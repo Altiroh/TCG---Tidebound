@@ -1,6 +1,6 @@
 import { computeEffectiveStats } from "@/game/cards/stats";
 import { getCardDefinition } from "@/game/cards/sets/core";
-import { hasKeyword } from "@/game/cards/types";
+import { hasKeyword, UNIT_CARD_TYPES } from "@/game/cards/types";
 import { getShipDefinition } from "@/game/environment/shipData";
 import type { GameState, PlayerId } from "@/game/state/types";
 
@@ -86,10 +86,21 @@ export function assertBoardNotFull(state: GameState, playerId: PlayerId): Valida
   return ok();
 }
 
+export function assertIsObjectCard(state: GameState, playerId: PlayerId, instanceId: string): ValidationResult {
+  const player = state.players.find((p) => p.id === playerId);
+  const unit = player?.board.find((u) => u.instanceId === instanceId);
+  if (!unit) return fail("Cette carte n'est pas sur le plateau de ce joueur.");
+  if (getCardDefinition(unit.cardId).type !== "objet") return fail("Seul un Objet peut être brisé.");
+  return ok();
+}
+
 export function assertUnitCanAttack(state: GameState, playerId: PlayerId, instanceId: string): ValidationResult {
   const player = state.players.find((p) => p.id === playerId);
   const unit = player?.board.find((u) => u.instanceId === instanceId);
   if (!unit) return fail("Cette unité n'est pas sur le plateau de ce joueur.");
+  if (!(UNIT_CARD_TYPES as readonly string[]).includes(getCardDefinition(unit.cardId).type)) {
+    return fail("Seuls les Marins et Créatures peuvent attaquer.");
+  }
   if (unit.summoningSick) return fail("Cette unité ne peut pas encore attaquer.");
   if (unit.hasAttackedThisTurn) return fail("Cette unité a déjà attaqué ce tour-ci.");
 

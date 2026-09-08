@@ -1,5 +1,6 @@
 import type { CardInstance } from "@/game/cards/types";
 import { computeEffectiveStats } from "@/game/cards/stats";
+import { getShipDefinition } from "@/game/environment/shipData";
 import type { GameEvent } from "@/game/events/types";
 import { processTrigger } from "@/game/triggers/triggerBus";
 import {
@@ -71,13 +72,17 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
 
   if (!action.defenderInstanceId) {
     const opponent = getOpponent(nextState, action.playerId);
+    // Faiblesse "Coque légère" (Le Courlis) : +1 dégât sur une attaque
+    // directe contre le Navire, propre à la faiblesse du DÉFENSEUR.
+    const directWeakness = getShipDefinition(opponent.shipId).directAttackWeakness ?? 0;
+    const directDamage = attackerDamage + directWeakness;
     nextState = {
       ...nextState,
       players: nextState.players.map((p) =>
-        p.id === opponent.id ? { ...p, anchor: p.anchor - attackerDamage } : p
+        p.id === opponent.id ? { ...p, anchor: p.anchor - directDamage } : p
       ) as [PlayerState, PlayerState],
     };
-    events.push({ ...base, type: "DAMAGE", targetPlayerId: opponent.id, amount: attackerDamage });
+    events.push({ ...base, type: "DAMAGE", targetPlayerId: opponent.id, amount: directDamage });
   } else {
     const opponent = getOpponent(nextState, action.playerId);
     const defenderUnit = opponent.board.find((u) => u.instanceId === action.defenderInstanceId)!;

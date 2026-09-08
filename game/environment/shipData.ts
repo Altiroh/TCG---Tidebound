@@ -1,44 +1,38 @@
 import type { ShipDefinition } from "@/game/environment/types";
 
 /**
- * Navires principaux, conformes au cadrage "Navires, Slots et Raison" et
- * "Mécaniques verrouillées" : 4/5/6 Slots comme vraie caractéristique
- * d'équilibrage (4 = léger/compensé, 5 = standard, 6 = lourd/pénalisé).
+ * Navires principaux — UNIQUEMENT les Navires verrouillés dans le cadrage
+ * Notion ("Collection des Navires" + fiches dédiées). Ne pas ajouter de
+ * Navire ici tant qu'il n'a pas été verrouillé côté design.
  *
- * NOTE — certains passifs/faiblesses du cadrage sont des capacités
- * conditionnelles ou activables (ex: "annulez la première modification
- * d'Eaux adverse par tour", "la première Réaction coûte 1 Raison de
- * moins") que le moteur ne sait pas encore résoudre : il n'existe pas
- * encore de système de Réactions/capacités activables (cadrage section
- * 16, volontairement complexe, pas encore implémenté). Ces textes sont
- * conservés pour l'UI/la fidélité au design, mais seuls les effets
- * exprimables avec les champs numériques ci-dessous sont réellement
- * appliqués par le moteur pour l'instant.
+ * NOTE — les capacités activables (`capacityText`) et certains éléments de
+ * passif ne sont pas encore exprimables par le moteur : il n'existe pas de
+ * système de capacités "une fois par partie" ni de distinction "gain de
+ * Raison venant d'une carte" (cadrage section 16, volontairement complexe,
+ * pas encore implémenté). Ces textes sont conservés pour l'UI/la fidélité
+ * au design ; seuls les effets exprimables avec les champs numériques
+ * ci-dessous sont réellement appliqués par le moteur pour l'instant.
  */
 export const SHIP_SET: ShipDefinition[] = [
   {
-    id: "le-brise-lames",
-    name: "Le Brise-Lames",
-    startingAnchor: 24,
-    reasonMax: 8,
-    slotCount: 6,
-    passiveText: "Réduisez de 2 les dégâts de Tempête.",
-    weaknessText:
-      "Les pertes de Raison provoquées par les Abysses sont augmentées de 1. " +
-      "Ne peut pas réduire la durée d'une Eau par ses propres effets (non appliqué : pas encore de telles cartes/effets ciblés).",
-    resistanceByState: { tempete: 2 },
-    reasonWeaknessByState: { abysses: 1 },
-  },
-  {
-    id: "linsondable",
-    name: "L'Insondable",
-    startingAnchor: 18,
-    reasonMax: 10,
-    slotCount: 5,
-    passiveText: "Réduisez de 3 les pertes d'Ancrage causées par les Abysses.",
-    weaknessText: "Lorsque vous subissez des dégâts de Tempête, défaussez une carte.",
-    resistanceByState: { abysses: 3 },
-    onTideDamageTakenByState: { tempete: { discardCount: 1 } },
+    id: "le-courlis",
+    name: "Le Courlis",
+    startingAnchor: 17,
+    reasonMax: 12,
+    slotCount: 4,
+    text: "Profil : léger / maniable / contrôle environnemental.",
+    passiveText:
+      "Tirant léger — la première fois par tour qu'un effet d'Eau ou de Marée devrait vous infliger des " +
+      "dégâts d'Ancrage, réduisez-les de 1.",
+    capacityText:
+      "Virage court — une fois par partie, lorsqu'une nouvelle Eau est révélée, vous pouvez la refuser ; " +
+      "une autre Eau valide est immédiatement révélée à la place (non appliqué : capacité activable non modélisée).",
+    weaknessText: "Coque légère — les attaques directes contre votre Navire lui infligent +1 dégât.",
+    // Le moteur ne calcule les dégâts de Marée/Eaux qu'une seule fois par tour
+    // (`resolveTideTurnStep`), donc cette résistance forfaitaire équivaut
+    // fidèlement à "la première fois par tour" de Tirant léger.
+    resistanceByState: { tempete: 1, abysses: 1 },
+    directAttackWeakness: 1,
   },
   {
     id: "lerrant",
@@ -48,32 +42,31 @@ export const SHIP_SET: ShipDefinition[] = [
     slotCount: 5,
     text: "Profil standard : polyvalent, équilibré, sans faiblesse critique.",
     passiveText:
-      "La première fois que vous changez volontairement les Eaux pendant votre tour, récupérez 1 Raison " +
-      "(non appliqué : nécessite un système de capacités de Navire déclenchées, pas encore implémenté).",
+      "Cap sûr — la première fois par tour que vous récupérez de la Raison grâce à une carte, récupérez 1 " +
+      "Raison supplémentaire (non appliqué : nécessite de distinguer les gains de Raison venant des cartes, " +
+      "pas encore modélisé).",
+    capacityText:
+      "Changer de cap — une fois par partie, après qu'une Marée a été annoncée mais avant l'application de " +
+      "ses effets, réduisez sa durée de 1 tour (non appliqué : capacité activable non modélisée).",
+    // Aucune faiblesse explicite.
   },
   {
-    id: "le-courlis",
-    name: "Le Courlis",
-    startingAnchor: 18,
-    reasonMax: 11,
-    slotCount: 4,
+    id: "le-brise-lames",
+    name: "Le Brise-Lames",
+    startingAnchor: 24,
+    reasonMax: 8,
+    slotCount: 6,
+    text: "Profil : lourd / Structures / endurance.",
     passiveText:
-      "Coque vive : une fois par tour, quand la Marée change, réduisez de 1 les dégâts qu'elle inflige " +
-      "(approximé ici par une résistance forfaitaire de 1 à la Tempête et aux Abysses).",
-    weaknessText: "Ne peut contrôler que 4 permanents (slotCount).",
-    resistanceByState: { tempete: 1, abysses: 1 },
-  },
-  {
-    id: "lechappee",
-    name: "L'Échappée",
-    startingAnchor: 16,
-    reasonMax: 12,
-    slotCount: 4,
-    passiveText:
-      "La première Réaction jouée pendant le tour adverse coûte 1 Raison de moins " +
-      "(non appliqué : pas encore de système de Réactions). " +
-      "Une fois par partie, quittez les Eaux actuelles 1 tour plus tôt (non appliqué : capacité activable non modélisée).",
-    weaknessText: "Faible Ancrage.",
+      "Coque renforcée — la première fois à chaque tour que votre Navire devrait subir des dégâts de " +
+      "Tempête, réduisez ces dégâts de 2.",
+    capacityText:
+      "Tenir la ligne — une fois par partie, au début de votre tour, jusqu'à la fin de ce tour, vos " +
+      "Structures ne peuvent pas être détruites par des effets environnementaux (non appliqué : capacité " +
+      "activable non modélisée).",
+    weaknessText: "Équipage à bout — chaque fois que vous entrez dans les Abysses, perdez 1 Raison supplémentaire.",
+    resistanceByState: { tempete: 2 },
+    reasonWeaknessByState: { abysses: 1 },
   },
 ];
 

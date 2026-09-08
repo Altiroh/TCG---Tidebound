@@ -1,4 +1,5 @@
 import { attack } from "@/game/actions/attack";
+import { breakObject } from "@/game/actions/breakObject";
 import { endTurn } from "@/game/actions/endTurn";
 import { playCard } from "@/game/actions/playCard";
 import { saborder } from "@/game/actions/saborder";
@@ -52,6 +53,8 @@ function applyAction(state: GameState, action: PlayerAction): ActionResult {
       return endTurn(state, action);
     case "saborder":
       return saborder(state, action);
+    case "breakObject":
+      return breakObject(state, action);
     default: {
       const exhaustiveCheck: never = action;
       return { ok: false, error: `Action inconnue: ${JSON.stringify(exhaustiveCheck)}` };

@@ -253,7 +253,10 @@ export function resolveEffect(
     }
 
     case "buff": {
-      const amount = amountValue(effect.amount);
+      const fallback = amountValue(effect.amount);
+      const attackDelta = effect.attackAmount ? amountValue(effect.attackAmount) : fallback;
+      const healthDelta = effect.healthAmount ? amountValue(effect.healthAmount) : fallback;
+      const duration = effect.permanent ? "permanent" : "temporary";
       let nextState = state;
       for (const { unit, ownerId } of resolveUnitTargets(state, effect, context)) {
         nextState = replaceUnit(nextState, ownerId, unit.instanceId, (u) => ({
@@ -263,19 +266,22 @@ export function resolveEffect(
             {
               id: `mod_${Math.random().toString(36).slice(2, 8)}`,
               source: effect.cardId ?? "unknown",
-              attack: amount,
-              health: amount,
-              duration: "temporary",
+              attack: attackDelta,
+              health: healthDelta,
+              duration,
             },
           ],
         }));
-        events.push({ ...base, type: "BUFF_APPLIED", targetInstanceId: unit.instanceId, attack: amount, health: amount });
+        events.push({ ...base, type: "BUFF_APPLIED", targetInstanceId: unit.instanceId, attack: attackDelta, health: healthDelta });
       }
       return { state: nextState, events };
     }
 
     case "debuff": {
-      const amount = amountValue(effect.amount);
+      const fallback = amountValue(effect.amount);
+      const attackDelta = effect.attackAmount ? amountValue(effect.attackAmount) : fallback;
+      const healthDelta = effect.healthAmount ? amountValue(effect.healthAmount) : 0;
+      const duration = effect.permanent ? "permanent" : "temporary";
       let nextState = state;
       for (const { unit, ownerId } of resolveUnitTargets(state, effect, context)) {
         nextState = replaceUnit(nextState, ownerId, unit.instanceId, (u) => ({
@@ -285,35 +291,41 @@ export function resolveEffect(
             {
               id: `mod_${Math.random().toString(36).slice(2, 8)}`,
               source: effect.cardId ?? "unknown",
-              attack: -amount,
-              health: 0,
-              duration: "temporary",
+              attack: -attackDelta,
+              health: -healthDelta,
+              duration,
             },
           ],
         }));
-        events.push({ ...base, type: "DEBUFF_APPLIED", targetInstanceId: unit.instanceId, attack: -amount, health: 0 });
+        events.push({ ...base, type: "DEBUFF_APPLIED", targetInstanceId: unit.instanceId, attack: -attackDelta, health: -healthDelta });
       }
       return { state: nextState, events };
     }
 
     case "reasonGain": {
       const amount = amountValue(effect.amount);
-      const player = resolveSinglePlayerTarget(state, effect, context) ?? getPlayer(state, context.controllerId);
-      events.push({ ...base, type: "REASON_CHANGED", playerId: player.id, delta: amount });
-      return {
-        state: replacePlayer(state, { ...player, reason: Math.min(player.reasonMax, player.reason + amount) }),
-        events,
-      };
+      const targets = resolvePlayerTargets(state, effect, context);
+      const players = targets.length > 0 ? targets : [getPlayer(state, context.controllerId)];
+      let nextState = state;
+      for (const target of players) {
+        const player = getPlayer(nextState, target.id);
+        events.push({ ...base, type: "REASON_CHANGED", playerId: player.id, delta: amount });
+        nextState = replacePlayer(nextState, { ...player, reason: Math.min(player.reasonMax, player.reason + amount) });
+      }
+      return { state: nextState, events };
     }
 
     case "reasonLoss": {
       const amount = amountValue(effect.amount);
-      const player = resolveSinglePlayerTarget(state, effect, context) ?? getPlayer(state, context.controllerId);
-      events.push({ ...base, type: "REASON_CHANGED", playerId: player.id, delta: -amount });
-      return {
-        state: replacePlayer(state, { ...player, reason: Math.max(0, player.reason - amount) }),
-        events,
-      };
+      const targets = resolvePlayerTargets(state, effect, context);
+      const players = targets.length > 0 ? targets : [getPlayer(state, context.controllerId)];
+      let nextState = state;
+      for (const target of players) {
+        const player = getPlayer(nextState, target.id);
+        events.push({ ...base, type: "REASON_CHANGED", playerId: player.id, delta: -amount });
+        nextState = replacePlayer(nextState, { ...player, reason: Math.max(0, player.reason - amount) });
+      }
+      return { state: nextState, events };
     }
 
     case "tideReduceDuration":

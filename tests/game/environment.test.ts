@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { dispatch } from "@/game/engine";
+import { computeEffectiveStats } from "@/game/cards/stats";
+import { resolveEffect } from "@/game/effects/resolveEffect";
+import { grantIgnoreNextTideDamage } from "@/game/environment/resolveEnvironment";
+import { validateDeckList } from "@/game/rules/deckValidation";
 import { instance, testEnvironment, testGameState, testPlayer } from "./testHelpers";
 
 describe("environnement - emplacements du Navire", () => {
-  it("un Navire limite le plateau à son slotCount (6 pour Le Brise-Lames)", () => {
-    const fullBoard = Array.from({ length: 6 }, () => instance("recrue-des-marees", "p1"));
-    const card = instance("recrue-des-marees", "p1");
+  it("un Navire limite le plateau à son slotCount (6 pour Le Brise-Lames), Structures/Objets inclus (Slots universels)", () => {
+    const fullBoard = Array.from({ length: 6 }, () => instance("marin-des-jetees", "p1"));
+    const card = instance("caisses-arrimees", "p1"); // Structure : occupe aussi un Slot
     const state = testGameState({
       players: [testPlayer("p1", { board: fullBoard, hand: [card], reason: 5 }), testPlayer("p2")],
     });
@@ -21,12 +25,12 @@ describe("environnement - Marée (modèle durée + intensité)", () => {
     // vide déclencherait un Jugement de l'Océan qui terminerait la partie
     // avant la fin de la boucle.
     const filler = (ownerId: string) =>
-      Array.from({ length: 2 }, () => instance("recrue-des-marees", ownerId));
+      Array.from({ length: 2 }, () => instance("marin-des-jetees", ownerId));
     let state = testGameState({
-      // p1: Le Brise-Lames (résiste 2 Tempête), p2: L'Insondable (aucune résistance Tempête)
+      // p1: Le Brise-Lames (résiste 2 Tempête), p2: L'Errant (aucune résistance Tempête)
       players: [
         testPlayer("p1", { deck: filler("p1") }),
-        testPlayer("p2", { shipId: "linsondable", deck: filler("p2") }),
+        testPlayer("p2", { shipId: "lerrant", deck: filler("p2") }),
       ],
     });
     for (let i = 0; i < 4; i++) {
@@ -36,111 +40,98 @@ describe("environnement - Marée (modèle durée + intensité)", () => {
     }
     expect(state.environment.tideState).toBe("tempete");
     expect(state.players[0].anchor).toBe(24); // Le Brise-Lames : résistance annule les 2 dégâts de base
-    expect(state.players[1].anchor).toBe(16); // L'Insondable : 18 - 2
+    expect(state.players[1].anchor).toBe(18); // L'Errant : 20 - 2
   });
 
-  it("une unité inactive pendant la Tempête ne peut pas attaquer", () => {
-    const vigie = instance("vigie-fragile", "p1");
+  it("une unité inactive par affinité de Marée (Masse Noire pendant Calme) ne peut pas attaquer", () => {
+    const mass = instance("masse-noire", "p1");
     const state = testGameState({
-      players: [testPlayer("p1", { board: [vigie] }), testPlayer("p2")],
-      environment: testEnvironment({ tideState: "tempete", tideRemainingTurns: 1 }),
+      players: [testPlayer("p1", { board: [mass] }), testPlayer("p2")],
+      // testGameState() par défaut est en Calme.
     });
-    const result = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: vigie.instanceId });
+    const result = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: mass.instanceId });
     expect(result.ok).toBe(false);
   });
 
-  it("une unité marquée 'destroyed' par la Marée est détruite en entrant dans cet état", () => {
-    const vigie = instance("vigie-fragile", "p1");
-    const state = testGameState({
-      players: [testPlayer("p1", { board: [vigie] }), testPlayer("p2")],
-      activePlayerId: "p2",
-      // À 1 tour des Abysses : le prochain endTurn fait progresser la Marée.
-      environment: testEnvironment({ tideState: "tempete", tideRemainingTurns: 1 }),
-    });
-    const result = dispatch(state, { type: "endTurn", playerId: "p2" });
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.state.environment.tideState).toBe("abysses");
-    expect(result.state.players[0].board).toHaveLength(0);
+  it("Murène Aveugle gagne +1 Puissance pendant Tempête ou Abysses (affinité de Marée)", () => {
+    const fish = instance("murene-aveugle", "p1");
+    expect(computeEffectiveStats(fish, "calme").attack).toBe(3);
+    expect(computeEffectiveStats(fish, "tempete").attack).toBe(4);
+    expect(computeEffectiveStats(fish, "abysses").attack).toBe(4);
   });
 
-  it("Poisson-Lanterne gagne en puissance avec la Marée et pioche à l'entrée en Abysses", () => {
-    const fish = instance("poisson-lanterne", "p1");
-    const deckCard = instance("recrue-des-marees", "p1");
+  it("Structure/Objet à durée limitée : expire (quitte le board) une fois `durationTurns` écoulé", () => {
+    const buoy = instance("radeau-de-fortune", "p1", { turnsRemaining: 1 });
     const state = testGameState({
-      players: [testPlayer("p1", { board: [fish], deck: [deckCard] }), testPlayer("p2")],
+      players: [testPlayer("p1", { board: [buoy], anchor: 20 }), testPlayer("p2")],
       activePlayerId: "p2",
-      environment: testEnvironment({ tideState: "tempete", tideRemainingTurns: 1 }),
     });
     const result = dispatch(state, { type: "endTurn", playerId: "p2" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.state.players[0].hand).toHaveLength(1);
+    expect(result.state.players[0].board).toHaveLength(0);
+    expect(result.state.players[0].anchor).toBe(21); // onExpire : +1 Ancrage
   });
 
   it("ignoreNextTideDamage annule la prochaine perte d'Ancrage de cet état pour ce joueur", () => {
-    const spell = instance("voiles-affalees", "p1");
     let state = testGameState({
-      players: [
-        testPlayer("p1", { shipId: "linsondable", hand: [spell], reason: 5 }),
-        testPlayer("p2"),
-      ],
+      players: [testPlayer("p1", { shipId: "lerrant" }), testPlayer("p2")],
       environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 1 }),
     });
-
-    const played = dispatch(state, { type: "playCard", playerId: "p1", instanceId: spell.instanceId });
-    expect(played.ok).toBe(true);
-    if (played.ok) state = played.state;
+    state = {
+      ...state,
+      players: [grantIgnoreNextTideDamage(state.players[0], "tempete"), state.players[1]],
+    };
 
     const result = dispatch(state, { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.state.environment.tideState).toBe("tempete");
-    expect(result.state.players[0].anchor).toBe(18); // aurait dû perdre 2 sans le sort
+    expect(result.state.players[0].anchor).toBe(20); // aurait dû perdre 2 sans l'ignore (L'Errant : 20 de départ)
   });
 
-  it("Marée Précipitée et Reflux modifient directement la durée restante de l'état courant", () => {
-    const advance = instance("maree-precipitee", "p1");
+  it("Sabordage d'une Structure de manipulation de Marée (Régulateur de Courant) réduit la durée restante", () => {
+    const regulator = instance("regulateur-de-courant", "p1");
     const state = testGameState({
-      players: [testPlayer("p1", { hand: [advance], reason: 5 }), testPlayer("p2")],
+      players: [testPlayer("p1", { board: [regulator] }), testPlayer("p2")],
     });
-    const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: advance.instanceId });
+    const result = dispatch(state, { type: "saborder", playerId: "p1", instanceId: regulator.instanceId });
     expect(result.ok).toBe(true);
-    // Calme dure 2 tours ; -2 est plafonné à un minimum de 1 tour restant.
+    // Calme dure 2 tours ; -1 tour restant.
     if (result.ok) expect(result.state.environment.tideRemainingTurns).toBe(1);
   });
 });
 
 describe("environnement - Eaux", () => {
   it("changeWater remplace les Eaux actuelles et réinitialise leur durée", () => {
-    const courant = instance("courant-de-verre", "p1");
-    const state = testGameState({
-      players: [testPlayer("p1", { hand: [courant], reason: 5 }), testPlayer("p2")],
-    });
-    const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: courant.instanceId });
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    const state = testGameState({ players: [testPlayer("p1"), testPlayer("p2")] });
+    const result = resolveEffect(
+      state,
+      { type: "changeWater", target: { kind: "allPlayers" }, waterId: "mer-de-verre" },
+      { controllerId: "p1", turnNumber: 1 }
+    );
     expect(result.state.environment.currentWaterId).toBe("mer-de-verre");
     expect(result.state.environment.waterRemainingTurns).toBe(3);
   });
 
   it("les Récifs Rouges réduisent le coût des cartes taguées 'equipement'", () => {
-    const sonar = instance("sonar-de-fortune", "p1"); // coût de base 2
+    const rope = instance("corde-de-remorquage", "p1"); // coût de base 1
     const state = testGameState({
-      players: [testPlayer("p1", { hand: [sonar], reason: 1 }), testPlayer("p2")],
+      players: [testPlayer("p1", { hand: [rope], reason: 0 }), testPlayer("p2")],
       environment: testEnvironment({ currentWaterId: "recifs-rouges" }),
     });
-    const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: sonar.instanceId });
-    expect(result.ok).toBe(true); // coût réduit à 1, payable avec 1 Raison
+    const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: rope.instanceId });
+    expect(result.ok).toBe(true); // coût réduit à 0, payable même sans Raison
   });
 });
 
 describe("environnement - decks préconstruits", () => {
-  it("chaque deck préconstruit reste cohérent (contenu actuel : 20 cartes, cible finale 40 — cf. game/cards/decks/preconstructed.ts)", async () => {
-    const { DECK_MAREE_MONTANTE, DECK_ABYSSES_SILENCIEUSES } = await import(
-      "@/game/cards/decks/preconstructed"
-    );
-    expect(DECK_MAREE_MONTANTE.cardIds).toHaveLength(20);
-    expect(DECK_ABYSSES_SILENCIEUSES.cardIds).toHaveLength(20);
+  it("chaque deck de base système (Courlis, Errant, Brise-Lames) est un deck valide (40-50 cartes, max_copies respecté)", async () => {
+    const { PRECONSTRUCTED_DECKS } = await import("@/game/cards/decks/preconstructed");
+    expect(PRECONSTRUCTED_DECKS).toHaveLength(3);
+    for (const deck of PRECONSTRUCTED_DECKS) {
+      const validation = validateDeckList(deck);
+      expect(validation.ok, `${deck.name}: ${!validation.ok ? validation.error : ""}`).toBe(true);
+    }
   });
 });

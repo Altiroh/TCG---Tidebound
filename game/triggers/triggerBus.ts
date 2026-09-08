@@ -35,7 +35,7 @@ function playersActiveFirst(state: GameState): PlayerState[] {
 function collectTriggeredWork(state: GameState, event: TriggerEvent, turnNumber: number): TriggeredWork[] {
   const work: TriggeredWork[] = [];
 
-  if (event.trigger === "onDeath" || event.trigger === "onSaborde") {
+  if (event.trigger === "onDeath" || event.trigger === "onSaborde" || event.trigger === "onExpire") {
     // L'unité est déjà retirée du plateau au moment où cet événement est
     // émis : on résout ses capacités à partir des infos portées par
     // l'événement lui-même.

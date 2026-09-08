@@ -91,6 +91,8 @@ export interface ShipDefinition {
   slotCount: number;
   text?: string;
   passiveText?: string;
+  /** Capacité activable (0 ou 1 par Navire) — texte informatif uniquement tant qu'il n'existe pas de système de capacités activables/une-fois-par-partie dans le moteur. */
+  capacityText?: string;
   weaknessText?: string;
   /** Réduction forfaitaire des dégâts d'Ancrage environnementaux de cet état, par joueur. */
   resistanceByState?: Partial<Record<TideStateName, number>>;
@@ -100,4 +102,6 @@ export interface ShipDefinition {
   reasonWeaknessByState?: Partial<Record<TideStateName, number>>;
   /** Ex: "défaussez une carte" quand le joueur subit des dégâts de Tempête. */
   onTideDamageTakenByState?: Partial<Record<TideStateName, { discardCount?: number }>>;
+  /** Dégâts supplémentaires subis par CE Navire lors d'une attaque directe (pas de defenderInstanceId). */
+  directAttackWeakness?: number;
 }

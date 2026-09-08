@@ -32,7 +32,21 @@ export interface SaborderAction {
   instanceId: string;
 }
 
-export type PlayerAction = PlayCardAction | AttackAction | EndTurnAction | SaborderAction;
+/**
+ * Brise un Objet que le joueur contrôle : résout `onBreakEffects` puis
+ * l'envoie au cimetière. Consomme l'action principale du tour. Distinct du
+ * Sabordage — ne déclenche ni `onDeath` ni `onSaborde` (cadrage : "Briser
+ * ≠ Saborder sauf texte contraire").
+ */
+export interface BreakObjectAction {
+  type: "breakObject";
+  playerId: PlayerId;
+  instanceId: string;
+  /** Requis si l'effet de bris de cet Objet cible `chosenUnit`. */
+  targetInstanceId?: string;
+}
+
+export type PlayerAction = PlayCardAction | AttackAction | EndTurnAction | SaborderAction | BreakObjectAction;
 
 export type ActionResult =
   | { ok: true; state: GameState; events: GameEvent[] }

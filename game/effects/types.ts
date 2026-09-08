@@ -72,4 +72,17 @@ export interface EffectDefinition {
    * "Bouchons de Cire : ignorez la prochaine perte d'Ancrage abyssale").
    */
   tideState?: "calme" | "houle" | "tempete" | "abysses";
+  /**
+   * Pour `buff`/`debuff` : `true` = modificateur permanent (ex: un
+   * Équipement qui attache "+1 Puissance" tant qu'il reste en jeu), sinon
+   * temporaire (retiré en fin de tour). Défaut : temporaire.
+   */
+  permanent?: boolean;
+  /**
+   * Pour `buff`/`debuff` : composantes séparées Puissance/Résistance,
+   * quand l'effet n'est pas symétrique (ex: "+1 Résistance" seul). Si
+   * absents, retombe sur `amount` pour les deux (comportement "+N/+N").
+   */
+  attackAmount?: EffectAmount;
+  healthAmount?: EffectAmount;
 }

@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { createGameState } from "@/game/state/createGameState";
-import { DECK_ABYSSES_SILENCIEUSES, DECK_MAREE_MONTANTE } from "@/game/cards/decks/preconstructed";
+import { DECK_LE_BRISE_LAMES, DECK_LE_COURLIS } from "@/game/cards/decks/preconstructed";
 import { RULES } from "@/game/rules/constants";
 
 function newTestGame(seed = 42) {
   return createGameState({
     gameId: "test-game",
-    player1: { id: "p1", deck: DECK_MAREE_MONTANTE },
-    player2: { id: "p2", deck: DECK_ABYSSES_SILENCIEUSES },
+    player1: { id: "p1", deck: DECK_LE_BRISE_LAMES },
+    player2: { id: "p2", deck: DECK_LE_COURLIS },
     seed,
   });
 }
@@ -25,10 +25,10 @@ describe("createGameState", () => {
     expect(state.players[0].anchor).toBe(24);
     expect(state.players[0].reasonMax).toBe(8);
     expect(state.players[0].reason).toBe(8);
-    expect(state.players[1].shipId).toBe("linsondable");
-    expect(state.players[1].anchor).toBe(18);
-    expect(state.players[1].reasonMax).toBe(10);
-    expect(state.players[1].reason).toBe(10);
+    expect(state.players[1].shipId).toBe("le-courlis");
+    expect(state.players[1].anchor).toBe(17);
+    expect(state.players[1].reasonMax).toBe(12);
+    expect(state.players[1].reason).toBe(12);
   });
 
   it("initialise la Marée en Calme avec sa durée et son Intensité de base", () => {
@@ -62,6 +62,6 @@ describe("createGameState", () => {
   it("ne perd ni ne duplique de carte : deck + main = taille du deck initial", () => {
     const state = newTestGame();
     const totalP1 = state.players[0].deck.length + state.players[0].hand.length;
-    expect(totalP1).toBe(DECK_MAREE_MONTANTE.cardIds.length);
+    expect(totalP1).toBe(DECK_LE_BRISE_LAMES.cardIds.length);
   });
 });

@@ -13,12 +13,20 @@ import type { TideStateName } from "@/game/environment/types";
  *    à ajuster dès que le cadrage correspondant arrive.
  */
 export const RULES = {
-  // --- Main / Deck (cadrage "Points à verrouiller", section 11) ---------
+  // --- Main / Deck (cadrage "Règles & mécaniques verrouillées" +
+  // `TCG_DATABASE.md`, verrouillage du 2026-09-08) ------------------------
   STARTING_HAND_SIZE: 5,
   MAX_HAND_SIZE: 7,
   SECOND_PLAYER_EXTRA_CARD: 1,
-  DECK_SIZE_TARGET: 40,
-  MAX_COPIES_PER_CARD: 3,
+  /** Deck personnel valide : 40 cartes minimum, 50 maximum (pas une taille fixe). */
+  DECK_SIZE_MIN: 40,
+  DECK_SIZE_MAX: 50,
+  /**
+   * La limite d'exemplaires est désormais définie CARTE PAR CARTE
+   * (`CardDefinition.maxCopies`, voir `getMaxCopies` dans
+   * `game/cards/types.ts`) et n'est jamais dérivée de la rareté. Cette
+   * constante n'existe plus : ne pas la réintroduire comme limite globale.
+   */
 
   // --- Raison (cadrage "Navires, Slots et Raison") -----------------------
   /** Emplacements par défaut si un Navire ne précise rien (les vrais Navires ont 4/5/6). */

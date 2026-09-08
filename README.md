@@ -60,8 +60,8 @@ npm test                     # tests unitaires du moteur (Vitest)
   /effects            Résolution des effets génériques
   /triggers           Bus de déclenchement des capacités
   /environment        Marée, Eaux, Navires (voir section dédiée ci-dessous)
-  /rules              Constantes, validations serveur-autoritaires, Jugement de l'Océan
-  /actions            Actions joueur (jouer une carte, attaquer, saborder, terminer le tour)
+  /rules              Constantes, validations serveur-autoritaires, Jugement de l'Océan, validation de deck
+  /actions            Actions joueur (jouer une carte, attaquer, saborder, briser un Objet, terminer le tour)
   /state              Modèle de l'état de partie + création + traitement des morts
   /events             Journal d'événements (pour replay/debug/stats plus tard)
   engine.ts           Point d'entrée unique : dispatch(state, action) -> nouvel état
@@ -104,14 +104,37 @@ npm test                     # tests unitaires du moteur (Vitest)
 
 ## Types de cartes
 
-Taxonomie verrouillée (`game/cards/types.ts`) : **Marin** et **Créature**
-sont des permanents-unités (occupent un emplacement, attaquent,
-défendent) ; **Équipement** est permanent par défaut mais peut être
-`permanent: false` pour un usage unique ; **Structure** et **Anomalie**
-sont des permanents non-unités ; **Action** se résout puis part au
-cimetière ; **Réaction** est prévue pour se jouer hors de son propre tour
-— le système de chaînes/réactions n'est **pas encore implémenté** (voir
-"Points restant à construire" ci-dessous).
+Taxonomie verrouillée (`game/cards/types.ts`, verrouillage du 2026-09-08) :
+**Marin** et **Créature** sont des permanents-unités (occupent un Slot,
+attaquent, défendent) ; **Équipement** est permanent par défaut mais peut
+être `permanent: false` pour un usage unique ; **Structure**, **Objet** et
+**Anomalie** sont des permanents non-unités.
+
+**Action et Réaction n'existent PAS comme types de carte** — changement de
+cadrage survenu en cours de projet : les effets ponctuels sont désormais
+portés par des **Objets**, des permanents autonomes toujours visibles qui
+occupent un Slot et se **brisent** (`game/actions/breakObject.ts`,
+`CardDefinition.onBreakEffects`) pour résoudre leur effet. Briser ≠
+Saborder : aucun des deux ne déclenche l'autre.
+
+Tous les permanents (unités comme non-unités) occupent un Slot — le
+plateau est limité par `Navire.slotCount`, pas seulement pour les unités.
+
+## Structures : durée et visibilité
+
+- **Durée** (`CardDefinition.durationTurns` / `CardInstance.turnsRemaining`) :
+  une Structure ou un Objet peut avoir une durée de vie limitée, décomptée
+  une fois par tour joué (tous joueurs confondus) par
+  `game/environment/resolveEnvironment.ts`. À 0, la carte quitte le board
+  par **expiration** — ni mort (`onDeath`) ni Sabordage (`onSaborde`) ;
+  déclenche `onExpire` si la carte a une capacité qui y réagit.
+- **Visibilité** (`CardDefinition.visibleDuringTide`) : une Structure peut
+  n'être visible pour l'adversaire que pendant certains états de Marée.
+  Le propriétaire la voit toujours ; elle occupe son Slot et continue
+  d'exister même invisible. La transition d'invisible à visible déclenche
+  `onBecomeVisible` (portée : la carte elle-même uniquement pour
+  l'instant — un déclenchement plus large, ex: "n'importe laquelle de vos
+  Structures", n'est pas encore modélisé).
 
 ## Structure de tour
 
@@ -160,13 +183,13 @@ jouer une carte, Saborder un permanent, ou passer
   selon l'état de Marée courant — calculé à la volée par
   `computeEffectiveStats` (`game/cards/stats.ts`), jamais stocké.
 
-Exemples de cartes illustrant ces systèmes : `poisson-lanterne` (stats
-variables + pioche à l'entrée en Abysses), `vigie-fragile` (inactive en
-Tempête, détruite en Abysses), `voiles-affalees` / `bouchons-de-cire`
-(ignorer la prochaine perte d'Ancrage), `front-depressionnaire` (double
-les prochains dégâts de Marée), `maree-precipitee` / `reflux` (réduire/
-prolonger la durée restante), `courant-de-verre` (changer les Eaux
-actuelles), `sentinelle-du-recif` (porte le mot-clé Garde).
+Exemples de cartes illustrant ces systèmes : `murene-aveugle` (stats
+variables selon la Marée), `masse-noire` (inactive pendant Calme),
+`regulateur-de-courant` / `horloge-de-maree` (Sabordage : réduit la durée
+de Marée restante), `radeau-de-fortune` (`onExpire` : récupère de
+l'Ancrage), `epave-engloutie` / `ponton-aux-cloches` (`onBecomeVisible`),
+`crabe-de-fer` (porte le mot-clé Garde), `thermos-du-dernier-quart` /
+`levier-de-lest` (Objets : `onBreakEffects`).
 
 ## Combat, Sabordage et Garde
 
@@ -205,49 +228,79 @@ dans `game/triggers/triggerBus.ts`.
 Le cadrage identifie explicitement des systèmes volontairement complexes
 et reportés :
 
-- **Réactions et chaînes** (cartes jouables hors de son propre tour, à la
-  Yu-Gi-Oh) : le type de carte `reaction` existe dans le modèle de
-  données, mais aucune mécanique de chaîne/priorité n'est implémentée.
-- **Invisibilité conditionnelle des Structures** selon la Marée : non
-  implémentée.
-- **Capacités de Navire activables/conditionnelles** (ex: "la première
-  fois que...", "une fois par partie...") : plusieurs Navires
-  (`game/environment/shipData.ts`) documentent ces textes dans
-  `passiveText`/`weaknessText` avec la mention explicite "non appliqué" —
-  seuls les effets exprimables par les champs numériques du moteur sont
-  réellement actifs.
+- **Capacités activables** (Navires : "une fois par partie..." ; certaines
+  cartes : "vous pouvez perdre X Raison pour...") : aucun système
+  d'activation hors pose/Sabordage/bris n'existe. Documentées en texte
+  avec la mention "non appliqué".
+- **Interception réactive** ("la première fois par tour que vous
+  perdriez X, réduisez de N") : très fréquente dans le catalogue de 80
+  cartes, non modélisée — le moteur ne sait pas encore intercepter/réduire
+  un effet en cours de résolution.
+- **Information cachée** (regarder une carte de la pioche/Eaux/main
+  adverse) : non modélisée, l'état de jeu est actuellement à information
+  parfaite côté serveur.
+- **Choix de joueur en cours de résolution** ("vous pouvez...", "choisissez
+  soit...") : non modélisé ; seul le ciblage `chosenUnit` au moment de
+  jouer/briser une carte existe.
+- **Attachement d'Équipement persistant** : jouer un Équipement applique
+  un bonus permanent via `chosenUnit`, mais l'Équipement lui-même n'est
+  pas suivi comme rattaché à sa cible (pas de retrait du bonus si la cible
+  part, pas de résolution de "si l'Équipement est détruit...").
 - **Priorité entre porteurs de Garde multiples** : non tranchée par le
   cadrage, tout porteur est accepté pour l'instant.
 - **Pondération du tirage des Eaux** : tirage uniforme dans `WATER_POOL`
   pour l'instant ; l'algorithme réel reste "à préciser".
 
+**Fidélité du catalogue de 80 cartes** (`game/cards/sets/core.ts`) : toutes
+les cartes portent leur texte réel et complet, mais une bonne partie de
+ces textes dépend des mécaniques ci-dessus (interception réactive,
+info cachée, choix). Quand une carte n'a pas d'`onPlayEffects`/
+`abilities`/`onBreakEffects` malgré un texte à effet, c'est volontaire —
+un commentaire `// non appliqué : ...` explique précisément pourquoi,
+juste au-dessus de sa définition.
+
 ## État du MVP
 
-Cible finale du cadrage : deck de 40 cartes (max 3 exemplaires par
-carte), 2 decks préconstruits, 2 joueurs, un plateau dont la taille suit
-le Navire (4/5/6 emplacements), Raison comme ressource unique, Ancrage
-comme condition de victoire principale, tours alternés avec structure
-verrouillée, combat sans riposte automatique, Sabordage, Garde,
-Jugement de l'Océan, effets génériques, triggers, Marée + Eaux + Navires.
+Catalogue complet : **80 cartes** verrouillées (`game/cards/sets/core.ts`,
+7 lots de conception), **3 Navires** verrouillés (Le Courlis, L'Errant, Le
+Brise-Lames — `game/environment/shipData.ts`), **3 decks de base système**
+assortis (un par Navire, `game/cards/decks/preconstructed.ts`, 40 cartes
+chacun). Deck personnel valide : 40 à 50 cartes, limite d'exemplaires
+définie carte par carte (`CardDefinition.maxCopies`, jamais dérivée de la
+rareté) et vérifiée côté serveur par `game/rules/deckValidation.ts`.
 
-**Écart actuel documenté** : les deux decks préconstruits
-(`game/cards/decks/preconstructed.ts`) contiennent encore 20 cartes
-chacun (contenu du bootstrap initial), pas 40 — l'expansion du pool de
-cartes vers la cible finale est une prochaine étape de contenu, pas de
-moteur.
+Raison comme ressource unique, Ancrage comme condition de victoire
+principale, Slots universels (tout permanent en occupe un), tours
+alternés avec structure verrouillée, combat sans riposte automatique,
+Sabordage, Bris d'Objet, Garde, Jugement de l'Océan, effets génériques,
+triggers (dont `onBecomeVisible`/`onExpire`), Marée + Eaux + Navires.
+
+**Écarts actuels documentés** :
+- Système de raretés/boosters/économie de collection (`TCG_DATABASE.md`)
+  spécifié côté design mais pas implémenté — pas de schéma BDD, pas de
+  logique d'ouverture de booster.
+- `RULES.MAX_HAND_SIZE` (7) est défini mais pas encore appliqué (pas de
+  défausse forcée en fin de tour au-delà de cette limite).
+- Voir "Points restant à construire" plus haut pour les mécaniques de
+  cartes non modélisées (interception réactive, information cachée,
+  choix de joueur, attachement d'Équipement persistant).
 
 Pas encore fait : interface de jeu (plateau, main, drag&drop, affichage
 de la Marée/des Eaux/de la Raison), Supabase (auth, schéma de base, RLS,
 temps réel), parties privées + invitation par code, matchmaking, PWA
 (manifest présent, service worker à ajouter), collection/decks persistés,
-historique de parties, système de Réactions/chaînes.
+boosters/économie, historique de parties.
 
 ## Prochaines étapes suggérées
 
-1. Étendre le pool de cartes vers la cible de 40 cartes/deck (contenu,
-   pas moteur).
-2. Cadrer et implémenter le système de Réactions/chaînes.
-3. Schéma Supabase minimal (profils, parties, invitations) + policies RLS.
+1. Décider si les mécaniques réactives/à information cachée les plus
+   fréquentes du catalogue (interception "1re fois par tour", regarder
+   une carte) valent la peine d'un nouveau sous-système générique, ou
+   restent hors périmètre.
+2. Appliquer `RULES.MAX_HAND_SIZE` (défausse en fin de tour).
+3. Schéma Supabase minimal (profils, parties, invitations, cartes,
+   raretés, boosters) + policies RLS — voir le schéma BDD recommandé dans
+   `TCG_DATABASE.md`.
 4. Route API / Server Action qui appelle `dispatch()` côté serveur et
    persiste le nouvel état + événements.
 5. UI de plateau (lecture seule de l'état, puis actions) avec affichage

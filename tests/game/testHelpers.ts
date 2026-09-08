@@ -53,7 +53,7 @@ export function testEnvironment(overrides: Partial<EnvironmentState> = {}): Envi
 
 export function testGameState(overrides: Partial<GameState> = {}): GameState {
   const p1 = testPlayer("p1");
-  const p2 = testPlayer("p2", { shipId: "linsondable" });
+  const p2 = testPlayer("p2", { shipId: "lerrant" });
   return {
     id: "test-game",
     createdAt: 0,

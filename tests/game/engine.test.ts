@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { dispatch } from "@/game/engine";
-import { instance, testGameState, testPlayer } from "./testHelpers";
+import { instance, testEnvironment, testGameState, testPlayer } from "./testHelpers";
 import type { GameState } from "@/game/state/types";
 
 describe("engine.dispatch - playCard", () => {
   it("joue une créature : paie le coût en Raison, la place sur le plateau avec la maladie d'invocation", () => {
-    const card = instance("lancier-cotier", "p1"); // coût 2, 2/2
+    const card = instance("murene-aveugle", "p1"); // coût 2, 3/1
     const state = testGameState({
       players: [
         testPlayer("p1", { hand: [card], reason: 5, reasonMax: 10 }),
@@ -27,9 +27,10 @@ describe("engine.dispatch - playCard", () => {
   });
 
   it("refuse de jouer une carte si la Raison est insuffisante", () => {
-    const card = instance("leviathan-abyssal", "p1"); // coût 6
+    const card = instance("loeil-sous-la-mer", "p1"); // coût 6
     const state = testGameState({
       players: [testPlayer("p1", { hand: [card], reason: 2 }), testPlayer("p2")],
+      environment: testEnvironment({ tideState: "abysses" }),
     });
 
     const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: card.instanceId });
@@ -37,8 +38,8 @@ describe("engine.dispatch - playCard", () => {
   });
 
   it("refuse une seconde carte/action principale dans le même tour", () => {
-    const first = instance("recrue-des-marees", "p1"); // coût 1
-    const second = instance("lancier-cotier", "p1"); // coût 2
+    const first = instance("marin-des-jetees", "p1"); // coût 1
+    const second = instance("murene-aveugle", "p1"); // coût 2
     const state = testGameState({
       players: [testPlayer("p1", { hand: [first, second], reason: 10 }), testPlayer("p2")],
     });
@@ -55,57 +56,91 @@ describe("engine.dispatch - playCard", () => {
     expect(secondResult.ok).toBe(false);
   });
 
-  it("une Action de dégâts inflige bien des dégâts à la cible choisie", () => {
-    const action = instance("vague-destructrice", "p1"); // coût 2, 3 dégâts
-    const enemyUnit = instance("lancier-cotier", "p2"); // 2/2
+  it("une carte ne peut être jouée que dans l'état de Marée requis (`requiresTideState`)", () => {
+    const card = instance("la-chose-qui-remonte", "p1"); // ne peut être jouée que pendant Tempête/Abysses
     const state = testGameState({
-      players: [
-        testPlayer("p1", { hand: [action], reason: 5 }),
-        testPlayer("p2", { board: [enemyUnit] }),
-      ],
+      players: [testPlayer("p1", { hand: [card], reason: 10 }), testPlayer("p2")],
+      // testGameState() par défaut est en Calme.
+    });
+
+    const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: card.instanceId });
+    expect(result.ok).toBe(false);
+  });
+
+  it("un onPlayEffect ciblé (chosenUnit) soigne bien l'unité choisie", () => {
+    const carpenter = instance("charpentier-de-bord", "p1"); // à l'arrivée : la Structure choisie récupère 1 Résistance
+    const structure = instance("caisses-arrimees", "p1", { damageMarked: 2 });
+    const state = testGameState({
+      players: [testPlayer("p1", { hand: [carpenter], board: [structure], reason: 5 }), testPlayer("p2")],
     });
 
     const result = dispatch(state, {
       type: "playCard",
       playerId: "p1",
-      instanceId: action.instanceId,
-      targetInstanceId: enemyUnit.instanceId,
+      instanceId: carpenter.instanceId,
+      targetInstanceId: structure.instanceId,
     });
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    // 3 dégâts >= 2 PV : l'unité meurt et part au cimetière.
-    const p2 = result.state.players[1];
-    expect(p2.board).toHaveLength(0);
-    expect(p2.graveyard).toHaveLength(1);
-    expect(result.events.some((e) => e.type === "DESTROY")).toBe(true);
+    const healedStructure = result.state.players[0].board.find((u) => u.instanceId === structure.instanceId);
+    expect(healedStructure?.damageMarked).toBe(1);
   });
 
-  it("un onPlayEffect de pioche ajoute bien une carte à la main", () => {
-    const veteran = instance("veterane-des-brisants", "p1"); // à l'arrivée : piochez 1
-    const deckCard = instance("recrue-des-marees", "p1");
+  it("un onPlayEffect inflige une perte de Raison aux deux joueurs", () => {
+    const card = instance("marin-aux-yeux-rouges", "p1"); // à l'arrivée : chaque joueur perd 1 Raison
     const state = testGameState({
-      players: [testPlayer("p1", { hand: [veteran], deck: [deckCard], reason: 5 }), testPlayer("p2")],
+      players: [testPlayer("p1", { hand: [card], reason: 5 }), testPlayer("p2", { reason: 5 })],
     });
 
-    const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: veteran.instanceId });
+    const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: card.instanceId });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // p1 a payé 2 de coût (5 -> 3) puis perdu 1 de Raison via l'effet (-> 2).
+    expect(result.state.players[0].reason).toBe(2);
+    expect(result.state.players[1].reason).toBe(4);
+  });
+});
+
+describe("engine.dispatch - breakObject", () => {
+  it("brise un Objet contrôlé : résout onBreakEffects, l'envoie au cimetière, sans déclencher onDeath/onSaborde", () => {
+    const thermos = instance("thermos-du-dernier-quart", "p1"); // Brisez : récupérez 2 Raison
+    const state = testGameState({
+      players: [testPlayer("p1", { board: [thermos], reason: 3 }), testPlayer("p2")],
+    });
+
+    const result = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: thermos.instanceId });
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     const p1 = result.state.players[0];
-    expect(p1.hand).toHaveLength(1);
-    expect(p1.deck).toHaveLength(0);
+    expect(p1.board).toHaveLength(0);
+    expect(p1.graveyard).toHaveLength(1);
+    expect(p1.reason).toBe(5);
+    expect(p1.hasUsedMainActionThisTurn).toBe(true);
+    expect(result.events.some((e) => e.type === "SABORDED")).toBe(false);
+  });
+
+  it("refuse de briser une carte qui n'est pas un Objet", () => {
+    const structure = instance("caisses-arrimees", "p1"); // Structure, pas un Objet
+    const state = testGameState({
+      players: [testPlayer("p1", { board: [structure] }), testPlayer("p2")],
+    });
+
+    const result = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: structure.instanceId });
+    expect(result.ok).toBe(false);
   });
 });
 
 describe("engine.dispatch - saborder", () => {
-  it("détruit son propre permanent et consomme l'action principale", () => {
-    const unit = instance("lancier-cotier", "p1");
+  it("détruit son propre permanent, consomme l'action principale et déclenche onSaborde", () => {
+    const structure = instance("caisses-arrimees", "p1"); // Sabordage : récupérez 2 Ancrage
     const state = testGameState({
-      players: [testPlayer("p1", { board: [unit] }), testPlayer("p2")],
+      players: [testPlayer("p1", { board: [structure], anchor: 20 }), testPlayer("p2")],
     });
 
-    const result = dispatch(state, { type: "saborder", playerId: "p1", instanceId: unit.instanceId });
+    const result = dispatch(state, { type: "saborder", playerId: "p1", instanceId: structure.instanceId });
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -113,11 +148,12 @@ describe("engine.dispatch - saborder", () => {
     expect(p1.board).toHaveLength(0);
     expect(p1.graveyard).toHaveLength(1);
     expect(p1.hasUsedMainActionThisTurn).toBe(true);
+    expect(p1.anchor).toBe(22);
     expect(result.events.some((e) => e.type === "SABORDED")).toBe(true);
   });
 
   it("refuse de saborder une carte qui n'est pas sur son propre plateau", () => {
-    const unit = instance("lancier-cotier", "p2");
+    const unit = instance("murene-aveugle", "p2");
     const state = testGameState({
       players: [testPlayer("p1"), testPlayer("p2", { board: [unit] })],
     });
@@ -129,7 +165,7 @@ describe("engine.dispatch - saborder", () => {
 
 describe("engine.dispatch - attack", () => {
   it("une attaque directe inflige les dégâts au joueur adverse", () => {
-    const attacker = instance("predateur-des-vagues", "p1"); // 4/3
+    const attacker = instance("requin-balafre", "p1"); // 4/2
     const state = testGameState({
       players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2", { anchor: 20 })],
     });
@@ -141,8 +177,35 @@ describe("engine.dispatch - attack", () => {
     expect(result.state.players[1].anchor).toBe(16);
   });
 
+  it("seuls les Marins et Créatures peuvent attaquer (pas une Structure/un Objet)", () => {
+    const structure = instance("caisses-arrimees", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { board: [structure] }), testPlayer("p2")],
+    });
+
+    const result = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: structure.instanceId });
+    expect(result.ok).toBe(false);
+  });
+
+  it("Coque légère (Le Courlis) : une attaque directe contre son Navire lui inflige +1 dégât", () => {
+    const attacker = instance("requin-balafre", "p1"); // 4/2
+    const state = testGameState({
+      players: [
+        testPlayer("p1", { board: [attacker] }),
+        testPlayer("p2", { shipId: "le-courlis", anchor: 17 }),
+      ],
+    });
+
+    const result = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attacker.instanceId });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // 4 d'attaque + 1 de faiblesse "Coque légère" = 5 dégâts.
+    expect(result.state.players[1].anchor).toBe(12);
+  });
+
   it("refuse d'attaquer avec une unité malade d'invocation", () => {
-    const attacker = instance("predateur-des-vagues", "p1", { summoningSick: true });
+    const attacker = instance("requin-balafre", "p1", { summoningSick: true });
     const state = testGameState({ players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2")] });
 
     const result = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attacker.instanceId });
@@ -150,7 +213,7 @@ describe("engine.dispatch - attack", () => {
   });
 
   it("refuse une seconde attaque de la même unité dans le même tour", () => {
-    const attacker = instance("predateur-des-vagues", "p1");
+    const attacker = instance("requin-balafre", "p1");
     const state = testGameState({ players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2")] });
 
     const first = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attacker.instanceId });
@@ -166,8 +229,8 @@ describe("engine.dispatch - attack", () => {
   });
 
   it("un combat unité contre unité n'inflige des dégâts qu'au défenseur (pas de riposte automatique)", () => {
-    const attacker = instance("predateur-des-vagues", "p1"); // 4/3
-    const defender = instance("lancier-cotier", "p2"); // 2/2
+    const attacker = instance("requin-balafre", "p1"); // 4/2
+    const defender = instance("murene-aveugle", "p2"); // 3/1
     const state = testGameState({
       players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2", { board: [defender] })],
     });
@@ -181,41 +244,15 @@ describe("engine.dispatch - attack", () => {
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    // Le défenseur (2 PV) meurt sous 4 dégâts ; l'attaquant ne subit AUCUN
+    // Le défenseur (1 PV) meurt sous 4 dégâts ; l'attaquant ne subit AUCUN
     // dégât en retour (règle verrouillée : pas de riposte automatique).
     expect(result.state.players[1].board).toHaveLength(0);
     expect(result.state.players[0].board[0]?.damageMarked).toBe(0);
   });
 
-  it("déclenche la capacité onDeath quand l'unité meurt au combat", () => {
-    // Sentinelle du Récif (1/4) : à la mort, inflige 1 dégât au joueur adverse.
-    const sentinel = instance("sentinelle-du-recif", "p2");
-    const bigAttacker = instance("leviathan-abyssal", "p1"); // 6/6, tue la sentinelle (4 PV)
-    const state = testGameState({
-      players: [
-        testPlayer("p1", { board: [bigAttacker] }),
-        testPlayer("p2", { board: [sentinel], anchor: 20 }),
-      ],
-    });
-
-    const result = dispatch(state, {
-      type: "attack",
-      playerId: "p1",
-      attackerInstanceId: bigAttacker.instanceId,
-      defenderInstanceId: sentinel.instanceId,
-    });
-
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    // La sentinelle meurt et son onDeath inflige 1 dégât... à l'adversaire de
-    // son contrôleur (p2), donc p1. p1 est sur Le Brise-Lames (24 Ancrage de
-    // départ) : 24 - 1 = 23.
-    expect(result.state.players[0].anchor).toBe(23);
-  });
-
   it("Garde : une attaque directe visant le Navire est refusée tant qu'un porteur de Garde est en jeu", () => {
-    const guard = instance("sentinelle-du-recif", "p2"); // porte le mot-clé "garde"
-    const attacker = instance("predateur-des-vagues", "p1");
+    const guard = instance("crabe-de-fer", "p2"); // porte le mot-clé "garde"
+    const attacker = instance("requin-balafre", "p1");
     const state = testGameState({
       players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2", { board: [guard] })],
     });
@@ -235,7 +272,7 @@ describe("engine.dispatch - attack", () => {
 
 describe("engine.dispatch - endTurn", () => {
   it("passe la main au joueur suivant, régénère 1 Raison et pioche", () => {
-    const deckCard = instance("recrue-des-marees", "p2");
+    const deckCard = instance("marin-des-jetees", "p2");
     const state = testGameState({
       players: [
         testPlayer("p1", { reasonMax: 10, reason: 5 }),
@@ -255,7 +292,7 @@ describe("engine.dispatch - endTurn", () => {
   });
 
   it("dégèle les unités et réinitialise l'action principale du joueur qui redevient actif", () => {
-    const frozenUnit = instance("lancier-cotier", "p2", { summoningSick: true, hasAttackedThisTurn: true });
+    const frozenUnit = instance("murene-aveugle", "p2", { summoningSick: true, hasAttackedThisTurn: true });
     const state = testGameState({
       players: [testPlayer("p1"), testPlayer("p2", { board: [frozenUnit], hasUsedMainActionThisTurn: true })],
       activePlayerId: "p1",
@@ -289,11 +326,27 @@ describe("engine.dispatch - endTurn", () => {
     const result = dispatch(state, { type: "endTurn", playerId: "p2" });
     expect(result.ok).toBe(false);
   });
+
+  it("une Structure/un Objet à durée limitée expire (quitte le board) quand son compteur atteint 0", () => {
+    const radeau = instance("radeau-de-fortune", "p2", { turnsRemaining: 1 }); // durée 3, onExpire : +1 Ancrage
+    const state = testGameState({
+      players: [testPlayer("p1"), testPlayer("p2", { board: [radeau], anchor: 15 })],
+      activePlayerId: "p1",
+    });
+
+    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const p2 = result.state.players[1];
+    expect(p2.board).toHaveLength(0);
+    expect(p2.graveyard).toHaveLength(1);
+    expect(p2.anchor).toBe(16);
+  });
 });
 
 describe("engine.dispatch - condition de victoire", () => {
   it("termine la partie quand un joueur tombe à 0 point d'Ancrage", () => {
-    const attacker = instance("leviathan-abyssal", "p1"); // 6/6
+    const attacker = instance("loeil-sous-la-mer", "p1"); // 5/7
     const state: GameState = testGameState({
       players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2", { anchor: 5 })],
     });

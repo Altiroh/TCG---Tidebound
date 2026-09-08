@@ -37,10 +37,16 @@ function validate(state: GameState, action: PlayCardAction) {
   const def = getCardDefinition(instance.cardId);
   const effectiveCost = computeEffectiveCost(def, state.environment.currentWaterId);
 
+  if (def.requiresTideState && !def.requiresTideState.includes(state.environment.tideState)) {
+    return { ok: false as const, error: "Cette carte ne peut pas être jouée dans l'état de Marée actuel." };
+  }
+
   const costCheck = assertCanPayCost(state, action.playerId, effectiveCost);
   if (!costCheck.ok) return costCheck;
 
-  if (isUnitCard(def.type)) {
+  if (isPermanentCard(def)) {
+    // Slots universels : tout permanent (unité, Structure, Objet, Équipement,
+    // Anomalie) occupe un Slot, pas seulement les unités.
     const boardCheck = assertBoardNotFull(state, action.playerId);
     if (!boardCheck.ok) return boardCheck;
   }
@@ -100,6 +106,7 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
       hasAttackedThisTurn: false,
       damageMarked: 0,
       modifiers: [],
+      turnsRemaining: def.durationTurns,
     };
     const owner = getPlayer(nextState, player.id);
     nextState = {
@@ -110,8 +117,9 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
     };
     events.push({ ...base, type: "SUMMON", playerId: player.id, instanceId: boardUnit.instanceId, cardId: def.id });
   } else {
-    // Action / Réaction / Équipement consommable : part directement au
-    // cimetière après résolution.
+    // Équipement consommable (`permanent: false`) : part directement au
+    // cimetière après résolution. Aucune autre carte ne prend cette voie —
+    // Action et Réaction n'existent plus comme types de carte.
     const owner = getPlayer(nextState, player.id);
     nextState = {
       ...nextState,

@@ -1,27 +1,24 @@
 import type { EffectDefinition } from "@/game/effects/types";
-import type { TideAffinity } from "@/game/environment/types";
+import type { TideAffinity, TideStateName } from "@/game/environment/types";
 import type { TriggerType } from "@/game/triggers/types";
 
 export type CardId = string;
 
 /**
- * Taxonomie verrouillée par le cadrage ("Mécaniques verrouillées" section
- * 12-19) : Marin et Créature sont des permanents "unité" (attaquent,
- * défendent) ; Équipement est permanent par défaut mais peut être
- * consommable (`permanent: false`) ; Structure et Anomalie sont des
- * permanents non-unité ; Action se résout puis part au cimetière ;
- * Réaction se joue en chaîne hors de son propre tour (système de
- * chaînes/réactions volontairement pas encore implémenté — voir
- * `game/effects/resolveEffect.ts`).
+ * Taxonomie verrouillée par le cadrage (`TCG_DATABASE.md` + "Règles &
+ * mécaniques verrouillées", verrouillage du 2026-09-08) : Marin et
+ * Créature sont des permanents "unité" (attaquent, défendent) ; Équipement
+ * est permanent par défaut mais peut être consommable (`permanent: false`) ;
+ * Structure, Objet et Anomalie sont des permanents non-unité.
+ *
+ * **Action et Réaction n'existent PAS comme types de carte** — changement
+ * de cadrage : les effets ponctuels sont désormais portés par des
+ * **Objets**, des permanents autonomes toujours visibles qui occupent un
+ * Slot et se **brisent** (`game/actions/breakObject.ts`) pour résoudre
+ * leur effet. Briser ≠ Saborder : ça ne déclenche ni `onDeath` ni
+ * `onSaborde` sauf texte contraire.
  */
-export type CardType =
-  | "marin"
-  | "creature"
-  | "equipement"
-  | "structure"
-  | "action"
-  | "reaction"
-  | "anomalie";
+export type CardType = "marin" | "creature" | "equipement" | "structure" | "objet" | "anomalie";
 
 /** Types de carte considérés comme des unités (peuvent occuper un Slot de combat, attaquer). */
 export const UNIT_CARD_TYPES: readonly CardType[] = ["marin", "creature"];
@@ -32,6 +29,7 @@ export const PERMANENT_CARD_TYPES: readonly CardType[] = [
   "creature",
   "equipement",
   "structure",
+  "objet",
   "anomalie",
 ];
 
@@ -42,7 +40,7 @@ export interface TriggeredAbility {
   /** Texte optionnel affiché dans l'UI ; pas de logique attachée. */
   description?: string;
   /** Filtre supplémentaire pour `onTideStateEntered` : ne se déclenche que pour cet état. */
-  condition?: { tideState?: import("@/game/environment/types").TideStateName };
+  condition?: { tideState?: TideStateName };
 }
 
 /**
@@ -55,20 +53,21 @@ export interface CardDefinition {
   id: CardId;
   name: string;
   type: CardType;
-  /** Sous-catégorie optionnelle et extensible (ex: "poisson" pour une Créature). */
+  /** Sous-catégorie optionnelle et extensible (ex: "poisson" pour une Créature, "Abyssal" pour un Marin/Créature). */
   subtype?: string;
   cost: number;
   /** Texte d'ambiance / règles, affiché tel quel dans l'UI. */
   text?: string;
 
-  // Statistiques de base, uniquement pertinentes pour les unités (Marin/Créature).
+  // Statistiques de base : Puissance/Résistance pour les unités (Marin/
+  // Créature) ; Résistance seule pour Structure/Objet (`attack` absent).
   attack?: number;
   health?: number;
 
   /**
    * Pour les Équipements uniquement : `true` (par défaut) = reste en jeu
    * indéfiniment ; `false` = consommable, part au cimetière après son
-   * effet (cadrage section 13/19).
+   * effet.
    */
   permanent?: boolean;
 
@@ -79,7 +78,6 @@ export interface CardDefinition {
    * Étiquettes libres utilisées par les Eaux et Navires pour cibler des
    * familles de cartes sans coupler le moteur à une liste fermée de
    * catégories (ex: "equipement", "brume", "abyssal", "observation").
-   * Voir cadrage section 16 : catégories encore ouvertes.
    */
   tags?: string[];
 
@@ -89,19 +87,70 @@ export interface CardDefinition {
   /** Effets résolus immédiatement lorsque la carte est jouée. */
   onPlayEffects?: EffectDefinition[];
 
+  /**
+   * Pour les Objets uniquement : effets résolus quand l'Objet est brisé
+   * (`game/actions/breakObject.ts`). L'Objet quitte alors le board — ce
+   * n'est ni une mort (`onDeath`) ni un Sabordage (`onSaborde`).
+   */
+  onBreakEffects?: EffectDefinition[];
+
   /** Capacités déclenchées par des événements de jeu ultérieurs. */
   abilities?: TriggeredAbility[];
+
+  /**
+   * Pour Structure/Objet uniquement : durée de vie en tours JOUÉS (tous
+   * joueurs confondus, même convention que `RULES.TIDE_STATE_DURATION`).
+   * `undefined` = reste en jeu indéfiniment (jusqu'à destruction/Sabordage/
+   * bris). Décompté par `game/environment/resolveEnvironment.ts` ; à 0, la
+   * carte quitte le board (expiration — ni mort ni Sabordage).
+   */
+  durationTurns?: number;
+
+  /**
+   * Pour Structure uniquement : liste des états de Marée pendant lesquels
+   * cette Structure est visible pour l'adversaire. `undefined` = toujours
+   * visible (comportement par défaut, y compris pour tous les autres
+   * types de carte). Le propriétaire la voit toujours ; elle occupe son
+   * Slot et continue d'exister même invisible.
+   */
+  visibleDuringTide?: TideStateName[];
+
+  /**
+   * Restreint les états de Marée pendant lesquels cette carte peut être
+   * jouée (ex: "Ne peut être jouée que pendant Tempête ou Abysses").
+   * `undefined` = jouable en toute circonstance.
+   */
+  requiresTideState?: TideStateName[];
+
+  /**
+   * Nombre maximum d'exemplaires de cette carte dans un deck personnel —
+   * donnée propre à chaque carte, jamais dérivée de la rareté (cadrage
+   * `TCG_DATABASE.md` "max_copies canonique"). Défaut : 3.
+   */
+  maxCopies?: number;
+}
+
+export const DEFAULT_MAX_COPIES = 3;
+
+export function getMaxCopies(def: CardDefinition): number {
+  return def.maxCopies ?? DEFAULT_MAX_COPIES;
 }
 
 /**
  * Une carte résolue reste-t-elle en jeu comme permanent, ou part-elle
- * directement au cimetière après résolution (Action/Réaction, ou
- * Équipement explicitement `permanent: false`) ?
+ * directement au cimetière après résolution (Équipement explicitement
+ * `permanent: false`) ?
  */
 export function isPermanentCard(def: CardDefinition): boolean {
   if (!PERMANENT_CARD_TYPES.includes(def.type)) return false;
   if (def.type === "equipement") return def.permanent !== false;
   return true;
+}
+
+/** Une Structure/Objet est-elle actuellement visible pour l'adversaire selon la Marée ? */
+export function isVisibleDuringTide(def: CardDefinition, tideState: TideStateName): boolean {
+  if (!def.visibleDuringTide) return true;
+  return def.visibleDuringTide.includes(tideState);
 }
 
 export function hasKeyword(def: CardDefinition, keyword: string): boolean {
@@ -130,6 +179,14 @@ export interface CardInstance {
 
   /** Remis à `false` au début de chaque tour du contrôleur. */
   hasAttackedThisTurn: boolean;
+
+  /**
+   * Pour Structure/Objet avec `durationTurns` : tours restants avant
+   * expiration. Fixé à `def.durationTurns` à l'entrée en jeu, décompté une
+   * fois par tour joué (tous joueurs confondus). `undefined` si la carte
+   * n'a pas de durée limitée.
+   */
+  turnsRemaining?: number;
 }
 
 export interface StatModifier {

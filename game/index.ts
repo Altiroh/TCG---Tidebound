@@ -23,18 +23,33 @@ export type {
   AttackAction,
   EndTurnAction,
   SaborderAction,
+  BreakObjectAction,
   ActionResult,
 } from "@/game/actions/types";
 
 export type { CardDefinition, CardInstance, CardType, TriggeredAbility } from "@/game/cards/types";
-export { isPermanentCard, hasKeyword, UNIT_CARD_TYPES, PERMANENT_CARD_TYPES } from "@/game/cards/types";
+export {
+  isPermanentCard,
+  isVisibleDuringTide,
+  hasKeyword,
+  getMaxCopies,
+  DEFAULT_MAX_COPIES,
+  UNIT_CARD_TYPES,
+  PERMANENT_CARD_TYPES,
+} from "@/game/cards/types";
 export { CARD_DATABASE, CORE_SET, getCardDefinition } from "@/game/cards/sets/core";
 export { computeEffectiveStats } from "@/game/cards/stats";
 export type { EffectiveStats } from "@/game/cards/stats";
 export { computeEffectiveCost } from "@/game/cards/cost";
 
 export type { DeckList } from "@/game/cards/decks/preconstructed";
-export { PRECONSTRUCTED_DECKS, DECK_MAREE_MONTANTE, DECK_ABYSSES_SILENCIEUSES } from "@/game/cards/decks/preconstructed";
+export {
+  PRECONSTRUCTED_DECKS,
+  DECK_LE_COURLIS,
+  DECK_LERRANT,
+  DECK_LE_BRISE_LAMES,
+} from "@/game/cards/decks/preconstructed";
+export { validateDeckList } from "@/game/rules/deckValidation";
 
 export type { GameEvent, GameEventType } from "@/game/events/types";
 

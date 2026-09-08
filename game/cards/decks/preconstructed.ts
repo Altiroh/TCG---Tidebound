@@ -1,9 +1,15 @@
 import type { CardId } from "@/game/cards/types";
 
 /**
- * Deux decks préconstruits pour le MVP (une seule ressource, un seul
- * plateau, 2 joueurs). Chaque entrée est un cardId répété autant de fois
- * qu'il y a de copies dans le deck.
+ * Decks de base système — un par Navire verrouillé (`TCG_DATABASE.md`,
+ * "Onboarding joueur — verrouillé" : Courlis, Errant, Brise-Lames).
+ * Fournis par le système, ne dépendent pas de la collection personnelle,
+ * pas modifiables directement (cadrage "Règles & mécaniques verrouillées",
+ * section "Decks de base système").
+ *
+ * Taille : 40 cartes chacun (deck personnel valide : 40 à 50 cartes,
+ * cadrage `RULES.DECK_SIZE_MIN`/`DECK_SIZE_MAX`). Chaque entrée respecte
+ * `getMaxCopies` de la carte concernée (cf. `game/cards/sets/core.ts`).
  */
 export interface DeckList {
   id: string;
@@ -17,47 +23,95 @@ function repeat(cardId: CardId, copies: number): CardId[] {
   return Array.from({ length: copies }, () => cardId);
 }
 
-export const DECK_MAREE_MONTANTE: DeckList = {
-  id: "maree-montante",
-  name: "Marée Montante",
-  shipId: "le-brise-lames",
+/**
+ * Le Courlis — léger, contrôle environnemental, tempo. Peu de gros
+ * permanents (4 Slots), beaucoup de manipulation de Marée/Eaux et
+ * d'Objets à faible coût.
+ */
+export const DECK_LE_COURLIS: DeckList = {
+  id: "le-courlis",
+  name: "Le Courlis",
+  shipId: "le-courlis",
   cardIds: [
-    ...repeat("recrue-des-marees", 2),
-    ...repeat("lancier-cotier", 2),
-    ...repeat("veterane-des-brisants", 2),
-    ...repeat("predateur-des-vagues", 2),
-    ...repeat("sentinelle-du-recif", 2),
-    ...repeat("eclat-de-givre", 1),
-    ...repeat("vague-destructrice", 2),
-    ...repeat("marque-des-abysses", 1),
-    ...repeat("rugissement-de-la-maree", 1),
-    ...repeat("appel-du-large", 1),
-    ...repeat("poisson-lanterne", 2),
-    ...repeat("voiles-affalees", 2),
+    ...repeat("marin-des-jetees", 3),
+    ...repeat("poisson-lanterne", 3),
+    ...repeat("murene-aveugle", 3),
+    ...repeat("guetteur-de-brume", 3),
+    ...repeat("cartographe-du-large", 3),
+    ...repeat("matelot-insomniaque", 3),
+    ...repeat("vieux-loup-de-mer", 2),
+    ...repeat("thermos-du-dernier-quart", 3),
+    ...repeat("levier-de-lest", 3),
+    ...repeat("regulateur-de-courant", 3),
+    ...repeat("horloge-de-maree", 2),
+    ...repeat("sondeur-des-mauvaises-eaux", 2),
+    ...repeat("caisses-arrimees", 2),
+    ...repeat("bouee-de-derive", 2),
+    ...repeat("charpentier-de-bord", 2),
+    ...repeat("treuil-rouille", 1),
   ],
 };
 
-export const DECK_ABYSSES_SILENCIEUSES: DeckList = {
-  id: "abysses-silencieuses",
-  name: "Abysses Silencieuses",
-  shipId: "linsondable",
+/**
+ * L'Errant — standard, polyvalent, midrange/soutien. Courbe équilibrée,
+ * mélange de Marins/Créatures et de Structures/Objets sans spécialisation
+ * marquée (5 Slots).
+ */
+export const DECK_LERRANT: DeckList = {
+  id: "lerrant",
+  name: "L'Errant",
+  shipId: "lerrant",
   cardIds: [
-    ...repeat("chaman-des-courants", 2),
-    ...repeat("sentinelle-du-recif", 2),
-    ...repeat("leviathan-abyssal", 2),
-    ...repeat("benediction-des-flots", 2),
-    ...repeat("vague-destructrice", 2),
-    ...repeat("tempete-cotiere", 1),
-    ...repeat("renfort-imprevu", 1),
-    ...repeat("appel-du-large", 1),
-    ...repeat("eclat-de-givre", 1),
-    ...repeat("marque-des-abysses", 2),
-    ...repeat("vigie-fragile", 2),
-    ...repeat("bouchons-de-cire", 2),
+    ...repeat("marin-aux-yeux-rouges", 3),
+    ...repeat("matelot-du-sans-nom", 3),
+    ...repeat("crabe-de-fer", 3),
+    ...repeat("barracuda-des-hauts-fonds", 3),
+    ...repeat("bernard-lermite-dacier", 3),
+    ...repeat("charpentier-de-bord", 3),
+    ...repeat("poisson-scie-gris", 3),
+    ...repeat("gardien-du-sondeur", 2),
+    ...repeat("capitaine-sans-sommeil", 2),
+    ...repeat("treuil-rouille", 2),
+    ...repeat("corde-de-remorquage", 2),
+    ...repeat("bouee-de-derive", 3),
+    ...repeat("filet-a-la-derive", 3),
+    ...repeat("grappin-de-recuperation", 2),
+    ...repeat("levier-de-lest", 2),
+    ...repeat("horloge-de-maree", 1),
+  ],
+};
+
+/**
+ * Le Brise-Lames — lourd, Structures/Garde/Sabordage, endurance. Board
+ * dense (6 Slots), synergies de Sabordage et gros permanents tardifs.
+ */
+export const DECK_LE_BRISE_LAMES: DeckList = {
+  id: "le-brise-lames",
+  name: "Le Brise-Lames",
+  shipId: "le-brise-lames",
+  cardIds: [
+    ...repeat("crabe-de-fer", 3),
+    ...repeat("chose-des-hauts-fonds", 3),
+    ...repeat("caisses-arrimees", 3),
+    ...repeat("regulateur-de-courant", 3),
+    ...repeat("horloge-de-maree", 2),
+    ...repeat("levier-de-lest", 3),
+    ...repeat("plongeur-des-epaves", 2),
+    ...repeat("treuil-a-chair", 2),
+    ...repeat("cage-de-flottaison", 2),
+    ...repeat("carcasse-renversee", 2),
+    ...repeat("second-au-visage-pale", 2),
+    ...repeat("masse-noire", 3),
+    ...repeat("la-chose-qui-remonte", 2),
+    ...repeat("ce-qui-suit-le-navire", 1),
+    ...repeat("baleine-aux-cicatrices-blanches", 3),
+    ...repeat("mecanicien-aux-mains-noires", 2),
+    ...repeat("ponton-aux-cloches", 2),
   ],
 };
 
 export const PRECONSTRUCTED_DECKS: readonly DeckList[] = [
-  DECK_MAREE_MONTANTE,
-  DECK_ABYSSES_SILENCIEUSES,
+  DECK_LE_COURLIS,
+  DECK_LERRANT,
+  DECK_LE_BRISE_LAMES,
 ];

@@ -2,6 +2,8 @@ import { consumeAmplify, tickTide } from "@/game/environment/tide";
 import { getShipDefinition } from "@/game/environment/shipData";
 import { getWaterDefinition } from "@/game/environment/waterData";
 import type { TideStateName } from "@/game/environment/types";
+import { getCardDefinition } from "@/game/cards/sets/core";
+import { isVisibleDuringTide } from "@/game/cards/types";
 import { RULES } from "@/game/rules/constants";
 import type { GameEvent } from "@/game/events/types";
 import { processTrigger } from "@/game/triggers/triggerBus";
@@ -62,6 +64,7 @@ export function resolveTideTurnStep(
 ): { state: GameState; events: GameEvent[] } {
   const events: GameEvent[] = [];
   const base = { turnNumber, timestamp: Date.now() };
+  const previousTideState = state.environment.tideState;
 
   const tick = tickTide(state.environment);
   const { amplified, modifiers: modifiersAfterAmplify } = consumeAmplify(tick.pendingTideModifiers);
@@ -133,6 +136,59 @@ export function resolveTideTurnStep(
     const trigger = processTrigger(nextState, { trigger: "onTideStateEntered", tideState: tick.tideState }, turnNumber);
     nextState = trigger.state;
     events.push(...trigger.events);
+  }
+
+  // --- Expiration des permanents à durée limitée (Structures/Objets) -----
+  // Décompte une fois par tour joué, tous joueurs confondus (même
+  // convention que la durée des états de Marée). Ni mort ni Sabordage.
+  for (const player of nextState.players) {
+    const expiring = player.board.filter((u) => u.turnsRemaining !== undefined && u.turnsRemaining <= 1);
+    const board = player.board
+      .filter((u) => !expiring.some((e) => e.instanceId === u.instanceId))
+      .map((u) => (u.turnsRemaining !== undefined ? { ...u, turnsRemaining: u.turnsRemaining - 1 } : u));
+    if (expiring.length === 0) continue;
+
+    const graveyard = [...player.graveyard, ...expiring.map((u) => ({ ...u, damageMarked: 0, modifiers: [] }))];
+    nextState = {
+      ...nextState,
+      players: nextState.players.map((p) => (p.id === player.id ? { ...p, board, graveyard } : p)) as [
+        PlayerState,
+        PlayerState
+      ],
+    };
+
+    for (const unit of expiring) {
+      events.push({ ...base, type: "CARD_MOVED", instanceId: unit.instanceId, fromZone: "board", toZone: "graveyard" });
+      const expireTrigger = processTrigger(
+        nextState,
+        { trigger: "onExpire", playerId: player.id, cardId: unit.cardId, sourceInstanceId: unit.instanceId },
+        turnNumber
+      );
+      nextState = expireTrigger.state;
+      events.push(...expireTrigger.events);
+    }
+  }
+
+  // --- "Devient visible" : Structures passant d'invisible à visible ------
+  // Ne dépend que d'une transition d'état de Marée (`visibleDuringTide`).
+  if (tick.stateChanged) {
+    for (const playerId of nextState.players.map((p) => p.id)) {
+      const player = nextState.players.find((p) => p.id === playerId)!;
+      for (const unit of player.board) {
+        const def = getCardDefinition(unit.cardId);
+        if (!def.visibleDuringTide) continue;
+        const wasVisible = isVisibleDuringTide(def, previousTideState);
+        const isVisible = isVisibleDuringTide(def, tick.tideState);
+        if (wasVisible || !isVisible) continue;
+        const becomeVisibleTrigger = processTrigger(
+          nextState,
+          { trigger: "onBecomeVisible", playerId, cardId: unit.cardId, sourceInstanceId: unit.instanceId },
+          turnNumber
+        );
+        nextState = becomeVisibleTrigger.state;
+        events.push(...becomeVisibleTrigger.events);
+      }
+    }
   }
 
   return { state: nextState, events };
