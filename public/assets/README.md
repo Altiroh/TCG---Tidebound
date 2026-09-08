@@ -21,7 +21,7 @@ gratuits.
 | Dossier | Contenu |
 | --- | --- |
 | `board/` | Board principal + variantes visuelles par Eaux + états visuels Calme/Houle/Tempête/Abysses |
-| `cards/` | Image **finie** de chaque carte — cadre + illustration + texte + stats déjà composités (une par `cardId`, voir `game/cards/sets/core.ts`) |
+| `cards/<type>/` | Image **finie** de chaque carte, rangée par `CardType` — cadre + illustration + texte + stats déjà composités (une par `cardId`, voir `game/cards/sets/core.ts`) |
 | `cards/icons/` | Icônes mécaniques : Ancrage, Raison, Puissance, Résistance, Garde, Sabordage, etc. |
 | `ships/` | Cadre Navire + médaillons (Ancrage, Raison) + illustrations des Navires |
 | `animations/water-change/` | Animation de changement d'Eaux |
@@ -29,6 +29,7 @@ gratuits.
 | `fx/structure-visibility/` | Visualisation des Structures invisibles / réémergentes |
 | `fx/triggered-effects/` | Représentation des effets déclenchés, activations d'Objets, fenêtres de résolution |
 | `fx/ocean-judgment/` | Effets du Jugement de l'Océan |
+| `menu/` | Écran d'accueil / menu principal — fond, logo, icônes de navigation (pas de spéc Notion dédiée, voir `menu/README.md`) |
 
 Chaque sous-dossier a son propre `README.md` avec le détail de la charte
 qui s'y applique.

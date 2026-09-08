@@ -1,11 +1,25 @@
 # Cartes
 
-Une image **finie** par carte, nommée par `cardId` (ex: `cylindre-flottant.png`)
-— voir `game/cards/sets/core.ts` (`CORE_SET`, 80 cartes) pour la liste
-complète des identifiants. Chaque fichier est le rendu **complet** de la
-carte (cadre + illustration + nom + coût + type + texte de règles +
-statistiques), pas une illustration isolée — l'app affiche l'image telle
-quelle, elle ne recompose rien à l'affichage.
+Une image **finie** par carte, rangée par type dans `cards/<type>/<cardId>.png`
+— le type est le `CardType` du moteur (`game/cards/types.ts`), le
+`cardId` vient de `game/cards/sets/core.ts` (`CORE_SET`, 80 cartes).
+Chaque fichier est le rendu **complet** de la carte (cadre + illustration
++ nom + coût + type + texte de règles + statistiques), pas une
+illustration isolée — l'app affiche l'image telle quelle, elle ne
+recompose rien à l'affichage.
+
+```
+cards/
+  marin/<cardId>.png
+  creature/<cardId>.png
+  equipement/<cardId>.png
+  structure/<cardId>.png
+  objet/<cardId>.png
+  anomalie/<cardId>.png
+```
+
+Exemple — Cylindre flottant (`type: "structure"`) :
+`public/assets/cards/structure/cylindre-flottant.png`
 
 ## Charte canonique (carte étalon : Cylindre flottant)
 
