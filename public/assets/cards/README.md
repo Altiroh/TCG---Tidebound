@@ -3,9 +3,16 @@
 Une image **finie** par carte, rangée par type dans `cards/<type>/` — le
 type est le `CardType` du moteur (`game/cards/types.ts`), le `cardId`
 vient de `game/cards/sets/core.ts` (`CORE_SET`, 80 cartes). Chaque fichier
-est le rendu **complet** de la carte (cadre + illustration + nom + coût +
-type + texte de règles + statistiques), pas une illustration isolée —
-l'app affiche l'image telle quelle, elle ne recompose rien à l'affichage.
+est le rendu de la carte (cadre + illustration + nom + coût + type +
+texte de règles), affiché tel quel par l'app.
+
+> **Écart volontaire par rapport à la charte Notion : ne PAS graver
+> Puissance/Résistance dans l'image.** Ces valeurs changent en cours de
+> partie (dégâts marqués, buffs) — l'image ne connaît que les stats de
+> base. `CardTile` (`features/match/CardTile.tsx`) superpose toujours ces
+> deux stats en overlay, live, par-dessus l'image. Laisser cette zone
+> vide/neutre sur l'export (bas de carte) pour ne pas dupliquer/entrer en
+> conflit visuel avec l'overlay.
 
 ## Convention de nommage
 
@@ -54,10 +61,11 @@ Exemple — Cylindre flottant (`type: "structure"`) :
   bleu nuit/noir bleuté, mots-clés en **bleu vif + gras**. Ordre rédactionnel
   recommandé : durée/condition de présence → condition d'activation →
   déclencheur → mot-clé → résolution → destruction/brisure/expiration.
-- Statistiques de combat en bas : Puissance en bas à gauche (si la carte
-  peut attaquer), Résistance en bas à droite (pictogramme bouclier). Un
-  permanent qui ne peut pas attaquer n'affiche que sa Résistance. Jamais de
-  valeur inventée pour remplir le cadre.
+- **Ne pas graver Puissance/Résistance sur l'image** (voir encadré plus
+  haut) : laisser le bas de la carte libre pour l'overlay live de l'app.
+  Position réservée par l'overlay, à respecter pour que rien d'autre ne
+  s'y trouve : Puissance en bas à gauche, Résistance en bas à droite
+  (pictogramme bouclier).
 
 ## Illustration = effet de carte
 
