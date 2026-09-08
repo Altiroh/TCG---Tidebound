@@ -1,25 +1,35 @@
 # Cartes
 
-Une image **finie** par carte, rangée par type dans `cards/<type>/<cardId>.png`
-— le type est le `CardType` du moteur (`game/cards/types.ts`), le
-`cardId` vient de `game/cards/sets/core.ts` (`CORE_SET`, 80 cartes).
-Chaque fichier est le rendu **complet** de la carte (cadre + illustration
-+ nom + coût + type + texte de règles + statistiques), pas une
-illustration isolée — l'app affiche l'image telle quelle, elle ne
-recompose rien à l'affichage.
+Une image **finie** par carte, rangée par type dans `cards/<type>/` — le
+type est le `CardType` du moteur (`game/cards/types.ts`), le `cardId`
+vient de `game/cards/sets/core.ts` (`CORE_SET`, 80 cartes). Chaque fichier
+est le rendu **complet** de la carte (cadre + illustration + nom + coût +
+type + texte de règles + statistiques), pas une illustration isolée —
+l'app affiche l'image telle quelle, elle ne recompose rien à l'affichage.
+
+## Convention de nommage
+
+```
+tb_<type>_<cardId>_card_v<NN>.png
+```
+
+`<NN>` = numéro de version sur 2 chiffres (`v01`, `v02`, ...), incrémenté à
+chaque nouvelle passe sur une carte déjà illustrée. Une carte peut donc
+avoir plusieurs versions présentes en même temps le temps d'une révision ;
+la plus récente fait foi.
 
 ```
 cards/
-  marin/<cardId>.png
-  creature/<cardId>.png
-  equipement/<cardId>.png
-  structure/<cardId>.png
-  objet/<cardId>.png
-  anomalie/<cardId>.png
+  marin/tb_marin_<cardId>_card_v01.png
+  creature/tb_creature_<cardId>_card_v01.png
+  equipement/tb_equipement_<cardId>_card_v01.png
+  structure/tb_structure_<cardId>_card_v01.png
+  objet/tb_objet_<cardId>_card_v01.png
+  anomalie/tb_anomalie_<cardId>_card_v01.png
 ```
 
 Exemple — Cylindre flottant (`type: "structure"`) :
-`public/assets/cards/structure/cylindre-flottant.png`
+`public/assets/cards/structure/tb_structure_cylindre-flottant_card_v01.png`
 
 ## Charte canonique (carte étalon : Cylindre flottant)
 
