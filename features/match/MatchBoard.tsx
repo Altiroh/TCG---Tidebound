@@ -13,6 +13,7 @@ import {
 } from "@/game";
 import { Button } from "@/components/ui/Button";
 import { CardBack } from "@/features/match/CardBack";
+import { CardHoverPreview } from "@/features/match/CardHoverPreview";
 import { CardTile } from "@/features/match/CardTile";
 import { TIDE_STATE_COLORS, TIDE_STATE_LABELS } from "@/features/match/cardDisplay";
 import { formatEvent } from "@/features/match/formatEvent";
@@ -27,15 +28,27 @@ type Pending =
   | { kind: "attack"; attackerId: string }
   | { kind: "break"; instanceId: string; needsTarget: boolean };
 
+interface HoverPreview {
+  cardId: string;
+  rect: DOMRect;
+}
+
 function isUnitType(type: string): boolean {
   return (UNIT_CARD_TYPES as readonly string[]).includes(type);
 }
+
+/** Instance en cours de glissement depuis la main, décodée depuis `DataTransfer` au drop. */
+const DRAG_MIME = "application/x-tidebound-card-instance";
 
 export function MatchBoard({ initialState, onExit }: MatchBoardProps) {
   const [state, setState] = useState<GameState>(initialState);
   const [pending, setPending] = useState<Pending | null>(null);
   const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [hoverPreview, setHoverPreview] = useState<HoverPreview | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragOverTargetId, setDragOverTargetId] = useState<string | null>(null);
+  const [dragOverOwnBoard, setDragOverOwnBoard] = useState(false);
 
   const activePlayerId = state.activePlayerId;
   const activePlayer = state.players.find((p) => p.id === activePlayerId)!;
@@ -121,6 +134,71 @@ export function MatchBoard({ initialState, onExit }: MatchBoardProps) {
     }
   }
 
+  function showPreview(e: React.MouseEvent, cardId: string) {
+    setHoverPreview({ cardId, rect: e.currentTarget.getBoundingClientRect() });
+  }
+  function hidePreview() {
+    setHoverPreview(null);
+  }
+
+  // --- Glisser-déposer depuis la main -------------------------------------
+  // Ajouté EN PLUS du clic (jamais à sa place) : le clic reste le parcours
+  // principal, notamment tant que le support tactile du drag HTML5 natif
+  // reste inégal sur mobile.
+  function handleHandDragStart(e: React.DragEvent, instanceId: string) {
+    e.dataTransfer.setData(DRAG_MIME, instanceId);
+    e.dataTransfer.effectAllowed = "move";
+    setDraggingId(instanceId);
+    hidePreview();
+  }
+  function handleHandDragEnd() {
+    setDraggingId(null);
+    setDragOverTargetId(null);
+    setDragOverOwnBoard(false);
+  }
+  function handleOwnBoardDragOver(e: React.DragEvent) {
+    if (!draggingId) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverOwnBoard(true);
+  }
+  function handleOwnBoardDragLeave() {
+    setDragOverOwnBoard(false);
+  }
+  function handleOwnBoardDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOverOwnBoard(false);
+    const instanceId = e.dataTransfer.getData(DRAG_MIME);
+    setDraggingId(null);
+    if (instanceId) handleHandCardClick(instanceId);
+  }
+  /** Déposer directement SUR un permanent (à soi ou adverse) résout la cible en un seul geste, sans étape intermédiaire. */
+  function handleBoardTileDragOver(e: React.DragEvent, targetInstanceId: string) {
+    if (!draggingId) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverTargetId(targetInstanceId);
+  }
+  function handleBoardTileDrop(e: React.DragEvent, targetInstanceId: string) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverTargetId(null);
+    setDragOverOwnBoard(false);
+    const instanceId = e.dataTransfer.getData(DRAG_MIME);
+    setDraggingId(null);
+    if (!instanceId) return;
+    const card = activePlayer.hand.find((c) => c.instanceId === instanceId);
+    if (!card) return;
+    const def = getCardDefinition(card.cardId);
+    const needsTarget = (def.onPlayEffects ?? []).some((e2) => e2.target.kind === "chosenUnit");
+    setError(null);
+    if (needsTarget) {
+      runAction({ type: "playCard", playerId: activePlayerId, instanceId, targetInstanceId });
+    } else {
+      runAction({ type: "playCard", playerId: activePlayerId, instanceId });
+    }
+  }
+
   if (state.status === "finished") {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-8 text-center">
@@ -135,6 +213,8 @@ export function MatchBoard({ initialState, onExit }: MatchBoardProps) {
 
   const selectedUnit = selectedBoardId ? activePlayer.board.find((u) => u.instanceId === selectedBoardId) : undefined;
   const selectedDef = selectedUnit ? getCardDefinition(selectedUnit.cardId) : undefined;
+  const ownEmptySlots = Math.max(0, ship.slotCount - activePlayer.board.length);
+  const opponentEmptySlots = Math.max(0, opponentShip.slotCount - opponent.board.length);
 
   return (
     <div className="mx-auto flex min-h-screen max-w-5xl flex-col gap-4 p-4">
@@ -154,15 +234,26 @@ export function MatchBoard({ initialState, onExit }: MatchBoardProps) {
       </div>
       <div className="flex flex-wrap gap-2">
         {opponent.board.map((unit) => (
-          <CardTile
+          <div
             key={unit.instanceId}
-            instance={unit}
-            tideState={state.environment.tideState}
-            selected={pending?.kind === "attack"}
-            onClick={() => handleAnyBoardCardClick(unit.instanceId, opponent.id)}
-          />
+            onMouseEnter={(e) => showPreview(e, unit.cardId)}
+            onMouseLeave={hidePreview}
+            onDragOver={(e) => handleBoardTileDragOver(e, unit.instanceId)}
+            onDragLeave={() => setDragOverTargetId((id) => (id === unit.instanceId ? null : id))}
+            onDrop={(e) => handleBoardTileDrop(e, unit.instanceId)}
+            className={dragOverTargetId === unit.instanceId ? "rounded-md ring-2 ring-board-accent" : ""}
+          >
+            <CardTile
+              instance={unit}
+              tideState={state.environment.tideState}
+              selected={pending?.kind === "attack"}
+              onClick={() => handleAnyBoardCardClick(unit.instanceId, opponent.id)}
+            />
+          </div>
         ))}
-        {opponent.board.length === 0 && <p className="text-xs text-slate-600">Plateau vide.</p>}
+        {Array.from({ length: opponentEmptySlots }).map((_, i) => (
+          <EmptySlot key={`opp-empty-${i}`} />
+        ))}
       </div>
 
       {/* Environnement */}
@@ -206,17 +297,35 @@ export function MatchBoard({ initialState, onExit }: MatchBoardProps) {
       )}
 
       {/* Joueur actif */}
-      <div className="flex flex-wrap gap-2">
+      <div
+        onDragOver={handleOwnBoardDragOver}
+        onDragLeave={handleOwnBoardDragLeave}
+        onDrop={handleOwnBoardDrop}
+        className={`flex flex-wrap gap-2 rounded-md p-1 transition-colors ${
+          dragOverOwnBoard ? "bg-board-accent/10 ring-2 ring-board-accent/60" : ""
+        }`}
+      >
         {activePlayer.board.map((unit) => (
-          <CardTile
+          <div
             key={unit.instanceId}
-            instance={unit}
-            tideState={state.environment.tideState}
-            selected={selectedBoardId === unit.instanceId || pending?.kind === "attack"}
-            onClick={() => handleAnyBoardCardClick(unit.instanceId, activePlayer.id)}
-          />
+            onMouseEnter={(e) => showPreview(e, unit.cardId)}
+            onMouseLeave={hidePreview}
+            onDragOver={(e) => handleBoardTileDragOver(e, unit.instanceId)}
+            onDragLeave={() => setDragOverTargetId((id) => (id === unit.instanceId ? null : id))}
+            onDrop={(e) => handleBoardTileDrop(e, unit.instanceId)}
+            className={dragOverTargetId === unit.instanceId ? "rounded-md ring-2 ring-board-accent" : ""}
+          >
+            <CardTile
+              instance={unit}
+              tideState={state.environment.tideState}
+              selected={selectedBoardId === unit.instanceId || pending?.kind === "attack"}
+              onClick={() => handleAnyBoardCardClick(unit.instanceId, activePlayer.id)}
+            />
+          </div>
         ))}
-        {activePlayer.board.length === 0 && <p className="text-xs text-slate-600">Plateau vide.</p>}
+        {Array.from({ length: ownEmptySlots }).map((_, i) => (
+          <EmptySlot key={`own-empty-${i}`} />
+        ))}
       </div>
 
       {selectedUnit && selectedDef && !pending && (
@@ -267,14 +376,23 @@ export function MatchBoard({ initialState, onExit }: MatchBoardProps) {
       />
       <div className="flex flex-wrap gap-2">
         {activePlayer.hand.map((card) => (
-          <CardTile
+          <div
             key={card.instanceId}
-            instance={card}
-            tideState={state.environment.tideState}
-            selected={pending?.kind === "playCard" && pending.instanceId === card.instanceId}
-            disabled={activePlayer.hasUsedMainActionThisTurn}
-            onClick={() => handleHandCardClick(card.instanceId)}
-          />
+            draggable={!activePlayer.hasUsedMainActionThisTurn}
+            onDragStart={(e) => handleHandDragStart(e, card.instanceId)}
+            onDragEnd={handleHandDragEnd}
+            onMouseEnter={(e) => showPreview(e, card.cardId)}
+            onMouseLeave={hidePreview}
+            className={draggingId === card.instanceId ? "opacity-40" : ""}
+          >
+            <CardTile
+              instance={card}
+              tideState={state.environment.tideState}
+              selected={pending?.kind === "playCard" && pending.instanceId === card.instanceId}
+              disabled={activePlayer.hasUsedMainActionThisTurn}
+              onClick={() => handleHandCardClick(card.instanceId)}
+            />
+          </div>
         ))}
         {activePlayer.hand.length === 0 && <p className="text-xs text-slate-600">Main vide.</p>}
       </div>
@@ -292,6 +410,20 @@ export function MatchBoard({ initialState, onExit }: MatchBoardProps) {
       <Button variant="secondary" className="self-start" onClick={onExit}>
         Abandonner la partie
       </Button>
+
+      {hoverPreview && <CardHoverPreview cardId={hoverPreview.cardId} anchorRect={hoverPreview.rect} />}
+    </div>
+  );
+}
+
+/** Emplacement de Slot inoccupé — rend visible le nombre total de Slots qu'autorise le Navire (4/5/6), pas seulement les permanents déjà posés. */
+function EmptySlot() {
+  return (
+    <div
+      aria-hidden
+      className="flex aspect-[5/7] w-28 items-center justify-center rounded-md border border-dashed border-slate-700/70 text-center text-[10px] leading-tight text-slate-600"
+    >
+      Emplacement libre
     </div>
   );
 }
