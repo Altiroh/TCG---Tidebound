@@ -278,7 +278,7 @@ export function CardBrowser() {
               onClick={() => setDetailCardId(null)}
             />
           </div>
-          <div className="hidden self-stretch sm:block" onClick={(e) => e.stopPropagation()}>
+          <div className="-my-8 hidden self-stretch sm:block" onClick={(e) => e.stopPropagation()}>
             <CardInfoPanel cardId={detailCardId} />
           </div>
         </div>
