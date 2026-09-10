@@ -28,7 +28,7 @@ function displayInstance(cardId: string): CardInstance {
   };
 }
 
-/** Grille de consultation des 80 cartes du catalogue — pour vérifier les assets au fur et à mesure. */
+/** Grille de consultation des 81 cartes du catalogue — pour vérifier les assets au fur et à mesure. */
 export function CardBrowser() {
   const [filter, setFilter] = useState<CardType | "all">("all");
   const [detailCardId, setDetailCardId] = useState<string | null>(null);

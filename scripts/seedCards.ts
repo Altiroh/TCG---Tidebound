@@ -4,7 +4,7 @@
  * vérité pour la RÉSOLUTION d'une partie (`game/cards/sets/core.ts`,
  * `game/cards/decks/preconstructed.ts`). `cards` en base n'est qu'un
  * miroir utilisé par les systèmes de collection/boosters/deckbuilding —
- * ce script les garde en phase plutôt que de dupliquer les 80 cartes à la
+ * ce script les garde en phase plutôt que de dupliquer les 81 cartes à la
  * main dans une migration SQL.
  *
  * `rarity`/`rarity_weight` ne sont PAS dans `CardDefinition` (ce sont des

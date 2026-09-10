@@ -53,11 +53,10 @@ describe("environnement - Marée (modèle durée + intensité)", () => {
     expect(result.ok).toBe(false);
   });
 
-  it("Murène Aveugle gagne +1 Puissance pendant Tempête ou Abysses (affinité de Marée)", () => {
-    const fish = instance("murene-aveugle", "p1");
-    expect(computeEffectiveStats(fish, "calme").attack).toBe(3);
-    expect(computeEffectiveStats(fish, "tempete").attack).toBe(4);
-    expect(computeEffectiveStats(fish, "abysses").attack).toBe(4);
+  it("Masse Noire gagne +1 Puissance pendant Abysses (affinité de Marée)", () => {
+    const mass = instance("masse-noire", "p1");
+    expect(computeEffectiveStats(mass, "houle").attack).toBe(4);
+    expect(computeEffectiveStats(mass, "abysses").attack).toBe(5);
   });
 
   it("Structure/Objet à durée limitée : expire (quitte le board) une fois `durationTurns` écoulé", () => {
