@@ -44,6 +44,18 @@ pour la liste des `cardId`. Tant qu'une illustration n'existe pas pour une
 carte, l'app laisse la zone illustration neutre/vide plutôt que d'inventer
 un visuel.
 
+### Calque de débord (`subtype: "abyssal"` uniquement)
+
+```
+illustrations/<cardId>-debord.png
+```
+
+Optionnel, en plus de `illustrations/<cardId>.png`. Silhouette à fond
+transparent posée par-dessus le cadre (couche : fond → cadre → débord →
+nom/coût/texte/stats), pensée pour déborder de la découpe d'illustration
+vers le haut et les côtés — voir `bat-marin-abyssal-debord.png` comme
+référence. Jamais utilisé pour une carte non-Abyssale.
+
 ## `icons/` — icônes mécaniques + icônes de type
 
 Voir `icons/README.md` pour les icônes mécaniques (Ancrage, Raison,

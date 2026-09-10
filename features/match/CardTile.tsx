@@ -106,6 +106,11 @@ function getTypeIconUrl(def: CardDefinition): string {
   return `/assets/cards/icons/TYPE_${def.type.toUpperCase()}_STANDARD.png`;
 }
 
+/** Calque optionnel, Abyssales uniquement — silhouette à fond transparent qui déborde du cadre, posée par-dessus. */
+function getDebordUrl(cardId: string): string {
+  return `/assets/cards/illustrations/${cardId}-debord.png`;
+}
+
 interface Zone {
   top: number;
   left: number;
@@ -121,6 +126,14 @@ interface Zone {
  * charte Notion "Bibliothèque visuelle — cohérence verrouillée".
  */
 const ILLUSTRATION_ZONE: Zone = { top: 4, left: 7, width: 87, height: 51 };
+/**
+ * Zone du calque de débord (Abyssales uniquement) — volontairement plus
+ * large que `ILLUSTRATION_ZONE` et étendue vers le bas, pour que le sujet
+ * déborde du cadre et empiète sur le bandeau de nom, comme sur les exports
+ * fournis (ex: Bat-marin Abyssal). Reste dans le cadre clippé de la carte
+ * (coins arrondis) — ne déborde jamais sur les cartes voisines.
+ */
+const DEBORD_ZONE: Zone = { top: 0, left: -4, width: 108, height: 62 };
 const STATUS_BADGES_ZONE: Zone = { top: 48, left: 9, width: 82, height: 6 };
 const NAME_BANNER_ZONE: Zone = { top: 55, left: 8, width: 84, height: 10 };
 const RULES_ZONE_WITH_STATS: Zone = { top: 66, left: 9, width: 82, height: 21 };
@@ -193,9 +206,11 @@ export function CardTile({
   const frameUrl = getFrameUrl(def);
   const typeIconUrl = getTypeIconUrl(def);
   const illustrationUrl = `/assets/cards/illustrations/${instance.cardId}.png`;
+  const debordUrl = getDebordUrl(instance.cardId);
   const frameOk = useImageOk(frameUrl);
   const typeIconOk = useImageOk(typeIconUrl);
   const illustrationOk = useImageOk(illustrationUrl);
+  const debordOk = useImageOk(debordUrl);
 
   const rulesZone = isUnit || hasResistance ? RULES_ZONE_WITH_STATS : RULES_ZONE_NO_STATS;
 
@@ -235,6 +250,12 @@ export function CardTile({
         {frameOk && (
           // eslint-disable-next-line @next/next/no-img-element -- asset local, cadre réutilisé par famille/variante de stats
           <img src={frameUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        )}
+
+        {/* Couche 2.5 : débord Abyssal — silhouette à fond transparent qui déborde du cadre, posée par-dessus */}
+        {isAbyssal && debordOk && (
+          // eslint-disable-next-line @next/next/no-img-element -- asset local, calque optionnel par carte Abyssale
+          <img src={debordUrl} alt="" className="pointer-events-none absolute object-contain object-top" style={zoneStyle(DEBORD_ZONE)} />
         )}
 
         {/* Couche 3 : icônes, textes et valeurs variables injectés par-dessus le cadre */}
