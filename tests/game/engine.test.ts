@@ -379,3 +379,44 @@ describe("engine.dispatch - condition de victoire", () => {
     expect(result.events.some((e) => e.type === "OCEAN_JUDGMENT")).toBe(true);
   });
 });
+
+describe("engine.dispatch - endTurn : défausse forcée (RULES.MAX_HAND_SIZE)", () => {
+  it("défausse les cartes excédentaires du joueur qui termine son tour, depuis le début de sa main", () => {
+    const keepCard = instance("murene-aveugle", "p1");
+    const discardedCard = instance("murene-aveugle", "p1");
+    const hand = [discardedCard, ...Array.from({ length: 6 }, () => instance("murene-aveugle", "p1")), keepCard];
+    const state = testGameState({
+      players: [testPlayer("p1", { hand }), testPlayer("p2")],
+      activePlayerId: "p1",
+    });
+
+    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const p1 = result.state.players.find((p) => p.id === "p1")!;
+    expect(p1.hand).toHaveLength(7);
+    expect(p1.hand.some((c) => c.instanceId === discardedCard.instanceId)).toBe(false);
+    expect(p1.hand.some((c) => c.instanceId === keepCard.instanceId)).toBe(true);
+    expect(p1.graveyard.some((c) => c.instanceId === discardedCard.instanceId)).toBe(true);
+    expect(
+      result.events.some((e) => e.type === "CARD_MOVED" && e.instanceId === discardedCard.instanceId && e.toZone === "graveyard")
+    ).toBe(true);
+  });
+
+  it("ne défausse rien si la main ne dépasse pas la limite", () => {
+    const hand = Array.from({ length: 7 }, () => instance("murene-aveugle", "p1"));
+    const state = testGameState({
+      players: [testPlayer("p1", { hand }), testPlayer("p2")],
+      activePlayerId: "p1",
+    });
+
+    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const p1 = result.state.players.find((p) => p.id === "p1")!;
+    expect(p1.hand).toHaveLength(7);
+    expect(result.events.some((e) => e.type === "CARD_MOVED")).toBe(false);
+  });
+});

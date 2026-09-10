@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tidebound — Hors ligne</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        padding: 2rem;
+        text-align: center;
+        background: #0b1220;
+        color: #e2e8f0;
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      h1 {
+        margin: 0;
+        font-size: 1.75rem;
+        letter-spacing: 0.02em;
+      }
+      p {
+        margin: 0;
+        max-width: 28rem;
+        color: #94a3b8;
+      }
+      button {
+        margin-top: 0.5rem;
+        padding: 0.6rem 1.4rem;
+        border-radius: 0.5rem;
+        border: 1px solid #334155;
+        background: #1e293b;
+        color: #e2e8f0;
+        font-size: 0.9rem;
+        cursor: pointer;
+      }
+      button:hover {
+        border-color: #475569;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Tidebound est hors ligne</h1>
+    <p>
+      La connexion réseau est indisponible. Tidebound est un jeu multijoueur :
+      il faut être reconnecté pour jouer, consulter ta collection ou tes decks.
+    </p>
+    <button onclick="location.reload()">Réessayer</button>
+  </body>
+</html>

@@ -60,6 +60,31 @@ export function endTurn(state: GameState, action: EndTurnAction): ActionResult {
   events.push({ ...base, type: "END_TURN", playerId: action.playerId });
   events.push(...endOfTurnTrigger.events);
 
+  // --- Défausse forcée (cadrage "Règles & mécaniques verrouillées" : main
+  // maximale 7) : appliquée en fin de tour, pour le joueur qui vient de
+  // jouer, avant de passer la main. Aucun choix de joueur n'existe encore
+  // pour sélectionner les cartes défaussées ("Choix de joueur en cours de
+  // résolution" non modélisé) : on défausse déterministiquement depuis le
+  // début de la main, comme pour la défausse liée aux dégâts de Marée
+  // (`game/environment/resolveEnvironment.ts`).
+  const endingPlayer = nextState.players.find((p) => p.id === action.playerId)!;
+  if (endingPlayer.hand.length > RULES.MAX_HAND_SIZE) {
+    let discardHand = endingPlayer.hand;
+    let discardGraveyard = endingPlayer.graveyard;
+    while (discardHand.length > RULES.MAX_HAND_SIZE) {
+      const [discarded, ...rest] = discardHand;
+      discardHand = rest;
+      discardGraveyard = [...discardGraveyard, discarded!];
+      events.push({ ...base, type: "CARD_MOVED", instanceId: discarded!.instanceId, fromZone: "hand", toZone: "graveyard" });
+    }
+    nextState = {
+      ...nextState,
+      players: nextState.players.map((p) =>
+        p.id === endingPlayer.id ? { ...p, hand: discardHand, graveyard: discardGraveyard } : p
+      ) as [PlayerState, PlayerState],
+    };
+  }
+
   const nextPlayer = getOpponent(nextState, action.playerId);
   const newTurnNumber = state.turnNumber + 1;
   const newBase = { turnNumber: newTurnNumber, timestamp: Date.now() };

@@ -279,17 +279,29 @@ triggers (dont `onBecomeVisible`/`onExpire`), Marée + Eaux + Navires.
 - Système de raretés/boosters/économie de collection (`TCG_DATABASE.md`)
   spécifié côté design mais pas implémenté — pas de schéma BDD, pas de
   logique d'ouverture de booster.
-- `RULES.MAX_HAND_SIZE` (7) est défini mais pas encore appliqué (pas de
-  défausse forcée en fin de tour au-delà de cette limite).
 - Voir "Points restant à construire" plus haut pour les mécaniques de
   cartes non modélisées (interception réactive, information cachée,
   choix de joueur, attachement d'Équipement persistant).
 
+`RULES.MAX_HAND_SIZE` (7) est désormais appliqué : `game/actions/endTurn.ts`
+défausse les cartes excédentaires du joueur qui termine son tour, avant de
+passer la main. Faute d'un système de choix de joueur, la défausse est
+déterministe (depuis le début de la main), sur le même principe que la
+défausse déjà existante liée aux dégâts de Marée
+(`game/environment/resolveEnvironment.ts`) — à remplacer par un vrai choix
+dès que "Choix de joueur en cours de résolution" sera modélisé.
+
 Pas encore fait : interface de jeu (plateau, main, drag&drop, affichage
 de la Marée/des Eaux/de la Raison), Supabase (auth, schéma de base, RLS,
-temps réel), parties privées + invitation par code, matchmaking, PWA
-(manifest présent, service worker à ajouter), collection/decks persistés,
-boosters/économie, historique de parties.
+temps réel), parties privées + invitation par code, matchmaking,
+collection/decks persistés, boosters/économie, historique de parties.
+
+**PWA** : `public/sw.js` (app shell minimal, stale-while-revalidate sur
+`/assets/*`, repli réseau→cache→`public/offline.html` pour la navigation)
+est enregistré côté client par `components/ServiceWorkerRegister.tsx`. Reste
+à faire : icônes d'app (`manifest.webmanifest` a un tableau `icons` vide —
+aucun asset d'icône n'existe encore dans `public/assets/menu/logo`), donc
+la PWA n'est pas encore réellement installable.
 
 ## Prochaines étapes suggérées
 
