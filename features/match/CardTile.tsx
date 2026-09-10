@@ -165,13 +165,16 @@ export function CardTile({ instance, tideState, selected, disabled, onClick, wid
         // Abyssale placée avant elle dans la main/le plateau.
         isAbyssal && overlayStatus === "ok" ? "z-10" : ""
       } ${disabled ? "opacity-40" : ""} ${onClick ? "cursor-pointer" : "cursor-default"}`}
+      // containerType ici (pas sur le fond ci-dessous) : les chiffres de
+      // stats vivent maintenant dans un calque SIBLING du fond (z-20, pour
+      // rester au-dessus du débord Abyssal) — sans conteneur commun, leurs
+      // unités `cqw` perdent leur contexte et explosent en taille (repli
+      // sur le viewport plutôt que la largeur réelle de la carte).
+      style={{ containerType: "inline-size" }}
     >
       {imageStatus === "ok" ? (
         <>
-          <div
-            className="relative aspect-[5/7] w-full overflow-hidden rounded-md bg-board-surface"
-            style={{ containerType: "inline-size" }}
-          >
+          <div className="relative aspect-[5/7] w-full overflow-hidden rounded-md bg-board-surface">
             {/* eslint-disable-next-line @next/next/no-img-element -- asset local, taille variable selon la carte */}
             <img src={`/api/card-image/${instance.cardId}`} alt={def.name} className="h-full w-full object-cover" />
             {(stats.inactive || (instance.summoningSick && isUnit) || instance.turnsRemaining !== undefined) && (
