@@ -3,11 +3,10 @@
 import { useImageLoadStatus } from "@/features/match/useImageLoadStatus";
 
 /**
- * Contrairement aux faces (une image par carte, `CardTile` +
- * `/api/card-image/[cardId]`), le dos est strictement identique pour
- * toutes les cartes — un seul fichier, réutilisé partout où une carte doit
- * s'afficher face cachée (main adverse, plus tard pile de pioche/défausse
- * fermées si besoin).
+ * Contrairement aux faces (composées carte par carte par `CardTile`), le
+ * dos est strictement identique pour toutes les cartes — un seul fichier,
+ * réutilisé partout où une carte doit s'afficher face cachée (main
+ * adverse, plus tard pile de pioche/défausse fermées si besoin).
  */
 export const CARD_BACK_SRC = "/assets/cards/card-back.png";
 

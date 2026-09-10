@@ -33,7 +33,8 @@ const GAP = 12;
  */
 export function CardHoverPreview({ cardId, anchorRect }: CardHoverPreviewProps) {
   const def = getCardDefinition(cardId);
-  const imageStatus = useImageLoadStatus(`/api/card-image/${cardId}`);
+  const illustrationUrl = `/assets/cards/illustrations/${cardId}.png`;
+  const imageStatus = useImageLoadStatus(illustrationUrl);
   const [viewport, setViewport] = useState<{ w: number; h: number } | null>(null);
 
   useEffect(() => {
@@ -62,7 +63,7 @@ export function CardHoverPreview({ cardId, anchorRect }: CardHoverPreviewProps) 
     >
       {imageStatus === "ok" && (
         // eslint-disable-next-line @next/next/no-img-element -- aperçu flottant, hors du flux normal de CardTile
-        <img src={`/api/card-image/${cardId}`} alt={def.name} className="aspect-[5/7] w-full object-cover" />
+        <img src={illustrationUrl} alt={def.name} className="aspect-[5/7] w-full object-cover" />
       )}
       <div className="flex flex-col gap-1.5 p-2.5">
         <div className="flex items-center justify-between gap-2">
