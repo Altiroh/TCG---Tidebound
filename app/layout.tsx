@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { cardStatFont } from "@/lib/fonts";
+import { cardStatFont, menuFont } from "@/lib/fonts";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import "./globals.css";
 
@@ -15,7 +15,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="fr" className={cardStatFont.variable}>
+    <html lang="fr" className={`${cardStatFont.variable} ${menuFont.variable}`}>
       <body>
         {children}
         <ServiceWorkerRegister />
