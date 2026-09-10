@@ -9,7 +9,7 @@ import {
   type CardInstance,
   type TideStateName,
 } from "@/game";
-import { CARD_TYPE_LABELS, STAT_VALUE_BORDER, THICK_TEXT_OUTLINE } from "@/features/match/cardDisplay";
+import { CARD_TYPE_LABELS, THICK_TEXT_OUTLINE } from "@/features/match/cardDisplay";
 
 interface CardTileProps {
   instance: CardInstance;
@@ -265,12 +265,7 @@ export function CardTile({
             className="flex items-center justify-center text-center font-bold text-white [font-family:var(--font-card-title)]"
             style={{ ...zoneStyle(COST_NUMBER_ZONE), fontSize: "11cqw", textShadow: THICK_TEXT_OUTLINE }}
           >
-            <span
-              className="inline-flex items-center justify-center"
-              style={{ border: STAT_VALUE_BORDER, borderRadius: "50%", minWidth: "1.7em", minHeight: "1.7em", padding: "0.1em" }}
-            >
-              {def.cost}
-            </span>
+            {def.cost}
           </div>
 
           <div
@@ -294,14 +289,9 @@ export function CardTile({
           >
             <span
               className="inline-block max-w-full overflow-hidden text-ellipsis whitespace-nowrap"
-              style={{
-                fontSize: `${nameFontSizeCqw(def.name)}cqw`,
-                border: STAT_VALUE_BORDER,
-                borderRadius: "0.2em",
-                padding: "0 0.25em",
-              }}
+              style={{ fontSize: `${nameFontSizeCqw(def.name)}cqw` }}
             >
-              <span style={{ fontSize: "1.3em" }}>{def.name.charAt(0)}</span>
+              <span style={{ fontSize: "1.6em" }}>{def.name.charAt(0)}</span>
               {def.name.slice(1)}
             </span>
           </div>
@@ -337,12 +327,7 @@ export function CardTile({
               className="flex items-center justify-start font-bold text-white [font-family:var(--font-card-title)]"
               style={{ ...zoneStyle(ATTACK_ZONE), fontSize: "7.5cqw", textShadow: THICK_TEXT_OUTLINE }}
             >
-              <span
-                className="inline-flex items-center justify-center"
-                style={{ border: STAT_VALUE_BORDER, borderRadius: "50%", minWidth: "1.7em", minHeight: "1.7em", padding: "0.1em" }}
-              >
-                {stats.attack}
-              </span>
+              {stats.attack}
             </div>
           )}
           {hasResistance && (
@@ -352,12 +337,7 @@ export function CardTile({
               }`}
               style={{ ...zoneStyle(RESISTANCE_ZONE), fontSize: "7.5cqw", textShadow: THICK_TEXT_OUTLINE }}
             >
-              <span
-                className="inline-flex items-center justify-center"
-                style={{ border: STAT_VALUE_BORDER, borderRadius: "50%", minWidth: "1.7em", minHeight: "1.7em", padding: "0.1em" }}
-              >
-                {resistanceRemaining}
-              </span>
+              {resistanceRemaining}
             </div>
           )}
         </div>
