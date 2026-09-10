@@ -73,3 +73,6 @@ export { SHIP_DATABASE, SHIP_SET, getShipDefinition } from "@/game/environment/s
 export { resolveOceanJudgment } from "@/game/rules/oceanJudgment";
 
 export { RULES } from "@/game/rules/constants";
+
+export { runBotTurn } from "@/game/bot/runBotTurn";
+export type { BotDifficulty } from "@/game/bot/types";

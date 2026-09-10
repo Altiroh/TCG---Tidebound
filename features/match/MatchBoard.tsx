@@ -1,11 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   dispatch,
   getCardDefinition,
   getShipDefinition,
+  runBotTurn,
   UNIT_CARD_TYPES,
+  type BotDifficulty,
   type CardInstance,
   type GameState,
   type PlayerAction,
@@ -21,6 +23,9 @@ import { formatEvent } from "@/features/match/formatEvent";
 interface MatchBoardProps {
   initialState: GameState;
   onExit: () => void;
+  /** Si défini, ce joueur est joué automatiquement par le bot (`runBotTurn`) plutôt qu'en hot-seat. */
+  botPlayerId?: PlayerId;
+  botDifficulty?: BotDifficulty;
 }
 
 type Pending =
@@ -40,7 +45,7 @@ function isUnitType(type: string): boolean {
 /** Instance en cours de glissement depuis la main, décodée depuis `DataTransfer` au drop. */
 const DRAG_MIME = "application/x-tidebound-card-instance";
 
-export function MatchBoard({ initialState, onExit }: MatchBoardProps) {
+export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }: MatchBoardProps) {
   const [state, setState] = useState<GameState>(initialState);
   const [pending, setPending] = useState<Pending | null>(null);
   const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
@@ -55,8 +60,27 @@ export function MatchBoard({ initialState, onExit }: MatchBoardProps) {
   const opponent = state.players.find((p) => p.id !== activePlayerId)!;
   const ship = getShipDefinition(activePlayer.shipId);
   const opponentShip = getShipDefinition(opponent.shipId);
+  const isBotTurn = botPlayerId !== undefined && botPlayerId === activePlayerId;
 
   const recentEvents = useMemo(() => state.eventLog.slice(-10).reverse(), [state.eventLog]);
+
+  // Joue automatiquement le tour du bot dès qu'il devient actif. Un léger
+  // délai laisse le temps de voir l'état précédent (et évite un
+  // enchaînement instantané qui donnerait l'impression d'un bug plutôt
+  // que d'un adversaire qui "réfléchit").
+  useEffect(() => {
+    if (!isBotTurn || state.status !== "active" || !botDifficulty) return;
+    const timer = setTimeout(() => {
+      setState((current) => {
+        if (current.status !== "active" || current.activePlayerId !== botPlayerId) return current;
+        return runBotTurn(current, botPlayerId, botDifficulty);
+      });
+      setPending(null);
+      setSelectedBoardId(null);
+      setError(null);
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [isBotTurn, state.status, state.activePlayerId, botPlayerId, botDifficulty]);
 
   function clearSelection() {
     setPending(null);
@@ -64,6 +88,7 @@ export function MatchBoard({ initialState, onExit }: MatchBoardProps) {
   }
 
   function runAction(action: PlayerAction) {
+    if (isBotTurn) return;
     const result = dispatch(state, action);
     if (!result.ok) {
       setError(result.error);
@@ -75,6 +100,7 @@ export function MatchBoard({ initialState, onExit }: MatchBoardProps) {
   }
 
   function handleHandCardClick(instanceId: string) {
+    if (isBotTurn) return;
     const card = activePlayer.hand.find((c) => c.instanceId === instanceId);
     if (!card) return;
     const def = getCardDefinition(card.cardId);
@@ -89,6 +115,7 @@ export function MatchBoard({ initialState, onExit }: MatchBoardProps) {
   }
 
   function handleOwnBoardCardClick(instanceId: string) {
+    if (isBotTurn) return;
     if (pending?.kind === "attack") {
       // Un clic sur son propre plateau pendant une sélection de cible d'attaque : annule.
       setPending(null);
@@ -125,6 +152,7 @@ export function MatchBoard({ initialState, onExit }: MatchBoardProps) {
   }
 
   function startBreak(unit: CardInstance) {
+    if (isBotTurn) return;
     const def = getCardDefinition(unit.cardId);
     const needsTarget = (def.onBreakEffects ?? []).some((e) => e.target.kind === "chosenUnit");
     if (needsTarget) {
@@ -203,7 +231,9 @@ export function MatchBoard({ initialState, onExit }: MatchBoardProps) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-8 text-center">
         <h1 className="text-3xl font-bold">
-          {state.winnerId ? `${state.winnerId === "p1" ? "Joueur 1" : "Joueur 2"} l'emporte` : "Match nul"}
+          {state.winnerId
+            ? `${state.winnerId === botPlayerId ? "Le bot" : state.winnerId === "p1" ? "Joueur 1" : "Joueur 2"} l'emporte`
+            : "Match nul"}
         </h1>
         <p className="text-slate-400">La mer a tranché.</p>
         <Button onClick={onExit}>Nouvelle partie</Button>
@@ -220,7 +250,11 @@ export function MatchBoard({ initialState, onExit }: MatchBoardProps) {
     <div className="mx-auto flex min-h-screen max-w-5xl flex-col gap-4 p-4">
       {/* Adversaire (inactif) */}
       <PlayerSummary
-        label={`Joueur ${opponent.id === "p1" ? "1" : "2"} — ${getShipDefinition(opponent.shipId).name}`}
+        label={
+          opponent.id === botPlayerId
+            ? `Bot — ${getShipDefinition(opponent.shipId).name}`
+            : `Joueur ${opponent.id === "p1" ? "1" : "2"} — ${getShipDefinition(opponent.shipId).name}`
+        }
         anchor={opponent.anchor}
         anchorMax={opponentShip.startingAnchor}
         reason={opponent.reason}
@@ -274,12 +308,18 @@ export function MatchBoard({ initialState, onExit }: MatchBoardProps) {
           </span>
         </div>
         <div className="flex items-center gap-2">
-          {pending && (
-            <Button variant="secondary" onClick={clearSelection}>
-              Annuler
-            </Button>
+          {isBotTurn ? (
+            <span className="animate-pulse text-sm text-slate-400">Le bot réfléchit…</span>
+          ) : (
+            <>
+              {pending && (
+                <Button variant="secondary" onClick={clearSelection}>
+                  Annuler
+                </Button>
+              )}
+              <Button onClick={() => runAction({ type: "endTurn", playerId: activePlayerId })}>Fin de tour</Button>
+            </>
           )}
-          <Button onClick={() => runAction({ type: "endTurn", playerId: activePlayerId })}>Fin de tour</Button>
         </div>
       </div>
 
@@ -328,7 +368,7 @@ export function MatchBoard({ initialState, onExit }: MatchBoardProps) {
         ))}
       </div>
 
-      {selectedUnit && selectedDef && !pending && (
+      {selectedUnit && selectedDef && !pending && !isBotTurn && (
         <div className="flex flex-wrap items-center gap-2 rounded-md border border-board-accent/40 bg-board-accent/5 px-3 py-2">
           <span className="text-xs text-slate-300">{selectedDef.name} :</span>
           {isUnitType(selectedDef.type) && !selectedUnit.summoningSick && !selectedUnit.hasAttackedThisTurn && (
@@ -366,7 +406,11 @@ export function MatchBoard({ initialState, onExit }: MatchBoardProps) {
       )}
 
       <PlayerSummary
-        label={`Joueur ${activePlayer.id === "p1" ? "1" : "2"} — ${ship.name} (à vous de jouer)`}
+        label={
+          isBotTurn
+            ? `Bot — ${ship.name}`
+            : `Joueur ${activePlayer.id === "p1" ? "1" : "2"} — ${ship.name} (à vous de jouer)`
+        }
         anchor={activePlayer.anchor}
         anchorMax={ship.startingAnchor}
         reason={activePlayer.reason}
@@ -375,25 +419,27 @@ export function MatchBoard({ initialState, onExit }: MatchBoardProps) {
         highlighted
       />
       <div className="flex flex-wrap gap-2">
-        {activePlayer.hand.map((card) => (
-          <div
-            key={card.instanceId}
-            draggable={!activePlayer.hasUsedMainActionThisTurn}
-            onDragStart={(e) => handleHandDragStart(e, card.instanceId)}
-            onDragEnd={handleHandDragEnd}
-            onMouseEnter={(e) => showPreview(e, card.cardId)}
-            onMouseLeave={hidePreview}
-            className={draggingId === card.instanceId ? "opacity-40" : ""}
-          >
-            <CardTile
-              instance={card}
-              tideState={state.environment.tideState}
-              selected={pending?.kind === "playCard" && pending.instanceId === card.instanceId}
-              disabled={activePlayer.hasUsedMainActionThisTurn}
-              onClick={() => handleHandCardClick(card.instanceId)}
-            />
-          </div>
-        ))}
+        {isBotTurn
+          ? activePlayer.hand.map((card) => <CardBack key={card.instanceId} />)
+          : activePlayer.hand.map((card) => (
+              <div
+                key={card.instanceId}
+                draggable={!activePlayer.hasUsedMainActionThisTurn}
+                onDragStart={(e) => handleHandDragStart(e, card.instanceId)}
+                onDragEnd={handleHandDragEnd}
+                onMouseEnter={(e) => showPreview(e, card.cardId)}
+                onMouseLeave={hidePreview}
+                className={draggingId === card.instanceId ? "opacity-40" : ""}
+              >
+                <CardTile
+                  instance={card}
+                  tideState={state.environment.tideState}
+                  selected={pending?.kind === "playCard" && pending.instanceId === card.instanceId}
+                  disabled={activePlayer.hasUsedMainActionThisTurn}
+                  onClick={() => handleHandCardClick(card.instanceId)}
+                />
+              </div>
+            ))}
         {activePlayer.hand.length === 0 && <p className="text-xs text-slate-600">Main vide.</p>}
       </div>
 
