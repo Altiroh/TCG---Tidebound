@@ -16,7 +16,9 @@ import {
 import { Button } from "@/components/ui/Button";
 import { CardBack } from "@/features/match/CardBack";
 import { CardHoverPreview } from "@/features/match/CardHoverPreview";
+import { BoardBackdrop } from "@/features/match/BoardBackdrop";
 import { CardTile } from "@/features/match/CardTile";
+import { PlayerSummary } from "@/features/match/PlayerSummary";
 import { TIDE_STATE_COLORS, TIDE_STATE_LABELS } from "@/features/match/cardDisplay";
 import { formatEvent } from "@/features/match/formatEvent";
 
@@ -229,15 +231,18 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
 
   if (state.status === "finished") {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-8 text-center">
-        <h1 className="text-3xl font-bold">
-          {state.winnerId
-            ? `${state.winnerId === botPlayerId ? "Le bot" : state.winnerId === "p1" ? "Joueur 1" : "Joueur 2"} l'emporte`
-            : "Match nul"}
-        </h1>
-        <p className="text-slate-400">La mer a tranché.</p>
-        <Button onClick={onExit}>Nouvelle partie</Button>
-      </div>
+      <>
+        <BoardBackdrop />
+        <div className="relative z-10 flex min-h-screen flex-col items-center justify-center gap-6 p-8 text-center">
+          <h1 className="text-3xl font-bold">
+            {state.winnerId
+              ? `${state.winnerId === botPlayerId ? "Le bot" : state.winnerId === "p1" ? "Joueur 1" : "Joueur 2"} l'emporte`
+              : "Match nul"}
+          </h1>
+          <p className="text-slate-400">La mer a tranché.</p>
+          <Button onClick={onExit}>Nouvelle partie</Button>
+        </div>
+      </>
     );
   }
 
@@ -247,7 +252,9 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
   const opponentEmptySlots = Math.max(0, opponentShip.slotCount - opponent.board.length);
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-5xl flex-col gap-4 p-4">
+    <>
+      <BoardBackdrop />
+      <div className="relative z-10 mx-auto flex min-h-screen max-w-5xl flex-col gap-4 p-4">
       {/* Adversaire (inactif) */}
       <PlayerSummary
         label={
@@ -458,7 +465,8 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
       </Button>
 
       {hoverPreview && <CardHoverPreview cardId={hoverPreview.cardId} anchorRect={hoverPreview.rect} />}
-    </div>
+      </div>
+    </>
   );
 }
 
@@ -474,44 +482,3 @@ function EmptySlot() {
   );
 }
 
-interface PlayerSummaryProps {
-  label: string;
-  anchor: number;
-  anchorMax: number;
-  reason: number;
-  reasonMax: number;
-  handCount: number;
-  highlighted?: boolean;
-}
-
-function PlayerSummary({ label, anchor, anchorMax, reason, reasonMax, handCount, highlighted }: PlayerSummaryProps) {
-  return (
-    <div
-      className={`flex flex-wrap items-center justify-between gap-3 rounded-md border px-4 py-2 text-sm ${
-        highlighted ? "border-board-accent/50 bg-board-accent/5" : "border-slate-800 bg-board-surface"
-      }`}
-    >
-      <span className="font-medium">{label}</span>
-      <div className="flex items-center gap-4">
-        <StatBar label="Ancrage" value={anchor} max={anchorMax} colorClass="bg-sky-500" />
-        <StatBar label="Raison" value={reason} max={reasonMax} colorClass="bg-violet-500" />
-        <span className="text-xs text-slate-500">{handCount} carte(s) en main</span>
-      </div>
-    </div>
-  );
-}
-
-function StatBar({ label, value, max, colorClass }: { label: string; value: number; max: number; colorClass: string }) {
-  const pct = max > 0 ? Math.max(0, Math.min(100, (value / max) * 100)) : 0;
-  return (
-    <span className="flex items-center gap-1.5 text-xs">
-      {label}
-      <span className="h-2 w-16 overflow-hidden rounded-full bg-slate-800">
-        <span className={`block h-full ${colorClass}`} style={{ width: `${pct}%` }} />
-      </span>
-      <span className="tabular-nums text-slate-300">
-        {value}/{max}
-      </span>
-    </span>
-  );
-}
