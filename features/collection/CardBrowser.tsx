@@ -67,7 +67,7 @@ function CardInfoPanel({ cardId }: { cardId: string }) {
   const showHealth = def.health !== undefined;
 
   return (
-    <div className="relative w-80 shrink-0 self-stretch [font-family:var(--font-card-body)]">
+    <div className="relative h-full w-80 shrink-0 [font-family:var(--font-card-body)]">
       {/* Glow diffus derrière le verre — teinte selon la famille de la carte */}
       <div aria-hidden className={`absolute -inset-8 opacity-50 blur-3xl ${isAbyssal ? "bg-fuchsia-700" : "bg-sky-500"}`} />
 
@@ -278,7 +278,7 @@ export function CardBrowser() {
               onClick={() => setDetailCardId(null)}
             />
           </div>
-          <div className="hidden sm:block" onClick={(e) => e.stopPropagation()}>
+          <div className="hidden self-stretch sm:block" onClick={(e) => e.stopPropagation()}>
             <CardInfoPanel cardId={detailCardId} />
           </div>
         </div>
