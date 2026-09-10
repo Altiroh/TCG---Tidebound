@@ -292,9 +292,28 @@ défausse déjà existante liée aux dégâts de Marée
 dès que "Choix de joueur en cours de résolution" sera modélisé.
 
 Pas encore fait : interface de jeu (plateau, main, drag&drop, affichage
-de la Marée/des Eaux/de la Raison), Supabase (auth, schéma de base, RLS,
-temps réel), parties privées + invitation par code, matchmaking,
-collection/decks persistés, boosters/économie, historique de parties.
+de la Marée/des Eaux/de la Raison), deckbuilder (les decks personnels ont
+un schéma BDD mais pas d'UI), historique de parties (UI — les données
+existent dans `matches`), système de raretés/boosters/économie côté client
+(ouverture de booster, boutique, recyclage — le schéma serveur existe,
+pas la logique d'ouverture).
+
+**Supabase** : schéma étendu par
+`supabase/migrations/20260910120000_cards_collection_economy.sql` —
+cartes (miroir de `game/cards/sets/core.ts`, synchronisé par
+`npm run seed:cards`), decks de base système, decks personnels, collection,
+boosters (format 8 cartes verrouillé, pity Abyssal, protection Abyssale —
+schéma seulement, pas encore la logique d'ouverture serveur), monnaie
+interne + historique de transactions, quêtes, onboarding, et une file de
+matchmaking (`matchmaking_queue` + fonction Postgres
+`claim_matchmaking_opponent()`, esquissées côté serveur dans
+`features/matchmaking/actions.ts`). Toutes ces tables ont RLS activé ;
+celles qui doivent rester autoritaires côté serveur (collection, boosters,
+monnaie, quêtes) n'ont volontairement aucune policy d'écriture pour
+`authenticated` — seule une Server Action avec la clé service_role peut y
+écrire. `RULES` (`game/rules/constants.ts`) et le moteur restent l'unique
+source de vérité pour la RÉSOLUTION d'une partie ; ce schéma sert les
+systèmes de méta-jeu (collection, boosters, progression) autour.
 
 **PWA** : `public/sw.js` (app shell minimal, stale-while-revalidate sur
 `/assets/*`, repli réseau→cache→`public/offline.html` pour la navigation)
