@@ -1,6 +1,11 @@
 import type { CardType } from "@/game";
 import type { TideStateName } from "@/game";
 
+// Données pures uniquement dans ce module (pas de hooks React) : il est
+// importé depuis des Server Components (ex: app/decks/page.tsx via
+// DeckViewer) qui ne peuvent pas transitivement tirer useState/useEffect.
+// Le hook de chargement d'image vit dans useImageLoadStatus.ts.
+
 export const CARD_TYPE_LABELS: Record<CardType, string> = {
   marin: "Marin",
   creature: "Créature",

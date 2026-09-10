@@ -9,6 +9,7 @@ import {
   type TideStateName,
 } from "@/game";
 import { CARD_TYPE_LABELS } from "@/features/match/cardDisplay";
+import { useImageLoadStatus } from "@/features/match/useImageLoadStatus";
 
 interface CardTileProps {
   instance: CardInstance;
@@ -71,33 +72,6 @@ const STAT_TEXT_SHADOW = (() => {
     offsets.map(([x, y]) => `${x}cqw ${y}cqw 0 #022a58`).join(", ") + ", 0 0.3cqw 0.5cqw rgba(0,0,0,0.5)"
   );
 })();
-
-/** Précharge l'image finie d'une carte hors du DOM plutôt que de dépendre
- * de l'événement `onError` d'un `<img>` rendu — plus fiable quand beaucoup
- * de cartes se chargent en même temps (ex: la page Collection, 80
- * requêtes simultanées), où `onError` s'est révélé peu fiable dans les
- * tests. */
-function useCardImageStatus(cardId: string): "loading" | "ok" | "error" {
-  const [status, setStatus] = useState<"loading" | "ok" | "error">("loading");
-
-  useEffect(() => {
-    let cancelled = false;
-    setStatus("loading");
-    const img = new window.Image();
-    img.onload = () => {
-      if (!cancelled) setStatus("ok");
-    };
-    img.onerror = () => {
-      if (!cancelled) setStatus("error");
-    };
-    img.src = `/api/card-image/${cardId}`;
-    return () => {
-      cancelled = true;
-    };
-  }, [cardId]);
-
-  return status;
-}
 
 /** `true` le temps d'une animation, chaque fois que `value` diminue par rapport à son appel précédent. */
 function useDecreaseFlash(value: number): boolean {
@@ -163,7 +137,7 @@ export function CardTile({ instance, tideState, selected, disabled, onClick, wid
   const stats = computeEffectiveStats(instance, tideState);
   const isUnit = (UNIT_CARD_TYPES as readonly string[]).includes(def.type);
   const hasResistance = isUnit || def.health !== undefined;
-  const imageStatus = useCardImageStatus(instance.cardId);
+  const imageStatus = useImageLoadStatus(`/api/card-image/${instance.cardId}`);
   const resistanceRemaining = Math.max(0, stats.health - instance.damageMarked);
   const resistanceFlashing = useDecreaseFlash(resistanceRemaining);
 

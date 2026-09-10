@@ -13,6 +13,7 @@ import {
   type PlayerId,
 } from "@/game";
 import { Button } from "@/components/ui/Button";
+import { CardBack } from "@/features/match/CardBack";
 import { CardTile } from "@/features/match/CardTile";
 import { TIDE_STATE_COLORS, TIDE_STATE_LABELS } from "@/features/match/cardDisplay";
 import { formatEvent } from "@/features/match/formatEvent";
@@ -148,6 +149,11 @@ export function MatchBoard({ initialState, onExit }: MatchBoardProps) {
         reasonMax={opponent.reasonMax}
         handCount={opponent.hand.length}
       />
+      <div className="flex flex-wrap gap-2">
+        {opponent.hand.map((card) => (
+          <CardBack key={card.instanceId} />
+        ))}
+      </div>
       <div className="flex flex-wrap gap-2">
         {opponent.board.map((unit) => (
           <CardTile
