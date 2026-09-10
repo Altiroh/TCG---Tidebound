@@ -15,14 +15,19 @@
  * son propre paint à l'événement `load` — ce qui a résolu le problème de
  * façon reproductible.
  */
-export function BoardBackdrop() {
+export function BoardBackdrop({ variant = "fixed" }: { variant?: "fixed" | "absolute" }) {
   return (
-    <div aria-hidden className="fixed inset-0 overflow-hidden">
+    <div aria-hidden className={`${variant === "fixed" ? "fixed" : "absolute"} inset-0 overflow-hidden`}>
       {/* eslint-disable-next-line @next/next/no-img-element -- calque de fond plein écran, jamais responsive au sens Next/Image */}
       <img src="/assets/board/board.jpg" alt="" draggable={false} className="h-full w-full select-none object-cover" />
       <div
         className="absolute inset-0"
-        style={{ background: "linear-gradient(180deg, rgba(6,10,18,0.55), rgba(6,10,18,0.82))" }}
+        style={{
+          background:
+            variant === "fixed"
+              ? "linear-gradient(180deg, rgba(6,10,18,0.55), rgba(6,10,18,0.82))"
+              : "linear-gradient(180deg, rgba(6,10,18,0.15), rgba(6,10,18,0.3))",
+        }}
       />
     </div>
   );

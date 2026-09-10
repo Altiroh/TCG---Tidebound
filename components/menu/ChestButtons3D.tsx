@@ -46,7 +46,13 @@ function roundedRectShape(w: number, h: number, r: number) {
 function plankGeometry(w: number, h: number, uvMargin = 0) {
   const r = Math.min(w, h) * 0.22;
   const depth = Math.min(w, h) * 0.28;
-  const bevelThickness = depth * 0.24;
+  // Biseau volontairement fin (contre 0.24 avant) : en vue orthographique de
+  // face, le biseau est ce qui rend les flancs visibles comme un liseré tout
+  // autour de la plaque (haut/bas/côtés) — un vrai plat extrudé sans biseau
+  // serait, lui, invisible de face (flancs parallèles à l'axe de vue). Vu que
+  // seul le bas doit garder un liseré visible (cf. `shadowTexture`), on
+  // réduit le biseau au minimum plutôt que de le garder prononcé partout.
+  const bevelThickness = depth * 0.08;
   const geo = new THREE.ExtrudeGeometry(roundedRectShape(w, h, r), {
     depth,
     bevelEnabled: true,
@@ -85,6 +91,30 @@ function rivetGeometry(size: number) {
   const geo = new THREE.CylinderGeometry(size / 2, size / 2, depth, 28);
   geo.rotateX(Math.PI / 2); // axe du cylindre aligné sur Z (face la caméra), au lieu de Y par défaut
   return { geo, frontZ: depth / 2 };
+}
+
+/**
+ * Dégradé vertical (opaque en haut → transparent en bas), pour le liseré
+ * d'ombre portée sous chaque plaque : demandé pour donner un léger relief
+ * "contre-plongée" (la plaque comme légèrement soulevée, ombre au sol sous
+ * son bord bas) sans le liseré tout autour qui lisait comme un double-cadre
+ * sur les côtés/le haut. Un seul canvas partagé par tous les boutons — pas
+ * besoin d'un dégradé par plaque, juste étiré à la taille voulue.
+ */
+let sharedShadowTexture: THREE.CanvasTexture | null = null;
+function shadowTexture(): THREE.CanvasTexture {
+  if (sharedShadowTexture) return sharedShadowTexture;
+  const c = document.createElement("canvas");
+  c.width = 8;
+  c.height = 128;
+  const ctx = c.getContext("2d")!;
+  const g = ctx.createLinearGradient(0, 0, 0, c.height);
+  g.addColorStop(0, "rgba(0,0,0,0.5)");
+  g.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, c.width, c.height);
+  sharedShadowTexture = new THREE.CanvasTexture(c);
+  return sharedShadowTexture;
 }
 
 /** Texture de secours (dégradé bois + liseré laiton) tant qu'aucun asset réel n'est fourni pour ce bouton. */
@@ -184,6 +214,8 @@ interface ButtonEntry {
   bodyMaterial: THREE.MeshStandardMaterial | THREE.MeshBasicMaterial;
   baseColor: THREE.Color;
   label: THREE.Mesh | null;
+  /** Ombre portée sous la plaque uniquement (cf. `shadowTexture`) — null pour les icônes circulaires. */
+  shadow: THREE.Mesh | null;
   isCircle: boolean;
   rect: { x: number; y: number; w: number; h: number };
   href?: string;
@@ -286,12 +318,17 @@ export function ChestButtons3D({ slots, iconSlots }: { slots: ChestSlotDef[]; ic
         group.add(label);
       }
 
+      const shadowMat = new THREE.MeshBasicMaterial({ map: shadowTexture(), transparent: true, depthWrite: false });
+      const shadow = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), shadowMat);
+      group.add(shadow);
+
       const entry: ButtonEntry = {
         group,
         body,
         bodyMaterial: capMaterial,
         baseColor: capMaterial.color.clone(),
         label,
+        shadow,
         isCircle: false,
         rect: slot.rect,
         href: slot.disabled ? undefined : (slot.href as string | undefined),
@@ -350,6 +387,7 @@ export function ChestButtons3D({ slots, iconSlots }: { slots: ChestSlotDef[]; ic
         bodyMaterial,
         baseColor: bodyMaterial.color.clone(),
         label,
+        shadow: null,
         isCircle: true,
         rect: icon.rect,
         href: icon.disabled ? undefined : icon.href,
@@ -397,21 +435,27 @@ export function ChestButtons3D({ slots, iconSlots }: { slots: ChestSlotDef[]; ic
           // emplacement du coffret. Le dégradé procédural n'a de toute façon
           // pas de ratio propre à préserver.
           //
-          // Léger sur-dimensionnement (OVERSCAN) : le coffret a déjà son
-          // propre cadre peint à cet emplacement (bois + liseré laiton).
-          // Une plaque pile calée sur l'emplacement mesuré laisse voir un
-          // mince liseré de ce cadre "de fond" en cas de moindre écart de
-          // mesure — donnant l'impression d'un double-cadre légèrement
-          // désaligné. En dépassant un peu, la plaque recouvre entièrement
-          // ce cadre de fond ; `uvMargin` compense en resserrant l'échan-
-          // tillonnage pour ne pas non plus déborder sur le halo du PNG.
-          const OVERSCAN = 1.08;
+          // Les rects de `SLOTS` (TideboundMenuChest.tsx) sont désormais
+          // mesurés au pixel près sur le bord EXTÉRIEUR du cadre peint —
+          // OVERSCAN reste à 1.0 (aucun sur-dimensionnement) : le repasser
+          // au-dessus de 1.0 fait déborder la plaque par-dessus le cadre
+          // doré (coins arrondis qui débordent des coins taillés du cadre).
+          const OVERSCAN = 1.0;
           const geoResult = plankGeometry(pw * OVERSCAN, ph * OVERSCAN, 0.05);
           frontZ = geoResult.frontZ;
           entry.body.geometry = geoResult.geo;
           if (entry.label) {
             entry.label.scale.set(pw * 0.88, ph * 0.62, 1);
             entry.label.position.z = frontZ + 1;
+          }
+          if (entry.shadow) {
+            // Bande fine sous la plaque : la moitié haute (sous la plaque,
+            // z=0 donc masquée par le corps opaque à frontZ) chevauche le
+            // bord bas pour ne pas laisser de liseré clair entre les deux ;
+            // seule la moitié basse dépasse et se voit vraiment.
+            const shadowH = ph * 0.16;
+            entry.shadow.scale.set(pw * 0.82, shadowH, 1);
+            entry.shadow.position.set(0, -ph / 2 - shadowH * 0.32, 0);
           }
         }
         // Soulèvement/enfoncement proportionnels à l'épaisseur réelle du
@@ -532,6 +576,12 @@ export function ChestButtons3D({ slots, iconSlots }: { slots: ChestSlotDef[]; ic
           entry.label.geometry.dispose();
           (entry.label.material as THREE.MeshBasicMaterial).map?.dispose();
           (entry.label.material as THREE.MeshBasicMaterial).dispose();
+        }
+        if (entry.shadow) {
+          // Ne dispose pas `.map` : `shadowTexture()` la partage entre tous
+          // les boutons (et entre montages/démontages via le cache module).
+          entry.shadow.geometry.dispose();
+          (entry.shadow.material as THREE.MeshBasicMaterial).dispose();
         }
       }
       renderer.dispose();

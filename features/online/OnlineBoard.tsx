@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import {
   getCardDefinition,
@@ -13,16 +13,15 @@ import {
 } from "@/game";
 import { Button } from "@/components/ui/Button";
 import { BoardBackdrop } from "@/features/match/BoardBackdrop";
+import { BoardStage } from "@/features/match/BoardStage";
 import { CardBack } from "@/features/match/CardBack";
 import { CardHoverPreview } from "@/features/match/CardHoverPreview";
 import { CardTile } from "@/features/match/CardTile";
 import { CargoCluster } from "@/features/match/CargoCluster";
 import { PhaseActionButton } from "@/features/match/PhaseActionButton";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
-import { PlayerSummary } from "@/features/match/PlayerSummary";
 import { ShipInstrumentCluster } from "@/features/match/ShipInstrumentCluster";
 import { TIDE_STATE_COLORS, TIDE_STATE_LABELS } from "@/features/match/cardDisplay";
-import { formatEvent } from "@/features/match/formatEvent";
 import { usePhaseBannerEvent } from "@/features/match/usePhaseBannerEvent";
 
 interface OnlineBoardProps {
@@ -73,7 +72,6 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
   const canPlayCards = canPlay && state.phase === "mainPhase" && !me.hasUsedMainActionThisTurn;
   const canAttack = canPlay && state.phase === "combatPhase";
 
-  const recentEvents = useMemo(() => state.eventLog.slice(-10).reverse(), [state.eventLog]);
   const bannerEvent = usePhaseBannerEvent(state);
   const bannerText = bannerEvent
     ? bannerEvent.kind === "combatPhase"
@@ -290,144 +288,182 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
   const selectedDef = selectedUnit ? getCardDefinition(selectedUnit.cardId) : undefined;
   const myEmptySlots = Math.max(0, myShip.slotCount - me.board.length);
   const opponentEmptySlots = Math.max(0, opponentShip.slotCount - opponent.board.length);
+  const hasHint = Boolean(error) || selection?.kind === "playCard" || selection?.kind === "break" || selection?.kind === "attack";
 
   return (
     <>
-      <BoardBackdrop />
-      <PhaseBanner text={bannerText} bannerKey={bannerEvent?.id ?? null} />
-      <div className="relative z-10 mx-auto flex min-h-screen max-w-5xl flex-col gap-4 p-4">
-        <PlayerSummary label="Adversaire" handCount={opponent.hand.length} />
-        <div className="flex flex-wrap gap-2">
+      <BoardStage>
+        <BoardBackdrop variant="absolute" />
+
+        {/* Main adverse — centrée en haut, au-dessus de la ligne de plateau adverse */}
+        <div className="absolute flex items-start justify-center gap-2" style={{ left: 0, top: 8, width: 1672, height: 108 }}>
           {opponent.hand.map((card) => (
-            <CardBack key={card.instanceId} />
+            <CardBack key={card.instanceId} widthClassName="w-16" />
           ))}
         </div>
-        <div className="flex items-center gap-2">
+
+        {/* Tour + info adversaire, nichés dans le cadre boussole en haut à droite */}
+        <div className="absolute flex flex-col items-stretch gap-1" style={{ left: 1518, top: 272, width: 108 }}>
+          <div className="rounded border border-slate-700/70 bg-black/60 px-1 py-0.5 text-center text-[9px] text-slate-200">
+            Tour <strong>{state.turnNumber}</strong>
+          </div>
+          <div className="truncate rounded border border-slate-700/70 bg-black/60 px-1 py-0.5 text-center text-[9px] text-slate-200">
+            Adv.<span className="ml-1 text-slate-500">· {opponent.hand.length}</span>
+          </div>
+        </div>
+
+        {/* Ligne de plateau adverse */}
+        <div className="absolute" style={{ left: 0, top: 125, width: 230 }}>
           <ShipInstrumentCluster
             anchor={opponent.anchor}
             anchorMax={opponentShip.startingAnchor}
             reason={opponent.reason}
             reasonMax={opponent.reasonMax}
+            width={230}
           />
-          <div
-            onDragOver={handleOpponentBoardDragOver}
-            onDragLeave={handleOpponentBoardDragLeave}
-            onDrop={handleOpponentBoardDrop}
-            className={`flex flex-1 flex-wrap gap-2 rounded-md p-1 transition-colors ${
-              dragOverOpponentBoard ? "bg-rose-500/10 ring-2 ring-rose-500/60" : ""
-            }`}
-          >
-            {opponent.board.map((unit) => (
-              <div
-                key={unit.instanceId}
-                onMouseEnter={(e) => showPreview(e, unit.cardId)}
-                onMouseLeave={hidePreview}
-                onDragOver={(e) => handleBoardTileDragOver(e, unit.instanceId)}
-                onDragLeave={() => setDragOverTargetId((id) => (id === unit.instanceId ? null : id))}
-                onDrop={(e) => handleBoardTileDrop(e, unit.instanceId)}
-                className={dragOverTargetId === unit.instanceId ? "rounded-md ring-2 ring-board-accent" : ""}
-              >
-                <CardTile
-                  instance={unit}
-                  tideState={state.environment.tideState}
-                  selected={selection?.kind === "attack"}
-                  onClick={() => handleAnyBoardCardClick(unit.instanceId, opponent.id)}
-                />
-              </div>
-            ))}
-            {Array.from({ length: opponentEmptySlots }).map((_, i) => (
-              <EmptySlot key={`opp-empty-${i}`} />
-            ))}
-          </div>
-          <CargoCluster deckCount={opponent.deck.length} graveyardCount={opponent.graveyard.length} />
+        </div>
+        <div
+          onDragOver={handleOpponentBoardDragOver}
+          onDragLeave={handleOpponentBoardDragLeave}
+          onDrop={handleOpponentBoardDrop}
+          className={`absolute flex items-center justify-center gap-2 rounded-md p-1 transition-colors ${
+            dragOverOpponentBoard ? "bg-rose-500/10 ring-2 ring-rose-500/60" : ""
+          }`}
+          style={{ left: 235, top: 130, width: 1010, height: 205 }}
+        >
+          {opponent.board.map((unit) => (
+            <div
+              key={unit.instanceId}
+              onMouseEnter={(e) => showPreview(e, unit.cardId)}
+              onMouseLeave={hidePreview}
+              onDragOver={(e) => handleBoardTileDragOver(e, unit.instanceId)}
+              onDragLeave={() => setDragOverTargetId((id) => (id === unit.instanceId ? null : id))}
+              onDrop={(e) => handleBoardTileDrop(e, unit.instanceId)}
+              className={dragOverTargetId === unit.instanceId ? "rounded-md ring-2 ring-board-accent" : ""}
+            >
+              <CardTile
+                instance={unit}
+                tideState={state.environment.tideState}
+                selected={selection?.kind === "attack"}
+                onClick={() => handleAnyBoardCardClick(unit.instanceId, opponent.id)}
+              />
+            </div>
+          ))}
+          {Array.from({ length: opponentEmptySlots }).map((_, i) => (
+            <EmptySlot key={`opp-empty-${i}`} />
+          ))}
+        </div>
+        <div className="absolute" style={{ left: 1250, top: 143, width: 240 }}>
+          <CargoCluster deckCount={opponent.deck.length} graveyardCount={opponent.graveyard.length} width={240} />
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-slate-800 bg-board-surface px-4 py-2 text-sm">
-          <div className="flex items-center gap-4">
-            <span>
-              Tour <strong>{state.turnNumber}</strong>
-            </span>
-            <span>
-              Marée :{" "}
-              <strong className={TIDE_STATE_COLORS[state.environment.tideState]}>
-                {TIDE_STATE_LABELS[state.environment.tideState]}
-              </strong>{" "}
-              ({state.environment.tideRemainingTurns} tour(s))
-            </span>
-            <span title={state.environment.tideOrientation === "montante" ? "Vers les Abysses" : "Vers le Calme"}>
-              {state.environment.tideOrientation === "montante" ? "▲ Montante" : "▼ Descendante"}
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            {selection && isMyTurn && (
-              <Button variant="secondary" onClick={clearSelection}>
-                Annuler
-              </Button>
-            )}
-            <PhaseActionButton
-              isMyTurn={isMyTurn && !pending}
-              phase={state.phase}
-              onAdvancePhase={() => act({ type: "advancePhase", playerId: myUserId })}
-              onEndTurn={() => act({ type: "endTurn", playerId: myUserId })}
-              size={56}
-            />
-          </div>
+        {/* Bande centrale : orientation de la Marée (gauche), état de la Marée (centre), interaction (droite) */}
+        <div
+          className="absolute flex flex-col items-center justify-center gap-2 rounded-md bg-black/80 text-center"
+          style={{ left: 8, top: 350, width: 214, height: 170 }}
+        >
+          <span className="text-4xl leading-none text-sky-200">
+            {state.environment.tideOrientation === "montante" ? "▲" : "▼"}
+          </span>
+          <span className="text-sm font-semibold uppercase tracking-wide text-sky-200">
+            Marée {state.environment.tideOrientation === "montante" ? "Montante" : "Descendante"}
+          </span>
         </div>
 
-        {error && (
-          <p className="rounded-md border border-rose-800 bg-rose-950/50 px-3 py-2 text-sm text-rose-300">{error}</p>
-        )}
-        {selection?.kind === "playCard" && <p className="text-xs text-slate-400">Choisissez une cible sur le plateau.</p>}
-        {selection?.kind === "break" && <p className="text-xs text-slate-400">Choisissez une cible pour l&apos;effet de bris.</p>}
-        {selection?.kind === "attack" && (
-          <p className="text-xs text-slate-400">Choisissez une cible adverse, ou attaquez le Navire directement.</p>
-        )}
+        <div
+          className="absolute flex flex-col items-center justify-center gap-2 text-center"
+          style={{ left: 230, top: 340, width: 1020, height: 190 }}
+        >
+          <span className="text-sm">
+            Marée :{" "}
+            <strong className={TIDE_STATE_COLORS[state.environment.tideState]}>
+              {TIDE_STATE_LABELS[state.environment.tideState]}
+            </strong>{" "}
+            ({state.environment.tideRemainingTurns} tour(s))
+          </span>
+          {hasHint && (
+            <p
+              className={`max-w-md rounded-md px-3 py-1 text-xs ${
+                error ? "border border-rose-800 bg-rose-950/70 text-rose-300" : "bg-black/50 text-slate-300"
+              }`}
+            >
+              {error
+                ? error
+                : selection?.kind === "playCard"
+                  ? "Choisissez une cible sur le plateau."
+                  : selection?.kind === "break"
+                    ? "Choisissez une cible pour l'effet de bris."
+                    : "Choisissez une cible adverse, ou attaquez le Navire directement."}
+            </p>
+          )}
+        </div>
 
-        <div className="flex items-center gap-2">
+        <div className="absolute flex flex-col items-center gap-2" style={{ left: 1473, top: 555, width: 182 }}>
+          <PhaseActionButton
+            isMyTurn={isMyTurn && !pending}
+            phase={state.phase}
+            onAdvancePhase={() => act({ type: "advancePhase", playerId: myUserId })}
+            onEndTurn={() => act({ type: "endTurn", playerId: myUserId })}
+            size={90}
+          />
+          {selection && isMyTurn && (
+            <Button variant="secondary" onClick={clearSelection}>
+              Annuler
+            </Button>
+          )}
+        </div>
+
+        {/* Ligne de plateau du viewer */}
+        <div className="absolute" style={{ left: 0, top: 530, width: 230 }}>
           <ShipInstrumentCluster
             anchor={me.anchor}
             anchorMax={myShip.startingAnchor}
             reason={me.reason}
             reasonMax={me.reasonMax}
+            width={230}
           />
-          <div
-            onDragOver={handleOwnBoardDragOver}
-            onDragLeave={handleOwnBoardDragLeave}
-            onDrop={handleOwnBoardDrop}
-            className={`flex flex-1 flex-wrap gap-2 rounded-md p-1 transition-colors ${
-              dragOverOwnBoard ? "bg-board-accent/10 ring-2 ring-board-accent/60" : ""
-            }`}
-          >
-            {me.board.map((unit) => (
-              <div
-                key={unit.instanceId}
-                draggable={canPlay}
-                onDragStart={(e) => handleUnitDragStart(e, unit.instanceId)}
-                onDragEnd={handleUnitDragEnd}
-                onMouseEnter={(e) => showPreview(e, unit.cardId)}
-                onMouseLeave={hidePreview}
-                onDragOver={(e) => handleBoardTileDragOver(e, unit.instanceId)}
-                onDragLeave={() => setDragOverTargetId((id) => (id === unit.instanceId ? null : id))}
-                onDrop={(e) => handleBoardTileDrop(e, unit.instanceId)}
-                className={`${dragOverTargetId === unit.instanceId ? "rounded-md ring-2 ring-board-accent" : ""} ${
-                  draggingUnitId === unit.instanceId ? "opacity-40" : ""
-                }`}
-              >
-                <CardTile
-                  instance={unit}
-                  tideState={state.environment.tideState}
-                  selected={selectedBoardId === unit.instanceId || selection?.kind === "attack"}
-                  onClick={() => handleAnyBoardCardClick(unit.instanceId, me.id)}
-                />
-              </div>
-            ))}
-            {Array.from({ length: myEmptySlots }).map((_, i) => (
-              <EmptySlot key={`own-empty-${i}`} />
-            ))}
-          </div>
+        </div>
+        <div
+          onDragOver={handleOwnBoardDragOver}
+          onDragLeave={handleOwnBoardDragLeave}
+          onDrop={handleOwnBoardDrop}
+          className={`absolute flex items-center justify-center gap-2 rounded-md p-1 transition-colors ${
+            dragOverOwnBoard ? "bg-board-accent/10 ring-2 ring-board-accent/60" : ""
+          }`}
+          style={{ left: 235, top: 538, width: 1010, height: 205 }}
+        >
+          {me.board.map((unit) => (
+            <div
+              key={unit.instanceId}
+              draggable={canPlay}
+              onDragStart={(e) => handleUnitDragStart(e, unit.instanceId)}
+              onDragEnd={handleUnitDragEnd}
+              onMouseEnter={(e) => showPreview(e, unit.cardId)}
+              onMouseLeave={hidePreview}
+              onDragOver={(e) => handleBoardTileDragOver(e, unit.instanceId)}
+              onDragLeave={() => setDragOverTargetId((id) => (id === unit.instanceId ? null : id))}
+              onDrop={(e) => handleBoardTileDrop(e, unit.instanceId)}
+              className={`${dragOverTargetId === unit.instanceId ? "rounded-md ring-2 ring-board-accent" : ""} ${
+                draggingUnitId === unit.instanceId ? "opacity-40" : ""
+              }`}
+            >
+              <CardTile
+                instance={unit}
+                tideState={state.environment.tideState}
+                selected={selectedBoardId === unit.instanceId || selection?.kind === "attack"}
+                onClick={() => handleAnyBoardCardClick(unit.instanceId, me.id)}
+              />
+            </div>
+          ))}
+          {Array.from({ length: myEmptySlots }).map((_, i) => (
+            <EmptySlot key={`own-empty-${i}`} />
+          ))}
+        </div>
+        <div className="absolute" style={{ left: 1250, top: 550, width: 240 }}>
           <CargoCluster
             deckCount={me.deck.length}
             graveyardCount={me.graveyard.length}
+            width={240}
             graveyardDropZone={{
               isOver: dragOverGraveyard,
               onDragOver: handleGraveyardDragOver,
@@ -438,7 +474,10 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
         </div>
 
         {selectedUnit && selectedDef && !selection && isMyTurn && (
-          <div className="flex flex-wrap items-center gap-2 rounded-md border border-board-accent/40 bg-board-accent/5 px-3 py-2">
+          <div
+            className="absolute flex flex-wrap items-center justify-center gap-2 rounded-md border border-board-accent/40 bg-black/70 px-3 py-2"
+            style={{ left: 336, top: 706, width: 1000 }}
+          >
             <span className="text-xs text-slate-300">{selectedDef.name} :</span>
             {canAttack && isUnitType(selectedDef.type) && !selectedUnit.summoningSick && !selectedUnit.hasAttackedThisTurn && (
               <>
@@ -478,8 +517,8 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
           </div>
         )}
 
-        <PlayerSummary label={isMyTurn ? "Toi (à toi de jouer)" : "Toi"} handCount={me.hand.length} highlighted={isMyTurn} />
-        <div className="flex flex-wrap gap-2">
+        {/* Main du viewer — centrée en bas de l'écran */}
+        <div className="absolute flex items-end justify-center gap-2" style={{ left: 0, top: 740, width: 1672, height: 195 }}>
           {me.hand.map((card) => (
             <div
               key={card.instanceId}
@@ -502,17 +541,20 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
           {me.hand.length === 0 && <p className="text-xs text-slate-600">Main vide.</p>}
         </div>
 
-        <details className="rounded-md border border-slate-800 bg-board-surface/50 px-3 py-2 text-xs text-slate-400">
-          <summary className="cursor-pointer select-none text-slate-300">Journal de la partie</summary>
-          <ul className="mt-2 space-y-1">
-            {recentEvents.map((event, i) => (
-              <li key={i}>{formatEvent(state, event)}</li>
-            ))}
-          </ul>
-        </details>
+        {/* Info du viewer, en bas à droite */}
+        <div
+          className={`absolute truncate rounded-md border px-2 py-1 text-[11px] ${
+            isMyTurn ? "border-board-accent/50 bg-board-accent/10 text-slate-100" : "border-slate-700/70 bg-black/60 text-slate-200"
+          }`}
+          style={{ left: 1462, top: 906, width: 204 }}
+        >
+          Toi{isMyTurn ? " (à toi)" : ""}
+          <span className="ml-1 text-slate-500">· {me.hand.length} carte(s)</span>
+        </div>
+      </BoardStage>
 
-        {hoverPreview && <CardHoverPreview cardId={hoverPreview.cardId} anchorRect={hoverPreview.rect} />}
-      </div>
+      <PhaseBanner text={bannerText} bannerKey={bannerEvent?.id ?? null} />
+      {hoverPreview && <CardHoverPreview cardId={hoverPreview.cardId} anchorRect={hoverPreview.rect} />}
     </>
   );
 }

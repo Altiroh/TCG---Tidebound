@@ -10,6 +10,7 @@ interface CargoClusterProps {
     onDragLeave: (e: React.DragEvent) => void;
     onDrop: (e: React.DragEvent) => void;
   };
+  width?: number;
 }
 
 /**
@@ -23,9 +24,9 @@ interface CargoClusterProps {
  * cible de glisser-déposer pour Saborder quand `graveyardDropZone` est
  * fourni.
  */
-export function CargoCluster({ deckCount, graveyardCount, graveyardDropZone }: CargoClusterProps) {
+export function CargoCluster({ deckCount, graveyardCount, graveyardDropZone, width = 100 }: CargoClusterProps) {
   return (
-    <div className="group relative shrink-0" style={{ width: 100 }}>
+    <div className="group relative shrink-0" style={{ width }}>
       {/* eslint-disable-next-line @next/next/no-img-element -- élément décoratif de mise en page fixe */}
       <img
         src="/assets/board/cargo-frame.png"

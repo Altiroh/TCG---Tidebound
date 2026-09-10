@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { getCardDefinition } from "@/game";
 import { CARD_TYPE_LABELS } from "@/features/match/cardDisplay";
 import { useImageLoadStatus } from "@/features/match/useImageLoadStatus";
@@ -36,6 +36,13 @@ export function CardHoverPreview({ cardId, anchorRect }: CardHoverPreviewProps) 
   const illustrationUrl = `/assets/cards/illustrations/${cardId}.png`;
   const imageStatus = useImageLoadStatus(illustrationUrl);
   const [viewport, setViewport] = useState<{ w: number; h: number } | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  // Hauteur réellement mesurée du panneau (le texte de règles fait varier sa
+  // hauteur d'une carte à l'autre) — sans ça, le clamp vertical se basait sur
+  // une estimation fixe qui laissait le panneau déborder sous l'écran pour
+  // les cartes à texte long. `useLayoutEffect` mesure et corrige la position
+  // AVANT le paint du navigateur : pas de flash à la position provisoire.
+  const [height, setHeight] = useState(340);
 
   useEffect(() => {
     function update() {
@@ -46,18 +53,22 @@ export function CardHoverPreview({ cardId, anchorRect }: CardHoverPreviewProps) 
     return () => window.removeEventListener("resize", update);
   }, []);
 
+  useLayoutEffect(() => {
+    if (panelRef.current) setHeight(panelRef.current.offsetHeight);
+  }, [cardId, imageStatus]);
+
   if (!viewport) return null;
 
   const spaceRight = viewport.w - anchorRect.right;
   const placeRight = spaceRight >= WIDTH + GAP || spaceRight >= anchorRect.left;
   const left = placeRight ? anchorRect.right + GAP : Math.max(GAP, anchorRect.left - WIDTH - GAP);
 
-  const estimatedHeight = 340; // hauteur approximative avant mesure réelle du DOM
-  let top = anchorRect.top + anchorRect.height / 2 - estimatedHeight / 2;
-  top = Math.max(GAP, Math.min(top, viewport.h - estimatedHeight - GAP));
+  let top = anchorRect.top + anchorRect.height / 2 - height / 2;
+  top = Math.max(GAP, Math.min(top, viewport.h - height - GAP));
 
   return (
     <div
+      ref={panelRef}
       className="pointer-events-none fixed z-50 overflow-hidden rounded-lg border border-slate-700 bg-board-surface shadow-2xl shadow-black/60"
       style={{ left, top, width: WIDTH }}
     >
