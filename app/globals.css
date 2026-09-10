@@ -42,3 +42,20 @@ body {
     transition: none;
   }
 }
+
+/* CargoCluster (features/match/CargoCluster.tsx) : les effectifs de pioche/
+   cimetière ne s'affichent qu'au survol sur un pointeur fin (souris,
+   Desktop) — sur tactile (pas de survol fiable), toujours visibles. */
+.reveal-on-hover {
+  opacity: 0;
+  transition: opacity 0.15s ease-out;
+}
+.group:hover .reveal-on-hover,
+.group:focus-within .reveal-on-hover {
+  opacity: 1;
+}
+@media (hover: none) {
+  .reveal-on-hover {
+    opacity: 1;
+  }
+}
