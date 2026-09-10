@@ -60,16 +60,14 @@ const SLOTS: ChestSlotDef[] = [
   { id: "secondaryB", label: "Collection", href: "/collection", variant: "secondary", rect: { x: 55, y: 50, w: 30, h: 11 } },
 ];
 
-// Aucun emplacement dédié pour Options/Quitter n'existe dans l'illustration
-// (elle ne montre que les 3 plaques) — positions choisies sous les plaques
-// secondaires, sur une zone de bois "neutre". Désactivés pour l'instant :
-// aucune page Options n'existe, et "Quitter" n'a pas de sens pour une PWA
-// web (fermer un onglet n'est pas déclenchable proprement en JS) — la
-// structure est prête, à activer/repositionner dès qu'une vraie
-// destination existe.
+// Aucun emplacement dédié pour Options n'existe dans l'illustration (elle ne
+// montre que les 3 plaques) — position choisie sous les plaques secondaires,
+// sur une zone de bois "neutre". Désactivé pour l'instant : aucune page
+// Options n'existe encore — la structure est prête, à activer dès qu'une
+// vraie destination existe. "Quitter" retiré : sans sens pour une PWA web
+// (fermer un onglet n'est pas déclenchable proprement en JS).
 const ICON_SLOTS: ChestIconSlotDef[] = [
   { id: "options", label: "Options", icon: "gear", texKey: "iconOptions", disabled: true, rect: { x: 27, y: 63, w: 6, h: 6 } },
-  { id: "quit", label: "Quitter", icon: "power", texKey: "iconQuit", disabled: true, rect: { x: 67, y: 63, w: 6, h: 6 } },
 ];
 
 /**

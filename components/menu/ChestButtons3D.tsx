@@ -304,8 +304,18 @@ export function ChestButtons3D({ slots, iconSlots }: { slots: ChestSlotDef[]; ic
       entries.push(entry);
 
       if (real) {
-        capMaterial.map = textureLoader.load(texUrl!);
-        capMaterial.map.colorSpace = THREE.SRGBColorSpace;
+        const tex = textureLoader.load(texUrl!);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        // Sans ça, le mipmapping mélange au fil des niveaux les pixels
+        // transparents du bord du PNG (RGB souvent noir/nul) avec les
+        // pixels opaques voisins — d'où une frange grise/sombre autour de
+        // la plaque, quelle que soit la marge UV appliquée. LinearFilter
+        // (pas de mipmap) élimine la frange ; acceptable ici, le bouton
+        // n'est jamais affiché à une échelle où l'aliasing de minification
+        // se remarque.
+        tex.generateMipmaps = false;
+        tex.minFilter = THREE.LinearFilter;
+        capMaterial.map = tex;
       } else {
         capMaterial.map = proceduralPlankTexture(WOOD[slot.variant]);
       }
