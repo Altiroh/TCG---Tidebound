@@ -5,10 +5,11 @@ import {
   computeEffectiveStats,
   getCardDefinition,
   UNIT_CARD_TYPES,
+  type CardDefinition,
   type CardInstance,
   type TideStateName,
 } from "@/game";
-import { CARD_TYPE_LABELS } from "@/features/match/cardDisplay";
+import { CARD_TYPE_LABELS, THICK_TEXT_OUTLINE } from "@/features/match/cardDisplay";
 
 interface CardTileProps {
   instance: CardInstance;
@@ -18,85 +19,52 @@ interface CardTileProps {
   onClick?: () => void;
   /** Classe Tailwind de largeur (ex: "w-28", "w-72") — permet un rendu plus grand (vue détail). Défaut : "w-28". */
   widthClassName?: string;
+  /**
+   * "preview" (défaut) : compact, sans texte de règles — pour la main/le
+   * plateau/les grilles. "detail" : ajoute le texte de règles — pour un
+   * aperçu agrandi (ex: `CardBrowser`).
+   */
+  variant?: "preview" | "detail";
 }
 
-const TYPE_BADGE_CLASSES: Record<string, string> = {
-  marin: "bg-sky-900 text-sky-200",
-  creature: "bg-rose-900 text-rose-200",
-  equipement: "bg-amber-900 text-amber-200",
-  structure: "bg-emerald-900 text-emerald-200",
-  objet: "bg-violet-900 text-violet-200",
-  anomalie: "bg-fuchsia-950 text-fuchsia-200",
+/** Repli uniquement pour le cas (rare) où le cadre lui-même n'a pas chargé — pas de bandeaux/découpe peints, juste une teinte par type. */
+const TYPE_BG_CLASSES: Record<string, string> = {
+  marin: "bg-sky-950",
+  creature: "bg-rose-950",
+  equipement: "bg-amber-950",
+  structure: "bg-emerald-950",
+  objet: "bg-violet-950",
+  anomalie: "bg-fuchsia-950",
 };
 
 /**
- * Position (en % de la carte, ancrée coin bas) des chiffres superposés sur
- * l'image — calée sur une annotation directe fournie sur l'export
- * "Cylindre flottant" (chiffre dessiné à la main juste après le mot
- * "Résistance", à sa hauteur). À réajuster si le gabarit diffère d'une
- * carte à l'autre, et une fois une Créature disponible pour caler la
- * Puissance à gauche (position non mesurée, symétrique par défaut).
- *
- * `PREVIEW_BOTTOM_OFFSET` : léger correctif vertical propre à la taille
- * "aperçu" (grille, `widthClassName` par défaut) — un même `bottom` en %
- * ne rend pas identique à toutes les échelles, la vue détail restant
- * calée sur l'annotation d'origine.
+ * Précharge une image hors du DOM plutôt que de dépendre de l'événement
+ * `onError` d'un `<img>` rendu — plus fiable quand beaucoup de cartes se
+ * chargent en même temps (ex: la page Collection, 80 cartes), où
+ * `onError` s'est révélé peu fiable dans les tests. `false` tant que
+ * l'image n'a pas fini de charger OU si elle échoue (404, pas encore
+ * fournie) — pas d'état intermédiaire à gérer côté appelant.
  */
-const RESISTANCE_POSITION = { right: "10.5%", bottom: "6.5%" };
-const ATTACK_POSITION = { left: "10.5%", bottom: "6.5%" };
-const PREVIEW_BOTTOM_OFFSET = 2;
-/** Taille du chiffre en % de la LARGEUR de la carte (container query : `cqw`),
- * pour rester proportionnée que la carte soit affichée petite (grille) ou
- * grande (détail) — un `text-*` Tailwind fixe ne s'adapte pas. */
-const STAT_FONT_SIZE = "7cqw";
-/**
- * Blanc + contour bleu nuit épais (8 directions, décalage en `cqw` pour
- * rester proportionné à `STAT_FONT_SIZE` quelle que soit la taille de la
- * carte), comme le chiffre du coût (Raison) en haut à gauche, plutôt qu'un
- * aplat de couleur.
- */
-const STAT_TEXT_SHADOW = (() => {
-  const d = 0.35; // cqw
-  const offsets: Array<[number, number]> = [
-    [-d, -d],
-    [d, -d],
-    [-d, d],
-    [d, d],
-    [0, -d],
-    [0, d],
-    [-d, 0],
-    [d, 0],
-  ];
-  return (
-    offsets.map(([x, y]) => `${x}cqw ${y}cqw 0 #022a58`).join(", ") + ", 0 0.3cqw 0.5cqw rgba(0,0,0,0.5)"
-  );
-})();
-
-/** Précharge l'image finie d'une carte hors du DOM plutôt que de dépendre
- * de l'événement `onError` d'un `<img>` rendu — plus fiable quand beaucoup
- * de cartes se chargent en même temps (ex: la page Collection, 80
- * requêtes simultanées), où `onError` s'est révélé peu fiable dans les
- * tests. */
-function useCardImageStatus(cardId: string): "loading" | "ok" | "error" {
-  const [status, setStatus] = useState<"loading" | "ok" | "error">("loading");
+function useImageOk(url: string): boolean {
+  const [ok, setOk] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    setStatus("loading");
+    setOk(false);
     const img = new window.Image();
     img.onload = () => {
-      if (!cancelled) setStatus("ok");
+      if (!cancelled) setOk(true);
     };
     img.onerror = () => {
-      if (!cancelled) setStatus("error");
+      if (!cancelled) setOk(false);
     };
-    img.src = `/api/card-image/${cardId}`;
+    img.src = url;
     return () => {
       cancelled = true;
     };
-  }, [cardId]);
+  }, [url]);
 
-  return status;
+  return ok;
 }
 
 /** `true` le temps d'une animation, chaque fois que `value` diminue par rapport à son appel précédent. */
@@ -119,60 +87,120 @@ function useDecreaseFlash(value: number): boolean {
 }
 
 /**
- * Un chiffre de statistique superposé sur l'image de la carte, dans la
- * police/position dédiées. Blanc + contour bleu nuit (`STAT_TEXT_SHADOW`),
- * même traitement que le chiffre de coût (Raison) en haut à gauche, plutôt
- * qu'un aplat de couleur.
+ * Le cadre ne dépend pas du type de carte mais de la famille (Abyssal via
+ * `subtype: "abyssal"`, sinon Standard) et du bloc de stats affiché — voir
+ * `public/assets/cards/README.md`.
  */
-function StatOverlay({
-  value,
-  position,
-  bottomOffset,
-  flashing,
-}: {
-  value: number;
-  position: { left?: string; right?: string; bottom: string };
-  bottomOffset: number;
-  flashing: boolean;
-}) {
-  const bottom = `calc(${position.bottom} - ${bottomOffset}%)`;
-  return (
-    <span
-      className={`absolute font-extrabold leading-none text-white [font-family:var(--font-card-stat)] ${
-        flashing ? "animate-stat-hit" : ""
-      }`}
-      style={{ ...position, bottom, fontSize: STAT_FONT_SIZE, textShadow: STAT_TEXT_SHADOW }}
-    >
-      {value}
-    </span>
-  );
+function getFrameUrl(def: CardDefinition): string {
+  const family = def.subtype === "abyssal" ? "ABYSSAL" : "STANDARD";
+  const variant = def.attack !== undefined && def.health !== undefined
+    ? "POWER_RESISTANCE"
+    : def.health !== undefined
+      ? "RESISTANCE"
+      : "NO_STATS";
+  return `/assets/cards/frames/FRAME_${family}_${variant}.png`;
+}
+
+/** Le type, lui, se recale carte par carte via une icône dédiée superposée au cadre. */
+function getTypeIconUrl(def: CardDefinition): string {
+  return `/assets/cards/icons/TYPE_${def.type.toUpperCase()}_STANDARD.png`;
+}
+
+interface Zone {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
 }
 
 /**
- * Une carte compacte. Composant "bête" : affiche l'image finie de la carte
- * si un asset existe (`/api/card-image/<cardId>`, voir
- * `public/assets/cards/README.md`), avec les chiffres de Puissance/
- * Résistance superposés en live dans l'emplacement réservé par l'export
- * (jamais gravés dans l'image — ils changent en cours de partie). Une
- * courte animation signale une baisse de Résistance. Retombe sur le rendu
- * HTML/CSS complet tant qu'aucun asset n'existe pour cette carte (ou
- * pendant le chargement).
+ * Zones du cadre exprimées en % de la carte — mesurées directement sur les
+ * pixels des PNG de `frames/` (découpe illustration, bandeau de type, bloc
+ * de règles) et sur la carte étalon "Cylindre flottant" pour le reste.
+ * Cohérentes à quelques % près entre les 6 cadres Standard/Abyssal. Voir la
+ * charte Notion "Bibliothèque visuelle — cohérence verrouillée".
  */
-export function CardTile({ instance, tideState, selected, disabled, onClick, widthClassName = "w-28" }: CardTileProps) {
+const ILLUSTRATION_ZONE: Zone = { top: 4, left: 7, width: 87, height: 51 };
+const STATUS_BADGES_ZONE: Zone = { top: 48, left: 9, width: 82, height: 6 };
+const NAME_BANNER_ZONE: Zone = { top: 55, left: 8, width: 84, height: 10 };
+const RULES_ZONE_WITH_STATS: Zone = { top: 66, left: 9, width: 82, height: 21 };
+const RULES_ZONE_NO_STATS: Zone = { top: 66, left: 9, width: 82, height: 28 };
+const ATTACK_ZONE: Zone = { top: 87, left: 43, width: 12, height: 7 };
+const RESISTANCE_ZONE: Zone = { top: 87, left: 78, width: 12, height: 7 };
+const COST_NUMBER_ZONE: Zone = { top: 3, left: 4, width: 14, height: 16 };
+const TYPE_RIBBON_ZONE: Zone = { top: 3.8, left: 64, width: 31, height: 7 };
+
+/**
+ * Adapte la taille du nom à sa longueur plutôt qu'une taille fixe — sur un
+ * bandeau de largeur fixe, un nom long doit rétrécir plutôt que déborder
+ * verticalement de sa zone (débordement observé sur des noms à 2 mots
+ * longs comme "Chose des Hauts-Fonds").
+ */
+function nameFontSizeCqw(name: string): number {
+  if (name.length <= 14) return 7;
+  if (name.length <= 20) return 6;
+  if (name.length <= 26) return 5.2;
+  return 4.6;
+}
+
+/** Même logique que `nameFontSizeCqw`, mais pour le texte de règles — on rétrécit plutôt que de faire apparaître une scrollbar. */
+function rulesFontSizeCqw(text: string): number {
+  if (text.length <= 60) return 5.2;
+  if (text.length <= 110) return 4.5;
+  if (text.length <= 170) return 3.9;
+  return 3.4;
+}
+
+function zoneStyle(zone: Zone): React.CSSProperties {
+  return {
+    position: "absolute",
+    top: `${zone.top}%`,
+    left: `${zone.left}%`,
+    width: `${zone.width}%`,
+    height: `${zone.height}%`,
+  };
+}
+
+/**
+ * Une carte, composée en couches plutôt qu'affichée comme une image finie
+ * par carte (abandonné — pas réaliste à 80 cartes) :
+ * illustration (dans la découpe du cadre) → cadre PNG (contour, bandeaux,
+ * bloc de règles, découpes Puissance/Résistance déjà peints) → icône de
+ * type, nom, coût, règles et statistiques posés par-dessus aux coordonnées
+ * du cadre — jamais gravés dans un asset. Tant qu'un cadre n'existe pas,
+ * un aplat de couleur par type le remplace ; tant qu'une illustration
+ * n'existe pas pour une carte, sa zone reste neutre plutôt que d'inventer
+ * un visuel. Typographie verrouillée dans Notion : Cinzel (nom, type,
+ * valeurs) + Crimson Pro (texte de règles).
+ */
+export function CardTile({
+  instance,
+  tideState,
+  selected,
+  disabled,
+  onClick,
+  widthClassName = "w-28",
+  variant = "preview",
+}: CardTileProps) {
   const def = getCardDefinition(instance.cardId);
+  const isAbyssal = def.subtype === "abyssal";
   const stats = computeEffectiveStats(instance, tideState);
   const isUnit = (UNIT_CARD_TYPES as readonly string[]).includes(def.type);
   const hasResistance = isUnit || def.health !== undefined;
-  const imageStatus = useCardImageStatus(instance.cardId);
   const resistanceRemaining = Math.max(0, stats.health - instance.damageMarked);
   const resistanceFlashing = useDecreaseFlash(resistanceRemaining);
 
-  const ringClasses = selected
-    ? "border-board-accent bg-board-accent/10"
-    : "border-slate-700 bg-board-surface hover:border-slate-500";
-  // Correctif vertical propre à la taille "aperçu" (voir PREVIEW_BOTTOM_OFFSET) ;
-  // la vue détail (toute autre largeur) reste calée sur l'annotation d'origine.
-  const bottomOffset = widthClassName === "w-28" ? PREVIEW_BOTTOM_OFFSET : 0;
+  const frameUrl = getFrameUrl(def);
+  const typeIconUrl = getTypeIconUrl(def);
+  const illustrationUrl = `/assets/cards/illustrations/${instance.cardId}.png`;
+  const frameOk = useImageOk(frameUrl);
+  const typeIconOk = useImageOk(typeIconUrl);
+  const illustrationOk = useImageOk(illustrationUrl);
+
+  const rulesZone = isUnit || hasResistance ? RULES_ZONE_WITH_STATS : RULES_ZONE_NO_STATS;
+
+  const hoverable = Boolean(onClick) && !disabled;
+  const scalesOnHover = hoverable;
 
   return (
     <button
@@ -180,63 +208,109 @@ export function CardTile({ instance, tideState, selected, disabled, onClick, wid
       onClick={onClick}
       disabled={!onClick || disabled}
       title={def.text}
-      className={`${widthClassName} overflow-hidden rounded-md border text-left text-xs transition-colors ${ringClasses} ${
-        disabled ? "opacity-40" : ""
-      } ${onClick ? "cursor-pointer" : "cursor-default"}`}
+      className={`${widthClassName} rounded-xl text-left transition-shadow duration-200 ${
+        selected ? "ring-2 ring-board-accent" : ""
+      } ${disabled ? "opacity-40" : ""} ${onClick ? "cursor-pointer" : "cursor-default"} ${
+        hoverable ? "hover:shadow-[0_0_35px_rgba(62,166,255,0.6)]" : ""
+      }`}
     >
-      {imageStatus === "ok" ? (
-        <div className="relative aspect-[5/7] w-full bg-board-surface" style={{ containerType: "inline-size" }}>
-          {/* eslint-disable-next-line @next/next/no-img-element -- asset local, taille variable selon la carte */}
-          <img src={`/api/card-image/${instance.cardId}`} alt={def.name} className="h-full w-full object-cover" />
+      <div
+        className={`relative aspect-[5/7] w-full overflow-hidden rounded-xl transition-transform duration-150 ease-out ${
+          scalesOnHover ? "hover:scale-[1.03]" : ""
+        }`}
+        style={{ containerType: "inline-size" }}
+      >
+        {/* Couche 1 : illustration, dans la découpe du cadre (ou plein cadre si le cadre est absent) */}
+        <div
+          className={`absolute overflow-hidden ${frameOk ? "rounded-sm bg-black/30" : (TYPE_BG_CLASSES[def.type] ?? "bg-board-surface")}`}
+          style={frameOk ? zoneStyle(ILLUSTRATION_ZONE) : { position: "absolute", inset: 0 }}
+        >
+          {illustrationOk && (
+            // eslint-disable-next-line @next/next/no-img-element -- asset local, une par carte
+            <img src={illustrationUrl} alt="" className="h-full w-full object-cover" />
+          )}
+        </div>
+
+        {/* Couche 2 : le cadre PNG — contour, bandeaux, bloc de règles et découpes de stats déjà peints */}
+        {frameOk && (
+          // eslint-disable-next-line @next/next/no-img-element -- asset local, cadre réutilisé par famille/variante de stats
+          <img src={frameUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        )}
+
+        {/* Couche 3 : icônes, textes et valeurs variables injectés par-dessus le cadre */}
+        <div className="absolute inset-0">
+          <div
+            className="flex items-center justify-center text-center font-bold text-white [font-family:var(--font-card-title)]"
+            style={{ ...zoneStyle(COST_NUMBER_ZONE), fontSize: "11cqw", textShadow: THICK_TEXT_OUTLINE }}
+          >
+            {def.cost}
+          </div>
+
+          <div
+            className={`flex items-center justify-start overflow-hidden px-[4%] ${frameOk ? "" : "rounded bg-black/50"}`}
+            style={zoneStyle(TYPE_RIBBON_ZONE)}
+          >
+            {typeIconOk && (
+              // eslint-disable-next-line @next/next/no-img-element -- asset local, icône + libellé de type déjà réunis dans l'asset
+              <img src={typeIconUrl} alt={CARD_TYPE_LABELS[def.type]} className="h-[78%] w-auto object-contain" />
+            )}
+          </div>
+
+          <div
+            className="flex items-center justify-start overflow-hidden pl-[4%] pr-[2%] text-left font-semibold uppercase leading-tight text-white [font-family:var(--font-card-title)]"
+            style={{ ...zoneStyle(NAME_BANNER_ZONE), textShadow: THICK_TEXT_OUTLINE }}
+          >
+            <span className="line-clamp-2" style={{ fontSize: `${nameFontSizeCqw(def.name)}cqw` }}>
+              {def.name}
+            </span>
+          </div>
+
           {(stats.inactive || (instance.summoningSick && isUnit) || instance.turnsRemaining !== undefined) && (
-            <div className="absolute inset-x-0 top-0 flex flex-wrap gap-1 bg-black/60 px-1 py-0.5">
-              {stats.inactive && <span className="text-[9px] text-amber-300">Inactive</span>}
-              {instance.summoningSick && isUnit && <span className="text-[9px] text-slate-300">Malade</span>}
+            <div
+              className="flex flex-wrap items-center justify-center gap-1 overflow-hidden"
+              style={{ ...zoneStyle(STATUS_BADGES_ZONE), fontSize: "5cqw" }}
+            >
+              {stats.inactive && <span className="rounded bg-black/60 px-1 text-amber-300">Inactive</span>}
+              {instance.summoningSick && isUnit && <span className="rounded bg-black/60 px-1 text-slate-300">Malade</span>}
               {instance.turnsRemaining !== undefined && (
-                <span className="text-[9px] text-slate-300">Durée {instance.turnsRemaining}</span>
+                <span className="rounded bg-black/60 px-1 text-slate-300">Durée {instance.turnsRemaining}</span>
               )}
             </div>
           )}
+
+          {variant === "detail" && def.text && (
+            <div
+              className={`overflow-hidden rounded-sm border px-[3%] text-left leading-snug [font-family:var(--font-card-body)] ${
+                frameOk
+                  ? `text-slate-800 ${isAbyssal ? "border-slate-600/70" : "border-sky-600/50"}`
+                  : "border-transparent bg-black/50 text-slate-100"
+              }`}
+              style={{ ...zoneStyle(rulesZone), fontSize: `${rulesFontSizeCqw(def.text)}cqw` }}
+            >
+              {def.text}
+            </div>
+          )}
+
           {isUnit && (
-            <StatOverlay value={stats.attack} position={ATTACK_POSITION} bottomOffset={bottomOffset} flashing={false} />
+            <div
+              className="flex items-center justify-start font-bold text-white [font-family:var(--font-card-title)]"
+              style={{ ...zoneStyle(ATTACK_ZONE), fontSize: "7.5cqw", textShadow: THICK_TEXT_OUTLINE }}
+            >
+              {stats.attack}
+            </div>
           )}
           {hasResistance && (
-            <StatOverlay
-              value={resistanceRemaining}
-              position={RESISTANCE_POSITION}
-              bottomOffset={bottomOffset}
-              flashing={resistanceFlashing}
-            />
-          )}
-        </div>
-      ) : (
-        <div className="flex flex-col gap-1 p-2">
-          <div className="flex items-center justify-between gap-1">
-            <span className={`rounded px-1 py-0.5 text-[10px] ${TYPE_BADGE_CLASSES[def.type] ?? "bg-slate-800"}`}>
-              {CARD_TYPE_LABELS[def.type]}
-            </span>
-            <span className="rounded-full bg-slate-800 px-1.5 py-0.5 text-[10px] font-semibold text-board-accent">
-              {def.cost}
-            </span>
-          </div>
-          <span className="line-clamp-2 font-medium leading-tight text-slate-100">{def.name}</span>
-          {stats.inactive && <span className="text-[10px] text-amber-400">Inactive</span>}
-          {instance.summoningSick && isUnit && (
-            <span className="text-[10px] text-slate-500">Malade d&apos;invocation</span>
-          )}
-          {instance.turnsRemaining !== undefined && (
-            <span className="text-[10px] text-slate-500">Durée : {instance.turnsRemaining}</span>
-          )}
-          {(isUnit || hasResistance) && (
-            <div className="mt-auto flex items-center gap-2 text-[11px] font-semibold">
-              {isUnit && <span className="text-orange-300">⚔ {stats.attack}</span>}
-              <span className="text-emerald-300">
-                ♥ {resistanceRemaining}/{stats.health}
-              </span>
+            <div
+              className={`flex items-center justify-start font-bold text-white [font-family:var(--font-card-title)] ${
+                resistanceFlashing ? "animate-stat-hit" : ""
+              }`}
+              style={{ ...zoneStyle(RESISTANCE_ZONE), fontSize: "7.5cqw", textShadow: THICK_TEXT_OUTLINE }}
+            >
+              {resistanceRemaining}
             </div>
           )}
         </div>
-      )}
+      </div>
     </button>
   );
 }

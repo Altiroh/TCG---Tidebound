@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { cardStatFont } from "@/lib/fonts";
+import { cardBodyFont, cardTitleFont } from "@/lib/fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -14,7 +14,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="fr" className={cardStatFont.variable}>
+    <html lang="fr" className={`${cardTitleFont.variable} ${cardBodyFont.variable}`}>
       <body>{children}</body>
     </html>
   );

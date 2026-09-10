@@ -1,97 +1,73 @@
 # Cartes
 
-Une image **finie** par carte, rangée par type dans `cards/<type>/` — le
-type est le `CardType` du moteur (`game/cards/types.ts`), le `cardId`
-vient de `game/cards/sets/core.ts` (`CORE_SET`, 80 cartes). Chaque fichier
-est le rendu de la carte (cadre + illustration + nom + coût + type +
-texte de règles), affiché tel quel par l'app.
+**Nouvelle approche (remplace l'idée d'une image finie par carte, abandonnée
+— 80 illustrations cohérentes une par une n'est pas réaliste) :** un cadre
+par famille/bloc de stats (pas par type), plus une icône de type superposée
+carte par carte. Le nom, le coût, le texte de règles, les statistiques et
+l'illustration (si elle existe) sont superposés par l'app à l'affichage —
+jamais gravés dans le cadre. C'est `features/match/CardTile.tsx` qui fait
+cette composition.
 
-> **Écart volontaire par rapport à la charte Notion : ne PAS graver
-> Puissance/Résistance dans l'image.** Ces valeurs changent en cours de
-> partie (dégâts marqués, buffs) — l'image ne connaît que les stats de
-> base. `CardTile` (`features/match/CardTile.tsx`) superpose toujours ces
-> deux stats en overlay, live, par-dessus l'image. Laisser cette zone
-> vide/neutre sur l'export (bas de carte) pour ne pas dupliquer/entrer en
-> conflit visuel avec l'overlay.
-
-## Convention de nommage
+## `frames/` — un cadre par famille × bloc de stats
 
 ```
-tb_<type>_<cardId>_card_v<NN>.png
+frames/
+  FRAME_STANDARD_NO_STATS.png
+  FRAME_STANDARD_RESISTANCE.png
+  FRAME_STANDARD_POWER_RESISTANCE.png
+  FRAME_ABYSSAL_NO_STATS.png
+  FRAME_ABYSSAL_RESISTANCE.png
+  FRAME_ABYSSAL_POWER_RESISTANCE.png
 ```
 
-`<NN>` = numéro de version sur 2 chiffres (`v01`, `v02`, ...), incrémenté à
-chaque nouvelle passe sur une carte déjà illustrée. Une carte peut donc
-avoir plusieurs versions présentes en même temps le temps d'une révision ;
-la plus récente fait foi.
+Le cadre ne dépend pas de `CardType` mais de :
+- **Famille** — `ABYSSAL` si `subtype: "abyssal"` sur la carte, sinon
+  `STANDARD`.
+- **Variante de stats** — `POWER_RESISTANCE` (attaque + résistance),
+  `RESISTANCE` (résistance seule), ou `NO_STATS` (aucune des deux).
+
+Le type de carte, lui, n'est plus gravé dans le cadre : voir `icons/` plus
+bas. Le cadre doit laisser des zones neutres pour : coût (haut-gauche),
+icône de type (haut-droite), illustration (~55 % de la hauteur), nom, bloc
+de règles, Puissance/Résistance (bas). Tant qu'un cadre n'existe pas pour
+une combinaison famille/variante, l'app retombe sur un rendu HTML/CSS
+générique (déjà en place).
+
+## `illustrations/` — optionnel, par carte
 
 ```
-cards/
-  marin/tb_marin_<cardId>_card_v01.png
-  creature/tb_creature_<cardId>_card_v01.png
-  equipement/tb_equipement_<cardId>_card_v01.png
-  structure/tb_structure_<cardId>_card_v01.png
-  objet/tb_objet_<cardId>_card_v01.png
-  anomalie/tb_anomalie_<cardId>_card_v01.png
+illustrations/<cardId>.png
 ```
 
-Exemple — Cylindre flottant (`type: "structure"`) :
-`public/assets/cards/structure/tb_structure_cylindre-flottant_card_v01.png`
+Ajoutées carte par carte, à votre rythme — voir `game/cards/sets/core.ts`
+pour la liste des `cardId`. Tant qu'une illustration n'existe pas pour une
+carte, l'app laisse la zone illustration neutre/vide plutôt que d'inventer
+un visuel.
 
-## Charte canonique (carte étalon : Cylindre flottant)
+## `icons/` — icônes mécaniques + icônes de type
+
+Voir `icons/README.md` pour les icônes mécaniques (Ancrage, Raison,
+Puissance, Résistance, Garde, Sabordage, etc.).
+
+L'icône de type de carte suit `TYPE_<TYPE>_STANDARD.png` (`<TYPE>` =
+`CardType` de `game/cards/types.ts` en majuscules : `MARIN`, `CREATURE`,
+`EQUIPEMENT`, `STRUCTURE`, `OBJET`, `ANOMALIE`) et se superpose en
+haut-droite du cadre, à la place de l'ancien badge texte. Tant qu'elle
+n'existe pas pour un type, l'app retombe sur le badge texte coloré.
+
+## Charte graphique applicable aux cadres
 
 - Format vertical **5:7**, quatre coins **arrondis** (rayon identique sur
-  toutes les cartes).
+  tous les cadres).
 - Contour extérieur noir / bleu nuit très sombre, **sans liseré blanc**.
-- Export PNG avec **transparence réelle** hors de la silhouette de la carte
-  — alpha propre, bords nets et anti-aliasés, aucun pixel noir/blanc/coloré
-  résiduel dans les coins.
-- Coût en haut à gauche (panneau bleu, icône **cerveau seul** blanc pour la
-  Raison — jamais dans une tête humaine).
-- Type en haut à droite : bandeau clair, pictogramme à gauche + nom en
-  capitales. Un même type = un même pictogramme sur toutes les cartes
-  (voir `cards/icons/`).
-- Illustration principale ≈ **55 %** de la carte.
-- Nom sur bandeau bleu nuit sous l'illustration, blanc, massif, seul —
-  **aucune sous-phrase/citation**.
-- Icône mécanique/thématique à droite du nom, dans un **losange** (repère
-  cohérent d'une carte à l'autre : Houle, Ancrage, Raison, Pêche, Abysses,
-  Courant, etc.).
-- Bloc de règles : fond blanc légèrement bleuté (jamais blanc pur), texte
-  bleu nuit/noir bleuté, mots-clés en **bleu vif + gras**. Ordre rédactionnel
-  recommandé : durée/condition de présence → condition d'activation →
-  déclencheur → mot-clé → résolution → destruction/brisure/expiration.
-- **Ne pas graver Puissance/Résistance sur l'image** (voir encadré plus
-  haut) : laisser le bas de la carte libre pour l'overlay live de l'app.
-  Position réservée par l'overlay, à respecter pour que rien d'autre ne
-  s'y trouve : Puissance en bas à gauche, Résistance en bas à droite
-  (pictogramme bouclier).
-
-## Illustration = effet de carte
-
-> La scène doit rendre l'effet compréhensible avant la lecture du texte.
-
-- Carte défensive → montre concrètement ce qu'elle bloque/protège.
-- Carte de déplacement → montre le déplacement ou son résultat.
-- Carte de destruction → montre la menace/conséquence, sans réduire
-  l'illustration à un pictogramme abstrait.
-- Carte de réflexion/redirection → montre l'attaque entrante, l'interception,
-  puis la trajectoire renvoyée vers la cible adverse.
-- Référence canonique — **Cylindre flottant** : projectile adverse →
-  interception par le Cylindre → projectile renvoyé → impact sur le Navire
-  adverse.
-
-Un motif maritime principal maximum par objet lorsque possible ; objets
-immédiatement identifiables, peu de signes décoratifs. Rendu
-illustration-first.
+- Export PNG avec **transparence réelle** hors de la silhouette — alpha
+  propre, bords nets, aucun pixel résiduel dans les coins.
+- Palette : bleu nuit, bleu pétrole, turquoise désaturé, gris ardoise,
+  blanc écume ; tons chauds réservés aux points de contraste.
+- Un même type de carte = un même pictogramme de type sur tous les cadres.
 
 ## Interdits stricts
 
-Pas de contour blanc, pas de phrase d'ambiance sous le nom, pas de
-citation, pas de logo/numéro d'édition inventé, pas de symboles occultes
-ni de surcharge de runes, pas de changement de layout d'une carte à
-l'autre, pas d'icône différente pour une même ressource/type/statistique,
-pas d'illustration qui contredit l'effet réel de la carte.
-
-Une nouvelle carte n'est pas un nouveau design : c'est une nouvelle
-instance du même système graphique.
+Pas de contour blanc, pas de logo/numéro d'édition inventé, pas de
+symboles occultes ni de surcharge de runes, pas de changement de layout
+d'un cadre à l'autre du même type.
