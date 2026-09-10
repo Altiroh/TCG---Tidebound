@@ -150,12 +150,19 @@ interface ButtonEntry {
   group: THREE.Group;
   body: THREE.Mesh;
   bodyMaterial: THREE.MeshStandardMaterial;
+  baseColor: THREE.Color;
   label: THREE.Mesh | null;
   isCircle: boolean;
   hasRealTexture: boolean;
   rect: { x: number; y: number; w: number; h: number };
   href?: string;
   disabled?: boolean;
+  /** Amplitude de soulèvement/enfoncement, proportionnelle à la taille du bouton (calculée dans layout()). */
+  liftAmount: number;
+  pressAmount: number;
+  /** État courant animé (0 = repos, 1 = pleinement enfoncé/survolé) — lissé indépendamment du hover/press instantanés. */
+  hoverMix: number;
+  pressMix: number;
 }
 
 /**
@@ -248,12 +255,17 @@ export function ChestButtons3D({ slots, iconSlots }: { slots: ChestSlotDef[]; ic
         group,
         body,
         bodyMaterial,
+        baseColor: bodyMaterial.color.clone(),
         label,
         isCircle: false,
         hasRealTexture: real,
         rect: slot.rect,
         href: slot.disabled ? undefined : (slot.href as string | undefined),
         disabled: slot.disabled,
+        liftAmount: 0,
+        pressAmount: 0,
+        hoverMix: 0,
+        pressMix: 0,
       });
     }
 
@@ -281,12 +293,17 @@ export function ChestButtons3D({ slots, iconSlots }: { slots: ChestSlotDef[]; ic
         group,
         body,
         bodyMaterial,
+        baseColor: bodyMaterial.color.clone(),
         label,
         isCircle: true,
         hasRealTexture: false,
         rect: icon.rect,
         href: icon.disabled ? undefined : icon.href,
         disabled: icon.disabled,
+        liftAmount: 0,
+        pressAmount: 0,
+        hoverMix: 0,
+        pressMix: 0,
       });
     }
 
@@ -308,22 +325,30 @@ export function ChestButtons3D({ slots, iconSlots }: { slots: ChestSlotDef[]; ic
         entry.group.position.y = -(py + ph / 2);
 
         entry.body.geometry.dispose();
+        let frontZ: number;
         if (entry.isCircle) {
           const size = Math.min(pw, ph);
-          const { geo, frontZ } = rivetGeometry(size);
-          entry.body.geometry = geo;
+          const geoResult = rivetGeometry(size);
+          frontZ = geoResult.frontZ;
+          entry.body.geometry = geoResult.geo;
           if (entry.label) {
             entry.label.scale.set(size * 0.6, size * 0.6, 1);
             entry.label.position.z = frontZ + 1;
           }
         } else {
-          const { geo, frontZ } = plankGeometry(pw, ph);
-          entry.body.geometry = geo;
+          const geoResult = plankGeometry(pw, ph);
+          frontZ = geoResult.frontZ;
+          entry.body.geometry = geoResult.geo;
           if (entry.label) {
             entry.label.scale.set(pw * 0.88, ph * 0.62, 1);
             entry.label.position.z = frontZ + 1;
           }
         }
+        // Soulèvement/enfoncement proportionnels à l'épaisseur réelle du
+        // bouton — un montant fixe en px paraîtrait énorme sur un petit
+        // écran et insignifiant sur un grand.
+        entry.liftAmount = frontZ * 0.9;
+        entry.pressAmount = frontZ * 0.55;
       }
     }
 
@@ -376,14 +401,31 @@ export function ChestButtons3D({ slots, iconSlots }: { slots: ChestSlotDef[]; ic
     let raf = 0;
     function animate() {
       raf = requestAnimationFrame(animate);
-      const lerp = reduceMotion ? 1 : 0.28;
       for (const entry of entries) {
         const isHover = entry === hovered,
           isPress = entry === pressed;
-        const targetZ = isPress ? -6 : isHover ? 10 : 0;
-        entry.group.position.z += (targetZ - entry.group.position.z) * lerp;
-        const targetEmissive = isHover && !isPress ? 0.22 : 0;
-        entry.bodyMaterial.emissiveIntensity += (targetEmissive - entry.bodyMaterial.emissiveIntensity) * lerp;
+
+        // Asymétrique et volontairement rapide vers l'état pressé (un clic
+        // doit répondre au quart de tour) ; le retour au repos est plus
+        // doux. Sans quoi le lerp unique précédent donnait une sensation
+        // "molle", pas un vrai déclic.
+        const hoverTarget = isHover ? 1 : 0;
+        const pressTarget = isPress ? 1 : 0;
+        const hoverLerp = reduceMotion ? 1 : hoverTarget > entry.hoverMix ? 0.35 : 0.2;
+        const pressLerp = reduceMotion ? 1 : pressTarget > entry.pressMix ? 0.6 : 0.22;
+        entry.hoverMix += (hoverTarget - entry.hoverMix) * hoverLerp;
+        entry.pressMix += (pressTarget - entry.pressMix) * pressLerp;
+
+        entry.group.position.z = entry.hoverMix * entry.liftAmount - entry.pressMix * entry.pressAmount;
+        // Léger tassement au clic : un vrai bouton physique se comprime un
+        // peu quand on l'enfonce, pas seulement "reculer en Z".
+        const squash = 1 - entry.pressMix * 0.04;
+        entry.group.scale.set(squash, squash, 1);
+
+        entry.bodyMaterial.emissiveIntensity = entry.hoverMix * 0.22 * (1 - entry.pressMix * 0.5);
+        // Assombrit la plaque en s'enfonçant (ombre "interne" simulée sans
+        // shadow map réelle) plutôt que de ne compter que sur le décalage Z.
+        entry.bodyMaterial.color.copy(entry.baseColor).multiplyScalar(1 - entry.pressMix * 0.35);
       }
       renderer.render(scene, camera);
     }
