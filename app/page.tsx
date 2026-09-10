@@ -3,17 +3,30 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/connexion/actions";
 import { TideboundMenuChest } from "@/components/menu/TideboundMenuChest";
 
-export default async function HomePage() {
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+/**
+ * Résout l'utilisateur connecté, sans jamais faire planter la page
+ * d'accueil : une config Supabase manquante/invalide dégrade juste vers
+ * "non connecté" (le menu marche toujours en local) plutôt qu'un 500 sur
+ * la toute première page vue par n'importe quel visiteur.
+ */
+async function resolveViewer(): Promise<{ displayName: string | null; isSignedIn: boolean }> {
+  try {
+    const supabase = createSupabaseServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { displayName: null, isSignedIn: false };
 
-  let displayName: string | null = null;
-  if (user) {
     const { data: profile } = await supabase.from("profiles").select("display_name").eq("id", user.id).maybeSingle();
-    displayName = profile?.display_name ?? user.email ?? null;
+    return { displayName: profile?.display_name ?? user.email ?? null, isSignedIn: true };
+  } catch (error) {
+    console.error("[HomePage] Impossible de résoudre l'utilisateur connecté :", error);
+    return { displayName: null, isSignedIn: false };
   }
+}
+
+export default async function HomePage() {
+  const { displayName, isSignedIn } = await resolveViewer();
 
   return (
     <main
@@ -27,7 +40,7 @@ export default async function HomePage() {
       </div>
 
       <p className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap text-xs text-slate-300 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
-        {user ? (
+        {isSignedIn ? (
           <>
             Connecté en tant que <span className="text-slate-100">{displayName}</span> ·{" "}
             <Link href="/en-ligne" className="text-board-accent hover:underline">
