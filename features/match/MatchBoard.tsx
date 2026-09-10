@@ -18,9 +18,11 @@ import { BoardBackdrop } from "@/features/match/BoardBackdrop";
 import { CardBack } from "@/features/match/CardBack";
 import { CardHoverPreview } from "@/features/match/CardHoverPreview";
 import { CardTile } from "@/features/match/CardTile";
+import { CargoCluster } from "@/features/match/CargoCluster";
 import { PhaseActionButton } from "@/features/match/PhaseActionButton";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { PlayerSummary } from "@/features/match/PlayerSummary";
+import { ShipInstrumentCluster } from "@/features/match/ShipInstrumentCluster";
 import { TIDE_STATE_COLORS, TIDE_STATE_LABELS } from "@/features/match/cardDisplay";
 import { formatEvent } from "@/features/match/formatEvent";
 import { usePhaseBannerEvent } from "@/features/match/usePhaseBannerEvent";
@@ -370,10 +372,6 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
               ? `Bot — ${otherShip.name}`
               : `Joueur ${otherPlayer.id === "p1" ? "1" : "2"} — ${otherShip.name}`
           }
-          anchor={otherPlayer.anchor}
-          anchorMax={otherShip.startingAnchor}
-          reason={otherPlayer.reason}
-          reasonMax={otherPlayer.reasonMax}
           handCount={otherPlayer.hand.length}
         />
         <div className="flex flex-wrap gap-2">
@@ -381,35 +379,44 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
             <CardBack key={card.instanceId} />
           ))}
         </div>
-        <div
-          onDragOver={handleOtherBoardDragOver}
-          onDragLeave={handleOtherBoardDragLeave}
-          onDrop={handleOtherBoardDrop}
-          className={`flex flex-wrap gap-2 rounded-md p-1 transition-colors ${
-            dragOverOtherBoard ? "bg-rose-500/10 ring-2 ring-rose-500/60" : ""
-          }`}
-        >
-          {otherPlayer.board.map((unit) => (
-            <div
-              key={unit.instanceId}
-              onMouseEnter={(e) => showPreview(e, unit.cardId)}
-              onMouseLeave={hidePreview}
-              onDragOver={(e) => handleBoardTileDragOver(e, unit.instanceId)}
-              onDragLeave={() => setDragOverTargetId((id) => (id === unit.instanceId ? null : id))}
-              onDrop={(e) => handleBoardTileDrop(e, unit.instanceId)}
-              className={dragOverTargetId === unit.instanceId ? "rounded-md ring-2 ring-board-accent" : ""}
-            >
-              <CardTile
-                instance={unit}
-                tideState={state.environment.tideState}
-                selected={pending?.kind === "attack"}
-                onClick={() => handleAnyBoardCardClick(unit.instanceId, otherPlayer.id)}
-              />
-            </div>
-          ))}
-          {Array.from({ length: otherEmptySlots }).map((_, i) => (
-            <EmptySlot key={`other-empty-${i}`} />
-          ))}
+        <div className="flex items-center gap-2">
+          <ShipInstrumentCluster
+            anchor={otherPlayer.anchor}
+            anchorMax={otherShip.startingAnchor}
+            reason={otherPlayer.reason}
+            reasonMax={otherPlayer.reasonMax}
+          />
+          <div
+            onDragOver={handleOtherBoardDragOver}
+            onDragLeave={handleOtherBoardDragLeave}
+            onDrop={handleOtherBoardDrop}
+            className={`flex flex-1 flex-wrap gap-2 rounded-md p-1 transition-colors ${
+              dragOverOtherBoard ? "bg-rose-500/10 ring-2 ring-rose-500/60" : ""
+            }`}
+          >
+            {otherPlayer.board.map((unit) => (
+              <div
+                key={unit.instanceId}
+                onMouseEnter={(e) => showPreview(e, unit.cardId)}
+                onMouseLeave={hidePreview}
+                onDragOver={(e) => handleBoardTileDragOver(e, unit.instanceId)}
+                onDragLeave={() => setDragOverTargetId((id) => (id === unit.instanceId ? null : id))}
+                onDrop={(e) => handleBoardTileDrop(e, unit.instanceId)}
+                className={dragOverTargetId === unit.instanceId ? "rounded-md ring-2 ring-board-accent" : ""}
+              >
+                <CardTile
+                  instance={unit}
+                  tideState={state.environment.tideState}
+                  selected={pending?.kind === "attack"}
+                  onClick={() => handleAnyBoardCardClick(unit.instanceId, otherPlayer.id)}
+                />
+              </div>
+            ))}
+            {Array.from({ length: otherEmptySlots }).map((_, i) => (
+              <EmptySlot key={`other-empty-${i}`} />
+            ))}
+          </div>
+          <CargoCluster deckCount={otherPlayer.deck.length} graveyardCount={otherPlayer.graveyard.length} />
         </div>
 
         {/* Environnement */}
@@ -459,55 +466,58 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
         )}
 
         {/* Mon plateau */}
-        <div
-          onDragOver={handleOwnBoardDragOver}
-          onDragLeave={handleOwnBoardDragLeave}
-          onDrop={handleOwnBoardDrop}
-          className={`flex flex-wrap gap-2 rounded-md p-1 transition-colors ${
-            dragOverOwnBoard ? "bg-board-accent/10 ring-2 ring-board-accent/60" : ""
-          }`}
-        >
-          {viewerPlayer.board.map((unit) => (
-            <div
-              key={unit.instanceId}
-              draggable={isViewerTurn}
-              onDragStart={(e) => handleUnitDragStart(e, unit.instanceId)}
-              onDragEnd={handleUnitDragEnd}
-              onMouseEnter={(e) => showPreview(e, unit.cardId)}
-              onMouseLeave={hidePreview}
-              onDragOver={(e) => handleBoardTileDragOver(e, unit.instanceId)}
-              onDragLeave={() => setDragOverTargetId((id) => (id === unit.instanceId ? null : id))}
-              onDrop={(e) => handleBoardTileDrop(e, unit.instanceId)}
-              className={`${dragOverTargetId === unit.instanceId ? "rounded-md ring-2 ring-board-accent" : ""} ${
-                draggingUnitId === unit.instanceId ? "opacity-40" : ""
-              }`}
-            >
-              <CardTile
-                instance={unit}
-                tideState={state.environment.tideState}
-                selected={selectedBoardId === unit.instanceId || pending?.kind === "attack"}
-                onClick={() => handleAnyBoardCardClick(unit.instanceId, viewerPlayer.id)}
-              />
-            </div>
-          ))}
-          {Array.from({ length: ownEmptySlots }).map((_, i) => (
-            <EmptySlot key={`own-empty-${i}`} />
-          ))}
+        <div className="flex items-center gap-2">
+          <ShipInstrumentCluster
+            anchor={viewerPlayer.anchor}
+            anchorMax={viewerShip.startingAnchor}
+            reason={viewerPlayer.reason}
+            reasonMax={viewerPlayer.reasonMax}
+          />
           <div
-            onDragOver={handleGraveyardDragOver}
-            onDragLeave={handleGraveyardDragLeave}
-            onDrop={handleGraveyardDrop}
-            title="Glissez une unité ici pour la Saborder"
-            className={`flex aspect-[5/7] w-20 shrink-0 flex-col items-center justify-center gap-1 rounded-md border border-dashed text-center text-[10px] leading-tight transition-colors ${
-              dragOverGraveyard ? "border-rose-500 bg-rose-500/10 text-rose-300" : "border-slate-700/70 text-slate-500"
+            onDragOver={handleOwnBoardDragOver}
+            onDragLeave={handleOwnBoardDragLeave}
+            onDrop={handleOwnBoardDrop}
+            className={`flex flex-1 flex-wrap gap-2 rounded-md p-1 transition-colors ${
+              dragOverOwnBoard ? "bg-board-accent/10 ring-2 ring-board-accent/60" : ""
             }`}
           >
-            <span aria-hidden className="text-lg">
-              💀
-            </span>
-            <span>Cimetière</span>
-            <span className="tabular-nums">{viewerPlayer.graveyard.length}</span>
+            {viewerPlayer.board.map((unit) => (
+              <div
+                key={unit.instanceId}
+                draggable={isViewerTurn}
+                onDragStart={(e) => handleUnitDragStart(e, unit.instanceId)}
+                onDragEnd={handleUnitDragEnd}
+                onMouseEnter={(e) => showPreview(e, unit.cardId)}
+                onMouseLeave={hidePreview}
+                onDragOver={(e) => handleBoardTileDragOver(e, unit.instanceId)}
+                onDragLeave={() => setDragOverTargetId((id) => (id === unit.instanceId ? null : id))}
+                onDrop={(e) => handleBoardTileDrop(e, unit.instanceId)}
+                className={`${dragOverTargetId === unit.instanceId ? "rounded-md ring-2 ring-board-accent" : ""} ${
+                  draggingUnitId === unit.instanceId ? "opacity-40" : ""
+                }`}
+              >
+                <CardTile
+                  instance={unit}
+                  tideState={state.environment.tideState}
+                  selected={selectedBoardId === unit.instanceId || pending?.kind === "attack"}
+                  onClick={() => handleAnyBoardCardClick(unit.instanceId, viewerPlayer.id)}
+                />
+              </div>
+            ))}
+            {Array.from({ length: ownEmptySlots }).map((_, i) => (
+              <EmptySlot key={`own-empty-${i}`} />
+            ))}
           </div>
+          <CargoCluster
+            deckCount={viewerPlayer.deck.length}
+            graveyardCount={viewerPlayer.graveyard.length}
+            graveyardDropZone={{
+              isOver: dragOverGraveyard,
+              onDragOver: handleGraveyardDragOver,
+              onDragLeave: handleGraveyardDragLeave,
+              onDrop: handleGraveyardDrop,
+            }}
+          />
         </div>
 
         {selectedUnit && selectedDef && !pending && isViewerTurn && (
@@ -569,10 +579,6 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
           label={`Joueur ${viewerPlayer.id === "p1" ? "1" : "2"} — ${viewerShip.name}${
             isViewerTurn ? " (à vous de jouer)" : ""
           }`}
-          anchor={viewerPlayer.anchor}
-          anchorMax={viewerShip.startingAnchor}
-          reason={viewerPlayer.reason}
-          reasonMax={viewerPlayer.reasonMax}
           handCount={viewerPlayer.hand.length}
           highlighted
         />
