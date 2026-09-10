@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { Route } from "next";
+import { ChestButtons3D } from "@/components/menu/ChestButtons3D";
 
 /**
  * Configuration centralisée des textures du coffret. `chestBase` est
@@ -11,11 +12,10 @@ import type { Route } from "next";
  * `public/assets/menu/box/menu_box_base.png`) : il contient encore le
  * panneau supérieur, le cadre, l'illustration, les coins métalliques, les
  * cordages, le panneau frontal et la serrure fondus ensemble. Les autres
- * clés existent déjà dans la structure pour que chaque calque puisse
- * recevoir sa propre image dès qu'elle est fournie, sans reprendre
- * l'architecture des composants — seul `ChestRoot` (plus bas) aurait alors
- * à afficher chaque calque séparément au lieu de s'appuyer sur `chestBase`
- * pour tout.
+ * clés existent déjà dans la structure pour que chaque calque/bouton
+ * puisse recevoir sa propre image dès qu'elle est fournie — voir
+ * `ChestButtons3D` pour la bascule texture réelle / dégradé procédural de
+ * secours, bouton par bouton.
  */
 export const TIDEBOUND_MENU_ASSETS = {
   chestBase: "/assets/menu/box/menu_box_base.png",
@@ -27,6 +27,8 @@ export const TIDEBOUND_MENU_ASSETS = {
   buttonMain: undefined as string | undefined,
   buttonSecondaryA: undefined as string | undefined,
   buttonSecondaryB: undefined as string | undefined,
+  iconOptions: undefined as string | undefined,
+  iconQuit: undefined as string | undefined,
 } satisfies Record<string, string | undefined>;
 
 export interface ChestSlotDef {
@@ -39,13 +41,35 @@ export interface ChestSlotDef {
   rect: { x: number; y: number; w: number; h: number };
 }
 
+export interface ChestIconSlotDef {
+  id: "options" | "quit";
+  label: string;
+  icon: "gear" | "power";
+  texKey: "iconOptions" | "iconQuit";
+  href?: Route | string;
+  disabled?: boolean;
+  rect: { x: number; y: number; w: number; h: number };
+}
+
 // Emplacements mesurés directement sur l'image (grille de repérage en %,
-// bords extérieurs du cadre laiton de chaque plaque) — pas les valeurs
-// approximatives d'origine, affinées par analyse réelle de l'asset.
+// bords extérieurs du cadre laiton de chaque plaque) — pas des valeurs
+// approximatives, affinées par analyse réelle de l'asset.
 const SLOTS: ChestSlotDef[] = [
   { id: "main", label: "Jouer", href: "/partie", variant: "primary", rect: { x: 24, y: 37, w: 52, h: 10 } },
   { id: "secondaryA", label: "Market", disabled: true, variant: "secondary", rect: { x: 15, y: 50, w: 30, h: 11 } },
   { id: "secondaryB", label: "Collection", href: "/collection", variant: "secondary", rect: { x: 55, y: 50, w: 30, h: 11 } },
+];
+
+// Aucun emplacement dédié pour Options/Quitter n'existe dans l'illustration
+// (elle ne montre que les 3 plaques) — positions choisies sous les plaques
+// secondaires, sur une zone de bois "neutre". Désactivés pour l'instant :
+// aucune page Options n'existe, et "Quitter" n'a pas de sens pour une PWA
+// web (fermer un onglet n'est pas déclenchable proprement en JS) — la
+// structure est prête, à activer/repositionner dès qu'une vraie
+// destination existe.
+const ICON_SLOTS: ChestIconSlotDef[] = [
+  { id: "options", label: "Options", icon: "gear", texKey: "iconOptions", disabled: true, rect: { x: 27, y: 63, w: 6, h: 6 } },
+  { id: "quit", label: "Quitter", icon: "power", texKey: "iconQuit", disabled: true, rect: { x: 67, y: 63, w: 6, h: 6 } },
 ];
 
 /**
@@ -57,15 +81,15 @@ const SLOTS: ChestSlotDef[] = [
  *   │   BottomFrontPanel / CentralLock / DecorativeDetails
  *   │     → fondus dans `chestBase` tant que ces assets n'existent pas
  *   │       séparément (cf. `TIDEBOUND_MENU_ASSETS`)
- *   ├── MenuSurface
- *   │     └── MainButtonSlot / SecondaryButtonSlotLeft / SecondaryButtonSlotRight
- *   │           → objets réels (`ChestButtonSlot`), pas des hotspots
- *   │             invisibles posés sur l'image : chacun porte son propre
- *   │             relief encastré, indépendant du bouton qu'il contient.
+ *   └── ChestButtons3D (Three.js) : les 3 plaques + les 2 icônes sont de
+ *       vrais maillages 3D extrudés/biseautés, testés par raycasting — pas
+ *       des rectangles HTML posés sur l'image.
  *
  * Le survol/mouvement de souris incline légèrement tout le coffret
  * (±1°/±1.5°, cf. section 9) ; désactivé si `prefers-reduced-motion` ou
- * sur pointeur tactile.
+ * sur pointeur tactile. Un `<nav>` visuellement masqué (`sr-only`) donne un
+ * accès clavier/lecteur d'écran réel, le canvas WebGL n'étant pas
+ * focusable élément par élément.
  */
 export function TideboundMenuChest() {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -115,67 +139,33 @@ export function TideboundMenuChest() {
           className="select-none object-contain drop-shadow-[0_30px_50px_rgba(0,0,0,0.6)]"
         />
 
-        {SLOTS.map((slot) => (
-          <ChestButtonSlot key={slot.id} slot={slot} />
-        ))}
+        <ChestButtons3D slots={SLOTS} iconSlots={ICON_SLOTS} />
+
+        <nav className="sr-only" aria-label="Menu Tidebound">
+          {SLOTS.map((slot) =>
+            slot.disabled || !slot.href ? (
+              <span key={slot.id} aria-disabled>
+                {slot.label}
+              </span>
+            ) : (
+              <Link key={slot.id} href={slot.href as Route}>
+                {slot.label}
+              </Link>
+            )
+          )}
+          {ICON_SLOTS.map((icon) =>
+            icon.disabled || !icon.href ? (
+              <span key={icon.id} aria-disabled>
+                {icon.label}
+              </span>
+            ) : (
+              <Link key={icon.id} href={icon.href as Route}>
+                {icon.label}
+              </Link>
+            )
+          )}
+        </nav>
       </div>
     </div>
-  );
-}
-
-/**
- * Un emplacement de bouton physique du coffret. Porte son propre relief
- * "encastré" (ombre interne + liseré) indépendamment du `TideboundButton`
- * qu'il contient : le slot existe comme objet visuel même si le bouton
- * change de variante ou de texture plus tard.
- */
-function ChestButtonSlot({ slot }: { slot: ChestSlotDef }) {
-  const { rect } = slot;
-  return (
-    <div
-      className="absolute"
-      style={{ left: `${rect.x}%`, top: `${rect.y}%`, width: `${rect.w}%`, height: `${rect.h}%` }}
-    >
-      <div className="pointer-events-none absolute inset-0 rounded-[10%/28%] shadow-[inset_0_3px_8px_rgba(0,0,0,0.5),inset_0_-1px_0_rgba(255,255,255,0.06)]" />
-      <TideboundButton slot={slot} />
-    </div>
-  );
-}
-
-/**
- * Bouton interactif réutilisable — épouse la forme de son `ChestSlotDef`
- * (posé en `inset` dans `ChestButtonSlot`, jamais un rectangle générique
- * flottant par-dessus l'illustration). Normal/hover/pressed/disabled gérés
- * en CSS (pas de state React nécessaire pour un simple bouton de menu).
- */
-function TideboundButton({ slot }: { slot: ChestSlotDef }) {
-  const { label, href, disabled, variant } = slot;
-  const isPrimary = variant === "primary";
-
-  const base =
-    "absolute inset-[6%] flex items-center justify-center rounded-[10%/28%] text-center uppercase tracking-[0.12em] " +
-    "font-[var(--font-menu)] font-bold transition-[transform,filter,box-shadow] duration-[180ms] ease-out " +
-    (isPrimary ? "text-lg sm:text-2xl" : "text-xs sm:text-base");
-
-  if (disabled || !href) {
-    return (
-      <span className={`${base} cursor-not-allowed text-slate-400/60`} aria-disabled>
-        {label}
-      </span>
-    );
-  }
-
-  return (
-    <Link
-      href={href as Route}
-      className={
-        base +
-        " text-[#e8c988] [text-shadow:0_1px_0_rgba(255,238,200,0.25),0_2px_3px_rgba(0,0,0,0.75)]" +
-        " hover:-translate-y-[2px] hover:brightness-125 hover:shadow-[0_0_14px_rgba(201,161,90,0.5)]" +
-        " active:translate-y-[1px] active:brightness-90 active:shadow-[inset_0_2px_5px_rgba(0,0,0,0.6)]"
-      }
-    >
-      {label}
-    </Link>
   );
 }
