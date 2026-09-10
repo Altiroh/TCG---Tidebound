@@ -159,6 +159,18 @@ Un joueur ne dispose que d'**une seule action principale par tour** :
 jouer une carte, Saborder un permanent, ou passer
 (`PlayerState.hasUsedMainActionThisTurn`).
 
+### Phases (`GameState.phase`, `game/actions/advancePhase.ts`)
+
+Chaque tour démarre en **Phase principale** : jouer une carte, Saborder ou
+Briser un Objet n'y sont possibles que là (`assertInPhase`, une seule
+action principale comme ci-dessus). Le joueur actif passe ensuite
+explicitement en **Phase de combat** via `advancePhase` — attaquer n'est
+possible que dans cette phase, avec chaque unité éligible (voir
+`assertUnitCanAttack`). `endTurn` reste accessible depuis l'une ou
+l'autre phase (un joueur sans unité à attaquer peut terminer son tour
+directement depuis la Phase principale) ; le tour suivant recommence
+systématiquement en Phase principale.
+
 ## La Marée, les Eaux et le Navire (`game/environment`)
 
 - **Marée** (`game/environment/tide.ts`) : modèle **durée + intensité**.

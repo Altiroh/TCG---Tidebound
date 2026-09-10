@@ -10,6 +10,7 @@ import {
   assertCardInHand,
   assertGameActive,
   assertHasNotUsedMainActionThisTurn,
+  assertInPhase,
   assertIsActivePlayer,
   assertPlayerInGame,
   combine,
@@ -27,6 +28,7 @@ function validate(state: GameState, action: PlayCardAction) {
     assertGameActive(state),
     assertPlayerInGame(state, action.playerId),
     assertIsActivePlayer(state, action.playerId),
+    assertInPhase(state, action.playerId, "mainPhase"),
     assertHasNotUsedMainActionThisTurn(state, action.playerId),
     assertCardInHand(state, action.playerId, action.instanceId)
   );

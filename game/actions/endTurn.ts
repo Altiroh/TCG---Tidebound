@@ -79,6 +79,10 @@ export function endTurn(state: GameState, action: EndTurnAction): ActionResult {
     turnNumber: newTurnNumber,
     activePlayerId: nextPlayer.id,
     priorityPlayerId: nextPlayer.id,
+    // Chaque tour recommence en Phase principale, quelle que soit la phase
+    // où le joueur précédent a terminé le sien (il peut passer directement
+    // en Fin de tour depuis la Phase principale s'il n'a rien à attaquer).
+    phase: "mainPhase",
   };
 
   // --- 1. Vérification de la Marée (décompte, progression, orientation, dégâts) ---

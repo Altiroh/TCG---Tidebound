@@ -12,13 +12,16 @@ import {
   type PlayerId,
 } from "@/game";
 import { Button } from "@/components/ui/Button";
+import { BoardBackdrop } from "@/features/match/BoardBackdrop";
 import { CardBack } from "@/features/match/CardBack";
 import { CardHoverPreview } from "@/features/match/CardHoverPreview";
-import { BoardBackdrop } from "@/features/match/BoardBackdrop";
 import { CardTile } from "@/features/match/CardTile";
+import { PhaseActionButton } from "@/features/match/PhaseActionButton";
+import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { PlayerSummary } from "@/features/match/PlayerSummary";
 import { TIDE_STATE_COLORS, TIDE_STATE_LABELS } from "@/features/match/cardDisplay";
 import { formatEvent } from "@/features/match/formatEvent";
+import { usePhaseBannerEvent } from "@/features/match/usePhaseBannerEvent";
 
 interface OnlineBoardProps {
   state: GameState;
@@ -42,8 +45,10 @@ function isUnitType(type: string): boolean {
   return (UNIT_CARD_TYPES as readonly string[]).includes(type);
 }
 
-/** Instance en cours de glissement depuis la main, décodée depuis `DataTransfer` au drop. */
-const DRAG_MIME = "application/x-tidebound-card-instance";
+/** Instance de MAIN en cours de glissement, décodée depuis `DataTransfer` au drop. */
+const DRAG_MIME_HAND = "application/x-tidebound-card-instance";
+/** Unité de PLATEAU (à soi) en cours de glissement — vers une cible (attaque) ou vers le cimetière (Sabordage). */
+const DRAG_MIME_UNIT = "application/x-tidebound-board-unit";
 
 /** Plateau d'une partie en ligne : oriente toujours "moi" en bas, main adverse cachée, actions envoyées au serveur. */
 export function OnlineBoard({ state, myUserId, onAction, pending, error }: OnlineBoardProps) {
@@ -51,8 +56,11 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
   const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
   const [hoverPreview, setHoverPreview] = useState<HoverPreview | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [draggingUnitId, setDraggingUnitId] = useState<string | null>(null);
   const [dragOverTargetId, setDragOverTargetId] = useState<string | null>(null);
   const [dragOverOwnBoard, setDragOverOwnBoard] = useState(false);
+  const [dragOverOpponentBoard, setDragOverOpponentBoard] = useState(false);
+  const [dragOverGraveyard, setDragOverGraveyard] = useState(false);
 
   const me = state.players.find((p) => p.id === myUserId)!;
   const opponent = state.players.find((p) => p.id !== myUserId)!;
@@ -60,8 +68,18 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
   const opponentShip = getShipDefinition(opponent.shipId);
   const isMyTurn = state.activePlayerId === myUserId;
   const canPlay = isMyTurn && !pending;
+  const canPlayCards = canPlay && state.phase === "mainPhase" && !me.hasUsedMainActionThisTurn;
+  const canAttack = canPlay && state.phase === "combatPhase";
 
   const recentEvents = useMemo(() => state.eventLog.slice(-10).reverse(), [state.eventLog]);
+  const bannerEvent = usePhaseBannerEvent(state);
+  const bannerText = bannerEvent
+    ? bannerEvent.kind === "combatPhase"
+      ? "Phase de combat"
+      : bannerEvent.playerId === myUserId
+        ? "Ton tour"
+        : "Tour de l'adversaire"
+    : null;
 
   function clearSelection() {
     setSelection(null);
@@ -74,7 +92,7 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
   }
 
   function handleHandCardClick(instanceId: string) {
-    if (!canPlay) return;
+    if (!canPlayCards) return;
     const card = me.hand.find((c) => c.instanceId === instanceId);
     if (!card) return;
     const def = getCardDefinition(card.cardId);
@@ -132,8 +150,8 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
 
   // --- Glisser-déposer depuis la main (cf. MatchBoard, même logique) -----
   function handleHandDragStart(e: React.DragEvent, instanceId: string) {
-    if (!canPlay) return;
-    e.dataTransfer.setData(DRAG_MIME, instanceId);
+    if (!canPlayCards) return;
+    e.dataTransfer.setData(DRAG_MIME_HAND, instanceId);
     e.dataTransfer.effectAllowed = "move";
     setDraggingId(instanceId);
     hidePreview();
@@ -155,12 +173,60 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
   function handleOwnBoardDrop(e: React.DragEvent) {
     e.preventDefault();
     setDragOverOwnBoard(false);
-    const instanceId = e.dataTransfer.getData(DRAG_MIME);
+    const instanceId = e.dataTransfer.getData(DRAG_MIME_HAND);
     setDraggingId(null);
     if (instanceId) handleHandCardClick(instanceId);
   }
+
+  // --- Glisser-déposer une unité de plateau : attaquer ou Saborder (cf. MatchBoard) ---
+  function handleUnitDragStart(e: React.DragEvent, instanceId: string) {
+    if (!canPlay) return;
+    e.dataTransfer.setData(DRAG_MIME_UNIT, instanceId);
+    e.dataTransfer.effectAllowed = "move";
+    setDraggingUnitId(instanceId);
+    hidePreview();
+  }
+  function handleUnitDragEnd() {
+    setDraggingUnitId(null);
+    setDragOverTargetId(null);
+    setDragOverOpponentBoard(false);
+    setDragOverGraveyard(false);
+  }
+  function handleOpponentBoardDragOver(e: React.DragEvent) {
+    if (!draggingUnitId) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverOpponentBoard(true);
+  }
+  function handleOpponentBoardDragLeave() {
+    setDragOverOpponentBoard(false);
+  }
+  function handleOpponentBoardDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOverOpponentBoard(false);
+    const instanceId = e.dataTransfer.getData(DRAG_MIME_UNIT);
+    setDraggingUnitId(null);
+    if (instanceId) act({ type: "attack", playerId: myUserId, attackerInstanceId: instanceId });
+  }
+  function handleGraveyardDragOver(e: React.DragEvent) {
+    if (!draggingUnitId) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverGraveyard(true);
+  }
+  function handleGraveyardDragLeave() {
+    setDragOverGraveyard(false);
+  }
+  function handleGraveyardDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOverGraveyard(false);
+    const instanceId = e.dataTransfer.getData(DRAG_MIME_UNIT);
+    setDraggingUnitId(null);
+    if (instanceId) act({ type: "saborder", playerId: myUserId, instanceId });
+  }
+
   function handleBoardTileDragOver(e: React.DragEvent, targetInstanceId: string) {
-    if (!draggingId) return;
+    if (!draggingId && !draggingUnitId) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
     setDragOverTargetId(targetInstanceId);
@@ -170,9 +236,18 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
     e.stopPropagation();
     setDragOverTargetId(null);
     setDragOverOwnBoard(false);
-    const instanceId = e.dataTransfer.getData(DRAG_MIME);
+    setDragOverOpponentBoard(false);
+
+    const attackerInstanceId = e.dataTransfer.getData(DRAG_MIME_UNIT);
+    if (attackerInstanceId) {
+      setDraggingUnitId(null);
+      act({ type: "attack", playerId: myUserId, attackerInstanceId, defenderInstanceId: targetInstanceId });
+      return;
+    }
+
+    const instanceId = e.dataTransfer.getData(DRAG_MIME_HAND);
     setDraggingId(null);
-    if (!instanceId || !canPlay) return;
+    if (!instanceId || !canPlayCards) return;
     const card = me.hand.find((c) => c.instanceId === instanceId);
     if (!card) return;
     const def = getCardDefinition(card.cardId);
@@ -208,189 +283,217 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
   return (
     <>
       <BoardBackdrop />
+      <PhaseBanner text={bannerText} bannerKey={bannerEvent?.id ?? null} />
       <div className="relative z-10 mx-auto flex min-h-screen max-w-5xl flex-col gap-4 p-4">
-      <PlayerSummary
-        label="Adversaire"
-        anchor={opponent.anchor}
-        anchorMax={opponentShip.startingAnchor}
-        reason={opponent.reason}
-        reasonMax={opponent.reasonMax}
-        handCount={opponent.hand.length}
-      />
-      <div className="flex flex-wrap gap-2">
-        {opponent.hand.map((card) => (
-          <CardBack key={card.instanceId} />
-        ))}
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {opponent.board.map((unit) => (
-          <div
-            key={unit.instanceId}
-            onMouseEnter={(e) => showPreview(e, unit.cardId)}
-            onMouseLeave={hidePreview}
-            onDragOver={(e) => handleBoardTileDragOver(e, unit.instanceId)}
-            onDragLeave={() => setDragOverTargetId((id) => (id === unit.instanceId ? null : id))}
-            onDrop={(e) => handleBoardTileDrop(e, unit.instanceId)}
-            className={dragOverTargetId === unit.instanceId ? "rounded-md ring-2 ring-board-accent" : ""}
-          >
-            <CardTile
-              instance={unit}
-              tideState={state.environment.tideState}
-              selected={selection?.kind === "attack"}
-              onClick={() => handleAnyBoardCardClick(unit.instanceId, opponent.id)}
-            />
-          </div>
-        ))}
-        {Array.from({ length: opponentEmptySlots }).map((_, i) => (
-          <EmptySlot key={`opp-empty-${i}`} />
-        ))}
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-slate-800 bg-board-surface px-4 py-2 text-sm">
-        <div className="flex items-center gap-4">
-          <span>
-            Tour <strong>{state.turnNumber}</strong>
-          </span>
-          <span>
-            Marée :{" "}
-            <strong className={TIDE_STATE_COLORS[state.environment.tideState]}>
-              {TIDE_STATE_LABELS[state.environment.tideState]}
-            </strong>{" "}
-            ({state.environment.tideRemainingTurns} tour(s))
-          </span>
-          <span title={state.environment.tideOrientation === "montante" ? "Vers les Abysses" : "Vers le Calme"}>
-            {state.environment.tideOrientation === "montante" ? "▲ Montante" : "▼ Descendante"}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          {isMyTurn ? (
-            <>
-              {selection && (
-                <Button variant="secondary" onClick={clearSelection}>
-                  Annuler
-                </Button>
-              )}
-              <Button disabled={pending} onClick={() => act({ type: "endTurn", playerId: myUserId })}>
-                Fin de tour
-              </Button>
-            </>
-          ) : (
-            <span className="text-xs text-slate-500">Tour de l&apos;adversaire...</span>
-          )}
-        </div>
-      </div>
-
-      {error && (
-        <p className="rounded-md border border-rose-800 bg-rose-950/50 px-3 py-2 text-sm text-rose-300">{error}</p>
-      )}
-      {selection?.kind === "playCard" && <p className="text-xs text-slate-400">Choisissez une cible sur le plateau.</p>}
-      {selection?.kind === "break" && <p className="text-xs text-slate-400">Choisissez une cible pour l&apos;effet de bris.</p>}
-      {selection?.kind === "attack" && (
-        <p className="text-xs text-slate-400">Choisissez une cible adverse, ou attaquez le Navire directement.</p>
-      )}
-
-      <div
-        onDragOver={handleOwnBoardDragOver}
-        onDragLeave={handleOwnBoardDragLeave}
-        onDrop={handleOwnBoardDrop}
-        className={`flex flex-wrap gap-2 rounded-md p-1 transition-colors ${
-          dragOverOwnBoard ? "bg-board-accent/10 ring-2 ring-board-accent/60" : ""
-        }`}
-      >
-        {me.board.map((unit) => (
-          <div
-            key={unit.instanceId}
-            onMouseEnter={(e) => showPreview(e, unit.cardId)}
-            onMouseLeave={hidePreview}
-            onDragOver={(e) => handleBoardTileDragOver(e, unit.instanceId)}
-            onDragLeave={() => setDragOverTargetId((id) => (id === unit.instanceId ? null : id))}
-            onDrop={(e) => handleBoardTileDrop(e, unit.instanceId)}
-            className={dragOverTargetId === unit.instanceId ? "rounded-md ring-2 ring-board-accent" : ""}
-          >
-            <CardTile
-              instance={unit}
-              tideState={state.environment.tideState}
-              selected={selectedBoardId === unit.instanceId || selection?.kind === "attack"}
-              onClick={() => handleAnyBoardCardClick(unit.instanceId, me.id)}
-            />
-          </div>
-        ))}
-        {Array.from({ length: myEmptySlots }).map((_, i) => (
-          <EmptySlot key={`own-empty-${i}`} />
-        ))}
-      </div>
-
-      {selectedUnit && selectedDef && !selection && isMyTurn && (
-        <div className="flex flex-wrap items-center gap-2 rounded-md border border-board-accent/40 bg-board-accent/5 px-3 py-2">
-          <span className="text-xs text-slate-300">{selectedDef.name} :</span>
-          {isUnitType(selectedDef.type) && !selectedUnit.summoningSick && !selectedUnit.hasAttackedThisTurn && (
-            <>
-              <Button variant="secondary" onClick={() => setSelection({ kind: "attack", attackerId: selectedUnit.instanceId })}>
-                Attaquer une cible
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => act({ type: "attack", playerId: myUserId, attackerInstanceId: selectedUnit.instanceId })}
-              >
-                Attaquer le Navire adverse
-              </Button>
-            </>
-          )}
-          {selectedDef.type === "objet" && !me.hasUsedMainActionThisTurn && (
-            <Button variant="secondary" onClick={() => startBreak(selectedUnit)}>
-              Briser
-            </Button>
-          )}
-          {!me.hasUsedMainActionThisTurn && (
-            <Button variant="secondary" onClick={() => act({ type: "saborder", playerId: myUserId, instanceId: selectedUnit.instanceId })}>
-              Saborder
-            </Button>
-          )}
-        </div>
-      )}
-
-      <PlayerSummary
-        label={isMyTurn ? "Toi (à toi de jouer)" : "Toi"}
-        anchor={me.anchor}
-        anchorMax={myShip.startingAnchor}
-        reason={me.reason}
-        reasonMax={me.reasonMax}
-        handCount={me.hand.length}
-        highlighted={isMyTurn}
-      />
-      <div className="flex flex-wrap gap-2">
-        {me.hand.map((card) => (
-          <div
-            key={card.instanceId}
-            draggable={canPlay && !me.hasUsedMainActionThisTurn}
-            onDragStart={(e) => handleHandDragStart(e, card.instanceId)}
-            onDragEnd={handleHandDragEnd}
-            onMouseEnter={(e) => showPreview(e, card.cardId)}
-            onMouseLeave={hidePreview}
-            className={draggingId === card.instanceId ? "opacity-40" : ""}
-          >
-            <CardTile
-              instance={card}
-              tideState={state.environment.tideState}
-              selected={selection?.kind === "playCard" && selection.instanceId === card.instanceId}
-              disabled={!isMyTurn || me.hasUsedMainActionThisTurn || pending}
-              onClick={() => handleHandCardClick(card.instanceId)}
-            />
-          </div>
-        ))}
-        {me.hand.length === 0 && <p className="text-xs text-slate-600">Main vide.</p>}
-      </div>
-
-      <details className="rounded-md border border-slate-800 bg-board-surface/50 px-3 py-2 text-xs text-slate-400">
-        <summary className="cursor-pointer select-none text-slate-300">Journal de la partie</summary>
-        <ul className="mt-2 space-y-1">
-          {recentEvents.map((event, i) => (
-            <li key={i}>{formatEvent(state, event)}</li>
+        <PlayerSummary
+          label="Adversaire"
+          anchor={opponent.anchor}
+          anchorMax={opponentShip.startingAnchor}
+          reason={opponent.reason}
+          reasonMax={opponent.reasonMax}
+          handCount={opponent.hand.length}
+        />
+        <div className="flex flex-wrap gap-2">
+          {opponent.hand.map((card) => (
+            <CardBack key={card.instanceId} />
           ))}
-        </ul>
-      </details>
+        </div>
+        <div
+          onDragOver={handleOpponentBoardDragOver}
+          onDragLeave={handleOpponentBoardDragLeave}
+          onDrop={handleOpponentBoardDrop}
+          className={`flex flex-wrap gap-2 rounded-md p-1 transition-colors ${
+            dragOverOpponentBoard ? "bg-rose-500/10 ring-2 ring-rose-500/60" : ""
+          }`}
+        >
+          {opponent.board.map((unit) => (
+            <div
+              key={unit.instanceId}
+              onMouseEnter={(e) => showPreview(e, unit.cardId)}
+              onMouseLeave={hidePreview}
+              onDragOver={(e) => handleBoardTileDragOver(e, unit.instanceId)}
+              onDragLeave={() => setDragOverTargetId((id) => (id === unit.instanceId ? null : id))}
+              onDrop={(e) => handleBoardTileDrop(e, unit.instanceId)}
+              className={dragOverTargetId === unit.instanceId ? "rounded-md ring-2 ring-board-accent" : ""}
+            >
+              <CardTile
+                instance={unit}
+                tideState={state.environment.tideState}
+                selected={selection?.kind === "attack"}
+                onClick={() => handleAnyBoardCardClick(unit.instanceId, opponent.id)}
+              />
+            </div>
+          ))}
+          {Array.from({ length: opponentEmptySlots }).map((_, i) => (
+            <EmptySlot key={`opp-empty-${i}`} />
+          ))}
+        </div>
 
-      {hoverPreview && <CardHoverPreview cardId={hoverPreview.cardId} anchorRect={hoverPreview.rect} />}
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-slate-800 bg-board-surface px-4 py-2 text-sm">
+          <div className="flex items-center gap-4">
+            <span>
+              Tour <strong>{state.turnNumber}</strong>
+            </span>
+            <span>
+              Marée :{" "}
+              <strong className={TIDE_STATE_COLORS[state.environment.tideState]}>
+                {TIDE_STATE_LABELS[state.environment.tideState]}
+              </strong>{" "}
+              ({state.environment.tideRemainingTurns} tour(s))
+            </span>
+            <span title={state.environment.tideOrientation === "montante" ? "Vers les Abysses" : "Vers le Calme"}>
+              {state.environment.tideOrientation === "montante" ? "▲ Montante" : "▼ Descendante"}
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            {selection && isMyTurn && (
+              <Button variant="secondary" onClick={clearSelection}>
+                Annuler
+              </Button>
+            )}
+            <PhaseActionButton
+              isMyTurn={isMyTurn && !pending}
+              phase={state.phase}
+              onAdvancePhase={() => act({ type: "advancePhase", playerId: myUserId })}
+              onEndTurn={() => act({ type: "endTurn", playerId: myUserId })}
+              size={56}
+            />
+          </div>
+        </div>
+
+        {error && (
+          <p className="rounded-md border border-rose-800 bg-rose-950/50 px-3 py-2 text-sm text-rose-300">{error}</p>
+        )}
+        {selection?.kind === "playCard" && <p className="text-xs text-slate-400">Choisissez une cible sur le plateau.</p>}
+        {selection?.kind === "break" && <p className="text-xs text-slate-400">Choisissez une cible pour l&apos;effet de bris.</p>}
+        {selection?.kind === "attack" && (
+          <p className="text-xs text-slate-400">Choisissez une cible adverse, ou attaquez le Navire directement.</p>
+        )}
+
+        <div
+          onDragOver={handleOwnBoardDragOver}
+          onDragLeave={handleOwnBoardDragLeave}
+          onDrop={handleOwnBoardDrop}
+          className={`flex flex-wrap gap-2 rounded-md p-1 transition-colors ${
+            dragOverOwnBoard ? "bg-board-accent/10 ring-2 ring-board-accent/60" : ""
+          }`}
+        >
+          {me.board.map((unit) => (
+            <div
+              key={unit.instanceId}
+              draggable={canPlay}
+              onDragStart={(e) => handleUnitDragStart(e, unit.instanceId)}
+              onDragEnd={handleUnitDragEnd}
+              onMouseEnter={(e) => showPreview(e, unit.cardId)}
+              onMouseLeave={hidePreview}
+              onDragOver={(e) => handleBoardTileDragOver(e, unit.instanceId)}
+              onDragLeave={() => setDragOverTargetId((id) => (id === unit.instanceId ? null : id))}
+              onDrop={(e) => handleBoardTileDrop(e, unit.instanceId)}
+              className={`${dragOverTargetId === unit.instanceId ? "rounded-md ring-2 ring-board-accent" : ""} ${
+                draggingUnitId === unit.instanceId ? "opacity-40" : ""
+              }`}
+            >
+              <CardTile
+                instance={unit}
+                tideState={state.environment.tideState}
+                selected={selectedBoardId === unit.instanceId || selection?.kind === "attack"}
+                onClick={() => handleAnyBoardCardClick(unit.instanceId, me.id)}
+              />
+            </div>
+          ))}
+          {Array.from({ length: myEmptySlots }).map((_, i) => (
+            <EmptySlot key={`own-empty-${i}`} />
+          ))}
+          <div
+            onDragOver={handleGraveyardDragOver}
+            onDragLeave={handleGraveyardDragLeave}
+            onDrop={handleGraveyardDrop}
+            title="Glissez une unité ici pour la Saborder"
+            className={`flex aspect-[5/7] w-20 shrink-0 flex-col items-center justify-center gap-1 rounded-md border border-dashed text-center text-[10px] leading-tight transition-colors ${
+              dragOverGraveyard ? "border-rose-500 bg-rose-500/10 text-rose-300" : "border-slate-700/70 text-slate-500"
+            }`}
+          >
+            <span aria-hidden className="text-lg">
+              💀
+            </span>
+            <span>Cimetière</span>
+            <span className="tabular-nums">{me.graveyard.length}</span>
+          </div>
+        </div>
+
+        {selectedUnit && selectedDef && !selection && isMyTurn && (
+          <div className="flex flex-wrap items-center gap-2 rounded-md border border-board-accent/40 bg-board-accent/5 px-3 py-2">
+            <span className="text-xs text-slate-300">{selectedDef.name} :</span>
+            {canAttack && isUnitType(selectedDef.type) && !selectedUnit.summoningSick && !selectedUnit.hasAttackedThisTurn && (
+              <>
+                <Button variant="secondary" onClick={() => setSelection({ kind: "attack", attackerId: selectedUnit.instanceId })}>
+                  Attaquer une cible
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => act({ type: "attack", playerId: myUserId, attackerInstanceId: selectedUnit.instanceId })}
+                >
+                  Attaquer le Navire adverse
+                </Button>
+              </>
+            )}
+            {canPlayCards && (
+              <>
+                {selectedDef.type === "objet" && (
+                  <Button variant="secondary" onClick={() => startBreak(selectedUnit)}>
+                    Briser
+                  </Button>
+                )}
+                <Button variant="secondary" onClick={() => act({ type: "saborder", playerId: myUserId, instanceId: selectedUnit.instanceId })}>
+                  Saborder
+                </Button>
+              </>
+            )}
+          </div>
+        )}
+
+        <PlayerSummary
+          label={isMyTurn ? "Toi (à toi de jouer)" : "Toi"}
+          anchor={me.anchor}
+          anchorMax={myShip.startingAnchor}
+          reason={me.reason}
+          reasonMax={me.reasonMax}
+          handCount={me.hand.length}
+          highlighted={isMyTurn}
+        />
+        <div className="flex flex-wrap gap-2">
+          {me.hand.map((card) => (
+            <div
+              key={card.instanceId}
+              draggable={canPlayCards}
+              onDragStart={(e) => handleHandDragStart(e, card.instanceId)}
+              onDragEnd={handleHandDragEnd}
+              onMouseEnter={(e) => showPreview(e, card.cardId)}
+              onMouseLeave={hidePreview}
+              className={draggingId === card.instanceId ? "opacity-40" : ""}
+            >
+              <CardTile
+                instance={card}
+                tideState={state.environment.tideState}
+                selected={selection?.kind === "playCard" && selection.instanceId === card.instanceId}
+                disabled={!canPlayCards}
+                onClick={() => handleHandCardClick(card.instanceId)}
+              />
+            </div>
+          ))}
+          {me.hand.length === 0 && <p className="text-xs text-slate-600">Main vide.</p>}
+        </div>
+
+        <details className="rounded-md border border-slate-800 bg-board-surface/50 px-3 py-2 text-xs text-slate-400">
+          <summary className="cursor-pointer select-none text-slate-300">Journal de la partie</summary>
+          <ul className="mt-2 space-y-1">
+            {recentEvents.map((event, i) => (
+              <li key={i}>{formatEvent(state, event)}</li>
+            ))}
+          </ul>
+        </details>
+
+        {hoverPreview && <CardHoverPreview cardId={hoverPreview.cardId} anchorRect={hoverPreview.rect} />}
       </div>
     </>
   );
@@ -407,4 +510,3 @@ function EmptySlot() {
     </div>
   );
 }
-

@@ -26,7 +26,8 @@ export type GameEventType =
   | "TIDE_ORIENTATION_CHANGED"
   | "SABORDED"
   | "OCEAN_JUDGMENT"
-  | "GAME_ENDED";
+  | "GAME_ENDED"
+  | "PHASE_CHANGED";
 
 export interface BaseGameEvent {
   type: GameEventType;
@@ -171,6 +172,13 @@ export interface OceanJudgmentEvent extends BaseGameEvent {
   winnerId?: PlayerId;
 }
 
+/** Le joueur actif est passé de la Phase principale à la Phase de combat (`game/actions/advancePhase.ts`). */
+export interface PhaseChangedEvent extends BaseGameEvent {
+  type: "PHASE_CHANGED";
+  playerId: PlayerId;
+  phase: "mainPhase" | "combatPhase";
+}
+
 export type GameEvent =
   | DrawCardEvent
   | PlayCardEvent
@@ -191,4 +199,5 @@ export type GameEvent =
   | TideAdvancedEvent
   | TideOrientationChangedEvent
   | SabordedEvent
-  | OceanJudgmentEvent;
+  | OceanJudgmentEvent
+  | PhaseChangedEvent;

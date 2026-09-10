@@ -3,6 +3,59 @@ import { dispatch } from "@/game/engine";
 import { instance, testEnvironment, testGameState, testPlayer } from "./testHelpers";
 import type { GameState } from "@/game/state/types";
 
+describe("engine.dispatch - phases", () => {
+  it("refuse d'attaquer en Phase principale, autorise après `advancePhase`", () => {
+    const attacker = instance("requin-balafre", "p1"); // 4/2
+    const state = testGameState({
+      players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2", { anchor: 20 })],
+    });
+
+    const tooEarly = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attacker.instanceId });
+    expect(tooEarly.ok).toBe(false);
+
+    const advanced = dispatch(state, { type: "advancePhase", playerId: "p1" });
+    expect(advanced.ok).toBe(true);
+    if (!advanced.ok) return;
+    expect(advanced.state.phase).toBe("combatPhase");
+
+    const attack = dispatch(advanced.state, { type: "attack", playerId: "p1", attackerInstanceId: attacker.instanceId });
+    expect(attack.ok).toBe(true);
+  });
+
+  it("refuse de jouer une carte/Saborder une fois en Phase de combat", () => {
+    const card = instance("marin-des-jetees", "p1");
+    const unit = instance("requin-balafre", "p1");
+    const state = testGameState({
+      phase: "combatPhase",
+      players: [testPlayer("p1", { hand: [card], board: [unit], reason: 10 }), testPlayer("p2")],
+    });
+
+    const playResult = dispatch(state, { type: "playCard", playerId: "p1", instanceId: card.instanceId });
+    expect(playResult.ok).toBe(false);
+
+    const saborderResult = dispatch(state, { type: "saborder", playerId: "p1", instanceId: unit.instanceId });
+    expect(saborderResult.ok).toBe(false);
+  });
+
+  it("refuse `advancePhase` hors Phase principale ou pour un joueur non actif", () => {
+    const state = testGameState({ phase: "combatPhase" });
+    const wrongPhase = dispatch(state, { type: "advancePhase", playerId: "p1" });
+    expect(wrongPhase.ok).toBe(false);
+
+    const mainPhaseState = testGameState({ phase: "mainPhase" });
+    const wrongPlayer = dispatch(mainPhaseState, { type: "advancePhase", playerId: "p2" });
+    expect(wrongPlayer.ok).toBe(false);
+  });
+
+  it("chaque nouveau tour recommence en Phase principale", () => {
+    const state = testGameState({ phase: "combatPhase" });
+    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.phase).toBe("mainPhase");
+  });
+});
+
 describe("engine.dispatch - playCard", () => {
   it("joue une créature : paie le coût en Raison, la place sur le plateau avec la maladie d'invocation", () => {
     const card = instance("murene-aveugle", "p1"); // coût 2, 3/1
@@ -167,6 +220,7 @@ describe("engine.dispatch - attack", () => {
   it("une attaque directe inflige les dégâts au joueur adverse", () => {
     const attacker = instance("requin-balafre", "p1"); // 4/2
     const state = testGameState({
+      phase: "combatPhase",
       players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2", { anchor: 20 })],
     });
 
@@ -180,6 +234,7 @@ describe("engine.dispatch - attack", () => {
   it("seuls les Marins et Créatures peuvent attaquer (pas une Structure/un Objet)", () => {
     const structure = instance("caisses-arrimees", "p1");
     const state = testGameState({
+      phase: "combatPhase",
       players: [testPlayer("p1", { board: [structure] }), testPlayer("p2")],
     });
 
@@ -190,6 +245,7 @@ describe("engine.dispatch - attack", () => {
   it("Coque légère (Le Courlis) : une attaque directe contre son Navire lui inflige +1 dégât", () => {
     const attacker = instance("requin-balafre", "p1"); // 4/2
     const state = testGameState({
+      phase: "combatPhase",
       players: [
         testPlayer("p1", { board: [attacker] }),
         testPlayer("p2", { shipId: "le-courlis", anchor: 17 }),
@@ -206,7 +262,7 @@ describe("engine.dispatch - attack", () => {
 
   it("refuse d'attaquer avec une unité malade d'invocation", () => {
     const attacker = instance("requin-balafre", "p1", { summoningSick: true });
-    const state = testGameState({ players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2")] });
+    const state = testGameState({ phase: "combatPhase", players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2")] });
 
     const result = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attacker.instanceId });
     expect(result.ok).toBe(false);
@@ -214,7 +270,7 @@ describe("engine.dispatch - attack", () => {
 
   it("refuse une seconde attaque de la même unité dans le même tour", () => {
     const attacker = instance("requin-balafre", "p1");
-    const state = testGameState({ players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2")] });
+    const state = testGameState({ phase: "combatPhase", players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2")] });
 
     const first = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attacker.instanceId });
     expect(first.ok).toBe(true);
@@ -232,6 +288,7 @@ describe("engine.dispatch - attack", () => {
     const attacker = instance("requin-balafre", "p1"); // 4/2
     const defender = instance("murene-aveugle", "p2"); // 3/1
     const state = testGameState({
+      phase: "combatPhase",
       players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2", { board: [defender] })],
     });
 
@@ -254,6 +311,7 @@ describe("engine.dispatch - attack", () => {
     const guard = instance("crabe-de-fer", "p2"); // porte le mot-clé "garde"
     const attacker = instance("requin-balafre", "p1");
     const state = testGameState({
+      phase: "combatPhase",
       players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2", { board: [guard] })],
     });
 
@@ -348,6 +406,7 @@ describe("engine.dispatch - condition de victoire", () => {
   it("termine la partie quand un joueur tombe à 0 point d'Ancrage", () => {
     const attacker = instance("loeil-sous-la-mer", "p1"); // 5/7
     const state: GameState = testGameState({
+      phase: "combatPhase",
       players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2", { anchor: 5 })],
     });
 

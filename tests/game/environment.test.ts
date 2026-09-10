@@ -46,6 +46,7 @@ describe("environnement - Marée (modèle durée + intensité)", () => {
   it("une unité inactive par affinité de Marée (Masse Noire pendant Calme) ne peut pas attaquer", () => {
     const mass = instance("masse-noire", "p1");
     const state = testGameState({
+      phase: "combatPhase",
       players: [testPlayer("p1", { board: [mass] }), testPlayer("p2")],
       // testGameState() par défaut est en Calme.
     });

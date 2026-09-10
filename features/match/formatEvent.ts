@@ -55,6 +55,8 @@ export function formatEvent(state: GameState, event: GameEvent): string {
       return event.winnerId ? `Partie terminée — victoire de ${playerName(event.winnerId)}.` : "Partie terminée — match nul.";
     case "END_TURN":
       return `${playerName(event.playerId)} termine son tour.`;
+    case "PHASE_CHANGED":
+      return `${playerName(event.playerId)} passe en Phase de combat.`;
     default:
       return event.type;
   }

@@ -14,13 +14,16 @@ import {
   type PlayerId,
 } from "@/game";
 import { Button } from "@/components/ui/Button";
+import { BoardBackdrop } from "@/features/match/BoardBackdrop";
 import { CardBack } from "@/features/match/CardBack";
 import { CardHoverPreview } from "@/features/match/CardHoverPreview";
-import { BoardBackdrop } from "@/features/match/BoardBackdrop";
 import { CardTile } from "@/features/match/CardTile";
+import { PhaseActionButton } from "@/features/match/PhaseActionButton";
+import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { PlayerSummary } from "@/features/match/PlayerSummary";
 import { TIDE_STATE_COLORS, TIDE_STATE_LABELS } from "@/features/match/cardDisplay";
 import { formatEvent } from "@/features/match/formatEvent";
+import { usePhaseBannerEvent } from "@/features/match/usePhaseBannerEvent";
 
 interface MatchBoardProps {
   initialState: GameState;
@@ -44,9 +47,20 @@ function isUnitType(type: string): boolean {
   return (UNIT_CARD_TYPES as readonly string[]).includes(type);
 }
 
-/** Instance en cours de glissement depuis la main, décodée depuis `DataTransfer` au drop. */
-const DRAG_MIME = "application/x-tidebound-card-instance";
+/** Instance de MAIN en cours de glissement, décodée depuis `DataTransfer` au drop. */
+const DRAG_MIME_HAND = "application/x-tidebound-card-instance";
+/** Unité de PLATEAU (à soi) en cours de glissement — vers une cible (attaque) ou vers le cimetière (Sabordage). */
+const DRAG_MIME_UNIT = "application/x-tidebound-board-unit";
 
+/**
+ * Plateau d'une partie locale (hot-seat ou contre un bot).
+ *
+ * "Perspective du viewer" : en hot-seat pur (`botPlayerId` absent), le bas
+ * de l'écran suit le joueur actif (on se passe l'appareil) — comportement
+ * historique, inchangé. Contre un bot, le joueur humain reste TOUJOURS en
+ * bas, même pendant le tour du bot : l'écran ne doit pas se réorganiser
+ * pendant que l'adversaire joue.
+ */
 export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }: MatchBoardProps) {
   const [state, setState] = useState<GameState>(initialState);
   const [pending, setPending] = useState<Pending | null>(null);
@@ -54,24 +68,41 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
   const [error, setError] = useState<string | null>(null);
   const [hoverPreview, setHoverPreview] = useState<HoverPreview | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [draggingUnitId, setDraggingUnitId] = useState<string | null>(null);
   const [dragOverTargetId, setDragOverTargetId] = useState<string | null>(null);
   const [dragOverOwnBoard, setDragOverOwnBoard] = useState(false);
+  const [dragOverOtherBoard, setDragOverOtherBoard] = useState(false);
+  const [dragOverGraveyard, setDragOverGraveyard] = useState(false);
 
   const activePlayerId = state.activePlayerId;
-  const activePlayer = state.players.find((p) => p.id === activePlayerId)!;
-  const opponent = state.players.find((p) => p.id !== activePlayerId)!;
-  const ship = getShipDefinition(activePlayer.shipId);
-  const opponentShip = getShipDefinition(opponent.shipId);
-  const isBotTurn = botPlayerId !== undefined && botPlayerId === activePlayerId;
+  const humanPlayerId = botPlayerId ? state.players.find((p) => p.id !== botPlayerId)!.id : null;
+  const viewerPlayerId = humanPlayerId ?? activePlayerId;
+  const viewerPlayer = state.players.find((p) => p.id === viewerPlayerId)!;
+  const otherPlayer = state.players.find((p) => p.id !== viewerPlayerId)!;
+  const viewerShip = getShipDefinition(viewerPlayer.shipId);
+  const otherShip = getShipDefinition(otherPlayer.shipId);
+  const isViewerTurn = activePlayerId === viewerPlayerId;
+  const canPlayCards = isViewerTurn && state.phase === "mainPhase" && !viewerPlayer.hasUsedMainActionThisTurn;
 
   const recentEvents = useMemo(() => state.eventLog.slice(-10).reverse(), [state.eventLog]);
+  const bannerEvent = usePhaseBannerEvent(state);
+
+  function playerLabel(id: PlayerId): string {
+    if (id === botPlayerId) return "du Bot";
+    return id === "p1" ? "du Joueur 1" : "du Joueur 2";
+  }
+  const bannerText = bannerEvent
+    ? bannerEvent.kind === "combatPhase"
+      ? "Phase de combat"
+      : `Tour ${playerLabel(bannerEvent.playerId)}`
+    : null;
 
   // Joue automatiquement le tour du bot dès qu'il devient actif. Un léger
   // délai laisse le temps de voir l'état précédent (et évite un
   // enchaînement instantané qui donnerait l'impression d'un bug plutôt
   // que d'un adversaire qui "réfléchit").
   useEffect(() => {
-    if (!isBotTurn || state.status !== "active" || !botDifficulty) return;
+    if (activePlayerId !== botPlayerId || state.status !== "active" || !botDifficulty) return;
     const timer = setTimeout(() => {
       setState((current) => {
         if (current.status !== "active" || current.activePlayerId !== botPlayerId) return current;
@@ -82,7 +113,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
       setError(null);
     }, 700);
     return () => clearTimeout(timer);
-  }, [isBotTurn, state.status, state.activePlayerId, botPlayerId, botDifficulty]);
+  }, [activePlayerId, state.status, botPlayerId, botDifficulty]);
 
   function clearSelection() {
     setPending(null);
@@ -90,7 +121,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
   }
 
   function runAction(action: PlayerAction) {
-    if (isBotTurn) return;
+    if (!isViewerTurn) return;
     const result = dispatch(state, action);
     if (!result.ok) {
       setError(result.error);
@@ -102,8 +133,8 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
   }
 
   function handleHandCardClick(instanceId: string) {
-    if (isBotTurn) return;
-    const card = activePlayer.hand.find((c) => c.instanceId === instanceId);
+    if (!canPlayCards) return;
+    const card = viewerPlayer.hand.find((c) => c.instanceId === instanceId);
     if (!card) return;
     const def = getCardDefinition(card.cardId);
     const needsTarget = (def.onPlayEffects ?? []).some((e) => e.target.kind === "chosenUnit");
@@ -117,7 +148,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
   }
 
   function handleOwnBoardCardClick(instanceId: string) {
-    if (isBotTurn) return;
+    if (!isViewerTurn) return;
     if (pending?.kind === "attack") {
       // Un clic sur son propre plateau pendant une sélection de cible d'attaque : annule.
       setPending(null);
@@ -141,7 +172,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
       return;
     }
     if (pending?.kind === "attack") {
-      if (ownerId === activePlayerId) return; // géré par handleOwnBoardCardClick
+      if (ownerId === viewerPlayerId) return; // géré par handleOwnBoardCardClick
       runAction({
         type: "attack",
         playerId: activePlayerId,
@@ -150,11 +181,11 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
       });
       return;
     }
-    if (ownerId === activePlayerId) handleOwnBoardCardClick(instanceId);
+    if (ownerId === viewerPlayerId) handleOwnBoardCardClick(instanceId);
   }
 
   function startBreak(unit: CardInstance) {
-    if (isBotTurn) return;
+    if (!isViewerTurn) return;
     const def = getCardDefinition(unit.cardId);
     const needsTarget = (def.onBreakEffects ?? []).some((e) => e.target.kind === "chosenUnit");
     if (needsTarget) {
@@ -176,7 +207,8 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
   // principal, notamment tant que le support tactile du drag HTML5 natif
   // reste inégal sur mobile.
   function handleHandDragStart(e: React.DragEvent, instanceId: string) {
-    e.dataTransfer.setData(DRAG_MIME, instanceId);
+    if (!canPlayCards) return;
+    e.dataTransfer.setData(DRAG_MIME_HAND, instanceId);
     e.dataTransfer.effectAllowed = "move";
     setDraggingId(instanceId);
     hidePreview();
@@ -198,13 +230,65 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
   function handleOwnBoardDrop(e: React.DragEvent) {
     e.preventDefault();
     setDragOverOwnBoard(false);
-    const instanceId = e.dataTransfer.getData(DRAG_MIME);
+    const instanceId = e.dataTransfer.getData(DRAG_MIME_HAND);
     setDraggingId(null);
     if (instanceId) handleHandCardClick(instanceId);
   }
-  /** Déposer directement SUR un permanent (à soi ou adverse) résout la cible en un seul geste, sans étape intermédiaire. */
+
+  // --- Glisser-déposer une unité de plateau : attaquer ou Saborder --------
+  // Une seule source de glissement pour les deux usages (le geste "prendre
+  // l'unité" est le même) — c'est la CIBLE du dépôt qui décide de l'action
+  // (adversaire = attaque, cimetière = Sabordage) ; `dispatch` refuse
+  // silencieusement toute combinaison illégale (mauvaise Phase, etc.).
+  function handleUnitDragStart(e: React.DragEvent, instanceId: string) {
+    if (!isViewerTurn) return;
+    e.dataTransfer.setData(DRAG_MIME_UNIT, instanceId);
+    e.dataTransfer.effectAllowed = "move";
+    setDraggingUnitId(instanceId);
+    hidePreview();
+  }
+  function handleUnitDragEnd() {
+    setDraggingUnitId(null);
+    setDragOverTargetId(null);
+    setDragOverOtherBoard(false);
+    setDragOverGraveyard(false);
+  }
+  function handleOtherBoardDragOver(e: React.DragEvent) {
+    if (!draggingUnitId) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverOtherBoard(true);
+  }
+  function handleOtherBoardDragLeave() {
+    setDragOverOtherBoard(false);
+  }
+  function handleOtherBoardDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOverOtherBoard(false);
+    const instanceId = e.dataTransfer.getData(DRAG_MIME_UNIT);
+    setDraggingUnitId(null);
+    if (instanceId) runAction({ type: "attack", playerId: activePlayerId, attackerInstanceId: instanceId });
+  }
+  function handleGraveyardDragOver(e: React.DragEvent) {
+    if (!draggingUnitId) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverGraveyard(true);
+  }
+  function handleGraveyardDragLeave() {
+    setDragOverGraveyard(false);
+  }
+  function handleGraveyardDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOverGraveyard(false);
+    const instanceId = e.dataTransfer.getData(DRAG_MIME_UNIT);
+    setDraggingUnitId(null);
+    if (instanceId) runAction({ type: "saborder", playerId: activePlayerId, instanceId });
+  }
+
+  /** Déposer directement SUR un permanent (à soi ou adverse) résout la cible en un seul geste, sans étape intermédiaire — carte de main (effet ciblé) ou unité de plateau (attaque). */
   function handleBoardTileDragOver(e: React.DragEvent, targetInstanceId: string) {
-    if (!draggingId) return;
+    if (!draggingId && !draggingUnitId) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
     setDragOverTargetId(targetInstanceId);
@@ -214,10 +298,24 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
     e.stopPropagation();
     setDragOverTargetId(null);
     setDragOverOwnBoard(false);
-    const instanceId = e.dataTransfer.getData(DRAG_MIME);
+    setDragOverOtherBoard(false);
+
+    const attackerInstanceId = e.dataTransfer.getData(DRAG_MIME_UNIT);
+    if (attackerInstanceId) {
+      setDraggingUnitId(null);
+      runAction({
+        type: "attack",
+        playerId: activePlayerId,
+        attackerInstanceId,
+        defenderInstanceId: targetInstanceId,
+      });
+      return;
+    }
+
+    const instanceId = e.dataTransfer.getData(DRAG_MIME_HAND);
     setDraggingId(null);
     if (!instanceId) return;
-    const card = activePlayer.hand.find((c) => c.instanceId === instanceId);
+    const card = viewerPlayer.hand.find((c) => c.instanceId === instanceId);
     if (!card) return;
     const def = getCardDefinition(card.cardId);
     const needsTarget = (def.onPlayEffects ?? []).some((e2) => e2.target.kind === "chosenUnit");
@@ -246,225 +344,254 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
     );
   }
 
-  const selectedUnit = selectedBoardId ? activePlayer.board.find((u) => u.instanceId === selectedBoardId) : undefined;
+  const selectedUnit = selectedBoardId ? viewerPlayer.board.find((u) => u.instanceId === selectedBoardId) : undefined;
   const selectedDef = selectedUnit ? getCardDefinition(selectedUnit.cardId) : undefined;
-  const ownEmptySlots = Math.max(0, ship.slotCount - activePlayer.board.length);
-  const opponentEmptySlots = Math.max(0, opponentShip.slotCount - opponent.board.length);
+  const ownEmptySlots = Math.max(0, viewerShip.slotCount - viewerPlayer.board.length);
+  const otherEmptySlots = Math.max(0, otherShip.slotCount - otherPlayer.board.length);
 
   return (
     <>
       <BoardBackdrop />
+      <PhaseBanner text={bannerText} bannerKey={bannerEvent?.id ?? null} />
       <div className="relative z-10 mx-auto flex min-h-screen max-w-5xl flex-col gap-4 p-4">
-      {/* Adversaire (inactif) */}
-      <PlayerSummary
-        label={
-          opponent.id === botPlayerId
-            ? `Bot — ${getShipDefinition(opponent.shipId).name}`
-            : `Joueur ${opponent.id === "p1" ? "1" : "2"} — ${getShipDefinition(opponent.shipId).name}`
-        }
-        anchor={opponent.anchor}
-        anchorMax={opponentShip.startingAnchor}
-        reason={opponent.reason}
-        reasonMax={opponent.reasonMax}
-        handCount={opponent.hand.length}
-      />
-      <div className="flex flex-wrap gap-2">
-        {opponent.hand.map((card) => (
-          <CardBack key={card.instanceId} />
-        ))}
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {opponent.board.map((unit) => (
-          <div
-            key={unit.instanceId}
-            onMouseEnter={(e) => showPreview(e, unit.cardId)}
-            onMouseLeave={hidePreview}
-            onDragOver={(e) => handleBoardTileDragOver(e, unit.instanceId)}
-            onDragLeave={() => setDragOverTargetId((id) => (id === unit.instanceId ? null : id))}
-            onDrop={(e) => handleBoardTileDrop(e, unit.instanceId)}
-            className={dragOverTargetId === unit.instanceId ? "rounded-md ring-2 ring-board-accent" : ""}
-          >
-            <CardTile
-              instance={unit}
-              tideState={state.environment.tideState}
-              selected={pending?.kind === "attack"}
-              onClick={() => handleAnyBoardCardClick(unit.instanceId, opponent.id)}
-            />
-          </div>
-        ))}
-        {Array.from({ length: opponentEmptySlots }).map((_, i) => (
-          <EmptySlot key={`opp-empty-${i}`} />
-        ))}
-      </div>
-
-      {/* Environnement */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-slate-800 bg-board-surface px-4 py-2 text-sm">
-        <div className="flex items-center gap-4">
-          <span>
-            Tour <strong>{state.turnNumber}</strong>
-          </span>
-          <span>
-            Marée :{" "}
-            <strong className={TIDE_STATE_COLORS[state.environment.tideState]}>
-              {TIDE_STATE_LABELS[state.environment.tideState]}
-            </strong>{" "}
-            ({state.environment.tideRemainingTurns} tour(s))
-          </span>
-          <span title={state.environment.tideOrientation === "montante" ? "Vers les Abysses" : "Vers le Calme"}>
-            {state.environment.tideOrientation === "montante" ? "▲ Montante" : "▼ Descendante"}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          {isBotTurn ? (
-            <span className="animate-pulse text-sm text-slate-400">Le bot réfléchit…</span>
-          ) : (
-            <>
-              {pending && (
-                <Button variant="secondary" onClick={clearSelection}>
-                  Annuler
-                </Button>
-              )}
-              <Button onClick={() => runAction({ type: "endTurn", playerId: activePlayerId })}>Fin de tour</Button>
-            </>
-          )}
-        </div>
-      </div>
-
-      {error && (
-        <p className="rounded-md border border-rose-800 bg-rose-950/50 px-3 py-2 text-sm text-rose-300">{error}</p>
-      )}
-      {pending?.kind === "playCard" && (
-        <p className="text-xs text-slate-400">Choisissez une cible sur le plateau (à vous ou adverse).</p>
-      )}
-      {pending?.kind === "break" && (
-        <p className="text-xs text-slate-400">Choisissez une cible pour l&apos;effet de bris.</p>
-      )}
-      {pending?.kind === "attack" && (
-        <p className="text-xs text-slate-400">Choisissez une cible adverse, ou attaquez le Navire directement.</p>
-      )}
-
-      {/* Joueur actif */}
-      <div
-        onDragOver={handleOwnBoardDragOver}
-        onDragLeave={handleOwnBoardDragLeave}
-        onDrop={handleOwnBoardDrop}
-        className={`flex flex-wrap gap-2 rounded-md p-1 transition-colors ${
-          dragOverOwnBoard ? "bg-board-accent/10 ring-2 ring-board-accent/60" : ""
-        }`}
-      >
-        {activePlayer.board.map((unit) => (
-          <div
-            key={unit.instanceId}
-            onMouseEnter={(e) => showPreview(e, unit.cardId)}
-            onMouseLeave={hidePreview}
-            onDragOver={(e) => handleBoardTileDragOver(e, unit.instanceId)}
-            onDragLeave={() => setDragOverTargetId((id) => (id === unit.instanceId ? null : id))}
-            onDrop={(e) => handleBoardTileDrop(e, unit.instanceId)}
-            className={dragOverTargetId === unit.instanceId ? "rounded-md ring-2 ring-board-accent" : ""}
-          >
-            <CardTile
-              instance={unit}
-              tideState={state.environment.tideState}
-              selected={selectedBoardId === unit.instanceId || pending?.kind === "attack"}
-              onClick={() => handleAnyBoardCardClick(unit.instanceId, activePlayer.id)}
-            />
-          </div>
-        ))}
-        {Array.from({ length: ownEmptySlots }).map((_, i) => (
-          <EmptySlot key={`own-empty-${i}`} />
-        ))}
-      </div>
-
-      {selectedUnit && selectedDef && !pending && !isBotTurn && (
-        <div className="flex flex-wrap items-center gap-2 rounded-md border border-board-accent/40 bg-board-accent/5 px-3 py-2">
-          <span className="text-xs text-slate-300">{selectedDef.name} :</span>
-          {isUnitType(selectedDef.type) && !selectedUnit.summoningSick && !selectedUnit.hasAttackedThisTurn && (
-            <>
-              <Button
-                variant="secondary"
-                onClick={() => setPending({ kind: "attack", attackerId: selectedUnit.instanceId })}
-              >
-                Attaquer une cible
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() =>
-                  runAction({ type: "attack", playerId: activePlayerId, attackerInstanceId: selectedUnit.instanceId })
-                }
-              >
-                Attaquer le Navire adverse
-              </Button>
-            </>
-          )}
-          {selectedDef.type === "objet" && !activePlayer.hasUsedMainActionThisTurn && (
-            <Button variant="secondary" onClick={() => startBreak(selectedUnit)}>
-              Briser
-            </Button>
-          )}
-          {!activePlayer.hasUsedMainActionThisTurn && (
-            <Button
-              variant="secondary"
-              onClick={() => runAction({ type: "saborder", playerId: activePlayerId, instanceId: selectedUnit.instanceId })}
-            >
-              Saborder
-            </Button>
-          )}
-        </div>
-      )}
-
-      <PlayerSummary
-        label={
-          isBotTurn
-            ? `Bot — ${ship.name}`
-            : `Joueur ${activePlayer.id === "p1" ? "1" : "2"} — ${ship.name} (à vous de jouer)`
-        }
-        anchor={activePlayer.anchor}
-        anchorMax={ship.startingAnchor}
-        reason={activePlayer.reason}
-        reasonMax={activePlayer.reasonMax}
-        handCount={activePlayer.hand.length}
-        highlighted
-      />
-      <div className="flex flex-wrap gap-2">
-        {isBotTurn
-          ? activePlayer.hand.map((card) => <CardBack key={card.instanceId} />)
-          : activePlayer.hand.map((card) => (
-              <div
-                key={card.instanceId}
-                draggable={!activePlayer.hasUsedMainActionThisTurn}
-                onDragStart={(e) => handleHandDragStart(e, card.instanceId)}
-                onDragEnd={handleHandDragEnd}
-                onMouseEnter={(e) => showPreview(e, card.cardId)}
-                onMouseLeave={hidePreview}
-                className={draggingId === card.instanceId ? "opacity-40" : ""}
-              >
-                <CardTile
-                  instance={card}
-                  tideState={state.environment.tideState}
-                  selected={pending?.kind === "playCard" && pending.instanceId === card.instanceId}
-                  disabled={activePlayer.hasUsedMainActionThisTurn}
-                  onClick={() => handleHandCardClick(card.instanceId)}
-                />
-              </div>
-            ))}
-        {activePlayer.hand.length === 0 && <p className="text-xs text-slate-600">Main vide.</p>}
-      </div>
-
-      {/* Journal */}
-      <details className="rounded-md border border-slate-800 bg-board-surface/50 px-3 py-2 text-xs text-slate-400">
-        <summary className="cursor-pointer select-none text-slate-300">Journal de la partie</summary>
-        <ul className="mt-2 space-y-1">
-          {recentEvents.map((event, i) => (
-            <li key={i}>{formatEvent(state, event)}</li>
+        {/* Adversaire (bot ou autre joueur en hot-seat) */}
+        <PlayerSummary
+          label={
+            otherPlayer.id === botPlayerId
+              ? `Bot — ${otherShip.name}`
+              : `Joueur ${otherPlayer.id === "p1" ? "1" : "2"} — ${otherShip.name}`
+          }
+          anchor={otherPlayer.anchor}
+          anchorMax={otherShip.startingAnchor}
+          reason={otherPlayer.reason}
+          reasonMax={otherPlayer.reasonMax}
+          handCount={otherPlayer.hand.length}
+        />
+        <div className="flex flex-wrap gap-2">
+          {otherPlayer.hand.map((card) => (
+            <CardBack key={card.instanceId} />
           ))}
-        </ul>
-      </details>
+        </div>
+        <div
+          onDragOver={handleOtherBoardDragOver}
+          onDragLeave={handleOtherBoardDragLeave}
+          onDrop={handleOtherBoardDrop}
+          className={`flex flex-wrap gap-2 rounded-md p-1 transition-colors ${
+            dragOverOtherBoard ? "bg-rose-500/10 ring-2 ring-rose-500/60" : ""
+          }`}
+        >
+          {otherPlayer.board.map((unit) => (
+            <div
+              key={unit.instanceId}
+              onMouseEnter={(e) => showPreview(e, unit.cardId)}
+              onMouseLeave={hidePreview}
+              onDragOver={(e) => handleBoardTileDragOver(e, unit.instanceId)}
+              onDragLeave={() => setDragOverTargetId((id) => (id === unit.instanceId ? null : id))}
+              onDrop={(e) => handleBoardTileDrop(e, unit.instanceId)}
+              className={dragOverTargetId === unit.instanceId ? "rounded-md ring-2 ring-board-accent" : ""}
+            >
+              <CardTile
+                instance={unit}
+                tideState={state.environment.tideState}
+                selected={pending?.kind === "attack"}
+                onClick={() => handleAnyBoardCardClick(unit.instanceId, otherPlayer.id)}
+              />
+            </div>
+          ))}
+          {Array.from({ length: otherEmptySlots }).map((_, i) => (
+            <EmptySlot key={`other-empty-${i}`} />
+          ))}
+        </div>
 
-      <Button variant="secondary" className="self-start" onClick={onExit}>
-        Abandonner la partie
-      </Button>
+        {/* Environnement */}
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-slate-800 bg-board-surface px-4 py-2 text-sm">
+          <div className="flex items-center gap-4">
+            <span>
+              Tour <strong>{state.turnNumber}</strong>
+            </span>
+            <span>
+              Marée :{" "}
+              <strong className={TIDE_STATE_COLORS[state.environment.tideState]}>
+                {TIDE_STATE_LABELS[state.environment.tideState]}
+              </strong>{" "}
+              ({state.environment.tideRemainingTurns} tour(s))
+            </span>
+            <span title={state.environment.tideOrientation === "montante" ? "Vers les Abysses" : "Vers le Calme"}>
+              {state.environment.tideOrientation === "montante" ? "▲ Montante" : "▼ Descendante"}
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            {pending && isViewerTurn && (
+              <Button variant="secondary" onClick={clearSelection}>
+                Annuler
+              </Button>
+            )}
+            <PhaseActionButton
+              isMyTurn={isViewerTurn}
+              phase={state.phase}
+              onAdvancePhase={() => runAction({ type: "advancePhase", playerId: activePlayerId })}
+              onEndTurn={() => runAction({ type: "endTurn", playerId: activePlayerId })}
+              size={56}
+            />
+          </div>
+        </div>
 
-      {hoverPreview && <CardHoverPreview cardId={hoverPreview.cardId} anchorRect={hoverPreview.rect} />}
+        {error && (
+          <p className="rounded-md border border-rose-800 bg-rose-950/50 px-3 py-2 text-sm text-rose-300">{error}</p>
+        )}
+        {pending?.kind === "playCard" && (
+          <p className="text-xs text-slate-400">Choisissez une cible sur le plateau (à vous ou adverse).</p>
+        )}
+        {pending?.kind === "break" && (
+          <p className="text-xs text-slate-400">Choisissez une cible pour l&apos;effet de bris.</p>
+        )}
+        {pending?.kind === "attack" && (
+          <p className="text-xs text-slate-400">Choisissez une cible adverse, ou attaquez le Navire directement.</p>
+        )}
+
+        {/* Mon plateau */}
+        <div
+          onDragOver={handleOwnBoardDragOver}
+          onDragLeave={handleOwnBoardDragLeave}
+          onDrop={handleOwnBoardDrop}
+          className={`flex flex-wrap gap-2 rounded-md p-1 transition-colors ${
+            dragOverOwnBoard ? "bg-board-accent/10 ring-2 ring-board-accent/60" : ""
+          }`}
+        >
+          {viewerPlayer.board.map((unit) => (
+            <div
+              key={unit.instanceId}
+              draggable={isViewerTurn}
+              onDragStart={(e) => handleUnitDragStart(e, unit.instanceId)}
+              onDragEnd={handleUnitDragEnd}
+              onMouseEnter={(e) => showPreview(e, unit.cardId)}
+              onMouseLeave={hidePreview}
+              onDragOver={(e) => handleBoardTileDragOver(e, unit.instanceId)}
+              onDragLeave={() => setDragOverTargetId((id) => (id === unit.instanceId ? null : id))}
+              onDrop={(e) => handleBoardTileDrop(e, unit.instanceId)}
+              className={`${dragOverTargetId === unit.instanceId ? "rounded-md ring-2 ring-board-accent" : ""} ${
+                draggingUnitId === unit.instanceId ? "opacity-40" : ""
+              }`}
+            >
+              <CardTile
+                instance={unit}
+                tideState={state.environment.tideState}
+                selected={selectedBoardId === unit.instanceId || pending?.kind === "attack"}
+                onClick={() => handleAnyBoardCardClick(unit.instanceId, viewerPlayer.id)}
+              />
+            </div>
+          ))}
+          {Array.from({ length: ownEmptySlots }).map((_, i) => (
+            <EmptySlot key={`own-empty-${i}`} />
+          ))}
+          <div
+            onDragOver={handleGraveyardDragOver}
+            onDragLeave={handleGraveyardDragLeave}
+            onDrop={handleGraveyardDrop}
+            title="Glissez une unité ici pour la Saborder"
+            className={`flex aspect-[5/7] w-20 shrink-0 flex-col items-center justify-center gap-1 rounded-md border border-dashed text-center text-[10px] leading-tight transition-colors ${
+              dragOverGraveyard ? "border-rose-500 bg-rose-500/10 text-rose-300" : "border-slate-700/70 text-slate-500"
+            }`}
+          >
+            <span aria-hidden className="text-lg">
+              💀
+            </span>
+            <span>Cimetière</span>
+            <span className="tabular-nums">{viewerPlayer.graveyard.length}</span>
+          </div>
+        </div>
+
+        {selectedUnit && selectedDef && !pending && isViewerTurn && (
+          <div className="flex flex-wrap items-center gap-2 rounded-md border border-board-accent/40 bg-board-accent/5 px-3 py-2">
+            <span className="text-xs text-slate-300">{selectedDef.name} :</span>
+            {state.phase === "combatPhase" &&
+              isUnitType(selectedDef.type) &&
+              !selectedUnit.summoningSick &&
+              !selectedUnit.hasAttackedThisTurn && (
+                <>
+                  <Button
+                    variant="secondary"
+                    onClick={() => setPending({ kind: "attack", attackerId: selectedUnit.instanceId })}
+                  >
+                    Attaquer une cible
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() =>
+                      runAction({ type: "attack", playerId: activePlayerId, attackerInstanceId: selectedUnit.instanceId })
+                    }
+                  >
+                    Attaquer le Navire adverse
+                  </Button>
+                </>
+              )}
+            {state.phase === "mainPhase" && !viewerPlayer.hasUsedMainActionThisTurn && (
+              <>
+                {selectedDef.type === "objet" && (
+                  <Button variant="secondary" onClick={() => startBreak(selectedUnit)}>
+                    Briser
+                  </Button>
+                )}
+                <Button
+                  variant="secondary"
+                  onClick={() => runAction({ type: "saborder", playerId: activePlayerId, instanceId: selectedUnit.instanceId })}
+                >
+                  Saborder
+                </Button>
+              </>
+            )}
+          </div>
+        )}
+
+        <PlayerSummary
+          label={`Joueur ${viewerPlayer.id === "p1" ? "1" : "2"} — ${viewerShip.name}${
+            isViewerTurn ? " (à vous de jouer)" : ""
+          }`}
+          anchor={viewerPlayer.anchor}
+          anchorMax={viewerShip.startingAnchor}
+          reason={viewerPlayer.reason}
+          reasonMax={viewerPlayer.reasonMax}
+          handCount={viewerPlayer.hand.length}
+          highlighted
+        />
+        <div className="flex flex-wrap gap-2">
+          {viewerPlayer.hand.map((card) => (
+            <div
+              key={card.instanceId}
+              draggable={canPlayCards}
+              onDragStart={(e) => handleHandDragStart(e, card.instanceId)}
+              onDragEnd={handleHandDragEnd}
+              onMouseEnter={(e) => showPreview(e, card.cardId)}
+              onMouseLeave={hidePreview}
+              className={draggingId === card.instanceId ? "opacity-40" : ""}
+            >
+              <CardTile
+                instance={card}
+                tideState={state.environment.tideState}
+                selected={pending?.kind === "playCard" && pending.instanceId === card.instanceId}
+                disabled={!canPlayCards}
+                onClick={() => handleHandCardClick(card.instanceId)}
+              />
+            </div>
+          ))}
+          {viewerPlayer.hand.length === 0 && <p className="text-xs text-slate-600">Main vide.</p>}
+        </div>
+
+        {/* Journal */}
+        <details className="rounded-md border border-slate-800 bg-board-surface/50 px-3 py-2 text-xs text-slate-400">
+          <summary className="cursor-pointer select-none text-slate-300">Journal de la partie</summary>
+          <ul className="mt-2 space-y-1">
+            {recentEvents.map((event, i) => (
+              <li key={i}>{formatEvent(state, event)}</li>
+            ))}
+          </ul>
+        </details>
+
+        <Button variant="secondary" className="self-start" onClick={onExit}>
+          Abandonner la partie
+        </Button>
+
+        {hoverPreview && <CardHoverPreview cardId={hoverPreview.cardId} anchorRect={hoverPreview.rect} />}
       </div>
     </>
   );
@@ -481,4 +608,3 @@ function EmptySlot() {
     </div>
   );
 }
-

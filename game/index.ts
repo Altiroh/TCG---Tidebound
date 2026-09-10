@@ -24,6 +24,7 @@ export type {
   EndTurnAction,
   SaborderAction,
   BreakObjectAction,
+  AdvancePhaseAction,
   ActionResult,
 } from "@/game/actions/types";
 
