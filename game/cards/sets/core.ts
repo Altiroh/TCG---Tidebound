@@ -2,11 +2,14 @@ import type { CardDefinition } from "@/game/cards/types";
 
 /**
  * Set de base ("Core") — catalogue verrouillé sur Notion (`Catalogue de
- * cartes`, Lots 01 à 07, resynchronisé le 2026-09-10) : 80 cartes de base
- * + 1 variante Abyssale distincte ("marin-aux-yeux-rouges-abyssal", cf.
- * `TCG_DATABASE.md` "État du projet"), soit 81 entrées. Toutes les cartes
- * sont exprimées en données pures : pas de code spécifique à une carte
- * dans le moteur.
+ * cartes`, Lots 01 à 07 + Lot 09, resynchronisé le 2026-09-10) : 80 cartes
+ * de base (Lots 01-07) + 1 variante Abyssale distincte
+ * ("marin-aux-yeux-rouges-abyssal") + les 5 cartes fun/références du
+ * Lot 09 (6 entrées avec la variante Abyssale de "Bat-Marin"), soit 87
+ * entrées. Le Lot 08 ("Grandes Anomalies de Marée", 2 cartes) reste hors
+ * du set : verrouillé sur Notion mais aucune illustration fournie pour
+ * l'instant. Toutes les cartes sont exprimées en données pures : pas de
+ * code spécifique à une carte dans le moteur.
  *
  * ÉVICTION DES EAUX (2026-09-10) — le sous-système autonome des Eaux
  * (paquet séparé, révélation, effet environnemental parallèle à la
@@ -1058,6 +1061,79 @@ export const CORE_SET: CardDefinition[] = [
       "Pendant 2 tours, chaque fois qu'une Marée change, elle entre avec 1 tour de durée en moins, minimum 1. " +
       "Chaque changement de Marée inflige aussi 1 dégât d'Ancrage à chaque Navire.",
     // non appliqué : règle temporaire globale non modélisée.
+  },
+
+  // ======================================================================
+  // LOT 09 — Références, clins d'œil & cartes fun
+  // ======================================================================
+  {
+    id: "wood-vy",
+    name: "Wood Vy",
+    type: "marin",
+    cost: 3,
+    attack: 2,
+    health: 4,
+    text: "La première fois par tour qu'une Structure alliée perd de la Résistance, rendez-lui 1 Résistance.",
+    // non appliqué : interception réactive "première fois par tour" sur perte de Résistance non modélisée.
+  },
+  {
+    id: "carape-hus",
+    name: "Carape Hus",
+    type: "creature",
+    cost: 3,
+    attack: 2,
+    health: 5,
+    text: "Si la Marée est Calme, obtient Garde.",
+    // non appliqué : octroi dynamique de Garde selon l'état de Marée non modélisé (même limite que "chose-des-hauts-fonds").
+  },
+  {
+    id: "si-raie-ponce",
+    name: "Si, Raie Ponce",
+    type: "creature",
+    cost: 4,
+    attack: 3,
+    health: 4,
+    text:
+      "À son arrivée, si la Marée est descendante, récupérez 2 Raison. Si elle est montante, l'adversaire perd " +
+      "1 Raison.",
+    // non appliqué : branchement conditionnel sur l'orientation à l'ETB non modélisé (même limite que "marin-des-jetees").
+  },
+  {
+    id: "bat-marin",
+    name: "Bat-Marin",
+    type: "marin",
+    cost: 3,
+    attack: 3,
+    health: 2,
+    text:
+      "Tant que la Marée est Tempête ou Abysses, il peut attaquer directement le Navire adverse même si un " +
+      "permanent possède Garde.",
+    // non appliqué : contournement de Garde conditionnel non modélisé (même limite que "raie-des-fosses").
+  },
+  {
+    id: "bat-marin-abyssal",
+    name: "Bat-Marin",
+    type: "marin",
+    subtype: "abyssal",
+    cost: 3,
+    attack: 3,
+    health: 2,
+    text:
+      "Tant que la Marée est Tempête ou Abysses, il peut attaquer directement le Navire adverse même si un " +
+      "permanent possède Garde.",
+    // non appliqué : contournement de Garde conditionnel non modélisé (même limite que "raie-des-fosses").
+  },
+  {
+    id: "chope",
+    name: "Choppe !",
+    type: "objet",
+    cost: 1,
+    health: 1,
+    text:
+      "Si la Marée est Calme, coûte 0 Raison. Brisez cet Objet : récupérez 2 Raison. Cet effet ne peut être " +
+      "activé que pendant Calme.",
+    onBreakEffects: [{ type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } }],
+    // non appliqué : la gratuité pendant Calme et la restriction d'activation à Calme ne sont pas câblées, seul le gain de base l'est.
   },
 ];
 
