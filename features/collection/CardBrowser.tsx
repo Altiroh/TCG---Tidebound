@@ -67,14 +67,11 @@ function CardInfoPanel({ cardId }: { cardId: string }) {
   const showHealth = def.health !== undefined;
 
   return (
-    <div className="relative w-80 shrink-0 [font-family:var(--font-card-body)]">
+    <div className="relative w-80 shrink-0 self-stretch [font-family:var(--font-card-body)]">
       {/* Glow diffus derrière le verre — teinte selon la famille de la carte */}
-      <div
-        aria-hidden
-        className={`absolute -inset-8 rounded-[2.5rem] opacity-50 blur-3xl ${isAbyssal ? "bg-fuchsia-700" : "bg-sky-500"}`}
-      />
+      <div aria-hidden className={`absolute -inset-8 opacity-50 blur-3xl ${isAbyssal ? "bg-fuchsia-700" : "bg-sky-500"}`} />
 
-      <div className="relative overflow-hidden rounded-3xl border border-white/15 bg-white/[0.07] shadow-[0_8px_40px_rgba(0,0,0,0.55)] backdrop-blur-2xl">
+      <div className="relative flex h-full flex-col overflow-hidden border border-white/15 bg-white/[0.07] shadow-[0_8px_40px_rgba(0,0,0,0.55)] backdrop-blur-2xl">
         {/* Reflet du haut, façon verre liquide */}
         <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-white/25 to-transparent" />
         <div aria-hidden className="pointer-events-none absolute -left-10 top-0 h-full w-16 -rotate-12 bg-white/10 blur-md" />
