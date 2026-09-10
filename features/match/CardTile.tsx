@@ -150,10 +150,11 @@ const TYPE_RIBBON_ZONE: Zone = { top: 3.8, left: 64, width: 31, height: 7 };
  * longs comme "Chose des Hauts-Fonds").
  */
 function nameFontSizeCqw(name: string): number {
-  if (name.length <= 14) return 7;
-  if (name.length <= 20) return 6;
-  if (name.length <= 26) return 5.2;
-  return 4.6;
+  if (name.length <= 14) return 6.2;
+  if (name.length <= 20) return 5.1;
+  if (name.length <= 26) return 4.2;
+  if (name.length <= 32) return 3.6;
+  return 3.2;
 }
 
 /** Même logique que `nameFontSizeCqw`, mais pour le texte de règles — on rétrécit plutôt que de faire apparaître une scrollbar. */
@@ -264,7 +265,12 @@ export function CardTile({
             className="flex items-center justify-center text-center font-bold text-white [font-family:var(--font-card-title)]"
             style={{ ...zoneStyle(COST_NUMBER_ZONE), fontSize: "11cqw", textShadow: THICK_TEXT_OUTLINE }}
           >
-            <span style={{ border: STAT_VALUE_BORDER, borderRadius: "0.2em", padding: "0 0.15em" }}>{def.cost}</span>
+            <span
+              className="inline-flex items-center justify-center"
+              style={{ border: STAT_VALUE_BORDER, borderRadius: "50%", minWidth: "1.7em", minHeight: "1.7em", padding: "0.1em" }}
+            >
+              {def.cost}
+            </span>
           </div>
 
           <div
@@ -273,7 +279,12 @@ export function CardTile({
           >
             {typeIconOk && (
               // eslint-disable-next-line @next/next/no-img-element -- asset local, icône + libellé de type déjà réunis dans l'asset
-              <img src={typeIconUrl} alt={CARD_TYPE_LABELS[def.type]} className="h-[78%] w-auto object-contain" />
+              <img
+                src={typeIconUrl}
+                alt={CARD_TYPE_LABELS[def.type]}
+                className="h-[78%] w-auto object-contain"
+                style={isAbyssal ? { filter: "grayscale(1) brightness(0.45)" } : undefined}
+              />
             )}
           </div>
 
@@ -282,7 +293,7 @@ export function CardTile({
             style={{ ...zoneStyle(NAME_BANNER_ZONE), textShadow: THICK_TEXT_OUTLINE }}
           >
             <span
-              className="line-clamp-2"
+              className="inline-block max-w-full overflow-hidden text-ellipsis whitespace-nowrap"
               style={{
                 fontSize: `${nameFontSizeCqw(def.name)}cqw`,
                 border: STAT_VALUE_BORDER,
@@ -290,7 +301,8 @@ export function CardTile({
                 padding: "0 0.25em",
               }}
             >
-              {def.name}
+              <span style={{ fontSize: "1.3em" }}>{def.name.charAt(0)}</span>
+              {def.name.slice(1)}
             </span>
           </div>
 
@@ -325,7 +337,12 @@ export function CardTile({
               className="flex items-center justify-start font-bold text-white [font-family:var(--font-card-title)]"
               style={{ ...zoneStyle(ATTACK_ZONE), fontSize: "7.5cqw", textShadow: THICK_TEXT_OUTLINE }}
             >
-              <span style={{ border: STAT_VALUE_BORDER, borderRadius: "0.2em", padding: "0 0.15em" }}>{stats.attack}</span>
+              <span
+                className="inline-flex items-center justify-center"
+                style={{ border: STAT_VALUE_BORDER, borderRadius: "50%", minWidth: "1.7em", minHeight: "1.7em", padding: "0.1em" }}
+              >
+                {stats.attack}
+              </span>
             </div>
           )}
           {hasResistance && (
@@ -335,7 +352,12 @@ export function CardTile({
               }`}
               style={{ ...zoneStyle(RESISTANCE_ZONE), fontSize: "7.5cqw", textShadow: THICK_TEXT_OUTLINE }}
             >
-              <span style={{ border: STAT_VALUE_BORDER, borderRadius: "0.2em", padding: "0 0.15em" }}>{resistanceRemaining}</span>
+              <span
+                className="inline-flex items-center justify-center"
+                style={{ border: STAT_VALUE_BORDER, borderRadius: "50%", minWidth: "1.7em", minHeight: "1.7em", padding: "0.1em" }}
+              >
+                {resistanceRemaining}
+              </span>
             </div>
           )}
         </div>
