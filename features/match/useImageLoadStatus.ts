@@ -10,10 +10,15 @@ import { useEffect, useState } from "react";
  * Utilisé par `CardTile` (une image par carte) et `CardBack` (une seule
  * image, réutilisée pour toutes les cartes face cachée).
  */
+/** `src` vide : aucun asset à tenter (ex: calque optionnel absent pour cette carte) — retombe direct sur "error", sans requête. */
 export function useImageLoadStatus(src: string): "loading" | "ok" | "error" {
-  const [status, setStatus] = useState<"loading" | "ok" | "error">("loading");
+  const [status, setStatus] = useState<"loading" | "ok" | "error">(src ? "loading" : "error");
 
   useEffect(() => {
+    if (!src) {
+      setStatus("error");
+      return undefined;
+    }
     let cancelled = false;
     setStatus("loading");
     const img = new window.Image();
