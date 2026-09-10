@@ -300,15 +300,24 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
     setDragOverOwnBoard(false);
     setDragOverOtherBoard(false);
 
-    const attackerInstanceId = e.dataTransfer.getData(DRAG_MIME_UNIT);
-    if (attackerInstanceId) {
+    const draggedUnitId = e.dataTransfer.getData(DRAG_MIME_UNIT);
+    if (draggedUnitId) {
       setDraggingUnitId(null);
-      runAction({
-        type: "attack",
-        playerId: activePlayerId,
-        attackerInstanceId,
-        defenderInstanceId: targetInstanceId,
-      });
+      const draggedUnit = viewerPlayer.board.find((u) => u.instanceId === draggedUnitId);
+      const draggedDef = draggedUnit ? getCardDefinition(draggedUnit.cardId) : undefined;
+      // Un Objet glissé sur une cible sert à résoudre son effet de bris ciblé
+      // (ex: "Levier de Lest" : Sabordez une Structure) — seuls les Marins/
+      // Créatures glissés sur une cible attaquent.
+      if (draggedDef?.type === "objet") {
+        runAction({ type: "breakObject", playerId: activePlayerId, instanceId: draggedUnitId, targetInstanceId });
+      } else {
+        runAction({
+          type: "attack",
+          playerId: activePlayerId,
+          attackerInstanceId: draggedUnitId,
+          defenderInstanceId: targetInstanceId,
+        });
+      }
       return;
     }
 
@@ -539,6 +548,19 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
                   Saborder
                 </Button>
               </>
+            )}
+            {!(
+              (state.phase === "combatPhase" &&
+                isUnitType(selectedDef.type) &&
+                !selectedUnit.summoningSick &&
+                !selectedUnit.hasAttackedThisTurn) ||
+              (state.phase === "mainPhase" && !viewerPlayer.hasUsedMainActionThisTurn)
+            ) && (
+              <span className="text-xs text-slate-500">
+                {state.phase === "combatPhase"
+                  ? "Aucune action disponible en Phase de combat pour cette carte."
+                  : "Action principale déjà utilisée ce tour-ci."}
+              </span>
             )}
           </div>
         )}

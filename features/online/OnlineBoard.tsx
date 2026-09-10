@@ -238,10 +238,19 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
     setDragOverOwnBoard(false);
     setDragOverOpponentBoard(false);
 
-    const attackerInstanceId = e.dataTransfer.getData(DRAG_MIME_UNIT);
-    if (attackerInstanceId) {
+    const draggedUnitId = e.dataTransfer.getData(DRAG_MIME_UNIT);
+    if (draggedUnitId) {
       setDraggingUnitId(null);
-      act({ type: "attack", playerId: myUserId, attackerInstanceId, defenderInstanceId: targetInstanceId });
+      const draggedUnit = me.board.find((u) => u.instanceId === draggedUnitId);
+      const draggedDef = draggedUnit ? getCardDefinition(draggedUnit.cardId) : undefined;
+      // Un Objet glissé sur une cible sert à résoudre son effet de bris ciblé
+      // (ex: "Levier de Lest" : Sabordez une Structure) — seuls les Marins/
+      // Créatures glissés sur une cible attaquent.
+      if (draggedDef?.type === "objet") {
+        act({ type: "breakObject", playerId: myUserId, instanceId: draggedUnitId, targetInstanceId });
+      } else {
+        act({ type: "attack", playerId: myUserId, attackerInstanceId: draggedUnitId, defenderInstanceId: targetInstanceId });
+      }
       return;
     }
 
@@ -448,6 +457,16 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
                   Saborder
                 </Button>
               </>
+            )}
+            {!(
+              (canAttack && isUnitType(selectedDef.type) && !selectedUnit.summoningSick && !selectedUnit.hasAttackedThisTurn) ||
+              canPlayCards
+            ) && (
+              <span className="text-xs text-slate-500">
+                {state.phase === "combatPhase"
+                  ? "Aucune action disponible en Phase de combat pour cette carte."
+                  : "Action principale déjà utilisée ce tour-ci."}
+              </span>
             )}
           </div>
         )}
