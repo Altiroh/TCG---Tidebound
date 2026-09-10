@@ -168,9 +168,6 @@ interface ButtonEntry {
   baseColor: THREE.Color;
   label: THREE.Mesh | null;
   isCircle: boolean;
-  hasRealTexture: boolean;
-  /** Rapport largeur/hauteur réel de la texture, connu une fois l'image chargée (undefined en attendant, ou hors sujet pour le dégradé procédural). */
-  naturalAspect?: number;
   rect: { x: number; y: number; w: number; h: number };
   href?: string;
   disabled?: boolean;
@@ -285,7 +282,6 @@ export function ChestButtons3D({ slots, iconSlots }: { slots: ChestSlotDef[]; ic
         baseColor: capMaterial.color.clone(),
         label,
         isCircle: false,
-        hasRealTexture: real,
         rect: slot.rect,
         href: slot.disabled ? undefined : (slot.href as string | undefined),
         disabled: slot.disabled,
@@ -297,13 +293,7 @@ export function ChestButtons3D({ slots, iconSlots }: { slots: ChestSlotDef[]; ic
       entries.push(entry);
 
       if (real) {
-        capMaterial.map = textureLoader.load(texUrl!, (loaded) => {
-          const img = loaded.image as { width?: number; height?: number } | undefined;
-          if (img?.width && img?.height) {
-            entry.naturalAspect = img.width / img.height;
-            layout();
-          }
-        });
+        capMaterial.map = textureLoader.load(texUrl!);
         capMaterial.map.colorSpace = THREE.SRGBColorSpace;
       } else {
         capMaterial.map = proceduralPlankTexture(WOOD[slot.variant]);
@@ -340,7 +330,6 @@ export function ChestButtons3D({ slots, iconSlots }: { slots: ChestSlotDef[]; ic
         baseColor: bodyMaterial.color.clone(),
         label,
         isCircle: true,
-        hasRealTexture: false,
         rect: icon.rect,
         href: icon.disabled ? undefined : icon.href,
         disabled: icon.disabled,
@@ -380,27 +369,17 @@ export function ChestButtons3D({ slots, iconSlots }: { slots: ChestSlotDef[]; ic
             entry.label.position.z = frontZ + 1;
           }
         } else {
-          // object-fit: contain — une texture réelle garde son rapport
-          // largeur/hauteur propre plutôt que d'être étirée pour remplir
-          // tout l'emplacement mesuré sur l'image (les deux ne coïncident
-          // pas forcément : le dégradé procédural n'a pas ce problème,
-          // n'importe quel rapport lui va).
-          let fw = pw,
-            fh = ph;
-          if (entry.hasRealTexture && entry.naturalAspect) {
-            if (pw / ph > entry.naturalAspect) {
-              fh = ph;
-              fw = ph * entry.naturalAspect;
-            } else {
-              fw = pw;
-              fh = pw / entry.naturalAspect;
-            }
-          }
-          const geoResult = plankGeometry(fw, fh);
+          // La plaque remplit tout l'emplacement mesuré sur l'image (object-
+          // fit: fill) : la boîte a la priorité sur le ratio propre de la
+          // texture, quitte à l'étirer légèrement — plus fiable que de
+          // dépendre d'assets aux proportions exactement calées sur chaque
+          // emplacement du coffret. Le dégradé procédural n'a de toute façon
+          // pas de ratio propre à préserver.
+          const geoResult = plankGeometry(pw, ph);
           frontZ = geoResult.frontZ;
           entry.body.geometry = geoResult.geo;
           if (entry.label) {
-            entry.label.scale.set(fw * 0.88, fh * 0.62, 1);
+            entry.label.scale.set(pw * 0.88, ph * 0.62, 1);
             entry.label.position.z = frontZ + 1;
           }
         }
