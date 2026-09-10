@@ -24,9 +24,9 @@ export const TIDEBOUND_MENU_ASSETS = {
   cornerMetal: undefined as string | undefined,
   rope: undefined as string | undefined,
   lock: undefined as string | undefined,
-  buttonMain: undefined as string | undefined,
-  buttonSecondaryA: undefined as string | undefined,
-  buttonSecondaryB: undefined as string | undefined,
+  buttonMain: "/assets/menu/buttons/button_main.png" as string | undefined,
+  buttonSecondaryA: "/assets/menu/buttons/button_secondary_a.png" as string | undefined,
+  buttonSecondaryB: "/assets/menu/buttons/button_secondary_b.png" as string | undefined,
   iconOptions: undefined as string | undefined,
   iconQuit: undefined as string | undefined,
 } satisfies Record<string, string | undefined>;

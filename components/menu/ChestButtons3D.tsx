@@ -49,6 +49,20 @@ function plankGeometry(w: number, h: number) {
     curveSegments: 8,
   });
   geo.translate(0, 0, -depth / 2);
+  // Le `UVGenerator` par défaut d'ExtrudeGeometry (`WorldUVGenerator`) pose
+  // les UV des faces avant/arrière directement sur les coordonnées monde
+  // (x, y) du contour, PAS normalisées en [0,1] — ici des valeurs de
+  // l'ordre de ±150px. Avec le `ClampToEdgeWrapping` par défaut des
+  // textures, tout ça se retrouve écrasé sur le tout dernier texel du
+  // bord : d'où la plaque en aplat de couleur sans texte visible. On
+  // renormalise donc les UV sur l'étendue réelle du rectangle (-w/2..w/2,
+  // -h/2..h/2) pour que la texture couvre bien toute la face.
+  const uv = geo.attributes.uv!;
+  const pos = geo.attributes.position!;
+  for (let i = 0; i < uv.count; i++) {
+    uv.setXY(i, pos.getX(i) / w + 0.5, pos.getY(i) / h + 0.5);
+  }
+  uv.needsUpdate = true;
   // Le biseau pousse la vraie face avant au-delà de `depth/2` (jusqu'à
   // `depth/2 + bevelThickness`) : un calque posé à `depth/2` se retrouve
   // sous la géométrie opaque et disparaît complètement.
@@ -149,11 +163,14 @@ function proceduralIconTexture(kind: "gear" | "power"): THREE.CanvasTexture {
 interface ButtonEntry {
   group: THREE.Group;
   body: THREE.Mesh;
+  /** Matériau de la ou des faces visibles (texture/couleur, réagit au survol/appui). */
   bodyMaterial: THREE.MeshStandardMaterial;
   baseColor: THREE.Color;
   label: THREE.Mesh | null;
   isCircle: boolean;
   hasRealTexture: boolean;
+  /** Rapport largeur/hauteur réel de la texture, connu une fois l'image chargée (undefined en attendant, ou hors sujet pour le dégradé procédural). */
+  naturalAspect?: number;
   rect: { x: number; y: number; w: number; h: number };
   href?: string;
   disabled?: boolean;
@@ -215,12 +232,6 @@ export function ChestButtons3D({ slots, iconSlots }: { slots: ChestSlotDef[]; ic
     scene.add(rim);
 
     const textureLoader = new THREE.TextureLoader();
-    function loadTexture(url: string | undefined, fallback: () => THREE.CanvasTexture) {
-      if (!url) return { tex: fallback(), real: false };
-      const tex = textureLoader.load(url);
-      tex.colorSpace = THREE.SRGBColorSpace;
-      return { tex, real: true };
-    }
 
     const entries: ButtonEntry[] = [];
 
@@ -228,20 +239,36 @@ export function ChestButtons3D({ slots, iconSlots }: { slots: ChestSlotDef[]; ic
       const texKey = (
         slot.id === "main" ? "buttonMain" : slot.id === "secondaryA" ? "buttonSecondaryA" : "buttonSecondaryB"
       ) as "buttonMain" | "buttonSecondaryA" | "buttonSecondaryB";
+      const texUrl = TIDEBOUND_MENU_ASSETS[texKey];
+      const real = !!texUrl;
 
       const group = new THREE.Group();
       scene.add(group);
 
-      const { tex, real } = loadTexture(TIDEBOUND_MENU_ASSETS[texKey], () => proceduralPlankTexture(WOOD[slot.variant]));
-      const bodyMaterial = new THREE.MeshStandardMaterial({
-        map: tex,
+      // Deux matériaux séparés plutôt qu'un seul partagé par toute la
+      // géométrie : les faces avant/arrière (texturées, transparentes pour
+      // la marge PNG) et les flancs du biseau (couleur unie). Un seul
+      // matériau texturé sur les flancs ferait apparaître un fragment
+      // étiré de l'image (le mapping UV des flancs d'ExtrudeGeometry
+      // n'a rien à voir avec celui des faces).
+      const capMaterial = new THREE.MeshStandardMaterial({
         roughness: 0.55,
         metalness: 0.12,
+        transparent: true,
+        alphaTest: 0.35,
         emissive: new THREE.Color(BRASS_LIGHT),
         emissiveIntensity: 0,
       });
-      if (slot.disabled) bodyMaterial.color.multiplyScalar(0.55);
-      const body = new THREE.Mesh(new THREE.BufferGeometry(), bodyMaterial);
+      const sideMaterial = new THREE.MeshStandardMaterial({ color: WOOD[slot.variant], roughness: 0.7, metalness: 0.08 });
+      if (slot.disabled) {
+        capMaterial.color.multiplyScalar(0.55);
+        sideMaterial.color.multiplyScalar(0.55);
+      }
+      // ExtrudeGeometry assigne l'index matériau 0 aux faces avant/arrière
+      // (caps) et l'index 1 aux flancs du biseau — l'inverse de ce qu'on
+      // pourrait supposer intuitivement (vérifié dans buildLidFaces/
+      // buildSideFaces de three/src/geometries/ExtrudeGeometry.js).
+      const body = new THREE.Mesh(new THREE.BufferGeometry(), [capMaterial, sideMaterial]);
       group.add(body);
 
       let label: THREE.Mesh | null = null;
@@ -251,11 +278,11 @@ export function ChestButtons3D({ slots, iconSlots }: { slots: ChestSlotDef[]; ic
         group.add(label);
       }
 
-      entries.push({
+      const entry: ButtonEntry = {
         group,
         body,
-        bodyMaterial,
-        baseColor: bodyMaterial.color.clone(),
+        bodyMaterial: capMaterial,
+        baseColor: capMaterial.color.clone(),
         label,
         isCircle: false,
         hasRealTexture: real,
@@ -266,7 +293,22 @@ export function ChestButtons3D({ slots, iconSlots }: { slots: ChestSlotDef[]; ic
         pressAmount: 0,
         hoverMix: 0,
         pressMix: 0,
-      });
+      };
+      entries.push(entry);
+
+      if (real) {
+        capMaterial.map = textureLoader.load(texUrl!, (loaded) => {
+          const img = loaded.image as { width?: number; height?: number } | undefined;
+          if (img?.width && img?.height) {
+            entry.naturalAspect = img.width / img.height;
+            layout();
+          }
+        });
+        capMaterial.map.colorSpace = THREE.SRGBColorSpace;
+      } else {
+        capMaterial.map = proceduralPlankTexture(WOOD[slot.variant]);
+      }
+      capMaterial.needsUpdate = true;
     }
 
     for (const icon of iconSlots) {
@@ -284,7 +326,9 @@ export function ChestButtons3D({ slots, iconSlots }: { slots: ChestSlotDef[]; ic
       const body = new THREE.Mesh(new THREE.BufferGeometry(), bodyMaterial);
       group.add(body);
 
-      const { tex } = loadTexture(TIDEBOUND_MENU_ASSETS[icon.texKey], () => proceduralIconTexture(icon.icon));
+      const iconUrl = TIDEBOUND_MENU_ASSETS[icon.texKey];
+      const tex = iconUrl ? textureLoader.load(iconUrl) : proceduralIconTexture(icon.icon);
+      tex.colorSpace = THREE.SRGBColorSpace;
       const labelMat = new THREE.MeshBasicMaterial({ map: tex, transparent: true });
       const label = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), labelMat);
       group.add(label);
@@ -336,11 +380,27 @@ export function ChestButtons3D({ slots, iconSlots }: { slots: ChestSlotDef[]; ic
             entry.label.position.z = frontZ + 1;
           }
         } else {
-          const geoResult = plankGeometry(pw, ph);
+          // object-fit: contain — une texture réelle garde son rapport
+          // largeur/hauteur propre plutôt que d'être étirée pour remplir
+          // tout l'emplacement mesuré sur l'image (les deux ne coïncident
+          // pas forcément : le dégradé procédural n'a pas ce problème,
+          // n'importe quel rapport lui va).
+          let fw = pw,
+            fh = ph;
+          if (entry.hasRealTexture && entry.naturalAspect) {
+            if (pw / ph > entry.naturalAspect) {
+              fh = ph;
+              fw = ph * entry.naturalAspect;
+            } else {
+              fw = pw;
+              fh = pw / entry.naturalAspect;
+            }
+          }
+          const geoResult = plankGeometry(fw, fh);
           frontZ = geoResult.frontZ;
           entry.body.geometry = geoResult.geo;
           if (entry.label) {
-            entry.label.scale.set(pw * 0.88, ph * 0.62, 1);
+            entry.label.scale.set(fw * 0.88, fh * 0.62, 1);
             entry.label.position.z = frontZ + 1;
           }
         }
@@ -440,8 +500,14 @@ export function ChestButtons3D({ slots, iconSlots }: { slots: ChestSlotDef[]; ic
       renderer.domElement.removeEventListener("pointerleave", onLeave);
       for (const entry of entries) {
         entry.body.geometry.dispose();
-        entry.bodyMaterial.map?.dispose();
-        entry.bodyMaterial.dispose();
+        // Les boutons "plaque" portent un matériau de flanc distinct
+        // (WOOD, non texturé) en plus de bodyMaterial (la ou les faces) —
+        // les deux sont dans le tableau `body.material` s'il y en a un.
+        const bodyMaterials = Array.isArray(entry.body.material) ? entry.body.material : [entry.body.material];
+        for (const m of bodyMaterials) {
+          if ("map" in m) (m as THREE.MeshStandardMaterial).map?.dispose();
+          m.dispose();
+        }
         if (entry.label) {
           entry.label.geometry.dispose();
           (entry.label.material as THREE.MeshBasicMaterial).map?.dispose();
