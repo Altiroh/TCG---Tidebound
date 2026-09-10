@@ -23,7 +23,7 @@ export type GameEventType =
   | "TURN_STARTED"
   | "END_TURN"
   | "TIDE_ADVANCED"
-  | "WATER_CHANGED"
+  | "TIDE_ORIENTATION_CHANGED"
   | "SABORDED"
   | "OCEAN_JUDGMENT"
   | "GAME_ENDED";
@@ -141,12 +141,15 @@ export interface TideAdvancedEvent extends BaseGameEvent {
   /** Tours restants avant la prochaine progression, après ce tick. */
   remainingTurns: number;
   tideState: "calme" | "houle" | "tempete" | "abysses";
+  /** Sens de la prochaine transition après ce tick (cadrage 2026-09-10). */
+  tideOrientation: "montante" | "descendante";
   stateChanged: boolean;
 }
 
-export interface WaterChangedEvent extends BaseGameEvent {
-  type: "WATER_CHANGED";
-  waterId: string;
+/** Un effet de carte a inversé l'orientation de la Marée (hors tick naturel de début/fin de tour). */
+export interface TideOrientationChangedEvent extends BaseGameEvent {
+  type: "TIDE_ORIENTATION_CHANGED";
+  orientation: "montante" | "descendante";
 }
 
 /** Un joueur sabordé volontairement un de ses permanents (consomme l'action principale). */
@@ -186,6 +189,6 @@ export type GameEvent =
   | GameStartedEvent
   | GameEndedEvent
   | TideAdvancedEvent
-  | WaterChangedEvent
+  | TideOrientationChangedEvent
   | SabordedEvent
   | OceanJudgmentEvent;

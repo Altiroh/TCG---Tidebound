@@ -8,9 +8,9 @@ import type { TideStateName } from "@/game/environment/types";
  *    le projet) — Raison standard, échelle de coûts, tailles de deck/main,
  *    durées de Marée provisoires ;
  *  - des valeurs PLACEHOLDER, encore explicitement "à définir/à verrouiller"
- *    d'après ces mêmes documents (dégâts exacts de Marée, règle de tirage
- *    des Eaux, etc.) — retenues ici comme hypothèse de travail raisonnable,
- *    à ajuster dès que le cadrage correspondant arrive.
+ *    d'après ces mêmes documents (dégâts exacts de Marée, etc.) — retenues
+ *    ici comme hypothèse de travail raisonnable, à ajuster dès que le
+ *    cadrage correspondant arrive.
  */
 export const RULES = {
   // --- Main / Deck (cadrage "Règles & mécaniques verrouillées" +
@@ -61,8 +61,4 @@ export const RULES = {
   TIDE_ANCHOR_DAMAGE: { tempete: 2, abysses: 3 } as Partial<Record<TideStateName, number>>,
   /** Perte de Raison infligée aux DEUX joueurs à chaque tour en Abysses (cadrage section 7 : "Abysses : perte de Raison"). */
   TIDE_REASON_DAMAGE: { abysses: 1 } as Partial<Record<TideStateName, number>>,
-
-  // --- Eaux (placeholder — "règle de tirage" explicitement à verrouiller) -
-  /** Durée par défaut si une Eau ne précise pas la sienne. */
-  DEFAULT_WATER_DURATION: 2,
 } as const;

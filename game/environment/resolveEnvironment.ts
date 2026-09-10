@@ -1,6 +1,5 @@
 import { consumeAmplify, tickTide } from "@/game/environment/tide";
 import { getShipDefinition } from "@/game/environment/shipData";
-import { getWaterDefinition } from "@/game/environment/waterData";
 import type { TideStateName } from "@/game/environment/types";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { isVisibleDuringTide } from "@/game/cards/types";
@@ -23,11 +22,9 @@ interface TideDamageForPlayer {
 /**
  * Calcule les pertes d'Ancrage et de Raison qu'un joueur subit pour l'état
  * de Marée courant, à l'Intensité donnée : dégâts de base × Intensité,
- * modulés par les Eaux actuelles et le Navire (résistance/faiblesse).
- * Jamais négatif.
+ * modulés par le Navire (résistance/faiblesse). Jamais négatif.
  */
 function computeTideDamageForPlayer(
-  state: GameState,
   player: PlayerState,
   tideState: TideStateName,
   intensity: number
@@ -35,15 +32,12 @@ function computeTideDamageForPlayer(
   const baseAnchor = RULES.TIDE_ANCHOR_DAMAGE[tideState] ?? 0;
   const baseReason = RULES.TIDE_REASON_DAMAGE[tideState] ?? 0;
 
-  const water = getWaterDefinition(state.environment.currentWaterId);
-  const waterModifier = water.tideDamageModifierByState?.[tideState] ?? 0;
-
   const ship = getShipDefinition(player.shipId);
   const resistance = ship.resistanceByState?.[tideState] ?? 0;
   const weakness = ship.weaknessByState?.[tideState] ?? 0;
   const reasonWeakness = ship.reasonWeaknessByState?.[tideState] ?? 0;
 
-  const anchor = Math.max(0, (baseAnchor + waterModifier + weakness - resistance) * intensity);
+  const anchor = Math.max(0, (baseAnchor + weakness - resistance) * intensity);
   const reason = Math.max(0, (baseReason + reasonWeakness) * intensity);
 
   return { anchor, reason };
@@ -76,6 +70,7 @@ export function resolveTideTurnStep(
       ...state.environment,
       tideState: tick.tideState,
       tideRemainingTurns: tick.tideRemainingTurns,
+      tideOrientation: tick.tideOrientation,
       tideIntensity: tick.tideIntensity,
       pendingTideModifiers: modifiersAfterAmplify,
     },
@@ -87,6 +82,7 @@ export function resolveTideTurnStep(
     timestamp: Date.now(),
     remainingTurns: tick.tideRemainingTurns,
     tideState: tick.tideState,
+    tideOrientation: tick.tideOrientation,
     stateChanged: tick.stateChanged,
   });
 
@@ -94,7 +90,7 @@ export function resolveTideTurnStep(
 
   for (let i = 0; i < players.length; i++) {
     const player = players[i]!;
-    const damage = computeTideDamageForPlayer(nextState, player, tick.tideState, intensity);
+    const damage = computeTideDamageForPlayer(player, tick.tideState, intensity);
 
     const flag = ignoreFlagFor(tick.tideState);
     const statusFlags = [...player.statusFlags];

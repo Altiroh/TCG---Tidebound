@@ -1,10 +1,11 @@
 import { RULES } from "@/game/rules/constants";
-import { nextTideState } from "@/game/environment/types";
-import type { EnvironmentState, PendingTideModifier, TideStateName } from "@/game/environment/types";
+import { advanceTideState, naturalOrientationFor } from "@/game/environment/types";
+import type { EnvironmentState, PendingTideModifier, TideOrientation, TideStateName } from "@/game/environment/types";
 
 export interface TickTideResult {
   tideState: TideStateName;
   tideRemainingTurns: number;
+  tideOrientation: TideOrientation;
   tideIntensity: number;
   pendingTideModifiers: PendingTideModifier[];
   stateChanged: boolean;
@@ -13,11 +14,17 @@ export interface TickTideResult {
 /**
  * Fait progresser la Marée d'un tour de jeu (étapes 4-6 de la structure de
  * tour verrouillée) : décompte la durée restante (sauf modificateur
- * "maintain" actif), et si elle atteint 0, passe à l'état suivant du
- * cycle avec une nouvelle durée et une Intensité remise à sa base.
+ * "maintain" actif), et si elle atteint 0, passe à l'état suivant SELON
+ * L'ORIENTATION courante (Montante vers les Abysses, Descendante vers le
+ * Calme) avec une nouvelle durée et une Intensité remise à sa base.
+ * L'orientation elle-même se réinitialise naturellement à Calme/Abysses
+ * (`naturalOrientationFor`), sinon elle est conservée telle quelle — seul
+ * un effet de carte peut l'inverser ailleurs (`tideInvertOrientation`).
  * Fonction pure : ne modifie rien, retourne le nouvel état calculé.
  */
-export function tickTide(env: Pick<EnvironmentState, "tideState" | "tideRemainingTurns" | "tideIntensity" | "pendingTideModifiers">): TickTideResult {
+export function tickTide(
+  env: Pick<EnvironmentState, "tideState" | "tideRemainingTurns" | "tideOrientation" | "tideIntensity" | "pendingTideModifiers">
+): TickTideResult {
   const maintainActive = env.pendingTideModifiers.some((m) => m.kind === "maintain" && m.remainingTriggers > 0);
 
   const consumedModifiers = env.pendingTideModifiers
@@ -28,6 +35,7 @@ export function tickTide(env: Pick<EnvironmentState, "tideState" | "tideRemainin
     return {
       tideState: env.tideState,
       tideRemainingTurns: env.tideRemainingTurns,
+      tideOrientation: env.tideOrientation,
       tideIntensity: env.tideIntensity,
       pendingTideModifiers: consumedModifiers,
       stateChanged: false,
@@ -39,16 +47,19 @@ export function tickTide(env: Pick<EnvironmentState, "tideState" | "tideRemainin
     return {
       tideState: env.tideState,
       tideRemainingTurns: remaining,
+      tideOrientation: env.tideOrientation,
       tideIntensity: env.tideIntensity,
       pendingTideModifiers: consumedModifiers,
       stateChanged: false,
     };
   }
 
-  const newState = nextTideState(env.tideState);
+  const newState = advanceTideState(env.tideState, env.tideOrientation);
+  const newOrientation = naturalOrientationFor(newState, env.tideOrientation);
   return {
     tideState: newState,
     tideRemainingTurns: RULES.TIDE_STATE_DURATION[newState],
+    tideOrientation: newOrientation,
     tideIntensity: RULES.TIDE_BASE_INTENSITY,
     pendingTideModifiers: consumedModifiers,
     stateChanged: true,

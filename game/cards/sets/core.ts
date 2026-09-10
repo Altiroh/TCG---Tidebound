@@ -10,15 +10,20 @@ import type { CardDefinition } from "@/game/cards/types";
  *
  * ÉVICTION DES EAUX (2026-09-10) — le sous-système autonome des Eaux
  * (paquet séparé, révélation, effet environnemental parallèle à la
- * Marée) est abandonné côté design. Ses anciennes fonctions sont
- * absorbées par la Marée : son état, sa durée, et sa nouvelle
- * **orientation** (montante vers les Abysses / descendante vers le
- * Calme). Le moteur (`game/environment/waterData.ts` et le
- * `currentWaterId`/`waterRemainingTurns` d'`EnvironmentState`) N'A PAS
- * ENCORE été mis à jour en conséquence — seuls les textes de cartes ont
- * été resynchronisés ici ; les cartes qui dépendent de l'orientation de
- * Marée sont marquées "non appliqué" comme le reste des mécaniques non
- * câblées, en attendant ce chantier moteur séparé.
+ * Marée) est abandonné côté design ET retiré du moteur (l'ancien
+ * `game/environment/waterData.ts` et les champs `currentWaterId`/
+ * `waterRemainingTurns` d'`EnvironmentState` n'existent plus). Ses
+ * anciennes fonctions sont absorbées par la Marée : son état, sa durée,
+ * et sa nouvelle **orientation** (`EnvironmentState.tideOrientation`,
+ * "montante" vers les Abysses / "descendante" vers le Calme — bascule
+ * naturellement à ces deux bornes, cf. `game/environment/types.ts`).
+ * L'inversion d'orientation par une carte est câblée via l'effet
+ * générique `tideInvertOrientation` quand le texte s'y prête sans
+ * branchement conditionnel ni choix optionnel (ex: "cartes-des-courants") ;
+ * les cartes dont l'effet dépend d'une condition ("si montante/si
+ * Abysses...") ou d'un choix optionnel ("vous pouvez... si vous le
+ * faites") restent marquées "non appliqué", comme le reste des
+ * mécaniques non câblées ci-dessous.
  *
  * FIDÉLITÉ MÉCANIQUE — le moteur actuel n'a pas encore de système de
  * "première fois par tour" par source, de choix de joueur en cours de
@@ -51,7 +56,7 @@ export const CORE_SET: CardDefinition[] = [
     text:
       "Quand il arrive en jeu, si la Marée est montante, il gagne +1 Résistance jusqu'à votre prochain tour. Si " +
       "elle est descendante, récupérez 1 Raison.",
-    // non appliqué : orientation de Marée (montante/descendante) non modélisée dans le moteur.
+    // non appliqué : branchement conditionnel sur l'orientation à l'ETB non modélisé (l'orientation elle-même existe dans le moteur).
   },
   {
     id: "vieux-loup-de-mer",
@@ -195,7 +200,7 @@ export const CORE_SET: CardDefinition[] = [
     cost: 2,
     health: 1,
     text: "Brisez cet Objet : inversez l'orientation de la prochaine transition de Marée (montante ↔ descendante).",
-    // non appliqué : orientation de Marée (montante/descendante) non modélisée dans le moteur.
+    onBreakEffects: [{ type: "tideInvertOrientation", target: { kind: "allPlayers" } }],
   },
   {
     id: "cloche-dalerte",
@@ -307,7 +312,7 @@ export const CORE_SET: CardDefinition[] = [
     text:
       "Durée : 3 tours. Visible pendant Calme et Houle. À votre début de tour, si elle est visible et que la " +
       "Marée est descendante, récupérez 1 Raison.",
-    // non appliqué : orientation de Marée (montante/descendante) non modélisée dans le moteur.
+    // non appliqué : condition récurrente en début de tour (visibilité + orientation) non modélisée (l'orientation elle-même existe dans le moteur).
   },
   {
     id: "epave-a-fleur-deau",
@@ -354,7 +359,7 @@ export const CORE_SET: CardDefinition[] = [
     attack: 1,
     health: 3,
     text: "À son arrivée, vous pouvez inverser l'orientation de la Marée. Si vous le faites, perdez 1 Raison.",
-    // non appliqué : orientation de Marée (montante/descendante) non modélisée dans le moteur.
+    // non appliqué : choix optionnel lié à un coût ("vous pouvez... si vous le faites") non modélisé (l'inversion d'orientation elle-même existe dans le moteur, cf. "cartes-des-courants").
   },
   {
     id: "matelot-insomniaque",
@@ -586,7 +591,7 @@ export const CORE_SET: CardDefinition[] = [
     text:
       "Équipez un Marin. À votre début de tour, vous pouvez perdre 1 Raison : choisissez soit de réduire de 1 " +
       "tour la durée de la Marée actuelle, soit d'inverser l'orientation de sa prochaine transition.",
-    // non appliqué : capacité activable optionnelle + orientation de Marée non modélisées.
+    // non appliqué : capacité activable optionnelle avec choix entre deux options non modélisée (l'inversion d'orientation elle-même existe dans le moteur, cf. "cartes-des-courants").
   },
   {
     id: "cage-de-flottaison",
@@ -810,7 +815,7 @@ export const CORE_SET: CardDefinition[] = [
     text:
       "À son arrivée, si la Marée est en Abysses, forcez son orientation à devenir descendante. Sinon, vous " +
       "pouvez réduire de 1 tour la durée de la Marée actuelle.",
-    // non appliqué : orientation de Marée (montante/descendante) non modélisée dans le moteur.
+    // non appliqué : branchement conditionnel à l'ETB (Abysses ou non) + choix optionnel non modélisés (l'orientation elle-même existe dans le moteur).
   },
   {
     id: "mecanicien-aux-mains-noires",

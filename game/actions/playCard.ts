@@ -1,5 +1,4 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
-import { computeEffectiveCost } from "@/game/cards/cost";
 import { isPermanentCard, UNIT_CARD_TYPES } from "@/game/cards/types";
 import type { EffectContext } from "@/game/effects/resolveEffect";
 import { resolveEffect } from "@/game/effects/resolveEffect";
@@ -35,13 +34,12 @@ function validate(state: GameState, action: PlayCardAction) {
 
   const instance = player!.hand.find((c) => c.instanceId === action.instanceId)!;
   const def = getCardDefinition(instance.cardId);
-  const effectiveCost = computeEffectiveCost(def, state.environment.currentWaterId);
 
   if (def.requiresTideState && !def.requiresTideState.includes(state.environment.tideState)) {
     return { ok: false as const, error: "Cette carte ne peut pas être jouée dans l'état de Marée actuel." };
   }
 
-  const costCheck = assertCanPayCost(state, action.playerId, effectiveCost);
+  const costCheck = assertCanPayCost(state, action.playerId, def.cost);
   if (!costCheck.ok) return costCheck;
 
   if (isPermanentCard(def)) {
@@ -74,7 +72,6 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
   const player = getPlayer(state, action.playerId);
   const instance = player.hand.find((c) => c.instanceId === action.instanceId)!;
   const def = getCardDefinition(instance.cardId);
-  const effectiveCost = computeEffectiveCost(def, state.environment.currentWaterId);
   const events: GameEvent[] = [];
   const base = { turnNumber: state.turnNumber, timestamp: Date.now() };
 
@@ -82,7 +79,7 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
   const playerAfterCost: PlayerState = {
     ...player,
     hand: handAfterRemoval,
-    reason: player.reason - effectiveCost,
+    reason: player.reason - def.cost,
     hasUsedMainActionThisTurn: true,
   };
 
@@ -95,7 +92,7 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
   };
 
   events.push({ ...base, type: "PLAY_CARD", playerId: player.id, instanceId: instance.instanceId, cardId: def.id });
-  events.push({ ...base, type: "REASON_CHANGED", playerId: player.id, delta: -effectiveCost });
+  events.push({ ...base, type: "REASON_CHANGED", playerId: player.id, delta: -def.cost });
 
   const asPermanent = isPermanentCard(def);
 

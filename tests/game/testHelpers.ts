@@ -43,10 +43,9 @@ export function testEnvironment(overrides: Partial<EnvironmentState> = {}): Envi
   return {
     tideState: "calme",
     tideRemainingTurns: RULES.TIDE_STATE_DURATION.calme,
+    tideOrientation: "montante",
     tideIntensity: RULES.TIDE_BASE_INTENSITY,
     pendingTideModifiers: [],
-    currentWaterId: "mer-etale",
-    waterRemainingTurns: RULES.DEFAULT_WATER_DURATION,
     ...overrides,
   };
 }

@@ -1,9 +1,8 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
 import type { CardInstance } from "@/game/cards/types";
 import { getShipDefinition } from "@/game/environment/shipData";
-import { WATER_POOL, getWaterDefinition } from "@/game/environment/waterData";
 import { RULES } from "@/game/rules/constants";
-import { createSeed, nextInt, shuffle } from "@/game/rng";
+import { createSeed, shuffle } from "@/game/rng";
 import type { GameState, PlayerId, PlayerState } from "@/game/state/types";
 import type { DeckList } from "@/game/cards/decks/preconstructed";
 
@@ -32,11 +31,6 @@ export interface CreateGameStateInput {
   gameId: string;
   player1: { id: PlayerId; deck: DeckList };
   player2: { id: PlayerId; deck: DeckList };
-  /**
-   * Eaux de départ ; par défaut tirées aléatoirement dans `WATER_POOL`
-   * (les Eaux ne sont jamais choisies par un joueur — cadrage section 25).
-   */
-  startingWaterId?: string;
   /** Graine RNG optionnelle, pour des parties reproductibles en test. */
   seed?: number;
 }
@@ -44,9 +38,9 @@ export interface CreateGameStateInput {
 /**
  * Construit l'état initial d'une partie : mélange les deux decks,
  * distribue les mains de départ, installe le Navire et l'Ancrage de
- * chaque joueur, initialise la Marée et les Eaux, et place le premier
- * joueur en priorité. Aucune mutation d'état externe — retourne un
- * `GameState` entièrement neuf.
+ * chaque joueur, initialise la Marée (Calme, orientation Montante — cadrage
+ * 2026-09-10), et place le premier joueur en priorité. Aucune mutation
+ * d'état externe — retourne un `GameState` entièrement neuf.
  */
 export function createGameState(input: CreateGameStateInput): GameState {
   const rngState = createSeed(input.seed);
@@ -100,15 +94,6 @@ export function createGameState(input: CreateGameStateInput): GameState {
     statusFlags: [],
   };
 
-  let startingWaterId = input.startingWaterId;
-  let rngAfterWater = shuffled2.nextState;
-  if (!startingWaterId) {
-    const draw = nextInt(rngAfterWater, WATER_POOL.length);
-    startingWaterId = WATER_POOL[draw.value]!.id;
-    rngAfterWater = draw.nextState;
-  }
-  const startingWater = getWaterDefinition(startingWaterId);
-
   return {
     id: input.gameId,
     createdAt: Date.now(),
@@ -117,14 +102,13 @@ export function createGameState(input: CreateGameStateInput): GameState {
     activePlayerId: player1.id,
     priorityPlayerId: player1.id,
     phase: "mainPhase",
-    rngState: rngAfterWater,
+    rngState: shuffled2.nextState,
     environment: {
       tideState: "calme",
       tideRemainingTurns: RULES.TIDE_STATE_DURATION.calme,
+      tideOrientation: "montante",
       tideIntensity: RULES.TIDE_BASE_INTENSITY,
       pendingTideModifiers: [],
-      currentWaterId: startingWaterId,
-      waterRemainingTurns: startingWater.duration,
     },
     eventLog: [
       {
