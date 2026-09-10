@@ -5,6 +5,14 @@ import { CORE_SET, getCardDefinition, getMaxCopies, UNIT_CARD_TYPES, type CardIn
 import { CardTile } from "@/features/match/CardTile";
 import { CARD_TYPE_LABELS } from "@/features/match/cardDisplay";
 
+/** Insensible aux accents (ex: "epave" retrouve "Épave") et à la casse. */
+function normalizeSearch(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase();
+}
+
 const TYPE_FILTERS: Array<CardType | "all"> = [
   "all",
   "marin",
@@ -26,6 +34,17 @@ function displayInstance(cardId: string): CardInstance {
     summoningSick: false,
     hasAttackedThisTurn: false,
   };
+}
+
+/** Panneau à largeur fixe (w-80) — paliers en rem par longueur, pour ne jamais passer sur 2 lignes (calibré/vérifié sur les 87 noms du catalogue). */
+function panelTitleFontSizeRem(name: string): number {
+  if (name.length <= 14) return 1.4;
+  if (name.length <= 18) return 1.25;
+  if (name.length <= 22) return 1.1;
+  if (name.length <= 26) return 0.98;
+  if (name.length <= 30) return 0.93;
+  if (name.length <= 34) return 0.9;
+  return 0.85;
 }
 
 /** Jeton stat (Coût/Puissance/Résistance) — verre dépoli, grosse valeur + légende. */
@@ -62,11 +81,12 @@ function CardInfoPanel({ cardId }: { cardId: string }) {
 
         <div className="relative p-6">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-sky-200 backdrop-blur-md">
-              {/* eslint-disable-next-line @next/next/no-img-element -- asset local, icône de type déjà stylée */}
-              <img src={`/assets/cards/icons/TYPE_${def.type.toUpperCase()}_STANDARD.png`} alt="" className="h-3.5 w-3.5 object-contain" />
-              {CARD_TYPE_LABELS[def.type]}
-            </span>
+            {/* eslint-disable-next-line @next/next/no-img-element -- asset local, icône + libellé de type déjà réunis dans l'asset */}
+            <img
+              src={`/assets/cards/icons/TYPE_${def.type.toUpperCase()}_STANDARD.png`}
+              alt={CARD_TYPE_LABELS[def.type]}
+              className="h-6 w-auto object-contain"
+            />
             {isAbyssal && (
               <span className="rounded-full border border-white/15 bg-fuchsia-500/20 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-fuchsia-200 backdrop-blur-md">
                 Abyssal
@@ -79,7 +99,12 @@ function CardInfoPanel({ cardId }: { cardId: string }) {
             )}
           </div>
 
-          <h2 className="mt-3 text-2xl font-semibold text-white [font-family:var(--font-card-title)]">{def.name}</h2>
+          <h2
+            className="mt-3 overflow-hidden text-ellipsis whitespace-nowrap font-semibold text-white [font-family:var(--font-card-title)]"
+            style={{ fontSize: `${panelTitleFontSizeRem(def.name)}rem` }}
+          >
+            {def.name}
+          </h2>
 
           <div className="mt-4 flex gap-2">
             <StatChip value={def.cost} label="Coût" accentClassName="text-sky-300" />
@@ -143,12 +168,17 @@ function NavArrow({ direction, onClick }: { direction: "left" | "right"; onClick
 /** Grille de consultation des 80 cartes du catalogue — pour vérifier les assets au fur et à mesure. */
 export function CardBrowser() {
   const [filter, setFilter] = useState<CardType | "all">("all");
+  const [search, setSearch] = useState("");
   const [detailCardId, setDetailCardId] = useState<string | null>(null);
 
-  const cards = useMemo(
-    () => CORE_SET.filter((def) => filter === "all" || def.type === filter),
-    [filter]
-  );
+  const cards = useMemo(() => {
+    const query = normalizeSearch(search.trim());
+    return CORE_SET.filter((def) => {
+      if (filter !== "all" && def.type !== filter) return false;
+      if (query && !normalizeSearch(def.name).includes(query)) return false;
+      return true;
+    });
+  }, [filter, search]);
 
   const showRelative = useCallback(
     (delta: number) => {
@@ -199,7 +229,16 @@ export function CardBrowser() {
             )}
           </button>
         ))}
-        <span className="ml-auto self-center text-xs text-slate-400">{cards.length} carte(s) — cliquer pour agrandir</span>
+        <div className="ml-auto flex flex-wrap items-center gap-3">
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Rechercher une carte..."
+            className="h-14 w-56 rounded-md border border-slate-700 bg-slate-200/90 px-4 text-sm text-slate-800 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-board-accent"
+          />
+          <span className="self-center whitespace-nowrap text-xs text-slate-400">{cards.length} carte(s) — cliquer pour agrandir</span>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
