@@ -2,9 +2,28 @@ import type { CardDefinition } from "@/game/cards/types";
 
 /**
  * Set de base ("Core") — catalogue verrouillé sur Notion (`Catalogue de
- * cartes`, Lots 01 à 07, verrouillage du 2026-09-08) : 80 cartes de
- * conception. Toutes les cartes sont exprimées en données pures : pas de
- * code spécifique à une carte dans le moteur.
+ * cartes`, Lots 01 à 07, resynchronisé le 2026-09-10) : 80 cartes de base
+ * + 1 variante Abyssale distincte ("marin-aux-yeux-rouges-abyssal", cf.
+ * `TCG_DATABASE.md` "État du projet"), soit 81 entrées. Toutes les cartes
+ * sont exprimées en données pures : pas de code spécifique à une carte
+ * dans le moteur.
+ *
+ * ÉVICTION DES EAUX (2026-09-10) — le sous-système autonome des Eaux
+ * (paquet séparé, révélation, effet environnemental parallèle à la
+ * Marée) est abandonné côté design ET retiré du moteur (l'ancien
+ * `game/environment/waterData.ts` et les champs `currentWaterId`/
+ * `waterRemainingTurns` d'`EnvironmentState` n'existent plus). Ses
+ * anciennes fonctions sont absorbées par la Marée : son état, sa durée,
+ * et sa nouvelle **orientation** (`EnvironmentState.tideOrientation`,
+ * "montante" vers les Abysses / "descendante" vers le Calme — bascule
+ * naturellement à ces deux bornes, cf. `game/environment/types.ts`).
+ * L'inversion d'orientation par une carte est câblée via l'effet
+ * générique `tideInvertOrientation` quand le texte s'y prête sans
+ * branchement conditionnel ni choix optionnel (ex: "cartes-des-courants") ;
+ * les cartes dont l'effet dépend d'une condition ("si montante/si
+ * Abysses...") ou d'un choix optionnel ("vous pouvez... si vous le
+ * faites") restent marquées "non appliqué", comme le reste des
+ * mécaniques non câblées ci-dessous.
  *
  * FIDÉLITÉ MÉCANIQUE — le moteur actuel n'a pas encore de système de
  * "première fois par tour" par source, de choix de joueur en cours de
@@ -34,8 +53,10 @@ export const CORE_SET: CardDefinition[] = [
     cost: 1,
     attack: 1,
     health: 2,
-    text: "Quand il arrive en jeu, regardez la prochaine Eau.",
-    // non appliqué : lecture d'information cachée (prochaine Eau) non modélisée.
+    text:
+      "Quand il arrive en jeu, si la Marée est montante, il gagne +1 Résistance jusqu'à votre prochain tour. Si " +
+      "elle est descendante, récupérez 1 Raison.",
+    // non appliqué : branchement conditionnel sur l'orientation à l'ETB non modélisé (l'orientation elle-même existe dans le moteur).
   },
   {
     id: "vieux-loup-de-mer",
@@ -66,11 +87,7 @@ export const CORE_SET: CardDefinition[] = [
     cost: 2,
     attack: 3,
     health: 1,
-    text: "Gagne +1 Puissance pendant Tempête ou Abysses.",
-    tideAffinity: {
-      tempete: { attack: 4, health: 1 },
-      abysses: { attack: 4, health: 1 },
-    },
+    // Volontairement sans effet (cadrage Notion "Catalogue de cartes") : corps agressif lisible à 3/1 pour coût 2.
   },
   {
     id: "poisson-lanterne",
@@ -182,8 +199,8 @@ export const CORE_SET: CardDefinition[] = [
     type: "objet",
     cost: 2,
     health: 1,
-    text: "Brisez cet Objet : regardez les 2 prochaines Eaux. Replacez-les dans l'ordre de votre choix.",
-    // non appliqué : lecture/réordonnancement de la pioche d'Eaux non modélisés.
+    text: "Brisez cet Objet : inversez l'orientation de la prochaine transition de Marée (montante ↔ descendante).",
+    onBreakEffects: [{ type: "tideInvertOrientation", target: { kind: "allPlayers" } }],
   },
   {
     id: "cloche-dalerte",
@@ -224,6 +241,25 @@ export const CORE_SET: CardDefinition[] = [
     onPlayEffects: [{ type: "reasonLoss", target: { kind: "allPlayers" }, amount: { kind: "flat", value: 1 } }],
   },
   {
+    // Variante ABYSSALE distincte de "marin-aux-yeux-rouges" (coexiste avec la
+    // Standard, cf. Notion "Catalogue de cartes" — règle des variantes Abyssales) :
+    // le catalogue verrouillé compte cette carte comme le "+1" au-delà des 80
+    // cartes de base ("80 cartes de base conçues et auditées + 1 variante
+    // Abyssale distincte", TCG_DATABASE.md).
+    id: "marin-aux-yeux-rouges-abyssal",
+    name: "Marin aux Yeux Rouges",
+    type: "marin",
+    subtype: "abyssal",
+    cost: 3,
+    attack: 3,
+    health: 3,
+    text:
+      "Quand il arrive en jeu, chaque joueur perd 1 Raison. Si la Marée est montante, l'adversaire perd 1 Raison " +
+      "supplémentaire. Si elle est descendante, récupérez 1 Raison.",
+    onPlayEffects: [{ type: "reasonLoss", target: { kind: "allPlayers" }, amount: { kind: "flat", value: 1 } }],
+    // non appliqué : le bonus/malus conditionnel à l'orientation de Marée n'est pas câblé (seule la perte de base l'est).
+  },
+  {
     id: "guetteur-de-brume",
     name: "Guetteur de Brume",
     type: "marin",
@@ -241,9 +277,8 @@ export const CORE_SET: CardDefinition[] = [
     type: "marin",
     cost: 3,
     attack: 3,
-    health: 3,
-    text: "Tant que vous avez moins de Raison que votre adversaire, il gagne +1 Puissance.",
-    // non appliqué : comparaison dynamique de Raison entre joueurs non modélisée.
+    health: 4,
+    // Volontairement sans effet (cadrage Notion "Catalogue de cartes") : 3/4 pour coût 3 sert de référence de corps simple.
   },
   {
     id: "anguille-des-profondeurs",
@@ -274,8 +309,10 @@ export const CORE_SET: CardDefinition[] = [
     health: 2,
     durationTurns: 3,
     visibleDuringTide: ["calme", "houle"],
-    text: "Durée : 3 tours. Visible pendant Calme et Houle. À votre début de tour, si elle est visible, regardez la prochaine Eau.",
-    // non appliqué : lecture d'information cachée (prochaine Eau) non modélisée.
+    text:
+      "Durée : 3 tours. Visible pendant Calme et Houle. À votre début de tour, si elle est visible et que la " +
+      "Marée est descendante, récupérez 1 Raison.",
+    // non appliqué : condition récurrente en début de tour (visibilité + orientation) non modélisée (l'orientation elle-même existe dans le moteur).
   },
   {
     id: "epave-a-fleur-deau",
@@ -321,8 +358,8 @@ export const CORE_SET: CardDefinition[] = [
     cost: 2,
     attack: 1,
     health: 3,
-    text: "À son arrivée, regardez les 2 prochaines Eaux. Vous pouvez les inverser.",
-    // non appliqué : lecture/réordonnancement de la pioche d'Eaux non modélisés.
+    text: "À son arrivée, vous pouvez inverser l'orientation de la Marée. Si vous le faites, perdez 1 Raison.",
+    // non appliqué : choix optionnel lié à un coût ("vous pouvez... si vous le faites") non modélisé (l'inversion d'orientation elle-même existe dans le moteur, cf. "cartes-des-courants").
   },
   {
     id: "matelot-insomniaque",
@@ -362,9 +399,8 @@ export const CORE_SET: CardDefinition[] = [
     type: "creature",
     cost: 2,
     attack: 2,
-    health: 2,
-    text: "Lorsqu'il détruit un permanent en combat, son contrôleur regarde la prochaine Eau.",
-    // non appliqué : trigger "détruit en combat" + lecture d'information non modélisés.
+    health: 3,
+    // Volontairement sans effet (cadrage Notion "Catalogue de cartes") : récompense de combat lisible via ses stats seules.
   },
   {
     id: "la-chose-qui-remonte",
@@ -553,9 +589,9 @@ export const CORE_SET: CardDefinition[] = [
     permanent: true,
     cost: 2,
     text:
-      "Équipez un Marin. À votre début de tour, vous pouvez perdre 1 Raison pour regarder les 2 prochaines Eaux " +
-      "et en placer une sous l'autre.",
-    // non appliqué : capacité activable optionnelle + lecture d'information non modélisées.
+      "Équipez un Marin. À votre début de tour, vous pouvez perdre 1 Raison : choisissez soit de réduire de 1 " +
+      "tour la durée de la Marée actuelle, soit d'inverser l'orientation de sa prochaine transition.",
+    // non appliqué : capacité activable optionnelle avec choix entre deux options non modélisée (l'inversion d'orientation elle-même existe dans le moteur, cf. "cartes-des-courants").
   },
   {
     id: "cage-de-flottaison",
@@ -776,8 +812,10 @@ export const CORE_SET: CardDefinition[] = [
     cost: 4,
     attack: 3,
     health: 4,
-    text: "À son arrivée, regardez les 2 prochaines Eaux. Si vous êtes en Abysses, vous pouvez en placer une au-dessous du paquet d'Eaux.",
-    // non appliqué : lecture/manipulation de la pioche d'Eaux non modélisées.
+    text:
+      "À son arrivée, si la Marée est en Abysses, forcez son orientation à devenir descendante. Sinon, vous " +
+      "pouvez réduire de 1 tour la durée de la Marée actuelle.",
+    // non appliqué : branchement conditionnel à l'ETB (Abysses ou non) + choix optionnel non modélisés (l'orientation elle-même existe dans le moteur).
   },
   {
     id: "mecanicien-aux-mains-noires",

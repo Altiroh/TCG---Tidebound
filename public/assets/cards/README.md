@@ -20,6 +20,10 @@ texte de règles), affiché tel quel par l'app.
 tb_<type>_<cardId>_card_v<NN>.png
 ```
 
+`<type>` est le `CardType` réel de la carte (`game/cards/types.ts`), **pas**
+son `subtype` — une carte `type: "creature", subtype: "abyssal"` va dans
+`cards/creature/`, pas dans un dossier "abyssal" qui n'existe pas.
+
 `<NN>` = numéro de version sur 2 chiffres (`v01`, `v02`, ...), incrémenté à
 chaque nouvelle passe sur une carte déjà illustrée. Une carte peut donc
 avoir plusieurs versions présentes en même temps le temps d'une révision ;
@@ -37,6 +41,33 @@ cards/
 
 Exemple — Cylindre flottant (`type: "structure"`) :
 `public/assets/cards/structure/tb_structure_cylindre-flottant_card_v01.png`
+
+### Cartes Abyssales (`subtype: "abyssal"`) : calque de débord optionnel
+
+Une carte Abyssale peut fournir un **second fichier**, en plus du fond
+habituel ci-dessus — une illustration à fond transparent destinée à déborder
+visuellement du cadre de la carte (superposée par `CardTile`, non gravée
+dans le fond) :
+
+```
+tb_<type>_<cardId>_card-debord_v<NN>.png
+```
+
+Même dossier `<type>/`, même `<cardId>`, même logique de version. Format
+PNG, fond transparent hors du sujet qui doit déborder ; le reste de la
+composition (fond de carte + cadre + bandeaux nom/coût/type) va dans le
+fichier `_card_` normal, inchangé.
+
+Exemple — Masse Noire (`type: "creature"`, `subtype: "abyssal"`) :
+```
+cards/creature/tb_creature_masse-noire_card_v01.png            (fond)
+cards/creature/tb_creature_masse-noire_card-debord_v01.png     (débord)
+```
+
+Le calque de débord est **optionnel** : une carte Abyssale sans ce fichier
+s'affiche normalement, juste sans effet de débordement (404 silencieux côté
+`/api/card-image/<cardId>?layer=debord`, ignoré par `CardTile`). Une carte
+non-Abyssale n'a jamais ce fichier — `CardTile` ne le demande même pas.
 
 ## Charte canonique (carte étalon : Cylindre flottant)
 

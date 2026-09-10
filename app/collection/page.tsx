@@ -11,7 +11,7 @@ export default function CollectionPage() {
         </Link>
       </div>
       <p className="text-sm text-slate-400">
-        Les 80 cartes du catalogue, pour vérifier les assets au fur et à mesure qu&apos;ils arrivent. Pas encore de
+        Les 81 cartes du catalogue, pour vérifier les assets au fur et à mesure qu&apos;ils arrivent. Pas encore de
         deck personnel — ça viendra avec la collection persistée.
       </p>
       <CardBrowser />

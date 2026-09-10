@@ -1,5 +1,9 @@
 /**
- * Modèle de l'environnement partagé : la Marée et les Eaux actuelles.
+ * Modèle de l'environnement partagé : la Marée actuelle. Le sous-système
+ * des Eaux (paquet séparé, révélation, effet environnemental parallèle à
+ * la Marée) a été abandonné par le design (Notion "Règles & mécaniques
+ * verrouillées", 2026-09-10) : ses anciennes fonctions sont absorbées par
+ * la Marée elle-même — son état, sa durée, et son **orientation**.
  *
  * Modèle "durée + intensité" verrouillé par le cadrage de design
  * (`design/*.md` dans le projet, notamment "Mécaniques verrouillées"
@@ -18,10 +22,41 @@ export const TIDE_STATES_ORDER: readonly TideStateName[] = [
   "abysses",
 ];
 
-/** État suivant dans le cycle (les Abysses referment le cycle sur le Calme). */
-export function nextTideState(state: TideStateName): TideStateName {
+/**
+ * Orientation de la Marée (cadrage 2026-09-10) : Montante progresse d'un
+ * état vers les Abysses à la prochaine transition, Descendante progresse
+ * d'un état vers le Calme. La Marée oscille entre Calme et Abysses plutôt
+ * que de boucler — voir `naturalOrientationFor`.
+ */
+export type TideOrientation = "montante" | "descendante";
+
+/**
+ * État suivant selon l'orientation courante : Montante avance vers les
+ * Abysses, Descendante recule vers le Calme. Contrairement à l'ancien
+ * modèle cyclique, la progression ne boucle jamais silencieusement sur
+ * elle-même : elle est bornée (`Math.min`/`Math.max`) à Abysses/Calme,
+ * l'inversion naturelle d'orientation à ces bornes étant gérée séparément
+ * par `naturalOrientationFor`.
+ */
+export function advanceTideState(state: TideStateName, orientation: TideOrientation): TideStateName {
   const index = TIDE_STATES_ORDER.indexOf(state);
-  return TIDE_STATES_ORDER[(index + 1) % TIDE_STATES_ORDER.length]!;
+  const nextIndex =
+    orientation === "montante"
+      ? Math.min(index + 1, TIDE_STATES_ORDER.length - 1)
+      : Math.max(index - 1, 0);
+  return TIDE_STATES_ORDER[nextIndex]!;
+}
+
+/**
+ * Orientation naturelle imposée par un état borne : à Calme elle devient
+ * Montante, à Abysses elle devient Descendante (cadrage 2026-09-10).
+ * Dans tout autre état, l'orientation courante est conservée telle quelle
+ * (`fallback`) — seules les bornes du cycle la réinitialisent d'office.
+ */
+export function naturalOrientationFor(state: TideStateName, fallback: TideOrientation): TideOrientation {
+  if (state === "calme") return "montante";
+  if (state === "abysses") return "descendante";
+  return fallback;
 }
 
 /**
@@ -39,12 +74,10 @@ export interface EnvironmentState {
   tideState: TideStateName;
   /** Nombre de tours restants avant que la Marée progresse vers l'état suivant. */
   tideRemainingTurns: number;
+  /** Sens de la prochaine transition — visible des deux joueurs (cadrage 2026-09-10). */
+  tideOrientation: TideOrientation;
   tideIntensity: number;
   pendingTideModifiers: PendingTideModifier[];
-
-  currentWaterId: string;
-  /** Nombre de tours restants avant un nouveau tirage d'Eaux. */
-  waterRemainingTurns: number;
 }
 
 /**
@@ -61,22 +94,6 @@ export interface TideAffinityEntry {
 }
 
 export type TideAffinity = Partial<Record<TideStateName, TideAffinityEntry>>;
-
-/**
- * Eaux : région maritime commune aux deux joueurs, changée automatiquement
- * par le moteur (jamais une carte de deck). Référence des `tags` de carte
- * plutôt que des cardId précis pour rester extensible.
- */
-export interface WaterDefinition {
-  id: string;
-  name: string;
-  text?: string;
-  /** Durée par défaut avant un nouveau tirage (cadrage : ~2-3 tours). */
-  duration: number;
-  costModifierByTag?: Array<{ tag: string; delta: number }>;
-  tideDamageModifierByState?: Partial<Record<TideStateName, number>>;
-  statModifierByTag?: Array<{ tag: string; attack?: number; health?: number }>;
-}
 
 /**
  * Navire principal : carte fixe, choisie au deck-building, jamais piochée

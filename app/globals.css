@@ -10,3 +10,35 @@ body {
 body {
   @apply bg-board-background text-slate-100;
 }
+
+/* TideboundMenuChest (components/menu/TideboundMenuChest.tsx) : flottement
+   vertical très discret + inclinaison pilotée par --tilt-x/--tilt-y (JS,
+   suit la souris dans une plage ±1°/±1.5°). */
+@keyframes chest-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+.chest-root {
+  animation: chest-float 6s ease-in-out infinite;
+}
+
+.chest-tilt {
+  transform: rotateX(calc(var(--tilt-x, 0) * 1deg)) rotateY(calc(var(--tilt-y, 0) * 1deg));
+  transform-style: preserve-3d;
+  transition: transform 0.3s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chest-root {
+    animation: none;
+  }
+  .chest-tilt {
+    transition: none;
+  }
+}

@@ -5,7 +5,6 @@ import {
   dispatch,
   getCardDefinition,
   getShipDefinition,
-  getWaterDefinition,
   UNIT_CARD_TYPES,
   type CardInstance,
   type GameState,
@@ -13,6 +12,7 @@ import {
   type PlayerId,
 } from "@/game";
 import { Button } from "@/components/ui/Button";
+import { CardBack } from "@/features/match/CardBack";
 import { CardTile } from "@/features/match/CardTile";
 import { TIDE_STATE_COLORS, TIDE_STATE_LABELS } from "@/features/match/cardDisplay";
 import { formatEvent } from "@/features/match/formatEvent";
@@ -42,7 +42,6 @@ export function MatchBoard({ initialState, onExit }: MatchBoardProps) {
   const opponent = state.players.find((p) => p.id !== activePlayerId)!;
   const ship = getShipDefinition(activePlayer.shipId);
   const opponentShip = getShipDefinition(opponent.shipId);
-  const water = getWaterDefinition(state.environment.currentWaterId);
 
   const recentEvents = useMemo(() => state.eventLog.slice(-10).reverse(), [state.eventLog]);
 
@@ -149,6 +148,11 @@ export function MatchBoard({ initialState, onExit }: MatchBoardProps) {
         handCount={opponent.hand.length}
       />
       <div className="flex flex-wrap gap-2">
+        {opponent.hand.map((card) => (
+          <CardBack key={card.instanceId} />
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-2">
         {opponent.board.map((unit) => (
           <CardTile
             key={unit.instanceId}
@@ -174,8 +178,8 @@ export function MatchBoard({ initialState, onExit }: MatchBoardProps) {
             </strong>{" "}
             ({state.environment.tideRemainingTurns} tour(s))
           </span>
-          <span>
-            Eaux : <strong>{water.name}</strong> ({state.environment.waterRemainingTurns} tour(s))
+          <span title={state.environment.tideOrientation === "montante" ? "Vers les Abysses" : "Vers le Calme"}>
+            {state.environment.tideOrientation === "montante" ? "▲ Montante" : "▼ Descendante"}
           </span>
         </div>
         <div className="flex items-center gap-2">

@@ -3,7 +3,6 @@ import { getCardDefinition } from "@/game/cards/sets/core";
 import type { EffectAmount, EffectDefinition } from "@/game/effects/types";
 import type { GameEvent } from "@/game/events/types";
 import { nextInt } from "@/game/rng";
-import { getWaterDefinition } from "@/game/environment/waterData";
 import {
   getOpponent,
   getPlayer,
@@ -375,19 +374,11 @@ export function resolveEffect(
       };
     }
 
-    case "changeWater": {
-      if (!effect.waterId) return { state, events };
-      const water = getWaterDefinition(effect.waterId);
-      events.push({ ...base, type: "WATER_CHANGED", waterId: effect.waterId });
+    case "tideInvertOrientation": {
+      const tideOrientation = state.environment.tideOrientation === "montante" ? "descendante" : "montante";
+      events.push({ ...base, type: "TIDE_ORIENTATION_CHANGED", orientation: tideOrientation });
       return {
-        state: {
-          ...state,
-          environment: {
-            ...state.environment,
-            currentWaterId: effect.waterId,
-            waterRemainingTurns: water.duration,
-          },
-        },
+        state: { ...state, environment: { ...state.environment, tideOrientation } },
         events,
       };
     }

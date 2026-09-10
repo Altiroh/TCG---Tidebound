@@ -9,6 +9,7 @@ import {
   type TideStateName,
 } from "@/game";
 import { CARD_TYPE_LABELS } from "@/features/match/cardDisplay";
+import { useImageLoadStatus } from "@/features/match/useImageLoadStatus";
 
 interface CardTileProps {
   instance: CardInstance;
@@ -71,33 +72,6 @@ const STAT_TEXT_SHADOW = (() => {
     offsets.map(([x, y]) => `${x}cqw ${y}cqw 0 #022a58`).join(", ") + ", 0 0.3cqw 0.5cqw rgba(0,0,0,0.5)"
   );
 })();
-
-/** Précharge l'image finie d'une carte hors du DOM plutôt que de dépendre
- * de l'événement `onError` d'un `<img>` rendu — plus fiable quand beaucoup
- * de cartes se chargent en même temps (ex: la page Collection, 80
- * requêtes simultanées), où `onError` s'est révélé peu fiable dans les
- * tests. */
-function useCardImageStatus(cardId: string): "loading" | "ok" | "error" {
-  const [status, setStatus] = useState<"loading" | "ok" | "error">("loading");
-
-  useEffect(() => {
-    let cancelled = false;
-    setStatus("loading");
-    const img = new window.Image();
-    img.onload = () => {
-      if (!cancelled) setStatus("ok");
-    };
-    img.onerror = () => {
-      if (!cancelled) setStatus("error");
-    };
-    img.src = `/api/card-image/${cardId}`;
-    return () => {
-      cancelled = true;
-    };
-  }, [cardId]);
-
-  return status;
-}
 
 /** `true` le temps d'une animation, chaque fois que `value` diminue par rapport à son appel précédent. */
 function useDecreaseFlash(value: number): boolean {
@@ -163,7 +137,12 @@ export function CardTile({ instance, tideState, selected, disabled, onClick, wid
   const stats = computeEffectiveStats(instance, tideState);
   const isUnit = (UNIT_CARD_TYPES as readonly string[]).includes(def.type);
   const hasResistance = isUnit || def.health !== undefined;
-  const imageStatus = useCardImageStatus(instance.cardId);
+  const isAbyssal = def.subtype === "abyssal";
+  const imageStatus = useImageLoadStatus(`/api/card-image/${instance.cardId}`);
+  // Calque optionnel (voir README cartes) : uniquement tenté pour les
+  // cartes Abyssales, 404 silencieux sinon — `src` vide fait retomber le
+  // hook direct sur "error" sans requête pour toutes les autres cartes.
+  const overlayStatus = useImageLoadStatus(isAbyssal ? `/api/card-image/${instance.cardId}?layer=debord` : "");
   const resistanceRemaining = Math.max(0, stats.health - instance.damageMarked);
   const resistanceFlashing = useDecreaseFlash(resistanceRemaining);
 
@@ -180,35 +159,70 @@ export function CardTile({ instance, tideState, selected, disabled, onClick, wid
       onClick={onClick}
       disabled={!onClick || disabled}
       title={def.text}
-      className={`${widthClassName} overflow-hidden rounded-md border text-left text-xs transition-colors ${ringClasses} ${
-        disabled ? "opacity-40" : ""
-      } ${onClick ? "cursor-pointer" : "cursor-default"}`}
+      className={`relative ${widthClassName} rounded-md border text-left text-xs transition-colors ${ringClasses} ${
+        // Sans ce relèvement, une carte plus loin dans le DOM (donc peinte
+        // après, par défaut au-dessus) recouvrirait le débord d'une
+        // Abyssale placée avant elle dans la main/le plateau.
+        isAbyssal && overlayStatus === "ok" ? "z-10" : ""
+      } ${disabled ? "opacity-40" : ""} ${onClick ? "cursor-pointer" : "cursor-default"}`}
     >
       {imageStatus === "ok" ? (
-        <div className="relative aspect-[5/7] w-full bg-board-surface" style={{ containerType: "inline-size" }}>
-          {/* eslint-disable-next-line @next/next/no-img-element -- asset local, taille variable selon la carte */}
-          <img src={`/api/card-image/${instance.cardId}`} alt={def.name} className="h-full w-full object-cover" />
-          {(stats.inactive || (instance.summoningSick && isUnit) || instance.turnsRemaining !== undefined) && (
-            <div className="absolute inset-x-0 top-0 flex flex-wrap gap-1 bg-black/60 px-1 py-0.5">
-              {stats.inactive && <span className="text-[9px] text-amber-300">Inactive</span>}
-              {instance.summoningSick && isUnit && <span className="text-[9px] text-slate-300">Malade</span>}
-              {instance.turnsRemaining !== undefined && (
-                <span className="text-[9px] text-slate-300">Durée {instance.turnsRemaining}</span>
-              )}
-            </div>
-          )}
-          {isUnit && (
-            <StatOverlay value={stats.attack} position={ATTACK_POSITION} bottomOffset={bottomOffset} flashing={false} />
-          )}
-          {hasResistance && (
-            <StatOverlay
-              value={resistanceRemaining}
-              position={RESISTANCE_POSITION}
-              bottomOffset={bottomOffset}
-              flashing={resistanceFlashing}
+        <>
+          <div
+            className="relative aspect-[5/7] w-full overflow-hidden rounded-md bg-board-surface"
+            style={{ containerType: "inline-size" }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element -- asset local, taille variable selon la carte */}
+            <img src={`/api/card-image/${instance.cardId}`} alt={def.name} className="h-full w-full object-cover" />
+            {(stats.inactive || (instance.summoningSick && isUnit) || instance.turnsRemaining !== undefined) && (
+              <div className="absolute inset-x-0 top-0 flex flex-wrap gap-1 bg-black/60 px-1 py-0.5">
+                {stats.inactive && <span className="text-[9px] text-amber-300">Inactive</span>}
+                {instance.summoningSick && isUnit && <span className="text-[9px] text-slate-300">Malade</span>}
+                {instance.turnsRemaining !== undefined && (
+                  <span className="text-[9px] text-slate-300">Durée {instance.turnsRemaining}</span>
+                )}
+              </div>
+            )}
+          </div>
+          {isAbyssal && overlayStatus === "ok" && (
+            // Volontairement PAS clippée par le cadre (contrairement au fond
+            // ci-dessus) : une carte Abyssale déborde librement par-dessus
+            // ses voisines (main/plateau), comme une Légendaire premium —
+            // z-10, entre le fond et les chiffres de stats (z-20).
+            // eslint-disable-next-line @next/next/no-img-element -- calque hors du cadre, object-fit: contain volontaire
+            <img
+              src={`/api/card-image/${instance.cardId}?layer=debord`}
+              alt=""
+              aria-hidden
+              draggable={false}
+              className="pointer-events-none absolute z-10 select-none"
+              // maxWidth/maxHeight: "none" — sans ça, le reset Tailwind
+              // (`img { max-width: 100% }`) replafonne la largeur à celle
+              // du bouton et annule le débordement horizontal voulu.
+              style={{
+                inset: "-18%",
+                width: "136%",
+                height: "136%",
+                maxWidth: "none",
+                maxHeight: "none",
+                objectFit: "contain",
+              }}
             />
           )}
-        </div>
+          <div className="pointer-events-none absolute inset-0 z-20">
+            {isUnit && (
+              <StatOverlay value={stats.attack} position={ATTACK_POSITION} bottomOffset={bottomOffset} flashing={false} />
+            )}
+            {hasResistance && (
+              <StatOverlay
+                value={resistanceRemaining}
+                position={RESISTANCE_POSITION}
+                bottomOffset={bottomOffset}
+                flashing={resistanceFlashing}
+              />
+            )}
+          </div>
+        </>
       ) : (
         <div className="flex flex-col gap-1 p-2">
           <div className="flex items-center justify-between gap-1">

@@ -1,6 +1,4 @@
 import { resolveTideTurnStep } from "@/game/environment/resolveEnvironment";
-import { WATER_POOL } from "@/game/environment/waterData";
-import { nextInt } from "@/game/rng";
 import type { GameEvent } from "@/game/events/types";
 import { processTrigger } from "@/game/triggers/triggerBus";
 import { RULES } from "@/game/rules/constants";
@@ -17,30 +15,17 @@ function validate(state: GameState, action: EndTurnAction) {
 }
 
 /**
- * Tire de nouvelles Eaux au hasard dans `WATER_POOL`, en excluant si
- * possible les Eaux actuelles (évite de retomber immédiatement sur les
- * mêmes). Algorithme de tirage volontairement simple — la pondération
- * exacte reste "à préciser" par le cadrage.
- */
-function drawNextWater(state: GameState) {
-  const candidates = WATER_POOL.filter((w) => w.id !== state.environment.currentWaterId);
-  const pool = candidates.length > 0 ? candidates : WATER_POOL;
-  const draw = nextInt(state.rngState, pool.length);
-  return { water: pool[draw.value]!, nextRngState: draw.nextState };
-}
-
-/**
  * Termine le tour du joueur actif et applique la structure de tour
- * verrouillée (cadrage "Mécaniques verrouillées" section 28) pour le
- * joueur qui devient actif :
+ * verrouillée (cadrage "Mécaniques verrouillées" section 28, resynchronisé
+ * 2026-09-10 après éviction du sous-système des Eaux) pour le joueur qui
+ * devient actif :
  *
- *   1. Vérification des Eaux (et tirage de nouvelles Eaux si épuisées)
- *   2. Vérification de la Marée (décompte + progression + dégâts du tour)
- *   3. Effets différés — non modélisés pour le MVP, étape ignorée
- *   4. Si Raison = 0 : perte d'Ancrage
- *   5. Régénération de Raison (+1, plafonnée à `reasonMax`)
- *   6. Pioche d'une carte
- *   7. Phase principale : réinitialise l'action principale du tour et l'état
+ *   1. Vérification de la Marée (décompte + progression + orientation + dégâts du tour)
+ *   2. Effets différés — non modélisés pour le MVP, étape ignorée
+ *   3. Si Raison = 0 : perte d'Ancrage
+ *   4. Régénération de Raison (+1, plafonnée à `reasonMax`)
+ *   5. Pioche d'une carte
+ *   6. Phase principale : réinitialise l'action principale du tour et l'état
  *      des unités (dégel, réinitialisation des attaques, nettoyage des
  *      modificateurs temporaires)
  */
@@ -60,6 +45,31 @@ export function endTurn(state: GameState, action: EndTurnAction): ActionResult {
   events.push({ ...base, type: "END_TURN", playerId: action.playerId });
   events.push(...endOfTurnTrigger.events);
 
+  // --- Défausse forcée (cadrage "Règles & mécaniques verrouillées" : main
+  // maximale 7) : appliquée en fin de tour, pour le joueur qui vient de
+  // jouer, avant de passer la main. Aucun choix de joueur n'existe encore
+  // pour sélectionner les cartes défaussées ("Choix de joueur en cours de
+  // résolution" non modélisé) : on défausse déterministiquement depuis le
+  // début de la main, comme pour la défausse liée aux dégâts de Marée
+  // (`game/environment/resolveEnvironment.ts`).
+  const endingPlayer = nextState.players.find((p) => p.id === action.playerId)!;
+  if (endingPlayer.hand.length > RULES.MAX_HAND_SIZE) {
+    let discardHand = endingPlayer.hand;
+    let discardGraveyard = endingPlayer.graveyard;
+    while (discardHand.length > RULES.MAX_HAND_SIZE) {
+      const [discarded, ...rest] = discardHand;
+      discardHand = rest;
+      discardGraveyard = [...discardGraveyard, discarded!];
+      events.push({ ...base, type: "CARD_MOVED", instanceId: discarded!.instanceId, fromZone: "hand", toZone: "graveyard" });
+    }
+    nextState = {
+      ...nextState,
+      players: nextState.players.map((p) =>
+        p.id === endingPlayer.id ? { ...p, hand: discardHand, graveyard: discardGraveyard } : p
+      ) as [PlayerState, PlayerState],
+    };
+  }
+
   const nextPlayer = getOpponent(nextState, action.playerId);
   const newTurnNumber = state.turnNumber + 1;
   const newBase = { turnNumber: newTurnNumber, timestamp: Date.now() };
@@ -71,35 +81,14 @@ export function endTurn(state: GameState, action: EndTurnAction): ActionResult {
     priorityPlayerId: nextPlayer.id,
   };
 
-  // --- 1. Vérification des Eaux ------------------------------------------
-  const waterRemainingTurns = nextState.environment.waterRemainingTurns - 1;
-  if (waterRemainingTurns > 0) {
-    nextState = {
-      ...nextState,
-      environment: { ...nextState.environment, waterRemainingTurns },
-    };
-  } else {
-    const { water, nextRngState } = drawNextWater(nextState);
-    nextState = {
-      ...nextState,
-      rngState: nextRngState,
-      environment: {
-        ...nextState.environment,
-        currentWaterId: water.id,
-        waterRemainingTurns: water.duration,
-      },
-    };
-    events.push({ ...newBase, type: "WATER_CHANGED", waterId: water.id });
-  }
-
-  // --- 2. Vérification de la Marée (décompte, progression, dégâts) -------
+  // --- 1. Vérification de la Marée (décompte, progression, orientation, dégâts) ---
   const tideStep = resolveTideTurnStep(nextState, newTurnNumber);
   nextState = tideStep.state;
   events.push(...tideStep.events);
 
-  // --- 3. Effets différés : non modélisés pour le MVP, étape ignorée -----
+  // --- 2. Effets différés : non modélisés pour le MVP, étape ignorée -----
 
-  // --- 4-6. Raison à 0 => perte d'Ancrage, régénération, pioche ----------
+  // --- 3-5. Raison à 0 => perte d'Ancrage, régénération, pioche ----------
   const playerBeforeUpkeep = nextState.players.find((p) => p.id === nextPlayer.id)!;
 
   let anchor = playerBeforeUpkeep.anchor;
@@ -130,7 +119,7 @@ export function endTurn(state: GameState, action: EndTurnAction): ActionResult {
     pendingOceanJudgment = pendingOceanJudgment ?? { playerId: nextPlayer.id };
   }
 
-  // --- 7. Phase principale : dégel et réinitialisation ---------------------
+  // --- 6. Phase principale : dégel et réinitialisation ---------------------
   const refreshedBoard = playerBeforeUpkeep.board.map((u) => ({
     ...u,
     summoningSick: false,
