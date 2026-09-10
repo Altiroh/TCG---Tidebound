@@ -5,6 +5,7 @@ import type { GameEvent } from "@/game/events/types";
 import { processTrigger } from "@/game/triggers/triggerBus";
 import {
   assertGameActive,
+  assertInPhase,
   assertIsActivePlayer,
   assertPlayerInGame,
   assertUnitCanAttack,
@@ -23,6 +24,7 @@ function validate(state: GameState, action: AttackAction) {
     assertGameActive(state),
     assertPlayerInGame(state, action.playerId),
     assertIsActivePlayer(state, action.playerId),
+    assertInPhase(state, action.playerId, "combatPhase"),
     assertUnitCanAttack(state, action.playerId, action.attackerInstanceId),
     assertValidDefender(state, action.playerId, action.defenderInstanceId)
   );

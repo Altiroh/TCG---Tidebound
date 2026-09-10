@@ -22,9 +22,16 @@ const config: Config = {
           "60%": { transform: "scale(0.95)", color: "#fb7185" },
           "100%": { transform: "scale(1)", color: "inherit" },
         },
+        "phase-banner": {
+          "0%": { opacity: "0", transform: "scale(0.9)" },
+          "12%": { opacity: "1", transform: "scale(1)" },
+          "80%": { opacity: "1", transform: "scale(1)" },
+          "100%": { opacity: "0", transform: "scale(1.02)" },
+        },
       },
       animation: {
         "stat-hit": "stat-hit 0.5s ease-out",
+        "phase-banner": "phase-banner 1.6s ease-in-out forwards",
       },
     },
   },

@@ -23,6 +23,19 @@ export interface EndTurnAction {
 }
 
 /**
+ * Fait passer le joueur actif de la Phase principale à la Phase de combat
+ * (cadrage "Structure de tour" : Phase principale → Phase de combat → Fin
+ * de tour). Ne consomme pas l'action principale du tour — jouer une carte
+ * (ou Saborder/Briser) reste possible avant de l'invoquer, mais plus
+ * après : ces actions sont réservées à la Phase principale, les attaques à
+ * la Phase de combat.
+ */
+export interface AdvancePhaseAction {
+  type: "advancePhase";
+  playerId: PlayerId;
+}
+
+/**
  * Sabordage : destruction volontaire d'un de ses propres permanents.
  * Consomme par défaut l'action principale du tour (cadrage section 29/37).
  */
@@ -46,7 +59,13 @@ export interface BreakObjectAction {
   targetInstanceId?: string;
 }
 
-export type PlayerAction = PlayCardAction | AttackAction | EndTurnAction | SaborderAction | BreakObjectAction;
+export type PlayerAction =
+  | PlayCardAction
+  | AttackAction
+  | EndTurnAction
+  | SaborderAction
+  | BreakObjectAction
+  | AdvancePhaseAction;
 
 export type ActionResult =
   | { ok: true; state: GameState; events: GameEvent[] }

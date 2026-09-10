@@ -45,16 +45,18 @@ export function formatEvent(state: GameState, event: GameEvent): string {
       return `${playerName(event.playerId)} : ${event.delta >= 0 ? "+" : ""}${event.delta} Raison.`;
     case "TIDE_ADVANCED":
       return event.stateChanged
-        ? `La Marée entre en ${TIDE_STATE_LABELS[event.tideState]}.`
+        ? `La Marée entre en ${TIDE_STATE_LABELS[event.tideState]} (${event.tideOrientation}).`
         : `Marée : ${TIDE_STATE_LABELS[event.tideState]} (${event.remainingTurns} tour(s) restant(s)).`;
-    case "WATER_CHANGED":
-      return "Les Eaux changent.";
+    case "TIDE_ORIENTATION_CHANGED":
+      return `La Marée s'inverse : ${event.orientation}.`;
     case "OCEAN_JUDGMENT":
       return `Jugement de l'Océan déclenché par ${playerName(event.triggeredByPlayerId)}.`;
     case "GAME_ENDED":
       return event.winnerId ? `Partie terminée — victoire de ${playerName(event.winnerId)}.` : "Partie terminée — match nul.";
     case "END_TURN":
       return `${playerName(event.playerId)} termine son tour.`;
+    case "PHASE_CHANGED":
+      return `${playerName(event.playerId)} passe en Phase de combat.`;
     default:
       return event.type;
   }

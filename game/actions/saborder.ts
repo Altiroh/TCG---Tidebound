@@ -5,6 +5,7 @@ import {
   assertCardOnOwnBoard,
   assertGameActive,
   assertHasNotUsedMainActionThisTurn,
+  assertInPhase,
   assertIsActivePlayer,
   assertPlayerInGame,
   combine,
@@ -17,6 +18,7 @@ function validate(state: GameState, action: SaborderAction) {
     assertGameActive(state),
     assertPlayerInGame(state, action.playerId),
     assertIsActivePlayer(state, action.playerId),
+    assertInPhase(state, action.playerId, "mainPhase"),
     assertHasNotUsedMainActionThisTurn(state, action.playerId),
     assertCardOnOwnBoard(state, action.playerId, action.instanceId)
   );

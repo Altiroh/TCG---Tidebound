@@ -31,17 +31,12 @@ describe("createGameState", () => {
     expect(state.players[1].reason).toBe(12);
   });
 
-  it("initialise la Marée en Calme avec sa durée et son Intensité de base", () => {
+  it("initialise la Marée en Calme, orientation Montante, avec sa durée et son Intensité de base", () => {
     const state = newTestGame();
     expect(state.environment.tideState).toBe("calme");
     expect(state.environment.tideRemainingTurns).toBe(RULES.TIDE_STATE_DURATION.calme);
+    expect(state.environment.tideOrientation).toBe("montante");
     expect(state.environment.tideIntensity).toBe(RULES.TIDE_BASE_INTENSITY);
-  });
-
-  it("tire des Eaux de départ dans WATER_POOL (jamais l'utilitaire de test mer-etale)", () => {
-    const state = newTestGame();
-    expect(state.environment.currentWaterId).not.toBe("mer-etale");
-    expect(state.environment.waterRemainingTurns).toBeGreaterThan(0);
   });
 
   it("aucun joueur n'a utilisé son action principale au départ", () => {
@@ -56,7 +51,6 @@ describe("createGameState", () => {
     const handA = a.players[0].hand.map((c) => c.cardId);
     const handB = b.players[0].hand.map((c) => c.cardId);
     expect(handA).toEqual(handB);
-    expect(a.environment.currentWaterId).toBe(b.environment.currentWaterId);
   });
 
   it("ne perd ni ne duplique de carte : deck + main = taille du deck initial", () => {

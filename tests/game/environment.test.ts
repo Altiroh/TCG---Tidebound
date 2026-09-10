@@ -46,6 +46,7 @@ describe("environnement - Marée (modèle durée + intensité)", () => {
   it("une unité inactive par affinité de Marée (Masse Noire pendant Calme) ne peut pas attaquer", () => {
     const mass = instance("masse-noire", "p1");
     const state = testGameState({
+      phase: "combatPhase",
       players: [testPlayer("p1", { board: [mass] }), testPlayer("p2")],
       // testGameState() par défaut est en Calme.
     });
@@ -53,11 +54,10 @@ describe("environnement - Marée (modèle durée + intensité)", () => {
     expect(result.ok).toBe(false);
   });
 
-  it("Murène Aveugle gagne +1 Puissance pendant Tempête ou Abysses (affinité de Marée)", () => {
-    const fish = instance("murene-aveugle", "p1");
-    expect(computeEffectiveStats(fish, "calme").attack).toBe(3);
-    expect(computeEffectiveStats(fish, "tempete").attack).toBe(4);
-    expect(computeEffectiveStats(fish, "abysses").attack).toBe(4);
+  it("Masse Noire gagne +1 Puissance pendant Abysses (affinité de Marée)", () => {
+    const mass = instance("masse-noire", "p1");
+    expect(computeEffectiveStats(mass, "houle").attack).toBe(4);
+    expect(computeEffectiveStats(mass, "abysses").attack).toBe(5);
   });
 
   it("Structure/Objet à durée limitée : expire (quitte le board) une fois `durationTurns` écoulé", () => {
@@ -102,26 +102,57 @@ describe("environnement - Marée (modèle durée + intensité)", () => {
   });
 });
 
-describe("environnement - Eaux", () => {
-  it("changeWater remplace les Eaux actuelles et réinitialise leur durée", () => {
-    const state = testGameState({ players: [testPlayer("p1"), testPlayer("p2")] });
-    const result = resolveEffect(
-      state,
-      { type: "changeWater", target: { kind: "allPlayers" }, waterId: "mer-de-verre" },
-      { controllerId: "p1", turnNumber: 1 }
-    );
-    expect(result.state.environment.currentWaterId).toBe("mer-de-verre");
-    expect(result.state.environment.waterRemainingTurns).toBe(3);
+describe("environnement - orientation de Marée", () => {
+  it("démarre Montante en Calme (createGameState) et bascule Descendante en atteignant les Abysses", () => {
+    const filler = (ownerId: string) => Array.from({ length: 2 }, () => instance("marin-des-jetees", ownerId));
+    let state = testGameState({
+      players: [testPlayer("p1", { deck: filler("p1") }), testPlayer("p2", { deck: filler("p2") })],
+      environment: testEnvironment({ tideState: "tempete", tideRemainingTurns: 1, tideOrientation: "montante" }),
+    });
+    expect(state.environment.tideOrientation).toBe("montante");
+    const result = dispatch(state, { type: "endTurn", playerId: state.activePlayerId });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.environment.tideState).toBe("abysses");
+    expect(result.state.environment.tideOrientation).toBe("descendante");
   });
 
-  it("les Récifs Rouges réduisent le coût des cartes taguées 'equipement'", () => {
-    const rope = instance("corde-de-remorquage", "p1"); // coût de base 1
+  it("Descendante fait reculer la Marée vers le Calme, jamais au-delà", () => {
+    const filler = (ownerId: string) => Array.from({ length: 1 }, () => instance("marin-des-jetees", ownerId));
     const state = testGameState({
-      players: [testPlayer("p1", { hand: [rope], reason: 0 }), testPlayer("p2")],
-      environment: testEnvironment({ currentWaterId: "recifs-rouges" }),
+      players: [testPlayer("p1", { deck: filler("p1") }), testPlayer("p2")],
+      environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 1, tideOrientation: "descendante" }),
     });
-    const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: rope.instanceId });
-    expect(result.ok).toBe(true); // coût réduit à 0, payable même sans Raison
+    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.environment.tideState).toBe("calme");
+    // À Calme, l'orientation redevient naturellement Montante.
+    expect(result.state.environment.tideOrientation).toBe("montante");
+  });
+
+  it("tideInvertOrientation inverse l'orientation courante", () => {
+    const state = testGameState({
+      players: [testPlayer("p1"), testPlayer("p2")],
+      environment: testEnvironment({ tideOrientation: "montante" }),
+    });
+    const result = resolveEffect(
+      state,
+      { type: "tideInvertOrientation", target: { kind: "allPlayers" } },
+      { controllerId: "p1", turnNumber: 1 }
+    );
+    expect(result.state.environment.tideOrientation).toBe("descendante");
+  });
+
+  it("Cartes des Courants (bris) inverse l'orientation de la prochaine transition", () => {
+    const currents = instance("cartes-des-courants", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { board: [currents] }), testPlayer("p2")],
+      environment: testEnvironment({ tideOrientation: "montante" }),
+    });
+    const result = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: currents.instanceId });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.state.environment.tideOrientation).toBe("descendante");
   });
 });
 

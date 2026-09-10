@@ -23,10 +23,11 @@ export type GameEventType =
   | "TURN_STARTED"
   | "END_TURN"
   | "TIDE_ADVANCED"
-  | "WATER_CHANGED"
+  | "TIDE_ORIENTATION_CHANGED"
   | "SABORDED"
   | "OCEAN_JUDGMENT"
-  | "GAME_ENDED";
+  | "GAME_ENDED"
+  | "PHASE_CHANGED";
 
 export interface BaseGameEvent {
   type: GameEventType;
@@ -141,12 +142,15 @@ export interface TideAdvancedEvent extends BaseGameEvent {
   /** Tours restants avant la prochaine progression, après ce tick. */
   remainingTurns: number;
   tideState: "calme" | "houle" | "tempete" | "abysses";
+  /** Sens de la prochaine transition après ce tick (cadrage 2026-09-10). */
+  tideOrientation: "montante" | "descendante";
   stateChanged: boolean;
 }
 
-export interface WaterChangedEvent extends BaseGameEvent {
-  type: "WATER_CHANGED";
-  waterId: string;
+/** Un effet de carte a inversé l'orientation de la Marée (hors tick naturel de début/fin de tour). */
+export interface TideOrientationChangedEvent extends BaseGameEvent {
+  type: "TIDE_ORIENTATION_CHANGED";
+  orientation: "montante" | "descendante";
 }
 
 /** Un joueur sabordé volontairement un de ses permanents (consomme l'action principale). */
@@ -168,6 +172,13 @@ export interface OceanJudgmentEvent extends BaseGameEvent {
   winnerId?: PlayerId;
 }
 
+/** Le joueur actif est passé de la Phase principale à la Phase de combat (`game/actions/advancePhase.ts`). */
+export interface PhaseChangedEvent extends BaseGameEvent {
+  type: "PHASE_CHANGED";
+  playerId: PlayerId;
+  phase: "mainPhase" | "combatPhase";
+}
+
 export type GameEvent =
   | DrawCardEvent
   | PlayCardEvent
@@ -186,6 +197,7 @@ export type GameEvent =
   | GameStartedEvent
   | GameEndedEvent
   | TideAdvancedEvent
-  | WaterChangedEvent
+  | TideOrientationChangedEvent
   | SabordedEvent
-  | OceanJudgmentEvent;
+  | OceanJudgmentEvent
+  | PhaseChangedEvent;

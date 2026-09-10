@@ -2,7 +2,7 @@ import { computeEffectiveStats } from "@/game/cards/stats";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { hasKeyword, UNIT_CARD_TYPES } from "@/game/cards/types";
 import { getShipDefinition } from "@/game/environment/shipData";
-import type { GameState, PlayerId } from "@/game/state/types";
+import type { GamePhase, GameState, PlayerId } from "@/game/state/types";
 
 /**
  * Résultat d'une validation : soit "ok", soit un message d'erreur stable
@@ -33,6 +33,21 @@ export function assertPlayerInGame(state: GameState, playerId: PlayerId): Valida
 
 export function assertIsActivePlayer(state: GameState, playerId: PlayerId): ValidationResult {
   if (state.activePlayerId !== playerId) return fail("Ce n'est pas le tour de ce joueur.");
+  return ok();
+}
+
+/**
+ * Structure de tour (README "Structure de tour") : jouer une carte,
+ * Saborder ou Briser un Objet sont réservés à la Phase principale ;
+ * attaquer est réservé à la Phase de combat, atteinte via `advancePhase`.
+ */
+export function assertInPhase(state: GameState, playerId: PlayerId, phase: GamePhase): ValidationResult {
+  const player = state.players.find((p) => p.id === playerId);
+  if (!player) return fail("Joueur introuvable.");
+  if (state.phase !== phase) {
+    const label = phase === "mainPhase" ? "la Phase principale" : "la Phase de combat";
+    return fail(`Cette action n'est possible que pendant ${label}.`);
+  }
   return ok();
 }
 
