@@ -35,11 +35,18 @@ function roundedRectShape(w: number, h: number, r: number) {
   return s;
 }
 
-/** Plaque extrudée avec biseau (coins arrondis, profondeur ~22% de son plus petit côté). */
-function plankGeometry(w: number, h: number) {
+/**
+ * Plaque extrudée avec biseau (coins arrondis, profondeur ~28% de son plus
+ * petit côté — accentuée pour un vrai relief, cf. retour "effet de
+ * profondeur"). `uvMargin` recadre l'échantillonnage de la texture vers
+ * l'intérieur (ex: 0.04 = on ignore les 4% extérieurs de chaque bord) pour
+ * exclure le halo/ombre douce souvent cuit dans le PNG source, qui sinon
+ * apparaît comme un liseré gris terne autour de la plaque.
+ */
+function plankGeometry(w: number, h: number, uvMargin = 0) {
   const r = Math.min(w, h) * 0.22;
-  const depth = Math.min(w, h) * 0.22;
-  const bevelThickness = depth * 0.2;
+  const depth = Math.min(w, h) * 0.28;
+  const bevelThickness = depth * 0.24;
   const geo = new THREE.ExtrudeGeometry(roundedRectShape(w, h, r), {
     depth,
     bevelEnabled: true,
@@ -56,11 +63,13 @@ function plankGeometry(w: number, h: number) {
   // textures, tout ça se retrouve écrasé sur le tout dernier texel du
   // bord : d'où la plaque en aplat de couleur sans texte visible. On
   // renormalise donc les UV sur l'étendue réelle du rectangle (-w/2..w/2,
-  // -h/2..h/2) pour que la texture couvre bien toute la face.
+  // -h/2..h/2), rétrécie de `uvMargin` de chaque côté, pour que la texture
+  // couvre bien toute la face sans son liseré extérieur indésirable.
   const uv = geo.attributes.uv!;
   const pos = geo.attributes.position!;
+  const scale = 1 - 2 * uvMargin;
   for (let i = 0; i < uv.count; i++) {
-    uv.setXY(i, pos.getX(i) / w + 0.5, pos.getY(i) / h + 0.5);
+    uv.setXY(i, (pos.getX(i) / w) * scale + 0.5, (pos.getY(i) / h) * scale + 0.5);
   }
   uv.needsUpdate = true;
   // Le biseau pousse la vraie face avant au-delà de `depth/2` (jusqu'à
@@ -163,8 +172,16 @@ function proceduralIconTexture(kind: "gear" | "power"): THREE.CanvasTexture {
 interface ButtonEntry {
   group: THREE.Group;
   body: THREE.Mesh;
-  /** Matériau de la ou des faces visibles (texture/couleur, réagit au survol/appui). */
-  bodyMaterial: THREE.MeshStandardMaterial;
+  /**
+   * Matériau de la ou des faces visibles (texture/couleur, réagit au
+   * survol/appui). Non éclairé (`MeshBasicMaterial`) pour les plaques —
+   * une illustration peinte doit garder ses couleurs d'origine, pas être
+   * teintée par les lumières chaudes de la scène (`MeshStandardMaterial`
+   * PBR désaturait visiblement les PNG). Les icônes en laiton, elles,
+   * restent en `MeshStandardMaterial` : leur aspect métallique dépend
+   * réellement de l'éclairage.
+   */
+  bodyMaterial: THREE.MeshStandardMaterial | THREE.MeshBasicMaterial;
   baseColor: THREE.Color;
   label: THREE.Mesh | null;
   isCircle: boolean;
@@ -243,20 +260,14 @@ export function ChestButtons3D({ slots, iconSlots }: { slots: ChestSlotDef[]; ic
       scene.add(group);
 
       // Deux matériaux séparés plutôt qu'un seul partagé par toute la
-      // géométrie : les faces avant/arrière (texturées, transparentes pour
-      // la marge PNG) et les flancs du biseau (couleur unie). Un seul
-      // matériau texturé sur les flancs ferait apparaître un fragment
-      // étiré de l'image (le mapping UV des flancs d'ExtrudeGeometry
-      // n'a rien à voir avec celui des faces).
-      const capMaterial = new THREE.MeshStandardMaterial({
-        roughness: 0.55,
-        metalness: 0.12,
-        transparent: true,
-        alphaTest: 0.35,
-        emissive: new THREE.Color(BRASS_LIGHT),
-        emissiveIntensity: 0,
-      });
-      const sideMaterial = new THREE.MeshStandardMaterial({ color: WOOD[slot.variant], roughness: 0.7, metalness: 0.08 });
+      // géométrie : la face avant (texturée, transparente pour la marge
+      // PNG, NON éclairée — cf. commentaire sur `ButtonEntry.bodyMaterial`)
+      // et les flancs du biseau (couleur unie, éclairés pour porter tout
+      // l'effet de profondeur). Un seul matériau texturé sur les flancs
+      // ferait apparaître un fragment étiré de l'image (le mapping UV des
+      // flancs d'ExtrudeGeometry n'a rien à voir avec celui des faces).
+      const capMaterial = new THREE.MeshBasicMaterial({ transparent: true, alphaTest: 0.35 });
+      const sideMaterial = new THREE.MeshStandardMaterial({ color: WOOD[slot.variant], roughness: 0.6, metalness: 0.15 });
       if (slot.disabled) {
         capMaterial.color.multiplyScalar(0.55);
         sideMaterial.color.multiplyScalar(0.55);
@@ -375,7 +386,17 @@ export function ChestButtons3D({ slots, iconSlots }: { slots: ChestSlotDef[]; ic
           // dépendre d'assets aux proportions exactement calées sur chaque
           // emplacement du coffret. Le dégradé procédural n'a de toute façon
           // pas de ratio propre à préserver.
-          const geoResult = plankGeometry(pw, ph);
+          //
+          // Léger sur-dimensionnement (OVERSCAN) : le coffret a déjà son
+          // propre cadre peint à cet emplacement (bois + liseré laiton).
+          // Une plaque pile calée sur l'emplacement mesuré laisse voir un
+          // mince liseré de ce cadre "de fond" en cas de moindre écart de
+          // mesure — donnant l'impression d'un double-cadre légèrement
+          // désaligné. En dépassant un peu, la plaque recouvre entièrement
+          // ce cadre de fond ; `uvMargin` compense en resserrant l'échan-
+          // tillonnage pour ne pas non plus déborder sur le halo du PNG.
+          const OVERSCAN = 1.08;
+          const geoResult = plankGeometry(pw * OVERSCAN, ph * OVERSCAN, 0.05);
           frontZ = geoResult.frontZ;
           entry.body.geometry = geoResult.geo;
           if (entry.label) {
@@ -461,10 +482,20 @@ export function ChestButtons3D({ slots, iconSlots }: { slots: ChestSlotDef[]; ic
         const squash = 1 - entry.pressMix * 0.04;
         entry.group.scale.set(squash, squash, 1);
 
-        entry.bodyMaterial.emissiveIntensity = entry.hoverMix * 0.22 * (1 - entry.pressMix * 0.5);
         // Assombrit la plaque en s'enfonçant (ombre "interne" simulée sans
         // shadow map réelle) plutôt que de ne compter que sur le décalage Z.
-        entry.bodyMaterial.color.copy(entry.baseColor).multiplyScalar(1 - entry.pressMix * 0.35);
+        const pressDarken = 1 - entry.pressMix * 0.35;
+        if (entry.bodyMaterial instanceof THREE.MeshStandardMaterial) {
+          // Icônes laiton : éclairées, le survol se lit via l'émissivité.
+          entry.bodyMaterial.emissiveIntensity = entry.hoverMix * 0.22 * (1 - entry.pressMix * 0.5);
+          entry.bodyMaterial.color.copy(entry.baseColor).multiplyScalar(pressDarken);
+        } else {
+          // Plaques non éclairées : le survol éclaircit directement la
+          // couleur (pas d'émissivité sur MeshBasicMaterial) pour garder
+          // les couleurs d'origine du PNG au repos.
+          const hoverBrighten = 1 + entry.hoverMix * 0.18 * (1 - entry.pressMix * 0.5);
+          entry.bodyMaterial.color.copy(entry.baseColor).multiplyScalar(pressDarken * hoverBrighten);
+        }
       }
       renderer.render(scene, camera);
     }
