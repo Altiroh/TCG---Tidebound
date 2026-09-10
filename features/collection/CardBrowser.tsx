@@ -28,17 +28,17 @@ function displayInstance(cardId: string): CardInstance {
   };
 }
 
-/** Jeton stat (Coût/Puissance/Résistance) — grosse valeur + légende, plutôt qu'une ligne "Label : valeur". */
+/** Jeton stat (Coût/Puissance/Résistance) — verre dépoli, grosse valeur + légende. */
 function StatChip({ value, label, accentClassName }: { value: number; label: string; accentClassName: string }) {
   return (
-    <div className="flex flex-1 flex-col items-center gap-0.5 rounded-lg border border-slate-700/60 bg-black/25 py-2.5">
+    <div className="flex flex-1 flex-col items-center gap-0.5 rounded-xl border border-white/15 bg-white/10 py-2.5 backdrop-blur-md">
       <span className={`text-xl font-bold [font-family:var(--font-card-title)] ${accentClassName}`}>{value}</span>
-      <span className="text-[10px] font-medium uppercase tracking-wider text-slate-500">{label}</span>
+      <span className="text-[10px] font-medium uppercase tracking-wider text-slate-300/80">{label}</span>
     </div>
   );
 }
 
-/** Panneau d'informations affiché à côté de la carte agrandie — inspiré des fiches de carte Hearthstone, mais limité aux données réelles du modèle Tidebound (pas de rareté/artiste/poussière, absents de `CardDefinition`). */
+/** Panneau d'informations affiché à côté de la carte agrandie — verre liquide (glow coloré diffus + carte dépolie + reflet), inspiré des fiches de carte Hearthstone mais limité aux données réelles du modèle Tidebound (pas de rareté/artiste/poussière, absents de `CardDefinition`). */
 function CardInfoPanel({ cardId }: { cardId: string }) {
   const def = getCardDefinition(cardId);
   const isAbyssal = def.subtype === "abyssal";
@@ -48,53 +48,67 @@ function CardInfoPanel({ cardId }: { cardId: string }) {
   const showHealth = def.health !== undefined;
 
   return (
-    <div className="w-80 shrink-0 overflow-hidden rounded-2xl border border-slate-700/60 bg-gradient-to-b from-board-surface to-board-background shadow-2xl [font-family:var(--font-card-body)]">
-      <div className={`h-1.5 w-full ${isAbyssal ? "bg-fuchsia-800" : "bg-board-accent"}`} />
-      <div className="p-6">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-800/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-board-accent">
-            {/* eslint-disable-next-line @next/next/no-img-element -- asset local, icône de type déjà stylée */}
-            <img src={`/assets/cards/icons/TYPE_${def.type.toUpperCase()}_STANDARD.png`} alt="" className="h-3.5 w-3.5 object-contain" />
-            {CARD_TYPE_LABELS[def.type]}
-          </span>
-          {isAbyssal && (
-            <span className="rounded-full bg-fuchsia-950/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-fuchsia-300">
-              Abyssal
+    <div className="relative w-80 shrink-0 [font-family:var(--font-card-body)]">
+      {/* Glow diffus derrière le verre — teinte selon la famille de la carte */}
+      <div
+        aria-hidden
+        className={`absolute -inset-8 rounded-[2.5rem] opacity-50 blur-3xl ${isAbyssal ? "bg-fuchsia-700" : "bg-sky-500"}`}
+      />
+
+      <div className="relative overflow-hidden rounded-3xl border border-white/15 bg-white/[0.07] shadow-[0_8px_40px_rgba(0,0,0,0.55)] backdrop-blur-2xl">
+        {/* Reflet du haut, façon verre liquide */}
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-white/25 to-transparent" />
+        <div aria-hidden className="pointer-events-none absolute -left-10 top-0 h-full w-16 -rotate-12 bg-white/10 blur-md" />
+
+        <div className="relative p-6">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-sky-200 backdrop-blur-md">
+              {/* eslint-disable-next-line @next/next/no-img-element -- asset local, icône de type déjà stylée */}
+              <img src={`/assets/cards/icons/TYPE_${def.type.toUpperCase()}_STANDARD.png`} alt="" className="h-3.5 w-3.5 object-contain" />
+              {CARD_TYPE_LABELS[def.type]}
             </span>
-          )}
-          {otherSubtype && (
-            <span className="rounded-full bg-slate-800/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-              {otherSubtype}
-            </span>
-          )}
-        </div>
-
-        <h2 className="mt-3 text-2xl font-semibold text-white [font-family:var(--font-card-title)]">{def.name}</h2>
-
-        <div className="mt-4 flex gap-2">
-          <StatChip value={def.cost} label="Coût" accentClassName="text-sky-300" />
-          {showAttack && <StatChip value={def.attack ?? 0} label="Puissance" accentClassName="text-orange-300" />}
-          {showHealth && <StatChip value={def.health ?? 0} label="Résistance" accentClassName="text-emerald-300" />}
-        </div>
-
-        {def.text && (
-          <p className="mt-4 rounded-lg border-l-2 border-board-accent/50 bg-black/20 py-2 pl-3 pr-2.5 text-[15px] leading-relaxed text-slate-300">
-            {def.text}
-          </p>
-        )}
-
-        {def.keywords && def.keywords.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-1.5">
-            {def.keywords.map((keyword) => (
-              <span key={keyword} className="rounded-md bg-board-accent/10 px-2 py-1 text-[11px] font-medium uppercase tracking-wide text-board-accent">
-                {keyword}
+            {isAbyssal && (
+              <span className="rounded-full border border-white/15 bg-fuchsia-500/20 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-fuchsia-200 backdrop-blur-md">
+                Abyssal
               </span>
-            ))}
+            )}
+            {otherSubtype && (
+              <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-slate-300 backdrop-blur-md">
+                {otherSubtype}
+              </span>
+            )}
           </div>
-        )}
 
-        <div className="mt-5 border-t border-slate-700/50 pt-3 text-right text-xs text-slate-500">
-          {getMaxCopies(def)} exemplaire{getMaxCopies(def) > 1 ? "s" : ""} max / deck
+          <h2 className="mt-3 text-2xl font-semibold text-white [font-family:var(--font-card-title)]">{def.name}</h2>
+
+          <div className="mt-4 flex gap-2">
+            <StatChip value={def.cost} label="Coût" accentClassName="text-sky-300" />
+            {showAttack && <StatChip value={def.attack ?? 0} label="Puissance" accentClassName="text-orange-300" />}
+            {showHealth && <StatChip value={def.health ?? 0} label="Résistance" accentClassName="text-emerald-300" />}
+          </div>
+
+          {def.text && (
+            <p className="mt-4 rounded-xl border border-white/10 bg-white/5 py-2 pl-3 pr-2.5 text-[15px] leading-relaxed text-slate-200 backdrop-blur-md">
+              {def.text}
+            </p>
+          )}
+
+          {def.keywords && def.keywords.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-1.5">
+              {def.keywords.map((keyword) => (
+                <span
+                  key={keyword}
+                  className="rounded-md border border-white/15 bg-white/10 px-2 py-1 text-[11px] font-medium uppercase tracking-wide text-sky-200 backdrop-blur-md"
+                >
+                  {keyword}
+                </span>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-5 border-t border-white/10 pt-3 text-right text-xs text-slate-400">
+            {getMaxCopies(def)} exemplaire{getMaxCopies(def) > 1 ? "s" : ""} max / deck
+          </div>
         </div>
       </div>
     </div>
