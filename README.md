@@ -327,7 +327,17 @@ la PWA n'est pas encore réellement installable.
 1. Décider si les mécaniques réactives/à information cachée les plus
    fréquentes du catalogue (interception "1re fois par tour", regarder
    une carte) valent la peine d'un nouveau sous-système générique, ou
-   restent hors périmètre.
+   restent hors périmètre. Proposition technique rédigée côté
+   implémentation (page Notion "Proposition — Interception réactive, info
+   cachée, choix de joueur, Équipement", dans TCG Online — Game Design) :
+   s'appuyer sur deux précédents déjà dans le moteur (`statusFlags` /
+   `ignoreNextTideDamage` pour l'interception, `pendingOceanJudgment` pour
+   les résolutions en attente) plutôt que d'inventer un nouveau paradigme,
+   et traiter l'Équipement persistant comme un chantier indépendant et
+   immédiatement actionnable. Signale aussi une fuite d'information déjà
+   présente aujourd'hui : `matches.state` expose le `GameState` complet
+   (main adverse incluse) aux deux participants via Realtime — pas de
+   couche de projection par joueur avant l'info cachée.
 2. Appliquer `RULES.MAX_HAND_SIZE` (défausse en fin de tour).
 3. Schéma Supabase minimal (profils, parties, invitations, cartes,
    raretés, boosters) + policies RLS — voir le schéma BDD recommandé dans
