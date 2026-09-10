@@ -95,7 +95,14 @@ export function TideboundMenuChest() {
     <div
       ref={rootRef}
       className="chest-root relative mx-auto w-full"
-      style={{ maxWidth: "min(90vw, 1400px)", aspectRatio: "1448 / 1086", perspective: "1400px" }}
+      style={{
+        // Contraint par la largeur ET la hauteur disponibles (sinon la
+        // boîte déborde verticalement sur les écrans larges mais courts,
+        // ex : un laptop en paysage) — 1448/1086 = le ratio réel de l'asset.
+        width: "min(90vw, 1400px, calc(85vh * 1448 / 1086))",
+        aspectRatio: "1448 / 1086",
+        perspective: "1400px",
+      }}
     >
       <div className="chest-tilt relative h-full w-full">
         <Image
