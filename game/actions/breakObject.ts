@@ -26,6 +26,11 @@ function validate(state: GameState, action: BreakObjectAction) {
   const player = getPlayer(state, action.playerId);
   const unit = player.board.find((u) => u.instanceId === action.instanceId)!;
   const def = getCardDefinition(unit.cardId);
+
+  if (def.requiresTideStateForBreak && !def.requiresTideStateForBreak.includes(state.environment.tideState)) {
+    return { ok: false as const, error: "Cet Objet ne peut être brisé dans l'état de Marée actuel." };
+  }
+
   const needsTarget = (def.onBreakEffects ?? []).some((e) => e.target.kind === "chosenUnit");
   if (needsTarget && !action.targetInstanceId) {
     return { ok: false as const, error: "Briser cet Objet nécessite une cible." };

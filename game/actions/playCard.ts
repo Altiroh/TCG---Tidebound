@@ -1,5 +1,5 @@
 import { canBeEquipTarget, getCardDefinition, hasAnyValidEquipTarget } from "@/game/cards/sets/core";
-import { isPermanentCard, UNIT_CARD_TYPES } from "@/game/cards/types";
+import { isPermanentCard, UNIT_CARD_TYPES, type CardDefinition } from "@/game/cards/types";
 import type { EffectContext } from "@/game/effects/resolveEffect";
 import { resolveEffect } from "@/game/effects/resolveEffect";
 import type { GameEvent } from "@/game/events/types";
@@ -21,6 +21,13 @@ function isUnitCard(type: string): boolean {
   return (UNIT_CARD_TYPES as readonly string[]).includes(type);
 }
 
+/** Coût réel à payer, en tenant compte d'un `costOverrideWhenTideStateIn` actif (ex: Choppe ! gratuite pendant Calme). `def.cost` reste la valeur imprimée par défaut ailleurs (fiche carte). */
+function effectiveCost(def: CardDefinition, state: GameState): number {
+  const override = def.costOverrideWhenTideStateIn;
+  if (override && override.tideStateIn.includes(state.environment.tideState)) return override.cost;
+  return def.cost;
+}
+
 function validate(state: GameState, action: PlayCardAction) {
   const player = state.players.find((p) => p.id === action.playerId);
   const generalChecks = combine(
@@ -39,7 +46,14 @@ function validate(state: GameState, action: PlayCardAction) {
     return { ok: false as const, error: "Cette carte ne peut pas être jouée dans l'état de Marée actuel." };
   }
 
-  const costCheck = assertCanPayCost(state, action.playerId, def.cost);
+  if (def.requiresControllerReasonAtMost !== undefined && player!.reason > def.requiresControllerReasonAtMost) {
+    return { ok: false as const, error: `Cette carte ne peut être jouée qu'avec ${def.requiresControllerReasonAtMost} Raison ou moins.` };
+  }
+  if (def.requiresControllerReasonExactly !== undefined && player!.reason !== def.requiresControllerReasonExactly) {
+    return { ok: false as const, error: `Cette carte ne peut être jouée qu'avec exactement ${def.requiresControllerReasonExactly} Raison.` };
+  }
+
+  const costCheck = assertCanPayCost(state, action.playerId, effectiveCost(def, state));
   if (!costCheck.ok) return costCheck;
 
   if (isPermanentCard(def)) {
@@ -92,6 +106,7 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
   const player = getPlayer(state, action.playerId);
   const instance = player.hand.find((c) => c.instanceId === action.instanceId)!;
   const def = getCardDefinition(instance.cardId);
+  const cost = effectiveCost(def, state);
   const events: GameEvent[] = [];
   const base = { turnNumber: state.turnNumber, timestamp: Date.now() };
 
@@ -99,7 +114,7 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
   const playerAfterCost: PlayerState = {
     ...player,
     hand: handAfterRemoval,
-    reason: player.reason - def.cost,
+    reason: player.reason - cost,
   };
 
   let nextState: GameState = {
@@ -111,7 +126,7 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
   };
 
   events.push({ ...base, type: "PLAY_CARD", playerId: player.id, instanceId: instance.instanceId, cardId: def.id });
-  events.push({ ...base, type: "REASON_CHANGED", playerId: player.id, delta: -def.cost });
+  events.push({ ...base, type: "REASON_CHANGED", playerId: player.id, delta: -cost });
 
   const asPermanent = isPermanentCard(def);
 

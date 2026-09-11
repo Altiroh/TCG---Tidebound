@@ -195,6 +195,49 @@ export interface CardDefinition {
   requiresTideState?: TideStateName[];
 
   /**
+   * Restreint la POSE de cette carte à un plafond de Raison du contrôleur
+   * (ex: Ce Qui Suit le Navire, "5 Raison ou moins"). Vérifié AVANT le
+   * paiement du coût, sur la Raison courante.
+   */
+  requiresControllerReasonAtMost?: number;
+
+  /**
+   * Restreint la POSE de cette carte à une Raison du contrôleur EXACTEMENT
+   * égale à cette valeur (ex: variante Abyssale de Ce Qui Suit le Navire,
+   * "exactement 5 Raison" — pas "5 ou moins"). Vérifié AVANT le paiement du
+   * coût. Mutuellement exclusif avec `requiresControllerReasonAtMost` en
+   * pratique (jamais les deux sur la même carte).
+   */
+  requiresControllerReasonExactly?: number;
+
+  /**
+   * Remplace `cost` par une autre valeur quand la Marée courante est l'un
+   * de ces états (ex: Choppe !, "coûte 0 Raison pendant Calme"). Vérifié à
+   * la pose, AVANT paiement — `cost` reste la valeur imprimée/affichée par
+   * défaut ailleurs (fiche carte, etc.).
+   */
+  costOverrideWhenTideStateIn?: { tideStateIn: TideStateName[]; cost: number };
+
+  /**
+   * Pour un Objet uniquement : restreint l'activation de `onBreakEffects`
+   * (`game/actions/breakObject.ts`) à ces états de Marée (ex: Choppe !,
+   * activable seulement pendant Calme). `undefined` = brisable en toute
+   * circonstance.
+   */
+  requiresTideStateForBreak?: TideStateName[];
+
+  /**
+   * Pour une unité ATTAQUANTE (ou l'Équipement qui l'équipe, via
+   * `CardInstance.attachedToInstanceId`) : dégâts supplémentaires infligés
+   * quand la CIBLE de l'attaque est de ce type (ex: Barracuda/Poisson-Scie
+   * Gris +1 contre une Structure, Corde de Remorquage +1 à l'unité
+   * équipée). Recalculé à chaque combat, jamais stocké comme modificateur
+   * permanent — sans effet sur une attaque directe du Navire (pas de
+   * cible-carte).
+   */
+  bonusDamageVsTargetType?: { type: CardType; amount: number };
+
+  /**
    * Nombre maximum d'exemplaires de cette carte dans un deck personnel —
    * donnée propre à chaque carte, jamais dérivée de la rareté (cadrage
    * `TCG_DATABASE.md` "max_copies canonique"). Défaut : 3.

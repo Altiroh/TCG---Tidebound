@@ -1,4 +1,5 @@
 import type { CardInstance } from "@/game/cards/types";
+import { getCardDefinition } from "@/game/cards/sets/core";
 import { computeEffectiveStats } from "@/game/cards/stats";
 import { getShipDefinition } from "@/game/environment/shipData";
 import type { GameEvent } from "@/game/events/types";
