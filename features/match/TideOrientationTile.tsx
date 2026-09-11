@@ -4,10 +4,9 @@ import { useState } from "react";
 import type { TideOrientation } from "@/game";
 
 /**
- * Tuile plein cadre pour un sens de Marée donné, avec repli propre tant
- * que l'asset (`/m_montante.png` / `/m_desc.png`, à la racine de
- * `public/`) n'est pas encore déposé : une image cassée resterait
- * visible sinon, `onError` bascule alors sur un repli textuel discret.
+ * Tuile plein cadre pour un sens de Marée donné, avec repli propre si
+ * jamais l'asset venait à manquer : une image cassée resterait visible
+ * sinon, `onError` bascule alors sur un repli textuel discret.
  */
 function TideTileImage({ src, label, arrow, visible }: { src: string; label: string; arrow: string; visible: boolean }) {
   const [broken, setBroken] = useState(false);
@@ -46,8 +45,8 @@ function TideTileImage({ src, label, arrow, visible }: { src: string; label: str
 export function TideOrientationTile({ orientation }: { orientation: TideOrientation }) {
   return (
     <div className="relative h-full w-full overflow-hidden rounded-md bg-black/80">
-      <TideTileImage src="/m_montante.png" label="Marée Montante" arrow="▲" visible={orientation === "montante"} />
-      <TideTileImage src="/m_desc.png" label="Marée Descendante" arrow="▼" visible={orientation === "descendante"} />
+      <TideTileImage src="/assets/m_montante.png" label="Marée Montante" arrow="▲" visible={orientation === "montante"} />
+      <TideTileImage src="/assets/m_desc.png" label="Marée Descendante" arrow="▼" visible={orientation === "descendante"} />
     </div>
   );
 }

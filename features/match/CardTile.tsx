@@ -5,6 +5,7 @@ import {
   computeEffectiveStats,
   computeStatModifierDelta,
   getCardDefinition,
+  STATUS_MALADE,
   UNIT_CARD_TYPES,
   type CardDefinition,
   type CardInstance,
@@ -328,13 +329,20 @@ export function CardTile({
             </span>
           </div>
 
-          {(stats.inactive || (instance.summoningSick && isUnit) || instance.turnsRemaining !== undefined) && (
+          {(stats.inactive ||
+            (instance.summoningSick && isUnit) ||
+            instance.turnsRemaining !== undefined ||
+            instance.statuses?.includes(STATUS_MALADE)) && (
             <div
               className="flex flex-wrap items-center justify-center gap-1 overflow-hidden"
               style={{ ...zoneStyle(STATUS_BADGES_ZONE), fontSize: "5cqw" }}
             >
               {stats.inactive && <span className="rounded bg-black/60 px-1 text-amber-300">Inactive</span>}
-              {instance.summoningSick && isUnit && <span className="rounded bg-black/60 px-1 text-slate-300">Malade</span>}
+              {/* "Non prête" (maladie d'invocation) — distinct du statut MALADE (Houle), voir `STATUS_MALADE` */}
+              {instance.summoningSick && isUnit && <span className="rounded bg-black/60 px-1 text-slate-300">Non prête</span>}
+              {instance.statuses?.includes(STATUS_MALADE) && (
+                <span className="rounded bg-black/60 px-1 text-cyan-300">Malade</span>
+              )}
               {instance.turnsRemaining !== undefined && (
                 <span className="rounded bg-black/60 px-1 text-slate-300">Durée {instance.turnsRemaining}</span>
               )}
