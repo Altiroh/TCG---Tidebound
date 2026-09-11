@@ -78,12 +78,19 @@ function CardInfoPanel({ cardId }: { cardId: string }) {
 
         <div className="relative p-6">
           <div className="flex flex-wrap items-center gap-2">
-            {/* eslint-disable-next-line @next/next/no-img-element -- asset local, icône + libellé de type déjà réunis dans l'asset */}
-            <img
-              src={`/assets/cards/icons/TYPE_${def.type.toUpperCase()}_STANDARD.png`}
-              alt={CARD_TYPE_LABELS[def.type]}
-              className="h-6 w-auto object-contain"
-            />
+            {/* Puce blanche, toujours visible : le type reste lisible même si
+                l'icône seule est ambiguë (ex: Marin vs Créature). */}
+            <span className="flex items-center gap-1.5 rounded-full bg-white px-3 py-1 shadow-[0_1px_4px_rgba(0,0,0,0.35)]">
+              {/* eslint-disable-next-line @next/next/no-img-element -- asset local, icône de type */}
+              <img
+                src={`/assets/cards/icons/TYPE_${def.type.toUpperCase()}_STANDARD.png`}
+                alt=""
+                className="h-4 w-auto object-contain"
+              />
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-800">
+                {CARD_TYPE_LABELS[def.type]}
+              </span>
+            </span>
             {isAbyssal && (
               <span className="rounded-full border border-white/15 bg-fuchsia-500/20 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-fuchsia-200 backdrop-blur-md">
                 Abyssal

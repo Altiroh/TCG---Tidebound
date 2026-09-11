@@ -1,4 +1,4 @@
-import type { CardType } from "@/game";
+import type { CardType, GraveyardCause } from "@/game";
 import type { TideStateName } from "@/game";
 
 /**
@@ -32,4 +32,19 @@ export const TIDE_STATE_COLORS: Record<TideStateName, string> = {
   houle: "text-cyan-300",
   tempete: "text-amber-300",
   abysses: "text-fuchsia-300",
+};
+
+/** Cause de sortie vers le cimetière (`CardInstance.graveyardCause`) — vue de défausse (`GraveyardViewer`). */
+export const GRAVEYARD_CAUSE_LABELS: Record<GraveyardCause, string> = {
+  discarded: "Défaussée",
+  destroyed: "Détruite",
+  scuttled: "Sabordée",
+  expired: "Expirée",
+};
+
+export const GRAVEYARD_CAUSE_COLORS: Record<GraveyardCause, string> = {
+  discarded: "text-slate-300",
+  destroyed: "text-rose-300",
+  scuttled: "text-amber-300",
+  expired: "text-cyan-300",
 };

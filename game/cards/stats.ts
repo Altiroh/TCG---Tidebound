@@ -35,3 +35,18 @@ export function computeEffectiveStats(unit: CardInstance, tideState: TideStateNa
     destroyedByTide: tideEntry?.destroyed ?? false,
   };
 }
+
+/**
+ * Isole la contribution des modificateurs (buffs/debuffs) sur la
+ * Puissance/Résistance affichée, séparément de l'affinité de Marée —
+ * pour la lisibilité visuelle demandée par Notion "Moteur de partie"
+ * (valeur au-dessus de la base imprimée en vert, en-dessous en rouge).
+ * `0` = valeur de base (imprimée, éventuellement ajustée par la Marée),
+ * inchangée par un buff/debuff actif.
+ */
+export function computeStatModifierDelta(unit: CardInstance): { attack: number; health: number } {
+  return {
+    attack: unit.modifiers.reduce((sum, m) => sum + m.attack, 0),
+    health: unit.modifiers.reduce((sum, m) => sum + m.health, 0),
+  };
+}

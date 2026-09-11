@@ -40,7 +40,7 @@ export {
   STATUS_MALADE,
 } from "@/game/cards/types";
 export { CARD_DATABASE, CORE_SET, getCardDefinition } from "@/game/cards/sets/core";
-export { computeEffectiveStats } from "@/game/cards/stats";
+export { computeEffectiveStats, computeStatModifierDelta } from "@/game/cards/stats";
 export type { EffectiveStats } from "@/game/cards/stats";
 
 export type { DeckList } from "@/game/cards/decks/preconstructed";

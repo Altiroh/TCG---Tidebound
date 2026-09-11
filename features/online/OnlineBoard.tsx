@@ -18,9 +18,11 @@ import { CardBack } from "@/features/match/CardBack";
 import { CardHoverPreview } from "@/features/match/CardHoverPreview";
 import { CardTile } from "@/features/match/CardTile";
 import { CargoCluster } from "@/features/match/CargoCluster";
+import { GraveyardViewer } from "@/features/match/GraveyardViewer";
 import { PhaseActionButton } from "@/features/match/PhaseActionButton";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ShipInstrumentCluster } from "@/features/match/ShipInstrumentCluster";
+import { TideOrientationTile } from "@/features/match/TideOrientationTile";
 import { TIDE_STATE_COLORS, TIDE_STATE_LABELS } from "@/features/match/cardDisplay";
 import { usePhaseBannerEvent } from "@/features/match/usePhaseBannerEvent";
 
@@ -62,6 +64,7 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
   const [dragOverOwnBoard, setDragOverOwnBoard] = useState(false);
   const [dragOverOpponentBoard, setDragOverOpponentBoard] = useState(false);
   const [dragOverGraveyard, setDragOverGraveyard] = useState(false);
+  const [graveyardViewerPlayerId, setGraveyardViewerPlayerId] = useState<PlayerId | null>(null);
 
   const me = state.players.find((p) => p.id === myUserId)!;
   const opponent = state.players.find((p) => p.id !== myUserId)!;
@@ -354,20 +357,17 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
           ))}
         </div>
         <div className="absolute" style={{ left: 1250, top: 143, width: 240 }}>
-          <CargoCluster deckCount={opponent.deck.length} graveyardCount={opponent.graveyard.length} width={240} />
+          <CargoCluster
+            deckCount={opponent.deck.length}
+            graveyardCount={opponent.graveyard.length}
+            width={240}
+            onOpenGraveyard={() => setGraveyardViewerPlayerId(opponent.id)}
+          />
         </div>
 
         {/* Bande centrale : orientation de la Marée (gauche), état de la Marée (centre), interaction (droite) */}
-        <div
-          className="absolute flex flex-col items-center justify-center gap-2 rounded-md bg-black/80 text-center"
-          style={{ left: 8, top: 350, width: 214, height: 170 }}
-        >
-          <span className="text-4xl leading-none text-sky-200">
-            {state.environment.tideOrientation === "montante" ? "▲" : "▼"}
-          </span>
-          <span className="text-sm font-semibold uppercase tracking-wide text-sky-200">
-            Marée {state.environment.tideOrientation === "montante" ? "Montante" : "Descendante"}
-          </span>
+        <div className="absolute" style={{ left: 8, top: 350, width: 214, height: 170 }}>
+          <TideOrientationTile orientation={state.environment.tideOrientation} />
         </div>
 
         <div
@@ -470,6 +470,7 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
               onDragLeave: handleGraveyardDragLeave,
               onDrop: handleGraveyardDrop,
             }}
+            onOpenGraveyard={() => setGraveyardViewerPlayerId(me.id)}
           />
         </div>
 
@@ -555,6 +556,13 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
 
       <PhaseBanner text={bannerText} bannerKey={bannerEvent?.id ?? null} />
       {hoverPreview && <CardHoverPreview cardId={hoverPreview.cardId} anchorRect={hoverPreview.rect} />}
+      {graveyardViewerPlayerId && (
+        <GraveyardViewer
+          playerLabel={graveyardViewerPlayerId === myUserId ? "Toi" : "Adversaire"}
+          cards={state.players.find((p) => p.id === graveyardViewerPlayerId)!.graveyard}
+          onClose={() => setGraveyardViewerPlayerId(null)}
+        />
+      )}
     </>
   );
 }

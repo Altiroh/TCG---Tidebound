@@ -28,10 +28,20 @@ const config: Config = {
           "80%": { opacity: "1", transform: "scale(1)" },
           "100%": { opacity: "0", transform: "scale(1.02)" },
         },
+        "stat-buff": {
+          "0%": { transform: "scale(1)" },
+          "30%": { transform: "scale(1.35)" },
+          "60%": { transform: "scale(0.95)" },
+          "100%": { transform: "scale(1)" },
+        },
       },
       animation: {
         "stat-hit": "stat-hit 0.5s ease-out",
         "phase-banner": "phase-banner 1.6s ease-in-out forwards",
+        // Pulse neutre (n'impose pas de couleur, contrairement à stat-hit) —
+        // pour la coloration verte/rouge des modificateurs, appliquée en
+        // classe séparée (voir `CardTile.tsx`).
+        "stat-buff": "stat-buff 0.5s ease-out",
       },
     },
   },

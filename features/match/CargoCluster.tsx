@@ -10,6 +10,8 @@ interface CargoClusterProps {
     onDragLeave: (e: React.DragEvent) => void;
     onDrop: (e: React.DragEvent) => void;
   };
+  /** Ouvre la vue de consultation du cimetière (`GraveyardViewer`) au clic sur la zone crâne. */
+  onOpenGraveyard?: () => void;
   width?: number;
 }
 
@@ -24,7 +26,7 @@ interface CargoClusterProps {
  * cible de glisser-déposer pour Saborder quand `graveyardDropZone` est
  * fourni.
  */
-export function CargoCluster({ deckCount, graveyardCount, graveyardDropZone, width = 100 }: CargoClusterProps) {
+export function CargoCluster({ deckCount, graveyardCount, graveyardDropZone, onOpenGraveyard, width = 100 }: CargoClusterProps) {
   return (
     <div className="group relative shrink-0" style={{ width }}>
       {/* eslint-disable-next-line @next/next/no-img-element -- élément décoratif de mise en page fixe */}
@@ -52,8 +54,9 @@ export function CargoCluster({ deckCount, graveyardCount, graveyardDropZone, wid
           onDragOver={graveyardDropZone.onDragOver}
           onDragLeave={graveyardDropZone.onDragLeave}
           onDrop={graveyardDropZone.onDrop}
-          title="Glissez une unité ici pour la Saborder"
-          className={`absolute rounded-md transition-colors ${
+          onClick={onOpenGraveyard}
+          title={onOpenGraveyard ? "Glissez une unité ici pour la Saborder, ou cliquez pour consulter le cimetière" : "Glissez une unité ici pour la Saborder"}
+          className={`absolute rounded-md transition-colors ${onOpenGraveyard ? "cursor-pointer" : ""} ${
             graveyardDropZone.isOver ? "bg-rose-500/25 ring-2 ring-rose-500" : ""
           }`}
           style={{ left: "54%", top: "0%", width: "46%", height: "100%" }}
@@ -67,13 +70,19 @@ export function CargoCluster({ deckCount, graveyardCount, graveyardDropZone, wid
           </span>
         </div>
       ) : (
-        <span
-          className="reveal-on-hover absolute rounded-full bg-black/70 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-white"
-          style={{ left: "77%", top: "80%", transform: "translate(-50%,-50%)" }}
-          title="Cartes au cimetière"
+        <div
+          onClick={onOpenGraveyard}
+          title="Cartes au cimetière — cliquez pour consulter"
+          className={`absolute ${onOpenGraveyard ? "cursor-pointer" : ""}`}
+          style={{ left: "54%", top: "0%", width: "46%", height: "100%" }}
         >
-          {graveyardCount}
-        </span>
+          <span
+            className="reveal-on-hover absolute rounded-full bg-black/70 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-white"
+            style={{ left: "43%", top: "80%", transform: "translate(-50%,-50%)" }}
+          >
+            {graveyardCount}
+          </span>
+        </div>
       )}
     </div>
   );

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   computeEffectiveStats,
+  computeStatModifierDelta,
   getCardDefinition,
   UNIT_CARD_TYPES,
   type CardDefinition,
@@ -84,6 +85,34 @@ function useDecreaseFlash(value: number): boolean {
   }, [value]);
 
   return flashing;
+}
+
+/** `true` le temps d'une animation, chaque fois que `value` change (dans n'importe quel sens) par rapport à son appel précédent — pour signaler l'application d'un buff/debuff. */
+function useChangeFlash(value: number): boolean {
+  const previous = useRef(value);
+  const [flashing, setFlashing] = useState(false);
+
+  useEffect(() => {
+    if (value === previous.current) return undefined;
+    previous.current = value;
+    setFlashing(true);
+    const timeout = setTimeout(() => setFlashing(false), 500);
+    return () => clearTimeout(timeout);
+  }, [value]);
+
+  return flashing;
+}
+
+/**
+ * Lisibilité des modificateurs (Notion "Moteur de partie", "Modificateurs
+ * de stats & lisibilité visuelle") : vert si la valeur affichée dépasse
+ * la base imprimée (éventuellement ajustée par la Marée), rouge si elle
+ * est en-dessous, couleur normale sinon.
+ */
+function statColorClass(delta: number): string {
+  if (delta > 0) return "text-emerald-300";
+  if (delta < 0) return "text-rose-400";
+  return "text-white";
 }
 
 /**
@@ -203,6 +232,9 @@ export function CardTile({
   const hasResistance = isUnit || def.health !== undefined;
   const resistanceRemaining = Math.max(0, stats.health - instance.damageMarked);
   const resistanceFlashing = useDecreaseFlash(resistanceRemaining);
+  const modifierDelta = computeStatModifierDelta(instance);
+  const attackChanged = useChangeFlash(modifierDelta.attack);
+  const healthChanged = useChangeFlash(modifierDelta.health);
 
   const frameUrl = getFrameUrl(def);
   const typeIconUrl = getTypeIconUrl(def);
@@ -324,7 +356,9 @@ export function CardTile({
 
           {isUnit && (
             <div
-              className="flex items-center justify-start font-bold text-white [font-family:var(--font-card-title)]"
+              className={`flex items-center justify-start font-bold [font-family:var(--font-card-title)] ${statColorClass(
+                modifierDelta.attack
+              )} ${attackChanged ? "animate-stat-buff" : ""}`}
               style={{ ...zoneStyle(ATTACK_ZONE), fontSize: "7.5cqw", textShadow: THICK_TEXT_OUTLINE }}
             >
               {stats.attack}
@@ -332,8 +366,8 @@ export function CardTile({
           )}
           {hasResistance && (
             <div
-              className={`flex items-center justify-start font-bold text-white [font-family:var(--font-card-title)] ${
-                resistanceFlashing ? "animate-stat-hit" : ""
+              className={`flex items-center justify-start font-bold [font-family:var(--font-card-title)] ${
+                resistanceFlashing ? "animate-stat-hit text-white" : `${statColorClass(modifierDelta.health)} ${healthChanged ? "animate-stat-buff" : ""}`
               }`}
               style={{ ...zoneStyle(RESISTANCE_ZONE), fontSize: "7.5cqw", textShadow: THICK_TEXT_OUTLINE }}
             >
