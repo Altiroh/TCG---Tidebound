@@ -3,6 +3,9 @@
 import { useState } from "react";
 import { signUpWithPassword } from "@/app/connexion/actions";
 import { AUTH_INPUT_CLASS, AUTH_PRIMARY_BUTTON_CLASS } from "@/components/auth/AuthGlassPanel";
+import { EmailField } from "@/components/auth/EmailField";
+import { PasswordField } from "@/components/auth/PasswordField";
+import { evaluatePasswordStrength, MIN_SIGNUP_PASSWORD_SCORE } from "@/components/auth/passwordStrength";
 
 interface SignupFormProps {
   /** Appelé seulement si une session est immédiatement ouverte (confirmation email désactivée côté projet Supabase). */
@@ -20,10 +23,18 @@ interface SignupFormProps {
 export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
   const [status, setStatus] = useState<"idle" | "loading" | "error" | "check-email">("idle");
   const [error, setError] = useState<string | null>(null);
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const strength = evaluatePasswordStrength(password);
+  const strengthTooLow = password.length > 0 && strength.score < MIN_SIGNUP_PASSWORD_SCORE;
 
   async function handleSubmit(formData: FormData) {
-    const password = String(formData.get("password") ?? "");
-    const confirmPassword = String(formData.get("confirmPassword") ?? "");
+    if (strength.score < MIN_SIGNUP_PASSWORD_SCORE) {
+      setStatus("error");
+      setError(`Mot de passe trop faible : au moins "${evaluatePasswordStrength("a".repeat(8)).label}" est requis.`);
+      return;
+    }
     if (password !== confirmPassword) {
       setStatus("error");
       setError("Les mots de passe ne correspondent pas.");
@@ -63,7 +74,10 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
 
   return (
     <form action={handleSubmit} className="flex flex-col gap-3">
-      <h2 className="text-xl font-semibold text-white">Créer un compte</h2>
+      <div className="mb-1 flex flex-col items-center gap-1 text-center">
+        <h2 className="text-xl font-semibold text-white">Créer un compte</h2>
+        <p className="text-xs text-slate-400">Rejoins Tidebound en quelques secondes.</p>
+      </div>
       <input
         type="text"
         name="displayName"
@@ -71,34 +85,29 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
         autoComplete="nickname"
         className={AUTH_INPUT_CLASS}
       />
-      <input
-        type="email"
-        name="email"
-        required
-        placeholder="toi@exemple.com"
-        autoComplete="email"
-        className={AUTH_INPUT_CLASS}
-      />
-      <input
-        type="password"
+      <EmailField name="email" placeholder="toi@exemple.com" autoComplete="email" className={AUTH_INPUT_CLASS} />
+      <PasswordField
         name="password"
-        required
-        minLength={8}
         placeholder="Mot de passe (8 caractères min.)"
         autoComplete="new-password"
-        className={AUTH_INPUT_CLASS}
+        value={password}
+        onChange={setPassword}
+        showStrength
       />
-      <input
-        type="password"
+      <PasswordField
         name="confirmPassword"
-        required
-        minLength={8}
         placeholder="Confirmer le mot de passe"
         autoComplete="new-password"
-        className={AUTH_INPUT_CLASS}
+        value={confirmPassword}
+        onChange={setConfirmPassword}
       />
       {error && <p className="text-sm text-rose-400">{error}</p>}
-      <button type="submit" disabled={status === "loading"} className={AUTH_PRIMARY_BUTTON_CLASS}>
+      <button
+        type="submit"
+        disabled={status === "loading" || strengthTooLow}
+        title={strengthTooLow ? "Mot de passe trop faible" : undefined}
+        className={AUTH_PRIMARY_BUTTON_CLASS}
+      >
         {status === "loading" ? "Création..." : "Créer mon compte"}
       </button>
       <p className="text-center text-xs text-slate-400">

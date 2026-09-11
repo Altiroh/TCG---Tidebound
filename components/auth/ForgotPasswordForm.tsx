@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { requestPasswordReset } from "@/app/connexion/actions";
 import { AUTH_INPUT_CLASS, AUTH_PRIMARY_BUTTON_CLASS } from "@/components/auth/AuthGlassPanel";
+import { EmailField } from "@/components/auth/EmailField";
 
 interface ForgotPasswordFormProps {
   onBackToLogin: () => void;
@@ -44,14 +45,7 @@ export function ForgotPasswordForm({ onBackToLogin }: ForgotPasswordFormProps) {
     <form action={handleSubmit} className="flex flex-col gap-3">
       <h2 className="text-xl font-semibold text-white">Mot de passe oublié</h2>
       <p className="text-sm text-slate-300">On t&apos;envoie un lien pour en choisir un nouveau.</p>
-      <input
-        type="email"
-        name="email"
-        required
-        placeholder="toi@exemple.com"
-        autoComplete="email"
-        className={AUTH_INPUT_CLASS}
-      />
+      <EmailField name="email" placeholder="toi@exemple.com" autoComplete="email" className={AUTH_INPUT_CLASS} />
       {error && <p className="text-sm text-rose-400">{error}</p>}
       <button type="submit" disabled={status === "loading"} className={AUTH_PRIMARY_BUTTON_CLASS}>
         {status === "loading" ? "Envoi..." : "Envoyer le lien"}
