@@ -65,7 +65,7 @@ export function HandFan({
             onDragEnd={onDragEnd}
             onMouseEnter={() => setHoveredId(card.instanceId)}
             onMouseLeave={() => setHoveredId((current) => (current === card.instanceId ? null : current))}
-            className="origin-bottom transition-transform duration-150 ease-out"
+            className="pointer-events-auto origin-bottom transition-transform duration-150 ease-out"
             style={{
               marginLeft: index === 0 ? 0 : -OVERLAP_PX,
               zIndex: isHovered ? 40 : index,

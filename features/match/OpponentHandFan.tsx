@@ -14,9 +14,14 @@ const OVERLAP_PX = 38;
 
 /**
  * Main adverse : dos de carte uniquement (information cachée, jamais
- * cliquable), en arc-de-cercle INVERSÉ par rapport à `HandFan` — le
- * centre du rang plonge vers le plateau, les bords remontent — même
- * taille que les cartes du viewer pour rester cohérent visuellement.
+ * cliquable), en vraie symétrie horizontale de `HandFan` (reflet dans un
+ * miroir posé à plat, pas juste un décalage vertical) — le centre du rang
+ * plonge vers le plateau, les bords remontent, ET la rotation de chaque
+ * carte est inversée par rapport à son équivalent dans `HandFan` (une
+ * réflexion inverse aussi la chiralité de la rotation, sans quoi les
+ * cartes gardent la même inclinaison que la main du joueur et l'arc ne se
+ * lit pas comme un miroir). Même taille que les cartes du viewer pour
+ * rester cohérent visuellement.
  */
 export function OpponentHandFan({ cards }: OpponentHandFanProps) {
   const count = cards.length;
@@ -26,7 +31,7 @@ export function OpponentHandFan({ cards }: OpponentHandFanProps) {
     <div className="flex items-start justify-center">
       {cards.map((card, index) => {
         const offsetFromCenter = index - (count - 1) / 2;
-        const rotation = offsetFromCenter * angleStep;
+        const rotation = -offsetFromCenter * angleStep;
         const arcRise = Math.min(MAX_ARC_DROP_PX, Math.abs(offsetFromCenter) * 6);
 
         return (

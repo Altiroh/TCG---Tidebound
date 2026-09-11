@@ -28,7 +28,7 @@ import { PhaseActionButton } from "@/features/match/PhaseActionButton";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ShipInstrumentCluster } from "@/features/match/ShipInstrumentCluster";
 import { TideOrientationTile } from "@/features/match/TideOrientationTile";
-import { TIDE_STATE_COLORS, TIDE_STATE_LABELS } from "@/features/match/cardDisplay";
+import { TideProgressBar } from "@/features/match/TideProgressBar";
 import { usePhaseBannerEvent } from "@/features/match/usePhaseBannerEvent";
 
 interface MatchBoardProps {
@@ -420,8 +420,13 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
       <BoardStage>
         <BoardBackdrop variant="absolute" />
 
-        {/* Main adverse — arc inversé, remontée pour ne pas cacher son plateau */}
-        <div className="absolute flex items-start justify-center" style={{ left: 0, top: -70, width: 1672, height: 220 }}>
+        {/* Main adverse — arc inversé, remontée pour ne pas cacher son plateau. `pointer-events-none` : purement
+            décorative (dos de carte, jamais interactive), et sans ça ce conteneur pleine-largeur peut intercepter
+            des glisser-déposer destinés au plateau juste en-dessous. */}
+        <div
+          className="pointer-events-none absolute flex items-start justify-center"
+          style={{ left: 0, top: -70, width: 1672, height: 220 }}
+        >
           <OpponentHandFan cards={otherPlayer.hand} />
         </div>
 
@@ -541,13 +546,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
           className="absolute flex flex-col items-center justify-center gap-2 text-center"
           style={{ left: 230, top: 340, width: 1020, height: 190 }}
         >
-          <span className="text-sm">
-            Marée :{" "}
-            <strong className={TIDE_STATE_COLORS[state.environment.tideState]}>
-              {TIDE_STATE_LABELS[state.environment.tideState]}
-            </strong>{" "}
-            ({state.environment.tideRemainingTurns} tour(s))
-          </span>
+          <TideProgressBar tideState={state.environment.tideState} tideRemainingTurns={state.environment.tideRemainingTurns} />
           {hasHint && (
             <p
               className={`max-w-md rounded-md px-3 py-1 text-xs ${
@@ -691,8 +690,10 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
           </div>
         )}
 
-        {/* Main du viewer — centrée en bas de l'écran, en éventail */}
-        <div className="absolute flex items-end justify-center" style={{ left: 0, top: 740, width: 1672, height: 195 }}>
+        {/* Main du viewer — centrée en bas de l'écran, en éventail. `pointer-events-none` sur ce conteneur
+            pleine-largeur (chaque carte se réactive individuellement, `HandFan`) : sinon la zone vide entre les
+            cartes peut intercepter des glisser-déposer destinés au plateau juste au-dessus. */}
+        <div className="pointer-events-none absolute flex items-end justify-center" style={{ left: 0, top: 740, width: 1672, height: 195 }}>
           <HandFan
             cards={viewerPlayer.hand}
             tideState={state.environment.tideState}
