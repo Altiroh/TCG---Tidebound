@@ -510,7 +510,9 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
           {me.board.map((unit) => (
             <div
               key={unit.instanceId}
-              draggable={canPlay}
+              // Seuls Marins/Créatures peuvent attaquer (et donc être "glissés" en Phase de combat) —
+              // Structure/Objet/Équipement se Sabordent via le bouton dédié, pas le glisser-déposer.
+              draggable={canPlay && isUnitType(getCardDefinition(unit.cardId).type)}
               onDragStart={(e) => handleUnitDragStart(e, unit.instanceId)}
               onDragEnd={handleUnitDragEnd}
               onDragOver={(e) => handleBoardTileDragOver(e, unit.instanceId)}

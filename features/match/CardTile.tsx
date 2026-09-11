@@ -206,7 +206,6 @@ const ILLUSTRATION_ZONE: Zone = { top: 4, left: 7, width: 87, height: 51 };
  * (coins arrondis) — ne déborde jamais sur les cartes voisines.
  */
 const DEBORD_ZONE: Zone = { top: 0, left: -4, width: 108, height: 62 };
-const STATUS_BADGES_ZONE: Zone = { top: 48, left: 9, width: 82, height: 6 };
 const NAME_BANNER_ZONE: Zone = { top: 55, left: 8, width: 84, height: 10 };
 const RULES_ZONE_WITH_STATS: Zone = { top: 66, left: 9, width: 82, height: 21 };
 const RULES_ZONE_NO_STATS: Zone = { top: 66, left: 9, width: 82, height: 28 };
@@ -299,7 +298,7 @@ export function CardTile({
       onClick={onClick}
       disabled={!onClick || disabled}
       title={def.text}
-      className={`${widthClassName} rounded-xl text-left transition-shadow duration-200 ${
+      className={`${widthClassName} relative rounded-xl text-left transition-shadow duration-200 ${
         selected ? "ring-2 ring-board-accent" : ""
       } ${disabled ? "opacity-40" : ""} ${onClick ? "cursor-pointer" : "cursor-default"} ${
         hoverable ? "hover:shadow-[0_0_35px_rgba(62,166,255,0.6)]" : ""
@@ -371,42 +370,6 @@ export function CardTile({
             </span>
           </div>
 
-          {(stats.inactive ||
-            (instance.summoningSick && isUnit) ||
-            instance.turnsRemaining !== undefined ||
-            hasKeyword(def, "garde") ||
-            (instance.statuses && instance.statuses.length > 0)) && (
-            <div
-              className="flex flex-wrap items-center justify-center gap-1 overflow-visible"
-              style={{ ...zoneStyle(STATUS_BADGES_ZONE), fontSize: "5cqw" }}
-            >
-              {stats.inactive && <span className="rounded bg-black/60 px-1 text-amber-300">Inactive</span>}
-              {instance.summoningSick && isUnit && (
-                <StatusBadge
-                  icon={ENGOURDI_ICON_INFO.icon}
-                  label={ENGOURDI_ICON_INFO.label}
-                  description={ENGOURDI_ICON_INFO.description}
-                />
-              )}
-              {hasKeyword(def, "garde") && (
-                <StatusBadge icon={GARDE_ICON_INFO.icon} label={GARDE_ICON_INFO.label} description={GARDE_ICON_INFO.description} />
-              )}
-              {instance.statuses?.map((status) => {
-                const info = STATUS_ICON_INFO[status];
-                if (!info) return null;
-                return <StatusBadge key={status} icon={info.icon} label={info.label} description={info.description} />;
-              })}
-              {instance.turnsRemaining !== undefined && (
-                <StatusBadge
-                  icon={TOUR_ICON}
-                  label="Durée"
-                  description={`${instance.turnsRemaining} tour${instance.turnsRemaining > 1 ? "s" : ""} restant${instance.turnsRemaining > 1 ? "s" : ""} avant expiration.`}
-                  overlayText={String(instance.turnsRemaining)}
-                />
-              )}
-            </div>
-          )}
-
           {def.text && (
             <div
               className={`overflow-hidden rounded-sm border px-[3%] text-left leading-snug [font-family:var(--font-card-body)] ${
@@ -442,6 +405,47 @@ export function CardTile({
           )}
         </div>
       </div>
+
+      {/* Badges de statut/mot-clé — EN DEHORS du conteneur `overflow-hidden` (le cadre/l'illustration),
+          flottant juste au-dessus de la carte : trop petits pour être vus "à l'œil nu" quand ils étaient
+          incrustés dans le cadre en cqw (rapetissant avec la carte). Taille fixe désormais (`StatusBadge`
+          n'utilise plus `cqw`), toujours lisible même sur la plus petite carte de plateau. */}
+      {(stats.inactive ||
+        (instance.summoningSick && isUnit) ||
+        instance.turnsRemaining !== undefined ||
+        hasKeyword(def, "garde") ||
+        (instance.statuses && instance.statuses.length > 0)) && (
+        <div className="pointer-events-none absolute inset-x-0 -top-4 z-20 flex flex-wrap items-center justify-center gap-1.5 px-1">
+          {stats.inactive && (
+            <span className="pointer-events-auto rounded-full border border-amber-400/60 bg-black/90 px-2 py-1 text-[11px] font-semibold uppercase text-amber-300 shadow-md">
+              Inactive
+            </span>
+          )}
+          {instance.summoningSick && isUnit && (
+            <StatusBadge
+              icon={ENGOURDI_ICON_INFO.icon}
+              label={ENGOURDI_ICON_INFO.label}
+              description={ENGOURDI_ICON_INFO.description}
+            />
+          )}
+          {hasKeyword(def, "garde") && (
+            <StatusBadge icon={GARDE_ICON_INFO.icon} label={GARDE_ICON_INFO.label} description={GARDE_ICON_INFO.description} />
+          )}
+          {instance.statuses?.map((status) => {
+            const info = STATUS_ICON_INFO[status];
+            if (!info) return null;
+            return <StatusBadge key={status} icon={info.icon} label={info.label} description={info.description} />;
+          })}
+          {instance.turnsRemaining !== undefined && (
+            <StatusBadge
+              icon={TOUR_ICON}
+              label="Durée"
+              description={`${instance.turnsRemaining} tour${instance.turnsRemaining > 1 ? "s" : ""} restant${instance.turnsRemaining > 1 ? "s" : ""} avant expiration.`}
+              overlayText={String(instance.turnsRemaining)}
+            />
+          )}
+        </div>
+      )}
     </button>
   );
 }

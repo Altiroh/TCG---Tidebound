@@ -7,8 +7,8 @@ interface StatusBadgeProps {
   icon: string;
   label: string;
   description: string;
-  /** Taille en `cqw` (relative à la largeur de la carte, comme le reste de `CardTile`). Défaut : 7. */
-  sizeCqw?: number;
+  /** Taille en pixels réels (PAS en `cqw`) — ce badge flotte désormais au-dessus de la carte, en dehors du conteneur à requête de conteneur (`container-type: inline-size`) de `CardTile` : un `cqw` y résoudrait à 0. Une taille fixe garantit aussi qu'il reste "assez gros pour le voir à l'œil nu" même sur les plus petites cartes de plateau. Défaut : 30. */
+  size?: number;
   /** Texte superposé au centre de l'icône (ex: nombre de tours restants pour le badge "Durée"). */
   overlayText?: string;
   /**
@@ -23,19 +23,21 @@ interface StatusBadgeProps {
 /**
  * Icône de statut/mot-clé posée sur une carte (`effect_malade.png`,
  * `effect_garde.png`, `effect_immobilise.png`, `effect_silence.png`,
- * `effect_tour.png` — `public/assets/`), avec une info-bulle explicative
- * au survol/focus. La bulle est rendue via un portail (`createPortal`
- * dans `document.body`) plutôt qu'en `position: absolute` classique : le
- * conteneur de carte (`CardTile`) est `overflow-hidden` pour clipper le
- * cadre/l'illustration, ce qui rognerait sinon toute bulle essayant de
- * s'ouvrir au-dessus de la carte. Position calculée depuis
- * `getBoundingClientRect()` de l'icône, toujours ouverte vers le HAUT.
+ * `effect_tour.png`, `effect_engourdi.png` — `public/assets/`), avec une
+ * info-bulle explicative au survol/focus (agrandissement léger de l'icône
+ * elle-même en prime, pour que l'interaction soit évidente). La bulle est
+ * rendue via un portail (`createPortal` dans `document.body`) plutôt qu'en
+ * `position: absolute` classique : le conteneur de carte (`CardTile`) est
+ * `overflow-hidden` pour clipper le cadre/l'illustration, ce qui rognerait
+ * sinon toute bulle essayant de s'ouvrir au-dessus de la carte. Position
+ * calculée depuis `getBoundingClientRect()` de l'icône, toujours ouverte
+ * vers le HAUT.
  */
 export function StatusBadge({
   icon,
   label,
   description,
-  sizeCqw = 7,
+  size = 30,
   overlayText,
   overlayTextClassName = "text-slate-900",
 }: StatusBadgeProps) {
@@ -65,15 +67,20 @@ export function StatusBadge({
         onFocus={show}
         onBlur={hide}
         aria-label={label}
-        className="relative block shrink-0 rounded-full"
-        style={{ width: `${sizeCqw}cqw`, height: `${sizeCqw}cqw` }}
+        className="pointer-events-auto relative block shrink-0 rounded-full transition-transform duration-150 ease-out hover:z-10 hover:scale-125"
+        style={{ width: size, height: size }}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element -- icône de statut, taille dépendante du conteneur (cqw) */}
-        <img src={icon} alt="" draggable={false} className="h-full w-full select-none rounded-full object-cover" />
+        {/* eslint-disable-next-line @next/next/no-img-element -- icône de statut, taille fixe (pixels réels, pas cqw) */}
+        <img
+          src={icon}
+          alt=""
+          draggable={false}
+          className="h-full w-full select-none rounded-full object-cover shadow-[0_2px_8px_rgba(0,0,0,0.75)]"
+        />
         {overlayText !== undefined && (
           <span
-            className={`absolute inset-0 flex items-center justify-center font-bold ${overlayTextClassName}`}
-            style={{ fontSize: `${sizeCqw * 0.55}cqw`, textShadow: "0 0 3px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)" }}
+            className={`absolute inset-0 flex items-center justify-center text-sm font-bold ${overlayTextClassName}`}
+            style={{ textShadow: "0 0 3px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)" }}
           >
             {overlayText}
           </span>
