@@ -35,18 +35,16 @@ export function ShipInstrumentCluster({ anchor, anchorMax, reason, reasonMax, wi
         style={{ aspectRatio: "232 / 175" }}
       />
       <div
-        className="absolute flex flex-col items-center"
+        className="absolute"
         style={{ left: "39%", top: "77%", transform: "translate(-50%, -50%)" }}
       >
         <ResourceGauge type="anchor" value={anchor} max={anchorMax} size={gaugeSize} />
-        <span className="text-[9px] tabular-nums text-slate-400">/{anchorMax}</span>
       </div>
       <div
-        className="absolute flex flex-col items-center"
+        className="absolute"
         style={{ left: "91%", top: "77%", transform: "translate(-50%, -50%)" }}
       >
         <ResourceGauge type="reason" value={reason} max={reasonMax} size={gaugeSize} />
-        <span className="text-[9px] tabular-nums text-slate-400">/{reasonMax}</span>
       </div>
     </div>
   );

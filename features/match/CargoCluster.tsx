@@ -15,20 +15,23 @@ interface CargoClusterProps {
   width?: number;
 }
 
+/** Effectif révélé uniquement au survol de SA PROPRE zone (pioche OU cimetière, indépendamment l'une de l'autre) — toujours visible sur tactile, faute de survol fiable là-bas. */
+const COUNT_BADGE_CLASSES =
+  "pointer-events-none absolute rounded-full bg-black/70 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-white opacity-0 transition-opacity duration-150 [@media(hover:none)]:opacity-100";
+
 /**
  * Cadre "pioche/cimetière" (trident/crâne) rogné depuis `board.jpg`, avec
  * le dos de carte standard (`CARD_BACK_SRC`, même asset que la main
  * adverse) superposé sur l'emplacement pioche — plus parlant que la seule
- * icône de trident peinte dans l'image. Les effectifs (`.reveal-on-hover`,
- * `app/globals.css`) restent masqués tant qu'on ne survole pas le cluster
- * sur un pointeur fin (souris) et sont en permanence visibles sur
- * tactile, faute de survol fiable là-bas. Le côté crâne sert aussi de
- * cible de glisser-déposer pour Saborder quand `graveyardDropZone` est
- * fourni.
+ * icône de trident peinte dans l'image. Chaque effectif (pioche/cimetière)
+ * ne se révèle qu'au survol de SA PROPRE moitié, indépendamment de
+ * l'autre (groupes Tailwind nommés `deck`/`grave`). Le côté crâne sert
+ * aussi de cible de glisser-déposer pour Saborder quand `graveyardDropZone`
+ * est fourni.
  */
 export function CargoCluster({ deckCount, graveyardCount, graveyardDropZone, onOpenGraveyard, width = 100 }: CargoClusterProps) {
   return (
-    <div className="group relative shrink-0" style={{ width }}>
+    <div className="relative shrink-0" style={{ width }}>
       {/* eslint-disable-next-line @next/next/no-img-element -- élément décoratif de mise en page fixe */}
       <img
         src="/assets/board/cargo-frame.png"
@@ -38,17 +41,22 @@ export function CargoCluster({ deckCount, graveyardCount, graveyardDropZone, onO
         className="w-full select-none"
         style={{ aspectRatio: "240 / 180" }}
       />
-      <div className="absolute overflow-hidden rounded" style={{ left: "5%", top: "6%", width: "40%", height: "88%" }}>
-        {/* eslint-disable-next-line @next/next/no-img-element -- dos de carte standard, pas de variation possible */}
-        <img src={CARD_BACK_SRC} alt="" aria-hidden draggable={false} className="h-full w-full select-none object-cover" />
+
+      {/* Moitié pioche */}
+      <div className="group/deck absolute inset-y-0 left-0" style={{ width: "50%" }} title="Cartes restantes dans la pioche">
+        <div className="absolute overflow-hidden rounded" style={{ left: "10%", top: "6%", width: "80%", height: "88%" }}>
+          {/* eslint-disable-next-line @next/next/no-img-element -- dos de carte standard, pas de variation possible */}
+          <img src={CARD_BACK_SRC} alt="" aria-hidden draggable={false} className="h-full w-full select-none object-cover" />
+        </div>
+        <span
+          className={`${COUNT_BADGE_CLASSES} group-hover/deck:opacity-100`}
+          style={{ left: "46%", top: "80%", transform: "translate(-50%,-50%)" }}
+        >
+          {deckCount}
+        </span>
       </div>
-      <span
-        className="reveal-on-hover absolute rounded-full bg-black/70 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-white"
-        style={{ left: "23%", top: "80%", transform: "translate(-50%,-50%)" }}
-        title="Cartes restantes dans la pioche"
-      >
-        {deckCount}
-      </span>
+
+      {/* Moitié cimetière */}
       {graveyardDropZone ? (
         <div
           onDragOver={graveyardDropZone.onDragOver}
@@ -56,15 +64,14 @@ export function CargoCluster({ deckCount, graveyardCount, graveyardDropZone, onO
           onDrop={graveyardDropZone.onDrop}
           onClick={onOpenGraveyard}
           title={onOpenGraveyard ? "Glissez une unité ici pour la Saborder, ou cliquez pour consulter le cimetière" : "Glissez une unité ici pour la Saborder"}
-          className={`absolute rounded-md transition-colors ${onOpenGraveyard ? "cursor-pointer" : ""} ${
+          className={`group/grave absolute inset-y-0 right-0 rounded-md transition-colors ${onOpenGraveyard ? "cursor-pointer" : ""} ${
             graveyardDropZone.isOver ? "bg-rose-500/25 ring-2 ring-rose-500" : ""
           }`}
-          style={{ left: "54%", top: "0%", width: "46%", height: "100%" }}
+          style={{ width: "50%" }}
         >
           <span
-            className="reveal-on-hover absolute rounded-full bg-black/70 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-white"
-            style={{ left: "43%", top: "80%", transform: "translate(-50%,-50%)" }}
-            title="Cartes au cimetière"
+            className={`${COUNT_BADGE_CLASSES} group-hover/grave:opacity-100`}
+            style={{ left: "50%", top: "80%", transform: "translate(-50%,-50%)" }}
           >
             {graveyardCount}
           </span>
@@ -73,12 +80,12 @@ export function CargoCluster({ deckCount, graveyardCount, graveyardDropZone, onO
         <div
           onClick={onOpenGraveyard}
           title="Cartes au cimetière — cliquez pour consulter"
-          className={`absolute ${onOpenGraveyard ? "cursor-pointer" : ""}`}
-          style={{ left: "54%", top: "0%", width: "46%", height: "100%" }}
+          className={`group/grave absolute inset-y-0 right-0 ${onOpenGraveyard ? "cursor-pointer" : ""}`}
+          style={{ width: "50%" }}
         >
           <span
-            className="reveal-on-hover absolute rounded-full bg-black/70 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-white"
-            style={{ left: "43%", top: "80%", transform: "translate(-50%,-50%)" }}
+            className={`${COUNT_BADGE_CLASSES} group-hover/grave:opacity-100`}
+            style={{ left: "50%", top: "80%", transform: "translate(-50%,-50%)" }}
           >
             {graveyardCount}
           </span>

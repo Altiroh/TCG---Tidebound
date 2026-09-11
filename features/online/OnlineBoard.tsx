@@ -15,12 +15,12 @@ import {
 import { Button } from "@/components/ui/Button";
 import { BoardBackdrop } from "@/features/match/BoardBackdrop";
 import { BoardStage } from "@/features/match/BoardStage";
-import { CardBack } from "@/features/match/CardBack";
 import { CargoCluster } from "@/features/match/CargoCluster";
 import { EventFeed } from "@/features/match/EventFeed";
 import { GraveyardViewer } from "@/features/match/GraveyardViewer";
 import { HandFan } from "@/features/match/HandFan";
 import { HoverLiftTile } from "@/features/match/HoverLiftTile";
+import { OpponentHandFan } from "@/features/match/OpponentHandFan";
 import { PhaseActionButton } from "@/features/match/PhaseActionButton";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ShipInstrumentCluster } from "@/features/match/ShipInstrumentCluster";
@@ -308,11 +308,9 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
       <BoardStage>
         <BoardBackdrop variant="absolute" />
 
-        {/* Main adverse — centrée en haut, au-dessus de la ligne de plateau adverse */}
-        <div className="absolute flex items-start justify-center gap-2" style={{ left: 0, top: 8, width: 1672, height: 108 }}>
-          {opponent.hand.map((card) => (
-            <CardBack key={card.instanceId} widthClassName="w-16" />
-          ))}
+        {/* Main adverse — arc inversé, remontée pour ne pas cacher son plateau */}
+        <div className="absolute flex items-start justify-center" style={{ left: 0, top: -50, width: 1672, height: 220 }}>
+          <OpponentHandFan cards={opponent.hand} />
         </div>
 
         {/* Tour + info adversaire, nichés dans le cadre boussole en haut à droite */}
@@ -379,7 +377,7 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
         </div>
 
         {/* Bande centrale : orientation de la Marée (gauche), état de la Marée (centre), interaction (droite) */}
-        <div className="absolute" style={{ left: 8, top: 350, width: 214, height: 170 }}>
+        <div className="absolute" style={{ left: 40, top: 350, width: 150, height: 170 }}>
           <TideOrientationTile orientation={state.environment.tideOrientation} />
         </div>
 
@@ -601,12 +599,5 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
 
 /** Emplacement de Slot inoccupé — rend visible le nombre total de Slots qu'autorise le Navire (4/5/6), pas seulement les permanents déjà posés. */
 function EmptySlot() {
-  return (
-    <div
-      aria-hidden
-      className="flex aspect-[5/7] w-28 items-center justify-center rounded-md border border-dashed border-slate-700/70 text-center text-[10px] leading-tight text-slate-600"
-    >
-      Emplacement libre
-    </div>
-  );
+  return <div aria-hidden className="aspect-[5/7] w-28 rounded-xl border-[3px] border-dashed border-slate-500/50" />;
 }

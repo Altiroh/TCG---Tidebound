@@ -25,7 +25,7 @@ function TideTileImage({ src, label, arrow, visible }: { src: string; label: str
           alt=""
           draggable={false}
           onError={() => setBroken(true)}
-          className="h-full w-full select-none object-cover"
+          className="h-full w-full select-none object-contain"
         />
       ) : (
         <>

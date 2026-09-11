@@ -16,14 +16,14 @@ interface HandFanProps {
   onClick: (instanceId: string) => void;
 }
 
-/** Largeur de base d'une carte de main (un peu plus grande que le standard `w-28` des autres contextes). */
-const BASE_WIDTH = "w-32";
-/** Largeur de la carte survolée, "levée" du rang, en version détail (avec texte de règles). */
-const HOVER_WIDTH = "w-52";
+/** Largeur de base d'une carte de main (nettement plus grande que le standard `w-28` des autres contextes). */
+const BASE_WIDTH = "w-40";
+/** Largeur de la carte survolée, "levée" du rang, en version détail — assez grande pour que le texte de règles reste lisible. */
+const HOVER_WIDTH = "w-72";
 
 const MAX_ROTATION_DEG = 26;
 const MAX_ARC_DROP_PX = 26;
-const OVERLAP_PX = 34;
+const OVERLAP_PX = 42;
 
 /**
  * Rang de main en léger arc-de-cercle : chaque carte tourne et descend
@@ -70,7 +70,7 @@ export function HandFan({
               marginLeft: index === 0 ? 0 : -OVERLAP_PX,
               zIndex: isHovered ? 40 : index,
               transform: isHovered
-                ? "translateY(-56px) scale(1.08) rotate(0deg)"
+                ? "translateY(-90px) scale(1.08) rotate(0deg)"
                 : `translateY(${arcDrop}px) rotate(${rotation}deg)`,
               opacity: draggingId === card.instanceId ? 0.4 : 1,
             }}
