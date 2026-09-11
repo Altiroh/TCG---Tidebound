@@ -17,6 +17,7 @@ import {
 import { CARD_TYPE_LABELS, THICK_TEXT_OUTLINE } from "@/features/match/cardDisplay";
 import { CARD_BACK_SRC } from "@/features/match/CardBack";
 import { StatusBadge } from "@/features/match/StatusBadge";
+import { useImageOk } from "@/features/match/useImageOk";
 
 interface CardTileProps {
   instance: CardInstance;
@@ -38,6 +39,9 @@ interface CardTileProps {
    * qui lui retire aussi ces deux affordances puisqu'il ne peut pas du tout l'identifier).
    */
   faceDown?: boolean;
+  /** Active le glisser-déposer HTML natif (ex: piocher une carte de la Collection vers l'éditeur de deck). Défaut : `false`. */
+  draggable?: boolean;
+  onDragStart?: (event: React.DragEvent<HTMLButtonElement>) => void;
 }
 
 /**
@@ -91,36 +95,6 @@ const TYPE_BG_CLASSES: Record<string, string> = {
   objet: "bg-violet-950",
   anomalie: "bg-fuchsia-950",
 };
-
-/**
- * Précharge une image hors du DOM plutôt que de dépendre de l'événement
- * `onError` d'un `<img>` rendu — plus fiable quand beaucoup de cartes se
- * chargent en même temps (ex: la page Collection, 80 cartes), où
- * `onError` s'est révélé peu fiable dans les tests. `false` tant que
- * l'image n'a pas fini de charger OU si elle échoue (404, pas encore
- * fournie) — pas d'état intermédiaire à gérer côté appelant.
- */
-function useImageOk(url: string): boolean {
-  const [ok, setOk] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    setOk(false);
-    const img = new window.Image();
-    img.onload = () => {
-      if (!cancelled) setOk(true);
-    };
-    img.onerror = () => {
-      if (!cancelled) setOk(false);
-    };
-    img.src = url;
-    return () => {
-      cancelled = true;
-    };
-  }, [url]);
-
-  return ok;
-}
 
 /** `true` le temps d'une animation, chaque fois que `value` diminue par rapport à son appel précédent. */
 function useDecreaseFlash(value: number): boolean {
@@ -279,6 +253,8 @@ export function CardTile({
   scaleOnHover = true,
   faceDown = false,
   badgeSize = 38,
+  draggable = false,
+  onDragStart,
 }: CardTileProps) {
   const def = getCardDefinition(instance.cardId);
   const isAbyssal = def.subtype === "abyssal";
@@ -311,6 +287,8 @@ export function CardTile({
       onClick={onClick}
       disabled={!onClick || disabled}
       title={def.text}
+      draggable={draggable}
+      onDragStart={onDragStart}
       className={`${widthClassName} relative rounded-xl text-left transition-shadow duration-200 ${
         selected ? "ring-2 ring-board-accent" : ""
       } ${disabled ? "opacity-40" : ""} ${onClick ? "cursor-pointer" : "cursor-default"} ${

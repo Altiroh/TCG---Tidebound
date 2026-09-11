@@ -7,12 +7,12 @@
  *
  * Volontairement PARTIEL : ne couvre que les tables effectivement
  * requêtées depuis du code TypeScript à ce jour (`profiles`, `matches`,
- * `matchmaking_queue`, `player_cards`). La migration
- * `..._cards_collection_economy.sql` introduit une quinzaine d'autres
- * tables (cartes, decks, boosters, monnaie, quêtes, onboarding) qui n'ont
- * pas encore de Server Action associée — les typer à la main ici avant
- * d'en avoir l'usage réel ferait courir un risque de dérive silencieuse
- * avec le schéma SQL.
+ * `matchmaking_queue`, `player_cards`, `player_decks`,
+ * `player_deck_cards`). La migration `..._cards_collection_economy.sql`
+ * introduit encore d'autres tables (cartes, boosters, monnaie, quêtes,
+ * onboarding) qui n'ont pas de Server Action associée — les typer à la
+ * main ici avant d'en avoir l'usage réel ferait courir un risque de
+ * dérive silencieuse avec le schéma SQL.
  */
 
 export interface Database {
@@ -127,6 +127,54 @@ export interface Database {
           quantity?: number;
           first_obtained_at?: string;
           updated_at?: string;
+        };
+        Relationships: [];
+      };
+      player_decks: {
+        Row: {
+          id: string;
+          user_id: string;
+          ship_id: string;
+          name: string;
+          is_valid: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          ship_id: string;
+          name: string;
+          is_valid?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          ship_id?: string;
+          name?: string;
+          is_valid?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      player_deck_cards: {
+        Row: {
+          deck_id: string;
+          card_id: string;
+          quantity: number;
+        };
+        Insert: {
+          deck_id: string;
+          card_id: string;
+          quantity: number;
+        };
+        Update: {
+          deck_id?: string;
+          card_id?: string;
+          quantity?: number;
         };
         Relationships: [];
       };

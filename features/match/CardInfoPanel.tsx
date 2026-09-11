@@ -28,7 +28,7 @@ interface CardInfoPanelProps {
   showGlow?: boolean;
 }
 
-/** Panneau d'informations affiché à côté de la carte agrandie — verre liquide (glow coloré diffus + carte dépolie + reflet), inspiré des fiches de carte Hearthstone mais limité aux données réelles du modèle Tidebound (pas de rareté/artiste/poussière, absents de `CardDefinition`). Partagé entre la Collection (`CardBrowser`) et le détail de carte de plateau (`CardDetailModal`). */
+/** Panneau d'informations affiché à côté de la carte agrandie — verre liquide (glow coloré diffus + carte dépolie + reflet), inspiré des fiches de carte Hearthstone mais limité aux données réelles du modèle Tidebound (pas de rareté/artiste/poussière, absents de `CardDefinition`). Partagé entre la Collection (`CollectionScreen`) et le détail de carte de plateau (`CardDetailModal`). */
 export function CardInfoPanel({ cardId, showGlow = true }: CardInfoPanelProps) {
   const def = getCardDefinition(cardId);
   const isAbyssal = def.subtype === "abyssal";

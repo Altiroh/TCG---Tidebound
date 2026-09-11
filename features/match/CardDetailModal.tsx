@@ -13,7 +13,7 @@ interface CardDetailModalProps {
 
 /**
  * Détail d'une carte de plateau — même composition que la fiche agrandie de
- * la Collection (`CardBrowser`, carte + `CardInfoPanel`) mais sans le glow
+ * la Collection (`CollectionScreen`, carte + `CardInfoPanel`) mais sans le glow
  * coloré derrière le panneau (`showGlow={false}`) : ouvert au clic sur une
  * carte posée plutôt qu'au survol (plus de "hover scale" sur le plateau).
  */
