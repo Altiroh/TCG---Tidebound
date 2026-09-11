@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import {
+  computeEffectiveStats,
   dispatch,
   eligibleCandidatesFor,
   getCardDefinition,
@@ -644,20 +645,28 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
           className="absolute flex items-center justify-center gap-2 rounded-md p-1"
           style={{ left: 235, top: 538, width: 1010, height: 205 }}
         >
-          {viewerPlayer.board.map((unit) => (
+          {viewerPlayer.board.map((unit) => {
+            // Seuls Marins/Créatures peuvent attaquer (et donc être "glissés" en Phase de combat) —
+            // Structure/Objet/Équipement se Sabordent via le bouton dédié, pas le glisser-déposer. Une
+            // unité Engourdie (maladie d'invocation), déjà Silencée, déjà attaquée ce tour-ci, ou rendue
+            // inactive par la Marée (ex: Masse-Sombre pendant Calme) ne peut pas (encore) attaquer — pas
+            // de raison d'être glissée, ni du glow rouge qui indique une cible d'attaque disponible. Pas
+            // de mot-clé "attaques multiples" dans le catalogue actuel : `hasAttackedThisTurn` suffit tant
+            // qu'aucune carte n'accorde d'attaque supplémentaire (le jour où l'une le ferait, une vraie
+            // limite par carte remplacerait ce booléen simple).
+            const canAttack =
+              isViewerTurn &&
+              state.phase === "combatPhase" &&
+              isUnitType(getCardDefinition(unit.cardId).type) &&
+              !unit.summoningSick &&
+              !unit.hasAttackedThisTurn &&
+              !unit.statuses?.includes(STATUS_SILENCE) &&
+              !computeEffectiveStats(unit, state.environment.tideState).inactive;
+
+            return (
             <div
               key={unit.instanceId}
-              // Seuls Marins/Créatures peuvent attaquer (et donc être "glissés" en Phase de combat) —
-              // Structure/Objet/Équipement se Sabordent via le bouton dédié, pas le glisser-déposer.
-              // Une unité Engourdie (maladie d'invocation) ne peut pas encore attaquer, et une unité
-              // Silencée ne peut pas utiliser d'effet (y compris Sabordage) — ni l'une ni l'autre n'a
-              // donc de raison d'être glissée.
-              draggable={
-                isViewerTurn &&
-                isUnitType(getCardDefinition(unit.cardId).type) &&
-                !unit.summoningSick &&
-                !unit.statuses?.includes(STATUS_SILENCE)
-              }
+              draggable={canAttack}
               onDragStart={(e) => handleUnitDragStart(e, unit.instanceId)}
               onDragEnd={handleUnitDragEnd}
               onDragOver={(e) => handleBoardTileDragOver(e, unit.instanceId)}
@@ -666,7 +675,9 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
               className={`rounded-xl transition-shadow ${dragOverTargetId === unit.instanceId ? "ring-2 ring-board-accent" : ""} ${
                 draggingUnitId === unit.instanceId
                   ? "opacity-50 shadow-[0_0_25px_6px_rgba(125,211,252,0.65)]"
-                  : ""
+                  : canAttack
+                    ? "shadow-[0_0_18px_4px_rgba(239,68,68,0.65)] ring-2 ring-red-500/70"
+                    : ""
               } ${myReactionCandidates.some((c) => c.sourceInstanceId === unit.instanceId) ? "animate-reaction-pulse" : ""}`}
             >
               <BoardCardTile
@@ -678,7 +689,8 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
                 faceDown={!isVisibleDuringTide(getCardDefinition(unit.cardId), state.environment.tideState)}
               />
             </div>
-          ))}
+            );
+          })}
           {Array.from({ length: ownEmptySlots }).map((_, i) => (
             <EmptySlot key={`own-empty-${i}`} />
           ))}
