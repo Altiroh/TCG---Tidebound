@@ -6,8 +6,8 @@ import type { GameState, PlayerId } from "@/game";
 export interface CardFlight {
   id: number;
   playerId: PlayerId;
-  /** "draw" : pioche → main. "toGraveyard" : plateau/main → cimetière (défausse, Sabordage, destruction). */
-  kind: "draw" | "toGraveyard";
+  /** "draw" : pioche → main. "play" : main → plateau (carte posée). "toGraveyard" : plateau/main → cimetière (défausse, Sabordage, destruction). */
+  kind: "draw" | "play" | "toGraveyard";
 }
 
 /** Doit rester cohérente avec la durée de transition posée sur `CardFlightLayer`. */
@@ -51,6 +51,8 @@ export function useCardFlights(state: GameState): CardFlight[] {
     for (const event of newEvents) {
       if (event.type === "DRAW_CARD") {
         created.push({ id: nextId.current++, playerId: event.playerId, kind: "draw" });
+      } else if (event.type === "SUMMON") {
+        created.push({ id: nextId.current++, playerId: event.playerId, kind: "play" });
       } else if (event.type === "SABORDED") {
         created.push({ id: nextId.current++, playerId: event.playerId, kind: "toGraveyard" });
       } else if (event.type === "CARD_MOVED" && event.toZone === "graveyard") {

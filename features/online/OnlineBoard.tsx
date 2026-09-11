@@ -6,6 +6,7 @@ import {
   eligibleCandidatesFor,
   getCardDefinition,
   getShipDefinition,
+  STATUS_SILENCE,
   UNIT_CARD_TYPES,
   type CardInstance,
   type GameState,
@@ -102,6 +103,9 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
     const isMine = flight.playerId === myUserId;
     if (flight.kind === "draw") {
       return isMine ? { from: OWN_DECK_POS, to: OWN_HAND_POS } : { from: OPPONENT_DECK_POS, to: OPPONENT_HAND_POS };
+    }
+    if (flight.kind === "play") {
+      return isMine ? { from: OWN_HAND_POS, to: OWN_BOARD_POS } : { from: OPPONENT_HAND_POS, to: OPPONENT_BOARD_POS };
     }
     return isMine
       ? { from: OWN_BOARD_POS, to: OWN_GRAVEYARD_POS }
@@ -512,7 +516,15 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
               key={unit.instanceId}
               // Seuls Marins/Créatures peuvent attaquer (et donc être "glissés" en Phase de combat) —
               // Structure/Objet/Équipement se Sabordent via le bouton dédié, pas le glisser-déposer.
-              draggable={canPlay && isUnitType(getCardDefinition(unit.cardId).type)}
+              // Une unité Engourdie (maladie d'invocation) ne peut pas encore attaquer, et une unité
+              // Silencée ne peut pas utiliser d'effet (y compris Sabordage) — ni l'une ni l'autre n'a
+              // donc de raison d'être glissée.
+              draggable={
+                canPlay &&
+                isUnitType(getCardDefinition(unit.cardId).type) &&
+                !unit.summoningSick &&
+                !unit.statuses?.includes(STATUS_SILENCE)
+              }
               onDragStart={(e) => handleUnitDragStart(e, unit.instanceId)}
               onDragEnd={handleUnitDragEnd}
               onDragOver={(e) => handleBoardTileDragOver(e, unit.instanceId)}

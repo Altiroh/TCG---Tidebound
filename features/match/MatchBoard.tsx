@@ -6,7 +6,8 @@ import {
   eligibleCandidatesFor,
   getCardDefinition,
   getShipDefinition,
-  runBotTurn,
+  stepBotTurn,
+  STATUS_SILENCE,
   UNIT_CARD_TYPES,
   type BotDifficulty,
   type CardInstance,
@@ -35,6 +36,9 @@ import { TideProgressBar } from "@/features/match/TideProgressBar";
 import { useActionToasts } from "@/features/match/useActionToasts";
 import { useCardFlights, type CardFlight } from "@/features/match/useCardFlights";
 import { usePhaseBannerEvent } from "@/features/match/usePhaseBannerEvent";
+
+/** Pause entre deux actions du bot (`stepBotTurn`) — assez long pour voir chaque pioche/pose/Sabordage se jouer (animation de vol ~650ms) avant l'action suivante, sans donner l'impression d'attendre. */
+const BOT_ACTION_DELAY_MS = 1100;
 
 /** Centres approximatifs (repère `BoardStage`, 1672×941) des zones pioche/main/cimetière de chaque côté — repris des coordonnées déjà posées pour `CargoCluster`/les mains/le plateau, pour l'animation `CardFlightLayer`. */
 const OWN_DECK_POS = { x: 1310, y: 640 };
@@ -121,6 +125,9 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
     if (flight.kind === "draw") {
       return isViewer ? { from: OWN_DECK_POS, to: OWN_HAND_POS } : { from: OPPONENT_DECK_POS, to: OPPONENT_HAND_POS };
     }
+    if (flight.kind === "play") {
+      return isViewer ? { from: OWN_HAND_POS, to: OWN_BOARD_POS } : { from: OPPONENT_HAND_POS, to: OPPONENT_BOARD_POS };
+    }
     return isViewer
       ? { from: OWN_BOARD_POS, to: OWN_GRAVEYARD_POS }
       : { from: OPPONENT_BOARD_POS, to: OPPONENT_GRAVEYARD_POS };
@@ -139,27 +146,42 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
   // Joue automatiquement le tour du bot dès qu'il devient actif, ET
   // chaque fois qu'une fenêtre de réaction l'attend — même hors de son
   // propre tour (l'humain vient de jouer une carte à laquelle le bot a
-  // une réaction facultative éligible). Un léger délai laisse le temps
-  // de voir l'état précédent (et évite un enchaînement instantané qui
-  // donnerait l'impression d'un bug plutôt que d'un adversaire qui
-  // "réfléchit").
+  // une réaction facultative éligible). UNE action à la fois
+  // (`stepBotTurn`, pas `runBotTurn`), avec un délai entre chaque : le
+  // tour entier appliqué d'un coup faisait "téléporter" les cartes du
+  // bot directement à leur état final (une seule transition React, donc
+  // aucune animation de pioche/pose/Sabordage n'avait de tour à jouer).
   const botAwaitingReaction = state.pendingReaction?.awaitingPlayerId === botPlayerId;
   useEffect(() => {
     if (state.status !== "active" || !botDifficulty) return;
     if (activePlayerId !== botPlayerId && !botAwaitingReaction) return;
-    const timer = setTimeout(() => {
-      setState((current) => {
-        if (current.status !== "active" || !botPlayerId) return current;
-        const ownTurn = current.activePlayerId === botPlayerId;
-        const ownReaction = current.pendingReaction?.awaitingPlayerId === botPlayerId;
-        if (!ownTurn && !ownReaction) return current;
-        return runBotTurn(current, botPlayerId, botDifficulty);
-      });
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+
+    function tick(current: GameState) {
+      if (cancelled) return;
+      if (current.status !== "active" || !botPlayerId) return;
+      const ownTurn = current.activePlayerId === botPlayerId;
+      const ownReaction = current.pendingReaction?.awaitingPlayerId === botPlayerId;
+      if (!ownTurn && !ownReaction) return;
+
+      const step = stepBotTurn(current, botPlayerId, botDifficulty!);
+      setState(step.state);
       setPending(null);
       setSelectedBoardId(null);
       setError(null);
-    }, 700);
-    return () => clearTimeout(timer);
+      if (!step.done) {
+        timer = setTimeout(() => tick(step.state), BOT_ACTION_DELAY_MS);
+      }
+    }
+
+    timer = setTimeout(() => tick(state), BOT_ACTION_DELAY_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `state` volontairement absent : ne doit réagir qu'aux transitions "c'est au bot d'agir", pas à chaque changement d'état (sinon la boucle se relancerait en double à chaque `setState` qu'elle déclenche elle-même) — `tick` capture l'état voulu via son propre paramètre plutôt que via la closure.
   }, [activePlayerId, botAwaitingReaction, state.status, botPlayerId, botDifficulty]);
 
   // Abandonner la partie via ÉCHAP plutôt qu'un bouton visible en permanence
@@ -625,7 +647,15 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
               key={unit.instanceId}
               // Seuls Marins/Créatures peuvent attaquer (et donc être "glissés" en Phase de combat) —
               // Structure/Objet/Équipement se Sabordent via le bouton dédié, pas le glisser-déposer.
-              draggable={isViewerTurn && isUnitType(getCardDefinition(unit.cardId).type)}
+              // Une unité Engourdie (maladie d'invocation) ne peut pas encore attaquer, et une unité
+              // Silencée ne peut pas utiliser d'effet (y compris Sabordage) — ni l'une ni l'autre n'a
+              // donc de raison d'être glissée.
+              draggable={
+                isViewerTurn &&
+                isUnitType(getCardDefinition(unit.cardId).type) &&
+                !unit.summoningSick &&
+                !unit.statuses?.includes(STATUS_SILENCE)
+              }
               onDragStart={(e) => handleUnitDragStart(e, unit.instanceId)}
               onDragEnd={handleUnitDragEnd}
               onDragOver={(e) => handleBoardTileDragOver(e, unit.instanceId)}
