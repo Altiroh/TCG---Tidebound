@@ -44,8 +44,8 @@ describe("environnement - Marée (modèle durée + intensité)", () => {
     expect(state.players[1].anchor).toBe(19); // L'Errant : 20 - 1
   });
 
-  it("une unité inactive par affinité de Marée (Masse Noire pendant Calme) ne peut pas attaquer", () => {
-    const mass = instance("masse-noire", "p1");
+  it("une unité inactive par affinité de Marée (Masse-Sombre pendant Calme) ne peut pas attaquer", () => {
+    const mass = instance("masse-sombre-abyssal", "p1");
     const state = testGameState({
       phase: "combatPhase",
       players: [testPlayer("p1", { board: [mass] }), testPlayer("p2")],
@@ -55,8 +55,8 @@ describe("environnement - Marée (modèle durée + intensité)", () => {
     expect(result.ok).toBe(false);
   });
 
-  it("Masse Noire gagne +1 Puissance pendant Abysses (affinité de Marée)", () => {
-    const mass = instance("masse-noire", "p1");
+  it("Masse-Sombre gagne +1 Puissance pendant Abysses (affinité de Marée)", () => {
+    const mass = instance("masse-sombre-abyssal", "p1");
     expect(computeEffectiveStats(mass, "houle").attack).toBe(4);
     expect(computeEffectiveStats(mass, "abysses").attack).toBe(5);
   });
@@ -244,6 +244,24 @@ describe("environnement - malus globaux des Marées (verrouillé, Notion 'Moteur
     const unit = result.state.players[0].board.find((u) => u.instanceId === sickUnit.instanceId);
     expect(unit?.damageMarked).toBe(1);
     expect(unit?.statuses).toContain(STATUS_MALADE);
+  });
+
+  it("Houle : seuls Marins/Créatures peuvent devenir MALADE — jamais une Structure/Objet/Équipement", () => {
+    const structure = instance("caisses-arrimees", "p1"); // Structure : aucune "santé" au sens du malus
+    // rngState: 1 est un tirage RNG déterministe connu pour déclencher le tirage MALADE si le seul candidat
+    // sur le board (cette Structure) n'est pas exclu — vérifié contre l'ancien `collectBoardCards` non filtré
+    // avant cette correction, qui la marquait bien MALADE dès ce premier tour.
+    const state = testGameState({
+      players: [testPlayer("p1", { board: [structure] }), testPlayer("p2")],
+      environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 5 }),
+      rngState: 1,
+    });
+
+    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const unit = result.state.players[0].board.find((u) => u.instanceId === structure.instanceId);
+    expect(unit?.statuses ?? []).not.toContain(STATUS_MALADE);
   });
 
   it("le statut MALADE est retiré automatiquement (sans dégât ce tour-là) dès que la Marée quitte la Houle", () => {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { dispatch } from "@/game/engine";
+import { computeEffectiveStats } from "@/game/cards/stats";
 import { instance, testEnvironment, testGameState, testPlayer } from "./testHelpers";
 import type { GameState } from "@/game/state/types";
 
@@ -123,24 +124,24 @@ describe("engine.dispatch - playCard", () => {
     expect(result.ok).toBe(false);
   });
 
-  it("un onPlayEffect ciblé (chosenUnit) soigne bien l'unité choisie", () => {
-    const carpenter = instance("charpentier-de-bord", "p1"); // à l'arrivée : la Structure choisie récupère 1 Résistance
-    const structure = instance("caisses-arrimees", "p1", { damageMarked: 2 });
+  it("un onPlayEffect ciblé (chosenUnit) s'applique bien à l'unité choisie", () => {
+    const harpoon = instance("harpon-de-pont", "p1"); // Équipez un Marin/Créature : +1 Puissance permanent
+    const target = instance("murene-aveugle", "p1"); // 3/1 de base
     const state = testGameState({
-      players: [testPlayer("p1", { hand: [carpenter], board: [structure], reason: 5 }), testPlayer("p2")],
+      players: [testPlayer("p1", { hand: [harpoon], board: [target], reason: 5 }), testPlayer("p2")],
     });
 
     const result = dispatch(state, {
       type: "playCard",
       playerId: "p1",
-      instanceId: carpenter.instanceId,
-      targetInstanceId: structure.instanceId,
+      instanceId: harpoon.instanceId,
+      targetInstanceId: target.instanceId,
     });
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    const healedStructure = result.state.players[0].board.find((u) => u.instanceId === structure.instanceId);
-    expect(healedStructure?.damageMarked).toBe(1);
+    const buffedUnit = result.state.players[0].board.find((u) => u.instanceId === target.instanceId);
+    expect(computeEffectiveStats(buffedUnit!, "calme").attack).toBe(4);
   });
 
   it("un onPlayEffect inflige une perte de Raison aux deux joueurs", () => {

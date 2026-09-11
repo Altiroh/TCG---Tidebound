@@ -15,6 +15,7 @@ import {
   type TideStateName,
 } from "@/game";
 import { CARD_TYPE_LABELS, THICK_TEXT_OUTLINE } from "@/features/match/cardDisplay";
+import { CARD_BACK_SRC } from "@/features/match/CardBack";
 import { StatusBadge } from "@/features/match/StatusBadge";
 
 interface CardTileProps {
@@ -27,6 +28,14 @@ interface CardTileProps {
   widthClassName?: string;
   /** `false` pour désactiver l'agrandissement léger au survol (ex: cartes de plateau — l'utilisateur clique désormais pour voir le détail plutôt que de survoler). Défaut : `true`. */
   scaleOnHover?: boolean;
+  /**
+   * Structure actuellement invisible pour l'adversaire (`visibleDuringTide`) SUR SON PROPRE plateau — même
+   * son propriétaire ne voit alors que le dos de carte pour l'illustration/le texte/les stats, mais garde les
+   * badges de statut flottants (dont "Durée") ET le bouton de détail "i" externe (`BoardCardTile`) pour
+   * pouvoir toujours la consulter. Différent de masquer la carte à l'adversaire (`BoardCardTile.hiddenFromViewer`,
+   * qui lui retire aussi ces deux affordances puisqu'il ne peut pas du tout l'identifier).
+   */
+  faceDown?: boolean;
 }
 
 /**
@@ -266,6 +275,7 @@ export function CardTile({
   onClick,
   widthClassName = "w-28",
   scaleOnHover = true,
+  faceDown = false,
 }: CardTileProps) {
   const def = getCardDefinition(instance.cardId);
   const isAbyssal = def.subtype === "abyssal";
@@ -310,6 +320,15 @@ export function CardTile({
         }`}
         style={{ containerType: "inline-size" }}
       >
+        {faceDown ? (
+          // Structure invisible pour la Marée courante, mais posée par SON PROPRIÉTAIRE (voir `faceDown` sur
+          // `CardTileProps`) : dos de carte à la place de l'illustration/cadre/stats — les badges flottants
+          // (dont "Durée") et le bouton "i" externe restent accessibles, contrairement à `hiddenFromViewer`
+          // (adversaire) qui masque tout.
+          // eslint-disable-next-line @next/next/no-img-element -- asset local unique, pas de variation par carte
+          <img src={CARD_BACK_SRC} alt="" draggable={false} className="h-full w-full select-none object-cover" />
+        ) : (
+        <>
         {/* Couche 1 : illustration, dans la découpe du cadre (ou plein cadre si le cadre est absent) */}
         <div
           className={`absolute overflow-hidden ${frameOk ? "rounded-sm bg-black/30" : (TYPE_BG_CLASSES[def.type] ?? "bg-board-surface")}`}
@@ -404,6 +423,8 @@ export function CardTile({
             </div>
           )}
         </div>
+        </>
+        )}
       </div>
 
       {/* Badges de statut/mot-clé — EN DEHORS du conteneur `overflow-hidden` (le cadre/l'illustration),

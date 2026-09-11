@@ -2,7 +2,7 @@ import { consumeAmplify, tickTide } from "@/game/environment/tide";
 import { getShipDefinition } from "@/game/environment/shipData";
 import type { TideStateName } from "@/game/environment/types";
 import { getCardDefinition } from "@/game/cards/sets/core";
-import { isVisibleDuringTide, STATUS_MALADE } from "@/game/cards/types";
+import { isVisibleDuringTide, STATUS_MALADE, UNIT_CARD_TYPES } from "@/game/cards/types";
 import type { CardInstance } from "@/game/cards/types";
 import { RULES } from "@/game/rules/constants";
 import { nextInt } from "@/game/rng";
@@ -126,10 +126,20 @@ interface BoardCardRef {
   ownerId: PlayerId;
 }
 
+/**
+ * Candidats éligibles au statut MALADE de la Houle — Marins/Créatures
+ * uniquement. Structures/Objets/Équipements n'ont pas de "santé" au sens
+ * où ce malus l'entend (perte de PV/tour n'a de sens narratif que pour un
+ * membre d'équipage) et ne doivent jamais être tirés au sort ici.
+ */
 function collectBoardCards(state: GameState): BoardCardRef[] {
   const refs: BoardCardRef[] = [];
   for (const player of state.players) {
-    for (const unit of player.board) refs.push({ unit, ownerId: player.id });
+    for (const unit of player.board) {
+      if (UNIT_CARD_TYPES.includes(getCardDefinition(unit.cardId).type)) {
+        refs.push({ unit, ownerId: player.id });
+      }
+    }
   }
   return refs;
 }

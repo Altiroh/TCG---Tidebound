@@ -106,7 +106,7 @@ export const DECK_LE_BRISE_LAMES: DeckList = {
     ...repeat("cage-de-flottaison", 2),
     ...repeat("carcasse-renversee", 2),
     ...repeat("second-au-visage-pale", 2),
-    ...repeat("masse-noire", 3),
+    ...repeat("masse-sombre-abyssal", 3),
     ...repeat("la-chose-qui-remonte", 2),
     ...repeat("ce-qui-suit-le-navire", 1),
     ...repeat("baleine-aux-cicatrices-blanches", 3),

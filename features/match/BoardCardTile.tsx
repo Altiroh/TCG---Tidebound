@@ -20,6 +20,13 @@ interface BoardCardTileProps {
    * détail disparaît (on n'inspecte pas ce qu'on n'a pas identifié).
    */
   hiddenFromViewer?: boolean;
+  /**
+   * Structure actuellement invisible pour la Marée courante, SUR SON PROPRE plateau : le propriétaire garde
+   * les badges de statut (dont "Durée") ET ce bouton "i" pour consulter la carte, mais son illustration/cadre/
+   * stats sont remplacés par un dos de carte — voir `CardTile.faceDown`. À l'inverse de `hiddenFromViewer`, ne
+   * retire aucune affordance : seul le rendu visuel change.
+   */
+  faceDown?: boolean;
 }
 
 /**
@@ -37,6 +44,7 @@ export function BoardCardTile({
   onShowDetail,
   widthClassName = "w-28",
   hiddenFromViewer = false,
+  faceDown = false,
 }: BoardCardTileProps) {
   if (hiddenFromViewer) {
     return (
@@ -55,6 +63,7 @@ export function BoardCardTile({
         onClick={onClick}
         widthClassName={widthClassName}
         scaleOnHover={false}
+        faceDown={faceDown}
       />
       <button
         type="button"

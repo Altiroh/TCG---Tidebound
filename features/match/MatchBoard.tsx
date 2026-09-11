@@ -675,6 +675,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
                 selected={selectedBoardId === unit.instanceId || pending?.kind === "attack"}
                 onClick={() => handleAnyBoardCardClick(unit.instanceId, viewerPlayer.id)}
                 onShowDetail={() => setDetailInstance(unit)}
+                faceDown={!isVisibleDuringTide(getCardDefinition(unit.cardId), state.environment.tideState)}
               />
             </div>
           ))}

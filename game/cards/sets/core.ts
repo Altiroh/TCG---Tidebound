@@ -153,6 +153,7 @@ export const CORE_SET: CardDefinition[] = [
     type: "equipement",
     permanent: true,
     cost: 2,
+    health: 2,
     text:
       "Équipez un Marin ou une Créature. Il gagne +1 Puissance. S'il attaque directement le Navire adverse, il " +
       "subit 1 dégât après l'attaque.",
@@ -377,6 +378,7 @@ export const CORE_SET: CardDefinition[] = [
     type: "equipement",
     permanent: true,
     cost: 2,
+    health: 1,
     text:
       "Équipez un permanent. La première fois qu'il devrait être détruit, détruisez la Plaque de Fortune à la " +
       "place et ce permanent perd 1 Résistance.",
@@ -454,6 +456,7 @@ export const CORE_SET: CardDefinition[] = [
     type: "equipement",
     permanent: true,
     cost: 1,
+    health: 2,
     text: "Équipez une Structure. Elle gagne +1 Résistance. Quand cette Structure quitte le board, piochez 1 carte.",
     onPlayEffects: [
       { type: "buff", target: { kind: "chosenUnit" }, healthAmount: { kind: "flat", value: 1 }, permanent: true },
@@ -466,6 +469,7 @@ export const CORE_SET: CardDefinition[] = [
     type: "equipement",
     permanent: true,
     cost: 2,
+    health: 2,
     text: "Équipez un Marin. Tant que vous êtes en Houle ou Tempête, il gagne +1 Puissance et +1 Résistance.",
     // non appliqué : bonus conditionnel à l'état de Marée courant (dynamique) non modélisé.
   },
@@ -553,8 +557,9 @@ export const CORE_SET: CardDefinition[] = [
     // non appliqué : aura dynamique conditionnelle non modélisée.
   },
   {
-    // Renommée "L'Homme Revenu de la Fosse" → "Revenante de la Fosse", n'existe plus qu'en version STANDARD
-    // (Notion "Catalogue de cartes", Lot 04, "Contrôle d'équilibrage — 47 cartes") — id conservé (référencée par testDecks.ts).
+    // Renommée "L'Homme Revenu de la Fosse" → "Revenante de la Fosse" (Notion "Catalogue de cartes", Lot 04)
+    // — id conservé (référencée par testDecks.ts). Coexiste avec une variante ABYSSALE distincte ci-dessous
+    // (confirmée malgré la note de lot qui la disait "STANDARD seule" — texte non mis à jour côté Notion).
     id: "lhomme-revenu-de-la-fosse",
     name: "Revenante de la Fosse",
     type: "marin",
@@ -564,6 +569,24 @@ export const CORE_SET: CardDefinition[] = [
     text: "À son arrivée, perdez 1 Raison. Tant que vous êtes en Abysses, il gagne +1 Résistance.",
     onPlayEffects: [{ type: "reasonLoss", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
     tideAffinity: { abysses: { attack: 3, health: 5 } },
+  },
+  {
+    // Variante ABYSSALE distincte — reprend les stats/texte de l'ancienne entrée unique sous
+    // "L'Homme Revenu de la Fosse" avant renommage, correspondant aux illustrations fournies
+    // ("revenante-de-la-fosse-abyssal.png"/"-debord").
+    id: "revenante-de-la-fosse-abyssal",
+    name: "Revenante de la Fosse",
+    type: "marin",
+    subtype: "abyssal",
+    cost: 5,
+    attack: 4,
+    health: 4,
+    maxCopies: 1,
+    text:
+      "À son arrivée, perdez 2 Raison. Tant que vous êtes en Abysses, la première fois à chaque tour qu'il devrait " +
+      "être détruit, il reste à 1 Résistance à la place.",
+    onPlayEffects: [{ type: "reasonLoss", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } }],
+    // non appliqué : la survie conditionnelle à 1 Résistance pendant Abysses n'est pas câblée.
   },
   {
     id: "requin-balafre",
@@ -576,8 +599,27 @@ export const CORE_SET: CardDefinition[] = [
     // non appliqué : contrecoup réactif sur attaque directe non modélisé.
   },
   {
-    // Renommée "Masse Noire" → "Masse-Sombre" (Notion "Catalogue de cartes", Lot 04) — id conservé (référencée par decks/testDecks.ts).
-    id: "masse-noire",
+    // Version STANDARD (Notion "Catalogue de cartes", Lot 04, confirmée coexister avec une variante ABYSSALE
+    // distincte — non reflété dans le texte du lot, qui ne montre qu'une ligne). Stats inférées (aucune
+    // ligne STANDARD publiée) en cohérence avec l'écart Standard/Abyssale observé ailleurs dans ce lot ;
+    // à corriger si des chiffres officiels sont publiés.
+    id: "masse-sombre",
+    name: "Masse-Sombre",
+    type: "creature",
+    cost: 3,
+    attack: 3,
+    health: 4,
+    text: "Pendant Calme, elle ne peut pas attaquer. Pendant Abysses, elle gagne +1 Puissance.",
+    tideAffinity: {
+      calme: { attack: 3, health: 4, inactive: true },
+      abysses: { attack: 4, health: 4 },
+    },
+  },
+  {
+    // Variante ABYSSALE distincte (coexiste avec la Standard ci-dessus) — anciennement seule entrée du
+    // catalogue sous l'id "masse-noire" ; renommée et scindée pour correspondre aux illustrations
+    // fournies ("masse-sombre-abyssal.png"/"-debord") et à la confirmation d'une vraie paire STD/ABY.
+    id: "masse-sombre-abyssal",
     name: "Masse-Sombre",
     type: "creature",
     subtype: "abyssal",
@@ -625,6 +667,7 @@ export const CORE_SET: CardDefinition[] = [
     type: "equipement",
     permanent: true,
     cost: 3,
+    health: 2,
     text: "Équipez une Créature. Elle gagne +2 Puissance. À chaque fin de votre tour où elle a attaqué, perdez 1 Raison.",
     onPlayEffects: [
       { type: "buff", target: { kind: "chosenUnit" }, attackAmount: { kind: "flat", value: 2 }, permanent: true },
@@ -637,6 +680,7 @@ export const CORE_SET: CardDefinition[] = [
     type: "equipement",
     permanent: true,
     cost: 2,
+    health: 2,
     text:
       "Équipez un Marin. À votre début de tour, vous pouvez perdre 1 Raison : choisissez soit de réduire de 1 " +
       "tour la durée de la Marée actuelle, soit d'inverser l'orientation de sa prochaine transition.",
@@ -726,14 +770,15 @@ export const CORE_SET: CardDefinition[] = [
     // non appliqué : comparaison dynamique de Raison entre joueurs non modélisée.
   },
   {
+    // Renommée "Charpentier de Bord" → "Gabière du Grand Large" (Notion "Catalogue de cartes", Lot 05) — id
+    // conservé (référencé par preconstructed.ts) ; perd son effet d'arrivée, devient une carte simple sans texte.
     id: "charpentier-de-bord",
-    name: "Charpentier de Bord",
+    name: "Gabière du Grand Large",
     type: "marin",
     cost: 2,
-    attack: 1,
+    attack: 2,
     health: 3,
-    text: "À son arrivée, choisissez une Structure que vous contrôlez. Elle récupère 1 Résistance.",
-    onPlayEffects: [{ type: "heal", target: { kind: "chosenUnit" }, amount: { kind: "flat", value: 1 } }],
+    // Volontairement sans effet (cadrage Notion "Catalogue de cartes") : 2/3 pour coût 2 sert de référence de corps simple.
   },
   {
     id: "contremaitre-des-amarres",
@@ -781,6 +826,7 @@ export const CORE_SET: CardDefinition[] = [
     type: "equipement",
     permanent: true,
     cost: 1,
+    health: 1,
     tags: ["equipement"],
     text: "Équipez un Marin. Lorsqu'il attaque une Structure, il gagne +1 Puissance.",
     // non appliqué : bonus de combat conditionnel (cible = Structure) non modélisé.
@@ -791,6 +837,7 @@ export const CORE_SET: CardDefinition[] = [
     type: "equipement",
     permanent: true,
     cost: 2,
+    health: 2,
     text: "Équipez une Structure. À votre début de tour, si elle est visible, elle récupère 1 Résistance. Maximum 1 fois par tour.",
     // non appliqué : capacité récurrente conditionnelle sur permanent équipé non modélisée.
   },
@@ -943,6 +990,7 @@ export const CORE_SET: CardDefinition[] = [
     type: "equipement",
     permanent: true,
     cost: 2,
+    health: 2,
     text: "Équipez un Marin. Pendant Abysses, il gagne +2 Résistance. À chaque sortie des Abysses, son contrôleur perd 1 Raison.",
     // non appliqué : bonus conditionnel à la Marée + trigger de sortie d'état non modélisés.
   },
@@ -952,6 +1000,7 @@ export const CORE_SET: CardDefinition[] = [
     type: "equipement",
     permanent: true,
     cost: 3,
+    health: 3,
     text: "Équipez une Créature. Elle gagne +1 Puissance et Garde. Si elle est détruite, perdez 1 Raison.",
     onPlayEffects: [
       { type: "buff", target: { kind: "chosenUnit" }, attackAmount: { kind: "flat", value: 1 }, permanent: true },

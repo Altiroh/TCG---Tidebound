@@ -544,6 +544,7 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
                 selected={selectedBoardId === unit.instanceId || selection?.kind === "attack"}
                 onClick={() => handleAnyBoardCardClick(unit.instanceId, me.id)}
                 onShowDetail={() => setDetailInstance(unit)}
+                faceDown={!isVisibleDuringTide(getCardDefinition(unit.cardId), state.environment.tideState)}
               />
             </div>
           ))}
