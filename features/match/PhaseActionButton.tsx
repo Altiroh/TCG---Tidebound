@@ -1,6 +1,7 @@
 "use client";
 
 import type { GamePhase } from "@/game";
+import { playButtonClick } from "@/lib/sound";
 
 interface PhaseActionButtonProps {
   /** Si `false`, affiche l'icône "en attente" (sablier), non cliquable — l'adversaire (humain, bot ou en ligne) joue. */
@@ -29,7 +30,13 @@ const ICONS = {
 export function PhaseActionButton({ isMyTurn, phase, onAdvancePhase, onEndTurn, size = 112 }: PhaseActionButtonProps) {
   const icon = !isMyTurn ? ICONS.wait : phase === "combatPhase" ? ICONS.endTurn : ICONS.combat;
   const label = !isMyTurn ? "En attente…" : phase === "combatPhase" ? "Fin de tour" : "Combat";
-  const onClick = !isMyTurn ? undefined : phase === "combatPhase" ? onEndTurn : onAdvancePhase;
+  const action = !isMyTurn ? undefined : phase === "combatPhase" ? onEndTurn : onAdvancePhase;
+  const onClick = action
+    ? () => {
+        playButtonClick();
+        action();
+      }
+    : undefined;
 
   return (
     <div className="group/phase relative flex shrink-0 flex-col items-center" style={{ width: size }}>

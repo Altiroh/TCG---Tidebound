@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { AttackImpact } from "@/features/match/useAttackImpacts";
 import { ATTACK_IMPACT_DURATION_MS } from "@/features/match/useAttackImpacts";
-import { playAttackImpactSound } from "@/features/match/sound";
+import { playRandomAttackSound } from "@/lib/sound";
 
 interface Point {
   x: number;
@@ -107,7 +107,7 @@ function SingleImpact({ impact }: { impact: AttackImpact }) {
   useEffect(() => {
     if (stage === "impact" && !soundPlayed.current) {
       soundPlayed.current = true;
-      playAttackImpactSound();
+      playRandomAttackSound();
     }
   }, [stage]);
 

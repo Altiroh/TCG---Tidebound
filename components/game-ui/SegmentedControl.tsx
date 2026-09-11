@@ -1,6 +1,7 @@
 "use client";
 
 import { TRANSITION } from "@/components/game-ui/tokens";
+import { playButtonClick } from "@/lib/sound";
 
 export interface SegmentedOption<T extends string> {
   value: T;
@@ -26,7 +27,10 @@ export function SegmentedControl<T extends string>({ value, options, onChange, c
         <button
           key={opt.value}
           type="button"
-          onClick={() => onChange(opt.value)}
+          onClick={() => {
+            playButtonClick();
+            onChange(opt.value);
+          }}
           className={`relative pb-1 font-medium ${TRANSITION} ${
             opt.value === value ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
           }`}

@@ -1,4 +1,5 @@
-import type { ButtonHTMLAttributes } from "react";
+import type { ButtonHTMLAttributes, MouseEvent } from "react";
+import { playButtonClick } from "@/lib/sound";
 
 type ButtonVariant = "primary" | "secondary";
 
@@ -12,9 +13,15 @@ const VARIANT_CLASSES: Record<ButtonVariant, string> = {
 };
 
 /** Bouton générique de l'UI. Composant "bête" : aucune logique de jeu ici. */
-export function Button({ variant = "primary", className = "", ...props }: ButtonProps) {
+export function Button({ variant = "primary", className = "", onClick, ...props }: ButtonProps) {
+  function handleClick(event: MouseEvent<HTMLButtonElement>) {
+    playButtonClick();
+    onClick?.(event);
+  }
+
   return (
     <button
+      onClick={handleClick}
       className={`rounded-md px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${VARIANT_CLASSES[variant]} ${className}`}
       {...props}
     />

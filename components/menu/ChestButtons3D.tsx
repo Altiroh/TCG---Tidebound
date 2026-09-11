@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import * as THREE from "three";
 import type { ChestSlotDef, ChestIconSlotDef } from "@/components/menu/TideboundMenuChest";
 import { TIDEBOUND_MENU_ASSETS } from "@/components/menu/TideboundMenuChest";
+import { playButtonClick } from "@/lib/sound";
 
 const BRASS = 0xc9a15a;
 const BRASS_LIGHT = 0xe8c988;
@@ -497,7 +498,10 @@ export function ChestButtons3D({ slots, iconSlots }: { slots: ChestSlotDef[]; ic
       pressed = hit && !hit.disabled ? hit : null;
     }
     function onUp() {
-      if (pressed && pressed === hovered && pressed.href) router.push(pressed.href);
+      if (pressed && pressed === hovered && pressed.href) {
+        playButtonClick();
+        router.push(pressed.href);
+      }
       pressed = null;
     }
     function onLeave() {

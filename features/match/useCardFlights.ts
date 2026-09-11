@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { GameState, PlayerId } from "@/game";
+import { playCardDraw } from "@/lib/sound";
 
 export interface CardFlight {
   id: number;
@@ -51,6 +52,7 @@ export function useCardFlights(state: GameState): CardFlight[] {
     for (const event of newEvents) {
       if (event.type === "DRAW_CARD") {
         created.push({ id: nextId.current++, playerId: event.playerId, kind: "draw" });
+        playCardDraw();
       } else if (event.type === "SUMMON") {
         created.push({ id: nextId.current++, playerId: event.playerId, kind: "play" });
       } else if (event.type === "SABORDED") {

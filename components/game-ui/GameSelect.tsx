@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { BORDER_SUBTLE, RADIUS_SM, SHADOW_FLOATING, SURFACE_1, TEXT_PRIMARY, TRANSITION } from "@/components/game-ui/tokens";
+import { playButtonClick } from "@/lib/sound";
 
 export interface GameSelectOption<T extends string> {
   value: T;
@@ -47,7 +48,10 @@ export function GameSelect<T extends string>({ value, options, onChange, classNa
     <div ref={rootRef} className={`relative ${className}`}>
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          playButtonClick();
+          setOpen((v) => !v);
+        }}
         className={`flex w-full items-center justify-between gap-2 px-3 py-1.5 text-sm ${SURFACE_1} ${BORDER_SUBTLE} ${RADIUS_SM} ${TEXT_PRIMARY} ${TRANSITION} hover:border-[var(--accent)]/50`}
       >
         <span className="truncate">{current?.label ?? value}</span>
@@ -70,6 +74,7 @@ export function GameSelect<T extends string>({ value, options, onChange, classNa
               <button
                 type="button"
                 onClick={() => {
+                  playButtonClick();
                   onChange(opt.value);
                   setOpen(false);
                 }}

@@ -1,7 +1,8 @@
 "use client";
 
-import type { ButtonHTMLAttributes } from "react";
+import type { ButtonHTMLAttributes, MouseEvent } from "react";
 import { BORDER_SUBTLE, RADIUS_SM, TEXT_PRIMARY, TRANSITION } from "@/components/game-ui/tokens";
+import { playButtonClick } from "@/lib/sound";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger";
 
@@ -26,11 +27,17 @@ const VARIANT_CLASSES: Record<Variant, string> = {
  * écrans hors-plateau. Compact, sans grand rectangle, feedback de clic
  * immédiat (`active:scale-95`).
  */
-export function GameButton({ variant = "secondary", className = "", disabled, ...props }: GameButtonProps) {
+export function GameButton({ variant = "secondary", className = "", disabled, onClick, ...props }: GameButtonProps) {
+  function handleClick(event: MouseEvent<HTMLButtonElement>) {
+    playButtonClick();
+    onClick?.(event);
+  }
+
   return (
     <button
       type="button"
       disabled={disabled}
+      onClick={handleClick}
       className={`inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium ${RADIUS_SM} ${TRANSITION} active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100 ${VARIANT_CLASSES[variant]} ${className}`}
       {...props}
     />
