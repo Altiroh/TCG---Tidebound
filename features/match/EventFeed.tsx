@@ -28,7 +28,7 @@ export function EventFeed({ state }: { state: GameState }) {
   return (
     <div
       ref={containerRef}
-      className="flex h-full flex-col gap-1 overflow-y-auto rounded-md border border-white/10 bg-black/70 p-2 text-[10px] leading-snug text-slate-300"
+      className="flex h-full flex-col gap-1.5 overflow-y-auto rounded-md border border-white/10 bg-black/70 p-2.5 text-xs leading-snug text-slate-300"
     >
       {recent.length === 0 ? (
         <p className="text-slate-600">Aucun événement pour l&apos;instant.</p>

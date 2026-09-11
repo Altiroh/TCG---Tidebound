@@ -624,7 +624,7 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
 
         {/* Info du viewer, en bas à droite */}
         <div
-          className={`absolute truncate rounded-md border px-2 py-1 text-[11px] ${
+          className={`absolute truncate rounded-md border px-2.5 py-1 text-xs ${
             isMyTurn ? "border-board-accent/50 bg-board-accent/10 text-slate-100" : "border-slate-700/70 bg-black/60 text-slate-200"
           }`}
           style={{ left: 1462, top: 906, width: 204 }}

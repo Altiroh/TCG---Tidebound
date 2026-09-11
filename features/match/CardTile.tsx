@@ -415,9 +415,9 @@ export function CardTile({
         instance.turnsRemaining !== undefined ||
         hasKeyword(def, "garde") ||
         (instance.statuses && instance.statuses.length > 0)) && (
-        <div className="pointer-events-none absolute inset-x-0 -top-4 z-20 flex flex-wrap items-center justify-center gap-1.5 px-1">
+        <div className="pointer-events-none absolute inset-x-0 -top-5 z-20 flex flex-wrap items-center justify-center gap-2 px-1">
           {stats.inactive && (
-            <span className="pointer-events-auto rounded-full border border-amber-400/60 bg-black/90 px-2 py-1 text-[11px] font-semibold uppercase text-amber-300 shadow-md">
+            <span className="pointer-events-auto rounded-full border border-amber-400/60 bg-black/90 px-2.5 py-1 text-xs font-semibold uppercase text-amber-300 shadow-md">
               Inactive
             </span>
           )}

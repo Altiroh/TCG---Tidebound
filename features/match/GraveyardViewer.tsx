@@ -78,7 +78,7 @@ export function GraveyardViewer({ playerLabel, cards, onClose }: GraveyardViewer
                     <CardTile instance={card} tideState="calme" widthClassName="w-24" />
                     {card.graveyardCause && (
                       <p
-                        className={`text-[10px] font-semibold uppercase tracking-wide ${GRAVEYARD_CAUSE_COLORS[card.graveyardCause]}`}
+                        className={`text-xs font-semibold uppercase tracking-wide ${GRAVEYARD_CAUSE_COLORS[card.graveyardCause]}`}
                         title={def.name}
                       >
                         {GRAVEYARD_CAUSE_LABELS[card.graveyardCause]}

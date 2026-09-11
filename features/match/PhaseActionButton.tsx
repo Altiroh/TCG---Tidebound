@@ -60,7 +60,7 @@ export function PhaseActionButton({ isMyTurn, phase, onAdvancePhase, onEndTurn, 
           }`}
         />
       </button>
-      <span className="pointer-events-none absolute top-full mt-1.5 whitespace-nowrap text-xs font-medium uppercase tracking-wide text-slate-200 opacity-0 transition-opacity duration-150 [text-shadow:0_1px_3px_rgba(0,0,0,0.9)] group-hover/phase:opacity-100">
+      <span className="pointer-events-none absolute top-full mt-1.5 whitespace-nowrap text-sm font-medium uppercase tracking-wide text-slate-200 opacity-0 transition-opacity duration-150 [text-shadow:0_1px_3px_rgba(0,0,0,0.9)] group-hover/phase:opacity-100">
         {label}
       </span>
     </div>

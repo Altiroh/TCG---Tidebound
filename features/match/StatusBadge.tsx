@@ -7,7 +7,7 @@ interface StatusBadgeProps {
   icon: string;
   label: string;
   description: string;
-  /** Taille en pixels réels (PAS en `cqw`) — ce badge flotte désormais au-dessus de la carte, en dehors du conteneur à requête de conteneur (`container-type: inline-size`) de `CardTile` : un `cqw` y résoudrait à 0. Une taille fixe garantit aussi qu'il reste "assez gros pour le voir à l'œil nu" même sur les plus petites cartes de plateau. Défaut : 30. */
+  /** Taille en pixels réels (PAS en `cqw`) — ce badge flotte désormais au-dessus de la carte, en dehors du conteneur à requête de conteneur (`container-type: inline-size`) de `CardTile` : un `cqw` y résoudrait à 0. Une taille fixe garantit aussi qu'il reste "assez gros pour le voir à l'œil nu" même sur les plus petites cartes de plateau. Défaut : 38. */
   size?: number;
   /** Texte superposé au centre de l'icône (ex: nombre de tours restants pour le badge "Durée"). */
   overlayText?: string;
@@ -37,7 +37,7 @@ export function StatusBadge({
   icon,
   label,
   description,
-  size = 30,
+  size = 38,
   overlayText,
   overlayTextClassName = "text-slate-900",
 }: StatusBadgeProps) {
@@ -79,7 +79,7 @@ export function StatusBadge({
         />
         {overlayText !== undefined && (
           <span
-            className={`absolute inset-0 flex items-center justify-center text-sm font-bold ${overlayTextClassName}`}
+            className={`absolute inset-0 flex items-center justify-center text-base font-bold ${overlayTextClassName}`}
             style={{ textShadow: "0 0 3px rgba(255,255,255,0.9), 0 0 2px rgba(255,255,255,0.9)" }}
           >
             {overlayText}
@@ -91,11 +91,11 @@ export function StatusBadge({
         typeof document !== "undefined" &&
         createPortal(
           <div
-            className="pointer-events-none fixed z-[100] w-48 -translate-x-1/2 -translate-y-full rounded-md border border-white/15 bg-black/95 p-2 text-left normal-case shadow-lg"
-            style={{ left: coords.left, top: coords.top - 8 }}
+            className="pointer-events-none fixed z-[100] w-60 -translate-x-1/2 -translate-y-full rounded-md border border-white/15 bg-black/95 p-3 text-left normal-case shadow-lg"
+            style={{ left: coords.left, top: coords.top - 10 }}
           >
-            <p className="text-xs font-semibold text-white">{label}</p>
-            <p className="mt-1 text-[11px] leading-snug text-slate-300">{description}</p>
+            <p className="text-sm font-semibold text-white">{label}</p>
+            <p className="mt-1 text-xs leading-snug text-slate-300">{description}</p>
           </div>,
           document.body
         )}
