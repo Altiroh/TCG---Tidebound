@@ -328,12 +328,16 @@ export function resolveTideTurnStep(
     const board = player.board
       .filter((u) => !expiring.some((e) => e.instanceId === u.instanceId))
       .map((u) => (u.turnsRemaining !== undefined ? { ...u, turnsRemaining: u.turnsRemaining - 1 } : u));
-    if (expiring.length === 0) continue;
 
-    const graveyard = [
-      ...player.graveyard,
-      ...expiring.map((u) => ({ ...u, damageMarked: 0, modifiers: [], graveyardCause: "expired" as const })),
-    ];
+    // Le décompte (nouveau `board`) doit toujours être appliqué, même
+    // quand rien n'expire ce tour-ci — un `continue` prématuré ici
+    // revenait à ignorer silencieusement la décrémentation tant qu'aucune
+    // Structure n'atteignait 0, ce qui la figeait indéfiniment à sa
+    // valeur initiale.
+    const graveyard =
+      expiring.length > 0
+        ? [...player.graveyard, ...expiring.map((u) => ({ ...u, damageMarked: 0, modifiers: [], graveyardCause: "expired" as const }))]
+        : player.graveyard;
     nextState = {
       ...nextState,
       players: nextState.players.map((p) => (p.id === player.id ? { ...p, board, graveyard } : p)) as [
@@ -341,6 +345,8 @@ export function resolveTideTurnStep(
         PlayerState
       ],
     };
+
+    if (expiring.length === 0) continue;
 
     for (const unit of expiring) {
       events.push({ ...base, type: "CARD_MOVED", instanceId: unit.instanceId, fromZone: "board", toZone: "graveyard" });

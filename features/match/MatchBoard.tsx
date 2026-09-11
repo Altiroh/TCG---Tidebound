@@ -6,6 +6,7 @@ import {
   eligibleCandidatesFor,
   getCardDefinition,
   getShipDefinition,
+  isVisibleDuringTide,
   stepBotTurn,
   STATUS_SILENCE,
   UNIT_CARD_TYPES,
@@ -530,6 +531,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
                 selected={pending?.kind === "attack"}
                 onClick={() => handleAnyBoardCardClick(unit.instanceId, otherPlayer.id)}
                 onShowDetail={() => setDetailInstance(unit)}
+                hiddenFromViewer={!isVisibleDuringTide(getCardDefinition(unit.cardId), state.environment.tideState)}
               />
             </div>
           ))}

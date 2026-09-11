@@ -6,6 +6,7 @@ import {
   eligibleCandidatesFor,
   getCardDefinition,
   getShipDefinition,
+  isVisibleDuringTide,
   STATUS_SILENCE,
   UNIT_CARD_TYPES,
   type CardInstance,
@@ -403,6 +404,7 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
                 selected={selection?.kind === "attack"}
                 onClick={() => handleAnyBoardCardClick(unit.instanceId, opponent.id)}
                 onShowDetail={() => setDetailInstance(unit)}
+                hiddenFromViewer={!isVisibleDuringTide(getCardDefinition(unit.cardId), state.environment.tideState)}
               />
             </div>
           ))}

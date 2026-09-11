@@ -2,6 +2,7 @@
 
 import type { CardInstance, TideStateName } from "@/game";
 import { CardTile } from "@/features/match/CardTile";
+import { CardBack } from "@/features/match/CardBack";
 
 interface BoardCardTileProps {
   instance: CardInstance;
@@ -10,6 +11,15 @@ interface BoardCardTileProps {
   onClick?: () => void;
   onShowDetail: () => void;
   widthClassName?: string;
+  /**
+   * Structure actuellement invisible pour l'adversaire selon la Marée
+   * (`visibleDuringTide` — son propriétaire la voit TOUJOURS, quel que
+   * soit l'état de Marée). À ne passer `true` que pour le plateau de
+   * l'AUTRE joueur du point de vue du viewer courant — jamais pour son
+   * propre plateau. Le slot reste occupé (face cachée), le bouton de
+   * détail disparaît (on n'inspecte pas ce qu'on n'a pas identifié).
+   */
+  hiddenFromViewer?: boolean;
 }
 
 /**
@@ -19,7 +29,23 @@ interface BoardCardTileProps {
  * ouvre le détail complet (`CardDetailModal`) sans interférer avec cette
  * sélection (`stopPropagation`).
  */
-export function BoardCardTile({ instance, tideState, selected, onClick, onShowDetail, widthClassName = "w-28" }: BoardCardTileProps) {
+export function BoardCardTile({
+  instance,
+  tideState,
+  selected,
+  onClick,
+  onShowDetail,
+  widthClassName = "w-28",
+  hiddenFromViewer = false,
+}: BoardCardTileProps) {
+  if (hiddenFromViewer) {
+    return (
+      <div className="relative cursor-pointer" onClick={onClick} role={onClick ? "button" : undefined}>
+        <CardBack widthClassName={widthClassName} />
+      </div>
+    );
+  }
+
   return (
     <div className="relative">
       <CardTile

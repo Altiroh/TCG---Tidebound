@@ -74,6 +74,19 @@ describe("environnement - Marée (modèle durée + intensité)", () => {
     expect(result.state.players[0].anchor).toBe(21); // onExpire : +1 Ancrage
   });
 
+  it("Structure/Objet à durée limitée : décompte `turnsRemaining` même quand rien n'expire ce tour-ci", () => {
+    const buoy = instance("radeau-de-fortune", "p1", { turnsRemaining: 3 });
+    const state = testGameState({
+      players: [testPlayer("p1", { board: [buoy] }), testPlayer("p2")],
+      activePlayerId: "p2",
+    });
+    const result = dispatch(state, { type: "endTurn", playerId: "p2" });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const remaining = result.state.players[0].board.find((u) => u.instanceId === buoy.instanceId)?.turnsRemaining;
+    expect(remaining).toBe(2);
+  });
+
   it("ignoreNextTideDamage annule la prochaine perte d'Ancrage de cet état pour ce joueur", () => {
     let state = testGameState({
       players: [testPlayer("p1", { shipId: "lerrant" }), testPlayer("p2")],
