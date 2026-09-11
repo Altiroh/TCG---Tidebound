@@ -15,6 +15,7 @@ import {
   type PlayerId,
 } from "@/game";
 import { Button } from "@/components/ui/Button";
+import { ActionToastStack } from "@/features/match/ActionToastStack";
 import { BoardBackdrop } from "@/features/match/BoardBackdrop";
 import { BoardCardTile } from "@/features/match/BoardCardTile";
 import { BoardStage } from "@/features/match/BoardStage";
@@ -30,6 +31,7 @@ import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ShipInstrumentCluster } from "@/features/match/ShipInstrumentCluster";
 import { TideOrientationTile } from "@/features/match/TideOrientationTile";
 import { TideProgressBar } from "@/features/match/TideProgressBar";
+import { useActionToasts } from "@/features/match/useActionToasts";
 import { usePhaseBannerEvent } from "@/features/match/usePhaseBannerEvent";
 
 interface MatchBoardProps {
@@ -100,6 +102,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
     : [];
 
   const bannerEvent = usePhaseBannerEvent(state);
+  const actionToasts = useActionToasts(state);
 
   function playerLabel(id: PlayerId): string {
     if (id === botPlayerId) return "du Bot";
@@ -440,13 +443,13 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
         </div>
 
         {/* Tour + info adversaire, nichés dans le cadre boussole en haut à droite */}
-        <div className="absolute flex flex-col items-stretch gap-1" style={{ left: 1518, top: 272, width: 108 }}>
-          <div className="rounded border border-slate-700/70 bg-black/60 px-1 py-0.5 text-center text-[9px] text-slate-200">
+        <div className="absolute flex flex-col items-stretch gap-0.5" style={{ left: 1518, top: 272, width: 108 }}>
+          <div className="text-center text-sm font-semibold text-slate-100 [text-shadow:0_1px_3px_rgba(0,0,0,0.9)]">
             Tour <strong>{state.turnNumber}</strong>
           </div>
-          <div className="truncate rounded border border-slate-700/70 bg-black/60 px-1 py-0.5 text-center text-[9px] text-slate-200">
+          <div className="truncate text-center text-[10px] text-slate-300 [text-shadow:0_1px_2px_rgba(0,0,0,0.9)]">
             {otherPlayer.id === botPlayerId ? "Bot" : otherPlayer.id === "p1" ? "Joueur 1" : "Joueur 2"}
-            <span className="ml-1 text-slate-500">· {otherPlayer.hand.length}</span>
+            <span className="ml-1 text-slate-400">· {otherPlayer.hand.length}</span>
           </div>
         </div>
 
@@ -549,7 +552,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
 
         <div
           className="absolute flex flex-col items-center justify-center gap-2 text-center"
-          style={{ left: 230, top: 340, width: 1020, height: 190 }}
+          style={{ left: 200, top: 340, width: 1050, height: 190 }}
         >
           <TideProgressBar tideState={state.environment.tideState} tideRemainingTurns={state.environment.tideRemainingTurns} />
           {hasHint && (
@@ -575,7 +578,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
             phase={state.phase}
             onAdvancePhase={() => runAction({ type: "advancePhase", playerId: activePlayerId })}
             onEndTurn={() => runAction({ type: "endTurn", playerId: activePlayerId })}
-            size={90}
+            size={120}
           />
           {pending && isViewerTurn && (
             <Button variant="secondary" onClick={clearSelection}>
@@ -729,6 +732,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
       </BoardStage>
 
       <DragTargetingTrail anchor={dragAnchor} />
+      <ActionToastStack toasts={actionToasts} />
       <PhaseBanner text={bannerText} bannerKey={bannerEvent?.id ?? null} />
       {graveyardViewerPlayerId && (
         <GraveyardViewer

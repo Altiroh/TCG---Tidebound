@@ -22,21 +22,22 @@ const ICONS = {
  * 3 icônes) : son icône ET son action changent selon l'état de la partie
  * plutôt que d'avoir un bouton "Combat" et un bouton "Fin de tour"
  * séparés — Phase principale → Phase de combat → Fin de tour, ou "en
- * attente" tant que ce n'est pas mon tour.
+ * attente" tant que ce n'est pas mon tour. Le libellé ne s'affiche qu'au
+ * survol (positionné en absolu sous le bouton, hors flux) pour ne jamais
+ * décaler le centrage du bouton lui-même selon la longueur du texte.
  */
-export function PhaseActionButton({ isMyTurn, phase, onAdvancePhase, onEndTurn, size = 72 }: PhaseActionButtonProps) {
+export function PhaseActionButton({ isMyTurn, phase, onAdvancePhase, onEndTurn, size = 112 }: PhaseActionButtonProps) {
   const icon = !isMyTurn ? ICONS.wait : phase === "combatPhase" ? ICONS.endTurn : ICONS.combat;
   const label = !isMyTurn ? "En attente…" : phase === "combatPhase" ? "Fin de tour" : "Combat";
   const onClick = !isMyTurn ? undefined : phase === "combatPhase" ? onEndTurn : onAdvancePhase;
 
   return (
-    <div className="flex flex-col items-center gap-1">
+    <div className="group/phase relative flex shrink-0 flex-col items-center" style={{ width: size }}>
       <button
         type="button"
         onClick={onClick}
         disabled={!onClick}
         aria-label={label}
-        title={label}
         className="group relative shrink-0 disabled:cursor-default"
         style={{ width: size, height: size }}
       >
@@ -59,7 +60,9 @@ export function PhaseActionButton({ isMyTurn, phase, onAdvancePhase, onEndTurn, 
           }`}
         />
       </button>
-      <span className="text-[10px] font-medium uppercase tracking-wide text-slate-400">{label}</span>
+      <span className="pointer-events-none absolute top-full mt-1.5 whitespace-nowrap text-xs font-medium uppercase tracking-wide text-slate-200 opacity-0 transition-opacity duration-150 [text-shadow:0_1px_3px_rgba(0,0,0,0.9)] group-hover/phase:opacity-100">
+        {label}
+      </span>
     </div>
   );
 }

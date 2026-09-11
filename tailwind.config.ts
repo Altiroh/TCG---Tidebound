@@ -38,6 +38,12 @@ const config: Config = {
           "0%, 100%": { boxShadow: "0 0 0 2px rgba(251,191,36,0.9), 0 0 14px 4px rgba(251,191,36,0.55)" },
           "50%": { boxShadow: "0 0 0 2px rgba(251,191,36,0.55), 0 0 4px 1px rgba(251,191,36,0.25)" },
         },
+        "toast-in": {
+          "0%": { opacity: "0", transform: "translateY(-8px) scale(0.95)" },
+          "10%": { opacity: "1", transform: "translateY(0) scale(1)" },
+          "85%": { opacity: "1", transform: "translateY(0) scale(1)" },
+          "100%": { opacity: "0", transform: "translateY(-4px) scale(0.98)" },
+        },
       },
       animation: {
         "stat-hit": "stat-hit 0.5s ease-out",
@@ -49,6 +55,9 @@ const config: Config = {
         // Carte dont le moteur attend actuellement une réaction (Notion
         // "Moteur de partie" : glow "plus intense / pulsant").
         "reaction-pulse": "reaction-pulse 1.4s ease-in-out infinite",
+        // Notification d'action éphémère (pioche/défausse/Sabordage/destruction) — durée synchronisée
+        // avec `TOAST_DURATION_MS` dans `useActionToasts.ts`.
+        "toast-in": "toast-in 2.2s ease-in-out forwards",
       },
     },
   },

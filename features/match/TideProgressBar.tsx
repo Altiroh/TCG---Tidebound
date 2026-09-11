@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { TideStateName } from "@/game";
 import { TIDE_STATE_LABELS } from "@/features/match/cardDisplay";
 
@@ -45,6 +46,57 @@ const TIDE_STATE_GLOW: Record<TideStateName, string> = {
   abysses: "shadow-[0_0_18px_rgba(232,121,249,0.9)]",
 };
 
+/** Icône info + info-bulle du repère courant — rendue via un portail (`createPortal` dans `document.body`) plutôt qu'en `position: absolute` classique : toute cette barre vit à l'intérieur du plateau mis à l'échelle par `BoardStage` (`transform: scale()`), qui rapetisse aussi le TEXTE de tout ce qui reste dans cet arbre (contrairement à une taille en `px` qu'on pourrait croire fixe). Un portail échappe entièrement à cette mise à l'échelle : texte à taille réelle, toujours lisible quel que soit le zoom du plateau. Position calculée depuis `getBoundingClientRect()`, ouverte vers le haut. */
+function TideInfoIcon({ stateName, tideRemainingTurns }: { stateName: TideStateName; tideRemainingTurns: number }) {
+  const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState<{ left: number; top: number } | null>(null);
+  const ref = useRef<HTMLButtonElement>(null);
+
+  function show() {
+    const rect = ref.current?.getBoundingClientRect();
+    if (rect) setCoords({ left: rect.left + rect.width / 2, top: rect.top });
+    setOpen(true);
+  }
+  function hide() {
+    setOpen(false);
+  }
+
+  return (
+    <>
+      <button
+        ref={ref}
+        type="button"
+        onMouseEnter={show}
+        onMouseLeave={hide}
+        onFocus={show}
+        onBlur={hide}
+        aria-label={`Effets de la Marée ${TIDE_STATE_LABELS[stateName]}`}
+        className="absolute -top-8 left-1/2 z-10 flex h-6 w-6 -translate-x-1/2 items-center justify-center rounded-full border border-white/50 bg-black/80 text-xs font-bold leading-none text-slate-200 hover:border-board-accent hover:text-board-accent"
+      >
+        i
+      </button>
+      {open &&
+        coords &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            className="pointer-events-none fixed z-[100] w-64 -translate-x-1/2 -translate-y-full rounded-md border border-white/15 bg-black/95 p-3 text-left shadow-lg"
+            style={{ left: coords.left, top: coords.top - 10 }}
+          >
+            <p
+              className={`text-sm font-semibold uppercase tracking-wide [font-family:var(--font-card-title)] ${TIDE_STATE_TEXT_CLASS[stateName]}`}
+            >
+              {TIDE_STATE_LABELS[stateName]} · {tideRemainingTurns} tour{tideRemainingTurns > 1 ? "s" : ""} restant
+              {tideRemainingTurns > 1 ? "s" : ""}
+            </p>
+            <p className="mt-1.5 text-sm leading-snug text-slate-300">{TIDE_STATE_EFFECT_TEXT[stateName]}</p>
+          </div>,
+          document.body
+        )}
+    </>
+  );
+}
+
 /**
  * Ligne de progression de la Marée, horizontale et sans fond, étirée
  * quasiment d'un bout à l'autre de la bande centrale (connecteurs en
@@ -57,7 +109,6 @@ const TIDE_STATE_GLOW: Record<TideStateName, string> = {
  * chaque transition.
  */
 export function TideProgressBar({ tideState, tideRemainingTurns }: TideProgressBarProps) {
-  const [infoOpen, setInfoOpen] = useState(false);
   const activeIndex = TIDE_ORDER.indexOf(tideState);
   const currentDuration = TIDE_STATE_DURATION[tideState];
   const currentStageFraction = Math.max(0, Math.min(1, (currentDuration - tideRemainingTurns) / currentDuration));
@@ -74,43 +125,20 @@ export function TideProgressBar({ tideState, tideRemainingTurns }: TideProgressB
           <div key={stateName} className={`flex items-center ${isLast ? "" : "flex-1"}`}>
             <div className="flex shrink-0 flex-col items-center gap-2">
               <div className="relative flex h-7 w-7 items-center justify-center">
-                {isActive && (
-                  <button
-                    type="button"
-                    onMouseEnter={() => setInfoOpen(true)}
-                    onMouseLeave={() => setInfoOpen(false)}
-                    onFocus={() => setInfoOpen(true)}
-                    onBlur={() => setInfoOpen(false)}
-                    aria-label={`Effets de la Marée ${TIDE_STATE_LABELS[stateName]}`}
-                    className="absolute -top-8 left-1/2 z-10 flex h-6 w-6 -translate-x-1/2 items-center justify-center rounded-full border border-white/50 bg-black/80 text-xs font-bold leading-none text-slate-200 hover:border-board-accent hover:text-board-accent"
-                  >
-                    i
-                  </button>
-                )}
-                {isActive && infoOpen && (
-                  <div className="absolute bottom-full left-1/2 z-20 mb-2 w-52 -translate-x-1/2 rounded-md border border-white/15 bg-black/95 p-2 text-left shadow-lg">
-                    <p
-                      className={`text-[11px] font-semibold uppercase tracking-wide [font-family:var(--font-card-title)] ${TIDE_STATE_TEXT_CLASS[stateName]}`}
-                    >
-                      {TIDE_STATE_LABELS[stateName]} · {tideRemainingTurns} tour{tideRemainingTurns > 1 ? "s" : ""} restant
-                      {tideRemainingTurns > 1 ? "s" : ""}
-                    </p>
-                    <p className="mt-1 text-[11px] leading-snug text-slate-300">{TIDE_STATE_EFFECT_TEXT[stateName]}</p>
-                  </div>
-                )}
+                {isActive && <TideInfoIcon stateName={stateName} tideRemainingTurns={tideRemainingTurns} />}
                 <div
                   className={`rounded-full transition-all duration-500 ease-out ${
                     isActive
                       ? `h-7 w-7 ${TIDE_STATE_FILL_CLASS[stateName]} ${TIDE_STATE_GLOW[stateName]}`
                       : isPast
                         ? `h-4 w-4 ${TIDE_STATE_FILL_CLASS[stateName]}`
-                        : "h-4 w-4 border-2 border-white/30 bg-transparent"
+                        : "h-4 w-4 border-2 border-white/60 bg-transparent"
                   }`}
                 />
               </div>
               <span
-                className={`whitespace-nowrap text-xs font-semibold uppercase tracking-wide [font-family:var(--font-card-title)] ${
-                  isActive ? TIDE_STATE_TEXT_CLASS[stateName] : isPast ? "text-slate-300" : "text-slate-600"
+                className={`whitespace-nowrap text-xs font-semibold uppercase tracking-wide [font-family:var(--font-card-title)] [text-shadow:0_1px_3px_rgba(0,0,0,0.95),0_0_6px_rgba(0,0,0,0.9)] ${
+                  isActive ? TIDE_STATE_TEXT_CLASS[stateName] : isPast ? "text-white/90" : "text-white/60"
                 }`}
               >
                 {TIDE_STATE_LABELS[stateName]}
@@ -118,7 +146,7 @@ export function TideProgressBar({ tideState, tideRemainingTurns }: TideProgressB
             </div>
 
             {!isLast && (
-              <div className="relative mx-3 h-1.5 min-w-[40px] flex-1 overflow-hidden rounded-full bg-white/15">
+              <div className="relative mx-3 h-1.5 min-w-[40px] flex-1 overflow-hidden rounded-full bg-white/35">
                 <div
                   className="h-full bg-white transition-[width] duration-700 ease-out"
                   style={{ width: `${connectorFraction * 100}%` }}

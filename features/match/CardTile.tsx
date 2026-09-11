@@ -64,6 +64,13 @@ const GARDE_ICON_INFO = {
 /** Icône du badge "Durée" (Structure/Objet à durée limitée, `instance.turnsRemaining`) — le nombre de tours restants est superposé au centre. */
 const TOUR_ICON = "/assets/effect_tour.png";
 
+/** Maladie d'invocation (`instance.summoningSick`) — distincte des statuts à durée (`instance.statuses`). */
+const ENGOURDI_ICON_INFO = {
+  icon: "/assets/effect_engourdi.png",
+  label: "Engourdi",
+  description: "Vient d'être invoquée : ne peut attaquer qu'à partir de votre prochain tour.",
+};
+
 /** Repli uniquement pour le cas (rare) où le cadre lui-même n'a pas chargé — pas de bandeaux/découpe peints, juste une teinte par type. */
 const TYPE_BG_CLASSES: Record<string, string> = {
   marin: "bg-sky-950",
@@ -374,8 +381,13 @@ export function CardTile({
               style={{ ...zoneStyle(STATUS_BADGES_ZONE), fontSize: "5cqw" }}
             >
               {stats.inactive && <span className="rounded bg-black/60 px-1 text-amber-300">Inactive</span>}
-              {/* "Non prête" (maladie d'invocation) — distinct des statuts à durée (`instance.statuses`) */}
-              {instance.summoningSick && isUnit && <span className="rounded bg-black/60 px-1 text-slate-300">Non prête</span>}
+              {instance.summoningSick && isUnit && (
+                <StatusBadge
+                  icon={ENGOURDI_ICON_INFO.icon}
+                  label={ENGOURDI_ICON_INFO.label}
+                  description={ENGOURDI_ICON_INFO.description}
+                />
+              )}
               {hasKeyword(def, "garde") && (
                 <StatusBadge icon={GARDE_ICON_INFO.icon} label={GARDE_ICON_INFO.label} description={GARDE_ICON_INFO.description} />
               )}
