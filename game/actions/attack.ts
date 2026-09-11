@@ -20,6 +20,30 @@ function effectiveAttack(unit: CardInstance, state: GameState): number {
   return computeEffectiveStats(unit, state.environment.tideState).attack;
 }
 
+/**
+ * Bonus de dégâts (attaquant lui-même + un Équipement qui lui serait
+ * attaché) quand la cible de l'attaque est du type visé — ex: Barracuda/
+ * Poisson-Scie Gris "+1 contre une Structure", Corde de Remorquage "+1 à
+ * l'unité équipée contre une Structure". Ne s'applique qu'aux attaques
+ * ciblant une unité (pas une attaque directe du Navire, qui n'a pas de
+ * carte-cible) et n'entre jamais dans le calcul de la riposte.
+ */
+function bonusDamageAgainst(attacker: CardInstance, defenderType: string, state: GameState): number {
+  let bonus = 0;
+  const attackerDef = getCardDefinition(attacker.cardId);
+  if (attackerDef.bonusDamageVsTargetType?.type === defenderType) {
+    bonus += attackerDef.bonusDamageVsTargetType.amount;
+  }
+  for (const unit of [...state.players[0].board, ...state.players[1].board]) {
+    if (unit.attachedToInstanceId !== attacker.instanceId) continue;
+    const equipDef = getCardDefinition(unit.cardId);
+    if (equipDef.bonusDamageVsTargetType?.type === defenderType) {
+      bonus += equipDef.bonusDamageVsTargetType.amount;
+    }
+  }
+  return bonus;
+}
+
 function validate(state: GameState, action: AttackAction) {
   return combine(
     assertGameActive(state),
@@ -91,6 +115,8 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
   } else {
     const opponent = getOpponent(nextState, action.playerId);
     const defenderUnit = opponent.board.find((u) => u.instanceId === action.defenderInstanceId)!;
+    const defenderType = getCardDefinition(defenderUnit.cardId).type;
+    const totalAttackerDamage = attackerDamage + bonusDamageAgainst(attackerUnit, defenderType, nextState);
 
     nextState = {
       ...nextState,
@@ -100,7 +126,7 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
             ...p,
             board: p.board.map((u) =>
               u.instanceId === defenderUnit.instanceId
-                ? { ...u, damageMarked: u.damageMarked + attackerDamage }
+                ? { ...u, damageMarked: u.damageMarked + totalAttackerDamage }
                 : u
             ),
           };
@@ -109,7 +135,7 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
       }) as [PlayerState, PlayerState],
     };
 
-    events.push({ ...base, type: "DAMAGE", targetInstanceId: defenderUnit.instanceId, amount: attackerDamage });
+    events.push({ ...base, type: "DAMAGE", targetInstanceId: defenderUnit.instanceId, amount: totalAttackerDamage });
 
     const damagedTrigger = processTrigger(
       nextState,

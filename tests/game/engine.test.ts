@@ -875,3 +875,258 @@ describe("engine.dispatch - Équipement : substitution de destruction (Plaque de
     expect(result.state.players[1].board).toHaveLength(0); // mort normalement, plus de Plaque pour la sauver
   });
 });
+
+describe("engine.dispatch - playCard : effets conditionnels à l'orientation (Marin aux Yeux Rouges Abyssal)", () => {
+  it("inflige 1 perte de Raison supplémentaire à l'adversaire si l'orientation est montante", () => {
+    const card = instance("marin-aux-yeux-rouges-abyssal", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { hand: [card], reason: 5 }), testPlayer("p2", { reason: 5 })],
+      environment: testEnvironment({ tideOrientation: "montante" }),
+    });
+
+    const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: card.instanceId });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // Coût 3 (5→2), puis -1 de base pour les deux (p1:1, p2:4), puis -1
+    // supplémentaire pour l'adversaire car montante (p2:3).
+    expect(result.state.players[0].reason).toBe(1);
+    expect(result.state.players[1].reason).toBe(3);
+  });
+
+  it("récupère 1 Raison pour le contrôleur si l'orientation est descendante, sans surcoût pour l'adversaire", () => {
+    const card = instance("marin-aux-yeux-rouges-abyssal", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { hand: [card], reason: 5 }), testPlayer("p2", { reason: 5 })],
+      environment: testEnvironment({ tideOrientation: "descendante" }),
+    });
+
+    const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: card.instanceId });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // Coût 3 (5→2), puis -1 de base pour les deux (p1:1, p2:4), puis +1 pour
+    // le contrôleur car descendante (p1:2). p2 ne subit que la perte de base.
+    expect(result.state.players[0].reason).toBe(2);
+    expect(result.state.players[1].reason).toBe(4);
+  });
+});
+
+describe("engine.dispatch - endTurn : capacité de début de tour conditionnelle (Bouée de Dérive)", () => {
+  it("récupère 1 Raison au début du tour si visible et orientation descendante", () => {
+    const bouee = instance("bouee-de-derive", "p2");
+    const state = testGameState({
+      players: [testPlayer("p1"), testPlayer("p2", { board: [bouee], reason: 5 })],
+      activePlayerId: "p1",
+      environment: testEnvironment({ tideState: "calme", tideOrientation: "descendante" }),
+    });
+
+    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // +1 régénération normale de début de tour, +1 capacité de Bouée de Dérive.
+    expect(result.state.players[1].reason).toBe(7);
+  });
+
+  it("ne récupère pas de Raison si l'orientation est montante", () => {
+    const bouee = instance("bouee-de-derive", "p2");
+    const state = testGameState({
+      players: [testPlayer("p1"), testPlayer("p2", { board: [bouee], reason: 5 })],
+      activePlayerId: "p1",
+      environment: testEnvironment({ tideState: "calme", tideOrientation: "montante" }),
+    });
+
+    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.players[1].reason).toBe(6); // seulement la régénération normale
+  });
+
+  it("ne récupère pas de Raison si elle est actuellement invisible (Tempête)", () => {
+    const bouee = instance("bouee-de-derive", "p2");
+    const state = testGameState({
+      players: [testPlayer("p1"), testPlayer("p2", { board: [bouee], reason: 5 })],
+      activePlayerId: "p1",
+      environment: testEnvironment({ tideState: "tempete", tideOrientation: "descendante" }),
+    });
+
+    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.players[1].reason).toBe(6); // seulement la régénération normale, Bouée invisible pendant Tempête
+  });
+});
+
+describe("engine.dispatch - bonusDamageVsTargetType", () => {
+  it("Barracuda des Hauts-Fonds inflige +1 dégât en attaquant une Structure", () => {
+    const attacker = instance("barracuda-des-hauts-fonds", "p1"); // 3/2
+    const structure = instance("cage-de-flottaison", "p2"); // pas d'attaque, 5 PV
+    const state = testGameState({
+      phase: "combatPhase",
+      players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2", { board: [structure] })],
+    });
+
+    const result = dispatch(state, {
+      type: "attack",
+      playerId: "p1",
+      attackerInstanceId: attacker.instanceId,
+      defenderInstanceId: structure.instanceId,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const survivor = result.state.players[1].board.find((u) => u.instanceId === structure.instanceId);
+    expect(survivor?.damageMarked).toBe(4); // 3 Puissance + 1 bonus vs Structure
+  });
+
+  it("n'ajoute pas de bonus quand la cible n'est pas du type visé", () => {
+    const attacker = instance("barracuda-des-hauts-fonds", "p1"); // 3/2
+    const defender = instance("murene-aveugle", "p2"); // 3/1, Créature
+    const state = testGameState({
+      phase: "combatPhase",
+      players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2", { board: [defender] })],
+    });
+
+    const result = dispatch(state, {
+      type: "attack",
+      playerId: "p1",
+      attackerInstanceId: attacker.instanceId,
+      defenderInstanceId: defender.instanceId,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.players[1].board).toHaveLength(0); // 3 dégâts (sans bonus) suffisent déjà à tuer 1 PV
+  });
+
+  it("Corde de Remorquage donne son bonus vs Structure à l'unité équipée (pas seulement à elle-même)", () => {
+    const marin = instance("marin-des-jetees", "p1"); // 1/2
+    const equip = instance("corde-de-remorquage", "p1", { attachedToInstanceId: marin.instanceId });
+    const structure = instance("cage-de-flottaison", "p2");
+    const state = testGameState({
+      phase: "combatPhase",
+      players: [testPlayer("p1", { board: [marin, equip] }), testPlayer("p2", { board: [structure] })],
+    });
+
+    const result = dispatch(state, {
+      type: "attack",
+      playerId: "p1",
+      attackerInstanceId: marin.instanceId,
+      defenderInstanceId: structure.instanceId,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const survivor = result.state.players[1].board.find((u) => u.instanceId === structure.instanceId);
+    expect(survivor?.damageMarked).toBe(2); // 1 Puissance + 1 bonus via l'Équipement attaché
+  });
+
+  it("le bonus vs Structure ne s'ajoute jamais à la riposte de l'attaquant", () => {
+    const attacker = instance("poisson-scie-gris", "p1"); // 3/3
+    const defender = instance("vieux-loup-de-mer", "p2"); // 2/4, Marin (pas une Structure)
+    const state = testGameState({
+      phase: "combatPhase",
+      players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2", { board: [defender] })],
+    });
+
+    const result = dispatch(state, {
+      type: "attack",
+      playerId: "p1",
+      attackerInstanceId: attacker.instanceId,
+      defenderInstanceId: defender.instanceId,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const attackerAfter = result.state.players[0].board.find((u) => u.instanceId === attacker.instanceId);
+    expect(attackerAfter?.damageMarked).toBe(2); // riposte = 2 Puissance du défenseur, pas affectée par le bonus
+  });
+});
+
+describe("engine.dispatch - playCard : restriction de Raison du contrôleur", () => {
+  it("Ce Qui Suit le Navire ne peut être joué qu'avec 5 Raison ou moins", () => {
+    const card = instance("ce-qui-suit-le-navire", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { hand: [card], reason: 6 }), testPlayer("p2")],
+    });
+
+    const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: card.instanceId });
+    expect(result.ok).toBe(false);
+  });
+
+  it("Ce Qui Suit le Navire se joue normalement avec 5 Raison ou moins", () => {
+    const card = instance("ce-qui-suit-le-navire", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { hand: [card], reason: 5 }), testPlayer("p2")],
+    });
+
+    const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: card.instanceId });
+    expect(result.ok).toBe(true);
+  });
+
+  it("la variante Abyssale exige EXACTEMENT 5 Raison, pas moins", () => {
+    const card = instance("ce-qui-suit-le-navire-abyssal", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { hand: [card], reason: 5 }), testPlayer("p2")],
+    });
+
+    const tooLow = dispatch(
+      { ...state, players: [testPlayer("p1", { hand: [card], reason: 4 }), testPlayer("p2")] },
+      { type: "playCard", playerId: "p1", instanceId: card.instanceId }
+    );
+    expect(tooLow.ok).toBe(false);
+
+    const exact = dispatch(state, { type: "playCard", playerId: "p1", instanceId: card.instanceId });
+    expect(exact.ok).toBe(true);
+  });
+});
+
+describe("engine.dispatch - Choppe ! : coût dynamique et bris restreint à Calme", () => {
+  it("coûte son prix normal (1 Raison) en dehors de Calme", () => {
+    const card = instance("chope", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { hand: [card], reason: 3 }), testPlayer("p2")],
+      environment: testEnvironment({ tideState: "houle" }),
+    });
+
+    const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: card.instanceId });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.players[0].reason).toBe(2);
+  });
+
+  it("coûte 0 Raison pendant Calme", () => {
+    const card = instance("chope", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { hand: [card], reason: 3 }), testPlayer("p2")],
+      environment: testEnvironment({ tideState: "calme" }),
+    });
+
+    const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: card.instanceId });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.players[0].reason).toBe(3);
+  });
+
+  it("ne peut être brisé que pendant Calme", () => {
+    const card = instance("chope", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { board: [card] }), testPlayer("p2")],
+      environment: testEnvironment({ tideState: "houle" }),
+    });
+
+    const result = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: card.instanceId });
+    expect(result.ok).toBe(false);
+  });
+
+  it("se brise normalement pendant Calme et rend 2 Raison", () => {
+    const card = instance("chope", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { board: [card], reason: 2 }), testPlayer("p2")],
+      environment: testEnvironment({ tideState: "calme" }),
+    });
+
+    const result = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: card.instanceId });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.players[0].reason).toBe(4);
+  });
+});

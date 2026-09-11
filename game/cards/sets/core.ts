@@ -310,8 +310,21 @@ export const CORE_SET: CardDefinition[] = [
     text:
       "Quand il arrive en jeu, chaque joueur perd 1 Raison. Si la Marée est montante, l'adversaire perd 1 Raison " +
       "supplémentaire. Si elle est descendante, récupérez 1 Raison.",
-    onPlayEffects: [{ type: "reasonLoss", target: { kind: "allPlayers" }, amount: { kind: "flat", value: 1 } }],
-    // non appliqué : le bonus/malus conditionnel à l'orientation de Marée n'est pas câblé (seule la perte de base l'est).
+    onPlayEffects: [
+      { type: "reasonLoss", target: { kind: "allPlayers" }, amount: { kind: "flat", value: 1 } },
+      {
+        type: "reasonLoss",
+        target: { kind: "opponentPlayer" },
+        amount: { kind: "flat", value: 1 },
+        conditionOrientationIs: "montante",
+      },
+      {
+        type: "reasonGain",
+        target: { kind: "controllerPlayer" },
+        amount: { kind: "flat", value: 1 },
+        conditionOrientationIs: "descendante",
+      },
+    ],
   },
   {
     id: "guetteur-de-brume",
@@ -366,7 +379,21 @@ export const CORE_SET: CardDefinition[] = [
     text:
       "Durée : 3 tours. Visible pendant Calme et Houle. À votre début de tour, si elle est visible et que la " +
       "Marée est descendante, récupérez 1 Raison.",
-    // non appliqué : condition récurrente en début de tour (visibilité + orientation) non modélisée (l'orientation elle-même existe dans le moteur).
+    abilities: [
+      {
+        trigger: "startOfTurn",
+        description: "À votre début de tour, si elle est visible et que la Marée est descendante, récupérez 1 Raison.",
+        effects: [
+          {
+            type: "reasonGain",
+            target: { kind: "controllerPlayer" },
+            amount: { kind: "flat", value: 1 },
+            conditionOrientationIs: "descendante",
+            conditionSelfVisible: true,
+          },
+        ],
+      },
+    ],
   },
   {
     id: "epave-a-fleur-deau",
@@ -662,8 +689,8 @@ export const CORE_SET: CardDefinition[] = [
     attack: 4,
     health: 5,
     text: "Vous ne pouvez la jouer que si vous avez 5 Raison ou moins. Lorsqu'elle arrive en jeu, perdez 1 Ancrage.",
+    requiresControllerReasonAtMost: 5,
     onPlayEffects: [{ type: "damage", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
-    // non appliqué : la restriction de pose "5 Raison ou moins" n'est pas câblée.
   },
   {
     // Variante ABYSSALE distincte (coexiste avec la Standard ci-dessus) — anciennement seule entrée sous
@@ -679,8 +706,8 @@ export const CORE_SET: CardDefinition[] = [
     text:
       "Vous devez avoir exactement 5 Raison pour jouer cette carte. Après paiement de son coût, votre Raison " +
       "tombe donc à 0. Lorsqu'elle arrive en jeu, perdez 2 Ancrage.",
+    requiresControllerReasonExactly: 5,
     onPlayEffects: [{ type: "damage", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } }],
-    // non appliqué : l'exigence "exactement 5 Raison" (et non "au moins 5") n'est pas distinguée du coût normal.
   },
   {
     id: "treuil-a-chair",
@@ -826,7 +853,7 @@ export const CORE_SET: CardDefinition[] = [
     attack: 3,
     health: 2,
     text: "Lorsqu'il attaque une Structure, il gagne +1 Puissance pour ce combat.",
-    // non appliqué : bonus de combat conditionnel (cible = Structure) non modélisé.
+    bonusDamageVsTargetType: { type: "structure", amount: 1 },
   },
   {
     id: "bernard-lermite-dacier",
@@ -846,7 +873,7 @@ export const CORE_SET: CardDefinition[] = [
     attack: 3,
     health: 3,
     text: "Lorsqu'il inflige des dégâts à une Structure, infligez 1 dégât supplémentaire à cette Structure.",
-    // non appliqué : dégât combat conditionnel (cible = Structure) non modélisé.
+    bonusDamageVsTargetType: { type: "structure", amount: 1 },
   },
   {
     id: "corde-de-remorquage",
@@ -856,8 +883,9 @@ export const CORE_SET: CardDefinition[] = [
     cost: 1,
     health: 1,
     tags: ["equipement"],
+    equipTargetTypes: ["marin"],
     text: "Équipez un Marin. Lorsqu'il attaque une Structure, il gagne +1 Puissance.",
-    // non appliqué : bonus de combat conditionnel (cible = Structure) non modélisé.
+    bonusDamageVsTargetType: { type: "structure", amount: 1 },
   },
   {
     id: "kit-de-calfatage",
@@ -1362,8 +1390,9 @@ export const CORE_SET: CardDefinition[] = [
     text:
       "Si la Marée est Calme, coûte 0 Raison. Brisez cet Objet : récupérez 2 Raison. Cet effet ne peut être " +
       "activé que pendant Calme.",
+    costOverrideWhenTideStateIn: { tideStateIn: ["calme"], cost: 0 },
+    requiresTideStateForBreak: ["calme"],
     onBreakEffects: [{ type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } }],
-    // non appliqué : la gratuité pendant Calme et la restriction d'activation à Calme ne sont pas câblées, seul le gain de base l'est.
   },
 ];
 

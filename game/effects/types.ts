@@ -106,4 +106,15 @@ export interface EffectDefinition {
    * `context.controllerId` — jamais à une autre cible.
    */
   conditionControllerReasonBelowOpponent?: boolean;
+
+  /**
+   * Restreint la résolution de CET effet au cas où la carte SOURCE
+   * (`context.sourceInstanceId`) est actuellement visible selon son propre
+   * `visibleDuringTide` (ex: Bouée de Dérive, capacité de début de tour
+   * "si elle est visible"). Une carte sans `visibleDuringTide` est toujours
+   * visible. Distinct de `onBecomeVisible`, qui ne se déclenche que sur une
+   * TRANSITION d'invisible à visible — ceci vérifie l'état courant à chaque
+   * résolution, utile pour une capacité récurrente (ex: `startOfTurn`).
+   */
+  conditionSelfVisible?: boolean;
 }

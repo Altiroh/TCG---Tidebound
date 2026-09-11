@@ -1,4 +1,4 @@
-import type { CardInstance } from "@/game/cards/types";
+import { isVisibleDuringTide, type CardInstance } from "@/game/cards/types";
 import { canBeEquipTarget, getCardDefinition } from "@/game/cards/sets/core";
 import type { EffectAmount, EffectDefinition } from "@/game/effects/types";
 import type { GameEvent } from "@/game/events/types";
@@ -146,6 +146,13 @@ export function resolveEffect(
     const controller = getPlayer(state, context.controllerId);
     const opponent = getOpponent(state, context.controllerId);
     if (!(controller.reason < opponent.reason)) return { state, events };
+  }
+  if (effect.conditionSelfVisible) {
+    const owner = context.sourceInstanceId ? findUnitOwner(state, context.sourceInstanceId) : undefined;
+    const source = owner?.board.find((u) => u.instanceId === context.sourceInstanceId);
+    if (!source || !isVisibleDuringTide(getCardDefinition(source.cardId), state.environment.tideState)) {
+      return { state, events };
+    }
   }
 
   switch (effect.type) {
