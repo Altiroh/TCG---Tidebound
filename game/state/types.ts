@@ -20,13 +20,13 @@ export interface PlayerState {
    * au Navire choisi.
    */
   reason: number;
-  reasonMax: number;
   /**
-   * Une seule action principale par tour (jouer une carte OU Saborder OU
-   * passer) — cadrage "Mécaniques verrouillées" sections 28-29 et 37.
-   * Remis à `false` au début de chaque tour de ce joueur.
+   * Plafond courant de la Raison. Propre au Navire choisi, mais peut être
+   * temporairement réduit par un malus continu (ex: -2 pendant les
+   * Abysses — Notion "Moteur de partie", section "Malus globaux des
+   * Marées") ; restauré dès que le malus se termine.
    */
-  hasUsedMainActionThisTurn: boolean;
+  reasonMax: number;
   deck: CardInstance[];
   hand: CardInstance[];
   board: CardInstance[];

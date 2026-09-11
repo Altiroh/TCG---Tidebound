@@ -9,7 +9,6 @@ import {
   assertCanPayCost,
   assertCardInHand,
   assertGameActive,
-  assertHasNotUsedMainActionThisTurn,
   assertInPhase,
   assertIsActivePlayer,
   assertPlayerInGame,
@@ -29,7 +28,6 @@ function validate(state: GameState, action: PlayCardAction) {
     assertPlayerInGame(state, action.playerId),
     assertIsActivePlayer(state, action.playerId),
     assertInPhase(state, action.playerId, "mainPhase"),
-    assertHasNotUsedMainActionThisTurn(state, action.playerId),
     assertCardInHand(state, action.playerId, action.instanceId)
   );
   if (!generalChecks.ok) return generalChecks;
@@ -63,9 +61,12 @@ function validate(state: GameState, action: PlayCardAction) {
  * Joue une carte de la main : paie le coût en Raison, la retire de la
  * main, la place (plateau pour un permanent, cimetière pour une carte non
  * permanente après résolution — cf. `isPermanentCard`), résout ses
- * `onPlayEffects`, déclenche les triggers `onCardPlayed`/`onEnterPlay`, et
- * consomme l'action principale du tour (une seule par tour, partagée
- * avec le Sabordage).
+ * `onPlayEffects`, et déclenche les triggers `onCardPlayed`/`onEnterPlay`.
+ *
+ * Pas de limite au nombre de cartes jouées par tour (Notion "Moteur de
+ * partie", "Principes déjà retenus") : un joueur peut jouer autant de
+ * cartes qu'il peut en payer pendant sa Phase principale — seule la
+ * Raison disponible (et l'espace sur le plateau) le limite.
  */
 export function playCard(state: GameState, action: PlayCardAction): ActionResult {
   const validation = validate(state, action);
@@ -82,7 +83,6 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
     ...player,
     hand: handAfterRemoval,
     reason: player.reason - def.cost,
-    hasUsedMainActionThisTurn: true,
   };
 
   let nextState: GameState = {
@@ -126,6 +126,9 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
         p.id === owner.id ? { ...owner, graveyard: [...owner.graveyard, instance] } : p
       ) as [PlayerState, PlayerState],
     };
+    // Pas de cause de cimetière ici : un Équipement consommable est
+    // "utilisé", pas défaussé/détruit/sabordé au sens de la traçabilité
+    // (Notion "Moteur de partie", section "Défausse").
   }
 
   const context: EffectContext = {

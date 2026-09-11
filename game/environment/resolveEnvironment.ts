@@ -2,11 +2,13 @@ import { consumeAmplify, tickTide } from "@/game/environment/tide";
 import { getShipDefinition } from "@/game/environment/shipData";
 import type { TideStateName } from "@/game/environment/types";
 import { getCardDefinition } from "@/game/cards/sets/core";
-import { isVisibleDuringTide } from "@/game/cards/types";
+import { isVisibleDuringTide, STATUS_MALADE } from "@/game/cards/types";
+import type { CardInstance } from "@/game/cards/types";
 import { RULES } from "@/game/rules/constants";
+import { nextInt } from "@/game/rng";
 import type { GameEvent } from "@/game/events/types";
 import { processTrigger } from "@/game/triggers/triggerBus";
-import type { GameState, PlayerState } from "@/game/state/types";
+import type { GameState, PlayerId, PlayerState } from "@/game/state/types";
 
 const IGNORE_FLAG_PREFIX = "ignoreNextTideDamage";
 
@@ -20,15 +22,23 @@ interface TideDamageForPlayer {
 }
 
 /**
- * Calcule les pertes d'Ancrage et de Raison qu'un joueur subit pour l'état
- * de Marée courant, à l'Intensité donnée : dégâts de base × Intensité,
- * modulés par le Navire (résistance/faiblesse). Jamais négatif.
+ * Calcule les pertes d'Ancrage et de Raison qu'un joueur subit CHAQUE
+ * TOUR pour l'état de Marée courant, à l'Intensité donnée : dégâts de
+ * base × Intensité, modulés par le Navire (résistance/faiblesse). Jamais
+ * négatif.
+ *
+ * Les Abysses n'ont PLUS de malus par tour ici (Notion "Moteur de partie
+ * — déroulement, Raison & chaînes d'effets", section "Malus globaux des
+ * Marées — verrouillé", 2026-09-10) : leur malus est un choc unique à
+ * l'entrée, traité séparément par `applyAbyssesEntryOrExit`.
  */
 function computeTideDamageForPlayer(
   player: PlayerState,
   tideState: TideStateName,
   intensity: number
 ): TideDamageForPlayer {
+  if (tideState === "abysses") return { anchor: 0, reason: 0 };
+
   const baseAnchor = RULES.TIDE_ANCHOR_DAMAGE[tideState] ?? 0;
   const baseReason = RULES.TIDE_REASON_DAMAGE[tideState] ?? 0;
 
@@ -43,13 +53,173 @@ function computeTideDamageForPlayer(
   return { anchor, reason };
 }
 
+interface AbyssesEntryLoss {
+  anchor: number;
+  extraReason: number;
+}
+
+/**
+ * Choc d'entrée dans les Abysses (une seule fois, pas par tour) : Ancrage
+ * fixe modulé par le Navire, plus une éventuelle perte de Raison
+ * supplémentaire propre au Navire (ex: "Équipage à bout" du Brise-Lames,
+ * `reasonWeaknessByState.abysses`). La réduction de Raison maximale
+ * elle-même est appliquée séparément (`applyAbyssesEntryOrExit`).
+ */
+function computeAbyssesEntryLoss(player: PlayerState): AbyssesEntryLoss {
+  const ship = getShipDefinition(player.shipId);
+  const resistance = ship.resistanceByState?.abysses ?? 0;
+  const weakness = ship.weaknessByState?.abysses ?? 0;
+  const anchor = Math.max(0, RULES.ABYSSES_ENTRY_ANCHOR_LOSS + weakness - resistance);
+  const extraReason = ship.reasonWeaknessByState?.abysses ?? 0;
+  return { anchor, extraReason };
+}
+
+/**
+ * Applique le choc d'entrée dans les Abysses (-Ancrage one-shot, -Raison
+ * max continue avec clampage immédiat de la Raison courante) ou restaure
+ * la Raison max à la sortie. Ne fait rien en dehors d'une transition
+ * entrante/sortante des Abysses.
+ */
+function applyAbyssesEntryOrExit(
+  state: GameState,
+  previousTideState: TideStateName,
+  newTideState: TideStateName,
+  turnNumber: number
+): { state: GameState; events: GameEvent[] } {
+  const events: GameEvent[] = [];
+  const base = { turnNumber, timestamp: Date.now() };
+
+  if (newTideState === "abysses" && previousTideState !== "abysses") {
+    const players = state.players.map((player) => {
+      const loss = computeAbyssesEntryLoss(player);
+      const reasonMax = Math.max(0, player.reasonMax - RULES.ABYSSES_REASON_MAX_PENALTY);
+      const reason = Math.max(0, Math.min(player.reason - loss.extraReason, reasonMax));
+      return { ...player, anchor: player.anchor - loss.anchor, reasonMax, reason };
+    }) as [PlayerState, PlayerState];
+
+    for (let i = 0; i < state.players.length; i++) {
+      const before = state.players[i]!;
+      const after = players[i]!;
+      const loss = computeAbyssesEntryLoss(before);
+      if (loss.anchor > 0) events.push({ ...base, type: "DAMAGE", targetPlayerId: before.id, amount: loss.anchor });
+      if (after.reason !== before.reason) {
+        events.push({ ...base, type: "REASON_CHANGED", playerId: before.id, delta: after.reason - before.reason });
+      }
+    }
+
+    return { state: { ...state, players }, events };
+  }
+
+  if (previousTideState === "abysses" && newTideState !== "abysses") {
+    const players = state.players.map((player) => ({
+      ...player,
+      reasonMax: player.reasonMax + RULES.ABYSSES_REASON_MAX_PENALTY,
+    })) as [PlayerState, PlayerState];
+    return { state: { ...state, players }, events };
+  }
+
+  return { state, events };
+}
+
+interface BoardCardRef {
+  unit: CardInstance;
+  ownerId: PlayerId;
+}
+
+function collectBoardCards(state: GameState): BoardCardRef[] {
+  const refs: BoardCardRef[] = [];
+  for (const player of state.players) {
+    for (const unit of player.board) refs.push({ unit, ownerId: player.id });
+  }
+  return refs;
+}
+
+function isSick(unit: CardInstance): boolean {
+  return (unit.statuses ?? []).includes(STATUS_MALADE);
+}
+
+/**
+ * Malus de la Houle (verrouillé, section "Malus globaux des Marées") :
+ * une fois par tour tant que la Houle est active, une carte éligible
+ * aléatoire du board (des deux joueurs confondus) a 10% de chances de
+ * devenir MALADE ; toute carte actuellement MALADE perd 1 PV/Résistance
+ * ce tour-ci. Le statut lui-même est retiré séparément dès la sortie de
+ * la Houle (`clearHouleSickness`).
+ */
+function applyHouleSickness(state: GameState, turnNumber: number): { state: GameState; events: GameEvent[] } {
+  const events: GameEvent[] = [];
+  const base = { turnNumber, timestamp: Date.now() };
+  const candidates = collectBoardCards(state);
+
+  let rngState = state.rngState;
+  let newlySickInstanceId: string | undefined;
+
+  if (candidates.length > 0) {
+    const pick = nextInt(rngState, candidates.length);
+    rngState = pick.nextState;
+    const roll = nextInt(rngState, 100);
+    rngState = roll.nextState;
+
+    if (roll.value < RULES.HOULE_SICKNESS_CHANCE_PERCENT) {
+      const target = candidates[pick.value]!;
+      if (!isSick(target.unit)) newlySickInstanceId = target.unit.instanceId;
+    }
+  }
+
+  const players = state.players.map((player) => ({
+    ...player,
+    board: player.board.map((unit) =>
+      unit.instanceId === newlySickInstanceId
+        ? { ...unit, statuses: [...(unit.statuses ?? []), STATUS_MALADE] }
+        : unit
+    ),
+  })) as [PlayerState, PlayerState];
+
+  if (newlySickInstanceId) {
+    events.push({ ...base, type: "STATUS_CHANGED", targetInstanceId: newlySickInstanceId, status: STATUS_MALADE, applied: true });
+  }
+
+  const damagedPlayers = players.map((player) => ({
+    ...player,
+    board: player.board.map((unit) => {
+      if (!isSick(unit)) return unit;
+      events.push({ ...base, type: "DAMAGE", targetInstanceId: unit.instanceId, amount: RULES.HOULE_SICKNESS_DAMAGE });
+      return { ...unit, damageMarked: unit.damageMarked + RULES.HOULE_SICKNESS_DAMAGE };
+    }),
+  })) as [PlayerState, PlayerState];
+
+  return { state: { ...state, players: damagedPlayers, rngState }, events };
+}
+
+/** Retire automatiquement le statut MALADE de tout le board dès que la Marée quitte la Houle. */
+function clearHouleSickness(state: GameState, turnNumber: number): { state: GameState; events: GameEvent[] } {
+  const events: GameEvent[] = [];
+  const base = { turnNumber, timestamp: Date.now() };
+
+  for (const player of state.players) {
+    for (const unit of player.board) {
+      if (isSick(unit)) events.push({ ...base, type: "STATUS_CHANGED", targetInstanceId: unit.instanceId, status: STATUS_MALADE, applied: false });
+    }
+  }
+
+  const players = state.players.map((player) => ({
+    ...player,
+    board: player.board.map((unit) =>
+      isSick(unit) ? { ...unit, statuses: unit.statuses!.filter((s) => s !== STATUS_MALADE) } : unit
+    ),
+  })) as [PlayerState, PlayerState];
+
+  return { state: { ...state, players }, events };
+}
+
 /**
  * Applique une étape complète de progression de Marée pour le début d'un
  * tour (étapes 4-7 de la structure de tour verrouillée) : décompte la
  * durée restante, avance éventuellement vers l'état suivant, puis
- * applique les effets environnementaux du tour (dégâts d'Ancrage/Raison
- * aux deux joueurs à CHAQUE tour tant qu'on est en Tempête/Abysses — pas
- * seulement à l'entrée), avec réactions de Navire et déclenchement des
+ * applique les effets environnementaux du tour — dégâts d'Ancrage/Raison
+ * aux deux joueurs à CHAQUE tour tant qu'on est en Tempête (pas seulement
+ * à l'entrée), choc d'entrée/sortie unique pour les Abysses, et maladie
+ * aléatoire de la Houle — avec réactions de Navire et déclenchement des
  * capacités `onTideStateEntered` en cas de changement d'état.
  */
 export function resolveTideTurnStep(
@@ -108,7 +278,7 @@ export function resolveTideTurnStep(
       for (let d = 0; d < discardCount && hand.length > 0; d++) {
         const [discarded, ...rest] = hand;
         hand = rest;
-        graveyard = [...graveyard, discarded!];
+        graveyard = [...graveyard, { ...discarded!, graveyardCause: "discarded" as const }];
         events.push({ ...base, type: "CARD_MOVED", instanceId: discarded!.instanceId, fromZone: "hand", toZone: "graveyard" });
       }
     }
@@ -128,6 +298,22 @@ export function resolveTideTurnStep(
 
   nextState = { ...nextState, players };
 
+  // --- Abysses : choc d'entrée (Ancrage + Raison max) / restauration à la sortie ---
+  const abysses = applyAbyssesEntryOrExit(nextState, previousTideState, tick.tideState, turnNumber);
+  nextState = abysses.state;
+  events.push(...abysses.events);
+
+  // --- Houle : maladie aléatoire tant qu'active / nettoyage à la sortie ---
+  if (tick.tideState === "houle") {
+    const sickness = applyHouleSickness(nextState, turnNumber);
+    nextState = sickness.state;
+    events.push(...sickness.events);
+  } else if (previousTideState === "houle") {
+    const cleared = clearHouleSickness(nextState, turnNumber);
+    nextState = cleared.state;
+    events.push(...cleared.events);
+  }
+
   if (tick.stateChanged) {
     const trigger = processTrigger(nextState, { trigger: "onTideStateEntered", tideState: tick.tideState }, turnNumber);
     nextState = trigger.state;
@@ -144,7 +330,10 @@ export function resolveTideTurnStep(
       .map((u) => (u.turnsRemaining !== undefined ? { ...u, turnsRemaining: u.turnsRemaining - 1 } : u));
     if (expiring.length === 0) continue;
 
-    const graveyard = [...player.graveyard, ...expiring.map((u) => ({ ...u, damageMarked: 0, modifiers: [] }))];
+    const graveyard = [
+      ...player.graveyard,
+      ...expiring.map((u) => ({ ...u, damageMarked: 0, modifiers: [], graveyardCause: "expired" as const })),
+    ];
     nextState = {
       ...nextState,
       players: nextState.players.map((p) => (p.id === player.id ? { ...p, board, graveyard } : p)) as [

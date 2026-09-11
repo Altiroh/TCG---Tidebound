@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { dispatch } from "@/game/engine";
 import { computeEffectiveStats } from "@/game/cards/stats";
+import { STATUS_MALADE } from "@/game/cards/types";
 import { resolveEffect } from "@/game/effects/resolveEffect";
 import { grantIgnoreNextTideDamage } from "@/game/environment/resolveEnvironment";
 import { validateDeckList } from "@/game/rules/deckValidation";
@@ -39,8 +40,8 @@ describe("environnement - Marée (modèle durée + intensité)", () => {
       if (result.ok) state = result.state;
     }
     expect(state.environment.tideState).toBe("tempete");
-    expect(state.players[0].anchor).toBe(24); // Le Brise-Lames : résistance annule les 2 dégâts de base
-    expect(state.players[1].anchor).toBe(18); // L'Errant : 20 - 2
+    expect(state.players[0].anchor).toBe(24); // Le Brise-Lames : résistance 2 > 1 dégât de base, clampé à 0
+    expect(state.players[1].anchor).toBe(19); // L'Errant : 20 - 1
   });
 
   it("une unité inactive par affinité de Marée (Masse Noire pendant Calme) ne peut pas attaquer", () => {
@@ -87,7 +88,7 @@ describe("environnement - Marée (modèle durée + intensité)", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.state.environment.tideState).toBe("tempete");
-    expect(result.state.players[0].anchor).toBe(20); // aurait dû perdre 2 sans l'ignore (L'Errant : 20 de départ)
+    expect(result.state.players[0].anchor).toBe(20); // aurait dû perdre 1 sans l'ignore (L'Errant : 20 de départ)
   });
 
   it("Sabordage d'une Structure de manipulation de Marée (Régulateur de Courant) réduit la durée restante", () => {
@@ -153,6 +154,125 @@ describe("environnement - orientation de Marée", () => {
     const result = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: currents.instanceId });
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.state.environment.tideOrientation).toBe("descendante");
+  });
+});
+
+describe("environnement - malus globaux des Marées (verrouillé, Notion 'Moteur de partie')", () => {
+  it("Abysses : à l'entrée, -2 Ancrage (une fois) et -2 Raison max (avec clampage immédiat de la Raison courante)", () => {
+    const state = testGameState({
+      players: [
+        testPlayer("p1", { shipId: "lerrant", anchor: 20, reason: 9, reasonMax: 10 }),
+        testPlayer("p2", { shipId: "lerrant", anchor: 20, reason: 10, reasonMax: 10 }),
+      ],
+      environment: testEnvironment({ tideState: "tempete", tideRemainingTurns: 1, tideOrientation: "montante" }),
+    });
+
+    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.environment.tideState).toBe("abysses");
+
+    const p1 = result.state.players[0];
+    const p2 = result.state.players[1];
+    expect(p1.anchor).toBe(18); // 20 - 2
+    expect(p1.reasonMax).toBe(8); // 10 - 2
+    expect(p1.reason).toBe(8); // 9, clampé à la nouvelle Raison max (8)
+    expect(p2.anchor).toBe(18);
+    expect(p2.reasonMax).toBe(8);
+    expect(p2.reason).toBe(8); // 10, clampé à 8
+  });
+
+  it("Abysses : le malus de Navire (Équipage à bout, Brise-Lames) ajoute une perte de Raison ponctuelle à l'entrée", () => {
+    const state = testGameState({
+      players: [
+        testPlayer("p1", { shipId: "le-brise-lames", anchor: 24, reason: 8, reasonMax: 8 }),
+        testPlayer("p2", { shipId: "lerrant" }),
+      ],
+      environment: testEnvironment({ tideState: "tempete", tideRemainingTurns: 1, tideOrientation: "montante" }),
+    });
+
+    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const p1 = result.state.players[0];
+    expect(p1.anchor).toBe(22); // 24 - 2
+    expect(p1.reasonMax).toBe(6); // 8 - 2
+    // Raison courante : 8 - 1 (Équipage à bout) = 7, puis clampée à la nouvelle max (6).
+    expect(p1.reason).toBe(6);
+  });
+
+  it("Abysses : à la sortie, la Raison maximale est restaurée", () => {
+    const state = testGameState({
+      players: [
+        testPlayer("p1", { shipId: "lerrant", reasonMax: 8, reason: 5 }),
+        testPlayer("p2", { shipId: "lerrant" }),
+      ],
+      environment: testEnvironment({ tideState: "abysses", tideRemainingTurns: 1, tideOrientation: "descendante" }),
+    });
+
+    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.environment.tideState).toBe("tempete");
+    expect(result.state.players[0].reasonMax).toBe(10); // 8 + 2 restauré
+  });
+
+  it("Houle : une carte déjà MALADE perd 1 PV/Résistance à chaque tour tant que la Houle reste active", () => {
+    const sickUnit = instance("baleine-aux-cicatrices-blanches", "p1", { statuses: [STATUS_MALADE] }); // 5/6
+    const state = testGameState({
+      players: [testPlayer("p1", { board: [sickUnit] }), testPlayer("p2")],
+      environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 5 }),
+    });
+
+    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.environment.tideState).toBe("houle");
+    const unit = result.state.players[0].board.find((u) => u.instanceId === sickUnit.instanceId);
+    expect(unit?.damageMarked).toBe(1);
+    expect(unit?.statuses).toContain(STATUS_MALADE);
+  });
+
+  it("le statut MALADE est retiré automatiquement (sans dégât ce tour-là) dès que la Marée quitte la Houle", () => {
+    const sickUnit = instance("baleine-aux-cicatrices-blanches", "p1", { statuses: [STATUS_MALADE] });
+    const state = testGameState({
+      players: [testPlayer("p1", { board: [sickUnit] }), testPlayer("p2")],
+      environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 1, tideOrientation: "montante" }),
+    });
+
+    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.environment.tideState).toBe("tempete");
+    const unit = result.state.players[0].board.find((u) => u.instanceId === sickUnit.instanceId);
+    expect(unit?.statuses ?? []).not.toContain(STATUS_MALADE);
+    expect(unit?.damageMarked).toBe(0);
+  });
+
+  it("Houle : peut rendre une carte du board aléatoirement MALADE au fil des tours (10% de chance par tour)", () => {
+    const unit = instance("baleine-aux-cicatrices-blanches", "p1"); // 5/6, encaisse largement la maladie
+    const maxTurns = 120;
+    const filler = (ownerId: string) => Array.from({ length: maxTurns }, () => instance("marin-des-jetees", ownerId));
+    let state = testGameState({
+      players: [
+        testPlayer("p1", { board: [unit], deck: filler("p1") }),
+        testPlayer("p2", { deck: filler("p2") }),
+      ],
+      environment: testEnvironment({ tideState: "houle", tideRemainingTurns: maxTurns + 10 }),
+    });
+
+    let becameSick = false;
+    for (let i = 0; i < maxTurns && !becameSick; i++) {
+      const result = dispatch(state, { type: "endTurn", playerId: state.activePlayerId });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      state = result.state;
+      becameSick = (
+        state.players[0].board.find((u) => u.instanceId === unit.instanceId)?.statuses ?? []
+      ).includes(STATUS_MALADE);
+    }
+
+    expect(becameSick).toBe(true);
   });
 });
 

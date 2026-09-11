@@ -63,16 +63,17 @@ export function createGameState(input: CreateGameStateInput): GameState {
   const ship1 = getShipDefinition(input.player1.deck.shipId);
   const ship2 = getShipDefinition(input.player2.deck.shipId);
 
-  // Les deux joueurs commencent avec leur Raison au maximum (pas de rampe
-  // de ressource asymétrique comme dans un modèle de mana classique — la
-  // Raison est LA ressource, cadrage "Navires, Slots et Raison").
+  // Les deux joueurs commencent à 50% de leur Raison maximale, pas au
+  // maximum (Notion "Moteur de partie — déroulement, Raison & chaînes
+  // d'effets", "Principes déjà retenus", verrouillage du 2026-09-10).
+  const startingReason = (reasonMax: number) => Math.floor(reasonMax * RULES.STARTING_REASON_RATIO);
+
   const player1: PlayerState = {
     id: input.player1.id,
     shipId: ship1.id,
     anchor: ship1.startingAnchor,
-    reason: ship1.reasonMax,
+    reason: startingReason(ship1.reasonMax),
     reasonMax: ship1.reasonMax,
-    hasUsedMainActionThisTurn: false,
     deck: player1Remaining,
     hand: player1Hand,
     board: [],
@@ -84,9 +85,8 @@ export function createGameState(input: CreateGameStateInput): GameState {
     id: input.player2.id,
     shipId: ship2.id,
     anchor: ship2.startingAnchor,
-    reason: ship2.reasonMax,
+    reason: startingReason(ship2.reasonMax),
     reasonMax: ship2.reasonMax,
-    hasUsedMainActionThisTurn: false,
     deck: player2Remaining,
     hand: player2Hand,
     board: [],

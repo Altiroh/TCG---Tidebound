@@ -28,7 +28,7 @@ export type {
   ActionResult,
 } from "@/game/actions/types";
 
-export type { CardDefinition, CardInstance, CardType, TriggeredAbility } from "@/game/cards/types";
+export type { CardDefinition, CardInstance, CardType, TriggeredAbility, GraveyardCause } from "@/game/cards/types";
 export {
   isPermanentCard,
   isVisibleDuringTide,
@@ -37,6 +37,7 @@ export {
   DEFAULT_MAX_COPIES,
   UNIT_CARD_TYPES,
   PERMANENT_CARD_TYPES,
+  STATUS_MALADE,
 } from "@/game/cards/types";
 export { CARD_DATABASE, CORE_SET, getCardDefinition } from "@/game/cards/sets/core";
 export { computeEffectiveStats } from "@/game/cards/stats";

@@ -4,7 +4,6 @@ import { resolveEffect } from "@/game/effects/resolveEffect";
 import type { GameEvent } from "@/game/events/types";
 import {
   assertGameActive,
-  assertHasNotUsedMainActionThisTurn,
   assertInPhase,
   assertIsActivePlayer,
   assertIsObjectCard,
@@ -20,7 +19,6 @@ function validate(state: GameState, action: BreakObjectAction) {
     assertPlayerInGame(state, action.playerId),
     assertIsActivePlayer(state, action.playerId),
     assertInPhase(state, action.playerId, "mainPhase"),
-    assertHasNotUsedMainActionThisTurn(state, action.playerId),
     assertIsObjectCard(state, action.playerId, action.instanceId)
   );
   if (!generalChecks.ok) return generalChecks;
@@ -38,8 +36,9 @@ function validate(state: GameState, action: BreakObjectAction) {
 
 /**
  * Brise un Objet contrôlé par le joueur : résout `onBreakEffects` puis
- * l'envoie au cimetière. Consomme l'action principale du tour, comme jouer
- * une carte ou Saborder.
+ * l'envoie au cimetière. Comme jouer une carte ou Saborder, n'est pas
+ * limité en nombre par tour (Notion "Moteur de partie" : pas de limite
+ * artificielle d'action).
  *
  * IMPORTANT — "Briser ≠ Saborder" (règle verrouillée) : contrairement à
  * `saborder.ts`, cette action ne déclenche NI `onDeath` NI `onSaborde`. Un
@@ -64,7 +63,6 @@ export function breakObject(state: GameState, action: BreakObjectAction): Action
     ...player,
     board,
     graveyard,
-    hasUsedMainActionThisTurn: true,
   };
 
   let nextState: GameState = {

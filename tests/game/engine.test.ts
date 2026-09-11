@@ -75,7 +75,6 @@ describe("engine.dispatch - playCard", () => {
     expect(p1.board).toHaveLength(1);
     expect(p1.board[0]?.summoningSick).toBe(true);
     expect(p1.reason).toBe(3);
-    expect(p1.hasUsedMainActionThisTurn).toBe(true);
     expect(result.events.some((e) => e.type === "SUMMON")).toBe(true);
   });
 
@@ -90,7 +89,7 @@ describe("engine.dispatch - playCard", () => {
     expect(result.ok).toBe(false);
   });
 
-  it("refuse une seconde carte/action principale dans le même tour", () => {
+  it("permet de jouer plusieurs cartes dans le même tour tant que la Raison le permet (pas de limite d'action)", () => {
     const first = instance("marin-des-jetees", "p1"); // coût 1
     const second = instance("murene-aveugle", "p1"); // coût 2
     const state = testGameState({
@@ -106,7 +105,11 @@ describe("engine.dispatch - playCard", () => {
       playerId: "p1",
       instanceId: second.instanceId,
     });
-    expect(secondResult.ok).toBe(false);
+    expect(secondResult.ok).toBe(true);
+    if (!secondResult.ok) return;
+    const p1 = secondResult.state.players[0];
+    expect(p1.board).toHaveLength(2);
+    expect(p1.reason).toBe(7); // 10 - 1 - 2
   });
 
   it("une carte ne peut être jouée que dans l'état de Marée requis (`requiresTideState`)", () => {
@@ -171,7 +174,6 @@ describe("engine.dispatch - breakObject", () => {
     expect(p1.board).toHaveLength(0);
     expect(p1.graveyard).toHaveLength(1);
     expect(p1.reason).toBe(5);
-    expect(p1.hasUsedMainActionThisTurn).toBe(true);
     expect(result.events.some((e) => e.type === "SABORDED")).toBe(false);
   });
 
@@ -187,10 +189,11 @@ describe("engine.dispatch - breakObject", () => {
 });
 
 describe("engine.dispatch - saborder", () => {
-  it("détruit son propre permanent, consomme l'action principale et déclenche onSaborde", () => {
+  it("détruit son propre permanent, déclenche onSaborde, et permet de continuer à jouer dans le même tour", () => {
     const structure = instance("caisses-arrimees", "p1"); // Sabordage : récupérez 2 Ancrage
+    const card = instance("marin-des-jetees", "p1"); // coût 1
     const state = testGameState({
-      players: [testPlayer("p1", { board: [structure], anchor: 20 }), testPlayer("p2")],
+      players: [testPlayer("p1", { board: [structure], hand: [card], reason: 10, anchor: 20 }), testPlayer("p2")],
     });
 
     const result = dispatch(state, { type: "saborder", playerId: "p1", instanceId: structure.instanceId });
@@ -200,9 +203,15 @@ describe("engine.dispatch - saborder", () => {
     const p1 = result.state.players[0];
     expect(p1.board).toHaveLength(0);
     expect(p1.graveyard).toHaveLength(1);
-    expect(p1.hasUsedMainActionThisTurn).toBe(true);
+    expect(p1.graveyard[0]?.graveyardCause).toBe("scuttled");
     expect(p1.anchor).toBe(22);
     expect(result.events.some((e) => e.type === "SABORDED")).toBe(true);
+
+    // Le Sabordage n'est pas une action limitée : rejouer une carte le
+    // même tour doit toujours être accepté (Notion "Moteur de partie" :
+    // "Saborder — action de jeu, pas fin de tour").
+    const followUp = dispatch(result.state, { type: "playCard", playerId: "p1", instanceId: card.instanceId });
+    expect(followUp.ok).toBe(true);
   });
 
   it("refuse de saborder une carte qui n'est pas sur son propre plateau", () => {
@@ -349,10 +358,10 @@ describe("engine.dispatch - endTurn", () => {
     expect(result.state.turnNumber).toBe(2);
   });
 
-  it("dégèle les unités et réinitialise l'action principale du joueur qui redevient actif", () => {
+  it("dégèle les unités du joueur qui redevient actif", () => {
     const frozenUnit = instance("murene-aveugle", "p2", { summoningSick: true, hasAttackedThisTurn: true });
     const state = testGameState({
-      players: [testPlayer("p1"), testPlayer("p2", { board: [frozenUnit], hasUsedMainActionThisTurn: true })],
+      players: [testPlayer("p1"), testPlayer("p2", { board: [frozenUnit] })],
       activePlayerId: "p1",
     });
 
@@ -362,10 +371,23 @@ describe("engine.dispatch - endTurn", () => {
     const unit = result.state.players[1].board[0];
     expect(unit?.summoningSick).toBe(false);
     expect(unit?.hasAttackedThisTurn).toBe(false);
-    expect(result.state.players[1].hasUsedMainActionThisTurn).toBe(false);
   });
 
-  it("perd 1 Ancrage si la Raison est à 0 au début du tour", () => {
+  it("perd 1 Ancrage si SA Raison est à 0 à la fin de SON tour (pas celle du joueur qui devient actif)", () => {
+    const state = testGameState({
+      players: [testPlayer("p1", { reason: 0, anchor: 18 }), testPlayer("p2", { reason: 5, anchor: 20 })],
+      activePlayerId: "p1",
+    });
+
+    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // p1 termine son tour à 0 Raison : il perd l'Ancrage, pas p2.
+    expect(result.state.players[0].anchor).toBe(17);
+    expect(result.state.players[1].anchor).toBe(20);
+  });
+
+  it("ne perd pas d'Ancrage si la Raison du joueur qui devient actif est à 0 (seule SA propre fin de tour compte)", () => {
     const state = testGameState({
       players: [testPlayer("p1"), testPlayer("p2", { reason: 0, anchor: 18 })],
       activePlayerId: "p1",
@@ -374,8 +396,9 @@ describe("engine.dispatch - endTurn", () => {
     const result = dispatch(state, { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.state.players[1].anchor).toBe(17);
-    // La régénération de +1 Raison s'applique quand même après la perte d'Ancrage.
+    // p2 devient actif à 0 Raison : la régénération de +1 s'applique
+    // normalement, sans perte d'Ancrage (ce n'est pas la fin de SON tour).
+    expect(result.state.players[1].anchor).toBe(18);
     expect(result.state.players[1].reason).toBe(1);
   });
 

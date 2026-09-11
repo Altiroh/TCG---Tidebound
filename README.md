@@ -95,10 +95,16 @@ npm test                     # tests unitaires du moteur (Vitest)
 - **Raison** (`PlayerState.reason` / `reasonMax`) est **LA** ressource du
   jeu — il n'existe pas de mana séparé. Elle paie le coût de toutes les
   cartes, régénère de +1 par tour (plafonnée à `reasonMax`, propre au
-  Navire), et sa valeur de départ est le maximum du Navire (les deux
-  joueurs commencent à pleine Raison). **Tant que la Raison est à 0**, le
-  joueur perd 1 point d'Ancrage au début de chacun de ses tours, jusqu'à
-  ce qu'elle remonte au-dessus de 0.
+  Navire), et sa valeur de départ est **50% du maximum du Navire**
+  (arrondi à l'entier inférieur — un joueur ne commence jamais à pleine
+  Raison, cadrage Notion "Moteur de partie", 2026-09-10). Pendant sa Phase
+  principale, un joueur peut jouer **autant de cartes qu'il peut en
+  payer** : il n'existe pas de limite artificielle du type "une carte par
+  tour" — dépenser toute sa Raison est une prise de risque volontaire.
+  **Si la Raison d'un joueur est à 0 à la FIN de son propre tour**, il
+  perd 1 point d'Ancrage (vérifié à ce moment précis, pas au début du
+  tour suivant : il peut encore tenter de la récupérer avant la fin de
+  son tour pour l'éviter).
 - Échelle de coût verrouillée : 1 à 5 = standard, 6 = exceptionnel,
   7 = extrême.
 
@@ -138,38 +144,59 @@ plateau est limité par `Navire.slotCount`, pas seulement pour les unités.
 
 ## Structure de tour
 
-Ordre verrouillé, appliqué par `game/actions/endTurn.ts` au moment où un
-nouveau joueur devient actif :
+Appliqué par `game/actions/endTurn.ts`, en deux temps distincts (cadrage
+Notion "Moteur de partie — déroulement, Raison & chaînes d'effets",
+2026-09-10) :
+
+**A. Fin de tour DU JOUEUR QUI TERMINE** — effets de fin de tour,
+défausse forcée (main > 7), puis, si **SA** Raison est à 0 à ce moment
+précis, perte d'1 Ancrage.
+
+**B. Début de tour DU JOUEUR QUI DEVIENT ACTIF** :
 
 1. Vérification des Eaux (tirage de nouvelles Eaux si leur durée est
    épuisée — jamais une carte de deck, toujours tiré par le moteur).
 2. Vérification de la Marée : décompte de la durée restante, progression
    éventuelle vers l'état suivant (`Calme → Houle → Tempête → Abysses →
-   Calme`), puis application des dégâts d'Ancrage/Raison **à chaque tour**
-   passé en Tempête ou en Abysses (pas seulement à l'entrée).
+   Calme`), puis application des malus de l'état courant — voir "Malus
+   globaux des Marées" ci-dessous.
 3. Effets différés — non modélisés pour le MVP, étape ignorée.
-4. Si la Raison est à 0 : perte d'1 Ancrage.
-5. Régénération de +1 Raison (plafonnée à `reasonMax`).
-6. Pioche d'une carte (deck vide → Jugement de l'Océan, voir plus bas).
-7. Phase principale : dégel des unités, réinitialisation des attaques,
-   nettoyage des modificateurs temporaires, et réinitialisation de
-   l'action principale du tour.
+4. Régénération de +1 Raison (plafonnée à `reasonMax`).
+5. Pioche d'une carte (deck vide → Jugement de l'Océan, voir plus bas).
+6. Phase principale : dégel des unités, réinitialisation des attaques,
+   nettoyage des modificateurs temporaires.
 
-Un joueur ne dispose que d'**une seule action principale par tour** :
-jouer une carte, Saborder un permanent, ou passer
-(`PlayerState.hasUsedMainActionThisTurn`).
+Un joueur **n'est plus limité** à une seule action principale par tour
+(changement de cadrage 2026-09-10) : jouer une carte, Saborder ou Briser
+un Objet peuvent s'enchaîner librement pendant la Phase principale — seule
+la Raison disponible (et l'espace sur le plateau) les limite.
+
+### Malus globaux des Marées (verrouillé, 2026-09-10)
+
+- **Calme** : aucun malus.
+- **Houle** : une fois par tour tant qu'elle est active, une carte
+  éligible aléatoire du board (des deux joueurs) a 10% de chances de
+  devenir **MALADE** (`STATUS_MALADE`) — elle perd alors 1 PV/Résistance
+  à chaque tour tant qu'elle reste MALADE. Le statut est retiré
+  automatiquement dès que la Marée quitte la Houle.
+- **Tempête** : au début de chaque tour, chaque Navire perd 1 Ancrage
+  tant qu'elle est active (`RULES.TIDE_ANCHOR_DAMAGE.tempete`).
+- **Abysses** : à l'**entrée** uniquement (pas à chaque tour), chaque
+  Navire perd 2 Ancrage et sa Raison maximale est réduite de 2
+  (`RULES.ABYSSES_ENTRY_ANCHOR_LOSS` / `ABYSSES_REASON_MAX_PENALTY`) ; si
+  la Raison courante dépasse la nouvelle limite, elle y est immédiatement
+  ramenée. La Raison maximale est restaurée dès la sortie des Abysses.
 
 ### Phases (`GameState.phase`, `game/actions/advancePhase.ts`)
 
 Chaque tour démarre en **Phase principale** : jouer une carte, Saborder ou
-Briser un Objet n'y sont possibles que là (`assertInPhase`, une seule
-action principale comme ci-dessus). Le joueur actif passe ensuite
-explicitement en **Phase de combat** via `advancePhase` — attaquer n'est
-possible que dans cette phase, avec chaque unité éligible (voir
-`assertUnitCanAttack`). `endTurn` reste accessible depuis l'une ou
-l'autre phase (un joueur sans unité à attaquer peut terminer son tour
-directement depuis la Phase principale) ; le tour suivant recommence
-systématiquement en Phase principale.
+Briser un Objet n'y sont possibles que là (`assertInPhase`), sans limite
+de nombre. Le joueur actif passe ensuite explicitement en **Phase de
+combat** via `advancePhase` — attaquer n'est possible que dans cette
+phase, avec chaque unité éligible (voir `assertUnitCanAttack`). `endTurn`
+reste accessible depuis l'une ou l'autre phase (un joueur sans unité à
+attaquer peut terminer son tour directement depuis la Phase principale) ;
+le tour suivant recommence systématiquement en Phase principale.
 
 ## La Marée, les Eaux et le Navire (`game/environment`)
 
@@ -215,9 +242,20 @@ l'Ancrage), `epave-engloutie` / `ponton-aux-cloches` (`onBecomeVisible`),
   Garde. La priorité entre plusieurs porteurs simultanés reste "à
   préciser" par le cadrage ; tout porteur est accepté pour l'instant.
 - **Sabordage** (`game/actions/saborder.ts`) : détruit volontairement un
-  de ses propres permanents. Consomme l'action principale du tour comme
-  jouer une carte, et déclenche `onSaborde` **et** `onDeath` (une
-  destruction volontaire reste une mort).
+  de ses propres permanents. N'est pas une action limitée et ne termine
+  jamais le tour (Notion "Moteur de partie" : "action de jeu, pas fin de
+  tour") ; déclenche `onSaborde` **et** `onDeath` (une destruction
+  volontaire reste une mort).
+
+## Cimetière : traçabilité
+
+Chaque carte qui rejoint `PlayerState.graveyard` porte désormais
+`CardInstance.graveyardCause` (`"discarded" | "destroyed" | "scuttled" |
+"expired"`), posée au moment de la sortie de jeu (défausse forcée ou par
+effet, destruction au combat/par effet, Sabordage, expiration de durée).
+Sert de base à une future vue de défausse consultable (Notion "Moteur de
+partie", section "Défausse — consultation et traçabilité") ; aucune
+interface ne l'exploite encore.
 
 ## Jugement de l'Océan
 

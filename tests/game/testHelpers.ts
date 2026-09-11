@@ -29,7 +29,6 @@ export function testPlayer(id: string, overrides: Partial<PlayerState> = {}): Pl
     anchor: ship.startingAnchor,
     reason: 10,
     reasonMax: 10,
-    hasUsedMainActionThisTurn: false,
     deck: [],
     hand: [],
     board: [],

@@ -34,43 +34,46 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
   const actions: PlayerAction[] = [];
 
   if (state.phase === "mainPhase") {
-    if (!player.hasUsedMainActionThisTurn) {
-      for (const card of player.hand) {
-        const def = getCardDefinition(card.cardId);
-        const needsTarget = (def.onPlayEffects ?? []).some((e) => e.target.kind === "chosenUnit");
+    // Pas de limite au nombre d'actions principales par tour (Notion
+    // "Moteur de partie" : jouer/Saborder/Briser ne sont plus réservés à
+    // une fois par tour) — toutes les cartes/permanents jouables sont
+    // proposés, `dispatch` écarte de toute façon ce que la Raison ou le
+    // plateau ne permettent plus.
+    for (const card of player.hand) {
+      const def = getCardDefinition(card.cardId);
+      const needsTarget = (def.onPlayEffects ?? []).some((e) => e.target.kind === "chosenUnit");
+      if (needsTarget) {
+        for (const target of allBoardUnits) {
+          actions.push({
+            type: "playCard",
+            playerId,
+            instanceId: card.instanceId,
+            targetInstanceId: target.instanceId,
+          });
+        }
+      } else {
+        actions.push({ type: "playCard", playerId, instanceId: card.instanceId });
+      }
+    }
+
+    for (const unit of player.board) {
+      const def = getCardDefinition(unit.cardId);
+      if (def.type === "objet") {
+        const needsTarget = (def.onBreakEffects ?? []).some((e) => e.target.kind === "chosenUnit");
         if (needsTarget) {
           for (const target of allBoardUnits) {
             actions.push({
-              type: "playCard",
+              type: "breakObject",
               playerId,
-              instanceId: card.instanceId,
+              instanceId: unit.instanceId,
               targetInstanceId: target.instanceId,
             });
           }
         } else {
-          actions.push({ type: "playCard", playerId, instanceId: card.instanceId });
+          actions.push({ type: "breakObject", playerId, instanceId: unit.instanceId });
         }
       }
-
-      for (const unit of player.board) {
-        const def = getCardDefinition(unit.cardId);
-        if (def.type === "objet") {
-          const needsTarget = (def.onBreakEffects ?? []).some((e) => e.target.kind === "chosenUnit");
-          if (needsTarget) {
-            for (const target of allBoardUnits) {
-              actions.push({
-                type: "breakObject",
-                playerId,
-                instanceId: unit.instanceId,
-                targetInstanceId: target.instanceId,
-              });
-            }
-          } else {
-            actions.push({ type: "breakObject", playerId, instanceId: unit.instanceId });
-          }
-        }
-        actions.push({ type: "saborder", playerId, instanceId: unit.instanceId });
-      }
+      actions.push({ type: "saborder", playerId, instanceId: unit.instanceId });
     }
 
     actions.push({ type: "advancePhase", playerId });

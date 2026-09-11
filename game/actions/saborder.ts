@@ -4,7 +4,6 @@ import { processTrigger } from "@/game/triggers/triggerBus";
 import {
   assertCardOnOwnBoard,
   assertGameActive,
-  assertHasNotUsedMainActionThisTurn,
   assertInPhase,
   assertIsActivePlayer,
   assertPlayerInGame,
@@ -19,17 +18,18 @@ function validate(state: GameState, action: SaborderAction) {
     assertPlayerInGame(state, action.playerId),
     assertIsActivePlayer(state, action.playerId),
     assertInPhase(state, action.playerId, "mainPhase"),
-    assertHasNotUsedMainActionThisTurn(state, action.playerId),
     assertCardOnOwnBoard(state, action.playerId, action.instanceId)
   );
 }
 
 /**
  * Sabordage : destruction volontaire d'un de ses propres permanents.
- * Consomme par défaut l'action principale du tour (cadrage
- * "Mécaniques verrouillées" sections 29/37). Reste une mort au sens du
- * jeu : déclenche `onDeath` en plus de `onSaborde`, comme une destruction
- * normale — seule la cause diffère.
+ * Action de jeu comme une autre (Notion "Moteur de partie", section
+ * "Saborder — action de jeu, pas fin de tour") : ne termine jamais le
+ * tour ni ne ferme la Phase principale, et n'est pas limité en nombre —
+ * un joueur peut saborder puis continuer à jouer dans le même tour.
+ * Reste une mort au sens du jeu : déclenche `onDeath` en plus de
+ * `onSaborde`, comme une destruction normale — seule la cause diffère.
  */
 export function saborder(state: GameState, action: SaborderAction): ActionResult {
   const validation = validate(state, action);
@@ -42,13 +42,15 @@ export function saborder(state: GameState, action: SaborderAction): ActionResult
   const base = { turnNumber: state.turnNumber, timestamp: Date.now() };
 
   const board = player.board.filter((u) => u.instanceId !== unit.instanceId);
-  const graveyard = [...player.graveyard, { ...unit, damageMarked: 0, modifiers: [] }];
+  const graveyard = [
+    ...player.graveyard,
+    { ...unit, damageMarked: 0, modifiers: [], graveyardCause: "scuttled" as const },
+  ];
 
   const playerAfter: PlayerState = {
     ...player,
     board,
     graveyard,
-    hasUsedMainActionThisTurn: true,
   };
 
   let nextState: GameState = {

@@ -28,8 +28,15 @@ describe("runBotTurn", () => {
     for (let i = 0; i < 20 && state.status === "active"; i++) {
       const active = state.activePlayerId;
       state = runBotTurn(state, active, "difficile");
-      expect(state.activePlayerId).not.toBe(active);
+      // Le tour doit toujours progresser : soit la main passe à l'autre
+      // joueur, soit la partie se termine en cours de tour (ex: une
+      // attaque fatale avant même `endTurn`) — dans les deux cas ce n'est
+      // jamais un blocage.
+      if (state.status === "active") {
+        expect(state.activePlayerId).not.toBe(active);
+      }
     }
+    expect(["active", "finished"]).toContain(state.status);
   });
 
   it("ne fait jamais progresser l'état si ce n'est pas le tour du joueur demandé", () => {

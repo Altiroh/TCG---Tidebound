@@ -15,19 +15,26 @@ function validate(state: GameState, action: EndTurnAction) {
 }
 
 /**
- * Termine le tour du joueur actif et applique la structure de tour
- * verrouillée (cadrage "Mécaniques verrouillées" section 28, resynchronisé
- * 2026-09-10 après éviction du sous-système des Eaux) pour le joueur qui
- * devient actif :
+ * Termine le tour du joueur actif. Deux temps distincts (Notion "Moteur de
+ * partie — déroulement, Raison & chaînes d'effets", verrouillage du
+ * 2026-09-10) :
  *
+ * A. Fin de tour DU JOUEUR QUI TERMINE : effets de fin de tour, défausse
+ *    forcée, puis — si SA Raison est à 0 à ce moment précis — perte d'1
+ *    Ancrage. Un joueur qui redescend à 0 Raison en cours de tour n'est
+ *    donc pas sanctionné immédiatement : il peut encore tenter de
+ *    récupérer de la Raison avant la fin de son tour pour l'éviter.
+ *
+ * B. Début de tour DU JOUEUR QUI DEVIENT ACTIF (structure verrouillée,
+ *    resynchronisée 2026-09-10 après éviction du sous-système des Eaux) :
  *   1. Vérification de la Marée (décompte + progression + orientation + dégâts du tour)
  *   2. Effets différés — non modélisés pour le MVP, étape ignorée
- *   3. Si Raison = 0 : perte d'Ancrage
- *   4. Régénération de Raison (+1, plafonnée à `reasonMax`)
- *   5. Pioche d'une carte
- *   6. Phase principale : réinitialise l'action principale du tour et l'état
- *      des unités (dégel, réinitialisation des attaques, nettoyage des
- *      modificateurs temporaires)
+ *   3. Régénération de Raison (+1, plafonnée à `reasonMax`)
+ *   4. Pioche d'une carte
+ *   5. Phase principale : dégel des unités (résiliation des attaques,
+ *      nettoyage des modificateurs temporaires) — aucune action à
+ *      réinitialiser : jouer une carte/Saborder/Briser ne sont plus
+ *      limités à une fois par tour.
  */
 export function endTurn(state: GameState, action: EndTurnAction): ActionResult {
   const validation = validate(state, action);
@@ -59,7 +66,7 @@ export function endTurn(state: GameState, action: EndTurnAction): ActionResult {
     while (discardHand.length > RULES.MAX_HAND_SIZE) {
       const [discarded, ...rest] = discardHand;
       discardHand = rest;
-      discardGraveyard = [...discardGraveyard, discarded!];
+      discardGraveyard = [...discardGraveyard, { ...discarded!, graveyardCause: "discarded" as const }];
       events.push({ ...base, type: "CARD_MOVED", instanceId: discarded!.instanceId, fromZone: "hand", toZone: "graveyard" });
     }
     nextState = {
@@ -68,6 +75,22 @@ export function endTurn(state: GameState, action: EndTurnAction): ActionResult {
         p.id === endingPlayer.id ? { ...p, hand: discardHand, graveyard: discardGraveyard } : p
       ) as [PlayerState, PlayerState],
     };
+  }
+
+  // --- Fin du tour du joueur qui vient de jouer : Raison = 0 => perte
+  // d'1 Ancrage (vérifiée ICI, sur SA Raison — pas sur celle du joueur
+  // qui devient actif juste après).
+  const playerEndingTurn = nextState.players.find((p) => p.id === action.playerId)!;
+  if (playerEndingTurn.reason <= 0) {
+    const anchor = playerEndingTurn.anchor - RULES.ANCHOR_LOSS_WHEN_REASON_ZERO;
+    nextState = {
+      ...nextState,
+      players: nextState.players.map((p) => (p.id === playerEndingTurn.id ? { ...p, anchor } : p)) as [
+        PlayerState,
+        PlayerState
+      ],
+    };
+    events.push({ ...base, type: "DAMAGE", targetPlayerId: playerEndingTurn.id, amount: RULES.ANCHOR_LOSS_WHEN_REASON_ZERO });
   }
 
   const nextPlayer = getOpponent(nextState, action.playerId);
@@ -92,14 +115,8 @@ export function endTurn(state: GameState, action: EndTurnAction): ActionResult {
 
   // --- 2. Effets différés : non modélisés pour le MVP, étape ignorée -----
 
-  // --- 3-5. Raison à 0 => perte d'Ancrage, régénération, pioche ----------
+  // --- 3-4. Régénération de Raison, pioche --------------------------------
   const playerBeforeUpkeep = nextState.players.find((p) => p.id === nextPlayer.id)!;
-
-  let anchor = playerBeforeUpkeep.anchor;
-  if (playerBeforeUpkeep.reason <= 0) {
-    anchor -= RULES.ANCHOR_LOSS_WHEN_REASON_ZERO;
-    events.push({ ...newBase, type: "DAMAGE", targetPlayerId: nextPlayer.id, amount: RULES.ANCHOR_LOSS_WHEN_REASON_ZERO });
-  }
 
   const reason = Math.min(
     playerBeforeUpkeep.reasonMax,
@@ -123,7 +140,7 @@ export function endTurn(state: GameState, action: EndTurnAction): ActionResult {
     pendingOceanJudgment = pendingOceanJudgment ?? { playerId: nextPlayer.id };
   }
 
-  // --- 6. Phase principale : dégel et réinitialisation ---------------------
+  // --- 5. Phase principale : dégel et nettoyage -----------------------------
   const refreshedBoard = playerBeforeUpkeep.board.map((u) => ({
     ...u,
     summoningSick: false,
@@ -133,12 +150,10 @@ export function endTurn(state: GameState, action: EndTurnAction): ActionResult {
 
   const refreshedPlayer: PlayerState = {
     ...playerBeforeUpkeep,
-    anchor,
     reason,
     deck,
     hand,
     board: refreshedBoard,
-    hasUsedMainActionThisTurn: false,
   };
 
   nextState = {

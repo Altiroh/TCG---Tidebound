@@ -42,7 +42,10 @@ export function processDeaths(
       const player = next.players.find((p) => p.id === owner.id);
       if (!player) continue;
       const board = player.board.filter((u) => u.instanceId !== unit.instanceId);
-      const graveyard = [...player.graveyard, { ...unit, damageMarked: 0, modifiers: [] }];
+      const graveyard = [
+        ...player.graveyard,
+        { ...unit, damageMarked: 0, modifiers: [], graveyardCause: "destroyed" as const },
+      ];
       next = {
         ...next,
         players: next.players.map((p) => (p.id === player.id ? { ...p, board, graveyard } : p)) as [

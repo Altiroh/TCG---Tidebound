@@ -212,7 +212,7 @@ export function resolveEffect(
 
       for (let i = 0; i < amount && hand.length > 0; i++) {
         const card = hand.shift()!;
-        graveyard.push(card);
+        graveyard.push({ ...card, graveyardCause: "discarded" as const });
         events.push({ ...base, type: "CARD_MOVED", instanceId: card.instanceId, fromZone: "hand", toZone: "graveyard" });
       }
 
@@ -224,7 +224,7 @@ export function resolveEffect(
       for (const { unit, ownerId } of resolveUnitTargets(state, effect, context)) {
         const owner = getPlayer(nextState, ownerId);
         const board = owner.board.filter((u) => u.instanceId !== unit.instanceId);
-        const graveyard = [...owner.graveyard, unit];
+        const graveyard = [...owner.graveyard, { ...unit, graveyardCause: "destroyed" as const }];
         nextState = replacePlayer(nextState, { ...owner, board, graveyard });
         events.push({ ...base, type: "DESTROY", instanceId: unit.instanceId, reason: "effect" });
       }

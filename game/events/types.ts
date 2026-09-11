@@ -27,7 +27,8 @@ export type GameEventType =
   | "SABORDED"
   | "OCEAN_JUDGMENT"
   | "GAME_ENDED"
-  | "PHASE_CHANGED";
+  | "PHASE_CHANGED"
+  | "STATUS_CHANGED";
 
 export interface BaseGameEvent {
   type: GameEventType;
@@ -179,6 +180,18 @@ export interface PhaseChangedEvent extends BaseGameEvent {
   phase: "mainPhase" | "combatPhase";
 }
 
+/**
+ * Un statut ponctuel (ex: `STATUS_MALADE`, posé par la Houle — voir
+ * `game/environment/resolveEnvironment.ts`) est appliqué ou retiré d'une
+ * carte du plateau.
+ */
+export interface StatusChangedEvent extends BaseGameEvent {
+  type: "STATUS_CHANGED";
+  targetInstanceId: string;
+  status: string;
+  applied: boolean;
+}
+
 export type GameEvent =
   | DrawCardEvent
   | PlayCardEvent
@@ -200,4 +213,5 @@ export type GameEvent =
   | TideOrientationChangedEvent
   | SabordedEvent
   | OceanJudgmentEvent
-  | PhaseChangedEvent;
+  | PhaseChangedEvent
+  | StatusChangedEvent;

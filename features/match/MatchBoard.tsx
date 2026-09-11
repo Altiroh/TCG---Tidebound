@@ -83,7 +83,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
   const viewerShip = getShipDefinition(viewerPlayer.shipId);
   const otherShip = getShipDefinition(otherPlayer.shipId);
   const isViewerTurn = activePlayerId === viewerPlayerId;
-  const canPlayCards = isViewerTurn && state.phase === "mainPhase" && !viewerPlayer.hasUsedMainActionThisTurn;
+  const canPlayCards = isViewerTurn && state.phase === "mainPhase";
 
   const bannerEvent = usePhaseBannerEvent(state);
 
@@ -580,7 +580,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
                   </Button>
                 </>
               )}
-            {state.phase === "mainPhase" && !viewerPlayer.hasUsedMainActionThisTurn && (
+            {state.phase === "mainPhase" && (
               <>
                 {selectedDef.type === "objet" && (
                   <Button variant="secondary" onClick={() => startBreak(selectedUnit)}>
@@ -595,19 +595,12 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
                 </Button>
               </>
             )}
-            {!(
-              (state.phase === "combatPhase" &&
-                isUnitType(selectedDef.type) &&
-                !selectedUnit.summoningSick &&
-                !selectedUnit.hasAttackedThisTurn) ||
-              (state.phase === "mainPhase" && !viewerPlayer.hasUsedMainActionThisTurn)
-            ) && (
-              <span className="text-xs text-slate-500">
-                {state.phase === "combatPhase"
-                  ? "Aucune action disponible en Phase de combat pour cette carte."
-                  : "Action principale déjà utilisée ce tour-ci."}
-              </span>
-            )}
+            {state.phase === "combatPhase" &&
+              !(isUnitType(selectedDef.type) && !selectedUnit.summoningSick && !selectedUnit.hasAttackedThisTurn) && (
+                <span className="text-xs text-slate-500">
+                  Aucune action disponible en Phase de combat pour cette carte.
+                </span>
+              )}
           </div>
         )}
 

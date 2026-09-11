@@ -19,16 +19,16 @@ describe("createGameState", () => {
     expect(state.players[1].hand).toHaveLength(RULES.STARTING_HAND_SIZE + RULES.SECOND_PLAYER_EXTRA_CARD);
   });
 
-  it("installe l'Ancrage et la Raison de départ depuis le Navire choisi par chaque deck", () => {
+  it("installe l'Ancrage et la Raison max depuis le Navire choisi par chaque deck, mais démarre à 50% de Raison", () => {
     const state = newTestGame();
     expect(state.players[0].shipId).toBe("le-brise-lames");
     expect(state.players[0].anchor).toBe(24);
     expect(state.players[0].reasonMax).toBe(8);
-    expect(state.players[0].reason).toBe(8);
+    expect(state.players[0].reason).toBe(4);
     expect(state.players[1].shipId).toBe("le-courlis");
     expect(state.players[1].anchor).toBe(17);
     expect(state.players[1].reasonMax).toBe(12);
-    expect(state.players[1].reason).toBe(12);
+    expect(state.players[1].reason).toBe(6);
   });
 
   it("initialise la Marée en Calme, orientation Montante, avec sa durée et son Intensité de base", () => {
@@ -37,12 +37,6 @@ describe("createGameState", () => {
     expect(state.environment.tideRemainingTurns).toBe(RULES.TIDE_STATE_DURATION.calme);
     expect(state.environment.tideOrientation).toBe("montante");
     expect(state.environment.tideIntensity).toBe(RULES.TIDE_BASE_INTENSITY);
-  });
-
-  it("aucun joueur n'a utilisé son action principale au départ", () => {
-    const state = newTestGame();
-    expect(state.players[0].hasUsedMainActionThisTurn).toBe(false);
-    expect(state.players[1].hasUsedMainActionThisTurn).toBe(false);
   });
 
   it("est parfaitement déterministe pour une même graine", () => {

@@ -69,7 +69,7 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
   const opponentShip = getShipDefinition(opponent.shipId);
   const isMyTurn = state.activePlayerId === myUserId;
   const canPlay = isMyTurn && !pending;
-  const canPlayCards = canPlay && state.phase === "mainPhase" && !me.hasUsedMainActionThisTurn;
+  const canPlayCards = canPlay && state.phase === "mainPhase";
   const canAttack = canPlay && state.phase === "combatPhase";
 
   const bannerEvent = usePhaseBannerEvent(state);

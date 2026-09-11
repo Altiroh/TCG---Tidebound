@@ -132,6 +132,22 @@ export interface CardDefinition {
 
 export const DEFAULT_MAX_COPIES = 3;
 
+/**
+ * Statut "MALADE" (Notion "Moteur de partie", section "Malus globaux des
+ * Marées — verrouillé") : posé aléatoirement par la Houle, perd 1 PV/
+ * Résistance par tour tant qu'il reste actif, retiré automatiquement dès
+ * que la Marée quitte la Houle (`game/environment/resolveEnvironment.ts`).
+ */
+export const STATUS_MALADE = "malade";
+
+/**
+ * Cause de sortie vers le cimetière (Notion "Moteur de partie", section
+ * "Défausse — consultation et traçabilité") : posée au moment où une carte
+ * rejoint `PlayerState.graveyard`, pour qu'une future vue de défausse
+ * puisse distinguer défausse/destruction/sabordage/expiration.
+ */
+export type GraveyardCause = "discarded" | "destroyed" | "scuttled" | "expired";
+
 export function getMaxCopies(def: CardDefinition): number {
   return def.maxCopies ?? DEFAULT_MAX_COPIES;
 }
@@ -187,6 +203,12 @@ export interface CardInstance {
    * n'a pas de durée limitée.
    */
   turnsRemaining?: number;
+
+  /** Statuts ponctuels actifs sur cette instance (ex: `STATUS_MALADE`). Absent = aucun. */
+  statuses?: string[];
+
+  /** Posée uniquement une fois la carte dans un cimetière : cause de sa sortie de jeu. */
+  graveyardCause?: GraveyardCause;
 }
 
 export interface StatModifier {

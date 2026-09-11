@@ -77,20 +77,6 @@ export function assertCanPayCost(
   return ok();
 }
 
-/**
- * Une seule action principale par tour : jouer une carte OU Saborder OU
- * passer (cadrage "Mécaniques verrouillées" sections 28-29/37). Partagé
- * entre `playCard` et `saborder`.
- */
-export function assertHasNotUsedMainActionThisTurn(state: GameState, playerId: PlayerId): ValidationResult {
-  const player = state.players.find((p) => p.id === playerId);
-  if (!player) return fail("Joueur introuvable.");
-  if (player.hasUsedMainActionThisTurn) {
-    return fail("Ce joueur a déjà utilisé son action principale ce tour-ci.");
-  }
-  return ok();
-}
-
 export function assertBoardNotFull(state: GameState, playerId: PlayerId): ValidationResult {
   const player = state.players.find((p) => p.id === playerId);
   if (!player) return fail("Joueur introuvable.");
