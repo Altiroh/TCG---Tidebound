@@ -54,6 +54,7 @@ export {
   DECK_LERRANT,
   DECK_LE_BRISE_LAMES,
 } from "@/game/cards/decks/preconstructed";
+export { ARCHETYPE_DECKS } from "@/game/cards/decks/testDecks";
 export { validateDeckList } from "@/game/rules/deckValidation";
 
 export type { GameEvent, GameEventType } from "@/game/events/types";

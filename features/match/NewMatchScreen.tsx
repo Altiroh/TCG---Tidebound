@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { PRECONSTRUCTED_DECKS, type BotDifficulty, type DeckList } from "@/game";
+import Link from "next/link";
+import { ARCHETYPE_DECKS, PRECONSTRUCTED_DECKS, getShipDefinition, type BotDifficulty, type DeckList } from "@/game";
 import { Button } from "@/components/ui/Button";
 
 export type MatchOpponent = { type: "pvp" } | { type: "bot"; difficulty: BotDifficulty };
@@ -9,6 +10,14 @@ export type MatchOpponent = { type: "pvp" } | { type: "bot"; difficulty: BotDiff
 interface NewMatchScreenProps {
   onStart: (deck1: DeckList, deck2: DeckList, opponent: MatchOpponent) => void;
 }
+
+/**
+ * Liste combinée proposée à l'écran de sélection : les 3 decks de base
+ * système (un par Navire) puis les archétypes — plusieurs archétypes
+ * partagent le même Navire, d'où l'affichage de son nom à côté de chaque
+ * deck plutôt qu'une simple liste de Navires.
+ */
+const SELECTABLE_DECKS: readonly DeckList[] = [...PRECONSTRUCTED_DECKS, ...ARCHETYPE_DECKS];
 
 const BOT_DIFFICULTIES: { id: BotDifficulty; label: string; description: string }[] = [
   { id: "facile", label: "Facile", description: "Joue quasiment au hasard, évite juste les pires coups." },
@@ -18,13 +27,13 @@ const BOT_DIFFICULTIES: { id: BotDifficulty; label: string; description: string 
 
 /** Écran de sélection des Navires/decks avant une partie locale : contre un autre joueur (hot-seat) ou contre un bot. */
 export function NewMatchScreen({ onStart }: NewMatchScreenProps) {
-  const [deck1Id, setDeck1Id] = useState(PRECONSTRUCTED_DECKS[0]!.id);
-  const [deck2Id, setDeck2Id] = useState(PRECONSTRUCTED_DECKS[1]!.id);
+  const [deck1Id, setDeck1Id] = useState(SELECTABLE_DECKS[0]!.id);
+  const [deck2Id, setDeck2Id] = useState(SELECTABLE_DECKS[1]!.id);
   const [opponentType, setOpponentType] = useState<"pvp" | "bot">("pvp");
   const [botDifficulty, setBotDifficulty] = useState<BotDifficulty>("moyen");
 
-  const deck1 = PRECONSTRUCTED_DECKS.find((d) => d.id === deck1Id)!;
-  const deck2 = PRECONSTRUCTED_DECKS.find((d) => d.id === deck2Id)!;
+  const deck1 = SELECTABLE_DECKS.find((d) => d.id === deck1Id)!;
+  const deck2 = SELECTABLE_DECKS.find((d) => d.id === deck2Id)!;
 
   function handleStart() {
     const opponent: MatchOpponent = opponentType === "bot" ? { type: "bot", difficulty: botDifficulty } : { type: "pvp" };
@@ -32,7 +41,14 @@ export function NewMatchScreen({ onStart }: NewMatchScreenProps) {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-xl flex-col items-center justify-center gap-8 p-8 text-center">
+    <main className="relative mx-auto flex min-h-screen max-w-xl flex-col items-center justify-center gap-8 p-8 text-center">
+      <Link
+        href="/"
+        className="fixed left-4 top-4 z-10 text-sm text-slate-400 transition-colors hover:text-board-accent"
+      >
+        ← Retour au menu
+      </Link>
+
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Nouvelle partie</h1>
         <p className="mt-2 text-sm text-slate-400">
@@ -105,6 +121,10 @@ export function NewMatchScreen({ onStart }: NewMatchScreenProps) {
 }
 
 function DeckPicker({ label, value, onChange }: { label: string; value: string; onChange: (id: string) => void }) {
+  const selected = SELECTABLE_DECKS.find((d) => d.id === value);
+  const shipName = selected ? getShipDefinition(selected.shipId).name : undefined;
+  const isArchetype = selected ? !PRECONSTRUCTED_DECKS.some((d) => d.id === selected.id) : false;
+
   return (
     <label className="flex flex-1 flex-col gap-2 rounded-md border border-slate-800 bg-board-surface p-4 text-left">
       <span className="text-sm font-medium text-slate-300">{label}</span>
@@ -113,12 +133,27 @@ function DeckPicker({ label, value, onChange }: { label: string; value: string; 
         onChange={(e) => onChange(e.target.value)}
         className="rounded-md border border-slate-700 bg-board-background px-2 py-1.5 text-sm text-slate-100"
       >
-        {PRECONSTRUCTED_DECKS.map((deck) => (
-          <option key={deck.id} value={deck.id}>
-            {deck.name}
-          </option>
-        ))}
+        <optgroup label="Decks de base (un par Navire)">
+          {PRECONSTRUCTED_DECKS.map((deck) => (
+            <option key={deck.id} value={deck.id}>
+              {deck.name}
+            </option>
+          ))}
+        </optgroup>
+        <optgroup label="Archétypes">
+          {ARCHETYPE_DECKS.map((deck) => (
+            <option key={deck.id} value={deck.id}>
+              {deck.name} — {getShipDefinition(deck.shipId).name}
+            </option>
+          ))}
+        </optgroup>
       </select>
+      {/* Suggestion du Navire correspondant : redondante avec le libellé de l'option pour un archétype, mais utile pour un deck de base où le nom du deck EST déjà celui du Navire. */}
+      {shipName && (
+        <span className="text-[11px] text-slate-500">
+          {isArchetype ? `Navire suggéré : ${shipName}` : `Navire : ${shipName}`}
+        </span>
+      )}
     </label>
   );
 }
