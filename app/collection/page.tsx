@@ -1,8 +1,39 @@
 import Link from "next/link";
 import { CardBrowser } from "@/features/collection/CardBrowser";
 import { THICK_TEXT_OUTLINE } from "@/features/match/cardDisplay";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-export default function CollectionPage() {
+interface ViewerCollection {
+  isSignedIn: boolean;
+  ownedCardIds: string[];
+}
+
+/**
+ * Résout la collection du joueur connecté, sans jamais faire planter la page
+ * (même garde-fou que `resolveViewer` sur la page d'accueil). Un compte tout
+ * juste créé n'a encore ouvert aucun booster : `player_cards` est vide et la
+ * grille l'est donc aussi, volontairement — seuls les decks préconstruits
+ * sont jouables en attendant.
+ */
+async function resolveViewerCollection(): Promise<ViewerCollection> {
+  try {
+    const supabase = createSupabaseServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { isSignedIn: false, ownedCardIds: [] };
+
+    const { data } = await supabase.from("player_cards").select("card_id").eq("user_id", user.id).gt("quantity", 0);
+    return { isSignedIn: true, ownedCardIds: (data ?? []).map((row) => row.card_id) };
+  } catch (error) {
+    console.error("[CollectionPage] Impossible de résoudre la collection du joueur :", error);
+    return { isSignedIn: false, ownedCardIds: [] };
+  }
+}
+
+export default async function CollectionPage() {
+  const { isSignedIn, ownedCardIds } = await resolveViewerCollection();
+
   return (
     <div
       className="min-h-screen bg-cover bg-center bg-fixed"
@@ -21,11 +52,35 @@ export default function CollectionPage() {
               ← Menu
             </Link>
           </div>
-          <p className="text-sm text-slate-200" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.9)" }}>
-            Les 80 cartes du catalogue, pour vérifier les assets au fur et à mesure qu&apos;ils arrivent. Pas encore
-            de deck personnel — ça viendra avec la collection persistée.
-          </p>
-          <CardBrowser />
+
+          {isSignedIn ? (
+            <>
+              <p className="text-sm text-slate-200" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.9)" }}>
+                {ownedCardIds.length > 0
+                  ? "Les cartes que tu possèdes."
+                  : "Tu ne possèdes encore aucune carte : joue avec un deck préconstruit en attendant d'ouvrir des boosters."}
+              </p>
+              <CardBrowser ownedCardIds={ownedCardIds} />
+            </>
+          ) : (
+            <div className="flex flex-col items-center gap-4 rounded-2xl border border-white/15 bg-white/[0.07] p-10 text-center backdrop-blur-2xl">
+              <p className="text-slate-200">Connecte-toi pour voir ta collection de cartes.</p>
+              <div className="flex gap-3">
+                <Link
+                  href="/connexion"
+                  className="rounded-md bg-board-accent px-4 py-2 text-sm font-medium text-slate-950 transition-colors hover:opacity-90"
+                >
+                  Se connecter
+                </Link>
+                <Link
+                  href="/inscription"
+                  className="rounded-md border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-slate-100 backdrop-blur-md transition-colors hover:bg-white/20"
+                >
+                  Créer un compte
+                </Link>
+              </div>
+            </div>
+          )}
         </main>
       </div>
     </div>

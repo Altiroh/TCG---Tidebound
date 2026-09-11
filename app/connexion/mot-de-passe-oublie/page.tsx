@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AuthGlassPanel } from "@/components/auth/AuthGlassPanel";
-import { LoginForm } from "@/components/auth/LoginForm";
+import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm";
 
-export default function ConnexionPage() {
+export default function MotDePasseOubliePage() {
   const router = useRouter();
 
   return (
@@ -17,11 +17,7 @@ export default function ConnexionPage() {
 
       <div className="relative z-10 flex w-full max-w-sm flex-col items-center gap-4">
         <AuthGlassPanel>
-          <LoginForm
-            onSuccess={() => router.push("/")}
-            onForgotPassword={() => router.push("/connexion/mot-de-passe-oublie")}
-            onSwitchToSignup={() => router.push("/inscription")}
-          />
+          <ForgotPasswordForm onBackToLogin={() => router.push("/connexion")} />
         </AuthGlassPanel>
         <Link href="/" className="text-sm text-slate-300 hover:text-board-accent hover:underline">
           ← Jouer sans compte

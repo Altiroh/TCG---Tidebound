@@ -62,20 +62,28 @@ function NavArrow({ direction, onClick }: { direction: "left" | "right"; onClick
   );
 }
 
-/** Grille de consultation des 80 cartes du catalogue — pour vérifier les assets au fur et à mesure. */
-export function CardBrowser() {
+interface CardBrowserProps {
+  /** Cartes possédées par le joueur connecté (`player_cards.card_id`, quantité > 0) — la grille n'affiche que celles-ci. */
+  ownedCardIds: string[];
+}
+
+/** Grille de la collection du joueur — ne montre que les cartes qu'il possède réellement. */
+export function CardBrowser({ ownedCardIds }: CardBrowserProps) {
   const [filter, setFilter] = useState<CardType | "all">("all");
   const [search, setSearch] = useState("");
   const [detailCardId, setDetailCardId] = useState<string | null>(null);
 
+  const ownedSet = useMemo(() => new Set(ownedCardIds), [ownedCardIds]);
+
   const cards = useMemo(() => {
     const query = normalizeSearch(search.trim());
     return CORE_SET.filter((def) => {
+      if (!ownedSet.has(def.id)) return false;
       if (filter !== "all" && def.type !== filter) return false;
       if (query && !normalizeSearch(def.name).includes(query)) return false;
       return true;
     });
-  }, [filter, search]);
+  }, [ownedSet, filter, search]);
 
   const showRelative = useCallback(
     (delta: number) => {
@@ -138,17 +146,23 @@ export function CardBrowser() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-        {cards.map((def) => (
-          <CardTile
-            key={def.id}
-            instance={displayInstance(def.id)}
-            tideState="calme"
-            widthClassName="w-full"
-            onClick={() => setDetailCardId(def.id)}
-          />
-        ))}
-      </div>
+      {cards.length === 0 ? (
+        <p className="rounded-xl border border-white/10 bg-white/5 p-6 text-center text-sm text-slate-300 backdrop-blur-md">
+          Aucune carte ne correspond à ces filtres.
+        </p>
+      ) : (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          {cards.map((def) => (
+            <CardTile
+              key={def.id}
+              instance={displayInstance(def.id)}
+              tideState="calme"
+              widthClassName="w-full"
+              onClick={() => setDetailCardId(def.id)}
+            />
+          ))}
+        </div>
+      )}
 
       {detailCardId && (
         <div

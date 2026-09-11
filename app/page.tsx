@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/connexion/actions";
 import { TideboundMenuChest } from "@/components/menu/TideboundMenuChest";
+import { AuthGateModal } from "@/components/auth/AuthGateModal";
 
 /**
  * Résout l'utilisateur connecté, sans jamais faire planter la page
@@ -34,6 +35,8 @@ export default async function HomePage() {
       style={{ backgroundImage: "url(/assets/menu/background/menu_background_fixed.png)" }}
     >
       <div className="absolute inset-0 bg-board-background/35" />
+
+      <AuthGateModal isSignedIn={isSignedIn} />
 
       <div className="relative z-10 w-full">
         <TideboundMenuChest />

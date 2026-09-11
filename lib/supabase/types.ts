@@ -7,11 +7,12 @@
  *
  * Volontairement PARTIEL : ne couvre que les tables effectivement
  * requêtées depuis du code TypeScript à ce jour (`profiles`, `matches`,
- * `matchmaking_queue`). La migration `..._cards_collection_economy.sql`
- * introduit une quinzaine d'autres tables (cartes, decks, collection,
- * boosters, monnaie, quêtes, onboarding) qui n'ont pas encore de Server
- * Action associée — les typer à la main ici avant d'en avoir l'usage
- * réel ferait courir un risque de dérive silencieuse avec le schéma SQL.
+ * `matchmaking_queue`, `player_cards`). La migration
+ * `..._cards_collection_economy.sql` introduit une quinzaine d'autres
+ * tables (cartes, decks, boosters, monnaie, quêtes, onboarding) qui n'ont
+ * pas encore de Server Action associée — les typer à la main ici avant
+ * d'en avoir l'usage réel ferait courir un risque de dérive silencieuse
+ * avec le schéma SQL.
  */
 
 export interface Database {
@@ -102,6 +103,30 @@ export interface Database {
           user_id?: string;
           deck_id?: string;
           queued_at?: string;
+        };
+        Relationships: [];
+      };
+      player_cards: {
+        Row: {
+          user_id: string;
+          card_id: string;
+          quantity: number;
+          first_obtained_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          card_id: string;
+          quantity?: number;
+          first_obtained_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          card_id?: string;
+          quantity?: number;
+          first_obtained_at?: string;
+          updated_at?: string;
         };
         Relationships: [];
       };
