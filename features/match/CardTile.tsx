@@ -21,12 +21,8 @@ interface CardTileProps {
   onClick?: () => void;
   /** Classe Tailwind de largeur (ex: "w-28", "w-72") — permet un rendu plus grand (vue détail). Défaut : "w-28". */
   widthClassName?: string;
-  /**
-   * "preview" (défaut) : compact, sans texte de règles — pour la main/le
-   * plateau/les grilles. "detail" : ajoute le texte de règles — pour un
-   * aperçu agrandi (ex: `CardBrowser`).
-   */
-  variant?: "preview" | "detail";
+  /** `false` pour désactiver l'agrandissement léger au survol (ex: cartes de plateau — l'utilisateur clique désormais pour voir le détail plutôt que de survoler). Défaut : `true`. */
+  scaleOnHover?: boolean;
 }
 
 /** Repli uniquement pour le cas (rare) où le cadre lui-même n'a pas chargé — pas de bandeaux/découpe peints, juste une teinte par type. */
@@ -224,7 +220,7 @@ export function CardTile({
   disabled,
   onClick,
   widthClassName = "w-28",
-  variant = "preview",
+  scaleOnHover = true,
 }: CardTileProps) {
   const def = getCardDefinition(instance.cardId);
   const isAbyssal = def.subtype === "abyssal";
@@ -249,7 +245,7 @@ export function CardTile({
   const rulesZone = isUnit || hasResistance ? RULES_ZONE_WITH_STATS : RULES_ZONE_NO_STATS;
 
   const hoverable = Boolean(onClick) && !disabled;
-  const scalesOnHover = hoverable;
+  const scalesOnHover = hoverable && scaleOnHover;
 
   return (
     <button
@@ -349,7 +345,7 @@ export function CardTile({
             </div>
           )}
 
-          {variant === "detail" && def.text && (
+          {def.text && (
             <div
               className={`overflow-hidden rounded-sm border px-[3%] text-left leading-snug [font-family:var(--font-card-body)] ${
                 frameOk

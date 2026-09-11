@@ -17,21 +17,21 @@ interface HandFanProps {
 }
 
 /** Largeur de base d'une carte de main (nettement plus grande que le standard `w-28` des autres contextes). */
-const BASE_WIDTH = "w-40";
-/** Largeur de la carte survolée, "levée" du rang, en version détail — assez grande pour que le texte de règles reste lisible. */
-const HOVER_WIDTH = "w-72";
+const BASE_WIDTH = "w-36";
+/** Largeur de la carte survolée, "levée" du rang — assez grande pour que le texte de règles reste lisible. */
+const HOVER_WIDTH = "w-64";
 
 const MAX_ROTATION_DEG = 26;
 const MAX_ARC_DROP_PX = 26;
-const OVERLAP_PX = 42;
+const OVERLAP_PX = 38;
 
 /**
  * Rang de main en léger arc-de-cercle : chaque carte tourne et descend
  * légèrement en s'éloignant du centre (façon éventail), en se chevauchant.
  * Au survol, la carte se lève du rang (translation vers le haut, agrandie,
- * remise à plat, texte de règles affiché via `CardTile variant="detail"`) —
- * remplace l'ancien aperçu flottant (`CardHoverPreview`, retiré : l'info
- * est désormais directement portée par la carte elle-même).
+ * remise à plat) — le texte de règles est toujours visible sur `CardTile`,
+ * survolée ou non. Remplace l'ancien aperçu flottant (`CardHoverPreview`,
+ * retiré : l'info est désormais directement portée par la carte elle-même).
  */
 export function HandFan({
   cards,
@@ -70,7 +70,7 @@ export function HandFan({
               marginLeft: index === 0 ? 0 : -OVERLAP_PX,
               zIndex: isHovered ? 40 : index,
               transform: isHovered
-                ? "translateY(-90px) scale(1.08) rotate(0deg)"
+                ? "translateY(-80px) scale(1.08) rotate(0deg)"
                 : `translateY(${arcDrop}px) rotate(${rotation}deg)`,
               opacity: draggingId === card.instanceId ? 0.4 : 1,
             }}
@@ -82,7 +82,6 @@ export function HandFan({
               disabled={disabled}
               onClick={() => onClick(card.instanceId)}
               widthClassName={isHovered ? HOVER_WIDTH : BASE_WIDTH}
-              variant={isHovered ? "detail" : "preview"}
             />
           </div>
         );

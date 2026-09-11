@@ -6,11 +6,11 @@ interface OpponentHandFanProps {
 }
 
 /** Même taille que les cartes de la main du viewer (`HandFan`, `BASE_WIDTH`). */
-const WIDTH = "w-40";
+const WIDTH = "w-36";
 
 const MAX_ROTATION_DEG = 26;
 const MAX_ARC_DROP_PX = 26;
-const OVERLAP_PX = 42;
+const OVERLAP_PX = 38;
 
 /**
  * Main adverse : dos de carte uniquement (information cachée, jamais

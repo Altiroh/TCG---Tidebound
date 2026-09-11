@@ -39,16 +39,17 @@ export function ResourceGauge({ type, value, max, size = 56 }: ResourceGaugeProp
           background: `conic-gradient(rgba(4,8,16,0.82) ${depletedAngle}deg, transparent ${depletedAngle}deg)`,
         }}
       />
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
+      {/* Valeur courante — toujours centrée, indépendamment du survol (le bloc maximum ci-dessous est positionné en absolu, hors flux, pour ne jamais la décaler). */}
+      <div className="absolute inset-0 flex items-center justify-center">
         <span className="text-[13px] font-bold tabular-nums text-white [font-family:var(--font-card-title)] [text-shadow:0_1px_3px_rgba(0,0,0,0.95)]">
           {value}
         </span>
-        <div className="flex flex-col items-center opacity-0 transition-opacity duration-150 group-hover/gauge:opacity-100">
-          <span className="h-px w-2.5 bg-white/60" />
-          <span className="text-[8px] font-semibold tabular-nums leading-tight text-slate-200 [font-family:var(--font-card-title)] [text-shadow:0_1px_2px_rgba(0,0,0,0.95)]">
-            {max}
-          </span>
-        </div>
+      </div>
+      <div className="pointer-events-none absolute inset-x-0 top-[60%] flex flex-col items-center opacity-0 transition-opacity duration-150 group-hover/gauge:opacity-100">
+        <span className="h-px w-2.5 bg-white/60" />
+        <span className="text-[8px] font-semibold tabular-nums leading-tight text-slate-200 [font-family:var(--font-card-title)] [text-shadow:0_1px_2px_rgba(0,0,0,0.95)]">
+          {max}
+        </span>
       </div>
     </div>
   );

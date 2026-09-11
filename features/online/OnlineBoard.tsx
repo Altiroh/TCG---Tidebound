@@ -14,12 +14,13 @@ import {
 } from "@/game";
 import { Button } from "@/components/ui/Button";
 import { BoardBackdrop } from "@/features/match/BoardBackdrop";
+import { BoardCardTile } from "@/features/match/BoardCardTile";
 import { BoardStage } from "@/features/match/BoardStage";
+import { CardDetailModal } from "@/features/match/CardDetailModal";
 import { CargoCluster } from "@/features/match/CargoCluster";
 import { EventFeed } from "@/features/match/EventFeed";
 import { GraveyardViewer } from "@/features/match/GraveyardViewer";
 import { HandFan } from "@/features/match/HandFan";
-import { HoverLiftTile } from "@/features/match/HoverLiftTile";
 import { OpponentHandFan } from "@/features/match/OpponentHandFan";
 import { PhaseActionButton } from "@/features/match/PhaseActionButton";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
@@ -62,6 +63,7 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
   const [dragOverOpponentBoard, setDragOverOpponentBoard] = useState(false);
   const [dragOverGraveyard, setDragOverGraveyard] = useState(false);
   const [graveyardViewerPlayerId, setGraveyardViewerPlayerId] = useState<PlayerId | null>(null);
+  const [detailInstance, setDetailInstance] = useState<CardInstance | null>(null);
 
   const me = state.players.find((p) => p.id === myUserId)!;
   const opponent = state.players.find((p) => p.id !== myUserId)!;
@@ -309,7 +311,7 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
         <BoardBackdrop variant="absolute" />
 
         {/* Main adverse — arc inversé, remontée pour ne pas cacher son plateau */}
-        <div className="absolute flex items-start justify-center" style={{ left: 0, top: -50, width: 1672, height: 220 }}>
+        <div className="absolute flex items-start justify-center" style={{ left: 0, top: -70, width: 1672, height: 220 }}>
           <OpponentHandFan cards={opponent.hand} />
         </div>
 
@@ -355,11 +357,12 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
               onDrop={(e) => handleBoardTileDrop(e, unit.instanceId)}
               className={dragOverTargetId === unit.instanceId ? "rounded-md ring-2 ring-board-accent" : ""}
             >
-              <HoverLiftTile
+              <BoardCardTile
                 instance={unit}
                 tideState={state.environment.tideState}
                 selected={selection?.kind === "attack"}
                 onClick={() => handleAnyBoardCardClick(unit.instanceId, opponent.id)}
+                onShowDetail={() => setDetailInstance(unit)}
               />
             </div>
           ))}
@@ -376,9 +379,13 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
           />
         </div>
 
-        {/* Bande centrale : orientation de la Marée (gauche), état de la Marée (centre), interaction (droite) */}
+        {/* Bande centrale : jauge de Marée (gauche), état de la Marée (centre), interaction (droite) */}
         <div className="absolute" style={{ left: 40, top: 350, width: 150, height: 170 }}>
-          <TideOrientationTile orientation={state.environment.tideOrientation} />
+          <TideOrientationTile
+            tideState={state.environment.tideState}
+            tideRemainingTurns={state.environment.tideRemainingTurns}
+            orientation={state.environment.tideOrientation}
+          />
         </div>
 
         {/* Fenêtre de réaction ouverte, en attente de "moi" — priorité
@@ -490,11 +497,12 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
                 draggingUnitId === unit.instanceId ? "opacity-40" : ""
               } ${myReactionCandidates.some((c) => c.sourceInstanceId === unit.instanceId) ? "animate-reaction-pulse" : ""}`}
             >
-              <HoverLiftTile
+              <BoardCardTile
                 instance={unit}
                 tideState={state.environment.tideState}
                 selected={selectedBoardId === unit.instanceId || selection?.kind === "attack"}
                 onClick={() => handleAnyBoardCardClick(unit.instanceId, me.id)}
+                onShowDetail={() => setDetailInstance(unit)}
               />
             </div>
           ))}
@@ -591,6 +599,13 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
           playerLabel={graveyardViewerPlayerId === myUserId ? "Toi" : "Adversaire"}
           cards={state.players.find((p) => p.id === graveyardViewerPlayerId)!.graveyard}
           onClose={() => setGraveyardViewerPlayerId(null)}
+        />
+      )}
+      {detailInstance && (
+        <CardDetailModal
+          instance={detailInstance}
+          tideState={state.environment.tideState}
+          onClose={() => setDetailInstance(null)}
         />
       )}
     </>
