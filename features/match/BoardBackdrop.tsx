@@ -1,5 +1,5 @@
 /**
- * Toile de fond immersive du plateau (`public/assets/board/board.jpg`),
+ * Toile de fond immersive du plateau (`public/assets/board/board.png`),
  * fixée au viewport derrière tout le contenu (voir l'usage dans
  * `MatchBoard.tsx`/`OnlineBoard.tsx` : le contenu passe en `relative z-10`
  * pour rester au-dessus).
@@ -19,7 +19,7 @@ export function BoardBackdrop({ variant = "fixed" }: { variant?: "fixed" | "abso
   return (
     <div aria-hidden className={`${variant === "fixed" ? "fixed" : "absolute"} inset-0 overflow-hidden`}>
       {/* eslint-disable-next-line @next/next/no-img-element -- calque de fond plein écran, jamais responsive au sens Next/Image */}
-      <img src="/assets/board/board.jpg" alt="" draggable={false} className="h-full w-full select-none object-cover" />
+      <img src="/assets/board/board.png" alt="" draggable={false} className="h-full w-full select-none object-cover" />
       <div
         className="absolute inset-0"
         style={{

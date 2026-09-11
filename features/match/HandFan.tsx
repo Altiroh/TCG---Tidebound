@@ -65,14 +65,15 @@ export function HandFan({
             onDragEnd={onDragEnd}
             onMouseEnter={() => setHoveredId(card.instanceId)}
             onMouseLeave={() => setHoveredId((current) => (current === card.instanceId ? null : current))}
-            className="pointer-events-auto origin-bottom transition-transform duration-150 ease-out"
+            className="pointer-events-auto origin-bottom rounded-xl transition-transform duration-150 ease-out"
             style={{
               marginLeft: index === 0 ? 0 : -OVERLAP_PX,
               zIndex: isHovered ? 40 : index,
               transform: isHovered
                 ? "translateY(-80px) scale(1.08) rotate(0deg)"
                 : `translateY(${arcDrop}px) rotate(${rotation}deg)`,
-              opacity: draggingId === card.instanceId ? 0.4 : 1,
+              opacity: draggingId === card.instanceId ? 0.5 : 1,
+              boxShadow: draggingId === card.instanceId ? "0 0 25px 6px rgba(125,211,252,0.65)" : undefined,
             }}
           >
             <CardTile

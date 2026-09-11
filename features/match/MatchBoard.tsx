@@ -20,6 +20,7 @@ import { BoardCardTile } from "@/features/match/BoardCardTile";
 import { BoardStage } from "@/features/match/BoardStage";
 import { CardDetailModal } from "@/features/match/CardDetailModal";
 import { CargoCluster } from "@/features/match/CargoCluster";
+import { DragTargetingTrail } from "@/features/match/DragTargetingTrail";
 import { EventFeed } from "@/features/match/EventFeed";
 import { GraveyardViewer } from "@/features/match/GraveyardViewer";
 import { HandFan } from "@/features/match/HandFan";
@@ -70,6 +71,8 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
   const [error, setError] = useState<string | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [draggingUnitId, setDraggingUnitId] = useState<string | null>(null);
+  /** Origine (viewport) du glisser-déposer en cours (main ou unité de plateau) — alimente `DragTargetingTrail`. */
+  const [dragAnchor, setDragAnchor] = useState<{ x: number; y: number } | null>(null);
   const [dragOverTargetId, setDragOverTargetId] = useState<string | null>(null);
   const [dragOverOwnBoard, setDragOverOwnBoard] = useState(false);
   const [dragOverOtherBoard, setDragOverOtherBoard] = useState(false);
@@ -269,11 +272,14 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
     e.dataTransfer.setData(DRAG_MIME_HAND, instanceId);
     e.dataTransfer.effectAllowed = "move";
     setDraggingId(instanceId);
+    const rect = e.currentTarget.getBoundingClientRect();
+    setDragAnchor({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
   }
   function handleHandDragEnd() {
     setDraggingId(null);
     setDragOverTargetId(null);
     setDragOverOwnBoard(false);
+    setDragAnchor(null);
   }
   function handleOwnBoardDragOver(e: React.DragEvent) {
     if (!draggingId) return;
@@ -302,12 +308,15 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
     e.dataTransfer.setData(DRAG_MIME_UNIT, instanceId);
     e.dataTransfer.effectAllowed = "move";
     setDraggingUnitId(instanceId);
+    const rect = e.currentTarget.getBoundingClientRect();
+    setDragAnchor({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
   }
   function handleUnitDragEnd() {
     setDraggingUnitId(null);
     setDragOverTargetId(null);
     setDragOverOtherBoard(false);
     setDragOverGraveyard(false);
+    setDragAnchor(null);
   }
   function handleOtherBoardDragOver(e: React.DragEvent) {
     if (!draggingUnitId) return;
@@ -495,13 +504,9 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
           />
         </div>
 
-        {/* Bande centrale : jauge de Marée (gauche), état de la Marée (centre), interaction (droite) */}
+        {/* Bande centrale : tuile de sens de Marée (gauche), progression de la Marée (centre), interaction (droite) */}
         <div className="absolute" style={{ left: 40, top: 350, width: 150, height: 170 }}>
-          <TideOrientationTile
-            tideState={state.environment.tideState}
-            tideRemainingTurns={state.environment.tideRemainingTurns}
-            orientation={state.environment.tideOrientation}
-          />
+          <TideOrientationTile orientation={state.environment.tideOrientation} />
         </div>
 
         {/* Fenêtre de réaction ouverte, en attente du viewer — priorité
@@ -607,8 +612,10 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
               onDragOver={(e) => handleBoardTileDragOver(e, unit.instanceId)}
               onDragLeave={() => setDragOverTargetId((id) => (id === unit.instanceId ? null : id))}
               onDrop={(e) => handleBoardTileDrop(e, unit.instanceId)}
-              className={`rounded-xl ${dragOverTargetId === unit.instanceId ? "ring-2 ring-board-accent" : ""} ${
-                draggingUnitId === unit.instanceId ? "opacity-40" : ""
+              className={`rounded-xl transition-shadow ${dragOverTargetId === unit.instanceId ? "ring-2 ring-board-accent" : ""} ${
+                draggingUnitId === unit.instanceId
+                  ? "opacity-50 shadow-[0_0_25px_6px_rgba(125,211,252,0.65)]"
+                  : ""
               } ${myReactionCandidates.some((c) => c.sourceInstanceId === unit.instanceId) ? "animate-reaction-pulse" : ""}`}
             >
               <BoardCardTile
@@ -693,7 +700,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
         {/* Main du viewer — centrée en bas de l'écran, en éventail. `pointer-events-none` sur ce conteneur
             pleine-largeur (chaque carte se réactive individuellement, `HandFan`) : sinon la zone vide entre les
             cartes peut intercepter des glisser-déposer destinés au plateau juste au-dessus. */}
-        <div className="pointer-events-none absolute flex items-end justify-center" style={{ left: 0, top: 740, width: 1672, height: 195 }}>
+        <div className="pointer-events-none absolute flex items-end justify-center" style={{ left: 0, top: 775, width: 1672, height: 195 }}>
           <HandFan
             cards={viewerPlayer.hand}
             tideState={state.environment.tideState}
@@ -721,6 +728,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
         </div>
       </BoardStage>
 
+      <DragTargetingTrail anchor={dragAnchor} />
       <PhaseBanner text={bannerText} bannerKey={bannerEvent?.id ?? null} />
       {graveyardViewerPlayerId && (
         <GraveyardViewer

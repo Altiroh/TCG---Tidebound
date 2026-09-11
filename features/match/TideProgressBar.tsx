@@ -39,20 +39,22 @@ const TIDE_STATE_TEXT_CLASS: Record<TideStateName, string> = {
 };
 
 const TIDE_STATE_GLOW: Record<TideStateName, string> = {
-  calme: "shadow-[0_0_12px_rgba(56,189,248,0.9)]",
-  houle: "shadow-[0_0_12px_rgba(34,211,238,0.9)]",
-  tempete: "shadow-[0_0_12px_rgba(251,191,36,0.9)]",
-  abysses: "shadow-[0_0_12px_rgba(232,121,249,0.9)]",
+  calme: "shadow-[0_0_18px_rgba(56,189,248,0.9)]",
+  houle: "shadow-[0_0_18px_rgba(34,211,238,0.9)]",
+  tempete: "shadow-[0_0_18px_rgba(251,191,36,0.9)]",
+  abysses: "shadow-[0_0_18px_rgba(232,121,249,0.9)]",
 };
 
 /**
- * Ligne de progression de la Marée, horizontale et sans fond — remplace le
- * texte "Marée : Calme (2 tour(s))" au centre du board (la tuile à gauche,
- * `TideOrientationTile`, reste inchangée). 4 repères reliés par une piste :
- * déjà traversés = petit disque plein, état courant = disque avec glow
- * (coloré par état), à venir = simple contour éteint. Le segment de piste
- * entre deux repères se remplit progressivement au fil des tours plutôt que
- * d'un bond brut à chaque transition.
+ * Ligne de progression de la Marée, horizontale et sans fond, étirée
+ * quasiment d'un bout à l'autre de la bande centrale (connecteurs en
+ * `flex-1`) — remplace le texte "Marée : Calme (2 tour(s))" au centre du
+ * board (la tuile à gauche, `TideOrientationTile`, reste inchangée). 4
+ * repères reliés par une piste blanche épaisse : déjà traversés = disque
+ * plein, état courant = disque plus grand avec glow (coloré par état), à
+ * venir = simple contour éteint. Le segment de piste entre deux repères se
+ * remplit progressivement au fil des tours plutôt que d'un bond brut à
+ * chaque transition.
  */
 export function TideProgressBar({ tideState, tideRemainingTurns }: TideProgressBarProps) {
   const [infoOpen, setInfoOpen] = useState(false);
@@ -61,7 +63,7 @@ export function TideProgressBar({ tideState, tideRemainingTurns }: TideProgressB
   const currentStageFraction = Math.max(0, Math.min(1, (currentDuration - tideRemainingTurns) / currentDuration));
 
   return (
-    <div className="flex items-start">
+    <div className="flex w-full items-center">
       {TIDE_ORDER.map((stateName, index) => {
         const isActive = stateName === tideState;
         const isPast = index < activeIndex;
@@ -69,9 +71,9 @@ export function TideProgressBar({ tideState, tideRemainingTurns }: TideProgressB
         const connectorFraction = index < activeIndex ? 1 : index === activeIndex ? currentStageFraction : 0;
 
         return (
-          <div key={stateName} className="flex items-start">
-            <div className="flex flex-col items-center gap-1.5">
-              <div className="relative flex h-4 w-4 items-center justify-center">
+          <div key={stateName} className={`flex items-center ${isLast ? "" : "flex-1"}`}>
+            <div className="flex shrink-0 flex-col items-center gap-2">
+              <div className="relative flex h-7 w-7 items-center justify-center">
                 {isActive && (
                   <button
                     type="button"
@@ -80,34 +82,34 @@ export function TideProgressBar({ tideState, tideRemainingTurns }: TideProgressB
                     onFocus={() => setInfoOpen(true)}
                     onBlur={() => setInfoOpen(false)}
                     aria-label={`Effets de la Marée ${TIDE_STATE_LABELS[stateName]}`}
-                    className="absolute -top-5 left-1/2 z-10 flex h-3.5 w-3.5 -translate-x-1/2 items-center justify-center rounded-full border border-white/50 bg-black/80 text-[8px] font-bold leading-none text-slate-200 hover:border-board-accent hover:text-board-accent"
+                    className="absolute -top-8 left-1/2 z-10 flex h-6 w-6 -translate-x-1/2 items-center justify-center rounded-full border border-white/50 bg-black/80 text-xs font-bold leading-none text-slate-200 hover:border-board-accent hover:text-board-accent"
                   >
                     i
                   </button>
                 )}
                 {isActive && infoOpen && (
-                  <div className="absolute left-1/2 top-full z-20 mt-2 w-48 -translate-x-1/2 rounded-md border border-white/15 bg-black/95 p-2 text-left shadow-lg">
+                  <div className="absolute bottom-full left-1/2 z-20 mb-2 w-52 -translate-x-1/2 rounded-md border border-white/15 bg-black/95 p-2 text-left shadow-lg">
                     <p
-                      className={`text-[10px] font-semibold uppercase tracking-wide [font-family:var(--font-card-title)] ${TIDE_STATE_TEXT_CLASS[stateName]}`}
+                      className={`text-[11px] font-semibold uppercase tracking-wide [font-family:var(--font-card-title)] ${TIDE_STATE_TEXT_CLASS[stateName]}`}
                     >
                       {TIDE_STATE_LABELS[stateName]} · {tideRemainingTurns} tour{tideRemainingTurns > 1 ? "s" : ""} restant
                       {tideRemainingTurns > 1 ? "s" : ""}
                     </p>
-                    <p className="mt-1 text-[10px] leading-snug text-slate-300">{TIDE_STATE_EFFECT_TEXT[stateName]}</p>
+                    <p className="mt-1 text-[11px] leading-snug text-slate-300">{TIDE_STATE_EFFECT_TEXT[stateName]}</p>
                   </div>
                 )}
                 <div
                   className={`rounded-full transition-all duration-500 ease-out ${
                     isActive
-                      ? `h-4 w-4 ${TIDE_STATE_FILL_CLASS[stateName]} ${TIDE_STATE_GLOW[stateName]}`
+                      ? `h-7 w-7 ${TIDE_STATE_FILL_CLASS[stateName]} ${TIDE_STATE_GLOW[stateName]}`
                       : isPast
-                        ? `h-2.5 w-2.5 ${TIDE_STATE_FILL_CLASS[stateName]}`
-                        : "h-2.5 w-2.5 border border-white/25 bg-transparent"
+                        ? `h-4 w-4 ${TIDE_STATE_FILL_CLASS[stateName]}`
+                        : "h-4 w-4 border-2 border-white/30 bg-transparent"
                   }`}
                 />
               </div>
               <span
-                className={`text-[10px] font-semibold uppercase tracking-wide [font-family:var(--font-card-title)] ${
+                className={`whitespace-nowrap text-xs font-semibold uppercase tracking-wide [font-family:var(--font-card-title)] ${
                   isActive ? TIDE_STATE_TEXT_CLASS[stateName] : isPast ? "text-slate-300" : "text-slate-600"
                 }`}
               >
@@ -116,9 +118,9 @@ export function TideProgressBar({ tideState, tideRemainingTurns }: TideProgressB
             </div>
 
             {!isLast && (
-              <div className="relative mx-2 h-[2px] w-16 overflow-hidden rounded-full bg-white/10" style={{ marginTop: 7 }}>
+              <div className="relative mx-3 h-1.5 min-w-[40px] flex-1 overflow-hidden rounded-full bg-white/15">
                 <div
-                  className="h-full bg-sky-200/80 transition-[width] duration-700 ease-out"
+                  className="h-full bg-white transition-[width] duration-700 ease-out"
                   style={{ width: `${connectorFraction * 100}%` }}
                 />
               </div>

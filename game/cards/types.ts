@@ -155,6 +155,22 @@ export const DEFAULT_MAX_COPIES = 3;
 export const STATUS_MALADE = "malade";
 
 /**
+ * Statut "IMMOBILISÉ" : la carte ne peut ni attaquer ni utiliser ses
+ * capacités tant qu'il reste actif — même famille que `STATUS_MALADE`,
+ * pas encore posé par aucun effet du moteur (préparation du système
+ * générique de statuts, le câblage effet → statut viendra avec le moteur
+ * d'effets data-driven).
+ */
+export const STATUS_IMMOBILISE = "immobilise";
+
+/**
+ * Statut "SILENCE" : les capacités déclenchées et effets d'arrivée de la
+ * carte sont désactivés tant qu'il reste actif — même remarque que
+ * `STATUS_IMMOBILISE`.
+ */
+export const STATUS_SILENCE = "silence";
+
+/**
  * Cause de sortie vers le cimetière (Notion "Moteur de partie", section
  * "Défausse — consultation et traçabilité") : posée au moment où une carte
  * rejoint `PlayerState.graveyard`, pour qu'une future vue de défausse

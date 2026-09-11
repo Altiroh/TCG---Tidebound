@@ -40,6 +40,8 @@ export {
   UNIT_CARD_TYPES,
   PERMANENT_CARD_TYPES,
   STATUS_MALADE,
+  STATUS_IMMOBILISE,
+  STATUS_SILENCE,
 } from "@/game/cards/types";
 export { CARD_DATABASE, CORE_SET, getCardDefinition } from "@/game/cards/sets/core";
 export { computeEffectiveStats, computeStatModifierDelta } from "@/game/cards/stats";

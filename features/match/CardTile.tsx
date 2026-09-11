@@ -5,13 +5,17 @@ import {
   computeEffectiveStats,
   computeStatModifierDelta,
   getCardDefinition,
+  hasKeyword,
+  STATUS_IMMOBILISE,
   STATUS_MALADE,
+  STATUS_SILENCE,
   UNIT_CARD_TYPES,
   type CardDefinition,
   type CardInstance,
   type TideStateName,
 } from "@/game";
 import { CARD_TYPE_LABELS, THICK_TEXT_OUTLINE } from "@/features/match/cardDisplay";
+import { StatusBadge } from "@/features/match/StatusBadge";
 
 interface CardTileProps {
   instance: CardInstance;
@@ -24,6 +28,41 @@ interface CardTileProps {
   /** `false` pour désactiver l'agrandissement léger au survol (ex: cartes de plateau — l'utilisateur clique désormais pour voir le détail plutôt que de survoler). Défaut : `true`. */
   scaleOnHover?: boolean;
 }
+
+/**
+ * Registre des icônes de statuts ponctuels (`instance.statuses`) — assets
+ * fournis à plat dans `public/assets/` (`effect_malade.png`, etc.), un
+ * statut sans entrée ici reste silencieux plutôt que de casser l'affichage
+ * (système volontairement générique : ajouter un statut n'importe où dans
+ * le moteur n'exige qu'une entrée ici pour être visible).
+ */
+const STATUS_ICON_INFO: Record<string, { icon: string; label: string; description: string }> = {
+  [STATUS_MALADE]: {
+    icon: "/assets/effect_malade.png",
+    label: "Malade",
+    description: "Perd 1 Résistance à chaque tour tant que ce statut reste actif.",
+  },
+  [STATUS_IMMOBILISE]: {
+    icon: "/assets/effect_immobilise.png",
+    label: "Immobilisé",
+    description: "Ne peut ni attaquer ni utiliser ses capacités tant que ce statut reste actif.",
+  },
+  [STATUS_SILENCE]: {
+    icon: "/assets/effect_silence.png",
+    label: "Silence",
+    description: "Ses capacités déclenchées et effets d'arrivée sont désactivés tant que ce statut reste actif.",
+  },
+};
+
+/** Mot-clé Garde (`def.keywords`, permanent — pas un statut à durée) : même registre d'icône que les statuts. */
+const GARDE_ICON_INFO = {
+  icon: "/assets/effect_garde.png",
+  label: "Garde",
+  description: "Les attaques adverses visant votre Navire doivent cibler en priorité les permanents portant Garde.",
+};
+
+/** Icône du badge "Durée" (Structure/Objet à durée limitée, `instance.turnsRemaining`) — le nombre de tours restants est superposé au centre. */
+const TOUR_ICON = "/assets/effect_tour.png";
 
 /** Repli uniquement pour le cas (rare) où le cadre lui-même n'a pas chargé — pas de bandeaux/découpe peints, juste une teinte par type. */
 const TYPE_BG_CLASSES: Record<string, string> = {
@@ -328,19 +367,30 @@ export function CardTile({
           {(stats.inactive ||
             (instance.summoningSick && isUnit) ||
             instance.turnsRemaining !== undefined ||
-            instance.statuses?.includes(STATUS_MALADE)) && (
+            hasKeyword(def, "garde") ||
+            (instance.statuses && instance.statuses.length > 0)) && (
             <div
-              className="flex flex-wrap items-center justify-center gap-1 overflow-hidden"
+              className="flex flex-wrap items-center justify-center gap-1 overflow-visible"
               style={{ ...zoneStyle(STATUS_BADGES_ZONE), fontSize: "5cqw" }}
             >
               {stats.inactive && <span className="rounded bg-black/60 px-1 text-amber-300">Inactive</span>}
-              {/* "Non prête" (maladie d'invocation) — distinct du statut MALADE (Houle), voir `STATUS_MALADE` */}
+              {/* "Non prête" (maladie d'invocation) — distinct des statuts à durée (`instance.statuses`) */}
               {instance.summoningSick && isUnit && <span className="rounded bg-black/60 px-1 text-slate-300">Non prête</span>}
-              {instance.statuses?.includes(STATUS_MALADE) && (
-                <span className="rounded bg-black/60 px-1 text-cyan-300">Malade</span>
+              {hasKeyword(def, "garde") && (
+                <StatusBadge icon={GARDE_ICON_INFO.icon} label={GARDE_ICON_INFO.label} description={GARDE_ICON_INFO.description} />
               )}
+              {instance.statuses?.map((status) => {
+                const info = STATUS_ICON_INFO[status];
+                if (!info) return null;
+                return <StatusBadge key={status} icon={info.icon} label={info.label} description={info.description} />;
+              })}
               {instance.turnsRemaining !== undefined && (
-                <span className="rounded bg-black/60 px-1 text-slate-300">Durée {instance.turnsRemaining}</span>
+                <StatusBadge
+                  icon={TOUR_ICON}
+                  label="Durée"
+                  description={`${instance.turnsRemaining} tour${instance.turnsRemaining > 1 ? "s" : ""} restant${instance.turnsRemaining > 1 ? "s" : ""} avant expiration.`}
+                  overlayText={String(instance.turnsRemaining)}
+                />
               )}
             </div>
           )}
