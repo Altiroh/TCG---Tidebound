@@ -138,6 +138,11 @@ export function resolveEffect(
 
   switch (effect.type) {
     case "damage": {
+      // NOTE : ne déclenche PAS `onDamaged` (contrairement aux dégâts de
+      // combat, `game/actions/attack.ts`) — `resolveEffect` est appelé
+      // par `triggerBus.ts`, qui l'appellerait en retour : cycle de
+      // dépendance à éviter. Pas encore nécessaire : aucune carte actuelle
+      // ne réagit aux dégâts infligés par un effet plutôt qu'un combat.
       const amount = amountValue(effect.amount);
       let nextState = state;
 

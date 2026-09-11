@@ -41,6 +41,20 @@ export interface TriggeredAbility {
   description?: string;
   /** Filtre supplémentaire pour `onTideStateEntered` : ne se déclenche que pour cet état. */
   condition?: { tideState?: TideStateName };
+  /**
+   * "auto" (défaut) : résolution automatique par le moteur, aucune
+   * décision du joueur (Notion "Moteur de partie", "Effets déclenchés
+   * obligatoires"). "optional" : capacité facultative/réaction — ne se
+   * résout JAMAIS automatiquement ; son contrôleur doit l'activer via une
+   * fenêtre de réaction (`activateReaction`, `game/reactions/`) tant
+   * qu'elle reste éligible, ou passer.
+   */
+  mode?: "auto" | "optional";
+  /**
+   * Coût à payer pour activer une capacité `optional` (ex: "tu peux
+   * dépenser 1 Raison : ..."). Sans effet sur une capacité `auto`.
+   */
+  cost?: { reason?: number };
 }
 
 /**

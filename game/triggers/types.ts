@@ -30,3 +30,22 @@ export interface TriggerEvent {
   /** État de Marée qui vient d'être atteint, pour onTideStateEntered. */
   tideState?: import("@/game/environment/types").TideStateName;
 }
+
+/**
+ * Une capacité `mode: "optional"` actuellement éligible pour un
+ * `TriggerEvent` donné : son contrôleur peut l'activer via une fenêtre de
+ * réaction (`game/reactions/`), ou passer. Recalculée à chaque étape
+ * plutôt que mise en cache — l'éligibilité (coût payable, cible
+ * disponible) peut changer entre deux étapes de la même fenêtre.
+ */
+export interface PendingReactionCandidate {
+  controllerId: string;
+  sourceInstanceId: string;
+  cardId: string;
+  /** Index de la capacité dans `CardDefinition.abilities` — identifie précisément laquelle activer. */
+  abilityIndex: number;
+  /** Coût en Raison à payer pour activer cette capacité (0 si aucun). */
+  reasonCost: number;
+  /** `true` si au moins un de ses effets cible `chosenUnit` : `activateReaction` doit alors recevoir `targetInstanceId`. */
+  needsTarget: boolean;
+}

@@ -2,6 +2,7 @@ import type { CardInstance } from "@/game/cards/types";
 import type { EnvironmentState } from "@/game/environment/types";
 import type { GameEvent } from "@/game/events/types";
 import type { RngState } from "@/game/rng";
+import type { TriggerEvent } from "@/game/triggers/types";
 
 export type PlayerId = string;
 
@@ -74,8 +75,39 @@ export interface GameState {
    */
   pendingOceanJudgment?: { playerId: PlayerId };
 
+  /**
+   * Fenêtre de réaction ouverte (Notion "Moteur de partie — déroulement,
+   * Raison & chaînes d'effets", pipeline étapes 6-9) : au moins un joueur
+   * a une capacité `mode: "optional"` actuellement éligible en réponse
+   * aux `events` qui viennent de se produire. Tant que ce champ est posé,
+   * `awaitingPlayerId` est le SEUL joueur autorisé à agir — uniquement
+   * via `activateReaction` ou `passReaction` (`game/reactions/`) ; aucune
+   * action normale n'est acceptée (cadrage : "tant qu'un effet, une
+   * réaction ou une conséquence est en cours de résolution, aucune
+   * nouvelle action normale ne peut être commencée").
+   */
+  pendingReaction?: PendingReactionState;
+
   status: "active" | "finished";
   winnerId?: PlayerId;
+}
+
+export interface PendingReactionState {
+  /** Événements déclencheurs ayant ouvert cette fenêtre (contexte pour l'UI/le recalcul d'éligibilité). */
+  events: TriggerEvent[];
+  /** Joueur actuellement invité à Activer une réaction éligible ou Passer. */
+  awaitingPlayerId: PlayerId;
+  /** Joueurs restants à consulter après celui-ci, dans l'ordre (file de priorité). */
+  priorityQueue: PlayerId[];
+  /**
+   * Clés `"sourceInstanceId:abilityIndex"` déjà activées PENDANT cette
+   * fenêtre : une capacité facultative ne se propose qu'une fois par
+   * fenêtre de réaction, même si elle resterait techniquement éligible
+   * (coût payable, cible disponible) — évite qu'un joueur la déclenche en
+   * boucle tant qu'il peut se le permettre.
+   */
+  usedCandidateKeys: string[];
+  turnNumber: number;
 }
 
 export function getPlayer(state: GameState, playerId: PlayerId): PlayerState {

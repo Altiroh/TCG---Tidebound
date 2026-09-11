@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   dispatch,
+  eligibleCandidatesFor,
   getCardDefinition,
   getShipDefinition,
   runBotTurn,
@@ -39,7 +40,8 @@ interface MatchBoardProps {
 type Pending =
   | { kind: "playCard"; instanceId: string; needsTarget: boolean }
   | { kind: "attack"; attackerId: string }
-  | { kind: "break"; instanceId: string; needsTarget: boolean };
+  | { kind: "break"; instanceId: string; needsTarget: boolean }
+  | { kind: "reaction"; sourceInstanceId: string; abilityIndex: number; needsTarget: boolean };
 
 function isUnitType(type: string): boolean {
   return (UNIT_CARD_TYPES as readonly string[]).includes(type);
@@ -74,13 +76,22 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
 
   const activePlayerId = state.activePlayerId;
   const humanPlayerId = botPlayerId ? state.players.find((p) => p.id !== botPlayerId)!.id : null;
-  const viewerPlayerId = humanPlayerId ?? activePlayerId;
+  // En hot-seat pur (pas de bot), l'écran suit qui doit agir MAINTENANT —
+  // le joueur actif normalement, mais celui attendu par une fenêtre de
+  // réaction si elle diffère (l'adversaire vient de jouer une carte
+  // ouvrant une réaction pour l'autre joueur). Contre un bot, le joueur
+  // humain reste toujours en bas, dans les deux cas.
+  const respondingPlayerId = state.pendingReaction?.awaitingPlayerId ?? activePlayerId;
+  const viewerPlayerId = humanPlayerId ?? respondingPlayerId;
   const viewerPlayer = state.players.find((p) => p.id === viewerPlayerId)!;
   const otherPlayer = state.players.find((p) => p.id !== viewerPlayerId)!;
   const viewerShip = getShipDefinition(viewerPlayer.shipId);
   const otherShip = getShipDefinition(otherPlayer.shipId);
   const isViewerTurn = activePlayerId === viewerPlayerId;
-  const canPlayCards = isViewerTurn && state.phase === "mainPhase";
+  const canPlayCards = isViewerTurn && state.phase === "mainPhase" && !state.pendingReaction;
+  const myReactionCandidates = state.pendingReaction?.awaitingPlayerId === viewerPlayerId
+    ? eligibleCandidatesFor(state, state.pendingReaction.events, viewerPlayerId, state.pendingReaction.turnNumber, state.pendingReaction.usedCandidateKeys)
+    : [];
 
   const bannerEvent = usePhaseBannerEvent(state);
 
@@ -94,15 +105,23 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
       : `Tour ${playerLabel(bannerEvent.playerId)}`
     : null;
 
-  // Joue automatiquement le tour du bot dès qu'il devient actif. Un léger
-  // délai laisse le temps de voir l'état précédent (et évite un
-  // enchaînement instantané qui donnerait l'impression d'un bug plutôt
-  // que d'un adversaire qui "réfléchit").
+  // Joue automatiquement le tour du bot dès qu'il devient actif, ET
+  // chaque fois qu'une fenêtre de réaction l'attend — même hors de son
+  // propre tour (l'humain vient de jouer une carte à laquelle le bot a
+  // une réaction facultative éligible). Un léger délai laisse le temps
+  // de voir l'état précédent (et évite un enchaînement instantané qui
+  // donnerait l'impression d'un bug plutôt que d'un adversaire qui
+  // "réfléchit").
+  const botAwaitingReaction = state.pendingReaction?.awaitingPlayerId === botPlayerId;
   useEffect(() => {
-    if (activePlayerId !== botPlayerId || state.status !== "active" || !botDifficulty) return;
+    if (state.status !== "active" || !botDifficulty) return;
+    if (activePlayerId !== botPlayerId && !botAwaitingReaction) return;
     const timer = setTimeout(() => {
       setState((current) => {
-        if (current.status !== "active" || current.activePlayerId !== botPlayerId) return current;
+        if (current.status !== "active" || !botPlayerId) return current;
+        const ownTurn = current.activePlayerId === botPlayerId;
+        const ownReaction = current.pendingReaction?.awaitingPlayerId === botPlayerId;
+        if (!ownTurn && !ownReaction) return current;
         return runBotTurn(current, botPlayerId, botDifficulty);
       });
       setPending(null);
@@ -110,7 +129,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
       setError(null);
     }, 700);
     return () => clearTimeout(timer);
-  }, [activePlayerId, state.status, botPlayerId, botDifficulty]);
+  }, [activePlayerId, botAwaitingReaction, state.status, botPlayerId, botDifficulty]);
 
   // Abandonner la partie via ÉCHAP plutôt qu'un bouton visible en permanence
   // à l'écran — libère l'espace pour le board pleine page.
@@ -139,6 +158,32 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
     clearSelection();
   }
 
+  /**
+   * Pendant une fenêtre de réaction, celui qui doit répondre n'est pas
+   * forcément le joueur actif (`isViewerTurn`) — jamais garder ce garde-
+   * fou ici : l'UI n'affiche les boutons Activer/Passer que si
+   * `state.pendingReaction?.awaitingPlayerId === viewerPlayerId` de
+   * toute façon.
+   */
+  function runReactionAction(action: PlayerAction) {
+    const result = dispatch(state, action);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    setError(null);
+    setState(result.state);
+    clearSelection();
+  }
+
+  function activateMyReaction(sourceInstanceId: string, abilityIndex: number, needsTarget: boolean) {
+    if (needsTarget) {
+      setPending({ kind: "reaction", sourceInstanceId, abilityIndex, needsTarget: true });
+    } else {
+      runReactionAction({ type: "activateReaction", playerId: viewerPlayerId, sourceInstanceId, abilityIndex });
+    }
+  }
+
   function handleHandCardClick(instanceId: string) {
     if (!canPlayCards) return;
     const card = viewerPlayer.hand.find((c) => c.instanceId === instanceId);
@@ -165,6 +210,16 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
   }
 
   function handleAnyBoardCardClick(instanceId: string, ownerId: PlayerId) {
+    if (pending?.kind === "reaction" && pending.needsTarget) {
+      runReactionAction({
+        type: "activateReaction",
+        playerId: viewerPlayerId,
+        sourceInstanceId: pending.sourceInstanceId,
+        abilityIndex: pending.abilityIndex,
+        targetInstanceId: instanceId,
+      });
+      return;
+    }
     if (pending?.kind === "playCard" && pending.needsTarget) {
       runAction({
         type: "playCard",
@@ -433,6 +488,44 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
           <TideOrientationTile orientation={state.environment.tideOrientation} />
         </div>
 
+        {/* Fenêtre de réaction ouverte, en attente du viewer — priorité
+            d'affichage sur tout le reste tant qu'elle reste ouverte
+            (Notion "Moteur de partie" : aucune action normale possible
+            tant qu'une réaction est en attente). */}
+        {state.pendingReaction?.awaitingPlayerId === viewerPlayerId && (
+          <div
+            className="absolute z-20 flex flex-col items-center gap-2 rounded-lg border-2 border-amber-400/80 bg-black/90 px-4 py-3 shadow-[0_0_25px_rgba(251,191,36,0.35)]"
+            style={{ left: 336, top: 300, width: 1000 }}
+          >
+            <span className="text-xs font-semibold uppercase tracking-wide text-amber-300">
+              Une carte peut réagir
+            </span>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {myReactionCandidates.map((candidate) => {
+                const def = getCardDefinition(candidate.cardId);
+                const ability = def.abilities?.[candidate.abilityIndex];
+                return (
+                  <Button
+                    key={`${candidate.sourceInstanceId}:${candidate.abilityIndex}`}
+                    variant="secondary"
+                    onClick={() => activateMyReaction(candidate.sourceInstanceId, candidate.abilityIndex, candidate.needsTarget)}
+                    title={ability?.description ?? def.text}
+                  >
+                    {def.name}
+                    {candidate.reasonCost > 0 ? ` (${candidate.reasonCost} Raison)` : ""}
+                  </Button>
+                );
+              })}
+              <Button variant="secondary" onClick={() => runReactionAction({ type: "passReaction", playerId: viewerPlayerId })}>
+                Passer
+              </Button>
+            </div>
+            {pending?.kind === "reaction" && pending.needsTarget && (
+              <span className="text-xs text-slate-300">Choisissez une cible sur le plateau.</span>
+            )}
+          </div>
+        )}
+
         <div
           className="absolute flex flex-col items-center justify-center gap-2 text-center"
           style={{ left: 230, top: 340, width: 1020, height: 190 }}
@@ -504,9 +597,9 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
               onDragOver={(e) => handleBoardTileDragOver(e, unit.instanceId)}
               onDragLeave={() => setDragOverTargetId((id) => (id === unit.instanceId ? null : id))}
               onDrop={(e) => handleBoardTileDrop(e, unit.instanceId)}
-              className={`${dragOverTargetId === unit.instanceId ? "rounded-md ring-2 ring-board-accent" : ""} ${
+              className={`rounded-xl ${dragOverTargetId === unit.instanceId ? "ring-2 ring-board-accent" : ""} ${
                 draggingUnitId === unit.instanceId ? "opacity-40" : ""
-              }`}
+              } ${myReactionCandidates.some((c) => c.sourceInstanceId === unit.instanceId) ? "animate-reaction-pulse" : ""}`}
             >
               <HoverLiftTile
                 instance={unit}

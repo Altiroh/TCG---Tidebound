@@ -28,7 +28,10 @@ export type GameEventType =
   | "OCEAN_JUDGMENT"
   | "GAME_ENDED"
   | "PHASE_CHANGED"
-  | "STATUS_CHANGED";
+  | "STATUS_CHANGED"
+  | "REACTION_WINDOW_OPENED"
+  | "REACTION_ACTIVATED"
+  | "REACTION_PASSED";
 
 export interface BaseGameEvent {
   type: GameEventType;
@@ -192,6 +195,30 @@ export interface StatusChangedEvent extends BaseGameEvent {
   applied: boolean;
 }
 
+/**
+ * Une fenêtre de réaction vient de s'ouvrir : au moins un joueur a une
+ * capacité `mode: "optional"` actuellement éligible en réponse à
+ * l'action qui vient de se résoudre (`game/reactions/`).
+ */
+export interface ReactionWindowOpenedEvent extends BaseGameEvent {
+  type: "REACTION_WINDOW_OPENED";
+  /** Joueur à qui la priorité est offerte en premier. */
+  playerId: PlayerId;
+}
+
+/** Un joueur a activé une capacité facultative éligible pendant une fenêtre de réaction. */
+export interface ReactionActivatedEvent extends BaseGameEvent {
+  type: "REACTION_ACTIVATED";
+  playerId: PlayerId;
+  sourceInstanceId: string;
+}
+
+/** Un joueur a passé sa priorité pendant une fenêtre de réaction (rien à activer, ou choix délibéré). */
+export interface ReactionPassedEvent extends BaseGameEvent {
+  type: "REACTION_PASSED";
+  playerId: PlayerId;
+}
+
 export type GameEvent =
   | DrawCardEvent
   | PlayCardEvent
@@ -214,4 +241,7 @@ export type GameEvent =
   | SabordedEvent
   | OceanJudgmentEvent
   | PhaseChangedEvent
-  | StatusChangedEvent;
+  | StatusChangedEvent
+  | ReactionWindowOpenedEvent
+  | ReactionActivatedEvent
+  | ReactionPassedEvent;

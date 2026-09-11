@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
+  eligibleCandidatesFor,
   getCardDefinition,
   getShipDefinition,
   UNIT_CARD_TYPES,
@@ -37,7 +38,8 @@ interface OnlineBoardProps {
 type Pending =
   | { kind: "playCard"; instanceId: string; needsTarget: boolean }
   | { kind: "attack"; attackerId: string }
-  | { kind: "break"; instanceId: string; needsTarget: boolean };
+  | { kind: "break"; instanceId: string; needsTarget: boolean }
+  | { kind: "reaction"; sourceInstanceId: string; abilityIndex: number; needsTarget: boolean };
 
 function isUnitType(type: string): boolean {
   return (UNIT_CARD_TYPES as readonly string[]).includes(type);
@@ -65,9 +67,13 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
   const myShip = getShipDefinition(me.shipId);
   const opponentShip = getShipDefinition(opponent.shipId);
   const isMyTurn = state.activePlayerId === myUserId;
-  const canPlay = isMyTurn && !pending;
+  const canRespondToReaction = state.pendingReaction?.awaitingPlayerId === myUserId;
+  const canPlay = isMyTurn && !pending && !state.pendingReaction;
   const canPlayCards = canPlay && state.phase === "mainPhase";
   const canAttack = canPlay && state.phase === "combatPhase";
+  const myReactionCandidates = canRespondToReaction
+    ? eligibleCandidatesFor(state, state.pendingReaction!.events, myUserId, state.pendingReaction!.turnNumber, state.pendingReaction!.usedCandidateKeys)
+    : [];
 
   const bannerEvent = usePhaseBannerEvent(state);
   const bannerText = bannerEvent
@@ -86,6 +92,14 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
   function act(action: PlayerAction) {
     onAction(action);
     clearSelection();
+  }
+
+  function activateMyReaction(sourceInstanceId: string, abilityIndex: number, needsTarget: boolean) {
+    if (needsTarget) {
+      setSelection({ kind: "reaction", sourceInstanceId, abilityIndex, needsTarget: true });
+    } else {
+      act({ type: "activateReaction", playerId: myUserId, sourceInstanceId, abilityIndex });
+    }
   }
 
   function handleHandCardClick(instanceId: string) {
@@ -111,6 +125,16 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
   }
 
   function handleAnyBoardCardClick(instanceId: string, ownerId: PlayerId) {
+    if (selection?.kind === "reaction" && selection.needsTarget) {
+      act({
+        type: "activateReaction",
+        playerId: myUserId,
+        sourceInstanceId: selection.sourceInstanceId,
+        abilityIndex: selection.abilityIndex,
+        targetInstanceId: instanceId,
+      });
+      return;
+    }
     if (!canPlay) return;
     if (selection?.kind === "playCard" && selection.needsTarget) {
       act({ type: "playCard", playerId: myUserId, instanceId: selection.instanceId, targetInstanceId: instanceId });
@@ -353,6 +377,40 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
           <TideOrientationTile orientation={state.environment.tideOrientation} />
         </div>
 
+        {/* Fenêtre de réaction ouverte, en attente de "moi" — priorité
+            d'affichage sur tout le reste tant qu'elle reste ouverte. */}
+        {canRespondToReaction && (
+          <div
+            className="absolute z-20 flex flex-col items-center gap-2 rounded-lg border-2 border-amber-400/80 bg-black/90 px-4 py-3 shadow-[0_0_25px_rgba(251,191,36,0.35)]"
+            style={{ left: 336, top: 300, width: 1000 }}
+          >
+            <span className="text-xs font-semibold uppercase tracking-wide text-amber-300">Une carte peut réagir</span>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {myReactionCandidates.map((candidate) => {
+                const def = getCardDefinition(candidate.cardId);
+                const ability = def.abilities?.[candidate.abilityIndex];
+                return (
+                  <Button
+                    key={`${candidate.sourceInstanceId}:${candidate.abilityIndex}`}
+                    variant="secondary"
+                    onClick={() => activateMyReaction(candidate.sourceInstanceId, candidate.abilityIndex, candidate.needsTarget)}
+                    title={ability?.description ?? def.text}
+                  >
+                    {def.name}
+                    {candidate.reasonCost > 0 ? ` (${candidate.reasonCost} Raison)` : ""}
+                  </Button>
+                );
+              })}
+              <Button variant="secondary" onClick={() => act({ type: "passReaction", playerId: myUserId })}>
+                Passer
+              </Button>
+            </div>
+            {selection?.kind === "reaction" && selection.needsTarget && (
+              <span className="text-xs text-slate-300">Choisissez une cible sur le plateau.</span>
+            )}
+          </div>
+        )}
+
         <div
           className="absolute flex flex-col items-center justify-center gap-2 text-center"
           style={{ left: 230, top: 340, width: 1020, height: 190 }}
@@ -424,9 +482,9 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
               onDragOver={(e) => handleBoardTileDragOver(e, unit.instanceId)}
               onDragLeave={() => setDragOverTargetId((id) => (id === unit.instanceId ? null : id))}
               onDrop={(e) => handleBoardTileDrop(e, unit.instanceId)}
-              className={`${dragOverTargetId === unit.instanceId ? "rounded-md ring-2 ring-board-accent" : ""} ${
+              className={`rounded-xl ${dragOverTargetId === unit.instanceId ? "ring-2 ring-board-accent" : ""} ${
                 draggingUnitId === unit.instanceId ? "opacity-40" : ""
-              }`}
+              } ${myReactionCandidates.some((c) => c.sourceInstanceId === unit.instanceId) ? "animate-reaction-pulse" : ""}`}
             >
               <HoverLiftTile
                 instance={unit}

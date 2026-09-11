@@ -2,6 +2,7 @@ import { getCardDefinition } from "@/game/cards/sets/core";
 import { UNIT_CARD_TYPES } from "@/game/cards/types";
 import type { CardInstance } from "@/game/cards/types";
 import type { PlayerAction } from "@/game/actions/types";
+import { eligibleCandidatesFor } from "@/game/reactions/reactionWindow";
 import type { GameState, PlayerId } from "@/game/state/types";
 
 function isEligibleAttacker(unit: CardInstance): boolean {
@@ -32,6 +33,41 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
   const opponent = state.players.find((p) => p.id !== playerId);
   const allBoardUnits = [...player.board, ...(opponent?.board ?? [])];
   const actions: PlayerAction[] = [];
+
+  // Fenêtre de réaction ouverte, en attente de CE joueur : seules
+  // `activateReaction`/`passReaction` sont légales tant qu'elle reste
+  // ouverte (`game/engine.ts`) — ne pas proposer d'action normale.
+  if (state.pendingReaction && state.pendingReaction.awaitingPlayerId === playerId) {
+    const candidates = eligibleCandidatesFor(
+      state,
+      state.pendingReaction.events,
+      playerId,
+      state.pendingReaction.turnNumber,
+      state.pendingReaction.usedCandidateKeys
+    );
+    for (const candidate of candidates) {
+      if (candidate.needsTarget) {
+        for (const target of allBoardUnits) {
+          actions.push({
+            type: "activateReaction",
+            playerId,
+            sourceInstanceId: candidate.sourceInstanceId,
+            abilityIndex: candidate.abilityIndex,
+            targetInstanceId: target.instanceId,
+          });
+        }
+      } else {
+        actions.push({
+          type: "activateReaction",
+          playerId,
+          sourceInstanceId: candidate.sourceInstanceId,
+          abilityIndex: candidate.abilityIndex,
+        });
+      }
+    }
+    actions.push({ type: "passReaction", playerId });
+    return actions;
+  }
 
   if (state.phase === "mainPhase") {
     // Pas de limite au nombre d'actions principales par tour (Notion

@@ -244,6 +244,33 @@ export const CORE_SET: CardDefinition[] = [
     onPlayEffects: [{ type: "reasonLoss", target: { kind: "allPlayers" }, amount: { kind: "flat", value: 1 } }],
   },
   {
+    // Première carte à capacité FACULTATIVE (`mode: "optional"`) du
+    // catalogue — démontre le pipeline de fenêtre de réaction de bout en
+    // bout (Notion "Moteur de partie — déroulement, Raison & chaînes
+    // d'effets", section "Effets facultatifs / réactions", verrouillage
+    // du 2026-09-10). `onCardPlayed` se déclenche pour n'importe quelle
+    // carte jouée par n'importe quel joueur (même convention que les
+    // capacités automatiques existantes sur ce trigger) : le texte reste
+    // volontairement neutre plutôt que de prétendre à tort "seulement
+    // l'adversaire".
+    id: "guetteur-mefiant",
+    name: "Guetteur Méfiant",
+    type: "marin",
+    cost: 2,
+    attack: 2,
+    health: 2,
+    text: "Réaction : quand une carte est jouée, vous pouvez dépenser 1 Raison : infligez 2 dégâts à une unité de votre choix.",
+    abilities: [
+      {
+        trigger: "onCardPlayed",
+        mode: "optional",
+        cost: { reason: 1 },
+        effects: [{ type: "damage", target: { kind: "chosenUnit" }, amount: { kind: "flat", value: 2 } }],
+        description: "Vous pouvez dépenser 1 Raison : infligez 2 dégâts à une unité de votre choix.",
+      },
+    ],
+  },
+  {
     // Variante ABYSSALE distincte de "marin-aux-yeux-rouges" (coexiste avec la
     // Standard, cf. Notion "Catalogue de cartes" — règle des variantes Abyssales) :
     // le catalogue verrouillé compte cette carte comme le "+1" au-delà des 80

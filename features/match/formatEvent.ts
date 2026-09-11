@@ -59,6 +59,12 @@ export function formatEvent(state: GameState, event: GameEvent): string {
       return `${playerName(event.playerId)} passe en Phase de combat.`;
     case "STATUS_CHANGED":
       return event.applied ? "Une carte devient MALADE." : "Une carte n'est plus MALADE.";
+    case "REACTION_WINDOW_OPENED":
+      return `${playerName(event.playerId)} peut réagir.`;
+    case "REACTION_ACTIVATED":
+      return `${playerName(event.playerId)} active une réaction.`;
+    case "REACTION_PASSED":
+      return `${playerName(event.playerId)} passe.`;
     default:
       return event.type;
   }

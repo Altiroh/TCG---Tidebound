@@ -59,13 +59,37 @@ export interface BreakObjectAction {
   targetInstanceId?: string;
 }
 
+/**
+ * Active une capacité `mode: "optional"` actuellement éligible pendant
+ * une fenêtre de réaction (`GameState.pendingReaction`). `sourceInstanceId`
+ * + `abilityIndex` identifient précisément la capacité (une carte peut en
+ * porter plusieurs). Refusée si elle ne figure plus dans les candidats
+ * éligibles au moment de la résolution (recalculés à chaque étape).
+ */
+export interface ActivateReactionAction {
+  type: "activateReaction";
+  playerId: PlayerId;
+  sourceInstanceId: string;
+  abilityIndex: number;
+  /** Requis si l'effet de cette capacité cible `chosenUnit`. */
+  targetInstanceId?: string;
+}
+
+/** Passe la priorité pendant une fenêtre de réaction — n'active rien. */
+export interface PassReactionAction {
+  type: "passReaction";
+  playerId: PlayerId;
+}
+
 export type PlayerAction =
   | PlayCardAction
   | AttackAction
   | EndTurnAction
   | SaborderAction
   | BreakObjectAction
-  | AdvancePhaseAction;
+  | AdvancePhaseAction
+  | ActivateReactionAction
+  | PassReactionAction;
 
 export type ActionResult =
   | { ok: true; state: GameState; events: GameEvent[] }

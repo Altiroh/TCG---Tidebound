@@ -34,6 +34,10 @@ const config: Config = {
           "60%": { transform: "scale(0.95)" },
           "100%": { transform: "scale(1)" },
         },
+        "reaction-pulse": {
+          "0%, 100%": { boxShadow: "0 0 0 2px rgba(251,191,36,0.9), 0 0 14px 4px rgba(251,191,36,0.55)" },
+          "50%": { boxShadow: "0 0 0 2px rgba(251,191,36,0.55), 0 0 4px 1px rgba(251,191,36,0.25)" },
+        },
       },
       animation: {
         "stat-hit": "stat-hit 0.5s ease-out",
@@ -42,6 +46,9 @@ const config: Config = {
         // pour la coloration verte/rouge des modificateurs, appliquée en
         // classe séparée (voir `CardTile.tsx`).
         "stat-buff": "stat-buff 0.5s ease-out",
+        // Carte dont le moteur attend actuellement une réaction (Notion
+        // "Moteur de partie" : glow "plus intense / pulsant").
+        "reaction-pulse": "reaction-pulse 1.4s ease-in-out infinite",
       },
     },
   },

@@ -25,6 +25,8 @@ export type {
   SaborderAction,
   BreakObjectAction,
   AdvancePhaseAction,
+  ActivateReactionAction,
+  PassReactionAction,
   ActionResult,
 } from "@/game/actions/types";
 
@@ -55,7 +57,9 @@ export { validateDeckList } from "@/game/rules/deckValidation";
 export type { GameEvent, GameEventType } from "@/game/events/types";
 
 export type { EffectDefinition, EffectType, TargetSelector } from "@/game/effects/types";
-export type { TriggerType } from "@/game/triggers/types";
+export type { PendingReactionCandidate, TriggerEvent, TriggerType } from "@/game/triggers/types";
+export type { PendingReactionState } from "@/game/state/types";
+export { eligibleCandidatesFor } from "@/game/reactions/reactionWindow";
 
 // --- Environnement : Marée, Navires (cadrage sections 4-14, orientation
 // de Marée et éviction des Eaux : 2026-09-10) ---------------------------

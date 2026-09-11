@@ -107,6 +107,14 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
     };
 
     events.push({ ...base, type: "DAMAGE", targetInstanceId: defenderUnit.instanceId, amount: attackerDamage });
+
+    const damagedTrigger = processTrigger(
+      nextState,
+      { trigger: "onDamaged", playerId: opponent.id, sourceInstanceId: defenderUnit.instanceId },
+      state.turnNumber
+    );
+    nextState = damagedTrigger.state;
+    events.push(...damagedTrigger.events);
   }
 
   const attackTrigger = processTrigger(
