@@ -1,19 +1,17 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getShipDefinition } from "@/game";
 import { deleteDeck, duplicateDeck, renameDeck, type PlayerDeckSummary } from "@/app/decks/actions";
-import { FrameTopNav } from "@/components/layout/FrameTopNav";
-import { NAUTICAL_CONTROL_CLASS, NAUTICAL_LABEL_CLASS } from "@/features/collection/CardCollectionPanel";
+import { GameButton } from "@/components/game-ui/GameButton";
+import { SearchField } from "@/components/game-ui/SearchField";
+import { SegmentedControl } from "@/components/game-ui/SegmentedControl";
+import { TEXT_PRIMARY, TEXT_SECONDARY } from "@/components/game-ui/tokens";
 import { DeckTile } from "@/features/decks/DeckTile";
 import { DeckContextMenu } from "@/features/decks/DeckContextMenu";
 import { DeleteDeckDialog } from "@/features/decks/DeleteDeckDialog";
-
-const BACKGROUND_SRC = "/assets/decks/background.PNG";
-const BACKGROUND_ASPECT = "1642 / 958";
 
 /** Insensible aux accents et à la casse. */
 function normalizeSearch(value: string): string {
@@ -43,11 +41,12 @@ interface DecksScreenProps {
 }
 
 /**
- * Écran plein cadre des decks personnels, même principe que `CollectionScreen`
- * (contrôles positionnés en %/`cqw` par-dessus `background.PNG`, fourni par
- * l'utilisateur). Clic droit sur une tuile → menu contextuel Tidebound
- * (Renommer/Éditer/Dupliquer/Supprimer). "Éditer" mène à `/decks/[deckId]`,
- * un écran encore minimal en attendant `background_detail.png`.
+ * Écran des decks personnels — même famille visuelle que `CollectionScreen`
+ * (fond en dégradé, nav minimale, un seul cluster de contrôle). Ici l'action
+ * PRINCIPALE de l'écran est de créer un deck : "Créer" est donc le seul
+ * bouton plein (laiton) de la page, la recherche reste discrète à côté.
+ * Clic droit sur une tuile → menu contextuel (Renommer/Éditer/Dupliquer/
+ * Supprimer). "Éditer" mène à `/decks/[deckId]`.
  */
 export function DecksScreen({ isSignedIn, initialDecks }: DecksScreenProps) {
   const router = useRouter();
@@ -96,121 +95,98 @@ export function DecksScreen({ isSignedIn, initialDecks }: DecksScreenProps) {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#050b16] p-2">
-      <div
-        className="relative w-full"
-        style={{
-          aspectRatio: BACKGROUND_ASPECT,
-          width: "min(99vw, calc(97vh * 1642 / 958))",
-          containerType: "inline-size",
-        }}
-      >
-        <Image
-          src={BACKGROUND_SRC}
-          alt=""
-          fill
-          priority
-          sizes="96vw"
-          draggable={false}
-          className="pointer-events-none select-none object-contain"
+    <div
+      className="fixed inset-0 flex flex-col gap-6 p-6 sm:p-10"
+      style={{ background: "radial-gradient(ellipse at 50% -10%, var(--surface-1) 0%, var(--surface-0) 60%)" }}
+    >
+      <div className="flex shrink-0 items-center gap-6">
+        <Link
+          href="/"
+          className={`flex items-center gap-1.5 text-sm font-medium ${TEXT_SECONDARY} transition-colors hover:${TEXT_PRIMARY}`}
+        >
+          <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
+            <path d="M15 5l-7 7 7 7" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Retour
+        </Link>
+        <SegmentedControl
+          value="decks"
+          options={[
+            { value: "collection", label: "Collection" },
+            { value: "decks", label: "Decks" },
+          ]}
+          onChange={(v) => {
+            if (v === "collection") router.push("/collection");
+          }}
         />
+      </div>
 
-        <FrameTopNav active="decks" />
-
-        {isSignedIn ? (
-          <>
-            <div className="absolute left-[6%] right-[6%] top-[15%] bottom-[13%] overflow-y-auto pr-[0.5%]">
-              {decks.length === 0 ? (
-                <div className="flex h-full flex-col items-center justify-center gap-2 text-center" style={{ fontSize: "1.05cqw" }}>
-                  <p className={`text-[1.3em] ${NAUTICAL_LABEL_CLASS}`}>
-                    {initialDecks.length === 0 ? "Aucun deck pour l'instant" : "Aucun deck ne correspond à cette recherche"}
-                  </p>
-                  {initialDecks.length === 0 && (
-                    <p className="max-w-md text-[1em] text-amber-100/80 [font-family:var(--font-card-body)]">
-                      Crée ton premier deck avec le bouton « Créer » en bas à gauche.
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <div className="grid gap-[1.4cqw]" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(11cqw, 1fr))" }}>
-                  {decks.map((deck) => (
-                    <DeckTile
-                      key={deck.id}
-                      deck={deck}
-                      shipName={shipNameFor(deck.shipId)}
-                      isRenaming={renamingDeckId === deck.id}
-                      onOpen={() => router.push(`/decks/${deck.id}`)}
-                      onRenameSubmit={(name) => handleRenameSubmit(deck.id, name)}
-                      onRenameCancel={() => setRenamingDeckId(null)}
-                      onContextMenu={(event) => {
-                        event.preventDefault();
-                        setMenu({ x: event.clientX, y: event.clientY, deckId: deck.id });
-                      }}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="absolute inset-x-0 bottom-0 flex h-[11%] items-center justify-between px-[3%]" style={{ fontSize: "1.05cqw" }}>
-              <button
-                type="button"
-                onClick={handleCreate}
-                disabled={isPending}
-                className={`flex h-[3.1cqw] items-center rounded-full border border-board-accent bg-board-accent/25 px-[1.4cqw] font-bold text-white ring-2 ring-board-accent transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 ${NAUTICAL_LABEL_CLASS}`}
-              >
-                Créer
-              </button>
-
-              <div className={`flex h-[3.1cqw] items-center gap-[0.6cqw] px-[1cqw] ${NAUTICAL_CONTROL_CLASS}`} style={{ width: "min(60%, 26cqw)" }}>
-                <svg viewBox="0 0 24 24" fill="none" className="h-[1.1em] w-[1.1em] shrink-0 text-amber-200/70">
-                  <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth={2} />
-                  <path d="M20 20l-3.2-3.2" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
+      {isSignedIn ? (
+        <>
+          <div className="flex shrink-0 items-center justify-end">
+            <div className="flex items-center gap-2">
+              <SearchField value={search} onChange={setSearch} placeholder="Rechercher un deck..." />
+              <GameButton variant="primary" onClick={handleCreate} disabled={isPending}>
+                <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
+                  <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
                 </svg>
-                <input
-                  type="search"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Rechercher un deck..."
-                  className="w-full bg-transparent text-amber-50 placeholder:text-amber-200/50 focus:outline-none"
-                />
-                {search && (
-                  <button
-                    type="button"
-                    onClick={() => setSearch("")}
-                    aria-label="Effacer la recherche"
-                    className="shrink-0 text-amber-200/70 hover:text-amber-100"
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" className="h-[1em] w-[1em]">
-                      <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
-                    </svg>
-                  </button>
-                )}
-              </div>
-            </div>
-          </>
-        ) : (
-          <div className="absolute left-[6%] right-[6%] top-[15%] bottom-[13%] flex items-center justify-center">
-            <div className="flex flex-col items-center gap-[1.2cqw] text-center" style={{ fontSize: "1.05cqw" }}>
-              <p className={`text-[1.3em] ${NAUTICAL_LABEL_CLASS}`}>Connecte-toi pour gérer tes decks</p>
-              <div className="flex gap-[1cqw]">
-                <Link
-                  href="/connexion"
-                  className="rounded-md bg-board-accent px-[1.4em] py-[0.7em] font-semibold text-slate-950 transition-opacity hover:opacity-90"
-                >
-                  Se connecter
-                </Link>
-                <Link
-                  href="/inscription"
-                  className={`rounded-md border px-[1.4em] py-[0.7em] font-semibold transition-colors hover:bg-slate-800/80 ${NAUTICAL_CONTROL_CLASS}`}
-                >
-                  Créer un compte
-                </Link>
-              </div>
+                Créer
+              </GameButton>
             </div>
           </div>
-        )}
-      </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+            {decks.length === 0 ? (
+              <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
+                <p className={`text-base font-medium ${TEXT_PRIMARY}`}>
+                  {initialDecks.length === 0 ? "Aucun deck pour l'instant" : "Aucun deck ne correspond à cette recherche"}
+                </p>
+                {initialDecks.length === 0 && (
+                  <p className={`max-w-md text-sm ${TEXT_SECONDARY}`}>Crée ton premier deck avec le bouton « Créer » ci-dessus.</p>
+                )}
+              </div>
+            ) : (
+              <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))" }}>
+                {decks.map((deck) => (
+                  <DeckTile
+                    key={deck.id}
+                    deck={deck}
+                    shipName={shipNameFor(deck.shipId)}
+                    isRenaming={renamingDeckId === deck.id}
+                    onOpen={() => router.push(`/decks/${deck.id}`)}
+                    onRenameSubmit={(name) => handleRenameSubmit(deck.id, name)}
+                    onRenameCancel={() => setRenamingDeckId(null)}
+                    onContextMenu={(event) => {
+                      event.preventDefault();
+                      setMenu({ x: event.clientX, y: event.clientY, deckId: deck.id });
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      ) : (
+        <div className="flex flex-1 items-center justify-center">
+          <div className="flex flex-col items-center gap-4 text-center">
+            <p className={`text-base font-medium ${TEXT_PRIMARY}`}>Connecte-toi pour gérer tes decks</p>
+            <div className="flex gap-2">
+              <Link
+                href="/connexion"
+                className="inline-flex items-center justify-center rounded-[var(--radius-sm)] bg-[var(--accent)] px-4 py-2 text-sm font-medium text-[#1a1410] transition duration-150 ease-out hover:bg-[var(--accent-hover)]"
+              >
+                Se connecter
+              </Link>
+              <Link
+                href="/inscription"
+                className="inline-flex items-center justify-center rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-1)] px-4 py-2 text-sm font-medium text-[var(--text-primary)] transition duration-150 ease-out hover:border-[var(--accent)]/50"
+              >
+                Créer un compte
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       {menu && (
         <DeckContextMenu

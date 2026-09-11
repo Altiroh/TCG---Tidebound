@@ -11,6 +11,31 @@ body {
   @apply bg-board-background text-slate-100;
 }
 
+/**
+ * Tokens de la refonte "jeu vidéo premium" (Collection/Decks/éditeur/auth/
+ * setup — pas le plateau de partie, déjà dans cette veine). Palette :
+ * anthracite/bleu pétrole en fond, ivoire sale pour le texte, cuivre/laiton
+ * désaturé comme SEULE couleur chaude d'accent. Consommés via des classes
+ * Tailwind arbitraires (`bg-[var(--surface-0)]`, etc.) plutôt qu'ajoutés à
+ * `tailwind.config.ts` : ça isole la refonte des couleurs `board-*`
+ * existantes (plateau de partie) sans risquer de les modifier par erreur.
+ */
+:root {
+  --surface-0: #0b0f13; /* fond le plus profond (pleine page) */
+  --surface-1: #141a20; /* panneau légèrement surélevé */
+  --surface-glass: rgba(20, 26, 32, 0.62); /* verre fumé, avec backdrop-blur */
+  --border-subtle: rgba(201, 178, 138, 0.14); /* laiton désaturé, à peine visible */
+  --text-primary: #e9e3d6; /* ivoire sale */
+  --text-secondary: #9b9488; /* variante grise/chaude atténuée */
+  --accent: #b08a5c; /* cuivre/laiton désaturé */
+  --accent-hover: #c49b6c;
+  --danger: #b3564f; /* rouge désaturé, jamais un rouge SaaS pur */
+  --radius-sm: 7px;
+  --radius-md: 13px;
+  --shadow-panel: 0 8px 30px rgba(0, 0, 0, 0.45);
+  --shadow-floating: 0 16px 50px rgba(0, 0, 0, 0.6);
+}
+
 /* TideboundMenuChest (components/menu/TideboundMenuChest.tsx) : flottement
    vertical très discret. */
 @keyframes chest-float {

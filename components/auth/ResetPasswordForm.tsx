@@ -45,15 +45,15 @@ export function ResetPasswordForm() {
   if (status === "done") {
     return (
       <div className="flex flex-col gap-2 text-center">
-        <h2 className="text-xl font-semibold text-white">Mot de passe mis à jour</h2>
-        <p className="text-sm text-slate-300">Redirection vers le menu...</p>
+        <h2 className="text-xl font-semibold text-[var(--text-primary)]">Mot de passe mis à jour</h2>
+        <p className="text-sm text-[var(--text-secondary)]">Redirection vers le menu...</p>
       </div>
     );
   }
 
   return (
     <form action={handleSubmit} className="flex flex-col gap-3">
-      <h2 className="text-xl font-semibold text-white">Nouveau mot de passe</h2>
+      <h2 className="text-xl font-semibold text-[var(--text-primary)]">Nouveau mot de passe</h2>
       <PasswordField
         name="password"
         placeholder="Nouveau mot de passe (8 caractères min.)"
@@ -69,7 +69,7 @@ export function ResetPasswordForm() {
         value={confirmPassword}
         onChange={setConfirmPassword}
       />
-      {error && <p className="text-sm text-rose-400">{error}</p>}
+      {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
       <button
         type="submit"
         disabled={status === "loading" || strengthTooLow}

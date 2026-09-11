@@ -17,6 +17,7 @@ import {
 } from "@/game";
 import { Button } from "@/components/ui/Button";
 import { ActionToastStack } from "@/features/match/ActionToastStack";
+import { AttackImpactLayer } from "@/features/match/AttackImpactLayer";
 import { BoardBackdrop } from "@/features/match/BoardBackdrop";
 import { BoardCardTile } from "@/features/match/BoardCardTile";
 import { BoardStage } from "@/features/match/BoardStage";
@@ -35,6 +36,7 @@ import { ShipInstrumentCluster } from "@/features/match/ShipInstrumentCluster";
 import { TideOrientationTile } from "@/features/match/TideOrientationTile";
 import { TideProgressBar } from "@/features/match/TideProgressBar";
 import { useActionToasts } from "@/features/match/useActionToasts";
+import { useAttackImpacts } from "@/features/match/useAttackImpacts";
 import { useCardFlights, type CardFlight } from "@/features/match/useCardFlights";
 import { usePhaseBannerEvent } from "@/features/match/usePhaseBannerEvent";
 
@@ -94,6 +96,19 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
   const canPlay = isMyTurn && !pending && !state.pendingReaction;
   const canPlayCards = canPlay && state.phase === "mainPhase";
   const canAttack = canPlay && state.phase === "combatPhase";
+  // Cf. MatchBoard : si aucune unité du joueur actif ne peut attaquer, le
+  // bouton de phase saute directement à "Fin de tour" plutôt que de
+  // proposer une Phase de combat sans aucune action possible.
+  const activePlayerBoard = state.players.find((p) => p.id === state.activePlayerId)?.board ?? [];
+  const hasAnyAttacker = activePlayerBoard.some((unit) => {
+    const def = getCardDefinition(unit.cardId);
+    return (
+      isUnitType(def.type) &&
+      !unit.summoningSick &&
+      !unit.hasAttackedThisTurn &&
+      !computeEffectiveStats(unit, state.environment.tideState).inactive
+    );
+  });
   const myReactionCandidates = canRespondToReaction
     ? eligibleCandidatesFor(state, state.pendingReaction!.events, myUserId, state.pendingReaction!.turnNumber, state.pendingReaction!.usedCandidateKeys)
     : [];
@@ -101,6 +116,7 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
   const bannerEvent = usePhaseBannerEvent(state);
   const actionToasts = useActionToasts(state);
   const cardFlights = useCardFlights(state);
+  const attackImpacts = useAttackImpacts(state);
 
   function getFlightCoords(flight: CardFlight) {
     const isMine = flight.playerId === myUserId;
@@ -374,7 +390,7 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
         </div>
 
         {/* Ligne de plateau adverse */}
-        <div className="absolute" style={{ left: 0, top: 125, width: 230 }}>
+        <div className="absolute" data-ship-target={opponent.id} style={{ left: 0, top: 125, width: 230 }}>
           <ShipInstrumentCluster
             anchor={opponent.anchor}
             anchorMax={opponentShip.startingAnchor}
@@ -395,6 +411,7 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
           {opponent.board.map((unit) => (
             <div
               key={unit.instanceId}
+              data-board-unit={unit.instanceId}
               onDragOver={(e) => handleBoardTileDragOver(e, unit.instanceId)}
               onDragLeave={() => setDragOverTargetId((id) => (id === unit.instanceId ? null : id))}
               onDrop={(e) => handleBoardTileDrop(e, unit.instanceId)}
@@ -487,7 +504,7 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
         <div className="absolute flex flex-col items-center gap-2" style={{ left: 1473, top: 555, width: 182 }}>
           <PhaseActionButton
             isMyTurn={isMyTurn && !pending}
-            phase={state.phase}
+            phase={state.phase === "mainPhase" && !hasAnyAttacker ? "combatPhase" : state.phase}
             onAdvancePhase={() => act({ type: "advancePhase", playerId: myUserId })}
             onEndTurn={() => act({ type: "endTurn", playerId: myUserId })}
             size={120}
@@ -500,7 +517,7 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
         </div>
 
         {/* Ligne de plateau du viewer */}
-        <div className="absolute" style={{ left: 0, top: 530, width: 230 }}>
+        <div className="absolute" data-ship-target={me.id} style={{ left: 0, top: 530, width: 230 }}>
           <ShipInstrumentCluster
             anchor={me.anchor}
             anchorMax={myShip.startingAnchor}
@@ -535,6 +552,7 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
             return (
             <div
               key={unit.instanceId}
+              data-board-unit={unit.instanceId}
               draggable={canAttack}
               onDragStart={(e) => handleUnitDragStart(e, unit.instanceId)}
               onDragEnd={handleUnitDragEnd}
@@ -651,6 +669,7 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
       </BoardStage>
 
       <DragTargetingTrail anchor={dragAnchor} />
+      <AttackImpactLayer impacts={attackImpacts} />
       <ActionToastStack toasts={actionToasts} />
       <PhaseBanner text={bannerText} bannerKey={bannerEvent?.id ?? null} />
       {graveyardViewerPlayerId && (

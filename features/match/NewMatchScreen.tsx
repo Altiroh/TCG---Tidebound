@@ -3,7 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ARCHETYPE_DECKS, PRECONSTRUCTED_DECKS, getShipDefinition, type BotDifficulty, type DeckList } from "@/game";
-import { Button } from "@/components/ui/Button";
+import { FilterChip } from "@/components/game-ui/FilterChip";
+import { GameButton } from "@/components/game-ui/GameButton";
+import { GamePanel } from "@/components/game-ui/GamePanel";
+import { GameSelect, type GameSelectOption } from "@/components/game-ui/GameSelect";
+import { TEXT_PRIMARY, TEXT_SECONDARY, TRANSITION } from "@/components/game-ui/tokens";
 
 export type MatchOpponent = { type: "pvp" } | { type: "bot"; difficulty: BotDifficulty };
 
@@ -18,6 +22,15 @@ interface NewMatchScreenProps {
  * deck plutôt qu'une simple liste de Navires.
  */
 const SELECTABLE_DECKS: readonly DeckList[] = [...PRECONSTRUCTED_DECKS, ...ARCHETYPE_DECKS];
+
+const DECK_OPTIONS: GameSelectOption<string>[] = [
+  ...PRECONSTRUCTED_DECKS.map((deck) => ({ value: deck.id, label: deck.name, group: "Decks de base" })),
+  ...ARCHETYPE_DECKS.map((deck) => ({
+    value: deck.id,
+    label: `${deck.name} — ${getShipDefinition(deck.shipId).name}`,
+    group: "Archétypes",
+  })),
+];
 
 const BOT_DIFFICULTIES: { id: BotDifficulty; label: string; description: string }[] = [
   { id: "facile", label: "Facile", description: "Joue quasiment au hasard, évite juste les pires coups." },
@@ -41,81 +54,65 @@ export function NewMatchScreen({ onStart }: NewMatchScreenProps) {
   }
 
   return (
-    <main className="relative mx-auto flex min-h-screen max-w-xl flex-col items-center justify-center gap-8 p-8 text-center">
-      <Link
-        href="/"
-        className="fixed left-4 top-4 z-10 text-sm text-slate-400 transition-colors hover:text-board-accent"
-      >
+    <main
+      className="relative flex min-h-screen flex-col items-center justify-center gap-8 p-6"
+      style={{ background: "radial-gradient(ellipse at 50% -10%, var(--surface-1) 0%, var(--surface-0) 60%)" }}
+    >
+      <Link href="/" className={`fixed left-6 top-6 z-10 text-sm ${TEXT_SECONDARY} transition-colors hover:${TEXT_PRIMARY}`}>
         ← Retour au menu
       </Link>
 
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Nouvelle partie</h1>
-        <p className="mt-2 text-sm text-slate-400">
+      <div className="text-center">
+        <h1 className={`text-3xl font-bold tracking-tight ${TEXT_PRIMARY}`}>Nouvelle partie</h1>
+        <p className={`mt-2 text-sm ${TEXT_SECONDARY}`}>
           {opponentType === "pvp"
             ? "Mode local : les deux joueurs jouent sur le même écran, à tour de rôle."
             : "Vous affrontez un bot — il jouera le second Navire."}
         </p>
       </div>
 
-      <div className="flex w-full flex-col gap-2 rounded-md border border-slate-800 bg-board-surface p-4 text-left">
-        <span className="text-sm font-medium text-slate-300">Adversaire</span>
+      <GamePanel className="flex w-full max-w-xl flex-col gap-3 p-5 text-left">
+        <span className={`text-sm font-medium ${TEXT_SECONDARY}`}>Adversaire</span>
         <div className="flex gap-2">
-          <Button
-            variant={opponentType === "pvp" ? "primary" : "secondary"}
-            onClick={() => setOpponentType("pvp")}
-          >
+          <FilterChip active={opponentType === "pvp"} onClick={() => setOpponentType("pvp")} className="!rounded-md !px-4 !py-2 !text-sm">
             Joueur contre joueur
-          </Button>
-          <Button
-            variant={opponentType === "bot" ? "primary" : "secondary"}
-            onClick={() => setOpponentType("bot")}
-          >
+          </FilterChip>
+          <FilterChip active={opponentType === "bot"} onClick={() => setOpponentType("bot")} className="!rounded-md !px-4 !py-2 !text-sm">
             Contre un bot
-          </Button>
+          </FilterChip>
         </div>
         {opponentType === "bot" && (
           <div className="mt-2 flex flex-col gap-2">
-            <span className="text-xs text-slate-400">Difficulté</span>
+            <span className={`text-xs ${TEXT_SECONDARY}`}>Difficulté</span>
             <div className="flex flex-col gap-2 sm:flex-row">
               {BOT_DIFFICULTIES.map((d) => (
-                <label
+                <button
                   key={d.id}
-                  className={`flex flex-1 cursor-pointer flex-col gap-1 rounded-md border px-3 py-2 text-left transition-colors ${
+                  type="button"
+                  onClick={() => setBotDifficulty(d.id)}
+                  className={`flex flex-1 flex-col gap-1 rounded-md px-3 py-2 text-left ${TRANSITION} ${
                     botDifficulty === d.id
-                      ? "border-board-accent bg-board-accent/10"
-                      : "border-slate-700 bg-board-background"
+                      ? "bg-[var(--accent)]/10 shadow-[0_0_0_1px_var(--accent)]"
+                      : "shadow-[0_0_0_1px_var(--border-subtle)] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.2)]"
                   }`}
                 >
-                  <span className="flex items-center gap-2 text-sm font-medium text-slate-200">
-                    <input
-                      type="radio"
-                      name="botDifficulty"
-                      value={d.id}
-                      checked={botDifficulty === d.id}
-                      onChange={() => setBotDifficulty(d.id)}
-                      className="accent-board-accent"
-                    />
-                    {d.label}
-                  </span>
-                  <span className="text-[11px] leading-tight text-slate-500">{d.description}</span>
-                </label>
+                  <span className={`text-sm font-medium ${TEXT_PRIMARY}`}>{d.label}</span>
+                  <span className={`text-[11px] leading-tight ${TEXT_SECONDARY}`}>{d.description}</span>
+                </button>
               ))}
             </div>
           </div>
         )}
-      </div>
+      </GamePanel>
 
-      <div className="flex w-full flex-col gap-4 sm:flex-row">
+      <div className="flex w-full max-w-xl flex-col gap-4 sm:flex-row">
         <DeckPicker label="Joueur 1" value={deck1Id} onChange={setDeck1Id} />
-        <DeckPicker
-          label={opponentType === "bot" ? "Bot" : "Joueur 2"}
-          value={deck2Id}
-          onChange={setDeck2Id}
-        />
+        <DeckPicker label={opponentType === "bot" ? "Bot" : "Joueur 2"} value={deck2Id} onChange={setDeck2Id} />
       </div>
 
-      <Button onClick={handleStart}>Commencer la partie</Button>
+      <GameButton variant="primary" onClick={handleStart} className="!px-8 !py-3 !text-base">
+        Commencer la partie
+      </GameButton>
     </main>
   );
 }
@@ -126,36 +123,15 @@ function DeckPicker({ label, value, onChange }: { label: string; value: string; 
   const isArchetype = selected ? !PRECONSTRUCTED_DECKS.some((d) => d.id === selected.id) : false;
 
   return (
-    <label className="flex flex-1 flex-col gap-2 rounded-md border border-slate-800 bg-board-surface p-4 text-left">
-      <span className="text-sm font-medium text-slate-300">{label}</span>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="rounded-md border border-slate-700 bg-board-background px-2 py-1.5 text-sm text-slate-100"
-      >
-        <optgroup label="Decks de base (un par Navire)">
-          {PRECONSTRUCTED_DECKS.map((deck) => (
-            <option key={deck.id} value={deck.id}>
-              {deck.name}
-            </option>
-          ))}
-        </optgroup>
-        <optgroup label="Archétypes">
-          {ARCHETYPE_DECKS.map((deck) => (
-            <option key={deck.id} value={deck.id}>
-              {deck.name} — {getShipDefinition(deck.shipId).name}
-            </option>
-          ))}
-        </optgroup>
-      </select>
+    <GamePanel className="flex flex-1 flex-col gap-2 p-4 text-left">
+      <span className={`text-sm font-medium ${TEXT_SECONDARY}`}>{label}</span>
+      <GameSelect value={value} onChange={onChange} options={DECK_OPTIONS} className="w-full" />
       {/* Suggestion du Navire correspondant : redondante avec le libellé de l'option pour un archétype, mais utile pour un deck de base où le nom du deck EST déjà celui du Navire. */}
       {shipName && (
-        <span className="text-[11px] text-slate-500">
-          {isArchetype ? `Navire suggéré : ${shipName}` : `Navire : ${shipName}`}
-        </span>
+        <span className={`text-[11px] ${TEXT_SECONDARY}`}>{isArchetype ? `Navire suggéré : ${shipName}` : `Navire : ${shipName}`}</span>
       )}
       {/* Le joueur doit savoir ce que le deck fait avant de le choisir, pas juste voir son nom. */}
-      {selected && <p className="text-xs leading-snug text-slate-400">{selected.description}</p>}
-    </label>
+      {selected && <p className={`text-xs leading-snug ${TEXT_SECONDARY}`}>{selected.description}</p>}
+    </GamePanel>
   );
 }

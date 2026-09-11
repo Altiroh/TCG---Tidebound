@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AuthGlassPanel } from "@/components/auth/AuthGlassPanel";
+import { AUTH_LINK_CLASS, AuthGlassPanel } from "@/components/auth/AuthGlassPanel";
 import { LoginForm } from "@/components/auth/LoginForm";
 
 export default function ConnexionPage() {
@@ -23,7 +23,7 @@ export default function ConnexionPage() {
             onSwitchToSignup={() => router.push("/inscription")}
           />
         </AuthGlassPanel>
-        <Link href="/" className="text-sm text-slate-300 hover:text-board-accent hover:underline">
+        <Link href="/" className={`text-sm ${AUTH_LINK_CLASS} hover:underline`}>
           ← Jouer sans compte
         </Link>
       </div>

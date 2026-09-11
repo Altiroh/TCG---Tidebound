@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CORE_SET, type CardDefinition, type CardInstance, type CardType } from "@/game";
+import { FilterChip } from "@/components/game-ui/FilterChip";
+import { GameModal } from "@/components/game-ui/GameModal";
+import { GameSelect } from "@/components/game-ui/GameSelect";
+import { SearchField } from "@/components/game-ui/SearchField";
 import { CardInfoPanel } from "@/features/match/CardInfoPanel";
 import { CardTile } from "@/features/match/CardTile";
 import { CARD_TYPE_LABELS } from "@/features/match/cardDisplay";
@@ -68,7 +72,7 @@ function NavArrow({ direction, onClick }: { direction: "left" | "right"; onClick
         onClick();
       }}
       aria-label={direction === "left" ? "Carte précédente" : "Carte suivante"}
-      className="fixed top-1/2 z-[60] flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full text-slate-300 transition-colors hover:bg-white/10 hover:text-board-accent"
+      className="fixed top-1/2 z-[60] flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full text-slate-300 transition-colors hover:bg-white/10 hover:text-[var(--accent)]"
       style={direction === "left" ? { left: "1.5rem" } : { right: "1.5rem" }}
     >
       <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6">
@@ -92,18 +96,14 @@ function TypeIcon({ type, active }: { type: CardType; active: boolean }) {
       className="block h-full w-full transition-[filter,opacity] duration-150"
       style={{
         backgroundImage: `url(/assets/cards/icons/TYPE_${type.toUpperCase()}_STANDARD.png)`,
-        backgroundSize: "auto 100%",
+        backgroundSize: "auto 180%",
         backgroundPosition: "left center",
         backgroundRepeat: "no-repeat",
-        filter: active ? "none" : "grayscale(0.7) opacity(0.55)",
+        filter: active ? "none" : "grayscale(0.7) opacity(0.6)",
       }}
     />
   );
 }
-
-export const NAUTICAL_LABEL_CLASS = "[font-family:var(--font-menu)] uppercase tracking-wider text-amber-100";
-export const NAUTICAL_CONTROL_CLASS =
-  "rounded-md border border-amber-600/60 bg-slate-950/85 text-amber-100 shadow-[0_2px_10px_rgba(0,0,0,0.5)] backdrop-blur-sm";
 
 interface CardCollectionPanelProps {
   /** Cartes possédées par le joueur connecté (`player_cards.card_id`, quantité > 0) — la grille n'affiche que celles-ci. */
@@ -119,11 +119,11 @@ interface CardCollectionPanelProps {
 
 /**
  * Bloc réutilisable filtre + tri + recherche + grille scrollable, partagé
- * entre `CollectionScreen` (page Collection) et `DeckEditorScreen` (colonne
- * du milieu, cartes possédées à ajouter au deck) — même disposition que le
- * gabarit fourni par l'utilisateur pour les deux écrans. Remplit tout
- * l'espace de son parent (flex-col en pleine hauteur) ; c'est au parent de
- * positionner/dimensionner ce conteneur.
+ * entre `CollectionScreen` et `DeckEditorScreen`. Un seul cluster de
+ * contrôle discret en haut (filtres à gauche, recherche/tri à droite,
+ * repliés tant qu'ils ne servent pas) plutôt que deux blocs opposés qui se
+ * disputaient l'attention avec la grille — la grille elle-même est le seul
+ * élément qui doit dominer l'écran.
  */
 export function CardCollectionPanel({ ownedCardIds, mode = "browse", onPick }: CardCollectionPanelProps) {
   const [activeType, setActiveType] = useState<CardType | null>(null);
@@ -173,31 +173,41 @@ export function CardCollectionPanel({ ownedCardIds, mode = "browse", onPick }: C
   }
 
   return (
-    <div className="flex h-full flex-col" style={{ fontSize: "1.05cqw" }}>
-      <div className="flex justify-end pb-[1cqw]">
-        <div className={`relative flex items-center ${NAUTICAL_CONTROL_CLASS}`}>
-          <select
+    <div className="flex h-full flex-col gap-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <FilterChip active={activeType === null} onClick={() => setActiveType(null)}>
+            Tout
+          </FilterChip>
+          {TYPE_FILTERS.map((type) => (
+            <FilterChip
+              key={type}
+              active={activeType === type}
+              onClick={() => setActiveType((current) => (current === type ? null : type))}
+              title={CARD_TYPE_LABELS[type]}
+              aria-label={CARD_TYPE_LABELS[type]}
+              className="!h-8 !w-8 overflow-hidden !rounded-full !p-0"
+            >
+              <TypeIcon type={type} active={activeType === type} />
+            </FilterChip>
+          ))}
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2">
+          <SearchField value={search} onChange={setSearch} placeholder="Rechercher une carte..." />
+          <GameSelect
             value={sort}
-            onChange={(e) => setSort(e.target.value as SortMode)}
-            className={`appearance-none bg-transparent py-[0.55em] pl-[1em] pr-[2.2em] font-semibold outline-none ${NAUTICAL_LABEL_CLASS}`}
-          >
-            {SORT_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value} className="bg-slate-900 text-amber-100 normal-case">
-                Trier : {opt.label}
-              </option>
-            ))}
-          </select>
-          <svg viewBox="0 0 24 24" fill="none" className="pointer-events-none absolute right-[0.7em] h-[0.9em] w-[0.9em]">
-            <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+            onChange={setSort}
+            options={SORT_OPTIONS.map((o) => ({ value: o.value, label: `Trier : ${o.label}` }))}
+          />
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto pr-[0.5%]">
+      <div className="min-h-0 flex-1 overflow-y-auto pr-1">
         {cards.length === 0 ? (
           <EmptyState hasAnyCards={ownedCardIds.length > 0} />
         ) : (
-          <div className="grid gap-[1.4cqw]" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(9.5cqw, 1fr))" }}>
+          <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(6, minmax(0, 1fr))" }}>
             {cards.map((def) => (
               <CardTile
                 key={def.id}
@@ -217,94 +227,36 @@ export function CardCollectionPanel({ ownedCardIds, mode = "browse", onPick }: C
         )}
       </div>
 
-      <div className="flex items-center justify-between gap-[1cqw] pt-[1cqw]">
-        <div className="flex items-center gap-[0.6cqw]">
-          <button
-            type="button"
-            onClick={() => setActiveType(null)}
-            className={`flex h-[3.1cqw] items-center rounded-full border px-[1.3cqw] font-bold transition-colors ${NAUTICAL_LABEL_CLASS} ${
-              activeType === null
-                ? "border-board-accent bg-board-accent/25 text-white ring-2 ring-board-accent"
-                : "border-amber-600/50 bg-slate-950/80 hover:bg-slate-800/80"
-            }`}
-          >
-            Tout
-          </button>
-          {TYPE_FILTERS.map((type) => (
-            <button
-              key={type}
-              type="button"
-              onClick={() => setActiveType((current) => (current === type ? null : type))}
-              title={CARD_TYPE_LABELS[type]}
-              aria-label={CARD_TYPE_LABELS[type]}
-              aria-pressed={activeType === type}
-              className={`flex h-[3.1cqw] w-[3.1cqw] items-center justify-center overflow-hidden rounded-full border-2 bg-amber-50 p-[0.55cqw] transition-shadow ${
-                activeType === type ? "border-board-accent shadow-[0_0_0.6cqw_rgba(62,166,255,0.75)]" : "border-amber-700/60"
-              }`}
-            >
-              <TypeIcon type={type} active={activeType === type} />
-            </button>
-          ))}
-        </div>
-
-        <div className={`flex h-[3.1cqw] items-center gap-[0.6cqw] px-[1cqw] ${NAUTICAL_CONTROL_CLASS}`} style={{ width: "min(60%, 22cqw)" }}>
-          <svg viewBox="0 0 24 24" fill="none" className="h-[1.1em] w-[1.1em] shrink-0 text-amber-200/70">
-            <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth={2} />
-            <path d="M20 20l-3.2-3.2" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
-          </svg>
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Rechercher une carte..."
-            className="w-full bg-transparent text-amber-50 placeholder:text-amber-200/50 focus:outline-none"
-          />
-          {search && (
+      {mode === "browse" && detailCardId && (
+        <GameModal onClose={() => setDetailCardId(null)} className="!bg-transparent !shadow-none !p-0">
+          <div className="flex items-center gap-8">
             <button
               type="button"
-              onClick={() => setSearch("")}
-              aria-label="Effacer la recherche"
-              className="shrink-0 text-amber-200/70 hover:text-amber-100"
+              onClick={() => setDetailCardId(null)}
+              className="fixed right-6 top-6 z-[60] flex items-center gap-2 rounded-full px-3 py-1.5 text-sm text-slate-300 drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)] transition-colors hover:bg-white/10 hover:text-[var(--accent)]"
             >
-              <svg viewBox="0 0 24 24" fill="none" className="h-[1em] w-[1em]">
+              Fermer
+              <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
                 <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
               </svg>
             </button>
-          )}
-        </div>
-      </div>
 
-      {mode === "browse" && detailCardId && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center gap-8 bg-black/70 p-8 backdrop-blur-md"
-          onClick={() => setDetailCardId(null)}
-        >
-          <button
-            type="button"
-            onClick={() => setDetailCardId(null)}
-            className="fixed right-6 top-6 z-[60] flex items-center gap-2 rounded-md px-3 py-1.5 text-sm text-slate-300 drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)] transition-colors hover:bg-white/10 hover:text-board-accent"
-          >
-            Fermer
-            <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
-              <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
-            </svg>
-          </button>
+            {cards.length > 1 && <NavArrow direction="left" onClick={() => showRelative(-1)} />}
+            {cards.length > 1 && <NavArrow direction="right" onClick={() => showRelative(1)} />}
 
-          {cards.length > 1 && <NavArrow direction="left" onClick={() => showRelative(-1)} />}
-          {cards.length > 1 && <NavArrow direction="right" onClick={() => showRelative(1)} />}
-
-          <div onClick={(e) => e.stopPropagation()}>
-            <CardTile
-              instance={displayInstance(detailCardId)}
-              tideState="calme"
-              widthClassName="w-80 sm:w-96"
-              onClick={() => setDetailCardId(null)}
-            />
+            <div onClick={(e) => e.stopPropagation()}>
+              <CardTile
+                instance={displayInstance(detailCardId)}
+                tideState="calme"
+                widthClassName="w-80 sm:w-96"
+                onClick={() => setDetailCardId(null)}
+              />
+            </div>
+            <div className="-my-8 hidden self-stretch sm:block" onClick={(e) => e.stopPropagation()}>
+              <CardInfoPanel cardId={detailCardId} />
+            </div>
           </div>
-          <div className="-my-8 hidden self-stretch sm:block" onClick={(e) => e.stopPropagation()}>
-            <CardInfoPanel cardId={detailCardId} />
-          </div>
-        </div>
+        </GameModal>
       )}
     </div>
   );
@@ -313,14 +265,14 @@ export function CardCollectionPanel({ ownedCardIds, mode = "browse", onPick }: C
 /** État vide : quelques emplacements de carte factices (asset fourni par l'utilisateur) plutôt qu'un simple message sec. */
 function EmptyState({ hasAnyCards }: { hasAnyCards: boolean }) {
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-[1.2cqw] text-center">
-      <div className="grid grid-cols-3 gap-[1.4cqw] opacity-60 sm:grid-cols-6" style={{ width: "min(100%, 60cqw)" }}>
+    <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
+      <div className="grid grid-cols-3 gap-4 opacity-50 sm:grid-cols-6" style={{ width: "min(100%, 640px)" }}>
         {Array.from({ length: 6 }).map((_, i) => (
           // eslint-disable-next-line @next/next/no-img-element -- asset local, simple silhouette décorative
           <img key={i} src={EMPTY_SLOT_SRC} alt="" className="aspect-[5/7] w-full rounded-md object-cover shadow-md" />
         ))}
       </div>
-      <p className="max-w-md text-[1.1em] text-amber-100/90 [font-family:var(--font-card-body)]" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.9)" }}>
+      <p className="max-w-md text-sm text-[var(--text-secondary)]">
         {hasAnyCards
           ? "Aucune carte ne correspond à ces filtres."
           : "Tu ne possèdes encore aucune carte : joue avec un deck préconstruit en attendant d'ouvrir des boosters."}

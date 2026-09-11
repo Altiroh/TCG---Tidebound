@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { signUpWithPassword } from "@/app/connexion/actions";
-import { AUTH_INPUT_CLASS, AUTH_PRIMARY_BUTTON_CLASS } from "@/components/auth/AuthGlassPanel";
+import { AUTH_INPUT_CLASS, AUTH_LINK_CLASS, AUTH_PRIMARY_BUTTON_CLASS } from "@/components/auth/AuthGlassPanel";
 import { EmailField } from "@/components/auth/EmailField";
 import { PasswordField } from "@/components/auth/PasswordField";
 import { evaluatePasswordStrength, MIN_SIGNUP_PASSWORD_SCORE } from "@/components/auth/passwordStrength";
@@ -60,12 +60,12 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
   if (status === "check-email") {
     return (
       <div className="flex flex-col gap-3 text-center">
-        <h2 className="text-xl font-semibold text-white">Vérifie ta boîte mail</h2>
-        <p className="text-sm text-slate-300">
+        <h2 className="text-xl font-semibold text-[var(--text-primary)]">Vérifie ta boîte mail</h2>
+        <p className="text-sm text-[var(--text-secondary)]">
           Un email de confirmation vient de t&apos;être envoyé. Clique sur le lien qu&apos;il contient pour activer
           ton compte, puis reviens te connecter.
         </p>
-        <button type="button" onClick={onSwitchToLogin} className="text-sm text-board-accent hover:underline">
+        <button type="button" onClick={onSwitchToLogin} className={`text-sm ${AUTH_LINK_CLASS} hover:underline`}>
           ← Retour à la connexion
         </button>
       </div>
@@ -75,8 +75,8 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
   return (
     <form action={handleSubmit} className="flex flex-col gap-3">
       <div className="mb-1 flex flex-col items-center gap-1 text-center">
-        <h2 className="text-xl font-semibold text-white">Créer un compte</h2>
-        <p className="text-xs text-slate-400">Rejoins Tidebound en quelques secondes.</p>
+        <h2 className="text-xl font-semibold text-[var(--text-primary)]">Créer un compte</h2>
+        <p className="text-xs text-[var(--text-secondary)]">Rejoins Tidebound en quelques secondes.</p>
       </div>
       <input
         type="text"
@@ -101,7 +101,7 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
         value={confirmPassword}
         onChange={setConfirmPassword}
       />
-      {error && <p className="text-sm text-rose-400">{error}</p>}
+      {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
       <button
         type="submit"
         disabled={status === "loading" || strengthTooLow}
@@ -110,14 +110,14 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
       >
         {status === "loading" ? "Création..." : "Créer mon compte"}
       </button>
-      <p className="text-center text-xs text-slate-400">
+      <p className="text-center text-xs text-[var(--text-secondary)]">
         Aucune carte au départ : tu pourras jouer avec les decks préconstruits en attendant d&apos;ouvrir des
         boosters.
       </p>
       <button
         type="button"
         onClick={onSwitchToLogin}
-        className="text-center text-xs text-slate-300 hover:text-board-accent hover:underline"
+        className={`text-center text-xs ${AUTH_LINK_CLASS} hover:underline`}
       >
         Déjà un compte ? Se connecter
       </button>

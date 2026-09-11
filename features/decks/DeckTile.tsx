@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { PlayerDeckSummary } from "@/app/decks/actions";
+import { BORDER_SUBTLE, RADIUS_MD, SHADOW_PANEL, SURFACE_1, TEXT_PRIMARY, TEXT_SECONDARY, TRANSITION } from "@/components/game-ui/tokens";
 
 const EMPTY_SLOT_SRC = "/assets/collection/card_empty_placeholder.png";
 
@@ -11,7 +12,7 @@ function DeckHeaderStack({ cardIds }: { cardIds: string[] }) {
     return (
       <div className="flex h-full items-center justify-center">
         {/* eslint-disable-next-line @next/next/no-img-element -- asset local, silhouette décorative */}
-        <img src={EMPTY_SLOT_SRC} alt="" className="h-[85%] rounded-sm object-cover opacity-60 shadow-md" />
+        <img src={EMPTY_SLOT_SRC} alt="" className="h-[85%] rounded-sm object-cover opacity-50" />
       </div>
     );
   }
@@ -24,7 +25,7 @@ function DeckHeaderStack({ cardIds }: { cardIds: string[] }) {
         return (
           <div
             key={cardId}
-            className="absolute h-[80%] w-[46%] overflow-hidden rounded-sm border border-amber-100/20 shadow-[0_4px_10px_rgba(0,0,0,0.5)]"
+            className="absolute h-[80%] w-[46%] overflow-hidden rounded-sm shadow-[0_4px_10px_rgba(0,0,0,0.5)]"
             style={{
               transform: `translateX(${offsetFromCenter * 34}%) rotate(${offsetFromCenter * 9}deg)`,
               zIndex: index,
@@ -70,12 +71,12 @@ export function DeckTile({ deck, shipName, isRenaming, onRenameSubmit, onRenameC
       type="button"
       onClick={isRenaming ? undefined : onOpen}
       onContextMenu={onContextMenu}
-      className="group flex aspect-[5/7] w-full flex-col overflow-hidden rounded-xl border-2 border-amber-700/60 bg-gradient-to-b from-slate-800 to-slate-950 text-left shadow-[0_6px_18px_rgba(0,0,0,0.5)] transition-transform hover:-translate-y-0.5 hover:border-amber-500/80"
+      className={`group flex aspect-[5/7] w-full flex-col overflow-hidden text-left ${SURFACE_1} ${BORDER_SUBTLE} ${RADIUS_MD} ${SHADOW_PANEL} ${TRANSITION} hover:-translate-y-0.5 hover:border-[var(--accent)]/50`}
     >
-      <div className="h-[58%] bg-slate-950/60">
+      <div className="h-[58%] bg-black/20">
         <DeckHeaderStack cardIds={deck.headerCardIds} />
       </div>
-      <div className="flex flex-1 flex-col items-center justify-center gap-1 border-t border-amber-700/40 px-2 text-center">
+      <div className="flex flex-1 flex-col items-center justify-center gap-1 border-t border-[var(--border-subtle)] px-2 text-center">
         {isRenaming ? (
           <input
             ref={inputRef}
@@ -87,12 +88,12 @@ export function DeckTile({ deck, shipName, isRenaming, onRenameSubmit, onRenameC
               if (e.key === "Escape") onRenameCancel();
             }}
             onBlur={() => onRenameSubmit(draftName)}
-            className="w-full rounded border border-board-accent bg-slate-900 px-1.5 py-0.5 text-center text-sm font-semibold text-amber-50 outline-none"
+            className={`w-full border-b border-[var(--accent)] bg-transparent px-1.5 py-0.5 text-center text-sm font-semibold ${TEXT_PRIMARY} outline-none`}
           />
         ) : (
-          <span className="w-full truncate text-sm font-semibold text-amber-50 [font-family:var(--font-menu)]">{deck.name}</span>
+          <span className={`w-full truncate text-sm font-semibold ${TEXT_PRIMARY}`}>{deck.name}</span>
         )}
-        <span className="text-[11px] text-amber-200/60">
+        <span className={`text-[11px] ${TEXT_SECONDARY}`}>
           {shipName} · {deck.cardCount} carte{deck.cardCount > 1 ? "s" : ""}
         </span>
       </div>

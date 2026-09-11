@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { signInWithPassword } from "@/app/connexion/actions";
-import { AUTH_INPUT_CLASS, AUTH_PRIMARY_BUTTON_CLASS } from "@/components/auth/AuthGlassPanel";
+import { AUTH_INPUT_CLASS, AUTH_LINK_CLASS, AUTH_PRIMARY_BUTTON_CLASS } from "@/components/auth/AuthGlassPanel";
 import { EmailField } from "@/components/auth/EmailField";
 import { PasswordField } from "@/components/auth/PasswordField";
 
@@ -34,8 +34,8 @@ export function LoginForm({ onSuccess, onForgotPassword, onSwitchToSignup }: Log
   return (
     <form action={handleSubmit} className="flex flex-col gap-3.5">
       <div className="mb-1 flex flex-col items-center gap-1 text-center">
-        <h2 className="text-xl font-semibold text-white">Connexion</h2>
-        <p className="text-xs text-slate-400">Content de te revoir sur Tidebound.</p>
+        <h2 className="text-xl font-semibold text-[var(--text-primary)]">Connexion</h2>
+        <p className="text-xs text-[var(--text-secondary)]">Content de te revoir sur Tidebound.</p>
       </div>
       <EmailField name="email" placeholder="toi@exemple.com" autoComplete="email" className={AUTH_INPUT_CLASS} />
       <PasswordField
@@ -45,15 +45,15 @@ export function LoginForm({ onSuccess, onForgotPassword, onSwitchToSignup }: Log
         value={password}
         onChange={setPassword}
       />
-      {error && <p className="text-sm text-rose-400">{error}</p>}
+      {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
       <button type="submit" disabled={status === "loading"} className={AUTH_PRIMARY_BUTTON_CLASS}>
         {status === "loading" ? "Connexion..." : "Se connecter"}
       </button>
-      <div className="flex items-center justify-between text-xs text-slate-300">
-        <button type="button" onClick={onForgotPassword} className="hover:text-board-accent hover:underline">
+      <div className="flex items-center justify-between text-xs">
+        <button type="button" onClick={onForgotPassword} className={`${AUTH_LINK_CLASS} hover:underline`}>
           Mot de passe oublié ?
         </button>
-        <button type="button" onClick={onSwitchToSignup} className="hover:text-board-accent hover:underline">
+        <button type="button" onClick={onSwitchToSignup} className={`${AUTH_LINK_CLASS} hover:underline`}>
           Créer un compte
         </button>
       </div>

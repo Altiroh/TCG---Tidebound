@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { requestPasswordReset } from "@/app/connexion/actions";
-import { AUTH_INPUT_CLASS, AUTH_PRIMARY_BUTTON_CLASS } from "@/components/auth/AuthGlassPanel";
+import { AUTH_INPUT_CLASS, AUTH_LINK_CLASS, AUTH_PRIMARY_BUTTON_CLASS } from "@/components/auth/AuthGlassPanel";
 import { EmailField } from "@/components/auth/EmailField";
 
 interface ForgotPasswordFormProps {
@@ -29,12 +29,12 @@ export function ForgotPasswordForm({ onBackToLogin }: ForgotPasswordFormProps) {
   if (status === "sent") {
     return (
       <div className="flex flex-col gap-3 text-center">
-        <h2 className="text-xl font-semibold text-white">Email envoyé</h2>
-        <p className="text-sm text-slate-300">
+        <h2 className="text-xl font-semibold text-[var(--text-primary)]">Email envoyé</h2>
+        <p className="text-sm text-[var(--text-secondary)]">
           Si un compte existe avec cette adresse, un lien pour choisir un nouveau mot de passe vient d&apos;être
           envoyé.
         </p>
-        <button type="button" onClick={onBackToLogin} className="text-sm text-board-accent hover:underline">
+        <button type="button" onClick={onBackToLogin} className={`text-sm ${AUTH_LINK_CLASS} hover:underline`}>
           ← Retour à la connexion
         </button>
       </div>
@@ -43,18 +43,14 @@ export function ForgotPasswordForm({ onBackToLogin }: ForgotPasswordFormProps) {
 
   return (
     <form action={handleSubmit} className="flex flex-col gap-3">
-      <h2 className="text-xl font-semibold text-white">Mot de passe oublié</h2>
-      <p className="text-sm text-slate-300">On t&apos;envoie un lien pour en choisir un nouveau.</p>
+      <h2 className="text-xl font-semibold text-[var(--text-primary)]">Mot de passe oublié</h2>
+      <p className="text-sm text-[var(--text-secondary)]">On t&apos;envoie un lien pour en choisir un nouveau.</p>
       <EmailField name="email" placeholder="toi@exemple.com" autoComplete="email" className={AUTH_INPUT_CLASS} />
-      {error && <p className="text-sm text-rose-400">{error}</p>}
+      {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
       <button type="submit" disabled={status === "loading"} className={AUTH_PRIMARY_BUTTON_CLASS}>
         {status === "loading" ? "Envoi..." : "Envoyer le lien"}
       </button>
-      <button
-        type="button"
-        onClick={onBackToLogin}
-        className="text-center text-xs text-slate-300 hover:text-board-accent hover:underline"
-      >
+      <button type="button" onClick={onBackToLogin} className={`text-center text-xs ${AUTH_LINK_CLASS} hover:underline`}>
         ← Retour à la connexion
       </button>
     </form>

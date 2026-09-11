@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AuthGlassPanel, AUTH_PRIMARY_BUTTON_CLASS, AUTH_SECONDARY_BUTTON_CLASS } from "@/components/auth/AuthGlassPanel";
+import { AuthGlassPanel, AUTH_LINK_CLASS, AUTH_PRIMARY_BUTTON_CLASS, AUTH_SECONDARY_BUTTON_CLASS } from "@/components/auth/AuthGlassPanel";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { SignupForm } from "@/components/auth/SignupForm";
 import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm";
@@ -76,7 +76,7 @@ export function AuthGateModal({ isSignedIn }: AuthGateModalProps) {
               type="button"
               onClick={() => setView("choice")}
               aria-label="Retour"
-              className="absolute left-4 top-4 z-10 text-slate-300 hover:text-board-accent"
+              className={`absolute left-4 top-4 z-10 ${AUTH_LINK_CLASS}`}
             >
               <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
                 <path d="M15 5l-7 7 7 7" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
@@ -86,8 +86,8 @@ export function AuthGateModal({ isSignedIn }: AuthGateModalProps) {
 
           {view === "choice" && (
             <div className="flex flex-col items-center gap-4 text-center">
-              <h2 className="text-2xl font-semibold text-white">Bienvenue sur Tidebound</h2>
-              <p className="text-sm text-slate-300">
+              <h2 className="text-2xl font-semibold text-[var(--text-primary)]">Bienvenue sur Tidebound</h2>
+              <p className="text-sm text-[var(--text-secondary)]">
                 Connecte-toi pour garder ta progression, ou lance une partie tout de suite sans compte.
               </p>
               <button type="button" onClick={() => setView("login")} className={AUTH_PRIMARY_BUTTON_CLASS}>
@@ -96,7 +96,7 @@ export function AuthGateModal({ isSignedIn }: AuthGateModalProps) {
               <button type="button" onClick={() => setView("signup")} className={AUTH_SECONDARY_BUTTON_CLASS}>
                 Créer un compte
               </button>
-              <button type="button" onClick={dismissAsGuest} className="text-sm text-slate-400 hover:text-board-accent hover:underline">
+              <button type="button" onClick={dismissAsGuest} className={`text-sm ${AUTH_LINK_CLASS} hover:underline`}>
                 Jouer sans compte
               </button>
             </div>

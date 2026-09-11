@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { BORDER_SUBTLE, RADIUS_SM, SHADOW_FLOATING, TEXT_PRIMARY, TRANSITION } from "@/components/game-ui/tokens";
 
 export interface DeckContextMenuProps {
   x: number;
@@ -12,7 +13,7 @@ export interface DeckContextMenuProps {
   onClose: () => void;
 }
 
-/** Menu contextuel façon clic droit Windows, redessiné aux couleurs Tidebound — mêmes déclencheurs de fermeture (clic extérieur, Échap) qu'un menu natif. */
+/** Menu contextuel façon clic droit Windows, redessiné avec les tokens de la refonte — mêmes déclencheurs de fermeture (clic extérieur, Échap) qu'un menu natif. */
 export function DeckContextMenu({ x, y, onRename, onEdit, onDuplicate, onDelete, onClose }: DeckContextMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ x, y });
@@ -42,14 +43,13 @@ export function DeckContextMenu({ x, y, onRename, onEdit, onDuplicate, onDelete,
     };
   }, [onClose]);
 
-  const itemClass =
-    "flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm text-slate-100 transition-colors hover:bg-board-accent/20 hover:text-board-accent";
+  const itemClass = `flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm ${TEXT_PRIMARY} ${TRANSITION} hover:bg-white/5`;
 
   return (
     <div
       ref={ref}
       style={{ left: pos.x, top: pos.y }}
-      className="fixed z-[70] w-48 overflow-hidden rounded-md border border-amber-600/50 bg-slate-950/95 py-1.5 shadow-[0_10px_40px_rgba(0,0,0,0.6)] backdrop-blur-md"
+      className={`fixed z-[70] w-48 overflow-hidden bg-[var(--surface-glass)] backdrop-blur-xl py-1.5 ${BORDER_SUBTLE} ${RADIUS_SM} ${SHADOW_FLOATING}`}
     >
       <button type="button" className={itemClass} onClick={onRename}>
         <PencilIcon /> Renommer
@@ -60,10 +60,10 @@ export function DeckContextMenu({ x, y, onRename, onEdit, onDuplicate, onDelete,
       <button type="button" className={itemClass} onClick={onDuplicate}>
         <DuplicateIcon /> Dupliquer
       </button>
-      <div className="my-1 h-px bg-amber-600/30" />
+      <div className="my-1 h-px bg-[var(--border-subtle)]" />
       <button
         type="button"
-        className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm text-rose-400 transition-colors hover:bg-rose-500/15 hover:text-rose-300"
+        className={`flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm text-[var(--danger)] ${TRANSITION} hover:bg-[var(--danger)]/10`}
         onClick={onDelete}
       >
         <TrashIcon /> Supprimer

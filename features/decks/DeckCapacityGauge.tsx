@@ -1,3 +1,5 @@
+import { TEXT_SECONDARY } from "@/components/game-ui/tokens";
+
 const SEGMENT_COUNT = 24;
 
 /** Bleu → vert en approchant `min`, vert plein entre `min` et `max`, rouge au-delà. */
@@ -23,7 +25,7 @@ export function DeckCapacityGauge({ count, min, max }: DeckCapacityGaugeProps) {
 
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex h-full items-center gap-[2px] rounded-md border border-amber-600/50 bg-slate-950/80 px-2 py-2">
+      <div className="flex h-full items-center gap-[2px] rounded-md bg-white/[0.03] px-2 py-2">
         {Array.from({ length: SEGMENT_COUNT }).map((_, i) => (
           <span
             key={i}
@@ -36,11 +38,11 @@ export function DeckCapacityGauge({ count, min, max }: DeckCapacityGaugeProps) {
           />
         ))}
       </div>
-      <div className="flex items-center justify-between text-[0.85em] text-amber-200/80">
+      <div className={`flex items-center justify-between text-[0.85em] ${TEXT_SECONDARY}`}>
         <span>
           {count} / {max}
         </span>
-        <span className={isValid ? "text-emerald-300" : "text-amber-200/60"}>
+        <span className={isValid ? "text-emerald-300" : TEXT_SECONDARY}>
           {isValid ? "Jouable" : `Min. ${min}`}
         </span>
       </div>

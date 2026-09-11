@@ -20,6 +20,7 @@ import {
 import { needsPlayTarget } from "@/features/match/needsPlayTarget";
 import { Button } from "@/components/ui/Button";
 import { ActionToastStack } from "@/features/match/ActionToastStack";
+import { AttackImpactLayer } from "@/features/match/AttackImpactLayer";
 import { BoardBackdrop } from "@/features/match/BoardBackdrop";
 import { BoardCardTile } from "@/features/match/BoardCardTile";
 import { BoardStage } from "@/features/match/BoardStage";
@@ -37,6 +38,7 @@ import { ShipInstrumentCluster } from "@/features/match/ShipInstrumentCluster";
 import { TideOrientationTile } from "@/features/match/TideOrientationTile";
 import { TideProgressBar } from "@/features/match/TideProgressBar";
 import { useActionToasts } from "@/features/match/useActionToasts";
+import { useAttackImpacts } from "@/features/match/useAttackImpacts";
 import { useCardFlights, type CardFlight } from "@/features/match/useCardFlights";
 import { usePhaseBannerEvent } from "@/features/match/usePhaseBannerEvent";
 
@@ -116,6 +118,21 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
   const otherShip = getShipDefinition(otherPlayer.shipId);
   const isViewerTurn = activePlayerId === viewerPlayerId;
   const canPlayCards = isViewerTurn && state.phase === "mainPhase" && !state.pendingReaction;
+  // Si aucune unité du joueur actif ne peut attaquer (toutes engourdies,
+  // ayant déjà attaqué, ou rendues inactives par la Marée), proposer la
+  // Phase de combat n'aurait aucun intérêt : le bouton unique saute
+  // directement à "Fin de tour", sans passage à vide par une Phase de
+  // combat sans aucune action possible.
+  const activePlayerBoard = state.players.find((p) => p.id === activePlayerId)?.board ?? [];
+  const hasAnyAttacker = activePlayerBoard.some((unit) => {
+    const def = getCardDefinition(unit.cardId);
+    return (
+      isUnitType(def.type) &&
+      !unit.summoningSick &&
+      !unit.hasAttackedThisTurn &&
+      !computeEffectiveStats(unit, state.environment.tideState).inactive
+    );
+  });
   const myReactionCandidates = state.pendingReaction?.awaitingPlayerId === viewerPlayerId
     ? eligibleCandidatesFor(state, state.pendingReaction.events, viewerPlayerId, state.pendingReaction.turnNumber, state.pendingReaction.usedCandidateKeys)
     : [];
@@ -123,6 +140,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
   const bannerEvent = usePhaseBannerEvent(state);
   const actionToasts = useActionToasts(state);
   const cardFlights = useCardFlights(state);
+  const attackImpacts = useAttackImpacts(state);
 
   function getFlightCoords(flight: CardFlight) {
     const isViewer = flight.playerId === viewerPlayerId;
@@ -510,7 +528,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
         </div>
 
         {/* Ligne de plateau adverse */}
-        <div className="absolute" style={{ left: 0, top: 125, width: 230 }}>
+        <div className="absolute" data-ship-target={otherPlayer.id} style={{ left: 0, top: 125, width: 230 }}>
           <ShipInstrumentCluster
             anchor={otherPlayer.anchor}
             anchorMax={otherShip.startingAnchor}
@@ -531,6 +549,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
           {otherPlayer.board.map((unit) => (
             <div
               key={unit.instanceId}
+              data-board-unit={unit.instanceId}
               onDragOver={(e) => handleBoardTileDragOver(e, unit.instanceId)}
               onDragLeave={() => setDragOverTargetId((id) => (id === unit.instanceId ? null : id))}
               onDrop={(e) => handleBoardTileDrop(e, unit.instanceId)}
@@ -627,7 +646,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
         <div className="absolute flex flex-col items-center gap-2" style={{ left: 1473, top: 555, width: 182 }}>
           <PhaseActionButton
             isMyTurn={isViewerTurn}
-            phase={state.phase}
+            phase={state.phase === "mainPhase" && !hasAnyAttacker ? "combatPhase" : state.phase}
             onAdvancePhase={() => runAction({ type: "advancePhase", playerId: activePlayerId })}
             onEndTurn={() => runAction({ type: "endTurn", playerId: activePlayerId })}
             size={120}
@@ -640,7 +659,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
         </div>
 
         {/* Ligne de plateau du viewer */}
-        <div className="absolute" style={{ left: 0, top: 530, width: 230 }}>
+        <div className="absolute" data-ship-target={viewerPlayer.id} style={{ left: 0, top: 530, width: 230 }}>
           <ShipInstrumentCluster
             anchor={viewerPlayer.anchor}
             anchorMax={viewerShip.startingAnchor}
@@ -676,6 +695,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
             return (
             <div
               key={unit.instanceId}
+              data-board-unit={unit.instanceId}
               draggable={canAttack}
               onDragStart={(e) => handleUnitDragStart(e, unit.instanceId)}
               onDragEnd={handleUnitDragEnd}
@@ -804,6 +824,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
       </BoardStage>
 
       <DragTargetingTrail anchor={dragAnchor} />
+      <AttackImpactLayer impacts={attackImpacts} />
       <ActionToastStack toasts={actionToasts} />
       <PhaseBanner text={bannerText} bannerKey={bannerEvent?.id ?? null} />
       {graveyardViewerPlayerId && (
