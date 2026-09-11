@@ -17,6 +17,7 @@ import { BoardBackdrop } from "@/features/match/BoardBackdrop";
 import { BoardStage } from "@/features/match/BoardStage";
 import { CardBack } from "@/features/match/CardBack";
 import { CargoCluster } from "@/features/match/CargoCluster";
+import { EventFeed } from "@/features/match/EventFeed";
 import { GraveyardViewer } from "@/features/match/GraveyardViewer";
 import { HandFan } from "@/features/match/HandFan";
 import { HoverLiftTile } from "@/features/match/HoverLiftTile";
@@ -322,6 +323,11 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
           <div className="truncate rounded border border-slate-700/70 bg-black/60 px-1 py-0.5 text-center text-[9px] text-slate-200">
             Adv.<span className="ml-1 text-slate-500">· {opponent.hand.length}</span>
           </div>
+        </div>
+
+        {/* Fil des événements — "pourquoi quelque chose vient de se produire" */}
+        <div className="absolute" style={{ left: 1462, top: 350, width: 204, height: 170 }}>
+          <EventFeed state={state} />
         </div>
 
         {/* Ligne de plateau adverse */}
