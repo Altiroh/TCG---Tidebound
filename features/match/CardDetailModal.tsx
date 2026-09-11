@@ -43,7 +43,7 @@ export function CardDetailModal({ instance, tideState, onClose }: CardDetailModa
       </button>
 
       <div onClick={(e) => e.stopPropagation()}>
-        <CardTile instance={instance} tideState={tideState} widthClassName="w-80 sm:w-96" scaleOnHover={false} />
+        <CardTile instance={instance} tideState={tideState} widthClassName="w-80 sm:w-96" scaleOnHover={false} badgeSize={90} />
       </div>
       <div className="-my-8 hidden self-stretch sm:block" onClick={(e) => e.stopPropagation()}>
         <CardInfoPanel cardId={instance.cardId} showGlow={false} />

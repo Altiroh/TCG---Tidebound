@@ -28,6 +28,8 @@ interface CardTileProps {
   widthClassName?: string;
   /** `false` pour désactiver l'agrandissement léger au survol (ex: cartes de plateau — l'utilisateur clique désormais pour voir le détail plutôt que de survoler). Défaut : `true`. */
   scaleOnHover?: boolean;
+  /** Taille en pixels réels des badges de statut flottants (`StatusBadge`) — indépendante de `widthClassName` puisqu'ils vivent hors du conteneur à requête de conteneur. Défaut : 38 (cartes de plateau). La vue détail (`CardDetailModal`, carte bien plus grande) passe une valeur plus élevée pour rester proportionnée. */
+  badgeSize?: number;
   /**
    * Structure actuellement invisible pour l'adversaire (`visibleDuringTide`) SUR SON PROPRE plateau — même
    * son propriétaire ne voit alors que le dos de carte pour l'illustration/le texte/les stats, mais garde les
@@ -276,6 +278,7 @@ export function CardTile({
   widthClassName = "w-28",
   scaleOnHover = true,
   faceDown = false,
+  badgeSize = 38,
 }: CardTileProps) {
   const def = getCardDefinition(instance.cardId);
   const isAbyssal = def.subtype === "abyssal";
@@ -436,9 +439,15 @@ export function CardTile({
         instance.turnsRemaining !== undefined ||
         hasKeyword(def, "garde") ||
         (instance.statuses && instance.statuses.length > 0)) && (
-        <div className="pointer-events-none absolute inset-x-0 -top-5 z-20 flex flex-wrap items-center justify-center gap-2 px-1">
+        <div
+          className="pointer-events-none absolute inset-x-0 z-20 flex flex-wrap items-center justify-center px-1"
+          style={{ top: -(badgeSize / 2 + 12), gap: badgeSize / 16 + 1.5 }}
+        >
           {stats.inactive && (
-            <span className="pointer-events-auto rounded-full border border-amber-400/60 bg-black/90 px-2.5 py-1 text-xs font-semibold uppercase text-amber-300 shadow-md">
+            <span
+              className="pointer-events-auto rounded-full border border-amber-400/60 bg-black/90 font-semibold uppercase text-amber-300 shadow-md"
+              style={{ padding: `${badgeSize / 38}px ${(badgeSize / 38) * 2.5}px`, fontSize: badgeSize / 3.2 }}
+            >
               Inactive
             </span>
           )}
@@ -447,15 +456,21 @@ export function CardTile({
               icon={ENGOURDI_ICON_INFO.icon}
               label={ENGOURDI_ICON_INFO.label}
               description={ENGOURDI_ICON_INFO.description}
+              size={badgeSize}
             />
           )}
           {hasKeyword(def, "garde") && (
-            <StatusBadge icon={GARDE_ICON_INFO.icon} label={GARDE_ICON_INFO.label} description={GARDE_ICON_INFO.description} />
+            <StatusBadge
+              icon={GARDE_ICON_INFO.icon}
+              label={GARDE_ICON_INFO.label}
+              description={GARDE_ICON_INFO.description}
+              size={badgeSize}
+            />
           )}
           {instance.statuses?.map((status) => {
             const info = STATUS_ICON_INFO[status];
             if (!info) return null;
-            return <StatusBadge key={status} icon={info.icon} label={info.label} description={info.description} />;
+            return <StatusBadge key={status} icon={info.icon} label={info.label} description={info.description} size={badgeSize} />;
           })}
           {instance.turnsRemaining !== undefined && (
             <StatusBadge
@@ -463,6 +478,7 @@ export function CardTile({
               label="Durée"
               description={`${instance.turnsRemaining} tour${instance.turnsRemaining > 1 ? "s" : ""} restant${instance.turnsRemaining > 1 ? "s" : ""} avant expiration.`}
               overlayText={String(instance.turnsRemaining)}
+              size={badgeSize}
             />
           )}
         </div>
