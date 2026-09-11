@@ -17,10 +17,10 @@ import { Button } from "@/components/ui/Button";
 import { BoardBackdrop } from "@/features/match/BoardBackdrop";
 import { BoardStage } from "@/features/match/BoardStage";
 import { CardBack } from "@/features/match/CardBack";
-import { CardHoverPreview } from "@/features/match/CardHoverPreview";
-import { CardTile } from "@/features/match/CardTile";
 import { CargoCluster } from "@/features/match/CargoCluster";
 import { GraveyardViewer } from "@/features/match/GraveyardViewer";
+import { HandFan } from "@/features/match/HandFan";
+import { HoverLiftTile } from "@/features/match/HoverLiftTile";
 import { PhaseActionButton } from "@/features/match/PhaseActionButton";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ShipInstrumentCluster } from "@/features/match/ShipInstrumentCluster";
@@ -40,11 +40,6 @@ type Pending =
   | { kind: "playCard"; instanceId: string; needsTarget: boolean }
   | { kind: "attack"; attackerId: string }
   | { kind: "break"; instanceId: string; needsTarget: boolean };
-
-interface HoverPreview {
-  cardId: string;
-  rect: DOMRect;
-}
 
 function isUnitType(type: string): boolean {
   return (UNIT_CARD_TYPES as readonly string[]).includes(type);
@@ -69,7 +64,6 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
   const [pending, setPending] = useState<Pending | null>(null);
   const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [hoverPreview, setHoverPreview] = useState<HoverPreview | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [draggingUnitId, setDraggingUnitId] = useState<string | null>(null);
   const [dragOverTargetId, setDragOverTargetId] = useState<string | null>(null);
@@ -208,13 +202,6 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
     }
   }
 
-  function showPreview(e: React.MouseEvent, cardId: string) {
-    setHoverPreview({ cardId, rect: e.currentTarget.getBoundingClientRect() });
-  }
-  function hidePreview() {
-    setHoverPreview(null);
-  }
-
   // --- Glisser-déposer depuis la main -------------------------------------
   // Ajouté EN PLUS du clic (jamais à sa place) : le clic reste le parcours
   // principal, notamment tant que le support tactile du drag HTML5 natif
@@ -224,7 +211,6 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
     e.dataTransfer.setData(DRAG_MIME_HAND, instanceId);
     e.dataTransfer.effectAllowed = "move";
     setDraggingId(instanceId);
-    hidePreview();
   }
   function handleHandDragEnd() {
     setDraggingId(null);
@@ -258,7 +244,6 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
     e.dataTransfer.setData(DRAG_MIME_UNIT, instanceId);
     e.dataTransfer.effectAllowed = "move";
     setDraggingUnitId(instanceId);
-    hidePreview();
   }
   function handleUnitDragEnd() {
     setDraggingUnitId(null);
@@ -417,14 +402,12 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
           {otherPlayer.board.map((unit) => (
             <div
               key={unit.instanceId}
-              onMouseEnter={(e) => showPreview(e, unit.cardId)}
-              onMouseLeave={hidePreview}
               onDragOver={(e) => handleBoardTileDragOver(e, unit.instanceId)}
               onDragLeave={() => setDragOverTargetId((id) => (id === unit.instanceId ? null : id))}
               onDrop={(e) => handleBoardTileDrop(e, unit.instanceId)}
               className={dragOverTargetId === unit.instanceId ? "rounded-md ring-2 ring-board-accent" : ""}
             >
-              <CardTile
+              <HoverLiftTile
                 instance={unit}
                 tideState={state.environment.tideState}
                 selected={pending?.kind === "attack"}
@@ -518,8 +501,6 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
               draggable={isViewerTurn}
               onDragStart={(e) => handleUnitDragStart(e, unit.instanceId)}
               onDragEnd={handleUnitDragEnd}
-              onMouseEnter={(e) => showPreview(e, unit.cardId)}
-              onMouseLeave={hidePreview}
               onDragOver={(e) => handleBoardTileDragOver(e, unit.instanceId)}
               onDragLeave={() => setDragOverTargetId((id) => (id === unit.instanceId ? null : id))}
               onDrop={(e) => handleBoardTileDrop(e, unit.instanceId)}
@@ -527,7 +508,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
                 draggingUnitId === unit.instanceId ? "opacity-40" : ""
               }`}
             >
-              <CardTile
+              <HoverLiftTile
                 instance={unit}
                 tideState={state.environment.tideState}
                 selected={selectedBoardId === unit.instanceId || pending?.kind === "attack"}
@@ -605,27 +586,19 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
           </div>
         )}
 
-        {/* Main du viewer — centrée en bas de l'écran */}
-        <div className="absolute flex items-end justify-center gap-2" style={{ left: 0, top: 740, width: 1672, height: 195 }}>
-          {viewerPlayer.hand.map((card) => (
-            <div
-              key={card.instanceId}
-              draggable={canPlayCards}
-              onDragStart={(e) => handleHandDragStart(e, card.instanceId)}
-              onDragEnd={handleHandDragEnd}
-              onMouseEnter={(e) => showPreview(e, card.cardId)}
-              onMouseLeave={hidePreview}
-              className={draggingId === card.instanceId ? "opacity-40" : ""}
-            >
-              <CardTile
-                instance={card}
-                tideState={state.environment.tideState}
-                selected={pending?.kind === "playCard" && pending.instanceId === card.instanceId}
-                disabled={!canPlayCards}
-                onClick={() => handleHandCardClick(card.instanceId)}
-              />
-            </div>
-          ))}
+        {/* Main du viewer — centrée en bas de l'écran, en éventail */}
+        <div className="absolute flex items-end justify-center" style={{ left: 0, top: 740, width: 1672, height: 195 }}>
+          <HandFan
+            cards={viewerPlayer.hand}
+            tideState={state.environment.tideState}
+            selectedInstanceId={pending?.kind === "playCard" ? pending.instanceId : undefined}
+            disabled={!canPlayCards}
+            draggable={canPlayCards}
+            draggingId={draggingId}
+            onDragStart={handleHandDragStart}
+            onDragEnd={handleHandDragEnd}
+            onClick={handleHandCardClick}
+          />
           {viewerPlayer.hand.length === 0 && <p className="text-xs text-slate-600">Main vide.</p>}
         </div>
 
@@ -643,7 +616,6 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
       </BoardStage>
 
       <PhaseBanner text={bannerText} bannerKey={bannerEvent?.id ?? null} />
-      {hoverPreview && <CardHoverPreview cardId={hoverPreview.cardId} anchorRect={hoverPreview.rect} />}
       {graveyardViewerPlayerId && (
         <GraveyardViewer
           playerLabel={
