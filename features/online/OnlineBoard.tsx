@@ -18,6 +18,7 @@ import { BoardBackdrop } from "@/features/match/BoardBackdrop";
 import { BoardCardTile } from "@/features/match/BoardCardTile";
 import { BoardStage } from "@/features/match/BoardStage";
 import { CardDetailModal } from "@/features/match/CardDetailModal";
+import { CardFlightLayer } from "@/features/match/CardFlightLayer";
 import { CargoCluster } from "@/features/match/CargoCluster";
 import { DragTargetingTrail } from "@/features/match/DragTargetingTrail";
 import { EventFeed } from "@/features/match/EventFeed";
@@ -30,7 +31,18 @@ import { ShipInstrumentCluster } from "@/features/match/ShipInstrumentCluster";
 import { TideOrientationTile } from "@/features/match/TideOrientationTile";
 import { TideProgressBar } from "@/features/match/TideProgressBar";
 import { useActionToasts } from "@/features/match/useActionToasts";
+import { useCardFlights, type CardFlight } from "@/features/match/useCardFlights";
 import { usePhaseBannerEvent } from "@/features/match/usePhaseBannerEvent";
+
+/** Centres approximatifs (repère `BoardStage`, 1672×941) des zones pioche/main/cimetière de chaque côté — repris des coordonnées déjà posées pour `CargoCluster`/les mains/le plateau, pour l'animation `CardFlightLayer`. */
+const OWN_DECK_POS = { x: 1310, y: 640 };
+const OWN_GRAVEYARD_POS = { x: 1430, y: 640 };
+const OWN_HAND_POS = { x: 836, y: 872 };
+const OWN_BOARD_POS = { x: 740, y: 640 };
+const OPPONENT_DECK_POS = { x: 1310, y: 233 };
+const OPPONENT_GRAVEYARD_POS = { x: 1430, y: 233 };
+const OPPONENT_HAND_POS = { x: 836, y: 40 };
+const OPPONENT_BOARD_POS = { x: 740, y: 233 };
 
 interface OnlineBoardProps {
   state: GameState;
@@ -64,7 +76,6 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
   /** Origine (viewport) du glisser-déposer en cours (main ou unité de plateau) — alimente `DragTargetingTrail`. */
   const [dragAnchor, setDragAnchor] = useState<{ x: number; y: number } | null>(null);
   const [dragOverTargetId, setDragOverTargetId] = useState<string | null>(null);
-  const [dragOverOwnBoard, setDragOverOwnBoard] = useState(false);
   const [dragOverOpponentBoard, setDragOverOpponentBoard] = useState(false);
   const [dragOverGraveyard, setDragOverGraveyard] = useState(false);
   const [graveyardViewerPlayerId, setGraveyardViewerPlayerId] = useState<PlayerId | null>(null);
@@ -85,6 +96,18 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
 
   const bannerEvent = usePhaseBannerEvent(state);
   const actionToasts = useActionToasts(state);
+  const cardFlights = useCardFlights(state);
+
+  function getFlightCoords(flight: CardFlight) {
+    const isMine = flight.playerId === myUserId;
+    if (flight.kind === "draw") {
+      return isMine ? { from: OWN_DECK_POS, to: OWN_HAND_POS } : { from: OPPONENT_DECK_POS, to: OPPONENT_HAND_POS };
+    }
+    return isMine
+      ? { from: OWN_BOARD_POS, to: OWN_GRAVEYARD_POS }
+      : { from: OPPONENT_BOARD_POS, to: OPPONENT_GRAVEYARD_POS };
+  }
+
   const bannerText = bannerEvent
     ? bannerEvent.kind === "combatPhase"
       ? "Phase de combat"
@@ -177,27 +200,27 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
     e.dataTransfer.setData(DRAG_MIME_HAND, instanceId);
     e.dataTransfer.effectAllowed = "move";
     setDraggingId(instanceId);
-    const rect = e.currentTarget.getBoundingClientRect();
-    setDragAnchor({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+    // Le suivi pointillé n'a de sens que pour CHOISIR une cible (effet ciblé) — une simple pose sur le
+    // plateau n'a pas de cible, la carte tombe sur le premier Slot libre quel que soit l'endroit du dépôt.
+    const card = me.hand.find((c) => c.instanceId === instanceId);
+    const needsTarget = card ? (getCardDefinition(card.cardId).onPlayEffects ?? []).some((e2) => e2.target.kind === "chosenUnit") : false;
+    if (needsTarget) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      setDragAnchor({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+    }
   }
   function handleHandDragEnd() {
     setDraggingId(null);
     setDragOverTargetId(null);
-    setDragOverOwnBoard(false);
     setDragAnchor(null);
   }
   function handleOwnBoardDragOver(e: React.DragEvent) {
     if (!draggingId) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
-    setDragOverOwnBoard(true);
-  }
-  function handleOwnBoardDragLeave() {
-    setDragOverOwnBoard(false);
   }
   function handleOwnBoardDrop(e: React.DragEvent) {
     e.preventDefault();
-    setDragOverOwnBoard(false);
     const instanceId = e.dataTransfer.getData(DRAG_MIME_HAND);
     setDraggingId(null);
     if (instanceId) handleHandCardClick(instanceId);
@@ -262,7 +285,6 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
     e.preventDefault();
     e.stopPropagation();
     setDragOverTargetId(null);
-    setDragOverOwnBoard(false);
     setDragOverOpponentBoard(false);
 
     const draggedUnitId = e.dataTransfer.getData(DRAG_MIME_UNIT);
@@ -332,13 +354,10 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
           <OpponentHandFan cards={opponent.hand} />
         </div>
 
-        {/* Tour + info adversaire, nichés dans le cadre boussole en haut à droite */}
-        <div className="absolute flex flex-col items-stretch gap-0.5" style={{ left: 1518, top: 272, width: 108 }}>
-          <div className="text-center text-sm font-semibold text-slate-100 [text-shadow:0_1px_3px_rgba(0,0,0,0.9)]">
-            Tour <strong>{state.turnNumber}</strong>
-          </div>
-          <div className="truncate text-center text-[10px] text-slate-300 [text-shadow:0_1px_2px_rgba(0,0,0,0.9)]">
-            Adv.<span className="ml-1 text-slate-400">· {opponent.hand.length}</span>
+        {/* Tour, nichée dans le cadre boussole en haut à droite */}
+        <div className="absolute flex items-center justify-center" style={{ left: 1518, top: 272, width: 108 }}>
+          <div className="text-center text-xl font-bold uppercase tracking-wide text-slate-100 [font-family:var(--font-card-title)] [text-shadow:0_1px_4px_rgba(0,0,0,0.95),0_0_8px_rgba(0,0,0,0.8)]">
+            Tour {state.turnNumber}
           </div>
         </div>
 
@@ -437,7 +456,7 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
 
         <div
           className="absolute flex flex-col items-center justify-center gap-2 text-center"
-          style={{ left: 200, top: 340, width: 1050, height: 190 }}
+          style={{ left: 290, top: 340, width: 930, height: 190 }}
         >
           <TideProgressBar tideState={state.environment.tideState} tideRemainingTurns={state.environment.tideRemainingTurns} />
           {hasHint && (
@@ -484,11 +503,8 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
         </div>
         <div
           onDragOver={handleOwnBoardDragOver}
-          onDragLeave={handleOwnBoardDragLeave}
           onDrop={handleOwnBoardDrop}
-          className={`absolute flex items-center justify-center gap-2 rounded-md p-1 transition-colors ${
-            dragOverOwnBoard ? "bg-board-accent/10 ring-2 ring-board-accent/60" : ""
-          }`}
+          className="absolute flex items-center justify-center gap-2 rounded-md p-1"
           style={{ left: 235, top: 538, width: 1010, height: 205 }}
         >
           {me.board.map((unit) => (
@@ -602,6 +618,7 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
           Toi{isMyTurn ? " (à toi)" : ""}
           <span className="ml-1 text-slate-500">· {me.hand.length} carte(s)</span>
         </div>
+        <CardFlightLayer flights={cardFlights} getCoords={getFlightCoords} />
       </BoardStage>
 
       <DragTargetingTrail anchor={dragAnchor} />
@@ -626,6 +643,24 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
 }
 
 /** Emplacement de Slot inoccupé — rend visible le nombre total de Slots qu'autorise le Navire (4/5/6), pas seulement les permanents déjà posés. */
+/**
+ * Surbrillance individuelle au survol d'un glisser-déposer (au lieu du
+ * plateau entier auparavant) : le joueur voit précisément quels
+ * emplacements libres accepteraient la carte. `onDragOver` sans
+ * `preventDefault` propre à ce Slot — la propagation vers le conteneur
+ * parent (qui l'appelle déjà) suffit à valider la cible de dépôt.
+ */
 function EmptySlot() {
-  return <div aria-hidden className="aspect-[5/7] w-28 rounded-xl border-[3px] border-dashed border-slate-500/50" />;
+  const [hovered, setHovered] = useState(false);
+  return (
+    <div
+      aria-hidden
+      onDragEnter={() => setHovered(true)}
+      onDragLeave={() => setHovered(false)}
+      onDrop={() => setHovered(false)}
+      className={`aspect-[5/7] w-28 rounded-xl border-[3px] border-dashed transition-colors ${
+        hovered ? "border-board-accent bg-board-accent/15" : "border-slate-500/50"
+      }`}
+    />
+  );
 }
