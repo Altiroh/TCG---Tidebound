@@ -2,14 +2,19 @@ import type { CardDefinition } from "@/game/cards/types";
 
 /**
  * Set de base ("Core") — catalogue verrouillé sur Notion (`Catalogue de
- * cartes`, Lots 01 à 07 + Lot 09, resynchronisé le 2026-09-10) : 80 cartes
- * de base (Lots 01-07) + 1 variante Abyssale distincte
- * ("marin-aux-yeux-rouges-abyssal") + les 5 cartes fun/références du
- * Lot 09 (6 entrées avec la variante Abyssale de "Bat-Marin"), soit 87
- * entrées. Le Lot 08 ("Grandes Anomalies de Marée", 2 cartes) reste hors
- * du set : verrouillé sur Notion mais aucune illustration fournie pour
- * l'instant. Toutes les cartes sont exprimées en données pures : pas de
- * code spécifique à une carte dans le moteur.
+ * cartes`, Lots 01 à 09, resynchronisé le 2026-09-11) : Lots 01-07 et 09
+ * comme précédemment, plus le Lot 08 ("Grandes Anomalies de Marée",
+ * "La Gueule Sous la Mer" / "Sept Brasses Plus Bas") désormais intégré.
+ * Cette resynchronisation a aussi scindé en couple STANDARD/ABYSSALE
+ * plusieurs cartes dont seule la variante Abyssale existait par erreur
+ * sous l'id de base ("Ce Qui Suit le Navire", "Ils Sont Sous Nous",
+ * "L'Œil Sous la Mer", "Le Fond Vous Regarde", "Cloche du Grand Fond",
+ * "La Mer Réclame Davantage"), corrigé "Bat-Marin — ABYSSALE" qui
+ * dupliquait par erreur les stats/texte de sa Standard, et repris deux
+ * renommages du catalogue ("Masse Noire" → "Masse-Sombre", "L'Homme
+ * Revenu de la Fosse" → "Revenante de la Fosse", cette dernière n'ayant
+ * plus de variante Abyssale). Toutes les cartes sont exprimées en
+ * données pures : pas de code spécifique à une carte dans le moteur.
  *
  * ÉVICTION DES EAUX (2026-09-10) — le sous-système autonome des Eaux
  * (paquet séparé, révélation, effet environnemental parallèle à la
@@ -548,19 +553,17 @@ export const CORE_SET: CardDefinition[] = [
     // non appliqué : aura dynamique conditionnelle non modélisée.
   },
   {
+    // Renommée "L'Homme Revenu de la Fosse" → "Revenante de la Fosse", n'existe plus qu'en version STANDARD
+    // (Notion "Catalogue de cartes", Lot 04, "Contrôle d'équilibrage — 47 cartes") — id conservé (référencée par testDecks.ts).
     id: "lhomme-revenu-de-la-fosse",
-    name: "L'Homme Revenu de la Fosse",
+    name: "Revenante de la Fosse",
     type: "marin",
-    subtype: "abyssal",
-    cost: 5,
-    attack: 4,
+    cost: 4,
+    attack: 3,
     health: 4,
-    maxCopies: 1,
-    text:
-      "À son arrivée, perdez 2 Raison. Tant que vous êtes en Abysses, la première fois à chaque tour qu'il devrait " +
-      "être détruit, il reste à 1 Résistance à la place.",
-    onPlayEffects: [{ type: "reasonLoss", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } }],
-    // non appliqué : la survie conditionnelle à 1 Résistance pendant Abysses n'est pas câblée.
+    text: "À son arrivée, perdez 1 Raison. Tant que vous êtes en Abysses, il gagne +1 Résistance.",
+    onPlayEffects: [{ type: "reasonLoss", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
+    tideAffinity: { abysses: { attack: 3, health: 5 } },
   },
   {
     id: "requin-balafre",
@@ -573,8 +576,9 @@ export const CORE_SET: CardDefinition[] = [
     // non appliqué : contrecoup réactif sur attaque directe non modélisé.
   },
   {
+    // Renommée "Masse Noire" → "Masse-Sombre" (Notion "Catalogue de cartes", Lot 04) — id conservé (référencée par decks/testDecks.ts).
     id: "masse-noire",
-    name: "Masse Noire",
+    name: "Masse-Sombre",
     type: "creature",
     subtype: "abyssal",
     cost: 4,
@@ -587,9 +591,24 @@ export const CORE_SET: CardDefinition[] = [
     },
   },
   {
+    // Version STANDARD (Notion "Catalogue de cartes", Lot 04) — coexiste avec la variante ABYSSALE ci-dessous.
     id: "ce-qui-suit-le-navire",
     name: "Ce Qui Suit le Navire",
     type: "creature",
+    cost: 4,
+    attack: 4,
+    health: 5,
+    text: "Vous ne pouvez la jouer que si vous avez 5 Raison ou moins. Lorsqu'elle arrive en jeu, perdez 1 Ancrage.",
+    onPlayEffects: [{ type: "damage", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
+    // non appliqué : la restriction de pose "5 Raison ou moins" n'est pas câblée.
+  },
+  {
+    // Variante ABYSSALE distincte (coexiste avec la Standard ci-dessus) — anciennement seule entrée sous
+    // l'id de base, maintenant scindée pour correspondre au catalogue verrouillé.
+    id: "ce-qui-suit-le-navire-abyssal",
+    name: "Ce Qui Suit le Navire",
+    type: "creature",
+    subtype: "abyssal",
     cost: 5,
     attack: 6,
     health: 6,
@@ -669,9 +688,22 @@ export const CORE_SET: CardDefinition[] = [
     // non appliqué : lecture de main adverse non modélisée.
   },
   {
+    // Version STANDARD (Notion "Catalogue de cartes", Lot 04) — coexiste avec la variante ABYSSALE ci-dessous.
     id: "ils-sont-sous-nous",
     name: "Ils Sont Sous Nous",
     type: "anomalie",
+    cost: 5,
+    maxCopies: 2,
+    text: "Pendant 2 tours, la première fois à chaque tour qu'un joueur joue un permanent, ce joueur perd 1 Raison.",
+    // non appliqué : règle temporaire globale non modélisée.
+  },
+  {
+    // Variante ABYSSALE distincte (coexiste avec la Standard ci-dessus) — anciennement seule entrée sous
+    // l'id de base, maintenant scindée pour correspondre au catalogue verrouillé.
+    id: "ils-sont-sous-nous-abyssal",
+    name: "Ils Sont Sous Nous",
+    type: "anomalie",
+    subtype: "abyssal",
     cost: 6,
     maxCopies: 1,
     text:
@@ -879,7 +911,21 @@ export const CORE_SET: CardDefinition[] = [
     // non appliqué : réduction réactive de dégâts par carte non modélisée.
   },
   {
+    // Version STANDARD (Notion "Catalogue de cartes", Lot 06) — coexiste avec la variante ABYSSALE ci-dessous.
     id: "loeil-sous-la-mer",
+    name: "L'Œil Sous la Mer",
+    type: "creature",
+    cost: 5,
+    attack: 4,
+    health: 6,
+    requiresTideState: ["abysses"],
+    text: "Ne peut être jouée que pendant Abysses. À son arrivée, chaque joueur perd 1 Raison.",
+    onPlayEffects: [{ type: "reasonLoss", target: { kind: "allPlayers" }, amount: { kind: "flat", value: 1 } }],
+  },
+  {
+    // Variante ABYSSALE distincte (coexiste avec la Standard ci-dessus) — anciennement seule entrée sous
+    // l'id de base, maintenant scindée pour correspondre au catalogue verrouillé.
+    id: "loeil-sous-la-mer-abyssal",
     name: "L'Œil Sous la Mer",
     type: "creature",
     subtype: "abyssal",
@@ -954,9 +1000,22 @@ export const CORE_SET: CardDefinition[] = [
     // non appliqué : réduction réactive de Puissance en combat non modélisée.
   },
   {
+    // Version STANDARD (Notion "Catalogue de cartes", Lot 06) — coexiste avec la variante ABYSSALE ci-dessous.
     id: "le-fond-vous-regarde",
     name: "Le Fond Vous Regarde",
     type: "anomalie",
+    cost: 5,
+    maxCopies: 2,
+    text: "Pendant 2 tours, au début de chaque tour, le joueur actif choisit : perdre 1 Raison, ou infliger 1 dégât d'Ancrage à son propre Navire.",
+    // non appliqué : règle temporaire globale + choix de joueur non modélisés.
+  },
+  {
+    // Variante ABYSSALE distincte (coexiste avec la Standard ci-dessus) — anciennement seule entrée sous
+    // l'id de base, maintenant scindée pour correspondre au catalogue verrouillé.
+    id: "le-fond-vous-regarde-abyssal",
+    name: "Le Fond Vous Regarde",
+    type: "anomalie",
+    subtype: "abyssal",
     cost: 7,
     maxCopies: 1,
     text: "Pendant 2 tours, au début de chaque tour, le joueur actif choisit : perdre 2 Raison, ou infliger 2 dégâts d'Ancrage à son propre Navire.",
@@ -1065,9 +1124,27 @@ export const CORE_SET: CardDefinition[] = [
     // non appliqué : amplificateur réactif conditionnel non modélisé.
   },
   {
+    // Version STANDARD (Notion "Catalogue de cartes", Lot 07) — coexiste avec la variante ABYSSALE ci-dessous.
     id: "cloche-du-grand-fond",
     name: "Cloche du Grand Fond",
     type: "structure",
+    cost: 3,
+    maxCopies: 2,
+    health: 2,
+    durationTurns: 3,
+    visibleDuringTide: ["abysses"],
+    text:
+      "Durée : 3 tours. Visible uniquement pendant Abysses. Lorsque vous entrez dans les Abysses, vous pouvez " +
+      "perdre 2 Raison. Si vous le faites, augmentez la durée des Abysses de 1 tour.",
+    // non appliqué : choix optionnel déclenché par l'entrée en Abysses non modélisé.
+  },
+  {
+    // Variante ABYSSALE distincte (coexiste avec la Standard ci-dessus) — anciennement seule entrée sous
+    // l'id de base, maintenant scindée pour correspondre au catalogue verrouillé.
+    id: "cloche-du-grand-fond-abyssal",
+    name: "Cloche du Grand Fond",
+    type: "structure",
+    subtype: "abyssal",
     cost: 4,
     maxCopies: 2,
     health: 3,
@@ -1079,15 +1156,58 @@ export const CORE_SET: CardDefinition[] = [
     // non appliqué : choix optionnel déclenché par l'entrée en Abysses non modélisé.
   },
   {
+    // Version STANDARD (Notion "Catalogue de cartes", Lot 07) — coexiste avec la variante ABYSSALE ci-dessous.
     id: "la-mer-reclame-davantage",
     name: "La Mer Réclame Davantage",
     type: "anomalie",
+    cost: 5,
+    maxCopies: 2,
+    text: "Pendant 2 tours, chaque fois qu'une Marée change, elle entre avec 1 tour de durée en moins, minimum 1.",
+    // non appliqué : règle temporaire globale non modélisée.
+  },
+  {
+    // Variante ABYSSALE distincte (coexiste avec la Standard ci-dessus) — anciennement seule entrée sous
+    // l'id de base, maintenant scindée pour correspondre au catalogue verrouillé.
+    id: "la-mer-reclame-davantage-abyssal",
+    name: "La Mer Réclame Davantage",
+    type: "anomalie",
+    subtype: "abyssal",
     cost: 6,
     maxCopies: 1,
     text:
       "Pendant 2 tours, chaque fois qu'une Marée change, elle entre avec 1 tour de durée en moins, minimum 1. " +
       "Chaque changement de Marée inflige aussi 1 dégât d'Ancrage à chaque Navire.",
     // non appliqué : règle temporaire globale non modélisée.
+  },
+
+  // ======================================================================
+  // LOT 08 — Grandes Anomalies de Marée
+  // ======================================================================
+  {
+    // Grande Anomalie : coûteuse et dangereuse pour son propre contrôleur, jamais un finisher universel
+    // (Notion "Catalogue de cartes", Lot 08, "Intention de design — Grandes Anomalies").
+    id: "la-gueule-sous-la-mer",
+    name: "La Gueule Sous la Mer",
+    type: "anomalie",
+    cost: 6,
+    maxCopies: 1,
+    text:
+      "Forcez immédiatement la Marée en Abysses. Les états intermédiaires sont ignorés. Après résolution, votre " +
+      "Navire perd 2 Ancrage. Jusqu'au début de votre prochain tour, vous ne pouvez pas récupérer de Raison.",
+    onPlayEffects: [{ type: "damage", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } }],
+    // non appliqué : le forçage direct de la Marée en Abysses et le verrou de récupération de Raison ne sont pas câblés.
+  },
+  {
+    id: "sept-brasses-plus-bas",
+    name: "Sept Brasses Plus Bas",
+    type: "anomalie",
+    cost: 7,
+    maxCopies: 1,
+    text:
+      "Forcez immédiatement la Marée en Abysses, puis augmentez de 1 tour sa durée restante. Chaque joueur perd " +
+      "2 Raison. L'orientation devient Descendante après l'arrivée en Abysses.",
+    onPlayEffects: [{ type: "reasonLoss", target: { kind: "allPlayers" }, amount: { kind: "flat", value: 2 } }],
+    // non appliqué : le forçage direct de la Marée en Abysses, la prolongation de durée et le forçage d'orientation ne sont pas câblés.
   },
 
   // ======================================================================
@@ -1138,17 +1258,19 @@ export const CORE_SET: CardDefinition[] = [
     // non appliqué : contournement de Garde conditionnel non modélisé (même limite que "raie-des-fosses").
   },
   {
+    // Corrigée : reprenait par erreur les mêmes stats/texte que la Standard (aucune plus-value réelle) —
+    // le catalogue (Notion "Catalogue de cartes", Lot 09) distingue bien coût/stats et ajoute une clause.
     id: "bat-marin-abyssal",
     name: "Bat-Marin",
     type: "marin",
     subtype: "abyssal",
-    cost: 3,
-    attack: 3,
-    health: 2,
+    cost: 4,
+    attack: 4,
+    health: 3,
     text:
       "Tant que la Marée est Tempête ou Abysses, il peut attaquer directement le Navire adverse même si un " +
-      "permanent possède Garde.",
-    // non appliqué : contournement de Garde conditionnel non modélisé (même limite que "raie-des-fosses").
+      "permanent possède Garde. Lorsqu'il inflige des dégâts directs pendant Abysses, l'adversaire perd aussi 1 Raison.",
+    // non appliqué : contournement de Garde conditionnel (même limite que "raie-des-fosses") + perte de Raison réactive au dégât direct non modélisés.
   },
   {
     id: "chope",

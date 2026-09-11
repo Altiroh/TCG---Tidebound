@@ -79,7 +79,7 @@ describe("engine.dispatch - playCard", () => {
   });
 
   it("refuse de jouer une carte si la Raison est insuffisante", () => {
-    const card = instance("loeil-sous-la-mer", "p1"); // coût 6
+    const card = instance("loeil-sous-la-mer", "p1"); // coût 5
     const state = testGameState({
       players: [testPlayer("p1", { hand: [card], reason: 2 }), testPlayer("p2")],
       environment: testEnvironment({ tideState: "abysses" }),
@@ -427,7 +427,7 @@ describe("engine.dispatch - endTurn", () => {
 
 describe("engine.dispatch - condition de victoire", () => {
   it("termine la partie quand un joueur tombe à 0 point d'Ancrage", () => {
-    const attacker = instance("loeil-sous-la-mer", "p1"); // 5/7
+    const attacker = instance("loeil-sous-la-mer-abyssal", "p1"); // 5/7
     const state: GameState = testGameState({
       phase: "combatPhase",
       players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2", { anchor: 5 })],
