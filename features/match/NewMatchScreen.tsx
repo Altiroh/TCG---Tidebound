@@ -154,6 +154,8 @@ function DeckPicker({ label, value, onChange }: { label: string; value: string; 
           {isArchetype ? `Navire suggéré : ${shipName}` : `Navire : ${shipName}`}
         </span>
       )}
+      {/* Le joueur doit savoir ce que le deck fait avant de le choisir, pas juste voir son nom. */}
+      {selected && <p className="text-xs leading-snug text-slate-400">{selected.description}</p>}
     </label>
   );
 }

@@ -25,6 +25,7 @@ export const DECK_PONT_DASSAUT: DeckList = {
   id: "pont-dassaut",
   name: "Pont d'Assaut",
   shipId: "le-courlis",
+  description: "Aggro : rush de petites unités peu coûteuses pour punir les decks trop lents avant qu'ils ne se stabilisent.",
   cardIds: [
     ...repeat("marin-des-jetees", 3),
     ...repeat("murene-aveugle", 3),
@@ -48,6 +49,7 @@ export const DECK_DESCENTE_AUX_ABYSSES: DeckList = {
   id: "descente-aux-abysses",
   name: "Descente aux Abysses",
   shipId: "lerrant",
+  description: "Raison basse assumée : pousse volontairement vers Tempête/Abysses pour débloquer de puissants finishers abyssaux.",
   cardIds: [
     ...repeat("poisson-lanterne", 3),
     ...repeat("marin-aux-yeux-rouges", 3),
@@ -76,6 +78,7 @@ export const DECK_MAREE_CONTROL: DeckList = {
   id: "maree-control",
   name: "Marée Control",
   shipId: "lerrant",
+  description: "Manipule la Marée au maximum pour dicter le rythme de la partie et forcer l'adversaire à jouer sous contrainte.",
   cardIds: [
     ...repeat("cartes-des-courants", 3),
     ...repeat("ancre-de-derive", 2),
@@ -103,6 +106,7 @@ export const DECK_FORTERESSE_FLOTTANTE: DeckList = {
   id: "forteresse-flottante",
   name: "Forteresse Flottante",
   shipId: "le-brise-lames",
+  description: "Défensif à l'extrême : empile les protections et vise le plafond défensif pour gagner sur la durée.",
   cardIds: [
     ...repeat("caisses-arrimees", 3),
     ...repeat("brise-vague-de-fortune", 3),
@@ -131,6 +135,7 @@ export const DECK_EPAVISTE_SABORDAGE: DeckList = {
   id: "epaviste-sabordage",
   name: "Épaviste / Sabordage",
   shipId: "le-brise-lames",
+  description: "Boucles économiques : détruit et Saborde volontairement ses propres cartes pour recycler et récupérer des ressources.",
   cardIds: [
     ...repeat("plongeur-des-epaves", 2),
     ...repeat("caisses-arrimees", 3),
@@ -157,6 +162,7 @@ export const DECK_CAPITAINE_MIDRANGE: DeckList = {
   id: "capitaine-midrange",
   name: "Capitaine / Midrange",
   shipId: "lerrant",
+  description: "Deck témoin neutre : courbe solide sans moteur extrême, reste compétitif sans dépendre d'une synergie précise.",
   cardIds: [
     ...repeat("marin-des-jetees", 3),
     ...repeat("vieux-loup-de-mer", 2),

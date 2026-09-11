@@ -16,6 +16,8 @@ export interface DeckList {
   name: string;
   /** Navire principal de ce deck (voir `game/environment/shipData.ts`). */
   shipId: string;
+  /** Résumé du style de jeu, affiché à l'écran de sélection — le joueur doit savoir ce que le deck fait avant de le choisir, pas juste son nom. */
+  description: string;
   cardIds: CardId[];
 }
 
@@ -32,6 +34,7 @@ export const DECK_LE_COURLIS: DeckList = {
   id: "le-courlis",
   name: "Le Courlis",
   shipId: "le-courlis",
+  description: "Léger et rapide : beaucoup de manipulation de Marée/Eaux et d'Objets à faible coût, peu de gros permanents.",
   cardIds: [
     ...repeat("marin-des-jetees", 3),
     ...repeat("poisson-lanterne", 3),
@@ -61,6 +64,7 @@ export const DECK_LERRANT: DeckList = {
   id: "lerrant",
   name: "L'Errant",
   shipId: "lerrant",
+  description: "Standard et polyvalent : courbe équilibrée, mélange de Marins/Créatures et de Structures/Objets sans spécialisation marquée.",
   cardIds: [
     ...repeat("marin-aux-yeux-rouges", 3),
     ...repeat("matelot-du-sans-nom", 3),
@@ -89,6 +93,7 @@ export const DECK_LE_BRISE_LAMES: DeckList = {
   id: "le-brise-lames",
   name: "Le Brise-Lames",
   shipId: "le-brise-lames",
+  description: "Lourd et endurant : board dense, synergies de Sabordage et gros permanents tardifs derrière de la Garde.",
   cardIds: [
     ...repeat("crabe-de-fer", 3),
     ...repeat("chose-des-hauts-fonds", 3),
