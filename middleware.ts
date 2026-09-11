@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/supabase/env";
 
 /**
  * Rafraîchit la session Supabase à chaque requête (pattern `@supabase/ssr`
@@ -16,10 +17,15 @@ import { NextResponse, type NextRequest } from "next/server";
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const url = getSupabaseUrl();
+  const anonKey = getSupabaseAnonKey();
   if (!url || !anonKey) {
-    console.error("[middleware] NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY manquante(s) — session non rafraîchie.");
+    // Diagnostic sûr : uniquement des booléens de présence, jamais la valeur des clés.
+    console.error("[middleware] NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY manquante(s) — session non rafraîchie.", {
+      url: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),
+      anonKey: Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
+      publishableKey: Boolean(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY),
+    });
     return response;
   }
 

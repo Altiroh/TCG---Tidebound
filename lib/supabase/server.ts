@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
+import { getSupabaseAnonKey, getSupabaseUrl } from "./env";
 import type { Database } from "./types";
 
 /**
@@ -11,8 +12,8 @@ export function createSupabaseServerClient() {
   const cookieStore = cookies();
 
   return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    getSupabaseUrl()!,
+    getSupabaseAnonKey()!,
     {
       cookies: {
         getAll() {
@@ -38,7 +39,7 @@ export function createSupabaseServerClient() {
  */
 export function createSupabaseServiceRoleClient() {
   return createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    getSupabaseUrl()!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { persistSession: false } }
   );
