@@ -1,3 +1,5 @@
+import { useDecreaseFlash } from "@/features/match/useDecreaseFlash";
+
 const GAUGE_ASSETS = {
   anchor: "/assets/ships/gauge-anchor.png",
   reason: "/assets/ships/gauge-reason.png",
@@ -26,9 +28,14 @@ interface ResourceGaugeProps {
 export function ResourceGauge({ type, value, max, size = 56 }: ResourceGaugeProps) {
   const pct = max > 0 ? Math.max(0, Math.min(1, value / max)) : 0;
   const depletedAngle = (1 - pct) * 360;
+  // Impact visible sur une attaque directe du Navire (Ancrage seul — une perte de Raison n'est pas un "coup" à faire ressentir de la même façon).
+  const hit = useDecreaseFlash(type === "anchor" ? value : Infinity);
 
   return (
-    <div className="group/gauge relative shrink-0" style={{ width: size, height: size }}>
+    <div
+      className={`group/gauge relative shrink-0 ${hit ? "animate-card-impact" : ""}`}
+      style={{ width: size, height: size }}
+    >
       {/* eslint-disable-next-line @next/next/no-img-element -- médaillon décoratif, taille fixe, jamais responsive */}
       <img src={GAUGE_ASSETS[type]} alt="" aria-hidden draggable={false} className="absolute inset-0 h-full w-full select-none object-contain" />
       <div

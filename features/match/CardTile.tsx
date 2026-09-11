@@ -17,6 +17,7 @@ import {
 import { CARD_TYPE_LABELS, THICK_TEXT_OUTLINE } from "@/features/match/cardDisplay";
 import { CARD_BACK_SRC } from "@/features/match/CardBack";
 import { StatusBadge } from "@/features/match/StatusBadge";
+import { useDecreaseFlash } from "@/features/match/useDecreaseFlash";
 import { useImageOk } from "@/features/match/useImageOk";
 
 interface CardTileProps {
@@ -95,25 +96,6 @@ const TYPE_BG_CLASSES: Record<string, string> = {
   objet: "bg-violet-950",
   anomalie: "bg-fuchsia-950",
 };
-
-/** `true` le temps d'une animation, chaque fois que `value` diminue par rapport à son appel précédent. */
-function useDecreaseFlash(value: number): boolean {
-  const previous = useRef(value);
-  const [flashing, setFlashing] = useState(false);
-
-  useEffect(() => {
-    if (value >= previous.current) {
-      previous.current = value;
-      return undefined;
-    }
-    setFlashing(true);
-    previous.current = value;
-    const timeout = setTimeout(() => setFlashing(false), 500);
-    return () => clearTimeout(timeout);
-  }, [value]);
-
-  return flashing;
-}
 
 /** `true` le temps d'une animation, chaque fois que `value` change (dans n'importe quel sens) par rapport à son appel précédent — pour signaler l'application d'un buff/debuff. */
 function useChangeFlash(value: number): boolean {
@@ -298,7 +280,7 @@ export function CardTile({
       <div
         className={`relative aspect-[5/7] w-full overflow-hidden rounded-xl transition-transform duration-150 ease-out ${
           scalesOnHover ? "hover:scale-[1.03]" : ""
-        }`}
+        } ${resistanceFlashing ? "animate-card-impact" : ""}`}
         style={{ containerType: "inline-size" }}
       >
         {faceDown ? (

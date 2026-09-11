@@ -1,8 +1,36 @@
 import { computeEffectiveStats } from "@/game/cards/stats";
 import { getCardDefinition } from "@/game/cards/sets/core";
-import { hasKeyword, UNIT_CARD_TYPES } from "@/game/cards/types";
+import { hasKeyword, UNIT_CARD_TYPES, type CardInstance } from "@/game/cards/types";
 import { getShipDefinition } from "@/game/environment/shipData";
-import type { GamePhase, GameState, PlayerId } from "@/game/state/types";
+import type { GamePhase, GameState, PlayerId, PlayerState } from "@/game/state/types";
+
+/**
+ * Un mot-clé statique (`CardDefinition.keywords`) OU accordé dynamiquement
+ * (`conditionalKeywords`, réévalué à chaque appel — jamais posé/retiré
+ * explicitement) est-il actif sur cette carte EN CE MOMENT, pour SON
+ * contrôleur (`controller`, pas un joueur quelconque) ?
+ */
+function hasEffectiveKeyword(state: GameState, controller: PlayerState, unit: CardInstance, keyword: string): boolean {
+  const def = getCardDefinition(unit.cardId);
+  const matches = (grant: { keyword: string; controllerReasonAtMost?: number; tideStateIn?: string[] }) => {
+    if (grant.keyword !== keyword) return false;
+    if (grant.controllerReasonAtMost !== undefined && controller.reason > grant.controllerReasonAtMost) return false;
+    if (grant.tideStateIn && !grant.tideStateIn.includes(state.environment.tideState)) return false;
+    return true;
+  };
+  if ((def.conditionalKeywordSuppressions ?? []).some(matches)) return false;
+  if (hasKeyword(def, keyword)) return true;
+  return (def.conditionalKeywords ?? []).some(matches);
+}
+
+/** Cette unité attaquante contourne-t-elle Garde EN CE MOMENT (`bypassesGardeTideStateIn`) ? `false` si elle n'existe plus/pas sur le plateau de son contrôleur. */
+function attackerBypassesGardeNow(state: GameState, attackerOwnerId: PlayerId, attackerInstanceId: string): boolean {
+  const attackerPlayer = state.players.find((p) => p.id === attackerOwnerId);
+  const attacker = attackerPlayer?.board.find((u) => u.instanceId === attackerInstanceId);
+  if (!attacker) return false;
+  const def = getCardDefinition(attacker.cardId);
+  return (def.bypassesGardeTideStateIn ?? []).includes(state.environment.tideState);
+}
 
 /**
  * Résultat d'une validation : soit "ok", soit un message d'erreur stable
@@ -121,19 +149,25 @@ export function assertUnitCanAttack(state: GameState, playerId: PlayerId, instan
  * Priorité entre plusieurs porteurs de Garde simultanés : non tranchée
  * par le cadrage ("à préciser") — tout porteur de Garde est accepté ici
  * en attendant une règle de priorité explicite.
+ *
+ * `attackerInstanceId` sert uniquement à vérifier un contournement de
+ * Garde propre à l'ATTAQUANT (`bypassesGardeTideStateIn`, ex: Raie des
+ * Fosses pendant Abysses) — jamais utilisé pour autre chose ici.
  */
 export function assertValidDefender(
   state: GameState,
   attackerOwnerId: PlayerId,
+  attackerInstanceId: string,
   defenderInstanceId?: string
 ): ValidationResult {
   const opponent = state.players.find((p) => p.id !== attackerOwnerId);
   if (!opponent) return fail("Adversaire introuvable.");
 
-  const guards = opponent.board.filter((u) => hasKeyword(getCardDefinition(u.cardId), "garde"));
+  const guards = opponent.board.filter((u) => hasEffectiveKeyword(state, opponent, u, "garde"));
+  const attackerBypassesGarde = attackerBypassesGardeNow(state, attackerOwnerId, attackerInstanceId);
 
   if (!defenderInstanceId) {
-    if (guards.length > 0) {
+    if (guards.length > 0 && !attackerBypassesGarde) {
       return fail("Une unité adverse porte Garde : l'attaque doit la cibler en priorité.");
     }
     return ok();
@@ -142,7 +176,7 @@ export function assertValidDefender(
   const target = opponent.board.find((u) => u.instanceId === defenderInstanceId);
   if (!target) return fail("Cible de défense invalide.");
 
-  if (guards.length > 0 && !hasKeyword(getCardDefinition(target.cardId), "garde")) {
+  if (guards.length > 0 && !hasEffectiveKeyword(state, opponent, target, "garde")) {
     return fail("Une unité adverse porte Garde : l'attaque doit la cibler en priorité.");
   }
 

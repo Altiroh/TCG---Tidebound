@@ -240,7 +240,26 @@ export function resolveTideTurnStep(
   const base = { turnNumber, timestamp: Date.now() };
   const previousTideState = state.environment.tideState;
 
-  const tick = tickTide(state.environment);
+  // La Marée ne PROGRESSE (décompte de durée + avancée d'état) qu'une fois
+  // par tour DE TABLE — les deux joueurs ont joué — jamais à chaque tour
+  // individuel (cadrage clarifié : "un tour" = un aller-retour des deux
+  // joueurs, pas le tour d'un seul). `turnNumber` impair marque le retour
+  // au premier joueur (P1 commence toujours à `turnNumber` 1, l'alternance
+  // stricte de `getOpponent` garantit la parité pour toute la partie) :
+  // c'est le seul moment où `tickTide` s'exécute réellement. Les dégâts/
+  // effets DE la Marée courante, eux, continuent de s'appliquer à chaque
+  // tour individuel (inchangé, cf. commentaire de fonction ci-dessus).
+  const isNewRound = turnNumber % 2 === 1;
+  const tick = isNewRound
+    ? tickTide(state.environment)
+    : {
+        tideState: state.environment.tideState,
+        tideRemainingTurns: state.environment.tideRemainingTurns,
+        tideOrientation: state.environment.tideOrientation,
+        tideIntensity: state.environment.tideIntensity,
+        pendingTideModifiers: state.environment.pendingTideModifiers,
+        stateChanged: false,
+      };
   const { amplified, modifiers: modifiersAfterAmplify } = consumeAmplify(tick.pendingTideModifiers);
   const intensity = amplified ? tick.tideIntensity * 2 : tick.tideIntensity;
 

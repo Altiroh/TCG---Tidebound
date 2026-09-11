@@ -26,7 +26,7 @@ function validate(state: GameState, action: AttackAction) {
     assertIsActivePlayer(state, action.playerId),
     assertInPhase(state, action.playerId, "combatPhase"),
     assertUnitCanAttack(state, action.playerId, action.attackerInstanceId),
-    assertValidDefender(state, action.playerId, action.defenderInstanceId)
+    assertValidDefender(state, action.playerId, action.attackerInstanceId, action.defenderInstanceId)
   );
 }
 
@@ -34,15 +34,17 @@ function validate(state: GameState, action: AttackAction) {
  * Résout une attaque : soit une unité contre une autre, soit une unité
  * contre le joueur adverse directement.
  *
- * IMPORTANT — "pas de riposte automatique" (cadrage "Mécaniques
- * verrouillées" section 34, règle verrouillée) : seule la cible attaquée
- * subit des dégâts. L'attaquant ne subit jamais de dégâts en retour,
- * sauf effet explicite de type "Riposte" (pas encore modélisé comme
- * mot-clé/effet générique — voir `game/effects/types.ts` pour l'ajouter
- * le jour où une carte l'exige).
+ * Combat MUTUEL (changement d'équilibrage confirmé) : quand l'attaque vise
+ * une unité (pas le Navire directement), le défenseur riposte — l'attaquant
+ * encaisse la Puissance effective du défenseur, exactement symétrique aux
+ * dégâts qu'il inflige lui-même. Un permanent sans Puissance (Structure/
+ * Objet, `attack` absent → 0 via `computeEffectiveStats`) ne riposte pas.
+ * Une attaque directe contre le Navire adverse, elle, ne fait toujours
+ * subir aucun dégât en retour (rien à riposter).
  *
- * Les morts éventuelles sont traitées par l'appelant (`engine.ts`) via
- * `processDeaths`, pas ici : cette fonction ne fait que marquer les dégâts.
+ * Les morts éventuelles (attaquant ET défenseur) sont traitées par
+ * l'appelant (`engine.ts`) via `processDeaths`, pas ici : cette fonction ne
+ * fait que marquer les dégâts.
  */
 export function attack(state: GameState, action: AttackAction): ActionResult {
   const validation = validate(state, action);
@@ -115,6 +117,34 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
     );
     nextState = damagedTrigger.state;
     events.push(...damagedTrigger.events);
+
+    // Riposte : la Puissance effective du défenseur (0 pour un permanent
+    // sans Puissance) blesse l'attaquant en retour, symétriquement.
+    const retaliationDamage = effectiveAttack(defenderUnit, state);
+    if (retaliationDamage > 0) {
+      nextState = {
+        ...nextState,
+        players: nextState.players.map((p) =>
+          p.id === attackerPlayer.id
+            ? {
+                ...p,
+                board: p.board.map((u) =>
+                  u.instanceId === attackerUnit.instanceId ? { ...u, damageMarked: u.damageMarked + retaliationDamage } : u
+                ),
+              }
+            : p
+        ) as [PlayerState, PlayerState],
+      };
+      events.push({ ...base, type: "DAMAGE", targetInstanceId: attackerUnit.instanceId, amount: retaliationDamage });
+
+      const attackerDamagedTrigger = processTrigger(
+        nextState,
+        { trigger: "onDamaged", playerId: attackerPlayer.id, sourceInstanceId: attackerUnit.instanceId },
+        state.turnNumber
+      );
+      nextState = attackerDamagedTrigger.state;
+      events.push(...attackerDamagedTrigger.events);
+    }
   }
 
   const attackTrigger = processTrigger(

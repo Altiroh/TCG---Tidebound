@@ -158,6 +158,57 @@ describe("engine.dispatch - playCard", () => {
     expect(result.state.players[0].reason).toBe(2);
     expect(result.state.players[1].reason).toBe(4);
   });
+
+  it("Marin des Jetées : Marée Montante donne +1 Résistance temporaire (pas de gain de Raison)", () => {
+    const card = instance("marin-des-jetees", "p1"); // coût 1, 1/2 de base
+    const state = testGameState({
+      players: [testPlayer("p1", { hand: [card], reason: 5 }), testPlayer("p2")],
+      environment: testEnvironment({ tideOrientation: "montante" }),
+    });
+
+    const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: card.instanceId });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.players[0].reason).toBe(4); // seulement le coût, pas de gain de Raison
+    const unit = result.state.players[0].board[0]!;
+    expect(computeEffectiveStats(unit, "calme").health).toBe(3); // 2 de base +1
+  });
+
+  it("Marin des Jetées : Marée Descendante récupère 1 Raison (pas de bonus de Résistance)", () => {
+    const card = instance("marin-des-jetees", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { hand: [card], reason: 5 }), testPlayer("p2")],
+      environment: testEnvironment({ tideOrientation: "descendante" }),
+    });
+
+    const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: card.instanceId });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // 5 - 1 (coût) + 1 (effet) = 5.
+    expect(result.state.players[0].reason).toBe(5);
+    const unit = result.state.players[0].board[0]!;
+    expect(computeEffectiveStats(unit, "calme").health).toBe(2); // pas de bonus
+  });
+
+  it("Mousse du Premier Quart récupère 1 Raison si sa Raison est strictement inférieure à celle de l'adversaire", () => {
+    const card = instance("mousse-du-premier-quart", "p1"); // coût 1
+    const behind = testGameState({
+      players: [testPlayer("p1", { hand: [card], reason: 5 }), testPlayer("p2", { reason: 8 })],
+    });
+    const behindResult = dispatch(behind, { type: "playCard", playerId: "p1", instanceId: card.instanceId });
+    expect(behindResult.ok).toBe(true);
+    if (behindResult.ok) expect(behindResult.state.players[0].reason).toBe(5); // 5 - 1 (coût) + 1 (effet) = 5
+
+    const card2 = instance("mousse-du-premier-quart", "p1");
+    const ahead = testGameState({
+      players: [testPlayer("p1", { hand: [card2], reason: 8 }), testPlayer("p2", { reason: 5 })],
+    });
+    const aheadResult = dispatch(ahead, { type: "playCard", playerId: "p1", instanceId: card2.instanceId });
+    expect(aheadResult.ok).toBe(true);
+    if (aheadResult.ok) expect(aheadResult.state.players[0].reason).toBe(7); // seulement le coût, pas de gain
+  });
 });
 
 describe("engine.dispatch - breakObject", () => {
@@ -294,7 +345,7 @@ describe("engine.dispatch - attack", () => {
     expect(second.ok).toBe(false);
   });
 
-  it("un combat unité contre unité n'inflige des dégâts qu'au défenseur (pas de riposte automatique)", () => {
+  it("un combat unité contre unité est MUTUEL : le défenseur riposte avec sa Puissance effective", () => {
     const attacker = instance("requin-balafre", "p1"); // 4/2
     const defender = instance("murene-aveugle", "p2"); // 3/1
     const state = testGameState({
@@ -311,18 +362,77 @@ describe("engine.dispatch - attack", () => {
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    // Le défenseur (1 PV) meurt sous 4 dégâts ; l'attaquant ne subit AUCUN
-    // dégât en retour (règle verrouillée : pas de riposte automatique).
+    // Le défenseur (1 PV) meurt sous 4 dégâts ; l'attaquant (2 PV) riposté
+    // meurt aussi sous les 3 dégâts de retour (combat mutuel, "trade").
     expect(result.state.players[1].board).toHaveLength(0);
-    expect(result.state.players[0].board[0]?.damageMarked).toBe(0);
+    expect(result.state.players[0].board).toHaveLength(0);
+  });
+
+  it("la riposte ne dépasse pas la Puissance effective du défenseur : l'attaquant survit s'il a assez de Résistance", () => {
+    const attacker = instance("requin-balafre", "p1"); // 4/2
+    const defender = instance("poisson-lanterne", "p2"); // 1/1
+    const state = testGameState({
+      phase: "combatPhase",
+      players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2", { board: [defender] })],
+    });
+
+    const result = dispatch(state, {
+      type: "attack",
+      playerId: "p1",
+      attackerInstanceId: attacker.instanceId,
+      defenderInstanceId: defender.instanceId,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.players[1].board).toHaveLength(0); // défenseur mort (1 PV < 4 dégâts)
+    const survivor = result.state.players[0].board.find((u) => u.instanceId === attacker.instanceId);
+    expect(survivor?.damageMarked).toBe(1); // riposte de 1 (Puissance du défenseur), 2 PV encaisse largement
+  });
+
+  it("un permanent sans Puissance (Structure/Objet) ne riposte pas", () => {
+    const attacker = instance("requin-balafre", "p1"); // 4/2
+    const structure = instance("caisses-arrimees", "p2"); // pas d'attaque
+    const state = testGameState({
+      phase: "combatPhase",
+      players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2", { board: [structure] })],
+    });
+
+    const result = dispatch(state, {
+      type: "attack",
+      playerId: "p1",
+      attackerInstanceId: attacker.instanceId,
+      defenderInstanceId: structure.instanceId,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const survivor = result.state.players[0].board.find((u) => u.instanceId === attacker.instanceId);
+    expect(survivor?.damageMarked).toBe(0);
+  });
+
+  it("une attaque directe contre le Navire adverse n'inflige toujours aucun dégât en retour", () => {
+    const attacker = instance("requin-balafre", "p1"); // 4/2
+    const state = testGameState({
+      phase: "combatPhase",
+      players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2", { anchor: 20 })],
+    });
+
+    const result = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attacker.instanceId });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const survivor = result.state.players[0].board.find((u) => u.instanceId === attacker.instanceId);
+    expect(survivor?.damageMarked).toBe(0);
   });
 
   it("Garde : une attaque directe visant le Navire est refusée tant qu'un porteur de Garde est en jeu", () => {
-    const guard = instance("crabe-de-fer", "p2"); // porte le mot-clé "garde"
+    const guard = instance("crabe-de-fer", "p2"); // porte "garde" (sauf pendant Calme, cf. son propre test dédié)
     const attacker = instance("requin-balafre", "p1");
     const state = testGameState({
       phase: "combatPhase",
       players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2", { board: [guard] })],
+      environment: testEnvironment({ tideState: "houle" }),
     });
 
     const direct = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attacker.instanceId });
@@ -335,6 +445,62 @@ describe("engine.dispatch - attack", () => {
       defenderInstanceId: guard.instanceId,
     });
     expect(redirected.ok).toBe(true);
+  });
+
+  it("Garde conditionnel : Crabe de Fer perd Garde pendant Calme, l'attaque directe passe", () => {
+    const guard = instance("crabe-de-fer", "p2");
+    const attacker = instance("requin-balafre", "p1");
+    const state = testGameState({
+      phase: "combatPhase",
+      players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2", { board: [guard] })],
+      // testGameState() par défaut est en Calme.
+    });
+
+    const direct = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attacker.instanceId });
+    expect(direct.ok).toBe(true);
+  });
+
+  it("Garde dynamique : Chose des Hauts-Fonds n'obtient Garde que si son contrôleur a 5 Raison ou moins", () => {
+    const guard = instance("chose-des-hauts-fonds", "p2");
+    const attacker = instance("requin-balafre", "p1");
+    const highReason = testGameState({
+      phase: "combatPhase",
+      players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2", { board: [guard], reason: 6 })],
+    });
+    expect(dispatch(highReason, { type: "attack", playerId: "p1", attackerInstanceId: attacker.instanceId }).ok).toBe(true);
+
+    const lowReason = testGameState({
+      phase: "combatPhase",
+      players: [testPlayer("p1", { board: [instance("requin-balafre", "p1")] }), testPlayer("p2", { board: [instance("chose-des-hauts-fonds", "p2")], reason: 5 })],
+    });
+    const lowAttacker = lowReason.players[0].board[0]!;
+    expect(dispatch(lowReason, { type: "attack", playerId: "p1", attackerInstanceId: lowAttacker.instanceId }).ok).toBe(false);
+  });
+
+  it("Contournement de Garde : Raie des Fosses attaque directement pendant Abysses malgré un porteur de Garde", () => {
+    const guard = instance("crabe-de-fer", "p2");
+    const attacker = instance("raie-des-fosses", "p1");
+    const state = testGameState({
+      phase: "combatPhase",
+      players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2", { board: [guard] })],
+      environment: testEnvironment({ tideState: "abysses" }),
+    });
+
+    const direct = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attacker.instanceId });
+    expect(direct.ok).toBe(true);
+  });
+
+  it("Sans contournement, Raie des Fosses reste soumise à Garde en dehors d'Abysses", () => {
+    const guard = instance("crabe-de-fer", "p2");
+    const attacker = instance("raie-des-fosses", "p1");
+    const state = testGameState({
+      phase: "combatPhase",
+      players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2", { board: [guard] })],
+      environment: testEnvironment({ tideState: "houle" }),
+    });
+
+    const direct = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attacker.instanceId });
+    expect(direct.ok).toBe(false);
   });
 });
 
@@ -501,5 +667,211 @@ describe("engine.dispatch - endTurn : défausse forcée (RULES.MAX_HAND_SIZE)", 
     const p1 = result.state.players.find((p) => p.id === "p1")!;
     expect(p1.hand).toHaveLength(7);
     expect(result.events.some((e) => e.type === "CARD_MOVED")).toBe(false);
+  });
+});
+
+describe("engine.dispatch - playCard : effet conditionnel à la Marée (Poisson-Lanterne)", () => {
+  it("récupère 1 Raison à l'arrivée en jeu si la Marée est Tempête", () => {
+    const card = instance("poisson-lanterne", "p1"); // coût 1
+    const state = testGameState({
+      players: [testPlayer("p1", { hand: [card], reason: 3 }), testPlayer("p2")],
+      environment: testEnvironment({ tideState: "tempete" }),
+    });
+
+    const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: card.instanceId });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // 3 - 1 (coût) + 1 (effet) = 3.
+    expect(result.state.players[0].reason).toBe(3);
+  });
+
+  it("ne récupère rien si la Marée n'est pas Tempête/Abysses", () => {
+    const card = instance("poisson-lanterne", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { hand: [card], reason: 3 }), testPlayer("p2")],
+      environment: testEnvironment({ tideState: "calme" }),
+    });
+
+    const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: card.instanceId });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.players[0].reason).toBe(2);
+  });
+});
+
+describe("engine.dispatch - playCard : attache d'Équipement", () => {
+  it("s'attache à une cible légale et applique son bonus", () => {
+    const equip = instance("harpon-de-pont", "p1"); // Équipez un Marin/Créature : +1 Puissance
+    const target = instance("murene-aveugle", "p1"); // 3/1
+    const state = testGameState({
+      players: [testPlayer("p1", { hand: [equip], board: [target], reason: 5 }), testPlayer("p2")],
+    });
+
+    const result = dispatch(state, {
+      type: "playCard",
+      playerId: "p1",
+      instanceId: equip.instanceId,
+      targetInstanceId: target.instanceId,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const equipOnBoard = result.state.players[0].board.find((u) => u.cardId === "harpon-de-pont");
+    expect(equipOnBoard?.attachedToInstanceId).toBe(target.instanceId);
+  });
+
+  it("refuse une cible d'un type interdit (Harpon de Pont ne peut pas équiper une Structure)", () => {
+    const equip = instance("harpon-de-pont", "p1");
+    const structure = instance("caisses-arrimees", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { hand: [equip], board: [structure], reason: 5 }), testPlayer("p2")],
+    });
+
+    const result = dispatch(state, {
+      type: "playCard",
+      playerId: "p1",
+      instanceId: equip.instanceId,
+      targetInstanceId: structure.instanceId,
+    });
+
+    expect(result.ok).toBe(false);
+  });
+
+  it("respecte la restriction plus étroite d'un Équipement donné (Treuil Rouillé : Structure uniquement)", () => {
+    const equip = instance("treuil-rouille", "p1");
+    const creature = instance("murene-aveugle", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { hand: [equip], board: [creature], reason: 5 }), testPlayer("p2")],
+    });
+
+    const result = dispatch(state, {
+      type: "playCard",
+      playerId: "p1",
+      instanceId: equip.instanceId,
+      targetInstanceId: creature.instanceId,
+    });
+
+    expect(result.ok).toBe(false);
+  });
+
+  it("refuse de cibler un permanent déjà équipé par un autre Équipement", () => {
+    const firstEquip = instance("harpon-de-pont", "p1");
+    const target = instance("murene-aveugle", "p1");
+    const secondEquip = instance("harpon-de-pont", "p1");
+    const state = testGameState({
+      players: [
+        testPlayer("p1", { hand: [secondEquip], board: [{ ...firstEquip, attachedToInstanceId: target.instanceId }, target], reason: 5 }),
+        testPlayer("p2"),
+      ],
+    });
+
+    const result = dispatch(state, {
+      type: "playCard",
+      playerId: "p1",
+      instanceId: secondEquip.instanceId,
+      targetInstanceId: target.instanceId,
+    });
+
+    expect(result.ok).toBe(false);
+  });
+
+  it("refuse de cibler un autre Équipement", () => {
+    const firstEquip = instance("harpon-de-pont", "p1");
+    const secondEquip = instance("plaque-de-fortune", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { hand: [secondEquip], board: [firstEquip], reason: 5 }), testPlayer("p2")],
+    });
+
+    const result = dispatch(state, {
+      type: "playCard",
+      playerId: "p1",
+      instanceId: secondEquip.instanceId,
+      targetInstanceId: firstEquip.instanceId,
+    });
+
+    expect(result.ok).toBe(false);
+  });
+
+  it("se joue sans cible si aucun permanent équipable n'est sur le plateau (\"si possible\")", () => {
+    const equip = instance("plaque-de-fortune", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { hand: [equip], board: [], reason: 5 }), testPlayer("p2")],
+    });
+
+    const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: equip.instanceId });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const equipOnBoard = result.state.players[0].board.find((u) => u.cardId === "plaque-de-fortune");
+    expect(equipOnBoard?.attachedToInstanceId).toBeUndefined();
+  });
+
+  it("exige une cible si au moins un permanent équipable existe", () => {
+    const equip = instance("plaque-de-fortune", "p1");
+    const target = instance("murene-aveugle", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { hand: [equip], board: [target], reason: 5 }), testPlayer("p2")],
+    });
+
+    const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: equip.instanceId });
+
+    expect(result.ok).toBe(false);
+  });
+});
+
+describe("engine.dispatch - Équipement : substitution de destruction (Plaque de Fortune)", () => {
+  it("détruit la Plaque de Fortune à la place du permanent équipé, qui survit avec -1 Résistance permanent", () => {
+    const attacker = instance("requin-balafre", "p1"); // 4/2
+    const target = instance("vieux-loup-de-mer", "p2"); // 2/4
+    const equip = instance("plaque-de-fortune", "p2", { attachedToInstanceId: target.instanceId });
+    const state = testGameState({
+      phase: "combatPhase",
+      players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2", { board: [target, equip] })],
+    });
+
+    const result = dispatch(state, {
+      type: "attack",
+      playerId: "p1",
+      attackerInstanceId: attacker.instanceId,
+      defenderInstanceId: target.instanceId,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const p2 = result.state.players[1];
+    // L'Équipement est détruit à la place de la cible.
+    expect(p2.board.some((u) => u.instanceId === equip.instanceId)).toBe(false);
+    expect(p2.graveyard.some((c) => c.instanceId === equip.instanceId)).toBe(true);
+    // La cible survit, malus permanent de Résistance appliqué.
+    const survivor = p2.board.find((u) => u.instanceId === target.instanceId);
+    expect(survivor).toBeDefined();
+    expect(computeEffectiveStats(survivor!, "calme").health).toBe(3); // 4 - 1
+    expect(survivor!.damageMarked).toBeLessThan(3);
+  });
+
+  it("ne se déclenche qu'une fois : sans Plaque de Fortune en jeu, un permanent déjà affaibli meurt normalement", () => {
+    const attacker = instance("requin-balafre", "p1"); // 4/2
+    // Simule un survivant d'une substitution précédente : malus permanent déjà posé, Plaque déjà consommée (absente du plateau).
+    const weakened = instance("vieux-loup-de-mer", "p2", {
+      damageMarked: 2,
+      modifiers: [{ id: "mod_test", source: "plaque-de-fortune", attack: 0, health: -1, duration: "permanent" }],
+    });
+    const state = testGameState({
+      phase: "combatPhase",
+      players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2", { board: [weakened] })],
+    });
+
+    const result = dispatch(state, {
+      type: "attack",
+      playerId: "p1",
+      attackerInstanceId: attacker.instanceId,
+      defenderInstanceId: weakened.instanceId,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.players[1].board).toHaveLength(0); // mort normalement, plus de Plaque pour la sauver
   });
 });

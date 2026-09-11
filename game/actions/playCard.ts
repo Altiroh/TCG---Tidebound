@@ -1,4 +1,4 @@
-import { getCardDefinition } from "@/game/cards/sets/core";
+import { canBeEquipTarget, getCardDefinition, hasAnyValidEquipTarget } from "@/game/cards/sets/core";
 import { isPermanentCard, UNIT_CARD_TYPES } from "@/game/cards/types";
 import type { EffectContext } from "@/game/effects/resolveEffect";
 import { resolveEffect } from "@/game/effects/resolveEffect";
@@ -49,9 +49,26 @@ function validate(state: GameState, action: PlayCardAction) {
     if (!boardCheck.ok) return boardCheck;
   }
 
+  const attachEffect = (def.onPlayEffects ?? []).find((e) => e.type === "attachEquipment");
   const needsTarget = (def.onPlayEffects ?? []).some((e) => e.target.kind === "chosenUnit");
-  if (needsTarget && !action.targetInstanceId) {
-    return { ok: false as const, error: "Cette carte nécessite une cible." };
+
+  if (needsTarget) {
+    if (attachEffect) {
+      // "Si possible" : un Équipement ne réclame une cible que s'il en
+      // existe au moins une légale sur le plateau du joueur — sinon il se
+      // joue sans lien plutôt que d'être injouable faute de permanent.
+      if (hasAnyValidEquipTarget(def, player!.board) && !action.targetInstanceId) {
+        return { ok: false as const, error: "Cet Équipement nécessite une cible." };
+      }
+      if (action.targetInstanceId) {
+        const target = player!.board.find((u) => u.instanceId === action.targetInstanceId);
+        if (!target || !canBeEquipTarget(def, player!.board, target)) {
+          return { ok: false as const, error: "Cible d'Équipement invalide." };
+        }
+      }
+    } else if (!action.targetInstanceId) {
+      return { ok: false as const, error: "Cette carte nécessite une cible." };
+    }
   }
 
   return { ok: true as const };

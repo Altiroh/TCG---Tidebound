@@ -21,27 +21,48 @@ describe("environnement - emplacements du Navire", () => {
 });
 
 describe("environnement - Marée (modèle durée + intensité)", () => {
-  it("progresse selon les durées d'état (Calme 2, Houle 2) et applique des dégâts environnementaux en Tempête", () => {
-    // Decks non vides : sur 4 endTurn, chaque joueur pioche 2 fois. Un deck
-    // vide déclencherait un Jugement de l'Océan qui terminerait la partie
-    // avant la fin de la boucle.
-    const filler = (ownerId: string) =>
-      Array.from({ length: 2 }, () => instance("marin-des-jetees", ownerId));
-    let state = testGameState({
+  it("progresse d'un état à l'autre une fois par TOUR DE TABLE et applique des dégâts environnementaux en Tempête", () => {
+    // La Marée ne décompte/avance qu'au retour au premier joueur (`turnNumber`
+    // impair après le `endTurn`) — `turnNumber: 2` ici pour que ce seul
+    // `endTurn` amène `turnNumber` à 3 (impair) et déclenche bien le tick.
+    const state = testGameState({
+      turnNumber: 2,
       // p1: Le Brise-Lames (résiste 2 Tempête), p2: L'Errant (aucune résistance Tempête)
-      players: [
-        testPlayer("p1", { deck: filler("p1") }),
-        testPlayer("p2", { shipId: "lerrant", deck: filler("p2") }),
-      ],
+      players: [testPlayer("p1"), testPlayer("p2", { shipId: "lerrant" })],
+      environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 1 }),
     });
-    for (let i = 0; i < 4; i++) {
-      const result = dispatch(state, { type: "endTurn", playerId: state.activePlayerId });
-      expect(result.ok).toBe(true);
-      if (result.ok) state = result.state;
-    }
-    expect(state.environment.tideState).toBe("tempete");
-    expect(state.players[0].anchor).toBe(24); // Le Brise-Lames : résistance 2 > 1 dégât de base, clampé à 0
-    expect(state.players[1].anchor).toBe(19); // L'Errant : 20 - 1
+
+    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.environment.tideState).toBe("tempete");
+    expect(result.state.players[0].anchor).toBe(24); // Le Brise-Lames : résistance 2 > 1 dégât de base, clampé à 0
+    expect(result.state.players[1].anchor).toBe(19); // L'Errant : 20 - 1
+  });
+
+  it("ne progresse PAS au tour du second joueur — seulement au retour au premier (un tour = un tour de table)", () => {
+    // Decks non vides : les 2 endTurn font piocher chaque joueur une fois,
+    // un deck vide déclencherait un Jugement de l'Océan qui terminerait la
+    // partie avant la fin du test.
+    const filler = (ownerId: string) => [instance("marin-des-jetees", ownerId)];
+    // p1 termine son tour (turnNumber 1 -> 2, pair) : pas de tick, la Marée reste figée pour le tour de p2.
+    const afterP1 = testGameState({
+      players: [testPlayer("p1", { deck: filler("p1") }), testPlayer("p2", { deck: filler("p2") })],
+      environment: testEnvironment({ tideState: "tempete", tideRemainingTurns: 1 }),
+    });
+    const resultP1 = dispatch(afterP1, { type: "endTurn", playerId: "p1" });
+    expect(resultP1.ok).toBe(true);
+    if (!resultP1.ok) return;
+    expect(resultP1.state.turnNumber).toBe(2);
+    expect(resultP1.state.environment.tideState).toBe("tempete"); // inchangé : le tour de p2 doit encore se jouer dans cet état.
+    expect(resultP1.state.environment.tideRemainingTurns).toBe(1);
+
+    // p2 termine à son tour (turnNumber 2 -> 3, impair) : le tour de table est complet, la Marée avance enfin.
+    const resultP2 = dispatch(resultP1.state, { type: "endTurn", playerId: "p2" });
+    expect(resultP2.ok).toBe(true);
+    if (!resultP2.ok) return;
+    expect(resultP2.state.turnNumber).toBe(3);
+    expect(resultP2.state.environment.tideState).toBe("abysses");
   });
 
   it("une unité inactive par affinité de Marée (Masse-Sombre pendant Calme) ne peut pas attaquer", () => {
@@ -89,6 +110,7 @@ describe("environnement - Marée (modèle durée + intensité)", () => {
 
   it("ignoreNextTideDamage annule la prochaine perte d'Ancrage de cet état pour ce joueur", () => {
     let state = testGameState({
+      turnNumber: 2, // pair : le endTurn suivant amène turnNumber=3 (impair) => la Marée progresse.
       players: [testPlayer("p1", { shipId: "lerrant" }), testPlayer("p2")],
       environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 1 }),
     });
@@ -120,6 +142,7 @@ describe("environnement - orientation de Marée", () => {
   it("démarre Montante en Calme (createGameState) et bascule Descendante en atteignant les Abysses", () => {
     const filler = (ownerId: string) => Array.from({ length: 2 }, () => instance("marin-des-jetees", ownerId));
     let state = testGameState({
+      turnNumber: 2, // pair : le endTurn suivant amène turnNumber=3 (impair) => la Marée progresse.
       players: [testPlayer("p1", { deck: filler("p1") }), testPlayer("p2", { deck: filler("p2") })],
       environment: testEnvironment({ tideState: "tempete", tideRemainingTurns: 1, tideOrientation: "montante" }),
     });
@@ -134,6 +157,7 @@ describe("environnement - orientation de Marée", () => {
   it("Descendante fait reculer la Marée vers le Calme, jamais au-delà", () => {
     const filler = (ownerId: string) => Array.from({ length: 1 }, () => instance("marin-des-jetees", ownerId));
     const state = testGameState({
+      turnNumber: 2, // pair : le endTurn suivant amène turnNumber=3 (impair) => la Marée progresse.
       players: [testPlayer("p1", { deck: filler("p1") }), testPlayer("p2")],
       environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 1, tideOrientation: "descendante" }),
     });
@@ -173,6 +197,7 @@ describe("environnement - orientation de Marée", () => {
 describe("environnement - malus globaux des Marées (verrouillé, Notion 'Moteur de partie')", () => {
   it("Abysses : à l'entrée, -2 Ancrage (une fois) et -2 Raison max (avec clampage immédiat de la Raison courante)", () => {
     const state = testGameState({
+      turnNumber: 2, // pair : le endTurn suivant amène turnNumber=3 (impair) => la Marée progresse.
       players: [
         testPlayer("p1", { shipId: "lerrant", anchor: 20, reason: 9, reasonMax: 10 }),
         testPlayer("p2", { shipId: "lerrant", anchor: 20, reason: 10, reasonMax: 10 }),
@@ -197,6 +222,7 @@ describe("environnement - malus globaux des Marées (verrouillé, Notion 'Moteur
 
   it("Abysses : le malus de Navire (Équipage à bout, Brise-Lames) ajoute une perte de Raison ponctuelle à l'entrée", () => {
     const state = testGameState({
+      turnNumber: 2, // pair : le endTurn suivant amène turnNumber=3 (impair) => la Marée progresse.
       players: [
         testPlayer("p1", { shipId: "le-brise-lames", anchor: 24, reason: 8, reasonMax: 8 }),
         testPlayer("p2", { shipId: "lerrant" }),
@@ -216,6 +242,7 @@ describe("environnement - malus globaux des Marées (verrouillé, Notion 'Moteur
 
   it("Abysses : à la sortie, la Raison maximale est restaurée", () => {
     const state = testGameState({
+      turnNumber: 2, // pair : le endTurn suivant amène turnNumber=3 (impair) => la Marée progresse.
       players: [
         testPlayer("p1", { shipId: "lerrant", reasonMax: 8, reason: 5 }),
         testPlayer("p2", { shipId: "lerrant" }),
@@ -267,6 +294,7 @@ describe("environnement - malus globaux des Marées (verrouillé, Notion 'Moteur
   it("le statut MALADE est retiré automatiquement (sans dégât ce tour-là) dès que la Marée quitte la Houle", () => {
     const sickUnit = instance("baleine-aux-cicatrices-blanches", "p1", { statuses: [STATUS_MALADE] });
     const state = testGameState({
+      turnNumber: 2, // pair : le endTurn suivant amène turnNumber=3 (impair) => la Marée progresse.
       players: [testPlayer("p1", { board: [sickUnit] }), testPlayer("p2")],
       environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 1, tideOrientation: "montante" }),
     });

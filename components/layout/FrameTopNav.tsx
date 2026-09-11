@@ -8,8 +8,8 @@ interface FrameTopNavProps {
 /** Barre "Retour / Collection / Decks" partagée par les 3 écrans calés sur un cadre plein écran (Collection, liste de decks, éditeur de deck) — même position/style partout, seul l'onglet actif change. */
 export function FrameTopNav({ active }: FrameTopNavProps) {
   return (
-    <div className="absolute left-[1.8%] top-[6.8%]">
-      <div className="flex items-stretch gap-[1cqw]" style={{ fontSize: "1.05cqw" }}>
+    <div className="absolute left-[2%] top-[5.2%]">
+      <div className="flex items-stretch gap-[0.9cqw]" style={{ fontSize: "0.95cqw" }}>
         <Link
           href="/"
           className={`flex items-center gap-[0.5cqw] rounded-md border border-amber-600/60 bg-slate-950/80 px-[1.2cqw] font-semibold transition-colors hover:bg-slate-800/80 ${NAUTICAL_LABEL_CLASS}`}

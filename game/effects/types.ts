@@ -22,6 +22,8 @@ export type EffectType =
   | "transform"
   | "reasonGain"
   | "reasonLoss"
+  /** Attache la source (un Équipement) au permanent choisi (`target: { kind: "chosenUnit" }`) — cf. `EQUIPPABLE_CARD_TYPES`, un seul Équipement par permanent. */
+  | "attachEquipment"
   // --- Environnement : Marée, modèle "durée + intensité" -----------------
   // (cadrage "Mécaniques verrouillées" sections 20-21, orientation 2026-09-10)
   /** Réduit la durée restante de l'état de Marée courant (rapproche la progression). */
@@ -84,4 +86,24 @@ export interface EffectDefinition {
    */
   attackAmount?: EffectAmount;
   healthAmount?: EffectAmount;
+
+  /**
+   * Restreint la résolution de CET effet à certains états de Marée courants
+   * (ex: Poisson-Lanterne, "récupérez 1 Raison" seulement pendant Tempête/
+   * Abysses) — vérifié une fois pour toutes dans `resolveEffect`, avant le
+   * `switch` sur `type`, pour rester utilisable par n'importe quel type
+   * d'effet sans dupliquer la vérification carte par carte.
+   */
+  conditionTideStateIn?: Array<"calme" | "houle" | "tempete" | "abysses">;
+
+  /** Restreint la résolution de CET effet à l'orientation de Marée courante (ex: Marin des Jetées, un effet différent selon Montante/Descendante). Même principe que `conditionTideStateIn`. */
+  conditionOrientationIs?: "montante" | "descendante";
+
+  /**
+   * Restreint la résolution de CET effet à la Raison courante du joueur
+   * contrôleur au moment de la résolution (ex: Mousse du Premier Quart,
+   * "si votre Raison est inférieure à celle de l'adversaire"). Comparée à
+   * `context.controllerId` — jamais à une autre cible.
+   */
+  conditionControllerReasonBelowOpponent?: boolean;
 }

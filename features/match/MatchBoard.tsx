@@ -17,6 +17,7 @@ import {
   type PlayerAction,
   type PlayerId,
 } from "@/game";
+import { needsPlayTarget } from "@/features/match/needsPlayTarget";
 import { Button } from "@/components/ui/Button";
 import { ActionToastStack } from "@/features/match/ActionToastStack";
 import { BoardBackdrop } from "@/features/match/BoardBackdrop";
@@ -98,6 +99,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
   const [dragOverGraveyard, setDragOverGraveyard] = useState(false);
   const [graveyardViewerPlayerId, setGraveyardViewerPlayerId] = useState<PlayerId | null>(null);
   const [detailInstance, setDetailInstance] = useState<CardInstance | null>(null);
+  const [showQuitConfirm, setShowQuitConfirm] = useState(false);
 
   const activePlayerId = state.activePlayerId;
   const humanPlayerId = botPlayerId ? state.players.find((p) => p.id !== botPlayerId)!.id : null;
@@ -187,14 +189,22 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
   }, [activePlayerId, botAwaitingReaction, state.status, botPlayerId, botDifficulty]);
 
   // Abandonner la partie via ÉCHAP plutôt qu'un bouton visible en permanence
-  // à l'écran — libère l'espace pour le board pleine page.
+  // à l'écran — libère l'espace pour le board pleine page. Une fiche de
+  // carte ouverte (`detailInstance`) intercepte la touche en priorité : elle
+  // se ferme seule, sans déclencher la confirmation de sortie derrière.
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onExit();
+      if (e.key !== "Escape") return;
+      if (detailInstance) {
+        setDetailInstance(null);
+        return;
+      }
+      // Bascule : une pression ouvre la confirmation, une seconde l'annule (Échap = "annuler", pas "confirmer").
+      setShowQuitConfirm((current) => !current);
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onExit]);
+  }, [detailInstance]);
 
   function clearSelection() {
     setPending(null);
@@ -244,7 +254,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
     const card = viewerPlayer.hand.find((c) => c.instanceId === instanceId);
     if (!card) return;
     const def = getCardDefinition(card.cardId);
-    const needsTarget = (def.onPlayEffects ?? []).some((e) => e.target.kind === "chosenUnit");
+    const needsTarget = needsPlayTarget(def, viewerPlayer.board);
     setError(null);
     if (needsTarget) {
       setSelectedBoardId(null);
@@ -324,7 +334,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
     // Le suivi pointillé n'a de sens que pour CHOISIR une cible (effet ciblé) — une simple pose sur le
     // plateau n'a pas de cible, la carte tombe sur le premier Slot libre quel que soit l'endroit du dépôt.
     const card = viewerPlayer.hand.find((c) => c.instanceId === instanceId);
-    const needsTarget = card ? (getCardDefinition(card.cardId).onPlayEffects ?? []).some((e2) => e2.target.kind === "chosenUnit") : false;
+    const needsTarget = card ? needsPlayTarget(getCardDefinition(card.cardId), viewerPlayer.board) : false;
     if (needsTarget) {
       const rect = e.currentTarget.getBoundingClientRect();
       setDragAnchor({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
@@ -440,7 +450,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
     const card = viewerPlayer.hand.find((c) => c.instanceId === instanceId);
     if (!card) return;
     const def = getCardDefinition(card.cardId);
-    const needsTarget = (def.onPlayEffects ?? []).some((e2) => e2.target.kind === "chosenUnit");
+    const needsTarget = needsPlayTarget(def, viewerPlayer.board);
     setError(null);
     if (needsTarget) {
       runAction({ type: "playCard", playerId: activePlayerId, instanceId, targetInstanceId });
@@ -487,10 +497,10 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
           <OpponentHandFan cards={otherPlayer.hand} />
         </div>
 
-        {/* Tour, nichée dans le cadre boussole en haut à droite */}
+        {/* Tour, nichée dans le cadre boussole en haut à droite — numéro de TOUR DE TABLE (les deux joueurs ont joué), pas `turnNumber` brut qui compte chaque tour individuel. */}
         <div className="absolute flex items-center justify-center" style={{ left: 1518, top: 272, width: 108 }}>
           <div className="text-center text-xl font-bold uppercase tracking-wide text-slate-100 [font-family:var(--font-card-title)] [text-shadow:0_1px_4px_rgba(0,0,0,0.95),0_0_8px_rgba(0,0,0,0.8)]">
-            Tour {state.turnNumber}
+            Tour {Math.ceil(state.turnNumber / 2)}
           </div>
         </div>
 
@@ -815,6 +825,36 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
           tideState={state.environment.tideState}
           onClose={() => setDetailInstance(null)}
         />
+      )}
+      {showQuitConfirm && (
+        <div
+          className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 p-4 backdrop-blur-md"
+          onClick={() => setShowQuitConfirm(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm rounded-2xl border border-white/15 bg-white/[0.07] p-6 shadow-[0_8px_40px_rgba(0,0,0,0.55)] backdrop-blur-2xl"
+          >
+            <h2 className="text-lg font-semibold text-white">Quitter la partie ?</h2>
+            <p className="mt-2 text-sm text-slate-300">La partie en cours ne sera pas sauvegardée.</p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowQuitConfirm(false)}
+                className="rounded-md border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-slate-100 transition-colors hover:bg-white/20"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={onExit}
+                className="rounded-md bg-rose-600 px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
+              >
+                Quitter
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

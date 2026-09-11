@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import type { GameState } from "@/game";
 import { formatEvent } from "@/features/match/formatEvent";
+import { THICK_TEXT_OUTLINE } from "@/features/match/cardDisplay";
 
 const VISIBLE_COUNT = 10;
 /** Événements trop bavards/redondants pour un fil de lecture — déjà visibles ailleurs à l'écran (jauges, bannière de phase). */
@@ -28,13 +29,15 @@ export function EventFeed({ state }: { state: GameState }) {
   return (
     <div
       ref={containerRef}
-      className="flex h-full flex-col gap-1.5 overflow-y-auto rounded-md border border-white/10 bg-black/70 p-2.5 text-xs leading-snug text-slate-300"
+      className="flex h-full flex-col gap-1.5 overflow-y-auto rounded-md border border-white/15 bg-black/90 p-2.5 text-xs font-medium leading-snug text-slate-100"
     >
       {recent.length === 0 ? (
-        <p className="text-slate-600">Aucun événement pour l&apos;instant.</p>
+        <p className="text-slate-400" style={{ textShadow: THICK_TEXT_OUTLINE }}>
+          Aucun événement pour l&apos;instant.
+        </p>
       ) : (
         recent.map((event, i) => (
-          <p key={`${event.timestamp}-${i}`} className="truncate">
+          <p key={`${event.timestamp}-${i}`} className="truncate" style={{ textShadow: THICK_TEXT_OUTLINE }}>
             {formatEvent(state, event)}
           </p>
         ))

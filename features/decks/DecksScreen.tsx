@@ -101,7 +101,7 @@ export function DecksScreen({ isSignedIn, initialDecks }: DecksScreenProps) {
         className="relative w-full"
         style={{
           aspectRatio: BACKGROUND_ASPECT,
-          width: "min(96vw, 1700px, calc(92vh * 1642 / 958))",
+          width: "min(99vw, calc(97vh * 1642 / 958))",
           containerType: "inline-size",
         }}
       >

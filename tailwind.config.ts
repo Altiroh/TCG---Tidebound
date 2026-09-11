@@ -44,6 +44,17 @@ const config: Config = {
           "85%": { opacity: "1", transform: "translateY(0) scale(1)" },
           "100%": { opacity: "0", transform: "translateY(-4px) scale(0.98)" },
         },
+        // Impact de combat (carte qui encaisse des dégâts) — tremblement +
+        // flash rouge sur la carte ENTIÈRE, plus visible que le seul chiffre
+        // de Résistance (`stat-hit`, conservé pour ce chiffre en plus).
+        "card-impact": {
+          "0%": { transform: "translateX(0)", filter: "brightness(1) drop-shadow(0 0 0 rgba(248,113,113,0))" },
+          "15%": { transform: "translateX(-3%)", filter: "brightness(1.5) drop-shadow(0 0 10px rgba(248,113,113,0.9))" },
+          "30%": { transform: "translateX(3%)", filter: "brightness(1.3) drop-shadow(0 0 8px rgba(248,113,113,0.7))" },
+          "45%": { transform: "translateX(-2%)" },
+          "60%": { transform: "translateX(1%)" },
+          "100%": { transform: "translateX(0)", filter: "brightness(1) drop-shadow(0 0 0 rgba(248,113,113,0))" },
+        },
       },
       animation: {
         "stat-hit": "stat-hit 0.5s ease-out",
@@ -58,6 +69,7 @@ const config: Config = {
         // Notification d'action éphémère (pioche/défausse/Sabordage/destruction) — durée synchronisée
         // avec `TOAST_DURATION_MS` dans `useActionToasts.ts`.
         "toast-in": "toast-in 2.2s ease-in-out forwards",
+        "card-impact": "card-impact 0.45s ease-out",
       },
     },
   },

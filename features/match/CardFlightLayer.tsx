@@ -9,6 +9,10 @@ interface Point {
   y: number;
 }
 
+/** Même gabarit que les cartes en main (`HandFan.BASE_WIDTH`, `w-36` = 144px, ratio 5/7) — trop petite (46×64) auparavant pour bien voir une carte se déplacer vers/depuis la défausse ou la pioche. */
+const FLIGHT_CARD_WIDTH = 144;
+const FLIGHT_CARD_HEIGHT = Math.round((FLIGHT_CARD_WIDTH * 7) / 5);
+
 interface CardFlightLayerProps {
   flights: CardFlight[];
   /** Résout les coordonnées (repère local de `BoardStage`) d'un vol donné — dépend de la mise en page propre à `MatchBoard`/`OnlineBoard` (qui joueur, quelle zone). `null` = vol ignoré (zone inconnue). */
@@ -32,8 +36,8 @@ function FlyingCard({ from, to }: { from: Point; to: Point }) {
       style={{
         left: pos.x,
         top: pos.y,
-        width: 46,
-        height: 64,
+        width: FLIGHT_CARD_WIDTH,
+        height: FLIGHT_CARD_HEIGHT,
         transform: `translate(-50%, -50%) scale(${arrived ? 0.7 : 1})`,
         opacity: arrived ? 0 : 1,
         transition: `left ${FLIGHT_DURATION_MS}ms, top ${FLIGHT_DURATION_MS}ms, transform ${FLIGHT_DURATION_MS}ms, opacity ${FLIGHT_DURATION_MS}ms`,
@@ -44,7 +48,7 @@ function FlyingCard({ from, to }: { from: Point; to: Point }) {
         src={CARD_BACK_SRC}
         alt=""
         draggable={false}
-        className="h-full w-full rounded-md border border-slate-600 object-cover shadow-[0_4px_18px_rgba(0,0,0,0.65)]"
+        className="h-full w-full rounded-xl border border-slate-600 object-cover shadow-[0_8px_28px_rgba(0,0,0,0.7)]"
       />
     </div>
   );

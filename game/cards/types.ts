@@ -23,6 +23,9 @@ export type CardType = "marin" | "creature" | "equipement" | "structure" | "obje
 /** Types de carte considérés comme des unités (peuvent occuper un Slot de combat, attaquer). */
 export const UNIT_CARD_TYPES: readonly CardType[] = ["marin", "creature"];
 
+/** Types de permanent qu'un Équipement peut cibler pour s'y attacher — jamais un autre Équipement/Objet/Anomalie (cadrage confirmé). */
+export const EQUIPPABLE_CARD_TYPES: readonly CardType[] = ["marin", "creature", "structure"];
+
 /** Types de carte qui restent en jeu comme permanents (par défaut) après résolution. */
 export const PERMANENT_CARD_TYPES: readonly CardType[] = [
   "marin",
@@ -58,6 +61,21 @@ export interface TriggeredAbility {
 }
 
 /**
+ * Octroi conditionnel d'un mot-clé, réévalué en direct (jamais posé/retiré
+ * explicitement) — `hasEffectiveKeyword` (`game/rules/validation.ts`) le
+ * combine avec les mots-clés statiques (`CardDefinition.keywords`). Les
+ * deux conditions sont indépendantes ; si les deux sont fournies, TOUTES
+ * doivent être vraies (ET logique).
+ */
+export interface ConditionalKeywordGrant {
+  keyword: string;
+  /** Le CONTRÔLEUR de la carte (pas un joueur quelconque) a au plus cette Raison. */
+  controllerReasonAtMost?: number;
+  /** La Marée courante doit être l'un de ces états. */
+  tideStateIn?: TideStateName[];
+}
+
+/**
  * Définition statique d'une carte : uniquement des données. Aucune carte
  * ne doit porter de logique spécifique en dur dans le code du moteur —
  * tout comportement passe par la combinaison d'effets génériques et de
@@ -89,6 +107,37 @@ export interface CardDefinition {
   keywords?: string[];
 
   /**
+   * Mots-clés obtenus seulement tant qu'une condition dynamique reste
+   * vraie (ex: Chose des Hauts-Fonds, "Tant que vous avez 5 Raison ou
+   * moins, elle gagne Garde") — jamais gravés dans `keywords`, réévalués à
+   * chaque vérification (`hasEffectiveKeyword`, `game/rules/validation.ts`)
+   * plutôt que posés/retirés explicitement à un moment précis.
+   */
+  conditionalKeywords?: ConditionalKeywordGrant[];
+
+  /** Symétrique de `conditionalKeywords` : supprime un mot-clé STATIQUE (`keywords`) tant que la condition reste vraie (ex: Crabe de Fer, "Garde. Perd Garde pendant Calme."). */
+  conditionalKeywordSuppressions?: ConditionalKeywordGrant[];
+
+  /**
+   * Pour une unité ATTAQUANTE : états de Marée pendant lesquels elle peut
+   * attaquer le Navire adverse directement même si un permanent adverse
+   * porte Garde (ex: Raie des Fosses pendant Abysses, Bat-Marin pendant
+   * Tempête/Abysses). `undefined`/tableau vide = jamais de contournement.
+   */
+  bypassesGardeTideStateIn?: TideStateName[];
+
+  /**
+   * Pour un Équipement uniquement : la PREMIÈRE fois que le permanent
+   * équipé (`CardInstance.attachedToInstanceId`) devrait être détruit,
+   * détruit CET Équipement à la place et inflige un malus permanent de
+   * Résistance au permanent sauvé (ex: Plaque de Fortune, -1). Consommé
+   * naturellement : l'Équipement quitte le plateau, ne peut donc pas se
+   * redéclencher. Traité dans `game/state/processDeaths.ts`, AVANT la
+   * collecte normale des morts.
+   */
+  destructionSubstitute?: { healthPenalty: number };
+
+  /**
    * Étiquettes libres utilisées par les Eaux et Navires pour cibler des
    * familles de cartes sans coupler le moteur à une liste fermée de
    * catégories (ex: "equipement", "brume", "abyssal", "observation").
@@ -100,6 +149,15 @@ export interface CardDefinition {
 
   /** Effets résolus immédiatement lorsque la carte est jouée. */
   onPlayEffects?: EffectDefinition[];
+
+  /**
+   * Pour un Équipement uniquement : types de permanent qu'il peut cibler
+   * pour s'y attacher (`attachEquipment`). `undefined` = `EQUIPPABLE_CARD_TYPES`
+   * (Marin/Créature/Structure). Certains Équipements restreignent
+   * davantage leur texte imprimé (ex: "Équipez une Structure" → `["structure"]`)
+   * — jamais un autre Équipement/Objet/Anomalie, quel que soit ce champ.
+   */
+  equipTargetTypes?: CardType[];
 
   /**
    * Pour les Objets uniquement : effets résolus quand l'Objet est brisé
@@ -239,6 +297,17 @@ export interface CardInstance {
 
   /** Posée uniquement une fois la carte dans un cimetière : cause de sa sortie de jeu. */
   graveyardCause?: GraveyardCause;
+
+  /**
+   * Pour un Équipement uniquement : `instanceId` du permanent (Marin/
+   * Créature/Structure, jamais un autre Équipement/Objet/Anomalie) sur
+   * lequel il est attaché — posé par l'effet `attachEquipment` à la pose.
+   * `undefined` = pas (encore) attaché. Toujours revalidé en le résolvant
+   * sur le plateau au moment de l'usage plutôt que synchronisé activement :
+   * si la cible a quitté le jeu, la référence devient simplement caduque
+   * (aucun nettoyage à faire ailleurs).
+   */
+  attachedToInstanceId?: string;
 }
 
 export interface StatModifier {

@@ -1,4 +1,4 @@
-import type { CardDefinition } from "@/game/cards/types";
+import { EQUIPPABLE_CARD_TYPES, type CardDefinition, type CardInstance } from "@/game/cards/types";
 
 /**
  * Set de base ("Core") — catalogue verrouillé sur Notion (`Catalogue de
@@ -64,7 +64,16 @@ export const CORE_SET: CardDefinition[] = [
     text:
       "Quand il arrive en jeu, si la Marée est montante, il gagne +1 Résistance jusqu'à votre prochain tour. Si " +
       "elle est descendante, récupérez 1 Raison.",
-    // non appliqué : branchement conditionnel sur l'orientation à l'ETB non modélisé (l'orientation elle-même existe dans le moteur).
+    onPlayEffects: [
+      {
+        type: "buff",
+        target: { kind: "self" },
+        healthAmount: { kind: "flat", value: 1 },
+        permanent: false,
+        conditionOrientationIs: "montante",
+      },
+      { type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, conditionOrientationIs: "descendante" },
+    ],
   },
   {
     id: "vieux-loup-de-mer",
@@ -105,7 +114,14 @@ export const CORE_SET: CardDefinition[] = [
     attack: 1,
     health: 1,
     text: "Quand il arrive en jeu, si la Marée actuelle est Tempête ou Abysses, récupérez 1 Raison.",
-    // non appliqué : condition sur l'état de Marée courant au moment de l'ETB non modélisée.
+    onPlayEffects: [
+      {
+        type: "reasonGain",
+        target: { kind: "controllerPlayer" },
+        amount: { kind: "flat", value: 1 },
+        conditionTideStateIn: ["tempete", "abysses"],
+      },
+    ],
   },
   {
     id: "chose-des-hauts-fonds",
@@ -115,7 +131,7 @@ export const CORE_SET: CardDefinition[] = [
     attack: 4,
     health: 4,
     text: "Tant que vous avez 5 Raison ou moins, elle gagne Garde.",
-    // non appliqué : octroi dynamique de mot-clé selon un seuil de Raison non modélisé.
+    conditionalKeywords: [{ keyword: "garde", controllerReasonAtMost: 5 }],
   },
   {
     id: "caisses-arrimees",
@@ -157,10 +173,12 @@ export const CORE_SET: CardDefinition[] = [
     text:
       "Équipez un Marin ou une Créature. Il gagne +1 Puissance. S'il attaque directement le Navire adverse, il " +
       "subit 1 dégât après l'attaque.",
+    equipTargetTypes: ["marin", "creature"],
     onPlayEffects: [
+      { type: "attachEquipment", target: { kind: "chosenUnit" } },
       { type: "buff", target: { kind: "chosenUnit" }, attackAmount: { kind: "flat", value: 1 }, permanent: true },
     ],
-    // non appliqué : le contrecoup sur attaque directe n'est pas câblé (seul le bonus de Puissance l'est).
+    // non appliqué : le contrecoup sur attaque directe n'est pas câblé.
   },
   {
     id: "thermos-du-dernier-quart",
@@ -335,7 +353,7 @@ export const CORE_SET: CardDefinition[] = [
     health: 5,
     keywords: ["garde"],
     text: "Garde. Perd Garde pendant Calme.",
-    // non appliqué : la suppression de Garde pendant Calme n'est pas câblée (Garde reste active en permanence).
+    conditionalKeywordSuppressions: [{ keyword: "garde", tideStateIn: ["calme"] }],
   },
   {
     id: "bouee-de-derive",
@@ -382,7 +400,8 @@ export const CORE_SET: CardDefinition[] = [
     text:
       "Équipez un permanent. La première fois qu'il devrait être détruit, détruisez la Plaque de Fortune à la " +
       "place et ce permanent perd 1 Résistance.",
-    // non appliqué : substitution de destruction non modélisée.
+    onPlayEffects: [{ type: "attachEquipment", target: { kind: "chosenUnit" } }],
+    destructionSubstitute: { healthPenalty: 1 },
   },
 
   // ======================================================================
@@ -428,7 +447,7 @@ export const CORE_SET: CardDefinition[] = [
     attack: 3,
     health: 3,
     text: "Pendant Abysses, elle peut attaquer le Navire adverse même si celui-ci est protégé par une carte avec Garde.",
-    // non appliqué : contournement de Garde conditionnel non modélisé.
+    bypassesGardeTideStateIn: ["abysses"],
   },
   {
     id: "poisson-aux-dents-de-verre",
@@ -458,10 +477,12 @@ export const CORE_SET: CardDefinition[] = [
     cost: 1,
     health: 2,
     text: "Équipez une Structure. Elle gagne +1 Résistance. Quand cette Structure quitte le board, piochez 1 carte.",
+    equipTargetTypes: ["structure"],
     onPlayEffects: [
+      { type: "attachEquipment", target: { kind: "chosenUnit" } },
       { type: "buff", target: { kind: "chosenUnit" }, healthAmount: { kind: "flat", value: 1 }, permanent: true },
     ],
-    // non appliqué : la pioche au départ de la Structure équipée n'est pas câblée (l'attache n'est pas suivie après la pose).
+    // non appliqué : la pioche au départ de la Structure équipée n'est pas câblée.
   },
   {
     id: "lampe-de-pont-rouge",
@@ -767,7 +788,14 @@ export const CORE_SET: CardDefinition[] = [
     attack: 1,
     health: 2,
     text: "À son arrivée, si votre Raison est inférieure à celle de l'adversaire, récupérez 1 Raison.",
-    // non appliqué : comparaison dynamique de Raison entre joueurs non modélisée.
+    onPlayEffects: [
+      {
+        type: "reasonGain",
+        target: { kind: "controllerPlayer" },
+        amount: { kind: "flat", value: 1 },
+        conditionControllerReasonBelowOpponent: true,
+      },
+    ],
   },
   {
     // Renommée "Charpentier de Bord" → "Gabière du Grand Large" (Notion "Catalogue de cartes", Lot 05) — id
@@ -1280,7 +1308,7 @@ export const CORE_SET: CardDefinition[] = [
     attack: 2,
     health: 5,
     text: "Si la Marée est Calme, obtient Garde.",
-    // non appliqué : octroi dynamique de Garde selon l'état de Marée non modélisé (même limite que "chose-des-hauts-fonds").
+    conditionalKeywords: [{ keyword: "garde", tideStateIn: ["calme"] }],
   },
   {
     id: "si-raie-ponce",
@@ -1292,7 +1320,10 @@ export const CORE_SET: CardDefinition[] = [
     text:
       "À son arrivée, si la Marée est descendante, récupérez 2 Raison. Si elle est montante, l'adversaire perd " +
       "1 Raison.",
-    // non appliqué : branchement conditionnel sur l'orientation à l'ETB non modélisé (même limite que "marin-des-jetees").
+    onPlayEffects: [
+      { type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 }, conditionOrientationIs: "descendante" },
+      { type: "reasonLoss", target: { kind: "opponentPlayer" }, amount: { kind: "flat", value: 1 }, conditionOrientationIs: "montante" },
+    ],
   },
   {
     id: "bat-marin",
@@ -1304,7 +1335,7 @@ export const CORE_SET: CardDefinition[] = [
     text:
       "Tant que la Marée est Tempête ou Abysses, il peut attaquer directement le Navire adverse même si un " +
       "permanent possède Garde.",
-    // non appliqué : contournement de Garde conditionnel non modélisé (même limite que "raie-des-fosses").
+    bypassesGardeTideStateIn: ["tempete", "abysses"],
   },
   {
     // Corrigée : reprenait par erreur les mêmes stats/texte que la Standard (aucune plus-value réelle) —
@@ -1319,7 +1350,8 @@ export const CORE_SET: CardDefinition[] = [
     text:
       "Tant que la Marée est Tempête ou Abysses, il peut attaquer directement le Navire adverse même si un " +
       "permanent possède Garde. Lorsqu'il inflige des dégâts directs pendant Abysses, l'adversaire perd aussi 1 Raison.",
-    // non appliqué : contournement de Garde conditionnel (même limite que "raie-des-fosses") + perte de Raison réactive au dégât direct non modélisés.
+    bypassesGardeTideStateIn: ["tempete", "abysses"],
+    // non appliqué : la perte de Raison réactive au dégât direct pendant Abysses n'est pas câblée (seul le contournement de Garde l'est).
   },
   {
     id: "chope",
@@ -1345,4 +1377,28 @@ export function getCardDefinition(cardId: string): CardDefinition {
     throw new Error(`Carte inconnue: ${cardId}`);
   }
   return def;
+}
+
+/**
+ * Ce permanent est-il un choix légal pour équiper `equipmentDef` — d'un
+ * type que CET Équipement accepte (`equipmentDef.equipTargetTypes`, sinon
+ * `EQUIPPABLE_CARD_TYPES` par défaut : certains Équipements restreignent
+ * davantage, ex: "Treuil Rouillé" → Structure uniquement) ET pas déjà
+ * équipé par un autre Équipement du même plateau ?
+ */
+export function canBeEquipTarget(
+  equipmentDef: CardDefinition,
+  board: CardInstance[],
+  candidate: CardInstance
+): boolean {
+  const allowedTypes = equipmentDef.equipTargetTypes ?? EQUIPPABLE_CARD_TYPES;
+  if (!allowedTypes.includes(getCardDefinition(candidate.cardId).type)) return false;
+  return !board.some(
+    (u) => u.instanceId !== candidate.instanceId && u.attachedToInstanceId === candidate.instanceId
+  );
+}
+
+/** Au moins un permanent du plateau donné peut-il recevoir cet Équipement ? Détermine si sa pose doit exiger une cible ou peut être jouée sans lien ("si possible"). */
+export function hasAnyValidEquipTarget(equipmentDef: CardDefinition, board: CardInstance[]): boolean {
+  return board.some((u) => canBeEquipTarget(equipmentDef, board, u));
 }

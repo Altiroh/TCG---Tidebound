@@ -156,7 +156,7 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
         className="relative w-full"
         style={{
           aspectRatio: BACKGROUND_ASPECT,
-          width: "min(96vw, 1700px, calc(92vh * 1370 / 795))",
+          width: "min(99vw, calc(97vh * 1370 / 795))",
           containerType: "inline-size",
         }}
       >

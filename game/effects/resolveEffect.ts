@@ -1,5 +1,5 @@
 import type { CardInstance } from "@/game/cards/types";
-import { getCardDefinition } from "@/game/cards/sets/core";
+import { canBeEquipTarget, getCardDefinition } from "@/game/cards/sets/core";
 import type { EffectAmount, EffectDefinition } from "@/game/effects/types";
 import type { GameEvent } from "@/game/events/types";
 import { nextInt } from "@/game/rng";
@@ -135,6 +135,18 @@ export function resolveEffect(
 ): EffectResolution {
   const events: GameEvent[] = [];
   const base = { turnNumber: context.turnNumber, timestamp: Date.now() };
+
+  if (effect.conditionTideStateIn && !effect.conditionTideStateIn.includes(state.environment.tideState)) {
+    return { state, events };
+  }
+  if (effect.conditionOrientationIs && state.environment.tideOrientation !== effect.conditionOrientationIs) {
+    return { state, events };
+  }
+  if (effect.conditionControllerReasonBelowOpponent) {
+    const controller = getPlayer(state, context.controllerId);
+    const opponent = getOpponent(state, context.controllerId);
+    if (!(controller.reason < opponent.reason)) return { state, events };
+  }
 
   switch (effect.type) {
     case "damage": {
@@ -329,6 +341,25 @@ export function resolveEffect(
         events.push({ ...base, type: "REASON_CHANGED", playerId: player.id, delta: -amount });
         nextState = replacePlayer(nextState, { ...player, reason: Math.max(0, player.reason - amount) });
       }
+      return { state: nextState, events };
+    }
+
+    case "attachEquipment": {
+      if (!context.sourceInstanceId || !context.chosenTargetInstanceId) return { state, events };
+
+      const sourceOwner = findUnitOwner(state, context.sourceInstanceId);
+      const sourceInstance = sourceOwner?.board.find((u) => u.instanceId === context.sourceInstanceId);
+      if (!sourceOwner || !sourceInstance) return { state, events };
+      const sourceDef = getCardDefinition(sourceInstance.cardId);
+
+      const targetOwner = findUnitOwner(state, context.chosenTargetInstanceId);
+      const target = targetOwner?.board.find((u) => u.instanceId === context.chosenTargetInstanceId);
+      if (!target || !targetOwner || !canBeEquipTarget(sourceDef, targetOwner.board, target)) return { state, events };
+
+      const nextState = replaceUnit(state, sourceOwner.id, context.sourceInstanceId, (u) => ({
+        ...u,
+        attachedToInstanceId: target.instanceId,
+      }));
       return { state: nextState, events };
     }
 

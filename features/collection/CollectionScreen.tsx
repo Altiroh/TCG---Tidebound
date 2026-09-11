@@ -1,9 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
+import { CORE_SET } from "@/game";
 import { FrameTopNav } from "@/components/layout/FrameTopNav";
-import { CardCollectionPanel, NAUTICAL_CONTROL_CLASS, NAUTICAL_LABEL_CLASS } from "@/features/collection/CardCollectionPanel";
+import { CardCollectionPanel } from "@/features/collection/CardCollectionPanel";
+
+/** Catalogue complet — utilisé quand personne n'est connecté : pas encore de compte, mais on doit quand même pouvoir feuilleter toutes les cartes ("pour l'instant"). */
+const ALL_CARD_IDS = CORE_SET.map((def) => def.id);
 
 const BACKGROUND_SRC = "/assets/collection/background.png";
 /** Dimensions réelles de `background.png` — verrouille le ratio du cadre, cf. `TideboundMenuChest` pour le même principe (une image de cadre entier, des contrôles positionnés en % par-dessus). */
@@ -32,7 +35,7 @@ export function CollectionScreen({ isSignedIn, ownedCardIds }: CollectionScreenP
         className="relative w-full"
         style={{
           aspectRatio: BACKGROUND_ASPECT,
-          width: "min(96vw, 1700px, calc(92vh * 1641 / 958))",
+          width: "min(99vw, calc(97vh * 1641 / 958))",
           containerType: "inline-size",
         }}
       >
@@ -48,31 +51,10 @@ export function CollectionScreen({ isSignedIn, ownedCardIds }: CollectionScreenP
 
         <FrameTopNav active="collection" />
 
-        {isSignedIn ? (
-          <div className="absolute left-[6%] right-[6%] top-[15%] bottom-[13%]">
-            <CardCollectionPanel ownedCardIds={ownedCardIds} mode="browse" />
-          </div>
-        ) : (
-          <div className="absolute left-[6%] right-[6%] top-[23%] bottom-[13%] flex items-center justify-center">
-            <div className="flex flex-col items-center gap-[1.2cqw] text-center" style={{ fontSize: "1.05cqw" }}>
-              <p className={`text-[1.3em] ${NAUTICAL_LABEL_CLASS}`}>Connecte-toi pour voir ta collection</p>
-              <div className="flex gap-[1cqw]">
-                <Link
-                  href="/connexion"
-                  className="rounded-md bg-board-accent px-[1.4em] py-[0.7em] font-semibold text-slate-950 transition-opacity hover:opacity-90"
-                >
-                  Se connecter
-                </Link>
-                <Link
-                  href="/inscription"
-                  className={`rounded-md border px-[1.4em] py-[0.7em] font-semibold transition-colors hover:bg-slate-800/80 ${NAUTICAL_CONTROL_CLASS}`}
-                >
-                  Créer un compte
-                </Link>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Sans compte, on peut quand même feuilleter tout le catalogue pour l'instant — seul un compte connecté restreint la grille aux cartes réellement possédées. */}
+        <div className="absolute left-[6%] right-[6%] top-[15%] bottom-[13%]">
+          <CardCollectionPanel ownedCardIds={isSignedIn ? ownedCardIds : ALL_CARD_IDS} mode="browse" />
+        </div>
       </div>
     </div>
   );

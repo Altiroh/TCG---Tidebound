@@ -42,7 +42,7 @@ export default async function HomePage() {
         <TideboundMenuChest />
       </div>
 
-      <p className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap text-xs text-slate-300 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
+      <div className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap text-xs text-slate-300 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
         {isSignedIn ? (
           <>
             Connecté en tant que <span className="text-slate-100">{displayName}</span> ·{" "}
@@ -61,7 +61,7 @@ export default async function HomePage() {
             Connexion (pour jouer en ligne)
           </Link>
         )}
-      </p>
+      </div>
     </main>
   );
 }

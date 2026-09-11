@@ -25,6 +25,7 @@ import { CardFlightLayer } from "@/features/match/CardFlightLayer";
 import { CargoCluster } from "@/features/match/CargoCluster";
 import { DragTargetingTrail } from "@/features/match/DragTargetingTrail";
 import { EventFeed } from "@/features/match/EventFeed";
+import { needsPlayTarget } from "@/features/match/needsPlayTarget";
 import { GraveyardViewer } from "@/features/match/GraveyardViewer";
 import { HandFan } from "@/features/match/HandFan";
 import { OpponentHandFan } from "@/features/match/OpponentHandFan";
@@ -145,7 +146,7 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
     const card = me.hand.find((c) => c.instanceId === instanceId);
     if (!card) return;
     const def = getCardDefinition(card.cardId);
-    const needsTarget = (def.onPlayEffects ?? []).some((e) => e.target.kind === "chosenUnit");
+    const needsTarget = needsPlayTarget(def, me.board);
     if (needsTarget) {
       setSelectedBoardId(null);
       setSelection({ kind: "playCard", instanceId, needsTarget: true });
@@ -209,7 +210,7 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
     // Le suivi pointillé n'a de sens que pour CHOISIR une cible (effet ciblé) — une simple pose sur le
     // plateau n'a pas de cible, la carte tombe sur le premier Slot libre quel que soit l'endroit du dépôt.
     const card = me.hand.find((c) => c.instanceId === instanceId);
-    const needsTarget = card ? (getCardDefinition(card.cardId).onPlayEffects ?? []).some((e2) => e2.target.kind === "chosenUnit") : false;
+    const needsTarget = card ? needsPlayTarget(getCardDefinition(card.cardId), me.board) : false;
     if (needsTarget) {
       const rect = e.currentTarget.getBoundingClientRect();
       setDragAnchor({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
@@ -315,7 +316,7 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
     const card = me.hand.find((c) => c.instanceId === instanceId);
     if (!card) return;
     const def = getCardDefinition(card.cardId);
-    const needsTarget = (def.onPlayEffects ?? []).some((e2) => e2.target.kind === "chosenUnit");
+    const needsTarget = needsPlayTarget(def, me.board);
     if (needsTarget) {
       act({ type: "playCard", playerId: myUserId, instanceId, targetInstanceId });
     } else {
@@ -360,10 +361,10 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
           <OpponentHandFan cards={opponent.hand} />
         </div>
 
-        {/* Tour, nichée dans le cadre boussole en haut à droite */}
+        {/* Tour, nichée dans le cadre boussole en haut à droite — numéro de TOUR DE TABLE (les deux joueurs ont joué), pas `turnNumber` brut qui compte chaque tour individuel. */}
         <div className="absolute flex items-center justify-center" style={{ left: 1518, top: 272, width: 108 }}>
           <div className="text-center text-xl font-bold uppercase tracking-wide text-slate-100 [font-family:var(--font-card-title)] [text-shadow:0_1px_4px_rgba(0,0,0,0.95),0_0_8px_rgba(0,0,0,0.8)]">
-            Tour {state.turnNumber}
+            Tour {Math.ceil(state.turnNumber / 2)}
           </div>
         </div>
 
