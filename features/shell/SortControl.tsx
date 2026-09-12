@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import styles from "@/features/collection/CollectionScreen.module.css";
+import styles from "@/features/shell/ScreenShell.module.css";
 import { SORT_OPTIONS, type SortMode } from "@/features/collection/cardFilters";
 import { playButtonClick } from "@/lib/sound";
 
@@ -10,7 +10,13 @@ interface SortControlProps {
   onChange: (value: SortMode) => void;
 }
 
-/** "SORT: NAME ▼" — ancré en haut à droite DU PANNEAU (cf. `.sortControl`), jamais de l'écran entier. */
+/**
+ * « Trier : Nom ⌄ » — du texte posé directement sur le papier (précédé d'un
+ * court filet de laiton), et non une plaque beige à contour et à capitales.
+ * Ancré en haut à droite de la SURFACE qui le contient (cf. `.inkControl`),
+ * jamais de l'écran entier : la Collection l'ancre sur toute la largeur,
+ * l'éditeur de deck sur sa seule colonne de gauche.
+ */
 export function SortControl({ value, onChange }: SortControlProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -33,28 +39,34 @@ export function SortControl({ value, onChange }: SortControlProps) {
   }, [open]);
 
   return (
-    <div ref={rootRef} className={styles.sortControl}>
+    <div ref={rootRef} className={styles.inkControl}>
+      <span className={styles.inkRule} aria-hidden />
+
       <button
         type="button"
-        className={styles.sortButton}
+        className={styles.inkButton}
+        aria-expanded={open}
+        aria-haspopup="listbox"
         onClick={() => {
           playButtonClick();
           setOpen((v) => !v);
         }}
       >
-        Sort: {current?.label ?? value}
-        <span aria-hidden style={{ transform: open ? "rotate(180deg)" : undefined, display: "inline-block" }}>
-          ▾
+        Trier&nbsp;: <span className={styles.inkValue}>{current?.label ?? value}</span>
+        <span className={open ? styles.inkCaretOpen : styles.inkCaret} aria-hidden>
+          ⌄
         </span>
       </button>
 
       {open && (
-        <div className={styles.sortMenu}>
+        <div className={styles.inkMenu} role="listbox">
           {SORT_OPTIONS.map((opt) => (
             <button
               key={opt.value}
               type="button"
-              className={opt.value === value ? styles.sortOptionActive : styles.sortOption}
+              role="option"
+              aria-selected={opt.value === value}
+              className={opt.value === value ? styles.inkOptionActive : styles.inkOption}
               onClick={() => {
                 playButtonClick();
                 onChange(opt.value);

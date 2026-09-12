@@ -1,22 +1,26 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { getCardDefinition, getMaxCopies, getShipDefinition, RULES } from "@/game";
+import { CORE_SET, getCardDefinition, getMaxCopies, getShipDefinition, RULES, type CardType } from "@/game";
 import { deleteDeck, duplicateDeck, saveDeck } from "@/app/decks/actions";
+import { compareCards, normalizeSearch, type SortMode } from "@/features/collection/cardFilters";
 import { DEFAULT_SHIP_ID } from "@/features/decks/constants";
-import { GameButton } from "@/components/game-ui/GameButton";
-import { GameIconButton } from "@/components/game-ui/GameIconButton";
-import { GameInput } from "@/components/game-ui/GameInput";
-import { GameModal } from "@/components/game-ui/GameModal";
-import { GamePanel } from "@/components/game-ui/GamePanel";
-import { SegmentedControl } from "@/components/game-ui/SegmentedControl";
-import { BORDER_SUBTLE, RADIUS_SM, SHADOW_FLOATING, TEXT_PRIMARY, TEXT_SECONDARY, TRANSITION } from "@/components/game-ui/tokens";
-import { CardCollectionPanel } from "@/features/collection/CardCollectionPanel";
 import { DeckCapacityGauge } from "@/features/decks/DeckCapacityGauge";
+import { DeckCardPicker } from "@/features/decks/DeckCardPicker";
 import { DeckSlotRow } from "@/features/decks/DeckSlotRow";
 import { DeleteDeckDialog } from "@/features/decks/DeleteDeckDialog";
+import { PaperDialog } from "@/features/shell/PaperDialog";
+import { PaperSurface } from "@/features/shell/PaperSurface";
+import { ScreenHeader } from "@/features/shell/ScreenHeader";
+import { ScreenShell } from "@/features/shell/ScreenShell";
+import { SearchLine } from "@/features/shell/SearchLine";
+import { SortControl } from "@/features/shell/SortControl";
+import { TypeFilterRow } from "@/features/shell/TypeFilterRow";
+import { UtilityBar } from "@/features/shell/UtilityBar";
+import shell from "@/features/shell/ScreenShell.module.css";
+import styles from "@/features/decks/DeckScreens.module.css";
+import { playButtonClick } from "@/lib/sound";
 
 const DRAG_MIME = "text/tidebound-card-id";
 
@@ -41,12 +45,17 @@ interface DeckEditorScreenProps {
 type UnsavedAction = "new" | null;
 
 /**
- * Éditeur de deck — même famille visuelle que `CollectionScreen`/
- * `DecksScreen`. Deux zones : à gauche `CardCollectionPanel` en mode
- * `pick` (clic/glisser = ajoute au deck), à droite un panneau compact
- * (nom, liste numérotée, jauge, actions). L'action PRINCIPALE ("Sauvegarder")
- * est le seul bouton plein de l'écran ; "Dupliquer"/"Supprimer" se cachent
- * derrière un menu "..." tant qu'on ne les demande pas.
+ * Éditeur de deck — même coquille que la Collection et la liste des decks
+ * (`features/shell`). La surface de papier est ici partagée en deux
+ * colonnes séparées par un UNIQUE filet de laiton : à gauche les cartes
+ * possédées (clic ou glisser = ajoute au deck), à droite le manifeste du
+ * deck, écrit sur la même feuille — pas un second panneau posé par-dessus.
+ *
+ * Les contrôles du sélecteur (filtres, recherche) descendent dans la barre
+ * utilitaire, exactement là où la Collection les place ; le tri reste posé
+ * sur le papier, en haut à droite de SA colonne. L'action primaire de
+ * l'écran ("Sauvegarder") occupe la place qu'occupe "Créer un deck"
+ * ailleurs — d'un écran à l'autre, rien ne bouge de place.
  */
 export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreenProps) {
   const router = useRouter();
@@ -62,6 +71,26 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [pendingUnsavedAction, setPendingUnsavedAction] = useState<UnsavedAction>(null);
   const savedFlashTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Contrôles du sélecteur de cartes — tenus ici parce que leur UI vit dans
+  // la barre utilitaire (filtres, recherche) et sur le papier (tri), pas
+  // dans la grille elle-même.
+  const [activeType, setActiveType] = useState<CardType | null>(null);
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<SortMode>("name");
+  const [isDropping, setIsDropping] = useState(false);
+
+  const ownedSet = useMemo(() => new Set(ownedCardIds), [ownedCardIds]);
+
+  const pickerCards = useMemo(() => {
+    const query = normalizeSearch(search.trim());
+    return CORE_SET.filter((def) => {
+      if (!ownedSet.has(def.id)) return false;
+      if (activeType && def.type !== activeType) return false;
+      if (query && !normalizeSearch(def.name).includes(query)) return false;
+      return true;
+    }).sort((a, b) => compareCards(a, b, sort));
+  }, [ownedSet, activeType, search, sort]);
 
   const isDirty = serializeState(name, cardIds) !== savedSnapshot;
   const shipName = (() => {
@@ -152,7 +181,12 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
     if (result.ok) router.push("/decks");
   }
 
-  const rowCount = useMemo(() => cardIds.length, [cardIds]);
+  useEffect(
+    () => () => {
+      if (savedFlashTimeout.current) clearTimeout(savedFlashTimeout.current);
+    },
+    []
+  );
 
   useEffect(() => {
     if (!moreMenuOpen) return;
@@ -164,138 +198,153 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
   }, [moreMenuOpen]);
 
   return (
-    <div
-      className="fixed inset-0 flex flex-col gap-6 p-6 sm:p-10"
-      style={{ background: "radial-gradient(ellipse at 50% -10%, var(--surface-1) 0%, var(--surface-0) 60%)" }}
-    >
-      <div className="flex shrink-0 items-center gap-6">
-        <Link
-          href="/"
-          className={`flex items-center gap-1.5 text-sm font-medium ${TEXT_SECONDARY} transition-colors hover:${TEXT_PRIMARY}`}
-        >
-          <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
-            <path d="M15 5l-7 7 7 7" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          Retour
-        </Link>
-        <SegmentedControl
-          value="decks"
-          options={[
-            { value: "collection", label: "Collection" },
-            { value: "decks", label: "Decks" },
-          ]}
-          onChange={(v) => router.push(v === "collection" ? "/collection" : "/decks")}
-        />
-      </div>
+    <ScreenShell>
+      <ScreenHeader active="decks" />
 
-      <div className="flex min-h-0 flex-1 gap-6">
-        {/* Gauche : collection possédée, mode "pick" (clic/glisser = ajoute au deck). */}
-        <div className="min-w-0 flex-1">
-          <CardCollectionPanel ownedCardIds={ownedCardIds} mode="pick" onPick={addCard} />
-        </div>
-
-        {/* Droite : deck en cours d'édition. */}
-        <GamePanel className="flex w-72 shrink-0 flex-col gap-3 p-4">
-          <GameInput value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom du deck" />
-
-          <div
-            className="min-h-0 flex-1 overflow-y-auto rounded-md bg-black/20 p-1"
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => {
-              e.preventDefault();
-              const cardId = e.dataTransfer.getData(DRAG_MIME);
-              if (cardId) addCard(cardId);
-            }}
-          >
-            {cardIds.length === 0 ? (
-              <p className={`p-3 text-center text-sm ${TEXT_SECONDARY}`}>Clique ou glisse une carte depuis la collection pour l&apos;ajouter.</p>
-            ) : (
-              <div className="flex flex-col gap-0.5">
-                {cardIds.map((cardId, index) => (
-                  <DeckSlotRow key={`${cardId}-${index}`} index={index + 1} cardId={cardId} onRemove={() => removeCardAt(index)} />
-                ))}
-              </div>
-            )}
+      <PaperSurface>
+        <div className={styles.editor}>
+          <div className={styles.pickerColumn}>
+            <SortControl value={sort} onChange={setSort} />
+            <DeckCardPicker cards={pickerCards} onPick={addCard} hasAnyCards={ownedCardIds.length > 0} />
           </div>
 
-          <DeckCapacityGauge count={rowCount} min={RULES.DECK_SIZE_MIN} max={RULES.DECK_SIZE_MAX} />
+          <div className={styles.editorRule} aria-hidden />
 
-          {saveError && <p className="text-sm text-[var(--danger)]">{saveError}</p>}
+          <div className={styles.ledger}>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Nom du deck"
+              className={styles.deckNameInput}
+              aria-label="Nom du deck"
+            />
 
-          <div className="flex items-center gap-2">
-            <GameButton variant="primary" onClick={handleSave} disabled={isSaving} className="flex-1">
-              {isSaving ? "Sauvegarde..." : savedFlash ? "Enregistré ✓" : "Sauvegarder"}
-            </GameButton>
-            <div className="relative" onClick={(e) => e.stopPropagation()}>
-              <GameIconButton onClick={() => setMoreMenuOpen((v) => !v)} aria-label="Plus d'options">
-                <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
+            <div className={styles.ledgerLabel}>Manifeste</div>
+
+            <div
+              className={isDropping ? styles.slotScrollDropping : styles.slotScroll}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDropping(true);
+              }}
+              onDragLeave={() => setIsDropping(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsDropping(false);
+                const cardId = e.dataTransfer.getData(DRAG_MIME);
+                if (cardId) addCard(cardId);
+              }}
+            >
+              {cardIds.length === 0 ? (
+                <p className={styles.slotDropHint}>Clique ou glisse une carte depuis la colonne de gauche pour l&apos;ajouter.</p>
+              ) : (
+                cardIds.map((cardId, index) => (
+                  <DeckSlotRow key={`${cardId}-${index}`} index={index + 1} cardId={cardId} onRemove={() => removeCardAt(index)} />
+                ))
+              )}
+            </div>
+
+            <DeckCapacityGauge count={cardIds.length} min={RULES.DECK_SIZE_MIN} max={RULES.DECK_SIZE_MAX} />
+
+            {saveError && <p className={styles.ledgerError}>{saveError}</p>}
+
+            <p className={styles.ledgerNote}>
+              Navire : {shipName} · valide entre {RULES.DECK_SIZE_MIN} et {RULES.DECK_SIZE_MAX} cartes
+            </p>
+          </div>
+        </div>
+      </PaperSurface>
+
+      <UtilityBar
+        left={
+          <>
+            <button
+              type="button"
+              className={savedFlash ? shell.primaryActionDone : shell.primaryAction}
+              onClick={() => {
+                playButtonClick();
+                void handleSave();
+              }}
+              disabled={isSaving}
+            >
+              {isSaving ? "Sauvegarde…" : savedFlash ? "Enregistré ✓" : "Sauvegarder"}
+            </button>
+
+            <button type="button" className={shell.ghostAction} onClick={handleNewDeck}>
+              <span className={shell.plus} aria-hidden>
+                +
+              </span>
+              Nouveau deck
+            </button>
+
+            {/* `stopPropagation` : le listener global de fermeture (cf. `moreMenuOpen`)
+                refermerait le menu dans le même clic que celui qui l'ouvre. */}
+            <div style={{ position: "relative" }} onClick={(e) => e.stopPropagation()}>
+              <button
+                type="button"
+                className={shell.ghostAction}
+                onClick={() => setMoreMenuOpen((v) => !v)}
+                aria-label="Plus d'options"
+                aria-expanded={moreMenuOpen}
+              >
+                <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" aria-hidden>
                   <circle cx="5" cy="12" r="1.6" fill="currentColor" />
                   <circle cx="12" cy="12" r="1.6" fill="currentColor" />
                   <circle cx="19" cy="12" r="1.6" fill="currentColor" />
                 </svg>
-              </GameIconButton>
+              </button>
+
               {moreMenuOpen && (
-                <div
-                  className={`absolute right-0 top-full z-50 mt-1.5 w-36 overflow-hidden bg-[var(--surface-glass)] backdrop-blur-xl py-1 ${BORDER_SUBTLE} ${RADIUS_SM} ${SHADOW_FLOATING}`}
-                >
-                  <button
-                    type="button"
-                    disabled={!deckId}
-                    onClick={handleDuplicate}
-                    className={`block w-full px-3 py-1.5 text-left text-sm ${TEXT_PRIMARY} ${TRANSITION} hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40`}
-                  >
+                <div className={shell.inkMenuUp}>
+                  <button type="button" className={shell.inkOption} disabled={!deckId} onClick={handleDuplicate}>
                     Dupliquer
                   </button>
+                  <div className={shell.inkMenuRule} />
                   <button
                     type="button"
+                    className={shell.inkOptionDanger}
                     disabled={!deckId}
                     onClick={() => {
                       setMoreMenuOpen(false);
                       setDeleteConfirm(true);
                     }}
-                    className={`block w-full px-3 py-1.5 text-left text-sm text-[var(--danger)] ${TRANSITION} hover:bg-[var(--danger)]/10 disabled:cursor-not-allowed disabled:opacity-40`}
                   >
                     Supprimer
                   </button>
                 </div>
               )}
             </div>
-          </div>
-
-          <GameButton variant="ghost" onClick={handleNewDeck} className="justify-center">
-            <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
-              <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
-            </svg>
-            Nouveau deck
-          </GameButton>
-
-          <p className={`text-center text-xs ${TEXT_SECONDARY}`}>
-            Navire : {shipName} · valide entre {RULES.DECK_SIZE_MIN} et {RULES.DECK_SIZE_MAX} cartes
-          </p>
-        </GamePanel>
-      </div>
+          </>
+        }
+        center={<TypeFilterRow activeType={activeType} onChange={setActiveType} />}
+        right={<SearchLine value={search} onChange={setSearch} placeholder="Rechercher une carte…" label="Rechercher une carte" />}
+      />
 
       {pendingUnsavedAction && (
-        <GameModal onClose={() => setPendingUnsavedAction(null)} className="w-full max-w-sm">
-          <h2 className={`text-lg font-semibold ${TEXT_PRIMARY}`}>Modifications non sauvegardées</h2>
-          <p className={`mt-2 text-sm ${TEXT_SECONDARY}`}>Veux-tu enregistrer « {name} » avant de créer un nouveau deck ?</p>
-          <div className="mt-5 flex flex-wrap justify-end gap-2">
-            <GameButton variant="secondary" onClick={() => setPendingUnsavedAction(null)}>
-              Annuler
-            </GameButton>
-            <GameButton variant="secondary" onClick={handleUnsavedDiscard}>
-              Ne pas enregistrer
-            </GameButton>
-            <GameButton variant="primary" onClick={handleUnsavedSave}>
-              Enregistrer
-            </GameButton>
-          </div>
-        </GameModal>
+        <PaperDialog
+          title="Modifications non sauvegardées"
+          onClose={() => setPendingUnsavedAction(null)}
+          actions={
+            <>
+              <button type="button" className={shell.dialogGhost} onClick={() => setPendingUnsavedAction(null)}>
+                Annuler
+              </button>
+              <button type="button" className={shell.dialogGhost} onClick={handleUnsavedDiscard}>
+                Ne pas enregistrer
+              </button>
+              <button type="button" className={shell.dialogConfirm} onClick={() => void handleUnsavedSave()}>
+                Enregistrer
+              </button>
+            </>
+          }
+        >
+          <p className={shell.dialogText}>Veux-tu enregistrer « {name} » avant de créer un nouveau deck ?</p>
+        </PaperDialog>
       )}
 
       {deleteConfirm && (
         <DeleteDeckDialog deckName={name} isDeleting={false} onConfirm={handleDelete} onCancel={() => setDeleteConfirm(false)} />
       )}
-    </div>
+    </ScreenShell>
   );
 }

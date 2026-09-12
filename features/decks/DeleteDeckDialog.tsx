@@ -1,7 +1,7 @@
 "use client";
 
-import { GameButton } from "@/components/game-ui/GameButton";
-import { GameModal } from "@/components/game-ui/GameModal";
+import { PaperDialog } from "@/features/shell/PaperDialog";
+import shell from "@/features/shell/ScreenShell.module.css";
 
 interface DeleteDeckDialogProps {
   deckName: string;
@@ -10,20 +10,24 @@ interface DeleteDeckDialogProps {
   onCancel: () => void;
 }
 
-/** Confirmation de suppression, sur `GameModal`. */
+/** Confirmation de suppression, sur `PaperDialog` (feuille de papier, encre, un filet de laiton). */
 export function DeleteDeckDialog({ deckName, isDeleting, onConfirm, onCancel }: DeleteDeckDialogProps) {
   return (
-    <GameModal onClose={onCancel} className="w-full max-w-sm">
-      <h2 className="text-lg font-semibold text-[var(--text-primary)]">Supprimer « {deckName} » ?</h2>
-      <p className="mt-2 text-sm text-[var(--text-secondary)]">Cette action est définitive et supprimera toutes les cartes de ce deck.</p>
-      <div className="mt-5 flex justify-end gap-2">
-        <GameButton variant="secondary" onClick={onCancel}>
-          Annuler
-        </GameButton>
-        <GameButton variant="danger" onClick={onConfirm} disabled={isDeleting}>
-          {isDeleting ? "Suppression..." : "Supprimer"}
-        </GameButton>
-      </div>
-    </GameModal>
+    <PaperDialog
+      title={`Supprimer « ${deckName} » ?`}
+      onClose={onCancel}
+      actions={
+        <>
+          <button type="button" className={shell.dialogGhost} onClick={onCancel}>
+            Annuler
+          </button>
+          <button type="button" className={shell.dialogDanger} onClick={onConfirm} disabled={isDeleting}>
+            {isDeleting ? "Suppression…" : "Supprimer"}
+          </button>
+        </>
+      }
+    >
+      <p className={shell.dialogText}>Cette action est définitive et supprimera toutes les cartes de ce deck.</p>
+    </PaperDialog>
   );
 }

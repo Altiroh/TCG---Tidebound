@@ -1,17 +1,23 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { CORE_SET, type CardType } from "@/game";
-import styles from "@/features/collection/CollectionScreen.module.css";
-import { CollectionHeader } from "@/features/collection/CollectionHeader";
-import { CollectionPanel } from "@/features/collection/CollectionPanel";
-import { CollectionToolbar } from "@/features/collection/CollectionToolbar";
 import { compareCards, normalizeSearch, type SortMode } from "@/features/collection/cardFilters";
 import { useDebouncedValue } from "@/features/collection/useDebouncedValue";
+import { CardGrid } from "@/features/collection/CardGrid";
+import { PaperSurface } from "@/features/shell/PaperSurface";
+import { ScreenHeader } from "@/features/shell/ScreenHeader";
+import { ScreenShell } from "@/features/shell/ScreenShell";
+import { SearchLine } from "@/features/shell/SearchLine";
+import { SortControl } from "@/features/shell/SortControl";
+import { TypeFilterRow } from "@/features/shell/TypeFilterRow";
+import { UtilityBar } from "@/features/shell/UtilityBar";
+import shell from "@/features/shell/ScreenShell.module.css";
 import { GameModal } from "@/components/game-ui/GameModal";
 import { CardInfoPanel } from "@/features/match/CardInfoPanel";
 import { CardTile } from "@/features/match/CardTile";
+import { playButtonClick } from "@/lib/sound";
+import Link from "next/link";
 
 /** Catalogue complet — utilisé quand personne n'est connecté : pas encore de compte, mais on doit quand même pouvoir feuilleter toutes les cartes ("pour l'instant"). */
 const ALL_CARD_IDS = CORE_SET.map((def) => def.id);
@@ -23,14 +29,16 @@ interface CollectionScreenProps {
 }
 
 /**
- * Écran Collection — reconstruction en zones indépendantes (Header / Panel /
- * Toolbar via CSS Grid, cf. `CollectionScreen.module.css`) de l'ambiance
- * maritime/parchemin/laiton de la maquette fournie. Aucune coordonnée n'est
- * calée sur une résolution donnée : chaque zone est responsive et calcule sa
- * propre taille via `clamp()`/`minmax()`/`1fr`.
+ * Écran Collection — monté sur la coquille partagée (`features/shell`) :
+ * header/panorama, surface de papier, barre utilitaire. Seule la grille de
+ * cartes et son chargement progressif lui appartiennent en propre.
+ *
+ * Les cartes sont la priorité visuelle de l'écran : le décor qui les
+ * entoure est délibérément discret (aucun cadre, un papier désaturé, des
+ * contrôles sans boîte), et elles sont les seuls objets autorisés à porter
+ * du relief et une ombre portée.
  */
 export function CollectionScreen({ isSignedIn, ownedCardIds }: CollectionScreenProps) {
-  const router = useRouter();
   const ownedSet = useMemo(() => new Set(isSignedIn ? ownedCardIds : ALL_CARD_IDS), [isSignedIn, ownedCardIds]);
 
   const [activeType, setActiveType] = useState<CardType | null>(null);
@@ -74,23 +82,34 @@ export function CollectionScreen({ isSignedIn, ownedCardIds }: CollectionScreenP
   }, [detailCardId]);
 
   return (
-    <div className={styles.screen}>
-      <CollectionHeader
-        active="collection"
-        onNavigate={(tab) => {
-          if (tab === "decks") router.push("/decks");
-        }}
-      />
+    <ScreenShell>
+      <ScreenHeader active="collection" />
 
-      <CollectionPanel
-        cards={filteredCards}
-        hasAnyCards={filteredCards.length > 0}
-        onCardClick={setDetailCardId}
-        sort={sort}
-        onSortChange={setSort}
-      />
+      <PaperSurface>
+        <SortControl value={sort} onChange={setSort} />
+        <CardGrid
+          cards={filteredCards}
+          onCardClick={setDetailCardId}
+          // Ce que possède le joueur, PAS ce que le filtre laisse passer :
+          // `filteredCards.length > 0` valait toujours `false` là où la grille
+          // est vide, et une recherche sans résultat affichait donc le message
+          // "tu ne possèdes encore aucune carte" à un joueur qui en a.
+          hasAnyCards={ownedSet.size > 0}
+        />
+      </PaperSurface>
 
-      <CollectionToolbar activeType={activeType} onTypeChange={setActiveType} search={search} onSearchChange={setSearch} />
+      <UtilityBar
+        left={
+          <Link href="/decks/nouveau" className={shell.primaryAction} onClick={() => playButtonClick()}>
+            <span className={shell.plus} aria-hidden>
+              +
+            </span>
+            Créer un deck
+          </Link>
+        }
+        center={<TypeFilterRow activeType={activeType} onChange={setActiveType} />}
+        right={<SearchLine value={search} onChange={setSearch} placeholder="Rechercher une carte…" label="Rechercher une carte" />}
+      />
 
       {detailCardId && (
         <GameModal onClose={() => setDetailCardId(null)} className="!bg-transparent !shadow-none !p-0">
@@ -153,6 +172,6 @@ export function CollectionScreen({ isSignedIn, ownedCardIds }: CollectionScreenP
           </div>
         </GameModal>
       )}
-    </div>
+    </ScreenShell>
   );
 }

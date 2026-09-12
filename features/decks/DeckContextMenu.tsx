@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { BORDER_SUBTLE, RADIUS_SM, SHADOW_FLOATING, TEXT_PRIMARY, TRANSITION } from "@/components/game-ui/tokens";
+import shell from "@/features/shell/ScreenShell.module.css";
 
 export interface DeckContextMenuProps {
   x: number;
@@ -13,7 +13,14 @@ export interface DeckContextMenuProps {
   onClose: () => void;
 }
 
-/** Menu contextuel façon clic droit Windows, redessiné avec les tokens de la refonte — mêmes déclencheurs de fermeture (clic extérieur, Échap) qu'un menu natif. */
+/**
+ * Menu contextuel du clic droit — même feuille de papier que le menu de
+ * tri (`shell.inkMenuFixed`), simplement positionnée à la souris, plutôt
+ * que le verre fumé sombre des tokens `game-ui` : sur cet écran, un menu
+ * est une note posée sur la table.
+ *
+ * Mêmes déclencheurs de fermeture qu'un menu natif (clic extérieur, Échap).
+ */
 export function DeckContextMenu({ x, y, onRename, onEdit, onDuplicate, onDelete, onClose }: DeckContextMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ x, y });
@@ -43,29 +50,19 @@ export function DeckContextMenu({ x, y, onRename, onEdit, onDuplicate, onDelete,
     };
   }, [onClose]);
 
-  const itemClass = `flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm ${TEXT_PRIMARY} ${TRANSITION} hover:bg-white/5`;
-
   return (
-    <div
-      ref={ref}
-      style={{ left: pos.x, top: pos.y }}
-      className={`fixed z-[70] w-48 overflow-hidden bg-[var(--surface-glass)] backdrop-blur-xl py-1.5 ${BORDER_SUBTLE} ${RADIUS_SM} ${SHADOW_FLOATING}`}
-    >
-      <button type="button" className={itemClass} onClick={onRename}>
+    <div ref={ref} style={{ left: pos.x, top: pos.y }} className={shell.inkMenuFixed}>
+      <button type="button" className={shell.inkOption} onClick={onRename}>
         <PencilIcon /> Renommer
       </button>
-      <button type="button" className={itemClass} onClick={onEdit}>
+      <button type="button" className={shell.inkOption} onClick={onEdit}>
         <EditIcon /> Éditer
       </button>
-      <button type="button" className={itemClass} onClick={onDuplicate}>
+      <button type="button" className={shell.inkOption} onClick={onDuplicate}>
         <DuplicateIcon /> Dupliquer
       </button>
-      <div className="my-1 h-px bg-[var(--border-subtle)]" />
-      <button
-        type="button"
-        className={`flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm text-[var(--danger)] ${TRANSITION} hover:bg-[var(--danger)]/10`}
-        onClick={onDelete}
-      >
+      <div className={shell.inkMenuRule} />
+      <button type="button" className={shell.inkOptionDanger} onClick={onDelete}>
         <TrashIcon /> Supprimer
       </button>
     </div>
@@ -74,34 +71,39 @@ export function DeckContextMenu({ x, y, onRename, onEdit, onDuplicate, onDelete,
 
 function PencilIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 shrink-0">
-      <path d="M4 20h4L19 9l-4-4L4 16v4z" stroke="currentColor" strokeWidth={1.8} strokeLinejoin="round" />
+    <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 shrink-0" aria-hidden>
+      <path d="M4 20h4L19 9l-4-4L4 16v4z" stroke="currentColor" strokeWidth={1.6} strokeLinejoin="round" />
     </svg>
   );
 }
 
 function EditIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 shrink-0">
-      <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" />
-      <rect x="3.5" y="3.5" width="17" height="17" rx="3" stroke="currentColor" strokeWidth={1.5} opacity={0.5} />
+    <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 shrink-0" aria-hidden>
+      <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" />
+      <rect x="3.5" y="3.5" width="17" height="17" rx="3" stroke="currentColor" strokeWidth={1.3} opacity={0.5} />
     </svg>
   );
 }
 
 function DuplicateIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 shrink-0">
-      <rect x="8" y="8" width="12" height="12" rx="2" stroke="currentColor" strokeWidth={1.8} />
-      <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" stroke="currentColor" strokeWidth={1.8} />
+    <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 shrink-0" aria-hidden>
+      <rect x="8" y="8" width="12" height="12" rx="2" stroke="currentColor" strokeWidth={1.6} />
+      <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" stroke="currentColor" strokeWidth={1.6} />
     </svg>
   );
 }
 
 function TrashIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 shrink-0">
-      <path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m2 0-.8 12.1a2 2 0 0 1-2 1.9H9.8a2 2 0 0 1-2-1.9L7 7h10z" stroke="currentColor" strokeWidth={1.8} strokeLinejoin="round" />
+    <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 shrink-0" aria-hidden>
+      <path
+        d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m2 0-.8 12.1a2 2 0 0 1-2 1.9H9.8a2 2 0 0 1-2-1.9L7 7h10z"
+        stroke="currentColor"
+        strokeWidth={1.6}
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }

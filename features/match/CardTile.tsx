@@ -44,10 +44,13 @@ interface CardTileProps {
   draggable?: boolean;
   onDragStart?: (event: React.DragEvent<HTMLButtonElement>) => void;
   /**
-   * Survol "premium" (léger soulèvement + ombre froide) à la place du glow
-   * bleu plein cadre — pensé pour une grille dense (Collection) où ce glow
-   * devient vite criard. Défaut : `false` (comportement historique inchangé
-   * partout ailleurs : plateau, éditeur de deck, fiche détail).
+   * Survol "premium" à la place du glow bleu plein cadre — pensé pour une
+   * grille dense (Collection) où ce glow devient vite criard. La carte se
+   * soulève de 8px, grandit de 3,5%, s'incline d'un demi-degré et
+   * s'éclaircit très légèrement, avec une ombre portée profonde : elle doit
+   * se lire comme un objet physique qu'on décolle de la surface, sans
+   * aucune lueur colorée autour. Défaut : `false` (comportement historique
+   * inchangé partout ailleurs : plateau, éditeur de deck, fiche détail).
    */
   liftOnHover?: boolean;
 }
@@ -281,7 +284,7 @@ export function CardTile({
       onDragStart={onDragStart}
       className={`${widthClassName} relative rounded-xl text-left ${
         liftOnHover
-          ? "transition-[transform,box-shadow] duration-[180ms] ease-[cubic-bezier(.2,.8,.2,1)] hover:z-10 hover:-translate-y-1.5 hover:scale-[1.025] hover:shadow-[0_16px_32px_rgba(0,0,0,0.5),0_0_0_1px_rgba(200,225,255,0.12)]"
+          ? "transition-[transform,box-shadow,filter] duration-[160ms] ease-[cubic-bezier(.2,.8,.2,1)] hover:z-10 hover:-translate-y-2 hover:scale-[1.035] hover:-rotate-[0.7deg] hover:brightness-[1.06] hover:shadow-[0_22px_44px_-10px_rgba(0,0,0,0.78),0_6px_14px_-6px_rgba(0,0,0,0.5)]"
           : "transition-shadow duration-200"
       } ${selected ? "ring-2 ring-board-accent" : ""} ${disabled ? "opacity-40" : ""} ${
         onClick ? "cursor-pointer" : "cursor-default"

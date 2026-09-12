@@ -1,0 +1,617 @@
+/*
+ * Ce qui est PROPRE aux écrans Decks (liste) et Éditeur de deck.
+ *
+ * Tout le reste — décor marin, header/panorama, surface de papier et ses
+ * ornements, barre utilitaire, filtres, recherche, tri, menus, dialogues,
+ * palette `--cb-*` — vient de `features/shell/ScreenShell.module.css`,
+ * partagé avec la Collection.
+ *
+ * Le principe de traduction d'un écran à l'autre : sur la Collection, les
+ * objets posés sur le papier sont des CARTES ; ici ce sont des PILES de
+ * cartes (liste) et un MANIFESTE manuscrit (éditeur). Même grammaire —
+ * aucun rectangle autour des contrôles, du laiton en accent, un seul plan
+ * d'objets autorisé à porter du relief.
+ */
+
+/* ==================== Liste des decks ==================== */
+
+/*
+ * Plus large que la grille de la Collection : une pile de cartes en
+ * éventail a besoin d'espace latéral pour ne pas mordre sur sa voisine, et
+ * chaque tuile porte deux lignes de texte sous elle.
+ */
+.deckGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(clamp(160px, 12vw, 232px), 1fr));
+  column-gap: clamp(26px, 2.8vw, 52px);
+  row-gap: clamp(26px, 3.2vh, 48px);
+  align-content: start;
+}
+
+/*
+ * La tuile n'a AUCUNE boîte : ni fond, ni bordure, ni rayon. Ce qu'on voit
+ * est la pile de cartes (objet physique) et, écrits sur le papier en
+ * dessous, le nom et la ligne d'information. C'est la traduction directe de
+ * la règle « cet élément a-t-il vraiment besoin d'un rectangle ? ».
+ */
+.deckTile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55em;
+  padding: 0;
+  border: none;
+  background: none;
+  text-align: center;
+  cursor: pointer;
+  animation: deckAppear 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes deckAppear {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+/*
+ * Seul l'OBJET bouge au survol — même spécification que les cartes de la
+ * Collection (`CardTile`, `liftOnHover`) : 8px de soulèvement, 3,5%
+ * d'agrandissement, un demi-degré d'inclinaison, une ombre profonde. Le
+ * nom, lui, est de l'encre sur le papier : de l'encre ne se soulève pas,
+ * elle ne fait que s'assombrir légèrement.
+ */
+.deckStack {
+  position: relative;
+  aspect-ratio: 5 / 6;
+  transition:
+    transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    filter 160ms ease;
+}
+
+.deckTile:hover .deckStack,
+.deckTile:focus-visible .deckStack {
+  transform: translateY(-8px) scale(1.035) rotate(-0.7deg);
+  filter: brightness(1.06);
+}
+
+/* Ombre de contact : la pile est posée sur le papier, pas dessinée dessus. */
+.deckStack::after {
+  content: "";
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: 4%;
+  height: 12px;
+  z-index: 0;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(30, 22, 10, 0.36) 0%, transparent 100%);
+  transition: opacity 160ms ease, transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.deckTile:hover .deckStack::after {
+  opacity: 0.55;
+  transform: translateY(7px) scale(1.12, 1.5);
+}
+
+/*
+ * Une carte de l'éventail. L'ombre portée de chacune fait la matière de la
+ * pile — c'est ce qui donne l'épaisseur, sans aucun contour.
+ *
+ * La largeur seule est donnée, la hauteur découle de `aspect-ratio` : une
+ * carte doit garder SES proportions (5/7). En fixant les deux (46% de large
+ * sur 84% de haut dans un conteneur 5/6), on obtenait des cartes étirées en
+ * hauteur qui ne ressemblaient plus à des cartes.
+ *
+ * Le dos de carte en fond n'est pas décoratif : beaucoup d'illustrations
+ * manquent encore dans `public/assets/cards/illustrations/`, et sans lui un
+ * deck entier se réduisait à des rectangles vides. La pile reste lisible
+ * comme pile, illustration ou pas.
+ */
+.deckStackCard {
+  position: absolute;
+  top: 13%;
+  left: 50%;
+  width: 50%;
+  aspect-ratio: 5 / 7;
+  overflow: hidden;
+  border-radius: 3px;
+  background-color: #0b1a26;
+  background-image: url("/assets/cards/card-back.png");
+  background-size: cover;
+  background-position: center;
+  box-shadow:
+    0 0 0 1px rgba(12, 8, 3, 0.45),
+    0 5px 12px -3px rgba(10, 6, 2, 0.6);
+}
+
+.deckStackCard img {
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+}
+
+.deckTile:hover .deckStack .deckStackCard {
+  box-shadow:
+    0 0 0 1px rgba(12, 8, 3, 0.5),
+    0 14px 26px -8px rgba(6, 4, 2, 0.7);
+}
+
+/* Deck sans carte : la silhouette d'un emplacement vide, très en retrait. */
+.deckStackEmpty {
+  position: absolute;
+  top: 13%;
+  left: 50%;
+  width: 50%;
+  aspect-ratio: 5 / 7;
+  transform: translateX(-50%);
+  overflow: hidden;
+  border-radius: 3px;
+  opacity: 0.28;
+  filter: grayscale(0.5);
+}
+.deckStackEmpty img {
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+}
+
+/* Nom du deck : la serif d'identité, en encre, écrite sur le papier. */
+.deckName {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--cb-font-display);
+  font-size: clamp(12px, 1vw, 15px);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--cb-ink);
+  transition: color 160ms ease-out;
+}
+.deckTile:hover .deckName {
+  color: #16120b;
+}
+
+.deckMeta {
+  display: block;
+  font-size: clamp(10px, 0.78vw, 12px);
+  color: var(--cb-ink-soft);
+}
+
+/* Renommage en place : un simple filet d'encre sous le texte, pas un input. */
+.deckRenameInput {
+  width: 100%;
+  padding: 0 0 2px;
+  border: none;
+  border-bottom: 1px solid rgba(42, 35, 24, 0.45);
+  background: transparent;
+  outline: none;
+  text-align: center;
+  font-family: var(--cb-font-display);
+  font-size: clamp(12px, 1vw, 15px);
+  font-weight: 600;
+  color: var(--cb-ink);
+}
+.deckRenameInput:focus {
+  border-bottom-color: var(--cb-teal);
+}
+
+/* Compteur posé sur le papier, à la place du contrôle de tri de la
+   Collection — même ancrage, même cale translucide. */
+.deckCount {
+  font-size: clamp(12px, 0.92vw, 14px);
+  font-weight: 500;
+  color: var(--cb-ink-soft);
+  padding: 0.34em 0.1em;
+}
+
+/* Invitation à se connecter — de l'encre centrée sur le papier. */
+.signedOut {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.1rem;
+  text-align: center;
+}
+
+.signedOutText {
+  max-width: 34ch;
+  margin: 0;
+  font-size: clamp(12px, 0.95vw, 14px);
+  line-height: 1.6;
+  color: var(--cb-ink-soft);
+}
+
+.signedOutActions {
+  display: flex;
+  align-items: center;
+  gap: clamp(6px, 1vw, 14px);
+}
+
+/* Sur le papier, l'action secondaire est de l'encre — la variante ivoire de
+   la barre basse (`ghostAction`) y serait invisible. */
+.signedOutGhost {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5em 0.85em;
+  border: none;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--cb-ink-soft);
+  font-family: var(--cb-font-ui);
+  font-size: clamp(12px, 0.95vw, 14px);
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 160ms ease-out, color 160ms ease-out;
+}
+.signedOutGhost:hover,
+.signedOutGhost:focus-visible {
+  outline: none;
+  background: rgba(42, 35, 24, 0.07);
+  color: var(--cb-ink);
+}
+
+/* ==================== Éditeur de deck ==================== */
+
+/*
+ * Une seule feuille, deux colonnes — la grille de cartes à gauche, le
+ * manifeste du deck à droite, séparés par un unique filet de laiton. Pas de
+ * second panneau posé par-dessus le papier : le manifeste est écrit SUR la
+ * même feuille, comme la colonne de droite d'un registre de bord.
+ */
+.editor {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 1px clamp(232px, 22vw, 330px);
+  height: 100%;
+  min-height: 0;
+}
+
+/* Le filet de séparation : fin, laiton, éteint aux deux bouts. */
+.editorRule {
+  background: linear-gradient(
+    180deg,
+    transparent 0,
+    rgba(164, 123, 54, 0.36) calc(var(--cb-fade-top) + 18px),
+    rgba(164, 123, 54, 0.36) calc(100% - var(--cb-fade-bottom) - 18px),
+    transparent 100%
+  );
+}
+
+/* Colonne de gauche : ancre `position:relative` du contrôle de tri, qui
+   doit se caler sur CETTE colonne et non sur l'écran entier. */
+.pickerColumn {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+}
+
+.pickerScroll {
+  position: absolute;
+  inset: 0;
+  padding: calc(var(--cb-fade-top) + clamp(48px, 5.6vh, 76px)) clamp(20px, 2.2vw, 40px) clamp(36px, 5vh, 64px)
+    clamp(30px, 3.4vw, 64px);
+}
+
+.pickerGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(clamp(104px, 8vw, 150px), 1fr));
+  column-gap: clamp(14px, 1.5vw, 26px);
+  row-gap: clamp(20px, 2.4vh, 36px);
+  align-content: start;
+}
+
+/* Même ombre de contact que sur la Collection : les cartes du sélecteur
+   sont, elles aussi, posées sur le papier. */
+.pickerCell {
+  position: relative;
+  animation: deckAppear 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.pickerCell::after {
+  content: "";
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: -6px;
+  height: 10px;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(30, 22, 10, 0.3) 0%, transparent 100%);
+  transition: opacity 160ms ease, transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.pickerCell:hover::after {
+  opacity: 0.55;
+  transform: translateY(5px) scale(1.1, 1.4);
+}
+
+/*
+ * Colonne de droite. Pas de fond de panneau : une teinte d'encre très
+ * légère, qui se fond elle-même en haut et en bas aux mêmes distances que
+ * le papier (un seul dégradé fait les deux — teinter et disparaître —, ce
+ * qui évite un masque supplémentaire).
+ */
+.ledger {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: clamp(10px, 1.2vh, 16px);
+  padding: calc(var(--cb-fade-top) + clamp(16px, 2vh, 26px)) clamp(16px, 1.6vw, 26px)
+    calc(var(--cb-fade-bottom) - clamp(20px, 2.6vh, 34px));
+  background: linear-gradient(
+    180deg,
+    transparent 0,
+    rgba(42, 35, 24, 0.05) var(--cb-fade-top),
+    rgba(42, 35, 24, 0.05) calc(100% - var(--cb-fade-bottom)),
+    transparent 100%
+  );
+}
+
+/* Nom du deck : le titre de la feuille. Aucun cadre ; un filet d'encre
+   n'apparaît qu'au survol/focus, pour signaler qu'il est modifiable. */
+.deckNameInput {
+  width: 100%;
+  padding: 0.1em 0.1em 0.25em;
+  border: none;
+  border-bottom: 1px solid transparent;
+  background: transparent;
+  outline: none;
+  font-family: var(--cb-font-display);
+  font-size: clamp(15px, 1.3vw, 20px);
+  font-weight: 600;
+  letter-spacing: 0.015em;
+  color: var(--cb-ink);
+  transition: border-color 180ms ease-out;
+}
+.deckNameInput::placeholder {
+  color: rgba(42, 35, 24, 0.4);
+}
+.deckNameInput:hover {
+  border-bottom-color: rgba(42, 35, 24, 0.25);
+}
+.deckNameInput:focus {
+  border-bottom-color: var(--cb-teal);
+}
+
+/* En-tête de la liste : petite capitale d'encre + filet, façon registre. */
+.ledgerLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.7em;
+  font-size: clamp(9px, 0.7vw, 11px);
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(42, 35, 24, 0.5);
+}
+.ledgerLabel::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(42, 35, 24, 0.16);
+}
+
+/* Liste des exemplaires — masquée en haut et en bas comme toute zone
+   défilante du papier, mais avec un fondu plus court : la colonne est
+   étroite, un fondu de 50px y mangerait deux lignes. */
+.slotScroll {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(58, 47, 28, 0.3) transparent;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 12px, #000 calc(100% - 14px), transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0, #000 12px, #000 calc(100% - 14px), transparent 100%);
+}
+.slotScroll::-webkit-scrollbar {
+  width: 7px;
+}
+.slotScroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.slotScroll::-webkit-scrollbar-thumb {
+  background-color: rgba(58, 47, 28, 0.28);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.slotDropHint {
+  padding: 1.6em 1em;
+  text-align: center;
+  font-size: clamp(11px, 0.88vw, 13px);
+  line-height: 1.6;
+  color: rgba(42, 35, 24, 0.55);
+}
+
+/* La colonne accepte le dépôt d'une carte glissée : pendant le survol du
+   glisser, un filet turquoise l'indique — rien d'autre. */
+.slotScrollDropping {
+  composes: slotScroll;
+  box-shadow: inset 0 0 0 1px rgba(79, 196, 206, 0.45);
+  border-radius: 2px;
+}
+
+/*
+ * Une ligne du manifeste : numéro, vignette, nom, coût. Aucune surface au
+ * repos — les lignes sont réglées par un filet d'encre très pâle, comme un
+ * registre. Le survol annonce le retrait (encre rouge délavée).
+ */
+.slotRow {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.55em;
+  padding: 0.3em 0.35em;
+  border: none;
+  border-bottom: 1px solid rgba(42, 35, 24, 0.08);
+  background: none;
+  text-align: left;
+  font-family: var(--cb-font-ui);
+  cursor: pointer;
+  transition: background 140ms ease-out;
+}
+.slotRow:hover,
+.slotRow:focus-visible {
+  outline: none;
+  background: rgba(140, 59, 47, 0.09);
+}
+
+.slotIndex {
+  flex-shrink: 0;
+  width: 1.6em;
+  font-size: clamp(9px, 0.72vw, 11px);
+  font-variant-numeric: tabular-nums;
+  color: rgba(42, 35, 24, 0.42);
+}
+
+.slotThumb {
+  position: relative;
+  flex-shrink: 0;
+  height: clamp(22px, 2.6vh, 28px);
+  width: clamp(22px, 2.6vh, 28px);
+  overflow: hidden;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(42, 35, 24, 0.25);
+}
+.slotThumb img {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+}
+.slotThumbDebord {
+  object-fit: contain !important;
+  pointer-events: none;
+}
+
+.slotName {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: clamp(11px, 0.88vw, 13px);
+  color: var(--cb-ink);
+}
+
+/* Le coût est la seule valeur numérique de la ligne : le laiton la
+   distingue sans avoir besoin d'un médaillon. */
+.slotCost {
+  flex-shrink: 0;
+  font-size: clamp(10px, 0.8vw, 12px);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--cb-brass-dark);
+}
+
+.slotRemove {
+  flex-shrink: 0;
+  width: 1em;
+  color: var(--cb-danger-ink);
+  opacity: 0;
+  transition: opacity 140ms ease-out;
+}
+.slotRow:hover .slotRemove,
+.slotRow:focus-visible .slotRemove {
+  opacity: 0.8;
+}
+
+/*
+ * Jauge de capacité — repensée en « ligne de charge » gravée dans le
+ * papier : un rail d'encre, un remplissage laiton, un repère au minimum
+ * légal. L'égaliseur à segments néon d'avant était le dernier vestige
+ * assumé de l'ancienne direction artistique.
+ */
+.gauge {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45em;
+}
+
+.gaugeTrack {
+  position: relative;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(42, 35, 24, 0.16);
+  box-shadow: inset 0 1px 1px rgba(42, 35, 24, 0.12);
+  overflow: hidden;
+}
+
+.gaugeFill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--cb-brass-dark), var(--cb-brass));
+  transition: width 220ms cubic-bezier(0.2, 0.8, 0.2, 1), background 220ms ease-out;
+}
+
+/* Deck jouable : le remplissage passe au turquoise — le seul moment où
+   cette couleur apparaît sur le papier. */
+.gaugeFillValid {
+  composes: gaugeFill;
+  background: linear-gradient(90deg, #2b7f87, var(--cb-teal));
+}
+
+.gaugeFillOver {
+  composes: gaugeFill;
+  background: linear-gradient(90deg, #7a3225, var(--cb-danger-ink));
+}
+
+/* Repère du minimum légal : un simple trait d'encre en travers du rail. */
+.gaugeMark {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 1px;
+  background: rgba(42, 35, 24, 0.55);
+}
+
+.gaugeLabels {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: clamp(10px, 0.78vw, 12px);
+  color: var(--cb-ink-soft);
+}
+
+.gaugeCount {
+  font-variant-numeric: tabular-nums;
+  color: var(--cb-ink);
+  font-weight: 600;
+}
+
+.gaugeStatusValid {
+  color: #1f6f78;
+  font-weight: 600;
+}
+
+.gaugeStatusOver {
+  color: var(--cb-danger-ink);
+  font-weight: 600;
+}
+
+.ledgerNote {
+  font-size: clamp(10px, 0.76vw, 12px);
+  line-height: 1.5;
+  color: rgba(42, 35, 24, 0.55);
+}
+
+.ledgerError {
+  font-size: clamp(11px, 0.85vw, 13px);
+  color: var(--cb-danger-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deckTile,
+  .pickerCell {
+    animation: none;
+  }
+  .deckStack,
+  .gaugeFill {
+    transition: none;
+  }
+}

@@ -2,41 +2,43 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { PlayerDeckSummary } from "@/app/decks/actions";
-import { BORDER_SUBTLE, RADIUS_MD, SHADOW_PANEL, SURFACE_1, TEXT_PRIMARY, TEXT_SECONDARY, TRANSITION } from "@/components/game-ui/tokens";
+import styles from "@/features/decks/DeckScreens.module.css";
 
 const EMPTY_SLOT_SRC = "/assets/collection/card_empty_placeholder.png";
 
-/** Léger éventail statique des 5 premières cartes du deck, en en-tête de la tuile — volontairement simple ("on pimpera plus tard"). */
-function DeckHeaderStack({ cardIds }: { cardIds: string[] }) {
+/** Éventail statique des premières cartes du deck — l'OBJET de la tuile. */
+function DeckStack({ cardIds }: { cardIds: string[] }) {
   if (cardIds.length === 0) {
     return (
-      <div className="flex h-full items-center justify-center">
-        {/* eslint-disable-next-line @next/next/no-img-element -- asset local, silhouette décorative */}
-        <img src={EMPTY_SLOT_SRC} alt="" className="h-[85%] rounded-sm object-cover opacity-50" />
+      <div className={styles.deckStack}>
+        <div className={styles.deckStackEmpty}>
+          {/* eslint-disable-next-line @next/next/no-img-element -- asset local, silhouette décorative */}
+          <img src={EMPTY_SLOT_SRC} alt="" draggable={false} />
+        </div>
       </div>
     );
   }
 
   const count = cardIds.length;
   return (
-    <div className="relative flex h-full items-center justify-center">
+    <div className={styles.deckStack}>
       {cardIds.map((cardId, index) => {
         const offsetFromCenter = index - (count - 1) / 2;
         return (
           <div
-            key={cardId}
-            className="absolute h-[80%] w-[46%] overflow-hidden rounded-sm shadow-[0_4px_10px_rgba(0,0,0,0.5)]"
+            key={`${cardId}-${index}`}
+            className={styles.deckStackCard}
             style={{
-              transform: `translateX(${offsetFromCenter * 34}%) rotate(${offsetFromCenter * 9}deg)`,
+              // `translateX(-50%)` centre la carte, le reste ouvre l'éventail :
+              // décalage latéral + rotation croissants depuis le centre de la pile.
+              // 22%/6° par cran : à 5 cartes l'éventail reste dans la largeur de
+              // la tuile, là où 34%/9° le faisait mordre sur la tuile voisine.
+              transform: `translateX(-50%) translateX(${offsetFromCenter * 22}%) rotate(${offsetFromCenter * 6}deg)`,
               zIndex: index,
             }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element -- vignette d'aperçu, pas une CardTile complète */}
-            <img
-              src={`/assets/cards/illustrations/${cardId}.png`}
-              alt=""
-              className="h-full w-full object-cover"
-            />
+            <img src={`/assets/cards/illustrations/${cardId}.png`} alt="" draggable={false} loading="lazy" decoding="async" />
           </div>
         );
       })}
@@ -54,6 +56,16 @@ interface DeckTileProps {
   onContextMenu: (event: React.MouseEvent) => void;
 }
 
+/**
+ * Une tuile de la liste des decks. Aucune boîte : ce qu'on voit est la pile
+ * de cartes en éventail — l'objet physique posé sur le papier — puis le nom
+ * et la ligne d'information ÉCRITS sur le papier en dessous.
+ *
+ * Au survol, seule la pile se soulève (même spécification que les cartes de
+ * la Collection) ; le nom, qui est de l'encre, ne fait que s'assombrir.
+ * C'est ce qui rend la hiérarchie lisible : l'objet est manipulable, le
+ * texte non.
+ */
 export function DeckTile({ deck, shipName, isRenaming, onRenameSubmit, onRenameCancel, onOpen, onContextMenu }: DeckTileProps) {
   const [draftName, setDraftName] = useState(deck.name);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -71,32 +83,32 @@ export function DeckTile({ deck, shipName, isRenaming, onRenameSubmit, onRenameC
       type="button"
       onClick={isRenaming ? undefined : onOpen}
       onContextMenu={onContextMenu}
-      className={`group flex aspect-[5/7] w-full flex-col overflow-hidden text-left ${SURFACE_1} ${BORDER_SUBTLE} ${RADIUS_MD} ${SHADOW_PANEL} ${TRANSITION} hover:-translate-y-0.5 hover:border-[var(--accent)]/50`}
+      className={styles.deckTile}
+      title={isRenaming ? undefined : `Éditer « ${deck.name} »`}
     >
-      <div className="h-[58%] bg-black/20">
-        <DeckHeaderStack cardIds={deck.headerCardIds} />
-      </div>
-      <div className="flex flex-1 flex-col items-center justify-center gap-1 border-t border-[var(--border-subtle)] px-2 text-center">
-        {isRenaming ? (
-          <input
-            ref={inputRef}
-            value={draftName}
-            onChange={(e) => setDraftName(e.target.value)}
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") onRenameSubmit(draftName);
-              if (e.key === "Escape") onRenameCancel();
-            }}
-            onBlur={() => onRenameSubmit(draftName)}
-            className={`w-full border-b border-[var(--accent)] bg-transparent px-1.5 py-0.5 text-center text-sm font-semibold ${TEXT_PRIMARY} outline-none`}
-          />
-        ) : (
-          <span className={`w-full truncate text-sm font-semibold ${TEXT_PRIMARY}`}>{deck.name}</span>
-        )}
-        <span className={`text-[11px] ${TEXT_SECONDARY}`}>
-          {shipName} · {deck.cardCount} carte{deck.cardCount > 1 ? "s" : ""}
-        </span>
-      </div>
+      <DeckStack cardIds={deck.headerCardIds} />
+
+      {isRenaming ? (
+        <input
+          ref={inputRef}
+          value={draftName}
+          onChange={(e) => setDraftName(e.target.value)}
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") onRenameSubmit(draftName);
+            if (e.key === "Escape") onRenameCancel();
+          }}
+          onBlur={() => onRenameSubmit(draftName)}
+          className={styles.deckRenameInput}
+          aria-label="Nom du deck"
+        />
+      ) : (
+        <span className={styles.deckName}>{deck.name}</span>
+      )}
+
+      <span className={styles.deckMeta}>
+        {shipName} · {deck.cardCount} carte{deck.cardCount > 1 ? "s" : ""}
+      </span>
     </button>
   );
 }

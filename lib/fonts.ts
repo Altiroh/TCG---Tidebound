@@ -1,4 +1,4 @@
-import { Cinzel, Crimson_Pro } from "next/font/google";
+import { Barlow, Cinzel, Crimson_Pro } from "next/font/google";
 
 /**
  * Typographie verrouillée dans Notion ("Bibliothèque visuelle — cohérence
@@ -30,4 +30,19 @@ export const menuFont = Cinzel({
   subsets: ["latin"],
   weight: ["600", "700", "900"],
   variable: "--font-menu",
+});
+
+/**
+ * Police fonctionnelle de l'interface (recherche, filtres, tri, boutons
+ * utilitaires). Cinzel/Crimson Pro restent réservées à ce qui porte
+ * l'identité Tidebound — titres, noms de sections, rendu des cartes ;
+ * au-delà, une serif décorative sur chaque petit contrôle donnait à l'UI
+ * un air de jeu Flash décoré. Barlow est neutre, un peu technique
+ * (instrument de bord) et lisible à 12-13px, sans tomber dans le
+ * "Inter/dashboard".
+ */
+export const uiFont = Barlow({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-ui",
 });

@@ -1,0 +1,96 @@
+/*
+ * Bandeau de récompense de fin de partie. Volontairement autonome et posé
+ * en `fixed` : il se superpose à l'écran de victoire sans rien changer à sa
+ * mise en page.
+ *
+ * Même registre que la coquille hors-partie (ivoire, laiton, turquoise en
+ * accent) sans en importer le module : ce composant vit sur l'écran de
+ * partie, qui a sa propre direction artistique.
+ */
+.banner {
+  position: fixed;
+  left: 50%;
+  bottom: clamp(18px, 4vh, 54px);
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  gap: clamp(10px, 1.4vw, 22px);
+  padding: 0.6em 1.3em;
+  transform: translateX(-50%);
+  border-radius: 3px;
+  background: rgba(4, 14, 22, 0.88);
+  box-shadow: inset 0 0 0 1px rgba(164, 123, 54, 0.28), 0 14px 34px -12px rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: #e9e2d1;
+  font-family: var(--font-ui, "Segoe UI", system-ui, sans-serif);
+  font-size: clamp(12px, 0.95vw, 14px);
+  white-space: nowrap;
+  animation: bannerIn 340ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes bannerIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%);
+  }
+}
+
+.gain {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3em;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.gainXp {
+  composes: gain;
+  color: #7fd6dd;
+}
+
+.gainTides {
+  composes: gain;
+  color: #ddc79a;
+}
+
+.unit {
+  font-size: 0.78em;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.rule {
+  width: 1px;
+  height: 1.2em;
+  background: rgba(164, 123, 54, 0.35);
+}
+
+/* Passage de niveau : le seul moment où le turquoise s'affirme. */
+.levelUp {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  font-family: var(--font-card-title, Georgia, serif);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #f2ecdc;
+  text-shadow: 0 0 14px rgba(79, 196, 206, 0.45);
+}
+
+.note {
+  color: #97917f;
+  font-size: 0.92em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .banner {
+    animation: none;
+  }
+}

@@ -11,6 +11,35 @@ projet) est la boussole de design de Tidebound : la Marée et les Eaux ne
 sont pas un décor, ce sont un troisième acteur que personne ne contrôle
 totalement.
 
+## Aperçu du jeu
+
+Tidebound est un TCG 1 contre 1, tour par tour, sans mana séparé : chaque
+carte se paie en **Raison**, la même ressource qui protège le joueur de
+la folie (à 0, son **Ancrage** — l'équivalent des points de vie — se
+dégrade). Les deux joueurs choisissent un **Navire** au deck-building
+(stats de départ, nombre de Slots, résistances/faiblesses), puis
+alternent des tours structurés en Phase principale (jouer des cartes,
+Saborder, Briser un Objet — sans limite de nombre, seule la Raison
+disponible freine) et Phase de combat (attaquer, en combat **mutuel** :
+l'attaquant encaisse aussi la Puissance de sa cible).
+
+Au-dessus de ce socle classique, la **Marée** (`Calme → Houle → Tempête →
+Abysses → Calme`, modèle durée + intensité) inflige des malus globaux
+identiques aux deux joueurs et rend certaines cartes plus fortes,
+inactives ou carrément détruites selon l'état courant — c'est le
+"troisième acteur" évoqué plus haut : personne ne la choisit, tout le
+monde doit composer avec.
+
+Le catalogue (~98 cartes, 7 lots de conception + variantes Abyssales)
+combine des **effets génériques** (dégâts, soin, buff, invocation,
+manipulation de Marée, révélation de main, choix forcé, ...) déclenchés
+par des **triggers** (pose, mort, début de tour, changement d'état de
+Marée, ...) — jamais de logique bricolée carte par carte, voir
+"Priorité du projet" ci-dessous. Les sections qui suivent détaillent
+chaque système ; "Mécanismes avancés" et "État du MVP" plus bas font le
+point sur ce qui est réellement câblé aujourd'hui contre ce qui reste
+prévu.
+
 ## Priorité du projet
 
 Le moteur de jeu (`/game`) est prioritaire sur tout le reste. Il est
@@ -221,6 +250,16 @@ le tour suivant recommence systématiquement en Phase principale.
   avoir des statistiques différentes, être inactive, ou être détruite
   selon l'état de Marée courant — calculé à la volée par
   `computeEffectiveStats` (`game/cards/stats.ts`), jamais stocké.
+- **Auras/stats dynamiques** : `computeEffectiveStats` accepte un troisième
+  paramètre optionnel (`AuraContext` : plateau + Raison du CONTRÔLEUR de
+  l'unité évaluée) pour calculer, sans jamais les stocker sur `CardInstance`,
+  les bonus qui dépendent du reste du plateau ou de la Raison — bonus sur
+  soi conditionné à une Structure visible contrôlée (`bernard-lermite-dacier`)
+  ou à un seuil de Raison (`matelot-insomniaque`), aura envoyée aux autres
+  unités d'un type donné sous un seuil de Raison (`capitaine-sans-sommeil`),
+  et bonus d'Équipement conditionné à la Marée (`lampe-de-pont-rouge`,
+  `masque-de-plongee-fissure`). Un appelant qui omet ce paramètre obtient les
+  stats de base (modificateurs + Marée) sans ces auras.
 
 Exemples de cartes illustrant ces systèmes : `murene-aveugle` (stats
 variables selon la Marée), `masse-noire` (inactive pendant Calme),
@@ -273,41 +312,90 @@ même temps (ex: `onTideStateEntered`, `onCardPlayed`), ceux du **joueur
 actif se résolvent en premier**, puis ceux de l'adversaire — implémenté
 dans `game/triggers/triggerBus.ts`.
 
-### Points restant à construire (documentés, non implémentés)
+## Mécanismes avancés
 
-Le cadrage identifie explicitement des systèmes volontairement complexes
-et reportés :
+Les familles de mécanismes ci-dessous ont longtemps été volontairement
+laissées de côté (trop risquées à câbler vite, ou demandant un vrai
+sous-système) avant d'être toutes construites depuis :
 
-- **Capacités activables** (Navires : "une fois par partie..." ; certaines
-  cartes : "vous pouvez perdre X Raison pour...") : aucun système
-  d'activation hors pose/Sabordage/bris n'existe. Documentées en texte
-  avec la mention "non appliqué".
-- **Interception réactive** ("la première fois par tour que vous
-  perdriez X, réduisez de N") : très fréquente dans le catalogue de 80
-  cartes, non modélisée — le moteur ne sait pas encore intercepter/réduire
-  un effet en cours de résolution.
-- **Information cachée** (regarder une carte de la pioche/Eaux/main
-  adverse) : non modélisée, l'état de jeu est actuellement à information
-  parfaite côté serveur.
-- **Choix de joueur en cours de résolution** ("vous pouvez...", "choisissez
-  soit...") : non modélisé ; seul le ciblage `chosenUnit` au moment de
-  jouer/briser une carte existe.
-- **Attachement d'Équipement persistant** : jouer un Équipement applique
-  un bonus permanent via `chosenUnit`, mais l'Équipement lui-même n'est
-  pas suivi comme rattaché à sa cible (pas de retrait du bonus si la cible
-  part, pas de résolution de "si l'Équipement est détruit...").
+- **Boucliers réactifs "1ère fois par tour"** (`game/state/shields.ts` +
+  `CardInstance.oncePerTurnFlags`) : 7 cartes (Vieux Loup de Mer, Brise-
+  Vague de Fortune, Second au Visage Pâle, Baleine aux Cicatrices
+  Blanches, Wood Vy, Cage de Flottaison, Le Filet qui Respire) —
+  interception d'une perte de Raison/de dégâts la première fois par tour
+  que la situation se produit, câblée dans `resolveEffect.ts`,
+  `resolveEnvironment.ts` et `attack.ts`.
+- **Auras/stats dynamiques** (`computeEffectiveStats`, voir plus haut) : 5
+  cartes (Bernard-l'Ermite d'Acier, Matelot Insomniaque, Capitaine Sans
+  Sommeil, Lampe de Pont Rouge, Masque de Plongée Fissuré).
+- **Lecture de main** (`HAND_CARD_REVEALED`, `game/effects/resolveEffect.ts`) :
+  3 cartes (Guetteur de Brume, La Bouée qui Regardait, Cloche Immergée) —
+  révèle N cartes aléatoires de la main adverse, purement informatif côté
+  moteur. Guetteur de Brume est câblé directement dans `resolveReaction`
+  (`game/triggers/triggerBus.ts`) plutôt que sur un `TriggerType` : activer
+  une réaction est, dans ce moteur, le seul moyen pour l'adversaire de
+  "déclencher un effet" pendant le tour de l'autre.
+- **Anomalies globales temporaires** (`game/state/anomalies.ts`, permanents
+  `type: "anomalie"` à durée limitée) : 7 des 9 cartes de cette famille
+  (Quelque Chose Sous la Coque, Le Chant Sous la Ligne, Les Voix dans le
+  Sillage, Ils Sont Sous Nous ×2, La Mer Réclame Davantage ×2) — règles
+  symétriques appliquées automatiquement, centralisées dans
+  `processTrigger`/`resolveEffect`/`resolveEnvironment`.
+- **Choix de joueur** (`GameState.pendingChoice` + `game/actions/resolveChoice.ts`) :
+  Le Fond Vous Regarde (×2) force, au début de chaque tour, un choix
+  binaire pour le joueur actif — perdre de la Raison, ou infliger des
+  dégâts d'Ancrage à son propre Navire. Bloque toute autre action tant
+  qu'il reste ouvert, exactement comme `pendingReaction` ; le bot
+  (`game/bot/`) le résout automatiquement via `evaluateState`. Ne couvre
+  que ce cas binaire fixe — un choix aux branches dynamiques (générer une
+  liste d'options à la résolution) resterait à construire au cas par cas.
+- **Capacité activable répétable** (`CardDefinition.activatableOncePerTurn`
+  + `game/actions/activateAbility.ts`) : Sondeur des Mauvaises Eaux
+  ("une fois par tour, vous pouvez perdre 1 Raison : réduisez la Marée
+  d'1 tour"). Ne couvre que les capacités de CARTE "une fois par tour" —
+  les capacités de NAVIRE "une fois par partie" (Le Courlis "Virage
+  court", L'Errant "Changer de cap", Le Brise-Lames "Tenir la ligne")
+  restent non modélisées (mécanique de comptage différente : par partie,
+  pas par tour).
+- **Recherche en défausse** (`moveGraveyardCardToHand`,
+  `game/actions/breakObject.ts`) : Grappin de Récupération — choisir dans
+  sa défausse une Structure/un Équipement sous un plafond de coût.
+- **Saut de Marée multi-états** (`forceTideJumpToAbysses`,
+  `game/environment/tide.ts`) : La Gueule Sous la Mer / Sept Brasses Plus
+  Bas (Lot 08) — force une entrée DIRECTE dans l'Abysses en ignorant les
+  états intermédiaires, avec un verrou "aucun gain de Raison jusqu'au
+  début du prochain tour" (`STATUS_NO_REASON_GAIN`) pour la première.
+
+**Ce qui reste réellement non modélisé** :
+
 - **Priorité entre porteurs de Garde multiples** : non tranchée par le
   cadrage, tout porteur est accepté pour l'instant.
 - **Pondération du tirage des Eaux** : tirage uniforme dans `WATER_POOL`
   pour l'instant ; l'algorithme réel reste "à préciser".
+- **Attachement d'Équipement, bonus statiques** : un bonus DYNAMIQUE
+  (recalculé à la volée via `computeEffectiveStats`, ex: Lampe de Pont
+  Rouge) se retire automatiquement dès que l'Équipement quitte le
+  plateau. Un bonus STATIQUE posé une fois pour toutes via un modificateur
+  (`CardInstance.modifiers`, ex: Harpon de Pont "+1 Puissance" à la pose)
+  reste sur l'unité après la destruction de l'Équipement qui l'a posé —
+  jamais nettoyé. Chantier distinct, non traité.
+- **Fuite d'information réseau** : `matches.state` expose toujours le
+  `GameState` complet (main adverse incluse) aux deux participants via
+  Realtime. Le système de lecture de main ci-dessus ajoute un événement
+  informatif PAR-DESSUS cet état déjà à information parfaite côté client
+  — il ne referme pas cette fuite, qui resterait à corriger avant toute
+  vraie séparation d'information par joueur.
+- Un bug de RNG pré-existant (`resolveUnitTargets`, `randomAllyUnit`/
+  `randomEnemyUnit` ne faisaient jamais avancer la graine — deux tirages
+  "aléatoires" successifs retombaient sur la même unité) a été corrigé ;
+  aucune carte du catalogue actuel n'utilise encore ces cibles.
 
-**Fidélité du catalogue de 80 cartes** (`game/cards/sets/core.ts`) : toutes
-les cartes portent leur texte réel et complet, mais une bonne partie de
-ces textes dépend des mécaniques ci-dessus (interception réactive,
-info cachée, choix). Quand une carte n'a pas d'`onPlayEffects`/
-`abilities`/`onBreakEffects` malgré un texte à effet, c'est volontaire —
-un commentaire `// non appliqué : ...` explique précisément pourquoi,
-juste au-dessus de sa définition.
+**Fidélité du catalogue** (`game/cards/sets/core.ts`) : toutes les cartes
+portent leur texte réel et complet. Quand une carte n'a pas
+d'`onPlayEffects`/`abilities`/`onBreakEffects` malgré un texte à effet,
+c'est volontaire — un commentaire `// non appliqué : ...` explique
+précisément pourquoi, juste au-dessus de sa définition (il n'en reste
+plus que pour les points listés ci-dessus).
 
 ## État du MVP
 
@@ -329,17 +417,19 @@ triggers (dont `onBecomeVisible`/`onExpire`), Marée + Eaux + Navires.
 - Système de raretés/boosters/économie de collection (`TCG_DATABASE.md`)
   spécifié côté design mais pas implémenté — pas de schéma BDD, pas de
   logique d'ouverture de booster.
-- Voir "Points restant à construire" plus haut pour les mécaniques de
-  cartes non modélisées (interception réactive, information cachée,
-  choix de joueur, attachement d'Équipement persistant).
+- Voir "Mécanismes avancés" plus haut pour ce qui reste réellement non
+  modélisé (priorité de Garde, pondération des Eaux, bonus d'Équipement
+  statiques, fuite d'information réseau).
 
 `RULES.MAX_HAND_SIZE` (7) est désormais appliqué : `game/actions/endTurn.ts`
 défausse les cartes excédentaires du joueur qui termine son tour, avant de
-passer la main. Faute d'un système de choix de joueur, la défausse est
-déterministe (depuis le début de la main), sur le même principe que la
-défausse déjà existante liée aux dégâts de Marée
-(`game/environment/resolveEnvironment.ts`) — à remplacer par un vrai choix
-dès que "Choix de joueur en cours de résolution" sera modélisé.
+passer la main, de façon déterministe (depuis le début de la main) — même
+principe que la défausse déjà existante liée aux dégâts de Marée
+(`game/environment/resolveEnvironment.ts`). Le système de choix de joueur
+qui existe désormais (`GameState.pendingChoice`) ne couvre que le cas
+binaire fixe déjà décrit dans "Mécanismes avancés" ; un vrai "choisissez
+lesquelles défausser" resterait un chantier séparé (choix parmi un nombre
+variable de cartes, pas entre deux effets connus d'avance).
 
 Pas encore fait : interface de jeu (plateau, main, drag&drop, affichage
 de la Marée/des Eaux/de la Raison), deckbuilder (les decks personnels ont
@@ -374,27 +464,26 @@ la PWA n'est pas encore réellement installable.
 
 ## Prochaines étapes suggérées
 
-1. Décider si les mécaniques réactives/à information cachée les plus
-   fréquentes du catalogue (interception "1re fois par tour", regarder
-   une carte) valent la peine d'un nouveau sous-système générique, ou
-   restent hors périmètre. Proposition technique rédigée côté
-   implémentation (page Notion "Proposition — Interception réactive, info
-   cachée, choix de joueur, Équipement", dans TCG Online — Game Design) :
-   s'appuyer sur deux précédents déjà dans le moteur (`statusFlags` /
-   `ignoreNextTideDamage` pour l'interception, `pendingOceanJudgment` pour
-   les résolutions en attente) plutôt que d'inventer un nouveau paradigme,
-   et traiter l'Équipement persistant comme un chantier indépendant et
-   immédiatement actionnable. Signale aussi une fuite d'information déjà
-   présente aujourd'hui : `matches.state` expose le `GameState` complet
-   (main adverse incluse) aux deux participants via Realtime — pas de
-   couche de projection par joueur avant l'info cachée.
-2. Appliquer `RULES.MAX_HAND_SIZE` (défausse en fin de tour).
-3. Schéma Supabase minimal (profils, parties, invitations, cartes,
-   raretés, boosters) + policies RLS — voir le schéma BDD recommandé dans
-   `TCG_DATABASE.md`.
-4. Route API / Server Action qui appelle `dispatch()` côté serveur et
-   persiste le nouvel état + événements.
-5. UI de plateau (lecture seule de l'état, puis actions) avec affichage
-   de la piste de Marée, des Eaux actuelles et de la Raison.
-6. Parties privées par code d'invitation.
-7. Historique de parties à partir du journal d'événements.
+Le bootstrap initial (moteur, UI de plateau, Server Actions, schéma
+Supabase, parties en ligne) est loin derrière — voir "État du MVP" plus
+haut pour ce qui existe déjà. Ce qui reste réellement devant nous :
+
+1. **Quêtes quotidiennes/hebdomadaires** — l'écart le plus structurant de
+   l'économie (cf. "État du MVP") : sans elles, la cadence de boosters
+   visée n'est pas atteignable avec les seuls paliers de niveau.
+2. **Parties bot arbitrées côté serveur** — remplacer la dérogation de
+   développement actuelle (issue déclarée par le navigateur) en faisant
+   tourner le moteur et le bot côté serveur, comme en PvP ; ne change pas
+   le calcul de récompense (`allowBotTides` suffira).
+3. **Fuite d'information réseau** — `matches.state` expose le `GameState`
+   complet (main adverse incluse) aux deux participants via Realtime ;
+   une vraie couche de projection par joueur est un préalable à toute
+   information cachée fiable en ligne (cf. "Mécanismes avancés").
+4. Nettoyage des bonus d'Équipement STATIQUES à la destruction de
+   l'Équipement (cf. "Mécanismes avancés") — les bonus dynamiques sont déjà
+   corrects, les modificateurs posés une fois pour toutes ne le sont pas.
+5. Icônes d'application pour la PWA (`manifest.webmanifest` a un tableau
+   `icons` vide) — service worker déjà en place, mais pas réellement
+   installable sans elles.
+6. Historique de parties (UI — les données existent déjà dans `matches`),
+   boutique complète, recyclage côté client.

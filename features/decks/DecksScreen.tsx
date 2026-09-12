@@ -5,13 +5,17 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getShipDefinition } from "@/game";
 import { deleteDeck, duplicateDeck, renameDeck, type PlayerDeckSummary } from "@/app/decks/actions";
-import { GameButton } from "@/components/game-ui/GameButton";
-import { SearchField } from "@/components/game-ui/SearchField";
-import { SegmentedControl } from "@/components/game-ui/SegmentedControl";
-import { TEXT_PRIMARY, TEXT_SECONDARY } from "@/components/game-ui/tokens";
+import { PaperSurface } from "@/features/shell/PaperSurface";
+import { ScreenHeader } from "@/features/shell/ScreenHeader";
+import { ScreenShell } from "@/features/shell/ScreenShell";
+import { SearchLine } from "@/features/shell/SearchLine";
+import { UtilityBar } from "@/features/shell/UtilityBar";
+import shell from "@/features/shell/ScreenShell.module.css";
+import styles from "@/features/decks/DeckScreens.module.css";
 import { DeckTile } from "@/features/decks/DeckTile";
 import { DeckContextMenu } from "@/features/decks/DeckContextMenu";
 import { DeleteDeckDialog } from "@/features/decks/DeleteDeckDialog";
+import { playButtonClick } from "@/lib/sound";
 
 /** Insensible aux accents et à la casse. */
 function normalizeSearch(value: string): string {
@@ -41,12 +45,14 @@ interface DecksScreenProps {
 }
 
 /**
- * Écran des decks personnels — même famille visuelle que `CollectionScreen`
- * (fond en dégradé, nav minimale, un seul cluster de contrôle). Ici l'action
- * PRINCIPALE de l'écran est de créer un deck : "Créer" est donc le seul
- * bouton plein (laiton) de la page, la recherche reste discrète à côté.
+ * Écran des decks personnels — montée sur la MÊME coquille que la
+ * Collection (`features/shell`) : header/panorama, surface de papier, barre
+ * utilitaire basse. Là où la Collection pose des cartes sur le papier, cet
+ * écran y pose des piles de cartes ; le reste de la grammaire est
+ * identique, à dessein.
+ *
  * Clic droit sur une tuile → menu contextuel (Renommer/Éditer/Dupliquer/
- * Supprimer). "Éditer" mène à `/decks/[deckId]`.
+ * Supprimer), sur papier lui aussi. « Éditer » mène à `/decks/[deckId]`.
  */
 export function DecksScreen({ isSignedIn, initialDecks }: DecksScreenProps) {
   const router = useRouter();
@@ -61,10 +67,6 @@ export function DecksScreen({ isSignedIn, initialDecks }: DecksScreenProps) {
     if (!query) return initialDecks;
     return initialDecks.filter((deck) => normalizeSearch(deck.name).includes(query));
   }, [initialDecks, search]);
-
-  function handleCreate() {
-    router.push("/decks/nouveau");
-  }
 
   function handleRenameSubmit(deckId: string, name: string) {
     setRenamingDeckId(null);
@@ -95,58 +97,61 @@ export function DecksScreen({ isSignedIn, initialDecks }: DecksScreenProps) {
   }
 
   return (
-    <div
-      className="fixed inset-0 flex flex-col gap-6 p-6 sm:p-10"
-      style={{ background: "radial-gradient(ellipse at 50% -10%, var(--surface-1) 0%, var(--surface-0) 60%)" }}
-    >
-      <div className="flex shrink-0 items-center gap-6">
-        <Link
-          href="/"
-          className={`flex items-center gap-1.5 text-sm font-medium ${TEXT_SECONDARY} transition-colors hover:${TEXT_PRIMARY}`}
-        >
-          <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
-            <path d="M15 5l-7 7 7 7" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          Retour
-        </Link>
-        <SegmentedControl
-          value="decks"
-          options={[
-            { value: "collection", label: "Collection" },
-            { value: "decks", label: "Decks" },
-          ]}
-          onChange={(v) => {
-            if (v === "collection") router.push("/collection");
-          }}
-        />
-      </div>
+    <ScreenShell>
+      <ScreenHeader active="decks" />
 
-      {isSignedIn ? (
-        <>
-          <div className="flex shrink-0 items-center justify-end">
-            <div className="flex items-center gap-2">
-              <SearchField value={search} onChange={setSearch} placeholder="Rechercher un deck..." />
-              <GameButton variant="primary" onClick={handleCreate} disabled={isPending}>
-                <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
-                  <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
-                </svg>
-                Créer
-              </GameButton>
+      <PaperSurface>
+        {isSignedIn && initialDecks.length > 0 && (
+          <div className={shell.inkControl}>
+            <span className={shell.inkRule} aria-hidden />
+            <span className={styles.deckCount}>
+              {decks.length} deck{decks.length > 1 ? "s" : ""}
+              {decks.length !== initialDecks.length && ` sur ${initialDecks.length}`}
+            </span>
+          </div>
+        )}
+
+        {!isSignedIn ? (
+          <div className={shell.paperScrollFill}>
+            <div className={styles.signedOut}>
+              <span className={shell.emptyStateTitle}>Connecte-toi pour gérer tes decks</span>
+              <p className={styles.signedOutText}>
+                Tes decks sont enregistrés sur ton compte : ils te suivent d&apos;une partie à l&apos;autre.
+              </p>
+              <div className={styles.signedOutActions}>
+                <Link href="/connexion" className={shell.primaryAction} onClick={() => playButtonClick()}>
+                  Se connecter
+                </Link>
+                <Link href="/inscription" className={styles.signedOutGhost} onClick={() => playButtonClick()}>
+                  Créer un compte
+                </Link>
+              </div>
             </div>
           </div>
-
-          <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+        ) : (
+          <div className={shell.paperScrollFill}>
             {decks.length === 0 ? (
-              <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
-                <p className={`text-base font-medium ${TEXT_PRIMARY}`}>
-                  {initialDecks.length === 0 ? "Aucun deck pour l'instant" : "Aucun deck ne correspond à cette recherche"}
+              <div className={shell.emptyState}>
+                <svg viewBox="0 0 24 24" width="30" height="30" fill="none" className={shell.emptyStateMark} aria-hidden>
+                  <path
+                    d="M4 8.5 12 5l8 3.5-8 3.5-8-3.5Z"
+                    stroke="currentColor"
+                    strokeWidth={1.3}
+                    strokeLinejoin="round"
+                  />
+                  <path d="M4 13l8 3.5 8-3.5M4 17.5 12 21l8-3.5" stroke="currentColor" strokeWidth={1.3} strokeLinejoin="round" />
+                </svg>
+                <span className={shell.emptyStateTitle}>
+                  {initialDecks.length === 0 ? "Aucun deck à bord" : "Aucun deck ne correspond"}
+                </span>
+                <p>
+                  {initialDecks.length === 0
+                    ? "Crée ton premier deck depuis la barre du bas : tu y choisiras tes cartes dans ta collection."
+                    : "Essaie un autre nom, ou efface la recherche."}
                 </p>
-                {initialDecks.length === 0 && (
-                  <p className={`max-w-md text-sm ${TEXT_SECONDARY}`}>Crée ton premier deck avec le bouton « Créer » ci-dessus.</p>
-                )}
               </div>
             ) : (
-              <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))" }}>
+              <div className={styles.deckGrid}>
                 {decks.map((deck) => (
                   <DeckTile
                     key={deck.id}
@@ -165,28 +170,26 @@ export function DecksScreen({ isSignedIn, initialDecks }: DecksScreenProps) {
               </div>
             )}
           </div>
-        </>
-      ) : (
-        <div className="flex flex-1 items-center justify-center">
-          <div className="flex flex-col items-center gap-4 text-center">
-            <p className={`text-base font-medium ${TEXT_PRIMARY}`}>Connecte-toi pour gérer tes decks</p>
-            <div className="flex gap-2">
-              <Link
-                href="/connexion"
-                className="inline-flex items-center justify-center rounded-[var(--radius-sm)] bg-[var(--accent)] px-4 py-2 text-sm font-medium text-[#1a1410] transition duration-150 ease-out hover:bg-[var(--accent-hover)]"
-              >
-                Se connecter
-              </Link>
-              <Link
-                href="/inscription"
-                className="inline-flex items-center justify-center rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-1)] px-4 py-2 text-sm font-medium text-[var(--text-primary)] transition duration-150 ease-out hover:border-[var(--accent)]/50"
-              >
-                Créer un compte
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
+        )}
+      </PaperSurface>
+
+      <UtilityBar
+        left={
+          isSignedIn ? (
+            <Link href="/decks/nouveau" className={shell.primaryAction} onClick={() => playButtonClick()}>
+              <span className={shell.plus} aria-hidden>
+                +
+              </span>
+              Créer un deck
+            </Link>
+          ) : undefined
+        }
+        right={
+          isSignedIn ? (
+            <SearchLine value={search} onChange={setSearch} placeholder="Rechercher un deck…" label="Rechercher un deck" />
+          ) : undefined
+        }
+      />
 
       {menu && (
         <DeckContextMenu
@@ -218,6 +221,6 @@ export function DecksScreen({ isSignedIn, initialDecks }: DecksScreenProps) {
           onCancel={() => setDeleteTarget(null)}
         />
       )}
-    </div>
+    </ScreenShell>
   );
 }

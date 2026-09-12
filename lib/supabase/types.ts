@@ -1,18 +1,23 @@
 /**
- * Types de la base de données, écrits à la main pour correspondre à
- * `supabase/migrations/20260908200000_init.sql` et
- * `supabase/migrations/20260910120000_cards_collection_economy.sql`. À
- * remplacer/régénérer une fois le projet lié au CLI Supabase :
+ * Types de la base de données, écrits à la main pour correspondre aux trois
+ * migrations de `supabase/migrations/` (`..._init.sql`,
+ * `..._cards_collection_economy.sql`,
+ * `..._progression_and_boosters.sql`). À remplacer/régénérer une fois le
+ * projet lié au CLI Supabase :
  *   npx supabase gen types typescript --project-id <id> > lib/supabase/types.ts
  *
- * Volontairement PARTIEL : ne couvre que les tables effectivement
- * requêtées depuis du code TypeScript à ce jour (`profiles`, `matches`,
- * `matchmaking_queue`, `player_cards`, `player_decks`,
- * `player_deck_cards`). La migration `..._cards_collection_economy.sql`
- * introduit encore d'autres tables (cartes, boosters, monnaie, quêtes,
- * onboarding) qui n'ont pas de Server Action associée — les typer à la
- * main ici avant d'en avoir l'usage réel ferait courir un risque de
- * dérive silencieuse avec le schéma SQL.
+ * Volontairement PARTIEL : ne couvre que les tables et colonnes
+ * effectivement requêtées depuis du code TypeScript à ce jour. Les tables
+ * encore sans Server Action (quêtes, onboarding, historique d'ouverture)
+ * et les colonnes non lues restent absentes plutôt que devinées : les
+ * typer avant d'en avoir l'usage réel ferait courir un risque de dérive
+ * silencieuse avec le schéma SQL.
+ *
+ * Les tables autoritaires (collection, boosters, monnaie, progression) sont
+ * déclarées en lecture seule (`Insert`/`Update` à `Record<string, never>`) :
+ * leurs écritures passent EXCLUSIVEMENT par les fonctions Postgres
+ * atomiques listées dans `Functions`. Le type rend donc une écriture
+ * directe impossible à compiler, ce qui est le comportement voulu.
  */
 
 export interface Database {
@@ -178,6 +183,127 @@ export interface Database {
         };
         Relationships: [];
       };
+
+      /**
+       * Miroir serveur du catalogue (`scripts/seedCards.ts`). Seules les
+       * colonnes réellement lues par les systèmes de collection/boosters
+       * sont typées ici ; la table en a davantage.
+       */
+      cards: {
+        Row: {
+          id: string;
+          name: string;
+          card_type: CardTypeEnum;
+          rarity: CardRarityEnum;
+          rarity_weight: number;
+          max_copies: number;
+          is_collectible: boolean;
+          is_enabled: boolean;
+          set_code: string;
+        };
+        Insert: {
+          id: string;
+          name: string;
+          card_type: CardTypeEnum;
+          rarity?: CardRarityEnum;
+          rarity_weight?: number;
+          max_copies?: number;
+          is_collectible?: boolean;
+          is_enabled?: boolean;
+          set_code?: string;
+        };
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      booster_definitions: {
+        Row: {
+          id: string;
+          name: string;
+          card_count: number;
+          price_currency: number | null;
+          is_purchasable: boolean;
+          is_enabled: boolean;
+          /** Raretés retirées du pool de CE booster (ex: pas d'Abyssale dans le Mini Booster de Bienvenue). */
+          pool_excluded_rarities: CardRarityEnum[];
+        };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      booster_slots: {
+        Row: {
+          booster_definition_id: string;
+          slot_index: number;
+          guaranteed_rarity: CardRarityEnum | null;
+          /** Pondération multi-rareté (slot Profondeur) : `{"uncommon": 55, ...}`. */
+          weighted_rarities: Partial<Record<CardRarityEnum, number>> | null;
+        };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      player_boosters: {
+        Row: {
+          user_id: string;
+          booster_definition_id: string;
+          quantity: number;
+          updated_at: string;
+        };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      player_pity: {
+        Row: {
+          user_id: string;
+          booster_definition_id: string;
+          packs_since_abyssal: number;
+          updated_at: string;
+        };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      player_currency: {
+        Row: {
+          user_id: string;
+          balance: number;
+          updated_at: string;
+        };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      player_progression: {
+        Row: {
+          user_id: string;
+          xp_total: number;
+          level: number;
+          matches_played: number;
+          pvp_wins: number;
+          /** Jour UTC (`YYYY-MM-DD`) de la dernière victoire PvP, ou `null`. */
+          last_pvp_win_day: string | null;
+          updated_at: string;
+        };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      match_rewards: {
+        Row: {
+          match_id: string;
+          user_id: string;
+          xp_granted: number;
+          tides_granted: number;
+          level_before: number;
+          level_after: number;
+          first_win_of_day: boolean;
+          granted_at: string;
+        };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -185,8 +311,55 @@ export interface Database {
         Args: Record<string, never>;
         Returns: { opponent_user_id: string; opponent_deck_id: string }[];
       };
+      /**
+       * Octroi atomique et idempotent des récompenses d'une partie.
+       * Retourne `{ granted, xp_total, level }` — `granted: false` signifie
+       * que cette partie avait déjà récompensé ce joueur.
+       */
+      grant_match_progression: {
+        Args: {
+          p_match_id: string;
+          p_user_id: string;
+          p_xp: number;
+          p_tides: number;
+          p_target_level: number;
+          p_level_before: number;
+          p_first_win_of_day: boolean;
+          p_is_pvp_win: boolean;
+          p_boosters: string[];
+        };
+        Returns: { granted: boolean; xp_total: number; level: number };
+      };
+      purchase_booster: {
+        Args: { p_user_id: string; p_booster_id: string; p_quantity?: number };
+        Returns: { ok: boolean; error?: string; balance?: number; spent?: number };
+      };
+      /** Consomme le booster et crédite la collection ; le tirage vient de `game/boosters`. */
+      open_booster: {
+        Args: { p_user_id: string; p_booster_id: string; p_card_ids: string[] };
+        Returns: {
+          ok: boolean;
+          error?: string;
+          opening_id?: string;
+          abyssal_pulled?: boolean;
+          packs_since_abyssal?: number;
+        };
+      };
+      recycle_card: {
+        Args: { p_user_id: string; p_card_id: string; p_quantity?: number };
+        Returns: { ok: boolean; error?: string; tides_gained?: number; balance?: number };
+      };
     };
-    Enums: Record<string, never>;
+    Enums: {
+      card_type: CardTypeEnum;
+      card_rarity: CardRarityEnum;
+    };
     CompositeTypes: Record<string, never>;
   };
 }
+
+/** Miroir de l'enum SQL `public.card_type`. */
+type CardTypeEnum = "marin" | "creature" | "equipement" | "structure" | "objet" | "anomalie";
+
+/** Miroir de l'enum SQL `public.card_rarity`. */
+type CardRarityEnum = "common" | "uncommon" | "rare" | "abyssal";

@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ShipDefinition } from "@/game";
 import { BoardBackdrop } from "@/features/match/BoardBackdrop";
 import { Fireworks } from "@/features/match/Fireworks";
+import styles from "@/features/match/VictoryScreen.module.css";
 
 interface VictoryScreenProps {
   /** `undefined` pour un match nul — dans ce cas, pas de cadre/navire à montrer. */
@@ -35,14 +36,6 @@ const ILLUSTRATION_ZONE = { top: "21%", left: "17%", width: "64%", height: "49%"
 const ILLUSTRATION_CLIP =
   "polygon(50% 0%, 36% 1.5%, 25% 6%, 16% 13%, 9% 23%, 4% 35%, 1% 48%, 0% 62%, 0% 100%, 100% 100%, 100% 62%, 99% 48%, 96% 35%, 91% 23%, 84% 13%, 75% 6%, 64% 1.5%)";
 const NAMEPLATE_ZONE = { top: "73%", left: "22%", width: "56%", height: "8%" };
-
-/** Bouton "Nouvelle partie" — même signature visuelle que le CTA principal de la Collection (laiton/turquoise). */
-const EXIT_BUTTON_CLASS =
-  "inline-flex items-center justify-center rounded-md px-8 py-3 text-sm font-bold uppercase tracking-wide text-amber-50 " +
-  "[font-family:var(--font-card-title)] transition-all duration-150 hover:-translate-y-0.5 " +
-  "shadow-[inset_0_0_0_1px_rgba(231,200,119,0.45),0_4px_14px_rgba(0,0,0,0.45)] " +
-  "hover:shadow-[inset_0_0_0_1px_rgba(231,200,119,0.7),0_6px_18px_rgba(0,0,0,0.55),0_0_14px_rgba(31,111,120,0.5)]";
-const EXIT_BUTTON_STYLE = { background: "linear-gradient(180deg, #1f6f78 0%, #123c42 100%)" };
 
 /**
  * Écran de fin de partie victorieuse — cadre `ship-frame-victory.png`
@@ -105,15 +98,23 @@ export function VictoryScreen({ winner, onExit, exitHref }: VictoryScreenProps) 
           <h1 className="text-3xl font-bold text-slate-100">Match nul</h1>
         )}
 
-        {exitHref ? (
-          <Link href={exitHref} className={EXIT_BUTTON_CLASS} style={EXIT_BUTTON_STYLE}>
-            Nouvelle partie
+        {/* Secondaire à gauche, action engageante à droite — même ordre de
+            lecture que les dialogues de la coquille hors-partie. */}
+        <div className={styles.actions}>
+          <Link href="/" className={styles.ghost}>
+            Retour au menu
           </Link>
-        ) : (
-          <button type="button" onClick={onExit} className={EXIT_BUTTON_CLASS} style={EXIT_BUTTON_STYLE}>
-            Nouvelle partie
-          </button>
-        )}
+
+          {exitHref ? (
+            <Link href={exitHref} className={styles.primary}>
+              Nouvelle partie
+            </Link>
+          ) : (
+            <button type="button" onClick={onExit} className={styles.primary}>
+              Nouvelle partie
+            </button>
+          )}
+        </div>
       </div>
     </>
   );

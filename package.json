@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "seed:cards": "tsx scripts/seedCards.ts"
+    "seed:cards": "tsx --env-file=.env.local scripts/seedCards.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

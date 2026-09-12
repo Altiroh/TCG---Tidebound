@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CardDefinition, CardInstance } from "@/game";
 import styles from "@/features/collection/CollectionScreen.module.css";
+import shell from "@/features/shell/ScreenShell.module.css";
 import { CardTile } from "@/features/match/CardTile";
 
 /** Nombre de cartes montées par lot — ajusté pour couvrir large sans jamais monter la collection entière d'un coup. */
@@ -100,9 +101,18 @@ export function CardGrid({ cards, onCardClick, hasAnyCards }: CardGridProps) {
   }, [hasMore, cards.length, visibleCount]);
 
   return (
-    <div ref={scrollRef} className={styles.cardGridScroll}>
+    <div ref={scrollRef} className={shell.paperScrollFill}>
       {cards.length === 0 ? (
-        <div className={styles.emptyState}>
+        <div className={shell.emptyState}>
+          <svg viewBox="0 0 24 24" width="30" height="30" fill="none" className={shell.emptyStateMark} aria-hidden>
+            <path
+              d="M12 3v12m0 0l-3-3m3 3l3-3M6 8h12M12 15v4a3 3 0 0 1-3 3m3-3a3 3 0 0 0 3 3"
+              stroke="currentColor"
+              strokeWidth={1.3}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
           <p>
             {hasAnyCards
               ? "Aucune carte ne correspond à ces filtres."

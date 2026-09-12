@@ -1,15 +1,4 @@
-import { TEXT_SECONDARY } from "@/components/game-ui/tokens";
-
-const SEGMENT_COUNT = 24;
-
-/** Bleu → vert en approchant `min`, vert plein entre `min` et `max`, rouge au-delà. */
-function gaugeColor(count: number, min: number, max: number): string {
-  if (count > max) return "#f87171";
-  if (count >= min) return "#34d399";
-  const ratio = Math.min(1, count / min);
-  const hue = 210 - ratio * 70; // 210 (bleu) → 140 (vert)
-  return `hsl(${hue}, 70%, 60%)`;
-}
+import styles from "@/features/decks/DeckScreens.module.css";
 
 interface DeckCapacityGaugeProps {
   count: number;
@@ -17,34 +6,48 @@ interface DeckCapacityGaugeProps {
   max: number;
 }
 
-/** Jauge segmentée façon égaliseur — remplissage et couleur progressifs selon la taille du deck par rapport aux règles (`RULES.DECK_SIZE_MIN`/`MAX`). */
+/**
+ * « Ligne de charge » du deck, gravée dans le papier : un rail d'encre, un
+ * remplissage, et un repère au minimum légal (`RULES.DECK_SIZE_MIN`).
+ *
+ * Remplace l'égaliseur à segments néon d'avant, dernier vestige de
+ * l'ancienne direction artistique. La couleur porte le seul sens utile :
+ * laiton tant que le deck est incomplet (« en cours »), turquoise dès
+ * qu'il est jouable (le seul endroit où cette couleur apparaît sur le
+ * papier), encre rouge délavée s'il dépasse le maximum.
+ */
 export function DeckCapacityGauge({ count, min, max }: DeckCapacityGaugeProps) {
-  const color = gaugeColor(count, min, max);
-  const filledSegments = Math.min(SEGMENT_COUNT, Math.round((count / max) * SEGMENT_COUNT));
+  const isOver = count > max;
   const isValid = count >= min && count <= max;
+  const fillRatio = Math.min(1, count / max);
+  const fillClass = isOver ? styles.gaugeFillOver : isValid ? styles.gaugeFillValid : styles.gaugeFill;
 
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex h-full items-center gap-[2px] rounded-md bg-white/[0.03] px-2 py-2">
-        {Array.from({ length: SEGMENT_COUNT }).map((_, i) => (
-          <span
-            key={i}
-            className="flex-1 rounded-sm transition-colors duration-200"
-            style={{
-              height: "100%",
-              backgroundColor: i < filledSegments ? color : "rgba(255,255,255,0.08)",
-              boxShadow: i < filledSegments ? `0 0 6px ${color}80` : undefined,
-            }}
-          />
-        ))}
+    <div className={styles.gauge}>
+      <div
+        className={styles.gaugeTrack}
+        role="progressbar"
+        aria-valuenow={count}
+        aria-valuemin={0}
+        aria-valuemax={max}
+        aria-label="Taille du deck"
+      >
+        <span className={fillClass} style={{ width: `${fillRatio * 100}%` }} />
+        {/* Repère du minimum : il n'a de sens que tant qu'on ne l'a pas atteint. */}
+        {!isValid && !isOver && <span className={styles.gaugeMark} style={{ left: `${(min / max) * 100}%` }} />}
       </div>
-      <div className={`flex items-center justify-between text-[0.85em] ${TEXT_SECONDARY}`}>
+
+      <div className={styles.gaugeLabels}>
         <span>
-          {count} / {max}
+          <span className={styles.gaugeCount}>{count}</span> / {max}
         </span>
-        <span className={isValid ? "text-emerald-300" : TEXT_SECONDARY}>
-          {isValid ? "Jouable" : `Min. ${min}`}
-        </span>
+        {isOver ? (
+          <span className={styles.gaugeStatusOver}>Trop de cartes</span>
+        ) : isValid ? (
+          <span className={styles.gaugeStatusValid}>Jouable</span>
+        ) : (
+          <span>Minimum {min}</span>
+        )}
       </div>
     </div>
   );

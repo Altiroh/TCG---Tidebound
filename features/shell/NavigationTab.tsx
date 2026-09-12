@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import styles from "@/features/collection/CollectionScreen.module.css";
+import styles from "@/features/shell/ScreenShell.module.css";
 import { playButtonClick } from "@/lib/sound";
 
 interface NavigationTabProps {
@@ -12,7 +12,7 @@ interface NavigationTabProps {
   onClick?: () => void;
 }
 
-/** Un onglet du header (RETOUR / COLLECTION / DECKS) — lien si `href`, bouton sinon. */
+/** Un libellé de navigation du header (Retour / Collection / Decks) — lien si `href`, bouton sinon. */
 export function NavigationTab({ children, active = false, href, onClick }: NavigationTabProps) {
   const className = active ? styles.navTabActive : styles.navTab;
 

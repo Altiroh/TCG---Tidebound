@@ -40,6 +40,7 @@ import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ReactionPrompt } from "@/features/match/ReactionPrompt";
 import { ShipInstrumentCluster } from "@/features/match/ShipInstrumentCluster";
 import { VictoryScreen } from "@/features/match/VictoryScreen";
+import { BotMatchRewardBanner } from "@/features/progression/BotMatchRewardBanner";
 import { TideOrientationTile } from "@/features/match/TideOrientationTile";
 import { TideProgressBar } from "@/features/match/TideProgressBar";
 import { useActionToasts } from "@/features/match/useActionToasts";
@@ -535,7 +536,14 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
     const winnerName = state.winnerId === botPlayerId ? "Le bot" : state.winnerId === "p1" ? "Joueur 1" : "Joueur 2";
     const winnerShip = state.winnerId === viewerPlayer.id ? viewerShip : otherShip;
     return (
-      <VictoryScreen winner={state.winnerId ? { name: winnerName, ship: winnerShip } : undefined} onExit={onExit} />
+      <>
+        <VictoryScreen winner={state.winnerId ? { name: winnerName, ship: winnerShip } : undefined} onExit={onExit} />
+        {/* Progression : uniquement contre un bot. En hot-seat (deux joueurs
+            humains sur le même écran), aucun des deux n'est identifiable —
+            rien à créditer. Le bandeau s'affiche par-dessus l'écran de
+            victoire, sans toucher à sa mise en page. */}
+        {botPlayerId && <BotMatchRewardBanner outcome={state.winnerId === botPlayerId ? "loss" : "win"} />}
+      </>
     );
   }
 

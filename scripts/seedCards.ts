@@ -4,36 +4,23 @@
  * vérité pour la RÉSOLUTION d'une partie (`game/cards/sets/core.ts`,
  * `game/cards/decks/preconstructed.ts`). `cards` en base n'est qu'un
  * miroir utilisé par les systèmes de collection/boosters/deckbuilding —
- * ce script les garde en phase plutôt que de dupliquer les 81 cartes à la
+ * ce script les garde en phase plutôt que de dupliquer les cartes à la
  * main dans une migration SQL.
  *
  * `rarity`/`rarity_weight` ne sont PAS dans `CardDefinition` (ce sont des
- * données de collection, pas de gameplay) : ce script les laisse à leur
- * valeur par défaut ('common'/55) pour toute carte sans entrée dans
- * `RARITY_OVERRIDES` ci-dessous. Compléter cette table dès que le design
- * verrouille la rareté carte par carte (cf. TODO dans la migration
- * `supabase/migrations/20260910120000_cards_collection_economy.sql`).
+ * données de collection, pas de gameplay) : elles viennent de
+ * `game/boosters/cardRarity.ts`, alimenté par l'audit de design. Le script
+ * REFUSE de tourner si une carte du catalogue n'y a pas d'entrée — un
+ * défaut silencieux à 'common' rendrait tous les boosters faux (plus aucune
+ * Peu commune/Rare/Abyssale à tirer) sans que rien ne le signale.
  *
  * Usage : npx tsx scripts/seedCards.ts
  * (nécessite NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY dans l'environnement)
  */
 import { createClient } from "@supabase/supabase-js";
-import { CORE_SET, getMaxCopies } from "@/game";
-import { PRECONSTRUCTED_DECKS } from "@/game";
-
-const RARITY_WEIGHTS: Record<string, number> = {
-  common: 55,
-  uncommon: 28,
-  rare: 12,
-  abyssal: 5,
-};
-
-/**
- * Rareté par carte — TODO design (non verrouillé par `TCG_DATABASE.md` à
- * ce jour). Toute carte absente de cette table reste 'common' par défaut ;
- * ne pas se fier à ce placeholder pour équilibrer de vrais boosters.
- */
-const RARITY_OVERRIDES: Record<string, "common" | "uncommon" | "rare" | "abyssal"> = {};
+import { CORE_SET, PRECONSTRUCTED_DECKS, getMaxCopies } from "@/game";
+import { RARITY_WEIGHTS } from "@/game/boosters";
+import { assertRarityCoverage, rarityForCardId } from "@/game/boosters/cardRarity";
 
 /**
  * `cards`, `system_decks` et `system_deck_cards` ne sont pas dans
@@ -51,8 +38,12 @@ function createServiceClient(): { from(table: string): ReturnType<ReturnType<typ
 }
 
 async function seedCards(supabase: ReturnType<typeof createServiceClient>) {
+  // Avant toute écriture : mieux vaut un seed qui refuse de tourner qu'une
+  // base où la moitié du catalogue est Commune par défaut.
+  assertRarityCoverage();
+
   const rows = CORE_SET.map((def) => {
-    const rarity = RARITY_OVERRIDES[def.id] ?? "common";
+    const rarity = rarityForCardId(def.id)!;
     return {
       id: def.id,
       name: def.name,

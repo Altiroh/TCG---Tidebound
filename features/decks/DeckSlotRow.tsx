@@ -1,6 +1,8 @@
+"use client";
+
 import { getCardDefinition } from "@/game";
-import { TEXT_PRIMARY, TEXT_SECONDARY, TRANSITION } from "@/components/game-ui/tokens";
-import { CardSquareThumbnail } from "@/features/decks/CardSquareThumbnail";
+import styles from "@/features/decks/DeckScreens.module.css";
+import { useImageOk } from "@/features/match/useImageOk";
 
 interface DeckSlotRowProps {
   index: number;
@@ -8,24 +10,40 @@ interface DeckSlotRowProps {
   onRemove: () => void;
 }
 
-/** Une ligne du deck en cours d'édition : numéro, vignette, nom, coût — clic ou icône = retire cet exemplaire. */
+/**
+ * Une ligne du manifeste : numéro, vignette, nom, coût — clic = retire cet
+ * exemplaire. Aucune surface au repos, juste un filet d'encre très pâle
+ * sous chaque ligne (un registre, pas une liste de composants) ; le survol
+ * annonce le retrait en encre rouge délavée.
+ *
+ * Pour une Abyssale, le calque de débord est superposé à l'illustration de
+ * base, même principe que `CardTile` en plus simple : les deux images
+ * empilées plein cadre, sans zones calées sur un cadre.
+ */
 export function DeckSlotRow({ index, cardId, onRemove }: DeckSlotRowProps) {
   const def = getCardDefinition(cardId);
+  const isAbyssal = def.subtype === "abyssal";
+  const debordUrl = `/assets/cards/illustrations/${cardId}-debord.png`;
+  const debordOk = useImageOk(isAbyssal ? debordUrl : "");
 
   return (
-    <button
-      type="button"
-      onClick={onRemove}
-      title="Retirer cet exemplaire"
-      className={`group flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left ${TRANSITION} hover:bg-[var(--danger)]/10`}
-    >
-      <span className={`flex h-[1.6em] w-[1.6em] shrink-0 items-center justify-center rounded-full text-[0.75em] ${TEXT_SECONDARY}`}>
-        {index}
+    <button type="button" onClick={onRemove} title="Retirer cet exemplaire" className={styles.slotRow}>
+      <span className={styles.slotIndex}>{index}</span>
+
+      <span className={styles.slotThumb}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- vignette de liste, pas une CardTile complète */}
+        <img src={`/assets/cards/illustrations/${cardId}.png`} alt="" loading="lazy" decoding="async" />
+        {isAbyssal && debordOk && (
+          // eslint-disable-next-line @next/next/no-img-element -- calque de débord Abyssal, cf. CardTile
+          <img src={debordUrl} alt="" className={styles.slotThumbDebord} loading="lazy" decoding="async" />
+        )}
       </span>
-      <CardSquareThumbnail cardId={cardId} className="h-[2.1em] w-[2.1em]" />
-      <span className={`min-w-0 flex-1 truncate text-[0.95em] ${TEXT_PRIMARY}`}>{def.name}</span>
-      <span className="shrink-0 text-[0.85em] tabular-nums text-[var(--accent-hover)]">{def.cost}</span>
-      <svg viewBox="0 0 24 24" fill="none" className="h-[1em] w-[1em] shrink-0 text-[var(--danger)] opacity-0 transition-opacity group-hover:opacity-100">
+
+      <span className={styles.slotName}>{def.name}</span>
+      <span className={styles.slotCost} title="Raison">
+        {def.cost}
+      </span>
+      <svg viewBox="0 0 24 24" fill="none" className={styles.slotRemove} aria-hidden>
         <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
       </svg>
     </button>
