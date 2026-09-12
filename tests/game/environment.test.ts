@@ -345,3 +345,37 @@ describe("environnement - decks préconstruits", () => {
     }
   });
 });
+
+describe("effects.resolveEffect - ciblage aléatoire (randomAllyUnit/randomEnemyUnit) fait avancer le RNG", () => {
+  it("un tirage aléatoire fait avancer rngState, pour que le tirage suivant reparte d'une graine différente", () => {
+    const unitA = instance("marin-des-jetees", "p2");
+    const unitB = instance("marin-des-jetees", "p2");
+    const state = testGameState({
+      players: [testPlayer("p1"), testPlayer("p2", { board: [unitA, unitB] })],
+    });
+    const effect = { type: "damage" as const, target: { kind: "randomEnemyUnit" as const }, amount: { kind: "flat" as const, value: 1 } };
+    const context = { controllerId: "p1", turnNumber: 1 };
+
+    // AVANT le correctif, `resolveUnitTargets` ne reportait jamais l'état
+    // avancé du RNG : deux résolutions successives à partir du même état
+    // de départ tiraient donc toujours la MÊME unité "aléatoire".
+    const first = resolveEffect(state, effect, context);
+    expect(first.state.rngState).not.toBe(state.rngState);
+
+    const second = resolveEffect(first.state, effect, context);
+    expect(second.state.rngState).not.toBe(first.state.rngState);
+  });
+
+  it("randomAllyUnit fait aussi avancer rngState", () => {
+    const unitA = instance("marin-des-jetees", "p1");
+    const unitB = instance("marin-des-jetees", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { board: [unitA, unitB] }), testPlayer("p2")],
+    });
+    const effect = { type: "buff" as const, target: { kind: "randomAllyUnit" as const }, amount: { kind: "flat" as const, value: 1 } };
+    const context = { controllerId: "p1", turnNumber: 1 };
+
+    const result = resolveEffect(state, effect, context);
+    expect(result.state.rngState).not.toBe(state.rngState);
+  });
+});

@@ -31,6 +31,7 @@ import { GraveyardViewer } from "@/features/match/GraveyardViewer";
 import { HandFan } from "@/features/match/HandFan";
 import { OpponentHandFan } from "@/features/match/OpponentHandFan";
 import { PhaseActionButton } from "@/features/match/PhaseActionButton";
+import { PendingChoicePrompt } from "@/features/match/PendingChoicePrompt";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ShipInstrumentCluster } from "@/features/match/ShipInstrumentCluster";
 import { VictoryScreen } from "@/features/match/VictoryScreen";
@@ -94,7 +95,7 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
   const opponentShip = getShipDefinition(opponent.shipId);
   const isMyTurn = state.activePlayerId === myUserId;
   const canRespondToReaction = state.pendingReaction?.awaitingPlayerId === myUserId;
-  const canPlay = isMyTurn && !pending && !state.pendingReaction;
+  const canPlay = isMyTurn && !pending && !state.pendingReaction && !state.pendingChoice;
   const canPlayCards = canPlay && state.phase === "mainPhase";
   const canAttack = canPlay && state.phase === "combatPhase";
   // Cf. MatchBoard : si aucune unité du joueur actif ne peut attaquer, le
@@ -472,6 +473,14 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
               <span className="text-xs text-slate-300">Choisissez une cible sur le plateau.</span>
             )}
           </div>
+        )}
+
+        {state.pendingChoice?.playerId === myUserId && (
+          <PendingChoicePrompt
+            reasonLossAmount={state.pendingChoice.reasonLossAmount}
+            anchorDamageAmount={state.pendingChoice.anchorDamageAmount}
+            onChoose={(choice) => act({ type: "resolveChoice", playerId: myUserId, choice })}
+          />
         )}
 
         <div

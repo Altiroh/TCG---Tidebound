@@ -34,6 +34,18 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
   const allBoardUnits = [...player.board, ...(opponent?.board ?? [])];
   const actions: PlayerAction[] = [];
 
+  // Choix forcé en attente, pour CE joueur (ex: Le Fond Vous Regarde) :
+  // seule `resolveChoice` est légale tant qu'il reste ouvert
+  // (`game/engine.ts`) — `evaluateState` départagera naturellement les deux
+  // branches (perte d'Ancrage pondérée bien plus lourdement que la Raison),
+  // aucune heuristique dédiée n'est nécessaire ici.
+  if (state.pendingChoice && state.pendingChoice.playerId === playerId) {
+    return [
+      { type: "resolveChoice", playerId, choice: "reasonLoss" },
+      { type: "resolveChoice", playerId, choice: "anchorDamage" },
+    ];
+  }
+
   // Fenêtre de réaction ouverte, en attente de CE joueur : seules
   // `activateReaction`/`passReaction` sont légales tant qu'elle reste
   // ouverte (`game/engine.ts`) — ne pas proposer d'action normale.

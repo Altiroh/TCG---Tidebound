@@ -11,9 +11,13 @@ import type { GameState, PlayerId } from "@/game/state/types";
  */
 const MAX_ACTIONS_PER_TURN = 40;
 
-/** `true` si CE joueur a quelque chose à décider maintenant : soit c'est son tour, soit une fenêtre de réaction l'attend (peut survenir hors de son tour — ex: l'adversaire vient de jouer une carte). */
+/** `true` si CE joueur a quelque chose à décider maintenant : soit c'est son tour, soit une fenêtre de réaction ou un choix forcé (ex: Le Fond Vous Regarde) l'attend (peut survenir hors de son tour — ex: l'adversaire vient de jouer une carte). */
 function hasSomethingToDo(state: GameState, playerId: PlayerId): boolean {
-  return state.activePlayerId === playerId || state.pendingReaction?.awaitingPlayerId === playerId;
+  return (
+    state.activePlayerId === playerId ||
+    state.pendingReaction?.awaitingPlayerId === playerId ||
+    state.pendingChoice?.playerId === playerId
+  );
 }
 
 export interface BotTurnStep {
@@ -36,7 +40,14 @@ export function stepBotTurn(state: GameState, playerId: PlayerId, difficulty: Bo
   const action = chooseBotAction(state, playerId, difficulty);
   const result = dispatch(state, action);
   if (!result.ok) {
-    const fallbackAction = state.pendingReaction ? { type: "passReaction" as const, playerId } : { type: "endTurn" as const, playerId };
+    // L'Ancrage pèse bien plus lourd que la Raison dans `evaluateState` :
+    // "perdre de la Raison" est le repli le plus sûr par défaut si le choix
+    // normalement évalué par `chooseBotAction` a, contre toute attente, échoué.
+    const fallbackAction = state.pendingReaction
+      ? { type: "passReaction" as const, playerId }
+      : state.pendingChoice
+        ? { type: "resolveChoice" as const, playerId, choice: "reasonLoss" as const }
+        : { type: "endTurn" as const, playerId };
     const fallback = dispatch(state, fallbackAction);
     return { state: fallback.ok ? fallback.state : state, done: true };
   }

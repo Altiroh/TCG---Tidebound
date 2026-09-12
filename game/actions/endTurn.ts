@@ -3,6 +3,7 @@ import type { GameEvent } from "@/game/events/types";
 import { processTrigger } from "@/game/triggers/triggerBus";
 import { RULES } from "@/game/rules/constants";
 import { assertGameActive, assertIsActivePlayer, assertPlayerInGame, combine } from "@/game/rules/validation";
+import { findAnomalyForcedChoice } from "@/game/state/anomalies";
 import { getOpponent, STATUS_NO_REASON_GAIN, type GameState, type PlayerState } from "@/game/state/types";
 import type { ActionResult, EndTurnAction } from "@/game/actions/types";
 
@@ -180,6 +181,15 @@ export function endTurn(state: GameState, action: EndTurnAction): ActionResult {
   );
   nextState = startOfTurnTrigger.state;
   events.push(...startOfTurnTrigger.events);
+
+  // "Le Fond Vous Regarde" : choix forcé pour le joueur qui DEVIENT actif,
+  // au début de CHAQUE tour tant que l'Anomalie reste en jeu (n'importe
+  // quel contrôleur — cf. `game/state/anomalies.ts`). Bloque toute autre
+  // action jusqu'à sa résolution (`resolveChoice`, vérifié dans `dispatch`).
+  const forcedChoice = findAnomalyForcedChoice(nextState, refreshedPlayer.id, newTurnNumber);
+  if (forcedChoice) {
+    nextState = { ...nextState, pendingChoice: forcedChoice };
+  }
 
   return { ok: true, state: nextState, events };
 }

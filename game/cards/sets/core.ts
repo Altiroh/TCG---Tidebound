@@ -1219,12 +1219,7 @@ export const CORE_SET: CardDefinition[] = [
     maxCopies: 2,
     durationTurns: 2,
     text: "Pendant 2 tours, au début de chaque tour, le joueur actif choisit : perdre 1 Raison, ou infliger 1 dégât d'Ancrage à son propre Navire.",
-    // non appliqué : nécessite un vrai choix de joueur (deux effets alternatifs proposés au joueur ACTIF à
-    // chaque début de tour) — contrairement aux autres Anomalies de ce lot, `game/state/anomalies.ts` ne
-    // modélise que des règles appliquées automatiquement, sans décision. Demanderait un sous-système dédié
-    // (état "choix en attente" façon `pendingReaction`, nouvelle action `resolveChoice`, UI de sélection) —
-    // signalé comme chantier séparé plutôt que deviné (un défaut fixe changerait la valeur stratégique réelle
-    // de la carte).
+    anomalyForceChoiceAtStartOfTurn: { reasonLossAmount: 1, anchorDamageAmount: 1 },
   },
   {
     // Variante ABYSSALE distincte (coexiste avec la Standard ci-dessus) — anciennement seule entrée sous
@@ -1238,7 +1233,7 @@ export const CORE_SET: CardDefinition[] = [
     maxCopies: 1,
     durationTurns: 2,
     text: "Pendant 2 tours, au début de chaque tour, le joueur actif choisit : perdre 2 Raison, ou infliger 2 dégâts d'Ancrage à son propre Navire.",
-    // non appliqué : même chantier que la version Standard ci-dessus (choix de joueur non modélisé).
+    anomalyForceChoiceAtStartOfTurn: { reasonLossAmount: 2, anchorDamageAmount: 2 },
   },
 
   // ======================================================================

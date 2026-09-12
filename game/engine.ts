@@ -6,6 +6,7 @@ import { breakObject } from "@/game/actions/breakObject";
 import { endTurn } from "@/game/actions/endTurn";
 import { passReaction } from "@/game/actions/passReaction";
 import { playCard } from "@/game/actions/playCard";
+import { resolveChoice } from "@/game/actions/resolveChoice";
 import { saborder } from "@/game/actions/saborder";
 import type { ActionResult, PlayerAction } from "@/game/actions/types";
 import { openReactionWindowIfEligible } from "@/game/reactions/reactionWindow";
@@ -31,6 +32,12 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
   // commencée"), seules `activateReaction`/`passReaction` sont acceptées.
   if (state.pendingReaction && !REACTION_ACTION_TYPES.has(action.type)) {
     return { ok: false, error: "Une fenêtre de réaction est ouverte : activez une capacité facultative éligible, ou passez." };
+  }
+
+  // Même principe pour un choix forcé en attente (ex: Le Fond Vous
+  // Regarde) : seule `resolveChoice` est acceptée tant qu'il reste ouvert.
+  if (state.pendingChoice && action.type !== "resolveChoice") {
+    return { ok: false, error: "Un choix est en attente : résolvez-le avant toute autre action." };
   }
 
   const result = applyAction(state, action);
@@ -61,7 +68,12 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
   // ferme) — ne pas en ouvrir une seconde par-dessus. Pour toute autre
   // action, vérifier si ce qu'elle vient de produire en ouvre une
   // nouvelle (au moins une capacité `optional` devient éligible).
-  if (finalState.status === "active" && !finalState.pendingOceanJudgment && !REACTION_ACTION_TYPES.has(action.type)) {
+  if (
+    finalState.status === "active" &&
+    !finalState.pendingOceanJudgment &&
+    !finalState.pendingChoice &&
+    !REACTION_ACTION_TYPES.has(action.type)
+  ) {
     const opened = openReactionWindowIfEligible(finalState, finalEvents, finalState.turnNumber);
     if (opened) {
       finalState = { ...finalState, pendingReaction: opened };
@@ -77,6 +89,9 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
   // sens, personne ne rejouera jamais dessus.
   if (finalState.status !== "active" && finalState.pendingReaction) {
     finalState = { ...finalState, pendingReaction: undefined };
+  }
+  if (finalState.status !== "active" && finalState.pendingChoice) {
+    finalState = { ...finalState, pendingChoice: undefined };
   }
 
   return { ok: true, state: finalState, events: finalEvents };
@@ -102,6 +117,8 @@ function applyAction(state: GameState, action: PlayerAction): ActionResult {
       return passReaction(state, action);
     case "activateAbility":
       return activateAbility(state, action);
+    case "resolveChoice":
+      return resolveChoice(state, action);
     default: {
       const exhaustiveCheck: never = action;
       return { ok: false, error: `Action inconnue: ${JSON.stringify(exhaustiveCheck)}` };

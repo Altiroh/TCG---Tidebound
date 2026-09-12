@@ -98,8 +98,36 @@ export interface GameState {
    */
   pendingReaction?: PendingReactionState;
 
+  /**
+   * Choix forcé en attente pour `playerId` (Notion "Choix de joueur en
+   * cours de résolution", ex: Le Fond Vous Regarde — "au début de chaque
+   * tour, le joueur actif choisit : perdre X Raison, ou infliger X dégâts
+   * d'Ancrage à son propre Navire"). Tant que ce champ est posé, `playerId`
+   * est le SEUL joueur autorisé à agir, uniquement via `resolveChoice`
+   * (`game/actions/resolveChoice.ts`) — même principe de blocage que
+   * `pendingReaction`, mais pour un choix entre deux effets fixes plutôt
+   * qu'une capacité facultative.
+   */
+  pendingChoice?: PendingChoice;
+
   status: "active" | "finished";
   winnerId?: PlayerId;
+}
+
+/**
+ * Choix binaire forcé, toujours entre "perdre de la Raison" et "infliger
+ * des dégâts d'Ancrage à son propre Navire" — les deux seules branches que
+ * le catalogue actuel requiert (Le Fond Vous Regarde). Une carte future aux
+ * branches différentes élargirait ce type plutôt que de le généraliser
+ * prématurément à des effets arbitraires.
+ */
+export interface PendingChoice {
+  playerId: PlayerId;
+  /** Carte-source de la capacité ayant ouvert ce choix (traçabilité/debug). */
+  sourceInstanceId: string;
+  reasonLossAmount: number;
+  anchorDamageAmount: number;
+  turnNumber: number;
 }
 
 export interface PendingReactionState {

@@ -3,7 +3,7 @@ import { canBeEquipTarget, getCardDefinition } from "@/game/cards/sets/core";
 import { forceTideJumpToAbysses, forceTideTransition } from "@/game/environment/tide";
 import type { EffectAmount, EffectDefinition } from "@/game/effects/types";
 import type { GameEvent } from "@/game/events/types";
-import { nextInt } from "@/game/rng";
+import { nextInt, type RngState } from "@/game/rng";
 import { reduceReasonGain } from "@/game/state/anomalies";
 import { consumeOwnDamageTakenShield, consumeReasonLossShield, consumeStructureResistanceRestoreShield } from "@/game/state/shields";
 import {
@@ -98,51 +98,63 @@ function findUnitOwner(state: GameState, instanceId: string): PlayerState | unde
   return state.players.find((p) => p.board.some((u) => u.instanceId === instanceId));
 }
 
-/** Résout les unités ciblées par un sélecteur, en tant que paires (unité, propriétaire). */
+/**
+ * Résout les unités ciblées par un sélecteur, en tant que paires (unité,
+ * propriétaire) — ET l'état du RNG résultant. Retourne toujours
+ * `state.rngState` inchangé pour un sélecteur non aléatoire : renvoyer
+ * cette valeur systématiquement (plutôt que `undefined`/optionnel) évite
+ * à chaque appelant de devoir distinguer "a tiré au hasard" de "non",
+ * puisqu'il doit de toute façon reporter CE `rngState` dans l'état qu'il
+ * retourne pour que le tirage suivant reparte d'une graine différente
+ * (corrige un bug où `randomAllyUnit`/`randomEnemyUnit` tiraient
+ * toujours la même unité "aléatoire" tant que rien d'autre ne faisait
+ * avancer la graine).
+ */
 function resolveUnitTargets(
   state: GameState,
   effect: EffectDefinition,
   context: EffectContext
-): Array<{ unit: CardInstance; ownerId: PlayerId }> {
+): { targets: Array<{ unit: CardInstance; ownerId: PlayerId }>; rngState: RngState } {
   const controller = getPlayer(state, context.controllerId);
   const opponent = getOpponent(state, context.controllerId);
+  const noDraw = (targets: Array<{ unit: CardInstance; ownerId: PlayerId }>) => ({ targets, rngState: state.rngState });
 
   switch (effect.target.kind) {
     case "self": {
-      if (!context.sourceInstanceId) return [];
+      if (!context.sourceInstanceId) return noDraw([]);
       const owner = findUnitOwner(state, context.sourceInstanceId);
       const unit = owner?.board.find((u) => u.instanceId === context.sourceInstanceId);
-      return unit && owner ? [{ unit, ownerId: owner.id }] : [];
+      return noDraw(unit && owner ? [{ unit, ownerId: owner.id }] : []);
     }
     case "chosenUnit": {
-      if (!context.chosenTargetInstanceId) return [];
+      if (!context.chosenTargetInstanceId) return noDraw([]);
       const owner = findUnitOwner(state, context.chosenTargetInstanceId);
       const unit = owner?.board.find((u) => u.instanceId === context.chosenTargetInstanceId);
-      return unit && owner ? [{ unit, ownerId: owner.id }] : [];
+      return noDraw(unit && owner ? [{ unit, ownerId: owner.id }] : []);
     }
     case "allAllyUnits":
-      return controller.board.map((unit) => ({ unit, ownerId: controller.id }));
+      return noDraw(controller.board.map((unit) => ({ unit, ownerId: controller.id })));
     case "allEnemyUnits":
-      return opponent.board.map((unit) => ({ unit, ownerId: opponent.id }));
+      return noDraw(opponent.board.map((unit) => ({ unit, ownerId: opponent.id })));
     case "allUnits":
-      return [
+      return noDraw([
         ...controller.board.map((unit) => ({ unit, ownerId: controller.id })),
         ...opponent.board.map((unit) => ({ unit, ownerId: opponent.id })),
-      ];
+      ]);
     case "randomAllyUnit": {
-      if (controller.board.length === 0) return [];
+      if (controller.board.length === 0) return noDraw([]);
       const draw = nextInt(state.rngState, controller.board.length);
       const unit = controller.board[draw.value]!;
-      return [{ unit, ownerId: controller.id }];
+      return { targets: [{ unit, ownerId: controller.id }], rngState: draw.nextState };
     }
     case "randomEnemyUnit": {
-      if (opponent.board.length === 0) return [];
+      if (opponent.board.length === 0) return noDraw([]);
       const draw = nextInt(state.rngState, opponent.board.length);
       const unit = opponent.board[draw.value]!;
-      return [{ unit, ownerId: opponent.id }];
+      return { targets: [{ unit, ownerId: opponent.id }], rngState: draw.nextState };
     }
     default:
-      return [];
+      return noDraw([]);
   }
 }
 
@@ -211,9 +223,10 @@ export function resolveEffect(
       // dépendance à éviter. Pas encore nécessaire : aucune carte actuelle
       // ne réagit aux dégâts infligés par un effet plutôt qu'un combat.
       const amount = amountValue(effect.amount);
-      let nextState = state;
+      const damageTargets = resolveUnitTargets(state, effect, context);
+      let nextState = { ...state, rngState: damageTargets.rngState };
 
-      for (const { unit, ownerId } of resolveUnitTargets(state, effect, context)) {
+      for (const { unit, ownerId } of damageTargets.targets) {
         // Boucliers "1ère fois par tour" (Baleine aux Cicatrices Blanches :
         // réduction directe ; Wood Vy : restauration après coup sur une
         // Structure alliée — équivalent net à une réduction supplémentaire,
@@ -247,9 +260,10 @@ export function resolveEffect(
 
     case "heal": {
       const amount = amountValue(effect.amount);
-      let nextState = state;
+      const healTargets = resolveUnitTargets(state, effect, context);
+      let nextState = { ...state, rngState: healTargets.rngState };
 
-      for (const { unit, ownerId } of resolveUnitTargets(state, effect, context)) {
+      for (const { unit, ownerId } of healTargets.targets) {
         nextState = replaceUnit(nextState, ownerId, unit.instanceId, (u) => ({
           ...u,
           damageMarked: Math.max(0, u.damageMarked - amount),
@@ -307,8 +321,9 @@ export function resolveEffect(
     }
 
     case "destroy": {
-      let nextState = state;
-      for (const { unit, ownerId } of resolveUnitTargets(state, effect, context)) {
+      const destroyTargets = resolveUnitTargets(state, effect, context);
+      let nextState = { ...state, rngState: destroyTargets.rngState };
+      for (const { unit, ownerId } of destroyTargets.targets) {
         const owner = getPlayer(nextState, ownerId);
         const board = owner.board.filter((u) => u.instanceId !== unit.instanceId);
         const graveyard = [...owner.graveyard, { ...unit, graveyardCause: "destroyed" as const }];
@@ -343,8 +358,9 @@ export function resolveEffect(
       const attackDelta = effect.attackAmount ? amountValue(effect.attackAmount) : fallback;
       const healthDelta = effect.healthAmount ? amountValue(effect.healthAmount) : fallback;
       const duration = effect.permanent ? "permanent" : "temporary";
-      let nextState = state;
-      for (const { unit, ownerId } of resolveUnitTargets(state, effect, context)) {
+      const buffTargets = resolveUnitTargets(state, effect, context);
+      let nextState = { ...state, rngState: buffTargets.rngState };
+      for (const { unit, ownerId } of buffTargets.targets) {
         nextState = replaceUnit(nextState, ownerId, unit.instanceId, (u) => ({
           ...u,
           modifiers: [
@@ -368,8 +384,9 @@ export function resolveEffect(
       const attackDelta = effect.attackAmount ? amountValue(effect.attackAmount) : fallback;
       const healthDelta = effect.healthAmount ? amountValue(effect.healthAmount) : 0;
       const duration = effect.permanent ? "permanent" : "temporary";
-      let nextState = state;
-      for (const { unit, ownerId } of resolveUnitTargets(state, effect, context)) {
+      const debuffTargets = resolveUnitTargets(state, effect, context);
+      let nextState = { ...state, rngState: debuffTargets.rngState };
+      for (const { unit, ownerId } of debuffTargets.targets) {
         nextState = replaceUnit(nextState, ownerId, unit.instanceId, (u) => ({
           ...u,
           modifiers: [

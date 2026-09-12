@@ -99,6 +99,18 @@ export interface ActivateAbilityAction {
   targetInstanceId?: string;
 }
 
+/**
+ * Résout le choix binaire en attente (`GameState.pendingChoice`, ex: Le
+ * Fond Vous Regarde) — seule action acceptée tant qu'un choix est ouvert,
+ * exactement comme `ActivateReactionAction`/`PassReactionAction` pour une
+ * fenêtre de réaction.
+ */
+export interface ResolveChoiceAction {
+  type: "resolveChoice";
+  playerId: PlayerId;
+  choice: "reasonLoss" | "anchorDamage";
+}
+
 export type PlayerAction =
   | PlayCardAction
   | AttackAction
@@ -108,7 +120,8 @@ export type PlayerAction =
   | AdvancePhaseAction
   | ActivateReactionAction
   | PassReactionAction
-  | ActivateAbilityAction;
+  | ActivateAbilityAction
+  | ResolveChoiceAction;
 
 export type ActionResult =
   | { ok: true; state: GameState; events: GameEvent[] }

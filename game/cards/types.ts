@@ -379,6 +379,18 @@ export interface CardDefinition {
   anomalyReduceTideEntryDuration?: { amount: number; anchorDamagePerShip?: number };
 
   /**
+   * Force, au début de CHAQUE tour (déclenché par `startOfTurn`, quel que
+   * soit le contrôleur de cette Anomalie), un choix pour le joueur qui
+   * DEVIENT actif : perdre `reasonLossAmount` Raison, ou infliger
+   * `anchorDamageAmount` dégâts d'Ancrage à son propre Navire (ex: Le Fond
+   * Vous Regarde). Résolu via `GameState.pendingChoice` +
+   * `game/actions/resolveChoice.ts`, jamais deviné automatiquement — un
+   * vrai choix de joueur, contrairement aux autres champs `anomalyXxx` de
+   * cette section qui s'appliquent sans décision.
+   */
+  anomalyForceChoiceAtStartOfTurn?: { reasonLossAmount: number; anchorDamageAmount: number };
+
+  /**
    * Capacité activable manuellement par son contrôleur, une fois par tour,
    * pendant sa Phase principale (`game/actions/activateAbility.ts`) — ex:
    * Sondeur des Mauvaises Eaux, "Une fois par tour, vous pouvez perdre 1

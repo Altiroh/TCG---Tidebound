@@ -2514,3 +2514,107 @@ describe("engine.dispatch - Sept Brasses Plus Bas : saut direct en Abysses + ori
     expect(result.state.players[1].reason).toBe(8); // 10 - 2 (perte de Raison, chaque joueur)
   });
 });
+
+describe("engine.dispatch - Le Fond Vous Regarde : choix forcé au début de chaque tour (système de choix de joueur)", () => {
+  it("ouvre un choix pour le joueur qui DEVIENT actif, bloque toute autre action, et recommence au tour suivant", () => {
+    const fondVousRegarde = instance("le-fond-vous-regarde", "p1");
+    const fillerP1 = instance("marin-des-jetees", "p1");
+    const fillerP2 = instance("marin-des-jetees", "p2");
+    const state = testGameState({
+      players: [
+        testPlayer("p1", { board: [fondVousRegarde], deck: [fillerP1], reason: 10, anchor: 20 }),
+        testPlayer("p2", { deck: [fillerP2], reason: 10, anchor: 20 }),
+      ],
+    });
+
+    const p2Turn = dispatch(state, { type: "endTurn", playerId: "p1" });
+    expect(p2Turn.ok).toBe(true);
+    if (!p2Turn.ok) return;
+    expect(p2Turn.state.activePlayerId).toBe("p2");
+    expect(p2Turn.state.pendingChoice).toEqual({
+      playerId: "p2",
+      sourceInstanceId: fondVousRegarde.instanceId,
+      reasonLossAmount: 1,
+      anchorDamageAmount: 1,
+      turnNumber: p2Turn.state.turnNumber,
+    });
+
+    // Toute autre action est refusée tant que le choix reste ouvert.
+    const blocked = dispatch(p2Turn.state, { type: "endTurn", playerId: "p2" });
+    expect(blocked.ok).toBe(false);
+
+    const resolved = dispatch(p2Turn.state, { type: "resolveChoice", playerId: "p2", choice: "reasonLoss" });
+    expect(resolved.ok).toBe(true);
+    if (!resolved.ok) return;
+    expect(resolved.state.pendingChoice).toBeUndefined();
+    expect(resolved.state.players[1].reason).toBe(9); // 10 - 1
+
+    // Toujours en jeu (durée 2 tours) : le choix revient au tour suivant, pour p1 cette fois.
+    const p1Turn = dispatch(resolved.state, { type: "endTurn", playerId: "p2" });
+    expect(p1Turn.ok).toBe(true);
+    if (!p1Turn.ok) return;
+    expect(p1Turn.state.activePlayerId).toBe("p1");
+    expect(p1Turn.state.pendingChoice?.playerId).toBe("p1");
+  });
+
+  it("l'autre branche inflige des dégâts d'Ancrage au lieu d'une perte de Raison", () => {
+    const fondVousRegarde = instance("le-fond-vous-regarde", "p1");
+    const fillerP2 = instance("marin-des-jetees", "p2");
+    const state = testGameState({
+      players: [
+        testPlayer("p1", { board: [fondVousRegarde], reason: 10, anchor: 20 }),
+        testPlayer("p2", { deck: [fillerP2], reason: 10, anchor: 20 }),
+      ],
+    });
+
+    const p2Turn = dispatch(state, { type: "endTurn", playerId: "p1" });
+    expect(p2Turn.ok).toBe(true);
+    if (!p2Turn.ok) return;
+
+    const resolved = dispatch(p2Turn.state, { type: "resolveChoice", playerId: "p2", choice: "anchorDamage" });
+    expect(resolved.ok).toBe(true);
+    if (!resolved.ok) return;
+    expect(resolved.state.players[1].anchor).toBe(19); // 20 - 1
+    expect(resolved.state.players[1].reason).toBe(10); // inchangée
+  });
+
+  it("refuse qu'un autre joueur que celui attendu résolve le choix", () => {
+    const fondVousRegarde = instance("le-fond-vous-regarde", "p1");
+    const fillerP2 = instance("marin-des-jetees", "p2");
+    const state = testGameState({
+      players: [
+        testPlayer("p1", { board: [fondVousRegarde], reason: 10, anchor: 20 }),
+        testPlayer("p2", { deck: [fillerP2], reason: 10, anchor: 20 }),
+      ],
+    });
+
+    const p2Turn = dispatch(state, { type: "endTurn", playerId: "p1" });
+    expect(p2Turn.ok).toBe(true);
+    if (!p2Turn.ok) return;
+
+    const result = dispatch(p2Turn.state, { type: "resolveChoice", playerId: "p1", choice: "reasonLoss" });
+    expect(result.ok).toBe(false);
+  });
+
+  it("version Abyssale : montants doublés (2 Raison ou 2 dégâts d'Ancrage)", () => {
+    const fondVousRegardeAbyssal = instance("le-fond-vous-regarde-abyssal", "p1");
+    const fillerP2 = instance("marin-des-jetees", "p2");
+    const state = testGameState({
+      players: [
+        testPlayer("p1", { board: [fondVousRegardeAbyssal], reason: 10, anchor: 20 }),
+        testPlayer("p2", { deck: [fillerP2], reason: 10, anchor: 20 }),
+      ],
+    });
+
+    const p2Turn = dispatch(state, { type: "endTurn", playerId: "p1" });
+    expect(p2Turn.ok).toBe(true);
+    if (!p2Turn.ok) return;
+    expect(p2Turn.state.pendingChoice?.reasonLossAmount).toBe(2);
+    expect(p2Turn.state.pendingChoice?.anchorDamageAmount).toBe(2);
+
+    const resolved = dispatch(p2Turn.state, { type: "resolveChoice", playerId: "p2", choice: "reasonLoss" });
+    expect(resolved.ok).toBe(true);
+    if (!resolved.ok) return;
+    expect(resolved.state.players[1].reason).toBe(8); // 10 - 2
+  });
+});
