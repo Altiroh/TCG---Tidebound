@@ -9,15 +9,14 @@ export type BoosterOpeningRarity = "standard" | "rare" | "abyssal";
 
 /** Une carte telle que la scène d'ouverture la consomme. */
 export interface BoosterOpeningCard {
+  /** Clé stable dans le booster (une même carte peut apparaître deux fois). */
   id: string;
+  /** Carte du catalogue affichée une fois retournée. Absente : face provisoire « Carte test ». */
+  cardId?: string;
   rarity: BoosterOpeningRarity;
 }
 
-/**
- * Traduction d'une rareté de gameplay vers un palier de mise en scène.
- * Pas encore utilisée : servira quand la scène recevra le vrai résultat
- * de `openBooster()` (cf. TODO dans `BoostersScreen`).
- */
+/** Traduction d'une rareté de collection vers un palier de mise en scène. */
 export function toOpeningRarity(rarity: CardRarity): BoosterOpeningRarity {
   if (rarity === "abyssal") return "abyssal";
   if (rarity === "rare") return "rare";

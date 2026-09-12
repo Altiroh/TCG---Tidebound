@@ -54,7 +54,8 @@
   --pack-y: calc(var(--u) * var(--pack-y-u));
   --pack-top: calc(var(--pack-y) - var(--pack-h) / 2);
   --card-w: calc(var(--u) * var(--card-w-u));
-  --card-h: calc(var(--card-w) * 1.5);
+  /* 5:7, les proportions de `CardTile` (face) — le dos est recadré en `cover`. */
+  --card-h: calc(var(--card-w) * 1.4);
   --slot-step: calc(var(--u) * var(--slot-step-u));
   --row-y: calc(var(--u) * var(--row-y-u));
 
@@ -990,6 +991,14 @@
   top: 0;
   height: 1px;
   background: linear-gradient(90deg, transparent, var(--frame-color), transparent);
+}
+
+/* Vraie face de carte (rendu `CardTile`, identique à la Collection) — purement décorative ici. */
+.frontTile {
+  position: absolute;
+  inset: 0;
+  display: block;
+  pointer-events: none;
 }
 
 .cardSheen {

@@ -1,6 +1,8 @@
 "use client";
 
-import { memo, useState, type CSSProperties } from "react";
+import { memo, useState, type CSSProperties, type KeyboardEvent } from "react";
+import { getCardDefinition } from "@/game";
+import { CardTile } from "@/features/match/CardTile";
 import styles from "@/features/boosters/opening/BoosterOpening.module.css";
 import { CARD_BACK_ASSET } from "@/features/boosters/opening/boosterOpeningAssets";
 import type { BoosterCardRevealState } from "@/features/boosters/opening/boosterOpeningMachine";
@@ -27,6 +29,10 @@ interface BoosterCardProps {
  *   `.card`      sortie du sachet (translation, rotation, z-index animé)
  *   `.cardLift`  survol
  *   `.cardFlip`  anticipation + retournement 3D (rotateY)
+ *
+ * `.card` est un `div role="button"` et non un `<button>` : la face rendue
+ * par `CardTile` est elle-même un bouton, et un bouton ne peut pas en
+ * contenir un autre.
  */
 export const BoosterCard = memo(function BoosterCard({
   card,
@@ -42,21 +48,30 @@ export const BoosterCard = memo(function BoosterCard({
   const [backFailed, setBackFailed] = useState(false);
   const revealed = state === "revealed";
   const rarityLabel = OPENING_RARITY_LABEL[card.rarity];
+  const cardName = card.cardId ? getCardDefinition(card.cardId).name : "Carte test";
   const showBackImage = cardBackAvailable && !backFailed;
 
+  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (!interactive || (event.key !== "Enter" && event.key !== " ")) return;
+    event.preventDefault();
+    onReveal(index);
+  }
+
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={interactive ? 0 : -1}
+      aria-disabled={!interactive}
       className={styles.card}
       style={cardStyle}
       data-state={state}
       data-rarity={card.rarity}
       data-interactive={interactive || undefined}
-      disabled={!interactive}
-      onClick={() => onReveal(index)}
+      onClick={() => interactive && onReveal(index)}
+      onKeyDown={handleKeyDown}
       aria-label={
         revealed
-          ? `Carte ${index + 1} sur ${count} : Carte test, ${rarityLabel}`
+          ? `Carte ${index + 1} sur ${count} : ${cardName}, ${rarityLabel}`
           : `Carte ${index + 1} sur ${count}, face cachée — révéler`
       }
     >
@@ -81,11 +96,33 @@ export const BoosterCard = memo(function BoosterCard({
               )}
             </span>
 
-            <span className={`${styles.cardFace} ${styles.cardFront}`} aria-hidden={!revealed}>
-              <span className={styles.frontFrame} />
-              <span className={styles.frontEmblem} />
-              <span className={styles.frontTitle}>Carte test</span>
-              <span className={styles.frontRarity}>{rarityLabel}</span>
+            {/* Montée dès la sortie du sachet (cachée par le dos) : ses images ont le temps de charger avant le retournement. */}
+            <span className={`${styles.cardFace} ${styles.cardFront}`} aria-hidden>
+              {card.cardId ? (
+                <span className={styles.frontTile}>
+                  <CardTile
+                    instance={{
+                      instanceId: `booster_${card.id}`,
+                      cardId: card.cardId,
+                      ownerId: "booster",
+                      damageMarked: 0,
+                      modifiers: [],
+                      summoningSick: false,
+                      hasAttackedThisTurn: false,
+                    }}
+                    tideState="calme"
+                    widthClassName="w-full"
+                    scaleOnHover={false}
+                  />
+                </span>
+              ) : (
+                <>
+                  <span className={styles.frontFrame} />
+                  <span className={styles.frontEmblem} />
+                  <span className={styles.frontTitle}>Carte test</span>
+                  <span className={styles.frontRarity}>{rarityLabel}</span>
+                </>
+              )}
               <span className={styles.cardSheen} />
             </span>
           </span>
@@ -94,6 +131,6 @@ export const BoosterCard = memo(function BoosterCard({
         {revealed && card.rarity === "abyssal" && <span className={styles.cardRing} aria-hidden />}
         {revealed && card.rarity !== "standard" && <BoosterParticles variant={card.rarity} />}
       </span>
-    </button>
+    </div>
   );
 });

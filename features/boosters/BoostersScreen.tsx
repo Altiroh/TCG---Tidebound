@@ -14,7 +14,8 @@ import { purchaseBooster, type BoosterInventory } from "@/features/boosters/acti
 import { BoosterOpeningScene } from "@/features/boosters/opening/BoosterOpeningScene";
 import { preloadBoosterOpeningAssets } from "@/features/boosters/opening/boosterOpeningAssets";
 import { getBoosterPackVisual } from "@/features/boosters/opening/boosterPackVisuals";
-import { getMockBoosterCards } from "@/features/boosters/opening/mockBoosterCards";
+import { drawTestBoosterCards } from "@/features/boosters/opening/testBoosterCards";
+import type { BoosterOpeningCard } from "@/features/boosters/opening/types";
 import { playButtonClick } from "@/lib/sound";
 
 /**
@@ -38,7 +39,7 @@ interface BoostersScreenProps {
  * L'objet posé sur le papier est ici un paquet scellé.
  *
  * PROTOTYPE : « Ouvrir » ne lance pour l'instant QUE la scène d'ouverture,
- * avec des cartes factices. Aucun appel serveur, aucune écriture : le
+ * avec des cartes du catalogue tirées au hasard localement. Aucun appel serveur, aucune écriture : le
  * booster n'est pas consommé et la collection ne change pas.
  */
 export function BoostersScreen({ inventory }: BoostersScreenProps) {
@@ -46,7 +47,8 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
   const [isPending, startTransition] = useTransition();
   const [busyBoosterId, setBusyBoosterId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [openingBoosterId, setOpeningBoosterId] = useState<string | null>(null);
+  /** Ouverture en cours : cartes tirées UNE fois au clic, pour ne jamais changer en cours de scène. */
+  const [opening, setOpening] = useState<{ boosterId: string; cards: BoosterOpeningCard[] } | null>(null);
 
   const ownedBoosterIds = inventory.boosters
     .filter((booster) => booster.owned > 0)
@@ -62,19 +64,19 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
   }, [ownedBoosterIds]);
 
   function handleOpen(boosterId: string) {
-    if (openingBoosterId) return;
+    if (opening) return;
     playButtonClick();
     setError(null);
     // TODO(booster-serveur) : c'est ici que se branchera la vraie ouverture —
     // `openBooster(boosterId)` (`features/boosters/actions.ts`) consomme le
     // booster, tire le contenu et crédite la collection côté base. Son
     // résultat (`cards`, converties via `toOpeningRarity`) remplacera
-    // `getMockBoosterCards()`. Pour le prototype, AUCUN appel.
-    setOpeningBoosterId(boosterId);
+    // `drawTestBoosterCards()`. Pour le prototype, AUCUN appel.
+    setOpening({ boosterId, cards: drawTestBoosterCards(boosterId) });
   }
 
   function handleOpeningClosed() {
-    setOpeningBoosterId(null);
+    setOpening(null);
     // TODO(booster-serveur) : une fois l'ouverture réelle branchée, rafraîchir
     // l'inventaire et la collection ici (`router.refresh()`). Rien n'a changé
     // côté serveur dans le prototype, donc rien à recharger.
@@ -86,7 +88,7 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
       type="button"
       className={shell.ghostAction}
       onClick={() => handleOpen(test.boosterId)}
-      disabled={openingBoosterId !== null}
+      disabled={opening !== null}
       title={`Tester l’animation d’ouverture : ${test.label}`}
     >
       {test.label}
@@ -234,10 +236,10 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
         {openingTestButtons}
       </div>
 
-      {openingBoosterId && (
+      {opening && (
         <BoosterOpeningScene
-          cards={getMockBoosterCards(openingBoosterId)}
-          visual={getBoosterPackVisual(openingBoosterId)}
+          cards={opening.cards}
+          visual={getBoosterPackVisual(opening.boosterId)}
           onClose={handleOpeningClosed}
         />
       )}
