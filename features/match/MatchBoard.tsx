@@ -35,6 +35,7 @@ import { GraveyardViewer } from "@/features/match/GraveyardViewer";
 import { HandFan } from "@/features/match/HandFan";
 import { OpponentHandFan } from "@/features/match/OpponentHandFan";
 import { PhaseActionButton } from "@/features/match/PhaseActionButton";
+import { PendingChoicePrompt } from "@/features/match/PendingChoicePrompt";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ReactionPrompt } from "@/features/match/ReactionPrompt";
 import { ShipInstrumentCluster } from "@/features/match/ShipInstrumentCluster";
@@ -124,7 +125,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
   const viewerShip = getShipDefinition(viewerPlayer.shipId);
   const otherShip = getShipDefinition(otherPlayer.shipId);
   const isViewerTurn = activePlayerId === viewerPlayerId;
-  const canPlayCards = isViewerTurn && state.phase === "mainPhase" && !state.pendingReaction;
+  const canPlayCards = isViewerTurn && state.phase === "mainPhase" && !state.pendingReaction && !state.pendingChoice;
   // Si aucune unité du joueur actif ne peut attaquer (toutes engourdies,
   // ayant déjà attaqué, ou rendues inactives par la Marée), proposer la
   // Phase de combat n'aurait aucun intérêt : le bouton unique saute
@@ -644,6 +645,14 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
           <div className="fixed left-1/2 top-6 z-[70] -translate-x-1/2 rounded-full border border-white/25 bg-slate-950/80 px-4 py-2 text-xs text-slate-200 backdrop-blur-md">
             Choisissez une cible sur le plateau.
           </div>
+        )}
+
+        {state.pendingChoice?.playerId === viewerPlayerId && (
+          <PendingChoicePrompt
+            reasonLossAmount={state.pendingChoice.reasonLossAmount}
+            anchorDamageAmount={state.pendingChoice.anchorDamageAmount}
+            onChoose={(choice) => runReactionAction({ type: "resolveChoice", playerId: viewerPlayerId, choice })}
+          />
         )}
 
         <div
