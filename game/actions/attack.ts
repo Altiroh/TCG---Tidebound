@@ -44,6 +44,57 @@ function bonusDamageAgainst(attacker: CardInstance, defenderType: string, state:
   return bonus;
 }
 
+/** Somme `selfDamageOnDirectAttack` de l'attaquant et de tout Équipement qui lui serait attaché (ex: Requin Balafré, Harpon de Pont). */
+function selfDamageOnDirectAttack(attacker: CardInstance, state: GameState): number {
+  let total = getCardDefinition(attacker.cardId).selfDamageOnDirectAttack ?? 0;
+  for (const unit of [...state.players[0].board, ...state.players[1].board]) {
+    if (unit.attachedToInstanceId !== attacker.instanceId) continue;
+    total += getCardDefinition(unit.cardId).selfDamageOnDirectAttack ?? 0;
+  }
+  return total;
+}
+
+/** Somme `opponentReasonLossOnDirectAttack` (filtré par `tideStateIn` si présent) de l'attaquant et de tout Équipement attaché (ex: Anguille des Profondeurs, Bat-Marin Abyssal). */
+function opponentReasonLossOnDirectAttack(attacker: CardInstance, state: GameState): number {
+  const applies = (def: ReturnType<typeof getCardDefinition>) => {
+    const effect = def.opponentReasonLossOnDirectAttack;
+    if (!effect) return 0;
+    if (effect.tideStateIn && !effect.tideStateIn.includes(state.environment.tideState)) return 0;
+    return effect.amount;
+  };
+  let total = applies(getCardDefinition(attacker.cardId));
+  for (const unit of [...state.players[0].board, ...state.players[1].board]) {
+    if (unit.attachedToInstanceId !== attacker.instanceId) continue;
+    total += applies(getCardDefinition(unit.cardId));
+  }
+  return total;
+}
+
+/** Somme `bonusDamageInTideState` (attaquant + Équipement attaché) actif pour la Marée courante — s'applique à TOUTE attaque, directe ou contre une unité (ex: Harponneur du Dernier Quai). */
+function bonusDamageInTideState(attacker: CardInstance, state: GameState): number {
+  const applies = (def: ReturnType<typeof getCardDefinition>) => {
+    const effect = def.bonusDamageInTideState;
+    if (!effect || !effect.tideStateIn.includes(state.environment.tideState)) return 0;
+    return effect.amount;
+  };
+  let total = applies(getCardDefinition(attacker.cardId));
+  for (const unit of [...state.players[0].board, ...state.players[1].board]) {
+    if (unit.attachedToInstanceId !== attacker.instanceId) continue;
+    total += applies(getCardDefinition(unit.cardId));
+  }
+  return total;
+}
+
+/** Somme `controllerReasonLossAfterAttack` (attaquant + Équipement attaché) — s'applique après TOUTE attaque, directe ou contre une unité (ex: Harponneur du Dernier Quai, Treuil à Chair non câblé). */
+function controllerReasonLossAfterAttack(attacker: CardInstance, state: GameState): number {
+  let total = getCardDefinition(attacker.cardId).controllerReasonLossAfterAttack ?? 0;
+  for (const unit of [...state.players[0].board, ...state.players[1].board]) {
+    if (unit.attachedToInstanceId !== attacker.instanceId) continue;
+    total += getCardDefinition(unit.cardId).controllerReasonLossAfterAttack ?? 0;
+  }
+  return total;
+}
+
 function validate(state: GameState, action: AttackAction) {
   return combine(
     assertGameActive(state),
@@ -77,7 +128,7 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
 
   const attackerPlayer = getPlayer(state, action.playerId);
   const attackerUnit = attackerPlayer.board.find((u) => u.instanceId === action.attackerInstanceId)!;
-  const attackerDamage = effectiveAttack(attackerUnit, state);
+  const attackerDamage = effectiveAttack(attackerUnit, state) + bonusDamageInTideState(attackerUnit, state);
   const events: GameEvent[] = [];
   const base = { turnNumber: state.turnNumber, timestamp: Date.now() };
 
@@ -112,6 +163,44 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
       ) as [PlayerState, PlayerState],
     };
     events.push({ ...base, type: "DAMAGE", targetPlayerId: opponent.id, amount: directDamage });
+
+    const reasonLoss = opponentReasonLossOnDirectAttack(attackerUnit, nextState);
+    if (reasonLoss > 0) {
+      const opponentAfterDamage = getPlayer(nextState, opponent.id);
+      events.push({ ...base, type: "REASON_CHANGED", playerId: opponent.id, delta: -reasonLoss });
+      nextState = {
+        ...nextState,
+        players: nextState.players.map((p) =>
+          p.id === opponent.id ? { ...p, reason: Math.max(0, opponentAfterDamage.reason - reasonLoss) } : p
+        ) as [PlayerState, PlayerState],
+      };
+    }
+
+    const recoil = selfDamageOnDirectAttack(attackerUnit, nextState);
+    if (recoil > 0) {
+      nextState = {
+        ...nextState,
+        players: nextState.players.map((p) =>
+          p.id === attackerPlayer.id
+            ? {
+                ...p,
+                board: p.board.map((u) =>
+                  u.instanceId === attackerUnit.instanceId ? { ...u, damageMarked: u.damageMarked + recoil } : u
+                ),
+              }
+            : p
+        ) as [PlayerState, PlayerState],
+      };
+      events.push({ ...base, type: "DAMAGE", targetInstanceId: attackerUnit.instanceId, amount: recoil });
+
+      const recoilDamagedTrigger = processTrigger(
+        nextState,
+        { trigger: "onDamaged", playerId: attackerPlayer.id, sourceInstanceId: attackerUnit.instanceId },
+        state.turnNumber
+      );
+      nextState = recoilDamagedTrigger.state;
+      events.push(...recoilDamagedTrigger.events);
+    }
   } else {
     const opponent = getOpponent(nextState, action.playerId);
     const defenderUnit = opponent.board.find((u) => u.instanceId === action.defenderInstanceId)!;
@@ -181,6 +270,18 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
   );
   nextState = attackTrigger.state;
   events.push(...attackTrigger.events);
+
+  const postAttackReasonLoss = controllerReasonLossAfterAttack(attackerUnit, nextState);
+  if (postAttackReasonLoss > 0) {
+    const attackerControllerAfter = getPlayer(nextState, attackerPlayer.id);
+    events.push({ ...base, type: "REASON_CHANGED", playerId: attackerPlayer.id, delta: -postAttackReasonLoss });
+    nextState = {
+      ...nextState,
+      players: nextState.players.map((p) =>
+        p.id === attackerPlayer.id ? { ...p, reason: Math.max(0, attackerControllerAfter.reason - postAttackReasonLoss) } : p
+      ) as [PlayerState, PlayerState],
+    };
+  }
 
   return { ok: true, state: nextState, events };
 }

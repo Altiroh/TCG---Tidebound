@@ -347,6 +347,14 @@ export function resolveTideTurnStep(
     const trigger = processTrigger(nextState, { trigger: "onTideStateEntered", tideState: tick.tideState }, turnNumber);
     nextState = trigger.state;
     events.push(...trigger.events);
+
+    const exitTrigger = processTrigger(
+      nextState,
+      { trigger: "onTideStateExited", tideState: previousTideState },
+      turnNumber
+    );
+    nextState = exitTrigger.state;
+    events.push(...exitTrigger.events);
   }
 
   // --- Expiration des permanents à durée limitée (Structures/Objets) -----

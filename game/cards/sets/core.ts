@@ -178,7 +178,7 @@ export const CORE_SET: CardDefinition[] = [
       { type: "attachEquipment", target: { kind: "chosenUnit" } },
       { type: "buff", target: { kind: "chosenUnit" }, attackAmount: { kind: "flat", value: 1 }, permanent: true },
     ],
-    // non appliqué : le contrecoup sur attaque directe n'est pas câblé.
+    selfDamageOnDirectAttack: 1,
   },
   {
     id: "thermos-du-dernier-quart",
@@ -187,8 +187,12 @@ export const CORE_SET: CardDefinition[] = [
     cost: 2,
     health: 1,
     text: "Brisez cet Objet : récupérez 2 Raison. Si vous avez 3 Raison ou moins, récupérez-en 3 à la place.",
-    onBreakEffects: [{ type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } }],
-    // non appliqué : le bonus conditionnel (Raison <= 3) n'est pas câblé, seul le gain de base de 2 l'est.
+    onBreakEffects: [
+      // Ordre important : l'effet conditionnel lit la Raison AVANT que le
+      // gain de base ne l'augmente (cf. `conditionControllerReasonAtMost`).
+      { type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, conditionControllerReasonAtMost: 3 },
+      { type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } },
+    ],
   },
   {
     id: "cylindre-flottant",
@@ -355,7 +359,7 @@ export const CORE_SET: CardDefinition[] = [
     attack: 3,
     health: 2,
     text: "Pendant Abysses, lorsqu'elle inflige des dégâts directs au Navire adverse, celui-ci perd aussi 1 Raison.",
-    // non appliqué : effet combiné combat + condition de Marée non modélisé.
+    opponentReasonLossOnDirectAttack: { amount: 1, tideStateIn: ["abysses"] },
   },
   {
     id: "crabe-de-fer",
@@ -442,7 +446,15 @@ export const CORE_SET: CardDefinition[] = [
     attack: 1,
     health: 3,
     text: "À son arrivée, vous pouvez inverser l'orientation de la Marée. Si vous le faites, perdez 1 Raison.",
-    // non appliqué : choix optionnel lié à un coût ("vous pouvez... si vous le faites") non modélisé (l'inversion d'orientation elle-même existe dans le moteur, cf. "cartes-des-courants").
+    abilities: [
+      {
+        trigger: "onEnterPlay",
+        mode: "optional",
+        cost: { reason: 1 },
+        description: "Vous pouvez dépenser 1 Raison : inversez l'orientation de la Marée.",
+        effects: [{ type: "tideInvertOrientation", target: { kind: "allPlayers" } }],
+      },
+    ],
   },
   {
     id: "matelot-insomniaque",
@@ -519,7 +531,10 @@ export const CORE_SET: CardDefinition[] = [
     cost: 2,
     health: 2,
     text: "Équipez un Marin. Tant que vous êtes en Houle ou Tempête, il gagne +1 Puissance et +1 Résistance.",
-    // non appliqué : bonus conditionnel à l'état de Marée courant (dynamique) non modélisé.
+    equipTargetTypes: ["marin"],
+    onPlayEffects: [{ type: "attachEquipment", target: { kind: "chosenUnit" } }],
+    // Bug corrigé au passage : l'Équipement ne s'attachait même pas (onPlayEffects absent).
+    // non appliqué : le bonus tant qu'en Houle/Tempête reste non câblé — nécessiterait d'exposer le plateau entier à `computeEffectiveStats` (unité équipée → lire l'état de Marée via son Équipement), signalé comme chantier plus lourd.
   },
   {
     id: "filet-a-la-derive",
@@ -591,7 +606,8 @@ export const CORE_SET: CardDefinition[] = [
     attack: 3,
     health: 3,
     text: "Lorsqu'il attaque pendant Tempête, il gagne +1 Puissance pour ce combat. Après l'attaque, perdez 1 Raison.",
-    // non appliqué : bonus de combat conditionnel + coût réactif non modélisés.
+    bonusDamageInTideState: { tideStateIn: ["tempete"], amount: 1 },
+    controllerReasonLossAfterAttack: 1,
   },
   {
     id: "capitaine-sans-sommeil",
@@ -644,7 +660,7 @@ export const CORE_SET: CardDefinition[] = [
     attack: 4,
     health: 2,
     text: "Lorsqu'il inflige des dégâts directs au Navire adverse, il subit 1 dégât.",
-    // non appliqué : contrecoup réactif sur attaque directe non modélisé.
+    selfDamageOnDirectAttack: 1,
   },
   {
     // Version STANDARD (Notion "Catalogue de cartes", Lot 04, confirmée coexister avec une variante ABYSSALE
@@ -717,10 +733,13 @@ export const CORE_SET: CardDefinition[] = [
     cost: 3,
     health: 2,
     text: "Équipez une Créature. Elle gagne +2 Puissance. À chaque fin de votre tour où elle a attaqué, perdez 1 Raison.",
+    equipTargetTypes: ["creature"],
     onPlayEffects: [
+      { type: "attachEquipment", target: { kind: "chosenUnit" } },
       { type: "buff", target: { kind: "chosenUnit" }, attackAmount: { kind: "flat", value: 2 }, permanent: true },
     ],
-    // non appliqué : la perte de Raison conditionnelle en fin de tour n'est pas câblée.
+    // Bug corrigé au passage : `attachEquipment`/`equipTargetTypes` manquaient (l'Équipement ne s'attachait jamais).
+    // non appliqué : la perte de Raison conditionnelle "si elle a attaqué" n'est pas câblée (pas de condition générique "l'unité équipée a attaqué ce tour-ci").
   },
   {
     id: "lanterne-aux-verres-noirs",
@@ -732,7 +751,18 @@ export const CORE_SET: CardDefinition[] = [
     text:
       "Équipez un Marin. À votre début de tour, vous pouvez perdre 1 Raison : choisissez soit de réduire de 1 " +
       "tour la durée de la Marée actuelle, soit d'inverser l'orientation de sa prochaine transition.",
-    // non appliqué : capacité activable optionnelle avec choix entre deux options non modélisée (l'inversion d'orientation elle-même existe dans le moteur, cf. "cartes-des-courants").
+    // fidélité partielle : seule l'option "réduire de 1" est câblée (même convention que Horloge de Marée) — pas de choix entre deux options facultatives.
+    equipTargetTypes: ["marin"],
+    onPlayEffects: [{ type: "attachEquipment", target: { kind: "chosenUnit" } }],
+    abilities: [
+      {
+        trigger: "startOfTurn",
+        mode: "optional",
+        cost: { reason: 1 },
+        description: "Vous pouvez dépenser 1 Raison : réduisez de 1 tour la durée de la Marée actuelle.",
+        effects: [{ type: "tideReduceDuration", target: { kind: "allPlayers" }, amount: { kind: "flat", value: 1 } }],
+      },
+    ],
   },
   {
     id: "cage-de-flottaison",
@@ -885,6 +915,9 @@ export const CORE_SET: CardDefinition[] = [
     tags: ["equipement"],
     equipTargetTypes: ["marin"],
     text: "Équipez un Marin. Lorsqu'il attaque une Structure, il gagne +1 Puissance.",
+    // Bug corrigé au passage : l'Équipement ne s'attachait jamais (onPlayEffects absent), rendant
+    // `bonusDamageVsTargetType` ci-dessous inerte en pratique (jamais d'`attachedToInstanceId` à trouver).
+    onPlayEffects: [{ type: "attachEquipment", target: { kind: "chosenUnit" } }],
     bonusDamageVsTargetType: { type: "structure", amount: 1 },
   },
   {
@@ -895,7 +928,12 @@ export const CORE_SET: CardDefinition[] = [
     cost: 2,
     health: 2,
     text: "Équipez une Structure. À votre début de tour, si elle est visible, elle récupère 1 Résistance. Maximum 1 fois par tour.",
-    // non appliqué : capacité récurrente conditionnelle sur permanent équipé non modélisée.
+    equipTargetTypes: ["structure"],
+    onPlayEffects: [{ type: "attachEquipment", target: { kind: "chosenUnit" } }],
+    // Bug corrigé au passage : l'Équipement ne s'attachait jamais (onPlayEffects absent).
+    // non appliqué : la capacité récurrente elle-même reste non câblée — cible "l'unité équipée par
+    // cette carte", un type de cible qui n'existe pas encore dans `TargetSelector` (seul `chosenUnit`
+    // existe, résolu au moment de la pose, pas "le permanent que JE équipe" à un moment ultérieur).
   },
   {
     id: "radeau-de-fortune",
@@ -927,7 +965,7 @@ export const CORE_SET: CardDefinition[] = [
     text:
       "Durée : 4 tours. Visible : Houle et Tempête. Lorsqu'une autre Structure que vous contrôlez est détruite, " +
       "cette carte gagne +1 Résistance. Maximum +2.",
-    // non appliqué : trigger sur destruction d'une autre Structure + plafond de cumul non modélisés.
+    buffSelfOnOtherOwnStructureDestroyed: { healthAmount: 1, maxStacks: 2 },
   },
   {
     id: "levier-de-lest",
@@ -1048,7 +1086,20 @@ export const CORE_SET: CardDefinition[] = [
     cost: 2,
     health: 2,
     text: "Équipez un Marin. Pendant Abysses, il gagne +2 Résistance. À chaque sortie des Abysses, son contrôleur perd 1 Raison.",
-    // non appliqué : bonus conditionnel à la Marée + trigger de sortie d'état non modélisés.
+    equipTargetTypes: ["marin"],
+    onPlayEffects: [{ type: "attachEquipment", target: { kind: "chosenUnit" } }],
+    abilities: [
+      {
+        trigger: "onTideStateExited",
+        condition: { tideState: "abysses" },
+        description: "À chaque sortie des Abysses, son contrôleur perd 1 Raison.",
+        effects: [{ type: "reasonLoss", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
+      },
+    ],
+    // Bug corrigé au passage : l'Équipement ne s'attachait jamais (onPlayEffects absent).
+    // non appliqué : le bonus "+2 Résistance pendant Abysses" reste non câblé — nécessiterait d'exposer le
+    // plateau entier à `computeEffectiveStats` (unité équipée → lire l'état de Marée via son Équipement),
+    // signalé comme chantier plus lourd (même famille que Lampe de Pont Rouge).
   },
   {
     id: "chaine-de-fer-noir",
@@ -1058,10 +1109,13 @@ export const CORE_SET: CardDefinition[] = [
     cost: 3,
     health: 3,
     text: "Équipez une Créature. Elle gagne +1 Puissance et Garde. Si elle est détruite, perdez 1 Raison.",
+    equipTargetTypes: ["creature"],
     onPlayEffects: [
+      { type: "attachEquipment", target: { kind: "chosenUnit" } },
       { type: "buff", target: { kind: "chosenUnit" }, attackAmount: { kind: "flat", value: 1 }, permanent: true },
     ],
-    // non appliqué : l'octroi de Garde et la perte de Raison à la destruction ne sont pas câblés (seul le bonus de Puissance l'est).
+    equipGrantsKeywords: ["garde"],
+    controllerReasonLossOnOwnDestruction: 1,
   },
   {
     id: "carcasse-renversee",
@@ -1165,7 +1219,24 @@ export const CORE_SET: CardDefinition[] = [
     text:
       "Durée : 4 tours. Visible pendant Houle et Tempête. Sabordage : uniquement pendant Houle ou Tempête, " +
       "avancez immédiatement la Marée d'un état, puis perdez 1 Raison.",
-    // non appliqué : avance immédiate et forcée de la Marée non modélisée (seul le décompte de durée existe).
+    abilities: [
+      {
+        trigger: "onSaborde",
+        description: "Sabordage : uniquement pendant Houle ou Tempête, avancez immédiatement la Marée d'un état, puis perdez 1 Raison.",
+        effects: [
+          // La perte de Raison DOIT être vérifiée avant l'avancée (sinon
+          // `tideForceAdvance` aurait déjà changé l'état de Marée que ce
+          // second effet vérifie, faussant la condition).
+          {
+            type: "reasonLoss",
+            target: { kind: "controllerPlayer" },
+            amount: { kind: "flat", value: 1 },
+            conditionTideStateIn: ["houle", "tempete"],
+          },
+          { type: "tideForceAdvance", target: { kind: "allPlayers" }, conditionTideStateIn: ["houle", "tempete"] },
+        ],
+      },
+    ],
   },
   {
     id: "bouee-de-rappel",
@@ -1180,7 +1251,13 @@ export const CORE_SET: CardDefinition[] = [
     text:
       "Durée : 4 tours. Visible pendant Tempête et Abysses. Sabordage : reculez immédiatement la Marée d'un " +
       "état. La Marée ne peut pas reculer au-delà de Calme.",
-    // non appliqué : recul immédiat et forcé de la Marée non modélisé.
+    abilities: [
+      {
+        trigger: "onSaborde",
+        description: "Sabordage : reculez immédiatement la Marée d'un état (jamais au-delà de Calme).",
+        effects: [{ type: "tideForceRetreat", target: { kind: "allPlayers" } }],
+      },
+    ],
   },
   {
     id: "horloge-de-maree",
@@ -1241,7 +1318,16 @@ export const CORE_SET: CardDefinition[] = [
     text:
       "Durée : 3 tours. Visible uniquement pendant Abysses. Lorsque vous entrez dans les Abysses, vous pouvez " +
       "perdre 2 Raison. Si vous le faites, augmentez la durée des Abysses de 1 tour.",
-    // non appliqué : choix optionnel déclenché par l'entrée en Abysses non modélisé.
+    abilities: [
+      {
+        trigger: "onTideStateEntered",
+        condition: { tideState: "abysses" },
+        mode: "optional",
+        cost: { reason: 2 },
+        description: "Vous pouvez dépenser 2 Raison : augmentez la durée des Abysses de 1 tour.",
+        effects: [{ type: "tideExtendDuration", target: { kind: "allPlayers" }, amount: { kind: "flat", value: 1 } }],
+      },
+    ],
   },
   {
     // Variante ABYSSALE distincte (coexiste avec la Standard ci-dessus) — anciennement seule entrée sous
@@ -1258,7 +1344,16 @@ export const CORE_SET: CardDefinition[] = [
     text:
       "Durée : 4 tours. Visible uniquement pendant Tempête et Abysses. Lorsque vous entrez dans les Abysses, " +
       "vous pouvez perdre 2 Raison. Si vous le faites, augmentez la durée des Abysses de 1 tour.",
-    // non appliqué : choix optionnel déclenché par l'entrée en Abysses non modélisé.
+    abilities: [
+      {
+        trigger: "onTideStateEntered",
+        condition: { tideState: "abysses" },
+        mode: "optional",
+        cost: { reason: 2 },
+        description: "Vous pouvez dépenser 2 Raison : augmentez la durée des Abysses de 1 tour.",
+        effects: [{ type: "tideExtendDuration", target: { kind: "allPlayers" }, amount: { kind: "flat", value: 1 } }],
+      },
+    ],
   },
   {
     // Version STANDARD (Notion "Catalogue de cartes", Lot 07) — coexiste avec la variante ABYSSALE ci-dessous.
@@ -1379,7 +1474,7 @@ export const CORE_SET: CardDefinition[] = [
       "Tant que la Marée est Tempête ou Abysses, il peut attaquer directement le Navire adverse même si un " +
       "permanent possède Garde. Lorsqu'il inflige des dégâts directs pendant Abysses, l'adversaire perd aussi 1 Raison.",
     bypassesGardeTideStateIn: ["tempete", "abysses"],
-    // non appliqué : la perte de Raison réactive au dégât direct pendant Abysses n'est pas câblée (seul le contournement de Garde l'est).
+    opponentReasonLossOnDirectAttack: { amount: 1, tideStateIn: ["abysses"] },
   },
   {
     id: "chope",

@@ -115,12 +115,12 @@ function collectTriggeredWork(
     return result;
   }
 
-  if (event.trigger === "onTideStateEntered") {
+  if (event.trigger === "onTideStateEntered" || event.trigger === "onTideStateExited") {
     for (const player of playersActiveFirst(state)) {
       for (const unit of player.board) {
         const def = getCardDefinition(unit.cardId);
         (def.abilities ?? []).forEach((ability, abilityIndex) => {
-          if (ability.trigger !== "onTideStateEntered" || !matchesMode(ability)) return;
+          if (ability.trigger !== event.trigger || !matchesMode(ability)) return;
           if (ability.condition?.tideState && ability.condition.tideState !== event.tideState) return;
           result.push(work(ability, abilityIndex, def.id, player.id, unit.instanceId, turnNumber));
         });

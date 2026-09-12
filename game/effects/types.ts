@@ -40,6 +40,10 @@ export type EffectType =
   | "tideAmplifyNext"
   /** Inverse l'orientation courante de la Marée (Montante ↔ Descendante). */
   | "tideInvertOrientation"
+  /** Force une transition IMMÉDIATE d'un état vers les Abysses (jamais via le décompte normal). */
+  | "tideForceAdvance"
+  /** Force une transition IMMÉDIATE d'un état vers Calme (jamais via le décompte normal). */
+  | "tideForceRetreat"
   | "ignoreNextTideDamage";
 
 /** Une valeur numérique d'effet, pour l'instant une constante — prête à
@@ -117,4 +121,16 @@ export interface EffectDefinition {
    * résolution, utile pour une capacité récurrente (ex: `startOfTurn`).
    */
   conditionSelfVisible?: boolean;
+
+  /**
+   * Restreint la résolution de CET effet à un plafond ABSOLU de Raison du
+   * contrôleur (ex: Thermos du Dernier Quart, "récupérez 3 Raison à la
+   * place si vous avez 3 Raison ou moins" — un bonus qui s'ajoute à un
+   * effet de base non conditionnel). Contrairement à
+   * `conditionControllerReasonBelowOpponent`, compare à une valeur fixe,
+   * pas à l'adversaire. Vérifié dans l'ordre du tableau `effects` : placer
+   * l'effet conditionnel AVANT l'effet de base pour qu'il lise la Raison
+   * telle qu'elle était avant que le reste de la liste ne la modifie.
+   */
+  conditionControllerReasonAtMost?: number;
 }

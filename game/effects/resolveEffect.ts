@@ -1,5 +1,6 @@
 import { isVisibleDuringTide, type CardInstance } from "@/game/cards/types";
 import { canBeEquipTarget, getCardDefinition } from "@/game/cards/sets/core";
+import { forceTideTransition } from "@/game/environment/tide";
 import type { EffectAmount, EffectDefinition } from "@/game/effects/types";
 import type { GameEvent } from "@/game/events/types";
 import { nextInt } from "@/game/rng";
@@ -146,6 +147,10 @@ export function resolveEffect(
     const controller = getPlayer(state, context.controllerId);
     const opponent = getOpponent(state, context.controllerId);
     if (!(controller.reason < opponent.reason)) return { state, events };
+  }
+  if (effect.conditionControllerReasonAtMost !== undefined) {
+    const controller = getPlayer(state, context.controllerId);
+    if (controller.reason > effect.conditionControllerReasonAtMost) return { state, events };
   }
   if (effect.conditionSelfVisible) {
     const owner = context.sourceInstanceId ? findUnitOwner(state, context.sourceInstanceId) : undefined;
@@ -411,6 +416,38 @@ export function resolveEffect(
           environment: {
             ...state.environment,
             pendingTideModifiers: [...state.environment.pendingTideModifiers, { kind, remainingTriggers }],
+          },
+        },
+        events,
+      };
+    }
+
+    case "tideForceAdvance":
+    case "tideForceRetreat": {
+      // Simplification assumée : contrairement au tick de début de tour
+      // (`resolveTideTurnStep`), cette transition forcée ne déclenche pas
+      // `onTideStateEntered` ni les vérifications "devient visible" — seuls
+      // l'état/la durée/l'orientation changent. À étendre si une carte
+      // future combine forçage ET réaction à l'entrée dans le nouvel état.
+      const tick = forceTideTransition(state.environment, effect.type === "tideForceAdvance" ? "avancer" : "reculer");
+      events.push({
+        ...base,
+        type: "TIDE_ADVANCED",
+        remainingTurns: tick.tideRemainingTurns,
+        tideState: tick.tideState,
+        tideOrientation: tick.tideOrientation,
+        stateChanged: tick.stateChanged,
+      });
+      return {
+        state: {
+          ...state,
+          environment: {
+            ...state.environment,
+            tideState: tick.tideState,
+            tideRemainingTurns: tick.tideRemainingTurns,
+            tideOrientation: tick.tideOrientation,
+            tideIntensity: tick.tideIntensity,
+            pendingTideModifiers: tick.pendingTideModifiers,
           },
         },
         events,

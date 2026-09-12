@@ -42,7 +42,7 @@ export interface TriggeredAbility {
   effects: EffectDefinition[];
   /** Texte optionnel affiché dans l'UI ; pas de logique attachée. */
   description?: string;
-  /** Filtre supplémentaire pour `onTideStateEntered` : ne se déclenche que pour cet état. */
+  /** Filtre supplémentaire pour `onTideStateEntered`/`onTideStateExited` : ne se déclenche que pour cet état. */
   condition?: { tideState?: TideStateName };
   /**
    * "auto" (défaut) : résolution automatique par le moteur, aucune
@@ -236,6 +236,66 @@ export interface CardDefinition {
    * cible-carte).
    */
   bonusDamageVsTargetType?: { type: CardType; amount: number };
+
+  /**
+   * Pour une unité ATTAQUANTE (ou l'Équipement qui l'équipe) : dégâts
+   * qu'elle s'inflige à elle-même après une attaque DIRECTE réussie contre
+   * le Navire adverse (ex: Requin Balafré, Harpon de Pont). Ne s'applique
+   * jamais à une attaque contre une autre unité.
+   */
+  selfDamageOnDirectAttack?: number;
+
+  /**
+   * Pour une unité ATTAQUANTE (ou l'Équipement qui l'équipe) : l'adversaire
+   * perd cette Raison en plus quand elle inflige des dégâts DIRECTS à son
+   * Navire (ex: Anguille des Profondeurs, Bat-Marin Abyssal). `tideStateIn`
+   * restreint l'effet à ces états de Marée (souvent Abysses) ; absent =
+   * toujours actif.
+   */
+  opponentReasonLossOnDirectAttack?: { amount: number; tideStateIn?: TideStateName[] };
+
+  /**
+   * Pour un Équipement UNIQUEMENT : mots-clés qu'il transmet à l'unité
+   * qu'il équipe tant qu'il reste attaché (ex: Chaîne de Fer Noir, "Elle
+   * gagne ... Garde"). Vérifié par `hasEffectiveKeyword` en scannant
+   * l'Équipement attaché au permanent concerné — jamais suppressible par
+   * `conditionalKeywordSuppressions` (propres à la carte équipée elle-même,
+   * pas à son Équipement).
+   */
+  equipGrantsKeywords?: string[];
+
+  /**
+   * Pour un Équipement UNIQUEMENT : son contrôleur perd cette Raison quand
+   * l'unité qu'il équipe MEURT au combat (ex: Chaîne de Fer Noir, "Si elle
+   * est détruite, perdez 1 Raison"). Ne couvre que la mort par dégâts
+   * (`processDeaths`), pas une destruction par effet de carte.
+   */
+  controllerReasonLossOnOwnDestruction?: number;
+
+  /**
+   * Cette carte gagne un bonus de Résistance PERMANENT chaque fois qu'une
+   * AUTRE Structure du même contrôleur est détruite (ex: Épaves
+   * Accrochées, "+1 Résistance. Maximum +2"), plafonné à `maxStacks`
+   * applications. Vérifié dans `processDeaths` ; ne réagit jamais à sa
+   * propre destruction ni à celle d'un permanent d'un autre type.
+   */
+  buffSelfOnOtherOwnStructureDestroyed?: { healthAmount: number; maxStacks: number };
+
+  /**
+   * Pour une unité ATTAQUANTE : dégâts supplémentaires infligés (cible
+   * unité OU Navire adverse en attaque directe, contrairement à
+   * `bonusDamageVsTargetType` qui ne s'applique qu'aux attaques d'unité)
+   * quand l'attaque a lieu pendant l'un de ces états de Marée (ex:
+   * Harponneur du Dernier Quai, "+1 Puissance pendant Tempête").
+   */
+  bonusDamageInTideState?: { tideStateIn: TideStateName[]; amount: number };
+
+  /**
+   * Pour une unité ATTAQUANTE : son contrôleur perd cette Raison après
+   * CHAQUE attaque qu'elle effectue (directe ou contre une unité) — ex:
+   * Harponneur du Dernier Quai, "Après l'attaque, perdez 1 Raison."
+   */
+  controllerReasonLossAfterAttack?: number;
 
   /**
    * Nombre maximum d'exemplaires de cette carte dans un deck personnel —

@@ -16,6 +16,7 @@ export type TriggerType =
   | "endOfTurn"
   | "onCardPlayed" // n'importe quelle carte est jouée par n'importe qui
   | "onTideStateEntered" // la Marée vient d'entrer dans un nouvel état
+  | "onTideStateExited" // la Marée vient de QUITTER un état (ex: Masque de Plongée Fissuré, "à chaque sortie des Abysses")
   | "onBecomeVisible" // une Structure devient visible pour l'adversaire (entrée dans un de ses `visibleDuringTide`)
   | "onExpire" // une Structure/Objet à durée limitée quitte le board par expiration (ni mort, ni Sabordage)
   | "onCondition"; // condition arbitraire évaluée par un `ConditionExpression`

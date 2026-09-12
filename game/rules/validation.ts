@@ -20,7 +20,13 @@ function hasEffectiveKeyword(state: GameState, controller: PlayerState, unit: Ca
   };
   if ((def.conditionalKeywordSuppressions ?? []).some(matches)) return false;
   if (hasKeyword(def, keyword)) return true;
-  return (def.conditionalKeywords ?? []).some(matches);
+  if ((def.conditionalKeywords ?? []).some(matches)) return true;
+  // Équipement attaché transmettant un mot-clé (ex: Chaîne de Fer Noir → Garde).
+  return controller.board.some(
+    (equip) =>
+      equip.attachedToInstanceId === unit.instanceId &&
+      (getCardDefinition(equip.cardId).equipGrantsKeywords ?? []).includes(keyword)
+  );
 }
 
 /** Cette unité attaquante contourne-t-elle Garde EN CE MOMENT (`bypassesGardeTideStateIn`) ? `false` si elle n'existe plus/pas sur le plateau de son contrôleur. */

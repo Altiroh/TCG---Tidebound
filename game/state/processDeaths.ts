@@ -123,17 +123,50 @@ export function processDeaths(
     for (const { unit, owner } of deaths) {
       const player = next.players.find((p) => p.id === owner.id);
       if (!player) continue;
-      const board = player.board.filter((u) => u.instanceId !== unit.instanceId);
+
+      // Équipement attaché portant `controllerReasonLossOnOwnDestruction`
+      // (ex: Chaîne de Fer Noir) : son contrôleur perd de la Raison quand
+      // l'unité qu'il équipe meurt — lu AVANT le filtrage du board, tant
+      // que l'Équipement (toujours attaché à `unit`) y est encore présent.
+      const equipReasonLoss = player.board
+        .filter((u) => u.attachedToInstanceId === unit.instanceId)
+        .reduce((sum, equip) => sum + (getCardDefinition(equip.cardId).controllerReasonLossOnOwnDestruction ?? 0), 0);
+
+      const boardWithoutUnit = player.board.filter((u) => u.instanceId !== unit.instanceId);
+
+      // Autres Structures du même contrôleur portant `buffSelfOnOtherOwnStructureDestroyed`
+      // (ex: Épaves Accrochées) : +Résistance permanente, plafonnée à `maxStacks`
+      // (compté via les modificateurs déjà posés par CETTE carte, `source` = son propre cardId).
+      const dyingIsStructure = getCardDefinition(unit.cardId).type === "structure";
+      const board = dyingIsStructure
+        ? boardWithoutUnit.map((other) => {
+            const buff = getCardDefinition(other.cardId).buffSelfOnOtherOwnStructureDestroyed;
+            if (!buff) return other;
+            const stacksSoFar = other.modifiers.filter((m) => m.source === other.cardId).length;
+            if (stacksSoFar >= buff.maxStacks) return other;
+            return {
+              ...other,
+              modifiers: [
+                ...other.modifiers,
+                { id: `mod_${Math.random().toString(36).slice(2, 8)}`, source: other.cardId, attack: 0, health: buff.healthAmount, duration: "permanent" as const },
+              ],
+            };
+          })
+        : boardWithoutUnit;
+
       const graveyard = [
         ...player.graveyard,
         { ...unit, damageMarked: 0, modifiers: [], graveyardCause: "destroyed" as const },
       ];
+      const updatedPlayer = {
+        ...player,
+        board,
+        graveyard,
+        reason: Math.max(0, player.reason - equipReasonLoss),
+      };
       next = {
         ...next,
-        players: next.players.map((p) => (p.id === player.id ? { ...p, board, graveyard } : p)) as [
-          PlayerState,
-          PlayerState
-        ],
+        players: next.players.map((p) => (p.id === player.id ? updatedPlayer : p)) as [PlayerState, PlayerState],
       };
       events.push({
         type: "DESTROY",
@@ -142,6 +175,9 @@ export function processDeaths(
         turnNumber,
         timestamp: Date.now(),
       });
+      if (equipReasonLoss > 0) {
+        events.push({ type: "REASON_CHANGED", playerId: player.id, delta: -equipReasonLoss, turnNumber, timestamp: Date.now() });
+      }
 
       const triggerResult = processTrigger(
         next,

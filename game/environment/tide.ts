@@ -66,6 +66,34 @@ export function tickTide(
   };
 }
 
+/**
+ * Force une transition IMMÉDIATE d'un état de Marée, sans attendre la fin
+ * du décompte normal (contrairement à `tickTide`/`tideReduceDuration`, qui
+ * ne font jamais progresser l'état lui-même avant que la durée n'atteigne
+ * 0 — cf. leurs commentaires respectifs). Utilisé par les cartes qui
+ * "avancent"/"reculent" explicitement la Marée d'un cran (ex: Compas aux
+ * Aiguilles Noires, Bouée de Rappel). `direction` fixe le sens du
+ * mouvement lui-même, indépendamment de l'orientation courante — "avancer"
+ * va toujours vers les Abysses, "reculer" toujours vers Calme, même si
+ * l'orientation affichée dit l'inverse à ce moment précis.
+ */
+export function forceTideTransition(
+  env: Pick<EnvironmentState, "tideState" | "tideOrientation" | "pendingTideModifiers">,
+  direction: "avancer" | "reculer"
+): TickTideResult {
+  const forcedOrientation: TideOrientation = direction === "avancer" ? "montante" : "descendante";
+  const newState = advanceTideState(env.tideState, forcedOrientation);
+  const newOrientation = naturalOrientationFor(newState, env.tideOrientation);
+  return {
+    tideState: newState,
+    tideRemainingTurns: RULES.TIDE_STATE_DURATION[newState],
+    tideOrientation: newOrientation,
+    tideIntensity: RULES.TIDE_BASE_INTENSITY,
+    pendingTideModifiers: env.pendingTideModifiers,
+    stateChanged: newState !== env.tideState,
+  };
+}
+
 /** Consomme (et retire) le modificateur "amplify" en attente, s'il y en a un. */
 export function consumeAmplify(modifiers: PendingTideModifier[]): { amplified: boolean; modifiers: PendingTideModifier[] } {
   const index = modifiers.findIndex((m) => m.kind === "amplify" && m.remainingTriggers > 0);
