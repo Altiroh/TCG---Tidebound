@@ -11,6 +11,7 @@ import {
   UNIT_CARD_TYPES,
   type CardInstance,
   type GameState,
+  type PendingReactionCandidate,
   type PlayerAction,
   type PlayerId,
 } from "@/game";
@@ -33,6 +34,7 @@ import { OpponentHandFan } from "@/features/match/OpponentHandFan";
 import { PhaseActionButton } from "@/features/match/PhaseActionButton";
 import { PendingChoicePrompt } from "@/features/match/PendingChoicePrompt";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
+import { ReactionPrompt } from "@/features/match/ReactionPrompt";
 import { ShipInstrumentCluster } from "@/features/match/ShipInstrumentCluster";
 import { VictoryScreen } from "@/features/match/VictoryScreen";
 import { TideOrientationTile } from "@/features/match/TideOrientationTile";
@@ -55,7 +57,10 @@ const OPPONENT_BOARD_POS = { x: 740, y: 233 };
 interface OnlineBoardProps {
   state: GameState;
   myUserId: PlayerId;
-  onAction: (action: PlayerAction) => void;
+  /** `OnlineMatch.handleAction` est asynchrone (aller-retour serveur) — attendu séquentiellement lors d'une
+      activation multiple de réactions (`activateSelectedReactions`) pour ne jamais envoyer la suivante avant
+      confirmation de la précédente. */
+  onAction: (action: PlayerAction) => void | Promise<void>;
   pending: boolean;
   error: string | null;
 }
@@ -88,6 +93,9 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
   const [dragOverGraveyard, setDragOverGraveyard] = useState(false);
   const [graveyardViewerPlayerId, setGraveyardViewerPlayerId] = useState<PlayerId | null>(null);
   const [detailInstance, setDetailInstance] = useState<CardInstance | null>(null);
+  /** Candidats à cible restant à traiter après celui en cours — sélection multiple dans `ReactionPrompt` :
+      les capacités sans cible sont soumises l'une après l'autre, celles avec cible s'enchaînent une par une. */
+  const [reactionQueue, setReactionQueue] = useState<PendingReactionCandidate[]>([]);
 
   const me = state.players.find((p) => p.id === myUserId)!;
   const opponent = state.players.find((p) => p.id !== myUserId)!;
@@ -144,6 +152,7 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
   function clearSelection() {
     setSelection(null);
     setSelectedBoardId(null);
+    setReactionQueue([]);
   }
 
   function act(action: PlayerAction) {
@@ -151,11 +160,27 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
     clearSelection();
   }
 
-  function activateMyReaction(sourceInstanceId: string, abilityIndex: number, needsTarget: boolean) {
-    if (needsTarget) {
-      setSelection({ kind: "reaction", sourceInstanceId, abilityIndex, needsTarget: true });
+  /**
+   * Sélection multiple de `ReactionPrompt` : contrairement au plateau local (`MatchBoard`, état rejoué
+   * localement via `dispatch`), ici chaque action fait un aller-retour serveur (`onAction`, asynchrone) — les
+   * capacités sans cible sont donc envoyées une par une, chacune ATTENDUE avant la suivante, jamais en rafale
+   * contre un état potentiellement pas encore confirmé. Celles qui demandent une cible sont mises en file
+   * (`reactionQueue`) et proposées une par une via le mécanisme existant de clic sur le plateau.
+   */
+  async function activateSelectedReactions(selected: PendingReactionCandidate[]) {
+    const immediate = selected.filter((c) => !c.needsTarget);
+    const queued = selected.filter((c) => c.needsTarget);
+
+    for (const candidate of immediate) {
+      await onAction({ type: "activateReaction", playerId: myUserId, sourceInstanceId: candidate.sourceInstanceId, abilityIndex: candidate.abilityIndex });
+    }
+
+    const [first, ...rest] = queued;
+    if (first) {
+      setSelection({ kind: "reaction", sourceInstanceId: first.sourceInstanceId, abilityIndex: first.abilityIndex, needsTarget: true });
+      setReactionQueue(rest);
     } else {
-      act({ type: "activateReaction", playerId: myUserId, sourceInstanceId, abilityIndex });
+      clearSelection();
     }
   }
 
@@ -181,15 +206,24 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
     setSelectedBoardId((current) => (current === instanceId ? null : instanceId));
   }
 
-  function handleAnyBoardCardClick(instanceId: string, ownerId: PlayerId) {
+  async function handleAnyBoardCardClick(instanceId: string, ownerId: PlayerId) {
     if (selection?.kind === "reaction" && selection.needsTarget) {
-      act({
+      await onAction({
         type: "activateReaction",
         playerId: myUserId,
         sourceInstanceId: selection.sourceInstanceId,
         abilityIndex: selection.abilityIndex,
         targetInstanceId: instanceId,
       });
+      // File de sélection multiple (`activateSelectedReactions`) : enchaîne sur la prochaine capacité à cible
+      // sans rouvrir toute la fenêtre, jusqu'à épuisement de la file.
+      const [next, ...rest] = reactionQueue;
+      if (next) {
+        setSelection({ kind: "reaction", sourceInstanceId: next.sourceInstanceId, abilityIndex: next.abilityIndex, needsTarget: true });
+        setReactionQueue(rest);
+      } else {
+        clearSelection();
+      }
       return;
     }
     if (!canPlay) return;
@@ -441,37 +475,19 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
           <TideOrientationTile orientation={state.environment.tideOrientation} />
         </div>
 
-        {/* Fenêtre de réaction ouverte, en attente de "moi" — priorité
-            d'affichage sur tout le reste tant qu'elle reste ouverte. */}
-        {canRespondToReaction && (
-          <div
-            className="absolute z-20 flex flex-col items-center gap-2 rounded-lg border-2 border-amber-400/80 bg-black/90 px-4 py-3 shadow-[0_0_25px_rgba(251,191,36,0.35)]"
-            style={{ left: 336, top: 300, width: 1000 }}
-          >
-            <span className="text-xs font-semibold uppercase tracking-wide text-amber-300">Une carte peut réagir</span>
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              {myReactionCandidates.map((candidate) => {
-                const def = getCardDefinition(candidate.cardId);
-                const ability = def.abilities?.[candidate.abilityIndex];
-                return (
-                  <Button
-                    key={`${candidate.sourceInstanceId}:${candidate.abilityIndex}`}
-                    variant="secondary"
-                    onClick={() => activateMyReaction(candidate.sourceInstanceId, candidate.abilityIndex, candidate.needsTarget)}
-                    title={ability?.description ?? def.text}
-                  >
-                    {def.name}
-                    {candidate.reasonCost > 0 ? ` (${candidate.reasonCost} Raison)` : ""}
-                  </Button>
-                );
-              })}
-              <Button variant="secondary" onClick={() => act({ type: "passReaction", playerId: myUserId })}>
-                Passer
-              </Button>
-            </div>
-            {selection?.kind === "reaction" && selection.needsTarget && (
-              <span className="text-xs text-slate-300">Choisissez une cible sur le plateau.</span>
-            )}
+        {/* Invitation à réagir — priorité d'affichage sur tout le reste tant qu'elle reste ouverte. Repliée dès
+            qu'une capacité ciblée est choisie pour laisser cliquer une cible sur le plateau — remplacée par un
+            petit rappel non bloquant. */}
+        {canRespondToReaction && myReactionCandidates.length > 0 && !(selection?.kind === "reaction" && selection.needsTarget) && (
+          <ReactionPrompt
+            candidates={myReactionCandidates}
+            onActivateMany={activateSelectedReactions}
+            onPass={() => act({ type: "passReaction", playerId: myUserId })}
+          />
+        )}
+        {selection?.kind === "reaction" && selection.needsTarget && (
+          <div className="fixed left-1/2 top-6 z-[70] -translate-x-1/2 rounded-full border border-white/25 bg-slate-950/80 px-4 py-2 text-xs text-slate-200 backdrop-blur-md">
+            Choisissez une cible sur le plateau.
           </div>
         )}
 

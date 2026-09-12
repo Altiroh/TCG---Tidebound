@@ -134,3 +134,30 @@ body {
     opacity: 0;
   }
 }
+
+/*
+ * ReactionPrompt (features/match/ReactionPrompt.tsx) : barre qui s'épuise
+ * sous le bouton de refus pendant les 30s laissées au joueur pour
+ * répondre à une invitation à réagir. `transform: scaleX` (pas `width`)
+ * pour rester sur une propriété animable au compositeur.
+ */
+.reaction-countdown-fill {
+  transform-origin: left;
+  animation: reaction-countdown linear forwards;
+}
+
+@keyframes reaction-countdown {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reaction-countdown-fill {
+    animation: none;
+    transform: scaleX(1);
+  }
+}

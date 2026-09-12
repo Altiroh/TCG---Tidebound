@@ -14,6 +14,7 @@ import {
   type BotDifficulty,
   type CardInstance,
   type GameState,
+  type PendingReactionCandidate,
   type PlayerAction,
   type PlayerId,
 } from "@/game";
@@ -34,8 +35,8 @@ import { GraveyardViewer } from "@/features/match/GraveyardViewer";
 import { HandFan } from "@/features/match/HandFan";
 import { OpponentHandFan } from "@/features/match/OpponentHandFan";
 import { PhaseActionButton } from "@/features/match/PhaseActionButton";
-import { PendingChoicePrompt } from "@/features/match/PendingChoicePrompt";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
+import { ReactionPrompt } from "@/features/match/ReactionPrompt";
 import { ShipInstrumentCluster } from "@/features/match/ShipInstrumentCluster";
 import { VictoryScreen } from "@/features/match/VictoryScreen";
 import { TideOrientationTile } from "@/features/match/TideOrientationTile";
@@ -105,6 +106,9 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
   const [graveyardViewerPlayerId, setGraveyardViewerPlayerId] = useState<PlayerId | null>(null);
   const [detailInstance, setDetailInstance] = useState<CardInstance | null>(null);
   const [showQuitConfirm, setShowQuitConfirm] = useState(false);
+  /** Candidats à cible restant à traiter après celui en cours — sélection multiple dans `ReactionPrompt` :
+      les capacités sans cible sont appliquées d'un coup, celles avec cible s'enchaînent une par une. */
+  const [reactionQueue, setReactionQueue] = useState<PendingReactionCandidate[]>([]);
 
   const activePlayerId = state.activePlayerId;
   const humanPlayerId = botPlayerId ? state.players.find((p) => p.id !== botPlayerId)!.id : null;
@@ -120,7 +124,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
   const viewerShip = getShipDefinition(viewerPlayer.shipId);
   const otherShip = getShipDefinition(otherPlayer.shipId);
   const isViewerTurn = activePlayerId === viewerPlayerId;
-  const canPlayCards = isViewerTurn && state.phase === "mainPhase" && !state.pendingReaction && !state.pendingChoice;
+  const canPlayCards = isViewerTurn && state.phase === "mainPhase" && !state.pendingReaction;
   // Si aucune unité du joueur actif ne peut attaquer (toutes engourdies,
   // ayant déjà attaqué, ou rendues inactives par la Marée), proposer la
   // Phase de combat n'aurait aucun intérêt : le bouton unique saute
@@ -230,6 +234,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
   function clearSelection() {
     setPending(null);
     setSelectedBoardId(null);
+    setReactionQueue([]);
   }
 
   function runAction(action: PlayerAction) {
@@ -262,11 +267,41 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
     clearSelection();
   }
 
-  function activateMyReaction(sourceInstanceId: string, abilityIndex: number, needsTarget: boolean) {
-    if (needsTarget) {
-      setPending({ kind: "reaction", sourceInstanceId, abilityIndex, needsTarget: true });
+  /**
+   * Sélection multiple de `ReactionPrompt` : les capacités sans cible sont appliquées d'un coup (`dispatch`
+   * enchaîné sur l'état retourné par le précédent, un seul `setState` final — jamais coup par coup sur `state`,
+   * qui resterait figé à sa valeur de ce rendu entre deux appels synchrones). Celles qui demandent une cible
+   * sont mises en file (`reactionQueue`) et proposées une par une via le mécanisme existant de clic sur le
+   * plateau, sans rouvrir toute la fenêtre entre chacune.
+   */
+  function activateSelectedReactions(selected: PendingReactionCandidate[]) {
+    const immediate = selected.filter((c) => !c.needsTarget);
+    const queued = selected.filter((c) => c.needsTarget);
+
+    let currentState = state;
+    for (const candidate of immediate) {
+      const result = dispatch(currentState, {
+        type: "activateReaction",
+        playerId: viewerPlayerId,
+        sourceInstanceId: candidate.sourceInstanceId,
+        abilityIndex: candidate.abilityIndex,
+      });
+      if (!result.ok) {
+        setError(result.error);
+        setState(currentState);
+        return;
+      }
+      currentState = result.state;
+    }
+    setError(null);
+    setState(currentState);
+
+    const [first, ...rest] = queued;
+    if (first) {
+      setPending({ kind: "reaction", sourceInstanceId: first.sourceInstanceId, abilityIndex: first.abilityIndex, needsTarget: true });
+      setReactionQueue(rest);
     } else {
-      runReactionAction({ type: "activateReaction", playerId: viewerPlayerId, sourceInstanceId, abilityIndex });
+      clearSelection();
     }
   }
 
@@ -297,13 +332,28 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
 
   function handleAnyBoardCardClick(instanceId: string, ownerId: PlayerId) {
     if (pending?.kind === "reaction" && pending.needsTarget) {
-      runReactionAction({
+      const result = dispatch(state, {
         type: "activateReaction",
         playerId: viewerPlayerId,
         sourceInstanceId: pending.sourceInstanceId,
         abilityIndex: pending.abilityIndex,
         targetInstanceId: instanceId,
       });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setError(null);
+      setState(result.state);
+      // File de sélection multiple (`activateSelectedReactions`) : enchaîne sur la prochaine capacité à cible
+      // sans rouvrir toute la fenêtre, jusqu'à épuisement de la file.
+      const [next, ...rest] = reactionQueue;
+      if (next) {
+        setPending({ kind: "reaction", sourceInstanceId: next.sourceInstanceId, abilityIndex: next.abilityIndex, needsTarget: true });
+        setReactionQueue(rest);
+      } else {
+        clearSelection();
+      }
       return;
     }
     if (pending?.kind === "playCard" && pending.needsTarget) {
@@ -577,50 +627,23 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
           <TideOrientationTile orientation={state.environment.tideOrientation} />
         </div>
 
-        {/* Fenêtre de réaction ouverte, en attente du viewer — priorité
-            d'affichage sur tout le reste tant qu'elle reste ouverte
-            (Notion "Moteur de partie" : aucune action normale possible
-            tant qu'une réaction est en attente). */}
-        {state.pendingReaction?.awaitingPlayerId === viewerPlayerId && (
-          <div
-            className="absolute z-20 flex flex-col items-center gap-2 rounded-lg border-2 border-amber-400/80 bg-black/90 px-4 py-3 shadow-[0_0_25px_rgba(251,191,36,0.35)]"
-            style={{ left: 336, top: 300, width: 1000 }}
-          >
-            <span className="text-xs font-semibold uppercase tracking-wide text-amber-300">
-              Une carte peut réagir
-            </span>
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              {myReactionCandidates.map((candidate) => {
-                const def = getCardDefinition(candidate.cardId);
-                const ability = def.abilities?.[candidate.abilityIndex];
-                return (
-                  <Button
-                    key={`${candidate.sourceInstanceId}:${candidate.abilityIndex}`}
-                    variant="secondary"
-                    onClick={() => activateMyReaction(candidate.sourceInstanceId, candidate.abilityIndex, candidate.needsTarget)}
-                    title={ability?.description ?? def.text}
-                  >
-                    {def.name}
-                    {candidate.reasonCost > 0 ? ` (${candidate.reasonCost} Raison)` : ""}
-                  </Button>
-                );
-              })}
-              <Button variant="secondary" onClick={() => runReactionAction({ type: "passReaction", playerId: viewerPlayerId })}>
-                Passer
-              </Button>
-            </div>
-            {pending?.kind === "reaction" && pending.needsTarget && (
-              <span className="text-xs text-slate-300">Choisissez une cible sur le plateau.</span>
-            )}
+        {/* Invitation à réagir — priorité d'affichage sur tout le reste tant qu'elle reste ouverte (Notion
+            "Moteur de partie" : aucune action normale possible tant qu'une réaction est en attente). Repliée dès
+            qu'une capacité ciblée est choisie (`pending.kind === "reaction" && needsTarget`) pour laisser cliquer
+            une cible sur le plateau — remplacée par un petit rappel non bloquant. */}
+        {state.pendingReaction?.awaitingPlayerId === viewerPlayerId &&
+          myReactionCandidates.length > 0 &&
+          !(pending?.kind === "reaction" && pending.needsTarget) && (
+            <ReactionPrompt
+              candidates={myReactionCandidates}
+              onActivateMany={activateSelectedReactions}
+              onPass={() => runReactionAction({ type: "passReaction", playerId: viewerPlayerId })}
+            />
+          )}
+        {pending?.kind === "reaction" && pending.needsTarget && (
+          <div className="fixed left-1/2 top-6 z-[70] -translate-x-1/2 rounded-full border border-white/25 bg-slate-950/80 px-4 py-2 text-xs text-slate-200 backdrop-blur-md">
+            Choisissez une cible sur le plateau.
           </div>
-        )}
-
-        {state.pendingChoice?.playerId === viewerPlayerId && (
-          <PendingChoicePrompt
-            reasonLossAmount={state.pendingChoice.reasonLossAmount}
-            anchorDamageAmount={state.pendingChoice.anchorDamageAmount}
-            onChoose={(choice) => runReactionAction({ type: "resolveChoice", playerId: viewerPlayerId, choice })}
-          />
         )}
 
         <div
