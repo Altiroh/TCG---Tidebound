@@ -14,8 +14,9 @@ import {
   assertPlayerInGame,
   combine,
 } from "@/game/rules/validation";
+import { canPayReason } from "@/game/state/reason";
 import { payReasonCost, reasonCostAfterShield } from "@/game/state/shields";
-import { getPlayer, type GameState, type PlayerState } from "@/game/state/types";
+import { getPlayer, type GameState, type PlayerId, type PlayerState } from "@/game/state/types";
 import type { ActionResult, PlayCardAction } from "@/game/actions/types";
 
 function isUnitCard(type: string): boolean {
@@ -27,6 +28,24 @@ function effectiveCost(def: CardDefinition, state: GameState): number {
   const override = def.costOverrideWhenTideStateIn;
   if (override && override.tideStateIn.includes(state.environment.tideState)) return override.cost;
   return def.cost;
+}
+
+/**
+ * Raison que coûterait réellement cette carte de la main si elle était
+ * jouée maintenant (override de Marée + bouclier de perte de Raison), et
+ * la Raison qui en résulterait — pour annoncer la Déraison dans l'UI AVANT
+ * validation. `undefined` si la carte n'est pas dans la main du joueur.
+ */
+export function previewPlayCardReason(
+  state: GameState,
+  playerId: PlayerId,
+  instanceId: string
+): { cost: number; reasonAfter: number; allowed: boolean } | undefined {
+  const player = state.players.find((p) => p.id === playerId);
+  const card = player?.hand.find((c) => c.instanceId === instanceId);
+  if (!player || !card) return undefined;
+  const cost = reasonCostAfterShield(state, playerId, effectiveCost(getCardDefinition(card.cardId), state), state.turnNumber);
+  return { cost, reasonAfter: player.reason - cost, allowed: canPayReason(player, cost) };
 }
 
 function validate(state: GameState, action: PlayCardAction) {

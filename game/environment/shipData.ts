@@ -85,12 +85,11 @@ export const SHIP_SET: ShipDefinition[] = [
     text: "Profil : healing / contrôle — survivre devient un moteur de jeu plutôt qu'une simple défense.",
     // Piste Notion "Gameplay — Raison, Déraison, healing & passifs de Navires" (2026-09-12), pas verrouillée :
     // ni les stats ni ce passif ne sont figés tant qu'un playtest n'a pas validé le rythme de la Déraison.
-    // Le moteur ne modélise pas encore la Raison négative (Déraison) : ce passif reste donc purement
-    // informatif pour l'instant, comme `capacityText` sur les autres Navires.
+    // Pénitence retenue plutôt qu'Absolution (l'autre piste de passif de la note).
     passiveText:
       "Pénitence — la première fois par tour que vous devriez subir des dégâts d'Ancrage à cause de votre " +
-      "Déraison, réduisez ces dégâts de 1 (non appliqué : la Déraison — Raison négative — n'est pas encore " +
-      "modélisée par le moteur, piste de gameplay non verrouillée).",
+      "Déraison, réduisez ces dégâts de 1.",
+    deraisonDamageReduction: 1,
   },
 ];
 

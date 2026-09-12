@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import {
   computeEffectiveStats,
+  deraisonAnchorDamage,
+  reasonCeiling,
   dispatch,
   eligibleCandidatesFor,
   getCardDefinition,
@@ -20,6 +22,7 @@ import {
 } from "@/game";
 import { needsPlayTarget } from "@/features/match/needsPlayTarget";
 import { Button } from "@/components/ui/Button";
+import { GlassAlert } from "@/components/ui/GlassAlert";
 import { ActionToastStack } from "@/features/match/ActionToastStack";
 import { AttackImpactLayer } from "@/features/match/AttackImpactLayer";
 import { BoardBackdrop } from "@/features/match/BoardBackdrop";
@@ -46,6 +49,7 @@ import { TideProgressBar } from "@/features/match/TideProgressBar";
 import { useActionToasts } from "@/features/match/useActionToasts";
 import { useAttackImpacts } from "@/features/match/useAttackImpacts";
 import { useCardFlights, type CardFlight } from "@/features/match/useCardFlights";
+import { useDeraisonWarning } from "@/features/match/useDeraisonWarning";
 import { usePhaseBannerEvent } from "@/features/match/usePhaseBannerEvent";
 
 /** Pause entre deux actions du bot (`stepBotTurn`) — assez long pour voir chaque pioche/pose/Sabordage se jouer (animation de vol ~650ms) avant l'action suivante, sans donner l'impression d'attendre. */
@@ -150,6 +154,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
   const actionToasts = useActionToasts(state);
   const cardFlights = useCardFlights(state);
   const attackImpacts = useAttackImpacts(state);
+  const deraison = useDeraisonWarning(state, viewerPlayer, draggingId);
 
   function getFlightCoords(flight: CardFlight) {
     const isViewer = flight.playerId === viewerPlayerId;
@@ -307,10 +312,11 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
     }
   }
 
-  function handleHandCardClick(instanceId: string) {
+  function handleHandCardClick(instanceId: string, confirmed = false) {
     if (!canPlayCards) return;
     const card = viewerPlayer.hand.find((c) => c.instanceId === instanceId);
     if (!card) return;
+    if (!confirmed && deraison.interceptClick(instanceId)) return;
     const def = getCardDefinition(card.cardId);
     const needsTarget = needsPlayTarget(def, viewerPlayer.board);
     setError(null);
@@ -427,7 +433,8 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
     e.preventDefault();
     const instanceId = e.dataTransfer.getData(DRAG_MIME_HAND);
     setDraggingId(null);
-    if (instanceId) handleHandCardClick(instanceId);
+    // Le glisser a déjà montré l'avertissement de Déraison : le dépôt vaut confirmation.
+    if (instanceId) handleHandCardClick(instanceId, true);
   }
 
   // --- Glisser-déposer une unité de plateau : attaquer ou Saborder --------
@@ -551,7 +558,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
   const selectedDef = selectedUnit ? getCardDefinition(selectedUnit.cardId) : undefined;
   const ownEmptySlots = Math.max(0, viewerShip.slotCount - viewerPlayer.board.length);
   const otherEmptySlots = Math.max(0, otherShip.slotCount - otherPlayer.board.length);
-  const hasHint = Boolean(error) || pending?.kind === "playCard" || pending?.kind === "break" || pending?.kind === "attack";
+  const hasHint = pending?.kind === "playCard" || pending?.kind === "break" || pending?.kind === "attack";
 
   return (
     <>
@@ -586,8 +593,9 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
             anchor={otherPlayer.anchor}
             anchorMax={otherShip.startingAnchor}
             reason={otherPlayer.reason}
-            reasonMax={otherPlayer.reasonMax}
+            reasonMax={reasonCeiling(otherPlayer)}
             illustration={otherShip.illustration}
+            deraisonDamage={deraisonAnchorDamage(otherPlayer, otherPlayer.reason)}
           />
         </div>
         <div
@@ -669,14 +677,8 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
         >
           <TideProgressBar tideState={state.environment.tideState} tideRemainingTurns={state.environment.tideRemainingTurns} />
           {hasHint && (
-            <p
-              className={`max-w-md rounded-md px-3 py-1 text-xs ${
-                error ? "border border-rose-800 bg-rose-950/70 text-rose-300" : "bg-black/50 text-slate-300"
-              }`}
-            >
-              {error
-                ? error
-                : pending?.kind === "playCard"
+            <p className="max-w-md rounded-md bg-black/50 px-3 py-1 text-xs text-slate-300">
+              {pending?.kind === "playCard"
                   ? "Choisissez une cible sur le plateau (à vous ou adverse)."
                   : pending?.kind === "break"
                     ? "Choisissez une cible pour l'effet de bris."
@@ -706,8 +708,9 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
             anchor={viewerPlayer.anchor}
             anchorMax={viewerShip.startingAnchor}
             reason={viewerPlayer.reason}
-            reasonMax={viewerPlayer.reasonMax}
+            reasonMax={reasonCeiling(viewerPlayer)}
             illustration={viewerShip.illustration}
+            deraisonDamage={deraisonAnchorDamage(viewerPlayer, viewerPlayer.reason)}
           />
         </div>
         <div
@@ -846,7 +849,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
             draggingId={draggingId}
             onDragStart={handleHandDragStart}
             onDragEnd={handleHandDragEnd}
-            onClick={handleHandCardClick}
+            onClick={(instanceId) => handleHandCardClick(instanceId)}
           />
           {viewerPlayer.hand.length === 0 && <p className="text-xs text-slate-600">Main vide.</p>}
         </div>
@@ -869,6 +872,11 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
       <EquipLinkOverlay state={state} />
       <AttackImpactLayer impacts={attackImpacts} />
       <ActionToastStack toasts={actionToasts} />
+      {error ? (
+        <GlassAlert message={error} severity="error" onDismiss={() => setError(null)} />
+      ) : (
+        <GlassAlert message={deraison.warning} severity="warning" onDismiss={deraison.dismiss} />
+      )}
       <PhaseBanner text={bannerText} bannerKey={bannerEvent?.id ?? null} />
       {graveyardViewerPlayerId && (
         <GraveyardViewer

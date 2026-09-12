@@ -38,7 +38,7 @@ describe("moteur de réactions — fenêtre facultative (Notion 'Moteur de parti
     const state = testGameState({
       players: [
         testPlayer("p1", { hand: [cardToPlay], reason: 5 }),
-        testPlayer("p2", { board: [guetteur], reason: 0 }), // ne peut pas payer 1 Raison
+        testPlayer("p2", { board: [guetteur], reason: -5, reasonMax: 10 }), // au plancher de Déraison : ne peut pas payer 1 Raison
       ],
     });
 

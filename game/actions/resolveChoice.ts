@@ -1,5 +1,6 @@
 import type { GameEvent } from "@/game/events/types";
 import { assertGameActive, assertPlayerInGame, combine } from "@/game/rules/validation";
+import { reasonAfterLoss } from "@/game/state/reason";
 import { consumeReasonLossShield } from "@/game/state/shields";
 import { getPlayer, type GameState, type PlayerState } from "@/game/state/types";
 import type { ActionResult, ResolveChoiceAction } from "@/game/actions/types";
@@ -44,7 +45,7 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
       nextState = {
         ...nextState,
         players: nextState.players.map((p) =>
-          p.id === action.playerId ? { ...player, reason: Math.max(0, player.reason - finalAmount) } : p
+          p.id === action.playerId ? { ...player, reason: reasonAfterLoss(player, finalAmount) } : p
         ) as [PlayerState, PlayerState],
       };
     }

@@ -1,6 +1,7 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
 import type { CardDefinition, CardInstance } from "@/game/cards/types";
 import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
+import { reasonAfterLoss } from "@/game/state/reason";
 import { getPlayer, type GameState, type PlayerId, type PlayerState } from "@/game/state/types";
 
 /**
@@ -89,7 +90,7 @@ export function payReasonCost(
     state: {
       ...shield.state,
       players: shield.state.players.map((p) =>
-        p.id === playerId ? { ...player, reason: Math.max(0, player.reason - paid) } : p
+        p.id === playerId ? { ...player, reason: reasonAfterLoss(player, paid) } : p
       ) as [PlayerState, PlayerState],
     },
     paid,

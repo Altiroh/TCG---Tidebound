@@ -32,7 +32,8 @@ export type GameEventType =
   | "REACTION_WINDOW_OPENED"
   | "REACTION_ACTIVATED"
   | "REACTION_PASSED"
-  | "HAND_CARD_REVEALED";
+  | "HAND_CARD_REVEALED"
+  | "DERAISON_SETTLED";
 
 export interface BaseGameEvent {
   type: GameEventType;
@@ -233,6 +234,20 @@ export interface HandCardRevealedEvent extends BaseGameEvent {
   cardId: string;
 }
 
+/**
+ * Règlement de la Déraison à la fin du tour de `playerId` (après tous les
+ * effets de fin de tour) : `debt` points sous 0 convertis en `anchorDamage`
+ * dégâts d'Ancrage (après réduction éventuelle du Navire), puis Raison
+ * remise à 0. Émis en plus du `DAMAGE` correspondant, pour que les cartes
+ * puissent plus tard réagir spécifiquement aux "dégâts de Déraison".
+ */
+export interface DeraisonSettledEvent extends BaseGameEvent {
+  type: "DERAISON_SETTLED";
+  playerId: PlayerId;
+  debt: number;
+  anchorDamage: number;
+}
+
 export type GameEvent =
   | DrawCardEvent
   | PlayCardEvent
@@ -259,4 +274,5 @@ export type GameEvent =
   | ReactionWindowOpenedEvent
   | ReactionActivatedEvent
   | ReactionPassedEvent
-  | HandCardRevealedEvent;
+  | HandCardRevealedEvent
+  | DeraisonSettledEvent;

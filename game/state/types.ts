@@ -38,6 +38,14 @@ export interface PlayerState {
    * Marées") ; restauré dès que le malus se termine.
    */
   reasonMax: number;
+  /**
+   * Plafond de DÉBUT DE PARTIE (Notion "Gameplay — Raison, Déraison…",
+   * courbe 25 % → 50 % → 100 %) : la Raison ne peut pas dépasser
+   * `min(reasonMax, reasonCap)`. Relevé au début de chacun des premiers
+   * tours du joueur (`RULES.STARTING_REASON_CURVE`). Absent = aucun plafond
+   * (parties créées avant cette règle, ou courbe terminée).
+   */
+  reasonCap?: number;
   deck: CardInstance[];
   hand: CardInstance[];
   board: CardInstance[];

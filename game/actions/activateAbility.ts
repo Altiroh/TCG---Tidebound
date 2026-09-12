@@ -12,6 +12,7 @@ import {
   combine,
 } from "@/game/rules/validation";
 import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
+import { canPayReason, reasonFloor } from "@/game/state/reason";
 import { payReasonCost, reasonCostAfterShield } from "@/game/state/shields";
 import { getPlayer, type GameState, type PlayerState } from "@/game/state/types";
 import type { ActivateAbilityAction, ActionResult } from "@/game/actions/types";
@@ -43,8 +44,8 @@ function validate(state: GameState, action: ActivateAbilityAction) {
   }
 
   const reasonCost = spec.cost.reason ?? 0;
-  if (player.reason < reasonCostAfterShield(state, player.id, reasonCost, state.turnNumber)) {
-    return { ok: false as const, error: "Raison insuffisante pour activer cette capacité." };
+  if (!canPayReason(player, reasonCostAfterShield(state, player.id, reasonCost, state.turnNumber))) {
+    return { ok: false as const, error: `Déraison maximale atteinte : impossible de descendre sous ${reasonFloor(player)} Raison.` };
   }
 
   const needsTarget = spec.effects.some((e) => e.target.kind === "chosenUnit");

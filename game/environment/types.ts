@@ -123,4 +123,6 @@ export interface ShipDefinition {
   onTideDamageTakenByState?: Partial<Record<TideStateName, { discardCount?: number }>>;
   /** Dégâts supplémentaires subis par CE Navire lors d'une attaque directe (pas de defenderInstanceId). */
   directAttackWeakness?: number;
+  /** Réduction des dégâts d'Ancrage de Déraison (réglés une seule fois par tour, donc équivaut à "la première fois par tour"). Ex: Pénitence de La Religieuse. */
+  deraisonDamageReduction?: number;
 }

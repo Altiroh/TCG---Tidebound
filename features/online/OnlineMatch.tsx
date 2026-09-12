@@ -80,6 +80,7 @@ export function OnlineMatch({ matchId, initialMatch, myUserId }: OnlineMatchProp
       onAction={handleAction}
       pending={pending}
       error={error}
+      onDismissError={() => setError(null)}
     />
   );
 }

@@ -3,6 +3,8 @@
 import { useState } from "react";
 import {
   computeEffectiveStats,
+  deraisonAnchorDamage,
+  reasonCeiling,
   eligibleCandidatesFor,
   getCardDefinition,
   getShipDefinition,
@@ -16,6 +18,7 @@ import {
   type PlayerId,
 } from "@/game";
 import { Button } from "@/components/ui/Button";
+import { GlassAlert } from "@/components/ui/GlassAlert";
 import { ActionToastStack } from "@/features/match/ActionToastStack";
 import { AttackImpactLayer } from "@/features/match/AttackImpactLayer";
 import { BoardBackdrop } from "@/features/match/BoardBackdrop";
@@ -42,6 +45,7 @@ import { TideProgressBar } from "@/features/match/TideProgressBar";
 import { useActionToasts } from "@/features/match/useActionToasts";
 import { useAttackImpacts } from "@/features/match/useAttackImpacts";
 import { useCardFlights, type CardFlight } from "@/features/match/useCardFlights";
+import { useDeraisonWarning } from "@/features/match/useDeraisonWarning";
 import { usePhaseBannerEvent } from "@/features/match/usePhaseBannerEvent";
 
 /** Centres approximatifs (repère `BoardStage`, 1672×941) des zones pioche/main/cimetière de chaque côté — repris des coordonnées déjà posées pour `CargoCluster`/les mains/le plateau, pour l'animation `CardFlightLayer`. */
@@ -63,6 +67,7 @@ interface OnlineBoardProps {
   onAction: (action: PlayerAction) => void | Promise<void>;
   pending: boolean;
   error: string | null;
+  onDismissError: () => void;
 }
 
 type Pending =
@@ -81,7 +86,7 @@ const DRAG_MIME_HAND = "application/x-tidebound-card-instance";
 const DRAG_MIME_UNIT = "application/x-tidebound-board-unit";
 
 /** Plateau d'une partie en ligne : oriente toujours "moi" en bas, main adverse cachée, actions envoyées au serveur. */
-export function OnlineBoard({ state, myUserId, onAction, pending, error }: OnlineBoardProps) {
+export function OnlineBoard({ state, myUserId, onAction, pending, error, onDismissError }: OnlineBoardProps) {
   const [selection, setSelection] = useState<Pending | null>(null);
   const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -127,6 +132,7 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
   const actionToasts = useActionToasts(state);
   const cardFlights = useCardFlights(state);
   const attackImpacts = useAttackImpacts(state);
+  const deraison = useDeraisonWarning(state, me, draggingId);
 
   function getFlightCoords(flight: CardFlight) {
     const isMine = flight.playerId === myUserId;
@@ -184,10 +190,11 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
     }
   }
 
-  function handleHandCardClick(instanceId: string) {
+  function handleHandCardClick(instanceId: string, confirmed = false) {
     if (!canPlayCards) return;
     const card = me.hand.find((c) => c.instanceId === instanceId);
     if (!card) return;
+    if (!confirmed && deraison.interceptClick(instanceId)) return;
     const def = getCardDefinition(card.cardId);
     const needsTarget = needsPlayTarget(def, me.board);
     if (needsTarget) {
@@ -282,7 +289,8 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
     e.preventDefault();
     const instanceId = e.dataTransfer.getData(DRAG_MIME_HAND);
     setDraggingId(null);
-    if (instanceId) handleHandCardClick(instanceId);
+    // Le glisser a déjà montré l'avertissement de Déraison : le dépôt vaut confirmation.
+    if (instanceId) handleHandCardClick(instanceId, true);
   }
 
   // --- Glisser-déposer une unité de plateau : attaquer ou Saborder (cf. MatchBoard) ---
@@ -390,7 +398,7 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
   const selectedDef = selectedUnit ? getCardDefinition(selectedUnit.cardId) : undefined;
   const myEmptySlots = Math.max(0, myShip.slotCount - me.board.length);
   const opponentEmptySlots = Math.max(0, opponentShip.slotCount - opponent.board.length);
-  const hasHint = Boolean(error) || selection?.kind === "playCard" || selection?.kind === "break" || selection?.kind === "attack";
+  const hasHint = selection?.kind === "playCard" || selection?.kind === "break" || selection?.kind === "attack";
 
   return (
     <>
@@ -425,8 +433,9 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
             anchor={opponent.anchor}
             anchorMax={opponentShip.startingAnchor}
             reason={opponent.reason}
-            reasonMax={opponent.reasonMax}
+            reasonMax={reasonCeiling(opponent)}
             illustration={opponentShip.illustration}
+            deraisonDamage={deraisonAnchorDamage(opponent, opponent.reason)}
           />
         </div>
         <div
@@ -505,14 +514,8 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
         >
           <TideProgressBar tideState={state.environment.tideState} tideRemainingTurns={state.environment.tideRemainingTurns} />
           {hasHint && (
-            <p
-              className={`max-w-md rounded-md px-3 py-1 text-xs ${
-                error ? "border border-rose-800 bg-rose-950/70 text-rose-300" : "bg-black/50 text-slate-300"
-              }`}
-            >
-              {error
-                ? error
-                : selection?.kind === "playCard"
+            <p className="max-w-md rounded-md bg-black/50 px-3 py-1 text-xs text-slate-300">
+              {selection?.kind === "playCard"
                   ? "Choisissez une cible sur le plateau."
                   : selection?.kind === "break"
                     ? "Choisissez une cible pour l'effet de bris."
@@ -542,8 +545,9 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
             anchor={me.anchor}
             anchorMax={myShip.startingAnchor}
             reason={me.reason}
-            reasonMax={me.reasonMax}
+            reasonMax={reasonCeiling(me)}
             illustration={myShip.illustration}
+            deraisonDamage={deraisonAnchorDamage(me, me.reason)}
           />
         </div>
         <div
@@ -670,7 +674,7 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
             draggingId={draggingId}
             onDragStart={handleHandDragStart}
             onDragEnd={handleHandDragEnd}
-            onClick={handleHandCardClick}
+            onClick={(instanceId) => handleHandCardClick(instanceId)}
           />
           {me.hand.length === 0 && <p className="text-xs text-slate-600">Main vide.</p>}
         </div>
@@ -692,6 +696,11 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
       <EquipLinkOverlay state={state} />
       <AttackImpactLayer impacts={attackImpacts} />
       <ActionToastStack toasts={actionToasts} />
+      {error ? (
+        <GlassAlert message={error} severity="error" onDismiss={onDismissError} />
+      ) : (
+        <GlassAlert message={deraison.warning} severity="warning" onDismiss={deraison.dismiss} />
+      )}
       <PhaseBanner text={bannerText} bannerKey={bannerEvent?.id ?? null} />
       {graveyardViewerPlayerId && (
         <GraveyardViewer

@@ -41,6 +41,8 @@ export function formatEvent(state: GameState, event: GameEvent): string {
       return "Une carte change de zone.";
     case "SABORDED":
       return `${playerName(event.playerId)} saborde un permanent.`;
+    case "DERAISON_SETTLED":
+      return `${playerName(event.playerId)} règle sa Déraison (-${event.debt}) : ${event.anchorDamage} dégât(s) d'Ancrage.`;
     case "REASON_CHANGED":
       return `${playerName(event.playerId)} : ${event.delta >= 0 ? "+" : ""}${event.delta} Raison.`;
     case "TIDE_ADVANCED":

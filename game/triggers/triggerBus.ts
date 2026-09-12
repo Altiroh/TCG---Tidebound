@@ -6,6 +6,7 @@ import type { EffectContext } from "@/game/effects/resolveEffect";
 import { resolveEffect, revealRandomHandCards } from "@/game/effects/resolveEffect";
 import type { GameEvent } from "@/game/events/types";
 import { applyCardPlayedAnomalies, applyPermanentLeftAnomalies } from "@/game/state/anomalies";
+import { canPayReason } from "@/game/state/reason";
 import { consumeOpponentReactionRevealShield, payReasonCost, reasonCostAfterShield } from "@/game/state/shields";
 import type { GameState, PlayerId, PlayerState } from "@/game/state/types";
 import type { PendingReactionCandidate, TriggerEvent } from "@/game/triggers/types";
@@ -219,7 +220,7 @@ export function collectReactionCandidates(
       if (seen.has(key)) continue;
 
       const reasonCost = item.ability.cost?.reason ?? 0;
-      if (player.reason < reasonCostAfterShield(state, forPlayerId, reasonCost, turnNumber)) continue;
+      if (!canPayReason(player, reasonCostAfterShield(state, forPlayerId, reasonCost, turnNumber))) continue;
 
       const needsTarget = item.effects.some((e) => e.target.kind === "chosenUnit");
       if (needsTarget && !hasAnyBoardUnit) continue;

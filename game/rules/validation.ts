@@ -2,6 +2,7 @@ import { computeEffectiveStats } from "@/game/cards/stats";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { hasKeyword, UNIT_CARD_TYPES, type CardInstance } from "@/game/cards/types";
 import { getShipDefinition } from "@/game/environment/shipData";
+import { canPayReason, reasonFloor } from "@/game/state/reason";
 import type { GamePhase, GameState, PlayerId, PlayerState } from "@/game/state/types";
 
 /**
@@ -105,8 +106,9 @@ export function assertCanPayCost(
   cost: number
 ): ValidationResult {
   const player = state.players.find((p) => p.id === playerId);
-  if (!player || player.reason < cost) {
-    return fail("Raison insuffisante pour jouer cette carte.");
+  if (!player) return fail("Joueur introuvable.");
+  if (!canPayReason(player, cost)) {
+    return fail(`Déraison maximale atteinte : impossible de descendre sous ${reasonFloor(player)} Raison.`);
   }
   return ok();
 }
