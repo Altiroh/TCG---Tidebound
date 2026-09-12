@@ -19,6 +19,7 @@ import {
   playCardFlipSound,
   playCardSpawnSound,
   playPackOpenSound,
+  playPackTearSound,
   playRareRevealSound,
 } from "@/features/boosters/opening/boosterOpeningSound";
 import {
@@ -27,6 +28,8 @@ import {
   PACK_RETREAT_GAP_MS,
   cardsSettledAt,
   lastCardExitAt,
+  tearSnapAt,
+  tearStartAt,
   type BoosterOpeningTimings,
 } from "@/features/boosters/opening/boosterOpeningTimings";
 import { BoosterCards } from "@/features/boosters/opening/BoosterCards";
@@ -72,6 +75,9 @@ function timingVariables(timings: BoosterOpeningTimings, cardCount: number): CSS
     "--t-pack-enter": `${timings.packEnter}ms`,
     "--t-tension": `${timings.tension}ms`,
     "--t-crossfade": `${timings.crossfade}ms`,
+    "--t-tear-start": `${tearStartAt(timings)}ms`,
+    "--t-tear": `${timings.tear}ms`,
+    "--t-snap": `${tearSnapAt(timings)}ms`,
     "--t-top-fly": `${timings.topFly}ms`,
     "--t-card-spawn": `${timings.cardRise + timings.cardPlace}ms`,
     "--t-retreat": `${timings.packRetreat}ms`,
@@ -133,8 +139,9 @@ export function BoosterOpeningScene({ cards, onClose }: BoosterOpeningSceneProps
   // --- Enchaînement automatique des phases non interactives. ---------------
   useEffect(() => {
     if (phase === "opening") {
-      schedule(playPackOpenSound, timings.tension);
-      schedule(() => dispatch({ type: "packTorn" }), timings.spawnAt);
+      schedule(playPackTearSound, tearStartAt(timings));
+      schedule(playPackOpenSound, tearSnapAt(timings));
+      schedule(() => dispatch({ type: "packTorn" }), tearSnapAt(timings) + timings.spawnAfterSnap);
     } else if (phase === "cardsSpawning") {
       for (let index = 0; index < cards.length; index += 1) {
         schedule(playCardSpawnSound, index * timings.cardStagger);

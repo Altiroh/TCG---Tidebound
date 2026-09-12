@@ -48,18 +48,39 @@ function ambientParticles(): Particle[] {
   }));
 }
 
-/** Gouttelettes et éclats projetés par la découpe, le long de la ligne de déchirure. */
+/**
+ * Particules de la déchirure. Les éclats de feuille naissent au passage du
+ * point de déchirure (`--frac` = position le long du bord, de gauche à
+ * droite) ; les gouttelettes jaillissent quand la bande cède.
+ */
 function tearParticles(): Particle[] {
   const rand = seeded(31);
-  const droplets = Array.from({ length: 15 }, () => {
+  const flecks = Array.from({ length: 16 }, (_, index) => {
+    const frac = (index + rand() * 0.8) / 16;
+    return {
+      className: styles.fleck!,
+      style: {
+        left: `${(6 + frac * 86).toFixed(1)}%`,
+        top: `${(11 + frac * 4 + rand() * 2).toFixed(1)}%`,
+        "--frac": frac.toFixed(3),
+        "--size": u(0.16 + rand() * 0.22),
+        "--dx": u(-2 + rand() * 5),
+        "--dy": u(-(3 + rand() * 6)),
+        "--fall": u(4 + rand() * 6),
+        "--dur": ms(700 + rand() * 500),
+        "--delay": ms(rand() * 60),
+      },
+    };
+  });
+  const droplets = Array.from({ length: 14 }, () => {
     const spread = rand() * 2 - 1;
     return {
       className: styles.droplet!,
       style: {
-        left: `${(44 + spread * 30).toFixed(1)}%`,
+        left: `${(58 + spread * 32).toFixed(1)}%`,
         top: `${(12 + rand() * 4).toFixed(1)}%`,
         "--size": u(0.3 + rand() * 0.45),
-        "--dx": u(spread * (5 + rand() * 9)),
+        "--dx": u(3 + spread * 8 + rand() * 6),
         "--dy": u(-(5 + rand() * 11)),
         "--fall": u(7 + rand() * 9),
         "--dur": ms(620 + rand() * 380),
@@ -67,23 +88,7 @@ function tearParticles(): Particle[] {
       },
     };
   });
-  const flecks = Array.from({ length: 9 }, () => {
-    const spread = rand() * 2 - 1;
-    return {
-      className: styles.fleck!,
-      style: {
-        left: `${(44 + spread * 34).toFixed(1)}%`,
-        top: `${(10 + rand() * 6).toFixed(1)}%`,
-        "--size": u(0.18 + rand() * 0.22),
-        "--dx": u(spread * (8 + rand() * 10)),
-        "--dy": u(-(8 + rand() * 12)),
-        "--fall": u(3 + rand() * 5),
-        "--dur": ms(900 + rand() * 500),
-        "--delay": ms(30 + rand() * 120),
-      },
-    };
-  });
-  return [...droplets, ...flecks];
+  return [...flecks, ...droplets];
 }
 
 /** Poussière lumineuse autour d'une carte révélée. Plus nombreuse, plus lente et plus froide pour une Abyssale. */

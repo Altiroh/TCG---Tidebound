@@ -16,10 +16,12 @@ export interface BoosterOpeningTimings {
   tension: number;
   /** Fondu paquet fermé → paquet découpé (masque le raccord des deux visuels). */
   crossfade: number;
-  /** Envol du morceau supérieur. */
+  /** Déchirure : la bande se décolle en plusieurs à-coups, attachée côté droit. */
+  tear: number;
+  /** Envol de la bande une fois qu'elle a cédé. */
   topFly: number;
-  /** Depuis le début de la découpe : moment où la première carte commence à monter. */
-  spawnAt: number;
+  /** Depuis la rupture de la bande : moment où la première carte commence à monter. */
+  spawnAfterSnap: number;
   cardStagger: number;
   /** Montée d'une carte à l'intérieur du sachet, jusqu'à la sortie. */
   cardRise: number;
@@ -42,8 +44,9 @@ export const BOOSTER_OPENING_TIMINGS: BoosterOpeningTimings = {
   packHold: 420,
   tension: 170,
   crossfade: 70,
-  topFly: 640,
-  spawnAt: 580,
+  tear: 720,
+  topFly: 580,
+  spawnAfterSnap: 180,
   cardStagger: 150,
   cardRise: 380,
   cardPlace: 540,
@@ -65,8 +68,9 @@ export const BOOSTER_OPENING_TIMINGS_REDUCED: BoosterOpeningTimings = {
   packHold: 140,
   tension: 0,
   crossfade: 60,
-  topFly: 240,
-  spawnAt: 200,
+  tear: 180,
+  topFly: 220,
+  spawnAfterSnap: 40,
   cardStagger: 50,
   cardRise: 150,
   cardPlace: 200,
@@ -77,6 +81,16 @@ export const BOOSTER_OPENING_TIMINGS_REDUCED: BoosterOpeningTimings = {
   uiIn: 140,
   sceneOut: 120,
 };
+
+/** Instant (depuis le début de la phase opening) où la bande commence à se déchirer. */
+export function tearStartAt(timings: BoosterOpeningTimings): number {
+  return timings.tension + timings.crossfade / 2;
+}
+
+/** Instant (depuis le début de la phase opening) où la bande cède et s'envole. */
+export function tearSnapAt(timings: BoosterOpeningTimings): number {
+  return tearStartAt(timings) + timings.tear;
+}
 
 /** Instant (depuis le début de la sortie des cartes) où la dernière carte a franchi l'ouverture. */
 export function lastCardExitAt(timings: BoosterOpeningTimings, cardCount: number): number {

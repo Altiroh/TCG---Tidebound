@@ -8,10 +8,11 @@
  * dans `public/assets/sound/` et renseigner son chemin ici.
  */
 
-type BoosterSoundKey = "enter" | "packOpen" | "cardSpawn" | "cardFlip" | "rareReveal" | "abyssalReveal";
+type BoosterSoundKey = "enter" | "packTear" | "packOpen" | "cardSpawn" | "cardFlip" | "rareReveal" | "abyssalReveal";
 
 const BOOSTER_SOUND_FILES: Record<BoosterSoundKey, string | null> = {
   enter: null,
+  packTear: null,
   packOpen: null,
   cardSpawn: null,
   cardFlip: null,
@@ -21,6 +22,7 @@ const BOOSTER_SOUND_FILES: Record<BoosterSoundKey, string | null> = {
 
 const BOOSTER_SOUND_VOLUME: Record<BoosterSoundKey, number> = {
   enter: 0.35,
+  packTear: 0.45,
   packOpen: 0.5,
   cardSpawn: 0.25,
   cardFlip: 0.35,
@@ -46,6 +48,12 @@ export function playBoosterEnterSound(): void {
   playBoosterSound("enter");
 }
 
+/** Début de la déchirure : la bande se décolle en plusieurs à-coups. */
+export function playPackTearSound(): void {
+  playBoosterSound("packTear");
+}
+
+/** La bande cède et s'envole. */
 export function playPackOpenSound(): void {
   playBoosterSound("packOpen");
 }

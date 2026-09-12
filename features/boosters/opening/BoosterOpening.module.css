@@ -231,16 +231,18 @@
   margin: calc(var(--size) / -2) 0 0 calc(var(--size) / -2);
   border-radius: 50%;
   opacity: 0;
-  animation: droplet var(--dur) linear calc(var(--t-tension) + var(--delay)) both;
 }
+/* Gouttelettes : jaillissent quand la bande cède. */
 .droplet {
   background: radial-gradient(circle at 35% 32%, #f4fcff 0%, rgba(165, 218, 234, 0.95) 42%, rgba(62, 132, 164, 0.55) 100%);
   box-shadow: 0 0 calc(var(--size) * 1.6) rgba(120, 200, 225, 0.35);
+  animation: droplet var(--dur) linear calc(var(--t-snap) + var(--delay)) both;
 }
-/* Éclats de feuille métallisée du sachet. */
+/* Éclats de feuille métallisée : naissent au passage du point de déchirure. */
 .fleck {
   border-radius: 1px;
   background: rgba(214, 184, 128, 0.85);
+  animation: droplet var(--dur) linear calc(var(--t-tear-start) + var(--t-tear) * var(--frac) + var(--delay)) both;
 }
 
 @keyframes droplet {
@@ -419,28 +421,80 @@
  * 367 / 1148 px → 31.97 %), recalée sur la ligne de découpe. Calibré à
  * l'œil sur les PNG fournis : les deux moitiés ne sont pas des découpes au
  * pixel près du même canevas.
+ *
+ * `.packTopFly` porte ce placement et l'envol final ; l'image à l'intérieur
+ * porte la déchirure, en rotation autour de son extrémité droite.
  */
-.packTop {
+.packTopFly {
+  position: absolute;
   left: 1%;
   top: -11.5%;
   width: 94.73%;
   height: 31.97%;
-  transform-origin: 84% 62%;
+  transform-origin: 88% 64%;
 }
-.packFloat[data-torn] .packTop {
-  animation: topFly var(--t-top-fly) cubic-bezier(0.22, 0.61, 0.28, 1) calc(var(--t-tension) + var(--t-crossfade) * 0.5) both;
+.packFloat[data-torn] .packTopFly {
+  animation: topFly var(--t-top-fly) cubic-bezier(0.22, 0.61, 0.28, 1) var(--t-snap) both;
 }
 
+.packTop {
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  /* Coin bas-droit de la bande : le dernier point encore attaché. */
+  transform-origin: 97% 70%;
+}
+.packFloat[data-torn] .packTop {
+  animation: topTear var(--t-tear) linear var(--t-tear-start) both;
+}
+
+/*
+ * Déchirure en trois à-coups. Chaque tirage est rapide (ease-out), chaque
+ * palier cède à peine (le sachet résiste) ; la bande reste accrochée à
+ * droite et se soulève d'abord par la gauche.
+ */
+@keyframes topTear {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+  13% {
+    transform: translate3d(0, -1%, 0) rotate(2deg);
+    animation-timing-function: ease-in-out;
+  }
+  30% {
+    transform: translate3d(0, -1.2%, 0) rotate(2.4deg);
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+  44% {
+    transform: translate3d(0.3%, -2.5%, 0) rotate(4.4deg);
+    animation-timing-function: ease-in-out;
+  }
+  60% {
+    transform: translate3d(0.3%, -2.8%, 0) rotate(4.8deg);
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+  76% {
+    transform: translate3d(0.6%, -4.5%, 0) rotate(6.8deg);
+    animation-timing-function: ease-in;
+  }
+  100% {
+    transform: translate3d(0.7%, -5%, 0) rotate(7.2deg);
+  }
+}
+
+/* La bande cède d'un coup sec, puis s'envole. */
 @keyframes topFly {
   0% {
     opacity: 1;
     transform: translate3d(0, 0, 0) rotate(0deg);
   }
-  16% { transform: translate3d(1.5%, -10%, 0) rotate(2.5deg); }
-  68% { opacity: 1; }
+  12% { transform: translate3d(1.2%, -9%, 0) rotate(1.8deg); }
+  65% { opacity: 1; }
   100% {
     opacity: 0;
-    transform: translate3d(16%, -125%, 0) rotate(12deg);
+    transform: translate3d(14%, -120%, 0) rotate(6deg);
   }
 }
 
@@ -480,17 +534,68 @@
   pointer-events: none;
 }
 
-/* Éclat bleu bref le long de la découpe. */
+/*
+ * Point de déchirure : une lueur froide qui court le long du bord, de gauche
+ * à droite, avec les mêmes paliers que `topTear`.
+ */
+.tearPoint {
+  position: absolute;
+  left: 4%;
+  top: 12%;
+  width: calc(var(--u) * 7);
+  height: calc(var(--u) * 2.2);
+  margin: calc(var(--u) * -1.1) 0 0 calc(var(--u) * -3.5);
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(236, 250, 255, 1), rgba(130, 204, 228, 0.55) 40%, transparent 80%);
+  opacity: 0;
+  animation: tearPoint var(--t-tear) linear var(--t-tear-start) both;
+}
+
+@keyframes tearPoint {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.6);
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+  6% { opacity: 1; }
+  13% {
+    transform: translate3d(calc(var(--pack-w) * 0.26), calc(var(--pack-h) * 0.012), 0) scale(1);
+    animation-timing-function: ease-in-out;
+  }
+  30% {
+    transform: translate3d(calc(var(--pack-w) * 0.29), calc(var(--pack-h) * 0.013), 0) scale(0.8);
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+  44% {
+    transform: translate3d(calc(var(--pack-w) * 0.56), calc(var(--pack-h) * 0.026), 0) scale(1);
+    animation-timing-function: ease-in-out;
+  }
+  60% {
+    transform: translate3d(calc(var(--pack-w) * 0.59), calc(var(--pack-h) * 0.027), 0) scale(0.8);
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+  76% {
+    transform: translate3d(calc(var(--pack-w) * 0.84), calc(var(--pack-h) * 0.038), 0) scale(1.05);
+    animation-timing-function: ease-in;
+  }
+  92% { opacity: 1; }
+  100% {
+    opacity: 0;
+    transform: translate3d(calc(var(--pack-w) * 0.9), calc(var(--pack-h) * 0.04), 0) scale(1.2);
+  }
+}
+
+/* Éclat bleu bref à la rupture, côté charnière. */
 .tearFlash {
   position: absolute;
-  left: 2%;
-  right: 6%;
-  top: 4%;
+  left: 46%;
+  right: -8%;
+  top: 5%;
   height: 18%;
   border-radius: 50%;
   background: radial-gradient(closest-side, rgba(196, 238, 248, 0.7), rgba(79, 170, 204, 0.3) 45%, transparent 76%);
   opacity: 0;
-  animation: tearFlash 520ms ease-out var(--t-tension) both;
+  animation: tearFlash 480ms ease-out var(--t-snap) both;
 }
 
 @keyframes tearFlash {
@@ -511,7 +616,7 @@
     radial-gradient(40% 50% at 38% 55%, rgba(160, 208, 222, 0.2), transparent 70%),
     radial-gradient(35% 45% at 64% 50%, rgba(120, 186, 208, 0.16), transparent 70%);
   opacity: 0;
-  animation: tearBreath 1000ms cubic-bezier(0.2, 0.6, 0.3, 1) calc(var(--t-tension) + 40ms) both;
+  animation: tearBreath 1000ms cubic-bezier(0.2, 0.6, 0.3, 1) calc(var(--t-snap) + 20ms) both;
 }
 
 @keyframes tearBreath {
@@ -1036,6 +1141,7 @@
   animation: none;
 }
 .scene[data-reduced-motion] .tearBreath,
+.scene[data-reduced-motion] .tearPoint,
 .scene[data-reduced-motion] .cardRing,
 .scene[data-reduced-motion] .particleLayer {
   display: none;

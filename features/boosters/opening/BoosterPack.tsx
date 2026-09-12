@@ -34,9 +34,12 @@ export const BoosterPack = memo(function BoosterPack({ torn, retreating }: Boost
             <img className={styles.packBottom} src={BOOSTER_OPENING_ASSETS.packOpenBottom} alt="" draggable={false} />
           </span>
 
+          {/* Deux mouvements, deux éléments : l'envol (repère écran) enveloppe la déchirure (charnière à droite). */}
           <span className={styles.packTopLayer}>
-            {/* eslint-disable-next-line @next/next/no-img-element -- idem */}
-            <img className={styles.packTop} src={BOOSTER_OPENING_ASSETS.packOpenTop} alt="" draggable={false} />
+            <span className={styles.packTopFly}>
+              {/* eslint-disable-next-line @next/next/no-img-element -- idem */}
+              <img className={styles.packTop} src={BOOSTER_OPENING_ASSETS.packOpenTop} alt="" draggable={false} />
+            </span>
           </span>
 
           {/* eslint-disable-next-line @next/next/no-img-element -- idem */}
@@ -44,6 +47,7 @@ export const BoosterPack = memo(function BoosterPack({ torn, retreating }: Boost
 
           {torn && (
             <span className={styles.tearEffects}>
+              <span className={styles.tearPoint} />
               <span className={styles.tearFlash} />
               <span className={styles.tearBreath} />
               <BoosterParticles variant="tear" />
