@@ -163,6 +163,46 @@
   color: #f0f7f8;
 }
 
+/*
+ * Boutons de test de l'animation d'ouverture. Dans la barre du bas sur
+ * grand écran ; sur téléphone la barre n'a pas la place, ils flottent
+ * juste au-dessus d'elle, à droite.
+ */
+.testInline {
+  display: contents;
+}
+
+.testLabel {
+  font-size: clamp(11px, 0.82vw, 13px);
+  color: rgba(233, 226, 209, 0.45);
+  white-space: nowrap;
+}
+
+.testFloating {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .testInline {
+    display: none;
+  }
+
+  .testFloating {
+    position: fixed;
+    right: 10px;
+    /* Hauteur de la barre du bas (`ScreenShell.module.css`, 3e rangée de la grille) + marge. */
+    bottom: calc(clamp(50px, 6.2vh, 64px) + 8px);
+    z-index: 4;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px 4px;
+    border-radius: 3px;
+    background: rgba(4, 14, 22, 0.88);
+    box-shadow: inset 0 0 0 1px rgba(199, 154, 78, 0.25);
+  }
+}
+
 .error {
   font-size: clamp(11px, 0.85vw, 13px);
   color: var(--cb-danger-ink);

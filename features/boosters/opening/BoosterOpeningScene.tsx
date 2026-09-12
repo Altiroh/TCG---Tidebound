@@ -35,11 +35,14 @@ import {
 import { BoosterCards } from "@/features/boosters/opening/BoosterCards";
 import { BoosterPack } from "@/features/boosters/opening/BoosterPack";
 import { BoosterParticles } from "@/features/boosters/opening/BoosterParticles";
+import { packVisualVariables, type BoosterPackVisual } from "@/features/boosters/opening/boosterPackVisuals";
 import type { BoosterOpeningCard } from "@/features/boosters/opening/types";
 
 interface BoosterOpeningSceneProps {
-  /** Contenu à révéler. Pour l'instant toujours factice (`MOCK_BOOSTER_CARDS`). */
+  /** Contenu à révéler. Pour l'instant toujours factice (`getMockBoosterCards`). */
   cards: readonly BoosterOpeningCard[];
+  /** Sachet mis en scène et son calage (`getBoosterPackVisual`). */
+  visual: BoosterPackVisual;
   onClose: () => void;
 }
 
@@ -101,7 +104,7 @@ function timingVariables(timings: BoosterOpeningTimings, cardCount: number): CSS
  *   - ce composant            : QUAND ça se passe (minuteries, sons, focus)
  *   - `BoosterOpening.module.css` : COMMENT ça bouge (transform/opacity)
  */
-export function BoosterOpeningScene({ cards, onClose }: BoosterOpeningSceneProps) {
+export function BoosterOpeningScene({ cards, visual, onClose }: BoosterOpeningSceneProps) {
   const [reducedMotion] = useState(prefersReducedMotion);
   const timings = reducedMotion ? BOOSTER_OPENING_TIMINGS_REDUCED : BOOSTER_OPENING_TIMINGS;
 
@@ -124,7 +127,7 @@ export function BoosterOpeningScene({ cards, onClose }: BoosterOpeningSceneProps
   // --- Préchargement, puis entrée du paquet. -------------------------------
   useEffect(() => {
     let cancelled = false;
-    void preloadBoosterOpeningAssets().then((status) => {
+    void preloadBoosterOpeningAssets(visual).then((status) => {
       if (cancelled) return;
       setAssets(status);
       dispatch({ type: "assetsReady" });
@@ -134,7 +137,7 @@ export function BoosterOpeningScene({ cards, onClose }: BoosterOpeningSceneProps
     return () => {
       cancelled = true;
     };
-  }, [schedule, timings]);
+  }, [schedule, timings, visual]);
 
   // --- Enchaînement automatique des phases non interactives. ---------------
   useEffect(() => {
@@ -202,7 +205,10 @@ export function BoosterOpeningScene({ cards, onClose }: BoosterOpeningSceneProps
     return () => returnFocusTo?.focus?.({ preventScroll: true });
   }, [returnFocusTo]);
 
-  const sceneStyle = useMemo(() => timingVariables(timings, cards.length), [timings, cards.length]);
+  const sceneStyle = useMemo(
+    () => ({ ...timingVariables(timings, cards.length), ...packVisualVariables(visual) }),
+    [timings, cards.length, visual],
+  );
 
   const revealedCount = state.cards.filter((card) => card === "revealed").length;
   const showPack = PACK_VISIBLE_PHASES.includes(phase);
@@ -241,7 +247,9 @@ export function BoosterOpeningScene({ cards, onClose }: BoosterOpeningSceneProps
           />
         )}
 
-        {showPack && <BoosterPack torn={phase !== "enter"} retreating={phase === "cardsSpawning"} />}
+        {showPack && (
+          <BoosterPack visual={visual} torn={phase !== "enter"} retreating={phase === "cardsSpawning"} />
+        )}
 
         {abyssalImpactKey > 0 && <div key={abyssalImpactKey} className={styles.abyssalImpact} aria-hidden />}
 

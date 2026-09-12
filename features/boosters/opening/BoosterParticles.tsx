@@ -61,7 +61,7 @@ function tearParticles(): Particle[] {
       className: styles.fleck!,
       style: {
         left: `${(6 + frac * 86).toFixed(1)}%`,
-        top: `${(11 + frac * 4 + rand() * 2).toFixed(1)}%`,
+        top: `calc(var(--tear-y) + ${(frac * 3 + rand() * 2).toFixed(1)}%)`,
         "--frac": frac.toFixed(3),
         "--size": u(0.16 + rand() * 0.22),
         "--dx": u(-2 + rand() * 5),
@@ -78,7 +78,7 @@ function tearParticles(): Particle[] {
       className: styles.droplet!,
       style: {
         left: `${(58 + spread * 32).toFixed(1)}%`,
-        top: `${(12 + rand() * 4).toFixed(1)}%`,
+        top: `calc(var(--tear-y) + ${(rand() * 4).toFixed(1)}%)`,
         "--size": u(0.3 + rand() * 0.45),
         "--dx": u(3 + spread * 8 + rand() * 6),
         "--dy": u(-(5 + rand() * 11)),

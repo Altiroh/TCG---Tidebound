@@ -2,7 +2,7 @@
 
 import { memo, useState, type CSSProperties } from "react";
 import styles from "@/features/boosters/opening/BoosterOpening.module.css";
-import { BOOSTER_OPENING_ASSETS } from "@/features/boosters/opening/boosterOpeningAssets";
+import { CARD_BACK_ASSET } from "@/features/boosters/opening/boosterOpeningAssets";
 import type { BoosterCardRevealState } from "@/features/boosters/opening/boosterOpeningMachine";
 import { BoosterParticles } from "@/features/boosters/opening/BoosterParticles";
 import { OPENING_RARITY_LABEL, type BoosterOpeningCard } from "@/features/boosters/opening/types";
@@ -71,7 +71,7 @@ export const BoosterCard = memo(function BoosterCard({
                 // eslint-disable-next-line @next/next/no-img-element -- asset préchargé, retourné en 3D
                 <img
                   className={styles.cardBackImage}
-                  src={BOOSTER_OPENING_ASSETS.cardBack}
+                  src={CARD_BACK_ASSET}
                   alt=""
                   draggable={false}
                   onError={() => setBackFailed(true)}

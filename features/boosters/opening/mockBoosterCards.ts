@@ -14,3 +14,15 @@ export const MOCK_BOOSTER_CARDS: readonly BoosterOpeningCard[] = [
   { id: "mock-4", rarity: "standard" },
   { id: "mock-5", rarity: "abyssal" },
 ];
+
+/** Mini Booster de Bienvenue : 4 cartes, ni Rare ni Abyssale. */
+export const MOCK_WELCOME_BOOSTER_CARDS: readonly BoosterOpeningCard[] = [
+  { id: "mock-welcome-1", rarity: "standard" },
+  { id: "mock-welcome-2", rarity: "standard" },
+  { id: "mock-welcome-3", rarity: "standard" },
+  { id: "mock-welcome-4", rarity: "standard" },
+];
+
+export function getMockBoosterCards(boosterId: string): readonly BoosterOpeningCard[] {
+  return boosterId === "welcome_tutorial" ? MOCK_WELCOME_BOOSTER_CARDS : MOCK_BOOSTER_CARDS;
+}

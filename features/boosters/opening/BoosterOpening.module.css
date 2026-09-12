@@ -29,9 +29,19 @@
 .scene {
   --u: min(1vh, 0.8vw);
   /* Hauteur du sachet ouvert, en u. */
-  --pack-h-u: 54;
+  --pack-h-u: 50;
   /* Décalage vertical du centre du sachet (vers le bas) : laisse la place aux cartes qui sortent par le haut. */
-  --pack-y-u: 8;
+  --pack-y-u: 10;
+
+  /*
+   * Calage du visuel de sachet (valeurs par défaut ; la scène pose en ligne
+   * celles du booster ouvert, cf. `boosterPackVisuals.ts`).
+   */
+  --pack-ratio: 0.6962;
+  --mouth-x: 0;
+  --mouth-w: 0.6;
+  --mouth-top: 0.14;
+  --tear-y: 8%;
   --card-w-u: 19;
   /* Pas horizontal entre deux cartes posées. Inférieur à `--card-w-u` = chevauchement. */
   --slot-step-u: 22;
@@ -39,8 +49,8 @@
   --fan-deg: 3;
 
   --pack-h: calc(var(--u) * var(--pack-h-u));
-  /* 778 / 1148 : proportions de `defaut-open-bottom.png`. */
-  --pack-w: calc(var(--pack-h) * 0.6777);
+  /* Proportions du PNG du corps ouvert. */
+  --pack-w: calc(var(--pack-h) * var(--pack-ratio));
   --pack-y: calc(var(--u) * var(--pack-y-u));
   --pack-top: calc(var(--pack-y) - var(--pack-h) / 2);
   --card-w: calc(var(--u) * var(--card-w-u));
@@ -48,13 +58,13 @@
   --slot-step: calc(var(--u) * var(--slot-step-u));
   --row-y: calc(var(--u) * var(--row-y-u));
 
-  /* Dans le sachet, une carte a la largeur des dos peints dans l'ouverture (52 % du sachet). */
-  --rise-scale: calc(var(--pack-h-u) * 0.6777 * 0.52 / var(--card-w-u));
+  /* Dans le sachet, une carte a la largeur des dos peints dans l'ouverture. */
+  --rise-scale: calc(var(--pack-h-u) * var(--pack-ratio) * var(--mouth-w) / var(--card-w-u));
   --rise-h: calc(var(--card-h) * var(--rise-scale));
-  /* Centre des dos peints, légèrement à gauche du centre du sachet. */
-  --spawn-x: calc(var(--pack-w) * -0.056);
+  /* Centre des dos peints, par rapport au centre du sachet. */
+  --spawn-x: calc(var(--pack-w) * var(--mouth-x));
   /* Départ : sommet de la carte sous le bord des dos peints → invisible. */
-  --spawn-start-y: calc(var(--pack-top) + var(--pack-h) * 0.14 + var(--rise-h) / 2);
+  --spawn-start-y: calc(var(--pack-top) + var(--pack-h) * var(--mouth-top) + var(--rise-h) / 2);
   /* Sortie : bas de la carte au-dessus du sachet → peut passer devant. */
   --spawn-apex-y: calc(var(--pack-top) - var(--pack-h) * 0.02 - var(--rise-h) / 2);
 
@@ -417,20 +427,18 @@
 }
 
 /*
- * Bande arrachée : même échelle que le corps (737 / 778 px → 94.73 %,
- * 367 / 1148 px → 31.97 %), recalée sur la ligne de découpe. Calibré à
- * l'œil sur les PNG fournis : les deux moitiés ne sont pas des découpes au
- * pixel près du même canevas.
+ * Bande arrachée : même échelle que le corps, recalée sur la ligne de
+ * découpe (`--top-*`, cf. `boosterPackVisuals.ts`).
  *
  * `.packTopFly` porte ce placement et l'envol final ; l'image à l'intérieur
  * porte la déchirure, en rotation autour de son extrémité droite.
  */
 .packTopFly {
   position: absolute;
-  left: 1%;
-  top: -11.5%;
-  width: 94.73%;
-  height: 31.97%;
+  left: var(--top-left);
+  top: var(--top-top);
+  width: var(--top-width);
+  height: var(--top-height);
   transform-origin: 88% 64%;
 }
 .packFloat[data-torn] .packTopFly {
@@ -443,7 +451,7 @@
   width: 100%;
   height: 100%;
   /* Coin bas-droit de la bande : le dernier point encore attaché. */
-  transform-origin: 97% 70%;
+  transform-origin: var(--top-hinge);
 }
 .packFloat[data-torn] .packTop {
   animation: topTear var(--t-tear) linear var(--t-tear-start) both;
@@ -500,17 +508,20 @@
 
 /*
  * Paquet fermé exprimé dans la boîte du corps ouvert : corps des deux
- * visuels superposés (bords latéraux, sangles, bas du sachet).
- * 1122×1402 px affichés à 89.2 % → 128.6 % × 108.94 % de la boîte.
+ * visuels superposés (bords latéraux, sangles, bas du sachet), cf. `--closed-*`.
  */
 .packClosed {
-  left: -14.37%;
-  top: -9.87%;
-  width: 128.6%;
-  height: 108.94%;
+  left: var(--closed-left);
+  top: var(--closed-top);
+  width: var(--closed-width);
+  height: var(--closed-height);
   transform-origin: 50% 95%;
 }
-/* Tension (le sachet se pince), puis fondu très court vers les pièces découpées. */
+/*
+ * Tension (le sachet se pince), puis fondu très court vers les pièces
+ * découpées. Le pincement ramène le haut du paquet fermé au niveau de la
+ * bande arrachée, un peu plus basse dans les visuels fournis.
+ */
 .packFloat[data-torn] .packClosed {
   animation:
     packTension var(--t-tension) cubic-bezier(0.4, 0, 0.6, 1) both,
@@ -519,8 +530,8 @@
 
 @keyframes packTension {
   from { transform: none; }
-  55% { transform: scale(1.006, 0.99); }
-  to { transform: scale(1.012, 0.974); }
+  55% { transform: scale(1.006, 0.985); }
+  to { transform: scale(1.012, 0.955); }
 }
 
 @keyframes closedCut {
@@ -541,7 +552,7 @@
 .tearPoint {
   position: absolute;
   left: 4%;
-  top: 12%;
+  top: var(--tear-y);
   width: calc(var(--u) * 7);
   height: calc(var(--u) * 2.2);
   margin: calc(var(--u) * -1.1) 0 0 calc(var(--u) * -3.5);
@@ -590,7 +601,7 @@
   position: absolute;
   left: 46%;
   right: -8%;
-  top: 5%;
+  top: calc(var(--tear-y) - 7%);
   height: 18%;
   border-radius: 50%;
   background: radial-gradient(closest-side, rgba(196, 238, 248, 0.7), rgba(79, 170, 204, 0.3) 45%, transparent 76%);
@@ -609,7 +620,7 @@
   position: absolute;
   left: -14%;
   right: -14%;
-  top: -6%;
+  top: calc(var(--tear-y) - 18%);
   height: 32%;
   border-radius: 50%;
   background:

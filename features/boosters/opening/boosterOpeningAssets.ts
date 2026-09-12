@@ -1,18 +1,11 @@
+import type { BoosterPackVisual } from "@/features/boosters/opening/boosterPackVisuals";
+
 /**
- * Assets de la scène d'ouverture. Les fichiers fournis vivent dans
- * `public/assets/boosters/defaut/` (orthographe du dossier conservée telle
- * quelle) — changer de visuel de booster se fait ici et nulle part ailleurs.
+ * Préchargement des images de la scène. Les chemins des sachets vivent
+ * dans `boosterPackVisuals.ts` ; seul le dos de carte, commun à tous les
+ * boosters, est déclaré ici.
  */
-export const BOOSTER_OPENING_ASSETS = {
-  /** Booster fermé complet. */
-  packClosed: "/assets/boosters/defaut/defaut.png",
-  /** Bande supérieure arrachée. */
-  packOpenTop: "/assets/boosters/defaut/defaut-open-top.png",
-  /** Corps du booster ouvert (cartes visibles dans l'ouverture). */
-  packOpenBottom: "/assets/boosters/defaut/defaut-open-bottom.png",
-  /** Dos de carte. Si absent, la scène dessine un dos de repli en CSS. */
-  cardBack: "/assets/cards/card-back.png",
-} as const;
+export const CARD_BACK_ASSET = "/assets/cards/card-back.png";
 
 export interface BoosterOpeningAssetStatus {
   cardBackAvailable: boolean;
@@ -49,22 +42,29 @@ function preloadImage(src: string): Promise<boolean> {
   });
 }
 
-let preloadPromise: Promise<BoosterOpeningAssetStatus> | null = null;
+const preloads = new Map<string, Promise<boolean>>();
+
+/** Une seule requête par image pour toute la session, quel que soit le nombre d'appels. */
+function preloadOnce(src: string): Promise<boolean> {
+  let promise = preloads.get(src);
+  if (!promise) {
+    promise = preloadImage(src);
+    preloads.set(src, promise);
+  }
+  return promise;
+}
 
 /**
- * Précharge (une seule fois par session) toutes les images de la scène.
- * Appelée dès l'affichage de la page Boosters pour que le clic sur
- * « Ouvrir » démarre sans attente, puis de nouveau par la scène (mémoïsé).
+ * Précharge les images d'un sachet et le dos de carte. Appelée dès
+ * l'affichage de la page Boosters pour que le clic sur « Ouvrir » démarre
+ * sans attente, puis de nouveau par la scène (mémoïsé).
  */
-export function preloadBoosterOpeningAssets(): Promise<BoosterOpeningAssetStatus> {
+export function preloadBoosterOpeningAssets(visual: BoosterPackVisual): Promise<BoosterOpeningAssetStatus> {
   if (typeof window === "undefined") return Promise.resolve({ cardBackAvailable: false });
-  if (!preloadPromise) {
-    preloadPromise = Promise.all([
-      preloadImage(BOOSTER_OPENING_ASSETS.packClosed),
-      preloadImage(BOOSTER_OPENING_ASSETS.packOpenTop),
-      preloadImage(BOOSTER_OPENING_ASSETS.packOpenBottom),
-      preloadImage(BOOSTER_OPENING_ASSETS.cardBack),
-    ]).then(([, , , cardBack]) => ({ cardBackAvailable: cardBack ?? false }));
-  }
-  return preloadPromise;
+  return Promise.all([
+    preloadOnce(visual.assets.closed),
+    preloadOnce(visual.assets.openTop),
+    preloadOnce(visual.assets.openBottom),
+    preloadOnce(CARD_BACK_ASSET),
+  ]).then(([, , , cardBack]) => ({ cardBackAvailable: cardBack ?? false }));
 }
