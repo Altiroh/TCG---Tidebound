@@ -24,6 +24,7 @@ import { CardDetailModal } from "@/features/match/CardDetailModal";
 import { CardFlightLayer } from "@/features/match/CardFlightLayer";
 import { CargoCluster } from "@/features/match/CargoCluster";
 import { DragTargetingTrail } from "@/features/match/DragTargetingTrail";
+import { EquipLinkOverlay } from "@/features/match/EquipLinkOverlay";
 import { EventFeed } from "@/features/match/EventFeed";
 import { needsPlayTarget } from "@/features/match/needsPlayTarget";
 import { GraveyardViewer } from "@/features/match/GraveyardViewer";
@@ -663,6 +664,7 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
       </BoardStage>
 
       <DragTargetingTrail anchor={dragAnchor} />
+      <EquipLinkOverlay state={state} />
       <AttackImpactLayer impacts={attackImpacts} />
       <ActionToastStack toasts={actionToasts} />
       <PhaseBanner text={bannerText} bannerKey={bannerEvent?.id ?? null} />

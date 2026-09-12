@@ -28,6 +28,7 @@ import { CardDetailModal } from "@/features/match/CardDetailModal";
 import { CardFlightLayer } from "@/features/match/CardFlightLayer";
 import { CargoCluster } from "@/features/match/CargoCluster";
 import { DragTargetingTrail } from "@/features/match/DragTargetingTrail";
+import { EquipLinkOverlay } from "@/features/match/EquipLinkOverlay";
 import { EventFeed } from "@/features/match/EventFeed";
 import { GraveyardViewer } from "@/features/match/GraveyardViewer";
 import { HandFan } from "@/features/match/HandFan";
@@ -816,6 +817,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
       </BoardStage>
 
       <DragTargetingTrail anchor={dragAnchor} />
+      <EquipLinkOverlay state={state} />
       <AttackImpactLayer impacts={attackImpacts} />
       <ActionToastStack toasts={actionToasts} />
       <PhaseBanner text={bannerText} bannerKey={bannerEvent?.id ?? null} />
