@@ -14,6 +14,7 @@ import {
   assertPlayerInGame,
   combine,
 } from "@/game/rules/validation";
+import { payReasonCost, reasonCostAfterShield } from "@/game/state/shields";
 import { getPlayer, type GameState, type PlayerState } from "@/game/state/types";
 import type { ActionResult, PlayCardAction } from "@/game/actions/types";
 
@@ -53,7 +54,11 @@ function validate(state: GameState, action: PlayCardAction) {
     return { ok: false as const, error: `Cette carte ne peut être jouée qu'avec exactement ${def.requiresControllerReasonExactly} Raison.` };
   }
 
-  const costCheck = assertCanPayCost(state, action.playerId, effectiveCost(def, state));
+  const costCheck = assertCanPayCost(
+    state,
+    action.playerId,
+    reasonCostAfterShield(state, action.playerId, effectiveCost(def, state), state.turnNumber)
+  );
   if (!costCheck.ok) return costCheck;
 
   if (isPermanentCard(def)) {
@@ -106,27 +111,22 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
   const player = getPlayer(state, action.playerId);
   const instance = player.hand.find((c) => c.instanceId === action.instanceId)!;
   const def = getCardDefinition(instance.cardId);
-  const cost = effectiveCost(def, state);
   const events: GameEvent[] = [];
   const base = { turnNumber: state.turnNumber, timestamp: Date.now() };
 
   const handAfterRemoval = player.hand.filter((c) => c.instanceId !== instance.instanceId);
-  const playerAfterCost: PlayerState = {
-    ...player,
-    hand: handAfterRemoval,
-    reason: player.reason - cost,
-  };
-
   let nextState: GameState = {
     ...state,
-    players: state.players.map((p) => (p.id === player.id ? playerAfterCost : p)) as [
+    players: state.players.map((p) => (p.id === player.id ? { ...player, hand: handAfterRemoval } : p)) as [
       PlayerState,
       PlayerState
     ],
   };
+  const payment = payReasonCost(nextState, player.id, effectiveCost(def, state), state.turnNumber);
+  nextState = payment.state;
 
   events.push({ ...base, type: "PLAY_CARD", playerId: player.id, instanceId: instance.instanceId, cardId: def.id });
-  events.push({ ...base, type: "REASON_CHANGED", playerId: player.id, delta: -cost });
+  events.push({ ...base, type: "REASON_CHANGED", playerId: player.id, delta: -payment.paid });
 
   const asPermanent = isPermanentCard(def);
 

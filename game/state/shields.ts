@@ -38,20 +38,62 @@ function consumeShield(state: GameState, playerId: PlayerId, unit: CardInstance,
   };
 }
 
+function findReasonLossShield(state: GameState, playerId: PlayerId, turnNumber: number) {
+  return findAvailableShield(state, playerId, turnNumber, "reasonLossShield", (def) => {
+    const shield = def.reduceOwnReasonLossOncePerTurn;
+    if (!shield) return undefined;
+    if (shield.tideStateIn && !shield.tideStateIn.includes(state.environment.tideState)) return undefined;
+    return shield;
+  });
+}
+
 /** Réduction de perte de Raison disponible (Vieux Loup de Mer, Second au Visage Pâle) — 0 si aucun bouclier éligible. */
 export function consumeReasonLossShield(
   state: GameState,
   playerId: PlayerId,
   turnNumber: number
 ): { state: GameState; reduction: number } {
-  const match = findAvailableShield(state, playerId, turnNumber, "reasonLossShield", (def) => {
-    const shield = def.reduceOwnReasonLossOncePerTurn;
-    if (!shield) return undefined;
-    if (shield.tideStateIn && !shield.tideStateIn.includes(state.environment.tideState)) return undefined;
-    return shield;
-  });
+  const match = findReasonLossShield(state, playerId, turnNumber);
   if (!match) return { state, reduction: 0 };
   return { state: consumeShield(state, playerId, match.unit, "reasonLossShield", turnNumber), reduction: match.spec.amount };
+}
+
+/**
+ * Coût en Raison réellement dû une fois le bouclier de perte de Raison
+ * appliqué, SANS le consommer — pour les validations "peut-il payer ?".
+ * Payer un coût est une perte de Raison comme une autre ("toute source
+ * confondue") : avec Vieux Loup de Mer en jeu, une carte à 3 se pose avec 2.
+ */
+export function reasonCostAfterShield(state: GameState, playerId: PlayerId, cost: number, turnNumber: number): number {
+  if (cost <= 0) return cost;
+  const match = findReasonLossShield(state, playerId, turnNumber);
+  return Math.max(0, cost - (match?.spec.amount ?? 0));
+}
+
+/**
+ * Paie un coût en Raison en consommant le bouclier de perte de Raison s'il
+ * est disponible. Un coût nul ne consomme rien (le bouclier reste pour une
+ * vraie perte plus tard dans le tour).
+ */
+export function payReasonCost(
+  state: GameState,
+  playerId: PlayerId,
+  cost: number,
+  turnNumber: number
+): { state: GameState; paid: number } {
+  if (cost <= 0) return { state, paid: 0 };
+  const shield = consumeReasonLossShield(state, playerId, turnNumber);
+  const paid = Math.max(0, cost - shield.reduction);
+  const player = getPlayer(shield.state, playerId);
+  return {
+    state: {
+      ...shield.state,
+      players: shield.state.players.map((p) =>
+        p.id === playerId ? { ...player, reason: Math.max(0, player.reason - paid) } : p
+      ) as [PlayerState, PlayerState],
+    },
+    paid,
+  };
 }
 
 /** Réduction de dégâts de Marée au Navire disponible (Brise-Vague de Fortune, Tempête uniquement) — 0 si aucun bouclier éligible. */

@@ -1586,7 +1586,7 @@ describe("engine.dispatch - Boucliers réactifs 'une fois par tour' (Vieux Loup 
     const first = dispatch(state, { type: "playCard", playerId: "p1", instanceId: marinA.instanceId });
     expect(first.ok).toBe(true);
     if (!first.ok) return;
-    // p1 : 10 - 2 (coût) - 0 (perte de 1 Raison intégralement absorbée par le bouclier) = 8.
+    // p1 : 10 - 1 (coût de 2 réduit par le bouclier, 1ère perte du tour) - 1 (perte de 1 Raison, bouclier déjà consommé) = 8.
     expect(first.state.players[0].reason).toBe(8);
     // p2 : pas de bouclier sur son plateau, perd normalement 1 Raison.
     expect(first.state.players[1].reason).toBe(9);
@@ -1613,7 +1613,7 @@ describe("engine.dispatch - Boucliers réactifs 'une fois par tour' (Vieux Loup 
     const inTempete = dispatch(stateInTempete, { type: "playCard", playerId: "p1", instanceId: marin.instanceId });
     expect(inTempete.ok).toBe(true);
     if (!inTempete.ok) return;
-    expect(inTempete.state.players[0].reason).toBe(8); // 10 - 2 (coût) - 0 (bouclier actif en Tempête)
+    expect(inTempete.state.players[0].reason).toBe(8); // 10 - 1 (coût réduit, bouclier actif en Tempête) - 1
 
     const marinCalme = instance("marin-aux-yeux-rouges", "p1");
     const stateInCalme = testGameState({
@@ -1627,6 +1627,29 @@ describe("engine.dispatch - Boucliers réactifs 'une fois par tour' (Vieux Loup 
     expect(inCalme.ok).toBe(true);
     if (!inCalme.ok) return;
     expect(inCalme.state.players[0].reason).toBe(7); // 10 - 2 (coût) - 1 (bouclier inactif hors Tempête/Abysses)
+  });
+
+  it("Vieux Loup de Mer permet de poser une carte coûtant 1 de plus que la Raison disponible, une seule fois par tour", () => {
+    const vieuxLoup = instance("vieux-loup-de-mer", "p1");
+    const cardA = instance("matelot-du-sans-nom", "p1"); // coût 3, sans effet
+    const cardB = instance("matelot-du-sans-nom", "p1");
+    const state = testGameState({
+      players: [
+        testPlayer("p1", { board: [vieuxLoup], hand: [cardA, cardB], reason: 2 }),
+        testPlayer("p2", { shipId: "lerrant", reason: 10 }),
+      ],
+    });
+
+    const first = dispatch(state, { type: "playCard", playerId: "p1", instanceId: cardA.instanceId });
+    expect(first.ok).toBe(true);
+    if (!first.ok) return;
+    expect(first.state.players[0].reason).toBe(0); // 2 - (3 - 1)
+
+    const noShield = dispatch(
+      { ...first.state, players: [{ ...first.state.players[0], reason: 2 }, first.state.players[1]] },
+      { type: "playCard", playerId: "p1", instanceId: cardB.instanceId }
+    );
+    expect(noShield.ok).toBe(false); // bouclier consommé : 2 < 3
   });
 });
 

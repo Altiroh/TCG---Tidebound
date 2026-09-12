@@ -12,6 +12,7 @@ import {
   combine,
 } from "@/game/rules/validation";
 import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
+import { payReasonCost, reasonCostAfterShield } from "@/game/state/shields";
 import { getPlayer, type GameState, type PlayerState } from "@/game/state/types";
 import type { ActivateAbilityAction, ActionResult } from "@/game/actions/types";
 
@@ -42,7 +43,7 @@ function validate(state: GameState, action: ActivateAbilityAction) {
   }
 
   const reasonCost = spec.cost.reason ?? 0;
-  if (player.reason < reasonCost) {
+  if (player.reason < reasonCostAfterShield(state, player.id, reasonCost, state.turnNumber)) {
     return { ok: false as const, error: "Raison insuffisante pour activer cette capacité." };
   }
 
@@ -75,7 +76,6 @@ export function activateAbility(state: GameState, action: ActivateAbilityAction)
   const reasonCost = spec.cost.reason ?? 0;
   const playerAfter: PlayerState = {
     ...player,
-    reason: player.reason - reasonCost,
     board: player.board.map((u) =>
       u.instanceId === unit.instanceId ? markOncePerTurnUsed(u, ONCE_PER_TURN_KEY, state.turnNumber) : u
     ),
@@ -85,7 +85,9 @@ export function activateAbility(state: GameState, action: ActivateAbilityAction)
     players: state.players.map((p) => (p.id === player.id ? playerAfter : p)) as [PlayerState, PlayerState],
   };
   if (reasonCost > 0) {
-    events.push({ ...base, type: "REASON_CHANGED", playerId: player.id, delta: -reasonCost });
+    const payment = payReasonCost(nextState, player.id, reasonCost, state.turnNumber);
+    nextState = payment.state;
+    events.push({ ...base, type: "REASON_CHANGED", playerId: player.id, delta: -payment.paid });
   }
 
   const context: EffectContext = {

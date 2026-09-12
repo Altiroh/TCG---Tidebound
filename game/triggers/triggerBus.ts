@@ -6,7 +6,7 @@ import type { EffectContext } from "@/game/effects/resolveEffect";
 import { resolveEffect, revealRandomHandCards } from "@/game/effects/resolveEffect";
 import type { GameEvent } from "@/game/events/types";
 import { applyCardPlayedAnomalies, applyPermanentLeftAnomalies } from "@/game/state/anomalies";
-import { consumeOpponentReactionRevealShield } from "@/game/state/shields";
+import { consumeOpponentReactionRevealShield, payReasonCost, reasonCostAfterShield } from "@/game/state/shields";
 import type { GameState, PlayerId, PlayerState } from "@/game/state/types";
 import type { PendingReactionCandidate, TriggerEvent } from "@/game/triggers/types";
 
@@ -219,7 +219,7 @@ export function collectReactionCandidates(
       if (seen.has(key)) continue;
 
       const reasonCost = item.ability.cost?.reason ?? 0;
-      if (player.reason < reasonCost) continue;
+      if (player.reason < reasonCostAfterShield(state, forPlayerId, reasonCost, turnNumber)) continue;
 
       const needsTarget = item.effects.some((e) => e.target.kind === "chosenUnit");
       if (needsTarget && !hasAnyBoardUnit) continue;
@@ -261,14 +261,9 @@ export function resolveReaction(
   let nextState = state;
 
   if (candidate.reasonCost > 0) {
-    const player = nextState.players.find((p) => p.id === candidate.controllerId)!;
-    nextState = {
-      ...nextState,
-      players: nextState.players.map((p) =>
-        p.id === player.id ? { ...p, reason: Math.max(0, p.reason - candidate.reasonCost) } : p
-      ) as [PlayerState, PlayerState],
-    };
-    events.push({ ...base, type: "REASON_CHANGED", playerId: player.id, delta: -candidate.reasonCost });
+    const payment = payReasonCost(nextState, candidate.controllerId, candidate.reasonCost, turnNumber);
+    nextState = payment.state;
+    events.push({ ...base, type: "REASON_CHANGED", playerId: candidate.controllerId, delta: -payment.paid });
   }
 
   const context: EffectContext = {
