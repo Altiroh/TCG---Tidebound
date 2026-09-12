@@ -43,6 +43,13 @@ interface CardTileProps {
   /** Active le glisser-déposer HTML natif (ex: piocher une carte de la Collection vers l'éditeur de deck). Défaut : `false`. */
   draggable?: boolean;
   onDragStart?: (event: React.DragEvent<HTMLButtonElement>) => void;
+  /**
+   * Survol "premium" (léger soulèvement + ombre froide) à la place du glow
+   * bleu plein cadre — pensé pour une grille dense (Collection) où ce glow
+   * devient vite criard. Défaut : `false` (comportement historique inchangé
+   * partout ailleurs : plateau, éditeur de deck, fiche détail).
+   */
+  liftOnHover?: boolean;
 }
 
 /**
@@ -237,6 +244,7 @@ export function CardTile({
   badgeSize = 38,
   draggable = false,
   onDragStart,
+  liftOnHover = false,
 }: CardTileProps) {
   const def = getCardDefinition(instance.cardId);
   const isAbyssal = def.subtype === "abyssal";
@@ -271,11 +279,13 @@ export function CardTile({
       title={def.text}
       draggable={draggable}
       onDragStart={onDragStart}
-      className={`${widthClassName} relative rounded-xl text-left transition-shadow duration-200 ${
-        selected ? "ring-2 ring-board-accent" : ""
-      } ${disabled ? "opacity-40" : ""} ${onClick ? "cursor-pointer" : "cursor-default"} ${
-        hoverable ? "hover:shadow-[0_0_35px_rgba(62,166,255,0.6)]" : ""
-      }`}
+      className={`${widthClassName} relative rounded-xl text-left ${
+        liftOnHover
+          ? "transition-[transform,box-shadow] duration-[180ms] ease-[cubic-bezier(.2,.8,.2,1)] hover:z-10 hover:-translate-y-1.5 hover:scale-[1.025] hover:shadow-[0_16px_32px_rgba(0,0,0,0.5),0_0_0_1px_rgba(200,225,255,0.12)]"
+          : "transition-shadow duration-200"
+      } ${selected ? "ring-2 ring-board-accent" : ""} ${disabled ? "opacity-40" : ""} ${
+        onClick ? "cursor-pointer" : "cursor-default"
+      } ${hoverable && !liftOnHover ? "hover:shadow-[0_0_35px_rgba(62,166,255,0.6)]" : ""}`}
     >
       <div
         className={`relative aspect-[5/7] w-full overflow-hidden rounded-xl transition-transform duration-150 ease-out ${
@@ -289,7 +299,14 @@ export function CardTile({
           // (dont "Durée") et le bouton "i" externe restent accessibles, contrairement à `hiddenFromViewer`
           // (adversaire) qui masque tout.
           // eslint-disable-next-line @next/next/no-img-element -- asset local unique, pas de variation par carte
-          <img src={CARD_BACK_SRC} alt="" draggable={false} className="h-full w-full select-none object-cover" />
+          <img
+            src={CARD_BACK_SRC}
+            alt=""
+            draggable={false}
+            loading="lazy"
+            decoding="async"
+            className="h-full w-full select-none object-cover"
+          />
         ) : (
         <>
         {/* Couche 1 : illustration, dans la découpe du cadre (ou plein cadre si le cadre est absent) */}
@@ -299,20 +316,27 @@ export function CardTile({
         >
           {illustrationOk && (
             // eslint-disable-next-line @next/next/no-img-element -- asset local, une par carte
-            <img src={illustrationUrl} alt="" className="h-full w-full object-cover" />
+            <img src={illustrationUrl} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
           )}
         </div>
 
         {/* Couche 2 : le cadre PNG — contour, bandeaux, bloc de règles et découpes de stats déjà peints */}
         {frameOk && (
           // eslint-disable-next-line @next/next/no-img-element -- asset local, cadre réutilisé par famille/variante de stats
-          <img src={frameUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          <img src={frameUrl} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
         )}
 
         {/* Couche 2.5 : débord Abyssal — silhouette à fond transparent qui déborde du cadre, posée par-dessus */}
         {isAbyssal && debordOk && (
           // eslint-disable-next-line @next/next/no-img-element -- asset local, calque optionnel par carte Abyssale
-          <img src={debordUrl} alt="" className="pointer-events-none absolute object-contain object-top" style={zoneStyle(DEBORD_ZONE)} />
+          <img
+            src={debordUrl}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="pointer-events-none absolute object-contain object-top"
+            style={zoneStyle(DEBORD_ZONE)}
+          />
         )}
 
         {/* Couche 3 : icônes, textes et valeurs variables injectés par-dessus le cadre */}
@@ -333,6 +357,8 @@ export function CardTile({
               <img
                 src={typeIconUrl}
                 alt={CARD_TYPE_LABELS[def.type]}
+                loading="lazy"
+                decoding="async"
                 className="h-[78%] w-auto object-contain"
                 style={isAbyssal ? { filter: "grayscale(1) brightness(0.45)" } : undefined}
               />

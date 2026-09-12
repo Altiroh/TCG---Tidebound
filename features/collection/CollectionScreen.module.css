@@ -1,0 +1,613 @@
+/*
+ * Palette "Tidebound maritime" — namespacée `--cb-*` (Collection Brass) et
+ * posée sur `.screen` plutôt que sur `:root` pour ne jamais entrer en
+ * collision avec les tokens `--surface-*`/`--accent` de la refonte "jeu
+ * vidéo premium" (`components/game-ui/tokens.ts`), qui vit sur d'autres
+ * écrans (auth, setup...). Les deux directions artistiques coexistent dans
+ * le code sans se marcher dessus.
+ */
+.screen {
+  --cb-navy-deep: #050b16;
+  --cb-navy: #0a1420;
+  --cb-navy-light: #0f2130;
+  --cb-brass-dark: #6b5326;
+  --cb-brass: #b9924f;
+  --cb-brass-light: #e7c877;
+  --cb-teal: #1f6f78;
+  --cb-teal-light: #3f97a1;
+  --cb-parchment: #dcc9a3;
+  --cb-parchment-shadow: #c7b088;
+  --cb-ink: #2f2416;
+  --cb-ivory: #ece4d2;
+  --cb-ivory-dim: #b9ae98;
+
+  width: 100vw;
+  height: 100dvh;
+  display: grid;
+  grid-template-rows: clamp(78px, 10.5vh, 125px) minmax(0, 1fr) clamp(78px, 10vh, 115px);
+  overflow: hidden;
+  background: var(--cb-navy-deep);
+  font-family: var(--font-card-title, Georgia, "Times New Roman", serif);
+  color: var(--cb-ivory);
+}
+
+/* ---------- Header ---------- */
+
+.header {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: auto auto auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: clamp(10px, 1.2vw, 20px);
+  padding-inline: clamp(12px, 1.6vw, 26px);
+  background: linear-gradient(180deg, var(--cb-navy) 0%, var(--cb-navy-deep) 100%);
+  box-shadow: inset 0 -3px 0 var(--cb-brass-dark), 0 2px 12px rgba(0, 0, 0, 0.5);
+}
+
+/*
+ * Onglets intégrés à la structure du header plutôt que trois boutons HTML
+ * séparés : pas de cadre individuel, juste un soulignement qui vit sur la
+ * ligne de base du bandeau (cf. `::after`). Le repos et le survol restent
+ * discrets ; seul le survol/clic déclenche une vraie lueur turquoise.
+ */
+.navTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  height: clamp(34px, 4.6vh, 46px);
+  padding-inline: clamp(12px, 1.2vw, 20px);
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--cb-ivory-dim);
+  font-size: clamp(12px, 1vw, 15px);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  position: relative;
+  transition: color 150ms ease-out, background 150ms ease-out;
+}
+
+.navTab::after {
+  content: "";
+  position: absolute;
+  left: 16%;
+  right: 16%;
+  bottom: 2px;
+  height: 2px;
+  border-radius: 1px;
+  background: transparent;
+  box-shadow: none;
+  transition: background 150ms ease-out, box-shadow 150ms ease-out;
+}
+
+.navTab:hover {
+  color: var(--cb-ivory);
+  background: rgba(255, 255, 255, 0.04);
+}
+.navTab:hover::after {
+  background: var(--cb-brass);
+}
+
+.navTabActive {
+  composes: navTab;
+  color: var(--cb-ivory);
+  background: linear-gradient(180deg, rgba(31, 111, 120, 0.18) 0%, transparent 75%);
+}
+.navTabActive::after {
+  background: var(--cb-teal-light);
+  box-shadow: 0 0 4px rgba(63, 151, 161, 0.45);
+}
+.navTabActive:hover,
+.navTabActive:active {
+  background: linear-gradient(180deg, rgba(31, 111, 120, 0.28) 0%, transparent 75%);
+}
+.navTabActive:hover::after,
+.navTabActive:active::after {
+  box-shadow: 0 0 10px rgba(63, 151, 161, 0.85);
+}
+
+.backArrow {
+  display: inline-block;
+  transform: translateY(-1px);
+}
+
+.panorama {
+  position: relative;
+  height: 100%;
+  min-width: 0;
+  overflow: hidden;
+  border-inline: 1px solid rgba(0, 0, 0, 0.4);
+  background:
+    radial-gradient(80px 80px at 82% 38%, rgba(255, 226, 160, 0.9) 0%, rgba(255, 226, 160, 0.15) 55%, transparent 75%),
+    linear-gradient(180deg, #0a1622 0%, #12283a 45%, #1c3c52 78%, #274d63 100%);
+}
+
+.panoramaStars {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1.5px 1.5px at 10% 20%, rgba(255, 255, 255, 0.8), transparent),
+    radial-gradient(1.5px 1.5px at 25% 12%, rgba(255, 255, 255, 0.6), transparent),
+    radial-gradient(1px 1px at 40% 30%, rgba(255, 255, 255, 0.7), transparent),
+    radial-gradient(1.5px 1.5px at 60% 15%, rgba(255, 255, 255, 0.5), transparent),
+    radial-gradient(1px 1px at 92% 22%, rgba(255, 255, 255, 0.6), transparent);
+  opacity: 0.8;
+}
+
+.panoramaPeaks {
+  position: absolute;
+  inset-inline: -2%;
+  bottom: -6%;
+  height: 62%;
+  background: #16303f;
+  clip-path: polygon(
+    0% 100%, 0% 55%, 6% 40%, 12% 58%, 18% 30%, 24% 52%, 33% 20%, 40% 50%,
+    48% 34%, 55% 55%, 63% 25%, 70% 48%, 78% 15%, 85% 45%, 92% 32%, 100% 50%, 100% 100%
+  );
+  opacity: 0.85;
+}
+
+.panoramaPeaksFar {
+  position: absolute;
+  inset-inline: -2%;
+  bottom: -6%;
+  height: 48%;
+  background: #0e2330;
+  clip-path: polygon(
+    0% 100%, 0% 65%, 10% 45%, 20% 62%, 30% 40%, 42% 60%, 52% 38%,
+    62% 58%, 72% 42%, 84% 60%, 92% 46%, 100% 60%, 100% 100%
+  );
+  opacity: 0.9;
+}
+
+.panoramaWater {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 22%;
+  background: linear-gradient(180deg, rgba(20, 60, 78, 0.4) 0%, rgba(6, 18, 26, 0.85) 100%);
+}
+
+.emblem {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: clamp(46px, 6vh, 62px);
+  width: clamp(46px, 6vh, 62px);
+  border-radius: 8px;
+  background: linear-gradient(155deg, var(--cb-teal) 0%, #0c2b31 70%);
+  border: 2px solid var(--cb-brass);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  color: var(--cb-brass-light);
+}
+
+/* ---------- Main panel ---------- */
+
+.panelOuter {
+  position: relative;
+  min-height: 0;
+  background: radial-gradient(ellipse at 50% 0%, var(--cb-navy-light) 0%, var(--cb-navy-deep) 70%);
+}
+
+.panelFrameWrap {
+  width: calc(100% - clamp(24px, 3vw, 64px));
+  height: calc(100% - clamp(20px, 2.6vh, 40px));
+  margin-inline: auto;
+  margin-block: clamp(10px, 1.3vh, 20px);
+  min-height: 0;
+  position: relative;
+}
+
+/*
+ * Cadre laiton "9-slice logique" : au lieu d'étirer une image de cadre
+ * complète, on empile des anneaux de `box-shadow`/`border` dont l'épaisseur
+ * ne dépend jamais de la taille du panneau — coins et bords restent nets à
+ * n'importe quelle résolution. Volontairement fin (un seul filet de laiton
+ * + un liséré sombre) : le métal est un ornement autour du parchemin, pas
+ * une fenêtre HTML qui domine l'écran. Les coins reçoivent en plus un petit
+ * rivet (`.rivet`) positionné en `absolute` dans ce conteneur déjà
+ * responsive.
+ */
+.decorativeFrame {
+  position: relative;
+  height: 100%;
+  border-radius: 8px;
+  background: var(--cb-parchment-shadow);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.55),
+    0 0 0 4px var(--cb-brass),
+    0 0 0 5px rgba(0, 0, 0, 0.4),
+    inset 0 0 0 1px rgba(255, 224, 170, 0.1),
+    0 18px 50px rgba(0, 0, 0, 0.6);
+}
+
+.rivet {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, var(--cb-brass-light), var(--cb-brass-dark) 75%);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  opacity: 0.85;
+  z-index: 4;
+}
+.rivetTL { top: 5px; left: 5px; }
+.rivetTR { top: 5px; right: 5px; }
+.rivetBL { bottom: 5px; left: 5px; }
+.rivetBR { bottom: 5px; right: 5px; }
+
+/*
+ * Transition fond sombre → structure métallique → ombre intérieure →
+ * parchemin : `.panelOuter` porte le fond marine, `.decorativeFrame` le
+ * filet de laiton, et cette ombre interne (avant même la texture) creuse
+ * visuellement le parchemin dans son logement métallique — le parchemin
+ * devient la vraie surface de lecture, pas un simple aplat posé dessus.
+ */
+.collectionContent {
+  position: relative;
+  height: 100%;
+  min-height: 0;
+  border-radius: 5px;
+  overflow: hidden;
+  box-shadow: inset 0 0 28px rgba(35, 22, 8, 0.4), inset 0 3px 10px rgba(0, 0, 0, 0.35);
+  /* Texture parchemin discrète : mouchetures irrégulières superposées sur un
+     aplat beige, jamais une image plaquée/étirée sur toute la surface. */
+  background-color: var(--cb-parchment);
+  background-image:
+    radial-gradient(circle at 15% 20%, rgba(255, 255, 255, 0.10) 0, transparent 3%),
+    radial-gradient(circle at 45% 65%, rgba(255, 255, 255, 0.08) 0, transparent 3%),
+    radial-gradient(circle at 75% 30%, rgba(0, 0, 0, 0.06) 0, transparent 3%),
+    radial-gradient(circle at 85% 80%, rgba(255, 255, 255, 0.09) 0, transparent 3%),
+    radial-gradient(circle at 30% 85%, rgba(0, 0, 0, 0.05) 0, transparent 3%),
+    radial-gradient(circle at 60% 10%, rgba(0, 0, 0, 0.05) 0, transparent 3%);
+  background-size: 140px 140px;
+}
+
+.compassRose {
+  position: absolute;
+  top: clamp(10px, 1.6vh, 22px);
+  left: clamp(10px, 1.6vw, 22px);
+  width: clamp(60px, 7vw, 110px);
+  height: auto;
+  opacity: 0.22;
+  color: var(--cb-ink);
+  pointer-events: none;
+}
+
+.coastCorner {
+  position: absolute;
+  bottom: 0;
+  width: clamp(90px, 12vw, 200px);
+  height: clamp(70px, 14vh, 180px);
+  opacity: 0.45;
+  pointer-events: none;
+  background: linear-gradient(150deg, #5c7d94 0%, #3c5b70 55%, transparent 100%);
+  clip-path: polygon(
+    0% 100%, 0% 60%, 15% 45%, 22% 62%, 32% 30%, 45% 55%, 55% 38%, 68% 58%, 100% 42%, 100% 100%
+  );
+}
+.coastCornerLeft {
+  composes: coastCorner;
+  left: 0;
+}
+.coastCornerRight {
+  composes: coastCorner;
+  right: 0;
+  transform: scaleX(-1);
+}
+
+/* ---------- Sort control ---------- */
+
+.sortControl {
+  position: absolute;
+  top: clamp(14px, 2vh, 26px);
+  right: clamp(16px, 2vw, 30px);
+  z-index: 5;
+}
+
+.sortButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6em;
+  height: clamp(30px, 3.8vh, 38px);
+  padding-inline: clamp(12px, 1.1vw, 18px);
+  border-radius: 4px;
+  border: none;
+  background: linear-gradient(180deg, #f2e6c9 0%, #e0cda1 100%);
+  color: var(--cb-ink);
+  font-size: clamp(11px, 0.85vw, 13px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(107, 83, 38, 0.35), 0 2px 6px rgba(0, 0, 0, 0.35);
+  transition: box-shadow 150ms ease-out, transform 150ms ease-out;
+}
+
+.sortButton:hover {
+  box-shadow: inset 0 0 0 1px var(--cb-brass), 0 3px 10px rgba(0, 0, 0, 0.4);
+  transform: translateY(-1px);
+}
+
+.sortMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 100%;
+  overflow: hidden;
+  border-radius: 3px;
+  border: 2px solid var(--cb-brass);
+  background: #f7efd9;
+  box-shadow: 0 2px 0 var(--cb-brass-dark), 0 12px 30px rgba(0, 0, 0, 0.6);
+  z-index: 6;
+}
+
+.sortOption {
+  display: block;
+  width: 100%;
+  padding: 0.5em 1em;
+  text-align: left;
+  white-space: nowrap;
+  font-size: clamp(11px, 0.85vw, 13px);
+  color: var(--cb-ink);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.sortOption:hover {
+  background: rgba(107, 83, 38, 0.12);
+}
+.sortOptionActive {
+  composes: sortOption;
+  color: var(--cb-teal);
+  font-weight: 700;
+}
+
+/* ---------- Card grid ---------- */
+
+/*
+ * Seule zone qui défile dans tout l'écran (header et toolbar restent fixes,
+ * cf. `.screen`) — navigation à la molette uniquement, plus de pagination.
+ * `overscroll-behavior: contain` empêche un défilement en bout de course de
+ * "fuiter" vers une page parente ; `scroll-padding-top` évite qu'une carte
+ * visée par `scrollIntoView`/ancre clavier ne se retrouve sous le
+ * `SortControl` flottant.
+ */
+.cardGridScroll {
+  position: absolute;
+  inset: 0;
+  padding: clamp(70px, 8vh, 100px) clamp(24px, 3vw, 48px) clamp(32px, 5vh, 60px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+  scroll-padding-top: clamp(56px, 8vh, 76px);
+  scrollbar-width: thin;
+  scrollbar-color: var(--cb-brass-dark) transparent;
+}
+.cardGridScroll::-webkit-scrollbar {
+  width: 8px;
+}
+.cardGridScroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.cardGridScroll::-webkit-scrollbar-thumb {
+  background-color: var(--cb-brass-dark);
+  background-image: linear-gradient(180deg, var(--cb-brass) 0%, var(--cb-brass-dark) 100%);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.cardGridScroll::-webkit-scrollbar-thumb:hover {
+  background-image: linear-gradient(180deg, var(--cb-brass-light) 0%, var(--cb-brass) 100%);
+}
+
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(clamp(145px, 10vw, 205px), 1fr));
+  gap: clamp(16px, 1.6vw, 28px);
+  align-content: start;
+}
+
+/* Microanimation d'apparition — courte, jamais rejouée sur 200 cartes à la fois (cf. `CardGrid.tsx`, la clé change
+   de génération uniquement au reset de filtre ; un lot lazy-loadé ajoute des cellules fraîches sans en rejouer). */
+.cardCell {
+  animation: cardAppear 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes cardAppear {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cardCell {
+    animation: none;
+  }
+}
+
+/* Indicateur de chargement du lot suivant — trois points discrets, jamais un spinner générique. Statiques tant
+   que rien ne charge ; une brève lueur pendant le court délai de chargement (cf. `LOAD_DELAY_MS`). */
+.loadMoreSentinel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 22px 0 6px;
+}
+
+.loadDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--cb-brass-light);
+  opacity: 0.35;
+}
+
+.loadDotActive {
+  animation: loadDotGlow 900ms ease-in-out infinite;
+}
+.loadDotActive:nth-child(2) { animation-delay: 150ms; }
+.loadDotActive:nth-child(3) { animation-delay: 300ms; }
+
+@keyframes loadDotGlow {
+  0%, 100% { opacity: 0.35; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.3); box-shadow: 0 0 6px var(--cb-brass-light); }
+}
+
+.emptyState {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  text-align: center;
+  color: var(--cb-ink);
+}
+
+/* ---------- Bottom toolbar ---------- */
+
+/* Plus de 4e colonne de pagination (supprimée) : la recherche récupère l'espace, `justify-content: space-between`
+   laisse les trois groupes respirer sans les coller les uns aux autres sur un écran large. */
+.toolbar {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: auto auto minmax(240px, 480px);
+  justify-content: space-between;
+  align-items: center;
+  gap: clamp(14px, 2vw, 32px);
+  padding-inline: clamp(16px, 2vw, 30px);
+  background: linear-gradient(180deg, var(--cb-navy-deep) 0%, var(--cb-navy) 100%);
+  box-shadow: inset 0 1px 0 rgba(185, 146, 79, 0.3), 0 -2px 12px rgba(0, 0, 0, 0.4);
+}
+
+.createButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: clamp(34px, 4.6vh, 44px);
+  padding-inline: clamp(16px, 1.6vw, 26px);
+  border-radius: 5px;
+  border: none;
+  background: linear-gradient(180deg, var(--cb-teal) 0%, #123c42 100%);
+  color: var(--cb-ivory);
+  font-size: clamp(12px, 1vw, 15px);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(231, 200, 119, 0.35), 0 4px 14px rgba(0, 0, 0, 0.4);
+  transition: box-shadow 150ms ease-out, filter 150ms ease-out, transform 150ms ease-out;
+}
+.createButton:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+  box-shadow: inset 0 0 0 1px rgba(231, 200, 119, 0.6), 0 6px 18px rgba(0, 0, 0, 0.5), 0 0 14px rgba(31, 111, 120, 0.5);
+}
+
+.filterGroup {
+  display: flex;
+  align-items: center;
+  gap: clamp(6px, 0.8vw, 12px);
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.filterGroup::-webkit-scrollbar {
+  display: none;
+}
+
+/*
+ * Médaillons de filtre — pas des boutons ronds HTML à bordure permanente :
+ * un anneau intérieur à peine visible au repos (l'icône seule fait le
+ * travail), qui ne se révèle en vrai relief laiton qu'au survol, et une
+ * mise en lumière nette une fois sélectionné.
+ */
+.filterButton {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: clamp(32px, 4.2vh, 42px);
+  width: clamp(32px, 4.2vh, 42px);
+  border-radius: 50%;
+  border: none;
+  background: radial-gradient(circle at 32% 28%, #182b39 0%, #060d14 70%);
+  color: var(--cb-ivory-dim);
+  cursor: pointer;
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 0 0 1px rgba(185, 146, 79, 0.18);
+  transition: box-shadow 180ms ease-out, transform 180ms ease-out;
+}
+.filterButton:hover {
+  box-shadow: inset 0 0 0 1px var(--cb-brass), 0 0 8px rgba(185, 146, 79, 0.35);
+  transform: translateY(-1px);
+}
+.filterButtonActive {
+  composes: filterButton;
+  color: var(--cb-ivory);
+  box-shadow: inset 0 0 0 1px var(--cb-brass-light), 0 0 0 3px rgba(231, 200, 119, 0.22), 0 0 10px rgba(231, 200, 119, 0.4);
+}
+
+.searchBar {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  height: clamp(34px, 4.4vh, 42px);
+  padding-inline: clamp(12px, 1.2vw, 18px);
+  border-radius: 6px;
+  border: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(0, 0, 0, 0.15) 100%), var(--cb-navy);
+  box-shadow: inset 0 0 0 1px rgba(185, 146, 79, 0.22), inset 0 1px 3px rgba(0, 0, 0, 0.5);
+  min-width: 0;
+  transition: box-shadow 180ms ease-out;
+}
+.searchBar:focus-within {
+  box-shadow: inset 0 0 0 1px var(--cb-brass), 0 0 10px rgba(185, 146, 79, 0.25);
+}
+
+.searchInput {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--cb-ivory);
+  font-size: clamp(12px, 0.9vw, 14px);
+}
+.searchInput::placeholder {
+  color: var(--cb-ivory-dim);
+}
+
+.searchClear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  height: 1.3em;
+  width: 1.3em;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--cb-ivory-dim);
+  cursor: pointer;
+}
+.searchClear:hover {
+  color: var(--cb-ivory);
+}
+

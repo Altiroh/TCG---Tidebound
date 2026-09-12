@@ -1,54 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CORE_SET, type CardDefinition, type CardInstance, type CardType } from "@/game";
+import { CORE_SET, type CardInstance, type CardType } from "@/game";
 import { FilterChip } from "@/components/game-ui/FilterChip";
 import { GameModal } from "@/components/game-ui/GameModal";
 import { GameSelect } from "@/components/game-ui/GameSelect";
 import { SearchField } from "@/components/game-ui/SearchField";
+import { compareCards, normalizeSearch, SORT_OPTIONS, TYPE_FILTERS, type SortMode } from "@/features/collection/cardFilters";
 import { CardInfoPanel } from "@/features/match/CardInfoPanel";
 import { CardTile } from "@/features/match/CardTile";
 import { CARD_TYPE_LABELS } from "@/features/match/cardDisplay";
 
 const EMPTY_SLOT_SRC = "/assets/collection/card_empty_placeholder.png";
-
-const TYPE_FILTERS: CardType[] = ["marin", "creature", "equipement", "structure", "objet", "anomalie"];
-
-type SortMode = "name" | "cost" | "power";
-
-const SORT_OPTIONS: Array<{ value: SortMode; label: string }> = [
-  { value: "name", label: "Nom" },
-  { value: "cost", label: "Raison" },
-  { value: "power", label: "Puissance" },
-];
-
-/** Insensible aux accents (ex: "epave" retrouve "Épave") et à la casse. */
-function normalizeSearch(value: string): string {
-  return value
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase();
-}
-
-/**
- * Comparateur de tri. `cost` et `power` départagent toujours les égalités
- * (et, pour `power`, l'absence de Puissance — Équipement/Structure/Objet/
- * Anomalie) par ordre alphabétique, comme demandé : jamais d'ordre
- * arbitraire résiduel.
- */
-function compareCards(a: CardDefinition, b: CardDefinition, sort: SortMode): number {
-  if (sort === "cost") {
-    return a.cost !== b.cost ? a.cost - b.cost : a.name.localeCompare(b.name, "fr");
-  }
-  if (sort === "power") {
-    const aHasPower = a.attack !== undefined;
-    const bHasPower = b.attack !== undefined;
-    if (aHasPower && bHasPower && a.attack !== b.attack) return (a.attack as number) - (b.attack as number);
-    if (aHasPower !== bHasPower) return aHasPower ? -1 : 1;
-    return a.name.localeCompare(b.name, "fr");
-  }
-  return a.name.localeCompare(b.name, "fr");
-}
 
 /** Instance factice, pour afficher une carte hors de toute partie (stats de base, aucun état vivant). */
 function displayInstance(cardId: string): CardInstance {
@@ -96,7 +59,10 @@ function TypeIcon({ type, active }: { type: CardType; active: boolean }) {
       className="block h-full w-full transition-[filter,opacity] duration-150"
       style={{
         backgroundImage: `url(/assets/cards/icons/TYPE_${type.toUpperCase()}_STANDARD.png)`,
-        backgroundSize: "auto 180%",
+        // cf. `FilterButton.tsx` : la zone icône de `TYPE_*_STANDARD.png` est
+        // carrée (largeur ≈ hauteur de l'image) — "auto 100%" montre cette
+        // zone entière au lieu d'une tranche gauche tronquée.
+        backgroundSize: "auto 100%",
         backgroundPosition: "left center",
         backgroundRepeat: "no-repeat",
         filter: active ? "none" : "grayscale(0.7) opacity(0.6)",
