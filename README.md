@@ -340,7 +340,8 @@ sous-système) avant d'être toutes construites depuis :
   (Quelque Chose Sous la Coque, Le Chant Sous la Ligne, Les Voix dans le
   Sillage, Ils Sont Sous Nous ×2, La Mer Réclame Davantage ×2) — règles
   symétriques appliquées automatiquement, centralisées dans
-  `processTrigger`/`resolveEffect`/`resolveEnvironment`.
+  `processTrigger`/`resolveEffect`/`resolveEnvironment`. **Le Fond Vous
+  Regarde ×2 reste à part** : voir "Choix de joueur" ci-dessous.
 - **Choix de joueur** (`GameState.pendingChoice` + `game/actions/resolveChoice.ts`) :
   Le Fond Vous Regarde (×2) force, au début de chaque tour, un choix
   binaire pour le joueur actif — perdre de la Raison, ou infliger des
@@ -414,9 +415,17 @@ Sabordage, Bris d'Objet, Garde, Jugement de l'Océan, effets génériques,
 triggers (dont `onBecomeVisible`/`onExpire`), Marée + Eaux + Navires.
 
 **Écarts actuels documentés** :
-- Système de raretés/boosters/économie de collection (`TCG_DATABASE.md`)
-  spécifié côté design mais pas implémenté — pas de schéma BDD, pas de
-  logique d'ouverture de booster.
+- Quêtes quotidiennes/hebdomadaires : schéma BDD présent (`quests`,
+  `player_quest_progress`) mais aucune logique. C'est l'écart le plus
+  structurant de l'économie : le cadrage en fait la **principale** source
+  de Tides, et la cadence cible (~1 booster tous les 2-3 jours) n'est pas
+  atteignable sans elles avec les seuls paliers de niveau.
+- Parties contre bot arbitrées côté serveur : elles sont enregistrées dans
+  `matches` et récompensées, mais leur ISSUE est déclarée par le navigateur
+  (cf. « Dérogation de développement » plus bas). À reprendre en faisant
+  tourner le moteur et le bot côté serveur, comme en PvP.
+- Recyclage des doublons : la fonction serveur existe (`recycle_card`,
+  barème verrouillé) mais aucune UI ne l'appelle encore.
 - Voir "Mécanismes avancés" plus haut pour ce qui reste réellement non
   modélisé (priorité de Garde, pondération des Eaux, bonus d'Équipement
   statiques, fuite d'information réseau).
@@ -431,29 +440,110 @@ binaire fixe déjà décrit dans "Mécanismes avancés" ; un vrai "choisissez
 lesquelles défausser" resterait un chantier séparé (choix parmi un nombre
 variable de cartes, pas entre deux effets connus d'avance).
 
-Pas encore fait : interface de jeu (plateau, main, drag&drop, affichage
-de la Marée/des Eaux/de la Raison), deckbuilder (les decks personnels ont
-un schéma BDD mais pas d'UI), historique de parties (UI — les données
-existent dans `matches`), système de raretés/boosters/économie côté client
-(ouverture de booster, boutique, recyclage — le schéma serveur existe,
-pas la logique d'ouverture).
+Pas encore fait : historique de parties (UI — les données existent dans
+`matches`), boutique complète (offres au-delà de l'achat de booster),
+recyclage côté client, quêtes.
+
+## Progression & boosters
+
+**Progression (XP / niveaux)** — `game/progression/` : logique pure et
+testée (`tests/game/progression.test.ts`). La courbe de niveaux et tout le
+calibrage (XP par partie, Tides par palier, bonus de première victoire
+quotidienne) vivent dans `game/progression/constants.ts`, avec le statut de
+chaque valeur : le cadrage Notion verrouille les PRINCIPES (les parties
+donnent surtout de l'XP, le bot ne donne jamais de Tide, le farm PvP doit
+rester peu rentable) mais aucun nombre. La base ne stocke que `xp_total` et
+un cache de `level` — le niveau est toujours dérivé de la courbe, ce qui
+permet de recalibrer sans migration.
+
+L'octroi est autoritaire et idempotent : `submitOnlineAction` détecte la fin
+de partie, `computeMatchReward()` calcule, et la fonction Postgres
+`grant_match_progression()` applique tout en une transaction. La clé
+primaire de `match_rewards (match_id, user_id)` garantit qu'une partie ne
+peut jamais récompenser deux fois — une double soumission ou une reprise
+réseau est sans effet.
+
+**Boosters** — `game/boosters/` : format 8 cartes, pity Abyssal et
+protection Abyssale implémentés selon le cadrage verrouillé, en fonctions
+pures à RNG déterministe (`tests/game/boosters.test.ts`, dont un test qui
+vérifie la garantie du 20e booster sur 40 graines). Le tirage se fait dans
+la Server Action ; toutes les écritures passent par `open_booster()`, qui
+re-vérifie la possession, le format et relit la rareté depuis `cards` pour
+décider du pity. Le client n'envoie qu'un id de booster.
+
+La rareté carte par carte vit dans `game/boosters/cardRarity.ts` (issue de
+l'audit de design Notion, mappée par slug) et alimente `cards.rarity` via
+`npm run seed:cards`. **Le script refuse de tourner** si une carte du
+catalogue n'a pas de rareté explicite, et `tests/game/cardRarity.test.ts`
+échoue de même : sans ce garde-fou, une carte ajoutée retombait en `common`
+par défaut et tous les boosters devenaient faux en silence. Les six cartes
+postérieures à l'audit ont été arbitrées le 2026-09-12 ;
+`PROVISIONAL_RARITY_CARD_IDS` est donc vide, et y remettre une entrée fait
+volontairement échouer le test jusqu'au prochain arbitrage.
+
+Répartition actuelle du pool (98 cartes) : 28 Communes, 27 Peu communes,
+24 Rares, 19 Abyssales — les Abyssales sont nombreuses parce que chaque
+variante `*-abyssal` en est une. **Le nombre de cartes d'un palier ne change
+pas le taux de drop** (ce sont les poids de slot qui le gouvernent) : sur
+5000 ouvertures consécutives, pity inclus, 12,8 % des boosters contiennent
+une Abyssale, soit environ une tous les 8 boosters. Les variantes Abyssales
+ont leur place dans le pool standard ; elles sont exclues du Mini Booster de
+Bienvenue via `booster_definitions.pool_excluded_rarities`, filtré avant le
+tirage (`tests/game/boosters.test.ts` vérifie qu'aucune n'en sort même avec
+le pity au maximum).
+
+### Dérogation de développement — récompenses contre bot
+
+Le cadrage verrouille « 0 Tide contre bot ». Comme le PvP demande deux
+joueurs réels et que les Contrats (missions quotidiennes) n'existent pas
+encore, aucune boucle solo ne permettait de tester l'économie : les parties
+contre bot rapportent donc, **pendant le développement**, de l'XP et des
+Tides réduites (`DEV_BOT_MATCH_TIDES`, moitié du PvP).
+
+Tout est concentré dans `features/progression/botRewardPolicy.ts` :
+`MATCH_TIDES.bot*` reste à 0 et la règle verrouillée n'est pas réécrite —
+elle est contournée à un seul endroit, par un paramètre explicite
+(`allowBotTides`) que seule cette politique active. Garde-fous :
+
+- désactivée en production par défaut ; `TIDEBOUND_BOT_REWARDS=on|off`
+  force les deux sens ;
+- la partie est enregistrée dans `matches` (`mode: 'bot'`, `state` laissé à
+  `null` — l'état local n'est pas une donnée de confiance) et payée par le
+  même chemin idempotent que le PvP ;
+- plafond de `BOT_REWARD_DAILY_CAP` parties bot récompensées par jour UTC ;
+- le bonus de première victoire du jour reste strictement PvP.
+
+Ce qui reste assumé : c'est le navigateur qui déclare l'issue d'une partie
+bot. Il ne déclare jamais un montant. Quand les parties bot seront arbitrées
+côté serveur, il suffira de faire retourner `true` à cette politique — le
+calcul ne change pas.
 
 **Supabase** : schéma étendu par
 `supabase/migrations/20260910120000_cards_collection_economy.sql` —
 cartes (miroir de `game/cards/sets/core.ts`, synchronisé par
 `npm run seed:cards`), decks de base système, decks personnels, collection,
-boosters (format 8 cartes verrouillé, pity Abyssal, protection Abyssale —
-schéma seulement, pas encore la logique d'ouverture serveur), monnaie
-interne + historique de transactions, quêtes, onboarding, et une file de
-matchmaking (`matchmaking_queue` + fonction Postgres
+boosters (format 8 cartes verrouillé, pity Abyssal, protection Abyssale),
+monnaie interne + historique de transactions, quêtes, onboarding, et une
+file de matchmaking (`matchmaking_queue` + fonction Postgres
 `claim_matchmaking_opponent()`, esquissées côté serveur dans
-`features/matchmaking/actions.ts`). Toutes ces tables ont RLS activé ;
+`features/matchmaking/actions.ts`) — puis par
+`supabase/migrations/20260912200000_progression_and_boosters.sql` :
+`player_progression`, `match_rewards`, et les quatre opérations atomiques
+`grant_match_progression()`, `purchase_booster()`, `open_booster()`,
+`recycle_card()`. Toutes ces tables ont RLS activé ;
 celles qui doivent rester autoritaires côté serveur (collection, boosters,
 monnaie, quêtes) n'ont volontairement aucune policy d'écriture pour
 `authenticated` — seule une Server Action avec la clé service_role peut y
 écrire. `RULES` (`game/rules/constants.ts`) et le moteur restent l'unique
 source de vérité pour la RÉSOLUTION d'une partie ; ce schéma sert les
 systèmes de méta-jeu (collection, boosters, progression) autour.
+
+La migration de progression **n'a pas été appliquée** : elle est validée
+syntaxiquement (parser PostgreSQL) mais jamais exécutée, faute de Docker/
+psql dans l'environnement de développement utilisé. À appliquer avec
+`npx supabase db push`, puis `npm run seed:cards` pour pousser les raretés
+— sans ce seed, `openBooster()` refuse explicitement d'ouvrir plutôt que de
+consommer un booster dans le vide.
 
 **PWA** : `public/sw.js` (app shell minimal, stale-while-revalidate sur
 `/assets/*`, repli réseau→cache→`public/offline.html` pour la navigation)
@@ -465,8 +555,9 @@ la PWA n'est pas encore réellement installable.
 ## Prochaines étapes suggérées
 
 Le bootstrap initial (moteur, UI de plateau, Server Actions, schéma
-Supabase, parties en ligne) est loin derrière — voir "État du MVP" plus
-haut pour ce qui existe déjà. Ce qui reste réellement devant nous :
+Supabase, parties en ligne) est loin derrière — voir "État du MVP" et
+"Progression & boosters" plus haut pour ce qui existe déjà. Ce qui reste
+réellement devant nous :
 
 1. **Quêtes quotidiennes/hebdomadaires** — l'écart le plus structurant de
    l'économie (cf. "État du MVP") : sans elles, la cadence de boosters
