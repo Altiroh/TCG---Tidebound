@@ -1,0 +1,1151 @@
+/*
+ * SCÈNE D'OUVERTURE DE BOOSTER — prototype visuel.
+ *
+ * Plans de profondeur. `.stage` forme son propre contexte d'empilement
+ * (animation d'opacité) : fond, lumière et particules d'ambiance sont
+ * peints avant lui ; à l'intérieur :
+ *   2     cartes EN TRAIN de sortir du sachet  `.card` (début de `cardSpawn`)
+ *   5     sachet (corps ouvert + bande + effets de découpe)  `.packAnchor`
+ *   8     assombrissement d'impact Abyssal     `.abyssalImpact`
+ *   10+i  cartes sorties                       `.card` (fin de `cardSpawn`)
+ *   30    interface                            `.hint`, `.closeButton`
+ * puis, au-dessus de `.stage` : grain + vignette (`.grain`, z-index 40).
+ *
+ * L'illusion « les cartes sont dans le sachet » repose sur ce z-index
+ * animé : une carte monte DERRIÈRE le corps opaque de
+ * `defaut-open-bottom.png` (qui peint déjà des dos de cartes dans
+ * l'ouverture), et ne passe au premier plan qu'une fois entièrement sortie
+ * par le haut — à 41 % de `cardSpawn`, ratio montée/placement de
+ * `boosterOpeningTimings.ts`.
+ *
+ * Toutes les distances sont en `--u`, l'unité de la scène (≈1 % de la
+ * hauteur utile), pour que les rapports sachet / cartes restent identiques
+ * du mobile portrait au 1920×1080. Les durées `--t-*` sont posées en ligne
+ * par `BoosterOpeningScene` depuis `boosterOpeningTimings.ts`.
+ *
+ * Uniquement transform / opacity dans les animations.
+ */
+
+.scene {
+  --u: min(1vh, 0.8vw);
+  /* Hauteur du sachet ouvert, en u. */
+  --pack-h-u: 54;
+  /* Décalage vertical du centre du sachet (vers le bas) : laisse la place aux cartes qui sortent par le haut. */
+  --pack-y-u: 8;
+  --card-w-u: 19;
+  /* Pas horizontal entre deux cartes posées. Inférieur à `--card-w-u` = chevauchement. */
+  --slot-step-u: 22;
+  --row-y-u: -2;
+  --fan-deg: 3;
+
+  --pack-h: calc(var(--u) * var(--pack-h-u));
+  /* 778 / 1148 : proportions de `defaut-open-bottom.png`. */
+  --pack-w: calc(var(--pack-h) * 0.6777);
+  --pack-y: calc(var(--u) * var(--pack-y-u));
+  --pack-top: calc(var(--pack-y) - var(--pack-h) / 2);
+  --card-w: calc(var(--u) * var(--card-w-u));
+  --card-h: calc(var(--card-w) * 1.5);
+  --slot-step: calc(var(--u) * var(--slot-step-u));
+  --row-y: calc(var(--u) * var(--row-y-u));
+
+  /* Dans le sachet, une carte a la largeur des dos peints dans l'ouverture (52 % du sachet). */
+  --rise-scale: calc(var(--pack-h-u) * 0.6777 * 0.52 / var(--card-w-u));
+  --rise-h: calc(var(--card-h) * var(--rise-scale));
+  /* Centre des dos peints, légèrement à gauche du centre du sachet. */
+  --spawn-x: calc(var(--pack-w) * -0.056);
+  /* Départ : sommet de la carte sous le bord des dos peints → invisible. */
+  --spawn-start-y: calc(var(--pack-top) + var(--pack-h) * 0.14 + var(--rise-h) / 2);
+  /* Sortie : bas de la carte au-dessus du sachet → peut passer devant. */
+  --spawn-apex-y: calc(var(--pack-top) - var(--pack-h) * 0.02 - var(--rise-h) / 2);
+
+  --ivory: #e9e2d1;
+  --brass: #a47b36;
+  --brass-light: #c79a4e;
+  --teal: #4fc4ce;
+
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  overflow: hidden;
+  isolation: isolate;
+  outline: none;
+  color: var(--ivory);
+  font-family: var(--font-ui, "Segoe UI", system-ui, sans-serif);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/*
+ * Tablette et mobile en portrait : la rangée se cale sur la largeur, et la
+ * hauteur disponible permet un sachet plus grand (les cartes y sont alors
+ * agrandies d'autant pendant leur montée, via `--rise-scale`).
+ */
+@media (orientation: portrait) {
+  .scene {
+    --u: min(0.62vh, 0.84vw);
+    --pack-h-u: 66;
+    --pack-y-u: 6;
+  }
+}
+
+@media (orientation: portrait) and (max-width: 600px) {
+  .scene {
+    --u: min(0.62vh, 1.2vw);
+    --pack-h-u: 70;
+    --slot-step-u: 14;
+    --fan-deg: 2.2;
+  }
+}
+
+/* ---------- Fond ---------- */
+
+/*
+ * L'opacité d'entrée / de sortie est animée couche par couche, jamais sur
+ * `.scene` : une opacité sur l'ancêtre isolerait `backdrop-filter` de
+ * l'interface qu'il doit flouter.
+ */
+.backdrop,
+.sea,
+.stage,
+.grain {
+  animation: sceneIn var(--t-backdrop) ease-out both;
+}
+
+.scene[data-closing] {
+  pointer-events: none;
+}
+.scene[data-closing] .backdrop,
+.scene[data-closing] .sea,
+.scene[data-closing] .stage,
+.scene[data-closing] .grain,
+.scene[data-closing] .ambientLayer {
+  animation: sceneOut var(--t-scene-out) ease-in both;
+}
+
+@keyframes sceneIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes sceneOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(90% 75% at 50% 46%, rgba(9, 32, 47, 0.78) 0%, rgba(4, 14, 22, 0.9) 55%, rgba(1, 5, 9, 0.96) 100%);
+  backdrop-filter: blur(4px) saturate(0.8);
+  -webkit-backdrop-filter: blur(4px) saturate(0.8);
+}
+
+.sea {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Deux nappes de lumière filtrée par la surface, qui dérivent très lentement. */
+.seaLightA,
+.seaLightB {
+  position: absolute;
+  border-radius: 50%;
+  will-change: transform;
+}
+.seaLightA {
+  left: 50%;
+  top: -34vmax;
+  width: 120vmax;
+  height: 80vmax;
+  margin-left: -60vmax;
+  background: radial-gradient(closest-side, rgba(79, 160, 190, 0.17), transparent 72%);
+  animation: seaDrift 17s ease-in-out infinite alternate;
+}
+.seaLightB {
+  left: -20vmax;
+  bottom: -40vmax;
+  width: 90vmax;
+  height: 60vmax;
+  background: radial-gradient(closest-side, rgba(28, 88, 118, 0.16), transparent 72%);
+  animation: seaDrift 23s ease-in-out -8s infinite alternate-reverse;
+}
+
+@keyframes seaDrift {
+  from { transform: translate3d(-4%, 0, 0) scale(1); }
+  to { transform: translate3d(4%, 3%, 0) scale(1.08); }
+}
+
+.grain {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 100% at 50% 50%, transparent 55%, rgba(0, 4, 8, 0.55) 100%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.7 0 0 0 0 0.8 0 0 0 0 0.85 0 0 0 0.09 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+
+/* ---------- Particules ---------- */
+
+/* Pas de z-index : peinte avant `.stage` dans l'ordre du DOM, donc derrière tout ce qu'elle contient. */
+.ambientLayer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.particleLayer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.mote {
+  position: absolute;
+  width: var(--size);
+  height: var(--size);
+  border-radius: 50%;
+  background: rgba(175, 218, 228, 0.9);
+  box-shadow: 0 0 calc(var(--size) * 3) rgba(110, 185, 208, 0.45);
+  opacity: 0;
+  animation: moteRise var(--dur) linear var(--delay) infinite;
+}
+
+@keyframes moteRise {
+  0% { opacity: 0; transform: translate3d(0, 0, 0); }
+  18% { opacity: var(--peak); }
+  82% { opacity: var(--peak); }
+  100% { opacity: 0; transform: translate3d(var(--drift), calc(var(--rise) * -1), 0); }
+}
+
+/* Gouttelettes : projection vers le haut, puis retombée. */
+.droplet,
+.fleck {
+  position: absolute;
+  width: var(--size);
+  height: var(--size);
+  margin: calc(var(--size) / -2) 0 0 calc(var(--size) / -2);
+  border-radius: 50%;
+  opacity: 0;
+}
+/* Gouttelettes : jaillissent quand la bande cède. */
+.droplet {
+  background: radial-gradient(circle at 35% 32%, #f4fcff 0%, rgba(165, 218, 234, 0.95) 42%, rgba(62, 132, 164, 0.55) 100%);
+  box-shadow: 0 0 calc(var(--size) * 1.6) rgba(120, 200, 225, 0.35);
+  animation: droplet var(--dur) linear calc(var(--t-snap) + var(--delay)) both;
+}
+/* Éclats de feuille métallisée : naissent au passage du point de déchirure. */
+.fleck {
+  border-radius: 1px;
+  background: rgba(214, 184, 128, 0.85);
+  animation: droplet var(--dur) linear calc(var(--t-tear-start) + var(--t-tear) * var(--frac) + var(--delay)) both;
+}
+
+@keyframes droplet {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.5);
+    animation-timing-function: cubic-bezier(0.15, 0.6, 0.35, 1);
+  }
+  10% { opacity: 1; }
+  45% {
+    transform: translate3d(calc(var(--dx) * 0.65), var(--dy), 0) scale(1) rotate(90deg);
+    animation-timing-function: cubic-bezier(0.5, 0, 0.85, 0.5);
+  }
+  70% { opacity: 0.9; }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--dx), calc(var(--dy) + var(--fall)), 0) scale(0.7) rotate(200deg);
+  }
+}
+
+.revealMote {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--size);
+  height: var(--size);
+  margin: calc(var(--size) / -2) 0 0 calc(var(--size) / -2);
+  border-radius: 50%;
+  background: rgba(242, 218, 168, 0.95);
+  box-shadow: 0 0 calc(var(--size) * 4) rgba(214, 170, 92, 0.7);
+  opacity: 0;
+  animation: revealMote var(--dur) cubic-bezier(0.2, 0.6, 0.3, 1) var(--delay) both;
+}
+.revealMoteAbyssal {
+  composes: revealMote;
+  background: rgba(160, 220, 238, 0.9);
+  box-shadow: 0 0 calc(var(--size) * 5) rgba(36, 118, 178, 0.85);
+}
+
+@keyframes revealMote {
+  0% { opacity: 0; transform: translate3d(0, 0, 0) scale(0.4); }
+  15% { opacity: 1; }
+  100% { opacity: 0; transform: translate3d(var(--dx), var(--dy), 0) scale(1); }
+}
+
+/* ---------- Scène ---------- */
+
+.stage {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Halo sombre et froid derrière le centre de la scène. */
+.stage::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(var(--u) * 120);
+  height: calc(var(--u) * 84);
+  margin: calc(var(--u) * -42) 0 0 calc(var(--u) * -60);
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(58, 134, 164, 0.15), transparent);
+}
+
+/* ---------- Sachet ---------- */
+
+/* La boîte a exactement les proportions de `defaut-open-bottom.png`. */
+.packAnchor {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 5;
+  width: var(--pack-w);
+  height: var(--pack-h);
+  margin-left: calc(var(--pack-w) / -2);
+  margin-top: var(--pack-top);
+}
+
+.packMotion {
+  position: absolute;
+  inset: 0;
+  animation: packEnter var(--t-pack-enter) cubic-bezier(0.16, 0.84, 0.3, 1) both;
+}
+.packAnchor[data-retreat] .packMotion {
+  animation: packRetreat var(--t-retreat) cubic-bezier(0.55, 0, 0.8, 0.45) var(--t-retreat-delay) both;
+}
+
+@keyframes packEnter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, calc(var(--u) * 12), 0) scale(0.9) rotate(-2.5deg);
+  }
+  55% { opacity: 1; }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes packRetreat {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(0, calc(var(--u) * 16), 0) scale(0.94);
+  }
+}
+
+/* Flottement d'attente, figé (et non annulé, pour éviter tout saut) dès la découpe. */
+.packFloat {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 90%;
+  animation: packFloat 3200ms ease-in-out infinite;
+}
+.packFloat[data-torn] {
+  animation-play-state: paused;
+}
+
+@keyframes packFloat {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  50% { transform: translate3d(0, calc(var(--u) * -0.6), 0) rotate(0.35deg); }
+}
+
+/* Ombre douce sous le sachet et halo sombre derrière lui. */
+.packShadow {
+  position: absolute;
+  left: -18%;
+  right: -18%;
+  top: -6%;
+  bottom: -10%;
+  border-radius: 50%;
+  background:
+    radial-gradient(34% 3.2% at 50% 92%, rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0.16) 55%, transparent 100%),
+    radial-gradient(closest-side, rgba(0, 6, 12, 0.4), transparent 80%);
+}
+
+.packOpenLayer,
+.packTopLayer {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+.packFloat[data-torn] .packOpenLayer,
+.packFloat[data-torn] .packTopLayer {
+  animation: showStep 1ms linear var(--t-tension) both;
+}
+
+@keyframes showStep {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.packBottom,
+.packTop,
+.packClosed {
+  position: absolute;
+  display: block;
+  max-width: none;
+  pointer-events: none;
+}
+
+.packBottom {
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/*
+ * Bande arrachée : même échelle que le corps (737 / 778 px → 94.73 %,
+ * 367 / 1148 px → 31.97 %), recalée sur la ligne de découpe. Calibré à
+ * l'œil sur les PNG fournis : les deux moitiés ne sont pas des découpes au
+ * pixel près du même canevas.
+ *
+ * `.packTopFly` porte ce placement et l'envol final ; l'image à l'intérieur
+ * porte la déchirure, en rotation autour de son extrémité droite.
+ */
+.packTopFly {
+  position: absolute;
+  left: 1%;
+  top: -11.5%;
+  width: 94.73%;
+  height: 31.97%;
+  transform-origin: 88% 64%;
+}
+.packFloat[data-torn] .packTopFly {
+  animation: topFly var(--t-top-fly) cubic-bezier(0.22, 0.61, 0.28, 1) var(--t-snap) both;
+}
+
+.packTop {
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  /* Coin bas-droit de la bande : le dernier point encore attaché. */
+  transform-origin: 97% 70%;
+}
+.packFloat[data-torn] .packTop {
+  animation: topTear var(--t-tear) linear var(--t-tear-start) both;
+}
+
+/*
+ * Déchirure en trois à-coups. Chaque tirage est rapide (ease-out), chaque
+ * palier cède à peine (le sachet résiste) ; la bande reste accrochée à
+ * droite et se soulève d'abord par la gauche.
+ */
+@keyframes topTear {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+  13% {
+    transform: translate3d(0, -1%, 0) rotate(2deg);
+    animation-timing-function: ease-in-out;
+  }
+  30% {
+    transform: translate3d(0, -1.2%, 0) rotate(2.4deg);
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+  44% {
+    transform: translate3d(0.3%, -2.5%, 0) rotate(4.4deg);
+    animation-timing-function: ease-in-out;
+  }
+  60% {
+    transform: translate3d(0.3%, -2.8%, 0) rotate(4.8deg);
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+  76% {
+    transform: translate3d(0.6%, -4.5%, 0) rotate(6.8deg);
+    animation-timing-function: ease-in;
+  }
+  100% {
+    transform: translate3d(0.7%, -5%, 0) rotate(7.2deg);
+  }
+}
+
+/* La bande cède d'un coup sec, puis s'envole. */
+@keyframes topFly {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  12% { transform: translate3d(1.2%, -9%, 0) rotate(1.8deg); }
+  65% { opacity: 1; }
+  100% {
+    opacity: 0;
+    transform: translate3d(14%, -120%, 0) rotate(6deg);
+  }
+}
+
+/*
+ * Paquet fermé exprimé dans la boîte du corps ouvert : corps des deux
+ * visuels superposés (bords latéraux, sangles, bas du sachet).
+ * 1122×1402 px affichés à 89.2 % → 128.6 % × 108.94 % de la boîte.
+ */
+.packClosed {
+  left: -14.37%;
+  top: -9.87%;
+  width: 128.6%;
+  height: 108.94%;
+  transform-origin: 50% 95%;
+}
+/* Tension (le sachet se pince), puis fondu très court vers les pièces découpées. */
+.packFloat[data-torn] .packClosed {
+  animation:
+    packTension var(--t-tension) cubic-bezier(0.4, 0, 0.6, 1) both,
+    closedCut var(--t-crossfade) linear var(--t-tension) both;
+}
+
+@keyframes packTension {
+  from { transform: none; }
+  55% { transform: scale(1.006, 0.99); }
+  to { transform: scale(1.012, 0.974); }
+}
+
+@keyframes closedCut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.tearEffects {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/*
+ * Point de déchirure : une lueur froide qui court le long du bord, de gauche
+ * à droite, avec les mêmes paliers que `topTear`.
+ */
+.tearPoint {
+  position: absolute;
+  left: 4%;
+  top: 12%;
+  width: calc(var(--u) * 7);
+  height: calc(var(--u) * 2.2);
+  margin: calc(var(--u) * -1.1) 0 0 calc(var(--u) * -3.5);
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(236, 250, 255, 1), rgba(130, 204, 228, 0.55) 40%, transparent 80%);
+  opacity: 0;
+  animation: tearPoint var(--t-tear) linear var(--t-tear-start) both;
+}
+
+@keyframes tearPoint {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.6);
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+  6% { opacity: 1; }
+  13% {
+    transform: translate3d(calc(var(--pack-w) * 0.26), calc(var(--pack-h) * 0.012), 0) scale(1);
+    animation-timing-function: ease-in-out;
+  }
+  30% {
+    transform: translate3d(calc(var(--pack-w) * 0.29), calc(var(--pack-h) * 0.013), 0) scale(0.8);
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+  44% {
+    transform: translate3d(calc(var(--pack-w) * 0.56), calc(var(--pack-h) * 0.026), 0) scale(1);
+    animation-timing-function: ease-in-out;
+  }
+  60% {
+    transform: translate3d(calc(var(--pack-w) * 0.59), calc(var(--pack-h) * 0.027), 0) scale(0.8);
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+  76% {
+    transform: translate3d(calc(var(--pack-w) * 0.84), calc(var(--pack-h) * 0.038), 0) scale(1.05);
+    animation-timing-function: ease-in;
+  }
+  92% { opacity: 1; }
+  100% {
+    opacity: 0;
+    transform: translate3d(calc(var(--pack-w) * 0.9), calc(var(--pack-h) * 0.04), 0) scale(1.2);
+  }
+}
+
+/* Éclat bleu bref à la rupture, côté charnière. */
+.tearFlash {
+  position: absolute;
+  left: 46%;
+  right: -8%;
+  top: 5%;
+  height: 18%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(196, 238, 248, 0.7), rgba(79, 170, 204, 0.3) 45%, transparent 76%);
+  opacity: 0;
+  animation: tearFlash 480ms ease-out var(--t-snap) both;
+}
+
+@keyframes tearFlash {
+  0% { opacity: 0; transform: scaleX(0.35); }
+  16% { opacity: 0.85; }
+  100% { opacity: 0; transform: scale(1.25, 1.7); }
+}
+
+/* Souffle : une nappe d'embruns qui s'échappe de l'ouverture. */
+.tearBreath {
+  position: absolute;
+  left: -14%;
+  right: -14%;
+  top: -6%;
+  height: 32%;
+  border-radius: 50%;
+  background:
+    radial-gradient(40% 50% at 38% 55%, rgba(160, 208, 222, 0.2), transparent 70%),
+    radial-gradient(35% 45% at 64% 50%, rgba(120, 186, 208, 0.16), transparent 70%);
+  opacity: 0;
+  animation: tearBreath 1000ms cubic-bezier(0.2, 0.6, 0.3, 1) calc(var(--t-snap) + 20ms) both;
+}
+
+@keyframes tearBreath {
+  0% { opacity: 0; transform: translate3d(0, 0, 0) scale(0.6, 0.5); }
+  25% { opacity: 1; }
+  100% { opacity: 0; transform: translate3d(3%, -22%, 0) scale(1.3, 1.15); }
+}
+
+/* ---------- Cartes ---------- */
+
+.card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 2;
+  width: var(--card-w);
+  height: var(--card-h);
+  margin-left: calc(var(--card-w) / -2);
+  margin-top: calc(var(--card-h) / -2);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  pointer-events: auto;
+  cursor: default;
+  will-change: transform;
+  animation: cardSpawn var(--t-card-spawn) linear var(--spawn-delay) both;
+}
+.card:focus {
+  outline: none;
+}
+.card[data-interactive] {
+  cursor: pointer;
+}
+
+/*
+ * Sortie du sachet. 0 → 41 % : montée derrière le corps opaque, qui
+ * accélère. 41 % : la carte est entièrement au-dessus du sachet, elle
+ * passe au premier plan. 41 → 100 % : trajet vers sa place, qui ralentit.
+ */
+@keyframes cardSpawn {
+  0% {
+    z-index: 2;
+    transform: translate3d(var(--spawn-x), var(--spawn-start-y), 0) rotate(var(--rise-rot)) scale(var(--rise-scale));
+    animation-timing-function: cubic-bezier(0.45, 0, 0.8, 0.55);
+  }
+  41% {
+    z-index: 2;
+    transform: translate3d(var(--spawn-x), var(--spawn-apex-y), 0) rotate(calc(var(--rise-rot) * -0.5)) scale(var(--rise-scale));
+    animation-timing-function: cubic-bezier(0.18, 0.62, 0.28, 1);
+  }
+  41.5% { z-index: calc(10 + var(--i)); }
+  100% {
+    z-index: calc(10 + var(--i));
+    transform: translate3d(var(--slot-x), var(--slot-y), 0) rotate(var(--slot-rot)) scale(1);
+  }
+}
+
+.cardLift {
+  position: absolute;
+  inset: 0;
+  transition: transform 260ms cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+@media (hover: hover) {
+  .card[data-interactive]:hover .cardLift {
+    transform: translate3d(0, calc(var(--u) * -1.2), 0);
+  }
+}
+.card[data-interactive]:focus-visible .cardLift {
+  transform: translate3d(0, calc(var(--u) * -1.2), 0);
+}
+.card:focus-visible .cardFace {
+  box-shadow:
+    0 0 0 2px rgba(79, 196, 206, 0.7),
+    0 calc(var(--u) * 1.1) calc(var(--u) * 2.6) rgba(0, 0, 0, 0.55);
+}
+
+/* --- Réaction lumineuse par rareté --- */
+
+.card[data-rarity="standard"] {
+  --aura: radial-gradient(closest-side, rgba(176, 208, 218, 0.36) 0%, rgba(150, 190, 204, 0.2) 50%, transparent 74%);
+  --aura-charge: 0;
+  --aura-peak: 0.5;
+  --aura-rest: 0;
+  --charge-lift: 0px;
+  --frame-color: rgba(233, 226, 209, 0.28);
+  --rarity-ink: #a7a18e;
+  --sheen: rgba(255, 255, 255, 0.14);
+}
+.card[data-rarity="rare"] {
+  --aura: radial-gradient(closest-side, rgba(232, 188, 106, 0.58) 0%, rgba(199, 154, 78, 0.34) 50%, transparent 76%);
+  --aura-charge: 0.45;
+  --aura-peak: 0.95;
+  --aura-rest: 0.4;
+  --charge-lift: calc(var(--u) * 1.4);
+  --frame-color: rgba(199, 154, 78, 0.72);
+  --rarity-ink: #d8b067;
+  --sheen: rgba(255, 228, 170, 0.22);
+}
+.card[data-rarity="abyssal"] {
+  --aura: radial-gradient(closest-side, rgba(6, 22, 40, 0.7) 20%, rgba(38, 112, 170, 0.5) 50%, transparent 78%);
+  --aura-charge: 0.55;
+  --aura-peak: 1;
+  --aura-rest: 0.65;
+  --charge-lift: calc(var(--u) * 1.6);
+  --frame-color: rgba(79, 196, 206, 0.5);
+  --rarity-ink: #82d2de;
+  --sheen: rgba(160, 225, 240, 0.18);
+}
+
+.cardAura {
+  position: absolute;
+  left: -32%;
+  right: -32%;
+  top: -22%;
+  bottom: -22%;
+  border-radius: 50%;
+  background: var(--aura);
+  opacity: 0;
+  pointer-events: none;
+}
+.card[data-state="charging"] .cardAura {
+  animation: auraCharge var(--charge-dur) ease-in both;
+}
+.card[data-state="flipping"] .cardAura {
+  opacity: var(--aura-charge);
+}
+.card[data-state="revealed"] .cardAura {
+  animation: auraImpact var(--impact-dur) cubic-bezier(0.2, 0.6, 0.3, 1) both;
+}
+
+@keyframes auraCharge {
+  from { opacity: 0; transform: scale(0.85); }
+  to { opacity: var(--aura-charge); transform: scale(1); }
+}
+
+@keyframes auraImpact {
+  0% { opacity: var(--aura-charge); transform: scale(0.95); }
+  18% { opacity: var(--aura-peak); transform: scale(1.08); }
+  100% { opacity: var(--aura-rest); transform: scale(1); }
+}
+
+/* Brume froide autour d'une Abyssale, dès l'anticipation. */
+.cardMist {
+  position: absolute;
+  left: -40%;
+  right: -40%;
+  bottom: -16%;
+  height: 50%;
+  pointer-events: none;
+  background:
+    radial-gradient(48% 58% at 30% 62%, rgba(120, 172, 202, 0.2), transparent 70%),
+    radial-gradient(44% 52% at 72% 56%, rgba(76, 138, 180, 0.2), transparent 70%);
+  opacity: 0;
+  animation:
+    mistIn 900ms ease-out both,
+    mistDrift 6s ease-in-out 900ms infinite alternate;
+}
+
+@keyframes mistIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes mistDrift {
+  from { transform: translate3d(-3%, 0, 0) scale(1); }
+  to { transform: translate3d(3%, -4%, 0) scale(1.06); }
+}
+
+/* --- Retournement 3D --- */
+
+.cardTilt {
+  position: absolute;
+  inset: 0;
+  perspective: calc(var(--card-w) * 5);
+}
+/* Anticipation Abyssale : un frémissement à peine perceptible. */
+.card[data-state="charging"][data-rarity="abyssal"] .cardTilt {
+  animation: tremble 110ms linear infinite;
+}
+.card[data-state="revealed"][data-rarity="rare"] .cardTilt {
+  animation: settle 420ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+.card[data-state="revealed"][data-rarity="abyssal"] .cardTilt {
+  animation: thud 620ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+@keyframes tremble {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  25% { transform: translate3d(calc(var(--u) * 0.12), calc(var(--u) * -0.06), 0); }
+  50% { transform: translate3d(calc(var(--u) * -0.1), calc(var(--u) * 0.08), 0); }
+  75% { transform: translate3d(calc(var(--u) * 0.06), calc(var(--u) * 0.1), 0); }
+}
+
+@keyframes settle {
+  from { transform: scale(1.03); }
+  to { transform: none; }
+}
+
+@keyframes thud {
+  0% { transform: scale(1.07); }
+  35% { transform: scale(0.985); }
+  100% { transform: none; }
+}
+
+.cardFlip {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+}
+.card[data-state="charging"] .cardFlip {
+  animation: cardCharge var(--charge-dur) cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+.card[data-state="flipping"] .cardFlip {
+  animation: cardFlip var(--flip-dur) linear both;
+}
+.card[data-state="revealed"] .cardFlip {
+  transform: rotateY(180deg);
+}
+
+@keyframes cardCharge {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(0, 0, var(--charge-lift)); }
+}
+
+/* Ease-in jusqu'à la tranche, ease-out ensuite : vitesse continue, aucun temps mort de profil. */
+@keyframes cardFlip {
+  0% {
+    transform: translate3d(0, 0, var(--charge-lift)) rotateY(0deg);
+    animation-timing-function: cubic-bezier(0.55, 0, 1, 0.45);
+  }
+  50% {
+    transform: translate3d(0, calc(var(--u) * -0.8), calc(var(--u) * 3)) rotateY(90deg);
+    animation-timing-function: cubic-bezier(0, 0.55, 0.45, 1);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) rotateY(180deg);
+  }
+}
+
+.cardFace {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: calc(var(--card-w) * 0.055);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.45),
+    0 calc(var(--u) * 1.1) calc(var(--u) * 2.6) rgba(0, 0, 0, 0.55);
+}
+
+.cardBack {
+  background: #0b1a26;
+}
+
+.cardBackImage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: cover;
+}
+
+/* Dos de repli si `card-back.png` est absent : filet de laiton sur bleu nuit. */
+.cardBackFallback {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 50%, transparent 17%, rgba(199, 154, 78, 0.55) 17.5%, transparent 18.5%),
+    repeating-linear-gradient(45deg, rgba(199, 154, 78, 0.06) 0 2px, transparent 2px 9px),
+    radial-gradient(circle at 50% 45%, #143549 0%, #0a1c29 55%, #06121c 100%);
+  box-shadow:
+    inset 0 0 0 calc(var(--card-w) * 0.035) #0b1a26,
+    inset 0 0 0 calc(var(--card-w) * 0.042) rgba(164, 123, 54, 0.7);
+}
+
+/* Face provisoire. */
+.cardFront {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding-bottom: 14%;
+  font-size: calc(var(--card-w) * 0.085);
+  background: linear-gradient(165deg, #1a3342 0%, #0d1d29 55%, #07121a 100%);
+  transform: rotateY(180deg);
+}
+.card[data-rarity="rare"] .cardFront {
+  background: linear-gradient(165deg, #2c2b22 0%, #172120 50%, #0a1218 100%);
+}
+.card[data-rarity="abyssal"] .cardFront {
+  background: radial-gradient(80% 60% at 50% 34%, #174063 0%, #0a1b2d 60%, #030a13 100%);
+}
+
+.frontFrame {
+  position: absolute;
+  inset: 5%;
+  border-radius: calc(var(--card-w) * 0.03);
+  box-shadow: inset 0 0 0 1px var(--frame-color);
+}
+
+/* Emblème provisoire : une rose des vents réduite à deux carrés. */
+.frontEmblem {
+  position: absolute;
+  left: 50%;
+  top: 38%;
+  width: 34%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%) rotate(45deg);
+  box-shadow: inset 0 0 0 1px var(--frame-color);
+}
+.frontEmblem::before,
+.frontEmblem::after {
+  content: "";
+  position: absolute;
+  border-radius: 1px;
+}
+.frontEmblem::before {
+  inset: 22%;
+  transform: rotate(45deg);
+  box-shadow: inset 0 0 0 1px var(--frame-color);
+}
+.frontEmblem::after {
+  left: 50%;
+  top: 50%;
+  width: 10%;
+  height: 10%;
+  margin: -5% 0 0 -5%;
+  background: var(--rarity-ink);
+}
+
+.frontTitle {
+  position: relative;
+  font-family: var(--font-card-title, Georgia, "Times New Roman", serif);
+  font-size: 1.15em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #efe7d4;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+  white-space: nowrap;
+}
+
+.frontRarity {
+  position: relative;
+  margin-top: 0.7em;
+  padding-top: 0.6em;
+  font-size: 0.62em;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--rarity-ink);
+}
+.frontRarity::before {
+  content: "";
+  position: absolute;
+  left: 15%;
+  right: 15%;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--frame-color), transparent);
+}
+
+.cardSheen {
+  position: absolute;
+  inset: -20% -60%;
+  background: linear-gradient(105deg, transparent 40%, var(--sheen) 50%, transparent 60%);
+  opacity: 0;
+  pointer-events: none;
+}
+.card[data-state="revealed"] .cardSheen {
+  animation: sheen 900ms cubic-bezier(0.3, 0.1, 0.3, 1) 60ms both;
+}
+
+@keyframes sheen {
+  0% { opacity: 0; transform: translate3d(-60%, 0, 0); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: translate3d(60%, 0, 0); }
+}
+
+/* Onde froide d'une Abyssale. */
+.cardRing {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(var(--card-w) * 1.1);
+  height: calc(var(--card-w) * 1.1);
+  margin: calc(var(--card-w) * -0.55) 0 0 calc(var(--card-w) * -0.55);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 1px rgba(110, 190, 220, 0.3),
+    0 0 calc(var(--u) * 2) rgba(36, 118, 178, 0.4),
+    inset 0 0 calc(var(--u) * 2) rgba(36, 118, 178, 0.3);
+  opacity: 0;
+  pointer-events: none;
+  animation: ring 1200ms cubic-bezier(0.15, 0.6, 0.3, 1) both;
+}
+
+@keyframes ring {
+  0% { opacity: 0; transform: scale(0.4); }
+  12% { opacity: 1; }
+  100% { opacity: 0; transform: scale(2.4); }
+}
+
+/* La scène s'assombrit brièvement autour d'une Abyssale. */
+.abyssalImpact {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  pointer-events: none;
+  background: radial-gradient(60% 55% at 50% 50%, rgba(2, 10, 20, 0.1) 25%, rgba(1, 6, 14, 0.6) 100%);
+  opacity: 0;
+  animation: abyssalImpact 1500ms ease-out both;
+}
+
+@keyframes abyssalImpact {
+  0% { opacity: 0; }
+  14% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ---------- Interface ---------- */
+
+.hint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(50% + var(--row-y) - var(--card-h) / 2 - var(--u) * 8);
+  z-index: 30;
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 0.9em;
+  margin: 0;
+  font-family: var(--font-card-title, Georgia, "Times New Roman", serif);
+  font-size: clamp(12px, calc(var(--u) * 1.7), 19px);
+  letter-spacing: 0.08em;
+  color: rgba(233, 226, 209, 0.78);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8);
+  opacity: 0;
+  transform: translate3d(0, calc(var(--u) * 0.8), 0);
+  transition:
+    opacity var(--t-ui) ease,
+    transform var(--t-ui) ease;
+  pointer-events: none;
+}
+.hint[data-visible] {
+  opacity: 1;
+  transform: none;
+}
+
+.hintCount {
+  font-family: var(--font-ui, "Segoe UI", system-ui, sans-serif);
+  font-size: 0.78em;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.12em;
+  color: rgba(199, 154, 78, 0.9);
+}
+
+.closeButton {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + var(--row-y) + var(--card-h) / 2 + var(--u) * 6.5);
+  z-index: 30;
+  min-width: 9.5em;
+  padding: 0.85em 2.2em;
+  border: 0;
+  border-radius: 2px;
+  background: linear-gradient(180deg, rgba(16, 48, 64, 0.92), rgba(8, 26, 38, 0.92));
+  box-shadow:
+    inset 0 0 0 1px rgba(199, 154, 78, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 10px 24px -8px rgba(0, 0, 0, 0.7);
+  color: #efe7d4;
+  font-family: var(--font-card-title, Georgia, "Times New Roman", serif);
+  font-size: clamp(13px, calc(var(--u) * 1.7), 18px);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+  pointer-events: auto;
+  transform: translateX(-50%);
+  animation: uiIn var(--t-ui) cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  transition:
+    background 180ms ease,
+    box-shadow 180ms ease;
+}
+.closeButton:hover,
+.closeButton:focus-visible {
+  outline: none;
+  background: linear-gradient(180deg, rgba(22, 64, 84, 0.95), rgba(10, 34, 48, 0.95));
+  box-shadow:
+    inset 0 0 0 1px rgba(199, 154, 78, 0.8),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 0 3px rgba(79, 196, 206, 0.22),
+    0 10px 24px -8px rgba(0, 0, 0, 0.7);
+}
+
+@keyframes uiIn {
+  from {
+    opacity: 0;
+    transform: translate3d(-50%, calc(var(--u) * 1), 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+/* ---------- Mouvement réduit ---------- */
+
+/*
+ * Les durées sont déjà raccourcies côté JS (`BOOSTER_OPENING_TIMINGS_REDUCED`).
+ * Ici on retire seulement ce qui bouge sans rien raconter.
+ */
+.scene[data-reduced-motion] .seaLightA,
+.scene[data-reduced-motion] .seaLightB,
+.scene[data-reduced-motion] .packFloat,
+.scene[data-reduced-motion] .cardMist,
+.scene[data-reduced-motion] .card[data-state="charging"] .cardTilt,
+.scene[data-reduced-motion] .card[data-state="revealed"] .cardTilt {
+  animation: none;
+}
+.scene[data-reduced-motion] .tearBreath,
+.scene[data-reduced-motion] .tearPoint,
+.scene[data-reduced-motion] .cardRing,
+.scene[data-reduced-motion] .particleLayer {
+  display: none;
+}
+.scene[data-reduced-motion] .cardLift {
+  transition-duration: 80ms;
+}
