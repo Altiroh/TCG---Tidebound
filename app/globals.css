@@ -74,3 +74,63 @@ body {
     opacity: 1;
   }
 }
+
+/*
+ * VictoryScreen (features/match/VictoryScreen.tsx) : feux d'artifice
+ * décoratifs en arrière-plan, derrière le cadre Navire flouté. Chaque
+ * `.firework` porte plusieurs `.firework-particle` disposées en cercle
+ * (`--angle`) ; l'animation les fait exploser vers l'extérieur
+ * (`rotate` + `translateX`, pas de calcul trigonométrique séparé pour
+ * x/y) puis s'éteindre, avec une longue pause opaque=0 dans le cycle pour
+ * que les tirs restent occasionnels plutôt qu'un feu d'artifice permanent
+ * qui distrairait du cadre. `--delay` décale chaque salve pour qu'elles
+ * n'explosent jamais toutes en même temps.
+ */
+.firework {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+}
+
+.firework-particle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 5px;
+  height: 5px;
+  margin: -2.5px;
+  border-radius: 50%;
+  background: var(--color, #e7c877);
+  box-shadow: 0 0 7px 1px var(--color, #e7c877);
+  opacity: 0;
+  animation: firework-burst var(--cycle, 4.5s) ease-out infinite;
+  animation-delay: var(--delay, 0s);
+}
+
+@keyframes firework-burst {
+  0%, 28% {
+    opacity: 0;
+    transform: rotate(var(--angle, 0deg)) translateX(0) scale(0.6);
+  }
+  32% {
+    opacity: 1;
+  }
+  46% {
+    opacity: 0.9;
+    transform: rotate(var(--angle, 0deg)) translateX(var(--distance, 70px)) scale(1);
+  }
+  62%,
+  100% {
+    opacity: 0;
+    transform: rotate(var(--angle, 0deg)) translateX(calc(var(--distance, 70px) * 1.2)) scale(0.4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .firework-particle {
+    animation: none;
+    opacity: 0;
+  }
+}

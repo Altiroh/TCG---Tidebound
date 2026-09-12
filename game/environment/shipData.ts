@@ -1,9 +1,13 @@
 import type { ShipDefinition } from "@/game/environment/types";
 
 /**
- * Navires principaux — UNIQUEMENT les Navires verrouillés dans le cadrage
- * Notion ("Collection des Navires" + fiches dédiées). Ne pas ajouter de
- * Navire ici tant qu'il n'a pas été verrouillé côté design.
+ * Navires principaux — le trio verrouillé dans le cadrage Notion
+ * ("Collection des Navires" + fiches dédiées) plus La Religieuse, ajoutée
+ * à la demande explicite de l'utilisateur alors que sa fiche Notion
+ * ("Gameplay — Raison, Déraison, healing & passifs de Navires") la
+ * décrit encore comme une piste non verrouillée : stats et passif sont
+ * donc les valeurs "moyennes" proposées par cette note, à ajuster au
+ * premier vrai playtest plutôt que gravées dans le marbre.
  *
  * NOTE — les capacités activables (`capacityText`) et certains éléments de
  * passif ne sont pas encore exprimables par le moteur : il n'existe pas de
@@ -20,6 +24,7 @@ export const SHIP_SET: ShipDefinition[] = [
     startingAnchor: 17,
     reasonMax: 12,
     slotCount: 4,
+    illustration: "le-courlis.png",
     text: "Profil : léger / maniable / contrôle environnemental.",
     passiveText:
       "Tirant léger — la première fois par tour qu'un effet d'Eau ou de Marée devrait vous infliger des " +
@@ -40,6 +45,7 @@ export const SHIP_SET: ShipDefinition[] = [
     startingAnchor: 20,
     reasonMax: 10,
     slotCount: 5,
+    illustration: "errant.png",
     text: "Profil standard : polyvalent, équilibré, sans faiblesse critique.",
     passiveText:
       "Cap sûr — la première fois par tour que vous récupérez de la Raison grâce à une carte, récupérez 1 " +
@@ -56,6 +62,7 @@ export const SHIP_SET: ShipDefinition[] = [
     startingAnchor: 24,
     reasonMax: 8,
     slotCount: 6,
+    illustration: "brise-lames.png",
     text: "Profil : lourd / Structures / endurance.",
     passiveText:
       "Coque renforcée — la première fois à chaque tour que votre Navire devrait subir des dégâts de " +
@@ -67,6 +74,23 @@ export const SHIP_SET: ShipDefinition[] = [
     weaknessText: "Équipage à bout — chaque fois que vous entrez dans les Abysses, perdez 1 Raison supplémentaire.",
     resistanceByState: { tempete: 2 },
     reasonWeaknessByState: { abysses: 1 },
+  },
+  {
+    id: "la-religieuse",
+    name: "La Religieuse",
+    startingAnchor: 20,
+    reasonMax: 10,
+    slotCount: 5,
+    illustration: "la-religieuse.png",
+    text: "Profil : healing / contrôle — survivre devient un moteur de jeu plutôt qu'une simple défense.",
+    // Piste Notion "Gameplay — Raison, Déraison, healing & passifs de Navires" (2026-09-12), pas verrouillée :
+    // ni les stats ni ce passif ne sont figés tant qu'un playtest n'a pas validé le rythme de la Déraison.
+    // Le moteur ne modélise pas encore la Raison négative (Déraison) : ce passif reste donc purement
+    // informatif pour l'instant, comme `capacityText` sur les autres Navires.
+    passiveText:
+      "Pénitence — la première fois par tour que vous devriez subir des dégâts d'Ancrage à cause de votre " +
+      "Déraison, réduisez ces dégâts de 1 (non appliqué : la Déraison — Raison négative — n'est pas encore " +
+      "modélisée par le moteur, piste de gameplay non verrouillée).",
   },
 ];
 

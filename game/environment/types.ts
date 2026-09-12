@@ -106,6 +106,8 @@ export interface ShipDefinition {
   startingAnchor: number;
   reasonMax: number;
   slotCount: number;
+  /** Nom de fichier dans `public/assets/ships/illu/` (ex: `le-courlis.png`) — absent tant que l'illustration n'existe pas encore. */
+  illustration?: string;
   text?: string;
   passiveText?: string;
   /** Capacité activable (0 ou 1 par Navire) — texte informatif uniquement tant qu'il n'existe pas de système de capacités activables/une-fois-par-partie dans le moteur. */

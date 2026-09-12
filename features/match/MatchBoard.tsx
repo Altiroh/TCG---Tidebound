@@ -35,6 +35,7 @@ import { OpponentHandFan } from "@/features/match/OpponentHandFan";
 import { PhaseActionButton } from "@/features/match/PhaseActionButton";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ShipInstrumentCluster } from "@/features/match/ShipInstrumentCluster";
+import { VictoryScreen } from "@/features/match/VictoryScreen";
 import { TideOrientationTile } from "@/features/match/TideOrientationTile";
 import { TideProgressBar } from "@/features/match/TideProgressBar";
 import { useActionToasts } from "@/features/match/useActionToasts";
@@ -478,19 +479,10 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
   }
 
   if (state.status === "finished") {
+    const winnerName = state.winnerId === botPlayerId ? "Le bot" : state.winnerId === "p1" ? "Joueur 1" : "Joueur 2";
+    const winnerShip = state.winnerId === viewerPlayer.id ? viewerShip : otherShip;
     return (
-      <>
-        <BoardBackdrop />
-        <div className="relative z-10 flex min-h-screen flex-col items-center justify-center gap-6 p-8 text-center">
-          <h1 className="text-3xl font-bold">
-            {state.winnerId
-              ? `${state.winnerId === botPlayerId ? "Le bot" : state.winnerId === "p1" ? "Joueur 1" : "Joueur 2"} l'emporte`
-              : "Match nul"}
-          </h1>
-          <p className="text-slate-400">La mer a tranché.</p>
-          <Button onClick={onExit}>Nouvelle partie</Button>
-        </div>
-      </>
+      <VictoryScreen winner={state.winnerId ? { name: winnerName, ship: winnerShip } : undefined} onExit={onExit} />
     );
   }
 
@@ -528,13 +520,13 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
         </div>
 
         {/* Ligne de plateau adverse */}
-        <div className="absolute" data-ship-target={otherPlayer.id} style={{ left: 0, top: 125, width: 230 }}>
+        <div className="absolute" data-ship-target={otherPlayer.id} style={{ left: 0, top: 125, width: 172 }}>
           <ShipInstrumentCluster
             anchor={otherPlayer.anchor}
             anchorMax={otherShip.startingAnchor}
             reason={otherPlayer.reason}
             reasonMax={otherPlayer.reasonMax}
-            width={230}
+            illustration={otherShip.illustration}
           />
         </div>
         <div
@@ -659,13 +651,13 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
         </div>
 
         {/* Ligne de plateau du viewer */}
-        <div className="absolute" data-ship-target={viewerPlayer.id} style={{ left: 0, top: 530, width: 230 }}>
+        <div className="absolute" data-ship-target={viewerPlayer.id} style={{ left: 0, top: 530, width: 172 }}>
           <ShipInstrumentCluster
             anchor={viewerPlayer.anchor}
             anchorMax={viewerShip.startingAnchor}
             reason={viewerPlayer.reason}
             reasonMax={viewerPlayer.reasonMax}
-            width={230}
+            illustration={viewerShip.illustration}
           />
         </div>
         <div

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import {
   computeEffectiveStats,
   eligibleCandidatesFor,
@@ -33,6 +32,7 @@ import { OpponentHandFan } from "@/features/match/OpponentHandFan";
 import { PhaseActionButton } from "@/features/match/PhaseActionButton";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ShipInstrumentCluster } from "@/features/match/ShipInstrumentCluster";
+import { VictoryScreen } from "@/features/match/VictoryScreen";
 import { TideOrientationTile } from "@/features/match/TideOrientationTile";
 import { TideProgressBar } from "@/features/match/TideProgressBar";
 import { useActionToasts } from "@/features/match/useActionToasts";
@@ -343,16 +343,10 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
   if (state.status === "finished") {
     const iWon = state.winnerId === myUserId;
     return (
-      <>
-        <BoardBackdrop />
-        <div className="relative z-10 flex min-h-screen flex-col items-center justify-center gap-6 p-8 text-center">
-          <h1 className="text-3xl font-bold">{state.winnerId ? (iWon ? "Tu gagnes" : "Tu perds") : "Match nul"}</h1>
-          <p className="text-slate-400">La mer a tranché.</p>
-          <Link href="/en-ligne">
-            <Button>Nouvelle partie</Button>
-          </Link>
-        </div>
-      </>
+      <VictoryScreen
+        winner={state.winnerId ? { name: iWon ? "Toi" : "L'adversaire", ship: iWon ? myShip : opponentShip } : undefined}
+        exitHref="/en-ligne"
+      />
     );
   }
 
@@ -390,13 +384,13 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
         </div>
 
         {/* Ligne de plateau adverse */}
-        <div className="absolute" data-ship-target={opponent.id} style={{ left: 0, top: 125, width: 230 }}>
+        <div className="absolute" data-ship-target={opponent.id} style={{ left: 0, top: 125, width: 172 }}>
           <ShipInstrumentCluster
             anchor={opponent.anchor}
             anchorMax={opponentShip.startingAnchor}
             reason={opponent.reason}
             reasonMax={opponent.reasonMax}
-            width={230}
+            illustration={opponentShip.illustration}
           />
         </div>
         <div
@@ -517,13 +511,13 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
         </div>
 
         {/* Ligne de plateau du viewer */}
-        <div className="absolute" data-ship-target={me.id} style={{ left: 0, top: 530, width: 230 }}>
+        <div className="absolute" data-ship-target={me.id} style={{ left: 0, top: 530, width: 172 }}>
           <ShipInstrumentCluster
             anchor={me.anchor}
             anchorMax={myShip.startingAnchor}
             reason={me.reason}
             reasonMax={me.reasonMax}
-            width={230}
+            illustration={myShip.illustration}
           />
         </div>
         <div
