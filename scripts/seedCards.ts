@@ -21,6 +21,7 @@ import { createClient } from "@supabase/supabase-js";
 import { CORE_SET, PRECONSTRUCTED_DECKS, getMaxCopies } from "@/game";
 import { RARITY_WEIGHTS } from "@/game/boosters";
 import { assertRarityCoverage, rarityForCardId } from "@/game/boosters/cardRarity";
+import { QUEST_CATALOG } from "@/game/quests";
 
 /**
  * `cards`, `system_decks` et `system_deck_cards` ne sont pas dans
@@ -100,10 +101,43 @@ async function seedSystemDecks(supabase: ReturnType<typeof createServiceClient>)
   console.log(`system_decks: ${deckRows.length} decks, ${cardRows.length} lignes de composition synchronisées.`);
 }
 
+/**
+ * Miroir du catalogue de quêtes (`game/quests/catalog.ts`), synchronisé sur
+ * `quests.code`. Une quête retirée du catalogue n'est pas supprimée (des
+ * joueurs peuvent l'avoir en cours ou à réclamer) : elle est désactivée, et
+ * n'est donc plus attribuée.
+ */
+async function seedQuests(supabase: ReturnType<typeof createServiceClient>) {
+  const rows = QUEST_CATALOG.map((quest) => ({
+    code: quest.code,
+    quest_type: quest.questType,
+    objective_key: quest.objectiveKey,
+    target_value: quest.targetValue,
+    reward_currency: quest.rewardTides,
+    reward_booster_definition_id: quest.rewardBoosterId ?? null,
+    bot_progress_allowed: quest.botProgressAllowed,
+    period: quest.questType,
+    is_enabled: true,
+  }));
+
+  const { error } = await supabase.from("quests").upsert(rows, { onConflict: "code" });
+  if (error) throw new Error(`Échec du seed quests: ${error.message}`);
+
+  const codes = rows.map((row) => `"${row.code}"`).join(",");
+  const { error: disableError } = await supabase
+    .from("quests")
+    .update({ is_enabled: false })
+    .not("code", "in", `(${codes})`);
+  if (disableError) throw new Error(`Échec de la désactivation des quêtes retirées: ${disableError.message}`);
+
+  console.log(`quests: ${rows.length} quêtes synchronisées.`);
+}
+
 async function main() {
   const supabase = createServiceClient();
   await seedCards(supabase);
   await seedSystemDecks(supabase);
+  await seedQuests(supabase);
 }
 
 main().catch((err) => {

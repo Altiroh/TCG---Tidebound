@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { loadSnapshot } from "@/features/matches/matchStore";
 import { OnlineMatch } from "@/features/online/OnlineMatch";
 
+/** Partie arbitrée côté serveur — PvP (invitation, matchmaking) ou contre bot. */
 export default async function OnlineMatchPage({ params }: { params: { matchId: string } }) {
   const supabase = createSupabaseServerClient();
   const {
@@ -9,10 +11,15 @@ export default async function OnlineMatchPage({ params }: { params: { matchId: s
   } = await supabase.auth.getUser();
   if (!user) redirect("/connexion");
 
-  const { data: match } = await supabase.from("matches").select("*").eq("id", params.matchId).maybeSingle();
-  if (!match || (match.player1_id !== user.id && match.player2_id !== user.id)) {
-    redirect("/en-ligne");
-  }
+  const snapshot = await loadSnapshot(params.matchId, user.id);
+  if (!snapshot) redirect("/en-ligne");
 
-  return <OnlineMatch matchId={params.matchId} initialMatch={match} myUserId={user.id} />;
+  return (
+    <OnlineMatch
+      matchId={params.matchId}
+      initialMatch={snapshot.match}
+      initialView={snapshot.view}
+      myUserId={user.id}
+    />
+  );
 }

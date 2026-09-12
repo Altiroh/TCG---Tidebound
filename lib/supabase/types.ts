@@ -1,8 +1,8 @@
 /**
- * Types de la base de données, écrits à la main pour correspondre aux trois
+ * Types de la base de données, écrits à la main pour correspondre aux
  * migrations de `supabase/migrations/` (`..._init.sql`,
- * `..._cards_collection_economy.sql`,
- * `..._progression_and_boosters.sql`). À remplacer/régénérer une fois le
+ * `..._cards_collection_economy.sql`, `..._progression_and_boosters.sql`,
+ * `..._private_match_state.sql`, `..._quests.sql`). À remplacer/régénérer une fois le
  * projet lié au CLI Supabase :
  *   npx supabase gen types typescript --project-id <id> > lib/supabase/types.ts
  *
@@ -49,48 +49,86 @@ export interface Database {
           player2_id: string | null;
           player1_deck_id: string;
           player2_deck_id: string | null;
-          /** `GameState` sérialisé (`game/state/types.ts`), `null` tant que la partie est en attente. */
-          state: unknown;
+          /**
+           * Version de l'état privé (`match_states.version`), 0 tant que la partie attend un second joueur.
+           * Seule trace de l'état diffusée en Realtime : quand elle change, le client redemande sa vue.
+           */
+          state_version: number;
           status: "waiting" | "active" | "finished" | "abandoned";
           winner_id: string | null;
           mode: "private_invite" | "matchmaking" | "bot";
           is_vs_bot: boolean;
+          bot_difficulty: "facile" | "moyen" | "difficile" | null;
           finished_at: string | null;
           created_at: string;
           updated_at: string;
         };
+        /**
+         * Uniquement pour créer une partie EN ATTENTE (invitation privée), avec la clé service_role : une partie
+         * déjà commencée passe par `create_active_match`, qui écrit l'état privé dans la même transaction.
+         */
         Insert: {
           id?: string;
           invite_code: string;
           player1_id: string;
-          player2_id?: string | null;
           player1_deck_id: string;
-          player2_deck_id?: string | null;
-          state?: unknown;
-          status?: "waiting" | "active" | "finished" | "abandoned";
-          winner_id?: string | null;
-          mode?: "private_invite" | "matchmaking" | "bot";
-          is_vs_bot?: boolean;
-          finished_at?: string | null;
-          created_at?: string;
-          updated_at?: string;
+          status?: "waiting";
+          mode?: "private_invite";
         };
-        Update: {
-          id?: string;
-          invite_code?: string;
-          player1_id?: string;
-          player2_id?: string | null;
-          player1_deck_id?: string;
-          player2_deck_id?: string | null;
-          state?: unknown;
-          status?: "waiting" | "active" | "finished" | "abandoned";
-          winner_id?: string | null;
-          mode?: "private_invite" | "matchmaking" | "bot";
-          is_vs_bot?: boolean;
-          finished_at?: string | null;
-          created_at?: string;
-          updated_at?: string;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      /** État COMPLET des parties — lisible par le serveur seul (aucune policy RLS), jamais envoyé tel quel à un client. */
+      match_states: {
+        Row: {
+          match_id: string;
+          /** `GameState` complet (`game/state/types.ts`). */
+          state: unknown;
+          version: number;
+          updated_at: string;
         };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      quests: {
+        Row: {
+          id: string;
+          code: string | null;
+          quest_type: "daily" | "weekly";
+          objective_key: string;
+          target_value: number;
+          reward_currency: number;
+          reward_booster_definition_id: string | null;
+          bot_progress_allowed: boolean;
+          is_enabled: boolean;
+        };
+        /** Écrit uniquement par `scripts/seedCards.ts` (miroir de `game/quests/catalog.ts`). */
+        Insert: {
+          code: string;
+          quest_type: "daily" | "weekly";
+          objective_key: string;
+          target_value: number;
+          reward_currency: number;
+          reward_booster_definition_id: string | null;
+          bot_progress_allowed: boolean;
+          is_enabled: boolean;
+        };
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      player_quest_progress: {
+        Row: {
+          user_id: string;
+          quest_id: string;
+          period_key: string;
+          progress_value: number;
+          completed_at: string | null;
+          claimed_at: string | null;
+          assigned_at: string;
+        };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
         Relationships: [];
       };
       matchmaking_queue: {
@@ -348,6 +386,55 @@ export interface Database {
       recycle_card: {
         Args: { p_user_id: string; p_card_id: string; p_quantity?: number };
         Returns: { ok: boolean; error?: string; tides_gained?: number; balance?: number };
+      };
+      /** Crée une partie déjà commencée (bot, matchmaking) et son état privé, atomiquement. */
+      create_active_match: {
+        Args: {
+          p_match_id: string;
+          p_invite_code: string;
+          p_mode: "matchmaking" | "bot";
+          p_player1_id: string;
+          p_player1_deck_id: string;
+          p_player2_id: string | null;
+          p_player2_deck_id: string;
+          p_bot_difficulty: "facile" | "moyen" | "difficile" | null;
+          p_state: unknown;
+        };
+        Returns: { ok: boolean; error?: string; version?: number };
+      };
+      /** Fait rejoindre une partie privée en attente et crée son état privé, atomiquement. */
+      activate_waiting_match: {
+        Args: { p_match_id: string; p_player2_id: string; p_player2_deck_id: string; p_state: unknown };
+        Returns: { ok: boolean; error?: string; version?: number };
+      };
+      /** Enregistre un coup si `p_expected_version` est toujours la version courante (`error: "conflict"` sinon). */
+      commit_match_state: {
+        Args: {
+          p_match_id: string;
+          p_expected_version: number;
+          p_state: unknown;
+          p_status: "active" | "finished";
+          p_winner_id: string | null;
+        };
+        Returns: { ok: boolean; error?: string; version?: number };
+      };
+      assign_player_quests: {
+        Args: { p_user_id: string; p_quest_type: "daily" | "weekly"; p_period_key: string; p_quest_codes: string[] };
+        Returns: { ok: boolean; assigned: number };
+      };
+      record_match_quest_progress: {
+        Args: {
+          p_match_id: string;
+          p_user_id: string;
+          p_vs_bot: boolean;
+          p_period_keys: string[];
+          p_progress: Record<string, number>;
+        };
+        Returns: { ok: boolean; recorded: boolean; completed: number };
+      };
+      claim_quest_reward: {
+        Args: { p_user_id: string; p_quest_id: string; p_period_key: string };
+        Returns: { ok: boolean; error?: string; tides_gained?: number; booster_id?: string | null; balance?: number };
       };
     };
     Enums: {

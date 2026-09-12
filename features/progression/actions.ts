@@ -1,23 +1,15 @@
 "use server";
 
-import { createSupabaseServerClient, createSupabaseServiceRoleClient } from "@/lib/supabase/server";
-import {
-  computeMatchReward,
-  progressionView,
-  utcDayKey,
-  type MatchMode,
-  type MatchOutcome,
-  type MatchReward,
-  type ProgressionView,
-} from "@/game/progression";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { progressionView, type ProgressionView } from "@/game/progression";
 
 /**
- * Progression joueur — lecture et octroi.
+ * Progression joueur — LECTURES uniquement.
  *
- * L'octroi est AUTORITAIRE côté serveur : le calcul vient de
- * `game/progression/matchRewards.ts` (pur, testé), l'écriture d'une seule
- * fonction Postgres atomique et idempotente (`grant_match_progression`).
- * Aucun chemin ne permet au navigateur de s'attribuer de l'XP ou des Tides.
+ * Tout ce fichier est exposé au navigateur (directive `"use server"`) : il
+ * ne doit contenir aucune fonction qui écrit ou qui prend un identifiant de
+ * joueur en paramètre. L'octroi vit dans `features/progression/rewards.ts`,
+ * joignable par le seul code serveur.
  */
 
 export interface ProgressionSummary {
@@ -68,78 +60,44 @@ export async function fetchProgression(): Promise<ProgressionSummary> {
   }
 }
 
-export interface AwardMatchRewardInput {
-  matchId: string;
-  userId: string;
-  mode: MatchMode;
-  outcome: MatchOutcome;
-  /** Dérogation de développement, cf. `features/progression/botRewardPolicy.ts`. */
-  allowBotTides?: boolean;
+export interface MatchRewardSummary {
+  xp: number;
+  tides: number;
+  levelBefore: number;
+  levelAfter: number;
+  firstWinOfDay: boolean;
 }
 
 /**
- * Octroie les récompenses d'une partie TERMINÉE à un joueur.
- *
- * À n'appeler QUE depuis un contexte serveur qui a lui-même constaté la fin
- * de la partie dans `matches` (cf. `features/online/actions.ts`) : la
- * fonction ne vérifie pas que la partie est finie, elle vérifie seulement
- * qu'elle n'a pas déjà payé ce joueur (idempotence par clé primaire sur
- * `match_rewards`). C'est cette contrainte qui rend l'appel sûr même
- * répété — deux soumissions d'action concurrentes ne peuvent pas doubler la
- * récompense.
- *
- * Retourne `null` si la partie avait déjà été récompensée, ou en cas
- * d'échec : une récompense manquée ne doit jamais faire échouer le coup de
- * jeu qui vient d'être joué.
+ * Récompense déjà octroyée au joueur connecté pour une partie, ou `null` si
+ * elle n'existe pas (encore). Lecture sous RLS : un joueur ne voit que ses
+ * propres lignes de `match_rewards`.
  */
-export async function awardMatchReward({
-  matchId,
-  userId,
-  mode,
-  outcome,
-  allowBotTides = false,
-}: AwardMatchRewardInput): Promise<MatchReward | null> {
+export async function fetchMatchReward(matchId: string): Promise<MatchRewardSummary | null> {
   try {
-    const service = createSupabaseServiceRoleClient();
+    const supabase = createSupabaseServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return null;
 
-    const { data: current } = await service
-      .from("player_progression")
-      .select("xp_total, level, last_pvp_win_day")
-      .eq("user_id", userId)
+    const { data } = await supabase
+      .from("match_rewards")
+      .select("*")
+      .eq("match_id", matchId)
+      .eq("user_id", user.id)
       .maybeSingle();
+    if (!data) return null;
 
-    const isPvpWin = mode !== "bot" && outcome === "win";
-    const isFirstPvpWinOfDay = isPvpWin && current?.last_pvp_win_day !== utcDayKey();
-
-    const reward = computeMatchReward({
-      mode,
-      outcome,
-      progression: { xpTotal: current?.xp_total ?? 0, level: current?.level ?? 1 },
-      isFirstPvpWinOfDay,
-      allowBotTides,
-    });
-
-    const { data, error } = await service.rpc("grant_match_progression", {
-      p_match_id: matchId,
-      p_user_id: userId,
-      p_xp: reward.xp,
-      p_tides: reward.totalTides,
-      p_target_level: reward.levelAfter,
-      p_level_before: reward.levelBefore,
-      p_first_win_of_day: reward.firstWinOfDay,
-      p_is_pvp_win: isPvpWin,
-      p_boosters: reward.boosterIds,
-    });
-
-    if (error) {
-      console.error("[awardMatchReward] Octroi refusé :", error.message);
-      return null;
-    }
-    if (!data?.granted) return null;
-
-    return reward;
+    return {
+      xp: data.xp_granted,
+      tides: data.tides_granted,
+      levelBefore: data.level_before,
+      levelAfter: data.level_after,
+      firstWinOfDay: data.first_win_of_day,
+    };
   } catch (error) {
-    console.error("[awardMatchReward] Échec :", error);
+    console.error("[fetchMatchReward] Lecture impossible :", error);
     return null;
   }
 }

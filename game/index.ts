@@ -16,6 +16,8 @@ export type {
   Zone,
 } from "@/game/state/types";
 export { getPlayer, getOpponent, findCardInstance } from "@/game/state/types";
+export { toPlayerView } from "@/game/state/playerView";
+export { HIDDEN_CARD_ID } from "@/game/cards/hiddenCard";
 
 export type {
   PlayerAction,
@@ -84,5 +86,5 @@ export { resolveOceanJudgment } from "@/game/rules/oceanJudgment";
 
 export { RULES } from "@/game/rules/constants";
 
-export { runBotTurn, stepBotTurn, type BotTurnStep } from "@/game/bot/runBotTurn";
+export { botHasSomethingToDo, runBotTurn, runBotUntilIdle, stepBotTurn, type BotTurnStep } from "@/game/bot/runBotTurn";
 export type { BotDifficulty } from "@/game/bot/types";

@@ -63,6 +63,10 @@ interface OnlineBoardProps {
   onAction: (action: PlayerAction) => void | Promise<void>;
   pending: boolean;
   error: string | null;
+  /** Désignation de l'adversaire à l'écran de fin ("L'adversaire", "Le bot"). */
+  opponentName?: string;
+  /** Destination du bouton de sortie de l'écran de fin. */
+  exitHref?: string;
 }
 
 type Pending =
@@ -81,7 +85,15 @@ const DRAG_MIME_HAND = "application/x-tidebound-card-instance";
 const DRAG_MIME_UNIT = "application/x-tidebound-board-unit";
 
 /** Plateau d'une partie en ligne : oriente toujours "moi" en bas, main adverse cachée, actions envoyées au serveur. */
-export function OnlineBoard({ state, myUserId, onAction, pending, error }: OnlineBoardProps) {
+export function OnlineBoard({
+  state,
+  myUserId,
+  onAction,
+  pending,
+  error,
+  opponentName = "L'adversaire",
+  exitHref = "/en-ligne",
+}: OnlineBoardProps) {
   const [selection, setSelection] = useState<Pending | null>(null);
   const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -380,8 +392,8 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error }: Onlin
     const iWon = state.winnerId === myUserId;
     return (
       <VictoryScreen
-        winner={state.winnerId ? { name: iWon ? "Toi" : "L'adversaire", ship: iWon ? myShip : opponentShip } : undefined}
-        exitHref="/en-ligne"
+        winner={state.winnerId ? { name: iWon ? "Toi" : opponentName, ship: iWon ? myShip : opponentShip } : undefined}
+        exitHref={exitHref}
       />
     );
   }

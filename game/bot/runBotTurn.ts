@@ -12,7 +12,7 @@ import type { GameState, PlayerId } from "@/game/state/types";
 const MAX_ACTIONS_PER_TURN = 40;
 
 /** `true` si CE joueur a quelque chose à décider maintenant : soit c'est son tour, soit une fenêtre de réaction ou un choix forcé (ex: Le Fond Vous Regarde) l'attend (peut survenir hors de son tour — ex: l'adversaire vient de jouer une carte). */
-function hasSomethingToDo(state: GameState, playerId: PlayerId): boolean {
+export function botHasSomethingToDo(state: GameState, playerId: PlayerId): boolean {
   return (
     state.activePlayerId === playerId ||
     state.pendingReaction?.awaitingPlayerId === playerId ||
@@ -35,7 +35,7 @@ export interface BotTurnStep {
  * être valide mais refusée force `endTurn`/`passReaction`).
  */
 export function stepBotTurn(state: GameState, playerId: PlayerId, difficulty: BotDifficulty): BotTurnStep {
-  if (state.status !== "active" || !hasSomethingToDo(state, playerId)) return { state, done: true };
+  if (state.status !== "active" || !botHasSomethingToDo(state, playerId)) return { state, done: true };
 
   const action = chooseBotAction(state, playerId, difficulty);
   const result = dispatch(state, action);
@@ -53,7 +53,7 @@ export function stepBotTurn(state: GameState, playerId: PlayerId, difficulty: Bo
   }
 
   const nextState = result.state;
-  const done = action.type === "endTurn" || nextState.status !== "active" || !hasSomethingToDo(nextState, playerId);
+  const done = action.type === "endTurn" || nextState.status !== "active" || !botHasSomethingToDo(nextState, playerId);
   return { state: nextState, done };
 }
 
@@ -74,4 +74,39 @@ export function runBotTurn(initialState: GameState, playerId: PlayerId, difficul
   }
 
   return state;
+}
+
+/**
+ * Garde-fou de `runBotUntilIdle` : un tour complet (40 actions max, cf.
+ * `MAX_ACTIONS_PER_TURN`) plus de la marge pour les réactions et choix forcés
+ * qui peuvent s'intercaler.
+ */
+const MAX_ACTIONS_UNTIL_IDLE = 120;
+
+/**
+ * Fait jouer le bot jusqu'à ce qu'il n'ait plus rien à décider — son tour
+ * entier, ou une réaction / un choix forcé survenu pendant le tour de
+ * l'adversaire — et retourne CHAQUE état intermédiaire, dans l'ordre.
+ *
+ * Utilisé par les parties contre bot arbitrées côté serveur
+ * (`features/matches/matchStore.ts`) : le serveur fait jouer le bot après le
+ * coup du joueur, puis renvoie ces états pour que le client rejoue le tour
+ * du bot action par action. Retourne un tableau vide si le bot n'a rien à
+ * faire.
+ */
+export function runBotUntilIdle(initialState: GameState, playerId: PlayerId, difficulty: BotDifficulty): GameState[] {
+  const frames: GameState[] = [];
+  let state = initialState;
+
+  for (let i = 0; i < MAX_ACTIONS_UNTIL_IDLE; i++) {
+    if (state.status !== "active" || !botHasSomethingToDo(state, playerId)) break;
+    const step = stepBotTurn(state, playerId, difficulty);
+    // Aucune progression possible (même le repli a été refusé) : on s'arrête
+    // plutôt que de boucler sur le même état.
+    if (step.state === state) break;
+    state = step.state;
+    frames.push(state);
+  }
+
+  return frames;
 }

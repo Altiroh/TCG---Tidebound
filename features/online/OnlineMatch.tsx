@@ -1,43 +1,142 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import type { GameState } from "@/game";
-import { Button } from "@/components/ui/Button";
+import type { GameState, PlayerAction } from "@/game";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { submitOnlineAction } from "@/features/online/actions";
+import { fetchMatchView, submitMatchAction } from "@/features/online/actions";
 import { OnlineBoard } from "@/features/online/OnlineBoard";
-import type { Database } from "@/lib/supabase/types";
+import { MatchRewardBanner } from "@/features/progression/MatchRewardBanner";
+import type { MatchRow } from "@/features/matches/matchStore";
 
-type MatchRow = Database["public"]["Tables"]["matches"]["Row"];
+/**
+ * Pause entre deux états successifs renvoyés par le serveur pour le tour du
+ * bot — même rythme que la partie locale (`MatchBoard`), assez long pour voir
+ * chaque pioche/pose/attaque se jouer avant l'action suivante.
+ */
+const BOT_FRAME_DELAY_MS = 1100;
 
 interface OnlineMatchProps {
   matchId: string;
   initialMatch: MatchRow;
+  /** Vue projetée pour ce joueur (`toPlayerView`) — jamais l'état complet. */
+  initialView: GameState | null;
   myUserId: string;
 }
 
-/** Orchestre une partie en ligne : écran d'attente puis plateau, synchronisés via Supabase Realtime. */
-export function OnlineMatch({ matchId, initialMatch, myUserId }: OnlineMatchProps) {
+/**
+ * Orchestre une partie arbitrée côté serveur : écran d'attente puis plateau.
+ *
+ * Le client ne reçoit JAMAIS l'état complet. Realtime ne diffuse que les
+ * métadonnées de `matches`, dont `state_version` : quand elle dépasse la
+ * version affichée, le client redemande SA vue au serveur
+ * (`fetchMatchView`). Contre le bot, chaque coup renvoie directement la
+ * suite des vues (le coup du joueur, puis chaque action du bot), rejouées
+ * une par une.
+ */
+export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: OnlineMatchProps) {
   const [match, setMatch] = useState<MatchRow>(initialMatch);
+  const [view, setView] = useState<GameState | null>(initialView);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [replaying, setReplaying] = useState(false);
+
+  const shownVersion = useRef(initialMatch.state_version);
+  const latestRemoteVersion = useRef(initialMatch.state_version);
+  const busy = useRef(false);
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const isBotMatch = match.mode === "bot";
+
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+
+  async function refresh() {
+    const result = await fetchMatchView(matchId);
+    if (!result.ok || !result.data) return;
+    shownVersion.current = result.data.match.state_version;
+    latestRemoteVersion.current = Math.max(latestRemoteVersion.current, shownVersion.current);
+    setMatch(result.data.match);
+    setView(result.data.view);
+  }
 
   useEffect(() => {
+    // Contre le bot, le seul joueur humain est l'appelant : chaque coup
+    // renvoie déjà l'état à jour, Realtime n'apporterait rien.
+    if (isBotMatch) return;
+
     const supabase = createSupabaseBrowserClient();
     const channel = supabase
       .channel(`match-${matchId}`)
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "matches", filter: `id=eq.${matchId}` },
-        (payload) => setMatch(payload.new as MatchRow)
+        (payload) => {
+          const next = payload.new as MatchRow;
+          latestRemoteVersion.current = Math.max(latestRemoteVersion.current, next.state_version);
+          setMatch((current) => ({ ...current, ...next }));
+          // Pendant un coup en cours, sa réponse fera foi ; on ne recharge
+          // qu'ensuite, si une version plus récente est apparue entre-temps.
+          if (!busy.current && next.state_version > shownVersion.current) void refresh();
+        }
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [matchId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- abonnement unique par partie.
+  }, [matchId, isBotMatch]);
+
+  async function handleAction(action: PlayerAction) {
+    if (busy.current) return;
+    busy.current = true;
+    setPending(true);
+    setError(null);
+
+    const result = await submitMatchAction(matchId, action);
+
+    if (!result.ok || !result.data) {
+      busy.current = false;
+      setPending(false);
+      setError(result.error ?? "Action refusée.");
+      // Un conflit de version signifie que l'affichage est périmé.
+      await refresh();
+      return;
+    }
+
+    const { match: updated, views } = result.data;
+    shownVersion.current = updated.state_version;
+    setMatch(updated);
+
+    const [first, ...botFrames] = views;
+    if (first) setView(first);
+
+    if (botFrames.length === 0) {
+      busy.current = false;
+      setPending(false);
+      if (latestRemoteVersion.current > shownVersion.current) await refresh();
+      return;
+    }
+
+    // Tour du bot : rejoue chaque état intermédiaire avec un délai. La
+    // promesse ne se résout qu'à la fin du rejeu, pour que l'activation
+    // enchaînée de plusieurs réactions (`OnlineBoard.activateSelectedReactions`,
+    // qui attend chaque coup) n'envoie jamais la suivante pendant le rejeu.
+    setReplaying(true);
+    await new Promise<void>((resolve) => {
+      botFrames.forEach((frame, index) => {
+        const timer = setTimeout(() => {
+          setView(frame);
+          if (index === botFrames.length - 1) {
+            busy.current = false;
+            setPending(false);
+            setReplaying(false);
+            resolve();
+          }
+        }, BOT_FRAME_DELAY_MS * (index + 1));
+        timers.current.push(timer);
+      });
+    });
+  }
 
   if (match.status === "waiting") {
     return (
@@ -52,7 +151,7 @@ export function OnlineMatch({ matchId, initialMatch, myUserId }: OnlineMatchProp
     );
   }
 
-  if (!match.state) {
+  if (!view) {
     return (
       <main className="flex min-h-screen items-center justify-center p-8 text-slate-400">
         Chargement de la partie...
@@ -60,26 +159,22 @@ export function OnlineMatch({ matchId, initialMatch, myUserId }: OnlineMatchProp
     );
   }
 
-  async function handleAction(action: Parameters<typeof submitOnlineAction>[1]) {
-    setPending(true);
-    setError(null);
-    const result = await submitOnlineAction(matchId, action);
-    setPending(false);
-    if (!result.ok) {
-      setError(result.error ?? "Action refusée.");
-      return;
-    }
-    // Mise à jour optimiste : Realtime confirmera juste après.
-    if (result.data) setMatch((current) => ({ ...current, state: result.data }));
-  }
+  // Le bandeau n'attend pas la fin du rejeu : il ne s'affiche qu'une fois
+  // l'écran de victoire à l'écran, donc quand la dernière vue est posée.
+  const finishedOnScreen = view.status === "finished" && !replaying;
 
   return (
-    <OnlineBoard
-      state={match.state as unknown as GameState}
-      myUserId={myUserId}
-      onAction={handleAction}
-      pending={pending}
-      error={error}
-    />
+    <>
+      <OnlineBoard
+        state={view}
+        myUserId={myUserId}
+        onAction={handleAction}
+        pending={pending}
+        error={error}
+        opponentName={isBotMatch ? "Le bot" : "L'adversaire"}
+        exitHref={isBotMatch ? "/partie" : "/en-ligne"}
+      />
+      {finishedOnScreen && <MatchRewardBanner matchId={matchId} />}
+    </>
   );
 }

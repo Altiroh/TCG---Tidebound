@@ -380,12 +380,6 @@ sous-système) avant d'être toutes construites depuis :
   (`CardInstance.modifiers`, ex: Harpon de Pont "+1 Puissance" à la pose)
   reste sur l'unité après la destruction de l'Équipement qui l'a posé —
   jamais nettoyé. Chantier distinct, non traité.
-- **Fuite d'information réseau** : `matches.state` expose toujours le
-  `GameState` complet (main adverse incluse) aux deux participants via
-  Realtime. Le système de lecture de main ci-dessus ajoute un événement
-  informatif PAR-DESSUS cet état déjà à information parfaite côté client
-  — il ne referme pas cette fuite, qui resterait à corriger avant toute
-  vraie séparation d'information par joueur.
 - Un bug de RNG pré-existant (`resolveUnitTargets`, `randomAllyUnit`/
   `randomEnemyUnit` ne faisaient jamais avancer la graine — deux tirages
   "aléatoires" successifs retombaient sur la même unité) a été corrigé ;
@@ -415,20 +409,14 @@ Sabordage, Bris d'Objet, Garde, Jugement de l'Océan, effets génériques,
 triggers (dont `onBecomeVisible`/`onExpire`), Marée + Eaux + Navires.
 
 **Écarts actuels documentés** :
-- Quêtes quotidiennes/hebdomadaires : schéma BDD présent (`quests`,
-  `player_quest_progress`) mais aucune logique. C'est l'écart le plus
-  structurant de l'économie : le cadrage en fait la **principale** source
-  de Tides, et la cadence cible (~1 booster tous les 2-3 jours) n'est pas
-  atteignable sans elles avec les seuls paliers de niveau.
-- Parties contre bot arbitrées côté serveur : elles sont enregistrées dans
-  `matches` et récompensées, mais leur ISSUE est déclarée par le navigateur
-  (cf. « Dérogation de développement » plus bas). À reprendre en faisant
-  tourner le moteur et le bot côté serveur, comme en PvP.
 - Recyclage des doublons : la fonction serveur existe (`recycle_card`,
   barème verrouillé) mais aucune UI ne l'appelle encore.
+- Parties serveur sans reprise sur abandon : une partie en ligne ou contre
+  bot quittée en cours reste `active` indéfiniment (pas de délai de tour,
+  pas d'abandon déclaré).
 - Voir "Mécanismes avancés" plus haut pour ce qui reste réellement non
   modélisé (priorité de Garde, pondération des Eaux, bonus d'Équipement
-  statiques, fuite d'information réseau).
+  statiques).
 
 `RULES.MAX_HAND_SIZE` (7) est désormais appliqué : `game/actions/endTurn.ts`
 défausse les cartes excédentaires du joueur qui termine son tour, avant de
@@ -442,7 +430,79 @@ variable de cartes, pas entre deux effets connus d'avance).
 
 Pas encore fait : historique de parties (UI — les données existent dans
 `matches`), boutique complète (offres au-delà de l'achat de booster),
-recyclage côté client, quêtes.
+recyclage côté client.
+
+## Parties arbitrées côté serveur & information cachée
+
+Toutes les parties qui rapportent quelque chose — en ligne (invitation,
+matchmaking) **et contre bot pour un joueur connecté** — sont jouées par le
+serveur (`features/matches/matchStore.ts`). Seules les parties locales
+(deux joueurs sur le même écran, ou bot hors connexion) tournent dans le
+navigateur, et elles ne rapportent jamais rien.
+
+- **État privé.** L'état complet vit dans `match_states`, sans aucune policy
+  RLS et hors de la publication Realtime. `matches` ne garde que des
+  métadonnées, dont `state_version` : c'est tout ce que Realtime diffuse.
+  Quand la version change, le client redemande sa vue (`fetchMatchView`).
+- **Vue par joueur** (`toPlayerView`, `game/state/playerView.ts`, testée
+  dans `tests/game/playerView.test.ts`) : main adverse, contenu et ordre des
+  deux decks, graine du générateur aléatoire et Structures adverses
+  invisibles pendant la Marée courante sont masqués — y compris leurs traces
+  dans le journal d'événements. La forme de l'état est conservée ; les cartes
+  masquées portent `HIDDEN_CARD_ID`, que `getCardDefinition` sait résoudre.
+- **Aucune écriture navigateur sur `matches`.** Les policies d'insertion et
+  de mise à jour ont été supprimées (un participant pouvait réécrire l'état
+  de sa partie avec la clé anon). Création, jonction et coups passent par des
+  fonctions Postgres réservées au serveur : `create_active_match()`,
+  `activate_waiting_match()`, `commit_match_state()`.
+- **Un coup = une version.** `commit_match_state()` n'enregistre un coup que
+  s'il a été calculé sur la version courante : deux soumissions simultanées
+  ne peuvent pas s'écraser.
+- **Un coup est joué au nom de l'appelant.** Le serveur refuse toute action
+  dont le `playerId` n'est pas le joueur connecté (avant, rien n'empêchait de
+  terminer le tour de son adversaire).
+- **Bot.** `startBotMatch()` (`features/bot/actions.ts`) crée la partie ; après
+  chaque coup du joueur, `runBotUntilIdle()` (`game/bot/runBotTurn.ts`) fait
+  jouer le bot jusqu'à ce qu'il rende la main. Le serveur renvoie chaque état
+  intermédiaire, projeté, et le client les rejoue avec un délai pour garder
+  un tour du bot lisible carte par carte.
+- **Fin de partie.** Constatée dans l'état autoritaire, juste après son
+  enregistrement : récompenses (`features/progression/rewards.ts`) et
+  progression des quêtes (`features/quests/questService.ts`) pour chaque
+  participant humain. Ces fonctions ne sont plus dans des fichiers
+  `"use server"` : exportées depuis un tel fichier, elles devenaient des
+  Server Actions que n'importe quel navigateur pouvait appeler avec le
+  joueur et l'issue de son choix.
+
+## Quêtes
+
+Cadrage : Notion "Boosters & économie de collection". Logique pure et testée
+dans `game/quests/` (`tests/game/quests.test.ts`) :
+
+- **Catalogue et calibrage** (`game/quests/catalog.ts`) : 3 quêtes
+  quotidiennes et 3 hebdomadaires par joueur, au plus une quête PvP-only par
+  période (un joueur solo ne reçoit jamais plusieurs quêtes qu'il ne peut pas
+  faire avancer). Récompenses proposées : 25 Tides par quotidienne, 120 par
+  hebdomadaire, soit un booster tous les ~2,1 jours pour un joueur régulier
+  (calcul détaillé en tête du fichier) — valeurs à retester, comme le reste du
+  calibrage économique.
+- **Attribution** (`selectQuestsForPeriod`) : déterministe par joueur et par
+  période UTC (`d:AAAA-MM-JJ`, `w:<lundi>`), donc idempotente sous accès
+  concurrents. `assign_player_quests()` n'écrit que si la période n'a encore
+  aucune quête de ce type.
+- **Progression** (`computeMatchQuestProgress`) : calculée par le serveur
+  depuis le journal d'événements de l'état final — cartes jouées par type,
+  Objets brisés, Structures sabordées, entrées dans les Abysses, victoires et
+  dégâts directs PvP. `record_match_quest_progress()` l'applique une seule
+  fois par partie (`match_quest_progress`) et respecte `bot_progress_allowed`
+  quête par quête.
+- **Réclamation** : écran `/quetes` (onglet « Quêtes » du bandeau) ;
+  `claim_quest_reward()` relit le montant en base et empêche d'encaisser deux
+  fois. Une quête terminée reste réclamable après la fin de sa période.
+
+La table `quests` est un miroir du catalogue TypeScript, synchronisé par
+`npm run seed:cards` (une quête retirée du catalogue est désactivée, pas
+supprimée).
 
 ## Progression & boosters
 
@@ -456,8 +516,8 @@ rester peu rentable) mais aucun nombre. La base ne stocke que `xp_total` et
 un cache de `level` — le niveau est toujours dérivé de la courbe, ce qui
 permet de recalibrer sans migration.
 
-L'octroi est autoritaire et idempotent : `submitOnlineAction` détecte la fin
-de partie, `computeMatchReward()` calcule, et la fonction Postgres
+L'octroi est autoritaire et idempotent : le serveur détecte la fin de partie
+(`features/matches/matchStore.ts`), `computeMatchReward()` calcule, et la fonction Postgres
 `grant_match_progression()` applique tout en une transaction. La clé
 primaire de `match_rewards (match_id, user_id)` garantit qu'une partie ne
 peut jamais récompenser deux fois — une double soumission ou une reprise
@@ -492,31 +552,22 @@ Bienvenue via `booster_definitions.pool_excluded_rarities`, filtré avant le
 tirage (`tests/game/boosters.test.ts` vérifie qu'aucune n'en sort même avec
 le pity au maximum).
 
-### Dérogation de développement — récompenses contre bot
+### Récompenses contre bot
 
-Le cadrage verrouille « 0 Tide contre bot ». Comme le PvP demande deux
-joueurs réels et que les Contrats (missions quotidiennes) n'existent pas
-encore, aucune boucle solo ne permettait de tester l'économie : les parties
-contre bot rapportent donc, **pendant le développement**, de l'XP et des
-Tides réduites (`DEV_BOT_MATCH_TIDES`, moitié du PvP).
+Les parties contre bot étant arbitrées côté serveur, leur issue est aussi
+fiable qu'en PvP : elles rapportent toujours leur XP (`MATCH_XP.bot*`) et
+font avancer les quêtes compatibles bot, sans plafond quotidien (le cadrage
+demande d'éviter « un plafond brutal » ; le plafond n'existait que parce que
+le navigateur déclarait l'issue).
 
-Tout est concentré dans `features/progression/botRewardPolicy.ts` :
-`MATCH_TIDES.bot*` reste à 0 et la règle verrouillée n'est pas réécrite —
-elle est contournée à un seul endroit, par un paramètre explicite
-(`allowBotTides`) que seule cette politique active. Garde-fous :
-
-- désactivée en production par défaut ; `TIDEBOUND_BOT_REWARDS=on|off`
-  force les deux sens ;
-- la partie est enregistrée dans `matches` (`mode: 'bot'`, `state` laissé à
-  `null` — l'état local n'est pas une donnée de confiance) et payée par le
-  même chemin idempotent que le PvP ;
-- plafond de `BOT_REWARD_DAILY_CAP` parties bot récompensées par jour UTC ;
-- le bonus de première victoire du jour reste strictement PvP.
-
-Ce qui reste assumé : c'est le navigateur qui déclare l'issue d'une partie
-bot. Il ne déclare jamais un montant. Quand les parties bot seront arbitrées
-côté serveur, il suffira de faire retourner `true` à cette politique — le
-calcul ne change pas.
+Reste une **dérogation de développement pour les Tides seulement**, dans
+`features/progression/botRewardPolicy.ts` : le cadrage verrouille « 0 Tide
+contre bot », mais hors production les parties bot rapportent des Tides
+réduites (`DEV_BOT_MATCH_TIDES`) pour tester l'économie en solo.
+`MATCH_TIDES.bot*` reste à 0 ; la règle n'est contournée qu'à un endroit, par
+le paramètre explicite `allowBotTides`. Désactivée en production par défaut ;
+`TIDEBOUND_BOT_REWARDS=on|off` force les deux sens. Le bonus de première
+victoire du jour reste strictement PvP.
 
 **Supabase** : schéma étendu par
 `supabase/migrations/20260910120000_cards_collection_economy.sql` —
@@ -530,7 +581,11 @@ file de matchmaking (`matchmaking_queue` + fonction Postgres
 `supabase/migrations/20260912200000_progression_and_boosters.sql` :
 `player_progression`, `match_rewards`, et les quatre opérations atomiques
 `grant_match_progression()`, `purchase_booster()`, `open_booster()`,
-`recycle_card()`. Toutes ces tables ont RLS activé ;
+`recycle_card()` — puis par
+`supabase/migrations/20260913100000_private_match_state.sql` (état de partie
+privé, fonctions de parties serveur, cf. "Parties arbitrées côté serveur")
+et `supabase/migrations/20260913110000_quests.sql` (quêtes par période,
+progression par partie, réclamation). Toutes ces tables ont RLS activé ;
 celles qui doivent rester autoritaires côté serveur (collection, boosters,
 monnaie, quêtes) n'ont volontairement aucune policy d'écriture pour
 `authenticated` — seule une Server Action avec la clé service_role peut y
@@ -538,12 +593,17 @@ monnaie, quêtes) n'ont volontairement aucune policy d'écriture pour
 source de vérité pour la RÉSOLUTION d'une partie ; ce schéma sert les
 systèmes de méta-jeu (collection, boosters, progression) autour.
 
-La migration de progression **n'a pas été appliquée** : elle est validée
-syntaxiquement (parser PostgreSQL) mais jamais exécutée, faute de Docker/
-psql dans l'environnement de développement utilisé. À appliquer avec
+Les migrations de progression, d'état de partie privé et de quêtes **n'ont
+pas été appliquées** : elles sont validées syntaxiquement (parser
+PostgreSQL) mais jamais exécutées, faute de Docker/psql dans
+l'environnement de développement utilisé. À appliquer avec
 `npx supabase db push`, puis `npm run seed:cards` pour pousser les raretés
-— sans ce seed, `openBooster()` refuse explicitement d'ouvrir plutôt que de
-consommer un booster dans le vide.
+et le catalogue de quêtes — sans ce seed, `openBooster()` refuse
+explicitement d'ouvrir plutôt que de consommer un booster dans le vide, et
+l'écran Quêtes reste vide. **Le code de cette branche suppose la migration
+d'état privé appliquée** : sans elle, aucune partie en ligne ou contre bot
+connectée ne peut démarrer (`match_states` et les fonctions de partie
+n'existent pas).
 
 **PWA** : `public/sw.js` (app shell minimal, stale-while-revalidate sur
 `/assets/*`, repli réseau→cache→`public/offline.html` pour la navigation)
@@ -559,22 +619,19 @@ Supabase, parties en ligne) est loin derrière — voir "État du MVP" et
 "Progression & boosters" plus haut pour ce qui existe déjà. Ce qui reste
 réellement devant nous :
 
-1. **Quêtes quotidiennes/hebdomadaires** — l'écart le plus structurant de
-   l'économie (cf. "État du MVP") : sans elles, la cadence de boosters
-   visée n'est pas atteignable avec les seuls paliers de niveau.
-2. **Parties bot arbitrées côté serveur** — remplacer la dérogation de
-   développement actuelle (issue déclarée par le navigateur) en faisant
-   tourner le moteur et le bot côté serveur, comme en PvP ; ne change pas
-   le calcul de récompense (`allowBotTides` suffira).
-3. **Fuite d'information réseau** — `matches.state` expose le `GameState`
-   complet (main adverse incluse) aux deux participants via Realtime ;
-   une vraie couche de projection par joueur est un préalable à toute
-   information cachée fiable en ligne (cf. "Mécanismes avancés").
-4. Nettoyage des bonus d'Équipement STATIQUES à la destruction de
+1. **Appliquer les migrations** (`npx supabase db push`) puis
+   `npm run seed:cards`, et jouer une partie en ligne et une partie contre
+   bot connectée de bout en bout : état privé, rejeu du bot, récompenses et
+   quêtes n'ont été testés qu'en logique pure et en typage, jamais contre une
+   vraie base.
+2. **Abandon et délai de tour** pour les parties serveur — aujourd'hui une
+   partie quittée reste `active` pour toujours.
+3. Nettoyage des bonus d'Équipement STATIQUES à la destruction de
    l'Équipement (cf. "Mécanismes avancés") — les bonus dynamiques sont déjà
    corrects, les modificateurs posés une fois pour toutes ne le sont pas.
-5. Icônes d'application pour la PWA (`manifest.webmanifest` a un tableau
+4. Icônes d'application pour la PWA (`manifest.webmanifest` a un tableau
    `icons` vide) — service worker déjà en place, mais pas réellement
    installable sans elles.
-6. Historique de parties (UI — les données existent déjà dans `matches`),
+5. Historique de parties (UI — les données existent déjà dans `matches`),
    boutique complète, recyclage côté client.
+6. Calibrage des quêtes et de la progression après de vraies sessions de jeu.

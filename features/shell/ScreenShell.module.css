@@ -94,8 +94,8 @@
   position: relative;
   z-index: 3;
   display: grid;
-  /* Retour · Collection · Decks · Boosters · ressort · (progression + emblème) */
-  grid-template-columns: auto auto auto auto minmax(0, 1fr) auto;
+  /* Retour · Collection · Decks · Boosters · Quêtes · ressort · (progression + emblème) */
+  grid-template-columns: auto auto auto auto auto minmax(0, 1fr) auto;
   align-items: center;
   /* Beaucoup plus d'air autour des libellés qu'un onglet ne le permettait. */
   gap: clamp(18px, 3vw, 54px);
