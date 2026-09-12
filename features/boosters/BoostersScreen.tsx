@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PITY } from "@/game/boosters";
@@ -10,8 +10,10 @@ import { ScreenShell } from "@/features/shell/ScreenShell";
 import { UtilityBar } from "@/features/shell/UtilityBar";
 import shell from "@/features/shell/ScreenShell.module.css";
 import styles from "@/features/boosters/Boosters.module.css";
-import { BoosterRevealOverlay } from "@/features/boosters/BoosterRevealOverlay";
-import { openBooster, purchaseBooster, type BoosterInventory, type OpenBoosterResult } from "@/features/boosters/actions";
+import { purchaseBooster, type BoosterInventory } from "@/features/boosters/actions";
+import { BoosterOpeningScene } from "@/features/boosters/opening/BoosterOpeningScene";
+import { preloadBoosterOpeningAssets } from "@/features/boosters/opening/boosterOpeningAssets";
+import { MOCK_BOOSTER_CARDS } from "@/features/boosters/opening/mockBoosterCards";
 import { playButtonClick } from "@/lib/sound";
 
 interface BoostersScreenProps {
@@ -20,33 +22,43 @@ interface BoostersScreenProps {
 
 /**
  * Écran Boosters — montée sur la même coquille que Collection et Decks.
- * L'objet posé sur le papier est ici un paquet scellé ; l'ouvrir déclenche
- * la Server Action autoritaire, puis la révélation.
+ * L'objet posé sur le papier est ici un paquet scellé.
  *
- * Aucun aléa côté client : `openBooster()` revient avec des cartes DÉJÀ
- * créditées en base. Cet écran ne fait que demander et mettre en scène.
+ * PROTOTYPE : « Ouvrir » ne lance pour l'instant QUE la scène d'ouverture,
+ * avec des cartes factices. Aucun appel serveur, aucune écriture : le
+ * booster n'est pas consommé et la collection ne change pas.
  */
 export function BoostersScreen({ inventory }: BoostersScreenProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [busyBoosterId, setBusyBoosterId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [opened, setOpened] = useState<OpenBoosterResult | null>(null);
+  const [openingBoosterId, setOpeningBoosterId] = useState<string | null>(null);
+
+  const hasOwnedBooster = inventory.boosters.some((booster) => booster.owned > 0);
+
+  // Images de la scène chargées et décodées en avance : « Ouvrir » démarre sans flash.
+  useEffect(() => {
+    if (hasOwnedBooster) void preloadBoosterOpeningAssets();
+  }, [hasOwnedBooster]);
 
   function handleOpen(boosterId: string) {
+    if (openingBoosterId) return;
     playButtonClick();
     setError(null);
-    setBusyBoosterId(boosterId);
+    // TODO(booster-serveur) : c'est ici que se branchera la vraie ouverture —
+    // `openBooster(boosterId)` (`features/boosters/actions.ts`) consomme le
+    // booster, tire le contenu et crédite la collection côté base. Son
+    // résultat (`cards`, converties via `toOpeningRarity`) remplacera
+    // `MOCK_BOOSTER_CARDS`. Pour le prototype, AUCUN appel.
+    setOpeningBoosterId(boosterId);
+  }
 
-    void openBooster(boosterId)
-      .then((result) => {
-        if (!result.ok || !result.data) {
-          setError(result.error ?? "Ouverture impossible.");
-          return;
-        }
-        setOpened(result.data);
-      })
-      .finally(() => setBusyBoosterId(null));
+  function handleOpeningClosed() {
+    setOpeningBoosterId(null);
+    // TODO(booster-serveur) : une fois l'ouverture réelle branchée, rafraîchir
+    // l'inventaire et la collection ici (`router.refresh()`). Rien n'a changé
+    // côté serveur dans le prototype, donc rien à recharger.
   }
 
   function handlePurchase(boosterId: string) {
@@ -65,13 +77,6 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
         startTransition(() => router.refresh());
       })
       .finally(() => setBusyBoosterId(null));
-  }
-
-  function handleRevealClosed() {
-    setOpened(null);
-    // La collection et l'inventaire ont changé : on recharge les données
-    // serveur plutôt que de les recalculer à la main côté client.
-    startTransition(() => router.refresh());
   }
 
   return (
@@ -187,9 +192,7 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
         }
       />
 
-      {opened && (
-        <BoosterRevealOverlay cards={opened.cards} abyssalPulled={opened.abyssalPulled} onClose={handleRevealClosed} />
-      )}
+      {openingBoosterId && <BoosterOpeningScene cards={MOCK_BOOSTER_CARDS} onClose={handleOpeningClosed} />}
     </ScreenShell>
   );
 }
