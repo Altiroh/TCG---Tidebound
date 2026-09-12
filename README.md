@@ -123,17 +123,35 @@ npm test                     # tests unitaires du moteur (Vitest)
   moins), le joueur perd. Sa valeur de départ vient du **Navire** choisi.
 - **Raison** (`PlayerState.reason` / `reasonMax`) est **LA** ressource du
   jeu — il n'existe pas de mana séparé. Elle paie le coût de toutes les
-  cartes, régénère de +1 par tour (plafonnée à `reasonMax`, propre au
-  Navire), et sa valeur de départ est **50% du maximum du Navire**
-  (arrondi à l'entier inférieur — un joueur ne commence jamais à pleine
-  Raison, cadrage Notion "Moteur de partie", 2026-09-10). Pendant sa Phase
+  cartes, plafonnée à `reasonMax` (propre au Navire). Pendant sa Phase
   principale, un joueur peut jouer **autant de cartes qu'il peut en
   payer** : il n'existe pas de limite artificielle du type "une carte par
-  tour" — dépenser toute sa Raison est une prise de risque volontaire.
-  **Si la Raison d'un joueur est à 0 à la FIN de son propre tour**, il
-  perd 1 point d'Ancrage (vérifié à ce moment précis, pas au début du
-  tour suivant : il peut encore tenter de la récupérer avant la fin de
-  son tour pour l'éviter).
+  tour". **Il n'y a plus de récupération de +1 par tour** : la Raison est
+  remise à niveau au début de chaque tour du joueur (ci-dessous).
+- **Remise à niveau & courbe de début de partie** (`RULES.STARTING_REASON_CURVE`,
+  piste Notion "Gameplay — Raison, Déraison…", **à prototyper**) : au début
+  de chacun de ses tours, la Raison du joueur est **remise à 25 %** de sa
+  Raison max à son 1er tour, **50 %** au 2e, **75 %** au 3e, puis **100 % à
+  chaque tour** ensuite, arrondi au supérieur (Courlis 12 → 3 / 6 / 9 / 12,
+  Errant 10 → 3 / 5 / 8 / 10, Brise-Lames 8 → 2 / 4 / 6 / 8). Ce palier
+  (`PlayerState.reasonCap`) plafonne aussi les gains pendant le tour. Une
+  dette de Déraison subie pendant le tour adverse est déduite de la remise
+  à niveau. Piste plus lente si c'est trop généreux : 20 / 40 / 60 / 80 / 100.
+- **Déraison** (`game/state/reason.ts`, piste Notion "Gameplay — Raison,
+  Déraison, healing & passifs de Navires", 2026-09-12, **à prototyper**) :
+  la Raison peut passer sous 0, jusqu'à un plancher de **-50 % de la
+  Raison max** (`RULES.DERAISON_FLOOR_RATIO`). Payer un coût (carte,
+  capacité activable, réaction) ou subir une perte de Raison peut y
+  pousser ; au-delà du plancher, le coût est refusé et les pertes s'y
+  arrêtent. **À la fin de son propre tour** (après tous les effets de fin
+  de tour — il peut donc encore remonter avant), chaque point de Déraison
+  inflige 1 dégât d'Ancrage (`DERAISON_ANCHOR_DAMAGE_PER_POINT`, événement
+  `DERAISON_SETTLED`), puis la Raison repart de 0. Remplace l'ancienne
+  règle "Raison à 0 en fin de tour = -1 Ancrage" : finir à exactement 0 ne
+  coûte rien. Pénitence (La Religieuse) réduit ces dégâts de 1. Côté UI :
+  jauge rouge et pastille "⚓ −N en fin de tour" sur le Navire, avertissement ambre avant de poser
+  une carte qui fait passer sous 0 (second clic pour confirmer, ou pendant
+  le glisser-déposer).
 - Échelle de coût verrouillée : 1 à 5 = standard, 6 = exceptionnel,
   7 = extrême.
 
@@ -178,8 +196,8 @@ Notion "Moteur de partie — déroulement, Raison & chaînes d'effets",
 2026-09-10) :
 
 **A. Fin de tour DU JOUEUR QUI TERMINE** — effets de fin de tour,
-défausse forcée (main > 7), puis, si **SA** Raison est à 0 à ce moment
-précis, perte d'1 Ancrage.
+défausse forcée (main > 7), puis, en tout dernier, règlement de **SA**
+Déraison (dette sous 0 → dégâts d'Ancrage, Raison remise à 0).
 
 **B. Début de tour DU JOUEUR QUI DEVIENT ACTIF** :
 
@@ -190,7 +208,8 @@ précis, perte d'1 Ancrage.
    Calme`), puis application des malus de l'état courant — voir "Malus
    globaux des Marées" ci-dessous.
 3. Effets différés — non modélisés pour le MVP, étape ignorée.
-4. Régénération de +1 Raison (plafonnée à `reasonMax`).
+4. Remise à niveau de la Raison : 25 % / 50 % / 75 % de la Raison max aux
+   trois premiers tours du joueur, puis 100 % à chaque tour.
 5. Pioche d'une carte (deck vide → Jugement de l'Océan, voir plus bas).
 6. Phase principale : dégel des unités, réinitialisation des attaques,
    nettoyage des modificateurs temporaires.

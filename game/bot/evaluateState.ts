@@ -1,5 +1,6 @@
 import { computeEffectiveStats } from "@/game/cards/stats";
 import type { CardInstance } from "@/game/cards/types";
+import { deraisonDebt } from "@/game/state/reason";
 import type { GameState, PlayerId, PlayerState } from "@/game/state/types";
 
 /**
@@ -19,7 +20,10 @@ function unitValue(state: GameState, unit: CardInstance, controller: PlayerState
 
 function playerValue(state: GameState, player: PlayerState): number {
   const boardValue = player.board.reduce((sum, unit) => sum + unitValue(state, unit, player), 0);
-  return player.anchor * 3 + player.reason * 0.5 + boardValue + player.hand.length * 0.75;
+  // Déraison : chaque point sous 0 sera payé en Ancrage en fin de tour — compté comme de l'Ancrage déjà perdu
+  // (un peu plus lourd, pour que le bot ne plonge en dette que si le gain sur le plateau le justifie clairement).
+  const debt = deraisonDebt(player.reason);
+  return (player.anchor - debt * 1.2) * 3 + Math.max(0, player.reason) * 0.5 + boardValue + player.hand.length * 0.75;
 }
 
 /**

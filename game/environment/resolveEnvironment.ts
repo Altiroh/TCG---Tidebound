@@ -1,5 +1,6 @@
 import { consumeAmplify, tickTide } from "@/game/environment/tide";
 import { getShipDefinition } from "@/game/environment/shipData";
+import { reasonAfterLoss } from "@/game/state/reason";
 import type { TideStateName } from "@/game/environment/types";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { isVisibleDuringTide, STATUS_MALADE, UNIT_CARD_TYPES } from "@/game/cards/types";
@@ -95,7 +96,7 @@ function applyAbyssesEntryOrExit(
     const players = state.players.map((player) => {
       const loss = computeAbyssesEntryLoss(player);
       const reasonMax = Math.max(0, player.reasonMax - RULES.ABYSSES_REASON_MAX_PENALTY);
-      const reason = Math.max(0, Math.min(player.reason - loss.extraReason, reasonMax));
+      const reason = Math.min(reasonAfterLoss({ reason: player.reason, reasonMax }, loss.extraReason), reasonMax);
       return { ...player, anchor: player.anchor - loss.anchor, reasonMax, reason };
     }) as [PlayerState, PlayerState];
 
@@ -357,7 +358,7 @@ export function resolveTideTurnStep(
       ...player,
       board,
       anchor: player.anchor - anchorLoss,
-      reason: Math.max(0, player.reason - reasonLoss),
+      reason: reasonAfterLoss(player, reasonLoss),
       statusFlags,
       hand,
       graveyard,

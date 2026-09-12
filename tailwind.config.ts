@@ -38,6 +38,10 @@ const config: Config = {
           "0%, 100%": { boxShadow: "0 0 0 2px rgba(251,191,36,0.9), 0 0 14px 4px rgba(251,191,36,0.55)" },
           "50%": { boxShadow: "0 0 0 2px rgba(251,191,36,0.55), 0 0 4px 1px rgba(251,191,36,0.25)" },
         },
+        "glass-alert-in": {
+          "0%": { opacity: "0", transform: "translateX(16px) scale(0.96)" },
+          "100%": { opacity: "1", transform: "translateX(0) scale(1)" },
+        },
         "toast-in": {
           "0%": { opacity: "0", transform: "translateY(-8px) scale(0.95)" },
           "10%": { opacity: "1", transform: "translateY(0) scale(1)" },
@@ -69,6 +73,8 @@ const config: Config = {
         // Notification d'action éphémère (pioche/défausse/Sabordage/destruction) — durée synchronisée
         // avec `TOAST_DURATION_MS` dans `useActionToasts.ts`.
         "toast-in": "toast-in 2.2s ease-in-out forwards",
+        // Alerte d'erreur/avertissement en haut à droite (`components/ui/GlassAlert.tsx`).
+        "glass-alert-in": "glass-alert-in 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.2) both",
         "card-impact": "card-impact 0.45s ease-out",
       },
     },

@@ -1,4 +1,6 @@
 import { resolveTideTurnStep } from "@/game/environment/resolveEnvironment";
+import { getShipDefinition } from "@/game/environment/shipData";
+import { deraisonAnchorDamage, deraisonDebt, reasonCeiling, startingReasonCap } from "@/game/state/reason";
 import type { GameEvent } from "@/game/events/types";
 import { processTrigger } from "@/game/triggers/triggerBus";
 import { RULES } from "@/game/rules/constants";
@@ -21,16 +23,16 @@ function validate(state: GameState, action: EndTurnAction) {
  * 2026-09-10) :
  *
  * A. Fin de tour DU JOUEUR QUI TERMINE : effets de fin de tour, défausse
- *    forcée, puis — si SA Raison est à 0 à ce moment précis — perte d'1
- *    Ancrage. Un joueur qui redescend à 0 Raison en cours de tour n'est
- *    donc pas sanctionné immédiatement : il peut encore tenter de
- *    récupérer de la Raison avant la fin de son tour pour l'éviter.
+ *    forcée, puis — en tout dernier — règlement de SA Déraison (dette sous
+ *    0 → dégâts d'Ancrage, Raison remise à 0). Un joueur qui passe sous 0
+ *    en cours de tour n'est donc pas sanctionné immédiatement : il peut
+ *    encore récupérer de la Raison avant la fin de son tour pour l'éviter.
  *
  * B. Début de tour DU JOUEUR QUI DEVIENT ACTIF (structure verrouillée,
  *    resynchronisée 2026-09-10 après éviction du sous-système des Eaux) :
  *   1. Vérification de la Marée (décompte + progression + orientation + dégâts du tour)
  *   2. Effets différés — non modélisés pour le MVP, étape ignorée
- *   3. Régénération de Raison (+1, plafonnée à `reasonMax`)
+ *   3. Remise à niveau de la Raison : 25 % / 50 % / 75 % de la Raison max aux 3 premiers tours du joueur, puis 100 %
  *   4. Pioche d'une carte
  *   5. Phase principale : dégel des unités (résiliation des attaques,
  *      nettoyage des modificateurs temporaires) — aucune action à
@@ -78,20 +80,25 @@ export function endTurn(state: GameState, action: EndTurnAction): ActionResult {
     };
   }
 
-  // --- Fin du tour du joueur qui vient de jouer : Raison = 0 => perte
-  // d'1 Ancrage (vérifiée ICI, sur SA Raison — pas sur celle du joueur
-  // qui devient actif juste après).
+  // --- Règlement de la Déraison du joueur qui TERMINE, en tout dernier
+  // (plus aucun effet de fin de tour ne peut encore lui rendre de Raison) :
+  // chaque point sous 0 coûte `DERAISON_ANCHOR_DAMAGE_PER_POINT` Ancrage
+  // (moins la réduction éventuelle du Navire, ex: Pénitence), puis la dette
+  // est effacée. Remplace l'ancienne règle "Raison à 0 en fin de tour =
+  // -1 Ancrage" : terminer exactement à 0 ne coûte plus rien.
   const playerEndingTurn = nextState.players.find((p) => p.id === action.playerId)!;
-  if (playerEndingTurn.reason <= 0) {
-    const anchor = playerEndingTurn.anchor - RULES.ANCHOR_LOSS_WHEN_REASON_ZERO;
+  const debt = deraisonDebt(playerEndingTurn.reason);
+  if (debt > 0) {
+    const anchorDamage = deraisonAnchorDamage(playerEndingTurn, playerEndingTurn.reason);
     nextState = {
       ...nextState,
-      players: nextState.players.map((p) => (p.id === playerEndingTurn.id ? { ...p, anchor } : p)) as [
-        PlayerState,
-        PlayerState
-      ],
+      players: nextState.players.map((p) =>
+        p.id === playerEndingTurn.id ? { ...p, anchor: p.anchor - anchorDamage, reason: 0 } : p
+      ) as [PlayerState, PlayerState],
     };
-    events.push({ ...base, type: "DAMAGE", targetPlayerId: playerEndingTurn.id, amount: RULES.ANCHOR_LOSS_WHEN_REASON_ZERO });
+    events.push({ ...base, type: "DERAISON_SETTLED", playerId: playerEndingTurn.id, debt, anchorDamage });
+    // Pas de REASON_CHANGED pour la remise à 0 : DERAISON_SETTLED la porte déjà (évite un "+N Raison" trompeur dans le journal).
+    if (anchorDamage > 0) events.push({ ...base, type: "DAMAGE", targetPlayerId: playerEndingTurn.id, amount: anchorDamage });
   }
 
   const nextPlayer = getOpponent(nextState, action.playerId);
@@ -116,18 +123,31 @@ export function endTurn(state: GameState, action: EndTurnAction): ActionResult {
 
   // --- 2. Effets différés : non modélisés pour le MVP, étape ignorée -----
 
-  // --- 3-4. Régénération de Raison, pioche --------------------------------
+  // --- 3-4. Remise à niveau de la Raison (courbe de début de partie), pioche
   const playerBeforeUpkeep = nextState.players.find((p) => p.id === nextPlayer.id)!;
 
-  // "La Gueule Sous la Mer" : verrou consommé exactement ICI — cette
-  // régénération-ci est bloquée, jamais les suivantes ("jusqu'au début de
+  // "La Gueule Sous la Mer" : verrou consommé exactement ICI — cette remise
+  // à niveau-ci est bloquée, jamais les suivantes ("jusqu'au début de
   // votre prochain tour" = jusqu'à ce moment précis, pas après).
   const reasonGainLocked = playerBeforeUpkeep.statusFlags.includes(STATUS_NO_REASON_GAIN);
   const statusFlagsAfterUpkeep = playerBeforeUpkeep.statusFlags.filter((f) => f !== STATUS_NO_REASON_GAIN);
 
+  // Au début de chacun de ses tours, la Raison du joueur REMONTE à son
+  // plafond : 25 % / 50 % / 75 % de sa Raison max à ses 1er/2e/3e tours
+  // (`RULES.STARTING_REASON_CURVE`), puis 100 % à chaque tour ensuite
+  // (`reasonMax` courant, donc réduit pendant les Abysses). Remplace l'ancien
+  // +1 par tour. p1 joue les tours impairs, p2 les pairs : ceil(n / 2) =
+  // numéro de CE tour pour lui. Une dette de Déraison encore présente (subie
+  // pendant le tour adverse — la sienne propre est déjà réglée en fin de
+  // tour) n'est pas effacée : elle est déduite de la remise à niveau.
+  let reasonCap = playerBeforeUpkeep.reasonCap;
+  if (reasonCap !== undefined) {
+    reasonCap = startingReasonCap(getShipDefinition(playerBeforeUpkeep.shipId).reasonMax, Math.ceil(newTurnNumber / 2));
+  }
+  const refillTarget = reasonCeiling({ reasonMax: playerBeforeUpkeep.reasonMax, reasonCap });
   const reason = reasonGainLocked
     ? playerBeforeUpkeep.reason
-    : Math.min(playerBeforeUpkeep.reasonMax, playerBeforeUpkeep.reason + RULES.REASON_REGEN_PER_TURN);
+    : Math.max(playerBeforeUpkeep.reason, refillTarget + Math.min(0, playerBeforeUpkeep.reason));
   if (reason !== playerBeforeUpkeep.reason) {
     events.push({ ...newBase, type: "REASON_CHANGED", playerId: nextPlayer.id, delta: reason - playerBeforeUpkeep.reason });
   }
@@ -157,6 +177,7 @@ export function endTurn(state: GameState, action: EndTurnAction): ActionResult {
   const refreshedPlayer: PlayerState = {
     ...playerBeforeUpkeep,
     reason,
+    reasonCap,
     deck,
     hand,
     board: refreshedBoard,

@@ -5,6 +5,7 @@ import type { EffectAmount, EffectDefinition } from "@/game/effects/types";
 import type { GameEvent } from "@/game/events/types";
 import { nextInt, type RngState } from "@/game/rng";
 import { reduceReasonGain } from "@/game/state/anomalies";
+import { reasonAfterLoss, reasonCeiling } from "@/game/state/reason";
 import { consumeOwnDamageTakenShield, consumeReasonLossShield, consumeStructureResistanceRestoreShield } from "@/game/state/shields";
 import {
   getOpponent,
@@ -418,7 +419,7 @@ export function resolveEffect(
         const amount = reduceReasonGain(nextState, rawAmount);
         if (amount <= 0) continue;
         events.push({ ...base, type: "REASON_CHANGED", playerId: player.id, delta: amount });
-        nextState = replacePlayer(nextState, { ...player, reason: Math.min(player.reasonMax, player.reason + amount) });
+        nextState = replacePlayer(nextState, { ...player, reason: Math.min(reasonCeiling(player), player.reason + amount) });
       }
       return { state: nextState, events };
     }
@@ -435,7 +436,7 @@ export function resolveEffect(
         if (finalAmount <= 0) continue;
         const player = getPlayer(nextState, target.id);
         events.push({ ...base, type: "REASON_CHANGED", playerId: player.id, delta: -finalAmount });
-        nextState = replacePlayer(nextState, { ...player, reason: Math.max(0, player.reason - finalAmount) });
+        nextState = replacePlayer(nextState, { ...player, reason: reasonAfterLoss(player, finalAmount) });
       }
       return { state: nextState, events };
     }
@@ -595,7 +596,7 @@ export function resolveEffect(
         if (finalAmount > 0) {
           const loserPlayer = getPlayer(nextState, loser.playerId);
           events.push({ ...base, type: "REASON_CHANGED", playerId: loserPlayer.id, delta: -finalAmount });
-          nextState = replacePlayer(nextState, { ...loserPlayer, reason: Math.max(0, loserPlayer.reason - finalAmount) });
+          nextState = replacePlayer(nextState, { ...loserPlayer, reason: reasonAfterLoss(loserPlayer, finalAmount) });
         }
       }
       return { state: nextState, events };

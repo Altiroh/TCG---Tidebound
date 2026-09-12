@@ -8,6 +8,8 @@ interface ShipInstrumentClusterProps {
   /** Nom de fichier dans `public/assets/ships/illu/` (`ShipDefinition.illustration`) — silhouette neutre si absent. */
   illustration?: string;
   width?: number;
+  /** Dégâts d'Ancrage que la Déraison infligera à la fin du tour de ce joueur (`deraisonAnchorDamage`) — 0/absent hors Déraison. */
+  deraisonDamage?: number;
 }
 
 /** Ratio réel de `ship-frame-empty.png` (512×640) — dérive la hauteur du cadre à partir de `width`. */
@@ -35,7 +37,7 @@ const GAUGES_TOP = "74%";
  * `MatchBoard`/`OnlineBoard`), donc aucun autre élément du plateau n'a
  * besoin d'être redéplacé.
  */
-export function ShipInstrumentCluster({ anchor, anchorMax, reason, reasonMax, illustration, width = 172 }: ShipInstrumentClusterProps) {
+export function ShipInstrumentCluster({ anchor, anchorMax, reason, reasonMax, illustration, width = 172, deraisonDamage = 0 }: ShipInstrumentClusterProps) {
   const height = width / FRAME_ASPECT;
   const gaugeSize = width * 0.3;
 
@@ -69,6 +71,17 @@ export function ShipInstrumentCluster({ anchor, anchorMax, reason, reasonMax, il
         <ResourceGauge type="anchor" value={anchor} max={anchorMax} size={gaugeSize} />
         <ResourceGauge type="reason" value={reason} max={reasonMax} size={gaugeSize} />
       </div>
+
+      {/* Dette de Déraison : la conséquence à venir, lisible sans survol (Notion : "la dette doit être très visible sur le board"). */}
+      {reason < 0 && (
+        <div
+          className="absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-rose-600/80 px-2 py-0.5 text-[10px] font-semibold text-white shadow-[0_2px_10px_rgba(0,0,0,0.5)] backdrop-blur-sm"
+          style={{ top: "90%" }}
+          title="Déraison : si la Raison n'est pas remontée à 0 d'ici là, chaque point sous 0 inflige 1 dégât d'Ancrage à la fin du tour de ce joueur."
+        >
+          ⚓ −{deraisonDamage} en fin de tour
+        </div>
+      )}
     </div>
   );
 }

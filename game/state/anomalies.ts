@@ -2,6 +2,7 @@ import { getCardDefinition } from "@/game/cards/sets/core";
 import type { CardDefinition, CardInstance } from "@/game/cards/types";
 import type { GameEvent } from "@/game/events/types";
 import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
+import { reasonAfterLoss } from "@/game/state/reason";
 import { getPlayer, type GameState, type PendingChoice, type PlayerId, type PlayerState } from "@/game/state/types";
 
 /**
@@ -71,7 +72,7 @@ export function applyCardPlayedAnomalies(
     nextState = replaceUnit(nextState, owner.id, unit.instanceId, (u) => markOncePerTurnUsed(u, key, turnNumber));
     const player = getPlayer(nextState, affectedPlayerId);
     events.push({ ...base, type: "REASON_CHANGED", playerId: affectedPlayerId, delta: -amount });
-    nextState = replacePlayer(nextState, { ...player, reason: Math.max(0, player.reason - amount) });
+    nextState = replacePlayer(nextState, { ...player, reason: reasonAfterLoss(player, amount) });
   }
 
   return { state: nextState, events };
@@ -102,7 +103,7 @@ export function applyPermanentLeftAnomalies(
     nextState = replaceUnit(nextState, owner.id, unit.instanceId, (u) => markOncePerTurnUsed(u, key, turnNumber));
     const player = getPlayer(nextState, affectedPlayerId);
     events.push({ ...base, type: "REASON_CHANGED", playerId: affectedPlayerId, delta: -amount });
-    nextState = replacePlayer(nextState, { ...player, reason: Math.max(0, player.reason - amount) });
+    nextState = replacePlayer(nextState, { ...player, reason: reasonAfterLoss(player, amount) });
   }
 
   return { state: nextState, events };

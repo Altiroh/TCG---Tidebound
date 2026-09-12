@@ -36,16 +36,24 @@ export const RULES = {
   /** Raison max "standard" si un Navire ne la précise pas. */
   DEFAULT_REASON_MAX: 10,
   /**
-   * Un joueur ne commence PAS à sa Raison maximale : départ à 50% de
-   * `reasonMax` (arrondi à l'entier inférieur — l'arrondi exact reste
-   * listé comme "à définir" par le cadrage, ceci est l'hypothèse de
-   * travail retenue en attendant).
+   * Courbe de début de partie (Notion "Gameplay — Raison, Déraison, healing
+   * & passifs de Navires", 2026-09-12, À PROTOTYPER — remplace l'ancien
+   * départ à 50 % ET l'ancienne récupération de +1 par tour) : au début de
+   * son 1er, 2e, 3e, 4e tour, la Raison du joueur est REMISE à cette
+   * fraction de `reasonMax` (arrondi au supérieur), qui sert aussi de
+   * plafond aux gains pendant ce tour. Au-delà de la dernière entrée : remise
+   * à 100 % à chaque début de tour (Courlis 12 : 3 / 6 / 9 / 12 / 12…).
+   * Piste plus lente déjà envisagée : [0.2, 0.4, 0.6, 0.8, 1].
    */
-  STARTING_REASON_RATIO: 0.5,
-  /** Récupération naturelle de Raison à chaque début de tour. Volontairement faible. */
-  REASON_REGEN_PER_TURN: 1,
-  /** Tant que la Raison d'un joueur est à 0 à la FIN de son tour, il perd ceci en Ancrage. */
-  ANCHOR_LOSS_WHEN_REASON_ZERO: 1,
+  STARTING_REASON_CURVE: [0.25, 0.5, 0.75, 1] as readonly number[],
+
+  // --- Déraison (Notion "Gameplay — Raison, Déraison, healing & passifs de
+  // Navires", 2026-09-12) : PISTE À PROTOTYPER, pas verrouillée — valeurs
+  // regroupées ici pour être ajustées au playtest sans toucher au moteur.
+  /** La Raison peut descendre jusqu'à -(ratio × Raison max), arrondi à l'entier inférieur (10 → -5, 12 → -6, 8 → -4). */
+  DERAISON_FLOOR_RATIO: 0.5,
+  /** Dégâts d'Ancrage par point de Déraison, réglés à la fin du tour du joueur (après tous les effets de fin de tour). Remplace l'ancienne perte d'1 Ancrage à 0 Raison. */
+  DERAISON_ANCHOR_DAMAGE_PER_POINT: 1,
   /**
    * Échelle de coûts en Raison verrouillée par le cadrage : 1-5 = standard,
    * 6 = exceptionnel, 7 = extrême. Le moteur ne plafonne pas le coût d'une

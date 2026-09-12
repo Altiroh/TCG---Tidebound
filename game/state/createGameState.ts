@@ -3,6 +3,7 @@ import type { CardInstance } from "@/game/cards/types";
 import { getShipDefinition } from "@/game/environment/shipData";
 import { RULES } from "@/game/rules/constants";
 import { createSeed, shuffle } from "@/game/rng";
+import { startingReasonCap } from "@/game/state/reason";
 import type { GameState, PlayerId, PlayerState } from "@/game/state/types";
 import type { DeckList } from "@/game/cards/decks/preconstructed";
 
@@ -63,17 +64,19 @@ export function createGameState(input: CreateGameStateInput): GameState {
   const ship1 = getShipDefinition(input.player1.deck.shipId);
   const ship2 = getShipDefinition(input.player2.deck.shipId);
 
-  // Les deux joueurs commencent à 50% de leur Raison maximale, pas au
-  // maximum (Notion "Moteur de partie — déroulement, Raison & chaînes
-  // d'effets", "Principes déjà retenus", verrouillage du 2026-09-10).
-  const startingReason = (reasonMax: number) => Math.floor(reasonMax * RULES.STARTING_REASON_RATIO);
+  // Courbe de début de partie : chaque joueur commence au plafond de son 1er
+  // tour (25 % de sa Raison max, arrondi au supérieur), relevé ensuite au
+  // début de ses tours suivants (`game/actions/endTurn.ts`).
+  const cap1 = startingReasonCap(ship1.reasonMax, 1) ?? ship1.reasonMax;
+  const cap2 = startingReasonCap(ship2.reasonMax, 1) ?? ship2.reasonMax;
 
   const player1: PlayerState = {
     id: input.player1.id,
     shipId: ship1.id,
     anchor: ship1.startingAnchor,
-    reason: startingReason(ship1.reasonMax),
+    reason: cap1,
     reasonMax: ship1.reasonMax,
+    reasonCap: cap1,
     deck: player1Remaining,
     hand: player1Hand,
     board: [],
@@ -85,8 +88,9 @@ export function createGameState(input: CreateGameStateInput): GameState {
     id: input.player2.id,
     shipId: ship2.id,
     anchor: ship2.startingAnchor,
-    reason: startingReason(ship2.reasonMax),
+    reason: cap2,
     reasonMax: ship2.reasonMax,
+    reasonCap: cap2,
     deck: player2Remaining,
     hand: player2Hand,
     board: [],

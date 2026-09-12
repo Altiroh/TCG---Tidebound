@@ -2,6 +2,7 @@ import type { CardInstance } from "@/game/cards/types";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { computeEffectiveStats } from "@/game/cards/stats";
 import { getShipDefinition } from "@/game/environment/shipData";
+import { reasonAfterLoss } from "@/game/state/reason";
 import type { GameEvent } from "@/game/events/types";
 import { processTrigger } from "@/game/triggers/triggerBus";
 import {
@@ -228,7 +229,7 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
       nextState = {
         ...nextState,
         players: nextState.players.map((p) =>
-          p.id === opponent.id ? { ...p, reason: Math.max(0, opponentAfterDamage.reason - reasonLoss) } : p
+          p.id === opponent.id ? { ...p, reason: reasonAfterLoss(opponentAfterDamage, reasonLoss) } : p
         ) as [PlayerState, PlayerState],
       };
     }
@@ -317,7 +318,7 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
     nextState = {
       ...nextState,
       players: nextState.players.map((p) =>
-        p.id === attackerPlayer.id ? { ...p, reason: Math.max(0, attackerControllerAfter.reason - postAttackReasonLoss) } : p
+        p.id === attackerPlayer.id ? { ...p, reason: reasonAfterLoss(attackerControllerAfter, postAttackReasonLoss) } : p
       ) as [PlayerState, PlayerState],
     };
   }

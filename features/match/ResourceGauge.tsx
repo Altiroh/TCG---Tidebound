@@ -21,6 +21,9 @@ interface ResourceGaugeProps {
  * différent. Départage à midi, sens horaire — convention classique de
  * jauge circulaire ("pie timer").
  *
+ * Déraison (Raison négative) : disque entièrement vidé, voile rouge qui
+ * pulse et valeur en rouge — la dette doit se voir de loin sur le plateau.
+ *
  * Le maximum ne s'affiche qu'au survol, sous la valeur actuelle séparée
  * par un petit trait — la valeur courante reste seule visible le reste du
  * temps pour ne pas encombrer le médaillon.
@@ -28,6 +31,7 @@ interface ResourceGaugeProps {
 export function ResourceGauge({ type, value, max, size = 56 }: ResourceGaugeProps) {
   const pct = max > 0 ? Math.max(0, Math.min(1, value / max)) : 0;
   const depletedAngle = (1 - pct) * 360;
+  const inDebt = value < 0;
   // Impact visible sur une attaque directe du Navire (Ancrage seul — une perte de Raison n'est pas un "coup" à faire ressentir de la même façon).
   const hit = useDecreaseFlash(type === "anchor" ? value : Infinity);
 
@@ -46,9 +50,20 @@ export function ResourceGauge({ type, value, max, size = 56 }: ResourceGaugeProp
           background: `conic-gradient(rgba(4,8,16,0.82) ${depletedAngle}deg, transparent ${depletedAngle}deg)`,
         }}
       />
+      {inDebt && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute animate-pulse rounded-full bg-rose-600/45 shadow-[0_0_14px_4px_rgba(244,63,94,0.55)]"
+          style={{ inset: "10%" }}
+        />
+      )}
       {/* Valeur courante — toujours centrée, indépendamment du survol (le bloc maximum ci-dessous est positionné en absolu, hors flux, pour ne jamais la décaler). */}
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-[13px] font-bold tabular-nums text-white [font-family:var(--font-card-title)] [text-shadow:0_1px_3px_rgba(0,0,0,0.95)]">
+        <span
+          className={`text-[13px] font-bold tabular-nums [font-family:var(--font-card-title)] [text-shadow:0_1px_3px_rgba(0,0,0,0.95)] ${
+            inDebt ? "text-rose-200" : "text-white"
+          }`}
+        >
           {value}
         </span>
       </div>

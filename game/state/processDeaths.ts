@@ -4,6 +4,7 @@ import type { CardInstance } from "@/game/cards/types";
 import type { TideStateName } from "@/game/environment/types";
 import type { GameEvent } from "@/game/events/types";
 import { processTrigger } from "@/game/triggers/triggerBus";
+import { reasonAfterLoss } from "@/game/state/reason";
 import type { GameState, PlayerState } from "@/game/state/types";
 
 function shouldDie(unit: CardInstance, tideState: TideStateName, controller: PlayerState): boolean {
@@ -166,7 +167,7 @@ export function processDeaths(
         ...player,
         board,
         graveyard,
-        reason: Math.max(0, player.reason - equipReasonLoss),
+        reason: reasonAfterLoss(player, equipReasonLoss),
       };
       next = {
         ...next,
