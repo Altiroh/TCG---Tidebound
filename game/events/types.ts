@@ -31,7 +31,8 @@ export type GameEventType =
   | "STATUS_CHANGED"
   | "REACTION_WINDOW_OPENED"
   | "REACTION_ACTIVATED"
-  | "REACTION_PASSED";
+  | "REACTION_PASSED"
+  | "HAND_CARD_REVEALED";
 
 export interface BaseGameEvent {
   type: GameEventType;
@@ -219,6 +220,19 @@ export interface ReactionPassedEvent extends BaseGameEvent {
   playerId: PlayerId;
 }
 
+/**
+ * Une carte de la main de `ownerId` a été révélée (ex: Guetteur de Brume,
+ * La Bouée qui Regardait, Cloche Immergée) — purement informatif : ne
+ * déplace ni ne modifie la carte elle-même, jamais suffisant à lui seul
+ * pour reconstituer l'état (l'UI décide qui a le droit de voir `cardId`).
+ */
+export interface HandCardRevealedEvent extends BaseGameEvent {
+  type: "HAND_CARD_REVEALED";
+  ownerId: PlayerId;
+  instanceId: string;
+  cardId: string;
+}
+
 export type GameEvent =
   | DrawCardEvent
   | PlayCardEvent
@@ -244,4 +258,5 @@ export type GameEvent =
   | StatusChangedEvent
   | ReactionWindowOpenedEvent
   | ReactionActivatedEvent
-  | ReactionPassedEvent;
+  | ReactionPassedEvent
+  | HandCardRevealedEvent;

@@ -1,6 +1,7 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
 import type { EffectContext } from "@/game/effects/resolveEffect";
 import { resolveEffect } from "@/game/effects/resolveEffect";
+import type { EffectDefinition } from "@/game/effects/types";
 import type { GameEvent } from "@/game/events/types";
 import {
   assertGameActive,
@@ -12,6 +13,18 @@ import {
 } from "@/game/rules/validation";
 import { getPlayer, type GameState, type PlayerState } from "@/game/state/types";
 import type { ActionResult, BreakObjectAction } from "@/game/actions/types";
+
+/** Cartes de la défausse de `playerId` éligibles pour l'effet `moveGraveyardCardToHand` fourni (filtrées par type/coût max, cf. `EffectDefinition.filter`). */
+function eligibleGraveyardCards(state: GameState, playerId: string, effect: EffectDefinition) {
+  const player = getPlayer(state, playerId);
+  const allowedTypes = effect.filter?.cardTypes ?? (effect.filter?.cardType ? [effect.filter.cardType] : undefined);
+  return player.graveyard.filter((card) => {
+    const cardDef = getCardDefinition(card.cardId);
+    if (allowedTypes && !(allowedTypes as readonly string[]).includes(cardDef.type)) return false;
+    if (effect.filter?.maxCost !== undefined && cardDef.cost > effect.filter.maxCost) return false;
+    return true;
+  });
+}
 
 function validate(state: GameState, action: BreakObjectAction) {
   const generalChecks = combine(
@@ -34,6 +47,23 @@ function validate(state: GameState, action: BreakObjectAction) {
   const needsTarget = (def.onBreakEffects ?? []).some((e) => e.target.kind === "chosenUnit");
   if (needsTarget && !action.targetInstanceId) {
     return { ok: false as const, error: "Briser cet Objet nécessite une cible." };
+  }
+
+  // "Si possible" (même convention que le ciblage d'Équipement, cf.
+  // playCard.ts) : une carte de défausse n'est réclamée que s'il en existe
+  // au moins une éligible — sinon l'effet se résout sans rien récupérer.
+  const graveyardEffect = (def.onBreakEffects ?? []).find((e) => e.type === "moveGraveyardCardToHand");
+  if (graveyardEffect) {
+    const eligible = eligibleGraveyardCards(state, action.playerId, graveyardEffect);
+    if (action.chosenGraveyardInstanceId) {
+      // Un choix explicite doit toujours être valide, même s'il n'était pas
+      // le SEUL disponible — indépendant du cas "aucune carte éligible" ci-dessous.
+      if (!eligible.some((c) => c.instanceId === action.chosenGraveyardInstanceId)) {
+        return { ok: false as const, error: "Cette carte de la défausse n'est pas une cible valide." };
+      }
+    } else if (eligible.length > 0) {
+      return { ok: false as const, error: "Briser cet Objet nécessite de choisir une carte dans la défausse." };
+    }
   }
 
   return { ok: true as const };
@@ -84,6 +114,7 @@ export function breakObject(state: GameState, action: BreakObjectAction): Action
     controllerId: player.id,
     sourceInstanceId: unit.instanceId,
     chosenTargetInstanceId: action.targetInstanceId,
+    chosenGraveyardInstanceId: action.chosenGraveyardInstanceId,
     turnNumber: state.turnNumber,
   };
 

@@ -1570,3 +1570,947 @@ describe("engine.dispatch - Harponneur du Dernier Quai : bonus de combat pendant
     expect(result.state.players[0].reason).toBe(4); // 5 - 1
   });
 });
+
+describe("engine.dispatch - Boucliers réactifs 'une fois par tour' (Vieux Loup de Mer, Second au Visage Pâle)", () => {
+  it("Vieux Loup de Mer réduit de 1 la première perte de Raison du tour, mais pas la seconde", () => {
+    const vieuxLoup = instance("vieux-loup-de-mer", "p1"); // shield inconditionnel
+    const marinA = instance("marin-aux-yeux-rouges", "p1"); // coût 2, "chaque joueur perd 1 Raison"
+    const marinB = instance("marin-aux-yeux-rouges", "p1");
+    const state = testGameState({
+      players: [
+        testPlayer("p1", { board: [vieuxLoup], hand: [marinA, marinB], reason: 10 }),
+        testPlayer("p2", { shipId: "lerrant", reason: 10 }),
+      ],
+    });
+
+    const first = dispatch(state, { type: "playCard", playerId: "p1", instanceId: marinA.instanceId });
+    expect(first.ok).toBe(true);
+    if (!first.ok) return;
+    // p1 : 10 - 2 (coût) - 0 (perte de 1 Raison intégralement absorbée par le bouclier) = 8.
+    expect(first.state.players[0].reason).toBe(8);
+    // p2 : pas de bouclier sur son plateau, perd normalement 1 Raison.
+    expect(first.state.players[1].reason).toBe(9);
+
+    const second = dispatch(first.state, { type: "playCard", playerId: "p1", instanceId: marinB.instanceId });
+    expect(second.ok).toBe(true);
+    if (!second.ok) return;
+    // Bouclier déjà consommé ce tour-ci : la seconde perte de Raison s'applique intégralement.
+    expect(second.state.players[0].reason).toBe(5); // 8 - 2 (coût) - 1
+    expect(second.state.players[1].reason).toBe(8); // 9 - 1
+  });
+
+  it("Second au Visage Pâle ne réduit la perte de Raison que pendant Tempête ou Abysses", () => {
+    const second = instance("second-au-visage-pale", "p1");
+    const marin = instance("marin-aux-yeux-rouges", "p1");
+    const stateInTempete = testGameState({
+      players: [
+        testPlayer("p1", { board: [second], hand: [marin], reason: 10 }),
+        testPlayer("p2", { shipId: "lerrant", reason: 10 }),
+      ],
+      environment: testEnvironment({ tideState: "tempete" }),
+    });
+
+    const inTempete = dispatch(stateInTempete, { type: "playCard", playerId: "p1", instanceId: marin.instanceId });
+    expect(inTempete.ok).toBe(true);
+    if (!inTempete.ok) return;
+    expect(inTempete.state.players[0].reason).toBe(8); // 10 - 2 (coût) - 0 (bouclier actif en Tempête)
+
+    const marinCalme = instance("marin-aux-yeux-rouges", "p1");
+    const stateInCalme = testGameState({
+      players: [
+        testPlayer("p1", { board: [instance("second-au-visage-pale", "p1")], hand: [marinCalme], reason: 10 }),
+        testPlayer("p2", { shipId: "lerrant", reason: 10 }),
+      ],
+      environment: testEnvironment({ tideState: "calme" }),
+    });
+    const inCalme = dispatch(stateInCalme, { type: "playCard", playerId: "p1", instanceId: marinCalme.instanceId });
+    expect(inCalme.ok).toBe(true);
+    if (!inCalme.ok) return;
+    expect(inCalme.state.players[0].reason).toBe(7); // 10 - 2 (coût) - 1 (bouclier inactif hors Tempête/Abysses)
+  });
+});
+
+describe("engine.dispatch - Brise-Vague de Fortune : bouclier de dégâts de Marée au Navire (Tempête)", () => {
+  it("réduit de 1 les dégâts de Marée subis par SON Navire pendant Tempête, sans affecter l'adversaire", () => {
+    const briseVague = instance("brise-vague-de-fortune", "p1");
+    const filler = instance("marin-aux-yeux-rouges", "p2");
+    const state = testGameState({
+      turnNumber: 1, // fin de tour -> newTurnNumber 2 (pair) : pas de tick de Marée, l'état Tempête configuré ci-dessous persiste.
+      activePlayerId: "p1",
+      priorityPlayerId: "p1",
+      players: [
+        testPlayer("p1", { shipId: "lerrant", anchor: 20, board: [briseVague], reason: 5 }),
+        testPlayer("p2", { shipId: "lerrant", anchor: 20, deck: [filler], reason: 5 }),
+      ],
+      environment: testEnvironment({ tideState: "tempete", tideRemainingTurns: 5 }),
+    });
+
+    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // 1 dégât d'Ancrage de Tempête, intégralement absorbé par le bouclier.
+    expect(result.state.players[0].anchor).toBe(20);
+    // p2 n'a pas de bouclier : subit normalement le dégât de Tempête.
+    expect(result.state.players[1].anchor).toBe(19);
+  });
+});
+
+describe("engine.dispatch - Cage de Flottaison : bouclier de dégâts DIRECTS au Navire (une fois par tour)", () => {
+  it("réduit de 1 la première attaque directe du tour, pas la seconde", () => {
+    const cage = instance("cage-de-flottaison", "p2");
+    const attacker1 = instance("murene-aveugle", "p1"); // 3/1
+    const attacker2 = instance("poisson-lanterne", "p1"); // 1/1
+    const state = testGameState({
+      phase: "combatPhase",
+      players: [
+        testPlayer("p1", { board: [attacker1, attacker2] }),
+        testPlayer("p2", { shipId: "lerrant", anchor: 20, board: [cage] }),
+      ],
+    });
+
+    const first = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attacker1.instanceId });
+    expect(first.ok).toBe(true);
+    if (!first.ok) return;
+    expect(first.state.players[1].anchor).toBe(18); // 20 - (3 - 1 bouclier)
+
+    const second = dispatch(first.state, { type: "attack", playerId: "p1", attackerInstanceId: attacker2.instanceId });
+    expect(second.ok).toBe(true);
+    if (!second.ok) return;
+    expect(second.state.players[1].anchor).toBe(17); // 18 - 1 (bouclier déjà consommé ce tour-ci)
+  });
+});
+
+describe("engine.dispatch - Le Filet qui Respire : bouclier de Puissance de l'attaquant (une fois par tour)", () => {
+  it("réduit de 1 la Puissance de la première Créature attaquant directement, pas la seconde", () => {
+    const filet = instance("le-filet-qui-respire", "p2");
+    const attacker1 = instance("murene-aveugle", "p1"); // 3/1
+    const attacker2 = instance("poisson-lanterne", "p1"); // 1/1
+    const state = testGameState({
+      phase: "combatPhase",
+      players: [
+        testPlayer("p1", { board: [attacker1, attacker2] }),
+        testPlayer("p2", { shipId: "lerrant", anchor: 20, board: [filet] }),
+      ],
+    });
+
+    const first = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attacker1.instanceId });
+    expect(first.ok).toBe(true);
+    if (!first.ok) return;
+    expect(first.state.players[1].anchor).toBe(18); // 20 - (3 - 1 bouclier de Puissance)
+
+    const second = dispatch(first.state, { type: "attack", playerId: "p1", attackerInstanceId: attacker2.instanceId });
+    expect(second.ok).toBe(true);
+    if (!second.ok) return;
+    expect(second.state.players[1].anchor).toBe(17); // 18 - 1 (bouclier déjà consommé ce tour-ci)
+  });
+});
+
+describe("engine.dispatch - Baleine aux Cicatrices Blanches : bouclier de dégâts de combat (attaque et défense)", () => {
+  it("réduit de 1 les dégâts qu'elle subit en défense, sans affecter la riposte qu'elle inflige", () => {
+    const attacker = instance("requin-balafre", "p1"); // 4/2
+    const baleine = instance("baleine-aux-cicatrices-blanches", "p2"); // 5/6
+    const state = testGameState({
+      phase: "combatPhase",
+      players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2", { board: [baleine] })],
+    });
+
+    const result = dispatch(state, {
+      type: "attack",
+      playerId: "p1",
+      attackerInstanceId: attacker.instanceId,
+      defenderInstanceId: baleine.instanceId,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const baleineAfter = result.state.players[1].board.find((u) => u.instanceId === baleine.instanceId);
+    expect(baleineAfter?.damageMarked).toBe(3); // 4 - 1 (bouclier)
+    // Riposte inchangée (5 Puissance) : l'attaquant (2 PV) meurt.
+    expect(result.state.players[0].board).toHaveLength(0);
+  });
+
+  it("réduit de 1 les dégâts de riposte qu'elle subit en tant qu'attaquante", () => {
+    const baleine = instance("baleine-aux-cicatrices-blanches", "p1"); // 5/6
+    const defender = instance("murene-aveugle", "p2"); // 3/1
+    const state = testGameState({
+      phase: "combatPhase",
+      players: [testPlayer("p1", { board: [baleine] }), testPlayer("p2", { board: [defender] })],
+    });
+
+    const result = dispatch(state, {
+      type: "attack",
+      playerId: "p1",
+      attackerInstanceId: baleine.instanceId,
+      defenderInstanceId: defender.instanceId,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.players[1].board).toHaveLength(0); // défenseur mort (1 PV < 5 dégâts)
+    const baleineAfter = result.state.players[0].board.find((u) => u.instanceId === baleine.instanceId);
+    expect(baleineAfter?.damageMarked).toBe(2); // 3 (Puissance du défenseur) - 1 (bouclier)
+  });
+});
+
+describe("engine.dispatch - Wood Vy : restauration de Résistance d'une Structure alliée (une fois par tour)", () => {
+  it("réduit de 1 les dégâts de combat subis par une Structure alliée", () => {
+    const woodVy = instance("wood-vy", "p1");
+    const structure = instance("caisses-arrimees", "p1"); // 3 PV, pas de bouclier propre
+    const attacker = instance("murene-aveugle", "p2"); // 3/1
+    const state = testGameState({
+      phase: "combatPhase",
+      activePlayerId: "p2",
+      priorityPlayerId: "p2",
+      players: [testPlayer("p1", { board: [woodVy, structure] }), testPlayer("p2", { board: [attacker] })],
+    });
+
+    const result = dispatch(state, {
+      type: "attack",
+      playerId: "p2",
+      attackerInstanceId: attacker.instanceId,
+      defenderInstanceId: structure.instanceId,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const structureAfter = result.state.players[0].board.find((u) => u.instanceId === structure.instanceId);
+    expect(structureAfter?.damageMarked).toBe(2); // 3 - 1 (restauration de Wood Vy)
+    // La Structure n'a pas de Puissance : pas de riposte, l'attaquant reste indemne.
+    const attackerAfter = result.state.players[1].board.find((u) => u.instanceId === attacker.instanceId);
+    expect(attackerAfter?.damageMarked).toBe(0);
+  });
+});
+
+describe("engine.dispatch - Auras/stats dynamiques (computeEffectiveStats étendu au plateau du contrôleur)", () => {
+  it("Bernard-l'Ermite d'Acier gagne +1 Résistance tant qu'une Structure visible est contrôlée", () => {
+    const bernard = instance("bernard-lermite-dacier", "p1"); // 1/3
+    const structure = instance("caisses-arrimees", "p1"); // visible en Calme/Houle
+    const attacker = instance("murene-aveugle", "p2"); // 3/1
+    const state = testGameState({
+      phase: "combatPhase",
+      activePlayerId: "p2",
+      priorityPlayerId: "p2",
+      players: [testPlayer("p1", { board: [bernard, structure] }), testPlayer("p2", { board: [attacker] })],
+      environment: testEnvironment({ tideState: "calme" }),
+    });
+
+    const result = dispatch(state, {
+      type: "attack",
+      playerId: "p2",
+      attackerInstanceId: attacker.instanceId,
+      defenderInstanceId: bernard.instanceId,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // 3 PV (base) + 1 (Structure visible) = 4 : survit à 3 dégâts.
+    const bernardAfter = result.state.players[0].board.find((u) => u.instanceId === bernard.instanceId);
+    expect(bernardAfter?.damageMarked).toBe(3);
+    // Riposte de Bernard (1 Puissance, non affectée par son propre bonus de Résistance) : la Murène (1 PV) meurt.
+    expect(result.state.players[1].board).toHaveLength(0);
+  });
+
+  it("Bernard-l'Ermite d'Acier ne gagne rien si sa Structure n'est pas visible pendant la Marée courante", () => {
+    const bernard = instance("bernard-lermite-dacier", "p1"); // 1/3
+    const structure = instance("caisses-arrimees", "p1"); // visible en Calme/Houle uniquement
+    const attacker = instance("murene-aveugle", "p2"); // 3/1
+    const state = testGameState({
+      phase: "combatPhase",
+      activePlayerId: "p2",
+      priorityPlayerId: "p2",
+      players: [testPlayer("p1", { board: [bernard, structure] }), testPlayer("p2", { board: [attacker] })],
+      environment: testEnvironment({ tideState: "abysses" }), // Caisses Arrimées invisible ici
+    });
+
+    const result = dispatch(state, {
+      type: "attack",
+      playerId: "p2",
+      attackerInstanceId: attacker.instanceId,
+      defenderInstanceId: bernard.instanceId,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // 3 PV (base, sans bonus) : meurt exactement sous 3 dégâts (la Structure, elle, reste sur le plateau).
+    expect(result.state.players[0].board.some((u) => u.instanceId === bernard.instanceId)).toBe(false);
+  });
+
+  it("Matelot Insomniaque gagne +1 Puissance tant que la Raison de son contrôleur est ≤ 4", () => {
+    const matelot = instance("matelot-insomniaque", "p1"); // 2/3
+    const lowReasonState = testGameState({
+      phase: "combatPhase",
+      players: [testPlayer("p1", { board: [matelot], reason: 4 }), testPlayer("p2", { shipId: "lerrant", anchor: 20 })],
+    });
+    const buffed = dispatch(lowReasonState, { type: "attack", playerId: "p1", attackerInstanceId: matelot.instanceId });
+    expect(buffed.ok).toBe(true);
+    if (!buffed.ok) return;
+    expect(buffed.state.players[1].anchor).toBe(17); // 20 - (2 + 1 bonus)
+
+    const highReasonState = testGameState({
+      phase: "combatPhase",
+      players: [testPlayer("p1", { board: [instance("matelot-insomniaque", "p1")], reason: 5 }), testPlayer("p2", { shipId: "lerrant", anchor: 20 })],
+    });
+    const attackerId = highReasonState.players[0].board[0]!.instanceId;
+    const unbuffed = dispatch(highReasonState, { type: "attack", playerId: "p1", attackerInstanceId: attackerId });
+    expect(unbuffed.ok).toBe(true);
+    if (!unbuffed.ok) return;
+    expect(unbuffed.state.players[1].anchor).toBe(18); // 20 - 2 (pas de bonus, Raison > 4)
+  });
+
+  it("Capitaine Sans Sommeil accorde +1 Résistance aux AUTRES Marins tant que sa Raison est ≤ 3, jamais à lui-même", () => {
+    const capitaine = instance("capitaine-sans-sommeil", "p1"); // 3/5
+    const autreMarin = instance("marin-des-jetees", "p1"); // 1/2
+    const attacker = instance("plongeur-des-epaves", "p2"); // 2/2
+    const state = testGameState({
+      phase: "combatPhase",
+      activePlayerId: "p2",
+      priorityPlayerId: "p2",
+      players: [testPlayer("p1", { board: [capitaine, autreMarin], reason: 3 }), testPlayer("p2", { board: [attacker] })],
+    });
+
+    const result = dispatch(state, {
+      type: "attack",
+      playerId: "p2",
+      attackerInstanceId: attacker.instanceId,
+      defenderInstanceId: autreMarin.instanceId,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // 2 PV (base) + 1 (aura de Capitaine Sans Sommeil, Raison ≤ 3) = 3 : survit à 2 dégâts.
+    const autreMarinAfter = result.state.players[0].board.find((u) => u.instanceId === autreMarin.instanceId);
+    expect(autreMarinAfter?.damageMarked).toBe(2);
+    expect(result.state.players[0].board).toHaveLength(2); // les deux Marins survivent
+
+    const stateAboveThreshold = testGameState({
+      phase: "combatPhase",
+      activePlayerId: "p2",
+      priorityPlayerId: "p2",
+      players: [
+        testPlayer("p1", { board: [instance("capitaine-sans-sommeil", "p1"), instance("marin-des-jetees", "p1")], reason: 4 }),
+        testPlayer("p2", { board: [instance("plongeur-des-epaves", "p2")] }),
+      ],
+    });
+    const [capitaine2, autreMarin2] = stateAboveThreshold.players[0].board;
+    const [attacker2] = stateAboveThreshold.players[1].board;
+    const noBuff = dispatch(stateAboveThreshold, {
+      type: "attack",
+      playerId: "p2",
+      attackerInstanceId: attacker2!.instanceId,
+      defenderInstanceId: autreMarin2!.instanceId,
+    });
+    expect(noBuff.ok).toBe(true);
+    if (!noBuff.ok) return;
+    // Raison > 3 : pas d'aura, 2 PV de base meurent exactement sous 2 dégâts.
+    expect(noBuff.state.players[0].board.some((u) => u.instanceId === autreMarin2!.instanceId)).toBe(false);
+    expect(noBuff.state.players[0].board.some((u) => u.instanceId === capitaine2!.instanceId)).toBe(true);
+  });
+
+  it("Lampe de Pont Rouge donne +1 Puissance et +1 Résistance à l'unité équipée pendant Houle ou Tempête", () => {
+    const marin = instance("marin-des-jetees", "p1"); // 1/2
+    const lampe = instance("lampe-de-pont-rouge", "p1", { attachedToInstanceId: marin.instanceId });
+    const stateInHoule = testGameState({
+      phase: "combatPhase",
+      players: [testPlayer("p1", { board: [marin, lampe] }), testPlayer("p2", { shipId: "lerrant", anchor: 20 })],
+      environment: testEnvironment({ tideState: "houle" }),
+    });
+    const buffed = dispatch(stateInHoule, { type: "attack", playerId: "p1", attackerInstanceId: marin.instanceId });
+    expect(buffed.ok).toBe(true);
+    if (!buffed.ok) return;
+    expect(buffed.state.players[1].anchor).toBe(18); // 20 - (1 + 1 bonus)
+
+    const marinCalme = instance("marin-des-jetees", "p1");
+    const lampeCalme = instance("lampe-de-pont-rouge", "p1", { attachedToInstanceId: marinCalme.instanceId });
+    const stateInCalme = testGameState({
+      phase: "combatPhase",
+      players: [testPlayer("p1", { board: [marinCalme, lampeCalme] }), testPlayer("p2", { shipId: "lerrant", anchor: 20 })],
+      environment: testEnvironment({ tideState: "calme" }),
+    });
+    const unbuffed = dispatch(stateInCalme, { type: "attack", playerId: "p1", attackerInstanceId: marinCalme.instanceId });
+    expect(unbuffed.ok).toBe(true);
+    if (!unbuffed.ok) return;
+    expect(unbuffed.state.players[1].anchor).toBe(19); // 20 - 1 (pas de bonus hors Houle/Tempête)
+  });
+
+  it("Masque de Plongée Fissuré donne +2 Résistance à l'unité équipée pendant Abysses uniquement", () => {
+    const marin = instance("marin-des-jetees", "p1"); // 1/2
+    const masque = instance("masque-de-plongee-fissure", "p1", { attachedToInstanceId: marin.instanceId });
+    const attacker = instance("murene-aveugle", "p2"); // 3/1
+    const stateInAbysses = testGameState({
+      phase: "combatPhase",
+      activePlayerId: "p2",
+      priorityPlayerId: "p2",
+      players: [testPlayer("p1", { board: [marin, masque] }), testPlayer("p2", { board: [attacker] })],
+      environment: testEnvironment({ tideState: "abysses" }),
+    });
+
+    const buffed = dispatch(stateInAbysses, {
+      type: "attack",
+      playerId: "p2",
+      attackerInstanceId: attacker.instanceId,
+      defenderInstanceId: marin.instanceId,
+    });
+    expect(buffed.ok).toBe(true);
+    if (!buffed.ok) return;
+    // 2 PV (base) + 2 (Abysses) = 4 : survit à 3 dégâts.
+    const marinAfter = buffed.state.players[0].board.find((u) => u.instanceId === marin.instanceId);
+    expect(marinAfter?.damageMarked).toBe(3);
+    // Riposte du Marin (1 Puissance) : la Murène (1 PV) meurt.
+    expect(buffed.state.players[1].board).toHaveLength(0);
+
+    const marinCalme = instance("marin-des-jetees", "p1");
+    const masqueCalme = instance("masque-de-plongee-fissure", "p1", { attachedToInstanceId: marinCalme.instanceId });
+    const attackerCalme = instance("murene-aveugle", "p2");
+    const stateInCalme = testGameState({
+      phase: "combatPhase",
+      activePlayerId: "p2",
+      priorityPlayerId: "p2",
+      players: [testPlayer("p1", { board: [marinCalme, masqueCalme] }), testPlayer("p2", { board: [attackerCalme] })],
+      environment: testEnvironment({ tideState: "calme" }),
+    });
+    const unbuffed = dispatch(stateInCalme, {
+      type: "attack",
+      playerId: "p2",
+      attackerInstanceId: attackerCalme.instanceId,
+      defenderInstanceId: marinCalme.instanceId,
+    });
+    expect(unbuffed.ok).toBe(true);
+    if (!unbuffed.ok) return;
+    // Hors Abysses : 2 PV de base meurent exactement sous 3 dégâts.
+    expect(unbuffed.state.players[0].board.some((u) => u.instanceId === marinCalme.instanceId)).toBe(false);
+  });
+});
+
+describe("engine.dispatch - Guetteur de Brume : révèle une carte adverse la 1ère fois par tour qu'il réagit pendant votre tour", () => {
+  it("se déclenche quand l'ADVERSAIRE active une réaction pendant le tour de son contrôleur", () => {
+    const guetteurDeBrume = instance("guetteur-de-brume", "p1");
+    const cible = instance("baleine-aux-cicatrices-blanches", "p1"); // 5/6, cible potentielle de la réaction
+    const cardToPlay = instance("marin-des-jetees", "p1");
+    const guetteurMefiant = instance("guetteur-mefiant", "p2");
+    const carteMain = instance("marin-des-jetees", "p2"); // seule carte en main de p2 : révélation déterministe
+    const state = testGameState({
+      players: [
+        testPlayer("p1", { board: [guetteurDeBrume, cible], hand: [cardToPlay], reason: 5 }),
+        testPlayer("p2", { board: [guetteurMefiant], hand: [carteMain], reason: 3 }),
+      ],
+    });
+
+    const opened = dispatch(state, { type: "playCard", playerId: "p1", instanceId: cardToPlay.instanceId });
+    expect(opened.ok).toBe(true);
+    if (!opened.ok) return;
+    expect(opened.state.pendingReaction?.awaitingPlayerId).toBe("p2");
+
+    const activated = dispatch(opened.state, {
+      type: "activateReaction",
+      playerId: "p2",
+      sourceInstanceId: guetteurMefiant.instanceId,
+      abilityIndex: 0,
+      targetInstanceId: cible.instanceId,
+    });
+    expect(activated.ok).toBe(true);
+    if (!activated.ok) return;
+    expect(
+      activated.events.some(
+        (e) => e.type === "HAND_CARD_REVEALED" && e.ownerId === "p2" && e.instanceId === carteMain.instanceId
+      )
+    ).toBe(true);
+  });
+
+  it("ne se déclenche pas si le contrôleur de Guetteur de Brume active lui-même une réaction (ce n'est pas 'l'adversaire')", () => {
+    const guetteurDeBrume = instance("guetteur-de-brume", "p1");
+    const guetteurMefiant = instance("guetteur-mefiant", "p1"); // contrôlé par le MÊME joueur
+    const cible = instance("baleine-aux-cicatrices-blanches", "p1");
+    const cardToPlay = instance("marin-des-jetees", "p1");
+    const state = testGameState({
+      players: [
+        testPlayer("p1", { board: [guetteurDeBrume, guetteurMefiant, cible], hand: [cardToPlay], reason: 5 }),
+        testPlayer("p2"),
+      ],
+    });
+
+    const opened = dispatch(state, { type: "playCard", playerId: "p1", instanceId: cardToPlay.instanceId });
+    expect(opened.ok).toBe(true);
+    if (!opened.ok) return;
+    expect(opened.state.pendingReaction?.awaitingPlayerId).toBe("p1"); // p1 réagit à sa propre carte
+
+    const activated = dispatch(opened.state, {
+      type: "activateReaction",
+      playerId: "p1",
+      sourceInstanceId: guetteurMefiant.instanceId,
+      abilityIndex: 0,
+      targetInstanceId: cible.instanceId,
+    });
+    expect(activated.ok).toBe(true);
+    if (!activated.ok) return;
+    expect(activated.events.some((e) => e.type === "HAND_CARD_REVEALED")).toBe(false);
+  });
+});
+
+describe("engine.dispatch - La Bouée qui Regardait : révèle une carte adverse en devenant visible", () => {
+  it("révèle 1 carte aléatoire de la main adverse à la transition Houle → Tempête", () => {
+    const bouee = instance("la-bouee-qui-regardait", "p1");
+    const carteMain = instance("marin-des-jetees", "p2"); // révélée en premier : révélation déterministe
+    const filler = instance("marin-des-jetees", "p2"); // carte à piocher par p2 (qui devient actif) : évite Jugement de l'Océan
+    const state = testGameState({
+      turnNumber: 2, // pair : le endTurn suivant amène turnNumber=3 (impair), la Marée progresse d'un cran.
+      players: [
+        testPlayer("p1", { shipId: "lerrant", board: [bouee], reason: 5 }),
+        testPlayer("p2", { hand: [carteMain], deck: [filler] }),
+      ],
+      environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 1, tideOrientation: "montante" }),
+    });
+
+    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.environment.tideState).toBe("tempete"); // Houle → Tempête : La Bouée devient visible
+    expect(
+      result.events.some(
+        (e) => e.type === "HAND_CARD_REVEALED" && e.ownerId === "p2" && e.instanceId === carteMain.instanceId
+      )
+    ).toBe(true);
+  });
+});
+
+describe("engine.dispatch - Cloche Immergée : compare une carte révélée de chaque main en devenant visible", () => {
+  it("le joueur ayant révélé la carte au coût le plus élevé perd 1 Raison", () => {
+    const cloche = instance("cloche-immergee", "p1");
+    const carteChere = instance("la-chose-qui-remonte", "p1"); // coût 5, seule carte en main : révélation déterministe
+    const carteBonMarche = instance("marin-des-jetees", "p2"); // coût 1, seule carte en main
+    const filler = instance("marin-des-jetees", "p2"); // carte à piocher par p2 (qui devient actif) : évite Jugement de l'Océan
+    const state = testGameState({
+      turnNumber: 2, // pair : le endTurn suivant amène turnNumber=3 (impair), la Marée progresse d'un cran.
+      players: [
+        testPlayer("p1", { shipId: "lerrant", board: [cloche], hand: [carteChere], reason: 5 }),
+        testPlayer("p2", { hand: [carteBonMarche], deck: [filler], reason: 5 }),
+      ],
+      environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 1, tideOrientation: "montante" }),
+    });
+
+    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.environment.tideState).toBe("tempete");
+    expect(result.events.filter((e) => e.type === "HAND_CARD_REVEALED")).toHaveLength(2);
+    // p1 a révélé la carte au coût le plus élevé (5 contre 1) : il perd 1 Raison.
+    // p1 termine son tour (pas de régénération pour lui) : 5 - 1 = 4.
+    expect(result.state.players[0].reason).toBe(4);
+    expect(result.state.players[1].reason).toBe(6); // p2 devient actif : régénération de +1 (5 → 6), pas de perte
+  });
+
+  it("en cas d'égalité de coût, personne ne perd de Raison", () => {
+    const cloche = instance("cloche-immergee", "p1");
+    const carteA = instance("marin-des-jetees", "p1"); // coût 1
+    const carteB = instance("marin-des-jetees", "p2"); // coût 1 également
+    const filler = instance("marin-des-jetees", "p2"); // carte à piocher par p2 (qui devient actif) : évite Jugement de l'Océan
+    const state = testGameState({
+      turnNumber: 2, // pair : le endTurn suivant amène turnNumber=3 (impair), la Marée progresse d'un cran.
+      players: [
+        testPlayer("p1", { shipId: "lerrant", board: [cloche], hand: [carteA], reason: 5 }),
+        testPlayer("p2", { hand: [carteB], deck: [filler], reason: 5 }),
+      ],
+      environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 1, tideOrientation: "montante" }),
+    });
+
+    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.events.filter((e) => e.type === "HAND_CARD_REVEALED")).toHaveLength(2);
+    expect(result.events.some((e) => e.type === "REASON_CHANGED" && e.delta < 0)).toBe(false);
+  });
+});
+
+describe("engine.dispatch - Quelque Chose Sous la Coque : perte de Raison à la 1ère carte jouée par tour", () => {
+  it("chaque joueur perd 1 Raison la 1ère fois qu'il joue une carte ce tour-ci, jamais la 2ème", () => {
+    const anomalie = instance("quelque-chose-sous-la-coque", "p1");
+    const marinA = instance("marin-des-jetees", "p1");
+    const marinB = instance("marin-des-jetees", "p1");
+    const state = testGameState({
+      players: [
+        testPlayer("p1", { board: [anomalie], hand: [marinA, marinB], reason: 5 }),
+        testPlayer("p2", { reason: 5 }),
+      ],
+    });
+
+    const first = dispatch(state, { type: "playCard", playerId: "p1", instanceId: marinA.instanceId });
+    expect(first.ok).toBe(true);
+    if (!first.ok) return;
+    expect(first.state.players[0].reason).toBe(3); // 5 - 1 (coût) - 1 (Anomalie, 1ère carte du tour)
+
+    const second = dispatch(first.state, { type: "playCard", playerId: "p1", instanceId: marinB.instanceId });
+    expect(second.ok).toBe(true);
+    if (!second.ok) return;
+    expect(second.state.players[0].reason).toBe(2); // 3 - 1 (coût) - 0 (déjà déclenchée ce tour-ci)
+  });
+});
+
+describe("engine.dispatch - Ils Sont Sous Nous : perte de Raison au 1er permanent joué par tour (+bonus Créature en Abysses)", () => {
+  it("version Standard : perte de 1 Raison à la 1ère carte jouée, sans bonus même pour une Créature", () => {
+    const anomalie = instance("ils-sont-sous-nous", "p1");
+    const murene = instance("murene-aveugle", "p1"); // creature, sans effet propre
+    const state = testGameState({
+      players: [
+        testPlayer("p1", { board: [anomalie], hand: [murene], reason: 10 }),
+        testPlayer("p2"),
+      ],
+    });
+
+    const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: murene.instanceId });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.players[0].reason).toBe(7); // 10 - 2 (coût) - 1 (Anomalie, pas de bonus Créature en Standard)
+  });
+
+  it("version Abyssale : inflige 1 Raison de plus si le permanent joué est une Créature, une seule fois par tour", () => {
+    const anomalie = instance("ils-sont-sous-nous-abyssal", "p1");
+    const murene = instance("murene-aveugle", "p1"); // creature
+    const marinX = instance("marin-des-jetees", "p1"); // marin, pas une Créature
+    const state = testGameState({
+      players: [
+        testPlayer("p1", { board: [anomalie], hand: [murene, marinX], reason: 10 }),
+        testPlayer("p2"),
+      ],
+    });
+
+    const first = dispatch(state, { type: "playCard", playerId: "p1", instanceId: murene.instanceId });
+    expect(first.ok).toBe(true);
+    if (!first.ok) return;
+    expect(first.state.players[0].reason).toBe(6); // 10 - 2 (coût) - 2 (1 base + 1 bonus Créature)
+
+    const second = dispatch(first.state, { type: "playCard", playerId: "p1", instanceId: marinX.instanceId });
+    expect(second.ok).toBe(true);
+    if (!second.ok) return;
+    expect(second.state.players[0].reason).toBe(5); // 6 - 1 (coût) - 0 (déjà déclenchée ce tour-ci)
+  });
+});
+
+describe("engine.dispatch - Les Voix dans le Sillage : perte de Raison au 1er permanent perdu par tour", () => {
+  it("le contrôleur d'un permanent qui meurt au combat perd 1 Raison", () => {
+    const anomalie = instance("les-voix-dans-le-sillage", "p1");
+    const fragile = instance("poisson-lanterne", "p1"); // 1/1
+    const attacker = instance("requin-balafre", "p2"); // 4/2
+    const state = testGameState({
+      phase: "combatPhase",
+      activePlayerId: "p2",
+      priorityPlayerId: "p2",
+      players: [
+        testPlayer("p1", { board: [anomalie, fragile], reason: 5 }),
+        testPlayer("p2", { board: [attacker] }),
+      ],
+    });
+
+    const result = dispatch(state, {
+      type: "attack",
+      playerId: "p2",
+      attackerInstanceId: attacker.instanceId,
+      defenderInstanceId: fragile.instanceId,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.players[0].board.some((u) => u.instanceId === fragile.instanceId)).toBe(false); // mort (1 PV < 4 dégâts)
+    expect(result.state.players[0].reason).toBe(4); // 5 - 1 (Anomalie, 1er permanent perdu ce tour-ci)
+  });
+});
+
+describe("engine.dispatch - Le Chant Sous la Ligne : réduction de tout gain de Raison", () => {
+  it("réduit de 1 (minimum 0) un gain de Raison déclenché par une autre carte", () => {
+    const anomalie = instance("le-chant-sous-la-ligne", "p1");
+    const mousse = instance("mousse-du-premier-quart", "p1"); // ETB : +1 Raison si Raison < adversaire
+    const state = testGameState({
+      players: [
+        testPlayer("p1", { board: [anomalie], hand: [mousse], reason: 3 }),
+        testPlayer("p2", { reason: 5 }),
+      ],
+    });
+
+    const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: mousse.instanceId });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // Sans l'Anomalie : 3 - 1 (coût) + 1 (gain ETB) = 3. Avec elle : le gain est réduit à 0.
+    expect(result.state.players[0].reason).toBe(2);
+  });
+});
+
+describe("engine.dispatch - La Mer Réclame Davantage : réduit la durée d'entrée à chaque changement de Marée", () => {
+  it("réduit de 1 la durée d'entrée du nouvel état (Houle descendante → Calme)", () => {
+    const anomalie = instance("la-mer-reclame-davantage", "p1");
+    const filler = instance("marin-des-jetees", "p2");
+    const state = testGameState({
+      turnNumber: 2, // pair : le endTurn suivant amène turnNumber=3 (impair), la Marée progresse d'un cran.
+      players: [
+        testPlayer("p1", { shipId: "lerrant", board: [anomalie], reason: 5 }),
+        testPlayer("p2", { shipId: "lerrant", deck: [filler], reason: 5 }),
+      ],
+      environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 1, tideOrientation: "descendante" }),
+    });
+
+    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.environment.tideState).toBe("calme"); // Houle descendante → Calme
+    // Calme dure normalement 2 tours ; l'Anomalie réduit l'entrée à 1.
+    expect(result.state.environment.tideRemainingTurns).toBe(1);
+  });
+
+  it("version Abyssale : inflige en plus 1 dégât d'Ancrage à CHAQUE Navire à ce changement", () => {
+    const anomalie = instance("la-mer-reclame-davantage-abyssal", "p1");
+    const filler = instance("marin-des-jetees", "p2");
+    const state = testGameState({
+      turnNumber: 2,
+      players: [
+        testPlayer("p1", { shipId: "lerrant", anchor: 20, board: [anomalie], reason: 5 }),
+        testPlayer("p2", { shipId: "lerrant", anchor: 20, deck: [filler], reason: 5 }),
+      ],
+      environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 1, tideOrientation: "descendante" }),
+    });
+
+    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.environment.tideState).toBe("calme");
+    // Calme n'inflige normalement aucun dégât d'Ancrage par tour : seule l'Anomalie inflige ce dégât.
+    expect(result.state.players[0].anchor).toBe(19);
+    expect(result.state.players[1].anchor).toBe(19);
+  });
+});
+
+describe("engine.dispatch - activateAbility : Sondeur des Mauvaises Eaux (capacité activable, une fois par tour)", () => {
+  it("paie 1 Raison et réduit la durée restante de la Marée de 1 tour", () => {
+    const sondeur = instance("sondeur-des-mauvaises-eaux", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { board: [sondeur], reason: 5 }), testPlayer("p2")],
+      environment: testEnvironment({ tideState: "tempete", tideRemainingTurns: 3 }),
+    });
+
+    const result = dispatch(state, { type: "activateAbility", playerId: "p1", sourceInstanceId: sondeur.instanceId });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.players[0].reason).toBe(4);
+    expect(result.state.environment.tideRemainingTurns).toBe(2);
+  });
+
+  it("refuse une seconde activation le même tour, mais l'autorise à nouveau au tour suivant", () => {
+    const sondeur = instance("sondeur-des-mauvaises-eaux", "p1");
+    const fillerP1 = instance("marin-des-jetees", "p1"); // p1 redevient actif et pioche : évite Jugement de l'Océan
+    const fillerP2 = instance("marin-des-jetees", "p2");
+    const state = testGameState({
+      players: [
+        testPlayer("p1", { board: [sondeur], deck: [fillerP1], reason: 5 }),
+        testPlayer("p2", { deck: [fillerP2] }),
+      ],
+      environment: testEnvironment({ tideState: "tempete", tideRemainingTurns: 5 }),
+    });
+
+    const first = dispatch(state, { type: "activateAbility", playerId: "p1", sourceInstanceId: sondeur.instanceId });
+    expect(first.ok).toBe(true);
+    if (!first.ok) return;
+    expect(first.state.environment.tideRemainingTurns).toBe(4);
+
+    const second = dispatch(first.state, { type: "activateAbility", playerId: "p1", sourceInstanceId: sondeur.instanceId });
+    expect(second.ok).toBe(false);
+
+    // Nouveau tour (endTurn x2 pour repasser à p1) : la capacité redevient disponible.
+    const p2Turn = dispatch(first.state, { type: "endTurn", playerId: "p1" });
+    expect(p2Turn.ok).toBe(true);
+    if (!p2Turn.ok) return;
+    const p1Turn = dispatch(p2Turn.state, { type: "endTurn", playerId: "p2" });
+    expect(p1Turn.ok).toBe(true);
+    if (!p1Turn.ok) return;
+
+    const thirdTurnRemaining = p1Turn.state.environment.tideRemainingTurns;
+    const third = dispatch(p1Turn.state, { type: "activateAbility", playerId: "p1", sourceInstanceId: sondeur.instanceId });
+    expect(third.ok).toBe(true);
+    if (!third.ok) return;
+    expect(third.state.environment.tideRemainingTurns).toBe(thirdTurnRemaining - 1);
+  });
+
+  it("refuse si la Raison est insuffisante pour payer le coût", () => {
+    const sondeur = instance("sondeur-des-mauvaises-eaux", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { board: [sondeur], reason: 0 }), testPlayer("p2")],
+    });
+
+    const result = dispatch(state, { type: "activateAbility", playerId: "p1", sourceInstanceId: sondeur.instanceId });
+    expect(result.ok).toBe(false);
+  });
+
+  it("refuse en dehors de la Phase principale", () => {
+    const sondeur = instance("sondeur-des-mauvaises-eaux", "p1");
+    const state = testGameState({
+      phase: "combatPhase",
+      players: [testPlayer("p1", { board: [sondeur], reason: 5 }), testPlayer("p2")],
+    });
+
+    const result = dispatch(state, { type: "activateAbility", playerId: "p1", sourceInstanceId: sondeur.instanceId });
+    expect(result.ok).toBe(false);
+  });
+
+  it("refuse pour une carte sans capacité activable", () => {
+    const marin = instance("marin-des-jetees", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { board: [marin], reason: 5 }), testPlayer("p2")],
+    });
+
+    const result = dispatch(state, { type: "activateAbility", playerId: "p1", sourceInstanceId: marin.instanceId });
+    expect(result.ok).toBe(false);
+  });
+});
+
+describe("engine.dispatch - breakObject : Grappin de Récupération (recherche en défausse)", () => {
+  it("récupère en main une Structure ou un Équipement choisi dans la défausse, coûtant 2 ou moins", () => {
+    const grappin = instance("grappin-de-recuperation", "p1");
+    const caisses = instance("caisses-arrimees", "p1"); // structure, coût 1
+    const state = testGameState({
+      players: [testPlayer("p1", { board: [grappin], graveyard: [caisses] }), testPlayer("p2")],
+    });
+
+    const result = dispatch(state, {
+      type: "breakObject",
+      playerId: "p1",
+      instanceId: grappin.instanceId,
+      chosenGraveyardInstanceId: caisses.instanceId,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.players[0].hand.some((c) => c.instanceId === caisses.instanceId)).toBe(true);
+    expect(result.state.players[0].graveyard.some((c) => c.instanceId === caisses.instanceId)).toBe(false);
+    // Le Grappin lui-même part au cimetière (Objet brisé), pas en main.
+    expect(result.state.players[0].graveyard.some((c) => c.instanceId === grappin.instanceId)).toBe(true);
+  });
+
+  it("se résout sans rien récupérer si la défausse ne contient aucune carte éligible", () => {
+    const grappin = instance("grappin-de-recuperation", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { board: [grappin], graveyard: [] }), testPlayer("p2")],
+    });
+
+    const result = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: grappin.instanceId });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.players[0].hand).toHaveLength(0);
+  });
+
+  it("refuse de choisir une carte de la défausse coûtant plus de 2", () => {
+    const grappin = instance("grappin-de-recuperation", "p1");
+    const cage = instance("cage-de-flottaison", "p1"); // structure, coût 3 : au-dessus du plafond
+    const state = testGameState({
+      players: [testPlayer("p1", { board: [grappin], graveyard: [cage] }), testPlayer("p2")],
+    });
+
+    const result = dispatch(state, {
+      type: "breakObject",
+      playerId: "p1",
+      instanceId: grappin.instanceId,
+      chosenGraveyardInstanceId: cage.instanceId,
+    });
+    expect(result.ok).toBe(false);
+  });
+
+  it("refuse de choisir une carte de la défausse d'un type non autorisé (ni Structure, ni Équipement)", () => {
+    const grappin = instance("grappin-de-recuperation", "p1");
+    const marin = instance("marin-des-jetees", "p1"); // type marin, coût 1 : type non autorisé malgré le coût
+    const state = testGameState({
+      players: [testPlayer("p1", { board: [grappin], graveyard: [marin] }), testPlayer("p2")],
+    });
+
+    const result = dispatch(state, {
+      type: "breakObject",
+      playerId: "p1",
+      instanceId: grappin.instanceId,
+      chosenGraveyardInstanceId: marin.instanceId,
+    });
+    expect(result.ok).toBe(false);
+  });
+
+  it("refuse de briser sans choisir de cible quand au moins une carte éligible existe", () => {
+    const grappin = instance("grappin-de-recuperation", "p1");
+    const caisses = instance("caisses-arrimees", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { board: [grappin], graveyard: [caisses] }), testPlayer("p2")],
+    });
+
+    const result = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: grappin.instanceId });
+    expect(result.ok).toBe(false);
+  });
+});
+
+describe("engine.dispatch - La Gueule Sous la Mer : saut direct en Abysses + verrou de Raison (Lot 08)", () => {
+  it("force la Marée directement en Abysses (sans passer par Tempête), inflige 2 à son Navire, et verrouille la Raison", () => {
+    const gueule = instance("la-gueule-sous-la-mer", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { hand: [gueule], reason: 10, anchor: 20 }), testPlayer("p2")],
+      environment: testEnvironment({ tideState: "calme", tideRemainingTurns: 2, tideOrientation: "montante" }),
+    });
+
+    const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: gueule.instanceId });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.environment.tideState).toBe("abysses"); // jamais "tempete" entre-temps
+    expect(result.state.environment.tideOrientation).toBe("descendante");
+    expect(result.state.players[0].reason).toBe(4); // 10 - 6 (coût) ; le dégât n'affecte que l'Ancrage
+    expect(result.state.players[0].anchor).toBe(18); // 20 - 2
+    expect(result.state.players[0].statusFlags).toContain("noReasonGainUntilNextTurn");
+
+    // La carte est une Anomalie à résolution immédiate (`permanent: false`) : elle part au cimetière, pas sur le plateau.
+    expect(result.state.players[0].board).toHaveLength(0);
+    expect(result.state.players[0].graveyard.some((c) => c.instanceId === gueule.instanceId)).toBe(true);
+  });
+
+  it("le verrou empêche tout gain de Raison jusqu'au début du prochain tour du contrôleur, puis se lève automatiquement", () => {
+    const gueule = instance("la-gueule-sous-la-mer", "p1");
+    const mousse = instance("mousse-du-premier-quart", "p1"); // ETB : +1 Raison si Raison < adversaire
+    const fillerP1 = instance("marin-des-jetees", "p1");
+    const fillerP2 = instance("marin-des-jetees", "p2");
+    const state = testGameState({
+      players: [
+        testPlayer("p1", { hand: [gueule, mousse], deck: [fillerP1], reason: 10, anchor: 20 }),
+        testPlayer("p2", { deck: [fillerP2], reason: 10 }),
+      ],
+      environment: testEnvironment({ tideState: "calme", tideRemainingTurns: 2, tideOrientation: "montante" }),
+    });
+
+    const played = dispatch(state, { type: "playCard", playerId: "p1", instanceId: gueule.instanceId });
+    expect(played.ok).toBe(true);
+    if (!played.ok) return;
+
+    // Raison basse (4) et inférieure à celle de p2 (10) : l'ETB de Mousse voudrait gagner 1 Raison, mais le verrou l'en empêche.
+    const withMousse = dispatch(played.state, { type: "playCard", playerId: "p1", instanceId: mousse.instanceId });
+    expect(withMousse.ok).toBe(true);
+    if (!withMousse.ok) return;
+    expect(withMousse.state.players[0].reason).toBe(3); // 4 - 1 (coût) + 0 (gain verrouillé)
+
+    // Fin du tour de p1 (verrou consommé, pas de régénération), puis fin du tour de p2 (p1 redevient actif : le verrou est levé).
+    const p2Turn = dispatch(withMousse.state, { type: "endTurn", playerId: "p1" });
+    expect(p2Turn.ok).toBe(true);
+    if (!p2Turn.ok) return;
+    expect(p2Turn.state.players[0].reason).toBe(3); // pas de régénération pour p1 ici (ce n'est pas son tour)
+    expect(p2Turn.state.players[0].statusFlags).toContain("noReasonGainUntilNextTurn"); // toujours posé : pas encore "le début de son tour"
+
+    const p1Turn = dispatch(p2Turn.state, { type: "endTurn", playerId: "p2" });
+    expect(p1Turn.ok).toBe(true);
+    if (!p1Turn.ok) return;
+    expect(p1Turn.state.players[0].statusFlags).not.toContain("noReasonGainUntilNextTurn");
+    expect(p1Turn.state.players[0].reason).toBe(3); // régénération bloquée PRÉCISÉMENT à ce tour-ci (le verrou vient d'expirer, pas de +1 rétroactif)
+  });
+});
+
+describe("engine.dispatch - Sept Brasses Plus Bas : saut direct en Abysses + orientation forcée (Lot 08)", () => {
+  it("force la Marée en Abysses avec 1 tour de durée en plus, oriente Descendante, et inflige 2 Raison à chaque joueur", () => {
+    const brasses = instance("sept-brasses-plus-bas", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { hand: [brasses], reason: 10 }), testPlayer("p2", { reason: 10 })],
+      environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 1, tideOrientation: "montante" }),
+    });
+
+    const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: brasses.instanceId });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.environment.tideState).toBe("abysses");
+    expect(result.state.environment.tideRemainingTurns).toBe(2); // 1 (base Abysses) + 1 (bonus de la carte)
+    expect(result.state.environment.tideOrientation).toBe("descendante");
+    expect(result.state.players[0].reason).toBe(1); // 10 - 7 (coût) - 2 (perte de Raison)
+    expect(result.state.players[1].reason).toBe(8); // 10 - 2 (perte de Raison, chaque joueur)
+  });
+});

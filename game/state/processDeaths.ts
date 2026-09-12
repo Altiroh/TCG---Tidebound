@@ -6,8 +6,8 @@ import type { GameEvent } from "@/game/events/types";
 import { processTrigger } from "@/game/triggers/triggerBus";
 import type { GameState, PlayerState } from "@/game/state/types";
 
-function shouldDie(unit: CardInstance, tideState: TideStateName): boolean {
-  const stats = computeEffectiveStats(unit, tideState);
+function shouldDie(unit: CardInstance, tideState: TideStateName, controller: PlayerState): boolean {
+  const stats = computeEffectiveStats(unit, tideState, { controllerBoard: controller.board, controllerReason: controller.reason });
   return unit.damageMarked >= stats.health || stats.destroyedByTide;
 }
 
@@ -32,19 +32,23 @@ function applyDestructionSubstitute(
   unit: CardInstance,
   substitute: CardInstance
 ): { state: GameState; events: GameEvent[] } {
+  const player = state.players.find((p) => p.id === ownerId)!;
   const penalty = getCardDefinition(substitute.cardId).destructionSubstitute?.healthPenalty ?? 1;
   const modifiers = [
     ...unit.modifiers,
     { id: `mod_${Math.random().toString(36).slice(2, 8)}`, source: substitute.cardId, attack: 0, health: -penalty, duration: "permanent" as const },
   ];
-  const newEffectiveHealth = computeEffectiveStats({ ...unit, modifiers }, state.environment.tideState).health;
+  const newEffectiveHealth = computeEffectiveStats(
+    { ...unit, modifiers },
+    state.environment.tideState,
+    { controllerBoard: player.board, controllerReason: player.reason }
+  ).health;
   const savedUnit: CardInstance = {
     ...unit,
     modifiers,
     damageMarked: Math.max(0, Math.min(unit.damageMarked, newEffectiveHealth - 1)),
   };
 
-  const player = state.players.find((p) => p.id === ownerId)!;
   const board = player.board
     .filter((u) => u.instanceId !== substitute.instanceId)
     .map((u) => (u.instanceId === unit.instanceId ? savedUnit : u));
@@ -92,7 +96,7 @@ export function processDeaths(
     const lethalPairs: Array<{ playerId: string; unitInstanceId: string }> = [];
     for (const player of current.players) {
       for (const unit of player.board) {
-        if (shouldDie(unit, current.environment.tideState)) {
+        if (shouldDie(unit, current.environment.tideState, player)) {
           lethalPairs.push({ playerId: player.id, unitInstanceId: unit.instanceId });
         }
       }
@@ -100,7 +104,7 @@ export function processDeaths(
     for (const { playerId, unitInstanceId } of lethalPairs) {
       const player = current.players.find((p) => p.id === playerId);
       const unit = player?.board.find((u) => u.instanceId === unitInstanceId);
-      if (!player || !unit || !shouldDie(unit, current.environment.tideState)) continue;
+      if (!player || !unit || !shouldDie(unit, current.environment.tideState, player)) continue;
       const substitute = findDestructionSubstitute(player.board, unit.instanceId);
       if (!substitute) continue;
       const result = applyDestructionSubstitute(current, turnNumber, player.id, unit, substitute);
@@ -113,7 +117,7 @@ export function processDeaths(
 
     for (const player of current.players) {
       for (const unit of player.board) {
-        if (shouldDie(unit, tideState)) deaths.push({ unit, owner: player });
+        if (shouldDie(unit, tideState, player)) deaths.push({ unit, owner: player });
       }
     }
 

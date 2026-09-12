@@ -44,7 +44,18 @@ export type EffectType =
   | "tideForceAdvance"
   /** Force une transition IMMÉDIATE d'un état vers Calme (jamais via le décompte normal). */
   | "tideForceRetreat"
-  | "ignoreNextTideDamage";
+  | "ignoreNextTideDamage"
+  // --- Lecture de main (purement informatif, cf. `HandCardRevealedEvent`) -
+  /** Révèle `amount` cartes aléatoires DISTINCTES de la main de la cible — aucun autre effet sur l'état (ex: Guetteur de Brume, La Bouée qui Regardait). */
+  | "revealRandomHandCards"
+  /** Révèle une carte aléatoire de CHAQUE joueur puis inflige `amount` de perte de Raison à celui dont la carte révélée coûte le plus cher (égalité, ou un joueur sans carte en main = personne, ex: Cloche Immergée). */
+  | "reasonLossToHigherRevealedHandCard"
+  /** Renvoie en main la carte de la défausse choisie par le joueur (`EffectContext.chosenGraveyardInstanceId`), filtrée par `EffectDefinition.filter` (ex: Grappin de Récupération). */
+  | "moveGraveyardCardToHand"
+  /** Force une entrée DIRECTE dans les Abysses, en ignorant tout état intermédiaire (ex: La Gueule Sous la Mer, Sept Brasses Plus Bas — Lot 08, "Grandes Anomalies"). `amount` (optionnel) ajoute ce nombre de tours à la durée d'entrée par défaut ; `forceTideOrientation` (optionnel) fixe l'orientation résultante. */
+  | "tideForceJumpToAbysses"
+  /** Empêche CETTE cible de récupérer la moindre Raison (régénération de début de tour incluse) jusqu'au début de son prochain tour (ex: La Gueule Sous la Mer). */
+  | "lockReasonGainUntilNextTurn";
 
 /** Une valeur numérique d'effet, pour l'instant une constante — prête à
  * être étendue vers des formules (ex: "= nombre d'unités contrôlées"). */
@@ -70,13 +81,25 @@ export interface EffectDefinition {
   cardId?: string;
   /** Zone de destination, pour `moveZone` (ex: retourner une carte en main). */
   toZone?: "hand" | "deck" | "graveyard" | "board";
-  /** Filtre optionnel utilisé par `searchDeck` (ex: par type de carte). */
-  filter?: { cardType?: import("@/game/cards/types").CardType };
+  /**
+   * Filtre optionnel utilisé par `searchDeck`/`moveGraveyardCardToHand` :
+   * `cardType` (un seul type) ou `cardTypes` (plusieurs types acceptés, ex:
+   * "Structure OU Équipement" pour Grappin de Récupération) ; `maxCost`
+   * plafonne le coût imprimé de la carte choisie.
+   */
+  filter?: {
+    cardType?: import("@/game/cards/types").CardType;
+    cardTypes?: import("@/game/cards/types").CardType[];
+    maxCost?: number;
+  };
   /**
    * État de Marée concerné par `ignoreNextTideDamage` (ex: "abysses" pour
    * "Bouchons de Cire : ignorez la prochaine perte d'Ancrage abyssale").
    */
   tideState?: "calme" | "houle" | "tempete" | "abysses";
+
+  /** Pour `tideForceJumpToAbysses` UNIQUEMENT : force l'orientation résultante au lieu de la déduire naturellement (ex: Sept Brasses Plus Bas, "l'orientation devient Descendante"). */
+  forceTideOrientation?: "montante" | "descendante";
   /**
    * Pour `buff`/`debuff` : `true` = modificateur permanent (ex: un
    * Équipement qui attache "+1 Puissance" tant qu'il reste en jeu), sinon

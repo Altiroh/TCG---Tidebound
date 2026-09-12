@@ -102,8 +102,11 @@ describe("moteur de réactions — fenêtre facultative (Notion 'Moteur de parti
     const p2After = activated.state.players.find((p) => p.id === "p2")!;
     expect(p2After.reason).toBe(2); // 3 - 1 (coût de la réaction)
 
+    // La Baleine aux Cicatrices Blanches réduit de 1 le premier dégât qu'elle
+    // subit chaque tour (`reduceOwnDamageTakenOncePerTurn`) : 2 dégâts bruts
+    // devient donc 1 dégât marqué.
     const targetAfter = activated.state.players.find((p) => p.id === "p1")!.board.find((u) => u.instanceId === bigUnit.instanceId);
-    expect(targetAfter?.damageMarked).toBe(2);
+    expect(targetAfter?.damageMarked).toBe(1);
 
     // Plus rien d'éligible : cette capacité a déjà été activée pendant
     // cette fenêtre (`usedCandidateKeys`), la fenêtre se referme.

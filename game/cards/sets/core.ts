@@ -84,7 +84,7 @@ export const CORE_SET: CardDefinition[] = [
     health: 4,
     maxCopies: 2,
     text: "La première fois par tour que vous perdez de la Raison, réduisez cette perte de 1.",
-    // non appliqué : interception "première fois par tour" par source non modélisée.
+    reduceOwnReasonLossOncePerTurn: { amount: 1 },
   },
   {
     id: "plongeur-des-epaves",
@@ -161,7 +161,11 @@ export const CORE_SET: CardDefinition[] = [
     text:
       "Durée : 3 tours. Visible pendant Houle et Tempête. La première fois que votre Navire subit des dégâts de " +
       "Tempête, réduisez-les de 1.",
-    // non appliqué : réduction réactive des dégâts de Tempête par carte non modélisée (seul `resistanceByState` du Navire l'est).
+    // Interprété comme "la première fois PAR TOUR" (même convention que les cartes similaires du catalogue,
+    // ex: Baleine aux Cicatrices Blanches) plutôt que "une seule fois pendant toute la durée de vie de la
+    // carte" — le texte est ambigu sur ce point, mais un bouclier à usage unique sur 3 tours de durée de vie
+    // serait d'une valeur dérisoire comparé à ses pairs.
+    reduceTideShipDamageOncePerTurn: { amount: 1, tideStateIn: ["tempete"] },
   },
   {
     id: "harpon-de-pont",
@@ -216,9 +220,16 @@ export const CORE_SET: CardDefinition[] = [
     name: "Quelque Chose Sous la Coque",
     type: "anomalie",
     cost: 4,
+    // Valeur de Résistance absente du cadrage Notion pour cette famille de cartes (texte muet sur ce point,
+    // comme pour les Structures) : fixée ici par cohérence avec des permanents de coût comparable, PLUTÔT
+    // que de laisser `health` undefined — `computeEffectiveStats` retombe alors sur 0, ce qui ferait mourir
+    // l'Anomalie instantanément dès le premier `processDeaths` après sa pose (0 dégât marqué >= 0 PV). À
+    // ajuster si un vrai chiffrage Notion existe pour ce lot.
+    health: 3,
     maxCopies: 2,
+    durationTurns: 2,
     text: "Pendant 2 tours, chaque joueur perd 1 Raison la première fois qu'il joue une carte pendant son tour.",
-    // non appliqué : règle temporaire globale symétrique non modélisée (pas de système d'Anomalies actives).
+    anomalyReasonLossOnFirstCardPlayedPerTurn: 1,
   },
 
   // ======================================================================
@@ -340,7 +351,7 @@ export const CORE_SET: CardDefinition[] = [
     text:
       "La première fois par tour que l'adversaire déclenche un effet pendant votre tour, regardez une carte " +
       "aléatoire de sa main.",
-    // non appliqué : lecture de main adverse non modélisée.
+    revealOpponentHandOnReactionOncePerTurn: { amount: 1 },
   },
   {
     id: "matelot-du-sans-nom",
@@ -417,9 +428,11 @@ export const CORE_SET: CardDefinition[] = [
     name: "Le Chant Sous la Ligne",
     type: "anomalie",
     cost: 4,
+    health: 3, // cf. commentaire sur Quelque Chose Sous la Coque : valeur absente du cadrage, fixée par cohérence.
     maxCopies: 2,
+    durationTurns: 2,
     text: "Pendant 2 tours, chaque fois qu'un joueur récupère de la Raison, il en récupère 1 de moins, minimum 0.",
-    // non appliqué : règle temporaire globale non modélisée.
+    anomalyReduceAllReasonGains: 1,
   },
   {
     id: "plaque-de-fortune",
@@ -464,7 +477,7 @@ export const CORE_SET: CardDefinition[] = [
     attack: 2,
     health: 3,
     text: "Tant que votre Raison est inférieure ou égale à 4, il gagne +1 Puissance.",
-    // non appliqué : seuil dynamique de Raison non modélisé.
+    selfBuffWhileControllerReasonAtMost: { reasonAtMost: 4, attackAmount: 1 },
   },
   {
     id: "gardien-du-sondeur",
@@ -534,7 +547,7 @@ export const CORE_SET: CardDefinition[] = [
     equipTargetTypes: ["marin"],
     onPlayEffects: [{ type: "attachEquipment", target: { kind: "chosenUnit" } }],
     // Bug corrigé au passage : l'Équipement ne s'attachait même pas (onPlayEffects absent).
-    // non appliqué : le bonus tant qu'en Houle/Tempête reste non câblé — nécessiterait d'exposer le plateau entier à `computeEffectiveStats` (unité équipée → lire l'état de Marée via son Équipement), signalé comme chantier plus lourd.
+    equipGrantsBuffWhileTideStateIn: { tideStateIn: ["houle", "tempete"], attackAmount: 1, healthAmount: 1 },
   },
   {
     id: "filet-a-la-derive",
@@ -590,9 +603,11 @@ export const CORE_SET: CardDefinition[] = [
     name: "Les Voix dans le Sillage",
     type: "anomalie",
     cost: 5,
+    health: 4, // cf. commentaire sur Quelque Chose Sous la Coque : valeur absente du cadrage, fixée par cohérence.
     maxCopies: 2,
+    durationTurns: 2,
     text: "Pendant 2 tours, chaque joueur perd 1 Raison la première fois qu'un de ses permanents quitte le board.",
-    // non appliqué : règle temporaire globale non modélisée.
+    anomalyReasonLossOnFirstPermanentLeavingPerTurn: 1,
   },
 
   // ======================================================================
@@ -618,7 +633,7 @@ export const CORE_SET: CardDefinition[] = [
     attack: 3,
     health: 5,
     text: "Tant que votre Raison est à 3 ou moins, les autres Marins que vous contrôlez gagnent +1 Résistance.",
-    // non appliqué : aura dynamique conditionnelle non modélisée.
+    auraBuffOtherUnitsWhileControllerReasonAtMost: { reasonAtMost: 3, targetType: "marin", healthAmount: 1 },
   },
   {
     // Renommée "L'Homme Revenu de la Fosse" → "Revenante de la Fosse" (Notion "Catalogue de cartes", Lot 04)
@@ -776,7 +791,7 @@ export const CORE_SET: CardDefinition[] = [
     text:
       "Durée : 4 tours. Visible pendant Calme, Houle et Tempête. La première fois par tour qu'une Créature " +
       "devrait infliger des dégâts directs à votre Navire, réduisez ces dégâts de 1.",
-    // non appliqué : réduction réactive de dégâts non modélisée.
+    reduceDirectShipDamageOncePerTurn: 1,
   },
   {
     id: "ponton-aux-cloches",
@@ -807,7 +822,29 @@ export const CORE_SET: CardDefinition[] = [
     text:
       "Durée : 5 tours. Visible uniquement pendant Tempête et Abysses. À chaque fois qu'elle devient visible, " +
       "regardez une carte aléatoire de la main adverse. Si vous êtes en Abysses, regardez-en 2 à la place.",
-    // non appliqué : lecture de main adverse non modélisée.
+    abilities: [
+      {
+        trigger: "onBecomeVisible",
+        description: "Regardez une carte aléatoire de la main adverse (2 en Abysses).",
+        effects: [
+          { type: "revealRandomHandCards", target: { kind: "opponentPlayer" }, amount: { kind: "flat", value: 1 } },
+          {
+            type: "revealRandomHandCards",
+            target: { kind: "opponentPlayer" },
+            amount: { kind: "flat", value: 1 },
+            conditionTideStateIn: ["abysses"],
+          },
+        ],
+      },
+    ],
+    // NOTE : `onBecomeVisible` ne se déclenche que sur la transition
+    // invisible → visible (`game/environment/resolveEnvironment.ts`), qui,
+    // en progression normale (un état à la fois), passe TOUJOURS par
+    // Tempête avant d'atteindre l'Abysses — la branche "2 cartes" ci-dessus
+    // n'est donc atteignable aujourd'hui que si un futur effet fait entrer
+    // directement dans l'Abysses depuis un état invisible (ex: un saut de
+    // Marée multi-états façon Lot 08, "La Gueule Sous la Mer"). Comportement
+    // correct tel qu'écrit, simplement pas encore démontrable en jeu normal.
   },
   {
     // Version STANDARD (Notion "Catalogue de cartes", Lot 04) — coexiste avec la variante ABYSSALE ci-dessous.
@@ -815,9 +852,11 @@ export const CORE_SET: CardDefinition[] = [
     name: "Ils Sont Sous Nous",
     type: "anomalie",
     cost: 5,
+    health: 4, // cf. commentaire sur Quelque Chose Sous la Coque : valeur absente du cadrage, fixée par cohérence.
     maxCopies: 2,
+    durationTurns: 2,
     text: "Pendant 2 tours, la première fois à chaque tour qu'un joueur joue un permanent, ce joueur perd 1 Raison.",
-    // non appliqué : règle temporaire globale non modélisée.
+    anomalyReasonLossOnFirstPermanentPlayedPerTurn: { amount: 1 },
   },
   {
     // Variante ABYSSALE distincte (coexiste avec la Standard ci-dessus) — anciennement seule entrée sous
@@ -827,11 +866,13 @@ export const CORE_SET: CardDefinition[] = [
     type: "anomalie",
     subtype: "abyssal",
     cost: 6,
+    health: 5, // cf. commentaire sur Quelque Chose Sous la Coque : valeur absente du cadrage, fixée par cohérence.
     maxCopies: 1,
+    durationTurns: 2,
     text:
       "Pendant 2 tours, la première fois à chaque tour qu'un joueur joue un permanent, ce joueur perd 1 Raison. " +
       "Si ce permanent est une Créature, il perd 1 Raison supplémentaire.",
-    // non appliqué : règle temporaire globale non modélisée.
+    anomalyReasonLossOnFirstPermanentPlayedPerTurn: { amount: 1, bonusIfCreature: 1 },
   },
 
   // ======================================================================
@@ -893,7 +934,7 @@ export const CORE_SET: CardDefinition[] = [
     attack: 1,
     health: 3,
     text: "Tant que vous contrôlez une Structure visible, il gagne +1 Résistance.",
-    // non appliqué : condition dynamique sur l'état du board non modélisée.
+    selfBuffWhileControllingVisibleStructure: { healthAmount: 1 },
   },
   {
     id: "poisson-scie-gris",
@@ -989,7 +1030,13 @@ export const CORE_SET: CardDefinition[] = [
     text:
       "Brisez cet Objet : choisissez dans votre défausse une Structure ou un Équipement coûtant 2 ou moins. " +
       "Remettez cette carte dans votre main.",
-    // non appliqué : recherche/récupération depuis la défausse non modélisée.
+    onBreakEffects: [
+      {
+        type: "moveGraveyardCardToHand",
+        target: { kind: "controllerPlayer" },
+        filter: { cardTypes: ["structure", "equipement"], maxCost: 2 },
+      },
+    ],
   },
 
   // ======================================================================
@@ -1006,7 +1053,7 @@ export const CORE_SET: CardDefinition[] = [
     text:
       "Tant que vous êtes en Tempête ou Abysses, la première fois par tour que vous devriez perdre de la Raison, " +
       "réduisez cette perte de 1.",
-    // non appliqué : interception conditionnelle "première fois par tour" non modélisée.
+    reduceOwnReasonLossOncePerTurn: { amount: 1, tideStateIn: ["tempete", "abysses"] },
   },
   {
     id: "veilleur-des-profondeurs",
@@ -1049,7 +1096,7 @@ export const CORE_SET: CardDefinition[] = [
     attack: 5,
     health: 6,
     text: "La première fois à chaque tour qu'elle subit des dégâts, réduisez-les de 1.",
-    // non appliqué : réduction réactive de dégâts par carte non modélisée.
+    reduceOwnDamageTakenOncePerTurn: 1,
   },
   {
     // Version STANDARD (Notion "Catalogue de cartes", Lot 06) — coexiste avec la variante ABYSSALE ci-dessous.
@@ -1097,9 +1144,7 @@ export const CORE_SET: CardDefinition[] = [
       },
     ],
     // Bug corrigé au passage : l'Équipement ne s'attachait jamais (onPlayEffects absent).
-    // non appliqué : le bonus "+2 Résistance pendant Abysses" reste non câblé — nécessiterait d'exposer le
-    // plateau entier à `computeEffectiveStats` (unité équipée → lire l'état de Marée via son Équipement),
-    // signalé comme chantier plus lourd (même famille que Lampe de Pont Rouge).
+    equipGrantsBuffWhileTideStateIn: { tideStateIn: ["abysses"], healthAmount: 2 },
   },
   {
     id: "chaine-de-fer-noir",
@@ -1142,7 +1187,13 @@ export const CORE_SET: CardDefinition[] = [
       "Durée : 5 tours. Visible uniquement pendant Tempête et Abysses. Lorsqu'elle devient visible, chaque " +
       "joueur révèle une carte aléatoire de sa main. Le joueur ayant révélé la carte au coût le plus élevé perd " +
       "1 Raison. En cas d'égalité, personne ne perd de Raison.",
-    // non appliqué : révélation de main + comparaison de coût non modélisées.
+    abilities: [
+      {
+        trigger: "onBecomeVisible",
+        description: "Chaque joueur révèle une carte aléatoire de sa main ; le coût le plus élevé perd 1 Raison (égalité = personne).",
+        effects: [{ type: "reasonLossToHigherRevealedHandCard", target: { kind: "allPlayers" }, amount: { kind: "flat", value: 1 } }],
+      },
+    ],
   },
   {
     id: "le-filet-qui-respire",
@@ -1156,7 +1207,7 @@ export const CORE_SET: CardDefinition[] = [
     text:
       "Durée : 4 tours. Visible pendant Houle et Abysses. La première fois par tour qu'une Créature adverse " +
       "attaque votre Navire, elle perd 1 Puissance jusqu'à la fin de ce combat.",
-    // non appliqué : réduction réactive de Puissance en combat non modélisée.
+    reduceAttackerPowerOnDirectAttackOncePerTurn: 1,
   },
   {
     // Version STANDARD (Notion "Catalogue de cartes", Lot 06) — coexiste avec la variante ABYSSALE ci-dessous.
@@ -1164,9 +1215,16 @@ export const CORE_SET: CardDefinition[] = [
     name: "Le Fond Vous Regarde",
     type: "anomalie",
     cost: 5,
+    health: 4, // cf. commentaire sur Quelque Chose Sous la Coque : valeur absente du cadrage, fixée par cohérence.
     maxCopies: 2,
+    durationTurns: 2,
     text: "Pendant 2 tours, au début de chaque tour, le joueur actif choisit : perdre 1 Raison, ou infliger 1 dégât d'Ancrage à son propre Navire.",
-    // non appliqué : règle temporaire globale + choix de joueur non modélisés.
+    // non appliqué : nécessite un vrai choix de joueur (deux effets alternatifs proposés au joueur ACTIF à
+    // chaque début de tour) — contrairement aux autres Anomalies de ce lot, `game/state/anomalies.ts` ne
+    // modélise que des règles appliquées automatiquement, sans décision. Demanderait un sous-système dédié
+    // (état "choix en attente" façon `pendingReaction`, nouvelle action `resolveChoice`, UI de sélection) —
+    // signalé comme chantier séparé plutôt que deviné (un défaut fixe changerait la valeur stratégique réelle
+    // de la carte).
   },
   {
     // Variante ABYSSALE distincte (coexiste avec la Standard ci-dessus) — anciennement seule entrée sous
@@ -1176,9 +1234,11 @@ export const CORE_SET: CardDefinition[] = [
     type: "anomalie",
     subtype: "abyssal",
     cost: 7,
+    health: 5, // cf. commentaire sur Quelque Chose Sous la Coque : valeur absente du cadrage, fixée par cohérence.
     maxCopies: 1,
+    durationTurns: 2,
     text: "Pendant 2 tours, au début de chaque tour, le joueur actif choisit : perdre 2 Raison, ou infliger 2 dégâts d'Ancrage à son propre Navire.",
-    // non appliqué : règle temporaire globale + choix de joueur non modélisés.
+    // non appliqué : même chantier que la version Standard ci-dessus (choix de joueur non modélisé).
   },
 
   // ======================================================================
@@ -1289,7 +1349,10 @@ export const CORE_SET: CardDefinition[] = [
     attack: 2,
     health: 3,
     text: "Une fois par tour, vous pouvez perdre 1 Raison : réduisez de 1 tour la durée de la Marée actuelle.",
-    // non appliqué : capacité activable répétable non modélisée (pas de système d'activation hors pose/Sabordage/bris).
+    activatableOncePerTurn: {
+      cost: { reason: 1 },
+      effects: [{ type: "tideReduceDuration", target: { kind: "allPlayers" } }],
+    },
   },
   {
     id: "ancre-de-tempete",
@@ -1361,9 +1424,11 @@ export const CORE_SET: CardDefinition[] = [
     name: "La Mer Réclame Davantage",
     type: "anomalie",
     cost: 5,
+    health: 4, // cf. commentaire sur Quelque Chose Sous la Coque : valeur absente du cadrage, fixée par cohérence.
     maxCopies: 2,
+    durationTurns: 2,
     text: "Pendant 2 tours, chaque fois qu'une Marée change, elle entre avec 1 tour de durée en moins, minimum 1.",
-    // non appliqué : règle temporaire globale non modélisée.
+    anomalyReduceTideEntryDuration: { amount: 1 },
   },
   {
     // Variante ABYSSALE distincte (coexiste avec la Standard ci-dessus) — anciennement seule entrée sous
@@ -1373,11 +1438,13 @@ export const CORE_SET: CardDefinition[] = [
     type: "anomalie",
     subtype: "abyssal",
     cost: 6,
+    health: 5, // cf. commentaire sur Quelque Chose Sous la Coque : valeur absente du cadrage, fixée par cohérence.
     maxCopies: 1,
+    durationTurns: 2,
     text:
       "Pendant 2 tours, chaque fois qu'une Marée change, elle entre avec 1 tour de durée en moins, minimum 1. " +
       "Chaque changement de Marée inflige aussi 1 dégât d'Ancrage à chaque Navire.",
-    // non appliqué : règle temporaire globale non modélisée.
+    anomalyReduceTideEntryDuration: { amount: 1, anchorDamagePerShip: 1 },
   },
 
   // ======================================================================
@@ -1389,25 +1456,40 @@ export const CORE_SET: CardDefinition[] = [
     id: "la-gueule-sous-la-mer",
     name: "La Gueule Sous la Mer",
     type: "anomalie",
+    // Résolution immédiate (onPlayEffects uniquement, aucune règle durable) : comme un Équipement consommable,
+    // part directement au cimetière plutôt que d'occuper indéfiniment un Slot sans plus aucun effet (cf.
+    // `isPermanentCard`).
+    permanent: false,
     cost: 6,
     maxCopies: 1,
     text:
       "Forcez immédiatement la Marée en Abysses. Les états intermédiaires sont ignorés. Après résolution, votre " +
       "Navire perd 2 Ancrage. Jusqu'au début de votre prochain tour, vous ne pouvez pas récupérer de Raison.",
-    onPlayEffects: [{ type: "damage", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } }],
-    // non appliqué : le forçage direct de la Marée en Abysses et le verrou de récupération de Raison ne sont pas câblés.
+    onPlayEffects: [
+      { type: "tideForceJumpToAbysses", target: { kind: "allPlayers" } },
+      { type: "damage", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } },
+      { type: "lockReasonGainUntilNextTurn", target: { kind: "controllerPlayer" } },
+    ],
   },
   {
     id: "sept-brasses-plus-bas",
     name: "Sept Brasses Plus Bas",
     type: "anomalie",
+    permanent: false, // cf. commentaire sur La Gueule Sous la Mer ci-dessus.
     cost: 7,
     maxCopies: 1,
     text:
       "Forcez immédiatement la Marée en Abysses, puis augmentez de 1 tour sa durée restante. Chaque joueur perd " +
       "2 Raison. L'orientation devient Descendante après l'arrivée en Abysses.",
-    onPlayEffects: [{ type: "reasonLoss", target: { kind: "allPlayers" }, amount: { kind: "flat", value: 2 } }],
-    // non appliqué : le forçage direct de la Marée en Abysses, la prolongation de durée et le forçage d'orientation ne sont pas câblés.
+    onPlayEffects: [
+      {
+        type: "tideForceJumpToAbysses",
+        target: { kind: "allPlayers" },
+        amount: { kind: "flat", value: 1 },
+        forceTideOrientation: "descendante",
+      },
+      { type: "reasonLoss", target: { kind: "allPlayers" }, amount: { kind: "flat", value: 2 } },
+    ],
   },
 
   // ======================================================================
@@ -1421,7 +1503,7 @@ export const CORE_SET: CardDefinition[] = [
     attack: 2,
     health: 4,
     text: "La première fois par tour qu'une Structure alliée perd de la Résistance, rendez-lui 1 Résistance.",
-    // non appliqué : interception réactive "première fois par tour" sur perte de Résistance non modélisée.
+    restoreResistanceOnAllyStructureLossOncePerTurn: 1,
   },
   {
     id: "carape-hus",

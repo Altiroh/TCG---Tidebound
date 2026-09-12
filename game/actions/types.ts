@@ -57,6 +57,8 @@ export interface BreakObjectAction {
   instanceId: string;
   /** Requis si l'effet de bris de cet Objet cible `chosenUnit`. */
   targetInstanceId?: string;
+  /** Requis si l'effet de bris de cet Objet est `moveGraveyardCardToHand` ET qu'au moins une carte éligible existe dans la défausse (ex: Grappin de Récupération). */
+  chosenGraveyardInstanceId?: string;
 }
 
 /**
@@ -81,6 +83,22 @@ export interface PassReactionAction {
   playerId: PlayerId;
 }
 
+/**
+ * Active la capacité `CardDefinition.activatableOncePerTurn` d'une carte du
+ * plateau du joueur — discrétionnaire, jamais déclenchée par un événement
+ * de jeu (contrairement à `ActivateReactionAction`, réservée aux fenêtres
+ * de réaction). Consomme le coût indiqué par la carte, pas l'action
+ * principale du tour (peut se combiner librement avec `playCard`/
+ * `saborder`/`breakObject`, comme toutes les actions de Phase principale).
+ */
+export interface ActivateAbilityAction {
+  type: "activateAbility";
+  playerId: PlayerId;
+  sourceInstanceId: string;
+  /** Requis si un effet de cette capacité cible `chosenUnit`. */
+  targetInstanceId?: string;
+}
+
 export type PlayerAction =
   | PlayCardAction
   | AttackAction
@@ -89,7 +107,8 @@ export type PlayerAction =
   | BreakObjectAction
   | AdvancePhaseAction
   | ActivateReactionAction
-  | PassReactionAction;
+  | PassReactionAction
+  | ActivateAbilityAction;
 
 export type ActionResult =
   | { ok: true; state: GameState; events: GameEvent[] }

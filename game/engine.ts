@@ -1,3 +1,4 @@
+import { activateAbility } from "@/game/actions/activateAbility";
 import { activateReaction } from "@/game/actions/activateReaction";
 import { advancePhase } from "@/game/actions/advancePhase";
 import { attack } from "@/game/actions/attack";
@@ -99,6 +100,8 @@ function applyAction(state: GameState, action: PlayerAction): ActionResult {
       return activateReaction(state, action);
     case "passReaction":
       return passReaction(state, action);
+    case "activateAbility":
+      return activateAbility(state, action);
     default: {
       const exhaustiveCheck: never = action;
       return { ok: false, error: `Action inconnue: ${JSON.stringify(exhaustiveCheck)}` };

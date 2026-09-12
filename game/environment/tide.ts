@@ -94,6 +94,34 @@ export function forceTideTransition(
   };
 }
 
+/**
+ * Force une entrée DIRECTE dans les Abysses, en ignorant tout état
+ * intermédiaire — contrairement à `forceTideTransition`, qui n'avance que
+ * d'un cran (ex: Compas aux Aiguilles Noires). Réservé aux "Grandes
+ * Anomalies" du Lot 08 (La Gueule Sous la Mer, Sept Brasses Plus Bas).
+ * `extraDurationTurns` (optionnel) s'ajoute à la durée d'entrée par défaut
+ * de l'Abysses ; `forceOrientation` (optionnel) fixe l'orientation
+ * résultante au lieu de la déduire naturellement (`naturalOrientationFor`).
+ * Comme `forceTideTransition`, ne déclenche NI le choc d'entrée dans
+ * l'Abysses NI `onTideStateEntered`/`onBecomeVisible` — seuls l'état, la
+ * durée et l'orientation changent (même limitation documentée, cf.
+ * commentaire de `forceTideTransition` ci-dessus).
+ */
+export function forceTideJumpToAbysses(
+  env: Pick<EnvironmentState, "tideState" | "tideOrientation" | "pendingTideModifiers">,
+  options?: { extraDurationTurns?: number; forceOrientation?: TideOrientation }
+): TickTideResult {
+  const orientation = options?.forceOrientation ?? naturalOrientationFor("abysses", env.tideOrientation);
+  return {
+    tideState: "abysses",
+    tideRemainingTurns: RULES.TIDE_STATE_DURATION.abysses + (options?.extraDurationTurns ?? 0),
+    tideOrientation: orientation,
+    tideIntensity: RULES.TIDE_BASE_INTENSITY,
+    pendingTideModifiers: env.pendingTideModifiers,
+    stateChanged: env.tideState !== "abysses",
+  };
+}
+
 /** Consomme (et retire) le modificateur "amplify" en attente, s'il y en a un. */
 export function consumeAmplify(modifiers: PendingTideModifier[]): { amplified: boolean; modifiers: PendingTideModifier[] } {
   const index = modifiers.findIndex((m) => m.kind === "amplify" && m.remainingTriggers > 0);

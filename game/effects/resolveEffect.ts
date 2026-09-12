@@ -1,12 +1,15 @@
 import { isVisibleDuringTide, type CardInstance } from "@/game/cards/types";
 import { canBeEquipTarget, getCardDefinition } from "@/game/cards/sets/core";
-import { forceTideTransition } from "@/game/environment/tide";
+import { forceTideJumpToAbysses, forceTideTransition } from "@/game/environment/tide";
 import type { EffectAmount, EffectDefinition } from "@/game/effects/types";
 import type { GameEvent } from "@/game/events/types";
 import { nextInt } from "@/game/rng";
+import { reduceReasonGain } from "@/game/state/anomalies";
+import { consumeOwnDamageTakenShield, consumeReasonLossShield, consumeStructureResistanceRestoreShield } from "@/game/state/shields";
 import {
   getOpponent,
   getPlayer,
+  STATUS_NO_REASON_GAIN,
   type GameState,
   type PlayerId,
   type PlayerState,
@@ -18,7 +21,15 @@ export interface EffectContext {
   controllerId: PlayerId;
   sourceInstanceId?: string;
   chosenTargetInstanceId?: string;
+  /** instanceId d'une carte de la DÉFAUSSE choisie par le joueur (`moveGraveyardCardToHand`, ex: Grappin de Récupération) — toujours dans la défausse de `controllerId`, jamais celle de l'adversaire. */
+  chosenGraveyardInstanceId?: string;
   turnNumber: number;
+}
+
+/** Types acceptés par `EffectDefinition.filter` pour une carte candidate — `undefined` = aucune restriction de type. */
+function matchesCardTypeFilter(filter: EffectDefinition["filter"], cardType: string): boolean {
+  const allowed = filter?.cardTypes ?? (filter?.cardType ? [filter.cardType] : undefined);
+  return !allowed || (allowed as readonly string[]).includes(cardType);
 }
 
 export interface EffectResolution {
@@ -28,6 +39,38 @@ export interface EffectResolution {
 
 function amountValue(amount: EffectAmount | undefined): number {
   return amount?.value ?? 0;
+}
+
+/**
+ * Révèle jusqu'à `amount` cartes aléatoires DISTINCTES de la main de
+ * `targetPlayerId` (moins si sa main en contient moins) : émet un
+ * `HAND_CARD_REVEALED` par carte, sans autre effet sur l'état (ex: Guetteur
+ * de Brume, La Bouée qui Regardait). Factorisé pour être appelable aussi
+ * bien depuis `case "revealRandomHandCards"` que directement depuis
+ * `game/triggers/triggerBus.ts` (Guetteur de Brume, hors du pipeline
+ * d'effets habituel — cf. commentaire sur place).
+ */
+export function revealRandomHandCards(
+  state: GameState,
+  targetPlayerId: PlayerId,
+  amount: number,
+  turnNumber: number
+): EffectResolution {
+  const events: GameEvent[] = [];
+  const base = { turnNumber, timestamp: Date.now() };
+  const player = getPlayer(state, targetPlayerId);
+  const pool = [...player.hand];
+  const count = Math.min(amount, pool.length);
+  let rngState = state.rngState;
+
+  for (let i = 0; i < count; i++) {
+    const draw = nextInt(rngState, pool.length);
+    rngState = draw.nextState;
+    const [card] = pool.splice(draw.value, 1);
+    events.push({ ...base, type: "HAND_CARD_REVEALED", ownerId: player.id, instanceId: card!.instanceId, cardId: card!.cardId });
+  }
+
+  return { state: { ...state, rngState }, events };
 }
 
 function replacePlayer(state: GameState, updated: PlayerState): GameState {
@@ -171,11 +214,26 @@ export function resolveEffect(
       let nextState = state;
 
       for (const { unit, ownerId } of resolveUnitTargets(state, effect, context)) {
+        // Boucliers "1ère fois par tour" (Baleine aux Cicatrices Blanches :
+        // réduction directe ; Wood Vy : restauration après coup sur une
+        // Structure alliée — équivalent net à une réduction supplémentaire,
+        // cf. commentaire de `consumeStructureResistanceRestoreShield`).
+        const selfShield = consumeOwnDamageTakenShield(nextState, ownerId, unit.instanceId, context.turnNumber);
+        nextState = selfShield.state;
+        let reduction = selfShield.reduction;
+        if (getCardDefinition(unit.cardId).type === "structure") {
+          const restoreShield = consumeStructureResistanceRestoreShield(nextState, ownerId, context.turnNumber);
+          nextState = restoreShield.state;
+          reduction += restoreShield.restore;
+        }
+        const finalAmount = Math.max(0, amount - reduction);
+        if (finalAmount <= 0) continue;
+
         nextState = replaceUnit(nextState, ownerId, unit.instanceId, (u) => ({
           ...u,
-          damageMarked: u.damageMarked + amount,
+          damageMarked: u.damageMarked + finalAmount,
         }));
-        events.push({ ...base, type: "DAMAGE", targetInstanceId: unit.instanceId, amount });
+        events.push({ ...base, type: "DAMAGE", targetInstanceId: unit.instanceId, amount: finalAmount });
       }
 
       for (const player of resolvePlayerTargets(state, effect, context)) {
@@ -331,12 +389,17 @@ export function resolveEffect(
     }
 
     case "reasonGain": {
-      const amount = amountValue(effect.amount);
+      const rawAmount = amountValue(effect.amount);
       const targets = resolvePlayerTargets(state, effect, context);
       const players = targets.length > 0 ? targets : [getPlayer(state, context.controllerId)];
       let nextState = state;
       for (const target of players) {
         const player = getPlayer(nextState, target.id);
+        // "La Gueule Sous la Mer" : verrou total, prioritaire sur toute réduction.
+        if (player.statusFlags.includes(STATUS_NO_REASON_GAIN)) continue;
+        // "Le Chant Sous la Ligne" : réduit TOUT gain de Raison tant qu'elle est en jeu.
+        const amount = reduceReasonGain(nextState, rawAmount);
+        if (amount <= 0) continue;
         events.push({ ...base, type: "REASON_CHANGED", playerId: player.id, delta: amount });
         nextState = replacePlayer(nextState, { ...player, reason: Math.min(player.reasonMax, player.reason + amount) });
       }
@@ -349,9 +412,13 @@ export function resolveEffect(
       const players = targets.length > 0 ? targets : [getPlayer(state, context.controllerId)];
       let nextState = state;
       for (const target of players) {
+        const shield = consumeReasonLossShield(nextState, target.id, context.turnNumber);
+        nextState = shield.state;
+        const finalAmount = Math.max(0, amount - shield.reduction);
+        if (finalAmount <= 0) continue;
         const player = getPlayer(nextState, target.id);
-        events.push({ ...base, type: "REASON_CHANGED", playerId: player.id, delta: -amount });
-        nextState = replacePlayer(nextState, { ...player, reason: Math.max(0, player.reason - amount) });
+        events.push({ ...base, type: "REASON_CHANGED", playerId: player.id, delta: -finalAmount });
+        nextState = replacePlayer(nextState, { ...player, reason: Math.max(0, player.reason - finalAmount) });
       }
       return { state: nextState, events };
     }
@@ -474,6 +541,104 @@ export function resolveEffect(
           : p
       ) as [PlayerState, PlayerState];
       return { state: { ...state, players }, events };
+    }
+
+    case "revealRandomHandCards": {
+      const amount = amountValue(effect.amount) || 1;
+      let nextState = state;
+      for (const target of resolvePlayerTargets(state, effect, context)) {
+        const result = revealRandomHandCards(nextState, target.id, amount, context.turnNumber);
+        nextState = result.state;
+        events.push(...result.events);
+      }
+      return { state: nextState, events };
+    }
+
+    case "reasonLossToHigherRevealedHandCard": {
+      const amount = amountValue(effect.amount) || 1;
+      let nextState = state;
+      let rngState = nextState.rngState;
+      const revealed: Array<{ playerId: PlayerId; cost: number }> = [];
+
+      for (const player of nextState.players) {
+        if (player.hand.length === 0) continue;
+        const draw = nextInt(rngState, player.hand.length);
+        rngState = draw.nextState;
+        const card = player.hand[draw.value]!;
+        events.push({ ...base, type: "HAND_CARD_REVEALED", ownerId: player.id, instanceId: card.instanceId, cardId: card.cardId });
+        revealed.push({ playerId: player.id, cost: getCardDefinition(card.cardId).cost });
+      }
+      nextState = { ...nextState, rngState };
+
+      if (revealed.length === 2 && revealed[0]!.cost !== revealed[1]!.cost) {
+        const loser = revealed[0]!.cost > revealed[1]!.cost ? revealed[0]! : revealed[1]!;
+        const shield = consumeReasonLossShield(nextState, loser.playerId, context.turnNumber);
+        nextState = shield.state;
+        const finalAmount = Math.max(0, amount - shield.reduction);
+        if (finalAmount > 0) {
+          const loserPlayer = getPlayer(nextState, loser.playerId);
+          events.push({ ...base, type: "REASON_CHANGED", playerId: loserPlayer.id, delta: -finalAmount });
+          nextState = replacePlayer(nextState, { ...loserPlayer, reason: Math.max(0, loserPlayer.reason - finalAmount) });
+        }
+      }
+      return { state: nextState, events };
+    }
+
+    case "tideForceJumpToAbysses": {
+      const extraDurationTurns = amountValue(effect.amount) || 0;
+      const tick = forceTideJumpToAbysses(state.environment, {
+        extraDurationTurns,
+        forceOrientation: effect.forceTideOrientation,
+      });
+      events.push({
+        ...base,
+        type: "TIDE_ADVANCED",
+        remainingTurns: tick.tideRemainingTurns,
+        tideState: tick.tideState,
+        tideOrientation: tick.tideOrientation,
+        stateChanged: tick.stateChanged,
+      });
+      return {
+        state: {
+          ...state,
+          environment: {
+            ...state.environment,
+            tideState: tick.tideState,
+            tideRemainingTurns: tick.tideRemainingTurns,
+            tideOrientation: tick.tideOrientation,
+            tideIntensity: tick.tideIntensity,
+            pendingTideModifiers: tick.pendingTideModifiers,
+          },
+        },
+        events,
+      };
+    }
+
+    case "lockReasonGainUntilNextTurn": {
+      let nextState = state;
+      for (const target of resolvePlayerTargets(state, effect, context)) {
+        const player = getPlayer(nextState, target.id);
+        if (player.statusFlags.includes(STATUS_NO_REASON_GAIN)) continue;
+        nextState = replacePlayer(nextState, { ...player, statusFlags: [...player.statusFlags, STATUS_NO_REASON_GAIN] });
+      }
+      return { state: nextState, events };
+    }
+
+    case "moveGraveyardCardToHand": {
+      const player = resolveSinglePlayerTarget(state, effect, context) ?? getPlayer(state, context.controllerId);
+      const chosenId = context.chosenGraveyardInstanceId;
+      if (!chosenId) return { state, events };
+      const card = player.graveyard.find((c) => c.instanceId === chosenId);
+      if (!card) return { state, events };
+      if (!matchesCardTypeFilter(effect.filter, getCardDefinition(card.cardId).type)) return { state, events };
+      if (effect.filter?.maxCost !== undefined && getCardDefinition(card.cardId).cost > effect.filter.maxCost) {
+        return { state, events };
+      }
+
+      const graveyard = player.graveyard.filter((c) => c.instanceId !== chosenId);
+      const hand = [...player.hand, card];
+      events.push({ ...base, type: "CARD_MOVED", instanceId: card.instanceId, fromZone: "graveyard", toZone: "hand" });
+      return { state: replacePlayer(state, { ...player, graveyard, hand }), events };
     }
 
     case "moveZone":

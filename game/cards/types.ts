@@ -297,6 +297,98 @@ export interface CardDefinition {
    */
   controllerReasonLossAfterAttack?: number;
 
+  // --- Boucliers "1ère fois par tour" (cf. `game/state/shields.ts` +
+  // `CardInstance.oncePerTurnFlags`) : chacun réduit/restaure un montant la
+  // PREMIÈRE fois que la situation décrite se produit pour son contrôleur
+  // au cours d'un même tour, jamais plus. -----------------------------
+
+  /** Réduit la perte de Raison de son contrôleur, toute source confondue (ex: Vieux Loup de Mer, Second au Visage Pâle avec `tideStateIn`). */
+  reduceOwnReasonLossOncePerTurn?: { amount: number; tideStateIn?: TideStateName[] };
+
+  /** Réduit les dégâts de MARÉE subis par le Navire de son contrôleur, dans ces états (ex: Brise-Vague de Fortune, Tempête uniquement). */
+  reduceTideShipDamageOncePerTurn?: { amount: number; tideStateIn: TideStateName[] };
+
+  /** Réduit les dégâts DIRECTS (attaque d'unité contre le Navire) subis par son contrôleur (ex: Cage de Flottaison). */
+  reduceDirectShipDamageOncePerTurn?: number;
+
+  /** Réduit la Puissance d'une unité ADVERSE qui attaque directement le Navire de son contrôleur, pour ce combat (ex: Le Filet qui Respire). */
+  reduceAttackerPowerOnDirectAttackOncePerTurn?: number;
+
+  /** Réduit les dégâts subis par CETTE unité elle-même, au combat (ex: Baleine aux Cicatrices Blanches). */
+  reduceOwnDamageTakenOncePerTurn?: number;
+
+  /** Restaure cette Résistance à une Structure alliée la première fois qu'elle en perd, ce tour-ci (ex: Wood Vy). */
+  restoreResistanceOnAllyStructureLossOncePerTurn?: number;
+
+  // --- Auras/stats dynamiques (cf. `computeEffectiveStats`, qui reçoit
+  // désormais le plateau et la Raison du CONTRÔLEUR de l'unité évaluée pour
+  // les calculer à la volée, jamais stockées sur `CardInstance`) --------
+
+  /** Bonus permanent sur SOI-MÊME tant que son contrôleur possède au moins une Structure VISIBLE sur son plateau (ex: Bernard-l'Ermite d'Acier). */
+  selfBuffWhileControllingVisibleStructure?: { attackAmount?: number; healthAmount?: number };
+
+  /** Bonus permanent sur SOI-MÊME tant que la Raison de son contrôleur est ≤ ce seuil (ex: Matelot Insomniaque). */
+  selfBuffWhileControllerReasonAtMost?: { reasonAtMost: number; attackAmount?: number; healthAmount?: number };
+
+  /**
+   * Aura : bonus accordé aux AUTRES unités du type `targetType` du même
+   * contrôleur (jamais à elle-même), tant que la Raison de son contrôleur
+   * est ≤ ce seuil (ex: Capitaine Sans Sommeil, "+1 Résistance aux autres
+   * Marins tant que Raison ≤ 3").
+   */
+  auraBuffOtherUnitsWhileControllerReasonAtMost?: { reasonAtMost: number; targetType: CardType; attackAmount?: number; healthAmount?: number };
+
+  /**
+   * Pour un Équipement UNIQUEMENT : bonus accordé à l'unité qu'il équipe
+   * tant que la Marée est dans l'un de ces états (ex: Lampe de Pont Rouge
+   * en Houle/Tempête, Masque de Plongée Fissuré en Abysses).
+   */
+  equipGrantsBuffWhileTideStateIn?: { tideStateIn: TideStateName[]; attackAmount?: number; healthAmount?: number };
+
+  /**
+   * La première fois par tour que l'ADVERSAIRE de son contrôleur active une
+   * réaction PENDANT le tour de son contrôleur (seul moyen, dans ce moteur,
+   * pour un joueur non-actif de "déclencher un effet" pendant le tour de
+   * l'autre), révèle `amount` cartes aléatoires de la main de cet adversaire
+   * (ex: Guetteur de Brume). Consommé via `game/state/shields.ts` +
+   * `CardInstance.oncePerTurnFlags`, câblé directement dans
+   * `game/triggers/triggerBus.ts` (`resolveReaction`) plutôt que via le
+   * système `abilities`/`TriggerType` : ce n'est pas une réaction à un
+   * `TriggerEvent` mais à l'ACTE MÊME d'activer une réaction.
+   */
+  revealOpponentHandOnReactionOncePerTurn?: { amount: number };
+
+  // --- Anomalies globales temporaires (`type: "anomalie"`, permanents à
+  // durée limitée via `durationTurns` comme une Structure) : cf.
+  // `game/state/anomalies.ts` — règles SYMÉTRIQUES qui affectent n'importe
+  // quel joueur concerné, pas seulement le contrôleur de l'Anomalie. -----
+
+  /** Chaque joueur perd ce montant de Raison la 1ère fois PAR TOUR qu'il joue une carte (ex: Quelque Chose Sous la Coque). */
+  anomalyReasonLossOnFirstCardPlayedPerTurn?: number;
+
+  /** Chaque joueur perd ce montant de Raison la 1ère fois PAR TOUR qu'un de ses permanents quitte le plateau — mort, Sabordage ou expiration (ex: Les Voix dans le Sillage). */
+  anomalyReasonLossOnFirstPermanentLeavingPerTurn?: number;
+
+  /** Chaque joueur perd ce montant de Raison la 1ère fois PAR TOUR qu'il joue un permanent ; `bonusIfCreature` s'ajoute si ce permanent est une Créature (ex: Ils Sont Sous Nous). */
+  anomalyReasonLossOnFirstPermanentPlayedPerTurn?: { amount: number; bonusIfCreature?: number };
+
+  /** Réduit de ce montant (jamais sous 0) TOUT gain de Raison, à chaque fois — pas de limite par tour (ex: Le Chant Sous la Ligne). */
+  anomalyReduceAllReasonGains?: number;
+
+  /** À chaque changement d'état de Marée, réduit sa durée d'entrée de ce montant (minimum 1) ; `anchorDamagePerShip` inflige en plus ce montant de dégâts d'Ancrage à CHAQUE Navire (ex: La Mer Réclame Davantage). */
+  anomalyReduceTideEntryDuration?: { amount: number; anchorDamagePerShip?: number };
+
+  /**
+   * Capacité activable manuellement par son contrôleur, une fois par tour,
+   * pendant sa Phase principale (`game/actions/activateAbility.ts`) — ex:
+   * Sondeur des Mauvaises Eaux, "Une fois par tour, vous pouvez perdre 1
+   * Raison : réduisez de 1 tour la durée de la Marée actuelle." Distincte
+   * des `abilities` déclenchées par un `TriggerType` : celle-ci n'est
+   * déclenchée par AUCUN événement de jeu, seulement par un choix
+   * discrétionnaire du joueur, tant que le coût est payable.
+   */
+  activatableOncePerTurn?: { cost: { reason?: number }; effects: EffectDefinition[] };
+
   /**
    * Nombre maximum d'exemplaires de cette carte dans un deck personnel —
    * donnée propre à chaque carte, jamais dérivée de la rareté (cadrage
@@ -350,7 +442,12 @@ export function getMaxCopies(def: CardDefinition): number {
  */
 export function isPermanentCard(def: CardDefinition): boolean {
   if (!PERMANENT_CARD_TYPES.includes(def.type)) return false;
-  if (def.type === "equipement") return def.permanent !== false;
+  // Comme un Équipement consommable (`permanent: false`) : une Anomalie à
+  // résolution immédiate (`onPlayEffects` uniquement, jamais de règle
+  // durable via `durationTurns`) part directement au cimetière plutôt que
+  // d'occuper indéfiniment un Slot sans plus aucun effet (ex: La Gueule
+  // Sous la Mer, Sept Brasses Plus Bas — Lot 08, "Grandes Anomalies").
+  if (def.type === "equipement" || def.type === "anomalie") return def.permanent !== false;
   return true;
 }
 
@@ -411,6 +508,20 @@ export interface CardInstance {
    * (aucun nettoyage à faire ailleurs).
    */
   attachedToInstanceId?: string;
+
+  /**
+   * Suivi générique des capacités "la première fois PAR TOUR que..." (ex:
+   * Vieux Loup de Mer, Baleine aux Cicatrices Blanches, Cage de Flottaison).
+   * Clé = identifiant du mécanisme (ex: "reasonLossShield"), valeur =
+   * `turnNumber` de la dernière activation. Une capacité est "encore
+   * disponible ce tour-ci" quand `oncePerTurnFlags[clé] !== state.turnNumber`
+   * — pas besoin de réinitialisation explicite en fin de tour, `turnNumber`
+   * ne fait qu'augmenter. Volontairement générique (une seule carte
+   * n'aura jamais deux mécanismes de MÊME clé) plutôt qu'un champ booléen
+   * dédié par mécanisme, pour ne pas faire grossir `CardInstance` à chaque
+   * nouvelle capacité de ce type.
+   */
+  oncePerTurnFlags?: Record<string, number>;
 }
 
 export interface StatModifier {

@@ -8,6 +8,16 @@ export type PlayerId = string;
 
 export type Zone = "deck" | "hand" | "board" | "graveyard";
 
+/**
+ * Drapeau `PlayerState.statusFlags` : ce joueur ne peut récupérer aucune
+ * Raison (régénération de début de tour incluse) tant qu'il reste posé (ex:
+ * La Gueule Sous la Mer, "jusqu'au début de votre prochain tour, vous ne
+ * pouvez pas récupérer de Raison") — retiré automatiquement à la toute
+ * PROCHAINE régénération de son porteur (`game/actions/endTurn.ts`), qui
+ * est donc celle bloquée, jamais les suivantes.
+ */
+export const STATUS_NO_REASON_GAIN = "noReasonGainUntilNextTurn";
+
 export interface PlayerState {
   id: PlayerId;
   /** Navire principal choisi pour ce deck : fixe, jamais dans une zone de cartes. */

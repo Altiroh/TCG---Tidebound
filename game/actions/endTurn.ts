@@ -3,7 +3,7 @@ import type { GameEvent } from "@/game/events/types";
 import { processTrigger } from "@/game/triggers/triggerBus";
 import { RULES } from "@/game/rules/constants";
 import { assertGameActive, assertIsActivePlayer, assertPlayerInGame, combine } from "@/game/rules/validation";
-import { getOpponent, type GameState, type PlayerState } from "@/game/state/types";
+import { getOpponent, STATUS_NO_REASON_GAIN, type GameState, type PlayerState } from "@/game/state/types";
 import type { ActionResult, EndTurnAction } from "@/game/actions/types";
 
 function validate(state: GameState, action: EndTurnAction) {
@@ -118,10 +118,15 @@ export function endTurn(state: GameState, action: EndTurnAction): ActionResult {
   // --- 3-4. Régénération de Raison, pioche --------------------------------
   const playerBeforeUpkeep = nextState.players.find((p) => p.id === nextPlayer.id)!;
 
-  const reason = Math.min(
-    playerBeforeUpkeep.reasonMax,
-    playerBeforeUpkeep.reason + RULES.REASON_REGEN_PER_TURN
-  );
+  // "La Gueule Sous la Mer" : verrou consommé exactement ICI — cette
+  // régénération-ci est bloquée, jamais les suivantes ("jusqu'au début de
+  // votre prochain tour" = jusqu'à ce moment précis, pas après).
+  const reasonGainLocked = playerBeforeUpkeep.statusFlags.includes(STATUS_NO_REASON_GAIN);
+  const statusFlagsAfterUpkeep = playerBeforeUpkeep.statusFlags.filter((f) => f !== STATUS_NO_REASON_GAIN);
+
+  const reason = reasonGainLocked
+    ? playerBeforeUpkeep.reason
+    : Math.min(playerBeforeUpkeep.reasonMax, playerBeforeUpkeep.reason + RULES.REASON_REGEN_PER_TURN);
   if (reason !== playerBeforeUpkeep.reason) {
     events.push({ ...newBase, type: "REASON_CHANGED", playerId: nextPlayer.id, delta: reason - playerBeforeUpkeep.reason });
   }
@@ -154,6 +159,7 @@ export function endTurn(state: GameState, action: EndTurnAction): ActionResult {
     deck,
     hand,
     board: refreshedBoard,
+    statusFlags: statusFlagsAfterUpkeep,
   };
 
   nextState = {

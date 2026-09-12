@@ -8,7 +8,9 @@ import { RULES } from "@/game/rules/constants";
 import { nextInt } from "@/game/rng";
 import type { GameEvent } from "@/game/events/types";
 import { processTrigger } from "@/game/triggers/triggerBus";
-import type { GameState, PlayerId, PlayerState } from "@/game/state/types";
+import { applyTideChangeAnomalies } from "@/game/state/anomalies";
+import { consumeReasonLossShield, consumeTideShipDamageShield } from "@/game/state/shields";
+import { getPlayer, type GameState, type PlayerId, type PlayerState } from "@/game/state/types";
 
 const IGNORE_FLAG_PREFIX = "ignoreNextTideDamage";
 
@@ -263,12 +265,19 @@ export function resolveTideTurnStep(
   const { amplified, modifiers: modifiersAfterAmplify } = consumeAmplify(tick.pendingTideModifiers);
   const intensity = amplified ? tick.tideIntensity * 2 : tick.tideIntensity;
 
+  // "La Mer Réclame Davantage" : uniquement sur un vrai CHANGEMENT d'état
+  // (`tick.stateChanged`), jamais sur un simple décompte dans le même état —
+  // lue AVANT que le nouvel état ne soit committé ci-dessous.
+  const tideAnomaly = tick.stateChanged
+    ? applyTideChangeAnomalies(state, tick.tideRemainingTurns)
+    : { tideRemainingTurns: tick.tideRemainingTurns, anchorDamagePerShip: 0 };
+
   let nextState: GameState = {
     ...state,
     environment: {
       ...state.environment,
       tideState: tick.tideState,
-      tideRemainingTurns: tick.tideRemainingTurns,
+      tideRemainingTurns: tideAnomaly.tideRemainingTurns,
       tideOrientation: tick.tideOrientation,
       tideIntensity: tick.tideIntensity,
       pendingTideModifiers: modifiersAfterAmplify,
@@ -279,11 +288,24 @@ export function resolveTideTurnStep(
     type: "TIDE_ADVANCED",
     turnNumber,
     timestamp: Date.now(),
-    remainingTurns: tick.tideRemainingTurns,
+    remainingTurns: tideAnomaly.tideRemainingTurns,
     tideState: tick.tideState,
     tideOrientation: tick.tideOrientation,
     stateChanged: tick.stateChanged,
   });
+
+  if (tideAnomaly.anchorDamagePerShip > 0) {
+    nextState = {
+      ...nextState,
+      players: nextState.players.map((p) => ({ ...p, anchor: p.anchor - tideAnomaly.anchorDamagePerShip })) as [
+        PlayerState,
+        PlayerState
+      ],
+    };
+    for (const p of nextState.players) {
+      events.push({ ...base, type: "DAMAGE", targetPlayerId: p.id, amount: tideAnomaly.anchorDamagePerShip });
+    }
+  }
 
   let players = nextState.players.map((p) => ({ ...p })) as [PlayerState, PlayerState];
 
@@ -296,8 +318,27 @@ export function resolveTideTurnStep(
     const ignored = (damage.anchor > 0 || damage.reason > 0) && statusFlags.includes(flag);
     if (ignored) statusFlags.splice(statusFlags.indexOf(flag), 1);
 
-    const anchorLoss = ignored ? 0 : damage.anchor;
-    const reasonLoss = ignored ? 0 : damage.reason;
+    let anchorLoss = ignored ? 0 : damage.anchor;
+    let reasonLoss = ignored ? 0 : damage.reason;
+    let board = player.board;
+
+    // Boucliers "1ère fois par tour" (Brise-Vague de Fortune : dégâts de
+    // Marée au Navire ; Vieux Loup de Mer / Second au Visage Pâle : perte
+    // de Raison) — consommés via `nextState` (qui porte le plateau à jour)
+    // puis reportés dans `board` pour que la ré-assignation de `players[i]`
+    // ci-dessous ne perde pas le marqueur "déjà utilisé ce tour-ci".
+    if (anchorLoss > 0) {
+      const shield = consumeTideShipDamageShield(nextState, player.id, turnNumber);
+      nextState = shield.state;
+      board = getPlayer(nextState, player.id).board;
+      anchorLoss = Math.max(0, anchorLoss - shield.reduction);
+    }
+    if (reasonLoss > 0) {
+      const shield = consumeReasonLossShield(nextState, player.id, turnNumber);
+      nextState = shield.state;
+      board = getPlayer(nextState, player.id).board;
+      reasonLoss = Math.max(0, reasonLoss - shield.reduction);
+    }
 
     let hand = player.hand;
     let graveyard = player.graveyard;
@@ -314,6 +355,7 @@ export function resolveTideTurnStep(
 
     players[i] = {
       ...player,
+      board,
       anchor: player.anchor - anchorLoss,
       reason: Math.max(0, player.reason - reasonLoss),
       statusFlags,

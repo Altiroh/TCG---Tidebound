@@ -8,14 +8,17 @@ import type { GameState, PlayerId, PlayerState } from "@/game/state/types";
  * réduite de moitié si la Marée rend l'unité inactive (elle occupe quand
  * même un Slot et reprendra de la valeur plus tard).
  */
-function unitValue(state: GameState, unit: CardInstance): number {
-  const stats = computeEffectiveStats(unit, state.environment.tideState);
+function unitValue(state: GameState, unit: CardInstance, controller: PlayerState): number {
+  const stats = computeEffectiveStats(unit, state.environment.tideState, {
+    controllerBoard: controller.board,
+    controllerReason: controller.reason,
+  });
   const raw = stats.attack * 1.5 + stats.health * 1.2;
   return stats.inactive ? raw * 0.5 : raw;
 }
 
 function playerValue(state: GameState, player: PlayerState): number {
-  const boardValue = player.board.reduce((sum, unit) => sum + unitValue(state, unit), 0);
+  const boardValue = player.board.reduce((sum, unit) => sum + unitValue(state, unit, player), 0);
   return player.anchor * 3 + player.reason * 0.5 + boardValue + player.hand.length * 0.75;
 }
 

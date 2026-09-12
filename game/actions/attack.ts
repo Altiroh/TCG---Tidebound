@@ -13,11 +13,21 @@ import {
   assertValidDefender,
   combine,
 } from "@/game/rules/validation";
+import {
+  consumeAttackerPowerShield,
+  consumeDirectShipDamageShield,
+  consumeOwnDamageTakenShield,
+  consumeStructureResistanceRestoreShield,
+} from "@/game/state/shields";
 import { getOpponent, getPlayer, type GameState, type PlayerState } from "@/game/state/types";
 import type { ActionResult, AttackAction } from "@/game/actions/types";
 
 function effectiveAttack(unit: CardInstance, state: GameState): number {
-  return computeEffectiveStats(unit, state.environment.tideState).attack;
+  const controller = getPlayer(state, unit.ownerId);
+  return computeEffectiveStats(unit, state.environment.tideState, {
+    controllerBoard: controller.board,
+    controllerReason: controller.reason,
+  }).attack;
 }
 
 /**
@@ -95,6 +105,39 @@ function controllerReasonLossAfterAttack(attacker: CardInstance, state: GameStat
   return total;
 }
 
+/** Applique des dégâts de COMBAT à une unité, en respectant son propre bouclier "1ère fois par tour" (Baleine aux Cicatrices Blanches) et, si c'est une Structure, la restauration de Wood Vy — retourne le montant réellement marqué (peut être 0 si totalement absorbé). Utilisé aussi bien pour les dégâts au défenseur que pour la riposte à l'attaquant : "elle subit des dégâts" ne distingue pas les deux rôles. */
+function applyCombatDamageToUnit(
+  state: GameState,
+  ownerId: string,
+  unit: CardInstance,
+  amount: number,
+  turnNumber: number
+): { state: GameState; amountApplied: number } {
+  if (amount <= 0) return { state, amountApplied: 0 };
+  const selfShield = consumeOwnDamageTakenShield(state, ownerId, unit.instanceId, turnNumber);
+  let nextState = selfShield.state;
+  let reduction = selfShield.reduction;
+  if (getCardDefinition(unit.cardId).type === "structure") {
+    const restoreShield = consumeStructureResistanceRestoreShield(nextState, ownerId, turnNumber);
+    nextState = restoreShield.state;
+    reduction += restoreShield.restore;
+  }
+  const finalAmount = Math.max(0, amount - reduction);
+  if (finalAmount <= 0) return { state: nextState, amountApplied: 0 };
+  nextState = {
+    ...nextState,
+    players: nextState.players.map((p) =>
+      p.id === ownerId
+        ? {
+            ...p,
+            board: p.board.map((u) => (u.instanceId === unit.instanceId ? { ...u, damageMarked: u.damageMarked + finalAmount } : u)),
+          }
+        : p
+    ) as [PlayerState, PlayerState],
+  };
+  return { state: nextState, amountApplied: finalAmount };
+}
+
 function validate(state: GameState, action: AttackAction) {
   return combine(
     assertGameActive(state),
@@ -152,10 +195,24 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
 
   if (!action.defenderInstanceId) {
     const opponent = getOpponent(nextState, action.playerId);
+
+    // Bouclier "1ère fois par tour" du DÉFENSEUR réduisant la Puissance de
+    // l'attaquant sur une attaque directe (Le Filet qui Respire).
+    const attackerPowerShield = consumeAttackerPowerShield(nextState, opponent.id, state.turnNumber);
+    nextState = attackerPowerShield.state;
+    const shieldedAttackerDamage = Math.max(0, attackerDamage - attackerPowerShield.reduction);
+
     // Faiblesse "Coque légère" (Le Courlis) : +1 dégât sur une attaque
     // directe contre le Navire, propre à la faiblesse du DÉFENSEUR.
     const directWeakness = getShipDefinition(opponent.shipId).directAttackWeakness ?? 0;
-    const directDamage = attackerDamage + directWeakness;
+    const baseDirectDamage = shieldedAttackerDamage + directWeakness;
+
+    // Bouclier "1ère fois par tour" du DÉFENSEUR réduisant les dégâts directs
+    // au Navire (Cage de Flottaison).
+    const directShipDamageShield = consumeDirectShipDamageShield(nextState, opponent.id, state.turnNumber);
+    nextState = directShipDamageShield.state;
+    const directDamage = Math.max(0, baseDirectDamage - directShipDamageShield.reduction);
+
     nextState = {
       ...nextState,
       players: nextState.players.map((p) =>
@@ -207,59 +264,41 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
     const defenderType = getCardDefinition(defenderUnit.cardId).type;
     const totalAttackerDamage = attackerDamage + bonusDamageAgainst(attackerUnit, defenderType, nextState);
 
-    nextState = {
-      ...nextState,
-      players: nextState.players.map((p) => {
-        if (p.id === opponent.id) {
-          return {
-            ...p,
-            board: p.board.map((u) =>
-              u.instanceId === defenderUnit.instanceId
-                ? { ...u, damageMarked: u.damageMarked + totalAttackerDamage }
-                : u
-            ),
-          };
-        }
-        return p;
-      }) as [PlayerState, PlayerState],
-    };
+    // Dégâts au défenseur, réduits par son propre bouclier "1ère fois par
+    // tour" (Baleine aux Cicatrices Blanches) et, si c'est une Structure,
+    // par la restauration de Résistance de Wood Vy.
+    const defenderDamageResult = applyCombatDamageToUnit(nextState, opponent.id, defenderUnit, totalAttackerDamage, state.turnNumber);
+    nextState = defenderDamageResult.state;
+    if (defenderDamageResult.amountApplied > 0) {
+      events.push({ ...base, type: "DAMAGE", targetInstanceId: defenderUnit.instanceId, amount: defenderDamageResult.amountApplied });
 
-    events.push({ ...base, type: "DAMAGE", targetInstanceId: defenderUnit.instanceId, amount: totalAttackerDamage });
-
-    const damagedTrigger = processTrigger(
-      nextState,
-      { trigger: "onDamaged", playerId: opponent.id, sourceInstanceId: defenderUnit.instanceId },
-      state.turnNumber
-    );
-    nextState = damagedTrigger.state;
-    events.push(...damagedTrigger.events);
-
-    // Riposte : la Puissance effective du défenseur (0 pour un permanent
-    // sans Puissance) blesse l'attaquant en retour, symétriquement.
-    const retaliationDamage = effectiveAttack(defenderUnit, state);
-    if (retaliationDamage > 0) {
-      nextState = {
-        ...nextState,
-        players: nextState.players.map((p) =>
-          p.id === attackerPlayer.id
-            ? {
-                ...p,
-                board: p.board.map((u) =>
-                  u.instanceId === attackerUnit.instanceId ? { ...u, damageMarked: u.damageMarked + retaliationDamage } : u
-                ),
-              }
-            : p
-        ) as [PlayerState, PlayerState],
-      };
-      events.push({ ...base, type: "DAMAGE", targetInstanceId: attackerUnit.instanceId, amount: retaliationDamage });
-
-      const attackerDamagedTrigger = processTrigger(
+      const damagedTrigger = processTrigger(
         nextState,
-        { trigger: "onDamaged", playerId: attackerPlayer.id, sourceInstanceId: attackerUnit.instanceId },
+        { trigger: "onDamaged", playerId: opponent.id, sourceInstanceId: defenderUnit.instanceId },
         state.turnNumber
       );
-      nextState = attackerDamagedTrigger.state;
-      events.push(...attackerDamagedTrigger.events);
+      nextState = damagedTrigger.state;
+      events.push(...damagedTrigger.events);
+    }
+
+    // Riposte : la Puissance effective du défenseur (0 pour un permanent
+    // sans Puissance) blesse l'attaquant en retour, symétriquement — soumise
+    // au même bouclier "1ère fois par tour" côté attaquant, cette fois.
+    const retaliationDamage = effectiveAttack(defenderUnit, state);
+    if (retaliationDamage > 0) {
+      const attackerDamageResult = applyCombatDamageToUnit(nextState, attackerPlayer.id, attackerUnit, retaliationDamage, state.turnNumber);
+      nextState = attackerDamageResult.state;
+      if (attackerDamageResult.amountApplied > 0) {
+        events.push({ ...base, type: "DAMAGE", targetInstanceId: attackerUnit.instanceId, amount: attackerDamageResult.amountApplied });
+
+        const attackerDamagedTrigger = processTrigger(
+          nextState,
+          { trigger: "onDamaged", playerId: attackerPlayer.id, sourceInstanceId: attackerUnit.instanceId },
+          state.turnNumber
+        );
+        nextState = attackerDamagedTrigger.state;
+        events.push(...attackerDamagedTrigger.events);
+      }
     }
   }
 
