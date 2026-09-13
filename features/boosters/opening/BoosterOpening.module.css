@@ -894,7 +894,7 @@
   object-fit: cover;
 }
 
-/* Dos de repli si `card-back.png` est absent : filet de laiton sur bleu nuit. */
+/* Dos de repli si `card-back/default.png` est absent : filet de laiton sur bleu nuit. */
 .cardBackFallback {
   position: absolute;
   inset: 0;

@@ -5,7 +5,7 @@ import type { BoosterPackVisual } from "@/features/boosters/opening/boosterPackV
  * dans `boosterPackVisuals.ts` ; seul le dos de carte, commun à tous les
  * boosters, est déclaré ici.
  */
-export const CARD_BACK_ASSET = "/assets/cards/card-back.png";
+export const CARD_BACK_ASSET = "/assets/cards/card-back/default.png";
 
 export interface BoosterOpeningAssetStatus {
   cardBackAvailable: boolean;

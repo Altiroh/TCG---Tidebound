@@ -113,7 +113,7 @@
   overflow: hidden;
   border-radius: 3px;
   background-color: #0b1a26;
-  background-image: url("/assets/cards/card-back.png");
+  background-image: url("/assets/cards/card-back/default.png");
   background-size: cover;
   background-position: center;
   box-shadow:
