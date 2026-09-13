@@ -1,9 +1,32 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { UNIT_CARD_TYPES } from "@/game/cards/types";
-import type { CardInstance } from "@/game/cards/types";
+import type { CardDefinition, CardInstance } from "@/game/cards/types";
+import { graveyardChoicesForBreak } from "@/game/actions/breakObject";
 import type { PlayerAction } from "@/game/actions/types";
 import { eligibleCandidatesFor } from "@/game/reactions/reactionWindow";
 import type { GameState, PlayerId } from "@/game/state/types";
+
+/**
+ * Variantes de Bris d'un Objet (posé ou depuis la main) : une par cible possible
+ * si l'effet vise `chosenUnit`, une par carte de défausse éligible s'il faut en
+ * récupérer une (ex: Grappin de Récupération) — sinon une seule action.
+ */
+function breakVariants(
+  state: GameState,
+  playerId: PlayerId,
+  instanceId: string,
+  def: CardDefinition,
+  fromHand: boolean,
+  allBoardUnits: readonly CardInstance[]
+): PlayerAction[] {
+  const base = { type: "breakObject" as const, playerId, instanceId, ...(fromHand ? { fromHand: true } : {}) };
+  if ((def.onBreakEffects ?? []).some((e) => e.target.kind === "chosenUnit")) {
+    return allBoardUnits.map((target) => ({ ...base, targetInstanceId: target.instanceId }));
+  }
+  const choices = graveyardChoicesForBreak(state, playerId, def);
+  if (choices.length > 0) return choices.map((card) => ({ ...base, chosenGraveyardInstanceId: card.instanceId }));
+  return [base];
+}
 
 function isEligibleAttacker(unit: CardInstance): boolean {
   return (
@@ -102,25 +125,13 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
       } else {
         actions.push({ type: "playCard", playerId, instanceId: card.instanceId });
       }
+      // Bris depuis la main (coût réduit, sans Slot) : même variantes de cible/défausse qu'un Objet posé.
+      if (def.type === "objet") actions.push(...breakVariants(state, playerId, card.instanceId, def, true, allBoardUnits));
     }
 
     for (const unit of player.board) {
       const def = getCardDefinition(unit.cardId);
-      if (def.type === "objet") {
-        const needsTarget = (def.onBreakEffects ?? []).some((e) => e.target.kind === "chosenUnit");
-        if (needsTarget) {
-          for (const target of allBoardUnits) {
-            actions.push({
-              type: "breakObject",
-              playerId,
-              instanceId: unit.instanceId,
-              targetInstanceId: target.instanceId,
-            });
-          }
-        } else {
-          actions.push({ type: "breakObject", playerId, instanceId: unit.instanceId });
-        }
-      }
+      if (def.type === "objet") actions.push(...breakVariants(state, playerId, unit.instanceId, def, false, allBoardUnits));
       actions.push({ type: "saborder", playerId, instanceId: unit.instanceId });
     }
 

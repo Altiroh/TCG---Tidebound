@@ -72,7 +72,7 @@ export function formatEvent(state: GameState, event: GameEvent, playerLabel: (pl
       return "Un permanent est détruit.";
     case "CARD_MOVED":
       if (event.fromZone === "board" && event.toZone === "graveyard") return "Un permanent quitte le plateau.";
-      if (event.fromZone === "hand" && event.toZone === "graveyard") return "Une carte est défaussée.";
+      if (event.fromZone === "hand" && event.toZone === "graveyard") return `${instanceName(state, event.instanceId)} part de la main au cimetière.`;
       return "Une carte change de zone.";
     case "SABORDED":
       return `${playerLabel(event.playerId)} saborde un permanent.`;

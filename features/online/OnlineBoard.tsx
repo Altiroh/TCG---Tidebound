@@ -8,7 +8,9 @@ import {
   eligibleCandidatesFor,
   getCardDefinition,
   getShipDefinition,
+  graveyardChoicesForBreak,
   isVisibleDuringTide,
+  previewHandBreakReason,
   STATUS_SILENCE,
   UNIT_CARD_TYPES,
   type CardInstance,
@@ -31,7 +33,9 @@ import { DragTargetingTrail } from "@/features/match/DragTargetingTrail";
 import { EquipLinkOverlay } from "@/features/match/EquipLinkOverlay";
 import { EventFeed } from "@/features/match/EventFeed";
 import { needsPlayTarget } from "@/features/match/needsPlayTarget";
+import { GraveyardPickPrompt } from "@/features/match/GraveyardPickPrompt";
 import { GraveyardViewer } from "@/features/match/GraveyardViewer";
+import { ObjectBreakPrompt } from "@/features/match/ObjectBreakPrompt";
 import { HandFan } from "@/features/match/HandFan";
 import { OpponentHandFan } from "@/features/match/OpponentHandFan";
 import { PhaseActionButton } from "@/features/match/PhaseActionButton";
@@ -78,7 +82,7 @@ interface OnlineBoardProps {
 type Pending =
   | { kind: "playCard"; instanceId: string; needsTarget: boolean }
   | { kind: "attack"; attackerId: string }
-  | { kind: "break"; instanceId: string; needsTarget: boolean }
+  | { kind: "break"; instanceId: string; needsTarget: boolean; fromHand?: boolean }
   | { kind: "reaction"; sourceInstanceId: string; abilityIndex: number; needsTarget: boolean };
 
 function isUnitType(type: string): boolean {
@@ -114,6 +118,10 @@ export function OnlineBoard({
   const [dragOverGraveyard, setDragOverGraveyard] = useState(false);
   const [graveyardViewerPlayerId, setGraveyardViewerPlayerId] = useState<PlayerId | null>(null);
   const [detailInstance, setDetailInstance] = useState<CardInstance | null>(null);
+  /** Objet glissé sur le crâne : on demande s'il faut activer son effet de bris (cf. `ObjectBreakPrompt`). */
+  const [breakPrompt, setBreakPrompt] = useState<{ card: CardInstance; source: "hand" | "board" } | null>(null);
+  /** Bris qui demande de choisir une carte de sa défausse (ex: Grappin de Récupération). */
+  const [graveyardPick, setGraveyardPick] = useState<{ card: CardInstance; fromHand: boolean } | null>(null);
   /** Candidats à cible restant à traiter après celui en cours — sélection multiple dans `ReactionPrompt` :
       les capacités sans cible sont soumises l'une après l'autre, celles avec cible s'enchaînent une par une. */
   const [reactionQueue, setReactionQueue] = useState<PendingReactionCandidate[]>([]);
@@ -257,7 +265,7 @@ export function OnlineBoard({
       return;
     }
     if (selection?.kind === "break" && selection.needsTarget) {
-      act({ type: "breakObject", playerId: myUserId, instanceId: selection.instanceId, targetInstanceId: instanceId });
+      act({ type: "breakObject", playerId: myUserId, instanceId: selection.instanceId, targetInstanceId: instanceId, fromHand: selection.fromHand });
       return;
     }
     if (selection?.kind === "attack") {
@@ -268,15 +276,28 @@ export function OnlineBoard({
     if (ownerId === myUserId) handleOwnBoardCardClick(instanceId);
   }
 
-  function startBreak(unit: CardInstance) {
-    const def = getCardDefinition(unit.cardId);
-    const needsTarget = (def.onBreakEffects ?? []).some((e) => e.target.kind === "chosenUnit");
-    if (needsTarget) {
-      setSelection({ kind: "break", instanceId: unit.instanceId, needsTarget: true });
-    } else {
-      act({ type: "breakObject", playerId: myUserId, instanceId: unit.instanceId });
+  /** Cf. `MatchBoard.requestBreak` : cible ou carte de défausse à choisir d'abord si l'effet en demande une. */
+  function requestBreak(card: CardInstance, fromHand: boolean) {
+    setBreakPrompt(null);
+    const def = getCardDefinition(card.cardId);
+    if ((def.onBreakEffects ?? []).some((e) => e.target.kind === "chosenUnit")) {
+      setSelection({ kind: "break", instanceId: card.instanceId, needsTarget: true, fromHand });
+      return;
     }
+    if (graveyardChoicesForBreak(state, myUserId, def).length > 0) {
+      setGraveyardPick({ card, fromHand });
+      return;
+    }
+    act({ type: "breakObject", playerId: myUserId, instanceId: card.instanceId, fromHand });
   }
+
+  function startBreak(unit: CardInstance) {
+    requestBreak(unit, false);
+  }
+
+  /** Carte de main en cours de glissement, si c'est un Objet (glissable sur le crâne pour être Brisé depuis la main). */
+  const draggingHandObject = draggingId ? me.hand.find((c) => c.instanceId === draggingId && getCardDefinition(c.cardId).type === "objet") : undefined;
+
 
   // --- Glisser-déposer depuis la main (cf. MatchBoard, même logique) -----
   function handleHandDragStart(e: React.DragEvent, instanceId: string) {
@@ -345,7 +366,7 @@ export function OnlineBoard({
     if (instanceId) act({ type: "attack", playerId: myUserId, attackerInstanceId: instanceId });
   }
   function handleGraveyardDragOver(e: React.DragEvent) {
-    if (!draggingUnitId) return;
+    if (!draggingUnitId && !draggingHandObject) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
     setDragOverGraveyard(true);
@@ -356,9 +377,27 @@ export function OnlineBoard({
   function handleGraveyardDrop(e: React.DragEvent) {
     e.preventDefault();
     setDragOverGraveyard(false);
+
+    // Objet de la main → proposer de le Briser depuis la main (coût réduit).
+    const handId = e.dataTransfer.getData(DRAG_MIME_HAND);
+    if (handId) {
+      setDraggingId(null);
+      setDragAnchor(null);
+      const card = me.hand.find((c) => c.instanceId === handId);
+      if (card && getCardDefinition(card.cardId).type === "objet") setBreakPrompt({ card, source: "hand" });
+      return;
+    }
+
     const instanceId = e.dataTransfer.getData(DRAG_MIME_UNIT);
     setDraggingUnitId(null);
-    if (instanceId) act({ type: "saborder", playerId: myUserId, instanceId });
+    if (!instanceId) return;
+    // Objet posé → demander : Briser (effet) ou Saborder (sans effet). Autres permanents → Sabordage direct.
+    const unit = me.board.find((u) => u.instanceId === instanceId);
+    if (unit && getCardDefinition(unit.cardId).type === "objet") {
+      setBreakPrompt({ card: unit, source: "board" });
+      return;
+    }
+    act({ type: "saborder", playerId: myUserId, instanceId });
   }
 
   function handleBoardTileDragOver(e: React.DragEvent, targetInstanceId: string) {
@@ -449,8 +488,8 @@ export function OnlineBoard({
           </div>
         </div>
 
-        {/* Fil des événements — "pourquoi quelque chose vient de se produire" */}
-        <div className="absolute" style={{ left: 1462, top: 350, width: 204, height: 170 }}>
+        {/* Fil des événements — logé dans le panneau sombre de la colonne boussole (intérieur mesuré sur board.png : x 1522→1619, sous "Tour" et au-dessus de l'arrondi du bouton). */}
+        <div className="absolute" style={{ left: 1523, top: 308, width: 95, height: 232 }}>
           <EventFeed
             state={state}
             playerLabel={(id) => (id === myUserId ? (displayNames[id] ?? "Toi") : id ? (displayNames[id] ?? opponentName) : "?")}
@@ -554,13 +593,13 @@ export function OnlineBoard({
           )}
         </div>
 
-        <div className="absolute flex flex-col items-center gap-2" style={{ left: 1473, top: 555, width: 182 }}>
+        <div className="absolute flex flex-col items-center gap-2" style={{ left: 1479, top: 549, width: 182 }}>
           <PhaseActionButton
             isMyTurn={isMyTurn && !pending}
             phase={state.phase === "mainPhase" && !hasAnyAttacker ? "combatPhase" : state.phase}
             onAdvancePhase={() => act({ type: "advancePhase", playerId: myUserId })}
             onEndTurn={() => act({ type: "endTurn", playerId: myUserId })}
-            size={120}
+            size={108}
           />
           {selection && isMyTurn && (
             <Button variant="secondary" onClick={clearSelection}>
@@ -644,7 +683,7 @@ export function OnlineBoard({
             width={240}
             graveyardDropZone={{
               isOver: dragOverGraveyard,
-              isAvailable: Boolean(draggingUnitId) && canPlayCards,
+              isAvailable: (Boolean(draggingUnitId) || Boolean(draggingHandObject)) && canPlayCards,
               onDragOver: handleGraveyardDragOver,
               onDragLeave: handleGraveyardDragLeave,
               onDrop: handleGraveyardDrop,
@@ -732,6 +771,40 @@ export function OnlineBoard({
         <GlassAlert message={deraison.warning} severity="warning" onDismiss={deraison.dismiss} />
       )}
       <PhaseBanner text={bannerText} bannerKey={bannerEvent?.id ?? null} />
+      {breakPrompt && (
+        <ObjectBreakPrompt
+          card={breakPrompt.card}
+          source={breakPrompt.source}
+          handCost={breakPrompt.source === "hand" ? previewHandBreakReason(state, myUserId, breakPrompt.card.instanceId) : undefined}
+          onBreak={() => requestBreak(breakPrompt.card, breakPrompt.source === "hand")}
+          onScuttle={
+            breakPrompt.source === "board"
+              ? () => {
+                  setBreakPrompt(null);
+                  act({ type: "saborder", playerId: myUserId, instanceId: breakPrompt.card.instanceId });
+                }
+              : undefined
+          }
+          onCancel={() => setBreakPrompt(null)}
+        />
+      )}
+      {graveyardPick && (
+        <GraveyardPickPrompt
+          sourceCardId={graveyardPick.card.cardId}
+          choices={graveyardChoicesForBreak(state, myUserId, getCardDefinition(graveyardPick.card.cardId))}
+          onConfirm={(chosen) => {
+            setGraveyardPick(null);
+            act({
+              type: "breakObject",
+              playerId: myUserId,
+              instanceId: graveyardPick.card.instanceId,
+              fromHand: graveyardPick.fromHand,
+              chosenGraveyardInstanceId: chosen.instanceId,
+            });
+          }}
+          onCancel={() => setGraveyardPick(null)}
+        />
+      )}
       {graveyardViewerPlayerId && (
         <GraveyardViewer
           playerLabel={graveyardViewerPlayerId === myUserId ? "Toi" : "Adversaire"}

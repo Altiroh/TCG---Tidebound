@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-import { getCardDefinition, type CardInstance } from "@/game";
-import { CardTile } from "@/features/match/CardTile";
+import type { CardInstance } from "@/game";
+import { CardCarousel } from "@/features/match/CardCarousel";
 import { GRAVEYARD_CAUSE_COLORS, GRAVEYARD_CAUSE_LABELS } from "@/features/match/cardDisplay";
 
 interface GraveyardViewerProps {
@@ -15,9 +15,8 @@ interface GraveyardViewerProps {
  * Vue de consultation du cimetière (Notion "Moteur de partie", section
  * "Défausse — consultation et traçabilité") : liste toutes les cartes
  * ayant quitté le jeu pour ce joueur, avec leur cause de sortie
- * (`CardInstance.graveyardCause`), rendues via `CardTile` (même qualité
- * d'illustration composée que partout ailleurs, plutôt qu'une vignette
- * simplifiée). N'est jamais une action de jeu : ne consomme rien,
+ * (`CardInstance.graveyardCause`), en grandes cartes sur une rangée qui défile
+ * sur le côté (`CardCarousel` : molette, glisser, flèches). N'est jamais une action de jeu : ne consomme rien,
  * n'interrompt aucune résolution en cours — un simple overlay de
  * lecture, fermé sur clic du fond, Échap, ou le bouton Fermer. Ouvrable
  * pour soi comme pour l'adversaire (`onOpenGraveyard` sur `CargoCluster`).
@@ -49,7 +48,7 @@ export function GraveyardViewer({ playerLabel, cards, onClose }: GraveyardViewer
 
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative flex max-h-[80vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-white/15 bg-white/[0.06] shadow-[0_8px_40px_rgba(0,0,0,0.6)] backdrop-blur-2xl"
+        className="relative flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-white/15 bg-white/[0.06] shadow-[0_8px_40px_rgba(0,0,0,0.6)] backdrop-blur-2xl"
       >
         {/* Reflet du haut, façon verre liquide (même traitement que CardInfoPanel/Collection) */}
         <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/20 to-transparent" />
@@ -64,31 +63,19 @@ export function GraveyardViewer({ playerLabel, cards, onClose }: GraveyardViewer
           </p>
         </div>
 
-        <div className="relative overflow-y-auto px-6 pb-8">
-          {cards.length === 0 ? (
-            <div className="flex min-h-[200px] items-center justify-center">
-              <p className="text-sm text-slate-400">Ce cimetière est vide.</p>
-            </div>
-          ) : (
-            <div className="flex flex-wrap justify-center gap-4">
-              {cards.map((card) => {
-                const def = getCardDefinition(card.cardId);
-                return (
-                  <div key={card.instanceId} className="flex w-24 flex-col items-center gap-1.5 text-center">
-                    <CardTile instance={card} tideState="calme" widthClassName="w-24" />
-                    {card.graveyardCause && (
-                      <p
-                        className={`text-xs font-semibold uppercase tracking-wide ${GRAVEYARD_CAUSE_COLORS[card.graveyardCause]}`}
-                        title={def.name}
-                      >
-                        {GRAVEYARD_CAUSE_LABELS[card.graveyardCause]}
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
+        <div className="relative pb-6">
+          <CardCarousel
+            // Les plus récentes d'abord : la dernière carte partie au cimetière est la première visible.
+            cards={[...cards].reverse()}
+            emptyLabel="Ce cimetière est vide."
+            renderCaption={(card) =>
+              card.graveyardCause ? (
+                <p className={`text-xs font-semibold uppercase tracking-wide ${GRAVEYARD_CAUSE_COLORS[card.graveyardCause]}`}>
+                  {GRAVEYARD_CAUSE_LABELS[card.graveyardCause]}
+                </p>
+              ) : null
+            }
+          />
         </div>
       </div>
     </div>

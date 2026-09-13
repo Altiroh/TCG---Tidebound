@@ -55,6 +55,11 @@ export interface BreakObjectAction {
   type: "breakObject";
   playerId: PlayerId;
   instanceId: string;
+  /**
+   * Brise l'Objet directement depuis la MAIN (Notion, règle prototype) : coût = moitié du coût imprimé arrondie
+   * au supérieur, minimum 1 Raison (`handBreakCost`) ; ne prend aucun Slot, va directement en défausse.
+   */
+  fromHand?: boolean;
   /** Requis si l'effet de bris de cet Objet cible `chosenUnit`. */
   targetInstanceId?: string;
   /** Requis si l'effet de bris de cet Objet est `moveGraveyardCardToHand` ET qu'au moins une carte éligible existe dans la défausse (ex: Grappin de Récupération). */

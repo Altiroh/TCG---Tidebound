@@ -93,30 +93,34 @@ function HighlightRow({ state, highlight }: { state: GameState; highlight: Highl
   if (highlight.kind === "effect") {
     const buff = highlight.attack + highlight.health >= 0;
     return (
-      <div className="flex items-center gap-1.5">
-        <CardThumb cardId={highlight.targetCardId} size={24} className={buff ? "border-emerald-400/50" : "border-rose-400/50"} />
-        <span className={`truncate text-[11px] font-semibold ${buff ? "text-emerald-300" : "text-rose-300"}`}>
+      <div className="flex items-center gap-1">
+        <CardThumb cardId={highlight.targetCardId} size={20} className={buff ? "border-emerald-400/50" : "border-rose-400/50"} />
+        <span className={`truncate text-[10px] font-semibold ${buff ? "text-emerald-300" : "text-rose-300"}`}>
           {shortDelta(highlight.attack, highlight.health)}
         </span>
       </div>
     );
   }
   return (
-    <div className="flex items-center gap-1.5">
-      <CardThumb cardId={highlight.attackerCardId} size={24} />
-      <span className="text-[11px] text-rose-300" aria-label="attaque">
+    <div className="flex flex-wrap items-center gap-x-1 gap-y-0.5">
+      <CardThumb cardId={highlight.attackerCardId} size={20} />
+      <span className="text-[10px] text-rose-300" aria-label="attaque">
         ⚔
       </span>
       {"playerId" in highlight.target ? (
-        <CardThumb src={shipIllustration(state, highlight.target.playerId)} glyph="⚓" size={24} />
+        <CardThumb src={shipIllustration(state, highlight.target.playerId)} glyph="⚓" size={20} />
       ) : (
-        <CardThumb cardId={highlight.target.cardId} size={24} className={highlight.defenderDestroyed ? "border-rose-500/70 opacity-60" : undefined} />
+        <CardThumb cardId={highlight.target.cardId} size={20} className={highlight.defenderDestroyed ? "border-rose-500/70 opacity-60" : undefined} />
       )}
-      <span className="truncate text-[11px] font-semibold text-rose-300">
+      <span className="text-[10px] font-semibold text-rose-300">
         {highlight.amount > 0 ? `-${highlight.amount}` : "0"}
         {highlight.defenderDestroyed ? " ☠" : ""}
-        {highlight.retaliation > 0 ? <span className="font-normal text-slate-400"> / riposte -{highlight.retaliation}</span> : null}
       </span>
+      {highlight.retaliation > 0 && (
+        <span className="w-full text-[9px] leading-none text-slate-400" title="Dégâts de riposte subis par l'attaquant">
+          riposte -{highlight.retaliation}
+        </span>
+      )}
     </div>
   );
 }
@@ -252,7 +256,7 @@ export function EventFeed({ state, playerLabel }: { state: GameState; playerLabe
   return (
     <>
       <div className="flex h-full flex-col rounded-md border border-white/15 bg-black/90 text-slate-100">
-        <div className="flex items-center justify-between border-b border-white/10 px-2 py-1">
+        <div className="flex items-center justify-between border-b border-white/10 py-1 pl-1.5 pr-1">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Journal</span>
           <button
             type="button"
@@ -266,9 +270,9 @@ export function EventFeed({ state, playerLabel }: { state: GameState; playerLabe
             </svg>
           </button>
         </div>
-        <div ref={listRef} className="flex flex-1 flex-col gap-1.5 overflow-y-auto p-2">
+        <div ref={listRef} className="flex flex-1 flex-col gap-1.5 overflow-y-auto p-1.5">
           {highlights.length === 0 ? (
-            <p className="text-[11px] text-slate-400">Aucune attaque ni effet pour l&apos;instant.</p>
+            <p className="text-[10px] leading-snug text-slate-400">Aucune attaque ni effet pour l&apos;instant.</p>
           ) : (
             highlights.map((highlight) => <HighlightRow key={highlight.key} state={state} highlight={highlight} />)
           )}

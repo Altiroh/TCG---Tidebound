@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { dispatch } from "@/game/engine";
 import { computeEffectiveStats } from "@/game/cards/stats";
+import { getCardDefinition } from "@/game/cards/sets/core";
+import { handBreakCost } from "@/game/actions/breakObject";
 import { instance, testEnvironment, testGameState, testPlayer } from "./testHelpers";
 import type { GameState } from "@/game/state/types";
 
@@ -251,6 +253,54 @@ describe("engine.dispatch - breakObject", () => {
 
     const result = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: structure.instanceId });
     expect(result.ok).toBe(false);
+  });
+});
+
+describe("engine.dispatch - breakObject depuis la main (règle prototype)", () => {
+  it("coûte la moitié du coût imprimé arrondie au supérieur, minimum 1", () => {
+    expect(handBreakCost(getCardDefinition("thermos-du-dernier-quart"))).toBe(1); // coût 2
+    expect(handBreakCost(getCardDefinition("levier-de-lest"))).toBe(1); // coût 1
+    expect(handBreakCost({ ...getCardDefinition("thermos-du-dernier-quart"), cost: 5 })).toBe(3);
+    expect(handBreakCost({ ...getCardDefinition("thermos-du-dernier-quart"), cost: 0 })).toBe(1);
+  });
+
+  it("paie le coût, résout l'effet et envoie l'Objet en défausse sans occuper de Slot", () => {
+    const thermos = instance("thermos-du-dernier-quart", "p1"); // Brisez : récupérez 2 Raison
+    const state = testGameState({
+      players: [testPlayer("p1", { hand: [thermos], reason: 5 }), testPlayer("p2")],
+    });
+
+    const result = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: thermos.instanceId, fromHand: true });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const p1 = result.state.players[0];
+    expect(p1.hand).toHaveLength(0);
+    expect(p1.board).toHaveLength(0);
+    expect(p1.graveyard.map((c) => c.instanceId)).toEqual([thermos.instanceId]);
+    expect(p1.reason).toBe(6); // 5 - 1 (Bris depuis la main) + 2
+    expect(result.events).toContainEqual(expect.objectContaining({ type: "CARD_MOVED", fromZone: "hand", toZone: "graveyard" }));
+  });
+
+  it("refuse une carte de la main qui n'est pas un Objet, et un Objet absent de la main", () => {
+    const marin = instance("marin-des-jetees", "p1");
+    const thermos = instance("thermos-du-dernier-quart", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { hand: [marin], board: [thermos], reason: 5 }), testPlayer("p2")],
+    });
+
+    expect(dispatch(state, { type: "breakObject", playerId: "p1", instanceId: marin.instanceId, fromHand: true }).ok).toBe(false);
+    expect(dispatch(state, { type: "breakObject", playerId: "p1", instanceId: thermos.instanceId, fromHand: true }).ok).toBe(false);
+  });
+
+  it("respecte les conditions d'activation de l'Objet (ex: Marée requise)", () => {
+    const choppe = instance("chope", "p1"); // Choppe ! : ne se brise que pendant Calme
+    const state = testGameState({
+      players: [testPlayer("p1", { hand: [choppe], reason: 5 }), testPlayer("p2")],
+      environment: testEnvironment({ tideState: "tempete" }),
+    });
+
+    expect(dispatch(state, { type: "breakObject", playerId: "p1", instanceId: choppe.instanceId, fromHand: true }).ok).toBe(false);
   });
 });
 

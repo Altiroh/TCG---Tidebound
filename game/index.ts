@@ -89,6 +89,7 @@ export { RULES } from "@/game/rules/constants";
 // --- Déraison (Raison négative, piste à prototyper du 2026-09-12) --------
 export { reasonFloor, reasonCeiling, deraisonDebt, deraisonAnchorDamage } from "@/game/state/reason";
 export { previewPlayCardReason } from "@/game/actions/playCard";
+export { graveyardChoicesForBreak, handBreakCost, previewHandBreakReason } from "@/game/actions/breakObject";
 
 export { botHasSomethingToDo, runBotTurn, runBotUntilIdle, stepBotTurn, type BotTurnStep } from "@/game/bot/runBotTurn";
 export type { BotDifficulty } from "@/game/bot/types";
