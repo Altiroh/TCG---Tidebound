@@ -1,3 +1,4 @@
+import { HIDDEN_CARD_DEFINITION, HIDDEN_CARD_ID } from "@/game/cards/hiddenCard";
 import { EQUIPPABLE_CARD_TYPES, type CardDefinition, type CardInstance } from "@/game/cards/types";
 
 /**
@@ -1579,6 +1580,9 @@ export const CARD_DATABASE: ReadonlyMap<string, CardDefinition> = new Map(
 );
 
 export function getCardDefinition(cardId: string): CardDefinition {
+  // Carte masquée d'une vue projetée (`game/state/playerView.ts`) : jamais
+  // dans le catalogue, seulement côté client.
+  if (cardId === HIDDEN_CARD_ID) return HIDDEN_CARD_DEFINITION;
   const def = CARD_DATABASE.get(cardId);
   if (!def) {
     throw new Error(`Carte inconnue: ${cardId}`);

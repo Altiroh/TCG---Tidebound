@@ -69,6 +69,10 @@ interface OnlineBoardProps {
   pending: boolean;
   error: string | null;
   onDismissError: () => void;
+  /** Désignation de l'adversaire à l'écran de fin ("L'adversaire", "Le bot"). */
+  opponentName?: string;
+  /** Destination du bouton de sortie de l'écran de fin. */
+  exitHref?: string;
 }
 
 type Pending =
@@ -87,7 +91,16 @@ const DRAG_MIME_HAND = "application/x-tidebound-card-instance";
 const DRAG_MIME_UNIT = "application/x-tidebound-board-unit";
 
 /** Plateau d'une partie en ligne : oriente toujours "moi" en bas, main adverse cachée, actions envoyées au serveur. */
-export function OnlineBoard({ state: liveState, myUserId, onAction, pending, error, onDismissError }: OnlineBoardProps) {
+export function OnlineBoard({
+  state: liveState,
+  myUserId,
+  onAction,
+  pending,
+  error,
+  onDismissError,
+  opponentName = "L'adversaire",
+  exitHref = "/en-ligne",
+}: OnlineBoardProps) {
   // `state` = état AFFICHÉ, retenu avant le choc pendant une attaque (cf. `useAttackPresentation`) — les actions partent au serveur, jamais validées sur cet état.
   const { displayState: state, attacks } = useAttackPresentation(liveState);
   const [selection, setSelection] = useState<Pending | null>(null);
@@ -395,12 +408,13 @@ export function OnlineBoard({ state: liveState, myUserId, onAction, pending, err
         winner={
           state.winnerId
             ? {
-                name: displayNames[state.winnerId] ?? (iWon ? "Toi" : "L'adversaire"),
+                // Pseudo du profil quand il existe (humain) ; sinon libellé fourni par l'appelant (ex: "Le bot").
+                name: displayNames[state.winnerId] ?? (iWon ? "Toi" : opponentName),
                 ship: iWon ? myShip : opponentShip,
               }
             : undefined
         }
-        exitHref="/en-ligne"
+        exitHref={exitHref}
       />
     );
   }

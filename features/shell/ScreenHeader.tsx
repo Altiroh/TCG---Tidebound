@@ -7,7 +7,7 @@ import { ProgressionBadge } from "@/features/progression/ProgressionBadge";
 
 interface ScreenHeaderProps {
   /** Section en cours — reçoit le filet turquoise et le halo. */
-  active: "collection" | "decks" | "boosters";
+  active: "collection" | "decks" | "boosters" | "quetes";
 }
 
 /**
@@ -68,6 +68,15 @@ export function ScreenHeader({ active }: ScreenHeaderProps) {
         }}
       >
         Boosters
+      </NavigationTab>
+
+      <NavigationTab
+        active={active === "quetes"}
+        onClick={() => {
+          if (active !== "quetes") router.push("/quetes");
+        }}
+      >
+        Quêtes
       </NavigationTab>
 
       <span />

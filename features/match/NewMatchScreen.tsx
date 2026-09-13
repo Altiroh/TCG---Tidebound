@@ -12,7 +12,12 @@ import { TEXT_PRIMARY, TEXT_SECONDARY, TRANSITION } from "@/components/game-ui/t
 export type MatchOpponent = { type: "pvp" } | { type: "bot"; difficulty: BotDifficulty };
 
 interface NewMatchScreenProps {
-  onStart: (deck1: DeckList, deck2: DeckList, opponent: MatchOpponent) => void;
+  onStart: (deck1: DeckList, deck2: DeckList, opponent: MatchOpponent) => void | Promise<void>;
+  /** Démarrage en cours (création d'une partie serveur) : le bouton est désactivé. */
+  starting?: boolean;
+  error?: string | null;
+  /** Précision affichée en mode bot (partie serveur récompensée, ou entraînement local). */
+  botNote?: string;
 }
 
 /**
@@ -39,7 +44,7 @@ const BOT_DIFFICULTIES: { id: BotDifficulty; label: string; description: string 
 ];
 
 /** Écran de sélection des Navires/decks avant une partie locale : contre un autre joueur (hot-seat) ou contre un bot. */
-export function NewMatchScreen({ onStart }: NewMatchScreenProps) {
+export function NewMatchScreen({ onStart, starting = false, error = null, botNote }: NewMatchScreenProps) {
   const [deck1Id, setDeck1Id] = useState(SELECTABLE_DECKS[0]!.id);
   const [deck2Id, setDeck2Id] = useState(SELECTABLE_DECKS[1]!.id);
   const [opponentType, setOpponentType] = useState<"pvp" | "bot">("pvp");
@@ -69,6 +74,7 @@ export function NewMatchScreen({ onStart }: NewMatchScreenProps) {
             ? "Mode local : les deux joueurs jouent sur le même écran, à tour de rôle."
             : "Vous affrontez un bot — il jouera le second Navire."}
         </p>
+        {opponentType === "bot" && botNote && <p className={`mx-auto mt-1 max-w-md text-xs ${TEXT_SECONDARY}`}>{botNote}</p>}
       </div>
 
       <GamePanel className="flex w-full max-w-xl flex-col gap-3 p-5 text-left">
@@ -110,9 +116,10 @@ export function NewMatchScreen({ onStart }: NewMatchScreenProps) {
         <DeckPicker label={opponentType === "bot" ? "Bot" : "Joueur 2"} value={deck2Id} onChange={setDeck2Id} />
       </div>
 
-      <GameButton variant="primary" onClick={handleStart} className="!px-8 !py-3 !text-base">
-        Commencer la partie
+      <GameButton variant="primary" onClick={handleStart} disabled={starting} className="!px-8 !py-3 !text-base">
+        {starting ? "Préparation de la partie..." : "Commencer la partie"}
       </GameButton>
+      {error && <p className="text-sm text-rose-400">{error}</p>}
     </main>
   );
 }

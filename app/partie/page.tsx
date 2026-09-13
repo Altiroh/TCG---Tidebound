@@ -1,35 +1,19 @@
-"use client";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { PartieScreen } from "@/features/match/PartieScreen";
 
-import { useState } from "react";
-import type { BotDifficulty, DeckList, GameState, PlayerId } from "@/game";
-import { createLocalMatch } from "@/features/match/createLocalMatch";
-import { NewMatchScreen, type MatchOpponent } from "@/features/match/NewMatchScreen";
-import { MatchBoard } from "@/features/match/MatchBoard";
-
-export default function PartiePage() {
-  const [match, setMatch] = useState<GameState | null>(null);
-  const [bot, setBot] = useState<{ playerId: PlayerId; difficulty: BotDifficulty } | null>(null);
-
-  function startMatch(deck1: DeckList, deck2: DeckList, opponent: MatchOpponent) {
-    const state = createLocalMatch(deck1, deck2);
-    setBot(opponent.type === "bot" ? { playerId: "p2", difficulty: opponent.difficulty } : null);
-    setMatch(state);
+export default async function PartiePage() {
+  // Jouer localement ne demande pas de compte : une config Supabase absente
+  // ou une session expirée dégrade simplement vers "non connecté".
+  let isSignedIn = false;
+  try {
+    const supabase = createSupabaseServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    isSignedIn = Boolean(user);
+  } catch {
+    isSignedIn = false;
   }
 
-  function exitMatch() {
-    setMatch(null);
-    setBot(null);
-  }
-
-  if (!match) {
-    return <NewMatchScreen onStart={startMatch} />;
-  }
-  return (
-    <MatchBoard
-      initialState={match}
-      onExit={exitMatch}
-      botPlayerId={bot?.playerId}
-      botDifficulty={bot?.difficulty}
-    />
-  );
+  return <PartieScreen isSignedIn={isSignedIn} />;
 }

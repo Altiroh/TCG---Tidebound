@@ -25,8 +25,8 @@
  * Avec la courbe ci-dessous, ça donne ~0,5 niveau/jour au début, donc
  * ~30 Tides/jour de paliers et un booster de palier tous les ~10 jours.
  * Les paliers sont donc une source SECONDAIRE : la cadence cible d'un
- * booster tous les 2-3 jours suppose les quêtes quotidiennes, qui ne sont
- * pas encore implémentées (cf. README).
+ * booster tous les 2-3 jours repose sur les quêtes quotidiennes et
+ * hebdomadaires (`game/quests/catalog.ts`).
  */
 
 /** XP nécessaire pour passer du niveau 1 au niveau 2. */
@@ -85,9 +85,9 @@ export const MATCH_TIDES = {
  * explicitement `allowBotTides` (cf. `computeMatchReward`), ce que seule
  * fait la politique de développement `features/progression/botRewardPolicy.ts`.
  *
- * Raison d'être : tant que les Contrats (missions quotidiennes) n'existent
- * pas et que le PvP demande deux joueurs réels, aucune boucle jouable ne
- * permet de tester l'économie de bout en bout. `MATCH_TIDES.bot*` reste à 0
+ * Raison d'être : le PvP demande deux joueurs réels ; en développement, une
+ * boucle solo reste utile pour tester l'économie de bout en bout (achat et
+ * ouverture de boosters) sans attendre les quêtes. `MATCH_TIDES.bot*` reste à 0
  * — la règle verrouillée n'est pas réécrite, elle est contournée à un seul
  * endroit, visible et désactivable.
  *
