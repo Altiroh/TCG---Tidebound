@@ -339,7 +339,7 @@ sous-système) avant d'être toutes construites depuis :
 
 - **Boucliers réactifs "1ère fois par tour"** (`game/state/shields.ts` +
   `CardInstance.oncePerTurnFlags`) : 7 cartes (Vieux Loup de Mer, Brise-
-  Vague de Fortune, Second au Visage Pâle, Baleine aux Cicatrices
+  Vague de Fortune, Seconde au Visage Pâle, Baleine aux Cicatrices
   Blanches, Wood Vy, Cage de Flottaison, Le Filet qui Respire) —
   interception d'une perte de Raison/de dégâts la première fois par tour
   que la situation se produit, câblée dans `resolveEffect.ts`,
@@ -381,7 +381,7 @@ sous-système) avant d'être toutes construites depuis :
   `game/actions/breakObject.ts`) : Grappin de Récupération — choisir dans
   sa défausse une Structure/un Équipement sous un plafond de coût.
 - **Saut de Marée multi-états** (`forceTideJumpToAbysses`,
-  `game/environment/tide.ts`) : La Gueule Sous la Mer / Sept Brasses Plus
+  `game/environment/tide.ts`) : La Gueule Sous la Mer (Créature) / Sept Brasses Plus
   Bas (Lot 08) — force une entrée DIRECTE dans l'Abysses en ignorant les
   états intermédiaires, avec un verrou "aucun gain de Raison jusqu'au
   début du prochain tour" (`STATUS_NO_REASON_GAIN`) pour la première.

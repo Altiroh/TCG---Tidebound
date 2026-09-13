@@ -324,7 +324,7 @@ export function resolveTideTurnStep(
     let board = player.board;
 
     // Boucliers "1ère fois par tour" (Brise-Vague de Fortune : dégâts de
-    // Marée au Navire ; Vieux Loup de Mer / Second au Visage Pâle : perte
+    // Marée au Navire ; Vieux Loup de Mer / Seconde au Visage Pâle : perte
     // de Raison) — consommés via `nextState` (qui porte le plateau à jour)
     // puis reportés dans `board` pour que la ré-assignation de `players[i]`
     // ci-dessous ne perde pas le marqueur "déjà utilisé ce tour-ci".

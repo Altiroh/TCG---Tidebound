@@ -1695,7 +1695,7 @@ describe("engine.dispatch - Harponneur du Dernier Quai : bonus de combat pendant
   });
 });
 
-describe("engine.dispatch - Boucliers réactifs 'une fois par tour' (Vieux Loup de Mer, Second au Visage Pâle)", () => {
+describe("engine.dispatch - Boucliers réactifs 'une fois par tour' (Vieux Loup de Mer, Seconde au Visage Pâle)", () => {
   it("Vieux Loup de Mer réduit de 1 la première perte de Raison du tour, mais pas la seconde", () => {
     const vieuxLoup = instance("vieux-loup-de-mer", "p1"); // shield inconditionnel
     const marinA = instance("marin-aux-yeux-rouges", "p1"); // coût 2, "chaque joueur perd 1 Raison"
@@ -1723,7 +1723,7 @@ describe("engine.dispatch - Boucliers réactifs 'une fois par tour' (Vieux Loup 
     expect(second.state.players[1].reason).toBe(8); // 9 - 1
   });
 
-  it("Second au Visage Pâle ne réduit la perte de Raison que pendant Tempête ou Abysses", () => {
+  it("Seconde au Visage Pâle ne réduit la perte de Raison que pendant Tempête ou Abysses", () => {
     const second = instance("second-au-visage-pale", "p1");
     const marin = instance("marin-aux-yeux-rouges", "p1");
     const stateInTempete = testGameState({
@@ -2600,9 +2600,9 @@ describe("engine.dispatch - La Gueule Sous la Mer : saut direct en Abysses + ver
     expect(result.state.players[0].anchor).toBe(18); // 20 - 2
     expect(result.state.players[0].statusFlags).toContain("noReasonGainUntilNextTurn");
 
-    // La carte est une Anomalie à résolution immédiate (`permanent: false`) : elle part au cimetière, pas sur le plateau.
-    expect(result.state.players[0].board).toHaveLength(0);
-    expect(result.state.players[0].graveyard.some((c) => c.instanceId === gueule.instanceId)).toBe(true);
+    // Créature 3/5 depuis la mise à jour du Lot 08 : elle reste sur le plateau après résolution de son effet de pose.
+    expect(result.state.players[0].board.map((c) => c.instanceId)).toEqual([gueule.instanceId]);
+    expect(result.state.players[0].graveyard.some((c) => c.instanceId === gueule.instanceId)).toBe(false);
   });
 
   it("le verrou empêche tout gain de Raison jusqu'au début du prochain tour du contrôleur, puis se lève automatiquement", () => {

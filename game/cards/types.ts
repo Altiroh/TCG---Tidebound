@@ -302,7 +302,7 @@ export interface CardDefinition {
   // PREMIÈRE fois que la situation décrite se produit pour son contrôleur
   // au cours d'un même tour, jamais plus. -----------------------------
 
-  /** Réduit la perte de Raison de son contrôleur, toute source confondue (ex: Vieux Loup de Mer, Second au Visage Pâle avec `tideStateIn`). */
+  /** Réduit la perte de Raison de son contrôleur, toute source confondue (ex: Vieux Loup de Mer, Seconde au Visage Pâle avec `tideStateIn`). */
   reduceOwnReasonLossOncePerTurn?: { amount: number; tideStateIn?: TideStateName[] };
 
   /** Réduit les dégâts de MARÉE subis par le Navire de son contrôleur, dans ces états (ex: Brise-Vague de Fortune, Tempête uniquement). */

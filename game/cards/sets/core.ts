@@ -1043,8 +1043,10 @@ export const CORE_SET: CardDefinition[] = [
   // LOT 06 — Profondeurs, endurance et pression mentale
   // ======================================================================
   {
+    // Id historique conservé (référencé par `public.cards`, collections et decks) : la carte a été renommée
+    // "Seconde" pour la parité (Notion "Catalogue de cartes", Lot 06).
     id: "second-au-visage-pale",
-    name: "Second au Visage Pâle",
+    name: "Seconde au Visage Pâle",
     type: "marin",
     cost: 3,
     maxCopies: 2,
@@ -1056,8 +1058,10 @@ export const CORE_SET: CardDefinition[] = [
     reduceOwnReasonLossOncePerTurn: { amount: 1, tideStateIn: ["tempete", "abysses"] },
   },
   {
+    // Id historique conservé (référencé par `public.cards`, collections et decks) : la carte a été renommée
+    // "Veilleuse" pour la parité (Notion "Catalogue de cartes", Lot 06).
     id: "veilleur-des-profondeurs",
-    name: "Veilleur des Profondeurs",
+    name: "Veilleuse des Profondeurs",
     type: "marin",
     cost: 4,
     attack: 3,
@@ -1446,20 +1450,19 @@ export const CORE_SET: CardDefinition[] = [
   // LOT 08 — Grandes Anomalies de Marée
   // ======================================================================
   {
-    // Grande Anomalie : coûteuse et dangereuse pour son propre contrôleur, jamais un finisher universel
-    // (Notion "Catalogue de cartes", Lot 08, "Intention de design — Grandes Anomalies").
+    // Ancienne Grande Anomalie devenue Créature (Notion "Catalogue de cartes", Lot 08, mise à jour du 13/09) :
+    // reste coûteuse et dangereuse pour son propre contrôleur, mais occupe désormais un Slot en 3/5 une fois posée.
     id: "la-gueule-sous-la-mer",
     name: "La Gueule Sous la Mer",
-    type: "anomalie",
-    // Résolution immédiate (onPlayEffects uniquement, aucune règle durable) : comme un Équipement consommable,
-    // part directement au cimetière plutôt que d'occuper indéfiniment un Slot sans plus aucun effet (cf.
-    // `isPermanentCard`).
-    permanent: false,
+    type: "creature",
     cost: 6,
     maxCopies: 1,
+    attack: 3,
+    health: 5,
     text:
-      "Forcez immédiatement la Marée en Abysses. Les états intermédiaires sont ignorés. Après résolution, votre " +
-      "Navire perd 2 Ancrage. Jusqu'au début de votre prochain tour, vous ne pouvez pas récupérer de Raison.",
+      "Lorsqu'il est posé, forcez immédiatement la Marée en Abysses. Les états intermédiaires sont ignorés. Après " +
+      "résolution, votre Navire perd 2 Ancrage. Jusqu'au début de votre prochain tour, vous ne pouvez pas récupérer " +
+      "de Raison.",
     onPlayEffects: [
       { type: "tideForceJumpToAbysses", target: { kind: "allPlayers" } },
       { type: "damage", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } },
@@ -1470,7 +1473,10 @@ export const CORE_SET: CardDefinition[] = [
     id: "sept-brasses-plus-bas",
     name: "Sept Brasses Plus Bas",
     type: "anomalie",
-    permanent: false, // cf. commentaire sur La Gueule Sous la Mer ci-dessus.
+    // Résolution immédiate (onPlayEffects uniquement, aucune règle durable) : comme un Équipement consommable,
+    // part directement au cimetière plutôt que d'occuper indéfiniment un Slot sans plus aucun effet (cf.
+    // `isPermanentCard`).
+    permanent: false,
     cost: 7,
     maxCopies: 1,
     text:

@@ -48,7 +48,7 @@ function findReasonLossShield(state: GameState, playerId: PlayerId, turnNumber: 
   });
 }
 
-/** Réduction de perte de Raison disponible (Vieux Loup de Mer, Second au Visage Pâle) — 0 si aucun bouclier éligible. */
+/** Réduction de perte de Raison disponible (Vieux Loup de Mer, Seconde au Visage Pâle) — 0 si aucun bouclier éligible. */
 export function consumeReasonLossShield(
   state: GameState,
   playerId: PlayerId,
