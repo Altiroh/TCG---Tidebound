@@ -35,6 +35,8 @@ export interface QuestEntry {
 
 export interface QuestBoard {
   isSignedIn: boolean;
+  /** Joueur connecté, mais lecture/attribution des quêtes impossible côté serveur (config, base) — à ne pas confondre avec "non connecté". */
+  unavailable?: boolean;
   daily: QuestEntry[];
   weekly: QuestEntry[];
   dailyEndsAt: string;
@@ -55,12 +57,14 @@ export async function fetchQuestBoard(): Promise<QuestBoard> {
     weeklyEndsAt: questPeriodEndsAt("weekly", now).toISOString(),
   };
 
+  let signedIn = false;
   try {
     const supabase = createSupabaseServerClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return empty;
+    signedIn = true;
 
     await ensureCurrentQuests(user.id, now);
 
@@ -77,7 +81,7 @@ export async function fetchQuestBoard(): Promise<QuestBoard> {
     ]);
     if (error || questsError) {
       console.error("[fetchQuestBoard] Lecture impossible :", error?.message ?? questsError?.message);
-      return { ...empty, isSignedIn: true };
+      return { ...empty, isSignedIn: true, unavailable: true };
     }
 
     const questById = new Map((quests ?? []).map((q) => [q.id, q]));
@@ -113,7 +117,8 @@ export async function fetchQuestBoard(): Promise<QuestBoard> {
     };
   } catch (error) {
     console.error("[fetchQuestBoard] Échec :", error);
-    return empty;
+    // Une panne APRÈS avoir identifié le joueur n'est pas une déconnexion : ne pas lui demander de se reconnecter.
+    return { ...empty, isSignedIn: signedIn, unavailable: signedIn };
   }
 }
 

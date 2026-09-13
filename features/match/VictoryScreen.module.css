@@ -14,86 +14,210 @@
  */
 
 /*
- * Apparition en cascade (retour de test du 13/09) : le bandeau "VICTOIRE"
- * tombe avec un léger rebond (~0,15 → 0,85 s, premier feu d'artifice calé
- * sur son arrivée), le cadre du Navire monte en fondu pendant que
- * l'illustration se resserre, puis la plaque du nom et enfin les boutons.
- * `both` : chaque élément reste invisible jusqu'à son tour.
+ * Chorégraphie de victoire (retour de test du 13/09 : "l'animation n'est pas
+ * folle") — ~2,4 s, chaque élément invisible jusqu'à son tour (`both`) :
+ *   0,00  l'écran s'assombrit (vignette) ;
+ *   0,15  le bandeau "VICTOIRE" s'abat comme un tampon (flou → écrasé → rebond),
+ *   0,45  impact : flash plein écran, secousse, onde de choc, gerbe d'étincelles
+ *         et premier feu d'artifice (`Fireworks firstBurstAt`) ; un reflet
+ *         balaie ensuite le bandeau en boucle ;
+ *   0,70  rayons dorés tournants derrière le Navire, qui s'élève en basculant ;
+ *   1,35  le nom s'écrit lettre par lettre ; 2,00 les boutons.
  */
-.bannerIn {
-  animation: victory-banner-in 700ms cubic-bezier(0.2, 1.35, 0.45, 1) 150ms both;
+.stage {
+  animation: victory-shake 420ms cubic-bezier(0.36, 0.07, 0.19, 0.97) 450ms both;
 }
-.frameIn {
-  animation: victory-frame-in 750ms cubic-bezier(0.16, 1, 0.3, 1) 550ms both;
+.vignette {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 45%, rgba(0, 0, 0, 0) 25%, rgba(0, 0, 0, 0.72) 100%);
+  animation: victory-fade-in 500ms ease-out both;
 }
-.illustrationIn {
-  animation: victory-illustration-in 1800ms cubic-bezier(0.16, 1, 0.3, 1) 550ms both;
-}
-.nameIn {
-  animation: victory-name-in 600ms ease-out 1150ms both;
-}
-.actionsIn {
-  animation: victory-actions-in 450ms ease-out 1600ms both;
+.flash {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 30%, rgba(255, 247, 214, 0.95), rgba(255, 214, 120, 0.35) 45%, rgba(255, 214, 120, 0) 75%);
+  animation: victory-flash 520ms ease-out 450ms both;
 }
 
-@keyframes victory-banner-in {
-  from {
-    opacity: 0;
-    transform: translateY(-70px) scale(1.25);
-  }
-  60% {
-    opacity: 1;
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
+.bannerWrap {
+  position: relative;
+  width: 100%;
+  max-width: min(70vw, 480px);
 }
-@keyframes victory-frame-in {
-  from {
-    opacity: 0;
-    transform: translateY(36px) scale(0.94);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
+.bannerIn {
+  display: block;
+  width: 100%;
+  animation: victory-banner-slam 620ms cubic-bezier(0.5, 0, 0.3, 1.4) 150ms both;
+}
+/* Reflet qui balaie le lettrage, découpé à la forme exacte du bandeau. */
+.bannerShine {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 250, 225, 0.9) 50%, transparent 65%) no-repeat;
+  background-size: 250% 100%;
+  -webkit-mask: url(/assets/victory-text.png) center / contain no-repeat;
+  mask: url(/assets/victory-text.png) center / contain no-repeat;
+  mix-blend-mode: screen;
+  animation: victory-shine 3200ms ease-in-out 900ms infinite both;
+}
+.shockwave {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 60%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 224, 150, 0.85);
+  box-shadow: 0 0 30px rgba(255, 200, 90, 0.7), inset 0 0 20px rgba(255, 200, 90, 0.5);
+  pointer-events: none;
+  animation: victory-shockwave 700ms cubic-bezier(0.2, 0.7, 0.3, 1) 450ms both;
+}
+.sparks {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.spark {
+  position: absolute;
+  left: -3px;
+  top: -3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ffe9a8;
+  box-shadow: 0 0 10px 2px rgba(255, 196, 80, 0.9);
+  animation: victory-spark 900ms cubic-bezier(0.1, 0.8, 0.3, 1) 450ms both;
+}
+
+.frameWrap {
+  position: relative;
+  perspective: 900px;
+}
+.rays {
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  width: 190%;
+  aspect-ratio: 1;
+  pointer-events: none;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, rgba(255, 214, 120, 0.22) 0deg 7deg, rgba(255, 214, 120, 0) 7deg 22deg);
+  -webkit-mask: radial-gradient(circle, #000 18%, transparent 68%);
+  mask: radial-gradient(circle, #000 18%, transparent 68%);
+  animation:
+    victory-rays-in 900ms ease-out 700ms both,
+    victory-rays-spin 26s linear 700ms infinite;
+}
+.frameIn {
+  animation:
+    victory-frame-rise 850ms cubic-bezier(0.2, 1.25, 0.35, 1) 700ms both,
+    victory-frame-glow 2800ms ease-in-out 1550ms infinite;
+}
+.illustrationIn {
+  animation: victory-illustration-in 1900ms cubic-bezier(0.16, 1, 0.3, 1) 700ms both;
+}
+.nameLetter {
+  display: inline-block;
+  white-space: pre;
+  animation: victory-letter 420ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+.actionsIn {
+  animation: victory-actions-in 450ms ease-out 2000ms both;
+}
+
+@keyframes victory-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes victory-banner-slam {
+  0% { opacity: 0; transform: scale(2.8); filter: blur(14px); }
+  55% { opacity: 1; transform: scale(0.9); filter: blur(0); }
+  75% { transform: scale(1.06); }
+  100% { opacity: 1; transform: none; filter: none; }
+}
+@keyframes victory-shake {
+  0%, 100% { transform: none; }
+  15% { transform: translate(-7px, 4px); }
+  30% { transform: translate(6px, -5px); }
+  45% { transform: translate(-5px, 2px); }
+  60% { transform: translate(3px, -2px); }
+  80% { transform: translate(-1px, 1px); }
+}
+@keyframes victory-flash {
+  0% { opacity: 0; }
+  12% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes victory-shine {
+  0% { background-position: 150% 0; }
+  45%, 100% { background-position: -150% 0; }
+}
+@keyframes victory-shockwave {
+  0% { opacity: 1; transform: translate(-50%, -50%) scale(0.2); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(2.6); }
+}
+@keyframes victory-spark {
+  0% { opacity: 1; transform: rotate(var(--angle)) translateX(0) scale(1.4); }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: rotate(var(--angle)) translateX(var(--distance)) scale(0.3); }
+}
+@keyframes victory-rays-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes victory-rays-spin {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+@keyframes victory-frame-rise {
+  0% { opacity: 0; transform: translateY(90px) scale(0.78) rotateX(28deg); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes victory-frame-glow {
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(255, 200, 90, 0)); }
+  50% { filter: drop-shadow(0 0 22px rgba(255, 200, 90, 0.55)); }
 }
 @keyframes victory-illustration-in {
-  from {
-    transform: scale(1.14);
-  }
-  to {
-    transform: none;
-  }
+  from { transform: scale(1.2); }
+  to { transform: none; }
 }
-@keyframes victory-name-in {
-  from {
-    opacity: 0;
-    letter-spacing: 0.3em;
-  }
-  to {
-    opacity: 1;
-  }
+@keyframes victory-letter {
+  0% { opacity: 0; transform: translateY(12px) scale(0.4); color: #fff6d0; text-shadow: 0 0 14px rgba(255, 210, 110, 1); }
+  100% { opacity: 1; transform: none; }
 }
 @keyframes victory-actions-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .stage,
+  .vignette,
+  .flash,
   .bannerIn,
+  .bannerShine,
+  .shockwave,
+  .spark,
+  .rays,
   .frameIn,
   .illustrationIn,
-  .nameIn,
+  .nameLetter,
   .actionsIn {
     animation: none;
+  }
+  .flash,
+  .shockwave,
+  .spark {
+    display: none;
   }
 }
 

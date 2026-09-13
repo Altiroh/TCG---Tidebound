@@ -19,15 +19,29 @@ interface CardFlightLayerProps {
   getCoords: (flight: CardFlight) => { from: Point; to: Point } | null;
 }
 
-function FlyingCard({ from, to }: { from: Point; to: Point }) {
+function FlyingCard({ from, to, delayMs, isDraw }: { from: Point; to: Point; delayMs: number; isDraw: boolean }) {
   const [arrived, setArrived] = useState(false);
+  // Une pioche en attente de son tour ne s'affiche pas encore : sinon plusieurs dos se superposeraient sur la pioche.
+  const [started, setStarted] = useState(delayMs === 0);
 
   useEffect(() => {
-    const raf = requestAnimationFrame(() => setArrived(true));
-    return () => cancelAnimationFrame(raf);
-  }, []);
+    let raf = 0;
+    const timer = setTimeout(() => {
+      setStarted(true);
+      raf = requestAnimationFrame(() => requestAnimationFrame(() => setArrived(true)));
+    }, delayMs);
+    return () => {
+      clearTimeout(timer);
+      cancelAnimationFrame(raf);
+    };
+  }, [delayMs]);
 
+  if (!started) return null;
   const pos = arrived ? to : from;
+  // Pioche : la carte ARRIVE en main, pleine taille et opaque, puis la vraie carte prend le relais à l'atterrissage.
+  // Autres vols (pose, cimetière) : la carte se fond dans sa destination.
+  const endScale = isDraw ? 1 : 0.7;
+  const endOpacity = isDraw ? 1 : 0;
 
   return (
     <div
@@ -38,8 +52,8 @@ function FlyingCard({ from, to }: { from: Point; to: Point }) {
         top: pos.y,
         width: FLIGHT_CARD_WIDTH,
         height: FLIGHT_CARD_HEIGHT,
-        transform: `translate(-50%, -50%) scale(${arrived ? 0.7 : 1})`,
-        opacity: arrived ? 0 : 1,
+        transform: `translate(-50%, -50%) scale(${arrived ? endScale : isDraw ? 0.85 : 1}) rotate(${isDraw && !arrived ? -8 : 0}deg)`,
+        opacity: arrived ? endOpacity : 1,
         transition: `left ${FLIGHT_DURATION_MS}ms, top ${FLIGHT_DURATION_MS}ms, transform ${FLIGHT_DURATION_MS}ms, opacity ${FLIGHT_DURATION_MS}ms`,
       }}
     >
@@ -70,7 +84,7 @@ export function CardFlightLayer({ flights, getCoords }: CardFlightLayerProps) {
       {flights.map((flight) => {
         const coords = getCoords(flight);
         if (!coords) return null;
-        return <FlyingCard key={flight.id} from={coords.from} to={coords.to} />;
+        return <FlyingCard key={flight.id} from={coords.from} to={coords.to} delayMs={flight.delayMs} isDraw={flight.kind === "draw"} />;
       })}
     </>
   );

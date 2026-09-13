@@ -76,6 +76,11 @@ export function QuestsScreen({ board }: QuestsScreenProps) {
                 Se connecter
               </Link>
             </div>
+          ) : board.unavailable ? (
+            <div className={shell.emptyState}>
+              <span className={shell.emptyStateTitle}>Quêtes indisponibles pour le moment</span>
+              <p>Le serveur n&apos;a pas pu charger tes quêtes. Réessaie dans un instant.</p>
+            </div>
           ) : !hasQuests ? (
             <div className={shell.emptyState}>
               <span className={shell.emptyStateTitle}>Aucune quête disponible</span>

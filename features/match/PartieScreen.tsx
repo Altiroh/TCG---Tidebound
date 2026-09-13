@@ -41,7 +41,14 @@ export function PartieScreen({ isSignedIn }: PartieScreenProps) {
 
     setStarting(true);
     setError(null);
-    const result = await startBotMatch(deck1.id, deck2.id, opponent.difficulty);
+    // Une Server Action qui lève (config serveur incomplète, réseau) rejette la promesse : sans ce filet,
+    // le bouton restait bloqué sur "démarrage" sans aucun message.
+    const result = await startBotMatch(deck1.id, deck2.id, opponent.difficulty).catch(() => ({
+      ok: false as const,
+      error: "Le serveur n'a pas pu créer la partie. Réessaie dans un instant.",
+      signedOut: false,
+      matchId: undefined,
+    }));
     if (result.ok && result.matchId) {
       router.push(`/en-ligne/${result.matchId}`);
       return;

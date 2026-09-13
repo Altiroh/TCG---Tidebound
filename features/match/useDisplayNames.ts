@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * Pseudos (`profiles.display_name`) des comptes demandés, pour l'écran de
  * victoire. `"me"` désigne le compte connecté dans ce navigateur (partie
@@ -28,7 +30,11 @@ export function useDisplayNames(ids: readonly string[]): Record<string, string> 
           } = await supabase.auth.getUser();
           meId = user?.id ?? null;
         }
-        const lookupIds = Array.from(new Set(ids.map((id) => (id === "me" ? meId : id)).filter((id): id is string => Boolean(id))));
+        // Seuls de vrais comptes (uuid) : un id de joueur non-uuid (ex: "bot" des parties arbitrées côté serveur)
+        // ferait échouer TOUTE la requête `in(...)`, pseudo du joueur humain compris.
+        const lookupIds = Array.from(
+          new Set(ids.map((id) => (id === "me" ? meId : id)).filter((id): id is string => Boolean(id) && UUID_PATTERN.test(id!)))
+        );
         if (lookupIds.length === 0) return;
 
         const { data } = await supabase.from("profiles").select("id, display_name").in("id", lookupIds);

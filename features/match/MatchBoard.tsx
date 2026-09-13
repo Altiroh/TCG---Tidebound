@@ -48,7 +48,7 @@ import { TideOrientationTile } from "@/features/match/TideOrientationTile";
 import { TideProgressBar } from "@/features/match/TideProgressBar";
 import { useActionToasts } from "@/features/match/useActionToasts";
 import { useAttackPresentation } from "@/features/match/useAttackPresentation";
-import { useCardFlights, type CardFlight } from "@/features/match/useCardFlights";
+import { pendingDrawCount, pendingDrawIds, useCardFlights, type CardFlight } from "@/features/match/useCardFlights";
 import { useDeraisonWarning } from "@/features/match/useDeraisonWarning";
 import { usePhaseBannerEvent } from "@/features/match/usePhaseBannerEvent";
 
@@ -158,6 +158,8 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
   const bannerEvent = usePhaseBannerEvent(state);
   const actionToasts = useActionToasts(state);
   const cardFlights = useCardFlights(state);
+  // Cartes piochées encore en vol depuis le deck : absentes de la main jusqu'à leur atterrissage.
+  const viewerDrawing = pendingDrawIds(cardFlights, viewerPlayerId);
   const deraison = useDeraisonWarning(state, viewerPlayer, draggingId);
 
   function getFlightCoords(flight: CardFlight) {
@@ -574,7 +576,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
           className="pointer-events-none absolute flex items-start justify-center"
           style={{ left: 0, top: -70, width: 1672, height: 220 }}
         >
-          <OpponentHandFan cards={otherPlayer.hand} />
+          <OpponentHandFan cards={otherPlayer.hand.slice(0, Math.max(0, otherPlayer.hand.length - pendingDrawCount(cardFlights, otherPlayer.id)))} />
         </div>
 
         {/* Tour, nichée dans le cadre boussole en haut à droite — numéro de TOUR DE TABLE (les deux joueurs ont joué), pas `turnNumber` brut qui compte chaque tour individuel. */}
@@ -586,7 +588,12 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
 
         {/* Fil des événements — "pourquoi quelque chose vient de se produire" */}
         <div className="absolute" style={{ left: 1462, top: 350, width: 204, height: 170 }}>
-          <EventFeed state={state} />
+          <EventFeed
+            state={state}
+            playerLabel={(id) =>
+              id === botPlayerId ? "Le bot" : id === humanPlayerId ? (displayNames.me ?? "Joueur 1") : id === "p1" ? "Joueur 1" : id === "p2" ? "Joueur 2" : "?"
+            }
+          />
         </div>
 
         {/* Ligne de plateau adverse */}
@@ -840,7 +847,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
             cartes peut intercepter des glisser-déposer destinés au plateau juste au-dessus. */}
         <div className="pointer-events-none absolute flex items-end justify-center" style={{ left: 0, top: 775, width: 1672, height: 195 }}>
           <HandFan
-            cards={viewerPlayer.hand}
+            cards={viewerPlayer.hand.filter((card) => !viewerDrawing.has(card.instanceId))}
             tideState={state.environment.tideState}
             selectedInstanceId={pending?.kind === "playCard" ? pending.instanceId : undefined}
             disabled={!canPlayCards}
@@ -867,7 +874,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
         <CardFlightLayer flights={cardFlights} getCoords={getFlightCoords} />
       </BoardStage>
 
-      <DragTargetingTrail anchor={dragAnchor} />
+      <DragTargetingTrail anchor={dragAnchor} tone={draggingUnitId && state.phase === "combatPhase" ? "attack" : "effect"} />
       <EquipLinkOverlay state={state} />
       <AttackImpactLayer attacks={attacks} />
       <ActionToastStack toasts={actionToasts} />
@@ -894,6 +901,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
         <CardDetailModal
           instance={detailInstance}
           tideState={state.environment.tideState}
+          boardUnits={state.players.flatMap((p) => p.board)}
           onClose={() => setDetailInstance(null)}
         />
       )}

@@ -42,10 +42,19 @@ function pickRandom<T>(items: T[]): T {
  * n'est jamais consignée.
  */
 export function chooseBotAction(state: GameState, playerId: PlayerId, difficulty: BotDifficulty): PlayerAction {
-  const scored = scoreCandidates(state, playerId);
+  let scored = scoreCandidates(state, playerId);
   if (scored.length === 0) return { type: "endTurn", playerId };
 
   scored.sort((a, b) => b.score - a.score);
+
+  // En Phase de combat, la marge d'erreur ne doit pas faire passer le tour quand une attaque vaut au moins
+  // autant : sinon, en "moyen", le bot tirait souvent "Fin de tour" au hasard et n'attaquait presque jamais
+  // (retour de test du 13/09 — ~0,4 attaque par tour contre ~0,8 en "facile").
+  if (state.phase === "combatPhase") {
+    const endTurnScore = scored.find((s) => s.action.type === "endTurn")?.score ?? -Infinity;
+    const worthwhileAttacks = scored.filter((s) => s.action.type === "attack" && s.score >= endTurnScore);
+    if (worthwhileAttacks.length > 0) scored = worthwhileAttacks;
+  }
 
   if (difficulty === "difficile") {
     const best = scored[0]!.score;

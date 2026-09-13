@@ -9,6 +9,8 @@ import { CardTile } from "@/features/match/CardTile";
 interface CardDetailModalProps {
   instance: CardInstance;
   tideState: TideStateName;
+  /** Permanents des deux plateaux — pour montrer l'Équipement attaché à la carte, ou l'unité qu'elle équipe. */
+  boardUnits?: readonly CardInstance[];
   onClose: () => void;
 }
 
@@ -18,7 +20,7 @@ interface CardDetailModalProps {
  * coloré derrière le panneau (`showGlow={false}`) : ouvert au clic sur une
  * carte posée plutôt qu'au survol (plus de "hover scale" sur le plateau).
  */
-export function CardDetailModal({ instance, tideState, onClose }: CardDetailModalProps) {
+export function CardDetailModal({ instance, tideState, boardUnits = [], onClose }: CardDetailModalProps) {
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") onClose();
@@ -45,7 +47,7 @@ export function CardDetailModal({ instance, tideState, onClose }: CardDetailModa
 
       <div className="flex w-80 flex-col gap-3 sm:w-96" onClick={(e) => e.stopPropagation()}>
         <CardTile instance={instance} tideState={tideState} widthClassName="w-full" scaleOnHover={false} badgeSize={90} />
-        <AppliedEffectsList instance={instance} tideState={tideState} />
+        <AppliedEffectsList instance={instance} tideState={tideState} boardUnits={boardUnits} />
       </div>
       <div className="-my-8 hidden self-stretch sm:block" onClick={(e) => e.stopPropagation()}>
         <CardInfoPanel cardId={instance.cardId} showGlow={false} />

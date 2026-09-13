@@ -25,7 +25,7 @@ function equipPairs(state: GameState): Array<{ equipId: string; targetId: string
 }
 
 /**
- * Trait glow reliant chaque Équipement posé à l'unité qu'il équipe,
+ * Trait en angles droits reliant chaque Équipement posé à l'unité qu'il équipe,
  * directement sur le plateau (`CardInstance.attachedToInstanceId`) — lit le
  * DOM (`[data-board-unit]`, déjà posé par `MatchBoard`/`OnlineBoard` sur
  * chaque tuile) plutôt que de dupliquer un système de refs : les deux
@@ -57,9 +57,9 @@ export function EquipLinkOverlay({ state }: { state: GameState }) {
         next.push({
           key: equipId,
           x1: equipRect.left + equipRect.width / 2,
-          y1: equipRect.bottom - 6,
+          y1: equipRect.bottom + 3,
           x2: targetRect.left + targetRect.width / 2,
-          y2: targetRect.bottom - 6,
+          y2: targetRect.bottom + 3,
         });
       }
       setLinks(next);
@@ -74,31 +74,18 @@ export function EquipLinkOverlay({ state }: { state: GameState }) {
 
   return (
     <svg className="pointer-events-none fixed inset-0 z-30 h-full w-full" aria-hidden>
-      <defs>
-        <filter id="equip-link-glow" x="-60%" y="-60%" width="220%" height="220%">
-          <feGaussianBlur stdDeviation="4" result="blur" />
-          <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
       {links.map((link) => {
-        const midX = (link.x1 + link.x2) / 2;
-        const sag = 22;
-        const dip = Math.max(link.y1, link.y2) + sag;
-        const path = `M ${link.x1} ${link.y1} Q ${midX} ${dip} ${link.x2} ${link.y2}`;
+        // Tracé orthogonal (retour de test du 13/09) : descend sous l'Équipement, file à angle droit jusqu'à
+        // l'aplomb de l'unité équipée, puis remonte vers elle. Bleu discret et fin, sans halo.
+        const dip = Math.max(link.y1, link.y2) + 14;
+        const path = `M ${link.x1} ${link.y1} V ${dip} H ${link.x2} V ${link.y2}`;
         return (
-          <path
-            key={link.key}
-            d={path}
-            fill="none"
-            stroke="#f0c419"
-            strokeWidth={2.5}
-            strokeLinecap="round"
-            filter="url(#equip-link-glow)"
-            opacity={0.9}
-          />
+          <g key={link.key}>
+            <path d={path} fill="none" stroke="rgba(2,6,23,0.4)" strokeWidth={3} strokeLinejoin="miter" />
+            <path d={path} fill="none" stroke="rgba(147,197,253,0.7)" strokeWidth={1.25} strokeLinejoin="miter" />
+            <circle cx={link.x1} cy={link.y1} r={2} fill="rgba(147,197,253,0.85)" />
+            <circle cx={link.x2} cy={link.y2} r={2} fill="rgba(147,197,253,0.85)" />
+          </g>
         );
       })}
     </svg>

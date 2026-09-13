@@ -38,9 +38,11 @@ export function createSupabaseServerClient() {
  * il ignore les policies RLS.
  */
 export function createSupabaseServiceRoleClient() {
-  return createClient<Database>(
-    getSupabaseUrl()!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false } }
-  );
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceRoleKey) {
+    // Message explicite plutôt que le "supabaseKey is required." du SDK : quêtes, parties arbitrées et
+    // récompenses en dépendent, et une variable vide dans `.env.local`/Vercel passait inaperçue.
+    throw new Error("SUPABASE_SERVICE_ROLE_KEY manquante ou vide (.env.local en local, variables d'environnement Vercel en prod).");
+  }
+  return createClient<Database>(getSupabaseUrl()!, serviceRoleKey, { auth: { persistSession: false } });
 }

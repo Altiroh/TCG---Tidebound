@@ -3,7 +3,7 @@
 import { getCardDefinition, type CardInstance, type TideStateName } from "@/game";
 import { TIDE_STATE_LABELS } from "@/features/match/cardDisplay";
 import { formatStatDelta } from "@/features/match/formatEvent";
-import { useImageOk } from "@/features/match/useImageOk";
+import { CardThumb } from "@/features/match/CardThumb";
 
 interface AppliedEffect {
   key: string;
@@ -32,14 +32,38 @@ function knownCardName(source: string): string | null {
 
 /**
  * Tout ce qui écarte une carte de plateau de sa fiche imprimée : buffs/malus
- * (`instance.modifiers`, regroupés par source et durée), ajustement de la
+ * (`instance.modifiers`, regroupés par source et durée), carte liée par un
+ * Équipement, ajustement de la
  * Marée courante (`tideAffinity`) et dégâts marqués. Les auras dynamiques
  * (qui dépendent du reste du plateau) n'y figurent pas — le détail de carte
  * n'a pas ce contexte, cf. `AuraContext`.
  */
-function collectAppliedEffects(instance: CardInstance, tideState: TideStateName): AppliedEffect[] {
+function collectAppliedEffects(instance: CardInstance, tideState: TideStateName, boardUnits: readonly CardInstance[]): AppliedEffect[] {
   const def = getCardDefinition(instance.cardId);
   const effects: AppliedEffect[] = [];
+
+  // Carte liée : l'Équipement attaché à cette carte, ou l'unité que cet Équipement équipe.
+  for (const equipment of boardUnits.filter((unit) => unit.attachedToInstanceId === instance.instanceId)) {
+    effects.push({
+      key: `linked-${equipment.instanceId}`,
+      thumbnail: { kind: "card", cardId: equipment.cardId },
+      source: "Équipement attaché",
+      delta: getCardDefinition(equipment.cardId).name,
+      tone: "neutral",
+    });
+  }
+  const equipped = instance.attachedToInstanceId
+    ? boardUnits.find((unit) => unit.instanceId === instance.attachedToInstanceId)
+    : undefined;
+  if (equipped) {
+    effects.push({
+      key: `linked-${equipped.instanceId}`,
+      thumbnail: { kind: "card", cardId: equipped.cardId },
+      source: "Unité équipée",
+      delta: getCardDefinition(equipped.cardId).name,
+      tone: "neutral",
+    });
+  }
 
   const grouped = new Map<string, { source: string; duration: "temporary" | "permanent"; attack: number; health: number }>();
   for (const modifier of instance.modifiers) {
@@ -105,34 +129,22 @@ const THUMB_BORDER_CLASSES: Record<AppliedEffect["tone"], string> = {
   neutral: "border-white/20",
 };
 
-function Thumbnail({ effect }: { effect: AppliedEffect }) {
-  const cardId = effect.thumbnail.kind === "card" ? effect.thumbnail.cardId : null;
-  const illustrationUrl = cardId ? `/assets/cards/illustrations/${cardId}.png` : "";
-  const illustrationOk = useImageOk(illustrationUrl);
-  const glyph = effect.thumbnail.kind === "glyph" ? effect.thumbnail.glyph : effect.source.charAt(0);
-
-  return (
-    <span
-      className={`flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-white/10 ${THUMB_BORDER_CLASSES[effect.tone]}`}
-    >
-      {cardId && illustrationOk ? (
-        // eslint-disable-next-line @next/next/no-img-element -- asset local, illustration de la carte source
-        <img src={illustrationUrl} alt="" draggable={false} className="h-full w-full select-none object-cover" />
-      ) : (
-        <span className={`text-lg font-bold ${TONE_CLASSES[effect.tone]}`}>{glyph}</span>
-      )}
-    </span>
-  );
-}
-
 /**
  * Liste "effets appliqués" posée SOUS la carte agrandie du détail de plateau
  * (`CardDetailModal`) : une ligne par effet, miniature de la source à gauche,
  * variation en toutes lettres à droite. Rien n'est rendu si la carte est
  * telle qu'imprimée.
  */
-export function AppliedEffectsList({ instance, tideState }: { instance: CardInstance; tideState: TideStateName }) {
-  const effects = collectAppliedEffects(instance, tideState);
+export function AppliedEffectsList({
+  instance,
+  tideState,
+  boardUnits = [],
+}: {
+  instance: CardInstance;
+  tideState: TideStateName;
+  boardUnits?: readonly CardInstance[];
+}) {
+  const effects = collectAppliedEffects(instance, tideState, boardUnits);
   if (effects.length === 0) return null;
 
   return (
@@ -142,7 +154,13 @@ export function AppliedEffectsList({ instance, tideState }: { instance: CardInst
     >
       {effects.map((effect) => (
         <li key={effect.key} className="flex items-center gap-3">
-          <Thumbnail effect={effect} />
+          <CardThumb
+            cardId={effect.thumbnail.kind === "card" ? effect.thumbnail.cardId : undefined}
+            glyph={effect.thumbnail.kind === "glyph" ? effect.thumbnail.glyph : undefined}
+            size={44}
+            className={THUMB_BORDER_CLASSES[effect.tone]}
+            glyphClassName={TONE_CLASSES[effect.tone]}
+          />
           <span className="min-w-0 flex-1">
             <span className={`block text-[15px] font-semibold leading-tight ${TONE_CLASSES[effect.tone]}`}>{effect.delta}</span>
             <span className="block truncate text-xs text-slate-400">

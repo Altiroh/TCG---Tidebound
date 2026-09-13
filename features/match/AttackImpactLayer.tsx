@@ -135,26 +135,6 @@ function ImpactFlash({ point }: { point: Point }) {
   );
 }
 
-/** Trait de ciblage bref (même style que `DragTargetingTrail`) — rend lisible QUI vise QUOI, surtout pour les attaques du bot. */
-function TargetingLine({ from, to }: { from: Point; to: Point }) {
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    const raf = requestAnimationFrame(() => setVisible(true));
-    const hide = setTimeout(() => setVisible(false), ATTACK_TIMINGS.lift + ATTACK_TIMINGS.windup);
-    return () => {
-      cancelAnimationFrame(raf);
-      clearTimeout(hide);
-    };
-  }, []);
-  return (
-    <svg className="pointer-events-none absolute inset-0 h-full w-full" style={{ opacity: visible ? 1 : 0, transition: "opacity 140ms ease-out" }} aria-hidden>
-      <line x1={from.x} y1={from.y} x2={to.x} y2={to.y} stroke="rgba(2,6,23,0.45)" strokeWidth={3.5} />
-      <line x1={from.x} y1={from.y} x2={to.x} y2={to.y} stroke="rgba(147,197,253,0.8)" strokeWidth={1.5} strokeDasharray="12 6" />
-      <circle cx={to.x} cy={to.y} r={7} fill="rgba(2,6,23,0.35)" stroke="rgba(147,197,253,0.85)" strokeWidth={1.5} />
-    </svg>
-  );
-}
-
 function SingleAttack({ attack }: { attack: AttackAnimation }) {
   const [geometry, setGeometry] = useState<{ from: Point; to: Point } | null>(null);
   const [impacted, setImpacted] = useState(false);
@@ -192,7 +172,6 @@ function SingleAttack({ attack }: { attack: AttackAnimation }) {
   if (!geometry) return null;
   return (
     <>
-      <TargetingLine from={geometry.from} to={geometry.to} />
       {impacted && (
         <>
           <ImpactFlash point={geometry.to} />
@@ -205,7 +184,7 @@ function SingleAttack({ attack }: { attack: AttackAnimation }) {
 }
 
 /**
- * Mise en scène d'une attaque (`useAttackPresentation`) : trait de ciblage,
+ * Mise en scène d'une attaque (`useAttackPresentation`) :
  * mouvement de la vraie carte attaquante (soulèvement, élan, frappe, retour),
  * puis au choc un flash, un léger tremblement, le son et les dégâts qui
  * s'envolent — riposte comprise en combat mutuel. Coordonnées VIEWPORT

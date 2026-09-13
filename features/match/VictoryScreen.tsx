@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import type { ShipDefinition } from "@/game";
 import { BoardBackdrop } from "@/features/match/BoardBackdrop";
@@ -27,6 +28,11 @@ interface VictoryScreenProps {
 const ILLUSTRATION_ZONE = { top: "18.54%", left: "16.54%", width: "65.03%", height: "54.51%" };
 const ILLUSTRATION_CLIP =
   "polygon(36.6% 0%, 21.3% 7.9%, 13.6% 14%, 8.3% 19.9%, 4.4% 26%, 1.7% 32%, 0.3% 37.9%, 0% 44%, 0% 74.1%, 3% 80.1%, 5.3% 86%, 5.6% 92.1%, 10.1% 100%, 91% 100%, 98.3% 92.1%, 100% 86%, 100% 44%, 99.5% 37.9%, 97.9% 32%, 95.2% 26%, 91.4% 19.9%, 86.1% 14%, 78% 7.9%, 61.2% 0%)";
+/** Étincelles de la gerbe d'impact du bandeau. */
+const SPARK_COUNT = 18;
+/** Le nom s'écrit lettre par lettre une fois le cadre posé (cf. chorégraphie dans `VictoryScreen.module.css`). */
+const NAME_START_MS = 1350;
+const NAME_LETTER_STEP_MS = 55;
 const NAMEPLATE_ZONE = { top: "73%", left: "22%", width: "56%", height: "8%" };
 
 /**
@@ -42,47 +48,95 @@ export function VictoryScreen({ winner, onExit, exitHref }: VictoryScreenProps) 
     <>
       <BoardBackdrop />
       {/* Plan intermédiaire : flouté, sous le cadre (net) mais au-dessus du fond de plateau — cf. `Fireworks.tsx`. */}
-      {winner && <Fireworks firstBurstAt={0.85} />}
-      <div className="relative z-10 flex min-h-screen flex-col items-center justify-center gap-8 p-8 text-center">
+      {winner && <div className={styles.vignette} aria-hidden />}
+      {winner && <Fireworks firstBurstAt={0.5} />}
+      {winner && <div className={styles.flash} aria-hidden />}
+      <div
+        className={`relative z-10 flex min-h-screen flex-col items-center justify-center gap-8 p-8 text-center ${winner ? styles.stage : ""}`}
+      >
         {winner ? (
           <>
-            {/* eslint-disable-next-line @next/next/no-img-element -- bandeau décoratif fixe */}
-            <img
-              src="/assets/victory-text.png"
-              alt="Victoire"
-              draggable={false}
-              className={`w-full select-none ${styles.bannerIn}`}
-              style={{ maxWidth: "min(70vw, 480px)" }}
-            />
-
-            <div className={`relative ${styles.frameIn}`} style={{ width: "min(60vw, 340px)", aspectRatio: "1161 / 1354" }}>
-              <div className="absolute overflow-hidden" style={{ ...ILLUSTRATION_ZONE, clipPath: ILLUSTRATION_CLIP }}>
-                {winner.ship.illustration && (
-                  // eslint-disable-next-line @next/next/no-img-element -- asset local, une par Navire
-                  <img
-                    src={`/assets/ships/illu/${winner.ship.illustration}`}
-                    alt=""
-                    draggable={false}
-                    className={`h-full w-full select-none object-cover ${styles.illustrationIn}`}
+            <div className={styles.bannerWrap}>
+              <span className={styles.shockwave} aria-hidden />
+              <span className={styles.sparks} aria-hidden>
+                {Array.from({ length: SPARK_COUNT }).map((_, i) => (
+                  <span
+                    key={i}
+                    className={styles.spark}
+                    style={
+                      {
+                        "--angle": `${(360 / SPARK_COUNT) * i + (i % 2) * 9}deg`,
+                        "--distance": `${120 + (i % 3) * 55}px`,
+                      } as CSSProperties
+                    }
                   />
-                )}
-              </div>
-
-              {/* eslint-disable-next-line @next/next/no-img-element -- cadre décoratif fixe, superpose l'illustration */}
+                ))}
+              </span>
+              {/* eslint-disable-next-line @next/next/no-img-element -- bandeau décoratif fixe */}
               <img
-                src="/assets/ships/ship-frame-victory.png"
-                alt=""
+                src="/assets/victory-text.png"
+                alt="Victoire"
                 draggable={false}
-                className="pointer-events-none absolute inset-0 h-full w-full select-none"
+                className={`select-none ${styles.bannerIn}`}
               />
+              <span className={styles.bannerShine} aria-hidden />
+            </div>
 
-              <div className={`absolute flex items-center justify-center ${styles.nameIn}`} style={{ ...NAMEPLATE_ZONE, containerType: "inline-size" }}>
-                <span
-                  className="max-w-full truncate text-[clamp(12px,11cqw,22px)] font-bold uppercase tracking-wide text-amber-50 [font-family:var(--font-card-title)]"
-                  style={{ textShadow: "0 1px 3px rgba(0,0,0,0.9)" }}
+            <div className={styles.frameWrap}>
+              <span className={styles.rays} aria-hidden />
+              <div
+                className={`relative ${styles.frameIn}`}
+                style={{
+                  width: "min(60vw, 340px)",
+                  aspectRatio: "1161 / 1354",
+                }}
+              >
+                <div
+                  className="absolute overflow-hidden"
+                  style={{ ...ILLUSTRATION_ZONE, clipPath: ILLUSTRATION_CLIP }}
                 >
-                  {winner.name}
-                </span>
+                  {winner.ship.illustration && (
+                    // eslint-disable-next-line @next/next/no-img-element -- asset local, une par Navire
+                    <img
+                      src={`/assets/ships/illu/${winner.ship.illustration}`}
+                      alt=""
+                      draggable={false}
+                      className={`h-full w-full select-none object-cover ${styles.illustrationIn}`}
+                    />
+                  )}
+                </div>
+
+                {/* eslint-disable-next-line @next/next/no-img-element -- cadre décoratif fixe, superpose l'illustration */}
+                <img
+                  src="/assets/ships/ship-frame-victory.png"
+                  alt=""
+                  draggable={false}
+                  className="pointer-events-none absolute inset-0 h-full w-full select-none"
+                />
+
+                <div
+                  className="absolute flex items-center justify-center"
+                  style={{ ...NAMEPLATE_ZONE, containerType: "inline-size" }}
+                >
+                  <span
+                    aria-label={winner.name}
+                    className="max-w-full truncate text-[clamp(12px,11cqw,22px)] font-bold uppercase tracking-wide text-amber-50 [font-family:var(--font-card-title)]"
+                    style={{ textShadow: "0 1px 3px rgba(0,0,0,0.9)" }}
+                  >
+                    {Array.from(winner.name).map((letter, i) => (
+                      <span
+                        key={i}
+                        aria-hidden
+                        className={styles.nameLetter}
+                        style={{
+                          animationDelay: `${NAME_START_MS + i * NAME_LETTER_STEP_MS}ms`,
+                        }}
+                      >
+                        {letter}
+                      </span>
+                    ))}
+                  </span>
+                </div>
               </div>
             </div>
           </>
