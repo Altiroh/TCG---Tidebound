@@ -40,10 +40,11 @@ import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ReactionPrompt } from "@/features/match/ReactionPrompt";
 import { ShipInstrumentCluster } from "@/features/match/ShipInstrumentCluster";
 import { VictoryScreen } from "@/features/match/VictoryScreen";
+import { useDisplayNames } from "@/features/match/useDisplayNames";
 import { TideOrientationTile } from "@/features/match/TideOrientationTile";
 import { TideProgressBar } from "@/features/match/TideProgressBar";
 import { useActionToasts } from "@/features/match/useActionToasts";
-import { useAttackImpacts } from "@/features/match/useAttackImpacts";
+import { useAttackPresentation } from "@/features/match/useAttackPresentation";
 import { useCardFlights, type CardFlight } from "@/features/match/useCardFlights";
 import { useDeraisonWarning } from "@/features/match/useDeraisonWarning";
 import { usePhaseBannerEvent } from "@/features/match/usePhaseBannerEvent";
@@ -86,7 +87,9 @@ const DRAG_MIME_HAND = "application/x-tidebound-card-instance";
 const DRAG_MIME_UNIT = "application/x-tidebound-board-unit";
 
 /** Plateau d'une partie en ligne : oriente toujours "moi" en bas, main adverse cachée, actions envoyées au serveur. */
-export function OnlineBoard({ state, myUserId, onAction, pending, error, onDismissError }: OnlineBoardProps) {
+export function OnlineBoard({ state: liveState, myUserId, onAction, pending, error, onDismissError }: OnlineBoardProps) {
+  // `state` = état AFFICHÉ, retenu avant le choc pendant une attaque (cf. `useAttackPresentation`) — les actions partent au serveur, jamais validées sur cet état.
+  const { displayState: state, attacks } = useAttackPresentation(liveState);
   const [selection, setSelection] = useState<Pending | null>(null);
   const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -104,6 +107,7 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error, onDismi
 
   const me = state.players.find((p) => p.id === myUserId)!;
   const opponent = state.players.find((p) => p.id !== myUserId)!;
+  const displayNames = useDisplayNames([me.id, opponent.id]);
   const myShip = getShipDefinition(me.shipId);
   const opponentShip = getShipDefinition(opponent.shipId);
   const isMyTurn = state.activePlayerId === myUserId;
@@ -131,7 +135,6 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error, onDismi
   const bannerEvent = usePhaseBannerEvent(state);
   const actionToasts = useActionToasts(state);
   const cardFlights = useCardFlights(state);
-  const attackImpacts = useAttackImpacts(state);
   const deraison = useDeraisonWarning(state, me, draggingId);
 
   function getFlightCoords(flight: CardFlight) {
@@ -310,7 +313,8 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error, onDismi
     setDragAnchor(null);
   }
   function handleOpponentBoardDragOver(e: React.DragEvent) {
-    if (!draggingUnitId) return;
+    // En Phase principale, une unité se glisse pour être Sabordée : pas de zone d'attaque à signaler.
+    if (!draggingUnitId || state.phase !== "combatPhase") return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
     setDragOverOpponentBoard(true);
@@ -388,7 +392,14 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error, onDismi
     const iWon = state.winnerId === myUserId;
     return (
       <VictoryScreen
-        winner={state.winnerId ? { name: iWon ? "Toi" : "L'adversaire", ship: iWon ? myShip : opponentShip } : undefined}
+        winner={
+          state.winnerId
+            ? {
+                name: displayNames[state.winnerId] ?? (iWon ? "Toi" : "L'adversaire"),
+                ship: iWon ? myShip : opponentShip,
+              }
+            : undefined
+        }
         exitHref="/en-ligne"
       />
     );
@@ -557,8 +568,9 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error, onDismi
           style={{ left: 235, top: 538, width: 1010, height: 205 }}
         >
           {me.board.map((unit) => {
-            // Seuls Marins/Créatures peuvent attaquer (et donc être "glissés" en Phase de combat) —
-            // Structure/Objet/Équipement se Sabordent via le bouton dédié, pas le glisser-déposer. Une
+            // Cf. MatchBoard : en Phase principale, n'importe quel permanent se glisse sur le crâne pour être
+            // Sabordé (seul moyen de Saborder) ; en Phase de combat, seuls les Marins/Créatures qui peuvent
+            // attaquer se glissent. Une
             // unité Engourdie (maladie d'invocation), déjà Silencée, déjà attaquée ce tour-ci, ou rendue
             // inactive par la Marée (ex: Masse-Sombre pendant Calme) ne peut pas (encore) attaquer — pas
             // de raison d'être glissée, ni du glow rouge qui indique une cible d'attaque disponible. Pas
@@ -577,7 +589,7 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error, onDismi
             <div
               key={unit.instanceId}
               data-board-unit={unit.instanceId}
-              draggable={canAttack}
+              draggable={canAttack || canPlayCards}
               onDragStart={(e) => handleUnitDragStart(e, unit.instanceId)}
               onDragEnd={handleUnitDragEnd}
               onDragOver={(e) => handleBoardTileDragOver(e, unit.instanceId)}
@@ -613,6 +625,7 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error, onDismi
             width={240}
             graveyardDropZone={{
               isOver: dragOverGraveyard,
+              isAvailable: Boolean(draggingUnitId) && canPlayCards,
               onDragOver: handleGraveyardDragOver,
               onDragLeave: handleGraveyardDragLeave,
               onDrop: handleGraveyardDrop,
@@ -647,9 +660,7 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error, onDismi
                     Briser
                   </Button>
                 )}
-                <Button variant="secondary" onClick={() => act({ type: "saborder", playerId: myUserId, instanceId: selectedUnit.instanceId })}>
-                  Saborder
-                </Button>
+                <span className="text-xs text-slate-400">Glissez-la sur le crâne pour la Saborder.</span>
               </>
             )}
             {state.phase === "combatPhase" &&
@@ -694,7 +705,7 @@ export function OnlineBoard({ state, myUserId, onAction, pending, error, onDismi
 
       <DragTargetingTrail anchor={dragAnchor} />
       <EquipLinkOverlay state={state} />
-      <AttackImpactLayer impacts={attackImpacts} />
+      <AttackImpactLayer attacks={attacks} />
       <ActionToastStack toasts={actionToasts} />
       {error ? (
         <GlassAlert message={error} severity="error" onDismiss={onDismissError} />

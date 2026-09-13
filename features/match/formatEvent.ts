@@ -14,6 +14,26 @@ function playerName(playerId?: string): string {
   return playerId === "p1" ? "Joueur 1" : playerId === "p2" ? "Joueur 2" : "?";
 }
 
+/** Nom de la carte d'une instance, où qu'elle soit (plateau, cimetière, main, deck) — "Une carte" si introuvable. */
+function instanceName(state: GameState, instanceId: string): string {
+  for (const player of state.players) {
+    const instance = [...player.board, ...player.graveyard, ...player.hand, ...player.deck].find(
+      (card) => card.instanceId === instanceId
+    );
+    if (instance) return cardName(state, instance.cardId);
+  }
+  return "Une carte";
+}
+
+/** Variation signée de stats en toutes lettres, ex: "+1 Résistance", "-2 Puissance et -1 Résistance". */
+export function formatStatDelta(attack: number, health: number): string {
+  const signed = (value: number) => `${value > 0 ? "+" : ""}${value}`;
+  const parts: string[] = [];
+  if (attack !== 0) parts.push(`${signed(attack)} Puissance`);
+  if (health !== 0) parts.push(`${signed(health)} Résistance`);
+  return parts.join(" et ");
+}
+
 /** Traduit un `GameEvent` en une ligne lisible pour le journal de partie. */
 export function formatEvent(state: GameState, event: GameEvent): string {
   switch (event.type) {
@@ -33,6 +53,15 @@ export function formatEvent(state: GameState, event: GameEvent): string {
       return `${event.amount} dégât(s)${event.targetPlayerId ? ` à ${playerName(event.targetPlayerId)}` : ""}.`;
     case "HEAL":
       return `+${event.amount} récupéré${event.targetPlayerId ? ` par ${playerName(event.targetPlayerId)}` : ""}.`;
+    case "BUFF_APPLIED":
+    case "DEBUFF_APPLIED": {
+      const delta = formatStatDelta(event.attack, event.health);
+      return delta ? `${instanceName(state, event.targetInstanceId)} : ${delta}.` : `${instanceName(state, event.targetInstanceId)} est modifiée.`;
+    }
+    case "HAND_CARD_REVEALED":
+      return `${playerName(event.ownerId)} révèle ${cardName(state, event.cardId)}.`;
+    case "RESOURCE_CHANGED":
+      return `${playerName(event.playerId)} : ${event.delta >= 0 ? "+" : ""}${event.delta} Raison.`;
     case "DESTROY":
       return "Un permanent est détruit.";
     case "CARD_MOVED":
@@ -68,6 +97,7 @@ export function formatEvent(state: GameState, event: GameEvent): string {
     case "REACTION_PASSED":
       return `${playerName(event.playerId)} passe.`;
     default:
-      return event.type;
+      // Tous les types sont traités ci-dessus : filet de sécurité pour un futur type pas encore traduit.
+      return (event as GameEvent).type;
   }
 }

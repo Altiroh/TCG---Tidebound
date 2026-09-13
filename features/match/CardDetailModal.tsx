@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import type { CardInstance, TideStateName } from "@/game";
+import { AppliedEffectsList } from "@/features/match/AppliedEffectsList";
 import { CardInfoPanel } from "@/features/match/CardInfoPanel";
 import { CardTile } from "@/features/match/CardTile";
 
@@ -42,8 +43,9 @@ export function CardDetailModal({ instance, tideState, onClose }: CardDetailModa
         </svg>
       </button>
 
-      <div onClick={(e) => e.stopPropagation()}>
-        <CardTile instance={instance} tideState={tideState} widthClassName="w-80 sm:w-96" scaleOnHover={false} badgeSize={90} />
+      <div className="flex w-80 flex-col gap-3 sm:w-96" onClick={(e) => e.stopPropagation()}>
+        <CardTile instance={instance} tideState={tideState} widthClassName="w-full" scaleOnHover={false} badgeSize={90} />
+        <AppliedEffectsList instance={instance} tideState={tideState} />
       </div>
       <div className="-my-8 hidden self-stretch sm:block" onClick={(e) => e.stopPropagation()}>
         <CardInfoPanel cardId={instance.cardId} showGlow={false} />

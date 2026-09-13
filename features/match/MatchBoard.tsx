@@ -43,11 +43,12 @@ import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ReactionPrompt } from "@/features/match/ReactionPrompt";
 import { ShipInstrumentCluster } from "@/features/match/ShipInstrumentCluster";
 import { VictoryScreen } from "@/features/match/VictoryScreen";
+import { useDisplayNames } from "@/features/match/useDisplayNames";
 import { BotMatchRewardBanner } from "@/features/progression/BotMatchRewardBanner";
 import { TideOrientationTile } from "@/features/match/TideOrientationTile";
 import { TideProgressBar } from "@/features/match/TideProgressBar";
 import { useActionToasts } from "@/features/match/useActionToasts";
-import { useAttackImpacts } from "@/features/match/useAttackImpacts";
+import { useAttackPresentation } from "@/features/match/useAttackPresentation";
 import { useCardFlights, type CardFlight } from "@/features/match/useCardFlights";
 import { useDeraisonWarning } from "@/features/match/useDeraisonWarning";
 import { usePhaseBannerEvent } from "@/features/match/usePhaseBannerEvent";
@@ -98,7 +99,10 @@ const DRAG_MIME_UNIT = "application/x-tidebound-board-unit";
  * pendant que l'adversaire joue.
  */
 export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }: MatchBoardProps) {
-  const [state, setState] = useState<GameState>(initialState);
+  const [liveState, setState] = useState<GameState>(initialState);
+  // `state` = état AFFICHÉ (retenu avant le choc pendant une attaque, cf. `useAttackPresentation`) ; toute
+  // action se valide et s'applique sur `liveState`, l'état de jeu réel.
+  const { displayState: state, attacks } = useAttackPresentation(liveState);
   const [pending, setPending] = useState<Pending | null>(null);
   const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -115,6 +119,8 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
   /** Candidats à cible restant à traiter après celui en cours — sélection multiple dans `ReactionPrompt` :
       les capacités sans cible sont appliquées d'un coup, celles avec cible s'enchaînent une par une. */
   const [reactionQueue, setReactionQueue] = useState<PendingReactionCandidate[]>([]);
+  // Contre le bot, le joueur humain est le compte connecté (s'il y en a un) ; en hot-seat, personne n'est identifiable.
+  const displayNames = useDisplayNames(botPlayerId ? ["me"] : []);
 
   const activePlayerId = state.activePlayerId;
   const humanPlayerId = botPlayerId ? state.players.find((p) => p.id !== botPlayerId)!.id : null;
@@ -153,7 +159,6 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
   const bannerEvent = usePhaseBannerEvent(state);
   const actionToasts = useActionToasts(state);
   const cardFlights = useCardFlights(state);
-  const attackImpacts = useAttackImpacts(state);
   const deraison = useDeraisonWarning(state, viewerPlayer, draggingId);
 
   function getFlightCoords(flight: CardFlight) {
@@ -212,7 +217,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
       }
     }
 
-    timer = setTimeout(() => tick(state), BOT_ACTION_DELAY_MS);
+    timer = setTimeout(() => tick(liveState), BOT_ACTION_DELAY_MS);
     return () => {
       cancelled = true;
       clearTimeout(timer);
@@ -246,7 +251,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
 
   function runAction(action: PlayerAction) {
     if (!isViewerTurn) return;
-    const result = dispatch(state, action);
+    const result = dispatch(liveState, action);
     if (!result.ok) {
       setError(result.error);
       return;
@@ -264,7 +269,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
    * toute façon.
    */
   function runReactionAction(action: PlayerAction) {
-    const result = dispatch(state, action);
+    const result = dispatch(liveState, action);
     if (!result.ok) {
       setError(result.error);
       return;
@@ -285,7 +290,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
     const immediate = selected.filter((c) => !c.needsTarget);
     const queued = selected.filter((c) => c.needsTarget);
 
-    let currentState = state;
+    let currentState = liveState;
     for (const candidate of immediate) {
       const result = dispatch(currentState, {
         type: "activateReaction",
@@ -340,7 +345,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
 
   function handleAnyBoardCardClick(instanceId: string, ownerId: PlayerId) {
     if (pending?.kind === "reaction" && pending.needsTarget) {
-      const result = dispatch(state, {
+      const result = dispatch(liveState, {
         type: "activateReaction",
         playerId: viewerPlayerId,
         sourceInstanceId: pending.sourceInstanceId,
@@ -458,7 +463,8 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
     setDragAnchor(null);
   }
   function handleOtherBoardDragOver(e: React.DragEvent) {
-    if (!draggingUnitId) return;
+    // En Phase principale, une unité se glisse pour être Sabordée : pas de zone d'attaque à signaler.
+    if (!draggingUnitId || state.phase !== "combatPhase") return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
     setDragOverOtherBoard(true);
@@ -540,7 +546,8 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
   }
 
   if (state.status === "finished") {
-    const winnerName = state.winnerId === botPlayerId ? "Le bot" : state.winnerId === "p1" ? "Joueur 1" : "Joueur 2";
+    const genericName = state.winnerId === "p1" ? "Joueur 1" : "Joueur 2";
+    const winnerName = state.winnerId === botPlayerId ? "Le bot" : botPlayerId ? (displayNames.me ?? genericName) : genericName;
     const winnerShip = state.winnerId === viewerPlayer.id ? viewerShip : otherShip;
     return (
       <>
@@ -720,8 +727,9 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
           style={{ left: 235, top: 538, width: 1010, height: 205 }}
         >
           {viewerPlayer.board.map((unit) => {
-            // Seuls Marins/Créatures peuvent attaquer (et donc être "glissés" en Phase de combat) —
-            // Structure/Objet/Équipement se Sabordent via le bouton dédié, pas le glisser-déposer. Une
+            // Glisser une carte de son plateau sert à deux choses selon la Phase : en Phase principale, n'importe
+            // quel permanent se glisse sur le crâne pour être Sabordé (seul moyen de Saborder — plus de bouton) ;
+            // en Phase de combat, seuls les Marins/Créatures qui peuvent attaquer se glissent. Une
             // unité Engourdie (maladie d'invocation), déjà Silencée, déjà attaquée ce tour-ci, ou rendue
             // inactive par la Marée (ex: Masse-Sombre pendant Calme) ne peut pas (encore) attaquer — pas
             // de raison d'être glissée, ni du glow rouge qui indique une cible d'attaque disponible. Pas
@@ -741,7 +749,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
             <div
               key={unit.instanceId}
               data-board-unit={unit.instanceId}
-              draggable={canAttack}
+              draggable={canAttack || canPlayCards}
               onDragStart={(e) => handleUnitDragStart(e, unit.instanceId)}
               onDragEnd={handleUnitDragEnd}
               onDragOver={(e) => handleBoardTileDragOver(e, unit.instanceId)}
@@ -777,6 +785,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
             width={240}
             graveyardDropZone={{
               isOver: dragOverGraveyard,
+              isAvailable: Boolean(draggingUnitId) && canPlayCards,
               onDragOver: handleGraveyardDragOver,
               onDragLeave: handleGraveyardDragLeave,
               onDrop: handleGraveyardDrop,
@@ -819,12 +828,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
                     Briser
                   </Button>
                 )}
-                <Button
-                  variant="secondary"
-                  onClick={() => runAction({ type: "saborder", playerId: activePlayerId, instanceId: selectedUnit.instanceId })}
-                >
-                  Saborder
-                </Button>
+                <span className="text-xs text-slate-400">Glissez-la sur le crâne pour la Saborder.</span>
               </>
             )}
             {state.phase === "combatPhase" &&
@@ -870,7 +874,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
 
       <DragTargetingTrail anchor={dragAnchor} />
       <EquipLinkOverlay state={state} />
-      <AttackImpactLayer impacts={attackImpacts} />
+      <AttackImpactLayer attacks={attacks} />
       <ActionToastStack toasts={actionToasts} />
       {error ? (
         <GlassAlert message={error} severity="error" onDismiss={() => setError(null)} />

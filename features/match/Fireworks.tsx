@@ -43,15 +43,19 @@ function FireworkBurst({ top, left, color, delay, cycle = 4.5, distance = 70, pa
  * `filter: blur(...)` sur ce conteneur garde le cadre au premier plan net
  * — lui seul reste sans flou, posé par-dessus dans `VictoryScreen`.
  */
-export function Fireworks() {
+export function Fireworks({ firstBurstAt = 1.26 }: { firstBurstAt?: number }) {
+  // Une salve explose à 28 % de son cycle (`@keyframes firework-burst`) : la première (délai 0, cycle 4,5 s)
+  // éclate donc à ~1,26 s. `firstBurstAt` décale TOUTES les salves (délai CSS négatif possible) pour caler ce
+  // premier tir sur un moment précis — ex: l'arrivée du bandeau "VICTOIRE".
+  const shift = firstBurstAt - 4.5 * 0.28;
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden" style={{ filter: "blur(2.5px)", opacity: 0.85 }} aria-hidden>
-      <FireworkBurst top="22%" left="20%" color="#e7c877" delay={0} />
-      <FireworkBurst top="16%" left="72%" color="#3f97a1" delay={1.1} cycle={5} distance={60} />
-      <FireworkBurst top="38%" left="46%" color="#ffe9b8" delay={2.3} cycle={4} distance={55} particleCount={12} />
-      <FireworkBurst top="12%" left="42%" color="#c9524f" delay={3.2} cycle={5.5} distance={65} />
-      <FireworkBurst top="28%" left="86%" color="#e7c877" delay={0.6} cycle={4.8} distance={65} particleCount={12} />
-      <FireworkBurst top="10%" left="10%" color="#3f97a1" delay={2.8} cycle={5.2} distance={58} particleCount={12} />
+      <FireworkBurst top="22%" left="20%" color="#e7c877" delay={0 + shift} />
+      <FireworkBurst top="16%" left="72%" color="#3f97a1" delay={1.1 + shift} cycle={5} distance={60} />
+      <FireworkBurst top="38%" left="46%" color="#ffe9b8" delay={2.3 + shift} cycle={4} distance={55} particleCount={12} />
+      <FireworkBurst top="12%" left="42%" color="#c9524f" delay={3.2 + shift} cycle={5.5} distance={65} />
+      <FireworkBurst top="28%" left="86%" color="#e7c877" delay={0.6 + shift} cycle={4.8} distance={65} particleCount={12} />
+      <FireworkBurst top="10%" left="10%" color="#3f97a1" delay={2.8 + shift} cycle={5.2} distance={58} particleCount={12} />
     </div>
   );
 }

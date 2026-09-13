@@ -6,6 +6,8 @@ interface CargoClusterProps {
   /** Zone crâne active comme cible de glisser-déposer pour Saborder (mon propre plateau uniquement — cf. MatchBoard/OnlineBoard). */
   graveyardDropZone?: {
     isOver: boolean;
+    /** Une unité est en cours de glissement et peut être Sabordée : la zone crâne se signale avant même d'être survolée. */
+    isAvailable?: boolean;
     onDragOver: (e: React.DragEvent) => void;
     onDragLeave: (e: React.DragEvent) => void;
     onDrop: (e: React.DragEvent) => void;
@@ -65,7 +67,11 @@ export function CargoCluster({ deckCount, graveyardCount, graveyardDropZone, onO
           onClick={onOpenGraveyard}
           title={onOpenGraveyard ? "Glissez une unité ici pour la Saborder, ou cliquez pour consulter le cimetière" : "Glissez une unité ici pour la Saborder"}
           className={`group/grave absolute inset-y-0 right-0 rounded-md transition-colors ${onOpenGraveyard ? "cursor-pointer" : ""} ${
-            graveyardDropZone.isOver ? "bg-rose-500/25 ring-2 ring-rose-500" : ""
+            graveyardDropZone.isOver
+              ? "bg-rose-500/25 ring-2 ring-rose-500"
+              : graveyardDropZone.isAvailable
+                ? "animate-pulse bg-rose-500/10 ring-1 ring-rose-400/60"
+                : ""
           }`}
           style={{ width: "50%" }}
         >

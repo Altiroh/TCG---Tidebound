@@ -13,6 +13,90 @@
  * sont donc explicites, au prix d'une petite duplication assumée.
  */
 
+/*
+ * Apparition en cascade (retour de test du 13/09) : le bandeau "VICTOIRE"
+ * tombe avec un léger rebond (~0,15 → 0,85 s, premier feu d'artifice calé
+ * sur son arrivée), le cadre du Navire monte en fondu pendant que
+ * l'illustration se resserre, puis la plaque du nom et enfin les boutons.
+ * `both` : chaque élément reste invisible jusqu'à son tour.
+ */
+.bannerIn {
+  animation: victory-banner-in 700ms cubic-bezier(0.2, 1.35, 0.45, 1) 150ms both;
+}
+.frameIn {
+  animation: victory-frame-in 750ms cubic-bezier(0.16, 1, 0.3, 1) 550ms both;
+}
+.illustrationIn {
+  animation: victory-illustration-in 1800ms cubic-bezier(0.16, 1, 0.3, 1) 550ms both;
+}
+.nameIn {
+  animation: victory-name-in 600ms ease-out 1150ms both;
+}
+.actionsIn {
+  animation: victory-actions-in 450ms ease-out 1600ms both;
+}
+
+@keyframes victory-banner-in {
+  from {
+    opacity: 0;
+    transform: translateY(-70px) scale(1.25);
+  }
+  60% {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes victory-frame-in {
+  from {
+    opacity: 0;
+    transform: translateY(36px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes victory-illustration-in {
+  from {
+    transform: scale(1.14);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes victory-name-in {
+  from {
+    opacity: 0;
+    letter-spacing: 0.3em;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes victory-actions-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bannerIn,
+  .frameIn,
+  .illustrationIn,
+  .nameIn,
+  .actionsIn {
+    animation: none;
+  }
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;

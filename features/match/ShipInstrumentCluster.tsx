@@ -16,15 +16,19 @@ interface ShipInstrumentClusterProps {
 const FRAME_ASPECT = 512 / 640;
 
 /**
- * Zones mesurées en scannant la transparence des pixels de
- * `ship-frame-empty.png` : la fenêtre en arche (illustration du Navire)
- * s'ouvre entre ~16 %/74 % de hauteur et ~5,5 %/94,5 % de largeur. La
- * plaque en bois, elle, vit vers ~73 % de hauteur — au lieu d'un nom de
- * joueur (réservé à `VictoryScreen`), elle porte ici les deux médaillons
- * Ancrage/Raison côte à côte, à la même hauteur que les anciens médaillons
- * peints sur `arch-frame.png`.
+ * Fenêtre en arche de `ship-frame-empty.png`, mesurée par remplissage de la
+ * zone transparente (alpha ≤ 40) depuis son centre : ~13,1 %/76,3 % de
+ * hauteur, ~14,8 %/84,8 % de largeur. L'ancienne zone (16 %/74 %, arrondi
+ * `rounded-t-full`) laissait voir le fond en haut de l'arche et en bas.
+ * La zone déborde de 1 % de chaque côté (anneau vérifié 100 % opaque :
+ * le bois du cadre recouvre ce débord) et `ILLUSTRATION_CLIP` suit le
+ * contour réel, en coordonnées relatives à la zone. La plaque en bois vers
+ * ~74 % porte les deux médaillons Ancrage/Raison (le nom de joueur est
+ * réservé à `VictoryScreen`).
  */
-const ILLUSTRATION_ZONE = { top: "16%", left: "5.5%", width: "89%", height: "58%" };
+const ILLUSTRATION_ZONE = { top: "12.19%", left: "13.87%", width: "71.88%", height: "65%" };
+const ILLUSTRATION_CLIP =
+  "polygon(39.4% 0%, 22.6% 7.5%, 13.9% 13.7%, 8.4% 19.7%, 4.6% 25.7%, 1.9% 31.7%, 0.3% 38%, 0% 44%, 0% 86.5%, 1.4% 92.5%, 7.3% 100%, 92.9% 100%, 98.9% 92.5%, 100% 86.5%, 100% 44%, 99.5% 38%, 97.8% 31.7%, 95.4% 25.7%, 91.6% 19.7%, 85.9% 13.7%, 77.2% 7.5%, 60.6% 0%)";
 const GAUGES_TOP = "74%";
 
 /**
@@ -43,7 +47,7 @@ export function ShipInstrumentCluster({ anchor, anchorMax, reason, reasonMax, il
 
   return (
     <div className="relative shrink-0" style={{ width, height }}>
-      <div className="absolute overflow-hidden rounded-t-full" style={ILLUSTRATION_ZONE}>
+      <div className="absolute overflow-hidden" style={{ ...ILLUSTRATION_ZONE, clipPath: ILLUSTRATION_CLIP }}>
         {illustration && (
           // eslint-disable-next-line @next/next/no-img-element -- asset local, une par Navire
           <img
