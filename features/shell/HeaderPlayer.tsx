@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { fetchProgression, type ProgressionSummary } from "@/features/progression/actions";
+import { onProgressionChanged } from "@/features/progression/progressionSync";
 import { SettingsDialog } from "@/features/settings/SettingsDialog";
 import styles from "@/features/shell/ScreenShell.module.css";
 import { playButtonClick } from "@/lib/sound";
@@ -22,9 +23,9 @@ function GearIcon() {
 }
 
 /** Jeton de Tides — une pièce, pas une icône de logiciel : la monnaie doit se reconnaître d'un coup d'œil. */
-function TideCoin() {
+export function TideCoin({ size = 15 }: { size?: number }) {
   return (
-    <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden className={styles.tideCoin}>
+    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden className={styles.tideCoin}>
       <circle cx="12" cy="12" r="9" fill="url(#tideCoinFace)" stroke="#a47b36" strokeWidth="1.3" />
       <path
         d="M6.6 13.4c1.4-1.5 2.7-1.5 4.1 0s2.7 1.5 4.1 0 2.7-1.5 4.1 0"
@@ -78,13 +79,24 @@ export function HeaderPlayer() {
 
   useEffect(() => {
     let cancelled = false;
-    fetchProgression()
-      .then((result) => {
-        if (!cancelled) setSummary(result);
-      })
-      .catch((error) => console.error("[HeaderPlayer] Lecture de la progression impossible :", error));
+    // Numéro de lecture : deux relectures rapprochées (achat puis quête)
+    // peuvent revenir dans le désordre — seule la dernière demandée compte.
+    let latest = 0;
+    const load = () => {
+      const request = ++latest;
+      fetchProgression()
+        .then((result) => {
+          if (!cancelled && request === latest) setSummary(result);
+        })
+        .catch((error) => console.error("[HeaderPlayer] Lecture de la progression impossible :", error));
+    };
+
+    load();
+    // Relecture après un achat, une quête réclamée… — cf. `progressionSync`.
+    const unsubscribe = onProgressionChanged(load);
     return () => {
       cancelled = true;
+      unsubscribe();
     };
   }, []);
 

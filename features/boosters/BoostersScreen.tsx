@@ -7,9 +7,11 @@ import { PITY } from "@/game/boosters";
 import { GameScreen } from "@/features/shell/GameScreen";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/boosters/Boosters.module.css";
+import shelfStyles from "@/features/shell/Shelf.module.css";
+import { ScreenToast, type ScreenToastMessage } from "@/features/shell/ScreenToast";
 import { openBooster, type BoosterInventory } from "@/features/boosters/actions";
 import { ownedPacks, type OwnedPack } from "@/features/boosters/ownedPacks";
-import { useHorizontalShelf } from "@/features/boosters/useHorizontalShelf";
+import { stackedShelfLayout, useElementSize } from "@/features/boosters/stackedShelf";
 import { BoosterOpeningScene } from "@/features/boosters/opening/BoosterOpeningScene";
 import { preloadBoosterOpeningAssets } from "@/features/boosters/opening/boosterOpeningAssets";
 import { closedPackVariables, getBoosterPackVisual } from "@/features/boosters/opening/boosterPackVisuals";
@@ -52,14 +54,21 @@ interface BoostersScreenProps {
 export function BoostersScreen({ inventory }: BoostersScreenProps) {
   const router = useRouter();
   const packs = useMemo(() => ownedPacks(inventory.boosters), [inventory.boosters]);
-  const shelf = useHorizontalShelf();
+  const shelfArea = useElementSize<HTMLDivElement>();
+  const layout = stackedShelfLayout(packs.length, shelfArea.width, shelfArea.height, {
+    gap: Math.round(shelfArea.width * 0.03),
+  });
 
   /** Paquet posé sur le plan, prêt à être ouvert (sa clé d'étagère). */
   const [dockedKey, setDockedKey] = useState<string | null>(null);
+  /** Paquet survolé ou focalisé sur l'étagère — son nom s'affiche sous la planche. */
+  const [hoveredKey, setHoveredKey] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isOver, setIsOver] = useState(false);
   const [isOpening, setIsOpening] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<ScreenToastMessage | null>(null);
+  const setError = (message: string | null) =>
+    setToast(message ? { id: Date.now(), tone: "error", text: message } : null);
   /**
    * Ouverture en cours. Les cartes sont fixées une fois pour toutes à
    * l'ouverture, jamais retirées en cours de scène. `real` distingue une
@@ -70,6 +79,7 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
 
   const docked = packs.find((pack) => pack.key === dockedKey) ?? null;
   const dockedEntry = docked ? inventory.boosters.find((entry) => entry.boosterId === docked.boosterId) : undefined;
+  const captionPack = packs.find((pack) => pack.key === hoveredKey) ?? null;
 
   // AUCUNE sélection par défaut : le plan reste vide tant qu'on n'y a rien
   // posé — c'est ce vide qui dit ce qu'on attend du joueur. On ne fait donc
@@ -172,8 +182,6 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
             <p className={styles.headHint}>Choisis un booster et glisse-le dans la zone d&apos;ouverture.</p>
           </div>
 
-          {error && <p className={game.error}>{error}</p>}
-
           <div className={styles.workbench} data-dragging={isDragging ? "true" : "false"}>
             <section className={styles.stock} aria-label="Paquets possédés">
               {packs.length === 0 ? (
@@ -186,34 +194,56 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
                   </Link>
                 </div>
               ) : (
-                <div className={styles.shelfRow}>
-                  <ShelfArrow direction={-1} disabled={!shelf.canScrollLeft} onClick={() => shelf.scrollByPage(-1)} />
-
-                  {/* `tabIndex` sur le conteneur : au clavier, l'étagère se
-                      parcourt aussi aux flèches, comme n'importe quelle
-                      zone défilante. */}
-                  <div className={styles.shelf} ref={shelf.ref} tabIndex={0} role="listbox" aria-label="Paquets possédés">
-                    {packs.map((pack) => (
-                      <ShelfPack
-                        key={pack.key}
-                        pack={pack}
-                        selected={pack.key === dockedKey}
-                        disabled={isOpening || opening !== null}
-                        onSelect={() => dock(pack.key)}
-                        onDragStart={(event) => {
-                          event.dataTransfer.setData(DRAG_MIME, pack.boosterId);
-                          event.dataTransfer.effectAllowed = "move";
-                          setIsDragging(true);
-                        }}
-                        onDragEnd={() => {
-                          setIsDragging(false);
-                          setIsOver(false);
-                        }}
-                      />
-                    ))}
+                <div className={styles.shelfStage}>
+                  {/* La zone mesurée : les sachets y sont posés en absolu,
+                      à la position que calcule `stackedShelfLayout`. */}
+                  <div className={styles.shelfArea} ref={shelfArea.ref}>
+                    <div className={styles.shelfRow} role="listbox" aria-label="Paquets possédés" style={{ height: layout.packHeight }}>
+                      {packs.map((pack, index) => (
+                        <ShelfPack
+                          key={pack.key}
+                          pack={pack}
+                          style={{
+                            left: layout.offset + index * layout.step,
+                            width: layout.slotWidth,
+                            // Le plus récent (à gauche) passe devant : c'est
+                            // lui qu'on voit en entier quand ils se chevauchent.
+                            zIndex: packs.length - index,
+                          }}
+                          selected={pack.key === dockedKey}
+                          disabled={isOpening || opening !== null}
+                          onSelect={() => dock(pack.key)}
+                          onFocusChange={(focused) => setHoveredKey(focused ? pack.key : null)}
+                          onDragStart={(event) => {
+                            event.dataTransfer.setData(DRAG_MIME, pack.boosterId);
+                            event.dataTransfer.effectAllowed = "move";
+                            setIsDragging(true);
+                          }}
+                          onDragEnd={() => {
+                            setIsDragging(false);
+                            setIsOver(false);
+                          }}
+                        />
+                      ))}
+                    </div>
                   </div>
-
-                  <ShelfArrow direction={1} disabled={!shelf.canScrollRight} onClick={() => shelf.scrollByPage(1)} />
+                  <div className={shelfStyles.plank} aria-hidden />
+                  <p className={styles.shelfCaption} aria-live="polite">
+                    {captionPack ? (
+                      <>
+                        <span className={styles.shelfCaptionName}>{captionPack.name}</span>
+                        <span aria-hidden> · </span>
+                        {captionPack.cardCount} cartes
+                      </>
+                    ) : (
+                      <>
+                        <span className={styles.shelfCaptionName}>
+                          {packs.length} booster{packs.length > 1 ? "s" : ""}
+                        </span>
+                        {packs.length > 1 && <> · du plus récent au plus ancien</>}
+                      </>
+                    )}
+                  </p>
                 </div>
               )}
             </section>
@@ -332,6 +362,8 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
         </div>
       </div>
 
+      <ScreenToast message={toast} onDismiss={() => setToast(null)} />
+
       {opening && (
         <BoosterOpeningScene
           cards={opening.cards}
@@ -343,32 +375,9 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
   );
 }
 
-/** Flèche de parcours de l'étagère — inutile au doigt, indispensable à la souris. */
-function ShelfArrow({ direction, disabled, onClick }: { direction: -1 | 1; disabled: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      className={styles.shelfArrow}
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={direction === -1 ? "Paquets précédents" : "Paquets suivants"}
-      tabIndex={-1}
-    >
-      <svg viewBox="0 0 24 24" fill="none" width="16" height="16" aria-hidden>
-        <path
-          d={direction === -1 ? "M15 5l-7 7 7 7" : "M9 5l7 7-7 7"}
-          stroke="currentColor"
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    </button>
-  );
-}
-
 /**
- * Un sachet sur l'étagère.
+ * Un sachet sur l'étagère, posé en absolu à la position calculée par
+ * l'écran.
  *
  * Une `div` et non un `button` : le glisser-déposer natif d'un `<button>`
  * est capricieux selon les navigateurs (le bouton avale le `dragstart`),
@@ -378,24 +387,34 @@ function ShelfArrow({ direction, disabled, onClick }: { direction: -1 | 1; disab
  */
 function ShelfPack({
   pack,
+  style,
   selected,
   disabled,
   onSelect,
+  onFocusChange,
   onDragStart,
   onDragEnd,
 }: {
   pack: OwnedPack;
+  style: React.CSSProperties;
   selected: boolean;
   disabled: boolean;
   onSelect: () => void;
+  /** Survol ou focus clavier : l'écran affiche le nom du sachet sous la planche. */
+  onFocusChange: (focused: boolean) => void;
   onDragStart: (event: React.DragEvent<HTMLDivElement>) => void;
   onDragEnd: () => void;
 }) {
   return (
     <div
       className={styles.shelfPack}
+      style={style}
       data-selected={selected ? "true" : "false"}
       data-disabled={disabled ? "true" : "false"}
+      onMouseEnter={() => onFocusChange(true)}
+      onMouseLeave={() => onFocusChange(false)}
+      onFocus={() => onFocusChange(true)}
+      onBlur={() => onFocusChange(false)}
       draggable={!disabled}
       onDragStart={disabled ? undefined : onDragStart}
       onDragEnd={onDragEnd}
@@ -410,19 +429,10 @@ function ShelfPack({
       aria-selected={selected}
       aria-disabled={disabled}
       tabIndex={disabled ? -1 : 0}
-      title="Glisse-le sur le plan, ou clique pour l'y poser"
+      aria-label={pack.name}
+      title="Glisse-le sur la zone d'ouverture, ou clique pour l'y poser"
     >
       <span className={styles.shelfPackArt} style={closedPackVariables(getBoosterPackVisual(pack.boosterId))} aria-hidden />
-      <span className={styles.shelfPackName}>{pack.name}</span>
-      <span className={styles.shelfPackMeta}>
-        {pack.cardCount} cartes
-        {pack.copyCount > 1 && (
-          <>
-            <span aria-hidden> · </span>
-            {pack.copyIndex}/{pack.copyCount}
-          </>
-        )}
-      </span>
     </div>
   );
 }

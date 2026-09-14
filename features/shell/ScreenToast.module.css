@@ -1,0 +1,113 @@
+/*
+ * Alerte éphémère des écrans hors plateau (`ScreenToast`) : une ligne,
+ * sous le bandeau à droite, qui s'efface d'elle-même. Matière des panneaux
+ * de la coquille (`--panel-solid`, `--line`), liseré de ton à gauche.
+ */
+.anchor {
+  position: fixed;
+  top: calc(clamp(54px, 6.8vh, 72px) + 10px);
+  right: clamp(12px, 1.6vw, 28px);
+  z-index: 80;
+  display: flex;
+  justify-content: flex-end;
+  max-width: min(420px, calc(100vw - 24px));
+  pointer-events: none;
+}
+
+.toast {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 34px 9px 10px;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: var(--panel-solid);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.55);
+  color: var(--ink);
+  font-size: clamp(12px, 0.88vw, 13.5px);
+  line-height: 1.35;
+  pointer-events: auto;
+  animation: toastIn 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --tone: var(--success);
+}
+
+.toast[data-tone="error"] { --tone: var(--danger); }
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+.icon {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--tone) 18%, transparent);
+  color: var(--tone);
+}
+
+.text {
+  min-width: 0;
+}
+
+.action {
+  flex: 0 0 auto;
+  padding-left: 10px;
+  border-left: 1px solid var(--line);
+  font-weight: 600;
+}
+
+.action a,
+.action button {
+  color: var(--cb-cyan);
+}
+
+.close {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-top: -10px;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--ink-faint);
+  cursor: pointer;
+}
+
+.close:hover { background: rgba(130, 178, 210, 0.14); color: var(--ink); }
+.close:focus-visible { outline: 2px solid var(--cb-cyan); }
+
+/* Filet de temps restant, au pied de l'alerte. Suspendu au survol, comme la fermeture. */
+.timer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--tone);
+  opacity: 0.55;
+  transform-origin: left;
+  animation: toastTimer linear both;
+}
+
+.toast:hover .timer { animation-play-state: paused; }
+
+@keyframes toastTimer {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast { animation: none; }
+  .timer { display: none; }
+}

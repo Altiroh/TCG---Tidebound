@@ -3,6 +3,8 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 export interface ViewerCollection {
   isSignedIn: boolean;
   ownedCardIds: string[];
+  /** Exemplaires possédés par carte (`player_cards.quantity`), cartes possédées uniquement. */
+  ownedCounts: Record<string, number>;
 }
 
 /**
@@ -18,13 +20,22 @@ export async function getOwnedCardIds(): Promise<ViewerCollection> {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return { isSignedIn: false, ownedCardIds: [] };
+    if (!user) return { isSignedIn: false, ownedCardIds: [], ownedCounts: {} };
 
-    const { data, error } = await supabase.from("player_cards").select("card_id").eq("user_id", user.id).gt("quantity", 0);
+    const { data, error } = await supabase
+      .from("player_cards")
+      .select("card_id, quantity")
+      .eq("user_id", user.id)
+      .gt("quantity", 0);
     if (error) console.error("[getOwnedCardIds] Échec de la lecture de player_cards :", error.message);
-    return { isSignedIn: true, ownedCardIds: (data ?? []).map((row) => row.card_id) };
+    const rows = data ?? [];
+    return {
+      isSignedIn: true,
+      ownedCardIds: rows.map((row) => row.card_id),
+      ownedCounts: Object.fromEntries(rows.map((row) => [row.card_id, row.quantity])),
+    };
   } catch (error) {
     console.error("[getOwnedCardIds] Impossible de résoudre la collection du joueur :", error);
-    return { isSignedIn: false, ownedCardIds: [] };
+    return { isSignedIn: false, ownedCardIds: [], ownedCounts: {} };
   }
 }

@@ -232,19 +232,23 @@ const TYPE_RIBBON_ZONE: Zone = { top: 3.8, left: 64, width: 31, height: 7 };
 
 /**
  * Zones propres au cadre de JETON (`cadre_token.webp`), mesurées sur ses
- * pixels comme les autres cadres : une grande découpe ovale (4,99 % /
- * 11,13 %, 77,83 × 80,39) et deux médaillons de stats en pied de cadre
- * (~27 % et ~72 % en x, ~93 % en y).
+ * pixels comme les autres cadres : une grande découpe ovale (5 % / 11,1 %,
+ * 78 × 80,3) et deux plaques de stats en pied de cadre, l'épée à gauche
+ * (chiffre entre ~22 % et ~35 % en x), le bouclier à droite (~72 % à
+ * ~85 %), toutes deux entre ~82 % et ~90 % en y.
  *
- * L'asset est au même format 5:7 que les cadres Standard/Abyssal (révision
- * du 2026-09-14), donc rendu comme eux, sans conversion de repère. Ce qui
- * reste propre au jeton : ni coût (il ne se joue pas), ni bandeau de type,
- * ni bloc de règles — le cadre n'a aucun emplacement pour eux.
+ * L'asset est au même format 5:7 que les cadres Standard/Abyssal, donc
+ * rendu comme eux. Ce qui reste propre au jeton : ni coût (il ne se joue
+ * pas), ni bandeau de type, ni bloc de règles — et une découpe OVALE, que
+ * le rectangle de l'illustration déborderait aux quatre coins (le cadre est
+ * transparent autour de l'ovale). D'où `TOKEN_ILLUSTRATION_MASK` : la
+ * découpe elle-même, légèrement dilatée pour glisser sous le bois du cadre.
  */
-const TOKEN_ILLUSTRATION_ZONE: Zone = { top: 4.99, left: 11.13, width: 77.83, height: 80.39 };
-const TOKEN_NAME_ZONE: Zone = { top: 84.5, left: 12, width: 76, height: 7 };
-const TOKEN_ATTACK_ZONE: Zone = { top: 90, left: 22, width: 10, height: 7 };
-const TOKEN_RESISTANCE_ZONE: Zone = { top: 90, left: 68, width: 10, height: 7 };
+const TOKEN_ILLUSTRATION_ZONE: Zone = { top: 3.5, left: 9.5, width: 81, height: 83 };
+const TOKEN_ILLUSTRATION_MASK = "/assets/cards/frames/cadre_token_mask.webp";
+const TOKEN_NAME_ZONE: Zone = { top: 72.5, left: 14, width: 72, height: 8 };
+const TOKEN_ATTACK_ZONE: Zone = { top: 82.5, left: 21.5, width: 14, height: 7.5 };
+const TOKEN_RESISTANCE_ZONE: Zone = { top: 82.5, left: 71.5, width: 14, height: 7.5 };
 
 /**
  * Adapte la taille du nom à sa longueur plutôt qu'une taille fixe — sur un
@@ -379,15 +383,34 @@ export function CardTile({
           />
         ) : (
         <>
-        {/* Couche 1 : illustration, dans la découpe du cadre (ou plein cadre si le cadre est absent) */}
+        {/* Couche 1 : illustration, dans la découpe du cadre (ou plein cadre si le cadre est absent).
+            Jeton : le calque couvre toute la carte et porte le masque de la découpe ovale. */}
         <div
-          className={`absolute overflow-hidden ${frameOk ? "rounded-sm bg-black/30" : (TYPE_BG_CLASSES[def.type] ?? "bg-board-surface")}`}
-          style={frameOk ? zoneStyle(illustrationZone) : { position: "absolute", inset: 0 }}
+          className="absolute inset-0"
+          style={
+            isToken && frameOk
+              ? {
+                  maskImage: `url(${TOKEN_ILLUSTRATION_MASK})`,
+                  WebkitMaskImage: `url(${TOKEN_ILLUSTRATION_MASK})`,
+                  maskSize: "100% 100%",
+                  WebkitMaskSize: "100% 100%",
+                  maskRepeat: "no-repeat",
+                  WebkitMaskRepeat: "no-repeat",
+                }
+              : undefined
+          }
         >
-          {illustrationOk && (
-            // eslint-disable-next-line @next/next/no-img-element -- asset local, une par carte
-            <img src={illustrationUrl} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
-          )}
+          <div
+            className={`absolute overflow-hidden ${
+              frameOk ? (isToken ? "bg-black/30" : "rounded-sm bg-black/30") : (TYPE_BG_CLASSES[def.type] ?? "bg-board-surface")
+            }`}
+            style={frameOk ? zoneStyle(illustrationZone) : { position: "absolute", inset: 0 }}
+          >
+            {illustrationOk && (
+              // eslint-disable-next-line @next/next/no-img-element -- asset local, une par carte
+              <img src={illustrationUrl} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+            )}
+          </div>
         </div>
 
         {/* Couche 2 : le cadre PNG — contour, bandeaux, bloc de règles et découpes de stats déjà peints */}
@@ -441,8 +464,11 @@ export function CardTile({
             )}
           </div>
 
+          {/* Jeton : pas de bandeau, le nom est posé centré sur le bas de l'illustration. */}
           <div
-            className="flex items-center justify-start overflow-hidden pl-[4%] pr-[2%] text-left font-semibold uppercase leading-tight text-white [font-family:var(--font-card-title)]"
+            className={`flex items-center overflow-hidden font-semibold uppercase leading-tight text-white [font-family:var(--font-card-title)] ${
+              isToken ? "justify-center px-[2%] text-center" : "justify-start pl-[4%] pr-[2%] text-left"
+            }`}
             style={{ ...zoneStyle(nameZone), textShadow: THICK_TEXT_OUTLINE }}
           >
             <span
@@ -487,9 +513,9 @@ export function CardTile({
 
           {isUnit && (
             <div
-              className={`flex items-center justify-start font-bold [font-family:var(--font-card-title)] ${statColorClass(
-                modifierDelta.attack
-              )} ${attackChanged ? "animate-stat-buff" : ""}`}
+              className={`flex items-center font-bold [font-family:var(--font-card-title)] ${
+                isToken ? "justify-center" : "justify-start"
+              } ${statColorClass(modifierDelta.attack)} ${attackChanged ? "animate-stat-buff" : ""}`}
               style={{ ...zoneStyle(attackZone), fontSize: "7.5cqw", textShadow: THICK_TEXT_OUTLINE }}
             >
               {stats.attack}
@@ -497,7 +523,9 @@ export function CardTile({
           )}
           {hasResistance && (
             <div
-              className={`flex items-center justify-start font-bold [font-family:var(--font-card-title)] ${
+              className={`flex items-center font-bold [font-family:var(--font-card-title)] ${
+                isToken ? "justify-center" : "justify-start"
+              } ${
                 resistanceFlashing ? "animate-stat-hit text-white" : `${statColorClass(modifierDelta.health)} ${healthChanged ? "animate-stat-buff" : ""}`
               }`}
               style={{ ...zoneStyle(resistanceZone), fontSize: "7.5cqw", textShadow: THICK_TEXT_OUTLINE }}

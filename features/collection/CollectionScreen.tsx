@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import type { CardDefinition } from "@/game";
 import { CardGrid } from "@/features/collection/CardGrid";
 import { CollectionSidebar } from "@/features/collection/CollectionSidebar";
 import { CollectionToolbar } from "@/features/collection/CollectionToolbar";
@@ -15,6 +16,8 @@ interface CollectionScreenProps {
   isSignedIn: boolean;
   /** Cartes possédées (`player_cards.card_id`, quantité > 0). Ignoré si `isSignedIn` est `false`. */
   ownedCardIds: string[];
+  /** Exemplaires possédés par carte — affichés en pastille sous chaque carte possédée. */
+  ownedCounts: Record<string, number>;
 }
 
 /**
@@ -35,10 +38,26 @@ interface CollectionScreenProps {
  * « Manquantes ». Un visiteur non connecté n'a pas de possession connue :
  * il feuillette sans estompage ni section « Statut de collection ».
  */
-export function CollectionScreen({ isSignedIn, ownedCardIds }: CollectionScreenProps) {
+export function CollectionScreen({ isSignedIn, ownedCardIds, ownedCounts }: CollectionScreenProps) {
   const owned = useMemo(() => (isSignedIn ? new Set(ownedCardIds) : null), [isSignedIn, ownedCardIds]);
   const browser = useCardBrowser({ owned });
   const [detailCardId, setDetailCardId] = useState<string | null>(null);
+
+  // Même pastille que la quantité du Deck Builder, ancrée au pied de la
+  // carte. Rien sur une carte non possédée : l'estompage le dit déjà.
+  const renderOwnedCount = useCallback(
+    (def: CardDefinition) => {
+      const count = ownedCounts[def.id] ?? 0;
+      if (!isSignedIn || count <= 0) return null;
+      return (
+        <span className={styles.ownedCount} aria-label={`${count} exemplaire${count > 1 ? "s" : ""} possédé${count > 1 ? "s" : ""}`}>
+          <span className={styles.ownedCountTimes} aria-hidden>×</span>
+          {count}
+        </span>
+      );
+    },
+    [isSignedIn, ownedCounts]
+  );
 
   return (
     <GameScreen
@@ -91,6 +110,7 @@ export function CollectionScreen({ isSignedIn, ownedCardIds }: CollectionScreenP
             // aucune carte » à un joueur qui en a.
             hasAnyCards={!isSignedIn || ownedCardIds.length > 0}
             owned={owned}
+            cellExtras={renderOwnedCount}
           />
         </main>
       </div>

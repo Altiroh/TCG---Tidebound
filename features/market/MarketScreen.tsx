@@ -1,79 +1,132 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { GameScreen } from "@/features/shell/GameScreen";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/market/Market.module.css";
+import shelf from "@/features/shell/Shelf.module.css";
+import { TideCoin } from "@/features/shell/HeaderPlayer";
+import { ScreenToast, type ScreenToastMessage } from "@/features/shell/ScreenToast";
 import { purchaseBooster, type BoosterInventory, type BoosterInventoryEntry } from "@/features/boosters/actions";
 import { MAX_PURCHASE_QUANTITY } from "@/features/boosters/constants";
 import { closedPackVariables, getBoosterPackVisual } from "@/features/boosters/opening/boosterPackVisuals";
+import { notifyProgressionChanged } from "@/features/progression/progressionSync";
 import { playButtonClick } from "@/lib/sound";
 
 interface MarketScreenProps {
   inventory: BoosterInventory;
 }
 
+/** Quantités du panier, par id de booster. Un booster absent vaut 0. */
+type Cart = Record<string, number>;
+
 /**
  * MARKET — la boutique, et rien d'autre : on y ACHÈTE des boosters contre
- * des Tides. Les ouvrir se fait dans « Mes boosters » (`/boosters`), écran
- * séparé. Cette séparation est l'objet même de l'écran : un seul écran qui
- * proposait « Ouvrir » et « Acheter » sur la même tuile ne disait jamais
- * lequel des deux on était en train de faire.
+ * des Tides. Les ouvrir se fait dans « Mes boosters » (`/boosters`).
  *
- * Rien de l'économie n'est décidé ici : le prix et le solde sont affichés
- * tels que la base les donne, et `purchaseBooster` → `purchase_booster`
- * (Postgres, atomique) revérifie prix, disponibilité et solde avant de
- * débiter. Le sélecteur de quantité ne fait que choisir un nombre — un
- * total calculé à l'écran n'est qu'une indication.
+ * Deux plans, de haut en bas :
+ *   - l'ÉTAGÈRE : les sachets en vente posés sur une planche, chacun avec
+ *     son étiquette de prix. Cliquer un sachet en met un au panier ;
+ *   - le PANIER : une ligne par booster (quantité, sous-total), et en bas à
+ *     droite le coût total de la transaction avec le bouton d'achat.
+ *
+ * Le solde n'est PAS répété ici : le bandeau le porte, et il est relu
+ * après chaque achat (`notifyProgressionChanged`).
+ *
+ * Rien de l'économie n'est décidé ici : `purchaseBooster` →
+ * `purchase_booster` (Postgres, atomique) revérifie prix, disponibilité et
+ * solde avant de débiter. Le total affiché n'est qu'une indication.
  */
 export function MarketScreen({ inventory }: MarketScreenProps) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-  const [busyBoosterId, setBusyBoosterId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [purchased, setPurchased] = useState<{ name: string; quantity: number } | null>(null);
+  const [, startTransition] = useTransition();
+  const [cart, setCart] = useState<Cart>({});
+  const [isBuying, setIsBuying] = useState(false);
+  const [toast, setToast] = useState<ScreenToastMessage | null>(null);
 
   // Un booster non achetable (le Mini Booster de Bienvenue, offert) n'a rien
   // à faire dans une boutique : il s'obtient, il ne se vend pas.
-  const onSale = inventory.boosters.filter((booster) => booster.isPurchasable && booster.price !== null);
+  const onSale = useMemo(
+    () => inventory.boosters.filter((booster) => booster.isPurchasable && booster.price !== null),
+    [inventory.boosters]
+  );
 
-  async function handlePurchase(booster: BoosterInventoryEntry, quantity: number) {
+  const total = onSale.reduce((sum, booster) => sum + (booster.price ?? 0) * (cart[booster.boosterId] ?? 0), 0);
+  const itemCount = onSale.reduce((sum, booster) => sum + (cart[booster.boosterId] ?? 0), 0);
+  const shortBy = Math.max(0, total - inventory.balance);
+
+  function setQuantity(boosterId: string, quantity: number) {
+    setCart((current) => ({ ...current, [boosterId]: Math.min(MAX_PURCHASE_QUANTITY, Math.max(0, quantity)) }));
+  }
+
+  function step(boosterId: string, delta: number) {
     playButtonClick();
-    setError(null);
-    setPurchased(null);
-    setBusyBoosterId(booster.boosterId);
+    setQuantity(boosterId, (cart[boosterId] ?? 0) + delta);
+  }
 
-    const result = await purchaseBooster(booster.boosterId, quantity);
-    setBusyBoosterId(null);
+  function showToast(tone: ScreenToastMessage["tone"], text: React.ReactNode, action?: React.ReactNode) {
+    setToast({ id: Date.now(), tone, text, action });
+  }
 
-    if (!result.ok) {
-      setError(result.error ?? "Achat impossible.");
+  async function handleCheckout() {
+    if (isBuying || itemCount === 0) return;
+    playButtonClick();
+    setIsBuying(true);
+
+    // Un appel par type de booster : chacun est une transaction atomique
+    // côté base. On s'arrête au premier refus — la suite du panier reste
+    // en place, rien n'a été débité pour elle.
+    const lines = onSale.filter((booster) => (cart[booster.boosterId] ?? 0) > 0);
+    let bought = 0;
+    let failure: string | null = null;
+    const remaining: Cart = { ...cart };
+
+    for (const booster of lines) {
+      const quantity = cart[booster.boosterId] ?? 0;
+      const result = await purchaseBooster(booster.boosterId, quantity);
+      if (!result.ok) {
+        failure = result.error ?? "Achat impossible.";
+        break;
+      }
+      bought += quantity;
+      remaining[booster.boosterId] = 0;
+    }
+
+    setIsBuying(false);
+    setCart(remaining);
+
+    if (bought > 0) {
+      notifyProgressionChanged();
+      // `revalidatePath` côté action a invalidé le cache : on relit la
+      // réserve plutôt que de la deviner.
+      startTransition(() => router.refresh());
+    }
+
+    if (failure) {
+      showToast("error", bought > 0 ? `${bought} booster${bought > 1 ? "s" : ""} acheté${bought > 1 ? "s" : ""}, puis : ${failure}` : failure);
       return;
     }
 
-    setPurchased({ name: booster.name, quantity });
-    // `revalidatePath` côté action a invalidé le cache : on rafraîchit pour
-    // lire le nouveau solde et la nouvelle réserve plutôt que de les deviner.
-    startTransition(() => router.refresh());
+    showToast(
+      "success",
+      <>
+        {bought} booster{bought > 1 ? "s" : ""} ajouté{bought > 1 ? "s" : ""} à ta réserve
+      </>,
+      <Link href="/boosters" onClick={() => playButtonClick()}>
+        Ouvrir →
+      </Link>
+    );
   }
 
   return (
     <GameScreen active="market" nav="minimal">
       <div className={styles.layout}>
         <div className={styles.layoutInner}>
-          <div className={game.pageHead}>
-            <div>
-              <p className={game.eyebrow}>Boutique</p>
-              <h1 className={game.title}>Market</h1>
-            </div>
-            {inventory.isSignedIn && (
-              <span className={styles.balance} aria-label={`Solde : ${inventory.balance} Tides`}>
-                {inventory.balance}
-                <span className={styles.balanceLabel}>Tides</span>
-              </span>
-            )}
+          <div className={styles.head}>
+            <h1 className={game.title}>Market</h1>
+            <p className={styles.headHint}>Touche un booster pour l&apos;ajouter au panier.</p>
           </div>
 
           {!inventory.isSignedIn ? (
@@ -94,27 +147,106 @@ export function MarketScreen({ inventory }: MarketScreenProps) {
             </div>
           ) : (
             <>
-              {error && <p className={game.error}>{error}</p>}
-              {purchased && !error && (
-                <p className={game.success}>
-                  {purchased.quantity} × {purchased.name} ajouté{purchased.quantity > 1 ? "s" : ""} à ta réserve.{" "}
-                  <Link href="/boosters" className={game.link} onClick={() => playButtonClick()}>
-                    Ouvrir maintenant →
-                  </Link>
-                </p>
-              )}
+              <section className={styles.stage} aria-label="Boosters en vente">
+                <div className={styles.shelfUnit}>
+                  <div className={styles.shelfItems}>
+                    {onSale.map((booster) => (
+                      <ShelfItem
+                        key={booster.boosterId}
+                        booster={booster}
+                        inCart={cart[booster.boosterId] ?? 0}
+                        disabled={isBuying || (cart[booster.boosterId] ?? 0) >= MAX_PURCHASE_QUANTITY}
+                        onAdd={() => step(booster.boosterId, 1)}
+                      />
+                    ))}
+                  </div>
+                  <div className={shelf.plank} aria-hidden />
+                  <div className={styles.shelfLabels}>
+                    {onSale.map((booster) => (
+                      <div key={booster.boosterId} className={styles.shelfLabel}>
+                        <span className={styles.priceTag}>
+                          <TideCoin size={13} />
+                          {booster.price}
+                        </span>
+                        <span className={styles.shelfName}>{booster.name}</span>
+                        <span className={styles.shelfMeta}>
+                          {booster.cardCount} cartes
+                          {booster.owned > 0 && <> · {booster.owned} en réserve</>}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </section>
 
-              <div className={styles.shelf}>
-                {onSale.map((booster) => (
-                  <MarketStall
-                    key={booster.boosterId}
-                    booster={booster}
-                    balance={inventory.balance}
-                    busy={busyBoosterId === booster.boosterId || isPending}
-                    onBuy={(quantity) => void handlePurchase(booster, quantity)}
-                  />
-                ))}
-              </div>
+              <section className={`${game.panel} ${styles.cart}`} aria-label="Panier">
+                <ul className={styles.cartLines}>
+                  {onSale.map((booster) => {
+                    const quantity = cart[booster.boosterId] ?? 0;
+                    return (
+                      <li key={booster.boosterId} className={styles.cartLine} data-empty={quantity === 0 ? "true" : "false"}>
+                        <span className={styles.cartName}>{booster.name}</span>
+                        <span className={styles.cartUnit}>
+                          {booster.price} <span className={styles.unitLabel}>/ unité</span>
+                        </span>
+                        <span className={styles.stepper} role="group" aria-label={`Quantité de ${booster.name}`}>
+                          <button
+                            type="button"
+                            className={styles.stepperButton}
+                            onClick={() => step(booster.boosterId, -1)}
+                            disabled={isBuying || quantity <= 0}
+                            aria-label="Un de moins"
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" width="12" height="12" aria-hidden>
+                              <path d="M6 12h12" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" />
+                            </svg>
+                          </button>
+                          <span className={styles.stepperValue} aria-live="polite">
+                            {quantity}
+                          </span>
+                          <button
+                            type="button"
+                            className={styles.stepperButton}
+                            onClick={() => step(booster.boosterId, 1)}
+                            disabled={isBuying || quantity >= MAX_PURCHASE_QUANTITY}
+                            aria-label="Un de plus"
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" width="12" height="12" aria-hidden>
+                              <path d="M12 6v12M6 12h12" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" />
+                            </svg>
+                          </button>
+                        </span>
+                        <span className={styles.cartSubtotal}>{(booster.price ?? 0) * quantity}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+
+                <div className={styles.checkout}>
+                  <div className={styles.totalBlock}>
+                    <span className={styles.totalLabel}>Total</span>
+                    <span className={styles.totalValue} data-short={shortBy > 0 ? "true" : "false"}>
+                      <TideCoin size={18} />
+                      {total}
+                    </span>
+                    <span className={styles.totalHint} data-short={shortBy > 0 ? "true" : "false"}>
+                      {itemCount === 0
+                        ? "Panier vide"
+                        : shortBy > 0
+                          ? `Il te manque ${shortBy} Tides`
+                          : `Solde après achat : ${inventory.balance - total}`}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className={game.primary}
+                    onClick={() => void handleCheckout()}
+                    disabled={isBuying || itemCount === 0 || shortBy > 0}
+                  >
+                    {isBuying ? "Achat…" : itemCount > 1 ? `Acheter (${itemCount})` : "Acheter"}
+                  </button>
+                </div>
+              </section>
             </>
           )}
 
@@ -128,110 +260,39 @@ export function MarketScreen({ inventory }: MarketScreenProps) {
           </div>
         </div>
       </div>
+
+      <ScreenToast message={toast} onDismiss={() => setToast(null)} />
     </GameScreen>
   );
 }
 
-/**
- * Un étal : le sachet, ce qu'il contient, son prix à l'unité, un sélecteur
- * de quantité et l'achat. Le total est recalculé à chaque cran — voir
- * combien on va dépenser AVANT de cliquer est la moitié du travail d'une
- * boutique.
- */
-function MarketStall({
+/** Un sachet posé sur l'étagère. Le toucher en met un au panier ; la pastille dit combien y sont déjà. */
+function ShelfItem({
   booster,
-  balance,
-  busy,
-  onBuy,
+  inCart,
+  disabled,
+  onAdd,
 }: {
   booster: BoosterInventoryEntry;
-  balance: number;
-  busy: boolean;
-  onBuy: (quantity: number) => void;
+  inCart: number;
+  disabled: boolean;
+  onAdd: () => void;
 }) {
-  const price = booster.price ?? 0;
-  const [quantity, setQuantity] = useState(1);
-
-  // Ce que le solde permet, borné par le maximum d'un achat. Zéro quand on
-  // ne peut même pas s'en offrir un — le bouton le dit alors franchement.
-  const affordable = price > 0 ? Math.min(MAX_PURCHASE_QUANTITY, Math.floor(balance / price)) : MAX_PURCHASE_QUANTITY;
-  const total = price * quantity;
-  const canAfford = total <= balance;
-
-  function step(delta: number) {
-    playButtonClick();
-    setQuantity((current) => Math.min(MAX_PURCHASE_QUANTITY, Math.max(1, current + delta)));
-  }
-
   return (
-    <article className={`${game.panelRaised} ${styles.stall}`} aria-label={booster.name}>
-      <span className={styles.stallPack} style={closedPackVariables(getBoosterPackVisual(booster.boosterId))} aria-hidden />
-
-      <h2 className={styles.stallName}>{booster.name}</h2>
-      <p className={styles.stallMeta}>
-        {booster.cardCount} cartes
-        {booster.owned > 0 && (
-          <>
-            <span aria-hidden> · </span>
-            <span className={styles.stallOwned}>{booster.owned} en réserve</span>
-          </>
-        )}
-      </p>
-
-      <p className={styles.stallPrice}>
-        {price}
-        <span className={styles.stallPriceUnit}>Tides / unité</span>
-      </p>
-
-      <div className={styles.quantity} role="group" aria-label={`Quantité de ${booster.name}`}>
-        <button
-          type="button"
-          className={styles.quantityStep}
-          onClick={() => step(-1)}
-          disabled={busy || quantity <= 1}
-          aria-label="Un de moins"
-        >
-          <svg viewBox="0 0 24 24" fill="none" width="13" height="13" aria-hidden>
-            <path d="M6 12h12" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" />
-          </svg>
-        </button>
-        <span className={styles.quantityValue} aria-live="polite">
-          {quantity}
+    <button
+      type="button"
+      className={styles.shelfItem}
+      data-in-cart={inCart > 0 ? "true" : "false"}
+      onClick={onAdd}
+      disabled={disabled}
+      aria-label={`Ajouter un ${booster.name} au panier`}
+    >
+      <span className={styles.shelfPack} style={closedPackVariables(getBoosterPackVisual(booster.boosterId))} aria-hidden />
+      {inCart > 0 && (
+        <span key={inCart} className={styles.cartBadge} aria-hidden>
+          ×{inCart}
         </span>
-        <button
-          type="button"
-          className={styles.quantityStep}
-          onClick={() => step(1)}
-          disabled={busy || quantity >= MAX_PURCHASE_QUANTITY}
-          aria-label="Un de plus"
-        >
-          <svg viewBox="0 0 24 24" fill="none" width="13" height="13" aria-hidden>
-            <path d="M12 6v12M6 12h12" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" />
-          </svg>
-        </button>
-      </div>
-
-      <p className={`${styles.stallTotal} ${canAfford ? "" : styles.stallTotalShort}`}>
-        Total <span className={styles.stallTotalValue}>{total}</span> Tides
-      </p>
-
-      <button
-        type="button"
-        className={game.primary}
-        onClick={() => onBuy(quantity)}
-        disabled={busy || !canAfford}
-        title={canAfford ? undefined : "Solde de Tides insuffisant"}
-      >
-        {busy ? "Achat…" : canAfford ? "Acheter" : "Tides insuffisants"}
-      </button>
-
-      {/* Dit ce qu'on peut s'offrir plutôt que de laisser buter sur un
-          bouton éteint. */}
-      {!canAfford && (
-        <p className={styles.stallHint}>
-          {affordable > 0 ? `Tu peux en prendre ${affordable} avec ton solde.` : "Il te manque des Tides — les quêtes en donnent."}
-        </p>
       )}
-    </article>
+    </button>
   );
 }

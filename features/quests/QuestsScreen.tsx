@@ -7,6 +7,7 @@ import { GameScreen } from "@/features/shell/GameScreen";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/quests/Quests.module.css";
 import { claimQuestReward, type QuestBoard, type QuestEntry } from "@/features/quests/actions";
+import { notifyProgressionChanged } from "@/features/progression/progressionSync";
 import { playButtonClick } from "@/lib/sound";
 
 interface QuestsScreenProps {
@@ -52,6 +53,7 @@ export function QuestsScreen({ board }: QuestsScreenProps) {
           return;
         }
         setLastGain(result.tidesGained ?? 0);
+        notifyProgressionChanged();
         startTransition(() => router.refresh());
       })
       .finally(() => setBusyKey(null));

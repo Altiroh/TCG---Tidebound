@@ -1,31 +1,32 @@
 /*
  * MARKET — la boutique de boosters, sur la coquille `GameScreen`.
  *
- * Un étal par booster en vente : le sachet fermé (le même visuel que
- * l'animation d'ouverture, via `closedPackVariables`), son contenu, son
- * prix à l'unité, la quantité et le total. Rien d'autre : ouvrir un
- * booster est l'affaire de « Mes boosters » (`features/boosters/`), et
- * aucune règle d'économie n'est décidée ici.
+ * L'étagère en haut (sachets en vente, étiquette de prix), le panier en
+ * bas, le total en bas à droite. Ouvrir un booster est l'affaire de « Mes
+ * boosters » (`features/boosters/`), et aucune règle d'économie n'est
+ * décidée ici. La planche vient de `features/shell/Shelf.module.css`.
  */
 
 /*
- * La boutique tient dans la hauteur de l'écran : aucun défilement. Elle
- * n'a que quelques articles — les faire défiler reviendrait à cacher la
- * moitié d'une vitrine qui tient sur une étagère. C'est donc la TAILLE des
- * étals qui suit la hauteur disponible, pas l'inverse.
+ * La boutique tient dans la hauteur de l'écran : aucun défilement. C'est
+ * la TAILLE des sachets qui suit la hauteur disponible (`--pack-h`).
  */
 .layout {
   position: relative;
   z-index: 1;
   display: flex;
   flex-direction: column;
-  gap: clamp(10px, 1.6vh, 22px);
   min-height: 0;
   overflow: hidden;
   padding: clamp(12px, 2vh, 26px) clamp(14px, 2.4vw, 44px) clamp(14px, 2.4vh, 30px);
 }
 
 .layoutInner {
+  --pack-h: clamp(120px, 34vh, 360px);
+  /* Emplacement d'un sachet : la largeur du plus large des visuels. */
+  --slot-w: calc(var(--pack-h) * 0.74);
+  --slot-gap: clamp(28px, 4vw, 72px);
+
   display: flex;
   flex-direction: column;
   gap: clamp(10px, 1.6vh, 22px);
@@ -35,118 +36,227 @@
   min-height: 0;
 }
 
-/*
- * Étagère CENTRÉE, pas une grille alignée à gauche : avec deux ou trois
- * boosters, une grille laisse un grand vide à droite et l'étal unique
- * paraît égaré dans un coin.
- */
-.shelf {
+.head {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.headHint {
+  margin: 0;
+  font-size: clamp(11.5px, 0.88vw, 14px);
+  color: var(--ink-dim);
+}
+
+/* ── Étagère ────────────────────────────────────────────────── */
+.stage {
+  display: flex;
+  align-items: center;
   justify-content: center;
-  align-items: stretch;
-  align-content: center;
-  gap: clamp(12px, 1.4vw, 22px);
   flex: 1 1 auto;
   min-height: 0;
 }
 
-.stall {
+.shelfUnit {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.45em;
-  flex: 0 1 clamp(220px, 21vw, 290px);
-  min-height: 0;
-  padding: clamp(12px, 1.5vh, 22px) clamp(12px, 1.2vw, 18px);
-  text-align: center;
+  min-width: min(100%, clamp(320px, 46vw, 760px));
+  max-width: 100%;
 }
 
-/*
- * Le sachet : `--pack-art` / `--pack-ratio` sont poussés en variables
- * inline par l'écran. Les visuels sont des découpes sur transparence —
- * `contain`, aucun fond, une `drop-shadow` qui épouse la silhouette.
- *
- * Dimensionné par la HAUTEUR disponible, et non par la largeur de l'étal :
- * c'est lui qui décidait jusqu'ici de la hauteur de la page, et donc du
- * défilement.
- */
-.stallPack {
-  flex: 0 1 auto;
-  height: clamp(120px, 30vh, 300px);
-  min-height: 0;
+.shelfItems,
+.shelfLabels {
+  display: flex;
+  justify-content: center;
+  gap: var(--slot-gap);
+  padding-inline: clamp(14px, 2vw, 34px);
+}
+
+.shelfItems {
+  align-items: flex-end;
+}
+
+.shelfItem {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  flex: 0 0 var(--slot-w);
+  height: var(--pack-h);
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.shelfItem:disabled { cursor: default; }
+.shelfItem:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 4px; border-radius: 8px; }
+
+.shelfPack {
+  height: 100%;
   aspect-ratio: var(--pack-ratio, 5 / 7);
   width: auto;
+  max-width: 100%;
   background-image: var(--pack-art);
   background-size: contain;
   background-position: center bottom;
   background-repeat: no-repeat;
-  filter: drop-shadow(0 16px 22px rgba(0, 0, 0, 0.6));
+  filter: drop-shadow(0 10px 12px rgba(0, 0, 0, 0.55));
+  transform-origin: 50% 100%;
   transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), filter 180ms ease;
 }
 
-.stall:hover .stallPack {
-  transform: translateY(-5px) scale(1.03) rotate(-0.7deg);
-  filter: drop-shadow(0 22px 26px rgba(0, 0, 0, 0.62)) brightness(1.05);
+.shelfItem:hover:not(:disabled) .shelfPack {
+  transform: translateY(-10px) rotate(-1deg);
+  filter: drop-shadow(0 22px 22px rgba(0, 0, 0, 0.6)) brightness(1.06);
 }
 
-.stallName {
-  margin: 0;
+.shelfItem:active:not(:disabled) .shelfPack {
+  transform: translateY(-4px) scale(0.98);
+}
+
+/* Déjà au panier : un halo cyan discret au pied du sachet. */
+.shelfItem[data-in-cart="true"] .shelfPack {
+  filter: drop-shadow(0 10px 12px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 14px rgba(88, 200, 216, 0.35));
+}
+
+.cartBadge {
+  position: absolute;
+  top: 6%;
+  right: 2%;
+  min-width: 34px;
+  padding: 4px 9px;
+  border: 1px solid rgba(88, 200, 216, 0.6);
+  border-radius: 999px;
+  background: var(--panel-solid);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+  color: #eaf8fb;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  animation: badgeBump 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes badgeBump {
+  from { transform: scale(1.35); }
+  to { transform: none; }
+}
+
+.shelfLabel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  flex: 0 0 var(--slot-w);
+  padding-top: clamp(10px, 1.8vh, 20px);
+  text-align: center;
+}
+
+/* Étiquette de prix accrochée à la planche : le laiton, c'est l'argent. */
+.priceTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 4px;
+  padding: 3px 10px 3px 7px;
+  border: 1px solid rgba(199, 154, 78, 0.45);
+  border-radius: 999px;
+  background: rgba(20, 14, 8, 0.72);
   font-family: var(--cb-font-display);
-  font-size: clamp(15px, 1.15vw, 19px);
+  font-size: clamp(13px, 1vw, 16px);
   font-weight: 600;
-  letter-spacing: 0.02em;
-  color: #f2f7fb;
+  font-variant-numeric: tabular-nums;
+  color: #e5cf9e;
 }
 
-.stallMeta {
-  margin: 0;
-  font-size: clamp(11px, 0.85vw, 13px);
+.shelfName {
+  font-family: var(--cb-font-display);
+  font-size: clamp(13px, 1vw, 16px);
+  font-weight: 600;
+  color: #f2f7fb;
+  text-shadow: 0 1px 6px rgba(2, 6, 11, 0.8);
+}
+
+.shelfMeta {
+  font-size: clamp(10.5px, 0.78vw, 12px);
   font-variant-numeric: tabular-nums;
   color: var(--ink-dim);
 }
 
-/* Ce qu'on a DÉJÀ de ce booster : une information de réserve au milieu
-   d'une boutique, donc en cyan et pas en laiton (le laiton, c'est le prix). */
-.stallOwned { color: var(--cb-cyan); }
-
-.stallPrice {
+/* ── Panier ─────────────────────────────────────────────────── */
+.cart {
   display: flex;
-  align-items: baseline;
-  gap: 0.4em;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: clamp(14px, 3vw, 48px);
+  padding: clamp(10px, 1.6vh, 18px) clamp(14px, 1.6vw, 24px);
+}
+
+@media (max-width: 760px) {
+  .cart { flex-direction: column; align-items: stretch; }
+}
+
+.cartLines {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
   margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cartLine {
+  display: grid;
+  grid-template-columns: minmax(9ch, auto) auto auto minmax(5ch, auto);
+  align-items: center;
+  gap: clamp(10px, 1.6vw, 26px);
+  padding: 3px 0;
+  font-size: clamp(12px, 0.9vw, 14px);
+  transition: opacity 150ms ease-out;
+}
+
+.cartLine[data-empty="true"] { opacity: 0.6; }
+.cartLine[data-empty="true"]:hover,
+.cartLine[data-empty="true"]:focus-within { opacity: 1; }
+
+.cartName {
   font-family: var(--cb-font-display);
-  font-size: clamp(18px, 1.4vw, 24px);
   font-weight: 600;
+  color: #f2f7fb;
+  white-space: nowrap;
+}
+
+.cartUnit {
   font-variant-numeric: tabular-nums;
   color: #ddc79a;
+  white-space: nowrap;
 }
 
-.stallPriceUnit {
-  font-family: var(--cb-font-ui);
-  font-size: 0.46em;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: rgba(199, 154, 78, 0.8);
+.unitLabel { color: var(--ink-faint); }
+
+.cartSubtotal {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--ink-dim);
 }
 
-/* ── Quantité ───────────────────────────────────────────────── */
-.quantity {
-  display: flex;
+.stepper {
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px;
+  gap: 2px;
+  padding: 2px;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: rgba(130, 178, 210, 0.05);
 }
 
-.quantityStep {
+.stepperButton {
   display: grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   border: none;
   border-radius: 50%;
   background: none;
@@ -155,48 +265,67 @@
   transition: background-color 130ms ease-out, color 130ms ease-out;
 }
 
-.quantityStep:hover:not(:disabled) {
-  background: rgba(130, 178, 210, 0.14);
-  color: var(--ink);
-}
+.stepperButton:hover:not(:disabled) { background: rgba(130, 178, 210, 0.14); color: var(--ink); }
+.stepperButton:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 1px; }
+.stepperButton:disabled { opacity: 0.3; cursor: not-allowed; }
 
-.quantityStep:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 1px; }
-.quantityStep:disabled { opacity: 0.3; cursor: not-allowed; }
-
-.quantityValue {
-  min-width: 2ch;
-  font-size: clamp(13px, 1vw, 15px);
+.stepperValue {
+  min-width: 2.2ch;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   text-align: center;
   color: #f2f7fb;
 }
 
-.stallTotal {
-  margin: 0;
-  font-size: clamp(11px, 0.85vw, 13px);
-  letter-spacing: 0.08em;
+/* Le total, en bas à droite : la seule somme qui compte avant de cliquer. */
+.checkout {
+  display: flex;
+  align-items: center;
+  gap: clamp(12px, 1.6vw, 24px);
+  flex: 0 0 auto;
+}
+
+@media (max-width: 760px) {
+  .checkout { justify-content: flex-end; }
+}
+
+.totalBlock {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: baseline;
+  column-gap: 10px;
+  text-align: right;
+}
+
+.totalLabel {
+  font-size: clamp(10px, 0.72vw, 12px);
+  font-weight: 600;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--ink-dim);
 }
 
-.stallTotalValue {
-  font-size: 1.25em;
+.totalValue {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  font-family: var(--cb-font-display);
+  font-size: clamp(20px, 1.7vw, 28px);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: #ddc79a;
+  color: #e5cf9e;
 }
 
-/* Total hors budget : le chiffre passe au rouge AVANT que le bouton ne
-   s'éteigne, pour qu'on comprenne pourquoi. */
-.stallTotalShort .stallTotalValue { color: var(--danger); }
+.totalValue[data-short="true"] { color: var(--danger); }
 
-.stallHint {
-  margin: 0;
-  font-size: clamp(10px, 0.78vw, 12px);
-  line-height: 1.4;
+.totalHint {
+  grid-column: 1 / -1;
+  font-size: clamp(10.5px, 0.78vw, 12px);
   color: var(--ink-faint);
 }
+
+.totalHint[data-short="true"] { color: #f3c3ba; }
 
 /* Rangée de liens de bas de page. */
 .footRow {
@@ -208,28 +337,9 @@
   color: var(--ink-faint);
 }
 
-/* Solde de Tides en tête de page — même lecture que dans « Mes boosters ». */
-.balance {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.35em;
-  font-family: var(--cb-font-display);
-  font-size: clamp(18px, 1.5vw, 26px);
-  font-weight: 600;
-  color: #ddc79a;
-  font-variant-numeric: tabular-nums;
-}
-
-.balanceLabel {
-  font-family: var(--cb-font-ui);
-  font-size: 0.5em;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: rgba(199, 154, 78, 0.8);
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .stallPack { transition: none; }
-  .stall:hover .stallPack { transform: none; }
+  .shelfPack { transition: none; }
+  .shelfItem:hover:not(:disabled) .shelfPack,
+  .shelfItem:active:not(:disabled) .shelfPack { transform: none; }
+  .cartBadge { animation: none; }
 }
