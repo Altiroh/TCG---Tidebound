@@ -13,7 +13,7 @@ import styles from "@/features/boosters/Boosters.module.css";
 import { purchaseBooster, type BoosterInventory } from "@/features/boosters/actions";
 import { BoosterOpeningScene } from "@/features/boosters/opening/BoosterOpeningScene";
 import { preloadBoosterOpeningAssets } from "@/features/boosters/opening/boosterOpeningAssets";
-import { getBoosterPackVisual } from "@/features/boosters/opening/boosterPackVisuals";
+import { closedPackVariables, getBoosterPackVisual } from "@/features/boosters/opening/boosterPackVisuals";
 import { drawTestBoosterCards } from "@/features/boosters/opening/testBoosterCards";
 import type { BoosterOpeningCard } from "@/features/boosters/opening/types";
 import { playButtonClick } from "@/lib/sound";
@@ -153,6 +153,9 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
                       <button
                         type="button"
                         className={styles.packObject}
+                        // Le sachet fermé de CE booster (le même visuel que
+                        // l'animation d'ouverture), et non un dos de carte.
+                        style={closedPackVariables(getBoosterPackVisual(booster.boosterId))}
                         onClick={() => booster.owned > 0 && !busy && handleOpen(booster.boosterId)}
                         disabled={booster.owned === 0 || busy}
                         aria-label={

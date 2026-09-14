@@ -100,6 +100,26 @@ const BOOSTER_VISUAL_BY_ID: Record<string, BoosterPackVisual> = {
 
 export const BOOSTER_PACK_VISUALS: readonly BoosterPackVisual[] = [DEFAULT_PACK_VISUAL, WELCOME_PACK_VISUAL];
 
+/**
+ * Largeur / hauteur du SACHET FERMÉ. Déduite du calage plutôt que saisie
+ * à part : `closedRect` dit déjà de quel facteur le paquet fermé est plus
+ * large et plus haut que le corps ouvert, dont on connaît les
+ * proportions. Un recadrage des visuels qui corrige `closedRect` corrige
+ * donc aussi cette valeur, sans rien d'autre à retoucher.
+ */
+export function closedPackAspectRatio(visual: BoosterPackVisual): number {
+  return visual.aspectRatio * (visual.closedRect.width / visual.closedRect.height);
+}
+
+/** Variables CSS pour poser le sachet FERMÉ d'un booster ailleurs que dans la scène d'ouverture (l'étagère de l'écran Boosters). */
+export function closedPackVariables(visual: BoosterPackVisual): CSSProperties {
+  const vars: Record<`--${string}`, string | number> = {
+    "--pack-art": `url("${visual.assets.closed}")`,
+    "--pack-ratio": closedPackAspectRatio(visual),
+  };
+  return vars as CSSProperties;
+}
+
 export function getBoosterPackVisual(boosterId: string): BoosterPackVisual {
   return BOOSTER_VISUAL_BY_ID[boosterId] ?? DEFAULT_PACK_VISUAL;
 }
