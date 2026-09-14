@@ -33,7 +33,15 @@ export type {
   ActionResult,
 } from "@/game/actions/types";
 
-export type { CardDefinition, CardInstance, CardType, TriggeredAbility, GraveyardCause } from "@/game/cards/types";
+export type {
+  CardDefinition,
+  CardInstance,
+  CardType,
+  TriggeredAbility,
+  GraveyardCause,
+  StatModifier,
+  StatModifierDuration,
+} from "@/game/cards/types";
 export {
   isPermanentCard,
   isVisibleDuringTide,

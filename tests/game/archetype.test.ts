@@ -495,3 +495,85 @@ describe("archétype Cra-Poiscail — branche Chevalier (Booster 3)", () => {
     expect(result.state.players[0]!.reason).toBe(9);
   });
 });
+
+describe("comptage d'archétype — Marins et Créatures uniquement", () => {
+  it("ignore les Structures, Objets et Anomalies de la famille dans les seuils", () => {
+    const banc = instance("banc-de-cra-poiscail", "p1");
+    // Trois "Cra-Poiscail" non-unités : le seuil de 3 AUTRES ne doit pas s'allumer.
+    const decor = [banc, instance("la-flaque-sacree", "p1"), instance("le-seau", "p1"), instance("le-trone-de-bouchon", "p1")];
+    expect(computeEffectiveStats(banc, "calme", { controllerBoard: decor, controllerReason: 10 }).attack).toBe(2);
+
+    const vraiBanc = [banc, instance("tetard-fesse", "p1"), instance("ptite-fesse", "p1"), instance(PEON, "p1")];
+    expect(computeEffectiveStats(banc, "calme", { controllerBoard: vraiBanc, controllerReason: 10 }).attack).toBe(3);
+  });
+
+  it("le Sauteur n'invoque pas si la famille n'est représentée que par des Objets", () => {
+    const sauteur = instance("cra-poiscail-sauteur", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { hand: [sauteur], board: [instance("le-seau", "p1")], reason: 10 }), testPlayer("p2")],
+    });
+
+    const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: sauteur.instanceId });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(peons(result.state.players[0]!.board)).toBe(0);
+  });
+});
+
+describe("durées de bonus", () => {
+  it("un bonus « jusqu'à la fin du tour » tombe dès que le tour se termine", () => {
+    const bavard = instance("cra-poiscail-bavard", "p1");
+    const arrivant = instance("tetard-fesse", "p1");
+    const state = testGameState({
+      players: [
+        testPlayer("p1", { hand: [arrivant], board: [bavard], reason: 10, deck: [instance("murene-aveugle", "p1")] }),
+        testPlayer("p2", { deck: [instance("murene-aveugle", "p2")] }),
+      ],
+    });
+
+    const played = dispatch(state, { type: "playCard", playerId: "p1", instanceId: arrivant.instanceId });
+    expect(played.ok).toBe(true);
+    if (!played.ok) return;
+    expect(computeEffectiveStats(played.state.players[0]!.board.find((u) => u.instanceId === bavard.instanceId)!, "calme").attack).toBe(2);
+
+    const ended = dispatch(played.state, { type: "endTurn", playerId: "p1" });
+    expect(ended.ok).toBe(true);
+    if (!ended.ok) return;
+    // Le +1 servait à attaquer ce tour-ci : il ne doit pas servir à défendre ensuite.
+    const after = ended.state.players.find((p) => p.id === "p1")!.board.find((u) => u.instanceId === bavard.instanceId)!;
+    expect(computeEffectiveStats(after, "calme").attack).toBe(1);
+  });
+
+  it("un bonus « jusqu'à votre prochain tour » survit au tour adverse", () => {
+    const flaque = instance("la-flaque-sacree", "p1");
+    const arrivant = instance("tetard-fesse", "p1");
+    // Des decks non vides : une pioche à vide déclencherait le Jugement de
+    // l'Océan et terminerait la partie avant la fin du test.
+    const deck = () => [instance("murene-aveugle", "p1"), instance("murene-aveugle", "p1"), instance("murene-aveugle", "p1")];
+    const state = testGameState({
+      players: [
+        testPlayer("p1", { hand: [arrivant], board: [flaque], reason: 10, deck: deck() }),
+        testPlayer("p2", { reason: 10, deck: deck() }),
+      ],
+    });
+
+    const played = dispatch(state, { type: "playCard", playerId: "p1", instanceId: arrivant.instanceId });
+    expect(played.ok).toBe(true);
+    if (!played.ok) return;
+    const buffed = played.state.players[0]!.board.find((u) => u.instanceId === arrivant.instanceId)!;
+    expect(computeEffectiveStats(buffed, "calme").health).toBe(2);
+
+    const p1Ended = dispatch(played.state, { type: "endTurn", playerId: "p1" });
+    expect(p1Ended.ok).toBe(true);
+    if (!p1Ended.ok) return;
+    // Pendant le tour adverse, la Résistance tient encore.
+    const duringOpponentTurn = p1Ended.state.players.find((p) => p.id === "p1")!.board.find((u) => u.instanceId === arrivant.instanceId)!;
+    expect(computeEffectiveStats(duringOpponentTurn, "calme").health).toBe(2);
+
+    const p2Ended = dispatch(p1Ended.state, { type: "endTurn", playerId: "p2" });
+    expect(p2Ended.ok).toBe(true);
+    if (!p2Ended.ok) return;
+    const backToOwner = p2Ended.state.players.find((p) => p.id === "p1")!.board.find((u) => u.instanceId === arrivant.instanceId)!;
+    expect(computeEffectiveStats(backToOwner, "calme").health).toBe(1);
+  });
+});

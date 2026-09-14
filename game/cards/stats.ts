@@ -1,3 +1,4 @@
+import { countArchetypeUnits } from "@/game/cards/archetypes";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { isVisibleDuringTide, type CardInstance } from "@/game/cards/types";
 import type { TideStateName } from "@/game/environment/types";
@@ -109,10 +110,9 @@ export function computeEffectiveStats(unit: CardInstance, tideState: TideStateNa
     // sur ses unités.
     const archetypeSelfBuff = def.selfBuffWhileControllingArchetype;
     if (archetypeSelfBuff) {
-      const owned = controllerBoard.filter((other) => {
-        if (archetypeSelfBuff.excludeSelf && other.instanceId === unit.instanceId) return false;
-        return getCardDefinition(other.cardId).archetype === archetypeSelfBuff.archetype;
-      }).length;
+      const owned = countArchetypeUnits(controllerBoard, archetypeSelfBuff.archetype, {
+        excludeInstanceId: archetypeSelfBuff.excludeSelf ? unit.instanceId : undefined,
+      });
       if (owned >= archetypeSelfBuff.atLeast) {
         auraAttack += archetypeSelfBuff.attackAmount ?? 0;
         auraHealth += archetypeSelfBuff.healthAmount ?? 0;
@@ -126,11 +126,11 @@ export function computeEffectiveStats(unit: CardInstance, tideState: TideStateNa
       if (source.instanceId === unit.instanceId) continue;
       const auraSpec = getCardDefinition(source.cardId).auraBuffOtherArchetypeUnits;
       if (!auraSpec || def.archetype !== auraSpec.archetype) continue;
-      if (auraSpec.requiresArchetypeCountAtLeast !== undefined) {
-        const owned = controllerBoard.filter(
-          (other) => getCardDefinition(other.cardId).archetype === auraSpec.archetype
-        ).length;
-        if (owned < auraSpec.requiresArchetypeCountAtLeast) continue;
+      if (
+        auraSpec.requiresArchetypeCountAtLeast !== undefined &&
+        countArchetypeUnits(controllerBoard, auraSpec.archetype) < auraSpec.requiresArchetypeCountAtLeast
+      ) {
+        continue;
       }
       auraAttack += auraSpec.attackAmount ?? 0;
       auraHealth += auraSpec.healthAmount ?? 0;

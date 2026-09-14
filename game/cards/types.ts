@@ -440,7 +440,9 @@ export interface CardDefinition {
 
   /**
    * Bonus permanent sur SOI-MÊME tant que son contrôleur a au moins
-   * `atLeast` permanents de cet archétype sur son plateau (ex: Banc de
+   * `atLeast` MARINS/CRÉATURES de cet archétype sur son plateau — les
+   * Structures, Objets et Anomalies de la famille ne comptent pas
+   * (`countArchetypeUnits`, règle du 2026-09-14) (ex: Banc de
    * Cra-Poiscail, "tant que vous contrôlez au moins 3 AUTRES
    * Cra-Poiscail"). `excludeSelf` décide si la carte se compte elle-même —
    * le catalogue distingue les deux formulations ("3 autres" vs "3
@@ -685,11 +687,23 @@ export interface CardInstance {
   oncePerTurnFlags?: Record<string, number>;
 }
 
+/**
+ * Durée de vie d'un modificateur de statistiques. Les deux durées courtes
+ * ne se valent PAS et le catalogue distingue bien les deux formulations :
+ *
+ *  - `endOfTurn` — "jusqu'à la fin du tour" : disparaît quand le tour EN
+ *    COURS se termine, donc avant que l'adversaire ne joue. C'est la durée
+ *    de la plupart des bonus du Lot 10 (Bavard, Chef de Banc, Bourreau…).
+ *  - `untilYourNextTurn` — "jusqu'à votre prochain tour" : survit au tour
+ *    adverse et ne tombe qu'au début du tour suivant de son contrôleur, ce
+ *    qui protège aussi en défense (Marin des Jetées, La Flaque Sacrée).
+ */
+export type StatModifierDuration = "endOfTurn" | "untilYourNextTurn" | "permanent";
+
 export interface StatModifier {
   id: string;
   source: CardId | "unknown";
   attack: number;
   health: number;
-  /** "temporary" retiré en fin de tour, "permanent" persiste. */
-  duration: "temporary" | "permanent";
+  duration: StatModifierDuration;
 }

@@ -82,7 +82,8 @@ export const CORE_SET: CardDefinition[] = [
         type: "buff",
         target: { kind: "self" },
         healthAmount: { kind: "flat", value: 1 },
-        permanent: false,
+        // "jusqu'à votre prochain tour" : couvre aussi le tour adverse.
+        duration: "untilYourNextTurn",
         conditionOrientationIs: "montante",
       },
       { type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, conditionOrientationIs: "descendante" },
@@ -1722,10 +1723,14 @@ export const CORE_SET: CardDefinition[] = [
         triggeredBy: { archetype: "cra-poiscail" },
         oncePerTurnKey: "flaqueAllyEnter",
         description: "Un Cra-Poiscail arrive : il gagne +1 Résistance.",
-        // Écart connu : le moteur ne connaît que "jusqu'à la fin du tour"
-        // (`temporary`) et "permanent" — la carte dit "jusqu'à votre
-        // prochain tour", soit un tour adverse de plus.
-        effects: [{ type: "buff", target: { kind: "triggerSource" }, healthAmount: { kind: "flat", value: 1 }, permanent: false }],
+        effects: [
+          {
+            type: "buff",
+            target: { kind: "triggerSource" },
+            healthAmount: { kind: "flat", value: 1 },
+            duration: "untilYourNextTurn",
+          },
+        ],
       },
     ],
   },
@@ -1739,15 +1744,15 @@ export const CORE_SET: CardDefinition[] = [
     // Slot (même traitement que les Grandes Anomalies du Lot 08).
     permanent: false,
     cost: 3,
-    text: "Invoquez 2 Péons Cra-Poiscail 1 / 1. Ils gagnent Ruée jusqu'à la fin du tour.",
+    text: "Invoquez 2 Péons Cra-Poiscail 1 / 1. Ils gagnent Pied marin jusqu'à la fin du tour.",
     onPlayEffects: [
       {
         type: "summon",
         target: { kind: "controllerPlayer" },
         cardId: "peon-cra-poiscail",
         count: 2,
-        // "Ruée jusqu'à la fin du tour" sur un corps qui vient d'arriver
-        // revient exactement à le priver de mal d'invocation.
+        // "Pied marin" sur un corps qui vient d'arriver revient exactement
+        // à le priver de son mal d'invocation.
         rush: true,
       },
     ],
@@ -2163,7 +2168,7 @@ export const CORE_SET: CardDefinition[] = [
     permanent: false,
     cost: 5,
     maxCopies: 1,
-    text: "Invoquez 3 Péons Cra-Poiscail 1 / 1. Ils gagnent +1 Puissance et Ruée jusqu'à la fin du tour.",
+    text: "Invoquez 3 Péons Cra-Poiscail 1 / 1. Ils gagnent +1 Puissance et Pied marin jusqu'à la fin du tour.",
     onPlayEffects: [
       {
         type: "summon",
@@ -2245,7 +2250,7 @@ export const CORE_SET: CardDefinition[] = [
     attack: 2,
     health: 3,
     maxCopies: 1,
-    text: "La première fois à chaque tour qu'un autre Cra-Poiscail gagne de la Puissance, elle gagne +2 Puissance et Ruée jusqu'à la fin du tour.",
+    text: "La première fois à chaque tour qu'un autre Cra-Poiscail gagne de la Puissance, elle gagne +2 Puissance et Pied marin jusqu'à la fin du tour.",
     // non appliqué : même déclencheur manquant que sa version Standard.
   },
   {

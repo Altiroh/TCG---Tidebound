@@ -15,9 +15,35 @@
  * une carte peut être Abyssale ET Cra-Poiscail, comme les trois variantes
  * du Lot 10.
  */
+import { getCardDefinition } from "@/game/cards/sets/core";
+import { UNIT_CARD_TYPES, type CardInstance } from "@/game/cards/types";
+
 export type ArchetypeId = "cra-poiscail";
 
 /** Libellé humain — outils de design, journaux, tests. Jamais rendu sur une carte. */
 export const ARCHETYPE_LABELS: Record<ArchetypeId, string> = {
   "cra-poiscail": "Cra-Poiscail",
 };
+
+/**
+ * Membres d'un archétype PRÉSENTS sur un plateau.
+ *
+ * Règle verrouillée le 2026-09-14 : seuls les **Marins et Créatures**
+ * comptent pour les effets de dénombrement ("si vous contrôlez déjà un
+ * autre Cra-Poiscail", "au moins 3 Cra-Poiscail"). Les Structures, Objets,
+ * Équipements et Anomalies de la famille portent bien leur `archetype` —
+ * ils restent ciblables et reconnaissables — mais ne gonflent pas les
+ * seuils : sans ça, poser Le Seau et La Flaque Sacrée suffisait à allumer
+ * un bonus censé récompenser un banc de créatures.
+ */
+export function countArchetypeUnits(
+  board: readonly CardInstance[],
+  archetype: ArchetypeId,
+  options: { excludeInstanceId?: string } = {}
+): number {
+  return board.filter((unit) => {
+    if (options.excludeInstanceId && unit.instanceId === options.excludeInstanceId) return false;
+    const def = getCardDefinition(unit.cardId);
+    return def.archetype === archetype && (UNIT_CARD_TYPES as readonly string[]).includes(def.type);
+  }).length;
+}

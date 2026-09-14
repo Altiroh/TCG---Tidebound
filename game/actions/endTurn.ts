@@ -55,6 +55,23 @@ export function endTurn(state: GameState, action: EndTurnAction): ActionResult {
   events.push({ ...base, type: "END_TURN", playerId: action.playerId });
   events.push(...endOfTurnTrigger.events);
 
+  // Le tour se termine : les bonus "jusqu'à la fin du tour" tombent, sur
+  // les DEUX plateaux (une carte peut en donner à l'adversaire) et avant
+  // que le joueur suivant ne commence — un +1 Puissance donné pour une
+  // attaque ne doit pas servir à défendre au tour d'après. Les bonus
+  // "jusqu'à votre prochain tour", eux, sont retirés plus bas, au début du
+  // tour de leur contrôleur.
+  nextState = {
+    ...nextState,
+    players: nextState.players.map((player) => ({
+      ...player,
+      board: player.board.map((unit) => ({
+        ...unit,
+        modifiers: unit.modifiers.filter((modifier) => modifier.duration !== "endOfTurn"),
+      })),
+    })) as [PlayerState, PlayerState],
+  };
+
   // --- Défausse forcée (cadrage "Règles & mécaniques verrouillées" : main
   // maximale 7) : appliquée en fin de tour, pour le joueur qui vient de
   // jouer, avant de passer la main. Aucun choix de joueur n'existe encore
@@ -171,6 +188,8 @@ export function endTurn(state: GameState, action: EndTurnAction): ActionResult {
     ...u,
     summoningSick: false,
     hasAttackedThisTurn: false,
+    // Début du tour de ce joueur : ses bonus "jusqu'à votre prochain tour"
+    // ont fait leur office (ils l'ont couvert pendant le tour adverse).
     modifiers: u.modifiers.filter((m) => m.duration === "permanent"),
   }));
 

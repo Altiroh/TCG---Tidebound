@@ -1,6 +1,6 @@
 "use client";
 
-import { getCardDefinition, type CardInstance, type TideStateName } from "@/game";
+import { getCardDefinition, type CardInstance, type StatModifierDuration, type TideStateName } from "@/game";
 import { TIDE_STATE_LABELS } from "@/features/match/cardDisplay";
 import { formatStatDelta } from "@/features/match/formatEvent";
 import { CardThumb } from "@/features/match/CardThumb";
@@ -65,7 +65,7 @@ function collectAppliedEffects(instance: CardInstance, tideState: TideStateName,
     });
   }
 
-  const grouped = new Map<string, { source: string; duration: "temporary" | "permanent"; attack: number; health: number }>();
+  const grouped = new Map<string, { source: string; duration: StatModifierDuration; attack: number; health: number }>();
   for (const modifier of instance.modifiers) {
     const key = `${modifier.source}|${modifier.duration}`;
     const entry = grouped.get(key) ?? { source: modifier.source, duration: modifier.duration, attack: 0, health: 0 };
@@ -82,7 +82,7 @@ function collectAppliedEffects(instance: CardInstance, tideState: TideStateName,
       thumbnail: name ? { kind: "card", cardId: entry.source } : { kind: "glyph", glyph: "✦" },
       source: name ?? "Effet",
       delta,
-      detail: entry.duration === "temporary" ? "Jusqu'à la fin du tour" : "Permanent",
+      detail: DURATION_LABELS[entry.duration],
       tone: toneOf(entry.attack, entry.health),
     });
   }
@@ -135,6 +135,13 @@ const THUMB_BORDER_CLASSES: Record<AppliedEffect["tone"], string> = {
  * variation en toutes lettres à droite. Rien n'est rendu si la carte est
  * telle qu'imprimée.
  */
+/** Libellé lisible de chaque durée de modificateur (`StatModifier.duration`). */
+const DURATION_LABELS: Record<StatModifierDuration, string> = {
+  endOfTurn: "Jusqu'à la fin du tour",
+  untilYourNextTurn: "Jusqu'à votre prochain tour",
+  permanent: "Permanent",
+};
+
 export function AppliedEffectsList({
   instance,
   tideState,

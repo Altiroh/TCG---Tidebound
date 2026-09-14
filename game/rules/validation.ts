@@ -52,6 +52,14 @@ function attackerBypassesGardeNow(state: GameState, attackerOwnerId: PlayerId, a
  * été refusée). Le serveur ne fait jamais confiance au client : toute
  * action passe par ces vérifications avant d'être appliquée.
  */
+/**
+ * Mot-clé "Pied marin" : l'unité ignore son mal d'invocation et peut agir
+ * le tour où elle arrive. Accordé aujourd'hui par l'invocation
+ * (`EffectDefinition.rush`) ; le mot-clé statique est reconnu ici pour les
+ * cartes qui le porteront en permanence.
+ */
+export const KEYWORD_PIED_MARIN = "pied-marin";
+
 export type ValidationResult = { ok: true } | { ok: false; error: string };
 
 export function ok(): ValidationResult {
@@ -145,7 +153,10 @@ export function assertUnitCanAttack(state: GameState, playerId: PlayerId, instan
   if (!(UNIT_CARD_TYPES as readonly string[]).includes(getCardDefinition(unit.cardId).type)) {
     return fail("Seuls les Marins et Créatures peuvent attaquer.");
   }
-  if (unit.summoningSick) return fail("Cette unité ne peut pas encore attaquer.");
+  // Pied marin : l'unité a le pied assez sûr pour agir dès son arrivée.
+  if (unit.summoningSick && !hasEffectiveKeyword(state, player!, unit, KEYWORD_PIED_MARIN)) {
+    return fail("Cette unité ne peut pas encore attaquer.");
+  }
   if (unit.hasAttackedThisTurn) return fail("Cette unité a déjà attaqué ce tour-ci.");
 
   if (computeEffectiveStats(unit, state.environment.tideState).inactive) {

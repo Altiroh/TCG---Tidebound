@@ -96,9 +96,10 @@ export interface EffectDefinition {
 
   /**
    * Pour `summon` : les invoqués arrivent SANS mal d'invocation, donc
-   * capables d'attaquer le tour même (Ruée, ex: Fesses en Avant !). Le
-   * texte parle d'un mot-clé temporaire, mais son seul effet réel sur un
-   * corps qui vient d'arriver est exactement celui-ci.
+   * capables d'attaquer le tour même — c'est le mot-clé **Pied marin**
+   * (ex: Fesses en Avant !). Le texte l'accorde "jusqu'à la fin du tour",
+   * mais sur un corps qui vient d'arriver son seul effet réel est
+   * exactement celui-ci.
    */
   rush?: boolean;
 
@@ -108,6 +109,14 @@ export interface EffectDefinition {
    * +1 Puissance et Ruée jusqu'à la fin du tour".
    */
   summonBuff?: { attackAmount?: number; healthAmount?: number };
+
+  /**
+   * Durée du `buff`/`debuff` posé. `permanent: true` reste accepté et
+   * équivaut à `"permanent"` ; sinon, défaut `"endOfTurn"` — "jusqu'à la
+   * fin du tour", la formulation la plus courante. Les cartes qui disent
+   * "jusqu'à votre prochain tour" doivent le déclarer explicitement.
+   */
+  duration?: import("@/game/cards/types").StatModifierDuration;
 
   /**
    * Ne résout cet effet que si le contrôleur a au moins `count` permanents

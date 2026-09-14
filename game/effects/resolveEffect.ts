@@ -1,5 +1,6 @@
-import { isVisibleDuringTide, type CardInstance } from "@/game/cards/types";
+import { isVisibleDuringTide, type CardInstance, type StatModifierDuration } from "@/game/cards/types";
 import { canBeEquipTarget, getCardDefinition } from "@/game/cards/sets/core";
+import { countArchetypeUnits } from "@/game/cards/archetypes";
 import { getShipDefinition } from "@/game/environment/shipData";
 import { forceTideJumpToAbysses, forceTideTransition } from "@/game/environment/tide";
 import type { EffectAmount, EffectDefinition } from "@/game/effects/types";
@@ -252,10 +253,9 @@ export function resolveEffect(
   if (effect.conditionControlledArchetypeAtLeast) {
     const { archetype, count, excludeSelf } = effect.conditionControlledArchetypeAtLeast;
     const controller = getPlayer(state, context.controllerId);
-    const owned = controller.board.filter((unit) => {
-      if (excludeSelf && unit.instanceId === context.sourceInstanceId) return false;
-      return getCardDefinition(unit.cardId).archetype === archetype;
-    }).length;
+    const owned = countArchetypeUnits(controller.board, archetype, {
+      excludeInstanceId: excludeSelf ? context.sourceInstanceId : undefined,
+    });
     if (owned < count) return { state, events };
   }
   if (effect.conditionSelfVisible) {
@@ -444,7 +444,7 @@ export function resolveEffect(
                 source: effect.cardId ?? "summon",
                 attack: effect.summonBuff?.attackAmount ?? 0,
                 health: effect.summonBuff?.healthAmount ?? 0,
-                duration: "temporary" as const,
+                duration: (effect.duration ?? "endOfTurn") as StatModifierDuration,
               },
             ],
           }))
@@ -458,7 +458,7 @@ export function resolveEffect(
       const fallback = amountValue(effect.amount);
       const attackDelta = effect.attackAmount ? amountValue(effect.attackAmount) : fallback;
       const healthDelta = effect.healthAmount ? amountValue(effect.healthAmount) : fallback;
-      const duration = effect.permanent ? "permanent" : "temporary";
+      const duration = effect.duration ?? (effect.permanent ? "permanent" : "endOfTurn");
       const buffTargets = resolveUnitTargets(state, effect, context);
       let nextState = { ...state, rngState: buffTargets.rngState };
       for (const { unit, ownerId } of buffTargets.targets) {
@@ -484,7 +484,7 @@ export function resolveEffect(
       const fallback = amountValue(effect.amount);
       const attackDelta = effect.attackAmount ? amountValue(effect.attackAmount) : fallback;
       const healthDelta = effect.healthAmount ? amountValue(effect.healthAmount) : 0;
-      const duration = effect.permanent ? "permanent" : "temporary";
+      const duration = effect.duration ?? (effect.permanent ? "permanent" : "endOfTurn");
       const debuffTargets = resolveUnitTargets(state, effect, context);
       let nextState = { ...state, rngState: debuffTargets.rngState };
       for (const { unit, ownerId } of debuffTargets.targets) {
