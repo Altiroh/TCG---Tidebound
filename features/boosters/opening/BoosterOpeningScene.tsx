@@ -39,7 +39,7 @@ import { packVisualVariables, type BoosterPackVisual } from "@/features/boosters
 import type { BoosterOpeningCard } from "@/features/boosters/opening/types";
 
 interface BoosterOpeningSceneProps {
-  /** Contenu à révéler. Pour l'instant un tirage de test local (`drawTestBoosterCards`). */
+  /** Contenu à révéler — le tirage du serveur (`openBooster`), déjà écrit en base avant que la scène ne commence. */
   cards: readonly BoosterOpeningCard[];
   /** Sachet mis en scène et son calage (`getBoosterPackVisual`). */
   visual: BoosterPackVisual;

@@ -1,117 +1,251 @@
 /*
- * MARKET (boosters) — ce qui s'ajoute à la coquille `GameScreen`.
- * L'objet est un PAQUET : le sachet fermé du booster (le même visuel que
- * l'animation d'ouverture), posé sur une tuile bleu nuit avec son nom, son
- * prix et ses actions. L'économie (prix, solde, pity) vient du serveur et
- * n'est jamais décidée ici.
+ * MES BOOSTERS — la réserve et son plan d'ouverture.
+ *
+ * Deux zones côte à côte : la pile de ce qu'on possède à gauche, LE plan
+ * d'ouverture à droite. On fait passer un sachet de l'une à l'autre, à la
+ * souris ou au clic — c'est tout le geste de l'écran.
+ *
+ * L'ACHAT n'est pas ici : il a son propre écran (`features/market/`). Les
+ * deux partagent le sachet fermé (`closedPackVariables`) et la lecture du
+ * solde (`.balance`), rien de plus.
  */
 
-.shelf {
+/* ──────────────────────────────────────────────────────────────
+ * ÉTABLI — réserve à gauche, plan d'ouverture à droite.
+ * ────────────────────────────────────────────────────────────── */
+.workbench {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(clamp(220px, 18vw, 300px), 1fr));
-  gap: clamp(12px, 1.4vw, 22px);
-  align-content: start;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: clamp(12px, 1.6vw, 26px);
+  align-items: stretch;
 }
 
-.pack {
+@media (max-width: 900px) {
+  .workbench { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ── Réserve ────────────────────────────────────────────────── */
+.stock {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(8px, 1vh, 14px);
+  padding: clamp(12px, 1.4vh, 18px) clamp(12px, 1vw, 18px);
+}
+
+.panelTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  padding-bottom: clamp(6px, 0.8vh, 10px);
+  border-bottom: 1px solid var(--line);
+  font-size: clamp(10px, 1.15vh, 12px);
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.panelTitleCount {
+  font-family: var(--cb-font-ui);
+  font-size: 1.1em;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+  color: var(--cb-cyan);
+}
+
+.stockList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stockEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: clamp(10px, 1.4vh, 18px) 0;
+}
+
+/* Une ligne de réserve : le sachet en vignette, le nom, le nombre. Le
+   `grab` dit que ça se glisse — le clic marche aussi. */
+.stockPack {
+  display: flex;
+  align-items: center;
+  gap: clamp(8px, 0.9vw, 14px);
+  width: 100%;
+  padding: clamp(7px, 0.9vh, 11px) clamp(9px, 0.8vw, 13px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: rgba(130, 178, 210, 0.05);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: grab;
+  transition: border-color 140ms ease-out, background-color 140ms ease-out, transform 140ms ease-out;
+}
+
+.stockPack:hover:not(:disabled) {
+  border-color: var(--line-strong);
+  background: rgba(130, 178, 210, 0.1);
+  transform: translateX(2px);
+}
+
+.stockPack:active:not(:disabled) { cursor: grabbing; }
+.stockPack:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 2px; }
+.stockPack:disabled { opacity: 0.45; cursor: default; }
+
+.stockPackSelected {
+  border-color: rgba(88, 200, 216, 0.5);
+  background: var(--cb-cyan-soft);
+}
+
+.stockPackArt {
+  flex: 0 0 auto;
+  width: clamp(34px, 3.4vw, 46px);
+  aspect-ratio: var(--pack-ratio, 5 / 7);
+  background-image: var(--pack-art);
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.55));
+  pointer-events: none;
+}
+
+.stockPackText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.stockPackName {
+  font-family: var(--cb-font-display);
+  font-size: clamp(13px, 1vw, 16px);
+  font-weight: 600;
+  color: #f2f7fb;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stockPackMeta {
+  font-size: clamp(10px, 0.78vw, 12px);
+  color: var(--ink-dim);
+}
+
+.stockPackCount {
+  flex: 0 0 auto;
+  padding: 0.15em 0.55em;
+  border: 1px solid rgba(88, 200, 216, 0.45);
+  border-radius: 999px;
+  font-size: clamp(11px, 0.85vw, 13px);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #eaf8fb;
+}
+
+/* ── Plan d'ouverture ───────────────────────────────────────────
+   Un cadre en pointillés tant qu'il est vide, un vrai panneau dès qu'un
+   sachet y est posé : la zone dit d'elle-même ce qu'on attend d'elle. */
+.dock {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.55em;
-  padding: clamp(14px, 1.6vw, 24px) clamp(12px, 1.2vw, 18px);
+  justify-content: center;
+  gap: clamp(6px, 0.9vh, 12px);
+  min-height: clamp(240px, 38vh, 420px);
+  padding: clamp(14px, 1.8vh, 24px);
+  border: 2px dashed var(--line-strong);
+  border-radius: var(--radius);
+  background: rgba(8, 18, 30, 0.5);
+  text-align: center;
+  transition: border-color 160ms ease-out, background-color 160ms ease-out, box-shadow 160ms ease-out;
 }
 
-/*
- * Le paquet lui-même : `--pack-art` / `--pack-ratio` sont poussés en
- * variables inline par `BoostersScreen` (`boosterPackVisuals.ts`). Les
- * visuels sont des découpes sur transparence : `contain`, aucun fond, une
- * `drop-shadow` qui épouse la silhouette.
- */
-.packObject {
-  position: relative;
-  width: 62%;
+.dock[data-state="loaded"] {
+  border-style: solid;
+  border-color: var(--line);
+  background: var(--panel);
+}
+
+/* Survolé par un sachet en cours de dépôt. */
+.dock[data-state="over"] {
+  border-style: dashed;
+  border-color: var(--cb-cyan);
+  background: rgba(88, 200, 216, 0.08);
+  box-shadow: inset 0 0 40px rgba(88, 200, 216, 0.12);
+}
+
+/* Pendant un glisser, le plan s'allume même sans être survolé : on doit
+   voir OÙ déposer avant d'y arriver. */
+.workbench[data-dragging="true"] .dock {
+  border-color: rgba(88, 200, 216, 0.55);
+}
+
+.dockPack {
+  width: clamp(110px, 13vw, 190px);
   aspect-ratio: var(--pack-ratio, 5 / 7);
-  border: 0;
-  padding: 0;
-  background-color: transparent;
   background-image: var(--pack-art);
   background-size: contain;
-  background-position: center bottom;
+  background-position: center;
   background-repeat: no-repeat;
-  filter: drop-shadow(0 16px 22px rgba(0, 0, 0, 0.6));
-  transition: transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1), filter 160ms ease;
+  filter: drop-shadow(0 18px 26px rgba(0, 0, 0, 0.6));
+  animation: dockDrop 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
-.packOwned .packObject { cursor: pointer; }
-.packOwned:hover .packObject {
-  transform: translateY(-6px) scale(1.03) rotate(-0.7deg);
-  filter: drop-shadow(0 22px 26px rgba(0, 0, 0, 0.62)) brightness(1.06);
-}
-.packObject:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 6px; border-radius: 8px; }
-
-.packEmpty .packObject {
-  filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.5)) grayscale(0.7) brightness(0.55);
+@keyframes dockDrop {
+  from { opacity: 0; transform: translateY(-14px) scale(0.94) rotate(-2deg); }
+  to { opacity: 1; transform: none; }
 }
 
-/* Compteur d'exemplaires possédés — un jeton dans le coin du paquet. */
-.packCount {
-  position: absolute;
-  top: 4px;
-  right: -6px;
-  min-width: 2em;
-  padding: 0.15em 0.5em;
-  border: 1px solid rgba(88, 200, 216, 0.5);
-  border-radius: 999px;
-  background: var(--panel-solid);
-  color: #eaf8fb;
-  font-size: clamp(11px, 0.85vw, 13px);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  text-align: center;
+/* Silhouette de sachet en creux : la place attend son paquet. */
+.dockGhost {
+  width: clamp(90px, 10vw, 150px);
+  aspect-ratio: 5 / 7;
+  border: 1.5px dashed var(--line-strong);
+  border-radius: 10px;
+  opacity: 0.5;
 }
 
-.packName {
+.dockName {
+  margin: 0;
   font-family: var(--cb-font-display);
-  font-size: clamp(15px, 1.15vw, 19px);
+  font-size: clamp(15px, 1.2vw, 20px);
   font-weight: 600;
-  letter-spacing: 0.02em;
   color: #f2f7fb;
-  text-align: center;
 }
 
-.packMeta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.dockMeta {
+  margin: 0;
   font-size: clamp(11px, 0.85vw, 13px);
-  color: var(--ink-dim);
-  text-align: center;
   font-variant-numeric: tabular-nums;
+  color: var(--ink-dim);
 }
 
-.packPrice {
-  color: #ddc79a;
-  font-weight: 600;
-}
-
-/* Compteur de pity : affiché seulement quand le renforcement a commencé. */
-.packPity {
+.dockPity {
+  margin: 0;
   font-size: clamp(10px, 0.76vw, 12px);
   color: var(--cb-violet);
-  text-align: center;
 }
 
-.packActions {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: auto;
-  padding-top: 6px;
+.dockHint {
+  margin: 0;
+  max-width: 22ch;
+  font-size: clamp(12px, 0.9vw, 14px);
+  line-height: 1.45;
+  color: var(--ink-dim);
 }
 
-/* Rangée « Tester l'animation » : discrète, en bas de page. */
+@media (prefers-reduced-motion: reduce) {
+  .dockPack { animation: none; }
+  .stockPack { transition: none; }
+}
+
+/* Rangée de liens de bas de page : discrète, jamais un appel à l'action. */
 .testRow {
   display: flex;
   align-items: center;

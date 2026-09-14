@@ -1,0 +1,190 @@
+/*
+ * MARKET — la boutique de boosters, sur la coquille `GameScreen`.
+ *
+ * Un étal par booster en vente : le sachet fermé (le même visuel que
+ * l'animation d'ouverture, via `closedPackVariables`), son contenu, son
+ * prix à l'unité, la quantité et le total. Rien d'autre : ouvrir un
+ * booster est l'affaire de « Mes boosters » (`features/boosters/`), et
+ * aucune règle d'économie n'est décidée ici.
+ */
+
+.shelf {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(clamp(220px, 19vw, 300px), 1fr));
+  gap: clamp(12px, 1.4vw, 22px);
+  align-content: start;
+}
+
+.stall {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5em;
+  padding: clamp(14px, 1.6vw, 24px) clamp(12px, 1.2vw, 18px);
+  text-align: center;
+}
+
+/*
+ * Le sachet : `--pack-art` / `--pack-ratio` sont poussés en variables
+ * inline par l'écran. Les visuels sont des découpes sur transparence —
+ * `contain`, aucun fond, une `drop-shadow` qui épouse la silhouette.
+ */
+.stallPack {
+  width: 60%;
+  aspect-ratio: var(--pack-ratio, 5 / 7);
+  background-image: var(--pack-art);
+  background-size: contain;
+  background-position: center bottom;
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 16px 22px rgba(0, 0, 0, 0.6));
+  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), filter 180ms ease;
+}
+
+.stall:hover .stallPack {
+  transform: translateY(-5px) scale(1.03) rotate(-0.7deg);
+  filter: drop-shadow(0 22px 26px rgba(0, 0, 0, 0.62)) brightness(1.05);
+}
+
+.stallName {
+  margin: 0;
+  font-family: var(--cb-font-display);
+  font-size: clamp(15px, 1.15vw, 19px);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #f2f7fb;
+}
+
+.stallMeta {
+  margin: 0;
+  font-size: clamp(11px, 0.85vw, 13px);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-dim);
+}
+
+/* Ce qu'on a DÉJÀ de ce booster : une information de réserve au milieu
+   d'une boutique, donc en cyan et pas en laiton (le laiton, c'est le prix). */
+.stallOwned { color: var(--cb-cyan); }
+
+.stallPrice {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4em;
+  margin: 0;
+  font-family: var(--cb-font-display);
+  font-size: clamp(18px, 1.4vw, 24px);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #ddc79a;
+}
+
+.stallPriceUnit {
+  font-family: var(--cb-font-ui);
+  font-size: 0.46em;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(199, 154, 78, 0.8);
+}
+
+/* ── Quantité ───────────────────────────────────────────────── */
+.quantity {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(130, 178, 210, 0.05);
+}
+
+.quantityStep {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--ink-dim);
+  cursor: pointer;
+  transition: background-color 130ms ease-out, color 130ms ease-out;
+}
+
+.quantityStep:hover:not(:disabled) {
+  background: rgba(130, 178, 210, 0.14);
+  color: var(--ink);
+}
+
+.quantityStep:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 1px; }
+.quantityStep:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.quantityValue {
+  min-width: 2ch;
+  font-size: clamp(13px, 1vw, 15px);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  color: #f2f7fb;
+}
+
+.stallTotal {
+  margin: 0;
+  font-size: clamp(11px, 0.85vw, 13px);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.stallTotalValue {
+  font-size: 1.25em;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #ddc79a;
+}
+
+/* Total hors budget : le chiffre passe au rouge AVANT que le bouton ne
+   s'éteigne, pour qu'on comprenne pourquoi. */
+.stallTotalShort .stallTotalValue { color: var(--danger); }
+
+.stallHint {
+  margin: 0;
+  font-size: clamp(10px, 0.78vw, 12px);
+  line-height: 1.4;
+  color: var(--ink-faint);
+}
+
+/* Rangée de liens de bas de page. */
+.footRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  font-size: clamp(11px, 0.82vw, 13px);
+  color: var(--ink-faint);
+}
+
+/* Solde de Tides en tête de page — même lecture que dans « Mes boosters ». */
+.balance {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35em;
+  font-family: var(--cb-font-display);
+  font-size: clamp(18px, 1.5vw, 26px);
+  font-weight: 600;
+  color: #ddc79a;
+  font-variant-numeric: tabular-nums;
+}
+
+.balanceLabel {
+  font-family: var(--cb-font-ui);
+  font-size: 0.5em;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(199, 154, 78, 0.8);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stallPack { transition: none; }
+  .stall:hover .stallPack { transform: none; }
+}

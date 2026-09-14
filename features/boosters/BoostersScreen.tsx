@@ -1,100 +1,135 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PITY } from "@/game/boosters";
 import { GameScreen } from "@/features/shell/GameScreen";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/boosters/Boosters.module.css";
-import { purchaseBooster, type BoosterInventory } from "@/features/boosters/actions";
+import { openBooster, type BoosterInventory, type BoosterInventoryEntry } from "@/features/boosters/actions";
 import { BoosterOpeningScene } from "@/features/boosters/opening/BoosterOpeningScene";
 import { preloadBoosterOpeningAssets } from "@/features/boosters/opening/boosterOpeningAssets";
 import { closedPackVariables, getBoosterPackVisual } from "@/features/boosters/opening/boosterPackVisuals";
-import { drawTestBoosterCards } from "@/features/boosters/opening/testBoosterCards";
-import type { BoosterOpeningCard } from "@/features/boosters/opening/types";
+import { toOpeningRarity, type BoosterOpeningCard } from "@/features/boosters/opening/types";
 import { playButtonClick } from "@/lib/sound";
 
-/**
- * Boutons « Tester l'animation » : rejouent la scène d'ouverture sans
- * posséder de booster ni être connecté. Purement visuels, comme « Ouvrir »
- * pour l'instant.
- * TODO(booster-serveur) : retirer (ou réserver au développement) une fois
- * l'ouverture réelle branchée.
- */
-const OPENING_TEST_BOOSTERS = [
-  { boosterId: "standard", label: "Standard" },
-  { boosterId: "welcome_tutorial", label: "Bienvenue" },
-] as const;
+/** Type MIME du glisser-déposer d'un booster vers le plan d'ouverture. */
+const DRAG_MIME = "text/tidebound-booster-id";
 
 interface BoostersScreenProps {
   inventory: BoosterInventory;
 }
 
 /**
- * Market — les boosters, sur la coquille commune. Chaque booster est une
- * tuile : le sachet fermé, le nom, le contenu et le prix, puis Ouvrir /
- * Acheter. Le solde de Tides est en tête de page (et dans le bandeau).
+ * MES BOOSTERS — l'inventaire et son plan d'ouverture, rien d'autre.
+ * L'achat vit dans le Market (`/market`), écran séparé : acheter et ouvrir
+ * sont deux gestes différents, à deux moments différents.
  *
- * PROTOTYPE : « Ouvrir » ne lance pour l'instant QUE la scène d'ouverture,
- * avec des cartes du catalogue tirées au hasard localement. Aucun appel
- * serveur, aucune écriture : le booster n'est pas consommé.
+ * À gauche, les boosters possédés, un par type, avec leur nombre
+ * d'exemplaires. À droite, LE plan d'ouverture : on y dépose un booster
+ * (glisser-déposer depuis la colonne de gauche, ou simple clic pour qui ne
+ * peut pas glisser), puis on l'ouvre.
+ *
+ * L'ouverture est RÉELLE : `openBooster` consomme l'exemplaire, tire les
+ * cartes côté serveur et crédite la collection avant que la scène ne
+ * commence. Le client n'a jamais la main sur le contenu — il ne fait que
+ * l'afficher (cf. l'en-tête de `features/boosters/actions.ts`).
  */
 export function BoostersScreen({ inventory }: BoostersScreenProps) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-  const [busyBoosterId, setBusyBoosterId] = useState<string | null>(null);
+  const owned = useMemo(() => inventory.boosters.filter((booster) => booster.owned > 0), [inventory.boosters]);
+
+  /** Booster posé sur le plan, prêt à être ouvert. */
+  const [dockedId, setDockedId] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isOver, setIsOver] = useState(false);
+  const [isOpening, setIsOpening] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  /** Ouverture en cours : cartes tirées UNE fois au clic, pour ne jamais changer en cours de scène. */
+  /** Cartes de l'ouverture en cours — fixées une fois pour toutes par le serveur, jamais retirées en cours de scène. */
   const [opening, setOpening] = useState<{ boosterId: string; cards: BoosterOpeningCard[] } | null>(null);
 
-  const ownedBoosterIds = inventory.boosters
-    .filter((booster) => booster.owned > 0)
-    .map((booster) => booster.boosterId)
-    .join(",");
+  const docked = owned.find((booster) => booster.boosterId === dockedId) ?? null;
 
-  // Images de la scène chargées et décodées en avance : « Ouvrir » démarre sans flash.
+  // Le plan garde un booster tant qu'on en possède : un exemplaire consommé
+  // en laisse d'autres, mais le dernier ouvert vide le plan de lui-même.
   useEffect(() => {
-    if (!ownedBoosterIds) return;
-    for (const boosterId of ownedBoosterIds.split(",")) {
+    setDockedId((current) => {
+      if (current && owned.some((booster) => booster.boosterId === current)) return current;
+      return owned[0]?.boosterId ?? null;
+    });
+  }, [owned]);
+
+  // Images de la scène chargées et décodées en avance : l'ouverture démarre sans flash.
+  const ownedIdsKey = owned.map((booster) => booster.boosterId).join(",");
+  useEffect(() => {
+    if (!ownedIdsKey) return;
+    for (const boosterId of ownedIdsKey.split(",")) {
       void preloadBoosterOpeningAssets(getBoosterPackVisual(boosterId));
     }
-  }, [ownedBoosterIds]);
+  }, [ownedIdsKey]);
 
-  function handleOpen(boosterId: string) {
-    if (opening) return;
+  function dock(boosterId: string) {
     playButtonClick();
     setError(null);
-    // TODO(booster-serveur) : c'est ici que se branchera la vraie ouverture —
-    // `openBooster(boosterId)` (`features/boosters/actions.ts`) consomme le
-    // booster, tire le contenu et crédite la collection côté base. Son
-    // résultat (`cards`, converties via `toOpeningRarity`) remplacera
-    // `drawTestBoosterCards()`. Pour le prototype, AUCUN appel.
-    setOpening({ boosterId, cards: drawTestBoosterCards(boosterId) });
+    setDockedId(boosterId);
+  }
+
+  async function handleOpen(boosterId: string) {
+    if (isOpening || opening) return;
+    playButtonClick();
+    setError(null);
+    setIsOpening(true);
+
+    const result = await openBooster(boosterId);
+    setIsOpening(false);
+
+    if (!result.ok || !result.data) {
+      setError(result.error ?? "Ouverture impossible.");
+      return;
+    }
+
+    setOpening({
+      boosterId,
+      cards: result.data.cards.map((card) => ({
+        // Une même carte peut sortir deux fois du même booster : c'est le
+        // slot qui rend la clé unique, pas l'identifiant de carte.
+        id: `${card.slotIndex}-${card.cardId}`,
+        cardId: card.cardId,
+        rarity: toOpeningRarity(card.rarity),
+      })),
+    });
   }
 
   function handleOpeningClosed() {
     setOpening(null);
-    // TODO(booster-serveur) : une fois l'ouverture réelle branchée, rafraîchir
-    // l'inventaire et la collection ici (`router.refresh()`).
+    // L'exemplaire est consommé et la collection créditée côté base : on
+    // relit l'inventaire plutôt que de deviner le nouvel état ici.
+    router.refresh();
   }
 
-  function handlePurchase(boosterId: string) {
-    playButtonClick();
-    setError(null);
-    setBusyBoosterId(boosterId);
-
-    void purchaseBooster(boosterId)
-      .then((result) => {
-        if (!result.ok) {
-          setError(result.error ?? "Achat impossible.");
-          return;
-        }
-        // `revalidatePath` côté action a invalidé le cache ; on rafraîchit
-        // pour voir le nouveau solde et le nouvel exemplaire.
-        startTransition(() => router.refresh());
-      })
-      .finally(() => setBusyBoosterId(null));
+  if (!inventory.isSignedIn) {
+    return (
+      <GameScreen active="boosters">
+        <div className={game.content}>
+          <div className={game.contentWide}>
+            <div className={game.pageHead}>
+              <div>
+                <p className={game.eyebrow}>Réserve</p>
+                <h1 className={game.title}>Mes boosters</h1>
+              </div>
+            </div>
+            <div className={`${game.panel} ${game.empty}`}>
+              <p className={game.emptyTitle}>Connecte-toi pour ouvrir des boosters</p>
+              <p className={game.muted}>Tes boosters, tes Tides et ta collection sont enregistrés sur ton compte.</p>
+              <Link href="/connexion" className={game.primary} onClick={() => playButtonClick()} style={{ marginTop: 6 }}>
+                Se connecter
+              </Link>
+            </div>
+          </div>
+        </div>
+      </GameScreen>
+    );
   }
 
   return (
@@ -103,110 +138,124 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
         <div className={game.contentWide}>
           <div className={game.pageHead}>
             <div>
-              <p className={game.eyebrow}>Market</p>
-              <h1 className={game.title}>Boosters</h1>
+              <p className={game.eyebrow}>Réserve</p>
+              <h1 className={game.title}>Mes boosters</h1>
             </div>
-            {inventory.isSignedIn && (
-              <span className={styles.balance} aria-label={`Solde : ${inventory.balance} Tides`}>
-                {inventory.balance}
-                <span className={styles.balanceLabel}>Tides</span>
-              </span>
-            )}
+            <span className={styles.balance} aria-label={`Solde : ${inventory.balance} Tides`}>
+              {inventory.balance}
+              <span className={styles.balanceLabel}>Tides</span>
+            </span>
           </div>
 
-          {!inventory.isSignedIn ? (
-            <div className={`${game.panel} ${game.empty}`}>
-              <p className={game.emptyTitle}>Connecte-toi pour ouvrir des boosters</p>
-              <p className={game.muted}>Tes boosters, tes Tides et ta collection sont enregistrés sur ton compte.</p>
-              <Link href="/connexion" className={game.primary} onClick={() => playButtonClick()} style={{ marginTop: 6 }}>
-                Se connecter
-              </Link>
-            </div>
-          ) : inventory.boosters.length === 0 ? (
-            <div className={`${game.panel} ${game.empty}`}>
-              <p className={game.emptyTitle}>Aucun booster disponible</p>
-              <p className={game.muted}>
-                Le catalogue de boosters est vide en base. Applique les migrations Supabase, puis lance <code>npm run seed:cards</code>.
+          {error && <p className={game.error}>{error}</p>}
+
+          <div className={styles.workbench} data-dragging={isDragging ? "true" : "false"}>
+            <section className={`${game.panel} ${styles.stock}`} aria-label="Boosters possédés">
+              <p className={styles.panelTitle}>
+                Possédés
+                <span className={styles.panelTitleCount}>{owned.reduce((sum, booster) => sum + booster.owned, 0)}</span>
               </p>
-            </div>
-          ) : (
-            <>
-              {error && <p className={game.error}>{error}</p>}
 
-              <div className={styles.shelf}>
-                {inventory.boosters.map((booster) => {
-                  const busy = busyBoosterId === booster.boosterId || isPending;
-                  const canAfford = booster.price !== null && inventory.balance >= booster.price;
-                  const packClass = booster.owned > 0 ? `${styles.pack} ${styles.packOwned}` : `${styles.pack} ${styles.packEmpty}`;
-                  // Le compteur de pity n'est montré qu'une fois le renforcement commencé : avant, c'est du bruit.
-                  const showPity = booster.packsSinceAbyssal >= PITY.rampStartsAfterPacks;
+              {owned.length === 0 ? (
+                <div className={styles.stockEmpty}>
+                  <p className={game.muted}>Tu n&apos;as aucun booster en réserve.</p>
+                  <Link href="/market" className={game.primary} onClick={() => playButtonClick()}>
+                    Aller au Market
+                  </Link>
+                </div>
+              ) : (
+                <div className={styles.stockList}>
+                  {owned.map((booster) => (
+                    <StockPack
+                      key={booster.boosterId}
+                      booster={booster}
+                      selected={booster.boosterId === dockedId}
+                      disabled={isOpening || opening !== null}
+                      onSelect={() => dock(booster.boosterId)}
+                      onDragStart={(event) => {
+                        event.dataTransfer.setData(DRAG_MIME, booster.boosterId);
+                        event.dataTransfer.effectAllowed = "move";
+                        setIsDragging(true);
+                      }}
+                      onDragEnd={() => {
+                        setIsDragging(false);
+                        setIsOver(false);
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
 
-                  return (
-                    <article key={booster.boosterId} className={`${game.panelRaised} ${packClass}`} aria-label={booster.name}>
-                      <button
-                        type="button"
-                        className={styles.packObject}
-                        // Le sachet fermé de CE booster (le même visuel que l'animation d'ouverture), et non un dos de carte.
-                        style={closedPackVariables(getBoosterPackVisual(booster.boosterId))}
-                        onClick={() => booster.owned > 0 && !busy && handleOpen(booster.boosterId)}
-                        disabled={booster.owned === 0 || busy}
-                        aria-label={booster.owned > 0 ? `Ouvrir un ${booster.name}` : `${booster.name} — aucun exemplaire`}
-                        title={booster.owned > 0 ? "Ouvrir" : "Tu n'en possèdes aucun"}
-                      >
-                        {booster.owned > 0 && <span className={styles.packCount}>×{booster.owned}</span>}
-                      </button>
+            {/* LE plan d'ouverture : une seule zone, toujours à la même place,
+                qu'on vise à la souris comme on poserait le sachet sur la table. */}
+            <section
+              className={styles.dock}
+              data-state={isOver ? "over" : docked ? "loaded" : "empty"}
+              aria-label="Plan d'ouverture"
+              onDragOver={(event) => {
+                if (!event.dataTransfer.types.includes(DRAG_MIME)) return;
+                event.preventDefault();
+                event.dataTransfer.dropEffect = "move";
+                setIsOver(true);
+              }}
+              onDragLeave={(event) => {
+                // Le survol des enfants déclenche `dragleave` sur le parent :
+                // on ne l'écoute que lorsqu'on sort vraiment de la zone.
+                if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+                setIsOver(false);
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                setIsOver(false);
+                setIsDragging(false);
+                const boosterId = event.dataTransfer.getData(DRAG_MIME);
+                if (boosterId) dock(boosterId);
+              }}
+            >
+              {docked ? (
+                <>
+                  <span
+                    className={styles.dockPack}
+                    style={closedPackVariables(getBoosterPackVisual(docked.boosterId))}
+                    aria-hidden
+                  />
+                  <p className={styles.dockName}>{docked.name}</p>
+                  <p className={styles.dockMeta}>
+                    {docked.cardCount} cartes · {docked.owned} en réserve
+                  </p>
+                  {docked.packsSinceAbyssal >= PITY.rampStartsAfterPacks && (
+                    <p className={styles.dockPity}>
+                      {docked.packsSinceAbyssal} sans Abyssale
+                      {docked.packsSinceAbyssal >= PITY.guaranteeAtPack - 1 ? " · garantie au prochain" : " · chance renforcée"}
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    className={game.primary}
+                    onClick={() => void handleOpen(docked.boosterId)}
+                    disabled={isOpening || opening !== null}
+                  >
+                    {isOpening ? "Ouverture…" : "Ouvrir"}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span className={styles.dockGhost} aria-hidden />
+                  <p className={styles.dockHint}>
+                    {owned.length > 0
+                      ? "Dépose ici le booster à ouvrir"
+                      : "Aucun booster à ouvrir — passe par le Market"}
+                  </p>
+                </>
+              )}
+            </section>
+          </div>
 
-                      <span className={styles.packName}>{booster.name}</span>
-                      <span className={styles.packMeta}>
-                        <span>{booster.cardCount} cartes</span>
-                        {booster.price !== null && (
-                          <>
-                            <span aria-hidden>·</span>
-                            <span className={styles.packPrice}>{booster.price} Tides</span>
-                          </>
-                        )}
-                        {booster.owned === 0 && <span className={game.tag}>Aucun</span>}
-                      </span>
-
-                      {showPity && (
-                        <span className={styles.packPity}>
-                          {booster.packsSinceAbyssal} sans Abyssale
-                          {booster.packsSinceAbyssal >= PITY.guaranteeAtPack - 1 ? " · garantie au prochain" : " · chance renforcée"}
-                        </span>
-                      )}
-
-                      <div className={styles.packActions}>
-                        {booster.owned > 0 && (
-                          <button type="button" className={game.primary} onClick={() => handleOpen(booster.boosterId)} disabled={busy}>
-                            {busy ? "Ouverture…" : "Ouvrir"}
-                          </button>
-                        )}
-                        {booster.isPurchasable && booster.price !== null && (
-                          <button
-                            type="button"
-                            className={game.secondary}
-                            onClick={() => handlePurchase(booster.boosterId)}
-                            disabled={busy || !canAfford}
-                            title={canAfford ? undefined : "Solde de Tides insuffisant"}
-                          >
-                            Acheter
-                          </button>
-                        )}
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            </>
-          )}
-
-          <div className={styles.testRow} role="group" aria-label="Tester l’animation d’ouverture">
-            <span>Tester l&apos;animation d&apos;ouverture</span>
-            {OPENING_TEST_BOOSTERS.map((test) => (
-              <button key={test.boosterId} type="button" className={game.link} onClick={() => handleOpen(test.boosterId)} disabled={opening !== null}>
-                {test.label}
-              </button>
-            ))}
+          <div className={styles.testRow}>
+            <Link href="/market" className={game.link} onClick={() => playButtonClick()}>
+              Acheter des boosters →
+            </Link>
             <Link href="/collection" className={game.link} onClick={() => playButtonClick()} style={{ marginLeft: "auto" }}>
               Voir la collection →
             </Link>
@@ -214,7 +263,56 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
         </div>
       </div>
 
-      {opening && <BoosterOpeningScene cards={opening.cards} visual={getBoosterPackVisual(opening.boosterId)} onClose={handleOpeningClosed} />}
+      {opening && (
+        <BoosterOpeningScene
+          cards={opening.cards}
+          visual={getBoosterPackVisual(opening.boosterId)}
+          onClose={handleOpeningClosed}
+        />
+      )}
     </GameScreen>
+  );
+}
+
+/**
+ * Un type de booster en réserve. Glissable vers le plan, ET cliquable :
+ * le glisser-déposer est le geste naturel, jamais le seul — au clavier ou
+ * sur écran tactile, un clic pose le même booster sur le plan.
+ */
+function StockPack({
+  booster,
+  selected,
+  disabled,
+  onSelect,
+  onDragStart,
+  onDragEnd,
+}: {
+  booster: BoosterInventoryEntry;
+  selected: boolean;
+  disabled: boolean;
+  onSelect: () => void;
+  onDragStart: (event: React.DragEvent<HTMLButtonElement>) => void;
+  onDragEnd: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={`${styles.stockPack} ${selected ? styles.stockPackSelected : ""}`}
+      draggable={!disabled}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      onClick={onSelect}
+      disabled={disabled}
+      aria-pressed={selected}
+      aria-label={`${booster.name} — ${booster.owned} en réserve`}
+      title="Glisse-le sur le plan, ou clique pour l'y poser"
+    >
+      <span className={styles.stockPackArt} style={closedPackVariables(getBoosterPackVisual(booster.boosterId))} aria-hidden />
+      <span className={styles.stockPackText}>
+        <span className={styles.stockPackName}>{booster.name}</span>
+        <span className={styles.stockPackMeta}>{booster.cardCount} cartes</span>
+      </span>
+      <span className={styles.stockPackCount}>×{booster.owned}</span>
+    </button>
   );
 }

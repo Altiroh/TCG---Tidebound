@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient, createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { createSeed } from "@/game/rng";
+import { MAX_PURCHASE_QUANTITY } from "@/features/boosters/constants";
 import { drawBooster, type BoosterPoolCard, type BoosterSlotRule, type CardRarity, type DrawnCard } from "@/game/boosters";
 
 /**
@@ -111,22 +112,34 @@ export async function fetchBoosterInventory(): Promise<BoosterInventory> {
   }
 }
 
-/** Achat d'un booster contre des Tides — vérification du solde et débit atomiques en base. */
-export async function purchaseBooster(boosterId: string): Promise<ActionResult<{ balance: number }>> {
+/**
+ * Achat d'un ou plusieurs boosters contre des Tides.
+ *
+ * Le prix, le solde et le débit sont entièrement décidés en base
+ * (`purchase_booster`, atomique et `security definer`) : la quantité est
+ * la SEULE chose que le client envoie, et elle est bornée ici avant même
+ * d'atteindre la fonction. Aucun prix ne transite par le navigateur.
+ */
+export async function purchaseBooster(boosterId: string, quantity = 1): Promise<ActionResult<{ balance: number }>> {
   const session = await requireUser();
   if (!session) return { ok: false, error: "Connecte-toi pour acheter un booster." };
+
+  if (!Number.isInteger(quantity) || quantity < 1 || quantity > MAX_PURCHASE_QUANTITY) {
+    return { ok: false, error: `Quantité invalide (1 à ${MAX_PURCHASE_QUANTITY}).` };
+  }
 
   try {
     const service = createSupabaseServiceRoleClient();
     const { data, error } = await service.rpc("purchase_booster", {
       p_user_id: session.userId,
       p_booster_id: boosterId,
-      p_quantity: 1,
+      p_quantity: quantity,
     });
 
     if (error) return { ok: false, error: error.message };
     if (!data?.ok) return { ok: false, error: data?.error ?? "Achat refusé." };
 
+    revalidatePath("/market");
     revalidatePath("/boosters");
     return { ok: true, data: { balance: data.balance ?? 0 } };
   } catch (error) {
@@ -227,6 +240,7 @@ export async function openBooster(boosterId: string): Promise<ActionResult<OpenB
     if (!data?.ok) return { ok: false, error: data?.error ?? "Ouverture refusée." };
 
     revalidatePath("/boosters");
+    revalidatePath("/market");
     revalidatePath("/collection");
 
     return {

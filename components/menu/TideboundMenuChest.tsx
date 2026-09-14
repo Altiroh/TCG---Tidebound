@@ -69,11 +69,14 @@ export interface ChestIconSlotDef {
 const SLOTS: ChestSlotDef[] = [
   { id: "main", label: "Jouer", href: "/partie", variant: "primary", rect: { x: 27, y: 37.6, w: 44.9, h: 10.5 } },
   // "Market" au sens de la Roadmap (boosters et économie) : la plaque mène
-  // pour l'instant à l'écran Boosters (inventaire, achat en Tides,
-  // ouverture). La boutique complète — offres, recyclage des doublons — n'y
-  // est pas encore ; l'illustration de la plaque, elle, ne change pas.
-  { id: "secondaryA", label: "Market", href: "/boosters", variant: "secondary", rect: { x: 54.1, y: 50.6, w: 33.1, h: 11.8 } },
-  { id: "secondaryB", label: "Collection", href: "/collection", variant: "secondary", rect: { x: 12.6, y: 50.6, w: 32.7, h: 11.8 } },
+  // à la BOUTIQUE (`/market`, achat en Tides) ; la réserve et l'ouverture
+  // sont un écran voisin (`/boosters`), atteignable depuis le bandeau. Le
+  // recyclage des doublons n'existe pas encore ; l'illustration de la
+  // plaque, elle, ne change pas.
+  { id: "secondaryA", label: "Market", href: "/market", variant: "secondary", rect: { x: 54.1, y: 50.6, w: 33.1, h: 11.8 } },
+  // "Cartes" comme dans le bandeau : cette plaque ouvre le catalogue de
+  // cartes, pas l'ensemble de la collection du joueur.
+  { id: "secondaryB", label: "Cartes", href: "/collection", variant: "secondary", rect: { x: 12.6, y: 50.6, w: 32.7, h: 11.8 } },
 ];
 
 // Pas de bouton Options pour l'instant : aucune page Options n'existe encore

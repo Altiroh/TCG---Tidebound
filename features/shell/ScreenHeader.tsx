@@ -20,8 +20,14 @@ export type ScreenSection = "collection" | "decks" | "market" | "boosters" | "qu
  * propose à la place un retour explicite au menu.
  */
 const TABS: Array<{ section: ScreenSection; label: string; href: string }> = [
-  { section: "collection", label: "Collection", href: "/collection" },
+  // « Cartes » plutôt que « Collection » : la collection du joueur, c'est
+  // aussi ses decks et ses boosters. Cet onglet-ci ne montre que les
+  // cartes, autant que son nom le dise.
+  { section: "collection", label: "Cartes", href: "/collection" },
   { section: "decks", label: "Decks", href: "/decks" },
+  // Market = la BOUTIQUE (acheter) ; Mes boosters = la RÉSERVE (ouvrir).
+  // Deux écrans, deux onglets, deux verbes — les confondre était la
+  // principale ambiguïté de l'ancien écran unique.
   { section: "market", label: "Market", href: "/market" },
   { section: "boosters", label: "Mes boosters", href: "/boosters" },
   { section: "quetes", label: "Quêtes", href: "/quetes" },
