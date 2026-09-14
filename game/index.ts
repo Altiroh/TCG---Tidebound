@@ -56,6 +56,8 @@ export {
   STATUS_SILENCE,
 } from "@/game/cards/types";
 export { CARD_DATABASE, CORE_SET, getCardDefinition, canBeEquipTarget, hasAnyValidEquipTarget } from "@/game/cards/sets/core";
+export { collectAuraContributions } from "@/game/cards/stats";
+export type { AuraContext, AuraContribution } from "@/game/cards/stats";
 export { computeEffectiveStats, computeStatModifierDelta } from "@/game/cards/stats";
 export type { EffectiveStats } from "@/game/cards/stats";
 

@@ -1,6 +1,13 @@
 "use client";
 
-import { getCardDefinition, type CardInstance, type StatModifierDuration, type TideStateName } from "@/game";
+import {
+  collectAuraContributions,
+  getCardDefinition,
+  type AuraContext,
+  type CardInstance,
+  type StatModifierDuration,
+  type TideStateName,
+} from "@/game";
 import { TIDE_STATE_LABELS } from "@/features/match/cardDisplay";
 import { formatStatDelta } from "@/features/match/formatEvent";
 import { CardThumb } from "@/features/match/CardThumb";
@@ -31,14 +38,18 @@ function knownCardName(source: string): string | null {
 }
 
 /**
- * Tout ce qui écarte une carte de plateau de sa fiche imprimée : buffs/malus
- * (`instance.modifiers`, regroupés par source et durée), carte liée par un
- * Équipement, ajustement de la
- * Marée courante (`tideAffinity`) et dégâts marqués. Les auras dynamiques
- * (qui dépendent du reste du plateau) n'y figurent pas — le détail de carte
- * n'a pas ce contexte, cf. `AuraContext`.
+ * Tout ce qui écarte une carte de plateau de sa fiche imprimée : bonus
+ * reçus d'autres cartes présentes (`auraContext`, nommés un par un), buffs/
+ * malus posés sur elle (`instance.modifiers`, regroupés par source et
+ * durée), carte liée par un Équipement, ajustement de la Marée courante
+ * (`tideAffinity`) et dégâts marqués.
  */
-function collectAppliedEffects(instance: CardInstance, tideState: TideStateName, boardUnits: readonly CardInstance[]): AppliedEffect[] {
+function collectAppliedEffects(
+  instance: CardInstance,
+  tideState: TideStateName,
+  boardUnits: readonly CardInstance[],
+  auraContext?: AuraContext
+): AppliedEffect[] {
   const def = getCardDefinition(instance.cardId);
   const effects: AppliedEffect[] = [];
 
@@ -63,6 +74,25 @@ function collectAppliedEffects(instance: CardInstance, tideState: TideStateName,
       delta: getCardDefinition(equipped.cardId).name,
       tone: "neutral",
     });
+  }
+
+  // Bonus venus du plateau : nommés carte par carte ("+1 Puissance —
+  // Cra-Poiscail Porte-Étendard") plutôt que fondus dans le total, pour que
+  // le joueur sache QUI renforce sa créature et ce qu'il perd en la perdant.
+  if (auraContext) {
+    for (const contribution of collectAuraContributions(instance, tideState, auraContext)) {
+      const delta = formatStatDelta(contribution.attack, contribution.health);
+      if (!delta) continue;
+      const isSelf = contribution.sourceInstanceId === instance.instanceId;
+      effects.push({
+        key: `aura-${contribution.sourceInstanceId ?? contribution.sourceCardId}-${contribution.attack}-${contribution.health}`,
+        thumbnail: { kind: "card", cardId: contribution.sourceCardId },
+        source: isSelf ? "Sa propre capacité" : getCardDefinition(contribution.sourceCardId).name,
+        delta,
+        detail: isSelf ? "Tant que la condition tient" : "Tant que cette carte est en jeu",
+        tone: toneOf(contribution.attack, contribution.health),
+      });
+    }
   }
 
   const grouped = new Map<string, { source: string; duration: StatModifierDuration; attack: number; health: number }>();
@@ -146,12 +176,15 @@ export function AppliedEffectsList({
   instance,
   tideState,
   boardUnits = [],
+  auraContext,
 }: {
   instance: CardInstance;
   tideState: TideStateName;
   boardUnits?: readonly CardInstance[];
+  /** Plateau du contrôleur — sans lui, les bonus reçus d'autres cartes ne peuvent pas être nommés. */
+  auraContext?: AuraContext;
 }) {
-  const effects = collectAppliedEffects(instance, tideState, boardUnits);
+  const effects = collectAppliedEffects(instance, tideState, boardUnits, auraContext);
   if (effects.length === 0) return null;
 
   return (

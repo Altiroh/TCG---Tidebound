@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
+  collectAuraContributions,
   computeEffectiveStats,
   computeStatModifierDelta,
   getCardDefinition,
@@ -10,6 +11,7 @@ import {
   STATUS_MALADE,
   STATUS_SILENCE,
   UNIT_CARD_TYPES,
+  type AuraContext,
   type CardDefinition,
   type CardInstance,
   type TideStateName,
@@ -32,6 +34,14 @@ interface CardTileProps {
   scaleOnHover?: boolean;
   /** Taille en pixels réels des badges de statut flottants (`StatusBadge`) — indépendante de `widthClassName` puisqu'ils vivent hors du conteneur à requête de conteneur. Défaut : 38 (cartes de plateau). La vue détail (`CardDetailModal`, carte bien plus grande) passe une valeur plus élevée pour rester proportionnée. */
   badgeSize?: number;
+  /**
+   * Plateau du CONTRÔLEUR de cette carte (+ sa Raison, + l'orientation de
+   * Marée). Sans lui, la carte n'affiche que sa valeur propre : tous les
+   * bonus venus d'une autre carte — Porte-Étendard, Trône de Bouchon,
+   * Destrier, Capitaine Sans Sommeil — restent invisibles alors que le
+   * combat, lui, les compte. À fournir dès que la carte est EN JEU.
+   */
+  auraContext?: AuraContext;
   /**
    * Structure actuellement invisible pour l'adversaire (`visibleDuringTide`) SUR SON PROPRE plateau — même
    * son propriétaire ne voit alors que le dos de carte pour l'illustration/le texte/les stats, mais garde les
@@ -281,13 +291,17 @@ export function CardTile({
   scaleOnHover = true,
   faceDown = false,
   badgeSize = 38,
+  auraContext,
   draggable = false,
   onDragStart,
   liftOnHover = false,
 }: CardTileProps) {
   const def = getCardDefinition(instance.cardId);
   const isAbyssal = def.subtype === "abyssal";
-  const stats = computeEffectiveStats(instance, tideState);
+  const stats = computeEffectiveStats(instance, tideState, auraContext);
+  // Bonus actuellement reçus du plateau — alimente la puce du bloc de règles.
+  const boardBonuses = auraContext ? collectAuraContributions(instance, tideState, auraContext) : [];
+  const hasActiveBoardBonus = boardBonuses.length > 0;
   const isUnit = (UNIT_CARD_TYPES as readonly string[]).includes(def.type);
   const hasResistance = isUnit || def.health !== undefined;
   const resistanceRemaining = Math.max(0, stats.health - instance.damageMarked);
@@ -439,6 +453,24 @@ export function CardTile({
               }`}
               style={{ ...zoneStyle(rulesZone), fontSize: `${rulesFontSizeCqw(def.text)}cqw` }}
             >
+              {/* Puce discrète : une condition de plateau est REMPLIE en ce
+                  moment (banc assez grand, Destrier présent, Marée dans le
+                  bon sens…). Volontairement muette — elle signale qu'il se
+                  passe quelque chose, la fiche de carte dit quoi. */}
+              {hasActiveBoardBonus && (
+                <span
+                  aria-hidden
+                  title="Un effet de plateau est actif sur cette carte"
+                  className="mr-[0.35em] inline-block align-middle"
+                  style={{
+                    width: "0.5em",
+                    height: "0.5em",
+                    borderRadius: "9999px",
+                    background: "var(--accent)",
+                    boxShadow: "0 0 0.35em var(--accent)",
+                  }}
+                />
+              )}
               {def.text}
             </div>
           )}

@@ -1,6 +1,6 @@
 "use client";
 
-import type { CardInstance, TideStateName } from "@/game";
+import type { AuraContext, CardInstance, TideStateName } from "@/game";
 import { CardTile } from "@/features/match/CardTile";
 import { CardBack } from "@/features/match/CardBack";
 
@@ -27,6 +27,8 @@ interface BoardCardTileProps {
    * retire aucune affordance : seul le rendu visuel change.
    */
   faceDown?: boolean;
+  /** Plateau du contrôleur de cette carte — sans lui, les bonus reçus d'autres cartes ne s'affichent pas (cf. `CardTile.auraContext`). */
+  auraContext?: AuraContext;
 }
 
 /**
@@ -45,6 +47,7 @@ export function BoardCardTile({
   widthClassName = "w-28",
   hiddenFromViewer = false,
   faceDown = false,
+  auraContext,
 }: BoardCardTileProps) {
   if (hiddenFromViewer) {
     return (
@@ -64,6 +67,7 @@ export function BoardCardTile({
         widthClassName={widthClassName}
         scaleOnHover={false}
         faceDown={faceDown}
+        auraContext={auraContext}
       />
       <button
         type="button"

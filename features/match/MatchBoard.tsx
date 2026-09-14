@@ -165,6 +165,17 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
     ? eligibleCandidatesFor(state, state.pendingReaction.events, viewerPlayerId, state.pendingReaction.turnNumber, state.pendingReaction.usedCandidateKeys)
     : [];
 
+
+  /**
+   * Contexte de plateau passé à chaque carte en jeu : sans lui, une carte
+   * afficherait sa valeur imprimée alors que le combat compte déjà les
+   * bonus reçus de ses voisines (Porte-Étendard, Trône, Destrier…).
+   */
+  const auraContextFor = (player: typeof viewerPlayer) => ({
+    controllerBoard: player.board,
+    controllerReason: player.reason,
+    tideOrientation: state.environment.tideOrientation,
+  });
   const bannerEvent = usePhaseBannerEvent(state);
   const actionToasts = useActionToasts(state);
   const cardFlights = useCardFlights(state);
@@ -692,6 +703,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
                 selected={pending?.kind === "attack"}
                 onClick={() => handleAnyBoardCardClick(unit.instanceId, otherPlayer.id)}
                 onShowDetail={() => setDetailInstance(unit)}
+                auraContext={auraContextFor(otherPlayer)}
                 hiddenFromViewer={!isVisibleDuringTide(getCardDefinition(unit.cardId), state.environment.tideState)}
               />
             </div>
@@ -832,6 +844,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
                 selected={selectedBoardId === unit.instanceId || pending?.kind === "attack"}
                 onClick={() => handleAnyBoardCardClick(unit.instanceId, viewerPlayer.id)}
                 onShowDetail={() => setDetailInstance(unit)}
+                auraContext={auraContextFor(viewerPlayer)}
                 faceDown={!isVisibleDuringTide(getCardDefinition(unit.cardId), state.environment.tideState)}
               />
             </div>
@@ -997,6 +1010,11 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
           instance={detailInstance}
           tideState={state.environment.tideState}
           boardUnits={state.players.flatMap((p) => p.board)}
+          // Contexte du plateau où vit CETTE carte : ses bonus reçus sont
+          // nommés dans la fiche (Porte-Étendard, Destrier…).
+          auraContext={auraContextFor(
+            viewerPlayer.board.some((u) => u.instanceId === detailInstance.instanceId) ? viewerPlayer : otherPlayer
+          )}
           onClose={() => setDetailInstance(null)}
         />
       )}

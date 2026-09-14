@@ -170,6 +170,17 @@ export function OnlineBoard({
     ? eligibleCandidatesFor(state, state.pendingReaction!.events, myUserId, state.pendingReaction!.turnNumber, state.pendingReaction!.usedCandidateKeys)
     : [];
 
+
+  /**
+   * Contexte de plateau passé à chaque carte en jeu : sans lui, une carte
+   * afficherait sa valeur imprimée alors que le combat compte déjà les
+   * bonus reçus de ses voisines (Porte-Étendard, Trône, Destrier…).
+   */
+  const auraContextFor = (player: typeof me) => ({
+    controllerBoard: player.board,
+    controllerReason: player.reason,
+    tideOrientation: state.environment.tideOrientation,
+  });
   const bannerEvent = usePhaseBannerEvent(state);
   const actionToasts = useActionToasts(state);
   const cardFlights = useCardFlights(state);
@@ -548,6 +559,7 @@ export function OnlineBoard({
                 selected={selection?.kind === "attack"}
                 onClick={() => handleAnyBoardCardClick(unit.instanceId, opponent.id)}
                 onShowDetail={() => setDetailInstance(unit)}
+                auraContext={auraContextFor(opponent)}
                 hiddenFromViewer={!isVisibleDuringTide(getCardDefinition(unit.cardId), state.environment.tideState)}
               />
             </div>
@@ -684,6 +696,7 @@ export function OnlineBoard({
                 selected={selectedBoardId === unit.instanceId || selection?.kind === "attack"}
                 onClick={() => handleAnyBoardCardClick(unit.instanceId, me.id)}
                 onShowDetail={() => setDetailInstance(unit)}
+                auraContext={auraContextFor(me)}
                 faceDown={!isVisibleDuringTide(getCardDefinition(unit.cardId), state.environment.tideState)}
               />
             </div>
@@ -834,6 +847,11 @@ export function OnlineBoard({
           instance={detailInstance}
           tideState={state.environment.tideState}
           boardUnits={state.players.flatMap((p) => p.board)}
+          // Contexte du plateau où vit CETTE carte : ses bonus reçus sont
+          // nommés dans la fiche (Porte-Étendard, Destrier…).
+          auraContext={auraContextFor(
+            me.board.some((u) => u.instanceId === detailInstance.instanceId) ? me : opponent
+          )}
           onClose={() => setDetailInstance(null)}
         />
       )}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import type { CardInstance, TideStateName } from "@/game";
+import type { AuraContext, CardInstance, TideStateName } from "@/game";
 import { AppliedEffectsList } from "@/features/match/AppliedEffectsList";
 import { CardInfoPanel } from "@/features/match/CardInfoPanel";
 import { CardTile } from "@/features/match/CardTile";
@@ -11,6 +11,8 @@ interface CardDetailModalProps {
   tideState: TideStateName;
   /** Permanents des deux plateaux — pour montrer l'Équipement attaché à la carte, ou l'unité qu'elle équipe. */
   boardUnits?: readonly CardInstance[];
+  /** Plateau du contrôleur de CETTE carte : fait apparaître, nommés, les bonus qu'elle reçoit de ses voisines. */
+  auraContext?: AuraContext;
   onClose: () => void;
 }
 
@@ -20,7 +22,7 @@ interface CardDetailModalProps {
  * coloré derrière le panneau (`showGlow={false}`) : ouvert au clic sur une
  * carte posée plutôt qu'au survol (plus de "hover scale" sur le plateau).
  */
-export function CardDetailModal({ instance, tideState, boardUnits = [], onClose }: CardDetailModalProps) {
+export function CardDetailModal({ instance, tideState, boardUnits = [], auraContext, onClose }: CardDetailModalProps) {
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") onClose();
@@ -46,8 +48,8 @@ export function CardDetailModal({ instance, tideState, boardUnits = [], onClose 
       </button>
 
       <div className="flex w-80 flex-col gap-3 sm:w-96" onClick={(e) => e.stopPropagation()}>
-        <CardTile instance={instance} tideState={tideState} widthClassName="w-full" scaleOnHover={false} badgeSize={90} />
-        <AppliedEffectsList instance={instance} tideState={tideState} boardUnits={boardUnits} />
+        <CardTile instance={instance} tideState={tideState} auraContext={auraContext} widthClassName="w-full" scaleOnHover={false} badgeSize={90} />
+        <AppliedEffectsList instance={instance} tideState={tideState} boardUnits={boardUnits} auraContext={auraContext} />
       </div>
       <div className="-my-8 hidden self-stretch sm:block" onClick={(e) => e.stopPropagation()}>
         <CardInfoPanel cardId={instance.cardId} showGlow={false} />
