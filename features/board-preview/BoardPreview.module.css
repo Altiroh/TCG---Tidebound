@@ -1,0 +1,833 @@
+/*
+ * LABORATOIRE DE LAYOUT — /game/board-preview
+ * ===========================================
+ *
+ * Tout le dimensionnement du board de prévisualisation vit ICI, et nulle
+ * part ailleurs : les composants React ne portent que la STRUCTURE (quelle
+ * zone contient quoi), jamais de valeurs en pixels. C'est ce qui permettra
+ * de remplacer `PreviewCard` par `GameCard`, les blocs navires par les
+ * vrais cadres, etc., sans retoucher une seule règle de mise en page.
+ *
+ * Principe directeur, volontairement à l'opposé de `BoardStage`
+ * (features/match/BoardStage.tsx) qui met un canevas 1672×941 à l'échelle
+ * avec un `transform: scale()` global : ici RIEN n'est mis à l'échelle
+ * globalement. La composition de référence reste un 16:9 (~1920×1080) dans
+ * la tête, mais chaque zone se ré-agence pour elle-même à partir de
+ * quelques tokens fluides.
+ *
+ * Les tokens (`--card-h`, `--ship-w`, `--gap-*`…) sont posés sur `.stage`
+ * et exprimés en unités de conteneur (`cqw`/`cqh`) bornées par `clamp()` :
+ * ils suivent donc la taille RÉELLE du viewport de jeu, pas celle de la
+ * fenêtre du document. `.viewport` déclare `container-type: size` ; les
+ * unités `cq*` employées plus bas se résolvent toutes contre lui.
+ *
+ * Trois modes, et trois seulement (cf. les deux `@media` en fin de
+ * fichier) : LAPTOP est le mode par défaut/nominal, MOBILE PAYSAGE et
+ * DESKTOP LARGE ne font que redéfinir des tokens — aucune règle de
+ * structure n'est dupliquée par breakpoint.
+ *
+ * Profondeur (z-index), du fond vers l'avant :
+ *   0   BackgroundLayer  — décor, recadrable, jamais cliquable
+ *   10  gameplay         — zones adversaire / centre / joueur
+ *   20  HudLayer         — boutons, compteurs (respecte la safe area)
+ *   30  EffectsLayer     — animations futures, `pointer-events: none`
+ *   40  DebugOverlay     — outil de dev, hors composition
+ */
+
+/* ──────────────────────────────────────────────────────────────
+ * VIEWPORT — la fenêtre de jeu. Seul élément accroché à l'écran.
+ * ────────────────────────────────────────────────────────────── */
+.viewport {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  /* Établit le conteneur de référence pour toutes les unités `cq*`
+     utilisées par les descendants : les tokens suivent la fenêtre de jeu,
+     ce qui restera vrai le jour où le board sera embarqué dans un panneau
+     plus petit qu'un plein écran. */
+  container-type: size;
+  container-name: gameviewport;
+  background: #05090f;
+  color: #dbe6f2;
+  user-select: none;
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * BACKGROUND LAYER — décor. Prévu pour un `background-image` réel :
+ * `cover` + `center` recadrent le décor selon le format d'écran SANS
+ * jamais déplacer le gameplay (qui vit dans `.stage`, au-dessus).
+ * ────────────────────────────────────────────────────────────── */
+.background {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-color: #07111c;
+  background-image: radial-gradient(120% 80% at 50% 0%, #16324a 0%, #0b1a28 45%, #060d15 100%);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* Voile de lisibilité : le gameplay doit rester lisible quel que soit le
+   décor qui viendra remplacer le dégradé ci-dessus. */
+.backgroundVeil {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(4, 9, 15, 0.55) 0%, rgba(4, 9, 15, 0.12) 35%, rgba(4, 9, 15, 0.12) 65%, rgba(4, 9, 15, 0.6) 100%);
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * STAGE — la scène. Porte TOUS les tokens de composition.
+ * ────────────────────────────────────────────────────────────── */
+.stage {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+
+  /* Nom du mode courant. Source de vérité UNIQUE du breakpoint actif :
+     `useBoardPreviewMetrics` le relit via `getComputedStyle` au lieu de
+     redéclarer les media queries en JavaScript (elles dériveraient). */
+  --bp: "laptop";
+
+  /* Safe area — encoches et barres système (iPhone en paysage). */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+
+  /* Largeur utile de la composition. Garde-fou pour les formats très
+     larges (ultrawide 21:9 / 32:9) : au-delà d'environ 2.1:1, navires et
+     ressources cesseraient de s'écarter indéfiniment du plateau, laissant
+     d'énormes vides latéraux. Sans effet sur toutes les résolutions
+     cibles, qui sont en 16:9 ou plus étroites. */
+  --stage-max-w: min(100%, 210cqh);
+
+  /* Respiration de la scène. */
+  --gutter-x: clamp(10px, 2.4cqw, 44px);
+  --gutter-y: clamp(6px, 1.6cqh, 26px);
+
+  /* Carte : LE token maître. Tout le reste (largeur des rangs, hauteur des
+     zones, chevauchement de la main) en découle. Borné par la hauteur ET
+     par la largeur disponibles — sur un 21:9 très plat c'est la hauteur qui
+     commande, sur un format étroit c'est la largeur. */
+  --card-h: clamp(72px, min(21cqh, 12cqw), 208px);
+  --card-w: calc(var(--card-h) * 5 / 7);
+  --card-radius: clamp(4px, 0.6cqh, 12px);
+
+  /* Plafond de la bande centrale. Sans lui, TOUT l'espace vertical
+     excédentaire s'accumulait au milieu (mesuré : 392 px de vide en
+     1920×1080) — le "grand espace mort" à éviter. Plafonnée, la bande
+     garde sa place et le reste de l'espace est réparti à parts égales
+     autour des trois rangées (`align-content: space-evenly`). */
+  --center-max: clamp(44px, 13cqh, 190px);
+
+  /* Espacements. */
+  --board-gap: clamp(4px, 0.9cqw, 20px);
+  --col-gap: clamp(8px, 2cqw, 40px);
+  --row-gap: clamp(4px, 1.2cqh, 20px);
+
+  /* Chevauchement de la main : 0 = rang complètement ouvert. */
+  --hand-overlap: clamp(0px, 1cqw, 14px);
+  /* Marge de sécurité au-dessus de la main, pour la future levée au survol. */
+  --hand-lift: clamp(4px, 1.2cqh, 18px);
+
+  /* Éléments secondaires. */
+  --ship-w: clamp(92px, 15cqw, 280px);
+  --res-w: clamp(74px, 10cqw, 180px);
+  --tide-h: clamp(30px, 7cqh, 86px);
+  --hud-h: clamp(28px, 4.6cqh, 46px);
+
+  /* Typographie des étiquettes de placeholder. */
+  --fs-label: clamp(7px, 1.25cqh, 13px);
+  --fs-value: clamp(10px, 1.9cqh, 20px);
+
+  /* Palette du laboratoire — volontairement neutre : le skin Tidebound
+     viendra plus tard, ces rectangles ne doivent pas chercher à être beaux. */
+  --line: rgba(148, 190, 226, 0.28);
+  --line-strong: rgba(148, 190, 226, 0.5);
+  --fill: rgba(10, 22, 34, 0.62);
+  --fill-soft: rgba(14, 30, 46, 0.42);
+  --ink: #cfe0f0;
+  --ink-dim: rgba(207, 224, 240, 0.6);
+
+  display: grid;
+  /* Trois rangées : adversaire en haut, bande centrale (Marée + HUD),
+     joueur en bas. La bande centrale est PLAFONNÉE (`--center-max`) et
+     l'espace vertical restant est réparti à parts égales au-dessus, entre
+     et en dessous des rangées (`align-content: space-evenly`) — la scène
+     reste ainsi équilibrée du 2560×1440 au 740×360, sans grand vide au
+     milieu, et se compacte proprement quand la hauteur manque.
+     Chaque zone est placée EXPLICITEMENT dans sa rangée (`.opponentZone`,
+     `.centerZone`, `.playerZone`, `.hud`) : le HUD partage la rangée
+     centrale avec la Marée, et le placement automatique ne peut donc pas
+     décaler une zone d'une rangée à cause de lui. */
+  grid-template-rows: auto minmax(var(--tide-h), var(--center-max)) auto;
+  align-content: space-evenly;
+  row-gap: var(--row-gap);
+  padding:
+    calc(var(--safe-top) + var(--gutter-y))
+    calc(var(--safe-right) + var(--gutter-x))
+    calc(var(--safe-bottom) + var(--gutter-y))
+    calc(var(--safe-left) + var(--gutter-x));
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * ZONES JOUEUR / ADVERSAIRE
+ * Même gabarit en trois colonnes, mirroir l'un de l'autre :
+ *   adversaire → [navire] [plateau] [ressources]
+ *   joueur     → [ressources] [plateau] [navire]
+ * Le plateau est la seule colonne élastique ; navire et ressources ont une
+ * largeur fluide mais bornée, donc ne mangent jamais le plateau.
+ * ────────────────────────────────────────────────────────────── */
+.zone {
+  grid-column: 1;
+  position: relative;
+  width: var(--stage-max-w);
+  justify-self: center;
+  display: grid;
+  /*
+   * Colonnes latérales STRICTEMENT égales (`1fr` de chaque côté) et
+   * plateau au milieu à sa largeur naturelle : c'est ce qui garantit que
+   * les deux plateaux et la Marée partagent le même axe vertical.
+   * Avec des colonnes calées sur `--ship-w` / `--res-w` (largeurs
+   * différentes), le rang adverse se décalait de ~58 px à droite et celui
+   * du joueur d'autant à gauche — un défaut de centrage visible à l'oeil
+   * dès 1920×1080.
+   */
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--col-gap);
+  min-width: 0;
+}
+
+/* Navire vers l'extérieur, ressources vers l'intérieur de l'écran, en
+   miroir d'un camp à l'autre. */
+.opponentZone .zoneSlotShip,
+.playerZone .zoneSlotResources {
+  justify-self: start;
+}
+
+.opponentZone .zoneSlotResources,
+.playerZone .zoneSlotShip {
+  justify-self: end;
+}
+
+.opponentZone {
+  grid-row: 1;
+}
+
+.playerZone {
+  grid-row: 3;
+  /* Ligne de plateau, puis la main en dessous sur toute la largeur. */
+  grid-template-rows: auto auto;
+  row-gap: var(--row-gap);
+}
+
+.zoneSlotShip,
+.zoneSlotResources,
+.zoneSlotBoard {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.zoneSlotShip {
+  width: var(--ship-w);
+}
+
+.zoneSlotResources {
+  width: var(--res-w);
+}
+
+.handSlot {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * PLATEAU — rang de 5 emplacements.
+ * Les emplacements ne s'étirent pas : ils gardent le ratio 5:7 et se
+ * centrent. Un emplacement vide reste visible (pointillés) pour juger les
+ * espacements à vide comme à plein.
+ * ────────────────────────────────────────────────────────────── */
+.board {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--board-gap);
+  min-width: 0;
+  /* Réserve la hauteur d'une carte même quand le rang est vide : la
+     composition ne bouge pas selon le nombre de cartes en jeu. */
+  min-height: var(--card-h);
+}
+
+.boardSlot {
+  width: var(--card-w);
+  flex: 0 0 auto;
+}
+
+.boardSlotEmpty {
+  aspect-ratio: 5 / 7;
+  border: 1px dashed var(--line);
+  border-radius: var(--card-radius);
+  background: var(--fill-soft);
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * MAIN — rang centré, chevauchement croissant quand la place manque.
+ *
+ * Chaque carte vit dans un "créneau" (`.handCardSlot`) plus étroit qu'elle :
+ * c'est la largeur du créneau qui produit le chevauchement, jamais une
+ * marge négative posée sur la carte. Les créneaux sont `flex-shrink`ables
+ * et le rang est plafonné à `max-width: 100%` : si la main s'allonge (10,
+ * 12 cartes…) ou si l'écran rétrécit, Flexbox resserre les créneaux tout
+ * seul et la main ne sort JAMAIS de l'écran. Le dernier créneau, lui, ne
+ * se comprime pas — la carte du dessus reste toujours entièrement visible.
+ * ────────────────────────────────────────────────────────────── */
+.hand {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  min-width: 0;
+  /* Place réservée à la levée d'une carte au survol (animation future). */
+  padding-top: var(--hand-lift);
+  min-height: calc(var(--card-h) + var(--hand-lift));
+}
+
+.handRow {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  max-width: 100%;
+}
+
+.handCardSlot {
+  flex: 0 1 calc(var(--card-w) - var(--hand-overlap));
+  min-width: 0;
+  /* La carte déborde vers la droite de son créneau : c'est ce débord qui
+     crée l'empilement, la carte la plus à droite passant au-dessus. */
+  position: relative;
+}
+
+.handCardSlot:last-child {
+  flex: 0 0 var(--card-w);
+}
+
+.handCard {
+  width: var(--card-w);
+  transform-origin: bottom center;
+  /* Prêt pour éventail / survol / sélection / drag : la transition est déjà
+     là, seules les valeurs de `transform` restent à animer plus tard. */
+  transition: transform 140ms ease-out;
+  will-change: transform;
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * CARTE DE PRÉVISUALISATION — ratio 5:7, fond simple, bordure légère.
+ * ────────────────────────────────────────────────────────────── */
+.card {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 5 / 7;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--card-radius);
+  background: linear-gradient(160deg, rgba(30, 56, 80, 0.9), rgba(12, 24, 38, 0.9));
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.cardIndex {
+  font-size: var(--fs-value);
+  font-weight: 600;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.cardLabel {
+  font-size: var(--fs-label);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.cardFaceDown {
+  background: repeating-linear-gradient(135deg, rgba(24, 44, 64, 0.95) 0 6px, rgba(16, 32, 48, 0.95) 6px 12px);
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * NAVIRES
+ * ────────────────────────────────────────────────────────────── */
+.ship {
+  position: relative;
+  width: 100%;
+  max-width: var(--ship-w);
+  aspect-ratio: 16 / 9;
+  /* Ne dépasse jamais la hauteur d'un rang de cartes : le navire reste un
+     compagnon du plateau, pas un élément qui impose sa propre hauteur. */
+  max-height: var(--card-h);
+  border: 1px solid var(--line);
+  border-radius: calc(var(--card-radius) * 1.2);
+  background: var(--fill);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(2px, 0.6cqh, 8px);
+  padding: clamp(2px, 0.8cqh, 10px);
+  text-align: center;
+}
+
+.shipName {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-label);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.shipHull {
+  font-size: var(--fs-value);
+  font-weight: 600;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.shipBar {
+  width: 78%;
+  height: clamp(3px, 0.7cqh, 8px);
+  border-radius: 999px;
+  background: rgba(148, 190, 226, 0.18);
+  overflow: hidden;
+}
+
+.shipBarFill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #3ea6ff, #7ee0d0);
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * RESSOURCES — pastilles compactes (Marée, deck, cimetière, main).
+ * ────────────────────────────────────────────────────────────── */
+.resources {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: clamp(2px, 0.6cqh, 8px);
+  width: 100%;
+  max-width: var(--res-w);
+}
+
+.resourceRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  padding: clamp(1px, 0.5cqh, 6px) clamp(4px, 0.6cqw, 10px);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--fill);
+  min-height: var(--hud-h);
+  min-height: min(var(--hud-h), calc(var(--card-h) / 3.2));
+}
+
+.resourceLabel {
+  font-size: var(--fs-label);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.resourceValue {
+  font-size: var(--fs-value);
+  font-weight: 600;
+  line-height: 1;
+  color: var(--ink);
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * CENTRE / MARÉE
+ * ────────────────────────────────────────────────────────────── */
+.centerZone {
+  grid-row: 2;
+  grid-column: 1;
+  width: var(--stage-max-w);
+  justify-self: center;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tide-h);
+  min-width: 0;
+}
+
+.tide {
+  display: flex;
+  align-items: center;
+  gap: clamp(6px, 1.4cqw, 20px);
+  padding: clamp(2px, 0.7cqh, 10px) clamp(8px, 1.6cqw, 24px);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--fill);
+  max-width: 100%;
+}
+
+.tideArrow {
+  font-size: var(--fs-value);
+  line-height: 1;
+  color: #7ee0d0;
+}
+
+.tideName {
+  font-size: var(--fs-label);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.tideTrack {
+  display: flex;
+  gap: clamp(3px, 0.5cqw, 7px);
+}
+
+.tideStep {
+  width: clamp(6px, 1cqw, 14px);
+  height: clamp(6px, 1cqw, 14px);
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+}
+
+.tideStepActive {
+  background: #7ee0d0;
+  box-shadow: 0 0 8px rgba(126, 224, 208, 0.7);
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * HUD — au-dessus du gameplay, respecte la safe area, laisse passer les
+ * clics partout sauf sur ses propres contrôles.
+ * ────────────────────────────────────────────────────────────── */
+/*
+ * Le calque HUD occupe la MÊME cellule de grille que la bande centrale
+ * (rangée 2) plutôt que tout l'écran en `position: absolute`.
+ *
+ * Pourquoi : le centre géométrique de l'écran n'est pas le centre de la
+ * bande libre — le camp du joueur est plus haut que celui de l'adversaire
+ * (il porte la main). Un HUD centré sur l'écran mordait donc sur les
+ * ressources et le navire du joueur en mobile paysage (mesuré : 9 px de
+ * recouvrement en 740×360). Posé sur la rangée centrale, il est centré sur
+ * la seule région réellement libre, à toutes les résolutions.
+ *
+ * Il hérite au passage du padding de la scène, donc de la safe area : un
+ * contrôle ne peut pas se retrouver derrière une encoche latérale.
+ *
+ * Pour un futur élément de HUD ancré dans un COIN d'écran, ajouter un
+ * second calque `position: absolute; inset: 0` (z-index 20) plutôt que de
+ * sortir celui-ci de sa rangée.
+ */
+.hud {
+  grid-row: 2;
+  grid-column: 1;
+  width: var(--stage-max-w);
+  justify-self: center;
+  z-index: 20;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--col-gap);
+  min-width: 0;
+}
+
+/*
+ * Les grappes de HUD sont ancrées aux bords GAUCHE et DROIT, centrées
+ * verticalement : elles tombent donc dans la bande centrale (la seule
+ * région structurellement libre de la scène, la Marée étant centrée) et ne
+ * recouvrent jamais un navire, un plateau ou la main. Les coins, eux,
+ * restent disponibles pour le gameplay.
+ */
+.hudLeft,
+.hudRight {
+  min-width: 0;
+}
+
+.hudGroup {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: clamp(4px, 0.8cqh, 10px);
+  pointer-events: auto;
+}
+
+.hudGroupRight {
+  align-items: flex-end;
+}
+
+.hudButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* 44px est la cible tactile de référence : on ne descend jamais en
+     dessous, même en mobile paysage (cf. mode MOBILE plus bas). */
+  min-height: var(--hud-h);
+  min-width: var(--hud-h);
+  padding: 0 clamp(8px, 1.2cqw, 18px);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--fill);
+  color: var(--ink);
+  font-size: var(--fs-label);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.hudButton:hover {
+  border-color: #7ee0d0;
+  color: #ffffff;
+}
+
+.hudButtonPrimary {
+  background: linear-gradient(180deg, rgba(62, 166, 255, 0.28), rgba(62, 166, 255, 0.12));
+  border-color: rgba(126, 224, 208, 0.75);
+}
+
+.hudChip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: clamp(2px, 0.5cqh, 6px) clamp(6px, 1cqw, 14px);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--fill);
+  font-size: var(--fs-label);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  pointer-events: auto;
+}
+
+.hudChipValue {
+  font-size: var(--fs-value);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * EFFECTS LAYER — vide aujourd'hui, jamais bloquante.
+ * ────────────────────────────────────────────────────────────── */
+.effects {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * DEBUG — contours de zones + panneau de mesures.
+ * Uniquement actif sur cet écran, jamais dans le vrai board.
+ * ────────────────────────────────────────────────────────────── */
+.viewport[data-debug-zones="true"] [data-zone] {
+  outline: 1px dashed var(--zone-color, rgba(255, 255, 255, 0.5));
+  outline-offset: -1px;
+}
+
+.viewport[data-debug-zones="true"] [data-zone]::after {
+  content: attr(data-zone);
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 5;
+  padding: 0 4px;
+  font-size: 9px;
+  line-height: 13px;
+  letter-spacing: 0.04em;
+  color: #05090f;
+  background: var(--zone-color, rgba(255, 255, 255, 0.5));
+  pointer-events: none;
+}
+
+/* Préfixés par `.viewport` : les CSS Modules refusent un sélecteur
+   "impur" (sans classe locale), et ça limite au passage ces couleurs au
+   seul laboratoire. */
+.viewport [data-zone="OpponentZone"] { --zone-color: #f97316; }
+.viewport [data-zone="OpponentBoard"] { --zone-color: #fbbf24; }
+.viewport [data-zone="CenterZone"] { --zone-color: #7ee0d0; }
+.viewport [data-zone="PlayerBoard"] { --zone-color: #4ade80; }
+.viewport [data-zone="PlayerZone"] { --zone-color: #3ea6ff; }
+.viewport [data-zone="PlayerHand"] { --zone-color: #c084fc; }
+.viewport [data-zone="HudLayer"] { --zone-color: #f472b6; }
+
+/*
+ * Barre de debug : UNE ligne, en haut au centre, translucide.
+ * Elle est volontairement minuscule — un panneau en bloc masquait le
+ * plateau adverse, c'est-à-dire précisément ce qu'on veut observer.
+ * Repliable en une pastille quand elle gêne quand même.
+ */
+.debug {
+  position: absolute;
+  z-index: 40;
+  top: calc(env(safe-area-inset-top, 0px) + 4px);
+  /* `left: 0; right: 0` + marges auto plutôt que `left: 50%` + translation :
+     avec `left: 50%`, la largeur disponible d'un élément absolu tombe à la
+     moitié de l'écran, et la barre se repliait sur deux lignes en mobile
+     paysage, masquant le plateau adverse. */
+  left: calc(env(safe-area-inset-left, 0px) + 8px);
+  right: calc(env(safe-area-inset-right, 0px) + 8px);
+  width: fit-content;
+  margin-inline: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 10px;
+  padding: 3px 8px;
+  border: 1px solid rgba(148, 190, 226, 0.3);
+  border-radius: 999px;
+  background: rgba(5, 9, 15, 0.72);
+  backdrop-filter: blur(4px);
+  font-size: 11px;
+  line-height: 16px;
+  color: #cfe0f0;
+}
+
+.debugCollapsed {
+  padding: 2px 4px;
+}
+
+.debugItem {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.debugKey {
+  color: rgba(207, 224, 240, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 9px;
+}
+
+.debugValue {
+  font-variant-numeric: tabular-nums;
+}
+
+.debugButton {
+  padding: 2px 8px;
+  border: 1px solid rgba(148, 190, 226, 0.32);
+  border-radius: 999px;
+  background: rgba(20, 36, 52, 0.85);
+  color: #cfe0f0;
+  font-size: 9px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.debugButtonActive {
+  border-color: #7ee0d0;
+  color: #ffffff;
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+ * MODE 1 — MOBILE PAYSAGE (932×430 … 740×360, et fenêtres étroites).
+ * Priorité absolue au gameplay : marges rognées, éléments secondaires
+ * réduits, chevauchement de la main augmenté. Aucune zone de gameplay
+ * n'est supprimée ; les cibles tactiles restent ≥ 36px.
+ * ══════════════════════════════════════════════════════════════ */
+@media (max-height: 520px), (max-width: 820px) {
+  .stage {
+    --bp: "mobile-landscape";
+    --gutter-x: clamp(6px, 1.6cqw, 16px);
+    --gutter-y: clamp(4px, 1cqh, 10px);
+    --card-h: clamp(56px, min(24cqh, 11cqw), 120px);
+    --board-gap: clamp(3px, 0.7cqw, 8px);
+    --col-gap: clamp(6px, 1.4cqw, 16px);
+    --row-gap: clamp(3px, 0.8cqh, 8px);
+    --hand-overlap: clamp(4px, 1.8cqw, 16px);
+    --hand-lift: clamp(2px, 0.8cqh, 8px);
+    --ship-w: clamp(74px, 13cqw, 130px);
+    --res-w: clamp(58px, 9cqw, 96px);
+    --tide-h: clamp(22px, 6cqh, 34px);
+    /* Le HUD ne rétrécit PAS autant que le reste : c'est ce qu'on touche. */
+    --hud-h: clamp(30px, 8cqh, 38px);
+    --fs-label: clamp(7px, 2cqh, 10px);
+    --fs-value: clamp(9px, 3cqh, 14px);
+  }
+
+  /* La bande centrale est basse en mobile paysage : les grappes de HUD
+     passent en ligne plutôt qu'en colonne, sinon elles débordent sur le
+     navire et les ressources du joueur (vérifié en 932×430 → 740×360). */
+  .hudGroup {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  /* Décoratif uniquement (jauge de coque, piste de Marée) : masqué pour
+     rendre la place au gameplay. La valeur chiffrée, elle, reste. */
+  .shipBar,
+  .tideTrack {
+    display: none;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+ * MODE 3 — DESKTOP LARGE (1920×1080 et au-delà).
+ * Les cartes respirent, la main s'ouvre complètement, les zones
+ * s'écartent. Rien ne change structurellement.
+ * ══════════════════════════════════════════════════════════════ */
+@media (min-width: 1900px) and (min-height: 1000px) {
+  .stage {
+    --bp: "desktop-large";
+    --gutter-x: clamp(28px, 3.2cqw, 90px);
+    --gutter-y: clamp(18px, 2.4cqh, 56px);
+    --card-h: clamp(160px, min(21cqh, 12cqw), 240px);
+    --board-gap: clamp(14px, 1.2cqw, 28px);
+    --col-gap: clamp(28px, 2.6cqw, 64px);
+    --row-gap: clamp(14px, 1.6cqh, 30px);
+    /* Grand écran : rang de main complètement ouvert, aucun chevauchement. */
+    --hand-overlap: 0px;
+    --hand-lift: clamp(14px, 1.6cqh, 28px);
+    --ship-w: clamp(220px, 15cqw, 340px);
+    --res-w: clamp(150px, 9cqw, 210px);
+    --tide-h: clamp(64px, 7cqh, 100px);
+    --hud-h: clamp(40px, 3.6cqh, 52px);
+  }
+}
+
+/*
+ * Garde-fou "format étroit" — PAS un quatrième mode.
+ * Le jeu vise le paysage ; en portrait ou dans une fenêtre très étroite
+ * (< 560px), les deux grappes de HUD et la Marée se disputent la même
+ * ligne. On retire alors les compteurs secondaires (Tour, Main) : les
+ * deux contrôles réellement nécessaires — Menu et bouton de phase —
+ * restent accessibles et à taille tactile.
+ */
+@media (max-width: 560px) {
+  .hudChip {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .handCard {
+    transition: none;
+  }
+}

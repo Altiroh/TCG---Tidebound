@@ -44,6 +44,25 @@ export default async function HomePage() {
         <TideboundMenuChest />
       </div>
 
+      {/*
+       * ENTRÉE TEMPORAIRE DE DÉVELOPPEMENT — à retirer une fois le layout
+       * du plateau validé et réinjecté dans le board réel.
+       *
+       * Volontairement posée en coin plutôt qu'ajoutée aux plaques du
+       * coffret : les 3 plaques sont calées au pixel sur l'illustration
+       * `menu_box_base.png` (cf. `TideboundMenuChest`), une 4ᵉ n'aurait
+       * nulle part où aller sans retoucher l'asset.
+       *
+       * Ne lance aucune partie : `/game/board-preview` est un bac à sable
+       * purement visuel (cf. `features/board-preview/BoardPreviewPage.tsx`).
+       */}
+      <Link
+        href="/game/board-preview"
+        className="absolute right-3 top-3 z-20 rounded-full border border-dashed border-board-accent/60 bg-black/45 px-3 py-1.5 text-xs text-board-accent backdrop-blur-sm transition hover:border-board-accent hover:text-white"
+      >
+        Board Preview <span className="text-slate-400">(temp)</span>
+      </Link>
+
       <div className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap text-xs text-slate-300 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
         {isSignedIn ? (
           <>
