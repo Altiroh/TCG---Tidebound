@@ -19,6 +19,7 @@ export type TriggerType =
   | "onTideStateExited" // la Marée vient de QUITTER un état (ex: Masque de Plongée Fissuré, "à chaque sortie des Abysses")
   | "onBecomeVisible" // une Structure devient visible pour l'adversaire (entrée dans un de ses `visibleDuringTide`)
   | "onExpire" // une Structure/Objet à durée limitée quitte le board par expiration (ni mort, ni Sabordage)
+  | "onObjectBroken" // le contrôleur vient de Briser un Objet (depuis le board OU depuis sa main)
   | "onCondition"; // condition arbitraire évaluée par un `ConditionExpression`
 
 export interface TriggerEvent {
@@ -30,6 +31,8 @@ export interface TriggerEvent {
   playerId?: string;
   /** État de Marée qui vient d'être atteint, pour onTideStateEntered. */
   tideState?: import("@/game/environment/types").TideStateName;
+  /** `onEnterPlay` : la carte arrive par INVOCATION et non par une pose depuis la main (ex: un Péon). */
+  fromSummon?: boolean;
 }
 
 /**

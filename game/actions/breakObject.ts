@@ -1,6 +1,7 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
 import type { EffectContext } from "@/game/effects/resolveEffect";
 import { resolveEffect } from "@/game/effects/resolveEffect";
+import { processSummonEnterTriggers, processTrigger } from "@/game/triggers/triggerBus";
 import type { EffectDefinition } from "@/game/effects/types";
 import type { GameEvent } from "@/game/events/types";
 import {
@@ -188,11 +189,28 @@ export function breakObject(state: GameState, action: BreakObjectAction): Action
     turnNumber: state.turnNumber,
   };
 
+  const breakEffectEvents: GameEvent[] = [];
   for (const effect of def.onBreakEffects ?? []) {
     const result = resolveEffect(nextState, effect, context);
     nextState = result.state;
     events.push(...result.events);
+    breakEffectEvents.push(...result.events);
   }
+
+  // Péons invoqués par le Bris (ex: Le Seau) : eux aussi arrivent en jeu.
+  const summoned = processSummonEnterTriggers(nextState, breakEffectEvents, state.turnNumber);
+  nextState = summoned.state;
+  events.push(...summoned.events);
+
+  // Le Bris lui-même est un fait auquel des cartes réagissent
+  // ("la première fois à chaque tour que vous Brisez un Objet").
+  const brokenTrigger = processTrigger(
+    nextState,
+    { trigger: "onObjectBroken", playerId: player.id, cardId: def.id, sourceInstanceId: unit.instanceId },
+    state.turnNumber
+  );
+  nextState = brokenTrigger.state;
+  events.push(...brokenTrigger.events);
 
   return { ok: true, state: nextState, events };
 }

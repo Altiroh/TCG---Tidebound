@@ -1,11 +1,12 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { computeEffectiveStats } from "@/game/cards/stats";
-import type { CardInstance, TriggeredAbility } from "@/game/cards/types";
+import type { CardInstance, TriggeredAbility, TriggerSourceFilter } from "@/game/cards/types";
 import type { EffectDefinition } from "@/game/effects/types";
 import type { EffectContext } from "@/game/effects/resolveEffect";
 import { resolveEffect, revealRandomHandCards } from "@/game/effects/resolveEffect";
 import type { GameEvent } from "@/game/events/types";
 import { applyCardPlayedAnomalies, applyPermanentLeftAnomalies } from "@/game/state/anomalies";
+import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
 import { canPayReason } from "@/game/state/reason";
 import { consumeOpponentReactionRevealShield, payReasonCost, reasonCostAfterShield } from "@/game/state/shields";
 import type { GameState, PlayerId, PlayerState } from "@/game/state/types";
@@ -46,15 +47,70 @@ function work(
   cardId: string,
   controllerId: PlayerId,
   sourceInstanceId: string,
-  turnNumber: number
+  turnNumber: number,
+  /** Carte à l'origine de l'événement, pour les capacités d'observateur (cible `triggerSource`). */
+  triggerSourceInstanceId?: string
 ): TriggeredWork {
   return {
     effects: ability.effects,
-    context: { controllerId, sourceInstanceId, turnNumber },
+    context: { controllerId, sourceInstanceId, turnNumber, triggerSourceInstanceId },
     cardId,
     abilityIndex,
     ability,
   };
+}
+
+
+/**
+ * La carte qui vient d'arriver/de mourir (portée par `event`) correspond-
+ * elle au filtre d'une capacité d'OBSERVATEUR, vue depuis `holder` ?
+ */
+function matchesTriggerSource(
+  filter: TriggerSourceFilter,
+  event: TriggerEvent,
+  holder: CardInstance,
+  holderControllerId: PlayerId
+): boolean {
+  if (!event.cardId) return false;
+  if ((filter.excludeSelf ?? true) && event.sourceInstanceId === holder.instanceId) return false;
+  if ((filter.sameController ?? true) && event.playerId !== holderControllerId) return false;
+  if (filter.onlySummoned && !event.fromSummon) return false;
+  if (filter.cardIds && !filter.cardIds.includes(event.cardId)) return false;
+  if (filter.archetype && getCardDefinition(event.cardId).archetype !== filter.archetype) return false;
+  return true;
+}
+
+/**
+ * Capacités d'OBSERVATEUR concernées par cet événement : celles qui, sur
+ * un permanent DÉJÀ en jeu, réagissent à ce qui arrive à une autre carte
+ * ("un autre Cra-Poiscail arrive en jeu", "un Cra-Poiscail que vous
+ * contrôlez est détruit"). Complète le déclenchement "personnel"
+ * historique, qui ne concerne que la carte visée par l'événement.
+ */
+function collectObserverWork(
+  state: GameState,
+  event: TriggerEvent,
+  turnNumber: number,
+  mode: "auto" | "optional"
+): TriggeredWork[] {
+  const result: TriggeredWork[] = [];
+  for (const player of playersActiveFirst(state)) {
+    for (const holder of player.board) {
+      if (isInactive(state, holder)) continue;
+      const def = getCardDefinition(holder.cardId);
+      (def.abilities ?? []).forEach((ability, abilityIndex) => {
+        if (ability.trigger !== event.trigger || (ability.mode ?? "auto") !== mode) return;
+        if (!ability.triggeredBy) return;
+        if (!matchesTriggerSource(ability.triggeredBy, event, holder, player.id)) return;
+        // "La première fois à chaque tour" : la capacité disparaît des
+        // candidats une fois consommée ce tour-ci (le marquage, lui, se
+        // fait à la résolution — cf. `processTrigger`).
+        if (ability.oncePerTurnKey && !oncePerTurnAvailable(holder, ability.oncePerTurnKey, turnNumber)) return;
+        result.push(work(ability, abilityIndex, def.id, player.id, holder.instanceId, turnNumber, event.sourceInstanceId));
+      });
+    }
+  }
+  return result;
 }
 
 /**
@@ -82,9 +138,12 @@ function collectTriggeredWork(
     if (!event.cardId || !event.playerId || !event.sourceInstanceId) return result;
     const def = getCardDefinition(event.cardId);
     (def.abilities ?? []).forEach((ability, abilityIndex) => {
-      if (ability.trigger !== event.trigger || !matchesMode(ability)) return;
+      // Capacité personnelle uniquement : `triggeredBy` désigne une AUTRE
+      // carte, elle est traitée par `collectObserverWork` juste après.
+      if (ability.trigger !== event.trigger || !matchesMode(ability) || ability.triggeredBy) return;
       result.push(work(ability, abilityIndex, def.id, event.playerId!, event.sourceInstanceId!, turnNumber));
     });
+    result.push(...collectObserverWork(state, event, turnNumber, mode));
     return result;
   }
 
@@ -133,20 +192,82 @@ function collectTriggeredWork(
   }
 
   // onAttack / onDamaged / onEnterPlay : déclenchement "personnel", limité
-  // à l'unité concernée par l'événement.
+  // à l'unité concernée par l'événement...
   if (event.sourceInstanceId) {
     for (const player of state.players) {
       const unit = player.board.find((u) => u.instanceId === event.sourceInstanceId);
       if (!unit || isInactive(state, unit)) continue;
       const def = getCardDefinition(unit.cardId);
       (def.abilities ?? []).forEach((ability, abilityIndex) => {
-        if (ability.trigger !== event.trigger || !matchesMode(ability)) return;
+        if (ability.trigger !== event.trigger || !matchesMode(ability) || ability.triggeredBy) return;
         result.push(work(ability, abilityIndex, def.id, player.id, unit.instanceId, turnNumber));
       });
     }
   }
 
+  // ...plus les OBSERVATEURS déjà en jeu qui réagissent à ce qui vient
+  // d'arriver à cette carte-là.
+  result.push(...collectObserverWork(state, event, turnNumber, mode));
+
   return result;
+}
+
+
+/** Localise un permanent sur le plateau de son contrôleur — `undefined` s'il l'a déjà quitté. */
+function findBoardUnit(state: GameState, instanceId: string): { unit: CardInstance; playerId: PlayerId } | undefined {
+  for (const player of state.players) {
+    const unit = player.board.find((u) => u.instanceId === instanceId);
+    if (unit) return { unit, playerId: player.id };
+  }
+  return undefined;
+}
+
+function markUnitOncePerTurn(
+  state: GameState,
+  playerId: PlayerId,
+  instanceId: string,
+  key: string,
+  turnNumber: number
+): GameState {
+  return {
+    ...state,
+    players: state.players.map((p) =>
+      p.id === playerId
+        ? { ...p, board: p.board.map((u) => (u.instanceId === instanceId ? markOncePerTurnUsed(u, key, turnNumber) : u)) }
+        : p
+    ) as [PlayerState, PlayerState],
+  };
+}
+
+/**
+ * Réveille les capacités d'arrivée pour chaque carte INVOQUÉE par les
+ * événements donnés (`SUMMON`). Les invocations ne passent pas par
+ * `playCard` : sans ce relais, un Péon apparaîtrait sans que personne ne
+ * le "voie" arriver. Appelée par les actions qui résolvent des effets
+ * (pose, Bris) et par `processTrigger` lui-même.
+ */
+export function processSummonEnterTriggers(
+  state: GameState,
+  events: readonly GameEvent[],
+  turnNumber: number,
+  depth = 1
+): { state: GameState; events: GameEvent[] } {
+  let nextState = state;
+  const produced: GameEvent[] = [];
+
+  for (const event of events) {
+    if (event.type !== "SUMMON") continue;
+    const result = processTrigger(
+      nextState,
+      { trigger: "onEnterPlay", playerId: event.playerId, cardId: event.cardId, sourceInstanceId: event.instanceId, fromSummon: true },
+      turnNumber,
+      depth
+    );
+    nextState = result.state;
+    produced.push(...result.events);
+  }
+
+  return { state: nextState, events: produced };
 }
 
 /**
@@ -159,18 +280,39 @@ function collectTriggeredWork(
 export function processTrigger(
   state: GameState,
   event: TriggerEvent,
-  turnNumber: number
+  turnNumber: number,
+  /** Profondeur de chaînage — une invocation produite PAR un déclenchement réveille les capacités d'arrivée, mais on s'arrête là. */
+  depth = 0
 ): { state: GameState; events: GameEvent[] } {
   const items = collectTriggeredWork(state, event, turnNumber, "auto");
   let nextState = state;
   const events: GameEvent[] = [];
 
   for (const item of items) {
+    // "La première fois à chaque tour" : marquée AVANT résolution, pour
+    // qu'une capacité qui provoque elle-même l'événement auquel elle
+    // réagit ne se rappelle pas en boucle.
+    const key = item.ability.oncePerTurnKey;
+    if (key && item.context.sourceInstanceId) {
+      const holder = findBoardUnit(nextState, item.context.sourceInstanceId);
+      if (!holder || !oncePerTurnAvailable(holder.unit, key, turnNumber)) continue;
+      nextState = markUnitOncePerTurn(nextState, holder.playerId, holder.unit.instanceId, key, turnNumber);
+    }
+
     for (const effect of item.effects) {
       const result = resolveEffect(nextState, effect, item.context);
       nextState = result.state;
       events.push(...result.events);
     }
+  }
+
+  // Une invocation produite par ces capacités (ex: La Grande Migration)
+  // fait bien "arriver en jeu" un Cra-Poiscail : les observateurs doivent
+  // le voir, comme pour une carte posée à la main.
+  if (depth === 0) {
+    const summoned = processSummonEnterTriggers(nextState, events, turnNumber, depth + 1);
+    nextState = summoned.state;
+    events.push(...summoned.events);
   }
 
   // Anomalies globales temporaires (`game/state/anomalies.ts`) : centralisées

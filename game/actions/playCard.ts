@@ -3,7 +3,7 @@ import { isPermanentCard, UNIT_CARD_TYPES, type CardDefinition } from "@/game/ca
 import type { EffectContext } from "@/game/effects/resolveEffect";
 import { resolveEffect } from "@/game/effects/resolveEffect";
 import type { GameEvent } from "@/game/events/types";
-import { processTrigger } from "@/game/triggers/triggerBus";
+import { processSummonEnterTriggers, processTrigger } from "@/game/triggers/triggerBus";
 import {
   assertBoardNotFull,
   assertCanPayCost,
@@ -189,11 +189,19 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
     turnNumber: state.turnNumber,
   };
 
+  const playEffectEvents: GameEvent[] = [];
   for (const effect of def.onPlayEffects ?? []) {
     const result = resolveEffect(nextState, effect, context);
     nextState = result.state;
     events.push(...result.events);
+    playEffectEvents.push(...result.events);
   }
+
+  // Les corps invoqués par la carte (ex: Fesses en Avant !) arrivent eux
+  // aussi en jeu : les capacités qui guettent une arrivée doivent les voir.
+  const summonedOnPlay = processSummonEnterTriggers(nextState, playEffectEvents, state.turnNumber);
+  nextState = summonedOnPlay.state;
+  events.push(...summonedOnPlay.events);
 
   const cardPlayedTrigger = processTrigger(
     nextState,
@@ -203,7 +211,11 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
   nextState = cardPlayedTrigger.state;
   events.push(...cardPlayedTrigger.events);
 
-  if (isUnitCard(def.type)) {
+  // Tout PERMANENT qui arrive déclenche `onEnterPlay` — pas seulement les
+  // unités : une Structure ou un Objet d'archétype "arrive en jeu" lui
+  // aussi, et les cartes qui guettent l'arrivée d'un membre de leur
+  // famille doivent le voir (Lot 10 Cra-Poiscail).
+  if (isUnitCard(def.type) || asPermanent) {
     const enterPlayTrigger = processTrigger(
       nextState,
       { trigger: "onEnterPlay", playerId: player.id, cardId: def.id, sourceInstanceId: instance.instanceId },

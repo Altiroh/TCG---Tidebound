@@ -167,6 +167,34 @@ const AUDITED_RARITY: Record<string, CardRarity> = {
   "le-seau": "common",
   "la-flaque-sacree": "common",
   "fesses-en-avant": "uncommon",
+
+  /* Lot 10 — Cra-Poiscail, Booster 2 (mêmes source et passe d'équilibrage). */
+  "cra-poiscail-bavard": "uncommon",
+  "cra-poiscail-chef-de-banc": "uncommon",
+  "cra-poiscail-ramasseur": "uncommon",
+  "cra-poiscail-des-bas-fonds": "common",
+  "cra-poiscail-des-hautes-eaux": "common",
+  "slip-de-guerre-cra-poiscail": "common",
+  "casque-coquille": "common",
+  "le-tas-de-trucs": "uncommon",
+  "le-trone-de-bouchon": "rare",
+  "la-grande-migration": "rare",
+
+  /* Lot 10 — Cra-Poiscail, Booster 3. Les trois variantes Abyssales ne sont
+     pas listées : leur suffixe `-abyssal` suffit (règle de design, cf. plus
+     haut). */
+  "ecuyer-cra-poiscail": "common",
+  "chevalier-cra-poiscail": "rare",
+  "destrier-du-grand-etang": "uncommon",
+  "bourreau-cra-poiscail": "uncommon",
+  "cra-poiscail-porte-etendard": "rare",
+  "roi-cra-poiscail": "rare",
+  "ptite-fesse-grand-reve": "rare",
+  "fourchette-du-grand-etang": "uncommon",
+  "banniere-en-vieille-chaussette": "uncommon",
+  "la-quete-du-grand-nenuphar": "rare",
+  "le-grand-saut": "rare",
+  "le-tournoi-du-grand-etang": "rare",
 };
 
 /**

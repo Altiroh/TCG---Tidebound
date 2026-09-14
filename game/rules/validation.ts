@@ -11,12 +11,19 @@ import type { GamePhase, GameState, PlayerId, PlayerState } from "@/game/state/t
  * explicitement) est-il actif sur cette carte EN CE MOMENT, pour SON
  * contrôleur (`controller`, pas un joueur quelconque) ?
  */
-function hasEffectiveKeyword(state: GameState, controller: PlayerState, unit: CardInstance, keyword: string): boolean {
+export function hasEffectiveKeyword(state: GameState, controller: PlayerState, unit: CardInstance, keyword: string): boolean {
   const def = getCardDefinition(unit.cardId);
-  const matches = (grant: { keyword: string; controllerReasonAtMost?: number; tideStateIn?: string[] }) => {
+  const matches = (grant: {
+    keyword: string;
+    controllerReasonAtMost?: number;
+    tideStateIn?: string[];
+    controllingCardIds?: string[];
+  }) => {
     if (grant.keyword !== keyword) return false;
     if (grant.controllerReasonAtMost !== undefined && controller.reason > grant.controllerReasonAtMost) return false;
     if (grant.tideStateIn && !grant.tideStateIn.includes(state.environment.tideState)) return false;
+    // Ex: Chevalier Cra-Poiscail — Garde tant qu'un Destrier est en jeu.
+    if (grant.controllingCardIds && !controller.board.some((u) => grant.controllingCardIds!.includes(u.cardId))) return false;
     return true;
   };
   if ((def.conditionalKeywordSuppressions ?? []).some(matches)) return false;

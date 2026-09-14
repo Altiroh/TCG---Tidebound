@@ -7,8 +7,17 @@ import { processTrigger } from "@/game/triggers/triggerBus";
 import { reasonAfterLoss } from "@/game/state/reason";
 import type { GameState, PlayerState } from "@/game/state/types";
 
-function shouldDie(unit: CardInstance, tideState: TideStateName, controller: PlayerState): boolean {
-  const stats = computeEffectiveStats(unit, tideState, { controllerBoard: controller.board, controllerReason: controller.reason });
+function shouldDie(
+  unit: CardInstance,
+  tideState: TideStateName,
+  controller: PlayerState,
+  tideOrientation: "montante" | "descendante"
+): boolean {
+  const stats = computeEffectiveStats(unit, tideState, {
+    controllerBoard: controller.board,
+    controllerReason: controller.reason,
+    tideOrientation,
+  });
   return unit.damageMarked >= stats.health || stats.destroyedByTide;
 }
 
@@ -42,7 +51,7 @@ function applyDestructionSubstitute(
   const newEffectiveHealth = computeEffectiveStats(
     { ...unit, modifiers },
     state.environment.tideState,
-    { controllerBoard: player.board, controllerReason: player.reason }
+    { controllerBoard: player.board, controllerReason: player.reason, tideOrientation: state.environment.tideOrientation }
   ).health;
   const savedUnit: CardInstance = {
     ...unit,
@@ -97,7 +106,7 @@ export function processDeaths(
     const lethalPairs: Array<{ playerId: string; unitInstanceId: string }> = [];
     for (const player of current.players) {
       for (const unit of player.board) {
-        if (shouldDie(unit, current.environment.tideState, player)) {
+        if (shouldDie(unit, current.environment.tideState, player, current.environment.tideOrientation)) {
           lethalPairs.push({ playerId: player.id, unitInstanceId: unit.instanceId });
         }
       }
@@ -105,7 +114,7 @@ export function processDeaths(
     for (const { playerId, unitInstanceId } of lethalPairs) {
       const player = current.players.find((p) => p.id === playerId);
       const unit = player?.board.find((u) => u.instanceId === unitInstanceId);
-      if (!player || !unit || !shouldDie(unit, current.environment.tideState, player)) continue;
+      if (!player || !unit || !shouldDie(unit, current.environment.tideState, player, current.environment.tideOrientation)) continue;
       const substitute = findDestructionSubstitute(player.board, unit.instanceId);
       if (!substitute) continue;
       const result = applyDestructionSubstitute(current, turnNumber, player.id, unit, substitute);
@@ -118,7 +127,7 @@ export function processDeaths(
 
     for (const player of current.players) {
       for (const unit of player.board) {
-        if (shouldDie(unit, tideState, player)) deaths.push({ unit, owner: player });
+        if (shouldDie(unit, tideState, player, current.environment.tideOrientation)) deaths.push({ unit, owner: player });
       }
     }
 

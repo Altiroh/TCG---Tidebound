@@ -25,6 +25,14 @@ export interface AuraContext {
   controllerBoard: readonly CardInstance[];
   /** Raison actuelle du contrôleur. */
   controllerReason: number;
+  /**
+   * Sens courant du cycle de Marée — nécessaire aux cartes qui en
+   * dépendent (Cra-Poiscail des Bas-Fonds / des Hautes-Eaux). Vit ici
+   * plutôt qu'en paramètre séparé pour suivre la même règle que les
+   * auras : un appelant qui ne fournit pas de contexte obtient les stats
+   * de base, sans elles.
+   */
+  tideOrientation?: "montante" | "descendante";
 }
 
 /**
@@ -50,7 +58,7 @@ export function computeEffectiveStats(unit: CardInstance, tideState: TideStateNa
   let auraHealth = 0;
 
   if (aura) {
-    const { controllerBoard, controllerReason } = aura;
+    const { controllerBoard, controllerReason, tideOrientation } = aura;
 
     // Bernard-l'Ermite d'Acier : bonus sur soi tant qu'une Structure VISIBLE est contrôlée.
     const visibleStructureBuff = def.selfBuffWhileControllingVisibleStructure;
@@ -70,6 +78,29 @@ export function computeEffectiveStats(unit: CardInstance, tideState: TideStateNa
     if (reasonSelfBuff && controllerReason <= reasonSelfBuff.reasonAtMost) {
       auraAttack += reasonSelfBuff.attackAmount ?? 0;
       auraHealth += reasonSelfBuff.healthAmount ?? 0;
+    }
+
+    // Chevalier Cra-Poiscail : bonus tant qu'une carte nommée est en jeu.
+    const namedSelfBuff = def.selfBuffWhileControllingCardIds;
+    if (namedSelfBuff && controllerBoard.some((other) => namedSelfBuff.cardIds.includes(other.cardId))) {
+      auraAttack += namedSelfBuff.attackAmount ?? 0;
+      auraHealth += namedSelfBuff.healthAmount ?? 0;
+    }
+
+    // Écuyer / Destrier : aura reçue d'une autre carte qui nomme celle-ci.
+    for (const source of controllerBoard) {
+      if (source.instanceId === unit.instanceId) continue;
+      const named = getCardDefinition(source.cardId).auraBuffCardIds;
+      if (!named || !named.cardIds.includes(unit.cardId)) continue;
+      auraAttack += named.attackAmount ?? 0;
+      auraHealth += named.healthAmount ?? 0;
+    }
+
+    // Cra-Poiscail des Bas-Fonds / des Hautes-Eaux : bonus selon le sens du cycle.
+    const orientationBuff = def.selfBuffWhileTideOrientation;
+    if (orientationBuff && tideOrientation === orientationBuff.orientation) {
+      auraAttack += orientationBuff.attackAmount ?? 0;
+      auraHealth += orientationBuff.healthAmount ?? 0;
     }
 
     // Banc de Cra-Poiscail : bonus sur soi tant que le banc atteint une

@@ -58,6 +58,10 @@ import { EQUIPPABLE_CARD_TYPES, type CardDefinition, type CardInstance } from "@
  * les pools de tirage — cf. `features/boosters/actions.ts`.
  */
 export const CRA_POISCAIL_BOOSTER_1 = "cra-poiscail-1";
+/** Deuxième booster de l'archétype — variantes Bris d'Objets, Marée et value. */
+export const CRA_POISCAIL_BOOSTER_2 = "cra-poiscail-2";
+/** Troisième booster — branche Chevalier/Destrier/Bourreau, finishers et variantes Abyssales. */
+export const CRA_POISCAIL_BOOSTER_3 = "cra-poiscail-3";
 
 export const CORE_SET: CardDefinition[] = [
   // ======================================================================
@@ -1704,9 +1708,20 @@ export const CORE_SET: CardDefinition[] = [
     text:
       "Durée : 3 tours. La première fois à chaque tour qu'un Cra-Poiscail arrive en jeu, il gagne +1 Résistance " +
       "jusqu'à votre prochain tour.",
-    // non appliqué : `onEnterPlay` n'est propagé qu'à l'unité qui arrive
-    // (`game/triggers/triggerBus.ts`), une Structure ne peut donc pas encore
-    // réagir à l'arrivée d'une autre carte.
+    abilities: [
+      {
+        trigger: "onEnterPlay",
+        // Elle-même est un Cra-Poiscail, mais une Structure n'"arrive" pas
+        // pour se renforcer elle-même : `excludeSelf` par défaut suffit.
+        triggeredBy: { archetype: "cra-poiscail" },
+        oncePerTurnKey: "flaqueAllyEnter",
+        description: "Un Cra-Poiscail arrive : il gagne +1 Résistance.",
+        // Écart connu : le moteur ne connaît que "jusqu'à la fin du tour"
+        // (`temporary`) et "permanent" — la carte dit "jusqu'à votre
+        // prochain tour", soit un tour adverse de plus.
+        effects: [{ type: "buff", target: { kind: "triggerSource" }, healthAmount: { kind: "flat", value: 1 }, permanent: false }],
+      },
+    ],
   },
   {
     id: "fesses-en-avant",
@@ -1730,6 +1745,521 @@ export const CORE_SET: CardDefinition[] = [
         rush: true,
       },
     ],
+  },
+
+  // ======================================================================
+  // LOT 10 — Cra-Poiscail (Booster 2)
+  // ======================================================================
+  // "Ouvre les variantes Bris / Marée / value" (Notion, Répartition
+  // Booster du Lot 10).
+  {
+    id: "cra-poiscail-bavard",
+    name: "Cra-Poiscail Bavard",
+    type: "creature",
+    archetype: "cra-poiscail",
+    setCode: CRA_POISCAIL_BOOSTER_2,
+    cost: 2,
+    attack: 1,
+    health: 3,
+    text: "La première fois à chaque tour qu'un autre Cra-Poiscail arrive en jeu, il gagne +1 Puissance jusqu'à la fin du tour.",
+    abilities: [
+      {
+        trigger: "onEnterPlay",
+        triggeredBy: { archetype: "cra-poiscail" },
+        oncePerTurnKey: "bavardAllyEnter",
+        description: "Un autre Cra-Poiscail arrive : +1 Puissance jusqu'à la fin du tour.",
+        effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, permanent: false }],
+      },
+    ],
+  },
+  {
+    id: "cra-poiscail-chef-de-banc",
+    name: "Cra-Poiscail Chef de Banc",
+    type: "creature",
+    archetype: "cra-poiscail",
+    setCode: CRA_POISCAIL_BOOSTER_2,
+    cost: 3,
+    attack: 2,
+    health: 3,
+    text: "La première fois à chaque tour qu'un autre Cra-Poiscail arrive en jeu, il gagne +1 / +1 jusqu'à la fin du tour.",
+    abilities: [
+      {
+        trigger: "onEnterPlay",
+        triggeredBy: { archetype: "cra-poiscail" },
+        oncePerTurnKey: "chefDeBancAllyEnter",
+        description: "Un autre Cra-Poiscail arrive : +1 / +1 jusqu'à la fin du tour.",
+        effects: [
+          {
+            type: "buff",
+            target: { kind: "self" },
+            attackAmount: { kind: "flat", value: 1 },
+            healthAmount: { kind: "flat", value: 1 },
+            permanent: false,
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "cra-poiscail-ramasseur",
+    name: "Cra-Poiscail Ramasseur",
+    type: "creature",
+    archetype: "cra-poiscail",
+    setCode: CRA_POISCAIL_BOOSTER_2,
+    cost: 2,
+    attack: 2,
+    health: 2,
+    text: "La première fois à chaque tour que vous Brisez un Objet, il gagne +1 / +1 jusqu'à la fin du tour.",
+    abilities: [
+      {
+        trigger: "onObjectBroken",
+        // Filtre vide : n'importe quel Objet, du moment que c'est SON
+        // contrôleur qui le brise (`sameController` par défaut).
+        triggeredBy: {},
+        oncePerTurnKey: "ramasseurObjectBroken",
+        description: "Vous Brisez un Objet : +1 / +1 jusqu'à la fin du tour.",
+        effects: [
+          {
+            type: "buff",
+            target: { kind: "self" },
+            attackAmount: { kind: "flat", value: 1 },
+            healthAmount: { kind: "flat", value: 1 },
+            permanent: false,
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "cra-poiscail-des-bas-fonds",
+    name: "Cra-Poiscail des Bas-Fonds",
+    type: "creature",
+    archetype: "cra-poiscail",
+    setCode: CRA_POISCAIL_BOOSTER_2,
+    cost: 2,
+    attack: 2,
+    health: 2,
+    text: "Tant que la Marée est descendante, il gagne +1 Puissance.",
+    selfBuffWhileTideOrientation: { orientation: "descendante", attackAmount: 1 },
+  },
+  {
+    id: "cra-poiscail-des-hautes-eaux",
+    name: "Cra-Poiscail des Hautes-Eaux",
+    type: "creature",
+    archetype: "cra-poiscail",
+    setCode: CRA_POISCAIL_BOOSTER_2,
+    cost: 2,
+    attack: 1,
+    health: 3,
+    text: "Tant que la Marée est montante, il gagne +1 Puissance.",
+    selfBuffWhileTideOrientation: { orientation: "montante", attackAmount: 1 },
+  },
+  {
+    id: "slip-de-guerre-cra-poiscail",
+    name: "Slip de Guerre Cra-Poiscail",
+    type: "equipement",
+    archetype: "cra-poiscail",
+    setCode: CRA_POISCAIL_BOOSTER_2,
+    permanent: true,
+    cost: 2,
+    health: 2,
+    equipTargetArchetype: "cra-poiscail",
+    text:
+      "Équipez un Cra-Poiscail. Il gagne +1 Résistance. La première fois à chaque tour qu'un autre Cra-Poiscail " +
+      "arrive en jeu, le porteur gagne +1 Puissance jusqu'à la fin du tour.",
+    onPlayEffects: [
+      { type: "attachEquipment", target: { kind: "chosenUnit" } },
+      { type: "buff", target: { kind: "chosenUnit" }, healthAmount: { kind: "flat", value: 1 }, permanent: true },
+    ],
+    abilities: [
+      {
+        trigger: "onEnterPlay",
+        triggeredBy: { archetype: "cra-poiscail" },
+        oncePerTurnKey: "slipAllyEnter",
+        description: "Un autre Cra-Poiscail arrive : le porteur gagne +1 Puissance jusqu'à la fin du tour.",
+        effects: [{ type: "buff", target: { kind: "equippedUnit" }, attackAmount: { kind: "flat", value: 1 }, permanent: false }],
+      },
+    ],
+  },
+  {
+    id: "casque-coquille",
+    name: "Casque-Coquille",
+    type: "equipement",
+    archetype: "cra-poiscail",
+    setCode: CRA_POISCAIL_BOOSTER_2,
+    permanent: true,
+    cost: 2,
+    health: 1,
+    equipTargetArchetype: "cra-poiscail",
+    text:
+      "Équipez un Cra-Poiscail. Il gagne +1 Résistance. La première fois qu'il devrait subir des dégâts d'un " +
+      "effet, réduisez ces dégâts de 1 puis détruisez cet Équipement.",
+    onPlayEffects: [
+      { type: "attachEquipment", target: { kind: "chosenUnit" } },
+      { type: "buff", target: { kind: "chosenUnit" }, healthAmount: { kind: "flat", value: 1 }, permanent: true },
+    ],
+    // non appliqué (seconde phrase) : il n'existe pas encore de bouclier
+    // consommable qui distingue les dégâts d'EFFET des dégâts de combat et
+    // détruise son propre Équipement en se déclenchant.
+  },
+  {
+    id: "le-tas-de-trucs",
+    name: "Le Tas de Trucs",
+    type: "structure",
+    archetype: "cra-poiscail",
+    setCode: CRA_POISCAIL_BOOSTER_2,
+    cost: 2,
+    health: 3,
+    text: "La première fois à chaque tour que vous Brisez un Objet, choisissez un Cra-Poiscail : il gagne +1 / +1 jusqu'à la fin du tour.",
+    // non appliqué : "choisissez" demande une cible désignée par le joueur
+    // au moment de la résolution. Le moteur ne sait le faire que dans une
+    // fenêtre de réaction (capacité `optional`), ce qui rendrait l'effet
+    // refusable — un changement de règle, pas une implémentation.
+  },
+  {
+    id: "le-trone-de-bouchon",
+    name: "Le Trône de Bouchon",
+    type: "structure",
+    archetype: "cra-poiscail",
+    setCode: CRA_POISCAIL_BOOSTER_2,
+    cost: 3,
+    health: 4,
+    maxCopies: 2,
+    text: "Tant que vous contrôlez au moins 3 Cra-Poiscail, vos Cra-Poiscail gagnent +1 Puissance.",
+    auraBuffOtherArchetypeUnits: { archetype: "cra-poiscail", attackAmount: 1, requiresArchetypeCountAtLeast: 3 },
+  },
+  {
+    id: "la-grande-migration",
+    name: "La Grande Migration",
+    type: "anomalie",
+    archetype: "cra-poiscail",
+    setCode: CRA_POISCAIL_BOOSTER_2,
+    cost: 4,
+    // Résistance absente du cadrage Notion pour les Anomalies, comme pour
+    // "Quelque Chose Sous la Coque" : fixée par cohérence avec les
+    // permanents de coût comparable plutôt que laissée à 0, ce qui la
+    // ferait mourir au premier `processDeaths`.
+    health: 3,
+    maxCopies: 2,
+    durationTurns: 2,
+    text: "Pendant 2 tours, la première fois à chaque tour qu'un Cra-Poiscail que vous contrôlez est détruit, invoquez 1 Péon Cra-Poiscail 1 / 1.",
+    abilities: [
+      {
+        trigger: "onDeath",
+        triggeredBy: { archetype: "cra-poiscail" },
+        oncePerTurnKey: "grandeMigrationAllyDeath",
+        description: "Un de vos Cra-Poiscail est détruit : invoquez 1 Péon Cra-Poiscail.",
+        effects: [{ type: "summon", target: { kind: "controllerPlayer" }, cardId: "peon-cra-poiscail" }],
+      },
+    ],
+  },
+
+  // ======================================================================
+  // LOT 10 — Cra-Poiscail (Booster 3) + variantes Abyssales
+  // ======================================================================
+  // Branche pseudo-médiévale (Chevalier / Destrier / Bourreau) et finishers.
+  {
+    id: "ecuyer-cra-poiscail",
+    name: "Écuyer Cra-Poiscail",
+    type: "creature",
+    archetype: "cra-poiscail",
+    setCode: CRA_POISCAIL_BOOSTER_3,
+    cost: 2,
+    attack: 1,
+    health: 3,
+    text: "Votre Chevalier Cra-Poiscail gagne +1 Résistance tant que l'Écuyer est en jeu.",
+    auraBuffCardIds: { cardIds: ["chevalier-cra-poiscail", "chevalier-cra-poiscail-abyssal"], healthAmount: 1 },
+  },
+  {
+    id: "chevalier-cra-poiscail",
+    name: "Chevalier Cra-Poiscail",
+    type: "creature",
+    archetype: "cra-poiscail",
+    setCode: CRA_POISCAIL_BOOSTER_3,
+    cost: 3,
+    attack: 3,
+    health: 3,
+    maxCopies: 2,
+    text: "Tant que vous contrôlez un Destrier du Grand Étang, il gagne +1 Puissance et Garde.",
+    selfBuffWhileControllingCardIds: { cardIds: ["destrier-du-grand-etang"], attackAmount: 1 },
+    conditionalKeywords: [{ keyword: "garde", controllingCardIds: ["destrier-du-grand-etang"] }],
+  },
+  {
+    id: "destrier-du-grand-etang",
+    name: "Destrier du Grand Étang",
+    type: "creature",
+    archetype: "cra-poiscail",
+    setCode: CRA_POISCAIL_BOOSTER_3,
+    cost: 2,
+    attack: 2,
+    health: 3,
+    text: "Tant qu'il est en jeu, votre Chevalier Cra-Poiscail gagne +1 Résistance.",
+    auraBuffCardIds: { cardIds: ["chevalier-cra-poiscail", "chevalier-cra-poiscail-abyssal"], healthAmount: 1 },
+  },
+  {
+    id: "bourreau-cra-poiscail",
+    name: "Bourreau Cra-Poiscail",
+    type: "creature",
+    archetype: "cra-poiscail",
+    setCode: CRA_POISCAIL_BOOSTER_3,
+    cost: 3,
+    attack: 3,
+    health: 2,
+    text: "La première fois à chaque tour qu'un autre Cra-Poiscail est détruit, il gagne +1 Puissance jusqu'à la fin du tour.",
+    abilities: [
+      {
+        trigger: "onDeath",
+        triggeredBy: { archetype: "cra-poiscail" },
+        oncePerTurnKey: "bourreauAllyDeath",
+        description: "Un autre Cra-Poiscail est détruit : +1 Puissance jusqu'à la fin du tour.",
+        effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, permanent: false }],
+      },
+    ],
+  },
+  {
+    id: "cra-poiscail-porte-etendard",
+    name: "Cra-Poiscail Porte-Étendard",
+    type: "creature",
+    archetype: "cra-poiscail",
+    setCode: CRA_POISCAIL_BOOSTER_3,
+    cost: 3,
+    attack: 1,
+    health: 4,
+    maxCopies: 2,
+    text: "Vos autres Cra-Poiscail gagnent +1 Puissance.",
+    auraBuffOtherArchetypeUnits: { archetype: "cra-poiscail", attackAmount: 1 },
+  },
+  {
+    id: "roi-cra-poiscail",
+    name: "Roi Cra-Poiscail",
+    type: "creature",
+    archetype: "cra-poiscail",
+    setCode: CRA_POISCAIL_BOOSTER_3,
+    cost: 5,
+    attack: 4,
+    health: 5,
+    maxCopies: 1,
+    text:
+      "À son arrivée, si vous contrôlez déjà au moins 2 autres Cra-Poiscail, invoquez 2 Péons Cra-Poiscail 1 / 1. " +
+      "Vos autres Cra-Poiscail gagnent +1 Puissance.",
+    onPlayEffects: [
+      {
+        type: "summon",
+        target: { kind: "controllerPlayer" },
+        cardId: "peon-cra-poiscail",
+        count: 2,
+        conditionControlledArchetypeAtLeast: { archetype: "cra-poiscail", count: 2, excludeSelf: true },
+      },
+    ],
+    auraBuffOtherArchetypeUnits: { archetype: "cra-poiscail", attackAmount: 1 },
+  },
+  {
+    id: "ptite-fesse-grand-reve",
+    name: "P'tite Fesse, Grand Rêve",
+    type: "creature",
+    archetype: "cra-poiscail",
+    setCode: CRA_POISCAIL_BOOSTER_3,
+    cost: 2,
+    attack: 1,
+    health: 2,
+    maxCopies: 2,
+    text: "La première fois à chaque tour qu'un autre Cra-Poiscail gagne de la Puissance, elle gagne +1 Puissance jusqu'à la fin du tour.",
+    // non appliqué : aucun déclencheur ne porte encore sur "une carte gagne
+    // de la Puissance". Le moteur émet bien `BUFF_APPLIED`, mais en faire un
+    // `TriggerType` ouvre des chaînes buff → buff qu'il faut d'abord borner.
+  },
+  {
+    id: "fourchette-du-grand-etang",
+    name: "Fourchette du Grand Étang",
+    type: "equipement",
+    archetype: "cra-poiscail",
+    setCode: CRA_POISCAIL_BOOSTER_3,
+    permanent: true,
+    cost: 2,
+    health: 2,
+    equipTargetArchetype: "cra-poiscail",
+    text:
+      "Équipez un Cra-Poiscail. Il gagne +1 Puissance. La première fois à chaque tour qu'il attaque, un autre " +
+      "Cra-Poiscail gagne +1 Puissance jusqu'à la fin du tour.",
+    onPlayEffects: [
+      { type: "attachEquipment", target: { kind: "chosenUnit" } },
+      { type: "buff", target: { kind: "chosenUnit" }, attackAmount: { kind: "flat", value: 1 }, permanent: true },
+    ],
+    // non appliqué (seconde phrase) : "un autre Cra-Poiscail" ne désigne ni
+    // une cible choisie ni une cible déterminée par la règle — à trancher
+    // avec le design avant de câbler un tirage.
+  },
+  {
+    id: "banniere-en-vieille-chaussette",
+    name: "Bannière en Vieille Chaussette",
+    type: "equipement",
+    archetype: "cra-poiscail",
+    setCode: CRA_POISCAIL_BOOSTER_3,
+    permanent: true,
+    cost: 3,
+    health: 2,
+    maxCopies: 2,
+    equipTargetArchetype: "cra-poiscail",
+    text:
+      "Équipez un Cra-Poiscail. Il gagne +1 Résistance. La première fois à chaque tour que vous invoquez un " +
+      "Cra-Poiscail, celui-ci gagne +1 Puissance jusqu'à la fin du tour.",
+    onPlayEffects: [
+      { type: "attachEquipment", target: { kind: "chosenUnit" } },
+      { type: "buff", target: { kind: "chosenUnit" }, healthAmount: { kind: "flat", value: 1 }, permanent: true },
+    ],
+    abilities: [
+      {
+        trigger: "onEnterPlay",
+        // "que vous INVOQUEZ" : une carte posée depuis la main ne compte pas.
+        triggeredBy: { archetype: "cra-poiscail", onlySummoned: true },
+        oncePerTurnKey: "banniereSummon",
+        description: "Vous invoquez un Cra-Poiscail : il gagne +1 Puissance jusqu'à la fin du tour.",
+        effects: [{ type: "buff", target: { kind: "triggerSource" }, attackAmount: { kind: "flat", value: 1 }, permanent: false }],
+      },
+    ],
+  },
+  {
+    id: "la-quete-du-grand-nenuphar",
+    name: "La Quête du Grand Nénuphar",
+    type: "structure",
+    archetype: "cra-poiscail",
+    setCode: CRA_POISCAIL_BOOSTER_3,
+    cost: 3,
+    health: 4,
+    maxCopies: 2,
+    durationTurns: 4,
+    text:
+      "Durée : 4 tours. La première fois à chaque tour que votre Chevalier Cra-Poiscail attaque alors que vous " +
+      "contrôlez un Destrier du Grand Étang, récupérez 1 Raison.",
+    abilities: [
+      {
+        trigger: "onAttack",
+        triggeredBy: { cardIds: ["chevalier-cra-poiscail", "chevalier-cra-poiscail-abyssal"] },
+        oncePerTurnKey: "queteChevalierAttack",
+        description: "Votre Chevalier attaque avec son Destrier : récupérez 1 Raison.",
+        effects: [
+          {
+            type: "reasonGain",
+            target: { kind: "controllerPlayer" },
+            amount: { kind: "flat", value: 1 },
+            conditionControlsAnyCardIds: ["destrier-du-grand-etang"],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "le-grand-saut",
+    name: "Le Grand Saut",
+    type: "anomalie",
+    archetype: "cra-poiscail",
+    setCode: CRA_POISCAIL_BOOSTER_3,
+    permanent: false,
+    cost: 5,
+    maxCopies: 1,
+    text: "Invoquez 3 Péons Cra-Poiscail 1 / 1. Ils gagnent +1 Puissance et Ruée jusqu'à la fin du tour.",
+    onPlayEffects: [
+      {
+        type: "summon",
+        target: { kind: "controllerPlayer" },
+        cardId: "peon-cra-poiscail",
+        count: 3,
+        rush: true,
+        summonBuff: { attackAmount: 1 },
+      },
+    ],
+  },
+  {
+    id: "le-tournoi-du-grand-etang",
+    name: "Le Tournoi du Grand Étang",
+    type: "anomalie",
+    archetype: "cra-poiscail",
+    setCode: CRA_POISCAIL_BOOSTER_3,
+    permanent: false,
+    cost: 4,
+    maxCopies: 2,
+    text:
+      "Jusqu'à la fin du tour, vos Chevalier Cra-Poiscail, Destrier du Grand Étang et Bourreau Cra-Poiscail " +
+      "gagnent +1 / +1. Si vous contrôlez les trois à la résolution, piochez 1 carte.",
+    onPlayEffects: [
+      {
+        type: "buff",
+        target: {
+          kind: "allyUnitsWithCardIds",
+          cardIds: ["chevalier-cra-poiscail", "chevalier-cra-poiscail-abyssal", "destrier-du-grand-etang", "bourreau-cra-poiscail"],
+        },
+        attackAmount: { kind: "flat", value: 1 },
+        healthAmount: { kind: "flat", value: 1 },
+        permanent: false,
+      },
+      {
+        type: "draw",
+        target: { kind: "controllerPlayer" },
+        amount: { kind: "flat", value: 1 },
+        conditionControlsAllCardIds: ["chevalier-cra-poiscail", "destrier-du-grand-etang", "bourreau-cra-poiscail"],
+      },
+    ],
+  },
+  {
+    id: "roi-cra-poiscail-abyssal",
+    name: "Roi Cra-Poiscail",
+    type: "creature",
+    subtype: "abyssal",
+    archetype: "cra-poiscail",
+    setCode: CRA_POISCAIL_BOOSTER_3,
+    cost: 6,
+    attack: 5,
+    health: 7,
+    maxCopies: 1,
+    text:
+      "À son arrivée, invoquez 2 Péons Cra-Poiscail 1 / 1. Vos autres Cra-Poiscail gagnent +1 / +1. La première " +
+      "fois à chaque tour qu'un Péon Cra-Poiscail arrive en jeu sous votre contrôle, vous perdez 1 Raison.",
+    onPlayEffects: [
+      { type: "summon", target: { kind: "controllerPlayer" }, cardId: "peon-cra-poiscail", count: 2 },
+    ],
+    auraBuffOtherArchetypeUnits: { archetype: "cra-poiscail", attackAmount: 1, healthAmount: 1 },
+    abilities: [
+      {
+        trigger: "onEnterPlay",
+        triggeredBy: { cardIds: ["peon-cra-poiscail"] },
+        oncePerTurnKey: "roiAbyssalPeonEnter",
+        description: "Un Péon arrive sous votre contrôle : vous perdez 1 Raison.",
+        effects: [{ type: "reasonLoss", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
+      },
+    ],
+  },
+  {
+    id: "ptite-fesse-grand-reve-abyssal",
+    name: "P'tite Fesse, Grand Rêve",
+    type: "creature",
+    subtype: "abyssal",
+    archetype: "cra-poiscail",
+    setCode: CRA_POISCAIL_BOOSTER_3,
+    cost: 3,
+    attack: 2,
+    health: 3,
+    maxCopies: 1,
+    text: "La première fois à chaque tour qu'un autre Cra-Poiscail gagne de la Puissance, elle gagne +2 Puissance et Ruée jusqu'à la fin du tour.",
+    // non appliqué : même déclencheur manquant que sa version Standard.
+  },
+  {
+    id: "chevalier-cra-poiscail-abyssal",
+    name: "Chevalier Cra-Poiscail",
+    type: "creature",
+    subtype: "abyssal",
+    archetype: "cra-poiscail",
+    setCode: CRA_POISCAIL_BOOSTER_3,
+    cost: 4,
+    attack: 4,
+    health: 5,
+    maxCopies: 1,
+    text:
+      "Tant que vous contrôlez un Destrier du Grand Étang, il gagne Garde et +1 Puissance. La première fois à " +
+      "chaque tour qu'il attaque, un autre Cra-Poiscail gagne +1 / +1 jusqu'à la fin du tour.",
+    selfBuffWhileControllingCardIds: { cardIds: ["destrier-du-grand-etang"], attackAmount: 1 },
+    conditionalKeywords: [{ keyword: "garde", controllingCardIds: ["destrier-du-grand-etang"] }],
+    // non appliqué (seconde phrase) : "un autre Cra-Poiscail" sans cible
+    // désignée, même question ouverte que la Fourchette du Grand Étang.
   },
 ];
 
@@ -1767,8 +2297,11 @@ export function canBeEquipTarget(
   board: CardInstance[],
   candidate: CardInstance
 ): boolean {
+  const candidateDef = getCardDefinition(candidate.cardId);
   const allowedTypes = equipmentDef.equipTargetTypes ?? EQUIPPABLE_CARD_TYPES;
-  if (!allowedTypes.includes(getCardDefinition(candidate.cardId).type)) return false;
+  if (!allowedTypes.includes(candidateDef.type)) return false;
+  // "Équipez un Cra-Poiscail" : la famille restreint la cible en plus du type.
+  if (equipmentDef.equipTargetArchetype && candidateDef.archetype !== equipmentDef.equipTargetArchetype) return false;
   return !board.some(
     (u) => u.instanceId !== candidate.instanceId && u.attachedToInstanceId === candidate.instanceId
   );

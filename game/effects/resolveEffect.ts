@@ -27,6 +27,8 @@ export interface EffectContext {
   chosenGraveyardInstanceId?: string;
   /** Résolution d'un `onBreakEffects` déclenché par un Bris DEPUIS LA MAIN (`breakObject` avec `fromHand`) — lu par `conditionBrokenFromHand` (ex: Le Seau). */
   brokenFromHand?: boolean;
+  /** Carte qui a DÉCLENCHÉ la capacité en cours d'exécution (capacités d'observateur) — cible `{ kind: "triggerSource" }`. */
+  triggerSourceInstanceId?: string;
   turnNumber: number;
 }
 
@@ -130,6 +132,30 @@ function resolveUnitTargets(
       const unit = owner?.board.find((u) => u.instanceId === context.sourceInstanceId);
       return noDraw(unit && owner ? [{ unit, ownerId: owner.id }] : []);
     }
+    case "allyUnitsWithCardIds": {
+      const controller = getPlayer(state, context.controllerId);
+      const wanted = effect.target.kind === "allyUnitsWithCardIds" ? effect.target.cardIds : [];
+      return noDraw(
+        controller.board.filter((u) => wanted.includes(u.cardId)).map((unit) => ({ unit, ownerId: controller.id }))
+      );
+    }
+    case "triggerSource": {
+      if (!context.triggerSourceInstanceId) return noDraw([]);
+      const owner = findUnitOwner(state, context.triggerSourceInstanceId);
+      const unit = owner?.board.find((u) => u.instanceId === context.triggerSourceInstanceId);
+      return noDraw(unit && owner ? [{ unit, ownerId: owner.id }] : []);
+    }
+    case "equippedUnit": {
+      // L'Équipement source porte la référence : on remonte vers le
+      // permanent qu'il équipe, sur le plateau de son contrôleur.
+      if (!context.sourceInstanceId) return noDraw([]);
+      const owner = findUnitOwner(state, context.sourceInstanceId);
+      const equipment = owner?.board.find((u) => u.instanceId === context.sourceInstanceId);
+      const carried = equipment?.attachedToInstanceId
+        ? owner?.board.find((u) => u.instanceId === equipment.attachedToInstanceId)
+        : undefined;
+      return noDraw(carried && owner ? [{ unit: carried, ownerId: owner.id }] : []);
+    }
     case "chosenUnit": {
       if (!context.chosenTargetInstanceId) return noDraw([]);
       const owner = findUnitOwner(state, context.chosenTargetInstanceId);
@@ -213,6 +239,15 @@ export function resolveEffect(
   }
   if (effect.conditionBrokenFromHand !== undefined && effect.conditionBrokenFromHand !== Boolean(context.brokenFromHand)) {
     return { state, events };
+  }
+  if (effect.conditionControlsAllCardIds) {
+    const controller = getPlayer(state, context.controllerId);
+    const owned = new Set(controller.board.map((u) => u.cardId));
+    if (!effect.conditionControlsAllCardIds.every((cardId) => owned.has(cardId))) return { state, events };
+  }
+  if (effect.conditionControlsAnyCardIds) {
+    const controller = getPlayer(state, context.controllerId);
+    if (!controller.board.some((u) => effect.conditionControlsAnyCardIds!.includes(u.cardId))) return { state, events };
   }
   if (effect.conditionControlledArchetypeAtLeast) {
     const { archetype, count, excludeSelf } = effect.conditionControlledArchetypeAtLeast;
@@ -398,7 +433,24 @@ export function resolveEffect(
         events.push({ ...base, type: "SUMMON", playerId: player.id, instanceId: token.instanceId, cardId: token.cardId });
       }
 
-      const board = [...player.board, ...summoned];
+      // Bonus accordé aux corps qui viennent d'arriver (ex: Le Grand Saut).
+      const buffed = effect.summonBuff
+        ? summoned.map((token) => ({
+            ...token,
+            modifiers: [
+              ...token.modifiers,
+              {
+                id: `mod_summon_${token.instanceId}`,
+                source: effect.cardId ?? "summon",
+                attack: effect.summonBuff?.attackAmount ?? 0,
+                health: effect.summonBuff?.healthAmount ?? 0,
+                duration: "temporary" as const,
+              },
+            ],
+          }))
+        : summoned;
+
+      const board = [...player.board, ...buffed];
       return { state: { ...replacePlayer(state, { ...player, board }), rngState }, events };
     }
 

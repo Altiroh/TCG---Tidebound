@@ -71,7 +71,13 @@ export type TargetSelector =
   | { kind: "allEnemyUnits" }
   | { kind: "allUnits" }
   | { kind: "randomEnemyUnit" }
-  | { kind: "randomAllyUnit" };
+  | { kind: "randomAllyUnit" }
+  /** Le permanent que l'Équipement SOURCE équipe (`CardInstance.attachedToInstanceId`) — ex: Slip de Guerre, qui renforce son porteur. */
+  | { kind: "equippedUnit" }
+  /** Les unités alliées portant l'un de ces `cardIds` (ex: Le Tournoi du Grand Étang, qui renforce Chevalier, Destrier et Bourreau). */
+  | { kind: "allyUnitsWithCardIds"; cardIds: string[] }
+  /** La carte qui a DÉCLENCHÉ la capacité en cours (ex: Bannière en Vieille Chaussette, qui renforce le Cra-Poiscail qui vient d'être invoqué). */
+  | { kind: "triggerSource" };
 
 export interface EffectDefinition {
   type: EffectType;
@@ -97,6 +103,13 @@ export interface EffectDefinition {
   rush?: boolean;
 
   /**
+   * Pour `summon` : bonus temporaire (jusqu'à la fin du tour) accordé aux
+   * corps qui viennent d'être invoqués — ex: Le Grand Saut, "ils gagnent
+   * +1 Puissance et Ruée jusqu'à la fin du tour".
+   */
+  summonBuff?: { attackAmount?: number; healthAmount?: number };
+
+  /**
    * Ne résout cet effet que si le contrôleur a au moins `count` permanents
    * de cet archétype sur son plateau (ex: Cra-Poiscail Sauteur, "si vous
    * contrôlez déjà un AUTRE Cra-Poiscail"). `excludeSelf` exclut la carte
@@ -116,6 +129,16 @@ export interface EffectDefinition {
    * brise directement de la main. `undefined` = indifférent.
    */
   conditionBrokenFromHand?: boolean;
+
+  /**
+   * Ne résout cet effet que si le contrôleur a TOUTES ces cartes nommées
+   * en jeu (ex: Le Tournoi du Grand Étang, "si vous contrôlez les trois à
+   * la résolution, piochez 1 carte").
+   */
+  conditionControlsAllCardIds?: string[];
+
+  /** Variante "au moins une" (ex: La Quête du Grand Nénuphar, "alors que vous contrôlez un Destrier du Grand Étang"). */
+  conditionControlsAnyCardIds?: string[];
   /** Zone de destination, pour `moveZone` (ex: retourner une carte en main). */
   toZone?: "hand" | "deck" | "graveyard" | "board";
   /**

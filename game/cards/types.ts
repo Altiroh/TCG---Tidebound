@@ -37,6 +37,29 @@ export const PERMANENT_CARD_TYPES: readonly CardType[] = [
   "anomalie",
 ];
 
+/**
+ * Filtre sur la carte qui DÉCLENCHE l'événement, pour une capacité qui
+ * réagit à ce qui arrive à une AUTRE carte que la sienne — "la première
+ * fois à chaque tour qu'un autre Cra-Poiscail arrive en jeu", "qu'un
+ * Cra-Poiscail que vous contrôlez est détruit".
+ *
+ * Sans ce champ, `onEnterPlay`/`onDeath` restent PERSONNELS (la carte ne
+ * réagit qu'à sa propre arrivée/mort), comportement historique de
+ * `game/triggers/triggerBus.ts`.
+ */
+export interface TriggerSourceFilter {
+  /** La carte déclencheuse appartient à cette famille. */
+  archetype?: ArchetypeId;
+  /** Ou est précisément l'une de ces cartes (ex: un Péon, pour le Roi Abyssal). */
+  cardIds?: string[];
+  /** Le déclencheur doit être contrôlé par le contrôleur de la capacité. Défaut : `true`. */
+  sameController?: boolean;
+  /** Exclut la carte elle-même — "un AUTRE Cra-Poiscail". Défaut : `true`. */
+  excludeSelf?: boolean;
+  /** Ne réagit qu'aux cartes INVOQUÉES, pas à celles posées depuis la main (ex: Bannière en Vieille Chaussette, "que vous invoquez"). */
+  onlySummoned?: boolean;
+}
+
 /** Une capacité déclenchée : "quand X se produit, résous ces effets". */
 export interface TriggeredAbility {
   trigger: TriggerType;
@@ -45,6 +68,17 @@ export interface TriggeredAbility {
   description?: string;
   /** Filtre supplémentaire pour `onTideStateEntered`/`onTideStateExited` : ne se déclenche que pour cet état. */
   condition?: { tideState?: TideStateName };
+
+  /** Réagit à ce qui arrive à une AUTRE carte (cf. `TriggerSourceFilter`). */
+  triggeredBy?: TriggerSourceFilter;
+
+  /**
+   * "La première fois à chaque tour que..." : clé de suivi dans
+   * `CardInstance.oncePerTurnFlags`, propre à cette capacité (ex:
+   * "bavardAllyEnter"). Sans elle, la capacité se déclenche autant de fois
+   * que l'événement se produit.
+   */
+  oncePerTurnKey?: string;
   /**
    * "auto" (défaut) : résolution automatique par le moteur, aucune
    * décision du joueur (Notion "Moteur de partie", "Effets déclenchés
@@ -70,6 +104,8 @@ export interface TriggeredAbility {
  */
 export interface ConditionalKeywordGrant {
   keyword: string;
+  /** Le contrôleur a au moins une de ces cartes nommées en jeu (ex: Chevalier Cra-Poiscail, "tant que vous contrôlez un Destrier du Grand Étang"). */
+  controllingCardIds?: string[];
   /** Le CONTRÔLEUR de la carte (pas un joueur quelconque) a au plus cette Raison. */
   controllerReasonAtMost?: number;
   /** La Marée courante doit être l'un de ces états. */
@@ -195,6 +231,13 @@ export interface CardDefinition {
    * — jamais un autre Équipement/Objet/Anomalie, quel que soit ce champ.
    */
   equipTargetTypes?: CardType[];
+
+  /**
+   * Pour un Équipement uniquement : restreint en plus sa cible aux membres
+   * d'une famille ("Équipez un Cra-Poiscail", Lot 10). Se combine avec
+   * `equipTargetTypes` — les deux doivent être satisfaits.
+   */
+  equipTargetArchetype?: ArchetypeId;
 
   /**
    * Pour les Objets uniquement : effets résolus quand l'Objet est brisé
@@ -366,6 +409,34 @@ export interface CardDefinition {
 
   /** Bonus permanent sur SOI-MÊME tant que la Raison de son contrôleur est ≤ ce seuil (ex: Matelot Insomniaque). */
   selfBuffWhileControllerReasonAtMost?: { reasonAtMost: number; attackAmount?: number; healthAmount?: number };
+
+  /**
+   * Bonus permanent sur SOI-MÊME tant que le contrôleur a l'une de ces
+   * cartes NOMMÉES en jeu (ex: Chevalier Cra-Poiscail, "tant que vous
+   * contrôlez un Destrier du Grand Étang"). Le duo Chevalier/Destrier est
+   * une synergie de cartes précises, pas d'archétype : elle ne peut pas
+   * passer par `selfBuffWhileControllingArchetype`.
+   */
+  selfBuffWhileControllingCardIds?: { cardIds: string[]; attackAmount?: number; healthAmount?: number };
+
+  /**
+   * Aura : bonus accordé aux cartes NOMMÉES contrôlées par le même joueur,
+   * tant que cette carte-ci est en jeu (ex: Écuyer et Destrier, qui
+   * renforcent tous deux "votre Chevalier Cra-Poiscail").
+   */
+  auraBuffCardIds?: { cardIds: string[]; attackAmount?: number; healthAmount?: number };
+
+  /**
+   * Bonus permanent sur SOI-MÊME tant que la Marée monte ou descend (ex:
+   * Cra-Poiscail des Bas-Fonds pendant une Marée descendante, des
+   * Hautes-Eaux pendant une montante). Porte sur l'ORIENTATION, pas sur
+   * l'état : c'est le sens du cycle qui compte, pas Calme/Houle/…
+   */
+  selfBuffWhileTideOrientation?: {
+    orientation: "montante" | "descendante";
+    attackAmount?: number;
+    healthAmount?: number;
+  };
 
   /**
    * Bonus permanent sur SOI-MÊME tant que son contrôleur a au moins

@@ -28,6 +28,7 @@ function effectiveAttack(unit: CardInstance, state: GameState): number {
   return computeEffectiveStats(unit, state.environment.tideState, {
     controllerBoard: controller.board,
     controllerReason: controller.reason,
+    tideOrientation: state.environment.tideOrientation,
   }).attack;
 }
 
