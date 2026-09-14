@@ -79,6 +79,43 @@ export interface EffectDefinition {
   amount?: EffectAmount;
   /** cardId à invoquer, pour `summon` ; cardId cible de transformation pour `transform`. */
   cardId?: string;
+
+  /**
+   * Pour `summon` : nombre d'exemplaires à invoquer (défaut 1). L'invocation
+   * s'arrête aux Slots libres du Navire — "on n'invoque pas plus qu'il n'en
+   * tient" (décision du 2026-09-14) : deux Péons sur un plateau qui n'a
+   * qu'une place donnent un Péon, pas une invocation annulée.
+   */
+  count?: number;
+
+  /**
+   * Pour `summon` : les invoqués arrivent SANS mal d'invocation, donc
+   * capables d'attaquer le tour même (Ruée, ex: Fesses en Avant !). Le
+   * texte parle d'un mot-clé temporaire, mais son seul effet réel sur un
+   * corps qui vient d'arriver est exactement celui-ci.
+   */
+  rush?: boolean;
+
+  /**
+   * Ne résout cet effet que si le contrôleur a au moins `count` permanents
+   * de cet archétype sur son plateau (ex: Cra-Poiscail Sauteur, "si vous
+   * contrôlez déjà un AUTRE Cra-Poiscail"). `excludeSelf` exclut la carte
+   * source du décompte — c'est presque toujours ce que dit le texte pour un
+   * effet d'arrivée, la carte étant déjà posée quand il se résout.
+   */
+  conditionControlledArchetypeAtLeast?: {
+    archetype: import("@/game/cards/archetypes").ArchetypeId;
+    count: number;
+    excludeSelf?: boolean;
+  };
+
+  /**
+   * Ne résout cet effet que si l'Objet source a été Brisé DEPUIS LA MAIN
+   * (`breakObject` avec `fromHand`), ou seulement s'il l'a été depuis le
+   * board (`false`) — ex: Le Seau, qui invoque un Péon de plus quand on le
+   * brise directement de la main. `undefined` = indifférent.
+   */
+  conditionBrokenFromHand?: boolean;
   /** Zone de destination, pour `moveZone` (ex: retourner une carte en main). */
   toZone?: "hand" | "deck" | "graveyard" | "board";
   /**

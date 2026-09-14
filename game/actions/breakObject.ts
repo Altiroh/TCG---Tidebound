@@ -182,6 +182,9 @@ export function breakObject(state: GameState, action: BreakObjectAction): Action
     sourceInstanceId: unit.instanceId,
     chosenTargetInstanceId: action.targetInstanceId,
     chosenGraveyardInstanceId: action.chosenGraveyardInstanceId,
+    // Certains Objets font plus quand on les brise directement de la main
+    // (ex: Le Seau) : l'info doit descendre jusqu'aux effets.
+    brokenFromHand: action.fromHand === true,
     turnNumber: state.turnNumber,
   };
 

@@ -152,6 +152,21 @@ const AUDITED_RARITY: Record<string, CardRarity> = {
   chope: "common",
   "wood-vy": "common",
   "carape-hus": "common",
+
+  /*
+   * Lot 10 — Cra-Poiscail, Booster 1. Raretés VALIDÉES par le design dans
+   * la passe d'équilibrage du 2026-09-14 (Notion "Catalogue de cartes",
+   * tableau "Lot 10 — paramètres d'équilibrage retenus"), reprises telles
+   * quelles : rien n'est déduit ici.
+   */
+  "tetard-fesse": "common",
+  "ptite-fesse": "common",
+  "cra-poiscail-grand-gueule": "common",
+  "cra-poiscail-sauteur": "common",
+  "banc-de-cra-poiscail": "uncommon",
+  "le-seau": "common",
+  "la-flaque-sacree": "common",
+  "fesses-en-avant": "uncommon",
 };
 
 /**

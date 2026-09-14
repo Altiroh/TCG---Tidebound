@@ -44,6 +44,10 @@ function cardPool(): Map<CardRarity, string[]> {
   if (!poolByRarity) {
     poolByRarity = new Map();
     for (const definition of CORE_SET) {
+      // Même pool que les vrais boosters (`features/boosters/actions.ts`) :
+      // seul le lot "core" est tiré, les lots d'archétype attendent leur
+      // booster dédié.
+      if (definition.setCode !== undefined && definition.setCode !== "core") continue;
       const rarity = rarityForCardId(definition.id);
       if (!rarity) continue;
       const ids = poolByRarity.get(rarity) ?? [];

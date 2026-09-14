@@ -72,6 +72,39 @@ export function computeEffectiveStats(unit: CardInstance, tideState: TideStateNa
       auraHealth += reasonSelfBuff.healthAmount ?? 0;
     }
 
+    // Banc de Cra-Poiscail : bonus sur soi tant que le banc atteint une
+    // certaine taille. Le décompte porte sur TOUT le plateau du contrôleur
+    // (un Cra-Poiscail peut être une Structure ou un Objet), pas seulement
+    // sur ses unités.
+    const archetypeSelfBuff = def.selfBuffWhileControllingArchetype;
+    if (archetypeSelfBuff) {
+      const owned = controllerBoard.filter((other) => {
+        if (archetypeSelfBuff.excludeSelf && other.instanceId === unit.instanceId) return false;
+        return getCardDefinition(other.cardId).archetype === archetypeSelfBuff.archetype;
+      }).length;
+      if (owned >= archetypeSelfBuff.atLeast) {
+        auraAttack += archetypeSelfBuff.attackAmount ?? 0;
+        auraHealth += archetypeSelfBuff.healthAmount ?? 0;
+      }
+    }
+
+    // Cra-Poiscail Porte-Étendard / Roi / Trône de Bouchon : aura reçue
+    // d'une AUTRE carte du même contrôleur, réservée aux membres de
+    // l'archétype visé.
+    for (const source of controllerBoard) {
+      if (source.instanceId === unit.instanceId) continue;
+      const auraSpec = getCardDefinition(source.cardId).auraBuffOtherArchetypeUnits;
+      if (!auraSpec || def.archetype !== auraSpec.archetype) continue;
+      if (auraSpec.requiresArchetypeCountAtLeast !== undefined) {
+        const owned = controllerBoard.filter(
+          (other) => getCardDefinition(other.cardId).archetype === auraSpec.archetype
+        ).length;
+        if (owned < auraSpec.requiresArchetypeCountAtLeast) continue;
+      }
+      auraAttack += auraSpec.attackAmount ?? 0;
+      auraHealth += auraSpec.healthAmount ?? 0;
+    }
+
     // Capitaine Sans Sommeil : aura reçue d'UNE AUTRE unité du même contrôleur.
     for (const source of controllerBoard) {
       if (source.instanceId === unit.instanceId) continue;

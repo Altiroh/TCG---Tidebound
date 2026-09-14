@@ -61,7 +61,10 @@ async function seedCards(supabase: ReturnType<typeof createServiceClient>) {
       visible_tides: def.visibleDuringTide ?? null,
       is_collectible: true,
       is_enabled: true,
-      set_code: "core",
+      // Lot de diffusion : "core" par défaut, sinon celui déclaré par la
+      // carte (Lot 10 Cra-Poiscail). C'est ce code qui décide dans quels
+      // boosters la carte peut tomber — cf. `features/boosters/actions.ts`.
+      set_code: def.setCode ?? "core",
       version: 1,
     };
   });

@@ -1,4 +1,5 @@
 import { HIDDEN_CARD_DEFINITION, HIDDEN_CARD_ID } from "@/game/cards/hiddenCard";
+import { TOKEN_SET } from "@/game/cards/sets/tokens";
 import { EQUIPPABLE_CARD_TYPES, type CardDefinition, type CardInstance } from "@/game/cards/types";
 
 /**
@@ -51,6 +52,13 @@ import { EQUIPPABLE_CARD_TYPES, type CardDefinition, type CardInstance } from "@
  * Structures et Objets (le moteur traite déjà tout permanent du board de
  * façon générique pour les dégâts/la mort, cf. `processDeaths.ts`).
  */
+/**
+ * Lot de diffusion du premier booster Cra-Poiscail (`CardDefinition.setCode`).
+ * Tant qu'aucun booster ne déclare ce lot, ses cartes restent hors de tous
+ * les pools de tirage — cf. `features/boosters/actions.ts`.
+ */
+export const CRA_POISCAIL_BOOSTER_1 = "cra-poiscail-1";
+
 export const CORE_SET: CardDefinition[] = [
   // ======================================================================
   // LOT 01 — Premières cartes
@@ -1573,10 +1581,167 @@ export const CORE_SET: CardDefinition[] = [
     requiresTideStateForBreak: ["calme"],
     onBreakEffects: [{ type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } }],
   },
+
+  // ======================================================================
+  // LOT 10 — Cra-Poiscail (Booster 1)
+  // ======================================================================
+  // Catalogue Notion "Lot 10 — paramètres d'équilibrage retenus"
+  // (2026-09-14), qui fait foi sur les coûts, stats, raretés, limites de
+  // deck et répartition en boosters. Seules les 8 cartes du **Booster 1**
+  // sont intégrées ici ; les boosters 2 et 3 (+ les 3 variantes Abyssales)
+  // attendent les primitives moteur qui leur manquent — déclenchements
+  // "la première fois par tour qu'un AUTRE Cra-Poiscail arrive/meurt"
+  // (le bus de triggers ne propage `onEnterPlay`/`onDeath` qu'à l'unité
+  // concernée), Équipements restreints à un archétype, et auras nommées
+  // (Chevalier ↔ Destrier).
+  //
+  // `setCode` les tient hors des boosters existants (cf. `CardDefinition`) :
+  // le plan de diffusion veut aucun Cra-Poiscail dans le Bienvenue, et une
+  // arrivée progressive en trois boosters dédiés.
+  {
+    id: "tetard-fesse",
+    name: "Têtard-Fesse",
+    type: "creature",
+    archetype: "cra-poiscail",
+    setCode: CRA_POISCAIL_BOOSTER_1,
+    cost: 1,
+    attack: 1,
+    health: 1,
+    // Volontairement sans effet : petite unité de base de l'archétype.
+  },
+  {
+    id: "ptite-fesse",
+    name: "P'tite Fesse",
+    type: "creature",
+    archetype: "cra-poiscail",
+    setCode: CRA_POISCAIL_BOOSTER_1,
+    cost: 1,
+    attack: 1,
+    health: 2,
+  },
+  {
+    id: "cra-poiscail-grand-gueule",
+    name: "Cra-Poiscail Grand-Gueule",
+    type: "creature",
+    archetype: "cra-poiscail",
+    setCode: CRA_POISCAIL_BOOSTER_1,
+    cost: 2,
+    attack: 3,
+    health: 1,
+  },
+  {
+    id: "cra-poiscail-sauteur",
+    name: "Cra-Poiscail Sauteur",
+    type: "creature",
+    archetype: "cra-poiscail",
+    setCode: CRA_POISCAIL_BOOSTER_1,
+    cost: 2,
+    attack: 1,
+    health: 1,
+    text: "À son arrivée, si vous contrôlez déjà un autre Cra-Poiscail, invoquez 1 Péon Cra-Poiscail 1 / 1.",
+    onPlayEffects: [
+      {
+        type: "summon",
+        target: { kind: "controllerPlayer" },
+        cardId: "peon-cra-poiscail",
+        // "un AUTRE Cra-Poiscail" : le Sauteur est déjà sur le plateau quand
+        // son effet d'arrivée se résout, il ne doit pas se compter lui-même.
+        conditionControlledArchetypeAtLeast: { archetype: "cra-poiscail", count: 1, excludeSelf: true },
+      },
+    ],
+  },
+  {
+    id: "banc-de-cra-poiscail",
+    name: "Banc de Cra-Poiscail",
+    type: "creature",
+    archetype: "cra-poiscail",
+    setCode: CRA_POISCAIL_BOOSTER_1,
+    cost: 3,
+    attack: 2,
+    health: 3,
+    text: "Tant que vous contrôlez au moins 3 autres Cra-Poiscail, il gagne +1 Puissance.",
+    selfBuffWhileControllingArchetype: {
+      archetype: "cra-poiscail",
+      atLeast: 3,
+      excludeSelf: true,
+      attackAmount: 1,
+    },
+  },
+  {
+    id: "le-seau",
+    name: "Le Seau",
+    type: "objet",
+    archetype: "cra-poiscail",
+    setCode: CRA_POISCAIL_BOOSTER_1,
+    cost: 2,
+    text:
+      "Brisez cet Objet : invoquez 1 Péon Cra-Poiscail 1 / 1. S'il a été Brisé directement depuis votre main et " +
+      "que vous contrôlez déjà un Cra-Poiscail, invoquez-en 2 à la place.",
+    // ORDRE IMPORTANT : le Péon supplémentaire est évalué AVANT l'invocation
+    // de base. Dans l'autre sens, le Péon que la base vient de créer
+    // satisferait lui-même la condition "vous contrôlez déjà un
+    // Cra-Poiscail" et la carte invoquerait toujours 2 corps.
+    onBreakEffects: [
+      {
+        type: "summon",
+        target: { kind: "controllerPlayer" },
+        cardId: "peon-cra-poiscail",
+        conditionBrokenFromHand: true,
+        conditionControlledArchetypeAtLeast: { archetype: "cra-poiscail", count: 1 },
+      },
+      { type: "summon", target: { kind: "controllerPlayer" }, cardId: "peon-cra-poiscail" },
+    ],
+  },
+  {
+    id: "la-flaque-sacree",
+    name: "La Flaque Sacrée",
+    type: "structure",
+    archetype: "cra-poiscail",
+    setCode: CRA_POISCAIL_BOOSTER_1,
+    cost: 2,
+    health: 3,
+    durationTurns: 3,
+    text:
+      "Durée : 3 tours. La première fois à chaque tour qu'un Cra-Poiscail arrive en jeu, il gagne +1 Résistance " +
+      "jusqu'à votre prochain tour.",
+    // non appliqué : `onEnterPlay` n'est propagé qu'à l'unité qui arrive
+    // (`game/triggers/triggerBus.ts`), une Structure ne peut donc pas encore
+    // réagir à l'arrivée d'une autre carte.
+  },
+  {
+    id: "fesses-en-avant",
+    name: "Fesses en Avant !",
+    type: "anomalie",
+    archetype: "cra-poiscail",
+    setCode: CRA_POISCAIL_BOOSTER_1,
+    // Résolution immédiate : part au cimetière sans occuper durablement un
+    // Slot (même traitement que les Grandes Anomalies du Lot 08).
+    permanent: false,
+    cost: 3,
+    text: "Invoquez 2 Péons Cra-Poiscail 1 / 1. Ils gagnent Ruée jusqu'à la fin du tour.",
+    onPlayEffects: [
+      {
+        type: "summon",
+        target: { kind: "controllerPlayer" },
+        cardId: "peon-cra-poiscail",
+        count: 2,
+        // "Ruée jusqu'à la fin du tour" sur un corps qui vient d'arriver
+        // revient exactement à le priver de mal d'invocation.
+        rush: true,
+      },
+    ],
+  },
 ];
 
+/**
+ * Index de résolution : le catalogue collectionnable PLUS les jetons
+ * (`TOKEN_SET`). Les jetons ne sont volontairement pas dans `CORE_SET` —
+ * collection, deckbuilding, boosters et rareté itèrent `CORE_SET` et ne
+ * doivent jamais les voir — mais `getCardDefinition` doit savoir les
+ * résoudre : un Péon invoqué est une carte comme une autre sur le plateau.
+ */
 export const CARD_DATABASE: ReadonlyMap<string, CardDefinition> = new Map(
-  CORE_SET.map((card) => [card.id, card])
+  [...CORE_SET, ...TOKEN_SET].map((card) => [card.id, card])
 );
 
 export function getCardDefinition(cardId: string): CardDefinition {

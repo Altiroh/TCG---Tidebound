@@ -141,6 +141,10 @@ function statColorClass(delta: number): string {
  * `public/assets/cards/README.md`.
  */
 function getFrameUrl(def: CardDefinition): string {
+  // Les jetons (Péons) ont leur propre cadre générique, volontairement
+  // indépendant de la famille : il servira aux Péons d'autres archétypes
+  // (Notion, Lot 10 — "son cadre doit être générique").
+  if (def.token) return "/assets/cards/frames/cadre_token.png";
   const family = def.subtype === "abyssal" ? "ABYSSAL" : "STANDARD";
   const variant = def.attack !== undefined && def.health !== undefined
     ? "POWER_RESISTANCE"
@@ -190,6 +194,25 @@ const ATTACK_ZONE: Zone = { top: 87, left: 43, width: 12, height: 7 };
 const RESISTANCE_ZONE: Zone = { top: 87, left: 78, width: 12, height: 7 };
 const COST_NUMBER_ZONE: Zone = { top: 3, left: 4, width: 14, height: 16 };
 const TYPE_RIBBON_ZONE: Zone = { top: 3.8, left: 64, width: 31, height: 7 };
+
+/**
+ * Zones propres au cadre de JETON (`cadre_token.png`), mesurées sur ses
+ * pixels comme les autres : une grande découpe ovale (4,95 % / 11,43 %,
+ * 77,34 × 82,49) et deux médaillons de stats en pied de cadre (~27 % et
+ * ~72 % en x, ~93 % en y).
+ *
+ * Deux différences assumées avec les cadres Standard/Abyssal :
+ *  - l'asset est en 2:3 et non en 5:7, donc il est rendu en `object-contain`
+ *    (sinon `object-cover` le rogne et tout le calage saute). Les valeurs
+ *    ci-dessous sont déjà converties dans le repère de la CARTE : retrait
+ *    horizontal de 3,3 % de chaque côté, largeurs × 0,934.
+ *  - un jeton n'a ni coût (il ne se joue pas), ni bandeau de type, ni bloc
+ *    de règles : le cadre n'a d'ailleurs aucun emplacement pour eux.
+ */
+const TOKEN_ILLUSTRATION_ZONE: Zone = { top: 4.95, left: 14, width: 72.2, height: 82.5 };
+const TOKEN_NAME_ZONE: Zone = { top: 85.5, left: 14, width: 72.2, height: 7.5 };
+const TOKEN_ATTACK_ZONE: Zone = { top: 90, left: 24, width: 10, height: 7 };
+const TOKEN_RESISTANCE_ZONE: Zone = { top: 90, left: 66, width: 10, height: 7 };
 
 /**
  * Adapte la taille du nom à sa longueur plutôt qu'une taille fixe — sur un
@@ -262,7 +285,14 @@ export function CardTile({
 
   const frameUrl = getFrameUrl(def);
   const typeIconUrl = getTypeIconUrl(def);
-  const illustrationUrl = `/assets/cards/illustrations/${instance.cardId}.png`;
+  // Carte à plusieurs visuels (Péon Cra-Poiscail) : la variante a été tirée
+  // à l'invocation et vit sur l'instance — jamais retirée au sort ici, sinon
+  // le jeton changerait de tête à chaque rendu et différerait d'un joueur à
+  // l'autre.
+  const illustrationUrl =
+    def.illustrationVariants && instance.illustrationVariant
+      ? `/assets/cards/illustrations/${instance.cardId}-${instance.illustrationVariant}.png`
+      : `/assets/cards/illustrations/${instance.cardId}.png`;
   const debordUrl = getDebordUrl(instance.cardId);
   const frameOk = useImageOk(frameUrl);
   const typeIconOk = useImageOk(typeIconUrl);
@@ -270,6 +300,11 @@ export function CardTile({
   const debordOk = useImageOk(debordUrl);
 
   const rulesZone = isUnit || hasResistance ? RULES_ZONE_WITH_STATS : RULES_ZONE_NO_STATS;
+  const isToken = def.token === true;
+  const illustrationZone = isToken ? TOKEN_ILLUSTRATION_ZONE : ILLUSTRATION_ZONE;
+  const nameZone = isToken ? TOKEN_NAME_ZONE : NAME_BANNER_ZONE;
+  const attackZone = isToken ? TOKEN_ATTACK_ZONE : ATTACK_ZONE;
+  const resistanceZone = isToken ? TOKEN_RESISTANCE_ZONE : RESISTANCE_ZONE;
 
   const hoverable = Boolean(onClick) && !disabled;
   const scalesOnHover = hoverable && scaleOnHover;
@@ -315,7 +350,7 @@ export function CardTile({
         {/* Couche 1 : illustration, dans la découpe du cadre (ou plein cadre si le cadre est absent) */}
         <div
           className={`absolute overflow-hidden ${frameOk ? "rounded-sm bg-black/30" : (TYPE_BG_CLASSES[def.type] ?? "bg-board-surface")}`}
-          style={frameOk ? zoneStyle(ILLUSTRATION_ZONE) : { position: "absolute", inset: 0 }}
+          style={frameOk ? zoneStyle(illustrationZone) : { position: "absolute", inset: 0 }}
         >
           {illustrationOk && (
             // eslint-disable-next-line @next/next/no-img-element -- asset local, une par carte
@@ -326,7 +361,13 @@ export function CardTile({
         {/* Couche 2 : le cadre PNG — contour, bandeaux, bloc de règles et découpes de stats déjà peints */}
         {frameOk && (
           // eslint-disable-next-line @next/next/no-img-element -- asset local, cadre réutilisé par famille/variante de stats
-          <img src={frameUrl} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
+          <img
+            src={frameUrl}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className={`absolute inset-0 h-full w-full ${isToken ? "object-contain" : "object-cover"}`}
+          />
         )}
 
         {/* Couche 2.5 : débord Abyssal — silhouette à fond transparent qui déborde du cadre, posée par-dessus */}
@@ -344,15 +385,21 @@ export function CardTile({
 
         {/* Couche 3 : icônes, textes et valeurs variables injectés par-dessus le cadre */}
         <div className="absolute inset-0">
-          <div
-            className="flex items-center justify-center text-center font-bold text-white [font-family:var(--font-card-title)]"
-            style={{ ...zoneStyle(COST_NUMBER_ZONE), fontSize: "11cqw", textShadow: THICK_TEXT_OUTLINE }}
-          >
-            {def.cost}
-          </div>
+          {/* Un jeton ne se joue jamais depuis la main : pas de coût à afficher. */}
+          {!isToken && (
+            <div
+              className="flex items-center justify-center text-center font-bold text-white [font-family:var(--font-card-title)]"
+              style={{ ...zoneStyle(COST_NUMBER_ZONE), fontSize: "11cqw", textShadow: THICK_TEXT_OUTLINE }}
+            >
+              {def.cost}
+            </div>
+          )}
 
+          {/* Le cadre de jeton n'a pas d'emplacement pour le bandeau de type. */}
           <div
-            className={`flex items-center justify-start overflow-hidden px-[4%] ${frameOk ? "" : "rounded bg-black/50"}`}
+            className={`flex items-center justify-start overflow-hidden px-[4%] ${frameOk ? "" : "rounded bg-black/50"} ${
+              isToken ? "hidden" : ""
+            }`}
             style={zoneStyle(TYPE_RIBBON_ZONE)}
           >
             {typeIconOk && (
@@ -370,7 +417,7 @@ export function CardTile({
 
           <div
             className="flex items-center justify-start overflow-hidden pl-[4%] pr-[2%] text-left font-semibold uppercase leading-tight text-white [font-family:var(--font-card-title)]"
-            style={{ ...zoneStyle(NAME_BANNER_ZONE), textShadow: THICK_TEXT_OUTLINE }}
+            style={{ ...zoneStyle(nameZone), textShadow: THICK_TEXT_OUTLINE }}
           >
             <span
               className="inline-block max-w-full overflow-hidden text-ellipsis whitespace-nowrap"
@@ -399,7 +446,7 @@ export function CardTile({
               className={`flex items-center justify-start font-bold [font-family:var(--font-card-title)] ${statColorClass(
                 modifierDelta.attack
               )} ${attackChanged ? "animate-stat-buff" : ""}`}
-              style={{ ...zoneStyle(ATTACK_ZONE), fontSize: "7.5cqw", textShadow: THICK_TEXT_OUTLINE }}
+              style={{ ...zoneStyle(attackZone), fontSize: "7.5cqw", textShadow: THICK_TEXT_OUTLINE }}
             >
               {stats.attack}
             </div>
@@ -409,7 +456,7 @@ export function CardTile({
               className={`flex items-center justify-start font-bold [font-family:var(--font-card-title)] ${
                 resistanceFlashing ? "animate-stat-hit text-white" : `${statColorClass(modifierDelta.health)} ${healthChanged ? "animate-stat-buff" : ""}`
               }`}
-              style={{ ...zoneStyle(RESISTANCE_ZONE), fontSize: "7.5cqw", textShadow: THICK_TEXT_OUTLINE }}
+              style={{ ...zoneStyle(resistanceZone), fontSize: "7.5cqw", textShadow: THICK_TEXT_OUTLINE }}
             >
               {resistanceRemaining}
             </div>

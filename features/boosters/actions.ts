@@ -158,7 +158,13 @@ export async function openBooster(boosterId: string): Promise<ActionResult<OpenB
         .select("slot_index, guaranteed_rarity, weighted_rarities")
         .eq("booster_definition_id", boosterId)
         .order("slot_index"),
-      service.from("cards").select("id, rarity").eq("is_collectible", true).eq("is_enabled", true),
+      // Pool restreint au lot "core" : les lots d'archétype (Lot 10
+      // Cra-Poiscail) sont dans le catalogue et jouables, mais ne doivent
+      // tomber que dans LEUR booster dédié — le plan de diffusion interdit
+      // notamment tout Cra-Poiscail dans le Mini Booster de Bienvenue. Tant
+      // que ces boosters n'existent pas, leurs cartes ne sont tirées nulle
+      // part.
+      service.from("cards").select("id, rarity").eq("is_collectible", true).eq("is_enabled", true).eq("set_code", "core"),
       service
         .from("player_pity")
         .select("packs_since_abyssal")

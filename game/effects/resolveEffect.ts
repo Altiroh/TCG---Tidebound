@@ -1,5 +1,6 @@
 import { isVisibleDuringTide, type CardInstance } from "@/game/cards/types";
 import { canBeEquipTarget, getCardDefinition } from "@/game/cards/sets/core";
+import { getShipDefinition } from "@/game/environment/shipData";
 import { forceTideJumpToAbysses, forceTideTransition } from "@/game/environment/tide";
 import type { EffectAmount, EffectDefinition } from "@/game/effects/types";
 import type { GameEvent } from "@/game/events/types";
@@ -24,6 +25,8 @@ export interface EffectContext {
   chosenTargetInstanceId?: string;
   /** instanceId d'une carte de la DÉFAUSSE choisie par le joueur (`moveGraveyardCardToHand`, ex: Grappin de Récupération) — toujours dans la défausse de `controllerId`, jamais celle de l'adversaire. */
   chosenGraveyardInstanceId?: string;
+  /** Résolution d'un `onBreakEffects` déclenché par un Bris DEPUIS LA MAIN (`breakObject` avec `fromHand`) — lu par `conditionBrokenFromHand` (ex: Le Seau). */
+  brokenFromHand?: boolean;
   turnNumber: number;
 }
 
@@ -208,6 +211,18 @@ export function resolveEffect(
     const controller = getPlayer(state, context.controllerId);
     if (controller.reason > effect.conditionControllerReasonAtMost) return { state, events };
   }
+  if (effect.conditionBrokenFromHand !== undefined && effect.conditionBrokenFromHand !== Boolean(context.brokenFromHand)) {
+    return { state, events };
+  }
+  if (effect.conditionControlledArchetypeAtLeast) {
+    const { archetype, count, excludeSelf } = effect.conditionControlledArchetypeAtLeast;
+    const controller = getPlayer(state, context.controllerId);
+    const owned = controller.board.filter((unit) => {
+      if (excludeSelf && unit.instanceId === context.sourceInstanceId) return false;
+      return getCardDefinition(unit.cardId).archetype === archetype;
+    }).length;
+    if (owned < count) return { state, events };
+  }
   if (effect.conditionSelfVisible) {
     const owner = context.sourceInstanceId ? findUnitOwner(state, context.sourceInstanceId) : undefined;
     const source = owner?.board.find((u) => u.instanceId === context.sourceInstanceId);
@@ -337,21 +352,54 @@ export function resolveEffect(
     case "summon": {
       if (!effect.cardId) return { state, events };
       const player = resolveSinglePlayerTarget(state, effect, context) ?? getPlayer(state, context.controllerId);
-      getCardDefinition(effect.cardId); // valide l'existence de la carte à invoquer
+      const summonedDef = getCardDefinition(effect.cardId); // valide l'existence de la carte à invoquer
 
-      const token: CardInstance = {
-        instanceId: `inst_summon_${Math.random().toString(36).slice(2, 10)}`,
-        cardId: effect.cardId,
-        ownerId: player.id,
-        damageMarked: 0,
-        modifiers: [],
-        summoningSick: true,
-        hasAttackedThisTurn: false,
-      };
+      // Les Slots du Navire s'appliquent à l'invocation comme à la pose :
+      // on remplit les places libres et on s'arrête là ("on n'invoque pas
+      // plus qu'il n'en tient", décision du 2026-09-14). Une invocation qui
+      // ne tient pas du tout n'est pas une erreur — elle ne produit
+      // simplement aucun corps.
+      const freeSlots = Math.max(0, getShipDefinition(player.shipId).slotCount - player.board.length);
+      const wanted = Math.max(0, effect.count ?? 1);
+      const toSummon = Math.min(wanted, freeSlots);
+      if (toSummon === 0) return { state, events };
 
-      const board = [...player.board, token];
-      events.push({ ...base, type: "SUMMON", playerId: player.id, instanceId: token.instanceId, cardId: token.cardId });
-      return { state: replacePlayer(state, { ...player, board }), events };
+      let rngState = state.rngState;
+      const summoned: CardInstance[] = [];
+
+      for (let i = 0; i < toSummon; i++) {
+        // Identifiant ET variante visuelle tirés du RNG de la partie, jamais
+        // de `Math.random()` : l'état doit être rejouable à l'identique, et
+        // en ligne les deux joueurs doivent voir le même jeton.
+        const idDraw = nextInt(rngState, 0xffffff);
+        rngState = idDraw.nextState;
+
+        let illustrationVariant: number | undefined;
+        if (summonedDef.illustrationVariants && summonedDef.illustrationVariants > 1) {
+          const variantDraw = nextInt(rngState, summonedDef.illustrationVariants);
+          rngState = variantDraw.nextState;
+          illustrationVariant = variantDraw.value + 1;
+        }
+
+        summoned.push({
+          instanceId: `inst_summon_${idDraw.value.toString(36)}_${i}`,
+          cardId: effect.cardId,
+          ownerId: player.id,
+          damageMarked: 0,
+          modifiers: [],
+          // Ruée (`rush`) : le corps invoqué peut attaquer le tour même.
+          summoningSick: !effect.rush,
+          hasAttackedThisTurn: false,
+          ...(illustrationVariant !== undefined ? { illustrationVariant } : {}),
+        });
+      }
+
+      for (const token of summoned) {
+        events.push({ ...base, type: "SUMMON", playerId: player.id, instanceId: token.instanceId, cardId: token.cardId });
+      }
+
+      const board = [...player.board, ...summoned];
+      return { state: { ...replacePlayer(state, { ...player, board }), rngState }, events };
     }
 
     case "buff": {

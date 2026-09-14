@@ -1,3 +1,4 @@
+import type { ArchetypeId } from "@/game/cards/archetypes";
 import type { EffectDefinition } from "@/game/effects/types";
 import type { TideAffinity, TideStateName } from "@/game/environment/types";
 import type { TriggerType } from "@/game/triggers/types";
@@ -87,6 +88,42 @@ export interface CardDefinition {
   type: CardType;
   /** Sous-catégorie optionnelle et extensible (ex: "poisson" pour une Créature, "Abyssal" pour un Marin/Créature). */
   subtype?: string;
+
+  /**
+   * Famille de cartes à laquelle appartient cette carte
+   * (`game/cards/archetypes.ts`). Lue par le moteur pour compter/cibler
+   * les membres d'un archétype ; JAMAIS affichée sur la carte.
+   */
+  archetype?: ArchetypeId;
+
+  /**
+   * Carte JETON (Péon) : créée uniquement par un effet d'invocation, jamais
+   * en main, jamais dans un deck, jamais dans la collection ni dans un
+   * booster. Concrètement elle vit dans `TOKEN_SET` et non dans `CORE_SET`
+   * (le catalogue collectionnable), ce qui l'exclut mécaniquement du seed
+   * `cards`, du deckbuilding et des pools de boosters — ce drapeau sert à
+   * l'affichage (cadre de jeton) et aux garde-fous.
+   */
+  token?: boolean;
+
+  /**
+   * Nombre de variantes d'illustration interchangeables, pour une carte
+   * dont le visuel est tiré au sort à la création (Péon Cra-Poiscail : 3
+   * visuels, une seule identité de gameplay). Les fichiers suivent
+   * `illustrations/<cardId>-<n>.png`, n de 1 à `illustrationVariants`.
+   * `undefined` = un seul visuel, `illustrations/<cardId>.png`.
+   */
+  illustrationVariants?: number;
+
+  /**
+   * Lot de diffusion, miroir de `cards.set_code`. `undefined` = "core", le
+   * pool historique tiré par les boosters existants. Une carte d'un autre
+   * lot est bien dans le catalogue (jouable, affichable, seedée) mais
+   * n'entre dans aucun booster tant qu'un booster ne déclare pas son lot —
+   * c'est ce qui tient le plan de diffusion du Lot 10 (3 boosters
+   * successifs, aucun Cra-Poiscail dans le Bienvenue).
+   */
+  setCode?: string;
   cost: number;
   /** Texte d'ambiance / règles, affiché tel quel dans l'UI. */
   text?: string;
@@ -331,6 +368,37 @@ export interface CardDefinition {
   selfBuffWhileControllerReasonAtMost?: { reasonAtMost: number; attackAmount?: number; healthAmount?: number };
 
   /**
+   * Bonus permanent sur SOI-MÊME tant que son contrôleur a au moins
+   * `atLeast` permanents de cet archétype sur son plateau (ex: Banc de
+   * Cra-Poiscail, "tant que vous contrôlez au moins 3 AUTRES
+   * Cra-Poiscail"). `excludeSelf` décide si la carte se compte elle-même —
+   * le catalogue distingue les deux formulations ("3 autres" vs "3
+   * Cra-Poiscail"), et l'écart d'un corps change complètement la carte.
+   */
+  selfBuffWhileControllingArchetype?: {
+    archetype: ArchetypeId;
+    atLeast: number;
+    excludeSelf?: boolean;
+    attackAmount?: number;
+    healthAmount?: number;
+  };
+
+  /**
+   * Aura : bonus accordé aux AUTRES permanents de cet archétype contrôlés
+   * par le même joueur (ex: Cra-Poiscail Porte-Étendard, "vos autres
+   * Cra-Poiscail gagnent +1 Puissance"). `requiresArchetypeCountAtLeast`
+   * conditionne l'aura à une taille de banc (ex: Le Trône de Bouchon,
+   * "tant que vous contrôlez au moins 3 Cra-Poiscail"), en comptant CETTE
+   * carte si elle appartient elle-même à l'archétype.
+   */
+  auraBuffOtherArchetypeUnits?: {
+    archetype: ArchetypeId;
+    attackAmount?: number;
+    healthAmount?: number;
+    requiresArchetypeCountAtLeast?: number;
+  };
+
+  /**
    * Aura : bonus accordé aux AUTRES unités du type `targetType` du même
    * contrôleur (jamais à elle-même), tant que la Raison de son contrôleur
    * est ≤ ce seuil (ex: Capitaine Sans Sommeil, "+1 Résistance aux autres
@@ -495,6 +563,16 @@ export interface CardInstance {
 
   /** Remis à `false` au début de chaque tour du contrôleur. */
   hasAttackedThisTurn: boolean;
+
+  /**
+   * Index (1-based) de la variante d'illustration tirée à la création, pour
+   * une carte à `illustrationVariants` (Péon Cra-Poiscail). Tiré avec le
+   * RNG DÉTERMINISTE de la partie et stocké sur l'instance : le visuel doit
+   * rester le même d'un rendu à l'autre, et surtout être identique chez les
+   * deux joueurs en ligne — un tirage fait à l'affichage donnerait deux
+   * jetons différents de chaque côté de la table.
+   */
+  illustrationVariant?: number;
 
   /**
    * Pour Structure/Objet avec `durationTurns` : tours restants avant
