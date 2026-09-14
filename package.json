@@ -13,6 +13,7 @@
     "test:watch": "vitest",
     "check:board-preview": "node scripts/checkBoardPreviewLayout.mjs",
     "seed:cards": "tsx --env-file=.env.local scripts/seedCards.ts",
+    "seed:sql": "tsx scripts/seedCardsSql.ts",
     "optimize:images": "node scripts/optimizeImages.mjs"
   },
   "dependencies": {
