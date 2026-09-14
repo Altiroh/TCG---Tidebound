@@ -2,7 +2,15 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ARCHETYPE_DECKS, PRECONSTRUCTED_DECKS, getShipDefinition, type BotDifficulty, type DeckList } from "@/game";
+import {
+  ARCHETYPE_DECKS,
+  CRA_POISCAIL_TEST_DECKS,
+  PLAYABLE_DECKS,
+  PRECONSTRUCTED_DECKS,
+  getShipDefinition,
+  type BotDifficulty,
+  type DeckList,
+} from "@/game";
 import { FilterChip } from "@/components/game-ui/FilterChip";
 import { GameButton } from "@/components/game-ui/GameButton";
 import { GamePanel } from "@/components/game-ui/GamePanel";
@@ -26,7 +34,20 @@ interface NewMatchScreenProps {
  * partagent le même Navire, d'où l'affichage de son nom à côté de chaque
  * deck plutôt qu'une simple liste de Navires.
  */
-const SELECTABLE_DECKS: readonly DeckList[] = [...PRECONSTRUCTED_DECKS, ...ARCHETYPE_DECKS];
+const SELECTABLE_DECKS: readonly DeckList[] = PLAYABLE_DECKS;
+
+/**
+ * Deck du BOT : toujours tiré au sort, jamais choisi — on ne règle que le
+ * sien, on découvre ce qui arrive en face. Tirage au LANCEMENT et non à
+ * l'affichage, pour que deux parties d'affilée donnent bien deux
+ * adversaires différents.
+ *
+ * `Math.random` est ici un choix d'INTERFACE, pas un aléa de moteur : il
+ * ne touche pas `GameState.rngState`, qui doit rester déterministe.
+ */
+function pickRandomDeck(): DeckList {
+  return SELECTABLE_DECKS[Math.floor(Math.random() * SELECTABLE_DECKS.length)]!;
+}
 
 const DECK_OPTIONS: GameSelectOption<string>[] = [
   ...PRECONSTRUCTED_DECKS.map((deck) => ({ value: deck.id, label: deck.name, group: "Decks de base" })),
@@ -34,6 +55,13 @@ const DECK_OPTIONS: GameSelectOption<string>[] = [
     value: deck.id,
     label: `${deck.name} — ${getShipDefinition(deck.shipId).name}`,
     group: "Archétypes",
+  })),
+  // Groupe à part : ce sont des listes de test du Lot 10, pas des
+  // propositions d'équilibrage au même titre que les archétypes.
+  ...CRA_POISCAIL_TEST_DECKS.map((deck) => ({
+    value: deck.id,
+    label: `${deck.name} — ${getShipDefinition(deck.shipId).name}`,
+    group: "Cra-Poiscail (à tester)",
   })),
 ];
 
@@ -46,15 +74,17 @@ const BOT_DIFFICULTIES: { id: BotDifficulty; label: string; description: string 
 /** Écran de sélection des Navires/decks avant une partie locale : contre un autre joueur (hot-seat) ou contre un bot. */
 export function NewMatchScreen({ onStart, starting = false, error = null, botNote }: NewMatchScreenProps) {
   const [deck1Id, setDeck1Id] = useState(SELECTABLE_DECKS[0]!.id);
+  /** Uniquement pour le hot-seat : contre un bot, le second deck est tiré au sort et ce réglage est ignoré. */
   const [deck2Id, setDeck2Id] = useState(SELECTABLE_DECKS[1]!.id);
   const [opponentType, setOpponentType] = useState<"pvp" | "bot">("pvp");
   const [botDifficulty, setBotDifficulty] = useState<BotDifficulty>("moyen");
 
-  const deck1 = SELECTABLE_DECKS.find((d) => d.id === deck1Id)!;
-  const deck2 = SELECTABLE_DECKS.find((d) => d.id === deck2Id)!;
-
   function handleStart() {
     const opponent: MatchOpponent = opponentType === "bot" ? { type: "bot", difficulty: botDifficulty } : { type: "pvp" };
+    const deck1 = SELECTABLE_DECKS.find((d) => d.id === deck1Id)!;
+    // Contre un bot, le tirage a lieu ICI — au lancement, pas à
+    // l'affichage : relancer une partie change d'adversaire.
+    const deck2 = opponentType === "bot" ? pickRandomDeck() : SELECTABLE_DECKS.find((d) => d.id === deck2Id)!;
     onStart(deck1, deck2, opponent);
   }
 
@@ -112,8 +142,8 @@ export function NewMatchScreen({ onStart, starting = false, error = null, botNot
       </GamePanel>
 
       <div className="flex w-full max-w-xl flex-col gap-4 sm:flex-row">
-        <DeckPicker label="Joueur 1" value={deck1Id} onChange={setDeck1Id} />
-        <DeckPicker label={opponentType === "bot" ? "Bot" : "Joueur 2"} value={deck2Id} onChange={setDeck2Id} />
+        <DeckPicker label={opponentType === "bot" ? "Votre deck" : "Joueur 1"} value={deck1Id} onChange={setDeck1Id} />
+        {opponentType === "bot" ? <RandomOpponentPanel /> : <DeckPicker label="Joueur 2" value={deck2Id} onChange={setDeck2Id} />}
       </div>
 
       <GameButton variant="primary" onClick={handleStart} disabled={starting} className="!px-8 !py-3 !text-base">
@@ -121,6 +151,32 @@ export function NewMatchScreen({ onStart, starting = false, error = null, botNot
       </GameButton>
       {error && <p className="text-sm text-rose-400">{error}</p>}
     </main>
+  );
+}
+
+/** Face au bot il n'y a rien à régler : on annonce le tirage, on ne le propose pas. Même gabarit que `DeckPicker` pour que les deux colonnes restent alignées. */
+function RandomOpponentPanel() {
+  return (
+    <GamePanel className="flex flex-1 flex-col gap-2 p-4 text-left">
+      <span className={`text-sm font-medium ${TEXT_SECONDARY}`}>Bot</span>
+      <div
+        className={`flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-sm ${TEXT_PRIMARY} shadow-[0_0_0_1px_var(--border-subtle)]`}
+      >
+        <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5 shrink-0 text-[var(--accent)]" aria-hidden>
+          <path
+            d="M16 3h5v5M21 3l-7 7M8 21H3v-5M3 21l7-7M21 16v5h-5M14 14l7 7M3 8V3h5M10 10L3 3"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+        Deck aléatoire
+      </div>
+      <p className={`text-xs leading-snug ${TEXT_SECONDARY}`}>
+        Tiré parmi les {SELECTABLE_DECKS.length} listes au lancement — Navire et style découverts en partie.
+      </p>
+    </GamePanel>
   );
 }
 

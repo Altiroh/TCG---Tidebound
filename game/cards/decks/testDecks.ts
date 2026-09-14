@@ -1,5 +1,5 @@
 import type { CardId } from "@/game/cards/types";
-import type { DeckList } from "@/game/cards/decks/preconstructed";
+import { PRECONSTRUCTED_DECKS, type DeckList } from "@/game/cards/decks/preconstructed";
 
 /**
  * Decks d'archétypes proposés au joueur en plus des 3 decks de base système
@@ -185,6 +185,114 @@ export const DECK_CAPITAINE_MIDRANGE: DeckList = {
   ],
 };
 
+
+/**
+ * La Religieuse — le Navire de la piste "Raison, Déraison, healing &
+ * passifs" (2026-09-12), qui n'avait encore aucune liste jouable : sans
+ * deck, son passif "Pénitence" (−1 aux dégâts d'Ancrage de Déraison, la
+ * première fois par tour) ne pouvait pas être essayé du tout.
+ *
+ * Le deck le pousse donc là où il compte : beaucoup de récupération de
+ * Raison à 1 de coût pour remonter d'une Déraison assumée, des soins et
+ * des boucliers "1ère fois par tour" pour tenir le temps que ça remonte,
+ * et presque aucune grosse menace — c'est la survie qui doit gagner la
+ * partie, pas la Puissance.
+ */
+export const DECK_PENITENCE: DeckList = {
+  id: "penitence",
+  name: "Pénitence",
+  shipId: "la-religieuse",
+  description:
+    "Survie et Raison : encaisse la Déraison, la rembourse à coups de petites récupérations, et tient la ligne derrière ses boucliers.",
+  cardIds: [
+    ...repeat("mousse-du-premier-quart", 3),
+    ...repeat("marin-des-jetees", 3),
+    ...repeat("poisson-lanterne", 3),
+    ...repeat("radeau-de-fortune", 3),
+    ...repeat("caisses-arrimees", 3),
+    ...repeat("levier-de-lest", 3),
+    ...repeat("thermos-du-dernier-quart", 3),
+    ...repeat("brise-vague-de-fortune", 3),
+    ...repeat("wood-vy", 3),
+    ...repeat("vieux-loup-de-mer", 2),
+    ...repeat("second-au-visage-pale", 2),
+    ...repeat("cage-de-flottaison", 2),
+    ...repeat("epave-engloutie", 2),
+    ...repeat("capitaine-sans-sommeil", 2),
+    ...repeat("lhomme-revenu-de-la-fosse", 3),
+  ],
+};
+
+/**
+ * Cra-Poiscail — deux listes de TEST du Lot 10, une par moitié de
+ * l'archétype, pour que ses synergies puissent être essayées en partie
+ * plutôt qu'une carte à la fois.
+ *
+ * Volontairement mono-archétype : les auras, les seuils ("si vous
+ * contrôlez au moins 3 Cra-Poiscail") et les déclencheurs "un autre
+ * Cra-Poiscail" ne veulent rien dire dans un deck qui n'en contient que
+ * la moitié. Ce sont des decks de laboratoire, pas des propositions
+ * d'équilibrage.
+ */
+
+/** Le côté LARGE : occuper tous les Slots, invoquer des Péons, et tout renforcer d'un coup. Le Brise-Lames (6 Slots) est le seul Navire qui laisse la place. */
+export const DECK_LE_GRAND_BANC: DeckList = {
+  id: "le-grand-banc",
+  name: "Le Grand Banc",
+  shipId: "le-brise-lames",
+  description:
+    "Cra-Poiscail large : sature le plateau de petits corps et de Péons, puis les renforce en bloc (Porte-Étendard, Trône, Bannière).",
+  cardIds: [
+    ...repeat("tetard-fesse", 3),
+    ...repeat("ptite-fesse", 3),
+    ...repeat("cra-poiscail-sauteur", 3),
+    ...repeat("cra-poiscail-grand-gueule", 3),
+    ...repeat("cra-poiscail-des-bas-fonds", 3),
+    ...repeat("banc-de-cra-poiscail", 3),
+    ...repeat("cra-poiscail-chef-de-banc", 3),
+    ...repeat("le-seau", 3),
+    ...repeat("la-flaque-sacree", 3),
+    ...repeat("fesses-en-avant", 3),
+    ...repeat("cra-poiscail-porte-etendard", 2),
+    ...repeat("le-trone-de-bouchon", 2),
+    ...repeat("la-grande-migration", 2),
+    ...repeat("banniere-en-vieille-chaussette", 2),
+    ...repeat("roi-cra-poiscail", 1),
+    ...repeat("le-grand-saut", 1),
+  ],
+};
+
+/** Le côté COUR : peu de corps, mais équipés et accompagnés. Sert aussi de banc d'essai aux cibles désignées (Fourchette, Chevalier Abyssale, Tas de Trucs). */
+export const DECK_LA_COUR_DU_GRAND_ETANG: DeckList = {
+  id: "la-cour-du-grand-etang",
+  name: "La Cour du Grand Étang",
+  shipId: "lerrant",
+  description:
+    "Cra-Poiscail chevaleresque : moins de corps, mais équipés et escortés — Chevalier et Destrier, Équipements, et des effets à cibler soi-même.",
+  cardIds: [
+    ...repeat("ecuyer-cra-poiscail", 3),
+    ...repeat("destrier-du-grand-etang", 3),
+    ...repeat("cra-poiscail-des-hautes-eaux", 3),
+    ...repeat("cra-poiscail-bavard", 3),
+    ...repeat("cra-poiscail-ramasseur", 3),
+    ...repeat("fourchette-du-grand-etang", 3),
+    ...repeat("slip-de-guerre-cra-poiscail", 3),
+    ...repeat("casque-coquille", 3),
+    ...repeat("chevalier-cra-poiscail", 2),
+    ...repeat("bourreau-cra-poiscail", 2),
+    ...repeat("ptite-fesse-grand-reve", 2),
+    // Le Tas de Trucs réagit au BRIS d'un Objet : sans Objet dans la
+    // liste, sa capacité ne pourrait jamais se déclencher — Le Seau est
+    // ici pour ça autant que pour ses Péons.
+    ...repeat("le-tas-de-trucs", 2),
+    ...repeat("le-seau", 2),
+    ...repeat("la-quete-du-grand-nenuphar", 2),
+    ...repeat("le-tournoi-du-grand-etang", 2),
+    ...repeat("chevalier-cra-poiscail-abyssal", 1),
+    ...repeat("ptite-fesse-grand-reve-abyssal", 1),
+  ],
+};
+
 /**
  * Decks d'archétypes, en plus des 3 decks de base système
  * (`PRECONSTRUCTED_DECKS`) — proposés côté sélection de partie locale pour
@@ -197,4 +305,27 @@ export const ARCHETYPE_DECKS: readonly DeckList[] = [
   DECK_FORTERESSE_FLOTTANTE,
   DECK_EPAVISTE_SABORDAGE,
   DECK_CAPITAINE_MIDRANGE,
+  DECK_PENITENCE,
+];
+
+/**
+ * Listes de LABORATOIRE du Lot 10 — mono-archétype, faites pour que les
+ * synergies Cra-Poiscail se déclenchent vraiment en partie. Groupées à
+ * part dans le sélecteur : ce ne sont pas des propositions d'équilibrage
+ * au même titre que les archétypes ci-dessus.
+ */
+export const CRA_POISCAIL_TEST_DECKS: readonly DeckList[] = [DECK_LE_GRAND_BANC, DECK_LA_COUR_DU_GRAND_ETANG];
+
+/**
+ * TOUTES les listes qu'une partie peut utiliser — base système, archétypes
+ * et laboratoire Cra-Poiscail. Source unique pour "ce deck est-il
+ * jouable ?" (`findPlayableDeck`, côté serveur) : ajouter une liste à l'une
+ * des trois collections suffit, il n'y a pas de second endroit à penser à
+ * mettre à jour, donc pas de deck proposé à l'écran que le serveur
+ * refuserait ensuite.
+ */
+export const PLAYABLE_DECKS: readonly DeckList[] = [
+  ...PRECONSTRUCTED_DECKS,
+  ...ARCHETYPE_DECKS,
+  ...CRA_POISCAIL_TEST_DECKS,
 ];

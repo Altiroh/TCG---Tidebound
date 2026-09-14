@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { BORDER_SUBTLE, RADIUS_SM, SHADOW_FLOATING, SURFACE_1, TEXT_PRIMARY, TRANSITION } from "@/components/game-ui/tokens";
 import { playButtonClick } from "@/lib/sound";
 
@@ -23,10 +23,45 @@ interface GameSelectProps<T extends string> {
  * bouton compact affichant la valeur courante ; le menu s'ouvre en popover
  * flottant juste en-dessous, fermé au clic extérieur ou à Échap.
  */
+/** Marge conservée entre le menu ouvert et le bord de la fenêtre, pour qu'il ne colle jamais au ras. */
+const VIEWPORT_MARGIN = 12;
+
 export function GameSelect<T extends string>({ value, options, onChange, className = "" }: GameSelectProps<T>) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  /**
+   * Placement calculé à l'OUVERTURE, à partir de la place réellement
+   * disponible autour du bouton : une hauteur maximale en CSS ne suffit
+   * pas quand le bouton est déjà bas dans la page — le menu déborde alors
+   * sous la fenêtre, et ses dernières entrées sont inatteignables.
+   */
+  const [placement, setPlacement] = useState<{ dropUp: boolean; maxHeight: number } | null>(null);
   const current = options.find((o) => o.value === value);
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setPlacement(null);
+      return;
+    }
+    function measure() {
+      const trigger = rootRef.current?.getBoundingClientRect();
+      if (!trigger) return;
+      const below = window.innerHeight - trigger.bottom - VIEWPORT_MARGIN;
+      const above = trigger.top - VIEWPORT_MARGIN;
+      // On ne remonte le menu que s'il y a franchement plus de place
+      // au-dessus : un menu qui s'ouvre vers le haut surprend, autant ne le
+      // faire que quand ça change vraiment quelque chose.
+      const dropUp = below < 200 && above > below;
+      setPlacement({ dropUp, maxHeight: Math.max(120, dropUp ? above : below) });
+    }
+    measure();
+    window.addEventListener("resize", measure);
+    window.addEventListener("scroll", measure, true);
+    return () => {
+      window.removeEventListener("resize", measure);
+      window.removeEventListener("scroll", measure, true);
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -62,7 +97,13 @@ export function GameSelect<T extends string>({ value, options, onChange, classNa
 
       {open && (
         <div
-          className={`absolute right-0 top-full z-20 mt-1.5 min-w-full overflow-hidden bg-[var(--surface-glass)] backdrop-blur-xl ${BORDER_SUBTLE} ${RADIUS_SM} ${SHADOW_FLOATING} py-1`}
+          // Défilement vertical borné par la place disponible (cf.
+          // `placement`) : une liste longue reste entièrement atteignable,
+          // que le bouton soit en haut ou en bas de la page.
+          className={`absolute right-0 z-20 min-w-full overflow-y-auto overflow-x-hidden bg-[var(--surface-glass)] backdrop-blur-xl ${BORDER_SUBTLE} ${RADIUS_SM} ${SHADOW_FLOATING} py-1 ${
+            placement?.dropUp ? "bottom-full mb-1.5" : "top-full mt-1.5"
+          }`}
+          style={placement ? { maxHeight: placement.maxHeight } : { visibility: "hidden" }}
         >
           {options.map((opt, i) => (
             <div key={opt.value}>
