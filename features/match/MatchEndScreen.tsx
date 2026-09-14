@@ -42,6 +42,17 @@ interface MatchEndScreenProps {
  * hauteur) ; la pointe sombre du bas reste réservée à un futur badge d'XP.
  */
 const ILLUSTRATION_ZONE = { top: "18.54%", left: "16.54%", width: "65.03%", height: "54.51%" };
+/**
+ * Le cadre de défaite (`ship-frame-loose.webp`, 1178×1335) n'a ni le même
+ * gabarit ni la même arche que celui de victoire : sa fenêtre est plus
+ * haute et commence plus près du bord supérieur. Mesurée sur ses pixels de
+ * la même façon (remplissage de la zone transparente depuis le centre),
+ * puis débordée de 1 % de chaque côté — cet anneau est recouvert par le
+ * cadre, et sans lui un liseré de fond apparaît sur le pourtour.
+ */
+const DEFEAT_ILLUSTRATION_ZONE = { top: "10.54%", left: "15.21%", width: "67.45%", height: "61.63%" };
+const DEFEAT_ILLUSTRATION_CLIP =
+  "polygon(45.5% 0%, 29.4% 4.6%, 24.8% 9.4%, 25% 14.2%, 14.3% 19%, 13.7% 23.7%, 13.1% 28.5%, 4.4% 33.3%, 3.9% 38.1%, 3.5% 42.8%, 4.4% 47.6%, 3.9% 52.3%, 4.4% 57%, 0.6% 61.8%, 0% 66.6%, 0% 71.4%, 0% 76.1%, 1.3% 80.9%, 2.2% 85.7%, 3% 90.5%, 4.7% 95.2%, 7.3% 100%, 92.3% 100%, 96.2% 95.2%, 99.9% 90.5%, 99.9% 85.7%, 99.9% 80.9%, 99.9% 76.1%, 99.9% 71.4%, 99.6% 66.6%, 99.6% 61.8%, 99.2% 57%, 99.9% 52.3%, 99.9% 47.6%, 99.9% 42.8%, 98.3% 38.1%, 95.3% 33.3%, 94.8% 28.5%, 93.5% 23.7%, 90.9% 19%, 84.3% 14.2%, 81.3% 9.4%, 68.4% 4.6%, 48.4% 0%)";
 const ILLUSTRATION_CLIP =
   "polygon(36.6% 0%, 21.3% 7.9%, 13.6% 14%, 8.3% 19.9%, 4.4% 26%, 1.7% 32%, 0.3% 37.9%, 0% 44%, 0% 74.1%, 3% 80.1%, 5.3% 86%, 5.6% 92.1%, 10.1% 100%, 91% 100%, 98.3% 92.1%, 100% 86%, 100% 44%, 99.5% 37.9%, 97.9% 32%, 95.2% 26%, 91.4% 19.9%, 86.1% 14%, 78% 7.9%, 61.2% 0%)";
 /** Étincelles de la gerbe d'impact du bandeau. */
@@ -50,6 +61,8 @@ const SPARK_COUNT = 18;
 const NAME_START_MS = 1350;
 const NAME_LETTER_STEP_MS = 55;
 const NAMEPLATE_ZONE = { top: "73%", left: "22%", width: "56%", height: "8%" };
+/** La planche du nom du cadre de défaite est plus haute et plus étroite que la bannière de victoire (mesurée sur la bande opaque sous l'arche, ~72 → 84 % de hauteur). */
+const DEFEAT_NAMEPLATE_ZONE = { top: "73%", left: "24%", width: "52%", height: "9%" };
 
 /**
  * Écran de fin de partie victorieuse — cadre `ship-frame-victory.webp`
@@ -63,14 +76,18 @@ export function MatchEndScreen({ outcome, player, onExit, exitHref }: MatchEndSc
   const isDefeat = outcome === "defeat";
   const winner = player;
 
-  // Le lot "défaite" (bandeau + cadre) n'est pas encore fourni : tant qu'il
-  // manque, on n'affiche pas d'image cassée — le reste de la chorégraphie
-  // (nom, Navire, marécage, boutons) tient debout sans eux, comme partout
-  // ailleurs dans le jeu où un asset absent laisse simplement sa place vide.
-  const bannerUrl = isDefeat ? "/assets/defeat-text.webp" : "/assets/victory-text.webp";
-  const frameUrl = isDefeat ? "/assets/ships/ship-frame-defeat.webp" : "/assets/ships/ship-frame-victory.webp";
+  // Repli si un asset venait à manquer : un titre en toutes lettres plutôt
+  // qu'une image cassée, comme partout ailleurs dans le jeu.
+  const bannerUrl = isDefeat ? "/assets/loose-text.webp" : "/assets/victory-text.webp";
+  const frameUrl = isDefeat ? "/assets/ships/ship-frame-loose.webp" : "/assets/ships/ship-frame-victory.webp";
   const bannerOk = useImageOk(bannerUrl);
   const frameOk = useImageOk(frameUrl);
+  const illustrationZone = isDefeat ? DEFEAT_ILLUSTRATION_ZONE : ILLUSTRATION_ZONE;
+  const illustrationClip = isDefeat ? DEFEAT_ILLUSTRATION_CLIP : ILLUSTRATION_CLIP;
+  // Chaque cadre garde ses propres proportions : les étirer au gabarit de
+  // l'autre décalerait l'arche par rapport à l'illustration.
+  const frameAspectRatio = isDefeat ? "1178 / 1335" : "1161 / 1354";
+  const nameplateZone = isDefeat ? DEFEAT_NAMEPLATE_ZONE : NAMEPLATE_ZONE;
   return (
     <>
       <BoardBackdrop />
@@ -123,12 +140,12 @@ export function MatchEndScreen({ outcome, player, onExit, exitHref }: MatchEndSc
                 className={`relative ${styles.frameIn}`}
                 style={{
                   width: "min(60vw, 340px)",
-                  aspectRatio: "1161 / 1354",
+                  aspectRatio: frameAspectRatio,
                 }}
               >
                 <div
                   className="absolute overflow-hidden"
-                  style={{ ...ILLUSTRATION_ZONE, clipPath: ILLUSTRATION_CLIP }}
+                  style={{ ...illustrationZone, clipPath: illustrationClip }}
                 >
                   {winner.ship.illustration && (
                     // eslint-disable-next-line @next/next/no-img-element -- asset local, une par Navire
@@ -153,7 +170,7 @@ export function MatchEndScreen({ outcome, player, onExit, exitHref }: MatchEndSc
 
                 <div
                   className="absolute flex items-center justify-center"
-                  style={{ ...NAMEPLATE_ZONE, containerType: "inline-size" }}
+                  style={{ ...nameplateZone, containerType: "inline-size" }}
                 >
                   <span
                     aria-label={winner.name}

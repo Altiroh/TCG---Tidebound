@@ -56,14 +56,13 @@ besoin.
 ## Écran de fin de partie
 
 ```
-victory-text.webp              # bandeau VICTOIRE (fourni)
-defeat-text.webp               # bandeau DÉFAITE  (attendu)
-ships/ship-frame-victory.webp  # cadre du Navire vainqueur (fourni)
-ships/ship-frame-defeat.webp   # cadre du Navire vaincu    (attendu)
+victory-text.webp              # bandeau VICTOIRE
+loose-text.webp                # bandeau DÉFAITE
+ships/ship-frame-victory.webp  # cadre du Navire vainqueur
+ships/ship-frame-loose.webp    # cadre du Navire vaincu
 ```
 
-Les deux cadres partagent le même gabarit (`1161 × 1354`, fenêtre en arche
-mesurée dans `features/match/MatchEndScreen.tsx`) : un cadre de défaite aux
-mêmes proportions se substitue sans retouche de code. Tant qu'un de ces
-fichiers manque, l'écran le remplace par un titre en toutes lettres plutôt
-que par une image cassée.
+Les deux cadres partagent le même gabarit (fenêtre en arche mesurée dans
+`features/match/MatchEndScreen.tsx`) : ils se substituent l'un à l'autre
+sans retouche de code. Si l'un venait à manquer, l'écran le remplace par un
+titre en toutes lettres plutôt que par une image cassée.
