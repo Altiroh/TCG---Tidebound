@@ -1,16 +1,12 @@
 /*
  * MARKET — la boutique de boosters, sur la coquille `GameScreen`.
  *
- * L'étagère en haut (sachets en vente, étiquette de prix), le panier en
- * bas, le total en bas à droite. Ouvrir un booster est l'affaire de « Mes
- * boosters » (`features/boosters/`), et aucune règle d'économie n'est
- * décidée ici. La planche vient de `features/shell/Shelf.module.css`.
+ * Les étagères en haut (cinq sachets chacune, nom et prix dessous), le
+ * panier en bas, le total en bas à droite. Le moins de texte possible :
+ * ce qui ne sert pas à décider d'un achat n'est pas affiché. La planche
+ * vient de `features/shell/Shelf.module.css`.
  */
 
-/*
- * La boutique tient dans la hauteur de l'écran : aucun défilement. C'est
- * la TAILLE des sachets qui suit la hauteur disponible (`--pack-h`).
- */
 .layout {
   position: relative;
   z-index: 1;
@@ -22,10 +18,10 @@
 }
 
 .layoutInner {
-  --pack-h: clamp(120px, 34vh, 360px);
+  --pack-h: clamp(120px, 34vh, 340px);
   /* Emplacement d'un sachet : la largeur du plus large des visuels. */
-  --slot-w: calc(var(--pack-h) * 0.74);
-  --slot-gap: clamp(28px, 4vw, 72px);
+  --slot-w: calc(var(--pack-h) * 0.66);
+  --slot-gap: clamp(24px, 3.4vw, 64px);
 
   display: flex;
   flex-direction: column;
@@ -36,32 +32,34 @@
   min-height: 0;
 }
 
-.head {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.headHint {
-  margin: 0;
-  font-size: clamp(11.5px, 0.88vw, 14px);
-  color: var(--ink-dim);
-}
-
-/* ── Étagère ────────────────────────────────────────────────── */
+/* ── Étagères ───────────────────────────────────────────────── */
+/* Défile verticalement dès qu'il faut une deuxième étagère. */
 .stage {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
+  gap: clamp(28px, 5vh, 56px);
   flex: 1 1 auto;
   min-height: 0;
+  padding-top: 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
 }
+
+.stage::-webkit-scrollbar { width: 6px; }
+.stage::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--line-strong); }
+
+/* Une seule étagère reste centrée dans la hauteur. */
+.stage > .shelfUnit:first-child { margin-top: auto; }
+.stage > .shelfUnit:last-child { margin-bottom: auto; }
 
 .shelfUnit {
   display: flex;
   flex-direction: column;
-  min-width: min(100%, clamp(320px, 46vw, 760px));
-  max-width: 100%;
+  flex: 0 0 auto;
+  min-width: min(100%, clamp(320px, 42vw, 720px));
 }
 
 .shelfItems,
@@ -69,12 +67,9 @@
   display: flex;
   justify-content: center;
   gap: var(--slot-gap);
-  padding-inline: clamp(14px, 2vw, 34px);
 }
 
-.shelfItems {
-  align-items: flex-end;
-}
+.shelfItems { align-items: flex-end; }
 
 .shelfItem {
   position: relative;
@@ -107,29 +102,25 @@
 }
 
 .shelfItem:hover:not(:disabled) .shelfPack {
-  transform: translateY(-10px) rotate(-1deg);
-  filter: drop-shadow(0 22px 22px rgba(0, 0, 0, 0.6)) brightness(1.06);
+  transform: translateY(-10px);
+  filter: drop-shadow(0 20px 20px rgba(0, 0, 0, 0.6)) brightness(1.05);
 }
 
-.shelfItem:active:not(:disabled) .shelfPack {
-  transform: translateY(-4px) scale(0.98);
-}
+.shelfItem:active:not(:disabled) .shelfPack { transform: translateY(-4px) scale(0.98); }
 
-/* Déjà au panier : un halo cyan discret au pied du sachet. */
 .shelfItem[data-in-cart="true"] .shelfPack {
-  filter: drop-shadow(0 10px 12px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 14px rgba(88, 200, 216, 0.35));
+  filter: drop-shadow(0 10px 12px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 14px rgba(88, 200, 216, 0.3));
 }
 
 .cartBadge {
   position: absolute;
   top: 6%;
-  right: 2%;
-  min-width: 34px;
-  padding: 4px 9px;
-  border: 1px solid rgba(88, 200, 216, 0.6);
+  right: 4%;
+  min-width: 30px;
+  padding: 4px 8px;
+  border: 1px solid rgba(88, 200, 216, 0.55);
   border-radius: 999px;
   background: var(--panel-solid);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
   color: #eaf8fb;
   font-size: 12px;
   font-weight: 700;
@@ -143,98 +134,83 @@
   to { transform: none; }
 }
 
+/* Sous la planche : le nom, puis le prix. Rien d'autre. */
 .shelfLabel {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   flex: 0 0 var(--slot-w);
-  padding-top: clamp(10px, 1.8vh, 20px);
+  padding-top: clamp(12px, 2vh, 20px);
   text-align: center;
 }
 
-/* Étiquette de prix accrochée à la planche : le laiton, c'est l'argent. */
-.priceTag {
+.shelfName {
+  font-family: var(--cb-font-display);
+  font-size: clamp(12.5px, 0.95vw, 15px);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #f2f7fb;
+}
+
+.shelfPrice {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  margin-bottom: 4px;
-  padding: 3px 10px 3px 7px;
-  border: 1px solid rgba(199, 154, 78, 0.45);
-  border-radius: 999px;
-  background: rgba(20, 14, 8, 0.72);
-  font-family: var(--cb-font-display);
-  font-size: clamp(13px, 1vw, 16px);
+  font-size: clamp(12px, 0.9vw, 14px);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: #e5cf9e;
 }
 
-.shelfName {
-  font-family: var(--cb-font-display);
-  font-size: clamp(13px, 1vw, 16px);
-  font-weight: 600;
-  color: #f2f7fb;
-  text-shadow: 0 1px 6px rgba(2, 6, 11, 0.8);
-}
-
-.shelfMeta {
-  font-size: clamp(10.5px, 0.78vw, 12px);
-  font-variant-numeric: tabular-nums;
-  color: var(--ink-dim);
-}
-
 /* ── Panier ─────────────────────────────────────────────────── */
 .cart {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: clamp(14px, 3vw, 48px);
-  padding: clamp(10px, 1.6vh, 18px) clamp(14px, 1.6vw, 24px);
+  padding: clamp(8px, 1.3vh, 14px) clamp(14px, 1.6vw, 22px);
 }
 
 @media (max-width: 760px) {
   .cart { flex-direction: column; align-items: stretch; }
 }
 
+.cartEmpty {
+  margin: 0;
+  font-size: clamp(12px, 0.88vw, 13.5px);
+  color: var(--ink-faint);
+}
+
 .cartLines {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   min-width: 0;
+  max-height: 7.5em;
   margin: 0;
   padding: 0;
+  overflow-y: auto;
   list-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
 }
+
+.cartLines[hidden] { display: none; }
 
 .cartLine {
   display: grid;
-  grid-template-columns: minmax(9ch, auto) auto auto minmax(5ch, auto);
+  grid-template-columns: minmax(10ch, auto) auto minmax(5ch, auto);
   align-items: center;
-  gap: clamp(10px, 1.6vw, 26px);
-  padding: 3px 0;
+  gap: clamp(12px, 1.8vw, 28px);
   font-size: clamp(12px, 0.9vw, 14px);
-  transition: opacity 150ms ease-out;
 }
 
-.cartLine[data-empty="true"] { opacity: 0.6; }
-.cartLine[data-empty="true"]:hover,
-.cartLine[data-empty="true"]:focus-within { opacity: 1; }
 
 .cartName {
-  font-family: var(--cb-font-display);
-  font-weight: 600;
-  color: #f2f7fb;
+  color: var(--ink);
   white-space: nowrap;
 }
-
-.cartUnit {
-  font-variant-numeric: tabular-nums;
-  color: #ddc79a;
-  white-space: nowrap;
-}
-
-.unitLabel { color: var(--ink-faint); }
 
 .cartSubtotal {
   font-variant-numeric: tabular-nums;
@@ -246,10 +222,6 @@
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  padding: 2px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: rgba(130, 178, 210, 0.05);
 }
 
 .stepperButton {
@@ -257,20 +229,20 @@
   place-items: center;
   width: 24px;
   height: 24px;
-  border: none;
+  border: 1px solid var(--line);
   border-radius: 50%;
   background: none;
   color: var(--ink-dim);
   cursor: pointer;
-  transition: background-color 130ms ease-out, color 130ms ease-out;
+  transition: background-color 130ms ease-out, color 130ms ease-out, border-color 130ms ease-out;
 }
 
-.stepperButton:hover:not(:disabled) { background: rgba(130, 178, 210, 0.14); color: var(--ink); }
+.stepperButton:hover:not(:disabled) { border-color: var(--line-strong); background: rgba(130, 178, 210, 0.12); color: var(--ink); }
 .stepperButton:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 1px; }
 .stepperButton:disabled { opacity: 0.3; cursor: not-allowed; }
 
 .stepperValue {
-  min-width: 2.2ch;
+  min-width: 2.4ch;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   text-align: center;
@@ -281,7 +253,7 @@
 .checkout {
   display: flex;
   align-items: center;
-  gap: clamp(12px, 1.6vw, 24px);
+  gap: clamp(10px, 1.2vw, 18px);
   flex: 0 0 auto;
 }
 
@@ -290,28 +262,18 @@
 }
 
 .totalBlock {
-  display: grid;
-  grid-template-columns: auto auto;
-  align-items: baseline;
-  column-gap: 10px;
-  text-align: right;
-}
-
-.totalLabel {
-  font-size: clamp(10px, 0.72vw, 12px);
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--ink-dim);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  margin-right: clamp(4px, 0.6vw, 10px);
 }
 
 .totalValue {
   display: inline-flex;
   align-items: center;
-  justify-content: flex-end;
   gap: 6px;
   font-family: var(--cb-font-display);
-  font-size: clamp(20px, 1.7vw, 28px);
+  font-size: clamp(19px, 1.6vw, 26px);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: #e5cf9e;
@@ -320,22 +282,25 @@
 .totalValue[data-short="true"] { color: var(--danger); }
 
 .totalHint {
-  grid-column: 1 / -1;
   font-size: clamp(10.5px, 0.78vw, 12px);
-  color: var(--ink-faint);
+  color: #f3c3ba;
 }
 
-.totalHint[data-short="true"] { color: #f3c3ba; }
-
-/* Rangée de liens de bas de page. */
-.footRow {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px 14px;
-  font-size: clamp(11px, 0.82vw, 13px);
-  color: var(--ink-faint);
+/* « Vider » : un simple lien, pour ne pas concurrencer « Acheter ». */
+.clearButton {
+  padding: 0.4em 0.2em;
+  border: none;
+  background: none;
+  color: var(--ink-dim);
+  font: inherit;
+  font-size: clamp(12px, 0.85vw, 13px);
+  cursor: pointer;
+  transition: color 150ms ease-out;
 }
+
+.clearButton:hover:not(:disabled) { color: var(--ink); }
+.clearButton:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 2px; border-radius: 4px; }
+.clearButton:disabled { opacity: 0.35; cursor: default; }
 
 @media (prefers-reduced-motion: reduce) {
   .shelfPack { transition: none; }

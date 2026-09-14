@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { PACK_SLOT_RATIO, stackedShelfLayout } from "@/features/boosters/stackedShelf";
+import { PACK_SLOT_RATIO, splitIntoShelves, stackedShelfLayout } from "@/features/boosters/stackedShelf";
+
+describe("splitIntoShelves", () => {
+  it("pose 5 sachets par étagère, dans l'ordre", () => {
+    const shelves = splitIntoShelves(Array.from({ length: 12 }, (_, i) => i));
+    expect(shelves.map((shelf) => shelf.length)).toEqual([5, 5, 2]);
+    expect(shelves[1]?.[0]).toBe(5);
+  });
+
+  it("ne crée aucune étagère sans sachet", () => {
+    expect(splitIntoShelves([])).toEqual([]);
+  });
+});
 
 describe("stackedShelfLayout", () => {
   it("centre un sachet seul", () => {

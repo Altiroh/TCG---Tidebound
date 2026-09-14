@@ -5,6 +5,16 @@ import { useEffect, useState } from "react";
 /** Largeur d'un emplacement de sachet, en fraction de sa hauteur (le plus large des visuels fermés). */
 export const PACK_SLOT_RATIO = 0.62;
 
+/** Sachets par étagère : au-delà, une nouvelle étagère se pose en dessous. */
+export const PACKS_PER_SHELF = 5;
+
+/** Répartit des éléments en étagères de `PACKS_PER_SHELF`, dans l'ordre. */
+export function splitIntoShelves<T>(items: readonly T[], perShelf = PACKS_PER_SHELF): T[][] {
+  const shelves: T[][] = [];
+  for (let index = 0; index < items.length; index += perShelf) shelves.push(items.slice(index, index + perShelf));
+  return shelves;
+}
+
 export interface StackedShelfLayout {
   /** Hauteur d'un sachet, en px. */
   packHeight: number;

@@ -11,6 +11,7 @@ import { TideCoin } from "@/features/shell/HeaderPlayer";
 import { ScreenToast, type ScreenToastMessage } from "@/features/shell/ScreenToast";
 import { purchaseBooster, type BoosterInventory, type BoosterInventoryEntry } from "@/features/boosters/actions";
 import { MAX_PURCHASE_QUANTITY } from "@/features/boosters/constants";
+import { splitIntoShelves } from "@/features/boosters/stackedShelf";
 import { closedPackVariables, getBoosterPackVisual } from "@/features/boosters/opening/boosterPackVisuals";
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
 import { playButtonClick } from "@/lib/sound";
@@ -124,10 +125,7 @@ export function MarketScreen({ inventory }: MarketScreenProps) {
     <GameScreen active="market" nav="minimal">
       <div className={styles.layout}>
         <div className={styles.layoutInner}>
-          <div className={styles.head}>
-            <h1 className={game.title}>Market</h1>
-            <p className={styles.headHint}>Touche un booster pour l&apos;ajouter au panier.</p>
-          </div>
+          <h1 className={game.title}>Market</h1>
 
           {!inventory.isSignedIn ? (
             <div className={`${game.panel} ${game.empty}`}>
@@ -147,48 +145,46 @@ export function MarketScreen({ inventory }: MarketScreenProps) {
             </div>
           ) : (
             <>
+              {/* Cinq sachets par étagère ; au-delà, une étagère en dessous et on défile. */}
               <section className={styles.stage} aria-label="Boosters en vente">
-                <div className={styles.shelfUnit}>
-                  <div className={styles.shelfItems}>
-                    {onSale.map((booster) => (
-                      <ShelfItem
-                        key={booster.boosterId}
-                        booster={booster}
-                        inCart={cart[booster.boosterId] ?? 0}
-                        disabled={isBuying || (cart[booster.boosterId] ?? 0) >= MAX_PURCHASE_QUANTITY}
-                        onAdd={() => step(booster.boosterId, 1)}
-                      />
-                    ))}
+                {splitIntoShelves(onSale).map((shelfBoosters, shelfIndex) => (
+                  <div key={shelfIndex} className={styles.shelfUnit}>
+                    <div className={styles.shelfItems}>
+                      {shelfBoosters.map((booster) => (
+                        <ShelfItem
+                          key={booster.boosterId}
+                          booster={booster}
+                          inCart={cart[booster.boosterId] ?? 0}
+                          disabled={isBuying || (cart[booster.boosterId] ?? 0) >= MAX_PURCHASE_QUANTITY}
+                          onAdd={() => step(booster.boosterId, 1)}
+                        />
+                      ))}
+                    </div>
+                    <div className={shelf.plank} aria-hidden />
+                    <div className={styles.shelfLabels}>
+                      {shelfBoosters.map((booster) => (
+                        <div key={booster.boosterId} className={styles.shelfLabel}>
+                          <span className={styles.shelfName}>{booster.name}</span>
+                          <span className={styles.shelfPrice}>
+                            <TideCoin size={12} />
+                            {booster.price}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div className={shelf.plank} aria-hidden />
-                  <div className={styles.shelfLabels}>
-                    {onSale.map((booster) => (
-                      <div key={booster.boosterId} className={styles.shelfLabel}>
-                        <span className={styles.priceTag}>
-                          <TideCoin size={13} />
-                          {booster.price}
-                        </span>
-                        <span className={styles.shelfName}>{booster.name}</span>
-                        <span className={styles.shelfMeta}>
-                          {booster.cardCount} cartes
-                          {booster.owned > 0 && <> · {booster.owned} en réserve</>}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                ))}
               </section>
 
               <section className={`${game.panel} ${styles.cart}`} aria-label="Panier">
-                <ul className={styles.cartLines}>
-                  {onSale.map((booster) => {
+                {/* Seulement ce qui est au panier : les boosters en vente sont déjà sur l'étagère. */}
+                {itemCount === 0 && <p className={styles.cartEmpty}>Touche un booster pour l&apos;ajouter au panier.</p>}
+                <ul className={styles.cartLines} hidden={itemCount === 0}>
+                  {onSale.filter((booster) => (cart[booster.boosterId] ?? 0) > 0).map((booster) => {
                     const quantity = cart[booster.boosterId] ?? 0;
                     return (
-                      <li key={booster.boosterId} className={styles.cartLine} data-empty={quantity === 0 ? "true" : "false"}>
+                      <li key={booster.boosterId} className={styles.cartLine}>
                         <span className={styles.cartName}>{booster.name}</span>
-                        <span className={styles.cartUnit}>
-                          {booster.price} <span className={styles.unitLabel}>/ unité</span>
-                        </span>
                         <span className={styles.stepper} role="group" aria-label={`Quantité de ${booster.name}`}>
                           <button
                             type="button"
@@ -224,19 +220,24 @@ export function MarketScreen({ inventory }: MarketScreenProps) {
 
                 <div className={styles.checkout}>
                   <div className={styles.totalBlock}>
-                    <span className={styles.totalLabel}>Total</span>
                     <span className={styles.totalValue} data-short={shortBy > 0 ? "true" : "false"}>
                       <TideCoin size={18} />
                       {total}
                     </span>
-                    <span className={styles.totalHint} data-short={shortBy > 0 ? "true" : "false"}>
-                      {itemCount === 0
-                        ? "Panier vide"
-                        : shortBy > 0
-                          ? `Il te manque ${shortBy} Tides`
-                          : `Solde après achat : ${inventory.balance - total}`}
-                    </span>
+                    {/* Une seule indication, et seulement quand elle empêche d'acheter. */}
+                    {shortBy > 0 && <span className={styles.totalHint}>Il manque {shortBy} Tides</span>}
                   </div>
+                  <button
+                    type="button"
+                    className={styles.clearButton}
+                    onClick={() => {
+                      playButtonClick();
+                      setCart({});
+                    }}
+                    disabled={isBuying || itemCount === 0}
+                  >
+                    Vider
+                  </button>
                   <button
                     type="button"
                     className={game.primary}
@@ -249,15 +250,6 @@ export function MarketScreen({ inventory }: MarketScreenProps) {
               </section>
             </>
           )}
-
-          <div className={styles.footRow}>
-            <Link href="/boosters" className={game.link} onClick={() => playButtonClick()}>
-              Voir mes boosters →
-            </Link>
-            <Link href="/quetes" className={game.link} onClick={() => playButtonClick()} style={{ marginLeft: "auto" }}>
-              Gagner des Tides avec les quêtes →
-            </Link>
-          </div>
         </div>
       </div>
 
