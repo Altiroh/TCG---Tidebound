@@ -55,16 +55,16 @@
      collé sous la dernière section et laisse un grand vide en dessous,
      alors que son `margin-top: auto` est justement là pour l'ancrer en bas. */
   flex: 1 1 auto;
-  /* Seule la colonne défile si elle déborde — jamais la page. */
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  /*
+   * La COLONNE ne défile jamais : toutes les sections (Variante, Type,
+   * Statut, Raison) restent visibles en même temps. C'est chaque section
+   * trop longue qui défile seule, dans sa propre boîte (`.filterList`) —
+   * chercher un filtre ne doit pas demander de faire défiler la colonne
+   * entière pour retrouver les autres axes.
+   */
+  overflow: hidden;
   padding: clamp(12px, 1.5vh, 18px) clamp(10px, 0.8vw, 16px);
-  scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
 }
-
-.sidebarInner::-webkit-scrollbar { width: 6px; }
-.sidebarInner::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--line-strong); }
 
 .sidebarHead {
   display: flex;
@@ -105,6 +105,40 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  /* Peut se comprimer : c'est ce qui laisse sa boîte de lignes prendre le
+     relais du défilement quand la colonne manque de hauteur. */
+  flex: 0 1 auto;
+  min-height: 0;
+}
+
+/*
+ * Les lignes d'une section. En dessous du seuil (`MAX_ROWS_BEFORE_SCROLL`
+ * dans `CollectionSidebar`), la boîte fait simplement la taille de son
+ * contenu ; au-dessus, elle se borne à la hauteur de ce nombre de lignes
+ * et demie et défile seule.
+ */
+.filterList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+  /* Filet de sécurité sur un écran très bas : une section sous le seuil se
+     comprime et défile elle aussi plutôt que de déborder du panneau. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.filterList::-webkit-scrollbar { width: 6px; }
+.filterList::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--line-strong); }
+
+.filterList[data-scroll="true"] {
+  /* Hauteur de ligne (30px mini + 2px de gouttière) × 4,5 : le demi-rang
+     coupé en bas dit qu'il y a la suite, sans autre ornement. */
+  max-height: clamp(112px, 18vh, 144px);
+  /* De la place pour l'ascenseur, pour qu'il ne recouvre pas les effectifs. */
+  padding-right: 4px;
 }
 
 .sectionTitle {
@@ -372,15 +406,24 @@
 
 /* Carte non possédée : présente, mais éteinte. Elle reste cliquable —
    consulter une carte qu'on n'a pas est précisément l'intérêt. */
+/*
+ * Non possédée = entièrement en niveaux de gris, possédée = en couleur.
+ * C'est le seul signal dont la Collection a besoin pour qu'on lise d'un
+ * coup d'œil ce qu'on a : un gris franc, pas un demi-estompage qu'on
+ * confondrait avec une carte simplement plus sombre. L'opacité reste
+ * haute — il faut voir la carte qui manque, pas la deviner.
+ */
 .cardCellMissing {
-  opacity: 0.42;
-  filter: grayscale(0.7);
+  opacity: 0.82;
+  filter: grayscale(1) brightness(0.78) contrast(0.94);
   transition: opacity 150ms ease-out, filter 150ms ease-out;
 }
 
+/* Au survol, la carte reprend ses couleurs : c'est la façon la plus directe
+   de montrer ce qu'on obtiendrait en l'ouvrant. */
 .cardCellMissing:hover {
-  opacity: 0.75;
-  filter: grayscale(0.25);
+  opacity: 1;
+  filter: grayscale(0.15) brightness(0.98);
 }
 
 @keyframes cardAppear {

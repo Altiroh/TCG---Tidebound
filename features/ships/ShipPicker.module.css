@@ -1,6 +1,8 @@
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  /* Assez large pour que les traits (passif/capacité/faiblesse) tiennent en
+     quelques lignes plutôt qu'en colonnes d'un mot. */
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: clamp(10px, 1.2vw, 16px);
 }
 
@@ -27,6 +29,44 @@
 }
 
 .profile {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--ink-dim);
+}
+
+/* ── Traits : passif, capacité, faiblesse ───────────────────────
+   Alignés à gauche alors que le reste de la tuile est centré : ce sont
+   des phrases, et une phrase centrée sur trois lignes se lit mal. */
+.traits {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  margin-top: 2px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+  text-align: left;
+}
+
+.trait {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.traitLabel {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--cb-cyan);
+}
+
+/* La faiblesse est le seul trait qui coûte : elle se distingue par sa
+   couleur, pas par un cadre ou une icône de plus. */
+.traitWeak .traitLabel { color: var(--danger); }
+
+.traitText {
   font-size: 11px;
   line-height: 1.4;
   color: var(--ink-dim);

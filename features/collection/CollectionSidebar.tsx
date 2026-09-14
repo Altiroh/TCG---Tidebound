@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { CARD_TYPE_LABELS } from "@/features/match/cardDisplay";
 import { TYPE_FILTERS } from "@/features/collection/cardFilters";
 import {
@@ -76,6 +77,29 @@ function FilterRow({
 }
 
 /**
+ * Au-delà de ce nombre de lignes, une section défile SEULE (hauteur bornée
+ * à ce même nombre de lignes) au lieu d'allonger la colonne. C'est ce qui
+ * permet à la colonne entière de ne jamais défiler : toutes les sections
+ * restent visibles, seule celle qui déborde se parcourt.
+ */
+const MAX_ROWS_BEFORE_SCROLL = 4;
+
+/**
+ * Les lignes d'une section. Au-delà de `MAX_ROWS_BEFORE_SCROLL`, elles
+ * défilent dans leur propre boîte (`data-scroll`), bornée par la CSS à la
+ * hauteur de `MAX_ROWS_BEFORE_SCROLL` lignes — un demi-rang reste visible
+ * en bas, ce qui signale qu'il y a la suite.
+ */
+function FilterList({ rowCount, children }: { rowCount: number; children: ReactNode }) {
+  const scrolls = rowCount > MAX_ROWS_BEFORE_SCROLL;
+  return (
+    <div className={styles.filterList} data-scroll={scrolls ? "true" : "false"}>
+      {children}
+    </div>
+  );
+}
+
+/**
  * Colonne de filtres de la Collection.
  *
  * Quatre axes, et quatre seulement : Variante, Type, Statut de collection,
@@ -118,58 +142,64 @@ export function CollectionSidebar({
 
       <section className={styles.filterSection}>
         <h2 className={styles.sectionTitle}>Variante</h2>
-        {VARIANTS.map((variant) => (
-          <FilterRow
-            key={variant.value}
-            label={variant.label}
-            dotClassName={variant.dotClassName}
-            active={filters.variant === variant.value}
-            count={countFor("variant", (def) =>
-              variant.value === "all"
-                ? true
-                : variant.value === "abyssal"
-                  ? def.subtype === "abyssal"
-                  : def.subtype !== "abyssal"
-            )}
-            onClick={() => onChange({ variant: variant.value })}
-          />
-        ))}
+        <FilterList rowCount={VARIANTS.length}>
+          {VARIANTS.map((variant) => (
+            <FilterRow
+              key={variant.value}
+              label={variant.label}
+              dotClassName={variant.dotClassName}
+              active={filters.variant === variant.value}
+              count={countFor("variant", (def) =>
+                variant.value === "all"
+                  ? true
+                  : variant.value === "abyssal"
+                    ? def.subtype === "abyssal"
+                    : def.subtype !== "abyssal"
+              )}
+              onClick={() => onChange({ variant: variant.value })}
+            />
+          ))}
+        </FilterList>
       </section>
 
       <section className={styles.filterSection}>
         <h2 className={styles.sectionTitle}>Type</h2>
-        <FilterRow
-          label="Tous"
-          active={filters.type === null}
-          count={countFor("type", () => true)}
-          onClick={() => onChange({ type: null })}
-        />
-        {TYPE_FILTERS.map((type) => (
+        <FilterList rowCount={TYPE_FILTERS.length + 1}>
           <FilterRow
-            key={type}
-            label={CARD_TYPE_LABELS[type]}
-            icon={`/assets/cards/icons/TYPE_${type.toUpperCase()}_STANDARD.webp`}
-            active={filters.type === type}
-            count={countFor("type", (def) => def.type === type)}
-            onClick={() => onChange({ type: filters.type === type ? null : type })}
+            label="Tous"
+            active={filters.type === null}
+            count={countFor("type", () => true)}
+            onClick={() => onChange({ type: null })}
           />
-        ))}
+          {TYPE_FILTERS.map((type) => (
+            <FilterRow
+              key={type}
+              label={CARD_TYPE_LABELS[type]}
+              icon={`/assets/cards/icons/TYPE_${type.toUpperCase()}_STANDARD.webp`}
+              active={filters.type === type}
+              count={countFor("type", (def) => def.type === type)}
+              onClick={() => onChange({ type: filters.type === type ? null : type })}
+            />
+          ))}
+        </FilterList>
       </section>
 
       {showOwnership && (
         <section className={styles.filterSection}>
           <h2 className={styles.sectionTitle}>Statut de collection</h2>
-          {OWNERSHIPS.map((status) => (
-            <FilterRow
-              key={status.value}
-              label={status.label}
-              active={filters.ownership === status.value}
-              count={countFor("ownership", (def) =>
-                status.value === "all" ? true : status.value === "owned" ? owned.has(def.id) : !owned.has(def.id)
-              )}
-              onClick={() => onChange({ ownership: status.value })}
-            />
-          ))}
+          <FilterList rowCount={OWNERSHIPS.length}>
+            {OWNERSHIPS.map((status) => (
+              <FilterRow
+                key={status.value}
+                label={status.label}
+                active={filters.ownership === status.value}
+                count={countFor("ownership", (def) =>
+                  status.value === "all" ? true : status.value === "owned" ? owned.has(def.id) : !owned.has(def.id)
+                )}
+                onClick={() => onChange({ ownership: status.value })}
+              />
+            ))}
+          </FilterList>
         </section>
       )}
 

@@ -49,6 +49,41 @@
   to { opacity: 1; transform: none; }
 }
 
+/* Tête : le titre, et la croix calée au même niveau — pas flottante dans
+   un coin, où elle recouvrirait un titre long. */
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.close {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin: -2px -4px 0 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  color: var(--ink-dim, rgba(190, 210, 228, 0.7));
+  cursor: pointer;
+  transition: color 140ms ease-out, background-color 140ms ease-out, border-color 140ms ease-out;
+}
+
+.close:hover {
+  border-color: var(--line-strong, rgba(130, 178, 210, 0.3));
+  background: rgba(130, 178, 210, 0.1);
+  color: #f2f7fb;
+}
+
+.close:focus-visible {
+  outline: 2px solid var(--cb-cyan, #58c8d8);
+  outline-offset: 2px;
+}
+
 .title {
   margin: 0;
   font-family: var(--cb-font-display, Georgia, serif);

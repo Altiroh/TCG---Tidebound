@@ -58,10 +58,12 @@
   position: relative;
   z-index: 3;
   display: grid;
-  /* Logo · Collection · Decks · Market · Quêtes · Jouer · ressort · (actions + progression) */
-  grid-template-columns: auto auto auto auto auto auto minmax(0, 1fr) auto;
+  /* Logo · Menu · Collection · Decks · Market · Mes boosters · Quêtes · ressort · (actions + progression) */
+  grid-template-columns: repeat(7, auto) minmax(0, 1fr) auto;
   align-items: center;
-  gap: clamp(14px, 2.2vw, 40px);
+  /* Un onglet de plus qu'avant : l'écart se resserre plutôt que de pousser
+     la recherche hors du bandeau sur un écran de portable. */
+  gap: clamp(10px, 1.5vw, 28px);
   padding-inline: clamp(14px, 2vw, 36px);
   isolation: isolate;
 }
@@ -366,6 +368,45 @@
   outline: none;
   background: rgba(233, 226, 209, 0.08);
   color: var(--cb-ivory);
+}
+
+/*
+ * Pastille de raccourci (Ctrl+K / ⌘K), à la place de la croix tant que le
+ * champ est vide. Une indication, pas un bouton : aucun survol, aucun
+ * curseur de clic — elle s'efface dès qu'on tape.
+ */
+
+.searchShortcut {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25em;
+  flex-shrink: 0;
+  padding: 0.15em 0.5em;
+  border: 1px solid rgba(233, 226, 209, 0.18);
+  border-radius: 5px;
+  background: rgba(233, 226, 209, 0.05);
+  color: var(--cb-ivory-dim);
+  font-family: inherit;
+  font-size: 0.72em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+  white-space: nowrap;
+  user-select: none;
+  transition: border-color 160ms ease-out, color 160ms ease-out;
+}
+
+.searchShortcutKey {
+  /* La touche elle-même un cran plus claire que le modificateur : c'est
+     elle qu'on cherche des yeux. */
+  color: var(--cb-ivory);
+}
+
+/* Dans le champ, le raccourci n'a plus de rôle : il s'éteint au lieu de
+   disparaître (pas de saut de largeur). */
+.searchBar:focus-within .searchShortcut {
+  border-color: transparent;
+  color: rgba(233, 226, 209, 0.28);
 }
 
 /*

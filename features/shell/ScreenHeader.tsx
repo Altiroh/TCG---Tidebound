@@ -8,28 +8,70 @@ import styles from "@/features/shell/ScreenShell.module.css";
 import { NavigationTab } from "@/features/shell/NavigationTab";
 import { ProgressionBadge } from "@/features/progression/ProgressionBadge";
 
+export type ScreenSection = "collection" | "decks" | "market" | "boosters" | "quetes" | "partie";
+
+/**
+ * Les onglets du bandeau, dans l'ordre de lecture.
+ *
+ * « Jouer » n'en fait PAS partie : lancer une partie se fait depuis le menu
+ * principal (le coffret), pas depuis un écran de gestion. L'onglet
+ * correspondant a été retiré ; `/partie` reste atteignable et garde son
+ * `active="partie"` (aucun onglet ne s'allume alors), mais le bandeau
+ * propose à la place un retour explicite au menu.
+ */
+const TABS: Array<{ section: ScreenSection; label: string; href: string }> = [
+  { section: "collection", label: "Collection", href: "/collection" },
+  { section: "decks", label: "Decks", href: "/decks" },
+  { section: "market", label: "Market", href: "/market" },
+  { section: "boosters", label: "Mes boosters", href: "/boosters" },
+  { section: "quetes", label: "Quêtes", href: "/quetes" },
+];
+
 export interface ScreenHeaderProps {
   /** Section en cours — reçoit le filet turquoise et le halo. `null` : aucun onglet actif (authentification). */
-  active: "collection" | "decks" | "boosters" | "quetes" | "partie" | null;
+  active: ScreenSection | null;
   /** Contrôles propres à l'écran, posés à droite de la navigation (recherche…). */
   actions?: ReactNode;
+  /**
+   * Filtre de navigation de l'écran : rendre `true` pour DÉCLINER le
+   * déplacement (l'écran s'en charge lui-même — typiquement un dialogue de
+   * modifications non sauvegardées). Toute la navigation du bandeau passe
+   * par là, logo compris.
+   */
+  onNavigate?: (href: string) => boolean;
 }
 
 /**
  * Bandeau du haut, commun à tous les écrans hors plateau (`GameScreen`) :
  * fin, sans fond propre — il se fond dans le décor de l'écran. Le logo à
- * gauche tient lieu de retour au menu ; les onglets sont du texte, l'actif
- * se lit à un filet cyan ; à droite, les contrôles de l'écran puis la
- * progression du joueur.
+ * gauche et l'onglet « Menu » ramènent au menu principal ; les autres
+ * onglets sont du texte, l'actif se lit à un filet cyan ; à droite, les
+ * contrôles de l'écran puis la progression du joueur.
  */
-export function ScreenHeader({ active, actions }: ScreenHeaderProps) {
+export function ScreenHeader({ active, actions, onNavigate }: ScreenHeaderProps) {
   const router = useRouter();
+
+  /** Un seul chemin pour tout déplacement du bandeau : l'écran peut le décliner. */
+  function go(href: string) {
+    if (onNavigate?.(href)) return;
+    router.push(href);
+  }
 
   return (
     <header className={styles.header}>
-      {/* Le logo TIENT LIEU de bouton Retour : même destination, mais il
-          porte l'identité au lieu d'un libellé de plus. */}
-      <Link href="/" className={styles.brand} aria-label="Retour au menu">
+      {/* Le logo TIENT LIEU de bouton Retour : même destination que l'onglet
+          « Menu », mais il porte l'identité au lieu d'un libellé de plus.
+          C'est un vrai lien (clic milieu, ouverture dans un onglet), dont le
+          clic gauche passe quand même par le filtre de l'écran. */}
+      <Link
+        href="/"
+        className={styles.brand}
+        aria-label="Retour au menu"
+        onClick={(event) => {
+          if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+          if (onNavigate?.("/")) event.preventDefault();
+        }}
+      >
         <Image
           src="/assets/menu/logo/tidebound-logo.webp"
           alt="Tidebound"
@@ -40,51 +82,23 @@ export function ScreenHeader({ active, actions }: ScreenHeaderProps) {
         />
       </Link>
 
-      <NavigationTab
-        active={active === "collection"}
-        onClick={() => {
-          if (active !== "collection") router.push("/collection");
-        }}
-      >
-        Collection
+      {/* Retour au menu principal, en toutes lettres : le logo seul ne se
+          lit pas comme un bouton pour qui ne le sait pas déjà. */}
+      <NavigationTab onClick={() => go("/")}>
+        <span aria-hidden>←</span> Menu
       </NavigationTab>
 
-      <NavigationTab
-        active={active === "decks"}
-        onClick={() => {
-          if (active !== "decks") router.push("/decks");
-        }}
-      >
-        Decks
-      </NavigationTab>
-
-      {/* Market = l'écran des boosters (`/boosters`) : un seul onglet, un seul écran. */}
-      <NavigationTab
-        active={active === "boosters"}
-        onClick={() => {
-          if (active !== "boosters") router.push("/boosters");
-        }}
-      >
-        Market
-      </NavigationTab>
-
-      <NavigationTab
-        active={active === "quetes"}
-        onClick={() => {
-          if (active !== "quetes") router.push("/quetes");
-        }}
-      >
-        Quêtes
-      </NavigationTab>
-
-      <NavigationTab
-        active={active === "partie"}
-        onClick={() => {
-          if (active !== "partie") router.push("/partie");
-        }}
-      >
-        Jouer
-      </NavigationTab>
+      {TABS.map((tab) => (
+        <NavigationTab
+          key={tab.section}
+          active={active === tab.section}
+          onClick={() => {
+            if (active !== tab.section) go(tab.href);
+          }}
+        >
+          {tab.label}
+        </NavigationTab>
+      ))}
 
       <span />
 

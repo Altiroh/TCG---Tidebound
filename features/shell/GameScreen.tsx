@@ -9,6 +9,8 @@ interface GameScreenProps {
   active: ScreenHeaderProps["active"];
   /** Contrôles propres à l'écran dans le bandeau (recherche…). */
   actions?: ReactNode;
+  /** Filtre de navigation du bandeau — cf. `ScreenHeaderProps.onNavigate`. */
+  onNavigate?: ScreenHeaderProps["onNavigate"];
   /** Classe additionnelle posée sur la racine (grille propre à l'écran, tokens…). */
   className?: string;
   children: ReactNode;
@@ -22,10 +24,10 @@ interface GameScreenProps {
  * La racine compose `shell.screen` (palette `--cb-*`, grille, polices) et
  * `styles.screen` (décor, tokens de panneau, deux rangées seulement).
  */
-export function GameScreen({ active, actions, className, children }: GameScreenProps) {
+export function GameScreen({ active, actions, onNavigate, className, children }: GameScreenProps) {
   return (
     <div className={`${shell.screen} ${styles.screen}${className ? ` ${className}` : ""}`}>
-      <ScreenHeader active={active} actions={actions} />
+      <ScreenHeader active={active} actions={actions} onNavigate={onNavigate} />
       {children}
     </div>
   );

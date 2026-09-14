@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { DeckList } from "@/game";
+import { getCardDefinition, type DeckList } from "@/game";
 import { validateDeckList } from "@/game/rules/deckValidation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -157,6 +157,55 @@ export async function saveDeck(input: SaveDeckInput): Promise<DeckActionResult> 
   return guarded("saveDeck", () => saveDeckUnguarded(input));
 }
 
+/** Nombre maximal d'identifiants inconnus cités dans le message d'erreur — au-delà, la liste devient illisible. */
+const MAX_LISTED_UNKNOWN_CARDS = 3;
+
+/**
+ * Les identifiants de `cardIds` absents de la table `cards`, dédupliqués.
+ *
+ * `cards` n'est qu'un MIROIR du catalogue TypeScript (cf.
+ * `scripts/seedCards.ts`) : elle peut donc être en retard sur lui, et
+ * c'est exactement ce que cette fonction détecte, avant d'écrire quoi que
+ * ce soit.
+ */
+async function unknownCardIds(
+  supabase: ReturnType<typeof createSupabaseServerClient>,
+  cardIds: readonly string[]
+): Promise<string[]> {
+  const distinct = Array.from(new Set(cardIds));
+  if (distinct.length === 0) return [];
+
+  const { data, error } = await supabase.from("cards").select("id").in("id", distinct);
+  // Lecture impossible (RLS, panne) : on ne bloque pas la sauvegarde sur un
+  // contrôle qui n'a pas pu s'exécuter — l'INSERT tranchera.
+  if (error) {
+    console.error("[saveDeck] Contrôle des cartes impossible :", error.message);
+    return [];
+  }
+
+  const known = new Set((data ?? []).map((row) => row.id as string));
+  return distinct.filter((cardId) => !known.has(cardId));
+}
+
+/** Message montré dans l'éditeur pour des cartes absentes de la base — nomme les cartes et le geste qui répare. */
+function unknownCardsMessage(missing: string[]): string {
+  const named = missing.slice(0, MAX_LISTED_UNKNOWN_CARDS).map(cardDisplayName).join(", ");
+  const rest = missing.length - MAX_LISTED_UNKNOWN_CARDS;
+  const list = rest > 0 ? `${named} (+${rest})` : named;
+  return `${missing.length > 1 ? "Ces cartes ne sont pas encore" : "Cette carte n'est pas encore"} synchronisée${
+    missing.length > 1 ? "s" : ""
+  } avec la base : ${list}. Lance \`npm run seed:cards\` pour mettre le catalogue à jour, puis réessaie. Ton deck n'a pas été modifié.`;
+}
+
+/** Nom lisible d'une carte, ou son identifiant si le catalogue ne la connaît pas non plus. */
+function cardDisplayName(cardId: string): string {
+  try {
+    return getCardDefinition(cardId).name;
+  } catch {
+    return cardId;
+  }
+}
+
 async function saveDeckUnguarded(input: SaveDeckInput): Promise<DeckActionResult> {
   const name = input.name.trim() || "Deck sans nom";
   const supabase = createSupabaseServerClient();
@@ -170,6 +219,19 @@ async function saveDeckUnguarded(input: SaveDeckInput): Promise<DeckActionResult
     description: "",
     cardIds: input.cardIds,
   });
+
+  // Contrôle AVANT toute écriture : `player_deck_cards.card_id` référence
+  // `cards.id`, une table miroir du catalogue TypeScript alimentée par
+  // `npm run seed:cards`. Une carte ajoutée au catalogue mais pas encore
+  // seedée faisait échouer l'INSERT sur
+  // `player_deck_cards_card_id_fkey` — APRÈS le DELETE du contenu
+  // précédent, donc en vidant le deck au passage. On vérifie donc
+  // d'abord, et on rend un message qui dit quoi faire plutôt que le texte
+  // brut de Postgres.
+  const missing = await unknownCardIds(supabase, input.cardIds);
+  if (missing.length > 0) {
+    return { ok: false, error: unknownCardsMessage(missing) };
+  }
 
   let deckId = input.id;
 

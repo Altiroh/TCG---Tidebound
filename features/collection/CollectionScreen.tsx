@@ -51,6 +51,7 @@ export function CollectionScreen({ isSignedIn, ownedCardIds }: CollectionScreenP
             onChange={(search) => browser.patchFilters({ search })}
             placeholder="Rechercher une carte…"
             label="Rechercher une carte"
+            shortcut
           />
         </div>
       }

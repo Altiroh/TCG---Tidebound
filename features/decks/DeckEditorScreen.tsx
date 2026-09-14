@@ -97,6 +97,8 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
 
   const isDirty = serializeState(name, shipId, cardIds) !== savedSnapshot;
   const issue = useMemo(() => deckRuleIssue(cardIds, shipId, name), [cardIds, shipId, name]);
+  /** Un deck encore hors des règles : sauvegardable, mais comme BROUILLON — c'est ce que le dialogue de sortie propose. */
+  const isDraft = issue !== null;
 
   // Trois garde-fous, tous tirés des règles du projet : la carte est
   // possédée, sa limite d'exemplaires n'est pas atteinte, et le deck n'a
@@ -170,6 +172,19 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
     performLeave(leave);
   }
 
+  /**
+   * Filtre de navigation du bandeau (onglets ET logo) : tant que le deck a
+   * des modifications non enregistrées, tout déplacement ouvre le dialogue
+   * au lieu de partir. Sans ça, cliquer « Collection » jetait le travail en
+   * cours sans un mot — le garde-fou n'existait que sur « Mes decks » et
+   * « Nouveau deck ».
+   */
+  function handleNavigate(href: string): boolean {
+    if (!isDirty) return false;
+    setPendingLeave({ kind: "navigate", href });
+    return true;
+  }
+
   function performLeave(leave: NonNullable<PendingLeave>) {
     if (leave.kind === "new") resetToBlankDeck();
     else router.push(leave.href);
@@ -178,8 +193,11 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
   async function handleLeaveSave() {
     const leave = pendingLeave;
     const ok = await handleSave();
+    // Échec : le dialogue RESTE ouvert, avec le message. Le refermer
+    // laisserait le joueur sur l'éditeur en croyant être sauvegardé.
+    if (!ok) return;
     setPendingLeave(null);
-    if (ok && leave) performLeave(leave);
+    if (leave) performLeave(leave);
   }
 
   function handleLeaveDiscard() {
@@ -286,6 +304,7 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
   return (
     <GameScreen
       active="decks"
+      onNavigate={handleNavigate}
       actions={
         <div className={game.headerSearch}>
           <SearchLine
@@ -294,6 +313,7 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
             onChange={(search) => cardBrowser.patchFilters({ search })}
             placeholder="Rechercher une carte…"
             label="Rechercher une carte"
+            shortcut
           />
         </div>
       }
@@ -388,18 +408,18 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
 
       {pendingLeave && (
         <Dialog
-          title="Modifications non sauvegardées"
+          title={isDraft ? "Deck en cours" : "Modifications non sauvegardées"}
           onClose={() => setPendingLeave(null)}
           actions={
             <>
-              <button type="button" className={game.link} onClick={() => setPendingLeave(null)}>
-                Annuler
+              <button type="button" className={game.link} onClick={() => setPendingLeave(null)} disabled={isSaving}>
+                Continuer à éditer
               </button>
-              <button type="button" className={game.secondary} onClick={handleLeaveDiscard}>
+              <button type="button" className={game.secondary} onClick={handleLeaveDiscard} disabled={isSaving}>
                 Ne pas enregistrer
               </button>
-              <button type="button" className={game.primary} onClick={() => void handleLeaveSave()}>
-                Enregistrer
+              <button type="button" className={game.primary} onClick={() => void handleLeaveSave()} disabled={isSaving}>
+                {isSaving ? "Enregistrement…" : isDraft ? "Enregistrer le brouillon" : "Enregistrer"}
               </button>
             </>
           }
@@ -407,6 +427,15 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
           <p style={{ margin: 0 }}>
             Veux-tu enregistrer « {name} » avant de {pendingLeave.kind === "new" ? "créer un nouveau deck" : "quitter"} ?
           </p>
+          {/* Un deck incomplet se sauvegarde quand même, simplement marqué
+              non jouable côté serveur : le dire ici évite de croire qu'il
+              faut le finir maintenant ou tout perdre. */}
+          {isDraft && (
+            <p className={game.muted} style={{ margin: 0 }}>
+              Il n&apos;est pas encore jouable ({issue}). Enregistré comme brouillon, il t&apos;attendra dans « Mes decks ».
+            </p>
+          )}
+          {saveError && <p className={game.error}>{saveError}</p>}
         </Dialog>
       )}
 
