@@ -21,8 +21,8 @@ interface CollectionScreenProps {
  * Écran Collection.
  *
  * Trois plans : le décor maritime en plein écran
- * (`collection/collection_background_2.webp`, posé par `CardBrowser.module.css`),
- * la colonne de filtres à gauche, la grille de cartes à droite. Le bandeau
+ * (`--screen-backdrop`, posé par `GameScreen.module.css`), la colonne de
+ * filtres à gauche, la grille de cartes à droite. Le bandeau
  * de navigation reste celui de la coquille partagée, privé de son panorama
  * pour se fondre dans ce décor-ci.
  *

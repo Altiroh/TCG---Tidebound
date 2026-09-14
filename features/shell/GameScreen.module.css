@@ -4,7 +4,7 @@
  *
  * Collection, Decks, Éditeur de deck, Jouer, Market, Quêtes et les pages
  * d'authentification sont le MÊME produit : une scène maritime nocturne
- * (`collection/collection_background_2.webp`) tenue derrière un voile,
+ * (`collection/collection_background_3.webp`, cf. `--screen-backdrop`) tenue derrière un voile,
  * un bandeau fin en haut, et des panneaux bleu nuit légèrement
  * transparents posés dessus. Tout ce qui est commun à ces écrans vit ICI ;
  * chaque écran n'ajoute dans son propre module que ce qui lui est propre.
@@ -51,10 +51,10 @@
 
   /*
    * LE décor de tous les écrans hors plateau, nommé une fois : en changer
-   * (collection_background_3.webp, etc.) est une seule ligne à retoucher,
+   * (collection_background_2.webp, etc.) est une seule ligne à retoucher,
    * ici, et non une chasse aux `url()` dans plusieurs feuilles.
    */
-  --screen-backdrop: url("/assets/collection/collection_background_2.webp");
+  --screen-backdrop: url("/assets/collection/collection_background_3.webp");
 
   background-color: #04090f;
   background-image:
