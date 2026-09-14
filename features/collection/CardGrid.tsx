@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CardDefinition, CardInstance } from "@/game";
 import styles from "@/features/collection/CollectionScreen.module.css";
-import shell from "@/features/shell/ScreenShell.module.css";
 import { CardTile } from "@/features/match/CardTile";
 
 /** Nombre de cartes montées par lot — ajusté pour couvrir large sans jamais monter la collection entière d'un coup. */
@@ -30,6 +29,15 @@ interface CardGridProps {
   cards: CardDefinition[];
   onCardClick: (cardId: string) => void;
   hasAnyCards: boolean;
+  /**
+   * Cartes réellement possédées. Les autres restent affichées mais
+   * estompées : une collection montre AUSSI ce qui manque, c'est ce qui lui
+   * donne un objectif. `null` = possession inconnue (visiteur non
+   * connecté), toutes les cartes sont alors rendues normalement.
+   */
+  owned: ReadonlySet<string> | null;
+  /** Message affiché quand la sélection courante ne donne rien. */
+  emptyLabel?: string;
 }
 
 /**
@@ -44,7 +52,7 @@ interface CardGridProps {
  * référence qui déclenche le retour en haut + la réinitialisation du lot,
  * sans plomberie supplémentaire côté parent.
  */
-export function CardGrid({ cards, onCardClick, hasAnyCards }: CardGridProps) {
+export function CardGrid({ cards, onCardClick, hasAnyCards, owned, emptyLabel }: CardGridProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const loadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -101,10 +109,10 @@ export function CardGrid({ cards, onCardClick, hasAnyCards }: CardGridProps) {
   }, [hasMore, cards.length, visibleCount]);
 
   return (
-    <div ref={scrollRef} className={shell.paperScrollFill}>
+    <div ref={scrollRef} className={styles.gridScroll}>
       {cards.length === 0 ? (
-        <div className={shell.emptyState}>
-          <svg viewBox="0 0 24 24" width="30" height="30" fill="none" className={shell.emptyStateMark} aria-hidden>
+        <div className={styles.emptyState}>
+          <svg viewBox="0 0 24 24" width="30" height="30" fill="none" className={styles.emptyStateMark} aria-hidden>
             <path
               d="M12 3v12m0 0l-3-3m3 3l3-3M6 8h12M12 15v4a3 3 0 0 1-3 3m3-3a3 3 0 0 0 3 3"
               stroke="currentColor"
@@ -115,7 +123,7 @@ export function CardGrid({ cards, onCardClick, hasAnyCards }: CardGridProps) {
           </svg>
           <p>
             {hasAnyCards
-              ? "Aucune carte ne correspond à ces filtres."
+              ? (emptyLabel ?? "Aucune carte ne correspond à ces filtres.")
               : "Tu ne possèdes encore aucune carte : joue avec un deck préconstruit en attendant d'ouvrir des boosters."}
           </p>
         </div>
@@ -125,7 +133,7 @@ export function CardGrid({ cards, onCardClick, hasAnyCards }: CardGridProps) {
             {visibleCards.map((def, index) => (
               <div
                 key={`${generation}:${def.id}`}
-                className={styles.cardCell}
+                className={`${styles.cardCell} ${owned && !owned.has(def.id) ? styles.cardCellMissing : ""}`}
                 style={index < STAGGER_COUNT ? { animationDelay: `${index * 15}ms` } : undefined}
               >
                 <CardTile

@@ -1,6 +1,9 @@
 "use client";
 
+import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import type { ReactNode } from "react";
 import styles from "@/features/shell/ScreenShell.module.css";
 import { NavigationTab } from "@/features/shell/NavigationTab";
 import { ProgressionBadge } from "@/features/progression/ProgressionBadge";
@@ -8,6 +11,15 @@ import { ProgressionBadge } from "@/features/progression/ProgressionBadge";
 interface ScreenHeaderProps {
   /** Section en cours — reçoit le filet turquoise et le halo. */
   active: "collection" | "decks" | "boosters" | "quetes";
+  /**
+   * `false` quand l'écran peint lui-même son décor de fond et que le
+   * bandeau doit s'y fondre plutôt que d'empiler une seconde scène marine
+   * (cas de la Collection). Défaut : `true` — les autres écrans gardent
+   * leur panorama.
+   */
+  showPanorama?: boolean;
+  /** Contrôles propres à l'écran, posés à droite de la navigation (recherche…). */
+  actions?: ReactNode;
 }
 
 /**
@@ -22,26 +34,36 @@ interface ScreenHeaderProps {
  * phare) restent des zones responsives empilées : rien n'est positionné en
  * dur pour une résolution donnée.
  */
-export function ScreenHeader({ active }: ScreenHeaderProps) {
+export function ScreenHeader({ active, showPanorama = true, actions }: ScreenHeaderProps) {
   const router = useRouter();
 
   return (
     <header className={styles.header}>
-      <div className={styles.panorama} aria-hidden>
-        <div className={styles.panoramaStars} />
-        <div className={styles.panoramaBeacon} />
-        <div className={styles.panoramaPeaksFar} />
-        <div className={styles.panoramaPeaks} />
-        <div className={styles.panoramaWater} />
-      </div>
-      <div className={styles.panoramaScrim} aria-hidden />
+      {showPanorama && (
+        <>
+          <div className={styles.panorama} aria-hidden>
+            <div className={styles.panoramaStars} />
+            <div className={styles.panoramaBeacon} />
+            <div className={styles.panoramaPeaksFar} />
+            <div className={styles.panoramaPeaks} />
+            <div className={styles.panoramaWater} />
+          </div>
+          <div className={styles.panoramaScrim} aria-hidden />
+        </>
+      )}
 
-      <NavigationTab href="/">
-        <span className={styles.backArrow} aria-hidden>
-          ‹
-        </span>
-        Retour
-      </NavigationTab>
+      {/* Le logo TIENT LIEU de bouton Retour : même destination, mais il
+          porte l'identité au lieu d'un libellé de plus. */}
+      <Link href="/" className={styles.brand} aria-label="Retour au menu">
+        <Image
+          src="/assets/menu/logo/tidebound-logo.webp"
+          alt="Tidebound"
+          width={1600}
+          height={631}
+          priority
+          className={styles.brandLogo}
+        />
+      </Link>
 
       <NavigationTab
         active={active === "collection"}
@@ -88,6 +110,7 @@ export function ScreenHeader({ active }: ScreenHeaderProps) {
        * hors de sa colonne.
        */}
       <div className={styles.headerRight}>
+        {actions}
         <ProgressionBadge />
 
         {/* Emblème Tidebound : le laiton franc est réservé à ce genre de signe
