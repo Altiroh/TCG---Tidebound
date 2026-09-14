@@ -60,19 +60,22 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
   const [isOver, setIsOver] = useState(false);
   const [isOpening, setIsOpening] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  /** Cartes de l'ouverture en cours — fixées une fois pour toutes par le serveur, jamais retirées en cours de scène. */
-  const [opening, setOpening] = useState<{ boosterId: string; cards: BoosterOpeningCard[] } | null>(null);
+  /**
+   * Ouverture en cours. Les cartes sont fixées une fois pour toutes à
+   * l'ouverture, jamais retirées en cours de scène. `real` distingue une
+   * vraie ouverture (exemplaire consommé, collection créditée) d'un essai
+   * d'animation, qui n'a rien écrit.
+   */
+  const [opening, setOpening] = useState<{ boosterId: string; cards: BoosterOpeningCard[]; real: boolean } | null>(null);
 
   const docked = packs.find((pack) => pack.key === dockedKey) ?? null;
   const dockedEntry = docked ? inventory.boosters.find((entry) => entry.boosterId === docked.boosterId) : undefined;
 
-  // Le plan se recharge tout seul : un exemplaire consommé en laisse
-  // d'autres sur l'étagère, et la dernière ouverture le laisse vide.
+  // AUCUNE sélection par défaut : le plan reste vide tant qu'on n'y a rien
+  // posé — c'est ce vide qui dit ce qu'on attend du joueur. On ne fait donc
+  // que retirer le paquet qui n'existe plus (celui qu'on vient d'ouvrir).
   useEffect(() => {
-    setDockedKey((current) => {
-      if (current && packs.some((pack) => pack.key === current)) return current;
-      return packs[0]?.key ?? null;
-    });
+    setDockedKey((current) => (current && packs.some((pack) => pack.key === current) ? current : null));
   }, [packs]);
 
   // Images de la scène chargées et décodées en avance : l'ouverture démarre sans flash.
@@ -106,6 +109,7 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
 
     setOpening({
       boosterId,
+      real: true,
       cards: result.data.cards.map((card) => ({
         // Une même carte peut sortir deux fois du même booster : c'est le
         // slot qui rend la clé unique, pas l'identifiant de carte.
@@ -121,11 +125,11 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
     if (isOpening || opening) return;
     playButtonClick();
     setError(null);
-    setOpening({ boosterId, cards: drawTestBoosterCards(boosterId) });
+    setOpening({ boosterId, real: false, cards: drawTestBoosterCards(boosterId) });
   }
 
   function handleOpeningClosed() {
-    const wasReal = opening !== null && packs.some((pack) => pack.boosterId === opening.boosterId);
+    const wasReal = opening?.real ?? false;
     setOpening(null);
     // Une ouverture réelle a consommé l'exemplaire et crédité la collection
     // côté base : on relit l'inventaire plutôt que de deviner le nouvel
@@ -161,40 +165,29 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
     <GameScreen active="boosters">
       <div className={styles.layout}>
         <div className={styles.layoutInner}>
-          <div className={game.pageHead}>
-            <div>
-              <p className={game.eyebrow}>Réserve</p>
-              <h1 className={game.title}>Mes boosters</h1>
-            </div>
-            <span className={styles.balance} aria-label={`Solde : ${inventory.balance} Tides`}>
-              {inventory.balance}
-              <span className={styles.balanceLabel}>Tides</span>
-            </span>
+          {/* Pas de rappel du solde ici : le bandeau le porte déjà, deux
+              pas au-dessus. */}
+          <div className={styles.head}>
+            <h1 className={game.title}>Mes boosters</h1>
+            <p className={styles.headHint}>Choisis un booster et glisse-le dans la zone d&apos;ouverture.</p>
           </div>
 
           {error && <p className={game.error}>{error}</p>}
 
           <div className={styles.workbench} data-dragging={isDragging ? "true" : "false"}>
-            <section className={`${game.panel} ${styles.stock}`} aria-label="Paquets possédés">
-              <p className={styles.panelTitle}>
-                Possédés
-                <span className={styles.panelTitleCount}>{packs.length}</span>
-              </p>
-
+            <section className={styles.stock} aria-label="Paquets possédés">
               {packs.length === 0 ? (
                 <div className={styles.stockEmpty}>
-                  <p className={game.muted}>Tu n&apos;as aucun booster en réserve.</p>
+                  <span className={styles.stockEmptyMark} aria-hidden />
+                  <p className={styles.stockEmptyTitle}>Aucun booster en réserve</p>
+                  <p className={game.muted}>Les boosters achetés au Market atterrissent ici.</p>
                   <Link href="/market" className={game.primary} onClick={() => playButtonClick()}>
                     Aller au Market
                   </Link>
                 </div>
               ) : (
                 <div className={styles.shelfRow}>
-                  <ShelfArrow
-                    direction={-1}
-                    disabled={!shelf.canScrollLeft}
-                    onClick={() => shelf.scrollByPage(-1)}
-                  />
+                  <ShelfArrow direction={-1} disabled={!shelf.canScrollLeft} onClick={() => shelf.scrollByPage(-1)} />
 
                   {/* `tabIndex` sur le conteneur : au clavier, l'étagère se
                       parcourt aussi aux flèches, comme n'importe quelle
@@ -211,7 +204,6 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
                           event.dataTransfer.setData(DRAG_MIME, pack.boosterId);
                           event.dataTransfer.effectAllowed = "move";
                           setIsDragging(true);
-                          dock(pack.key);
                         }}
                         onDragEnd={() => {
                           setIsDragging(false);
@@ -224,10 +216,6 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
                   <ShelfArrow direction={1} disabled={!shelf.canScrollRight} onClick={() => shelf.scrollByPage(1)} />
                 </div>
               )}
-
-              <p className={styles.shelfHint}>
-                {packs.length > 0 ? "Glisse un paquet sur le plan à droite pour l’ouvrir." : " "}
-              </p>
             </section>
 
             {/* LE plan d'ouverture : une seule zone, toujours à la même place,
@@ -255,7 +243,13 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
                 const boosterId = event.dataTransfer.getData(DRAG_MIME);
                 if (!boosterId) return;
                 const dropped = packs.find((pack) => pack.boosterId === boosterId);
-                if (dropped) dock(dropped.key);
+                if (!dropped) return;
+                // Déposer OUVRE : c'est le geste de l'écran, et le sachet
+                // qu'on lâche sur la zone est déjà un engagement. Le chemin
+                // au clic, lui, passe par le bouton « Ouvrir » — un clic
+                // est trop facile à donner par erreur.
+                setDockedKey(dropped.key);
+                void handleOpen(dropped.boosterId);
               }}
             >
               {docked ? (
@@ -288,9 +282,21 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
                 </>
               ) : (
                 <>
-                  <span className={styles.dockGhost} aria-hidden />
+                  {/* Placeholder : trois cartes en attente, pas un cadre
+                      vide — la zone montre ce qu'elle rend, pas ce qui lui
+                      manque. */}
+                  <svg viewBox="0 0 48 44" width="52" height="48" fill="none" className={styles.dockMark} aria-hidden>
+                    <rect x="8" y="9" width="21" height="29" rx="3" stroke="currentColor" strokeWidth="1.6" transform="rotate(-11 18 23)" />
+                    <rect x="14" y="7" width="21" height="29" rx="3" stroke="currentColor" strokeWidth="1.6" />
+                    <rect x="20" y="9" width="21" height="29" rx="3" stroke="currentColor" strokeWidth="1.6" transform="rotate(11 30 23)" />
+                  </svg>
+                  <p className={styles.dockTitle}>
+                    {packs.length > 0 ? "Déposez un booster ici" : "Rien à ouvrir"}
+                  </p>
                   <p className={styles.dockHint}>
-                    {packs.length > 0 ? "Dépose ici le paquet à ouvrir" : "Aucun booster à ouvrir — passe par le Market"}
+                    {packs.length > 0
+                      ? "Glissez-déposez un booster depuis votre réserve."
+                      : "Achetez-en un au Market, il apparaîtra dans la réserve."}
                   </p>
                 </>
               )}

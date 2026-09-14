@@ -59,22 +59,40 @@
   z-index: 3;
   display: grid;
   /*
-   * Colonnes automatiques : le bandeau porte selon l'écran cinq éléments
-   * (retour · Cartes · Decks · Mes boosters · Quêtes) ou un seul
-   * (`data-nav="minimal"` : le retour). `auto-flow` les place sans qu'on
-   * ait à décrire les deux gabarits — seul le ressort avant le groupe de
-   * droite est nommé. Le logo, lui, n'est PAS dans la grille : il est
-   * centré sur l'écran (cf. `.brandSlot`).
+   * TROIS ZONES. Les deux colonnes latérales prennent la même part du
+   * reste (`1fr`), donc le logo du milieu tombe au centre de l'écran sans
+   * être sorti du flux — c'est ce qui le faisait passer par-dessus le
+   * dernier onglet.
    */
-  grid-auto-flow: column;
-  grid-auto-columns: auto;
-  grid-template-columns: none;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  /* Plusieurs onglets à loger : l'écart se resserre plutôt que de pousser
-     la recherche hors du bandeau sur un écran de portable. */
   gap: clamp(10px, 1.5vw, 28px);
   padding-inline: clamp(14px, 2vw, 36px);
   isolation: isolate;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: clamp(10px, 1.5vw, 28px);
+  min-width: 0;
+  justify-self: start;
+}
+
+/*
+ * Le logo DÉBORDE sous le filet du bandeau : une enseigne accrochée
+ * au-dessus de l'écran, pas un élément de barre d'outils. Il ne pousse
+ * donc pas la hauteur du bandeau (`height: 0` + centrage de son contenu),
+ * et passe au-dessus du filet (`z-index`).
+ */
+.headerBrand {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 0;
+  justify-self: center;
 }
 
 /* Séparation basse : un filet de laiton qui s'éteint sur les bords, pas un
@@ -186,62 +204,30 @@
   pointer-events: none;
 }
 
-/* Le ressort qui pousse le groupe de droite au bord : la seule colonne du
-   bandeau qui ne soit pas dimensionnée par son contenu. */
-.headerSpring {
-  width: 100%;
-  min-width: 0;
-}
-
-/* Groupe de droite du header : actions de l'écran + progression. */
+/* Groupe de droite du header : actions de l'écran + zone du compte. */
 
 .headerRight {
   position: relative;
   z-index: 2;
   display: flex;
   align-items: center;
-  gap: clamp(12px, 1.6vw, 26px);
+  gap: clamp(10px, 1.3vw, 22px);
+  min-width: 0;
   justify-self: end;
 }
 
-/* ---------- Progression (niveau + XP + Tides) ---------- */
+/* ---------- Compte (avatar + pseudo + niveau + Tides) ---------- */
 
 /*
- * Posée dans le header, à droite de la navigation : c'est une information
- * de statut, pas un contrôle — donc aucun cadre, aucune surface. Le
- * `text-shadow` la rend lisible par-dessus la scène maritime, exactement
- * comme les libellés de navigation.
+ * Engrenage des Options, au bout du bandeau : toujours là, connecté ou
+ * non — les réglages audio ne demandent pas de compte. Même encre et même
+ * gabarit que la flèche de retour à l'autre bout, pour que les deux seuls
+ * boutons ronds du bandeau se répondent.
  */
-
-.progression {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  gap: clamp(10px, 1.2vw, 20px);
-  white-space: nowrap;
-  text-shadow: 0 1px 5px rgba(3, 10, 16, 0.95);
-}
-
-/* Pseudo du joueur, devant le niveau. Borné en largeur : un pseudo long ne
-   doit pas repousser la jauge et les Tides hors du bandeau. */
-.progressionName {
-  max-width: clamp(80px, 10vw, 180px);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: var(--cb-font-display);
-  font-size: clamp(12px, 0.95vw, 15px);
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  color: #f1ead9;
-}
-
-/* Engrenage des Options, au bout du bandeau : toujours là, connecté ou
-   non — les réglages audio ne demandent pas de compte. */
 .optionsButton {
   position: relative;
   z-index: 2;
+  flex: 0 0 auto;
   display: grid;
   place-items: center;
   width: clamp(30px, 3.4vh, 36px);
@@ -271,31 +257,88 @@
   .optionsButton:hover { transform: none; }
 }
 
-.progressionLevel {
+/*
+ * Bloc du compte, au bout du bandeau : une information de statut, pas un
+ * contrôle — donc pas de cadre plein, juste une plaque très légère qui le
+ * détache du décor maritime et le tient d'un seul bloc.
+ */
+.account {
+  position: relative;
+  z-index: 2;
   display: flex;
-  align-items: baseline;
-  gap: 0.4em;
-  font-family: var(--cb-font-display);
-  font-size: clamp(12px, 0.95vw, 15px);
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: #f1ead9;
+  align-items: center;
+  gap: clamp(8px, 0.8vw, 13px);
+  min-width: 0;
+  padding: 4px clamp(8px, 0.8vw, 13px) 4px 4px;
+  border: 1px solid rgba(233, 226, 209, 0.1);
+  border-radius: 999px;
+  background: rgba(4, 10, 17, 0.42);
+  white-space: nowrap;
+  text-shadow: 0 1px 4px rgba(3, 10, 16, 0.9);
 }
 
-.progressionLevelLabel {
-  font-family: var(--cb-font-ui);
-  font-size: 0.72em;
+/* Avatar : l'initiale du pseudo dans un jeton de laiton. */
+.accountAvatar {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: clamp(26px, 3.2vh, 34px);
+  height: clamp(26px, 3.2vh, 34px);
+  border: 1px solid rgba(199, 154, 78, 0.55);
+  border-radius: 50%;
+  background: linear-gradient(160deg, rgba(199, 154, 78, 0.34), rgba(109, 82, 36, 0.3));
+  font-family: var(--cb-font-display);
+  font-size: clamp(12px, 1.5vh, 15px);
+  font-weight: 600;
+  color: #f4ead6;
+  text-shadow: none;
+}
+
+.accountIdentity {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* Pseudo borné : un pseudo long ne doit pas repousser les Tides et
+   l'engrenage hors du bandeau. */
+.accountName {
+  max-width: clamp(70px, 9vw, 160px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--cb-font-display);
+  font-size: clamp(11.5px, 0.92vw, 14px);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  line-height: 1.15;
+  color: #f4efe1;
+}
+
+.accountLevelRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.accountLevel {
+  font-size: clamp(8.5px, 0.66vw, 10.5px);
   font-weight: 500;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--cb-ivory-dim);
 }
 
-/* Jauge d'XP : un trait, pas une barre de progression de logiciel. */
+.accountLevel b {
+  font-weight: 700;
+  color: var(--cb-ivory);
+}
 
+/* Jauge d'XP : un trait, pas une barre de progression de logiciel. */
 .progressionTrack {
   position: relative;
-  width: clamp(52px, 7vw, 128px);
+  width: clamp(38px, 5vw, 86px);
   height: 3px;
   border-radius: 2px;
   overflow: hidden;
@@ -312,33 +355,24 @@
   transition: width 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-.progressionXp {
-  /* Les chiffres d'XP encombrent un bandeau fin : la jauge suffit, les
-     chiffres restent dans l'`aria-label` de la piste. */
-  display: none;
-  font-size: clamp(9px, 0.7vw, 11px);
-  font-variant-numeric: tabular-nums;
-  color: var(--cb-ivory-dim);
-}
-
-/* Solde de Tides — le laiton dit "ressource", comme ailleurs. */
-
-.progressionTides {
-  display: flex;
+/* Solde de Tides : la pièce puis le nombre, sans répéter le mot — l'icône
+   le dit, et le titre au survol le confirme. */
+.accountTides {
+  display: inline-flex;
   align-items: center;
-  gap: 0.35em;
-  font-size: clamp(11px, 0.85vw, 13px);
+  gap: 5px;
+  padding-left: clamp(7px, 0.7vw, 11px);
+  border-left: 1px solid rgba(233, 226, 209, 0.12);
+  font-family: var(--cb-font-display);
+  font-size: clamp(12px, 0.98vw, 15px);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: #ddc79a;
+  color: #e5cf9e;
 }
 
-.progressionTidesLabel {
-  font-size: 0.78em;
-  font-weight: 500;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: rgba(199, 154, 78, 0.75);
+.tideCoin {
+  flex: 0 0 auto;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
 }
 
 /* ---------- Recherche ---------- */
@@ -513,37 +547,27 @@
  * automatique — le logo garde son ratio.
  */
 
-/*
- * Emplacement du logo : une bande qui couvre tout le bandeau et centre son
- * contenu. Elle est TRANSPARENTE AUX CLICS (`pointer-events: none`) —
- * sinon elle recouvrirait les onglets et la recherche, qu'elle survole ;
- * seul le lien qu'elle contient les reçoit.
- */
-.brandSlot {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-}
-
 .brand {
   display: flex;
   align-items: center;
   border-radius: 6px;
-  pointer-events: auto;
-  transition: filter 150ms ease-out, opacity 150ms ease-out;
+  /* Décalé vers le bas : le logo mord sur le contenu, il n'est pas posé
+     dessus. La moitié haute reste dans le bandeau. */
+  transform: translateY(18%);
+  transition: filter 150ms ease-out, opacity 150ms ease-out, transform 150ms ease-out;
+}
+
+.brand:hover {
+  transform: translateY(18%) scale(1.03);
 }
 
 /*
- * Écran étroit : entre quatre onglets à gauche et la recherche à droite, un
- * logo centré finirait par les chevaucher. Il s'efface alors — le retour au
+ * Écran étroit : entre quatre onglets à gauche et le compte à droite, le
+ * logo n'a plus la place d'exister au milieu. Il s'efface — le retour au
  * menu reste assuré par la flèche.
  */
 @media (max-width: 1180px) {
-  .header[data-nav="collection"] .brandSlot { display: none; }
+  .header[data-nav="collection"] .headerBrand { display: none; }
 }
 
 /* Retour au menu : une flèche seule, à la même encre que les onglets. */
@@ -575,15 +599,27 @@
   outline-offset: 2px;
 }
 
+/* Plus grand que les onglets qui l'entourent : c'est l'enseigne, et c'est
+   ce débordement qui la fait exister au-dessus du filet. */
 .brandLogo {
   width: auto;
-  height: clamp(22px, 3.6vh, 38px);
+  height: clamp(34px, 6.4vh, 62px);
   object-fit: contain;
-  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.75));
+  filter: drop-shadow(0 3px 10px rgba(0, 0, 0, 0.85));
 }
 
-.brand:hover {
-  filter: brightness(1.12);
+.brand:hover .brandLogo {
+  filter: drop-shadow(0 3px 12px rgba(0, 0, 0, 0.85)) brightness(1.1);
+}
+
+.brand:focus-visible {
+  outline: 2px solid var(--cb-teal);
+  outline-offset: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand,
+  .brand:hover { transition: none; transform: translateY(18%); }
 }
 
 .brand:focus-visible {

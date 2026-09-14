@@ -21,9 +21,38 @@ function GearIcon() {
   );
 }
 
+/** Jeton de Tides — une pièce, pas une icône de logiciel : la monnaie doit se reconnaître d'un coup d'œil. */
+function TideCoin() {
+  return (
+    <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden className={styles.tideCoin}>
+      <circle cx="12" cy="12" r="9" fill="url(#tideCoinFace)" stroke="#a47b36" strokeWidth="1.3" />
+      <path
+        d="M6.6 13.4c1.4-1.5 2.7-1.5 4.1 0s2.7 1.5 4.1 0 2.7-1.5 4.1 0"
+        fill="none"
+        stroke="#6d5224"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+        opacity="0.85"
+      />
+      <defs>
+        <linearGradient id="tideCoinFace" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#f0d79a" />
+          <stop offset="100%" stopColor="#c79a4e" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
+
+/** Initiale du pseudo pour l'avatar. Insécable si le pseudo est vide ou ne commence pas par une lettre. */
+function avatarInitial(name: string | null): string {
+  const first = name?.trim()?.[0];
+  return first ? first.toUpperCase() : "?";
+}
+
 /**
- * Bloc joueur du bandeau : pseudo, niveau, avancement d'XP, solde de
- * Tides, et l'accès aux Options.
+ * Zone du COMPTE, au bout du bandeau : avatar, pseudo, niveau et
+ * avancement d'XP, solde de Tides, puis l'accès aux Options.
  *
  * UN SEUL composant pour tout ça, et donc une seule lecture de la
  * progression : le bouton Options a besoin de savoir si quelqu'un est
@@ -66,36 +95,40 @@ export function HeaderPlayer() {
   return (
     <>
       {signedIn && summary && (
-        <div className={styles.progression}>
-          {summary.displayName && (
-            <span className={styles.progressionName} title={summary.displayName}>
-              {summary.displayName}
+        <div className={styles.account}>
+          {/* Avatar : l'initiale du pseudo dans un jeton de laiton. Pas
+              d'image tant que le jeu n'en propose pas — un rond vide dirait
+              qu'il manque quelque chose. */}
+          <span className={styles.accountAvatar} aria-hidden>
+            {avatarInitial(summary.displayName)}
+          </span>
+
+          <span className={styles.accountIdentity}>
+            <span className={styles.accountName} title={summary.displayName ?? undefined}>
+              {summary.displayName ?? "Joueur"}
             </span>
-          )}
 
-          <span className={styles.progressionLevel}>
-            <span className={styles.progressionLevelLabel}>Niv.</span>
-            {summary.view.level}
+            <span className={styles.accountLevelRow}>
+              <span className={styles.accountLevel}>
+                Niv. <b>{summary.view.level}</b>
+              </span>
+              <span
+                className={styles.progressionTrack}
+                role="progressbar"
+                aria-valuenow={summary.view.xpIntoLevel}
+                aria-valuemin={0}
+                aria-valuemax={summary.view.xpForNextLevel}
+                aria-label={`Progression : ${summary.view.xpIntoLevel} XP sur ${summary.view.xpForNextLevel} avant le niveau ${summary.view.level + 1}`}
+                title={`${summary.view.xpIntoLevel} / ${summary.view.xpForNextLevel} XP`}
+              >
+                <span className={styles.progressionFill} style={{ width: `${summary.view.ratio * 100}%` }} />
+              </span>
+            </span>
           </span>
 
-          <span
-            className={styles.progressionTrack}
-            role="progressbar"
-            aria-valuenow={summary.view.xpIntoLevel}
-            aria-valuemin={0}
-            aria-valuemax={summary.view.xpForNextLevel}
-            aria-label={`Progression : ${summary.view.xpIntoLevel} XP sur ${summary.view.xpForNextLevel} avant le niveau ${summary.view.level + 1}`}
-          >
-            <span className={styles.progressionFill} style={{ width: `${summary.view.ratio * 100}%` }} />
-          </span>
-
-          <span className={styles.progressionXp}>
-            {summary.view.xpIntoLevel} / {summary.view.xpForNextLevel}
-          </span>
-
-          <span className={styles.progressionTides} title="Tides — la monnaie du jeu">
+          <span className={styles.accountTides} title="Tides — la monnaie du jeu">
+            <TideCoin />
             {summary.balance}
-            <span className={styles.progressionTidesLabel}>Tides</span>
           </span>
         </div>
       )}

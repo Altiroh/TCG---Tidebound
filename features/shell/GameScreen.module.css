@@ -49,11 +49,18 @@
   --radius: clamp(10px, 0.9vw, 16px);
   --radius-sm: 9px;
 
+  /*
+   * LE décor de tous les écrans hors plateau, nommé une fois : en changer
+   * (collection_background_3.webp, etc.) est une seule ligne à retoucher,
+   * ici, et non une chasse aux `url()` dans plusieurs feuilles.
+   */
+  --screen-backdrop: url("/assets/collection/collection_background_2.webp");
+
   background-color: #04090f;
   background-image:
     /* Voile : sombre en haut (lisibilité du bandeau), profond en bas. */
     linear-gradient(180deg, rgba(4, 9, 15, 0.82) 0%, rgba(4, 10, 17, 0.5) 26%, rgba(3, 8, 13, 0.72) 100%),
-    url("/assets/collection/collection_background_2.webp");
+    var(--screen-backdrop);
   background-size: cover, cover;
   background-position: center, center;
   background-repeat: no-repeat, no-repeat;

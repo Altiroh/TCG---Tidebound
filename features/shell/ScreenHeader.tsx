@@ -61,10 +61,15 @@ export interface ScreenHeaderProps {
  * Bandeau du haut, commun à tous les écrans hors plateau (`GameScreen`) :
  * fin, sans fond propre — il se fond dans le décor de l'écran.
  *
- * Trois zones : la flèche de retour au menu tout à gauche puis les onglets
- * ; les contrôles de l'écran et la progression tout à droite ; et le logo
- * AU CENTRE, posé hors du flux pour rester centré sur l'écran quel que
- * soit le poids des deux côtés.
+ * TROIS ZONES, toutes dans le flux : à gauche le retour au menu et les
+ * onglets, au centre le logo, à droite le profil du joueur et les
+ * options. Le logo a d'abord été posé hors du flux pour être centré sur
+ * l'écran — il passait alors PAR-DESSUS le dernier onglet. Les deux
+ * colonnes latérales partagent désormais la place restante à parts égales
+ * (`1fr` chacune), ce qui centre le logo sans le superposer à rien.
+ *
+ * Le logo déborde sous le filet du bandeau, comme une enseigne accrochée
+ * au-dessus de l'écran plutôt qu'un élément de barre d'outils.
  */
 export function ScreenHeader({ active, actions, onNavigate, nav = "collection" }: ScreenHeaderProps) {
   const router = useRouter();
@@ -78,53 +83,39 @@ export function ScreenHeader({ active, actions, onNavigate, nav = "collection" }
 
   return (
     <header className={styles.header} data-nav={nav}>
-      {/* Retour au menu : une flèche, sans libellé. Le geste est assez
-          courant dans un client de jeu pour se passer du mot, et le mot
-          prenait la place d'un onglet. */}
-      <button
-        type="button"
-        className={styles.backButton}
-        aria-label="Retour au menu"
-        title="Retour au menu"
-        onClick={() => {
-          playButtonClick();
-          go("/");
-        }}
-      >
-        <svg viewBox="0 0 24 24" fill="none" width="20" height="20" aria-hidden>
-          <path d="M19 12H5M5 12l6-6M5 12l6 6" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
-
-      {tabs.map((tab) => (
-        <NavigationTab
-          key={tab.section}
-          active={active === tab.section}
+      <div className={styles.headerLeft}>
+        {/* Retour au menu : une flèche, sans libellé. Le geste est assez
+            courant dans un client de jeu pour se passer du mot, et le mot
+            prenait la place d'un onglet. */}
+        <button
+          type="button"
+          className={styles.backButton}
+          aria-label="Retour au menu"
+          title="Retour au menu"
           onClick={() => {
-            if (active !== tab.section) go(tab.href);
+            playButtonClick();
+            go("/");
           }}
         >
-          {tab.label}
-        </NavigationTab>
-      ))}
+          <svg viewBox="0 0 24 24" fill="none" width="20" height="20" aria-hidden>
+            <path d="M19 12H5M5 12l6-6M5 12l6 6" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
 
-      <span className={styles.headerSpring} />
-
-      {/* Actions de l'écran + bloc joueur (pseudo, niveau, Tides, Options)
-          dans UN seul groupe, donc une seule case de grille. */}
-      <div className={styles.headerRight}>
-        {actions}
-        <HeaderPlayer />
+        {tabs.map((tab) => (
+          <NavigationTab
+            key={tab.section}
+            active={active === tab.section}
+            onClick={() => {
+              if (active !== tab.section) go(tab.href);
+            }}
+          >
+            {tab.label}
+          </NavigationTab>
+        ))}
       </div>
 
-      {/*
-        Le logo est centré sur l'ÉCRAN, pas entre ses deux voisins : il est
-        donc hors du flux de la grille (`position: absolute`), sinon la
-        largeur des onglets à gauche et de la recherche à droite le
-        décentrerait d'un écran à l'autre. Il reste un lien vers le menu —
-        le conteneur laisse passer les clics, le lien seul les reçoit.
-      */}
-      <div className={styles.brandSlot}>
+      <div className={styles.headerBrand}>
         <Link
           href="/"
           className={styles.brand}
@@ -143,6 +134,13 @@ export function ScreenHeader({ active, actions, onNavigate, nav = "collection" }
             className={styles.brandLogo}
           />
         </Link>
+      </div>
+
+      {/* Actions de l'écran + profil du joueur (avatar, pseudo, niveau,
+          Tides) + options : la zone du compte, toujours au même endroit. */}
+      <div className={styles.headerRight}>
+        {actions}
+        <HeaderPlayer />
       </div>
     </header>
   );
