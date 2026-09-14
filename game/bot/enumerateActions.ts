@@ -3,6 +3,7 @@ import { UNIT_CARD_TYPES } from "@/game/cards/types";
 import type { CardDefinition, CardInstance } from "@/game/cards/types";
 import { graveyardChoicesForBreak } from "@/game/actions/breakObject";
 import type { PlayerAction } from "@/game/actions/types";
+import { eligibleChosenUnits } from "@/game/effects/chosenTargets";
 import { eligibleCandidatesFor } from "@/game/reactions/reactionWindow";
 import type { GameState, PlayerId } from "@/game/state/types";
 
@@ -82,7 +83,16 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
     );
     for (const candidate of candidates) {
       if (candidate.needsTarget) {
-        for (const target of allBoardUnits) {
+        // Cibles réellement légales pour CETTE capacité ("choisissez un
+        // Cra-Poiscail") : pas une duplication de la validation, c'est la
+        // fonction du moteur elle-même — proposer le reste ne ferait que
+        // brûler des `dispatch` refusés.
+        const abilityEffects = getCardDefinition(candidate.cardId).abilities?.[candidate.abilityIndex]?.effects ?? [];
+        const targeting = abilityEffects.find((e) => e.target.kind === "chosenUnit");
+        const legalTargets = targeting
+          ? eligibleChosenUnits(state, targeting.target, playerId, candidate.sourceInstanceId).map((c) => c.unit)
+          : allBoardUnits;
+        for (const target of legalTargets) {
           actions.push({
             type: "activateReaction",
             playerId,

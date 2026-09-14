@@ -138,10 +138,10 @@ function validate(state: GameState, action: BreakObjectAction) {
  * artificielle d'action).
  *
  * IMPORTANT — "Briser ≠ Saborder" (règle verrouillée) : contrairement à
- * `saborder.ts`, cette action ne déclenche NI `onDeath` NI `onSaborde`. Un
- * texte de carte qui voudrait réagir spécifiquement à un bris devra un
- * jour s'accrocher à un trigger dédié (pas encore nécessaire pour le pool
- * actuel).
+ * `saborder.ts`, cette action ne déclenche NI `onDeath` NI `onSaborde`.
+ * Les cartes qui réagissent au bris passent par son trigger dédié,
+ * `onObjectBroken` (déclenchements automatiques) et par l'événement
+ * `OBJECT_BROKEN` (fenêtres de réaction facultatives).
  */
 export function breakObject(state: GameState, action: BreakObjectAction): ActionResult {
   const validation = validate(state, action);
@@ -177,6 +177,11 @@ export function breakObject(state: GameState, action: BreakObjectAction): Action
   }
 
   events.push({ ...base, type: "CARD_MOVED", instanceId: unit.instanceId, fromZone, toZone: "graveyard" });
+  // Le Bris est un fait distinct du simple départ vers le cimetière : il
+  // porte la fenêtre de réaction "la première fois à chaque tour que vous
+  // Brisez un Objet" (Le Tas de Trucs), qui ne peut s'ouvrir qu'à partir
+  // d'un `GameEvent` — cf. `deriveReactionTriggerEvents`.
+  events.push({ ...base, type: "OBJECT_BROKEN", playerId: player.id, instanceId: unit.instanceId, cardId: def.id, fromHand: action.fromHand === true });
 
   const context: EffectContext = {
     controllerId: player.id,

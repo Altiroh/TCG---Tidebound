@@ -306,7 +306,10 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
 
   const attackTrigger = processTrigger(
     nextState,
-    { trigger: "onAttack", playerId: action.playerId, sourceInstanceId: action.attackerInstanceId },
+    // `cardId` de l'attaquant : sans lui, les capacités d'observateur
+    // filtrées par identité ou par famille ("votre Chevalier attaque",
+    // "un Cra-Poiscail attaque") ne peuvent pas reconnaître l'attaquant.
+    { trigger: "onAttack", playerId: action.playerId, sourceInstanceId: action.attackerInstanceId, cardId: attackerUnit.cardId },
     state.turnNumber
   );
   nextState = attackTrigger.state;

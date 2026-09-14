@@ -58,6 +58,14 @@ export interface TriggerSourceFilter {
   excludeSelf?: boolean;
   /** Ne réagit qu'aux cartes INVOQUÉES, pas à celles posées depuis la main (ex: Bannière en Vieille Chaussette, "que vous invoquez"). */
   onlySummoned?: boolean;
+  /**
+   * Pour un Équipement : ne réagit qu'à ce qui arrive au permanent qu'il
+   * équipe — "La première fois à chaque tour QU'IL attaque" (ex:
+   * Fourchette du Grand Étang). L'Équipement n'attaque pas lui-même :
+   * sans ce filtre, aucune de ses capacités ne pourrait suivre son
+   * porteur.
+   */
+  equippedUnit?: boolean;
 }
 
 /** Une capacité déclenchée : "quand X se produit, résous ces effets". */
@@ -209,6 +217,21 @@ export interface CardDefinition {
    * collecte normale des morts.
    */
   destructionSubstitute?: { healthPenalty: number };
+
+  /**
+   * Pour un Équipement uniquement : la PREMIÈRE fois que le permanent
+   * équipé devrait subir des dégâts d'EFFET, réduit ces dégâts de
+   * `amount`, puis CET Équipement est détruit (ex: Casque-Coquille, 1).
+   *
+   * "Dégâts d'effet" = la Marée et le texte d'une carte, jamais le combat
+   * (arbitrage du 2026-09-14 : « c'est la marée, c'est l'effet d'une
+   * carte, pas un dégât physique ») — d'où deux points d'appel seulement :
+   * l'effet `damage` (`game/effects/resolveEffect.ts`) et le malus de
+   * Houle (`game/environment/resolveEnvironment.ts`). Pas de suivi
+   * "1ère fois par tour" : le texte dit "la première fois", point — la
+   * destruction de l'Équipement est ce qui le consomme.
+   */
+  reduceEquippedEffectDamageThenDestroy?: number;
 
   /**
    * Étiquettes libres utilisées par les Eaux et Navires pour cibler des

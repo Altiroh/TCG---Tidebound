@@ -25,6 +25,7 @@ export type GameEventType =
   | "TIDE_ADVANCED"
   | "TIDE_ORIENTATION_CHANGED"
   | "SABORDED"
+  | "OBJECT_BROKEN"
   | "OCEAN_JUDGMENT"
   | "GAME_ENDED"
   | "PHASE_CHANGED"
@@ -167,6 +168,22 @@ export interface SabordedEvent extends BaseGameEvent {
 }
 
 /**
+ * Un joueur vient de Briser un de ses Objets — depuis le plateau ou
+ * depuis sa main (`fromHand`). Émis EN PLUS du `CARD_MOVED` vers le
+ * cimetière, parce que "Briser" est un fait de jeu distinct auquel des
+ * cartes réagissent ("la première fois à chaque tour que vous Brisez un
+ * Objet") : le seul déplacement de zone ne le distingue pas d'un
+ * Sabordage ou d'une destruction.
+ */
+export interface ObjectBrokenEvent extends BaseGameEvent {
+  type: "OBJECT_BROKEN";
+  playerId: PlayerId;
+  instanceId: string;
+  cardId: string;
+  fromHand: boolean;
+}
+
+/**
  * "Jugement de l'Océan" : un joueur a tenté de piocher dans un deck vide.
  * Comparaison de Résilience (Ancrage + Raison) avec départage documenté
  * (Ancrage, puis nombre de permanents en jeu, puis pioche).
@@ -268,6 +285,7 @@ export type GameEvent =
   | TideAdvancedEvent
   | TideOrientationChangedEvent
   | SabordedEvent
+  | ObjectBrokenEvent
   | OceanJudgmentEvent
   | PhaseChangedEvent
   | StatusChangedEvent

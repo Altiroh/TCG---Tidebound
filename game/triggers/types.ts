@@ -46,11 +46,18 @@ export interface TriggerEvent {
 export interface PendingReactionCandidate {
   controllerId: string;
   sourceInstanceId: string;
+  /** Carte à l'origine de l'événement déclencheur, pour les capacités d'observateur (cible `triggerSource`) — `undefined` pour un déclenchement personnel. */
+  triggerSourceInstanceId?: string;
   cardId: string;
   /** Index de la capacité dans `CardDefinition.abilities` — identifie précisément laquelle activer. */
   abilityIndex: number;
   /** Coût en Raison à payer pour activer cette capacité (0 si aucun). */
   reasonCost: number;
-  /** `true` si au moins un de ses effets cible `chosenUnit` : `activateReaction` doit alors recevoir `targetInstanceId`. */
+  /**
+   * `true` si au moins un de ses effets cible `chosenUnit` :
+   * `activateReaction` doit alors recevoir un `targetInstanceId` LÉGAL au
+   * regard du filtre de l'effet (`ChosenUnitFilter`) — un candidat n'est
+   * recensé que si une telle cible existe.
+   */
   needsTarget: boolean;
 }

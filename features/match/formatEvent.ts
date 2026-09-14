@@ -76,6 +76,8 @@ export function formatEvent(state: GameState, event: GameEvent, playerLabel: (pl
       return "Une carte change de zone.";
     case "SABORDED":
       return `${playerLabel(event.playerId)} saborde un permanent.`;
+    case "OBJECT_BROKEN":
+      return `${playerLabel(event.playerId)} brise ${cardName(state, event.cardId)}${event.fromHand ? " depuis sa main" : ""}.`;
     case "DERAISON_SETTLED":
       return `${playerLabel(event.playerId)} règle sa Déraison (-${event.debt}) : ${event.anchorDamage} dégât(s) d'Ancrage.`;
     case "REASON_CHANGED":
