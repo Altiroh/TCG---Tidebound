@@ -654,3 +654,19 @@ réellement devant nous :
 5. Historique de parties (UI — les données existent déjà dans `matches`),
    boutique complète, recyclage côté client.
 6. Calibrage des quêtes et de la progression après de vraies sessions de jeu.
+
+## Déploiement
+
+Le projet travaille **directement en production** : `main` est la seule
+branche déployée. `vercel.json` désactive donc les déploiements des
+branches de travail (`claude/*`) — chaque déploiement, preview comprise,
+consomme le quota de "Deployment Storage", et des previews jamais
+consultées l'avaient fait exploser (19 Go pour 10 de quota).
+
+Deux conséquences pratiques :
+
+- pousser sur `main` déclenche une mise en production, donc on groupe les
+  commits d'un même lot de travail en un seul push plutôt que d'en
+  enchaîner un par correction ;
+- les images passent par `npm run optimize:images` avant d'être commitées
+  (voir `public/assets/README.md`) : elles pèsent dans chaque déploiement.
