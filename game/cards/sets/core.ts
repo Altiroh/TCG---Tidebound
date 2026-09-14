@@ -1678,6 +1678,12 @@ export const CORE_SET: CardDefinition[] = [
     archetype: "cra-poiscail",
     setCode: CRA_POISCAIL_BOOSTER_1,
     cost: 2,
+    // Le catalogue laisse la Résistance vide pour les Objets, mais un
+    // permanent à 0 meurt dès le `processDeaths` qui suit sa pose (0 dégât
+    // marqué >= 0 Résistance) : il ne pourrait jamais être Brisé plus tard.
+    // 1, comme tous les autres Objets du set (Thermos, Choppe !, Levier de
+    // Lest, Grappin, Cartes des Courants).
+    health: 1,
     text:
       "Brisez cet Objet : invoquez 1 Péon Cra-Poiscail 1 / 1. S'il a été Brisé directement depuis votre main et " +
       "que vous contrôlez déjà un Cra-Poiscail, invoquez-en 2 à la place.",

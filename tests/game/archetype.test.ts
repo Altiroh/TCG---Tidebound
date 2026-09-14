@@ -118,6 +118,18 @@ describe("archétype Cra-Poiscail — invocation de Péons", () => {
 });
 
 describe("archétype Cra-Poiscail — Le Seau", () => {
+  it("reste sur le plateau une fois posé, pour pouvoir être Brisé plus tard", () => {
+    const seau = instance("le-seau", "p1");
+    const state = testGameState({ players: [testPlayer("p1", { hand: [seau], reason: 10 }), testPlayer("p2")] });
+
+    const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: seau.instanceId });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // Un permanent sans Résistance meurt au premier `processDeaths` : tout
+    // Objet doit en porter une, sinon il ne survit pas à sa propre pose.
+    expect(result.state.players[0]!.board.some((u) => u.cardId === "le-seau")).toBe(true);
+  });
+
   it("invoque 1 Péon depuis le board, 2 en Bris depuis la main auprès d'un Cra-Poiscail", () => {
     const seauBoard = instance("le-seau", "p1");
     const fromBoard = testGameState({
