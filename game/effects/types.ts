@@ -7,6 +7,7 @@
  * de nouveau code — seulement de nouvelles données, tant que la carte
  * peut s'exprimer avec les effets et cibles existants.
  */
+import type { ArchetypeId } from "@/game/cards/archetypes";
 
 export type EffectType =
   | "damage"
@@ -61,12 +62,45 @@ export type EffectType =
  * être étendue vers des formules (ex: "= nombre d'unités contrôlées"). */
 export type EffectAmount = { kind: "flat"; value: number };
 
+/**
+ * Restriction d'une cible `chosenUnit` : le joueur désigne, mais seulement
+ * PARMI ce que le texte autorise. Le moteur, l'UI et la liste des réactions
+ * éligibles s'appuient tous sur le même filtre (`eligibleChosenUnits`,
+ * `game/effects/chosenTargets.ts`) — une cible que l'UI ne devrait pas
+ * proposer est aussi une cible que le moteur refuse.
+ */
+export interface ChosenUnitFilter {
+  /**
+   * "choisissez un Cra-Poiscail" : ne retient que les UNITÉS (Marins et
+   * Créatures) de cette famille — même restriction que le comptage
+   * d'archétype (`countArchetypeUnits`, décision du 2026-09-14). Les
+   * Structures, Objets, Équipements et Anomalies de la famille ne sont pas
+   * des cibles : un "+1 / +1" n'a aucun sens sur elles.
+   */
+  archetype?: ArchetypeId;
+  /**
+   * "un AUTRE Cra-Poiscail" : exclut la source de l'effet et — si cette
+   * source est un Équipement — le permanent qu'elle équipe. C'est LUI que
+   * le texte oppose à "un autre" (ex: Fourchette du Grand Étang, dont la
+   * phrase parle du porteur, pas du bout de ferraille attaché).
+   */
+  excludeSource?: boolean;
+  /** Restreint au plateau du contrôleur de la source. Défaut : `true` — aucun texte du pool actuel ne fait choisir dans le camp adverse. */
+  sameController?: boolean;
+}
+
 export type TargetSelector =
   | { kind: "self" } // la carte/l'unité source elle-même
   | { kind: "controllerPlayer" } // le joueur qui contrôle la source
   | { kind: "opponentPlayer" }
   | { kind: "allPlayers" } // les deux joueurs, ex: effets environnementaux
-  | { kind: "chosenUnit" } // choisi par le joueur au moment de la résolution
+  /**
+   * Choisi par le joueur au moment de la résolution. `among` restreint ce
+   * choix quand le texte le restreint ("choisissez un Cra-Poiscail") ;
+   * sans lui, n'importe quel permanent des deux plateaux reste éligible,
+   * comme depuis toujours.
+   */
+  | { kind: "chosenUnit"; among?: ChosenUnitFilter }
   | { kind: "allAllyUnits" }
   | { kind: "allEnemyUnits" }
   | { kind: "allUnits" }

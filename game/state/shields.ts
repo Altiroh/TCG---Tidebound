@@ -1,4 +1,5 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
+import type { GameEvent } from "@/game/events/types";
 import type { CardDefinition, CardInstance } from "@/game/cards/types";
 import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
 import { reasonAfterLoss } from "@/game/state/reason";
@@ -181,5 +182,57 @@ export function consumeOpponentReactionRevealShield(
   return {
     state: consumeShield(state, observerId, match.unit, "opponentReactionRevealShield", turnNumber),
     amount: match.spec,
+  };
+}
+
+/**
+ * Bouclier à usage UNIQUE contre les dégâts d'EFFET (Casque-Coquille) :
+ * l'Équipement porté par `unitInstanceId` absorbe `amount` dégâts, puis
+ * se détruit. Contrairement aux boucliers ci-dessus, il n'est pas
+ * "1ère fois par tour" — sa consommation EST son départ du plateau, donc
+ * il ne peut pas se redéclencher.
+ *
+ * N'intercepte que les dégâts d'effet — Marée et texte de carte — jamais
+ * le combat (arbitrage du 2026-09-14). Les appelants sont donc les seuls
+ * juges : ce sont eux qui savent d'où vient le dégât.
+ *
+ * Le bonus que l'Équipement avait accordé au porteur (ici +1 Résistance)
+ * reste posé après sa destruction : c'est la convention du moteur pour
+ * tout Équipement qui quitte le plateau (cf. `processDeaths.ts`, Plaque
+ * de Fortune), pas une exception de cette carte.
+ */
+export function consumeEquippedEffectDamageShield(
+  state: GameState,
+  ownerId: PlayerId,
+  unitInstanceId: string,
+  turnNumber: number
+): { state: GameState; reduction: number; events: GameEvent[] } {
+  const player = state.players.find((p) => p.id === ownerId);
+  if (!player) return { state, reduction: 0, events: [] };
+
+  const equipment = player.board.find(
+    (u) =>
+      u.attachedToInstanceId === unitInstanceId &&
+      getCardDefinition(u.cardId).reduceEquippedEffectDamageThenDestroy !== undefined
+  );
+  if (!equipment) return { state, reduction: 0, events: [] };
+
+  const reduction = getCardDefinition(equipment.cardId).reduceEquippedEffectDamageThenDestroy!;
+  const updated: PlayerState = {
+    ...player,
+    board: player.board.filter((u) => u.instanceId !== equipment.instanceId),
+    graveyard: [...player.graveyard, { ...equipment, damageMarked: 0, modifiers: [], graveyardCause: "destroyed" as const }],
+  };
+
+  return {
+    state: {
+      ...state,
+      players: state.players.map((p) => (p.id === ownerId ? updated : p)) as [PlayerState, PlayerState],
+    },
+    reduction,
+    // Même convention que la substitution de destruction (Plaque de
+    // Fortune) : un `DESTROY` de raison "effect", sans `onDeath` — la
+    // carte est consommée par son propre texte, elle ne "meurt" pas.
+    events: [{ type: "DESTROY", instanceId: equipment.instanceId, reason: "effect", turnNumber, timestamp: Date.now() }],
   };
 }

@@ -35,11 +35,17 @@ import { EQUIPPABLE_CARD_TYPES, type CardDefinition, type CardInstance } from "@
  * faites") restent marquées "non appliqué", comme le reste des
  * mécaniques non câblées ci-dessous.
  *
- * FIDÉLITÉ MÉCANIQUE — le moteur actuel n'a pas encore de système de
- * "première fois par tour" par source, de choix de joueur en cours de
- * résolution (option "vous pouvez"), de lecture d'information cachée
- * (regarder une carte), de recherche en défausse, ou d'attachement
- * d'Équipement persistant. Chaque carte porte donc son texte RÉEL et
+ * FIDÉLITÉ MÉCANIQUE — le moteur sait désormais faire le "première fois
+ * par tour" par source (`oncePerTurnKey`), l'attachement d'Équipement
+ * persistant (`attachEquipment`), la lecture d'information cachée
+ * (révélation de main), la recherche en défausse (`moveGraveyardCardToHand`)
+ * et le choix d'une cible par le joueur en cours de résolution — ce
+ * dernier UNIQUEMENT via une fenêtre de réaction (`mode: "optional"`), qui
+ * rend l'effet refusable : un texte impératif ("choisissez...") câblé
+ * ainsi porte donc un écart assumé, à signaler dans son commentaire.
+ * Restent hors de portée : les branchements conditionnels à la résolution
+ * ("si vous le faites...") et les triggers de portée large non modélisés.
+ * Chaque carte porte donc son texte RÉEL et
  * complet (`text`), mais seuls les effets structurellement exprimables
  * avec le système générique actuel (`game/effects`) sont câblés via
  * `onPlayEffects` / `onBreakEffects` / `abilities`. Quand une carte n'a
@@ -1909,9 +1915,11 @@ export const CORE_SET: CardDefinition[] = [
       { type: "attachEquipment", target: { kind: "chosenUnit" } },
       { type: "buff", target: { kind: "chosenUnit" }, healthAmount: { kind: "flat", value: 1 }, permanent: true },
     ],
-    // non appliqué (seconde phrase) : il n'existe pas encore de bouclier
-    // consommable qui distingue les dégâts d'EFFET des dégâts de combat et
-    // détruise son propre Équipement en se déclenchant.
+    // "Dégâts d'un effet" = la Marée et le texte d'une carte, jamais le
+    // combat (arbitrage du 2026-09-14). Le porteur garde le +1 Résistance
+    // après la destruction du Casque : convention du moteur pour tout
+    // Équipement qui quitte le plateau, pas une exception d'ici.
+    reduceEquippedEffectDamageThenDestroy: 1,
   },
   {
     id: "le-tas-de-trucs",
@@ -1922,10 +1930,34 @@ export const CORE_SET: CardDefinition[] = [
     cost: 2,
     health: 3,
     text: "La première fois à chaque tour que vous Brisez un Objet, choisissez un Cra-Poiscail : il gagne +1 / +1 jusqu'à la fin du tour.",
-    // non appliqué : "choisissez" demande une cible désignée par le joueur
-    // au moment de la résolution. Le moteur ne sait le faire que dans une
-    // fenêtre de réaction (capacité `optional`), ce qui rendrait l'effet
-    // refusable — un changement de règle, pas une implémentation.
+    // "Choisissez" passe par une fenêtre de réaction (`mode: "optional"`),
+    // seul mécanisme du moteur qui laisse le joueur DÉSIGNER sa cible.
+    // Écart assumé (arbitrage du 2026-09-14) : l'effet devient refusable,
+    // ce que le design accepte — « si on peut choisir quelque chose on le
+    // fait, et faut nous laisser cibler ». La fenêtre ne s'ouvre de toute
+    // façon que s'il existe un Cra-Poiscail à renforcer.
+    abilities: [
+      {
+        trigger: "onObjectBroken",
+        // Filtre vide, comme le Cra-Poiscail Ramasseur : n'importe quel
+        // Objet, du moment que c'est SON contrôleur qui le brise
+        // (`sameController` par défaut). L'Objet brisé a déjà quitté le
+        // plateau quand l'événement part : seul ce chemin d'observateur
+        // voit le Bris.
+        triggeredBy: {},
+        mode: "optional",
+        oncePerTurnKey: "tasDeTrucsBreak",
+        description: "Choisissez un Cra-Poiscail : il gagne +1 / +1 jusqu'à la fin du tour.",
+        effects: [
+          {
+            type: "buff",
+            target: { kind: "chosenUnit", among: { archetype: "cra-poiscail" } },
+            attackAmount: { kind: "flat", value: 1 },
+            healthAmount: { kind: "flat", value: 1 },
+          },
+        ],
+      },
+    ],
   },
   {
     id: "le-trone-de-bouchon",
@@ -2102,9 +2134,26 @@ export const CORE_SET: CardDefinition[] = [
       { type: "attachEquipment", target: { kind: "chosenUnit" } },
       { type: "buff", target: { kind: "chosenUnit" }, attackAmount: { kind: "flat", value: 1 }, permanent: true },
     ],
-    // non appliqué (seconde phrase) : "un autre Cra-Poiscail" ne désigne ni
-    // une cible choisie ni une cible déterminée par la règle — à trancher
-    // avec le design avant de câbler un tirage.
+    // "Un autre Cra-Poiscail" est désigné par le JOUEUR (arbitrage du
+    // 2026-09-14), donc une fenêtre de réaction — refusable, écart assumé.
+    // `equippedUnit` fait suivre le porteur : c'est LUI qui attaque, et
+    // c'est lui que "un autre" exclut (avec l'Équipement lui-même).
+    abilities: [
+      {
+        trigger: "onAttack",
+        triggeredBy: { equippedUnit: true },
+        mode: "optional",
+        oncePerTurnKey: "fourchetteBearerAttack",
+        description: "Un autre Cra-Poiscail gagne +1 Puissance jusqu'à la fin du tour.",
+        effects: [
+          {
+            type: "buff",
+            target: { kind: "chosenUnit", among: { archetype: "cra-poiscail", excludeSource: true } },
+            attackAmount: { kind: "flat", value: 1 },
+          },
+        ],
+      },
+    ],
   },
   {
     id: "banniere-en-vieille-chaussette",
@@ -2285,8 +2334,26 @@ export const CORE_SET: CardDefinition[] = [
       "chaque tour qu'il attaque, un autre Cra-Poiscail gagne +1 / +1 jusqu'à la fin du tour.",
     selfBuffWhileControllingCardIds: { cardIds: ["destrier-du-grand-etang"], attackAmount: 1 },
     conditionalKeywords: [{ keyword: "garde", controllingCardIds: ["destrier-du-grand-etang"] }],
-    // non appliqué (seconde phrase) : "un autre Cra-Poiscail" sans cible
-    // désignée, même question ouverte que la Fourchette du Grand Étang.
+    // Seconde phrase : même arbitrage que la Fourchette du Grand Étang —
+    // le joueur désigne "un autre Cra-Poiscail", via une fenêtre de
+    // réaction. Déclencheur PERSONNEL ici : c'est le Chevalier lui-même
+    // qui attaque, et `excludeSource` l'écarte de ses propres cibles.
+    abilities: [
+      {
+        trigger: "onAttack",
+        mode: "optional",
+        oncePerTurnKey: "chevalierAbyssalAttack",
+        description: "Un autre Cra-Poiscail gagne +1 / +1 jusqu'à la fin du tour.",
+        effects: [
+          {
+            type: "buff",
+            target: { kind: "chosenUnit", among: { archetype: "cra-poiscail", excludeSource: true } },
+            attackAmount: { kind: "flat", value: 1 },
+            healthAmount: { kind: "flat", value: 1 },
+          },
+        ],
+      },
+    ],
   },
 ];
 

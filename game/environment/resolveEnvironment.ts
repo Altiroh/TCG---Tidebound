@@ -10,7 +10,11 @@ import { nextInt } from "@/game/rng";
 import type { GameEvent } from "@/game/events/types";
 import { processTrigger } from "@/game/triggers/triggerBus";
 import { applyTideChangeAnomalies } from "@/game/state/anomalies";
-import { consumeReasonLossShield, consumeTideShipDamageShield } from "@/game/state/shields";
+import {
+  consumeEquippedEffectDamageShield,
+  consumeReasonLossShield,
+  consumeTideShipDamageShield,
+} from "@/game/state/shields";
 import { getPlayer, type GameState, type PlayerId, type PlayerState } from "@/game/state/types";
 
 const IGNORE_FLAG_PREFIX = "ignoreNextTideDamage";
@@ -192,16 +196,36 @@ function applyHouleSickness(state: GameState, turnNumber: number): { state: Game
     events.push({ ...base, type: "STATUS_CHANGED", targetInstanceId: newlySickInstanceId, status: STATUS_MALADE, applied: true });
   }
 
-  const damagedPlayers = players.map((player) => ({
-    ...player,
-    board: player.board.map((unit) => {
-      if (!isSick(unit)) return unit;
-      events.push({ ...base, type: "DAMAGE", targetInstanceId: unit.instanceId, amount: RULES.HOULE_SICKNESS_DAMAGE });
-      return { ...unit, damageMarked: unit.damageMarked + RULES.HOULE_SICKNESS_DAMAGE };
-    }),
-  })) as [PlayerState, PlayerState];
+  // Le dégât de MALADE est un dégât de Marée, donc un dégât d'EFFET : le
+  // Casque-Coquille l'intercepte (arbitrage du 2026-09-14). Le bouclier
+  // modifiant l'état (il détruit son propre Équipement), on l'enchaîne
+  // unité par unité plutôt que de mapper le board d'un bloc.
+  let damaged: GameState = { ...state, players, rngState };
+  const sickPairs = players.flatMap((player) =>
+    player.board.filter(isSick).map((unit) => ({ playerId: player.id, instanceId: unit.instanceId }))
+  );
 
-  return { state: { ...state, players: damagedPlayers, rngState }, events };
+  for (const { playerId, instanceId } of sickPairs) {
+    const shield = consumeEquippedEffectDamageShield(damaged, playerId, instanceId, turnNumber);
+    damaged = shield.state;
+    events.push(...shield.events);
+    const amount = Math.max(0, RULES.HOULE_SICKNESS_DAMAGE - shield.reduction);
+    if (amount === 0) continue;
+    events.push({ ...base, type: "DAMAGE", targetInstanceId: instanceId, amount });
+    damaged = {
+      ...damaged,
+      players: damaged.players.map((p) =>
+        p.id === playerId
+          ? {
+              ...p,
+              board: p.board.map((u) => (u.instanceId === instanceId ? { ...u, damageMarked: u.damageMarked + amount } : u)),
+            }
+          : p
+      ) as [PlayerState, PlayerState],
+    };
+  }
+
+  return { state: damaged, events };
 }
 
 /** Retire automatiquement le statut MALADE de tout le board dès que la Marée quitte la Houle. */

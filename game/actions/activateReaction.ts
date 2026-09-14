@@ -1,3 +1,5 @@
+import { getCardDefinition } from "@/game/cards/sets/core";
+import { isEligibleChosenUnit } from "@/game/effects/chosenTargets";
 import { candidateKey, eligibleCandidatesFor, recomputePendingReaction } from "@/game/reactions/reactionWindow";
 import { resolveReaction } from "@/game/triggers/triggerBus";
 import type { PendingReactionCandidate } from "@/game/triggers/types";
@@ -27,8 +29,18 @@ function validate(
     (c) => c.sourceInstanceId === action.sourceInstanceId && c.abilityIndex === action.abilityIndex
   );
   if (!candidate) return { ok: false, error: "Cette capacité n'est plus éligible." };
-  if (candidate.needsTarget && !action.targetInstanceId) {
-    return { ok: false, error: "Cette réaction nécessite une cible." };
+  if (candidate.needsTarget) {
+    if (!action.targetInstanceId) return { ok: false, error: "Cette réaction nécessite une cible." };
+    // La cible doit respecter le filtre du texte ("choisissez un
+    // Cra-Poiscail") : refusée ici plutôt que silencieusement ignorée par
+    // `resolveEffect`, pour que le joueur sache pourquoi rien ne se passe.
+    const effects = getCardDefinition(candidate.cardId).abilities?.[candidate.abilityIndex]?.effects ?? [];
+    const legal = effects
+      .filter((e) => e.target.kind === "chosenUnit")
+      .every((e) =>
+        isEligibleChosenUnit(state, e.target, action.playerId, action.targetInstanceId!, candidate.sourceInstanceId)
+      );
+    if (!legal) return { ok: false, error: "Cette carte n'est pas une cible valide pour cette réaction." };
   }
 
   return { ok: true, candidate };

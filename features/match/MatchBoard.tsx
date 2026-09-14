@@ -46,6 +46,7 @@ import { PhaseActionButton } from "@/features/match/PhaseActionButton";
 import { PendingChoicePrompt } from "@/features/match/PendingChoicePrompt";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ReactionPrompt } from "@/features/match/ReactionPrompt";
+import { reactionTargetHint } from "@/features/match/reactionTargetHint";
 import { ShipInstrumentCluster } from "@/features/match/ShipInstrumentCluster";
 import { MatchEndScreen } from "@/features/match/MatchEndScreen";
 import { useDisplayNames } from "@/features/match/useDisplayNames";
@@ -751,7 +752,10 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
           )}
         {pending?.kind === "reaction" && pending.needsTarget && (
           <div className="fixed left-1/2 top-6 z-[70] -translate-x-1/2 rounded-full border border-white/25 bg-slate-950/80 px-4 py-2 text-xs text-slate-200 backdrop-blur-md">
-            Choisissez une cible sur le plateau.
+            {reactionTargetHint(
+              [...viewerPlayer.board, ...otherPlayer.board].find((u) => u.instanceId === pending.sourceInstanceId)?.cardId,
+              pending.abilityIndex
+            )}
           </div>
         )}
 

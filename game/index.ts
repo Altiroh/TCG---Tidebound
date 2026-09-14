@@ -73,7 +73,10 @@ export { validateDeckList } from "@/game/rules/deckValidation";
 
 export type { GameEvent, GameEventType } from "@/game/events/types";
 
-export type { EffectDefinition, EffectType, TargetSelector } from "@/game/effects/types";
+export type { ChosenUnitFilter, EffectDefinition, EffectType, TargetSelector } from "@/game/effects/types";
+export { chosenTargetFilter, eligibleChosenUnits } from "@/game/effects/chosenTargets";
+export { ARCHETYPE_LABELS } from "@/game/cards/archetypes";
+export type { ArchetypeId } from "@/game/cards/archetypes";
 export type { PendingReactionCandidate, TriggerEvent, TriggerType } from "@/game/triggers/types";
 export type { PendingReactionState } from "@/game/state/types";
 export { eligibleCandidatesFor } from "@/game/reactions/reactionWindow";

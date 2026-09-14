@@ -23,9 +23,20 @@ export function deriveReactionTriggerEvents(state: GameState, events: GameEvent[
       case "SUMMON":
         derived.push({ trigger: "onEnterPlay", playerId: event.playerId, cardId: event.cardId, sourceInstanceId: event.instanceId });
         break;
-      case "ATTACK":
-        derived.push({ trigger: "onAttack", playerId: event.playerId, sourceInstanceId: event.attackerInstanceId });
+      case "ATTACK": {
+        // Même contenu que le déclenchement automatique (`attack.ts`) :
+        // l'attaquant a pu mourir au combat, on retombe alors sur un
+        // événement sans `cardId` — les filtres par identité ne matchent
+        // simplement pas, plutôt que de mentir sur qui a attaqué.
+        const attacker = findCardInstance(state, event.attackerInstanceId);
+        derived.push({
+          trigger: "onAttack",
+          playerId: event.playerId,
+          sourceInstanceId: event.attackerInstanceId,
+          cardId: attacker?.card.cardId,
+        });
         break;
+      }
       case "DAMAGE": {
         if (!event.targetInstanceId) break;
         // La cible doit encore être en jeu pour réagir à ses propres
@@ -37,6 +48,9 @@ export function deriveReactionTriggerEvents(state: GameState, events: GameEvent[
         derived.push({ trigger: "onDamaged", playerId: found.owner.id, cardId: found.card.cardId, sourceInstanceId: event.targetInstanceId });
         break;
       }
+      case "OBJECT_BROKEN":
+        derived.push({ trigger: "onObjectBroken", playerId: event.playerId, cardId: event.cardId, sourceInstanceId: event.instanceId });
+        break;
       case "TURN_STARTED":
         derived.push({ trigger: "startOfTurn", playerId: event.playerId });
         break;

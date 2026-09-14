@@ -34,6 +34,7 @@ import { EquipLinkOverlay } from "@/features/match/EquipLinkOverlay";
 import { EventFeed } from "@/features/match/EventFeed";
 import { MatchPauseMenu } from "@/features/match/MatchPauseMenu";
 import { needsPlayTarget } from "@/features/match/needsPlayTarget";
+import { reactionTargetHint } from "@/features/match/reactionTargetHint";
 import { GraveyardPickPrompt } from "@/features/match/GraveyardPickPrompt";
 import { GraveyardViewer } from "@/features/match/GraveyardViewer";
 import { ObjectBreakPrompt } from "@/features/match/ObjectBreakPrompt";
@@ -590,7 +591,10 @@ export function OnlineBoard({
         )}
         {selection?.kind === "reaction" && selection.needsTarget && (
           <div className="fixed left-1/2 top-6 z-[70] -translate-x-1/2 rounded-full border border-white/25 bg-slate-950/80 px-4 py-2 text-xs text-slate-200 backdrop-blur-md">
-            Choisissez une cible sur le plateau.
+            {reactionTargetHint(
+              [...me.board, ...opponent.board].find((u) => u.instanceId === selection.sourceInstanceId)?.cardId,
+              selection.abilityIndex
+            )}
           </div>
         )}
 

@@ -3,12 +3,18 @@ import { canBeEquipTarget, getCardDefinition } from "@/game/cards/sets/core";
 import { countArchetypeUnits } from "@/game/cards/archetypes";
 import { getShipDefinition } from "@/game/environment/shipData";
 import { forceTideJumpToAbysses, forceTideTransition } from "@/game/environment/tide";
+import { isEligibleChosenUnit } from "@/game/effects/chosenTargets";
 import type { EffectAmount, EffectDefinition } from "@/game/effects/types";
 import type { GameEvent } from "@/game/events/types";
 import { nextInt, type RngState } from "@/game/rng";
 import { reduceReasonGain } from "@/game/state/anomalies";
 import { reasonAfterLoss, reasonCeiling } from "@/game/state/reason";
-import { consumeOwnDamageTakenShield, consumeReasonLossShield, consumeStructureResistanceRestoreShield } from "@/game/state/shields";
+import {
+  consumeEquippedEffectDamageShield,
+  consumeOwnDamageTakenShield,
+  consumeReasonLossShield,
+  consumeStructureResistanceRestoreShield,
+} from "@/game/state/shields";
 import {
   getOpponent,
   getPlayer,
@@ -159,6 +165,21 @@ function resolveUnitTargets(
     }
     case "chosenUnit": {
       if (!context.chosenTargetInstanceId) return noDraw([]);
+      // Le choix du joueur passe par le MÊME filtre que celui qui a servi
+      // à proposer la capacité : un "choisissez un Cra-Poiscail" ne se
+      // résout pas sur une carte hors famille, même si l'action arrive
+      // d'un client qui l'aurait proposée à tort.
+      if (
+        !isEligibleChosenUnit(
+          state,
+          effect.target,
+          context.controllerId,
+          context.chosenTargetInstanceId,
+          context.sourceInstanceId
+        )
+      ) {
+        return noDraw([]);
+      }
       const owner = findUnitOwner(state, context.chosenTargetInstanceId);
       const unit = owner?.board.find((u) => u.instanceId === context.chosenTargetInstanceId);
       return noDraw(unit && owner ? [{ unit, ownerId: owner.id }] : []);
@@ -285,6 +306,13 @@ export function resolveEffect(
         const selfShield = consumeOwnDamageTakenShield(nextState, ownerId, unit.instanceId, context.turnNumber);
         nextState = selfShield.state;
         let reduction = selfShield.reduction;
+        // Casque-Coquille : ces dégâts-ci viennent bien d'un effet de
+        // carte, pas d'un combat — l'Équipement les absorbe une fois puis
+        // se détruit.
+        const effectShield = consumeEquippedEffectDamageShield(nextState, ownerId, unit.instanceId, context.turnNumber);
+        nextState = effectShield.state;
+        reduction += effectShield.reduction;
+        events.push(...effectShield.events);
         if (getCardDefinition(unit.cardId).type === "structure") {
           const restoreShield = consumeStructureResistanceRestoreShield(nextState, ownerId, context.turnNumber);
           nextState = restoreShield.state;

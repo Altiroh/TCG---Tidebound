@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import { dispatch } from "@/game/engine";
 import { computeEffectiveStats } from "@/game/cards/stats";
 import { canBeEquipTarget, getCardDefinition } from "@/game/cards/sets/core";
+import { resolveEffect } from "@/game/effects/resolveEffect";
 import { hasEffectiveKeyword } from "@/game/rules/validation";
-import { instance, testGameState, testPlayer } from "./testHelpers";
+import { STATUS_MALADE } from "@/game/cards/types";
+import { instance, testEnvironment, testGameState, testPlayer } from "./testHelpers";
 
 const PEON = "peon-cra-poiscail";
 
@@ -625,5 +627,297 @@ describe("P'tite Fesse, Grand Rêve — réagit à tout gain de Puissance", () =
     expect(
       computeEffectiveStats(after, "calme", { controllerBoard: board, controllerReason: 10 }).attack
     ).toBe(3);
+  });
+});
+
+/** Puissance/Résistance effectives d'une unité, vues depuis le plateau de son contrôleur. */
+function statsOf(state: ReturnType<typeof testGameState>, playerId: string, instanceId: string) {
+  const player = state.players.find((p) => p.id === playerId)!;
+  const unit = player.board.find((u) => u.instanceId === instanceId)!;
+  return computeEffectiveStats(unit, state.environment.tideState, {
+    controllerBoard: player.board,
+    controllerReason: player.reason,
+    tideOrientation: state.environment.tideOrientation,
+  });
+}
+
+describe("archétype Cra-Poiscail — cibles désignées par le joueur", () => {
+  it("Le Tas de Trucs : briser un Objet ouvre une fenêtre où le joueur choisit QUEL Cra-Poiscail gagne +1 / +1", () => {
+    const tas = instance("le-tas-de-trucs", "p1");
+    const objet = instance("levier-de-lest", "p1");
+    const cible = instance("tetard-fesse", "p1"); // Cra-Poiscail 1/1
+    const autre = instance("ptite-fesse", "p1"); // Cra-Poiscail 1/2, l'autre choix possible
+    const state = testGameState({
+      players: [testPlayer("p1", { board: [tas, objet, cible, autre], reason: 10 }), testPlayer("p2")],
+    });
+
+    const broken = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: objet.instanceId });
+    expect(broken.ok).toBe(true);
+    if (!broken.ok) return;
+
+    // Rien n'est appliqué d'office : c'est au joueur de désigner sa cible.
+    expect(broken.state.pendingReaction?.awaitingPlayerId).toBe("p1");
+    expect(statsOf(broken.state, "p1", cible.instanceId).attack).toBe(1);
+
+    const activated = dispatch(broken.state, {
+      type: "activateReaction",
+      playerId: "p1",
+      sourceInstanceId: tas.instanceId,
+      abilityIndex: 0,
+      targetInstanceId: cible.instanceId,
+    });
+    expect(activated.ok).toBe(true);
+    if (!activated.ok) return;
+
+    expect(statsOf(activated.state, "p1", cible.instanceId).attack).toBe(2);
+    expect(statsOf(activated.state, "p1", cible.instanceId).health).toBe(2);
+    // L'autre Cra-Poiscail n'a rien reçu : le choix portait bien sur une seule carte.
+    expect(statsOf(activated.state, "p1", autre.instanceId).attack).toBe(1);
+  });
+
+  it("Le Tas de Trucs : refuse une cible hors famille, et ne se propose pas du tout sans Cra-Poiscail à renforcer", () => {
+    const tas = instance("le-tas-de-trucs", "p1");
+    const objet = instance("levier-de-lest", "p1");
+    const horsFamille = instance("marin-des-jetees", "p1");
+    const withTarget = testGameState({
+      players: [
+        testPlayer("p1", { board: [tas, objet, horsFamille, instance("tetard-fesse", "p1")], reason: 10 }),
+        testPlayer("p2"),
+      ],
+    });
+
+    const broken = dispatch(withTarget, { type: "breakObject", playerId: "p1", instanceId: objet.instanceId });
+    expect(broken.ok).toBe(true);
+    if (!broken.ok) return;
+
+    const illegal = dispatch(broken.state, {
+      type: "activateReaction",
+      playerId: "p1",
+      sourceInstanceId: tas.instanceId,
+      abilityIndex: 0,
+      targetInstanceId: horsFamille.instanceId,
+    });
+    expect(illegal.ok).toBe(false);
+
+    // Même plateau sans le moindre Cra-Poiscail : la fenêtre ne s'ouvre pas.
+    const tasSeul = instance("le-tas-de-trucs", "p1");
+    const objetSeul = instance("levier-de-lest", "p1");
+    const withoutTarget = testGameState({
+      players: [
+        testPlayer("p1", { board: [tasSeul, objetSeul, instance("marin-des-jetees", "p1")], reason: 10 }),
+        testPlayer("p2"),
+      ],
+    });
+    const brokenAlone = dispatch(withoutTarget, { type: "breakObject", playerId: "p1", instanceId: objetSeul.instanceId });
+    expect(brokenAlone.ok).toBe(true);
+    if (!brokenAlone.ok) return;
+    expect(brokenAlone.state.pendingReaction).toBeUndefined();
+  });
+
+  it("Le Tas de Trucs : une seule fois par tour, quel que soit le nombre d'Objets brisés", () => {
+    const tas = instance("le-tas-de-trucs", "p1");
+    const premier = instance("levier-de-lest", "p1");
+    const second = instance("levier-de-lest", "p1");
+    const cible = instance("tetard-fesse", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { board: [tas, premier, second, cible], reason: 10 }), testPlayer("p2")],
+    });
+
+    const first = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: premier.instanceId });
+    expect(first.ok).toBe(true);
+    if (!first.ok) return;
+    const used = dispatch(first.state, {
+      type: "activateReaction",
+      playerId: "p1",
+      sourceInstanceId: tas.instanceId,
+      abilityIndex: 0,
+      targetInstanceId: cible.instanceId,
+    });
+    expect(used.ok).toBe(true);
+    if (!used.ok) return;
+
+    const secondBreak = dispatch(used.state, { type: "breakObject", playerId: "p1", instanceId: second.instanceId });
+    expect(secondBreak.ok).toBe(true);
+    if (!secondBreak.ok) return;
+    expect(secondBreak.state.pendingReaction).toBeUndefined();
+  });
+
+  it("Fourchette du Grand Étang : l'attaque du PORTEUR laisse choisir un AUTRE Cra-Poiscail", () => {
+    const porteur = instance("tetard-fesse", "p1"); // 1/1 Cra-Poiscail
+    const fourchette = instance("fourchette-du-grand-etang", "p1", { attachedToInstanceId: porteur.instanceId });
+    const autre = instance("ptite-fesse", "p1");
+    const state = testGameState({
+      phase: "combatPhase",
+      players: [testPlayer("p1", { board: [porteur, fourchette, autre], reason: 10 }), testPlayer("p2")],
+    });
+
+    const attacked = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: porteur.instanceId });
+    expect(attacked.ok).toBe(true);
+    if (!attacked.ok) return;
+    expect(attacked.state.pendingReaction?.awaitingPlayerId).toBe("p1");
+
+    // "Un AUTRE Cra-Poiscail" : ni l'Équipement, ni le porteur qui vient d'attaquer.
+    const onSelf = dispatch(attacked.state, {
+      type: "activateReaction",
+      playerId: "p1",
+      sourceInstanceId: fourchette.instanceId,
+      abilityIndex: 0,
+      targetInstanceId: porteur.instanceId,
+    });
+    expect(onSelf.ok).toBe(false);
+
+    const activated = dispatch(attacked.state, {
+      type: "activateReaction",
+      playerId: "p1",
+      sourceInstanceId: fourchette.instanceId,
+      abilityIndex: 0,
+      targetInstanceId: autre.instanceId,
+    });
+    expect(activated.ok).toBe(true);
+    if (!activated.ok) return;
+    expect(statsOf(activated.state, "p1", autre.instanceId).attack).toBe(2);
+  });
+
+  it("Chevalier Cra-Poiscail Abyssal : sa propre attaque laisse choisir un autre Cra-Poiscail, une fois par tour", () => {
+    const chevalier = instance("chevalier-cra-poiscail-abyssal", "p1");
+    const autre = instance("tetard-fesse", "p1");
+    const state = testGameState({
+      phase: "combatPhase",
+      players: [testPlayer("p1", { board: [chevalier, autre], reason: 10 }), testPlayer("p2")],
+    });
+
+    const attacked = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: chevalier.instanceId });
+    expect(attacked.ok).toBe(true);
+    if (!attacked.ok) return;
+
+    const activated = dispatch(attacked.state, {
+      type: "activateReaction",
+      playerId: "p1",
+      sourceInstanceId: chevalier.instanceId,
+      abilityIndex: 0,
+      targetInstanceId: autre.instanceId,
+    });
+    expect(activated.ok).toBe(true);
+    if (!activated.ok) return;
+    expect(statsOf(activated.state, "p1", autre.instanceId).attack).toBe(2);
+    expect(statsOf(activated.state, "p1", autre.instanceId).health).toBe(2);
+
+    // La capacité est consommée pour le tour : plus proposée du tout.
+    expect(activated.state.pendingReaction).toBeUndefined();
+  });
+});
+
+describe("Casque-Coquille — bouclier contre les dégâts d'effet", () => {
+  it("réduit de 1 les dégâts d'un effet de carte, puis se détruit", () => {
+    const porteur = instance("tetard-fesse", "p1", { damageMarked: 0 });
+    const casque = instance("casque-coquille", "p1", { attachedToInstanceId: porteur.instanceId });
+    const state = testGameState({
+      players: [testPlayer("p1", { board: [porteur, casque] }), testPlayer("p2")],
+    });
+
+    const damaged = resolveEffect(
+      state,
+      { type: "damage", target: { kind: "chosenUnit" }, amount: { kind: "flat", value: 2 } },
+      { controllerId: "p2", chosenTargetInstanceId: porteur.instanceId, turnNumber: 1 }
+    );
+
+    const survivor = damaged.state.players[0]!.board.find((u) => u.instanceId === porteur.instanceId)!;
+    expect(survivor.damageMarked).toBe(1);
+    // L'Équipement a payé de sa personne.
+    expect(damaged.state.players[0]!.board.some((u) => u.instanceId === casque.instanceId)).toBe(false);
+    expect(damaged.state.players[0]!.graveyard.some((u) => u.instanceId === casque.instanceId)).toBe(true);
+  });
+
+  it("ne joue qu'une fois : le second effet frappe à plein", () => {
+    const porteur = instance("cra-poiscail-des-hautes-eaux", "p1"); // 1/3, encaisse deux coups
+    const casque = instance("casque-coquille", "p1", { attachedToInstanceId: porteur.instanceId });
+    const state = testGameState({
+      players: [testPlayer("p1", { board: [porteur, casque] }), testPlayer("p2")],
+    });
+    const effect = { type: "damage" as const, target: { kind: "chosenUnit" as const }, amount: { kind: "flat" as const, value: 1 } };
+    const context = { controllerId: "p2", chosenTargetInstanceId: porteur.instanceId, turnNumber: 1 };
+
+    const first = resolveEffect(state, effect, context);
+    expect(first.state.players[0]!.board.find((u) => u.instanceId === porteur.instanceId)!.damageMarked).toBe(0);
+
+    const second = resolveEffect(first.state, effect, context);
+    expect(second.state.players[0]!.board.find((u) => u.instanceId === porteur.instanceId)!.damageMarked).toBe(1);
+  });
+
+  it("n'intercepte PAS les dégâts de combat — c'est un dégât physique, pas un effet", () => {
+    const porteur = instance("cra-poiscail-des-hautes-eaux", "p1"); // 1/3
+    const casque = instance("casque-coquille", "p1", { attachedToInstanceId: porteur.instanceId });
+    const attaquant = instance("marin-des-jetees", "p2");
+    const state = testGameState({
+      phase: "combatPhase",
+      activePlayerId: "p2",
+      players: [testPlayer("p1", { board: [porteur, casque] }), testPlayer("p2", { board: [attaquant] })],
+    });
+
+    const attacked = dispatch(state, {
+      type: "attack",
+      playerId: "p2",
+      attackerInstanceId: attaquant.instanceId,
+      defenderInstanceId: porteur.instanceId,
+    });
+    expect(attacked.ok).toBe(true);
+    if (!attacked.ok) return;
+
+    const attaquantDef = getCardDefinition("marin-des-jetees");
+    const defender = attacked.state.players[0]!.board.find((u) => u.instanceId === porteur.instanceId);
+    expect(defender?.damageMarked).toBe(attaquantDef.attack);
+    // Le Casque est toujours là : rien ne l'a consommé.
+    expect(attacked.state.players[0]!.board.some((u) => u.instanceId === casque.instanceId)).toBe(true);
+  });
+});
+
+describe("Casque-Coquille — les dégâts de Marée sont des dégâts d'effet", () => {
+  it("absorbe le dégât de MALADE de la Houle et se détruit, laissant le porteur intact", () => {
+    const porteur = instance("cra-poiscail-des-hautes-eaux", "p1", { statuses: [STATUS_MALADE] });
+    const casque = instance("casque-coquille", "p1", { attachedToInstanceId: porteur.instanceId });
+    const state = testGameState({
+      players: [testPlayer("p1", { board: [porteur, casque] }), testPlayer("p2")],
+      environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 5 }),
+    });
+
+    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const unit = result.state.players[0]!.board.find((u) => u.instanceId === porteur.instanceId);
+    expect(unit?.damageMarked).toBe(0);
+    expect(result.state.players[0]!.board.some((u) => u.instanceId === casque.instanceId)).toBe(false);
+  });
+});
+
+describe("déclencheurs d'attaque filtrés par carte", () => {
+  it("La Quête du Grand Nénuphar reconnaît le Chevalier qui attaque (l'événement porte enfin son cardId)", () => {
+    const quete = instance("la-quete-du-grand-nenuphar", "p1");
+    const chevalier = instance("chevalier-cra-poiscail", "p1");
+    const destrier = instance("destrier-du-grand-etang", "p1");
+    const state = testGameState({
+      phase: "combatPhase",
+      players: [testPlayer("p1", { board: [quete, chevalier, destrier], reason: 5 }), testPlayer("p2")],
+    });
+
+    const attacked = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: chevalier.instanceId });
+    expect(attacked.ok).toBe(true);
+    if (!attacked.ok) return;
+    expect(attacked.state.players[0]!.reason).toBe(6);
+
+    // Un autre attaquant que le Chevalier ne déclenche rien.
+    const autre = instance("tetard-fesse", "p1");
+    const quete2 = instance("la-quete-du-grand-nenuphar", "p1");
+    const neutral = testGameState({
+      phase: "combatPhase",
+      players: [
+        testPlayer("p1", { board: [quete2, autre, instance("destrier-du-grand-etang", "p1")], reason: 5 }),
+        testPlayer("p2"),
+      ],
+    });
+    const other = dispatch(neutral, { type: "attack", playerId: "p1", attackerInstanceId: autre.instanceId });
+    expect(other.ok).toBe(true);
+    if (!other.ok) return;
+    expect(other.state.players[0]!.reason).toBe(5);
   });
 });

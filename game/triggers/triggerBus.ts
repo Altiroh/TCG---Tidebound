@@ -6,6 +6,7 @@ import type { EffectContext } from "@/game/effects/resolveEffect";
 import { resolveEffect, revealRandomHandCards } from "@/game/effects/resolveEffect";
 import type { GameEvent } from "@/game/events/types";
 import { applyCardPlayedAnomalies, applyPermanentLeftAnomalies } from "@/game/state/anomalies";
+import { chosenTargetRequirement } from "@/game/effects/chosenTargets";
 import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
 import { canPayReason } from "@/game/state/reason";
 import { consumeOpponentReactionRevealShield, payReasonCost, reasonCostAfterShield } from "@/game/state/shields";
@@ -71,12 +72,16 @@ function matchesTriggerSource(
   holder: CardInstance,
   holderControllerId: PlayerId
 ): boolean {
-  if (!event.cardId) return false;
   if ((filter.excludeSelf ?? true) && event.sourceInstanceId === holder.instanceId) return false;
   if ((filter.sameController ?? true) && event.playerId !== holderControllerId) return false;
   if (filter.onlySummoned && !event.fromSummon) return false;
-  if (filter.cardIds && !filter.cardIds.includes(event.cardId)) return false;
-  if (filter.archetype && getCardDefinition(event.cardId).archetype !== filter.archetype) return false;
+  // "Quand IL attaque" sur un Équipement : l'événement vise le permanent
+  // équipé, pas l'Équipement lui-même (qui, lui, n'attaque jamais).
+  if (filter.equippedUnit && event.sourceInstanceId !== holder.attachedToInstanceId) return false;
+  // Les filtres par identité de carte n'ont de sens que si l'événement la
+  // porte (`onAttack` ne la porte pas) : sans elle, ils ne matchent pas.
+  if (filter.cardIds && !(event.cardId && filter.cardIds.includes(event.cardId))) return false;
+  if (filter.archetype && !(event.cardId && getCardDefinition(event.cardId).archetype === filter.archetype)) return false;
   return true;
 }
 
@@ -200,6 +205,12 @@ function collectTriggeredWork(
       const def = getCardDefinition(unit.cardId);
       (def.abilities ?? []).forEach((ability, abilityIndex) => {
         if (ability.trigger !== event.trigger || !matchesMode(ability) || ability.triggeredBy) return;
+        // "La première fois à chaque tour" : même garde que pour les
+        // observateurs. Indispensable en mode "optional", où le marquage
+        // n'a lieu qu'à l'activation (`resolveReaction`) et non au
+        // recensement — sans elle, la capacité serait reproposée à chaque
+        // fenêtre du tour.
+        if (ability.oncePerTurnKey && !oncePerTurnAvailable(unit, ability.oncePerTurnKey, turnNumber)) return;
         result.push(work(ability, abilityIndex, def.id, player.id, unit.instanceId, turnNumber));
       });
     }
@@ -421,7 +432,6 @@ export function collectReactionCandidates(
   const player = state.players.find((p) => p.id === forPlayerId);
   if (!player) return [];
 
-  const hasAnyBoardUnit = state.players.some((p) => p.board.length > 0);
   const candidates: PendingReactionCandidate[] = [];
   const seen = new Set<string>();
 
@@ -434,13 +444,22 @@ export function collectReactionCandidates(
       const reasonCost = item.ability.cost?.reason ?? 0;
       if (!canPayReason(player, reasonCostAfterShield(state, forPlayerId, reasonCost, turnNumber))) continue;
 
-      const needsTarget = item.effects.some((e) => e.target.kind === "chosenUnit");
-      if (needsTarget && !hasAnyBoardUnit) continue;
+      // "choisissez un Cra-Poiscail" : la capacité ne se propose que s'il
+      // existe au moins une cible LÉGALE — pas seulement une carte
+      // quelconque sur un plateau.
+      const { needsTarget, hasEligibleTarget } = chosenTargetRequirement(
+        state,
+        item.effects,
+        forPlayerId,
+        item.context.sourceInstanceId
+      );
+      if (needsTarget && !hasEligibleTarget) continue;
 
       seen.add(key);
       candidates.push({
         controllerId: forPlayerId,
         sourceInstanceId: item.context.sourceInstanceId!,
+        triggerSourceInstanceId: item.context.triggerSourceInstanceId,
         cardId: item.cardId,
         abilityIndex: item.abilityIndex,
         reasonCost,
@@ -479,10 +498,21 @@ export function resolveReaction(
     events.push({ ...base, type: "REASON_CHANGED", playerId: candidate.controllerId, delta: -payment.paid });
   }
 
+  // "La première fois à chaque tour" : marquée à l'ACTIVATION (le
+  // recensement, lui, ne fait que la lire — cf. `collectTriggeredWork`).
+  // Même ordre qu'en résolution automatique : marquer avant de résoudre.
+  if (ability.oncePerTurnKey) {
+    const holder = findBoardUnit(nextState, candidate.sourceInstanceId);
+    if (holder) {
+      nextState = markUnitOncePerTurn(nextState, holder.playerId, holder.unit.instanceId, ability.oncePerTurnKey, turnNumber);
+    }
+  }
+
   const context: EffectContext = {
     controllerId: candidate.controllerId,
     sourceInstanceId: candidate.sourceInstanceId,
     chosenTargetInstanceId: targetInstanceId,
+    triggerSourceInstanceId: candidate.triggerSourceInstanceId,
     turnNumber,
   };
 
