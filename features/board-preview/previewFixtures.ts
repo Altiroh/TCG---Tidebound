@@ -1,78 +1,103 @@
+import type { TideStateName } from "@/game";
+
+type CardId = string;
+
 /**
  * Jeu de données factice du laboratoire de layout (`/game/board-preview`).
  *
- * AUCUN lien avec `@/game` : cet écran ne crée pas de partie, ne lit aucun
- * deck et n'appelle aucun backend. Les modèles ci-dessous n'existent que
- * pour donner au layout de quoi être jugé (des rectangles à la bonne
- * taille, en bon nombre).
- *
- * Migration future : `PreviewCardModel` est volontairement réduit au strict
- * minimum dont le LAYOUT a besoin (une identité + une étiquette). Le jour
- * où l'on branchera les vraies cartes, seuls les composants de rendu
- * (`PreviewCard` → `GameCard`) changeront — les composants de disposition
- * (`PreviewBoard`, `PreviewHand`) acceptent déjà n'importe quel rendu via
- * leur prop `renderCard`.
+ * Seul lien avec `@/game` : des TYPES et des identifiants du catalogue de
+ * cartes. Cet écran ne crée pas de partie, ne lit aucun deck et n’appelle
+ * aucun backend — les cartes ci-dessous sont choisies à la main pour juger
+ * le layout sur de vraies cartes (noms longs, textes de règles, Abyssale).
  */
 
 export interface PreviewCardModel {
+  /** Identifiant d’instance, unique sur l’écran. */
   id: string;
-  /** Numéro affiché sur le placeholder, pour repérer une carte à l'oeil. */
-  index: number;
-  label: string;
+  /** Carte du catalogue (`game/cards/sets/core.ts`). */
+  cardId: CardId;
 }
 
-/** Emplacements d'un plateau, côté joueur comme côté adversaire. */
+/** Emplacements d’un plateau, côté joueur comme côté adversaire. */
 export const BOARD_CAPACITY = 5;
 
-/** Taille de main de référence pour juger les espacements (cf. cahier des charges : 7 ou 8 cartes). */
-export const HAND_SIZE = 8;
-
-function makeCards(prefix: string, count: number, label: string): PreviewCardModel[] {
-  return Array.from({ length: count }, (_, i) => ({
-    id: `${prefix}-${i + 1}`,
-    index: i + 1,
-    label,
-  }));
+function makeCards(prefix: string, cardIds: CardId[]): PreviewCardModel[] {
+  return cardIds.map((cardId, i) => ({ id: `${prefix}-${i + 1}`, cardId }));
 }
 
 export const PREVIEW_FIXTURES = {
-  opponentBoard: makeCards("opp-board", BOARD_CAPACITY, "Unité"),
-  playerBoard: makeCards("own-board", BOARD_CAPACITY, "Unité"),
-  playerHand: makeCards("own-hand", HAND_SIZE, "Main"),
+  opponentBoard: makeCards("opp-board", ["chevalier-cra-poiscail", "bat-marin-abyssal", "crabe-de-fer"]),
+  playerBoard: makeCards("own-board", ["capitaine-sans-sommeil", "murene-aveugle", "epave-engloutie", "harpon-de-pont"]),
+  /** Le Harpon de pont (4e carte) équipe déjà le Capitaine (1re) : le lien se voit dès l'ouverture. */
+  playerAttachments: { "own-board-4": "own-board-1" } as Record<string, string>,
+  /** 8 cartes : la taille de main de référence du cahier des charges (7 ou 8). */
+  playerHand: makeCards("own-hand", [
+    "cra-poiscail-sauteur",
+    "thermos-du-dernier-quart",
+    "tetard-fesse",
+    "plaque-de-fortune",
+    "banc-de-cra-poiscail",
+    "cylindre-flottant",
+    "vieux-loup-de-mer",
+    "cloche-du-grand-fond-abyssal",
+  ]),
+  /** Suite de la pioche du joueur, après la main de départ (cf. `usePreviewTable`). */
+  playerDeck: makeCards("own-deck", [
+    "cra-poiscail-bavard",
+    "bat-marin",
+    "guetteur-de-brume",
+    "chope",
+    "cartographe-du-large",
+    "casque-coquille",
+    "anguille-des-profondeurs",
+    "ecuyer-cra-poiscail",
+    "barracuda-des-hauts-fonds",
+    "charpentier-de-bord",
+  ]),
+  /** Main de départ adverse (dos de cartes, distribuée comme celle du joueur). */
+  opponentHandCount: 7,
   opponent: {
     name: "Adversaire",
-    shipName: "Enemy Ship",
+    shipName: "Le Courlis",
+    illustration: "le-courlis.webp",
+    /** Pastille rouge du cadre navire (coque / ancre). */
     hull: 18,
     maxHull: 20,
-    // Colonne de zone : ressources de camp uniquement. Les compteurs
-    // deck / main vivent dans le HUD (`PreviewHud`) — un même chiffre
-    // n'est jamais affiché à deux endroits, c'est justement ce genre de
-    // doublon que ce laboratoire sert à repérer.
-    resources: [
-      { key: "tides", label: "Tides", value: 3 },
-      { key: "deck", label: "Deck", value: 24 },
-      { key: "graveyard", label: "Cimetière", value: 2 },
-    ],
+    /** Pastille bleue du cadre navire (Raison). */
+    reason: 3,
+    deck: 24,
+    graveyard: 2,
   },
   player: {
     name: "Joueur",
-    shipName: "Player Ship",
+    shipName: "La Religieuse",
+    illustration: "la-religieuse.webp",
     hull: 20,
     maxHull: 20,
-    resources: [
-      { key: "tides", label: "Tides", value: 5 },
-      { key: "deck", label: "Deck", value: 21 },
-      { key: "graveyard", label: "Cimetière", value: 4 },
-    ],
+    reason: 5,
+    deck: 21,
+    graveyard: 4,
   },
   tide: {
-    name: "Marée montante",
-    direction: "up" as const,
-    step: 2,
-    steps: 4,
+    /** Tuile de sens, entre les deux navires. */
+    orientation: "rising" as "rising" | "falling",
+    /** Piste de progression, au centre du plateau. */
+    states: [
+      { id: "calme", label: "Calme" },
+      { id: "houle", label: "Houle" },
+      { id: "tempete", label: "Tempête" },
+      { id: "abysses", label: "Abysses" },
+    ] as { id: TideStateName; label: string }[],
+    current: 1,
+    /** Tours restants dans l'état courant (Houle dure 2 tours). */
+    remainingTurns: 1,
+    /** Avancement dans l'état courant, 0 → 1 : remplit le segment qui suit son repère. */
+    stageProgress: 0.5,
   },
+  turn: 3,
+  phaseLabel: "Fin de tour",
+  journal: ["Tour 3 — à vous.", "Le bot joue Têtard-fesse.", "Crâ-poiscail attaque le navire (−2)."],
 } satisfies Record<string, unknown>;
 
-export type PreviewResourceModel = (typeof PREVIEW_FIXTURES)["player"]["resources"][number];
 export type PreviewSideModel = (typeof PREVIEW_FIXTURES)["player"];
 export type PreviewTideModel = (typeof PREVIEW_FIXTURES)["tide"];

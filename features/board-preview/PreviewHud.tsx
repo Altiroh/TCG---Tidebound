@@ -1,55 +1,82 @@
 "use client";
 
-import Link from "next/link";
+import type { ReactNode } from "react";
 import styles from "@/features/board-preview/BoardPreview.module.css";
 
 interface PreviewHudProps {
   turn: number;
-  phaseLabel: string;
-  handCount: number;
-  /** Facultatif : aucun gameplay derrière ces boutons, ils ne servent qu'au réglage des positions. */
-  onPhaseAction?: () => void;
+  /** À qui de jouer, affiché discrètement sous le numéro de tour (« À vous », « Au bot »…). */
+  turnOwner: string;
+  /** Le tour est-il au joueur qui regarde ? (teinte de la ligne ci-dessus) */
+  viewerTurn: boolean;
+  /** Contenu du journal (liste compacte, miniatures…), posé sur le feutre de la colonne. */
+  journal: ReactNode;
+  /** Bouton de phase complet (cf. `PhaseButton`). */
+  phaseButton: ReactNode;
+  /** Ouvre le menu de pause. */
+  onMenu: () => void;
 }
 
 /**
- * Calque HUD : boutons et compteurs, au-dessus du gameplay.
+ * Colonne de droite, sur toute la hauteur des deux rangées de plateau
+ * (emplacement du cadre boussole de l'ancien board) :
+ *   Tour N
+ *   à qui de jouer
+ *   Journal d'actions (élastique)
+ *   Bouton de phase (rond)
  *
- * `pointer-events: none` sur le calque entier, réactivé sur les seules
- * grappes de contrôles (cf. `.hud` / `.hudGroup`) — le calque ne vole donc
- * jamais un clic destiné à une carte.
- *
- * Le padding du calque intègre la safe area (`env(safe-area-inset-*)`) :
- * aucun contrôle ne peut se retrouver derrière une encoche ou une barre
- * système sur un téléphone en paysage.
- *
- * Les contrôles sont volontairement des placeholders inertes : cet écran ne
- * touche à aucun moteur de partie.
+ * Le bouton Menu est posé au-dessus de la colonne, dans le coin haut droit
+ * laissé libre par la main adverse.
  */
-export function PreviewHud({ turn, phaseLabel, handCount, onPhaseAction }: PreviewHudProps) {
+export function PreviewHud({ turn, turnOwner, viewerTurn, journal, phaseButton, onMenu }: PreviewHudProps) {
   return (
-    <div className={styles.hud} data-zone="HudLayer">
-      <div className={styles.hudLeft}>
-        <div className={styles.hudGroup}>
-          {/* Seul contrôle réellement fonctionnel de l'écran : le retour au menu. */}
-          <Link href="/" className={styles.hudButton}>
-            Menu
-          </Link>
-          <span className={styles.hudChip}>
-            Tour <span className={styles.hudChipValue}>{turn}</span>
+    <>
+      <div className={styles.hudCornerTop}>
+        <button type="button" className={styles.hudButton} onClick={onMenu} aria-label="Menu" title="Menu">
+          {/* eslint-disable-next-line @next/next/no-img-element -- cadre décoratif, même asset que le bouton de phase */}
+          <img src="/assets/board/phase-buttons/frame.webp" alt="" aria-hidden draggable={false} className={styles.fill} />
+          <span className={styles.menuGlyph} aria-hidden>
+            <span />
+            <span />
+            <span />
           </span>
-        </div>
+        </button>
       </div>
 
-      <div className={styles.hudRight}>
-        <div className={`${styles.hudGroup} ${styles.hudGroupRight}`}>
-          <span className={styles.hudChip}>
-            Main <span className={styles.hudChipValue}>{handCount}</span>
-          </span>
-          <button type="button" className={`${styles.hudButton} ${styles.hudButtonPrimary}`} onClick={onPhaseAction}>
-            {phaseLabel}
-          </button>
+      <aside className={styles.rail} data-zone="SideRail" aria-label="Tour et journal">
+        <div className={styles.railTurn}>Tour {turn}</div>
+        <div className={`${styles.railTurnOwner} ${viewerTurn ? styles.railTurnOwnerViewer : ""}`} aria-live="polite">
+          {turnOwner}
         </div>
-      </div>
-    </div>
+        <div className={styles.journal}>{journal}</div>
+        {phaseButton}
+      </aside>
+    </>
+  );
+}
+
+interface PhaseButtonProps {
+  label: string;
+  icon: string;
+  disabled?: boolean;
+  onClick?: () => void;
+}
+
+/** Bouton de phase de la colonne : cadre laiton + icône, comme `PhaseActionButton`, dimensionné par la colonne. */
+export function PhaseButton({ label, icon, disabled = false, onClick }: PhaseButtonProps) {
+  return (
+    <button
+      type="button"
+      className={styles.phaseButton}
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      title={label}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element -- bouton composite décoratif */}
+      <img src="/assets/board/phase-buttons/frame.webp" alt="" aria-hidden draggable={false} className={styles.fill} />
+      {/* eslint-disable-next-line @next/next/no-img-element -- idem */}
+      <img src={icon} alt="" aria-hidden draggable={false} className={styles.phaseIcon} />
+    </button>
   );
 }

@@ -4,11 +4,13 @@
  * Ouvre la page dans un vrai navigateur à chaque résolution cible et
  * vérifie, mesures à l'appui, ce qu'un oeil rate facilement :
  *   - débordement du document (barre de défilement fantôme) ;
- *   - carte coupée par un bord de l'écran ;
+ *   - carte de plateau ou pile coupée par un bord de l'écran (les deux mains,
+ *     elles, sont VOLONTAIREMENT coupées en haut / en bas : seul un
+ *     débordement latéral est un défaut) ;
  *   - contrôle de HUD hors écran ;
- *   - HUD posé sur un élément de gameplay (navire, ressources, carte, Marée) ;
+ *   - colonne de droite / HUD d'angle posés sur un élément de gameplay ;
  *   - zones adverse / centre / joueur qui se chevauchent ;
- *   - plateaux décentrés par rapport à l'axe de la scène ;
+ *   - plateaux et piste de Marée qui ne partagent plus le même axe ;
  *   - erreurs console.
  *
  * Usage :
@@ -86,13 +88,19 @@ function collectReport(epsilon) {
     return x > epsilon && y > epsilon ? { x: Math.round(x), y: Math.round(y) } : null;
   };
 
+  // Classes CSS Modules : `BoardPreview_<nom>__<hash>`. Le `_<nom>__` évite
+  // que `card` attrape aussi `cardBack`, `handCard`, etc.
+  const cls = (name) => `[class*="_${name}__"]`;
+
   const zones = {
+    OpponentHand: zone("OpponentHand"),
     OpponentZone: zone("OpponentZone"),
     OpponentBoard: zone("OpponentBoard"),
     CenterZone: zone("CenterZone"),
     PlayerZone: zone("PlayerZone"),
     PlayerBoard: zone("PlayerBoard"),
     PlayerHand: zone("PlayerHand"),
+    SideRail: zone("SideRail"),
   };
 
   const stage = document.querySelector('[data-zone="OpponentZone"]')?.parentElement ?? null;
@@ -100,14 +108,14 @@ function collectReport(epsilon) {
     ? getComputedStyle(stage).getPropertyValue("--bp").trim().replace(/^"|"$/g, "")
     : "?";
 
-  const cards = rects('[class*="card"]').filter((r) => r && r.w > 5);
-  const hudControls = rects('[class*="hudButton"], [class*="hudChip"]');
-  const hudGroups = rects('[class*="hudGroup"]');
-  // Le HUD vit dans la bande centrale, vide par construction : on le
-  // confronte au CONTENU réel, pas aux boîtes de zone qui l'englobent.
-  const gameplay = rects(
-    '[class*="ship"]:not([class*="Bar"]):not([class*="Name"]):not([class*="Hull"]), [class*="resourceRow"], [class*="boardSlot"], [class*="handCard"], [class*="tide"]'
-  );
+  // Plateaux, piles, navires et tuile doivent être ENTIÈREMENT à l'écran.
+  const boardItems = rects(`${cls("boardSlot")}, ${cls("cargo")}, ${cls("ship")}, ${cls("tideTile")}`).filter((r) => r && r.w > 5);
+  // Les mains sont coupées en haut / en bas par construction : seul un
+  // débordement latéral compte.
+  const handItems = rects(`${cls("handCard")}, ${cls("cardBack")}`);
+  const hudControls = rects(`${cls("hudButton")}, ${cls("hudChip")}, ${cls("phaseButton")}`);
+  const hudBlocks = rects(`${cls("rail")}, ${cls("hudCornerTop")}, ${cls("hudCornerBottom")}`);
+  const gameplay = [...boardItems, ...rects(cls("tide")), ...handItems];
 
   const problems = [];
   const docOverflowX = document.documentElement.scrollWidth - vw;
@@ -115,30 +123,42 @@ function collectReport(epsilon) {
   if (docOverflowX > epsilon || docOverflowY > epsilon)
     problems.push(`débordement du document (${docOverflowX}×${docOverflowY} px)`);
 
-  const clipped = cards.filter(outside).length;
-  if (clipped) problems.push(`${clipped} carte(s) coupée(s) par un bord`);
+  const clipped = boardItems.filter(outside).length;
+  if (clipped) problems.push(`${clipped} élément(s) de plateau coupé(s) par un bord`);
+
+  const handOut = handItems.filter((r) => r.x < -epsilon || r.right > vw + epsilon).length;
+  if (handOut) problems.push(`${handOut} carte(s) de main sortie(s) par un côté`);
 
   const hudOut = hudControls.filter(outside).length;
   if (hudOut) problems.push(`${hudOut} contrôle(s) de HUD hors écran`);
 
-  const hudHits = hudGroups.reduce((n, g) => n + gameplay.filter((c) => overlap(g, c)).length, 0);
+  const hudHits = hudBlocks.reduce((n, g) => n + gameplay.filter((c) => overlap(g, c)).length, 0);
   if (hudHits) problems.push(`HUD superposé à ${hudHits} élément(s) de gameplay`);
 
   for (const [a, b] of [
     ["OpponentZone", "CenterZone"],
     ["CenterZone", "PlayerZone"],
     ["OpponentZone", "PlayerZone"],
+    ["OpponentHand", "OpponentZone"],
+    ["PlayerZone", "PlayerHand"],
   ])
     if (overlap(zones[a], zones[b])) problems.push(`${a} et ${b} se chevauchent`);
 
-  for (const name of ["OpponentBoard", "PlayerBoard"]) {
-    const r = zones[name];
+  // Plateaux, piste de Marée et mains partagent l'axe vertical de l'écran.
+  const axis = (r) => r && r.x + r.w / 2;
+  for (const [name, r] of [
+    ["OpponentBoard", zones.OpponentBoard],
+    ["PlayerBoard", zones.PlayerBoard],
+    ["Marée", rect(document.querySelector(cls("tide")))],
+    ["OpponentHand", rect(document.querySelector(cls("opponentHandRow")))],
+    ["PlayerHand", rect(document.querySelector(cls("handRow")))],
+  ]) {
     if (!r) continue;
-    const offset = Math.abs(r.x + r.w / 2 - vw / 2);
+    const offset = Math.abs(axis(r) - vw / 2);
     if (offset > 2) problems.push(`${name} décentré de ${Math.round(offset)} px`);
   }
 
-  const firstCard = cards[0];
+  const firstCard = rect(document.querySelector(`[data-zone="PlayerBoard"] ${cls("boardSlot")}`));
   return {
     breakpoint,
     problems,

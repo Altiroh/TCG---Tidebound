@@ -94,13 +94,15 @@ function shipIllustration(state: GameState, playerId: PlayerId): string | undefi
   return illustration ? `/assets/ships/illu/${illustration}` : undefined;
 }
 
-function HighlightRow({ state, highlight }: { state: GameState; highlight: Highlight }) {
+function HighlightRow({ state, highlight, thumbSize = 20 }: { state: GameState; highlight: Highlight; thumbSize?: number }) {
+  // Le texte suit la taille des miniatures (variante « colonne » du nouveau plateau, plus grande).
+  const text = { fontSize: Math.max(10, Math.round(thumbSize * 0.42)) };
   if (highlight.kind === "effect") {
     const buff = highlight.attack + highlight.health >= 0;
     return (
       <div className="flex items-center gap-1">
-        <CardThumb cardId={highlight.targetCardId} size={20} className={buff ? "border-emerald-400/50" : "border-rose-400/50"} />
-        <span className={`truncate text-[10px] font-semibold ${buff ? "text-emerald-300" : "text-rose-300"}`}>
+        <CardThumb cardId={highlight.targetCardId} size={thumbSize} className={buff ? "border-emerald-400/50" : "border-rose-400/50"} />
+        <span className={`truncate font-semibold ${buff ? "text-emerald-300" : "text-rose-300"}`} style={text}>
           {shortDelta(highlight.attack, highlight.health)}
         </span>
       </div>
@@ -108,16 +110,16 @@ function HighlightRow({ state, highlight }: { state: GameState; highlight: Highl
   }
   return (
     <div className="flex flex-wrap items-center gap-x-1 gap-y-0.5">
-      <CardThumb cardId={highlight.attackerCardId} size={20} />
-      <span className="text-[10px] text-rose-300" aria-label="attaque">
+      <CardThumb cardId={highlight.attackerCardId} size={thumbSize} />
+      <span className="text-rose-300" style={text} aria-label="attaque">
         ⚔
       </span>
       {"playerId" in highlight.target ? (
-        <CardThumb src={shipIllustration(state, highlight.target.playerId)} glyph="⚓" size={20} />
+        <CardThumb src={shipIllustration(state, highlight.target.playerId)} glyph="⚓" size={thumbSize} />
       ) : (
-        <CardThumb cardId={highlight.target.cardId} size={20} className={highlight.defenderDestroyed ? "border-rose-500/70 opacity-60" : undefined} />
+        <CardThumb cardId={highlight.target.cardId} size={thumbSize} className={highlight.defenderDestroyed ? "border-rose-500/70 opacity-60" : undefined} />
       )}
-      <span className="text-[10px] font-semibold text-rose-300">
+      <span className="font-semibold text-rose-300" style={text}>
         {highlight.amount > 0 ? `-${highlight.amount}` : "0"}
         {highlight.defenderDestroyed ? " ☠" : ""}
       </span>
@@ -247,7 +249,20 @@ function FullLogPanel({ state, playerLabel, onClose }: { state: GameState; playe
  * l'échelle par `transform`, ce qui piégerait un `position: fixed` à
  * l'intérieur du plateau.
  */
-export function EventFeed({ state, playerLabel }: { state: GameState; playerLabel?: PlayerLabel }) {
+interface EventFeedProps {
+  state: GameState;
+  playerLabel?: PlayerLabel;
+  /**
+   * `panel` (défaut, ancien plateau) : encadré noir avec le titre « Journal ».
+   * `rail` (nouveau plateau) : posé directement sur le feutre de la colonne
+   * boussole, sans titre (le cadre suffit), miniatures plus grandes.
+   */
+  variant?: "panel" | "rail";
+}
+
+export function EventFeed({ state, playerLabel, variant = "panel" }: EventFeedProps) {
+  const rail = variant === "rail";
+  const thumbSize = rail ? 30 : 20;
   const [open, setOpen] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   // Le plateau se re-rend souvent sans que l'état change (survol, glisser…).
@@ -262,26 +277,34 @@ export function EventFeed({ state, playerLabel }: { state: GameState; playerLabe
 
   return (
     <>
-      <div className="flex h-full flex-col rounded-md border border-white/15 bg-black/90 text-slate-100">
-        <div className="flex items-center justify-between border-b border-white/10 py-1 pl-1.5 pr-1">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Journal</span>
+      <div className={rail ? "relative flex h-full flex-col text-slate-100" : "flex h-full flex-col rounded-md border border-white/15 bg-black/90 text-slate-100"}>
+        <div
+          className={
+            rail
+              ? "absolute right-0 top-0 z-10"
+              : "flex items-center justify-between border-b border-white/10 py-1 pl-1.5 pr-1"
+          }
+        >
+          {!rail && <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Journal</span>}
           <button
             type="button"
             onClick={() => setOpen(true)}
             title="Ouvrir le journal complet"
             aria-label="Ouvrir le journal complet"
-            className="flex h-5 w-5 items-center justify-center rounded text-slate-300 transition-colors hover:bg-white/10 hover:text-board-accent"
+            className={`flex items-center justify-center rounded text-slate-300 transition-colors hover:bg-white/10 hover:text-board-accent ${
+              rail ? "h-6 w-6 bg-black/50" : "h-5 w-5"
+            }`}
           >
             <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5" aria-hidden>
               <path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
         </div>
-        <div ref={listRef} className="flex flex-1 flex-col gap-1.5 overflow-y-auto p-1.5">
+        <div ref={listRef} className={`flex flex-1 flex-col overflow-y-auto ${rail ? "gap-2 py-1 pr-6" : "gap-1.5 p-1.5"}`}>
           {highlights.length === 0 ? (
-            <p className="text-[10px] leading-snug text-slate-400">Aucune attaque ni effet pour l&apos;instant.</p>
+            <p className={`leading-snug text-slate-400 ${rail ? "text-[11px]" : "text-[10px]"}`}>Aucune attaque ni effet pour l&apos;instant.</p>
           ) : (
-            highlights.map((highlight) => <HighlightRow key={highlight.key} state={state} highlight={highlight} />)
+            highlights.map((highlight) => <HighlightRow key={highlight.key} state={state} highlight={highlight} thumbSize={thumbSize} />)
           )}
         </div>
       </div>

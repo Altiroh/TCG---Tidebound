@@ -8,43 +8,47 @@
  * de remplacer `PreviewCard` par `GameCard`, les blocs navires par les
  * vrais cadres, etc., sans retoucher une seule règle de mise en page.
  *
- * Principe directeur, volontairement à l'opposé de `BoardStage`
- * (features/match/BoardStage.tsx) qui met un canevas 1672×941 à l'échelle
- * avec un `transform: scale()` global : ici RIEN n'est mis à l'échelle
- * globalement. La composition de référence reste un 16:9 (~1920×1080) dans
- * la tête, mais chaque zone se ré-agence pour elle-même à partir de
- * quelques tokens fluides.
+ * COMPOSITION : celle de l'ancien board (`features/match/MatchBoard.tsx`,
+ * repère 1672×941, décor `public/assets/board/board.webp`), reprise telle
+ * quelle — seules les proportions sont converties en tokens :
  *
- * Les tokens (`--card-h`, `--ship-w`, `--gap-*`…) sont posés sur `.stage`
+ *   ┌─────────┬──────────────────────────┬─────────────┬────────┐
+ *   │   ─────────── main adverse (dos, coupée en haut) ─────── Menu │
+ *   │ navire  │  5 emplacements          │ pioche · ☠  │ Tour   │
+ *   │ tuile ▲ │  piste de Marée          │             │ Journal│
+ *   │ navire  │  5 emplacements          │ pioche · ☠  │ Phase  │
+ *   │   ─────────── main (éventail, coupée en bas) ──────── joueur │
+ *   └─────────┴──────────────────────────┴─────────────┴────────┘
+ *
+ * Principe directeur, volontairement à l'opposé de `BoardStage` qui met un
+ * canevas 1672×941 à l'échelle avec un `transform: scale()` global : ici
+ * RIEN n'est mis à l'échelle globalement. Chaque zone se ré-agence pour
+ * elle-même à partir de quelques tokens fluides.
+ *
+ * Les tokens (`--card-h`, `--row-h`, `--ship-w`…) sont posés sur `.stage`
  * et exprimés en unités de conteneur (`cqw`/`cqh`) bornées par `clamp()` :
- * ils suivent donc la taille RÉELLE du viewport de jeu, pas celle de la
- * fenêtre du document. `.viewport` déclare `container-type: size` ; les
- * unités `cq*` employées plus bas se résolvent toutes contre lui.
+ * ils suivent donc la taille RÉELLE du viewport de jeu. `.viewport` déclare
+ * `container-type: size` ; les unités `cq*` se résolvent toutes contre lui.
  *
- * Trois modes, et trois seulement (cf. les deux `@media` en fin de
- * fichier) : LAPTOP est le mode par défaut/nominal, MOBILE PAYSAGE et
- * DESKTOP LARGE ne font que redéfinir des tokens — aucune règle de
- * structure n'est dupliquée par breakpoint.
+ * Trois modes, et trois seulement (cf. les `@media` en fin de fichier) :
+ * LAPTOP est le mode par défaut/nominal, MOBILE PAYSAGE et DESKTOP LARGE ne
+ * font que redéfinir des tokens — aucune règle de structure n'est dupliquée.
  *
  * Profondeur (z-index), du fond vers l'avant :
  *   0   BackgroundLayer  — décor, recadrable, jamais cliquable
- *   10  gameplay         — zones adversaire / centre / joueur
- *   20  HudLayer         — boutons, compteurs (respecte la safe area)
+ *   10  stage            — bandeaux (0) → zones (1) → mains (5/15) → colonne & HUD (20)
  *   30  EffectsLayer     — animations futures, `pointer-events: none`
  *   40  DebugOverlay     — outil de dev, hors composition
  */
 
 /* ──────────────────────────────────────────────────────────────
  * VIEWPORT — la fenêtre de jeu. Seul élément accroché à l'écran.
+ * `overflow: hidden` est ce qui coupe proprement les deux mains aux bords.
  * ────────────────────────────────────────────────────────────── */
 .viewport {
   position: fixed;
   inset: 0;
   overflow: hidden;
-  /* Établit le conteneur de référence pour toutes les unités `cq*`
-     utilisées par les descendants : les tokens suivent la fenêtre de jeu,
-     ce qui restera vrai le jour où le board sera embarqué dans un panneau
-     plus petit qu'un plein écran. */
   container-type: size;
   container-name: gameviewport;
   background: #05090f;
@@ -53,27 +57,86 @@
 }
 
 /* ──────────────────────────────────────────────────────────────
- * BACKGROUND LAYER — décor. Prévu pour un `background-image` réel :
- * `cover` + `center` recadrent le décor selon le format d'écran SANS
- * jamais déplacer le gameplay (qui vit dans `.stage`, au-dessus).
+ * BACKGROUND LAYER — mer de l'état de Marée (`tide-states/*.webp`) + pont
+ * (`board-deck.webp`), tous au même format et au même cadrage.
+ * `cover` recadre le décor selon le format d'écran SANS jamais déplacer le
+ * gameplay (qui vit dans `.stage`, au-dessus). Cadré sur le bas : c'est le
+ * pont, sous la main du joueur, qu'on veut garder.
  * ────────────────────────────────────────────────────────────── */
 .background {
   position: absolute;
   inset: 0;
   z-index: 0;
   background-color: #07111c;
-  background-image: radial-gradient(120% 80% at 50% 0%, #16324a 0%, #0b1a28 45%, #060d15 100%);
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
 }
 
-/* Voile de lisibilité : le gameplay doit rester lisible quel que soit le
-   décor qui viendra remplacer le dégradé ci-dessus. */
+.backgroundImage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 70%;
+  user-select: none;
+}
+
+/* Les quatre mers restent montées et se relaient en fondu enchaîné. */
+.backgroundTide {
+  opacity: 0;
+  transition: opacity 1200ms ease-in-out;
+}
+
+.backgroundTideActive {
+  opacity: 1;
+}
+
+/* Voile léger : assombrit le ciel (main adverse) et le pont (main du joueur)
+   sans éteindre la mer, que la bande de Marée laisse voir. */
 .backgroundVeil {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(4, 9, 15, 0.55) 0%, rgba(4, 9, 15, 0.12) 35%, rgba(4, 9, 15, 0.12) 65%, rgba(4, 9, 15, 0.6) 100%);
+  background: linear-gradient(180deg, rgba(4, 9, 15, 0.45) 0%, rgba(4, 9, 15, 0.1) 30%, rgba(4, 9, 15, 0.05) 60%, rgba(4, 9, 15, 0.35) 100%);
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * DÉCORS D'ANGLE — accessoires posés sur le fond, derrière le gameplay.
+ * Dimensionnés en hauteur d'écran, calés sur leur coin et légèrement
+ * rognés par le bord, comme sur l'ancien `board.webp`.
+ * ────────────────────────────────────────────────────────────── */
+.decor {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.decorItem {
+  position: absolute;
+  height: auto;
+  user-select: none;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.6));
+}
+
+/* Cordage, bouée et lanterne : au-dessus de la colonne boussole. */
+.decorTopRight {
+  top: -3cqh;
+  right: -2cqh;
+  width: min(46cqh, 30cqw);
+}
+
+/* Gouvernails : coupés par le bord droit et le bas. */
+.decorBottomRight {
+  right: -7cqh;
+  bottom: -9cqh;
+  width: min(44cqh, 27cqw);
+}
+
+/* Lanterne, tonneau, filet : sur le pont, à gauche de la main. */
+.decorBottomLeft {
+  left: -3cqh;
+  bottom: -5cqh;
+  width: min(58cqh, 34cqw);
 }
 
 /* ──────────────────────────────────────────────────────────────
@@ -84,170 +147,217 @@
   inset: 0;
   z-index: 10;
 
-  /* Nom du mode courant. Source de vérité UNIQUE du breakpoint actif :
-     `useBoardPreviewMetrics` le relit via `getComputedStyle` au lieu de
-     redéclarer les media queries en JavaScript (elles dériveraient). */
+  /* Nom du mode courant, relu par `useBoardPreviewMetrics`. */
   --bp: "laptop";
 
-  /* Safe area — encoches et barres système (iPhone en paysage). */
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
 
-  /* Largeur utile de la composition. Garde-fou pour les formats très
-     larges (ultrawide 21:9 / 32:9) : au-delà d'environ 2.1:1, navires et
-     ressources cesseraient de s'écarter indéfiniment du plateau, laissant
-     d'énormes vides latéraux. Sans effet sur toutes les résolutions
-     cibles, qui sont en 16:9 ou plus étroites. */
-  --stage-max-w: min(100%, 210cqh);
+  /* Largeur utile maximale (ultrawide) : au-delà de ~2.1:1, la scène se
+     centre au lieu d'écarter indéfiniment navires et colonne de droite. */
+  --stage-max-w: 210cqh;
 
-  /* Respiration de la scène. */
-  --gutter-x: clamp(10px, 2.4cqw, 44px);
-  --gutter-y: clamp(6px, 1.6cqh, 26px);
+  --gutter-x: clamp(8px, 1.4cqw, 36px);
+  --gutter-y: clamp(4px, 1cqh, 16px);
 
-  /* Carte : LE token maître. Tout le reste (largeur des rangs, hauteur des
-     zones, chevauchement de la main) en découle. Borné par la hauteur ET
-     par la largeur disponibles — sur un 21:9 très plat c'est la hauteur qui
-     commande, sur un format étroit c'est la largeur. */
-  --card-h: clamp(72px, min(21cqh, 12cqw), 208px);
+  /* Carte en jeu : LE token maître. Sur l'ancien board, un rang de plateau
+     fait 205/941 de la hauteur et une carte ~190 → ~20cqh.
+     Bornée aussi par la LARGEUR : `--card-h-fit` est la plus grande carte
+     qui laisse tenir, côte à côte, 5 emplacements, les 2 piles de chaque côté
+     (le côté navire a la même largeur que le côté piles, pour centrer le
+     plateau) et les 2 colonnes de droite / gauche — soit 9 largeurs de carte,
+     2 colonnes, 4 gouttières de colonnes et 8 écarts de cartes (dont un
+     d'air entre le plateau et chaque pile). */
+  --card-h-fit: calc(
+    (min(100cqw, var(--stage-max-w)) - 2 * var(--gutter-x) - 2 * var(--rail-w) - 4 * var(--col-gap) - 8 * var(--board-gap)) / 9 * 7 / 5
+  );
+  --card-h: clamp(52px, min(20.5cqh, var(--card-h-fit)), 250px);
   --card-w: calc(var(--card-h) * 5 / 7);
-  --card-radius: clamp(4px, 0.6cqh, 12px);
+  --card-radius: clamp(3px, 0.6cqh, 12px);
 
-  /* Plafond de la bande centrale. Sans lui, TOUT l'espace vertical
-     excédentaire s'accumulait au milieu (mesuré : 392 px de vide en
-     1920×1080) — le "grand espace mort" à éviter. Plafonnée, la bande
-     garde sa place et le reste de l'espace est réparti à parts égales
-     autour des trois rangées (`align-content: space-evenly`). */
-  --center-max: clamp(44px, 13cqh, 190px);
+  /* Rangée de plateau = une carte + une fine respiration. Le navire est
+     calé sur cette hauteur, et sa largeur en découle (cadre en arche ~4:5). */
+  --row-pad: clamp(2px, 0.5cqh, 10px);
+  --row-h: calc(var(--card-h) + 2 * var(--row-pad));
+  --ship-w: calc(var(--row-h) * 0.8);
 
-  /* Espacements. */
-  --board-gap: clamp(4px, 0.9cqw, 20px);
-  --col-gap: clamp(8px, 2cqw, 40px);
-  --row-gap: clamp(4px, 1.2cqh, 20px);
+  /* Pioche / défausse : deux piles exactement à la taille d'une carte en jeu. */
+  --pile-gap: var(--board-gap);
+  --cargo-w: calc(2 * var(--card-w) + var(--pile-gap));
 
-  /* Chevauchement de la main : 0 = rang complètement ouvert. */
-  --hand-overlap: clamp(0px, 1cqw, 14px);
-  /* Marge de sécurité au-dessus de la main, pour la future levée au survol. */
-  --hand-lift: clamp(4px, 1.2cqh, 18px);
+  /* Colonne Tour / Journal / Phase (~9% de la largeur sur l'ancien board). */
+  --rail-w: clamp(60px, 8.6cqw, 220px);
+  --phase-size: clamp(40px, min(11cqh, 6.2cqw), 124px);
 
-  /* Éléments secondaires. */
-  --ship-w: clamp(92px, 15cqw, 280px);
-  --res-w: clamp(74px, 10cqw, 180px);
-  --tide-h: clamp(30px, 7cqh, 86px);
-  --hud-h: clamp(28px, 4.6cqh, 46px);
+  /* Largeur de chaque « côté » du plateau : piles + gouttière + colonne de
+     droite, jamais moins qu'un navire. Symétrique, c'est ce qui centre le
+     plateau (et la Marée) sur l'écran. */
+  --side-w: max(var(--ship-w), calc(var(--cargo-w) + var(--col-gap) + var(--rail-w)));
 
-  /* Typographie des étiquettes de placeholder. */
-  --fs-label: clamp(7px, 1.25cqh, 13px);
-  --fs-value: clamp(10px, 1.9cqh, 20px);
+  /* Bande centrale (Marée) : ~20% de la hauteur, comme un rang de plateau. */
+  --center-h: clamp(28px, 19cqh, 240px);
+
+  /* Main du joueur : cartes à la taille des cartes en jeu, en éventail serré, dont
+     seule la partie haute dépasse du bord bas (`--hand-peek`) : assez pour
+     lire coût, illustration et nom ; le texte de règles se lit au survol. */
+  --hand-card-h: var(--card-h);
+  --hand-card-w: calc(var(--hand-card-h) * 5 / 7);
+  --hand-peek: calc(var(--hand-card-h) * 0.8);
+  --hand-overlap: calc(var(--hand-card-w) * 0.32);
+  --hand-hover-lift: calc(var(--hand-card-h) - var(--hand-peek) + var(--row-gap));
+
+  /* Main adverse : dos de cartes, encore plus petits, à peine sortis du haut. */
+  --opp-card-h: calc(var(--card-h) * 0.78);
+  --opp-card-w: calc(var(--opp-card-h) * 5 / 7);
+  --opp-peek: calc(var(--opp-card-h) * 0.6);
+  --opp-overlap: calc(var(--opp-card-w) * 0.34);
+
+  /* Éventail : rotation par rang d'écart au centre, et creux de l'arc. */
+  --fan-step: 3.5deg;
+  --fan-drop: calc(var(--card-h) * 0.035);
+
+  --board-gap: clamp(3px, 0.8cqw, 20px);
+  --col-gap: clamp(6px, 1.6cqw, 44px);
+  --row-gap: clamp(3px, 0.8cqh, 14px);
+
+  --hud-h: clamp(28px, 4.2cqh, 46px);
+
+  --fs-label: clamp(7px, 1.2cqh, 13px);
+  --fs-value: clamp(9px, 1.9cqh, 22px);
+  --fs-title: clamp(11px, 2.6cqh, 32px);
 
   /* Palette du laboratoire — volontairement neutre : le skin Tidebound
-     viendra plus tard, ces rectangles ne doivent pas chercher à être beaux. */
+     viendra plus tard. Seules les pastilles du navire gardent leur code
+     couleur (rouge coque / bleu Raison), qui porte du sens. */
   --line: rgba(148, 190, 226, 0.28);
   --line-strong: rgba(148, 190, 226, 0.5);
   --fill: rgba(10, 22, 34, 0.62);
   --fill-soft: rgba(14, 30, 46, 0.42);
   --ink: #cfe0f0;
   --ink-dim: rgba(207, 224, 240, 0.6);
+  --accent: #7ee0d0;
 
   display: grid;
-  /* Trois rangées : adversaire en haut, bande centrale (Marée + HUD),
-     joueur en bas. La bande centrale est PLAFONNÉE (`--center-max`) et
-     l'espace vertical restant est réparti à parts égales au-dessus, entre
-     et en dessous des rangées (`align-content: space-evenly`) — la scène
-     reste ainsi équilibrée du 2560×1440 au 740×360, sans grand vide au
-     milieu, et se compacte proprement quand la hauteur manque.
-     Chaque zone est placée EXPLICITEMENT dans sa rangée (`.opponentZone`,
-     `.centerZone`, `.playerZone`, `.hud`) : le HUD partage la rangée
-     centrale avec la Marée, et le placement automatique ne peut donc pas
-     décaler une zone d'une rangée à cause de lui. */
-  grid-template-rows: auto minmax(var(--tide-h), var(--center-max)) auto;
-  align-content: space-evenly;
+  /* La 1re colonne a EXACTEMENT la largeur des deux dernières (piles + colonne
+     de droite) : la colonne du plateau est ainsi centrée sur l'écran, sur le
+     même axe que les deux mains. Le navire se cale à gauche de sa colonne. */
+  grid-template-columns: var(--side-w) minmax(0, 1fr) var(--cargo-w) var(--rail-w);
+  /* Seules les bandes de main et la bande centrale sont élastiques (1fr / 2fr / 1fr) :
+     l'espace vertical en trop se répartit sans jamais créer de grand vide au milieu. */
+  grid-template-rows:
+    minmax(var(--opp-peek), 1fr)
+    var(--row-h)
+    minmax(var(--center-h), 2fr)
+    var(--row-h)
+    minmax(var(--hand-peek), 1fr);
+  column-gap: var(--col-gap);
   row-gap: var(--row-gap);
   padding:
     calc(var(--safe-top) + var(--gutter-y))
-    calc(var(--safe-right) + var(--gutter-x))
+    max(calc(var(--safe-right) + var(--gutter-x)), calc((100cqw - var(--stage-max-w)) / 2))
     calc(var(--safe-bottom) + var(--gutter-y))
-    calc(var(--safe-left) + var(--gutter-x));
+    max(calc(var(--safe-left) + var(--gutter-x)), calc((100cqw - var(--stage-max-w)) / 2));
 }
 
 /* ──────────────────────────────────────────────────────────────
- * ZONES JOUEUR / ADVERSAIRE
- * Même gabarit en trois colonnes, mirroir l'un de l'autre :
- *   adversaire → [navire] [plateau] [ressources]
- *   joueur     → [ressources] [plateau] [navire]
- * Le plateau est la seule colonne élastique ; navire et ressources ont une
- * largeur fluide mais bornée, donc ne mangent jamais le plateau.
+ * CADRES DES RANGÉES — `board-row-frame.webp` (2145×629, feutre inclus).
+ *
+ * Les rangées sont bien plus allongées que l'image (~8:1 contre ~3,4:1) :
+ * l'image est posée en 9 morceaux (`border-image`). Les coins (cordages,
+ * ferrures) gardent leurs proportions ; bords haut/bas en `round` : leurs
+ * rivets, régulièrement espacés, se répètent au lieu de s'ovaliser.
+ *
+ * Mesures dans l'image (px) :
+ *   bande de bois/métal (jusqu'au feutre) : haut 88 · droite 64 · bas 78 · gauche 61
+ *   découpe (ornements compris)        : haut 175 · droite 340 · bas 165 · gauche 320
+ * La bande est posée EN DEHORS de la rangée (`border-image-outset`) : le
+ * feutre coïncide exactement avec la rangée, les cartes ne touchent jamais
+ * le bois. `--frame-unit` = un pixel de l'image à l'écran, calé pour que les
+ * 463 px de feutre de l'image fassent exactement la hauteur de la rangée :
+ * les bords verticaux ne sont donc jamais étirés.
+ * ────────────────────────────────────────────────────────────── */
+.lane {
+  grid-column: 1 / 4;
+  z-index: 0;
+  pointer-events: none;
+  --frame-unit: calc(var(--row-h) / 463);
+  border-style: solid;
+  border-width: 0;
+  border-image-source: url("/assets/board/board-row-frame.webp");
+  border-image-slice: 175 340 165 320 fill;
+  border-image-width: calc(var(--frame-unit) * 175) calc(var(--frame-unit) * 340) calc(var(--frame-unit) * 165)
+    calc(var(--frame-unit) * 320);
+  border-image-outset: calc(var(--frame-unit) * 88) calc(var(--frame-unit) * 64) calc(var(--frame-unit) * 78)
+    calc(var(--frame-unit) * 61);
+  border-image-repeat: round stretch;
+}
+
+.laneOpponent {
+  grid-row: 2;
+}
+
+.lanePlayer {
+  grid-row: 4;
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * ZONES — rangée adverse, bande centrale, rangée du joueur.
+ * `subgrid` : les trois zones partagent EXACTEMENT les colonnes de la
+ * scène, donc navires / tuile, plateaux / piste de Marée et piles restent
+ * alignés verticalement quelle que soit la résolution.
  * ────────────────────────────────────────────────────────────── */
 .zone {
-  grid-column: 1;
+  grid-column: 1 / 4;
   position: relative;
-  width: var(--stage-max-w);
-  justify-self: center;
+  z-index: 1;
   display: grid;
-  /*
-   * Colonnes latérales STRICTEMENT égales (`1fr` de chaque côté) et
-   * plateau au milieu à sa largeur naturelle : c'est ce qui garantit que
-   * les deux plateaux et la Marée partagent le même axe vertical.
-   * Avec des colonnes calées sur `--ship-w` / `--res-w` (largeurs
-   * différentes), le rang adverse se décalait de ~58 px à droite et celui
-   * du joueur d'autant à gauche — un défaut de centrage visible à l'oeil
-   * dès 1920×1080.
-   */
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-columns: subgrid;
   align-items: center;
-  column-gap: var(--col-gap);
   min-width: 0;
-}
-
-/* Navire vers l'extérieur, ressources vers l'intérieur de l'écran, en
-   miroir d'un camp à l'autre. */
-.opponentZone .zoneSlotShip,
-.playerZone .zoneSlotResources {
-  justify-self: start;
-}
-
-.opponentZone .zoneSlotResources,
-.playerZone .zoneSlotShip {
-  justify-self: end;
+  min-height: 0;
 }
 
 .opponentZone {
-  grid-row: 1;
+  grid-row: 2;
+}
+
+.centerZone {
+  grid-row: 3;
 }
 
 .playerZone {
-  grid-row: 3;
-  /* Ligne de plateau, puis la main en dessous sur toute la largeur. */
-  grid-template-rows: auto auto;
-  row-gap: var(--row-gap);
+  grid-row: 4;
 }
 
 .zoneSlotShip,
-.zoneSlotResources,
-.zoneSlotBoard {
+.zoneSlotBoard,
+.zoneSlotCargo {
   min-width: 0;
-  max-width: 100%;
+  min-height: 0;
 }
 
 .zoneSlotShip {
+  grid-column: 1;
+  justify-self: start;
   width: var(--ship-w);
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.zoneSlotResources {
-  width: var(--res-w);
+.zoneSlotBoard {
+  grid-column: 2;
 }
 
-.handSlot {
-  grid-column: 1 / -1;
-  min-width: 0;
+.zoneSlotCargo {
+  grid-column: 3;
 }
 
 /* ──────────────────────────────────────────────────────────────
- * PLATEAU — rang de 5 emplacements.
- * Les emplacements ne s'étirent pas : ils gardent le ratio 5:7 et se
- * centrent. Un emplacement vide reste visible (pointillés) pour juger les
- * espacements à vide comme à plein.
+ * PLATEAU — rang de 5 emplacements centrés dans sa colonne.
  * ────────────────────────────────────────────────────────────── */
 .board {
   position: relative;
@@ -256,8 +366,6 @@
   align-items: center;
   gap: var(--board-gap);
   min-width: 0;
-  /* Réserve la hauteur d'une carte même quand le rang est vide : la
-     composition ne bouge pas selon le nombre de cartes en jeu. */
   min-height: var(--card-h);
 }
 
@@ -266,366 +374,1091 @@
   flex: 0 0 auto;
 }
 
+/* Emplacement vide, creusé dans le feutre. */
 .boardSlotEmpty {
   aspect-ratio: 5 / 7;
-  border: 1px dashed var(--line);
   border-radius: var(--card-radius);
-  background: var(--fill-soft);
+  background: rgba(2, 8, 16, 0.28);
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.45);
+}
+
+/* Carte adverse cachée par la Marée (Structure invisible) : le dos, au format carte. */
+.boardCardBack {
+  display: block;
+  width: 100%;
+  aspect-ratio: 5 / 7;
+  object-fit: cover;
+  border-radius: var(--card-radius);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+/* Dos de carte (main adverse) : l’image réelle, recadrée au 5:7. */
+.cardBack {
+  overflow: hidden;
+  border-radius: var(--card-radius);
+  background: #0c1a2a;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+/* Image qui remplit son parent positionné (cadres, médaillons, tuiles). */
+.fill,
+.fillCover {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+
+.fillCover {
+  object-fit: cover;
 }
 
 /* ──────────────────────────────────────────────────────────────
- * MAIN — rang centré, chevauchement croissant quand la place manque.
- *
- * Chaque carte vit dans un "créneau" (`.handCardSlot`) plus étroit qu'elle :
- * c'est la largeur du créneau qui produit le chevauchement, jamais une
- * marge négative posée sur la carte. Les créneaux sont `flex-shrink`ables
- * et le rang est plafonné à `max-width: 100%` : si la main s'allonge (10,
- * 12 cartes…) ou si l'écran rétrécit, Flexbox resserre les créneaux tout
- * seul et la main ne sort JAMAIS de l'écran. Le dernier créneau, lui, ne
- * se comprime pas — la carte du dessus reste toujours entièrement visible.
+ * NAVIRES — cadre réel (`ship-frame-empty.webp`, 512×640) calé sur la
+ * hauteur de rangée. Arche et plaque : géométrie de
+ * `features/ships/shipFrame.ts` (zone passée en style inline).
  * ────────────────────────────────────────────────────────────── */
-.hand {
+.ship {
   position: relative;
+  height: 100%;
+  aspect-ratio: 512 / 640;
+  max-width: 100%;
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.6));
+}
+
+.shipArt {
+  position: absolute;
+  overflow: hidden;
+}
+
+.shipArt .fill {
+  object-fit: cover;
+}
+
+.shipFrame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Médaillons Ancrage / Raison, centrés sur la plaque (74 % de hauteur,
+   30 % de largeur chacun, espacés de 10 % — comme `ShipInstrumentCluster`). */
+.shipGauges {
+  position: absolute;
+  top: 74%;
+  left: 50%;
+  display: flex;
+  gap: 10%;
+  width: 70%;
+  justify-content: center;
+  transform: translate(-50%, -50%);
+}
+
+.shipGauge {
+  position: relative;
+  width: 43%;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.shipDebt {
+  position: absolute;
+  top: 92%;
+  left: 50%;
+  z-index: 10;
+  transform: translateX(-50%);
+  padding: 0.15em 0.6em;
+  border-radius: 999px;
+  background: rgba(225, 29, 72, 0.85);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  font-size: calc(var(--fs-label) * 0.9);
+  font-weight: 600;
+  white-space: nowrap;
+  color: #ffffff;
+}
+
+.shipGaugeValue {
+  position: relative;
+  font-size: var(--fs-value);
+  font-weight: 700;
+  line-height: 1;
+  color: #ffffff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95);
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * PIOCHE / DÉFAUSSE — deux piles à la taille exacte d'une carte en jeu :
+ * la pioche montre le dos de carte (avec l'épaisseur du paquet), la défausse
+ * un creux dans le feutre marqué du crâne.
+ * ────────────────────────────────────────────────────────────── */
+.cargo {
   display: flex;
   justify-content: center;
-  align-items: flex-end;
+  align-items: center;
+  gap: var(--pile-gap);
+  width: var(--cargo-w);
+  margin-inline: auto;
+}
+
+.cargoDeck,
+.cargoGraveyard {
+  position: relative;
+  flex: 0 0 auto;
+  width: var(--card-w);
+  aspect-ratio: 5 / 7;
+  border-radius: var(--card-radius);
+}
+
+/* Paquet : le dos de carte, et deux tranches décalées dessous pour l'épaisseur. */
+.cargoDeck {
+  box-shadow:
+    2px 2px 0 #0a141e,
+    3px 3px 0 rgba(148, 190, 226, 0.25),
+    5px 5px 0 #0a141e,
+    0 8px 16px rgba(0, 0, 0, 0.55);
+}
+
+.cargoDeck .fillCover {
+  border-radius: var(--card-radius);
+}
+
+.cargoGraveyard {
+  background: rgba(2, 8, 16, 0.4);
+  box-shadow: inset 0 2px 12px rgba(0, 0, 0, 0.55);
+}
+
+.graveyardSkull {
+  position: absolute;
+  top: 44%;
+  left: 50%;
+  width: 42%;
+  transform: translate(-50%, -50%);
+  /* Crâne clair sur fond sombre : `screen` efface son propre fond. */
+  mix-blend-mode: screen;
+  opacity: 0.75;
+  pointer-events: none;
+  user-select: none;
+}
+
+.pileCount {
+  position: absolute;
+  bottom: 8%;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 2ch;
+  padding: 0 0.4em;
+  border-radius: 999px;
+  background: rgba(5, 9, 15, 0.8);
+  font-size: var(--fs-label);
+  font-weight: 700;
+  line-height: 1.5;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  color: #ffffff;
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * MARÉE — tuile de sens (colonne des navires) + piste (colonne plateau).
+ * ────────────────────────────────────────────────────────────── */
+/* Tuile réelle (`m_montante.webp` / `m_desc.webp`, ~1040×1254). */
+/* Deux faces superposées qui se relaient en pivotant (comme `TideOrientationTile`). */
+.tideTileFace {
+  opacity: 0;
+  transform: rotate(6deg) scale(0.9);
+  transition: opacity 700ms ease-out, transform 700ms ease-out;
+}
+
+.tideTileFaceOn {
+  opacity: 1;
+  transform: none;
+}
+
+/* Piste de Marée + consigne ponctuelle en dessous. */
+.centerStack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(4px, 1.2cqh, 14px);
+}
+
+.centerHint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.8em;
+  max-width: 100%;
+  padding: 0.35em 0.5em 0.35em 1em;
+  border: 1px solid rgba(126, 224, 208, 0.45);
+  border-radius: 999px;
+  background: rgba(2, 6, 23, 0.8);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+  font-size: var(--fs-label);
+  color: #e2e8f0;
+}
+
+.centerHintButton {
+  padding: 0.25em 0.8em;
+  border: 1px solid rgba(207, 224, 240, 0.35);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #f1f5f9;
+  font: inherit;
+  cursor: pointer;
+}
+
+.centerHintButton:hover {
+  border-color: var(--accent);
+}
+
+.tideTile {
+  position: relative;
+  height: min(100%, calc(var(--ship-w) * 1.05));
+  aspect-ratio: 1040 / 1254;
+  max-width: 100%;
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.6));
+}
+
+/* Piste de Marée — même dessin que `TideProgressBar` de l'ancien board,
+   en tokens pour tenir jusqu'au mobile. Couleur de chaque repère : `--tide-rgb`. */
+.tide {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  --tide-dot: clamp(9px, 2.1cqh, 22px);
+  --tide-dot-active: clamp(14px, 3.4cqh, 36px);
+  --tide-marker: var(--tide-dot-active);
+}
+
+.tideStep {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(2px, 0.8cqh, 10px);
+}
+
+.tideMarker {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--tide-marker);
+  height: var(--tide-marker);
+}
+
+/* À venir : simple contour éteint. */
+.tideDot {
+  width: var(--tide-dot);
+  height: var(--tide-dot);
+  border: 2px solid rgba(255, 255, 255, 0.75);
+  border-radius: 50%;
+  background: rgba(2, 6, 23, 0.35);
+  box-shadow: 0 0 0 1px rgba(2, 6, 23, 0.35), 0 1px 5px rgba(0, 0, 0, 0.65);
+  transition: all 500ms ease-out;
+}
+
+/* Franchi : petit disque plein, à la couleur de son état. */
+.tideStepPast .tideDot {
+  border: 0;
+  background: rgb(var(--tide-rgb));
+}
+
+/* Courant : grand disque lumineux. */
+.tideStepActive .tideDot {
+  width: var(--tide-dot-active);
+  height: var(--tide-dot-active);
+  border: 0;
+  background: rgb(var(--tide-rgb));
+  box-shadow: 0 0 18px rgba(var(--tide-rgb), 0.9);
+}
+
+.tideName {
+  white-space: nowrap;
+  font-family: var(--font-card-title), Georgia, serif;
+  font-size: calc(var(--fs-label) * 1.1);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95), 0 0 6px rgba(0, 0, 0, 0.9);
+}
+
+.tideStepPast .tideName {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.tideStepActive .tideName {
+  color: rgb(var(--tide-rgb));
+  filter: brightness(1.15);
+}
+
+/* Segment entre deux repères, centré sur la hauteur des repères. */
+.tideSegment {
+  position: relative;
+  flex: 1 1 0;
+  min-width: clamp(12px, 2cqw, 40px);
+  height: clamp(3px, 0.75cqh, 8px);
+  margin: calc((var(--tide-marker) - clamp(3px, 0.75cqh, 8px)) / 2) clamp(4px, 0.8cqw, 12px) 0;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.35);
+  /* Liseré sombre : la piste reste lisible sur la mer claire du Calme comme sur l'écume. */
+  box-shadow: 0 0 0 1px rgba(2, 6, 23, 0.35), 0 1px 5px rgba(0, 0, 0, 0.55);
+}
+
+.tideSegmentFill {
+  display: block;
+  height: 100%;
+  background: #ffffff;
+  transition: width 700ms ease-out;
+}
+
+/* « i » au-dessus du repère courant. */
+.tideInfo {
+  position: absolute;
+  bottom: calc(100% + clamp(3px, 0.6cqh, 8px));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(16px, 2.6cqh, 28px);
+  height: clamp(16px, 2.6cqh, 28px);
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.8);
+  color: #e2e8f0;
+  font-size: clamp(9px, 1.4cqh, 14px);
+  font-weight: 700;
+  line-height: 1;
+  cursor: help;
+}
+
+.tideInfo:hover,
+.tideInfo:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.tideTooltip {
+  position: absolute;
+  bottom: calc(100% + var(--tide-marker));
+  left: 0;
+  z-index: 30;
+  width: min(320px, 90%);
+  padding: clamp(6px, 1.2cqh, 14px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.95);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+
+.tideTooltipTitle {
+  margin: 0;
+  font-family: var(--font-card-title), Georgia, serif;
+  font-size: calc(var(--fs-label) * 1.2);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgb(var(--tide-rgb));
+}
+
+.tideTooltipText {
+  margin: 0.4em 0 0;
+  font-size: var(--fs-label);
+  line-height: 1.35;
+  color: #cbd5e1;
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * MAIN DU JOUEUR — éventail posé sur le bord bas, PAS un rang complet.
+ *
+ * La bande n'a que la hauteur visible (`--hand-peek`) et descend jusqu'au
+ * bord réel de l'écran (marge négative = gouttière + safe area) : le reste
+ * de chaque carte passe sous le bord et est coupé par `.viewport`.
+ *
+ * Chevauchement : chaque carte vit dans un créneau plus étroit qu'elle
+ * (`flex-shrink`able). Si la main s'allonge ou si l'écran rétrécit, Flexbox
+ * resserre les créneaux tout seul ; la main ne déborde jamais sur la
+ * colonne de droite (`max-width` de `.handRow`).
+ * ────────────────────────────────────────────────────────────── */
+.hand {
+  grid-column: 1 / -1;
+  grid-row: 5;
+  align-self: end;
+  position: relative;
+  z-index: 15;
+  height: var(--hand-peek);
+  margin-bottom: calc(-1 * (var(--gutter-y) + var(--safe-bottom)));
+  display: flex;
+  justify-content: center;
   min-width: 0;
-  /* Place réservée à la levée d'une carte au survol (animation future). */
-  padding-top: var(--hand-lift);
-  min-height: calc(var(--card-h) + var(--hand-lift));
+  pointer-events: none;
 }
 
 .handRow {
   display: flex;
   justify-content: center;
-  align-items: flex-end;
-  max-width: 100%;
+  align-items: flex-start;
+  height: 100%;
+  width: 100%;
+  max-width: calc(100% - 2 * (var(--rail-w) + var(--col-gap)));
 }
 
 .handCardSlot {
-  flex: 0 1 calc(var(--card-w) - var(--hand-overlap));
-  min-width: 0;
-  /* La carte déborde vers la droite de son créneau : c'est ce débord qui
-     crée l'empilement, la carte la plus à droite passant au-dessus. */
   position: relative;
+  flex: 0 1 calc(var(--hand-card-w) - var(--hand-overlap));
+  min-width: 0;
+  pointer-events: auto;
 }
 
 .handCardSlot:last-child {
-  flex: 0 0 var(--card-w);
+  flex: 0 0 var(--hand-card-w);
 }
 
 .handCard {
-  width: var(--card-w);
-  transform-origin: bottom center;
-  /* Prêt pour éventail / survol / sélection / drag : la transition est déjà
-     là, seules les valeurs de `transform` restent à animer plus tard. */
+  width: var(--hand-card-w);
+  transform-origin: 50% 100%;
+  transform: translateY(calc(var(--fan-dist) * var(--fan-drop))) rotate(calc(var(--fan-offset) * var(--fan-step)));
   transition: transform 140ms ease-out;
   will-change: transform;
 }
 
+/* Survol : la carte passe devant, se remet à plat et se lève assez pour
+   être lue en entier. (Le `!important` bat le `z-index` inline d'ordre.) */
+.handCardSlot:hover {
+  z-index: 50 !important;
+}
+
+.handCardSlot:hover .handCard {
+  transform: translateY(calc(-1 * var(--hand-hover-lift)));
+}
+
 /* ──────────────────────────────────────────────────────────────
- * CARTE DE PRÉVISUALISATION — ratio 5:7, fond simple, bordure légère.
+ * MAIN ADVERSE — reflet de la main du joueur, sur le bord haut.
  * ────────────────────────────────────────────────────────────── */
-.card {
+.opponentHand {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  align-self: start;
   position: relative;
+  z-index: 5;
+  height: var(--opp-peek);
+  margin-top: calc(-1 * (var(--gutter-y) + var(--safe-top)));
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+  pointer-events: none;
+}
+
+.opponentHandRow {
+  display: flex;
+  justify-content: center;
+  height: 100%;
   width: 100%;
+  max-width: calc(100% - 2 * (var(--rail-w) + var(--col-gap)));
+}
+
+.opponentHandSlot {
+  position: relative;
+  flex: 0 1 calc(var(--opp-card-w) - var(--opp-overlap));
+  min-width: 0;
+  height: 100%;
+}
+
+.opponentHandSlot:last-child {
+  flex: 0 0 var(--opp-card-w);
+}
+
+.opponentHandSlot .cardBack {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: var(--opp-card-w);
   aspect-ratio: 5 / 7;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--card-radius);
-  background: linear-gradient(160deg, rgba(30, 56, 80, 0.9), rgba(12, 24, 38, 0.9));
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+  transform-origin: 50% 0;
+  transform: translateY(calc(-1 * var(--fan-dist) * var(--fan-drop) * 0.8)) rotate(calc(-1 * var(--fan-offset) * var(--fan-step)));
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * COLONNE DE DROITE — Tour, Journal, bouton de phase, dans le cadre
+ * boussole (`side-rail-frame.webp`, 560×1692, feutre inclus).
+ *
+ * La colonne est plus élancée que l'image (~4,5:1 contre ~3:1) : l'image est
+ * posée en 3 bandes verticales (`border-image`, sans tranche latérale).
+ *   haut 604 px  — boussole, ferrures et cordages du haut : fixe ;
+ *   bas  748 px  — cordages du bas, plaques et arrondi : fixe ;
+ *   milieu       — bois lisse et feutre : seule partie étirée.
+ * `--rail-unit` = un pixel de l'image à l'écran, calé sur la LARGEUR de la
+ * colonne : l'image n'est jamais déformée en largeur.
+ * Feutre (px de l'image) : de 90 à 471 en largeur, de 236 à 1593 en hauteur.
+ * ────────────────────────────────────────────────────────────── */
+.rail {
+  grid-column: 4;
+  grid-row: 2 / 5;
+  position: relative;
+  z-index: 20;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 2px;
-  overflow: hidden;
+  gap: clamp(3px, 1cqh, 14px);
+  min-height: 0;
+  margin-top: calc(var(--row-h) * 0.3);
+  margin-bottom: calc(var(--row-h) * 0.15);
+  --rail-unit: calc(var(--rail-w) / 560);
+  /* Contenu posé sur le feutre : sous la boussole, entre les bois, au-dessus de l'arrondi. */
+  padding: calc(var(--rail-unit) * 250) calc(var(--rail-unit) * 96) calc(var(--rail-unit) * 110);
+  border-style: solid;
+  border-width: 0;
+  border-image-source: url("/assets/board/side-rail-frame.webp");
+  border-image-slice: 604 0 748 0 fill;
+  border-image-width: calc(var(--rail-unit) * 604) 0 calc(var(--rail-unit) * 748) 0;
+  border-image-repeat: stretch;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.55));
 }
 
-.cardIndex {
-  font-size: var(--fs-value);
-  font-weight: 600;
-  line-height: 1;
+.railTurn {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  /* Tient dans la largeur du feutre (~68 % de la colonne). */
+  font-family: var(--font-card-title), Georgia, serif;
+  font-size: min(var(--fs-title), calc(var(--rail-w) * 0.13));
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.1;
+  text-transform: uppercase;
+  white-space: nowrap;
   color: var(--ink);
 }
 
-.cardLabel {
-  font-size: var(--fs-label);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-dim);
-}
-
-/* ──────────────────────────────────────────────────────────────
- * NAVIRES
- * ────────────────────────────────────────────────────────────── */
-.ship {
-  position: relative;
-  width: 100%;
-  max-width: var(--ship-w);
-  aspect-ratio: 16 / 9;
-  /* Ne dépasse jamais la hauteur d'un rang de cartes : le navire reste un
-     compagnon du plateau, pas un élément qui impose sa propre hauteur. */
-  max-height: var(--card-h);
-  border: 1px solid var(--line);
-  border-radius: calc(var(--card-radius) * 1.2);
-  background: var(--fill);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: clamp(2px, 0.6cqh, 8px);
-  padding: clamp(2px, 0.8cqh, 10px);
-  text-align: center;
-}
-
-.shipName {
+/* À qui de jouer, discret, sous le numéro de tour. */
+.railTurnOwner {
+  margin-top: calc(-1 * clamp(2px, 0.6cqh, 10px));
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: var(--fs-label);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ink-dim);
-}
-
-.shipHull {
-  font-size: var(--fs-value);
-  font-weight: 600;
-  line-height: 1;
-  color: var(--ink);
-}
-
-.shipBar {
-  width: 78%;
-  height: clamp(3px, 0.7cqh, 8px);
-  border-radius: 999px;
-  background: rgba(148, 190, 226, 0.18);
-  overflow: hidden;
-}
-
-.shipBarFill {
-  height: 100%;
-  border-radius: 999px;
-  background: linear-gradient(90deg, #3ea6ff, #7ee0d0);
-}
-
-/* ──────────────────────────────────────────────────────────────
- * RESSOURCES — pastilles compactes (Marée, deck, cimetière, main).
- * ────────────────────────────────────────────────────────────── */
-.resources {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: clamp(2px, 0.6cqh, 8px);
-  width: 100%;
-  max-width: var(--res-w);
-}
-
-.resourceRow {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 6px;
-  padding: clamp(1px, 0.5cqh, 6px) clamp(4px, 0.6cqw, 10px);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--fill);
-  /* Affichage seul, jamais une cible tactile : son plancher peut descendre
-     sous les 36px imposés aux contrôles du HUD (`--hud-h`), mais jamais
-     au-delà du tiers d'une carte, pour rester lisible. */
-  min-height: min(var(--hud-h), calc(var(--card-h) / 3.2));
-}
-
-.resourceLabel {
-  font-size: var(--fs-label);
+  font-family: var(--font-card-title), Georgia, serif;
+  font-size: min(var(--fs-label), calc(var(--rail-w) * 0.075));
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--ink-dim);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  color: rgba(226, 232, 240, 0.6);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
 }
 
-.resourceValue {
-  font-size: var(--fs-value);
-  font-weight: 600;
-  line-height: 1;
-  color: var(--ink);
+.railTurnOwnerViewer {
+  color: var(--accent);
 }
 
-/* ──────────────────────────────────────────────────────────────
- * CENTRE / MARÉE
- * ────────────────────────────────────────────────────────────── */
-.centerZone {
-  grid-row: 2;
-  grid-column: 1;
-  width: var(--stage-max-w);
-  justify-self: center;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: var(--tide-h);
-  min-width: 0;
-}
-
-.tide {
-  display: flex;
-  align-items: center;
-  gap: clamp(6px, 1.4cqw, 20px);
-  padding: clamp(2px, 0.7cqh, 10px) clamp(8px, 1.6cqw, 24px);
-  border: 1px solid var(--line-strong);
-  border-radius: 999px;
-  background: var(--fill);
-  max-width: 100%;
-}
-
-.tideArrow {
-  font-size: var(--fs-value);
-  line-height: 1;
-  color: #7ee0d0;
-}
-
-.tideName {
-  font-size: var(--fs-label);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--ink);
-  white-space: nowrap;
-}
-
-.tideTrack {
-  display: flex;
-  gap: clamp(3px, 0.5cqw, 7px);
-}
-
-.tideStep {
-  width: clamp(6px, 1cqw, 14px);
-  height: clamp(6px, 1cqw, 14px);
-  border-radius: 999px;
-  border: 1px solid var(--line-strong);
-}
-
-.tideStepActive {
-  background: #7ee0d0;
-  box-shadow: 0 0 8px rgba(126, 224, 208, 0.7);
-}
-
-/* ──────────────────────────────────────────────────────────────
- * HUD — au-dessus du gameplay, respecte la safe area, laisse passer les
- * clics partout sauf sur ses propres contrôles.
- * ────────────────────────────────────────────────────────────── */
-/*
- * Le calque HUD occupe la MÊME cellule de grille que la bande centrale
- * (rangée 2) plutôt que tout l'écran en `position: absolute`.
- *
- * Pourquoi : le centre géométrique de l'écran n'est pas le centre de la
- * bande libre — le camp du joueur est plus haut que celui de l'adversaire
- * (il porte la main). Un HUD centré sur l'écran mordait donc sur les
- * ressources et le navire du joueur en mobile paysage (mesuré : 9 px de
- * recouvrement en 740×360). Posé sur la rangée centrale, il est centré sur
- * la seule région réellement libre, à toutes les résolutions.
- *
- * Il hérite au passage du padding de la scène, donc de la safe area : un
- * contrôle ne peut pas se retrouver derrière une encoche latérale.
- *
- * Pour un futur élément de HUD ancré dans un COIN d'écran, ajouter un
- * second calque `position: absolute; inset: 0` (z-index 20) plutôt que de
- * sortir celui-ci de sa rangée.
- */
-.hud {
-  grid-row: 2;
-  grid-column: 1;
-  /* Comme toute zone portant `data-zone` : sert de repère à l'étiquette de
-     debug (`[data-zone]::after`), qui se calerait sinon sur `.stage` et se
-     superposerait à celle de la zone adverse. */
-  position: relative;
-  width: var(--stage-max-w);
-  justify-self: center;
-  z-index: 20;
-  pointer-events: none;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--col-gap);
-  min-width: 0;
-}
-
-/*
- * Les grappes de HUD sont ancrées aux bords GAUCHE et DROIT, centrées
- * verticalement : elles tombent donc dans la bande centrale (la seule
- * région structurellement libre de la scène, la Marée étant centrée) et ne
- * recouvrent jamais un navire, un plateau ou la main. Les coins, eux,
- * restent disponibles pour le gameplay.
- */
-.hudLeft,
-.hudRight {
-  min-width: 0;
-}
-
-.hudGroup {
+.journal {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: clamp(4px, 0.8cqh, 10px);
-  pointer-events: auto;
+  gap: clamp(2px, 0.6cqh, 8px);
+  padding: clamp(2px, 0.5cqh, 8px) clamp(2px, 0.3cqw, 6px);
+  /* Posé directement sur le feutre du cadre, à peine assombri pour le texte. */
+  border-radius: var(--card-radius);
+  background: rgba(4, 9, 15, 0.28);
+  overflow: hidden;
 }
 
-.hudGroupRight {
-  align-items: flex-end;
-}
-
-.hudButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  /* 44px est la cible tactile de référence : on ne descend jamais en
-     dessous, même en mobile paysage (cf. mode MOBILE plus bas). */
-  min-height: var(--hud-h);
-  min-width: var(--hud-h);
-  padding: 0 clamp(8px, 1.2cqw, 18px);
-  border: 1px solid var(--line-strong);
-  border-radius: 999px;
-  background: var(--fill);
-  color: var(--ink);
+.journalTitle {
+  font-family: var(--font-card-title), Georgia, serif;
   font-size: var(--fs-label);
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  white-space: nowrap;
+  color: var(--ink-dim);
+}
+
+.journalList {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(2px, 0.6cqh, 8px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow: hidden;
+}
+
+.journalEntry {
+  font-size: clamp(7px, calc(var(--rail-w) * 0.07), var(--fs-label));
+  line-height: 1.3;
+  color: var(--ink);
+}
+
+/* Même assemblage que `PhaseActionButton` : cadre laiton + icône à 70 %. */
+.phaseButton {
+  position: relative;
+  flex: 0 0 auto;
+  width: min(var(--phase-size), calc(var(--rail-w) * 0.74));
+  height: min(var(--phase-size), calc(var(--rail-w) * 0.74));
+  padding: 0;
+  border: 0;
+  background: none;
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.6));
   cursor: pointer;
 }
 
-.hudButton:hover {
-  border-color: #7ee0d0;
-  color: #ffffff;
+.phaseIcon {
+  position: absolute;
+  inset: 15%;
+  width: 70%;
+  height: 70%;
+  border-radius: 50%;
+  pointer-events: none;
+  user-select: none;
+  transition: transform 140ms ease-out;
 }
 
-.hudButtonPrimary {
-  background: linear-gradient(180deg, rgba(62, 166, 255, 0.28), rgba(62, 166, 255, 0.12));
-  border-color: rgba(126, 224, 208, 0.75);
+.phaseButton:hover:not(:disabled) .phaseIcon {
+  transform: scale(1.1);
 }
 
+.phaseButton:disabled {
+  cursor: default;
+}
+
+.phaseButton:disabled .phaseIcon {
+  opacity: 0.6;
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * HUD d'angle — Menu (haut droite), étiquette du joueur (bas droite).
+ * ────────────────────────────────────────────────────────────── */
+.hudCornerTop,
+.hudCornerBottom {
+  grid-column: 4;
+  position: relative;
+  z-index: 20;
+  justify-self: end;
+  min-width: 0;
+}
+
+.hudCornerTop {
+  grid-row: 1;
+  align-self: start;
+}
+
+.hudCornerBottom {
+  grid-row: 5;
+  align-self: end;
+}
+
+/* Bouton Menu : même cadre de laiton que le bouton de phase
+   (`phase-buttons/frame.webp`), trois barres gravées au centre. */
+.hudButton {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--hud-h) * 1.15);
+  height: calc(var(--hud-h) * 1.15);
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.6));
+  cursor: pointer;
+}
+
+.menuGlyph {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 36%;
+  height: 28%;
+  transition: transform 140ms ease-out;
+}
+
+.menuGlyph span {
+  display: block;
+  height: 18%;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fbe3bd, #c68a4c);
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.7);
+}
+
+.hudButton:hover .menuGlyph {
+  transform: scale(1.12);
+}
+
+/* Étiquette du joueur : plaque de bois cerclée de laiton, police des cartes. */
 .hudChip {
   display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-  padding: clamp(2px, 0.5cqh, 6px) clamp(6px, 1cqw, 14px);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--fill);
+  align-items: center;
+  padding: clamp(2px, 0.5cqh, 6px) clamp(8px, 1cqw, 16px);
+  border: 1px solid #b87a3e;
+  border-radius: calc(var(--card-radius) * 0.8);
+  background: linear-gradient(180deg, #4a2e18 0%, #2c1a0d 100%);
+  box-shadow: inset 0 1px 0 rgba(233, 183, 122, 0.35), 0 2px 8px rgba(0, 0, 0, 0.6);
+  font-family: var(--font-card-title), Georgia, serif;
   font-size: var(--fs-label);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-dim);
-  pointer-events: auto;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  color: #f1dcb8;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 }
 
-.hudChipValue {
-  font-size: var(--fs-value);
-  font-weight: 600;
-  color: var(--ink);
+/* ──────────────────────────────────────────────────────────────
+ * GESTES — poser (main → plateau) et cibler (unité → cible adverse).
+ * Logique : `useTableGestures` ; ici seulement les retours visuels.
+ *
+ * Les surbrillances passent par `filter: drop-shadow` et non
+ * `box-shadow` : l'ombre suit le contour réel de l'image (coins arrondis
+ * du cadre de carte, arche du Navire) au lieu de dessiner un rectangle.
+ * ────────────────────────────────────────────────────────────── */
+.tableCard {
+  position: relative;
+  /* Le geste doit rester à nous : ni défilement ni zoom au doigt. */
+  touch-action: none;
+  transition: transform 140ms ease-out, opacity 140ms ease-out, filter 140ms ease-out;
+}
+
+/* `CardTile` est un <button> désactivé quand il n'a pas d'`onClick` : un
+   bouton désactivé avale les événements pointeur. C'est l'enveloppe qui
+   les reçoit. */
+.tableCard button,
+.dragGhost button {
+  pointer-events: none;
+}
+
+.handGrab,
+.boardGrab {
+  cursor: grab;
+}
+
+/* Équipement tiré de la main vers son porteur : il se lève, turquoise. */
+.castSource {
+  transform: translateY(-12%);
+  filter: drop-shadow(0 0 2px #ccfbf1) drop-shadow(0 0 16px rgba(126, 224, 208, 0.9));
+}
+
+/* Unité qui peut attaquer : liseré rouge discret, comme l'ancien board en Phase de combat. */
+.attacker {
+  cursor: grab;
+  filter: drop-shadow(0 0 1px rgba(248, 113, 113, 0.9)) drop-shadow(0 0 8px rgba(239, 68, 68, 0.45));
+}
+
+.attacker:hover {
+  filter: drop-shadow(0 0 2px rgba(254, 202, 202, 1)) drop-shadow(0 0 14px rgba(239, 68, 68, 0.75));
+}
+
+.aimSource,
+.aimSource:hover {
+  transform: translateY(-5%);
+  filter: drop-shadow(0 0 2px #fecaca) drop-shadow(0 0 18px rgba(239, 68, 68, 0.95));
+}
+
+/* Carte en main en cours de pose : reste en place, en fantôme. */
+.dragSource {
+  opacity: 0.3;
+  filter: grayscale(0.5);
+}
+
+/* Pendant un glisser, la main ne se lève plus au survol. */
+.handDragging .handCardSlot:hover .handCard {
+  transform: translateY(calc(var(--fan-dist) * var(--fan-drop))) rotate(calc(var(--fan-offset) * var(--fan-step)));
+}
+
+/* Cibles valides pendant un ciblage : pulsation ; survolée : franche.
+   Couleur portée par `--target-rgb` : rouge pour une attaque, turquoise
+   pour un effet (`.effectTone`, porteurs d'un Équipement). */
+.targetable {
+  --target-rgb: 239, 68, 68;
+  animation: targetPulse 1.1s ease-in-out infinite;
+}
+
+.effectTone {
+  --target-rgb: 126, 224, 208;
+}
+
+.targetHover {
+  animation: none;
+  transform: scale(1.04);
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.85)) drop-shadow(0 0 22px rgba(var(--target-rgb, 239, 68, 68), 1));
+}
+
+@keyframes targetPulse {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 1px rgba(var(--target-rgb), 0.7)) drop-shadow(0 0 4px rgba(var(--target-rgb), 0.3));
+  }
+  50% {
+    filter: drop-shadow(0 0 2px rgba(var(--target-rgb), 0.95)) drop-shadow(0 0 14px rgba(var(--target-rgb), 0.7));
+  }
+}
+
+/* Enveloppe du Navire adverse : garde la hauteur de la cellule. */
+.shipTarget {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 140ms ease-out, filter 140ms ease-out;
+}
+
+/* Plateau pendant une pose : il se signale, et le prochain emplacement libre s'allume. */
+.boardDropReady {
+  border-radius: var(--card-radius);
+  outline: 1px solid rgba(126, 224, 208, 0.35);
+  outline-offset: var(--row-pad);
+}
+
+.boardDropOver {
+  outline: 2px solid var(--accent);
+  background: rgba(126, 224, 208, 0.07);
+}
+
+.boardSlotNext {
+  box-shadow: inset 0 0 0 2px var(--accent), inset 0 0 18px rgba(126, 224, 208, 0.3);
+  background: rgba(126, 224, 208, 0.12);
+  animation: slotPulse 1s ease-in-out infinite;
+}
+
+.boardDropOver .boardSlotNext {
+  animation: none;
+  background: rgba(126, 224, 208, 0.28);
+}
+
+@keyframes slotPulse {
+  50% {
+    background: rgba(126, 224, 208, 0.24);
+  }
+}
+
+/* Crâne du joueur pendant qu'une carte du plateau est prise : zone de Sabordage. */
+.graveyardReady {
+  box-shadow: inset 0 0 0 1px rgba(203, 213, 225, 0.55), 0 0 12px rgba(203, 213, 225, 0.25);
+  transition: box-shadow 140ms ease-out, background 140ms ease-out;
+}
+
+.graveyardOver {
+  background: rgba(15, 23, 42, 0.55);
+  box-shadow: inset 0 0 0 2px #e2e8f0, 0 0 22px rgba(226, 232, 240, 0.6);
+}
+
+/* Lien Équipement ↔ porteur (`EquipLinks`), sous les cartes. */
+.equipLinks {
+  position: fixed;
+  inset: 0;
+  z-index: 12;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.equipLinkShadow {
+  fill: none;
+  stroke: rgba(2, 6, 23, 0.55);
+  stroke-width: 4;
+}
+
+.equipLink {
+  fill: none;
+  stroke: rgba(126, 224, 208, 0.85);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+/* Carte agrandie (`CardZoom`) : lecture au doigt. */
+.cardZoom {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(2, 6, 23, 0.72);
+  backdrop-filter: blur(2px);
+  touch-action: none;
+  animation: cardZoomFade 140ms ease-out;
+}
+
+.cardZoomCard {
+  /* Aussi grande que l'écran le permet, au ratio 5:7. */
+  width: min(calc(88cqh * 5 / 7), 82cqw);
+  filter: drop-shadow(0 24px 40px rgba(0, 0, 0, 0.7));
+  animation: cardZoomIn 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.cardZoomCard button {
+  pointer-events: none;
+}
+
+@keyframes cardZoomFade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes cardZoomIn {
+  from {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * MOUVEMENTS (`useCardMotion`, `MotionLayer`, `attackMotion`).
+ * ────────────────────────────────────────────────────────────── */
+/* Carte présente dans l'état mais encore en vol : elle garde sa place. */
+.motionHidden {
+  visibility: hidden;
+}
+
+.motionLayer {
+  position: fixed;
+  inset: 0;
+  z-index: 44;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.flyingCard {
+  position: fixed;
+  aspect-ratio: 5 / 7;
+  transform-origin: 50% 50%;
+  filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.6));
+}
+
+.flyingCard button {
+  pointer-events: none;
+}
+
+.flyingBack {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--card-radius);
+  border: 1px solid rgba(71, 85, 105, 0.9);
+}
+
+/* Choc d'une attaque — flash et dégâts de l'ancien `AttackImpactLayer`. */
+.fxFlash {
+  position: fixed;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.95) 0%, rgba(255, 241, 214, 0.7) 35%, rgba(239, 68, 68, 0) 72%);
+  animation: fxFlash 380ms ease-in forwards;
+}
+
+@keyframes fxFlash {
+  from {
+    transform: translate(-50%, -50%) scale(0.3);
+    opacity: 0.95;
+  }
+  to {
+    transform: translate(-50%, -50%) scale(1.3);
+    opacity: 0;
+  }
+}
+
+.fxDamage {
+  position: fixed;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+  color: #fb7185;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9), 0 0 10px rgba(244, 63, 94, 0.6);
+  transform: translate(-50%, -50%);
+  animation: fxDamage 900ms cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
+}
+
+@keyframes fxDamage {
+  0% {
+    transform: translate(-50%, -50%) scale(1.6);
+    opacity: 1;
+  }
+  25% {
+    transform: translate(-50%, calc(-50% + var(--rise) * 0.3)) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, calc(-50% + var(--rise))) scale(1);
+    opacity: 0;
+  }
+}
+
+/* Pioche du joueur : se touche pour piocher. */
+.cargoDeckButton {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  transition: filter 140ms ease-out, transform 140ms ease-out;
+}
+
+.cargoDeckButton:hover:not(:disabled) {
+  filter: brightness(1.15) drop-shadow(0 0 8px rgba(126, 224, 208, 0.6));
+  transform: translateY(-2%);
+}
+
+.cargoDeckButton:disabled {
+  cursor: default;
+}
+
+/* Couche de glisser (`DragLayer`) : au-dessus de tout, jamais cliquable. */
+.dragGhost {
+  position: fixed;
+  z-index: 45;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(1.08) rotate(-2deg);
+  filter: drop-shadow(0 18px 22px rgba(0, 0, 0, 0.65));
+}
+
+.aimLayer {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.tone_attack {
+  --aim-rgb: 248, 113, 113;
+}
+
+.tone_effect {
+  --aim-rgb: 126, 224, 208;
+}
+
+.tone_sabotage {
+  --aim-rgb: 203, 213, 225;
+}
+
+.aimLineShadow {
+  stroke: rgba(2, 6, 23, 0.5);
+  stroke-width: 4.5;
+}
+
+.aimLine {
+  stroke: rgba(var(--aim-rgb), 0.92);
+  stroke-width: 2;
+  stroke-dasharray: 12 6;
+}
+
+.aimReticle {
+  fill: rgba(2, 6, 23, 0.35);
+  stroke: rgba(var(--aim-rgb), 0.95);
+  stroke-width: 2;
+}
+
+.aimDot {
+  fill: rgba(254, 202, 202, 0.95);
 }
 
 /* ──────────────────────────────────────────────────────────────
@@ -663,38 +1496,25 @@
   pointer-events: none;
 }
 
-/* Préfixés par `.viewport` : les CSS Modules refusent un sélecteur
-   "impur" (sans classe locale), et ça limite au passage ces couleurs au
-   seul laboratoire. */
-/* Le HUD partage sa rangée avec la bande centrale : son étiquette part à
-   droite, sinon les deux se superposent exactement au même coin. */
-.viewport[data-debug-zones="true"] [data-zone="HudLayer"]::after {
+/* Les plateaux partagent leur coin haut gauche avec leur zone : étiquette à droite. */
+.viewport[data-debug-zones="true"] [data-zone$="Board"]::after {
   left: auto;
   right: 0;
 }
 
+.viewport [data-zone="OpponentHand"] { --zone-color: #fb7185; }
 .viewport [data-zone="OpponentZone"] { --zone-color: #f97316; }
 .viewport [data-zone="OpponentBoard"] { --zone-color: #fbbf24; }
 .viewport [data-zone="CenterZone"] { --zone-color: #7ee0d0; }
 .viewport [data-zone="PlayerBoard"] { --zone-color: #4ade80; }
 .viewport [data-zone="PlayerZone"] { --zone-color: #3ea6ff; }
 .viewport [data-zone="PlayerHand"] { --zone-color: #c084fc; }
-.viewport [data-zone="HudLayer"] { --zone-color: #f472b6; }
+.viewport [data-zone="SideRail"] { --zone-color: #f472b6; }
 
-/*
- * Barre de debug : UNE ligne, en haut au centre, translucide.
- * Elle est volontairement minuscule — un panneau en bloc masquait le
- * plateau adverse, c'est-à-dire précisément ce qu'on veut observer.
- * Repliable en une pastille quand elle gêne quand même.
- */
 .debug {
   position: absolute;
   z-index: 40;
   top: calc(env(safe-area-inset-top, 0px) + 4px);
-  /* `left: 0; right: 0` + marges auto plutôt que `left: 50%` + translation :
-     avec `left: 50%`, la largeur disponible d'un élément absolu tombe à la
-     moitié de l'écran, et la barre se repliait sur deux lignes en mobile
-     paysage, masquant le plateau adverse. */
   left: calc(env(safe-area-inset-left, 0px) + 8px);
   right: calc(env(safe-area-inset-right, 0px) + 8px);
   width: fit-content;
@@ -757,78 +1577,57 @@
 
 /* ══════════════════════════════════════════════════════════════
  * MODE 1 — MOBILE PAYSAGE (932×430 … 740×360, et fenêtres étroites).
- * Priorité absolue au gameplay : marges rognées, éléments secondaires
- * réduits, chevauchement de la main augmenté. Aucune zone de gameplay
- * n'est supprimée ; les cibles tactiles restent ≥ 36px.
+ * Même composition, tokens resserrés. Les cibles tactiles restent ≥ 36px.
  * ══════════════════════════════════════════════════════════════ */
 @media (max-height: 520px), (max-width: 820px) {
   .stage {
     --bp: "mobile-landscape";
-    --gutter-x: clamp(6px, 1.6cqw, 16px);
-    --gutter-y: clamp(4px, 1cqh, 10px);
-    --card-h: clamp(56px, min(24cqh, 11cqw), 120px);
-    --board-gap: clamp(3px, 0.7cqw, 8px);
-    --col-gap: clamp(6px, 1.4cqw, 16px);
-    --row-gap: clamp(3px, 0.8cqh, 8px);
-    --hand-overlap: clamp(4px, 1.8cqw, 16px);
-    --hand-lift: clamp(2px, 0.8cqh, 8px);
-    --ship-w: clamp(74px, 13cqw, 130px);
-    --res-w: clamp(58px, 9cqw, 96px);
-    --tide-h: clamp(22px, 6cqh, 34px);
-    /* Le HUD ne rétrécit PAS autant que le reste : c'est ce qu'on touche.
-       36px est le plancher tactile, tenu même en 740×360. */
+    --gutter-x: clamp(6px, 1.4cqw, 14px);
+    --gutter-y: clamp(3px, 0.8cqh, 8px);
+    --card-h: clamp(40px, min(21cqh, var(--card-h-fit)), 120px);
+    --row-pad: clamp(1px, 0.5cqh, 4px);
+    --center-h: clamp(30px, 17cqh, 80px);
+    --hand-peek: calc(var(--hand-card-h) * 0.62);
+    --opp-peek: calc(var(--opp-card-h) * 0.45);
+    --board-gap: clamp(3px, 0.6cqw, 8px);
+    --col-gap: clamp(4px, 1.2cqw, 14px);
+    --row-gap: clamp(2px, 0.6cqh, 6px);
+    --rail-w: clamp(60px, 9cqw, 96px);
+    --phase-size: clamp(40px, 13cqh, 56px);
     --hud-h: clamp(36px, 8cqh, 40px);
     --fs-label: clamp(7px, 2cqh, 10px);
     --fs-value: clamp(9px, 3cqh, 14px);
+    --fs-title: clamp(10px, 3.4cqh, 16px);
   }
 
-  /* La bande centrale est basse en mobile paysage : les grappes de HUD
-     passent en ligne plutôt qu'en colonne, sinon elles débordent sur le
-     navire et les ressources du joueur (vérifié en 932×430 → 740×360). */
-  .hudGroup {
-    flex-direction: row;
-    align-items: center;
-  }
-
-  /* Décoratif uniquement (jauge de coque, piste de Marée) : masqué pour
-     rendre la place au gameplay. La valeur chiffrée, elle, reste. */
-  .shipBar,
-  .tideTrack {
+  /* Pas la place d’un titre de journal : les entrées, elles, restent. */
+  .journalTitle {
     display: none;
   }
 }
 
 /* ══════════════════════════════════════════════════════════════
  * MODE 3 — DESKTOP LARGE (1920×1080 et au-delà).
- * Les cartes respirent, la main s'ouvre complètement, les zones
- * s'écartent. Rien ne change structurellement.
+ * Les cartes respirent, les zones s'écartent. Rien ne change
+ * structurellement.
  * ══════════════════════════════════════════════════════════════ */
 @media (min-width: 1900px) and (min-height: 1000px) {
   .stage {
     --bp: "desktop-large";
-    --gutter-x: clamp(28px, 3.2cqw, 90px);
-    --gutter-y: clamp(18px, 2.4cqh, 56px);
-    --card-h: clamp(160px, min(21cqh, 12cqw), 240px);
-    --board-gap: clamp(14px, 1.2cqw, 28px);
-    --col-gap: clamp(28px, 2.6cqw, 64px);
-    --row-gap: clamp(14px, 1.6cqh, 30px);
-    /* Grand écran : rang de main complètement ouvert, aucun chevauchement. */
-    --hand-overlap: 0px;
-    --hand-lift: clamp(14px, 1.6cqh, 28px);
-    --ship-w: clamp(220px, 15cqw, 340px);
-    --res-w: clamp(150px, 9cqw, 210px);
-    --tide-h: clamp(64px, 7cqh, 100px);
+    --gutter-x: clamp(20px, 1.6cqw, 72px);
+    --gutter-y: clamp(10px, 1.2cqh, 30px);
+    --card-h: clamp(120px, min(20.5cqh, var(--card-h-fit)), 290px);
+    --board-gap: clamp(10px, 0.8cqw, 24px);
+    --col-gap: clamp(18px, 1.4cqw, 48px);
+    --row-gap: clamp(8px, 1cqh, 20px);
     --hud-h: clamp(40px, 3.6cqh, 52px);
   }
 }
 
 /*
- * Garde-fou "format étroit" — PAS un quatrième mode.
- * Le jeu vise le paysage ; en portrait ou dans une fenêtre très étroite
- * (< 560px), les deux grappes de HUD et la Marée se disputent la même
- * ligne. On retire alors les compteurs secondaires (Tour, Main) : les
- * deux contrôles réellement nécessaires — Menu et bouton de phase —
- * restent accessibles et à taille tactile.
+ * Garde-fou "format étroit" — PAS un quatrième mode. Le jeu vise le
+ * paysage ; en portrait l'étiquette du joueur est retirée, Menu et bouton
+ * de phase restent accessibles.
  */
 @media (max-width: 560px) {
   .hudChip {
@@ -837,7 +1636,22 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .handCard {
+  .handCard,
+  .tableCard {
+    transition: none;
+  }
+
+  .targetable,
+  .boardSlotNext,
+  .cardZoom,
+  .cardZoomCard,
+  .fxFlash,
+  .fxDamage {
+    animation: none;
+  }
+
+  .backgroundTide,
+  .tideTileFace {
     transition: none;
   }
 }

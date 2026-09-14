@@ -10,17 +10,19 @@ import styles from "@/features/board-preview/BoardPreview.module.css";
  * PAS un canevas figé mis à l'échelle (contrairement à
  * `features/match/BoardStage.tsx` et son `transform: scale()` global) :
  * elle occupe tout l'espace sûr disponible et se ré-agence zone par zone.
- * Trois rangées seulement :
+ * La composition reprend les placements de l'ancien board (`MatchBoard`,
+ * repère 1672×941) sur une grille 4 colonnes × 5 rangées :
  *
- *   adversaire   auto                          → navire, plateau, ressources
- *   centre       minmax(--tide-h, --center-max) → Marée + HUD (superposés)
- *   joueur       auto                          → plateau, navire, ressources, main
+ *                 navires   plateau          piles    colonne
+ *   main adverse  ─────── éventail (dos) ───────      Menu
+ *   adversaire    navire    5 emplacements   pioche·défausse │ Tour
+ *   centre        tuile     piste de Marée   —               │ Journal
+ *   joueur        navire    5 emplacements   pioche·défausse │ Phase
+ *   main          ─────── éventail ───────────────    joueur
  *
- * La bande centrale étant plafonnée, l'espace vertical restant est réparti
- * à parts égales autour des trois rangées (`align-content: space-evenly`) :
- * les camps ne sont donc PAS collés aux bords, ils sont insérés avec une
- * marge égale à celle qui les sépare de la Marée (~127px en 2560×1440,
- * ~15px en 740×360). C'est ce qui évite le grand vide central.
+ * Seules les bandes de main (`1fr`) et la bande centrale (`2fr`) sont
+ * élastiques : l'espace en trop se répartit entre elles, sans grand vide au
+ * milieu du plateau.
  *
  * Le padding de la scène intègre `env(safe-area-inset-*)` : le gameplay
  * reste toujours dans la zone sûre, même si le décor, lui, peut être

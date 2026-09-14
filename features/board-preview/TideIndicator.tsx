@@ -1,3 +1,7 @@
+"use client";
+
+import { Fragment, useState, type CSSProperties } from "react";
+import type { TideStateName } from "@/game";
 import styles from "@/features/board-preview/BoardPreview.module.css";
 import type { PreviewTideModel } from "@/features/board-preview/previewFixtures";
 
@@ -5,25 +9,90 @@ interface TideIndicatorProps {
   tide: PreviewTideModel;
 }
 
+/** Couleur de chaque état — mêmes teintes que `TideProgressBar` (sky / cyan / amber / fuchsia). */
+const TIDE_COLOR: Record<TideStateName, string> = {
+  calme: "56, 189, 248",
+  houle: "34, 211, 238",
+  tempete: "251, 191, 36",
+  abysses: "232, 121, 249",
+};
+
+/** Rappel du malus de chaque état — repris de `TideProgressBar` (README "Malus globaux des Marées"). */
+const TIDE_EFFECT: Record<TideStateName, string> = {
+  calme: "Aucun malus.",
+  houle: "Chaque tour, une carte aléatoire du plateau a 10% de chances de devenir Malade (perd 1 Résistance/tour tant qu'elle le reste).",
+  tempete: "Chaque Navire perd 1 Ancrage au début de chaque tour.",
+  abysses: "À l'entrée : chaque Navire perd 2 Ancrage et sa Raison maximale est réduite de 2 (restaurée à la sortie).",
+};
+
 /**
- * Placeholder de la mécanique de Marée, au centre de la scène entre les
- * deux plateaux. Remplacera à terme (ou sera remplacé par) le vrai
- * composant `TideProgressBar`/`TideOrientationTile` du board de partie.
+ * Piste de progression de la Marée, au centre du plateau, posée directement
+ * sur le décor — même dessin que `TideProgressBar` de l'ancien board :
+ *   - 4 repères reliés par des segments blancs translucides ;
+ *   - franchi = petit disque plein, courant = grand disque lumineux,
+ *     à venir = simple contour ;
+ *   - le segment après l'état courant se remplit au fil de ses tours ;
+ *   - un « i » au-dessus du repère courant rappelle son effet.
+ * Tailles en tokens (et non en pixels fixes) pour tenir jusqu'au mobile.
+ * Le sens (montante / descendante) a sa propre tuile, entre les navires.
  */
 export function TideIndicator({ tide }: TideIndicatorProps) {
+  const [infoOpen, setInfoOpen] = useState(false);
+  const current = tide.states[tide.current];
+
   return (
-    <div className={styles.tide}>
-      <span className={styles.tideArrow}>{tide.direction === "up" ? "▲" : "▼"}</span>
-      <span className={styles.tideName}>Marée · {tide.name}</span>
-      {/* Piste d'avancement : décorative, masquée en mobile paysage. */}
-      <div className={styles.tideTrack}>
-        {Array.from({ length: tide.steps }, (_, index) => (
-          <span
-            key={index}
-            className={`${styles.tideStep} ${index < tide.step ? styles.tideStepActive : ""}`}
-          />
-        ))}
-      </div>
+    <div className={styles.tide} aria-label="Progression de la Marée" role="group">
+      {tide.states.map((state, index) => {
+        const isActive = index === tide.current;
+        const isPast = index < tide.current;
+        const isLast = index === tide.states.length - 1;
+        const fill = index < tide.current ? 1 : isActive ? tide.stageProgress : 0;
+
+        return (
+          <Fragment key={state.id}>
+            <div
+              className={`${styles.tideStep} ${isActive ? styles.tideStepActive : ""} ${isPast ? styles.tideStepPast : ""}`}
+              style={{ "--tide-rgb": TIDE_COLOR[state.id] } as CSSProperties}
+              aria-current={isActive ? "step" : undefined}
+            >
+              <span className={styles.tideMarker}>
+                {isActive && (
+                  <button
+                    type="button"
+                    className={styles.tideInfo}
+                    aria-label={`Effets de la Marée ${state.label}`}
+                    aria-expanded={infoOpen}
+                    onMouseEnter={() => setInfoOpen(true)}
+                    onMouseLeave={() => setInfoOpen(false)}
+                    onFocus={() => setInfoOpen(true)}
+                    onBlur={() => setInfoOpen(false)}
+                    // Au doigt, pas de survol : un toucher ouvre et referme.
+                    onClick={() => setInfoOpen((open) => !open)}
+                  >
+                    i
+                  </button>
+                )}
+                <span className={styles.tideDot} />
+              </span>
+              <span className={styles.tideName}>{state.label}</span>
+            </div>
+            {!isLast && (
+              <span className={styles.tideSegment} aria-hidden>
+                <span className={styles.tideSegmentFill} style={{ width: `${fill * 100}%` }} />
+              </span>
+            )}
+          </Fragment>
+        );
+      })}
+
+      {infoOpen && current && (
+        <div className={styles.tideTooltip} role="tooltip" style={{ "--tide-rgb": TIDE_COLOR[current.id] } as CSSProperties}>
+          <p className={styles.tideTooltipTitle}>
+            {current.label} · {tide.remainingTurns} tour{tide.remainingTurns > 1 ? "s" : ""} restant{tide.remainingTurns > 1 ? "s" : ""}
+          </p>
+          <p className={styles.tideTooltipText}>{TIDE_EFFECT[current.id]}</p>
+        </div>
+      )}
     </div>
   );
 }

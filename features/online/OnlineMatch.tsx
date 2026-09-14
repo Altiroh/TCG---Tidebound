@@ -6,6 +6,8 @@ import type { GameState, PlayerAction } from "@/game";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { fetchMatchView, submitMatchAction } from "@/features/online/actions";
 import { OnlineBoard } from "@/features/online/OnlineBoard";
+import { OnlineBoardLegacy } from "@/features/online/legacy/OnlineBoardLegacy";
+import { useLegacyBoard } from "@/features/match/legacy/useLegacyBoard";
 import { MatchRewardBanner } from "@/features/progression/MatchRewardBanner";
 import type { MatchRow } from "@/features/matches/matchStore";
 import { unpackFrames } from "@/features/matches/matchFrames";
@@ -39,6 +41,8 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
   const [match, setMatch] = useState<MatchRow>(initialMatch);
   const [view, setView] = useState<GameState | null>(initialView);
   const [error, setError] = useState<string | null>(null);
+  /** `?plateau=ancien` : ancien plateau, le temps de valider le nouveau. */
+  const legacyBoard = useLegacyBoard();
   const [pending, setPending] = useState(false);
   const [replaying, setReplaying] = useState(false);
 
@@ -164,10 +168,11 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
   // Le bandeau n'attend pas la fin du rejeu : il ne s'affiche qu'une fois
   // l'écran de victoire à l'écran, donc quand la dernière vue est posée.
   const finishedOnScreen = view.status === "finished" && !replaying;
+  const Board = legacyBoard ? OnlineBoardLegacy : OnlineBoard;
 
   return (
     <>
-      <OnlineBoard
+      <Board
         state={view}
         myUserId={myUserId}
         onAction={handleAction}

@@ -1,37 +1,40 @@
+import type { ReactNode } from "react";
 import styles from "@/features/board-preview/BoardPreview.module.css";
 import { PreviewBoard } from "@/features/board-preview/PreviewBoard";
-import { PreviewResources } from "@/features/board-preview/PreviewResources";
-import { PreviewShip } from "@/features/board-preview/PreviewShip";
-import type { PreviewCardModel, PreviewSideModel } from "@/features/board-preview/previewFixtures";
+import { PreviewCargo } from "@/features/board-preview/PreviewCargo";
+import { PreviewShip, type ShipView } from "@/features/board-preview/PreviewShip";
+import type { PreviewCardModel } from "@/features/board-preview/previewFixtures";
 
 interface OpponentZoneProps {
-  side: PreviewSideModel;
+  ship: ShipView;
   board: PreviewCardModel[];
+  /** Emplacements du Navire (4, 5 ou 6) — les vides restent dessinés. */
+  capacity?: number;
+  renderCard: (card: PreviewCardModel) => ReactNode;
+  /** Habillage du Navire (cible d'attaque : `data-drop="ship"`, surbrillance…). */
+  wrapShip?: (ship: ReactNode) => ReactNode;
+  deck: number;
+  graveyard: number;
+  onGraveyardClick?: () => void;
 }
 
 /**
- * Camp adverse, collé au bord haut de la scène :
- *   [ navire ] [ plateau ] [ ressources ]
+ * Rangée adverse, sous la main adverse :
+ *   [ navire ] [ plateau ] [ pioche · défausse ]
  *
- * Seule la colonne centrale est élastique ; navire et ressources ont une
- * largeur fluide mais bornée (`--ship-w`, `--res-w`) et ne mangent donc
- * jamais le plateau, même en 740×360.
- *
- * La main adverse n'est pas représentée ici : sur cette itération elle
- * n'apporte rien au réglage du layout et coûterait de la hauteur. Sa place
- * est réservée par la gouttière haute de la scène.
+ * Les trois cellules sont en `subgrid` : elles partagent exactement les
+ * colonnes de la scène avec la bande centrale et la rangée du joueur, donc
+ * les deux plateaux et la piste de Marée restent sur le même axe.
  */
-export function OpponentZone({ side, board }: OpponentZoneProps) {
+export function OpponentZone({ ship, board, capacity, renderCard, wrapShip = (node) => node, deck, graveyard, onGraveyardClick }: OpponentZoneProps) {
   return (
     <section className={`${styles.zone} ${styles.opponentZone}`} data-zone="OpponentZone" aria-label="Zone adverse">
-      <div className={styles.zoneSlotShip}>
-        <PreviewShip name={side.shipName} hull={side.hull} maxHull={side.maxHull} />
-      </div>
+      <div className={styles.zoneSlotShip}>{wrapShip(<PreviewShip {...ship} />)}</div>
       <div className={styles.zoneSlotBoard}>
-        <PreviewBoard zone="OpponentBoard" cards={board} />
+        <PreviewBoard zone="OpponentBoard" cards={board} capacity={capacity} renderCard={renderCard} />
       </div>
-      <div className={styles.zoneSlotResources}>
-        <PreviewResources resources={side.resources} />
+      <div className={styles.zoneSlotCargo}>
+        <PreviewCargo side="opponent" deck={deck} graveyard={graveyard} onGraveyardClick={onGraveyardClick} />
       </div>
     </section>
   );

@@ -15,6 +15,11 @@ interface DebugOverlayProps {
   onToggleZones: () => void;
   collapsed: boolean;
   onToggleCollapsed: () => void;
+  /** Remet la table dans son état de départ (cartes posées rendues à la main). */
+  onReset: () => void;
+  /** Passe à l'état de Marée suivant (Calme → Houle → Tempête → Abysses → Calme). */
+  onNextTide: () => void;
+  tideLabel: string;
 }
 
 /**
@@ -36,6 +41,9 @@ export function DebugOverlay({
   onToggleZones,
   collapsed,
   onToggleCollapsed,
+  onReset,
+  onNextTide,
+  tideLabel,
 }: DebugOverlayProps) {
   if (collapsed) {
     return (
@@ -76,6 +84,12 @@ export function DebugOverlay({
         aria-pressed={zonesVisible}
       >
         {zonesVisible ? "Masquer les zones" : "Afficher les zones"}
+      </button>
+      <button type="button" className={styles.debugButton} onClick={onNextTide} title="Marée suivante">
+        Marée : {tideLabel} ›
+      </button>
+      <button type="button" className={styles.debugButton} onClick={onReset}>
+        Réinitialiser
       </button>
       <button type="button" className={styles.debugButton} onClick={onToggleCollapsed}>
         Replier

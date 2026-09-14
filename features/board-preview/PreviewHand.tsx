@@ -1,34 +1,39 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import styles from "@/features/board-preview/BoardPreview.module.css";
-import { PreviewCard } from "@/features/board-preview/PreviewCard";
 import type { PreviewCardModel } from "@/features/board-preview/previewFixtures";
 
 interface PreviewHandProps {
   cards: PreviewCardModel[];
   /** Idem `PreviewBoard` : point d'injection pour le futur `GameCard`. */
-  renderCard?: (card: PreviewCardModel) => ReactNode;
+  renderCard: (card: PreviewCardModel) => ReactNode;
+  /** Une carte est en cours de glisser : la levée au survol se coupe. */
+  dragging?: boolean;
 }
 
 /**
- * Main du joueur : rang centré, chevauchement piloté par le token
- * `--hand-overlap` (nul sur grand écran, marqué en mobile paysage) et
- * resserré automatiquement par Flexbox si la place vient à manquer — voir
- * le commentaire de `.hand` dans `BoardPreview.module.css`.
+ * Main du joueur : un éventail posé sur le bord bas de l'écran, pas un rang
+ * complet. Les cartes sont plus petites qu'en jeu (`--hand-card-h`), se
+ * chevauchent fortement et ne montrent que leur partie haute
+ * (`--hand-peek`) — le reste passe sous le bord, comme sur l'ancien board.
+ * Survolée, une carte se lève et se remet à plat pour être lue en entier.
  *
- * Préparation des interactions futures (éventail, survol, sélection, drag,
- * agrandissement) : chaque carte est déjà isolée dans son propre créneau,
- * avec un `transform-origin` en bas et une transition prête. Aucune de ces
- * animations n'est codée ici — seule l'architecture qui les rendra
- * possibles l'est. Le `z-index` croissant garantit que la carte survolée
- * pourra passer au-dessus de ses voisines de droite.
+ * Rotation et creux de l'arc sont calculés en CSS à partir de deux
+ * variables posées par carte : `--fan-offset` (écart signé au centre) et
+ * `--fan-dist` (sa valeur absolue — `abs()` CSS n'est pas encore partout).
  */
-export function PreviewHand({ cards, renderCard }: PreviewHandProps) {
+export function PreviewHand({ cards, renderCard, dragging = false }: PreviewHandProps) {
+  const center = (cards.length - 1) / 2;
+
   return (
-    <div className={styles.hand} data-zone="PlayerHand">
+    <div className={`${styles.hand} ${dragging ? styles.handDragging : ""}`} data-zone="PlayerHand">
       <div className={styles.handRow}>
         {cards.map((card, index) => (
-          <div key={card.id} className={styles.handCardSlot} style={{ zIndex: index + 1 }}>
-            <div className={styles.handCard}>{renderCard ? renderCard(card) : <PreviewCard card={card} />}</div>
+          <div
+            key={card.id}
+            className={styles.handCardSlot}
+            style={{ zIndex: index + 1, "--fan-offset": index - center, "--fan-dist": Math.abs(index - center) } as CSSProperties}
+          >
+            <div className={styles.handCard}>{renderCard(card)}</div>
           </div>
         ))}
       </div>
