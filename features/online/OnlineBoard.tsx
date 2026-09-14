@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   computeEffectiveStats,
   deraisonAnchorDamage,
@@ -32,6 +32,7 @@ import { CargoCluster } from "@/features/match/CargoCluster";
 import { DragTargetingTrail } from "@/features/match/DragTargetingTrail";
 import { EquipLinkOverlay } from "@/features/match/EquipLinkOverlay";
 import { EventFeed } from "@/features/match/EventFeed";
+import { MatchPauseMenu } from "@/features/match/MatchPauseMenu";
 import { needsPlayTarget } from "@/features/match/needsPlayTarget";
 import { GraveyardPickPrompt } from "@/features/match/GraveyardPickPrompt";
 import { GraveyardViewer } from "@/features/match/GraveyardViewer";
@@ -125,6 +126,22 @@ export function OnlineBoard({
   /** Candidats à cible restant à traiter après celui en cours — sélection multiple dans `ReactionPrompt` :
       les capacités sans cible sont soumises l'une après l'autre, celles avec cible s'enchaînent une par une. */
   const [reactionQueue, setReactionQueue] = useState<PendingReactionCandidate[]>([]);
+  /** Menu de pause (ÉCHAP) : options audio + abandon. Comme en partie locale (`MatchBoard`). */
+  const [showPauseMenu, setShowPauseMenu] = useState(false);
+
+  // Même règle qu'en local : toute surcouche déjà ouverte (fiche de carte,
+  // cimetière, invite de bris) se ferme elle-même sur ÉCHAP — la pause ne
+  // doit pas s'ouvrir derrière elle.
+  useEffect(() => {
+    const overlayOpen = Boolean(detailInstance || graveyardViewerPlayerId || breakPrompt || graveyardPick);
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      if (overlayOpen) return;
+      setShowPauseMenu((current) => !current);
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [detailInstance, graveyardViewerPlayerId, breakPrompt, graveyardPick]);
 
   const me = state.players.find((p) => p.id === myUserId)!;
   const opponent = state.players.find((p) => p.id !== myUserId)!;
@@ -818,6 +835,23 @@ export function OnlineBoard({
           tideState={state.environment.tideState}
           boardUnits={state.players.flatMap((p) => p.board)}
           onClose={() => setDetailInstance(null)}
+        />
+      )}
+      {showPauseMenu && (
+        <MatchPauseMenu
+          onResume={() => setShowPauseMenu(false)}
+          concedePending={pending}
+          // Pas de sortie discrète en ligne (`onQuit`/`homeHref` absents) :
+          // la partie vit sur le serveur et un adversaire attend en face —
+          // on abandonne, ou on reprend.
+          //
+          // L'abandon part au serveur : le menu reste ouvert (bouton en
+          // attente) jusqu'à la réponse. En cas de succès, tout l'écran
+          // bascule sur la fin de partie ; en cas d'échec réseau, le menu se
+          // referme pour laisser voir l'alerte d'erreur du plateau.
+          onConcede={() => {
+            void Promise.resolve(onAction({ type: "concede", playerId: myUserId })).finally(() => setShowPauseMenu(false));
+          }}
         />
       )}
     </>

@@ -22,6 +22,7 @@ import {
   type PlayerAction,
   type PlayerId,
 } from "@/game";
+import { MatchPauseMenu } from "@/features/match/MatchPauseMenu";
 import { needsPlayTarget } from "@/features/match/needsPlayTarget";
 import { Button } from "@/components/ui/Button";
 import { GlassAlert } from "@/components/ui/GlassAlert";
@@ -122,7 +123,8 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
   const [breakPrompt, setBreakPrompt] = useState<{ card: CardInstance; source: "hand" | "board" } | null>(null);
   /** Bris qui demande de choisir une carte de sa défausse (ex: Grappin de Récupération). */
   const [graveyardPick, setGraveyardPick] = useState<{ card: CardInstance; fromHand: boolean } | null>(null);
-  const [showQuitConfirm, setShowQuitConfirm] = useState(false);
+  /** Menu de pause (ÉCHAP) : options audio + abandon. */
+  const [showPauseMenu, setShowPauseMenu] = useState(false);
   /** Candidats à cible restant à traiter après celui en cours — sélection multiple dans `ReactionPrompt` :
       les capacités sans cible sont appliquées d'un coup, celles avec cible s'enchaînent une par une. */
   const [reactionQueue, setReactionQueue] = useState<PendingReactionCandidate[]>([]);
@@ -234,28 +236,45 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `state` volontairement absent : ne doit réagir qu'aux transitions "c'est au bot d'agir", pas à chaque changement d'état (sinon la boucle se relancerait en double à chaque `setState` qu'elle déclenche elle-même) — `tick` capture l'état voulu via son propre paramètre plutôt que via la closure.
   }, [activePlayerId, botAwaitingReaction, state.status, botPlayerId, botDifficulty]);
 
-  // Abandonner la partie via ÉCHAP plutôt qu'un bouton visible en permanence
-  // à l'écran — libère l'espace pour le board pleine page. Une fiche de
-  // carte ouverte (`detailInstance`) intercepte la touche en priorité : elle
-  // se ferme seule, sans déclencher la confirmation de sortie derrière.
+  // Menu de pause via ÉCHAP plutôt qu'un bouton visible en permanence à
+  // l'écran — libère l'espace pour le board pleine page. Toute surcouche
+  // déjà ouverte (fiche de carte, cimetière, invite de bris) intercepte la
+  // touche en priorité : chacune se ferme d'elle-même sur ÉCHAP, la pause
+  // ne doit pas s'ouvrir derrière.
   useEffect(() => {
+    const overlayOpen = Boolean(detailInstance || graveyardViewerPlayerId || breakPrompt || graveyardPick);
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key !== "Escape") return;
-      if (detailInstance) {
-        setDetailInstance(null);
-        return;
-      }
-      // Bascule : une pression ouvre la confirmation, une seconde l'annule (Échap = "annuler", pas "confirmer").
-      setShowQuitConfirm((current) => !current);
+      if (overlayOpen) return;
+      // Bascule : une pression ouvre la pause, une seconde reprend la partie (Échap = "annuler", jamais "confirmer").
+      setShowPauseMenu((current) => !current);
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [detailInstance]);
+  }, [detailInstance, graveyardViewerPlayerId, breakPrompt, graveyardPick]);
 
   function clearSelection() {
     setPending(null);
     setSelectedBoardId(null);
     setReactionQueue([]);
+  }
+
+  /**
+   * Abandon depuis le menu de pause. Passe par le moteur (et non par
+   * `runAction`, réservé au joueur actif) : la partie se termine
+   * proprement, sur l'écran de victoire de l'adversaire, plutôt que de
+   * disparaître comme si elle n'avait jamais eu lieu.
+   */
+  function concedeMatch() {
+    const result = dispatch(liveState, { type: "concede", playerId: viewerPlayerId });
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    setShowPauseMenu(false);
+    setError(null);
+    setState(result.state);
+    clearSelection();
   }
 
   function runAction(action: PlayerAction) {
@@ -981,35 +1000,12 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
           onClose={() => setDetailInstance(null)}
         />
       )}
-      {showQuitConfirm && (
-        <div
-          className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 p-4 backdrop-blur-md"
-          onClick={() => setShowQuitConfirm(false)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm rounded-2xl border border-white/15 bg-white/[0.07] p-6 shadow-[0_8px_40px_rgba(0,0,0,0.55)] backdrop-blur-2xl"
-          >
-            <h2 className="text-lg font-semibold text-white">Quitter la partie ?</h2>
-            <p className="mt-2 text-sm text-slate-300">La partie en cours ne sera pas sauvegardée.</p>
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setShowQuitConfirm(false)}
-                className="rounded-md border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-slate-100 transition-colors hover:bg-white/20"
-              >
-                Annuler
-              </button>
-              <button
-                type="button"
-                onClick={onExit}
-                className="rounded-md bg-rose-600 px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
-              >
-                Quitter
-              </button>
-            </div>
-          </div>
-        </div>
+      {showPauseMenu && (
+        <MatchPauseMenu
+          onResume={() => setShowPauseMenu(false)}
+          onConcede={concedeMatch}
+          onQuit={onExit}
+        />
       )}
     </>
   );

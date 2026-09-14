@@ -89,7 +89,14 @@ export function formatEvent(state: GameState, event: GameEvent, playerLabel: (pl
     case "OCEAN_JUDGMENT":
       return `Jugement de l'Océan déclenché par ${playerLabel(event.triggeredByPlayerId)}.`;
     case "GAME_ENDED":
-      return event.winnerId ? `Partie terminée — victoire de ${playerLabel(event.winnerId)}.` : "Partie terminée — match nul.";
+      if (!event.winnerId) return "Partie terminée — match nul.";
+      // L'abandon se lit du côté de celui qui l'a décidé : "l'autre a gagné"
+      // ne dirait pas POURQUOI la partie s'arrête d'un coup.
+      if (event.reason === "concede") {
+        const loser = state.players.find((p) => p.id !== event.winnerId);
+        return `${loser ? playerLabel(loser.id) : "Un joueur"} abandonne le navire — victoire de ${playerLabel(event.winnerId)}.`;
+      }
+      return `Partie terminée — victoire de ${playerLabel(event.winnerId)}.`;
     case "END_TURN":
       return `${playerLabel(event.playerId)} termine son tour.`;
     case "PHASE_CHANGED":

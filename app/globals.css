@@ -161,3 +161,30 @@ body {
     transform: scaleX(1);
   }
 }
+
+/*
+ * VolumeSlider (features/settings/VolumeSlider.tsx) : la pastille d'un
+ * `<input type="range">` ne se style QUE par pseudo-élément propre à chaque
+ * moteur — impossible depuis Tailwind, d'où ces deux règles. Le rail, lui,
+ * est peint en `background` inline (dégradé calculé sur la valeur).
+ */
+.volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: var(--accent-hover);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+}
+
+.volume-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: none;
+  border-radius: 9999px;
+  background: var(--accent-hover);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+}

@@ -116,6 +116,16 @@ export interface ResolveChoiceAction {
   choice: "reasonLoss" | "anchorDamage";
 }
 
+/**
+ * Abandon volontaire ("abandonner le navire") : l'adversaire gagne
+ * immédiatement. Acceptée à tout moment, quel que soit le joueur actif, la
+ * phase, ou une fenêtre de réaction ouverte (cf. `dispatch`).
+ */
+export interface ConcedeAction {
+  type: "concede";
+  playerId: PlayerId;
+}
+
 export type PlayerAction =
   | PlayCardAction
   | AttackAction
@@ -126,7 +136,8 @@ export type PlayerAction =
   | ActivateReactionAction
   | PassReactionAction
   | ActivateAbilityAction
-  | ResolveChoiceAction;
+  | ResolveChoiceAction
+  | ConcedeAction;
 
 export type ActionResult =
   | { ok: true; state: GameState; events: GameEvent[] }

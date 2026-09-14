@@ -32,10 +32,13 @@ const ATTACK_SOUNDS = [
 
 /** Une instance `Audio` par lecture (plutôt qu'un élément partagé) : deux effets qui se chevauchent (ex: clics rapides) doivent tous les deux s'entendre, pas s'interrompre l'un l'autre. */
 function play(src: string, volume: number): void {
-  if (!getAudioSettings().effects) return;
+  const settings = getAudioSettings();
+  // Volume à 0 : inutile de créer un élément et de lancer une lecture que
+  // personne n'entendra.
+  if (!settings.effects || settings.effectsVolume === 0) return;
   try {
     const audio = new Audio(src);
-    audio.volume = volume;
+    audio.volume = volume * settings.effectsVolume;
     void audio.play().catch(() => {
       // Autoplay bloqué ou fichier indisponible : silencieux, jamais bloquant.
     });
@@ -73,8 +76,13 @@ let ambianceWanted = false;
  */
 function applyAmbiance(): void {
   if (typeof window === "undefined") return;
+  const settings = getAudioSettings();
 
-  if (!ambianceWanted || !getAudioSettings().music) {
+  // Le volume, lui, s'applique même quand la musique tourne déjà : bouger le
+  // curseur doit s'entendre tout de suite, sans couper puis relancer la piste.
+  if (ambianceEl) ambianceEl.volume = VOLUME.ambiance * settings.musicVolume;
+
+  if (!ambianceWanted || !settings.music) {
     if (ambianceEl) {
       ambianceEl.pause();
       ambianceEl.currentTime = 0;
@@ -85,7 +93,7 @@ function applyAmbiance(): void {
   if (!ambianceEl) {
     ambianceEl = new Audio("/assets/sound/ambiance-menu.mp3");
     ambianceEl.loop = true;
-    ambianceEl.volume = VOLUME.ambiance;
+    ambianceEl.volume = VOLUME.ambiance * settings.musicVolume;
   }
   const el = ambianceEl;
   el.play().catch(() => {

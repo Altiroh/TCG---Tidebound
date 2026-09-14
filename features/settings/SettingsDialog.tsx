@@ -3,10 +3,9 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { AUTH_LINK_CLASS } from "@/components/auth/AuthGlassPanel";
+import { AudioSettingsSection } from "@/features/settings/AudioSettingsSection";
 import { ChangePasswordSection } from "@/features/settings/ChangePasswordSection";
 import { DeleteAccountSection } from "@/features/settings/DeleteAccountSection";
-import { ToggleSwitch } from "@/features/settings/ToggleSwitch";
-import { setAudioSetting, useAudioSettings } from "@/lib/settings";
 
 interface SettingsDialogProps {
   isSignedIn: boolean;
@@ -25,8 +24,6 @@ function SectionTitle({ children }: { children: string }) {
  * onglets ni page dédiée.
  */
 export function SettingsDialog({ isSignedIn, onClose }: SettingsDialogProps) {
-  const audio = useAudioSettings();
-
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") onClose();
@@ -67,18 +64,7 @@ export function SettingsDialog({ isSignedIn, onClose }: SettingsDialogProps) {
 
           <section className="flex flex-col gap-1">
             <SectionTitle>Audio</SectionTitle>
-            <ToggleSwitch
-              label="Musique"
-              description="Ambiance sonore des menus."
-              checked={audio.music}
-              onChange={(value) => setAudioSetting("music", value)}
-            />
-            <ToggleSwitch
-              label="Effets sonores"
-              description="Clics, pioche, combats, ouverture de boosters."
-              checked={audio.effects}
-              onChange={(value) => setAudioSetting("effects", value)}
-            />
+            <AudioSettingsSection />
           </section>
 
           <div aria-hidden className="my-5 h-px bg-[var(--border-subtle)]" />

@@ -8,7 +8,7 @@
  * dans `public/assets/sound/` et renseigner son chemin ici.
  *
  * Comme tous les autres sons du jeu, ceux-ci sont soumis à l'interrupteur
- * "Effets" des Options (`lib/settings.ts`).
+ * et au volume "Effets" des Options (`lib/settings.ts`).
  */
 
 import { getAudioSettings } from "@/lib/settings";
@@ -38,10 +38,11 @@ const BOOSTER_SOUND_VOLUME: Record<BoosterSoundKey, number> = {
 function playBoosterSound(key: BoosterSoundKey): void {
   const src = BOOSTER_SOUND_FILES[key];
   if (!src || typeof window === "undefined") return;
-  if (!getAudioSettings().effects) return;
+  const settings = getAudioSettings();
+  if (!settings.effects || settings.effectsVolume === 0) return;
   try {
     const audio = new Audio(src);
-    audio.volume = BOOSTER_SOUND_VOLUME[key];
+    audio.volume = BOOSTER_SOUND_VOLUME[key] * settings.effectsVolume;
     void audio.play().catch(() => {
       // Autoplay bloqué ou fichier indisponible : silencieux, jamais bloquant.
     });

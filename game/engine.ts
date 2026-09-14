@@ -3,6 +3,7 @@ import { activateReaction } from "@/game/actions/activateReaction";
 import { advancePhase } from "@/game/actions/advancePhase";
 import { attack } from "@/game/actions/attack";
 import { breakObject } from "@/game/actions/breakObject";
+import { concede } from "@/game/actions/concede";
 import { endTurn } from "@/game/actions/endTurn";
 import { passReaction } from "@/game/actions/passReaction";
 import { playCard } from "@/game/actions/playCard";
@@ -30,13 +31,16 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
   // partie" : "tant qu'un effet, une réaction ou une conséquence est en
   // cours de résolution, aucune nouvelle action normale ne peut être
   // commencée"), seules `activateReaction`/`passReaction` sont acceptées.
-  if (state.pendingReaction && !REACTION_ACTION_TYPES.has(action.type)) {
+  // Exception : l'abandon, qui doit rester possible à tout instant — sinon
+  // un joueur parti sans répondre laisserait l'autre coincé sur une fenêtre
+  // que plus personne ne fermera.
+  if (state.pendingReaction && !REACTION_ACTION_TYPES.has(action.type) && action.type !== "concede") {
     return { ok: false, error: "Une fenêtre de réaction est ouverte : activez une capacité facultative éligible, ou passez." };
   }
 
   // Même principe pour un choix forcé en attente (ex: Le Fond Vous
   // Regarde) : seule `resolveChoice` est acceptée tant qu'il reste ouvert.
-  if (state.pendingChoice && action.type !== "resolveChoice") {
+  if (state.pendingChoice && action.type !== "resolveChoice" && action.type !== "concede") {
     return { ok: false, error: "Un choix est en attente : résolvez-le avant toute autre action." };
   }
 
@@ -119,6 +123,8 @@ function applyAction(state: GameState, action: PlayerAction): ActionResult {
       return activateAbility(state, action);
     case "resolveChoice":
       return resolveChoice(state, action);
+    case "concede":
+      return concede(state, action);
     default: {
       const exhaustiveCheck: never = action;
       return { ok: false, error: `Action inconnue: ${JSON.stringify(exhaustiveCheck)}` };

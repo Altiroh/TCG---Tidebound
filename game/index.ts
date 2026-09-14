@@ -29,6 +29,7 @@ export type {
   AdvancePhaseAction,
   ActivateReactionAction,
   PassReactionAction,
+  ConcedeAction,
   ActionResult,
 } from "@/game/actions/types";
 
