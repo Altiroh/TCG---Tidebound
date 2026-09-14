@@ -1,13 +1,29 @@
+"use client";
+
 import type { CSSProperties } from "react";
 import Link from "next/link";
 import type { ShipDefinition } from "@/game";
 import { BoardBackdrop } from "@/features/match/BoardBackdrop";
+import { useImageOk } from "@/features/match/useImageOk";
 import { Fireworks } from "@/features/match/Fireworks";
-import styles from "@/features/match/VictoryScreen.module.css";
+import { SwampHaze } from "@/features/match/SwampHaze";
+import styles from "@/features/match/MatchEndScreen.module.css";
 
-interface VictoryScreenProps {
-  /** `undefined` pour un match nul — dans ce cas, pas de cadre/navire à montrer. */
-  winner?: { name: string; ship: ShipDefinition };
+export type MatchOutcome = "victory" | "defeat";
+
+interface MatchEndScreenProps {
+  /**
+   * Issue vue par le joueur qui regarde cet écran. `defeat` change le
+   * bandeau, le cadre et l'ambiance de fond — jamais la chorégraphie.
+   */
+  outcome: MatchOutcome;
+  /**
+   * Le JOUEUR qui regarde, victoire ou défaite : c'est toujours son nom et
+   * son Navire qui s'affichent sur la plaque (décision du 2026-09-14), pas
+   * ceux du vainqueur. `undefined` pour un match nul — dans ce cas, pas de
+   * cadre/navire à montrer.
+   */
+  player?: { name: string; ship: ShipDefinition };
   /** Local (hot-seat/bot) : relance une partie sans navigation. Fournir soit `onExit`, soit `exitHref`. */
   onExit?: () => void;
   /** En ligne : redirige vers l'écran de matchmaking (`next/link`, navigation client). */
@@ -43,14 +59,26 @@ const NAMEPLATE_ZONE = { top: "73%", left: "22%", width: "56%", height: "8%" };
  * Le bandeau "VICTOIRE" (`victory-text.webp`) surmonte le cadre plutôt que
  * d'être incrusté dedans, pour rester lisible à toutes les tailles.
  */
-export function VictoryScreen({ winner, onExit, exitHref }: VictoryScreenProps) {
+export function MatchEndScreen({ outcome, player, onExit, exitHref }: MatchEndScreenProps) {
+  const isDefeat = outcome === "defeat";
+  const winner = player;
+
+  // Le lot "défaite" (bandeau + cadre) n'est pas encore fourni : tant qu'il
+  // manque, on n'affiche pas d'image cassée — le reste de la chorégraphie
+  // (nom, Navire, marécage, boutons) tient debout sans eux, comme partout
+  // ailleurs dans le jeu où un asset absent laisse simplement sa place vide.
+  const bannerUrl = isDefeat ? "/assets/defeat-text.webp" : "/assets/victory-text.webp";
+  const frameUrl = isDefeat ? "/assets/ships/ship-frame-defeat.webp" : "/assets/ships/ship-frame-victory.webp";
+  const bannerOk = useImageOk(bannerUrl);
+  const frameOk = useImageOk(frameUrl);
   return (
     <>
       <BoardBackdrop />
       {/* Plan intermédiaire : flouté, sous le cadre (net) mais au-dessus du fond de plateau — cf. `Fireworks.tsx`. */}
       {winner && <div className={styles.vignette} aria-hidden />}
-      {winner && <Fireworks firstBurstAt={0.5} />}
-      {winner && <div className={styles.flash} aria-hidden />}
+      {/* La victoire éclate, la défaite stagne — même emplacement, sentiment inverse. */}
+      {winner && (isDefeat ? <SwampHaze /> : <Fireworks firstBurstAt={0.5} />)}
+      {winner && <div className={isDefeat ? styles.flashDefeat : styles.flash} aria-hidden />}
       <div
         className={`relative z-10 flex min-h-screen flex-col items-center justify-center gap-8 p-8 text-center ${winner ? styles.stage : ""}`}
       >
@@ -73,17 +101,24 @@ export function VictoryScreen({ winner, onExit, exitHref }: VictoryScreenProps) 
                 ))}
               </span>
               {/* eslint-disable-next-line @next/next/no-img-element -- bandeau décoratif fixe */}
+              {bannerOk ? (
               <img
-                src="/assets/victory-text.webp"
-                alt="Victoire"
+                src={bannerUrl}
+                alt={isDefeat ? "Défaite" : "Victoire"}
                 draggable={false}
                 className={`select-none ${styles.bannerIn}`}
               />
-              <span className={styles.bannerShine} aria-hidden />
+              ) : (
+                <h1 className={`text-center text-4xl font-bold uppercase tracking-widest ${isDefeat ? "text-[#9db487]" : "text-amber-200"}`}>
+                  {isDefeat ? "Défaite" : "Victoire"}
+                </h1>
+              )}
+              {bannerOk && <span className={styles.bannerShine} aria-hidden />}
             </div>
 
             <div className={styles.frameWrap}>
-              <span className={styles.rays} aria-hidden />
+              {/* Les rayons de gloire n'ont pas leur place dans une défaite. */}
+              {!isDefeat && <span className={styles.rays} aria-hidden />}
               <div
                 className={`relative ${styles.frameIn}`}
                 style={{
@@ -106,13 +141,15 @@ export function VictoryScreen({ winner, onExit, exitHref }: VictoryScreenProps) 
                   )}
                 </div>
 
-                {/* eslint-disable-next-line @next/next/no-img-element -- cadre décoratif fixe, superpose l'illustration */}
-                <img
-                  src="/assets/ships/ship-frame-victory.webp"
-                  alt=""
-                  draggable={false}
-                  className="pointer-events-none absolute inset-0 h-full w-full select-none"
-                />
+                {frameOk && (
+                  // eslint-disable-next-line @next/next/no-img-element -- cadre décoratif fixe, superpose l'illustration
+                  <img
+                    src={frameUrl}
+                    alt=""
+                    draggable={false}
+                    className="pointer-events-none absolute inset-0 h-full w-full select-none"
+                  />
+                )}
 
                 <div
                   className="absolute flex items-center justify-center"

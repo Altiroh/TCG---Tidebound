@@ -44,7 +44,7 @@ import { PendingChoicePrompt } from "@/features/match/PendingChoicePrompt";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ReactionPrompt } from "@/features/match/ReactionPrompt";
 import { ShipInstrumentCluster } from "@/features/match/ShipInstrumentCluster";
-import { VictoryScreen } from "@/features/match/VictoryScreen";
+import { MatchEndScreen } from "@/features/match/MatchEndScreen";
 import { useDisplayNames } from "@/features/match/useDisplayNames";
 import { TideOrientationTile } from "@/features/match/TideOrientationTile";
 import { TideProgressBar } from "@/features/match/TideProgressBar";
@@ -473,16 +473,12 @@ export function OnlineBoard({
   if (state.status === "finished") {
     const iWon = state.winnerId === myUserId;
     return (
-      <VictoryScreen
-        winner={
-          state.winnerId
-            ? {
-                // Pseudo du profil quand il existe (humain) ; sinon libellé fourni par l'appelant (ex: "Le bot").
-                name: displayNames[state.winnerId] ?? (iWon ? "Toi" : opponentName),
-                ship: iWon ? myShip : opponentShip,
-              }
-            : undefined
-        }
+      <MatchEndScreen
+        outcome={iWon ? "victory" : "defeat"}
+        // Toujours le joueur qui regarde, jamais le vainqueur : il se
+        // reconnaît sur la plaque, avec son propre Navire, qu'il l'emporte
+        // ou qu'il sombre.
+        player={state.winnerId ? { name: displayNames[myUserId] ?? "Toi", ship: myShip } : undefined}
         exitHref={exitHref}
       />
     );

@@ -47,7 +47,7 @@ import { PendingChoicePrompt } from "@/features/match/PendingChoicePrompt";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ReactionPrompt } from "@/features/match/ReactionPrompt";
 import { ShipInstrumentCluster } from "@/features/match/ShipInstrumentCluster";
-import { VictoryScreen } from "@/features/match/VictoryScreen";
+import { MatchEndScreen } from "@/features/match/MatchEndScreen";
 import { useDisplayNames } from "@/features/match/useDisplayNames";
 import { TideOrientationTile } from "@/features/match/TideOrientationTile";
 import { TideProgressBar } from "@/features/match/TideProgressBar";
@@ -619,14 +619,24 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
   }
 
   if (state.status === "finished") {
-    const genericName = state.winnerId === "p1" ? "Joueur 1" : "Joueur 2";
-    const winnerName = state.winnerId === botPlayerId ? "Le bot" : botPlayerId ? (displayNames.me ?? genericName) : genericName;
-    const winnerShip = state.winnerId === viewerPlayer.id ? viewerShip : otherShip;
+    // Contre un bot, l'écran appartient au joueur humain : c'est SON nom et
+    // SON Navire qui s'affichent, qu'il gagne ou qu'il perde. En hot-seat,
+    // personne n'est "le joueur" — l'écran reste celui du vainqueur, comme
+    // avant, et il n'y a donc jamais de défaite à afficher.
+    const subjectId = humanPlayerId ?? state.winnerId;
+    const isDefeat = Boolean(humanPlayerId && state.winnerId && state.winnerId !== humanPlayerId);
+    const genericName = subjectId === "p1" ? "Joueur 1" : "Joueur 2";
+    const subjectName = humanPlayerId ? (displayNames.me ?? genericName) : genericName;
+    const subjectShip = subjectId === viewerPlayer.id ? viewerShip : otherShip;
     return (
       // Partie LOCALE (hot-seat, ou bot hors connexion) : jouée entièrement
       // dans le navigateur, elle ne rapporte jamais rien. Les parties contre
       // bot récompensées sont arbitrées côté serveur (`features/bot/actions.ts`).
-      <VictoryScreen winner={state.winnerId ? { name: winnerName, ship: winnerShip } : undefined} onExit={onExit} />
+      <MatchEndScreen
+        outcome={isDefeat ? "defeat" : "victory"}
+        player={state.winnerId ? { name: subjectName, ship: subjectShip } : undefined}
+        onExit={onExit}
+      />
     );
   }
 

@@ -14,8 +14,15 @@
  */
 
 /*
- * Chorégraphie de victoire (retour de test du 13/09 : "l'animation n'est pas
- * folle") — ~2,4 s, chaque élément invisible jusqu'à son tour (`both`) :
+ * Chorégraphie de fin de partie (retour de test du 13/09 : "l'animation
+ * n'est pas folle") — ~2,4 s, chaque élément invisible jusqu'à son tour
+ * (`both`). La DÉFAITE suit exactement la même, à trois exceptions près :
+ * son bandeau et son cadre lui sont propres, le flash vire au vert d'eau
+ * (`.flashDefeat`), et les rayons de gloire comme les feux d'artifice
+ * laissent place au marécage (`SwampHaze`). Les noms `victory-*` des
+ * keyframes sont donc historiques : ils servent aux deux issues.
+ *
+ * Déroulé :
  *   0,00  l'écran s'assombrit (vignette) ;
  *   0,15  le bandeau "VICTOIRE" s'abat comme un tampon (flou → écrasé → rebond),
  *   0,45  impact : flash plein écran, secousse, onde de choc, gerbe d'étincelles
@@ -42,6 +49,11 @@
   pointer-events: none;
   background: radial-gradient(circle at 50% 30%, rgba(255, 247, 214, 0.95), rgba(255, 214, 120, 0.35) 45%, rgba(255, 214, 120, 0) 75%);
   animation: victory-flash 520ms ease-out 450ms both;
+}
+/* Même impact, lumière inverse : un vert d'eau trouble au lieu de l'or. */
+.flashDefeat {
+  composes: flash;
+  background: radial-gradient(circle at 50% 30%, rgba(198, 219, 178, 0.7), rgba(104, 140, 96, 0.3) 45%, rgba(78, 106, 72, 0) 75%);
 }
 
 .bannerWrap {

@@ -52,3 +52,18 @@ Le script est idempotent et applique une taille maximale par famille
 (illustrations 768 px, cadres 1200 px, reste 1280–1600 px). Ne jamais
 commiter les PNG/JPG d'origine : l'historique Git les conserve déjà si
 besoin.
+
+## Écran de fin de partie
+
+```
+victory-text.webp              # bandeau VICTOIRE (fourni)
+defeat-text.webp               # bandeau DÉFAITE  (attendu)
+ships/ship-frame-victory.webp  # cadre du Navire vainqueur (fourni)
+ships/ship-frame-defeat.webp   # cadre du Navire vaincu    (attendu)
+```
+
+Les deux cadres partagent le même gabarit (`1161 × 1354`, fenêtre en arche
+mesurée dans `features/match/MatchEndScreen.tsx`) : un cadre de défaite aux
+mêmes proportions se substitue sans retouche de code. Tant qu'un de ces
+fichiers manque, l'écran le remplace par un titre en toutes lettres plutôt
+que par une image cassée.
