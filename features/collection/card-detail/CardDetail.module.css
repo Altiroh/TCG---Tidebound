@@ -1,0 +1,613 @@
+/*
+ * FICHE DÉTAILLÉE D'UNE CARTE — Collection
+ * ========================================
+ *
+ * Un inspecteur de carte, pas une fenêtre de site : la carte est la pièce
+ * maîtresse, le panneau de droite l'accompagne. Toute la mise en page vit
+ * ici ; les composants ne portent que la structure et les données.
+ *
+ * Grammaire visuelle, alignée sur le reste du jeu (`ScreenShell.module.css`,
+ * `globals.css`) :
+ *   - bleu nuit profond, jamais de noir pur ni de gris "dashboard" ;
+ *   - UNE couleur d'accent à la fois, pilotée par la variante de la carte
+ *     (`--accent`, `--glow`) — sarcelle maritime en Standard, violet
+ *     abyssal en Abyssal ;
+ *   - un seul flou lourd dans toute la vue (le fond) : le panneau se
+ *     contente d'un voile translucide, pour ne pas empiler les couches
+ *     coûteuses en GPU ;
+ *   - des tailles en `clamp()` plutôt que des paliers par résolution.
+ *
+ * Trois comportements responsive seulement : deux colonnes (défaut), deux
+ * colonnes compactes (laptop / mobile paysage), une colonne (repli pour
+ * les fenêtres vraiment étroites, le jeu visant le paysage).
+ */
+
+/* ──────────────────────────────────────────────────────────────
+ * FOND — la collection reste perceptible derrière.
+ * ────────────────────────────────────────────────────────────── */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(8px, 2vmin, 40px);
+  /* Voile bleu nuit plutôt qu'un aplat noir : les cartes du catalogue
+     restent devinables, ce qui garde le contexte de navigation. */
+  background: radial-gradient(120% 90% at 50% 40%, rgba(6, 16, 28, 0.72), rgba(3, 8, 14, 0.9));
+  backdrop-filter: blur(14px) saturate(0.85);
+  animation: detail-fade 200ms ease-out both;
+}
+
+/*
+ * DÉCOR ABYSSAL — uniquement pour une carte Abyssale.
+ *
+ * Les tentacules (`ui/decor/tentacles-abyssal-frame.webp`) sont posées sur
+ * le FOND, en dehors du panneau, à très faible opacité et en `screen` :
+ * elles habitent les bords de l'écran sans jamais passer sous le texte de
+ * la fiche. Un masque radial creuse en plus le centre, là où vit la carte.
+ *
+ * Une carte Standard n'en reçoit aucune : le violet n'est pas la couleur
+ * par défaut du jeu, et ces assets sont explicitement abyssaux.
+ */
+.backdrop[data-variant="abyssal"]::before {
+  content: "";
+  position: absolute;
+  inset: -2%;
+  pointer-events: none;
+  background-image: url("/assets/ui/decor/tentacles-abyssal-frame.webp");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  /* Très basse opacité, et surtout PAS de `mix-blend-mode: screen` : sur un
+     fond sombre, `screen` est additif et ramenait les tentacules à quasi
+     pleine intensité — elles avalaient la carte. Ici elles doivent
+     seulement se deviner aux quatre coins. */
+  opacity: 0.15;
+  /* Creuse largement le centre : la zone de lecture reste nette. */
+  mask-image: radial-gradient(64% 64% at 50% 50%, transparent 30%, #000 88%);
+  /* AUCUNE animation propre ici : `detail-fade` finit à `opacity: 1` et,
+     avec `both`, l'état final de l'animation l'emporte sur l'opacité
+     déclarée — le décor repassait donc à 100 %. Il apparaît de toute façon
+     en fondu, puisque `.backdrop`, son parent, est déjà animé. */
+}
+
+/* Mobile paysage : le décor mange une place précieuse, on l'efface presque. */
+@media (max-height: 480px) {
+  .backdrop[data-variant="abyssal"]::before {
+    opacity: 0.07;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * PANNEAU
+ * ────────────────────────────────────────────────────────────── */
+.panel {
+  /* Accent par défaut : maritime. La variante Abyssale le remplace plus
+     bas — un seul point de bascule pour tout le thème de la fiche. */
+  --accent: #5ec8c0;
+  --accent-soft: rgba(94, 200, 192, 0.16);
+  --glow: rgba(64, 148, 160, 0.3);
+  --ink: #e6edf5;
+  --ink-dim: rgba(198, 214, 230, 0.62);
+  --line: rgba(148, 190, 226, 0.14);
+  --line-strong: rgba(148, 190, 226, 0.26);
+  --surface: rgba(9, 17, 29, 0.9);
+  --surface-inset: rgba(5, 11, 20, 0.55);
+
+  position: relative;
+  display: grid;
+  /* Deux pistes qui épousent leur contenu (`auto`), pas une piste
+     élastique : avec `1fr`, la colonne de droite prenait toute la largeur
+     restante — 644px de piste pour 338px de texte — et la fiche traînait un
+     grand vide. `minmax(0, …)` lui laisse quand même le droit de se
+     comprimer quand l'écran est trop étroit. */
+  grid-template-columns: minmax(0, auto) minmax(0, auto);
+  gap: clamp(16px, 2.6vw, 48px);
+  align-items: center;
+  /* Le panneau épouse son contenu plutôt que d'occuper une largeur fixe :
+     une fiche à l'effet court ne doit pas traîner 400px de vide à droite. */
+  width: fit-content;
+  max-width: min(100%, 1180px);
+  max-height: 100%;
+  padding: clamp(14px, 2.4vmin, 34px);
+  border: 1px solid var(--line);
+  border-radius: clamp(12px, 1.6vmin, 22px);
+  background: linear-gradient(150deg, rgba(16, 30, 48, 0.92), var(--surface) 55%);
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.02) inset;
+  color: var(--ink);
+  font-family: var(--font-card-body), ui-sans-serif, system-ui, sans-serif;
+  animation: detail-rise 220ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+.panel[data-variant="abyssal"] {
+  --accent: #c98bff;
+  --accent-soft: rgba(201, 139, 255, 0.16);
+  --glow: rgba(146, 74, 208, 0.34);
+  --line-strong: rgba(201, 139, 255, 0.3);
+}
+
+/* Halo de variante : une seule nappe très diffuse DERRIÈRE le panneau —
+   pas une bordure lumineuse, pas un aplat coloré par-dessus le contenu. */
+.panel::before {
+  content: "";
+  position: absolute;
+  inset: -14%;
+  z-index: -1;
+  border-radius: inherit;
+  background: radial-gradient(60% 60% at 28% 45%, var(--glow), transparent 70%);
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+/* Filet de lumière sur l'arête haute — le seul "reflet" de la fiche. */
+.panel::after {
+  content: "";
+  position: absolute;
+  inset-inline: 12%;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent);
+  pointer-events: none;
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * COLONNE GAUCHE — la carte
+ * ────────────────────────────────────────────────────────────── */
+.artwork {
+  position: relative;
+  /* Bornée par la largeur ET la hauteur : sur un écran bas (mobile
+     paysage), c'est la hauteur qui commande, sinon la carte déborderait
+     du panneau avant même que la largeur ne pose problème.
+     5/7 = le ratio de carte, donc `--card-w` reste la variable pilote. */
+  width: min(clamp(170px, 24vw, 400px), calc((100vh - 120px) * 5 / 7));
+  flex: 0 0 auto;
+  filter: drop-shadow(0 18px 34px rgba(0, 0, 0, 0.55));
+  animation: detail-card-in 260ms ease-out both;
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * COLONNE DROITE — informations
+ * ────────────────────────────────────────────────────────────── */
+.info {
+  /* Occupe toute la hauteur du panneau (fixée par la carte) : les infos
+     secondaires viennent alors se caler sur le bord bas de la carte
+     (`.meta { margin-top: auto }`) au lieu de flotter au milieu. */
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(10px, 1.6vmin, 20px);
+  min-width: 0;
+  /* Colonne de lecture : assez large pour respirer, assez étroite pour que
+     les lignes de texte restent confortables (~60 caractères). */
+  width: clamp(240px, 40vw, 580px);
+  max-height: min(78vh, 760px);
+  /* Seul le panneau de droite défile : la carte reste visible. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.info::-webkit-scrollbar {
+  width: 6px;
+}
+.info::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: var(--line-strong);
+}
+
+/* ── En-tête ─────────────────────────────────────────────────── */
+.eyebrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: clamp(6px, 0.8vw, 12px);
+  font-size: clamp(9px, 1.05vmin, 11px);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.rarity {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent);
+}
+
+.rarityMark {
+  width: 7px;
+  height: 7px;
+  rotate: 45deg;
+  background: currentColor;
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(5px, 0.6vw, 9px);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: clamp(3px, 0.5vmin, 6px) clamp(8px, 1vw, 14px);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: clamp(9px, 1.1vmin, 11.5px);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+
+.badgeAccent {
+  border-color: var(--line-strong);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.title {
+  /* Le titre domine, sans jamais imposer sa largeur : les noms longs
+     passent sur deux lignes plutôt que d'élargir la fiche. */
+  margin: 0;
+  font-family: var(--font-card-title), Georgia, serif;
+  font-size: clamp(20px, 3.1vmin, 38px);
+  font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: 0.01em;
+  text-wrap: balance;
+  color: #f2f6fb;
+}
+
+.subtitle {
+  margin: 0;
+  font-size: clamp(11px, 1.35vmin, 14px);
+  font-style: italic;
+  line-height: 1.5;
+  color: var(--ink-dim);
+}
+
+/* ── Stats ───────────────────────────────────────────────────── */
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: clamp(10px, 1.6vw, 26px);
+  padding-block: clamp(2px, 0.6vmin, 8px);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+/* Médaillon : un anneau fin et une valeur dominante — pas une tuile. */
+.statMedallion {
+  display: grid;
+  place-items: center;
+  width: clamp(42px, 6.4vmin, 74px);
+  aspect-ratio: 1;
+  border: 1px solid var(--stat-color, var(--accent));
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 35%, rgba(255, 255, 255, 0.07), transparent 65%);
+  box-shadow: 0 0 14px -6px var(--stat-color, var(--accent));
+  font-family: var(--font-card-title), Georgia, serif;
+  font-size: clamp(17px, 2.5vmin, 30px);
+  font-weight: 600;
+  line-height: 1;
+  color: var(--stat-color, var(--accent));
+}
+
+.statLabel {
+  font-size: clamp(8px, 1vmin, 10.5px);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.statSeparator {
+  width: 1px;
+  height: clamp(22px, 3.4vmin, 40px);
+  background: var(--line);
+}
+
+/* Couleurs de grandeur — reprises de celles déjà utilisées sur les cartes
+   et le plateau (`CardInfoPanel`, `ResourceGauge`). */
+.statCost { --stat-color: #6fc3f5; }
+.statAttack { --stat-color: #e6b765; }
+.statHealth { --stat-color: #63d3ac; }
+
+/* ── Sections ────────────────────────────────────────────────── */
+.sectionLabel {
+  display: block;
+  margin-bottom: clamp(4px, 0.7vmin, 8px);
+  font-size: clamp(8px, 1vmin, 10.5px);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.effect {
+  position: relative;
+  padding: clamp(9px, 1.4vmin, 18px) clamp(11px, 1.6vmin, 20px);
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--accent);
+  border-radius: 0 clamp(8px, 1vmin, 12px) clamp(8px, 1vmin, 12px) 0;
+  background: var(--surface-inset);
+}
+
+.effectText {
+  margin: 0;
+  font-size: clamp(12px, 1.6vmin, 17px);
+  line-height: 1.6;
+  color: #dce7f2;
+}
+
+/* Mise en valeur DANS le texte de règles : un ton, pas une surbrillance —
+   le texte doit rester une phrase, pas un sapin de Noël. */
+.effectValue {
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.effectTerm {
+  color: var(--accent);
+}
+
+/* ── Mots-clés ───────────────────────────────────────────────── */
+.keywords {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: clamp(5px, 0.7vw, 10px);
+}
+
+.keyword {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: clamp(4px, 0.6vmin, 7px) clamp(9px, 1.1vw, 15px);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: clamp(10px, 1.3vmin, 13px);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  /* Cible tactile confortable même quand la puce est petite. */
+  min-height: 30px;
+}
+
+.keywordDefined {
+  cursor: help;
+  border-bottom-style: solid;
+}
+
+/* ── Méta ────────────────────────────────────────────────────── */
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(8px, 1.4vw, 28px);
+  align-items: flex-start;
+  margin-top: auto;
+  padding-top: clamp(8px, 1.2vmin, 16px);
+  border-top: 1px solid var(--line);
+}
+
+.metaItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.metaLabel {
+  font-size: clamp(8px, 0.95vmin, 10px);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.metaValue {
+  font-size: clamp(10.5px, 1.3vmin, 13.5px);
+  color: #d5e2ee;
+}
+
+/* Lien vers la contrepartie Standard/Abyssale — une vraie navigation. */
+.metaLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  /* Vrai lien cliquable : une ligne de texte nue fait ~16px de haut, trop
+     peu pour un doigt. */
+  min-height: 28px;
+  margin-block: -4px;
+  border-radius: 4px;
+  color: var(--accent);
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: clamp(10.5px, 1.3vmin, 13.5px);
+  cursor: pointer;
+}
+
+.metaLink:hover {
+  text-decoration: underline;
+}
+
+.metaLink:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * CONTRÔLES — fermeture et navigation
+ * ────────────────────────────────────────────────────────────── */
+.control {
+  position: absolute;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  /* 44px : cible tactile de référence, tenue à toutes les tailles. */
+  width: clamp(36px, 4.6vmin, 46px);
+  height: clamp(36px, 4.6vmin, 46px);
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  background: rgba(8, 16, 27, 0.8);
+  color: var(--ink);
+  cursor: pointer;
+  transition: background-color 140ms ease-out, color 140ms ease-out, border-color 140ms ease-out;
+}
+
+.control:hover {
+  background: rgba(20, 36, 56, 0.95);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.control:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.close {
+  top: clamp(-14px, -1.4vmin, -8px);
+  right: clamp(-14px, -1.4vmin, -8px);
+}
+
+.navPrev {
+  left: clamp(-16px, -2.2vmin, -22px);
+  top: 50%;
+  translate: 0 -50%;
+}
+
+.navNext {
+  right: clamp(-16px, -2.2vmin, -22px);
+  top: 50%;
+  translate: 0 -50%;
+}
+
+.controlIcon {
+  width: 45%;
+  height: 45%;
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * RESPONSIVE
+ * ────────────────────────────────────────────────────────────── */
+
+/* LAPTOP & MOBILE PAYSAGE — deux colonnes resserrées.
+   Déclenché par la HAUTEUR : c'est elle qui manque en 1366×768 comme en
+   932×430, pas la largeur. */
+@media (max-height: 800px) {
+  .panel {
+    /* `max-width` seulement : poser une `width` ici écraserait le
+       `fit-content` du panneau, qui reprendrait toute la largeur
+       disponible en étirant ses colonnes. */
+    max-width: min(100%, 1040px);
+    gap: clamp(12px, 2vw, 30px);
+  }
+
+  .info {
+    max-height: min(84vh, 620px);
+  }
+
+  .artwork {
+    width: min(clamp(150px, 21vw, 260px), calc((100vh - 90px) * 5 / 7));
+  }
+}
+
+/* MOBILE PAYSAGE — le HUD de la fiche se resserre encore, mais la
+   composition à deux colonnes tient : c'est le mode de jeu visé. */
+@media (max-height: 480px) {
+  .panel {
+    padding: clamp(10px, 2vmin, 16px);
+    gap: 14px;
+  }
+
+  .info {
+    max-height: none;
+    gap: 8px;
+  }
+
+  /* Place regagnée par la grille : la carte peut respirer, et le texte
+     s'étaler sur moins de lignes. */
+  .artwork {
+    width: min(190px, calc((100vh - 46px) * 5 / 7));
+  }
+
+  .info {
+    width: clamp(240px, 46vw, 430px);
+  }
+
+  /* Seule la fermeture rentre dans le panneau (le coin haut-droit est
+     libre) ; les flèches restent à l'extérieur, le panneau n'occupant plus
+     que ~70% de la largeur depuis qu'il épouse son contenu. */
+  .close { top: 4px; right: 4px; }
+}
+
+/* REPLI UNE COLONNE — fenêtre étroite / portrait (hors cible, mais ne
+   doit jamais casser). La carte reste en haut, tout défile ensemble. */
+@media (max-width: 660px) and (min-height: 481px) {
+  .panel {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    overflow-y: auto;
+  }
+
+  .artwork {
+    width: min(clamp(140px, 42vw, 220px), calc((100vh - 320px) * 5 / 7));
+  }
+
+  .info {
+    max-height: none;
+    width: 100%;
+    overflow: visible;
+  }
+
+  .navPrev { left: 4px; }
+  .navNext { right: 4px; }
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * ANIMATIONS
+ * ────────────────────────────────────────────────────────────── */
+@keyframes detail-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes detail-rise {
+  from { opacity: 0; transform: translateY(12px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes detail-card-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backdrop,
+  .panel,
+  .artwork {
+    animation: none;
+  }
+
+  .control {
+    transition: none;
+  }
+}

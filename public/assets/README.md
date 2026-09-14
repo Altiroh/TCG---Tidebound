@@ -30,6 +30,7 @@ gratuits.
 | `fx/triggered-effects/` | Représentation des effets déclenchés, activations d'Objets, fenêtres de résolution |
 | `fx/ocean-judgment/` | Effets du Jugement de l'Océan |
 | `menu/` | Écran d'accueil / menu principal — fond, logo, icônes de navigation (pas de spéc Notion dédiée, voir `menu/README.md`) |
+| `ui/decor/` | Décors d'interface hors plateau — habillages posés derrière une fenêtre ou un panneau, jamais au premier plan (voir `ui/decor/README.md`) |
 
 Chaque sous-dossier a son propre `README.md` avec le détail de la charte
 qui s'y applique.

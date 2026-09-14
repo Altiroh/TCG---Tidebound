@@ -17,10 +17,16 @@ interface CardDetailModalProps {
 }
 
 /**
- * Détail d'une carte de plateau — même composition que la fiche agrandie de
- * la Collection (`CollectionScreen`, carte + `CardInfoPanel`) mais sans le glow
- * coloré derrière le panneau (`showGlow={false}`) : ouvert au clic sur une
- * carte posée plutôt qu'au survol (plus de "hover scale" sur le plateau).
+ * Détail d'une carte DE PLATEAU : carte agrandie + `CardInfoPanel`, sans le
+ * glow coloré derrière le panneau (`showGlow={false}`). Ouvert au clic sur
+ * une carte posée plutôt qu'au survol (plus de "hover scale" sur le
+ * plateau).
+ *
+ * À ne pas confondre avec `features/collection/card-detail/`, la fiche de
+ * la Collection : celle-ci montre l'ÉTAT VIVANT d'une carte en jeu (dégâts,
+ * modificateurs, équipements attachés, Marée courante), ce que la fiche de
+ * catalogue n'a précisément pas à montrer. Les deux ont donc divergé
+ * volontairement.
  */
 export function CardDetailModal({ instance, tideState, boardUnits = [], auraContext, onClose }: CardDetailModalProps) {
   useEffect(() => {

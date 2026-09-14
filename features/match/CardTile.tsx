@@ -32,6 +32,15 @@ interface CardTileProps {
   widthClassName?: string;
   /** `false` pour désactiver l'agrandissement léger au survol (ex: cartes de plateau — l'utilisateur clique désormais pour voir le détail plutôt que de survoler). Défaut : `true`. */
   scaleOnHover?: boolean;
+  /**
+   * `false` retire les badges de statut flottants (Inactive, Mal
+   * d'invocation, Garde, Durée…). Ces badges décrivent l'état d'une carte
+   * EN PARTIE ; hors partie — fiche de Collection — ils sont calculés à
+   * partir d'une Marée arbitraire et racontent donc n'importe quoi (une
+   * carte marquée « Inactive » parce que l'aperçu suppose Calme). Défaut :
+   * `true`, aucun appelant existant ne change de comportement.
+   */
+  showStatusBadges?: boolean;
   /** Taille en pixels réels des badges de statut flottants (`StatusBadge`) — indépendante de `widthClassName` puisqu'ils vivent hors du conteneur à requête de conteneur. Défaut : 38 (cartes de plateau). La vue détail (`CardDetailModal`, carte bien plus grande) passe une valeur plus élevée pour rester proportionnée. */
   badgeSize?: number;
   /**
@@ -291,6 +300,7 @@ export function CardTile({
   scaleOnHover = true,
   faceDown = false,
   badgeSize = 38,
+  showStatusBadges = true,
   auraContext,
   draggable = false,
   onDragStart,
@@ -504,7 +514,8 @@ export function CardTile({
           flottant juste au-dessus de la carte : trop petits pour être vus "à l'œil nu" quand ils étaient
           incrustés dans le cadre en cqw (rapetissant avec la carte). Taille fixe désormais (`StatusBadge`
           n'utilise plus `cqw`), toujours lisible même sur la plus petite carte de plateau. */}
-      {(stats.inactive ||
+      {showStatusBadges &&
+        (stats.inactive ||
         (instance.summoningSick && isUnit) ||
         instance.turnsRemaining !== undefined ||
         hasKeyword(def, "garde") ||

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { CORE_SET, type CardType } from "@/game";
 import { compareCards, normalizeSearch, type SortMode } from "@/features/collection/cardFilters";
 import { useDebouncedValue } from "@/features/collection/useDebouncedValue";
@@ -13,9 +13,7 @@ import { SortControl } from "@/features/shell/SortControl";
 import { TypeFilterRow } from "@/features/shell/TypeFilterRow";
 import { UtilityBar } from "@/features/shell/UtilityBar";
 import shell from "@/features/shell/ScreenShell.module.css";
-import { GameModal } from "@/components/game-ui/GameModal";
-import { CardInfoPanel } from "@/features/match/CardInfoPanel";
-import { CardTile } from "@/features/match/CardTile";
+import { CardDetailModal } from "@/features/collection/card-detail/CardDetailModal";
 import { playButtonClick } from "@/lib/sound";
 import Link from "next/link";
 
@@ -60,26 +58,21 @@ export function CollectionScreen({ isSignedIn, ownedCardIds }: CollectionScreenP
     }).sort((a, b) => compareCards(a, b, sort));
   }, [ownedSet, activeType, debouncedSearch, sort]);
 
-  const detailIndex = detailCardId ? filteredCards.findIndex((def) => def.id === detailCardId) : -1;
-
-  function showRelative(delta: number) {
-    if (detailIndex === -1 || filteredCards.length === 0) return;
-    const nextIndex = (detailIndex + delta + filteredCards.length) % filteredCards.length;
-    const nextCard = filteredCards[nextIndex];
-    if (nextCard) setDetailCardId(nextCard.id);
-  }
-
-  useEffect(() => {
-    if (!detailCardId) return;
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setDetailCardId(null);
-      if (event.key === "ArrowLeft") showRelative(-1);
-      if (event.key === "ArrowRight") showRelative(1);
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [detailCardId]);
+  // La navigation tourne en boucle sur la SÉLECTION COURANTE (filtre +
+  // recherche + tri), pas sur le catalogue entier : les flèches suivent ce
+  // que le joueur a sous les yeux.
+  const showRelative = useCallback(
+    (delta: number) => {
+      setDetailCardId((currentId) => {
+        if (!currentId || filteredCards.length === 0) return currentId;
+        const index = filteredCards.findIndex((def) => def.id === currentId);
+        if (index === -1) return currentId;
+        const next = filteredCards[(index + delta + filteredCards.length) % filteredCards.length];
+        return next ? next.id : currentId;
+      });
+    },
+    [filteredCards]
+  );
 
   return (
     <ScreenShell>
@@ -112,66 +105,16 @@ export function CollectionScreen({ isSignedIn, ownedCardIds }: CollectionScreenP
       />
 
       {detailCardId && (
-        <GameModal onClose={() => setDetailCardId(null)} className="!bg-transparent !shadow-none !p-0">
-          <div className="flex items-center gap-8" onClick={(e) => e.stopPropagation()}>
-            <button
-              type="button"
-              onClick={() => setDetailCardId(null)}
-              className="fixed right-6 top-6 z-[60] flex items-center gap-2 rounded-full px-3 py-1.5 text-sm text-slate-300 drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)] transition-colors hover:bg-white/10 hover:text-amber-300"
-            >
-              Fermer
-              <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
-                <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
-              </svg>
-            </button>
-
-            {filteredCards.length > 1 && (
-              <button
-                type="button"
-                onClick={() => showRelative(-1)}
-                aria-label="Carte précédente"
-                className="fixed left-6 top-1/2 z-[60] flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full text-slate-300 transition-colors hover:bg-white/10 hover:text-amber-300"
-              >
-                <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6">
-                  <path d="M15 5l-7 7 7 7" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </button>
-            )}
-            {filteredCards.length > 1 && (
-              <button
-                type="button"
-                onClick={() => showRelative(1)}
-                aria-label="Carte suivante"
-                className="fixed right-6 top-1/2 z-[60] flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full text-slate-300 transition-colors hover:bg-white/10 hover:text-amber-300"
-              >
-                <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6">
-                  <path d="M9 5l7 7-7 7" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </button>
-            )}
-
-            <div>
-              <CardTile
-                instance={{
-                  instanceId: detailCardId,
-                  cardId: detailCardId,
-                  ownerId: "collection",
-                  damageMarked: 0,
-                  modifiers: [],
-                  summoningSick: false,
-                  hasAttackedThisTurn: false,
-                }}
-                tideState="calme"
-                widthClassName="w-80 sm:w-96"
-                onClick={() => setDetailCardId(null)}
-              />
-            </div>
-            <div className="-my-8 hidden self-stretch sm:block">
-              <CardInfoPanel cardId={detailCardId} />
-            </div>
-          </div>
-        </GameModal>
+        <CardDetailModal
+          cardId={detailCardId}
+          onClose={() => setDetailCardId(null)}
+          // Pas de flèches quand la sélection ne contient qu'une carte.
+          onPrevious={filteredCards.length > 1 ? () => showRelative(-1) : undefined}
+          onNext={filteredCards.length > 1 ? () => showRelative(1) : undefined}
+          onShowCard={setDetailCardId}
+        />
       )}
+
     </ScreenShell>
   );
 }
