@@ -7,7 +7,13 @@
  * un navigateur qui bloque l'audio (politique d'autoplay, contexte non
  * sécurisé) ne doit jamais faire échouer une action de jeu, d'où les
  * `try/catch`/`.catch()` silencieux partout.
+ *
+ * Tout passe par ce module : c'est donc ici, et nulle part ailleurs, que
+ * les interrupteurs "Musique" / "Effets" des Options (`lib/settings.ts`)
+ * sont appliqués — aucun appelant n'a à s'en préoccuper.
  */
+
+import { getAudioSettings, subscribeAudioSettings } from "@/lib/settings";
 
 const VOLUME = {
   click: 0.35,
@@ -26,6 +32,7 @@ const ATTACK_SOUNDS = [
 
 /** Une instance `Audio` par lecture (plutôt qu'un élément partagé) : deux effets qui se chevauchent (ex: clics rapides) doivent tous les deux s'entendre, pas s'interrompre l'un l'autre. */
 function play(src: string, volume: number): void {
+  if (!getAudioSettings().effects) return;
   try {
     const audio = new Audio(src);
     audio.volume = volume;
@@ -54,14 +61,27 @@ export function playRandomAttackSound(): void {
 }
 
 let ambianceEl: HTMLAudioElement | null = null;
+/** L'écran qui veut de l'ambiance est-il monté ? Indépendant du réglage "Musique" : c'est la conjonction des deux qui décide si le son tourne. */
+let ambianceWanted = false;
 
 /**
- * Lance l'ambiance du menu principal en boucle. Si l'autoplay est bloqué
- * (quasi systématique sans interaction préalable), retente automatiquement
- * au tout premier clic/touche appuyée n'importe où sur la page.
+ * Aligne l'état réel de l'élément audio sur ce qui est voulu (écran monté ET
+ * musique activée dans les Options). Rappelée aussi bien au montage/démontage
+ * de l'écran qu'à chaque bascule de l'interrupteur, pour que couper la
+ * musique depuis les Options la fasse taire immédiatement — et que la
+ * réactiver la relance sans quitter le menu.
  */
-export function startMenuAmbiance(): void {
+function applyAmbiance(): void {
   if (typeof window === "undefined") return;
+
+  if (!ambianceWanted || !getAudioSettings().music) {
+    if (ambianceEl) {
+      ambianceEl.pause();
+      ambianceEl.currentTime = 0;
+    }
+    return;
+  }
+
   if (!ambianceEl) {
     ambianceEl = new Audio("/assets/sound/ambiance-menu.mp3");
     ambianceEl.loop = true;
@@ -69,15 +89,28 @@ export function startMenuAmbiance(): void {
   }
   const el = ambianceEl;
   el.play().catch(() => {
-    const retry = () => void el.play().catch(() => {});
+    // Autoplay bloqué (quasi systématique sans interaction préalable) :
+    // on retente au tout premier clic/touche. Le `applyAmbiance()` du retry
+    // re-vérifie les conditions — si la musique a été coupée entre-temps,
+    // il ne relance rien.
+    const retry = () => applyAmbiance();
     window.addEventListener("pointerdown", retry, { once: true });
     window.addEventListener("keydown", retry, { once: true });
   });
 }
 
+if (typeof window !== "undefined") {
+  subscribeAudioSettings(applyAmbiance);
+}
+
+/** Lance l'ambiance du menu principal en boucle (sauf si la musique est coupée dans les Options). */
+export function startMenuAmbiance(): void {
+  ambianceWanted = true;
+  applyAmbiance();
+}
+
 /** Coupe l'ambiance du menu (ex: en quittant l'écran d'accueil). */
 export function stopMenuAmbiance(): void {
-  if (!ambianceEl) return;
-  ambianceEl.pause();
-  ambianceEl.currentTime = 0;
+  ambianceWanted = false;
+  applyAmbiance();
 }

@@ -4,6 +4,7 @@ import { signOut } from "@/app/connexion/actions";
 import { TideboundMenuChest } from "@/components/menu/TideboundMenuChest";
 import { MenuAmbiance } from "@/components/menu/MenuAmbiance";
 import { AuthGateModal } from "@/components/auth/AuthGateModal";
+import { OptionsButton } from "@/features/settings/OptionsButton";
 
 /**
  * Résout l'utilisateur connecté, sans jamais faire planter la page
@@ -39,6 +40,7 @@ export default async function HomePage() {
 
       <AuthGateModal isSignedIn={isSignedIn} />
       <MenuAmbiance />
+      <OptionsButton isSignedIn={isSignedIn} />
 
       <div className="relative z-10 w-full">
         <TideboundMenuChest />

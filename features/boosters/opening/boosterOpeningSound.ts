@@ -6,7 +6,12 @@
  * fonction correspondante ne fait strictement rien (pas même une requête
  * réseau vers un fichier absent). Pour brancher un son : déposer le fichier
  * dans `public/assets/sound/` et renseigner son chemin ici.
+ *
+ * Comme tous les autres sons du jeu, ceux-ci sont soumis à l'interrupteur
+ * "Effets" des Options (`lib/settings.ts`).
  */
+
+import { getAudioSettings } from "@/lib/settings";
 
 type BoosterSoundKey = "enter" | "packTear" | "packOpen" | "cardSpawn" | "cardFlip" | "rareReveal" | "abyssalReveal";
 
@@ -33,6 +38,7 @@ const BOOSTER_SOUND_VOLUME: Record<BoosterSoundKey, number> = {
 function playBoosterSound(key: BoosterSoundKey): void {
   const src = BOOSTER_SOUND_FILES[key];
   if (!src || typeof window === "undefined") return;
+  if (!getAudioSettings().effects) return;
   try {
     const audio = new Audio(src);
     audio.volume = BOOSTER_SOUND_VOLUME[key];
