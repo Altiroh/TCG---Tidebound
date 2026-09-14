@@ -57,8 +57,12 @@ export function CardDetailModal({ instance, tideState, boardUnits = [], auraCont
         <CardTile instance={instance} tideState={tideState} auraContext={auraContext} widthClassName="w-full" scaleOnHover={false} badgeSize={90} />
         <AppliedEffectsList instance={instance} tideState={tideState} boardUnits={boardUnits} auraContext={auraContext} />
       </div>
-      <div className="-my-8 hidden self-stretch sm:block" onClick={(e) => e.stopPropagation()}>
-        <CardInfoPanel cardId={instance.cardId} showGlow={false} />
+      {/* Colonne d'informations à hauteur de son contenu : elle ne
+          s'étire plus du haut au bas de l'écran (`self-stretch` + `-my-8`),
+          ce qui dessinait une bande verticale permanente à droite de la
+          carte quelle que soit la quantité de texte. */}
+      <div className="hidden sm:block" onClick={(e) => e.stopPropagation()}>
+        <CardInfoPanel cardId={instance.cardId} />
       </div>
     </div>
   );
