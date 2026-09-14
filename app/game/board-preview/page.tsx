@@ -20,7 +20,10 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
+  // Pas de `maximumScale` : seul `viewportFit` sert la safe area, et
+  // verrouiller l'échelle empêcherait le zoom par pincement (WCAG 1.4.4)
+  // — précisément le geste qui permet d'inspecter un détail de layout sur
+  // un vrai téléphone.
   viewportFit: "cover",
   themeColor: "#05090f",
 };

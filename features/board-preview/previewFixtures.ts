@@ -19,8 +19,6 @@ export interface PreviewCardModel {
   /** Numéro affiché sur le placeholder, pour repérer une carte à l'oeil. */
   index: number;
   label: string;
-  /** Face cachée (main adverse) — change uniquement l'habillage du placeholder. */
-  faceDown?: boolean;
 }
 
 /** Emplacements d'un plateau, côté joueur comme côté adversaire. */
@@ -29,12 +27,11 @@ export const BOARD_CAPACITY = 5;
 /** Taille de main de référence pour juger les espacements (cf. cahier des charges : 7 ou 8 cartes). */
 export const HAND_SIZE = 8;
 
-function makeCards(prefix: string, count: number, label: string, faceDown = false): PreviewCardModel[] {
+function makeCards(prefix: string, count: number, label: string): PreviewCardModel[] {
   return Array.from({ length: count }, (_, i) => ({
     id: `${prefix}-${i + 1}`,
     index: i + 1,
     label,
-    faceDown,
   }));
 }
 

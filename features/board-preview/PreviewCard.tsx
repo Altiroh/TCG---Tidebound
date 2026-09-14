@@ -16,13 +16,9 @@ interface PreviewCardProps {
  */
 export function PreviewCard({ card }: PreviewCardProps) {
   return (
-    <div className={`${styles.card} ${card.faceDown ? styles.cardFaceDown : ""}`} aria-hidden={card.faceDown}>
-      {card.faceDown ? null : (
-        <>
-          <span className={styles.cardIndex}>{card.index}</span>
-          <span className={styles.cardLabel}>{card.label}</span>
-        </>
-      )}
+    <div className={styles.card}>
+      <span className={styles.cardIndex}>{card.index}</span>
+      <span className={styles.cardLabel}>{card.label}</span>
     </div>
   );
 }

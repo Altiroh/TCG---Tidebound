@@ -356,10 +356,6 @@
   color: var(--ink-dim);
 }
 
-.cardFaceDown {
-  background: repeating-linear-gradient(135deg, rgba(24, 44, 64, 0.95) 0 6px, rgba(16, 32, 48, 0.95) 6px 12px);
-}
-
 /* ──────────────────────────────────────────────────────────────
  * NAVIRES
  * ────────────────────────────────────────────────────────────── */
@@ -436,7 +432,9 @@
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--fill);
-  min-height: var(--hud-h);
+  /* Affichage seul, jamais une cible tactile : son plancher peut descendre
+     sous les 36px imposés aux contrôles du HUD (`--hud-h`), mais jamais
+     au-delà du tiers d'une carte, pour rester lisible. */
   min-height: min(var(--hud-h), calc(var(--card-h) / 3.2));
 }
 
@@ -540,6 +538,10 @@
 .hud {
   grid-row: 2;
   grid-column: 1;
+  /* Comme toute zone portant `data-zone` : sert de repère à l'étiquette de
+     debug (`[data-zone]::after`), qui se calerait sinon sur `.stage` et se
+     superposerait à celle de la zone adverse. */
+  position: relative;
   width: var(--stage-max-w);
   justify-self: center;
   z-index: 20;
@@ -664,6 +666,13 @@
 /* Préfixés par `.viewport` : les CSS Modules refusent un sélecteur
    "impur" (sans classe locale), et ça limite au passage ces couleurs au
    seul laboratoire. */
+/* Le HUD partage sa rangée avec la bande centrale : son étiquette part à
+   droite, sinon les deux se superposent exactement au même coin. */
+.viewport[data-debug-zones="true"] [data-zone="HudLayer"]::after {
+  left: auto;
+  right: 0;
+}
+
 .viewport [data-zone="OpponentZone"] { --zone-color: #f97316; }
 .viewport [data-zone="OpponentBoard"] { --zone-color: #fbbf24; }
 .viewport [data-zone="CenterZone"] { --zone-color: #7ee0d0; }
@@ -766,8 +775,9 @@
     --ship-w: clamp(74px, 13cqw, 130px);
     --res-w: clamp(58px, 9cqw, 96px);
     --tide-h: clamp(22px, 6cqh, 34px);
-    /* Le HUD ne rétrécit PAS autant que le reste : c'est ce qu'on touche. */
-    --hud-h: clamp(30px, 8cqh, 38px);
+    /* Le HUD ne rétrécit PAS autant que le reste : c'est ce qu'on touche.
+       36px est le plancher tactile, tenu même en 740×360. */
+    --hud-h: clamp(36px, 8cqh, 40px);
     --fs-label: clamp(7px, 2cqh, 10px);
     --fs-value: clamp(9px, 3cqh, 14px);
   }

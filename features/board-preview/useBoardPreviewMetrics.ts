@@ -54,13 +54,26 @@ export function useBoardPreviewMetrics(stageRef: React.RefObject<HTMLElement>): 
         if (isBreakpoint(raw)) breakpoint = raw;
       }
 
-      setMetrics({
+      const next: BoardPreviewMetrics = {
         width,
         height,
         ratio: height > 0 ? Math.round((width / height) * 100) / 100 : 0,
         breakpoint,
         orientation: width >= height ? "landscape" : "portrait",
-      });
+      };
+
+      // Un redimensionnement à la souris émet des dizaines d'événements par
+      // seconde : on ne re-rend que quand une valeur affichée bouge vraiment
+      // (les mesures sont arrondies, donc beaucoup de ticks sont identiques).
+      setMetrics((current) =>
+        current.width === next.width &&
+        current.height === next.height &&
+        current.ratio === next.ratio &&
+        current.breakpoint === next.breakpoint &&
+        current.orientation === next.orientation
+          ? current
+          : next
+      );
     }
 
     read();
