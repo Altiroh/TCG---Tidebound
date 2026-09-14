@@ -4,11 +4,8 @@ import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PITY } from "@/game/boosters";
-import { PaperSurface } from "@/features/shell/PaperSurface";
-import { ScreenHeader } from "@/features/shell/ScreenHeader";
-import { ScreenShell } from "@/features/shell/ScreenShell";
-import { UtilityBar } from "@/features/shell/UtilityBar";
-import shell from "@/features/shell/ScreenShell.module.css";
+import { GameScreen } from "@/features/shell/GameScreen";
+import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/boosters/Boosters.module.css";
 import { purchaseBooster, type BoosterInventory } from "@/features/boosters/actions";
 import { BoosterOpeningScene } from "@/features/boosters/opening/BoosterOpeningScene";
@@ -19,9 +16,9 @@ import type { BoosterOpeningCard } from "@/features/boosters/opening/types";
 import { playButtonClick } from "@/lib/sound";
 
 /**
- * Boutons « Tester l'animation » de la barre du bas : rejouent la scène
- * d'ouverture sans posséder de booster ni être connecté. Purement visuels,
- * comme « Ouvrir » pour l'instant.
+ * Boutons « Tester l'animation » : rejouent la scène d'ouverture sans
+ * posséder de booster ni être connecté. Purement visuels, comme « Ouvrir »
+ * pour l'instant.
  * TODO(booster-serveur) : retirer (ou réserver au développement) une fois
  * l'ouverture réelle branchée.
  */
@@ -35,12 +32,13 @@ interface BoostersScreenProps {
 }
 
 /**
- * Écran Boosters — montée sur la même coquille que Collection et Decks.
- * L'objet posé sur le papier est ici un paquet scellé.
+ * Market — les boosters, sur la coquille commune. Chaque booster est une
+ * tuile : le sachet fermé, le nom, le contenu et le prix, puis Ouvrir /
+ * Acheter. Le solde de Tides est en tête de page (et dans le bandeau).
  *
  * PROTOTYPE : « Ouvrir » ne lance pour l'instant QUE la scène d'ouverture,
- * avec des cartes du catalogue tirées au hasard localement. Aucun appel serveur, aucune écriture : le
- * booster n'est pas consommé et la collection ne change pas.
+ * avec des cartes du catalogue tirées au hasard localement. Aucun appel
+ * serveur, aucune écriture : le booster n'est pas consommé.
  */
 export function BoostersScreen({ inventory }: BoostersScreenProps) {
   const router = useRouter();
@@ -78,22 +76,8 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
   function handleOpeningClosed() {
     setOpening(null);
     // TODO(booster-serveur) : une fois l'ouverture réelle branchée, rafraîchir
-    // l'inventaire et la collection ici (`router.refresh()`). Rien n'a changé
-    // côté serveur dans le prototype, donc rien à recharger.
+    // l'inventaire et la collection ici (`router.refresh()`).
   }
-
-  const openingTestButtons = OPENING_TEST_BOOSTERS.map((test) => (
-    <button
-      key={test.boosterId}
-      type="button"
-      className={shell.ghostAction}
-      onClick={() => handleOpen(test.boosterId)}
-      disabled={opening !== null}
-      title={`Tester l’animation d’ouverture : ${test.label}`}
-    >
-      {test.label}
-    </button>
-  ));
 
   function handlePurchase(boosterId: string) {
     playButtonClick();
@@ -114,53 +98,59 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
   }
 
   return (
-    <ScreenShell>
-      <ScreenHeader active="boosters" />
+    <GameScreen active="boosters">
+      <div className={game.content}>
+        <div className={game.contentWide}>
+          <div className={game.pageHead}>
+            <div>
+              <p className={game.eyebrow}>Market</p>
+              <h1 className={game.title}>Boosters</h1>
+            </div>
+            {inventory.isSignedIn && (
+              <span className={styles.balance} aria-label={`Solde : ${inventory.balance} Tides`}>
+                {inventory.balance}
+                <span className={styles.balanceLabel}>Tides</span>
+              </span>
+            )}
+          </div>
 
-      <PaperSurface>
-        <div className={shell.paperScrollFill}>
           {!inventory.isSignedIn ? (
-            <div className={shell.emptyState}>
-              <span className={shell.emptyStateTitle}>Connecte-toi pour ouvrir des boosters</span>
-              <p>Tes boosters, tes Tides et ta collection sont enregistrés sur ton compte.</p>
-              <Link href="/connexion" className={shell.primaryAction} onClick={() => playButtonClick()}>
+            <div className={`${game.panel} ${game.empty}`}>
+              <p className={game.emptyTitle}>Connecte-toi pour ouvrir des boosters</p>
+              <p className={game.muted}>Tes boosters, tes Tides et ta collection sont enregistrés sur ton compte.</p>
+              <Link href="/connexion" className={game.primary} onClick={() => playButtonClick()} style={{ marginTop: 6 }}>
                 Se connecter
               </Link>
             </div>
           ) : inventory.boosters.length === 0 ? (
-            <div className={shell.emptyState}>
-              <span className={shell.emptyStateTitle}>Aucun booster disponible</span>
-              <p>
-                Le catalogue de boosters est vide en base. Applique les migrations Supabase, puis lance{" "}
-                <code>npm run seed:cards</code>.
+            <div className={`${game.panel} ${game.empty}`}>
+              <p className={game.emptyTitle}>Aucun booster disponible</p>
+              <p className={game.muted}>
+                Le catalogue de boosters est vide en base. Applique les migrations Supabase, puis lance <code>npm run seed:cards</code>.
               </p>
             </div>
           ) : (
             <>
-              {error && <p className={styles.error}>{error}</p>}
+              {error && <p className={game.error}>{error}</p>}
 
               <div className={styles.shelf}>
                 {inventory.boosters.map((booster) => {
                   const busy = busyBoosterId === booster.boosterId || isPending;
                   const canAfford = booster.price !== null && inventory.balance >= booster.price;
                   const packClass = booster.owned > 0 ? `${styles.pack} ${styles.packOwned}` : `${styles.pack} ${styles.packEmpty}`;
-                  // Le compteur de pity n'est montré qu'une fois le
-                  // renforcement commencé : avant, c'est du bruit.
+                  // Le compteur de pity n'est montré qu'une fois le renforcement commencé : avant, c'est du bruit.
                   const showPity = booster.packsSinceAbyssal >= PITY.rampStartsAfterPacks;
 
                   return (
-                    <div key={booster.boosterId} className={packClass}>
+                    <article key={booster.boosterId} className={`${game.panelRaised} ${packClass}`} aria-label={booster.name}>
                       <button
                         type="button"
                         className={styles.packObject}
-                        // Le sachet fermé de CE booster (le même visuel que
-                        // l'animation d'ouverture), et non un dos de carte.
+                        // Le sachet fermé de CE booster (le même visuel que l'animation d'ouverture), et non un dos de carte.
                         style={closedPackVariables(getBoosterPackVisual(booster.boosterId))}
                         onClick={() => booster.owned > 0 && !busy && handleOpen(booster.boosterId)}
                         disabled={booster.owned === 0 || busy}
-                        aria-label={
-                          booster.owned > 0 ? `Ouvrir un ${booster.name}` : `${booster.name} — aucun exemplaire`
-                        }
+                        aria-label={booster.owned > 0 ? `Ouvrir un ${booster.name}` : `${booster.name} — aucun exemplaire`}
                         title={booster.owned > 0 ? "Ouvrir" : "Tu n'en possèdes aucun"}
                       >
                         {booster.owned > 0 && <span className={styles.packCount}>×{booster.owned}</span>}
@@ -168,34 +158,33 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
 
                       <span className={styles.packName}>{booster.name}</span>
                       <span className={styles.packMeta}>
-                        {booster.cardCount} cartes
-                        {booster.price !== null && ` · ${booster.price} Tides`}
+                        <span>{booster.cardCount} cartes</span>
+                        {booster.price !== null && (
+                          <>
+                            <span aria-hidden>·</span>
+                            <span className={styles.packPrice}>{booster.price} Tides</span>
+                          </>
+                        )}
+                        {booster.owned === 0 && <span className={game.tag}>Aucun</span>}
                       </span>
 
                       {showPity && (
                         <span className={styles.packPity}>
                           {booster.packsSinceAbyssal} sans Abyssale
-                          {booster.packsSinceAbyssal >= PITY.guaranteeAtPack - 1
-                            ? " · garantie au prochain"
-                            : " · chance renforcée"}
+                          {booster.packsSinceAbyssal >= PITY.guaranteeAtPack - 1 ? " · garantie au prochain" : " · chance renforcée"}
                         </span>
                       )}
 
                       <div className={styles.packActions}>
                         {booster.owned > 0 && (
-                          <button
-                            type="button"
-                            className={styles.packButtonPrimary}
-                            onClick={() => handleOpen(booster.boosterId)}
-                            disabled={busy}
-                          >
+                          <button type="button" className={game.primary} onClick={() => handleOpen(booster.boosterId)} disabled={busy}>
                             {busy ? "Ouverture…" : "Ouvrir"}
                           </button>
                         )}
                         {booster.isPurchasable && booster.price !== null && (
                           <button
                             type="button"
-                            className={styles.packButton}
+                            className={game.secondary}
                             onClick={() => handlePurchase(booster.boosterId)}
                             disabled={busy || !canAfford}
                             title={canAfford ? undefined : "Solde de Tides insuffisant"}
@@ -204,48 +193,28 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
                           </button>
                         )}
                       </div>
-                    </div>
+                    </article>
                   );
                 })}
               </div>
             </>
           )}
+
+          <div className={styles.testRow} role="group" aria-label="Tester l’animation d’ouverture">
+            <span>Tester l&apos;animation d&apos;ouverture</span>
+            {OPENING_TEST_BOOSTERS.map((test) => (
+              <button key={test.boosterId} type="button" className={game.link} onClick={() => handleOpen(test.boosterId)} disabled={opening !== null}>
+                {test.label}
+              </button>
+            ))}
+            <Link href="/collection" className={game.link} onClick={() => playButtonClick()} style={{ marginLeft: "auto" }}>
+              Voir la collection →
+            </Link>
+          </div>
         </div>
-      </PaperSurface>
-
-      <UtilityBar
-        left={
-          <Link href="/collection" className={shell.ghostAction} onClick={() => playButtonClick()}>
-            Voir la collection
-          </Link>
-        }
-        center={
-          <span className={styles.testInline}>
-            <span className={styles.testLabel}>Tester l’animation</span>
-            {openingTestButtons}
-          </span>
-        }
-        right={
-          inventory.isSignedIn ? (
-            <span className={shell.progressionTides} style={{ justifyContent: "flex-end" }}>
-              {inventory.balance}
-              <span className={shell.progressionTidesLabel}>Tides</span>
-            </span>
-          ) : undefined
-        }
-      />
-
-      <div className={styles.testFloating} aria-label="Tester l’animation d’ouverture" role="group">
-        {openingTestButtons}
       </div>
 
-      {opening && (
-        <BoosterOpeningScene
-          cards={opening.cards}
-          visual={getBoosterPackVisual(opening.boosterId)}
-          onClose={handleOpeningClosed}
-        />
-      )}
-    </ScreenShell>
+      {opening && <BoosterOpeningScene cards={opening.cards} visual={getBoosterPackVisual(opening.boosterId)} onClose={handleOpeningClosed} />}
+    </GameScreen>
   );
 }

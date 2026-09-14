@@ -1,4 +1,12 @@
 import { ResourceGauge } from "@/features/match/ResourceGauge";
+import {
+  SHIP_FRAME_ASPECT,
+  SHIP_FRAME_SRC,
+  SHIP_ILLUSTRATION_CLIP,
+  SHIP_ILLUSTRATION_ZONE,
+  SHIP_PLATE_TOP,
+  shipIllustrationUrl,
+} from "@/features/ships/shipFrame";
 
 interface ShipInstrumentClusterProps {
   anchor: number;
@@ -12,24 +20,14 @@ interface ShipInstrumentClusterProps {
   deraisonDamage?: number;
 }
 
-/** Ratio réel de `ship-frame-empty.webp` (512×640) — dérive la hauteur du cadre à partir de `width`. */
-const FRAME_ASPECT = 512 / 640;
-
-/**
- * Fenêtre en arche de `ship-frame-empty.webp`, mesurée par remplissage de la
- * zone transparente (alpha ≤ 40) depuis son centre : ~13,1 %/76,3 % de
- * hauteur, ~14,8 %/84,8 % de largeur. L'ancienne zone (16 %/74 %, arrondi
- * `rounded-t-full`) laissait voir le fond en haut de l'arche et en bas.
- * La zone déborde de 1 % de chaque côté (anneau vérifié 100 % opaque :
- * le bois du cadre recouvre ce débord) et `ILLUSTRATION_CLIP` suit le
- * contour réel, en coordonnées relatives à la zone. La plaque en bois vers
- * ~74 % porte les deux médaillons Ancrage/Raison (le nom de joueur est
- * réservé à `VictoryScreen`).
+/*
+ * Géométrie du cadre (ratio, fenêtre en arche, contour, plaque) :
+ * `features/ships/shipFrame.ts`, partagée avec `ShipPortrait` (menus).
  */
-const ILLUSTRATION_ZONE = { top: "12.19%", left: "13.87%", width: "71.88%", height: "65%" };
-const ILLUSTRATION_CLIP =
-  "polygon(39.4% 0%, 22.6% 7.5%, 13.9% 13.7%, 8.4% 19.7%, 4.6% 25.7%, 1.9% 31.7%, 0.3% 38%, 0% 44%, 0% 86.5%, 1.4% 92.5%, 7.3% 100%, 92.9% 100%, 98.9% 92.5%, 100% 86.5%, 100% 44%, 99.5% 38%, 97.8% 31.7%, 95.4% 25.7%, 91.6% 19.7%, 85.9% 13.7%, 77.2% 7.5%, 60.6% 0%)";
-const GAUGES_TOP = "74%";
+const FRAME_ASPECT = SHIP_FRAME_ASPECT;
+const ILLUSTRATION_ZONE = SHIP_ILLUSTRATION_ZONE;
+const ILLUSTRATION_CLIP = SHIP_ILLUSTRATION_CLIP;
+const GAUGES_TOP = SHIP_PLATE_TOP;
 
 /**
  * Cadre Navire vertical (`ship-frame-empty.webp`, bois vieilli + laiton,
@@ -51,7 +49,7 @@ export function ShipInstrumentCluster({ anchor, anchorMax, reason, reasonMax, il
         {illustration && (
           // eslint-disable-next-line @next/next/no-img-element -- asset local, une par Navire
           <img
-            src={`/assets/ships/illu/${illustration}`}
+            src={shipIllustrationUrl(illustration)}
             alt=""
             draggable={false}
             className="h-full w-full select-none object-cover"
@@ -61,7 +59,7 @@ export function ShipInstrumentCluster({ anchor, anchorMax, reason, reasonMax, il
 
       {/* eslint-disable-next-line @next/next/no-img-element -- élément décoratif de mise en page fixe */}
       <img
-        src="/assets/ships/ship-frame-empty.webp"
+        src={SHIP_FRAME_SRC}
         alt=""
         aria-hidden
         draggable={false}

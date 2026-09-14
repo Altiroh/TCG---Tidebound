@@ -3,11 +3,8 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { PaperSurface } from "@/features/shell/PaperSurface";
-import { ScreenHeader } from "@/features/shell/ScreenHeader";
-import { ScreenShell } from "@/features/shell/ScreenShell";
-import { UtilityBar } from "@/features/shell/UtilityBar";
-import shell from "@/features/shell/ScreenShell.module.css";
+import { GameScreen } from "@/features/shell/GameScreen";
+import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/quests/Quests.module.css";
 import { claimQuestReward, type QuestBoard, type QuestEntry } from "@/features/quests/actions";
 import { playButtonClick } from "@/lib/sound";
@@ -27,12 +24,12 @@ function formatRemaining(endsAtIso: string): string {
 }
 
 /**
- * Écran Quêtes — même coquille que Collection, Decks et Boosters. Un
- * registre posé sur le papier : une ligne par quête, sa progression à
- * l'encre, et la récompense à réclamer une fois la cible atteinte.
- *
- * Aucune progression n'est calculée ici : elle est écrite par le serveur à
- * la fin de chaque partie arbitrée (`features/matches/matchStore.ts`).
+ * Quêtes — sur la coquille commune. Une section par période (quotidiennes,
+ * hebdomadaires) avec le temps restant ; une ligne par quête : objectif,
+ * progression, récompense, état. Aucune progression n'est calculée ici :
+ * elle est écrite par le serveur à la fin de chaque partie arbitrée
+ * (`features/matches/matchStore.ts`), et la réclamation est une Server
+ * Action autoritaire.
  */
 export function QuestsScreen({ board }: QuestsScreenProps) {
   const router = useRouter();
@@ -61,77 +58,60 @@ export function QuestsScreen({ board }: QuestsScreenProps) {
   }
 
   const hasQuests = board.daily.length + board.weekly.length > 0;
+  const claimableCount = [...board.daily, ...board.weekly].filter((entry) => entry.completed && !entry.claimed).length;
 
   return (
-    <ScreenShell>
-      <ScreenHeader active="quetes" />
+    <GameScreen active="quetes">
+      <div className={game.content}>
+        <div className={game.contentInner}>
+          <div className={game.pageHead}>
+            <div>
+              <p className={game.eyebrow}>Quêtes</p>
+              <h1 className={game.title}>{claimableCount > 0 ? `${claimableCount} récompense${claimableCount > 1 ? "s" : ""} à réclamer` : "Journal de bord"}</h1>
+            </div>
+            {board.isSignedIn && (
+              <Link href="/partie" className={game.secondary} onClick={() => playButtonClick()}>
+                Jouer une partie
+              </Link>
+            )}
+          </div>
 
-      <PaperSurface>
-        <div className={shell.paperScrollFill}>
           {!board.isSignedIn ? (
-            <div className={shell.emptyState}>
-              <span className={shell.emptyStateTitle}>Connecte-toi pour recevoir des quêtes</span>
-              <p>Tes quêtes avancent à chaque partie en ligne ou contre le bot, et rapportent des Tides.</p>
-              <Link href="/connexion" className={shell.primaryAction} onClick={() => playButtonClick()}>
+            <div className={`${game.panel} ${game.empty}`}>
+              <p className={game.emptyTitle}>Connecte-toi pour recevoir des quêtes</p>
+              <p className={game.muted}>Tes quêtes avancent à chaque partie en ligne ou contre le bot, et rapportent des Tides.</p>
+              <Link href="/connexion" className={game.primary} onClick={() => playButtonClick()} style={{ marginTop: 6 }}>
                 Se connecter
               </Link>
             </div>
           ) : board.unavailable ? (
-            <div className={shell.emptyState}>
-              <span className={shell.emptyStateTitle}>Quêtes indisponibles pour le moment</span>
-              <p>Le serveur n&apos;a pas pu charger tes quêtes. Réessaie dans un instant.</p>
+            <div className={`${game.panel} ${game.empty}`}>
+              <p className={game.emptyTitle}>Quêtes indisponibles pour le moment</p>
+              <p className={game.muted}>Le serveur n&apos;a pas pu charger tes quêtes. Réessaie dans un instant.</p>
             </div>
           ) : !hasQuests ? (
-            <div className={shell.emptyState}>
-              <span className={shell.emptyStateTitle}>Aucune quête disponible</span>
-              <p>
-                Le catalogue de quêtes est vide en base. Applique les migrations Supabase, puis lance{" "}
-                <code>npm run seed:cards</code>.
+            <div className={`${game.panel} ${game.empty}`}>
+              <p className={game.emptyTitle}>Aucune quête disponible</p>
+              <p className={game.muted}>
+                Le catalogue de quêtes est vide en base. Applique les migrations Supabase, puis lance <code>npm run seed:cards</code>.
               </p>
             </div>
           ) : (
-            <div className={styles.ledger}>
-              {error && <p className={styles.error}>{error}</p>}
+            <>
+              {error && <p className={game.error}>{error}</p>}
               {lastGain !== null && lastGain > 0 && (
-                <p className={styles.gain} role="status">
+                <p className={`${game.success} ${styles.gain}`} role="status">
                   +{lastGain} Tides
                 </p>
               )}
 
-              <QuestSection
-                title="Quotidiennes"
-                subtitle={formatRemaining(board.dailyEndsAt)}
-                entries={board.daily}
-                busyKey={isPending ? "*" : busyKey}
-                onClaim={handleClaim}
-              />
-              <QuestSection
-                title="Hebdomadaires"
-                subtitle={formatRemaining(board.weeklyEndsAt)}
-                entries={board.weekly}
-                busyKey={isPending ? "*" : busyKey}
-                onClaim={handleClaim}
-              />
-            </div>
+              <QuestSection title="Quotidiennes" subtitle={formatRemaining(board.dailyEndsAt)} entries={board.daily} busyKey={isPending ? "*" : busyKey} onClaim={handleClaim} />
+              <QuestSection title="Hebdomadaires" subtitle={formatRemaining(board.weeklyEndsAt)} entries={board.weekly} busyKey={isPending ? "*" : busyKey} onClaim={handleClaim} />
+            </>
           )}
         </div>
-      </PaperSurface>
-
-      <UtilityBar
-        left={
-          <Link href="/partie" className={shell.ghostAction} onClick={() => playButtonClick()}>
-            Jouer une partie
-          </Link>
-        }
-        right={
-          board.isSignedIn ? (
-            <Link href="/boosters" className={shell.ghostAction} onClick={() => playButtonClick()}>
-              Dépenser mes Tides
-            </Link>
-          ) : undefined
-        }
-      />
-    </ScreenShell>
+      </div>
+    </GameScreen>
   );
 }
 
@@ -149,9 +129,9 @@ function QuestSection({ title, subtitle, entries, busyKey, onClaim }: QuestSecti
 
   return (
     <section className={styles.section}>
-      <header className={styles.sectionHeader}>
-        <h2 className={styles.sectionTitle}>{title}</h2>
-        <span className={styles.sectionMeta}>{subtitle}</span>
+      <header className={styles.sectionHead}>
+        <h2 className={game.sectionTitle}>{title}</h2>
+        <span className={game.muted}>{subtitle}</span>
       </header>
 
       <ul className={styles.list}>
@@ -162,28 +142,22 @@ function QuestSection({ title, subtitle, entries, busyKey, onClaim }: QuestSecti
           const claimable = entry.completed && !entry.claimed;
 
           return (
-            <li key={key} className={`${styles.row} ${entry.claimed ? styles.rowClaimed : ""}`}>
+            <li key={key} className={`${game.panel} ${styles.row} ${claimable ? styles.rowClaimable : ""} ${entry.claimed ? styles.rowClaimed : ""}`}>
               <div className={styles.rowMain}>
-                <span className={styles.label}>{entry.label}</span>
-                <span className={styles.tags}>
-                  {!entry.botProgressAllowed && <span className={styles.tag}>PvP</span>}
-                  {entry.fromPreviousPeriod && <span className={styles.tag}>Période passée</span>}
-                </span>
-                <div
-                  className={styles.track}
-                  role="progressbar"
-                  aria-valuemin={0}
-                  aria-valuemax={entry.target}
-                  aria-valuenow={entry.progress}
-                  aria-label={entry.label}
-                >
-                  <div className={styles.fill} style={{ width: `${ratio * 100}%` }} />
+                <div className={styles.labelLine}>
+                  <span className={styles.label}>{entry.label}</span>
+                  {!entry.botProgressAllowed && <span className={game.tagViolet}>PvP uniquement</span>}
+                  {entry.fromPreviousPeriod && <span className={game.tag}>Période passée</span>}
+                </div>
+                <div className={styles.progressLine}>
+                  <div className={styles.track} role="progressbar" aria-valuemin={0} aria-valuemax={entry.target} aria-valuenow={entry.progress} aria-label={entry.label}>
+                    <div className={`${styles.fill} ${entry.completed ? styles.fillDone : ""}`} style={{ width: `${ratio * 100}%` }} />
+                  </div>
+                  <span className={styles.count}>
+                    {Math.min(entry.progress, entry.target)} / {entry.target}
+                  </span>
                 </div>
               </div>
-
-              <span className={styles.count}>
-                {entry.progress}/{entry.target}
-              </span>
 
               <span className={styles.reward}>
                 {entry.rewardTides}
@@ -192,13 +166,13 @@ function QuestSection({ title, subtitle, entries, busyKey, onClaim }: QuestSecti
 
               <div className={styles.action}>
                 {entry.claimed ? (
-                  <span className={styles.claimed}>Réclamée</span>
+                  <span className={game.tag}>Réclamée</span>
                 ) : claimable ? (
-                  <button type="button" className={shell.primaryAction} onClick={() => onClaim(entry)} disabled={busy}>
+                  <button type="button" className={game.primary} onClick={() => onClaim(entry)} disabled={busy}>
                     {busyKey === key ? "…" : "Réclamer"}
                   </button>
                 ) : (
-                  <span className={styles.inProgress}>En cours</span>
+                  <span className={game.tagCyan}>En cours</span>
                 )}
               </div>
             </li>

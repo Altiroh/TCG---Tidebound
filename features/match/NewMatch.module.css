@@ -1,0 +1,214 @@
+/*
+ * JOUER — le parcours avant une partie, sur la coquille `GameScreen`.
+ * Étape 1 : le mode (trois tuiles). Étape 2 (et 3 en local à deux) : le
+ * deck, choisi visuellement par son Navire. Une barre basse porte l'action
+ * primaire « Lancer la partie ».
+ */
+.steps {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: clamp(11px, 0.8vw, 12px);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.step {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stepIndex {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-size: 10px;
+  letter-spacing: 0;
+}
+
+.stepActive { color: var(--cb-cyan); }
+.stepDone { color: var(--ink-dim); }
+.stepSep { width: 22px; height: 1px; background: var(--line-strong); }
+
+/* ── Étape 1 : modes ────────────────────────────────────────── */
+.modes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: clamp(12px, 1.4vw, 22px);
+}
+
+.mode {
+  gap: 10px;
+  min-height: clamp(180px, 24vh, 250px);
+  padding: clamp(16px, 1.8vw, 26px);
+}
+
+.modeMark {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  color: var(--cb-cyan);
+}
+
+.modeTitle {
+  font-family: var(--cb-font-display);
+  font-size: clamp(17px, 1.35vw, 22px);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #f2f7fb;
+}
+
+.modeText {
+  font-size: clamp(12px, 0.9vw, 14px);
+  line-height: 1.45;
+  color: var(--ink-dim);
+}
+
+.modeFoot {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* ── Étape 2 : difficulté + decks ───────────────────────────── */
+.difficulty {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.difficultyChip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 150px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: rgba(8, 18, 30, 0.5);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 150ms ease-out, background-color 150ms ease-out;
+}
+.difficultyChip:hover { border-color: var(--line-strong); }
+.difficultyChip:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 2px; }
+.difficultyChipActive {
+  composes: difficultyChip;
+  border-color: var(--cb-cyan);
+  background: var(--cb-cyan-soft);
+}
+.difficultyLabel { font-weight: 600; font-size: clamp(12px, 0.9vw, 14px); }
+.difficultyText { font-size: 11px; color: var(--ink-dim); }
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.groupHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.decks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(clamp(150px, 12vw, 190px), 1fr));
+  gap: clamp(10px, 1.1vw, 16px);
+}
+
+.deck {
+  align-items: center;
+  gap: 6px;
+  padding: clamp(10px, 1vw, 14px);
+  text-align: center;
+}
+
+.deckPortrait {
+  width: 72% !important;
+  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.55));
+}
+
+.deckName {
+  font-family: var(--cb-font-display);
+  font-size: clamp(13px, 1vw, 16px);
+  font-weight: 600;
+  line-height: 1.2;
+  color: #f2f7fb;
+}
+
+.deckShip {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cb-cyan);
+}
+
+.deckMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--ink-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.deckText {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--ink-dim);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── Barre de lancement ─────────────────────────────────────── */
+.launch {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin-top: 4px;
+  padding: clamp(10px, 1.2vh, 14px) clamp(14px, 1.4vw, 20px);
+  /* Collée en bas de la zone défilante : elle passe DEVANT les tuiles, donc opaque. */
+  background: var(--panel-solid);
+}
+
+.launchSummary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  font-size: clamp(12px, 0.9vw, 14px);
+  color: var(--ink-dim);
+}
+
+.launchSummary strong { color: #f2f7fb; font-weight: 600; }
+
+.launchButton {
+  min-height: 44px;
+  padding-inline: 1.8em;
+  font-size: clamp(13px, 0.95vw, 15px);
+}

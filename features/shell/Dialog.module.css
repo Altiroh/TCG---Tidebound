@@ -1,0 +1,83 @@
+/*
+ * Fenêtre de dialogue commune (confirmation, question, sélecteur) : la même
+ * langue que les panneaux de `GameScreen` — bleu nuit translucide, un filet
+ * cyan en tête, jamais de verre blanc. Les tokens ont des repli pour les
+ * rares cas où le dialogue est monté hors d'un `GameScreen`.
+ */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(3, 8, 14, 0.66);
+  backdrop-filter: blur(4px);
+}
+
+.dialog {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(10px, 1.4vh, 16px);
+  width: min(100%, var(--dialog-width, 440px));
+  max-height: min(92vh, 900px);
+  padding: clamp(18px, 2.4vh, 26px) clamp(18px, 1.8vw, 28px);
+  border: 1px solid var(--line-strong, rgba(130, 178, 210, 0.3));
+  border-radius: var(--radius, 14px);
+  background: var(--panel-solid, rgba(6, 14, 24, 0.94));
+  color: var(--ink, #dce8f2);
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.6);
+  animation: dialogIn 170ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  overflow: hidden;
+}
+
+/* Le seul accent du dialogue : un filet cyan en tête, qui s'éteint à droite. */
+.dialog::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, var(--cb-cyan, #58c8d8), transparent 70%);
+}
+
+@keyframes dialogIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+
+.title {
+  margin: 0;
+  font-family: var(--cb-font-display, Georgia, serif);
+  font-size: clamp(17px, 1.4vw, 22px);
+  font-weight: 600;
+  color: #f2f7fb;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong, rgba(130, 178, 210, 0.3)) transparent;
+  font-size: clamp(12.5px, 0.9vw, 14px);
+  line-height: 1.5;
+  color: var(--ink-dim, rgba(190, 210, 228, 0.7));
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dialog { animation: none; }
+}

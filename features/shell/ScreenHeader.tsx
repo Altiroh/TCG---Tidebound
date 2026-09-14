@@ -8,50 +8,25 @@ import styles from "@/features/shell/ScreenShell.module.css";
 import { NavigationTab } from "@/features/shell/NavigationTab";
 import { ProgressionBadge } from "@/features/progression/ProgressionBadge";
 
-interface ScreenHeaderProps {
-  /** Section en cours — reçoit le filet turquoise et le halo. */
-  active: "collection" | "decks" | "boosters" | "quetes";
-  /**
-   * `false` quand l'écran peint lui-même son décor de fond et que le
-   * bandeau doit s'y fondre plutôt que d'empiler une seconde scène marine
-   * (cas de la Collection). Défaut : `true` — les autres écrans gardent
-   * leur panorama.
-   */
-  showPanorama?: boolean;
+export interface ScreenHeaderProps {
+  /** Section en cours — reçoit le filet turquoise et le halo. `null` : aucun onglet actif (authentification). */
+  active: "collection" | "decks" | "boosters" | "quetes" | "partie" | null;
   /** Contrôles propres à l'écran, posés à droite de la navigation (recherche…). */
   actions?: ReactNode;
 }
 
 /**
- * Bandeau du haut, commun aux trois écrans — le panorama marin n'est pas
- * une vignette coincée entre des onglets : il occupe TOUT le fond du header
- * (`.panorama`, en `position:absolute`), et les libellés de navigation sont
- * posés par-dessus. Seul un voile dégradé (`.panoramaScrim`, opaque à
- * gauche, transparent à droite) garantit leur lisibilité — aucun libellé
- * n'a de boîte à lui.
- *
- * Les couches de la scène (étoiles, deux lignes de crêtes, eau, lumière du
- * phare) restent des zones responsives empilées : rien n'est positionné en
- * dur pour une résolution donnée.
+ * Bandeau du haut, commun à tous les écrans hors plateau (`GameScreen`) :
+ * fin, sans fond propre — il se fond dans le décor de l'écran. Le logo à
+ * gauche tient lieu de retour au menu ; les onglets sont du texte, l'actif
+ * se lit à un filet cyan ; à droite, les contrôles de l'écran puis la
+ * progression du joueur.
  */
-export function ScreenHeader({ active, showPanorama = true, actions }: ScreenHeaderProps) {
+export function ScreenHeader({ active, actions }: ScreenHeaderProps) {
   const router = useRouter();
 
   return (
     <header className={styles.header}>
-      {showPanorama && (
-        <>
-          <div className={styles.panorama} aria-hidden>
-            <div className={styles.panoramaStars} />
-            <div className={styles.panoramaBeacon} />
-            <div className={styles.panoramaPeaksFar} />
-            <div className={styles.panoramaPeaks} />
-            <div className={styles.panoramaWater} />
-          </div>
-          <div className={styles.panoramaScrim} aria-hidden />
-        </>
-      )}
-
       {/* Le logo TIENT LIEU de bouton Retour : même destination, mais il
           porte l'identité au lieu d'un libellé de plus. */}
       <Link href="/" className={styles.brand} aria-label="Retour au menu">
@@ -83,13 +58,14 @@ export function ScreenHeader({ active, showPanorama = true, actions }: ScreenHea
         Decks
       </NavigationTab>
 
+      {/* Market = l'écran des boosters (`/boosters`) : un seul onglet, un seul écran. */}
       <NavigationTab
         active={active === "boosters"}
         onClick={() => {
           if (active !== "boosters") router.push("/boosters");
         }}
       >
-        Boosters
+        Market
       </NavigationTab>
 
       <NavigationTab
@@ -101,33 +77,22 @@ export function ScreenHeader({ active, showPanorama = true, actions }: ScreenHea
         Quêtes
       </NavigationTab>
 
+      <NavigationTab
+        active={active === "partie"}
+        onClick={() => {
+          if (active !== "partie") router.push("/partie");
+        }}
+      >
+        Jouer
+      </NavigationTab>
+
       <span />
 
-      {/*
-       * Progression et emblème dans UN seul groupe, donc une seule case de
-       * grille : `ProgressionBadge` ne rend rien quand personne n'est
-       * connecté, et un enfant de grille en moins décalerait sinon l'emblème
-       * hors de sa colonne.
-       */}
+      {/* Actions de l'écran + progression dans UN seul groupe, donc une seule
+          case de grille (`ProgressionBadge` ne rend rien hors connexion). */}
       <div className={styles.headerRight}>
         {actions}
         <ProgressionBadge />
-
-        {/* Emblème Tidebound : le laiton franc est réservé à ce genre de signe
-            d'identité — pas de médaillon, pas de bordure, juste le glyphe
-            précédé d'un court séparateur. */}
-        <div className={styles.emblem} aria-hidden>
-          <span className={styles.emblemRule} />
-          <svg viewBox="0 0 24 24" height="100%" fill="none">
-            <path
-              d="M12 2v13m0 0l-3-3m3 3l3-3M6 8h12M8 5h8M12 15v3a4 4 0 0 1-4 4M12 18a4 4 0 0 0 4 4"
-              stroke="currentColor"
-              strokeWidth={1.4}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </div>
       </div>
     </header>
   );

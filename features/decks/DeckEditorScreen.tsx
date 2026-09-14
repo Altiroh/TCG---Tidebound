@@ -4,8 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getCardDefinition, getMaxCopies, RULES, type CardDefinition } from "@/game";
 import { deleteDeck, duplicateDeck, saveDeck } from "@/app/decks/actions";
-import { GameModal } from "@/components/game-ui/GameModal";
-import { GameButton } from "@/components/game-ui/GameButton";
 import { CardGrid } from "@/features/collection/CardGrid";
 import { CollectionSidebar } from "@/features/collection/CollectionSidebar";
 import { CollectionToolbar } from "@/features/collection/CollectionToolbar";
@@ -13,20 +11,23 @@ import { CardDetailModal } from "@/features/collection/card-detail/CardDetailMod
 import { useCardBrowser } from "@/features/collection/useCardBrowser";
 import { DEFAULT_SHIP_ID } from "@/features/decks/constants";
 import { countInDeck, deckRuleIssue } from "@/features/decks/deckComposition";
+import { DeckIdentity } from "@/features/decks/DeckIdentity";
 import { DeckListPanel } from "@/features/decks/DeckListPanel";
 import { DeleteDeckDialog } from "@/features/decks/DeleteDeckDialog";
-import { ScreenHeader } from "@/features/shell/ScreenHeader";
+import { Dialog } from "@/features/shell/Dialog";
+import { GameScreen } from "@/features/shell/GameScreen";
+import { ShipPicker } from "@/features/ships/ShipPicker";
 import { SearchLine } from "@/features/shell/SearchLine";
 import browser from "@/features/collection/CardBrowser.module.css";
 import styles from "@/features/decks/DeckBuilder.module.css";
-import shell from "@/features/shell/ScreenShell.module.css";
+import game from "@/features/shell/GameScreen.module.css";
 import { playButtonClick } from "@/lib/sound";
 
 const DRAG_MIME = "text/tidebound-card-id";
 
-/** Sérialisation grossière pour détecter des modifications non sauvegardées (nom + multiset de cartes, ordre des exemplaires sans importance). */
-function serializeState(name: string, cardIds: string[]): string {
-  return `${name}|${[...cardIds].sort().join(",")}`;
+/** Sérialisation grossière pour détecter des modifications non sauvegardées (nom + Navire + multiset de cartes, ordre des exemplaires sans importance). */
+function serializeState(name: string, shipId: string, cardIds: string[]): string {
+  return `${name}|${shipId}|${[...cardIds].sort().join(",")}`;
 }
 
 export interface DeckEditorInitialData {
@@ -48,6 +49,12 @@ type PendingLeave = { kind: "new" } | { kind: "navigate"; href: string } | null;
 /**
  * Deck Builder — la Collection en mode construction.
  *
+ * Colonne de gauche : l'identité du deck (Navire dans son cadre, nom,
+ * changement de Navire, retour) puis les filtres de la Collection. Centre :
+ * les cartes disponibles. Droite : le deck seul (effectif, composition,
+ * validité, sauvegarde). Le Navire fait partie du deck et est persisté
+ * avec lui (`saveDeck` → `ship_id`).
+ *
  * Même navigateur de cartes que `CollectionScreen` (`useCardBrowser`,
  * `CollectionSidebar`, `CollectionToolbar`, `CardGrid`, même feuille de
  * style), avec une colonne de plus à droite : le deck (`DeckListPanel`).
@@ -67,9 +74,10 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
   const router = useRouter();
   const [deckId, setDeckId] = useState<string | null>(initialDeck?.id ?? null);
   const [name, setName] = useState(initialDeck?.name ?? "Nouveau deck");
-  const [shipId] = useState(initialDeck?.shipId ?? DEFAULT_SHIP_ID);
+  const [shipId, setShipId] = useState(initialDeck?.shipId ?? DEFAULT_SHIP_ID);
+  const [shipPickerOpen, setShipPickerOpen] = useState(false);
   const [cardIds, setCardIds] = useState<string[]>(initialDeck?.cardIds ?? []);
-  const [savedSnapshot, setSavedSnapshot] = useState(() => serializeState(name, cardIds));
+  const [savedSnapshot, setSavedSnapshot] = useState(() => serializeState(name, shipId, cardIds));
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savedFlash, setSavedFlash] = useState(false);
@@ -87,7 +95,7 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
   const initialFilters = useMemo(() => (isSignedIn ? { ownership: "owned" as const } : {}), [isSignedIn]);
   const cardBrowser = useCardBrowser({ owned, initialFilters });
 
-  const isDirty = serializeState(name, cardIds) !== savedSnapshot;
+  const isDirty = serializeState(name, shipId, cardIds) !== savedSnapshot;
   const issue = useMemo(() => deckRuleIssue(cardIds, shipId, name), [cardIds, shipId, name]);
 
   // Trois garde-fous, tous tirés des règles du projet : la carte est
@@ -133,7 +141,7 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
       setSaveError(result.error ?? "Échec de la sauvegarde.");
       return false;
     }
-    setSavedSnapshot(serializeState(name, cardIds));
+    setSavedSnapshot(serializeState(name, shipId, cardIds));
     if (!deckId) {
       setDeckId(result.id);
       router.replace(`/decks/${result.id}`);
@@ -147,8 +155,9 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
   function resetToBlankDeck() {
     setDeckId(null);
     setName("Nouveau deck");
+    setShipId(DEFAULT_SHIP_ID);
     setCardIds([]);
-    setSavedSnapshot(serializeState("Nouveau deck", []));
+    setSavedSnapshot(serializeState("Nouveau deck", DEFAULT_SHIP_ID, []));
     router.push("/decks/nouveau");
   }
 
@@ -275,23 +284,20 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
   );
 
   return (
-    <div className={`${shell.screen} ${browser.screen}`}>
-      <ScreenHeader
-        active="decks"
-        showPanorama={false}
-        actions={
-          <div className={browser.headerSearch}>
-            <SearchLine
-              variant="pill"
-              value={cardBrowser.filters.search}
-              onChange={(search) => cardBrowser.patchFilters({ search })}
-              placeholder="Rechercher une carte…"
-              label="Rechercher une carte"
-            />
-          </div>
-        }
-      />
-
+    <GameScreen
+      active="decks"
+      actions={
+        <div className={game.headerSearch}>
+          <SearchLine
+            variant="pill"
+            value={cardBrowser.filters.search}
+            onChange={(search) => cardBrowser.patchFilters({ search })}
+            placeholder="Rechercher une carte…"
+            label="Rechercher une carte"
+          />
+        </div>
+      }
+    >
       <div
         className={`${browser.workspace} ${styles.workspace}`}
         data-columns="3"
@@ -306,7 +312,14 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
         <button type="button" className={browser.drawerScrim} aria-label="Fermer les filtres" onClick={() => cardBrowser.setDrawerOpen(false)} />
         <button type="button" className={styles.deckScrim} aria-label="Fermer le deck" onClick={() => setDeckOpen(false)} />
 
-        <aside className={`${browser.panel} ${browser.sidebar}`} aria-label="Filtres de la collection">
+        <aside className={`${game.panel} ${browser.sidebar}`} aria-label="Identité du deck et filtres">
+          <DeckIdentity
+            name={name}
+            onNameChange={setName}
+            shipId={shipId}
+            onChangeShip={() => setShipPickerOpen(true)}
+            onBack={() => requestLeave({ kind: "navigate", href: "/decks" })}
+          />
           <CollectionSidebar
             filters={cardBrowser.filters}
             onChange={cardBrowser.patchFilters}
@@ -317,7 +330,7 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
           />
         </aside>
 
-        <main className={`${browser.panel} ${browser.main}`}>
+        <main className={`${game.panel} ${browser.main}`}>
           <CollectionToolbar
             count={cardBrowser.cards.length}
             sort={cardBrowser.sort}
@@ -341,10 +354,8 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
           />
         </main>
 
-        <aside className={`${browser.panel} ${styles.deckPanel}`} aria-label="Deck en construction">
+        <aside className={`${game.panel} ${styles.deckPanel}`} aria-label="Deck en construction">
           <DeckListPanel
-            name={name}
-            onNameChange={setName}
             cardIds={cardIds}
             onRemove={removeCard}
             onAdd={addCard}
@@ -359,7 +370,6 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
             onNewDeck={() => requestLeave({ kind: "new" })}
             onDuplicate={() => void handleDuplicate()}
             onDelete={() => setDeleteConfirm(true)}
-            onBack={() => requestLeave({ kind: "navigate", href: "/decks" })}
           />
         </aside>
       </div>
@@ -374,29 +384,35 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
         />
       )}
 
+      {shipPickerOpen && <ShipPicker currentShipId={shipId} onSelect={setShipId} onClose={() => setShipPickerOpen(false)} />}
+
       {pendingLeave && (
-        <GameModal onClose={() => setPendingLeave(null)}>
-          <h2 className="text-lg font-semibold [font-family:var(--font-card-title)]">Modifications non sauvegardées</h2>
-          <p className="mt-2 text-sm text-[var(--text-secondary)]">
+        <Dialog
+          title="Modifications non sauvegardées"
+          onClose={() => setPendingLeave(null)}
+          actions={
+            <>
+              <button type="button" className={game.link} onClick={() => setPendingLeave(null)}>
+                Annuler
+              </button>
+              <button type="button" className={game.secondary} onClick={handleLeaveDiscard}>
+                Ne pas enregistrer
+              </button>
+              <button type="button" className={game.primary} onClick={() => void handleLeaveSave()}>
+                Enregistrer
+              </button>
+            </>
+          }
+        >
+          <p style={{ margin: 0 }}>
             Veux-tu enregistrer « {name} » avant de {pendingLeave.kind === "new" ? "créer un nouveau deck" : "quitter"} ?
           </p>
-          <div className="mt-5 flex flex-wrap justify-end gap-2">
-            <GameButton variant="ghost" onClick={() => setPendingLeave(null)}>
-              Annuler
-            </GameButton>
-            <GameButton variant="secondary" onClick={handleLeaveDiscard}>
-              Ne pas enregistrer
-            </GameButton>
-            <GameButton variant="primary" onClick={() => void handleLeaveSave()}>
-              Enregistrer
-            </GameButton>
-          </div>
-        </GameModal>
+        </Dialog>
       )}
 
       {deleteConfirm && (
         <DeleteDeckDialog deckName={name} isDeleting={false} onConfirm={() => void handleDelete()} onCancel={() => setDeleteConfirm(false)} />
       )}
-    </div>
+    </GameScreen>
   );
 }

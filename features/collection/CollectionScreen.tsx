@@ -6,10 +6,10 @@ import { CollectionSidebar } from "@/features/collection/CollectionSidebar";
 import { CollectionToolbar } from "@/features/collection/CollectionToolbar";
 import { CardDetailModal } from "@/features/collection/card-detail/CardDetailModal";
 import { useCardBrowser } from "@/features/collection/useCardBrowser";
-import { ScreenHeader } from "@/features/shell/ScreenHeader";
+import { GameScreen } from "@/features/shell/GameScreen";
 import { SearchLine } from "@/features/shell/SearchLine";
 import styles from "@/features/collection/CardBrowser.module.css";
-import shell from "@/features/shell/ScreenShell.module.css";
+import game from "@/features/shell/GameScreen.module.css";
 
 interface CollectionScreenProps {
   isSignedIn: boolean;
@@ -41,25 +41,20 @@ export function CollectionScreen({ isSignedIn, ownedCardIds }: CollectionScreenP
   const [detailCardId, setDetailCardId] = useState<string | null>(null);
 
   return (
-    <div className={`${shell.screen} ${styles.screen}`}>
-      <ScreenHeader
-        active="collection"
-        // L'écran peint déjà sa propre scène marine : un second panorama
-        // dans le bandeau ferait deux horizons l'un au-dessus de l'autre.
-        showPanorama={false}
-        actions={
-          <div className={styles.headerSearch}>
-            <SearchLine
-              variant="pill"
-              value={browser.filters.search}
-              onChange={(search) => browser.patchFilters({ search })}
-              placeholder="Rechercher une carte…"
-              label="Rechercher une carte"
-            />
-          </div>
-        }
-      />
-
+    <GameScreen
+      active="collection"
+      actions={
+        <div className={game.headerSearch}>
+          <SearchLine
+            variant="pill"
+            value={browser.filters.search}
+            onChange={(search) => browser.patchFilters({ search })}
+            placeholder="Rechercher une carte…"
+            label="Rechercher une carte"
+          />
+        </div>
+      }
+    >
       <div className={styles.workspace} data-drawer={browser.drawerOpen ? "open" : "closed"}>
         <button
           type="button"
@@ -68,7 +63,7 @@ export function CollectionScreen({ isSignedIn, ownedCardIds }: CollectionScreenP
           onClick={() => browser.setDrawerOpen(false)}
         />
 
-        <aside className={`${styles.panel} ${styles.sidebar}`} aria-label="Filtres de la collection">
+        <aside className={`${game.panel} ${styles.sidebar}`} aria-label="Filtres de la collection">
           <CollectionSidebar
             filters={browser.filters}
             onChange={browser.patchFilters}
@@ -78,7 +73,7 @@ export function CollectionScreen({ isSignedIn, ownedCardIds }: CollectionScreenP
           />
         </aside>
 
-        <main className={`${styles.panel} ${styles.main}`}>
+        <main className={`${game.panel} ${styles.main}`}>
           <CollectionToolbar
             count={browser.cards.length}
             sort={browser.sort}
@@ -108,6 +103,6 @@ export function CollectionScreen({ isSignedIn, ownedCardIds }: CollectionScreenP
           onShowCard={setDetailCardId}
         />
       )}
-    </div>
+    </GameScreen>
   );
 }

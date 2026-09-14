@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { BotDifficulty, DeckList, GameState, PlayerId } from "@/game";
+import { PLAYABLE_DECKS, type BotDifficulty, type DeckList, type GameState, type PlayerId } from "@/game";
 import { startBotMatch } from "@/features/bot/actions";
 import { createLocalMatch } from "@/features/match/createLocalMatch";
 import { NewMatchScreen, type MatchOpponent } from "@/features/match/NewMatchScreen";
@@ -10,6 +10,8 @@ import { MatchBoard } from "@/features/match/MatchBoard";
 
 interface PartieScreenProps {
   isSignedIn: boolean;
+  /** Decks personnels jouables du joueur connecté — vide hors connexion. */
+  personalDecks?: DeckList[];
 }
 
 /**
@@ -21,7 +23,7 @@ interface PartieScreenProps {
  *   - Contre un bot hors connexion, ou à deux sur le même écran : partie
  *     locale, entièrement dans le navigateur, qui ne rapporte rien.
  */
-export function PartieScreen({ isSignedIn }: PartieScreenProps) {
+export function PartieScreen({ isSignedIn, personalDecks = [] }: PartieScreenProps) {
   const router = useRouter();
   const [match, setMatch] = useState<GameState | null>(null);
   const [bot, setBot] = useState<{ playerId: PlayerId; difficulty: BotDifficulty } | null>(null);
@@ -39,6 +41,12 @@ export function PartieScreen({ isSignedIn }: PartieScreenProps) {
   async function startMatch(deck1: DeckList, deck2: DeckList, opponent: MatchOpponent) {
     if (opponent.type !== "bot" || !isSignedIn) {
       startLocalMatch(deck1, deck2, opponent);
+      return;
+    }
+    // L'arbitrage serveur ne connaît que les listes du jeu (`findPlayableDeck`) :
+    // un deck personnel contre le bot se joue donc en local, et on le dit.
+    if (!PLAYABLE_DECKS.some((deck) => deck.id === deck1.id)) {
+      startLocalMatch(deck1, deck2, opponent, "Les decks personnels ne sont pas encore arbitrés par le serveur — partie d'entraînement, sans XP ni quêtes.");
       return;
     }
 
@@ -86,6 +94,7 @@ export function PartieScreen({ isSignedIn }: PartieScreenProps) {
         onStart={startMatch}
         starting={starting}
         error={error}
+        personalDecks={personalDecks}
         botNote={
           isSignedIn
             ? "La partie est arbitrée par le serveur : elle rapporte de l'XP et fait avancer tes quêtes."

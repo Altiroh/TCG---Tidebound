@@ -17,8 +17,6 @@ import { playButtonClick } from "@/lib/sound";
 const DRAG_MIME = "text/tidebound-card-id";
 
 interface DeckListPanelProps {
-  name: string;
-  onNameChange: (name: string) => void;
   cardIds: string[];
   onRemove: (cardId: string) => void;
   onAdd: (cardId: string) => void;
@@ -35,23 +33,20 @@ interface DeckListPanelProps {
   onNewDeck: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
-  onBack: () => void;
 }
 
 /**
  * Colonne de droite du Deck Builder : la composition du deck, lisible en
  * quelques secondes.
  *
- * De haut en bas : retour à la liste, nom (de l'encre, pas un champ),
- * effectif et jauge de taille légale, résumé (courbe de Raison et types),
+ * De haut en bas : effectif et jauge de taille légale, résumé (courbe de
+ * Raison et types),
  * la liste REGROUPÉE — une ligne par carte distincte avec sa quantité,
  * jamais un exemplaire par ligne — puis les règles enfreintes et les
  * actions. Aucune donnée de règle n'est décidée ici : `RULES` et
  * `deckComposition` font foi.
  */
 export function DeckListPanel({
-  name,
-  onNameChange,
   cardIds,
   onRemove,
   onAdd,
@@ -66,7 +61,6 @@ export function DeckListPanel({
   onNewDeck,
   onDuplicate,
   onDelete,
-  onBack,
 }: DeckListPanelProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isDropping, setIsDropping] = useState(false);
@@ -87,18 +81,7 @@ export function DeckListPanel({
 
   return (
     <div className={styles.deckInner}>
-      <button type="button" className={styles.backLink} onClick={onBack}>
-        <span aria-hidden>←</span> Mes decks
-      </button>
-
-      <input
-        value={name}
-        onChange={(event) => onNameChange(event.target.value)}
-        placeholder="Nom du deck"
-        aria-label="Nom du deck"
-        className={styles.deckName}
-        maxLength={60}
-      />
+      <p className={styles.deckHeading}>Deck</p>
 
       <div className={styles.capacity}>
         <div className={styles.capacityRow}>

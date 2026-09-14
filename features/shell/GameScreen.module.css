@@ -1,0 +1,389 @@
+/*
+ * GAMESCREEN — SOCLE VISUEL PARTAGÉ DE TOUS LES ÉCRANS HORS PLATEAU
+ * ==================================================================
+ *
+ * Collection, Decks, Éditeur de deck, Jouer, Market, Quêtes et les pages
+ * d'authentification sont le MÊME produit : une scène maritime nocturne
+ * (`collection/collection_background_2.webp`) tenue derrière un voile,
+ * un bandeau fin en haut, et des panneaux bleu nuit légèrement
+ * transparents posés dessus. Tout ce qui est commun à ces écrans vit ICI ;
+ * chaque écran n'ajoute dans son propre module que ce qui lui est propre.
+ *
+ * Règles tenues :
+ *   - le décor est un DÉCOR : voile + vignette le gardent derrière le
+ *     contenu, les cartes/navires restent ce qu'il y a de plus lumineux ;
+ *   - un seul accent, le cyan, pour actif/survol/focus ; le violet est
+ *     réservé à la variante Abyssale ; le laiton aux ressources (Tides) ;
+ *   - panneaux fins et translucides, jamais de dalles opaques ni de verre
+ *     blanc ; un seul flou de fond par panneau ;
+ *   - aucune coordonnée calée sur une résolution : `clamp()` partout.
+ *
+ * La palette `--cb-*` (navy, laiton, turquoise, ivoire, polices) vient de
+ * `.screen` de `ScreenShell.module.css`, avec laquelle `.screen` d'ici est
+ * composée côté JSX (`GameScreen.tsx`). Ce fichier la complète avec les
+ * tokens de panneau (`--panel`, `--line`, `--ink`…).
+ */
+
+/*
+ * Sélecteur doublé (`.screen.screen`) pour l'emporter à coup sûr sur les
+ * règles de la coquille : à spécificité égale, le gagnant dépendrait de
+ * l'ordre d'injection des deux feuilles, qui n'est pas garanti.
+ */
+.screen.screen {
+  /* Deux rangées seulement : le bandeau, puis tout le reste. */
+  grid-template-rows: clamp(54px, 6.8vh, 72px) minmax(0, 1fr);
+
+  --cb-cyan: #58c8d8;
+  --cb-cyan-soft: rgba(88, 200, 216, 0.14);
+  --cb-violet: #b388f0;
+  --panel: rgba(8, 18, 30, 0.74);
+  --panel-solid: rgba(6, 14, 24, 0.9);
+  --panel-raised: rgba(14, 28, 44, 0.86);
+  --line: rgba(130, 178, 210, 0.16);
+  --line-strong: rgba(130, 178, 210, 0.3);
+  --ink: #dce8f2;
+  --ink-dim: rgba(190, 210, 228, 0.6);
+  --ink-faint: rgba(190, 210, 228, 0.38);
+  --danger: #e07a6a;
+  --success: #7fd6a4;
+  --radius: clamp(10px, 0.9vw, 16px);
+  --radius-sm: 9px;
+
+  background-color: #04090f;
+  background-image:
+    /* Voile : sombre en haut (lisibilité du bandeau), profond en bas. */
+    linear-gradient(180deg, rgba(4, 9, 15, 0.82) 0%, rgba(4, 10, 17, 0.5) 26%, rgba(3, 8, 13, 0.72) 100%),
+    url("/assets/collection/collection_background_2.webp");
+  background-size: cover, cover;
+  background-position: center, center;
+  background-repeat: no-repeat, no-repeat;
+  /* Pas de `background-attachment: fixed` : rien ne défile au niveau du
+     document, il n'aurait aucun effet mais forcerait un repaint coûteux. */
+}
+
+/* Vignette — assombrit les quatre coins pour ramener l'œil au centre. */
+.screen.screen::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(130% 105% at 50% 45%, transparent 42%, rgba(2, 6, 11, 0.72) 100%);
+}
+
+/* La recherche vit dans le bandeau partagé : largeur digne d'une barre
+   principale, sans toucher au composant lui-même. */
+.headerSearch {
+  min-width: clamp(150px, 18vw, 300px);
+}
+
+/* ── Panneau commun ─────────────────────────────────────────── */
+.panel {
+  position: relative;
+  min-height: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  backdrop-filter: blur(10px) saturate(0.9);
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.45);
+}
+
+/* Panneau un peu plus présent — pour les objets sélectionnables (tuiles). */
+.panelRaised {
+  composes: panel;
+  background: var(--panel-raised);
+}
+
+/* ── Zone de contenu défilante (écrans « page » : Decks, Jouer, Market, Quêtes) ── */
+.content {
+  position: relative;
+  z-index: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+  padding: clamp(14px, 2.2vh, 30px) clamp(14px, 2.4vw, 44px) clamp(18px, 3vh, 40px);
+}
+.content::-webkit-scrollbar { width: 8px; }
+.content::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--line-strong); }
+
+.contentInner {
+  width: min(100%, 1180px);
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(14px, 2vh, 26px);
+}
+
+.contentWide {
+  composes: contentInner;
+  width: min(100%, 1480px);
+}
+
+/* ── Titres et textes ───────────────────────────────────────── */
+.pageHead {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: clamp(12px, 2vw, 30px);
+  flex-wrap: wrap;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--cb-font-display);
+  font-size: clamp(20px, 1.7vw, 28px);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #f2f7fb;
+  text-shadow: 0 1px 6px rgba(2, 6, 11, 0.8);
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: clamp(10px, 0.72vw, 12px);
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--cb-cyan);
+}
+
+.muted {
+  margin: 0;
+  color: var(--ink-dim);
+  font-size: clamp(12px, 0.9vw, 14px);
+  line-height: 1.45;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: clamp(11px, 0.78vw, 13px);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+/* Filet de section : un trait qui s'éteint, jamais un séparateur plein. */
+.rule {
+  height: 1px;
+  border: none;
+  margin: 0;
+  background: linear-gradient(90deg, var(--line-strong), transparent);
+}
+
+/* ── Boutons ────────────────────────────────────────────────── */
+/*
+ * Un seul vocabulaire : primaire (cyan teinté, pour l'action attendue),
+ * secondaire (contour fin), lien (texte seul). Jamais de dégradé brillant.
+ */
+.primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+  min-height: 38px;
+  padding: 0.55em 1.25em;
+  border: 1px solid rgba(88, 200, 216, 0.55);
+  border-radius: var(--radius-sm);
+  background: linear-gradient(180deg, rgba(88, 200, 216, 0.22), rgba(88, 200, 216, 0.12));
+  color: #eaf8fb;
+  font-family: var(--cb-font-ui);
+  font-size: clamp(12px, 0.9vw, 14px);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out, transform 120ms ease-out;
+}
+.primary:hover {
+  background: linear-gradient(180deg, rgba(88, 200, 216, 0.32), rgba(88, 200, 216, 0.18));
+  border-color: var(--cb-cyan);
+}
+.primary:active { transform: translateY(1px); }
+.primary:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 2px; }
+.primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.secondary {
+  composes: primary;
+  border-color: var(--line-strong);
+  background: rgba(8, 18, 30, 0.5);
+  color: var(--ink);
+}
+.secondary:hover {
+  background: rgba(88, 200, 216, 0.1);
+  border-color: rgba(88, 200, 216, 0.6);
+  color: #eaf8fb;
+}
+
+.danger {
+  composes: primary;
+  border-color: rgba(224, 122, 106, 0.45);
+  background: rgba(224, 122, 106, 0.1);
+  color: #f3c3ba;
+}
+.danger:hover {
+  background: rgba(224, 122, 106, 0.2);
+  border-color: rgba(224, 122, 106, 0.8);
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--ink-dim);
+  font: inherit;
+  font-size: clamp(12px, 0.85vw, 13px);
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 150ms ease-out;
+}
+.link:hover { color: var(--cb-cyan); }
+.link:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 2px; border-radius: 4px; }
+.link:disabled { opacity: 0.4; cursor: not-allowed; color: var(--ink-dim); }
+
+/* ── Champs ─────────────────────────────────────────────────── */
+.input {
+  width: 100%;
+  min-height: 40px;
+  padding: 0.55em 0.85em;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: rgba(4, 10, 17, 0.6);
+  color: var(--ink);
+  font: inherit;
+  font-size: clamp(13px, 0.95vw, 15px);
+  transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+.input::placeholder { color: var(--ink-faint); }
+.input:hover { border-color: var(--line-strong); }
+.input:focus {
+  outline: none;
+  border-color: var(--cb-cyan);
+  box-shadow: 0 0 0 3px var(--cb-cyan-soft);
+}
+.input:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.fieldLabel {
+  font-size: clamp(11px, 0.78vw, 12px);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+/* ── Messages d'état ────────────────────────────────────────── */
+.error {
+  margin: 0;
+  padding: 0.55em 0.85em;
+  border-left: 2px solid var(--danger);
+  border-radius: 0 6px 6px 0;
+  background: rgba(224, 122, 106, 0.08);
+  color: #f3c3ba;
+  font-size: clamp(12px, 0.85vw, 13px);
+  line-height: 1.4;
+}
+
+.notice {
+  composes: error;
+  border-left-color: var(--cb-cyan);
+  background: var(--cb-cyan-soft);
+  color: var(--ink);
+}
+
+.success {
+  composes: error;
+  border-left-color: var(--success);
+  background: rgba(127, 214, 164, 0.08);
+  color: #cdeedb;
+}
+
+/* ── État vide ──────────────────────────────────────────────── */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: clamp(28px, 6vh, 64px) 1rem;
+  text-align: center;
+  color: var(--ink-dim);
+}
+
+.emptyTitle {
+  margin: 0;
+  font-family: var(--cb-font-display);
+  font-size: clamp(16px, 1.3vw, 21px);
+  color: var(--ink);
+}
+
+/* ── Étiquettes d'état (tags) ───────────────────────────────── */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  padding: 0.18em 0.6em;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: clamp(10px, 0.72vw, 11px);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  white-space: nowrap;
+}
+.tagCyan { composes: tag; border-color: rgba(88, 200, 216, 0.45); color: var(--cb-cyan); }
+.tagViolet { composes: tag; border-color: rgba(179, 136, 240, 0.45); color: var(--cb-violet); }
+.tagSuccess { composes: tag; border-color: rgba(127, 214, 164, 0.45); color: var(--success); }
+.tagDanger { composes: tag; border-color: rgba(224, 122, 106, 0.45); color: var(--danger); }
+.tagBrass { composes: tag; border-color: rgba(199, 154, 78, 0.45); color: #ddc79a; }
+
+/* ── Tuile sélectionnable (deck, mode de jeu…) ──────────────── */
+.tile {
+  composes: panelRaised;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 160ms ease-out, transform 160ms ease-out, box-shadow 160ms ease-out;
+}
+.tile:hover {
+  border-color: rgba(88, 200, 216, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.5);
+}
+.tile:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 3px; }
+.tileActive {
+  composes: tile;
+  border-color: var(--cb-cyan);
+  box-shadow: 0 0 0 1px rgba(88, 200, 216, 0.45), 0 22px 50px rgba(0, 0, 0, 0.5), 0 0 28px rgba(88, 200, 216, 0.18);
+}
+.tileDisabled {
+  composes: tile;
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.tileDisabled:hover { transform: none; border-color: var(--line); box-shadow: 0 18px 46px rgba(0, 0, 0, 0.45); }
+
+@media (prefers-reduced-motion: reduce) {
+  .primary, .tile { transition: none; }
+  .tile:hover { transform: none; }
+}

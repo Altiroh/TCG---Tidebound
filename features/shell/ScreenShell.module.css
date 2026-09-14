@@ -1,33 +1,22 @@
 /*
- * GRAMMAIRE VISUELLE PARTAGÉE — Collection / Decks / Éditeur de deck.
+ * COQUILLE PARTAGÉE — palette, grille d'écran, bandeau, progression, recherche.
  *
- * Ces trois écrans sont le même meuble vu sous trois angles : un décor
- * marin, une surface de papier, des objets physiques posés dessus, une
- * barre de service en bas. Tout ce qui est commun vit ICI et nulle part
- * ailleurs ; chaque écran n'ajoute dans son propre module que ce qui lui
- * est réellement propre (la grille de cartes, les tuiles de deck, le
- * manifeste d'édition).
+ * Tout écran hors plateau est monté sur `GameScreen` (`GameScreen.tsx` +
+ * `GameScreen.module.css`), qui compose `.screen` d'ici (palette `--cb-*`,
+ * grille, polices) avec son propre décor et ses panneaux. Ce fichier ne
+ * garde que ce que le bandeau et ses contrôles utilisent ; l'ancienne
+ * surface de papier (parchemin, barre utilitaire, contrôles d'encre) a été
+ * retirée avec la refonte.
  *
  * Règle directrice : un élément ne reçoit un rectangle (bordure / fond /
- * ombre / rayon) que s'il en a BESOIN. Les contrôles vivent posés
- * directement sur leur plan — texte et icône font le travail, la lumière
- * signale l'état actif. Le laiton est une couleur d'accent (quelques
- * filets, un coin, un emblème), jamais une bordure par défaut. Seuls les
- * objets manipulables — cartes, piles de cartes — portent du relief et une
- * ombre portée franche.
+ * ombre / rayon) que s'il en a BESOIN. Le laiton est une couleur d'accent
+ * (ressources), le cyan celle de l'état actif.
  *
  * Palette namespacée `--cb-*` et posée sur `.screen` plutôt que sur
  * `:root`, pour ne jamais entrer en collision avec les tokens
- * `--surface-*`/`--accent` (`components/game-ui/tokens.ts`) qui vivent sur
- * d'autres écrans (partie, auth, setup).
- *
- * Quatre plans de profondeur, explicites et jamais mélangés :
- *   PLAN 0  décor marin            → `.screen` (fond + dérive de lumière)
- *   PLAN 1  structure d'interface  → `.header`, `.toolbar`      (z-index 3)
- *   PLAN 2  surface papier         → `.parchment` + détails     (z-index 0)
- *   PLAN 3  objets posés dessus    → `.paperScroll`             (z-index 1)
- *   PLAN 4  survol / menus         → objet survolé, `.inkMenu`  (z-index 5+)
+ * `--surface-*`/`--accent` (`components/game-ui/tokens.ts`) du plateau.
  */
+
 .screen {
   /* Bleus nuit / pétrole — le décor. */
   --cb-navy-deep: #06121c;
@@ -38,38 +27,19 @@
   --cb-brass-light: #c79a4e;
   /* Turquoise — accent d'état actif uniquement. */
   --cb-teal: #4fc4ce;
-  /*
-   * Papier marin désaturé — "ivoire sale", pas crème jaune. Volontairement
-   * plus sombre que le beige d'origine : c'est ce qui laisse les cartes
-   * ressortir comme l'élément le plus lumineux de l'écran (la surface est
-   * un support, pas un aplat qui rivalise avec elles).
-   */
-  --cb-parchment: #c5bb9f;
-  --cb-ink: #2a2318;
-  --cb-ink-soft: rgba(42, 35, 24, 0.72);
   --cb-ivory: #e9e2d1;
   --cb-ivory-dim: #97917f;
-  --cb-danger-ink: #8c3b2f;
 
   --cb-font-ui: var(--font-ui, "Segoe UI", system-ui, sans-serif);
   --cb-font-display: var(--font-card-title, Georgia, "Times New Roman", serif);
 
-  /*
-   * Hauteur du fondu haut du papier. Partagée, parce que plusieurs choses
-   * en dépendent et doivent rester d'accord : le masque de `.parchment`, la
-   * position des contrôles d'encre posés dessus (il leur faut du papier
-   * opaque en dessous) et le retrait haut des zones défilantes.
-   */
-  --cb-fade-top: clamp(22px, 2.8vh, 36px);
-  /* Idem en bas — les ornements posés près du bord doivent rester au-dessus. */
-  --cb-fade-bottom: clamp(44px, 5.6vh, 74px);
 
   width: 100vw;
   height: 100dvh;
   display: grid;
-  /* Header et toolbar volontairement bas : ce sont des plans de service,
-     pas deux navbars qui encadrent le contenu. */
-  grid-template-rows: clamp(70px, 9.4vh, 104px) minmax(0, 1fr) clamp(50px, 6.2vh, 64px);
+  /* Bandeau volontairement bas : un plan de service, pas une navbar qui
+     encadre le contenu (GameScreen ne garde que deux rangées). */
+  grid-template-rows: clamp(54px, 6.8vh, 72px) minmax(0, 1fr) clamp(50px, 6.2vh, 64px);
   overflow: hidden;
   font-family: var(--cb-font-ui);
   color: var(--cb-ivory);
@@ -84,27 +54,21 @@
 
 /* ---------- PLAN 1 — Header ---------- */
 
-/*
- * Le panorama marin est le FOND du bandeau entier (`.panorama`,
- * `position:absolute`), pas une case coincée entre des onglets. Les
- * libellés sont donc posés SUR la scène maritime, sans cadre propre — un
- * voile dégradé (`.panoramaScrim`) garantit seul leur lisibilité.
- */
 .header {
   position: relative;
   z-index: 3;
   display: grid;
-  /* Retour · Collection · Decks · Boosters · Quêtes · ressort · (progression + emblème) */
-  grid-template-columns: auto auto auto auto auto minmax(0, 1fr) auto;
+  /* Logo · Collection · Decks · Market · Quêtes · Jouer · ressort · (actions + progression) */
+  grid-template-columns: auto auto auto auto auto auto minmax(0, 1fr) auto;
   align-items: center;
-  /* Beaucoup plus d'air autour des libellés qu'un onglet ne le permettait. */
-  gap: clamp(18px, 3vw, 54px);
-  padding-inline: clamp(18px, 2.4vw, 44px);
+  gap: clamp(14px, 2.2vw, 40px);
+  padding-inline: clamp(14px, 2vw, 36px);
   isolation: isolate;
 }
 
 /* Séparation basse : un filet de laiton qui s'éteint sur les bords, pas un
    liseré uniforme sur toute la largeur. */
+
 .header::after {
   content: "";
   position: absolute;
@@ -122,132 +86,12 @@
   );
 }
 
-.panorama {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  overflow: hidden;
-  background: linear-gradient(180deg, #061320 0%, #0d2537 44%, #123c52 76%, #17506a 100%);
-}
-
-.panoramaStars {
-  position: absolute;
-  inset: 0;
-  background-image:
-    radial-gradient(1.5px 1.5px at 10% 20%, rgba(255, 255, 255, 0.75), transparent),
-    radial-gradient(1.5px 1.5px at 25% 12%, rgba(255, 255, 255, 0.5), transparent),
-    radial-gradient(1px 1px at 40% 30%, rgba(255, 255, 255, 0.6), transparent),
-    radial-gradient(1.5px 1.5px at 60% 15%, rgba(255, 255, 255, 0.45), transparent),
-    radial-gradient(1px 1px at 92% 22%, rgba(255, 255, 255, 0.55), transparent);
-  opacity: 0.7;
-}
-
-/*
- * Dérive de parallaxe : les deux crêtes glissent de quelques pixels sur une
- * minute, à des vitesses différentes. Assez lent pour ne jamais attirer
- * l'œil (les objets posés sur le papier restent les vedettes), assez
- * présent pour que la scène ne soit pas une image morte.
- */
-.panoramaPeaks {
-  position: absolute;
-  inset-inline: -4%;
-  bottom: -6%;
-  height: 58%;
-  background: linear-gradient(180deg, #1b3d51 0%, #142d3d 100%);
-  clip-path: polygon(
-    0% 100%, 0% 55%, 6% 40%, 12% 58%, 18% 30%, 24% 52%, 33% 20%, 40% 50%,
-    48% 34%, 55% 55%, 63% 25%, 70% 48%, 78% 15%, 85% 45%, 92% 32%, 100% 50%, 100% 100%
-  );
-  opacity: 0.9;
-  animation: peakDrift 82s ease-in-out infinite alternate;
-}
-
-.panoramaPeaksFar {
-  position: absolute;
-  inset-inline: -4%;
-  bottom: -6%;
-  height: 46%;
-  background: #0e2330;
-  clip-path: polygon(
-    0% 100%, 0% 65%, 10% 45%, 20% 62%, 30% 40%, 42% 60%, 52% 38%,
-    62% 58%, 72% 42%, 84% 60%, 92% 46%, 100% 60%, 100% 100%
-  );
-  opacity: 0.85;
-  animation: peakDriftFar 124s ease-in-out infinite alternate;
-}
-
-@keyframes peakDrift {
-  from { transform: translateX(-0.8%); }
-  to { transform: translateX(0.8%); }
-}
-@keyframes peakDriftFar {
-  from { transform: translateX(0.6%); }
-  to { transform: translateX(-0.6%); }
-}
-
-.panoramaWater {
-  position: absolute;
-  inset-inline: 0;
-  bottom: 0;
-  height: 26%;
-  background:
-    repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.045) 0 1px, transparent 1px 5px),
-    linear-gradient(180deg, rgba(26, 76, 99, 0.35) 0%, rgba(6, 18, 26, 0.9) 100%);
-}
-
-/* Lumière du phare — lente respiration, jamais un clignotement ni un glow
-   permanent : c'est la seule source chaude de la scène. */
-.panoramaBeacon {
-  position: absolute;
-  top: 18%;
-  right: 16%;
-  width: clamp(90px, 11vw, 170px);
-  height: clamp(90px, 11vw, 170px);
-  transform: translate(50%, -22%);
-  background: radial-gradient(
-    circle,
-    rgba(255, 232, 176, 0.85) 0%,
-    rgba(255, 219, 150, 0.3) 34%,
-    rgba(255, 210, 140, 0.08) 62%,
-    transparent 76%
-  );
-  animation: beaconBreathe 7.5s ease-in-out infinite;
-}
-
-@keyframes beaconBreathe {
-  0%, 100% { opacity: 0.55; }
-  50% { opacity: 1; }
-}
-
-/*
- * Voile : assez dense à gauche pour que les libellés se lisent, mais jamais
- * opaque — les crêtes et les étoiles restent perceptibles DERRIÈRE la
- * navigation, ce qui donne l'impression que les contrôles sont superposés à
- * la scène et non enfermés dans un bandeau à eux. La lisibilité est
- * verrouillée par le `text-shadow` de `.navTab`, pas par un aplat.
- * Un second voile bas ancre le filet de laiton du header.
- */
-.panoramaScrim {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  background:
-    linear-gradient(
-      90deg,
-      rgba(6, 18, 28, 0.92) 0%,
-      rgba(6, 18, 28, 0.78) 18%,
-      rgba(6, 18, 28, 0.48) 42%,
-      rgba(6, 18, 28, 0.16) 66%,
-      transparent 86%
-    ),
-    linear-gradient(180deg, rgba(6, 18, 28, 0.45) 0%, transparent 38%, rgba(6, 18, 28, 0.55) 100%);
-}
-
 /*
  * Navigation : du texte dans la barre. Pas de cadre, pas de fond au repos,
  * pas de lueur permanente. L'état actif se lit à trois signes discrets —
  * un peu plus de lumière, un filet turquoise court, un halo bas très doux.
  */
+
 .navTab {
   position: relative;
   z-index: 2;
@@ -259,9 +103,9 @@
   background: none;
   color: var(--cb-ivory-dim);
   font-family: var(--cb-font-display);
-  font-size: clamp(13px, 1.05vw, 17px);
+  font-size: clamp(12px, 0.95vw, 15px);
   font-weight: 600;
-  letter-spacing: 0.055em;
+  letter-spacing: 0.07em;
   white-space: nowrap;
   cursor: pointer;
   text-decoration: none;
@@ -287,14 +131,17 @@
 .navTab:hover {
   color: var(--cb-ivory);
 }
+
 .navTab:hover::after {
   width: 46%;
   opacity: 0.3;
 }
+
 .navTab:focus-visible {
   outline: none;
   color: var(--cb-ivory);
 }
+
 .navTab:focus-visible::after {
   width: 70%;
   opacity: 0.55;
@@ -305,13 +152,17 @@
   color: #f4efe1;
   text-shadow: 0 1px 5px rgba(3, 10, 16, 0.95), 0 0 16px rgba(79, 196, 206, 0.3);
 }
+
 /* Filet turquoise — court, net, sans halo lumineux qui bave. */
+
 .navTabActive::after {
   width: 74%;
   opacity: 1;
   background: linear-gradient(90deg, transparent 0%, var(--cb-teal) 20%, var(--cb-teal) 80%, transparent 100%);
 }
+
 /* Halo bas : 0.18 d'alpha, il donne l'assise de l'onglet sans "briller". */
+
 .navTabActive::before {
   content: "";
   position: absolute;
@@ -324,35 +175,8 @@
   pointer-events: none;
 }
 
-.backArrow {
-  display: inline-block;
-  font-size: 1.15em;
-  line-height: 1;
-  opacity: 0.75;
-  transform: translateY(-0.04em);
-}
+/* Groupe de droite du header : actions de l'écran + progression. */
 
-/* Emblème Tidebound : un des rares endroits où le laiton a le droit d'être
-   franc. Aucun médaillon, aucune bordure — le glyphe seul, précédé d'un
-   court séparateur. */
-.emblem {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  gap: clamp(12px, 1.4vw, 22px);
-  height: clamp(26px, 3.4vh, 36px);
-  color: var(--cb-brass-light);
-  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.7));
-}
-
-.emblemRule {
-  width: 1px;
-  height: 100%;
-  background: linear-gradient(180deg, transparent, rgba(199, 154, 78, 0.5) 35%, rgba(199, 154, 78, 0.5) 65%, transparent);
-}
-
-/* Groupe de droite du header : progression + emblème. */
 .headerRight {
   position: relative;
   z-index: 2;
@@ -370,6 +194,7 @@
  * `text-shadow` la rend lisible par-dessus la scène maritime, exactement
  * comme les libellés de navigation.
  */
+
 .progression {
   position: relative;
   z-index: 2;
@@ -401,6 +226,7 @@
 }
 
 /* Jauge d'XP : un trait, pas une barre de progression de logiciel. */
+
 .progressionTrack {
   position: relative;
   width: clamp(52px, 7vw, 128px);
@@ -421,12 +247,16 @@
 }
 
 .progressionXp {
+  /* Les chiffres d'XP encombrent un bandeau fin : la jauge suffit, les
+     chiffres restent dans l'`aria-label` de la piste. */
+  display: none;
   font-size: clamp(9px, 0.7vw, 11px);
   font-variant-numeric: tabular-nums;
   color: var(--cb-ivory-dim);
 }
 
 /* Solde de Tides — le laiton dit "ressource", comme ailleurs. */
+
 .progressionTides {
   display: flex;
   align-items: center;
@@ -445,773 +275,13 @@
   color: rgba(199, 154, 78, 0.75);
 }
 
-/* ---------- PLAN 2 — Surface papier ---------- */
-
-.surface {
-  position: relative;
-  min-height: 0;
-  isolation: isolate;
-}
-
-/*
- * Déplacement très lent d'une lumière haute au-dessus de la surface : le
- * seul mouvement du plan 2. Amplitude minuscule (quelques %), période très
- * longue — on ne le remarque pas, on le sent.
- */
-.surface::before {
-  content: "";
-  position: absolute;
-  inset: -10% -20% auto;
-  height: 70%;
-  z-index: 0;
-  background: radial-gradient(52% 100% at 50% 0%, rgba(120, 190, 210, 0.09) 0%, transparent 70%);
-  pointer-events: none;
-  animation: lightDrift 46s ease-in-out infinite alternate;
-}
-
-@keyframes lightDrift {
-  from { transform: translateX(-3%); }
-  to { transform: translateX(3%); }
-}
-
-/*
- * LA surface de travail — plus un panneau posé dans l'écran.
- *
- * Il n'y a ni cadre laiton, ni bordure, ni rayon : le papier occupe toute
- * la zone et se DISSOUT dans le bleu nuit en haut et en bas
- * (`mask-image`), tandis que ses flancs reçoivent une ombre douce
- * (`::after`) qui le décolle du décor sans jamais le cerner. C'est la
- * transition « fond marine → ombre → surface papier → objets ».
- */
-.parchment {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-
-  background-color: var(--cb-parchment);
-  background-image:
-    /*
-     * Marbrures peintes larges — l'échelle (900x640) évite tout motif
-     * répété perceptible. Deux claires, deux sombres et légèrement
-     * froides, en alpha modéré : elles donnent l'inégalité d'un papier
-     * peint à la main sans éclaircir l'ensemble de la surface (ce que
-     * faisaient des marbrures uniquement plus claires que le fond).
-     */
-    radial-gradient(38% 46% at 18% 24%, rgba(209, 200, 177, 0.55) 0%, transparent 100%),
-    radial-gradient(44% 40% at 74% 68%, rgba(174, 168, 148, 0.5) 0%, transparent 100%),
-    radial-gradient(30% 34% at 58% 12%, rgba(206, 198, 178, 0.38) 0%, transparent 100%),
-    radial-gradient(34% 40% at 34% 88%, rgba(166, 161, 143, 0.45) 0%, transparent 100%),
-    /* Fibres du papier — deux trames croisées, très faibles. */
-    repeating-linear-gradient(97deg, rgba(58, 46, 28, 0.028) 0 1px, transparent 1px 4px),
-    repeating-linear-gradient(6deg, rgba(255, 252, 240, 0.035) 0 1px, transparent 1px 6px),
-    /* Grain irrégulier. */
-    radial-gradient(circle at 15% 20%, rgba(255, 255, 255, 0.07) 0, transparent 3%),
-    radial-gradient(circle at 45% 65%, rgba(255, 255, 255, 0.05) 0, transparent 3%),
-    radial-gradient(circle at 75% 30%, rgba(0, 0, 0, 0.05) 0, transparent 3%),
-    radial-gradient(circle at 85% 80%, rgba(255, 255, 255, 0.06) 0, transparent 3%),
-    radial-gradient(circle at 30% 85%, rgba(0, 0, 0, 0.04) 0, transparent 3%),
-    /*
-     * Assombrissement haut/bas, pour que la dissolution ne soit pas un
-     * simple fondu d'opacité. Exprimé en PIXELS et calé sur les mêmes
-     * distances que le masque : en pourcentage, sur une surface haute, il
-     * s'étendait bien au-delà de la zone de fondu et venait ternir le
-     * papier sous les contrôles d'encre.
-     */
-    linear-gradient(
-      180deg,
-      rgba(40, 32, 20, 0.34) 0,
-      transparent calc(var(--cb-fade-top) + 14px),
-      transparent calc(100% - var(--cb-fade-bottom) - 16px),
-      rgba(40, 32, 20, 0.36) 100%
-    );
-  background-size:
-    900px 640px, 780px 560px, 640px 480px, 700px 520px,
-    auto, auto,
-    150px 150px, 150px 150px, 150px 150px, 150px 150px, 150px 150px,
-    auto;
-  background-position: 0 0, 100% 100%, 40% 0, 10% 100%, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0;
-  background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, repeat, repeat, repeat, repeat, repeat, repeat, repeat, no-repeat;
-
-  /*
-   * Dissolution verticale : le papier n'a pas de bord haut ni bas, il
-   * s'éteint. La zone de fondu haute est volontairement courte
-   * (`--cb-fade-top`) : tout ce qui porte du texte sombre doit se poser
-   * SOUS elle, sinon l'encre se retrouve sur le bleu nuit et devient
-   * illisible.
-   */
-  -webkit-mask-image: linear-gradient(
-    180deg,
-    transparent 0,
-    rgba(0, 0, 0, 0.25) clamp(8px, 1vh, 13px),
-    #000 var(--cb-fade-top),
-    #000 calc(100% - var(--cb-fade-bottom)),
-    rgba(0, 0, 0, 0.3) calc(100% - clamp(11px, 1.4vh, 18px)),
-    transparent 100%
-  );
-  mask-image: linear-gradient(
-    180deg,
-    transparent 0,
-    rgba(0, 0, 0, 0.25) clamp(8px, 1vh, 13px),
-    #000 var(--cb-fade-top),
-    #000 calc(100% - var(--cb-fade-bottom)),
-    rgba(0, 0, 0, 0.3) calc(100% - clamp(11px, 1.4vh, 18px)),
-    transparent 100%
-  );
-}
-
-/* Ombre douce des flancs : le papier s'enfonce dans le décor sur les côtés
-   au lieu d'être découpé net. */
-.parchment::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    90deg,
-    rgba(5, 15, 23, 0.85) 0%,
-    rgba(5, 15, 23, 0.34) clamp(14px, 1.6vw, 30px),
-    transparent clamp(52px, 5vw, 96px),
-    transparent calc(100% - clamp(52px, 5vw, 96px)),
-    rgba(5, 15, 23, 0.34) calc(100% - clamp(14px, 1.6vw, 30px)),
-    rgba(5, 15, 23, 0.85) 100%
-  );
-}
-
-/*
- * Ornements — volontairement peu nombreux et ASYMÉTRIQUES : une seule
- * équerre de laiton, un rivet isolé, une tache de sel décentrée, une
- * éraflure, un compas fantôme. Rien de répété aux quatre coins : c'est ce
- * qui donne la matérialité artisanale sans refermer un cadre.
- */
-.parchmentDetails {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-}
-
-/* Équerre : deux filets courts, un seul coin. Comme les contrôles d'encre,
-   elle se cale sous le fondu du papier — sinon le laiton s'éteint avec lui. */
-.cornerBracket {
-  position: absolute;
-  top: calc(var(--cb-fade-top) + clamp(8px, 1.1vh, 15px));
-  /* Plus à gauche que le retrait du contenu : sinon les objets, qui vivent
-     au plan supérieur, lui passent dessus. */
-  left: clamp(11px, 1.3vw, 24px);
-  width: clamp(38px, 4vw, 62px);
-  height: clamp(30px, 3.4vh, 46px);
-  border-top: 1px solid rgba(164, 123, 54, 0.72);
-  border-left: 1px solid rgba(164, 123, 54, 0.58);
-  -webkit-mask-image: linear-gradient(135deg, #000 0%, rgba(0, 0, 0, 0.25) 72%, transparent 100%);
-  mask-image: linear-gradient(135deg, #000 0%, rgba(0, 0, 0, 0.25) 72%, transparent 100%);
-}
-
-/* Rivet isolé — un seul, décalé, avec son ombre de perçage dans le papier. */
-.rivet {
-  position: absolute;
-  right: clamp(22px, 2.4vw, 42px);
-  bottom: calc(var(--cb-fade-bottom) + clamp(10px, 1.4vh, 20px));
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 34% 28%, var(--cb-brass-light) 0%, var(--cb-brass) 48%, var(--cb-brass-dark) 100%);
-  box-shadow: 0 1px 2px rgba(42, 33, 16, 0.55), inset 0 -1px 1px rgba(0, 0, 0, 0.35);
-  opacity: 0.8;
-}
-
-/* Tache de sel : auréole irrégulière, un bord légèrement plus marqué. */
-.saltStain {
-  position: absolute;
-  top: 46%;
-  right: clamp(40px, 9vw, 190px);
-  width: clamp(90px, 12vw, 190px);
-  height: clamp(70px, 9vw, 150px);
-  border-radius: 58% 42% 51% 49% / 46% 55% 45% 54%;
-  background:
-    radial-gradient(closest-side, rgba(120, 100, 64, 0.05) 0%, rgba(120, 100, 64, 0.028) 62%, rgba(104, 86, 54, 0.075) 88%, transparent 100%);
-  /* Sans ce flou, l'auréole se lit comme une ellipse DESSINÉE : c'est le
-     bord diffus qui en fait une trace de sel séchée. */
-  filter: blur(7px);
-  transform: rotate(-8deg);
-}
-
-.saltStainSmall {
-  composes: saltStain;
-  top: 14%;
-  right: auto;
-  left: clamp(90px, 22vw, 460px);
-  width: clamp(48px, 6vw, 96px);
-  height: clamp(40px, 4.5vw, 76px);
-  transform: rotate(23deg);
-  opacity: 0.75;
-}
-
-/* Éraflure sèche, une seule, légèrement oblique. */
-.scuff {
-  position: absolute;
-  bottom: clamp(56px, 12vh, 130px);
-  left: clamp(30px, 16vw, 320px);
-  width: clamp(60px, 9vw, 150px);
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(76, 62, 38, 0.16) 30%, rgba(76, 62, 38, 0.1) 70%, transparent);
-  transform: rotate(-1.6deg);
-}
-
-/* Compas : presque invisible (0.07) — une trace imprimée dans le papier,
-   pas une icône décorative. */
-.compassRose {
-  position: absolute;
-  bottom: calc(var(--cb-fade-bottom) - clamp(20px, 3vh, 40px));
-  left: clamp(10px, 2vw, 40px);
-  width: clamp(90px, 11vw, 190px);
-  height: auto;
-  opacity: 0.07;
-  color: var(--cb-ink);
-}
-
-/* ---------- PLAN 3 — Zone défilante sur le papier ---------- */
-
-/*
- * Le masque haut/bas prolonge la dissolution du papier : un objet qui sort
- * du champ s'éteint dans le bleu nuit au lieu d'être tranché par un bord
- * de cadre.
- */
-.paperScroll {
-  position: relative;
-  z-index: 1;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  scroll-behavior: smooth;
-  overscroll-behavior: contain;
-  scroll-padding-top: clamp(56px, 8vh, 76px);
-  scrollbar-width: thin;
-  scrollbar-color: rgba(109, 82, 36, 0.5) transparent;
-
-  -webkit-mask-image: linear-gradient(
-    180deg,
-    transparent 0,
-    #000 clamp(34px, 4.4vh, 58px),
-    #000 calc(100% - clamp(34px, 4.6vh, 60px)),
-    transparent 100%
-  );
-  mask-image: linear-gradient(
-    180deg,
-    transparent 0,
-    #000 clamp(34px, 4.4vh, 58px),
-    #000 calc(100% - clamp(34px, 4.6vh, 60px)),
-    transparent 100%
-  );
-}
-.paperScroll::-webkit-scrollbar {
-  width: 9px;
-}
-.paperScroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-/* Ascenseur : encre sur papier, pas un rail de laiton doré. */
-.paperScroll::-webkit-scrollbar-thumb {
-  background-color: rgba(58, 47, 28, 0.32);
-  border-radius: 5px;
-  border: 3px solid transparent;
-  background-clip: padding-box;
-}
-.paperScroll::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(109, 82, 36, 0.6);
-}
-
-/* Variante plein cadre : la zone défilante occupe toute la surface. */
-.paperScrollFill {
-  composes: paperScroll;
-  position: absolute;
-  inset: 0;
-  /* Le retrait haut laisse passer le fondu du papier PUIS les contrôles
-     d'encre : un objet ne doit jamais démarrer dans cette zone. */
-  padding: calc(var(--cb-fade-top) + clamp(48px, 5.6vh, 76px)) clamp(34px, 4.4vw, 88px) clamp(40px, 6vh, 76px);
-}
-
-/* ---------- Contrôles d'encre (posés sur le papier) ---------- */
-
-/*
- * Posé juste sous la zone de fondu du papier (`--cb-fade-top`) : son encre
- * sombre a besoin de papier opaque derrière elle.
- *
- * Le contrôle flotte au-dessus du contenu défilant : dès qu'on défile, des
- * objets passent DERRIÈRE lui et l'encre devient illisible. D'où la mince
- * surface translucide de `::before` — teintée exactement comme le papier,
- * donc invisible au repos, et juste assez opaque pour porter le texte
- * quand une carte glisse dessous. Ses deux extrémités sont dissoutes au
- * masque : c'est une cale de papier, pas un bouton à contour.
- */
-.inkControl {
-  position: absolute;
-  top: calc(var(--cb-fade-top) + clamp(8px, 1.2vh, 16px));
-  right: clamp(26px, 3vw, 56px);
-  z-index: 5;
-  display: flex;
-  align-items: center;
-  gap: clamp(10px, 1vw, 16px);
-  padding: 2px clamp(10px, 1.2vw, 20px) 2px clamp(14px, 1.6vw, 28px);
-  font-family: var(--cb-font-ui);
-}
-
-/*
- * La cale porte le masque sur un pseudo-élément, jamais sur `.inkControl`
- * lui-même : un masque clippe au border-box, et un menu déroulant
- * (positionné SOUS le contrôle) disparaîtrait entièrement avec lui.
- */
-.inkControl::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background: rgba(197, 187, 159, 0.66);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
-  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 26%, #000 88%, transparent 100%);
-  mask-image: linear-gradient(90deg, transparent 0, #000 26%, #000 88%, transparent 100%);
-}
-
-/* Petit séparateur laiton — un des accents autorisés. */
-.inkRule {
-  width: clamp(26px, 3vw, 58px);
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(109, 82, 36, 0.42));
-}
-
-/* Du texte sur le papier. Pas de plaque beige, pas de contour, pas de
-   capitales : juste une surface translucide au survol. */
-.inkButton {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5em;
-  padding: 0.34em 0.55em;
-  border: none;
-  border-radius: 2px;
-  background: transparent;
-  color: var(--cb-ink-soft);
-  font-family: inherit;
-  font-size: clamp(12px, 0.92vw, 14px);
-  font-weight: 500;
-  letter-spacing: 0.005em;
-  cursor: pointer;
-  transition: background 160ms ease-out, color 160ms ease-out;
-}
-.inkButton:hover,
-.inkButton:focus-visible {
-  outline: none;
-  background: rgba(42, 35, 24, 0.07);
-  color: var(--cb-ink);
-}
-
-.inkValue {
-  color: var(--cb-ink);
-  font-weight: 600;
-}
-
-.inkCaret {
-  display: inline-block;
-  font-size: 0.8em;
-  opacity: 0.6;
-  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-.inkCaretOpen {
-  composes: inkCaret;
-  transform: rotate(180deg);
-}
-
-/*
- * PLAN 4 — un menu flotte au-dessus du papier : un filet d'encre fin (pas
- * 2px de laiton) et une ombre portée franche font tout le travail.
- *
- * L'APPARENCE est ici, le POSITIONNEMENT dans les trois variantes qui
- * suivent : un menu de tri s'ouvre vers le bas, un menu d'actions ancré
- * dans la barre basse doit s'ouvrir vers le haut, et un menu contextuel de
- * clic droit est positionné en `fixed` à la souris. Même feuille de papier
- * dans les trois cas.
- */
-.inkMenuFloat {
-  min-width: 148px;
-  overflow: hidden;
-  border-radius: 3px;
-  background: #efe7d5;
-  box-shadow:
-    0 0 0 1px rgba(42, 35, 24, 0.22),
-    0 14px 34px -8px rgba(6, 14, 22, 0.55);
-  animation: menuIn 140ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  z-index: 6;
-}
-
-.inkMenu {
-  composes: inkMenuFloat;
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-}
-
-/* S'ouvre vers le haut — pour un déclencheur posé dans la barre basse. */
-.inkMenuUp {
-  composes: inkMenuFloat;
-  position: absolute;
-  bottom: calc(100% + 8px);
-  right: 0;
-}
-
-/* Menu contextuel (clic droit) : positionné à la souris par le composant. */
-.inkMenuFixed {
-  composes: inkMenuFloat;
-  position: fixed;
-  min-width: 11rem;
-  z-index: 70;
-}
-
-@keyframes menuIn {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: none; }
-}
-
-.inkOption {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  gap: 0.7em;
-  padding: 0.52em 0.9em;
-  text-align: left;
-  white-space: nowrap;
-  font-family: inherit;
-  font-size: clamp(12px, 0.9vw, 14px);
-  color: var(--cb-ink-soft);
-  background: none;
-  border: none;
-  cursor: pointer;
-  transition: background 120ms ease-out, color 120ms ease-out;
-}
-.inkOption:hover,
-.inkOption:focus-visible {
-  outline: none;
-  background: rgba(42, 35, 24, 0.07);
-  color: var(--cb-ink);
-}
-.inkOption:disabled {
-  cursor: not-allowed;
-  opacity: 0.38;
-}
-.inkOptionActive {
-  composes: inkOption;
-  color: var(--cb-ink);
-  font-weight: 600;
-  /* Marque turquoise de l'option retenue — 2px, à gauche, rien d'autre. */
-  box-shadow: inset 2px 0 0 var(--cb-teal);
-}
-/* Action destructrice : une encre rouge délavée, jamais un rouge SaaS pur. */
-.inkOptionDanger {
-  composes: inkOption;
-  color: var(--cb-danger-ink);
-}
-.inkOptionDanger:hover {
-  background: rgba(140, 59, 47, 0.1);
-  color: var(--cb-danger-ink);
-}
-
-.inkMenuRule {
-  height: 1px;
-  margin: 4px 0;
-  background: rgba(42, 35, 24, 0.14);
-}
-
-/* ---------- État vide ---------- */
-
-.emptyState {
-  display: flex;
-  height: 100%;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.9rem;
-  max-width: 36ch;
-  margin-inline: auto;
-  text-align: center;
-  font-size: clamp(13px, 1vw, 15px);
-  line-height: 1.6;
-  color: var(--cb-ink-soft);
-}
-
-.emptyStateMark {
-  color: var(--cb-brass-dark);
-  opacity: 0.4;
-}
-
-.emptyStateTitle {
-  font-family: var(--cb-font-display);
-  font-size: clamp(15px, 1.2vw, 19px);
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--cb-ink);
-}
-
-/* ---------- PLAN 1 — Barre utilitaire basse ---------- */
-
-/*
- * Barre de service, pas une seconde navbar : basse, translucide, séparée du
- * papier par un seul filet. Aucun de ses composants ne porte de contour.
- */
-.toolbar {
-  position: relative;
-  z-index: 3;
-  display: grid;
-  grid-template-columns: auto minmax(0, auto) minmax(200px, 400px);
-  justify-content: space-between;
-  align-items: center;
-  gap: clamp(16px, 2.4vw, 40px);
-  padding-inline: clamp(18px, 2.4vw, 44px);
-  background: rgba(4, 14, 22, 0.9);
-  backdrop-filter: blur(7px);
-  -webkit-backdrop-filter: blur(7px);
-}
-
-.toolbar::before {
-  content: "";
-  position: absolute;
-  inset-inline: 0;
-  top: 0;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(164, 123, 54, 0.3) 16%,
-    rgba(164, 123, 54, 0.18) 62%,
-    transparent 100%
-  );
-}
-
-.toolbarGroup {
-  display: flex;
-  align-items: center;
-  gap: clamp(8px, 1vw, 16px);
-  min-width: 0;
-}
-
-/*
- * L'action primaire de l'écran garde une surface — mais désaturée et
- * plate : pas de dégradé de laiton, pas de contour doré, pas de capitales.
- * Le turquoise n'apparaît qu'au survol.
- */
-.primaryAction {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5em;
-  padding: 0.5em 1.15em;
-  border: none;
-  border-radius: 3px;
-  background: rgba(13, 52, 69, 0.55);
-  box-shadow: inset 0 0 0 1px rgba(79, 196, 206, 0.16);
-  color: #d8e6e8;
-  font-family: inherit;
-  font-size: clamp(12px, 0.95vw, 14px);
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  white-space: nowrap;
-  text-decoration: none;
-  cursor: pointer;
-  transition: background 170ms ease-out, box-shadow 170ms ease-out, color 170ms ease-out;
-}
-.primaryAction:hover,
-.primaryAction:focus-visible {
-  outline: none;
-  background: rgba(17, 68, 88, 0.75);
-  box-shadow: inset 0 0 0 1px rgba(79, 196, 206, 0.42);
-  color: #f0f7f8;
-}
-.primaryAction:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
-  background: rgba(13, 52, 69, 0.4);
-  box-shadow: inset 0 0 0 1px rgba(79, 196, 206, 0.1);
-}
-
-/* Confirmation de sauvegarde : le turquoise se tient une seconde, puis
-   retombe. Pas de pulsation permanente. */
-.primaryActionDone {
-  composes: primaryAction;
-  background: rgba(20, 78, 84, 0.8);
-  box-shadow: inset 0 0 0 1px rgba(79, 196, 206, 0.55);
-  color: #e9f7f8;
-}
-
-/* Action secondaire : du texte dans la barre, aucune surface. */
-.ghostAction {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45em;
-  padding: 0.5em 0.5em;
-  border: none;
-  border-radius: 3px;
-  background: transparent;
-  color: var(--cb-ivory-dim);
-  font-family: inherit;
-  font-size: clamp(12px, 0.92vw, 14px);
-  font-weight: 500;
-  white-space: nowrap;
-  text-decoration: none;
-  cursor: pointer;
-  transition: background 170ms ease-out, color 170ms ease-out;
-}
-.ghostAction:hover,
-.ghostAction:focus-visible {
-  outline: none;
-  background: rgba(233, 226, 209, 0.05);
-  color: var(--cb-ivory);
-}
-.ghostAction:disabled {
-  cursor: not-allowed;
-  opacity: 0.4;
-}
-
-.plus {
-  font-size: 1.05em;
-  line-height: 1;
-  opacity: 0.7;
-}
-
-/* ---------- Filtres de type ---------- */
-
-.filterGroup {
-  display: flex;
-  align-items: center;
-  gap: clamp(2px, 0.35vw, 6px);
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-.filterGroup::-webkit-scrollbar {
-  display: none;
-}
-
-/* Séparateur laiton entre « Toutes » et les icônes de type. */
-.filterRule {
-  flex-shrink: 0;
-  width: 1px;
-  height: clamp(14px, 1.8vh, 20px);
-  margin-inline: clamp(6px, 0.7vw, 12px);
-  background: linear-gradient(180deg, transparent, rgba(164, 123, 54, 0.4), transparent);
-}
-
-/*
- * Pas de médaillons ronds : une zone de clic compacte et transparente,
- * l'icône seule. Au repos elle est quasi monochrome et peu contrastée ; le
- * survol l'éclaircit ; l'état actif ajoute une petite lumière, un fond
- * discret et un fin filet bas. Aucun anneau brillant.
- */
-.filterButton {
-  position: relative;
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: clamp(30px, 3.8vh, 38px);
-  min-width: clamp(30px, 3.8vh, 38px);
-  padding-inline: 0.35em;
-  border: none;
-  border-radius: 3px;
-  background: transparent;
-  color: var(--cb-ivory-dim);
-  font-family: inherit;
-  font-size: clamp(12px, 0.92vw, 14px);
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 170ms ease-out, color 170ms ease-out;
-}
-
-/*
- * Répartition des deux accents sur tout l'écran, pour que l'état actif ait
- * un sens plutôt que d'être décoratif : le turquoise dit « où je suis / ce
- * qui a le focus » (section de navigation, focus de la recherche, option de
- * tri retenue), le laiton dit « ce qui est engagé » (filtre actif). D'où ce
- * filet laiton, et non turquoise.
- */
-.filterButton::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  bottom: 3px;
-  width: 0;
-  height: 1px;
-  transform: translateX(-50%);
-  background: var(--cb-brass);
-  opacity: 0;
-  transition: width 190ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 190ms ease-out;
-}
-
-.filterButton:hover,
-.filterButton:focus-visible {
-  outline: none;
-  background: rgba(233, 226, 209, 0.05);
-  color: var(--cb-ivory);
-}
-
-.filterButtonActive {
-  composes: filterButton;
-  background: rgba(208, 188, 140, 0.08);
-  color: #e3d2ab;
-}
-.filterButtonActive::after {
-  width: 56%;
-  opacity: 0.9;
-}
-
-/* L'icône elle-même : désaturée et en retrait au repos, pleine couleur une
-   fois le filtre actif. La transition porte sur `filter`, pas sur une
-   bordure. */
-.filterIcon {
-  display: block;
-  height: clamp(19px, 2.4vh, 25px);
-  width: clamp(19px, 2.4vh, 25px);
-  background-size: auto 100%;
-  /*
-   * Chaque asset `TYPE_*_STANDARD.webp` est un pictogramme suivi d'un
-   * mot-clé sur un ratio ~3:1 — l'icône occupe la zone carrée de tête
-   * (largeur ≈ hauteur de l'image). `auto 100%` cale la hauteur affichée
-   * sur celle du conteneur, ce qui fait exactement coïncider la fenêtre
-   * visible (`left center`) avec cette zone carrée : le pictogramme entier
-   * apparaît, centré, jamais tronqué.
-   */
-  background-position: left center;
-  background-repeat: no-repeat;
-  /*
-   * Les assets `TYPE_*` sont des pictogrammes bleu marine foncé sur fond
-   * transparent : posés tels quels sur la barre sombre, ils disparaissent
-   * (c'est ce que le médaillon clair d'avant compensait). `invert()` les
-   * retourne en glyphes clairs — et, joli hasard utile, l'inverse de ce
-   * bleu marine est un sable/laiton exactement dans la palette Tidebound.
-   * D'où la lecture des trois états : gris désaturé au repos, plus clair au
-   * survol, sable laiton une fois le filtre actif.
-   */
-  filter: invert(1) grayscale(1) brightness(0.78) opacity(0.46);
-  transition: filter 190ms ease-out;
-}
-.filterButton:hover .filterIcon,
-.filterButton:focus-visible .filterIcon {
-  filter: invert(1) grayscale(0.85) brightness(0.96) opacity(0.72);
-}
-/*
- * Déclaré APRÈS les règles de survol, et à spécificité égale pour la
- * variante survolée (`.filterButtonActive:hover .filterIcon`) : un filtre
- * actif que l'on survole reste en pleine couleur au lieu de retomber dans
- * l'état désaturé. La « petite lumière » de l'état actif vit sur l'icône,
- * pas en anneau autour du bouton.
- */
-.filterButtonActive .filterIcon,
-.filterButtonActive:hover .filterIcon,
-.filterButtonActive:focus-visible .filterIcon {
-  filter: invert(1) saturate(1.15) brightness(1.04) drop-shadow(0 0 6px rgba(199, 154, 78, 0.45));
-}
-
 /* ---------- Recherche ---------- */
 
 /*
  * Pas de rectangle : une icône, un champ, un filet bas. Le focus ne fait
  * qu'allumer ce filet en turquoise.
  */
+
 .searchBar {
   position: relative;
   display: flex;
@@ -1232,9 +302,11 @@
   background: rgba(233, 226, 209, 0.16);
   transition: background 200ms ease-out, box-shadow 200ms ease-out;
 }
+
 .searchBar:hover::after {
   background: rgba(233, 226, 209, 0.28);
 }
+
 .searchBar:focus-within::after {
   background: var(--cb-teal);
   box-shadow: 0 0 8px rgba(79, 196, 206, 0.4);
@@ -1245,6 +317,7 @@
   opacity: 0.55;
   transition: opacity 200ms ease-out;
 }
+
 .searchBar:focus-within .searchIcon {
   opacity: 0.9;
 }
@@ -1260,11 +333,14 @@
   font-size: clamp(12px, 0.95vw, 14px);
   font-weight: 400;
 }
+
 .searchInput::placeholder {
   color: var(--cb-ivory-dim);
   opacity: 0.85;
 }
+
 /* La croix native de `type="search"` ferait double emploi avec `.searchClear`. */
+
 .searchInput::-webkit-search-cancel-button {
   appearance: none;
 }
@@ -1284,6 +360,7 @@
   cursor: pointer;
   transition: color 150ms ease-out, background 150ms ease-out;
 }
+
 .searchClear:hover,
 .searchClear:focus-visible {
   outline: none;
@@ -1297,6 +374,7 @@
  * capsule sombre à contour fin ; le focus allume le contour en turquoise
  * plutôt qu'un filet bas.
  */
+
 .searchPill {
   composes: searchBar;
   height: clamp(32px, 4vh, 40px);
@@ -1321,125 +399,6 @@
   box-shadow: 0 0 0 3px rgba(79, 196, 206, 0.14);
 }
 
-/* ---------- Dialogue papier ---------- */
-
-/*
- * Une confirmation est une feuille posée sur la table, pas une fenêtre de
- * système : papier, encre, un filet de laiton en tête, une ombre portée
- * profonde. Même famille que `.inkMenu`, en plus grand.
- */
-.dialog {
-  width: min(92vw, 30rem);
-  padding: clamp(20px, 2.4vw, 30px) clamp(22px, 2.6vw, 34px) clamp(18px, 2vw, 26px);
-  border-radius: 3px;
-  background: #ded4bd;
-  background-image:
-    radial-gradient(60% 70% at 22% 18%, rgba(233, 226, 205, 0.7) 0%, transparent 100%),
-    repeating-linear-gradient(97deg, rgba(58, 46, 28, 0.03) 0 1px, transparent 1px 4px);
-  box-shadow:
-    0 0 0 1px rgba(42, 35, 24, 0.3),
-    0 26px 60px -12px rgba(2, 8, 14, 0.75);
-  color: var(--cb-ink);
-  animation: dialogIn 170ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-}
-
-/* Le seul laiton du dialogue : un filet en tête, qui s'éteint à droite. */
-.dialog::before {
-  content: "";
-  display: block;
-  height: 1px;
-  margin-bottom: clamp(14px, 1.6vw, 20px);
-  background: linear-gradient(90deg, rgba(164, 123, 54, 0.65), rgba(164, 123, 54, 0.15) 55%, transparent);
-}
-
-@keyframes dialogIn {
-  from { opacity: 0; transform: translateY(8px) scale(0.99); }
-  to { opacity: 1; transform: none; }
-}
-
-.dialogTitle {
-  margin: 0;
-  font-family: var(--cb-font-display);
-  font-size: clamp(16px, 1.35vw, 21px);
-  font-weight: 600;
-  letter-spacing: 0.015em;
-  color: var(--cb-ink);
-}
-
-.dialogText {
-  margin: 0.7em 0 0;
-  font-size: clamp(12px, 0.95vw, 14px);
-  line-height: 1.6;
-  color: var(--cb-ink-soft);
-}
-
-.dialogActions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  align-items: center;
-  gap: clamp(4px, 0.8vw, 12px);
-  margin-top: clamp(18px, 2vw, 26px);
-}
-
-/* Boutons d'un dialogue : de l'encre sur le papier. Seul celui qui engage
-   l'action porte une surface. */
-.dialogGhost {
-  composes: inkButton;
-  padding: 0.5em 0.85em;
-}
-
-.dialogConfirm {
-  composes: inkButton;
-  padding: 0.5em 1.1em;
-  background: rgba(13, 52, 69, 0.9);
-  color: #dceaec;
-  font-weight: 500;
-}
-.dialogConfirm:hover,
-.dialogConfirm:focus-visible {
-  background: rgba(17, 68, 88, 1);
-  color: #f0f7f8;
-}
-
-.dialogDanger {
-  composes: inkButton;
-  padding: 0.5em 1.1em;
-  background: rgba(140, 59, 47, 0.9);
-  color: #f6e6e2;
-  font-weight: 500;
-}
-.dialogDanger:hover,
-.dialogDanger:focus-visible {
-  background: rgba(158, 68, 54, 1);
-  color: #fff2ee;
-}
-.dialogDanger:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-
-/* ---------- Mouvement réduit ---------- */
-
-/*
- * Toutes les animations de ce module sont décoratives (dérive du panorama,
- * phare, lumière, apparition des menus) : elles s'éteignent toutes, et les
- * états finaux restent ceux du repos.
- */
-@media (prefers-reduced-motion: reduce) {
-  .panoramaPeaks,
-  .panoramaPeaksFar,
-  .panoramaBeacon,
-  .surface::before,
-  .inkMenuFloat,
-  .dialog {
-    animation: none;
-  }
-  .panoramaBeacon {
-    opacity: 0.8;
-  }
-}
-
 /* ---------- Logo de marque, à gauche du header ---------- */
 
 /*
@@ -1448,6 +407,7 @@
  * client de TCG. Hauteur pilotée par celle du bandeau (`clamp`), largeur
  * automatique — le logo garde son ratio.
  */
+
 .brand {
   position: relative;
   z-index: 2;
@@ -1459,7 +419,7 @@
 
 .brandLogo {
   width: auto;
-  height: clamp(28px, 4.2vh, 52px);
+  height: clamp(22px, 3.6vh, 38px);
   object-fit: contain;
   filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.75));
 }

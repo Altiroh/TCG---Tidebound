@@ -1,13 +1,11 @@
 /*
- * ÉCRAN COLLECTION
- * ================
+ * NAVIGATEUR DE CARTES (Collection + Éditeur de deck)
+ * ====================================================
  *
- * Refonte complète : l'écran ne pose plus la grille sur la surface de
- * papier partagée (`features/shell/ScreenShell.module.css`, toujours
- * utilisée telle quelle par Decks / Boosters / Quêtes). Il devient une
- * scène maritime nocturne — `collection/collection_background_2.webp` en
- * plein écran — sur laquelle flottent deux panneaux bleu nuit : les
- * filtres à gauche, les cartes à droite.
+ * Deux panneaux bleu nuit posés sur la coquille commune
+ * (`features/shell/GameScreen.module.css` : décor, tokens de panneau,
+ * panneau et recherche de bandeau) : les filtres à gauche, les cartes à
+ * droite.
  *
  * Règles tenues ici :
  *   - le décor est un DÉCOR : un voile + une vignette le tiennent derrière
@@ -19,60 +17,11 @@
  *   - aucune coordonnée calée sur une résolution : `clamp()` partout, et
  *     trois bascules seulement (laptop, paysage court, tiroir).
  *
- * La palette `--cb-*` vient de `.screen` (coquille partagée), que ce
- * fichier complète sans la redéfinir.
+ * La palette `--cb-*` vient de la coquille partagée et les tokens de
+ * panneau de `GameScreen.module.css` : ce fichier ne redéfinit ni les uns
+ * ni les autres.
  */
 
-/*
- * `.screen` est composé AVEC `shell.screen` côté JSX. Le sélecteur est
- * doublé (`.screen.screen`) pour l'emporter à coup sûr sur les règles de la
- * coquille : à spécificité égale, le gagnant dépendrait de l'ordre
- * d'injection des deux feuilles, qui n'est pas garanti.
- */
-.screen.screen {
-  /* Deux rangées seulement : le bandeau, puis tout le reste. L'ancienne
-     barre utilitaire basse n'existe plus ici. */
-  grid-template-rows: clamp(70px, 9.4vh, 104px) minmax(0, 1fr);
-
-  --cb-cyan: #58c8d8;
-  --cb-cyan-soft: rgba(88, 200, 216, 0.14);
-  --cb-violet: #b388f0;
-  --panel: rgba(8, 18, 30, 0.74);
-  --panel-solid: rgba(6, 14, 24, 0.9);
-  --line: rgba(130, 178, 210, 0.16);
-  --line-strong: rgba(130, 178, 210, 0.3);
-  --ink: #dce8f2;
-  --ink-dim: rgba(190, 210, 228, 0.6);
-
-  background-color: #04090f;
-  background-image:
-    /* Voile : sombre en haut (lisibilité du bandeau), profond en bas. */
-    linear-gradient(180deg, rgba(4, 9, 15, 0.82) 0%, rgba(4, 10, 17, 0.5) 26%, rgba(3, 8, 13, 0.72) 100%),
-    url("/assets/collection/collection_background_2.webp");
-  background-size: cover, cover;
-  background-position: center, center;
-  background-repeat: no-repeat, no-repeat;
-  /* Pas de `background-attachment: fixed` : rien ne défile au niveau du
-     document (seuls les panneaux ont leur propre défilement), il n'aurait
-     donc aucun effet — mais il force un repaint coûteux à chaque frame et
-     n'est pas supporté sur iOS. */
-}
-
-/* La recherche vit dans le bandeau partagé : on lui donne ici une largeur
-   digne d'une barre principale, sans toucher au composant lui-même. */
-.headerSearch {
-  min-width: clamp(150px, 18vw, 300px);
-}
-
-/* Vignette — assombrit les quatre coins pour ramener l'œil au centre. */
-.screen.screen::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background: radial-gradient(130% 105% at 50% 45%, transparent 42%, rgba(2, 6, 11, 0.72) 100%);
-}
 
 /* ──────────────────────────────────────────────────────────────
  * ESPACE DE TRAVAIL — filtres à gauche, cartes à droite.
@@ -87,18 +36,6 @@
   padding: clamp(10px, 1.4vh, 22px) clamp(12px, 1.8vw, 34px) clamp(12px, 1.8vh, 26px);
 }
 
-/* ── Panneau commun ─────────────────────────────────────────── */
-.panel {
-  position: relative;
-  min-height: 0;
-  border: 1px solid var(--line);
-  border-radius: clamp(10px, 0.9vw, 16px);
-  background: var(--panel);
-  /* Un seul flou de fond dans tout l'écran, sur les deux panneaux : le
-     décor s'y devine sans jamais gêner la lecture. */
-  backdrop-filter: blur(10px) saturate(0.9);
-  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.45);
-}
 
 /* ──────────────────────────────────────────────────────────────
  * COLONNE DE FILTRES
@@ -511,7 +448,9 @@
  * Mêmes règles que le tiroir général ci-dessous, restreintes à ce cas.
  * ══════════════════════════════════════════════════════════════ */
 @media (max-width: 1280px) and (min-width: 901px) and (min-height: 561px) {
-  .workspace[data-columns="3"] .sidebar {
+  /* Sélecteur doublé : `.panel` (GameScreen, `position: relative`) est de
+     même spécificité et peut être injecté après cette feuille. */
+  .workspace[data-columns="3"] .sidebar.sidebar {
     position: absolute;
     z-index: 5;
     top: clamp(6px, 1vh, 12px);
@@ -550,7 +489,7 @@
     padding: clamp(6px, 1vh, 12px) clamp(8px, 1.4vw, 16px) clamp(8px, 1.2vh, 14px);
   }
 
-  .sidebar {
+  .sidebar.sidebar {
     position: absolute;
     z-index: 5;
     top: clamp(6px, 1vh, 12px);

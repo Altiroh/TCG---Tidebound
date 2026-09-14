@@ -1,0 +1,33 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: clamp(10px, 1.2vw, 16px);
+}
+
+.tile {
+  align-items: center;
+  gap: 8px;
+  padding: clamp(10px, 1.2vh, 14px);
+  text-align: center;
+}
+
+.name {
+  font-family: var(--cb-font-display);
+  font-size: clamp(14px, 1.05vw, 17px);
+  font-weight: 600;
+  color: #f2f7fb;
+}
+
+.stats {
+  display: flex;
+  gap: 10px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.profile {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--ink-dim);
+}

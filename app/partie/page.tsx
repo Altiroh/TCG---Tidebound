@@ -1,4 +1,5 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { listPlayerDeckLists } from "@/app/decks/actions";
 import { PartieScreen } from "@/features/match/PartieScreen";
 
 export default async function PartiePage() {
@@ -15,5 +16,7 @@ export default async function PartiePage() {
     isSignedIn = false;
   }
 
-  return <PartieScreen isSignedIn={isSignedIn} />;
+  const personalDecks = isSignedIn ? await listPlayerDeckLists() : [];
+
+  return <PartieScreen isSignedIn={isSignedIn} personalDecks={personalDecks} />;
 }

@@ -1,18 +1,15 @@
 /*
- * Ce qui est PROPRE à l'écran Boosters. Le décor, le papier, le header, la
- * barre utilitaire et les contrôles viennent de
- * `features/shell/ScreenShell.module.css`, comme pour Collection et Decks.
- *
- * L'objet posé sur le papier est ici un PAQUET : le sachet fermé du
- * booster, avec son ombre de contact. Même grammaire que les cartes de la
- * Collection et les piles de la liste de decks — seul l'objet change.
+ * MARKET (boosters) — ce qui s'ajoute à la coquille `GameScreen`.
+ * L'objet est un PAQUET : le sachet fermé du booster (le même visuel que
+ * l'animation d'ouverture), posé sur une tuile bleu nuit avec son nom, son
+ * prix et ses actions. L'économie (prix, solde, pity) vient du serveur et
+ * n'est jamais décidée ici.
  */
 
 .shelf {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(clamp(170px, 14vw, 240px), 1fr));
-  column-gap: clamp(26px, 3vw, 56px);
-  row-gap: clamp(28px, 3.4vh, 52px);
+  grid-template-columns: repeat(auto-fill, minmax(clamp(220px, 18vw, 300px), 1fr));
+  gap: clamp(12px, 1.4vw, 22px);
   align-content: start;
 }
 
@@ -20,26 +17,20 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.6em;
+  gap: 0.55em;
+  padding: clamp(14px, 1.6vw, 24px) clamp(12px, 1.2vw, 18px);
 }
 
 /*
- * Le paquet lui-même : le VISUEL du booster concerné, poussé en variables
- * inline par `BoostersScreen` (`--pack-art` / `--pack-ratio`, cf.
- * `features/boosters/opening/boosterPackVisuals.ts`) — c'est le même
- * sachet fermé que celui de l'animation d'ouverture, pas un dos de carte.
- *
- * Les visuels sont des découpes sur transparence : donc `contain` (jamais
- * `cover`, qui rognerait le sachet), aucun fond ni coin arrondi, et une
- * `drop-shadow` qui épouse la silhouette au lieu d'une `box-shadow` qui
- * dessinerait un rectangle derrière.
+ * Le paquet lui-même : `--pack-art` / `--pack-ratio` sont poussés en
+ * variables inline par `BoostersScreen` (`boosterPackVisuals.ts`). Les
+ * visuels sont des découpes sur transparence : `contain`, aucun fond, une
+ * `drop-shadow` qui épouse la silhouette.
  */
 .packObject {
   position: relative;
-  width: 82%;
+  width: 62%;
   aspect-ratio: var(--pack-ratio, 5 / 7);
-  /* Explicite : sans ça, le fond de bouton par défaut du navigateur
-     peint un rectangle clair derrière la découpe du sachet. */
   border: 0;
   padding: 0;
   background-color: transparent;
@@ -47,49 +38,32 @@
   background-size: contain;
   background-position: center bottom;
   background-repeat: no-repeat;
-  filter: drop-shadow(0 14px 18px rgba(4, 10, 16, 0.6));
-  transition:
-    transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1),
-    filter 160ms ease;
+  filter: drop-shadow(0 16px 22px rgba(0, 0, 0, 0.6));
+  transition: transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1), filter 160ms ease;
 }
 
-/* Un paquet possédé est manipulable : il se soulève comme une carte. Un
-   paquet à zéro exemplaire ne bouge pas — il n'y a rien à ouvrir. */
-.packOwned .packObject {
-  cursor: pointer;
-}
+.packOwned .packObject { cursor: pointer; }
 .packOwned:hover .packObject {
-  transform: translateY(-8px) scale(1.035) rotate(-0.7deg);
-  filter: drop-shadow(0 20px 24px rgba(4, 10, 16, 0.62)) brightness(1.06);
+  transform: translateY(-6px) scale(1.03) rotate(-0.7deg);
+  filter: drop-shadow(0 22px 26px rgba(0, 0, 0, 0.62)) brightness(1.06);
 }
+.packObject:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 6px; border-radius: 8px; }
 
 .packEmpty .packObject {
-  filter: drop-shadow(0 10px 14px rgba(4, 10, 16, 0.5)) grayscale(0.7) brightness(0.62);
+  filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.5)) grayscale(0.7) brightness(0.55);
 }
 
-/* Ombre de contact sur le papier, comme les cartes de la Collection. */
-.packObject::after {
-  content: "";
-  position: absolute;
-  left: 10%;
-  right: 10%;
-  bottom: -8px;
-  height: 12px;
-  border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(30, 22, 10, 0.34) 0%, transparent 100%);
-}
-
-/* Compteur d'exemplaires possédés — un jeton de laiton dans le coin. */
+/* Compteur d'exemplaires possédés — un jeton dans le coin du paquet. */
 .packCount {
   position: absolute;
-  top: 6px;
-  right: 6px;
-  min-width: 1.7em;
-  padding: 0.1em 0.4em;
-  border-radius: 2px;
-  background: rgba(6, 18, 28, 0.85);
-  box-shadow: inset 0 0 0 1px rgba(199, 154, 78, 0.55);
-  color: #e3d2ab;
+  top: 4px;
+  right: -6px;
+  min-width: 2em;
+  padding: 0.15em 0.5em;
+  border: 1px solid rgba(88, 200, 216, 0.5);
+  border-radius: 999px;
+  background: var(--panel-solid);
+  color: #eaf8fb;
   font-size: clamp(11px, 0.85vw, 13px);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -98,27 +72,32 @@
 
 .packName {
   font-family: var(--cb-font-display);
-  font-size: clamp(12px, 1vw, 15px);
+  font-size: clamp(15px, 1.15vw, 19px);
   font-weight: 600;
   letter-spacing: 0.02em;
-  color: var(--cb-ink);
+  color: #f2f7fb;
   text-align: center;
 }
 
 .packMeta {
-  font-size: clamp(10px, 0.78vw, 12px);
-  color: var(--cb-ink-soft);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: clamp(11px, 0.85vw, 13px);
+  color: var(--ink-dim);
   text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
-/*
- * Compteur de pity. Affiché seulement quand il devient une information
- * utile (le renforcement a commencé) : le montrer en permanence
- * transformerait une garantie de confort en tableau de bord statistique.
- */
+.packPrice {
+  color: #ddc79a;
+  font-weight: 600;
+}
+
+/* Compteur de pity : affiché seulement quand le renforcement a commencé. */
 .packPity {
   font-size: clamp(10px, 0.76vw, 12px);
-  color: var(--cb-brass-dark);
+  color: var(--cb-violet);
   text-align: center;
 }
 
@@ -126,196 +105,42 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: clamp(4px, 0.6vw, 10px);
-}
-
-/* Boutons du paquet : de l'encre sur le papier, sauf l'action d'ouverture
-   qui est l'action primaire de l'écran. */
-.packButton {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.4em 0.8em;
-  border: none;
-  border-radius: 2px;
-  background: transparent;
-  color: var(--cb-ink-soft);
-  font-family: var(--cb-font-ui);
-  font-size: clamp(11px, 0.85vw, 13px);
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 160ms ease-out, color 160ms ease-out;
-}
-.packButton:hover:not(:disabled),
-.packButton:focus-visible:not(:disabled) {
-  outline: none;
-  background: rgba(42, 35, 24, 0.07);
-  color: var(--cb-ink);
-}
-.packButton:disabled {
-  cursor: not-allowed;
-  opacity: 0.4;
-}
-
-.packButtonPrimary {
-  composes: packButton;
-  background: rgba(13, 52, 69, 0.9);
-  color: #dceaec;
-  font-weight: 600;
-}
-.packButtonPrimary:hover:not(:disabled),
-.packButtonPrimary:focus-visible:not(:disabled) {
-  background: rgba(17, 68, 88, 1);
-  color: #f0f7f8;
-}
-
-/*
- * Boutons de test de l'animation d'ouverture. Dans la barre du bas sur
- * grand écran ; sur téléphone la barre n'a pas la place, ils flottent
- * juste au-dessus d'elle, à droite.
- */
-.testInline {
-  display: contents;
-}
-
-.testLabel {
-  font-size: clamp(11px, 0.82vw, 13px);
-  color: rgba(233, 226, 209, 0.45);
-  white-space: nowrap;
-}
-
-.testFloating {
-  display: none;
-}
-
-@media (max-width: 720px) {
-  .testInline {
-    display: none;
-  }
-
-  .testFloating {
-    position: fixed;
-    right: 10px;
-    /* Hauteur de la barre du bas (`ScreenShell.module.css`, 3e rangée de la grille) + marge. */
-    bottom: calc(clamp(50px, 6.2vh, 64px) + 8px);
-    z-index: 4;
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    padding: 2px 4px;
-    border-radius: 3px;
-    background: rgba(4, 14, 22, 0.88);
-    box-shadow: inset 0 0 0 1px rgba(199, 154, 78, 0.25);
-  }
-}
-
-.error {
-  font-size: clamp(11px, 0.85vw, 13px);
-  color: var(--cb-danger-ink);
-  text-align: center;
-}
-
-/* ---------- Révélation ---------- */
-
-/*
- * Superposition d'ouverture. Elle assombrit l'écran pour que les 8 cartes
- * soient la seule chose visible : c'est le moment de tension de la boucle,
- * il ne doit pas cohabiter avec le reste de l'interface.
- */
-.revealOverlay {
-  position: fixed;
-  inset: 0;
-  z-index: 90;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: clamp(18px, 2.4vh, 34px);
-  padding: clamp(20px, 3vw, 48px);
-  background: radial-gradient(120% 90% at 50% 40%, rgba(8, 26, 39, 0.86) 0%, rgba(3, 10, 16, 0.96) 70%);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  animation: revealIn 220ms ease-out both;
-}
-
-@keyframes revealIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.revealTitle {
-  font-family: var(--cb-font-display);
-  font-size: clamp(14px, 1.3vw, 20px);
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  color: #f1ead9;
-  text-shadow: 0 1px 6px rgba(3, 10, 16, 0.9);
-}
-
-.revealRow {
-  display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: clamp(8px, 1.2vw, 20px);
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 6px;
 }
 
-.revealCard {
-  position: relative;
-  width: clamp(84px, 9vw, 150px);
-  /* Chaque carte entre avec son propre décalage (`--reveal-delay`, posé en
-     ligne) : l'ouverture se lit slot par slot, de la première Commune au
-     slot Profondeur. */
-  animation: revealCard 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  animation-delay: var(--reveal-delay, 0ms);
-}
-
-@keyframes revealCard {
-  from {
-    opacity: 0;
-    transform: translateY(18px) scale(0.94) rotate(-2deg);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-/* Une Abyssale mérite d'être signalée — c'est le seul glow de tout l'écran,
-   et il ne dure que le temps de la révélation. */
-.revealCardAbyssal {
-  composes: revealCard;
-  filter: drop-shadow(0 0 14px rgba(199, 154, 78, 0.55));
-}
-
-/* Marqueur "nouvelle carte" : un filet turquoise et un mot, pas un badge. */
-.revealNew {
-  position: absolute;
-  inset-inline: 0;
-  bottom: -1.35em;
-  text-align: center;
-  font-size: clamp(8px, 0.62vw, 10px);
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--cb-teal);
-}
-
-.revealActions {
+/* Rangée « Tester l'animation » : discrète, en bas de page. */
+.testRow {
   display: flex;
   align-items: center;
-  gap: clamp(8px, 1vw, 16px);
-  /* Après la dernière carte : on ne propose de fermer qu'une fois tout révélé. */
-  animation: revealIn 300ms ease-out both;
-  animation-delay: var(--reveal-actions-delay, 0ms);
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  font-size: clamp(11px, 0.82vw, 13px);
+  color: var(--ink-faint);
+}
+
+.balance {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35em;
+  font-family: var(--cb-font-display);
+  font-size: clamp(18px, 1.5vw, 26px);
+  font-weight: 600;
+  color: #ddc79a;
+  font-variant-numeric: tabular-nums;
+}
+
+.balanceLabel {
+  font-family: var(--cb-font-ui);
+  font-size: 0.5em;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(199, 154, 78, 0.8);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .revealOverlay,
-  .revealCard,
-  .revealActions {
-    animation: none;
-  }
-  .packObject {
-    transition: none;
-  }
+  .packObject { transition: none; }
 }

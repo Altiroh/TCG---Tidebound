@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type { DeckList } from "@/game";
 import { validateDeckList } from "@/game/rules/deckValidation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -9,6 +10,8 @@ export interface PlayerDeckSummary {
   name: string;
   shipId: string;
   cardCount: number;
+  /** `is_valid` tel que recalculé par `saveDeck` (`validateDeckList`) à la dernière sauvegarde. */
+  isValid: boolean;
   /** Jusqu'à 5 `card_id` du deck, pour l'empilement d'en-tête de la tuile — ordre arbitraire pour l'instant. */
   headerCardIds: string[];
 }
@@ -50,7 +53,7 @@ export async function listPlayerDecks(): Promise<PlayerDeckSummary[]> {
 
   const { data: decks, error: decksError } = await supabase
     .from("player_decks")
-    .select("id, name, ship_id")
+    .select("id, name, ship_id, is_valid")
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
   if (decksError) console.error("[listPlayerDecks] Échec de la lecture de player_decks :", decksError.message);
@@ -78,10 +81,59 @@ export async function listPlayerDecks(): Promise<PlayerDeckSummary[]> {
       id: deck.id,
       name: deck.name,
       shipId: deck.ship_id,
+      isValid: Boolean(deck.is_valid),
       cardCount: deckCards.reduce((sum, card) => sum + card.quantity, 0),
       headerCardIds: deckCards.slice(0, 5).map((card) => card.card_id),
     };
   });
+}
+
+/**
+ * Les decks personnels sous la forme que la partie consomme (`DeckList`,
+ * un `cardId` par exemplaire) — pour l'écran Jouer. Même tolérance que
+ * `listPlayerDecks` : tableau vide si non connecté ou si Supabase manque.
+ */
+export async function listPlayerDeckLists(): Promise<DeckList[]> {
+  try {
+    const supabase = createSupabaseServerClient();
+    const userId = await currentUserId(supabase);
+    if (!userId) return [];
+
+    const { data: decks, error: decksError } = await supabase
+      .from("player_decks")
+      .select("id, name, ship_id")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: true });
+    if (decksError) console.error("[listPlayerDeckLists] Échec de la lecture de player_decks :", decksError.message);
+    if (!decks || decks.length === 0) return [];
+
+    const { data: cards, error: cardsError } = await supabase
+      .from("player_deck_cards")
+      .select("deck_id, card_id, quantity")
+      .in(
+        "deck_id",
+        decks.map((deck) => deck.id)
+      );
+    if (cardsError) console.error("[listPlayerDeckLists] Échec de la lecture de player_deck_cards :", cardsError.message);
+
+    const cardsByDeck = new Map<string, string[]>();
+    for (const row of cards ?? []) {
+      const list = cardsByDeck.get(row.deck_id) ?? [];
+      for (let i = 0; i < row.quantity; i += 1) list.push(row.card_id);
+      cardsByDeck.set(row.deck_id, list);
+    }
+
+    return decks.map((deck) => ({
+      id: deck.id,
+      name: deck.name,
+      shipId: deck.ship_id,
+      description: "Deck personnel",
+      cardIds: cardsByDeck.get(deck.id) ?? [],
+    }));
+  } catch (error) {
+    console.error("[listPlayerDeckLists] Échec inattendu :", error);
+    return [];
+  }
 }
 
 export interface SaveDeckInput {
@@ -132,7 +184,7 @@ async function saveDeckUnguarded(input: SaveDeckInput): Promise<DeckActionResult
   } else {
     const { error: updateError } = await supabase
       .from("player_decks")
-      .update({ name, is_valid: validation.ok })
+      .update({ name, ship_id: input.shipId, is_valid: validation.ok })
       .eq("id", deckId);
     if (updateError) return { ok: false, error: updateError.message };
 

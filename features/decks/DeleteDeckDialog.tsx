@@ -1,7 +1,7 @@
 "use client";
 
-import { PaperDialog } from "@/features/shell/PaperDialog";
-import shell from "@/features/shell/ScreenShell.module.css";
+import { Dialog } from "@/features/shell/Dialog";
+import game from "@/features/shell/GameScreen.module.css";
 
 interface DeleteDeckDialogProps {
   deckName: string;
@@ -10,24 +10,24 @@ interface DeleteDeckDialogProps {
   onCancel: () => void;
 }
 
-/** Confirmation de suppression, sur `PaperDialog` (feuille de papier, encre, un filet de laiton). */
+/** Confirmation de suppression d'un deck — dialogue commun, action destructrice en dernier. */
 export function DeleteDeckDialog({ deckName, isDeleting, onConfirm, onCancel }: DeleteDeckDialogProps) {
   return (
-    <PaperDialog
+    <Dialog
       title={`Supprimer « ${deckName} » ?`}
       onClose={onCancel}
       actions={
         <>
-          <button type="button" className={shell.dialogGhost} onClick={onCancel}>
+          <button type="button" className={game.secondary} onClick={onCancel}>
             Annuler
           </button>
-          <button type="button" className={shell.dialogDanger} onClick={onConfirm} disabled={isDeleting}>
+          <button type="button" className={game.danger} onClick={onConfirm} disabled={isDeleting}>
             {isDeleting ? "Suppression…" : "Supprimer"}
           </button>
         </>
       }
     >
-      <p className={shell.dialogText}>Cette action est définitive et supprimera toutes les cartes de ce deck.</p>
-    </PaperDialog>
+      <p style={{ margin: 0 }}>Cette action est définitive et supprimera toutes les cartes de ce deck.</p>
+    </Dialog>
   );
 }

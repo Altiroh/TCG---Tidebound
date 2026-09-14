@@ -60,7 +60,7 @@ export function PasswordField({ name, placeholder, autoComplete, value, onChange
           onClick={() => setVisible((v) => !v)}
           aria-label={visible ? "Masquer le mot de passe" : "Afficher le mot de passe"}
           tabIndex={-1}
-          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] transition-colors hover:text-[var(--text-primary)]"
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[rgba(190,210,228,0.6)] transition-colors hover:text-[#58c8d8]"
         >
           {visible ? <EyeOffIcon /> : <EyeIcon />}
         </button>
@@ -71,11 +71,11 @@ export function PasswordField({ name, placeholder, autoComplete, value, onChange
             {[0, 1, 2, 3].map((i) => (
               <span
                 key={i}
-                className={`h-1 flex-1 rounded-full transition-colors ${i < strength.score ? strength.barColorClass : "bg-white/10"}`}
+                className={`h-1 flex-1 rounded-full transition-colors ${i < strength.score ? strength.barColorClass : "bg-[rgba(130,178,210,0.14)]"}`}
               />
             ))}
           </div>
-          <span className="text-[11px] text-[var(--text-secondary)]">Force du mot de passe : {strength.label}</span>
+          <span className="text-[11px] text-[rgba(190,210,228,0.6)]">Force du mot de passe : {strength.label}</span>
         </div>
       )}
     </div>

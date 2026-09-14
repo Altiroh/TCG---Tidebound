@@ -1,0 +1,124 @@
+/*
+ * LISTE DES DECKS — ce qui s'ajoute à la coquille `GameScreen`.
+ * Chaque deck est une tuile : son Navire dans le cadre du plateau (c'est
+ * l'identité du deck, pas une vignette), le nom, l'effectif, l'état.
+ */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(clamp(280px, 24vw, 360px), 1fr));
+  gap: clamp(12px, 1.4vw, 22px);
+}
+
+.tile {
+  display: grid;
+  grid-template-columns: clamp(84px, 6.5vw, 108px) minmax(0, 1fr);
+  gap: clamp(10px, 1vw, 16px);
+  padding: clamp(12px, 1.2vw, 18px);
+  cursor: default;
+}
+
+.tilePortrait {
+  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.55));
+}
+
+.tileBody {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.tileName {
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: var(--cb-font-display);
+  font-size: clamp(16px, 1.25vw, 20px);
+  font-weight: 600;
+  line-height: 1.2;
+  color: #f2f7fb;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.tileName:hover { color: var(--cb-cyan); }
+.tileName:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 2px; border-radius: 4px; }
+
+.tileShip {
+  font-size: clamp(10px, 0.75vw, 12px);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cb-cyan);
+}
+
+.tileMeta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: clamp(11px, 0.85vw, 13px);
+  color: var(--ink-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.tileActions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+.tileOpen {
+  min-height: 30px;
+  padding-block: 0.3em;
+  font-size: clamp(11px, 0.8vw, 12px);
+}
+
+/* Tuile « nouveau deck » : la même place qu'un deck, en creux. */
+.newTile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 140px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius);
+  background: rgba(88, 200, 216, 0.04);
+  color: var(--ink-dim);
+  font: inherit;
+  font-size: clamp(12px, 0.9vw, 14px);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 150ms ease-out, color 150ms ease-out, background-color 150ms ease-out;
+}
+.newTile:hover {
+  border-color: var(--cb-cyan);
+  color: #eaf8fb;
+  background: rgba(88, 200, 216, 0.08);
+}
+.newTile:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 3px; }
+
+.newTileMark {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  font-size: 20px;
+  line-height: 1;
+}
+
+@media (max-width: 640px) {
+  .grid { grid-template-columns: 1fr; }
+}

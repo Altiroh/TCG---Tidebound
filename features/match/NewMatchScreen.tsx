@@ -1,21 +1,21 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useMemo, useState } from "react";
 import {
   ARCHETYPE_DECKS,
   CRA_POISCAIL_TEST_DECKS,
   PLAYABLE_DECKS,
   PRECONSTRUCTED_DECKS,
-  getShipDefinition,
+  RULES,
+  validateDeckList,
   type BotDifficulty,
   type DeckList,
 } from "@/game";
-import { FilterChip } from "@/components/game-ui/FilterChip";
-import { GameButton } from "@/components/game-ui/GameButton";
-import { GamePanel } from "@/components/game-ui/GamePanel";
-import { GameSelect, type GameSelectOption } from "@/components/game-ui/GameSelect";
-import { TEXT_PRIMARY, TEXT_SECONDARY, TRANSITION } from "@/components/game-ui/tokens";
+import { GameScreen } from "@/features/shell/GameScreen";
+import { ShipPortrait, shipNameOf } from "@/features/ships/ShipPortrait";
+import game from "@/features/shell/GameScreen.module.css";
+import styles from "@/features/match/NewMatch.module.css";
+import { playButtonClick } from "@/lib/sound";
 
 export type MatchOpponent = { type: "pvp" } | { type: "bot"; difficulty: BotDifficulty };
 
@@ -26,15 +26,9 @@ interface NewMatchScreenProps {
   error?: string | null;
   /** Précision affichée en mode bot (partie serveur récompensée, ou entraînement local). */
   botNote?: string;
+  /** Decks personnels du joueur connecté (`listPlayerDeckLists`) — vide hors connexion. */
+  personalDecks?: readonly DeckList[];
 }
-
-/**
- * Liste combinée proposée à l'écran de sélection : les 3 decks de base
- * système (un par Navire) puis les archétypes — plusieurs archétypes
- * partagent le même Navire, d'où l'affichage de son nom à côté de chaque
- * deck plutôt qu'une simple liste de Navires.
- */
-const SELECTABLE_DECKS: readonly DeckList[] = PLAYABLE_DECKS;
 
 /**
  * Deck du BOT : toujours tiré au sort, jamais choisi — on ne règle que le
@@ -46,24 +40,8 @@ const SELECTABLE_DECKS: readonly DeckList[] = PLAYABLE_DECKS;
  * ne touche pas `GameState.rngState`, qui doit rester déterministe.
  */
 function pickRandomDeck(): DeckList {
-  return SELECTABLE_DECKS[Math.floor(Math.random() * SELECTABLE_DECKS.length)]!;
+  return PLAYABLE_DECKS[Math.floor(Math.random() * PLAYABLE_DECKS.length)]!;
 }
-
-const DECK_OPTIONS: GameSelectOption<string>[] = [
-  ...PRECONSTRUCTED_DECKS.map((deck) => ({ value: deck.id, label: deck.name, group: "Decks de base" })),
-  ...ARCHETYPE_DECKS.map((deck) => ({
-    value: deck.id,
-    label: `${deck.name} — ${getShipDefinition(deck.shipId).name}`,
-    group: "Archétypes",
-  })),
-  // Groupe à part : ce sont des listes de test du Lot 10, pas des
-  // propositions d'équilibrage au même titre que les archétypes.
-  ...CRA_POISCAIL_TEST_DECKS.map((deck) => ({
-    value: deck.id,
-    label: `${deck.name} — ${getShipDefinition(deck.shipId).name}`,
-    group: "Cra-Poiscail (à tester)",
-  })),
-];
 
 const BOT_DIFFICULTIES: { id: BotDifficulty; label: string; description: string }[] = [
   { id: "facile", label: "Facile", description: "Joue quasiment au hasard, évite juste les pires coups." },
@@ -71,130 +49,262 @@ const BOT_DIFFICULTIES: { id: BotDifficulty; label: string; description: string 
   { id: "difficile", label: "Difficile", description: "Cherche systématiquement le meilleur coup possible." },
 ];
 
-/** Écran de sélection des Navires/decks avant une partie locale : contre un autre joueur (hot-seat) ou contre un bot. */
-export function NewMatchScreen({ onStart, starting = false, error = null, botNote }: NewMatchScreenProps) {
-  const [deck1Id, setDeck1Id] = useState(SELECTABLE_DECKS[0]!.id);
-  /** Uniquement pour le hot-seat : contre un bot, le second deck est tiré au sort et ce réglage est ignoré. */
-  const [deck2Id, setDeck2Id] = useState(SELECTABLE_DECKS[1]!.id);
-  const [opponentType, setOpponentType] = useState<"pvp" | "bot">("pvp");
-  const [botDifficulty, setBotDifficulty] = useState<BotDifficulty>("moyen");
+type Mode = "pvp" | "bot";
+/** 1 : mode · 2 : deck du joueur 1 (ou le sien contre le bot) · 3 : deck du joueur 2 (local à deux seulement). */
+type Step = 1 | 2 | 3;
 
-  function handleStart() {
-    const opponent: MatchOpponent = opponentType === "bot" ? { type: "bot", difficulty: botDifficulty } : { type: "pvp" };
-    const deck1 = SELECTABLE_DECKS.find((d) => d.id === deck1Id)!;
-    // Contre un bot, le tirage a lieu ICI — au lancement, pas à
-    // l'affichage : relancer une partie change d'adversaire.
-    const deck2 = opponentType === "bot" ? pickRandomDeck() : SELECTABLE_DECKS.find((d) => d.id === deck2Id)!;
-    onStart(deck1, deck2, opponent);
+interface DeckGroup {
+  title: string;
+  hint?: string;
+  decks: readonly DeckList[];
+}
+
+/**
+ * Jouer — un parcours en étapes, pas un formulaire : d'abord le mode (en
+ * ligne, bientôt ; local à deux ; contre un bot), puis le deck, choisi par
+ * son Navire. En local à deux, chaque joueur choisit le sien à tour de rôle.
+ *
+ * Les decks personnels sont proposés s'ils sont jouables
+ * (`validateDeckList`, la même règle que le serveur) ; les autres restent
+ * visibles, éteints, avec la raison. Contre le bot, l'adversaire est tiré
+ * au sort au lancement parmi les listes du jeu.
+ */
+export function NewMatchScreen({ onStart, starting = false, error = null, botNote, personalDecks = [] }: NewMatchScreenProps) {
+  const [step, setStep] = useState<Step>(1);
+  const [mode, setMode] = useState<Mode>("bot");
+  const [botDifficulty, setBotDifficulty] = useState<BotDifficulty>("moyen");
+  const [deck1, setDeck1] = useState<DeckList | null>(null);
+  const [deck2, setDeck2] = useState<DeckList | null>(null);
+
+  const personalValidity = useMemo(() => {
+    const map = new Map<string, string | null>();
+    for (const deck of personalDecks) {
+      const result = validateDeckList(deck);
+      map.set(deck.id, result.ok ? null : result.error);
+    }
+    return map;
+  }, [personalDecks]);
+
+  const groups: DeckGroup[] = useMemo(() => {
+    const list: DeckGroup[] = [];
+    if (personalDecks.length > 0) list.push({ title: "Mes decks", hint: `${RULES.DECK_SIZE_MIN} à ${RULES.DECK_SIZE_MAX} cartes pour être jouable`, decks: personalDecks });
+    list.push({ title: "Decks de base", hint: "Un par Navire", decks: PRECONSTRUCTED_DECKS });
+    list.push({ title: "Archétypes", decks: ARCHETYPE_DECKS });
+    list.push({ title: "Cra-Poiscail", hint: "Listes à tester", decks: CRA_POISCAIL_TEST_DECKS });
+    return list;
+  }, [personalDecks]);
+
+  const current = step === 3 ? deck2 : deck1;
+  const setCurrent = step === 3 ? setDeck2 : setDeck1;
+
+  function chooseMode(next: Mode) {
+    playButtonClick();
+    setMode(next);
+    setStep(2);
   }
 
+  function handleLaunch() {
+    if (!deck1) return;
+    if (mode === "pvp") {
+      if (step === 2) {
+        playButtonClick();
+        setStep(3);
+        return;
+      }
+      if (!deck2) return;
+      playButtonClick();
+      void onStart(deck1, deck2, { type: "pvp" });
+      return;
+    }
+    playButtonClick();
+    // Contre un bot, le tirage a lieu ICI — au lancement, pas à l'affichage : relancer une partie change d'adversaire.
+    void onStart(deck1, pickRandomDeck(), { type: "bot", difficulty: botDifficulty });
+  }
+
+  const stepLabels: string[] = mode === "pvp" ? ["Mode", "Deck du joueur 1", "Deck du joueur 2"] : ["Mode", "Ton deck"];
+  const canLaunch = step === 3 ? deck2 !== null : deck1 !== null;
+  const launchLabel = mode === "pvp" && step === 2 ? "Deck du joueur 2 →" : starting ? "Préparation de la partie…" : "Lancer la partie";
+
   return (
-    <main
-      className="relative flex min-h-screen flex-col items-center justify-center gap-8 p-6"
-      style={{ background: "radial-gradient(ellipse at 50% -10%, var(--surface-1) 0%, var(--surface-0) 60%)" }}
-    >
-      <Link href="/" className={`fixed left-6 top-6 z-10 text-sm ${TEXT_SECONDARY} transition-colors hover:${TEXT_PRIMARY}`}>
-        ← Retour au menu
-      </Link>
-
-      <div className="text-center">
-        <h1 className={`text-3xl font-bold tracking-tight ${TEXT_PRIMARY}`}>Nouvelle partie</h1>
-        <p className={`mt-2 text-sm ${TEXT_SECONDARY}`}>
-          {opponentType === "pvp"
-            ? "Mode local : les deux joueurs jouent sur le même écran, à tour de rôle."
-            : "Vous affrontez un bot — il jouera le second Navire."}
-        </p>
-        {opponentType === "bot" && botNote && <p className={`mx-auto mt-1 max-w-md text-xs ${TEXT_SECONDARY}`}>{botNote}</p>}
-      </div>
-
-      <GamePanel className="flex w-full max-w-xl flex-col gap-3 p-5 text-left">
-        <span className={`text-sm font-medium ${TEXT_SECONDARY}`}>Adversaire</span>
-        <div className="flex gap-2">
-          <FilterChip active={opponentType === "pvp"} onClick={() => setOpponentType("pvp")} className="!rounded-md !px-4 !py-2 !text-sm">
-            Joueur contre joueur
-          </FilterChip>
-          <FilterChip active={opponentType === "bot"} onClick={() => setOpponentType("bot")} className="!rounded-md !px-4 !py-2 !text-sm">
-            Contre un bot
-          </FilterChip>
-        </div>
-        {opponentType === "bot" && (
-          <div className="mt-2 flex flex-col gap-2">
-            <span className={`text-xs ${TEXT_SECONDARY}`}>Difficulté</span>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              {BOT_DIFFICULTIES.map((d) => (
-                <button
-                  key={d.id}
-                  type="button"
-                  onClick={() => setBotDifficulty(d.id)}
-                  className={`flex flex-1 flex-col gap-1 rounded-md px-3 py-2 text-left ${TRANSITION} ${
-                    botDifficulty === d.id
-                      ? "bg-[var(--accent)]/10 shadow-[0_0_0_1px_var(--accent)]"
-                      : "shadow-[0_0_0_1px_var(--border-subtle)] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.2)]"
-                  }`}
-                >
-                  <span className={`text-sm font-medium ${TEXT_PRIMARY}`}>{d.label}</span>
-                  <span className={`text-[11px] leading-tight ${TEXT_SECONDARY}`}>{d.description}</span>
-                </button>
-              ))}
+    <GameScreen active="partie">
+      <div className={game.content}>
+        <div className={game.contentWide}>
+          <div className={game.pageHead}>
+            <div>
+              <p className={game.eyebrow}>Jouer</p>
+              <h1 className={game.title}>
+                {step === 1 ? "Choisis un mode" : step === 3 ? "Joueur 2 — choisis ton deck" : mode === "pvp" ? "Joueur 1 — choisis ton deck" : "Choisis ton deck"}
+              </h1>
             </div>
+            <ol className={styles.steps} aria-label="Étapes">
+              {stepLabels.map((label, index) => {
+                const number = (index + 1) as Step;
+                return (
+                  <li key={label} className={`${styles.step} ${number === step ? styles.stepActive : number < step ? styles.stepDone : ""}`}>
+                    {index > 0 && <span className={styles.stepSep} aria-hidden />}
+                    <span className={styles.stepIndex}>{number}</span>
+                    {label}
+                  </li>
+                );
+              })}
+            </ol>
           </div>
-        )}
-      </GamePanel>
 
-      <div className="flex w-full max-w-xl flex-col gap-4 sm:flex-row">
-        <DeckPicker label={opponentType === "bot" ? "Votre deck" : "Joueur 1"} value={deck1Id} onChange={setDeck1Id} />
-        {opponentType === "bot" ? <RandomOpponentPanel /> : <DeckPicker label="Joueur 2" value={deck2Id} onChange={setDeck2Id} />}
+          {step === 1 ? (
+            <div className={styles.modes}>
+              <div className={`${game.tileDisabled} ${styles.mode}`} aria-disabled title="Bientôt disponible">
+                <span className={styles.modeMark} aria-hidden>
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
+                    <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth={1.5} />
+                    <path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18" stroke="currentColor" strokeWidth={1.3} />
+                  </svg>
+                </span>
+                <span className={styles.modeTitle}>En ligne</span>
+                <span className={styles.modeText}>Affronte un autre joueur à distance, partie arbitrée par le serveur.</span>
+                <span className={styles.modeFoot}>
+                  <span className={game.tag}>Bientôt disponible</span>
+                </span>
+              </div>
+
+              <button type="button" className={`${game.tile} ${styles.mode}`} onClick={() => chooseMode("pvp")}>
+                <span className={styles.modeMark} aria-hidden>
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
+                    <circle cx="8" cy="9" r="3" stroke="currentColor" strokeWidth={1.5} />
+                    <circle cx="16" cy="9" r="3" stroke="currentColor" strokeWidth={1.5} />
+                    <path d="M2.5 20c.6-3.2 2.7-5 5.5-5s4.9 1.8 5.5 5M10.5 20c.6-3.2 2.7-5 5.5-5s4.9 1.8 5.5 5" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
+                  </svg>
+                </span>
+                <span className={styles.modeTitle}>Local — joueur contre joueur</span>
+                <span className={styles.modeText}>Deux joueurs sur le même écran, à tour de rôle. Chacun choisit son deck.</span>
+                <span className={styles.modeFoot}>
+                  <span className={game.tagCyan}>Sans XP</span>
+                  <span className={game.link}>Choisir →</span>
+                </span>
+              </button>
+
+              <button type="button" className={`${game.tile} ${styles.mode}`} onClick={() => chooseMode("bot")}>
+                <span className={styles.modeMark} aria-hidden>
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
+                    <rect x="4" y="7" width="16" height="12" rx="3" stroke="currentColor" strokeWidth={1.5} />
+                    <path d="M12 3v4M9 13h.01M15 13h.01M9 16h6" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" />
+                  </svg>
+                </span>
+                <span className={styles.modeTitle}>Contre un bot</span>
+                <span className={styles.modeText}>Trois niveaux de difficulté. Le deck adverse est tiré au sort au lancement.</span>
+                <span className={styles.modeFoot}>
+                  <span className={game.tagBrass}>XP et quêtes</span>
+                  <span className={game.link}>Choisir →</span>
+                </span>
+              </button>
+            </div>
+          ) : (
+            <>
+              <div>
+                <button
+                  type="button"
+                  className={game.link}
+                  onClick={() => {
+                    playButtonClick();
+                    setStep(step === 3 ? 2 : 1);
+                  }}
+                >
+                  <span aria-hidden>←</span> {step === 3 ? "Deck du joueur 1" : "Changer de mode"}
+                </button>
+              </div>
+
+              {mode === "bot" && step === 2 && (
+                <section className={`${game.panel} ${styles.group}`} style={{ padding: "clamp(12px, 1.2vw, 18px)" }}>
+                  <h2 className={game.sectionTitle}>Difficulté du bot</h2>
+                  <div className={styles.difficulty} role="radiogroup" aria-label="Difficulté du bot">
+                    {BOT_DIFFICULTIES.map((d) => (
+                      <button
+                        key={d.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={botDifficulty === d.id}
+                        className={botDifficulty === d.id ? styles.difficultyChipActive : styles.difficultyChip}
+                        onClick={() => {
+                          playButtonClick();
+                          setBotDifficulty(d.id);
+                        }}
+                      >
+                        <span className={styles.difficultyLabel}>{d.label}</span>
+                        <span className={styles.difficultyText}>{d.description}</span>
+                      </button>
+                    ))}
+                  </div>
+                  {botNote && <p className={game.muted}>{botNote}</p>}
+                </section>
+              )}
+
+              {groups.map((group) => (
+                <section key={group.title} className={styles.group}>
+                  <div className={styles.groupHead}>
+                    <h2 className={game.sectionTitle}>{group.title}</h2>
+                    {group.hint && <span className={game.muted}>{group.hint}</span>}
+                  </div>
+                  <div className={styles.decks} role="listbox" aria-label={group.title}>
+                    {group.decks.map((deck) => {
+                      const issue = personalValidity.get(deck.id) ?? null;
+                      const selected = current?.id === deck.id;
+                      const className = issue ? game.tileDisabled : selected ? game.tileActive : game.tile;
+                      return (
+                        <button
+                          key={deck.id}
+                          type="button"
+                          role="option"
+                          aria-selected={selected}
+                          disabled={issue !== null}
+                          className={`${className} ${styles.deck}`}
+                          onClick={() => {
+                            playButtonClick();
+                            setCurrent(deck);
+                          }}
+                          title={issue ?? deck.description}
+                        >
+                          <ShipPortrait shipId={deck.shipId} width="100%" showName={false} className={styles.deckPortrait} />
+                          <span className={styles.deckName}>{deck.name}</span>
+                          <span className={styles.deckShip}>{shipNameOf(deck.shipId)}</span>
+                          <span className={styles.deckMeta}>
+                            <span>{deck.cardIds.length} cartes</span>
+                            {issue ? <span className={game.tagDanger}>Non valide</span> : selected ? <span className={game.tagCyan}>Choisi</span> : null}
+                          </span>
+                          <span className={styles.deckText}>{issue ?? deck.description}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
+              ))}
+
+              <div className={`${game.panel} ${styles.launch}`}>
+                <div className={styles.launchSummary}>
+                  <span>
+                    Mode : <strong>{mode === "pvp" ? "Local à deux" : `Bot ${BOT_DIFFICULTIES.find((d) => d.id === botDifficulty)?.label.toLowerCase()}`}</strong>
+                  </span>
+                  <span>
+                    {mode === "pvp" ? "Joueur 1" : "Ton deck"} : <strong>{deck1?.name ?? "—"}</strong>
+                  </span>
+                  {mode === "pvp" && (
+                    <span>
+                      Joueur 2 : <strong>{deck2?.name ?? "—"}</strong>
+                    </span>
+                  )}
+                  {mode === "bot" && (
+                    <span>
+                      Adversaire : <strong>tiré au sort</strong>
+                    </span>
+                  )}
+                </div>
+                <button type="button" className={`${game.primary} ${styles.launchButton}`} onClick={handleLaunch} disabled={!canLaunch || starting}>
+                  {launchLabel}
+                </button>
+              </div>
+              {error && <p className={game.error}>{error}</p>}
+            </>
+          )}
+        </div>
       </div>
-
-      <GameButton variant="primary" onClick={handleStart} disabled={starting} className="!px-8 !py-3 !text-base">
-        {starting ? "Préparation de la partie..." : "Commencer la partie"}
-      </GameButton>
-      {error && <p className="text-sm text-rose-400">{error}</p>}
-    </main>
-  );
-}
-
-/** Face au bot il n'y a rien à régler : on annonce le tirage, on ne le propose pas. Même gabarit que `DeckPicker` pour que les deux colonnes restent alignées. */
-function RandomOpponentPanel() {
-  return (
-    <GamePanel className="flex flex-1 flex-col gap-2 p-4 text-left">
-      <span className={`text-sm font-medium ${TEXT_SECONDARY}`}>Bot</span>
-      <div
-        className={`flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-sm ${TEXT_PRIMARY} shadow-[0_0_0_1px_var(--border-subtle)]`}
-      >
-        <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5 shrink-0 text-[var(--accent)]" aria-hidden>
-          <path
-            d="M16 3h5v5M21 3l-7 7M8 21H3v-5M3 21l7-7M21 16v5h-5M14 14l7 7M3 8V3h5M10 10L3 3"
-            stroke="currentColor"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-        Deck aléatoire
-      </div>
-      <p className={`text-xs leading-snug ${TEXT_SECONDARY}`}>
-        Tiré parmi les {SELECTABLE_DECKS.length} listes au lancement — Navire et style découverts en partie.
-      </p>
-    </GamePanel>
-  );
-}
-
-function DeckPicker({ label, value, onChange }: { label: string; value: string; onChange: (id: string) => void }) {
-  const selected = SELECTABLE_DECKS.find((d) => d.id === value);
-  const shipName = selected ? getShipDefinition(selected.shipId).name : undefined;
-  const isArchetype = selected ? !PRECONSTRUCTED_DECKS.some((d) => d.id === selected.id) : false;
-
-  return (
-    <GamePanel className="flex flex-1 flex-col gap-2 p-4 text-left">
-      <span className={`text-sm font-medium ${TEXT_SECONDARY}`}>{label}</span>
-      <GameSelect value={value} onChange={onChange} options={DECK_OPTIONS} className="w-full" />
-      {/* Suggestion du Navire correspondant : redondante avec le libellé de l'option pour un archétype, mais utile pour un deck de base où le nom du deck EST déjà celui du Navire. */}
-      {shipName && (
-        <span className={`text-[11px] ${TEXT_SECONDARY}`}>{isArchetype ? `Navire suggéré : ${shipName}` : `Navire : ${shipName}`}</span>
-      )}
-      {/* Le joueur doit savoir ce que le deck fait avant de le choisir, pas juste voir son nom. */}
-      {selected && <p className={`text-xs leading-snug ${TEXT_SECONDARY}`}>{selected.description}</p>}
-    </GamePanel>
+    </GameScreen>
   );
 }

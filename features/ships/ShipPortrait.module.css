@@ -1,0 +1,57 @@
+/* Cadre Navire hors plateau : même géométrie que `ShipInstrumentCluster`. */
+.portrait {
+  position: relative;
+  flex-shrink: 0;
+  aspect-ratio: 512 / 640;
+  max-width: 100%;
+  user-select: none;
+  /* Le nom se dimensionne sur la largeur du cadre (`cqw`), quelle qu'elle soit. */
+  container-type: inline-size;
+}
+
+.window {
+  position: absolute;
+  overflow: hidden;
+  background: #071019;
+}
+
+.illustration {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Navire inconnu : une silhouette vide, ni image cassée ni fond blanc. */
+.unknown {
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(70% 60% at 50% 55%, rgba(88, 200, 216, 0.18), transparent 70%), #071019;
+}
+
+.frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  display: block;
+}
+
+.name {
+  position: absolute;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 70%;
+  text-align: center;
+  font-family: var(--cb-font-display, Georgia, serif);
+  font-size: clamp(9px, 8.5cqw, 18px);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: #f0e4c8;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}

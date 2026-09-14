@@ -1,51 +1,28 @@
 /*
- * Ce qui est PROPRE à l'écran Quêtes. Décor, papier, header et barre
- * utilitaire viennent de `features/shell/ScreenShell.module.css`.
- *
- * L'objet posé sur le papier est ici un REGISTRE : des lignes tracées à
- * l'encre, une jauge de progression par quête, la récompense en marge.
- * Aucun cadre ni carte : des filets, comme un livre de bord.
+ * QUÊTES — ce qui s'ajoute à la coquille `GameScreen`.
+ * Un registre : une section par période, une ligne par quête avec son
+ * objectif, sa progression (un trait fin, pas une barre de logiciel), sa
+ * récompense en laiton et son état — trois états lisibles au premier
+ * coup d'œil : en cours (neutre), à réclamer (cyan), réclamée (éteinte).
  */
-
-.ledger {
-  display: flex;
-  flex-direction: column;
-  gap: clamp(26px, 3.6vh, 48px);
-  max-width: 980px;
-  margin-inline: auto;
-  color: var(--cb-ink);
-}
-
 .section {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 10px;
 }
 
-.sectionHeader {
+.sectionHead {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 1rem;
-  padding-bottom: 0.45rem;
-  border-bottom: 1px solid rgba(42, 35, 24, 0.35);
-}
-
-.sectionTitle {
-  margin: 0;
-  font-family: var(--cb-font-display);
-  font-size: clamp(17px, 1.45vw, 23px);
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
-.sectionMeta {
-  font-size: clamp(11px, 0.85vw, 13px);
-  color: var(--cb-ink-soft);
-  font-variant-numeric: tabular-nums;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -53,130 +30,114 @@
 
 .row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 4.5em 6.5em 7.5em;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: clamp(10px, 1.6vw, 26px);
-  padding-block: clamp(10px, 1.4vh, 16px);
-  border-bottom: 1px dashed rgba(42, 35, 24, 0.2);
+  padding: clamp(10px, 1.3vh, 16px) clamp(12px, 1.4vw, 20px);
+  border-left: 2px solid transparent;
 }
 
-.rowClaimed {
-  opacity: 0.55;
+.rowClaimable {
+  border-left-color: var(--cb-cyan);
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(88, 200, 216, 0.18);
 }
+
+.rowClaimed { opacity: 0.5; }
 
 .rowMain {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  column-gap: 0.6rem;
-  row-gap: 0.45rem;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
   min-width: 0;
 }
 
+.labelLine {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .label {
-  font-size: clamp(13px, 1.05vw, 16px);
+  font-size: clamp(13px, 1vw, 15px);
   font-weight: 500;
   line-height: 1.35;
+  color: #f2f7fb;
 }
 
-.tags {
-  display: flex;
-  gap: 0.35rem;
+.progressLine {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
 }
 
-.tag {
-  padding: 0.05em 0.45em;
-  border-radius: 2px;
-  background: rgba(42, 35, 24, 0.1);
-  color: var(--cb-ink-soft);
-  font-size: 0.72em;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-/* Jauge tracée à l'encre : un trait fin, rempli en laiton. */
+/* Progression : un trait fin, rempli en cyan (laiton quand c'est réclamable, l'argent est là). */
 .track {
-  grid-column: 1 / -1;
-  height: 5px;
-  border-radius: 3px;
-  background: rgba(42, 35, 24, 0.14);
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(130, 178, 210, 0.14);
   overflow: hidden;
 }
 
 .fill {
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--cb-brass-dark), var(--cb-brass));
+  background: var(--cb-cyan);
   transition: width 400ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
+.fillDone { background: linear-gradient(90deg, #a47b36, #ddc79a); }
+
 .count {
-  justify-self: end;
-  font-size: clamp(12px, 0.95vw, 14px);
-  color: var(--cb-ink-soft);
+  font-size: clamp(11px, 0.85vw, 13px);
+  color: var(--ink-dim);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .reward {
-  justify-self: end;
   display: inline-flex;
   align-items: baseline;
   gap: 0.3em;
   font-family: var(--cb-font-display);
-  font-size: clamp(15px, 1.2vw, 19px);
+  font-size: clamp(16px, 1.3vw, 21px);
   font-weight: 600;
-  color: var(--cb-brass-dark);
+  color: #ddc79a;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .rewardUnit {
   font-family: var(--cb-font-ui);
-  font-size: 0.62em;
-  font-weight: 500;
-  letter-spacing: 0.04em;
+  font-size: 0.55em;
+  font-weight: 600;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--cb-ink-soft);
+  color: rgba(199, 154, 78, 0.8);
 }
 
 .action {
-  justify-self: end;
-}
-
-.inProgress,
-.claimed {
-  font-size: clamp(11px, 0.85vw, 13px);
-  color: var(--cb-ink-soft);
-}
-
-.error {
-  margin: 0;
-  color: var(--cb-danger-ink);
-  font-size: 0.9rem;
+  display: flex;
+  justify-content: flex-end;
+  min-width: 7em;
 }
 
 .gain {
   margin: 0;
   font-family: var(--cb-font-display);
-  font-size: 1.1rem;
+  font-size: clamp(15px, 1.15vw, 19px);
   font-weight: 600;
-  color: var(--cb-brass-dark);
+  color: #ddc79a;
 }
 
 @media (max-width: 640px) {
   .row {
     grid-template-columns: minmax(0, 1fr) auto;
   }
-  .count {
-    display: none;
-  }
-  .reward {
-    grid-column: 2;
-    grid-row: 1;
-  }
   .action {
     grid-column: 1 / -1;
-    justify-self: start;
+    justify-content: flex-start;
+    min-width: 0;
   }
 }
