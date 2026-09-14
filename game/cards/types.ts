@@ -146,8 +146,8 @@ export interface CardDefinition {
    * Nombre de variantes d'illustration interchangeables, pour une carte
    * dont le visuel est tiré au sort à la création (Péon Cra-Poiscail : 3
    * visuels, une seule identité de gameplay). Les fichiers suivent
-   * `illustrations/<cardId>-<n>.png`, n de 1 à `illustrationVariants`.
-   * `undefined` = un seul visuel, `illustrations/<cardId>.png`.
+   * `illustrations/<cardId>-<n>.webp`, n de 1 à `illustrationVariants`.
+   * `undefined` = un seul visuel, `illustrations/<cardId>.webp`.
    */
   illustrationVariants?: number;
 

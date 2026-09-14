@@ -36,7 +36,7 @@ export function CargoCluster({ deckCount, graveyardCount, graveyardDropZone, onO
     <div className="relative shrink-0" style={{ width }}>
       {/* eslint-disable-next-line @next/next/no-img-element -- élément décoratif de mise en page fixe */}
       <img
-        src="/assets/board/cargo-frame.png"
+        src="/assets/board/cargo-frame.webp"
         alt=""
         aria-hidden
         draggable={false}

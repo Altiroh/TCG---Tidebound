@@ -666,7 +666,7 @@ export const CORE_SET: CardDefinition[] = [
   {
     // Variante ABYSSALE distincte — reprend les stats/texte de l'ancienne entrée unique sous
     // "L'Homme Revenu de la Fosse" avant renommage, correspondant aux illustrations fournies
-    // ("revenante-de-la-fosse-abyssal.png"/"-debord").
+    // ("revenante-de-la-fosse-abyssal.webp"/"-debord").
     id: "revenante-de-la-fosse-abyssal",
     name: "Revenante de la Fosse",
     type: "marin",
@@ -711,7 +711,7 @@ export const CORE_SET: CardDefinition[] = [
   {
     // Variante ABYSSALE distincte (coexiste avec la Standard ci-dessus) — anciennement seule entrée du
     // catalogue sous l'id "masse-noire" ; renommée et scindée pour correspondre aux illustrations
-    // fournies ("masse-sombre-abyssal.png"/"-debord") et à la confirmation d'une vraie paire STD/ABY.
+    // fournies ("masse-sombre-abyssal.webp"/"-debord") et à la confirmation d'une vraie paire STD/ABY.
     id: "masse-sombre-abyssal",
     name: "Masse-Sombre",
     type: "creature",

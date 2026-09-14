@@ -13,9 +13,9 @@ interface PhaseActionButtonProps {
 }
 
 const ICONS = {
-  wait: "/assets/board/phase-buttons/icon-wait.png",
-  combat: "/assets/board/phase-buttons/icon-combat.png",
-  endTurn: "/assets/board/phase-buttons/icon-end-turn.png",
+  wait: "/assets/board/phase-buttons/icon-wait.webp",
+  combat: "/assets/board/phase-buttons/icon-combat.webp",
+  endTurn: "/assets/board/phase-buttons/icon-end-turn.webp",
 } as const;
 
 /**
@@ -50,7 +50,7 @@ export function PhaseActionButton({ isMyTurn, phase, onAdvancePhase, onEndTurn, 
       >
         {/* eslint-disable-next-line @next/next/no-img-element -- bouton composite décoratif, taille fixe */}
         <img
-          src="/assets/board/phase-buttons/frame.png"
+          src="/assets/board/phase-buttons/frame.webp"
           alt=""
           aria-hidden
           draggable={false}

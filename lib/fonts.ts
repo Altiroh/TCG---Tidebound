@@ -22,7 +22,7 @@ export const cardBodyFont = Crimson_Pro({
 
 /**
  * Police des libellés posés sur les plaques du coffret du menu principal
- * (`app/page.tsx`, `public/assets/menu/box/menu_box_base.png`) — gravure
+ * (`app/page.tsx`, `public/assets/menu/box/menu_box_base.webp`) — gravure
  * capitale, cohérente avec le rendu du logo "TIDEBOUND" déjà peint sur
  * l'asset.
  */

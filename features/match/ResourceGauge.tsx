@@ -1,8 +1,8 @@
 import { useDecreaseFlash } from "@/features/match/useDecreaseFlash";
 
 const GAUGE_ASSETS = {
-  anchor: "/assets/ships/gauge-anchor.png",
-  reason: "/assets/ships/gauge-reason.png",
+  anchor: "/assets/ships/gauge-anchor.webp",
+  reason: "/assets/ships/gauge-reason.webp",
 } as const;
 
 interface ResourceGaugeProps {

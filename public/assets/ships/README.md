@@ -6,17 +6,17 @@ Brise-Lames, La Religieuse).
 
 ## Assets validés (statut : validé sur Notion)
 
-- **Cadre Navire — cadre vide** (`ship-frame-empty.png`) : cadre principal
+- **Cadre Navire — cadre vide** (`ship-frame-empty.webp`) : cadre principal
   vertical, bois vieilli + laiton, cordages, médaillon-compas supérieur,
   zone centrale vide, plaque inférieure vierge. Utilisé sur le plateau de
   partie par `features/match/ShipInstrumentCluster.tsx` (illustration du
   Navire dans la fenêtre en arche, médaillons Ancrage/Raison sur la
   plaque).
-- **Cadre Navire — médaillon Ancrage** (`gauge-anchor.png`) : cercle seul,
+- **Cadre Navire — médaillon Ancrage** (`gauge-anchor.webp`) : cercle seul,
   bordure laiton vieillie, intérieur rouge texturé, sans texte ni icône.
-- **Cadre Navire — médaillon Raison** (`gauge-reason.png`) : cercle seul,
+- **Cadre Navire — médaillon Raison** (`gauge-reason.webp`) : cercle seul,
   bordure laiton vieillie, intérieur bleu texturé, sans texte ni icône.
-- **Cadre Navire — cadre victoire** (`ship-frame-victory.png`, 1161×1354) :
+- **Cadre Navire — cadre victoire** (`ship-frame-victory.webp`, 1161×1354) :
   variante ornée (couronne, ailes, trésor) du cadre vide, utilisée par
   `features/match/VictoryScreen.tsx` pour présenter le Navire vainqueur en
   fin de partie. Fenêtre en arche (illustration) mesurée à ~17–81 % de
@@ -30,7 +30,7 @@ l'asset).
 ## Illustrations (`illu/`)
 
 Une image carrée par Navire, référencée par `ShipDefinition.illustration`
-(`game/environment/shipData.ts`) : `le-courlis.png`, `errant.png`,
-`brise-lames.png`, `la-religieuse.png`. Utilisées à la fois sur le plateau
+(`game/environment/shipData.ts`) : `le-courlis.webp`, `errant.webp`,
+`brise-lames.webp`, `la-religieuse.webp`. Utilisées à la fois sur le plateau
 de partie (`ShipInstrumentCluster`) et sur l'écran de victoire
 (`VictoryScreen`).

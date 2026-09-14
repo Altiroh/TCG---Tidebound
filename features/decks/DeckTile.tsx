@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { PlayerDeckSummary } from "@/app/decks/actions";
 import styles from "@/features/decks/DeckScreens.module.css";
 
-const EMPTY_SLOT_SRC = "/assets/collection/card_empty_placeholder.png";
+const EMPTY_SLOT_SRC = "/assets/collection/card_empty_placeholder.webp";
 
 /** Éventail statique des premières cartes du deck — l'OBJET de la tuile. */
 function DeckStack({ cardIds }: { cardIds: string[] }) {
@@ -38,7 +38,7 @@ function DeckStack({ cardIds }: { cardIds: string[] }) {
             }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element -- vignette d'aperçu, pas une CardTile complète */}
-            <img src={`/assets/cards/illustrations/${cardId}.png`} alt="" draggable={false} loading="lazy" decoding="async" />
+            <img src={`/assets/cards/illustrations/${cardId}.webp`} alt="" draggable={false} loading="lazy" decoding="async" />
           </div>
         );
       })}

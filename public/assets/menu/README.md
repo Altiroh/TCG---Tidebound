@@ -13,10 +13,10 @@ amenée à évoluer.
   - `actif/` : pendant le clic (pressed).
   
   Nommer par bouton pour retrouver le trio facilement, ex:
-  `buttons/repos/jouer.png`, `buttons/survol/jouer.png`,
-  `buttons/actif/jouer.png`.
+  `buttons/repos/jouer.webp`, `buttons/survol/jouer.webp`,
+  `buttons/actif/jouer.webp`.
 - `icons/` : icônes diverses hors bouton — rouage (paramètres), pochette
-  (deck), etc. Nommer par fonction, ex: `parametres.png`, `deck.png`.
+  (deck), etc. Nommer par fonction, ex: `parametres.webp`, `deck.webp`.
 - `logo/` : logo / wordmark "Tidebound" (actuellement du texte brut, `<h1>`).
 
 Respecter la direction artistique verrouillée (voir

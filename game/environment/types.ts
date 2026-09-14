@@ -106,7 +106,7 @@ export interface ShipDefinition {
   startingAnchor: number;
   reasonMax: number;
   slotCount: number;
-  /** Nom de fichier dans `public/assets/ships/illu/` (ex: `le-courlis.png`) — absent tant que l'illustration n'existe pas encore. */
+  /** Nom de fichier dans `public/assets/ships/illu/` (ex: `le-courlis.webp`) — absent tant que l'illustration n'existe pas encore. */
   illustration?: string;
   text?: string;
   passiveText?: string;

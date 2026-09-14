@@ -55,7 +55,7 @@ export function CardInfoPanel({ cardId, showGlow = true }: CardInfoPanelProps) {
             <span className="flex items-center gap-1.5 rounded-full bg-white px-3 py-1 shadow-[0_1px_4px_rgba(0,0,0,0.35)]">
               {/* eslint-disable-next-line @next/next/no-img-element -- asset local, icône de type */}
               <img
-                src={`/assets/cards/icons/TYPE_${def.type.toUpperCase()}_STANDARD.png`}
+                src={`/assets/cards/icons/TYPE_${def.type.toUpperCase()}_STANDARD.webp`}
                 alt=""
                 className="h-4 w-auto object-contain"
               />

@@ -64,7 +64,7 @@ function FilterButton({ active, onClick, type }: FilterButtonProps) {
         <span
           aria-hidden
           className={styles.filterIcon}
-          style={{ backgroundImage: `url(/assets/cards/icons/TYPE_${type.toUpperCase()}_STANDARD.png)` }}
+          style={{ backgroundImage: `url(/assets/cards/icons/TYPE_${type.toUpperCase()}_STANDARD.webp)` }}
         />
       ) : (
         label

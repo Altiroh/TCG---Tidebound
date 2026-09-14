@@ -12,9 +12,9 @@ token/<cardId>-<n>.png      # jeton à plusieurs visuels, n de 1 à illustration
 Pour le Péon Cra-Poiscail (`illustrationVariants: 3`) :
 
 ```
-token/peon-cra-poiscail-1.png
-token/peon-cra-poiscail-2.png
-token/peon-cra-poiscail-3.png
+token/peon-cra-poiscail-1.webp
+token/peon-cra-poiscail-2.webp
+token/peon-cra-poiscail-3.webp
 ```
 
 Une seule identité de gameplay, trois visuels interchangeables : la
@@ -23,7 +23,7 @@ partie, et retenue sur l'instance — le jeton garde donc la même tête
 jusqu'à sa mort, et les deux joueurs voient le même.
 
 Le cadre, lui, est commun à tous les jetons
-(`../cards/frames/cadre_token.png`) : volontairement générique pour servir
+(`../cards/frames/cadre_token.webp`) : volontairement générique pour servir
 aux Péons d'autres familles plus tard. Il n'a d'emplacement ni pour un
 coût, ni pour un bandeau de type, ni pour un bloc de règles — seulement
 l'illustration, le nom et les deux médaillons de statistiques.

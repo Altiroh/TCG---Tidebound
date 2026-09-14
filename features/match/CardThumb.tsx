@@ -23,7 +23,7 @@ interface CardThumbProps {
  */
 export function CardThumb({ cardId, src, glyph, size = 28, className = "border-white/20", glyphClassName = "text-slate-200" }: CardThumbProps) {
   const isCard = Boolean(cardId) && cardId !== HIDDEN_CARD_ID;
-  const imageUrl = src ?? (isCard ? `/assets/cards/illustrations/${cardId}.png` : "");
+  const imageUrl = src ?? (isCard ? `/assets/cards/illustrations/${cardId}.webp` : "");
   const imageOk = useImageOk(imageUrl);
   const name = isCard ? getCardDefinition(cardId!).name : undefined;
   const fallback = glyph ?? (isCard ? name!.charAt(0) : "?");

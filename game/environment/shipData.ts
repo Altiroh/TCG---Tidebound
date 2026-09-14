@@ -24,7 +24,7 @@ export const SHIP_SET: ShipDefinition[] = [
     startingAnchor: 17,
     reasonMax: 12,
     slotCount: 4,
-    illustration: "le-courlis.png",
+    illustration: "le-courlis.webp",
     text: "Profil : léger / maniable / contrôle environnemental.",
     passiveText:
       "Tirant léger — la première fois par tour qu'un effet d'Eau ou de Marée devrait vous infliger des " +
@@ -45,7 +45,7 @@ export const SHIP_SET: ShipDefinition[] = [
     startingAnchor: 20,
     reasonMax: 10,
     slotCount: 5,
-    illustration: "errant.png",
+    illustration: "errant.webp",
     text: "Profil standard : polyvalent, équilibré, sans faiblesse critique.",
     passiveText:
       "Cap sûr — la première fois par tour que vous récupérez de la Raison grâce à une carte, récupérez 1 " +
@@ -62,7 +62,7 @@ export const SHIP_SET: ShipDefinition[] = [
     startingAnchor: 24,
     reasonMax: 8,
     slotCount: 6,
-    illustration: "brise-lames.png",
+    illustration: "brise-lames.webp",
     text: "Profil : lourd / Structures / endurance.",
     passiveText:
       "Coque renforcée — la première fois à chaque tour que votre Navire devrait subir des dégâts de " +
@@ -81,7 +81,7 @@ export const SHIP_SET: ShipDefinition[] = [
     startingAnchor: 20,
     reasonMax: 10,
     slotCount: 5,
-    illustration: "la-religieuse.png",
+    illustration: "la-religieuse.webp",
     text: "Profil : healing / contrôle — survivre devient un moteur de jeu plutôt qu'une simple défense.",
     // Piste Notion "Gameplay — Raison, Déraison, healing & passifs de Navires" (2026-09-12), pas verrouillée :
     // ni les stats ni ce passif ne sont figés tant qu'un playtest n'a pas validé le rythme de la Déraison.

@@ -33,3 +33,22 @@ gratuits.
 
 Chaque sous-dossier a son propre `README.md` avec le détail de la charte
 qui s'y applique.
+
+## Format : WebP obligatoire
+
+Toutes les images de ce dossier sont servies en **WebP**, redimensionnées à
+la taille réellement affichée. Les PNG sortis des générateurs pèsent 2 à
+3 Mo pièce ; `public/` atteignait 422 Mo, embarqués dans **chaque**
+déploiement Vercel — de quoi dépasser le quota de stockage à lui seul.
+
+Après avoir déposé de nouvelles images (PNG ou JPG), lancer :
+
+```
+npm run optimize:images                 # convertit, garde les sources
+node scripts/optimizeImages.mjs --delete-sources
+```
+
+Le script est idempotent et applique une taille maximale par famille
+(illustrations 768 px, cadres 1200 px, reste 1280–1600 px). Ne jamais
+commiter les PNG/JPG d'origine : l'historique Git les conserve déjà si
+besoin.

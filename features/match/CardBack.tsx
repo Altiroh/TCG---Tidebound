@@ -8,7 +8,7 @@ import { useImageLoadStatus } from "@/features/match/useImageLoadStatus";
  * réutilisé partout où une carte doit s'afficher face cachée (main
  * adverse, plus tard pile de pioche/défausse fermées si besoin).
  */
-export const CARD_BACK_SRC = "/assets/cards/card-back/default.png";
+export const CARD_BACK_SRC = "/assets/cards/card-back/default.webp";
 
 /**
  * Une carte face cachée : dos uniquement, jamais cliquable (on ne peut pas

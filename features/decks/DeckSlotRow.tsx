@@ -23,7 +23,7 @@ interface DeckSlotRowProps {
 export function DeckSlotRow({ index, cardId, onRemove }: DeckSlotRowProps) {
   const def = getCardDefinition(cardId);
   const isAbyssal = def.subtype === "abyssal";
-  const debordUrl = `/assets/cards/illustrations/${cardId}-debord.png`;
+  const debordUrl = `/assets/cards/illustrations/${cardId}-debord.webp`;
   const debordOk = useImageOk(isAbyssal ? debordUrl : "");
 
   return (
@@ -32,7 +32,7 @@ export function DeckSlotRow({ index, cardId, onRemove }: DeckSlotRowProps) {
 
       <span className={styles.slotThumb}>
         {/* eslint-disable-next-line @next/next/no-img-element -- vignette de liste, pas une CardTile complète */}
-        <img src={`/assets/cards/illustrations/${cardId}.png`} alt="" loading="lazy" decoding="async" />
+        <img src={`/assets/cards/illustrations/${cardId}.webp`} alt="" loading="lazy" decoding="async" />
         {isAbyssal && debordOk && (
           // eslint-disable-next-line @next/next/no-img-element -- calque de débord Abyssal, cf. CardTile
           <img src={debordUrl} alt="" className={styles.slotThumbDebord} loading="lazy" decoding="async" />

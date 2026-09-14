@@ -6,7 +6,7 @@ export default function ReinitialiserMotDePassePage() {
   return (
     <main
       className="relative flex min-h-screen items-center justify-center overflow-hidden bg-cover bg-center p-4"
-      style={{ backgroundImage: "url(/assets/menu/background/menu_background_fixed.png)" }}
+      style={{ backgroundImage: "url(/assets/menu/background/menu_background_fixed.webp)" }}
     >
       <div className="absolute inset-0 bg-board-background/50" />
 

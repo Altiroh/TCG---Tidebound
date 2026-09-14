@@ -13,7 +13,7 @@
  *
  * L'illusion « les cartes sont dans le sachet » repose sur ce z-index
  * animé : une carte monte DERRIÈRE le corps opaque de
- * `defaut-open-bottom.png` (qui peint déjà des dos de cartes dans
+ * `defaut-open-bottom.webp` (qui peint déjà des dos de cartes dans
  * l'ouverture), et ne passe au premier plan qu'une fois entièrement sortie
  * par le haut — à 41 % de `cardSpawn`, ratio montée/placement de
  * `boosterOpeningTimings.ts`.
@@ -322,7 +322,7 @@
 
 /* ---------- Sachet ---------- */
 
-/* La boîte a exactement les proportions de `defaut-open-bottom.png`. */
+/* La boîte a exactement les proportions de `defaut-open-bottom.webp`. */
 .packAnchor {
   position: absolute;
   left: 50%;
@@ -894,7 +894,7 @@
   object-fit: cover;
 }
 
-/* Dos de repli si `card-back/default.png` est absent : filet de laiton sur bleu nuit. */
+/* Dos de repli si `card-back/default.webp` est absent : filet de laiton sur bleu nuit. */
 .cardBackFallback {
   position: absolute;
   inset: 0;

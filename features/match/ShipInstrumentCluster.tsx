@@ -12,11 +12,11 @@ interface ShipInstrumentClusterProps {
   deraisonDamage?: number;
 }
 
-/** Ratio réel de `ship-frame-empty.png` (512×640) — dérive la hauteur du cadre à partir de `width`. */
+/** Ratio réel de `ship-frame-empty.webp` (512×640) — dérive la hauteur du cadre à partir de `width`. */
 const FRAME_ASPECT = 512 / 640;
 
 /**
- * Fenêtre en arche de `ship-frame-empty.png`, mesurée par remplissage de la
+ * Fenêtre en arche de `ship-frame-empty.webp`, mesurée par remplissage de la
  * zone transparente (alpha ≤ 40) depuis son centre : ~13,1 %/76,3 % de
  * hauteur, ~14,8 %/84,8 % de largeur. L'ancienne zone (16 %/74 %, arrondi
  * `rounded-t-full`) laissait voir le fond en haut de l'arche et en bas.
@@ -32,10 +32,10 @@ const ILLUSTRATION_CLIP =
 const GAUGES_TOP = "74%";
 
 /**
- * Cadre Navire vertical (`ship-frame-empty.png`, bois vieilli + laiton,
+ * Cadre Navire vertical (`ship-frame-empty.webp`, bois vieilli + laiton,
  * cordages, médaillon-compas — cf. `public/assets/ships/README.md`) avec
  * l'illustration du Navire du joueur dans la fenêtre en arche. Remplace
- * l'ancien `arch-frame.png` (arche horizontale rognée depuis `board.jpg`) :
+ * l'ancien `arch-frame.webp` (arche horizontale rognée depuis `board.webp`) :
  * même budget de hauteur qu'avant (`width` par défaut choisi pour que
  * `width / FRAME_ASPECT` retombe sur les ~215px déjà occupés dans
  * `MatchBoard`/`OnlineBoard`), donc aucun autre élément du plateau n'a
@@ -61,7 +61,7 @@ export function ShipInstrumentCluster({ anchor, anchorMax, reason, reasonMax, il
 
       {/* eslint-disable-next-line @next/next/no-img-element -- élément décoratif de mise en page fixe */}
       <img
-        src="/assets/ships/ship-frame-empty.png"
+        src="/assets/ships/ship-frame-empty.webp"
         alt=""
         aria-hidden
         draggable={false}

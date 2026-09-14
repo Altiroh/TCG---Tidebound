@@ -15,7 +15,7 @@ interface VictoryScreenProps {
 }
 
 /**
- * Fenêtre en arche de `ship-frame-victory.png` (1161×1354), mesurée par
+ * Fenêtre en arche de `ship-frame-victory.webp` (1161×1354), mesurée par
  * remplissage de la zone transparente (alpha ≤ 40) depuis son centre :
  * ~19,6 %/72 % de hauteur, ~17,6 %/80,5 % de largeur. L'ancienne zone
  * estimée (21 %/70 %) laissait voir le fond en haut de l'arche et en bas.
@@ -36,11 +36,11 @@ const NAME_LETTER_STEP_MS = 55;
 const NAMEPLATE_ZONE = { top: "73%", left: "22%", width: "56%", height: "8%" };
 
 /**
- * Écran de fin de partie victorieuse — cadre `ship-frame-victory.png`
+ * Écran de fin de partie victorieuse — cadre `ship-frame-victory.webp`
  * fourni par l'utilisateur, illustration du Navire vainqueur dans la
  * fenêtre en arche, nom du joueur sur la plaque (le nom du Navire n'y
  * figure plus — demande explicite, la plaque ne porte qu'une identité).
- * Le bandeau "VICTOIRE" (`victory-text.png`) surmonte le cadre plutôt que
+ * Le bandeau "VICTOIRE" (`victory-text.webp`) surmonte le cadre plutôt que
  * d'être incrusté dedans, pour rester lisible à toutes les tailles.
  */
 export function VictoryScreen({ winner, onExit, exitHref }: VictoryScreenProps) {
@@ -74,7 +74,7 @@ export function VictoryScreen({ winner, onExit, exitHref }: VictoryScreenProps) 
               </span>
               {/* eslint-disable-next-line @next/next/no-img-element -- bandeau décoratif fixe */}
               <img
-                src="/assets/victory-text.png"
+                src="/assets/victory-text.webp"
                 alt="Victoire"
                 draggable={false}
                 className={`select-none ${styles.bannerIn}`}
@@ -108,7 +108,7 @@ export function VictoryScreen({ winner, onExit, exitHref }: VictoryScreenProps) 
 
                 {/* eslint-disable-next-line @next/next/no-img-element -- cadre décoratif fixe, superpose l'illustration */}
                 <img
-                  src="/assets/ships/ship-frame-victory.png"
+                  src="/assets/ships/ship-frame-victory.webp"
                   alt=""
                   draggable={false}
                   className="pointer-events-none absolute inset-0 h-full w-full select-none"

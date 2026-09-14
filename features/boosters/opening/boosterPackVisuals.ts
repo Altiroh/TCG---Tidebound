@@ -59,9 +59,9 @@ export interface BoosterPackVisual {
 export const DEFAULT_PACK_VISUAL: BoosterPackVisual = {
   id: "defaut",
   assets: {
-    closed: "/assets/boosters/defaut/defaut.png",
-    openTop: "/assets/boosters/defaut/defaut-open-top.png",
-    openBottom: "/assets/boosters/defaut/defaut-open-bottom.png",
+    closed: "/assets/boosters/defaut/defaut.webp",
+    openTop: "/assets/boosters/defaut/defaut-open-top.webp",
+    openBottom: "/assets/boosters/defaut/defaut-open-bottom.webp",
   },
   // 834 × 1198 px
   aspectRatio: 834 / 1198,
@@ -77,9 +77,9 @@ export const DEFAULT_PACK_VISUAL: BoosterPackVisual = {
 export const WELCOME_PACK_VISUAL: BoosterPackVisual = {
   id: "welcome",
   assets: {
-    closed: "/assets/boosters/welcome/welcome.png",
-    openTop: "/assets/boosters/welcome/welcome-open-top.png",
-    openBottom: "/assets/boosters/welcome/welcome-open-bottom.png",
+    closed: "/assets/boosters/welcome/welcome.webp",
+    openTop: "/assets/boosters/welcome/welcome-open-top.webp",
+    openBottom: "/assets/boosters/welcome/welcome-open-bottom.webp",
   },
   // 849 × 1322 px
   aspectRatio: 849 / 1322,

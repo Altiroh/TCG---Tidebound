@@ -26,7 +26,7 @@ function GearIcon() {
 /**
  * Bouton Options du menu principal — une pastille de verre en haut à
  * droite, posée par-dessus le coffret. Volontairement HORS des plaques 3D
- * du coffre (`ChestButtons3D`) : l'illustration `menu_box_base.png` n'offre
+ * du coffre (`ChestButtons3D`) : l'illustration `menu_box_base.webp` n'offre
  * aucun emplacement pour une icône, et ces plaques ne savent que naviguer
  * vers une route, pas ouvrir un dialogue.
  */

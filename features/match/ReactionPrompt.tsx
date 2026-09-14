@@ -96,14 +96,14 @@ export function ReactionPrompt({ candidates, onActivateMany, onPass }: ReactionP
 function CardThumb({ cardId, className = "h-16 w-16" }: { cardId: string; className?: string }) {
   const def = getCardDefinition(cardId);
   const isAbyssal = def.subtype === "abyssal";
-  const debordUrl = `/assets/cards/illustrations/${cardId}-debord.png`;
+  const debordUrl = `/assets/cards/illustrations/${cardId}-debord.webp`;
   const debordOk = useImageOk(isAbyssal ? debordUrl : "");
 
   return (
     <span className={`relative block shrink-0 overflow-hidden rounded-xl shadow-[0_4px_14px_rgba(0,0,0,0.45)] ${className}`}>
       {/* eslint-disable-next-line @next/next/no-img-element -- vignette, pas une CardTile complète */}
       <img
-        src={`/assets/cards/illustrations/${cardId}.png`}
+        src={`/assets/cards/illustrations/${cardId}.webp`}
         alt=""
         loading="lazy"
         decoding="async"

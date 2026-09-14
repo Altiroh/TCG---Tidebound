@@ -658,7 +658,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
           </div>
         </div>
 
-        {/* Fil des événements — logé dans le panneau sombre de la colonne boussole (intérieur mesuré sur board.png : x 1522→1619, sous "Tour" et au-dessus de l'arrondi du bouton). */}
+        {/* Fil des événements — logé dans le panneau sombre de la colonne boussole (intérieur mesuré sur board.webp : x 1522→1619, sous "Tour" et au-dessus de l'arrondi du bouton). */}
         <div className="absolute" style={{ left: 1523, top: 308, width: 95, height: 232 }}>
           <EventFeed
             state={state}

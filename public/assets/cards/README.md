@@ -12,12 +12,12 @@ cette composition.
 
 ```
 frames/
-  FRAME_STANDARD_NO_STATS.png
-  FRAME_STANDARD_RESISTANCE.png
-  FRAME_STANDARD_POWER_RESISTANCE.png
-  FRAME_ABYSSAL_NO_STATS.png
-  FRAME_ABYSSAL_RESISTANCE.png
-  FRAME_ABYSSAL_POWER_RESISTANCE.png
+  FRAME_STANDARD_NO_STATS.webp
+  FRAME_STANDARD_RESISTANCE.webp
+  FRAME_STANDARD_POWER_RESISTANCE.webp
+  FRAME_ABYSSAL_NO_STATS.webp
+  FRAME_ABYSSAL_RESISTANCE.webp
+  FRAME_ABYSSAL_POWER_RESISTANCE.webp
 ```
 
 Le cadre ne dépend pas de `CardType` mais de :
@@ -47,19 +47,19 @@ un visuel.
 ### Jetons
 
 Les cartes **jeton** (Péons) ont leur propre dossier, `public/assets/token/`
-— voir son README. Leur cadre, lui, vit ici : `frames/cadre_token.png`,
+— voir son README. Leur cadre, lui, vit ici : `frames/cadre_token.webp`,
 commun à tous les jetons quelle que soit leur famille.
 
 ### Calque de débord (`subtype: "abyssal"` uniquement)
 
 ```
-illustrations/<cardId>-debord.png
+illustrations/<cardId>-debord.webp
 ```
 
 Optionnel, en plus de `illustrations/<cardId>.png`. Silhouette à fond
 transparent posée par-dessus le cadre (couche : fond → cadre → débord →
 nom/coût/texte/stats), pensée pour déborder de la découpe d'illustration
-vers le haut et les côtés — voir `bat-marin-abyssal-debord.png` comme
+vers le haut et les côtés — voir `bat-marin-abyssal-debord.webp` comme
 référence. Jamais utilisé pour une carte non-Abyssale.
 
 ## `icons/` — icônes mécaniques + icônes de type
@@ -67,7 +67,7 @@ référence. Jamais utilisé pour une carte non-Abyssale.
 Voir `icons/README.md` pour les icônes mécaniques (Ancrage, Raison,
 Puissance, Résistance, Garde, Sabordage, etc.).
 
-L'icône de type de carte suit `TYPE_<TYPE>_STANDARD.png` (`<TYPE>` =
+L'icône de type de carte suit `TYPE_<TYPE>_STANDARD.webp` (`<TYPE>` =
 `CardType` de `game/cards/types.ts` en majuscules : `MARIN`, `CREATURE`,
 `EQUIPEMENT`, `STRUCTURE`, `OBJET`, `ANOMALIE`) et se superpose en
 haut-droite du cadre, à la place de l'ancien badge texte. Tant qu'elle

@@ -67,24 +67,24 @@ interface CardTileProps {
 
 /**
  * Registre des icônes de statuts ponctuels (`instance.statuses`) — assets
- * fournis à plat dans `public/assets/` (`effect_malade.png`, etc.), un
+ * fournis à plat dans `public/assets/` (`effect_malade.webp`, etc.), un
  * statut sans entrée ici reste silencieux plutôt que de casser l'affichage
  * (système volontairement générique : ajouter un statut n'importe où dans
  * le moteur n'exige qu'une entrée ici pour être visible).
  */
 const STATUS_ICON_INFO: Record<string, { icon: string; label: string; description: string }> = {
   [STATUS_MALADE]: {
-    icon: "/assets/effect_malade.png",
+    icon: "/assets/effect_malade.webp",
     label: "Malade",
     description: "Perd 1 Résistance à chaque tour tant que ce statut reste actif.",
   },
   [STATUS_IMMOBILISE]: {
-    icon: "/assets/effect_immobilise.png",
+    icon: "/assets/effect_immobilise.webp",
     label: "Immobilisé",
     description: "Ne peut ni attaquer ni utiliser ses capacités tant que ce statut reste actif.",
   },
   [STATUS_SILENCE]: {
-    icon: "/assets/effect_silence.png",
+    icon: "/assets/effect_silence.webp",
     label: "Silence",
     description: "Ses capacités déclenchées et effets d'arrivée sont désactivés tant que ce statut reste actif.",
   },
@@ -92,17 +92,17 @@ const STATUS_ICON_INFO: Record<string, { icon: string; label: string; descriptio
 
 /** Mot-clé Garde (`def.keywords`, permanent — pas un statut à durée) : même registre d'icône que les statuts. */
 const GARDE_ICON_INFO = {
-  icon: "/assets/effect_garde.png",
+  icon: "/assets/effect_garde.webp",
   label: "Garde",
   description: "Les attaques adverses visant votre Navire doivent cibler en priorité les permanents portant Garde.",
 };
 
 /** Icône du badge "Durée" (Structure/Objet à durée limitée, `instance.turnsRemaining`) — le nombre de tours restants est superposé au centre. */
-const TOUR_ICON = "/assets/effect_tour.png";
+const TOUR_ICON = "/assets/effect_tour.webp";
 
 /** Maladie d'invocation (`instance.summoningSick`) — distincte des statuts à durée (`instance.statuses`). */
 const ENGOURDI_ICON_INFO = {
-  icon: "/assets/effect_engourdi.png",
+  icon: "/assets/effect_engourdi.webp",
   label: "Engourdi",
   description: "Vient d'être invoquée : ne peut attaquer qu'à partir de votre prochain tour.",
 };
@@ -154,24 +154,24 @@ function getFrameUrl(def: CardDefinition): string {
   // Les jetons (Péons) ont leur propre cadre générique, volontairement
   // indépendant de la famille : il servira aux Péons d'autres archétypes
   // (Notion, Lot 10 — "son cadre doit être générique").
-  if (def.token) return "/assets/cards/frames/cadre_token.png";
+  if (def.token) return "/assets/cards/frames/cadre_token.webp";
   const family = def.subtype === "abyssal" ? "ABYSSAL" : "STANDARD";
   const variant = def.attack !== undefined && def.health !== undefined
     ? "POWER_RESISTANCE"
     : def.health !== undefined
       ? "RESISTANCE"
       : "NO_STATS";
-  return `/assets/cards/frames/FRAME_${family}_${variant}.png`;
+  return `/assets/cards/frames/FRAME_${family}_${variant}.webp`;
 }
 
 /** Le type, lui, se recale carte par carte via une icône dédiée superposée au cadre. */
 function getTypeIconUrl(def: CardDefinition): string {
-  return `/assets/cards/icons/TYPE_${def.type.toUpperCase()}_STANDARD.png`;
+  return `/assets/cards/icons/TYPE_${def.type.toUpperCase()}_STANDARD.webp`;
 }
 
 /**
  * Illustration de la carte. Deux écarts avec la règle générale
- * (`illustrations/<cardId>.png`, cf. `public/assets/cards/README.md`) :
+ * (`illustrations/<cardId>.webp`, cf. `public/assets/cards/README.md`) :
  *
  *  - les JETONS ont leur propre dossier, `assets/token/` ;
  *  - une carte à plusieurs visuels (Péon Cra-Poiscail) prend la variante
@@ -182,12 +182,12 @@ function getTypeIconUrl(def: CardDefinition): string {
 function getIllustrationUrl(def: CardDefinition, instance: CardInstance): string {
   const directory = def.token ? "/assets/token" : "/assets/cards/illustrations";
   const variant = def.illustrationVariants && instance.illustrationVariant ? `-${instance.illustrationVariant}` : "";
-  return `${directory}/${instance.cardId}${variant}.png`;
+  return `${directory}/${instance.cardId}${variant}.webp`;
 }
 
 /** Calque optionnel, Abyssales uniquement — silhouette à fond transparent qui déborde du cadre, posée par-dessus. */
 function getDebordUrl(cardId: string): string {
-  return `/assets/cards/illustrations/${cardId}-debord.png`;
+  return `/assets/cards/illustrations/${cardId}-debord.webp`;
 }
 
 interface Zone {
@@ -222,7 +222,7 @@ const COST_NUMBER_ZONE: Zone = { top: 3, left: 4, width: 14, height: 16 };
 const TYPE_RIBBON_ZONE: Zone = { top: 3.8, left: 64, width: 31, height: 7 };
 
 /**
- * Zones propres au cadre de JETON (`cadre_token.png`), mesurées sur ses
+ * Zones propres au cadre de JETON (`cadre_token.webp`), mesurées sur ses
  * pixels comme les autres cadres : une grande découpe ovale (4,99 % /
  * 11,13 %, 77,83 × 80,39) et deux médaillons de stats en pied de cadre
  * (~27 % et ~72 % en x, ~93 % en y).

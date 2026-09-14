@@ -1168,7 +1168,7 @@
   width: clamp(19px, 2.4vh, 25px);
   background-size: auto 100%;
   /*
-   * Chaque asset `TYPE_*_STANDARD.png` est un pictogramme suivi d'un
+   * Chaque asset `TYPE_*_STANDARD.webp` est un pictogramme suivi d'un
    * mot-clé sur un ratio ~3:1 — l'icône occupe la zone carrée de tête
    * (largeur ≈ hauteur de l'image). `auto 100%` cale la hauteur affichée
    * sur celle du conteneur, ce qui fait exactement coïncider la fenêtre
