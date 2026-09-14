@@ -44,6 +44,12 @@ pour la liste des `cardId`. Tant qu'une illustration n'existe pas pour une
 carte, l'app laisse la zone illustration neutre/vide plutôt que d'inventer
 un visuel.
 
+### Jetons
+
+Les cartes **jeton** (Péons) ont leur propre dossier, `public/assets/token/`
+— voir son README. Leur cadre, lui, vit ici : `frames/cadre_token.png`,
+commun à tous les jetons quelle que soit leur famille.
+
 ### Calque de débord (`subtype: "abyssal"` uniquement)
 
 ```

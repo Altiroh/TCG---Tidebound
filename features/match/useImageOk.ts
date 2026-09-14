@@ -8,12 +8,16 @@ import { useEffect, useState } from "react";
  * l'image n'a pas fini de charger OU si elle échoue (404, pas encore
  * fournie) — pas d'état intermédiaire à gérer côté appelant.
  */
-export function useImageOk(url: string): boolean {
+export function useImageOk(url: string | null): boolean {
   const [ok, setOk] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     setOk(false);
+    // `null` = calque qui n'a pas lieu d'exister pour cette carte (ex: le
+    // débord, réservé aux Abyssales) : ne pas le demander évite un 404 par
+    // carte affichée.
+    if (url === null) return;
     const img = new window.Image();
     img.onload = () => {
       if (!cancelled) setOk(true);

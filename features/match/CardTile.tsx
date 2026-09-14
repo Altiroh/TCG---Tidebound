@@ -159,6 +159,22 @@ function getTypeIconUrl(def: CardDefinition): string {
   return `/assets/cards/icons/TYPE_${def.type.toUpperCase()}_STANDARD.png`;
 }
 
+/**
+ * Illustration de la carte. Deux écarts avec la règle générale
+ * (`illustrations/<cardId>.png`, cf. `public/assets/cards/README.md`) :
+ *
+ *  - les JETONS ont leur propre dossier, `assets/token/` ;
+ *  - une carte à plusieurs visuels (Péon Cra-Poiscail) prend la variante
+ *    tirée à l'invocation et retenue sur l'instance — jamais retirée au
+ *    sort ici, sinon le jeton changerait de tête à chaque rendu et
+ *    différerait d'un joueur à l'autre.
+ */
+function getIllustrationUrl(def: CardDefinition, instance: CardInstance): string {
+  const directory = def.token ? "/assets/token" : "/assets/cards/illustrations";
+  const variant = def.illustrationVariants && instance.illustrationVariant ? `-${instance.illustrationVariant}` : "";
+  return `${directory}/${instance.cardId}${variant}.png`;
+}
+
 /** Calque optionnel, Abyssales uniquement — silhouette à fond transparent qui déborde du cadre, posée par-dessus. */
 function getDebordUrl(cardId: string): string {
   return `/assets/cards/illustrations/${cardId}-debord.png`;
@@ -197,22 +213,19 @@ const TYPE_RIBBON_ZONE: Zone = { top: 3.8, left: 64, width: 31, height: 7 };
 
 /**
  * Zones propres au cadre de JETON (`cadre_token.png`), mesurées sur ses
- * pixels comme les autres : une grande découpe ovale (4,95 % / 11,43 %,
- * 77,34 × 82,49) et deux médaillons de stats en pied de cadre (~27 % et
- * ~72 % en x, ~93 % en y).
+ * pixels comme les autres cadres : une grande découpe ovale (4,99 % /
+ * 11,13 %, 77,83 × 80,39) et deux médaillons de stats en pied de cadre
+ * (~27 % et ~72 % en x, ~93 % en y).
  *
- * Deux différences assumées avec les cadres Standard/Abyssal :
- *  - l'asset est en 2:3 et non en 5:7, donc il est rendu en `object-contain`
- *    (sinon `object-cover` le rogne et tout le calage saute). Les valeurs
- *    ci-dessous sont déjà converties dans le repère de la CARTE : retrait
- *    horizontal de 3,3 % de chaque côté, largeurs × 0,934.
- *  - un jeton n'a ni coût (il ne se joue pas), ni bandeau de type, ni bloc
- *    de règles : le cadre n'a d'ailleurs aucun emplacement pour eux.
+ * L'asset est au même format 5:7 que les cadres Standard/Abyssal (révision
+ * du 2026-09-14), donc rendu comme eux, sans conversion de repère. Ce qui
+ * reste propre au jeton : ni coût (il ne se joue pas), ni bandeau de type,
+ * ni bloc de règles — le cadre n'a aucun emplacement pour eux.
  */
-const TOKEN_ILLUSTRATION_ZONE: Zone = { top: 4.95, left: 14, width: 72.2, height: 82.5 };
-const TOKEN_NAME_ZONE: Zone = { top: 85.5, left: 14, width: 72.2, height: 7.5 };
-const TOKEN_ATTACK_ZONE: Zone = { top: 90, left: 24, width: 10, height: 7 };
-const TOKEN_RESISTANCE_ZONE: Zone = { top: 90, left: 66, width: 10, height: 7 };
+const TOKEN_ILLUSTRATION_ZONE: Zone = { top: 4.99, left: 11.13, width: 77.83, height: 80.39 };
+const TOKEN_NAME_ZONE: Zone = { top: 84.5, left: 12, width: 76, height: 7 };
+const TOKEN_ATTACK_ZONE: Zone = { top: 90, left: 22, width: 10, height: 7 };
+const TOKEN_RESISTANCE_ZONE: Zone = { top: 90, left: 68, width: 10, height: 7 };
 
 /**
  * Adapte la taille du nom à sa longueur plutôt qu'une taille fixe — sur un
@@ -285,15 +298,10 @@ export function CardTile({
 
   const frameUrl = getFrameUrl(def);
   const typeIconUrl = getTypeIconUrl(def);
-  // Carte à plusieurs visuels (Péon Cra-Poiscail) : la variante a été tirée
-  // à l'invocation et vit sur l'instance — jamais retirée au sort ici, sinon
-  // le jeton changerait de tête à chaque rendu et différerait d'un joueur à
-  // l'autre.
-  const illustrationUrl =
-    def.illustrationVariants && instance.illustrationVariant
-      ? `/assets/cards/illustrations/${instance.cardId}-${instance.illustrationVariant}.png`
-      : `/assets/cards/illustrations/${instance.cardId}.png`;
-  const debordUrl = getDebordUrl(instance.cardId);
+  const illustrationUrl = getIllustrationUrl(def, instance);
+  // Le débord n'existe que pour les Abyssales (`public/assets/cards/README.md`) :
+  // inutile d'aller le chercher pour toutes les autres cartes.
+  const debordUrl = isAbyssal ? getDebordUrl(instance.cardId) : null;
   const frameOk = useImageOk(frameUrl);
   const typeIconOk = useImageOk(typeIconUrl);
   const illustrationOk = useImageOk(illustrationUrl);
@@ -361,17 +369,11 @@ export function CardTile({
         {/* Couche 2 : le cadre PNG — contour, bandeaux, bloc de règles et découpes de stats déjà peints */}
         {frameOk && (
           // eslint-disable-next-line @next/next/no-img-element -- asset local, cadre réutilisé par famille/variante de stats
-          <img
-            src={frameUrl}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            className={`absolute inset-0 h-full w-full ${isToken ? "object-contain" : "object-cover"}`}
-          />
+          <img src={frameUrl} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
         )}
 
         {/* Couche 2.5 : débord Abyssal — silhouette à fond transparent qui déborde du cadre, posée par-dessus */}
-        {isAbyssal && debordOk && (
+        {isAbyssal && debordOk && debordUrl && (
           // eslint-disable-next-line @next/next/no-img-element -- asset local, calque optionnel par carte Abyssale
           <img
             src={debordUrl}
