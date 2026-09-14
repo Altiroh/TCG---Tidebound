@@ -240,6 +240,76 @@ function markUnitOncePerTurn(
 }
 
 /**
+ * Puissance effective de chaque unité en jeu, par `instanceId`.
+ *
+ * Sert de photo avant/après pour détecter les gains de Puissance
+ * (`onPowerGained`). On passe par les stats EFFECTIVES — et non par les
+ * seuls buffs posés — parce que le design veut le déclencheur large
+ * (décision du 2026-09-14) : un Porte-Étendard qui arrive, un banc qui
+ * atteint son seuil ou une Marée qui change de sens font "gagner de la
+ * Puissance" tout autant qu'un buff explicite, et rien de tout cela
+ * n'émet d'événement.
+ */
+export function snapshotEffectivePower(state: GameState): Map<string, number> {
+  const snapshot = new Map<string, number>();
+  for (const player of state.players) {
+    for (const unit of player.board) {
+      snapshot.set(
+        unit.instanceId,
+        computeEffectiveStats(unit, state.environment.tideState, {
+          controllerBoard: player.board,
+          controllerReason: player.reason,
+          tideOrientation: state.environment.tideOrientation,
+        }).attack
+      );
+    }
+  }
+  return snapshot;
+}
+
+/**
+ * Compare une photo de Puissance à l'état courant et déclenche
+ * `onPowerGained` pour chaque carte qui a gagné du terrain. Appelée une
+ * seule fois par action (`game/engine.ts`) : les bonus que ces capacités
+ * posent à leur tour ne relancent pas de comparaison, ce qui borne
+ * naturellement la chaîne.
+ */
+export function processPowerGains(
+  state: GameState,
+  before: Map<string, number>,
+  turnNumber: number
+): { state: GameState; events: GameEvent[] } {
+  const after = snapshotEffectivePower(state);
+  let nextState = state;
+  const events: GameEvent[] = [];
+
+  for (const [instanceId, power] of after) {
+    const owner = nextState.players.find((p) => p.board.some((u) => u.instanceId === instanceId));
+    const unit = owner?.board.find((u) => u.instanceId === instanceId);
+    if (!owner || !unit) continue;
+
+    // Référence : sa Puissance au tour précédent si elle était déjà là,
+    // sinon sa Puissance IMPRIMÉE. Une carte qui arrive déjà renforcée —
+    // un Péon que la Bannière accueille, une créature qui atterrit sous un
+    // Porte-Étendard — a bien gagné de la Puissance, elle aussi.
+    const printed = computeEffectiveStats({ ...unit, modifiers: [] }, nextState.environment.tideState).attack;
+    const previous = before.get(instanceId) ?? printed;
+    if (power <= previous) continue;
+
+    const result = processTrigger(
+      nextState,
+      { trigger: "onPowerGained", playerId: owner.id, cardId: unit.cardId, sourceInstanceId: instanceId },
+      turnNumber,
+      1
+    );
+    nextState = result.state;
+    events.push(...result.events);
+  }
+
+  return { state: nextState, events };
+}
+
+/**
  * Réveille les capacités d'arrivée pour chaque carte INVOQUÉE par les
  * événements donnés (`SUMMON`). Les invocations ne passent pas par
  * `playCard` : sans ce relais, un Péon apparaîtrait sans que personne ne

@@ -577,3 +577,53 @@ describe("durées de bonus", () => {
     expect(computeEffectiveStats(backToOwner, "calme").health).toBe(1);
   });
 });
+
+describe("P'tite Fesse, Grand Rêve — réagit à tout gain de Puissance", () => {
+  it("se déclenche quand un buff explicite renforce un autre Cra-Poiscail", () => {
+    const reve = instance("ptite-fesse-grand-reve", "p1");
+    const porteur = instance("tetard-fesse", "p1");
+    const banniere = instance("banniere-en-vieille-chaussette", "p1");
+    const seau = instance("le-seau", "p1");
+    const state = testGameState({
+      players: [
+        testPlayer("p1", {
+          board: [reve, porteur, { ...banniere, attachedToInstanceId: porteur.instanceId }, seau],
+          reason: 10,
+        }),
+        testPlayer("p2"),
+      ],
+    });
+
+    // Le Bris invoque un Péon, que la Bannière renforce : ce Péon gagne
+    // de la Puissance, donc P'tite Fesse aussi.
+    const result = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: seau.instanceId });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const after = result.state.players[0]!.board.find((u) => u.instanceId === reve.instanceId)!;
+    expect(computeEffectiveStats(after, "calme").attack).toBe(2);
+  });
+
+  it("se déclenche aussi sur un bonus de plateau, sans buff posé", () => {
+    const reve = instance("ptite-fesse-grand-reve", "p1");
+    const etendard = instance("cra-poiscail-porte-etendard", "p1");
+    const state = testGameState({
+      players: [
+        testPlayer("p1", { hand: [etendard], board: [reve, instance("tetard-fesse", "p1")], reason: 10 }),
+        testPlayer("p2"),
+      ],
+    });
+
+    // Le Porte-Étendard arrive : le Têtard-Fesse passe de 1 à 2 Puissance
+    // sans qu'aucun buff ne lui soit posé — c'est un gain quand même.
+    const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: etendard.instanceId });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const board = result.state.players[0]!.board;
+    const after = board.find((u) => u.instanceId === reve.instanceId)!;
+    // 1 de base + 1 de l'aura du Porte-Étendard + 1 de sa propre capacité.
+    expect(
+      computeEffectiveStats(after, "calme", { controllerBoard: board, controllerReason: 10 }).attack
+    ).toBe(3);
+  });
+});

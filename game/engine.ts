@@ -13,6 +13,7 @@ import type { ActionResult, PlayerAction } from "@/game/actions/types";
 import { openReactionWindowIfEligible } from "@/game/reactions/reactionWindow";
 import { resolveOceanJudgment } from "@/game/rules/oceanJudgment";
 import { processDeaths } from "@/game/state/processDeaths";
+import { processPowerGains, snapshotEffectivePower } from "@/game/triggers/triggerBus";
 import type { GameEvent } from "@/game/events/types";
 import type { GameState } from "@/game/state/types";
 
@@ -44,15 +45,20 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
     return { ok: false, error: "Un choix est en attente : résolvez-le avant toute autre action." };
   }
 
+  // Photo des Puissances AVANT l'action : ce qui a augmenté après coup
+  // déclenchera `onPowerGained` (cf. `processPowerGains`).
+  const powerBefore = snapshotEffectivePower(state);
+
   const result = applyAction(state, action);
   if (!result.ok) return result;
 
   const deaths = processDeaths(result.state, state.turnNumber);
-  const allEvents: GameEvent[] = [...result.events, ...deaths.events];
+  const powerGains = processPowerGains(deaths.state, powerBefore, state.turnNumber);
+  const allEvents: GameEvent[] = [...result.events, ...deaths.events, ...powerGains.events];
 
   const stateWithEvents: GameState = {
-    ...deaths.state,
-    eventLog: [...deaths.state.eventLog, ...allEvents],
+    ...powerGains.state,
+    eventLog: [...powerGains.state.eventLog, ...allEvents],
   };
 
   let finalState = checkWinCondition(stateWithEvents);

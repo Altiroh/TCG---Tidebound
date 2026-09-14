@@ -2075,9 +2075,15 @@ export const CORE_SET: CardDefinition[] = [
     health: 2,
     maxCopies: 2,
     text: "La première fois à chaque tour qu'un autre Cra-Poiscail gagne de la Puissance, elle gagne +1 Puissance jusqu'à la fin du tour.",
-    // non appliqué : aucun déclencheur ne porte encore sur "une carte gagne
-    // de la Puissance". Le moteur émet bien `BUFF_APPLIED`, mais en faire un
-    // `TriggerType` ouvre des chaînes buff → buff qu'il faut d'abord borner.
+    abilities: [
+      {
+        trigger: "onPowerGained",
+        triggeredBy: { archetype: "cra-poiscail" },
+        oncePerTurnKey: "grandReveAllyPowerGain",
+        description: "Un autre Cra-Poiscail gagne de la Puissance : +1 Puissance jusqu'à la fin du tour.",
+        effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 } }],
+      },
+    ],
   },
   {
     id: "fourchette-du-grand-etang",
@@ -2251,7 +2257,17 @@ export const CORE_SET: CardDefinition[] = [
     health: 3,
     maxCopies: 1,
     text: "La première fois à chaque tour qu'un autre Cra-Poiscail gagne de la Puissance, elle gagne +2 Puissance et Pied marin jusqu'à la fin du tour.",
-    // non appliqué : même déclencheur manquant que sa version Standard.
+    abilities: [
+      {
+        trigger: "onPowerGained",
+        triggeredBy: { archetype: "cra-poiscail" },
+        oncePerTurnKey: "grandReveAbyssalAllyPowerGain",
+        description: "Un autre Cra-Poiscail gagne de la Puissance : +2 Puissance jusqu'à la fin du tour.",
+        // "Pied marin" non appliqué ici : le mot-clé ne s'accorde pour
+        // l'instant qu'à l'invocation (`rush`), pas à une carte déjà en jeu.
+        effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 2 } }],
+      },
+    ],
   },
   {
     id: "chevalier-cra-poiscail-abyssal",
