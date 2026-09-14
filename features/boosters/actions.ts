@@ -41,6 +41,13 @@ export interface BoosterInventoryEntry {
   isPurchasable: boolean;
   /** Exemplaires possédés, non encore ouverts. */
   owned: number;
+  /**
+   * Dernier mouvement de la réserve pour CE type de booster
+   * (`player_boosters.updated_at`), en ISO. `null` si on n'en possède
+   * aucun. Sert à présenter l'étagère du plus récent au plus ancien — la
+   * base ne date pas chaque exemplaire, seulement la ligne du type.
+   */
+  obtainedAt: string | null;
   /** Boosters ouverts depuis la dernière Abyssale, pour CE type de booster. */
   packsSinceAbyssal: number;
 }
@@ -65,6 +72,25 @@ export interface OpenBoosterResult {
   packsSinceAbyssal: number;
 }
 
+/**
+ * Traduit un échec inattendu en message utile.
+ *
+ * Achat et ouverture passent tous deux par `createSupabaseServiceRoleClient`,
+ * qui LÈVE si `SUPABASE_SERVICE_ROLE_KEY` est absente : les deux tombaient
+ * alors sur le même « impossible pour le moment », qui n'aide personne à
+ * comprendre qu'il manque une variable d'environnement. On nomme donc la
+ * cause quand on la reconnaît, et on laisse le message d'origine passer
+ * sinon — cet écran est déjà réservé au joueur connecté, et un message
+ * vague coûte plus qu'il ne protège.
+ */
+function describeFailure(error: unknown, fallback: string): string {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes("SUPABASE_SERVICE_ROLE_KEY")) {
+    return "Configuration serveur incomplète : SUPABASE_SERVICE_ROLE_KEY est absente. Achat et ouverture de boosters passent par elle (`.env.local` en local, variables d'environnement Vercel en prod).";
+  }
+  return `${fallback} (${message})`;
+}
+
 async function requireUser() {
   const supabase = createSupabaseServerClient();
   const {
@@ -85,12 +111,13 @@ export async function fetchBoosterInventory(): Promise<BoosterInventory> {
 
     const [definitions, owned, pity, currency] = await Promise.all([
       supabase.from("booster_definitions").select("*").eq("is_enabled", true).order("id"),
-      supabase.from("player_boosters").select("booster_definition_id, quantity").eq("user_id", userId),
+      supabase.from("player_boosters").select("booster_definition_id, quantity, updated_at").eq("user_id", userId),
       supabase.from("player_pity").select("booster_definition_id, packs_since_abyssal").eq("user_id", userId),
       supabase.from("player_currency").select("balance").eq("user_id", userId).maybeSingle(),
     ]);
 
     const ownedByBooster = new Map((owned.data ?? []).map((row) => [row.booster_definition_id, row.quantity]));
+    const obtainedByBooster = new Map((owned.data ?? []).map((row) => [row.booster_definition_id, row.updated_at]));
     const pityByBooster = new Map((pity.data ?? []).map((row) => [row.booster_definition_id, row.packs_since_abyssal]));
 
     return {
@@ -103,6 +130,7 @@ export async function fetchBoosterInventory(): Promise<BoosterInventory> {
         price: def.price_currency,
         isPurchasable: def.is_purchasable,
         owned: ownedByBooster.get(def.id) ?? 0,
+        obtainedAt: obtainedByBooster.get(def.id) ?? null,
         packsSinceAbyssal: pityByBooster.get(def.id) ?? 0,
       })),
     };
@@ -144,7 +172,7 @@ export async function purchaseBooster(boosterId: string, quantity = 1): Promise<
     return { ok: true, data: { balance: data.balance ?? 0 } };
   } catch (error) {
     console.error("[purchaseBooster] Échec :", error);
-    return { ok: false, error: "Achat impossible pour le moment." };
+    return { ok: false, error: describeFailure(error, "Achat impossible pour le moment.") };
   }
 }
 
@@ -255,7 +283,7 @@ export async function openBooster(boosterId: string): Promise<ActionResult<OpenB
     };
   } catch (error) {
     console.error("[openBooster] Échec :", error);
-    return { ok: false, error: "Ouverture impossible pour le moment." };
+    return { ok: false, error: describeFailure(error, "Ouverture impossible pour le moment.") };
   }
 }
 

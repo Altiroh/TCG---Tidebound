@@ -19,6 +19,8 @@ export interface ProgressionSummary {
   balance: number;
   matchesPlayed: number;
   pvpWins: number;
+  /** Pseudo affiché à côté du niveau (`profiles.display_name`), repli sur l'e-mail. `null` hors connexion. */
+  displayName: string | null;
 }
 
 const SIGNED_OUT: ProgressionSummary = {
@@ -27,6 +29,7 @@ const SIGNED_OUT: ProgressionSummary = {
   balance: 0,
   matchesPlayed: 0,
   pvpWins: 0,
+  displayName: null,
 };
 
 /**
@@ -42,9 +45,10 @@ export async function fetchProgression(): Promise<ProgressionSummary> {
     } = await supabase.auth.getUser();
     if (!user) return SIGNED_OUT;
 
-    const [progression, currency] = await Promise.all([
+    const [progression, currency, profile] = await Promise.all([
       supabase.from("player_progression").select("*").eq("user_id", user.id).maybeSingle(),
       supabase.from("player_currency").select("balance").eq("user_id", user.id).maybeSingle(),
+      supabase.from("profiles").select("display_name").eq("id", user.id).maybeSingle(),
     ]);
 
     return {
@@ -53,6 +57,9 @@ export async function fetchProgression(): Promise<ProgressionSummary> {
       balance: currency.data?.balance ?? 0,
       matchesPlayed: progression.data?.matches_played ?? 0,
       pvpWins: progression.data?.pvp_wins ?? 0,
+      // Repli sur l'e-mail comme le menu principal : mieux vaut un identifiant
+      // qu'un vide à côté du niveau.
+      displayName: profile.data?.display_name ?? user.email ?? null,
     };
   } catch (error) {
     console.error("[fetchProgression] Lecture impossible :", error);

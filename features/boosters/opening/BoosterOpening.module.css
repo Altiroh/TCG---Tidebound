@@ -656,7 +656,10 @@
   pointer-events: auto;
   cursor: default;
   will-change: transform;
-  animation: cardSpawn var(--t-card-spawn) linear var(--spawn-delay) both;
+  /* Nommée une fois, réutilisée telle quelle quand la carte s'agrandit et
+     doit en plus passer devant ses voisines (cf. `cardRaise`). */
+  --spawn-animation: cardSpawn var(--t-card-spawn) linear var(--spawn-delay) both;
+  animation: var(--spawn-animation);
 }
 .card:focus {
   outline: none;
@@ -700,6 +703,69 @@
 }
 .card[data-interactive]:focus-visible .cardLift {
   transform: translate3d(0, calc(var(--u) * -1.2), 0);
+}
+
+/*
+ * AGRANDISSEMENT AU RETOURNEMENT
+ * ------------------------------
+ * Dans la rangée, une carte fait la taille d'une vignette : assez pour
+ * savoir qu'elle est là, pas pour la LIRE. Or c'est au retournement qu'on
+ * veut la lire. Elle quitte donc la rangée en grossissant — d'un cran
+ * pendant l'anticipation, franchement pendant le retournement — puis
+ * retrouve sa place une fois révélée et regardée.
+ *
+ * L'échelle vit sur `.cardLift`, la couche du survol : ni la trajectoire
+ * de sortie du sachet (`.card`), ni la rotation 3D (`.cardFlip`) ne sont
+ * touchées, donc rien ne se déforme en biais. Le survol est exclu par
+ * construction : une carte en cours de retournement n'est plus
+ * interactive.
+ */
+.card {
+  --reveal-scale-charge: 1.12;
+  --reveal-scale-flip: 1.34;
+  /* Le temps de lecture après le retournement, en fraction de `revealSettle`. */
+  --reveal-hold: 45%;
+}
+
+.card[data-state="charging"] .cardLift {
+  transform: scale(var(--reveal-scale-charge));
+}
+
+.card[data-state="flipping"] .cardLift {
+  transform: scale(var(--reveal-scale-flip));
+}
+
+/* Révélée : on TIENT la carte grande un instant — redescendre aussitôt
+   reviendrait à la montrer et à la reprendre — puis elle rejoint la
+   rangée. */
+.card[data-state="revealed"] .cardLift {
+  animation: revealSettle 640ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+@keyframes revealSettle {
+  0% { transform: scale(var(--reveal-scale-flip)); }
+  45% { transform: scale(var(--reveal-scale-flip)); }
+  100% { transform: none; }
+}
+
+/*
+ * Agrandie, la carte déborde sur ses voisines (le pas de la rangée est
+ * plus étroit que la carte grossie) : elle doit passer devant.
+ *
+ * `cardSpawn` remplit ses valeurs vers l'avant, `z-index` compris : une
+ * simple déclaration ne pourrait pas la contredire. D'où une seconde
+ * animation, posée APRÈS elle dans la liste — c'est la dernière qui
+ * l'emporte — la première étant réinjectée par sa variable, jamais
+ * recopiée.
+ */
+.card[data-state="charging"],
+.card[data-state="flipping"],
+.card[data-state="revealed"] {
+  animation: var(--spawn-animation), cardRaise 1ms linear both;
+}
+
+@keyframes cardRaise {
+  to { z-index: calc(40 + var(--i)); }
 }
 .card:focus-visible .cardFace {
   box-shadow:
@@ -1168,4 +1234,14 @@
 }
 .scene[data-reduced-motion] .cardLift {
   transition-duration: 80ms;
+}
+
+/* Mouvement réduit : la carte se retourne sur place, sans changer de
+   taille — c'est le grossissement qui fait le gros du déplacement. */
+.scene[data-reduced-motion] .card[data-state="charging"] .cardLift,
+.scene[data-reduced-motion] .card[data-state="flipping"] .cardLift {
+  transform: none;
+}
+.scene[data-reduced-motion] .card[data-state="revealed"] .cardLift {
+  animation: none;
 }

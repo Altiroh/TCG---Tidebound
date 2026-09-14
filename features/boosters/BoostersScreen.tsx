@@ -7,29 +7,42 @@ import { PITY } from "@/game/boosters";
 import { GameScreen } from "@/features/shell/GameScreen";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/boosters/Boosters.module.css";
-import { openBooster, type BoosterInventory, type BoosterInventoryEntry } from "@/features/boosters/actions";
+import { openBooster, type BoosterInventory } from "@/features/boosters/actions";
+import { ownedPacks, type OwnedPack } from "@/features/boosters/ownedPacks";
+import { useHorizontalShelf } from "@/features/boosters/useHorizontalShelf";
 import { BoosterOpeningScene } from "@/features/boosters/opening/BoosterOpeningScene";
 import { preloadBoosterOpeningAssets } from "@/features/boosters/opening/boosterOpeningAssets";
 import { closedPackVariables, getBoosterPackVisual } from "@/features/boosters/opening/boosterPackVisuals";
+import { drawTestBoosterCards } from "@/features/boosters/opening/testBoosterCards";
 import { toOpeningRarity, type BoosterOpeningCard } from "@/features/boosters/opening/types";
 import { playButtonClick } from "@/lib/sound";
 
-/** Type MIME du glisser-déposer d'un booster vers le plan d'ouverture. */
+/** Type MIME du glisser-déposer d'un paquet vers le plan d'ouverture. */
 const DRAG_MIME = "text/tidebound-booster-id";
+
+/**
+ * Rejouent la scène d'ouverture sur un tirage LOCAL, sans consommer de
+ * booster ni toucher à la collection — pour régler l'animation sans devoir
+ * s'acheter un paquet à chaque essai.
+ */
+const OPENING_TEST_BOOSTERS = [
+  { boosterId: "standard", label: "Standard" },
+  { boosterId: "welcome_tutorial", label: "Bienvenue" },
+] as const;
 
 interface BoostersScreenProps {
   inventory: BoosterInventory;
 }
 
 /**
- * MES BOOSTERS — l'inventaire et son plan d'ouverture, rien d'autre.
- * L'achat vit dans le Market (`/market`), écran séparé : acheter et ouvrir
- * sont deux gestes différents, à deux moments différents.
+ * MES BOOSTERS — la réserve et son plan d'ouverture. L'achat vit dans le
+ * Market (`/market`), écran séparé : acheter et ouvrir sont deux gestes
+ * différents, à deux moments différents.
  *
- * À gauche, les boosters possédés, un par type, avec leur nombre
- * d'exemplaires. À droite, LE plan d'ouverture : on y dépose un booster
- * (glisser-déposer depuis la colonne de gauche, ou simple clic pour qui ne
- * peut pas glisser), puis on l'ouvre.
+ * À gauche, l'ÉTAGÈRE : un sachet par exemplaire possédé (pas une ligne
+ * par type — cf. `ownedPacks`), du plus récent au plus ancien, qui se
+ * parcourt horizontalement. À droite, LE plan : on y fait glisser un
+ * sachet, et il s'ouvre.
  *
  * L'ouverture est RÉELLE : `openBooster` consomme l'exemplaire, tire les
  * cartes côté serveur et crédite la collection avant que la scène ne
@@ -38,10 +51,11 @@ interface BoostersScreenProps {
  */
 export function BoostersScreen({ inventory }: BoostersScreenProps) {
   const router = useRouter();
-  const owned = useMemo(() => inventory.boosters.filter((booster) => booster.owned > 0), [inventory.boosters]);
+  const packs = useMemo(() => ownedPacks(inventory.boosters), [inventory.boosters]);
+  const shelf = useHorizontalShelf();
 
-  /** Booster posé sur le plan, prêt à être ouvert. */
-  const [dockedId, setDockedId] = useState<string | null>(null);
+  /** Paquet posé sur le plan, prêt à être ouvert (sa clé d'étagère). */
+  const [dockedKey, setDockedKey] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isOver, setIsOver] = useState(false);
   const [isOpening, setIsOpening] = useState(false);
@@ -49,30 +63,31 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
   /** Cartes de l'ouverture en cours — fixées une fois pour toutes par le serveur, jamais retirées en cours de scène. */
   const [opening, setOpening] = useState<{ boosterId: string; cards: BoosterOpeningCard[] } | null>(null);
 
-  const docked = owned.find((booster) => booster.boosterId === dockedId) ?? null;
+  const docked = packs.find((pack) => pack.key === dockedKey) ?? null;
+  const dockedEntry = docked ? inventory.boosters.find((entry) => entry.boosterId === docked.boosterId) : undefined;
 
-  // Le plan garde un booster tant qu'on en possède : un exemplaire consommé
-  // en laisse d'autres, mais le dernier ouvert vide le plan de lui-même.
+  // Le plan se recharge tout seul : un exemplaire consommé en laisse
+  // d'autres sur l'étagère, et la dernière ouverture le laisse vide.
   useEffect(() => {
-    setDockedId((current) => {
-      if (current && owned.some((booster) => booster.boosterId === current)) return current;
-      return owned[0]?.boosterId ?? null;
+    setDockedKey((current) => {
+      if (current && packs.some((pack) => pack.key === current)) return current;
+      return packs[0]?.key ?? null;
     });
-  }, [owned]);
+  }, [packs]);
 
   // Images de la scène chargées et décodées en avance : l'ouverture démarre sans flash.
-  const ownedIdsKey = owned.map((booster) => booster.boosterId).join(",");
+  const visualIdsKey = Array.from(new Set(packs.map((pack) => pack.boosterId))).join(",");
   useEffect(() => {
-    if (!ownedIdsKey) return;
-    for (const boosterId of ownedIdsKey.split(",")) {
+    if (!visualIdsKey) return;
+    for (const boosterId of visualIdsKey.split(",")) {
       void preloadBoosterOpeningAssets(getBoosterPackVisual(boosterId));
     }
-  }, [ownedIdsKey]);
+  }, [visualIdsKey]);
 
-  function dock(boosterId: string) {
+  function dock(key: string) {
     playButtonClick();
     setError(null);
-    setDockedId(boosterId);
+    setDockedKey(key);
   }
 
   async function handleOpen(boosterId: string) {
@@ -101,11 +116,21 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
     });
   }
 
+  /** Ouverture À BLANC : un tirage local, aucun appel serveur, aucun booster consommé. */
+  function handleTestOpen(boosterId: string) {
+    if (isOpening || opening) return;
+    playButtonClick();
+    setError(null);
+    setOpening({ boosterId, cards: drawTestBoosterCards(boosterId) });
+  }
+
   function handleOpeningClosed() {
+    const wasReal = opening !== null && packs.some((pack) => pack.boosterId === opening.boosterId);
     setOpening(null);
-    // L'exemplaire est consommé et la collection créditée côté base : on
-    // relit l'inventaire plutôt que de deviner le nouvel état ici.
-    router.refresh();
+    // Une ouverture réelle a consommé l'exemplaire et crédité la collection
+    // côté base : on relit l'inventaire plutôt que de deviner le nouvel
+    // état. Un essai d'animation n'a rien écrit — rien à relire.
+    if (wasReal) router.refresh();
   }
 
   if (!inventory.isSignedIn) {
@@ -134,8 +159,8 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
 
   return (
     <GameScreen active="boosters">
-      <div className={game.content}>
-        <div className={game.contentWide}>
+      <div className={styles.layout}>
+        <div className={styles.layoutInner}>
           <div className={game.pageHead}>
             <div>
               <p className={game.eyebrow}>Réserve</p>
@@ -150,13 +175,13 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
           {error && <p className={game.error}>{error}</p>}
 
           <div className={styles.workbench} data-dragging={isDragging ? "true" : "false"}>
-            <section className={`${game.panel} ${styles.stock}`} aria-label="Boosters possédés">
+            <section className={`${game.panel} ${styles.stock}`} aria-label="Paquets possédés">
               <p className={styles.panelTitle}>
                 Possédés
-                <span className={styles.panelTitleCount}>{owned.reduce((sum, booster) => sum + booster.owned, 0)}</span>
+                <span className={styles.panelTitleCount}>{packs.length}</span>
               </p>
 
-              {owned.length === 0 ? (
+              {packs.length === 0 ? (
                 <div className={styles.stockEmpty}>
                   <p className={game.muted}>Tu n&apos;as aucun booster en réserve.</p>
                   <Link href="/market" className={game.primary} onClick={() => playButtonClick()}>
@@ -164,27 +189,45 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
                   </Link>
                 </div>
               ) : (
-                <div className={styles.stockList}>
-                  {owned.map((booster) => (
-                    <StockPack
-                      key={booster.boosterId}
-                      booster={booster}
-                      selected={booster.boosterId === dockedId}
-                      disabled={isOpening || opening !== null}
-                      onSelect={() => dock(booster.boosterId)}
-                      onDragStart={(event) => {
-                        event.dataTransfer.setData(DRAG_MIME, booster.boosterId);
-                        event.dataTransfer.effectAllowed = "move";
-                        setIsDragging(true);
-                      }}
-                      onDragEnd={() => {
-                        setIsDragging(false);
-                        setIsOver(false);
-                      }}
-                    />
-                  ))}
+                <div className={styles.shelfRow}>
+                  <ShelfArrow
+                    direction={-1}
+                    disabled={!shelf.canScrollLeft}
+                    onClick={() => shelf.scrollByPage(-1)}
+                  />
+
+                  {/* `tabIndex` sur le conteneur : au clavier, l'étagère se
+                      parcourt aussi aux flèches, comme n'importe quelle
+                      zone défilante. */}
+                  <div className={styles.shelf} ref={shelf.ref} tabIndex={0} role="listbox" aria-label="Paquets possédés">
+                    {packs.map((pack) => (
+                      <ShelfPack
+                        key={pack.key}
+                        pack={pack}
+                        selected={pack.key === dockedKey}
+                        disabled={isOpening || opening !== null}
+                        onSelect={() => dock(pack.key)}
+                        onDragStart={(event) => {
+                          event.dataTransfer.setData(DRAG_MIME, pack.boosterId);
+                          event.dataTransfer.effectAllowed = "move";
+                          setIsDragging(true);
+                          dock(pack.key);
+                        }}
+                        onDragEnd={() => {
+                          setIsDragging(false);
+                          setIsOver(false);
+                        }}
+                      />
+                    ))}
+                  </div>
+
+                  <ShelfArrow direction={1} disabled={!shelf.canScrollRight} onClick={() => shelf.scrollByPage(1)} />
                 </div>
               )}
+
+              <p className={styles.shelfHint}>
+                {packs.length > 0 ? "Glisse un paquet sur le plan à droite pour l’ouvrir." : " "}
+              </p>
             </section>
 
             {/* LE plan d'ouverture : une seule zone, toujours à la même place,
@@ -210,7 +253,9 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
                 setIsOver(false);
                 setIsDragging(false);
                 const boosterId = event.dataTransfer.getData(DRAG_MIME);
-                if (boosterId) dock(boosterId);
+                if (!boosterId) return;
+                const dropped = packs.find((pack) => pack.boosterId === boosterId);
+                if (dropped) dock(dropped.key);
               }}
             >
               {docked ? (
@@ -222,12 +267,14 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
                   />
                   <p className={styles.dockName}>{docked.name}</p>
                   <p className={styles.dockMeta}>
-                    {docked.cardCount} cartes · {docked.owned} en réserve
+                    {docked.cardCount} cartes · {docked.copyCount} en réserve
                   </p>
-                  {docked.packsSinceAbyssal >= PITY.rampStartsAfterPacks && (
+                  {dockedEntry && dockedEntry.packsSinceAbyssal >= PITY.rampStartsAfterPacks && (
                     <p className={styles.dockPity}>
-                      {docked.packsSinceAbyssal} sans Abyssale
-                      {docked.packsSinceAbyssal >= PITY.guaranteeAtPack - 1 ? " · garantie au prochain" : " · chance renforcée"}
+                      {dockedEntry.packsSinceAbyssal} sans Abyssale
+                      {dockedEntry.packsSinceAbyssal >= PITY.guaranteeAtPack - 1
+                        ? " · garantie au prochain"
+                        : " · chance renforcée"}
                     </p>
                   )}
                   <button
@@ -243,19 +290,35 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
                 <>
                   <span className={styles.dockGhost} aria-hidden />
                   <p className={styles.dockHint}>
-                    {owned.length > 0
-                      ? "Dépose ici le booster à ouvrir"
-                      : "Aucun booster à ouvrir — passe par le Market"}
+                    {packs.length > 0 ? "Dépose ici le paquet à ouvrir" : "Aucun booster à ouvrir — passe par le Market"}
                   </p>
                 </>
               )}
             </section>
           </div>
 
-          <div className={styles.testRow}>
+          <div className={styles.footRow}>
             <Link href="/market" className={game.link} onClick={() => playButtonClick()}>
               Acheter des boosters →
             </Link>
+
+            {/* Réglage de l'animation : un tirage local, sans booster ni
+                écriture — le seul moyen de la revoir sans en acheter un. */}
+            <span className={styles.testGroup} role="group" aria-label="Tester l’animation d’ouverture">
+              <span className={styles.testLabel}>Tester l&apos;animation</span>
+              {OPENING_TEST_BOOSTERS.map((test) => (
+                <button
+                  key={test.boosterId}
+                  type="button"
+                  className={game.link}
+                  onClick={() => handleTestOpen(test.boosterId)}
+                  disabled={opening !== null || isOpening}
+                >
+                  {test.label}
+                </button>
+              ))}
+            </span>
+
             <Link href="/collection" className={game.link} onClick={() => playButtonClick()} style={{ marginLeft: "auto" }}>
               Voir la collection →
             </Link>
@@ -274,45 +337,86 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
   );
 }
 
+/** Flèche de parcours de l'étagère — inutile au doigt, indispensable à la souris. */
+function ShelfArrow({ direction, disabled, onClick }: { direction: -1 | 1; disabled: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      className={styles.shelfArrow}
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={direction === -1 ? "Paquets précédents" : "Paquets suivants"}
+      tabIndex={-1}
+    >
+      <svg viewBox="0 0 24 24" fill="none" width="16" height="16" aria-hidden>
+        <path
+          d={direction === -1 ? "M15 5l-7 7 7 7" : "M9 5l7 7-7 7"}
+          stroke="currentColor"
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </button>
+  );
+}
+
 /**
- * Un type de booster en réserve. Glissable vers le plan, ET cliquable :
- * le glisser-déposer est le geste naturel, jamais le seul — au clavier ou
- * sur écran tactile, un clic pose le même booster sur le plan.
+ * Un sachet sur l'étagère.
+ *
+ * Une `div` et non un `button` : le glisser-déposer natif d'un `<button>`
+ * est capricieux selon les navigateurs (le bouton avale le `dragstart`),
+ * et c'est le geste principal de cet écran. Le rôle, le `tabIndex` et la
+ * gestion d'Entrée/Espace lui rendent le comportement d'un bouton pour qui
+ * ne glisse pas.
  */
-function StockPack({
-  booster,
+function ShelfPack({
+  pack,
   selected,
   disabled,
   onSelect,
   onDragStart,
   onDragEnd,
 }: {
-  booster: BoosterInventoryEntry;
+  pack: OwnedPack;
   selected: boolean;
   disabled: boolean;
   onSelect: () => void;
-  onDragStart: (event: React.DragEvent<HTMLButtonElement>) => void;
+  onDragStart: (event: React.DragEvent<HTMLDivElement>) => void;
   onDragEnd: () => void;
 }) {
   return (
-    <button
-      type="button"
-      className={`${styles.stockPack} ${selected ? styles.stockPackSelected : ""}`}
+    <div
+      className={styles.shelfPack}
+      data-selected={selected ? "true" : "false"}
+      data-disabled={disabled ? "true" : "false"}
       draggable={!disabled}
-      onDragStart={onDragStart}
+      onDragStart={disabled ? undefined : onDragStart}
       onDragEnd={onDragEnd}
-      onClick={onSelect}
-      disabled={disabled}
-      aria-pressed={selected}
-      aria-label={`${booster.name} — ${booster.owned} en réserve`}
+      onClick={disabled ? undefined : onSelect}
+      onKeyDown={(event) => {
+        if (disabled) return;
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        onSelect();
+      }}
+      role="option"
+      aria-selected={selected}
+      aria-disabled={disabled}
+      tabIndex={disabled ? -1 : 0}
       title="Glisse-le sur le plan, ou clique pour l'y poser"
     >
-      <span className={styles.stockPackArt} style={closedPackVariables(getBoosterPackVisual(booster.boosterId))} aria-hidden />
-      <span className={styles.stockPackText}>
-        <span className={styles.stockPackName}>{booster.name}</span>
-        <span className={styles.stockPackMeta}>{booster.cardCount} cartes</span>
+      <span className={styles.shelfPackArt} style={closedPackVariables(getBoosterPackVisual(pack.boosterId))} aria-hidden />
+      <span className={styles.shelfPackName}>{pack.name}</span>
+      <span className={styles.shelfPackMeta}>
+        {pack.cardCount} cartes
+        {pack.copyCount > 1 && (
+          <>
+            <span aria-hidden> · </span>
+            {pack.copyIndex}/{pack.copyCount}
+          </>
+        )}
       </span>
-      <span className={styles.stockPackCount}>×{booster.owned}</span>
-    </button>
+    </div>
   );
 }

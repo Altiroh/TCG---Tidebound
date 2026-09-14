@@ -126,7 +126,7 @@ export function NewMatchScreen({ onStart, starting = false, error = null, botNot
   const launchLabel = mode === "pvp" && step === 2 ? "Deck du joueur 2 →" : starting ? "Préparation de la partie…" : "Lancer la partie";
 
   return (
-    <GameScreen active="partie">
+    <GameScreen active="partie" nav="minimal">
       <div className={game.content}>
         <div className={game.contentWide}>
           <div className={game.pageHead}>

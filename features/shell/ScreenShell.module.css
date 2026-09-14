@@ -58,10 +58,19 @@
   position: relative;
   z-index: 3;
   display: grid;
-  /* Logo · Menu · Collection · Decks · Market · Mes boosters · Quêtes · ressort · (actions + progression) */
-  grid-template-columns: repeat(7, auto) minmax(0, 1fr) auto;
+  /*
+   * Colonnes automatiques : le bandeau porte selon l'écran cinq éléments
+   * (retour · Cartes · Decks · Mes boosters · Quêtes) ou un seul
+   * (`data-nav="minimal"` : le retour). `auto-flow` les place sans qu'on
+   * ait à décrire les deux gabarits — seul le ressort avant le groupe de
+   * droite est nommé. Le logo, lui, n'est PAS dans la grille : il est
+   * centré sur l'écran (cf. `.brandSlot`).
+   */
+  grid-auto-flow: column;
+  grid-auto-columns: auto;
+  grid-template-columns: none;
   align-items: center;
-  /* Un onglet de plus qu'avant : l'écart se resserre plutôt que de pousser
+  /* Plusieurs onglets à loger : l'écart se resserre plutôt que de pousser
      la recherche hors du bandeau sur un écran de portable. */
   gap: clamp(10px, 1.5vw, 28px);
   padding-inline: clamp(14px, 2vw, 36px);
@@ -177,6 +186,13 @@
   pointer-events: none;
 }
 
+/* Le ressort qui pousse le groupe de droite au bord : la seule colonne du
+   bandeau qui ne soit pas dimensionnée par son contenu. */
+.headerSpring {
+  width: 100%;
+  min-width: 0;
+}
+
 /* Groupe de droite du header : actions de l'écran + progression. */
 
 .headerRight {
@@ -205,6 +221,54 @@
   gap: clamp(10px, 1.2vw, 20px);
   white-space: nowrap;
   text-shadow: 0 1px 5px rgba(3, 10, 16, 0.95);
+}
+
+/* Pseudo du joueur, devant le niveau. Borné en largeur : un pseudo long ne
+   doit pas repousser la jauge et les Tides hors du bandeau. */
+.progressionName {
+  max-width: clamp(80px, 10vw, 180px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--cb-font-display);
+  font-size: clamp(12px, 0.95vw, 15px);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: #f1ead9;
+}
+
+/* Engrenage des Options, au bout du bandeau : toujours là, connecté ou
+   non — les réglages audio ne demandent pas de compte. */
+.optionsButton {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: clamp(30px, 3.4vh, 36px);
+  height: clamp(30px, 3.4vh, 36px);
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: none;
+  color: var(--cb-ivory-dim);
+  cursor: pointer;
+  filter: drop-shadow(0 1px 4px rgba(3, 10, 16, 0.95));
+  transition: color 160ms ease-out, background-color 160ms ease-out, border-color 160ms ease-out, transform 220ms ease-out;
+}
+
+.optionsButton:hover {
+  border-color: rgba(233, 226, 209, 0.22);
+  background: rgba(233, 226, 209, 0.08);
+  color: var(--cb-ivory);
+  transform: rotate(35deg);
+}
+
+.optionsButton:focus-visible {
+  outline: 2px solid var(--cb-teal);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .optionsButton:hover { transform: none; }
 }
 
 .progressionLevel {
@@ -449,13 +513,66 @@
  * automatique — le logo garde son ratio.
  */
 
+/*
+ * Emplacement du logo : une bande qui couvre tout le bandeau et centre son
+ * contenu. Elle est TRANSPARENTE AUX CLICS (`pointer-events: none`) —
+ * sinon elle recouvrirait les onglets et la recherche, qu'elle survole ;
+ * seul le lien qu'elle contient les reçoit.
+ */
+.brandSlot {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
 .brand {
-  position: relative;
-  z-index: 2;
   display: flex;
   align-items: center;
   border-radius: 6px;
+  pointer-events: auto;
   transition: filter 150ms ease-out, opacity 150ms ease-out;
+}
+
+/*
+ * Écran étroit : entre quatre onglets à gauche et la recherche à droite, un
+ * logo centré finirait par les chevaucher. Il s'efface alors — le retour au
+ * menu reste assuré par la flèche.
+ */
+@media (max-width: 1180px) {
+  .header[data-nav="collection"] .brandSlot { display: none; }
+}
+
+/* Retour au menu : une flèche seule, à la même encre que les onglets. */
+.backButton {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: clamp(30px, 3.4vh, 36px);
+  height: clamp(30px, 3.4vh, 36px);
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: none;
+  color: var(--cb-ivory-dim);
+  cursor: pointer;
+  filter: drop-shadow(0 1px 4px rgba(3, 10, 16, 0.95));
+  transition: color 160ms ease-out, background-color 160ms ease-out, border-color 160ms ease-out, transform 160ms ease-out;
+}
+
+.backButton:hover {
+  border-color: rgba(233, 226, 209, 0.22);
+  background: rgba(233, 226, 209, 0.08);
+  color: var(--cb-ivory);
+  transform: translateX(-2px);
+}
+
+.backButton:focus-visible {
+  outline: 2px solid var(--cb-teal);
+  outline-offset: 2px;
 }
 
 .brandLogo {

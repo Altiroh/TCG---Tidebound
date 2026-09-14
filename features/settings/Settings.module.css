@@ -1,0 +1,54 @@
+/*
+ * OPTIONS — le contenu du dialogue, posé dans la coquille commune
+ * (`features/shell/Dialog`) comme n'importe quelle autre fenêtre du jeu.
+ *
+ * Les trois sections (Audio, Compte, Suppression) sont écrites en Tailwind
+ * avec les tokens `--text-primary` / `--text-secondary` / `--border-subtle`
+ * du PLATEAU (ivoire sale sur laiton, cf. `app/globals.css`), alors que
+ * tout le reste des écrans hors plateau parle l'encre bleu clair de
+ * `GameScreen`. Plutôt que de réécrire les trois composants — partagés
+ * avec le menu de pause en partie, où l'ivoire est le bon choix — on
+ * REMAPPE ces tokens ici : le même balisage se teinte alors comme son
+ * voisinage, des deux côtés.
+ */
+.settings {
+  --text-primary: #f2f7fb;
+  --text-secondary: rgba(190, 210, 228, 0.7);
+  --border-subtle: rgba(130, 178, 210, 0.16);
+
+  display: flex;
+  flex-direction: column;
+  gap: clamp(12px, 1.8vh, 20px);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: clamp(9px, 1vh, 11px);
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-dim, rgba(190, 210, 228, 0.6));
+}
+
+/* Filet de séparation entre deux sections — la même encre que les panneaux
+   des écrans, jamais un trait plein pleine largeur. */
+.divider {
+  height: 1px;
+  border: 0;
+  margin: 0;
+  background: linear-gradient(90deg, var(--line-strong, rgba(130, 178, 210, 0.3)), transparent 82%);
+}
+
+.signedOut {
+  margin: 0;
+  padding: 4px 0;
+  font-size: clamp(11.5px, 0.85vw, 13px);
+  line-height: 1.5;
+  color: var(--ink-dim, rgba(190, 210, 228, 0.7));
+}

@@ -60,9 +60,9 @@ export function MarketScreen({ inventory }: MarketScreenProps) {
   }
 
   return (
-    <GameScreen active="market">
-      <div className={game.content}>
-        <div className={game.contentWide}>
+    <GameScreen active="market" nav="minimal">
+      <div className={styles.layout}>
+        <div className={styles.layoutInner}>
           <div className={game.pageHead}>
             <div>
               <p className={game.eyebrow}>Boutique</p>

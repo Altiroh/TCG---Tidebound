@@ -11,24 +11,52 @@
  */
 
 /* ──────────────────────────────────────────────────────────────
- * ÉTABLI — réserve à gauche, plan d'ouverture à droite.
+ * MISE EN PAGE — tient dans la hauteur de l'écran, sans défilement :
+ * l'étagère se parcourt horizontalement, le plan est toujours visible.
+ * ────────────────────────────────────────────────────────────── */
+.layout {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(10px, 1.6vh, 22px);
+  min-height: 0;
+  overflow: hidden;
+  padding: clamp(12px, 2vh, 26px) clamp(14px, 2.4vw, 44px) clamp(14px, 2.4vh, 30px);
+}
+
+.layoutInner {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(10px, 1.6vh, 22px);
+  width: min(100%, 1480px);
+  margin-inline: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * ÉTABLI — étagère à gauche, plan d'ouverture à droite.
  * ────────────────────────────────────────────────────────────── */
 .workbench {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
   gap: clamp(12px, 1.6vw, 26px);
   align-items: stretch;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 @media (max-width: 900px) {
   .workbench { grid-template-columns: minmax(0, 1fr); }
 }
 
-/* ── Réserve ────────────────────────────────────────────────── */
+/* ── Étagère ────────────────────────────────────────────────── */
 .stock {
   display: flex;
   flex-direction: column;
   gap: clamp(8px, 1vh, 14px);
+  min-height: 0;
   padding: clamp(12px, 1.4vh, 18px) clamp(12px, 1vw, 18px);
 }
 
@@ -55,97 +83,149 @@
   color: var(--cb-cyan);
 }
 
-.stockList {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
 .stockEmpty {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  justify-content: center;
   gap: 10px;
-  padding: clamp(10px, 1.4vh, 18px) 0;
+  flex: 1 1 auto;
 }
 
-/* Une ligne de réserve : le sachet en vignette, le nom, le nombre. Le
-   `grab` dit que ça se glisse — le clic marche aussi. */
-.stockPack {
+/* La rangée : deux flèches encadrant la bande défilante. */
+.shelfRow {
   display: flex;
   align-items: center;
-  gap: clamp(8px, 0.9vw, 14px);
-  width: 100%;
-  padding: clamp(7px, 0.9vh, 11px) clamp(9px, 0.8vw, 13px);
+  gap: 6px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.shelfArrow {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 46px;
   border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
+  border-radius: 8px;
   background: rgba(130, 178, 210, 0.05);
+  color: var(--ink-dim);
+  cursor: pointer;
+  transition: border-color 140ms ease-out, background-color 140ms ease-out, color 140ms ease-out, opacity 140ms ease-out;
+}
+
+.shelfArrow:hover:not(:disabled) {
+  border-color: var(--line-strong);
+  background: rgba(130, 178, 210, 0.12);
   color: var(--ink);
-  font: inherit;
-  text-align: left;
+}
+
+/* Éteinte plutôt que masquée : une flèche qui disparaît fait sauter la
+   largeur de l'étagère à chaque bout atteint. */
+.shelfArrow:disabled { opacity: 0.22; cursor: default; }
+
+/*
+ * La bande elle-même : un seul rang de sachets, qui défile
+ * horizontalement. `scroll-snap` cale le paquet sous la main plutôt que de
+ * s'arrêter à mi-sachet.
+ */
+.shelf {
+  display: flex;
+  align-items: stretch;
+  gap: clamp(8px, 0.9vw, 14px);
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  padding: 4px 2px 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x proximity;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.shelf::-webkit-scrollbar { height: 6px; }
+.shelf::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--line-strong); }
+.shelf:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 2px; border-radius: 8px; }
+
+/* Un sachet posé sur l'étagère. Le `grab` dit que ça s'attrape — le clic
+   et Entrée font la même chose pour qui ne glisse pas. */
+.shelfPack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+  padding: clamp(6px, 0.8vh, 10px) clamp(6px, 0.6vw, 10px);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
   cursor: grab;
+  /* Sans ça, un glisser qui démarre sur le nom sélectionne le texte au
+     lieu d'emporter le sachet. */
+  user-select: none;
+  -webkit-user-drag: element;
   transition: border-color 140ms ease-out, background-color 140ms ease-out, transform 140ms ease-out;
 }
 
-.stockPack:hover:not(:disabled) {
-  border-color: var(--line-strong);
-  background: rgba(130, 178, 210, 0.1);
-  transform: translateX(2px);
+.shelfPack:hover {
+  border-color: var(--line);
+  background: rgba(130, 178, 210, 0.07);
+  transform: translateY(-3px);
 }
 
-.stockPack:active:not(:disabled) { cursor: grabbing; }
-.stockPack:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 2px; }
-.stockPack:disabled { opacity: 0.45; cursor: default; }
+.shelfPack:active { cursor: grabbing; }
+.shelfPack:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 2px; }
 
-.stockPackSelected {
+.shelfPack[data-selected="true"] {
   border-color: rgba(88, 200, 216, 0.5);
   background: var(--cb-cyan-soft);
 }
 
-.stockPackArt {
-  flex: 0 0 auto;
-  width: clamp(34px, 3.4vw, 46px);
+.shelfPack[data-disabled="true"] {
+  opacity: 0.45;
+  cursor: default;
+  transform: none;
+}
+
+.shelfPackArt {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: clamp(90px, 22vh, 210px);
   aspect-ratio: var(--pack-ratio, 5 / 7);
+  width: auto;
   background-image: var(--pack-art);
   background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
-  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.55));
+  filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.55));
   pointer-events: none;
 }
 
-.stockPackText {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.stockPackName {
+.shelfPackName {
+  max-width: 14ch;
   font-family: var(--cb-font-display);
-  font-size: clamp(13px, 1vw, 16px);
+  font-size: clamp(11px, 0.85vw, 13px);
   font-weight: 600;
   color: #f2f7fb;
+  text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.stockPackMeta {
-  font-size: clamp(10px, 0.78vw, 12px);
+.shelfPackMeta {
+  font-size: clamp(9px, 0.7vw, 11px);
+  font-variant-numeric: tabular-nums;
   color: var(--ink-dim);
 }
 
-.stockPackCount {
-  flex: 0 0 auto;
-  padding: 0.15em 0.55em;
-  border: 1px solid rgba(88, 200, 216, 0.45);
-  border-radius: 999px;
-  font-size: clamp(11px, 0.85vw, 13px);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: #eaf8fb;
+.shelfHint {
+  margin: 0;
+  font-size: clamp(10px, 0.78vw, 12px);
+  color: var(--ink-faint);
 }
 
 /* ── Plan d'ouverture ───────────────────────────────────────────
@@ -157,7 +237,7 @@
   align-items: center;
   justify-content: center;
   gap: clamp(6px, 0.9vh, 12px);
-  min-height: clamp(240px, 38vh, 420px);
+  min-height: 0;
   padding: clamp(14px, 1.8vh, 24px);
   border: 2px dashed var(--line-strong);
   border-radius: var(--radius);
@@ -187,7 +267,9 @@
 }
 
 .dockPack {
-  width: clamp(110px, 13vw, 190px);
+  height: clamp(110px, 26vh, 250px);
+  width: auto;
+  min-height: 0;
   aspect-ratio: var(--pack-ratio, 5 / 7);
   background-image: var(--pack-art);
   background-size: contain;
@@ -204,7 +286,8 @@
 
 /* Silhouette de sachet en creux : la place attend son paquet. */
 .dockGhost {
-  width: clamp(90px, 10vw, 150px);
+  height: clamp(90px, 22vh, 200px);
+  width: auto;
   aspect-ratio: 5 / 7;
   border: 1.5px dashed var(--line-strong);
   border-radius: 10px;
@@ -242,11 +325,10 @@
 
 @media (prefers-reduced-motion: reduce) {
   .dockPack { animation: none; }
-  .stockPack { transition: none; }
 }
 
 /* Rangée de liens de bas de page : discrète, jamais un appel à l'action. */
-.testRow {
+.footRow {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -277,4 +359,21 @@
 
 @media (prefers-reduced-motion: reduce) {
   .packObject { transition: none; }
+}
+
+/* Réglage de l'animation : posé au milieu de la rangée de bas de page,
+   assez effacé pour qu'on ne le prenne pas pour une vraie ouverture. */
+.testGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-inline: clamp(10px, 2vw, 28px);
+}
+
+.testLabel {
+  color: var(--ink-faint);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shelfPack { transition: none; }
 }

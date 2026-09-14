@@ -8,19 +8,57 @@
  * aucune règle d'économie n'est décidée ici.
  */
 
+/*
+ * La boutique tient dans la hauteur de l'écran : aucun défilement. Elle
+ * n'a que quelques articles — les faire défiler reviendrait à cacher la
+ * moitié d'une vitrine qui tient sur une étagère. C'est donc la TAILLE des
+ * étals qui suit la hauteur disponible, pas l'inverse.
+ */
+.layout {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(10px, 1.6vh, 22px);
+  min-height: 0;
+  overflow: hidden;
+  padding: clamp(12px, 2vh, 26px) clamp(14px, 2.4vw, 44px) clamp(14px, 2.4vh, 30px);
+}
+
+.layoutInner {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(10px, 1.6vh, 22px);
+  width: min(100%, 1480px);
+  margin-inline: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/*
+ * Étagère CENTRÉE, pas une grille alignée à gauche : avec deux ou trois
+ * boosters, une grille laisse un grand vide à droite et l'étal unique
+ * paraît égaré dans un coin.
+ */
 .shelf {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(clamp(220px, 19vw, 300px), 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: stretch;
+  align-content: center;
   gap: clamp(12px, 1.4vw, 22px);
-  align-content: start;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .stall {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5em;
-  padding: clamp(14px, 1.6vw, 24px) clamp(12px, 1.2vw, 18px);
+  gap: 0.45em;
+  flex: 0 1 clamp(220px, 21vw, 290px);
+  min-height: 0;
+  padding: clamp(12px, 1.5vh, 22px) clamp(12px, 1.2vw, 18px);
   text-align: center;
 }
 
@@ -28,10 +66,17 @@
  * Le sachet : `--pack-art` / `--pack-ratio` sont poussés en variables
  * inline par l'écran. Les visuels sont des découpes sur transparence —
  * `contain`, aucun fond, une `drop-shadow` qui épouse la silhouette.
+ *
+ * Dimensionné par la HAUTEUR disponible, et non par la largeur de l'étal :
+ * c'est lui qui décidait jusqu'ici de la hauteur de la page, et donc du
+ * défilement.
  */
 .stallPack {
-  width: 60%;
+  flex: 0 1 auto;
+  height: clamp(120px, 30vh, 300px);
+  min-height: 0;
   aspect-ratio: var(--pack-ratio, 5 / 7);
+  width: auto;
   background-image: var(--pack-art);
   background-size: contain;
   background-position: center bottom;
