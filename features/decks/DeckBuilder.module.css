@@ -1,0 +1,554 @@
+/*
+ * DECK BUILDER — ce qui s'AJOUTE au navigateur de cartes partagé
+ * (`features/collection/CardBrowser.module.css`) : une troisième colonne,
+ * la liste du deck, et les superpositions de quantité sur les cartes.
+ *
+ * Rien n'est redéfini du navigateur : même décor, mêmes panneaux, même
+ * colonne de filtres, même grille. Le Deck Builder doit se lire comme la
+ * Collection en mode construction — pas comme un second écran.
+ */
+
+/* Trois colonnes : filtres · grille · deck. La colonne de deck est plus
+   large que celle des filtres — c'est là qu'on lit la composition. */
+.workspace.workspace {
+  grid-template-columns: clamp(206px, 16vw, 268px) minmax(0, 1fr) clamp(250px, 19vw, 320px);
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * PANNEAU DU DECK
+ * ────────────────────────────────────────────────────────────── */
+.deckPanel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.deckInner {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: clamp(8px, 1.1vh, 14px);
+  padding: clamp(10px, 1.4vh, 16px) clamp(10px, 0.9vw, 16px);
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  border: none;
+  background: none;
+  padding: 2px 0;
+  font: inherit;
+  font-size: clamp(10px, 1.15vh, 12px);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  cursor: pointer;
+}
+
+.backLink:hover { color: var(--cb-cyan); }
+.backLink:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 2px; border-radius: 4px; }
+
+/* Nom du deck : de l'encre, pas un champ de formulaire — le contour
+   n'apparaît qu'au survol et au focus. */
+.deckName {
+  width: 100%;
+  min-width: 0;
+  padding: 4px 6px;
+  margin-inline: -6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  font-family: var(--cb-font-display);
+  font-size: clamp(17px, 2.3vh, 24px);
+  font-weight: 600;
+  color: #f0f7fb;
+  transition: border-color 140ms ease-out, background-color 140ms ease-out;
+}
+
+.deckName:hover { border-color: var(--line); }
+.deckName:focus { outline: none; border-color: var(--cb-cyan); background: rgba(88, 200, 216, 0.06); }
+.deckName::placeholder { color: var(--ink-dim); font-weight: 400; }
+
+/* ── Effectif et jauge ──────────────────────────────────────── */
+.capacity {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.capacityRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: clamp(10px, 1.15vh, 12px);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.capacityCount {
+  font-family: var(--cb-font-display);
+  font-size: clamp(16px, 2.2vh, 22px);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: #f0f7fb;
+}
+
+.capacityStatus { font-weight: 600; }
+.statusShort { color: var(--ink-dim); }
+.statusValid { color: var(--cb-cyan); }
+.statusOver { color: #e98b7a; }
+
+.gaugeTrack {
+  position: relative;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(130, 178, 210, 0.14);
+  overflow: hidden;
+}
+
+.gaugeFill {
+  height: 100%;
+  border-radius: 999px;
+  background: rgba(190, 210, 228, 0.55);
+  transition: width 200ms ease-out, background-color 200ms ease-out;
+}
+
+.gaugeFillValid { background: var(--cb-cyan); box-shadow: 0 0 8px rgba(88, 200, 216, 0.5); }
+.gaugeFillOver { background: #e98b7a; }
+
+/* Repère du minimum légal, tant qu'il n'est pas atteint. */
+.gaugeMark {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 1px;
+  background: rgba(240, 247, 251, 0.6);
+}
+
+/* ── Résumé : courbe de Raison + types ──────────────────────── */
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: clamp(8px, 1vh, 12px) clamp(8px, 0.7vw, 12px);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(130, 178, 210, 0.04);
+}
+
+.summaryTitle {
+  margin: 0;
+  font-size: clamp(8.5px, 1vh, 10px);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.curve {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 3px;
+  align-items: end;
+  height: clamp(34px, 5vh, 52px);
+}
+
+.curveBar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+  height: 100%;
+  min-width: 0;
+}
+
+.curveValue {
+  font-size: 9px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-dim);
+}
+
+.curveFill {
+  width: 100%;
+  min-height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: rgba(88, 200, 216, 0.55);
+  transition: height 180ms ease-out;
+}
+
+.curveFillEmpty { background: rgba(130, 178, 210, 0.12); }
+
+.curveLabels {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 3px;
+  font-size: 9px;
+  text-align: center;
+  color: var(--ink-dim);
+}
+
+.types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: clamp(10px, 1.15vh, 12px);
+  color: var(--ink-dim);
+}
+
+.typeCount { color: #e6eef6; font-variant-numeric: tabular-nums; }
+
+/* ── Liste du deck ──────────────────────────────────────────── */
+.list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin-inline: -4px;
+  padding-inline: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.list::-webkit-scrollbar { width: 6px; }
+.list::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--line-strong); }
+
+.listEmpty {
+  padding: 22px 10px;
+  text-align: center;
+  font-size: clamp(11px, 1.3vh, 13px);
+  line-height: 1.5;
+  color: var(--ink-dim);
+}
+
+.listDropping {
+  outline: 1px dashed var(--cb-cyan);
+  outline-offset: -2px;
+  border-radius: 8px;
+}
+
+/*
+ * Une ligne = une carte distincte : médaillon de Raison, nom, vignette,
+ * quantité, retrait. Aucune surface au repos ; le survol éclaire la ligne
+ * et révèle la croix. Priorité de lecture : nom, quantité, Raison.
+ */
+.row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 34px;
+  padding: 3px 6px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  transition: background-color 120ms ease-out, border-color 120ms ease-out;
+}
+
+.row:hover {
+  background: rgba(130, 178, 210, 0.07);
+  border-color: var(--line);
+}
+
+.rowAbyssal .rowCost { border-color: rgba(179, 136, 240, 0.6); color: var(--cb-violet); }
+
+.rowCost {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid rgba(88, 200, 216, 0.45);
+  border-radius: 50%;
+  font-family: var(--cb-font-display);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cb-cyan);
+}
+
+.rowName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: clamp(11px, 1.35vh, 13px);
+}
+
+.rowThumb {
+  position: relative;
+  width: 34px;
+  height: 22px;
+  overflow: hidden;
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px rgba(130, 178, 210, 0.2);
+}
+
+.rowThumb img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.rowQty {
+  font-size: clamp(11px, 1.35vh, 13px);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #e6eef6;
+}
+
+.rowRemove {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--ink-dim);
+  opacity: 0.45;
+  cursor: pointer;
+  transition: opacity 120ms ease-out, background-color 120ms ease-out, color 120ms ease-out;
+}
+
+.row:hover .rowRemove { opacity: 1; }
+.rowRemove:hover { background: rgba(233, 139, 122, 0.16); color: #e98b7a; }
+.rowRemove:focus-visible { opacity: 1; outline: 2px solid var(--cb-cyan); }
+
+/* ── Règles et actions ──────────────────────────────────────── */
+.issue {
+  margin: 0;
+  padding: 7px 9px;
+  border-left: 2px solid #e98b7a;
+  border-radius: 0 6px 6px 0;
+  background: rgba(233, 139, 122, 0.08);
+  font-size: clamp(10.5px, 1.25vh, 12px);
+  line-height: 1.45;
+  color: #f2c9bf;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.save {
+  flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 8px 14px;
+  border: 1px solid rgba(88, 200, 216, 0.45);
+  border-radius: 9px;
+  background: linear-gradient(180deg, rgba(88, 200, 216, 0.2), rgba(88, 200, 216, 0.08));
+  color: #eaf6fa;
+  font: inherit;
+  font-size: clamp(11px, 1.3vh, 13px);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: background-color 140ms ease-out, border-color 140ms ease-out;
+}
+
+.save:hover:not(:disabled) { border-color: var(--cb-cyan); }
+.save:disabled { opacity: 0.55; cursor: default; }
+.save:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 2px; }
+.saveDone { border-color: var(--cb-cyan); background: rgba(88, 200, 216, 0.24); }
+
+.iconButton {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  min-height: 38px;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  background: rgba(130, 178, 210, 0.06);
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color 140ms ease-out;
+}
+
+.iconButton:hover { border-color: var(--cb-cyan); }
+.iconButton:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 2px; }
+
+/* Menu « plus » : même feuille sombre que le sélecteur de tri. */
+.menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  min-width: 160px;
+  padding: 4px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--panel-solid);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+}
+
+.menuItem {
+  padding: 8px 10px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menuItem:hover:not(:disabled) { background: rgba(130, 178, 210, 0.1); }
+.menuItem:disabled { opacity: 0.4; cursor: default; }
+.menuItemDanger { color: #e98b7a; }
+
+/* ──────────────────────────────────────────────────────────────
+ * SUPERPOSITION SUR LES CARTES DE LA GRILLE
+ * Quantité dans le deck + retrait + détail. Compacte : la carte reste
+ * lisible en dessous.
+ * ────────────────────────────────────────────────────────────── */
+.cellBar {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--panel-solid);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+}
+
+.cellQty {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #eaf6fa;
+}
+
+.cellQtyMax { color: var(--ink-dim); font-weight: 400; }
+.cellQtyFull { color: var(--cb-cyan); }
+
+.cellButton {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--ink);
+  cursor: pointer;
+  transition: background-color 120ms ease-out, color 120ms ease-out;
+}
+
+.cellButton:hover:not(:disabled) { background: rgba(130, 178, 210, 0.16); color: #ffffff; }
+.cellButton:disabled { opacity: 0.35; cursor: default; }
+.cellButton:focus-visible { outline: 2px solid var(--cb-cyan); }
+
+/* Carte qu'on ne peut pas ajouter (non possédée) : la superposition le dit sans crier. */
+.cellLocked {
+  padding: 2px 9px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+/* Bouton de bascule du panneau de deck — petits écrans seulement. */
+.deckToggle {
+  display: none;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 5px 12px;
+  border: 1px solid rgba(88, 200, 216, 0.45);
+  border-radius: 999px;
+  background: rgba(88, 200, 216, 0.1);
+  color: #eaf6fa;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.deckToggle:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 2px; }
+
+/* Colonne de deck étroite : la vignette est la première à céder, le nom
+   est ce qu'on lit. */
+@media (max-width: 1500px) {
+  .rowThumb { display: none; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+ * ÉCRANS INTERMÉDIAIRES — les filtres passent en tiroir (règle du
+ * navigateur partagé), le deck reste visible mais plus étroit.
+ * ══════════════════════════════════════════════════════════════ */
+@media (max-width: 1280px) and (min-width: 901px) and (min-height: 561px) {
+  /* La colonne de filtres, elle, passe en tiroir : règle portée par le
+     navigateur partagé (`[data-columns="3"]` dans `CardBrowser.module.css`),
+     puisque ce sont ses classes. */
+  .workspace.workspace {
+    grid-template-columns: minmax(0, 1fr) clamp(228px, 22vw, 280px);
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+ * PETITS ÉCRANS — le deck devient un tiroir à droite, symétrique du
+ * tiroir de filtres à gauche. Jamais les trois colonnes écrasées.
+ * ══════════════════════════════════════════════════════════════ */
+@media (max-height: 560px), (max-width: 900px) {
+  .workspace.workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .deckPanel {
+    position: absolute;
+    z-index: 5;
+    top: clamp(6px, 1vh, 12px);
+    bottom: clamp(8px, 1.2vh, 14px);
+    right: clamp(8px, 1.4vw, 16px);
+    width: min(320px, 78vw);
+    background: var(--panel-solid);
+    transform: translateX(calc(100% + clamp(8px, 1.4vw, 16px)));
+    transition: transform 180ms cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+
+  .workspace[data-deck="open"] .deckPanel { transform: none; }
+
+  .workspace[data-deck="open"] .deckScrim {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    border: none;
+    padding: 0;
+    background: rgba(3, 8, 14, 0.55);
+  }
+
+  .deckToggle { display: inline-flex; }
+  .summary { display: none; }
+}
+
+.deckScrim { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .deckPanel { transition: none; }
+}

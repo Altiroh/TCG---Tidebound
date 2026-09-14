@@ -12,7 +12,7 @@ import {
   type OwnershipFilter,
   type VariantFilter,
 } from "@/features/collection/collectionFilters";
-import styles from "@/features/collection/CollectionScreen.module.css";
+import styles from "@/features/collection/CardBrowser.module.css";
 import { playButtonClick } from "@/lib/sound";
 
 const VARIANTS: Array<{ value: VariantFilter; label: string; dotClassName?: string }> = [
@@ -34,6 +34,8 @@ interface CollectionSidebarProps {
   owned: ReadonlySet<string>;
   /** La possession n'a de sens que pour un compte connecté — sinon la section entière disparaît. */
   showOwnership: boolean;
+  /** Le Deck Builder n'a pas à proposer d'en créer un autre depuis sa colonne de filtres. Défaut : `true`. */
+  showCreateDeck?: boolean;
 }
 
 /** Une ligne de filtre : libellé à gauche, effectif à droite. */
@@ -86,7 +88,15 @@ function FilterRow({
  * donc exactement ce qu'on obtiendra en cliquant dessus, et il tombe à 0
  * quand la combinaison ne donne rien.
  */
-export function CollectionSidebar({ filters, onChange, onReset, owned, showOwnership }: CollectionSidebarProps) {
+export function CollectionSidebar({
+  filters,
+  onChange,
+  onReset,
+  owned,
+  showOwnership,
+  showCreateDeck = true,
+}: CollectionSidebarProps) {
+  const canReset = hasActiveFilters(filters);
   const countFor = (ignore: keyof CollectionFilterState, extra: Parameters<typeof countMatching>[3]) =>
     countMatching(filters, owned, ignore, extra);
 
@@ -99,11 +109,11 @@ export function CollectionSidebar({ filters, onChange, onReset, owned, showOwner
           </svg>
           Filtres
         </span>
-        {hasActiveFilters(filters) && (
-          <button type="button" className={styles.resetLink} onClick={onReset}>
-            Réinitialiser
-          </button>
-        )}
+        {/* Toujours présent, éteint quand il n'y a rien à effacer : un lien
+            qui apparaît et disparaît fait sauter la mise en page. */}
+        <button type="button" className={styles.resetLink} onClick={onReset} disabled={!canReset}>
+          Réinitialiser
+        </button>
       </div>
 
       <section className={styles.filterSection}>
@@ -190,9 +200,11 @@ export function CollectionSidebar({ filters, onChange, onReset, owned, showOwner
         </div>
       </section>
 
-      <Link href="/decks/nouveau" className={styles.createDeck} onClick={() => playButtonClick()}>
-        <span aria-hidden>+</span> Créer un deck
-      </Link>
+      {showCreateDeck && (
+        <Link href="/decks/nouveau" className={styles.createDeck} onClick={() => playButtonClick()}>
+          <span aria-hidden>+</span> Créer un deck
+        </Link>
+      )}
     </div>
   );
 }

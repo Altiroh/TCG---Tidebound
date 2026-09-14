@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { CardDefinition, CardInstance } from "@/game";
-import styles from "@/features/collection/CollectionScreen.module.css";
+import styles from "@/features/collection/CardBrowser.module.css";
 import { CardTile } from "@/features/match/CardTile";
 
 /** Nombre de cartes montées par lot — ajusté pour couvrir large sans jamais monter la collection entière d'un coup. */
@@ -38,6 +38,18 @@ interface CardGridProps {
   owned: ReadonlySet<string> | null;
   /** Message affiché quand la sélection courante ne donne rien. */
   emptyLabel?: string;
+  /**
+   * Contenu posé PAR-DESSUS chaque carte (coin bas de la cellule) — le Deck
+   * Builder y met la quantité dans le deck et ses boutons. `null` pour une
+   * carte sans superposition. La grille ne sait rien de ce qu'elle affiche.
+   */
+  cellExtras?: (def: CardDefinition) => ReactNode;
+  /**
+   * Rend les cartes glissables (HTML natif) et reçoit le `dragstart` — le
+   * Deck Builder y pose l'identifiant de la carte pour la zone de dépôt de
+   * sa liste. Sans ce prop, rien ne se glisse (Collection).
+   */
+  onCardDragStart?: (def: CardDefinition, event: React.DragEvent<HTMLButtonElement>) => void;
 }
 
 /**
@@ -52,7 +64,7 @@ interface CardGridProps {
  * référence qui déclenche le retour en haut + la réinitialisation du lot,
  * sans plomberie supplémentaire côté parent.
  */
-export function CardGrid({ cards, onCardClick, hasAnyCards, owned, emptyLabel }: CardGridProps) {
+export function CardGrid({ cards, onCardClick, hasAnyCards, owned, emptyLabel, cellExtras, onCardDragStart }: CardGridProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const loadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -143,7 +155,10 @@ export function CardGrid({ cards, onCardClick, hasAnyCards, owned, emptyLabel }:
                   scaleOnHover={false}
                   liftOnHover
                   onClick={() => onCardClick(def.id)}
+                  draggable={Boolean(onCardDragStart)}
+                  onDragStart={onCardDragStart ? (event) => onCardDragStart(def, event) : undefined}
                 />
+                {cellExtras && <div className={styles.cellExtras}>{cellExtras(def)}</div>}
               </div>
             ))}
           </div>

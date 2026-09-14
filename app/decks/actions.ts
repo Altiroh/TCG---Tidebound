@@ -19,6 +19,22 @@ export interface DeckActionResult {
   id?: string;
 }
 
+/**
+ * Toute action de deck rend un `DeckActionResult`, jamais une exception :
+ * une configuration Supabase absente (`createSupabaseServerClient` lève
+ * alors) ou une panne réseau doivent arriver dans l'éditeur comme un
+ * message sous le bouton, pas comme une erreur non rattrapée qui casse
+ * l'écran. Même principe que `getOwnedCardIds`.
+ */
+async function guarded(label: string, run: () => Promise<DeckActionResult>): Promise<DeckActionResult> {
+  try {
+    return await run();
+  } catch (error) {
+    console.error(`[${label}] Échec inattendu :`, error);
+    return { ok: false, error: "Sauvegarde indisponible pour le moment : réessaie dans un instant." };
+  }
+}
+
 async function currentUserId(supabase: ReturnType<typeof createSupabaseServerClient>): Promise<string | null> {
   const {
     data: { user },
@@ -86,6 +102,10 @@ export interface SaveDeckInput {
  * juste marqué non jouable.
  */
 export async function saveDeck(input: SaveDeckInput): Promise<DeckActionResult> {
+  return guarded("saveDeck", () => saveDeckUnguarded(input));
+}
+
+async function saveDeckUnguarded(input: SaveDeckInput): Promise<DeckActionResult> {
   const name = input.name.trim() || "Deck sans nom";
   const supabase = createSupabaseServerClient();
   const userId = await currentUserId(supabase);
@@ -140,14 +160,20 @@ export async function renameDeck(deckId: string, name: string): Promise<DeckActi
   const trimmed = name.trim();
   if (!trimmed) return { ok: false, error: "Le nom ne peut pas être vide." };
 
-  const supabase = createSupabaseServerClient();
-  const { error } = await supabase.from("player_decks").update({ name: trimmed }).eq("id", deckId);
-  if (error) return { ok: false, error: error.message };
-  revalidatePath("/decks");
-  return { ok: true };
+  return guarded("renameDeck", async () => {
+    const supabase = createSupabaseServerClient();
+    const { error } = await supabase.from("player_decks").update({ name: trimmed }).eq("id", deckId);
+    if (error) return { ok: false, error: error.message };
+    revalidatePath("/decks");
+    return { ok: true };
+  });
 }
 
 export async function duplicateDeck(deckId: string): Promise<DeckActionResult> {
+  return guarded("duplicateDeck", () => duplicateDeckUnguarded(deckId));
+}
+
+async function duplicateDeckUnguarded(deckId: string): Promise<DeckActionResult> {
   const supabase = createSupabaseServerClient();
   const userId = await currentUserId(supabase);
   if (!userId) return { ok: false, error: "Connecte-toi pour dupliquer un deck." };
@@ -179,9 +205,11 @@ export async function duplicateDeck(deckId: string): Promise<DeckActionResult> {
 }
 
 export async function deleteDeck(deckId: string): Promise<DeckActionResult> {
-  const supabase = createSupabaseServerClient();
-  const { error } = await supabase.from("player_decks").delete().eq("id", deckId);
-  if (error) return { ok: false, error: error.message };
-  revalidatePath("/decks");
-  return { ok: true };
+  return guarded("deleteDeck", async () => {
+    const supabase = createSupabaseServerClient();
+    const { error } = await supabase.from("player_decks").delete().eq("id", deckId);
+    if (error) return { ok: false, error: error.message };
+    revalidatePath("/decks");
+    return { ok: true };
+  });
 }

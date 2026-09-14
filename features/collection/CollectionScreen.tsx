@@ -1,21 +1,14 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
-import { CORE_SET } from "@/game";
-import { compareCards, type SortMode } from "@/features/collection/cardFilters";
-import {
-  EMPTY_FILTERS,
-  matchesFilters,
-  type CollectionFilterState,
-} from "@/features/collection/collectionFilters";
-import { useDebouncedValue } from "@/features/collection/useDebouncedValue";
+import { useMemo, useState } from "react";
 import { CardGrid } from "@/features/collection/CardGrid";
 import { CollectionSidebar } from "@/features/collection/CollectionSidebar";
 import { CollectionToolbar } from "@/features/collection/CollectionToolbar";
 import { CardDetailModal } from "@/features/collection/card-detail/CardDetailModal";
+import { useCardBrowser } from "@/features/collection/useCardBrowser";
 import { ScreenHeader } from "@/features/shell/ScreenHeader";
 import { SearchLine } from "@/features/shell/SearchLine";
-import styles from "@/features/collection/CollectionScreen.module.css";
+import styles from "@/features/collection/CardBrowser.module.css";
 import shell from "@/features/shell/ScreenShell.module.css";
 
 interface CollectionScreenProps {
@@ -28,70 +21,24 @@ interface CollectionScreenProps {
  * Écran Collection.
  *
  * Trois plans : le décor maritime en plein écran
- * (`collection/collection_background_2.webp`, posé par le module CSS), la
- * colonne de filtres à gauche, la grille de cartes à droite. Le bandeau de
- * navigation reste celui de la coquille partagée, simplement privé de son
- * panorama pour se fondre dans ce décor-ci.
+ * (`collection/collection_background_2.webp`, posé par `CardBrowser.module.css`),
+ * la colonne de filtres à gauche, la grille de cartes à droite. Le bandeau
+ * de navigation reste celui de la coquille partagée, privé de son panorama
+ * pour se fondre dans ce décor-ci.
  *
- * Changement de fond par rapport à la version précédente : la grille montre
- * désormais TOUT le catalogue, les cartes non possédées estompées, au lieu
- * de masquer purement et simplement ce qui manque. C'est ce qui donne un
- * sens au filtre « Manquantes » — et à une collection en général.
+ * Toute la mécanique de navigation dans le catalogue (filtres, recherche,
+ * tri, tiroir) vit dans `useCardBrowser`, partagé avec le Deck Builder :
+ * ce dernier est le même écran, avec une colonne de deck en plus.
  *
- * Un visiteur non connecté n'a pas de possession connue : il feuillette le
- * catalogue entier sans estompage ni section « Statut de collection »,
- * plutôt que de se voir annoncer qu'il possède tout.
+ * La grille montre TOUT le catalogue, les cartes non possédées estompées,
+ * au lieu de masquer ce qui manque — c'est ce qui donne un sens au filtre
+ * « Manquantes ». Un visiteur non connecté n'a pas de possession connue :
+ * il feuillette sans estompage ni section « Statut de collection ».
  */
 export function CollectionScreen({ isSignedIn, ownedCardIds }: CollectionScreenProps) {
   const owned = useMemo(() => (isSignedIn ? new Set(ownedCardIds) : null), [isSignedIn, ownedCardIds]);
-  /** Ensemble utilisé par les filtres : vide plutôt que `null`, pour ne pas avoir à tester partout. */
-  const ownedForFilters = useMemo(() => owned ?? new Set<string>(), [owned]);
-
-  const [filters, setFilters] = useState<CollectionFilterState>(EMPTY_FILTERS);
-  const [sort, setSort] = useState<SortMode>("name");
+  const browser = useCardBrowser({ owned });
   const [detailCardId, setDetailCardId] = useState<string | null>(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-
-  // Le champ reste réactif à chaque frappe ; seul le filtrage réel attend
-  // une pause de frappe.
-  const debouncedSearch = useDebouncedValue(filters.search, 200);
-  const appliedFilters = useMemo<CollectionFilterState>(
-    () => ({ ...filters, search: debouncedSearch }),
-    [filters, debouncedSearch]
-  );
-
-  const filteredCards = useMemo(
-    () =>
-      CORE_SET.filter((def) => matchesFilters(def, appliedFilters, ownedForFilters)).sort((a, b) =>
-        compareCards(a, b, sort)
-      ),
-    [appliedFilters, ownedForFilters, sort]
-  );
-
-  const patchFilters = useCallback((patch: Partial<CollectionFilterState>) => {
-    setFilters((current) => ({ ...current, ...patch }));
-  }, []);
-
-  // La navigation de la fiche tourne en boucle sur la SÉLECTION COURANTE,
-  // pas sur le catalogue entier : les flèches suivent ce qu'on a sous les yeux.
-  const showRelative = useCallback(
-    (delta: number) => {
-      setDetailCardId((currentId) => {
-        if (!currentId || filteredCards.length === 0) return currentId;
-        const index = filteredCards.findIndex((def) => def.id === currentId);
-        if (index === -1) return currentId;
-        const next = filteredCards[(index + delta + filteredCards.length) % filteredCards.length];
-        return next ? next.id : currentId;
-      });
-    },
-    [filteredCards]
-  );
-
-  const activeFilterCount =
-    (filters.variant !== "all" ? 1 : 0) +
-    (filters.type ? 1 : 0) +
-    (filters.ownership !== "all" ? 1 : 0) +
-    (filters.costs.length > 0 ? 1 : 0);
 
   return (
     <div className={`${shell.screen} ${styles.screen}`}>
@@ -103,8 +50,9 @@ export function CollectionScreen({ isSignedIn, ownedCardIds }: CollectionScreenP
         actions={
           <div className={styles.headerSearch}>
             <SearchLine
-              value={filters.search}
-              onChange={(search) => patchFilters({ search })}
+              variant="pill"
+              value={browser.filters.search}
+              onChange={(search) => browser.patchFilters({ search })}
               placeholder="Rechercher une carte…"
               label="Rechercher une carte"
             />
@@ -112,37 +60,35 @@ export function CollectionScreen({ isSignedIn, ownedCardIds }: CollectionScreenP
         }
       />
 
-      <div className={styles.workspace} data-drawer={drawerOpen ? "open" : "closed"}>
-        {/* Voile du tiroir : ferme les filtres au clic à côté, sur les
-            formats où la colonne passe par-dessus la grille. */}
+      <div className={styles.workspace} data-drawer={browser.drawerOpen ? "open" : "closed"}>
         <button
           type="button"
           className={styles.drawerScrim}
           aria-label="Fermer les filtres"
-          onClick={() => setDrawerOpen(false)}
+          onClick={() => browser.setDrawerOpen(false)}
         />
 
         <aside className={`${styles.panel} ${styles.sidebar}`} aria-label="Filtres de la collection">
           <CollectionSidebar
-            filters={filters}
-            onChange={patchFilters}
-            onReset={() => setFilters(EMPTY_FILTERS)}
-            owned={ownedForFilters}
+            filters={browser.filters}
+            onChange={browser.patchFilters}
+            onReset={browser.resetFilters}
+            owned={browser.ownedForFilters}
             showOwnership={isSignedIn}
           />
         </aside>
 
         <main className={`${styles.panel} ${styles.main}`}>
           <CollectionToolbar
-            count={filteredCards.length}
-            sort={sort}
-            onSortChange={setSort}
-            onOpenFilters={() => setDrawerOpen((open) => !open)}
-            activeFilterCount={activeFilterCount}
+            count={browser.cards.length}
+            sort={browser.sort}
+            onSortChange={browser.setSort}
+            onOpenFilters={() => browser.setDrawerOpen((open) => !open)}
+            activeFilterCount={browser.activeFilterCount}
           />
 
           <CardGrid
-            cards={filteredCards}
+            cards={browser.cards}
             onCardClick={setDetailCardId}
             // Ce que le joueur possède, PAS ce que le filtre laisse passer :
             // sinon une recherche sans résultat afficherait « tu ne possèdes
@@ -157,8 +103,8 @@ export function CollectionScreen({ isSignedIn, ownedCardIds }: CollectionScreenP
         <CardDetailModal
           cardId={detailCardId}
           onClose={() => setDetailCardId(null)}
-          onPrevious={filteredCards.length > 1 ? () => showRelative(-1) : undefined}
-          onNext={filteredCards.length > 1 ? () => showRelative(1) : undefined}
+          onPrevious={browser.cards.length > 1 ? () => setDetailCardId((id) => (id ? browser.relativeCardId(id, -1) : id)) : undefined}
+          onNext={browser.cards.length > 1 ? () => setDetailCardId((id) => (id ? browser.relativeCardId(id, 1) : id)) : undefined}
           onShowCard={setDetailCardId}
         />
       )}

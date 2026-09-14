@@ -1,8 +1,9 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { GameSelect } from "@/components/game-ui/GameSelect";
 import { COLLECTION_SORT_OPTIONS, type SortMode } from "@/features/collection/cardFilters";
-import styles from "@/features/collection/CollectionScreen.module.css";
+import styles from "@/features/collection/CardBrowser.module.css";
 
 interface CollectionToolbarProps {
   count: number;
@@ -12,6 +13,8 @@ interface CollectionToolbarProps {
   onOpenFilters: () => void;
   /** Nombre de filtres actifs, affiché sur le bouton du tiroir. */
   activeFilterCount: number;
+  /** Contrôles propres à l'écran, après le tri (ex : bascule du panneau de deck). */
+  extra?: ReactNode;
 }
 
 /**
@@ -23,7 +26,14 @@ interface CollectionToolbarProps {
  * nulle part ailleurs — deux endroits pour le même filtre, c'est deux
  * endroits à synchroniser et un doute permanent sur lequel fait foi.
  */
-export function CollectionToolbar({ count, sort, onSortChange, onOpenFilters, activeFilterCount }: CollectionToolbarProps) {
+export function CollectionToolbar({
+  count,
+  sort,
+  onSortChange,
+  onOpenFilters,
+  activeFilterCount,
+  extra,
+}: CollectionToolbarProps) {
   return (
     <div className={styles.toolbar}>
       <button type="button" className={styles.filtersToggle} onClick={onOpenFilters}>
@@ -42,6 +52,7 @@ export function CollectionToolbar({ count, sort, onSortChange, onOpenFilters, ac
         <span className={styles.sortLabel}>Trier par</span>
         <GameSelect value={sort} options={COLLECTION_SORT_OPTIONS} onChange={onSortChange} className={styles.sortSelect} />
       </div>
+      {extra}
     </div>
   );
 }

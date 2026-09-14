@@ -505,6 +505,40 @@
 }
 
 /* ══════════════════════════════════════════════════════════════
+ * TIROIR ANTICIPÉ — un écran à trois colonnes (`data-columns="3"`, le
+ * Deck Builder) n'a pas la place de garder filtres ET deck ouverts sur un
+ * laptop : les filtres passent en tiroir dès 1280px, le deck reste visible.
+ * Mêmes règles que le tiroir général ci-dessous, restreintes à ce cas.
+ * ══════════════════════════════════════════════════════════════ */
+@media (max-width: 1280px) and (min-width: 901px) and (min-height: 561px) {
+  .workspace[data-columns="3"] .sidebar {
+    position: absolute;
+    z-index: 5;
+    top: clamp(6px, 1vh, 12px);
+    bottom: clamp(8px, 1.2vh, 14px);
+    left: clamp(8px, 1.4vw, 16px);
+    width: min(270px, 72vw);
+    background: var(--panel-solid);
+    transform: translateX(calc(-100% - clamp(8px, 1.4vw, 16px)));
+    transition: transform 180ms cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+
+  .workspace[data-columns="3"][data-drawer="open"] .sidebar { transform: none; }
+
+  .workspace[data-columns="3"][data-drawer="open"] .drawerScrim {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    border: none;
+    padding: 0;
+    background: rgba(3, 8, 14, 0.55);
+  }
+
+  .workspace[data-columns="3"] .filtersToggle { display: inline-flex; }
+}
+
+/* ══════════════════════════════════════════════════════════════
  * TIROIR — écran court (paysage mobile) ou fenêtre étroite.
  * La colonne de filtres sort du flux et s'ouvre par-dessus la grille :
  * comprimée davantage, elle deviendrait illisible sans rien rendre à la
@@ -566,4 +600,34 @@
   .sidebar {
     transition: none;
   }
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * SUPERPOSITION PAR CELLULE (`CardGrid.cellExtras`) — le Deck Builder y
+ * pose la quantité et ses boutons. Ancrée au bas de la carte ; ce qui y
+ * est rendu est cliquable, le reste laisse passer vers la carte.
+ * ────────────────────────────────────────────────────────────── */
+.cellExtras {
+  position: absolute;
+  inset-inline: 6%;
+  bottom: -6px;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.cellExtras > * {
+  pointer-events: auto;
+}
+
+/* Le lien « Réinitialiser » reste en place, simplement éteint. */
+.resetLink:disabled {
+  opacity: 0.35;
+  cursor: default;
+  text-decoration: none;
+}
+
+.resetLink:disabled:hover {
+  color: var(--ink-dim);
 }
