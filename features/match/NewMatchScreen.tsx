@@ -37,25 +37,19 @@ interface NewMatchScreenProps {
 const SELECTABLE_DECKS: readonly DeckList[] = PLAYABLE_DECKS;
 
 /**
- * Valeur sentinelle du sélecteur : le deck n'est tiré qu'au moment de
- * lancer la partie, jamais figé à l'affichage — deux parties d'affilée
- * avec ce réglage donnent bien deux adversaires différents.
+ * Deck du BOT : toujours tiré au sort, jamais choisi — on ne règle que le
+ * sien, on découvre ce qui arrive en face. Tirage au LANCEMENT et non à
+ * l'affichage, pour que deux parties d'affilée donnent bien deux
+ * adversaires différents.
+ *
+ * `Math.random` est ici un choix d'INTERFACE, pas un aléa de moteur : il
+ * ne touche pas `GameState.rngState`, qui doit rester déterministe.
  */
-const RANDOM_DECK = "__random__";
-
-const RANDOM_DECK_OPTION: GameSelectOption<string> = {
-  value: RANDOM_DECK,
-  label: "Deck aléatoire",
-  group: "Au hasard",
-};
-
-/** `Math.random` est ici un choix d'INTERFACE, pas un aléa de moteur : il ne touche pas `GameState.rngState`, qui doit rester déterministe. */
 function pickRandomDeck(): DeckList {
   return SELECTABLE_DECKS[Math.floor(Math.random() * SELECTABLE_DECKS.length)]!;
 }
 
 const DECK_OPTIONS: GameSelectOption<string>[] = [
-  RANDOM_DECK_OPTION,
   ...PRECONSTRUCTED_DECKS.map((deck) => ({ value: deck.id, label: deck.name, group: "Decks de base" })),
   ...ARCHETYPE_DECKS.map((deck) => ({
     value: deck.id,
@@ -80,19 +74,17 @@ const BOT_DIFFICULTIES: { id: BotDifficulty; label: string; description: string 
 /** Écran de sélection des Navires/decks avant une partie locale : contre un autre joueur (hot-seat) ou contre un bot. */
 export function NewMatchScreen({ onStart, starting = false, error = null, botNote }: NewMatchScreenProps) {
   const [deck1Id, setDeck1Id] = useState(SELECTABLE_DECKS[0]!.id);
-  // L'adversaire tire au sort par défaut : on ne choisit que SON deck, et
-  // on découvre en face ce qui tombe. Reste modifiable — le joueur qui
-  // veut affronter une liste précise la désigne.
-  const [deck2Id, setDeck2Id] = useState<string>(RANDOM_DECK);
+  /** Uniquement pour le hot-seat : contre un bot, le second deck est tiré au sort et ce réglage est ignoré. */
+  const [deck2Id, setDeck2Id] = useState(SELECTABLE_DECKS[1]!.id);
   const [opponentType, setOpponentType] = useState<"pvp" | "bot">("pvp");
   const [botDifficulty, setBotDifficulty] = useState<BotDifficulty>("moyen");
 
   function handleStart() {
     const opponent: MatchOpponent = opponentType === "bot" ? { type: "bot", difficulty: botDifficulty } : { type: "pvp" };
-    // Tirage au LANCEMENT, pour que "aléatoire" reste aléatoire d'une
-    // partie à l'autre sans rien re-régler.
-    const deck1 = deck1Id === RANDOM_DECK ? pickRandomDeck() : SELECTABLE_DECKS.find((d) => d.id === deck1Id)!;
-    const deck2 = deck2Id === RANDOM_DECK ? pickRandomDeck() : SELECTABLE_DECKS.find((d) => d.id === deck2Id)!;
+    const deck1 = SELECTABLE_DECKS.find((d) => d.id === deck1Id)!;
+    // Contre un bot, le tirage a lieu ICI — au lancement, pas à
+    // l'affichage : relancer une partie change d'adversaire.
+    const deck2 = opponentType === "bot" ? pickRandomDeck() : SELECTABLE_DECKS.find((d) => d.id === deck2Id)!;
     onStart(deck1, deck2, opponent);
   }
 
@@ -150,8 +142,8 @@ export function NewMatchScreen({ onStart, starting = false, error = null, botNot
       </GamePanel>
 
       <div className="flex w-full max-w-xl flex-col gap-4 sm:flex-row">
-        <DeckPicker label="Joueur 1" value={deck1Id} onChange={setDeck1Id} />
-        <DeckPicker label={opponentType === "bot" ? "Bot" : "Joueur 2"} value={deck2Id} onChange={setDeck2Id} />
+        <DeckPicker label={opponentType === "bot" ? "Votre deck" : "Joueur 1"} value={deck1Id} onChange={setDeck1Id} />
+        {opponentType === "bot" ? <RandomOpponentPanel /> : <DeckPicker label="Joueur 2" value={deck2Id} onChange={setDeck2Id} />}
       </div>
 
       <GameButton variant="primary" onClick={handleStart} disabled={starting} className="!px-8 !py-3 !text-base">
@@ -159,6 +151,32 @@ export function NewMatchScreen({ onStart, starting = false, error = null, botNot
       </GameButton>
       {error && <p className="text-sm text-rose-400">{error}</p>}
     </main>
+  );
+}
+
+/** Face au bot il n'y a rien à régler : on annonce le tirage, on ne le propose pas. Même gabarit que `DeckPicker` pour que les deux colonnes restent alignées. */
+function RandomOpponentPanel() {
+  return (
+    <GamePanel className="flex flex-1 flex-col gap-2 p-4 text-left">
+      <span className={`text-sm font-medium ${TEXT_SECONDARY}`}>Bot</span>
+      <div
+        className={`flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-sm ${TEXT_PRIMARY} shadow-[0_0_0_1px_var(--border-subtle)]`}
+      >
+        <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5 shrink-0 text-[var(--accent)]" aria-hidden>
+          <path
+            d="M16 3h5v5M21 3l-7 7M8 21H3v-5M3 21l7-7M21 16v5h-5M14 14l7 7M3 8V3h5M10 10L3 3"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+        Deck aléatoire
+      </div>
+      <p className={`text-xs leading-snug ${TEXT_SECONDARY}`}>
+        Tiré parmi les {SELECTABLE_DECKS.length} listes au lancement — Navire et style découverts en partie.
+      </p>
+    </GamePanel>
   );
 }
 
@@ -171,21 +189,12 @@ function DeckPicker({ label, value, onChange }: { label: string; value: string; 
     <GamePanel className="flex flex-1 flex-col gap-2 p-4 text-left">
       <span className={`text-sm font-medium ${TEXT_SECONDARY}`}>{label}</span>
       <GameSelect value={value} onChange={onChange} options={DECK_OPTIONS} className="w-full" />
-      {/* Rien à annoncer sur un tirage au sort : ni Navire ni style tant que la partie n'est pas lancée — le dire serait mentir sur ce qui va tomber. */}
-      {value === RANDOM_DECK ? (
-        <p className={`text-xs leading-snug ${TEXT_SECONDARY}`}>
-          Tiré parmi les {SELECTABLE_DECKS.length} listes au lancement — Navire et style découverts en partie.
-        </p>
-      ) : (
-        <>
-          {/* Suggestion du Navire correspondant : redondante avec le libellé de l'option pour un archétype, mais utile pour un deck de base où le nom du deck EST déjà celui du Navire. */}
-          {shipName && (
-            <span className={`text-[11px] ${TEXT_SECONDARY}`}>{isArchetype ? `Navire suggéré : ${shipName}` : `Navire : ${shipName}`}</span>
-          )}
-          {/* Le joueur doit savoir ce que le deck fait avant de le choisir, pas juste voir son nom. */}
-          {selected && <p className={`text-xs leading-snug ${TEXT_SECONDARY}`}>{selected.description}</p>}
-        </>
+      {/* Suggestion du Navire correspondant : redondante avec le libellé de l'option pour un archétype, mais utile pour un deck de base où le nom du deck EST déjà celui du Navire. */}
+      {shipName && (
+        <span className={`text-[11px] ${TEXT_SECONDARY}`}>{isArchetype ? `Navire suggéré : ${shipName}` : `Navire : ${shipName}`}</span>
       )}
+      {/* Le joueur doit savoir ce que le deck fait avant de le choisir, pas juste voir son nom. */}
+      {selected && <p className={`text-xs leading-snug ${TEXT_SECONDARY}`}>{selected.description}</p>}
     </GamePanel>
   );
 }
