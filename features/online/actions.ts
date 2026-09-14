@@ -11,6 +11,7 @@ import {
   type MatchSnapshot,
   type MatchUpdate,
 } from "@/features/matches/matchStore";
+import { packFrames, type PackedFrames } from "@/features/matches/matchFrames";
 
 /**
  * Parties en ligne — Server Actions exposées au navigateur.
@@ -95,11 +96,14 @@ export async function joinOnlineMatch(inviteCode: string, deckId: string): Promi
  * Métadonnées de la partie et vue projetée pour l'appelant. Appelée au
  * chargement, puis chaque fois que Realtime signale une nouvelle version.
  */
-export async function fetchMatchView(matchId: string): Promise<ActionResult<MatchSnapshot>> {
+export async function fetchMatchView(
+  matchId: string
+): Promise<ActionResult<{ match: MatchSnapshot["match"]; frames: PackedFrames | null }>> {
   const user = await requireUser();
   const snapshot = await loadSnapshot(matchId, user.id);
   if (!snapshot) return { ok: false, error: "Partie introuvable." };
-  return { ok: true, data: snapshot };
+  // Emballée comme les vues d'un coup : les decks masqués ne font pas le voyage (`matchFrames`).
+  return { ok: true, data: { match: snapshot.match, frames: snapshot.view ? packFrames([snapshot.view]) : null } };
 }
 
 /**

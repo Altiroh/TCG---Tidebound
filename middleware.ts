@@ -51,6 +51,15 @@ export async function middleware(request: NextRequest) {
   return response;
 }
 
+/**
+ * Uniquement les pages, routes et Server Actions : jamais les fichiers
+ * statiques. Sans ces exclusions, chaque illustration, cadre, icône ou son
+ * de `public/` déclenchait `auth.getUser()` — un aller-retour vers Supabase
+ * Auth PAR FICHIER pour un joueur connecté (des dizaines par lot de cartes
+ * sur la Collection), pour une session qu'aucun de ces fichiers ne lit.
+ */
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|assets/|favicon.ico|manifest.webmanifest|sw.js|offline.html|.*\\.(?:webp|png|jpg|jpeg|gif|svg|ico|mp3|wav|ogg|woff2?)$).*)",
+  ],
 };

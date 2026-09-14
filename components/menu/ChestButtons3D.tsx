@@ -278,7 +278,25 @@ export function ChestButtons3D({ slots, iconSlots }: { slots: ChestSlotDef[]; ic
     rim.position.set(-160, 120, 140);
     scene.add(rim);
 
-    const textureLoader = new THREE.TextureLoader();
+    /**
+     * Rendu À LA DEMANDE : la scène n'est redessinée que tant qu'un bouton
+     * s'anime (survol, appui, retour au repos), ou quand quelque chose a
+     * changé (redimensionnement, texture chargée). Auparavant la boucle
+     * tournait à 60 images/s en permanence, même menu immobile — la carte
+     * graphique travaillait pour rien tant que l'écran d'accueil restait
+     * ouvert.
+     */
+    let raf = 0;
+    // Une texture ou la police peuvent finir de charger après le démontage.
+    let disposed = false;
+    function requestRender() {
+      if (!raf && !disposed) raf = requestAnimationFrame(animate);
+    }
+
+    // Les textures arrivent après le premier rendu : chacune en redemande un.
+    const loadingManager = new THREE.LoadingManager();
+    loadingManager.onProgress = () => requestRender();
+    const textureLoader = new THREE.TextureLoader(loadingManager);
 
     const entries: ButtonEntry[] = [];
 
@@ -404,6 +422,7 @@ export function ChestButtons3D({ slots, iconSlots }: { slots: ChestSlotDef[]; ic
       const w = container!.clientWidth;
       const h = container!.clientHeight;
       if (w === 0 || h === 0) return;
+      requestRender();
       renderer.setSize(w, h, true);
       camera.right = w;
       camera.bottom = -h;
@@ -489,25 +508,30 @@ export function ChestButtons3D({ slots, iconSlots }: { slots: ChestSlotDef[]; ic
     function onMove(e: PointerEvent) {
       pointerToNdc(e);
       const hit = pick();
-      hovered = hit && !hit.disabled ? hit : null;
+      const next = hit && !hit.disabled ? hit : null;
+      if (next !== hovered) requestRender();
+      hovered = next;
       renderer.domElement.style.cursor = hovered ? "pointer" : "default";
     }
     function onDown(e: PointerEvent) {
       pointerToNdc(e);
       const hit = pick();
       pressed = hit && !hit.disabled ? hit : null;
+      requestRender();
     }
     function onUp() {
       if (pressed && pressed === hovered && pressed.href) {
         playButtonClick();
         router.push(pressed.href);
       }
+      if (pressed) requestRender();
       pressed = null;
     }
     function onLeave() {
       hovered = null;
       pressed = null;
       pointerNdc.set(-10, -10);
+      requestRender();
     }
 
     renderer.domElement.addEventListener("pointermove", onMove);
@@ -516,9 +540,13 @@ export function ChestButtons3D({ slots, iconSlots }: { slots: ChestSlotDef[]; ic
     renderer.domElement.addEventListener("pointerleave", onLeave);
 
     const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    let raf = 0;
+    // Les libellés procéduraux sont redessinés une fois Cinzel chargée
+    // (`proceduralLabelTexture`) : un rendu de plus à ce moment-là.
+    document.fonts.load("700 74px Cinzel").then(requestRender, () => undefined);
+
     function animate() {
-      raf = requestAnimationFrame(animate);
+      raf = 0;
+      let settled = true;
       for (const entry of entries) {
         const isHover = entry === hovered,
           isPress = entry === pressed;
@@ -533,6 +561,12 @@ export function ChestButtons3D({ slots, iconSlots }: { slots: ChestSlotDef[]; ic
         const pressLerp = reduceMotion ? 1 : pressTarget > entry.pressMix ? 0.6 : 0.22;
         entry.hoverMix += (hoverTarget - entry.hoverMix) * hoverLerp;
         entry.pressMix += (pressTarget - entry.pressMix) * pressLerp;
+        // Assez près de la cible pour ne plus se voir : on y cale la valeur,
+        // sinon l'interpolation ne l'atteint jamais et la boucle ne s'arrête pas.
+        if (Math.abs(hoverTarget - entry.hoverMix) < 0.002) entry.hoverMix = hoverTarget;
+        else settled = false;
+        if (Math.abs(pressTarget - entry.pressMix) < 0.002) entry.pressMix = pressTarget;
+        else settled = false;
 
         entry.group.position.z = entry.hoverMix * entry.liftAmount - entry.pressMix * entry.pressAmount;
         // Léger tassement au clic : un vrai bouton physique se comprime un
@@ -556,10 +590,12 @@ export function ChestButtons3D({ slots, iconSlots }: { slots: ChestSlotDef[]; ic
         }
       }
       renderer.render(scene, camera);
+      if (!settled) requestRender();
     }
-    animate();
+    requestRender();
 
     return () => {
+      disposed = true;
       cancelAnimationFrame(raf);
       resizeObserver.disconnect();
       renderer.domElement.removeEventListener("pointermove", onMove);

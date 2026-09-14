@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { forgetProgression } from "@/features/progression/progressionSync";
 import { SettingsDialog } from "@/features/settings/SettingsDialog";
 import { playButtonClick } from "@/lib/sound";
 
@@ -32,6 +33,12 @@ function GearIcon() {
  */
 export function OptionsButton({ isSignedIn }: OptionsButtonProps) {
   const [open, setOpen] = useState(false);
+
+  // Le menu repasse en « non connecté » après une déconnexion : le bandeau
+  // des autres écrans ne doit plus reprendre le compte mémorisé.
+  useEffect(() => {
+    if (!isSignedIn) forgetProgression();
+  }, [isSignedIn]);
 
   return (
     <>

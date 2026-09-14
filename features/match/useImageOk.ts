@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { knownImageStatus, loadImageStatus } from "@/features/match/imageStatusCache";
 
 /**
  * Précharge une image hors du DOM plutôt que de dépendre de l'événement
@@ -7,25 +8,31 @@ import { useEffect, useState } from "react";
  * `onError` s'est révélé peu fiable dans les tests. `false` tant que
  * l'image n'a pas fini de charger OU si elle échoue (404, pas encore
  * fournie) — pas d'état intermédiaire à gérer côté appelant.
+ *
+ * Une URL déjà résolue ailleurs dans l'app répond `true` dès le premier
+ * rendu (`imageStatusCache`), sans nouvelle requête ni second rendu.
  */
 export function useImageOk(url: string | null): boolean {
-  const [ok, setOk] = useState(false);
+  const [ok, setOk] = useState(() => url !== null && knownImageStatus(url) === "ok");
 
   useEffect(() => {
-    let cancelled = false;
-    setOk(false);
     // `null` = calque qui n'a pas lieu d'exister pour cette carte (ex: le
     // débord, réservé aux Abyssales) : ne pas le demander évite un 404 par
     // carte affichée.
-    if (url === null) return;
-    const img = new window.Image();
-    img.onload = () => {
-      if (!cancelled) setOk(true);
-    };
-    img.onerror = () => {
-      if (!cancelled) setOk(false);
-    };
-    img.src = url;
+    if (url === null) {
+      setOk(false);
+      return;
+    }
+    const known = knownImageStatus(url);
+    if (known !== "loading") {
+      setOk(known === "ok");
+      return;
+    }
+    setOk(false);
+    let cancelled = false;
+    void loadImageStatus(url).then((status) => {
+      if (!cancelled) setOk(status === "ok");
+    });
     return () => {
       cancelled = true;
     };

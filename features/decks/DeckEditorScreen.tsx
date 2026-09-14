@@ -25,6 +25,11 @@ import { playButtonClick } from "@/lib/sound";
 
 const DRAG_MIME = "text/tidebound-card-id";
 
+/** Hors du composant : une référence stable, pour ne pas re-rendre toutes les cellules mémoïsées de `CardGrid`. */
+function handleCardDragStart(def: CardDefinition, event: React.DragEvent<HTMLButtonElement>) {
+  event.dataTransfer.setData(DRAG_MIME, def.id);
+}
+
 /** Sérialisation grossière pour détecter des modifications non sauvegardées (nom + Navire + multiset de cartes, ordre des exemplaires sans importance). */
 function serializeState(name: string, shipId: string, cardIds: string[]): string {
   return `${name}|${shipId}|${[...cardIds].sort().join(",")}`;
@@ -370,7 +375,7 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
             hasAnyCards={!isSignedIn || ownedCardIds.length > 0}
             owned={owned}
             cellExtras={renderCellExtras}
-            onCardDragStart={(def, event) => event.dataTransfer.setData(DRAG_MIME, def.id)}
+            onCardDragStart={handleCardDragStart}
           />
         </main>
 

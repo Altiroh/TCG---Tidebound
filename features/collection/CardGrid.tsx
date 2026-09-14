@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { CardDefinition, CardInstance } from "@/game";
 import styles from "@/features/collection/CardBrowser.module.css";
 import { CardTile } from "@/features/match/CardTile";
@@ -24,6 +24,50 @@ function displayInstance(cardId: string): CardInstance {
     hasAttackedThisTurn: false,
   };
 }
+
+/**
+ * Une cellule de la grille, MÉMOÏSÉE : saisir dans la recherche, ouvrir une
+ * fiche ou charger le lot suivant re-rendait jusqu'ici chaque carte déjà
+ * affichée (cadre, illustration, statistiques recalculées). Une cellule ne
+ * se redessine plus que si SA carte, son estompage ou les rappels du parent
+ * changent — d'où l'intérêt que ces rappels soient stables côté écran
+ * (`useCallback`, setter d'état).
+ */
+const GridCell = memo(function GridCell({
+  def,
+  index,
+  missing,
+  onCardClick,
+  cellExtras,
+  onCardDragStart,
+}: {
+  def: CardDefinition;
+  index: number;
+  missing: boolean;
+  onCardClick: CardGridProps["onCardClick"];
+  cellExtras: CardGridProps["cellExtras"];
+  onCardDragStart: CardGridProps["onCardDragStart"];
+}) {
+  const instance = useMemo(() => displayInstance(def.id), [def.id]);
+  return (
+    <div
+      className={`${styles.cardCell} ${missing ? styles.cardCellMissing : ""}`}
+      style={index < STAGGER_COUNT ? { animationDelay: `${index * 15}ms` } : undefined}
+    >
+      <CardTile
+        instance={instance}
+        tideState="calme"
+        widthClassName="w-full"
+        scaleOnHover={false}
+        liftOnHover
+        onClick={() => onCardClick(def.id)}
+        draggable={Boolean(onCardDragStart)}
+        onDragStart={onCardDragStart ? (event) => onCardDragStart(def, event) : undefined}
+      />
+      {cellExtras && <div className={styles.cellExtras}>{cellExtras(def)}</div>}
+    </div>
+  );
+});
 
 interface CardGridProps {
   cards: CardDefinition[];
@@ -143,23 +187,15 @@ export function CardGrid({ cards, onCardClick, hasAnyCards, owned, emptyLabel, c
         <>
           <div className={styles.cardGrid}>
             {visibleCards.map((def, index) => (
-              <div
+              <GridCell
                 key={`${generation}:${def.id}`}
-                className={`${styles.cardCell} ${owned && !owned.has(def.id) ? styles.cardCellMissing : ""}`}
-                style={index < STAGGER_COUNT ? { animationDelay: `${index * 15}ms` } : undefined}
-              >
-                <CardTile
-                  instance={displayInstance(def.id)}
-                  tideState="calme"
-                  widthClassName="w-full"
-                  scaleOnHover={false}
-                  liftOnHover
-                  onClick={() => onCardClick(def.id)}
-                  draggable={Boolean(onCardDragStart)}
-                  onDragStart={onCardDragStart ? (event) => onCardDragStart(def, event) : undefined}
-                />
-                {cellExtras && <div className={styles.cellExtras}>{cellExtras(def)}</div>}
-              </div>
+                def={def}
+                index={index}
+                missing={Boolean(owned && !owned.has(def.id))}
+                onCardClick={onCardClick}
+                cellExtras={cellExtras}
+                onCardDragStart={onCardDragStart}
+              />
             ))}
           </div>
 

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AUTH_LINK_CLASS } from "@/components/auth/AuthGlassPanel";
 import { PasswordField } from "@/components/auth/PasswordField";
 import { deleteAccount } from "@/features/settings/actions";
+import { forgetProgression } from "@/features/progression/progressionSync";
 
 interface DeleteAccountSectionProps {
   /** Refermer le dialogue une fois le compte supprimé — plus rien à y régler côté compte. */
@@ -29,6 +30,7 @@ export function DeleteAccountSection({ onDeleted }: DeleteAccountSectionProps) {
     setError(null);
     const result = await deleteAccount(formData);
     if (result.ok) {
+      forgetProgression();
       onDeleted();
       // Le rendu serveur du menu repasse en "non connecté" (la session
       // vient d'être détruite côté serveur).

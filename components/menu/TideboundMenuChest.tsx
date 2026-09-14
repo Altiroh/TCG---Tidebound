@@ -3,7 +3,17 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Route } from "next";
-import { ChestButtons3D } from "@/components/menu/ChestButtons3D";
+import dynamic from "next/dynamic";
+
+/**
+ * Chargé à part, côté client uniquement : `three` pèse lourd et ne sert
+ * qu'aux boutons 3D. La page d'accueil (image du coffret, liens
+ * accessibles) s'affiche sans l'attendre ; les plaques 3D arrivent par
+ * dessus dès que le module est là.
+ */
+const ChestButtons3D = dynamic(() => import("@/components/menu/ChestButtons3D").then((mod) => mod.ChestButtons3D), {
+  ssr: false,
+});
 
 /**
  * Configuration centralisée des textures du coffret. `chestBase` est

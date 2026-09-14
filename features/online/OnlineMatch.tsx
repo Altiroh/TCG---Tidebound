@@ -8,6 +8,7 @@ import { fetchMatchView, submitMatchAction } from "@/features/online/actions";
 import { OnlineBoard } from "@/features/online/OnlineBoard";
 import { MatchRewardBanner } from "@/features/progression/MatchRewardBanner";
 import type { MatchRow } from "@/features/matches/matchStore";
+import { unpackFrames } from "@/features/matches/matchFrames";
 
 /**
  * Pause entre deux états successifs renvoyés par le serveur pour le tour du
@@ -55,7 +56,7 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
     shownVersion.current = result.data.match.state_version;
     latestRemoteVersion.current = Math.max(latestRemoteVersion.current, shownVersion.current);
     setMatch(result.data.match);
-    setView(result.data.view);
+    setView(result.data.frames ? unpackFrames(result.data.frames)[0]! : null);
   }
 
   useEffect(() => {
@@ -103,7 +104,8 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
       return;
     }
 
-    const { match: updated, views } = result.data;
+    const { match: updated, frames } = result.data;
+    const views = unpackFrames(frames);
     shownVersion.current = updated.state_version;
     setMatch(updated);
 

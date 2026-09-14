@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { fetchProgression, type ProgressionSummary } from "@/features/progression/actions";
-import { onProgressionChanged } from "@/features/progression/progressionSync";
+import { onProgressionChanged, rememberProgression, rememberedProgression } from "@/features/progression/progressionSync";
 import { SettingsDialog } from "@/features/settings/SettingsDialog";
 import styles from "@/features/shell/ScreenShell.module.css";
 import { playButtonClick } from "@/lib/sound";
@@ -74,7 +74,11 @@ function avatarInitial(name: string | null): string {
  * bouton qui apparaît après coup déplace ce qui l'entoure.
  */
 export function HeaderPlayer() {
-  const [summary, setSummary] = useState<ProgressionSummary | null>(null);
+  // Dernière lecture connue affichée d'emblée : chaque écran monte son propre
+  // bandeau, qui repartait sinon de rien — le bloc du compte apparaissait
+  // une fraction de seconde après tout le reste à CHAQUE navigation. La
+  // relecture se fait quand même en arrière-plan et corrige l'affichage.
+  const [summary, setSummary] = useState<ProgressionSummary | null>(rememberedProgression);
   const [optionsOpen, setOptionsOpen] = useState(false);
 
   useEffect(() => {
@@ -86,6 +90,9 @@ export function HeaderPlayer() {
       const request = ++latest;
       fetchProgression()
         .then((result) => {
+          // Mémorisée même si ce bandeau a été démonté entre-temps : le
+          // prochain écran en profitera. Déconnecté : on n'en garde rien.
+          rememberProgression(result);
           if (!cancelled && request === latest) setSummary(result);
         })
         .catch((error) => console.error("[HeaderPlayer] Lecture de la progression impossible :", error));

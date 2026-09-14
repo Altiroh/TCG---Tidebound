@@ -12,6 +12,7 @@ import type { Database } from "@/lib/supabase/types";
 import { awardMatchReward } from "@/features/progression/rewards";
 import { botTidesEnabled } from "@/features/progression/botRewardPolicy";
 import { recordMatchQuestProgress } from "@/features/quests/questService";
+import { packFrames, type PackedFrames } from "@/features/matches/matchFrames";
 
 /**
  * Parties arbitrées côté serveur — PvP comme contre bot.
@@ -47,9 +48,10 @@ export interface MatchUpdate {
   /**
    * Vues successives, projetées pour l'appelant : l'état juste après son
    * coup, puis après chaque action du bot. Le client les rejoue une par une
-   * pour que le tour du bot reste lisible, carte par carte.
+   * pour que le tour du bot reste lisible, carte par carte. Emballées pour
+   * ne transporter le journal qu'une fois (`unpackFrames` côté client).
    */
-  views: GameState[];
+  frames: PackedFrames;
 }
 
 export type StoreResult<T> = { ok: true; data: T } | { ok: false; error: string };
@@ -82,9 +84,10 @@ async function loadFullState(matchId: string): Promise<{ state: GameState; versi
 
 /** Partie + vue projetée pour un participant. `null` si la partie n'existe pas ou si l'appelant n'y joue pas. */
 export async function loadSnapshot(matchId: string, userId: string): Promise<MatchSnapshot | null> {
-  const match = await loadMatchRow(matchId);
+  // En parallèle : l'état n'est renvoyé qu'après la vérification de
+  // participation, qui reste la condition pour qu'il sorte d'ici.
+  const [match, full] = await Promise.all([loadMatchRow(matchId), loadFullState(matchId)]);
   if (!match || !isParticipant(match, userId)) return null;
-  const full = await loadFullState(matchId);
   return { match, view: full ? toPlayerView(full.state, userId) : null };
 }
 
@@ -109,11 +112,12 @@ export async function submitAction(matchId: string, userId: string, action: Play
     return { ok: false, error: "Action refusée." };
   }
 
-  const match = await loadMatchRow(matchId);
+  // Les deux lectures en parallèle : un aller-retour en base de moins par
+  // coup. L'état complet ne quitte jamais cette fonction, il n'y a donc rien
+  // à protéger en attendant la vérification de participation.
+  const [match, full] = await Promise.all([loadMatchRow(matchId), loadFullState(matchId)]);
   if (!match || !isParticipant(match, userId)) return { ok: false, error: "Partie introuvable." };
   if (match.status !== "active") return { ok: false, error: "Cette partie n'est pas en cours." };
-
-  const full = await loadFullState(matchId);
   if (!full) return { ok: false, error: "Cette partie n'est pas en cours." };
 
   const result = dispatch(full.state, action);
@@ -153,7 +157,7 @@ export async function submitAction(matchId: string, userId: string, action: Play
   // si deux chemins observent la même fin.
   if (finished) await settleFinishedMatch(updatedMatch, finalState);
 
-  return { ok: true, data: { match: updatedMatch, views: frames.map((frame) => toPlayerView(frame, userId)) } };
+  return { ok: true, data: { match: updatedMatch, frames: packFrames(frames.map((frame) => toPlayerView(frame, userId))) } };
 }
 
 /** Récompenses et quêtes de chaque participant HUMAIN d'une partie terminée. */

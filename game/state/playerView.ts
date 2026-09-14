@@ -67,9 +67,13 @@ export function toPlayerView(state: GameState, viewerId: PlayerId): GameState {
   };
 }
 
-/** Instances de substitution : identifiants positionnels, pour qu'aucune carte masquée ne puisse être suivie d'une zone à l'autre. */
-function hiddenCards(cards: CardInstance[], ownerId: PlayerId, zone: "hand" | "deck"): CardInstance[] {
-  return cards.map((_, index) => ({
+/**
+ * Instances de substitution : identifiants positionnels, pour qu'aucune carte masquée ne puisse être suivie d'une zone à l'autre.
+ * Exportée pour que le transport des vues (`features/matches/matchFrames.ts`) puisse ne pas envoyer les decks masqués
+ * et les regénérer À L'IDENTIQUE côté client à partir de leur seule longueur.
+ */
+export function hiddenZoneCards(count: number, ownerId: PlayerId, zone: "hand" | "deck"): CardInstance[] {
+  return Array.from({ length: count }, (_, index) => ({
     instanceId: `hidden_${ownerId}_${zone}_${index}`,
     cardId: HIDDEN_CARD_ID,
     ownerId,
@@ -84,8 +88,8 @@ function projectPlayer(player: PlayerState, viewerId: PlayerId, hiddenBoardIds: 
   const isViewer = player.id === viewerId;
   return {
     ...player,
-    deck: hiddenCards(player.deck, player.id, "deck"),
-    hand: isViewer ? player.hand : hiddenCards(player.hand, player.id, "hand"),
+    deck: hiddenZoneCards(player.deck.length, player.id, "deck"),
+    hand: isViewer ? player.hand : hiddenZoneCards(player.hand.length, player.id, "hand"),
     board: player.board.map((unit) =>
       hiddenBoardIds.has(unit.instanceId)
         ? {

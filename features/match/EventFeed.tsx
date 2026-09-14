@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { getShipDefinition, type GameEvent, type GameState, type PlayerId } from "@/game";
 import { CardThumb } from "@/features/match/CardThumb";
@@ -37,7 +37,11 @@ function shortDelta(attack: number, health: number): string {
 function buildHighlights(state: GameState): Highlight[] {
   const events = state.eventLog;
   const highlights: Highlight[] = [];
-  events.forEach((event, index) => {
+  // Parcours À REBOURS, arrêté dès qu'on a les `HIGHLIGHT_COUNT` derniers :
+  // seule la fin du journal est affichée, inutile de reconstituer toute la
+  // partie (et de recopier la suite du journal à chaque attaque) à chaque rendu.
+  for (let index = events.length - 1; index >= 0 && highlights.length < HIGHLIGHT_COUNT; index--) {
+    const event = events[index]!;
     if (event.type === "BUFF_APPLIED" || event.type === "DEBUFF_APPLIED") {
       highlights.push({
         kind: "effect",
@@ -46,15 +50,16 @@ function buildHighlights(state: GameState): Highlight[] {
         attack: event.attack,
         health: event.health,
       });
-      return;
+      continue;
     }
-    if (event.type !== "ATTACK") return;
+    if (event.type !== "ATTACK") continue;
 
     let amount = 0;
     let retaliation = 0;
     let targetPlayerId: PlayerId | undefined;
     let defenderDestroyed = false;
-    for (const next of events.slice(index + 1)) {
+    for (let nextIndex = index + 1; nextIndex < events.length; nextIndex++) {
+      const next = events[nextIndex]!;
       if (next.type === "ATTACK" || next.type === "END_TURN" || next.type === "PHASE_CHANGED") break;
       if (next.type === "DAMAGE") {
         if (event.defenderInstanceId && next.targetInstanceId === event.defenderInstanceId) amount += next.amount;
@@ -79,8 +84,8 @@ function buildHighlights(state: GameState): Highlight[] {
       retaliation,
       defenderDestroyed,
     });
-  });
-  return highlights.slice(-HIGHLIGHT_COUNT);
+  }
+  return highlights.reverse();
 }
 
 function shipIllustration(state: GameState, playerId: PlayerId): string | undefined {
@@ -245,7 +250,9 @@ function FullLogPanel({ state, playerLabel, onClose }: { state: GameState; playe
 export function EventFeed({ state, playerLabel }: { state: GameState; playerLabel?: PlayerLabel }) {
   const [open, setOpen] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
-  const highlights = buildHighlights(state);
+  // Le plateau se re-rend souvent sans que l'état change (survol, glisser…).
+  const highlights = useMemo(() => buildHighlights(state), [state]);
+  const closeLog = useCallback(() => setOpen(false), []);
   const label = playerLabel ?? ((id?: string) => (id === "p1" ? "Joueur 1" : id === "p2" ? "Joueur 2" : "?"));
 
   useEffect(() => {
@@ -278,7 +285,7 @@ export function EventFeed({ state, playerLabel }: { state: GameState; playerLabe
           )}
         </div>
       </div>
-      {open && <FullLogPanel state={state} playerLabel={label} onClose={() => setOpen(false)} />}
+      {open && <FullLogPanel state={state} playerLabel={label} onClose={closeLog} />}
     </>
   );
 }
