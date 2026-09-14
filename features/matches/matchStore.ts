@@ -1,7 +1,6 @@
 import {
-  ARCHETYPE_DECKS,
   dispatch,
-  PRECONSTRUCTED_DECKS,
+  PLAYABLE_DECKS,
   runBotUntilIdle,
   toPlayerView,
   type DeckList,
@@ -57,7 +56,7 @@ export type StoreResult<T> = { ok: true; data: T } | { ok: false; error: string 
 
 /** Decks jouables sur une partie serveur : decks de base système et archétypes. */
 export function findPlayableDeck(deckId: string): DeckList | undefined {
-  return [...PRECONSTRUCTED_DECKS, ...ARCHETYPE_DECKS].find((deck) => deck.id === deckId);
+  return PLAYABLE_DECKS.find((deck) => deck.id === deckId);
 }
 
 export function isParticipant(match: MatchRow, userId: string): boolean {

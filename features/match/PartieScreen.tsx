@@ -27,9 +27,12 @@ export function PartieScreen({ isSignedIn }: PartieScreenProps) {
   const [bot, setBot] = useState<{ playerId: PlayerId; difficulty: BotDifficulty } | null>(null);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Pourquoi la partie en cours est locale alors qu'elle aurait dû être arbitrée — affiché par-dessus le plateau, jamais bloquant. */
+  const [fallbackNotice, setFallbackNotice] = useState<string | null>(null);
 
-  function startLocalMatch(deck1: DeckList, deck2: DeckList, opponent: MatchOpponent) {
+  function startLocalMatch(deck1: DeckList, deck2: DeckList, opponent: MatchOpponent, notice: string | null = null) {
     setBot(opponent.type === "bot" ? { playerId: "p2", difficulty: opponent.difficulty } : null);
+    setFallbackNotice(notice);
     setMatch(createLocalMatch(deck1, deck2));
   }
 
@@ -41,11 +44,13 @@ export function PartieScreen({ isSignedIn }: PartieScreenProps) {
 
     setStarting(true);
     setError(null);
-    // Une Server Action qui lève (config serveur incomplète, réseau) rejette la promesse : sans ce filet,
-    // le bouton restait bloqué sur "démarrage" sans aucun message.
+    // `startBotMatch` attrape ses propres erreurs, mais un échec de transport
+    // (réseau coupé pendant l'appel) rejette encore la promesse : même issue
+    // que côté serveur — on joue en local plutôt que de rester bloqué.
     const result = await startBotMatch(deck1.id, deck2.id, opponent.difficulty).catch(() => ({
       ok: false as const,
-      error: "Le serveur n'a pas pu créer la partie. Réessaie dans un instant.",
+      error: "Serveur injoignable — partie d'entraînement lancée, sans XP ni quêtes.",
+      serverUnavailable: true,
       signedOut: false,
       matchId: undefined,
     }));
@@ -59,12 +64,20 @@ export function PartieScreen({ isSignedIn }: PartieScreenProps) {
       startLocalMatch(deck1, deck2, opponent);
       return;
     }
+    if (result.serverUnavailable) {
+      // L'arbitrage serveur est en panne (clé de service absente, migration
+      // manquante, base injoignable). Ce n'est pas au joueur d'en faire les
+      // frais : il joue, sans récompense, et on lui dit pourquoi.
+      startLocalMatch(deck1, deck2, opponent, result.error ?? null);
+      return;
+    }
     setError(result.error ?? "Impossible de démarrer la partie.");
   }
 
   function exitMatch() {
     setMatch(null);
     setBot(null);
+    setFallbackNotice(null);
   }
 
   if (!match) {
@@ -81,5 +94,20 @@ export function PartieScreen({ isSignedIn }: PartieScreenProps) {
       />
     );
   }
-  return <MatchBoard initialState={match} onExit={exitMatch} botPlayerId={bot?.playerId} botDifficulty={bot?.difficulty} />;
+  return (
+    <>
+      {fallbackNotice && (
+        <div className="pointer-events-none fixed inset-x-0 top-3 z-[80] flex justify-center px-4">
+          <button
+            type="button"
+            onClick={() => setFallbackNotice(null)}
+            className="pointer-events-auto max-w-lg rounded-full border border-amber-300/35 bg-slate-950/85 px-4 py-2 text-center text-xs text-amber-100 shadow-lg backdrop-blur-md"
+          >
+            {fallbackNotice} <span className="text-amber-200/60">— cliquer pour masquer</span>
+          </button>
+        </div>
+      )}
+      <MatchBoard initialState={match} onExit={exitMatch} botPlayerId={bot?.playerId} botDifficulty={bot?.difficulty} />
+    </>
+  );
 }

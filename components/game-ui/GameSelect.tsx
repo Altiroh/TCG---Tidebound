@@ -62,7 +62,11 @@ export function GameSelect<T extends string>({ value, options, onChange, classNa
 
       {open && (
         <div
-          className={`absolute right-0 top-full z-20 mt-1.5 min-w-full overflow-hidden bg-[var(--surface-glass)] backdrop-blur-xl ${BORDER_SUBTLE} ${RADIUS_SM} ${SHADOW_FLOATING} py-1`}
+          // Hauteur bornée et défilement : la liste de decks dépasse
+          // maintenant la douzaine d'entrées, et `overflow-hidden` seul
+          // faisait sortir les derniers groupes de l'écran sans moyen d'y
+          // accéder.
+          className={`absolute right-0 top-full z-20 mt-1.5 max-h-[min(60vh,22rem)] min-w-full overflow-y-auto overflow-x-hidden bg-[var(--surface-glass)] backdrop-blur-xl ${BORDER_SUBTLE} ${RADIUS_SM} ${SHADOW_FLOATING} py-1`}
         >
           {options.map((opt, i) => (
             <div key={opt.value}>

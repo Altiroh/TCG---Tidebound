@@ -4,6 +4,7 @@ import { computeEffectiveStats } from "@/game/cards/stats";
 import { STATUS_MALADE } from "@/game/cards/types";
 import { resolveEffect } from "@/game/effects/resolveEffect";
 import { grantIgnoreNextTideDamage } from "@/game/environment/resolveEnvironment";
+import { getShipDefinition } from "@/game/environment/shipData";
 import { validateDeckList } from "@/game/rules/deckValidation";
 import { instance, testEnvironment, testGameState, testPlayer } from "./testHelpers";
 
@@ -342,6 +343,37 @@ describe("environnement - decks préconstruits", () => {
     for (const deck of PRECONSTRUCTED_DECKS) {
       const validation = validateDeckList(deck);
       expect(validation.ok, `${deck.name}: ${!validation.ok ? validation.error : ""}`).toBe(true);
+    }
+  });
+
+  it("TOUTE liste proposée à la sélection est valide et connue du serveur — sinon l'écran offre un deck que la partie refusera", async () => {
+    const { PLAYABLE_DECKS, ARCHETYPE_DECKS, CRA_POISCAIL_TEST_DECKS } = await import("@/game/cards/decks/testDecks");
+    const { PRECONSTRUCTED_DECKS } = await import("@/game/cards/decks/preconstructed");
+
+    for (const deck of PLAYABLE_DECKS) {
+      const validation = validateDeckList(deck);
+      expect(validation.ok, `${deck.name}: ${!validation.ok ? validation.error : ""}`).toBe(true);
+      // Le Navire suggéré doit exister : `getShipDefinition` lève sinon, et
+      // la partie ne démarrerait jamais.
+      expect(() => getShipDefinition(deck.shipId)).not.toThrow();
+    }
+
+    // Les trois collections sont disjointes et couvrent exactement `PLAYABLE_DECKS` :
+    // un deck oublié dans l'une serait proposé sans être jouable, ou l'inverse.
+    const grouped = [...PRECONSTRUCTED_DECKS, ...ARCHETYPE_DECKS, ...CRA_POISCAIL_TEST_DECKS];
+    expect(grouped.map((d) => d.id).sort()).toEqual(PLAYABLE_DECKS.map((d) => d.id).sort());
+    expect(new Set(grouped.map((d) => d.id)).size).toBe(grouped.length);
+  });
+
+  it("chaque Navire du catalogue a au moins une liste jouable — un Navire sans deck ne peut pas être essayé", async () => {
+    const { PLAYABLE_DECKS } = await import("@/game/cards/decks/testDecks");
+    const { SHIP_SET } = await import("@/game/environment/shipData");
+
+    for (const ship of SHIP_SET) {
+      expect(
+        PLAYABLE_DECKS.some((deck) => deck.shipId === ship.id),
+        `Aucun deck ne propose ${ship.name}`
+      ).toBe(true);
     }
   });
 });
