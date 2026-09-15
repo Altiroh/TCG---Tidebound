@@ -102,7 +102,9 @@ export function formatEvent(state: GameState, event: GameEvent, playerLabel: (pl
     case "END_TURN":
       return `${playerLabel(event.playerId)} termine son tour.`;
     case "PHASE_CHANGED":
-      return `${playerLabel(event.playerId)} passe en Phase de combat.`;
+      return `${playerLabel(event.playerId)} passe en ${
+        event.phase === "combatPhase" ? "Phase de combat" : event.phase === "mainPhase2" ? "Phase principale 2" : "Phase principale"
+      }.`;
     case "STATUS_CHANGED":
       return event.applied ? "Une carte devient MALADE." : "Une carte n'est plus MALADE.";
     case "REACTION_WINDOW_OPENED":

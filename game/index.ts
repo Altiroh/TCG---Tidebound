@@ -15,7 +15,7 @@ export type {
   GamePhase,
   Zone,
 } from "@/game/state/types";
-export { getPlayer, getOpponent, findCardInstance } from "@/game/state/types";
+export { getPlayer, getOpponent, findCardInstance, isMainPhase, MAIN_PHASES } from "@/game/state/types";
 export { hiddenZoneCards, toPlayerView } from "@/game/state/playerView";
 export { HIDDEN_CARD_ID } from "@/game/cards/hiddenCard";
 

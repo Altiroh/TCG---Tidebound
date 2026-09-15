@@ -3,7 +3,7 @@ import { getCardDefinition } from "@/game/cards/sets/core";
 import { hasKeyword, UNIT_CARD_TYPES, type CardInstance } from "@/game/cards/types";
 import { getShipDefinition } from "@/game/environment/shipData";
 import { canPayReason, reasonFloor } from "@/game/state/reason";
-import type { GamePhase, GameState, PlayerId, PlayerState } from "@/game/state/types";
+import { isMainPhase, type GamePhase, type GameState, type PlayerId, type PlayerState } from "@/game/state/types";
 
 /**
  * Un mot-clé statique (`CardDefinition.keywords`) OU accordé dynamiquement
@@ -86,18 +86,34 @@ export function assertIsActivePlayer(state: GameState, playerId: PlayerId): Vali
   return ok();
 }
 
+const PHASE_LABELS: Record<GamePhase, string> = {
+  waitingForPlayers: "l'attente des joueurs",
+  mainPhase: "la Phase principale",
+  combatPhase: "la Phase de combat",
+  mainPhase2: "la Phase principale 2",
+  finished: "la fin de partie",
+};
+
 /**
- * Structure de tour (README "Structure de tour") : jouer une carte,
- * Saborder ou Briser un Objet sont réservés à la Phase principale ;
- * attaquer est réservé à la Phase de combat, atteinte via `advancePhase`.
+ * Structure de tour (README "Structure de tour") : Phase principale →
+ * Phase de combat → Phase principale 2, chaque passage via `advancePhase`.
+ * Attaquer est réservé à la Phase de combat ; jouer une carte, Saborder ou
+ * Briser un Objet aux Phases PRINCIPALES — les deux (`assertInMainPhase`).
  */
 export function assertInPhase(state: GameState, playerId: PlayerId, phase: GamePhase): ValidationResult {
   const player = state.players.find((p) => p.id === playerId);
   if (!player) return fail("Joueur introuvable.");
   if (state.phase !== phase) {
-    const label = phase === "mainPhase" ? "la Phase principale" : "la Phase de combat";
-    return fail(`Cette action n'est possible que pendant ${label}.`);
+    return fail(`Cette action n'est possible que pendant ${PHASE_LABELS[phase]}.`);
   }
+  return ok();
+}
+
+/** Variante de `assertInPhase` acceptant indifféremment les deux Phases principales. */
+export function assertInMainPhase(state: GameState, playerId: PlayerId): ValidationResult {
+  const player = state.players.find((p) => p.id === playerId);
+  if (!player) return fail("Joueur introuvable.");
+  if (!isMainPhase(state.phase)) return fail("Cette action n'est possible que pendant une Phase principale.");
   return ok();
 }
 

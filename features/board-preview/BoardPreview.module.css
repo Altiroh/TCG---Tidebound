@@ -469,6 +469,79 @@
   justify-content: center;
 }
 
+/* Cuve du médaillon : le disque peint, découpé en rond. Le voile de
+   vidage (`.shipGaugeDrain`) descend à l'intérieur. */
+.shipGaugeBowl {
+  position: absolute;
+  inset: 10%;
+  overflow: hidden;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* Part manquante de la ressource : voile sombre posé PAR LE HAUT, dont la
+   hauteur est pilotée en ligne (`style.height`). Animée, pour que chaque
+   perte se voie descendre comme le niveau d'une fiole. */
+.shipGaugeDrain {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: rgba(4, 8, 16, 0.82);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.28);
+  transition: height 320ms ease-out;
+}
+
+/* Déraison : voile rouge qui pulse par-dessus le disque entièrement vidé. */
+.shipGaugeDebt {
+  position: absolute;
+  inset: 10%;
+  border-radius: 50%;
+  pointer-events: none;
+  background: rgba(225, 29, 72, 0.45);
+  box-shadow: 0 0 14px 4px rgba(244, 63, 94, 0.55);
+  animation: ship-gauge-debt 1.4s ease-in-out infinite;
+}
+
+@keyframes ship-gauge-debt {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+/* Maximum : caché au repos, révélé au survol sous la valeur courante,
+   séparé d'elle par un petit trait — comme sur l'ancien plateau. */
+.shipGaugeMax {
+  position: absolute;
+  top: 58%;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1em;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms ease-out;
+}
+
+.shipGauge:hover .shipGaugeMax {
+  opacity: 1;
+}
+
+.shipGaugeMaxRule {
+  width: 34%;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.shipGaugeMaxValue {
+  font-size: calc(var(--fs-value) * 0.55);
+  font-weight: 600;
+  line-height: 1;
+  color: #e2e8f0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95);
+}
+
 .shipDebt {
   position: absolute;
   top: 92%;
@@ -492,6 +565,10 @@
   line-height: 1;
   color: #ffffff;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95);
+}
+
+.shipGaugeValueDebt {
+  color: #fecdd3;
 }
 
 /* ──────────────────────────────────────────────────────────────

@@ -4,7 +4,7 @@ import { processTrigger } from "@/game/triggers/triggerBus";
 import {
   assertCardOnOwnBoard,
   assertGameActive,
-  assertInPhase,
+  assertInMainPhase,
   assertIsActivePlayer,
   assertPlayerInGame,
   combine,
@@ -17,7 +17,7 @@ function validate(state: GameState, action: SaborderAction) {
     assertGameActive(state),
     assertPlayerInGame(state, action.playerId),
     assertIsActivePlayer(state, action.playerId),
-    assertInPhase(state, action.playerId, "mainPhase"),
+    assertInMainPhase(state, action.playerId),
     assertCardOnOwnBoard(state, action.playerId, action.instanceId)
   );
 }

@@ -65,6 +65,7 @@ export const PREVIEW_FIXTURES = {
     maxHull: 20,
     /** Pastille bleue du cadre navire (Raison). */
     reason: 3,
+    maxReason: 8,
     deck: 24,
     graveyard: 2,
   },
@@ -75,6 +76,7 @@ export const PREVIEW_FIXTURES = {
     hull: 20,
     maxHull: 20,
     reason: 5,
+    maxReason: 10,
     deck: 21,
     graveyard: 4,
   },

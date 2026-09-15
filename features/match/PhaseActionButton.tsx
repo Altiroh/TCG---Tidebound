@@ -22,15 +22,17 @@ const ICONS = {
  * Bouton d'action de phase unique (assets fournis : `cadre_btn_phase` +
  * 3 icônes) : son icône ET son action changent selon l'état de la partie
  * plutôt que d'avoir un bouton "Combat" et un bouton "Fin de tour"
- * séparés — Phase principale → Phase de combat → Fin de tour, ou "en
- * attente" tant que ce n'est pas mon tour. Le libellé ne s'affiche qu'au
+ * séparés — Phase principale → Phase de combat → Phase principale 2 →
+ * Fin de tour, ou "en attente" tant que ce n'est pas mon tour. Le libellé ne s'affiche qu'au
  * survol (positionné en absolu sous le bouton, hors flux) pour ne jamais
  * décaler le centrage du bouton lui-même selon la longueur du texte.
  */
 export function PhaseActionButton({ isMyTurn, phase, onAdvancePhase, onEndTurn, size = 112 }: PhaseActionButtonProps) {
-  const icon = !isMyTurn ? ICONS.wait : phase === "combatPhase" ? ICONS.endTurn : ICONS.combat;
-  const label = !isMyTurn ? "En attente…" : phase === "combatPhase" ? "Fin de tour" : "Combat";
-  const action = !isMyTurn ? undefined : phase === "combatPhase" ? onEndTurn : onAdvancePhase;
+  // Phase principale → Combat → Phase principale 2 → Fin de tour.
+  const last = phase === "mainPhase2";
+  const icon = !isMyTurn ? ICONS.wait : last ? ICONS.endTurn : ICONS.combat;
+  const label = !isMyTurn ? "En attente…" : last ? "Fin de tour" : phase === "combatPhase" ? "Phase principale 2" : "Combat";
+  const action = !isMyTurn ? undefined : last ? onEndTurn : onAdvancePhase;
   const onClick = action
     ? () => {
         playButtonClick();

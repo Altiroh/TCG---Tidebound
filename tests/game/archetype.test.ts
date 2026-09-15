@@ -214,7 +214,7 @@ describe("jetons", () => {
 });
 
 describe("archétype Cra-Poiscail — capacités d'observateur (Booster 2)", () => {
-  it("le Bavard gagne +1 Puissance quand un autre Cra-Poiscail arrive, une seule fois par tour", () => {
+  it("le Bavard donne +1 Puissance au Cra-Poiscail qui arrive, une seule fois par tour", () => {
     const bavard = instance("cra-poiscail-bavard", "p1");
     const premier = instance("tetard-fesse", "p1");
     const second = instance("ptite-fesse", "p1");
@@ -225,15 +225,18 @@ describe("archétype Cra-Poiscail — capacités d'observateur (Booster 2)", () 
     const first = dispatch(state, { type: "playCard", playerId: "p1", instanceId: premier.instanceId });
     expect(first.ok).toBe(true);
     if (!first.ok) return;
-    const afterFirst = first.state.players[0]!.board.find((u) => u.instanceId === bavard.instanceId)!;
-    expect(computeEffectiveStats(afterFirst, "calme").attack).toBe(2);
+    // "il gagne" = l'arrivant (Têtard-Fesse 1/1 → 2/1), pas le Bavard.
+    const arrivant = first.state.players[0]!.board.find((u) => u.instanceId === premier.instanceId)!;
+    expect(computeEffectiveStats(arrivant, "calme").attack).toBe(2);
+    const bavardAfter = first.state.players[0]!.board.find((u) => u.instanceId === bavard.instanceId)!;
+    expect(computeEffectiveStats(bavardAfter, "calme").attack).toBe(1);
 
     const second1 = dispatch(first.state, { type: "playCard", playerId: "p1", instanceId: second.instanceId });
     expect(second1.ok).toBe(true);
     if (!second1.ok) return;
-    // "La première fois à chaque tour" : la deuxième arrivée ne rebuffe pas.
-    const afterSecond = second1.state.players[0]!.board.find((u) => u.instanceId === bavard.instanceId)!;
-    expect(computeEffectiveStats(afterSecond, "calme").attack).toBe(2);
+    // "La première fois à chaque tour" : la deuxième arrivée ne reçoit rien.
+    const afterSecond = second1.state.players[0]!.board.find((u) => u.instanceId === second.instanceId)!;
+    expect(computeEffectiveStats(afterSecond, "calme").attack).toBe(1);
   });
 
   it("ne réagit pas à sa propre arrivée ni à un Cra-Poiscail adverse", () => {
@@ -259,8 +262,11 @@ describe("archétype Cra-Poiscail — capacités d'observateur (Booster 2)", () 
     const opponentPlay = dispatch(withOpponent, { type: "playCard", playerId: "p2", instanceId: opponentCard.instanceId });
     expect(opponentPlay.ok).toBe(true);
     if (!opponentPlay.ok) return;
+    // Ni le Bavard, ni le Cra-Poiscail adverse qui vient d'arriver.
     const untouched = opponentPlay.state.players[0]!.board[0]!;
     expect(computeEffectiveStats(untouched, "calme").attack).toBe(1);
+    const enemyArrival = opponentPlay.state.players[1]!.board.find((u) => u.instanceId === opponentCard.instanceId)!;
+    expect(computeEffectiveStats(enemyArrival, "calme").attack).toBe(1);
   });
 
   it("voit arriver un Péon invoqué, pas seulement une carte posée", () => {
@@ -274,10 +280,11 @@ describe("archétype Cra-Poiscail — capacités d'observateur (Booster 2)", () 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
-    // Le Sauteur arrive (1er déclenchement, consommé), puis invoque un Péon.
+    // Le Péon invoqué par le Sauteur arrive lui aussi en jeu : c'est LUI
+    // (première arrivée résolue du tour) que le Bavard renforce, 1/1 → 2/1.
     expect(peons(result.state.players[0]!.board)).toBe(1);
-    const buffed = result.state.players[0]!.board.find((u) => u.instanceId === bavard.instanceId)!;
-    expect(computeEffectiveStats(buffed, "calme").attack).toBe(2);
+    const peon = result.state.players[0]!.board.find((u) => u.cardId === PEON)!;
+    expect(computeEffectiveStats(peon, "calme").attack).toBe(2);
   });
 
   it("le Ramasseur profite du Bris d'un Objet, y compris depuis la main", () => {
@@ -536,13 +543,13 @@ describe("durées de bonus", () => {
     const played = dispatch(state, { type: "playCard", playerId: "p1", instanceId: arrivant.instanceId });
     expect(played.ok).toBe(true);
     if (!played.ok) return;
-    expect(computeEffectiveStats(played.state.players[0]!.board.find((u) => u.instanceId === bavard.instanceId)!, "calme").attack).toBe(2);
+    expect(computeEffectiveStats(played.state.players[0]!.board.find((u) => u.instanceId === arrivant.instanceId)!, "calme").attack).toBe(2);
 
     const ended = dispatch(played.state, { type: "endTurn", playerId: "p1" });
     expect(ended.ok).toBe(true);
     if (!ended.ok) return;
     // Le +1 servait à attaquer ce tour-ci : il ne doit pas servir à défendre ensuite.
-    const after = ended.state.players.find((p) => p.id === "p1")!.board.find((u) => u.instanceId === bavard.instanceId)!;
+    const after = ended.state.players.find((p) => p.id === "p1")!.board.find((u) => u.instanceId === arrivant.instanceId)!;
     expect(computeEffectiveStats(after, "calme").attack).toBe(1);
   });
 
@@ -919,5 +926,68 @@ describe("déclencheurs d'attaque filtrés par carte", () => {
     expect(other.ok).toBe(true);
     if (!other.ok) return;
     expect(other.state.players[0]!.reason).toBe(5);
+  });
+});
+
+describe("Équipements — le sort de l'Équipement suit celui de son porteur", () => {
+  /** Slip de Guerre (Équipement Cra-Poiscail, +1 Résistance permanent) déjà attaché à `wearer`. */
+  function equipped(wearerInstanceId: string) {
+    return instance("slip-de-guerre-cra-poiscail", "p1", { attachedToInstanceId: wearerInstanceId });
+  }
+
+  it("part au cimetière quand le permanent équipé est détruit au combat", () => {
+    const porteur = instance("tetard-fesse", "p1", { damageMarked: 0 });
+    const slip = equipped(porteur.instanceId);
+    // Un attaquant adverse assez fort pour tuer le porteur (1/1, +1 Rés. par le Slip → 1/2).
+    const assaillant = instance("cra-poiscail-grand-gueule", "p2", { summoningSick: false });
+    const state = testGameState({
+      activePlayerId: "p2",
+      phase: "combatPhase",
+      players: [testPlayer("p1", { board: [porteur, slip] }), testPlayer("p2", { board: [assaillant] })],
+    });
+
+    const result = dispatch(state, {
+      type: "attack",
+      playerId: "p2",
+      attackerInstanceId: assaillant.instanceId,
+      defenderInstanceId: porteur.instanceId,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const p1 = result.state.players.find((p) => p.id === "p1")!;
+    expect(p1.board.some((u) => u.instanceId === porteur.instanceId)).toBe(false);
+    expect(p1.board.some((u) => u.instanceId === slip.instanceId)).toBe(false);
+    expect(p1.graveyard.some((c) => c.instanceId === slip.instanceId)).toBe(true);
+  });
+
+  it("part au cimetière quand le permanent équipé est sabordé", () => {
+    const porteur = instance("tetard-fesse", "p1");
+    const slip = equipped(porteur.instanceId);
+    const state = testGameState({
+      players: [testPlayer("p1", { board: [porteur, slip] }), testPlayer("p2")],
+    });
+
+    const result = dispatch(state, { type: "saborder", playerId: "p1", instanceId: porteur.instanceId });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const p1 = result.state.players.find((p) => p.id === "p1")!;
+    expect(p1.board).toHaveLength(0);
+    expect(p1.graveyard.map((c) => c.instanceId)).toContain(slip.instanceId);
+  });
+
+  it("reste en jeu tant que son porteur y est, et ne concerne pas un Équipement jamais attaché", () => {
+    const porteur = instance("tetard-fesse", "p1");
+    const slip = equipped(porteur.instanceId);
+    const libre = instance("slip-de-guerre-cra-poiscail", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { board: [porteur, slip, libre] }), testPlayer("p2")],
+    });
+
+    const result = dispatch(state, { type: "advancePhase", playerId: "p1" });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.players[0]!.board).toHaveLength(3);
   });
 });

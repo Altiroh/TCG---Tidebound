@@ -184,8 +184,14 @@
   /* Colonne de lecture : assez large pour respirer, assez étroite pour que
      les lignes de texte restent confortables (~60 caractères). */
   width: clamp(240px, 40vw, 580px);
-  max-height: min(78vh, 760px);
-  /* Seul le panneau de droite défile : la carte reste visible. */
+  /* Bornée par la HAUTEUR DU PANNEAU, pas par une fraction de la fenêtre :
+     un `78vh` fixe était souvent quelques pixels plus court que la colonne
+     étirée à la hauteur de la carte, et la fiche affichait une barre de
+     défilement permanente pour un contenu qui tenait entièrement (retour du
+     15/09 : pas de barre quand il n'y a rien à faire défiler). */
+  min-height: 0;
+  max-height: 100%;
+  /* Seul le panneau de droite défile — et seulement s'il déborde vraiment. */
   overflow-y: auto;
   overscroll-behavior: contain;
   padding-right: 4px;

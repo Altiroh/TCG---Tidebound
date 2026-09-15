@@ -9,6 +9,7 @@ import {
   getCardDefinition,
   getShipDefinition,
   isVisibleDuringTide,
+  reasonCeiling,
   RULES,
   STATUS_SILENCE,
   TIDE_STATES_ORDER,
@@ -349,6 +350,9 @@ export function TableBoard(props: TableBoardProps) {
     hull: player.anchor,
     maxHull: def.startingAnchor,
     reason: player.reason,
+    // Plafond COURANT, pas le maximum imprimé du Navire : les Abysses le
+    // réduisent, et la courbe de début de partie le plafonne encore.
+    maxReason: reasonCeiling(player),
     deraisonDamage: deraisonAnchorDamage(player, player.reason),
   });
 

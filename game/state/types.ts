@@ -63,7 +63,21 @@ export type GamePhase =
   | "waitingForPlayers"
   | "mainPhase"
   | "combatPhase"
+  /** Seconde Phase principale, après le combat : reposer, Saborder, Briser une fois l'attaque résolue. */
+  | "mainPhase2"
   | "finished";
+
+/**
+ * Les deux Phases principales du tour. Tout ce qui est "réservé à la Phase
+ * principale" (poser une carte, Saborder, Briser un Objet, activer une
+ * capacité) vaut pour l'une comme pour l'autre : seul le COMBAT est
+ * enfermé dans sa propre phase.
+ */
+export const MAIN_PHASES = ["mainPhase", "mainPhase2"] as const;
+
+export function isMainPhase(phase: GamePhase): boolean {
+  return (MAIN_PHASES as readonly GamePhase[]).includes(phase);
+}
 
 export interface GameState {
   id: string;

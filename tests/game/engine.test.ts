@@ -40,18 +40,43 @@ describe("engine.dispatch - phases", () => {
     expect(saborderResult.ok).toBe(false);
   });
 
-  it("refuse `advancePhase` hors Phase principale ou pour un joueur non actif", () => {
-    const state = testGameState({ phase: "combatPhase" });
-    const wrongPhase = dispatch(state, { type: "advancePhase", playerId: "p1" });
-    expect(wrongPhase.ok).toBe(false);
+  it("enchaîne Phase principale → Combat → Phase principale 2, et s'arrête là", () => {
+    const toCombat = dispatch(testGameState({ phase: "mainPhase" }), { type: "advancePhase", playerId: "p1" });
+    expect(toCombat.ok).toBe(true);
+    if (!toCombat.ok) return;
+    expect(toCombat.state.phase).toBe("combatPhase");
 
+    const toMain2 = dispatch(toCombat.state, { type: "advancePhase", playerId: "p1" });
+    expect(toMain2.ok).toBe(true);
+    if (!toMain2.ok) return;
+    expect(toMain2.state.phase).toBe("mainPhase2");
+
+    // Rien après la Phase principale 2 : seul `endTurn` en sort.
+    expect(dispatch(toMain2.state, { type: "advancePhase", playerId: "p1" }).ok).toBe(false);
+  });
+
+  it("refuse `advancePhase` pour un joueur non actif", () => {
     const mainPhaseState = testGameState({ phase: "mainPhase" });
     const wrongPlayer = dispatch(mainPhaseState, { type: "advancePhase", playerId: "p2" });
     expect(wrongPlayer.ok).toBe(false);
   });
 
+  it("autorise poser / Saborder / Briser pendant la Phase principale 2", () => {
+    const card = instance("murene-aveugle", "p1");
+    const unit = instance("requin-balafre", "p1");
+    const state = testGameState({
+      phase: "mainPhase2",
+      players: [testPlayer("p1", { hand: [card], board: [unit], reason: 10 }), testPlayer("p2")],
+    });
+
+    expect(dispatch(state, { type: "playCard", playerId: "p1", instanceId: card.instanceId }).ok).toBe(true);
+    expect(dispatch(state, { type: "saborder", playerId: "p1", instanceId: unit.instanceId }).ok).toBe(true);
+    // Le combat, lui, reste enfermé dans sa propre phase.
+    expect(dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: unit.instanceId }).ok).toBe(false);
+  });
+
   it("chaque nouveau tour recommence en Phase principale", () => {
-    const state = testGameState({ phase: "combatPhase" });
+    const state = testGameState({ phase: "mainPhase2" });
     const result = dispatch(state, { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;

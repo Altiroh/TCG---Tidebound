@@ -9,7 +9,7 @@ import {
   assertCanPayCost,
   assertCardInHand,
   assertGameActive,
-  assertInPhase,
+  assertInMainPhase,
   assertIsActivePlayer,
   assertPlayerInGame,
   combine,
@@ -54,7 +54,7 @@ function validate(state: GameState, action: PlayCardAction) {
     assertGameActive(state),
     assertPlayerInGame(state, action.playerId),
     assertIsActivePlayer(state, action.playerId),
-    assertInPhase(state, action.playerId, "mainPhase"),
+    assertInMainPhase(state, action.playerId),
     assertCardInHand(state, action.playerId, action.instanceId)
   );
   if (!generalChecks.ok) return generalChecks;

@@ -9,13 +9,18 @@ const ICONS = {
 
 /**
  * Libellé, icône et action du bouton de phase du nouveau plateau — même règle
- * que `PhaseActionButton` : pas mon tour → attente ; Phase principale → passer
- * au combat ; Phase de combat → fin de tour. (Les conteneurs passent déjà
- * `combatPhase` quand aucune unité ne peut attaquer, pour sauter le combat.)
+ * que `PhaseActionButton` : pas mon tour → attente ; Phase principale →
+ * passer au combat ; Phase de combat → Phase principale 2 ; Phase
+ * principale 2 → fin de tour. (Les conteneurs passent déjà `mainPhase2`
+ * quand aucune unité ne peut attaquer, pour sauter le combat.)
+ *
+ * Faute d'icône dédiée, la Phase principale 2 réutilise celle du combat :
+ * le bouton dit « avancer », son libellé précise vers quoi.
  */
 export function phaseButtonFor({ isMyTurn, phase }: { isMyTurn: boolean; phase: GamePhase }) {
   if (!isMyTurn) return { label: "En attente…", icon: ICONS.wait, action: null };
-  if (phase === "combatPhase") return { label: "Fin de tour", icon: ICONS.endTurn, action: "endTurn" as const };
+  if (phase === "mainPhase2") return { label: "Fin de tour", icon: ICONS.endTurn, action: "endTurn" as const };
+  if (phase === "combatPhase") return { label: "Phase principale 2", icon: ICONS.combat, action: "advance" as const };
   return { label: "Combat", icon: ICONS.combat, action: "advance" as const };
 }
 

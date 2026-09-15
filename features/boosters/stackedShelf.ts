@@ -8,6 +8,22 @@ export const PACK_SLOT_RATIO = 0.62;
 /** Sachets par étagère : au-delà, une nouvelle étagère se pose en dessous. */
 export const PACKS_PER_SHELF = 5;
 
+/**
+ * Chevauchement voulu entre deux sachets voisins d'une étagère PLEINE, en
+ * fraction de la largeur d'un sachet. Une étagère bien garnie se range
+ * comme un présentoir de bureau de tabac : les sachets mordent légèrement
+ * les uns sur les autres, ce qui leur laisse la place d'être GRANDS
+ * (demande du 15/09) plutôt que réduits à des vignettes alignées.
+ */
+export const SHELF_PACK_OVERLAP = 0.14;
+
+/**
+ * Largeur occupée par une étagère pleine, en multiples de la largeur d'un
+ * sachet, chevauchement compris. Sert à déduire la hauteur maximale d'un
+ * sachet à partir de la largeur disponible.
+ */
+export const FULL_SHELF_SLOTS = 1 + (PACKS_PER_SHELF - 1) * (1 - SHELF_PACK_OVERLAP);
+
 /** Répartit des éléments en étagères de `PACKS_PER_SHELF`, dans l'ordre. */
 export function splitIntoShelves<T>(items: readonly T[], perShelf = PACKS_PER_SHELF): T[][] {
   const shelves: T[][] = [];

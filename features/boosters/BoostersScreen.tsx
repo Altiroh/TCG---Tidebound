@@ -11,7 +11,15 @@ import shelfStyles from "@/features/shell/Shelf.module.css";
 import { ScreenToast, type ScreenToastMessage } from "@/features/shell/ScreenToast";
 import { openBooster, type BoosterInventory } from "@/features/boosters/actions";
 import { ownedPacks, type OwnedPack } from "@/features/boosters/ownedPacks";
-import { PACK_SLOT_RATIO, PACKS_PER_SHELF, splitIntoShelves, stackedShelfLayout, useElementSize } from "@/features/boosters/stackedShelf";
+import {
+  FULL_SHELF_SLOTS,
+  PACK_SLOT_RATIO,
+  PACKS_PER_SHELF,
+  SHELF_PACK_OVERLAP,
+  splitIntoShelves,
+  stackedShelfLayout,
+  useElementSize,
+} from "@/features/boosters/stackedShelf";
 import { BoosterOpeningScene } from "@/features/boosters/opening/BoosterOpeningScene";
 import { preloadBoosterOpeningAssets } from "@/features/boosters/opening/boosterOpeningAssets";
 import { closedPackVariables, getBoosterPackVisual } from "@/features/boosters/opening/boosterPackVisuals";
@@ -58,16 +66,19 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
   const shelves = useMemo(() => splitIntoShelves(packs), [packs]);
   // Même disposition pour toutes les étagères, calculée pour une étagère
   // PLEINE : un sachet garde sa taille et sa place d'une étagère à l'autre.
-  // La hauteur laisse deviner l'étagère suivante sous la première.
-  // Hauteur bornée par la largeur aussi : cinq sachets doivent tenir côte à
-  // côte, à peine espacés, sans se chevaucher.
-  const shelfGap = Math.round(shelfArea.width * 0.02);
-  const layout = stackedShelfLayout(
-    PACKS_PER_SHELF,
-    shelfArea.width,
-    Math.min(340, shelfArea.height * 0.7, (shelfArea.width - shelfGap * (PACKS_PER_SHELF - 1)) / PACKS_PER_SHELF / PACK_SLOT_RATIO),
-    { gap: shelfGap }
-  );
+  //
+  // Les sachets prennent quasiment toute la hauteur de la zone et se
+  // CHEVAUCHENT légèrement (demande du 15/09) : c'est le visuel du sachet
+  // qui doit porter le présentoir, pas le vide autour. Deux bornes donc —
+  // la hauteur disponible, et la largeur qu'une étagère pleine occupe une
+  // fois le chevauchement déduit (`FULL_SHELF_SLOTS`).
+  const packHeight = Math.min(shelfArea.height * 0.94, shelfArea.width / (FULL_SHELF_SLOTS * PACK_SLOT_RATIO));
+  const layout = stackedShelfLayout(PACKS_PER_SHELF, shelfArea.width, packHeight, {
+    // Écart NÉGATIF : les sachets d'une étagère pleine mordent les uns sur
+    // les autres. Une étagère moins garnie les écarte d'autant.
+    gap: -packHeight * PACK_SLOT_RATIO * SHELF_PACK_OVERLAP,
+    maxPackHeight: Number.POSITIVE_INFINITY,
+  });
 
   /** Paquet posé sur le plan, prêt à être ouvert (sa clé d'étagère). */
   const [dockedKey, setDockedKey] = useState<string | null>(null);

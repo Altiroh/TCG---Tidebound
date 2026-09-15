@@ -90,15 +90,20 @@ export function MatchEndScreen({ outcome, player, onExit, exitHref }: MatchEndSc
   const nameplateZone = isDefeat ? DEFEAT_NAMEPLATE_ZONE : NAMEPLATE_ZONE;
   return (
     <>
-      <BoardBackdrop />
+      {/* Le plateau peint (`board.webp`) porte ses propres cadres de Navire
+          vides et ses dos de carte : à peine voilé, on les lisait derrière
+          l'écran de fin (retour du 15/09). Il ne sert plus que de matière —
+          flouté, assombri et désaturé par `.backdrop`. */}
+      <div className={styles.backdrop} aria-hidden>
+        <BoardBackdrop variant="absolute" />
+      </div>
+      <div className={styles.backdropVeil} aria-hidden />
       {/* Plan intermédiaire : flouté, sous le cadre (net) mais au-dessus du fond de plateau — cf. `Fireworks.tsx`. */}
       {winner && <div className={styles.vignette} aria-hidden />}
       {/* La victoire éclate, la défaite stagne — même emplacement, sentiment inverse. */}
       {winner && (isDefeat ? <SwampHaze /> : <Fireworks firstBurstAt={0.5} />)}
       {winner && <div className={isDefeat ? styles.flashDefeat : styles.flash} aria-hidden />}
-      <div
-        className={`relative z-10 flex min-h-screen flex-col items-center justify-center gap-8 p-8 text-center ${winner ? styles.stage : ""}`}
-      >
+      <div className={`${styles.screen} ${winner ? styles.stage : ""}`}>
         {winner ? (
           <>
             <div className={styles.bannerWrap}>
@@ -139,7 +144,9 @@ export function MatchEndScreen({ outcome, player, onExit, exitHref }: MatchEndSc
               <div
                 className={`relative ${styles.frameIn}`}
                 style={{
-                  width: "min(60vw, 340px)",
+                  // Borné par la largeur ET la hauteur disponible : l'écran
+                  // de fin ne défile pas, tout doit tenir dans la fenêtre.
+                  width: "min(60vw, 340px, 46dvh)",
                   aspectRatio: frameAspectRatio,
                 }}
               >

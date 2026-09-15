@@ -1778,14 +1778,17 @@ export const CORE_SET: CardDefinition[] = [
     cost: 2,
     attack: 1,
     health: 3,
-    text: "La première fois à chaque tour qu'un autre Cra-Poiscail arrive en jeu, il gagne +1 Puissance jusqu'à la fin du tour.",
+    text: "La première fois à chaque tour qu'un autre Cra-Poiscail arrive en jeu, celui-ci gagne +1 Puissance jusqu'à la fin du tour.",
     abilities: [
       {
         trigger: "onEnterPlay",
         triggeredBy: { archetype: "cra-poiscail" },
         oncePerTurnKey: "bavardAllyEnter",
-        description: "Un autre Cra-Poiscail arrive : +1 Puissance jusqu'à la fin du tour.",
-        effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, permanent: false }],
+        description: "Un autre Cra-Poiscail arrive : il gagne +1 Puissance jusqu'à la fin du tour.",
+        // "il gagne" = le Cra-Poiscail QUI ARRIVE, pas le Bavard — même
+        // lecture que La Flaque Sacrée, dont le texte a la même forme.
+        // Le mot "celui-ci" lève l'ambiguïté sur la carte imprimée.
+        effects: [{ type: "buff", target: { kind: "triggerSource" }, attackAmount: { kind: "flat", value: 1 }, permanent: false }],
       },
     ],
   },
@@ -1798,17 +1801,18 @@ export const CORE_SET: CardDefinition[] = [
     cost: 3,
     attack: 2,
     health: 3,
-    text: "La première fois à chaque tour qu'un autre Cra-Poiscail arrive en jeu, il gagne +1 / +1 jusqu'à la fin du tour.",
+    text: "La première fois à chaque tour qu'un autre Cra-Poiscail arrive en jeu, celui-ci gagne +1 / +1 jusqu'à la fin du tour.",
     abilities: [
       {
         trigger: "onEnterPlay",
         triggeredBy: { archetype: "cra-poiscail" },
         oncePerTurnKey: "chefDeBancAllyEnter",
-        description: "Un autre Cra-Poiscail arrive : +1 / +1 jusqu'à la fin du tour.",
+        description: "Un autre Cra-Poiscail arrive : il gagne +1 / +1 jusqu'à la fin du tour.",
         effects: [
           {
             type: "buff",
-            target: { kind: "self" },
+            // Comme le Bavard : c'est l'arrivant qui est renforcé.
+            target: { kind: "triggerSource" },
             attackAmount: { kind: "flat", value: 1 },
             healthAmount: { kind: "flat", value: 1 },
             permanent: false,

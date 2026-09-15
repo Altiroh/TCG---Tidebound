@@ -219,6 +219,17 @@ export interface CardDefinition {
   destructionSubstitute?: { healthPenalty: number };
 
   /**
+   * Pour un Équipement uniquement : CONTRE-INDICATION à la règle générale
+   * « un Équipement suit son porteur au cimetière ». Par défaut, quand le
+   * permanent équipé quitte le plateau (destruction, Sabordage,
+   * expiration…), l'Équipement attaché est détruit avec lui
+   * (`game/state/processDeaths.ts`, `destroyOrphanedEquipment`). Un
+   * Équipement qui déclare `survivesOwnerDestruction` reste en jeu, sans
+   * porteur, jusqu'à ce qu'un effet le rattache ou le détruise.
+   */
+  survivesOwnerDestruction?: boolean;
+
+  /**
    * Pour un Équipement uniquement : la PREMIÈRE fois que le permanent
    * équipé devrait subir des dégâts d'EFFET, réduit ces dégâts de
    * `amount`, puis CET Équipement est détruit (ex: Casque-Coquille, 1).

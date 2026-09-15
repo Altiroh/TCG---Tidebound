@@ -1,15 +1,22 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { getShipDefinition, type GameEvent, type GameState, type PlayerId } from "@/game";
+import { getCardDefinition, getShipDefinition, type GameState, type PlayerId } from "@/game";
 import { CardThumb } from "@/features/match/CardThumb";
-import { findInstanceCardId, formatEvent } from "@/features/match/formatEvent";
+import { findInstanceCardId } from "@/features/match/formatEvent";
 
 type PlayerLabel = (playerId?: string) => string;
 
-/** Nombre de faits marquants gardés dans la version compacte. */
-const HIGHLIGHT_COUNT = 6;
+/**
+ * Nombre de faits marquants gardés. Le journal ne défile PAS et ne s'ouvre
+ * pas : il montre les dernières actions, un point c'est tout (demande du
+ * 15/09). Assez peu pour tenir dans le feutre de la colonne à toutes les
+ * tailles d'écran ; ce qui déborderait malgré tout est masqué par
+ * `overflow: hidden` côté colonne, les lignes les plus récentes étant
+ * ancrées en bas.
+ */
+const HIGHLIGHT_COUNT = 5;
 
 type Highlight =
   | {
@@ -20,21 +27,31 @@ type Highlight =
       amount: number;
       retaliation: number;
       defenderDestroyed: boolean;
+      /** Récapitulatif en toutes lettres, affiché en infobulle au survol. */
+      summary: string;
     }
-  | { kind: "effect"; key: string; targetCardId?: string; attack: number; health: number };
+  | { kind: "effect"; key: string; targetCardId?: string; attack: number; health: number; summary: string };
 
 /** Variation abrégée pour la version compacte ("+1 Rés.", "-2 Puis."). */
-function shortDelta(attack: number, health: number): string {
-  const signed = (value: number) => `${value > 0 ? "+" : ""}${value}`;
-  return [attack !== 0 ? `${signed(attack)} Puis.` : "", health !== 0 ? `${signed(health)} Rés.` : ""].filter(Boolean).join(" ");
+function shortDelta(value: number, unit: string): string {
+  return `${value > 0 ? "+" : ""}${value} ${unit}`;
+}
+
+function cardLabel(cardId: string | undefined, fallback = "Une carte"): string {
+  if (!cardId) return fallback;
+  try {
+    return getCardDefinition(cardId).name;
+  } catch {
+    return fallback;
+  }
 }
 
 /**
  * Faits marquants du journal : uniquement les attaques (avec leurs dégâts,
- * riposte et destruction regroupés) et les effets de stats appliqués — la
- * version compacte ne montre QUE ce qui s'est passé sur les cartes.
+ * riposte et destruction regroupés) et les effets de stats appliqués — le
+ * journal ne montre QUE ce qui s'est passé sur les cartes.
  */
-function buildHighlights(state: GameState): Highlight[] {
+function buildHighlights(state: GameState, label: PlayerLabel): Highlight[] {
   const events = state.eventLog;
   const highlights: Highlight[] = [];
   // Parcours À REBOURS, arrêté dès qu'on a les `HIGHLIGHT_COUNT` derniers :
@@ -43,12 +60,18 @@ function buildHighlights(state: GameState): Highlight[] {
   for (let index = events.length - 1; index >= 0 && highlights.length < HIGHLIGHT_COUNT; index--) {
     const event = events[index]!;
     if (event.type === "BUFF_APPLIED" || event.type === "DEBUFF_APPLIED") {
+      const targetCardId = findInstanceCardId(state, event.targetInstanceId);
+      const parts = [
+        event.attack !== 0 ? `${shortDelta(event.attack, "Puissance")}` : "",
+        event.health !== 0 ? `${shortDelta(event.health, "Résistance")}` : "",
+      ].filter(Boolean);
       highlights.push({
         kind: "effect",
         key: `${index}`,
-        targetCardId: findInstanceCardId(state, event.targetInstanceId),
+        targetCardId,
         attack: event.attack,
         health: event.health,
+        summary: `${cardLabel(targetCardId)} : ${parts.join(" et ") || "aucune variation"}.`,
       });
       continue;
     }
@@ -73,16 +96,26 @@ function buildHighlights(state: GameState): Highlight[] {
       }
     }
     const opponentId = state.players.find((player) => player.id !== event.playerId)?.id;
+    const attackerCardId = findInstanceCardId(state, event.attackerInstanceId);
+    const defenderCardId = event.defenderInstanceId ? findInstanceCardId(state, event.defenderInstanceId) : undefined;
+    const targetName = event.defenderInstanceId
+      ? cardLabel(defenderCardId)
+      : `le Navire de ${label(targetPlayerId ?? opponentId ?? event.playerId)}`;
+    const summary = [
+      `${cardLabel(attackerCardId)} attaque ${targetName} : ${amount} dégât${amount > 1 ? "s" : ""}.`,
+      defenderDestroyed ? " Cible détruite." : "",
+      retaliation > 0 ? ` Riposte : ${retaliation} dégât${retaliation > 1 ? "s" : ""} subi${retaliation > 1 ? "s" : ""}.` : "",
+    ].join("");
+
     highlights.push({
       kind: "attack",
       key: `${index}`,
-      attackerCardId: findInstanceCardId(state, event.attackerInstanceId),
-      target: event.defenderInstanceId
-        ? { cardId: findInstanceCardId(state, event.defenderInstanceId) }
-        : { playerId: targetPlayerId ?? opponentId ?? event.playerId },
+      attackerCardId,
+      target: event.defenderInstanceId ? { cardId: defenderCardId } : { playerId: targetPlayerId ?? opponentId ?? event.playerId },
       amount,
       retaliation,
       defenderDestroyed,
+      summary,
     });
   }
   return highlights.reverse();
@@ -94,16 +127,34 @@ function shipIllustration(state: GameState, playerId: PlayerId): string | undefi
   return illustration ? `/assets/ships/illu/${illustration}` : undefined;
 }
 
+/**
+ * Couleur d'une variation de stat : une HAUSSE est verte, une BAISSE rouge
+ * — chaque composante jugée pour elle-même. Un "+1 Puissance / -1
+ * Résistance" affiche donc bien un morceau vert et un morceau rouge, là où
+ * une teinte unique tirée de la somme rendait l'augmentation rouge (retour
+ * du 15/09 : « l'info d'une augmentation n'est pas forcément en vert »).
+ */
+function deltaToneClass(value: number): string {
+  return value > 0 ? "text-emerald-300" : value < 0 ? "text-rose-300" : "text-slate-300";
+}
+
 function HighlightRow({ state, highlight, thumbSize = 20 }: { state: GameState; highlight: Highlight; thumbSize?: number }) {
   // Le texte suit la taille des miniatures (variante « colonne » du nouveau plateau, plus grande).
   const text = { fontSize: Math.max(10, Math.round(thumbSize * 0.42)) };
   if (highlight.kind === "effect") {
-    const buff = highlight.attack + highlight.health >= 0;
+    // Bordure de la miniature : teinte du signe DOMINANT, faute de pouvoir
+    // en afficher deux — le texte, lui, garde une couleur par composante.
+    const dominant = Math.abs(highlight.attack) >= Math.abs(highlight.health) ? highlight.attack : highlight.health;
     return (
       <div className="flex items-center gap-1">
-        <CardThumb cardId={highlight.targetCardId} size={thumbSize} className={buff ? "border-emerald-400/50" : "border-rose-400/50"} />
-        <span className={`truncate font-semibold ${buff ? "text-emerald-300" : "text-rose-300"}`} style={text}>
-          {shortDelta(highlight.attack, highlight.health)}
+        <CardThumb
+          cardId={highlight.targetCardId}
+          size={thumbSize}
+          className={dominant >= 0 ? "border-emerald-400/50" : "border-rose-400/50"}
+        />
+        <span className="flex min-w-0 flex-wrap items-center gap-x-1 font-semibold" style={text}>
+          {highlight.attack !== 0 && <span className={deltaToneClass(highlight.attack)}>{shortDelta(highlight.attack, "Puis.")}</span>}
+          {highlight.health !== 0 && <span className={deltaToneClass(highlight.health)}>{shortDelta(highlight.health, "Rés.")}</span>}
         </span>
       </div>
     );
@@ -124,130 +175,37 @@ function HighlightRow({ state, highlight, thumbSize = 20 }: { state: GameState; 
         {highlight.defenderDestroyed ? " ☠" : ""}
       </span>
       {highlight.retaliation > 0 && (
-        <span className="w-full text-[9px] leading-none text-slate-400" title="Dégâts de riposte subis par l'attaquant">
-          riposte -{highlight.retaliation}
-        </span>
+        <span className="w-full text-[9px] leading-none text-slate-400">riposte -{highlight.retaliation}</span>
       )}
     </div>
   );
 }
 
-/** Miniatures des cartes impliquées dans un événement — jamais pour une pioche (la carte piochée est une information cachée). */
-function eventThumbs(state: GameState, event: GameEvent): Array<{ cardId?: string; src?: string; glyph?: string }> {
-  const card = (instanceId?: string) => (instanceId ? [{ cardId: findInstanceCardId(state, instanceId) }] : []);
-  switch (event.type) {
-    case "PLAY_CARD":
-    case "SUMMON":
-    case "HAND_CARD_REVEALED":
-      return [{ cardId: event.cardId }];
-    case "ATTACK":
-      return [
-        ...card(event.attackerInstanceId),
-        ...(event.defenderInstanceId
-          ? card(event.defenderInstanceId)
-          : [{ src: shipIllustration(state, state.players.find((p) => p.id !== event.playerId)?.id ?? event.playerId), glyph: "⚓" }]),
-      ];
-    case "DAMAGE":
-    case "HEAL":
-      return event.targetInstanceId ? card(event.targetInstanceId) : [];
-    case "BUFF_APPLIED":
-    case "DEBUFF_APPLIED":
-    case "STATUS_CHANGED":
-      return card(event.targetInstanceId);
-    case "DESTROY":
-    case "SABORDED":
-      return card(event.instanceId);
-    case "CARD_MOVED":
-      return event.toZone === "graveyard" ? card(event.instanceId) : [];
-    case "REACTION_ACTIVATED":
-      return card(event.sourceInstanceId);
-    default:
-      return [];
-  }
-}
-
-function FullLogPanel({ state, playerLabel, onClose }: { state: GameState; playerLabel: PlayerLabel; onClose: () => void }) {
-  const listRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const el = listRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [state.eventLog.length]);
-
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        event.stopPropagation();
-        onClose();
-      }
-    }
-    window.addEventListener("keydown", handleKeyDown, true);
-    return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [onClose]);
-
-  let turnCount = 0;
+/**
+ * Infobulle du journal : posée en coordonnées VIEWPORT via un portail, pour
+ * ne pas être rognée par le `overflow: hidden` de la colonne ni décalée par
+ * ses transformations. Ancrée à gauche de la ligne survolée (la colonne
+ * longe le bord droit de l'écran) et recentrée verticalement sur elle.
+ */
+function JournalTooltip({ text, anchor }: { text: string; anchor: DOMRect }) {
+  if (typeof document === "undefined") return null;
   return createPortal(
-    <aside
-      aria-label="Journal de partie"
-      className="fixed inset-y-0 right-0 z-[80] flex w-[min(92vw,400px)] flex-col border-l border-white/15 bg-slate-950/90 shadow-[-12px_0_40px_rgba(0,0,0,0.6)] backdrop-blur-xl [font-family:var(--font-card-body)]"
+    <div
+      role="tooltip"
+      className="pointer-events-none fixed z-[90] max-w-[min(320px,60vw)] -translate-x-full -translate-y-1/2 rounded-lg border border-white/20 bg-slate-950/95 px-3 py-2 text-[13px] leading-snug text-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.6)] backdrop-blur-md [font-family:var(--font-card-body)]"
+      style={{ left: Math.max(8, anchor.left - 10), top: anchor.top + anchor.height / 2 }}
     >
-      <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-        <h2 className="text-base font-semibold text-slate-100 [font-family:var(--font-card-title)]">Journal de partie</h2>
-        <button
-          type="button"
-          onClick={onClose}
-          className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-slate-300 transition-colors hover:bg-white/10 hover:text-board-accent"
-        >
-          Fermer
-          <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" aria-hidden>
-            <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
-          </svg>
-        </button>
-      </div>
-
-      <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-3">
-        {state.eventLog.map((event, index) => {
-          if (event.type === "TURN_STARTED") {
-            turnCount += 1;
-            return (
-              <div key={index} className="mb-1.5 mt-3 flex items-center gap-2 first:mt-0">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                  Tour {Math.ceil(turnCount / 2)} · {playerLabel(event.playerId)}
-                </span>
-                <span className="h-px flex-1 bg-white/10" />
-              </div>
-            );
-          }
-          if (event.type === "PHASE_CHANGED") return null;
-          const thumbs = eventThumbs(state, event);
-          return (
-            <div key={index} className="flex items-start gap-2 py-1">
-              <span className="flex shrink-0 gap-1" style={{ minWidth: 28 }}>
-                {thumbs.map((thumb, i) => (
-                  <Fragment key={i}>
-                    <CardThumb cardId={thumb.cardId} src={thumb.src} glyph={thumb.glyph} size={28} />
-                  </Fragment>
-                ))}
-              </span>
-              <p className="pt-1 text-[13px] leading-snug text-slate-200">{formatEvent(state, event, playerLabel)}</p>
-            </div>
-          );
-        })}
-      </div>
-    </aside>,
+      {text}
+    </div>,
     document.body
   );
 }
 
 /**
- * Journal de partie. Version COMPACTE sur le plateau : uniquement les
- * attaques et les effets appliqués, abrégés avec les miniatures des cartes
- * (retour de test du 13/09 — les lignes de texte étaient tronquées). Le
- * bouton d'agrandissement ouvre le journal COMPLET en panneau à droite :
- * tous les événements, sans troncature, avec miniatures quand une carte est
- * impliquée. Le panneau passe par un portail : `BoardStage` est mis à
- * l'échelle par `transform`, ce qui piégerait un `position: fixed` à
- * l'intérieur du plateau.
+ * Journal de partie — les DERNIÈRES actions, rien d'autre : ni défilement,
+ * ni panneau complet à ouvrir (retrait demandé le 15/09). Chaque ligne est
+ * abrégée avec les miniatures des cartes concernées ; le récapitulatif en
+ * toutes lettres n'apparaît qu'au survol de la ligne, en infobulle.
  */
 interface EventFeedProps {
   state: GameState;
@@ -263,52 +221,40 @@ interface EventFeedProps {
 export function EventFeed({ state, playerLabel, variant = "panel" }: EventFeedProps) {
   const rail = variant === "rail";
   const thumbSize = rail ? 30 : 20;
-  const [open, setOpen] = useState(false);
-  const listRef = useRef<HTMLDivElement>(null);
-  // Le plateau se re-rend souvent sans que l'état change (survol, glisser…).
-  const highlights = useMemo(() => buildHighlights(state), [state]);
-  const closeLog = useCallback(() => setOpen(false), []);
+  const [hovered, setHovered] = useState<{ text: string; anchor: DOMRect } | null>(null);
   const label = playerLabel ?? ((id?: string) => (id === "p1" ? "Joueur 1" : id === "p2" ? "Joueur 2" : "?"));
+  // Le plateau se re-rend souvent sans que l'état change (survol, glisser…).
+  const highlights = useMemo(() => buildHighlights(state, label), [state, label]);
 
-  useEffect(() => {
-    const el = listRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [highlights.length, state.eventLog.length]);
+  let body: ReactNode;
+  if (highlights.length === 0) {
+    body = <p className={`leading-snug text-slate-400 ${rail ? "text-[11px]" : "text-[10px]"}`}>Aucune attaque ni effet pour l&apos;instant.</p>;
+  } else {
+    body = highlights.map((highlight) => (
+      <div
+        key={highlight.key}
+        onPointerEnter={(event) => setHovered({ text: highlight.summary, anchor: event.currentTarget.getBoundingClientRect() })}
+        onPointerLeave={() => setHovered(null)}
+        className="cursor-default rounded transition-colors hover:bg-white/10"
+      >
+        <HighlightRow state={state} highlight={highlight} thumbSize={thumbSize} />
+      </div>
+    ));
+  }
 
   return (
     <>
-      <div className={rail ? "relative flex h-full flex-col text-slate-100" : "flex h-full flex-col rounded-md border border-white/15 bg-black/90 text-slate-100"}>
-        <div
-          className={
-            rail
-              ? "absolute right-0 top-0 z-10"
-              : "flex items-center justify-between border-b border-white/10 py-1 pl-1.5 pr-1"
-          }
-        >
-          {!rail && <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Journal</span>}
-          <button
-            type="button"
-            onClick={() => setOpen(true)}
-            title="Ouvrir le journal complet"
-            aria-label="Ouvrir le journal complet"
-            className={`flex items-center justify-center rounded text-slate-300 transition-colors hover:bg-white/10 hover:text-board-accent ${
-              rail ? "h-6 w-6 bg-black/50" : "h-5 w-5"
-            }`}
-          >
-            <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5" aria-hidden>
-              <path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-        </div>
-        <div ref={listRef} className={`flex flex-1 flex-col overflow-y-auto ${rail ? "gap-2 py-1 pr-6" : "gap-1.5 p-1.5"}`}>
-          {highlights.length === 0 ? (
-            <p className={`leading-snug text-slate-400 ${rail ? "text-[11px]" : "text-[10px]"}`}>Aucune attaque ni effet pour l&apos;instant.</p>
-          ) : (
-            highlights.map((highlight) => <HighlightRow key={highlight.key} state={state} highlight={highlight} thumbSize={thumbSize} />)
-          )}
-        </div>
+      <div className={rail ? "flex h-full flex-col text-slate-100" : "flex h-full flex-col rounded-md border border-white/15 bg-black/90 text-slate-100"}>
+        {!rail && (
+          <div className="border-b border-white/10 py-1 pl-1.5 pr-1">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Journal</span>
+          </div>
+        )}
+        {/* Aucun défilement : les lignes les plus récentes sont ancrées en
+            bas (`justify-end`) et ce qui ne tient pas est simplement masqué. */}
+        <div className={`flex flex-1 flex-col justify-end overflow-hidden ${rail ? "gap-2 py-1" : "gap-1.5 p-1.5"}`}>{body}</div>
       </div>
-      {open && <FullLogPanel state={state} playerLabel={label} onClose={closeLog} />}
+      {hovered && <JournalTooltip text={hovered.text} anchor={hovered.anchor} />}
     </>
   );
 }

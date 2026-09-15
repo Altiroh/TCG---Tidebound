@@ -330,7 +330,7 @@ export function BoardPreviewPage() {
 
         <PreviewOpponentHand count={opponentHand} hidden={motion.hidden} />
         <OpponentZone
-          ship={{ name: opponent.shipName, illustration: opponent.illustration, hull: hull.opponent, maxHull: opponent.maxHull, reason: opponent.reason }}
+          ship={{ name: opponent.shipName, illustration: opponent.illustration, hull: hull.opponent, maxHull: opponent.maxHull, reason: opponent.reason, maxReason: opponent.maxReason }}
           board={opponentBoard}
           deck={opponentDeck}
           graveyard={opponentGraveyard}
@@ -360,7 +360,7 @@ export function BoardPreviewPage() {
         />
         <CenterZone tide={tide} />
         <PlayerZone
-          ship={{ name: player.shipName, illustration: player.illustration, hull: hull.player, maxHull: player.maxHull, reason: player.reason }}
+          ship={{ name: player.shipName, illustration: player.illustration, hull: hull.player, maxHull: player.maxHull, reason: player.reason, maxReason: player.maxReason }}
           board={playerBoard}
           deck={playerDeck.length}
           onDraw={drawPlayer}

@@ -9,6 +9,7 @@ import {
   getCardDefinition,
   getShipDefinition,
   graveyardChoicesForBreak,
+  isMainPhase,
   isVisibleDuringTide,
   previewHandBreakReason,
   STATUS_SILENCE,
@@ -159,7 +160,7 @@ export function OnlineBoardLegacy({
   const isMyTurn = state.activePlayerId === myUserId;
   const canRespondToReaction = state.pendingReaction?.awaitingPlayerId === myUserId;
   const canPlay = isMyTurn && !pending && !state.pendingReaction && !state.pendingChoice;
-  const canPlayCards = canPlay && state.phase === "mainPhase";
+  const canPlayCards = canPlay && isMainPhase(state.phase);
   const canAttack = canPlay && state.phase === "combatPhase";
   // Cf. MatchBoard : si aucune unité du joueur actif ne peut attaquer, le
   // bouton de phase saute directement à "Fin de tour" plutôt que de
@@ -632,7 +633,7 @@ export function OnlineBoardLegacy({
         <div className="absolute flex flex-col items-center gap-2" style={{ left: 1479, top: 549, width: 182 }}>
           <PhaseActionButton
             isMyTurn={isMyTurn && !pending}
-            phase={state.phase === "mainPhase" && !hasAnyAttacker ? "combatPhase" : state.phase}
+            phase={state.phase === "mainPhase" && !hasAnyAttacker ? "mainPhase2" : state.phase}
             onAdvancePhase={() => act({ type: "advancePhase", playerId: myUserId })}
             onEndTurn={() => act({ type: "endTurn", playerId: myUserId })}
             size={108}

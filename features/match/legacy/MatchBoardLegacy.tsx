@@ -10,6 +10,7 @@ import {
   getCardDefinition,
   getShipDefinition,
   graveyardChoicesForBreak,
+  isMainPhase,
   isVisibleDuringTide,
   previewHandBreakReason,
   stepBotTurn,
@@ -153,7 +154,7 @@ export function MatchBoardLegacy({ initialState, onExit, botPlayerId, botDifficu
   const viewerShip = getShipDefinition(viewerPlayer.shipId);
   const otherShip = getShipDefinition(otherPlayer.shipId);
   const isViewerTurn = activePlayerId === viewerPlayerId;
-  const canPlayCards = isViewerTurn && state.phase === "mainPhase" && !state.pendingReaction && !state.pendingChoice;
+  const canPlayCards = isViewerTurn && isMainPhase(state.phase) && !state.pendingReaction && !state.pendingChoice;
   // Si aucune unité du joueur actif ne peut attaquer (toutes engourdies,
   // ayant déjà attaqué, ou rendues inactives par la Marée), proposer la
   // Phase de combat n'aurait aucun intérêt : le bouton unique saute
@@ -793,7 +794,7 @@ export function MatchBoardLegacy({ initialState, onExit, botPlayerId, botDifficu
         <div className="absolute flex flex-col items-center gap-2" style={{ left: 1479, top: 549, width: 182 }}>
           <PhaseActionButton
             isMyTurn={isViewerTurn}
-            phase={state.phase === "mainPhase" && !hasAnyAttacker ? "combatPhase" : state.phase}
+            phase={state.phase === "mainPhase" && !hasAnyAttacker ? "mainPhase2" : state.phase}
             onAdvancePhase={() => runAction({ type: "advancePhase", playerId: activePlayerId })}
             onEndTurn={() => runAction({ type: "endTurn", playerId: activePlayerId })}
             size={108}
@@ -918,7 +919,7 @@ export function MatchBoardLegacy({ initialState, onExit, botPlayerId, botDifficu
                   </Button>
                 </>
               )}
-            {state.phase === "mainPhase" && (
+            {isMainPhase(state.phase) && (
               <>
                 {selectedDef.type === "objet" && (
                   <Button variant="secondary" onClick={() => startBreak(selectedUnit)}>

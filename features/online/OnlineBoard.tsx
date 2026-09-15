@@ -7,6 +7,7 @@ import {
   getCardDefinition,
   getShipDefinition,
   graveyardChoicesForBreak,
+  isMainPhase,
   previewHandBreakReason,
   UNIT_CARD_TYPES,
   type CardInstance,
@@ -110,7 +111,7 @@ export function OnlineBoard({
   const isMyTurn = state.activePlayerId === myUserId;
   const canRespondToReaction = state.pendingReaction?.awaitingPlayerId === myUserId;
   const canPlay = isMyTurn && !pending && !state.pendingReaction && !state.pendingChoice;
-  const canPlayCards = canPlay && state.phase === "mainPhase";
+  const canPlayCards = canPlay && isMainPhase(state.phase);
   const canAttack = canPlay && state.phase === "combatPhase";
   const activePlayerBoard = state.players.find((p) => p.id === state.activePlayerId)?.board ?? [];
   const hasAnyAttacker = activePlayerBoard.some((unit) => {
@@ -133,6 +134,8 @@ export function OnlineBoard({
   const bannerText = bannerEvent
     ? bannerEvent.kind === "combatPhase"
       ? "Phase de combat"
+      : bannerEvent.kind === "mainPhase2"
+        ? "Phase principale 2"
       : bannerEvent.playerId === myUserId
         ? "Ton tour"
         : "Tour de l'adversaire"
@@ -250,7 +253,7 @@ export function OnlineBoard({
     );
   }
 
-  const phase = phaseButtonFor({ isMyTurn, phase: state.phase === "mainPhase" && !hasAnyAttacker ? "combatPhase" : state.phase });
+  const phase = phaseButtonFor({ isMyTurn, phase: state.phase === "mainPhase" && !hasAnyAttacker ? "mainPhase2" : state.phase });
   const hint = targetingHint(selection?.kind === "reaction" ? null : selection?.kind ?? null);
 
   return (

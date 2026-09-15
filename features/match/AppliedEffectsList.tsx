@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import {
   collectAuraContributions,
   getCardDefinition,
@@ -17,7 +18,7 @@ interface AppliedEffect {
   /** Miniature carrée à gauche : illustration de la carte source, ou pictogramme quand l'effet ne vient pas d'une carte. */
   thumbnail: { kind: "card"; cardId: string } | { kind: "glyph"; glyph: string };
   source: string;
-  delta: string;
+  delta: ReactNode;
   /** Précision discrète (durée). */
   detail?: string;
   tone: "buff" | "malus" | "neutral";
@@ -26,6 +27,25 @@ interface AppliedEffect {
 function toneOf(attack: number, health: number): AppliedEffect["tone"] {
   const total = attack + health;
   return total > 0 ? "buff" : total < 0 ? "malus" : "neutral";
+}
+
+/**
+ * Variation de stats colorée COMPOSANTE PAR COMPOSANTE : une hausse est
+ * verte, une baisse rouge, même quand les deux cohabitent sur la même
+ * ligne. Une teinte unique tirée de la somme affichait un "+1 Puissance"
+ * en rouge dès qu'un "-2 Résistance" l'accompagnait (retour du 15/09 :
+ * « l'info d'une augmentation n'est pas forcément en vert »).
+ */
+function StatDelta({ attack, health }: { attack: number; health: number }) {
+  const tone = (value: number) => (value > 0 ? "text-emerald-300" : value < 0 ? "text-rose-300" : "text-slate-200");
+  const signed = (value: number) => `${value > 0 ? "+" : ""}${value}`;
+  return (
+    <>
+      {attack !== 0 && <span className={tone(attack)}>{signed(attack)} Puissance</span>}
+      {attack !== 0 && health !== 0 && <span className="text-slate-400"> et </span>}
+      {health !== 0 && <span className={tone(health)}>{signed(health)} Résistance</span>}
+    </>
+  );
 }
 
 function knownCardName(source: string): string | null {
@@ -81,14 +101,13 @@ function collectAppliedEffects(
   // le joueur sache QUI renforce sa créature et ce qu'il perd en la perdant.
   if (auraContext) {
     for (const contribution of collectAuraContributions(instance, tideState, auraContext)) {
-      const delta = formatStatDelta(contribution.attack, contribution.health);
-      if (!delta) continue;
+      if (!formatStatDelta(contribution.attack, contribution.health)) continue;
       const isSelf = contribution.sourceInstanceId === instance.instanceId;
       effects.push({
         key: `aura-${contribution.sourceInstanceId ?? contribution.sourceCardId}-${contribution.attack}-${contribution.health}`,
         thumbnail: { kind: "card", cardId: contribution.sourceCardId },
         source: isSelf ? "Sa propre capacité" : getCardDefinition(contribution.sourceCardId).name,
-        delta,
+        delta: <StatDelta attack={contribution.attack} health={contribution.health} />,
         detail: isSelf ? "Tant que la condition tient" : "Tant que cette carte est en jeu",
         tone: toneOf(contribution.attack, contribution.health),
       });
@@ -104,14 +123,13 @@ function collectAppliedEffects(
     grouped.set(key, entry);
   }
   for (const [key, entry] of grouped) {
-    const delta = formatStatDelta(entry.attack, entry.health);
-    if (!delta) continue;
+    if (!formatStatDelta(entry.attack, entry.health)) continue;
     const name = knownCardName(entry.source);
     effects.push({
       key,
       thumbnail: name ? { kind: "card", cardId: entry.source } : { kind: "glyph", glyph: "✦" },
       source: name ?? "Effet",
-      delta,
+      delta: <StatDelta attack={entry.attack} health={entry.health} />,
       detail: DURATION_LABELS[entry.duration],
       tone: toneOf(entry.attack, entry.health),
     });
@@ -127,7 +145,13 @@ function collectAppliedEffects(
         key: "tide",
         thumbnail: { kind: "glyph", glyph: "≋" },
         source: `Marée — ${TIDE_STATE_LABELS[tideState]}`,
-        delta: [delta, tideEntry.inactive ? "Inactive" : ""].filter(Boolean).join(", "),
+        delta: (
+          <>
+            <StatDelta attack={attack} health={health} />
+            {delta && tideEntry.inactive && <span className="text-slate-400">, </span>}
+            {tideEntry.inactive && <span className="text-rose-300">Inactive</span>}
+          </>
+        ),
         detail: "Tant que la Marée reste dans cet état",
         tone: tideEntry.inactive ? "malus" : toneOf(attack, health),
       });
@@ -190,7 +214,7 @@ export function AppliedEffectsList({
   return (
     <ul
       aria-label="Effets appliqués"
-      className="flex max-h-[30vh] flex-col gap-2 overflow-y-auto rounded-xl border border-white/15 bg-black/60 p-2.5 shadow-[0_8px_30px_rgba(0,0,0,0.5)] backdrop-blur-xl [font-family:var(--font-card-body)]"
+      className="flex max-h-[30vh] flex-col gap-2 overflow-y-auto overscroll-contain rounded-xl border border-white/15 bg-black/60 p-2.5 shadow-[0_8px_30px_rgba(0,0,0,0.5)] backdrop-blur-xl [scrollbar-width:thin] [font-family:var(--font-card-body)]"
     >
       {effects.map((effect) => (
         <li key={effect.key} className="flex items-center gap-3">
@@ -202,6 +226,7 @@ export function AppliedEffectsList({
             glyphClassName={TONE_CLASSES[effect.tone]}
           />
           <span className="min-w-0 flex-1">
+            {/* Pas de teinte globale ici : chaque composante porte la sienne (`StatDelta`) ; seules les lignes non chiffrées (carte liée) retombent sur `tone`. */}
             <span className={`block text-[15px] font-semibold leading-tight ${TONE_CLASSES[effect.tone]}`}>{effect.delta}</span>
             <span className="block truncate text-xs text-slate-400">
               {effect.source}

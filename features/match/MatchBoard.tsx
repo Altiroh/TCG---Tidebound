@@ -8,6 +8,7 @@ import {
   getCardDefinition,
   getShipDefinition,
   graveyardChoicesForBreak,
+  isMainPhase,
   previewHandBreakReason,
   stepBotTurn,
   UNIT_CARD_TYPES,
@@ -107,7 +108,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
   const otherPlayer = state.players.find((p) => p.id !== viewerPlayerId)!;
   const isViewerTurn = activePlayerId === viewerPlayerId;
   const noPendingWindow = !state.pendingReaction && !state.pendingChoice;
-  const canPlayCards = isViewerTurn && state.phase === "mainPhase" && noPendingWindow;
+  const canPlayCards = isViewerTurn && isMainPhase(state.phase) && noPendingWindow;
   const canAttackNow = isViewerTurn && state.phase === "combatPhase" && noPendingWindow;
   // Si aucune unité du joueur actif ne peut attaquer, le bouton unique saute directement à "Fin de tour".
   const activePlayerBoard = state.players.find((p) => p.id === activePlayerId)?.board ?? [];
@@ -133,7 +134,13 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
     if (id === botPlayerId) return "du Bot";
     return id === "p1" ? "du Joueur 1" : "du Joueur 2";
   }
-  const bannerText = bannerEvent ? (bannerEvent.kind === "combatPhase" ? "Phase de combat" : `Tour ${playerLabel(bannerEvent.playerId)}`) : null;
+  const bannerText = bannerEvent
+    ? bannerEvent.kind === "combatPhase"
+      ? "Phase de combat"
+      : bannerEvent.kind === "mainPhase2"
+        ? "Phase principale 2"
+        : `Tour ${playerLabel(bannerEvent.playerId)}`
+    : null;
   // Court : il tient sous « Tour N » dans la colonne, même en mobile.
   const turnOwnerLabel = botPlayerId ? (isViewerTurn ? "À vous" : "Au bot") : `Joueur ${activePlayerId === "p1" ? "1" : "2"}`;
 
@@ -352,7 +359,8 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
     );
   }
 
-  const phase = phaseButtonFor({ isMyTurn: isViewerTurn, phase: state.phase === "mainPhase" && !hasAnyAttacker ? "combatPhase" : state.phase });
+  // Rien à attaquer : le bouton saute le combat ET la Phase principale 2 (on y est déjà, en pratique) et propose la fin du tour.
+  const phase = phaseButtonFor({ isMyTurn: isViewerTurn, phase: state.phase === "mainPhase" && !hasAnyAttacker ? "mainPhase2" : state.phase });
   const hint = targetingHint(pending?.kind === "reaction" ? null : pending?.kind ?? null);
 
   return (

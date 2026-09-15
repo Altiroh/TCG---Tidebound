@@ -5,7 +5,7 @@ import { graveyardChoicesForBreak } from "@/game/actions/breakObject";
 import type { PlayerAction } from "@/game/actions/types";
 import { eligibleChosenUnits } from "@/game/effects/chosenTargets";
 import { eligibleCandidatesFor } from "@/game/reactions/reactionWindow";
-import type { GameState, PlayerId } from "@/game/state/types";
+import { isMainPhase, type GameState, type PlayerId } from "@/game/state/types";
 
 /**
  * Variantes de Bris d'un Objet (posé ou depuis la main) : une par cible possible
@@ -46,8 +46,8 @@ function isEligibleAttacker(unit: CardInstance): boolean {
  * jamais avoir à réimplémenter `game/rules/validation.ts`.
  *
  * Consciente des Phases (`game/actions/advancePhase.ts`) : jouer une
- * carte/Saborder/Briser n'est proposé qu'en Phase principale, attaquer
- * qu'en Phase de combat — cohérent avec ce que `dispatch` accepterait de
+ * carte/Saborder/Briser n'est proposé qu'en Phase principale (la 1re comme
+ * la 2de, après le combat), attaquer qu'en Phase de combat — cohérent avec ce que `dispatch` accepterait de
  * toute façon, mais évite de gonfler inutilement la liste de candidats.
  */
 export function enumerateCandidateActions(state: GameState, playerId: PlayerId): PlayerAction[] {
@@ -114,7 +114,7 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
     return actions;
   }
 
-  if (state.phase === "mainPhase") {
+  if (isMainPhase(state.phase)) {
     // Pas de limite au nombre d'actions principales par tour (Notion
     // "Moteur de partie" : jouer/Saborder/Briser ne sont plus réservés à
     // une fois par tour) — toutes les cartes/permanents jouables sont
@@ -145,12 +145,17 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
       actions.push({ type: "saborder", playerId, instanceId: unit.instanceId });
     }
 
-    actions.push({ type: "advancePhase", playerId });
-    // N'offre "passer directement" que s'il n'y a rien à attaquer derrière —
-    // sinon `chooseAction.ts` favorise de toute façon `advancePhase` via son
-    // bonus heuristique, mais autant ne pas tenter le sort avec un
-    // choix aléatoire (difficulté "facile") qui zapperait une attaque gratuite.
-    if (!player.board.some(isEligibleAttacker)) {
+    if (state.phase === "mainPhase") {
+      actions.push({ type: "advancePhase", playerId });
+      // N'offre "passer directement" que s'il n'y a rien à attaquer derrière —
+      // sinon `chooseAction.ts` favorise de toute façon `advancePhase` via son
+      // bonus heuristique, mais autant ne pas tenter le sort avec un
+      // choix aléatoire (difficulté "facile") qui zapperait une attaque gratuite.
+      if (!player.board.some(isEligibleAttacker)) {
+        actions.push({ type: "endTurn", playerId });
+      }
+    } else {
+      // Phase principale 2 : le combat est derrière, la seule sortie est la fin du tour.
       actions.push({ type: "endTurn", playerId });
     }
   } else if (state.phase === "combatPhase") {

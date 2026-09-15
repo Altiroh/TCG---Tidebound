@@ -219,6 +219,17 @@ Un joueur **n'est plus limité** à une seule action principale par tour
 un Objet peuvent s'enchaîner librement pendant la Phase principale — seule
 la Raison disponible (et l'espace sur le plateau) les limite.
 
+### Phases d'un tour
+
+`Phase principale → Phase de combat → Phase principale 2`, chaque passage
+par `advancePhase` ; `endTurn` sort de n'importe laquelle. Poser une
+carte, Saborder, Briser un Objet et activer une capacité sont possibles
+dans **les deux** Phases principales (`isMainPhase`, `assertInMainPhase`) ;
+attaquer reste réservé à la Phase de combat. La Phase principale 2 existe
+pour pouvoir répondre à ce que le combat vient de révéler — reposer sur un
+plateau dégarni, Saborder ce qui s'est exposé, Briser un Objet devenu
+utile. Le tour suivant recommence toujours en Phase principale.
+
 ### Malus globaux des Marées (verrouillé, 2026-09-10)
 
 - **Calme** : aucun malus.

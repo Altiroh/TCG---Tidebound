@@ -8,7 +8,7 @@ import {
   assertCanPayCost,
   assertCardInHand,
   assertGameActive,
-  assertInPhase,
+  assertInMainPhase,
   assertIsActivePlayer,
   assertIsObjectCard,
   assertPlayerInGame,
@@ -80,7 +80,7 @@ function validate(state: GameState, action: BreakObjectAction) {
     assertGameActive(state),
     assertPlayerInGame(state, action.playerId),
     assertIsActivePlayer(state, action.playerId),
-    assertInPhase(state, action.playerId, "mainPhase"),
+    assertInMainPhase(state, action.playerId),
     action.fromHand
       ? assertCardInHand(state, action.playerId, action.instanceId)
       : assertIsObjectCard(state, action.playerId, action.instanceId)

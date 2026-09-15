@@ -31,6 +31,53 @@
  *   0,70  rayons dorés tournants derrière le Navire, qui s'élève en basculant ;
  *   1,35  le nom s'écrit lettre par lettre ; 2,00 les boutons.
  */
+/*
+ * L'écran de fin NE DÉFILE PAS (retour du 15/09) : il occupe exactement la
+ * fenêtre, et tout ce qu'il contient est borné en hauteur pour y tenir
+ * (bandeau, cadre, boutons). `100dvh` plutôt que `100vh` : sur mobile, les
+ * barres d'interface du navigateur ne doivent pas repousser les boutons
+ * sous le pli.
+ */
+.screen {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(8px, 2.2dvh, 32px);
+  width: 100%;
+  height: 100dvh;
+  max-height: 100dvh;
+  padding: clamp(10px, 2.5dvh, 32px) clamp(12px, 4vw, 32px);
+  overflow: hidden;
+  text-align: center;
+}
+
+/*
+ * Arrière-plan : le plateau peint n'est plus lisible, seulement suggéré.
+ * Il porte ses propres cadres de Navire vides et ses dos de carte, qu'on
+ * reconnaissait derrière l'écran de fin — flou, désaturation et
+ * assombrissement les réduisent à une matière sombre.
+ */
+.backdrop {
+  position: fixed;
+  inset: -3%;
+  z-index: 0;
+  pointer-events: none;
+  filter: blur(14px) saturate(0.45) brightness(0.42);
+}
+
+/* Voile uni par-dessus : garantit le contraste du cadre et du lettrage
+   quelle que soit la zone du plateau restée claire. */
+.backdropVeil {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: rgba(4, 8, 16, 0.72);
+}
+
 .stage {
   animation: victory-shake 420ms cubic-bezier(0.36, 0.07, 0.19, 0.97) 450ms both;
 }
@@ -59,7 +106,9 @@
 .bannerWrap {
   position: relative;
   width: 100%;
-  max-width: min(70vw, 480px);
+  /* Borné en hauteur aussi : sur un écran bas, le bandeau mangeait la place
+     du cadre et des boutons, et l'écran finissait par défiler. */
+  max-width: min(70vw, 480px, 130dvh);
 }
 .bannerIn {
   display: block;

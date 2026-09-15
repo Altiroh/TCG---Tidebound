@@ -82,6 +82,67 @@ function applyDestructionSubstitute(
 }
 
 /**
+ * Un Équipement suit son porteur : quand le permanent auquel il est
+ * attaché n'est plus sur le plateau (détruit, Sabordé, expiré, renvoyé en
+ * main…), l'Équipement part au cimetière avec lui — "sauf contre-indication
+ * de l'effet", c'est-à-dire sauf s'il déclare `survivesOwnerDestruction`.
+ *
+ * Nettoyage passé en revue à CHAQUE passe de `processDeaths` plutôt qu'à
+ * chaque site de départ (destruction, Sabordage, effet `destroy`,
+ * expiration de durée…) : `dispatch` fait toujours passer une action par
+ * ici, ce qui donne un point unique — et couvre du même coup les départs
+ * en chaîne (un Équipement détruit avec son porteur peut en faire mourir
+ * d'autres).
+ *
+ * Un Équipement jamais attaché (`attachedToInstanceId` absent, ex: joué
+ * sans cible légale) n'est PAS orphelin : il n'a jamais eu de porteur.
+ */
+function destroyOrphanedEquipment(state: GameState, turnNumber: number): { state: GameState; events: GameEvent[] } {
+  const events: GameEvent[] = [];
+  let next = state;
+
+  for (const player of state.players) {
+    const orphans = player.board.filter((unit) => {
+      if (!unit.attachedToInstanceId) return false;
+      if (getCardDefinition(unit.cardId).survivesOwnerDestruction) return false;
+      return !player.board.some((u) => u.instanceId === unit.attachedToInstanceId);
+    });
+    if (orphans.length === 0) continue;
+
+    const orphanIds = new Set(orphans.map((u) => u.instanceId));
+    const current = next.players.find((p) => p.id === player.id)!;
+    next = {
+      ...next,
+      players: next.players.map((p) =>
+        p.id === player.id
+          ? {
+              ...p,
+              board: current.board.filter((u) => !orphanIds.has(u.instanceId)),
+              graveyard: [
+                ...current.graveyard,
+                ...orphans.map((u) => ({ ...u, damageMarked: 0, modifiers: [], attachedToInstanceId: undefined, graveyardCause: "destroyed" as const })),
+              ],
+            }
+          : p
+      ) as [PlayerState, PlayerState],
+    };
+
+    for (const orphan of orphans) {
+      events.push({ type: "DESTROY", instanceId: orphan.instanceId, reason: "effect", turnNumber, timestamp: Date.now() });
+      const triggerResult = processTrigger(
+        next,
+        { trigger: "onDeath", sourceInstanceId: orphan.instanceId, cardId: orphan.cardId, playerId: player.id },
+        turnNumber
+      );
+      next = triggerResult.state;
+      events.push(...triggerResult.events);
+    }
+  }
+
+  return { state: next, events };
+}
+
+/**
  * Repère les unités dont les dégâts marqués atteignent ou dépassent leur
  * vie effective (ou que la Marée courante détruit directement, ex: la
  * Vigie fragile aux Abysses), les envoie au cimetière et déclenche leurs
@@ -131,7 +192,17 @@ export function processDeaths(
       }
     }
 
-    if (deaths.length === 0) break;
+    if (deaths.length === 0) {
+      // Plus personne ne meurt : reste à renvoyer au cimetière les
+      // Équipements dont le porteur vient de partir. S'ils en font mourir
+      // d'autres (perte de Résistance apportée par l'Équipement), la
+      // passe suivante s'en chargera ; sinon on s'arrête là.
+      const orphaned = destroyOrphanedEquipment(current, turnNumber);
+      if (orphaned.events.length === 0) break;
+      current = orphaned.state;
+      events.push(...orphaned.events);
+      continue;
+    }
 
     let next = current;
     for (const { unit, owner } of deaths) {

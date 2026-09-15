@@ -5,7 +5,7 @@ import type { GameState, PlayerId } from "@/game";
 
 export interface PhaseBannerEvent {
   id: number;
-  kind: "turnStart" | "combatPhase";
+  kind: "turnStart" | "combatPhase" | "mainPhase2";
   playerId: PlayerId;
 }
 
@@ -36,6 +36,8 @@ export function usePhaseBannerEvent(state: GameState): PhaseBannerEvent | null {
       next = { kind: "turnStart", playerId: state.activePlayerId };
     } else if (previous.phase !== state.phase && state.phase === "combatPhase") {
       next = { kind: "combatPhase", playerId: state.activePlayerId };
+    } else if (previous.phase !== state.phase && state.phase === "mainPhase2") {
+      next = { kind: "mainPhase2", playerId: state.activePlayerId };
     }
     if (!next) return;
 

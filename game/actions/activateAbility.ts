@@ -6,7 +6,7 @@ import type { GameEvent } from "@/game/events/types";
 import {
   assertCardOnOwnBoard,
   assertGameActive,
-  assertInPhase,
+  assertInMainPhase,
   assertIsActivePlayer,
   assertPlayerInGame,
   combine,
@@ -25,7 +25,7 @@ function validate(state: GameState, action: ActivateAbilityAction) {
     assertGameActive(state),
     assertPlayerInGame(state, action.playerId),
     assertIsActivePlayer(state, action.playerId),
-    assertInPhase(state, action.playerId, "mainPhase"),
+    assertInMainPhase(state, action.playerId),
     assertCardOnOwnBoard(state, action.playerId, action.sourceInstanceId)
   );
   if (!generalChecks.ok) return generalChecks;

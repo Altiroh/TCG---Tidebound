@@ -195,11 +195,12 @@ export interface OceanJudgmentEvent extends BaseGameEvent {
   winnerId?: PlayerId;
 }
 
-/** Le joueur actif est passé de la Phase principale à la Phase de combat (`game/actions/advancePhase.ts`). */
+/** Le joueur actif a avancé d'une phase : Principale → Combat → Principale 2 (`game/actions/advancePhase.ts`). */
 export interface PhaseChangedEvent extends BaseGameEvent {
   type: "PHASE_CHANGED";
   playerId: PlayerId;
-  phase: "mainPhase" | "combatPhase";
+  /** Phase ATTEINTE par ce changement. */
+  phase: "mainPhase" | "combatPhase" | "mainPhase2";
 }
 
 /**
