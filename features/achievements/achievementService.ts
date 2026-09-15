@@ -18,8 +18,25 @@ import { catalogDeckById } from "@/game";
  *     une vérification applicative.
  */
 
-/** Lit tous les compteurs dont dépendent les exploits, en une passe. */
+/**
+ * Lit tous les compteurs dont dépendent les exploits, en une passe.
+ *
+ * `null` couvre les deux cas où l'on ne sait rien : le joueur n'a pas encore
+ * de ligne de progression, et la base n'a pas répondu. Ne lève jamais — pas
+ * même si la clé de service manque, auquel cas la création du client échoue
+ * avant la première lecture. Un exploit manqué se rattrape à la partie
+ * suivante ; une exception, elle, remonterait jusqu'à l'écran.
+ */
 export async function readAchievementStats(userId: string): Promise<AchievementStats | null> {
+  try {
+    return await readStats(userId);
+  } catch (error) {
+    console.error("[readAchievementStats] Lecture impossible :", error);
+    return null;
+  }
+}
+
+async function readStats(userId: string): Promise<AchievementStats | null> {
   const service = createSupabaseServiceRoleClient();
 
   const [progression, onboarding, unlocks, cards, boosters] = await Promise.all([

@@ -20,20 +20,30 @@ const QUEST_TYPES: readonly QuestType[] = ["daily", "weekly"];
  * qu'une partie jouée avant d'avoir ouvert l'écran compte quand même.
  */
 export async function ensureCurrentQuests(userId: string, now: Date = new Date()): Promise<void> {
-  const service = createSupabaseServiceRoleClient();
-  await Promise.all(
-    QUEST_TYPES.map(async (questType) => {
-      const periodKey = questPeriodKey(questType, now);
-      const codes = selectQuestsForPeriod(userId, questType, periodKey).map((q) => q.code);
-      const { error } = await service.rpc("assign_player_quests", {
-        p_user_id: userId,
-        p_quest_type: questType,
-        p_period_key: periodKey,
-        p_quest_codes: codes,
-      });
-      if (error) console.error(`[ensureCurrentQuests] Attribution ${questType} refusée :`, error.message);
-    })
-  );
+  // Ne lève JAMAIS, même si la clé de service manque — auquel cas la
+  // création du client échoue avant le premier appel. Cette fonction est
+  // appelée à l'ouverture de l'écran des quêtes et à chaque fin de partie :
+  // une exception y viderait l'écran, ou ferait échouer le coup qui vient
+  // de terminer la partie. Ne pas avoir ses quêtes du jour est ennuyeux ;
+  // perdre la partie qu'on vient de gagner ne l'est pas du tout.
+  try {
+    const service = createSupabaseServiceRoleClient();
+    await Promise.all(
+      QUEST_TYPES.map(async (questType) => {
+        const periodKey = questPeriodKey(questType, now);
+        const codes = selectQuestsForPeriod(userId, questType, periodKey).map((q) => q.code);
+        const { error } = await service.rpc("assign_player_quests", {
+          p_user_id: userId,
+          p_quest_type: questType,
+          p_period_key: periodKey,
+          p_quest_codes: codes,
+        });
+        if (error) console.error(`[ensureCurrentQuests] Attribution ${questType} refusée :`, error.message);
+      })
+    );
+  } catch (error) {
+    console.error("[ensureCurrentQuests] Échec :", error);
+  }
 }
 
 export interface RecordMatchQuestProgressInput {
