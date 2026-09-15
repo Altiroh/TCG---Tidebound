@@ -78,9 +78,8 @@ function isUnitType(type: string): boolean {
 }
 
 /**
- * Plateau d'une partie locale (hot-seat ou contre un bot), sur le NOUVEAU
- * plateau (`TableBoard`). L'ancien rendu est conservé dans
- * `features/match/legacy/MatchBoardLegacy.tsx` (`?plateau=ancien`).
+ * Plateau d'une partie locale (hot-seat ou contre un bot), rendu par
+ * `TableBoard`.
  *
  * Ce composant garde toute la logique de partie — tour du bot, fenêtres de
  * réaction, bris, Déraison, pause, fin de partie — et ne fait que brancher

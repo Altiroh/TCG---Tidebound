@@ -7,8 +7,6 @@ import { startBotMatch } from "@/features/bot/actions";
 import { createLocalMatch } from "@/features/match/createLocalMatch";
 import { NewMatchScreen, type MatchOpponent } from "@/features/match/NewMatchScreen";
 import { MatchBoard } from "@/features/match/MatchBoard";
-import { MatchBoardLegacy } from "@/features/match/legacy/MatchBoardLegacy";
-import { useLegacyBoard } from "@/features/match/legacy/useLegacyBoard";
 
 interface PartieScreenProps {
   isSignedIn: boolean;
@@ -38,9 +36,6 @@ export function PartieScreen({ isSignedIn, personalDecks = [], unlockedDeckIds =
   const [error, setError] = useState<string | null>(null);
   /** Pourquoi la partie en cours est locale alors qu'elle aurait dû être arbitrée — affiché par-dessus le plateau, jamais bloquant. */
   const [fallbackNotice, setFallbackNotice] = useState<string | null>(null);
-  /** `?plateau=ancien` : ancien plateau, le temps de valider le nouveau. */
-  const legacyBoard = useLegacyBoard();
-  const Board = legacyBoard ? MatchBoardLegacy : MatchBoard;
 
   function startLocalMatch(deck1: DeckList, deck2: DeckList, opponent: MatchOpponent, notice: string | null = null) {
     setBot(opponent.type === "bot" ? { playerId: "p2", difficulty: opponent.difficulty } : null);
@@ -140,7 +135,7 @@ export function PartieScreen({ isSignedIn, personalDecks = [], unlockedDeckIds =
           </button>
         </div>
       )}
-      <Board initialState={match} onExit={exitMatch} botPlayerId={bot?.playerId} botDifficulty={bot?.difficulty} />
+      <MatchBoard initialState={match} onExit={exitMatch} botPlayerId={bot?.playerId} botDifficulty={bot?.difficulty} />
     </>
   );
 }

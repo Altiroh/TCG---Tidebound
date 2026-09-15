@@ -70,8 +70,6 @@ function isUnitType(type: string): boolean {
  * Plateau d'une partie en ligne (y compris contre le bot arbitré par le
  * serveur), sur le NOUVEAU plateau (`TableBoard`) : "moi" toujours en bas,
  * main adverse cachée, actions envoyées au serveur. L'ancien rendu est
- * conservé dans `features/online/legacy/OnlineBoardLegacy.tsx`
- * (`?plateau=ancien`).
  */
 export function OnlineBoard({
   state: liveState,
