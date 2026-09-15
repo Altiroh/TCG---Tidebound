@@ -12,7 +12,7 @@ async function loadDeck(deckId: string) {
 
   const { data: deck } = await supabase
     .from("player_decks")
-    .select("id, name, ship_id")
+    .select("id, name, ship_id, art_card_id")
     .eq("id", deckId)
     .maybeSingle();
   if (!deck) return null;
@@ -21,7 +21,7 @@ async function loadDeck(deckId: string) {
 
   const cardIds = (cards ?? []).flatMap((row) => Array.from({ length: row.quantity }, () => row.card_id));
 
-  return { id: deck.id, name: deck.name, shipId: deck.ship_id, cardIds };
+  return { id: deck.id, name: deck.name, shipId: deck.ship_id, cardIds, artCardId: deck.art_card_id };
 }
 
 export default async function DeckDetailPage({ params }: { params: { deckId: string } }) {

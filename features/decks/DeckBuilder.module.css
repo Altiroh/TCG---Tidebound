@@ -79,23 +79,70 @@
 }
 
 
-/* Le champ de nom vit dans l'`ArtPlate` partagée (`features/shell/ArtPlate`) :
-   le cadre, le voile bleu et les tentacules sont à elle, pas ici. */
+/* ── Plaque du nom, en tête du panneau de DROITE ────────────────
+ *
+ * Le cadre, le voile bleu et les tentacules viennent de l'`ArtPlate`
+ * partagée : il n'y a ici que ce qui se pose dessus.
+ */
+.namePlate {
+  /* Déborde du rembourrage du panneau : elle le coiffe d'un bord à l'autre,
+     comme une enseigne, au lieu de flotter au milieu. */
+  margin: calc(-1 * clamp(10px, 1.4vh, 16px)) calc(-1 * clamp(10px, 0.9vw, 16px)) 0;
+  border-inline: none;
+  border-top: none;
+  border-radius: 0;
+}
+
+.nameRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* Bouton d'illustration : discret, il ne concurrence pas le nom. */
+.artPick {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid rgba(140, 220, 245, 0.35);
+  border-radius: 7px;
+  background: rgba(6, 22, 38, 0.55);
+  color: rgba(210, 238, 250, 0.85);
+  cursor: pointer;
+  transition: border-color 140ms ease-out, color 140ms ease-out, background-color 140ms ease-out;
+}
+.artPick:hover { border-color: #6fdcff; color: #fff; background: rgba(14, 58, 90, 0.8); }
+.artPick:focus-visible { outline: 2px solid #6fdcff; outline-offset: 2px; }
 
 /* Nom du deck : de l'encre, pas un champ de formulaire — le cadre et le
-   focus sont portés par la plaque. */
+   focus sont portés par la plaque.
+
+   UNE SEULE LIGNE, toujours : `white-space: nowrap` empêche le retour, et
+   `useFitText` rétrécit la police jusqu'à ce que le nom tienne. Pas
+   d'ellipse — un deck tronqué ne se reconnaît plus. La taille est donc
+   posée en ligne par le hook, pas ici. */
 .deckName {
-  position: relative;
-  z-index: 3;
+  flex: 1 1 auto;
   width: 100%;
   min-width: 0;
-  padding: clamp(10px, 1.5vh, 16px) clamp(10px, 0.9vw, 14px);
+  padding: 0;
   border: none;
   background: none;
   font-family: var(--cb-font-display);
-  font-size: clamp(17px, 2.3vh, 24px);
   font-weight: 600;
+  line-height: 1.25;
   color: #f0f7fb;
+  white-space: nowrap;
+  overflow: hidden;
+  /* Dernier recours seulement : la police a déjà rétréci jusqu'à son
+     plancher. Au-delà, mieux vaut une ellipse qu'une lettre tranchée en
+     deux — et un nom assez long pour en arriver là ne tiendrait de toute
+     façon à aucune taille lisible. */
+  text-overflow: ellipsis;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85), 0 0 12px rgba(0, 0, 0, 0.6);
 }
 
@@ -598,4 +645,53 @@
 
 @media (prefers-reduced-motion: reduce) {
   .deckPanel { transition: none; }
+}
+
+/* ── Sélecteur d'illustration du deck ───────────────────────── */
+.artPicker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(clamp(92px, 9vw, 128px), 1fr));
+  gap: 10px;
+  /* Un deck peut compter des dizaines de cartes distinctes : le dialogue
+     défile plutôt que de pousser ses boutons hors de l'écran. */
+  max-height: min(56vh, 460px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+}
+
+.artOption {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(8, 22, 36, 0.6);
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 140ms ease-out, transform 140ms ease-out;
+}
+.artOption:hover { border-color: rgba(94, 214, 255, 0.6); transform: translateY(-2px); }
+.artOption:focus-visible { outline: 2px solid #6fdcff; outline-offset: 2px; }
+
+.artOptionActive {
+  border-color: #6fdcff;
+  box-shadow: 0 0 0 1px rgba(94, 214, 255, 0.5);
+}
+
+.artOptionArt {
+  display: block;
+  aspect-ratio: 4 / 3;
+  background-size: cover;
+  background-position: center 28%;
+  background-repeat: no-repeat;
+}
+
+.artOptionName {
+  padding: 0 7px 7px;
+  font-size: clamp(10px, 0.78vw, 12px);
+  line-height: 1.25;
+  color: var(--ink);
+  text-align: left;
 }

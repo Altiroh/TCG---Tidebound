@@ -11,7 +11,9 @@ import { CardDetailModal } from "@/features/collection/card-detail/CardDetailMod
 import { useCardBrowser } from "@/features/collection/useCardBrowser";
 import { DEFAULT_SHIP_ID } from "@/features/decks/constants";
 import { countInDeck, deckRuleIssue } from "@/features/decks/deckComposition";
+import { DeckArtPicker } from "@/features/decks/DeckArtPicker";
 import { DeckIdentity } from "@/features/decks/DeckIdentity";
+import { DeckNamePlate } from "@/features/decks/DeckNamePlate";
 import { DeckListPanel } from "@/features/decks/DeckListPanel";
 import { DeleteDeckDialog } from "@/features/decks/DeleteDeckDialog";
 import { Dialog } from "@/features/shell/Dialog";
@@ -31,8 +33,8 @@ function handleCardDragStart(def: CardDefinition, event: React.DragEvent<HTMLBut
 }
 
 /** Sérialisation grossière pour détecter des modifications non sauvegardées (nom + Navire + multiset de cartes, ordre des exemplaires sans importance). */
-function serializeState(name: string, shipId: string, cardIds: string[]): string {
-  return `${name}|${shipId}|${[...cardIds].sort().join(",")}`;
+function serializeState(name: string, shipId: string, cardIds: string[], artCardId: string | null): string {
+  return `${name}|${shipId}|${artCardId ?? ""}|${[...cardIds].sort().join(",")}`;
 }
 
 export interface DeckEditorInitialData {
@@ -40,6 +42,8 @@ export interface DeckEditorInitialData {
   name: string;
   shipId: string;
   cardIds: string[];
+  /** Illustration choisie, ou `null` : la règle par défaut reprend alors la main. */
+  artCardId: string | null;
 }
 
 interface DeckEditorScreenProps {
@@ -82,7 +86,10 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
   const [shipId, setShipId] = useState(initialDeck?.shipId ?? DEFAULT_SHIP_ID);
   const [shipPickerOpen, setShipPickerOpen] = useState(false);
   const [cardIds, setCardIds] = useState<string[]>(initialDeck?.cardIds ?? []);
-  const [savedSnapshot, setSavedSnapshot] = useState(() => serializeState(name, shipId, cardIds));
+  /** Illustration choisie, ou `null` : la carte la plus chère du deck sert alors. */
+  const [artCardId, setArtCardId] = useState<string | null>(initialDeck?.artCardId ?? null);
+  const [artPickerOpen, setArtPickerOpen] = useState(false);
+  const [savedSnapshot, setSavedSnapshot] = useState(() => serializeState(name, shipId, cardIds, artCardId));
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savedFlash, setSavedFlash] = useState(false);
@@ -100,7 +107,7 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
   const initialFilters = useMemo(() => (isSignedIn ? { ownership: "owned" as const } : {}), [isSignedIn]);
   const cardBrowser = useCardBrowser({ owned, initialFilters });
 
-  const isDirty = serializeState(name, shipId, cardIds) !== savedSnapshot;
+  const isDirty = serializeState(name, shipId, cardIds, artCardId) !== savedSnapshot;
   const issue = useMemo(() => deckRuleIssue(cardIds, shipId, name), [cardIds, shipId, name]);
   /** Un deck encore hors des règles : sauvegardable, mais comme BROUILLON — c'est ce que le dialogue de sortie propose. */
   const isDraft = issue !== null;
@@ -142,13 +149,13 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
   async function handleSave(): Promise<boolean> {
     setIsSaving(true);
     setSaveError(null);
-    const result = await saveDeck({ id: deckId, name, shipId, cardIds });
+    const result = await saveDeck({ id: deckId, name, shipId, cardIds, artCardId });
     setIsSaving(false);
     if (!result.ok || !result.id) {
       setSaveError(result.error ?? "Échec de la sauvegarde.");
       return false;
     }
-    setSavedSnapshot(serializeState(name, shipId, cardIds));
+    setSavedSnapshot(serializeState(name, shipId, cardIds, artCardId));
     if (!deckId) {
       setDeckId(result.id);
       router.replace(`/decks/${result.id}`);
@@ -164,7 +171,8 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
     setName("Nouveau deck");
     setShipId(DEFAULT_SHIP_ID);
     setCardIds([]);
-    setSavedSnapshot(serializeState("Nouveau deck", DEFAULT_SHIP_ID, []));
+    setArtCardId(null);
+    setSavedSnapshot(serializeState("Nouveau deck", DEFAULT_SHIP_ID, [], null));
     router.push("/decks/nouveau");
   }
 
@@ -339,10 +347,7 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
 
         <aside className={`${game.panel} ${browser.sidebar}`} aria-label="Identité du deck et filtres">
           <DeckIdentity
-            name={name}
-            onNameChange={setName}
             shipId={shipId}
-            cardIds={cardIds}
             onChangeShip={() => setShipPickerOpen(true)}
             onBack={() => requestLeave({ kind: "navigate", href: "/decks" })}
           />
@@ -383,6 +388,16 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
         <aside className={`${game.panel} ${styles.deckPanel}`} aria-label="Deck en construction">
           <DeckListPanel
             cardIds={cardIds}
+            namePlate={
+              <DeckNamePlate
+                name={name}
+                onNameChange={setName}
+                shipId={shipId}
+                cardIds={cardIds}
+                artCardId={artCardId}
+                onPickArt={() => setArtPickerOpen(true)}
+              />
+            }
             onRemove={removeCard}
             onAdd={addCard}
             onShowCard={setDetailCardId}

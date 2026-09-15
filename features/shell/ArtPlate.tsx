@@ -32,8 +32,10 @@ export function ArtPlate({ artUrl, size = "md", children, className, style }: Ar
       style={style}
     >
       {artUrl && <span className={styles.art} aria-hidden style={{ backgroundImage: `url("${artUrl}")` }} />}
-      <span className={styles.veil} aria-hidden />
+      {/* Ordre voulu : illustration, tentacules, voile, contenu. Les
+          tentacules passent SOUS le voile pour en prendre la teinte. */}
       <span className={styles.tentacles} aria-hidden />
+      <span className={styles.veil} aria-hidden />
       <div className={styles.content}>{children}</div>
     </div>
   );

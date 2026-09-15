@@ -61,7 +61,7 @@ export async function listPlayerDecks(): Promise<PlayerDeckSummary[]> {
 
   const { data: decks, error: decksError } = await supabase
     .from("player_decks")
-    .select("id, name, ship_id, is_valid")
+    .select("id, name, ship_id, is_valid, art_card_id")
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
   if (decksError) console.error("[listPlayerDecks] Échec de la lecture de player_decks :", decksError.message);
@@ -92,9 +92,9 @@ export async function listPlayerDecks(): Promise<PlayerDeckSummary[]> {
       isValid: Boolean(deck.is_valid),
       cardCount: deckCards.reduce((sum, card) => sum + card.quantity, 0),
       headerCardIds: deckCards.slice(0, 5).map((card) => card.card_id),
-      // Sur les cartes DISTINCTES : `signatureCardId` ne compte pas les
-      // exemplaires, seul l'ensemble des cartes du deck l'intéresse.
-      artCardId: signatureCardId(deckCards.map((card) => card.card_id)),
+      // Choix explicite s'il existe, sinon la règle par défaut : la carte
+      // la plus chère (`signatureCardId` ignore les exemplaires).
+      artCardId: deck.art_card_id ?? signatureCardId(deckCards.map((card) => card.card_id)),
     };
   });
 }
@@ -154,6 +154,12 @@ export interface SaveDeckInput {
   shipId: string;
   /** Un élément par exemplaire (pas groupé) — reflète directement la liste de l'éditeur. */
   cardIds: string[];
+  /**
+   * Carte choisie comme illustration du deck, ou `null` pour laisser la
+   * règle décider (la plus chère). `undefined` ne touche à rien — ce qui
+   * permet à un appelant qui ignore ce champ de ne pas l'effacer.
+   */
+  artCardId?: string | null;
 }
 
 /**
@@ -244,12 +250,20 @@ async function saveDeckUnguarded(input: SaveDeckInput): Promise<DeckActionResult
     return { ok: false, error: unknownCardsMessage(missing) };
   }
 
+  /*
+   * Illustration : seule une carte PRÉSENTE dans le deck est retenue. Sans
+   * ce filtre, retirer la carte choisie laisserait le deck illustré par une
+   * carte qu'il ne contient plus — et la plaque mentirait sur son contenu.
+   * Écartée, on retombe sur la règle par défaut.
+   */
+  const artCardId = input.artCardId && input.cardIds.includes(input.artCardId) ? input.artCardId : null;
+
   let deckId = input.id;
 
   if (!deckId) {
     const { data, error } = await supabase
       .from("player_decks")
-      .insert({ user_id: userId, ship_id: input.shipId, name, is_valid: validation.ok })
+      .insert({ user_id: userId, ship_id: input.shipId, name, is_valid: validation.ok, art_card_id: artCardId })
       .select("id")
       .single();
     if (error || !data) return { ok: false, error: error?.message ?? "Échec de la création du deck." };
@@ -257,7 +271,7 @@ async function saveDeckUnguarded(input: SaveDeckInput): Promise<DeckActionResult
   } else {
     const { error: updateError } = await supabase
       .from("player_decks")
-      .update({ name, ship_id: input.shipId, is_valid: validation.ok })
+      .update({ name, ship_id: input.shipId, is_valid: validation.ok, art_card_id: artCardId })
       .eq("id", deckId);
     if (updateError) return { ok: false, error: updateError.message };
 

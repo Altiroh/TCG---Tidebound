@@ -187,6 +187,7 @@ export interface Database {
       };
       player_decks: {
         Row: {
+          art_card_id: string | null;
           id: string;
           user_id: string;
           ship_id: string;
@@ -196,6 +197,7 @@ export interface Database {
           updated_at: string;
         };
         Insert: {
+          art_card_id?: string | null;
           id?: string;
           user_id: string;
           ship_id: string;
@@ -205,6 +207,7 @@ export interface Database {
           updated_at?: string;
         };
         Update: {
+          art_card_id?: string | null;
           id?: string;
           user_id?: string;
           ship_id?: string;

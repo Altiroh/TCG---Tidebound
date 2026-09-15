@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { RULES } from "@/game";
 import { CARD_TYPE_LABELS } from "@/features/match/cardDisplay";
 import {
@@ -18,6 +18,8 @@ const DRAG_MIME = "text/tidebound-card-id";
 
 interface DeckListPanelProps {
   cardIds: string[];
+  /** Plaque du nom du deck, posée en tête de ce panneau — juste au-dessus de la liste qu'elle nomme. */
+  namePlate?: ReactNode;
   onRemove: (cardId: string) => void;
   onAdd: (cardId: string) => void;
   onShowCard: (cardId: string) => void;
@@ -48,6 +50,7 @@ interface DeckListPanelProps {
  */
 export function DeckListPanel({
   cardIds,
+  namePlate,
   onRemove,
   onAdd,
   onShowCard,
@@ -81,7 +84,7 @@ export function DeckListPanel({
 
   return (
     <div className={styles.deckInner}>
-      <p className={styles.deckHeading}>Deck</p>
+      {namePlate ?? <p className={styles.deckHeading}>Deck</p>}
 
       <div className={styles.capacity}>
         <div className={styles.capacityRow}>
