@@ -1,5 +1,6 @@
 import { enumerateCandidateActions } from "@/game/bot/enumerateActions";
 import { evaluateState } from "@/game/bot/evaluateState";
+import { searchBestAction } from "@/game/bot/searchTurn";
 import type { BotDifficulty } from "@/game/bot/types";
 import { dispatch } from "@/game/engine";
 import type { PlayerAction } from "@/game/actions/types";
@@ -35,6 +36,12 @@ function pickRandom<T>(items: T[]): T {
  * Choisit l'action du bot pour ce coup, selon la difficulté. N'exécute
  * rien — `runBotTurn.ts` se charge d'appeler `dispatch` avec le résultat.
  *
+ * Deux régimes bien distincts :
+ *   - « facile » et « moyen » jugent le coup sur l'état qu'il produit
+ *     IMMÉDIATEMENT, avec une marge d'erreur assumée ;
+ *   - « difficile » cherche (`searchTurn.ts`) : il déroule son tour entier
+ *     et note ce qu'il laisse à l'adversaire.
+ *
  * Le hasard utilisé ici (`Math.random()`) n'a pas besoin de passer par le
  * RNG déterministe du moteur (`game/rng.ts`) : seule l'action finalement
  * soumise à `dispatch` est journalisée/rejouable, pas la façon dont le bot
@@ -57,24 +64,57 @@ export function chooseBotAction(state: GameState, playerId: PlayerId, difficulty
   }
 
   if (difficulty === "difficile") {
-    const best = scored[0]!.score;
-    const topTier = scored.filter((s) => s.score >= best - 0.01);
-    return pickRandom(topTier).action;
+    // « Difficile » ne se décide PAS coup par coup : il explore son tour
+    // jusqu'au bout et note la position après la riposte de l'adversaire
+    // (`searchTurn.ts`). C'est ce qui le rend dur — et ce qui fait tomber
+    // d'elles-mêmes les bêtises que la note statique laissait passer, à
+    // commencer par saborder une Structure pour deux points d'Ancrage dont
+    // il n'a pas l'usage.
+    //
+    // Aucun hasard ici, contrairement aux deux autres difficultés : un
+    // adversaire implacable ne se trompe jamais par accident.
+    const searched = searchBestAction(state, playerId);
+    if (searched) return searched;
+    return scored[0]!.action;
   }
 
-  if (difficulty === "moyen") {
-    // Globalement solide, avec une marge d'erreur : 30% du temps, choisit
-    // dans la moitié la plus faible des candidats plutôt que le meilleur.
-    if (scored.length > 2 && Math.random() < 0.3) {
-      const lowerHalf = scored.slice(Math.ceil(scored.length / 2));
-      return pickRandom(lowerHalf.length > 0 ? lowerHalf : scored).action;
-    }
-    const topThird = scored.slice(0, Math.max(1, Math.ceil(scored.length / 3)));
-    return pickRandom(topThird).action;
+  /*
+   * L'ÉCHELLE DE DIFFICULTÉ ÉTAIT INVERSÉE.
+   *
+   * « Moyen » perdait 2 parties sur 12 contre « facile » — mesuré, et
+   * antérieur à la recherche. La raison tenait à la forme de leur hasard :
+   * « facile » tirait dans les 75 % MEILLEURS coups (donc souvent le bon),
+   * tandis que « moyen » allait chercher, trois fois sur dix, dans la
+   * moitié la plus FAIBLE — une bourde délibérée bien plus grave que tout
+   * ce que « facile » pouvait commettre.
+   *
+   * Les deux se décrivent maintenant sur le même axe, une seule grandeur :
+   * la fréquence à laquelle le bot renonce au meilleur coup, et la
+   * profondeur de la fourchette dans laquelle il pioche alors. « Moyen » se
+   * trompe deux fois moins souvent que « facile », et moins gravement — la
+   * progression facile → moyen → difficile est monotone par construction,
+   * plus par accident de réglage.
+   */
+  const { mistakeChance, mistakeDepth } = difficulty === "moyen" ? MOYEN : FACILE;
+
+  if (scored.length > 1 && Math.random() < mistakeChance) {
+    // La bourde reste une bourde PLAUSIBLE : on pioche dans une fourchette
+    // partant du meilleur coup, jamais dans le pire coup absolu — un bot
+    // qui se saborde sans raison n'est pas « facile », il est cassé.
+    const window = Math.max(2, Math.ceil(scored.length * mistakeDepth));
+    return pickRandom(scored.slice(0, Math.min(window, scored.length))).action;
   }
 
-  // facile : quasi aléatoire — exclut seulement le quart le plus mauvais
-  // (évite les coups absurdement suicidaires, sans vraie stratégie).
-  const cutoff = Math.max(1, Math.floor(scored.length * 0.75));
-  return pickRandom(scored.slice(0, cutoff)).action;
+  return scored[0]!.action;
 }
+
+/** Fréquence d'erreur, et largeur de la fourchette où le bot pioche quand il se trompe. */
+interface MistakeProfile {
+  mistakeChance: number;
+  mistakeDepth: number;
+}
+
+/** Se trompe souvent, et large : on apprend le jeu contre lui. */
+const FACILE: MistakeProfile = { mistakeChance: 0.55, mistakeDepth: 0.8 };
+/** Joue le bon coup la plupart du temps, et ses erreurs restent proches du bon. */
+const MOYEN: MistakeProfile = { mistakeChance: 0.25, mistakeDepth: 0.4 };
