@@ -97,3 +97,36 @@ export async function leaveMatchmakingQueue(): Promise<ActionResult<null>> {
   if (error) return { ok: false, error: error.message };
   return { ok: true, data: null };
 }
+
+/**
+ * La partie en cours de ce joueur, s'il vient d'être apparié.
+ *
+ * L'appariement n'est tenté qu'au moment où QUELQU'UN rejoint la file
+ * (`claim_matchmaking_opponent`) : celui qui attendait déjà n'apprend donc
+ * rien par la valeur de retour de son propre appel — c'est l'arrivant qui a
+ * créé la partie, de son côté. Il faut bien que le premier l'apprenne
+ * autrement, et c'est ce que cette fonction permet.
+ *
+ * Interrogée périodiquement plutôt qu'écoutée en Realtime : un abonnement
+ * demanderait deux canaux (le joueur peut être `player1` ou `player2`, et
+ * un filtre Realtime ne porte que sur une colonne), et tomberait en silence
+ * si Realtime n'est pas activé sur le projet. Une file d'attente qui ne
+ * démarre jamais la partie est le pire résultat possible ; quelques
+ * requêtes par minute sont un prix raisonnable pour ne pas en dépendre.
+ */
+export async function findMyActiveMatch(): Promise<ActionResult<{ matchId: string | null }>> {
+  const { supabase, user } = await requireUser();
+
+  const { data, error } = await supabase
+    .from("matches")
+    .select("id, created_at")
+    .eq("mode", "matchmaking")
+    .eq("status", "active")
+    .or(`player1_id.eq.${user.id},player2_id.eq.${user.id}`)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, data: { matchId: data?.id ?? null } };
+}
