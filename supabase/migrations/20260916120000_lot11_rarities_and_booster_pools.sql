@@ -40,8 +40,8 @@ begin
     where n.nspname = 'public' and c.relname = 'cards' and a.attname = 'rarity'
       and format_type(a.atttypid, a.atttypmod) = 'card_rarity'
   ) then
-    -- `open_card_choice` prend la rareté en paramètre : sa signature
-    -- référence le type, il faut la retirer avant de convertir.
+    -- Une signature d'`open_card_choice` héritée d'une base ancienne peut
+    -- encore référencer le type : elle retiendrait la suppression.
     drop function if exists public.open_card_choice(uuid, text, text, public.card_rarity, text[]);
 
     alter table public.cards alter column rarity drop default;
@@ -59,37 +59,6 @@ begin
     drop type if exists public.card_rarity;
   end if;
 end $$;
-
--- Rendue avec une rareté en TEXTE. Recréée hors du bloc conditionnel : elle
--- doit exister dans sa nouvelle forme que la conversion vienne d'avoir lieu
--- ou qu'elle date d'un passage précédent.
-create or replace function public.open_card_choice(
-  p_user_id uuid,
-  p_source text,
-  p_source_ref text,
-  p_rarity text,
-  p_card_ids text[]
-)
-returns jsonb
-language plpgsql
-security definer set search_path = public
-as $$
-declare
-  v_id uuid;
-begin
-  perform public.assert_server_caller('open_card_choice');
-
-  insert into public.player_card_choices (user_id, source, source_ref, rarity, offered_card_ids)
-  values (p_user_id, p_source, p_source_ref, p_rarity, p_card_ids)
-  on conflict (user_id, source, source_ref) do nothing
-  returning id into v_id;
-
-  return jsonb_build_object('ok', true, 'opened', v_id is not null, 'choice_id', v_id);
-end;
-$$;
-
-revoke all on function public.open_card_choice(uuid, text, text, text, text[]) from public, anon, authenticated;
-grant execute on function public.open_card_choice(uuid, text, text, text, text[]) to service_role;
 
 /*
  * Jeu de valeurs autorisé — miroir de `CardRarity` (`game/boosters/types.ts`).

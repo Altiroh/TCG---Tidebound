@@ -1070,11 +1070,22 @@ grant execute on function public.reroll_player_quest(uuid, text, uuid, text, int
 -- 18. CHOIX DE CARTE DE PALIER
 -- ======================================================================
 -- Ouverture : les propositions sont figées ici, une seule fois par palier.
+-- La rareté est prise en TEXTE, pas en `card_rarity` : la migration du Lot
+-- 11 convertit l'enum en colonne texte contrainte, et une signature qui
+-- référencerait encore le type rendrait ce fichier injouable après elle.
+-- Une signature enum laissée par un passage antérieur est retirée d'abord.
+do $do$
+begin
+  if exists (select 1 from pg_type where typname = 'card_rarity' and typnamespace = 'public'::regnamespace) then
+    execute 'drop function if exists public.open_card_choice(uuid, text, text, public.card_rarity, text[])';
+  end if;
+end $do$;
+
 create or replace function public.open_card_choice(
   p_user_id uuid,
   p_source text,
   p_source_ref text,
-  p_rarity public.card_rarity,
+  p_rarity text,
   p_card_ids text[]
 )
 returns jsonb
@@ -1095,8 +1106,8 @@ begin
 end;
 $$;
 
-revoke all on function public.open_card_choice(uuid, text, text, public.card_rarity, text[]) from public, anon, authenticated;
-grant execute on function public.open_card_choice(uuid, text, text, public.card_rarity, text[]) to service_role;
+revoke all on function public.open_card_choice(uuid, text, text, text, text[]) from public, anon, authenticated;
+grant execute on function public.open_card_choice(uuid, text, text, text, text[]) to service_role;
 
 -- Résolution : la carte doit faire partie des propositions figées, et le
 -- choix ne peut être tranché qu'une fois.
