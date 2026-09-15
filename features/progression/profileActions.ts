@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createSupabaseServerClient, createSupabaseServiceRoleClient } from "@/lib/supabase/server";
+import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import {
   MAX_REWARDED_LEVEL,
   levelRewardsLabel,
@@ -16,6 +16,7 @@ import { DEFAULT_CARD_BACK_ID } from "@/game";
 import { claimLoginReward, readLoginRewards } from "@/features/progression/loginService";
 import { syncAchievements } from "@/features/achievements/achievementService";
 import { equipCardBackFor, loadCardBacks, type CardBackCollection } from "@/features/cosmetics/cardBackService";
+import { getSessionUser } from "@/lib/supabase/sessionUser";
 
 /**
  * Profil joueur — Server Actions exposées au navigateur.
@@ -112,10 +113,7 @@ function isStreakAlive(day: string | null): boolean {
 
 export async function fetchProfile(): Promise<ProfileSummary> {
   try {
-    const supabase = createSupabaseServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getSessionUser();
     if (!user) return SIGNED_OUT;
 
     // Rattrape les exploits dus mais pas encore octroyés : le profil est
@@ -188,10 +186,7 @@ export interface ClaimLoginActionResult {
 
 /** Réclame la récompense de connexion du jour (§8). Une par jour UTC, jamais de remise à zéro. */
 export async function claimDailyLogin(): Promise<ClaimLoginActionResult> {
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) return { ok: false, error: "Connecte-toi pour réclamer ta récompense." };
 
   const result = await claimLoginReward(user.id);
@@ -215,10 +210,7 @@ export interface EquipCardBackActionResult {
  * d'équiper le cosmétique de quelqu'un d'autre.
  */
 export async function equipCardBack(cardBackId: string): Promise<EquipCardBackActionResult> {
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) return { ok: false, error: "Connecte-toi pour changer de dos de carte." };
 
   const result = await equipCardBackFor(user.id, cardBackId);
@@ -253,10 +245,7 @@ export interface UpdateIdentityInput {
  * n'obtiendrait rien.
  */
 export async function updateProfileIdentity({ displayName, avatarCardId }: UpdateIdentityInput): Promise<UpdateIdentityActionResult> {
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) return { ok: false, error: "Connecte-toi pour modifier ton profil." };
 
   try {

@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import styles from "@/features/shell/ScreenShell.module.css";
 import { NavigationTab } from "@/features/shell/NavigationTab";
 import { HeaderPlayer } from "@/features/shell/HeaderPlayer";
@@ -80,6 +80,14 @@ export interface ScreenHeaderProps {
 export function ScreenHeader({ active, actions, onNavigate, nav = "collection" }: ScreenHeaderProps) {
   const router = useRouter();
   const tabs = nav === "minimal" ? [] : TABS;
+
+  // Onglets et retour au menu passent par `router.push`, que Next ne
+  // précharge pas : chaque clic attendait alors le rendu serveur complet de
+  // l'écran visé. Préchargés, ils affichent au moins son écran de
+  // chargement (`loading.tsx`) dès le clic.
+  useEffect(() => {
+    for (const href of ["/", "/profil", ...TABS.map((tab) => tab.href)]) router.prefetch(href);
+  }, [router]);
 
   /** Un seul chemin pour tout déplacement du bandeau : l'écran peut le décliner. */
   function go(href: string) {

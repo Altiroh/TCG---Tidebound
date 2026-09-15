@@ -1,8 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { recycleCardFor, type RecycleResult } from "@/features/collection/recycleService";
+import { getSessionUser } from "@/lib/supabase/sessionUser";
 
 /**
  * Revente d'une carte, depuis la Collection.
@@ -12,10 +12,7 @@ import { recycleCardFor, type RecycleResult } from "@/features/collection/recycl
  * n'importe qui.
  */
 export async function recycleCard(cardId: string, quantity = 1): Promise<RecycleResult> {
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) return { ok: false, error: "Connecte-toi pour revendre une carte." };
 
   const result = await recycleCardFor(user.id, cardId, quantity);

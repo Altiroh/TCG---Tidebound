@@ -394,3 +394,46 @@
   .primary, .tile { transition: none; }
   .tile:hover { transform: none; }
 }
+
+/* ── Écran de chargement d'une route (`ScreenLoading`) ──────── */
+.loading {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 14px;
+  min-height: 0;
+  /* Ne se montre qu'au-delà d'un instant : une page rapide passe sans que
+     le chargement clignote. */
+  animation: loadingIn 260ms ease-out 180ms both;
+}
+
+.loadingMark {
+  width: 34px;
+  height: 34px;
+  border: 2px solid rgba(88, 200, 216, 0.16);
+  border-top-color: var(--cb-cyan);
+  border-radius: 50%;
+  animation: loadingSpin 900ms linear infinite;
+}
+
+.loadingLabel {
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+@keyframes loadingIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes loadingSpin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loadingMark { animation-duration: 2400ms; }
+}

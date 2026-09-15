@@ -294,6 +294,28 @@
   text-shadow: none;
 }
 
+.accountAvatarLink {
+  flex: 0 0 auto;
+  display: block;
+  border-radius: 50%;
+  text-decoration: none;
+  transition: transform 160ms ease-out, filter 160ms ease-out;
+}
+
+.accountAvatarLink:hover {
+  transform: scale(1.06);
+  filter: brightness(1.1);
+}
+
+/* Illustration de profil : la carte recadrée sur son sujet, dans le même
+   jeton de laiton que l'initiale. */
+.accountAvatarArt {
+  background-color: #0b1a26;
+  background-size: cover;
+  background-position: 50% 30%;
+  box-shadow: inset 0 0 0 1px rgba(3, 10, 16, 0.4), 0 1px 4px rgba(0, 0, 0, 0.55);
+}
+
 .accountIdentity {
   display: flex;
   flex-direction: column;

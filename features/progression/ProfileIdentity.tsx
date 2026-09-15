@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { getCardDefinition } from "@/game";
 import { cardIllustrationUrl, plateArtUrl } from "@/features/decks/nameplateArt";
 import { updateProfileIdentity } from "@/features/progression/profileActions";
+import { notifyProgressionChanged } from "@/features/progression/progressionSync";
 import { DEFAULT_SHIP_ID } from "@/features/decks/constants";
 import { ArtPlate } from "@/features/shell/ArtPlate";
 import { Dialog } from "@/features/shell/Dialog";
@@ -65,6 +66,8 @@ export function ProfileIdentity({ displayName, avatarCardId, ownedCardIds }: Pro
         return;
       }
       onDone?.();
+      // Le bandeau porte le pseudo et l'avatar sur TOUS les écrans : il relit.
+      notifyProgressionChanged();
       router.refresh();
     });
   }

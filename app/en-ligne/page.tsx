@@ -1,17 +1,14 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { listPlayerDeckLists } from "@/app/decks/actions";
 import { readPlayableCatalogDecks } from "@/features/decks/catalogService";
 import { QuickMatchPanel } from "@/features/matchmaking/QuickMatchPanel";
 import { CreateMatchForm } from "@/features/online/CreateMatchForm";
 import { JoinMatchForm } from "@/features/online/JoinMatchForm";
+import { getSessionUser } from "@/lib/supabase/sessionUser";
 
 export default async function EnLignePage() {
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) redirect("/connexion");
 
   // Decks engageables : ceux que le jeu lui a débloqués, et les siens. Même

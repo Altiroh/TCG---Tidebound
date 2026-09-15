@@ -1,19 +1,16 @@
 import { Suspense } from "react";
 import { BORROWED_DECKS } from "@/game";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { listPlayerDeckLists } from "@/app/decks/actions";
 import { fetchDeckCatalog } from "@/features/decks/catalogActions";
 import { PartieScreen } from "@/features/match/PartieScreen";
+import { getSessionUser } from "@/lib/supabase/sessionUser";
 
 export default async function PartiePage() {
   // Jouer localement ne demande pas de compte : une config Supabase absente
   // ou une session expirée dégrade simplement vers "non connecté".
   let isSignedIn = false;
   try {
-    const supabase = createSupabaseServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getSessionUser();
     isSignedIn = Boolean(user);
   } catch {
     isSignedIn = false;

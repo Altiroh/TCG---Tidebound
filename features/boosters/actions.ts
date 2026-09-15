@@ -5,6 +5,7 @@ import { createSupabaseServerClient, createSupabaseServiceRoleClient } from "@/l
 import { createSeed } from "@/game/rng";
 import { MAX_PURCHASE_QUANTITY } from "@/features/boosters/constants";
 import { drawBooster, type BoosterPoolCard, type BoosterSlotRule, type CardRarity, type DrawnCard } from "@/game/boosters";
+import { getSessionUser } from "@/lib/supabase/sessionUser";
 
 /**
  * Boosters — achat et ouverture, entièrement autoritaires côté serveur.
@@ -93,9 +94,7 @@ function describeFailure(error: unknown, fallback: string): string {
 
 async function requireUser() {
   const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) return null;
   return { supabase, userId: user.id };
 }

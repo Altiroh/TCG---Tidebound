@@ -1,14 +1,11 @@
 import { listPlayerDecks } from "@/app/decks/actions";
 import { fetchDeckCatalog } from "@/features/decks/catalogActions";
 import { DecksScreen } from "@/features/decks/DecksScreen";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getSessionUser } from "@/lib/supabase/sessionUser";
 
 async function resolveIsSignedIn(): Promise<boolean> {
   try {
-    const supabase = createSupabaseServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getSessionUser();
     return Boolean(user);
   } catch (error) {
     console.error("[DecksPage] Impossible de résoudre l'utilisateur connecté :", error);

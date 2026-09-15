@@ -7,6 +7,7 @@ import { TideboundMenuChest } from "@/components/menu/TideboundMenuChest";
 import { MenuAmbiance } from "@/components/menu/MenuAmbiance";
 import { AuthGateModal } from "@/components/auth/AuthGateModal";
 import { OptionsButton } from "@/features/settings/OptionsButton";
+import { getSessionUser } from "@/lib/supabase/sessionUser";
 
 /**
  * Résout l'utilisateur connecté, sans jamais faire planter la page
@@ -17,9 +18,7 @@ import { OptionsButton } from "@/features/settings/OptionsButton";
 async function resolveViewer(): Promise<{ displayName: string | null; isSignedIn: boolean }> {
   try {
     const supabase = createSupabaseServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getSessionUser();
     if (!user) return { displayName: null, isSignedIn: false };
 
     const { data: profile } = await supabase.from("profiles").select("display_name").eq("id", user.id).maybeSingle();

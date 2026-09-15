@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { fetchProgression, type ProgressionSummary } from "@/features/progression/actions";
-import { notifyProgressionChanged, onProgressionChanged, rememberProgression, rememberedProgression } from "@/features/progression/progressionSync";
+import { notifyProgressionChanged, onProgressionChanged, readProgression, rememberedProgression } from "@/features/progression/progressionSync";
+import { cardIllustrationUrl } from "@/features/decks/nameplateArt";
 import { QuestDrawer } from "@/features/quests/QuestDrawer";
 import { ScreenToast, type ScreenToastMessage } from "@/features/shell/ScreenToast";
 import { SettingsDialog } from "@/features/settings/SettingsDialog";
@@ -116,13 +117,13 @@ export function HeaderPlayer() {
     // Numéro de lecture : deux relectures rapprochées (achat puis quête)
     // peuvent revenir dans le désordre — seule la dernière demandée compte.
     let latest = 0;
-    const load = () => {
+    const load = (force: boolean) => {
       const request = ++latest;
-      fetchProgression()
+      // Lecture partagée (`readProgression`) : mémorisée même si ce bandeau
+      // a été démonté entre-temps, et réutilisée par le suivant tant
+      // qu'elle est fraîche. Déconnecté : on n'en garde rien.
+      readProgression(fetchProgression, force)
         .then((result) => {
-          // Mémorisée même si ce bandeau a été démonté entre-temps : le
-          // prochain écran en profitera. Déconnecté : on n'en garde rien.
-          rememberProgression(result);
           if (cancelled || request !== latest) return;
           setSummary(result);
           announceNewQuests(result.claimableQuests);
@@ -162,9 +163,9 @@ export function HeaderPlayer() {
       });
     }
 
-    load();
+    load(false);
     // Relecture après un achat, une quête réclamée… — cf. `progressionSync`.
-    const unsubscribe = onProgressionChanged(load);
+    const unsubscribe = onProgressionChanged(() => load(true));
     return () => {
       cancelled = true;
       unsubscribe();
@@ -179,12 +180,20 @@ export function HeaderPlayer() {
     <>
       {signedIn && summary && (
         <div className={styles.account}>
-          {/* Avatar : l'initiale du pseudo dans un jeton de laiton. Pas
-              d'image tant que le jeu n'en propose pas — un rond vide dirait
-              qu'il manque quelque chose. */}
-          <span className={styles.accountAvatar} aria-hidden>
-            {avatarInitial(summary.displayName)}
-          </span>
+          {/* Avatar : l'illustration choisie au profil, sinon l'initiale du
+              pseudo dans un jeton de laiton — jamais un rond vide, qui dirait
+              qu'il manque quelque chose. Le jeton mène au profil, comme le
+              pseudo. */}
+          <Link href="/profil" className={styles.accountAvatarLink} aria-hidden tabIndex={-1} onClick={() => playButtonClick()}>
+            {summary.avatarCardId ? (
+              <span
+                className={`${styles.accountAvatar} ${styles.accountAvatarArt}`}
+                style={{ backgroundImage: `url("${cardIllustrationUrl(summary.avatarCardId)}")` }}
+              />
+            ) : (
+              <span className={styles.accountAvatar}>{avatarInitial(summary.displayName)}</span>
+            )}
+          </Link>
 
           <span className={styles.accountIdentity}>
             {/* Le pseudo mène au carnet de bord : niveau, paliers, escales
