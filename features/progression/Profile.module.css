@@ -229,3 +229,78 @@
     grid-column: auto;
   }
 }
+
+/* ──────────────────────────────────────────────────────────────
+ * DOS DE CARTE — la seule famille de cosmétiques rendue pour
+ * l'instant. Les vignettes sont de vraies cartes au ratio du jeu :
+ * on choisit ce qu'on va voir, pas une pastille de couleur.
+ * ────────────────────────────────────────────────────────────── */
+.cardBacks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(clamp(96px, 9vw, 132px), max-content));
+  gap: clamp(10px, 1.2vw, 18px);
+  margin: 0 0 4px;
+  padding: 0;
+  list-style: none;
+}
+
+.cardBackChoice {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: clamp(96px, 9vw, 132px);
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--ink-dim);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+}
+
+.cardBackChoice:disabled {
+  cursor: default;
+}
+
+.cardBackChoiceActive {
+  composes: cardBackChoice;
+  color: #dceaec;
+}
+
+.cardBackImage {
+  width: 100%;
+  aspect-ratio: 5 / 7;
+  object-fit: cover;
+  border-radius: 7px;
+  border: 1px solid var(--line);
+  transition: border-color 160ms ease-out, transform 160ms ease-out, box-shadow 160ms ease-out;
+}
+
+.cardBackChoice:hover:not(:disabled) .cardBackImage {
+  transform: translateY(-2px);
+  border-color: var(--line-strong);
+}
+
+.cardBackChoiceActive .cardBackImage {
+  border-color: rgba(88, 200, 216, 0.75);
+  box-shadow: 0 0 0 1px rgba(88, 200, 216, 0.4), 0 6px 18px rgba(4, 20, 28, 0.55);
+}
+
+/* Un dos verrouillé reste LISIBLE — il doit donner envie — mais
+   visiblement hors de portée : désaturé, jamais caché. */
+.cardBackImageLocked {
+  composes: cardBackImage;
+  filter: grayscale(0.85) brightness(0.5);
+}
+
+.cardBackName {
+  font-size: clamp(11px, 0.95vw, 13px);
+  line-height: 1.2;
+  color: var(--ink);
+}
+
+.cardBackHint {
+  font-size: clamp(10px, 0.85vw, 11px);
+  letter-spacing: 0.04em;
+  color: inherit;
+}

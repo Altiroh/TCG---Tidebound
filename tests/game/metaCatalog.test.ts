@@ -5,9 +5,15 @@ import {
   unlockedAchievements,
   type AchievementStats,
 } from "@/game/achievements";
+import { MAX_REWARDED_LEVEL, levelRewardItems } from "@/game/progression";
 import {
   BORROWED_DECKS,
+  CARD_BACKS,
   CATALOG_DECKS,
+  DEFAULT_CARD_BACK_ID,
+  PENDING_CARD_BACK_IDS,
+  cardBackById,
+  cardBackSrc,
   PRECON_DECKS,
   catalogDeckById,
   deckOwnership,
@@ -154,5 +160,30 @@ describe("possession d'un deck — possédé contre prêté (§3)", () => {
     // Possédée au sens du compteur, mais listée sans nom résolu.
     expect(ownership.total).toBe(1);
     expect(ownership.cards[0]!.name).toBe("carte-qui-nexiste-plus");
+  });
+});
+
+describe("dos de carte", () => {
+  it("le dos par défaut est gratuit et en tête du catalogue", () => {
+    expect(CARD_BACKS[0]?.id).toBe(DEFAULT_CARD_BACK_ID);
+    expect(CARD_BACKS[0]?.free).toBe(true);
+  });
+
+  it("un identifiant inconnu retombe sur le dos par défaut plutôt que de casser l'affichage", () => {
+    expect(cardBackSrc("back-inexistant")).toBe(cardBackSrc(DEFAULT_CARD_BACK_ID));
+    expect(cardBackSrc(null)).toBe(cardBackSrc(DEFAULT_CARD_BACK_ID));
+  });
+
+  it("chaque dos déblocable par un palier est affichable, ou déclaré en attente de visuel", () => {
+    // Sinon le palier crédite un cosmétique que le sélecteur ne sait pas
+    // afficher, et le joueur ne voit jamais sa récompense — sans que rien
+    // ne le signale.
+    for (let level = 1; level <= MAX_REWARDED_LEVEL; level++) {
+      for (const item of levelRewardItems(level)) {
+        if (item.kind !== "cosmetic" || item.cosmetic !== "cardBack") continue;
+        const known = cardBackById(item.id) !== undefined || PENDING_CARD_BACK_IDS.includes(item.id);
+        expect(known, `palier ${level} : dos « ${item.id} » ni au catalogue ni déclaré en attente`).toBe(true);
+      }
+    }
   });
 });

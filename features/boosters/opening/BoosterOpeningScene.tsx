@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import styles from "@/features/boosters/opening/BoosterOpening.module.css";
+import { useCardBackSrc } from "@/features/cosmetics/CardBackProvider";
 import {
   preloadBoosterOpeningAssets,
   type BoosterOpeningAssetStatus,
@@ -123,11 +124,14 @@ export function BoosterOpeningScene({ cards, visual, onClose }: BoosterOpeningSc
   onCloseRef.current = onClose;
 
   const { phase } = state;
+  // Le dos équipé est celui qu'on voit pendant toute la sortie du sachet :
+  // c'est donc lui qu'il faut précharger, pas le dos par défaut.
+  const cardBack = useCardBackSrc();
 
   // --- Préchargement, puis entrée du paquet. -------------------------------
   useEffect(() => {
     let cancelled = false;
-    void preloadBoosterOpeningAssets(visual).then((status) => {
+    void preloadBoosterOpeningAssets(visual, cardBack).then((status) => {
       if (cancelled) return;
       setAssets(status);
       dispatch({ type: "assetsReady" });
@@ -137,7 +141,7 @@ export function BoosterOpeningScene({ cards, visual, onClose }: BoosterOpeningSc
     return () => {
       cancelled = true;
     };
-  }, [schedule, timings, visual]);
+  }, [schedule, timings, visual, cardBack]);
 
   // --- Enchaînement automatique des phases non interactives. ---------------
   useEffect(() => {

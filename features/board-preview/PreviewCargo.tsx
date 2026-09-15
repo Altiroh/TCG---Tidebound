@@ -1,8 +1,15 @@
+"use client";
+
+import { useCardBackSrc } from "@/features/cosmetics/CardBackProvider";
 import styles from "@/features/board-preview/BoardPreview.module.css";
 import type { BoardDropState } from "@/features/board-preview/PreviewBoard";
 
-/** Même asset que `CardBack` / `CargoCluster` (`features/match/CardBack.tsx`). */
-export const PREVIEW_CARD_BACK_SRC = "/assets/cards/card-back/default.webp";
+/**
+ * Même dos que le vrai plateau : celui que le joueur a équipé
+ * (`features/cosmetics/CardBackProvider.tsx`). Le bac à sable visuel doit
+ * montrer ce que la partie montrera, cosmétique compris.
+ */
+export { useCardBackSrc as usePreviewCardBack } from "@/features/cosmetics/CardBackProvider";
 
 interface PreviewCargoProps {
   /** Camp : sert de repère aux vols de cartes (`data-deck`, `data-graveyard`). */
@@ -23,11 +30,13 @@ interface PreviewCargoProps {
  * de carte, la défausse un creux marqué du crâne (repris de `cargo-frame.webp`).
  */
 export function PreviewCargo({ side, deck, graveyard, graveyardDropState, onDraw, onGraveyardClick }: PreviewCargoProps) {
+  const cardBack = useCardBackSrc();
+
   const deckContent = (
     <>
       {deck > 0 && (
         // eslint-disable-next-line @next/next/no-img-element -- dos de carte standard
-        <img src={PREVIEW_CARD_BACK_SRC} alt="" aria-hidden draggable={false} className={styles.fillCover} />
+        <img src={cardBack} alt="" aria-hidden draggable={false} className={styles.fillCover} />
       )}
       <span className={styles.pileCount}>{deck}</span>
     </>

@@ -4,7 +4,7 @@ import { memo, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { getCardDefinition } from "@/game";
 import { CardTile } from "@/features/match/CardTile";
 import styles from "@/features/boosters/opening/BoosterOpening.module.css";
-import { CARD_BACK_ASSET } from "@/features/boosters/opening/boosterOpeningAssets";
+import { useCardBackSrc } from "@/features/cosmetics/CardBackProvider";
 import type { BoosterCardRevealState } from "@/features/boosters/opening/boosterOpeningMachine";
 import { BoosterParticles } from "@/features/boosters/opening/BoosterParticles";
 import { OPENING_RARITY_LABEL, type BoosterOpeningCard } from "@/features/boosters/opening/types";
@@ -49,6 +49,7 @@ export const BoosterCard = memo(function BoosterCard({
   const revealed = state === "revealed";
   const rarityLabel = OPENING_RARITY_LABEL[card.rarity];
   const cardName = card.cardId ? getCardDefinition(card.cardId).name : "Carte test";
+  const cardBack = useCardBackSrc();
   const showBackImage = cardBackAvailable && !backFailed;
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
@@ -86,7 +87,7 @@ export const BoosterCard = memo(function BoosterCard({
                 // eslint-disable-next-line @next/next/no-img-element -- asset préchargé, retourné en 3D
                 <img
                   className={styles.cardBackImage}
-                  src={CARD_BACK_ASSET}
+                  src={cardBack}
                   alt=""
                   draggable={false}
                   onError={() => setBackFailed(true)}

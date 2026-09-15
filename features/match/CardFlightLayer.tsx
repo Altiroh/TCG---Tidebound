@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CARD_BACK_SRC } from "@/features/match/CardBack";
+import { useCardBackSrc } from "@/features/cosmetics/CardBackProvider";
 import { FLIGHT_DURATION_MS, type CardFlight } from "@/features/match/useCardFlights";
 
 interface Point {
@@ -20,6 +20,7 @@ interface CardFlightLayerProps {
 }
 
 function FlyingCard({ from, to, delayMs, isDraw }: { from: Point; to: Point; delayMs: number; isDraw: boolean }) {
+  const cardBack = useCardBackSrc();
   const [arrived, setArrived] = useState(false);
   // Une pioche en attente de son tour ne s'affiche pas encore : sinon plusieurs dos se superposeraient sur la pioche.
   const [started, setStarted] = useState(delayMs === 0);
@@ -59,7 +60,7 @@ function FlyingCard({ from, to, delayMs, isDraw }: { from: Point; to: Point; del
     >
       {/* eslint-disable-next-line @next/next/no-img-element -- dos de carte, toujours identique, jamais la face (une pioche adverse ne doit pas révéler la carte) */}
       <img
-        src={CARD_BACK_SRC}
+        src={cardBack}
         alt=""
         draggable={false}
         className="h-full w-full rounded-xl border border-slate-600 object-cover shadow-[0_8px_28px_rgba(0,0,0,0.7)]"

@@ -10,7 +10,7 @@ import {
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
 import { awardMatchReward } from "@/features/progression/rewards";
-import { botTidesEnabled } from "@/features/progression/botRewardPolicy";
+import { botCountsAsPvp } from "@/features/progression/botRewardPolicy";
 import { recordMatchQuestProgress } from "@/features/quests/questService";
 import { packFrames, type PackedFrames } from "@/features/matches/matchFrames";
 
@@ -163,6 +163,10 @@ export async function submitAction(matchId: string, userId: string, action: Play
 /** Récompenses et quêtes de chaque participant HUMAIN d'une partie terminée. */
 async function settleFinishedMatch(match: MatchRow, finalState: GameState): Promise<void> {
   const vsBot = match.mode === "bot";
+  // Dérogation de développement : hors production, une partie contre bot est
+  // récompensée et comptée comme une partie PvP, pour que toute la boucle
+  // (Tides, bonus du jour, quêtes PvP) soit testable avec un seul compte.
+  const botAsPvp = vsBot && botCountsAsPvp();
   const winner = winnerUserId(match, finalState);
   // Une partie contre soi-même (même compte aux deux places) ne serait payée
   // qu'une fois de toute façon — clés (match_id, user_id) — autant ne pas
@@ -182,14 +186,16 @@ async function settleFinishedMatch(match: MatchRow, finalState: GameState): Prom
         // (anti-AFK, Notion « Progression joueur » §7).
         finalState,
         enginePlayerId: userId,
-        allowBotTides: vsBot && botTidesEnabled(),
+        botCountsAsPvp: botAsPvp,
       });
       await recordMatchQuestProgress({
         matchId: match.id,
         userId,
         playerId: userId,
         finalState,
-        vsBot,
+        // Idem côté quêtes : sous la dérogation, la partie n'est pas « bot »,
+        // donc les objectifs réservés au PvP avancent aussi.
+        vsBot: vsBot && !botAsPvp,
         won,
         // Deck joué par CE participant : les objectifs de la catégorie
         // Decks (« jouer avec 2 decks différents ») comptent des decks

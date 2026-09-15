@@ -2,7 +2,7 @@
 
 import { useLayoutEffect, useRef } from "react";
 import styles from "@/features/board-preview/BoardPreview.module.css";
-import { PREVIEW_CARD_BACK_SRC } from "@/features/board-preview/PreviewCargo";
+import { useCardBackSrc } from "@/features/cosmetics/CardBackProvider";
 import { FLIGHT_MS, type Flight } from "@/features/board-preview/useCardMotion";
 
 /** Effet ponctuel à un point de l'écran : flash d'impact ou dégâts qui s'envolent. */
@@ -24,6 +24,7 @@ interface MotionLayerProps {
 }
 
 function FlyingCard({ flight }: { flight: Flight }) {
+  const cardBack = useCardBackSrc();
   const ref = useRef<HTMLDivElement>(null);
   const { from, to, ending, delayMs = 0 } = flight;
 
@@ -57,7 +58,7 @@ function FlyingCard({ flight }: { flight: Flight }) {
     >
       {flight.look.kind === "back" ? (
         // eslint-disable-next-line @next/next/no-img-element -- dos de carte standard : une pioche ne révèle jamais la face en vol
-        <img src={PREVIEW_CARD_BACK_SRC} alt="" draggable={false} className={styles.flyingBack} />
+        <img src={cardBack} alt="" draggable={false} className={styles.flyingBack} />
       ) : (
         flight.look.node
       )}

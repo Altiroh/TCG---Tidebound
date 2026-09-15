@@ -91,7 +91,9 @@ export const LEVEL_REWARDS: Readonly<Record<number, readonly LevelRewardItem[]>>
   22: [cardChoice("common")],
   23: [tides(55)],
   24: [booster()],
-  25: [cosmetic("cardBack", "back-progression", "Dos de carte de progression")],
+  // L'identifiant pointe sur un dos RÉEL (`game/cosmetics/cardBacks.ts`) :
+  // c'est le seul cosmétique aujourd'hui équipable, depuis le profil.
+  25: [cosmetic("cardBack", "back-ogee", "Dos de carte — Épave engloutie")],
   26: [tides(60)],
   27: [cardChoice("uncommon")],
   28: [tides(60)],

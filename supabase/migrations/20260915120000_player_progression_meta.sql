@@ -64,6 +64,7 @@ create table if not exists public.player_level_rewards (
 
 alter table public.player_level_rewards enable row level security;
 
+drop policy if exists "a user can read their own level rewards" on public.player_level_rewards;
 create policy "a user can read their own level rewards"
   on public.player_level_rewards for select to authenticated using (user_id = auth.uid());
 
@@ -85,6 +86,7 @@ create table if not exists public.player_cosmetics (
 
 alter table public.player_cosmetics enable row level security;
 
+drop policy if exists "a user can read their own cosmetics" on public.player_cosmetics;
 create policy "a user can read their own cosmetics"
   on public.player_cosmetics for select to authenticated using (user_id = auth.uid());
 
@@ -112,6 +114,7 @@ create table if not exists public.player_card_choices (
 
 alter table public.player_card_choices enable row level security;
 
+drop policy if exists "a user can read their own card choices" on public.player_card_choices;
 create policy "a user can read their own card choices"
   on public.player_card_choices for select to authenticated using (user_id = auth.uid());
 
@@ -135,6 +138,7 @@ create table if not exists public.player_login_rewards (
 
 alter table public.player_login_rewards enable row level security;
 
+drop policy if exists "a user can read their own login rewards" on public.player_login_rewards;
 create policy "a user can read their own login rewards"
   on public.player_login_rewards for select to authenticated using (user_id = auth.uid());
 
@@ -156,6 +160,7 @@ create table if not exists public.player_achievements (
 
 alter table public.player_achievements enable row level security;
 
+drop policy if exists "a user can read their own achievements" on public.player_achievements;
 create policy "a user can read their own achievements"
   on public.player_achievements for select to authenticated using (user_id = auth.uid());
 
@@ -180,6 +185,7 @@ create table if not exists public.player_deck_unlocks (
 
 alter table public.player_deck_unlocks enable row level security;
 
+drop policy if exists "a user can read their own deck unlocks" on public.player_deck_unlocks;
 create policy "a user can read their own deck unlocks"
   on public.player_deck_unlocks for select to authenticated using (user_id = auth.uid());
 
@@ -223,6 +229,7 @@ create table if not exists public.player_quest_rerolls (
 
 alter table public.player_quest_rerolls enable row level security;
 
+drop policy if exists "a user can read their own quest rerolls" on public.player_quest_rerolls;
 create policy "a user can read their own quest rerolls"
   on public.player_quest_rerolls for select to authenticated using (user_id = auth.uid());
 
@@ -1011,3 +1018,68 @@ $$;
 
 revoke all on function public.resolve_card_choice(uuid, uuid, text) from public, anon, authenticated;
 grant execute on function public.resolve_card_choice(uuid, uuid, text) to service_role;
+
+-- ======================================================================
+-- 19. ÉQUIPER UN COSMÉTIQUE
+-- ======================================================================
+-- Aujourd'hui, seuls les DOS DE CARTE ont un rendu (catalogue TypeScript
+-- `game/cosmetics/cardBacks.ts`) ; la fonction est écrite pour toutes les
+-- familles, puisque la spec demande d'ajouter des cosmétiques « sans
+-- recoder le système en dur ».
+--
+-- Un seul équipé par famille : la mise à zéro et l'équipement sont dans la
+-- MÊME fonction, donc dans la même transaction — jamais d'état où le joueur
+-- n'a plus aucun cosmétique de la famille.
+--
+-- `p_cosmetic_id` nul = revenir à l'apparence par défaut. Le défaut n'est
+-- pas stocké : il n'est possédé par personne en base, il est possédé par
+-- tout le monde par construction. Retirer une ligne suffit à y revenir.
+create or replace function public.equip_cosmetic(
+  p_user_id uuid,
+  p_cosmetic_kind text,
+  p_cosmetic_id text
+)
+returns jsonb
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  v_owned boolean;
+begin
+  perform public.assert_server_caller('equip_cosmetic');
+
+  if p_cosmetic_id is not null then
+    select true into v_owned
+    from public.player_cosmetics
+    where user_id = p_user_id
+      and cosmetic_kind = p_cosmetic_kind
+      and cosmetic_id = p_cosmetic_id;
+
+    -- Refus plutôt que déblocage implicite : équiper n'a jamais le droit de
+    -- donner. Un cosmétique s'obtient par un palier de niveau, pas par un
+    -- appel bien formé.
+    if v_owned is not true then
+      return jsonb_build_object('ok', false, 'error', 'not_owned');
+    end if;
+  end if;
+
+  update public.player_cosmetics
+  set equipped = false
+  where user_id = p_user_id
+    and cosmetic_kind = p_cosmetic_kind
+    and equipped;
+
+  if p_cosmetic_id is not null then
+    update public.player_cosmetics
+    set equipped = true
+    where user_id = p_user_id
+      and cosmetic_kind = p_cosmetic_kind
+      and cosmetic_id = p_cosmetic_id;
+  end if;
+
+  return jsonb_build_object('ok', true, 'cosmetic_id', p_cosmetic_id);
+end;
+$$;
+
+revoke all on function public.equip_cosmetic(uuid, text, text) from public, anon, authenticated;
+grant execute on function public.equip_cosmetic(uuid, text, text) to service_role;

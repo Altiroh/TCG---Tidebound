@@ -22,6 +22,7 @@ import {
 } from "@/features/boosters/stackedShelf";
 import { BoosterOpeningScene } from "@/features/boosters/opening/BoosterOpeningScene";
 import { preloadBoosterOpeningAssets } from "@/features/boosters/opening/boosterOpeningAssets";
+import { useCardBackSrc } from "@/features/cosmetics/CardBackProvider";
 import { closedPackVariables, getBoosterPackVisual } from "@/features/boosters/opening/boosterPackVisuals";
 import { drawTestBoosterCards } from "@/features/boosters/opening/testBoosterCards";
 import { toOpeningRarity, type BoosterOpeningCard } from "@/features/boosters/opening/types";
@@ -108,12 +109,13 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
 
   // Images de la scène chargées et décodées en avance : l'ouverture démarre sans flash.
   const visualIdsKey = Array.from(new Set(packs.map((pack) => pack.boosterId))).join(",");
+  const cardBack = useCardBackSrc();
   useEffect(() => {
     if (!visualIdsKey) return;
     for (const boosterId of visualIdsKey.split(",")) {
-      void preloadBoosterOpeningAssets(getBoosterPackVisual(boosterId));
+      void preloadBoosterOpeningAssets(getBoosterPackVisual(boosterId), cardBack);
     }
-  }, [visualIdsKey]);
+  }, [visualIdsKey, cardBack]);
 
   function dock(key: string) {
     playButtonClick();

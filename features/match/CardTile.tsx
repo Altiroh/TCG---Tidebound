@@ -17,7 +17,7 @@ import {
   type TideStateName,
 } from "@/game";
 import { CARD_TYPE_LABELS, THICK_TEXT_OUTLINE } from "@/features/match/cardDisplay";
-import { CARD_BACK_SRC } from "@/features/match/CardBack";
+import { useCardBackSrc } from "@/features/cosmetics/CardBackProvider";
 import { StatusBadge } from "@/features/match/StatusBadge";
 import { useDecreaseFlash } from "@/features/match/useDecreaseFlash";
 import { useImageOk } from "@/features/match/useImageOk";
@@ -310,6 +310,7 @@ export function CardTile({
   onDragStart,
   liftOnHover = false,
 }: CardTileProps) {
+  const cardBack = useCardBackSrc();
   const def = getCardDefinition(instance.cardId);
   const isAbyssal = def.subtype === "abyssal";
   const stats = computeEffectiveStats(instance, tideState, auraContext);
@@ -374,7 +375,7 @@ export function CardTile({
           // (adversaire) qui masque tout.
           // eslint-disable-next-line @next/next/no-img-element -- asset local unique, pas de variation par carte
           <img
-            src={CARD_BACK_SRC}
+            src={cardBack}
             alt=""
             draggable={false}
             loading="lazy"

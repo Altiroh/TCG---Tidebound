@@ -1,22 +1,28 @@
 "use client";
 
+import { useCardBackSrc } from "@/features/cosmetics/CardBackProvider";
 import { useImageLoadStatus } from "@/features/match/useImageLoadStatus";
 
 /**
  * Contrairement aux faces (composées carte par carte par `CardTile`), le
- * dos est strictement identique pour toutes les cartes — un seul fichier,
- * réutilisé partout où une carte doit s'afficher face cachée (main
- * adverse, plus tard pile de pioche/défausse fermées si besoin).
+ * dos est strictement identique pour toutes les cartes d'un joueur — un
+ * seul fichier, réutilisé partout où une carte doit s'afficher face cachée
+ * (main adverse, pile de pioche, cartes en vol).
+ *
+ * QUEL fichier, en revanche, dépend du cosmétique équipé : le chemin vient
+ * de `useCardBackSrc` (`features/cosmetics/CardBackProvider.tsx`), jamais
+ * d'une constante. Les rares appelants qui ne sont pas des composants
+ * passent par `cardBackSrc()` du catalogue.
  */
-export const CARD_BACK_SRC = "/assets/cards/card-back/default.webp";
 
 /**
  * Une carte face cachée : dos uniquement, jamais cliquable (on ne peut pas
- * cibler ce qu'on ne peut pas identifier). Retombe sur un repli neutre
- * tant que `CARD_BACK_SRC` n'existe pas.
+ * cibler ce qu'on ne peut pas identifier). Retombe sur un repli neutre tant
+ * que l'image n'est pas chargée.
  */
 export function CardBack({ widthClassName = "w-28" }: { widthClassName?: string }) {
-  const status = useImageLoadStatus(CARD_BACK_SRC);
+  const src = useCardBackSrc();
+  const status = useImageLoadStatus(src);
 
   return (
     <div
@@ -24,8 +30,8 @@ export function CardBack({ widthClassName = "w-28" }: { widthClassName?: string 
       className={`${widthClassName} aspect-[5/7] overflow-hidden rounded-md border border-slate-700 bg-board-surface`}
     >
       {status === "ok" ? (
-        // eslint-disable-next-line @next/next/no-img-element -- asset local unique, pas de variation par carte
-        <img src={CARD_BACK_SRC} alt="" draggable={false} className="h-full w-full object-cover" />
+        // eslint-disable-next-line @next/next/no-img-element -- asset local, taille pilotée par le conteneur
+        <img src={src} alt="" draggable={false} className="h-full w-full object-cover" />
       ) : (
         <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-board-surface to-board-background">
           <span className="text-[10px] uppercase tracking-widest text-slate-600">Tidebound</span>

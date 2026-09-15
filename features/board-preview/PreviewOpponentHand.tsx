@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import styles from "@/features/board-preview/BoardPreview.module.css";
-import { PREVIEW_CARD_BACK_SRC } from "@/features/board-preview/PreviewCargo";
+import { useCardBackSrc } from "@/features/cosmetics/CardBackProvider";
 
 interface PreviewOpponentHandProps {
   count: number;
@@ -15,6 +15,7 @@ interface PreviewOpponentHandProps {
  * rotation de sens opposé, seule la partie basse des cartes est visible.
  */
 export function PreviewOpponentHand({ count, hidden }: PreviewOpponentHandProps) {
+  const cardBack = useCardBackSrc();
   const center = (count - 1) / 2;
 
   return (
@@ -31,7 +32,7 @@ export function PreviewOpponentHand({ count, hidden }: PreviewOpponentHandProps)
               data-opp-hand-index={index}
             >
               {/* eslint-disable-next-line @next/next/no-img-element -- dos de carte standard */}
-              <img src={PREVIEW_CARD_BACK_SRC} alt="" aria-hidden draggable={false} className={styles.fillCover} />
+              <img src={cardBack} alt="" aria-hidden draggable={false} className={styles.fillCover} />
             </div>
           </div>
         ))}

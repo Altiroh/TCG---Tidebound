@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LOGIN_CYCLE_LENGTH, loginStepLabel, MAX_REWARDED_LEVEL } from "@/game/progression";
-import { claimDailyLogin, type ProfileSummary } from "@/features/progression/profileActions";
+import { claimDailyLogin, equipCardBack, type ProfileSummary } from "@/features/progression/profileActions";
+import { useCardBack } from "@/features/cosmetics/CardBackProvider";
+import type { CardBackCollection } from "@/features/cosmetics/cardBackService";
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
 import { GameScreen } from "@/features/shell/GameScreen";
 import game from "@/features/shell/GameScreen.module.css";
@@ -200,6 +202,14 @@ export function ProfileScreen({ profile }: ProfileScreenProps) {
               )}
             </section>
 
+            {/* ── Dos de carte ──────────────────────────────────── */}
+            <section className={`${game.panel} ${styles.blockWide}`} aria-label="Dos de carte">
+              <h2 className={game.sectionTitle}>
+                Dos de carte <span className={game.muted}>· visible dès le premier tour</span>
+              </h2>
+              <CardBackPicker collection={profile.cardBacks} level={profile.view.level} />
+            </section>
+
             {/* ── Exploits ──────────────────────────────────────── */}
             <section className={`${game.panel} ${styles.blockWide}`} aria-label="Exploits">
               <h2 className={game.sectionTitle}>
@@ -219,5 +229,83 @@ export function ProfileScreen({ profile }: ProfileScreenProps) {
         </div>
       </div>
     </GameScreen>
+  );
+}
+
+/**
+ * Sélecteur de dos de carte.
+ *
+ * Les dos VERROUILLÉS restent affichés, en clair et avec leur condition —
+ * un cosmétique qu'on ne voit pas ne donne envie de rien. Seul le clic est
+ * refusé, et c'est le serveur qui tranche : le bouton désactivé n'est
+ * qu'une politesse.
+ *
+ * Le changement est appliqué à l'écran DÈS que le serveur a dit oui, sans
+ * rechargement : le dos est visible partout ailleurs dans le jeu via
+ * `CardBackProvider`, et un rafraîchissement complet de la page pour un
+ * cosmétique serait disproportionné.
+ */
+function CardBackPicker({ collection, level }: { collection: CardBackCollection; level: number }) {
+  const { id: current, apply } = useCardBack();
+  const [busy, setBusy] = useState<string | null>(null);
+  const [failure, setFailure] = useState<string | null>(null);
+
+  // Le profil est le seul écran qui LIT la base : c'est donc ici que le
+  // miroir local est réaligné sur elle. Sur un appareil neuf, ou après un
+  // déblocage obtenu ailleurs, ce passage remet tout d'aplomb.
+  useEffect(() => apply(collection.equipped), [collection.equipped, apply]);
+
+  function choose(id: string) {
+    if (id === current) return;
+    playButtonClick();
+    setFailure(null);
+    setBusy(id);
+    void equipCardBack(id)
+      .then((result) => {
+        if (!result.ok) {
+          setFailure(result.error ?? "Équipement impossible.");
+          return;
+        }
+        apply(result.equipped ?? id);
+      })
+      .finally(() => setBusy(null));
+  }
+
+  return (
+    <>
+      <ul className={styles.cardBacks}>
+        {collection.options.map((option) => {
+          const selected = option.id === current;
+          return (
+            <li key={option.id}>
+              <button
+                type="button"
+                className={selected ? styles.cardBackChoiceActive : styles.cardBackChoice}
+                onClick={() => choose(option.id)}
+                disabled={!option.owned || busy !== null}
+                aria-pressed={selected}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element -- asset local, taille pilotée par le conteneur */}
+                <img src={option.src} alt="" aria-hidden draggable={false} className={option.owned ? styles.cardBackImage : styles.cardBackImageLocked} />
+                <span className={styles.cardBackName}>{option.label}</span>
+                <span className={styles.cardBackHint}>
+                  {option.owned
+                    ? selected
+                      ? "Équipé"
+                      : busy === option.id
+                        ? "…"
+                        : "Équiper"
+                    : option.unlockLevel
+                      ? `Niveau ${option.unlockLevel}${level < option.unlockLevel ? ` · encore ${option.unlockLevel - level}` : ""}`
+                      : "Verrouillé"}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      <p className={game.muted}>{collection.options.find((option) => option.id === current)?.description ?? ""}</p>
+      {failure && <p className={game.error}>{failure}</p>}
+    </>
   );
 }

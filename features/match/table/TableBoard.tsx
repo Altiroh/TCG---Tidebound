@@ -20,7 +20,7 @@ import {
   type PlayerState,
 } from "@/game";
 import { AttackImpactLayer } from "@/features/match/AttackImpactLayer";
-import { CARD_BACK_SRC } from "@/features/match/CardBack";
+import { useCardBackSrc } from "@/features/cosmetics/CardBackProvider";
 import { CardTile } from "@/features/match/CardTile";
 import { TIDE_STATE_LABELS } from "@/features/match/cardDisplay";
 import { EquipLinkOverlay } from "@/features/match/EquipLinkOverlay";
@@ -120,6 +120,7 @@ const toModel = (instance: CardInstance): PreviewCardModel => ({ id: instance.in
  */
 export function TableBoard(props: TableBoardProps) {
   const { state, viewerId, canPlayCards, canAttack, targeting } = props;
+  const cardBack = useCardBackSrc();
   const stageRef = useRef<HTMLDivElement>(null);
   const metrics = useBoardPreviewMetrics(stageRef);
   const badgeSize = BADGE_SIZE[metrics.breakpoint];
@@ -317,7 +318,7 @@ export function TableBoard(props: TableBoardProps) {
         {!mine && !visible ? (
           // Structure invisible pour cette Marée : l'adversaire ne voit que le dos.
           // eslint-disable-next-line @next/next/no-img-element -- dos de carte standard
-          <img src={CARD_BACK_SRC} alt="" draggable={false} className={styles.boardCardBack} />
+          <img src={cardBack} alt="" draggable={false} className={styles.boardCardBack} />
         ) : (
           <CardTile
             instance={instance}

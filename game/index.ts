@@ -134,3 +134,14 @@ export { graveyardChoicesForBreak, handBreakCost, previewHandBreakReason } from 
 
 export { botHasSomethingToDo, runBotTurn, runBotUntilIdle, stepBotTurn, type BotTurnStep } from "@/game/bot/runBotTurn";
 export type { BotDifficulty } from "@/game/bot/types";
+
+// --- Cosmétiques -------------------------------------------------------
+export {
+  CARD_BACKS,
+  DEFAULT_CARD_BACK_ID,
+  PENDING_CARD_BACK_IDS,
+  UNLOCKABLE_CARD_BACK_IDS,
+  cardBackById,
+  cardBackSrc,
+  type CardBackSkin,
+} from "@/game/cosmetics/cardBacks";

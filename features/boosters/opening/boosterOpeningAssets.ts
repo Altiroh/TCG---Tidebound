@@ -1,11 +1,13 @@
 import type { BoosterPackVisual } from "@/features/boosters/opening/boosterPackVisuals";
+import { DEFAULT_CARD_BACK_ID, cardBackSrc } from "@/game";
 
 /**
  * Préchargement des images de la scène. Les chemins des sachets vivent
  * dans `boosterPackVisuals.ts` ; seul le dos de carte, commun à tous les
  * boosters, est déclaré ici.
  */
-export const CARD_BACK_ASSET = "/assets/cards/card-back/default.webp";
+/** Repli : le dos par défaut, quand aucun cosmétique n'est équipé. */
+export const CARD_BACK_ASSET = cardBackSrc(DEFAULT_CARD_BACK_ID);
 
 export interface BoosterOpeningAssetStatus {
   cardBackAvailable: boolean;
@@ -58,13 +60,17 @@ function preloadOnce(src: string): Promise<boolean> {
  * Précharge les images d'un sachet et le dos de carte. Appelée dès
  * l'affichage de la page Boosters pour que le clic sur « Ouvrir » démarre
  * sans attente, puis de nouveau par la scène (mémoïsé).
+ *
+ * `cardBack` est le dos ÉQUIPÉ (`features/cosmetics/CardBackProvider.tsx`),
+ * pas une constante : c'est lui qu'on voit pendant toute la sortie du
+ * sachet, donc lui qu'il faut avoir en cache avant de lancer la scène.
  */
-export function preloadBoosterOpeningAssets(visual: BoosterPackVisual): Promise<BoosterOpeningAssetStatus> {
+export function preloadBoosterOpeningAssets(visual: BoosterPackVisual, cardBackAsset: string = CARD_BACK_ASSET): Promise<BoosterOpeningAssetStatus> {
   if (typeof window === "undefined") return Promise.resolve({ cardBackAvailable: false });
   return Promise.all([
     preloadOnce(visual.assets.closed),
     preloadOnce(visual.assets.openTop),
     preloadOnce(visual.assets.openBottom),
-    preloadOnce(CARD_BACK_ASSET),
+    preloadOnce(cardBackAsset),
   ]).then(([, , , cardBack]) => ({ cardBackAvailable: cardBack ?? false }));
 }

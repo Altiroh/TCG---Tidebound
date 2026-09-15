@@ -11,8 +11,10 @@ import {
   type ProgressionView,
 } from "@/game/progression";
 import { ACHIEVEMENT_CATALOG } from "@/game/achievements";
+import { DEFAULT_CARD_BACK_ID } from "@/game";
 import { claimLoginReward, readLoginRewards } from "@/features/progression/loginService";
 import { syncAchievements } from "@/features/achievements/achievementService";
+import { equipCardBackFor, loadCardBacks, type CardBackCollection } from "@/features/cosmetics/cardBackService";
 
 /**
  * Profil joueur — Server Actions exposées au navigateur.
@@ -56,6 +58,12 @@ export interface ProfileSummary {
   /** Cycle de connexion : étape à réclamer et disponibilité du jour. */
   login: { step: number; items: readonly LoginRewardItem[]; claimable: boolean; totalClaims: number };
   achievements: ProfileAchievement[];
+  /**
+   * Dos de carte débloqués et celui équipé. Seule famille de cosmétiques
+   * rendue pour l'instant — les autres sont stockées mais pas encore
+   * portées par le jeu.
+   */
+  cardBacks: CardBackCollection;
   /** `true` si le niveau maximum récompensé de cette version est atteint. */
   maxRewardedLevelReached: boolean;
 }
@@ -73,6 +81,7 @@ const SIGNED_OUT: ProfileSummary = {
   claimedLevels: [],
   login: { step: 1, items: [], claimable: false, totalClaims: 0 },
   achievements: [],
+  cardBacks: { options: [], equipped: DEFAULT_CARD_BACK_ID },
   maxRewardedLevelReached: false,
 };
 
@@ -89,13 +98,14 @@ export async function fetchProfile(): Promise<ProfileSummary> {
     await syncAchievements(user.id);
 
     const service = createSupabaseServiceRoleClient();
-    const [progression, currency, profile, claimed, unlocked, login] = await Promise.all([
+    const [progression, currency, profile, claimed, unlocked, login, cardBacks] = await Promise.all([
       service.from("player_progression").select("xp_total, level, matches_played, pvp_wins, precon_tokens").eq("user_id", user.id).maybeSingle(),
       service.from("player_currency").select("balance").eq("user_id", user.id).maybeSingle(),
       service.from("profiles").select("display_name").eq("id", user.id).maybeSingle(),
       service.from("player_level_rewards").select("level").eq("user_id", user.id).order("level", { ascending: false }).limit(8),
       service.from("player_achievements").select("code").eq("user_id", user.id),
       readLoginRewards(user.id),
+      loadCardBacks(user.id),
     ]);
 
     const view = progressionView(progression.data?.xp_total ?? 0);
@@ -120,6 +130,7 @@ export async function fetchProfile(): Promise<ProfileSummary> {
         rewardTides: achievement.rewardTides,
         unlocked: unlockedCodes.has(achievement.code),
       })),
+      cardBacks,
       maxRewardedLevelReached: view.level >= MAX_REWARDED_LEVEL,
     };
   } catch (error) {
@@ -150,4 +161,28 @@ export async function claimDailyLogin(): Promise<ClaimLoginActionResult> {
     revalidatePath("/");
   }
   return { ok: result.ok, error: result.error, tides: result.tides, xp: result.xp, boosterId: result.boosterId ?? null };
+}
+
+export interface EquipCardBackActionResult {
+  ok: boolean;
+  error?: string;
+  /** Identifiant réellement équipé — le client aligne son miroir dessus. */
+  equipped?: string;
+}
+
+/**
+ * Équipe un dos de carte. Le joueur vient TOUJOURS de la session : un
+ * identifiant de joueur en paramètre ferait de cette action un moyen
+ * d'équiper le cosmétique de quelqu'un d'autre.
+ */
+export async function equipCardBack(cardBackId: string): Promise<EquipCardBackActionResult> {
+  const supabase = createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Connecte-toi pour changer de dos de carte." };
+
+  const result = await equipCardBackFor(user.id, cardBackId);
+  if (result.ok) revalidatePath("/profil");
+  return result;
 }

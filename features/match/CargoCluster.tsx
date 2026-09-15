@@ -1,4 +1,6 @@
-import { CARD_BACK_SRC } from "@/features/match/CardBack";
+"use client";
+
+import { useCardBackSrc } from "@/features/cosmetics/CardBackProvider";
 
 interface CargoClusterProps {
   deckCount: number;
@@ -23,7 +25,7 @@ const COUNT_BADGE_CLASSES =
 
 /**
  * Cadre "pioche/cimetière" (trident/crâne) rogné depuis `board.jpg`, avec
- * le dos de carte standard (`CARD_BACK_SRC`, même asset que la main
+ * le dos de carte standard (`useCardBackSrc`, même asset que la main
  * adverse) superposé sur l'emplacement pioche — plus parlant que la seule
  * icône de trident peinte dans l'image. Chaque effectif (pioche/cimetière)
  * ne se révèle qu'au survol de SA PROPRE moitié, indépendamment de
@@ -32,6 +34,8 @@ const COUNT_BADGE_CLASSES =
  * est fourni.
  */
 export function CargoCluster({ deckCount, graveyardCount, graveyardDropZone, onOpenGraveyard, width = 100 }: CargoClusterProps) {
+  const cardBack = useCardBackSrc();
+
   return (
     <div className="relative shrink-0" style={{ width }}>
       {/* eslint-disable-next-line @next/next/no-img-element -- élément décoratif de mise en page fixe */}
@@ -48,7 +52,7 @@ export function CargoCluster({ deckCount, graveyardCount, graveyardDropZone, onO
       <div className="group/deck absolute inset-y-0 left-0" style={{ width: "50%" }} title="Cartes restantes dans la pioche">
         <div className="absolute overflow-hidden rounded" style={{ left: "10%", top: "6%", width: "80%", height: "88%" }}>
           {/* eslint-disable-next-line @next/next/no-img-element -- dos de carte standard, pas de variation possible */}
-          <img src={CARD_BACK_SRC} alt="" aria-hidden draggable={false} className="h-full w-full select-none object-cover" />
+          <img src={cardBack} alt="" aria-hidden draggable={false} className="h-full w-full select-none object-cover" />
         </div>
         <span
           className={`${COUNT_BADGE_CLASSES} group-hover/deck:opacity-100`}

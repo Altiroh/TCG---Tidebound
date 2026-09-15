@@ -2,7 +2,6 @@ import type { GameState, PlayerId } from "@/game/state/types";
 import {
   ABANDONED_MATCH_XP,
   DAILY_MATCHES_BONUS,
-  DEV_BOT_MATCH_TIDES,
   FIRST_WIN_OF_DAY_BONUS,
   MATCH_TIDES,
   MATCH_XP,
@@ -41,10 +40,12 @@ export interface MatchRewardInput {
    */
   activity?: MatchActivity;
   /**
-   * DÉROGATION DE DÉVELOPPEMENT : autorise des Tides sur une partie contre
-   * bot (`DEV_BOT_MATCH_TIDES`), que le cadrage fixe normalement à 0.
+   * DÉROGATION DE DÉVELOPPEMENT : traite une partie contre bot exactement
+   * comme une partie PvP (Tides de partie et bonus de première victoire du
+   * jour), que le cadrage fixe normalement à 0. Décidée par
+   * `features/progression/botRewardPolicy.ts`, jamais ici.
    */
-  allowBotTides?: boolean;
+  botCountsAsPvp?: boolean;
 }
 
 /**
@@ -85,10 +86,11 @@ export function isMeaningfulMatch(activity: MatchActivity | undefined): boolean 
  * Garde-fous appliqués ICI, pas ailleurs :
  *  - une partie contre bot ne rapporte JAMAIS de Tide direct (cadrage
  *    « Boosters & économie de collection », non revu par la page
- *    Progression) ;
- *  - le bonus de Tides de la première victoire du jour est réservé au PvP,
- *    sinon une victoire quotidienne contre un bot capterait la principale
- *    source de Tides ; son XP, elle, est accordée dans les deux modes ;
+ *    Progression), SAUF sous la dérogation de développement
+ *    `botCountsAsPvp` ;
+ *  - le bonus de Tides de la première victoire du jour suit la même règle —
+ *    réservé au PvP, sauf dérogation ; son XP, elle, est accordée dans les
+ *    deux modes ;
  *  - une partie sans activité significative ne donne ni Tides, ni bonus.
  */
 export function computeMatchReward({
@@ -98,9 +100,11 @@ export function computeMatchReward({
   isFirstWinOfDay,
   matchesFinishedToday,
   activity,
-  allowBotTides = false,
+  botCountsAsPvp = false,
 }: MatchRewardInput): MatchReward {
-  const isBot = mode === "bot";
+  // Sous la dérogation, la partie contre bot n'est plus « bot » du tout aux
+  // yeux des récompenses : un seul booléen, appliqué partout pareil.
+  const isBot = mode === "bot" && !botCountsAsPvp;
   const won = outcome === "win";
   const meaningful = isMeaningfulMatch(activity);
 
@@ -108,8 +112,8 @@ export function computeMatchReward({
   let xp = meaningful ? MATCH_XP.completed + (won ? MATCH_XP.win : 0) : ABANDONED_MATCH_XP;
   let tides = 0;
   if (meaningful) {
-    const botTides = allowBotTides ? (won ? DEV_BOT_MATCH_TIDES.win : DEV_BOT_MATCH_TIDES.loss) : won ? MATCH_TIDES.botWin : MATCH_TIDES.botLoss;
-    tides = isBot ? botTides : won ? MATCH_TIDES.pvpWin : MATCH_TIDES.pvpLoss;
+    if (isBot) tides = won ? MATCH_TIDES.botWin : MATCH_TIDES.botLoss;
+    else tides = won ? MATCH_TIDES.pvpWin : MATCH_TIDES.pvpLoss;
   }
 
   const firstWinOfDay = meaningful && won && isFirstWinOfDay;

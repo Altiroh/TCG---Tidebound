@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   ABANDONED_MATCH_XP,
   DAILY_MATCHES_BONUS,
-  DEV_BOT_MATCH_TIDES,
   FIRST_WIN_OF_DAY_BONUS,
   LEVEL_REWARDS,
   LOGIN_CYCLE_LENGTH,
@@ -171,7 +170,20 @@ describe("XP de partie (§7)", () => {
 
   it("une partie contre bot ne rapporte aucune Tide sans la dérogation de développement", () => {
     expect(computeMatchReward(rewardInput({ mode: "bot", outcome: "win" })).tides).toBe(0);
-    expect(computeMatchReward(rewardInput({ mode: "bot", outcome: "win", allowBotTides: true })).tides).toBe(DEV_BOT_MATCH_TIDES.win);
+    expect(computeMatchReward(rewardInput({ mode: "bot", outcome: "loss" })).tides).toBe(0);
+  });
+
+  it("sous la dérogation, une partie contre bot est payée comme une partie PvP", () => {
+    const win = computeMatchReward(rewardInput({ mode: "bot", outcome: "win", botCountsAsPvp: true }));
+    expect(win.tides).toBe(MATCH_TIDES.pvpWin);
+    const loss = computeMatchReward(rewardInput({ mode: "bot", outcome: "loss", botCountsAsPvp: true }));
+    expect(loss.tides).toBe(MATCH_TIDES.pvpLoss);
+  });
+
+  it("sous la dérogation, la première victoire du jour contre bot donne aussi ses Tides", () => {
+    const base = { mode: "bot" as const, outcome: "win" as const, isFirstWinOfDay: true };
+    expect(computeMatchReward(rewardInput(base)).tides).toBe(0);
+    expect(computeMatchReward(rewardInput({ ...base, botCountsAsPvp: true })).tides).toBe(MATCH_TIDES.pvpWin + FIRST_WIN_OF_DAY_BONUS.tides);
   });
 });
 

@@ -92,19 +92,20 @@ export const MATCH_TIDES = {
 } as const;
 
 /**
- * DÉROGATION DE DÉVELOPPEMENT — Tides sur une partie contre bot.
+ * DÉROGATION DE DÉVELOPPEMENT — parité bot / PvP.
  *
- * Ne s'applique QUE si l'appelant passe explicitement `allowBotTides`
+ * Ne s'applique QUE si l'appelant passe explicitement `botCountsAsPvp`
  * (cf. `computeMatchReward`), ce que seule fait la politique de
- * développement `features/progression/botRewardPolicy.ts`. La règle
- * verrouillée n'est pas réécrite : elle est contournée à un seul endroit,
- * visible et désactivable, pour que la boucle économique reste testable en
- * solo.
+ * développement `features/progression/botRewardPolicy.ts`. La partie contre
+ * bot est alors traitée EXACTEMENT comme une partie PvP : mêmes Tides
+ * (`MATCH_TIDES.pvp*`), bonus de Tides de la première victoire du jour, et
+ * quêtes réservées au PvP qui avancent.
+ *
+ * Raison d'être : tester la boucle complète (XP, Tides, paliers, quêtes) avec
+ * UN seul compte, sans monter deux sessions PvP. La règle verrouillée n'est
+ * pas réécrite — elle est contournée à un seul endroit, visible et
+ * désactivable par `TIDEBOUND_BOT_REWARDS=off`.
  */
-export const DEV_BOT_MATCH_TIDES = {
-  win: 3,
-  loss: 1,
-} as const;
 
 /**
  * Première victoire du jour (UTC) — §7. Le bonus de Tides reste réservé au

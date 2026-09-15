@@ -35,8 +35,12 @@ export interface AwardMatchRewardInput {
    */
   finalState?: GameState;
   enginePlayerId?: PlayerId;
-  /** Dérogation de développement, cf. `features/progression/botRewardPolicy.ts`. */
-  allowBotTides?: boolean;
+  /**
+   * Dérogation de développement : la partie contre bot compte comme une
+   * partie PvP. Cf. `features/progression/botRewardPolicy.ts` — décidée
+   * là-bas, jamais ici.
+   */
+  botCountsAsPvp?: boolean;
 }
 
 /**
@@ -59,7 +63,7 @@ export async function awardMatchReward({
   outcome,
   finalState,
   enginePlayerId,
-  allowBotTides = false,
+  botCountsAsPvp = false,
 }: AwardMatchRewardInput): Promise<MatchReward | null> {
   try {
     const service = createSupabaseServiceRoleClient();
@@ -72,7 +76,10 @@ export async function awardMatchReward({
       .maybeSingle();
 
     const isWin = outcome === "win";
-    const isPvpWin = mode !== "bot" && isWin;
+    // Sous la dérogation, une victoire contre bot alimente aussi les
+    // compteurs PvP : les exploits et les quêtes PvP deviennent testables en
+    // solo, ce qui est tout l'intérêt.
+    const isPvpWin = (mode !== "bot" || botCountsAsPvp) && isWin;
     const isFirstWinOfDay = isWin && current?.last_win_day !== today;
     // Le compteur du jour ne vaut que pour AUJOURD'HUI : une journée UTC qui
     // change repart de zéro, sans tâche de maintenance.
@@ -87,7 +94,7 @@ export async function awardMatchReward({
       isFirstWinOfDay,
       matchesFinishedToday,
       activity,
-      allowBotTides,
+      botCountsAsPvp,
     });
 
     const { data, error } = await service.rpc("grant_match_progression", {
