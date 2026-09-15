@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { fetchMatchReward, type MatchRewardSummary } from "@/features/progression/actions";
+import { notifyProgressionChanged } from "@/features/progression/progressionSync";
 import styles from "@/features/progression/MatchRewardBanner.module.css";
 
 interface MatchRewardBannerProps {
@@ -38,6 +39,11 @@ export function MatchRewardBanner({ matchId }: MatchRewardBannerProps) {
               if (!cancelled && found) {
                 setReward(found);
                 cancelled = true;
+                // L'octroi est écrit : le bandeau du haut doit relire son
+                // solde, son niveau ET ses quêtes à réclamer. C'est ce qui
+                // déclenche l'alerte « quête terminée » — sans ça, le joueur
+                // ne l'apprendrait qu'en ouvrant le tiroir de lui-même.
+                notifyProgressionChanged();
               }
             })
             .catch((error) => console.error("[MatchRewardBanner] Lecture impossible :", error));

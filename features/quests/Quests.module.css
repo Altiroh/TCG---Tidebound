@@ -33,13 +33,61 @@
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: clamp(10px, 1.6vw, 26px);
+  width: 100%;
   padding: clamp(10px, 1.3vh, 16px) clamp(12px, 1.4vw, 20px);
   border-left: 2px solid transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
 }
 
+/*
+ * Quête TERMINÉE, récompense en attente. Elle doit se repérer d'un coup
+ * d'œil dans une liste — d'où le laiton plutôt que le cyan des lignes en
+ * cours — et une pulsation lente qui attire sans clignoter.
+ *
+ * Toute la ligne est le bouton : ce qu'on a gagné ne se réclame pas en
+ * visant une cible de 80 pixels au bout d'une rangée.
+ */
 .rowClaimable {
-  border-left-color: var(--cb-cyan);
-  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(88, 200, 216, 0.18);
+  border-left-color: #f0d79a;
+  background: linear-gradient(90deg, rgba(85, 62, 20, 0.42), transparent 60%);
+  cursor: pointer;
+  animation: questReady 2.4s ease-in-out infinite;
+  transition: transform 140ms ease-out, box-shadow 140ms ease-out;
+}
+
+.rowClaimable:hover:not(:disabled),
+.rowClaimable:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(240, 215, 154, 0.75);
+  animation: none;
+}
+
+.rowClaimable:disabled {
+  cursor: default;
+  opacity: 0.7;
+  animation: none;
+}
+
+@keyframes questReady {
+  0%,
+  100% { box-shadow: 0 18px 46px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(240, 215, 154, 0.25); }
+  50% { box-shadow: 0 18px 46px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(240, 215, 154, 0.75), 0 0 22px rgba(199, 154, 78, 0.22); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rowClaimable { animation: none; }
+}
+
+/* Invite de la ligne terminée — pas un bouton : la ligne en est un. */
+.claimHint {
+  font-size: clamp(11px, 0.95vw, 13px);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: #f0d79a;
 }
 
 .rowClaimed { opacity: 0.5; }

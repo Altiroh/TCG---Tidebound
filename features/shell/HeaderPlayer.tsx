@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { fetchProgression, type ProgressionSummary } from "@/features/progression/actions";
 import { notifyProgressionChanged, onProgressionChanged, rememberProgression, rememberedProgression } from "@/features/progression/progressionSync";
 import { QuestDrawer } from "@/features/quests/QuestDrawer";
+import { ScreenToast, type ScreenToastMessage } from "@/features/shell/ScreenToast";
 import { SettingsDialog } from "@/features/settings/SettingsDialog";
 import styles from "@/features/shell/ScreenShell.module.css";
 import { playButtonClick } from "@/lib/sound";
@@ -98,6 +99,17 @@ export function HeaderPlayer() {
   const [summary, setSummary] = useState<ProgressionSummary | null>(rememberedProgression);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [questsOpen, setQuestsOpen] = useState(false);
+  const [toast, setToast] = useState<ScreenToastMessage | null>(null);
+  /**
+   * Dernier nombre de quêtes à réclamer VU. Sert à repérer une quête qui
+   * vient de tomber : c'est une AUGMENTATION qui s'annonce, pas un total —
+   * sinon l'alerte reviendrait à chaque écran tant que rien n'est réclamé.
+   *
+   * `null` tant qu'on n'a rien lu : la première lecture d'une session ne
+   * doit rien annoncer, même si des quêtes attendent depuis hier.
+   */
+  const lastClaimable = useRef<number | null>(null);
+  const toastId = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -111,10 +123,44 @@ export function HeaderPlayer() {
           // Mémorisée même si ce bandeau a été démonté entre-temps : le
           // prochain écran en profitera. Déconnecté : on n'en garde rien.
           rememberProgression(result);
-          if (!cancelled && request === latest) setSummary(result);
+          if (cancelled || request !== latest) return;
+          setSummary(result);
+          announceNewQuests(result.claimableQuests);
         })
         .catch((error) => console.error("[HeaderPlayer] Lecture de la progression impossible :", error));
     };
+
+    /**
+     * Annonce les quêtes qui viennent de se terminer. Le joueur ne doit pas
+     * avoir à ouvrir un panneau pour apprendre qu'il a gagné quelque chose :
+     * une partie finie, et l'alerte le dit, avec de quoi encaisser sur-le-champ.
+     */
+    function announceNewQuests(claimable: number) {
+      const previous = lastClaimable.current;
+      lastClaimable.current = claimable;
+      // Première lecture de la session : on prend le compte sans rien dire.
+      if (previous === null || claimable <= previous) return;
+
+      const gained = claimable - previous;
+      setToast({
+        id: ++toastId.current,
+        tone: "success",
+        text: `${gained} quête${gained > 1 ? "s" : ""} terminée${gained > 1 ? "s" : ""} — récompense à encaisser.`,
+        action: (
+          <button
+            type="button"
+            className={styles.toastAction}
+            onClick={() => {
+              playButtonClick();
+              setToast(null);
+              setQuestsOpen(true);
+            }}
+          >
+            Voir →
+          </button>
+        ),
+      });
+    }
 
     load();
     // Relecture après un achat, une quête réclamée… — cf. `progressionSync`.
@@ -177,7 +223,7 @@ export function HeaderPlayer() {
       {signedIn && (
         <button
           type="button"
-          className={styles.optionsButton}
+          className={summary && summary.claimableQuests > 0 ? styles.questsWaiting : styles.optionsButton}
           aria-label={
             summary && summary.claimableQuests > 0
               ? `Quêtes — ${summary.claimableQuests} récompense${summary.claimableQuests > 1 ? "s" : ""} à réclamer`
@@ -214,6 +260,11 @@ export function HeaderPlayer() {
       >
         <GearIcon />
       </button>
+
+      {/* Alerte de quête terminée. Montée ICI et non par écran : le bandeau
+          est le seul composant présent partout, et c'est lui qui relit la
+          progression. */}
+      <ScreenToast message={toast} onDismiss={() => setToast(null)} />
 
       {questsOpen && (
         <QuestDrawer

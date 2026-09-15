@@ -221,8 +221,26 @@ function QuestSection({ title, subtitle, entries, busyKey, onClaim, onReroll }: 
           const claimable = entry.completed && !entry.claimed;
           const meta = QUEST_CATEGORY_META[entry.category];
 
+          // Terminée : toute la ligne encaisse, comme dans le tiroir. Viser
+          // un bouton pour récupérer ce qu'on a déjà gagné est un obstacle
+          // de plus, pas une sécurité.
+          const Row = claimable ? "button" : "div";
+
           return (
-            <li key={key} className={`${game.panel} ${styles.row} ${claimable ? styles.rowClaimable : ""} ${entry.claimed ? styles.rowClaimed : ""}`}>
+            <li key={key}>
+              <Row
+                {...(claimable
+                  ? {
+                      type: "button" as const,
+                      onClick: () => onClaim(entry),
+                      disabled: busy,
+                      "aria-label": `${entry.name || entry.label} — terminée, encaisser ${
+                        entry.rewardBoosterId ? "un booster" : `${entry.rewardTides} Tides`
+                      }`,
+                    }
+                  : {})}
+                className={`${game.panel} ${styles.row} ${claimable ? styles.rowClaimable : ""} ${entry.claimed ? styles.rowClaimed : ""}`}
+              >
               <div className={styles.rowLead}>
                 <span className={styles.categoryMark} title={meta.label}>
                   {/* eslint-disable-next-line @next/next/no-img-element -- icône locale, taille fixe */}
@@ -260,23 +278,24 @@ function QuestSection({ title, subtitle, entries, busyKey, onClaim, onReroll }: 
                 {entry.claimed ? (
                   <span className={game.tag}>Réclamée</span>
                 ) : claimable ? (
-                  <button type="button" className={game.primary} onClick={() => onClaim(entry)} disabled={busy}>
-                    {busyKey === key ? "…" : "Réclamer"}
-                  </button>
+                  <span className={styles.claimHint}>{busyKey === key ? "…" : "Encaisser"}</span>
                 ) : (
-                  <>
-                    <span className={game.tagCyan}>En cours</span>
-                    {/* Remplacement gratuit : réservé aux quêtes du jour non
-                        terminées — remplacer une quête finie reviendrait à
-                        rejouer sa récompense. */}
-                    {onReroll && !entry.fromPreviousPeriod && (
-                      <button type="button" className={styles.reroll} onClick={() => onReroll(entry)} disabled={busy} title="Remplacer cette quête">
-                        Remplacer
-                      </button>
-                    )}
-                  </>
+                  <span className={game.tagCyan}>En cours</span>
                 )}
               </div>
+              </Row>
+
+              {/* Le remplacement reste un BOUTON À PART, hors de la ligne
+                  cliquable : il vit sous elle plutôt que dedans, sinon on ne
+                  pourrait plus l'imbriquer dans un bouton — et surtout un
+                  clic mal placé remplacerait la quête au lieu de l'encaisser.
+                  Réservé aux quêtes du jour non terminées : remplacer une
+                  quête finie reviendrait à rejouer sa récompense. */}
+              {!claimable && !entry.claimed && onReroll && !entry.fromPreviousPeriod && (
+                <button type="button" className={styles.reroll} onClick={() => onReroll(entry)} disabled={busy} title="Remplacer cette quête">
+                  Remplacer
+                </button>
+              )}
             </li>
           );
         })}

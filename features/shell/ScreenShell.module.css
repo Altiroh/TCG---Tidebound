@@ -647,3 +647,38 @@
   text-align: center;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
 }
+
+/* Lien de l'alerte de quête : « Voir → », qui ouvre le tiroir. */
+.toastAction {
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/*
+ * Bouton de quêtes quand une récompense attend : il pulse doucement.
+ * La pastille dit COMBIEN, la pulsation dit qu'il y a quelque chose — un
+ * chiffre de 16 pixels dans un bandeau ne se remarque pas tout seul.
+ */
+.questsWaiting {
+  composes: optionsButton;
+  color: #f0d79a;
+  animation: questsWaitingPulse 2.6s ease-in-out infinite;
+}
+
+@keyframes questsWaitingPulse {
+  0%,
+  100% { box-shadow: 0 0 0 0 rgba(199, 154, 78, 0); }
+  50% { box-shadow: 0 0 0 3px rgba(199, 154, 78, 0.22); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .questsWaiting { animation: none; }
+}

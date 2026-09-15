@@ -263,6 +263,9 @@ export async function rerollQuest(questId: string, periodKey: string): Promise<R
 
 /** Une quête qui a bougé pendant une partie — avant / après, et sa cible. */
 export interface QuestRecapEntry {
+  /** Couple attendu par `claimQuestReward` : la récompense s'encaisse depuis l'écran de fin. */
+  questId: string;
+  periodKey: string;
   code: string;
   name: string;
   category: QuestCategory;
@@ -305,6 +308,8 @@ export async function fetchMatchQuestRecap(matchId: string): Promise<QuestRecapE
     if (error) throw new Error(error.message);
 
     return (data?.quest_recap ?? []).map((row) => ({
+      questId: row.quest_id,
+      periodKey: row.period_key,
       code: row.code,
       name: row.name,
       category: isQuestCategory(row.category) ? row.category : "parties",

@@ -190,6 +190,11 @@ begin
   select coalesce(
     jsonb_agg(
       jsonb_build_object(
+        -- De quoi RÉCLAMER depuis l'écran de fin : `claim_quest_reward`
+        -- prend ce couple, et le joueur doit pouvoir encaisser là où il
+        -- voit la quête tomber, pas seulement dans son journal.
+        'quest_id', pqp.quest_id,
+        'period_key', pqp.period_key,
         'code', q.code,
         'name', coalesce(q.name, q.code),
         'category', q.category,

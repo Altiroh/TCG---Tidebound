@@ -129,33 +129,50 @@ export function QuestDrawer({ onClose }: QuestDrawerProps) {
               const ratio = Math.min(1, entry.progress / entry.target);
               const meta = QUEST_CATEGORY_META[entry.category];
 
+              // Une quête terminée : TOUTE la ligne encaisse. Un petit
+              // bouton à viser dans une liste est un obstacle de plus entre
+              // le joueur et ce qu'il a déjà gagné.
+              const Row = claimable ? "button" : "div";
+
               return (
-                <li key={key} className={`${styles.row} ${entry.claimed ? styles.rowClaimed : ""}`}>
-                  {/* eslint-disable-next-line @next/next/no-img-element -- icône locale, taille fixe */}
-                  <img src={meta.icon} alt="" aria-hidden draggable={false} className={styles.icon} />
+                <li key={key}>
+                  <Row
+                    {...(claimable
+                      ? {
+                          type: "button" as const,
+                          onClick: () => claim(entry),
+                          disabled: busyKey === key,
+                          "aria-label": `${entry.name || entry.label} — terminée, encaisser ${
+                            entry.rewardBoosterId ? "un booster" : `${entry.rewardTides} Tides`
+                          }`,
+                        }
+                      : {})}
+                    className={`${styles.row} ${claimable ? styles.rowClaimable : ""} ${entry.claimed ? styles.rowClaimed : ""}`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element -- icône locale, taille fixe */}
+                    <img src={meta.icon} alt="" aria-hidden draggable={false} className={styles.icon} />
 
-                  <div className={styles.body}>
-                    <span className={styles.name}>{entry.name || entry.label}</span>
-                    <span className={styles.objective}>{entry.label}</span>
-                    <div className={styles.track} role="progressbar" aria-valuenow={entry.progress} aria-valuemin={0} aria-valuemax={entry.target}>
-                      <div className={entry.completed ? styles.fillDone : styles.fill} style={{ width: `${ratio * 100}%` }} />
+                    <div className={styles.body}>
+                      <span className={styles.name}>{entry.name || entry.label}</span>
+                      <span className={styles.objective}>{entry.label}</span>
+                      <div className={styles.track} role="progressbar" aria-valuenow={entry.progress} aria-valuemin={0} aria-valuemax={entry.target}>
+                        <div className={entry.completed ? styles.fillDone : styles.fill} style={{ width: `${ratio * 100}%` }} />
+                      </div>
                     </div>
-                  </div>
 
-                  <div className={styles.side}>
-                    <span className={styles.reward}>
-                      {entry.rewardBoosterId ? "1 booster" : `${entry.rewardTides} Tides`}
-                    </span>
-                    {claimable ? (
-                      <button type="button" className={styles.claim} onClick={() => claim(entry)} disabled={busyKey === key}>
-                        {busyKey === key ? "…" : "Réclamer"}
-                      </button>
-                    ) : (
-                      <span className={styles.count}>
-                        {Math.min(entry.progress, entry.target)} / {entry.target}
+                    <div className={styles.side}>
+                      <span className={claimable ? styles.rewardReady : styles.reward}>
+                        {entry.rewardBoosterId ? "1 booster" : `${entry.rewardTides} Tides`}
                       </span>
-                    )}
-                  </div>
+                      {claimable ? (
+                        <span className={styles.claimHint}>{busyKey === key ? "…" : "Encaisser"}</span>
+                      ) : (
+                        <span className={styles.count}>
+                          {Math.min(entry.progress, entry.target)} / {entry.target}
+                        </span>
+                      )}
+                    </div>
+                  </Row>
                 </li>
               );
             })}

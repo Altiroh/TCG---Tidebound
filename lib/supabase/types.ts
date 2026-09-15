@@ -668,6 +668,8 @@ type CardTypeEnum = "marin" | "creature" | "equipement" | "structure" | "objet" 
  * Miroir du `jsonb_build_object` de `record_match_quest_progress`.
  */
 export interface QuestRecapRow {
+  quest_id: string;
+  period_key: string;
   code: string;
   name: string;
   category: string;
