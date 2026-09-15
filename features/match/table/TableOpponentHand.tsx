@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import styles from "@/features/board-preview/BoardPreview.module.css";
+import styles from "@/features/match/table/Table.module.css";
 import { useCardBackSrc } from "@/features/cosmetics/CardBackProvider";
 
 interface PreviewOpponentHandProps {
@@ -11,10 +11,10 @@ interface PreviewOpponentHandProps {
 /**
  * Main adverse : dos de cartes, jamais interactifs, en éventail inversé qui
  * dépasse du bord HAUT de l'écran (emplacement de `OpponentHandFan` sur
- * l'ancien board). Reflet exact de `PreviewHand` : même variables d'arc,
+ * l'ancien board). Reflet exact de `TableHand` : même variables d'arc,
  * rotation de sens opposé, seule la partie basse des cartes est visible.
  */
-export function PreviewOpponentHand({ count, hidden }: PreviewOpponentHandProps) {
+export function TableOpponentHand({ count, hidden }: PreviewOpponentHandProps) {
   const cardBack = useCardBackSrc();
   const center = (count - 1) / 2;
 

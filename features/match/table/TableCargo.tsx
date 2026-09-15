@@ -1,8 +1,8 @@
 "use client";
 
 import { useCardBackSrc } from "@/features/cosmetics/CardBackProvider";
-import styles from "@/features/board-preview/BoardPreview.module.css";
-import type { BoardDropState } from "@/features/board-preview/PreviewBoard";
+import styles from "@/features/match/table/Table.module.css";
+import type { BoardDropState } from "@/features/match/table/TableRow";
 
 /**
  * Même dos que le vrai plateau : celui que le joueur a équipé
@@ -29,7 +29,7 @@ interface PreviewCargoProps {
  * à la taille exacte d'une carte en jeu (`--card-w`) — la pioche montre le dos
  * de carte, la défausse un creux marqué du crâne (repris de `cargo-frame.webp`).
  */
-export function PreviewCargo({ side, deck, graveyard, graveyardDropState, onDraw, onGraveyardClick }: PreviewCargoProps) {
+export function TableCargo({ side, deck, graveyard, graveyardDropState, onDraw, onGraveyardClick }: PreviewCargoProps) {
   const cardBack = useCardBackSrc();
 
   const deckContent = (

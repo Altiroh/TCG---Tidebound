@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
-import styles from "@/features/board-preview/BoardPreview.module.css";
-import { TideIndicator } from "@/features/board-preview/TideIndicator";
-import type { PreviewTideModel } from "@/features/board-preview/previewFixtures";
+import styles from "@/features/match/table/Table.module.css";
+import { TideIndicator } from "@/features/match/table/TideIndicator";
+import type { TableTideModel } from "@/features/match/table/tableModel";
 
 interface CenterZoneProps {
-  tide: PreviewTideModel;
+  tide: TableTideModel;
   /** Consigne ponctuelle sous la piste (« Choisissez une cible… »), avec son éventuel bouton. */
   hint?: ReactNode;
 }

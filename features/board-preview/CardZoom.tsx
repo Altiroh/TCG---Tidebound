@@ -2,12 +2,12 @@
 
 import { useEffect } from "react";
 import type { TideStateName } from "@/game";
-import styles from "@/features/board-preview/BoardPreview.module.css";
+import styles from "@/features/match/table/Table.module.css";
 import { PreviewGameCard } from "@/features/board-preview/PreviewGameCard";
-import type { PreviewCardModel } from "@/features/board-preview/previewFixtures";
+import type { TableCardModel } from "@/features/board-preview/previewFixtures";
 
 interface CardZoomProps {
-  card: PreviewCardModel | null;
+  card: TableCardModel | null;
   tideState: TideStateName;
   damage?: number;
   onClose: () => void;

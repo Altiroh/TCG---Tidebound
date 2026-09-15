@@ -5,26 +5,26 @@ import { useRouter } from "next/navigation";
 import { advanceTideState, naturalOrientationFor, type TideOrientation } from "@/game";
 import { playCardDraw, playRandomAttackSound } from "@/lib/sound";
 import { animateAttacker, ATTACK_IMPACT_AT_MS, ATTACK_TOTAL_MS, shake } from "@/features/board-preview/attackMotion";
-import { BackgroundLayer } from "@/features/board-preview/BackgroundLayer";
+import { BackgroundLayer } from "@/features/match/table/BackgroundLayer";
 import { CardZoom } from "@/features/board-preview/CardZoom";
-import { CenterZone } from "@/features/board-preview/CenterZone";
+import { CenterZone } from "@/features/match/table/CenterZone";
 import { DebugOverlay } from "@/features/board-preview/DebugOverlay";
-import { DecorLayer } from "@/features/board-preview/DecorLayer";
-import { DragLayer, type AimTone } from "@/features/board-preview/DragLayer";
+import { DecorLayer } from "@/features/match/table/DecorLayer";
+import { DragLayer, type AimTone } from "@/features/match/table/DragLayer";
 import { EquipLinks } from "@/features/board-preview/EquipLinks";
 import { EffectsLayer } from "@/features/board-preview/EffectsLayer";
-import { GameStage } from "@/features/board-preview/GameStage";
-import { GameViewport } from "@/features/board-preview/GameViewport";
-import { MotionLayer, type ImpactFx } from "@/features/board-preview/MotionLayer";
-import { OpponentZone } from "@/features/board-preview/OpponentZone";
-import { PlayerZone } from "@/features/board-preview/PlayerZone";
+import { GameStage } from "@/features/match/table/GameStage";
+import { GameViewport } from "@/features/match/table/GameViewport";
+import { MotionLayer, type ImpactFx } from "@/features/match/table/MotionLayer";
+import { OpponentZone } from "@/features/match/table/OpponentZone";
+import { PlayerZone } from "@/features/match/table/PlayerZone";
 import { PreviewGameCard } from "@/features/board-preview/PreviewGameCard";
-import { PreviewHand } from "@/features/board-preview/PreviewHand";
-import { PhaseButton, PreviewHud } from "@/features/board-preview/PreviewHud";
-import { PreviewOpponentHand } from "@/features/board-preview/PreviewOpponentHand";
-import styles from "@/features/board-preview/BoardPreview.module.css";
+import { TableHand } from "@/features/match/table/TableHand";
+import { PhaseButton, TableHud } from "@/features/match/table/TableHud";
+import { TableOpponentHand } from "@/features/match/table/TableOpponentHand";
+import styles from "@/features/match/table/Table.module.css";
 import { BOARD_CAPACITY, PREVIEW_FIXTURES } from "@/features/board-preview/previewFixtures";
-import { boxOf, DRAW_STAGGER_MS, reducedMotion, useCardMotion } from "@/features/board-preview/useCardMotion";
+import { boxOf, DRAW_STAGGER_MS, reducedMotion, useCardMotion } from "@/features/match/table/useCardMotion";
 import {
   canAttack,
   HAND_LIMIT,
@@ -33,8 +33,8 @@ import {
   usePreviewTable,
   type PreviewTargetId,
 } from "@/features/board-preview/usePreviewTable";
-import { useTableGestures } from "@/features/board-preview/useTableGestures";
-import { useBoardPreviewMetrics, type BoardPreviewBreakpoint } from "@/features/board-preview/useBoardPreviewMetrics";
+import { useTableGestures } from "@/features/match/table/useTableGestures";
+import { useTableMetrics, type BoardPreviewBreakpoint } from "@/features/match/table/useTableMetrics";
 
 /**
  * BOARD PREVIEW — laboratoire de layout, écran temporaire.
@@ -66,7 +66,7 @@ import { useBoardPreviewMetrics, type BoardPreviewBreakpoint } from "@/features/
  * `features/match/BoardStage.tsx`), qui reste strictement inchangé. Une
  * fois la composition validée ici, elle sera réinjectée progressivement
  * là-bas — d'où le soin mis à ne coupler la disposition à AUCUN rendu de
- * carte (cf. les props `renderCard` de `PreviewBoard`/`PreviewHand`).
+ * carte (cf. les props `renderCard` de `TableRow`/`TableHand`).
  */
 const BADGE_SIZE: Record<BoardPreviewBreakpoint, number> = {
   "mobile-landscape": 20,
@@ -76,7 +76,7 @@ const BADGE_SIZE: Record<BoardPreviewBreakpoint, number> = {
 
 export function BoardPreviewPage() {
   const stageRef = useRef<HTMLDivElement>(null);
-  const metrics = useBoardPreviewMetrics(stageRef);
+  const metrics = useTableMetrics(stageRef);
   const [zonesVisible, setZonesVisible] = useState(false);
   const [debugCollapsed, setDebugCollapsed] = useState(false);
 
@@ -328,7 +328,7 @@ export function BoardPreviewPage() {
         <div aria-hidden className={`${styles.lane} ${styles.laneOpponent}`} />
         <div aria-hidden className={`${styles.lane} ${styles.lanePlayer}`} />
 
-        <PreviewOpponentHand count={opponentHand} hidden={motion.hidden} />
+        <TableOpponentHand count={opponentHand} hidden={motion.hidden} />
         <OpponentZone
           ship={{ name: opponent.shipName, illustration: opponent.illustration, hull: hull.opponent, maxHull: opponent.maxHull, reason: opponent.reason, maxReason: opponent.maxReason }}
           board={opponentBoard}
@@ -400,7 +400,7 @@ export function BoardPreviewPage() {
             );
           }}
         />
-        <PreviewHand
+        <TableHand
           cards={hand}
           dragging={placing !== null || casting !== null}
           renderCard={(card) => {
@@ -426,7 +426,7 @@ export function BoardPreviewPage() {
           }}
         />
 
-        <PreviewHud
+        <TableHud
           turn={turn}
           turnOwner="À vous"
           viewerTurn

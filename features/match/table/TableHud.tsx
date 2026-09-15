@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import styles from "@/features/board-preview/BoardPreview.module.css";
+import styles from "@/features/match/table/Table.module.css";
 
 interface PreviewHudProps {
   turn: number;
@@ -28,7 +28,7 @@ interface PreviewHudProps {
  * Le bouton Menu est posé au-dessus de la colonne, dans le coin haut droit
  * laissé libre par la main adverse.
  */
-export function PreviewHud({ turn, turnOwner, viewerTurn, journal, phaseButton, onMenu }: PreviewHudProps) {
+export function TableHud({ turn, turnOwner, viewerTurn, journal, phaseButton, onMenu }: PreviewHudProps) {
   return (
     <>
       <div className={styles.hudCornerTop}>

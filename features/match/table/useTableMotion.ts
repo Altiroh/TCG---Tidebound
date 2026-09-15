@@ -2,7 +2,7 @@
 
 import { useLayoutEffect, useRef, type ReactNode } from "react";
 import type { CardInstance, GameState, PlayerId } from "@/game";
-import { boxOf, DRAW_STAGGER_MS, reducedMotion, useCardMotion, type Box } from "@/features/board-preview/useCardMotion";
+import { boxOf, DRAW_STAGGER_MS, reducedMotion, useCardMotion, type Box } from "@/features/match/table/useCardMotion";
 import { playCardDraw } from "@/lib/sound";
 
 /**

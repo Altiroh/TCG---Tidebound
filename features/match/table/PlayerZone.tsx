@@ -1,16 +1,16 @@
 import type { ReactNode } from "react";
-import styles from "@/features/board-preview/BoardPreview.module.css";
-import { PreviewBoard, type BoardDropState } from "@/features/board-preview/PreviewBoard";
-import { PreviewCargo } from "@/features/board-preview/PreviewCargo";
-import { PreviewShip, type ShipView } from "@/features/board-preview/PreviewShip";
-import type { PreviewCardModel } from "@/features/board-preview/previewFixtures";
+import styles from "@/features/match/table/Table.module.css";
+import { TableRow, type BoardDropState } from "@/features/match/table/TableRow";
+import { TableCargo } from "@/features/match/table/TableCargo";
+import { TableShip, type ShipView } from "@/features/match/table/TableShip";
+import type { TableCardModel } from "@/features/match/table/tableModel";
 
 interface PlayerZoneProps {
   ship: ShipView;
-  board: PreviewCardModel[];
+  board: TableCardModel[];
   /** Emplacements du Navire (4, 5 ou 6) — les vides restent dessinés. */
   capacity?: number;
-  renderCard: (card: PreviewCardModel) => ReactNode;
+  renderCard: (card: TableCardModel) => ReactNode;
   /** Habillage du Navire (repère d'animation `data-ship-target`…). */
   wrapShip?: (ship: ReactNode) => ReactNode;
   /** État de dépôt du plateau pendant une pose depuis la main. */
@@ -31,7 +31,7 @@ interface PlayerZoneProps {
  *   [ navire ] [ plateau ] [ pioche · défausse ]
  *
  * La main n'en fait plus partie : elle vit dans sa propre bande en bas de la
- * scène (`PreviewHand`), en éventail coupé par le bord de l'écran.
+ * scène (`TableHand`), en éventail coupé par le bord de l'écran.
  */
 export function PlayerZone({
   ship,
@@ -48,12 +48,12 @@ export function PlayerZone({
 }: PlayerZoneProps) {
   return (
     <section className={`${styles.zone} ${styles.playerZone}`} data-zone="PlayerZone" aria-label="Zone du joueur">
-      <div className={styles.zoneSlotShip}>{wrapShip(<PreviewShip {...ship} />)}</div>
+      <div className={styles.zoneSlotShip}>{wrapShip(<TableShip {...ship} />)}</div>
       <div className={styles.zoneSlotBoard}>
-        <PreviewBoard zone="PlayerBoard" cards={board} capacity={capacity} renderCard={renderCard} droppable dropState={dropState} />
+        <TableRow zone="PlayerBoard" cards={board} capacity={capacity} renderCard={renderCard} droppable dropState={dropState} />
       </div>
       <div className={styles.zoneSlotCargo}>
-        <PreviewCargo
+        <TableCargo
           side="player"
           deck={deck}
           graveyard={graveyard}

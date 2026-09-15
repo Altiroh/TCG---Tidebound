@@ -2,11 +2,11 @@
 
 import { Fragment, useState, type CSSProperties } from "react";
 import type { TideStateName } from "@/game";
-import styles from "@/features/board-preview/BoardPreview.module.css";
-import type { PreviewTideModel } from "@/features/board-preview/previewFixtures";
+import styles from "@/features/match/table/Table.module.css";
+import type { TableTideModel } from "@/features/match/table/tableModel";
 
 interface TideIndicatorProps {
-  tide: PreviewTideModel;
+  tide: TableTideModel;
 }
 
 /** Couleur de chaque état — mêmes teintes que `TideProgressBar` (sky / cyan / amber / fuchsia). */

@@ -2,10 +2,10 @@
 
 import type { TideStateName } from "@/game";
 import { CardTile } from "@/features/match/CardTile";
-import type { PreviewCardModel } from "@/features/board-preview/previewFixtures";
+import type { TableCardModel } from "@/features/board-preview/previewFixtures";
 
 interface PreviewGameCardProps {
-  card: PreviewCardModel;
+  card: TableCardModel;
   tideState: TideStateName;
   /** `false` en main : les badges de statut décrivent une carte EN JEU. */
   showStatusBadges?: boolean;

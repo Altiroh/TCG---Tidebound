@@ -1,4 +1,4 @@
-import styles from "@/features/board-preview/BoardPreview.module.css";
+import styles from "@/features/match/table/Table.module.css";
 
 /**
  * Calque d'effets — vide par construction à ce stade.

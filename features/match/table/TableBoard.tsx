@@ -26,22 +26,22 @@ import { TIDE_STATE_LABELS } from "@/features/match/cardDisplay";
 import { EquipLinkOverlay } from "@/features/match/EquipLinkOverlay";
 import { needsPlayTarget } from "@/features/match/needsPlayTarget";
 import type { AttackAnimation } from "@/features/match/useAttackPresentation";
-import styles from "@/features/board-preview/BoardPreview.module.css";
-import { BackgroundLayer } from "@/features/board-preview/BackgroundLayer";
-import { CenterZone } from "@/features/board-preview/CenterZone";
-import { DecorLayer } from "@/features/board-preview/DecorLayer";
-import { DragLayer, type AimTone } from "@/features/board-preview/DragLayer";
-import { GameStage } from "@/features/board-preview/GameStage";
-import { GameViewport } from "@/features/board-preview/GameViewport";
-import { MotionLayer } from "@/features/board-preview/MotionLayer";
-import { OpponentZone } from "@/features/board-preview/OpponentZone";
-import { PlayerZone } from "@/features/board-preview/PlayerZone";
-import { PreviewHand } from "@/features/board-preview/PreviewHand";
-import { PhaseButton, PreviewHud } from "@/features/board-preview/PreviewHud";
-import { PreviewOpponentHand } from "@/features/board-preview/PreviewOpponentHand";
-import type { PreviewCardModel } from "@/features/board-preview/previewFixtures";
-import { useBoardPreviewMetrics, type BoardPreviewBreakpoint } from "@/features/board-preview/useBoardPreviewMetrics";
-import { useTableGestures } from "@/features/board-preview/useTableGestures";
+import styles from "@/features/match/table/Table.module.css";
+import { BackgroundLayer } from "@/features/match/table/BackgroundLayer";
+import { CenterZone } from "@/features/match/table/CenterZone";
+import { DecorLayer } from "@/features/match/table/DecorLayer";
+import { DragLayer, type AimTone } from "@/features/match/table/DragLayer";
+import { GameStage } from "@/features/match/table/GameStage";
+import { GameViewport } from "@/features/match/table/GameViewport";
+import { MotionLayer } from "@/features/match/table/MotionLayer";
+import { OpponentZone } from "@/features/match/table/OpponentZone";
+import { PlayerZone } from "@/features/match/table/PlayerZone";
+import { TableHand } from "@/features/match/table/TableHand";
+import { PhaseButton, TableHud } from "@/features/match/table/TableHud";
+import { TableOpponentHand } from "@/features/match/table/TableOpponentHand";
+import type { TableCardModel } from "@/features/match/table/tableModel";
+import { useTableMetrics, type BoardPreviewBreakpoint } from "@/features/match/table/useTableMetrics";
+import { useTableGestures } from "@/features/match/table/useTableGestures";
 import { useTableMotion } from "@/features/match/table/useTableMotion";
 
 /** Ciblage en cours côté conteneur (clic sur une carte de main à effet, bris ciblé, réaction ciblée, attaque). */
@@ -111,15 +111,16 @@ function isUnit(instance: CardInstance) {
   return (UNIT_CARD_TYPES as readonly string[]).includes(getCardDefinition(instance.cardId).type);
 }
 
-const toModel = (instance: CardInstance): PreviewCardModel => ({ id: instance.instanceId, cardId: instance.cardId });
+const toModel = (instance: CardInstance): TableCardModel => ({ id: instance.instanceId, cardId: instance.cardId });
 
 /**
  * NOUVEAU PLATEAU de partie — rendu partagé par la partie locale
  * (`MatchBoard`) et la partie en ligne (`OnlineBoard`).
  *
- * Construit sur le laboratoire `/game/board-preview` (mêmes composants, même
- * feuille de style) : grille fluide sans mise à l'échelle globale, vrais
- * assets, gestes au pointeur (souris ET doigt), mouvements de cartes.
+ * Grille fluide sans mise à l'échelle globale, vrais assets, gestes au
+ * pointeur (souris ET doigt), mouvements de cartes. Le laboratoire de
+ * layout (`/game/board-preview`) rend ces mêmes composants sur des données
+ * factices : il importe d'ici, jamais l'inverse.
  *
  * Ne connaît aucune règle d'action : il décide seulement quels gestes sont
  * PROPOSÉS (à partir de l'état et de `canPlayCards` / `canAttack`) et rend
@@ -131,7 +132,7 @@ export function TableBoard(props: TableBoardProps) {
   const { state, viewerId, canPlayCards, canAttack, targeting } = props;
   const cardBack = useCardBackSrc();
   const stageRef = useRef<HTMLDivElement>(null);
-  const metrics = useBoardPreviewMetrics(stageRef);
+  const metrics = useTableMetrics(stageRef);
   const badgeSize = BADGE_SIZE[metrics.breakpoint];
 
   const viewer = state.players.find((p) => p.id === viewerId)!;
@@ -301,7 +302,7 @@ export function TableBoard(props: TableBoardProps) {
   const attackTargeting = targeting?.kind === "attack" || aimAttacks;
 
   // ── Rendu d'une carte en jeu ────────────────────────────────────────
-  function renderBoardCard(card: PreviewCardModel, owner: PlayerState) {
+  function renderBoardCard(card: TableCardModel, owner: PlayerState) {
     const instance = byId.get(card.id)?.instance;
     if (!instance) return null;
     const mine = owner.id === viewerId;
@@ -392,7 +393,7 @@ export function TableBoard(props: TableBoardProps) {
           <div aria-hidden className={`${styles.lane} ${styles.laneOpponent}`} />
           <div aria-hidden className={`${styles.lane} ${styles.lanePlayer}`} />
 
-          <PreviewOpponentHand count={opponent.hand.length} />
+          <TableOpponentHand count={opponent.hand.length} />
           <OpponentZone
             ship={shipView(opponent, opponentShip)}
             board={opponent.board.map(toModel)}
@@ -449,7 +450,7 @@ export function TableBoard(props: TableBoardProps) {
             dropState={placing && slotsFree ? (hover === "board" ? "over" : "ready") : "idle"}
             renderCard={(card) => renderBoardCard(card, viewer)}
           />
-          <PreviewHand
+          <TableHand
             cards={viewer.hand.map(toModel)}
             dragging={placing !== null || casting !== null}
             renderCard={(card) => {
@@ -483,7 +484,7 @@ export function TableBoard(props: TableBoardProps) {
             }}
           />
 
-          <PreviewHud
+          <TableHud
             turn={Math.ceil(state.turnNumber / 2)}
             turnOwner={props.turnOwnerLabel}
             viewerTurn={state.activePlayerId === viewerId}

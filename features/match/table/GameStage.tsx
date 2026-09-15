@@ -1,5 +1,5 @@
 import { forwardRef } from "react";
-import styles from "@/features/board-preview/BoardPreview.module.css";
+import styles from "@/features/match/table/Table.module.css";
 
 /**
  * Scène de jeu — la grille de composition, et le porteur de TOUS les

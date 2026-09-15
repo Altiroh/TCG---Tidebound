@@ -1,9 +1,9 @@
 "use client";
 
 import { useLayoutEffect, useRef } from "react";
-import styles from "@/features/board-preview/BoardPreview.module.css";
+import styles from "@/features/match/table/Table.module.css";
 import { useCardBackSrc } from "@/features/cosmetics/CardBackProvider";
-import { FLIGHT_MS, type Flight } from "@/features/board-preview/useCardMotion";
+import { FLIGHT_MS, type Flight } from "@/features/match/table/useCardMotion";
 
 /** Effet ponctuel à un point de l'écran : flash d'impact ou dégâts qui s'envolent. */
 export interface ImpactFx {

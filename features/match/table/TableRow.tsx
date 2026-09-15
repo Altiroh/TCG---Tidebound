@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import styles from "@/features/board-preview/BoardPreview.module.css";
-import { BOARD_CAPACITY, type PreviewCardModel } from "@/features/board-preview/previewFixtures";
+import styles from "@/features/match/table/Table.module.css";
+import { BOARD_CAPACITY, type TableCardModel } from "@/features/match/table/tableModel";
 
 /** État de dépôt d'un rang pendant une pose : `ready` = une carte est en route, `over` = elle le survole. */
 export type BoardDropState = "idle" | "ready" | "over";
@@ -8,14 +8,14 @@ export type BoardDropState = "idle" | "ready" | "over";
 interface PreviewBoardProps {
   /** Nom de zone pour l'overlay de debug (`DebugOverlay`). */
   zone: "OpponentBoard" | "PlayerBoard";
-  cards: PreviewCardModel[];
+  cards: TableCardModel[];
   /** Nombre d'emplacements dessinés, cartes absentes comprises. */
   capacity?: number;
   /**
    * Rendu d'une carte (aujourd'hui `PreviewGameCard`). Le rang ne connaît
    * que ses emplacements : la carte remplit le sien (`--card-w`).
    */
-  renderCard: (card: PreviewCardModel) => ReactNode;
+  renderCard: (card: TableCardModel) => ReactNode;
   /** Rang où l'on peut poser : porte `data-drop="board"` (cf. `useTableGestures`). */
   droppable?: boolean;
   dropState?: BoardDropState;
@@ -31,7 +31,7 @@ interface PreviewBoardProps {
  * dépôt, pas seulement cet emplacement (viser au doigt une case de 50 px
  * serait pénible).
  */
-export function PreviewBoard({ zone, cards, capacity = BOARD_CAPACITY, renderCard, droppable = false, dropState = "idle" }: PreviewBoardProps) {
+export function TableRow({ zone, cards, capacity = BOARD_CAPACITY, renderCard, droppable = false, dropState = "idle" }: PreviewBoardProps) {
   const slots = Array.from({ length: Math.max(capacity, cards.length) }, (_, index) => cards[index]);
   const nextFree = cards.length < capacity ? cards.length : -1;
 

@@ -1,5 +1,5 @@
 import type { TideStateName } from "@/game";
-import styles from "@/features/board-preview/BoardPreview.module.css";
+import styles from "@/features/match/table/Table.module.css";
 
 /** Mer et ciel propres à chaque état de Marée (1672×941, même cadrage). */
 const TIDE_BACKGROUNDS: Record<TideStateName, string> = {

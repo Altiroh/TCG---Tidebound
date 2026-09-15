@@ -1,16 +1,16 @@
 "use client";
 
-import styles from "@/features/board-preview/BoardPreview.module.css";
-import type { BoardPreviewMetrics } from "@/features/board-preview/useBoardPreviewMetrics";
+import styles from "@/features/match/table/Table.module.css";
+import type { TableMetrics } from "@/features/match/table/useTableMetrics";
 
-const BREAKPOINT_LABELS: Record<BoardPreviewMetrics["breakpoint"], string> = {
+const BREAKPOINT_LABELS: Record<TableMetrics["breakpoint"], string> = {
   "mobile-landscape": "Mobile Landscape",
   laptop: "Laptop",
   "desktop-large": "Desktop Large",
 };
 
 interface DebugOverlayProps {
-  metrics: BoardPreviewMetrics;
+  metrics: TableMetrics;
   zonesVisible: boolean;
   onToggleZones: () => void;
   collapsed: boolean;

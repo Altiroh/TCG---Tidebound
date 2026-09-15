@@ -1,4 +1,4 @@
-import styles from "@/features/board-preview/BoardPreview.module.css";
+import styles from "@/features/match/table/Table.module.css";
 import {
   SHIP_FRAME_SRC,
   SHIP_ILLUSTRATION_CLIP,
@@ -83,7 +83,7 @@ function ShipGauge({ kind, value, max }: { kind: keyof typeof GAUGE_ASSETS; valu
  * La géométrie de l'arche vient de `features/ships/shipFrame.ts` (aucun
  * import de `@/game`).
  */
-export function PreviewShip({ name, illustration, hull, maxHull, reason, maxReason, deraisonDamage = 0 }: ShipView) {
+export function TableShip({ name, illustration, hull, maxHull, reason, maxReason, deraisonDamage = 0 }: ShipView) {
   return (
     <div
       className={styles.ship}

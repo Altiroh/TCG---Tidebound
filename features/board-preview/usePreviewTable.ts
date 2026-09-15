@@ -9,7 +9,7 @@ import {
   type CardInstance,
   type TideStateName,
 } from "@/game";
-import { BOARD_CAPACITY, PREVIEW_FIXTURES, type PreviewCardModel } from "@/features/board-preview/previewFixtures";
+import { BOARD_CAPACITY, PREVIEW_FIXTURES, type TableCardModel } from "@/features/board-preview/previewFixtures";
 
 /**
  * État de table du laboratoire : pioche, main, plateaux, défausses, coques,
@@ -29,13 +29,13 @@ export type PreviewTargetId = { kind: "unit"; id: string } | { kind: "ship" };
 export type Side = "player" | "opponent";
 
 export interface PreviewTableState {
-  playerDeck: PreviewCardModel[];
-  hand: PreviewCardModel[];
-  playerBoard: PreviewCardModel[];
+  playerDeck: TableCardModel[];
+  hand: TableCardModel[];
+  playerBoard: TableCardModel[];
   playerGraveyard: number;
   opponentDeck: number;
   opponentHand: number;
-  opponentBoard: PreviewCardModel[];
+  opponentBoard: TableCardModel[];
   opponentGraveyard: number;
   hull: Record<Side, number>;
   /** Dégâts marqués par carte (`CardInstance.damageMarked`). */
@@ -75,7 +75,7 @@ function initialState(): PreviewTableState {
   };
 }
 
-function cardName(card: PreviewCardModel | undefined): string {
+function cardName(card: TableCardModel | undefined): string {
   return card ? getCardDefinition(card.cardId).name : "?";
 }
 
@@ -169,11 +169,11 @@ function reducer(state: PreviewTableState, action: Action): PreviewTableState {
 }
 
 /** Seuls les Marins et Créatures attaquent (lecture du catalogue, `UNIT_CARD_TYPES`). */
-export function canAttack(card: PreviewCardModel): boolean {
+export function canAttack(card: TableCardModel): boolean {
   return (UNIT_CARD_TYPES as readonly string[]).includes(getCardDefinition(card.cardId).type);
 }
 
-function toInstance(card: PreviewCardModel, state: PreviewTableState): CardInstance {
+function toInstance(card: TableCardModel, state: PreviewTableState): CardInstance {
   return {
     instanceId: card.id,
     cardId: card.cardId,
@@ -187,7 +187,7 @@ function toInstance(card: PreviewCardModel, state: PreviewTableState): CardInsta
 }
 
 /** Puissance et Résistance restante affichées par la carte (même calcul que `CardTile`, sans auras). */
-export function unitStats(card: PreviewCardModel, state: PreviewTableState, tideState: TideStateName) {
+export function unitStats(card: TableCardModel, state: PreviewTableState, tideState: TideStateName) {
   const stats = computeEffectiveStats(toInstance(card, state), tideState);
   const hasHealth = stats.health > 0 || getCardDefinition(card.cardId).health !== undefined;
   return { attack: stats.attack, remaining: stats.health - (state.damage[card.id] ?? 0), hasHealth };
@@ -199,7 +199,7 @@ export function unitStats(card: PreviewCardModel, state: PreviewTableState, tide
  * règle que `needsPlayTarget` / le moteur — cible "si possible" : sans
  * permanent équipable, il se pose librement plutôt que de rester bloqué.
  */
-export function playTargetsFor(card: PreviewCardModel, state: PreviewTableState): string[] | null {
+export function playTargetsFor(card: TableCardModel, state: PreviewTableState): string[] | null {
   const def = getCardDefinition(card.cardId);
   const attaches = (def.onPlayEffects ?? []).some((e) => e.type === "attachEquipment" && e.target.kind === "chosenUnit");
   if (!attaches) return null;

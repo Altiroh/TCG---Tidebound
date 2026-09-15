@@ -1,12 +1,16 @@
 /*
- * LABORATOIRE DE LAYOUT — /game/board-preview
- * ===========================================
+ * PLATEAU DE JEU — dimensionnement
+ * ================================
  *
- * Tout le dimensionnement du board de prévisualisation vit ICI, et nulle
- * part ailleurs : les composants React ne portent que la STRUCTURE (quelle
- * zone contient quoi), jamais de valeurs en pixels. C'est ce qui permettra
- * de remplacer `PreviewCard` par `GameCard`, les blocs navires par les
- * vrais cadres, etc., sans retoucher une seule règle de mise en page.
+ * Tout le dimensionnement du plateau vit ICI, et nulle part ailleurs : les
+ * composants React ne portent que la STRUCTURE (quelle zone contient quoi),
+ * jamais de valeurs en pixels. C'est ce qui a permis de remplacer les
+ * cartes de démonstration par les vraies, les blocs navires par les vrais
+ * cadres, sans retoucher une seule règle de mise en page.
+ *
+ * Feuille PARTAGÉE avec le laboratoire de layout (`/game/board-preview`),
+ * qui rend le même plateau sur des données factices — c'est lui qui importe
+ * d'ici, jamais l'inverse.
  *
  * COMPOSITION : celle de l'ancien board (`features/match/MatchBoard.tsx`,
  * repère 1672×941, décor `public/assets/board/board.webp`), reprise telle
@@ -147,7 +151,7 @@
   inset: 0;
   z-index: 10;
 
-  /* Nom du mode courant, relu par `useBoardPreviewMetrics`. */
+  /* Nom du mode courant, relu par `useTableMetrics`. */
   --bp: "laptop";
 
   --safe-top: env(safe-area-inset-top, 0px);

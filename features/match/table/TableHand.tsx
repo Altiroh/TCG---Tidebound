@@ -1,11 +1,11 @@
 import type { CSSProperties, ReactNode } from "react";
-import styles from "@/features/board-preview/BoardPreview.module.css";
-import type { PreviewCardModel } from "@/features/board-preview/previewFixtures";
+import styles from "@/features/match/table/Table.module.css";
+import type { TableCardModel } from "@/features/match/table/tableModel";
 
 interface PreviewHandProps {
-  cards: PreviewCardModel[];
-  /** Idem `PreviewBoard` : point d'injection pour le futur `GameCard`. */
-  renderCard: (card: PreviewCardModel) => ReactNode;
+  cards: TableCardModel[];
+  /** Idem `TableRow` : point d'injection pour le futur `GameCard`. */
+  renderCard: (card: TableCardModel) => ReactNode;
   /** Une carte est en cours de glisser : la levée au survol se coupe. */
   dragging?: boolean;
 }
@@ -21,7 +21,7 @@ interface PreviewHandProps {
  * variables posées par carte : `--fan-offset` (écart signé au centre) et
  * `--fan-dist` (sa valeur absolue — `abs()` CSS n'est pas encore partout).
  */
-export function PreviewHand({ cards, renderCard, dragging = false }: PreviewHandProps) {
+export function TableHand({ cards, renderCard, dragging = false }: PreviewHandProps) {
   const center = (cards.length - 1) / 2;
 
   return (

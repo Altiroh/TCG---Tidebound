@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import styles from "@/features/board-preview/BoardPreview.module.css";
-import type { Gesture } from "@/features/board-preview/useTableGestures";
+import styles from "@/features/match/table/Table.module.css";
+import type { Gesture } from "@/features/match/table/useTableGestures";
 
 /** Couleur du trait : `attack` rouge, `effect` turquoise (Équipement), `sabotage` gris cendre. */
 export type AimTone = "attack" | "effect" | "sabotage";

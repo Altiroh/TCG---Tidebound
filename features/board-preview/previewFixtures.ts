@@ -1,4 +1,5 @@
 import type { TideStateName } from "@/game";
+import { BOARD_CAPACITY, type TableCardModel, type TableTideModel } from "@/features/match/table/tableModel";
 
 type CardId = string;
 
@@ -11,17 +12,16 @@ type CardId = string;
  * le layout sur de vraies cartes (noms longs, textes de règles, Abyssale).
  */
 
-export interface PreviewCardModel {
-  /** Identifiant d’instance, unique sur l’écran. */
-  id: string;
-  /** Carte du catalogue (`game/cards/sets/core.ts`). */
-  cardId: CardId;
-}
+/*
+ * Le MODÈLE de vue (`TableCardModel`, `TableTideModel`, `BOARD_CAPACITY`)
+ * vit avec le plateau (`features/match/table/tableModel.ts`), pas ici : ce
+ * fichier ne fournit que des données de démonstration. Réexportés par
+ * commodité pour les écrans du laboratoire.
+ */
+export { BOARD_CAPACITY };
+export type { TableCardModel, TableTideModel };
 
-/** Emplacements d’un plateau, côté joueur comme côté adversaire. */
-export const BOARD_CAPACITY = 5;
-
-function makeCards(prefix: string, cardIds: CardId[]): PreviewCardModel[] {
+function makeCards(prefix: string, cardIds: CardId[]): TableCardModel[] {
   return cardIds.map((cardId, i) => ({ id: `${prefix}-${i + 1}`, cardId }));
 }
 
@@ -102,4 +102,3 @@ export const PREVIEW_FIXTURES = {
 } satisfies Record<string, unknown>;
 
 export type PreviewSideModel = (typeof PREVIEW_FIXTURES)["player"];
-export type PreviewTideModel = (typeof PREVIEW_FIXTURES)["tide"];

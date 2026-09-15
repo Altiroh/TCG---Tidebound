@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 export type BoardPreviewBreakpoint = "mobile-landscape" | "laptop" | "desktop-large";
 
-export interface BoardPreviewMetrics {
+export interface TableMetrics {
   width: number;
   height: number;
   /** Largeur / hauteur, arrondi à 2 décimales (1.78 ≈ 16:9). */
@@ -13,7 +13,7 @@ export interface BoardPreviewMetrics {
   orientation: "landscape" | "portrait";
 }
 
-const INITIAL: BoardPreviewMetrics = {
+const INITIAL: TableMetrics = {
   width: 0,
   height: 0,
   ratio: 0,
@@ -36,8 +36,8 @@ function isBreakpoint(value: string): value is BoardPreviewBreakpoint {
  *
  * @param stageRef élément portant les tokens (la `.stage` de `GameStage`).
  */
-export function useBoardPreviewMetrics(stageRef: React.RefObject<HTMLElement>): BoardPreviewMetrics {
-  const [metrics, setMetrics] = useState<BoardPreviewMetrics>(INITIAL);
+export function useTableMetrics(stageRef: React.RefObject<HTMLElement>): TableMetrics {
+  const [metrics, setMetrics] = useState<TableMetrics>(INITIAL);
 
   useEffect(() => {
     function read() {
@@ -54,7 +54,7 @@ export function useBoardPreviewMetrics(stageRef: React.RefObject<HTMLElement>): 
         if (isBreakpoint(raw)) breakpoint = raw;
       }
 
-      const next: BoardPreviewMetrics = {
+      const next: TableMetrics = {
         width,
         height,
         ratio: height > 0 ? Math.round((width / height) * 100) / 100 : 0,

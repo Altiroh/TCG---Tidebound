@@ -1,4 +1,4 @@
-import styles from "@/features/board-preview/BoardPreview.module.css";
+import styles from "@/features/match/table/Table.module.css";
 
 /**
  * Décors d'angle posés sur le fond, DERRIÈRE le gameplay (jamais cliquables) —
