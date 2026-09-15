@@ -19,6 +19,8 @@ export interface BoosterOpeningCard {
   /** Carte du catalogue affichée une fois retournée. Absente : face provisoire « Carte test ». */
   cardId?: string;
   rarity: BoosterOpeningRarity;
+  /** Carte que le joueur ne possédait pas avant cette ouverture : badge « Nouveau ». */
+  isNew?: boolean;
 }
 
 /** Traduction d'une rareté de collection vers un palier de mise en scène — un pour un. */

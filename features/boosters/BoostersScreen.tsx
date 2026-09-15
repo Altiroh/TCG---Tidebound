@@ -169,6 +169,7 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
         id: `${card.slotIndex}-${card.cardId}`,
         cardId: card.cardId,
         rarity: toOpeningRarity(card.rarity),
+        isNew: card.isNew,
       })),
     });
   }

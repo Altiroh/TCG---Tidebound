@@ -308,8 +308,8 @@
 }
 .revealMoteAbyssal {
   composes: revealMote;
-  background: rgba(160, 220, 238, 0.9);
-  box-shadow: 0 0 calc(var(--size) * 5) rgba(36, 118, 178, 0.85);
+  background: rgba(226, 196, 255, 0.95);
+  box-shadow: 0 0 calc(var(--size) * 5) rgba(150, 70, 255, 0.9);
 }
 
 /* Étincelles d'une Légendaire : elles crépitent au bord de la carte. */
@@ -996,18 +996,69 @@
   --rarity-ink: #ffd772;
   --sheen: rgba(255, 238, 180, 0.34);
 }
+/* Abyssale : un violet profond, et des orbes qui gravitent autour. */
 .card[data-rarity="abyssal"] {
-  --glow: rgba(90, 210, 236, 0.9);
-  --glow-far: rgba(30, 110, 180, 0.6);
-  --glow-size: 2.4;
-  --aura: radial-gradient(closest-side, rgba(6, 22, 40, 0.7) 20%, rgba(38, 112, 170, 0.5) 50%, transparent 78%);
+  --glow: rgba(176, 102, 255, 1);
+  --glow-far: rgba(120, 40, 220, 0.65);
+  --glow-size: 2.8;
+  --aura: radial-gradient(closest-side, rgba(24, 6, 44, 0.7) 20%, rgba(130, 60, 230, 0.55) 50%, transparent 78%);
   --aura-charge: 0.55;
   --aura-peak: 1;
   --aura-rest: 0.65;
   --charge-lift: calc(var(--u) * 1.6);
-  --frame-color: rgba(79, 196, 206, 0.5);
-  --rarity-ink: #82d2de;
-  --sheen: rgba(160, 225, 240, 0.18);
+  --frame-color: rgba(176, 120, 255, 0.6);
+  --rarity-ink: #c9a2ff;
+  --sheen: rgba(220, 190, 255, 0.22);
+}
+
+.card[data-state="revealed"][data-rarity="abyssal"] .cardGlow {
+  animation:
+    glowIn var(--impact-dur) cubic-bezier(0.2, 0.6, 0.3, 1) both,
+    glowPulse 2200ms ease-in-out var(--impact-dur) infinite;
+}
+
+/*
+ * ORBES en orbite. Chaque orbe combine deux oscillations décalées d'un
+ * quart de période (horizontale sur son porteur, verticale sur lui-même) :
+ * leur somme trace une ellipse autour de la carte, sans calcul JS. Plus
+ * grands et plus lumineux quand ils passent « devant » (bas de l'ellipse).
+ */
+.cardOrbs {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+  animation: sceneIn 700ms ease-out 200ms both;
+}
+
+.orbCarrier {
+  position: absolute;
+  animation: orbX var(--orbit, 3.6s) ease-in-out var(--delay, 0s) infinite alternate;
+}
+
+.orb {
+  display: block;
+  width: calc(var(--u) * var(--orb-size, 1.4));
+  height: calc(var(--u) * var(--orb-size, 1.4));
+  margin: calc(var(--u) * var(--orb-size, 1.4) / -2);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff 0%, #e2c6ff 30%, #9a4dff 70%, rgba(110, 30, 220, 0.2) 100%);
+  box-shadow: 0 0 calc(var(--u) * 1.4) rgba(170, 90, 255, 0.95), 0 0 calc(var(--u) * 3.2) rgba(130, 50, 240, 0.6);
+  animation: orbY var(--orbit, 3.6s) ease-in-out calc(var(--delay, 0s) - var(--orbit, 3.6s) / 2) infinite alternate;
+}
+
+@keyframes orbX {
+  from { transform: translate3d(calc(var(--card-w) * -0.72), 0, 0); }
+  to { transform: translate3d(calc(var(--card-w) * 0.72), 0, 0); }
+}
+
+@keyframes orbY {
+  from { transform: translate3d(0, calc(var(--card-h) * -0.58), 0) scale(0.7); opacity: 0.65; }
+  to { transform: translate3d(0, calc(var(--card-h) * 0.58), 0) scale(1.15); opacity: 1; }
 }
 
 /* Le halo qui reste : un liseré lumineux au contour de la carte. */
@@ -1087,8 +1138,8 @@
   height: 50%;
   pointer-events: none;
   background:
-    radial-gradient(48% 58% at 30% 62%, rgba(120, 172, 202, 0.2), transparent 70%),
-    radial-gradient(44% 52% at 72% 56%, rgba(76, 138, 180, 0.2), transparent 70%);
+    radial-gradient(48% 58% at 30% 62%, rgba(170, 110, 240, 0.22), transparent 70%),
+    radial-gradient(44% 52% at 72% 56%, rgba(120, 60, 210, 0.22), transparent 70%);
   opacity: 0;
   animation:
     mistIn 900ms ease-out both,
@@ -1339,9 +1390,9 @@
   margin: calc(var(--card-w) * -0.55) 0 0 calc(var(--card-w) * -0.55);
   border-radius: 50%;
   box-shadow:
-    0 0 0 1px rgba(110, 190, 220, 0.3),
-    0 0 calc(var(--u) * 2) rgba(36, 118, 178, 0.4),
-    inset 0 0 calc(var(--u) * 2) rgba(36, 118, 178, 0.3);
+    0 0 0 1px rgba(190, 140, 255, 0.4),
+    0 0 calc(var(--u) * 2) rgba(140, 60, 240, 0.5),
+    inset 0 0 calc(var(--u) * 2) rgba(140, 60, 240, 0.35);
   opacity: 0;
   pointer-events: none;
   animation: ring 1200ms cubic-bezier(0.15, 0.6, 0.3, 1) both;
@@ -1613,7 +1664,7 @@
   height: 160vmax;
   margin: -80vmax 0 0 -80vmax;
   border-radius: 50%;
-  background: repeating-conic-gradient(from 0deg, rgba(110, 210, 236, 0.13) 0deg 6deg, transparent 6deg 18deg);
+  background: repeating-conic-gradient(from 0deg, rgba(180, 120, 255, 0.15) 0deg 6deg, transparent 6deg 18deg);
   mask-image: radial-gradient(closest-side, #000 8%, rgba(0, 0, 0, 0.5) 30%, transparent 62%);
   -webkit-mask-image: radial-gradient(closest-side, #000 8%, rgba(0, 0, 0, 0.5) 30%, transparent 62%);
   animation: raysSpin 18s linear infinite;
@@ -1648,8 +1699,8 @@
   font-weight: 700;
   letter-spacing: 0.34em;
   text-transform: uppercase;
-  color: #8fe3ee;
-  text-shadow: 0 0 calc(var(--u) * 1.4) rgba(60, 180, 220, 0.8);
+  color: #d2b0ff;
+  text-shadow: 0 0 calc(var(--u) * 1.4) rgba(150, 70, 255, 0.85);
 }
 
 .showcaseName {
@@ -1674,5 +1725,35 @@
 }
 
 .scene[data-reduced-motion] .showcaseRays {
+  animation: none;
+}
+
+/* Carte jamais possédée : « Nouveau », au coin, dès qu'elle est retournée. */
+.newBadge {
+  position: absolute;
+  top: calc(var(--u) * -1.1);
+  right: calc(var(--u) * -1.1);
+  z-index: 4;
+  padding: calc(var(--u) * 0.35) calc(var(--u) * 1);
+  border: 1px solid #fff1b8;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffd35c, #e5941c);
+  color: #3a2000;
+  font-size: clamp(9px, calc(var(--u) * 1.15), 13px);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  box-shadow: 0 0 calc(var(--u) * 1.2) rgba(255, 190, 60, 0.7);
+  pointer-events: none;
+  animation: newBadgeIn 520ms cubic-bezier(0.2, 1.5, 0.4, 1) 250ms both;
+}
+
+@keyframes newBadgeIn {
+  from { opacity: 0; transform: scale(0.3) rotate(-20deg); }
+  to { opacity: 1; transform: rotate(6deg); }
+}
+
+.scene[data-reduced-motion] .orbCarrier,
+.scene[data-reduced-motion] .orb {
   animation: none;
 }

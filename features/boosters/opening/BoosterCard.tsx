@@ -11,6 +11,14 @@ import { OPENING_RARITY_LABEL, type BoosterOpeningCard } from "@/features/booste
 
 export type BoosterCardStyle = CSSProperties & Record<`--${string}`, string | number>;
 
+/** Orbes d'une Abyssale : période, déphasage et taille propres, pour qu'ils ne tournent pas en file indienne. */
+const ORBS: BoosterCardStyle[] = [
+  { "--orbit": "3.6s", "--delay": "0s", "--orb-size": 1.6 },
+  { "--orbit": "3.6s", "--delay": "-1.2s", "--orb-size": 1.1 },
+  { "--orbit": "3.6s", "--delay": "-2.4s", "--orb-size": 1.3 },
+  { "--orbit": "5.2s", "--delay": "-0.8s", "--orb-size": 0.8 },
+];
+
 /** Gros plan d'une Abyssale : la carte vole au centre (`in`), puis rejoint sa place (`out`). */
 export type BoosterCardShowcase = "in" | "out" | "done";
 
@@ -174,6 +182,16 @@ export const BoosterCard = memo(function BoosterCard({
         {revealed && card.rarity === "legendary" && <span className={`${styles.cardRing} ${styles.cardRingGold}`} aria-hidden />}
         {revealed && highRarity && card.rarity !== "abyssal" && <BoosterParticles variant={card.rarity === "rare" ? "rare" : card.rarity === "epic" ? "epic" : "legendary"} />}
         {revealed && card.rarity === "abyssal" && <BoosterParticles variant="abyssal" />}
+        {revealed && card.rarity === "abyssal" && (
+          <span className={styles.cardOrbs} aria-hidden>
+            {ORBS.map((orb, index) => (
+              <span key={index} className={styles.orbCarrier} style={orb}>
+                <span className={styles.orb} />
+              </span>
+            ))}
+          </span>
+        )}
+        {revealed && card.isNew && <span className={styles.newBadge}>Nouveau</span>}
         {revealed && card.rarity === "legendary" && <BoosterParticles variant="sparks" />}
       </span>
     </div>

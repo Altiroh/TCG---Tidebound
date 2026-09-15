@@ -87,6 +87,7 @@ export function drawTestBoosterCards(boosterId: string, random: () => number = M
     if (candidates.length === 0) return [];
     const cardId = candidates[Math.floor(random() * candidates.length)]!;
     used.add(cardId);
-    return [{ id: `${slotIndex}-${cardId}`, cardId, rarity: toOpeningRarity(rarity) }];
+    // Essai : une carte sur deux passe pour « nouvelle », pour voir le badge.
+    return [{ id: `${slotIndex}-${cardId}`, cardId, rarity: toOpeningRarity(rarity), isNew: random() < 0.5 }];
   });
 }
