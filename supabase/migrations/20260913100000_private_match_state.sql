@@ -28,7 +28,7 @@
 
 -- --- état complet, privé ---------------------------------------------------
 
-create table public.match_states (
+create table if not exists public.match_states (
   match_id uuid primary key references public.matches (id) on delete cascade,
   -- `GameState` complet (`game/state/types.ts`). Jamais lu par un client.
   state jsonb not null,
@@ -43,25 +43,38 @@ alter table public.match_states enable row level security;
 -- Aucune policy : seules les fonctions `security definer` et la clé
 -- service_role y accèdent. Volontairement absente de la publication Realtime.
 
-insert into public.match_states (match_id, state)
-select m.id, m.state from public.matches m where m.state is not null
-on conflict (match_id) do nothing;
+-- Reprise des états déjà stockés dans `matches.state`, la colonne que cette
+-- migration s'apprête à supprimer. Au SECOND passage elle n'existe plus, et
+-- une requête qui la nomme ne compile même pas — d'où l'`execute` sous
+-- condition plutôt qu'un simple `insert`.
+do $$ begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'matches' and column_name = 'state'
+  ) then
+    execute $q$
+      insert into public.match_states (match_id, state)
+      select m.id, m.state from public.matches m where m.state is not null
+      on conflict (match_id) do nothing
+    $q$;
+  end if;
+end $$;
 
 -- --- matches : métadonnées publiques seulement ------------------------------
 
 alter table public.matches
   -- Recopie de `match_states.version` : c'est la seule chose que Realtime
   -- diffuse au sujet de l'état. Quand elle change, le client redemande sa vue.
-  add column state_version integer not null default 0,
+  add column if not exists state_version integer not null default 0,
   -- Difficulté du bot pour une partie `mode = 'bot'` (le bot n'a pas de
   -- profil : `player2_id` reste null, `player2_deck_id` porte son deck).
-  add column bot_difficulty text check (bot_difficulty in ('facile', 'moyen', 'difficile'));
+  add column if not exists bot_difficulty text check (bot_difficulty in ('facile', 'moyen', 'difficile'));
 
 update public.matches m
   set state_version = 1
   where exists (select 1 from public.match_states s where s.match_id = m.id);
 
-alter table public.matches drop column state;
+alter table public.matches drop column if exists state;
 
 drop policy if exists "anyone authenticated can find a waiting match by invite code" on public.matches;
 drop policy if exists "a user can create a match as player1" on public.matches;

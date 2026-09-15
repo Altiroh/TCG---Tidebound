@@ -11,7 +11,7 @@
 
 -- --- profiles -------------------------------------------------------------
 
-create table public.profiles (
+create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   display_name text not null,
   created_at timestamptz not null default now()
@@ -19,11 +19,13 @@ create table public.profiles (
 
 alter table public.profiles enable row level security;
 
+drop policy if exists "profiles are readable by any authenticated user" on public.profiles;
 create policy "profiles are readable by any authenticated user"
   on public.profiles for select
   to authenticated
   using (true);
 
+drop policy if exists "a user can update their own profile" on public.profiles;
 create policy "a user can update their own profile"
   on public.profiles for update
   to authenticated
@@ -33,7 +35,7 @@ create policy "a user can update their own profile"
 -- Crée automatiquement un profil à l'inscription (déclenché sur auth.users,
 -- schéma géré par Supabase Auth). `security definer` : nécessaire pour
 -- pouvoir écrire dans `public.profiles` depuis un trigger sur `auth.users`.
-create function public.handle_new_user()
+create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
 security definer set search_path = public
@@ -45,13 +47,14 @@ begin
 end;
 $$;
 
+drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
 -- --- matches ----------------------------------------------------------
 
-create table public.matches (
+create table if not exists public.matches (
   id uuid primary key default gen_random_uuid(),
   -- Code court partagé hors-bande (ex: lien) pour rejoindre une partie
   -- privée en attente d'un second joueur.
@@ -78,12 +81,13 @@ create table public.matches (
   updated_at timestamptz not null default now()
 );
 
-create index matches_player1_id_idx on public.matches (player1_id);
-create index matches_player2_id_idx on public.matches (player2_id);
-create index matches_invite_code_idx on public.matches (invite_code);
+create index if not exists matches_player1_id_idx on public.matches (player1_id);
+create index if not exists matches_player2_id_idx on public.matches (player2_id);
+create index if not exists matches_invite_code_idx on public.matches (invite_code);
 
 alter table public.matches enable row level security;
 
+drop policy if exists "players can read their own matches" on public.matches;
 create policy "players can read their own matches"
   on public.matches for select
   to authenticated
@@ -92,11 +96,13 @@ create policy "players can read their own matches"
 -- Nécessaire pour que le flux "rejoindre par code" puisse localiser une
 -- partie avant que l'appelant en soit membre. N'expose que les parties
 -- encore ouvertes (pas de fuite d'état de partie en cours/terminée).
+drop policy if exists "anyone authenticated can find a waiting match by invite code" on public.matches;
 create policy "anyone authenticated can find a waiting match by invite code"
   on public.matches for select
   to authenticated
   using (status = 'waiting');
 
+drop policy if exists "a user can create a match as player1" on public.matches;
 create policy "a user can create a match as player1"
   on public.matches for insert
   to authenticated
@@ -106,6 +112,7 @@ create policy "a user can create a match as player1"
 -- encore ouverte" (nécessaire pour la rejoindre, avant d'être membre) ;
 -- WITH CHECK garantit qu'après l'écriture l'appelant EST bien un des deux
 -- joueurs (empêche de modifier une partie sans y participer).
+drop policy if exists "participants can update their match, including joining an open one" on public.matches;
 create policy "participants can update their match, including joining an open one"
   on public.matches for update
   to authenticated
@@ -114,4 +121,11 @@ create policy "participants can update their match, including joining an open on
 
 -- --- realtime -----------------------------------------------------------
 
-alter publication supabase_realtime add table public.matches;
+do $$ begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'matches'
+  ) then
+    alter publication supabase_realtime add table public.matches;
+  end if;
+end $$;

@@ -100,6 +100,7 @@ create index if not exists booster_pool_cards_booster_idx
 alter table public.booster_pool_cards enable row level security;
 
 drop policy if exists "booster pools are readable by any authenticated user" on public.booster_pool_cards;
+drop policy if exists "booster pools are readable by any authenticated user" on public.booster_pool_cards;
 create policy "booster pools are readable by any authenticated user"
   on public.booster_pool_cards for select to authenticated using (true);
 
@@ -183,3 +184,23 @@ grant select on public.booster_pool_health to service_role;
 -- explicite ; garder les deux mécanismes, c'est se garantir qu'ils
 -- divergeront. La colonne est retirée plutôt que laissée vide.
 alter table public.booster_definitions drop column if exists pool_excluded_rarities;
+
+-- REJEU — à faire EN DERNIER.
+--
+-- `20260910120000` recrée l'enum à chaque passage (son `create type` est
+-- gardé contre le doublon, pas supprimé), et `20260912200000` recrée avec
+-- lui la colonne `pool_excluded_rarities` qui s'en sert. Le bloc §1, lui,
+-- voit la conversion déjà faite et ne retouche à rien.
+--
+-- À ce point-ci du fichier, et seulement ici, la colonne vient d'être
+-- supprimée (§5) : plus rien ne dépend du type, il peut partir. Sans ça il
+-- resterait orphelin en base après chaque réinjection, prêt à être
+-- réutilisé par mégarde par une migration future.
+do $$
+begin
+  drop type if exists public.card_rarity;
+exception when dependent_objects_still_exist then
+  -- Un objet s'y réfère encore : c'est que la conversion n'a pas eu lieu,
+  -- et le supprimer casserait la base. On le laisse.
+  null;
+end $$;

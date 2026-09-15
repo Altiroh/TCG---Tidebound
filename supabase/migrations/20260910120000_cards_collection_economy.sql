@@ -29,10 +29,16 @@
 
 -- --- cartes ---------------------------------------------------------------
 
-create type public.card_type as enum ('marin', 'creature', 'equipement', 'structure', 'objet', 'anomalie');
-create type public.card_rarity as enum ('common', 'uncommon', 'rare', 'abyssal');
+do $$ begin
+  create type public.card_type as enum ('marin', 'creature', 'equipement', 'structure', 'objet', 'anomalie');
+exception when duplicate_object then null;
+end $$;
+do $$ begin
+  create type public.card_rarity as enum ('common', 'uncommon', 'rare', 'abyssal');
+exception when duplicate_object then null;
+end $$;
 
-create table public.cards (
+create table if not exists public.cards (
   id text primary key, -- CardDefinition.id (slug), ex: 'murene-aveugle'
   name text not null,
   card_type public.card_type not null,
@@ -56,6 +62,7 @@ create table public.cards (
 
 alter table public.cards enable row level security;
 
+drop policy if exists "cards are readable by any authenticated user" on public.cards;
 create policy "cards are readable by any authenticated user"
   on public.cards for select
   to authenticated
@@ -67,7 +74,7 @@ create policy "cards are readable by any authenticated user"
 
 -- --- decks de base système --------------------------------------------
 
-create table public.system_decks (
+create table if not exists public.system_decks (
   id text primary key, -- correspond à DeckList.id (game/cards/decks/preconstructed.ts)
   ship_id text not null, -- id de Navire, validé côté code via getShipDefinition() ; pas de table `ships` séparée
   name text not null,
@@ -75,7 +82,7 @@ create table public.system_decks (
   version integer not null default 1
 );
 
-create table public.system_deck_cards (
+create table if not exists public.system_deck_cards (
   system_deck_id text not null references public.system_decks (id) on delete cascade,
   card_id text not null references public.cards (id),
   quantity smallint not null check (quantity > 0),
@@ -85,15 +92,17 @@ create table public.system_deck_cards (
 alter table public.system_decks enable row level security;
 alter table public.system_deck_cards enable row level security;
 
+drop policy if exists "system decks are readable by any authenticated user" on public.system_decks;
 create policy "system decks are readable by any authenticated user"
   on public.system_decks for select to authenticated using (true);
 
+drop policy if exists "system deck cards are readable by any authenticated user" on public.system_deck_cards;
 create policy "system deck cards are readable by any authenticated user"
   on public.system_deck_cards for select to authenticated using (true);
 
 -- --- decks personnels ---------------------------------------------------
 
-create table public.player_decks (
+create table if not exists public.player_decks (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles (id) on delete cascade,
   ship_id text not null,
@@ -106,7 +115,7 @@ create table public.player_decks (
   updated_at timestamptz not null default now()
 );
 
-create table public.player_deck_cards (
+create table if not exists public.player_deck_cards (
   deck_id uuid not null references public.player_decks (id) on delete cascade,
   card_id text not null references public.cards (id),
   quantity smallint not null check (quantity > 0),
@@ -116,12 +125,14 @@ create table public.player_deck_cards (
 alter table public.player_decks enable row level security;
 alter table public.player_deck_cards enable row level security;
 
+drop policy if exists "a user can manage their own decks" on public.player_decks;
 create policy "a user can manage their own decks"
   on public.player_decks for all
   to authenticated
   using (user_id = auth.uid())
   with check (user_id = auth.uid());
 
+drop policy if exists "a user can manage the cards of their own decks" on public.player_deck_cards;
 create policy "a user can manage the cards of their own decks"
   on public.player_deck_cards for all
   to authenticated
@@ -130,7 +141,7 @@ create policy "a user can manage the cards of their own decks"
 
 -- --- collection ----------------------------------------------------------
 
-create table public.player_cards (
+create table if not exists public.player_cards (
   user_id uuid not null references public.profiles (id) on delete cascade,
   card_id text not null references public.cards (id),
   quantity integer not null default 0 check (quantity >= 0),
@@ -141,6 +152,7 @@ create table public.player_cards (
 
 alter table public.player_cards enable row level security;
 
+drop policy if exists "a user can read their own collection" on public.player_cards;
 create policy "a user can read their own collection"
   on public.player_cards for select
   to authenticated
@@ -153,7 +165,7 @@ create policy "a user can read their own collection"
 
 -- --- boosters --------------------------------------------------------
 
-create table public.booster_definitions (
+create table if not exists public.booster_definitions (
   id text primary key, -- ex: 'standard', 'welcome_tutorial'
   name text not null,
   card_count smallint not null default 8,
@@ -162,7 +174,7 @@ create table public.booster_definitions (
   is_enabled boolean not null default true
 );
 
-create table public.booster_slots (
+create table if not exists public.booster_slots (
   booster_definition_id text not null references public.booster_definitions (id) on delete cascade,
   slot_index smallint not null,
   -- L'un des deux est renseigné : rareté garantie (slots 1-7 du format
@@ -176,9 +188,11 @@ create table public.booster_slots (
 alter table public.booster_definitions enable row level security;
 alter table public.booster_slots enable row level security;
 
+drop policy if exists "booster definitions are readable by any authenticated user" on public.booster_definitions;
 create policy "booster definitions are readable by any authenticated user"
   on public.booster_definitions for select to authenticated using (true);
 
+drop policy if exists "booster slots are readable by any authenticated user" on public.booster_slots;
 create policy "booster slots are readable by any authenticated user"
   on public.booster_slots for select to authenticated using (true);
 
@@ -189,7 +203,11 @@ create policy "booster slots are readable by any authenticated user"
 -- commune, 1 Rare ou mieux.
 insert into public.booster_definitions (id, name, card_count, price_currency, is_purchasable, is_enabled) values
   ('standard', 'Booster standard', 8, 500, true, true),
-  ('welcome_tutorial', 'Mini Booster de Bienvenue', 4, null, false, true);
+  ('welcome_tutorial', 'Mini Booster de Bienvenue', 4, null, false, true)
+-- `do nothing`, surtout pas `do update` : c'est la définition d'ORIGINE,
+-- que `20260916120000` corrige ensuite (Booster Défaut, 100 Tides). Une
+-- seconde injection de ce fichier remettrait sinon le prix à 500.
+on conflict (id) do nothing;
 
 insert into public.booster_slots (booster_definition_id, slot_index, guaranteed_rarity, weighted_rarities) values
   ('standard', 1, 'common', null),
@@ -203,9 +221,12 @@ insert into public.booster_slots (booster_definition_id, slot_index, guaranteed_
   ('welcome_tutorial', 1, 'common', null),
   ('welcome_tutorial', 2, 'common', null),
   ('welcome_tutorial', 3, 'uncommon', null),
-  ('welcome_tutorial', 4, 'rare', null);
+  ('welcome_tutorial', 4, 'rare', null)
+-- Idem : le format des boosters achetables est redéfini plus tard (slot 7
+-- pondéré). On ne réécrit pas par-dessus à la réinjection.
+on conflict (booster_definition_id, slot_index) do nothing;
 
-create table public.player_boosters (
+create table if not exists public.player_boosters (
   user_id uuid not null references public.profiles (id) on delete cascade,
   booster_definition_id text not null references public.booster_definitions (id),
   quantity integer not null default 0 check (quantity >= 0),
@@ -213,21 +234,21 @@ create table public.player_boosters (
   primary key (user_id, booster_definition_id)
 );
 
-create table public.booster_openings (
+create table if not exists public.booster_openings (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles (id) on delete cascade,
   booster_definition_id text not null references public.booster_definitions (id),
   opened_at timestamptz not null default now()
 );
 
-create table public.booster_opening_cards (
+create table if not exists public.booster_opening_cards (
   booster_opening_id uuid not null references public.booster_openings (id) on delete cascade,
   slot_index smallint not null,
   card_id text not null references public.cards (id),
   primary key (booster_opening_id, slot_index)
 );
 
-create table public.player_pity (
+create table if not exists public.player_pity (
   user_id uuid not null references public.profiles (id) on delete cascade,
   booster_definition_id text not null references public.booster_definitions (id),
   packs_since_abyssal integer not null default 0,
@@ -240,17 +261,21 @@ alter table public.booster_openings enable row level security;
 alter table public.booster_opening_cards enable row level security;
 alter table public.player_pity enable row level security;
 
+drop policy if exists "a user can read their own unopened boosters" on public.player_boosters;
 create policy "a user can read their own unopened boosters"
   on public.player_boosters for select to authenticated using (user_id = auth.uid());
 
+drop policy if exists "a user can read their own booster opening history" on public.booster_openings;
 create policy "a user can read their own booster opening history"
   on public.booster_openings for select to authenticated using (user_id = auth.uid());
 
+drop policy if exists "a user can read the cards from their own booster openings" on public.booster_opening_cards;
 create policy "a user can read the cards from their own booster openings"
   on public.booster_opening_cards for select
   to authenticated
   using (exists (select 1 from public.booster_openings o where o.id = booster_opening_id and o.user_id = auth.uid()));
 
+drop policy if exists "a user can read their own pity counter" on public.player_pity;
 create policy "a user can read their own pity counter"
   on public.player_pity for select to authenticated using (user_id = auth.uid());
 
@@ -261,13 +286,13 @@ create policy "a user can read their own pity counter"
 
 -- --- monnaie et économie -----------------------------------------------
 
-create table public.player_currency (
+create table if not exists public.player_currency (
   user_id uuid primary key references public.profiles (id) on delete cascade,
   balance integer not null default 0 check (balance >= 0),
   updated_at timestamptz not null default now()
 );
 
-create table public.currency_transactions (
+create table if not exists public.currency_transactions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles (id) on delete cascade,
   amount integer not null, -- positif = crédit, négatif = débit
@@ -276,20 +301,22 @@ create table public.currency_transactions (
   created_at timestamptz not null default now()
 );
 
-create index currency_transactions_user_id_idx on public.currency_transactions (user_id);
+create index if not exists currency_transactions_user_id_idx on public.currency_transactions (user_id);
 
 alter table public.player_currency enable row level security;
 alter table public.currency_transactions enable row level security;
 
+drop policy if exists "a user can read their own currency balance" on public.player_currency;
 create policy "a user can read their own currency balance"
   on public.player_currency for select to authenticated using (user_id = auth.uid());
 
+drop policy if exists "a user can read their own currency transactions" on public.currency_transactions;
 create policy "a user can read their own currency transactions"
   on public.currency_transactions for select to authenticated using (user_id = auth.uid());
 
 -- --- quêtes ---------------------------------------------------------------
 
-create table public.quests (
+create table if not exists public.quests (
   id uuid primary key default gen_random_uuid(),
   quest_type text not null check (quest_type in ('daily', 'weekly')),
   objective_key text not null, -- ex: 'play_matches', 'play_creatures', 'break_objects' — jamais une carte/rareté précise
@@ -303,7 +330,7 @@ create table public.quests (
   is_enabled boolean not null default true
 );
 
-create table public.player_quest_progress (
+create table if not exists public.player_quest_progress (
   user_id uuid not null references public.profiles (id) on delete cascade,
   quest_id uuid not null references public.quests (id) on delete cascade,
   progress_value integer not null default 0,
@@ -315,15 +342,17 @@ create table public.player_quest_progress (
 alter table public.quests enable row level security;
 alter table public.player_quest_progress enable row level security;
 
+drop policy if exists "quests are readable by any authenticated user" on public.quests;
 create policy "quests are readable by any authenticated user"
   on public.quests for select to authenticated using (true);
 
+drop policy if exists "a user can read their own quest progress" on public.player_quest_progress;
 create policy "a user can read their own quest progress"
   on public.player_quest_progress for select to authenticated using (user_id = auth.uid());
 
 -- --- onboarding ------------------------------------------------------
 
-create table public.player_onboarding (
+create table if not exists public.player_onboarding (
   user_id uuid primary key references public.profiles (id) on delete cascade,
   tutorial_status text not null default 'not_started' check (tutorial_status in ('not_started', 'completed', 'skipped')),
   tutorial_reward_claimed boolean not null default false,
@@ -335,6 +364,7 @@ create table public.player_onboarding (
 
 alter table public.player_onboarding enable row level security;
 
+drop policy if exists "a user can read their own onboarding state" on public.player_onboarding;
 create policy "a user can read their own onboarding state"
   on public.player_onboarding for select to authenticated using (user_id = auth.uid());
 
@@ -370,7 +400,7 @@ $$;
 -- --- matchmaking -----------------------------------------------------
 
 -- File d'attente : un joueur ne peut avoir qu'une seule entrée à la fois.
-create table public.matchmaking_queue (
+create table if not exists public.matchmaking_queue (
   user_id uuid primary key references public.profiles (id) on delete cascade,
   deck_id text not null, -- id de deck système OU uuid de player_decks, en texte (même convention que matches.player1_deck_id)
   queued_at timestamptz not null default now()
@@ -378,6 +408,7 @@ create table public.matchmaking_queue (
 
 alter table public.matchmaking_queue enable row level security;
 
+drop policy if exists "a user can manage their own matchmaking queue entry" on public.matchmaking_queue;
 create policy "a user can manage their own matchmaking queue entry"
   on public.matchmaking_queue for all
   to authenticated
@@ -429,13 +460,20 @@ grant execute on function public.claim_matchmaking_opponent() to authenticated;
 -- --- historique de parties : extension de `matches` ---------------------
 
 alter table public.matches
-  add column mode text not null default 'private_invite' check (mode in ('private_invite', 'matchmaking', 'bot')),
-  add column is_vs_bot boolean not null default false,
-  add column finished_at timestamptz;
+  add column if not exists mode text not null default 'private_invite' check (mode in ('private_invite', 'matchmaking', 'bot')),
+  add column if not exists is_vs_bot boolean not null default false,
+  add column if not exists finished_at timestamptz;
 
-create index matches_status_idx on public.matches (status);
-create index matches_finished_at_idx on public.matches (finished_at) where finished_at is not null;
+create index if not exists matches_status_idx on public.matches (status);
+create index if not exists matches_finished_at_idx on public.matches (finished_at) where finished_at is not null;
 
 -- --- réaltime --------------------------------------------------------
 
-alter publication supabase_realtime add table public.matchmaking_queue;
+do $$ begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'matchmaking_queue'
+  ) then
+    alter publication supabase_realtime add table public.matchmaking_queue;
+  end if;
+end $$;

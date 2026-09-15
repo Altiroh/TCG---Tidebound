@@ -13,8 +13,12 @@
 -- --- catalogue ----------------------------------------------------------------
 
 alter table public.quests
-  add column code text,
-  add constraint quests_code_key unique (code);
+  add column if not exists code text;
+
+-- `add constraint` n'accepte pas `if not exists` : au second passage la
+-- contrainte existe déjà, et l'`alter` échouerait.
+alter table public.quests drop constraint if exists quests_code_key;
+alter table public.quests add constraint quests_code_key unique (code);
 
 -- --- quêtes attribuées : une ligne par joueur, quête et période --------------
 --
@@ -25,14 +29,14 @@ alter table public.quests
 -- `game/quests/rotation.ts`.
 
 alter table public.player_quest_progress
-  add column period_key text not null default 'legacy',
-  add column assigned_at timestamptz not null default now();
+  add column if not exists period_key text not null default 'legacy',
+  add column if not exists assigned_at timestamptz not null default now();
 
-alter table public.player_quest_progress drop constraint player_quest_progress_pkey;
+alter table public.player_quest_progress drop constraint if exists player_quest_progress_pkey;
 alter table public.player_quest_progress add primary key (user_id, quest_id, period_key);
 alter table public.player_quest_progress alter column period_key drop default;
 
-create index player_quest_progress_user_period_idx on public.player_quest_progress (user_id, period_key);
+create index if not exists player_quest_progress_user_period_idx on public.player_quest_progress (user_id, period_key);
 
 -- --- idempotence de la progression par partie -------------------------------
 --
@@ -40,7 +44,7 @@ create index player_quest_progress_user_period_idx on public.player_quest_progre
 -- les quêtes d'un joueur qu'UNE fois, quelle que soit la façon dont sa fin
 -- est observée (double soumission, reprise réseau).
 
-create table public.match_quest_progress (
+create table if not exists public.match_quest_progress (
   match_id uuid not null references public.matches (id) on delete cascade,
   user_id uuid not null references public.profiles (id) on delete cascade,
   progress jsonb not null,
@@ -50,6 +54,7 @@ create table public.match_quest_progress (
 
 alter table public.match_quest_progress enable row level security;
 
+drop policy if exists "a user can read their own match quest progress" on public.match_quest_progress;
 create policy "a user can read their own match quest progress"
   on public.match_quest_progress for select
   to authenticated

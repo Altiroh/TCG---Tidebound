@@ -35,7 +35,7 @@
 -- cas. L'éligibilité restera définie « au niveau du pool de booster », pas
 -- déduite de la rareté, quand ces tables arriveront.
 alter table public.booster_definitions
-  add column pool_excluded_rarities public.card_rarity[] not null default '{}';
+  add column if not exists pool_excluded_rarities public.card_rarity[] not null default '{}';
 
 update public.booster_definitions
   set pool_excluded_rarities = '{abyssal}'
@@ -43,7 +43,7 @@ update public.booster_definitions
 
 -- --- progression joueur --------------------------------------------------
 
-create table public.player_progression (
+create table if not exists public.player_progression (
   user_id uuid primary key references public.profiles (id) on delete cascade,
   -- XP cumulée depuis la création du compte, jamais décrémentée. Le niveau
   -- en est DÉRIVÉ par `game/progression/levels.ts` ; `level` ci-dessous
@@ -63,6 +63,7 @@ create table public.player_progression (
 
 alter table public.player_progression enable row level security;
 
+drop policy if exists "a user can read their own progression" on public.player_progression;
 create policy "a user can read their own progression"
   on public.player_progression for select
   to authenticated
@@ -75,7 +76,7 @@ create policy "a user can read their own progression"
 -- après erreur réseau, Realtime). Cette table est la clé d'idempotence :
 -- une partie ne peut récompenser un joueur qu'UNE fois, garanti par la clé
 -- primaire et non par une vérification applicative.
-create table public.match_rewards (
+create table if not exists public.match_rewards (
   match_id uuid not null references public.matches (id) on delete cascade,
   user_id uuid not null references public.profiles (id) on delete cascade,
   xp_granted integer not null,
@@ -89,12 +90,13 @@ create table public.match_rewards (
 
 alter table public.match_rewards enable row level security;
 
+drop policy if exists "a user can read their own match rewards" on public.match_rewards;
 create policy "a user can read their own match rewards"
   on public.match_rewards for select
   to authenticated
   using (user_id = auth.uid());
 
-create index match_rewards_user_id_idx on public.match_rewards (user_id);
+create index if not exists match_rewards_user_id_idx on public.match_rewards (user_id);
 
 -- --- progression des comptes existants ----------------------------------
 --

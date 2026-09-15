@@ -77,6 +77,7 @@ create table if not exists public.player_level_rewards (
 alter table public.player_level_rewards enable row level security;
 
 drop policy if exists "a user can read their own level rewards" on public.player_level_rewards;
+drop policy if exists "a user can read their own level rewards" on public.player_level_rewards;
 create policy "a user can read their own level rewards"
   on public.player_level_rewards for select to authenticated using (user_id = auth.uid());
 
@@ -98,6 +99,7 @@ create table if not exists public.player_cosmetics (
 
 alter table public.player_cosmetics enable row level security;
 
+drop policy if exists "a user can read their own cosmetics" on public.player_cosmetics;
 drop policy if exists "a user can read their own cosmetics" on public.player_cosmetics;
 create policy "a user can read their own cosmetics"
   on public.player_cosmetics for select to authenticated using (user_id = auth.uid());
@@ -127,6 +129,7 @@ create table if not exists public.player_card_choices (
 alter table public.player_card_choices enable row level security;
 
 drop policy if exists "a user can read their own card choices" on public.player_card_choices;
+drop policy if exists "a user can read their own card choices" on public.player_card_choices;
 create policy "a user can read their own card choices"
   on public.player_card_choices for select to authenticated using (user_id = auth.uid());
 
@@ -151,6 +154,7 @@ create table if not exists public.player_login_rewards (
 alter table public.player_login_rewards enable row level security;
 
 drop policy if exists "a user can read their own login rewards" on public.player_login_rewards;
+drop policy if exists "a user can read their own login rewards" on public.player_login_rewards;
 create policy "a user can read their own login rewards"
   on public.player_login_rewards for select to authenticated using (user_id = auth.uid());
 
@@ -172,6 +176,7 @@ create table if not exists public.player_achievements (
 
 alter table public.player_achievements enable row level security;
 
+drop policy if exists "a user can read their own achievements" on public.player_achievements;
 drop policy if exists "a user can read their own achievements" on public.player_achievements;
 create policy "a user can read their own achievements"
   on public.player_achievements for select to authenticated using (user_id = auth.uid());
@@ -197,6 +202,7 @@ create table if not exists public.player_deck_unlocks (
 
 alter table public.player_deck_unlocks enable row level security;
 
+drop policy if exists "a user can read their own deck unlocks" on public.player_deck_unlocks;
 drop policy if exists "a user can read their own deck unlocks" on public.player_deck_unlocks;
 create policy "a user can read their own deck unlocks"
   on public.player_deck_unlocks for select to authenticated using (user_id = auth.uid());
@@ -241,6 +247,7 @@ create table if not exists public.player_quest_rerolls (
 
 alter table public.player_quest_rerolls enable row level security;
 
+drop policy if exists "a user can read their own quest rerolls" on public.player_quest_rerolls;
 drop policy if exists "a user can read their own quest rerolls" on public.player_quest_rerolls;
 create policy "a user can read their own quest rerolls"
   on public.player_quest_rerolls for select to authenticated using (user_id = auth.uid());
