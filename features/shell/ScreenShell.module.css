@@ -756,3 +756,8 @@
      décor sans poser de barre opaque sur le menu. */
   background: linear-gradient(180deg, rgba(3, 8, 14, 0.72) 0%, rgba(3, 8, 14, 0.35) 70%, transparent 100%);
 }
+
+/* Téléphone : même sans onglets, le logo n'a plus la place entre la flèche et le compte. */
+@media (max-width: 640px) {
+  .header .headerBrand { display: none; }
+}
