@@ -31,7 +31,7 @@ import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ReactionPrompt } from "@/features/match/ReactionPrompt";
 import { reactionTargetHint } from "@/features/match/reactionTargetHint";
 import { TableBoard } from "@/features/match/table/TableBoard";
-import { phaseButtonFor, targetingHint } from "@/features/match/table/tableLabels";
+import { phaseButtonFor, phaseTitle, targetingHint } from "@/features/match/table/tableLabels";
 import { useActionToasts } from "@/features/match/useActionToasts";
 import { useAttackPresentation } from "@/features/match/useAttackPresentation";
 import { useDeraisonWarning } from "@/features/match/useDeraisonWarning";
@@ -52,6 +52,8 @@ interface OnlineBoardProps {
   opponentName?: string;
   /** Destination du bouton de sortie de l'écran de fin. */
   exitHref?: string;
+  /** Partie arbitrée : l'écran de fin y lit le relevé de quêtes. */
+  matchId?: string;
 }
 
 type Selection =
@@ -80,6 +82,7 @@ export function OnlineBoard({
   onDismissError,
   opponentName = "L'adversaire",
   exitHref = "/en-ligne",
+  matchId,
 }: OnlineBoardProps) {
   // `state` = état AFFICHÉ, retenu avant le choc pendant une attaque (cf. `useAttackPresentation`).
   const { displayState: state, attacks } = useAttackPresentation(liveState);
@@ -249,6 +252,7 @@ export function OnlineBoard({
         // Toujours le joueur qui regarde, jamais le vainqueur : il se reconnaît sur la plaque, avec son propre Navire.
         player={state.winnerId ? { name: displayNames[myUserId] ?? "Toi", ship: myShip } : undefined}
         exitHref={exitHref}
+        matchId={matchId}
       />
     );
   }
@@ -285,6 +289,9 @@ export function OnlineBoard({
         onCancelHint={clearSelection}
         phaseButton={{
           label: phase.label,
+          // La phase EN COURS, pas celle vers laquelle le bouton mène :
+          // c'est ce que l'icône ne dit pas.
+          phaseLabel: phaseTitle(state.phase),
           icon: phase.icon,
           disabled: !canPlay,
           onClick: () => {

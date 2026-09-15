@@ -37,8 +37,9 @@ const GAUGE_LABELS = { anchor: "Ancrage", reason: "Raison" } as const;
  *  - le disque SE VIDE PROGRESSIVEMENT, comme une fiole : l'asset est peint
  *    plein (aucune variante "vide" fournie), on le recouvre donc par le HAUT
  *    d'un voile sombre dont la hauteur suit la ressource, avec un trait de
- *    surface au niveau du liquide. La hauteur est animée, donc chaque perte
- *    se voit descendre ;
+ *    surface au niveau du liquide, qui ONDULE comme de l'eau (deux vagues
+ *    croisées, cf. `.shipGaugeDrain::before/::after`). La hauteur est
+ *    animée, donc chaque perte se voit descendre ;
  *  - le MAXIMUM apparaît au survol, sous la valeur courante et séparé d'elle
  *    par un petit trait — la valeur seule le reste du temps, pour ne pas
  *    encombrer un médaillon large de quelques dizaines de pixels ;
@@ -54,7 +55,12 @@ function ShipGauge({ kind, value, max }: { kind: keyof typeof GAUGE_ASSETS; valu
       {/* eslint-disable-next-line @next/next/no-img-element -- médaillon décoratif */}
       <img src={GAUGE_ASSETS[kind]} alt="" aria-hidden draggable={false} className={styles.fill} />
       <span aria-hidden className={styles.shipGaugeBowl}>
-        <span className={styles.shipGaugeDrain} style={{ height: `${(1 - level) * 100}%` }} />
+        {/* La vague ne se dessine qu'entre les deux extrêmes : à plein il
+            n'y a pas de surface, à vide il n'y a plus de liquide à agiter. */}
+        <span
+          className={`${styles.shipGaugeDrain} ${level >= 1 || level <= 0 ? styles.shipGaugeDrainEmpty : ""}`}
+          style={{ height: `${(1 - level) * 100}%` }}
+        />
       </span>
       {inDebt && <span aria-hidden className={styles.shipGaugeDebt} />}
       <span className={`${styles.shipGaugeValue} ${inDebt ? styles.shipGaugeValueDebt : ""}`}>{value}</span>

@@ -27,6 +27,13 @@ export type ScreenSection = "collection" | "decks" | "market" | "boosters" | "qu
  * les liens croisés du bas de page ; ils se rendent avec `nav="minimal"`,
  * dont le bandeau n'a plus que le retour au menu et le logo.
  */
+/*
+ * Onglets du bandeau. « Quêtes » n'y est plus : l'accès se fait par le
+ * tiroir du bloc de compte, à droite, qui montre la même chose sans quitter
+ * l'écran en cours. La route `/quetes` reste servie — elle porte ce que le
+ * tiroir laisse de côté (filtres, échéances, remplacements) et le tiroir y
+ * mène.
+ */
 const TABS: Array<{ section: ScreenSection; label: string; href: string }> = [
   // « Cartes » plutôt que « Collection » : la collection du joueur, c'est
   // aussi ses decks et ses boosters. Cet onglet-ci ne montre que les
@@ -34,7 +41,6 @@ const TABS: Array<{ section: ScreenSection; label: string; href: string }> = [
   { section: "collection", label: "Cartes", href: "/collection" },
   { section: "decks", label: "Decks", href: "/decks" },
   { section: "boosters", label: "Mes boosters", href: "/boosters" },
-  { section: "quetes", label: "Quêtes", href: "/quetes" },
 ];
 
 export interface ScreenHeaderProps {

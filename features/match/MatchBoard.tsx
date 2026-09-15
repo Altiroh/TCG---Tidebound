@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   computeEffectiveStats,
   dispatch,
@@ -34,7 +34,7 @@ import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ReactionPrompt } from "@/features/match/ReactionPrompt";
 import { reactionTargetHint } from "@/features/match/reactionTargetHint";
 import { TableBoard } from "@/features/match/table/TableBoard";
-import { phaseButtonFor, targetingHint } from "@/features/match/table/tableLabels";
+import { phaseButtonFor, phaseTitle, targetingHint } from "@/features/match/table/tableLabels";
 import { useActionToasts } from "@/features/match/useActionToasts";
 import { useAttackPresentation } from "@/features/match/useAttackPresentation";
 import { useDeraisonWarning } from "@/features/match/useDeraisonWarning";
@@ -174,10 +174,25 @@ export function MatchBoard({
   // Joue automatiquement le tour du bot dès qu'il devient actif, ET chaque fois qu'une fenêtre de
   // réaction l'attend. UNE action à la fois (`stepBotTurn`), avec un délai entre chaque : chaque
   // pioche/pose/Sabordage a le temps d'être animé.
-  const botAwaitingReaction = state.pendingReaction?.awaitingPlayerId === botPlayerId;
+  //
+  // TOUT ce qui suit se lit sur `liveState`, jamais sur `state` (l'état
+  // AFFICHÉ). Pendant une attaque, l'affichage est volontairement retenu sur
+  // l'état d'AVANT le choc : un bot qui s'y fierait rejouerait depuis un
+  // plateau périmé et remettrait en jeu une carte déjà partie au cimetière —
+  // c'est exactement ce qu'on voyait, la carte détruite revenant encaisser
+  // le coup avant de repartir.
+  //
+  // `liveRef` sert à la même fin dans le temps : la minuterie démarre après
+  // un délai, et doit repartir de l'état COURANT, pas de celui capturé au
+  // moment où l'effet a été posé.
+  const liveRef = useRef(liveState);
+  liveRef.current = liveState;
+
+  const botAwaitingReaction = liveState.pendingReaction?.awaitingPlayerId === botPlayerId;
+  const liveActivePlayerId = liveState.activePlayerId;
   useEffect(() => {
-    if (state.status !== "active" || !botDifficulty) return;
-    if (activePlayerId !== botPlayerId && !botAwaitingReaction) return;
+    if (liveRef.current.status !== "active" || !botDifficulty) return;
+    if (liveActivePlayerId !== botPlayerId && !botAwaitingReaction) return;
 
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout>;
@@ -198,13 +213,13 @@ export function MatchBoard({
       }
     }
 
-    timer = setTimeout(() => tick(liveState), BOT_ACTION_DELAY_MS);
+    timer = setTimeout(() => tick(liveRef.current), BOT_ACTION_DELAY_MS);
     return () => {
       cancelled = true;
       clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- ne doit réagir qu'aux transitions "c'est au bot d'agir" (cf. l'ancien MatchBoard).
-  }, [activePlayerId, botAwaitingReaction, state.status, botPlayerId, botDifficulty]);
+  }, [liveActivePlayerId, botAwaitingReaction, liveState.status, botPlayerId, botDifficulty]);
 
   // Menu de pause via ÉCHAP. Toute surcouche déjà ouverte intercepte la touche en priorité.
   useEffect(() => {
@@ -419,6 +434,9 @@ export function MatchBoard({
         onCancelHint={clearSelection}
         phaseButton={{
           label: phase.label,
+          // La phase EN COURS, pas celle vers laquelle le bouton mène :
+          // c'est ce que l'icône ne dit pas.
+          phaseLabel: phaseTitle(state.phase),
           icon: phase.icon,
           disabled: !isViewerTurn || !noPendingWindow,
           onClick: () => {

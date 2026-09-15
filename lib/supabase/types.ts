@@ -357,6 +357,13 @@ export interface Database {
         Update: Record<string, never>;
         Relationships: [];
       };
+      /** Progression de quêtes d'une partie, et son relevé lisible. */
+      match_quest_progress: {
+        Row: { match_id: string; user_id: string; progress: Record<string, number>; quest_recap: QuestRecapRow[] };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
       /** Quelles cartes peuvent tomber dans quel booster — source d'autorité de l'éligibilité. */
       booster_pool_cards: {
         Row: {
@@ -589,7 +596,7 @@ export interface Database {
           /** Valeurs DISTINCTES apportées par la partie (objectifs `set`). */
           p_sets?: Record<string, string[]>;
         };
-        Returns: { ok: boolean; recorded: boolean; completed: number; dailies_completed?: number };
+        Returns: { ok: boolean; recorded: boolean; completed: number; dailies_completed?: number; recap?: QuestRecapRow[] };
       };
       claim_quest_reward: {
         Args: { p_user_id: string; p_quest_id: string; p_period_key: string };
@@ -656,5 +663,23 @@ export interface Database {
 type CardTypeEnum = "marin" | "creature" | "equipement" | "structure" | "objet" | "anomalie";
 
 /** Miroir de l'enum SQL `public.card_rarity`. */
+/**
+ * Une ligne du relevé de quêtes d'une partie (`match_quest_progress.quest_recap`).
+ * Miroir du `jsonb_build_object` de `record_match_quest_progress`.
+ */
+export interface QuestRecapRow {
+  code: string;
+  name: string;
+  category: string;
+  quest_type: string;
+  before: number;
+  after: number;
+  target: number;
+  completed: boolean;
+  reward_tides: number;
+  reward_xp: number;
+  reward_booster_id: string | null;
+}
+
 /** Miroir de l'enum SQL `public.card_rarity` — cf. `game/boosters/types.ts`. */
 type CardRarityEnum = "common" | "uncommon" | "rare" | "epic" | "legendary" | "abyssal";

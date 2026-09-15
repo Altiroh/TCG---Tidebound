@@ -28,12 +28,15 @@ import styles from "@/features/board-preview/BoardPreview.module.css";
  * reste toujours dans la zone sûre, même si le décor, lui, peut être
  * recadré derrière.
  */
-export const GameStage = forwardRef<HTMLDivElement, { children: React.ReactNode }>(function GameStage(
-  { children },
+export const GameStage = forwardRef<HTMLDivElement, { children: React.ReactNode; className?: string }>(function GameStage(
+  { children, className },
   ref
 ) {
   return (
-    <div ref={ref} className={styles.stage}>
+    // `className` s'AJOUTE : la scène porte ses propres tokens de mise en
+    // page, un appelant ne fait qu'y accrocher un état (un glisser en
+    // cours, par exemple).
+    <div ref={ref} className={className ? `${styles.stage} ${className}` : styles.stage}>
       {children}
     </div>
   );

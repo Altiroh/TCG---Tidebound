@@ -323,7 +323,7 @@ export function BoardPreviewPage() {
       <BackgroundLayer tideState={tideState} />
       <DecorLayer />
 
-      <GameStage ref={stageRef}>
+      <GameStage ref={stageRef} className={gesture ? styles.gesturing : undefined}>
         {/* Cadres des deux rangées de plateau, derrière les zones. La bande de Marée n'en a pas : on y voit le décor. */}
         <div aria-hidden className={`${styles.lane} ${styles.laneOpponent}`} />
         <div aria-hidden className={`${styles.lane} ${styles.lanePlayer}`} />
@@ -343,7 +343,7 @@ export function BoardPreviewPage() {
                 // Carte adverse : jamais prise, seulement lisible (appui long / toucher / clic droit).
                 onPointerDown={startGesture("inspect", card.id)}
                 onContextMenu={inspectOnContextMenu(card.id)}
-                className={`${styles.tableCard} ${aimingAttacker ? styles.targetable : ""} ${hover === drop ? styles.targetHover : ""}`}
+                className={`${styles.tableCard} ${styles.boardHoverable} ${aimingAttacker ? styles.targetable : ""} ${hover === drop ? styles.targetHover : ""}`}
               >
                 <PreviewGameCard card={card} tideState={tideState} badgeSize={badgeSize} damage={damage[card.id]} />
               </div>
@@ -382,6 +382,7 @@ export function BoardPreviewPage() {
                 onContextMenu={inspectOnContextMenu(card.id)}
                 className={[
                   styles.tableCard,
+                  styles.boardHoverable,
                   styles.boardGrab,
                   attacker && !gesture ? styles.attacker : "",
                   aiming?.sourceId === card.id ? styles.aimSource : "",
@@ -412,6 +413,7 @@ export function BoardPreviewPage() {
                 onContextMenu={inspectOnContextMenu(card.id)}
                 className={[
                   styles.tableCard,
+                  styles.boardHoverable,
                   styles.handGrab,
                   isSource ? (casting ? styles.castSource : styles.dragSource) : "",
                   // Piochée mais encore en vol depuis la pioche.
@@ -438,7 +440,7 @@ export function BoardPreviewPage() {
               ))}
             </ul>
           }
-          phaseButton={<PhaseButton label={phaseLabel} icon="/assets/board/phase-buttons/icon-end-turn.webp" />}
+          phaseButton={<PhaseButton label={phaseLabel} phaseLabel="Phase principale" icon="/assets/board/phase-buttons/icon-end-turn.webp" />}
         />
 
         <EffectsLayer />

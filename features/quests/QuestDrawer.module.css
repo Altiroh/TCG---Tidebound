@@ -1,0 +1,213 @@
+/*
+ * Panneau de quêtes glissé depuis la droite. Volontairement dépouillé :
+ * on vient y jeter un œil entre deux parties, pas s'y installer.
+ */
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: rgba(3, 8, 14, 0.55);
+  backdrop-filter: blur(2px);
+  animation: scrimIn 180ms ease-out;
+}
+
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 91;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(420px, 92vw);
+  padding: clamp(16px, 1.6vw, 24px);
+  /* Encoches : le panneau touche les quatre bords de l'écran. */
+  padding-top: calc(clamp(16px, 1.6vw, 24px) + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(clamp(16px, 1.6vw, 24px) + env(safe-area-inset-bottom, 0px));
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(7, 15, 25, 0.97);
+  box-shadow: -24px 0 60px rgba(0, 0, 0, 0.55);
+  color: var(--ink, #e8edf4);
+  overflow: hidden;
+  animation: drawerIn 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.drawer:focus {
+  outline: none;
+}
+
+@keyframes scrimIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes drawerIn {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scrim,
+  .drawer { animation: none; }
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-card-title), Georgia, serif;
+  font-size: clamp(18px, 1.6vw, 22px);
+  color: #f3e7c8;
+}
+
+.close {
+  padding: 0 6px;
+  border: none;
+  background: none;
+  color: var(--ink-dim, #9fb0c0);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.close:hover { color: var(--ink, #e8edf4); }
+
+.muted {
+  margin: 0;
+  color: var(--ink-dim, #9fb0c0);
+  font-size: 13px;
+}
+
+.error {
+  margin: 0;
+  color: #f0a3a3;
+  font-size: 13px;
+}
+
+/* La liste est la seule zone qui défile : l'en-tête et le lien restent. */
+.list {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+/* Réclamée : elle reste visible — on veut voir ce qu'on a fait — mais en retrait. */
+.rowClaimed { opacity: 0.45; }
+
+.icon {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
+.body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink, #e8edf4);
+}
+
+.objective {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--ink-dim, #9fb0c0);
+}
+
+.track {
+  height: 4px;
+  margin-top: 2px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #58c8d8, #7fd6a4);
+  transition: width 420ms ease-out;
+}
+
+.fillDone {
+  composes: fill;
+  background: linear-gradient(90deg, #7fd6a4, #c79a4e);
+}
+
+.side {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.reward {
+  font-size: 11px;
+  white-space: nowrap;
+  color: #ddc79a;
+}
+
+.count {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-dim, #9fb0c0);
+}
+
+.claim {
+  padding: 4px 10px;
+  border: 1px solid rgba(88, 200, 216, 0.5);
+  border-radius: 999px;
+  background: rgba(13, 52, 69, 0.75);
+  color: #dceaec;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 140ms ease-out;
+}
+
+.claim:hover:not(:disabled) { background: rgba(19, 74, 96, 0.9); }
+.claim:disabled { cursor: default; opacity: 0.6; }
+
+.more {
+  flex: 0 0 auto;
+  padding-top: 4px;
+  color: #8fc9d6;
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.more:hover { text-decoration: underline; }

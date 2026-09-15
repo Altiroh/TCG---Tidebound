@@ -56,27 +56,48 @@ export function PreviewHud({ turn, turnOwner, viewerTurn, journal, phaseButton, 
 }
 
 interface PhaseButtonProps {
+  /** Ce que le bouton FAIT (« Combat », « Fin de tour »). */
   label: string;
+  /** Phase en COURS, telle qu'on la nomme — l'infobulle la rappelle. */
+  phaseLabel?: string;
   icon: string;
   disabled?: boolean;
   onClick?: () => void;
 }
 
-/** Bouton de phase de la colonne : cadre laiton + icône, comme `PhaseActionButton`, dimensionné par la colonne. */
-export function PhaseButton({ label, icon, disabled = false, onClick }: PhaseButtonProps) {
+/**
+ * Bouton de phase de la colonne : cadre laiton + icône, comme
+ * `PhaseActionButton`, dimensionné par la colonne.
+ *
+ * Au survol, une infobulle DANS LE TON DE L'INTERFACE — laiton sur bleu de
+ * nuit, pas l'infobulle grise du navigateur — qui dit deux choses que
+ * l'icône seule ne dit pas : la phase où l'on est, et ce que le bouton fera.
+ * Une icône d'épée ne distingue pas « passer au combat » de « on y est
+ * déjà ». D'où l'absence de `title` : il aurait doublé l'infobulle d'une
+ * seconde, native et hors charte.
+ */
+export function PhaseButton({ label, phaseLabel, icon, disabled = false, onClick }: PhaseButtonProps) {
   return (
-    <button
-      type="button"
-      className={styles.phaseButton}
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={label}
-      title={label}
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element -- bouton composite décoratif */}
-      <img src="/assets/board/phase-buttons/frame.webp" alt="" aria-hidden draggable={false} className={styles.fill} />
-      {/* eslint-disable-next-line @next/next/no-img-element -- idem */}
-      <img src={icon} alt="" aria-hidden draggable={false} className={styles.phaseIcon} />
-    </button>
+    <span className={styles.phaseWrap}>
+      <button
+        type="button"
+        className={styles.phaseButton}
+        onClick={onClick}
+        disabled={disabled}
+        aria-label={phaseLabel ? `${label} — ${phaseLabel}` : label}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element -- bouton composite décoratif */}
+        <img src="/assets/board/phase-buttons/frame.webp" alt="" aria-hidden draggable={false} className={styles.fill} />
+        {/* eslint-disable-next-line @next/next/no-img-element -- idem */}
+        <img src={icon} alt="" aria-hidden draggable={false} className={styles.phaseIcon} />
+      </button>
+
+      {/* `aria-hidden` : le bouton porte déjà les deux informations dans son
+          `aria-label`, un lecteur d'écran les entendrait deux fois. */}
+      <span className={styles.phaseTip} aria-hidden>
+        {phaseLabel && <span className={styles.phaseTipPhase}>{phaseLabel}</span>}
+        <span className={styles.phaseTipAction}>{label}</span>
+      </span>
+    </span>
   );
 }

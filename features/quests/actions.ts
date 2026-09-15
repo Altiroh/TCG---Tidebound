@@ -260,3 +260,68 @@ export async function rerollQuest(questId: string, periodKey: string): Promise<R
 
   return { ok: true, remaining: data.remaining };
 }
+
+/** Une quête qui a bougé pendant une partie — avant / après, et sa cible. */
+export interface QuestRecapEntry {
+  code: string;
+  name: string;
+  category: QuestCategory;
+  before: number;
+  after: number;
+  target: number;
+  completed: boolean;
+  rewardTides: number;
+  rewardXp: number;
+  rewardBoosterId: string | null;
+}
+
+/**
+ * Relevé de quêtes d'une partie terminée, pour l'écran de fin.
+ *
+ * Lu en base et non recalculé : le relevé est établi une fois, au moment de
+ * l'arbitrage (`record_match_quest_progress`), et persisté. Un
+ * rafraîchissement de l'écran de fin, ou un joueur qui y revient, retrouve
+ * donc exactement le même — un recalcul depuis la progression courante
+ * montrerait l'état d'AUJOURD'HUI, pas ce que cette partie a apporté.
+ *
+ * Retourne une liste vide plutôt que d'échouer : un relevé manquant ne doit
+ * jamais empêcher l'écran de fin de s'afficher.
+ */
+export async function fetchMatchQuestRecap(matchId: string): Promise<QuestRecapEntry[]> {
+  try {
+    const supabase = createSupabaseServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    const { data, error } = await supabase
+      .from("match_quest_progress")
+      .select("quest_recap")
+      .eq("match_id", matchId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
+
+    return (data?.quest_recap ?? []).map((row) => ({
+      code: row.code,
+      name: row.name,
+      category: isQuestCategory(row.category) ? row.category : "parties",
+      before: row.before,
+      after: row.after,
+      target: row.target,
+      completed: row.completed,
+      rewardTides: row.reward_tides ?? 0,
+      rewardXp: row.reward_xp ?? 0,
+      rewardBoosterId: row.reward_booster_id,
+    }));
+  } catch (cause) {
+    console.error("[fetchMatchQuestRecap] Lecture impossible :", cause);
+    return [];
+  }
+}
+
+function isQuestCategory(value: string): value is QuestCategory {
+  return value in QUEST_CATEGORY_META;
+}

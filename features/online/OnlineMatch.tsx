@@ -181,6 +181,7 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
         onDismissError={() => setError(null)}
         opponentName={isBotMatch ? "Le bot" : "L'adversaire"}
         exitHref={isBotMatch ? "/partie" : "/en-ligne"}
+        matchId={matchId}
       />
       {finishedOnScreen && <MatchRewardBanner matchId={matchId} />}
     </>

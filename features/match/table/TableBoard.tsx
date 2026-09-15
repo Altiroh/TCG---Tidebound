@@ -77,7 +77,7 @@ export interface TableBoardProps {
   hint?: string | null;
   onCancelHint?: () => void;
 
-  phaseButton: { label: string; icon: string; disabled: boolean; onClick?: () => void };
+  phaseButton: { label: string; phaseLabel?: string; icon: string; disabled: boolean; onClick?: () => void };
   onMenu: () => void;
 
   /** Clic / toucher sur une carte de la main (parcours au clic : jouer, ou entrer en choix de cible). */
@@ -326,6 +326,7 @@ export function TableBoard(props: TableBoardProps) {
         }}
         className={[
           styles.tableCard,
+          styles.boardHoverable,
           mine ? styles.boardGrab : "",
           ready && !gesture ? styles.attacker : "",
           aiming?.sourceId === card.id ? styles.aimSource : "",
@@ -383,7 +384,11 @@ export function TableBoard(props: TableBoardProps) {
         <BackgroundLayer tideState={tideState} />
         <DecorLayer />
 
-        <GameStage ref={stageRef}>
+        {/* `gesturing` : un glisser est en cours quelque part. Il coupe
+            l'agrandissement au survol sur TOUT le plateau — une carte qui
+            gonfle sous le curseur pendant qu'on en traîne une autre cache
+            précisément la zone visée. */}
+        <GameStage ref={stageRef} className={gesture ? styles.gesturing : undefined}>
           <div aria-hidden className={`${styles.lane} ${styles.laneOpponent}`} />
           <div aria-hidden className={`${styles.lane} ${styles.lanePlayer}`} />
 

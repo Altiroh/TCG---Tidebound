@@ -3,10 +3,26 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { fetchProgression, type ProgressionSummary } from "@/features/progression/actions";
-import { onProgressionChanged, rememberProgression, rememberedProgression } from "@/features/progression/progressionSync";
+import { notifyProgressionChanged, onProgressionChanged, rememberProgression, rememberedProgression } from "@/features/progression/progressionSync";
+import { QuestDrawer } from "@/features/quests/QuestDrawer";
 import { SettingsDialog } from "@/features/settings/SettingsDialog";
 import styles from "@/features/shell/ScreenShell.module.css";
 import { playButtonClick } from "@/lib/sound";
+
+/** Parchemin roulé — le journal de bord, pas une coche de logiciel. */
+function QuestIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" width="18" height="18" aria-hidden>
+      <path
+        d="M6.5 3.5h9.2a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H7a2.5 2.5 0 0 1-2.5-2.5V6a2.5 2.5 0 0 1 2.5-2.5Z"
+        stroke="currentColor"
+        strokeWidth={1.5}
+        strokeLinejoin="round"
+      />
+      <path d="M8.6 8h6.4M8.6 11.4h6.4M8.6 14.8h4" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" />
+    </svg>
+  );
+}
 
 function GearIcon() {
   return (
@@ -81,6 +97,7 @@ export function HeaderPlayer() {
   // relecture se fait quand même en arrière-plan et corrige l'affichage.
   const [summary, setSummary] = useState<ProgressionSummary | null>(rememberedProgression);
   const [optionsOpen, setOptionsOpen] = useState(false);
+  const [questsOpen, setQuestsOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -155,6 +172,35 @@ export function HeaderPlayer() {
         </div>
       )}
 
+      {/* Quêtes : au bout du bloc de compte, comme les Options. Réservé aux
+          joueurs connectés — un tiroir vide n'apprend rien à un visiteur. */}
+      {signedIn && (
+        <button
+          type="button"
+          className={styles.optionsButton}
+          aria-label={
+            summary && summary.claimableQuests > 0
+              ? `Quêtes — ${summary.claimableQuests} récompense${summary.claimableQuests > 1 ? "s" : ""} à réclamer`
+              : "Quêtes"
+          }
+          title="Quêtes"
+          aria-haspopup="dialog"
+          onClick={() => {
+            playButtonClick();
+            setQuestsOpen(true);
+          }}
+        >
+          <QuestIcon />
+          {/* Pastille : ce qui attend une action, et rien d'autre. Une
+              quête en cours n'a pas à réclamer l'attention. */}
+          {summary && summary.claimableQuests > 0 && (
+            <span className={styles.badge} aria-hidden>
+              {summary.claimableQuests}
+            </span>
+          )}
+        </button>
+      )}
+
       <button
         type="button"
         className={styles.optionsButton}
@@ -169,6 +215,16 @@ export function HeaderPlayer() {
         <GearIcon />
       </button>
 
+      {questsOpen && (
+        <QuestDrawer
+          onClose={() => {
+            setQuestsOpen(false);
+            // Une réclamation faite dans le tiroir change le solde et la
+            // pastille : on relit en fermant.
+            notifyProgressionChanged();
+          }}
+        />
+      )}
       {optionsOpen && <SettingsDialog isSignedIn={signedIn} onClose={() => setOptionsOpen(false)} />}
     </>
   );

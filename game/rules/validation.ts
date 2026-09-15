@@ -86,7 +86,12 @@ export function assertIsActivePlayer(state: GameState, playerId: PlayerId): Vali
   return ok();
 }
 
-const PHASE_LABELS: Record<GamePhase, string> = {
+/**
+ * Nom de chaque phase, tel qu'on le DIT dans une phrase (« pendant la Phase
+ * de combat »). Exporté : l'infobulle du bouton de phase montre la même
+ * chose que les messages de refus, et deux listes finiraient par diverger.
+ */
+export const PHASE_LABELS: Record<GamePhase, string> = {
   waitingForPlayers: "l'attente des joueurs",
   mainPhase: "la Phase principale",
   combatPhase: "la Phase de combat",

@@ -21,6 +21,14 @@ export interface ProgressionSummary {
   pvpWins: number;
   /** Pseudo affiché à côté du niveau (`profiles.display_name`), repli sur l'e-mail. `null` hors connexion. */
   displayName: string | null;
+  /**
+   * Quêtes terminées mais pas encore réclamées — la pastille du bandeau.
+   *
+   * Lue ici plutôt que par une seconde requête : le bandeau lit déjà la
+   * progression à chaque écran, et un compteur d'attention qui arriverait
+   * après coup ferait sauter la mise en page.
+   */
+  claimableQuests: number;
 }
 
 const SIGNED_OUT: ProgressionSummary = {
@@ -30,6 +38,7 @@ const SIGNED_OUT: ProgressionSummary = {
   matchesPlayed: 0,
   pvpWins: 0,
   displayName: null,
+  claimableQuests: 0,
 };
 
 /**
@@ -45,10 +54,18 @@ export async function fetchProgression(): Promise<ProgressionSummary> {
     } = await supabase.auth.getUser();
     if (!user) return SIGNED_OUT;
 
-    const [progression, currency, profile] = await Promise.all([
+    const [progression, currency, profile, claimable] = await Promise.all([
       supabase.from("player_progression").select("*").eq("user_id", user.id).maybeSingle(),
       supabase.from("player_currency").select("balance").eq("user_id", user.id).maybeSingle(),
       supabase.from("profiles").select("display_name").eq("id", user.id).maybeSingle(),
+      // Terminées et pas encore réclamées : `head` + `count`, on ne veut
+      // que le nombre.
+      supabase
+        .from("player_quest_progress")
+        .select("quest_id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .not("completed_at", "is", null)
+        .is("claimed_at", null),
     ]);
 
     return {
@@ -60,6 +77,7 @@ export async function fetchProgression(): Promise<ProgressionSummary> {
       // Repli sur l'e-mail comme le menu principal : mieux vaut un identifiant
       // qu'un vide à côté du niveau.
       displayName: profile.data?.display_name ?? user.email ?? null,
+      claimableQuests: claimable.count ?? 0,
     };
   } catch (error) {
     console.error("[fetchProgression] Lecture impossible :", error);

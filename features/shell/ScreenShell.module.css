@@ -626,3 +626,24 @@
   outline: 2px solid var(--cb-teal);
   outline-offset: 4px;
 }
+
+/*
+ * Pastille de quêtes à réclamer, posée sur son bouton. Ne compte QUE ce qui
+ * attend une action : une quête en cours n'a pas à réclamer l'attention.
+ */
+.badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f0d79a, #c79a4e);
+  color: #2a1d08;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}

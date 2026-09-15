@@ -1,5 +1,6 @@
 "use client";
 
+import { MatchQuestRecap } from "@/features/quests/MatchQuestRecap";
 import type { CSSProperties } from "react";
 import Link from "next/link";
 import type { ShipDefinition } from "@/game";
@@ -28,6 +29,11 @@ interface MatchEndScreenProps {
   onExit?: () => void;
   /** En ligne : redirige vers l'écran de matchmaking (`next/link`, navigation client). */
   exitHref?: string;
+  /**
+   * Partie ARBITRÉE dont on montre le relevé de quêtes. Absent pour une
+   * partie locale : elle ne rapporte rien, il n'y a donc rien à relever.
+   */
+  matchId?: string;
 }
 
 /**
@@ -72,7 +78,7 @@ const DEFEAT_NAMEPLATE_ZONE = { top: "73%", left: "24%", width: "52%", height: "
  * Le bandeau "VICTOIRE" (`victory-text.webp`) surmonte le cadre plutôt que
  * d'être incrusté dedans, pour rester lisible à toutes les tailles.
  */
-export function MatchEndScreen({ outcome, player, onExit, exitHref }: MatchEndScreenProps) {
+export function MatchEndScreen({ outcome, player, onExit, exitHref, matchId }: MatchEndScreenProps) {
   const isDefeat = outcome === "defeat";
   const winner = player;
 
@@ -204,6 +210,10 @@ export function MatchEndScreen({ outcome, player, onExit, exitHref }: MatchEndSc
         ) : (
           <h1 className="text-3xl font-bold text-slate-100">Match nul</h1>
         )}
+
+        {/* Ce que la partie a rapporté, sous la fiche : les quêtes touchées
+            défilent une à une, jauge en train de se remplir. */}
+        {matchId && <MatchQuestRecap matchId={matchId} />}
 
         {/* Secondaire à gauche, action engageante à droite — même ordre de
             lecture que les dialogues de la coquille hors-partie. */}

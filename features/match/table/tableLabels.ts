@@ -1,4 +1,5 @@
 import type { GamePhase } from "@/game";
+import { PHASE_LABELS } from "@/game/rules/validation";
 
 /** Icônes du bouton de phase — les mêmes que `PhaseActionButton`. */
 const ICONS = {
@@ -30,4 +31,20 @@ export function targetingHint(kind: "playCard" | "break" | "attack" | null): str
   if (kind === "break") return "Choisissez une cible pour l'effet de bris.";
   if (kind === "attack") return "Choisissez une cible adverse, ou le Navire adverse.";
   return null;
+}
+
+/**
+ * Nom de la phase EN COURS, en majuscule initiale, pour l'infobulle du
+ * bouton de phase.
+ *
+ * Dérivé de `PHASE_LABELS`, qui sert déjà aux messages de refus du moteur
+ * (« Cette action n'est possible que pendant la Phase de combat ») : deux
+ * listes de noms finiraient par se contredire, et le joueur lirait un nom
+ * dans l'infobulle et un autre dans le message d'erreur.
+ */
+export function phaseTitle(phase: GamePhase): string {
+  // `PHASE_LABELS` est écrit pour s'insérer dans une phrase (« pendant la
+  // Phase de combat ») : on retire l'article pour un titre.
+  const label = PHASE_LABELS[phase].replace(/^(la |l'|le )/, "");
+  return label.charAt(0).toUpperCase() + label.slice(1);
 }
