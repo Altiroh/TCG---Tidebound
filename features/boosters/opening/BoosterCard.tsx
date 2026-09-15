@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useState, type CSSProperties, type KeyboardEvent } from "react";
+import { memo, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent } from "react";
 import { getCardDefinition } from "@/game";
 import { CardTile } from "@/features/match/CardTile";
 import styles from "@/features/boosters/opening/BoosterOpening.module.css";
@@ -11,6 +11,9 @@ import { OPENING_RARITY_LABEL, type BoosterOpeningCard } from "@/features/booste
 
 export type BoosterCardStyle = CSSProperties & Record<`--${string}`, string | number>;
 
+/** Gros plan d'une Abyssale : la carte vole au centre (`in`), puis rejoint sa place (`out`). */
+export type BoosterCardShowcase = "in" | "out" | "done";
+
 interface BoosterCardProps {
   card: BoosterOpeningCard;
   index: number;
@@ -20,15 +23,23 @@ interface BoosterCardProps {
   cardBackAvailable: boolean;
   /** Variables de placement et de rythme — objet stable, calculé une fois par `BoosterCards`. */
   cardStyle: BoosterCardStyle;
+  showcase?: BoosterCardShowcase;
   onReveal: (index: number) => void;
+  /** Clic droit sur une carte révélée : sa fiche détaillée. */
+  onInspect: (cardId: string) => void;
+  /** Clic sur la carte en gros plan : elle rejoint la rangée. */
+  onShowcaseDismiss: () => void;
 }
 
 /**
  * Une carte du booster. Trois couches de mouvement, chacune sur son propre
  * élément pour ne jamais se marcher dessus :
- *   `.card`      sortie du sachet (translation, rotation, z-index animé)
- *   `.cardLift`  survol
+ *   `.card`      sortie du sachet, puis gros plan (translation, rotation, z-index animé)
+ *   `.cardLift`  survol et agrandissement au retournement
  *   `.cardFlip`  anticipation + retournement 3D (rotateY)
+ *
+ * Trois façons de la retourner : la survoler à la souris, la toucher, ou
+ * Entrée/Espace au clavier. Une fois retournée, le clic droit ouvre sa fiche.
  *
  * `.card` est un `div role="button"` et non un `<button>` : la face rendue
  * par `CardTile` est elle-même un bouton, et un bouton ne peut pas en
@@ -42,7 +53,10 @@ export const BoosterCard = memo(function BoosterCard({
   interactive,
   cardBackAvailable,
   cardStyle,
+  showcase,
   onReveal,
+  onInspect,
+  onShowcaseDismiss,
 }: BoosterCardProps) {
   // Si le PNG du dos échoue malgré le préchargement, on retombe sur le dos CSS.
   const [backFailed, setBackFailed] = useState(false);
@@ -51,11 +65,30 @@ export const BoosterCard = memo(function BoosterCard({
   const cardName = card.cardId ? getCardDefinition(card.cardId).name : "Carte test";
   const cardBack = useCardBackSrc();
   const showBackImage = cardBackAvailable && !backFailed;
+  const highRarity = card.rarity === "rare" || card.rarity === "epic" || card.rarity === "legendary" || card.rarity === "abyssal";
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (!interactive || (event.key !== "Enter" && event.key !== " ")) return;
     event.preventDefault();
     onReveal(index);
+  }
+
+  /** Survol à la souris : la carte se retourne d'elle-même. Au doigt, c'est le toucher qui le fait. */
+  function handlePointerEnter(event: PointerEvent<HTMLDivElement>) {
+    if (interactive && event.pointerType === "mouse") onReveal(index);
+  }
+
+  function handleClick() {
+    if (showcase === "in") {
+      onShowcaseDismiss();
+      return;
+    }
+    if (interactive) onReveal(index);
+  }
+
+  function handleContextMenu(event: MouseEvent<HTMLDivElement>) {
+    event.preventDefault();
+    if (revealed && card.cardId) onInspect(card.cardId);
   }
 
   return (
@@ -68,8 +101,12 @@ export const BoosterCard = memo(function BoosterCard({
       data-state={state}
       data-rarity={card.rarity}
       data-interactive={interactive || undefined}
-      onClick={() => interactive && onReveal(index)}
+      data-showcase={showcase}
+      onPointerEnter={handlePointerEnter}
+      onClick={handleClick}
+      onContextMenu={handleContextMenu}
       onKeyDown={handleKeyDown}
+      title={revealed && card.cardId ? "Clic droit : fiche de la carte" : undefined}
       aria-label={
         revealed
           ? `Carte ${index + 1} sur ${count} : ${cardName}, ${rarityLabel}`
@@ -79,6 +116,10 @@ export const BoosterCard = memo(function BoosterCard({
       <span className={styles.cardLift}>
         <span className={styles.cardAura} aria-hidden />
         {card.rarity === "abyssal" && state !== "hidden" && <span className={styles.cardMist} aria-hidden />}
+        {/* Halo de rareté : il s'allume au retournement et reste, à la
+            couleur de la rareté — c'est lui qu'on lit d'un coup d'œil sur la
+            rangée une fois tout retourné. */}
+        <span className={styles.cardGlow} aria-hidden />
 
         <span className={styles.cardTilt}>
           <span className={styles.cardFlip}>
@@ -130,7 +171,10 @@ export const BoosterCard = memo(function BoosterCard({
         </span>
 
         {revealed && card.rarity === "abyssal" && <span className={styles.cardRing} aria-hidden />}
-        {revealed && card.rarity !== "standard" && <BoosterParticles variant={card.rarity} />}
+        {revealed && card.rarity === "legendary" && <span className={`${styles.cardRing} ${styles.cardRingGold}`} aria-hidden />}
+        {revealed && highRarity && card.rarity !== "abyssal" && <BoosterParticles variant={card.rarity === "rare" ? "rare" : card.rarity === "epic" ? "epic" : "legendary"} />}
+        {revealed && card.rarity === "abyssal" && <BoosterParticles variant="abyssal" />}
+        {revealed && card.rarity === "legendary" && <BoosterParticles variant="sparks" />}
       </span>
     </div>
   );

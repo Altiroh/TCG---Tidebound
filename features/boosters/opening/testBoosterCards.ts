@@ -20,15 +20,16 @@ type SlotWeights = Partial<Record<CardRarity, number>>;
 
 /**
  * Booster standard de test : 5 cartes, les Communes d'abord, la dernière
- * pouvant être Abyssale — assez souvent pour voir tous les effets en
- * quelques ouvertures (bien plus souvent que dans le vrai booster).
+ * pouvant être Épique, Légendaire ou Abyssale — assez souvent pour voir
+ * chaque lumière de rareté en quelques ouvertures (bien plus souvent que
+ * dans le vrai booster).
  */
 const STANDARD_TEST_SLOTS: readonly SlotWeights[] = [
   { common: 1 },
   { common: 1 },
   { common: 1, uncommon: 1 },
   { uncommon: 3, rare: 2 },
-  { rare: 3, abyssal: 1 },
+  { rare: 2, epic: 1, legendary: 1, abyssal: 1 },
 ];
 
 /** Mini Booster de Bienvenue : 4 cartes, ni Rare ni Abyssale. */
@@ -47,9 +48,12 @@ function cardPool(): Map<CardRarity, string[]> {
       // Même pool que les vrais boosters (`features/boosters/actions.ts`) :
       // seul le lot "core" est tiré, les lots d'archétype attendent leur
       // booster dédié.
-      if (definition.setCode !== undefined && definition.setCode !== "core") continue;
       const rarity = rarityForCardId(definition.id);
       if (!rarity) continue;
+      // Exception d'essai : Épiques et Légendaires n'existent que dans les
+      // lots d'archétype. Sans eux, leur lumière ne se verrait jamais ici.
+      const testOnlyRarity = rarity === "epic" || rarity === "legendary";
+      if (definition.setCode !== undefined && definition.setCode !== "core" && !testOnlyRarity) continue;
       const ids = poolByRarity.get(rarity) ?? [];
       ids.push(definition.id);
       poolByRarity.set(rarity, ids);

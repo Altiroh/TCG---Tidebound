@@ -3,7 +3,7 @@
 import { memo, useMemo, type CSSProperties } from "react";
 import styles from "@/features/boosters/opening/BoosterOpening.module.css";
 
-export type BoosterParticlesVariant = "ambient" | "tear" | "rare" | "abyssal";
+export type BoosterParticlesVariant = "ambient" | "tear" | "rare" | "epic" | "legendary" | "abyssal" | "sparks";
 
 interface BoosterParticlesProps {
   variant: BoosterParticlesVariant;
@@ -91,22 +91,56 @@ function tearParticles(): Particle[] {
   return [...flecks, ...droplets];
 }
 
-/** Poussière lumineuse autour d'une carte révélée. Plus nombreuse, plus lente et plus froide pour une Abyssale. */
-function revealParticles(variant: "rare" | "abyssal"): Particle[] {
-  const abyssal = variant === "abyssal";
-  const rand = seeded(abyssal ? 97 : 53);
-  const count = abyssal ? 12 : 8;
-  return Array.from({ length: count }, (_, index) => {
-    const angle = (index / count) * Math.PI * 2 + rand() * 0.6;
-    const distance = (abyssal ? 13 : 10) + rand() * 6;
+/** Réglage de la poussière de révélation, par rareté : combien, jusqu'où, quelle teinte. */
+const REVEAL_BURST: Record<"rare" | "epic" | "legendary" | "abyssal", { seed: number; count: number; distance: number; duration: number; className: string }> = {
+  rare: { seed: 53, count: 10, distance: 11, duration: 900, className: styles.revealMoteRare! },
+  epic: { seed: 61, count: 14, distance: 13, duration: 1000, className: styles.revealMoteEpic! },
+  legendary: { seed: 71, count: 26, distance: 19, duration: 1200, className: styles.revealMoteLegendary! },
+  abyssal: { seed: 97, count: 16, distance: 15, duration: 1400, className: styles.revealMoteAbyssal! },
+};
+
+/** Poussière lumineuse qui jaillit d'une carte au moment où elle se révèle. */
+function revealParticles(variant: keyof typeof REVEAL_BURST): Particle[] {
+  const burst = REVEAL_BURST[variant];
+  const rand = seeded(burst.seed);
+  return Array.from({ length: burst.count }, (_, index) => {
+    const angle = (index / burst.count) * Math.PI * 2 + rand() * 0.6;
+    const distance = burst.distance + rand() * 7;
     return {
-      className: abyssal ? styles.revealMoteAbyssal! : styles.revealMote!,
+      className: burst.className,
       style: {
-        "--size": u(0.28 + rand() * 0.34),
+        "--size": u(0.28 + rand() * (variant === "legendary" ? 0.5 : 0.34)),
         "--dx": u(Math.cos(angle) * distance * 0.8),
         "--dy": u(Math.sin(angle) * distance - 3),
-        "--dur": ms((abyssal ? 1300 : 900) + rand() * 500),
+        "--dur": ms(burst.duration + rand() * 500),
         "--delay": ms(rand() * 140),
+      },
+    };
+  });
+}
+
+/**
+ * Étincelles d'une Légendaire : elles ne s'éteignent pas après l'impact,
+ * elles crépitent autour de la carte tant qu'elle est à l'écran.
+ */
+function sparkParticles(): Particle[] {
+  const rand = seeded(113);
+  return Array.from({ length: 18 }, () => {
+    // Réparties sur le pourtour de la carte, pas au hasard dans le vide.
+    const edge = Math.floor(rand() * 4);
+    const along = rand() * 100;
+    const left = edge === 0 ? along : edge === 1 ? 100 : edge === 2 ? along : 0;
+    const top = edge === 0 ? 0 : edge === 1 ? along : edge === 2 ? 100 : along;
+    return {
+      className: styles.spark!,
+      style: {
+        left: `${left.toFixed(1)}%`,
+        top: `${top.toFixed(1)}%`,
+        "--size": u(0.22 + rand() * 0.36),
+        "--dx": u(-2.5 + rand() * 5),
+        "--dy": u(-(2 + rand() * 5)),
+        "--dur": ms(900 + rand() * 900),
+        "--delay": ms(-rand() * 1800),
       },
     };
   });
@@ -124,6 +158,8 @@ export const BoosterParticles = memo(function BoosterParticles({ variant }: Boos
         return ambientParticles();
       case "tear":
         return tearParticles();
+      case "sparks":
+        return sparkParticles();
       default:
         return revealParticles(variant);
     }

@@ -29,9 +29,8 @@ describe("drawTestBoosterCards", () => {
   it("donne une rareté de mise en scène cohérente avec la carte tirée", () => {
     const cards = drawTestBoosterCards("standard", seededRandom(7));
     for (const card of cards) {
-      const rarity = rarityForCardId(card.cardId!);
-      const expected = rarity === "abyssal" ? "abyssal" : rarity === "rare" ? "rare" : "standard";
-      expect(card.rarity).toBe(expected);
+      // Un pour un : la scène suit les six raretés de la collection.
+      expect(card.rarity).toBe(rarityForCardId(card.cardId!));
     }
   });
 

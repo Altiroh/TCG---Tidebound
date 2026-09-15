@@ -1,11 +1,16 @@
 import type { CardRarity } from "@/game/boosters";
 
 /**
- * Palier VISUEL d'une carte pendant l'ouverture. Volontairement distinct de
- * `CardRarity` (4 paliers de gameplay) : la scène n'a que trois
- * intensités de mise en scène, et ne doit pas dépendre du modèle serveur.
+ * Palier VISUEL d'une carte pendant l'ouverture : les six raretés de la
+ * collection, chacune avec sa lumière (cf. `BoosterOpening.module.css`,
+ * « Réaction lumineuse par rareté »).
+ *
+ * La scène n'en avait que trois (standard / rare / abyssal) : une commune et
+ * une peu commune se retournaient pareil, une Légendaire comme une Rare. Le
+ * type reste distinct de `CardRarity` par son nom — la scène ne dépend pas
+ * du modèle serveur — mais il en suit les paliers un pour un.
  */
-export type BoosterOpeningRarity = "standard" | "rare" | "abyssal";
+export type BoosterOpeningRarity = CardRarity;
 
 /** Une carte telle que la scène d'ouverture la consomme. */
 export interface BoosterOpeningCard {
@@ -16,15 +21,21 @@ export interface BoosterOpeningCard {
   rarity: BoosterOpeningRarity;
 }
 
-/** Traduction d'une rareté de collection vers un palier de mise en scène. */
+/** Traduction d'une rareté de collection vers un palier de mise en scène — un pour un. */
 export function toOpeningRarity(rarity: CardRarity): BoosterOpeningRarity {
-  if (rarity === "abyssal") return "abyssal";
-  if (rarity === "rare") return "rare";
-  return "standard";
+  return rarity;
 }
 
 export const OPENING_RARITY_LABEL: Record<BoosterOpeningRarity, string> = {
-  standard: "Standard",
+  common: "Commune",
+  uncommon: "Peu commune",
   rare: "Rare",
-  abyssal: "Abyssal",
+  epic: "Épique",
+  legendary: "Légendaire",
+  abyssal: "Abyssale",
 };
+
+/** Raretés qui méritent un son de révélation et une poussière lumineuse. */
+export function isHighRarity(rarity: BoosterOpeningRarity): boolean {
+  return rarity === "rare" || rarity === "epic" || rarity === "legendary" || rarity === "abyssal";
+}

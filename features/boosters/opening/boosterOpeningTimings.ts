@@ -10,7 +10,7 @@ export interface BoosterOpeningTimings {
   backdropIn: number;
   /** Arrivée du paquet au centre. */
   packEnter: number;
-  /** Paquet immobile (léger flottement) avant la découpe. */
+  /** Paquet immobile (léger flottement) avant qu'il n'attende le geste d'ouverture. */
   packHold: number;
   /** Petite compression du paquet juste avant la découpe. */
   tension: number;
@@ -34,6 +34,10 @@ export interface BoosterOpeningTimings {
   flip: Record<BoosterOpeningRarity, number>;
   /** Durée de l'impact lumineux après retournement. */
   revealImpact: Record<BoosterOpeningRarity, number>;
+  /** Abyssale révélée : vol de la rangée jusqu'au centre de l'écran, pour le gros plan. */
+  showcaseIn: number;
+  /** Retour du gros plan à sa place dans la rangée. */
+  showcaseOut: number;
   uiIn: number;
   sceneOut: number;
 }
@@ -51,9 +55,11 @@ export const BOOSTER_OPENING_TIMINGS: BoosterOpeningTimings = {
   cardRise: 380,
   cardPlace: 540,
   packRetreat: 620,
-  revealPause: { standard: 0, rare: 240, abyssal: 460 },
-  flip: { standard: 460, rare: 520, abyssal: 620 },
-  revealImpact: { standard: 700, rare: 1000, abyssal: 1600 },
+  revealPause: { common: 0, uncommon: 0, rare: 200, epic: 280, legendary: 420, abyssal: 520 },
+  flip: { common: 440, uncommon: 450, rare: 500, epic: 540, legendary: 600, abyssal: 640 },
+  revealImpact: { common: 700, uncommon: 800, rare: 1000, epic: 1150, legendary: 1500, abyssal: 1600 },
+  showcaseIn: 720,
+  showcaseOut: 520,
   uiIn: 380,
   sceneOut: 300,
 };
@@ -75,9 +81,11 @@ export const BOOSTER_OPENING_TIMINGS_REDUCED: BoosterOpeningTimings = {
   cardRise: 150,
   cardPlace: 200,
   packRetreat: 200,
-  revealPause: { standard: 0, rare: 0, abyssal: 0 },
-  flip: { standard: 220, rare: 220, abyssal: 240 },
-  revealImpact: { standard: 300, rare: 400, abyssal: 500 },
+  revealPause: { common: 0, uncommon: 0, rare: 0, epic: 0, legendary: 0, abyssal: 0 },
+  flip: { common: 220, uncommon: 220, rare: 220, epic: 220, legendary: 240, abyssal: 240 },
+  revealImpact: { common: 300, uncommon: 300, rare: 400, epic: 400, legendary: 500, abyssal: 500 },
+  showcaseIn: 200,
+  showcaseOut: 160,
   uiIn: 140,
   sceneOut: 120,
 };

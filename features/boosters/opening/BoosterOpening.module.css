@@ -42,9 +42,10 @@
   --mouth-w: 0.6;
   --mouth-top: 0.14;
   --tear-y: 8%;
-  --card-w-u: 19;
+  /* Un cran plus grandes qu'avant (19 → 22) : une carte se lit dès la rangée. */
+  --card-w-u: 22;
   /* Pas horizontal entre deux cartes posées. Inférieur à `--card-w-u` = chevauchement. */
-  --slot-step-u: 22;
+  --slot-step-u: 25;
   --row-y-u: -2;
   --fan-deg: 3;
 
@@ -98,6 +99,8 @@
     --u: min(0.62vh, 0.84vw);
     --pack-h-u: 66;
     --pack-y-u: 6;
+    --card-w-u: 21;
+    --slot-step-u: 23;
   }
 }
 
@@ -105,7 +108,8 @@
   .scene {
     --u: min(0.62vh, 1.2vw);
     --pack-h-u: 70;
-    --slot-step-u: 14;
+    --card-w-u: 19;
+    --slot-step-u: 15;
     --fan-deg: 2.2;
   }
 }
@@ -287,10 +291,44 @@
   opacity: 0;
   animation: revealMote var(--dur) cubic-bezier(0.2, 0.6, 0.3, 1) var(--delay) both;
 }
+.revealMoteRare {
+  composes: revealMote;
+  background: rgba(170, 196, 255, 0.95);
+  box-shadow: 0 0 calc(var(--size) * 4) rgba(56, 108, 255, 0.85);
+}
+.revealMoteEpic {
+  composes: revealMote;
+  background: rgba(226, 196, 255, 0.95);
+  box-shadow: 0 0 calc(var(--size) * 4) rgba(170, 90, 255, 0.85);
+}
+.revealMoteLegendary {
+  composes: revealMote;
+  background: rgba(255, 244, 196, 1);
+  box-shadow: 0 0 calc(var(--size) * 5) rgba(255, 196, 60, 0.95);
+}
 .revealMoteAbyssal {
   composes: revealMote;
   background: rgba(160, 220, 238, 0.9);
   box-shadow: 0 0 calc(var(--size) * 5) rgba(36, 118, 178, 0.85);
+}
+
+/* Étincelles d'une Légendaire : elles crépitent au bord de la carte. */
+.spark {
+  position: absolute;
+  width: var(--size);
+  height: var(--size);
+  margin: calc(var(--size) / -2) 0 0 calc(var(--size) / -2);
+  border-radius: 50%;
+  background: #fff6cf;
+  box-shadow: 0 0 calc(var(--size) * 3) rgba(255, 200, 70, 0.95), 0 0 calc(var(--size) * 7) rgba(255, 170, 40, 0.5);
+  opacity: 0;
+  animation: spark var(--dur) ease-out var(--delay) infinite;
+}
+
+@keyframes spark {
+  0% { opacity: 0; transform: translate3d(0, 0, 0) scale(0.3); }
+  20% { opacity: 1; transform: translate3d(calc(var(--dx) * 0.3), calc(var(--dy) * 0.3), 0) scale(1); }
+  100% { opacity: 0; transform: translate3d(var(--dx), var(--dy), 0) scale(0.4); }
 }
 
 @keyframes revealMote {
@@ -334,10 +372,22 @@
   margin-top: var(--pack-top);
 }
 
+/* Monté dès le préchargement, invisible : la scène mesure sa place finale
+   pour calculer d'où il arrive (`--enter-*`). */
+.scene[data-phase="idle"] .packAnchor {
+  visibility: hidden;
+}
+
 .packMotion {
   position: absolute;
   inset: 0;
+}
+.scene[data-phase="enter"] .packMotion {
   animation: packEnter var(--t-pack-enter) cubic-bezier(0.16, 0.84, 0.3, 1) both;
+}
+/* Parti du plan d'ouverture, le sachet décrit une courbe jusqu'au centre. */
+.scene[data-phase="enter"][data-origin="dock"] .packMotion {
+  animation: packFly var(--t-pack-enter) cubic-bezier(0.3, 0.1, 0.2, 1) both;
 }
 .packAnchor[data-retreat] .packMotion {
   animation: packRetreat var(--t-retreat) cubic-bezier(0.55, 0, 0.8, 0.45) var(--t-retreat-delay) both;
@@ -353,6 +403,100 @@
     opacity: 1;
     transform: none;
   }
+}
+
+@keyframes packFly {
+  from {
+    opacity: var(--enter-opacity, 0);
+    transform: translate3d(var(--enter-dx, 0px), var(--enter-dy, 0px), 0) scale(var(--enter-scale, 0.9)) rotate(var(--enter-rot, -2.5deg));
+  }
+  /* Il monte un peu avant de se poser : une trajectoire, pas une glissade. */
+  55% {
+    opacity: 1;
+    transform: translate3d(calc(var(--enter-dx, 0px) * 0.22), calc(var(--enter-dy, 0px) * 0.12 - var(--u) * 5), 0) scale(1.04) rotate(2deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---- Sachet en attente du geste d'ouverture ---- */
+.packAnchor[data-ready] {
+  /* La scène ne capte rien (`.stage`) : le sachet en attente, lui, se touche. */
+  pointer-events: auto;
+  cursor: pointer;
+  outline: none;
+}
+
+.packReadyHalo {
+  position: absolute;
+  left: -14%;
+  right: -14%;
+  top: -8%;
+  bottom: -8%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(120, 214, 236, 0.32), rgba(79, 170, 204, 0.1) 55%, transparent 78%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 320ms ease-out;
+}
+.packAnchor[data-ready] .packReadyHalo {
+  opacity: 1;
+  animation: readyHalo 1800ms ease-in-out infinite;
+}
+
+@keyframes readyHalo {
+  0%, 100% { transform: scale(0.96); opacity: 0.7; }
+  50% { transform: scale(1.05); opacity: 1; }
+}
+
+.packAnchor[data-ready] .packFloat {
+  transition: filter 220ms ease-out;
+}
+.packAnchor[data-ready]:hover .packFloat,
+.packAnchor[data-ready]:focus-visible .packFloat {
+  filter: brightness(1.12) drop-shadow(0 0 calc(var(--u) * 2) rgba(140, 220, 240, 0.45));
+}
+.packAnchor[data-ready]:hover .packClosed,
+.packAnchor[data-ready]:focus-visible .packClosed {
+  transform: scale(1.025) rotate(-0.6deg);
+}
+
+/* Reflet : une lame de lumière qui balaie le sachet fermé, découpée à sa
+   silhouette (le visuel fermé sert de masque). */
+.packShine {
+  position: absolute;
+  left: var(--closed-left);
+  top: var(--closed-top);
+  width: var(--closed-width);
+  height: var(--closed-height);
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.55) 48%, rgba(190, 240, 255, 0.25) 54%, transparent 64%);
+  background-size: 260% 100%;
+  background-position: 130% 0;
+  mask-image: var(--pack-closed-art);
+  mask-size: 100% 100%;
+  -webkit-mask-image: var(--pack-closed-art);
+  -webkit-mask-size: 100% 100%;
+  mix-blend-mode: screen;
+  opacity: 0;
+}
+.scene[data-phase="enter"] .packShine {
+  animation: packShine 900ms ease-out calc(var(--t-pack-enter) * 0.55) both;
+}
+.packAnchor[data-ready] .packShine {
+  animation: packShine 1500ms ease-in-out 200ms infinite;
+}
+.packFloat[data-torn] .packShine {
+  display: none;
+}
+
+@keyframes packShine {
+  0% { opacity: 0; background-position: 130% 0; }
+  15% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; background-position: -30% 0; }
 }
 
 @keyframes packRetreat {
@@ -517,6 +661,7 @@
   width: var(--closed-width);
   height: var(--closed-height);
   transform-origin: 50% 95%;
+  transition: transform 220ms cubic-bezier(0.2, 0.7, 0.3, 1);
 }
 /*
  * Tension (le sachet se pince), puis fondu très court vers les pièces
@@ -775,27 +920,86 @@
 
 /* --- Réaction lumineuse par rareté --- */
 
-.card[data-rarity="standard"] {
-  --aura: radial-gradient(closest-side, rgba(176, 208, 218, 0.36) 0%, rgba(150, 190, 204, 0.2) 50%, transparent 74%);
+/*
+ * Chaque rareté a SA lumière, et elle reste allumée une fois la carte
+ * retournée (`.cardGlow`) : sur la rangée finale, on lit le tirage d'un
+ * coup d'œil.
+ *   commune      gris argent, halo discret
+ *   peu commune  vert clair, halo simple
+ *   rare         bleu cobalt, halo intensifié
+ *   épique       violet, halo soutenu
+ *   légendaire   or, halo intense qui pulse, étincelles
+ *   abyssale     bleu abyssal et brume, puis gros plan au centre
+ */
+.card[data-rarity="common"] {
+  --glow: rgba(206, 214, 222, 0.55);
+  --glow-far: rgba(190, 200, 210, 0.18);
+  --glow-size: 1.1;
+  --aura: radial-gradient(closest-side, rgba(206, 214, 222, 0.3) 0%, rgba(190, 200, 210, 0.14) 50%, transparent 74%);
   --aura-charge: 0;
   --aura-peak: 0.5;
   --aura-rest: 0;
   --charge-lift: 0px;
   --frame-color: rgba(233, 226, 209, 0.28);
-  --rarity-ink: #a7a18e;
+  --rarity-ink: #b9bfc6;
   --sheen: rgba(255, 255, 255, 0.14);
 }
+.card[data-rarity="uncommon"] {
+  --glow: rgba(140, 238, 160, 0.72);
+  --glow-far: rgba(120, 220, 140, 0.24);
+  --glow-size: 1.4;
+  --aura: radial-gradient(closest-side, rgba(140, 238, 160, 0.4) 0%, rgba(110, 210, 130, 0.18) 50%, transparent 74%);
+  --aura-charge: 0;
+  --aura-peak: 0.65;
+  --aura-rest: 0.12;
+  --charge-lift: 0px;
+  --frame-color: rgba(140, 238, 160, 0.5);
+  --rarity-ink: #9fe6ae;
+  --sheen: rgba(210, 255, 220, 0.18);
+}
 .card[data-rarity="rare"] {
-  --aura: radial-gradient(closest-side, rgba(232, 188, 106, 0.58) 0%, rgba(199, 154, 78, 0.34) 50%, transparent 76%);
+  --glow: rgba(56, 108, 255, 0.95);
+  --glow-far: rgba(40, 90, 255, 0.45);
+  --glow-size: 2;
+  --aura: radial-gradient(closest-side, rgba(70, 120, 255, 0.62) 0%, rgba(40, 80, 230, 0.34) 50%, transparent 76%);
   --aura-charge: 0.45;
-  --aura-peak: 0.95;
-  --aura-rest: 0.4;
+  --aura-peak: 1;
+  --aura-rest: 0.42;
   --charge-lift: calc(var(--u) * 1.4);
-  --frame-color: rgba(199, 154, 78, 0.72);
-  --rarity-ink: #d8b067;
-  --sheen: rgba(255, 228, 170, 0.22);
+  --frame-color: rgba(90, 140, 255, 0.72);
+  --rarity-ink: #8fb0ff;
+  --sheen: rgba(180, 205, 255, 0.24);
+}
+.card[data-rarity="epic"] {
+  --glow: rgba(186, 110, 255, 0.95);
+  --glow-far: rgba(160, 80, 255, 0.45);
+  --glow-size: 2.2;
+  --aura: radial-gradient(closest-side, rgba(190, 120, 255, 0.6) 0%, rgba(140, 70, 230, 0.32) 50%, transparent 76%);
+  --aura-charge: 0.5;
+  --aura-peak: 1;
+  --aura-rest: 0.45;
+  --charge-lift: calc(var(--u) * 1.5);
+  --frame-color: rgba(190, 130, 255, 0.72);
+  --rarity-ink: #cfa2ff;
+  --sheen: rgba(230, 200, 255, 0.24);
+}
+.card[data-rarity="legendary"] {
+  --glow: rgba(255, 212, 80, 1);
+  --glow-far: rgba(255, 184, 40, 0.62);
+  --glow-size: 2.8;
+  --aura: radial-gradient(closest-side, rgba(255, 220, 110, 0.78) 0%, rgba(255, 170, 40, 0.42) 50%, transparent 78%);
+  --aura-charge: 0.6;
+  --aura-peak: 1;
+  --aura-rest: 0.7;
+  --charge-lift: calc(var(--u) * 1.8);
+  --frame-color: rgba(255, 210, 100, 0.8);
+  --rarity-ink: #ffd772;
+  --sheen: rgba(255, 238, 180, 0.34);
 }
 .card[data-rarity="abyssal"] {
+  --glow: rgba(90, 210, 236, 0.9);
+  --glow-far: rgba(30, 110, 180, 0.6);
+  --glow-size: 2.4;
   --aura: radial-gradient(closest-side, rgba(6, 22, 40, 0.7) 20%, rgba(38, 112, 170, 0.5) 50%, transparent 78%);
   --aura-charge: 0.55;
   --aura-peak: 1;
@@ -804,6 +1008,42 @@
   --frame-color: rgba(79, 196, 206, 0.5);
   --rarity-ink: #82d2de;
   --sheen: rgba(160, 225, 240, 0.18);
+}
+
+/* Le halo qui reste : un liseré lumineux au contour de la carte. */
+.cardGlow {
+  position: absolute;
+  inset: 0;
+  border-radius: calc(var(--card-w) * 0.055);
+  pointer-events: none;
+  opacity: 0;
+  box-shadow:
+    0 0 0 calc(var(--u) * 0.18) var(--glow),
+    0 0 calc(var(--u) * var(--glow-size)) calc(var(--u) * 0.25) var(--glow),
+    0 0 calc(var(--u) * var(--glow-size) * 3) calc(var(--u) * 0.4) var(--glow-far);
+}
+.card[data-state="flipping"] .cardGlow {
+  opacity: 0.35;
+  transition: opacity var(--flip-dur) ease-in;
+}
+.card[data-state="revealed"] .cardGlow {
+  animation: glowIn var(--impact-dur) cubic-bezier(0.2, 0.6, 0.3, 1) both;
+}
+.card[data-state="revealed"][data-rarity="legendary"] .cardGlow {
+  animation:
+    glowIn var(--impact-dur) cubic-bezier(0.2, 0.6, 0.3, 1) both,
+    glowPulse 1600ms ease-in-out var(--impact-dur) infinite;
+}
+
+@keyframes glowIn {
+  0% { opacity: 0; transform: scale(1.08); }
+  25% { opacity: 1; transform: scale(1.03); }
+  100% { opacity: 0.9; transform: none; }
+}
+
+@keyframes glowPulse {
+  0%, 100% { opacity: 0.9; filter: brightness(1); }
+  50% { opacity: 1; filter: brightness(1.35); }
 }
 
 .cardAura {
@@ -873,12 +1113,15 @@
   perspective: calc(var(--card-w) * 5);
 }
 /* Anticipation Abyssale : un frémissement à peine perceptible. */
-.card[data-state="charging"][data-rarity="abyssal"] .cardTilt {
+.card[data-state="charging"][data-rarity="abyssal"] .cardTilt,
+.card[data-state="charging"][data-rarity="legendary"] .cardTilt {
   animation: tremble 110ms linear infinite;
 }
-.card[data-state="revealed"][data-rarity="rare"] .cardTilt {
+.card[data-state="revealed"][data-rarity="rare"] .cardTilt,
+.card[data-state="revealed"][data-rarity="epic"] .cardTilt {
   animation: settle 420ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
 }
+.card[data-state="revealed"][data-rarity="legendary"] .cardTilt,
 .card[data-state="revealed"][data-rarity="abyssal"] .cardTilt {
   animation: thud 620ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
 }
@@ -984,7 +1227,9 @@
   background: linear-gradient(165deg, #1a3342 0%, #0d1d29 55%, #07121a 100%);
   transform: rotateY(180deg);
 }
-.card[data-rarity="rare"] .cardFront {
+.card[data-rarity="rare"] .cardFront,
+.card[data-rarity="epic"] .cardFront,
+.card[data-rarity="legendary"] .cardFront {
   background: linear-gradient(165deg, #2c2b22 0%, #172120 50%, #0a1218 100%);
 }
 .card[data-rarity="abyssal"] .cardFront {
@@ -1102,14 +1347,22 @@
   animation: ring 1200ms cubic-bezier(0.15, 0.6, 0.3, 1) both;
 }
 
+.cardRingGold {
+  box-shadow:
+    0 0 0 1px rgba(255, 220, 120, 0.5),
+    0 0 calc(var(--u) * 2.4) rgba(255, 190, 60, 0.55),
+    inset 0 0 calc(var(--u) * 2) rgba(255, 190, 60, 0.4);
+}
+
 @keyframes ring {
   0% { opacity: 0; transform: scale(0.4); }
   12% { opacity: 1; }
   100% { opacity: 0; transform: scale(2.4); }
 }
 
-/* La scène s'assombrit brièvement autour d'une Abyssale. */
-.abyssalImpact {
+/* Éclair de révélation : la scène s'assombrit autour d'une Abyssale, se
+   dore d'un coup pour une Légendaire. */
+.revealImpact {
   position: absolute;
   inset: 0;
   z-index: 8;
@@ -1117,6 +1370,11 @@
   background: radial-gradient(60% 55% at 50% 50%, rgba(2, 10, 20, 0.1) 25%, rgba(1, 6, 14, 0.6) 100%);
   opacity: 0;
   animation: abyssalImpact 1500ms ease-out both;
+}
+.revealImpact[data-rarity="legendary"] {
+  background: radial-gradient(55% 50% at 50% 50%, rgba(255, 214, 110, 0.32) 0%, rgba(255, 170, 40, 0.12) 45%, transparent 75%);
+  mix-blend-mode: screen;
+  animation-duration: 1200ms;
 }
 
 @keyframes abyssalImpact {
@@ -1154,6 +1412,25 @@
   opacity: 1;
   transform: none;
 }
+/* Sachet en attente : la consigne passe SOUS le sachet. */
+.scene[data-phase="ready"] .hint {
+  top: calc(50% + var(--pack-y) + var(--pack-h) / 2 + var(--u) * 3);
+}
+
+.inspectHint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(50% + var(--row-y) + var(--card-h) / 2 + var(--u) * 2.2);
+  z-index: 30;
+  margin: 0;
+  font-size: clamp(11px, calc(var(--u) * 1.3), 14px);
+  letter-spacing: 0.06em;
+  text-align: center;
+  color: rgba(233, 226, 209, 0.55);
+  pointer-events: none;
+  animation: sceneIn var(--t-ui) ease-out both;
+}
 
 .hintCount {
   font-family: var(--font-ui, "Segoe UI", system-ui, sans-serif);
@@ -1166,7 +1443,7 @@
 .closeButton {
   position: absolute;
   left: 50%;
-  top: calc(50% + var(--row-y) + var(--card-h) / 2 + var(--u) * 6.5);
+  top: calc(50% + var(--row-y) + var(--card-h) / 2 + var(--u) * 7.5);
   z-index: 30;
   min-width: 9.5em;
   padding: 0.85em 2.2em;
@@ -1229,8 +1506,13 @@
 .scene[data-reduced-motion] .tearBreath,
 .scene[data-reduced-motion] .tearPoint,
 .scene[data-reduced-motion] .cardRing,
-.scene[data-reduced-motion] .particleLayer {
+.scene[data-reduced-motion] .particleLayer,
+.scene[data-reduced-motion] .packShine {
   display: none;
+}
+.scene[data-reduced-motion] .packReadyHalo,
+.scene[data-reduced-motion] .card[data-state="revealed"][data-rarity="legendary"] .cardGlow {
+  animation: none;
 }
 .scene[data-reduced-motion] .cardLift {
   transition-duration: 80ms;
@@ -1243,5 +1525,154 @@
   transform: none;
 }
 .scene[data-reduced-motion] .card[data-state="revealed"] .cardLift {
+  animation: none;
+}
+
+/* ---------- Gros plan d'une Abyssale ---------- */
+
+/*
+ * La carte quitte la rangée pour le centre de l'écran, agrandie, sur un fond
+ * éteint traversé de rais de lumière froide. Même mécanique que
+ * `cardRaise` : une animation posée APRÈS celle de sortie du sachet, qui
+ * l'emporte sur elle pour `transform` et `z-index`.
+ */
+.card {
+  /* × 1.34 d'agrandissement de retournement = ~1.95 au total. */
+  --showcase-scale: 1.45;
+}
+
+.card[data-showcase="in"] {
+  cursor: pointer;
+  animation: var(--spawn-animation), cardShowcaseIn var(--t-showcase-in) cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.card[data-showcase="out"] {
+  animation: var(--spawn-animation), cardShowcaseOut var(--t-showcase-out) cubic-bezier(0.5, 0, 0.3, 1) both;
+}
+
+@keyframes cardShowcaseIn {
+  0% {
+    z-index: 70;
+    transform: translate3d(var(--slot-x), var(--slot-y), 0) rotate(var(--slot-rot)) scale(1);
+  }
+  60% {
+    z-index: 70;
+    transform: translate3d(0, calc(var(--u) * -3), 0) rotate(-1.5deg) scale(calc(var(--showcase-scale) * 1.06));
+  }
+  100% {
+    z-index: 70;
+    transform: translate3d(0, calc(var(--u) * -2), 0) rotate(0deg) scale(var(--showcase-scale));
+  }
+}
+
+@keyframes cardShowcaseOut {
+  0% {
+    z-index: 70;
+    transform: translate3d(0, calc(var(--u) * -2), 0) rotate(0deg) scale(var(--showcase-scale));
+  }
+  99% { z-index: 70; }
+  100% {
+    z-index: calc(40 + var(--i));
+    transform: translate3d(var(--slot-x), var(--slot-y), 0) rotate(var(--slot-rot)) scale(1);
+  }
+}
+
+/* L'Abyssale garde sa taille de retournement jusqu'au gros plan : sans ça
+   elle rétrécirait dans la rangée juste avant d'en décoller. */
+.card[data-rarity="abyssal"][data-state="revealed"] .cardLift {
+  animation: none;
+  transform: scale(var(--reveal-scale-flip));
+}
+.card[data-rarity="abyssal"][data-state="revealed"][data-showcase="done"] .cardLift,
+.scene[data-reduced-motion] .card[data-rarity="abyssal"][data-state="revealed"] .cardLift {
+  transform: none;
+}
+
+/* En gros plan, l'échelle totale : celle du retournement × `--showcase-scale`. */
+.card[data-showcase="in"] .cardGlow {
+  animation: glowIn 900ms cubic-bezier(0.2, 0.6, 0.3, 1) both, glowPulse 2000ms ease-in-out 900ms infinite;
+}
+
+.showcase {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  cursor: pointer;
+  background: radial-gradient(60% 60% at 50% 48%, rgba(8, 30, 48, 0.55) 0%, rgba(1, 6, 12, 0.88) 70%);
+  animation: sceneIn var(--t-showcase-in) ease-out both;
+}
+.showcase[data-leaving] {
+  animation: sceneOut var(--t-showcase-out) ease-in both;
+  pointer-events: none;
+}
+
+.showcaseRays {
+  position: absolute;
+  left: 50%;
+  top: 48%;
+  width: 160vmax;
+  height: 160vmax;
+  margin: -80vmax 0 0 -80vmax;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, rgba(110, 210, 236, 0.13) 0deg 6deg, transparent 6deg 18deg);
+  mask-image: radial-gradient(closest-side, #000 8%, rgba(0, 0, 0, 0.5) 30%, transparent 62%);
+  -webkit-mask-image: radial-gradient(closest-side, #000 8%, rgba(0, 0, 0, 0.5) 30%, transparent 62%);
+  animation: raysSpin 18s linear infinite;
+}
+
+@keyframes raysSpin {
+  to { transform: rotate(360deg); }
+}
+
+.showcaseCaption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  /* Sous la carte en gros plan : demi-hauteur × échelle totale (~1.95). */
+  top: calc(50% + var(--card-h) * 0.975);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--u) * 0.6);
+  text-align: center;
+  pointer-events: none;
+  animation: uiInPlain var(--t-ui) ease-out calc(var(--t-showcase-in) * 0.6) both;
+}
+
+@keyframes uiInPlain {
+  from { opacity: 0; transform: translate3d(0, calc(var(--u) * 1), 0); }
+  to { opacity: 1; transform: none; }
+}
+
+.showcaseRarity {
+  font-size: clamp(11px, calc(var(--u) * 1.4), 15px);
+  font-weight: 700;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: #8fe3ee;
+  text-shadow: 0 0 calc(var(--u) * 1.4) rgba(60, 180, 220, 0.8);
+}
+
+.showcaseName {
+  font-family: var(--font-card-title, Georgia, "Times New Roman", serif);
+  font-size: clamp(20px, calc(var(--u) * 3.2), 38px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #eef9fb;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.9);
+}
+
+.showcaseHint {
+  font-size: clamp(11px, calc(var(--u) * 1.2), 13px);
+  letter-spacing: 0.08em;
+  color: rgba(233, 226, 209, 0.55);
+}
+
+@media (orientation: portrait) {
+  .card {
+    --showcase-scale: 1.3;
+  }
+}
+
+.scene[data-reduced-motion] .showcaseRays {
   animation: none;
 }
