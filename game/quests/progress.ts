@@ -32,6 +32,23 @@ export interface MatchQuestProgressInput {
   deckId?: string;
   /** `true` si cette partie était un ESSAI de préconstruit contre le bot. */
   preconTrial?: boolean;
+  /**
+   * Jour UTC (`YYYY-MM-DD`) de la partie — valeur de l'ensemble `play_days`.
+   * Fourni par l'appelant plutôt que lu ici : ce module reste pur, et c'est
+   * le serveur qui sait quand la partie s'est terminée.
+   */
+  dayKey?: string;
+  /**
+   * Longueur de la série de jours consécutifs joués APRÈS cette partie,
+   * telle que le compte la porte (`player_progression.play_streak`).
+   * Absente : `play_streak` n'avance pas, plutôt qu'être crédité à tort.
+   */
+  playStreak?: number;
+  /**
+   * `true` si le deck joué a été créé récemment (`NEW_DECK_WINDOW_HOURS`).
+   * Décidé par le serveur, qui a la date de création du deck.
+   */
+  deckIsNew?: boolean;
 }
 
 export interface MatchQuestContribution {
@@ -72,6 +89,9 @@ export function computeMatchQuestContribution({
   won,
   deckId,
   preconTrial = false,
+  dayKey,
+  playStreak,
+  deckIsNew = false,
 }: MatchQuestProgressInput): MatchQuestContribution {
   const progress: Record<QuestObjectiveKey, number> = {
     play_cards: 0,
@@ -90,8 +110,15 @@ export function computeMatchQuestContribution({
     win_matches: 0,
     win_pvp_matches: 0,
     long_matches: 0,
+    play_days: 0,
+    // Série : VALEUR ABSOLUE, pas un incrément — l'objectif est `max`.
+    play_streak: playStreak ?? 0,
+    // Écrit par la base, jamais par le journal de partie : une quête
+    // journalière ne peut pas savoir ici qu'elle vient de se terminer.
+    complete_daily_quests: 0,
     distinct_decks_played: 0,
     distinct_decks_won: 0,
+    play_new_deck: deckIsNew ? 1 : 0,
     precon_trials: preconTrial ? 1 : 0,
     deal_damage: 0,
     take_damage: 0,
@@ -106,6 +133,7 @@ export function computeMatchQuestContribution({
     tide_fall: 0,
     reach_abysses: 0,
     tide_both_ways_in_match: 0,
+    exact_lethal: 0,
   };
 
   const defByInstance = new Map<string, CardDefinition>();
@@ -224,6 +252,12 @@ export function computeMatchQuestContribution({
           // « Ça pique » : la Créature à l'origine de l'attaque en cours.
           if (currentAttacker && defByInstance.get(currentAttacker)?.type === "creature") damagingCreatures.add(currentAttacker);
         }
+        // « Au point exact » : l'Ancrage n'est jamais borné, donc 0 pile veut
+        // dire que le coup a porté ni plus ni moins que nécessaire. Un
+        // dépassement laisse une valeur négative et ne compte pas.
+        if (targetsOpponentShip && event.targetAnchorAfter === 0 && event.amount > 0) {
+          progress.exact_lethal = 1;
+        }
         if (awaitingDirectDamage && targetsOpponentShip) {
           progress.pvp_ship_damage += event.amount;
           awaitingDirectDamage = false;
@@ -295,6 +329,9 @@ export function computeMatchQuestContribution({
 
   // --- Ensembles : decks distincts ---------------------------------------
   const sets: MatchQuestSets = {};
+  // « Marin régulier » : un jour compte une fois, quel que soit le nombre de
+  // parties — c'est de la régularité qu'on récompense, pas du volume.
+  if (dayKey) sets.play_days = [dayKey];
   if (deckId) {
     sets.distinct_decks_played = [deckId];
     if (won) sets.distinct_decks_won = [deckId];

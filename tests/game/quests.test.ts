@@ -368,3 +368,67 @@ describe("remplacement d'une quête (§9)", () => {
     }
   });
 });
+
+describe("objectifs ajoutés avec leur mécanique", () => {
+  /** Attaque directe de p1 sur le Navire de p2, amenant son Ancrage à `anchorAfter`. */
+  const lethalAttack = (amount: number, anchorAfter: number): GameEvent[] => [
+    { ...base, type: "ATTACK", playerId: "p1", attackerInstanceId: "att" },
+    { ...base, type: "DAMAGE", targetPlayerId: "p2", amount, targetAnchorAfter: anchorAfter },
+  ];
+
+  it("« Au point exact » : un Ancrage ramené pile à 0 compte, un dépassement non", () => {
+    const exact = finishedState(lethalAttack(3, 0));
+    expect(computeMatchQuestProgress({ state: exact, playerId: "p1", vsBot: false, won: true }).exact_lethal).toBe(1);
+
+    // Dépassement : l'Ancrage n'est jamais borné, il passe sous 0.
+    const overkill = finishedState(lethalAttack(5, -2));
+    expect(computeMatchQuestProgress({ state: overkill, playerId: "p1", vsBot: false, won: true }).exact_lethal).toBeUndefined();
+
+    // Coup non létal.
+    const partial = finishedState(lethalAttack(3, 4));
+    expect(computeMatchQuestProgress({ state: partial, playerId: "p1", vsBot: false, won: false }).exact_lethal).toBeUndefined();
+  });
+
+  it("« Au point exact » ne crédite pas le joueur qui ENCAISSE le coup exact", () => {
+    const state = finishedState(lethalAttack(3, 0));
+    expect(computeMatchQuestProgress({ state, playerId: "p2", vsBot: false, won: false }).exact_lethal).toBeUndefined();
+  });
+
+  it("le jour de la partie alimente l'ensemble des jours joués", () => {
+    const state = finishedState([]);
+    const { sets } = computeMatchQuestContribution({ state, playerId: "p1", vsBot: false, won: false, dayKey: "2026-09-15" });
+    expect(sets.play_days).toEqual(["2026-09-15"]);
+    // Sans jour fourni, l'objectif n'avance pas plutôt que d'être deviné.
+    expect(computeMatchQuestContribution({ state, playerId: "p1", vsBot: false, won: false }).sets.play_days).toBeUndefined();
+  });
+
+  it("la série de jours est transmise telle quelle — c'est un état, pas un incrément", () => {
+    const state = finishedState([]);
+    expect(computeMatchQuestProgress({ state, playerId: "p1", vsBot: false, won: false, playStreak: 4 }).play_streak).toBe(4);
+    expect(computeMatchQuestProgress({ state, playerId: "p1", vsBot: false, won: false }).play_streak).toBeUndefined();
+  });
+
+  it("un deck fraîchement obtenu compte une fois pour la partie", () => {
+    const state = finishedState([]);
+    expect(computeMatchQuestProgress({ state, playerId: "p1", vsBot: false, won: false, deckIsNew: true }).play_new_deck).toBe(1);
+    expect(computeMatchQuestProgress({ state, playerId: "p1", vsBot: false, won: false }).play_new_deck).toBeUndefined();
+  });
+
+  it("une série se compte en `max`, un ensemble de jours en `set`", () => {
+    // Le type de progression décide de l'agrégation côté base : se tromper
+    // ici ferait additionner des séries au lieu d'en garder la plus longue.
+    expect(questProgressKind("play_streak")).toBe("max");
+    expect(questProgressKind("play_days")).toBe("set");
+    expect(questProgressKind("complete_daily_quests")).toBe("sum");
+    expect(questProgressKind("exact_lethal")).toBe("sum");
+  });
+
+  it("« Terminer N quêtes journalières » n'est jamais produit par une partie", () => {
+    // Il est écrit par `record_match_quest_progress` quand une journalière
+    // bascule : si le journal de partie pouvait le produire, la méta-quête
+    // avancerait deux fois.
+    const state = finishedState([{ ...base, type: "PLAY_CARD", playerId: "p1", instanceId: "a", cardId: "murene-aveugle" }]);
+    const { progress } = computeMatchQuestContribution({ state, playerId: "p1", vsBot: false, won: true, playStreak: 2, dayKey: "2026-09-15" });
+    expect(progress.complete_daily_quests).toBeUndefined();
+  });
+});

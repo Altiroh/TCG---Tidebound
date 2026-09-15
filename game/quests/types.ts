@@ -36,7 +36,9 @@ export type QuestCategory = "cartes" | "parties" | "decks" | "stats" | "maree";
  *   - SEUIL PAR PARTIE : chaque partie qui atteint le seuil compte pour 1
  *     (« Jouer 5 Créatures dans une même partie ») ;
  *   - ENSEMBLE : on compte des valeurs DISTINCTES (« Jouer avec 2 decks
- *     différents »), ce qui demande de mémoriser ce qui a déjà été vu.
+ *     différents »), ce qui demande de mémoriser ce qui a déjà été vu ;
+ *   - MAXIMUM : on retient la plus grande valeur vue (« 3 jours de suite »),
+ *     parce qu'une série est un ÉTAT du compte, pas une somme de parties.
  */
 export type QuestObjectiveKey =
   // --- Cartes -----------------------------------------------------------
@@ -61,11 +63,30 @@ export type QuestObjectiveKey =
   | "win_pvp_matches"
   /** Seuil par partie : la partie a duré au moins N tours. */
   | "long_matches"
+  /**
+   * Ensemble : JOURS (UTC) distincts où le joueur a terminé une partie.
+   * « Jouer 3 jours cette semaine » — les jours n'ont pas à se suivre.
+   */
+  | "play_days"
+  /**
+   * Maximum : longueur de la série de jours CONSÉCUTIFS joués, lue sur le
+   * compte (`player_progression.play_streak`). Ce n'est pas un cumul : une
+   * série cassée redescend, et la quête garde le meilleur de la période.
+   */
+  | "play_streak"
+  /**
+   * Cumul : quêtes journalières TERMINÉES (objectif atteint), qu'elles
+   * aient été réclamées ou non. Alimenté par la base au moment où une
+   * journalière bascule, pas par le journal de partie.
+   */
+  | "complete_daily_quests"
   // --- Decks ------------------------------------------------------------
   /** Ensemble : decks DISTINCTS avec lesquels le joueur a joué. */
   | "distinct_decks_played"
   /** Ensemble : decks DISTINCTS avec lesquels le joueur a gagné. */
   | "distinct_decks_won"
+  /** Cumul : parties jouées avec un deck créé récemment (`NEW_DECK_WINDOW_HOURS`). */
+  | "play_new_deck"
   /** Cumul : parties jouées avec un préconstruit en essai (contre le bot). */
   | "precon_trials"
   // --- Stats ------------------------------------------------------------
@@ -87,14 +108,22 @@ export type QuestObjectiveKey =
   | "tide_fall"
   | "reach_abysses"
   /** Seuil par partie : la Marée a été poussée dans les deux sens. */
-  | "tide_both_ways_in_match";
+  | "tide_both_ways_in_match"
+  /**
+   * Seuil par partie : le joueur a réduit l'Ancrage adverse à EXACTEMENT 0
+   * — ni trop peu, ni dépassement. Observable grâce à
+   * `DamageEvent.targetAnchorAfter`.
+   */
+  | "exact_lethal";
 
 /**
  * Comment la progression d'un objectif s'agrège d'une partie à l'autre.
  * `sum` est le défaut historique ; `set` mémorise les valeurs distinctes
- * déjà vues (`player_quest_progress.progress_meta`).
+ * déjà vues (`player_quest_progress.progress_meta`) ; `max` garde la plus
+ * grande valeur rencontrée, pour les objectifs qui décrivent un ÉTAT du
+ * compte (une série de jours) plutôt qu'une accumulation.
  */
-export type QuestProgressKind = "sum" | "set";
+export type QuestProgressKind = "sum" | "set" | "max";
 
 export interface QuestDefinition {
   /** Identifiant stable, clé de synchronisation avec la table `quests` (`quests.code`). */
@@ -118,7 +147,11 @@ export interface QuestDefinition {
   botProgressAllowed: boolean;
 }
 
-/** Contributions cumulables d'une partie (`sum`). */
+/**
+ * Contributions d'une partie, par objectif. Interprétées selon le
+ * `QuestProgressKind` de l'objectif : additionnées (`sum`) ou comparées
+ * (`max`). Les objectifs `set` passent par `MatchQuestSets`.
+ */
 export type MatchQuestProgress = Partial<Record<QuestObjectiveKey, number>>;
 
 /**

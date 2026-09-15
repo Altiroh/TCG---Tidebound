@@ -331,7 +331,7 @@ export function resolveEffect(
       for (const player of resolvePlayerTargets(state, effect, context)) {
         const current = getPlayer(nextState, player.id);
         nextState = replacePlayer(nextState, { ...current, anchor: current.anchor - amount });
-        events.push({ ...base, type: "DAMAGE", targetPlayerId: player.id, amount });
+        events.push({ ...base, type: "DAMAGE", targetPlayerId: player.id, amount, targetAnchorAfter: current.anchor - amount });
       }
 
       return { state: nextState, events };

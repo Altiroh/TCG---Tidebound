@@ -337,6 +337,9 @@ export interface Database {
           daily_matches_count: number;
           /** Jetons de Préconstruit disponibles (Notion « Progression joueur » §4). */
           precon_tokens: number;
+          play_streak_day: string | null;
+          play_streak: number;
+          best_play_streak: number;
           updated_at: string;
         };
         Insert: Record<string, never>;
@@ -500,7 +503,7 @@ export interface Database {
           /** `[{ level, items: LevelRewardItem[] }]` — chaque palier n'est appliqué qu'une fois. */
           p_level_rewards: unknown;
         };
-        Returns: { granted: boolean; xp_total: number; level: number; precon_tokens_gained?: number };
+        Returns: { granted: boolean; xp_total: number; level: number; precon_tokens_gained?: number; play_streak?: number };
       };
       purchase_booster: {
         Args: { p_user_id: string; p_booster_id: string; p_quantity?: number };
@@ -566,7 +569,7 @@ export interface Database {
           /** Valeurs DISTINCTES apportées par la partie (objectifs `set`). */
           p_sets?: Record<string, string[]>;
         };
-        Returns: { ok: boolean; recorded: boolean; completed: number };
+        Returns: { ok: boolean; recorded: boolean; completed: number; dailies_completed?: number };
       };
       claim_quest_reward: {
         Args: { p_user_id: string; p_quest_id: string; p_period_key: string };

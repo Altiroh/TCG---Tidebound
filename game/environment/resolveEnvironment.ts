@@ -108,7 +108,9 @@ function applyAbyssesEntryOrExit(
       const before = state.players[i]!;
       const after = players[i]!;
       const loss = computeAbyssesEntryLoss(before);
-      if (loss.anchor > 0) events.push({ ...base, type: "DAMAGE", targetPlayerId: before.id, amount: loss.anchor });
+      if (loss.anchor > 0) {
+        events.push({ ...base, type: "DAMAGE", targetPlayerId: before.id, amount: loss.anchor, targetAnchorAfter: after.anchor });
+      }
       if (after.reason !== before.reason) {
         events.push({ ...base, type: "REASON_CHANGED", playerId: before.id, delta: after.reason - before.reason });
       }
@@ -328,7 +330,8 @@ export function resolveTideTurnStep(
       ],
     };
     for (const p of nextState.players) {
-      events.push({ ...base, type: "DAMAGE", targetPlayerId: p.id, amount: tideAnomaly.anchorDamagePerShip });
+      // `nextState` porte déjà la perte : `p.anchor` est l'Ancrage d'après.
+      events.push({ ...base, type: "DAMAGE", targetPlayerId: p.id, amount: tideAnomaly.anchorDamagePerShip, targetAnchorAfter: p.anchor });
     }
   }
 
@@ -388,7 +391,9 @@ export function resolveTideTurnStep(
       graveyard,
     };
 
-    if (anchorLoss > 0) events.push({ ...base, type: "DAMAGE", targetPlayerId: player.id, amount: anchorLoss });
+    if (anchorLoss > 0) {
+      events.push({ ...base, type: "DAMAGE", targetPlayerId: player.id, amount: anchorLoss, targetAnchorAfter: player.anchor - anchorLoss });
+    }
     if (reasonLoss > 0) events.push({ ...base, type: "REASON_CHANGED", playerId: player.id, delta: -reasonLoss });
   }
 

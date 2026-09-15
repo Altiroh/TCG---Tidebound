@@ -7,6 +7,7 @@ import {
   levelRewardsLabel,
   nextMilestones,
   progressionView,
+  utcDayKey,
   type LoginRewardItem,
   type ProgressionView,
 } from "@/game/progression";
@@ -49,6 +50,8 @@ export interface ProfileSummary {
   preconTokens: number;
   matchesPlayed: number;
   wins: number;
+  /** Série de jours consécutifs joués : la courante, et la meilleure tenue. */
+  playStreak: { current: number; best: number };
   /** Récompense du niveau suivant, en toutes lettres. */
   nextLevelReward: string;
   /** Prochains gros paliers (niveau + libellé). */
@@ -76,6 +79,7 @@ const SIGNED_OUT: ProfileSummary = {
   preconTokens: 0,
   matchesPlayed: 0,
   wins: 0,
+  playStreak: { current: 0, best: 0 },
   nextLevelReward: "—",
   upcomingMilestones: [],
   claimedLevels: [],
@@ -84,6 +88,14 @@ const SIGNED_OUT: ProfileSummary = {
   cardBacks: { options: [], equipped: DEFAULT_CARD_BACK_ID },
   maxRewardedLevelReached: false,
 };
+
+/** `true` si une série dont le dernier jour compté est `day` court toujours. */
+function isStreakAlive(day: string | null): boolean {
+  if (!day) return false;
+  const today = utcDayKey();
+  const yesterday = utcDayKey(new Date(Date.now() - 86_400_000));
+  return day === today || day === yesterday;
+}
 
 export async function fetchProfile(): Promise<ProfileSummary> {
   try {
@@ -99,7 +111,7 @@ export async function fetchProfile(): Promise<ProfileSummary> {
 
     const service = createSupabaseServiceRoleClient();
     const [progression, currency, profile, claimed, unlocked, login, cardBacks] = await Promise.all([
-      service.from("player_progression").select("xp_total, level, matches_played, pvp_wins, precon_tokens").eq("user_id", user.id).maybeSingle(),
+      service.from("player_progression").select("xp_total, level, matches_played, pvp_wins, precon_tokens, play_streak, best_play_streak, play_streak_day").eq("user_id", user.id).maybeSingle(),
       service.from("player_currency").select("balance").eq("user_id", user.id).maybeSingle(),
       service.from("profiles").select("display_name").eq("id", user.id).maybeSingle(),
       service.from("player_level_rewards").select("level").eq("user_id", user.id).order("level", { ascending: false }).limit(8),
@@ -119,6 +131,15 @@ export async function fetchProfile(): Promise<ProfileSummary> {
       preconTokens: progression.data?.precon_tokens ?? 0,
       matchesPlayed: progression.data?.matches_played ?? 0,
       wins: progression.data?.pvp_wins ?? 0,
+      // Une série ne se met à jour qu'en jouant : affichée telle quelle, une
+      // série vieille de trois jours se lirait « 5 jours d'affilée » alors
+      // qu'elle est morte. On la considère vivante seulement si le dernier
+      // jour compté est aujourd'hui ou hier — c'est exactement la fenêtre
+      // dans laquelle une partie la prolongerait.
+      playStreak: {
+        current: isStreakAlive(progression.data?.play_streak_day ?? null) ? (progression.data?.play_streak ?? 0) : 0,
+        best: progression.data?.best_play_streak ?? 0,
+      },
       nextLevelReward: view.level >= MAX_REWARDED_LEVEL ? "—" : levelRewardsLabel(view.level + 1),
       upcomingMilestones: nextMilestones(view.level, 3).map((level) => ({ level, label: levelRewardsLabel(level), claimed: false })),
       claimedLevels: (claimed.data ?? []).map((row) => ({ level: row.level, label: levelRewardsLabel(row.level), claimed: true })),

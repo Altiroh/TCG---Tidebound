@@ -115,7 +115,15 @@ export function endTurn(state: GameState, action: EndTurnAction): ActionResult {
     };
     events.push({ ...base, type: "DERAISON_SETTLED", playerId: playerEndingTurn.id, debt, anchorDamage });
     // Pas de REASON_CHANGED pour la remise à 0 : DERAISON_SETTLED la porte déjà (évite un "+N Raison" trompeur dans le journal).
-    if (anchorDamage > 0) events.push({ ...base, type: "DAMAGE", targetPlayerId: playerEndingTurn.id, amount: anchorDamage });
+    if (anchorDamage > 0) {
+      events.push({
+        ...base,
+        type: "DAMAGE",
+        targetPlayerId: playerEndingTurn.id,
+        amount: anchorDamage,
+        targetAnchorAfter: playerEndingTurn.anchor - anchorDamage,
+      });
+    }
   }
 
   const nextPlayer = getOpponent(nextState, action.playerId);

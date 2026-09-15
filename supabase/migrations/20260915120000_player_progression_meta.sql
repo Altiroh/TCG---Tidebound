@@ -45,7 +45,19 @@ alter table public.player_progression
   add column if not exists daily_matches_count integer not null default 0 check (daily_matches_count >= 0),
   -- Jetons de Préconstruit (§4) — ressource persistée du joueur, dépensée
   -- dans Decks → Préconstruits.
-  add column if not exists precon_tokens integer not null default 0 check (precon_tokens >= 0);
+  add column if not exists precon_tokens integer not null default 0 check (precon_tokens >= 0),
+  -- SÉRIE DE JOURS JOUÉS (« Marin régulier »). Trois colonnes plutôt
+  -- qu'une : `play_streak_day` est le dernier jour COMPTÉ, sans quoi
+  -- plusieurs parties le même jour gonfleraient la série ; `play_streak`
+  -- est la série courante ; `best_play_streak` la garde en mémoire pour le
+  -- profil, une série cassée ne devant pas effacer ce qui a été tenu.
+  --
+  -- Une série n'est pas dérivable après coup : sans ces colonnes il
+  -- faudrait un historique de toutes les parties, et « 3 jours d'affilée »
+  -- resterait indistinguable de « 3 jours dans le mois ».
+  add column if not exists play_streak_day date,
+  add column if not exists play_streak integer not null default 0 check (play_streak >= 0),
+  add column if not exists best_play_streak integer not null default 0 check (best_play_streak >= 0);
 
 -- ======================================================================
 -- 3. PALIERS DE NIVEAU DÉJÀ OCTROYÉS
@@ -307,6 +319,7 @@ declare
   v_item jsonb;
   v_level_value integer;
   v_extra_tides integer := 0;
+  v_streak integer := 0;
 begin
   perform public.assert_server_caller('grant_match_progression');
 
@@ -330,7 +343,7 @@ begin
 
   insert into public.player_progression (
     user_id, xp_total, level, matches_played, pvp_wins, last_pvp_win_day, last_win_day,
-    daily_matches_day, daily_matches_count
+    daily_matches_day, daily_matches_count, play_streak_day, play_streak, best_play_streak
   )
   values (
     p_user_id,
@@ -341,7 +354,10 @@ begin
     case when p_is_pvp_win then v_today else null end,
     case when p_is_win then v_today else null end,
     v_today,
-    case when p_counts_for_daily then 1 else 0 end
+    case when p_counts_for_daily then 1 else 0 end,
+    v_today,
+    1,
+    1
   )
   on conflict (user_id) do update set
     xp_total = player_progression.xp_total + p_xp,
@@ -356,8 +372,27 @@ begin
       when player_progression.daily_matches_day is distinct from v_today then case when p_counts_for_daily then 1 else 0 end
       else player_progression.daily_matches_count + case when p_counts_for_daily then 1 else 0 end
     end,
+    -- SÉRIE. Trois cas, et un seul incrémente : même jour (rien ne bouge,
+    -- la série se compte en jours, pas en parties), veille (+1), plus
+    -- ancien ou jamais (la série repart à 1 — cette partie-ci en est le
+    -- premier jour, pas 0).
+    play_streak = case
+      when player_progression.play_streak_day = v_today then greatest(player_progression.play_streak, 1)
+      when player_progression.play_streak_day = v_today - 1 then player_progression.play_streak + 1
+      else 1
+    end,
+    play_streak_day = v_today,
+    best_play_streak = greatest(
+      player_progression.best_play_streak,
+      case
+        when player_progression.play_streak_day = v_today then greatest(player_progression.play_streak, 1)
+        when player_progression.play_streak_day = v_today - 1 then player_progression.play_streak + 1
+        else 1
+      end
+    ),
     updated_at = now()
-  returning player_progression.xp_total, player_progression.level into v_xp_total, v_level;
+  returning player_progression.xp_total, player_progression.level, player_progression.play_streak
+  into v_xp_total, v_level, v_streak;
 
   -- --- paliers franchis, un par un et une seule fois --------------------
   for v_reward in select * from jsonb_array_elements(coalesce(p_level_rewards, '[]'::jsonb)) loop
@@ -417,7 +452,16 @@ begin
     values (p_user_id, p_tides, 'match_reward', p_match_id);
   end if;
 
-  return jsonb_build_object('granted', true, 'xp_total', v_xp_total, 'level', v_level, 'precon_tokens_gained', v_tokens);
+  -- `play_streak` remonte à l'appelant : la progression des quêtes de série
+  -- en a besoin, et la relire séparément ouvrirait une fenêtre où une autre
+  -- partie l'aurait déjà changée.
+  return jsonb_build_object(
+    'granted', true,
+    'xp_total', v_xp_total,
+    'level', v_level,
+    'precon_tokens_gained', v_tokens,
+    'play_streak', v_streak
+  );
 end;
 $$;
 
@@ -786,6 +830,13 @@ as $$
 declare
   v_completed integer := 0;
   v_set_completed integer := 0;
+  v_max_completed integer := 0;
+  v_meta_completed integer := 0;
+  -- Journalières qui viennent de basculer : c'est ce que compte la
+  -- méta-quête « Terminer N quêtes journalières ».
+  v_daily_completed integer := 0;
+  v_daily_from_sets integer := 0;
+  v_daily_from_max integer := 0;
 begin
   perform public.assert_server_caller('record_match_quest_progress');
 
@@ -814,9 +865,13 @@ begin
         and p_progress ? q.objective_key
         and (p_progress ->> q.objective_key)::integer > 0
         and (not p_vs_bot or q.bot_progress_allowed)
-      returning pqp.completed_at
+      returning pqp.completed_at, q.quest_type
   )
-  select count(*) filter (where completed_at is not null) into v_completed from advanced;
+  select
+    count(*) filter (where completed_at is not null),
+    count(*) filter (where completed_at is not null and quest_type = 'daily')
+  into v_completed, v_daily_completed
+  from advanced;
 
   -- --- objectifs d'ensemble ---------------------------------------------
   -- Union de l'ensemble mémorisé et des valeurs apportées par la partie,
@@ -826,6 +881,7 @@ begin
       pqp.quest_id,
       pqp.period_key,
       q.target_value,
+      q.quest_type,
       (
         select coalesce(jsonb_agg(distinct value), '[]'::jsonb)
         from (
@@ -850,11 +906,78 @@ begin
           completed_at = case when jsonb_array_length(m.next_meta) >= m.target_value then now() else null end
       from merged m
       where pqp.user_id = p_user_id and pqp.quest_id = m.quest_id and pqp.period_key = m.period_key
-      returning pqp.completed_at
+      returning pqp.completed_at, m.quest_type
   )
-  select count(*) filter (where completed_at is not null) into v_set_completed from advanced_sets;
+  select
+    count(*) filter (where completed_at is not null),
+    count(*) filter (where completed_at is not null and quest_type = 'daily')
+  into v_set_completed, v_daily_from_sets
+  from advanced_sets;
 
-  return jsonb_build_object('ok', true, 'recorded', true, 'completed', v_completed + v_set_completed);
+  -- --- objectifs de MAXIMUM ---------------------------------------------
+  -- La valeur reçue est un ÉTAT du compte (une série de jours), pas un
+  -- incrément : on garde la plus grande vue pendant la période. Une série
+  -- cassée fait donc redescendre le compte du joueur sans défaire la quête
+  -- — perdre une quête déjà gagnée parce qu'on a sauté un soir serait la
+  -- punir deux fois.
+  with advanced_max as (
+    update public.player_quest_progress pqp
+      set progress_value = least(q.target_value, greatest(pqp.progress_value, (p_progress ->> q.objective_key)::integer)),
+          completed_at = case
+            when greatest(pqp.progress_value, (p_progress ->> q.objective_key)::integer) >= q.target_value then now()
+            else null
+          end
+      from public.quests q
+      where q.id = pqp.quest_id
+        and pqp.user_id = p_user_id
+        and pqp.period_key = any (p_period_keys)
+        and pqp.completed_at is null
+        and q.progress_kind = 'max'
+        and p_progress ? q.objective_key
+        and (p_progress ->> q.objective_key)::integer > 0
+        and (not p_vs_bot or q.bot_progress_allowed)
+      returning pqp.completed_at, q.quest_type
+  )
+  select
+    count(*) filter (where completed_at is not null),
+    count(*) filter (where completed_at is not null and quest_type = 'daily')
+  into v_max_completed, v_daily_from_max
+  from advanced_max;
+
+  v_daily_completed := v_daily_completed + v_daily_from_sets + v_daily_from_max;
+
+  -- --- méta-quête : « Terminer N quêtes journalières » -------------------
+  -- Elle se nourrit des passes ci-dessus, et doit donc venir APRÈS elles.
+  -- Aucune boucle possible : son objectif n'est jamais dans `p_progress`,
+  -- les passes précédentes ne peuvent pas la toucher, et elle ne compte que
+  -- des quêtes JOURNALIÈRES alors qu'elle est hebdomadaire.
+  --
+  -- Compte la COMPLÉTION, pas la réclamation : une journalière terminée et
+  -- laissée sans être réclamée compte quand même — c'est de l'avoir faite
+  -- qu'on récompense.
+  if v_daily_completed > 0 then
+    with advanced_meta as (
+      update public.player_quest_progress pqp
+        set progress_value = least(q.target_value, pqp.progress_value + v_daily_completed),
+            completed_at = case when pqp.progress_value + v_daily_completed >= q.target_value then now() else null end
+        from public.quests q
+        where q.id = pqp.quest_id
+          and pqp.user_id = p_user_id
+          and pqp.period_key = any (p_period_keys)
+          and pqp.completed_at is null
+          and q.objective_key = 'complete_daily_quests'
+          and (not p_vs_bot or q.bot_progress_allowed)
+        returning pqp.completed_at
+    )
+    select count(*) filter (where completed_at is not null) into v_meta_completed from advanced_meta;
+  end if;
+
+  return jsonb_build_object(
+    'ok', true,
+    'recorded', true,
+    'completed', v_completed + v_set_completed + v_max_completed + v_meta_completed,
+    'dailies_completed', v_daily_completed
+  );
 end;
 $$;
 

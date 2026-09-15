@@ -12,6 +12,7 @@ import type { Database } from "@/lib/supabase/types";
 import { awardMatchReward } from "@/features/progression/rewards";
 import { botCountsAsPvp } from "@/features/progression/botRewardPolicy";
 import { recordMatchQuestProgress } from "@/features/quests/questService";
+import { isRecentDeck } from "@/features/decks/recentDecks";
 import { packFrames, type PackedFrames } from "@/features/matches/matchFrames";
 
 /**
@@ -176,7 +177,8 @@ async function settleFinishedMatch(match: MatchRow, finalState: GameState): Prom
   await Promise.all(
     participants.map(async (userId) => {
       const won = winner === userId;
-      await awardMatchReward({
+      const deckId = userId === match.player1_id ? match.player1_deck_id : (match.player2_deck_id ?? undefined);
+      const reward = await awardMatchReward({
         matchId: match.id,
         userId,
         mode: match.mode,
@@ -200,7 +202,12 @@ async function settleFinishedMatch(match: MatchRow, finalState: GameState): Prom
         // Deck joué par CE participant : les objectifs de la catégorie
         // Decks (« jouer avec 2 decks différents ») comptent des decks
         // distincts, pas des parties.
-        deckId: userId === match.player1_id ? match.player1_deck_id : (match.player2_deck_id ?? undefined),
+        deckId,
+        // Série : la valeur d'APRÈS cette partie, telle que l'octroi vient
+        // de l'écrire. `null` quand la partie avait déjà payé (rejeu) : la
+        // quête de série ne bouge alors pas, ce qui est correct.
+        playStreak: reward?.playStreak,
+        deckIsNew: await isRecentDeck(userId, deckId),
       });
     })
   );

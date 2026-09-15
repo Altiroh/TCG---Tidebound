@@ -43,6 +43,17 @@ export interface AwardMatchRewardInput {
   botCountsAsPvp?: boolean;
 }
 
+export interface AwardedMatchReward extends MatchReward {
+  /**
+   * Série de jours consécutifs joués APRÈS cette partie, telle que la base
+   * la porte. Renvoyée par `grant_match_progression` plutôt que relue :
+   * entre l'octroi et une relecture, une autre partie pourrait l'avoir
+   * changée, et la quête de série serait créditée d'une valeur qui n'est
+   * pas celle de cette partie.
+   */
+  playStreak: number;
+}
+
 /**
  * Octroie les récompenses d'une partie TERMINÉE à un joueur.
  *
@@ -64,7 +75,7 @@ export async function awardMatchReward({
   finalState,
   enginePlayerId,
   botCountsAsPvp = false,
-}: AwardMatchRewardInput): Promise<MatchReward | null> {
+}: AwardMatchRewardInput): Promise<AwardedMatchReward | null> {
   try {
     const service = createSupabaseServiceRoleClient();
     const today = utcDayKey();
@@ -126,7 +137,7 @@ export async function awardMatchReward({
     // l'événement — un exploit manqué se rattrape à la partie suivante.
     await syncAchievements(userId);
 
-    return reward;
+    return { ...reward, playStreak: data.play_streak ?? 0 };
   } catch (error) {
     console.error("[awardMatchReward] Échec :", error);
     return null;

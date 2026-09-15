@@ -133,6 +133,16 @@ export function ProfileScreen({ profile }: ProfileScreenProps) {
                   <span className={styles.statValue}>{unlockedAchievements}</span>
                   <span className={styles.statLabel}>Exploits</span>
                 </span>
+                {/* Série de jours joués. Le record n'apparaît que s'il
+                    dépasse la série en cours : sinon il répète la même
+                    chose deux fois. */}
+                <span className={styles.stat} title={`Meilleure série tenue : ${profile.playStreak.best} jour${profile.playStreak.best > 1 ? "s" : ""}`}>
+                  <span className={styles.statValue}>{profile.playStreak.current}</span>
+                  <span className={styles.statLabel}>
+                    Jour{profile.playStreak.current > 1 ? "s" : ""} d&apos;affilée
+                    {profile.playStreak.best > profile.playStreak.current && ` · record ${profile.playStreak.best}`}
+                  </span>
+                </span>
               </div>
 
               {profile.preconTokens > 0 && (

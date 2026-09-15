@@ -69,6 +69,17 @@ export interface DamageEvent extends BaseGameEvent {
   targetInstanceId?: string;
   targetPlayerId?: PlayerId;
   amount: number;
+  /**
+   * Ancrage du Navire APRÈS ce coup — renseigné uniquement pour les dégâts
+   * à un joueur (`targetPlayerId`). L'Ancrage n'est jamais borné à 0 : une
+   * valeur négative est un dépassement, et `0` signifie donc que le coup a
+   * porté EXACTEMENT ce qu'il fallait.
+   *
+   * Sans lui, un observateur du journal sait qu'un Navire est tombé, pas
+   * s'il est tombé au point exact — l'information n'existe nulle part
+   * ailleurs, puisque l'Ancrage bouge aussi par soin et par Marée.
+   */
+  targetAnchorAfter?: number;
 }
 
 export interface HealEvent extends BaseGameEvent {

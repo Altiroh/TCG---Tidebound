@@ -19,12 +19,15 @@ import type { QuestCategory, QuestDefinition, QuestObjectiveKey, QuestProgressKi
  *     jour — l'équivalent d'un booster (150 Tides) ;
  *   - 1 remplacement gratuit par jour.
  *
- * Les quêtes reprises ci-dessous sont celles de la page dont l'objectif est
- * OBSERVABLE avec les événements actuels du moteur. Celles qui demandent un
- * suivi encore absent (rétention inter-journées, « X quêtes complétées »,
- * « deck récemment créé », « exactement les dégâts nécessaires ») ne sont
- * pas inventées à moitié : elles attendent leur mécanique plutôt que
- * d'exister en approximation.
+ * Toutes les quêtes de la page y sont désormais, y compris les quatre qui
+ * demandaient un suivi absent du moteur et qui l'ont reçu :
+ *   - rétention inter-journées → `player_progression.play_streak` et
+ *     l'ensemble des jours joués (`play_days`) ;
+ *   - « X quêtes journalières complétées » → compté par
+ *     `record_match_quest_progress` au moment où une journalière bascule ;
+ *   - « deck récemment créé » → `decks.created_at` et une fenêtre de
+ *     `NEW_DECK_WINDOW_HOURS` ;
+ *   - « exactement les dégâts nécessaires » → `DamageEvent.targetAnchorAfter`.
  *
  * Ce fichier est la SOURCE DE VÉRITÉ : la table `quests` n'en est qu'un
  * miroir, synchronisé par `npm run seed:cards` (comme `cards`).
@@ -91,13 +94,18 @@ export const QUEST_CATEGORY_META: Record<QuestCategory, { label: string; icon: s
  * Forme d'agrégation de chaque objectif.
  *
  * `sum` (défaut) additionne d'une partie à l'autre ; `set` compte des
- * valeurs DISTINCTES. Un objectif « seuil par partie » reste un `sum` : la
- * partie rapporte 1 quand le seuil est atteint, 0 sinon — c'est
- * `computeMatchQuestProgress` qui évalue le seuil, pas la base.
+ * valeurs DISTINCTES ; `max` garde la plus grande valeur vue. Un objectif
+ * « seuil par partie » reste un `sum` : la partie rapporte 1 quand le seuil
+ * est atteint, 0 sinon — c'est `computeMatchQuestProgress` qui évalue le
+ * seuil, pas la base.
  */
 export const QUEST_PROGRESS_KIND: Partial<Record<QuestObjectiveKey, QuestProgressKind>> = {
   distinct_decks_played: "set",
   distinct_decks_won: "set",
+  play_days: "set",
+  // Une série est un état du compte : on retient la meilleure atteinte
+  // pendant la période, et une série cassée ne défait pas la quête.
+  play_streak: "max",
 };
 
 export function questProgressKind(objectiveKey: QuestObjectiveKey): QuestProgressKind {
@@ -115,6 +123,16 @@ export const LONG_MATCH_TURNS = 8;
 
 /** Dégâts en un seul tour pour « Gros calibre ». */
 export const BIG_TURN_DAMAGE = 10;
+
+/**
+ * Fenêtre pendant laquelle un deck est considéré comme « récemment créé »
+ * (« Essayer un deck fraîchement monté »).
+ *
+ * 24 heures glissantes, et non « depuis le début de la journée UTC » : un
+ * deck monté à 23 h vaudrait sinon une quête de dix minutes. La fenêtre
+ * couvre la soirée de montage ET la session du lendemain.
+ */
+export const NEW_DECK_WINDOW_HOURS = 24;
 
 /** Libellés joueur de chaque objectif, en fonction de la cible. */
 export const QUEST_OBJECTIVE_LABELS: Record<QuestObjectiveKey, (target: number) => string> = {
@@ -136,10 +154,17 @@ export const QUEST_OBJECTIVE_LABELS: Record<QuestObjectiveKey, (target: number) 
   win_matches: (n) => `Gagner ${n} partie${n > 1 ? "s" : ""}`,
   win_pvp_matches: (n) => `Gagner ${n} partie${n > 1 ? "s" : ""} en PvP`,
   long_matches: (n) => `Atteindre le tour ${LONG_MATCH_TURNS} dans ${n} partie${n > 1 ? "s" : ""}`,
+  play_days: (n) => `Jouer au moins une partie sur ${n} jours différents`,
+  play_streak: (n) => `Jouer ${n} jours d'affilée`,
+  complete_daily_quests: (n) => `Terminer ${n} quêtes journalières`,
   // Decks
   distinct_decks_played: (n) => `Jouer avec ${n} decks différents`,
   distinct_decks_won: (n) => `Gagner avec ${n} decks différents`,
   precon_trials: (n) => (n > 1 ? `Essayer ${n} préconstruits contre le bot` : "Essayer un préconstruit contre le bot"),
+  play_new_deck: (n) =>
+    n > 1
+      ? `Jouer ${n} parties avec un deck créé dans les ${NEW_DECK_WINDOW_HOURS} dernières heures`
+      : `Jouer une partie avec un deck créé dans les ${NEW_DECK_WINDOW_HOURS} dernières heures`,
   // Stats
   deal_damage: (n) => `Infliger ${n} dégâts au total`,
   take_damage: (n) => `Subir ${n} dégâts au total`,
@@ -160,6 +185,10 @@ export const QUEST_OBJECTIVE_LABELS: Record<QuestObjectiveKey, (target: number) 
   reach_abysses: (n) => `Atteindre les Abysses ${n} fois`,
   tide_both_ways_in_match: (n) =>
     n > 1 ? `Faire évoluer la Marée dans les deux sens, dans ${n} parties` : "Faire évoluer la Marée dans les deux sens dans une même partie",
+  exact_lethal: (n) =>
+    n > 1
+      ? `Achever ${n} Navires en portant exactement les dégâts nécessaires`
+      : "Achever un Navire en portant exactement les dégâts nécessaires",
 };
 
 /** Barème des quotidiennes (« environ 30 à 50 Tides + XP »). */
@@ -211,6 +240,15 @@ export const QUEST_CATALOG: readonly QuestDefinition[] = [
   { code: "weekly_win_matches_7", name: "Vieux loup de mer", category: "parties", questType: "weekly", objectiveKey: "win_matches", targetValue: 7, ...WEEKLY.standard, botProgressAllowed: true },
   { code: "weekly_play_matches_20", name: "Une longue semaine", category: "parties", questType: "weekly", objectiveKey: "play_matches", targetValue: 20, ...WEEKLY.standard, botProgressAllowed: true },
   { code: "weekly_win_pvp_8", name: "Pavillon haut", category: "parties", questType: "weekly", objectiveKey: "win_pvp_matches", targetValue: 8, ...WEEKLY.standard, botProgressAllowed: false },
+  // Régularité. Volontairement hebdomadaires : une quête de série n'a aucun
+  // sens sur une journée, et « 3 jours sur 7 » reste tenable pour un joueur
+  // qui saute une soirée.
+  { code: "weekly_play_days_3", name: "Marin régulier", category: "parties", questType: "weekly", objectiveKey: "play_days", targetValue: 3, ...WEEKLY.standard, botProgressAllowed: true },
+  { code: "weekly_play_days_5", name: "Toujours à quai", category: "parties", questType: "weekly", objectiveKey: "play_days", targetValue: 5, ...WEEKLY.booster, botProgressAllowed: true },
+  { code: "weekly_play_streak_3", name: "Trois jours de mer", category: "parties", questType: "weekly", objectiveKey: "play_streak", targetValue: 3, ...WEEKLY.standard, botProgressAllowed: true },
+  // Méta-quête : elle se nourrit des journalières terminées, pas du journal
+  // de partie. 8 pour une semaine, soit un peu moins de 3 jours pleins.
+  { code: "weekly_complete_dailies_8", name: "Carnet de bord tenu", category: "parties", questType: "weekly", objectiveKey: "complete_daily_quests", targetValue: 8, ...WEEKLY.booster, botProgressAllowed: true },
 
   // ======================================================================
   // 3. DECKS — varier les équipages.
@@ -221,6 +259,8 @@ export const QUEST_CATALOG: readonly QuestDefinition[] = [
   { code: "weekly_distinct_decks_3", name: "Un peu de tout", category: "decks", questType: "weekly", objectiveKey: "distinct_decks_played", targetValue: 3, ...WEEKLY.standard, botProgressAllowed: true },
   { code: "weekly_distinct_decks_won_3", name: "Tous les horizons", category: "decks", questType: "weekly", objectiveKey: "distinct_decks_won", targetValue: 3, ...WEEKLY.standard, botProgressAllowed: true },
   { code: "weekly_distinct_decks_4", name: "Tour du port", category: "decks", questType: "weekly", objectiveKey: "distinct_decks_played", targetValue: 4, ...WEEKLY.standard, botProgressAllowed: true },
+  { code: "daily_play_new_deck_1", name: "Sortie d'atelier", category: "decks", questType: "daily", objectiveKey: "play_new_deck", targetValue: 1, ...DAILY.standard, botProgressAllowed: true },
+  { code: "weekly_play_new_deck_3", name: "Chantier naval", category: "decks", questType: "weekly", objectiveKey: "play_new_deck", targetValue: 3, ...WEEKLY.standard, botProgressAllowed: true },
 
   // ======================================================================
   // 4. STATS — dégâts, Ancrage, survie.
@@ -235,6 +275,11 @@ export const QUEST_CATALOG: readonly QuestDefinition[] = [
   { code: "weekly_deal_damage_200", name: "Canon chargé", category: "stats", questType: "weekly", objectiveKey: "deal_damage", targetValue: 200, ...WEEKLY.standard, botProgressAllowed: true },
   { code: "weekly_take_damage_150", name: "Dur au mal", category: "stats", questType: "weekly", objectiveKey: "take_damage", targetValue: 150, ...WEEKLY.standard, botProgressAllowed: true },
   { code: "weekly_draw_extra_30", name: "Jamais rassasié", category: "stats", questType: "weekly", objectiveKey: "draw_extra_cards", targetValue: 30, ...WEEKLY.standard, botProgressAllowed: true },
+  // Achever au point exact demande de compter son Ancrage adverse : c'est
+  // une quête de calcul, pas de volume — d'où le barème « heavy » sur une
+  // cible de 1.
+  { code: "daily_exact_lethal_1", name: "Au point exact", category: "stats", questType: "daily", objectiveKey: "exact_lethal", targetValue: 1, ...DAILY.heavy, botProgressAllowed: true },
+  { code: "weekly_exact_lethal_3", name: "Main sûre", category: "stats", questType: "weekly", objectiveKey: "exact_lethal", targetValue: 3, ...WEEKLY.standard, botProgressAllowed: true },
 
   // ======================================================================
   // 5. MARÉE — la catégorie identitaire.

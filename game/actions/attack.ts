@@ -221,7 +221,13 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
         p.id === opponent.id ? { ...p, anchor: p.anchor - directDamage } : p
       ) as [PlayerState, PlayerState],
     };
-    events.push({ ...base, type: "DAMAGE", targetPlayerId: opponent.id, amount: directDamage });
+    events.push({
+      ...base,
+      type: "DAMAGE",
+      targetPlayerId: opponent.id,
+      amount: directDamage,
+      targetAnchorAfter: getPlayer(nextState, opponent.id).anchor,
+    });
 
     const reasonLoss = opponentReasonLossOnDirectAttack(attackerUnit, nextState);
     if (reasonLoss > 0) {

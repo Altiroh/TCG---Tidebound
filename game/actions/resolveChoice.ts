@@ -51,7 +51,13 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
     }
   } else {
     const player = getPlayer(nextState, action.playerId);
-    events.push({ ...base, type: "DAMAGE", targetPlayerId: action.playerId, amount: choice.anchorDamageAmount });
+    events.push({
+      ...base,
+      type: "DAMAGE",
+      targetPlayerId: action.playerId,
+      amount: choice.anchorDamageAmount,
+      targetAnchorAfter: player.anchor - choice.anchorDamageAmount,
+    });
     nextState = {
       ...nextState,
       players: nextState.players.map((p) =>

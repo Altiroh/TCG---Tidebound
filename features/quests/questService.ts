@@ -1,6 +1,7 @@
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import type { GameState, PlayerId } from "@/game";
 import { computeMatchQuestContribution, questPeriodKey, selectQuestsForPeriod, type QuestType } from "@/game/quests";
+import { utcDayKey } from "@/game/progression";
 
 /**
  * Quêtes — opérations SERVEUR (attribution, progression). Pas de directive
@@ -49,6 +50,13 @@ export interface RecordMatchQuestProgressInput {
    * d'être crédités sur un deck inconnu.
    */
   deckId?: string;
+  /**
+   * Série de jours consécutifs après cette partie, remontée par l'octroi
+   * (`awardMatchReward`). Absente : les objectifs de série n'avancent pas.
+   */
+  playStreak?: number;
+  /** `true` si le deck joué vient d'être créé ou obtenu (`isRecentDeck`). */
+  deckIsNew?: boolean;
 }
 
 /**
@@ -67,6 +75,12 @@ export async function recordMatchQuestProgress(input: RecordMatchQuestProgressIn
       vsBot: input.vsBot,
       won: input.won,
       deckId: input.deckId,
+      playStreak: input.playStreak,
+      deckIsNew: input.deckIsNew,
+      // Jour UTC de la FIN de partie : c'est lui qui alimente « jouer N
+      // jours différents », et il doit coller à la journée des autres
+      // bonus quotidiens (`utcDayKey`).
+      dayKey: utcDayKey(now),
     });
 
     const service = createSupabaseServiceRoleClient();
