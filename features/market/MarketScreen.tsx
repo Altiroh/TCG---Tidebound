@@ -57,6 +57,8 @@ export function MarketScreen({ inventory }: MarketScreenProps) {
   const total = onSale.reduce((sum, booster) => sum + (booster.price ?? 0) * (cart[booster.boosterId] ?? 0), 0);
   const itemCount = onSale.reduce((sum, booster) => sum + (cart[booster.boosterId] ?? 0), 0);
   const shortBy = Math.max(0, total - inventory.balance);
+  /** Exemplaires en réserve, tous types confondus — offerts compris (Bienvenue). */
+  const ownedCount = inventory.boosters.reduce((sum, booster) => sum + booster.owned, 0);
 
   function setQuantity(boosterId: string, quantity: number) {
     setCart((current) => ({ ...current, [boosterId]: Math.min(MAX_PURCHASE_QUANTITY, Math.max(0, quantity)) }));
@@ -125,7 +127,29 @@ export function MarketScreen({ inventory }: MarketScreenProps) {
     <GameScreen active="market" nav="minimal">
       <div className={styles.layout}>
         <div className={styles.layoutInner}>
-          <h1 className={game.title}>Market</h1>
+          {/* Le titre, et le chemin vers la réserve : acheter n'a de sens
+              que pour ouvrir ensuite, le lien reste donc toujours à portée —
+              pas seulement dans l'alerte qui suit un achat. */}
+          <div className={styles.titleRow}>
+            <h1 className={game.title}>Market</h1>
+            {inventory.isSignedIn && (
+              <Link
+                href="/boosters"
+                className={styles.reserveLink}
+                data-waiting={ownedCount > 0 ? "true" : "false"}
+                onClick={() => playButtonClick()}
+              >
+                <span className={styles.reserveIcon} style={closedPackVariables(getBoosterPackVisual("standard"))} aria-hidden />
+                <span className={styles.reserveText}>
+                  <span className={styles.reserveTitle}>Mes boosters</span>
+                  <span className={styles.reserveCount}>
+                    {ownedCount > 0 ? `${ownedCount} à ouvrir` : "Réserve vide"}
+                  </span>
+                </span>
+                <span aria-hidden>→</span>
+              </Link>
+            )}
+          </div>
 
           {!inventory.isSignedIn ? (
             <div className={`${game.panel} ${game.empty}`}>

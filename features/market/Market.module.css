@@ -308,3 +308,86 @@
   .shelfItem:active:not(:disabled) .shelfPack { transform: none; }
   .cartBadge { animation: none; }
 }
+
+/* ── Titre + accès à la réserve ─────────────────────────────── */
+.titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.reserveLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 16px 6px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: rgba(8, 18, 30, 0.62);
+  color: var(--ink);
+  text-decoration: none;
+  transition: border-color 160ms ease-out, background-color 160ms ease-out, transform 160ms ease-out;
+}
+
+.reserveLink:hover {
+  border-color: var(--cb-cyan);
+  background: rgba(13, 52, 69, 0.7);
+  transform: translateX(2px);
+}
+
+.reserveLink:focus-visible {
+  outline: 2px solid var(--cb-cyan);
+  outline-offset: 2px;
+}
+
+/* Des boosters attendent : le lien se signale, sans clignoter. */
+.reserveLink[data-waiting="true"] {
+  border-color: rgba(199, 154, 78, 0.6);
+  animation: reserveWaiting 2.8s ease-in-out infinite;
+}
+
+@keyframes reserveWaiting {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(199, 154, 78, 0); }
+  50% { box-shadow: 0 0 0 4px rgba(199, 154, 78, 0.16); }
+}
+
+/* Le sachet fermé du Standard, en vignette. */
+.reserveIcon {
+  width: 26px;
+  height: 36px;
+  background-image: var(--pack-art);
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+}
+
+.reserveText {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.reserveTitle {
+  font-family: var(--cb-font-display);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.reserveCount {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.reserveLink[data-waiting="true"] .reserveCount {
+  color: #e5cf9e;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reserveLink[data-waiting="true"] { animation: none; }
+}
