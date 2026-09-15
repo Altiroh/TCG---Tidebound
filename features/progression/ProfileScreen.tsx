@@ -18,6 +18,7 @@ import { useCardBack } from "@/features/cosmetics/CardBackProvider";
 import { forgetProgression, notifyProgressionChanged } from "@/features/progression/progressionSync";
 import { ProfileIdentity } from "@/features/progression/ProfileIdentity";
 import { RewardIcon } from "@/features/progression/RewardIcon";
+import { AchievementBoard } from "@/features/progression/AchievementBoard";
 import { GameScreen } from "@/features/shell/GameScreen";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/progression/Profile.module.css";
@@ -406,21 +407,5 @@ function LevelRewardsTab({ profile }: { profile: ProfileSummary }) {
 /* ── Exploits ───────────────────────────────────────────────────── */
 
 function AchievementsTab({ profile }: { profile: ProfileSummary }) {
-  const unlocked = profile.achievements.filter((achievement) => achievement.unlocked).length;
-  return (
-    <section className={`${game.panel} ${styles.blockWide}`} aria-label="Exploits">
-      <h2 className={game.sectionTitle}>
-        Exploits <span className={game.muted}>· {unlocked} / {profile.achievements.length}</span>
-      </h2>
-      <ul className={styles.achievements}>
-        {profile.achievements.map((achievement) => (
-          <li key={achievement.code} className={achievement.unlocked ? styles.achievementDone : styles.achievement}>
-            <span className={styles.achievementName}>{achievement.name}</span>
-            <span>{achievement.description}</span>
-            <span>{achievement.unlocked ? `Obtenu · +${achievement.rewardTides} Tides` : `+${achievement.rewardTides} Tides`}</span>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
+  return <AchievementBoard achievements={profile.achievements} />;
 }
