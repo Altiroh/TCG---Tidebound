@@ -689,3 +689,28 @@
 .resaleNote { color: var(--ink-dim); }
 .resaleOk { color: var(--accent); }
 .resaleError { color: #e98b7a; }
+
+/* Confirmation de revente : on ne rachète pas une carte vendue. */
+.resaleConfirm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 9px 10px;
+  border: 1px solid rgba(233, 180, 90, 0.55);
+  border-radius: 9px;
+  background: rgba(60, 40, 12, 0.35);
+}
+
+.resaleConfirmText {
+  margin: 0;
+  font-size: clamp(11px, 1.3vh, 13px);
+  line-height: 1.4;
+  color: var(--ink);
+}
+
+.resaleButtonConfirm {
+  border-color: #e9b45a;
+  background: linear-gradient(180deg, rgba(150, 100, 30, 0.85), rgba(95, 60, 14, 0.85));
+  color: #fff6e0;
+}
+.resaleButtonConfirm:hover:not(:disabled) { border-color: #ffd27a; background: linear-gradient(180deg, rgba(180, 122, 38, 0.95), rgba(110, 70, 16, 0.95)); }

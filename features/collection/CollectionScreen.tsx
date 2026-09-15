@@ -7,6 +7,10 @@ import { CollectionSidebar } from "@/features/collection/CollectionSidebar";
 import { CollectionToolbar } from "@/features/collection/CollectionToolbar";
 import { BorrowedDeckPrompt } from "@/features/collection/BorrowedDeckPrompt";
 import { CardDetailModal } from "@/features/collection/card-detail/CardDetailModal";
+import { SurplusResaleDialog } from "@/features/collection/SurplusResaleDialog";
+import { surplusPlan } from "@/features/collection/recycleValue";
+import surplusStyles from "@/features/collection/SurplusResale.module.css";
+import { playButtonClick } from "@/lib/sound";
 import type { DeckCatalogView } from "@/features/decks/catalogService";
 import { useCardBrowser } from "@/features/collection/useCardBrowser";
 import { GameScreen } from "@/features/shell/GameScreen";
@@ -52,6 +56,12 @@ export function CollectionScreen({ isSignedIn, ownedCardIds, ownedCounts, catalo
   const owned = useMemo(() => (isSignedIn ? new Set(ownedCardIds) : null), [isSignedIn, ownedCardIds]);
   const browser = useCardBrowser({ owned });
   const [detailCardId, setDetailCardId] = useState<string | null>(null);
+  const [surplusOpen, setSurplusOpen] = useState(false);
+  // Figé à l'ouverture : le récapitulatif confirmé ne bouge pas sous les yeux
+  // quand la collection est relue après la vente.
+  const [surplusLines, setSurplusLines] = useState<ReturnType<typeof surplusPlan>>([]);
+  const surplus = useMemo(() => (isSignedIn ? surplusPlan(ownedCounts) : []), [isSignedIn, ownedCounts]);
+  const surplusCount = surplus.reduce((sum, line) => sum + line.quantity, 0);
 
   // Même pastille que la quantité du Deck Builder, ancrée au pied de la
   // carte. Rien sur une carte non possédée : l'estompage le dit déjà.
@@ -110,6 +120,24 @@ export function CollectionScreen({ isSignedIn, ownedCardIds, ownedCounts, catalo
             onSortChange={browser.setSort}
             onOpenFilters={() => browser.setDrawerOpen((open) => !open)}
             activeFilterCount={browser.activeFilterCount}
+            countAction={
+              isSignedIn ? (
+                <button
+                  type="button"
+                  className={surplusStyles.button}
+                  disabled={surplusCount === 0}
+                  title={surplusCount === 0 ? "Aucune carte au-delà du maximum d'un deck" : "Revendre les exemplaires au-delà du maximum d'un deck"}
+                  onClick={() => {
+                    playButtonClick();
+                    setSurplusLines(surplus);
+                    setSurplusOpen(true);
+                  }}
+                >
+                  Revendre le surplus
+                  {surplusCount > 0 && <span className={surplusStyles.buttonCount}>{surplusCount}</span>}
+                </button>
+              ) : undefined
+            }
           />
 
           <CardGrid
@@ -126,6 +154,8 @@ export function CollectionScreen({ isSignedIn, ownedCardIds, ownedCounts, catalo
       </div>
 
       {needsBorrowedDeck && catalog && <BorrowedDeckPrompt catalog={catalog} />}
+
+      {surplusOpen && <SurplusResaleDialog lines={surplusLines} onClose={() => setSurplusOpen(false)} />}
 
       {detailCardId && (
         <CardDetailModal

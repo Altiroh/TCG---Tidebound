@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { recycleCard } from "@/features/collection/recycleActions";
-import { recycleValueOf } from "@/features/collection/recycleValue";
+import { keptCopiesOf, recycleValueOf, surplusOf } from "@/features/collection/recycleValue";
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
 import styles from "@/features/collection/card-detail/CardDetail.module.css";
 import { playButtonClick } from "@/lib/sound";
@@ -15,37 +15,36 @@ interface CardDetailResaleProps {
 }
 
 /**
- * Revente des exemplaires EN DOUBLE, depuis la fiche de carte.
+ * Revente du SURPLUS, depuis la fiche de carte.
  *
- * Le prix suit la RARETÉ (`RECYCLE_VALUE`, dérivé du prix du booster) : plus
- * une carte est rare, plus elle se revend cher. C'est le catalogue qui le
- * dit, pas cet écran.
+ * On ne revend que ce qui dépasse le maximum d'exemplaires d'un deck
+ * (`keptCopiesOf`) : au-delà, une copie ne peut servir à aucun deck, la
+ * vendre ne coûte rien. En dessous, le bouton n'existe pas. Et la vente
+ * passe par une CONFIRMATION — on ne rachète pas une carte vendue.
  *
- * Deux règles, et elles sont tenues par le serveur — ce qui s'affiche ici
- * n'est qu'un miroir :
- *   - on garde TOUJOURS au moins un exemplaire de chaque carte, pour qu'une
- *     revente ne puisse jamais rendre un deck sauvegardé injouable, ni être
- *     un regret définitif ;
- *   - la possession est relue en base sous verrou : deux onglets ne peuvent
- *     pas revendre le même exemplaire deux fois.
+ * Le prix suit la RARETÉ (`RECYCLE_VALUE`). Le serveur tient les mêmes
+ * règles sous verrou (`recycle_card`, `p_keep`) : ce qui s'affiche ici
+ * n'est qu'un miroir.
  */
 export function CardDetailResale({ cardId, owned }: CardDetailResaleProps) {
   const router = useRouter();
+  const [confirming, setConfirming] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const unitValue = recycleValueOf(cardId);
-  // Doubles seulement : le dernier exemplaire n'est jamais vendable.
-  const spare = Math.max(0, owned - 1);
-  if (unitValue === null) return null;
+  const keep = keptCopiesOf(cardId);
+  const surplus = surplusOf(cardId, owned);
+  if (unitValue === null || keep === null) return null;
 
-  function sell(quantity: number) {
+  function sell() {
     playButtonClick();
     setError(null);
     setMessage(null);
     startTransition(async () => {
-      const result = await recycleCard(cardId, quantity);
+      const result = await recycleCard(cardId, surplus);
+      setConfirming(false);
       if (!result.ok) {
         setError(result.error ?? "Revente impossible.");
         return;
@@ -65,26 +64,51 @@ export function CardDetailResale({ cardId, owned }: CardDetailResaleProps) {
         <span className={styles.resaleValue}>{unitValue} Tides / exemplaire</span>
       </p>
 
-      {spare === 0 ? (
+      {surplus === 0 ? (
         <p className={styles.resaleNote}>
           {owned === 0
             ? "Tu ne possèdes pas encore cette carte."
-            : "Tu n'en as qu'un exemplaire — on garde toujours le dernier."}
+            : `${owned} / ${keep} exemplaire${keep > 1 ? "s" : ""} — rien en surplus. Seuls les exemplaires au-delà du maximum d'un deck se revendent.`}
         </p>
+      ) : confirming ? (
+        <div className={styles.resaleConfirm} role="alertdialog" aria-label="Confirmer la revente">
+          <p className={styles.resaleConfirmText}>
+            Revendre <b>{surplus}</b> exemplaire{surplus > 1 ? "s" : ""} pour <b>{unitValue * surplus} Tides</b> ? Tu en garderas {keep}.
+          </p>
+          <div className={styles.resaleActions}>
+            <button
+              type="button"
+              className={styles.resaleButton}
+              onClick={() => {
+                playButtonClick();
+                setConfirming(false);
+              }}
+              disabled={isPending}
+            >
+              Annuler
+            </button>
+            <button type="button" className={`${styles.resaleButton} ${styles.resaleButtonConfirm}`} onClick={sell} disabled={isPending}>
+              {isPending ? "Revente…" : "Confirmer la revente"}
+            </button>
+          </div>
+        </div>
       ) : (
         <>
           <div className={styles.resaleActions}>
-            <button type="button" className={styles.resaleButton} onClick={() => sell(1)} disabled={isPending}>
-              Revendre 1
+            <button
+              type="button"
+              className={styles.resaleButton}
+              onClick={() => {
+                playButtonClick();
+                setMessage(null);
+                setConfirming(true);
+              }}
+            >
+              Revendre le surplus ({surplus}) · {unitValue * surplus} Tides
             </button>
-            {spare > 1 && (
-              <button type="button" className={styles.resaleButton} onClick={() => sell(spare)} disabled={isPending}>
-                Revendre les {spare} doubles · {unitValue * spare} Tides
-              </button>
-            )}
           </div>
           <p className={styles.resaleNote}>
-            {owned} possédée{owned > 1 ? "s" : ""} · {spare} en double
+            {owned} possédée{owned > 1 ? "s" : ""} · maximum {keep} par deck · {surplus} en surplus
           </p>
         </>
       )}
