@@ -52,6 +52,8 @@ export interface TriggerSourceFilter {
   archetype?: ArchetypeId;
   /** Ou est précisément l'une de ces cartes (ex: un Péon, pour le Roi Abyssal). */
   cardIds?: string[];
+  /** Ou porte ce SOUS-TYPE (ex: "marionnette" — Lot 11, qui raisonne en sous-type et non en archétype). */
+  subtype?: string;
   /** Le déclencheur doit être contrôlé par le contrôleur de la capacité. Défaut : `true`. */
   sameController?: boolean;
   /** Exclut la carte elle-même — "un AUTRE Cra-Poiscail". Défaut : `true`. */

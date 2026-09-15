@@ -129,8 +129,8 @@ describe("table de récompenses 1-50 (Notion « Progression joueur » §6)", () 
 });
 
 describe("économie", () => {
-  it("le booster Standard vaut 150 Tides, et c'est la seule définition", () => {
-    expect(BOOSTER_STANDARD_PRICE).toBe(150);
+  it("le booster d'entrée vaut 100 Tides, et c'est la seule définition", () => {
+    expect(BOOSTER_STANDARD_PRICE).toBe(100);
     // Un gros palier vaut exactement un booster : c'est ce qui rend la
     // cadence « un booster tous les N jours » lisible dans toute la table.
     expect(TIDE_REWARD.milestone).toBe(BOOSTER_STANDARD_PRICE);

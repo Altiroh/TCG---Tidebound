@@ -270,7 +270,6 @@ export interface Database {
           is_purchasable: boolean;
           is_enabled: boolean;
           /** Raretés retirées du pool de CE booster (ex: pas d'Abyssale dans le Mini Booster de Bienvenue). */
-          pool_excluded_rarities: CardRarityEnum[];
         };
         Insert: Record<string, never>;
         Update: Record<string, never>;
@@ -357,6 +356,27 @@ export interface Database {
         Insert: Record<string, never>;
         Update: Record<string, never>;
         Relationships: [];
+      };
+      /** Quelles cartes peuvent tomber dans quel booster — source d'autorité de l'éligibilité. */
+      booster_pool_cards: {
+        Row: {
+          booster_definition_id: string;
+          card_id: string;
+          is_enabled: boolean;
+        };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        // Déclarée pour que `select("card_id, cards!inner(...)")` soit typé :
+        // sans elle, le client ne sait pas relier les deux tables.
+        Relationships: [
+          {
+            foreignKeyName: "booster_pool_cards_card_id_fkey";
+            columns: ["card_id"];
+            isOneToOne: false;
+            referencedRelation: "cards";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       player_cosmetics: {
         Row: {
@@ -636,4 +656,5 @@ export interface Database {
 type CardTypeEnum = "marin" | "creature" | "equipement" | "structure" | "objet" | "anomalie";
 
 /** Miroir de l'enum SQL `public.card_rarity`. */
-type CardRarityEnum = "common" | "uncommon" | "rare" | "abyssal";
+/** Miroir de l'enum SQL `public.card_rarity` — cf. `game/boosters/types.ts`. */
+type CardRarityEnum = "common" | "uncommon" | "rare" | "epic" | "legendary" | "abyssal";

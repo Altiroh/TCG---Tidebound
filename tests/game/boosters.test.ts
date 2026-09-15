@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { BOOSTER_STANDARD_PRICE } from "@/game/economy/constants";
 import {
   PITY,
+  RARITY_ORDER,
   RARITY_WEIGHTS,
   RECYCLE_VALUE,
   abyssalChanceWithPity,
@@ -241,12 +243,36 @@ describe("robustesse du pool", () => {
 });
 
 describe("valeurs verrouillées par le cadrage", () => {
-  it("conserve les poids de palier", () => {
-    expect(RARITY_WEIGHTS).toEqual({ common: 55, uncommon: 28, rare: 12, abyssal: 5 });
+  it("conserve les quatre poids de palier verrouillés", () => {
+    // Épique et Légendaire sont arrivés avec le Lot 11 : ils s'ajoutent
+    // SANS toucher aux quatre poids que le cadrage verrouille.
+    expect(RARITY_WEIGHTS.common).toBe(55);
+    expect(RARITY_WEIGHTS.uncommon).toBe(28);
+    expect(RARITY_WEIGHTS.rare).toBe(12);
+    expect(RARITY_WEIGHTS.abyssal).toBe(5);
   });
 
-  it("conserve les valeurs de recyclage, toutes très inférieures au prix d'un booster", () => {
-    expect(RECYCLE_VALUE).toEqual({ common: 5, uncommon: 15, rare: 45, abyssal: 120 });
-    expect(Math.max(...Object.values(RECYCLE_VALUE))).toBeLessThan(500);
+  it("intercale Épique et Légendaire entre Rare et Abyssale", () => {
+    expect(RARITY_ORDER).toEqual(["common", "uncommon", "rare", "epic", "legendary", "abyssal"]);
+    // Plus rare que Rare, moins fréquent d'un palier au suivant.
+    expect(RARITY_WEIGHTS.epic).toBeLessThan(RARITY_WEIGHTS.rare);
+    expect(RARITY_WEIGHTS.legendary).toBeLessThan(RARITY_WEIGHTS.epic);
+  });
+
+  it("garde les valeurs de recyclage très inférieures au prix d'un booster", () => {
+    // Elles suivent désormais le prix : ce sont les RATIOS du cadrage
+    // (1 % / 3 % / 9 % / 24 %) qui sont tenus, pas des montants figés
+    // calibrés sur un booster à 500 Tides.
+    expect(RECYCLE_VALUE.common).toBe(Math.round(BOOSTER_STANDARD_PRICE * 0.01));
+    expect(RECYCLE_VALUE.rare).toBe(Math.round(BOOSTER_STANDARD_PRICE * 0.09));
+    expect(RECYCLE_VALUE.abyssal).toBe(Math.round(BOOSTER_STANDARD_PRICE * 0.24));
+    // La règle qui compte : jamais de boucle d'ouverture autosuffisante.
+    expect(RECYCLE_VALUE.abyssal).toBeLessThan(BOOSTER_STANDARD_PRICE / 2);
+    // Monotone : un palier plus rare ne peut jamais recycler pour moins.
+    const values = RARITY_ORDER.map((rarity) => RECYCLE_VALUE[rarity]);
+    expect(values).toEqual([...values].sort((a, b) => a - b));
+    // Le recyclage reste un amortisseur de doublons, pas une boucle
+    // autosuffisante : il ne doit jamais approcher le prix d'un booster.
+    expect(Math.max(...values)).toBeLessThan(BOOSTER_STANDARD_PRICE);
   });
 });

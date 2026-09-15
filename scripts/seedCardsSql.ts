@@ -14,7 +14,15 @@
  *
  * Usage : npm run seed:sql > seed.sql
  */
-import { cardRows, questRows, systemDeckCardRows, systemDeckRows, type SeedRow, type SeedValue } from "@/scripts/seedRows";
+import {
+  boosterPoolCardRows,
+  cardRows,
+  questRows,
+  systemDeckCardRows,
+  systemDeckRows,
+  type SeedRow,
+  type SeedValue,
+} from "@/scripts/seedRows";
 
 /** Un littéral SQL sûr : les chaînes sont échappées par doublement de l'apostrophe, jamais concaténées telles quelles. */
 function literal(value: SeedValue): string {
@@ -58,11 +66,23 @@ function upsertStatement(table: string, rows: SeedRow[], conflictColumns: string
   ].join("\n");
 }
 
+/**
+ * Clause `exists` listant les couples (booster, carte) encore au catalogue —
+ * sert à désactiver ceux qui n'y sont plus, sans les effacer.
+ */
+function poolPairsExistsClause(rows: SeedRow[]): string {
+  const pairs = rows
+    .map((row) => `(${literal(row.booster_definition_id ?? null)}, ${literal(row.card_id ?? null)})`)
+    .join(", ");
+  return `select 1 from (values ${pairs}) as keep(booster_definition_id, card_id)\n  where keep.booster_definition_id = bpc.booster_definition_id and keep.card_id = bpc.card_id`;
+}
+
 function main() {
   const cards = cardRows();
   const decks = systemDeckRows();
   const deckCards = systemDeckCardRows();
   const quests = questRows();
+  const poolCards = boosterPoolCardRows();
 
   const codes = quests.map((quest) => literal(quest.code ?? null)).join(", ");
 
@@ -80,6 +100,14 @@ function main() {
     upsertStatement("system_decks", decks, ["id"]),
     upsertStatement("system_deck_cards", deckCards, ["system_deck_id", "card_id"]),
     upsertStatement("quests", quests, ["code"]),
+    // Pools de boosters : la table est reconstruite à l'identique de
+    // `game/boosters/pools.ts`. Les lignes retirées du catalogue sont
+    // désactivées plutôt qu'effacées, pour la même raison que les quêtes.
+    upsertStatement("booster_pool_cards", poolCards, ["booster_definition_id", "card_id"]),
+    "-- Cartes retirées d'un pool : désactivées, jamais supprimées.",
+    "update public.booster_pool_cards bpc set is_enabled = false",
+    `where not exists (${poolPairsExistsClause(poolCards)});`,
+    "",
     "-- Quêtes retirées du catalogue : désactivées, jamais supprimées (des",
     "-- joueurs peuvent les avoir en cours ou à réclamer).",
     `update public.quests set is_enabled = false where code is null or code not in (${codes});`,

@@ -62,6 +62,11 @@ export function eligibleChosenUnits(
       if (def.archetype !== filter.archetype) return false;
       if (!UNIT_CARD_TYPES.includes(def.type)) return false;
     }
+    // Le sous-type, lui, ne restreint PAS aux unités : la troupe du Théâtre
+    // compte des Structures et des Objets, et « renvoyez une Marionnette
+    // alliée » doit pouvoir les viser.
+    if (filter.subtype && getCardDefinition(unit.cardId).subtype !== filter.subtype) return false;
+    if (filter.maxCost !== undefined && getCardDefinition(unit.cardId).cost > filter.maxCost) return false;
     return true;
   });
 }

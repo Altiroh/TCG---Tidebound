@@ -69,6 +69,17 @@ export const CRA_POISCAIL_BOOSTER_2 = "cra-poiscail-2";
 /** Troisième booster — branche Chevalier/Destrier/Bourreau, finishers et variantes Abyssales. */
 export const CRA_POISCAIL_BOOSTER_3 = "cra-poiscail-3";
 
+/** Lot 11 — Les Masques Noyés / Théâtre Englouti (`CardDefinition.setCode`). */
+export const THEATRE_ENGLOUTI = "theatre-englouti";
+
+/**
+ * Sous-type de la troupe du Théâtre Englouti. Constante plutôt que chaîne
+ * répétée : c'est la clé que lisent les filtres de ciblage, les réductions
+ * de coût et les capacités d'observateur du lot — une faute de frappe y
+ * serait silencieuse.
+ */
+export const MARIONNETTE = "marionnette";
+
 export const CORE_SET: CardDefinition[] = [
   // ======================================================================
   // LOT 01 — Premières cartes
@@ -2355,6 +2366,394 @@ export const CORE_SET: CardDefinition[] = [
             attackAmount: { kind: "flat", value: 1 },
             healthAmount: { kind: "flat", value: 1 },
           },
+        ],
+      },
+    ],
+  },
+  // ======================================================================
+  // LOT 11 — LES MASQUES NOYÉS / THÉÂTRE ENGLOUTI
+  // ======================================================================
+  // Source : Notion « Lot 11 — Les Masques Noyés / Théâtre Englouti »,
+  // passe d'équilibrage du 15 septembre 2026.
+  //
+  // Mini-archétype de SOUS-TYPE, pas d'`archetype` au sens
+  // `game/cards/archetypes.ts` : la troupe se reconnaît au sous-type
+  // `MARIONNETTE`, et les effets de dénombrement d'archétype (seuils
+  // Cra-Poiscail) ne doivent pas s'y appliquer.
+  //
+  // Boucle : jouer une Marionnette → profiter de son arrivée → la renvoyer
+  // en main → la rejouer. Toutes les répétitions, réductions et
+  // remboursements sont limités à la première fois par tour ; aucune
+  // réduction ne descend sous 1 Raison (plancher tenu par
+  // `MIN_DISCOUNTED_COST`, cf. `game/actions/playCard.ts`).
+  {
+    id: "pulcinella-gonfle",
+    name: "Pulcinella Gonflé",
+    type: "creature",
+    subtype: MARIONNETTE,
+    setCode: THEATRE_ENGLOUTI,
+    cost: 2,
+    attack: 2,
+    health: 3,
+    maxCopies: 3,
+    text: "Quand il est détruit, infligez 1 dégât à une créature ennemie.",
+    abilities: [
+      {
+        trigger: "onDeath",
+        description: "Détruit : 1 dégât à une créature ennemie.",
+        effects: [{ type: "damage", target: { kind: "randomEnemyUnit" }, amount: { kind: "flat", value: 1 } }],
+      },
+    ],
+  },
+  {
+    id: "arlecchino-des-profondeurs",
+    name: "Arlecchino des Profondeurs",
+    type: "creature",
+    subtype: MARIONNETTE,
+    setCode: THEATRE_ENGLOUTI,
+    cost: 2,
+    attack: 2,
+    health: 2,
+    maxCopies: 3,
+    text: "À son arrivée, vous pouvez renvoyer une autre Marionnette alliée dans votre main. Si vous le faites, il gagne +2 Puissance jusqu'à la fin du tour.",
+    abilities: [
+      {
+        trigger: "onEnterPlay",
+        mode: "optional",
+        description: "Renvoyez une autre Marionnette alliée en main : il gagne +2 Puissance jusqu'à la fin du tour.",
+        effects: [
+          { type: "moveZone", toZone: "hand", target: { kind: "chosenUnit", among: { subtype: MARIONNETTE, excludeSource: true } } },
+          { type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 2 }, permanent: false },
+        ],
+      },
+    ],
+  },
+  {
+    id: "le-masque-fendu",
+    name: "Le Masque Fendu",
+    type: "objet",
+    subtype: MARIONNETTE,
+    setCode: THEATRE_ENGLOUTI,
+    cost: 2,
+    health: 1,
+    maxCopies: 3,
+    text: "Brisez cet Objet : renvoyez une Marionnette alliée dans votre main, puis piochez 1 carte et défaussez 1 carte.",
+    onBreakEffects: [
+      { type: "moveZone", toZone: "hand", target: { kind: "chosenUnit", among: { subtype: MARIONNETTE } } },
+      { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+      { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+    ],
+  },
+  {
+    id: "colombina-aux-cent-visages",
+    name: "Colombina aux Cent Visages",
+    type: "creature",
+    subtype: MARIONNETTE,
+    setCode: THEATRE_ENGLOUTI,
+    cost: 3,
+    attack: 3,
+    health: 3,
+    maxCopies: 2,
+    text: "À son arrivée, choisissez une autre Marionnette alliée : répétez son effet d'arrivée. Une seule fois par tour.",
+    abilities: [
+      {
+        trigger: "onEnterPlay",
+        oncePerTurnKey: "colombinaRepeat",
+        description: "Répète l'effet d'arrivée d'une autre Marionnette alliée.",
+        effects: [
+          { type: "repeatEnterEffects", target: { kind: "chosenUnit", among: { subtype: MARIONNETTE, excludeSource: true } } },
+        ],
+      },
+    ],
+  },
+  {
+    id: "pantalone-sans-sou",
+    name: "Pantalone Sans-Sou",
+    type: "creature",
+    subtype: MARIONNETTE,
+    setCode: THEATRE_ENGLOUTI,
+    cost: 3,
+    attack: 2,
+    health: 4,
+    maxCopies: 3,
+    text: "La première fois à chaque tour que vous Brisez un Objet directement depuis votre main, récupérez 1 Raison.",
+    abilities: [
+      {
+        trigger: "onObjectBroken",
+        oncePerTurnKey: "pantaloneHandBreak",
+        description: "Premier Bris depuis la main du tour : récupérez 1 Raison.",
+        // Le remboursement ne vaut QUE pour un Bris depuis la main : sinon
+        // les Objets déjà posés sur le board deviendraient gratuits.
+        effects: [{ type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, conditionBrokenFromHand: true }],
+      },
+    ],
+  },
+  {
+    id: "il-capitano-naufrage",
+    name: "Il Capitano Naufragé",
+    type: "creature",
+    subtype: MARIONNETTE,
+    setCode: THEATRE_ENGLOUTI,
+    cost: 4,
+    attack: 6,
+    health: 6,
+    maxCopies: 2,
+    text: "La première fois qu'il subit des dégâts, il perd définitivement -3 Puissance et -2 Résistance.",
+    abilities: [
+      {
+        trigger: "onDamaged",
+        oncePerTurnKey: "capitanoDeflated",
+        description: "Première blessure : -3 Puissance et -2 Résistance, définitivement.",
+        // Volontairement sur-staté avant sa première blessure ; après
+        // déclenchement il devient 3 / 4, cohérent avec son fanfaron.
+        effects: [
+          {
+            type: "debuff",
+            target: { kind: "self" },
+            attackAmount: { kind: "flat", value: 3 },
+            healthAmount: { kind: "flat", value: 2 },
+            permanent: true,
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "il-dottore-des-noyes",
+    name: "Il Dottore des Noyés",
+    type: "creature",
+    subtype: MARIONNETTE,
+    setCode: THEATRE_ENGLOUTI,
+    cost: 4,
+    attack: 3,
+    health: 5,
+    maxCopies: 2,
+    text: "À son arrivée, choisissez : une créature alliée gagne +2 / +2 jusqu'à votre prochain tour ; ou une créature ennemie perd -2 / -2 jusqu'à votre prochain tour.",
+    abilities: [
+      {
+        trigger: "onEnterPlay",
+        mode: "optional",
+        description: "Une créature alliée gagne +2 / +2 jusqu'à votre prochain tour.",
+        effects: [
+          {
+            type: "buff",
+            target: { kind: "chosenUnit" },
+            attackAmount: { kind: "flat", value: 2 },
+            healthAmount: { kind: "flat", value: 2 },
+            duration: "untilYourNextTurn",
+          },
+        ],
+      },
+    ],
+    // non appliqué : le SECOND mode (« ou une créature ennemie perd -2 / -2 »)
+    // demande un choix entre deux capacités distinctes, que `mode: "optional"`
+    // ne sait pas encore exprimer — il n'offre qu'accepter ou passer.
+  },
+  {
+    id: "le-regisseur-sans-visage",
+    name: "Le Régisseur Sans Visage",
+    type: "creature",
+    subtype: MARIONNETTE,
+    setCode: THEATRE_ENGLOUTI,
+    cost: 5,
+    attack: 4,
+    health: 6,
+    maxCopies: 1,
+    text: "La première fois à chaque tour qu'une autre Marionnette alliée arrive en jeu, vous pouvez renvoyer une autre Marionnette alliée de coût 2 ou moins dans votre main. Si vous le faites, cette carte coûte 1 de moins à rejouer ce tour, minimum 1.",
+    abilities: [
+      {
+        trigger: "onEnterPlay",
+        triggeredBy: { subtype: MARIONNETTE },
+        oncePerTurnKey: "regisseurRecall",
+        mode: "optional",
+        description: "Renvoyez une Marionnette de coût 2 ou moins en main : elle coûte 1 de moins à rejouer ce tour.",
+        // Le plafond de coût 2 empêche les boucles de valeur avec Colombina
+        // ou Il Dottore (audit du 15 septembre).
+        effects: [
+          {
+            type: "moveZone",
+            toZone: "hand",
+            target: { kind: "chosenUnit", among: { subtype: MARIONNETTE, excludeSource: true, maxCost: 2 } },
+          },
+          { type: "discountNextCards", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, filter: { subtype: MARIONNETTE } },
+        ],
+      },
+    ],
+  },
+  {
+    id: "la-clochette-du-rappel",
+    name: "La Clochette du Rappel",
+    type: "objet",
+    subtype: MARIONNETTE,
+    setCode: THEATRE_ENGLOUTI,
+    cost: 3,
+    health: 1,
+    maxCopies: 3,
+    text: "Brisez cet Objet : renvoyez une Marionnette alliée dans votre main. La prochaine Marionnette que vous jouez ce tour coûte 1 de moins, minimum 1.",
+    onBreakEffects: [
+      { type: "moveZone", toZone: "hand", target: { kind: "chosenUnit", among: { subtype: MARIONNETTE } } },
+      { type: "discountNextCards", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, filter: { subtype: MARIONNETTE } },
+    ],
+  },
+  {
+    id: "le-theatre-englouti",
+    name: "Le Théâtre Englouti",
+    type: "structure",
+    subtype: MARIONNETTE,
+    setCode: THEATRE_ENGLOUTI,
+    cost: 4,
+    health: 4,
+    durationTurns: 4,
+    maxCopies: 1,
+    text: "Durée : 4 tours. La première fois à chaque tour qu'une Marionnette alliée revient dans votre main, récupérez 1 Raison.",
+    abilities: [
+      {
+        trigger: "onReturnedToHand",
+        triggeredBy: { subtype: MARIONNETTE, excludeSelf: false },
+        oncePerTurnKey: "theatreRecall",
+        description: "Première Marionnette revenue en main du tour : récupérez 1 Raison.",
+        effects: [{ type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
+      },
+    ],
+    // non appliqué : la seconde phrase (« si vous contrôlez au moins 3
+    // Marionnettes de noms différents, la prochaine Marionnette jouée ce
+    // tour gagne +1 / +1 ») demande un comptage de NOMS DISTINCTS par
+    // sous-type, que `ConditionExpression` ne sait pas encore exprimer.
+  },
+  {
+    id: "les-coulisses-inondees",
+    name: "Les Coulisses Inondées",
+    type: "structure",
+    subtype: MARIONNETTE,
+    setCode: THEATRE_ENGLOUTI,
+    cost: 2,
+    health: 3,
+    durationTurns: 3,
+    maxCopies: 3,
+    text: "Durée : 3 tours. La première Marionnette renvoyée dans votre main à chaque tour coûte 1 de moins à rejouer ce tour, minimum 1.",
+    abilities: [
+      {
+        trigger: "onReturnedToHand",
+        triggeredBy: { subtype: MARIONNETTE, excludeSelf: false },
+        oncePerTurnKey: "coulissesRecall",
+        description: "Première Marionnette revenue en main du tour : elle coûte 1 de moins à rejouer ce tour.",
+        effects: [
+          { type: "discountNextCards", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, filter: { subtype: MARIONNETTE } },
+        ],
+      },
+    ],
+  },
+  {
+    id: "changement-de-role",
+    name: "Changement de rôle !",
+    type: "objet",
+    subtype: MARIONNETTE,
+    setCode: THEATRE_ENGLOUTI,
+    cost: 2,
+    health: 1,
+    maxCopies: 3,
+    text: "Brisez cet Objet : renvoyez une Marionnette alliée dans votre main. Une autre Marionnette de votre main coûte 1 de moins ce tour, minimum 1.",
+    // Réduction abaissée de 2 à 1 par l'audit : Brisé depuis la main, il ne
+    // doit pas transformer un retour défensif en accélération explosive.
+    onBreakEffects: [
+      { type: "moveZone", toZone: "hand", target: { kind: "chosenUnit", among: { subtype: MARIONNETTE } } },
+      { type: "discountNextCards", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, filter: { subtype: MARIONNETTE } },
+    ],
+  },
+  {
+    id: "rappel-du-public",
+    name: "Rappel du Public",
+    type: "objet",
+    subtype: MARIONNETTE,
+    setCode: THEATRE_ENGLOUTI,
+    cost: 3,
+    health: 1,
+    maxCopies: 3,
+    text: "Brisez cet Objet : récupérez une Marionnette depuis votre défausse vers votre main.",
+    onBreakEffects: [
+      { type: "moveGraveyardCardToHand", target: { kind: "controllerPlayer" }, filter: { subtype: MARIONNETTE } },
+    ],
+    // non appliqué : la réduction conditionnelle (« si vous ne contrôlez
+    // aucune carte portant ce nom ») porte sur la carte RÉCUPÉRÉE, dont
+    // l'identité n'est connue qu'après le choix du joueur — aucune
+    // condition d'effet ne sait encore lire ce résultat.
+  },
+  {
+    id: "le-rideau-se-leve",
+    name: "Le Rideau se Lève",
+    type: "anomalie",
+    subtype: MARIONNETTE,
+    setCode: THEATRE_ENGLOUTI,
+    cost: 5,
+    health: 3,
+    durationTurns: 2,
+    maxCopies: 1,
+    text: "Pendant 2 tours, la première Marionnette que vous jouez à chacun de vos tours déclenche une seconde fois son effet d'arrivée.",
+    abilities: [
+      {
+        trigger: "onEnterPlay",
+        triggeredBy: { subtype: MARIONNETTE, excludeSelf: false },
+        oncePerTurnKey: "rideauEncore",
+        description: "Première Marionnette du tour : son effet d'arrivée se déclenche une seconde fois.",
+        effects: [{ type: "repeatEnterEffects", target: { kind: "triggerSource" } }],
+      },
+    ],
+  },
+
+  // --- Variantes ABYSSALES du Lot 11 ------------------------------------
+  {
+    id: "arlecchino-celui-derriere-le-masque-abyssal",
+    name: "Arlecchino, Celui derrière le Masque",
+    type: "creature",
+    subtype: "abyssal",
+    setCode: THEATRE_ENGLOUTI,
+    cost: 4,
+    attack: 4,
+    health: 4,
+    maxCopies: 1,
+    text: "À son arrivée, vous pouvez renvoyer une autre Marionnette alliée dans votre main. Si vous le faites, la prochaine Marionnette que vous jouez ce tour coûte 2 de moins, minimum 1.",
+    abilities: [
+      {
+        trigger: "onEnterPlay",
+        mode: "optional",
+        description: "Renvoyez une autre Marionnette alliée en main : la prochaine coûte 2 de moins ce tour.",
+        effects: [
+          { type: "moveZone", toZone: "hand", target: { kind: "chosenUnit", among: { subtype: MARIONNETTE, excludeSource: true } } },
+          { type: "discountNextCards", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 }, filter: { subtype: MARIONNETTE } },
+        ],
+      },
+    ],
+    // non appliqué : la seconde phrase (« la première fois à chaque tour
+    // qu'il devrait revenir dans votre main, vous pouvez le laisser en jeu »)
+    // demande d'INTERROMPRE un retour en main déjà décidé — le moteur n'a
+    // pas de fenêtre de remplacement d'effet.
+  },
+  {
+    id: "le-regisseur-des-profondeurs-abyssal",
+    name: "Le Régisseur des Profondeurs",
+    type: "creature",
+    subtype: "abyssal",
+    setCode: THEATRE_ENGLOUTI,
+    cost: 7,
+    attack: 6,
+    health: 8,
+    maxCopies: 1,
+    text: "La première fois à chaque tour qu'une autre Marionnette alliée arrive en jeu, répétez son effet d'arrivée. La première fois à chaque tour qu'une Marionnette alliée revient dans votre main, la prochaine Marionnette que vous jouez ce tour coûte 1 de moins, minimum 1.",
+    abilities: [
+      {
+        trigger: "onEnterPlay",
+        triggeredBy: { subtype: MARIONNETTE },
+        oncePerTurnKey: "regisseurAbyssalEcho",
+        description: "Première autre Marionnette du tour : son effet d'arrivée se répète.",
+        effects: [{ type: "repeatEnterEffects", target: { kind: "triggerSource" } }],
+      },
+      {
+        trigger: "onReturnedToHand",
+        triggeredBy: { subtype: MARIONNETTE, excludeSelf: false },
+        oncePerTurnKey: "regisseurAbyssalRecall",
+        description: "Première Marionnette revenue en main du tour : la prochaine coûte 1 de moins.",
+        effects: [
+          { type: "discountNextCards", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, filter: { subtype: MARIONNETTE } },
         ],
       },
     ],

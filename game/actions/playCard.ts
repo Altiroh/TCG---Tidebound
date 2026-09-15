@@ -1,9 +1,9 @@
 import { canBeEquipTarget, getCardDefinition, hasAnyValidEquipTarget } from "@/game/cards/sets/core";
 import { isPermanentCard, UNIT_CARD_TYPES, type CardDefinition } from "@/game/cards/types";
 import type { EffectContext } from "@/game/effects/resolveEffect";
-import { resolveEffect } from "@/game/effects/resolveEffect";
+import { discountApplies, resolveEffect } from "@/game/effects/resolveEffect";
 import type { GameEvent } from "@/game/events/types";
-import { processSummonEnterTriggers, processTrigger } from "@/game/triggers/triggerBus";
+import { processReturnedToHandTriggers, processSummonEnterTriggers, processTrigger } from "@/game/triggers/triggerBus";
 import {
   assertBoardNotFull,
   assertCanPayCost,
@@ -16,18 +16,66 @@ import {
 } from "@/game/rules/validation";
 import { canPayReason } from "@/game/state/reason";
 import { payReasonCost, reasonCostAfterShield } from "@/game/state/shields";
-import { getPlayer, type GameState, type PlayerId, type PlayerState } from "@/game/state/types";
+import { getPlayer, MIN_DISCOUNTED_COST, type GameState, type PlayerId, type PlayerState } from "@/game/state/types";
 import type { ActionResult, PlayCardAction } from "@/game/actions/types";
 
 function isUnitCard(type: string): boolean {
   return (UNIT_CARD_TYPES as readonly string[]).includes(type);
 }
 
-/** Coût réel à payer, en tenant compte d'un `costOverrideWhenTideStateIn` actif (ex: Choppe ! gratuite pendant Calme). `def.cost` reste la valeur imprimée par défaut ailleurs (fiche carte). */
-function effectiveCost(def: CardDefinition, state: GameState): number {
+/** Coût imprimé, en tenant compte d'un `costOverrideWhenTideStateIn` actif (ex: Choppe ! gratuite pendant Calme). */
+function printedCost(def: CardDefinition, state: GameState): number {
   const override = def.costOverrideWhenTideStateIn;
   if (override && override.tideStateIn.includes(state.environment.tideState)) return override.cost;
   return def.cost;
+}
+
+/**
+ * Coût réel à payer : coût imprimé, moins les réductions en attente du
+ * joueur qui s'appliquent à cette carte (Lot 11 — « la prochaine
+ * Marionnette que vous jouez ce tour coûte 1 de moins »).
+ *
+ * Le plancher `MIN_DISCOUNTED_COST` est appliqué ICI, une fois toutes les
+ * réductions cumulées, et pas réduction par réduction : deux réductions de
+ * 1 sur une carte à 2 la ramènent à 1, pas à 0. C'est la règle générale du
+ * lot (« aucun effet de réduction ne peut faire descendre un coût sous 1 »),
+ * tenue à un seul endroit plutôt que répétée sur chaque carte.
+ *
+ * Une carte dont le coût imprimé est DÉJÀ sous le plancher (une carte
+ * gratuite par override de Marée) n'est pas remontée : le plancher borne
+ * les réductions, il n'impose pas un coût minimum au catalogue.
+ */
+function effectiveCost(def: CardDefinition, state: GameState, playerId?: PlayerId): number {
+  const printed = printedCost(def, state);
+  if (playerId === undefined) return printed;
+
+  const player = state.players.find((p) => p.id === playerId);
+  const reduction = (player?.costDiscounts ?? [])
+    .filter((discount) => discountApplies(discount, def, state.turnNumber))
+    .reduce((sum, discount) => sum + discount.amount, 0);
+  if (reduction <= 0) return printed;
+
+  return Math.max(Math.min(printed, MIN_DISCOUNTED_COST), printed - reduction);
+}
+
+/**
+ * Consomme UNE charge de chaque réduction qui vient de s'appliquer, et
+ * jette celles qui n'ont plus de charge. Appelé une seule fois, au moment
+ * où la carte est effectivement payée — prévisualiser un coût ne doit rien
+ * consommer.
+ */
+function consumeCostDiscounts(state: GameState, playerId: PlayerId, def: CardDefinition): GameState {
+  const player = state.players.find((p) => p.id === playerId);
+  if (!player?.costDiscounts?.length) return state;
+
+  const remaining = player.costDiscounts
+    .map((discount) => (discountApplies(discount, def, state.turnNumber) ? { ...discount, uses: discount.uses - 1 } : discount))
+    .filter((discount) => discount.uses > 0 && state.turnNumber <= discount.expiresAfterTurn);
+
+  return {
+    ...state,
+    players: state.players.map((p) => (p.id === playerId ? { ...p, costDiscounts: remaining } : p)) as GameState["players"],
+  };
 }
 
 /**
@@ -44,7 +92,7 @@ export function previewPlayCardReason(
   const player = state.players.find((p) => p.id === playerId);
   const card = player?.hand.find((c) => c.instanceId === instanceId);
   if (!player || !card) return undefined;
-  const cost = reasonCostAfterShield(state, playerId, effectiveCost(getCardDefinition(card.cardId), state), state.turnNumber);
+  const cost = reasonCostAfterShield(state, playerId, effectiveCost(getCardDefinition(card.cardId), state, playerId), state.turnNumber);
   return { cost, reasonAfter: player.reason - cost, allowed: canPayReason(player, cost) };
 }
 
@@ -76,7 +124,7 @@ function validate(state: GameState, action: PlayCardAction) {
   const costCheck = assertCanPayCost(
     state,
     action.playerId,
-    reasonCostAfterShield(state, action.playerId, effectiveCost(def, state), state.turnNumber)
+    reasonCostAfterShield(state, action.playerId, effectiveCost(def, state, action.playerId), state.turnNumber)
   );
   if (!costCheck.ok) return costCheck;
 
@@ -141,8 +189,10 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
       PlayerState
     ],
   };
-  const payment = payReasonCost(nextState, player.id, effectiveCost(def, state), state.turnNumber);
-  nextState = payment.state;
+  const payment = payReasonCost(nextState, player.id, effectiveCost(def, state, player.id), state.turnNumber);
+  // La réduction est dépensée en même temps que la Raison, jamais avant :
+  // une pose refusée plus haut ne doit pas avoir consommé la charge.
+  nextState = consumeCostDiscounts(payment.state, player.id, def);
 
   events.push({ ...base, type: "PLAY_CARD", playerId: player.id, instanceId: instance.instanceId, cardId: def.id });
   events.push({ ...base, type: "REASON_CHANGED", playerId: player.id, delta: -payment.paid });
@@ -202,6 +252,11 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
   const summonedOnPlay = processSummonEnterTriggers(nextState, playEffectEvents, state.turnNumber);
   nextState = summonedOnPlay.state;
   events.push(...summonedOnPlay.events);
+
+  // Marionnettes renvoyées en main par la pose : même raison.
+  const recalledOnPlay = processReturnedToHandTriggers(nextState, playEffectEvents, state.turnNumber);
+  nextState = recalledOnPlay.state;
+  events.push(...recalledOnPlay.events);
 
   const cardPlayedTrigger = processTrigger(
     nextState,

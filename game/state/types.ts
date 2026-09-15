@@ -57,7 +57,40 @@ export interface PlayerState {
    * que ces effets restent rares et ponctuels.
    */
   statusFlags: string[];
+  /**
+   * Réductions de coût en attente, posées par un effet et consommées par
+   * la prochaine carte jouée qui correspond (Lot 11 — « la prochaine
+   * Marionnette que vous jouez ce tour coûte 1 de moins »).
+   *
+   * Portées par le JOUEUR et non par la carte : le texte parle de la
+   * prochaine carte jouée, laquelle est encore en main — et peut très bien
+   * ne jamais être jouée. Nettoyées à la fin du tour où elles ont été
+   * posées, comme leur texte l'exige.
+   */
+  costDiscounts?: CostDiscount[];
 }
+
+/**
+ * Une réduction de coût en attente. Aucune ne peut faire descendre un coût
+ * sous `MIN_DISCOUNTED_COST` : c'est une règle générale du Lot 11 (« Aucun
+ * effet de réduction ne peut faire descendre un coût sous 1 »), appliquée
+ * au calcul et non carte par carte.
+ */
+export interface CostDiscount {
+  /** Raison retirée au coût imprimé. */
+  amount: number;
+  /** Ne s'applique qu'aux cartes de ce sous-type (ex: "marionnette"). */
+  subtype?: string;
+  /** Ne s'applique qu'aux cartes de ces types. */
+  cardTypes?: string[];
+  /** Nombre de cartes encore concernées. Décrémenté à chaque usage. */
+  uses: number;
+  /** Tour au-delà duquel la réduction est perdue (« ce tour »). */
+  expiresAfterTurn: number;
+}
+
+/** Plancher absolu d'un coût après réduction (Lot 11, règle générale). */
+export const MIN_DISCOUNTED_COST = 1;
 
 export type GamePhase =
   | "waitingForPlayers"

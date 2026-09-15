@@ -82,6 +82,8 @@ function matchesTriggerSource(
   // porte (`onAttack` ne la porte pas) : sans elle, ils ne matchent pas.
   if (filter.cardIds && !(event.cardId && filter.cardIds.includes(event.cardId))) return false;
   if (filter.archetype && !(event.cardId && getCardDefinition(event.cardId).archetype === filter.archetype)) return false;
+  // Même logique pour le sous-type (Lot 11, « une autre Marionnette alliée »).
+  if (filter.subtype && !(event.cardId && getCardDefinition(event.cardId).subtype === filter.subtype)) return false;
   return true;
 }
 
@@ -352,6 +354,48 @@ export function processSummonEnterTriggers(
 }
 
 /**
+ * Déclenchements « une Marionnette revient dans votre main » (Lot 11).
+ *
+ * Même forme que `processSummonEnterTriggers`, et pour la même raison : le
+ * retour en main est décidé dans `resolveEffect`, qui ne peut pas appeler
+ * `processTrigger` (ce module importe déjà la résolution d'effets, la
+ * dépendance inverse serait circulaire). L'appelant qui vient de résoudre
+ * des effets passe donc les événements produits ici, et ce balayage réveille
+ * les capacités qui guettent un retour.
+ *
+ * Un `CARD_MOVED` board → hand est le seul signal : il est émis une fois par
+ * carte renvoyée, quelle que soit la carte qui l'a provoqué.
+ */
+export function processReturnedToHandTriggers(
+  state: GameState,
+  events: readonly GameEvent[],
+  turnNumber: number,
+  depth = 1
+): { state: GameState; events: GameEvent[] } {
+  let nextState = state;
+  const produced: GameEvent[] = [];
+
+  for (const event of events) {
+    if (event.type !== "CARD_MOVED" || event.fromZone !== "board" || event.toZone !== "hand") continue;
+
+    // La carte n'est plus sur le board : c'est l'événement qui porte son
+    // identité et son propriétaire, précisément pour ce cas.
+    if (!event.cardId || !event.ownerId) continue;
+
+    const result = processTrigger(
+      nextState,
+      { trigger: "onReturnedToHand", playerId: event.ownerId, cardId: event.cardId, sourceInstanceId: event.instanceId },
+      turnNumber,
+      depth
+    );
+    nextState = result.state;
+    produced.push(...result.events);
+  }
+
+  return { state: nextState, events: produced };
+}
+
+/**
  * Traite un `TriggerEvent` : résout dans l'ordre toutes les capacités
  * AUTOMATIQUES concernées et retourne le nouvel état + les événements
  * produits (à ajouter au journal par l'appelant). Les capacités
@@ -394,6 +438,12 @@ export function processTrigger(
     const summoned = processSummonEnterTriggers(nextState, events, turnNumber, depth + 1);
     nextState = summoned.state;
     events.push(...summoned.events);
+
+    // Idem pour un retour en main provoqué par une capacité (ex: Le
+    // Régisseur Sans Visage) : Le Théâtre Englouti doit le voir.
+    const recalled = processReturnedToHandTriggers(nextState, events, turnNumber, depth + 1);
+    nextState = recalled.state;
+    events.push(...recalled.events);
   }
 
   // Anomalies globales temporaires (`game/state/anomalies.ts`) : centralisées

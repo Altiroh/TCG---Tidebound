@@ -209,6 +209,32 @@ const AUDITED_RARITY: Record<string, CardRarity> = {
  */
 const PROVISIONAL_RARITY: Record<string, CardRarity> = {};
 
+/**
+ * Lot 11 — Les Masques Noyés / Théâtre Englouti. Raretés VALIDÉES par la
+ * passe d'équilibrage Notion du 15 septembre 2026, carte par carte : ce
+ * n'est pas une table provisoire, elle est directement issue du design.
+ *
+ * C'est ce lot qui introduit les paliers `epic` et `legendary`.
+ */
+const THEATRE_ENGLOUTI_RARITY: Record<string, CardRarity> = {
+  "pulcinella-gonfle": "common",
+  "le-masque-fendu": "common",
+  "changement-de-role": "common",
+  "arlecchino-des-profondeurs": "uncommon",
+  "pantalone-sans-sou": "uncommon",
+  "la-clochette-du-rappel": "uncommon",
+  "les-coulisses-inondees": "uncommon",
+  "rappel-du-public": "uncommon",
+  "colombina-aux-cent-visages": "rare",
+  "il-capitano-naufrage": "rare",
+  "il-dottore-des-noyes": "rare",
+  "le-regisseur-sans-visage": "epic",
+  "le-theatre-englouti": "epic",
+  "le-rideau-se-leve": "legendary",
+  // Les deux variantes Abyssales sont déduites de leur suffixe de slug
+  // (`-abyssal`), comme toutes les autres.
+};
+
 /** Ids dont la rareté n'est pas encore validée par le design. */
 export const PROVISIONAL_RARITY_CARD_IDS: readonly string[] = Object.keys(PROVISIONAL_RARITY);
 
@@ -223,7 +249,7 @@ const ABYSSAL_VARIANT_SUFFIX = "-abyssal";
  */
 export function rarityForCardId(cardId: string): CardRarity | null {
   if (cardId.endsWith(ABYSSAL_VARIANT_SUFFIX)) return "abyssal";
-  return AUDITED_RARITY[cardId] ?? PROVISIONAL_RARITY[cardId] ?? null;
+  return AUDITED_RARITY[cardId] ?? THEATRE_ENGLOUTI_RARITY[cardId] ?? PROVISIONAL_RARITY[cardId] ?? null;
 }
 
 /** Ids du catalogue sans rareté explicite — doit toujours être vide. */

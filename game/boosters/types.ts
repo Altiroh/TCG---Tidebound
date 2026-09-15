@@ -1,8 +1,17 @@
-/** Paliers de rareté — mêmes valeurs que l'enum SQL `public.card_rarity`. */
-export type CardRarity = "common" | "uncommon" | "rare" | "abyssal";
+/**
+ * Paliers de rareté — mêmes valeurs que l'enum SQL `public.card_rarity`.
+ *
+ * `epic` et `legendary` sont arrivés avec le Lot 11 (Notion « Les Masques
+ * Noyés / Théâtre Englouti », 15/09/2026) : trois cartes y sont annoncées
+ * Épique ou Légendaire, paliers qui n'existaient pas. Ils se placent AU
+ * DESSUS de Rare et EN DESSOUS d'Abyssale — une Abyssale n'est pas un
+ * palier de plus, c'est une variante « beaucoup plus rare d'une carte
+ * existante », et elle reste le seul lot du slot Profondeur.
+ */
+export type CardRarity = "common" | "uncommon" | "rare" | "epic" | "legendary" | "abyssal";
 
 /** Ordre croissant de rareté — sert aussi de repli quand un palier est vide. */
-export const RARITY_ORDER: readonly CardRarity[] = ["common", "uncommon", "rare", "abyssal"];
+export const RARITY_ORDER: readonly CardRarity[] = ["common", "uncommon", "rare", "epic", "legendary", "abyssal"];
 
 /**
  * Règle d'un slot de booster — miroir d'une ligne de `booster_slots`.

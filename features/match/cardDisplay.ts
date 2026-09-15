@@ -60,6 +60,8 @@ export const CARD_RARITY_LABELS: Record<CardRarity, string> = {
   common: "Commune",
   uncommon: "Peu commune",
   rare: "Rare",
+  epic: "Épique",
+  legendary: "Légendaire",
   abyssal: "Abyssale",
 };
 

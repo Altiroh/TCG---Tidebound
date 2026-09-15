@@ -92,13 +92,64 @@ export const WELCOME_PACK_VISUAL: BoosterPackVisual = {
   mouth: { centerX: 0.055, width: 0.56, startTop: 0.15 },
 };
 
+/**
+ * Les deux boosters spécialisés. Leur calage n'est pas fait à l'œil comme
+ * celui des deux premiers : leurs trois fichiers sont DÉCOUPÉS d'une même
+ * planche, donc leurs positions relatives sont connues exactement. Les
+ * rectangles ci-dessous en sont le calcul direct — le sachet fermé aligné
+ * par le bas sur le corps ouvert (c'est le même objet), la bande arrachée
+ * centrée et posée sur la ligne de déchirure.
+ */
+export const POISSONS_PAS_FRAIS_PACK_VISUAL: BoosterPackVisual = {
+  id: "poissons-pas-frais",
+  assets: {
+    closed: "/assets/boosters/poissons-pas-frais/poissons-pas-frais.webp",
+    openTop: "/assets/boosters/poissons-pas-frais/poissons-pas-frais-open-top.webp",
+    openBottom: "/assets/boosters/poissons-pas-frais/poissons-pas-frais-open-bottom.webp",
+  },
+  // 868 × 1228 px
+  aspectRatio: 868 / 1228,
+  // 869 × 1477 px, aligné par le bas.
+  closedRect: { left: -0.06, top: -20.28, width: 100.12, height: 120.28 },
+  // 803 × 202 px → 92.51 % × 16.45 %, posé sur la ligne de déchirure.
+  topRect: { left: 3.74, top: -8.45, width: 92.51, height: 16.45 },
+  topHinge: { x: 96, y: 84 },
+  tearLineTop: 8,
+  mouth: { centerX: 0.01, width: 0.62, startTop: 0.14 },
+};
+
+export const ETRANGETE_SOUS_MARINE_PACK_VISUAL: BoosterPackVisual = {
+  id: "etrangete-sous-marine",
+  assets: {
+    closed: "/assets/boosters/etrangete-sous-marine/etrangete-sous-marine.webp",
+    openTop: "/assets/boosters/etrangete-sous-marine/etrangete-sous-marine-open-top.webp",
+    openBottom: "/assets/boosters/etrangete-sous-marine/etrangete-sous-marine-open-bottom.webp",
+  },
+  // 858 × 1246 px
+  aspectRatio: 858 / 1246,
+  // 862 × 1465 px, aligné par le bas.
+  closedRect: { left: -0.23, top: -17.58, width: 100.47, height: 117.58 },
+  // 776 × 202 px → 90.44 % × 16.21 %.
+  topRect: { left: 4.78, top: -8.21, width: 90.44, height: 16.21 },
+  topHinge: { x: 96, y: 84 },
+  tearLineTop: 8,
+  mouth: { centerX: 0.01, width: 0.62, startTop: 0.14 },
+};
+
 /** Id de booster (table `boosters`) → visuel. Tout id inconnu retombe sur le visuel par défaut. */
 const BOOSTER_VISUAL_BY_ID: Record<string, BoosterPackVisual> = {
   standard: DEFAULT_PACK_VISUAL,
   welcome_tutorial: WELCOME_PACK_VISUAL,
+  "poissons-pas-frais": POISSONS_PAS_FRAIS_PACK_VISUAL,
+  "etrangete-sous-marine": ETRANGETE_SOUS_MARINE_PACK_VISUAL,
 };
 
-export const BOOSTER_PACK_VISUALS: readonly BoosterPackVisual[] = [DEFAULT_PACK_VISUAL, WELCOME_PACK_VISUAL];
+export const BOOSTER_PACK_VISUALS: readonly BoosterPackVisual[] = [
+  DEFAULT_PACK_VISUAL,
+  POISSONS_PAS_FRAIS_PACK_VISUAL,
+  ETRANGETE_SOUS_MARINE_PACK_VISUAL,
+  WELCOME_PACK_VISUAL,
+];
 
 /**
  * Largeur / hauteur du SACHET FERMÉ. Déduite du calage plutôt que saisie

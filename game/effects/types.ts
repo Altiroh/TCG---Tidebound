@@ -56,7 +56,25 @@ export type EffectType =
   /** Force une entrée DIRECTE dans les Abysses, en ignorant tout état intermédiaire (ex: La Gueule Sous la Mer, Sept Brasses Plus Bas — Lot 08, "Grandes Anomalies"). `amount` (optionnel) ajoute ce nombre de tours à la durée d'entrée par défaut ; `forceTideOrientation` (optionnel) fixe l'orientation résultante. */
   | "tideForceJumpToAbysses"
   /** Empêche CETTE cible de récupérer la moindre Raison (régénération de début de tour incluse) jusqu'au début de son prochain tour (ex: La Gueule Sous la Mer). */
-  | "lockReasonGainUntilNextTurn";
+  | "lockReasonGainUntilNextTurn"
+  // --- Théâtre Englouti : retour en main, rappel d'arrivée, réduction ----
+  // (Lot 11, Notion « Les Masques Noyés / Théâtre Englouti »)
+  /**
+   * Répète l'effet d'ARRIVÉE (`onEnterPlay`) de la cible, sans la faire
+   * revenir en jeu (ex: Colombina aux Cent Visages, Le Régisseur des
+   * Profondeurs). Seuls les effets qui ne demandent AUCUN choix au joueur
+   * sont rejoués : une répétition ne rouvre pas de fenêtre de ciblage, et
+   * rejouer un effet ciblé avec l'ancienne cible serait faux.
+   */
+  | "repeatEnterEffects"
+  /**
+   * Pose une réduction de coût sur les PROCHAINES cartes jouées par le
+   * contrôleur ce tour-ci (« la prochaine Marionnette que vous jouez ce
+   * tour coûte 1 de moins, minimum 1 »). `amount` porte la réduction,
+   * `filter` la restriction éventuelle (sous-type, type), `uses` le nombre
+   * de cartes concernées (défaut 1).
+   */
+  | "discountNextCards";
 
 /** Une valeur numérique d'effet, pour l'instant une constante — prête à
  * être étendue vers des formules (ex: "= nombre d'unités contrôlées"). */
@@ -79,6 +97,13 @@ export interface ChosenUnitFilter {
    */
   archetype?: ArchetypeId;
   /**
+   * "choisissez une Marionnette alliée" : ne retient que les permanents de
+   * ce SOUS-TYPE (`CardDefinition.subtype`). Le Lot 11 raisonne en
+   * sous-type et non en archétype — une Marionnette est un sous-type de
+   * Créature, pas une famille au sens `archetypes.ts`.
+   */
+  subtype?: string;
+  /**
    * "un AUTRE Cra-Poiscail" : exclut la source de l'effet et — si cette
    * source est un Équipement — le permanent qu'elle équipe. C'est LUI que
    * le texte oppose à "un autre" (ex: Fourchette du Grand Étang, dont la
@@ -87,6 +112,13 @@ export interface ChosenUnitFilter {
   excludeSource?: boolean;
   /** Restreint au plateau du contrôleur de la source. Défaut : `true` — aucun texte du pool actuel ne fait choisir dans le camp adverse. */
   sameController?: boolean;
+  /**
+   * Coût IMPRIMÉ maximum de la carte choisie (ex: Le Régisseur Sans Visage,
+   * « une Marionnette de coût 2 ou moins »). Le coût imprimé et non le coût
+   * réduit : un plafond qui bougerait avec les réductions en cours rendrait
+   * la cible légale ou non selon l'ordre des effets.
+   */
+  maxCost?: number;
 }
 
 export type TargetSelector =
@@ -184,6 +216,8 @@ export interface EffectDefinition {
   conditionControlsAnyCardIds?: string[];
   /** Zone de destination, pour `moveZone` (ex: retourner une carte en main). */
   toZone?: "hand" | "deck" | "graveyard" | "board";
+  /** `discountNextCards` : nombre de cartes concernées par la réduction. Défaut 1. */
+  uses?: number;
   /**
    * Filtre optionnel utilisé par `searchDeck`/`moveGraveyardCardToHand` :
    * `cardType` (un seul type) ou `cardTypes` (plusieurs types acceptés, ex:
@@ -193,6 +227,8 @@ export interface EffectDefinition {
   filter?: {
     cardType?: import("@/game/cards/types").CardType;
     cardTypes?: import("@/game/cards/types").CardType[];
+    /** Sous-type exact (ex: "marionnette") — utilisé par `discountNextCards`. */
+    subtype?: string;
     maxCost?: number;
   };
   /**

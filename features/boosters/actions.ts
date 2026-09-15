@@ -192,20 +192,24 @@ export async function openBooster(boosterId: string): Promise<ActionResult<OpenB
     // base qui décide de ce qui est tirable, pas le catalogue TypeScript
     // (une carte peut être désactivée ou rendue non collectionnable sans
     // toucher au moteur).
-    const [definition, slots, pool, pity, ownedCards] = await Promise.all([
-      service.from("booster_definitions").select("pool_excluded_rarities").eq("id", boosterId).maybeSingle(),
+    const [slots, pool, pity, ownedCards] = await Promise.all([
       service
         .from("booster_slots")
         .select("slot_index, guaranteed_rarity, weighted_rarities")
         .eq("booster_definition_id", boosterId)
         .order("slot_index"),
-      // Pool restreint au lot "core" : les lots d'archétype (Lot 10
-      // Cra-Poiscail) sont dans le catalogue et jouables, mais ne doivent
-      // tomber que dans LEUR booster dédié — le plan de diffusion interdit
-      // notamment tout Cra-Poiscail dans le Mini Booster de Bienvenue. Tant
-      // que ces boosters n'existent pas, leurs cartes ne sont tirées nulle
-      // part.
-      service.from("cards").select("id, rarity").eq("is_collectible", true).eq("is_enabled", true).eq("set_code", "core"),
+      // Pool PROPRE À CE BOOSTER (`booster_pool_cards`) : c'est la table
+      // qui fait autorité sur « dans quels boosters une carte peut
+      // réellement apparaître ». La jointure ne garde que les cartes
+      // encore collectionnables et actives — désactiver une carte la
+      // retire de tous les boosters sans toucher aux pools.
+      service
+        .from("booster_pool_cards")
+        .select("card_id, cards!inner(id, rarity, is_collectible, is_enabled)")
+        .eq("booster_definition_id", boosterId)
+        .eq("is_enabled", true)
+        .eq("cards.is_collectible", true)
+        .eq("cards.is_enabled", true),
       service
         .from("player_pity")
         .select("packs_since_abyssal")
@@ -221,9 +225,10 @@ export async function openBooster(boosterId: string): Promise<ActionResult<OpenB
       return { ok: false, error: "Ce booster n'a pas de format défini." };
     }
     if (!pool.data || pool.data.length === 0) {
-      // Cas réel si `npm run seed:cards` n'a jamais tourné : mieux vaut le
-      // dire que consommer le booster pour rien.
-      return { ok: false, error: "Aucune carte collectionnable en base — lance `npm run seed:cards`." };
+      // Cas réel si `npm run seed:cards` n'a jamais tourné, ou si le pool
+      // de ce booster est vide : mieux vaut le dire que consommer le
+      // booster du joueur pour ne rien lui rendre.
+      return { ok: false, error: "Le pool de ce booster est vide — lance `npm run seed:cards`." };
     }
 
     const slotRules: BoosterSlotRule[] = slots.data.map((row) => ({
@@ -232,14 +237,15 @@ export async function openBooster(boosterId: string): Promise<ActionResult<OpenB
       weightedRarities: row.weighted_rarities,
     }));
 
-    // Exclusions de pool (ex: pas d'Abyssale dans le Mini Booster de
-    // Bienvenue). Filtrées ICI, avant le tirage : un slot qui viserait une
-    // rareté exclue retombera sur le palier voisin peuplé via le repli de
-    // `drawBooster`, plutôt que de produire une carte interdite.
-    const excluded = new Set<CardRarity>(definition.data?.pool_excluded_rarities ?? []);
-    const poolCards: BoosterPoolCard[] = pool.data
-      .filter((row) => !excluded.has(row.rarity))
-      .map((row) => ({ id: row.id, rarity: row.rarity }));
+    // Le pool lu en base est déjà celui de CE booster : plus rien à
+    // exclure ici. L'ancien filtrage par rareté (`pool_excluded_rarities`)
+    // n'avait de sens que tant que tous les boosters partageaient le même
+    // pool — il ne pouvait de toute façon pas exprimer « ce booster-ci
+    // contient ces cartes-là ».
+    const poolCards: BoosterPoolCard[] = pool.data.map((row) => ({
+      id: row.cards.id,
+      rarity: row.cards.rarity,
+    }));
 
     if (poolCards.length === 0) {
       return { ok: false, error: "Le pool de ce booster ne contient aucune carte éligible." };

@@ -21,6 +21,7 @@ export type TriggerType =
   | "onExpire" // une Structure/Objet à durée limitée quitte le board par expiration (ni mort, ni Sabordage)
   | "onObjectBroken" // le contrôleur vient de Briser un Objet (depuis le board OU depuis sa main)
   | "onPowerGained" // une carte EN JEU vient de voir sa Puissance effective augmenter, quelle qu'en soit la cause
+  | "onReturnedToHand" // un permanent quitte le board pour la main de son contrôleur (Lot 11 — Théâtre Englouti)
   | "onCondition"; // condition arbitraire évaluée par un `ConditionExpression`
 
 export interface TriggerEvent {

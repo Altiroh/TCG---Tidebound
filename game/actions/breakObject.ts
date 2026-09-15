@@ -1,7 +1,7 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
 import type { EffectContext } from "@/game/effects/resolveEffect";
 import { resolveEffect } from "@/game/effects/resolveEffect";
-import { processSummonEnterTriggers, processTrigger } from "@/game/triggers/triggerBus";
+import { processReturnedToHandTriggers, processSummonEnterTriggers, processTrigger } from "@/game/triggers/triggerBus";
 import type { EffectDefinition } from "@/game/effects/types";
 import type { GameEvent } from "@/game/events/types";
 import {
@@ -206,6 +206,11 @@ export function breakObject(state: GameState, action: BreakObjectAction): Action
   const summoned = processSummonEnterTriggers(nextState, breakEffectEvents, state.turnNumber);
   nextState = summoned.state;
   events.push(...summoned.events);
+
+  // Marionnettes renvoyées en main par le Bris (ex: La Clochette du Rappel).
+  const recalled = processReturnedToHandTriggers(nextState, breakEffectEvents, state.turnNumber);
+  nextState = recalled.state;
+  events.push(...recalled.events);
 
   // Le Bris lui-même est un fait auquel des cartes réagissent
   // ("la première fois à chaque tour que vous Brisez un Objet").

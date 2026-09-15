@@ -23,6 +23,7 @@
 import { CORE_SET, PRECONSTRUCTED_DECKS, getMaxCopies } from "@/game";
 import { RARITY_WEIGHTS } from "@/game/boosters";
 import { assertRarityCoverage, rarityForCardId } from "@/game/boosters/cardRarity";
+import { BOOSTER_POOLS } from "@/game/boosters/pools";
 import { QUEST_CATALOG, questProgressKind } from "@/game/quests";
 
 /** Une valeur telle qu'elle part en base : `null`, un scalaire, ou un tableau de texte (colonnes `text[]`). */
@@ -54,12 +55,30 @@ export function cardRows(): SeedRow[] {
       is_collectible: true,
       is_enabled: true,
       // Lot de diffusion : "core" par défaut, sinon celui déclaré par la
-      // carte (Lot 10 Cra-Poiscail). C'est ce code qui décide dans quels
-      // boosters la carte peut tomber — cf. `features/boosters/actions.ts`.
+      // carte (Lot 10 Cra-Poiscail, Lot 11 Théâtre Englouti). PUREMENT
+      // DOCUMENTAIRE depuis que les pools existent : ce qui décide où une
+      // carte peut tomber, c'est `booster_pool_cards` (`game/boosters/pools.ts`).
       set_code: def.setCode ?? "core",
       version: 1,
     };
   });
+}
+
+/**
+ * Appartenance carte ↔ booster, dans la forme de `booster_pool_cards`.
+ *
+ * C'est cette table qui décide où une carte peut tomber. Une carte peut
+ * apparaître dans plusieurs pools (les trois passerelles du catalogue) :
+ * ce sont des réimpressions, pas des cartes distinctes.
+ */
+export function boosterPoolCardRows(): SeedRow[] {
+  return Object.entries(BOOSTER_POOLS).flatMap(([boosterId, cardIds]) =>
+    cardIds.map((cardId) => ({
+      booster_definition_id: boosterId,
+      card_id: cardId,
+      is_enabled: true,
+    }))
+  );
 }
 
 /** Les decks préconstruits, dans la forme de la table `system_decks`. */

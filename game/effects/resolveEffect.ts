@@ -1,4 +1,4 @@
-import { isVisibleDuringTide, type CardInstance, type StatModifierDuration } from "@/game/cards/types";
+import { isVisibleDuringTide, type CardDefinition, type CardInstance, type StatModifierDuration } from "@/game/cards/types";
 import { canBeEquipTarget, getCardDefinition } from "@/game/cards/sets/core";
 import { countArchetypeUnits } from "@/game/cards/archetypes";
 import { getShipDefinition } from "@/game/environment/shipData";
@@ -18,11 +18,81 @@ import {
 import {
   getOpponent,
   getPlayer,
+  MIN_DISCOUNTED_COST,
   STATUS_NO_REASON_GAIN,
+  type CostDiscount,
   type GameState,
   type PlayerId,
   type PlayerState,
 } from "@/game/state/types";
+
+/**
+ * Renvoie un permanent du board vers la main de son propriétaire.
+ *
+ * L'exemplaire qui revient est NEUF : dégâts, modificateurs, durée,
+ * statuts et drapeaux « une fois par tour » sont remis à zéro. C'est la
+ * lecture naturelle de « renvoyez-la dans votre main » — la carte
+ * redevient une carte en main, pas une unité blessée rangée de côté — et
+ * c'est ce qui rend la boucle du Théâtre jouable sans accumuler d'état.
+ *
+ * L'`instanceId` change aussi : conserver l'ancien laisserait des
+ * références pendantes (Équipements attachés, capacités qui suivent une
+ * instance) pointer sur une carte qui n'est plus en jeu.
+ */
+function returnPermanentToHand(
+  state: GameState,
+  ownerId: PlayerId,
+  instanceId: string
+): { state: GameState; events: GameEvent[]; returned: CardInstance | null } {
+  const owner = getPlayer(state, ownerId);
+  const unit = owner.board.find((u) => u.instanceId === instanceId);
+  if (!unit) return { state, events: [], returned: null };
+
+  const fresh: CardInstance = {
+    instanceId: `${unit.instanceId}:hand:${state.turnNumber}`,
+    cardId: unit.cardId,
+    ownerId: unit.ownerId,
+    damageMarked: 0,
+    modifiers: [],
+    summoningSick: false,
+    hasAttackedThisTurn: false,
+    ...(unit.illustrationVariant !== undefined ? { illustrationVariant: unit.illustrationVariant } : {}),
+  };
+
+  // Un Équipement dont le porteur quitte le board n'équipe plus rien :
+  // `processDeaths` le ramasse au prochain passage (`destroyOrphanedEquipment`),
+  // exactement comme lorsque le porteur meurt.
+  const nextState = replacePlayer(state, {
+    ...owner,
+    board: owner.board.filter((u) => u.instanceId !== instanceId),
+    hand: [...owner.hand, fresh],
+  });
+
+  const events: GameEvent[] = [
+    {
+      type: "CARD_MOVED",
+      instanceId,
+      fromZone: "board",
+      toZone: "hand",
+      cardId: unit.cardId,
+      toInstanceId: fresh.instanceId,
+      ownerId: unit.ownerId,
+      turnNumber: state.turnNumber,
+      timestamp: 0,
+    },
+  ];
+
+  return { state: nextState, events, returned: fresh };
+}
+
+/** Une réduction de coût s'applique-t-elle à cette carte ? */
+export function discountApplies(discount: CostDiscount, def: CardDefinition, turnNumber: number): boolean {
+  if (discount.uses <= 0) return false;
+  if (turnNumber > discount.expiresAfterTurn) return false;
+  if (discount.subtype && def.subtype !== discount.subtype) return false;
+  if (discount.cardTypes && !discount.cardTypes.includes(def.type)) return false;
+  return true;
+}
 
 /** Contexte de résolution : qui a causé l'effet, et quelle cible a été
  * choisie par le joueur (résolue et validée avant d'appeler ce module). */
@@ -105,6 +175,15 @@ function replaceUnit(
   const owner = getPlayer(state, ownerId);
   const board = owner.board.map((u) => (u.instanceId === instanceId ? updater(u) : u));
   return replacePlayer(state, { ...owner, board });
+}
+
+/** `getCardDefinition` sans lever : un cardId inconnu ne casse pas une résolution. */
+function safeCardDefinition(cardId: string): CardDefinition | undefined {
+  try {
+    return getCardDefinition(cardId);
+  } catch {
+    return undefined;
+  }
 }
 
 function findUnitOwner(state: GameState, instanceId: string): PlayerState | undefined {
@@ -794,11 +873,94 @@ export function resolveEffect(
       return { state: replacePlayer(state, { ...player, graveyard, hand }), events };
     }
 
-    case "moveZone":
+    case "moveZone": {
+      // Seule la destination « main » est implémentée : c'est la seule que
+      // le catalogue demande (Lot 11 — « renvoyez une Marionnette alliée
+      // dans votre main »). Les autres destinations restent prévues par le
+      // modèle de données sans consommateur.
+      if (effect.toZone !== "hand") return { state, events };
+
+      const { targets, rngState } = resolveUnitTargets(state, effect, context);
+      let nextState: GameState = { ...state, rngState };
+
+      for (const { unit, ownerId } of targets) {
+        // Un permanent ne rentre en main que chez SON contrôleur : aucun
+        // texte du pool ne renvoie une carte adverse, et le faire mettrait
+        // une carte adverse dans la mauvaise main.
+        if (ownerId !== context.controllerId) continue;
+        const moved = returnPermanentToHand(nextState, ownerId, unit.instanceId);
+        nextState = moved.state;
+        events.push(...moved.events);
+      }
+
+      return { state: nextState, events };
+    }
+
+    case "repeatEnterEffects": {
+      const { targets, rngState } = resolveUnitTargets(state, effect, context);
+      let nextState: GameState = { ...state, rngState };
+
+      for (const { unit, ownerId } of targets) {
+        const def = safeCardDefinition(unit.cardId);
+        if (!def) continue;
+
+        for (const ability of def.abilities ?? []) {
+          if (ability.trigger !== "onEnterPlay") continue;
+          // Une capacité d'observateur (« quand une AUTRE carte arrive »)
+          // n'est pas l'effet d'arrivée de CETTE carte : la répéter
+          // déclencherait une capacité qui n'a jamais été déclenchée.
+          if (ability.triggeredBy) continue;
+          // Une capacité facultative demande une décision à son contrôleur :
+          // elle ne peut pas être rejouée sans rouvrir de fenêtre.
+          if (ability.mode === "optional") continue;
+
+          for (const inner of ability.effects) {
+            // Un effet ciblé rejoué sans nouveau choix retomberait sur la
+            // cible de l'appelant, pas sur celle de l'arrivée d'origine.
+            // On saute plutôt que de viser au hasard.
+            if (inner.target.kind === "chosenUnit") continue;
+
+            const repeated = resolveEffect(nextState, inner, {
+              ...context,
+              // La source de l'effet répété est la carte dont on répète
+              // l'arrivée : un « il gagne +1 » doit la viser ELLE.
+              sourceInstanceId: unit.instanceId,
+              controllerId: ownerId,
+              triggerSourceInstanceId: unit.instanceId,
+            });
+            nextState = repeated.state;
+            events.push(...repeated.events);
+          }
+        }
+      }
+
+      return { state: nextState, events };
+    }
+
+    case "discountNextCards": {
+      const reduction = amountValue(effect.amount);
+      if (reduction <= 0) return { state, events };
+
+      const player = getPlayer(state, context.controllerId);
+      const discount: CostDiscount = {
+        amount: reduction,
+        uses: Math.max(1, effect.uses ?? 1),
+        // « ce tour » : la réduction meurt avec le tour où elle est posée.
+        expiresAfterTurn: state.turnNumber,
+        ...(effect.filter?.subtype ? { subtype: effect.filter.subtype } : {}),
+        ...(effect.filter?.cardTypes ? { cardTypes: [...effect.filter.cardTypes] } : {}),
+      };
+
+      return {
+        state: replacePlayer(state, { ...player, costDiscounts: [...(player.costDiscounts ?? []), discount] }),
+        events,
+      };
+    }
+
     case "transform":
     case "searchDeck":
       // Prévus par le modèle de données pour de futures extensions ;
-      // pas encore nécessaires pour les 30 cartes du MVP.
+      // pas encore nécessaires pour le catalogue actuel.
       return { state, events };
 
     default:

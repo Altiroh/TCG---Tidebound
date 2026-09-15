@@ -134,6 +134,20 @@ export interface CardMovedEvent extends BaseGameEvent {
   instanceId: string;
   fromZone: string;
   toZone: string;
+  /**
+   * Identité de la carte déplacée, et exemplaire d'ARRIVÉE quand le
+   * déplacement en crée un neuf (un retour en main repart d'une carte
+   * vierge, donc d'un nouvel `instanceId`).
+   *
+   * Sans eux, un observateur du journal devrait retrouver la carte dans la
+   * zone de destination pour savoir de laquelle il s'agit — impossible dès
+   * que l'`instanceId` change. Renseignés par les déplacements qui les
+   * connaissent, absents des plus anciens.
+   */
+  cardId?: string;
+  toInstanceId?: string;
+  /** Propriétaire de la carte déplacée. */
+  ownerId?: PlayerId;
 }
 
 export interface TurnStartedEvent extends BaseGameEvent {
