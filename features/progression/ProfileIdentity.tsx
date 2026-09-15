@@ -1,12 +1,11 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { getCardDefinition } from "@/game";
 import { cardIllustrationUrl } from "@/features/decks/nameplateArt";
 import { updateProfileIdentity } from "@/features/progression/profileActions";
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
-import { Dialog } from "@/features/shell/Dialog";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/progression/ProfileIdentity.module.css";
 import { playButtonClick } from "@/lib/sound";
@@ -14,10 +13,10 @@ import { playButtonClick } from "@/lib/sound";
 interface ProfileIdentityProps {
   displayName: string | null;
   avatarCardId: string | null;
-  /** Cartes possédées — les seules proposées comme illustration. */
-  ownedCardIds: readonly string[];
   /** Après une modification acceptée. Par défaut : relecture de la page. */
   onChanged?: () => void;
+  /** Ouvre le choix d'illustration, dans la partie droite du profil (`IllustrationPicker`). */
+  onPickIllustration: () => void;
 }
 
 /** Nom lisible d'une carte, son identifiant à défaut — jamais d'exception à l'affichage. */
@@ -40,20 +39,12 @@ function cardName(cardId: string): string {
  * (`set_profile_identity`) : le navigateur ne peut pas s'attribuer une
  * carte qu'il n'a pas.
  */
-export function ProfileIdentity({ displayName, avatarCardId, ownedCardIds, onChanged }: ProfileIdentityProps) {
+export function ProfileIdentity({ displayName, avatarCardId, onChanged, onPickIllustration }: ProfileIdentityProps) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
-  const [picking, setPicking] = useState(false);
   const [draftName, setDraftName] = useState(displayName ?? "");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-
-  // Triées par nom : dans une collection de plusieurs dizaines de cartes,
-  // l'ordre d'obtention ne veut plus rien dire.
-  const options = useMemo(
-    () => [...new Set(ownedCardIds)].map((cardId) => ({ cardId, name: cardName(cardId) })).sort((a, b) => a.name.localeCompare(b.name, "fr")),
-    [ownedCardIds]
-  );
 
   /** Une seule porte vers le serveur : les deux champs passent par là. */
   function commit(patch: { displayName?: string; avatarCardId?: string | null }, onDone?: () => void) {
@@ -95,7 +86,7 @@ export function ProfileIdentity({ displayName, avatarCardId, ownedCardIds, onCha
           onClick={() => {
             playButtonClick();
             setError(null);
-            setPicking(true);
+            onPickIllustration();
           }}
           aria-label={avatarCardId ? `Illustration : ${cardName(avatarCardId)} — changer` : "Choisir une illustration"}
           title={avatarCardId ? `${cardName(avatarCardId)} — changer d'illustration` : "Choisir une illustration"}
@@ -157,52 +148,6 @@ export function ProfileIdentity({ displayName, avatarCardId, ownedCardIds, onCha
 
       {error && <p className={game.error}>{error}</p>}
 
-      {picking && (
-        <Dialog
-          title="Ton illustration de profil"
-          width={820}
-          onClose={() => setPicking(false)}
-          actions={
-            <>
-              <button type="button" className={game.secondary} onClick={() => setPicking(false)}>
-                Fermer
-              </button>
-              {avatarCardId && (
-                <button
-                  type="button"
-                  className={game.link}
-                  onClick={() => commit({ avatarCardId: null }, () => setPicking(false))}
-                  disabled={isPending}
-                >
-                  Retirer l&apos;illustration
-                </button>
-              )}
-            </>
-          }
-        >
-          {options.length === 0 ? (
-            <p className={game.muted}>
-              Tu n&apos;as encore aucune carte. Ouvre un booster : chaque carte obtenue devient une illustration possible.
-            </p>
-          ) : (
-            <div className={styles.picker}>
-              {options.map(({ cardId, name }) => (
-                <button
-                  key={cardId}
-                  type="button"
-                  className={`${styles.option} ${cardId === avatarCardId ? styles.optionActive : ""}`}
-                  onClick={() => commit({ avatarCardId: cardId }, () => setPicking(false))}
-                  disabled={isPending}
-                  title={name}
-                >
-                  <span className={styles.optionArt} style={{ backgroundImage: `url("${cardIllustrationUrl(cardId)}")` }} aria-hidden />
-                  <span className={styles.optionName}>{name}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </Dialog>
-      )}
     </>
   );
 }

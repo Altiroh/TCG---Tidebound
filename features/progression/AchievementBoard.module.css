@@ -327,3 +327,58 @@
 .cell:first-child .tooltip[data-open="true"] {
   transform: none;
 }
+
+/* Débloqué, Tides à réclamer : la tuile pulse et le cadeau remplace la coche. */
+.toClaim {
+  color: #ffe08a;
+  font-weight: 600;
+}
+
+.cell[data-claimable="true"] .tile {
+  cursor: pointer;
+  border-color: #ffc95a;
+  animation: tileClaim 1.8s ease-in-out infinite;
+}
+
+.cell[data-claimable="true"] .caption {
+  color: #ffe9b0;
+}
+
+@keyframes tileClaim {
+  0%, 100% { box-shadow: inset 0 0 0 1px rgba(255, 230, 170, 0.35), 0 0 10px rgba(255, 190, 70, 0.35), 0 6px 14px rgba(0, 0, 0, 0.5); }
+  50% { box-shadow: inset 0 0 0 1px rgba(255, 230, 170, 0.6), 0 0 24px rgba(255, 190, 70, 0.75), 0 6px 14px rgba(0, 0, 0, 0.5); }
+}
+
+.gift {
+  position: absolute;
+  right: -8px;
+  bottom: -8px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid #fff1c8;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #ffd66e, #e0a132);
+  font-size: 15px;
+  box-shadow: 0 0 10px rgba(255, 200, 90, 0.7);
+  animation: giftBounce 1.8s ease-in-out infinite;
+}
+
+@keyframes giftBounce {
+  0%, 60%, 100% { transform: none; }
+  70% { transform: translateY(-4px) rotate(-10deg); }
+  85% { transform: translateY(0) rotate(8deg); }
+}
+
+.cell[data-claimable="true"] .tooltipBar {
+  background: linear-gradient(180deg, #b77a1f, #7a4d0f);
+  color: #fff2c4;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cell[data-claimable="true"] .tile,
+  .gift {
+    animation: none;
+  }
+}

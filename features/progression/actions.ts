@@ -79,7 +79,7 @@ export async function fetchProgression(): Promise<ProgressionSummary> {
     const user = await getSessionUser();
     if (!user) return SIGNED_OUT;
 
-    const [progression, currency, profile, claimable, levelRewards, cardChoices, login] = await Promise.all([
+    const [progression, currency, profile, claimable, levelRewards, cardChoices, login, achievements] = await Promise.all([
       supabase.from("player_progression").select("*").eq("user_id", user.id).maybeSingle(),
       supabase.from("player_currency").select("balance").eq("user_id", user.id).maybeSingle(),
       readProfileHeader(supabase, user.id),
@@ -94,6 +94,7 @@ export async function fetchProgression(): Promise<ProgressionSummary> {
       supabase.from("player_level_rewards").select("level").eq("user_id", user.id),
       supabase.from("player_card_choices").select("id", { count: "exact", head: true }).eq("user_id", user.id).is("resolved_at", null),
       supabase.from("player_login_rewards").select("last_claimed_day").eq("user_id", user.id).maybeSingle(),
+      supabase.from("player_achievements").select("code", { count: "exact", head: true }).eq("user_id", user.id).is("claimed_at", null),
     ]);
     const storedLevel = progression.data?.level ?? 1;
     const levelsToClaim = claimableLevelsFor(storedLevel, (levelRewards.data ?? []).map((row) => row.level)).length;
@@ -110,7 +111,8 @@ export async function fetchProgression(): Promise<ProgressionSummary> {
       displayName: profile.displayName ?? user.email ?? null,
       avatarCardId: profile.avatarCardId,
       claimableQuests: claimable.count ?? 0,
-      claimableRewards: levelsToClaim + (cardChoices.count ?? 0) + loginToClaim,
+      // Tout ce qui se réclame au profil — quêtes comprises, elles y ont leur onglet.
+      claimableRewards: levelsToClaim + (cardChoices.count ?? 0) + loginToClaim + (claimable.count ?? 0) + (achievements.error ? 0 : (achievements.count ?? 0)),
     };
   } catch (error) {
     console.error("[fetchProgression] Lecture impossible :", error);

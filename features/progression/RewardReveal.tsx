@@ -3,10 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { getCardDefinition, type CardInstance } from "@/game";
-import { levelRewardLabel, type LevelRewardItem } from "@/game/progression";
+import { levelRewardLabel, loginRewardLabel, type LevelRewardItem, type LoginRewardItem } from "@/game/progression";
 import { CardTile } from "@/features/match/CardTile";
 import { chooseRewardCard, type PendingCardChoice } from "@/features/progression/profileActions";
-import { RewardIcon } from "@/features/progression/RewardIcon";
+import { RewardIcon, type RewardItem } from "@/features/progression/RewardIcon";
 import styles from "@/features/progression/RewardReveal.module.css";
 import { playButtonClick } from "@/lib/sound";
 
@@ -20,7 +20,16 @@ interface RewardRevealProps {
   levels: readonly RevealedLevel[];
   /** Cartes au choix à trancher, l'une après l'autre. */
   choices: readonly PendingCardChoice[];
+  /** Gains hors paliers (quêtes, exploits, escale du jour) : Tides, XP, boosters. */
+  extraItems?: readonly RewardItem[];
+  /** Titre imposé — sinon déduit des paliers. */
+  title?: string;
   onDone: () => void;
+}
+
+function itemLabel(item: RewardItem): string {
+  if (item.kind === "xp" || item.kind === "card") return loginRewardLabel(item as LoginRewardItem);
+  return levelRewardLabel(item as LevelRewardItem);
 }
 
 function choiceInstance(choiceId: string, cardId: string): CardInstance {
@@ -44,7 +53,7 @@ function choiceInstance(choiceId: string, cardId: string): CardInstance {
  * se présentent face visible : on en garde une, et elle rejoint la
  * collection (`resolve_card_choice`, vérifiée côté serveur).
  */
-export function RewardReveal({ levels, choices, onDone }: RewardRevealProps) {
+export function RewardReveal({ levels, choices, extraItems = [], title: forcedTitle, onDone }: RewardRevealProps) {
   const [mounted, setMounted] = useState(false);
   const [choiceIndex, setChoiceIndex] = useState(0);
   const [picked, setPicked] = useState<string | null>(null);
@@ -52,22 +61,29 @@ export function RewardReveal({ levels, choices, onDone }: RewardRevealProps) {
   const [error, setError] = useState<string | null>(null);
   const [kept, setKept] = useState<string[]>([]);
   // Les récompenses d'abord ; s'il n'y en a pas (on vient seulement choisir), directement le choix.
-  const [phase, setPhase] = useState<"items" | "choice">(levels.length > 0 ? "items" : "choice");
+  const [phase, setPhase] = useState<"items" | "choice">(levels.length > 0 || extraItems.length > 0 ? "items" : "choice");
 
   useEffect(() => setMounted(true), []);
 
   /** Récompenses à montrer : les Tides additionnés, le reste tel quel (les choix de carte ont leur étape). */
   const shown = useMemo(() => {
     let tides = 0;
-    const others: LevelRewardItem[] = [];
-    for (const level of levels) {
-      for (const item of level.items) {
-        if (item.kind === "tides") tides += item.amount;
-        else if (item.kind !== "cardChoice") others.push(item);
-      }
+    let xp = 0;
+    const boosters = new Map<string, number>();
+    const others: RewardItem[] = [];
+    const all: RewardItem[] = [...levels.flatMap((level) => level.items), ...extraItems];
+    for (const item of all) {
+      if (item.kind === "tides") tides += item.amount;
+      else if (item.kind === "xp") xp += item.amount;
+      else if (item.kind === "booster") boosters.set(item.boosterId, (boosters.get(item.boosterId) ?? 0) + item.count);
+      else if (item.kind !== "cardChoice") others.push(item);
     }
-    return tides > 0 ? [{ kind: "tides", amount: tides } as LevelRewardItem, ...others] : others;
-  }, [levels]);
+    const merged: RewardItem[] = [];
+    if (tides > 0) merged.push({ kind: "tides", amount: tides });
+    if (xp > 0) merged.push({ kind: "xp", amount: xp });
+    for (const [boosterId, count] of boosters) merged.push({ kind: "booster", boosterId, count });
+    return [...merged, ...others];
+  }, [levels, extraItems]);
 
   const choice = choices[choiceIndex];
 
@@ -107,7 +123,8 @@ export function RewardReveal({ levels, choices, onDone }: RewardRevealProps) {
   if (!mounted) return null;
 
   const title =
-    levels.length === 1 ? `Palier ${levels[0]!.level} réclamé !` : levels.length > 1 ? `${levels.length} paliers réclamés !` : "Choisis ta carte";
+    forcedTitle ??
+    (levels.length === 1 ? `Palier ${levels[0]!.level} réclamé !` : levels.length > 1 ? `${levels.length} paliers réclamés !` : "Choisis ta carte");
 
   return createPortal(
     <div className={styles.scene} role="dialog" aria-modal aria-label={title}>
@@ -128,7 +145,7 @@ export function RewardReveal({ levels, choices, onDone }: RewardRevealProps) {
                 <span className={styles.itemIcon}>
                   <RewardIcon item={item} size={84} />
                 </span>
-                <span className={styles.itemLabel}>{levelRewardLabel(item)}</span>
+                <span className={styles.itemLabel}>{itemLabel(item)}</span>
               </li>
             ))}
             {choices.length > 0 && (

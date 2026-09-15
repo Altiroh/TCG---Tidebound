@@ -95,3 +95,92 @@ $$;
 
 revoke all on function public.claim_level_reward(uuid, integer, jsonb) from public, anon, authenticated;
 grant execute on function public.claim_level_reward(uuid, integer, jsonb) to service_role;
+
+-- ======================================================================
+-- EXPLOITS À RÉCLAMER
+-- ======================================================================
+-- Même principe que les paliers : un exploit rempli est DÉBLOQUÉ par la
+-- synchronisation (`grant_achievements`), mais ses Tides attendent que le
+-- joueur vienne les réclamer (`claim_achievement`).
+--
+-- `claimed_at` nul = à réclamer. Les exploits déjà présents au moment de
+-- cette migration ont été crédités par l'ancienne version : ils sont
+-- marqués réclamés UNE SEULE FOIS, à l'ajout de la colonne — relancer la
+-- migration ne marque pas réclamés ceux débloqués depuis.
+do $$
+begin
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'player_achievements' and column_name = 'claimed_at'
+  ) then
+    alter table public.player_achievements add column claimed_at timestamptz;
+    update public.player_achievements set claimed_at = unlocked_at;
+  end if;
+end;
+$$;
+
+-- Déblocage SANS crédit : la récompense est notée (`tides_granted`), pas versée.
+create or replace function public.grant_achievements(p_user_id uuid, p_achievements jsonb)
+returns jsonb
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  v_entry jsonb;
+  v_code text;
+  v_tides integer;
+  v_granted text[] := '{}';
+begin
+  perform public.assert_server_caller('grant_achievements');
+
+  for v_entry in select * from jsonb_array_elements(coalesce(p_achievements, '[]'::jsonb)) loop
+    v_code := v_entry ->> 'code';
+    v_tides := greatest(0, coalesce((v_entry ->> 'tides')::integer, 0));
+
+    insert into public.player_achievements (user_id, code, tides_granted, claimed_at)
+    values (p_user_id, v_code, v_tides, null)
+    on conflict (user_id, code) do nothing;
+
+    if found then
+      v_granted := array_append(v_granted, v_code);
+    end if;
+  end loop;
+
+  return jsonb_build_object('ok', true, 'granted', to_jsonb(v_granted), 'tides', 0);
+end;
+$$;
+
+revoke all on function public.grant_achievements(uuid, jsonb) from public, anon, authenticated;
+grant execute on function public.grant_achievements(uuid, jsonb) to service_role;
+
+create or replace function public.claim_achievement(p_user_id uuid, p_code text)
+returns jsonb
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  v_tides integer;
+begin
+  perform public.assert_server_caller('claim_achievement');
+
+  update public.player_achievements
+    set claimed_at = now()
+    where user_id = p_user_id and code = p_code and claimed_at is null
+    returning tides_granted into v_tides;
+
+  if not found then
+    return jsonb_build_object('ok', false, 'error', 'Exploit introuvable ou déjà réclamé.');
+  end if;
+
+  if coalesce(v_tides, 0) > 0 then
+    insert into public.player_currency (user_id, balance) values (p_user_id, v_tides)
+    on conflict (user_id) do update set balance = player_currency.balance + v_tides, updated_at = now();
+    insert into public.currency_transactions (user_id, amount, reason) values (p_user_id, v_tides, 'achievement_reward');
+  end if;
+
+  return jsonb_build_object('ok', true, 'code', p_code, 'tides', coalesce(v_tides, 0));
+end;
+$$;
+
+revoke all on function public.claim_achievement(uuid, text) from public, anon, authenticated;
+grant execute on function public.claim_achievement(uuid, text) to service_role;

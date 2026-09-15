@@ -736,6 +736,7 @@
 .waitingCall {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
   padding: 10px 12px;
   border: 1px solid rgba(255, 200, 90, 0.55);
@@ -745,13 +746,10 @@
   font: inherit;
   font-size: 13px;
   text-align: left;
-  cursor: pointer;
   animation: waitingPulse 2.2s ease-in-out infinite;
 }
 
-.waitingCall:hover {
-  filter: brightness(1.12);
-}
+
 
 .waitingGift {
   display: inline-block;
@@ -830,6 +828,8 @@
   font-size: 12px;
   letter-spacing: 0.04em;
   text-transform: none;
+  white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 .claimButton:hover:not(:disabled),
@@ -890,4 +890,16 @@
   .escaleCurrent[data-claimable="true"] {
     animation: none;
   }
+}
+
+.waitingText {
+  flex: 1 1 110px;
+  min-width: 0;
+}
+
+.questPeriod {
+  font-family: var(--cb-font-ui);
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--ink-faint);
 }

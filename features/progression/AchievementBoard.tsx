@@ -41,6 +41,14 @@ const BRANCHES: Array<{ id: string; title: string; codes: string[] }> = [
   { id: "phare", title: "Les phares", codes: ["level_10", "level_20", "level_30", "level_40", "level_50"] },
 ];
 
+interface AchievementBoardProps {
+  achievements: readonly ProfileAchievement[];
+  /** Réclame les Tides d'un exploit débloqué. */
+  onClaim?: (code: string) => void;
+  /** Exploit en cours de réclamation. */
+  claimingCode?: string | null;
+}
+
 /**
  * Exploits — une vitrine à la manière des succès de Minecraft : des tuiles
  * carrées à l'icône peinte, éteintes et cadenassées tant qu'elles ne sont
@@ -50,7 +58,7 @@ const BRANCHES: Array<{ id: string; title: string; codes: string[] }> = [
  * Les exploits sans branche connue (ajoutés au catalogue après coup) ne
  * disparaissent pas : ils tombent dans « Autres ».
  */
-export function AchievementBoard({ achievements }: { achievements: readonly ProfileAchievement[] }) {
+export function AchievementBoard({ achievements, onClaim, claimingCode = null }: AchievementBoardProps) {
   const [focused, setFocused] = useState<string | null>(null);
   const byCode = new Map(achievements.map((achievement) => [achievement.code, achievement]));
   const placed = new Set(BRANCHES.flatMap((branch) => branch.codes));
@@ -59,7 +67,8 @@ export function AchievementBoard({ achievements }: { achievements: readonly Prof
 
   const unlocked = achievements.filter((achievement) => achievement.unlocked).length;
   const ratio = achievements.length > 0 ? unlocked / achievements.length : 0;
-  const earnedTides = achievements.filter((achievement) => achievement.unlocked).reduce((sum, achievement) => sum + achievement.rewardTides, 0);
+  const earnedTides = achievements.filter((achievement) => achievement.unlocked && !achievement.claimable).reduce((sum, achievement) => sum + achievement.rewardTides, 0);
+  const toClaim = achievements.filter((achievement) => achievement.claimable).length;
 
   return (
     <section className={styles.board} aria-label="Exploits">
@@ -68,6 +77,7 @@ export function AchievementBoard({ achievements }: { achievements: readonly Prof
           <h2 className={styles.title}>Exploits</h2>
           <p className={styles.subtitle}>
             {unlocked} / {achievements.length} obtenus · <TideCoin size={13} /> {earnedTides} Tides gagnés
+            {toClaim > 0 && <span className={styles.toClaim}> · 🎁 {toClaim} à réclamer</span>}
           </p>
         </div>
         <div className={styles.progress} role="progressbar" aria-valuenow={unlocked} aria-valuemin={0} aria-valuemax={achievements.length}>
@@ -97,6 +107,7 @@ export function AchievementBoard({ achievements }: { achievements: readonly Prof
                       key={achievement.code}
                       className={styles.cell}
                       data-unlocked={achievement.unlocked ? "true" : "false"}
+                      data-claimable={achievement.claimable ? "true" : undefined}
                       data-link={index > 0 ? (achievement.unlocked && previousDone ? "lit" : "dim") : undefined}
                     >
                       <button
@@ -107,6 +118,9 @@ export function AchievementBoard({ achievements }: { achievements: readonly Prof
                         onMouseLeave={() => setFocused((current) => (current === achievement.code ? null : current))}
                         onFocus={() => setFocused(achievement.code)}
                         onBlur={() => setFocused((current) => (current === achievement.code ? null : current))}
+                        onClick={() => achievement.claimable && onClaim?.(achievement.code)}
+                        disabled={claimingCode === achievement.code}
+                        aria-label={achievement.claimable ? `${achievement.name} — réclamer ${achievement.rewardTides} Tides` : achievement.name}
                       >
                         {icon ? (
                           // eslint-disable-next-line @next/next/no-img-element -- icône peinte locale
@@ -124,7 +138,12 @@ export function AchievementBoard({ achievements }: { achievements: readonly Prof
                             </svg>
                           </span>
                         )}
-                        {achievement.unlocked && (
+                        {achievement.claimable && (
+                          <span className={styles.gift} aria-hidden>
+                            🎁
+                          </span>
+                        )}
+                        {achievement.unlocked && !achievement.claimable && (
                           <span className={styles.check} aria-hidden>
                             <svg viewBox="0 0 16 16" width="12" height="12" fill="none">
                               <path d="M3.5 8.5l3 3 6-7" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
@@ -141,7 +160,9 @@ export function AchievementBoard({ achievements }: { achievements: readonly Prof
                         className={styles.tooltip}
                         data-open={focused === achievement.code ? "true" : "false"}
                       >
-                        <span className={styles.tooltipBar}>{achievement.unlocked ? "Exploit obtenu !" : "Exploit à décrocher"}</span>
+                        <span className={styles.tooltipBar}>
+                          {achievement.claimable ? "Touche pour réclamer !" : achievement.unlocked ? "Exploit obtenu !" : "Exploit à décrocher"}
+                        </span>
                         <span className={styles.tooltipName}>{achievement.name}</span>
                         <span className={styles.tooltipText}>{achievement.description}</span>
                         <span className={styles.tooltipReward}>

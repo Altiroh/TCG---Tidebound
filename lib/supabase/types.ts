@@ -441,6 +441,8 @@ export interface Database {
           code: string;
           tides_granted: number;
           unlocked_at: string;
+          /** `null` : exploit débloqué dont les Tides attendent d'être réclamées. */
+          claimed_at: string | null;
         };
         Insert: Record<string, never>;
         Update: Record<string, never>;
@@ -659,6 +661,10 @@ export interface Database {
         Returns: { ok: boolean; error?: string; deck_id?: string; tokens?: number };
       };
       /** Exploits : `[{ code, tides }]`, filtré par l'appelant ; la clé primaire évite tout doublon. */
+      claim_achievement: {
+        Args: { p_user_id: string; p_code: string };
+        Returns: { ok: boolean; error?: string; code?: string; tides?: number };
+      };
       grant_achievements: {
         Args: { p_user_id: string; p_achievements: unknown };
         Returns: { ok: boolean; granted: string[]; tides: number };

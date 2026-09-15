@@ -14,12 +14,19 @@ import {
 } from "@/game/progression";
 import { signOut } from "@/app/connexion/actions";
 import {
+  claimAchievement,
   claimAllLevelRewards,
   claimDailyLogin,
+  claimEverything,
   claimLevelReward,
   type PendingCardChoice,
   type ProfileSummary,
 } from "@/features/progression/profileActions";
+import { claimQuestReward, type QuestEntry } from "@/features/quests/actions";
+import { QUEST_CATEGORY_META } from "@/game/quests";
+import { IllustrationPicker } from "@/features/progression/IllustrationPicker";
+import type { RewardItem } from "@/features/progression/RewardIcon";
+import questStyles from "@/features/quests/QuestDrawer.module.css";
 import { useCardBack } from "@/features/cosmetics/CardBackProvider";
 import { forgetProgression, notifyProgressionChanged } from "@/features/progression/progressionSync";
 import { ProfileIdentity } from "@/features/progression/ProfileIdentity";
@@ -30,13 +37,23 @@ import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/progression/Profile.module.css";
 import { playButtonClick } from "@/lib/sound";
 
-export type ProfileTab = "carnet" | "recompenses" | "exploits";
+export type ProfileTab = "carnet" | "recompenses" | "quetes" | "exploits";
 
 const TABS: Array<{ id: ProfileTab; label: string }> = [
   { id: "carnet", label: "Carnet de bord" },
   { id: "recompenses", label: "Récompenses de niveau" },
+  { id: "quetes", label: "Quêtes" },
   { id: "exploits", label: "Exploits" },
 ];
+
+/** Ce qui attend le joueur, famille par famille — les pastilles et le « tout réclamer ». */
+function waitingCounts(profile: ProfileSummary) {
+  const levels = profile.claimableLevels.length + profile.pendingCardChoices.length;
+  const quests = profile.quests.filter((quest) => quest.completed && !quest.claimed).length;
+  const achievements = profile.achievements.filter((achievement) => achievement.claimable).length;
+  const login = profile.login.claimable ? 1 : 0;
+  return { levels, quests, achievements, login, total: levels + quests + achievements + login };
+}
 
 interface ProfileViewProps {
   profile: ProfileSummary;
@@ -62,9 +79,11 @@ export function ProfileView({ profile, onRefresh, initialTab = "carnet", onLeave
   const [tab, setTab] = useState<ProfileTab>(initialTab);
   const [signingOut, startSignOut] = useTransition();
   const { apply: applyCardBack } = useCardBack();
-  const [reveal, setReveal] = useState<{ levels: RevealedLevel[]; choices: PendingCardChoice[] } | null>(null);
-  const [claiming, setClaiming] = useState<number | "all" | null>(null);
+  const [reveal, setReveal] = useState<{ levels: RevealedLevel[]; choices: PendingCardChoice[]; extraItems?: RewardItem[]; title?: string } | null>(null);
+  const [claiming, setClaiming] = useState<number | "all" | "everything" | string | null>(null);
   const [claimError, setClaimError] = useState<string | null>(null);
+  /** Choix d'illustration ouvert à la place de l'onglet. */
+  const [picking, setPicking] = useState(false);
 
   // Le profil lit la base : il réaligne au passage le miroir local du dos
   // équipé (un appareil neuf repart juste, même sans ouvrir Collectables).
@@ -72,7 +91,64 @@ export function ProfileView({ profile, onRefresh, initialTab = "carnet", onLeave
     applyCardBack(profile.cardBacks.equipped);
   }, [profile.cardBacks.equipped, applyCardBack]);
 
-  const rewardsWaiting = profile.claimableLevels.length + profile.pendingCardChoices.length;
+  const waiting = waitingCounts(profile);
+
+  /**
+   * TOUT RÉCLAMER : l'escale du jour, puis paliers, quêtes et exploits côté
+   * serveur — et une seule révélation qui additionne le tout.
+   */
+  async function claimAllRewards() {
+    if (claiming !== null) return;
+    playButtonClick();
+    setClaimError(null);
+    setClaiming("everything");
+    try {
+      const extra: RewardItem[] = [];
+      if (profile.login.claimable) {
+        const login = await claimDailyLogin();
+        if (login.ok) {
+          if (login.tides) extra.push({ kind: "tides", amount: login.tides });
+          if (login.xp) extra.push({ kind: "xp", amount: login.xp });
+          if (login.boosterId) extra.push({ kind: "booster", boosterId: login.boosterId, count: 1 });
+        }
+      }
+      const result = await claimEverything();
+      const levels = result.levels.filter((entry) => entry.level && entry.items).map((entry) => ({ level: entry.level!, items: entry.items! }));
+      const choices = [
+        ...profile.pendingCardChoices,
+        ...result.levels.map((entry) => entry.cardChoice).filter((entry): entry is PendingCardChoice => Boolean(entry)),
+      ];
+      if (result.quests.tides > 0) extra.push({ kind: "tides", amount: result.quests.tides });
+      if (result.quests.xp > 0) extra.push({ kind: "xp", amount: result.quests.xp });
+      for (const boosterId of result.quests.boosterIds) extra.push({ kind: "booster", boosterId, count: 1 });
+      if (result.achievements.tides > 0) extra.push({ kind: "tides", amount: result.achievements.tides });
+      if (!result.ok) setClaimError(result.error ?? "Une partie des récompenses n'a pas pu être réclamée.");
+      if (levels.length > 0 || choices.length > 0 || extra.length > 0) {
+        const parts = result.levels.length + result.quests.count + result.achievements.count + (extra.length > 0 && profile.login.claimable ? 1 : 0);
+        setReveal({ levels, choices, extraItems: extra, title: parts > 1 ? "Tout est réclamé !" : undefined });
+      }
+      notifyProgressionChanged();
+      onRefresh();
+    } finally {
+      setClaiming(null);
+    }
+  }
+
+  async function claimOneAchievement(code: string) {
+    if (claiming !== null) return;
+    playButtonClick();
+    setClaimError(null);
+    setClaiming(code);
+    try {
+      const result = await claimAchievement(code);
+      if (!result.ok) setClaimError(result.error ?? "Réclamation impossible.");
+      else setReveal({ levels: [], choices: [], extraItems: [{ kind: "tides", amount: result.tides ?? 0 }], title: "Exploit réclamé !" });
+      notifyProgressionChanged();
+      onRefresh();
+    } finally {
+      setClaiming(null);
+    }
+  }
 
   function handleSignOut() {
     playButtonClick();
@@ -125,7 +201,12 @@ export function ProfileView({ profile, onRefresh, initialTab = "carnet", onLeave
   return (
     <div className={styles.shell}>
       <aside className={`${game.panel} ${styles.side}`} aria-label="Profil">
-        <ProfileIdentity displayName={profile.displayName} avatarCardId={profile.avatarCardId} ownedCardIds={profile.ownedCardIds} onChanged={onRefresh} />
+        <ProfileIdentity
+          displayName={profile.displayName}
+          avatarCardId={profile.avatarCardId}
+          onChanged={onRefresh}
+          onPickIllustration={() => setPicking(true)}
+        />
 
         <div className={styles.sideLevel}>
           <span className={styles.sideLevelNumber}>{view.level}</span>
@@ -141,40 +222,39 @@ export function ProfileView({ profile, onRefresh, initialTab = "carnet", onLeave
         </div>
 
         {/* Ce qui attend : visible dès l'ouverture, quel que soit l'onglet. */}
-        {rewardsWaiting > 0 && (
-          <button
-            type="button"
-            className={styles.waitingCall}
-            onClick={() => {
-              playButtonClick();
-              setTab("recompenses");
-            }}
-          >
+        {waiting.total > 0 && (
+          <div className={styles.waitingCall}>
             <span className={styles.waitingGift} aria-hidden>
               🎁
             </span>
-            <span>
+            <span className={styles.waitingText}>
               <b>
-                {rewardsWaiting} récompense{rewardsWaiting > 1 ? "s" : ""}
+                {waiting.total} récompense{waiting.total > 1 ? "s" : ""}
               </b>{" "}
               à réclamer
             </span>
-          </button>
+            <button type="button" className={styles.claimButtonSmall} onClick={() => void claimAllRewards()} disabled={claiming !== null}>
+              {claiming === "everything" ? "…" : "Tout réclamer"}
+            </button>
+          </div>
         )}
+        {claimError && <p className={game.error}>{claimError}</p>}
 
         <nav className={styles.tabs} role="tablist" aria-label="Sections du profil" aria-orientation="vertical">
           {TABS.map((entry) => {
-            const badge = entry.id === "recompenses" ? rewardsWaiting : entry.id === "carnet" ? (profile.login.claimable ? 1 : 0) : 0;
+            const badge =
+              entry.id === "recompenses" ? waiting.levels : entry.id === "carnet" ? waiting.login : entry.id === "quetes" ? waiting.quests : waiting.achievements;
             return (
               <button
                 key={entry.id}
                 type="button"
                 role="tab"
-                aria-selected={tab === entry.id}
-                className={tab === entry.id ? styles.tabActive : styles.tab}
+                aria-selected={tab === entry.id && !picking}
+                className={tab === entry.id && !picking ? styles.tabActive : styles.tab}
                 onClick={() => {
-                  if (tab === entry.id) return;
+                  if (tab === entry.id && !picking) return;
                   playButtonClick();
+                  setPicking(false);
                   setTab(entry.id);
                 }}
               >
@@ -191,16 +271,6 @@ export function ProfileView({ profile, onRefresh, initialTab = "carnet", onLeave
               </button>
             );
           })}
-          <Link
-            href="/quetes"
-            className={styles.tab}
-            onClick={() => {
-              playButtonClick();
-              onLeave?.();
-            }}
-          >
-            Mes quêtes <span aria-hidden>→</span>
-          </Link>
         </nav>
 
         {/* Pied du panneau : la déconnexion, seule, à l'écart du reste —
@@ -216,8 +286,17 @@ export function ProfileView({ profile, onRefresh, initialTab = "carnet", onLeave
       </aside>
 
       <main className={styles.main} role="tabpanel">
-        {tab === "carnet" && <LogbookTab profile={profile} onRefresh={onRefresh} onShowRewards={() => setTab("recompenses")} />}
-        {tab === "recompenses" && (
+        {picking && (
+          <IllustrationPicker
+            avatarCardId={profile.avatarCardId}
+            ownedCardIds={profile.ownedCardIds}
+            onClose={() => setPicking(false)}
+            onChanged={onRefresh}
+          />
+        )}
+        {!picking && tab === "carnet" && <LogbookTab profile={profile} onRefresh={onRefresh} onShowRewards={() => setTab("recompenses")} />}
+        {!picking && tab === "quetes" && <QuestsTab profile={profile} onRefresh={onRefresh} onLeave={onLeave} />}
+        {!picking && tab === "recompenses" && (
           <LevelRewardsTab
             profile={profile}
             claiming={claiming}
@@ -226,13 +305,17 @@ export function ProfileView({ profile, onRefresh, initialTab = "carnet", onLeave
             onChooseCards={chooseCards}
           />
         )}
-        {tab === "exploits" && <AchievementBoard achievements={profile.achievements} />}
+        {!picking && tab === "exploits" && (
+          <AchievementBoard achievements={profile.achievements} onClaim={(code) => void claimOneAchievement(code)} claimingCode={typeof claiming === "string" ? claiming : null} />
+        )}
       </main>
 
       {reveal && (
         <RewardReveal
           levels={reveal.levels}
           choices={reveal.choices}
+          extraItems={reveal.extraItems}
+          title={reveal.title}
           onDone={() => {
             setReveal(null);
             notifyProgressionChanged();
@@ -397,7 +480,7 @@ function LogbookTab({ profile, onRefresh, onShowRewards }: { profile: ProfileSum
 
 interface LevelRewardsTabProps {
   profile: ProfileSummary;
-  claiming: number | "all" | null;
+  claiming: number | "all" | "everything" | string | null;
   error: string | null;
   onClaim: (level: number | "all") => void;
   onChooseCards: (choices: PendingCardChoice[]) => void;
@@ -536,6 +619,106 @@ function LevelRewardsTab({ profile, claiming, error, onClaim, onChooseCards }: L
           );
         })}
       </ol>
+    </section>
+  );
+}
+
+/* ── Quêtes ─────────────────────────────────────────────────────── */
+
+/**
+ * Les quêtes du jour et de la semaine, au profil : les terminées en tête,
+ * toute la ligne encaisse. L'écran complet (`/quetes`) garde les filtres,
+ * les échéances et les remplacements.
+ */
+function QuestsTab({ profile, onRefresh, onLeave }: { profile: ProfileSummary; onRefresh: () => void; onLeave?: () => void }) {
+  const [busyKey, setBusyKey] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [claimedKeys, setClaimedKeys] = useState<Set<string>>(new Set());
+
+  const entries = useMemo(() => {
+    const rank = (entry: QuestEntry) => (entry.completed && !entry.claimed ? 0 : entry.claimed ? 2 : 1);
+    return [...profile.quests].sort((a, b) => rank(a) - rank(b) || b.progress / b.target - a.progress / a.target);
+  }, [profile.quests]);
+
+  function claim(entry: QuestEntry) {
+    const key = `${entry.questId}|${entry.periodKey}`;
+    playButtonClick();
+    setError(null);
+    setBusyKey(key);
+    void claimQuestReward(entry.questId, entry.periodKey)
+      .then((result) => {
+        if (!result.ok) {
+          setError(result.error ?? "Réclamation impossible.");
+          return;
+        }
+        setClaimedKeys((current) => new Set(current).add(key));
+        notifyProgressionChanged();
+        onRefresh();
+      })
+      .finally(() => setBusyKey(null));
+  }
+
+  return (
+    <section className={`${game.panel} ${styles.block}`} aria-label="Quêtes">
+      <div className={styles.blockHead}>
+        <h2 className={game.sectionTitle}>Quêtes du jour et de la semaine</h2>
+        <Link
+          href="/quetes"
+          className={game.link}
+          onClick={() => {
+            playButtonClick();
+            onLeave?.();
+          }}
+        >
+          Journal complet →
+        </Link>
+      </div>
+      {error && <p className={game.error}>{error}</p>}
+      {entries.length === 0 ? (
+        <p className={game.muted}>Aucune quête en cours pour l&apos;instant.</p>
+      ) : (
+        <ul className={questStyles.list}>
+          {entries.map((entry) => {
+            const key = `${entry.questId}|${entry.periodKey}`;
+            const claimed = entry.claimed || claimedKeys.has(key);
+            const claimable = entry.completed && !claimed;
+            const ratio = Math.min(1, entry.progress / entry.target);
+            const meta = QUEST_CATEGORY_META[entry.category];
+            const Row = claimable ? "button" : "div";
+            return (
+              <li key={key}>
+                <Row
+                  {...(claimable ? { type: "button" as const, onClick: () => claim(entry), disabled: busyKey === key } : {})}
+                  className={`${questStyles.row} ${claimable ? questStyles.rowClaimable : ""} ${claimed ? questStyles.rowClaimed : ""}`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element -- icône locale, taille fixe */}
+                  <img src={meta.icon} alt="" aria-hidden draggable={false} className={questStyles.icon} />
+                  <div className={questStyles.body}>
+                    <span className={questStyles.name}>
+                      {entry.name || entry.label}
+                      <span className={styles.questPeriod}>{entry.questType === "weekly" ? " · semaine" : " · jour"}</span>
+                    </span>
+                    <span className={questStyles.objective}>{entry.label}</span>
+                    <div className={questStyles.track}>
+                      <div className={entry.completed ? questStyles.fillDone : questStyles.fill} style={{ width: `${ratio * 100}%` }} />
+                    </div>
+                  </div>
+                  <div className={questStyles.side}>
+                    <span className={claimable ? questStyles.rewardReady : questStyles.reward}>
+                      {entry.rewardBoosterId ? "1 booster" : `${entry.rewardTides} Tides`}
+                    </span>
+                    {claimable ? (
+                      <span className={styles.claimButtonSmall}>{busyKey === key ? "…" : "Réclamer"}</span>
+                    ) : (
+                      <span className={questStyles.count}>{claimed ? "Réclamée" : `${Math.min(entry.progress, entry.target)} / ${entry.target}`}</span>
+                    )}
+                  </div>
+                </Row>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </section>
   );
 }
