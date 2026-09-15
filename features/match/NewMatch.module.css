@@ -127,57 +127,207 @@
   gap: 10px;
 }
 
-.decks {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(clamp(150px, 12vw, 190px), 1fr));
-  gap: clamp(10px, 1.1vw, 16px);
-}
-
-.deck {
+/* ── Onglets des familles de decks ──────────────────────────── */
+.deckTabs {
+  display: flex;
   align-items: center;
-  gap: 6px;
-  padding: clamp(10px, 1vw, 14px);
-  text-align: center;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
-.deckPortrait {
-  width: 72% !important;
-  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.55));
+.deckTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.5em 1.1em;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(8, 18, 30, 0.45);
+  color: var(--ink-dim);
+  font: inherit;
+  font-family: var(--cb-font-display);
+  font-size: clamp(12px, 1vw, 15px);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: background-color 160ms ease-out, color 160ms ease-out, border-color 160ms ease-out;
+}
+
+.deckTab:hover {
+  border-color: var(--line-strong);
+  color: var(--ink);
+}
+
+.deckTab:focus-visible {
+  outline: 2px solid var(--cb-cyan);
+  outline-offset: 2px;
+}
+
+.deckTabActive {
+  composes: deckTab;
+  border-color: rgba(88, 200, 216, 0.55);
+  background: rgba(13, 52, 69, 0.7);
+  color: #eaf8fb;
+}
+
+.deckTabCount {
+  font-family: var(--cb-font-ui);
+  font-size: 0.82em;
+  font-weight: 500;
+  opacity: 0.65;
+}
+
+.deckTabHint {
+  margin-left: 6px;
+}
+
+/* ── Carrousel ──────────────────────────────────────────────── */
+.carousel {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.carouselTrack {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: clamp(240px, 19vw, 300px);
+  gap: clamp(12px, 1.2vw, 20px);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 4px;
+  /* De la place pour l'élévation au survol et le halo de la tuile choisie. */
+  padding: 10px 4px 18px;
+  scrollbar-width: none;
+  cursor: grab;
+  /* Les bords s'estompent : la rangée continue au-delà. */
+  mask-image: linear-gradient(90deg, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%);
+}
+
+.carouselTrack::-webkit-scrollbar {
+  display: none;
+}
+
+.carouselTrack:focus-visible {
+  outline: 2px solid var(--cb-cyan);
+  outline-offset: 2px;
+}
+
+.carouselTrack[data-dragging="true"] {
+  cursor: grabbing;
+  scroll-snap-type: none;
+  user-select: none;
+}
+
+.carouselTrack[data-dragging="true"] > * {
+  pointer-events: none;
+}
+
+.carouselArrow {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  background: rgba(6, 14, 24, 0.8);
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color 150ms ease-out, background-color 150ms ease-out, opacity 150ms ease-out, transform 150ms ease-out;
+}
+
+.carouselArrow:hover:not(:disabled) {
+  border-color: var(--cb-cyan);
+  background: rgba(13, 52, 69, 0.85);
+  transform: scale(1.06);
+}
+
+.carouselArrow:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.carouselArrow:focus-visible {
+  outline: 2px solid var(--cb-cyan);
+  outline-offset: 2px;
+}
+
+/* ── Tuile de deck ──────────────────────────────────────────── */
+.deckTile {
+  scroll-snap-align: start;
+  overflow: hidden;
+  padding: 0;
+  gap: 0;
+}
+
+/* La plaque coiffe la tuile d'un bord à l'autre, comme sur l'écran Decks. */
+.deckPlate {
+  border-inline: none;
+  border-top: none;
+  border-radius: var(--radius) var(--radius) 0 0;
 }
 
 .deckName {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-family: var(--cb-font-display);
-  font-size: clamp(13px, 1vw, 16px);
+  font-size: clamp(15px, 1.2vw, 19px);
   font-weight: 600;
   line-height: 1.2;
   color: #f2f7fb;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
 }
 
 .deckShip {
-  font-size: 10px;
+  font-size: clamp(10px, 0.72vw, 11px);
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--cb-cyan);
 }
 
+.deckBody {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 6px;
+  padding: clamp(10px, 1vw, 14px);
+}
+
 .deckMeta {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11px;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: 11.5px;
   color: var(--ink-dim);
   font-variant-numeric: tabular-nums;
 }
 
+.deckStars {
+  color: #e5cf9e;
+  letter-spacing: 0.04em;
+}
+
 .deckText {
-  font-size: 11px;
+  min-height: calc(1.4em * 3);
+  font-size: 12px;
   line-height: 1.4;
   color: var(--ink-dim);
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.deckFoot {
+  display: flex;
+  margin-top: auto;
 }
 
 /* ── Barre de lancement ─────────────────────────────────────── */
