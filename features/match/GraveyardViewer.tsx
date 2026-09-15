@@ -1,27 +1,35 @@
 "use client";
 
-import { useEffect } from "react";
-import type { CardInstance } from "@/game";
+import { useEffect, useMemo, useState } from "react";
+import type { CardInstance, GraveyardCause } from "@/game";
 import { CardCarousel } from "@/features/match/CardCarousel";
-import { GRAVEYARD_CAUSE_COLORS, GRAVEYARD_CAUSE_LABELS } from "@/features/match/cardDisplay";
+import { GRAVEYARD_CAUSE_LABELS } from "@/features/match/cardDisplay";
+import sheet from "@/features/match/table/TableSheet.module.css";
 
 interface GraveyardViewerProps {
   playerLabel: string;
   cards: CardInstance[];
   onClose: () => void;
+  /** Clic droit sur une carte : sa fiche détaillée. */
+  onInspect?: (card: CardInstance) => void;
 }
 
+const CAUSE_ORDER: readonly GraveyardCause[] = ["destroyed", "scuttled", "discarded", "expired"];
+
 /**
- * Vue de consultation du cimetière (Notion "Moteur de partie", section
- * "Défausse — consultation et traçabilité") : liste toutes les cartes
- * ayant quitté le jeu pour ce joueur, avec leur cause de sortie
- * (`CardInstance.graveyardCause`), en grandes cartes sur une rangée qui défile
- * sur le côté (`CardCarousel` : molette, glisser, flèches). N'est jamais une action de jeu : ne consomme rien,
- * n'interrompt aucune résolution en cours — un simple overlay de
- * lecture, fermé sur clic du fond, Échap, ou le bouton Fermer. Ouvrable
- * pour soi comme pour l'adversaire (`onOpenGraveyard` sur `CargoCluster`).
+ * Consultation du cimetière (Notion "Moteur de partie", section "Défausse —
+ * consultation et traçabilité") : toutes les cartes sorties du jeu pour ce
+ * joueur, en VRAIES cartes, comme sur la table, chacune avec la cause de sa
+ * sortie. Les plus récentes d'abord ; un filtre par cause quand il y a de
+ * quoi trier.
+ *
+ * Jamais une action de jeu : ne consomme rien, n'interrompt aucune
+ * résolution. Fermé sur clic du fond, Échap, ou la croix. Ouvrable pour soi
+ * comme pour l'adversaire.
  */
-export function GraveyardViewer({ playerLabel, cards, onClose }: GraveyardViewerProps) {
+export function GraveyardViewer({ playerLabel, cards, onClose, onInspect }: GraveyardViewerProps) {
+  const [cause, setCause] = useState<GraveyardCause | null>(null);
+
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") onClose();
@@ -30,52 +38,72 @@ export function GraveyardViewer({ playerLabel, cards, onClose }: GraveyardViewer
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
+  const counts = useMemo(() => {
+    const map = new Map<GraveyardCause, number>();
+    for (const card of cards) if (card.graveyardCause) map.set(card.graveyardCause, (map.get(card.graveyardCause) ?? 0) + 1);
+    return map;
+  }, [cards]);
+
+  // Les plus récentes d'abord : la dernière carte partie est la première visible.
+  const shown = useMemo(() => [...cards].reverse().filter((card) => !cause || card.graveyardCause === cause), [cards, cause]);
+
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-8 backdrop-blur-md"
-      onClick={onClose}
-    >
-      <button
-        type="button"
-        onClick={onClose}
-        className="fixed right-6 top-6 z-[60] flex items-center gap-2 rounded-md px-3 py-1.5 text-sm text-slate-300 drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)] transition-colors hover:bg-white/10 hover:text-board-accent"
-      >
-        Fermer
-        <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
-          <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
-        </svg>
-      </button>
+    <div className={sheet.backdrop} onClick={onClose} role="presentation">
+      <div className={sheet.sheet} role="dialog" aria-modal aria-label={`Cimetière — ${playerLabel}`} onClick={(event) => event.stopPropagation()}>
+        <header className={sheet.head}>
+          {/* eslint-disable-next-line @next/next/no-img-element -- le crâne de la défausse du plateau */}
+          <img src="/assets/board/graveyard-skull.webp" alt="" aria-hidden className={sheet.headIcon} />
+          <div className={sheet.headText}>
+            <h2 className={sheet.title}>Cimetière</h2>
+            <p className={sheet.subtitle}>
+              {playerLabel} · {cards.length} carte{cards.length > 1 ? "s" : ""}
+              {onInspect && cards.length > 0 ? " · clic droit : fiche" : ""}
+            </p>
+          </div>
+          <button type="button" className={sheet.close} onClick={onClose} aria-label="Fermer">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden>
+              <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
+            </svg>
+          </button>
+        </header>
 
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="relative flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-white/15 bg-white/[0.06] shadow-[0_8px_40px_rgba(0,0,0,0.6)] backdrop-blur-2xl"
-      >
-        {/* Reflet du haut, façon verre liquide (même traitement que CardInfoPanel/Collection) */}
-        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/20 to-transparent" />
+        {counts.size > 1 && (
+          <div className={sheet.filters} role="group" aria-label="Filtrer par cause">
+            <button type="button" className={sheet.filter} aria-pressed={cause === null} onClick={() => setCause(null)}>
+              Toutes <span className={sheet.filterCount}>{cards.length}</span>
+            </button>
+            {CAUSE_ORDER.filter((entry) => counts.has(entry)).map((entry) => (
+              <button key={entry} type="button" className={sheet.filter} aria-pressed={cause === entry} onClick={() => setCause(cause === entry ? null : entry)}>
+                <span className={sheet.cause} data-cause={entry}>
+                  {GRAVEYARD_CAUSE_LABELS[entry]}
+                </span>
+                <span className={sheet.filterCount}>{counts.get(entry)}</span>
+              </button>
+            ))}
+          </div>
+        )}
 
-        <div className="relative flex flex-col items-center gap-1 px-6 pb-4 pt-8 text-center">
-          <h2 className="text-2xl font-semibold uppercase tracking-wider text-white [font-family:var(--font-card-title)]">
-            Cimetière
-          </h2>
-          <p className="text-xs uppercase tracking-wide text-slate-400">
-            {playerLabel}
-            {cards.length > 0 ? ` · ${cards.length} carte${cards.length > 1 ? "s" : ""}` : ""}
-          </p>
-        </div>
-
-        <div className="relative pb-6">
-          <CardCarousel
-            // Les plus récentes d'abord : la dernière carte partie au cimetière est la première visible.
-            cards={[...cards].reverse()}
-            emptyLabel="Ce cimetière est vide."
-            renderCaption={(card) =>
-              card.graveyardCause ? (
-                <p className={`text-xs font-semibold uppercase tracking-wide ${GRAVEYARD_CAUSE_COLORS[card.graveyardCause]}`}>
-                  {GRAVEYARD_CAUSE_LABELS[card.graveyardCause]}
-                </p>
-              ) : null
-            }
-          />
+        <div className={sheet.body}>
+          {cards.length === 0 ? (
+            <div className={sheet.empty}>
+              {/* eslint-disable-next-line @next/next/no-img-element -- icône décorative */}
+              <img src="/assets/board/graveyard-skull.webp" alt="" aria-hidden className={sheet.emptySkull} />
+              Aucune carte n&apos;a encore quitté le jeu.
+            </div>
+          ) : (
+            <CardCarousel
+              cards={shown}
+              emptyLabel="Aucune carte pour cette cause."
+              onInspect={onInspect}
+              renderCaption={(card) =>
+                card.graveyardCause ? (
+                  <span className={sheet.cause} data-cause={card.graveyardCause}>
+                    {GRAVEYARD_CAUSE_LABELS[card.graveyardCause]}
+                  </span>
+                ) : null
+              }
+            />
+          )}
         </div>
       </div>
     </div>

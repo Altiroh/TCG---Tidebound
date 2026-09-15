@@ -452,6 +452,7 @@ export function MatchBoard({
           playerLabel={graveyardViewerPlayerId === botPlayerId ? "Bot" : graveyardViewerPlayerId === "p1" ? "Joueur 1" : "Joueur 2"}
           cards={state.players.find((p) => p.id === graveyardViewerPlayerId)!.graveyard}
           onClose={() => board.setGraveyardViewerPlayerId(null)}
+          onInspect={board.setDetailInstance}
         />
       )}
       {detailInstance && (

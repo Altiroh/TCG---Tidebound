@@ -296,6 +296,7 @@ export function OnlineBoard({
           playerLabel={graveyardViewerPlayerId === myUserId ? "Toi" : "Adversaire"}
           cards={state.players.find((p) => p.id === graveyardViewerPlayerId)!.graveyard}
           onClose={() => board.setGraveyardViewerPlayerId(null)}
+          onInspect={board.setDetailInstance}
         />
       )}
       {detailInstance && (

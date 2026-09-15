@@ -171,11 +171,16 @@
      Bornée aussi par la LARGEUR : `--card-h-fit` est la plus grande carte
      qui laisse tenir, côte à côte, 5 emplacements, les 2 piles de chaque côté
      (le côté navire a la même largeur que le côté piles, pour centrer le
-     plateau) et les 2 colonnes de droite / gauche — soit 9 largeurs de carte,
-     2 colonnes, 4 gouttières de colonnes et 8 écarts de cartes (dont un
-     d'air entre le plateau et chaque pile). */
+     plateau) et les 2 colonnes de droite / gauche — soit (emplacements + 4)
+     largeurs de carte, 2 colonnes, 4 gouttières de colonnes et
+     (emplacements + 3) écarts de cartes.
+     `--board-slots` vaut le plus grand Navire en jeu (posé par `TableBoard`) :
+     un Brise-Lames et ses 6 emplacements rétrécissent les cartes au lieu de
+     glisser la dernière sous la pioche. */
+  --board-slots: 5;
   --card-h-fit: calc(
-    (min(100cqw, var(--stage-max-w)) - 2 * var(--gutter-x) - 2 * var(--rail-w) - 4 * var(--col-gap) - 8 * var(--board-gap)) / 9 * 7 / 5
+    (min(100cqw, var(--stage-max-w)) - 2 * var(--gutter-x) - 2 * var(--rail-w) - 4 * var(--col-gap) - (var(--board-slots) + 3) * var(--board-gap)) /
+      (var(--board-slots) + 4) * 7 / 5
   );
   --card-h: clamp(52px, min(20.5cqh, var(--card-h-fit)), 250px);
   --card-w: calc(var(--card-h) * 5 / 7);
@@ -1394,6 +1399,112 @@
   align-items: center;
   justify-content: center;
   transition: transform 140ms ease-out, filter 140ms ease-out;
+}
+
+/* Hors ciblage, un Navire se consulte : clic (ou clic droit) = sa fiche. */
+.shipInspectable {
+  cursor: pointer;
+}
+
+.shipInspectable:hover {
+  filter: brightness(1.1);
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * PLUIE — Tempête et Abysses. Deux nappes de gouttes (proche / lointaine)
+ * qui tombent en biais par-dessus la mer, SOUS le plateau : elle habille la
+ * scène sans jamais gêner la lecture d'une carte. Rien que du transform.
+ * ────────────────────────────────────────────────────────────── */
+.rain {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 1200ms ease-in-out;
+}
+
+.rain[data-intensity="storm"],
+.rain[data-intensity="abyss"] {
+  opacity: 1;
+}
+
+.rainSheet {
+  position: absolute;
+  left: -20%;
+  top: -100%;
+  width: 140%;
+  height: 200%;
+  background-repeat: repeat;
+  transform: rotate(12deg);
+  will-change: transform;
+}
+
+.rainNear {
+  composes: rainSheet;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='260'><g stroke='%23cfe6f5' stroke-linecap='round' stroke-width='1.4'><line x1='12' y1='10' x2='12' y2='38' opacity='.55'/><line x1='64' y1='120' x2='64' y2='150' opacity='.4'/><line x1='118' y1='40' x2='118' y2='66' opacity='.5'/><line x1='170' y1='170' x2='170' y2='200' opacity='.45'/><line x1='36' y1='200' x2='36' y2='226' opacity='.35'/><line x1='200' y1='70' x2='200' y2='96' opacity='.5'/><line x1='92' y1='230' x2='92' y2='256' opacity='.4'/><line x1='146' y1='110' x2='146' y2='134' opacity='.3'/></g></svg>");
+  animation: rainFallNear 520ms linear infinite;
+}
+
+.rainFar {
+  composes: rainSheet;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='180'><g stroke='%23a9c8dc' stroke-linecap='round' stroke-width='1'><line x1='20' y1='20' x2='20' y2='36' opacity='.35'/><line x1='80' y1='90' x2='80' y2='106' opacity='.3'/><line x1='130' y1='30' x2='130' y2='46' opacity='.3'/><line x1='50' y1='140' x2='50' y2='156' opacity='.25'/><line x1='110' y1='150' x2='110' y2='166' opacity='.3'/></g></svg>");
+  animation: rainFallFar 900ms linear infinite;
+}
+
+@keyframes rainFallNear {
+  from { transform: rotate(12deg) translate3d(0, 0, 0); }
+  to { transform: rotate(12deg) translate3d(0, 260px, 0); }
+}
+
+@keyframes rainFallFar {
+  from { transform: rotate(12deg) translate3d(0, 0, 0); }
+  to { transform: rotate(12deg) translate3d(0, 180px, 0); }
+}
+
+/* Abysses : une pluie plus rare, plus froide, et un voile sombre. */
+.rain[data-intensity="abyss"] .rainNear {
+  opacity: 0.55;
+  animation-duration: 700ms;
+  filter: hue-rotate(20deg) brightness(0.8);
+}
+
+.rain[data-intensity="abyss"] .rainFar {
+  opacity: 0.6;
+}
+
+.rain[data-intensity="abyss"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 90% at 50% 40%, transparent 40%, rgba(2, 8, 18, 0.35) 100%);
+}
+
+/* Éclairs lointains, en Tempête seulement : un voile clair, bref et rare. */
+.rain[data-intensity="storm"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(90% 60% at 60% 10%, rgba(210, 230, 255, 0.28), transparent 70%);
+  opacity: 0;
+  animation: lightning 11s ease-out 3s infinite;
+}
+
+@keyframes lightning {
+  0%, 91%, 100% { opacity: 0; }
+  92% { opacity: 1; }
+  93% { opacity: 0.2; }
+  94.5% { opacity: 0.8; }
+  97% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rainNear,
+  .rainFar,
+  .rain[data-intensity="storm"]::after {
+    animation: none;
+  }
 }
 
 /* Plateau pendant une pose : il se signale, et le prochain emplacement libre s'allume. */
