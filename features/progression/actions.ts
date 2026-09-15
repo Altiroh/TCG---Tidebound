@@ -1,7 +1,8 @@
 "use server";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { progressionView, type ProgressionView } from "@/game/progression";
+import { progressionView, utcDayKey, type ProgressionView } from "@/game/progression";
+import { claimableLevelsFor } from "@/features/progression/levelRewardService";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
 
 /**
@@ -32,6 +33,12 @@ export interface ProgressionSummary {
    * après coup ferait sauter la mise en page.
    */
   claimableQuests: number;
+  /**
+   * Récompenses qui ATTENDENT le joueur au profil : paliers de niveau à
+   * réclamer, cartes au choix à trancher, escale de connexion du jour. La
+   * pastille de l'avatar — ce qui donne envie d'y aller.
+   */
+  claimableRewards: number;
 }
 
 const SIGNED_OUT: ProgressionSummary = {
@@ -43,6 +50,7 @@ const SIGNED_OUT: ProgressionSummary = {
   displayName: null,
   avatarCardId: null,
   claimableQuests: 0,
+  claimableRewards: 0,
 };
 
 /**
@@ -71,7 +79,7 @@ export async function fetchProgression(): Promise<ProgressionSummary> {
     const user = await getSessionUser();
     if (!user) return SIGNED_OUT;
 
-    const [progression, currency, profile, claimable] = await Promise.all([
+    const [progression, currency, profile, claimable, levelRewards, cardChoices, login] = await Promise.all([
       supabase.from("player_progression").select("*").eq("user_id", user.id).maybeSingle(),
       supabase.from("player_currency").select("balance").eq("user_id", user.id).maybeSingle(),
       readProfileHeader(supabase, user.id),
@@ -83,7 +91,13 @@ export async function fetchProgression(): Promise<ProgressionSummary> {
         .eq("user_id", user.id)
         .not("completed_at", "is", null)
         .is("claimed_at", null),
+      supabase.from("player_level_rewards").select("level").eq("user_id", user.id),
+      supabase.from("player_card_choices").select("id", { count: "exact", head: true }).eq("user_id", user.id).is("resolved_at", null),
+      supabase.from("player_login_rewards").select("last_claimed_day").eq("user_id", user.id).maybeSingle(),
     ]);
+    const storedLevel = progression.data?.level ?? 1;
+    const levelsToClaim = claimableLevelsFor(storedLevel, (levelRewards.data ?? []).map((row) => row.level)).length;
+    const loginToClaim = login.error ? 0 : login.data?.last_claimed_day === utcDayKey() ? 0 : 1;
 
     return {
       isSignedIn: true,
@@ -96,6 +110,7 @@ export async function fetchProgression(): Promise<ProgressionSummary> {
       displayName: profile.displayName ?? user.email ?? null,
       avatarCardId: profile.avatarCardId,
       claimableQuests: claimable.count ?? 0,
+      claimableRewards: levelsToClaim + (cardChoices.count ?? 0) + loginToClaim,
     };
   } catch (error) {
     console.error("[fetchProgression] Lecture impossible :", error);

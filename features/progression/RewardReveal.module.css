@@ -1,0 +1,258 @@
+/*
+ * RÉVÉLATION d'une récompense — lumière tournante, éclats, puis les
+ * récompenses qui surgissent une à une.
+ */
+
+.scene {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  display: grid;
+  justify-items: center;
+  /* « safe » : sur un écran bas, le haut du panneau reste atteignable au lieu de sortir de l'écran. */
+  align-content: safe center;
+  padding: 16px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: radial-gradient(80% 70% at 50% 45%, rgba(14, 40, 58, 0.92), rgba(2, 6, 12, 0.96));
+  color: #e8edf0;
+  font-family: var(--font-ui, "Segoe UI", system-ui, sans-serif);
+  animation: fadeIn 220ms ease-out both;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.rays {
+  position: fixed;
+  left: 50%;
+  top: 45%;
+  width: 150vmax;
+  height: 150vmax;
+  margin: -75vmax 0 0 -75vmax;
+  background: repeating-conic-gradient(from 0deg, rgba(255, 214, 120, 0.14) 0deg 7deg, transparent 7deg 20deg);
+  mask-image: radial-gradient(closest-side, #000 6%, rgba(0, 0, 0, 0.45) 28%, transparent 60%);
+  -webkit-mask-image: radial-gradient(closest-side, #000 6%, rgba(0, 0, 0, 0.45) 28%, transparent 60%);
+  animation: spin 22s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Éclats qui partent du centre à l'ouverture. */
+.burst {
+  position: fixed;
+  left: 50%;
+  top: 45%;
+  pointer-events: none;
+}
+
+.burst span {
+  position: absolute;
+  width: 6px;
+  height: 18px;
+  margin: -9px 0 0 -3px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #fff3c4, #e5b04f);
+  box-shadow: 0 0 10px rgba(255, 200, 90, 0.8);
+  opacity: 0;
+  transform: rotate(var(--a)) translateY(0);
+  animation: shard 900ms cubic-bezier(0.15, 0.7, 0.3, 1) var(--d) both;
+}
+
+@keyframes shard {
+  0% { opacity: 0; transform: rotate(var(--a)) translateY(0) scaleY(0.3); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: rotate(var(--a)) translateY(-38vmin) scaleY(1); }
+}
+
+.panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  width: min(820px, 100%);
+  text-align: center;
+  animation: rise 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(18px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: #00b7ff;
+  text-shadow: 0 0 12px rgba(0, 183, 255, 0.55);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-card-title, Georgia, serif);
+  font-size: clamp(26px, 4vw, 44px);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #fff4d6;
+  text-shadow: 0 2px 18px rgba(255, 190, 80, 0.45);
+}
+
+.items {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: clamp(14px, 3vw, 34px);
+  margin: 6px 0 4px;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 150px;
+  opacity: 0;
+  animation: pop 560ms cubic-bezier(0.2, 1.4, 0.4, 1) calc(280ms + var(--i) * 180ms) both;
+}
+
+@keyframes pop {
+  0% { opacity: 0; transform: translateY(20px) scale(0.4); }
+  70% { opacity: 1; transform: translateY(-4px) scale(1.08); }
+  100% { opacity: 1; transform: none; }
+}
+
+.itemIcon {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0, 183, 255, 0.5), 0 0 28px rgba(0, 183, 255, 0.35), 0 0 60px rgba(255, 200, 90, 0.18);
+  animation: glow 2.2s ease-in-out infinite;
+}
+
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(0, 183, 255, 0.5), 0 0 22px rgba(0, 183, 255, 0.3), 0 0 50px rgba(255, 200, 90, 0.15); }
+  50% { box-shadow: 0 0 0 1px rgba(0, 183, 255, 0.8), 0 0 34px rgba(0, 183, 255, 0.45), 0 0 70px rgba(255, 200, 90, 0.25); }
+}
+
+.itemLabel {
+  font-family: var(--font-card-title, Georgia, serif);
+  font-size: 15px;
+  font-weight: 600;
+  color: #e8edf0;
+}
+
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: clamp(12px, 2.4vw, 28px);
+}
+
+.choice {
+  width: clamp(140px, 18vw, 210px);
+  padding: 0;
+  border: none;
+  border-radius: 12px;
+  background: none;
+  cursor: pointer;
+  opacity: 0;
+  animation: pop 560ms cubic-bezier(0.2, 1.3, 0.4, 1) calc(120ms + var(--i) * 140ms) both;
+  transition: transform 180ms ease-out, filter 180ms ease-out;
+}
+
+.choice:hover {
+  transform: translateY(-6px);
+}
+
+.choice:focus-visible {
+  outline: 2px solid #00b7ff;
+  outline-offset: 4px;
+}
+
+.choiceCard {
+  display: block;
+  pointer-events: none;
+  border-radius: 12px;
+  transition: box-shadow 200ms ease-out;
+}
+
+.choice[data-picked="true"] {
+  transform: translateY(-10px) scale(1.04);
+}
+
+.choice[data-picked="true"] .choiceCard {
+  box-shadow: 0 0 0 2px #00b7ff, 0 0 30px rgba(0, 183, 255, 0.55);
+}
+
+/* Les autres s'effacent un peu quand une carte est choisie. */
+.choices:has(.choice[data-picked="true"]) .choice:not([data-picked="true"]) {
+  filter: brightness(0.6) saturate(0.7);
+}
+
+.primary {
+  min-width: 220px;
+  padding: 12px 28px;
+  border: 1px solid #00b7ff;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #0b4265 0%, #08273d 100%);
+  box-shadow: 0 0 9px rgba(0, 183, 255, 0.45), inset 0 0 10px rgba(0, 183, 255, 0.12);
+  color: #fff;
+  font-family: var(--font-card-title, Georgia, serif);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  opacity: 0;
+  animation: fadeIn 300ms ease-out 700ms both;
+  transition: filter 150ms ease-out;
+}
+
+.primary:hover:not(:disabled) {
+  filter: brightness(1.15);
+}
+
+.primary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.error {
+  margin: 0;
+  color: #f0a497;
+  font-size: 13px;
+}
+
+.kept {
+  margin: 0;
+  font-size: 12px;
+  color: #9eb3c2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rays,
+  .itemIcon {
+    animation: none;
+  }
+
+  .burst {
+    display: none;
+  }
+}
+
+@media (max-height: 620px) {
+  .panel { gap: 10px; }
+  .item { width: 120px; }
+  .itemIcon { transform: scale(0.8); }
+  .choice { width: clamp(110px, 14vw, 150px); }
+}

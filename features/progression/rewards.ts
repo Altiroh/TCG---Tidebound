@@ -9,7 +9,6 @@ import {
   type MatchReward,
 } from "@/game/progression";
 import { syncAchievements } from "@/features/achievements/achievementService";
-import { openLevelCardChoices } from "@/features/progression/cardChoices";
 
 /**
  * Octroi des récompenses de partie — module SERVEUR, volontairement sans
@@ -112,7 +111,9 @@ export async function awardMatchReward({
       p_match_id: matchId,
       p_user_id: userId,
       p_xp: reward.xp,
-      p_tides: reward.totalTides,
+      // Tides de la PARTIE seulement : ceux des paliers franchis attendent
+      // d'être réclamés au profil (`claim_level_reward`).
+      p_tides: reward.tides,
       p_target_level: reward.levelAfter,
       p_level_before: reward.levelBefore,
       p_first_win_of_day: reward.firstWinOfDay,
@@ -121,7 +122,9 @@ export async function awardMatchReward({
       // Une partie abandonnée ne compte pas dans les 3 parties du jour :
       // sinon l'abandon en boucle débloquerait le bonus quotidien.
       p_counts_for_daily: !reward.abandoned,
-      p_level_rewards: reward.levelRewards.map((entry) => ({ level: entry.level, items: entry.items })),
+      // Les paliers ne sont plus crédités ici : ils se RÉCLAMENT
+      // (`features/progression/levelRewardService.ts`). Le joueur a son moment.
+      p_level_rewards: [],
     });
 
     if (error) {
@@ -130,9 +133,6 @@ export async function awardMatchReward({
     }
     if (!data?.granted) return null;
 
-    // Paliers « carte au choix » : le tirage des propositions se fait après
-    // l'octroi, et n'a pas le droit de le faire échouer.
-    if (reward.cardChoices.length > 0) await openLevelCardChoices(userId, reward.cardChoices);
     // Exploits : recalculés depuis les compteurs à jour, jamais depuis
     // l'événement — un exploit manqué se rattrape à la partie suivante.
     await syncAchievements(userId);

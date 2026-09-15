@@ -6,6 +6,8 @@ import { fetchProgression, type ProgressionSummary } from "@/features/progressio
 import { notifyProgressionChanged, onProgressionChanged, readProgression, rememberedProgression } from "@/features/progression/progressionSync";
 import { cardIllustrationUrl } from "@/features/decks/nameplateArt";
 import { QuestDrawer } from "@/features/quests/QuestDrawer";
+import { ProfileDrawer } from "@/features/progression/ProfileDrawer";
+import type { ProfileTab } from "@/features/progression/ProfileView";
 import { ScreenToast, type ScreenToastMessage } from "@/features/shell/ScreenToast";
 import { SettingsDialog } from "@/features/settings/SettingsDialog";
 import styles from "@/features/shell/ScreenShell.module.css";
@@ -100,6 +102,10 @@ export function HeaderPlayer() {
   const [summary, setSummary] = useState<ProgressionSummary | null>(rememberedProgression);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [questsOpen, setQuestsOpen] = useState(false);
+  /** Profil ouvert en panneau, et sur quel onglet (`null` : fermé). */
+  const [profileTab, setProfileTab] = useState<ProfileTab | null>(null);
+  /** Dernier nombre de récompenses à réclamer VU — même principe que les quêtes. */
+  const lastRewards = useRef<number | null>(null);
   const [toast, setToast] = useState<ScreenToastMessage | null>(null);
   /**
    * Dernier nombre de quêtes à réclamer VU. Sert à repérer une quête qui
@@ -127,6 +133,7 @@ export function HeaderPlayer() {
           if (cancelled || request !== latest) return;
           setSummary(result);
           announceNewQuests(result.claimableQuests);
+          announceNewRewards(result.claimableRewards);
         })
         .catch((error) => console.error("[HeaderPlayer] Lecture de la progression impossible :", error));
     };
@@ -163,6 +170,39 @@ export function HeaderPlayer() {
       });
     }
 
+    /**
+     * Annonce les récompenses qui viennent d'arriver (un palier franchi en
+     * fin de partie, typiquement). Les quêtes ont la priorité sur l'alerte :
+     * une seule à la fois, et la pastille de l'avatar reste de toute façon.
+     */
+    function announceNewRewards(claimable: number) {
+      const previous = lastRewards.current;
+      lastRewards.current = claimable;
+      if (previous === null || claimable <= previous) return;
+      setToast((current) =>
+        current
+          ? current
+          : {
+              id: ++toastId.current,
+              tone: "success",
+              text: "Nouvelle récompense à réclamer au profil !",
+              action: (
+                <button
+                  type="button"
+                  className={styles.toastAction}
+                  onClick={() => {
+                    playButtonClick();
+                    setToast(null);
+                    setProfileTab("recompenses");
+                  }}
+                >
+                  Réclamer →
+                </button>
+              ),
+            }
+      );
+    }
+
     load(false);
     // Relecture après un achat, une quête réclamée… — cf. `progressionSync`.
     const unsubscribe = onProgressionChanged(() => load(true));
@@ -176,6 +216,14 @@ export function HeaderPlayer() {
   // rien du tout plutôt qu'un niveau 1 trompeur.
   const signedIn = summary?.isSignedIn ?? false;
 
+  /** Le profil s'ouvre en PANNEAU ; un clic molette ou Ctrl+clic garde la page `/profil`. */
+  function openProfile(event: React.MouseEvent, tab: ProfileTab) {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+    event.preventDefault();
+    playButtonClick();
+    setProfileTab(tab);
+  }
+
   return (
     <>
       {signedIn && summary && (
@@ -184,7 +232,12 @@ export function HeaderPlayer() {
               pseudo dans un jeton de laiton — jamais un rond vide, qui dirait
               qu'il manque quelque chose. Le jeton mène au profil, comme le
               pseudo. */}
-          <Link href="/profil" className={styles.accountAvatarLink} aria-hidden tabIndex={-1} onClick={() => playButtonClick()}>
+          <Link
+            href="/profil"
+            className={styles.accountAvatarLink}
+            aria-label={summary.claimableRewards > 0 ? `Profil — ${summary.claimableRewards} récompense${summary.claimableRewards > 1 ? "s" : ""} à réclamer` : "Profil"}
+            onClick={(event) => openProfile(event, summary.claimableRewards > 0 ? "recompenses" : "carnet")}
+          >
             {summary.avatarCardId ? (
               <span
                 className={`${styles.accountAvatar} ${styles.accountAvatarArt}`}
@@ -193,12 +246,18 @@ export function HeaderPlayer() {
             ) : (
               <span className={styles.accountAvatar}>{avatarInitial(summary.displayName)}</span>
             )}
+            {/* Pastille : quelque chose attend au profil. Elle pulse — c'est fait pour donner envie d'y aller. */}
+            {summary.claimableRewards > 0 && (
+              <span className={styles.rewardBadge} aria-hidden>
+                {summary.claimableRewards}
+              </span>
+            )}
           </Link>
 
           <span className={styles.accountIdentity}>
             {/* Le pseudo mène au carnet de bord : niveau, paliers, escales
                 de connexion, exploits (Notion « Progression joueur » §12). */}
-            <Link href="/profil" className={styles.accountName} title={summary.displayName ?? undefined} onClick={() => playButtonClick()}>
+            <Link href="/profil" className={styles.accountName} title={summary.displayName ?? undefined} onClick={(event) => openProfile(event, "carnet")}>
               {summary.displayName ?? "Joueur"}
             </Link>
 
@@ -289,6 +348,16 @@ export function HeaderPlayer() {
             setQuestsOpen(false);
             // Une réclamation faite dans le tiroir change le solde et la
             // pastille : on relit en fermant.
+            notifyProgressionChanged();
+          }}
+        />
+      )}
+      {profileTab && (
+        <ProfileDrawer
+          initialTab={profileTab}
+          onClose={() => {
+            setProfileTab(null);
+            // Réclamations, pseudo, avatar : le bandeau relit en fermant.
             notifyProgressionChanged();
           }}
         />

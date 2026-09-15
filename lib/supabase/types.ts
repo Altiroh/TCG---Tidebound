@@ -667,6 +667,10 @@ export interface Database {
         Args: { p_user_id: string; p_source: string; p_source_ref: string; p_rarity: CardRarityEnum; p_card_ids: string[] };
         Returns: { ok: boolean; opened: boolean; choice_id?: string | null };
       };
+      claim_level_reward: {
+        Args: { p_user_id: string; p_level: number; p_items: unknown };
+        Returns: { ok: boolean; error?: string; already_claimed?: boolean; level?: number; tides?: number; precon_tokens?: number };
+      };
       resolve_card_choice: {
         Args: { p_user_id: string; p_choice_id: string; p_card_id: string };
         Returns: { ok: boolean; error?: string; card_id?: string };
