@@ -704,3 +704,55 @@
 @media (prefers-reduced-motion: reduce) {
   .questsWaiting { animation: none; }
 }
+
+/* Visiteur non connecté : lien de connexion à la place du bloc de compte. */
+.signInLink {
+  position: relative;
+  z-index: 2;
+  padding: 6px 14px;
+  border: 1px solid rgba(88, 200, 216, 0.45);
+  border-radius: 999px;
+  background: rgba(4, 10, 17, 0.42);
+  color: #eaf8fb;
+  font-size: clamp(12px, 0.9vw, 14px);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: border-color 160ms ease-out, background-color 160ms ease-out;
+}
+
+.signInLink:hover {
+  border-color: var(--cb-teal);
+  background: rgba(13, 52, 69, 0.6);
+}
+
+/*
+ * Bandeau du MENU PRINCIPAL. Le menu n'est pas monté sur `GameScreen` (il a
+ * son décor et son coffret) : le bandeau y est posé en surimpression, avec
+ * la même palette que `.screen` — sans sa grille plein écran.
+ */
+.homeBar {
+  --cb-navy-deep: #06121c;
+  --cb-navy: #081a27;
+  --cb-brass-dark: #6d5224;
+  --cb-brass: #a47b36;
+  --cb-brass-light: #c79a4e;
+  --cb-teal: #4fc4ce;
+  --cb-ivory: #e9e2d1;
+  --cb-ivory-dim: #97917f;
+  --cb-font-ui: var(--font-ui, "Segoe UI", system-ui, sans-serif);
+  --cb-font-display: var(--font-card-title, Georgia, "Times New Roman", serif);
+
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  z-index: 30;
+  display: grid;
+  height: clamp(54px, 6.8vh, 72px);
+  font-family: var(--cb-font-ui);
+  color: var(--cb-ivory);
+  /* Un voile en haut seulement : le bandeau reste lisible sur le ciel du
+     décor sans poser de barre opaque sur le menu. */
+  background: linear-gradient(180deg, rgba(3, 8, 14, 0.72) 0%, rgba(3, 8, 14, 0.35) 70%, transparent 100%);
+}

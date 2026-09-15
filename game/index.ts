@@ -145,3 +145,4 @@ export {
   cardBackSrc,
   type CardBackSkin,
 } from "@/game/cosmetics/cardBacks";
+export { DEFAULT_SHIP_FRAME_ID, SHIP_FRAMES, SHIP_FRAME_COSMETIC_KIND, type ShipFrameSkin } from "@/game/cosmetics/shipFrames";

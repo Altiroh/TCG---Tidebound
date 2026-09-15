@@ -70,6 +70,8 @@ export interface ProfileSummary {
   upcomingMilestones: ProfileLevelRow[];
   /** Derniers paliers déjà récupérés, du plus récent au plus ancien. */
   claimedLevels: ProfileLevelRow[];
+  /** TOUS les niveaux dont la récompense a été créditée — la frise des récompenses les coche un à un. */
+  claimedLevelNumbers: number[];
   /** Cycle de connexion : étape à réclamer et disponibilité du jour. */
   login: { step: number; items: readonly LoginRewardItem[]; claimable: boolean; totalClaims: number };
   achievements: ProfileAchievement[];
@@ -97,6 +99,7 @@ const SIGNED_OUT: ProfileSummary = {
   nextLevelReward: "—",
   upcomingMilestones: [],
   claimedLevels: [],
+  claimedLevelNumbers: [],
   login: { step: 1, items: [], claimable: false, totalClaims: 0 },
   achievements: [],
   cardBacks: { options: [], equipped: DEFAULT_CARD_BACK_ID },
@@ -125,7 +128,7 @@ export async function fetchProfile(): Promise<ProfileSummary> {
       service.from("player_progression").select("xp_total, level, matches_played, pvp_wins, precon_tokens, play_streak, best_play_streak, play_streak_day").eq("user_id", user.id).maybeSingle(),
       service.from("player_currency").select("balance").eq("user_id", user.id).maybeSingle(),
       service.from("profiles").select("display_name, avatar_card_id").eq("id", user.id).maybeSingle(),
-      service.from("player_level_rewards").select("level").eq("user_id", user.id).order("level", { ascending: false }).limit(8),
+      service.from("player_level_rewards").select("level").eq("user_id", user.id).order("level", { ascending: false }),
       service.from("player_achievements").select("code").eq("user_id", user.id),
       readLoginRewards(user.id),
       loadCardBacks(user.id),
@@ -158,7 +161,8 @@ export async function fetchProfile(): Promise<ProfileSummary> {
       },
       nextLevelReward: view.level >= MAX_REWARDED_LEVEL ? "—" : levelRewardsLabel(view.level + 1),
       upcomingMilestones: nextMilestones(view.level, 3).map((level) => ({ level, label: levelRewardsLabel(level), claimed: false })),
-      claimedLevels: (claimed.data ?? []).map((row) => ({ level: row.level, label: levelRewardsLabel(row.level), claimed: true })),
+      claimedLevelNumbers: (claimed.data ?? []).map((row) => row.level),
+      claimedLevels: (claimed.data ?? []).slice(0, 8).map((row) => ({ level: row.level, label: levelRewardsLabel(row.level), claimed: true })),
       login,
       achievements: ACHIEVEMENT_CATALOG.map((achievement) => ({
         code: achievement.code,
@@ -214,7 +218,10 @@ export async function equipCardBack(cardBackId: string): Promise<EquipCardBackAc
   if (!user) return { ok: false, error: "Connecte-toi pour changer de dos de carte." };
 
   const result = await equipCardBackFor(user.id, cardBackId);
-  if (result.ok) revalidatePath("/profil");
+  if (result.ok) {
+    revalidatePath("/profil");
+    revalidatePath("/collectables");
+  }
   return result;
 }
 

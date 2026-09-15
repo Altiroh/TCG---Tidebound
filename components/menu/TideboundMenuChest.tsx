@@ -121,7 +121,7 @@ export function TideboundMenuChest() {
         // Contraint par la largeur ET la hauteur disponibles (sinon la
         // boîte déborde verticalement sur les écrans larges mais courts,
         // ex : un laptop en paysage) — 1448/1086 = le ratio réel de l'asset.
-        width: "min(90vw, 1400px, calc(85vh * 1448 / 1086))",
+        width: "min(90vw, 1400px, calc(78vh * 1448 / 1086))",
         aspectRatio: "1448 / 1086",
       }}
     >

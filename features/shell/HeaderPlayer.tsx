@@ -227,6 +227,14 @@ export function HeaderPlayer() {
         </div>
       )}
 
+      {/* Visiteur : la porte d'entrée du compte, là où le compte s'afficherait.
+          Seulement une fois la lecture revenue — avant, on ne sait pas. */}
+      {summary && !signedIn && (
+        <Link href="/connexion" className={styles.signInLink} onClick={() => playButtonClick()}>
+          Se connecter
+        </Link>
+      )}
+
       {/* Quêtes : au bout du bloc de compte, comme les Options. Réservé aux
           joueurs connectés — un tiroir vide n'apprend rien à un visiteur. */}
       {signedIn && (

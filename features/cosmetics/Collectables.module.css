@@ -1,0 +1,151 @@
+/*
+ * Collectables — la vitrine. La colonne de gauche et la barre reprennent la
+ * grammaire des Cartes (`CardBrowser.module.css`) ; il n'y a ici que les
+ * objets eux-mêmes.
+ */
+
+.showcase {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: clamp(14px, 1.8vw, 26px);
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(clamp(160px, 13vw, 220px), 1fr));
+  gap: clamp(14px, 1.6vw, 26px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  padding: 10px 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(8, 18, 30, 0.5);
+  color: var(--ink-dim);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 160ms ease-out, transform 160ms ease-out, background-color 160ms ease-out;
+}
+
+div.item {
+  cursor: default;
+}
+
+button.item:hover:not(:disabled) {
+  transform: translateY(-3px);
+  border-color: var(--line-strong);
+  background: rgba(13, 34, 50, 0.6);
+}
+
+.item:focus-visible {
+  outline: 2px solid var(--cb-cyan);
+  outline-offset: 2px;
+}
+
+.item:disabled {
+  cursor: default;
+}
+
+.item[data-selected="true"] {
+  border-color: rgba(88, 200, 216, 0.7);
+  background: linear-gradient(180deg, rgba(13, 52, 69, 0.6), rgba(8, 18, 30, 0.5));
+  box-shadow: 0 0 0 1px rgba(88, 200, 216, 0.25), 0 10px 26px rgba(4, 20, 28, 0.5);
+}
+
+.cardBackFrame,
+.shipFrameBox {
+  position: relative;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.cardBackFrame {
+  aspect-ratio: 5 / 7;
+}
+
+.cardBackImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.55);
+}
+
+.shipFrameBox {
+  aspect-ratio: 4 / 5;
+  background: radial-gradient(closest-side, rgba(24, 56, 78, 0.6), rgba(6, 14, 24, 0.9));
+}
+
+.shipFrameImage {
+  width: 92%;
+  height: 92%;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.6));
+}
+
+.shipFramePending {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* Verrouillé : lisible, mais visiblement hors de portée. */
+.item[data-locked="true"] .cardBackImage,
+.item[data-locked="true"] .shipFrameImage {
+  filter: grayscale(0.85) brightness(0.5);
+}
+
+.badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 2px 8px;
+  border: 1px solid rgba(88, 200, 216, 0.6);
+  border-radius: 999px;
+  background: rgba(4, 14, 22, 0.85);
+  color: #dff6fa;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.itemName {
+  font-family: var(--cb-font-display);
+  font-size: clamp(13px, 1vw, 15px);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.itemText {
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.itemHint {
+  margin-top: auto;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.item[data-selected="true"] .itemHint {
+  color: var(--cb-cyan);
+}
