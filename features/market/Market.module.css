@@ -18,18 +18,79 @@
 }
 
 .layoutInner {
-  --pack-h: clamp(120px, 34vh, 340px);
+  --pack-h: clamp(120px, 30vh, 272px);
   /* Emplacement d'un sachet : la largeur du plus large des visuels. */
   --slot-w: calc(var(--pack-h) * 0.66);
-  --slot-gap: clamp(24px, 3.4vw, 64px);
+  --slot-gap: clamp(20px, 2.6vw, 44px);
 
   display: flex;
   flex-direction: column;
-  gap: clamp(10px, 1.6vh, 22px);
-  width: min(100%, 1480px);
+  /* Le groupe des trois plans est centré dans la hauteur : haut de page, il
+     laissait un vide de plusieurs centaines de pixels sous le panier. */
+  justify-content: center;
+  gap: clamp(10px, 1.6vh, 20px);
+  /* 1480 px laissaient l'étagère se centrer sur toute la largeur d'un
+     écran large pendant que le titre et le panier s'alignaient à ses
+     bords : trois sachets perdus au milieu d'un vide. Une colonne plus
+     étroite tient les trois plans ensemble. */
+  width: min(100%, 900px);
   margin-inline: auto;
   flex: 1 1 auto;
   min-height: 0;
+}
+
+/* Écran étroit : les emplacements sont à largeur FIXE, donc trois sachets
+   à taille normale débordaient du panneau et le premier se retrouvait
+   coupé. On rapetisse les sachets plutôt que de les laisser sortir. */
+@media (max-width: 700px) {
+  .layoutInner {
+    --pack-h: clamp(104px, 19vh, 168px);
+    --slot-gap: 12px;
+  }
+}
+
+/* ── En-tête ────────────────────────────────────────────────── */
+.head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: clamp(12px, 2vw, 28px);
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--cb-font-display);
+  font-size: clamp(22px, 2.3vw, 34px);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #f2f7fb;
+}
+
+.lede {
+  margin: 4px 0 0;
+  font-size: clamp(12px, 0.9vw, 14px);
+  color: var(--ink-dim);
+}
+
+/* Le solde, à hauteur du titre : une boutique pose en permanence la
+   question « est-ce que je peux me le payer ». Le bandeau le porte aussi,
+   mais à l'autre bout de l'écran. */
+.purse {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  padding: 0.35em 0.8em;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel-solid);
+  font-family: var(--cb-font-display);
+  font-size: clamp(15px, 1.2vw, 20px);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #e5cf9e;
 }
 
 /* ── Étagères ───────────────────────────────────────────────── */
@@ -38,10 +99,15 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: clamp(28px, 5vh, 56px);
-  flex: 1 1 auto;
+  gap: clamp(24px, 4vh, 48px);
+  /* Le panneau ÉPOUSE son étagère. En `1 1 auto` il s'étirait sur toute la
+     hauteur libre et les sachets flottaient au milieu d'un grand vide
+     bleu — le défaut même qu'on corrige. Il ne défile que s'il déborde. */
+  flex: 0 1 auto;
   min-height: 0;
-  padding-top: 16px;
+  /* Le panneau CADRE l'étagère. Sans lui, les sachets étaient posés à même
+     le décor de fond et rien ne disait où s'arrêtait la boutique. */
+  padding: clamp(18px, 3vh, 34px) clamp(14px, 2vw, 30px) clamp(10px, 1.6vh, 20px);
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
@@ -51,15 +117,14 @@
 .stage::-webkit-scrollbar { width: 6px; }
 .stage::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--line-strong); }
 
-/* Une seule étagère reste centrée dans la hauteur. */
-.stage > .shelfUnit:first-child { margin-top: auto; }
-.stage > .shelfUnit:last-child { margin-bottom: auto; }
-
+/* Largeur DICTÉE par les sachets posés dessus : une largeur fixe faisait
+   dépasser la planche de plusieurs dizaines de centimètres quand l'étagère
+   ne portait que deux ou trois sachets. */
 .shelfUnit {
   display: flex;
   flex-direction: column;
   flex: 0 0 auto;
-  min-width: min(100%, clamp(320px, 42vw, 720px));
+  max-width: 100%;
 }
 
 .shelfItems,
@@ -135,10 +200,14 @@
 }
 
 /* Sous la planche : le nom, puis le prix. Rien d'autre. */
+/* `space-between` et non un simple empilement : les étiquettes ont la même
+   hauteur (elles s'étirent), donc un nom qui passe sur deux lignes ne
+   décale plus le prix de ses voisines. */
 .shelfLabel {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: space-between;
   gap: 4px;
   flex: 0 0 var(--slot-w);
   padding-top: clamp(12px, 2vh, 20px);
@@ -169,7 +238,8 @@
   align-items: center;
   justify-content: space-between;
   gap: clamp(14px, 3vw, 48px);
-  padding: clamp(8px, 1.3vh, 14px) clamp(14px, 1.6vw, 22px);
+  flex: 0 0 auto;
+  padding: clamp(10px, 1.5vh, 16px) clamp(14px, 1.6vw, 22px);
 }
 
 @media (max-width: 760px) {

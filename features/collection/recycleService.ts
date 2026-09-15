@@ -1,5 +1,5 @@
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
-import { recycleValueOf } from "@/features/collection/recycleValue";
+import { keepThreshold, recycleValueOf } from "@/features/collection/recycleValue";
 
 /**
  * Revente de cartes — module SERVEUR, volontairement sans `"use server"` :
@@ -27,18 +27,24 @@ export interface RecycleResult {
 }
 
 /**
- * Revend `quantity` exemplaires de `cardId`.
+ * Revend `quantity` exemplaires EN TROP de `cardId`.
  *
- * Ne vérifie NI la possession NI le dernier exemplaire : c'est la base qui
- * tranche, sous verrou (`for update`), pour que deux reventes simultanées ne
- * puissent pas vendre le même exemplaire deux fois. Ici on ne fait que
- * refuser ce qui n'a pas de sens avant même d'atteindre la base.
+ * Ne vérifie NI la possession NI le seuil de conservation : c'est la base
+ * qui tranche, sous verrou (`for update`), pour que deux reventes
+ * simultanées ne puissent pas vendre le même exemplaire deux fois. Ici on
+ * ne fait que refuser ce qui n'a pas de sens avant même d'atteindre la base.
+ *
+ * Deux chiffres descendent du CATALOGUE vers la base : le montant unitaire
+ * et le seuil à conserver (`maxCopies` de la carte). La base ne tient aucun
+ * barème ni aucune limite en propre — c'est exactement le barème gravé en
+ * SQL qui avait dérivé la première fois.
  */
 export async function recycleCardFor(userId: string, cardId: string, quantity: number): Promise<RecycleResult> {
   if (!Number.isInteger(quantity) || quantity < 1) return { ok: false, error: "Quantité invalide." };
 
   const unitValue = recycleValueOf(cardId);
-  if (unitValue === null) return { ok: false, error: "Carte inconnue." };
+  const minKeep = keepThreshold(cardId);
+  if (unitValue === null || minKeep === null) return { ok: false, error: "Carte inconnue." };
 
   try {
     const { data, error } = await createSupabaseServiceRoleClient().rpc("recycle_card", {
@@ -46,6 +52,7 @@ export async function recycleCardFor(userId: string, cardId: string, quantity: n
       p_card_id: cardId,
       p_quantity: quantity,
       p_unit_value: unitValue,
+      p_min_keep: minKeep,
     });
     if (error) {
       console.error("[recycleCardFor] Revente refusée :", error.message);

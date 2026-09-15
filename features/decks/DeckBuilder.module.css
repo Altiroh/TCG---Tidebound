@@ -93,20 +93,17 @@
   border-radius: 0;
 }
 
-.nameRow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-/* Bouton d'illustration : discret, il ne concurrence pas le nom. */
+/* Bouton d'illustration : ancré au coin HAUT DROIT de la plaque, hors du
+   flux — le nom occupe seul la ligne du bas, à pleine largeur, et rien ne
+   lui dispute la place quand il rétrécit. */
 .artPick {
-  flex: 0 0 auto;
+  position: absolute;
+  top: 9px;
+  right: 9px;
   display: grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
   padding: 0;
   border: 1px solid rgba(140, 220, 245, 0.35);
   border-radius: 7px;
@@ -126,7 +123,6 @@
    d'ellipse — un deck tronqué ne se reconnaît plus. La taille est donc
    posée en ligne par le hook, pas ici. */
 .deckName {
-  flex: 1 1 auto;
   width: 100%;
   min-width: 0;
   padding: 0;

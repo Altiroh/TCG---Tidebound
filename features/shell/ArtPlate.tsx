@@ -1,12 +1,9 @@
 import type { CSSProperties, ReactNode } from "react";
 import styles from "@/features/shell/ArtPlate.module.css";
 
-export type ArtPlateSize = "sm" | "md" | "lg";
-
 interface ArtPlateProps {
   /** Illustration de fond, ou `null` : la plaque se contente alors de son dégradé. */
   artUrl: string | null;
-  size?: ArtPlateSize;
   /** Contenu posé sur la plaque — titre, champ de saisie, métadonnées. */
   children: ReactNode;
   className?: string;
@@ -21,13 +18,18 @@ interface ArtPlateProps {
  * est le but : un seul composant, donc un seul endroit à retoucher, et
  * aucune divergence possible entre deux écrans.
  *
+ * UNE SEULE taille, volontairement : trois jetons `sm`/`md`/`lg` avaient
+ * fini par diverger à chaque retouche — on réduisait l'un en croyant les
+ * réduire tous. Un appelant qui a besoin d'autre chose le dit dans sa
+ * propre feuille, sur `className`, et c'est visible dans sa revue.
+ *
  * Purement présentationnel : QUELLE illustration afficher se décide
  * ailleurs (`features/decks/nameplateArt.ts` pour un deck), jamais ici.
  */
-export function ArtPlate({ artUrl, size = "md", children, className, style }: ArtPlateProps) {
+export function ArtPlate({ artUrl, children, className, style }: ArtPlateProps) {
   return (
     <div
-      className={`${styles.plate} ${styles[size]}${className ? ` ${className}` : ""}`}
+      className={`${styles.plate}${className ? ` ${className}` : ""}`}
       data-art={artUrl ? "card" : "none"}
       style={style}
     >

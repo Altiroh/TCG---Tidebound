@@ -92,7 +92,7 @@ export function DeckCatalogSection({ catalog, kind }: DeckCatalogSectionProps) {
           const ratio = ownership.total === 0 ? 0 : ownership.owned / ownership.total;
           return (
             <article key={deck.id} className={`${game.panelRaised} ${styles.tile}`} aria-label={deck.name}>
-              <ArtPlate artUrl={nameplateArtUrl(deck.cardIds, deck.shipId)} size="lg" className={styles.tilePlate}>
+              <ArtPlate artUrl={nameplateArtUrl(deck.cardIds, deck.shipId)} className={styles.tilePlate}>
                 <span className={styles.tileName}>{deck.name}</span>
                 <span className={styles.tileShip}>{shipNameOf(deck.shipId)}</span>
               </ArtPlate>

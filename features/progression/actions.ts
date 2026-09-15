@@ -22,6 +22,12 @@ export interface ProgressionSummary {
   /** Pseudo affiché à côté du niveau (`profiles.display_name`), repli sur l'e-mail. `null` hors connexion. */
   displayName: string | null;
   /**
+   * Carte servant d'illustration d'avatar, ou `null`. Lue ICI parce que le
+   * bandeau l'affiche sur chaque écran : une seconde requête rien que pour
+   * elle ferait apparaître l'avatar après le reste du bloc de compte.
+   */
+  avatarCardId: string | null;
+  /**
    * Quêtes terminées mais pas encore réclamées — la pastille du bandeau.
    *
    * Lue ici plutôt que par une seconde requête : le bandeau lit déjà la
@@ -38,6 +44,7 @@ const SIGNED_OUT: ProgressionSummary = {
   matchesPlayed: 0,
   pvpWins: 0,
   displayName: null,
+  avatarCardId: null,
   claimableQuests: 0,
 };
 
@@ -57,7 +64,7 @@ export async function fetchProgression(): Promise<ProgressionSummary> {
     const [progression, currency, profile, claimable] = await Promise.all([
       supabase.from("player_progression").select("*").eq("user_id", user.id).maybeSingle(),
       supabase.from("player_currency").select("balance").eq("user_id", user.id).maybeSingle(),
-      supabase.from("profiles").select("display_name").eq("id", user.id).maybeSingle(),
+      supabase.from("profiles").select("display_name, avatar_card_id").eq("id", user.id).maybeSingle(),
       // Terminées et pas encore réclamées : `head` + `count`, on ne veut
       // que le nombre.
       supabase
@@ -77,6 +84,7 @@ export async function fetchProgression(): Promise<ProgressionSummary> {
       // Repli sur l'e-mail comme le menu principal : mieux vaut un identifiant
       // qu'un vide à côté du niveau.
       displayName: profile.data?.display_name ?? user.email ?? null,
+      avatarCardId: profile.data?.avatar_card_id ?? null,
       claimableQuests: claimable.count ?? 0,
     };
   } catch (error) {

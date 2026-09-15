@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { recycleCard } from "@/features/collection/recycleActions";
-import { recycleValueOf } from "@/features/collection/recycleValue";
+import { keepThreshold, recycleValueOf, sellableCopies } from "@/features/collection/recycleValue";
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
 import styles from "@/features/collection/card-detail/CardDetail.module.css";
 import { playButtonClick } from "@/lib/sound";
@@ -15,19 +15,21 @@ interface CardDetailResaleProps {
 }
 
 /**
- * Revente des exemplaires EN DOUBLE, depuis la fiche de carte.
+ * Revente des exemplaires EN TROP, depuis la fiche de carte.
+ *
+ * « En trop » veut dire : au-delà de ce qu'un deck peut accueillir
+ * (`maxCopies`, propre à chaque carte). Ce n'étaient auparavant que « les
+ * doubles » — on pouvait donc vendre le 2ᵉ exemplaire d'une carte qui se
+ * joue en triple, et le regretter sans recours. Un exemplaire qui dépasse
+ * la limite, lui, ne peut servir nulle part.
  *
  * Le prix suit la RARETÉ (`RECYCLE_VALUE`, dérivé du prix du booster) : plus
  * une carte est rare, plus elle se revend cher. C'est le catalogue qui le
  * dit, pas cet écran.
  *
- * Deux règles, et elles sont tenues par le serveur — ce qui s'affiche ici
- * n'est qu'un miroir :
- *   - on garde TOUJOURS au moins un exemplaire de chaque carte, pour qu'une
- *     revente ne puisse jamais rendre un deck sauvegardé injouable, ni être
- *     un regret définitif ;
- *   - la possession est relue en base sous verrou : deux onglets ne peuvent
- *     pas revendre le même exemplaire deux fois.
+ * Tout cela est tenu par le SERVEUR — ce qui s'affiche ici n'en est qu'un
+ * miroir : la possession est relue en base sous verrou, donc deux onglets
+ * ne peuvent pas revendre le même exemplaire deux fois.
  */
 export function CardDetailResale({ cardId, owned }: CardDetailResaleProps) {
   const router = useRouter();
@@ -36,9 +38,10 @@ export function CardDetailResale({ cardId, owned }: CardDetailResaleProps) {
   const [isPending, startTransition] = useTransition();
 
   const unitValue = recycleValueOf(cardId);
-  // Doubles seulement : le dernier exemplaire n'est jamais vendable.
-  const spare = Math.max(0, owned - 1);
-  if (unitValue === null) return null;
+  const keep = keepThreshold(cardId);
+  // L'EXCÉDENT seulement : ce qui dépasse la limite de deck de cette carte.
+  const spare = sellableCopies(cardId, owned);
+  if (unitValue === null || keep === null) return null;
 
   function sell(quantity: number) {
     playButtonClick();
@@ -69,22 +72,22 @@ export function CardDetailResale({ cardId, owned }: CardDetailResaleProps) {
         <p className={styles.resaleNote}>
           {owned === 0
             ? "Tu ne possèdes pas encore cette carte."
-            : "Tu n'en as qu'un exemplaire — on garde toujours le dernier."}
+            : `Un deck en accepte ${keep} : rien en trop à revendre.`}
         </p>
       ) : (
         <>
           <div className={styles.resaleActions}>
             <button type="button" className={styles.resaleButton} onClick={() => sell(1)} disabled={isPending}>
-              Revendre 1
+              Revendre 1 · {unitValue} Tides
             </button>
             {spare > 1 && (
               <button type="button" className={styles.resaleButton} onClick={() => sell(spare)} disabled={isPending}>
-                Revendre les {spare} doubles · {unitValue * spare} Tides
+                Revendre les {spare} en trop · {unitValue * spare} Tides
               </button>
             )}
           </div>
           <p className={styles.resaleNote}>
-            {owned} possédée{owned > 1 ? "s" : ""} · {spare} en double
+            {owned} possédée{owned > 1 ? "s" : ""} · un deck en accepte {keep} · {spare} en trop
           </p>
         </>
       )}

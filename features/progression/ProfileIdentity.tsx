@@ -82,7 +82,7 @@ export function ProfileIdentity({ displayName, avatarCardId, ownedCardIds }: Pro
 
   return (
     <>
-      <ArtPlate artUrl={plateArtUrl(avatarCardId, DEFAULT_SHIP_ID)} size="lg" className={styles.plate}>
+      <ArtPlate artUrl={plateArtUrl(avatarCardId, DEFAULT_SHIP_ID)} className={styles.plate}>
         <p className={styles.eyebrow}>Carnet de bord</p>
 
         {editing ? (

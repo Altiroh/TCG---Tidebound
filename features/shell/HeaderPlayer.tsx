@@ -1,29 +1,14 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchProgression, type ProgressionSummary } from "@/features/progression/actions";
-import { notifyProgressionChanged, onProgressionChanged, rememberProgression, rememberedProgression } from "@/features/progression/progressionSync";
-import { QuestDrawer } from "@/features/quests/QuestDrawer";
+import { onProgressionChanged, rememberProgression, rememberedProgression } from "@/features/progression/progressionSync";
+import { PlayerDrawer } from "@/features/progression/PlayerDrawer";
+import { cardIllustrationUrl } from "@/features/decks/nameplateArt";
 import { ScreenToast, type ScreenToastMessage } from "@/features/shell/ScreenToast";
 import { SettingsDialog } from "@/features/settings/SettingsDialog";
 import styles from "@/features/shell/ScreenShell.module.css";
 import { playButtonClick } from "@/lib/sound";
-
-/** Parchemin roulé — le journal de bord, pas une coche de logiciel. */
-function QuestIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" width="18" height="18" aria-hidden>
-      <path
-        d="M6.5 3.5h9.2a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H7a2.5 2.5 0 0 1-2.5-2.5V6a2.5 2.5 0 0 1 2.5-2.5Z"
-        stroke="currentColor"
-        strokeWidth={1.5}
-        strokeLinejoin="round"
-      />
-      <path d="M8.6 8h6.4M8.6 11.4h6.4M8.6 14.8h4" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" />
-    </svg>
-  );
-}
 
 function GearIcon() {
   return (
@@ -98,8 +83,17 @@ export function HeaderPlayer() {
   // relecture se fait quand même en arrière-plan et corrige l'affichage.
   const [summary, setSummary] = useState<ProgressionSummary | null>(rememberedProgression);
   const [optionsOpen, setOptionsOpen] = useState(false);
-  const [questsOpen, setQuestsOpen] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(false);
   const [toast, setToast] = useState<ScreenToastMessage | null>(null);
+  /**
+   * Fermeture DIFFÉRÉE du carnet de bord.
+   *
+   * Le panneau s'ouvre au survol du bloc de compte mais s'affiche à côté :
+   * entre les deux, le curseur traverse forcément un peu de bandeau. Sans
+   * ce délai, le panneau se refermerait avant qu'on l'ait atteint. Entrer
+   * dans le panneau annule le compte à rebours, et en sortir le relance.
+   */
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   /**
    * Dernier nombre de quêtes à réclamer VU. Sert à repérer une quête qui
    * vient de tomber : c'est une AUGMENTATION qui s'annonce, pas un total —
@@ -153,7 +147,7 @@ export function HeaderPlayer() {
             onClick={() => {
               playButtonClick();
               setToast(null);
-              setQuestsOpen(true);
+              setPanelOpen(true);
             }}
           >
             Voir →
@@ -171,6 +165,27 @@ export function HeaderPlayer() {
     };
   }, []);
 
+  // Le compte à rebours ne doit pas survivre au démontage du bandeau —
+  // chaque navigation en monte un nouveau.
+  useEffect(() => () => { if (closeTimer.current) clearTimeout(closeTimer.current); }, []);
+
+  const holdOpen = useCallback(() => {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    closeTimer.current = null;
+    setPanelOpen(true);
+  }, []);
+
+  const releaseOpen = useCallback(() => {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    closeTimer.current = setTimeout(() => setPanelOpen(false), 260);
+  }, []);
+
+  const closeNow = useCallback(() => {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    closeTimer.current = null;
+    setPanelOpen(false);
+  }, []);
+
   // Joueur non connecté : la progression n'existe pas encore, on n'affiche
   // rien du tout plutôt qu'un niveau 1 trompeur.
   const signedIn = summary?.isSignedIn ?? false;
@@ -178,20 +193,46 @@ export function HeaderPlayer() {
   return (
     <>
       {signedIn && summary && (
-        <div className={styles.account}>
-          {/* Avatar : l'initiale du pseudo dans un jeton de laiton. Pas
-              d'image tant que le jeu n'en propose pas — un rond vide dirait
-              qu'il manque quelque chose. */}
-          <span className={styles.accountAvatar} aria-hidden>
-            {avatarInitial(summary.displayName)}
-          </span>
+        /*
+         * Tout le bloc est la POIGNÉE du carnet de bord : le survoler
+         * l'ouvre, le clic aussi (et le clavier par le focus). Le pseudo
+         * menait auparavant à `/profil` — une navigation complète pour
+         * jeter un œil à son niveau entre deux parties.
+         */
+        <button
+          type="button"
+          className={styles.account}
+          onMouseEnter={holdOpen}
+          onMouseLeave={releaseOpen}
+          onFocus={holdOpen}
+          onClick={() => {
+            playButtonClick();
+            if (panelOpen) closeNow();
+            else holdOpen();
+          }}
+          aria-haspopup="dialog"
+          aria-expanded={panelOpen}
+          aria-label="Carnet de bord"
+        >
+          {/* L'illustration choisie sert d'avatar, SANS filtre : c'est un
+              trophée, pas un fond de plaque. Sans illustration, l'initiale
+              du pseudo dans un jeton de laiton. */}
+          {summary.avatarCardId ? (
+            <span
+              className={styles.accountPortrait}
+              style={{ backgroundImage: `url("${cardIllustrationUrl(summary.avatarCardId)}")` }}
+              aria-hidden
+            />
+          ) : (
+            <span className={styles.accountAvatar} aria-hidden>
+              {avatarInitial(summary.displayName)}
+            </span>
+          )}
 
           <span className={styles.accountIdentity}>
-            {/* Le pseudo mène au carnet de bord : niveau, paliers, escales
-                de connexion, exploits (Notion « Progression joueur » §12). */}
-            <Link href="/profil" className={styles.accountName} title={summary.displayName ?? undefined} onClick={() => playButtonClick()}>
+            <span className={styles.accountName} title={summary.displayName ?? undefined}>
               {summary.displayName ?? "Joueur"}
-            </Link>
+            </span>
 
             <span className={styles.accountLevelRow}>
               <span className={styles.accountLevel}>
@@ -215,32 +256,12 @@ export function HeaderPlayer() {
             <TideCoin />
             {summary.balance}
           </span>
-        </div>
-      )}
 
-      {/* Quêtes : au bout du bloc de compte, comme les Options. Réservé aux
-          joueurs connectés — un tiroir vide n'apprend rien à un visiteur. */}
-      {signedIn && (
-        <button
-          type="button"
-          className={summary && summary.claimableQuests > 0 ? styles.questsWaiting : styles.optionsButton}
-          aria-label={
-            summary && summary.claimableQuests > 0
-              ? `Quêtes — ${summary.claimableQuests} récompense${summary.claimableQuests > 1 ? "s" : ""} à réclamer`
-              : "Quêtes"
-          }
-          title="Quêtes"
-          aria-haspopup="dialog"
-          onClick={() => {
-            playButtonClick();
-            setQuestsOpen(true);
-          }}
-        >
-          <QuestIcon />
-          {/* Pastille : ce qui attend une action, et rien d'autre. Une
-              quête en cours n'a pas à réclamer l'attention. */}
-          {summary && summary.claimableQuests > 0 && (
-            <span className={styles.badge} aria-hidden>
+          {/* Pastille : ce qui attend une action, et rien d'autre. Elle a
+              suivi les quêtes dans le carnet de bord, faute d'icône à
+              porter — c'est le bloc de compte qui signale l'attente. */}
+          {summary.claimableQuests > 0 && (
+            <span className={styles.badge} aria-label={`${summary.claimableQuests} récompense${summary.claimableQuests > 1 ? "s" : ""} à réclamer`}>
               {summary.claimableQuests}
             </span>
           )}
@@ -266,16 +287,7 @@ export function HeaderPlayer() {
           progression. */}
       <ScreenToast message={toast} onDismiss={() => setToast(null)} />
 
-      {questsOpen && (
-        <QuestDrawer
-          onClose={() => {
-            setQuestsOpen(false);
-            // Une réclamation faite dans le tiroir change le solde et la
-            // pastille : on relit en fermant.
-            notifyProgressionChanged();
-          }}
-        />
-      )}
+      {panelOpen && <PlayerDrawer onClose={closeNow} onPointerEnter={holdOpen} onPointerLeave={releaseOpen} />}
       {optionsOpen && <SettingsDialog isSignedIn={signedIn} onClose={() => setOptionsOpen(false)} />}
     </>
   );

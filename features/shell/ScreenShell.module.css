@@ -258,9 +258,11 @@
 }
 
 /*
- * Bloc du compte, au bout du bandeau : une information de statut, pas un
- * contrôle — donc pas de cadre plein, juste une plaque très légère qui le
- * détache du décor maritime et le tient d'un seul bloc.
+ * Bloc du compte, au bout du bandeau. C'est aujourd'hui la POIGNÉE du
+ * carnet de bord : le survoler ouvre le panneau du joueur. Il reste discret
+ * — une plaque très légère qui le détache du décor maritime — mais il se
+ * signale au survol, sans quoi rien ne dirait qu'il y a quelque chose à
+ * ouvrir.
  */
 .account {
   position: relative;
@@ -273,8 +275,37 @@
   border: 1px solid rgba(233, 226, 209, 0.1);
   border-radius: 999px;
   background: rgba(4, 10, 17, 0.42);
+  color: inherit;
+  font: inherit;
+  text-align: left;
   white-space: nowrap;
   text-shadow: 0 1px 4px rgba(3, 10, 16, 0.9);
+  cursor: pointer;
+  transition: border-color 160ms ease-out, background-color 160ms ease-out;
+}
+
+.account:hover,
+.account[aria-expanded="true"] {
+  border-color: rgba(233, 226, 209, 0.3);
+  background: rgba(8, 20, 33, 0.7);
+}
+
+.account:focus-visible {
+  outline: 2px solid var(--cb-teal);
+  outline-offset: 2px;
+}
+
+/* L'illustration choisie, en avatar : TELLE QUELLE, sans voile. C'est un
+   trophée — la carte qu'on a eue — pas un fond de plaque. */
+.accountPortrait {
+  flex: 0 0 auto;
+  width: clamp(26px, 3.2vh, 34px);
+  height: clamp(26px, 3.2vh, 34px);
+  border: 1px solid rgba(199, 154, 78, 0.55);
+  border-radius: 50%;
+  background-size: cover;
+  /* Cadrage haut : les illustrations portent leur sujet en haut. */
+  background-position: center 22%;
 }
 
 /* Avatar : l'initiale du pseudo dans un jeton de laiton. */
@@ -628,13 +659,15 @@
 }
 
 /*
- * Pastille de quêtes à réclamer, posée sur son bouton. Ne compte QUE ce qui
- * attend une action : une quête en cours n'a pas à réclamer l'attention.
+ * Pastille de quêtes à réclamer, posée sur le bloc de compte — elle a suivi
+ * les quêtes dans le carnet de bord, qui n'a plus d'icône propre. Ne compte
+ * QUE ce qui attend une action : une quête en cours n'a pas à réclamer
+ * l'attention.
  */
 .badge {
   position: absolute;
-  top: -3px;
-  right: -3px;
+  top: -5px;
+  right: -5px;
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
@@ -648,7 +681,7 @@
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
 }
 
-/* Lien de l'alerte de quête : « Voir → », qui ouvre le tiroir. */
+/* Lien de l'alerte de quête : « Voir → », qui ouvre le carnet de bord. */
 .toastAction {
   padding: 0;
   border: none;
@@ -667,18 +700,3 @@
  * La pastille dit COMBIEN, la pulsation dit qu'il y a quelque chose — un
  * chiffre de 16 pixels dans un bandeau ne se remarque pas tout seul.
  */
-.questsWaiting {
-  composes: optionsButton;
-  color: #f0d79a;
-  animation: questsWaitingPulse 2.6s ease-in-out infinite;
-}
-
-@keyframes questsWaitingPulse {
-  0%,
-  100% { box-shadow: 0 0 0 0 rgba(199, 154, 78, 0); }
-  50% { box-shadow: 0 0 0 3px rgba(199, 154, 78, 0.22); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .questsWaiting { animation: none; }
-}

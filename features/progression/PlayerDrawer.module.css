@@ -1,0 +1,314 @@
+/*
+ * CARNET DE BORD — le panneau du joueur, glissé depuis la droite.
+ *
+ * Il s'ouvre au SURVOL de l'avatar du bandeau, donc sans qu'on l'ait
+ * demandé : pas de voile sur l'écran, rien de bloquant. Toute sa mise en
+ * page découle de là — il se superpose, il ne s'impose pas.
+ */
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 91;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(400px, 94vw);
+  padding: clamp(14px, 1.4vw, 20px);
+  /* Encoches : le panneau touche les quatre bords de l'écran. */
+  padding-top: calc(clamp(14px, 1.4vw, 20px) + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(clamp(14px, 1.4vw, 20px) + env(safe-area-inset-bottom, 0px));
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(7, 15, 25, 0.97);
+  box-shadow: -24px 0 60px rgba(0, 0, 0, 0.55);
+  color: var(--ink, #e8edf4);
+  overflow: hidden;
+  animation: drawerIn 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes drawerIn {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawer { animation: none; }
+}
+
+/* ── Tête : l'illustration, le pseudo, le niveau ─────────────── */
+.head {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  flex: 0 0 auto;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+/* L'illustration choisie, SANS filtre : elle sert d'avatar, pas de fond de
+   plaque — un voile bleu par-dessus en ferait un décor de plus. */
+.avatar,
+.avatarEmpty {
+  flex: 0 0 auto;
+  width: 46px;
+  height: 46px;
+  border: 1px solid rgba(140, 220, 245, 0.4);
+  border-radius: 12px;
+  background-size: cover;
+  background-position: center 22%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+}
+
+.avatarEmpty {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(180deg, rgba(20, 52, 78, 0.95), rgba(8, 20, 34, 0.95));
+  font-family: var(--cb-font-display);
+  font-size: 19px;
+  font-weight: 600;
+  color: #cfe6f4;
+}
+
+.headText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.name {
+  font-family: var(--cb-font-display);
+  font-size: 17px;
+  font-weight: 600;
+  color: #f2f7fb;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.levelLine {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cb-cyan, #6fdcff);
+}
+
+.close {
+  flex: 0 0 auto;
+  padding: 0 4px;
+  border: none;
+  background: none;
+  color: var(--ink-dim, #9fb0c0);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.close:hover { color: var(--ink, #e8edf4); }
+
+/* ── Corps : UNE seule zone de défilement ────────────────────── */
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-dim, #9fb0c0);
+}
+
+.muted {
+  margin: 0;
+  color: var(--ink-dim, #9fb0c0);
+  font-size: 13px;
+}
+
+.error {
+  margin: 0;
+  color: #f0a3a3;
+  font-size: 13px;
+}
+
+.notice {
+  margin: 0;
+  color: #9fe0b4;
+  font-size: 13px;
+}
+
+/* ── Niveau ──────────────────────────────────────────────────── */
+.xpTrack {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.xpFill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #2f8fd0, #6fdcff);
+}
+
+.xpLine {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-dim, #9fb0c0);
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 7px 4px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.03);
+  text-align: center;
+}
+
+.statValue {
+  font-family: var(--cb-font-display);
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #f2f7fb;
+}
+
+.statLabel {
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint, #7d8d9c);
+}
+
+/* ── Escales de connexion ────────────────────────────────────── */
+.cycle {
+  display: flex;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step,
+.stepPassed,
+.stepCurrent {
+  display: grid;
+  place-items: center;
+  flex: 1 1 0;
+  height: 26px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-faint, #7d8d9c);
+}
+
+.stepPassed {
+  border-color: rgba(111, 220, 255, 0.28);
+  color: #9fc9dc;
+}
+
+.stepCurrent {
+  border-color: #6fdcff;
+  background: rgba(40, 140, 195, 0.28);
+  color: #f2f7fb;
+  box-shadow: 0 0 0 1px rgba(111, 220, 255, 0.35);
+}
+
+.claim {
+  padding: 8px 12px;
+  border: 1px solid rgba(111, 220, 255, 0.4);
+  border-radius: 9px;
+  background: rgba(24, 78, 116, 0.5);
+  color: #eaf6fb;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 140ms ease-out, border-color 140ms ease-out;
+}
+
+.claim:hover:not(:disabled) { background: rgba(32, 104, 152, 0.7); border-color: #6fdcff; }
+.claim:focus-visible { outline: 2px solid #6fdcff; outline-offset: 2px; }
+.claim:disabled { opacity: 0.45; cursor: default; }
+
+/* ── Prochaines escales de niveau ────────────────────────────── */
+.route {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stop {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12.5px;
+  color: var(--ink-dim, #9fb0c0);
+}
+
+.stopLevel {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #dceaf4;
+}
+
+/* ── Pied ────────────────────────────────────────────────────── */
+.more {
+  flex: 0 0 auto;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
+  color: #8fc9d6;
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.more:hover { text-decoration: underline; }

@@ -27,14 +27,20 @@ type Cart = Record<string, number>;
  * MARKET — la boutique, et rien d'autre : on y ACHÈTE des boosters contre
  * des Tides. Les ouvrir se fait dans « Mes boosters » (`/boosters`).
  *
- * Deux plans, de haut en bas :
- *   - l'ÉTAGÈRE : les sachets en vente posés sur une planche, chacun avec
- *     son étiquette de prix. Cliquer un sachet en met un au panier ;
- *   - le PANIER : une ligne par booster (quantité, sous-total), et en bas à
- *     droite le coût total de la transaction avec le bouton d'achat.
+ * Trois plans, de haut en bas, DANS UNE MÊME COLONNE — c'est le point :
+ * l'étagère se centrait auparavant sur toute la largeur de l'écran pendant
+ * que le titre et le panier s'alignaient ailleurs, et les sachets
+ * flottaient au milieu d'un vide.
+ *   - l'EN-TÊTE : ce qu'on vient faire, et le solde dont on dispose ;
+ *   - l'ÉTAGÈRE : les sachets en vente posés sur une planche, dans un
+ *     panneau qui la CADRE. Cliquer un sachet en met un au panier ;
+ *   - le PANIER : une ligne par booster (quantité, sous-total), et à droite
+ *     le coût total de la transaction avec le bouton d'achat.
  *
- * Le solde n'est PAS répété ici : le bandeau le porte, et il est relu
- * après chaque achat (`notifyProgressionChanged`).
+ * Le solde est redit ici, contrairement à ce que faisait la première
+ * version : le bandeau le porte à l'autre bout de l'écran, alors qu'une
+ * boutique demande en permanence « est-ce que je peux me le payer ». Il
+ * reste relu après chaque achat (`notifyProgressionChanged`).
  *
  * Rien de l'économie n'est décidé ici : `purchaseBooster` →
  * `purchase_booster` (Postgres, atomique) revérifie prix, disponibilité et
@@ -125,7 +131,21 @@ export function MarketScreen({ inventory }: MarketScreenProps) {
     <GameScreen active="market" nav="minimal">
       <div className={styles.layout}>
         <div className={styles.layoutInner}>
-          <h1 className={game.title}>Market</h1>
+          {/* Un vrai en-tête de boutique : ce qu'on y fait, et avec quoi.
+              Le titre flottait seul dans un coin, à des centaines de pixels
+              de l'étagère — rien ne reliait les deux. */}
+          <header className={styles.head}>
+            <div>
+              <h1 className={styles.title}>Market</h1>
+              <p className={styles.lede}>Des boosters contre des Tides. Pour les ouvrir, passe par Mes boosters.</p>
+            </div>
+            {inventory.isSignedIn && (
+              <p className={styles.purse} title="Ton solde de Tides">
+                <TideCoin size={17} />
+                {inventory.balance}
+              </p>
+            )}
+          </header>
 
           {!inventory.isSignedIn ? (
             <div className={`${game.panel} ${game.empty}`}>
@@ -146,7 +166,7 @@ export function MarketScreen({ inventory }: MarketScreenProps) {
           ) : (
             <>
               {/* Cinq sachets par étagère ; au-delà, une étagère en dessous et on défile. */}
-              <section className={styles.stage} aria-label="Boosters en vente">
+              <section className={`${game.panel} ${styles.stage}`} aria-label="Boosters en vente">
                 {splitIntoShelves(onSale).map((shelfBoosters, shelfIndex) => (
                   <div key={shelfIndex} className={styles.shelfUnit}>
                     <div className={styles.shelfItems}>

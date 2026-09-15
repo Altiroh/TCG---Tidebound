@@ -178,7 +178,7 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog }: DecksScreenPr
             <div className={styles.grid}>
               {decks.map((deck) => (
                 <article key={deck.id} className={`${game.panelRaised} ${styles.tile}`} aria-label={deck.name}>
-                  <ArtPlate artUrl={plateArtUrl(deck.artCardId, deck.shipId)} size="lg" className={styles.tilePlate}>
+                  <ArtPlate artUrl={plateArtUrl(deck.artCardId, deck.shipId)} className={styles.tilePlate}>
                     <button
                       type="button"
                       className={styles.tileName}
