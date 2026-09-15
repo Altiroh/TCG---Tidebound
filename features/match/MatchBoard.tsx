@@ -27,7 +27,6 @@ import { GraveyardPickPrompt } from "@/features/match/GraveyardPickPrompt";
 import { GraveyardViewer } from "@/features/match/GraveyardViewer";
 import { MatchEndScreen } from "@/features/match/MatchEndScreen";
 import { MatchPauseMenu } from "@/features/match/MatchPauseMenu";
-import { needsPlayTarget } from "@/features/match/needsPlayTarget";
 import { ObjectBreakPrompt } from "@/features/match/ObjectBreakPrompt";
 import { PendingChoicePrompt } from "@/features/match/PendingChoicePrompt";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
@@ -40,6 +39,7 @@ import { useAttackPresentation } from "@/features/match/useAttackPresentation";
 import { useDeraisonWarning } from "@/features/match/useDeraisonWarning";
 import { useDisplayNames } from "@/features/match/useDisplayNames";
 import { usePhaseBannerEvent } from "@/features/match/usePhaseBannerEvent";
+import { useBoardInteraction } from "@/features/match/useBoardInteraction";
 import { playButtonClick } from "@/lib/sound";
 
 /** Pause entre deux actions du bot (`stepBotTurn`) — assez long pour voir chaque pioche/pose/Sabordage se jouer avant l'action suivante, sans donner l'impression d'attendre. */
@@ -107,20 +107,8 @@ export function MatchBoard({
   useEffect(() => {
     onStateChange?.(liveState);
   }, [liveState, onStateChange]);
-  const [pending, setPending] = useState<Pending | null>(null);
+  /** Seule erreur propre à la partie locale : le moteur refuse ici, tout de suite, au lieu du serveur. */
   const [error, setError] = useState<string | null>(null);
-  /** Carte de main en cours de glisser : l'avertissement de Déraison s'affiche pendant tout le glisser. */
-  const [draggingId, setDraggingId] = useState<string | null>(null);
-  const [graveyardViewerPlayerId, setGraveyardViewerPlayerId] = useState<PlayerId | null>(null);
-  const [detailInstance, setDetailInstance] = useState<CardInstance | null>(null);
-  /** Objet glissé sur le crâne : on demande s'il faut activer son effet de bris (cf. `ObjectBreakPrompt`). */
-  const [breakPrompt, setBreakPrompt] = useState<{ card: CardInstance; source: "hand" | "board" } | null>(null);
-  /** Bris qui demande de choisir une carte de sa défausse (ex: Grappin de Récupération). */
-  const [graveyardPick, setGraveyardPick] = useState<{ card: CardInstance; fromHand: boolean } | null>(null);
-  /** Menu de pause (ÉCHAP ou bouton Menu) : options audio + abandon. */
-  const [showPauseMenu, setShowPauseMenu] = useState(false);
-  /** Candidats à cible restant à traiter après celui en cours — sélection multiple dans `ReactionPrompt`. */
-  const [reactionQueue, setReactionQueue] = useState<PendingReactionCandidate[]>([]);
   // Contre le bot, le joueur humain est le compte connecté (s'il y en a un) ; en hot-seat, personne n'est identifiable.
   const displayNames = useDisplayNames(botPlayerId ? ["me"] : []);
 
@@ -154,7 +142,20 @@ export function MatchBoard({
   });
   const bannerEvent = usePhaseBannerEvent(state);
   const actionToasts = useActionToasts(state);
-  const deraison = useDeraisonWarning(state, viewerPlayer, draggingId);
+  const board = useBoardInteraction({
+    liveState,
+    viewer: viewerPlayer,
+    // Les actions normales portent le nom du joueur ACTIF : en hot-seat,
+    // c'est celui qui tient l'appareil, et ce n'est pas toujours le même.
+    actorId: activePlayerId,
+    canPlayCards,
+    canAct: isViewerTurn,
+    act: runAction,
+    interceptDeraison: (instanceId) => deraison.interceptClick(instanceId),
+    onGestureStart: () => setError(null),
+  });
+  const { selection: pending } = board;
+  const deraison = useDeraisonWarning(state, viewerPlayer, board.draggingId);
 
   function playerLabel(id: PlayerId): string {
     if (id === botPlayerId) return "du Bot";
@@ -205,7 +206,7 @@ export function MatchBoard({
 
       const step = stepBotTurn(current, botPlayerId, botDifficulty!);
       setState(step.state);
-      setPending(null);
+      board.clearSelection();
       setError(null);
       if (!step.done) {
         timer = setTimeout(() => tick(step.state), BOT_ACTION_DELAY_MS);
@@ -220,23 +221,6 @@ export function MatchBoard({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- ne doit réagir qu'aux transitions "c'est au bot d'agir" (cf. l'ancien MatchBoard).
   }, [liveActivePlayerId, botAwaitingReaction, liveState.status, botPlayerId, botDifficulty]);
 
-  // Menu de pause via ÉCHAP. Toute surcouche déjà ouverte intercepte la touche en priorité.
-  useEffect(() => {
-    const overlayOpen = Boolean(detailInstance || graveyardViewerPlayerId || breakPrompt || graveyardPick);
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key !== "Escape") return;
-      if (overlayOpen) return;
-      setShowPauseMenu((current) => !current);
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [detailInstance, graveyardViewerPlayerId, breakPrompt, graveyardPick]);
-
-  function clearSelection() {
-    setPending(null);
-    setReactionQueue([]);
-  }
-
   /** Abandon depuis le menu de pause : la partie se termine proprement, sur l'écran de victoire de l'adversaire. */
   function concedeMatch() {
     const result = dispatch(liveState, { type: "concede", playerId: viewerPlayerId });
@@ -244,10 +228,10 @@ export function MatchBoard({
       setError(result.error);
       return;
     }
-    setShowPauseMenu(false);
+    board.setShowPauseMenu(false);
     setError(null);
     setState(result.state);
-    clearSelection();
+    board.clearSelection();
   }
 
   function runAction(action: PlayerAction) {
@@ -259,7 +243,7 @@ export function MatchBoard({
     }
     setError(null);
     setState(result.state);
-    clearSelection();
+    board.clearSelection();
   }
 
   /** Pendant une fenêtre de réaction, celui qui répond n'est pas forcément le joueur actif. */
@@ -271,7 +255,7 @@ export function MatchBoard({
     }
     setError(null);
     setState(result.state);
-    clearSelection();
+    board.clearSelection();
   }
 
   /** Sélection multiple de `ReactionPrompt` : sans cible appliquées d'un coup, avec cible mises en file. */
@@ -297,94 +281,27 @@ export function MatchBoard({
     setError(null);
     setState(currentState);
 
-    const [first, ...rest] = queued;
-    if (first) {
-      setPending({ kind: "reaction", sourceInstanceId: first.sourceInstanceId, abilityIndex: first.abilityIndex, needsTarget: true });
-      setReactionQueue(rest);
-    } else {
-      clearSelection();
-    }
+    board.beginReactionTargeting(queued);
   }
 
-  /** Clic sur une carte de main : la joue, ou entre en choix de cible. Le glisser-déposer passe `confirmed`. */
-  function handleHandCardClick(instanceId: string, confirmed = false) {
-    if (!canPlayCards) return;
-    const card = viewerPlayer.hand.find((c) => c.instanceId === instanceId);
-    if (!card) return;
-    if (!confirmed && deraison.interceptClick(instanceId)) return;
-    const needsTarget = needsPlayTarget(getCardDefinition(card.cardId), viewerPlayer.board);
-    setError(null);
-    if (pending?.kind === "playCard" && pending.instanceId === instanceId) {
-      clearSelection();
-      return;
-    }
-    if (needsTarget) setPending({ kind: "playCard", instanceId, needsTarget: true });
-    else runAction({ type: "playCard", playerId: activePlayerId, instanceId });
-  }
-
+  /**
+   * Cible désignée sur le plateau.
+   *
+   * Le hook traite tout sauf les RÉACTIONS, qu'il remonte : en local, elles
+   * se dispatchent même quand ce n'est pas son tour, par un chemin qui doit
+   * rester distinct des actions normales (`runReactionAction`).
+   */
   function handleAnyBoardCardClick(instanceId: string, ownerId: PlayerId) {
-    if (pending?.kind === "reaction" && pending.needsTarget) {
-      const result = dispatch(liveState, {
-        type: "activateReaction",
-        playerId: viewerPlayerId,
-        sourceInstanceId: pending.sourceInstanceId,
-        abilityIndex: pending.abilityIndex,
-        targetInstanceId: instanceId,
-      });
-      if (!result.ok) {
-        setError(result.error);
-        return;
-      }
-      setError(null);
-      setState(result.state);
-      const [next, ...rest] = reactionQueue;
-      if (next) {
-        setPending({ kind: "reaction", sourceInstanceId: next.sourceInstanceId, abilityIndex: next.abilityIndex, needsTarget: true });
-        setReactionQueue(rest);
-      } else {
-        clearSelection();
-      }
+    const reaction = board.resolveBoardCardClick(instanceId, ownerId);
+    if (!reaction) return;
+    const result = dispatch(liveState, reaction);
+    if (!result.ok) {
+      setError(result.error);
       return;
     }
-    if (pending?.kind === "playCard" && pending.needsTarget) {
-      runAction({ type: "playCard", playerId: activePlayerId, instanceId: pending.instanceId, targetInstanceId: instanceId });
-      return;
-    }
-    if (pending?.kind === "break" && pending.needsTarget) {
-      runAction({ type: "breakObject", playerId: activePlayerId, instanceId: pending.instanceId, targetInstanceId: instanceId, fromHand: pending.fromHand });
-      return;
-    }
-    if (pending?.kind === "attack" && ownerId !== viewerPlayerId) {
-      runAction({ type: "attack", playerId: activePlayerId, attackerInstanceId: pending.attackerId, defenderInstanceId: instanceId });
-    }
-  }
-
-  /** Brise un Objet, posé ou depuis la main : cible ou carte de défausse à choisir d'abord si l'effet en demande. */
-  function requestBreak(card: CardInstance, fromHand: boolean) {
-    if (!isViewerTurn) return;
-    setBreakPrompt(null);
-    const def = getCardDefinition(card.cardId);
-    if ((def.onBreakEffects ?? []).some((e) => e.target.kind === "chosenUnit")) {
-      setPending({ kind: "break", instanceId: card.instanceId, needsTarget: true, fromHand });
-      return;
-    }
-    if (graveyardChoicesForBreak(liveState, activePlayerId, def).length > 0) {
-      setGraveyardPick({ card, fromHand });
-      return;
-    }
-    runAction({ type: "breakObject", playerId: activePlayerId, instanceId: card.instanceId, fromHand });
-  }
-
-  /** Carte lâchée sur le crâne : un Objet propose Briser / Saborder, tout autre permanent est Sabordé. */
-  function handleDropOnGraveyard(instanceId: string, from: "hand" | "board") {
-    const zone = from === "hand" ? viewerPlayer.hand : viewerPlayer.board;
-    const card = zone.find((c) => c.instanceId === instanceId);
-    if (!card) return;
-    if (getCardDefinition(card.cardId).type === "objet") {
-      setBreakPrompt({ card, source: from });
-      return;
-    }
-    if (from === "board") runAction({ type: "saborder", playerId: activePlayerId, instanceId });
+    setError(null);
+    setState(result.state);
+    board.beginReactionTargeting(board.reactionQueue);
   }
 
   if (state.status === "finished" && !hideEndScreen) {
@@ -403,6 +320,10 @@ export function MatchBoard({
   // Rien à attaquer : le bouton saute le combat ET la Phase principale 2 (on y est déjà, en pratique) et propose la fin du tour.
   const phase = phaseButtonFor({ isMyTurn: isViewerTurn, phase: state.phase === "mainPhase" && !hasAnyAttacker ? "mainPhase2" : state.phase });
   const hint = targetingHint(pending?.kind === "reaction" ? null : pending?.kind ?? null);
+
+  // Objets d'invite en constantes locales : `board.breakPrompt` ne se
+  // rétrécit pas à travers une fermeture, une constante si.
+  const { breakPrompt, graveyardPick, detailInstance, graveyardViewerPlayerId } = board;
 
   return (
     <>
@@ -430,7 +351,7 @@ export function MatchBoard({
         }
         reactionSourceIds={myReactionCandidates.map((c) => c.sourceInstanceId)}
         hint={hint}
-        onCancelHint={clearSelection}
+        onCancelHint={board.clearSelection}
         phaseButton={{
           label: phase.label,
           // La phase EN COURS, pas celle vers laquelle le bouton mène :
@@ -444,23 +365,23 @@ export function MatchBoard({
             else if (phase.action === "endTurn") runAction({ type: "endTurn", playerId: activePlayerId });
           },
         }}
-        onMenu={() => setShowPauseMenu(true)}
-        onHandCardClick={(id) => handleHandCardClick(id)}
+        onMenu={() => board.setShowPauseMenu(true)}
+        onHandCardClick={(id) => board.handleHandCardClick(id)}
         onPlayCard={(instanceId, targetInstanceId) => {
           // Le lâcher a déjà montré l'avertissement de Déraison : il vaut confirmation.
           if (targetInstanceId) runAction({ type: "playCard", playerId: activePlayerId, instanceId, targetInstanceId });
-          else handleHandCardClick(instanceId, true);
+          else board.handleHandCardClick(instanceId, true);
         }}
         onAttack={(attackerInstanceId, defenderInstanceId) =>
           runAction({ type: "attack", playerId: activePlayerId, attackerInstanceId, defenderInstanceId })
         }
         onBreakOnTarget={(instanceId, targetInstanceId) => runAction({ type: "breakObject", playerId: activePlayerId, instanceId, targetInstanceId })}
-        onDropOnGraveyard={handleDropOnGraveyard}
+        onDropOnGraveyard={board.handleDropOnGraveyard}
         onBoardCardClick={handleAnyBoardCardClick}
         onShipClick={() => pending?.kind === "attack" && runAction({ type: "attack", playerId: activePlayerId, attackerInstanceId: pending.attackerId })}
-        onInspect={setDetailInstance}
-        onOpenGraveyard={setGraveyardViewerPlayerId}
-        onHandDragChange={setDraggingId}
+        onInspect={board.setDetailInstance}
+        onOpenGraveyard={board.setGraveyardViewerPlayerId}
+        onHandDragChange={board.setDraggingId}
       />
 
       {/* Invitation à réagir — priorité sur tout le reste tant qu'elle reste ouverte ; repliée dès qu'une
@@ -497,16 +418,16 @@ export function MatchBoard({
           card={breakPrompt.card}
           source={breakPrompt.source}
           handCost={breakPrompt.source === "hand" ? previewHandBreakReason(liveState, activePlayerId, breakPrompt.card.instanceId) : undefined}
-          onBreak={() => requestBreak(breakPrompt.card, breakPrompt.source === "hand")}
+          onBreak={() => board.requestBreak(breakPrompt.card, breakPrompt.source === "hand")}
           onScuttle={
             breakPrompt.source === "board"
               ? () => {
-                  setBreakPrompt(null);
+                  board.setBreakPrompt(null);
                   runAction({ type: "saborder", playerId: activePlayerId, instanceId: breakPrompt.card.instanceId });
                 }
               : undefined
           }
-          onCancel={() => setBreakPrompt(null)}
+          onCancel={() => board.setBreakPrompt(null)}
         />
       )}
       {graveyardPick && (
@@ -514,7 +435,7 @@ export function MatchBoard({
           sourceCardId={graveyardPick.card.cardId}
           choices={graveyardChoicesForBreak(liveState, activePlayerId, getCardDefinition(graveyardPick.card.cardId))}
           onConfirm={(chosen) => {
-            setGraveyardPick(null);
+            board.setGraveyardPick(null);
             runAction({
               type: "breakObject",
               playerId: activePlayerId,
@@ -523,14 +444,14 @@ export function MatchBoard({
               chosenGraveyardInstanceId: chosen.instanceId,
             });
           }}
-          onCancel={() => setGraveyardPick(null)}
+          onCancel={() => board.setGraveyardPick(null)}
         />
       )}
       {graveyardViewerPlayerId && (
         <GraveyardViewer
           playerLabel={graveyardViewerPlayerId === botPlayerId ? "Bot" : graveyardViewerPlayerId === "p1" ? "Joueur 1" : "Joueur 2"}
           cards={state.players.find((p) => p.id === graveyardViewerPlayerId)!.graveyard}
-          onClose={() => setGraveyardViewerPlayerId(null)}
+          onClose={() => board.setGraveyardViewerPlayerId(null)}
         />
       )}
       {detailInstance && (
@@ -539,10 +460,10 @@ export function MatchBoard({
           tideState={state.environment.tideState}
           boardUnits={state.players.flatMap((p) => p.board)}
           auraContext={auraContextFor(viewerPlayer.board.some((u) => u.instanceId === detailInstance.instanceId) ? viewerPlayer : otherPlayer)}
-          onClose={() => setDetailInstance(null)}
+          onClose={() => board.setDetailInstance(null)}
         />
       )}
-      {showPauseMenu && <MatchPauseMenu onResume={() => setShowPauseMenu(false)} onConcede={concedeMatch} onQuit={onExit} />}
+      {board.showPauseMenu && <MatchPauseMenu onResume={() => board.setShowPauseMenu(false)} onConcede={concedeMatch} onQuit={onExit} />}
     </>
   );
 }
