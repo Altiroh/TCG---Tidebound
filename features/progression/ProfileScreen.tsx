@@ -8,6 +8,7 @@ import { claimDailyLogin, equipCardBack, type ProfileSummary } from "@/features/
 import { useCardBack } from "@/features/cosmetics/CardBackProvider";
 import type { CardBackCollection } from "@/features/cosmetics/cardBackService";
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
+import { ProfileIdentity } from "@/features/progression/ProfileIdentity";
 import { GameScreen } from "@/features/shell/GameScreen";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/progression/Profile.module.css";
@@ -78,11 +79,13 @@ export function ProfileScreen({ profile }: ProfileScreenProps) {
     <GameScreen active={null} nav="minimal">
       <div className={game.content}>
         <div className={game.contentWide}>
+          <ProfileIdentity
+            displayName={profile.displayName}
+            avatarCardId={profile.avatarCardId}
+            ownedCardIds={profile.ownedCardIds}
+          />
+
           <div className={game.pageHead}>
-            <div>
-              <p className={game.eyebrow}>Carnet de bord</p>
-              <h1 className={game.title}>{profile.displayName ?? "Marin"}</h1>
-            </div>
             <Link href="/quetes" className={game.secondary} onClick={() => playButtonClick()}>
               Mes quêtes →
             </Link>

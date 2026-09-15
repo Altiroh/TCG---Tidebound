@@ -134,6 +134,7 @@ export function CollectionScreen({ isSignedIn, ownedCardIds, ownedCounts, catalo
           onPrevious={browser.cards.length > 1 ? () => setDetailCardId((id) => (id ? browser.relativeCardId(id, -1) : id)) : undefined}
           onNext={browser.cards.length > 1 ? () => setDetailCardId((id) => (id ? browser.relativeCardId(id, 1) : id)) : undefined}
           onShowCard={setDetailCardId}
+          ownedCount={isSignedIn ? (ownedCounts[detailCardId] ?? 0) : undefined}
         />
       )}
     </GameScreen>

@@ -8,6 +8,7 @@ import { CardDetailHeader } from "@/features/collection/card-detail/CardDetailHe
 import { CardDetailKeywords } from "@/features/collection/card-detail/CardDetailKeywords";
 import { CardDetailMeta } from "@/features/collection/card-detail/CardDetailMeta";
 import { CardDetailNavigation } from "@/features/collection/card-detail/CardDetailNavigation";
+import { CardDetailResale } from "@/features/collection/card-detail/CardDetailResale";
 import { CardDetailStats } from "@/features/collection/card-detail/CardDetailStats";
 import styles from "@/features/collection/card-detail/CardDetail.module.css";
 
@@ -19,6 +20,13 @@ interface CardDetailModalProps {
   onNext?: () => void;
   /** Saut direct vers une autre carte (contrepartie Standard/Abyssale). */
   onShowCard?: (cardId: string) => void;
+  /**
+   * Exemplaires possédés de CETTE carte. `undefined` là où la possession
+   * n'a pas de sens (éditeur de deck hors connexion, fiche ouverte depuis
+   * une liste d'emprunt) : la revente n'apparaît alors pas du tout, plutôt
+   * que d'afficher « 0 possédée » à quelqu'un qui n'a pas de collection.
+   */
+  ownedCount?: number;
 }
 
 /**
@@ -34,7 +42,7 @@ interface CardDetailModalProps {
  * `CardDetail.module.css` ; ce composant ne fait qu'assembler les sections
  * et tenir le comportement modal (fermeture, navigation, focus, défilement).
  */
-export function CardDetailModal({ cardId, onClose, onPrevious, onNext, onShowCard }: CardDetailModalProps) {
+export function CardDetailModal({ cardId, onClose, onPrevious, onNext, onShowCard, ownedCount }: CardDetailModalProps) {
   const model = buildCardDetailModel(cardId);
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -147,6 +155,7 @@ export function CardDetailModal({ cardId, onClose, onPrevious, onNext, onShowCar
           {def.text && <CardDetailEffect text={def.text} />}
           {keywords.length > 0 && <CardDetailKeywords keywords={keywords} />}
           <CardDetailMeta model={model} onShowCounterpart={onShowCard} />
+          {ownedCount !== undefined && <CardDetailResale cardId={cardId} owned={ownedCount} />}
         </div>
       </div>
     </div>

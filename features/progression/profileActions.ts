@@ -45,6 +45,17 @@ export interface ProfileAchievement {
 export interface ProfileSummary {
   isSignedIn: boolean;
   displayName: string | null;
+  /**
+   * Carte servant d'illustration de profil, ou `null`. Toujours une carte
+   * POSSÉDÉE : c'est `set_profile_identity` qui le garantit, pas l'écran.
+   */
+  avatarCardId: string | null;
+  /**
+   * Cartes que le joueur possède, pour le choix de l'illustration. Les
+   * identifiants seuls : le nom et l'image viennent du catalogue côté
+   * client, il n'y a rien à transporter de plus.
+   */
+  ownedCardIds: string[];
   view: ProgressionView;
   balance: number;
   preconTokens: number;
@@ -74,6 +85,8 @@ export interface ProfileSummary {
 const SIGNED_OUT: ProfileSummary = {
   isSignedIn: false,
   displayName: null,
+  avatarCardId: null,
+  ownedCardIds: [],
   view: progressionView(0),
   balance: 0,
   preconTokens: 0,
@@ -110,14 +123,17 @@ export async function fetchProfile(): Promise<ProfileSummary> {
     await syncAchievements(user.id);
 
     const service = createSupabaseServiceRoleClient();
-    const [progression, currency, profile, claimed, unlocked, login, cardBacks] = await Promise.all([
+    const [progression, currency, profile, claimed, unlocked, login, cardBacks, ownedCards] = await Promise.all([
       service.from("player_progression").select("xp_total, level, matches_played, pvp_wins, precon_tokens, play_streak, best_play_streak, play_streak_day").eq("user_id", user.id).maybeSingle(),
       service.from("player_currency").select("balance").eq("user_id", user.id).maybeSingle(),
-      service.from("profiles").select("display_name").eq("id", user.id).maybeSingle(),
+      service.from("profiles").select("display_name, avatar_card_id").eq("id", user.id).maybeSingle(),
       service.from("player_level_rewards").select("level").eq("user_id", user.id).order("level", { ascending: false }).limit(8),
       service.from("player_achievements").select("code").eq("user_id", user.id),
       readLoginRewards(user.id),
       loadCardBacks(user.id),
+      // `quantity > 0` : une carte entièrement revendue laisse une ligne à
+      // zéro, elle ne doit plus être proposée comme illustration.
+      service.from("player_cards").select("card_id").eq("user_id", user.id).gt("quantity", 0),
     ]);
 
     const view = progressionView(progression.data?.xp_total ?? 0);
@@ -126,6 +142,8 @@ export async function fetchProfile(): Promise<ProfileSummary> {
     return {
       isSignedIn: true,
       displayName: profile.data?.display_name ?? user.email ?? null,
+      avatarCardId: profile.data?.avatar_card_id ?? null,
+      ownedCardIds: (ownedCards.data ?? []).map((row) => row.card_id),
       view,
       balance: currency.data?.balance ?? 0,
       preconTokens: progression.data?.precon_tokens ?? 0,
@@ -206,4 +224,61 @@ export async function equipCardBack(cardBackId: string): Promise<EquipCardBackAc
   const result = await equipCardBackFor(user.id, cardBackId);
   if (result.ok) revalidatePath("/profil");
   return result;
+}
+
+export interface UpdateIdentityActionResult {
+  ok: boolean;
+  error?: string;
+}
+
+export interface UpdateIdentityInput {
+  /** Nouveau pseudo, ou `undefined` pour n'y pas toucher. */
+  displayName?: string;
+  /**
+   * Nouvelle illustration : un `card_id` pour en choisir une, `null` pour
+   * retirer celle en place, `undefined` pour n'y pas toucher. Les trois cas
+   * sont distincts, et c'est voulu — sans ça, retirer son illustration et
+   * ne pas la changer se confondraient.
+   */
+  avatarCardId?: string | null;
+}
+
+/**
+ * Change le pseudo et/ou l'illustration de profil.
+ *
+ * Le joueur vient de sa SESSION. Rien n'est validé ici qui ne le soit aussi
+ * en base : `set_profile_identity` rogne le pseudo, contrôle sa longueur et
+ * vérifie que l'illustration demandée est une carte POSSÉDÉE — un
+ * navigateur qui appellerait l'action avec n'importe quel `card_id`
+ * n'obtiendrait rien.
+ */
+export async function updateProfileIdentity({ displayName, avatarCardId }: UpdateIdentityInput): Promise<UpdateIdentityActionResult> {
+  const supabase = createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Connecte-toi pour modifier ton profil." };
+
+  try {
+    const { data, error } = await createSupabaseServiceRoleClient().rpc("set_profile_identity", {
+      p_user_id: user.id,
+      p_display_name: displayName ?? null,
+      p_avatar_card_id: avatarCardId ?? null,
+      p_clear_avatar: avatarCardId === null,
+    });
+    if (error) {
+      console.error("[updateProfileIdentity] Écriture refusée :", error.message);
+      return { ok: false, error: "Modification impossible pour l'instant — réessaie dans un instant." };
+    }
+    if (!data?.ok) return { ok: false, error: data?.error ?? "Modification impossible." };
+
+    // Le pseudo s'affiche dans le bandeau de TOUS les écrans, pas seulement
+    // au profil : la racine est revalidée avec lui.
+    revalidatePath("/profil");
+    revalidatePath("/");
+    return { ok: true };
+  } catch (cause) {
+    console.error("[updateProfileIdentity] Échec inattendu :", cause);
+    return { ok: false, error: "Modification impossible pour l'instant — réessaie dans un instant." };
+  }
 }

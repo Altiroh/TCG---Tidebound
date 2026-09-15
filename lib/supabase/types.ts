@@ -27,16 +27,20 @@ export interface Database {
         Row: {
           id: string;
           display_name: string;
+          /** Carte servant d'illustration de profil — toujours une carte possédée (`set_profile_identity`). */
+          avatar_card_id: string | null;
           created_at: string;
         };
         Insert: {
           id: string;
           display_name: string;
+          avatar_card_id?: string | null;
           created_at?: string;
         };
         Update: {
           id?: string;
           display_name?: string;
+          avatar_card_id?: string | null;
           created_at?: string;
         };
         Relationships: [];
@@ -547,9 +551,27 @@ export interface Database {
           packs_since_abyssal?: number;
         };
       };
+      /**
+       * Revend des exemplaires EN DOUBLE. `p_unit_value` vient de
+       * `RECYCLE_VALUE` (`game/boosters/constants.ts`) : le barème vit dans
+       * le catalogue TypeScript, la base garantit possession et intégrité.
+       */
       recycle_card: {
-        Args: { p_user_id: string; p_card_id: string; p_quantity?: number };
-        Returns: { ok: boolean; error?: string; tides_gained?: number; balance?: number };
+        Args: { p_user_id: string; p_card_id: string; p_quantity: number; p_unit_value: number };
+        Returns: { ok: boolean; error?: string; tides_gained?: number; balance?: number; remaining?: number };
+      };
+      /**
+       * Pseudo et illustration de profil. Un argument `null` laisse la
+       * valeur en place ; `p_clear_avatar` retire l'illustration.
+       */
+      set_profile_identity: {
+        Args: {
+          p_user_id: string;
+          p_display_name?: string | null;
+          p_avatar_card_id?: string | null;
+          p_clear_avatar?: boolean;
+        };
+        Returns: { ok: boolean; error?: string };
       };
       /** Crée une partie déjà commencée (bot, matchmaking) et son état privé, atomiquement. */
       create_active_match: {
