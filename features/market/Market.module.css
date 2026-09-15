@@ -353,6 +353,30 @@
   text-wrap: balance;
 }
 
+/* Accès au contenu du booster, sous le prix. */
+.contentsButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6cqw;
+  margin-top: 0.5cqw;
+  padding: 0.35cqw 1.1cqw;
+  border: 1px solid #195374;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(11, 38, 56, 0.92) 0%, rgba(7, 24, 38, 0.92) 100%);
+  color: #c8d7e1;
+  font: inherit;
+  font-size: clamp(10px, 1.15cqw, 13px);
+  white-space: nowrap;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: border-color 140ms ease-out, box-shadow 140ms ease-out;
+}
+
+.contentsButton:hover {
+  border-color: #00aef0;
+  box-shadow: 0 0 8px rgba(0, 174, 240, 0.25);
+}
+
 .labelPrice {
   display: inline-flex;
   align-items: center;

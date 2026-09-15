@@ -13,6 +13,7 @@ import { MAX_PURCHASE_QUANTITY } from "@/features/boosters/constants";
 import { closedPackVariables, getBoosterPackVisual } from "@/features/boosters/opening/boosterPackVisuals";
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
 import { playButtonClick } from "@/lib/sound";
+import { BoosterContentsDialog } from "@/features/market/BoosterContentsDialog";
 
 interface MarketScreenProps {
   inventory: BoosterInventory;
@@ -116,6 +117,9 @@ export function MarketScreen({ inventory }: MarketScreenProps) {
   const [cart, setCart] = useState<Cart>({});
   const [isBuying, setIsBuying] = useState(false);
   const [toast, setToast] = useState<ScreenToastMessage | null>(null);
+  /** Booster dont on consulte le contenu. */
+  const [contentsOf, setContentsOf] = useState<BoosterInventoryEntry | null>(null);
+  const ownedSet = useMemo(() => new Set(inventory.ownedCardIds), [inventory.ownedCardIds]);
 
   // Un booster non achetable (le Mini Booster de Bienvenue, offert) n'a rien
   // à faire dans une boutique : il s'obtient, il ne se vend pas.
@@ -260,6 +264,12 @@ export function MarketScreen({ inventory }: MarketScreenProps) {
                       inCart={cart[booster.boosterId] ?? 0}
                       disabled={isBuying || (cart[booster.boosterId] ?? 0) >= MAX_PURCHASE_QUANTITY}
                       onAdd={() => step(booster.boosterId, 1)}
+                      ownedInPool={new Set(booster.pool.map((entry) => entry.cardId).filter((id) => ownedSet.has(id))).size}
+                      poolSize={new Set(booster.pool.map((entry) => entry.cardId)).size}
+                      onShowContents={() => {
+                        playButtonClick();
+                        setContentsOf(booster);
+                      }}
                     />
                   ))}
                 </div>
@@ -377,6 +387,7 @@ export function MarketScreen({ inventory }: MarketScreenProps) {
       </div>
 
       <ScreenToast message={toast} onDismiss={() => setToast(null)} />
+      {contentsOf && <BoosterContentsDialog booster={contentsOf} owned={ownedSet} onClose={() => setContentsOf(null)} />}
     </GameScreen>
   );
 }
@@ -392,12 +403,18 @@ function PedestalItem({
   inCart,
   disabled,
   onAdd,
+  ownedInPool,
+  poolSize,
+  onShowContents,
 }: {
   booster: BoosterInventoryEntry;
   slot: number;
   inCart: number;
   disabled: boolean;
   onAdd: () => void;
+  ownedInPool: number;
+  poolSize: number;
+  onShowContents: () => void;
 }) {
   return (
     <div className={styles.pedestal} data-slot={slot}>
@@ -422,6 +439,15 @@ function PedestalItem({
           <TideCoin size={16} />
           {booster.price}
         </span>
+        {poolSize > 0 && (
+          <button type="button" className={styles.contentsButton} onClick={onShowContents} title="Voir les cartes obtenables">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" aria-hidden>
+              <rect x="4" y="5" width="11" height="15" rx="1.5" stroke="currentColor" strokeWidth={1.6} />
+              <path d="M9 3h9.5A1.5 1.5 0 0 1 20 4.5V17" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" />
+            </svg>
+            Contenu · {ownedInPool}/{poolSize}
+          </button>
+        )}
       </span>
     </div>
   );
