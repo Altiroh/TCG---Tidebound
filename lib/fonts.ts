@@ -25,7 +25,7 @@ export const cardBodyFont = Crimson_Pro({
 
 /**
  * Police des libellés posés sur les plaques du coffret du menu principal
- * (`app/page.tsx`, `public/assets/menu/box/menu_box_base.webp`) — gravure
+ * (`app/page.tsx`, `public/assets/menu/box/base.webp`) — gravure
  * capitale, cohérente avec le rendu du logo "TIDEBOUND" déjà peint sur
  * l'asset. C'est la MÊME police que `cardTitleFont` : seule la variable
  * CSS `--font-menu` est posée à part (cf. `app/layout.tsx`), pour qu'on

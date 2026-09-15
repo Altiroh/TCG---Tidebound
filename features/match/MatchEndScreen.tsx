@@ -75,7 +75,7 @@ const DEFEAT_NAMEPLATE_ZONE = { top: "73%", left: "24%", width: "52%", height: "
  * fourni par l'utilisateur, illustration du Navire vainqueur dans la
  * fenêtre en arche, nom du joueur sur la plaque (le nom du Navire n'y
  * figure plus — demande explicite, la plaque ne porte qu'une identité).
- * Le bandeau "VICTOIRE" (`victory-text.webp`) surmonte le cadre plutôt que
+ * Le bandeau "VICTOIRE" (`victory.webp`) surmonte le cadre plutôt que
  * d'être incrusté dedans, pour rester lisible à toutes les tailles.
  */
 export function MatchEndScreen({ outcome, player, onExit, exitHref, matchId }: MatchEndScreenProps) {
@@ -84,7 +84,7 @@ export function MatchEndScreen({ outcome, player, onExit, exitHref, matchId }: M
 
   // Repli si un asset venait à manquer : un titre en toutes lettres plutôt
   // qu'une image cassée, comme partout ailleurs dans le jeu.
-  const bannerUrl = isDefeat ? "/assets/loose-text.webp" : "/assets/victory-text.webp";
+  const bannerUrl = isDefeat ? "/assets/match-end/defeat.webp" : "/assets/match-end/victory.webp";
   const frameUrl = isDefeat ? "/assets/ships/ship-frame-loose.webp" : "/assets/ships/ship-frame-victory.webp";
   const bannerOk = useImageOk(bannerUrl);
   const frameOk = useImageOk(frameUrl);

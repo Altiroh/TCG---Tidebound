@@ -720,7 +720,7 @@
 /* ──────────────────────────────────────────────────────────────
  * MARÉE — tuile de sens (colonne des navires) + piste (colonne plateau).
  * ────────────────────────────────────────────────────────────── */
-/* Tuile réelle (`m_montante.webp` / `m_desc.webp`, ~1040×1254). */
+/* Tuile réelle (`montante.webp` / `descendante.webp`, ~1040×1254). */
 /* Deux faces superposées qui se relaient en pivotant (comme `TideOrientationTile`). */
 .tideTileFace {
   opacity: 0;

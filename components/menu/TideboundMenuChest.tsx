@@ -18,7 +18,7 @@ const ChestButtons3D = dynamic(() => import("@/components/menu/ChestButtons3D").
 /**
  * Configuration centralisée des textures du coffret. `chestBase` est
  * aujourd'hui le seul asset réel (le PNG plat déposé par l'utilisateur,
- * `public/assets/menu/box/menu_box_base.webp`) : il contient encore le
+ * `public/assets/menu/box/base.webp`) : il contient encore le
  * panneau supérieur, le cadre, l'illustration, les coins métalliques, les
  * cordages, le panneau frontal et la serrure fondus ensemble. Les autres
  * clés existent déjà dans la structure pour que chaque calque/bouton
@@ -27,15 +27,15 @@ const ChestButtons3D = dynamic(() => import("@/components/menu/ChestButtons3D").
  * secours, bouton par bouton.
  */
 export const TIDEBOUND_MENU_ASSETS = {
-  chestBase: "/assets/menu/box/menu_box_base.webp",
+  chestBase: "/assets/menu/box/base.webp",
   topArtwork: undefined as string | undefined,
   logo: undefined as string | undefined,
   cornerMetal: undefined as string | undefined,
   rope: undefined as string | undefined,
   lock: undefined as string | undefined,
-  buttonMain: "/assets/menu/buttons/button_main.webp" as string | undefined,
-  buttonSecondaryA: "/assets/menu/buttons/button_secondary_a.webp" as string | undefined,
-  buttonSecondaryB: "/assets/menu/buttons/button_secondary_b.webp" as string | undefined,
+  buttonMain: "/assets/menu/buttons/main.webp" as string | undefined,
+  buttonSecondaryA: "/assets/menu/buttons/secondary-a.webp" as string | undefined,
+  buttonSecondaryB: "/assets/menu/buttons/secondary-b.webp" as string | undefined,
   iconOptions: undefined as string | undefined,
   iconQuit: undefined as string | undefined,
 } satisfies Record<string, string | undefined>;
@@ -46,7 +46,7 @@ export interface ChestSlotDef {
   href?: Route | string;
   disabled?: boolean;
   variant: "primary" | "secondary";
-  /** Position en % relative au coffret entier (mesurée sur menu_box_base.webp, 1448×1086). */
+  /** Position en % relative au coffret entier (mesurée sur base.webp, 1448×1086). */
   rect: { x: number; y: number; w: number; h: number };
 }
 
@@ -61,7 +61,7 @@ export interface ChestIconSlotDef {
 }
 
 // Emplacements des 3 plaques mesurés par analyse de pixels de
-// menu_box_base.webp : profil de la fraction de pixels "laiton" (teinte
+// base.webp : profil de la fraction de pixels "laiton" (teinte
 // dorée distincte) le long de chaque ligne/colonne, pour repérer précisément
 // le bord EXTÉRIEUR du cadre peint de chaque panneau (pas à l'oeil, pas le
 // remplissage bois intérieur — une plaque calée sur le seul remplissage

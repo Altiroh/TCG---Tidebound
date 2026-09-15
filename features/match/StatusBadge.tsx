@@ -12,7 +12,7 @@ interface StatusBadgeProps {
   /** Texte superposé au centre de l'icône (ex: nombre de tours restants pour le badge "Durée"). */
   overlayText?: string;
   /**
-   * Couleur du texte superposé — `effect_tour.webp` a un médaillon clair
+   * Couleur du texte superposé — `status/tour.webp` a un médaillon clair
    * (contrairement aux autres icônes) : du blanc avec un simple halo flou
    * (`THICK_TEXT_OUTLINE`) s'y fond et devient illisible. Défaut : foncé
    * avec un léger halo clair, lisible sur n'importe quel fond.
@@ -21,9 +21,9 @@ interface StatusBadgeProps {
 }
 
 /**
- * Icône de statut/mot-clé posée sur une carte (`effect_malade.webp`,
- * `effect_garde.webp`, `effect_immobilise.webp`, `effect_silence.webp`,
- * `effect_tour.webp`, `effect_engourdi.webp` — `public/assets/`), avec une
+ * Icône de statut/mot-clé posée sur une carte (`status/malade.webp`,
+ * `status/garde.webp`, `status/immobilise.webp`, `status/silence.webp`,
+ * `status/tour.webp`, `status/engourdi.webp` — `public/assets/`), avec une
  * info-bulle explicative au survol/focus (agrandissement léger de l'icône
  * elle-même en prime, pour que l'interaction soit évidente). La bulle est
  * rendue via un portail (`createPortal` dans `document.body`) plutôt qu'en

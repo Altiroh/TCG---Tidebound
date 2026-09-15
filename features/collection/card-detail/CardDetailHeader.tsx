@@ -27,7 +27,7 @@ export function CardDetailHeader({ model, titleId }: { model: CardDetailModel; t
       </div>
 
       <div className={`${styles.badges} mt-2`}>
-        {/* Pas d'icône de type ici : les assets `TYPE_*_STANDARD.webp` sont
+        {/* Pas d'icône de type ici : les assets `type-*.webp` sont
             des pastilles avec le mot déjà écrit dedans — les afficher à côté
             du libellé donnait « structure STRUCTURE ». Le texte seul est
             aussi plus net à petite taille et reste sélectionnable. */}

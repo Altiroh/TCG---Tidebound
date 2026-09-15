@@ -44,7 +44,7 @@ export default async function HomePage() {
   return (
     <main
       className="relative flex min-h-screen items-center justify-center overflow-hidden bg-cover bg-center p-4"
-      style={{ backgroundImage: "url(/assets/menu/background/menu_background_fixed.webp)" }}
+      style={{ backgroundImage: "url(/assets/menu/background/fixed.webp)" }}
     >
       <div className="absolute inset-0 bg-board-background/35" />
 
@@ -62,7 +62,7 @@ export default async function HomePage() {
        *
        * Volontairement posée en coin plutôt qu'ajoutée aux plaques du
        * coffret : les 3 plaques sont calées au pixel sur l'illustration
-       * `menu_box_base.webp` (cf. `TideboundMenuChest`), une 4ᵉ n'aurait
+       * `base.webp` (cf. `TideboundMenuChest`), une 4ᵉ n'aurait
        * nulle part où aller sans retoucher l'asset.
        *
        * Coin HAUT-GAUCHE : le coin haut-droit est pris par le bouton

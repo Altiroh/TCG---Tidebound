@@ -76,24 +76,24 @@ interface CardTileProps {
 
 /**
  * Registre des icônes de statuts ponctuels (`instance.statuses`) — assets
- * fournis à plat dans `public/assets/` (`effect_malade.webp`, etc.), un
+ * fournis à plat dans `public/assets/` (`status/malade.webp`, etc.), un
  * statut sans entrée ici reste silencieux plutôt que de casser l'affichage
  * (système volontairement générique : ajouter un statut n'importe où dans
  * le moteur n'exige qu'une entrée ici pour être visible).
  */
 const STATUS_ICON_INFO: Record<string, { icon: string; label: string; description: string }> = {
   [STATUS_MALADE]: {
-    icon: "/assets/effect_malade.webp",
+    icon: "/assets/status/malade.webp",
     label: "Malade",
     description: "Perd 1 Résistance à chaque tour tant que ce statut reste actif.",
   },
   [STATUS_IMMOBILISE]: {
-    icon: "/assets/effect_immobilise.webp",
+    icon: "/assets/status/immobilise.webp",
     label: "Immobilisé",
     description: "Ne peut ni attaquer ni utiliser ses capacités tant que ce statut reste actif.",
   },
   [STATUS_SILENCE]: {
-    icon: "/assets/effect_silence.webp",
+    icon: "/assets/status/silence.webp",
     label: "Silence",
     description: "Ses capacités déclenchées et effets d'arrivée sont désactivés tant que ce statut reste actif.",
   },
@@ -101,17 +101,17 @@ const STATUS_ICON_INFO: Record<string, { icon: string; label: string; descriptio
 
 /** Mot-clé Garde (`def.keywords`, permanent — pas un statut à durée) : même registre d'icône que les statuts. */
 const GARDE_ICON_INFO = {
-  icon: "/assets/effect_garde.webp",
+  icon: "/assets/status/garde.webp",
   label: "Garde",
   description: "Les attaques adverses visant votre Navire doivent cibler en priorité les permanents portant Garde.",
 };
 
 /** Icône du badge "Durée" (Structure/Objet à durée limitée, `instance.turnsRemaining`) — le nombre de tours restants est superposé au centre. */
-const TOUR_ICON = "/assets/effect_tour.webp";
+const TOUR_ICON = "/assets/status/tour.webp";
 
 /** Maladie d'invocation (`instance.summoningSick`) — distincte des statuts à durée (`instance.statuses`). */
 const ENGOURDI_ICON_INFO = {
-  icon: "/assets/effect_engourdi.webp",
+  icon: "/assets/status/engourdi.webp",
   label: "Engourdi",
   description: "Vient d'être invoquée : ne peut attaquer qu'à partir de votre prochain tour.",
 };
@@ -163,19 +163,19 @@ function getFrameUrl(def: CardDefinition): string {
   // Les jetons (Péons) ont leur propre cadre générique, volontairement
   // indépendant de la famille : il servira aux Péons d'autres archétypes
   // (Notion, Lot 10 — "son cadre doit être générique").
-  if (def.token) return "/assets/cards/frames/cadre_token.webp";
-  const family = def.subtype === "abyssal" ? "ABYSSAL" : "STANDARD";
+  if (def.token) return "/assets/cards/frames/token.webp";
+  const family = def.subtype === "abyssal" ? "abyssal" : "standard";
   const variant = def.attack !== undefined && def.health !== undefined
-    ? "POWER_RESISTANCE"
+    ? "power-resistance"
     : def.health !== undefined
-      ? "RESISTANCE"
-      : "NO_STATS";
-  return `/assets/cards/frames/FRAME_${family}_${variant}.webp`;
+      ? "resistance"
+      : "no-stats";
+  return `/assets/cards/frames/${family}-${variant}.webp`;
 }
 
 /** Le type, lui, se recale carte par carte via une icône dédiée superposée au cadre. */
 function getTypeIconUrl(def: CardDefinition): string {
-  return `/assets/cards/icons/TYPE_${def.type.toUpperCase()}_STANDARD.webp`;
+  return `/assets/cards/icons/type-${def.type}.webp`;
 }
 
 /**
@@ -231,7 +231,7 @@ const COST_NUMBER_ZONE: Zone = { top: 3, left: 4, width: 14, height: 16 };
 const TYPE_RIBBON_ZONE: Zone = { top: 3.8, left: 64, width: 31, height: 7 };
 
 /**
- * Zones propres au cadre de JETON (`cadre_token.webp`), mesurées sur ses
+ * Zones propres au cadre de JETON (`token.webp`), mesurées sur ses
  * pixels comme les autres cadres : une grande découpe ovale (5 % / 11,1 %,
  * 78 × 80,3) et deux plaques de stats en pied de cadre, l'épée à gauche
  * (chiffre entre ~22 % et ~35 % en x), le bouclier à droite (~72 % à
@@ -245,7 +245,7 @@ const TYPE_RIBBON_ZONE: Zone = { top: 3.8, left: 64, width: 31, height: 7 };
  * découpe elle-même, légèrement dilatée pour glisser sous le bois du cadre.
  */
 const TOKEN_ILLUSTRATION_ZONE: Zone = { top: 3.5, left: 9.5, width: 81, height: 83 };
-const TOKEN_ILLUSTRATION_MASK = "/assets/cards/frames/cadre_token_mask.webp";
+const TOKEN_ILLUSTRATION_MASK = "/assets/cards/frames/token-mask.webp";
 const TOKEN_NAME_ZONE: Zone = { top: 72.5, left: 14, width: 72, height: 8 };
 const TOKEN_ATTACK_ZONE: Zone = { top: 82.5, left: 21.5, width: 14, height: 7.5 };
 const TOKEN_RESISTANCE_ZONE: Zone = { top: 82.5, left: 71.5, width: 14, height: 7.5 };

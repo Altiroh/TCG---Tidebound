@@ -175,7 +175,7 @@ export function CollectionSidebar({
             <FilterRow
               key={type}
               label={CARD_TYPE_LABELS[type]}
-              icon={`/assets/cards/icons/TYPE_${type.toUpperCase()}_STANDARD.webp`}
+              icon={`/assets/cards/icons/type-${type}.webp`}
               active={filters.type === type}
               count={countFor("type", (def) => def.type === type)}
               onClick={() => onChange({ type: filters.type === type ? null : type })}

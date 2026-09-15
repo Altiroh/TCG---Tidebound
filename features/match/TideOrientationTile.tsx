@@ -45,8 +45,8 @@ function TideTileImage({ src, label, arrow, visible }: { src: string; label: str
 export function TideOrientationTile({ orientation }: { orientation: TideOrientation }) {
   return (
     <div className="relative h-full w-full overflow-hidden rounded-md bg-black/80">
-      <TideTileImage src="/assets/m_montante.webp" label="Marée Montante" arrow="▲" visible={orientation === "montante"} />
-      <TideTileImage src="/assets/m_desc.webp" label="Marée Descendante" arrow="▼" visible={orientation === "descendante"} />
+      <TideTileImage src="/assets/board/tide-orientation/montante.webp" label="Marée Montante" arrow="▲" visible={orientation === "montante"} />
+      <TideTileImage src="/assets/board/tide-orientation/descendante.webp" label="Marée Descendante" arrow="▼" visible={orientation === "descendante"} />
     </div>
   );
 }

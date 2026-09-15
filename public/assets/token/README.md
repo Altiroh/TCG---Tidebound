@@ -23,7 +23,7 @@ partie, et retenue sur l'instance — le jeton garde donc la même tête
 jusqu'à sa mort, et les deux joueurs voient le même.
 
 Le cadre, lui, est commun à tous les jetons
-(`../cards/frames/cadre_token.webp`) : volontairement générique pour servir
+(`../cards/frames/token.webp`) : volontairement générique pour servir
 aux Péons d'autres familles plus tard. Il n'a d'emplacement ni pour un
 coût, ni pour un bandeau de type, ni pour un bloc de règles — seulement
 l'illustration, le nom et les deux médaillons de statistiques.

@@ -17,7 +17,7 @@ interface CenterZoneProps {
  * la piste dans la colonne des plateaux, donc centrée sur eux (et non sur
  * l'écran). La colonne des piles reste libre, comme sur l'ancien board.
  *
- * Tuile de sens : les deux faces (`m_montante` / `m_desc`) restent montées et
+ * Tuile de sens : les deux faces (`montante` / `descendante`) restent montées et
  * se relaient en pivotant quand l'orientation change — même mouvement que
  * `TideOrientationTile` (fondu + légère rotation + zoom).
  */
@@ -29,14 +29,14 @@ export function CenterZone({ tide, hint }: CenterZoneProps) {
         <div className={styles.tideTile} role="img" aria-label={`Marée ${rising ? "montante" : "descendante"}`}>
           {/* eslint-disable-next-line @next/next/no-img-element -- tuile locale */}
           <img
-            src="/assets/m_montante.webp"
+            src="/assets/board/tide-orientation/montante.webp"
             alt=""
             draggable={false}
             className={`${styles.fill} ${styles.tideTileFace} ${rising ? styles.tideTileFaceOn : ""}`}
           />
           {/* eslint-disable-next-line @next/next/no-img-element -- tuile locale */}
           <img
-            src="/assets/m_desc.webp"
+            src="/assets/board/tide-orientation/descendante.webp"
             alt=""
             draggable={false}
             className={`${styles.fill} ${styles.tideTileFace} ${rising ? "" : styles.tideTileFaceOn}`}

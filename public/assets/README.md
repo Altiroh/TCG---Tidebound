@@ -29,11 +29,28 @@ gratuits.
 | `fx/structure-visibility/` | Visualisation des Structures invisibles / réémergentes |
 | `fx/triggered-effects/` | Représentation des effets déclenchés, activations d'Objets, fenêtres de résolution |
 | `fx/ocean-judgment/` | Effets du Jugement de l'Océan |
+| `board/tide-orientation/` | Les deux faces du sens de la Marée (montante / descendante) |
+| `status/` | Icônes d'état posées sur une carte en jeu : Garde, Malade, Silence, Immobilisé, Engourdi, compteur de tours |
+| `match-end/` | Bandeaux de fin de partie (victoire / défaite) |
 | `menu/` | Écran d'accueil / menu principal — fond, logo, icônes de navigation (pas de spéc Notion dédiée, voir `menu/README.md`) |
 | `ui/decor/` | Décors d'interface hors plateau — habillages posés derrière une fenêtre ou un panneau, jamais au premier plan (voir `ui/decor/README.md`) |
 
 Chaque sous-dossier a son propre `README.md` avec le détail de la charte
 qui s'y applique.
+
+## Nommage : kebab-case, sans préfixe redondant
+
+Un seul style pour tout le dossier : **minuscules, mots séparés par des
+tirets**, pas d'underscore, pas de majuscules. Le dossier porte déjà le
+contexte — un fichier de `collection/` n'a pas à s'appeler
+`collection_background_3` mais `background-3`.
+
+Quatre conventions coexistaient (`FRAME_STANDARD_NO_STATS.webp`,
+`cadre_token.webp`, `effect_garde.webp`, `menu_box_base.webp`), et dix
+fichiers traînaient à la racine faute de dossier où les ranger. Quand un
+chemin est construit par gabarit (`frames/${famille}-${variante}.webp`),
+le nom du fichier suit directement la valeur du code : plus de
+`.toUpperCase()` ni de suffixe `_STANDARD` à maintenir des deux côtés.
 
 ## Format : WebP obligatoire
 
@@ -57,8 +74,8 @@ besoin.
 ## Écran de fin de partie
 
 ```
-victory-text.webp              # bandeau VICTOIRE
-loose-text.webp                # bandeau DÉFAITE
+match-end/victory.webp         # bandeau VICTOIRE
+match-end/defeat.webp          # bandeau DÉFAITE
 ships/ship-frame-victory.webp  # cadre du Navire vainqueur
 ships/ship-frame-loose.webp    # cadre du Navire vaincu
 ```
