@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getCardDefinition, type DeckList } from "@/game";
 import { validateDeckList } from "@/game/rules/deckValidation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { signatureCardId } from "@/features/decks/nameplateArt";
 
 export interface PlayerDeckSummary {
   id: string;
@@ -14,6 +15,13 @@ export interface PlayerDeckSummary {
   isValid: boolean;
   /** Jusqu'à 5 `card_id` du deck, pour l'empilement d'en-tête de la tuile — ordre arbitraire pour l'instant. */
   headerCardIds: string[];
+  /**
+   * Carte qui sert d'illustration à la tuile (`signatureCardId`), choisie
+   * sur la liste ENTIÈRE et non sur les cinq de `headerCardIds` : la tuile
+   * et la plaque de l'éditeur montrent ainsi la même carte. `null` pour un
+   * deck vide — le Navire prend alors le relais côté écran.
+   */
+  artCardId: string | null;
 }
 
 export interface DeckActionResult {
@@ -84,6 +92,9 @@ export async function listPlayerDecks(): Promise<PlayerDeckSummary[]> {
       isValid: Boolean(deck.is_valid),
       cardCount: deckCards.reduce((sum, card) => sum + card.quantity, 0),
       headerCardIds: deckCards.slice(0, 5).map((card) => card.card_id),
+      // Sur les cartes DISTINCTES : `signatureCardId` ne compte pas les
+      // exemplaires, seul l'ensemble des cartes du deck l'intéresse.
+      artCardId: signatureCardId(deckCards.map((card) => card.card_id)),
     };
   });
 }

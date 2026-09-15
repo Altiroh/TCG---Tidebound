@@ -79,26 +79,28 @@
 }
 
 
-/* Nom du deck : de l'encre, pas un champ de formulaire — le contour
-   n'apparaît qu'au survol et au focus. */
+/* Le champ de nom vit dans l'`ArtPlate` partagée (`features/shell/ArtPlate`) :
+   le cadre, le voile bleu et les tentacules sont à elle, pas ici. */
+
+/* Nom du deck : de l'encre, pas un champ de formulaire — le cadre et le
+   focus sont portés par la plaque. */
 .deckName {
+  position: relative;
+  z-index: 3;
   width: 100%;
   min-width: 0;
-  padding: 4px 6px;
-  margin-inline: -6px;
-  border: 1px solid transparent;
-  border-radius: 6px;
+  padding: clamp(10px, 1.5vh, 16px) clamp(10px, 0.9vw, 14px);
+  border: none;
   background: none;
   font-family: var(--cb-font-display);
   font-size: clamp(17px, 2.3vh, 24px);
   font-weight: 600;
   color: #f0f7fb;
-  transition: border-color 140ms ease-out, background-color 140ms ease-out;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85), 0 0 12px rgba(0, 0, 0, 0.6);
 }
 
-.deckName:hover { border-color: var(--line); }
-.deckName:focus { outline: none; border-color: var(--cb-cyan); background: rgba(88, 200, 216, 0.06); }
-.deckName::placeholder { color: var(--ink-dim); font-weight: 400; }
+.deckName:focus { outline: none; }
+.deckName::placeholder { color: rgba(190, 214, 230, 0.6); font-weight: 400; }
 
 /* ── Effectif et jauge ──────────────────────────────────────── */
 .capacity {
@@ -288,19 +290,34 @@
   border-color: var(--line);
 }
 
-.rowAbyssal .rowCost { border-color: rgba(179, 136, 240, 0.6); color: var(--cb-violet); }
+/* Abyssale : le rond passe au violet, mais reste un rond plein. */
+.rowAbyssal .rowCost {
+  border-color: rgba(200, 165, 250, 0.6);
+  background: radial-gradient(circle at 50% 32%, #7a4fc4, #331a5c 78%);
+}
 
+/* Raison : un rond BLEU plein, le chiffre centré dedans — la même lecture
+   que sur la carte. `place-items: center` centre sur les deux axes, et
+   `line-height: 1` évite que la demi-interligne d'une police de titre
+   décale le chiffre vers le bas dans un cercle aussi petit. */
 .rowCost {
   display: grid;
   place-items: center;
+  flex: 0 0 auto;
   width: 24px;
   height: 24px;
-  border: 1px solid rgba(88, 200, 216, 0.45);
+  padding: 0;
+  border: 1px solid rgba(140, 220, 245, 0.55);
   border-radius: 50%;
+  background: radial-gradient(circle at 50% 32%, #2f89c4, #14446e 78%);
+  box-shadow: inset 0 1px 0 rgba(190, 230, 250, 0.4), 0 1px 3px rgba(0, 0, 0, 0.5);
   font-family: var(--cb-font-display);
   font-size: 13px;
-  font-weight: 600;
-  color: var(--cb-cyan);
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  color: #f2fbff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
 .rowName {

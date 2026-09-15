@@ -6,7 +6,9 @@ import { ownershipLabel } from "@/game";
 import type { DeckCatalogView } from "@/features/decks/catalogService";
 import { chooseBorrowedDeck } from "@/features/decks/catalogActions";
 import { Dialog } from "@/features/shell/Dialog";
-import { ShipPortrait, shipNameOf } from "@/features/ships/ShipPortrait";
+import { shipNameOf } from "@/features/ships/ShipPortrait";
+import { ArtPlate } from "@/features/shell/ArtPlate";
+import { nameplateArtUrl } from "@/features/decks/nameplateArt";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/decks/DeckCatalog.module.css";
 import { playButtonClick } from "@/lib/sound";
@@ -68,9 +70,10 @@ export function BorrowedDeckPrompt({ catalog }: BorrowedDeckPromptProps) {
       <div className={styles.grid}>
         {catalog.borrowed.map(({ deck, ownership }) => (
           <article key={deck.id} className={`${game.panelRaised} ${styles.tile}`} aria-label={deck.name}>
-            <ShipPortrait shipId={deck.shipId} width="100%" showName={false} className={styles.tilePortrait} />
-            <div className={styles.tileBody}>
+            <ArtPlate artUrl={nameplateArtUrl(deck.cardIds, deck.shipId)} size="lg" className={styles.tilePlate}>
               <span className={styles.tileName}>{deck.name}</span>
+            </ArtPlate>
+            <div className={styles.tileBody}>
               <span className={styles.tileStyle}>
                 {shipNameOf(deck.shipId)} · <span className={styles.difficulty}>{difficultyStars(deck.difficulty)}</span>
               </span>

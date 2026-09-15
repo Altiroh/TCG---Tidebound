@@ -7,7 +7,9 @@ import type { CatalogDeckView, DeckCatalogView } from "@/features/decks/catalogS
 import { chooseBorrowedDeck, unlockPreconstructedDeck } from "@/features/decks/catalogActions";
 import { DeckSheet } from "@/features/decks/DeckSheet";
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
-import { ShipPortrait, shipNameOf } from "@/features/ships/ShipPortrait";
+import { shipNameOf } from "@/features/ships/ShipPortrait";
+import { ArtPlate } from "@/features/shell/ArtPlate";
+import { nameplateArtUrl } from "@/features/decks/nameplateArt";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/decks/DeckCatalog.module.css";
 import { playButtonClick } from "@/lib/sound";
@@ -90,9 +92,11 @@ export function DeckCatalogSection({ catalog, kind }: DeckCatalogSectionProps) {
           const ratio = ownership.total === 0 ? 0 : ownership.owned / ownership.total;
           return (
             <article key={deck.id} className={`${game.panelRaised} ${styles.tile}`} aria-label={deck.name}>
-              <ShipPortrait shipId={deck.shipId} width="100%" showName={false} className={styles.tilePortrait} />
-              <div className={styles.tileBody}>
+              <ArtPlate artUrl={nameplateArtUrl(deck.cardIds, deck.shipId)} size="lg" className={styles.tilePlate}>
                 <span className={styles.tileName}>{deck.name}</span>
+                <span className={styles.tileShip}>{shipNameOf(deck.shipId)}</span>
+              </ArtPlate>
+              <div className={styles.tileBody}>
                 <span className={styles.tileStyle}>
                   {deck.style} · <span className={styles.difficulty}>{difficultyStars(deck.difficulty)}</span>
                 </span>

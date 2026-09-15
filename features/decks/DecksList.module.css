@@ -1,7 +1,11 @@
 /*
  * LISTE DES DECKS — ce qui s'ajoute à la coquille `GameScreen`.
- * Chaque deck est une tuile : son Navire dans le cadre du plateau (c'est
- * l'identité du deck, pas une vignette), le nom, l'effectif, l'état.
+ *
+ * Chaque deck est une tuile coiffée de sa PLAQUE (`features/shell/ArtPlate`) :
+ * une illustration tirée du deck — sa carte la plus chère, ou son Navire si
+ * le deck est vide — sous le voile bleu et les tentacules, avec le nom
+ * gravé dessus. La même plaque sert dans l'éditeur et au profil : un deck
+ * se reconnaît partout à la même image.
  */
 .grid {
   display: grid;
@@ -10,15 +14,23 @@
 }
 
 .tile {
-  display: grid;
-  grid-template-columns: clamp(84px, 6.5vw, 108px) minmax(0, 1fr);
-  gap: clamp(10px, 1vw, 16px);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(10px, 1vw, 14px);
   padding: clamp(12px, 1.2vw, 18px);
   cursor: default;
 }
 
-.tilePortrait {
-  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.55));
+/* La plaque déborde du rembourrage de la tuile : elle la coiffe d'un bord à
+   l'autre, comme une enseigne, au lieu de flotter au milieu. */
+.tilePlate {
+  margin: calc(-1 * clamp(12px, 1.2vw, 18px));
+  margin-bottom: 0;
+  border-inline: none;
+  border-top: none;
+  /* Le même rayon que la tuile (`--radius` de `GameScreen`), sans quoi un
+     coin carré dépasserait du panneau arrondi. */
+  border-radius: var(--radius) var(--radius) 0 0;
 }
 
 .tileBody {

@@ -342,6 +342,7 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
             name={name}
             onNameChange={setName}
             shipId={shipId}
+            cardIds={cardIds}
             onChangeShip={() => setShipPickerOpen(true)}
             onBack={() => requestLeave({ kind: "navigate", href: "/decks" })}
           />

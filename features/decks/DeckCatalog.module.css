@@ -2,10 +2,11 @@
  * Rayon des decks fournis par le jeu — decks d'emprunt et préconstruits
  * (Notion « Progression joueur » §3 et §4).
  *
- * Même grammaire que « Mes decks » : des tuiles dont l'identité est le
- * Navire. Ce qui change, c'est ce qu'on lit dessus — un préconstruit
- * verrouillé doit rester consultable et donner envie, pas être grisé sans
- * information.
+ * Même grammaire que « Mes decks » : des tuiles coiffées de la PLAQUE
+ * partagée (`features/shell/ArtPlate`) — une illustration tirée du deck
+ * sous le voile bleu et les tentacules, le nom gravé dessus. Ce qui change,
+ * c'est ce qu'on lit dessous — un préconstruit verrouillé doit rester
+ * consultable et donner envie, pas être grisé sans information.
  */
 
 .categories {
@@ -57,8 +58,20 @@
   text-align: left;
 }
 
-.tilePortrait {
-  display: block;
+/* La plaque coiffe la tuile d'un bord à l'autre : la tuile n'a pas de
+   rembourrage propre, il n'y a donc rien à compenser ici. */
+.tilePlate {
+  border-inline: none;
+  border-top: none;
+  border-radius: 0;
+}
+
+.tileShip {
+  font-size: clamp(9px, 0.7vw, 11px);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cb-cyan);
 }
 
 .tileBody {

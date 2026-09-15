@@ -11,7 +11,9 @@ import { DeleteDeckDialog } from "@/features/decks/DeleteDeckDialog";
 import { Dialog } from "@/features/shell/Dialog";
 import { GameScreen } from "@/features/shell/GameScreen";
 import { SearchLine } from "@/features/shell/SearchLine";
-import { ShipPortrait, shipNameOf } from "@/features/ships/ShipPortrait";
+import { shipNameOf } from "@/features/ships/ShipPortrait";
+import { ArtPlate } from "@/features/shell/ArtPlate";
+import { plateArtUrl } from "@/features/decks/nameplateArt";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/decks/DecksList.module.css";
 import catalogStyles from "@/features/decks/DeckCatalog.module.css";
@@ -176,8 +178,7 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog }: DecksScreenPr
             <div className={styles.grid}>
               {decks.map((deck) => (
                 <article key={deck.id} className={`${game.panelRaised} ${styles.tile}`} aria-label={deck.name}>
-                  <ShipPortrait shipId={deck.shipId} width="100%" showName={false} className={styles.tilePortrait} />
-                  <div className={styles.tileBody}>
+                  <ArtPlate artUrl={plateArtUrl(deck.artCardId, deck.shipId)} size="lg" className={styles.tilePlate}>
                     <button
                       type="button"
                       className={styles.tileName}
@@ -190,6 +191,8 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog }: DecksScreenPr
                       {deck.name}
                     </button>
                     <span className={styles.tileShip}>{shipNameOf(deck.shipId)}</span>
+                  </ArtPlate>
+                  <div className={styles.tileBody}>
                     <span className={styles.tileMeta}>
                       <span>
                         {deck.cardCount} / {RULES.DECK_SIZE_MAX} cartes
