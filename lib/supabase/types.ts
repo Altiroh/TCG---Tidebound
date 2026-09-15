@@ -562,7 +562,7 @@ export interface Database {
        * le catalogue TypeScript, la base garantit possession et intégrité.
        */
       recycle_card: {
-        Args: { p_user_id: string; p_card_id: string; p_quantity: number; p_unit_value: number; p_keep: number };
+        Args: { p_user_id: string; p_card_id: string; p_quantity: number; p_unit_value: number; p_min_keep: number };
         Returns: { ok: boolean; error?: string; tides_gained?: number; balance?: number; remaining?: number };
       };
       /** Revente du surplus de plusieurs cartes, en une transaction. */

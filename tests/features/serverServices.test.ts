@@ -194,7 +194,7 @@ describe("revente", () => {
     expect(call?.args.p_quantity).toBe(2);
     expect(typeof call?.args.p_unit_value).toBe("number");
     expect(call?.args.p_unit_value as number).toBeGreaterThan(0);
-    expect(call?.args.p_keep as number).toBeGreaterThanOrEqual(1);
+    expect(call?.args.p_min_keep as number).toBeGreaterThanOrEqual(1);
   });
 
   it("revend le surplus avec les valeurs du catalogue et ignore l'inconnu", async () => {

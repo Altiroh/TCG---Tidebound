@@ -47,7 +47,7 @@ export async function recycleCardFor(userId: string, cardId: string, quantity: n
       p_card_id: cardId,
       p_quantity: quantity,
       p_unit_value: unitValue,
-      p_keep: keep,
+      p_min_keep: keep,
     });
     if (error) {
       console.error("[recycleCardFor] Revente refusée :", error.message);

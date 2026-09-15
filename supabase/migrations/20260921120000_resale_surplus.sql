@@ -7,7 +7,7 @@
 -- nombre maximal d'exemplaires qu'un deck peut contenir (`getMaxCopies`).
 -- Au-delà, une copie ne peut servir à aucun deck : la vendre ne coûte rien.
 --
---   1. `recycle_card` gagne `p_keep` : le nombre d'exemplaires à garder,
+--   1. `recycle_card` gagne `p_min_keep` : le nombre d'exemplaires à garder,
 --      fourni par le serveur applicatif (le maximum vit dans le catalogue
 --      TypeScript, comme le barème).
 --   2. `recycle_surplus` revend le surplus de PLUSIEURS cartes en une seule
@@ -16,7 +16,7 @@
 -- Garanties tenues par la base :
 --   - la possession est lue `for update` : deux reventes simultanées ne
 --     vendent jamais le même exemplaire ;
---   - on ne descend jamais sous `p_keep` (et jamais sous 1) ;
+--   - on ne descend jamais sous `p_min_keep` (et jamais sous 1) ;
 --   - une quantité attendue est un PLAFOND : si la collection a changé entre
 --     l'affichage du récapitulatif et la confirmation, on vend moins, jamais
 --     plus que ce que le joueur a validé.
@@ -24,13 +24,16 @@
 -- Entièrement idempotent : rejouable sans risque.
 
 drop function if exists public.recycle_card(uuid, text, integer, integer);
+-- Une version à cinq paramètres peut déjà exister (nommée ou non comme
+-- ici) : un nom de paramètre ne se change pas par `create or replace`.
+drop function if exists public.recycle_card(uuid, text, integer, integer, integer);
 
 create or replace function public.recycle_card(
   p_user_id uuid,
   p_card_id text,
   p_quantity integer,
   p_unit_value integer,
-  p_keep integer
+  p_min_keep integer
 )
 returns jsonb
 language plpgsql
@@ -38,7 +41,7 @@ security definer set search_path = public
 as $$
 declare
   v_owned integer;
-  v_keep integer := greatest(coalesce(p_keep, 1), 1);
+  v_keep integer := greatest(coalesce(p_min_keep, 1), 1);
   v_total integer;
   v_balance integer;
 begin

@@ -23,7 +23,7 @@ interface CardDetailResaleProps {
  * passe par une CONFIRMATION — on ne rachète pas une carte vendue.
  *
  * Le prix suit la RARETÉ (`RECYCLE_VALUE`). Le serveur tient les mêmes
- * règles sous verrou (`recycle_card`, `p_keep`) : ce qui s'affiche ici
+ * règles sous verrou (`recycle_card`, `p_min_keep`) : ce qui s'affiche ici
  * n'est qu'un miroir.
  */
 export function CardDetailResale({ cardId, owned }: CardDetailResaleProps) {
