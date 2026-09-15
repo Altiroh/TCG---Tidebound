@@ -9,6 +9,7 @@ import { OnlineBoard } from "@/features/online/OnlineBoard";
 import { MatchRewardBanner } from "@/features/progression/MatchRewardBanner";
 import type { MatchRow } from "@/features/matches/matchStore";
 import { unpackFrames } from "@/features/matches/matchFrames";
+import { predictView } from "@/features/online/predictView";
 
 /**
  * Pause entre deux états successifs renvoyés par le serveur pour le tour du
@@ -50,13 +51,20 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
 
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
+  /** Vue affichée, lisible sans attendre un rendu : les prédictions s'enchaînent sur la dernière. */
+  const viewRef = useRef<GameState | null>(initialView);
+  function showView(next: GameState | null) {
+    viewRef.current = next;
+    setView(next);
+  }
+
   async function refresh() {
     const result = await fetchMatchView(matchId);
     if (!result.ok || !result.data) return;
     shownVersion.current = result.data.match.state_version;
     latestRemoteVersion.current = Math.max(latestRemoteVersion.current, shownVersion.current);
     setMatch(result.data.match);
-    setView(result.data.frames ? unpackFrames(result.data.frames)[0]! : null);
+    showView(result.data.frames ? unpackFrames(result.data.frames)[0]! : null);
   }
 
   useEffect(() => {
@@ -87,57 +95,88 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
     // eslint-disable-next-line react-hooks/exhaustive-deps -- abonnement unique par partie.
   }, [matchId, isBotMatch]);
 
-  async function handleAction(action: PlayerAction) {
-    if (busy.current) return;
-    busy.current = true;
-    setPending(true);
+  /**
+   * Coups en attente d'envoi, dans l'ordre. `predicted` : la vue affiche déjà
+   * leur résultat (`predictView`). `resolve` : l'appelant qui attend ce coup
+   * (`activateSelectedReactions` enchaîne ses activations une à une).
+   */
+  const queue = useRef<Array<{ action: PlayerAction; predicted: boolean; resolve: () => void }>>([]);
+
+  /**
+   * Un coup du joueur : affiché TOUT DE SUITE quand il se prédit, puis envoyé
+   * au serveur. Les coups joués pendant qu'un autre est en route attendent
+   * leur tour dans la file au lieu d'être refusés — on pose ses cartes à son
+   * rythme, pas à celui du réseau.
+   */
+  function handleAction(action: PlayerAction): Promise<void> {
+    const current = viewRef.current;
+    const predicted = current ? predictView(current, action) : null;
+    if (predicted) showView(predicted);
+    else setPending(true);
     setError(null);
 
-    const result = await submitMatchAction(matchId, action);
-
-    if (!result.ok || !result.data) {
-      busy.current = false;
-      setPending(false);
-      setError(result.error ?? "Action refusée.");
-      // Un conflit de version signifie que l'affichage est périmé.
-      await refresh();
-      return;
-    }
-
-    const { match: updated, frames } = result.data;
-    const views = unpackFrames(frames);
-    shownVersion.current = updated.state_version;
-    setMatch(updated);
-
-    const [first, ...botFrames] = views;
-    if (first) setView(first);
-
-    if (botFrames.length === 0) {
-      busy.current = false;
-      setPending(false);
-      if (latestRemoteVersion.current > shownVersion.current) await refresh();
-      return;
-    }
-
-    // Tour du bot : rejoue chaque état intermédiaire avec un délai. La
-    // promesse ne se résout qu'à la fin du rejeu, pour que l'activation
-    // enchaînée de plusieurs réactions (`OnlineBoard.activateSelectedReactions`,
-    // qui attend chaque coup) n'envoie jamais la suivante pendant le rejeu.
-    setReplaying(true);
-    await new Promise<void>((resolve) => {
-      botFrames.forEach((frame, index) => {
-        const timer = setTimeout(() => {
-          setView(frame);
-          if (index === botFrames.length - 1) {
-            busy.current = false;
-            setPending(false);
-            setReplaying(false);
-            resolve();
-          }
-        }, BOT_FRAME_DELAY_MS * (index + 1));
-        timers.current.push(timer);
-      });
+    return new Promise<void>((resolve) => {
+      queue.current.push({ action, predicted: predicted !== null, resolve });
+      if (!busy.current) void drainQueue();
     });
+  }
+
+  async function drainQueue() {
+    busy.current = true;
+
+    while (queue.current.length > 0) {
+      const item = queue.current.shift()!;
+      if (!item.predicted) setPending(true);
+
+      const result = await submitMatchAction(matchId, item.action).catch(() => ({ ok: false as const, error: "Coup non enregistré, réessaie.", data: undefined }));
+
+      if (!result.ok || !result.data) {
+        // Les coups suivants avaient été prédits sur un état qui n'a pas eu
+        // lieu : ils sont abandonnés, et l'affichage se réaligne sur le serveur.
+        const dropped = queue.current.splice(0);
+        setError(result.error ?? "Action refusée.");
+        await refresh();
+        item.resolve();
+        dropped.forEach((entry) => entry.resolve());
+        break;
+      }
+
+      const { match: updated, frames } = result.data;
+      const views = unpackFrames(frames);
+      shownVersion.current = updated.state_version;
+      setMatch(updated);
+
+      const [first, ...botFrames] = views;
+      // Le coup suivant est déjà affiché par prédiction : remettre la vue du
+      // serveur maintenant le ferait disparaître un instant. Sa propre
+      // réponse fera foi.
+      const nextIsPredicted = queue.current[0]?.predicted ?? false;
+      if (first && !(nextIsPredicted && botFrames.length === 0)) showView(first);
+
+      if (botFrames.length > 0) {
+        // Tour du bot : rejoue chaque état intermédiaire avec un délai. La
+        // promesse ne se résout qu'à la fin du rejeu, pour que l'activation
+        // enchaînée de plusieurs réactions n'envoie jamais la suivante
+        // pendant le rejeu.
+        setReplaying(true);
+        await new Promise<void>((resolve) => {
+          botFrames.forEach((frame, index) => {
+            const timer = setTimeout(() => {
+              showView(frame);
+              if (index === botFrames.length - 1) resolve();
+            }, BOT_FRAME_DELAY_MS * (index + 1));
+            timers.current.push(timer);
+          });
+        });
+        setReplaying(false);
+      }
+
+      item.resolve();
+    }
+
+    busy.current = false;
+    setPending(false);
+    if (latestRemoteVersion.current > shownVersion.current) await refresh();
   }
 
   if (match.status === "waiting") {
