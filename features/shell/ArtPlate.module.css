@@ -33,10 +33,18 @@
 }
 
 /* Trois tailles, et rien d'autre : au-delà, chaque appelant recommencerait
-   à inventer la sienne — ce que cette plaque existe justement pour éviter. */
+   à inventer la sienne — ce que cette plaque existe justement pour éviter.
+
+   La hauteur se lit TOUJOURS par rapport à la largeur de l'appelant : une
+   plaque basse sur une tuile large se lit comme un bandeau, pas comme un
+   cadre. Les tuiles font ~280–360 px de large, d'où un `lg` qui monte à la
+   moitié de cette largeur — en dessous, l'illustration n'a plus la place
+   d'être une image, elle n'est plus qu'une frise.
+   `sm` fait exception et reste un bandeau assumé : il ne porte qu'une
+   ligne de texte (le nom, dans l'éditeur), rien à cadrer. */
 .sm { min-height: clamp(40px, 5vh, 54px); }
-.md { min-height: clamp(56px, 7.5vh, 78px); }
-.lg { min-height: clamp(84px, 12vh, 128px); }
+.md { min-height: clamp(92px, 12vh, 124px); }
+.lg { min-height: clamp(168px, 22vh, 224px); }
 
 /* Interactive : la plaque réagit comme un bouton. */
 .plate:hover,
