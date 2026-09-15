@@ -91,7 +91,7 @@ export { BOOSTER_STANDARD_PRICE, CURRENCY_NAME, STANDARD_BOOSTER_ID, TIDE_REWARD
 export type { TideRewardTier } from "@/game/economy";
 
 // --- Tutoriel (Notion « Progression joueur » §2) ------------------------
-export { TUTORIAL_STEPS, tutorialProgress } from "@/game/tutorial";
+export { TUTORIAL_OPENING_TYPES, TUTORIAL_STEPS, tutorialProgress } from "@/game/tutorial";
 export type { TutorialProgress, TutorialStep } from "@/game/tutorial";
 
 // --- Exploits (Notion « Progression joueur » §10) -----------------------

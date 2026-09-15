@@ -34,6 +34,22 @@ export interface CreateGameStateInput {
   player2: { id: PlayerId; deck: DeckList };
   /** Graine RNG optionnelle, pour des parties reproductibles en test. */
   seed?: number;
+  /**
+   * Types de cartes à GARANTIR dans la main de départ du joueur 1, dans
+   * cet ordre de priorité (`["creature", "objet", "objet"]` : au moins une
+   * unité et deux Objets).
+   *
+   * N'invente jamais de carte : les exemplaires sont remontés depuis le
+   * deck mélangé du joueur, et le reste de la main est complété
+   * normalement. Une demande impossible (le deck ne contient pas assez de
+   * ce type) est satisfaite partiellement plutôt que de lever — une partie
+   * doit pouvoir démarrer.
+   *
+   * Sert au TUTORIEL, dont chaque étape demande un geste précis : sans
+   * cette garantie, une main d'ouverture malchanceuse rend une étape
+   * infranchissable et bloque le joueur sans explication.
+   */
+  guaranteedOpeningTypes?: readonly string[];
 }
 
 /**
@@ -43,6 +59,45 @@ export interface CreateGameStateInput {
  * 2026-09-10), et place le premier joueur en priorité. Aucune mutation
  * d'état externe — retourne un `GameState` entièrement neuf.
  */
+/**
+ * Sépare main de départ et pioche, en remontant d'abord un exemplaire de
+ * chaque type garanti.
+ *
+ * L'ordre du deck est par ailleurs préservé : ce n'est pas un second
+ * mélange, juste une extraction. Sans type garanti, le comportement est
+ * exactement l'ancien découpage.
+ */
+function dealOpeningHand(
+  deck: readonly CardInstance[],
+  handSize: number,
+  guaranteedTypes: readonly string[] | undefined
+): { hand: CardInstance[]; rest: CardInstance[] } {
+  if (!guaranteedTypes?.length) {
+    return { hand: [...deck.slice(0, handSize)], rest: [...deck.slice(handSize)] };
+  }
+
+  const remaining = [...deck];
+  const hand: CardInstance[] = [];
+
+  for (const wanted of guaranteedTypes) {
+    if (hand.length >= handSize) break;
+    const index = remaining.findIndex((card) => {
+      try {
+        return getCardDefinition(card.cardId).type === wanted;
+      } catch {
+        return false;
+      }
+    });
+    // Type absent du deck : on n'insiste pas, la main se complète au hasard.
+    if (index === -1) continue;
+    hand.push(...remaining.splice(index, 1));
+  }
+
+  while (hand.length < handSize && remaining.length > 0) hand.push(remaining.shift()!);
+
+  return { hand, rest: remaining };
+}
+
 export function createGameState(input: CreateGameStateInput): GameState {
   const rngState = createSeed(input.seed);
 
@@ -52,8 +107,9 @@ export function createGameState(input: CreateGameStateInput): GameState {
   const shuffled1 = shuffle(player1Deck, rngState);
   const shuffled2 = shuffle(player2Deck, shuffled1.nextState);
 
-  const player1Hand = shuffled1.value.slice(0, RULES.STARTING_HAND_SIZE);
-  const player1Remaining = shuffled1.value.slice(RULES.STARTING_HAND_SIZE);
+  const dealt1 = dealOpeningHand(shuffled1.value, RULES.STARTING_HAND_SIZE, input.guaranteedOpeningTypes);
+  const player1Hand = dealt1.hand;
+  const player1Remaining = dealt1.rest;
 
   // Le second joueur pioche une carte supplémentaire pour compenser le
   // désavantage de ne pas jouer en premier.

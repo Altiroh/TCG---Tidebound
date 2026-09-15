@@ -2,9 +2,9 @@
 
 import { useCallback, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { BORROWED_DECKS, TUTORIAL_STEPS, type GameState } from "@/game";
+import { BORROWED_DECKS, TUTORIAL_OPENING_TYPES, TUTORIAL_STEPS, tutorialProgress, type GameState } from "@/game";
 import { completeTutorial } from "@/features/onboarding/actions";
-import { createLocalMatch } from "@/features/match/createLocalMatch";
+import { createTutorialMatch } from "@/features/match/createLocalMatch";
 import { MatchBoard } from "@/features/match/MatchBoard";
 import { GameScreen } from "@/features/shell/GameScreen";
 import { TutorialCoach } from "@/features/tutorial/TutorialCoach";
@@ -36,6 +36,12 @@ export function TutorialScreen() {
   const [match, setMatch] = useState<GameState | null>(null);
   /** État VIVANT de la partie guidée, publié par `MatchBoard`. */
   const [liveState, setLiveState] = useState<GameState | null>(null);
+  /**
+   * Rang le plus avancé atteint. Tenu ICI et non dans le guide : l'écran en
+   * a besoin lui aussi, pour savoir quelles cartes autoriser — deux
+   * compteurs séparés finiraient par diverger d'une étape.
+   */
+  const [furthest, setFurthest] = useState(0);
   const [outcome, setOutcome] = useState<"completed" | "skipped" | null>(null);
   const [boosterGranted, setBoosterGranted] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,7 +76,9 @@ export function TutorialScreen() {
 
   function startTutorial() {
     playButtonClick();
-    const created = createLocalMatch(decks.player, decks.opponent);
+    // Main d'ouverture GARANTIE : chaque étape demande un geste précis, et
+    // une main malchanceuse rendait la suivante infranchissable.
+    const created = createTutorialMatch(decks.player, decks.opponent, TUTORIAL_OPENING_TYPES);
     setMatch(created);
     setLiveState(created);
   }
@@ -113,6 +121,13 @@ export function TutorialScreen() {
 
   // --- Partie guidée -----------------------------------------------------
   if (match && liveState) {
+    // Étape en cours : seules ses cartes sont jouables. `undefined` quand
+    // l'étape ne porte pas sur une pose (attaquer, observer la Marée) —
+    // le plateau redevient alors entièrement libre.
+    const step = tutorialProgress(liveState, "p1", furthest).step;
+    const eligible = step?.eligibleHandCards?.(liveState, "p1");
+    const playableHandCards = eligible ? new Set(eligible) : undefined;
+
     return (
       <>
         {/* `hideEndScreen` : la fin de partie du tutoriel est la nôtre, pas
@@ -123,9 +138,17 @@ export function TutorialScreen() {
           botPlayerId="p2"
           botDifficulty="facile"
           onStateChange={setLiveState}
+          playableHandCards={playableHandCards}
           hideEndScreen
         />
-        <TutorialCoach state={liveState} playerId="p1" onSkip={handleSkip} onComplete={handleComplete} />
+        <TutorialCoach
+          state={liveState}
+          playerId="p1"
+          furthest={furthest}
+          onFurthest={setFurthest}
+          onSkip={handleSkip}
+          onComplete={handleComplete}
+        />
       </>
     );
   }

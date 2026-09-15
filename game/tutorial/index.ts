@@ -5,5 +5,5 @@
  * jamais un script qui pilote le moteur. Le rendu vit dans
  * `features/tutorial/`.
  */
-export { TUTORIAL_STEPS, tutorialProgress } from "@/game/tutorial/steps";
-export type { TutorialProgress, TutorialStep } from "@/game/tutorial/steps";
+export { TUTORIAL_OPENING_TYPES, TUTORIAL_STEPS, tutorialProgress } from "@/game/tutorial/steps";
+export type { TutorialAnchor, TutorialProgress, TutorialStep } from "@/game/tutorial/steps";

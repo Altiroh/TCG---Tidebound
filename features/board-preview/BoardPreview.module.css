@@ -1732,3 +1732,23 @@
     transition: none;
   }
 }
+
+/*
+ * Carte de main écartée par le tutoriel. Estompée, pas cachée : elle reste
+ * lisible et consultable au clic droit — on montre au joueur ce qu'il a en
+ * main, on l'empêche seulement de le jouer MAINTENANT.
+ *
+ * `cursor: default` et l'absence de levée au survol suffisent à dire
+ * qu'elle ne répond pas ; les gestes sont déjà refusés côté logique
+ * (`isPlayable`), le style ne fait que l'annoncer.
+ */
+.handCardMuted {
+  filter: grayscale(0.7) brightness(0.55);
+  opacity: 0.7;
+  cursor: default;
+  transition: filter 200ms ease-out, opacity 200ms ease-out;
+}
+
+.handCardSlot:hover .handCardMuted {
+  filter: grayscale(0.45) brightness(0.7);
+}

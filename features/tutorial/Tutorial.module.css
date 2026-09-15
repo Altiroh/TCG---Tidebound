@@ -63,13 +63,19 @@
 /* ──────────────────────────────────────────────────────────────
  * COMPAGNON DE BORD — posé pendant la partie, au-dessus du plateau.
  * ────────────────────────────────────────────────────────────── */
+/*
+ * Fiche du guide. Positionnée en coordonnées d'ÉCRAN par `placeCoach`, à
+ * côté de la zone où le geste se fait — d'où l'absence de `left`/`top`
+ * ici, et surtout l'absence de `transform` : la fiche est portalisée sur
+ * le `body`, elle ne doit subir aucun décalage qui la désolidariserait de
+ * son ancre.
+ */
 .coach {
   position: fixed;
-  left: clamp(10px, 2vw, 28px);
-  top: 50%;
+  left: 0;
+  top: 0;
   z-index: 75;
   width: min(300px, 76vw);
-  transform: translateY(-50%);
   padding: clamp(12px, 1.4vw, 18px);
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 14px;
@@ -215,5 +221,54 @@
     bottom: clamp(8px, 2vh, 18px);
     width: min(420px, 92vw);
     transform: translateX(-50%);
+  }
+}
+
+
+/*
+ * Premier rendu, avant mesure : la fiche doit exister pour qu'on connaisse
+ * sa hauteur, mais ne doit pas apparaître une image au mauvais endroit.
+ * Invisible et hors flux de clic, jamais `display: none` — un élément
+ * masqué n'a pas de boîte, donc pas de hauteur à mesurer.
+ */
+.coachMeasuring {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/*
+ * Halo posé sur la zone à utiliser, après cinq secondes d'hésitation.
+ * `pointer-events: none` est vital : il se superpose exactement à la main
+ * et au plateau, il ne doit jamais intercepter le geste qu'il réclame.
+ */
+.spotlight {
+  position: fixed;
+  z-index: 74;
+  border-radius: 18px;
+  pointer-events: none;
+  box-shadow:
+    0 0 0 2px rgba(122, 221, 236, 0.85),
+    0 0 22px 6px rgba(88, 200, 216, 0.45),
+    inset 0 0 26px rgba(88, 200, 216, 0.18);
+  animation: coachPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes coachPulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.012);
+  }
+}
+
+/* Un joueur qui a demandé moins d'animation garde le halo, sans la pulsation. */
+@media (prefers-reduced-motion: reduce) {
+  .spotlight {
+    animation: none;
+    opacity: 0.9;
   }
 }

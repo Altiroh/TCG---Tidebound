@@ -58,6 +58,11 @@ interface MatchBoardProps {
    * plateau reste maître de son état.
    */
   onStateChange?: (state: GameState) => void;
+  /**
+   * Restreint les cartes de la main jouables (tutoriel). `null`/absent =
+   * aucune restriction.
+   */
+  playableHandCards?: ReadonlySet<string> | null;
   /** Masque l'écran de fin de partie : le tutoriel a le sien. */
   hideEndScreen?: boolean;
 }
@@ -85,7 +90,15 @@ function isUnitType(type: string): boolean {
  * de l'écran suit le joueur actif (on se passe l'appareil). Contre un bot,
  * le joueur humain reste TOUJOURS en bas, même pendant le tour du bot.
  */
-export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty, onStateChange, hideEndScreen = false }: MatchBoardProps) {
+export function MatchBoard({
+  initialState,
+  onExit,
+  botPlayerId,
+  botDifficulty,
+  onStateChange,
+  playableHandCards,
+  hideEndScreen = false,
+}: MatchBoardProps) {
   const [liveState, setState] = useState<GameState>(initialState);
   // `state` = état AFFICHÉ (retenu avant le choc pendant une attaque, cf. `useAttackPresentation`) ; toute
   // action se valide et s'applique sur `liveState`, l'état de jeu réel.
@@ -394,6 +407,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty, o
           />
         }
         canPlayCards={canPlayCards}
+        playableHandCards={playableHandCards}
         canAttack={canAttackNow}
         targeting={
           pending

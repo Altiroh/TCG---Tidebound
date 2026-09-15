@@ -59,6 +59,15 @@ export interface TableBoardProps {
 
   /** Le joueur peut poser / Saborder / Briser (sa Phase principale, rien en attente). */
   canPlayCards: boolean;
+  /**
+   * Restreint les cartes de la main réellement jouables, par `instanceId`.
+   * `null`/absent = aucune restriction, comportement normal.
+   *
+   * Sert au TUTORIEL : pendant une étape « pose un Objet », le reste de la
+   * main est inerte, pour que le joueur ne dépense pas la carte dont
+   * l'étape suivante a besoin.
+   */
+  playableHandCards?: ReadonlySet<string> | null;
   /** Le joueur peut attaquer (sa Phase de combat, rien en attente). */
   canAttack: boolean;
   targeting: TableTargeting;
@@ -190,7 +199,9 @@ export function TableBoard(props: TableBoardProps) {
   }
 
   const slotsFree = viewer.board.length < viewerShip.slotCount;
-  const handTargets = new Map(viewer.hand.map((card) => [card.instanceId, canPlayCards ? playTargets(card) : null] as const));
+  /** La carte est-elle jouable, restriction du tutoriel comprise ? */
+  const isPlayable = (instanceId: string) => canPlayCards && (props.playableHandCards?.has(instanceId) ?? true);
+  const handTargets = new Map(viewer.hand.map((card) => [card.instanceId, isPlayable(card.instanceId) ? playTargets(card) : null] as const));
 
   const dropId = (drop: string) => drop.replace(/^(own|unit):/, "");
 
@@ -199,6 +210,12 @@ export function TableBoard(props: TableBoardProps) {
       const entry = byId.get(sourceId);
       if (!entry) return false;
       const { instance } = entry;
+      // Un geste qui PART de la main — poser, lancer, ou glisser sur le
+      // crâne pour Briser — est soumis à la restriction du tutoriel ; les
+      // gestes qui partent du plateau (attaquer, Saborder) n'y sont pas.
+      const fromHand = viewer.hand.some((card) => card.instanceId === sourceId);
+      if (fromHand && !isPlayable(sourceId)) return false;
+
       if (kind === "place") {
         if (!canPlayCards) return false;
         if (drop === "board") return slotsFree;
@@ -252,6 +269,9 @@ export function TableBoard(props: TableBoardProps) {
       const entry = byId.get(sourceId);
       if (!entry) return false;
       if (kind === "place" || kind === "cast") {
+        // Même règle qu'au glisser : une carte écartée par le tutoriel ne
+        // réagit pas non plus au toucher.
+        if (!isPlayable(sourceId)) return false;
         props.onHandCardClick(sourceId);
         return true;
       }
@@ -431,9 +451,14 @@ export function TableBoard(props: TableBoardProps) {
               const instance = byId.get(card.id)?.instance;
               if (!instance) return null;
               const kind = handTargets.get(card.id) ? "cast" : "place";
+              // Carte écartée par le tutoriel : elle reste lisible et
+              // consultable (clic droit), mais visiblement hors-jeu —
+              // sinon le joueur la tire en vain et croit à une panne.
+              const muted = props.playableHandCards ? !props.playableHandCards.has(card.id) : false;
               return (
                 <div
                   data-card-id={card.id}
+                  data-muted={muted ? "" : undefined}
                   onPointerDown={startGesture(kind, card.id)}
                   onContextMenu={(e) => {
                     e.preventDefault();
@@ -441,7 +466,8 @@ export function TableBoard(props: TableBoardProps) {
                   }}
                   className={[
                     styles.tableCard,
-                    canPlayCards ? styles.handGrab : "",
+                    canPlayCards && !muted ? styles.handGrab : "",
+                    muted ? styles.handCardMuted : "",
                     placing?.sourceId === card.id ? styles.dragSource : "",
                     casting?.sourceId === card.id || targeting?.sourceInstanceId === card.id ? styles.castSource : "",
                   ].join(" ")}

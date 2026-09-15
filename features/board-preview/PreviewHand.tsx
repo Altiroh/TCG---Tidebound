@@ -30,6 +30,9 @@ export function PreviewHand({ cards, renderCard, dragging = false }: PreviewHand
         {cards.map((card, index) => (
           <div
             key={card.id}
+            // Ancre par carte : le guide du tutoriel désigne UNE carte
+            // précise, pas la main entière.
+            data-hand-card={card.id}
             className={styles.handCardSlot}
             style={{ zIndex: index + 1, "--fan-offset": index - center, "--fan-dist": Math.abs(index - center) } as CSSProperties}
           >
