@@ -1,12 +1,4 @@
-import {
-  dispatch,
-  PLAYABLE_DECKS,
-  runBotUntilIdle,
-  toPlayerView,
-  type DeckList,
-  type GameState,
-  type PlayerAction,
-} from "@/game";
+import { dispatch, runBotUntilIdle, toPlayerView, type GameState, type PlayerAction } from "@/game";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
 import { awardMatchReward } from "@/features/progression/rewards";
@@ -56,11 +48,6 @@ export interface MatchUpdate {
 }
 
 export type StoreResult<T> = { ok: true; data: T } | { ok: false; error: string };
-
-/** Decks jouables sur une partie serveur : decks de base système et archétypes. */
-export function findPlayableDeck(deckId: string): DeckList | undefined {
-  return PLAYABLE_DECKS.find((deck) => deck.id === deckId);
-}
 
 export function isParticipant(match: MatchRow, userId: string): boolean {
   return match.player1_id === userId || match.player2_id === userId;

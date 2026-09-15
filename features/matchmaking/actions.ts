@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { createGameState } from "@/game";
 import { createSupabaseServerClient, createSupabaseServiceRoleClient } from "@/lib/supabase/server";
-import { findPlayableDeck } from "@/features/matches/matchStore";
+import { resolveMatchDeck } from "@/features/decks/matchDeck";
 
 export interface ActionResult<T> {
   ok: boolean;
@@ -34,11 +34,10 @@ async function requireUser() {
  * uniquement de la valeur de retour de cet appel.
  */
 export async function joinMatchmakingQueue(deckId: string): Promise<ActionResult<{ status: "queued" } | { status: "matched"; matchId: string }>> {
-  // TODO: accepter aussi un deck personnel (`player_decks`) une fois le
-  // deckbuilder branché aux parties serveur.
-  const selfDeck = findPlayableDeck(deckId);
-  if (!selfDeck) return { ok: false, error: "Deck inconnu." };
   const { supabase, user } = await requireUser();
+  const self = await resolveMatchDeck(user.id, deckId);
+  if (!self.ok) return { ok: false, error: "Deck inconnu." };
+  const selfDeck = self.deck;
 
   const { error: upsertError } = await supabase
     .from("matchmaking_queue")
@@ -56,7 +55,9 @@ export async function joinMatchmakingQueue(deckId: string): Promise<ActionResult
   // Un adversaire attendait : on crée la partie nous-mêmes (`self` devient
   // player1) et on se retire de la file — l'adversaire a déjà été retiré
   // par `claim_matchmaking_opponent()`.
-  const opponentDeck = findPlayableDeck(opponent.opponent_deck_id);
+  // Le deck de l'adversaire, résolu sous SON identité.
+  const opponentResolved = await resolveMatchDeck(opponent.opponent_user_id, opponent.opponent_deck_id);
+  const opponentDeck = opponentResolved.ok ? opponentResolved.deck : undefined;
   await supabase.from("matchmaking_queue").delete().eq("user_id", user.id);
   if (!opponentDeck) return { ok: false, error: "Le deck de l'adversaire est introuvable." };
 

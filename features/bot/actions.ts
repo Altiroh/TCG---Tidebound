@@ -3,7 +3,8 @@
 import { createGameState, type BotDifficulty } from "@/game";
 import { createSupabaseServerClient, createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { generateInviteCode } from "@/features/online/inviteCode";
-import { BOT_PLAYER_ID, findPlayableDeck } from "@/features/matches/matchStore";
+import { BOT_PLAYER_ID } from "@/features/matches/matchStore";
+import { findCatalogDeck, resolveMatchDeck } from "@/features/decks/matchDeck";
 
 const DIFFICULTIES: readonly BotDifficulty[] = ["facile", "moyen", "difficile"];
 
@@ -50,9 +51,9 @@ export async function startBotMatch(deckId: string, botDeckId: string, difficult
 }
 
 async function createBotMatch(deckId: string, botDeckId: string, difficulty: BotDifficulty): Promise<StartBotMatchResult> {
-  const playerDeck = findPlayableDeck(deckId);
-  const botDeck = findPlayableDeck(botDeckId);
-  if (!playerDeck || !botDeck) return { ok: false, error: "Deck inconnu." };
+  // Le bot joue forcément une liste du jeu : personne ne monte de deck pour lui.
+  const botDeck = findCatalogDeck(botDeckId);
+  if (!botDeck) return { ok: false, error: "Deck inconnu." };
   if (!DIFFICULTIES.includes(difficulty)) return { ok: false, error: "Difficulté inconnue." };
 
   const supabase = createSupabaseServerClient();
@@ -60,6 +61,18 @@ async function createBotMatch(deckId: string, botDeckId: string, difficulty: Bot
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, signedOut: true };
+
+  // Le deck du JOUEUR peut être un deck personnel : il est relu en base,
+  // pour ce joueur-là, jamais reçu du navigateur.
+  const resolved = await resolveMatchDeck(user.id, deckId);
+  if (!resolved.ok) {
+    if (resolved.reason === "unavailable") return { ok: false, serverUnavailable: true, error: UNAVAILABLE };
+    if (resolved.reason === "invalid") {
+      return { ok: false, error: `Ce deck n'est pas jouable en l'état : ${resolved.detail}` };
+    }
+    return { ok: false, error: "Deck inconnu." };
+  }
+  const playerDeck = resolved.deck;
 
   const matchId = crypto.randomUUID();
   const state = createGameState({

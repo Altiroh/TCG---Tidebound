@@ -10,10 +10,9 @@ import { NEW_DECK_WINDOW_HOURS } from "@/game/quests";
  *   - l'avoir OBTENU, deck d'emprunt ou préconstruit débloqué avec un Jeton
  *     (`player_deck_unlocks.unlocked_at`).
  *
- * Aujourd'hui seuls les decks du catalogue arrivent jusqu'à une partie
- * serveur (`PLAYABLE_DECKS`), donc c'est la seconde branche qui travaille ;
- * la première est déjà là pour le jour où un deck monté par le joueur
- * deviendra jouable, sans qu'il faille revenir sur la quête.
+ * Les deux branches travaillent : depuis `resolveMatchDeck`
+ * (`features/decks/matchDeck.ts`), un deck monté par le joueur arrive
+ * jusqu'à une partie arbitrée au même titre qu'une liste du catalogue.
  *
  * La fenêtre est GLISSANTE (`NEW_DECK_WINDOW_HOURS`) et non « depuis minuit
  * UTC » : un deck monté à 23 h ne vaudrait sinon qu'une heure de quête.

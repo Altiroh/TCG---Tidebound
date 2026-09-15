@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { catalogDeckById, PLAYABLE_DECKS, PRECON_DECKS, type BotDifficulty, type DeckList, type GameState, type PlayerId } from "@/game";
+import { catalogDeckById, PRECON_DECKS, type BotDifficulty, type DeckList, type GameState, type PlayerId } from "@/game";
 import { startBotMatch } from "@/features/bot/actions";
 import { createLocalMatch } from "@/features/match/createLocalMatch";
 import { NewMatchScreen, type MatchOpponent } from "@/features/match/NewMatchScreen";
@@ -23,7 +23,9 @@ interface PartieScreenProps {
  *
  *   - Contre un bot, joueur CONNECTÉ : partie arbitrée côté serveur
  *     (`startBotMatch`), jouée sur le plateau en ligne ; elle rapporte XP et
- *     progression de quêtes.
+ *     progression de quêtes. Le deck peut être une liste du jeu OU un deck
+ *     personnel : le serveur le relit en base (`resolveMatchDeck`), donc les
+ *     deux rapportent pareil.
  *   - Contre un bot hors connexion, ou à deux sur le même écran : partie
  *     locale, entièrement dans le navigateur, qui ne rapporte rien.
  */
@@ -51,13 +53,6 @@ export function PartieScreen({ isSignedIn, personalDecks = [], unlockedDeckIds =
       startLocalMatch(deck1, deck2, opponent);
       return;
     }
-    // L'arbitrage serveur ne connaît que les listes du jeu (`findPlayableDeck`) :
-    // un deck personnel contre le bot se joue donc en local, et on le dit.
-    if (!PLAYABLE_DECKS.some((deck) => deck.id === deck1.id)) {
-      startLocalMatch(deck1, deck2, opponent, "Les decks personnels ne sont pas encore arbitrés par le serveur — partie d'entraînement, sans XP ni quêtes.");
-      return;
-    }
-
     setStarting(true);
     setError(null);
     // `startBotMatch` attrape ses propres erreurs, mais un échec de transport

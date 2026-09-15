@@ -5,13 +5,13 @@ import { createGameState, type PlayerAction } from "@/game";
 import { createSupabaseServerClient, createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { generateInviteCode } from "@/features/online/inviteCode";
 import {
-  findPlayableDeck,
   loadSnapshot,
   submitAction,
   type MatchSnapshot,
   type MatchUpdate,
 } from "@/features/matches/matchStore";
 import { packFrames, type PackedFrames } from "@/features/matches/matchFrames";
+import { resolveMatchDeck, type MatchDeckResult } from "@/features/decks/matchDeck";
 
 /**
  * Parties en ligne — Server Actions exposées au navigateur.
@@ -27,6 +27,13 @@ export interface ActionResult<T> {
   data?: T;
 }
 
+/** Message montré au joueur quand son deck ne peut pas entrer en partie. */
+function deckRejection(result: MatchDeckResult & { ok: false }): string {
+  if (result.reason === "invalid") return `Ce deck n'est pas jouable en l'état : ${result.detail}`;
+  if (result.reason === "unavailable") return "Le serveur ne peut pas lire ton deck pour l'instant — réessaie dans un instant.";
+  return "Deck inconnu.";
+}
+
 async function requireUser() {
   const supabase = createSupabaseServerClient();
   const {
@@ -38,8 +45,9 @@ async function requireUser() {
 
 /** Crée une partie en attente d'un second joueur, avec un code d'invitation. */
 export async function createOnlineMatch(deckId: string): Promise<ActionResult<{ matchId: string; inviteCode: string }>> {
-  if (!findPlayableDeck(deckId)) return { ok: false, error: "Deck inconnu." };
   const user = await requireUser();
+  const own = await resolveMatchDeck(user.id, deckId);
+  if (!own.ok) return { ok: false, error: deckRejection(own) };
 
   const { data, error } = await createSupabaseServiceRoleClient()
     .from("matches")
@@ -53,9 +61,10 @@ export async function createOnlineMatch(deckId: string): Promise<ActionResult<{ 
 
 /** Rejoint une partie en attente via son code d'invitation et démarre la partie. */
 export async function joinOnlineMatch(inviteCode: string, deckId: string): Promise<ActionResult<{ matchId: string }>> {
-  const deck2 = findPlayableDeck(deckId);
-  if (!deck2) return { ok: false, error: "Deck inconnu." };
   const user = await requireUser();
+  const own = await resolveMatchDeck(user.id, deckId);
+  if (!own.ok) return { ok: false, error: deckRejection(own) };
+  const deck2 = own.deck;
   const service = createSupabaseServiceRoleClient();
 
   const { data: match, error: findError } = await service
@@ -69,8 +78,11 @@ export async function joinOnlineMatch(inviteCode: string, deckId: string): Promi
   if (!match) return { ok: false, error: "Aucune partie en attente avec ce code." };
   if (match.player1_id === user.id) return { ok: false, error: "Tu ne peux pas rejoindre ta propre partie." };
 
-  const deck1 = findPlayableDeck(match.player1_deck_id);
-  if (!deck1) return { ok: false, error: "Le deck de ton adversaire n'est plus disponible." };
+  // Le deck de l'HÔTE, résolu sous SON identité : un deck personnel
+  // n'appartient qu'à son auteur, et c'est lui qui l'a choisi.
+  const hostDeck = await resolveMatchDeck(match.player1_id, match.player1_deck_id);
+  if (!hostDeck.ok) return { ok: false, error: "Le deck de ton adversaire n'est plus disponible." };
+  const deck1 = hostDeck.deck;
 
   const state = createGameState({
     gameId: match.id,
