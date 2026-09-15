@@ -1,12 +1,10 @@
 import {
-  BOOSTER_EVERY_N_LEVELS,
-  LEVEL_REWARD_BOOSTER_ID,
   STARTING_LEVEL,
-  TIDES_PER_LEVEL,
   XP_FIRST_LEVEL,
   XP_LEVEL_STEP,
   XP_STEP_PLATEAU_LEVEL,
 } from "@/game/progression/constants";
+import { levelRewardItems, levelRewardsBetween } from "@/game/progression/levelRewards";
 import type { LevelReward, ProgressionView } from "@/game/progression/types";
 
 /**
@@ -60,18 +58,14 @@ export function progressionView(xpTotal: number): ProgressionView {
     xpTotal: safeXp,
     xpIntoLevel,
     xpForNextLevel,
+    xpToNextLevel: Math.max(0, xpForNextLevel - xpIntoLevel),
     ratio: xpForNextLevel === 0 ? 0 : Math.min(1, xpIntoLevel / xpForNextLevel),
   };
 }
 
 /** Récompense d'un palier de niveau donné (le niveau ATTEINT). */
 export function rewardForLevel(level: number): LevelReward {
-  const grantsBooster = level % BOOSTER_EVERY_N_LEVELS === 0;
-  return {
-    level,
-    tides: TIDES_PER_LEVEL,
-    boosterIds: grantsBooster ? [LEVEL_REWARD_BOOSTER_ID] : [],
-  };
+  return { level, items: levelRewardItems(level) };
 }
 
 /**
@@ -81,7 +75,5 @@ export function rewardForLevel(level: number): LevelReward {
  * dès lors que `levelBefore` vient de la base.
  */
 export function rewardsForLevelsGained(levelBefore: number, levelAfter: number): LevelReward[] {
-  const rewards: LevelReward[] = [];
-  for (let level = levelBefore + 1; level <= levelAfter; level++) rewards.push(rewardForLevel(level));
-  return rewards;
+  return levelRewardsBetween(levelBefore, levelAfter).map((entry) => ({ level: entry.level, items: entry.items }));
 }

@@ -86,6 +86,14 @@ export function formatEvent(state: GameState, event: GameEvent, playerLabel: (pl
       return event.stateChanged
         ? `La Marée entre en ${TIDE_STATE_LABELS[event.tideState]} (${event.tideOrientation}).`
         : `Marée : ${TIDE_STATE_LABELS[event.tideState]} (${event.remainingTurns} tour(s) restant(s)).`;
+    case "TIDE_MODIFIED":
+      return event.change === "duration"
+        ? `La Marée est retenue : ${event.value} tour(s) restant(s).`
+        : event.change === "intensity"
+          ? `Intensité de Marée : ${event.value}.`
+          : event.change === "maintain"
+            ? "La Marée est maintenue en l'état."
+            : "Les prochains dégâts de Marée seront amplifiés.";
     case "TIDE_ORIENTATION_CHANGED":
       return `La Marée s'inverse : ${event.orientation}.`;
     case "OCEAN_JUDGMENT":

@@ -1,4 +1,5 @@
 import { listPlayerDecks } from "@/app/decks/actions";
+import { fetchDeckCatalog } from "@/features/decks/catalogActions";
 import { DecksScreen } from "@/features/decks/DecksScreen";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -17,7 +18,10 @@ async function resolveIsSignedIn(): Promise<boolean> {
 
 export default async function DecksPage() {
   const isSignedIn = await resolveIsSignedIn();
-  const initialDecks = isSignedIn ? await listPlayerDecks() : [];
+  // Le catalogue est lu même hors connexion : les decks fournis par le jeu
+  // sont consultables sans compte (§4, « les préconstruits verrouillés
+  // doivent rester visibles »). Seule la possession est alors vide.
+  const [initialDecks, catalog] = await Promise.all([isSignedIn ? listPlayerDecks() : [], fetchDeckCatalog()]);
 
-  return <DecksScreen isSignedIn={isSignedIn} initialDecks={initialDecks} />;
+  return <DecksScreen isSignedIn={isSignedIn} initialDecks={initialDecks} catalog={catalog} />;
 }

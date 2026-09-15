@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { RULES } from "@/game";
 import { deleteDeck, duplicateDeck, renameDeck, type PlayerDeckSummary } from "@/app/decks/actions";
+import type { DeckCatalogView } from "@/features/decks/catalogService";
+import { DeckCatalogSection } from "@/features/decks/DeckCatalogSection";
 import { DeleteDeckDialog } from "@/features/decks/DeleteDeckDialog";
 import { Dialog } from "@/features/shell/Dialog";
 import { GameScreen } from "@/features/shell/GameScreen";
@@ -12,6 +14,7 @@ import { SearchLine } from "@/features/shell/SearchLine";
 import { ShipPortrait, shipNameOf } from "@/features/ships/ShipPortrait";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/decks/DecksList.module.css";
+import catalogStyles from "@/features/decks/DeckCatalog.module.css";
 import { playButtonClick } from "@/lib/sound";
 
 /** Insensible aux accents et à la casse. */
@@ -22,9 +25,24 @@ function normalizeSearch(value: string): string {
     .toLowerCase();
 }
 
+/**
+ * Les trois rayons de l'écran Decks (Notion « Progression joueur » §4 :
+ * « ajouter au minimum les catégories Mes decks / Decks d'emprunt /
+ * Préconstruits »).
+ */
+type DeckCategory = "mine" | "borrowed" | "precon";
+
+const CATEGORY_LABELS: Record<DeckCategory, string> = {
+  mine: "Mes decks",
+  borrowed: "Decks d'emprunt",
+  precon: "Préconstruits",
+};
+
 interface DecksScreenProps {
   isSignedIn: boolean;
   initialDecks: PlayerDeckSummary[];
+  /** Decks fournis par le jeu, avec la possession réelle du joueur. */
+  catalog: DeckCatalogView;
 }
 
 /**
@@ -35,8 +53,11 @@ interface DecksScreenProps {
  * l'éditeur ; dupliquer, renommer et supprimer restent sur place, la
  * suppression demandant confirmation.
  */
-export function DecksScreen({ isSignedIn, initialDecks }: DecksScreenProps) {
+export function DecksScreen({ isSignedIn, initialDecks, catalog }: DecksScreenProps) {
   const router = useRouter();
+  // Le joueur qui n'a pas encore emprunté de deck arrive directement sur le
+  // rayon d'emprunt : c'est l'étape qui lui manque pour jouer.
+  const [category, setCategory] = useState<DeckCategory>(isSignedIn && catalog.borrowedDeckId === null ? "borrowed" : "mine");
   const [search, setSearch] = useState("");
   const [renameTarget, setRenameTarget] = useState<PlayerDeckSummary | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<PlayerDeckSummary | null>(null);
@@ -80,7 +101,7 @@ export function DecksScreen({ isSignedIn, initialDecks }: DecksScreenProps) {
     <GameScreen
       active="decks"
       actions={
-        isSignedIn && initialDecks.length > 0 ? (
+        isSignedIn && category === "mine" && initialDecks.length > 0 ? (
           <div className={game.headerSearch}>
             <SearchLine variant="pill" value={search} onChange={setSearch} placeholder="Rechercher un deck…" label="Rechercher un deck" />
           </div>
@@ -91,21 +112,49 @@ export function DecksScreen({ isSignedIn, initialDecks }: DecksScreenProps) {
         <div className={game.contentWide}>
           <div className={game.pageHead}>
             <div>
-              <p className={game.eyebrow}>Mes decks</p>
+              <p className={game.eyebrow}>Decks</p>
               <h1 className={game.title}>
-                {isSignedIn
-                  ? `${decks.length} deck${decks.length > 1 ? "s" : ""}${decks.length !== initialDecks.length ? ` sur ${initialDecks.length}` : ""}`
-                  : "Tes decks"}
+                {category === "mine"
+                  ? isSignedIn
+                    ? `${decks.length} deck${decks.length > 1 ? "s" : ""}${decks.length !== initialDecks.length ? ` sur ${initialDecks.length}` : ""}`
+                    : "Tes decks"
+                  : CATEGORY_LABELS[category]}
               </h1>
             </div>
-            {isSignedIn && (
+            {isSignedIn && category === "mine" && (
               <Link href="/decks/nouveau" className={game.primary} onClick={() => playButtonClick()}>
                 + Créer un deck
               </Link>
             )}
           </div>
 
-          {!isSignedIn ? (
+          {/* Les trois rayons. Un préconstruit verrouillé reste visible et
+              consultable : c'est ce qui donne envie de dépenser un Jeton. */}
+          <div className={catalogStyles.categories} role="tablist" aria-label="Catégories de decks">
+            {(Object.keys(CATEGORY_LABELS) as DeckCategory[]).map((key) => {
+              const count = key === "mine" ? initialDecks.length : key === "borrowed" ? catalog.borrowed.length : catalog.precon.length;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={category === key}
+                  className={category === key ? catalogStyles.categoryActive : catalogStyles.category}
+                  onClick={() => {
+                    playButtonClick();
+                    setCategory(key);
+                  }}
+                >
+                  {CATEGORY_LABELS[key]}
+                  <span className={catalogStyles.categoryCount}>{count}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {category !== "mine" ? (
+            <DeckCatalogSection catalog={catalog} kind={category} />
+          ) : !isSignedIn ? (
             <div className={`${game.panel} ${game.empty}`}>
               <p className={game.emptyTitle}>Connecte-toi pour gérer tes decks</p>
               <p className={game.muted}>Tes decks sont enregistrés sur ton compte : ils te suivent d&apos;une partie à l&apos;autre.</p>

@@ -177,9 +177,25 @@ async function settleFinishedMatch(match: MatchRow, finalState: GameState): Prom
         userId,
         mode: match.mode,
         outcome: won ? "win" : "loss",
+        // L'état final sert à mesurer l'activité réelle du joueur : une
+        // partie abandonnée sans rien jouer ne paie pas plein tarif
+        // (anti-AFK, Notion « Progression joueur » §7).
+        finalState,
+        enginePlayerId: userId,
         allowBotTides: vsBot && botTidesEnabled(),
       });
-      await recordMatchQuestProgress({ matchId: match.id, userId, playerId: userId, finalState, vsBot, won });
+      await recordMatchQuestProgress({
+        matchId: match.id,
+        userId,
+        playerId: userId,
+        finalState,
+        vsBot,
+        won,
+        // Deck joué par CE participant : les objectifs de la catégorie
+        // Decks (« jouer avec 2 decks différents ») comptent des decks
+        // distincts, pas des parties.
+        deckId: userId === match.player1_id ? match.player1_deck_id : (match.player2_deck_id ?? undefined),
+      });
     })
   );
 }

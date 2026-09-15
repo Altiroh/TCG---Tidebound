@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { fetchOnboarding } from "@/features/onboarding/actions";
 import { signOut } from "@/app/connexion/actions";
 import { TideboundMenuChest } from "@/components/menu/TideboundMenuChest";
 import { MenuAmbiance } from "@/components/menu/MenuAmbiance";
@@ -30,6 +32,14 @@ async function resolveViewer(): Promise<{ displayName: string | null; isSignedIn
 
 export default async function HomePage() {
   const { displayName, isSignedIn } = await resolveViewer();
+
+  // Première connexion : le tutoriel est PROPOSÉ avant tout le reste
+  // (Notion « Progression joueur » §2, étape 2 du flow). Une seule fois —
+  // dès que le joueur a choisi (fait ou passé), l'accueil reprend sa place.
+  if (isSignedIn) {
+    const onboarding = await fetchOnboarding();
+    if (onboarding.needsTutorialChoice) redirect("/tutoriel");
+  }
 
   return (
     <main

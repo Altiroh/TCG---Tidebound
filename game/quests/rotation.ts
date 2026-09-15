@@ -63,25 +63,86 @@ export function selectQuestsForPeriod(
   userId: string,
   questType: QuestType,
   periodKey: string,
-  catalog: readonly QuestDefinition[] = QUEST_CATALOG
+  catalog: readonly QuestDefinition[] = QUEST_CATALOG,
+  /**
+   * Codes déjà attribués à écarter — sert au REMPLACEMENT d'une quête
+   * (§9, « prévoir 1 remplacement gratuit par jour ») : on rejoue le même
+   * tirage déterministe en excluant ce que le joueur a déjà vu.
+   */
+  excludeCodes: readonly string[] = []
 ): QuestDefinition[] {
   const count = questType === "daily" ? DAILY_QUEST_COUNT : WEEKLY_QUEST_COUNT;
-  const pool = catalog.filter((q) => q.questType === questType).sort((a, b) => a.code.localeCompare(b.code));
+  const excluded = new Set(excludeCodes);
+  const pool = catalog.filter((q) => q.questType === questType && !excluded.has(q.code)).sort((a, b) => a.code.localeCompare(b.code));
   const shuffled = shuffle(pool, createSeed(hashSeed(`${userId}|${periodKey}`))).value;
 
   const selected: QuestDefinition[] = [];
   const usedObjectives = new Set<string>();
+  const usedCategories = new Set<string>();
   let pvpOnly = 0;
-  for (const quest of shuffled) {
-    if (selected.length >= count) break;
-    // Deux quêtes de la même période sur le même objectif feraient doublon.
-    if (usedObjectives.has(quest.objectiveKey)) continue;
-    if (!quest.botProgressAllowed) {
-      if (pvpOnly >= MAX_PVP_ONLY_PER_PERIOD[questType]) continue;
-      pvpOnly += 1;
+
+  /**
+   * Deux passes. La PREMIÈRE n'accepte qu'une quête par CATÉGORIE : c'est
+   * la règle « une journée idéale propose 3 quêtes de catégories
+   * différentes » (Notion « Catalogue de quêtes », §6). La seconde
+   * complète si le catalogue ne permet pas d'y arriver — mieux vaut trois
+   * quêtes de deux catégories que deux quêtes seulement.
+   */
+  for (const distinctCategories of [true, false]) {
+    for (const quest of shuffled) {
+      if (selected.length >= count) break;
+      if (selected.includes(quest)) continue;
+      // Deux quêtes de la même période sur le même objectif feraient doublon.
+      if (usedObjectives.has(quest.objectiveKey)) continue;
+      if (distinctCategories && usedCategories.has(quest.category)) continue;
+      if (!quest.botProgressAllowed) {
+        if (pvpOnly >= MAX_PVP_ONLY_PER_PERIOD[questType]) continue;
+        pvpOnly += 1;
+      }
+      selected.push(quest);
+      usedObjectives.add(quest.objectiveKey);
+      usedCategories.add(quest.category);
     }
-    selected.push(quest);
-    usedObjectives.add(quest.objectiveKey);
+    if (selected.length >= count) break;
   }
   return selected;
+}
+
+/**
+ * Quête de remplacement pour un joueur qui « rejette » `replacedCode`.
+ *
+ * Déterministe elle aussi (même joueur, même période, même quête rejetée →
+ * même remplaçante) : deux clics concurrents ne peuvent pas tirer deux
+ * quêtes différentes. Écarte tout ce que le joueur a déjà (`currentCodes`)
+ * et les objectifs déjà couverts, et retombe sur `undefined` si le pool est
+ * épuisé — l'appelant laisse alors la quête en place plutôt que d'échouer.
+ */
+export function pickReplacementQuest(
+  userId: string,
+  questType: QuestType,
+  periodKey: string,
+  currentCodes: readonly string[],
+  replacedCode: string,
+  catalog: readonly QuestDefinition[] = QUEST_CATALOG
+): QuestDefinition | undefined {
+  const kept = currentCodes.filter((code) => code !== replacedCode);
+  const keptQuests = kept.map((code) => catalog.find((quest) => quest.code === code)).filter((quest): quest is QuestDefinition => Boolean(quest));
+  const keptObjectives = new Set(keptQuests.map((quest) => quest.objectiveKey));
+  const keptCategories = new Set(keptQuests.map((quest) => quest.category));
+  const keptPvpOnly = keptQuests.filter((quest) => !quest.botProgressAllowed).length;
+
+  const eligible = catalog
+    .filter((quest) => quest.questType === questType)
+    .filter((quest) => !currentCodes.includes(quest.code))
+    .filter((quest) => !keptObjectives.has(quest.objectiveKey))
+    .filter((quest) => quest.botProgressAllowed || keptPvpOnly < MAX_PVP_ONLY_PER_PERIOD[questType])
+    .sort((a, b) => a.code.localeCompare(b.code));
+  if (eligible.length === 0) return undefined;
+
+  // Même règle qu'au tirage : on garde des catégories distinctes tant que
+  // c'est possible, sans pour autant refuser tout remplacement.
+  const preferred = eligible.filter((quest) => !keptCategories.has(quest.category));
+  const pool = preferred.length > 0 ? preferred : eligible;
+
+  return shuffle(pool, createSeed(hashSeed(`${userId}|${periodKey}|reroll|${replacedCode}`))).value[0];
 }

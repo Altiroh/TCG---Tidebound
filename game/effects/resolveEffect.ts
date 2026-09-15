@@ -596,6 +596,10 @@ export function resolveEffect(
       // durée reste au minimum à 1, l'avancée réelle se fait via le tick de
       // début de tour (`resolveTideTurnStep`), pas ici.
       const tideRemainingTurns = Math.max(1, state.environment.tideRemainingTurns + delta);
+      // `TIDE_MODIFIED` : la Marée ne change pas d'état, mais elle vient
+      // bien d'être manipulée — le journal doit le dire, et les quêtes
+      // « Modifier la Marée » n'ont pas d'autre trace à observer.
+      events.push({ ...base, type: "TIDE_MODIFIED", change: "duration", value: tideRemainingTurns });
       return {
         state: { ...state, environment: { ...state.environment, tideRemainingTurns } },
         events,
@@ -604,6 +608,7 @@ export function resolveEffect(
 
     case "tideSetIntensity": {
       const value = Math.max(1, amountValue(effect.amount));
+      events.push({ ...base, type: "TIDE_MODIFIED", change: "intensity", value });
       return {
         state: { ...state, environment: { ...state.environment, tideIntensity: value } },
         events,
@@ -613,6 +618,7 @@ export function resolveEffect(
     case "tideModifyIntensity": {
       const delta = amountValue(effect.amount);
       const tideIntensity = Math.max(1, state.environment.tideIntensity + delta);
+      events.push({ ...base, type: "TIDE_MODIFIED", change: "intensity", value: tideIntensity });
       return {
         state: { ...state, environment: { ...state.environment, tideIntensity } },
         events,
@@ -623,6 +629,7 @@ export function resolveEffect(
     case "tideAmplifyNext": {
       const kind = effect.type === "tideMaintain" ? "maintain" : "amplify";
       const remainingTriggers = amountValue(effect.amount) || 1;
+      events.push({ ...base, type: "TIDE_MODIFIED", change: kind, value: remainingTriggers });
       return {
         state: {
           ...state,

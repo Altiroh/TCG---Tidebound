@@ -71,6 +71,33 @@ export {
 export { ARCHETYPE_DECKS, CRA_POISCAIL_TEST_DECKS, PLAYABLE_DECKS } from "@/game/cards/decks/testDecks";
 export { validateDeckList } from "@/game/rules/deckValidation";
 
+// --- Catalogue de decks fournis par le jeu (Notion « Progression joueur »
+// §3 et §4) : decks d'emprunt gratuits et préconstruits à Jeton, plus le
+// calcul « possédé / prêté » qui les accompagne partout dans l'interface.
+export {
+  BORROWED_DECKS,
+  CATALOG_DECKS,
+  PRECON_DECKS,
+  catalogDeckById,
+  isBorrowedDeckId,
+  isPreconDeckId,
+} from "@/game/cards/decks/catalog";
+export type { CatalogDeck, DeckDifficulty } from "@/game/cards/decks/catalog";
+export { deckOwnership, ownershipLabel } from "@/game/cards/decks/ownership";
+export type { DeckCardOwnership, DeckOwnership } from "@/game/cards/decks/ownership";
+
+// --- Économie (Notion « Progression joueur » §5) ------------------------
+export { BOOSTER_STANDARD_PRICE, CURRENCY_NAME, STANDARD_BOOSTER_ID, TIDE_REWARD } from "@/game/economy";
+export type { TideRewardTier } from "@/game/economy";
+
+// --- Tutoriel (Notion « Progression joueur » §2) ------------------------
+export { TUTORIAL_STEPS, tutorialProgress } from "@/game/tutorial";
+export type { TutorialProgress, TutorialStep } from "@/game/tutorial";
+
+// --- Exploits (Notion « Progression joueur » §10) -----------------------
+export { ACHIEVEMENT_CATALOG, achievementByCode, unlockedAchievements } from "@/game/achievements";
+export type { AchievementDefinition, AchievementStats } from "@/game/achievements";
+
 export type { GameEvent, GameEventType } from "@/game/events/types";
 
 export type { ChosenUnitFilter, EffectDefinition, EffectType, TargetSelector } from "@/game/effects/types";

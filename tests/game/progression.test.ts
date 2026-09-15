@@ -1,22 +1,53 @@
 import { describe, expect, it } from "vitest";
 import {
-  BOOSTER_EVERY_N_LEVELS,
+  ABANDONED_MATCH_XP,
+  DAILY_MATCHES_BONUS,
   DEV_BOT_MATCH_TIDES,
-  FIRST_PVP_WIN_OF_DAY_BONUS,
+  FIRST_WIN_OF_DAY_BONUS,
+  LEVEL_REWARDS,
+  LOGIN_CYCLE_LENGTH,
+  LOGIN_REWARD_CYCLE,
   MATCH_TIDES,
   MATCH_XP,
-  TIDES_PER_LEVEL,
+  MAX_REWARDED_LEVEL,
   XP_FIRST_LEVEL,
   XP_LEVEL_STEP,
   XP_STEP_PLATEAU_LEVEL,
+  advanceLoginStep,
+  canClaimLoginReward,
   computeMatchReward,
+  isMeaningfulMatch,
+  isMilestoneLevel,
   levelForTotalXp,
+  levelRewardItems,
+  loginRewardForStep,
+  matchActivity,
+  nextMilestones,
   progressionView,
   rewardsForLevelsGained,
   totalXpForLevel,
   utcDayKey,
   xpForLevel,
+  type LevelRewardItem,
+  type LoginRewardState,
+  type MatchActivity,
+  type ProgressionState,
 } from "@/game/progression";
+import { BOOSTER_STANDARD_PRICE, TIDE_REWARD } from "@/game/economy";
+
+const FRESH: ProgressionState = { xpTotal: 0, level: 1 };
+
+/** Entrée par défaut de `computeMatchReward` — aucun bonus, activité normale. */
+function rewardInput(overrides: Partial<Parameters<typeof computeMatchReward>[0]> = {}) {
+  return {
+    mode: "matchmaking" as const,
+    outcome: "loss" as const,
+    progression: FRESH,
+    isFirstWinOfDay: false,
+    matchesFinishedToday: 0,
+    ...overrides,
+  };
+}
 
 describe("courbe de niveaux", () => {
   it("le premier niveau coûte XP_FIRST_LEVEL et chaque niveau coûte XP_LEVEL_STEP de plus", () => {
@@ -32,10 +63,9 @@ describe("courbe de niveaux", () => {
   });
 
   it("levelForTotalXp est l'inverse exact de totalXpForLevel", () => {
-    for (let level = 1; level <= 40; level++) {
+    for (let level = 1; level <= 50; level++) {
       const exact = totalXpForLevel(level);
       expect(levelForTotalXp(exact)).toBe(level);
-      // Un point d'XP de moins doit rester au niveau précédent.
       if (level > 1) expect(levelForTotalXp(exact - 1)).toBe(level - 1);
     }
   });
@@ -47,167 +77,190 @@ describe("courbe de niveaux", () => {
     expect(progressionView(-10).xpIntoLevel).toBe(0);
   });
 
-  it("progressionView décompose l'avancement dans le niveau courant", () => {
+  it("progressionView décompose l'avancement et l'XP restante", () => {
     const view = progressionView(XP_FIRST_LEVEL + 100);
     expect(view.level).toBe(2);
     expect(view.xpIntoLevel).toBe(100);
     expect(view.xpForNextLevel).toBe(xpForLevel(2));
+    expect(view.xpToNextLevel).toBe(xpForLevel(2) - 100);
     expect(view.ratio).toBeCloseTo(100 / xpForLevel(2));
   });
 });
 
-describe("récompenses de palier", () => {
-  it("chaque niveau gagné donne des Tides, et un booster tous les BOOSTER_EVERY_N_LEVELS", () => {
-    const rewards = rewardsForLevelsGained(1, BOOSTER_EVERY_N_LEVELS);
-    expect(rewards).toHaveLength(BOOSTER_EVERY_N_LEVELS - 1);
-    expect(rewards.every((r) => r.tides === TIDES_PER_LEVEL)).toBe(true);
-
-    const withBooster = rewards.filter((r) => r.boosterIds.length > 0);
-    expect(withBooster).toHaveLength(1);
-    expect(withBooster[0]!.level).toBe(BOOSTER_EVERY_N_LEVELS);
-  });
-
-  it("ne rend rien pour un niveau déjà atteint — l'octroi reste idempotent", () => {
-    expect(rewardsForLevelsGained(7, 7)).toEqual([]);
-    expect(rewardsForLevelsGained(7, 3)).toEqual([]);
-  });
-});
-
-describe("récompenses de partie", () => {
-  const fresh = { xpTotal: 0, level: 1 };
-
-  it("une victoire PvP donne plus d'XP qu'une défaite, mais la défaite progresse quand même", () => {
-    const win = computeMatchReward({ mode: "matchmaking", outcome: "win", progression: fresh, isFirstPvpWinOfDay: false });
-    const loss = computeMatchReward({ mode: "matchmaking", outcome: "loss", progression: fresh, isFirstPvpWinOfDay: false });
-
-    expect(win.xp).toBe(MATCH_XP.pvpWin);
-    expect(loss.xp).toBe(MATCH_XP.pvpLoss);
-    expect(loss.xp).toBeGreaterThan(0);
-    expect(win.xp).toBeGreaterThan(loss.xp);
-  });
-
-  it("une partie contre bot ne rapporte aucun Tide par défaut", () => {
-    // Règle verrouillée par le cadrage. Elle doit rester le comportement
-    // SANS option : seule une dérogation explicite peut la contourner.
-    for (const outcome of ["win", "loss"] as const) {
-      const reward = computeMatchReward({ mode: "bot", outcome, progression: fresh, isFirstPvpWinOfDay: true });
-      expect(reward.tides).toBe(0);
-      expect(reward.totalTides).toBe(0);
-      expect(reward.xp).toBeGreaterThan(0);
+describe("table de récompenses 1-50 (Notion « Progression joueur » §6)", () => {
+  it("chaque niveau de 1 à 50 donne au moins une récompense — aucun trou", () => {
+    for (let level = 1; level <= MAX_REWARDED_LEVEL; level++) {
+      expect(levelRewardItems(level).length, `niveau ${level}`).toBeGreaterThan(0);
     }
   });
 
-  it("n'accorde des Tides contre bot que sur dérogation explicite, et toujours moins qu'en PvP", () => {
-    const derogated = computeMatchReward({
-      mode: "bot",
-      outcome: "win",
-      progression: fresh,
-      isFirstPvpWinOfDay: false,
-      allowBotTides: true,
-    });
-
-    expect(derogated.tides).toBe(DEV_BOT_MATCH_TIDES.win);
-    expect(derogated.tides).toBeGreaterThan(0);
-    // Le bot ne doit jamais devenir le chemin le plus rentable, même en dev.
-    expect(derogated.tides).toBeLessThan(MATCH_TIDES.pvpWin);
-    expect(DEV_BOT_MATCH_TIDES.loss).toBeLessThan(MATCH_TIDES.pvpWin);
+  it("ne récompense plus au-delà du niveau 50, sans planter", () => {
+    expect(levelRewardItems(MAX_REWARDED_LEVEL + 1)).toEqual([]);
+    expect(rewardsForLevelsGained(49, 60).map((r) => r.level)).toEqual([50]);
   });
 
-  it("la dérogation bot ne débloque pas le bonus de première victoire du jour", () => {
-    // Ce bonus est une source de Tides majeure et strictement PvP : la
-    // dérogation de dev ne doit pas y donner accès par ricochet.
-    const reward = computeMatchReward({
-      mode: "bot",
-      outcome: "win",
-      progression: fresh,
-      isFirstPvpWinOfDay: true,
-      allowBotTides: true,
-    });
-
-    expect(reward.firstWinOfDay).toBe(false);
-    expect(reward.tides).toBe(DEV_BOT_MATCH_TIDES.win);
+  it("donne un Jeton de Préconstruit tous les 10 niveaux, et seulement là", () => {
+    const withToken: number[] = [];
+    for (let level = 1; level <= MAX_REWARDED_LEVEL; level++) {
+      if (levelRewardItems(level).some((item) => item.kind === "preconToken")) withToken.push(level);
+    }
+    expect(withToken).toEqual([10, 20, 30, 40, 50]);
   });
 
-  it("la dérogation ne change rien au PvP", () => {
-    const withFlag = computeMatchReward({
-      mode: "matchmaking",
-      outcome: "win",
-      progression: fresh,
-      isFirstPvpWinOfDay: false,
-      allowBotTides: true,
-    });
-    const without = computeMatchReward({
-      mode: "matchmaking",
-      outcome: "win",
-      progression: fresh,
-      isFirstPvpWinOfDay: false,
-    });
-
-    expect(withFlag).toEqual(without);
+  it("place un gros palier (autre chose que des Tides) au moins tous les 5 niveaux", () => {
+    for (let start = 1; start + 4 <= MAX_REWARDED_LEVEL; start += 5) {
+      const window = [start, start + 1, start + 2, start + 3, start + 4];
+      expect(window.some(isMilestoneLevel), `niveaux ${start}-${start + 4}`).toBe(true);
+    }
   });
 
-  it("le bonus de première victoire du jour ne s'applique qu'à une victoire PvP", () => {
-    const pvpWin = computeMatchReward({ mode: "matchmaking", outcome: "win", progression: fresh, isFirstPvpWinOfDay: true });
-    expect(pvpWin.firstWinOfDay).toBe(true);
-    expect(pvpWin.xp).toBe(MATCH_XP.pvpWin + FIRST_PVP_WIN_OF_DAY_BONUS.xp);
-    expect(pvpWin.tides).toBe(MATCH_TIDES.pvpWin + FIRST_PVP_WIN_OF_DAY_BONUS.tides);
-
-    const pvpLoss = computeMatchReward({ mode: "matchmaking", outcome: "loss", progression: fresh, isFirstPvpWinOfDay: true });
-    expect(pvpLoss.firstWinOfDay).toBe(false);
-
-    const botWin = computeMatchReward({ mode: "bot", outcome: "win", progression: fresh, isFirstPvpWinOfDay: true });
-    expect(botWin.firstWinOfDay).toBe(false);
+  it("nextMilestones donne les prochains jalons à annoncer dans le profil", () => {
+    expect(nextMilestones(1, 3)).toEqual([2, 4, 5]);
+    expect(nextMilestones(MAX_REWARDED_LEVEL)).toEqual([]);
   });
 
-  it("le farm PvP pur reste très peu rentable face au prix d'un booster", () => {
-    // Garde-fou d'intention, pas de calibrage : si une modification rendait
-    // un booster accessible en moins de 20 victoires, l'anti-farm du cadrage
-    // serait cassé.
-    const winsPerBooster = 500 / MATCH_TIDES.pvpWin;
-    expect(winsPerBooster).toBeGreaterThan(20);
-  });
-
-  it("cumule les paliers franchis quand une seule partie fait gagner un niveau", () => {
-    const justBelow = { xpTotal: XP_FIRST_LEVEL - 1, level: 1 };
-    const reward = computeMatchReward({
-      mode: "matchmaking",
-      outcome: "win",
-      progression: justBelow,
-      isFirstPvpWinOfDay: false,
-    });
-
-    expect(reward.levelBefore).toBe(1);
-    expect(reward.levelAfter).toBe(2);
-    expect(reward.levelRewards).toHaveLength(1);
-    expect(reward.totalTides).toBe(MATCH_TIDES.pvpWin + TIDES_PER_LEVEL);
-  });
-
-  it("rattrape un niveau en retard en base plutôt que de re-payer un palier déjà atteint", () => {
-    // `level` en base a dérivé (plus bas que l'XP cumulée) : la courbe fait
-    // foi, et les paliers déjà couverts par l'XP ne sont pas re-octroyés.
-    const drifted = { xpTotal: totalXpForLevel(4), level: 2 };
-    const reward = computeMatchReward({
-      mode: "matchmaking",
-      outcome: "loss",
-      progression: drifted,
-      isFirstPvpWinOfDay: false,
-    });
-
-    expect(reward.levelBefore).toBe(4);
-    expect(reward.levelRewards.every((r) => r.level > 4)).toBe(true);
-  });
-
-  it("n'octroie aucun booster de palier quand aucun niveau n'est franchi", () => {
-    const reward = computeMatchReward({ mode: "matchmaking", outcome: "loss", progression: fresh, isFirstPvpWinOfDay: false });
-    expect(reward.levelAfter).toBe(reward.levelBefore);
-    expect(reward.boosterIds).toEqual([]);
-    expect(reward.totalTides).toBe(MATCH_TIDES.pvpLoss);
+  it("aucune récompense de Tides n'est nulle ou négative", () => {
+    for (const items of Object.values(LEVEL_REWARDS)) {
+      for (const item of items as readonly LevelRewardItem[]) {
+        if (item.kind === "tides") expect(item.amount).toBeGreaterThan(0);
+        if (item.kind === "booster") expect(item.count).toBeGreaterThan(0);
+      }
+    }
   });
 });
 
-describe("utcDayKey", () => {
-  it("produit une clé de jour UTC stable, indépendante de l'heure locale", () => {
-    expect(utcDayKey(new Date("2026-09-12T23:59:59Z"))).toBe("2026-09-12");
-    expect(utcDayKey(new Date("2026-09-13T00:00:01Z"))).toBe("2026-09-13");
+describe("économie", () => {
+  it("le booster Standard vaut 150 Tides, et c'est la seule définition", () => {
+    expect(BOOSTER_STANDARD_PRICE).toBe(150);
+    // Un gros palier vaut exactement un booster : c'est ce qui rend la
+    // cadence « un booster tous les N jours » lisible dans toute la table.
+    expect(TIDE_REWARD.milestone).toBe(BOOSTER_STANDARD_PRICE);
+  });
+});
+
+describe("XP de partie (§7)", () => {
+  it("une partie terminée donne toujours de l'XP, même perdue", () => {
+    const loss = computeMatchReward(rewardInput({ outcome: "loss" }));
+    expect(loss.xp).toBe(MATCH_XP.completed);
+    const win = computeMatchReward(rewardInput({ outcome: "win" }));
+    expect(win.xp).toBe(MATCH_XP.completed + MATCH_XP.win);
+  });
+
+  it("ajoute le bonus de première victoire du jour, XP et Tides en PvP", () => {
+    const reward = computeMatchReward(rewardInput({ outcome: "win", isFirstWinOfDay: true }));
+    expect(reward.firstWinOfDay).toBe(true);
+    expect(reward.xp).toBe(MATCH_XP.completed + MATCH_XP.win + FIRST_WIN_OF_DAY_BONUS.xp);
+    expect(reward.tides).toBe(MATCH_TIDES.pvpWin + FIRST_WIN_OF_DAY_BONUS.tides);
+  });
+
+  it("contre le bot : l'XP de première victoire est accordée, pas les Tides", () => {
+    const reward = computeMatchReward(rewardInput({ mode: "bot", outcome: "win", isFirstWinOfDay: true }));
+    expect(reward.xp).toBe(MATCH_XP.completed + MATCH_XP.win + FIRST_WIN_OF_DAY_BONUS.xp);
+    expect(reward.tides).toBe(0);
+  });
+
+  it("le bonus des 3 parties du jour tombe exactement à la 3e, une seule fois", () => {
+    const second = computeMatchReward(rewardInput({ matchesFinishedToday: 1 }));
+    expect(second.dailyMatchesBonus).toBe(false);
+    const third = computeMatchReward(rewardInput({ matchesFinishedToday: 2 }));
+    expect(third.dailyMatchesBonus).toBe(true);
+    expect(third.xp).toBe(MATCH_XP.completed + DAILY_MATCHES_BONUS.xp);
+    const fourth = computeMatchReward(rewardInput({ matchesFinishedToday: 3 }));
+    expect(fourth.dailyMatchesBonus).toBe(false);
+  });
+
+  it("une partie contre bot ne rapporte aucune Tide sans la dérogation de développement", () => {
+    expect(computeMatchReward(rewardInput({ mode: "bot", outcome: "win" })).tides).toBe(0);
+    expect(computeMatchReward(rewardInput({ mode: "bot", outcome: "win", allowBotTides: true })).tides).toBe(DEV_BOT_MATCH_TIDES.win);
+  });
+});
+
+describe("anti-AFK (§7)", () => {
+  const idle: MatchActivity = { cardsPlayed: 0, attacks: 0, turns: 1 };
+
+  it("une partie abandonnée sans rien jouer ne donne ni Tides, ni bonus", () => {
+    const reward = computeMatchReward(rewardInput({ outcome: "win", isFirstWinOfDay: true, matchesFinishedToday: 2, activity: idle }));
+    expect(reward.abandoned).toBe(true);
+    expect(reward.xp).toBe(ABANDONED_MATCH_XP);
+    expect(reward.tides).toBe(0);
+    expect(reward.firstWinOfDay).toBe(false);
+    expect(reward.dailyMatchesBonus).toBe(false);
+  });
+
+  it("un seul signe d'activité suffit à rendre la partie pleine", () => {
+    expect(isMeaningfulMatch(idle)).toBe(false);
+    expect(isMeaningfulMatch({ ...idle, attacks: 1 })).toBe(true);
+    expect(isMeaningfulMatch({ ...idle, cardsPlayed: 2 })).toBe(true);
+    expect(isMeaningfulMatch({ ...idle, turns: 4 })).toBe(true);
+    // Appelant qui ne fournit pas d'activité : jamais puni.
+    expect(isMeaningfulMatch(undefined)).toBe(true);
+  });
+
+  it("matchActivity lit les actions du joueur dans le journal", () => {
+    const state = {
+      turnNumber: 6,
+      eventLog: [
+        { type: "PLAY_CARD", playerId: "p1" },
+        { type: "PLAY_CARD", playerId: "p2" },
+        { type: "ATTACK", playerId: "p1" },
+      ],
+    } as never;
+    expect(matchActivity(state, "p1")).toEqual({ cardsPlayed: 1, attacks: 1, turns: 6 });
+  });
+});
+
+describe("paliers franchis par une partie", () => {
+  it("expose les jetons, boosters et cosmétiques des niveaux gagnés", () => {
+    // XP juste sous le niveau 10 : la partie fait franchir le palier à Jeton.
+    const xpTotal = totalXpForLevel(10) - 1;
+    const reward = computeMatchReward(rewardInput({ outcome: "win", progression: { xpTotal, level: 9 } }));
+    expect(reward.levelAfter).toBe(10);
+    expect(reward.preconTokens).toBe(1);
+  });
+
+  it("ne rejoue jamais un palier déjà octroyé", () => {
+    const reward = computeMatchReward(rewardInput({ progression: { xpTotal: 0, level: 5 } }));
+    expect(reward.levelBefore).toBe(5);
+    expect(reward.levelRewards).toEqual([]);
+  });
+
+  it("cumule les Tides de palier dans totalTides", () => {
+    const xpTotal = totalXpForLevel(3) - 1;
+    const reward = computeMatchReward(rewardInput({ outcome: "win", progression: { xpTotal, level: 2 } }));
+    const levelTides = reward.levelRewards.flatMap((r) => r.items).reduce((sum, item) => sum + (item.kind === "tides" ? item.amount : 0), 0);
+    expect(reward.totalTides).toBe(reward.tides + levelTides);
+  });
+});
+
+describe("récompenses de connexion (§8)", () => {
+  it("le cycle compte 7 escales, la dernière donnant un booster", () => {
+    expect(LOGIN_REWARD_CYCLE).toHaveLength(LOGIN_CYCLE_LENGTH);
+    expect(loginRewardForStep(7).some((item) => item.kind === "booster")).toBe(true);
+  });
+
+  it("une absence ne remet JAMAIS le cycle à zéro", () => {
+    let state: LoginRewardState = { step: 3, lastClaimedDay: "2026-09-01" };
+    // Retour deux semaines plus tard : on reprend à l'étape 4, pas à 1.
+    expect(canClaimLoginReward(state, "2026-09-15")).toBe(true);
+    state = advanceLoginStep(state, "2026-09-15");
+    expect(state.step).toBe(4);
+  });
+
+  it("une seule réclamation par jour", () => {
+    const state = { step: 2, lastClaimedDay: "2026-09-15" };
+    expect(canClaimLoginReward(state, "2026-09-15")).toBe(false);
+    expect(canClaimLoginReward(state, "2026-09-16")).toBe(true);
+  });
+
+  it("boucle de l'étape 7 vers l'étape 1", () => {
+    expect(advanceLoginStep({ step: 7, lastClaimedDay: null }, "2026-09-15").step).toBe(1);
+    expect(loginRewardForStep(8)).toEqual(loginRewardForStep(1));
+  });
+});
+
+describe("clé de jour UTC", () => {
+  it("formate en YYYY-MM-DD", () => {
+    expect(utcDayKey(new Date("2026-09-15T23:59:59Z"))).toBe("2026-09-15");
+    expect(utcDayKey(new Date("2026-09-16T00:00:00Z"))).toBe("2026-09-16");
   });
 });

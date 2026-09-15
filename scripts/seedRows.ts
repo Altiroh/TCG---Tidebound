@@ -23,7 +23,7 @@
 import { CORE_SET, PRECONSTRUCTED_DECKS, getMaxCopies } from "@/game";
 import { RARITY_WEIGHTS } from "@/game/boosters";
 import { assertRarityCoverage, rarityForCardId } from "@/game/boosters/cardRarity";
-import { QUEST_CATALOG } from "@/game/quests";
+import { QUEST_CATALOG, questProgressKind } from "@/game/quests";
 
 /** Une valeur telle qu'elle part en base : `null`, un scalaire, ou un tableau de texte (colonnes `text[]`). */
 export type SeedValue = string | number | boolean | null | string[];
@@ -90,10 +90,15 @@ export function systemDeckCardRows(): SeedRow[] {
 export function questRows(): SeedRow[] {
   return QUEST_CATALOG.map((quest) => ({
     code: quest.code,
+    name: quest.name,
+    category: quest.category,
+    progress_kind: questProgressKind(quest.objectiveKey),
     quest_type: quest.questType,
     objective_key: quest.objectiveKey,
     target_value: quest.targetValue,
     reward_currency: quest.rewardTides,
+    // Les quêtes rapportent XP **et** Tides (Notion « Progression joueur » §9).
+    reward_xp: quest.rewardXp,
     reward_booster_definition_id: quest.rewardBoosterId ?? null,
     bot_progress_allowed: quest.botProgressAllowed,
     period: quest.questType,

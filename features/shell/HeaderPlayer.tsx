@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { fetchProgression, type ProgressionSummary } from "@/features/progression/actions";
 import { onProgressionChanged, rememberProgression, rememberedProgression } from "@/features/progression/progressionSync";
@@ -123,9 +124,11 @@ export function HeaderPlayer() {
           </span>
 
           <span className={styles.accountIdentity}>
-            <span className={styles.accountName} title={summary.displayName ?? undefined}>
+            {/* Le pseudo mène au carnet de bord : niveau, paliers, escales
+                de connexion, exploits (Notion « Progression joueur » §12). */}
+            <Link href="/profil" className={styles.accountName} title={summary.displayName ?? undefined} onClick={() => playButtonClick()}>
               {summary.displayName ?? "Joueur"}
-            </span>
+            </Link>
 
             <span className={styles.accountLevelRow}>
               <span className={styles.accountLevel}>

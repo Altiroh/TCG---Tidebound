@@ -3,10 +3,15 @@
 import { createSupabaseServerClient, createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { ensureCurrentQuests } from "@/features/quests/questService";
 import {
+  QUEST_CATEGORY_META,
+  pickReplacementQuest,
+  questByCode,
   questLabel,
   questPeriodEndsAt,
   questPeriodKey,
   QUEST_OBJECTIVE_LABELS,
+  REROLLS_PER_PERIOD,
+  type QuestCategory,
   type QuestObjectiveKey,
   type QuestType,
 } from "@/game/quests";
@@ -19,12 +24,19 @@ import {
 
 export interface QuestEntry {
   questId: string;
+  /** Code du catalogue — nécessaire pour tirer un remplacement déterministe. */
+  code: string;
   periodKey: string;
   questType: QuestType;
+  /** Catégorie d'interface — porte l'icône de la ligne. */
+  category: QuestCategory;
+  /** Nom de la quête (« Prendre le large »), affiché au-dessus de l'objectif. */
+  name: string;
   label: string;
   progress: number;
   target: number;
   rewardTides: number;
+  rewardXp: number;
   rewardBoosterId: string | null;
   botProgressAllowed: boolean;
   completed: boolean;
@@ -41,10 +53,24 @@ export interface QuestBoard {
   weekly: QuestEntry[];
   dailyEndsAt: string;
   weeklyEndsAt: string;
+  /** Remplacements gratuits restants pour la journée (Notion « Progression joueur » §9). */
+  dailyRerollsLeft: number;
 }
 
 function isObjectiveKey(key: string): key is QuestObjectiveKey {
   return key in QUEST_OBJECTIVE_LABELS;
+}
+
+/**
+ * Catégorie d'une quête. La base en est le miroir, mais le CATALOGUE
+ * TypeScript fait foi : une base en retard d'un seed rendrait sinon des
+ * lignes sans icône. `parties` est le repli neutre.
+ */
+function resolveCategory(code: string | null, stored: string | null): QuestCategory {
+  const fromCatalog = code ? questByCode(code)?.category : undefined;
+  if (fromCatalog) return fromCatalog;
+  if (stored && stored in QUEST_CATEGORY_META) return stored as QuestCategory;
+  return "parties";
 }
 
 export async function fetchQuestBoard(): Promise<QuestBoard> {
@@ -55,6 +81,7 @@ export async function fetchQuestBoard(): Promise<QuestBoard> {
     weekly: [],
     dailyEndsAt: questPeriodEndsAt("daily", now).toISOString(),
     weeklyEndsAt: questPeriodEndsAt("weekly", now).toISOString(),
+    dailyRerollsLeft: 0,
   };
 
   let signedIn = false;
@@ -68,8 +95,15 @@ export async function fetchQuestBoard(): Promise<QuestBoard> {
 
     await ensureCurrentQuests(user.id, now);
 
-    const currentKeys = [questPeriodKey("daily", now), questPeriodKey("weekly", now)];
+    const dailyKey = questPeriodKey("daily", now);
+    const currentKeys = [dailyKey, questPeriodKey("weekly", now)];
     const service = createSupabaseServiceRoleClient();
+    const rerollsPromise = service
+      .from("player_quest_rerolls")
+      .select("used")
+      .eq("user_id", user.id)
+      .eq("period_key", dailyKey)
+      .maybeSingle();
     const [{ data: rows, error }, { data: quests, error: questsError }] = await Promise.all([
       service
         .from("player_quest_progress")
@@ -91,12 +125,18 @@ export async function fetchQuestBoard(): Promise<QuestBoard> {
       if (!quest || !isObjectiveKey(quest.objective_key)) continue;
       entries.push({
         questId: row.quest_id,
+        code: quest.code ?? "",
         periodKey: row.period_key,
         questType: quest.quest_type,
+        category: resolveCategory(quest.code, quest.category),
+        // Le nom vient du catalogue TypeScript quand la base est en retard
+        // d'un seed : mieux vaut un nom correct qu'une ligne anonyme.
+        name: quest.name ?? questByCode(quest.code ?? "")?.name ?? "",
         label: questLabel({ objectiveKey: quest.objective_key, targetValue: quest.target_value }),
         progress: row.progress_value,
         target: quest.target_value,
         rewardTides: quest.reward_currency,
+        rewardXp: quest.reward_xp ?? 0,
         rewardBoosterId: quest.reward_booster_definition_id,
         botProgressAllowed: quest.bot_progress_allowed,
         completed: row.completed_at !== null,
@@ -109,11 +149,13 @@ export async function fetchQuestBoard(): Promise<QuestBoard> {
     const rank = (entry: QuestEntry) => (entry.completed && !entry.claimed ? 0 : entry.claimed ? 2 : 1);
     entries.sort((a, b) => rank(a) - rank(b) || a.label.localeCompare(b.label));
 
+    const { data: rerolls } = await rerollsPromise;
     return {
       ...empty,
       isSignedIn: true,
       daily: entries.filter((e) => e.questType === "daily"),
       weekly: entries.filter((e) => e.questType === "weekly"),
+      dailyRerollsLeft: Math.max(0, REROLLS_PER_PERIOD.daily - (rerolls?.used ?? 0)),
     };
   } catch (error) {
     console.error("[fetchQuestBoard] Échec :", error);
@@ -126,6 +168,7 @@ export interface ClaimQuestResult {
   ok: boolean;
   error?: string;
   tidesGained?: number;
+  xpGained?: number;
   boosterId?: string | null;
   balance?: number;
 }
@@ -149,5 +192,71 @@ export async function claimQuestReward(questId: string, periodKey: string): Prom
   }
   if (!data?.ok) return { ok: false, error: data?.error ?? "Réclamation impossible." };
 
-  return { ok: true, tidesGained: data.tides_gained, boosterId: data.booster_id ?? null, balance: data.balance };
+  return {
+    ok: true,
+    tidesGained: data.tides_gained,
+    xpGained: data.xp_gained,
+    boosterId: data.booster_id ?? null,
+    balance: data.balance,
+  };
+}
+
+export interface RerollQuestResult {
+  ok: boolean;
+  error?: string;
+  /** Remplacements gratuits restants après ce remplacement. */
+  remaining?: number;
+}
+
+/**
+ * Remplace une quête quotidienne non terminée par une autre (Notion §9 :
+ * « prévoir 1 remplacement gratuit par jour »).
+ *
+ * Le TIRAGE de la remplaçante est déterministe (`pickReplacementQuest`) et
+ * fait ici ; la base vérifie le quota, refuse une quête déjà terminée, et
+ * fait l'échange dans une seule transaction — deux clics simultanés ne
+ * peuvent donc pas consommer deux remplacements.
+ */
+export async function rerollQuest(questId: string, periodKey: string): Promise<RerollQuestResult> {
+  const supabase = createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Connecte-toi pour remplacer une quête." };
+
+  const now = new Date();
+  if (periodKey !== questPeriodKey("daily", now)) {
+    return { ok: false, error: "Seules les quêtes du jour peuvent être remplacées." };
+  }
+
+  const service = createSupabaseServiceRoleClient();
+  const { data: rows } = await service
+    .from("player_quest_progress")
+    .select("quest_id")
+    .eq("user_id", user.id)
+    .eq("period_key", periodKey);
+  const { data: quests } = await service.from("quests").select("id, code");
+  const codeById = new Map((quests ?? []).map((q) => [q.id, q.code ?? ""]));
+
+  const currentCodes = (rows ?? []).map((row) => codeById.get(row.quest_id) ?? "").filter(Boolean);
+  const replacedCode = codeById.get(questId);
+  if (!replacedCode) return { ok: false, error: "Quête introuvable." };
+
+  const replacement = pickReplacementQuest(user.id, "daily", periodKey, currentCodes, replacedCode);
+  if (!replacement) return { ok: false, error: "Aucune quête de remplacement disponible." };
+
+  const { data, error } = await service.rpc("reroll_player_quest", {
+    p_user_id: user.id,
+    p_period_key: periodKey,
+    p_quest_id: questId,
+    p_new_quest_code: replacement.code,
+    p_max_rerolls: REROLLS_PER_PERIOD.daily,
+  });
+  if (error) {
+    console.error("[rerollQuest] Remplacement refusé :", error.message);
+    return { ok: false, error: "Remplacement impossible pour le moment." };
+  }
+  if (!data?.ok) return { ok: false, error: data?.error ?? "Remplacement impossible." };
+
+  return { ok: true, remaining: data.remaining };
 }

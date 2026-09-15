@@ -1,5 +1,7 @@
+import { Suspense } from "react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { listPlayerDeckLists } from "@/app/decks/actions";
+import { fetchDeckCatalog } from "@/features/decks/catalogActions";
 import { PartieScreen } from "@/features/match/PartieScreen";
 
 export default async function PartiePage() {
@@ -16,7 +18,14 @@ export default async function PartiePage() {
     isSignedIn = false;
   }
 
-  const personalDecks = isSignedIn ? await listPlayerDeckLists() : [];
+  const [personalDecks, catalog] = await Promise.all([isSignedIn ? listPlayerDeckLists() : [], fetchDeckCatalog()]);
+  const unlockedDeckIds = [...catalog.borrowed, ...catalog.precon].filter((entry) => entry.unlocked).map((entry) => entry.deck.id);
 
-  return <PartieScreen isSignedIn={isSignedIn} personalDecks={personalDecks} />;
+  // `useSearchParams` (essai d'un préconstruit) impose une frontière de
+  // suspense : sans elle, Next rend toute la page en client au build.
+  return (
+    <Suspense>
+      <PartieScreen isSignedIn={isSignedIn} personalDecks={personalDecks} unlockedDeckIds={unlockedDeckIds} />
+    </Suspense>
+  );
 }

@@ -36,6 +36,9 @@ const RULES = [
   { match: /\/token\//, maxSize: 768, quality: 85 },
   { match: /\/cards\/(frames|card-back)\//, maxSize: 1200, quality: 90 },
   { match: /\/cards\/icons\//, maxSize: 512, quality: 90 },
+  // Icônes de catégorie de quête : affichées à ~40 px, jamais plus de 96 px
+  // sur un écran à forte densité. Qualité haute, elles ont des bords nets.
+  { match: /\/quests\//, maxSize: 256, quality: 92 },
   { match: /\/(menu|ships|boosters|collection|decks|board)\//, maxSize: 1600, quality: 85 },
   { match: /.*/, maxSize: 1280, quality: 85 },
 ];

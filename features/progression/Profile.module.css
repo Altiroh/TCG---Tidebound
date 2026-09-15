@@ -1,0 +1,231 @@
+/*
+ * Profil — « route maritime / carnet de marin », pas un battle pass
+ * générique (Notion « Progression joueur » §12, direction visuelle).
+ *
+ * Trois blocs : l'état du bord (niveau, jauge, prochaine récompense), la
+ * route (paliers passés et à venir, comme des escales), et le carnet
+ * (connexions, exploits).
+ */
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: clamp(12px, 1.6vw, 24px);
+  align-items: start;
+}
+
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(8px, 1.2vh, 16px);
+  padding: clamp(14px, 1.8vw, 26px);
+}
+
+.blockWide {
+  composes: block;
+  grid-column: 1 / -1;
+}
+
+/* ── État du bord ───────────────────────────────────────────── */
+.levelHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: clamp(8px, 1.4vw, 20px);
+}
+
+.levelNumber {
+  font-family: var(--font-card-title), Georgia, serif;
+  font-size: clamp(34px, 4.4vw, 60px);
+  font-weight: 700;
+  line-height: 1;
+  color: #f3e7c8;
+}
+
+.levelCaption {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.xpBar {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.xpFill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #58c8d8, #7fd6a4);
+  transition: width 420ms ease-out;
+}
+
+.xpLine {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: clamp(11px, 0.95vw, 13px);
+  color: var(--ink-dim);
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(10px, 1.6vw, 26px);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.statValue {
+  font-family: var(--font-card-title), Georgia, serif;
+  font-size: clamp(16px, 1.6vw, 22px);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.statLabel {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+/* ── La route : escales de paliers ──────────────────────────── */
+.route {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stop {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: clamp(11px, 0.95vw, 13px);
+}
+
+.stop:last-child {
+  border-bottom: none;
+}
+
+.stopLevel {
+  flex: 0 0 auto;
+  min-width: 2.6em;
+  padding: 0.15em 0.5em;
+  border-radius: 999px;
+  background: rgba(88, 200, 216, 0.14);
+  color: #cfe9ee;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.stopLevelDone {
+  composes: stopLevel;
+  background: rgba(127, 214, 164, 0.16);
+  color: #b9e6cd;
+}
+
+.stopLabel {
+  flex: 1 1 auto;
+  color: var(--ink);
+}
+
+/* ── Connexions : sept escales ──────────────────────────────── */
+.cycle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.escale {
+  display: flex;
+  flex: 1 1 88px;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 6px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  text-align: center;
+  font-size: 10.5px;
+  line-height: 1.35;
+  color: var(--ink-dim);
+}
+
+.escaleCurrent {
+  composes: escale;
+  border-color: rgba(88, 200, 216, 0.5);
+  background: rgba(13, 52, 69, 0.45);
+  color: #dceaec;
+}
+
+.escalePassed {
+  composes: escale;
+  opacity: 0.5;
+}
+
+.escaleIndex {
+  font-family: var(--font-card-title), Georgia, serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: inherit;
+}
+
+/* ── Exploits ───────────────────────────────────────────────── */
+.achievements {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.achievement {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 11.5px;
+  color: var(--ink-dim);
+}
+
+.achievementDone {
+  composes: achievement;
+  border-color: rgba(127, 214, 164, 0.4);
+  background: rgba(20, 44, 36, 0.35);
+  color: var(--ink);
+}
+
+.achievementName {
+  font-family: var(--font-card-title), Georgia, serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: inherit;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .blockWide {
+    grid-column: auto;
+  }
+}

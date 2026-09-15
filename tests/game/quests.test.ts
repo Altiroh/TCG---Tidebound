@@ -1,14 +1,21 @@
 import { describe, expect, it } from "vitest";
 import type { GameEvent } from "@/game";
 import {
+  computeMatchQuestContribution,
   computeMatchQuestProgress,
   DAILY_QUEST_COUNT,
+  HIGH_ANCHOR_THRESHOLD,
+  LOW_ANCHOR_THRESHOLD,
   MAX_PVP_ONLY_PER_PERIOD,
+  pickReplacementQuest,
   QUEST_CATALOG,
+  QUEST_CATEGORIES,
+  QUEST_CATEGORY_META,
   QUEST_OBJECTIVE_LABELS,
   questLabel,
   questPeriodEndsAt,
   questPeriodKey,
+  questProgressKind,
   selectQuestsForPeriod,
   WEEKLY_QUEST_COUNT,
 } from "@/game/quests";
@@ -35,13 +42,43 @@ describe("catalogue des quêtes", () => {
     expect(new Set(codes).size).toBe(codes.length);
     for (const quest of QUEST_CATALOG) {
       expect(quest.targetValue).toBeGreaterThan(0);
-      expect(quest.rewardTides).toBeGreaterThan(0);
+      // Une quête donne toujours de l'XP ; les Tides peuvent céder la place
+      // à un booster (cycle hebdomadaire, Notion §10).
+      expect(quest.rewardXp).toBeGreaterThan(0);
+      expect(quest.rewardTides > 0 || Boolean(quest.rewardBoosterId)).toBe(true);
+      expect(quest.name.length).toBeGreaterThan(0);
+      expect(QUEST_CATEGORIES).toContain(quest.category);
       expect(QUEST_OBJECTIVE_LABELS[quest.objectiveKey]).toBeDefined();
     }
   });
 
+  it("couvre les cinq catégories, chacune avec son icône", () => {
+    for (const category of QUEST_CATEGORIES) {
+      expect(QUEST_CATALOG.some((quest) => quest.category === category), category).toBe(true);
+      const meta = QUEST_CATEGORY_META[category];
+      expect(meta.label.length).toBeGreaterThan(0);
+      expect(meta.icon).toMatch(/^\/assets\/quests\/icon-cat-[a-z]+\.webp$/);
+    }
+  });
+
+  it("propose assez de catégories distinctes pour remplir une journée", () => {
+    const dailyCategories = new Set(QUEST_CATALOG.filter((q) => q.questType === "daily").map((q) => q.category));
+    expect(dailyCategories.size).toBeGreaterThanOrEqual(DAILY_QUEST_COUNT);
+  });
+
+  it("récompense chaque quotidienne dans la fourchette 30-50 Tides de la spec", () => {
+    for (const quest of QUEST_CATALOG.filter((q) => q.questType === "daily")) {
+      expect(quest.rewardTides, quest.code).toBeGreaterThanOrEqual(30);
+      expect(quest.rewardTides, quest.code).toBeLessThanOrEqual(50);
+    }
+  });
+
+  it("offre au moins un booster dans le cycle hebdomadaire", () => {
+    expect(QUEST_CATALOG.some((q) => q.questType === "weekly" && q.rewardBoosterId)).toBe(true);
+  });
+
   it("n'autorise jamais le bot à faire progresser un objectif PvP", () => {
-    const pvpObjectives = ["win_pvp_matches", "pvp_ship_damage", "pvp_win_high_anchor"];
+    const pvpObjectives = ["win_pvp_matches", "pvp_ship_damage"];
     for (const quest of QUEST_CATALOG.filter((q) => pvpObjectives.includes(q.objectiveKey))) {
       expect(quest.botProgressAllowed).toBe(false);
     }
@@ -57,6 +94,8 @@ describe("catalogue des quêtes", () => {
   it("produit des libellés lisibles", () => {
     expect(questLabel({ objectiveKey: "play_creatures", targetValue: 6 })).toBe("Jouer 6 Créatures");
     expect(questLabel({ objectiveKey: "play_matches", targetValue: 1 })).toBe("Jouer 1 partie");
+    expect(questLabel({ objectiveKey: "modify_tide", targetValue: 5 })).toBe("Modifier la Marée 5 fois");
+    expect(questLabel({ objectiveKey: "distinct_decks_played", targetValue: 2 })).toBe("Jouer avec 2 decks différents");
   });
 });
 
@@ -96,6 +135,13 @@ describe("attribution des quêtes", () => {
       }
     }
   });
+
+  it("tire les 3 quotidiennes dans 3 catégories DIFFÉRENTES", () => {
+    for (let i = 0; i < 200; i++) {
+      const quests = selectQuestsForPeriod(`user-${i}`, "daily", `d:2026-01-${String((i % 28) + 1).padStart(2, "0")}`);
+      expect(new Set(quests.map((q) => q.category)).size, `user-${i}`).toBe(quests.length);
+    }
+  });
 });
 
 describe("progression d'une partie terminée", () => {
@@ -112,17 +158,22 @@ describe("progression d'une partie terminée", () => {
     expect(progress.play_marins).toBeUndefined();
   });
 
-  it("compte un Objet brisé, mais pas un Objet expiré", () => {
+  it("compte un Objet brisé — et l'agrège avec les Objets joués", () => {
     const broken = instance("thermos-du-dernier-quart", "p1");
     const expired = instance("thermos-du-dernier-quart", "p1", { graveyardCause: "expired" });
     const state = finishedState(
       [
-        { ...base, type: "CARD_MOVED", instanceId: broken.instanceId, fromZone: "board", toZone: "graveyard" },
+        { ...base, type: "PLAY_CARD", playerId: "p1", instanceId: "o1", cardId: "thermos-du-dernier-quart" },
+        { ...base, type: "OBJECT_BROKEN", playerId: "p1", instanceId: broken.instanceId, cardId: "thermos-du-dernier-quart", fromHand: false },
+        // Expiration : un simple départ de zone n'est pas un Bris.
         { ...base, type: "CARD_MOVED", instanceId: expired.instanceId, fromZone: "board", toZone: "graveyard" },
       ],
       { p1Graveyard: [broken, expired] }
     );
-    expect(computeMatchQuestProgress({ state, playerId: "p1", vsBot: false, won: false }).break_objects).toBe(1);
+    const progress = computeMatchQuestProgress({ state, playerId: "p1", vsBot: false, won: false });
+    expect(progress.break_objects).toBe(1);
+    expect(progress.play_objects).toBe(1);
+    expect(progress.play_or_break_objects).toBe(2);
   });
 
   it("compte les Structures sabordées et les entrées dans les Abysses", () => {
@@ -144,9 +195,10 @@ describe("progression d'une partie terminée", () => {
     const events: GameEvent[] = [
       { ...base, type: "ATTACK", playerId: "p1", attackerInstanceId: "u1" },
       { ...base, type: "DAMAGE", targetPlayerId: "p2", amount: 4 },
-      // Dégât de Marée hors attaque : ne compte pas.
+      // Dégât d'environnement, hors action : ne compte pour personne.
+      { ...base, type: "END_TURN", playerId: "p1" },
       { ...base, type: "DAMAGE", targetPlayerId: "p2", amount: 1 },
-      // Attaque sur une unité : ne compte pas.
+      // Attaque sur une unité : ce n'est pas un dégât DIRECT au Navire.
       { ...base, type: "ATTACK", playerId: "p1", attackerInstanceId: "u1", defenderInstanceId: "u9" },
       { ...base, type: "DAMAGE", targetInstanceId: "u9", amount: 3 },
     ];
@@ -154,12 +206,165 @@ describe("progression d'une partie terminée", () => {
     expect(computeMatchQuestProgress({ state: finishedState(events), playerId: "p1", vsBot: true, won: false }).pvp_ship_damage).toBeUndefined();
   });
 
-  it("n'accorde les objectifs de victoire qu'en PvP, et l'objectif d'Ancrage qu'au-dessus du seuil", () => {
-    const high = finishedState([], { p1Anchor: 5 });
-    const low = finishedState([], { p1Anchor: 4 });
-    expect(computeMatchQuestProgress({ state: high, playerId: "p1", vsBot: false, won: true })).toMatchObject({ win_pvp_matches: 1, pvp_win_high_anchor: 1 });
-    expect(computeMatchQuestProgress({ state: low, playerId: "p1", vsBot: false, won: true }).pvp_win_high_anchor).toBeUndefined();
+  it("compte les dégâts TOTAUX infligés à l'adversaire, sans la riposte ni l'environnement", () => {
+    const ennemi = instance("murene-aveugle", "p2");
+    const mien = instance("murene-aveugle", "p1");
+    const state = {
+      ...finishedState([
+        { ...base, type: "ATTACK", playerId: "p1", attackerInstanceId: mien.instanceId, defenderInstanceId: ennemi.instanceId },
+        { ...base, type: "DAMAGE", targetInstanceId: ennemi.instanceId, amount: 3 },
+        // Riposte encaissée par MON unité : ne compte pas.
+        { ...base, type: "DAMAGE", targetInstanceId: mien.instanceId, amount: 2 },
+        { ...base, type: "ATTACK", playerId: "p1", attackerInstanceId: mien.instanceId },
+        { ...base, type: "DAMAGE", targetPlayerId: "p2", amount: 4 },
+        // Marée de début de tour : personne ne l'a provoquée.
+        { ...base, type: "TURN_STARTED", playerId: "p2" },
+        { ...base, type: "DAMAGE", targetPlayerId: "p2", amount: 1 },
+      ]),
+      players: [
+        testPlayer("p1", { board: [mien], anchor: 20 }),
+        testPlayer("p2", { shipId: "lerrant", board: [ennemi] }),
+      ],
+    } as ReturnType<typeof finishedState>;
+    expect(computeMatchQuestProgress({ state, playerId: "p1", vsBot: true, won: false }).deal_damage).toBe(7);
+  });
+
+  it("compte les dégâts SUBIS, quelle qu'en soit l'origine", () => {
+    const mien = instance("murene-aveugle", "p1");
+    const state = {
+      ...finishedState([
+        { ...base, type: "ATTACK", playerId: "p2", attackerInstanceId: "u9", defenderInstanceId: mien.instanceId },
+        { ...base, type: "DAMAGE", targetInstanceId: mien.instanceId, amount: 3 },
+        // Dégât d'environnement sur MON Navire : « Ça encaisse » ne demande pas qui a frappé.
+        { ...base, type: "TURN_STARTED", playerId: "p1" },
+        { ...base, type: "DAMAGE", targetPlayerId: "p1", amount: 2 },
+      ]),
+      players: [testPlayer("p1", { board: [mien], anchor: 20 }), testPlayer("p2", { shipId: "lerrant" })],
+    } as ReturnType<typeof finishedState>;
+    expect(computeMatchQuestProgress({ state, playerId: "p1", vsBot: true, won: false }).take_damage).toBe(5);
+  });
+
+  it("valide les objectifs « dans une même partie » quand le seuil est atteint", () => {
+    const play = (id: string, cardId: string) => ({ ...base, type: "PLAY_CARD" as const, playerId: "p1" as const, instanceId: id, cardId });
+    const enough = finishedState([
+      play("a", "tetard-fesse"),
+      play("b", "tetard-fesse"),
+      play("c", "tetard-fesse"),
+      play("d", "tetard-fesse"),
+      play("e", "tetard-fesse"),
+    ]);
+    const short = finishedState([play("a", "tetard-fesse"), play("b", "tetard-fesse")]);
+    expect(computeMatchQuestProgress({ state: enough, playerId: "p1", vsBot: true, won: false }).creatures_in_match).toBe(1);
+    expect(computeMatchQuestProgress({ state: short, playerId: "p1", vsBot: true, won: false }).creatures_in_match).toBeUndefined();
+  });
+
+  it("distingue montée et descente de Marée, et « les deux sens » dans une même partie", () => {
+    const state = finishedState([
+      { ...base, type: "PLAY_CARD", playerId: "p1", instanceId: "c1", cardId: "levier-de-lest" },
+      { ...base, type: "TIDE_ADVANCED", remainingTurns: 2, tideState: "houle", tideOrientation: "montante", stateChanged: true },
+      { ...base, type: "PLAY_CARD", playerId: "p1", instanceId: "c2", cardId: "levier-de-lest" },
+      { ...base, type: "TIDE_ADVANCED", remainingTurns: 2, tideState: "calme", tideOrientation: "descendante", stateChanged: true },
+    ]);
+    const progress = computeMatchQuestProgress({ state, playerId: "p1", vsBot: true, won: false });
+    expect(progress.tide_rise).toBe(1);
+    expect(progress.tide_fall).toBe(1);
+    expect(progress.modify_tide).toBe(2);
+    expect(progress.tide_both_ways_in_match).toBe(1);
+  });
+
+  it("rapporte le deck joué comme une valeur DISTINCTE, pas comme un compteur", () => {
+    const state = finishedState([]);
+    const played = computeMatchQuestContribution({ state, playerId: "p1", vsBot: true, won: false, deckId: "le-courlis" });
+    expect(played.sets.distinct_decks_played).toEqual(["le-courlis"]);
+    expect(played.sets.distinct_decks_won).toBeUndefined();
+
+    const won = computeMatchQuestContribution({ state, playerId: "p1", vsBot: true, won: true, deckId: "le-courlis" });
+    expect(won.sets.distinct_decks_won).toEqual(["le-courlis"]);
+
+    // Sans deck connu, aucun objectif de deck n'avance — plutôt qu'un crédit à tort.
+    expect(computeMatchQuestContribution({ state, playerId: "p1", vsBot: true, won: true }).sets).toEqual({});
+    expect(questProgressKind("distinct_decks_played")).toBe("set");
+    expect(questProgressKind("play_matches")).toBe("sum");
+  });
+
+  it("« À un fil » demande de terminer bas mais DEBOUT", () => {
+    const alive = finishedState([], { p1Anchor: LOW_ANCHOR_THRESHOLD });
+    const dead = finishedState([], { p1Anchor: 0 });
+    expect(computeMatchQuestProgress({ state: alive, playerId: "p1", vsBot: true, won: false }).finish_low_anchor).toBe(1);
+    expect(computeMatchQuestProgress({ state: dead, playerId: "p1", vsBot: true, won: false }).finish_low_anchor).toBeUndefined();
+  });
+
+  it("ne compte comme « modification de Marée » que ce qu'une carte du joueur provoque", () => {
+    const state = finishedState([
+      // Tick naturel, hors action : ne compte pas.
+      { ...base, type: "TIDE_ADVANCED", remainingTurns: 2, tideState: "houle", tideOrientation: "montante", stateChanged: true },
+      { ...base, type: "PLAY_CARD", playerId: "p1", instanceId: "c1", cardId: "levier-de-lest" },
+      { ...base, type: "TIDE_MODIFIED", change: "duration", value: 3 },
+      { ...base, type: "TIDE_ORIENTATION_CHANGED", orientation: "descendante" },
+      // Carte de l'adversaire : ne compte pas pour p1.
+      { ...base, type: "PLAY_CARD", playerId: "p2", instanceId: "c2", cardId: "levier-de-lest" },
+      { ...base, type: "TIDE_MODIFIED", change: "intensity", value: 2 },
+    ]);
+    expect(computeMatchQuestProgress({ state, playerId: "p1", vsBot: true, won: false }).modify_tide).toBe(2);
+  });
+
+  it("compte les pioches SUPPLÉMENTAIRES, au-delà de celle de début de tour", () => {
+    const state = finishedState([
+      { ...base, type: "TURN_STARTED", playerId: "p1" },
+      { ...base, type: "DRAW_CARD", playerId: "p1", instanceId: "d1" },
+      { ...base, type: "DRAW_CARD", playerId: "p1", instanceId: "d2" },
+      { ...base, type: "TURN_STARTED", playerId: "p1" },
+      { ...base, type: "DRAW_CARD", playerId: "p1", instanceId: "d3" },
+      { ...base, type: "DRAW_CARD", playerId: "p2", instanceId: "d4" },
+    ]);
+    expect(computeMatchQuestProgress({ state, playerId: "p1", vsBot: true, won: false }).draw_extra_cards).toBe(1);
+  });
+
+  it("compte les Créatures à faible coût à part", () => {
+    const state = finishedState([
+      { ...base, type: "PLAY_CARD", playerId: "p1", instanceId: "a", cardId: "tetard-fesse" },
+      { ...base, type: "PLAY_CARD", playerId: "p1", instanceId: "b", cardId: "baleine-aux-cicatrices-blanches" },
+    ]);
+    const progress = computeMatchQuestProgress({ state, playerId: "p1", vsBot: true, won: false });
+    expect(progress.play_creatures).toBe(2);
+    expect(progress.play_low_cost_creatures).toBe(1);
+  });
+
+  it("n'accorde les objectifs de victoire qu'en PvP, et « tenir le pont » au-dessus du seuil d'Ancrage", () => {
+    const high = finishedState([], { p1Anchor: HIGH_ANCHOR_THRESHOLD });
+    const low = finishedState([], { p1Anchor: HIGH_ANCHOR_THRESHOLD - 1 });
+    expect(computeMatchQuestProgress({ state: high, playerId: "p1", vsBot: false, won: true })).toMatchObject({ win_pvp_matches: 1, finish_high_anchor: 1 });
+    expect(computeMatchQuestProgress({ state: low, playerId: "p1", vsBot: false, won: true }).finish_high_anchor).toBeUndefined();
+    // « Tenir le pont » est compatible bot : c'est une action, pas un résultat PvP.
+    expect(computeMatchQuestProgress({ state: high, playerId: "p1", vsBot: true, won: false }).finish_high_anchor).toBe(1);
     expect(computeMatchQuestProgress({ state: high, playerId: "p1", vsBot: true, won: true }).win_pvp_matches).toBeUndefined();
     expect(computeMatchQuestProgress({ state: high, playerId: "p1", vsBot: false, won: false }).win_pvp_matches).toBeUndefined();
+  });
+});
+
+describe("remplacement d'une quête (§9)", () => {
+  it("rend une quête différente, hors des objectifs déjà attribués, de façon déterministe", () => {
+    const current = selectQuestsForPeriod("user-1", "daily", "d:2026-09-15").map((q) => q.code);
+    const replaced = current[0]!;
+    const first = pickReplacementQuest("user-1", "daily", "d:2026-09-15", current, replaced);
+    const again = pickReplacementQuest("user-1", "daily", "d:2026-09-15", current, replaced);
+    expect(first).toBeDefined();
+    expect(first?.code).toBe(again?.code);
+    expect(current).not.toContain(first!.code);
+    const keptObjectives = current.filter((code) => code !== replaced).map((code) => QUEST_CATALOG.find((q) => q.code === code)!.objectiveKey);
+    expect(keptObjectives).not.toContain(first!.objectiveKey);
+  });
+
+  it("ne dépasse jamais le plafond de quêtes PvP en remplaçant", () => {
+    for (let i = 0; i < 100; i++) {
+      const userId = `user-${i}`;
+      const current = selectQuestsForPeriod(userId, "daily", "d:2026-09-15");
+      for (const quest of current) {
+        const replacement = pickReplacementQuest(userId, "daily", "d:2026-09-15", current.map((q) => q.code), quest.code);
+        if (!replacement) continue;
+        const after = [...current.filter((q) => q.code !== quest.code), replacement];
+        expect(after.filter((q) => !q.botProgressAllowed).length).toBeLessThanOrEqual(MAX_PVP_ONLY_PER_PERIOD.daily);
+      }
+    }
   });
 });

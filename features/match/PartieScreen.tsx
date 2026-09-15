@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { PLAYABLE_DECKS, type BotDifficulty, type DeckList, type GameState, type PlayerId } from "@/game";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { catalogDeckById, PLAYABLE_DECKS, PRECON_DECKS, type BotDifficulty, type DeckList, type GameState, type PlayerId } from "@/game";
 import { startBotMatch } from "@/features/bot/actions";
 import { createLocalMatch } from "@/features/match/createLocalMatch";
 import { NewMatchScreen, type MatchOpponent } from "@/features/match/NewMatchScreen";
@@ -14,6 +14,8 @@ interface PartieScreenProps {
   isSignedIn: boolean;
   /** Decks personnels jouables du joueur connecté — vide hors connexion. */
   personalDecks?: DeckList[];
+  /** Decks fournis par le jeu que ce joueur a débloqués (emprunt + préconstruits). */
+  unlockedDeckIds?: string[];
 }
 
 /**
@@ -25,8 +27,9 @@ interface PartieScreenProps {
  *   - Contre un bot hors connexion, ou à deux sur le même écran : partie
  *     locale, entièrement dans le navigateur, qui ne rapporte rien.
  */
-export function PartieScreen({ isSignedIn, personalDecks = [] }: PartieScreenProps) {
+export function PartieScreen({ isSignedIn, personalDecks = [], unlockedDeckIds = [] }: PartieScreenProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [match, setMatch] = useState<GameState | null>(null);
   const [bot, setBot] = useState<{ playerId: PlayerId; difficulty: BotDifficulty } | null>(null);
   const [starting, setStarting] = useState(false);
@@ -93,6 +96,26 @@ export function PartieScreen({ isSignedIn, personalDecks = [] }: PartieScreenPro
     setFallbackNotice(null);
   }
 
+  /**
+   * « Essayer » un préconstruit verrouillé (Notion « Progression joueur »
+   * §4, option UX recommandée) : partie contre le bot, deck entièrement
+   * PRÊTÉ le temps du test, et récompenses nulles — c'est une partie
+   * locale, elle ne passe pas par l'arbitrage serveur. Le joueur voit ce
+   * que le deck fait avant de dépenser son Jeton.
+   */
+  useEffect(() => {
+    const tryDeckId = searchParams.get("essai");
+    if (!tryDeckId || match) return;
+    const deck = catalogDeckById(tryDeckId);
+    if (!deck || !PRECON_DECKS.some((entry) => entry.id === deck.id)) return;
+    setBot({ playerId: "p2", difficulty: "moyen" });
+    setFallbackNotice("Essai d'un préconstruit : deck entièrement prêté, partie d'entraînement sans XP ni quêtes.");
+    setMatch(createLocalMatch(deck, pickTrialOpponent(deck)));
+    // Une seule fois : on retire le paramètre pour qu'un retour arrière ne relance pas l'essai.
+    router.replace("/partie");
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- ne doit réagir qu'à l'arrivée du paramètre.
+  }, [searchParams]);
+
   if (!match) {
     return (
       <NewMatchScreen
@@ -100,6 +123,7 @@ export function PartieScreen({ isSignedIn, personalDecks = [] }: PartieScreenPro
         starting={starting}
         error={error}
         personalDecks={personalDecks}
+        unlockedDeckIds={unlockedDeckIds}
         botNote={
           isSignedIn
             ? "La partie est arbitrée par le serveur : elle rapporte de l'XP et fait avancer tes quêtes."
@@ -124,4 +148,10 @@ export function PartieScreen({ isSignedIn, personalDecks = [] }: PartieScreenPro
       <Board initialState={match} onExit={exitMatch} botPlayerId={bot?.playerId} botDifficulty={bot?.difficulty} />
     </>
   );
+}
+
+/** Adversaire d'un essai : un autre préconstruit, pour que le test soit représentatif. */
+function pickTrialOpponent(deck: DeckList): DeckList {
+  const others = PRECON_DECKS.filter((entry) => entry.id !== deck.id);
+  return others[Math.floor(Math.random() * others.length)] ?? deck;
 }

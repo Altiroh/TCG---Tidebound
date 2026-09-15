@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { QUEST_CATEGORIES, QUEST_CATEGORY_META, type QuestCategory } from "@/game/quests";
 import { GameScreen } from "@/features/shell/GameScreen";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/quests/Quests.module.css";
-import { claimQuestReward, type QuestBoard, type QuestEntry } from "@/features/quests/actions";
+import { claimQuestReward, rerollQuest, type QuestBoard, type QuestEntry } from "@/features/quests/actions";
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
 import { playButtonClick } from "@/lib/sound";
 
@@ -25,19 +26,28 @@ function formatRemaining(endsAtIso: string): string {
 }
 
 /**
- * Quêtes — sur la coquille commune. Une section par période (quotidiennes,
- * hebdomadaires) avec le temps restant ; une ligne par quête : objectif,
- * progression, récompense, état. Aucune progression n'est calculée ici :
- * elle est écrite par le serveur à la fin de chaque partie arbitrée
- * (`features/matches/matchStore.ts`), et la réclamation est une Server
- * Action autoritaire.
+ * Quêtes — sur la coquille commune.
+ *
+ * Organisation par CATÉGORIE (Notion « Catalogue de quêtes — Tidebound ») :
+ * Cartes, Parties, Decks, Stats, Marée. Chaque ligne porte l'icône de sa
+ * famille — c'est ce qui rend la liste lisible avant même d'en lire le
+ * texte — et un filtre permet de ne garder qu'une catégorie.
+ *
+ * Aucune progression n'est calculée ici : elle est écrite par le serveur à
+ * la fin de chaque partie arbitrée (`features/matches/matchStore.ts`), et
+ * la réclamation comme le remplacement sont des Server Actions autoritaires.
  */
 export function QuestsScreen({ board }: QuestsScreenProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [lastGain, setLastGain] = useState<number | null>(null);
+  const [lastGain, setLastGain] = useState<{ tides: number; xp: number } | null>(null);
+  const [filter, setFilter] = useState<QuestCategory | null>(null);
+
+  const all = useMemo(() => [...board.daily, ...board.weekly], [board.daily, board.weekly]);
+  const presentCategories = useMemo(() => QUEST_CATEGORIES.filter((category) => all.some((entry) => entry.category === category)), [all]);
+  const visible = (entries: QuestEntry[]) => (filter ? entries.filter((entry) => entry.category === filter) : entries);
 
   function handleClaim(entry: QuestEntry) {
     playButtonClick();
@@ -52,15 +62,33 @@ export function QuestsScreen({ board }: QuestsScreenProps) {
           setError(result.error ?? "Réclamation impossible.");
           return;
         }
-        setLastGain(result.tidesGained ?? 0);
+        setLastGain({ tides: result.tidesGained ?? 0, xp: result.xpGained ?? 0 });
         notifyProgressionChanged();
         startTransition(() => router.refresh());
       })
       .finally(() => setBusyKey(null));
   }
 
-  const hasQuests = board.daily.length + board.weekly.length > 0;
-  const claimableCount = [...board.daily, ...board.weekly].filter((entry) => entry.completed && !entry.claimed).length;
+  function handleReroll(entry: QuestEntry) {
+    playButtonClick();
+    setError(null);
+    setLastGain(null);
+    const key = `${entry.questId}|${entry.periodKey}`;
+    setBusyKey(key);
+
+    void rerollQuest(entry.questId, entry.periodKey)
+      .then((result) => {
+        if (!result.ok) {
+          setError(result.error ?? "Remplacement impossible.");
+          return;
+        }
+        startTransition(() => router.refresh());
+      })
+      .finally(() => setBusyKey(null));
+  }
+
+  const hasQuests = all.length > 0;
+  const claimableCount = all.filter((entry) => entry.completed && !entry.claimed).length;
 
   return (
     <GameScreen active="quetes">
@@ -81,7 +109,7 @@ export function QuestsScreen({ board }: QuestsScreenProps) {
           {!board.isSignedIn ? (
             <div className={`${game.panel} ${game.empty}`}>
               <p className={game.emptyTitle}>Connecte-toi pour recevoir des quêtes</p>
-              <p className={game.muted}>Tes quêtes avancent à chaque partie en ligne ou contre le bot, et rapportent des Tides.</p>
+              <p className={game.muted}>Tes quêtes avancent à chaque partie en ligne ou contre le bot, et rapportent des Tides et de l&apos;XP.</p>
               <Link href="/connexion" className={game.primary} onClick={() => playButtonClick()} style={{ marginTop: 6 }}>
                 Se connecter
               </Link>
@@ -100,15 +128,62 @@ export function QuestsScreen({ board }: QuestsScreenProps) {
             </div>
           ) : (
             <>
+              {/* Filtres de catégorie. Seules les familles présentes dans les
+                  quêtes du moment sont proposées : un filtre qui ne montre
+                  rien n'apprend rien. */}
+              {presentCategories.length > 1 && (
+                <div className={styles.filters} role="group" aria-label="Catégories de quêtes">
+                  <button
+                    type="button"
+                    className={filter === null ? styles.filterActive : styles.filter}
+                    onClick={() => {
+                      playButtonClick();
+                      setFilter(null);
+                    }}
+                  >
+                    Toutes
+                  </button>
+                  {presentCategories.map((category) => (
+                    <button
+                      key={category}
+                      type="button"
+                      className={filter === category ? styles.filterActive : styles.filter}
+                      title={QUEST_CATEGORY_META[category].description}
+                      onClick={() => {
+                        playButtonClick();
+                        setFilter(filter === category ? null : category);
+                      }}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element -- icône locale, taille fixe */}
+                      <img src={QUEST_CATEGORY_META[category].icon} alt="" aria-hidden className={styles.filterIcon} />
+                      {QUEST_CATEGORY_META[category].label}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               {error && <p className={game.error}>{error}</p>}
-              {lastGain !== null && lastGain > 0 && (
+              {lastGain !== null && (lastGain.tides > 0 || lastGain.xp > 0) && (
                 <p className={`${game.success} ${styles.gain}`} role="status">
-                  +{lastGain} Tides
+                  {[lastGain.tides > 0 ? `+${lastGain.tides} Tides` : "", lastGain.xp > 0 ? `+${lastGain.xp} XP` : ""].filter(Boolean).join(" · ")}
                 </p>
               )}
 
-              <QuestSection title="Quotidiennes" subtitle={formatRemaining(board.dailyEndsAt)} entries={board.daily} busyKey={isPending ? "*" : busyKey} onClaim={handleClaim} />
-              <QuestSection title="Hebdomadaires" subtitle={formatRemaining(board.weeklyEndsAt)} entries={board.weekly} busyKey={isPending ? "*" : busyKey} onClaim={handleClaim} />
+              <QuestSection
+                title="Quotidiennes"
+                subtitle={`${formatRemaining(board.dailyEndsAt)}${board.dailyRerollsLeft > 0 ? ` · ${board.dailyRerollsLeft} remplacement gratuit` : ""}`}
+                entries={visible(board.daily)}
+                busyKey={isPending ? "*" : busyKey}
+                onClaim={handleClaim}
+                onReroll={board.dailyRerollsLeft > 0 ? handleReroll : undefined}
+              />
+              <QuestSection
+                title="Hebdomadaires"
+                subtitle={formatRemaining(board.weeklyEndsAt)}
+                entries={visible(board.weekly)}
+                busyKey={isPending ? "*" : busyKey}
+                onClaim={handleClaim}
+              />
             </>
           )}
         </div>
@@ -124,9 +199,11 @@ interface QuestSectionProps {
   /** Clé `questId|periodKey` en cours de réclamation, `"*"` pendant un rafraîchissement. */
   busyKey: string | null;
   onClaim: (entry: QuestEntry) => void;
+  /** Absent quand le quota de remplacements de la période est épuisé. */
+  onReroll?: (entry: QuestEntry) => void;
 }
 
-function QuestSection({ title, subtitle, entries, busyKey, onClaim }: QuestSectionProps) {
+function QuestSection({ title, subtitle, entries, busyKey, onClaim, onReroll }: QuestSectionProps) {
   if (entries.length === 0) return null;
 
   return (
@@ -142,28 +219,41 @@ function QuestSection({ title, subtitle, entries, busyKey, onClaim }: QuestSecti
           const busy = busyKey === key || busyKey === "*";
           const ratio = Math.min(1, entry.progress / entry.target);
           const claimable = entry.completed && !entry.claimed;
+          const meta = QUEST_CATEGORY_META[entry.category];
 
           return (
             <li key={key} className={`${game.panel} ${styles.row} ${claimable ? styles.rowClaimable : ""} ${entry.claimed ? styles.rowClaimed : ""}`}>
-              <div className={styles.rowMain}>
-                <div className={styles.labelLine}>
-                  <span className={styles.label}>{entry.label}</span>
-                  {!entry.botProgressAllowed && <span className={game.tagViolet}>PvP uniquement</span>}
-                  {entry.fromPreviousPeriod && <span className={game.tag}>Période passée</span>}
-                </div>
-                <div className={styles.progressLine}>
-                  <div className={styles.track} role="progressbar" aria-valuemin={0} aria-valuemax={entry.target} aria-valuenow={entry.progress} aria-label={entry.label}>
-                    <div className={`${styles.fill} ${entry.completed ? styles.fillDone : ""}`} style={{ width: `${ratio * 100}%` }} />
+              <div className={styles.rowLead}>
+                <span className={styles.categoryMark} title={meta.label}>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- icône locale, taille fixe */}
+                  <img src={meta.icon} alt="" aria-hidden draggable={false} className={styles.categoryIcon} />
+                </span>
+
+                <div className={styles.rowMain}>
+                  <div className={styles.labelLine}>
+                    <span className={styles.label}>{entry.name || entry.label}</span>
+                    <span className={styles.categoryName}>{meta.label}</span>
+                    {!entry.botProgressAllowed && <span className={game.tagViolet}>PvP uniquement</span>}
+                    {entry.fromPreviousPeriod && <span className={game.tag}>Période passée</span>}
                   </div>
-                  <span className={styles.count}>
-                    {Math.min(entry.progress, entry.target)} / {entry.target}
-                  </span>
+                  {/* Le nom occupe la ligne du haut : l'objectif chiffré passe
+                      juste en dessous, là où le joueur lit sa progression. */}
+                  <span className={game.muted}>{entry.label}</span>
+                  <div className={styles.progressLine}>
+                    <div className={styles.track} role="progressbar" aria-valuemin={0} aria-valuemax={entry.target} aria-valuenow={entry.progress} aria-label={entry.label}>
+                      <div className={`${styles.fill} ${entry.completed ? styles.fillDone : ""}`} style={{ width: `${ratio * 100}%` }} />
+                    </div>
+                    <span className={styles.count}>
+                      {Math.min(entry.progress, entry.target)} / {entry.target}
+                    </span>
+                  </div>
                 </div>
               </div>
 
               <span className={styles.reward}>
-                {entry.rewardTides}
-                <span className={styles.rewardUnit}>Tides</span>
+                {entry.rewardBoosterId ? "1" : entry.rewardTides}
+                <span className={styles.rewardUnit}>{entry.rewardBoosterId ? "booster" : "Tides"}</span>
+                {entry.rewardXp > 0 && <span className={styles.rewardXp}>+{entry.rewardXp} XP</span>}
               </span>
 
               <div className={styles.action}>
@@ -174,7 +264,17 @@ function QuestSection({ title, subtitle, entries, busyKey, onClaim }: QuestSecti
                     {busyKey === key ? "…" : "Réclamer"}
                   </button>
                 ) : (
-                  <span className={game.tagCyan}>En cours</span>
+                  <>
+                    <span className={game.tagCyan}>En cours</span>
+                    {/* Remplacement gratuit : réservé aux quêtes du jour non
+                        terminées — remplacer une quête finie reviendrait à
+                        rejouer sa récompense. */}
+                    {onReroll && !entry.fromPreviousPeriod && (
+                      <button type="button" className={styles.reroll} onClick={() => onReroll(entry)} disabled={busy} title="Remplacer cette quête">
+                        Remplacer
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             </li>

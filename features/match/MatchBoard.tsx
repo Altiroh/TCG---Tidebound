@@ -51,6 +51,15 @@ interface MatchBoardProps {
   /** Si défini, ce joueur est joué automatiquement par le bot (`runBotTurn`) plutôt qu'en hot-seat. */
   botPlayerId?: PlayerId;
   botDifficulty?: BotDifficulty;
+  /**
+   * Notifié à chaque nouvel état de partie. Sert au compagnon du tutoriel
+   * (`features/tutorial/`), qui doit lire l'état RÉEL pour valider ses
+   * étapes sans jamais piloter le moteur. Absent partout ailleurs : le
+   * plateau reste maître de son état.
+   */
+  onStateChange?: (state: GameState) => void;
+  /** Masque l'écran de fin de partie : le tutoriel a le sien. */
+  hideEndScreen?: boolean;
 }
 
 type Pending =
@@ -76,11 +85,16 @@ function isUnitType(type: string): boolean {
  * de l'écran suit le joueur actif (on se passe l'appareil). Contre un bot,
  * le joueur humain reste TOUJOURS en bas, même pendant le tour du bot.
  */
-export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }: MatchBoardProps) {
+export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty, onStateChange, hideEndScreen = false }: MatchBoardProps) {
   const [liveState, setState] = useState<GameState>(initialState);
   // `state` = état AFFICHÉ (retenu avant le choc pendant une attaque, cf. `useAttackPresentation`) ; toute
   // action se valide et s'applique sur `liveState`, l'état de jeu réel.
   const { displayState: state, attacks } = useAttackPresentation(liveState);
+  // Observateur externe (tutoriel) : notifié de l'état RÉEL, pas de l'état
+  // affiché — une étape ne doit pas attendre la fin d'une animation.
+  useEffect(() => {
+    onStateChange?.(liveState);
+  }, [liveState, onStateChange]);
   const [pending, setPending] = useState<Pending | null>(null);
   const [error, setError] = useState<string | null>(null);
   /** Carte de main en cours de glisser : l'avertissement de Déraison s'affiche pendant tout le glisser. */
@@ -346,7 +360,7 @@ export function MatchBoard({ initialState, onExit, botPlayerId, botDifficulty }:
     if (from === "board") runAction({ type: "saborder", playerId: activePlayerId, instanceId });
   }
 
-  if (state.status === "finished") {
+  if (state.status === "finished" && !hideEndScreen) {
     // Contre un bot, l'écran appartient au joueur humain ; en hot-seat, c'est celui du vainqueur.
     const subjectId = humanPlayerId ?? state.winnerId;
     const isDefeat = Boolean(humanPlayerId && state.winnerId && state.winnerId !== humanPlayerId);

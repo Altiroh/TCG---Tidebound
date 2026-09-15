@@ -506,33 +506,117 @@ navigateur, et elles ne rapportent jamais rien.
 
 ## Quêtes
 
-Cadrage : Notion "Boosters & économie de collection". Logique pure et testée
-dans `game/quests/` (`tests/game/quests.test.ts`) :
+Cadrage : Notion "Catalogue de quêtes — Tidebound" et "Progression joueur"
+§9-10. Logique pure et testée dans `game/quests/`
+(`tests/game/quests.test.ts`) :
 
+- **Cinq catégories** — Cartes, Parties, Decks, Stats, Marée
+  (`QuestCategory`), chacune avec son icône
+  (`public/assets/quests/icon-cat-*.webp`). Elles structurent l'écran et
+  pilotent le tirage : **les 3 quotidiennes viennent de 3 catégories
+  différentes** (« pour éviter les journées répétitives »), avec une seconde
+  passe de repli si le catalogue ne le permet pas.
 - **Catalogue et calibrage** (`game/quests/catalog.ts`) : 3 quêtes
   quotidiennes et 3 hebdomadaires par joueur, au plus une quête PvP-only par
   période (un joueur solo ne reçoit jamais plusieurs quêtes qu'il ne peut pas
-  faire avancer). Récompenses proposées : 25 Tides par quotidienne, 120 par
-  hebdomadaire, soit un booster tous les ~2,1 jours pour un joueur régulier
-  (calcul détaillé en tête du fichier) — valeurs à retester, comme le reste du
-  calibrage économique.
+  faire avancer). Chaque quête rapporte **XP et Tides** ; 30 à 50 Tides par
+  quotidienne, soit 90 à 150 pour la journée — presque exactement un booster
+  (150 Tides). Au moins une hebdomadaire donne un booster.
+- **Trois formes d'objectif** : CUMUL (« Jouer 15 Créatures »), SEUIL PAR
+  PARTIE (« Jouer 5 Créatures dans une même partie » — la partie rapporte 1
+  quand le seuil tombe) et ENSEMBLE (« Jouer avec 2 decks différents »,
+  `progress_kind = 'set'`, dont les valeurs distinctes sont mémorisées dans
+  `player_quest_progress.progress_meta` et fusionnées en SQL pour que deux
+  parties simultanées n'en perdent aucune).
 - **Attribution** (`selectQuestsForPeriod`) : déterministe par joueur et par
   période UTC (`d:AAAA-MM-JJ`, `w:<lundi>`), donc idempotente sous accès
   concurrents. `assign_player_quests()` n'écrit que si la période n'a encore
   aucune quête de ce type.
-- **Progression** (`computeMatchQuestProgress`) : calculée par le serveur
-  depuis le journal d'événements de l'état final — cartes jouées par type,
-  Objets brisés, Structures sabordées, entrées dans les Abysses, victoires et
-  dégâts directs PvP. `record_match_quest_progress()` l'applique une seule
-  fois par partie (`match_quest_progress`) et respecte `bot_progress_allowed`
-  quête par quête.
+- **Remplacement gratuit** : une quête quotidienne non terminée par jour
+  (`pickReplacementQuest`, déterministe lui aussi ; quota tenu par
+  `player_quest_rerolls` et consommé dans la même transaction que l'échange).
+  Une quête TERMINÉE n'est jamais remplaçable — ce serait rejouer sa
+  récompense.
+- **Progression** (`computeMatchQuestContribution`) : calculée par le serveur
+  depuis le journal d'événements de l'état final. Les objectifs dont le
+  moteur n'attribue pas la cause (`DAMAGE` n'a pas de source, `TIDE_ADVANCED`
+  non plus) sont crédités via un ACTEUR COURANT — le joueur dont l'action est
+  en cours de résolution, remis à zéro à chaque changement de tour. Ce qui
+  vient de l'environnement n'est donc crédité à personne, ce qui est voulu.
+  `record_match_quest_progress()` applique le tout une seule fois par partie
+  (`match_quest_progress`) et respecte `bot_progress_allowed` quête par quête.
 - **Réclamation** : écran `/quetes` (onglet « Quêtes » du bandeau) ;
-  `claim_quest_reward()` relit le montant en base et empêche d'encaisser deux
-  fois. Une quête terminée reste réclamable après la fin de sa période.
+  `claim_quest_reward()` relit montant ET XP en base et empêche d'encaisser
+  deux fois. Une quête terminée reste réclamable après la fin de sa période.
 
 La table `quests` est un miroir du catalogue TypeScript, synchronisé par
 `npm run seed:cards` (une quête retirée du catalogue est désactivée, pas
 supprimée).
+
+## Onboarding, paliers et méta-jeu
+
+Cadrage : Notion "Progression joueur — Tutoriel, XP, Quêtes &
+Préconstruits". Tout ce qui suit est PUR et testé
+(`tests/game/progression.test.ts`, `tests/game/metaCatalog.test.ts`) ; les
+écritures passent par les fonctions Postgres de
+`supabase/migrations/..._player_progression_meta.sql`, dont
+l'anti-double-claim repose sur des CLÉS PRIMAIRES, jamais sur une
+vérification applicative.
+
+**Économie** (`game/economy/`) — **150 Tides = 1 booster Standard**, valeur
+verrouillée dont tout le reste dérive (`TIDE_REWARD`). Un compte neuf reçoit
+150 Tides et **aucun booster** : celui-ci récompense désormais le tutoriel.
+
+**Tutoriel** (`/tutoriel`, `game/tutorial/`) — proposé à la première
+connexion, avec un vrai choix : le faire (1 booster) ou le passer (rien).
+C'est une PARTIE guidée contre le bot, pas un diaporama : sept étapes
+(`TUTORIAL_STEPS`), chacune un prédicat pur sur l'état réel, qui se valident
+quand le joueur fait le geste. Le booster n'est jamais accordé côté client —
+`finish_tutorial()` décide, et ne crédite qu'une fois. Dans les deux cas, le
+joueur est conduit à la Collection.
+
+**Deck d'emprunt** (§3) — premier deck jouable, gratuit, choisi une seule
+fois depuis la Collection. Aucune carte n'est créditée : `deckOwnership()`
+répartit les exemplaires entre POSSÉDÉS et PRÊTÉS, à l'exemplaire et non à
+la carte distincte, pour que le compteur bouge à chaque booster. Le premier
+deck n'est volontairement PAS un déblocage de niveau 1.
+
+**Préconstruits et Jetons** (§4) — `player_progression.precon_tokens`, gagnés
+aux niveaux 10/20/30/40/50. Le jeton n'impose aucun deck : l'écran Decks a
+trois rayons (Mes decks / Decks d'emprunt / Préconstruits), les préconstruits
+verrouillés restent consultables (style, difficulté, mécaniques, courbe,
+liste complète, possédé/prêté) et un bouton **Essayer** lance une partie
+locale avec le deck entièrement prêté, sans récompense.
+
+**Paliers 1-50** (`game/progression/levelRewards.ts`) — une récompense à
+chaque niveau, sans trou, typée (`LevelRewardItem`) pour être exécutable :
+Tides, boosters, carte au choix parmi 3, Jeton de Préconstruit, cosmétiques.
+Un gros palier au moins tous les 5 niveaux, un Jeton tous les 10 — vérifié
+par des tests plutôt que par relecture. `player_level_rewards (user_id,
+level)` empêche qu'un palier soit crédité deux fois, même si `level_before`
+était périmé.
+
+**XP de partie** (§7) — 25 XP pour une partie terminée, +25 en cas de
+victoire, +75 XP et 25 Tides à la première victoire du jour, +50 XP à la
+3ᵉ partie de la journée. Protection anti-AFK : une partie sans activité
+significative (`MEANINGFUL_ACTIVITY`, lue sur le journal par
+`matchActivity()`) ne donne ni Tides, ni bonus, et ne compte pas dans les
+3 parties du jour.
+
+**Connexions** (§8) — cycle de 7 escales **non punitif** : l'état persisté
+est une ÉTAPE, pas un streak. Rien, dans le schéma, ne permet de la faire
+reculer — une absence de trois semaines laisse le joueur exactement où il
+s'était arrêté. Une réclamation par jour UTC.
+
+**Exploits** (§10) — permanents, non renouvelables, et ÉVALUÉS depuis les
+compteurs persistés plutôt que déclenchés par un événement
+(`game/achievements/`). Conséquence voulue : un exploit ajouté plus tard se
+débloque tout seul pour les comptes qui remplissent déjà sa condition, et
+une synchronisation manquée se rattrape à la suivante.
+
+**Profil** (`/profil`) — niveau, jauge, XP restante, récompense du prochain
+niveau, prochaines escales, paliers déjà franchis, cycle de connexion et
+exploits, sur une direction « carnet de marin ».
 
 ## Progression & boosters
 

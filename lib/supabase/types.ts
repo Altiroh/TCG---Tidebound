@@ -95,6 +95,14 @@ export interface Database {
         Row: {
           id: string;
           code: string | null;
+          /** Nom joueur de la quête (« Prendre le large ») — miroir de `QuestDefinition.name`. */
+          name: string | null;
+          /** Catégorie d'interface : cartes | parties | decks | stats | maree. */
+          category: string | null;
+          /** `sum` (cumul) ou `set` (valeurs distinctes). */
+          progress_kind: "sum" | "set";
+          /** XP accordée à la réclamation, en plus des Tides. */
+          reward_xp: number;
           quest_type: "daily" | "weekly";
           objective_key: string;
           target_value: number;
@@ -321,7 +329,129 @@ export interface Database {
           pvp_wins: number;
           /** Jour UTC (`YYYY-MM-DD`) de la dernière victoire PvP, ou `null`. */
           last_pvp_win_day: string | null;
+          /** Jour UTC de la dernière victoire TOUS MODES — porte le bonus de première victoire du jour. */
+          last_win_day: string | null;
+          /** Journée UTC à laquelle `daily_matches_count` se rapporte. */
+          daily_matches_day: string | null;
+          /** Parties terminées ce jour-là — bonus « 3 parties dans la journée ». */
+          daily_matches_count: number;
+          /** Jetons de Préconstruit disponibles (Notion « Progression joueur » §4). */
+          precon_tokens: number;
           updated_at: string;
+        };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      /** Paliers de niveau déjà octroyés — la clé primaire est l'anti-double-claim. */
+      player_level_rewards: {
+        Row: {
+          user_id: string;
+          level: number;
+          granted: unknown;
+          granted_at: string;
+        };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      player_cosmetics: {
+        Row: {
+          user_id: string;
+          cosmetic_kind: string;
+          cosmetic_id: string;
+          label: string;
+          equipped: boolean;
+          unlocked_at: string;
+        };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      /** Choix « carte au choix parmi N » ouverts par un palier, propositions figées. */
+      player_card_choices: {
+        Row: {
+          id: string;
+          user_id: string;
+          source: string;
+          source_ref: string;
+          rarity: CardRarityEnum;
+          offered_card_ids: string[];
+          chosen_card_id: string | null;
+          created_at: string;
+          resolved_at: string | null;
+        };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      /** Cycle de connexion — une ÉTAPE, jamais un streak à réinitialiser. */
+      player_login_rewards: {
+        Row: {
+          user_id: string;
+          step: number;
+          last_claimed_day: string | null;
+          total_claims: number;
+          updated_at: string;
+        };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      player_achievements: {
+        Row: {
+          user_id: string;
+          code: string;
+          tides_granted: number;
+          unlocked_at: string;
+        };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      /** Decks fournis par le jeu débloqués : deck d'emprunt (un seul) ou préconstruits à Jeton. */
+      player_deck_unlocks: {
+        Row: {
+          user_id: string;
+          deck_id: string;
+          source: "borrowed" | "precon_token";
+          unlocked_at: string;
+        };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      player_quest_rerolls: {
+        Row: {
+          user_id: string;
+          period_key: string;
+          used: number;
+          updated_at: string;
+        };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      player_onboarding: {
+        Row: {
+          user_id: string;
+          tutorial_status: "not_started" | "completed" | "skipped";
+          tutorial_reward_claimed: boolean;
+          starter_standard_booster_claimed: boolean;
+          starter_currency_granted: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      booster_openings: {
+        Row: {
+          id: string;
+          user_id: string;
+          booster_definition_id: string;
+          opened_at: string;
         };
         Insert: Record<string, never>;
         Update: Record<string, never>;
@@ -364,9 +494,13 @@ export interface Database {
           p_level_before: number;
           p_first_win_of_day: boolean;
           p_is_pvp_win: boolean;
-          p_boosters: string[];
+          p_is_win: boolean;
+          /** `false` pour une partie abandonnée : elle ne compte pas dans les 3 parties du jour. */
+          p_counts_for_daily: boolean;
+          /** `[{ level, items: LevelRewardItem[] }]` — chaque palier n'est appliqué qu'une fois. */
+          p_level_rewards: unknown;
         };
-        Returns: { granted: boolean; xp_total: number; level: number };
+        Returns: { granted: boolean; xp_total: number; level: number; precon_tokens_gained?: number };
       };
       purchase_booster: {
         Args: { p_user_id: string; p_booster_id: string; p_quantity?: number };
@@ -429,12 +563,58 @@ export interface Database {
           p_vs_bot: boolean;
           p_period_keys: string[];
           p_progress: Record<string, number>;
+          /** Valeurs DISTINCTES apportées par la partie (objectifs `set`). */
+          p_sets?: Record<string, string[]>;
         };
         Returns: { ok: boolean; recorded: boolean; completed: number };
       };
       claim_quest_reward: {
         Args: { p_user_id: string; p_quest_id: string; p_period_key: string };
-        Returns: { ok: boolean; error?: string; tides_gained?: number; booster_id?: string | null; balance?: number };
+        Returns: { ok: boolean; error?: string; tides_gained?: number; xp_gained?: number; booster_id?: string | null; balance?: number };
+      };
+      /** Remplacement gratuit d'une quête non terminée, dans la limite du quota de la période. */
+      reroll_player_quest: {
+        Args: { p_user_id: string; p_period_key: string; p_quest_id: string; p_new_quest_code: string; p_max_rerolls: number };
+        Returns: { ok: boolean; error?: string; quest_id?: string; remaining?: number };
+      };
+      /** Tutoriel terminé (booster crédité une seule fois) ou passé (rien). */
+      finish_tutorial: {
+        Args: { p_user_id: string; p_completed: boolean; p_booster_id?: string };
+        Returns: { ok: boolean; booster_granted: boolean; status: "completed" | "skipped" };
+      };
+      /** Une réclamation par jour UTC ; l'étape avance, elle ne repart jamais de zéro. */
+      claim_login_reward: {
+        Args: {
+          p_user_id: string;
+          p_step: number;
+          p_next_step: number;
+          p_tides: number;
+          p_xp: number;
+          p_booster_id?: string | null;
+          p_card_id?: string | null;
+        };
+        Returns: { ok: boolean; error?: string; step?: number; tides?: number; xp?: number };
+      };
+      claim_borrowed_deck: {
+        Args: { p_user_id: string; p_deck_id: string };
+        Returns: { ok: boolean; error?: string; deck_id?: string };
+      };
+      unlock_precon_deck: {
+        Args: { p_user_id: string; p_deck_id: string };
+        Returns: { ok: boolean; error?: string; deck_id?: string; tokens?: number };
+      };
+      /** Exploits : `[{ code, tides }]`, filtré par l'appelant ; la clé primaire évite tout doublon. */
+      grant_achievements: {
+        Args: { p_user_id: string; p_achievements: unknown };
+        Returns: { ok: boolean; granted: string[]; tides: number };
+      };
+      open_card_choice: {
+        Args: { p_user_id: string; p_source: string; p_source_ref: string; p_rarity: CardRarityEnum; p_card_ids: string[] };
+        Returns: { ok: boolean; opened: boolean; choice_id?: string | null };
+      };
+      resolve_card_choice: {
+        Args: { p_user_id: string; p_choice_id: string; p_card_id: string };
+        Returns: { ok: boolean; error?: string; card_id?: string };
       };
     };
     Enums: {

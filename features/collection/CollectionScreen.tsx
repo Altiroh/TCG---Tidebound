@@ -5,7 +5,9 @@ import type { CardDefinition } from "@/game";
 import { CardGrid } from "@/features/collection/CardGrid";
 import { CollectionSidebar } from "@/features/collection/CollectionSidebar";
 import { CollectionToolbar } from "@/features/collection/CollectionToolbar";
+import { BorrowedDeckPrompt } from "@/features/collection/BorrowedDeckPrompt";
 import { CardDetailModal } from "@/features/collection/card-detail/CardDetailModal";
+import type { DeckCatalogView } from "@/features/decks/catalogService";
 import { useCardBrowser } from "@/features/collection/useCardBrowser";
 import { GameScreen } from "@/features/shell/GameScreen";
 import { SearchLine } from "@/features/shell/SearchLine";
@@ -14,6 +16,14 @@ import game from "@/features/shell/GameScreen.module.css";
 
 interface CollectionScreenProps {
   isSignedIn: boolean;
+  /**
+   * Decks fournis par le jeu + possession. Sert à l'invite de PREMIER DECK :
+   * après le tutoriel, le joueur est conduit ici pour emprunter son premier
+   * équipage (Notion « Progression joueur » §2, étape 5).
+   */
+  catalog?: DeckCatalogView;
+  /** `true` tant que le joueur n'a pas choisi son deck d'emprunt. */
+  needsBorrowedDeck?: boolean;
   /** Cartes possédées (`player_cards.card_id`, quantité > 0). Ignoré si `isSignedIn` est `false`. */
   ownedCardIds: string[];
   /** Exemplaires possédés par carte — affichés en pastille sous chaque carte possédée. */
@@ -38,7 +48,7 @@ interface CollectionScreenProps {
  * « Manquantes ». Un visiteur non connecté n'a pas de possession connue :
  * il feuillette sans estompage ni section « Statut de collection ».
  */
-export function CollectionScreen({ isSignedIn, ownedCardIds, ownedCounts }: CollectionScreenProps) {
+export function CollectionScreen({ isSignedIn, ownedCardIds, ownedCounts, catalog, needsBorrowedDeck = false }: CollectionScreenProps) {
   const owned = useMemo(() => (isSignedIn ? new Set(ownedCardIds) : null), [isSignedIn, ownedCardIds]);
   const browser = useCardBrowser({ owned });
   const [detailCardId, setDetailCardId] = useState<string | null>(null);
@@ -114,6 +124,8 @@ export function CollectionScreen({ isSignedIn, ownedCardIds, ownedCounts }: Coll
           />
         </main>
       </div>
+
+      {needsBorrowedDeck && catalog && <BorrowedDeckPrompt catalog={catalog} />}
 
       {detailCardId && (
         <CardDetailModal

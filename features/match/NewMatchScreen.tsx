@@ -2,10 +2,8 @@
 
 import { useMemo, useState } from "react";
 import {
-  ARCHETYPE_DECKS,
-  CRA_POISCAIL_TEST_DECKS,
-  PLAYABLE_DECKS,
-  PRECONSTRUCTED_DECKS,
+  BORROWED_DECKS,
+  PRECON_DECKS,
   RULES,
   validateDeckList,
   type BotDifficulty,
@@ -28,6 +26,13 @@ interface NewMatchScreenProps {
   botNote?: string;
   /** Decks personnels du joueur connecté (`listPlayerDeckLists`) — vide hors connexion. */
   personalDecks?: readonly DeckList[];
+  /**
+   * Decks FOURNIS par le jeu que ce joueur a débloqués : son deck
+   * d'emprunt et ses préconstruits payés en Jetons. Les autres restent
+   * affichés, éteints, avec la raison — un rayon vide n'apprendrait rien
+   * (Notion « Progression joueur » §4).
+   */
+  unlockedDeckIds?: readonly string[];
 }
 
 /**
@@ -36,11 +41,16 @@ interface NewMatchScreenProps {
  * l'affichage, pour que deux parties d'affilée donnent bien deux
  * adversaires différents.
  *
+ * Tiré parmi TOUS les decks fournis, y compris ceux que le joueur n'a pas
+ * débloqués : l'adversaire n'est pas limité par la collection du joueur.
+ *
  * `Math.random` est ici un choix d'INTERFACE, pas un aléa de moteur : il
  * ne touche pas `GameState.rngState`, qui doit rester déterministe.
  */
+const BOT_DECK_POOL: readonly DeckList[] = [...BORROWED_DECKS, ...PRECON_DECKS];
+
 function pickRandomDeck(): DeckList {
-  return PLAYABLE_DECKS[Math.floor(Math.random() * PLAYABLE_DECKS.length)]!;
+  return BOT_DECK_POOL[Math.floor(Math.random() * BOT_DECK_POOL.length)]!;
 }
 
 const BOT_DIFFICULTIES: { id: BotDifficulty; label: string; description: string }[] = [
@@ -57,6 +67,8 @@ interface DeckGroup {
   title: string;
   hint?: string;
   decks: readonly DeckList[];
+  /** Raison affichée sur un deck non débloqué — la tuile reste visible, éteinte. */
+  lockedReason?: (deck: DeckList) => string | null;
 }
 
 /**
@@ -69,7 +81,7 @@ interface DeckGroup {
  * visibles, éteints, avec la raison. Contre le bot, l'adversaire est tiré
  * au sort au lancement parmi les listes du jeu.
  */
-export function NewMatchScreen({ onStart, starting = false, error = null, botNote, personalDecks = [] }: NewMatchScreenProps) {
+export function NewMatchScreen({ onStart, starting = false, error = null, botNote, personalDecks = [], unlockedDeckIds = [] }: NewMatchScreenProps) {
   const [step, setStep] = useState<Step>(1);
   const [mode, setMode] = useState<Mode>("bot");
   const [botDifficulty, setBotDifficulty] = useState<BotDifficulty>("moyen");
@@ -85,14 +97,26 @@ export function NewMatchScreen({ onStart, starting = false, error = null, botNot
     return map;
   }, [personalDecks]);
 
+  const unlocked = useMemo(() => new Set(unlockedDeckIds), [unlockedDeckIds]);
+
   const groups: DeckGroup[] = useMemo(() => {
     const list: DeckGroup[] = [];
-    if (personalDecks.length > 0) list.push({ title: "Mes decks", hint: `${RULES.DECK_SIZE_MIN} à ${RULES.DECK_SIZE_MAX} cartes pour être jouable`, decks: personalDecks });
-    list.push({ title: "Decks de base", hint: "Un par Navire", decks: PRECONSTRUCTED_DECKS });
-    list.push({ title: "Archétypes", decks: ARCHETYPE_DECKS });
-    list.push({ title: "Cra-Poiscail", hint: "Listes à tester", decks: CRA_POISCAIL_TEST_DECKS });
+    if (personalDecks.length > 0) {
+      list.push({ title: "Mes decks", hint: `${RULES.DECK_SIZE_MIN} à ${RULES.DECK_SIZE_MAX} cartes pour être jouable`, decks: personalDecks });
+    }
+    // Deck d'emprunt : celui que le joueur a choisi, et lui seul. Les deux
+    // autres ne sont pas « verrouillés », ils ne sont simplement pas les siens.
+    const borrowed = BORROWED_DECKS.filter((deck) => unlocked.has(deck.id));
+    if (borrowed.length > 0) list.push({ title: "Mon deck d'emprunt", hint: "Cartes prêtées tant que tu ne les possèdes pas", decks: borrowed });
+
+    list.push({
+      title: "Préconstruits",
+      hint: "Débloqués avec un Jeton de Préconstruit",
+      decks: PRECON_DECKS,
+      lockedReason: (deck) => (unlocked.has(deck.id) ? null : "Verrouillé — débloque-le dans Decks → Préconstruits (1 Jeton)."),
+    });
     return list;
-  }, [personalDecks]);
+  }, [personalDecks, unlocked]);
 
   const current = step === 3 ? deck2 : deck1;
   const setCurrent = step === 3 ? setDeck2 : setDeck1;
@@ -245,7 +269,7 @@ export function NewMatchScreen({ onStart, starting = false, error = null, botNot
                   </div>
                   <div className={styles.decks} role="listbox" aria-label={group.title}>
                     {group.decks.map((deck) => {
-                      const issue = personalValidity.get(deck.id) ?? null;
+                      const issue = personalValidity.get(deck.id) ?? group.lockedReason?.(deck) ?? null;
                       const selected = current?.id === deck.id;
                       const className = issue ? game.tileDisabled : selected ? game.tileActive : game.tile;
                       return (

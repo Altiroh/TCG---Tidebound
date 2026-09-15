@@ -23,6 +23,7 @@ export type GameEventType =
   | "TURN_STARTED"
   | "END_TURN"
   | "TIDE_ADVANCED"
+  | "TIDE_MODIFIED"
   | "TIDE_ORIENTATION_CHANGED"
   | "SABORDED"
   | "OBJECT_BROKEN"
@@ -152,6 +153,25 @@ export interface TideAdvancedEvent extends BaseGameEvent {
   /** Sens de la prochaine transition après ce tick (cadrage 2026-09-10). */
   tideOrientation: "montante" | "descendante";
   stateChanged: boolean;
+}
+
+/**
+ * Un effet de carte a manipulé la Marée SANS la faire changer d'état :
+ * durée raccourcie/prolongée, Intensité fixée ou modifiée, modificateur
+ * « maintenez cet état » / « doublez les prochains dégâts » posé.
+ *
+ * Ces effets ne modifiaient rien d'observable dans le journal, alors qu'ils
+ * sont bel et bien des manipulations de Marée : sans cet événement, la
+ * quête « Modifier la Marée N fois » (Notion Progression §9) ne pourrait
+ * les compter, et le joueur ne verrait jamais dans le journal ce que sa
+ * carte vient de faire.
+ */
+export interface TideModifiedEvent extends BaseGameEvent {
+  type: "TIDE_MODIFIED";
+  /** Quelle facette de la Marée a bougé. */
+  change: "duration" | "intensity" | "maintain" | "amplify";
+  /** Valeur résultante (tours restants, Intensité) ou nombre de déclenchements posés. */
+  value: number;
 }
 
 /** Un effet de carte a inversé l'orientation de la Marée (hors tick naturel de début/fin de tour). */
@@ -284,6 +304,7 @@ export type GameEvent =
   | GameStartedEvent
   | GameEndedEvent
   | TideAdvancedEvent
+  | TideModifiedEvent
   | TideOrientationChangedEvent
   | SabordedEvent
   | ObjectBrokenEvent

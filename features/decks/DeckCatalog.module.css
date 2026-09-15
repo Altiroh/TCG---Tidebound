@@ -1,0 +1,299 @@
+/*
+ * Rayon des decks fournis par le jeu — decks d'emprunt et préconstruits
+ * (Notion « Progression joueur » §3 et §4).
+ *
+ * Même grammaire que « Mes decks » : des tuiles dont l'identité est le
+ * Navire. Ce qui change, c'est ce qu'on lit dessus — un préconstruit
+ * verrouillé doit rester consultable et donner envie, pas être grisé sans
+ * information.
+ */
+
+.categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.category {
+  padding: 0.5em 1.1em;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-dim);
+  font: inherit;
+  font-size: clamp(12px, 1vw, 14px);
+  cursor: pointer;
+  transition: background 160ms ease-out, color 160ms ease-out, border-color 160ms ease-out;
+}
+
+.category:hover {
+  border-color: var(--line-strong);
+  color: var(--ink);
+}
+
+.categoryActive {
+  composes: category;
+  border-color: rgba(88, 200, 216, 0.5);
+  background: rgba(13, 52, 69, 0.55);
+  color: #dceaec;
+}
+
+.categoryCount {
+  margin-left: 0.5em;
+  opacity: 0.6;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(clamp(200px, 17vw, 260px), 1fr));
+  gap: clamp(12px, 1.4vw, 22px);
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+  text-align: left;
+}
+
+.tilePortrait {
+  display: block;
+}
+
+.tileBody {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 6px;
+  padding: clamp(10px, 1vw, 16px);
+}
+
+.tileName {
+  font-family: var(--font-card-title), Georgia, serif;
+  font-size: clamp(14px, 1.2vw, 18px);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--ink);
+}
+
+.tileStyle {
+  font-size: clamp(11px, 0.9vw, 13px);
+  color: var(--ink-dim);
+}
+
+/* Barre de possession : la part réellement possédée du deck. */
+.ownBar {
+  position: relative;
+  height: 5px;
+  margin-top: 2px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.ownFill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #58c8d8, #7fd6a4);
+  transition: width 320ms ease-out;
+}
+
+.ownFillComplete {
+  composes: ownFill;
+  background: linear-gradient(90deg, #7fd6a4, #c79a4e);
+}
+
+.ownLabel {
+  font-size: clamp(10px, 0.85vw, 12px);
+  color: var(--ink-dim);
+}
+
+.tileFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 6px;
+}
+
+.difficulty {
+  letter-spacing: 0.12em;
+  color: #ddc79a;
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * FICHE DE DECK — tout ce que la spec demande d'afficher avant de
+ * dépenser un jeton (§4).
+ * ────────────────────────────────────────────────────────────── */
+.sheet {
+  display: grid;
+  grid-template-columns: minmax(0, 240px) minmax(0, 1fr);
+  gap: clamp(14px, 2vw, 28px);
+  align-items: start;
+}
+
+/* La fiche entière peut défiler si l'écran est bas, plutôt que d'écraser la
+   liste de cartes : c'est la seule zone du jeu où il y a vraiment plus de
+   contenu que de place. */
+.sheetScroll {
+  max-height: min(70vh, 640px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.sheetAside {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sheetMain {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(10px, 1.4vh, 18px);
+  min-width: 0;
+}
+
+.sheetRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(10px, 1.4vw, 22px);
+}
+
+.sheetField {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sheetLabel {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.sheetValue {
+  font-size: clamp(12px, 1vw, 14px);
+  color: var(--ink);
+}
+
+.mechanics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mechanic {
+  padding: 0.25em 0.7em;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: clamp(10px, 0.85vw, 12px);
+  color: var(--ink-dim);
+}
+
+/* Courbe de coût : une colonne par palier de Raison. */
+.curve {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: clamp(54px, 7vh, 82px);
+}
+
+.curveBucket {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.curveBar {
+  width: 100%;
+  min-height: 2px;
+  border-radius: 3px 3px 0 0;
+  background: linear-gradient(180deg, rgba(88, 200, 216, 0.85), rgba(88, 200, 216, 0.3));
+}
+
+.curveLabel {
+  font-size: 10px;
+  color: var(--ink-dim);
+}
+
+/* Liste complète des cartes, avec le détail possédé / prêté. */
+.cardList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 4px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cardRow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 0;
+  font-size: clamp(11px, 0.95vw, 13px);
+}
+
+.cardCost {
+  flex: 0 0 auto;
+  min-width: 1.4em;
+  text-align: center;
+  border-radius: 4px;
+  background: rgba(88, 200, 216, 0.16);
+  color: #cfe9ee;
+  font-variant-numeric: tabular-nums;
+}
+
+.cardName {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink);
+}
+
+/* Une carte entièrement prêtée s'écrit en creux : c'est ce qui manque. */
+.cardBorrowed .cardName {
+  color: var(--ink-dim);
+}
+
+.cardCount {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-dim);
+}
+
+.cardCountOwned {
+  composes: cardCount;
+  color: #7fd6a4;
+}
+
+.sheetActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+@media (max-width: 820px) {
+  .sheet {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sheetAside {
+    max-width: 220px;
+  }
+}

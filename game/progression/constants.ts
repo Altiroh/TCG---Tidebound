@@ -1,44 +1,39 @@
 /**
- * Progression joueur — XP, niveaux et récompenses de palier.
+ * Progression joueur — XP et calibrage de la boucle de partie.
  *
- * STATUT DU CADRAGE. La page Notion "Boosters & économie de collection"
- * verrouille les PRINCIPES mais aucune valeur numérique de progression :
- *   - « Les parties donnent principalement de l'XP / progression. »
- *   - « Une partie PvP peut donner une très faible quantité de Tides, mais
- *     suffisamment faible pour rendre le farm pur peu intéressant. »
- *   - « Les parties contre bot rapportent 0 Tide directement. »
- *   - « Les premières victoires, objectifs quotidiens/hebdomadaires,
- *     paliers de progression et événements constituent les principales
- *     sources de Tides. »
- *   - Les anciennes valeurs 100 / 35 / 500 sont explicitement ABANDONNÉES
- *     pour les récompenses de match (elles rendaient l'accès aux boosters
- *     proportionnel au nombre de matchs joués).
- *   - Cadence cible : « environ 1 booster tous les 2 à 3 jours pour un
- *     joueur régulier », hors événements.
+ * SOURCE DE VÉRITÉ : Notion « Progression joueur — Tutoriel, XP, Quêtes &
+ * Préconstruits » (2026-09-15), sections 5 à 7. Elle remplace le calibrage
+ * prototype précédent (booster à 500 Tides, 100/60 XP par partie), et
+ * verrouille :
+ *   - 150 Tides = 1 booster Standard (cf. `game/economy/constants.ts`) ;
+ *   - partie terminée : +25 XP, victoire : +25 XP de plus ;
+ *   - première victoire du jour : +75 XP et +25 Tides ;
+ *   - 3 parties terminées dans la journée : +50 XP de bonus ;
+ *   - une récompense à chaque niveau jusqu'à 50 (`levelRewards.ts`) ;
+ *   - « prévoir une protection anti-AFK / abandon : une partie abandonnée
+ *     immédiatement ou sans activité significative ne doit pas accorder la
+ *     récompense complète ».
  *
- * Tout ce qui suit est donc une PROPOSITION d'équilibrage, calibrée sur ces
- * principes et volontairement regroupée ici pour être ajustable d'un seul
- * endroit. Rien dans le code ne doit dupliquer ces nombres.
- *
- * Calibrage retenu (à retester) : un joueur régulier = ~4 parties PvP/jour
- * à ~50% de victoires, soit ~320 XP/jour + le bonus de première victoire.
- * Avec la courbe ci-dessous, ça donne ~0,5 niveau/jour au début, donc
- * ~30 Tides/jour de paliers et un booster de palier tous les ~10 jours.
- * Les paliers sont donc une source SECONDAIRE : la cadence cible d'un
- * booster tous les 2-3 jours repose sur les quêtes quotidiennes et
- * hebdomadaires (`game/quests/catalog.ts`).
+ * Reste NON verrouillé et ajustable ici : la courbe d'XP niveau par niveau
+ * (§14, « à équilibrer plus tard ») et les Tides par partie.
  */
+import { TIDE_REWARD } from "@/game/economy/constants";
 
 /** XP nécessaire pour passer du niveau 1 au niveau 2. */
-export const XP_FIRST_LEVEL = 400;
+export const XP_FIRST_LEVEL = 150;
 
 /** Chaque niveau coûte ce nombre d'XP de plus que le précédent. */
-export const XP_LEVEL_STEP = 80;
+export const XP_LEVEL_STEP = 25;
 
 /**
  * Au-delà de ce niveau, le coût d'un niveau cesse d'augmenter. Sans ce
  * plateau, les niveaux élevés deviennent inatteignables et la progression
  * n'est plus lisible ; ce n'est pas un niveau maximum (il n'y en a pas).
+ *
+ * Calibrage retenu, à retester : un joueur régulier (4 parties dont
+ * 2 victoires, ses 3 quêtes du jour) gagne ~700 XP/jour, soit le niveau 50
+ * en un peu plus d'un mois — la table de paliers 1-50 a donc le temps de se
+ * dérouler sans être consommée en une semaine.
  */
 export const XP_STEP_PLATEAU_LEVEL = 20;
 
@@ -46,33 +41,52 @@ export const XP_STEP_PLATEAU_LEVEL = 20;
 export const STARTING_LEVEL = 1;
 
 /**
- * XP par partie terminée, selon l'issue et le mode.
- *
- * Une défaite rapporte volontairement une part importante de la victoire :
- * le cadrage veut que la partie fasse progresser (« Défaite PvP : gain nul
- * ou très faible de Tides + progression/XP »), sinon la progression
- * devient une prime au winrate et pousse au farm de matchs faciles.
- *
- * Le bot rapporte beaucoup moins que le PvP, pour la raison inverse : il
- * ne doit jamais devenir la voie la plus rentable vers les paliers (qui,
- * eux, donnent des Tides).
+ * XP par partie (§7). Volontairement INDÉPENDANT de l'issue pour sa moitié
+ * basse : « une partie terminée doit toujours faire progresser le joueur,
+ * même en cas de défaite ».
  */
 export const MATCH_XP = {
-  pvpWin: 100,
-  pvpLoss: 60,
-  botWin: 25,
-  botLoss: 15,
+  /** Toute partie menée à son terme. */
+  completed: 25,
+  /** S'ajoute à `completed` en cas de victoire. */
+  win: 25,
 } as const;
 
 /**
- * Tides par partie. « Très faible » au sens du cadrage : à 8 Tides par
- * victoire, il faut ~63 victoires PvP pour un seul booster à 500 — le farm
- * pur n'est pas une stratégie viable, ce qui est exactement l'intention.
- * Le bot rapporte 0, VERROUILLÉ par le cadrage.
+ * Partie écourtée sans jeu réel (abandon immédiat, aucune action
+ * significative) : la progression n'est pas nulle — sinon une déconnexion
+ * malheureuse serait punie — mais réduite au point que l'abandon en boucle
+ * ne soit jamais rentable. Aucune Tide, aucun bonus, et la partie ne compte
+ * pas dans les 3 parties du jour.
+ */
+export const ABANDONED_MATCH_XP = 5;
+
+/**
+ * Seuil d'« activité significative » (§7, anti-AFK). Une partie compte
+ * pleinement dès que le joueur a fait l'une de ces choses ; c'est
+ * volontairement bas : l'objectif est d'écarter l'abandon immédiat, pas de
+ * pénaliser une partie courte mais jouée.
+ */
+export const MEANINGFUL_ACTIVITY = {
+  /** Cartes posées depuis la main. */
+  cardsPlayed: 2,
+  /** Attaques déclarées. */
+  attacks: 1,
+  /** Tours de jeu écoulés dans la partie (les deux joueurs confondus). */
+  turns: 4,
+} as const;
+
+/**
+ * Tides par partie. Le cadrage antérieur (« Boosters & économie de
+ * collection ») verrouille « les parties contre bot rapportent 0 Tide
+ * directement » ; la nouvelle page ne revient pas dessus, cette règle tient
+ * donc toujours. Avec un booster à 150 Tides, 5 Tides par victoire PvP
+ * demandent 30 victoires pour un booster : le farm de matchs reste une
+ * mauvaise affaire face aux quêtes, ce qui est l'intention.
  */
 export const MATCH_TIDES = {
-  pvpWin: 8,
-  pvpLoss: 3,
+  pvpWin: 5,
+  pvpLoss: 2,
   botWin: 0,
   botLoss: 0,
 } as const;
@@ -80,45 +94,31 @@ export const MATCH_TIDES = {
 /**
  * DÉROGATION DE DÉVELOPPEMENT — Tides sur une partie contre bot.
  *
- * Le cadrage verrouille « les parties contre bot rapportent 0 Tide
- * directement ». Ces valeurs ne s'appliquent donc QUE si l'appelant passe
- * explicitement `allowBotTides` (cf. `computeMatchReward`), ce que seule
- * fait la politique de développement `features/progression/botRewardPolicy.ts`.
- *
- * Raison d'être : le PvP demande deux joueurs réels ; en développement, une
- * boucle solo reste utile pour tester l'économie de bout en bout (achat et
- * ouverture de boosters) sans attendre les quêtes. `MATCH_TIDES.bot*` reste à 0
- * — la règle verrouillée n'est pas réécrite, elle est contournée à un seul
- * endroit, visible et désactivable.
- *
- * Volontairement deux fois plus faibles que le PvP : même en dev, un bot ne
- * doit pas être le chemin le plus rentable.
+ * Ne s'applique QUE si l'appelant passe explicitement `allowBotTides`
+ * (cf. `computeMatchReward`), ce que seule fait la politique de
+ * développement `features/progression/botRewardPolicy.ts`. La règle
+ * verrouillée n'est pas réécrite : elle est contournée à un seul endroit,
+ * visible et désactivable, pour que la boucle économique reste testable en
+ * solo.
  */
 export const DEV_BOT_MATCH_TIDES = {
-  win: 4,
+  win: 3,
   loss: 1,
 } as const;
 
 /**
- * Première victoire PvP de la journée (UTC) — une des sources de Tides
- * explicitement désignées comme principales par le cadrage. Non
- * cumulable : c'est une récompense de retour quotidien, pas un multiplicateur
- * de farm.
+ * Première victoire du jour (UTC) — §7. Le bonus de Tides reste réservé au
+ * PvP, par cohérence avec la règle « bot = 0 Tide » ; l'XP, elle, est
+ * accordée quel que soit le mode, puisque le cadrage veut que jouer fasse
+ * toujours progresser.
  */
-export const FIRST_PVP_WIN_OF_DAY_BONUS = {
-  xp: 150,
-  tides: 60,
+export const FIRST_WIN_OF_DAY_BONUS = {
+  xp: 75,
+  tides: TIDE_REWARD.small,
 } as const;
 
-/** Tides octroyées à chaque niveau gagné. */
-export const TIDES_PER_LEVEL = 60;
-
-/**
- * Un booster standard offert tous N niveaux (en plus des Tides du niveau).
- * C'est le "palier" au sens du cadrage : un jalon visible, pas un revenu
- * continu.
- */
-export const BOOSTER_EVERY_N_LEVELS = 5;
-
-/** Booster offert par les paliers de niveau. */
-export const LEVEL_REWARD_BOOSTER_ID = "standard";
+/** Bonus accordé UNE fois par jour, à la 3ᵉ partie terminée (§7). */
+export const DAILY_MATCHES_BONUS = {
+  matches: 3,
+  xp: 50,
+} as const;

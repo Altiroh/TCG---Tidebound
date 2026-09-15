@@ -1,6 +1,6 @@
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import type { GameState, PlayerId } from "@/game";
-import { computeMatchQuestProgress, questPeriodKey, selectQuestsForPeriod, type QuestType } from "@/game/quests";
+import { computeMatchQuestContribution, questPeriodKey, selectQuestsForPeriod, type QuestType } from "@/game/quests";
 
 /**
  * Quêtes — opérations SERVEUR (attribution, progression). Pas de directive
@@ -43,6 +43,12 @@ export interface RecordMatchQuestProgressInput {
   finalState: GameState;
   vsBot: boolean;
   won: boolean;
+  /**
+   * Deck joué par ce joueur — alimente la catégorie DECKS (« jouer avec 2
+   * decks différents »). Absent, ces objectifs n'avancent pas plutôt que
+   * d'être crédités sur un deck inconnu.
+   */
+  deckId?: string;
 }
 
 /**
@@ -55,11 +61,12 @@ export async function recordMatchQuestProgress(input: RecordMatchQuestProgressIn
     const now = new Date();
     await ensureCurrentQuests(input.userId, now);
 
-    const progress = computeMatchQuestProgress({
+    const { progress, sets } = computeMatchQuestContribution({
       state: input.finalState,
       playerId: input.playerId,
       vsBot: input.vsBot,
       won: input.won,
+      deckId: input.deckId,
     });
 
     const service = createSupabaseServiceRoleClient();
@@ -69,6 +76,7 @@ export async function recordMatchQuestProgress(input: RecordMatchQuestProgressIn
       p_vs_bot: input.vsBot,
       p_period_keys: QUEST_TYPES.map((questType) => questPeriodKey(questType, now)),
       p_progress: progress as Record<string, number>,
+      p_sets: sets as Record<string, string[]>,
     });
     if (error) console.error("[recordMatchQuestProgress] Progression refusée :", error.message);
   } catch (error) {
