@@ -1728,29 +1728,48 @@
   animation: none;
 }
 
-/* Carte jamais possédée : « Nouveau », au coin, dès qu'elle est retournée. */
+/*
+ * Carte jamais possédée : une étiquette discrète posée à cheval sur le bord
+ * haut — verre sombre, filet doré, petites capitales espacées. Elle se lit
+ * sans voler la vedette à l'illustration.
+ */
 .newBadge {
   position: absolute;
-  top: calc(var(--u) * -1.1);
-  right: calc(var(--u) * -1.1);
+  top: 0;
+  left: 50%;
   z-index: 4;
-  padding: calc(var(--u) * 0.35) calc(var(--u) * 1);
-  border: 1px solid #fff1b8;
-  border-radius: 999px;
-  background: linear-gradient(180deg, #ffd35c, #e5941c);
-  color: #3a2000;
-  font-size: clamp(9px, calc(var(--u) * 1.15), 13px);
-  font-weight: 800;
-  letter-spacing: 0.08em;
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--u) * 0.45);
+  padding: calc(var(--u) * 0.22) calc(var(--u) * 0.85);
+  border: 1px solid rgba(240, 206, 140, 0.45);
+  border-radius: calc(var(--u) * 0.4);
+  background: rgba(6, 14, 22, 0.82);
+  backdrop-filter: blur(3px);
+  color: #eed9a8;
+  font-size: clamp(8px, calc(var(--u) * 0.95), 11px);
+  font-weight: 600;
+  letter-spacing: 0.24em;
   text-transform: uppercase;
-  box-shadow: 0 0 calc(var(--u) * 1.2) rgba(255, 190, 60, 0.7);
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
   pointer-events: none;
-  animation: newBadgeIn 520ms cubic-bezier(0.2, 1.5, 0.4, 1) 250ms both;
+  transform: translate(-50%, -50%);
+  animation: newBadgeIn 600ms ease-out 350ms both;
+}
+
+.newBadge::before {
+  content: "";
+  width: calc(var(--u) * 0.42);
+  height: calc(var(--u) * 0.42);
+  background: #f0ce8c;
+  transform: rotate(45deg);
+  box-shadow: 0 0 4px rgba(240, 206, 140, 0.8);
 }
 
 @keyframes newBadgeIn {
-  from { opacity: 0; transform: scale(0.3) rotate(-20deg); }
-  to { opacity: 1; transform: rotate(6deg); }
+  from { opacity: 0; transform: translate(-50%, -20%); }
+  to { opacity: 1; transform: translate(-50%, -50%); }
 }
 
 .scene[data-reduced-motion] .orbCarrier,
