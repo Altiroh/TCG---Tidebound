@@ -11,6 +11,8 @@ interface CardCarouselProps {
   /** Mode sélection : un clic choisit la carte (cadre lumineux sur la carte choisie). */
   selectedInstanceId?: string | null;
   onSelect?: (card: CardInstance) => void;
+  /** Clic droit sur une carte : sa fiche détaillée. */
+  onInspect?: (card: CardInstance) => void;
   emptyLabel?: string;
 }
 
@@ -23,7 +25,7 @@ const SCROLL_STEP_PX = 420;
  * (`scroll-snap`). Partagée par la vue du cimetière (`GraveyardViewer`) et le
  * choix d'une carte de défausse (`GraveyardPickPrompt`).
  */
-export function CardCarousel({ cards, renderCaption, selectedInstanceId, onSelect, emptyLabel = "Aucune carte." }: CardCarouselProps) {
+export function CardCarousel({ cards, renderCaption, selectedInstanceId, onSelect, onInspect, emptyLabel = "Aucune carte." }: CardCarouselProps) {
   const trackRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{ startX: number; startScroll: number; moved: boolean } | null>(null);
   const [edges, setEdges] = useState({ atStart: true, atEnd: true });
@@ -86,7 +88,7 @@ export function CardCarousel({ cards, renderCaption, selectedInstanceId, onSelec
           setTimeout(() => (drag.current = null), 0);
         }}
         onPointerLeave={() => (drag.current = null)}
-        className="flex snap-x snap-mandatory gap-5 overflow-x-auto scroll-smooth px-12 pb-4 pt-2 [scrollbar-width:thin]"
+        className="flex snap-x snap-mandatory gap-5 overflow-x-auto scroll-smooth px-12 pb-4 pt-2 [scrollbar-width:thin] [scrollbar-color:rgba(130,178,210,0.35)_transparent]"
         style={{ scrollPaddingInline: 48 }}
       >
         {cards.map((card) => {
@@ -100,6 +102,11 @@ export function CardCarousel({ cards, renderCaption, selectedInstanceId, onSelec
                 onClick={() => {
                   if (drag.current?.moved) return;
                   onSelect?.(card);
+                }}
+                onContextMenu={(event) => {
+                  if (!onInspect) return;
+                  event.preventDefault();
+                  onInspect(card);
                 }}
               >
                 {/* `CardTile` sans `onClick` rend un bouton désactivé, qui avalerait clics et glissements : on les capte

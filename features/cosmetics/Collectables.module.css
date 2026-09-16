@@ -1,0 +1,258 @@
+/*
+ * Collectables — la vitrine. La colonne de gauche et la barre reprennent la
+ * grammaire des Cartes (`CardBrowser.module.css`) ; il n'y a ici que les
+ * objets eux-mêmes.
+ */
+
+.showcase {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: clamp(14px, 1.8vw, 26px);
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(clamp(160px, 13vw, 220px), 1fr));
+  gap: clamp(14px, 1.6vw, 26px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/*
+ * LA COQUE porte tout le décor de la vignette (cadre, fond, survol) ; la
+ * zone cliquable (`.item`) est DEDANS, sans décor propre.
+ *
+ * Pourquoi ce dédoublement : le bouton « Acheter » doit tomber À
+ * L'INTÉRIEUR de la carte, sous la ligne d'état. Impossible tant que la
+ * carte entière était elle-même un `<button>` — on n'imbrique pas un
+ * bouton dans un bouton. Posé à côté, il débordait sous le cadre et
+ * décalait toute la rangée.
+ */
+.itemShell {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+  padding: 10px 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(8, 18, 30, 0.5);
+  transition: border-color 160ms ease-out, transform 160ms ease-out, background-color 160ms ease-out;
+}
+
+/* Survol et focus sont déclenchés par la zone cliquable, peints par la coque. */
+.itemShell:has(> button.item:hover:not(:disabled)) {
+  transform: translateY(-3px);
+  border-color: var(--line-strong);
+  background: rgba(13, 34, 50, 0.6);
+}
+
+.itemShell:has(> .item:focus-visible) {
+  outline: 2px solid var(--cb-cyan);
+  outline-offset: 2px;
+}
+
+.itemShell[data-selected="true"] {
+  border-color: rgba(88, 200, 216, 0.7);
+  background: linear-gradient(180deg, rgba(13, 52, 69, 0.6), rgba(8, 18, 30, 0.5));
+  box-shadow: 0 0 0 1px rgba(88, 200, 216, 0.25), 0 10px 26px rgba(4, 20, 28, 0.5);
+}
+
+/* `flex: 1` : toutes les vignettes d'une rangée ont la même hauteur, donc
+   les boutons d'achat s'alignent, qu'il y en ait un par carte ou un seul. */
+.item {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-dim);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+div.item,
+.item:disabled {
+  cursor: default;
+}
+
+/* Le contour de focus est porté par la coque, pas par la zone cliquable. */
+.item:focus-visible {
+  outline: none;
+}
+
+.cardBackFrame,
+.shipFrameBox {
+  position: relative;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.cardBackFrame {
+  aspect-ratio: 5 / 7;
+}
+
+.cardBackImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.55);
+}
+
+.shipFrameBox {
+  aspect-ratio: 4 / 5;
+  background: radial-gradient(closest-side, rgba(24, 56, 78, 0.6), rgba(6, 14, 24, 0.9));
+}
+
+.shipFrameImage {
+  width: 92%;
+  height: 92%;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.6));
+}
+
+.shipFramePending {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* Verrouillé : lisible, mais visiblement hors de portée. */
+.itemShell[data-locked="true"] .cardBackImage,
+.itemShell[data-locked="true"] .shipFrameImage {
+  filter: grayscale(0.85) brightness(0.5);
+}
+
+.badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 2px 8px;
+  border: 1px solid rgba(88, 200, 216, 0.6);
+  border-radius: 999px;
+  background: rgba(4, 14, 22, 0.85);
+  color: #dff6fa;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.itemName {
+  font-family: var(--cb-font-display);
+  font-size: clamp(13px, 1vw, 15px);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/*
+ * La description occupe TROIS lignes, qu'elle en remplisse une ou trois :
+ * sans ça, la ligne de condition tombait à une hauteur différente dans
+ * chaque vignette et la rangée partait en escalier. Au-delà de trois, elle
+ * est coupée — c'est une accroche, pas une notice.
+ */
+.itemText {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  min-height: calc(3 * 1.35 * 12px);
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+/* Deux lignes de condition (« 100 parties jouées · encore 98 ») ne doivent
+   pas décaler le bouton d'achat de la vignette voisine. */
+.itemHint {
+  min-height: calc(2 * 1.3 * 11px);
+}
+
+.itemHint {
+  margin-top: auto;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.itemShell[data-selected="true"] .itemHint {
+  color: var(--cb-cyan);
+}
+
+/* ── Emplacement CACHÉ ────────────────────────────────────────
+ * Le voile n'est pas « verrouillé en plus sombre » : c'est un objet à part,
+ * qu'on montre entier et net. Le filtre de verrouillage ci-dessus le
+ * rendrait illisible, alors que tout son intérêt est d'attirer l'œil.
+ * ────────────────────────────────────────────────────────────── */
+.cardBackFrame[data-masked="true"] .cardBackImage,
+.shipFrameBox[data-masked="true"] .shipFrameImage {
+  filter: none;
+  opacity: 0.9;
+}
+
+/* ── Achat d'un Collectable en vente ───────────────────────── */
+.buyRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.buyButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+  padding: 0.4em 0.85em;
+  border: 1px solid rgba(199, 154, 78, 0.55);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(90, 64, 20, 0.55), rgba(48, 34, 10, 0.55));
+  color: #e9d8ae;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 140ms ease-out, background-color 140ms ease-out, color 140ms ease-out;
+}
+
+.buyButton:hover:not(:disabled) {
+  border-color: #e9b45a;
+  color: #fff6e0;
+}
+
+.buyButton:focus-visible {
+  outline: 2px solid var(--cb-cyan);
+  outline-offset: 2px;
+}
+
+/* Hors de portée : le bouton reste LISIBLE et dit le prix — c'est
+   l'objectif d'épargne. Son `title` porte ce qu'il manque. */
+.buyButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.buyCancel {
+  composes: buyButton;
+  border-color: var(--line);
+  background: rgba(8, 18, 30, 0.6);
+  color: var(--ink-dim);
+}
+
+.buyError {
+  font-size: 11px;
+  color: #e98b7a;
+}

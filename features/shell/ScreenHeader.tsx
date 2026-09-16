@@ -3,13 +3,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import styles from "@/features/shell/ScreenShell.module.css";
 import { NavigationTab } from "@/features/shell/NavigationTab";
 import { HeaderPlayer } from "@/features/shell/HeaderPlayer";
 import { playButtonClick } from "@/lib/sound";
 
-export type ScreenSection = "collection" | "decks" | "market" | "boosters" | "quetes" | "partie";
+export type ScreenSection = "collection" | "collectables" | "decks" | "market" | "boosters" | "quetes" | "partie";
 
 /**
  * Les onglets de la COLLECTION, dans l'ordre de lecture.
@@ -39,6 +39,9 @@ const TABS: Array<{ section: ScreenSection; label: string; href: string }> = [
   // aussi ses decks et ses boosters. Cet onglet-ci ne montre que les
   // cartes, autant que son nom le dise.
   { section: "collection", label: "Cartes", href: "/collection" },
+  // Ce que la collection compte d'autre que des cartes : dos de carte,
+  // cadres de navire… Rangé à côté des cartes, comme une autre étagère.
+  { section: "collectables", label: "Collectables", href: "/collectables" },
   { section: "decks", label: "Decks", href: "/decks" },
   { section: "boosters", label: "Mes boosters", href: "/boosters" },
 ];
@@ -58,9 +61,11 @@ export interface ScreenHeaderProps {
   /**
    * `collection` (défaut) : les onglets de la collection. `minimal` : le
    * retour au menu et le logo, rien d'autre — pour les écrans qui ne font
-   * pas partie de la collection (Jouer, Market).
+   * pas partie de la collection (Jouer, Market). `home` : le menu
+   * principal — les onglets, sans retour ni logo (le coffret porte déjà
+   * l'enseigne, et il n'y a nulle part où revenir).
    */
-  nav?: "collection" | "minimal";
+  nav?: "collection" | "minimal" | "home";
 }
 
 /**
@@ -81,6 +86,14 @@ export function ScreenHeader({ active, actions, onNavigate, nav = "collection" }
   const router = useRouter();
   const tabs = nav === "minimal" ? [] : TABS;
 
+  // Onglets et retour au menu passent par `router.push`, que Next ne
+  // précharge pas : chaque clic attendait alors le rendu serveur complet de
+  // l'écran visé. Préchargés, ils affichent au moins son écran de
+  // chargement (`loading.tsx`) dès le clic.
+  useEffect(() => {
+    for (const href of ["/", "/profil", ...TABS.map((tab) => tab.href)]) router.prefetch(href);
+  }, [router]);
+
   /** Un seul chemin pour tout déplacement du bandeau : l'écran peut le décliner. */
   function go(href: string) {
     if (onNavigate?.(href)) return;
@@ -93,20 +106,22 @@ export function ScreenHeader({ active, actions, onNavigate, nav = "collection" }
         {/* Retour au menu : une flèche, sans libellé. Le geste est assez
             courant dans un client de jeu pour se passer du mot, et le mot
             prenait la place d'un onglet. */}
-        <button
-          type="button"
-          className={styles.backButton}
-          aria-label="Retour au menu"
-          title="Retour au menu"
-          onClick={() => {
-            playButtonClick();
-            go("/");
-          }}
-        >
-          <svg viewBox="0 0 24 24" fill="none" width="20" height="20" aria-hidden>
-            <path d="M19 12H5M5 12l6-6M5 12l6 6" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
+        {nav !== "home" && (
+          <button
+            type="button"
+            className={styles.backButton}
+            aria-label="Retour au menu"
+            title="Retour au menu"
+            onClick={() => {
+              playButtonClick();
+              go("/");
+            }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" width="20" height="20" aria-hidden>
+              <path d="M19 12H5M5 12l6-6M5 12l6 6" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        )}
 
         {tabs.map((tab) => (
           <NavigationTab
@@ -122,24 +137,26 @@ export function ScreenHeader({ active, actions, onNavigate, nav = "collection" }
       </div>
 
       <div className={styles.headerBrand}>
-        <Link
-          href="/"
-          className={styles.brand}
-          aria-label="Retour au menu"
-          onClick={(event) => {
-            if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
-            if (onNavigate?.("/")) event.preventDefault();
-          }}
-        >
-          <Image
-            src="/assets/menu/logo/tidebound-logo.webp"
-            alt="Tidebound"
-            width={1600}
-            height={631}
-            priority
-            className={styles.brandLogo}
-          />
-        </Link>
+        {nav !== "home" && (
+          <Link
+            href="/"
+            className={styles.brand}
+            aria-label="Retour au menu"
+            onClick={(event) => {
+              if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+              if (onNavigate?.("/")) event.preventDefault();
+            }}
+          >
+            <Image
+              src="/assets/menu/logo/tidebound-logo.webp"
+              alt="Tidebound"
+              width={1600}
+              height={631}
+              priority
+              className={styles.brandLogo}
+            />
+          </Link>
+        )}
       </div>
 
       {/* Actions de l'écran + profil du joueur (avatar, pseudo, niveau,

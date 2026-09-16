@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PITY } from "@/game/boosters";
@@ -20,7 +20,7 @@ import {
   stackedShelfLayout,
   useElementSize,
 } from "@/features/boosters/stackedShelf";
-import { BoosterOpeningScene } from "@/features/boosters/opening/BoosterOpeningScene";
+import { BoosterOpeningScene, type BoosterOpeningOrigin } from "@/features/boosters/opening/BoosterOpeningScene";
 import { preloadBoosterOpeningAssets } from "@/features/boosters/opening/boosterOpeningAssets";
 import { useCardBackSrc } from "@/features/cosmetics/CardBackProvider";
 import { closedPackVariables, getBoosterPackVisual } from "@/features/boosters/opening/boosterPackVisuals";
@@ -30,6 +30,13 @@ import { playButtonClick } from "@/lib/sound";
 
 /** Type MIME du glisser-déposer d'un paquet vers le plan d'ouverture. */
 const DRAG_MIME = "text/tidebound-booster-id";
+
+/**
+ * Durée MINIMALE de la mise en tension sur le plan (tremblement, rotation,
+ * reflet) avant que le sachet ne décolle vers le centre. Le tirage serveur
+ * se fait pendant ce temps ; s'il est plus long, la tension dure d'autant.
+ */
+const DOCK_CHARGE_MS = 900;
 
 /**
  * Rejouent la scène d'ouverture sur un tirage LOCAL, sans consommer de
@@ -95,7 +102,15 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
    * vraie ouverture (exemplaire consommé, collection créditée) d'un essai
    * d'animation, qui n'a rien écrit.
    */
-  const [opening, setOpening] = useState<{ boosterId: string; cards: BoosterOpeningCard[]; real: boolean } | null>(null);
+  const [opening, setOpening] = useState<{
+    boosterId: string;
+    cards: BoosterOpeningCard[];
+    real: boolean;
+    /** Où était le sachet sur le plan : la scène l'en fait partir. */
+    origin: BoosterOpeningOrigin | null;
+  } | null>(null);
+  /** Sachet du plan d'ouverture — mesuré au lancement, pour que la scène le fasse décoller de là. */
+  const dockPackRef = useRef<HTMLSpanElement>(null);
 
   const docked = packs.find((pack) => pack.key === dockedKey) ?? null;
   const dockedEntry = docked ? inventory.boosters.find((entry) => entry.boosterId === docked.boosterId) : undefined;
@@ -129,7 +144,14 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
     setError(null);
     setIsOpening(true);
 
-    const result = await openBooster(boosterId);
+    // Le sachet tremble, pivote et s'illumine sur le plan PENDANT que le
+    // serveur tire les cartes : l'attente devient la montée en tension, et
+    // l'animation dure au moins le temps d'être vue.
+    const [result] = await Promise.all([
+      openBooster(boosterId).catch(() => ({ ok: false as const, error: "Serveur injoignable — réessaie dans un instant.", data: undefined })),
+      new Promise((resolve) => setTimeout(resolve, DOCK_CHARGE_MS)),
+    ]);
+    const rect = dockPackRef.current?.getBoundingClientRect();
     setIsOpening(false);
 
     if (!result.ok || !result.data) {
@@ -140,12 +162,14 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
     setOpening({
       boosterId,
       real: true,
+      origin: rect && rect.height > 0 ? { x: rect.left, y: rect.top, width: rect.width, height: rect.height } : null,
       cards: result.data.cards.map((card) => ({
         // Une même carte peut sortir deux fois du même booster : c'est le
         // slot qui rend la clé unique, pas l'identifiant de carte.
         id: `${card.slotIndex}-${card.cardId}`,
         cardId: card.cardId,
         rarity: toOpeningRarity(card.rarity),
+        isNew: card.isNew,
       })),
     });
   }
@@ -155,7 +179,7 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
     if (isOpening || opening) return;
     playButtonClick();
     setError(null);
-    setOpening({ boosterId, real: false, cards: drawTestBoosterCards(boosterId) });
+    setOpening({ boosterId, real: false, cards: drawTestBoosterCards(boosterId), origin: null });
   }
 
   function handleOpeningClosed() {
@@ -286,8 +310,11 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
               {docked ? (
                 <>
                   <span
+                    ref={dockPackRef}
                     className={styles.dockPack}
                     style={closedPackVariables(getBoosterPackVisual(docked.boosterId))}
+                    data-charging={isOpening || undefined}
+                    data-launched={opening !== null || undefined}
                     aria-hidden
                   />
                   <p className={styles.dockName}>{docked.name}</p>
@@ -357,6 +384,7 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
         <BoosterOpeningScene
           cards={opening.cards}
           visual={getBoosterPackVisual(opening.boosterId)}
+          origin={opening.origin}
           onClose={handleOpeningClosed}
         />
       )}

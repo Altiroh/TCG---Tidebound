@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createGameState, type PlayerAction } from "@/game";
-import { createSupabaseServerClient, createSupabaseServiceRoleClient } from "@/lib/supabase/server";
+import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { generateInviteCode } from "@/features/online/inviteCode";
 import {
   loadSnapshot,
@@ -12,6 +12,7 @@ import {
 } from "@/features/matches/matchStore";
 import { packFrames, type PackedFrames } from "@/features/matches/matchFrames";
 import { resolveMatchDeck, type MatchDeckResult } from "@/features/decks/matchDeck";
+import { getSessionUser } from "@/lib/supabase/sessionUser";
 
 /**
  * Parties en ligne — Server Actions exposées au navigateur.
@@ -35,10 +36,7 @@ function deckRejection(result: MatchDeckResult & { ok: false }): string {
 }
 
 async function requireUser() {
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) redirect("/connexion");
   return user;
 }

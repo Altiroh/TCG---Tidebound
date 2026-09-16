@@ -1,144 +1,146 @@
 /*
- * TÊTE DU PROFIL — la plaque du joueur.
- *
- * Le cadre, le voile bleu et les tentacules viennent de l'`ArtPlate`
- * partagée : il n'y a ici que ce qui se pose DESSUS, et le sélecteur
- * d'illustration.
+ * TÊTE DU PROFIL — le portrait (une illustration de carte possédée) à côté
+ * du pseudo, sans cadre ni plaque. Puis le sélecteur d'illustration.
  */
-.plate {
-  margin-bottom: clamp(12px, 1.6vh, 20px);
+.identity {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.avatar {
+  position: relative;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  border: 1px solid rgba(0, 183, 255, 0.55);
+  border-radius: 12px;
+  background: linear-gradient(160deg, #0b2638, #071826) center 28% / cover no-repeat;
+  box-shadow: 0 0 10px rgba(0, 183, 255, 0.25), 0 6px 14px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  transition: transform 160ms ease-out, box-shadow 160ms ease-out;
+}
+
+.avatar:hover {
+  transform: scale(1.04);
+  box-shadow: 0 0 14px rgba(0, 183, 255, 0.45), 0 6px 14px rgba(0, 0, 0, 0.5);
+}
+
+.avatar:focus-visible {
+  outline: 2px solid #00b7ff;
+  outline-offset: 3px;
+}
+
+.avatarInitial {
+  font-family: var(--font-card-title), Georgia, serif;
+  font-size: 26px;
+  font-weight: 700;
+  color: #e8edf0;
+}
+
+.avatarEdit {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid #00b7ff;
+  border-radius: 50%;
+  background: #071a29;
+  color: #e8edf0;
+}
+
+.identityText {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
 .eyebrow {
   margin: 0;
-  font-size: clamp(10px, 1.15vh, 12px);
+  font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: rgba(200, 226, 240, 0.75);
+  color: #9eb3c2;
 }
 
 .nameRow {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
 }
 
 .name {
   margin: 0;
-  font-family: var(--font-card-title), Georgia, serif;
-  font-size: clamp(22px, 3.4vh, 34px);
-  font-weight: 700;
-  line-height: 1.1;
-  color: #f4fafd;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-family: var(--font-card-title), Georgia, serif;
+  font-size: clamp(20px, 2.6vh, 26px);
+  font-weight: 700;
+  line-height: 1.15;
+  color: #e8edf0;
 }
 
-.pencil {
+.pencil,
+.nameSave {
   flex: 0 0 auto;
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   padding: 0;
-  border: 1px solid rgba(140, 220, 245, 0.4);
+  border: 1px solid #195374;
   border-radius: 50%;
-  background: rgba(8, 28, 46, 0.6);
-  color: rgba(214, 238, 248, 0.9);
+  background: linear-gradient(180deg, #0b2638 0%, #071826 100%);
+  color: #c8d7e1;
   cursor: pointer;
-  transition: border-color 140ms ease-out, color 140ms ease-out, background-color 140ms ease-out;
+  transition: border-color 140ms ease-out, box-shadow 140ms ease-out;
 }
-.pencil:hover { border-color: var(--cb-cyan); color: #fff; background: rgba(14, 54, 82, 0.8); }
-.pencil:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 2px; }
+
+.pencil:hover,
+.nameSave:hover {
+  border-color: #00aef0;
+  box-shadow: 0 0 8px rgba(0, 174, 240, 0.25);
+}
+
+.pencil:focus-visible,
+.nameSave:focus-visible {
+  outline: 2px solid #00b7ff;
+  outline-offset: 2px;
+}
 
 .nameEdit {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .nameInput {
-  flex: 1 1 200px;
+  flex: 1 1 auto;
   min-width: 0;
-  padding: 6px 10px;
-  border: 1px solid rgba(140, 220, 245, 0.5);
-  border-radius: 8px;
-  background: rgba(6, 20, 34, 0.75);
+  padding: 4px 8px;
+  border: 1px solid #195374;
+  border-radius: 6px;
+  background: #061522;
   font-family: var(--font-card-title), Georgia, serif;
-  font-size: clamp(18px, 2.6vh, 26px);
+  font-size: 18px;
   font-weight: 700;
-  color: #f4fafd;
-}
-.nameInput:focus { outline: none; border-color: var(--cb-cyan); }
-
-/* Ce qui porte l'illustration : un lien discret, pas un bouton de plus —
-   changer d'illustration est un geste rare. */
-.artLink {
-  align-self: flex-start;
-  padding: 0;
-  border: none;
-  background: none;
-  font: inherit;
-  font-size: clamp(11px, 1.35vh, 13px);
-  color: rgba(190, 222, 238, 0.85);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  cursor: pointer;
-}
-.artLink:hover { color: var(--cb-cyan); }
-.artLink:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 2px; border-radius: 4px; }
-
-/* ── Sélecteur d'illustration ──────────────────────────────── */
-.picker {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(clamp(92px, 9vw, 128px), 1fr));
-  gap: 10px;
-  /* La collection peut compter des dizaines de cartes : le dialogue
-     défile plutôt que de pousser ses boutons hors de l'écran. */
-  max-height: min(56vh, 460px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding-right: 4px;
+  color: #e8edf0;
 }
 
-.option {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  padding: 0;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: rgba(8, 22, 36, 0.6);
-  overflow: hidden;
-  cursor: pointer;
-  transition: border-color 140ms ease-out, transform 140ms ease-out;
-}
-.option:hover { border-color: rgba(88, 200, 216, 0.6); transform: translateY(-2px); }
-.option:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 2px; }
-.option:disabled { opacity: 0.5; cursor: progress; }
-
-.optionActive {
-  border-color: var(--cb-cyan);
-  box-shadow: 0 0 0 1px rgba(88, 200, 216, 0.5);
-}
-
-.optionArt {
-  display: block;
-  aspect-ratio: 4 / 3;
-  background-size: cover;
-  background-position: center 28%;
-  background-repeat: no-repeat;
-}
-
-.optionName {
-  padding: 0 7px 7px;
-  font-size: clamp(10px, 0.78vw, 12px);
-  line-height: 1.25;
-  color: var(--ink);
-  text-align: left;
+.nameInput:focus {
+  outline: none;
+  border-color: #00b7ff;
+  box-shadow: 0 0 6px rgba(0, 183, 255, 0.35);
 }

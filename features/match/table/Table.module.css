@@ -19,7 +19,7 @@
  *   ┌─────────┬──────────────────────────┬─────────────┬────────┐
  *   │   ─────────── main adverse (dos, coupée en haut) ─────── Menu │
  *   │ navire  │  5 emplacements          │ pioche · ☠  │ Tour   │
- *   │ tuile ▲ │  piste de Marée          │             │ Journal│
+ *   │ tuile ▲ │  piste de Marée          │  hublot     │ Journal│
  *   │ navire  │  5 emplacements          │ pioche · ☠  │ Phase  │
  *   │   ─────────── main (éventail, coupée en bas) ──────── joueur │
  *   └─────────┴──────────────────────────┴─────────────┴────────┘
@@ -171,11 +171,16 @@
      Bornée aussi par la LARGEUR : `--card-h-fit` est la plus grande carte
      qui laisse tenir, côte à côte, 5 emplacements, les 2 piles de chaque côté
      (le côté navire a la même largeur que le côté piles, pour centrer le
-     plateau) et les 2 colonnes de droite / gauche — soit 9 largeurs de carte,
-     2 colonnes, 4 gouttières de colonnes et 8 écarts de cartes (dont un
-     d'air entre le plateau et chaque pile). */
+     plateau) et les 2 colonnes de droite / gauche — soit (emplacements + 4)
+     largeurs de carte, 2 colonnes, 4 gouttières de colonnes et
+     (emplacements + 3) écarts de cartes.
+     `--board-slots` vaut le plus grand Navire en jeu (posé par `TableBoard`) :
+     un Brise-Lames et ses 6 emplacements rétrécissent les cartes au lieu de
+     glisser la dernière sous la pioche. */
+  --board-slots: 5;
   --card-h-fit: calc(
-    (min(100cqw, var(--stage-max-w)) - 2 * var(--gutter-x) - 2 * var(--rail-w) - 4 * var(--col-gap) - 8 * var(--board-gap)) / 9 * 7 / 5
+    (min(100cqw, var(--stage-max-w)) - 2 * var(--gutter-x) - 2 * var(--rail-w) - 4 * var(--col-gap) - (var(--board-slots) + 3) * var(--board-gap)) /
+      (var(--board-slots) + 4) * 7 / 5
   );
   --card-h: clamp(52px, min(20.5cqh, var(--card-h-fit)), 250px);
   --card-w: calc(var(--card-h) * 5 / 7);
@@ -431,10 +436,14 @@
  * hauteur de rangée. Arche et plaque : géométrie de
  * `features/ships/shipFrame.ts` (zone passée en style inline).
  * ────────────────────────────────────────────────────────────── */
+/* Le format et la hauteur de plaque sont posés EN LIGNE par le composant,
+   depuis la géométrie du cadre équipé (`features/ships/shipFrame.ts`) : les
+   quinze cadres n'ont ni le même ratio ni la même arche. Les valeurs ci-
+   dessous ne sont donc que des replis, pour le cadre d'origine. */
 .ship {
   position: relative;
   height: 100%;
-  aspect-ratio: 512 / 640;
+  aspect-ratio: var(--frame-aspect, 0.8);
   max-width: 100%;
   filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.6));
 }
@@ -461,7 +470,7 @@
    30 % de largeur chacun, espacés de 10 % — comme `ShipInstrumentCluster`). */
 .shipGauges {
   position: absolute;
-  top: 74%;
+  top: var(--plate-top, 74%);
   left: 50%;
   display: flex;
   gap: 10%;
@@ -779,6 +788,78 @@
   aspect-ratio: 1040 / 1254;
   max-width: 100%;
   filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.6));
+}
+
+/* ── HUBLOT DE MARÉE — colonne des piles, bande centrale ─────────
+ * Le cadre (`tide-porthole-frame.webp`, 1254² détouré) porte une fenêtre
+ * ronde MESURÉE dans l'image : centre 49,5 % / 49,8 %, diamètre utile
+ * 53 %. La mer est posée dessous à 54 %, un cheveu plus large, pour que
+ * le biseau du cuivre morde sur l'eau au lieu de laisser un liseré vide.
+ * Toucher à ces valeurs sans remesurer l'image décentre la mer.
+ * ────────────────────────────────────────────────────────────── */
+.centerPorthole {
+  display: flex;
+  align-self: stretch;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
+.porthole {
+  position: relative;
+  height: min(100%, var(--cargo-w));
+  aspect-ratio: 1;
+  max-width: 100%;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.7));
+}
+
+.portholeWindow {
+  position: absolute;
+  top: 49.8%;
+  left: 49.5%;
+  width: 54%;
+  height: 54%;
+  transform: translate(-50%, -50%);
+  overflow: hidden;
+  border-radius: 50%;
+  /* Nuit de fond : le disque n'est jamais vide, même image non chargée. */
+  background: #07111c;
+}
+
+/* Les quatre mers restent montées et se relaient en fondu, comme le décor. */
+.portholeSea {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 1200ms ease-in-out;
+  user-select: none;
+}
+
+.portholeSeaOn {
+  opacity: 1;
+}
+
+/* Le verre : un reflet en écharpe et un assombrissement vers le bord, pour
+   que la mer paraisse DERRIÈRE une vitre et non collée dans un trou. */
+.portholeGlass {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    linear-gradient(150deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.06) 22%, rgba(255, 255, 255, 0) 45%),
+    radial-gradient(closest-side, rgba(0, 0, 0, 0) 58%, rgba(2, 8, 16, 0.55) 100%);
+  box-shadow: inset 0 0 12px rgba(2, 8, 16, 0.75);
+}
+
+.portholeFrame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  user-select: none;
 }
 
 /* Piste de Marée — même dessin que `TideProgressBar` de l'ancien board,
@@ -1394,6 +1475,112 @@
   align-items: center;
   justify-content: center;
   transition: transform 140ms ease-out, filter 140ms ease-out;
+}
+
+/* Hors ciblage, un Navire se consulte : clic (ou clic droit) = sa fiche. */
+.shipInspectable {
+  cursor: pointer;
+}
+
+.shipInspectable:hover {
+  filter: brightness(1.1);
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * PLUIE — Tempête et Abysses. Deux nappes de gouttes (proche / lointaine)
+ * qui tombent en biais par-dessus la mer, SOUS le plateau : elle habille la
+ * scène sans jamais gêner la lecture d'une carte. Rien que du transform.
+ * ────────────────────────────────────────────────────────────── */
+.rain {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 1200ms ease-in-out;
+}
+
+.rain[data-intensity="storm"],
+.rain[data-intensity="abyss"] {
+  opacity: 1;
+}
+
+.rainSheet {
+  position: absolute;
+  left: -20%;
+  top: -100%;
+  width: 140%;
+  height: 200%;
+  background-repeat: repeat;
+  transform: rotate(12deg);
+  will-change: transform;
+}
+
+.rainNear {
+  composes: rainSheet;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='260'><g stroke='%23cfe6f5' stroke-linecap='round' stroke-width='1.4'><line x1='12' y1='10' x2='12' y2='38' opacity='.55'/><line x1='64' y1='120' x2='64' y2='150' opacity='.4'/><line x1='118' y1='40' x2='118' y2='66' opacity='.5'/><line x1='170' y1='170' x2='170' y2='200' opacity='.45'/><line x1='36' y1='200' x2='36' y2='226' opacity='.35'/><line x1='200' y1='70' x2='200' y2='96' opacity='.5'/><line x1='92' y1='230' x2='92' y2='256' opacity='.4'/><line x1='146' y1='110' x2='146' y2='134' opacity='.3'/></g></svg>");
+  animation: rainFallNear 520ms linear infinite;
+}
+
+.rainFar {
+  composes: rainSheet;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='180'><g stroke='%23a9c8dc' stroke-linecap='round' stroke-width='1'><line x1='20' y1='20' x2='20' y2='36' opacity='.35'/><line x1='80' y1='90' x2='80' y2='106' opacity='.3'/><line x1='130' y1='30' x2='130' y2='46' opacity='.3'/><line x1='50' y1='140' x2='50' y2='156' opacity='.25'/><line x1='110' y1='150' x2='110' y2='166' opacity='.3'/></g></svg>");
+  animation: rainFallFar 900ms linear infinite;
+}
+
+@keyframes rainFallNear {
+  from { transform: rotate(12deg) translate3d(0, 0, 0); }
+  to { transform: rotate(12deg) translate3d(0, 260px, 0); }
+}
+
+@keyframes rainFallFar {
+  from { transform: rotate(12deg) translate3d(0, 0, 0); }
+  to { transform: rotate(12deg) translate3d(0, 180px, 0); }
+}
+
+/* Abysses : une pluie plus rare, plus froide, et un voile sombre. */
+.rain[data-intensity="abyss"] .rainNear {
+  opacity: 0.55;
+  animation-duration: 700ms;
+  filter: hue-rotate(20deg) brightness(0.8);
+}
+
+.rain[data-intensity="abyss"] .rainFar {
+  opacity: 0.6;
+}
+
+.rain[data-intensity="abyss"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 90% at 50% 40%, transparent 40%, rgba(2, 8, 18, 0.35) 100%);
+}
+
+/* Éclairs lointains, en Tempête seulement : un voile clair, bref et rare. */
+.rain[data-intensity="storm"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(90% 60% at 60% 10%, rgba(210, 230, 255, 0.28), transparent 70%);
+  opacity: 0;
+  animation: lightning 11s ease-out 3s infinite;
+}
+
+@keyframes lightning {
+  0%, 91%, 100% { opacity: 0; }
+  92% { opacity: 1; }
+  93% { opacity: 0.2; }
+  94.5% { opacity: 0.8; }
+  97% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rainNear,
+  .rainFar,
+  .rain[data-intensity="storm"]::after {
+    animation: none;
+  }
 }
 
 /* Plateau pendant une pose : il se signale, et le prochain emplacement libre s'allume. */

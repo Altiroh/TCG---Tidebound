@@ -441,6 +441,8 @@ export interface Database {
           code: string;
           tides_granted: number;
           unlocked_at: string;
+          /** `null` : exploit débloqué dont les Tides attendent d'être réclamées. */
+          claimed_at: string | null;
         };
         Insert: Record<string, never>;
         Update: Record<string, never>;
@@ -560,8 +562,20 @@ export interface Database {
        * le catalogue TypeScript, la base garantit possession et intégrité.
        */
       recycle_card: {
-        Args: { p_user_id: string; p_card_id: string; p_quantity: number; p_unit_value: number };
+        Args: { p_user_id: string; p_card_id: string; p_quantity: number; p_unit_value: number; p_min_keep: number };
         Returns: { ok: boolean; error?: string; tides_gained?: number; balance?: number; remaining?: number };
+      };
+      /** Revente du surplus de plusieurs cartes, en une transaction. */
+      recycle_surplus: {
+        Args: { p_user_id: string; p_items: Array<{ card_id: string; quantity: number; unit_value: number; keep: number }> };
+        Returns: {
+          ok: boolean;
+          error?: string;
+          tides_gained?: number;
+          cards_sold?: number;
+          balance?: number;
+          lines?: Array<{ card_id: string; sold: number; tides: number }>;
+        };
       };
       /**
        * Pseudo et illustration de profil. Un argument `null` laisse la
@@ -659,6 +673,10 @@ export interface Database {
         Returns: { ok: boolean; error?: string; deck_id?: string; tokens?: number };
       };
       /** Exploits : `[{ code, tides }]`, filtré par l'appelant ; la clé primaire évite tout doublon. */
+      claim_achievement: {
+        Args: { p_user_id: string; p_code: string };
+        Returns: { ok: boolean; error?: string; code?: string; tides?: number };
+      };
       grant_achievements: {
         Args: { p_user_id: string; p_achievements: unknown };
         Returns: { ok: boolean; granted: string[]; tides: number };
@@ -667,6 +685,10 @@ export interface Database {
         Args: { p_user_id: string; p_source: string; p_source_ref: string; p_rarity: CardRarityEnum; p_card_ids: string[] };
         Returns: { ok: boolean; opened: boolean; choice_id?: string | null };
       };
+      claim_level_reward: {
+        Args: { p_user_id: string; p_level: number; p_items: unknown };
+        Returns: { ok: boolean; error?: string; already_claimed?: boolean; level?: number; tides?: number; precon_tokens?: number };
+      };
       resolve_card_choice: {
         Args: { p_user_id: string; p_choice_id: string; p_card_id: string };
         Returns: { ok: boolean; error?: string; card_id?: string };
@@ -674,6 +696,14 @@ export interface Database {
       equip_cosmetic: {
         Args: { p_user_id: string; p_cosmetic_kind: string; p_cosmetic_id: string | null };
         Returns: { ok: boolean; error?: string; cosmetic_id?: string | null };
+      };
+      grant_cosmetics: {
+        Args: { p_user_id: string; p_cosmetics: unknown };
+        Returns: { ok: boolean; granted: string[] };
+      };
+      purchase_cosmetic: {
+        Args: { p_user_id: string; p_cosmetic_kind: string; p_cosmetic_id: string; p_label: string; p_price: number };
+        Returns: { ok: boolean; error?: string; balance?: number; cosmetic_id?: string };
       };
     };
     Enums: {

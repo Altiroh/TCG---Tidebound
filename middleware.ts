@@ -43,7 +43,10 @@ export async function middleware(request: NextRequest) {
       },
     });
 
-    await supabase.auth.getUser();
+    // `getClaims` plutôt que `getUser` : il rafraîchit la session de la même
+    // façon, mais vérifie le jeton localement quand le projet signe en
+    // asymétrique — un aller-retour Auth de moins sur CHAQUE navigation.
+    await supabase.auth.getClaims();
   } catch (error) {
     console.error("[middleware] Échec du rafraîchissement de session Supabase :", error);
   }

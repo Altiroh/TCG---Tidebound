@@ -45,4 +45,37 @@ export function rememberProgression(summary: ProgressionSummary): void {
 /** À la déconnexion : le prochain bandeau ne doit pas afficher, même un instant, le compte précédent. */
 export function forgetProgression(): void {
   lastProgression = null;
+  lastReadAt = 0;
+}
+
+/** Instant de la dernière lecture réussie, pour `readProgression`. */
+let lastReadAt = 0;
+/** Lecture en cours, partagée : deux bandeaux montés coup sur coup n'en font qu'une. */
+let inflight: Promise<ProgressionSummary> | null = null;
+
+/**
+ * Au-delà, une lecture au montage repart au serveur. En deçà, le bandeau se
+ * contente de la dernière — un changement d'écran monte DEUX bandeaux
+ * (l'écran de chargement, puis la page), et chacun relisait tout.
+ */
+const FRESH_FOR_MS = 15_000;
+
+/**
+ * Progression du bandeau, dédoublonnée. `force` : relecture obligatoire —
+ * c'est le cas après un achat, une quête réclamée… (`notifyProgressionChanged`).
+ * Sans `force`, une lecture récente ou déjà en route est réutilisée.
+ */
+export function readProgression(fetcher: () => Promise<ProgressionSummary>, force = false): Promise<ProgressionSummary> {
+  if (!force && lastProgression && Date.now() - lastReadAt < FRESH_FOR_MS) return Promise.resolve(lastProgression);
+  if (!force && inflight) return inflight;
+  const request = fetcher().then((summary) => {
+    rememberProgression(summary);
+    lastReadAt = Date.now();
+    return summary;
+  });
+  inflight = request;
+  void request.finally(() => {
+    if (inflight === request) inflight = null;
+  }).catch(() => undefined);
+  return request;
 }

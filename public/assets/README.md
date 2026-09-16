@@ -24,6 +24,8 @@ gratuits.
 | `cards/<type>/` | Image **finie** de chaque carte, rangée par `CardType` — cadre + illustration + texte + stats déjà composités (une par `cardId`, voir `game/cards/sets/core.ts`) |
 | `cards/icons/` | Icônes mécaniques : Ancrage, Raison, Puissance, Résistance, Garde, Sabordage, etc. |
 | `ships/` | Cadre Navire + médaillons (Ancrage, Raison) + illustrations des Navires |
+| `ships/frames/` | Cadres de Navire **cosmétiques** (`game/cosmetics/shipFrames.ts`) — même gabarit que `ship-frame-empty.webp`, un fichier par skin |
+| `ui/icons/` | Icônes d'interface récurrentes : `tides.webp` (la monnaie), `precon-token.webp` (le Jeton de Préconstruit). Servies par `features/shell/GameIcons.tsx`, jamais en `<img>` recopié |
 | `animations/water-change/` | Animation de changement d'Eaux |
 | `animations/tide-change/` | Animation de changement de Marée |
 | `fx/structure-visibility/` | Visualisation des Structures invisibles / réémergentes |

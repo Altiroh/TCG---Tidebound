@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createSupabaseServerClient, createSupabaseServiceRoleClient } from "@/lib/supabase/server";
+import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import {
   MAX_REWARDED_LEVEL,
   levelRewardsLabel,
@@ -16,6 +16,21 @@ import { DEFAULT_CARD_BACK_ID } from "@/game";
 import { claimLoginReward, readLoginRewards } from "@/features/progression/loginService";
 import { syncAchievements } from "@/features/achievements/achievementService";
 import { equipCardBackFor, loadCardBacks, type CardBackCollection } from "@/features/cosmetics/cardBackService";
+import { getSessionUser } from "@/lib/supabase/sessionUser";
+import { fetchQuestBoard, type QuestEntry } from "@/features/quests/actions";
+import {
+  claimAchievementFor,
+  claimEverythingFor,
+  type ClaimAchievementResult,
+  type ClaimEverythingResult,
+} from "@/features/progression/rewardCenterService";
+import {
+  claimLevelRewardFor,
+  claimableLevelsFor,
+  resolveCardChoiceFor,
+  type ClaimLevelRewardResult,
+  type PendingCardChoice,
+} from "@/features/progression/levelRewardService";
 
 /**
  * Profil joueur — Server Actions exposées au navigateur.
@@ -40,6 +55,8 @@ export interface ProfileAchievement {
   description: string;
   rewardTides: number;
   unlocked: boolean;
+  /** Débloqué et Tides pas encore réclamées. */
+  claimable: boolean;
 }
 
 export interface ProfileSummary {
@@ -69,6 +86,14 @@ export interface ProfileSummary {
   upcomingMilestones: ProfileLevelRow[];
   /** Derniers paliers déjà récupérés, du plus récent au plus ancien. */
   claimedLevels: ProfileLevelRow[];
+  /** TOUS les niveaux dont la récompense a été créditée — la frise des récompenses les coche un à un. */
+  claimedLevelNumbers: number[];
+  /** Paliers atteints et PAS encore réclamés — ce que l'interface doit faire briller. */
+  claimableLevels: number[];
+  /** « Cartes au choix » ouvertes et pas encore tranchées. */
+  pendingCardChoices: PendingCardChoice[];
+  /** Quêtes du jour et de la semaine — elles se consultent et se réclament aussi au profil. */
+  quests: QuestEntry[];
   /** Cycle de connexion : étape à réclamer et disponibilité du jour. */
   login: { step: number; items: readonly LoginRewardItem[]; claimable: boolean; totalClaims: number };
   achievements: ProfileAchievement[];
@@ -96,11 +121,28 @@ const SIGNED_OUT: ProfileSummary = {
   nextLevelReward: "—",
   upcomingMilestones: [],
   claimedLevels: [],
+  claimedLevelNumbers: [],
+  claimableLevels: [],
+  pendingCardChoices: [],
+  quests: [],
   login: { step: 1, items: [], claimable: false, totalClaims: 0 },
   achievements: [],
   cardBacks: { options: [], equipped: DEFAULT_CARD_BACK_ID },
   maxRewardedLevelReached: false,
 };
+
+/**
+ * Exploits débloqués, et lesquels attendent d'être réclamés. Sans la colonne
+ * `claimed_at` (migration pas encore passée), tout est considéré réclamé :
+ * c'était le comportement d'avant, où l'exploit créditait tout seul.
+ */
+async function readAchievementRows(userId: string): Promise<Array<{ code: string; claimable: boolean }>> {
+  const service = createSupabaseServiceRoleClient();
+  const full = await service.from("player_achievements").select("code, claimed_at").eq("user_id", userId);
+  if (!full.error) return (full.data ?? []).map((row) => ({ code: row.code, claimable: row.claimed_at === null }));
+  const basic = await service.from("player_achievements").select("code").eq("user_id", userId);
+  return (basic.data ?? []).map((row) => ({ code: row.code, claimable: false }));
+}
 
 /** `true` si une série dont le dernier jour compté est `day` court toujours. */
 function isStreakAlive(day: string | null): boolean {
@@ -112,10 +154,7 @@ function isStreakAlive(day: string | null): boolean {
 
 export async function fetchProfile(): Promise<ProfileSummary> {
   try {
-    const supabase = createSupabaseServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getSessionUser();
     if (!user) return SIGNED_OUT;
 
     // Rattrape les exploits dus mais pas encore octroyés : le profil est
@@ -123,21 +162,24 @@ export async function fetchProfile(): Promise<ProfileSummary> {
     await syncAchievements(user.id);
 
     const service = createSupabaseServiceRoleClient();
-    const [progression, currency, profile, claimed, unlocked, login, cardBacks, ownedCards] = await Promise.all([
+    const [progression, currency, profile, claimed, unlocked, login, cardBacks, ownedCards, choices, questBoard] = await Promise.all([
       service.from("player_progression").select("xp_total, level, matches_played, pvp_wins, precon_tokens, play_streak, best_play_streak, play_streak_day").eq("user_id", user.id).maybeSingle(),
       service.from("player_currency").select("balance").eq("user_id", user.id).maybeSingle(),
       service.from("profiles").select("display_name, avatar_card_id").eq("id", user.id).maybeSingle(),
-      service.from("player_level_rewards").select("level").eq("user_id", user.id).order("level", { ascending: false }).limit(8),
-      service.from("player_achievements").select("code").eq("user_id", user.id),
+      service.from("player_level_rewards").select("level").eq("user_id", user.id).order("level", { ascending: false }),
+      readAchievementRows(user.id),
       readLoginRewards(user.id),
       loadCardBacks(user.id),
       // `quantity > 0` : une carte entièrement revendue laisse une ligne à
       // zéro, elle ne doit plus être proposée comme illustration.
       service.from("player_cards").select("card_id").eq("user_id", user.id).gt("quantity", 0),
+      service.from("player_card_choices").select("id, source, source_ref, rarity, offered_card_ids").eq("user_id", user.id).is("resolved_at", null),
+      fetchQuestBoard().catch(() => null),
     ]);
 
     const view = progressionView(progression.data?.xp_total ?? 0);
-    const unlockedCodes = new Set((unlocked.data ?? []).map((row) => row.code));
+    const unlockedCodes = new Set(unlocked.map((row) => row.code));
+    const claimableCodes = new Set(unlocked.filter((row) => row.claimable).map((row) => row.code));
 
     return {
       isSignedIn: true,
@@ -160,7 +202,15 @@ export async function fetchProfile(): Promise<ProfileSummary> {
       },
       nextLevelReward: view.level >= MAX_REWARDED_LEVEL ? "—" : levelRewardsLabel(view.level + 1),
       upcomingMilestones: nextMilestones(view.level, 3).map((level) => ({ level, label: levelRewardsLabel(level), claimed: false })),
-      claimedLevels: (claimed.data ?? []).map((row) => ({ level: row.level, label: levelRewardsLabel(row.level), claimed: true })),
+      claimedLevelNumbers: (claimed.data ?? []).map((row) => row.level),
+      claimableLevels: claimableLevelsFor(progression.data?.level ?? 1, (claimed.data ?? []).map((row) => row.level)),
+      pendingCardChoices: (choices.data ?? []).map((row) => ({
+        id: row.id,
+        level: row.source === "level" && /^d+$/.test(row.source_ref) ? Number(row.source_ref) : null,
+        rarity: row.rarity,
+        offeredCardIds: row.offered_card_ids,
+      })),
+      claimedLevels: (claimed.data ?? []).slice(0, 8).map((row) => ({ level: row.level, label: levelRewardsLabel(row.level), claimed: true })),
       login,
       achievements: ACHIEVEMENT_CATALOG.map((achievement) => ({
         code: achievement.code,
@@ -168,7 +218,9 @@ export async function fetchProfile(): Promise<ProfileSummary> {
         description: achievement.description,
         rewardTides: achievement.rewardTides,
         unlocked: unlockedCodes.has(achievement.code),
+        claimable: claimableCodes.has(achievement.code),
       })),
+      quests: questBoard?.isSignedIn ? [...questBoard.daily, ...questBoard.weekly] : [],
       cardBacks,
       maxRewardedLevelReached: view.level >= MAX_REWARDED_LEVEL,
     };
@@ -188,10 +240,7 @@ export interface ClaimLoginActionResult {
 
 /** Réclame la récompense de connexion du jour (§8). Une par jour UTC, jamais de remise à zéro. */
 export async function claimDailyLogin(): Promise<ClaimLoginActionResult> {
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) return { ok: false, error: "Connecte-toi pour réclamer ta récompense." };
 
   const result = await claimLoginReward(user.id);
@@ -215,14 +264,14 @@ export interface EquipCardBackActionResult {
  * d'équiper le cosmétique de quelqu'un d'autre.
  */
 export async function equipCardBack(cardBackId: string): Promise<EquipCardBackActionResult> {
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) return { ok: false, error: "Connecte-toi pour changer de dos de carte." };
 
   const result = await equipCardBackFor(user.id, cardBackId);
-  if (result.ok) revalidatePath("/profil");
+  if (result.ok) {
+    revalidatePath("/profil");
+    revalidatePath("/collectables");
+  }
   return result;
 }
 
@@ -253,10 +302,7 @@ export interface UpdateIdentityInput {
  * n'obtiendrait rien.
  */
 export async function updateProfileIdentity({ displayName, avatarCardId }: UpdateIdentityInput): Promise<UpdateIdentityActionResult> {
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) return { ok: false, error: "Connecte-toi pour modifier ton profil." };
 
   try {
@@ -281,4 +327,89 @@ export async function updateProfileIdentity({ displayName, avatarCardId }: Updat
     console.error("[updateProfileIdentity] Échec inattendu :", cause);
     return { ok: false, error: "Modification impossible pour l'instant — réessaie dans un instant." };
   }
+}
+
+export type { ClaimLevelRewardResult, PendingCardChoice };
+
+/** Réclame un palier de niveau atteint. Le joueur vient de sa session ; le contenu, de la table du serveur. */
+export async function claimLevelReward(level: number): Promise<ClaimLevelRewardResult> {
+  const user = await getSessionUser();
+  if (!user) return { ok: false, error: "Connecte-toi pour réclamer tes récompenses." };
+  const result = await claimLevelRewardFor(user.id, level);
+  if (result.ok) {
+    revalidatePath("/profil");
+    revalidatePath("/boosters");
+    revalidatePath("/collectables");
+  }
+  return result;
+}
+
+export interface ClaimAllLevelRewardsResult {
+  ok: boolean;
+  error?: string;
+  claimed: ClaimLevelRewardResult[];
+}
+
+/** Réclame d'un coup tous les paliers en attente, dans l'ordre. S'arrête au premier refus. */
+export async function claimAllLevelRewards(): Promise<ClaimAllLevelRewardsResult> {
+  const user = await getSessionUser();
+  if (!user) return { ok: false, error: "Connecte-toi pour réclamer tes récompenses.", claimed: [] };
+
+  const service = createSupabaseServiceRoleClient();
+  const [progression, claimedRows] = await Promise.all([
+    service.from("player_progression").select("level").eq("user_id", user.id).maybeSingle(),
+    service.from("player_level_rewards").select("level").eq("user_id", user.id),
+  ]);
+  const levels = claimableLevelsFor(progression.data?.level ?? 1, (claimedRows.data ?? []).map((row) => row.level));
+
+  const claimed: ClaimLevelRewardResult[] = [];
+  for (const level of levels) {
+    const result = await claimLevelRewardFor(user.id, level);
+    if (!result.ok) {
+      if (claimed.length > 0) revalidatePath("/profil");
+      return { ok: false, error: result.error, claimed };
+    }
+    claimed.push(result);
+  }
+  revalidatePath("/profil");
+  revalidatePath("/boosters");
+  revalidatePath("/collectables");
+  return { ok: true, claimed };
+}
+
+/** Tranche une « carte au choix » : la carte doit faire partie des propositions figées en base. */
+export async function chooseRewardCard(choiceId: string, cardId: string): Promise<{ ok: boolean; error?: string }> {
+  const user = await getSessionUser();
+  if (!user) return { ok: false, error: "Connecte-toi pour choisir ta carte." };
+  const result = await resolveCardChoiceFor(user.id, choiceId, cardId);
+  if (result.ok) {
+    revalidatePath("/profil");
+    revalidatePath("/collection");
+  }
+  return result;
+}
+
+export type { ClaimAchievementResult, ClaimEverythingResult };
+
+/** Réclame les Tides d'un exploit débloqué. */
+export async function claimAchievement(code: string): Promise<ClaimAchievementResult> {
+  const user = await getSessionUser();
+  if (!user) return { ok: false, error: "Connecte-toi pour réclamer tes récompenses." };
+  const result = await claimAchievementFor(user.id, code);
+  if (result.ok) revalidatePath("/profil");
+  return result;
+}
+
+/** Réclame TOUT ce qui attend : paliers, quêtes terminées, exploits. */
+export async function claimEverything(): Promise<ClaimEverythingResult> {
+  const user = await getSessionUser();
+  if (!user) {
+    return { ok: false, error: "Connecte-toi pour réclamer tes récompenses.", levels: [], quests: { count: 0, tides: 0, xp: 0, boosterIds: [] }, achievements: { count: 0, tides: 0 } };
+  }
+  const result = await claimEverythingFor(user.id);
+  revalidatePath("/profil");
+  revalidatePath("/quetes");
+  revalidatePath("/boosters");
+  revalidatePath("/collectables");
+  return result;
 }

@@ -39,12 +39,19 @@ export async function readAchievementStats(userId: string): Promise<AchievementS
 async function readStats(userId: string): Promise<AchievementStats | null> {
   const service = createSupabaseServiceRoleClient();
 
-  const [progression, onboarding, unlocks, cards, boosters] = await Promise.all([
+  const [progression, onboarding, unlocks, cards, boosters, losses] = await Promise.all([
     service.from("player_progression").select("level, xp_total, matches_played, pvp_wins").eq("user_id", userId).maybeSingle(),
     service.from("player_onboarding").select("tutorial_status").eq("user_id", userId).maybeSingle(),
     service.from("player_deck_unlocks").select("deck_id, source").eq("user_id", userId),
     service.from("player_cards").select("card_id, quantity").eq("user_id", userId).gt("quantity", 0),
     service.from("booster_openings").select("id", { count: "exact", head: true }).eq("user_id", userId),
+    // Lecture SÉPARÉE, et pas une colonne de plus dans le `select` ci-dessus :
+    // `losses` est arrivé par une migration postérieure
+    // (`20260923120000_player_losses`). Groupée, une colonne encore absente
+    // ferait échouer toute la lecture — donc plus aucun exploit, plus aucun
+    // Collectable, pour un compteur qui n'en concerne que deux. Isolée, elle
+    // retombe à zéro et le reste continue de vivre.
+    service.from("player_progression").select("losses").eq("user_id", userId).maybeSingle(),
   ]);
 
   if (!progression.data) return null;
@@ -73,13 +80,17 @@ async function readStats(userId: string): Promise<AchievementStats | null> {
     ownsAbyssalCard = (abyssal?.length ?? 0) > 0;
   }
 
+  if (losses.error) console.warn("[readAchievementStats] Compteur de défaites indisponible :", losses.error.message);
+
   return {
     level: progression.data.level ?? 1,
     // « Première victoire » sans distinction de mode (§10).
     wins: progression.data.pvp_wins ?? 0,
+    losses: (losses.data as { losses?: number } | null)?.losses ?? 0,
     matchesPlayed: progression.data.matches_played ?? 0,
     boostersOpened: boosters.count ?? 0,
     distinctCardsOwned: ownedIds.length,
+    ownedCardIds: ownedIds,
     ownsAbyssalCard,
     preconDecksUnlocked: (unlocks.data ?? []).filter((row) => row.source === "precon_token").length,
     decksFullyOwned,

@@ -1,5 +1,5 @@
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
-import { recycleValueOf } from "@/features/collection/recycleValue";
+import { keptCopiesOf, recycleValueOf } from "@/features/collection/recycleValue";
 
 /**
  * Revente de cartes — module SERVEUR, volontairement sans `"use server"` :
@@ -13,6 +13,13 @@ import { recycleValueOf } from "@/features/collection/recycleValue";
  * un second barème qui finirait par diverger (c'est exactement ce qui était
  * arrivé : l'ancienne `recycle_card` en avait un, périmé et sans les
  * raretés Épique et Légendaire).
+ *
+ * DEUX reventes, deux règles, exprès :
+ *   - `recycleCardFor` — à la carte, quantité choisie par le joueur : AUCUN
+ *     plancher, il peut tout vendre (la fiche confirme et prévient) ;
+ *   - `recycleSurplusFor` — le bouton « Revendre le surplus » : opération de
+ *     ménage, elle ne doit jamais entamer ce qu'un deck peut jouer, donc
+ *     elle garde `keep` par carte.
  */
 
 export interface RecycleResult {
@@ -27,7 +34,14 @@ export interface RecycleResult {
 }
 
 /**
- * Revend `quantity` exemplaires de `cardId`.
+ * Revend `quantity` exemplaires de `cardId`, SANS plancher.
+ *
+ * `p_min_keep: 0` est délibéré : le joueur a choisi la quantité sur la
+ * fiche de la carte et confirmé. La base refusait auparavant de descendre
+ * sous un exemplaire, ce qui privait de bouton quiconque voulait se
+ * débarrasser d'une carte qu'il ne jouera jamais. Le garde-fou est passé à
+ * l'écran (avertissement quand la vente entame ce qu'un deck peut jouer),
+ * là où il informe au lieu de bloquer.
  *
  * Ne vérifie NI la possession NI le dernier exemplaire : c'est la base qui
  * tranche, sous verrou (`for update`), pour que deux reventes simultanées ne
@@ -46,6 +60,7 @@ export async function recycleCardFor(userId: string, cardId: string, quantity: n
       p_card_id: cardId,
       p_quantity: quantity,
       p_unit_value: unitValue,
+      p_min_keep: 0,
     });
     if (error) {
       console.error("[recycleCardFor] Revente refusée :", error.message);
@@ -56,6 +71,51 @@ export async function recycleCardFor(userId: string, cardId: string, quantity: n
     return { ok: true, tidesGained: data.tides_gained, balance: data.balance, remaining: data.remaining };
   } catch (cause) {
     console.error("[recycleCardFor] Échec inattendu :", cause);
+    return { ok: false, error: "La revente n'a pas pu aboutir — réessaie dans un instant." };
+  }
+}
+
+export interface RecycleSurplusResult {
+  ok: boolean;
+  error?: string;
+  tidesGained?: number;
+  /** Exemplaires vendus, toutes cartes confondues. */
+  cardsSold?: number;
+  balance?: number;
+}
+
+/**
+ * Revend le SURPLUS de plusieurs cartes, en une transaction.
+ *
+ * `expected` est ce que le joueur a vu et confirmé : un PLAFOND par carte.
+ * La valeur et le nombre d'exemplaires gardés viennent du catalogue, la
+ * possession est relue en base sous verrou (`recycle_surplus`) — si la
+ * collection a bougé entre-temps, on vend moins, jamais plus.
+ */
+export async function recycleSurplusFor(userId: string, expected: ReadonlyArray<{ cardId: string; quantity: number }>): Promise<RecycleSurplusResult> {
+  const items: Array<{ card_id: string; quantity: number; unit_value: number; keep: number }> = [];
+  const seen = new Set<string>();
+  for (const entry of expected) {
+    if (typeof entry?.cardId !== "string" || seen.has(entry.cardId)) continue;
+    if (!Number.isInteger(entry.quantity) || entry.quantity < 1) continue;
+    const unitValue = recycleValueOf(entry.cardId);
+    const keep = keptCopiesOf(entry.cardId);
+    if (unitValue === null || keep === null) continue;
+    seen.add(entry.cardId);
+    items.push({ card_id: entry.cardId, quantity: entry.quantity, unit_value: unitValue, keep });
+  }
+  if (items.length === 0) return { ok: false, error: "Aucun surplus à revendre." };
+
+  try {
+    const { data, error } = await createSupabaseServiceRoleClient().rpc("recycle_surplus", { p_user_id: userId, p_items: items });
+    if (error) {
+      console.error("[recycleSurplusFor] Revente refusée :", error.message);
+      return { ok: false, error: "La revente n'a pas pu aboutir — réessaie dans un instant." };
+    }
+    if (!data?.ok) return { ok: false, error: data?.error ?? "La revente n'a pas pu aboutir." };
+    return { ok: true, tidesGained: data.tides_gained, cardsSold: data.cards_sold, balance: data.balance };
+  } catch (cause) {
+    console.error("[recycleSurplusFor] Échec inattendu :", cause);
     return { ok: false, error: "La revente n'a pas pu aboutir — réessaie dans un instant." };
   }
 }

@@ -248,6 +248,77 @@
   to { opacity: 1; transform: none; }
 }
 
+/*
+ * Mise en tension avant l'ouverture : le sachet tremble, pivote de quelques
+ * degrés et un reflet le balaie — puis il décolle vers le centre de l'écran
+ * (la scène prend le relais depuis cette position exacte).
+ */
+.dockPack {
+  position: relative;
+}
+
+.dockPack[data-charging] {
+  animation: dockCharge 900ms cubic-bezier(0.4, 0, 0.6, 1) both;
+  filter: drop-shadow(0 18px 26px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 18px rgba(120, 214, 236, 0.35));
+}
+
+/* Le reflet est découpé à la silhouette du sachet (son visuel sert de masque). */
+.dockPack::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.6) 48%, rgba(190, 240, 255, 0.3) 54%, transparent 64%);
+  background-size: 260% 100%;
+  background-position: 130% 0;
+  mask-image: var(--pack-art);
+  mask-size: contain;
+  mask-position: center;
+  mask-repeat: no-repeat;
+  -webkit-mask-image: var(--pack-art);
+  -webkit-mask-size: contain;
+  -webkit-mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mix-blend-mode: screen;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.dockPack[data-charging]::after {
+  animation: dockShine 900ms ease-in-out both;
+}
+
+/* Parti vers le centre : il n'est plus sur le plan. */
+.dockPack[data-launched] {
+  opacity: 0;
+  animation: none;
+}
+
+@keyframes dockCharge {
+  0% { transform: none; }
+  10% { transform: translate(-1px, 0) rotate(-1.5deg); }
+  20% { transform: translate(1px, -1px) rotate(1.8deg); }
+  30% { transform: translate(-2px, 0) rotate(-2.4deg); }
+  40% { transform: translate(2px, -1px) rotate(2.8deg) scale(1.02); }
+  50% { transform: translate(-2px, -2px) rotate(-3deg) scale(1.03); }
+  60% { transform: translate(2px, -2px) rotate(3.2deg) scale(1.04); }
+  70% { transform: translate(-1px, -3px) rotate(-2.6deg) scale(1.05); }
+  80% { transform: translate(1px, -4px) rotate(2deg) scale(1.06); }
+  90% { transform: translate(0, -6px) rotate(-1deg) scale(1.07); }
+  100% { transform: translate(0, -8px) rotate(0deg) scale(1.08); }
+}
+
+@keyframes dockShine {
+  0% { opacity: 0; background-position: 130% 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; background-position: -30% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dockPack[data-charging] { animation: none; }
+  .dockPack[data-charging]::after { animation: none; }
+}
+
 /* Trois cartes en attente : la zone montre ce qu'elle rend, pas ce qui lui
    manque. */
 .dockMark {

@@ -32,19 +32,16 @@
   transition: border-color 160ms ease-out, box-shadow 160ms ease-out;
 }
 
-/* Trois tailles, et rien d'autre : au-delà, chaque appelant recommencerait
-   à inventer la sienne — ce que cette plaque existe justement pour éviter.
-
-   La hauteur se lit TOUJOURS par rapport à la largeur de l'appelant : une
-   plaque basse sur une tuile large se lit comme un bandeau, pas comme un
-   cadre. Les tuiles font ~280–360 px de large, d'où un `lg` qui monte à la
-   moitié de cette largeur — en dessous, l'illustration n'a plus la place
-   d'être une image, elle n'est plus qu'une frise.
-   `sm` fait exception et reste un bandeau assumé : il ne porte qu'une
-   ligne de texte (le nom, dans l'éditeur), rien à cadrer. */
-.sm { min-height: clamp(40px, 5vh, 54px); }
-.md { min-height: clamp(92px, 12vh, 124px); }
-.lg { min-height: clamp(168px, 22vh, 224px); }
+/*
+ * UNE hauteur, la même partout.
+ *
+ * Elle se lit toujours par rapport à la largeur de l'appelant : une plaque
+ * basse sur une tuile large se lit comme un bandeau, pas comme un cadre.
+ * Les tuiles de deck font ~280–360 px de large et la colonne de l'éditeur
+ * ~250–320 px ; à cette hauteur-là, la plaque reste plus haute que large
+ * dans les deux cas, et l'illustration a la place d'être une image.
+ */
+.plate { min-height: clamp(168px, 22vh, 224px); }
 
 /* Interactive : la plaque réagit comme un bouton. */
 .plate:hover,
@@ -82,7 +79,7 @@
   /* Poussée vers le bleu AVANT le voile : une teinte posée par-dessus une
      image désaturée donne du bleu-gris, jamais du bleu électrique. C'est
      l'image elle-même qu'on sature et qu'on fait virer. */
-  filter: saturate(1.5) hue-rotate(-12deg) brightness(1.08) contrast(1.05);
+  filter: saturate(1.3) hue-rotate(-10deg) brightness(1.04) contrast(1.04);
 }
 
 /*
@@ -97,13 +94,15 @@
 .veil {
   z-index: 2;
   background:
-    /* Assombrissement vertical : transparent en haut, dense en bas, là où
-       le contenu est posé. C'est lui qui garantit la lisibilité. */
-    linear-gradient(180deg, rgba(4, 16, 30, 0.1) 0%, rgba(4, 18, 34, 0.42) 52%, rgba(2, 10, 20, 0.88) 100%),
-    /* Teinte ÉLECTRIQUE : un bleu franc et lumineux, pas le bleu-gris
-       d'avant. Posé en `overlay`, il sature l'image au lieu de la couvrir —
-       une couche opaque donnerait un aplat mort. */
-    linear-gradient(112deg, rgba(18, 118, 210, 0.55) 0%, rgba(40, 165, 240, 0.42) 55%, rgba(80, 210, 255, 0.36) 100%);
+    /* Assombrissement vertical : transparent en haut, dense EN BAS SEULEMENT,
+       sous le texte. Il commence tard (65 %) pour ne pas noyer le milieu de
+       l'image, où vivent les tentacules. */
+    linear-gradient(180deg, rgba(4, 16, 30, 0) 0%, rgba(4, 18, 34, 0.14) 46%, rgba(3, 13, 24, 0.62) 78%, rgba(2, 10, 20, 0.9) 100%),
+    /* Teinte bleue, tenue BASSE : à pleine force elle transformait la plaque
+       en aplat — l'illustration se devinait à peine et les tentacules
+       disparaissaient. Elle ramène l'image dans la palette, elle ne la
+       remplace pas. */
+    linear-gradient(112deg, rgba(18, 118, 210, 0.3) 0%, rgba(40, 165, 240, 0.22) 55%, rgba(80, 210, 255, 0.18) 100%);
 }
 
 /* Seule la couche de TEINTE passe en `overlay` ; l'assombrissement doit
@@ -113,7 +112,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(112deg, rgba(30, 150, 235, 0.5), rgba(90, 215, 255, 0.34));
+  background: linear-gradient(112deg, rgba(30, 150, 235, 0.26), rgba(90, 215, 255, 0.18));
   mix-blend-mode: overlay;
 }
 
@@ -140,11 +139,12 @@
   /* `soft-light` les avait fait disparaître : sur une illustration sombre,
      il ne reste rien. Fondu NORMAL, à une opacité qui les laisse deviner —
      le voile posé par-dessus s'occupe de les teinter. */
-  opacity: 0.42;
-  filter: grayscale(1) contrast(1.2) brightness(1.25);
+  opacity: 0.6;
+  filter: grayscale(1) contrast(1.25) brightness(1.3);
   /* Creusé là où vit le contenu — en bas à gauche : le relief habite le
-     haut et les bords, jamais sous le texte. */
-  mask-image: radial-gradient(135% 105% at 18% 100%, transparent 26%, #000 80%);
+     haut et les bords, jamais sous le texte. Le creux est resserré depuis
+     que la plaque est haute : il mangeait la moitié de l'image. */
+  mask-image: radial-gradient(95% 70% at 14% 100%, transparent 22%, #000 78%);
 }
 
 .content {

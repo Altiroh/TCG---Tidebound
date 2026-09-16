@@ -1,0 +1,151 @@
+/* « Revendre le surplus » : bouton de la barre de Collection et récapitulatif. */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  padding: 5px 11px;
+  border: 1px solid #195374;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #0b2638, #071826);
+  color: #c8d7e1;
+  font: inherit;
+  font-size: clamp(11px, 1.25vh, 13px);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 140ms ease-out, box-shadow 140ms ease-out, color 140ms ease-out;
+}
+
+.button:hover:not(:disabled) {
+  border-color: #00aef0;
+  box-shadow: 0 0 8px rgba(0, 183, 255, 0.3);
+  color: #fff;
+}
+
+.button:focus-visible {
+  outline: 2px solid #00b7ff;
+  outline-offset: 2px;
+}
+
+.button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.buttonCount {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: rgba(255, 200, 90, 0.9);
+  color: #2a1a00;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.recap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(233, 180, 90, 0.45);
+  border-radius: 10px;
+  background: rgba(60, 40, 12, 0.3);
+  color: var(--ink, #e8edf0);
+}
+
+.recapBig {
+  font-family: var(--cb-font-display);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+  color: #ffe2a0;
+}
+
+.tides {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  font-family: var(--cb-font-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffd66e;
+}
+
+.hint {
+  margin: 0;
+  font-size: 12px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: min(46vh, 380px);
+  margin: 0;
+  padding: 0 4px 0 0;
+  overflow-y: auto;
+  list-style: none;
+  overscroll-behavior: contain;
+}
+
+.line {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 8px 5px 5px;
+  border: 1px solid #17405a;
+  border-radius: 8px;
+  background: rgba(7, 26, 41, 0.7);
+}
+
+.art {
+  width: 44px;
+  height: 33px;
+  border-radius: 5px;
+  background-size: cover;
+  background-position: center 28%;
+}
+
+.name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  color: #e8edf0;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.keep {
+  font-size: 11px;
+  color: #9eb3c2;
+}
+
+.quantity {
+  font-weight: 700;
+  color: #f3c3ba;
+}
+
+.lineTides {
+  min-width: 42px;
+  text-align: right;
+  font-weight: 600;
+  color: #ffd66e;
+}
+
+.doneLine {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--ink, #e8edf0);
+  font-size: 15px;
+}

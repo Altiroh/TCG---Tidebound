@@ -1,8 +1,10 @@
 /* Cadre Navire hors plateau : même géométrie que `ShipInstrumentCluster`. */
+/* Format posé en ligne depuis la géométrie du cadre équipé ; la valeur
+   ci-dessous n'est qu'un repli (cadre d'origine). */
 .portrait {
   position: relative;
   flex-shrink: 0;
-  aspect-ratio: 512 / 640;
+  aspect-ratio: var(--frame-aspect, 0.8);
   max-width: 100%;
   user-select: none;
   /* Le nom se dimensionne sur la largeur du cadre (`cqw`), quelle qu'elle soit. */

@@ -5,6 +5,7 @@ import { createSupabaseServerClient, createSupabaseServiceRoleClient } from "@/l
 import { createSeed } from "@/game/rng";
 import { MAX_PURCHASE_QUANTITY } from "@/features/boosters/constants";
 import { drawBooster, type BoosterPoolCard, type BoosterSlotRule, type CardRarity, type DrawnCard } from "@/game/boosters";
+import { getSessionUser } from "@/lib/supabase/sessionUser";
 
 /**
  * Boosters — achat et ouverture, entièrement autoritaires côté serveur.
@@ -50,6 +51,8 @@ export interface BoosterInventoryEntry {
   obtainedAt: string | null;
   /** Boosters ouverts depuis la dernière Abyssale, pour CE type de booster. */
   packsSinceAbyssal: number;
+  /** Cartes qui peuvent tomber dans ce booster (`booster_pool_cards`), avec leur rareté. */
+  pool: Array<{ cardId: string; rarity: CardRarity }>;
 }
 
 export interface BoosterInventory {
@@ -57,6 +60,8 @@ export interface BoosterInventory {
   /** Solde de Tides. */
   balance: number;
   boosters: BoosterInventoryEntry[];
+  /** Cartes possédées (quantité > 0) — le Market dit, carte par carte, ce qu'on a déjà. */
+  ownedCardIds: string[];
 }
 
 export interface OpenedCard {
@@ -93,28 +98,45 @@ function describeFailure(error: unknown, fallback: string): string {
 
 async function requireUser() {
   const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) return null;
   return { supabase, userId: user.id };
 }
 
 /** Inventaire de boosters + solde de Tides du joueur connecté. */
 export async function fetchBoosterInventory(): Promise<BoosterInventory> {
-  const empty: BoosterInventory = { isSignedIn: false, balance: 0, boosters: [] };
+  const empty: BoosterInventory = { isSignedIn: false, balance: 0, boosters: [], ownedCardIds: [] };
 
   try {
     const session = await requireUser();
     if (!session) return empty;
     const { supabase, userId } = session;
 
-    const [definitions, owned, pity, currency] = await Promise.all([
+    const [definitions, owned, pity, currency, pools, ownedCards] = await Promise.all([
       supabase.from("booster_definitions").select("*").eq("is_enabled", true).order("id"),
       supabase.from("player_boosters").select("booster_definition_id, quantity, updated_at").eq("user_id", userId),
       supabase.from("player_pity").select("booster_definition_id, packs_since_abyssal").eq("user_id", userId),
       supabase.from("player_currency").select("balance").eq("user_id", userId).maybeSingle(),
+      // Même filtre que le tirage (`openBooster`) : ce qui est montré est
+      // exactement ce qui peut tomber.
+      supabase
+        .from("booster_pool_cards")
+        .select("booster_definition_id, card_id, cards!inner(id, rarity, is_collectible, is_enabled)")
+        .eq("is_enabled", true)
+        .eq("cards.is_collectible", true)
+        .eq("cards.is_enabled", true),
+      supabase.from("player_cards").select("card_id").eq("user_id", userId).gt("quantity", 0),
     ]);
+
+    if (pools.error) console.error("[fetchBoosterInventory] Pools illisibles :", pools.error.message);
+    const poolByBooster = new Map<string, Array<{ cardId: string; rarity: CardRarity }>>();
+    for (const row of pools.data ?? []) {
+      const card = Array.isArray(row.cards) ? row.cards[0] : row.cards;
+      if (!card) continue;
+      const list = poolByBooster.get(row.booster_definition_id) ?? [];
+      list.push({ cardId: row.card_id, rarity: card.rarity as CardRarity });
+      poolByBooster.set(row.booster_definition_id, list);
+    }
 
     const ownedByBooster = new Map((owned.data ?? []).map((row) => [row.booster_definition_id, row.quantity]));
     const obtainedByBooster = new Map((owned.data ?? []).map((row) => [row.booster_definition_id, row.updated_at]));
@@ -132,7 +154,9 @@ export async function fetchBoosterInventory(): Promise<BoosterInventory> {
         owned: ownedByBooster.get(def.id) ?? 0,
         obtainedAt: obtainedByBooster.get(def.id) ?? null,
         packsSinceAbyssal: pityByBooster.get(def.id) ?? 0,
+        pool: poolByBooster.get(def.id) ?? [],
       })),
+      ownedCardIds: (ownedCards.data ?? []).map((row) => row.card_id),
     };
   } catch (error) {
     console.error("[fetchBoosterInventory] Lecture impossible :", error);

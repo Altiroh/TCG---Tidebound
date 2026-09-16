@@ -1,8 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { finishTutorial, readOnboarding, type OnboardingState } from "@/features/onboarding/onboardingService";
+import { getSessionUser } from "@/lib/supabase/sessionUser";
 
 /**
  * Onboarding — Server Actions exposées au navigateur.
@@ -24,10 +24,7 @@ export interface OnboardingSummary extends OnboardingState {
 
 export async function fetchOnboarding(): Promise<OnboardingSummary> {
   try {
-    const supabase = createSupabaseServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getSessionUser();
     if (!user) return { ...SIGNED_OUT, isSignedIn: false, needsTutorialChoice: false, needsBorrowedDeck: false };
 
     const state = await readOnboarding(user.id);
@@ -58,10 +55,7 @@ export interface FinishTutorialActionResult {
  * navigateur ne puisse pas déclarer une complétion qu'il n'a pas jouée.
  */
 export async function completeTutorial(completed: boolean): Promise<FinishTutorialActionResult> {
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) return { ok: false, error: "Connecte-toi pour commencer." };
 
   const result = await finishTutorial(user.id, completed);

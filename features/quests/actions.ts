@@ -15,6 +15,7 @@ import {
   type QuestObjectiveKey,
   type QuestType,
 } from "@/game/quests";
+import { getSessionUser } from "@/lib/supabase/sessionUser";
 
 /**
  * Quêtes — Server Actions exposées au navigateur. Le joueur est TOUJOURS
@@ -86,10 +87,7 @@ export async function fetchQuestBoard(): Promise<QuestBoard> {
 
   let signedIn = false;
   try {
-    const supabase = createSupabaseServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getSessionUser();
     if (!user) return empty;
     signedIn = true;
 
@@ -174,10 +172,7 @@ export interface ClaimQuestResult {
 }
 
 export async function claimQuestReward(questId: string, periodKey: string): Promise<ClaimQuestResult> {
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) return { ok: false, error: "Connecte-toi pour réclamer une récompense." };
 
   const service = createSupabaseServiceRoleClient();
@@ -218,10 +213,7 @@ export interface RerollQuestResult {
  * peuvent donc pas consommer deux remplacements.
  */
 export async function rerollQuest(questId: string, periodKey: string): Promise<RerollQuestResult> {
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) return { ok: false, error: "Connecte-toi pour remplacer une quête." };
 
   const now = new Date();
@@ -293,9 +285,7 @@ export interface QuestRecapEntry {
 export async function fetchMatchQuestRecap(matchId: string): Promise<QuestRecapEntry[]> {
   try {
     const supabase = createSupabaseServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getSessionUser();
     if (!user) return [];
 
     const { data, error } = await supabase

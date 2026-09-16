@@ -5,6 +5,7 @@ import { getCardDefinition, type DeckList } from "@/game";
 import { validateDeckList } from "@/game/rules/deckValidation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { signatureCardId } from "@/features/decks/nameplateArt";
+import { getSessionUser } from "@/lib/supabase/sessionUser";
 
 export interface PlayerDeckSummary {
   id: string;
@@ -47,9 +48,7 @@ async function guarded(label: string, run: () => Promise<DeckActionResult>): Pro
 }
 
 async function currentUserId(supabase: ReturnType<typeof createSupabaseServerClient>): Promise<string | null> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   return user?.id ?? null;
 }
 
