@@ -16,6 +16,8 @@ interface CollectionToolbarProps {
   activeFilterCount: number;
   /** Contrôles propres à l'écran, après le tri (ex : bascule du panneau de deck). */
   extra?: ReactNode;
+  /** Action posée juste à côté de l'effectif (ex : « Revendre le surplus »). */
+  countAction?: ReactNode;
 }
 
 /**
@@ -34,6 +36,7 @@ export function CollectionToolbar({
   onOpenFilters,
   activeFilterCount,
   extra,
+  countAction,
 }: CollectionToolbarProps) {
   return (
     <div className={styles.toolbar}>
@@ -47,6 +50,7 @@ export function CollectionToolbar({
 
       <p className={styles.count}>
         <span className={styles.countValue}>{count}</span> carte{count > 1 ? "s" : ""}
+        {countAction && <span className={styles.countAction}>{countAction}</span>}
       </p>
 
       <div className={styles.sort}>

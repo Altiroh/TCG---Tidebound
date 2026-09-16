@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { cardBodyFont, cardTitleFont, uiFont } from "@/lib/fonts";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import { CardBackProvider } from "@/features/cosmetics/CardBackProvider";
+import { ShipFrameProvider } from "@/features/cosmetics/ShipFrameProvider";
 import "./tokens.css";
 import "./globals.css";
 
@@ -24,14 +25,17 @@ export default function RootLayout({
       style={{ ["--font-menu" as string]: `var(--font-card-title)` }}
     >
       <body>
-        {/* Dos de carte équipé. Monté ici, et SANS lecture serveur : le
-            fournisseur s'hydrate depuis le miroir local, ce qui garde cette
-            mise en page statique — une requête Supabase ici rendrait tout le
-            site dynamique pour un cosmétique. L'autorité reste la base, relue
-            et réalignée à chaque passage par le profil. */}
+        {/* Cosmétiques équipés — dos de carte et cadre de Navire. Montés
+            ici, et SANS lecture serveur : les fournisseurs s'hydratent depuis
+            le miroir local, ce qui garde cette mise en page statique — une
+            requête Supabase ici rendrait tout le site dynamique pour un
+            cosmétique. L'autorité reste la base, relue et réalignée à chaque
+            passage par Collectables. */}
         <CardBackProvider>
-          {children}
-          <ServiceWorkerRegister />
+          <ShipFrameProvider>
+            {children}
+            <ServiceWorkerRegister />
+          </ShipFrameProvider>
         </CardBackProvider>
       </body>
     </html>

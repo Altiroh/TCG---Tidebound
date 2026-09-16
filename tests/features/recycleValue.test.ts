@@ -4,7 +4,8 @@ import { BOOSTER_STANDARD_PRICE } from "@/game/economy/constants";
 import { RARITY_ORDER } from "@/game/boosters/types";
 import { CORE_SET } from "@/game/cards/sets/core";
 import { rarityForCardId } from "@/game/boosters/cardRarity";
-import { recycleValueOf } from "@/features/collection/recycleValue";
+import { keptCopiesOf, recycleValueOf, surplusOf, surplusPlan } from "@/features/collection/recycleValue";
+import { getMaxCopies } from "@/game/cards/types";
 
 /**
  * Barème de revente. Les propriétés vérifiées ici sont celles dont dépend
@@ -36,5 +37,29 @@ describe("recycleValueOf", () => {
 
   it("rend null pour une carte inconnue", () => {
     expect(recycleValueOf("carte-qui-nexiste-pas")).toBeNull();
+  });
+});
+
+describe("surplus", () => {
+  const def = CORE_SET[0]!;
+  const max = getMaxCopies(def);
+
+  it("garde le maximum d'exemplaires d'un deck", () => {
+    expect(keptCopiesOf(def.id)).toBe(Math.max(1, max));
+    expect(keptCopiesOf("carte-qui-nexiste-pas")).toBeNull();
+  });
+
+  it("ne compte QUE ce qui dépasse le maximum", () => {
+    expect(surplusOf(def.id, 0)).toBe(0);
+    expect(surplusOf(def.id, max)).toBe(0);
+    expect(surplusOf(def.id, max + 2)).toBe(2);
+    expect(surplusOf("carte-qui-nexiste-pas", 9)).toBe(0);
+  });
+
+  it("récapitule les cartes en surplus, la plus lucrative d'abord", () => {
+    const other = CORE_SET.find((card) => recycleValueOf(card.id)! > recycleValueOf(def.id)!)!;
+    const plan = surplusPlan({ [def.id]: max + 1, [other.id]: getMaxCopies(other) + 1, [CORE_SET[2]!.id]: 1 });
+    expect(plan.map((line) => line.cardId)).toEqual([other.id, def.id]);
+    expect(plan[1]).toMatchObject({ quantity: 1, keep: max, tides: recycleValueOf(def.id) });
   });
 });

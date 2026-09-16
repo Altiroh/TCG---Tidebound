@@ -45,6 +45,29 @@ describe("couverture de rareté du catalogue", () => {
     }
   });
 
+  it("réserve la rareté Abyssale aux variantes « -abyssal », et à elles seules", () => {
+    /*
+     * RÈGLE VERROUILLÉE (design, 2026-09-16) : « une carte Abyssale est la
+     * variante `-abyssal`, sinon au mieux c'est légendaire ». Le test la
+     * vérifie dans LES DEUX SENS.
+     *
+     * Elle vient d'une régression : neuf cartes valaient `abyssal` parce
+     * que l'audit les nommait ainsi avant que la variante n'existe comme
+     * mécanique. La rareté avait suivi l'IDENTIFIANT au lieu de suivre la
+     * carte, et un emplacement de booster tiré en Abyssale rendait la
+     * version Standard, annoncée « ABYSSALE » à l'écran.
+     */
+    const usurpatrices = CORE_SET.filter((def) => !def.id.endsWith("-abyssal") && rarityForCardId(def.id) === "abyssal").map(
+      (def) => def.id
+    );
+    expect(usurpatrices, "sans le suffixe « -abyssal », une carte plafonne à légendaire").toEqual([]);
+
+    const oubliees = CORE_SET.filter((def) => def.id.endsWith("-abyssal") && rarityForCardId(def.id) !== "abyssal").map(
+      (def) => def.id
+    );
+    expect(oubliees, "toute variante « -abyssal » est Abyssale par construction").toEqual([]);
+  });
+
   it("n'a aucune rareté en attente d'arbitrage du design", () => {
     /*
      * Toutes les raretés sont validées (les six cartes postérieures à

@@ -1,4 +1,5 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getSessionUser } from "@/lib/supabase/sessionUser";
 
 export interface ViewerCollection {
   isSignedIn: boolean;
@@ -17,9 +18,7 @@ export interface ViewerCollection {
 export async function getOwnedCardIds(): Promise<ViewerCollection> {
   try {
     const supabase = createSupabaseServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getSessionUser();
     if (!user) return { isSignedIn: false, ownedCardIds: [], ownedCounts: {} };
 
     const { data, error } = await supabase

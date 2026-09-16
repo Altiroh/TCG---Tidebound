@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useMemo } from "react";
-import { BoosterCard, type BoosterCardStyle } from "@/features/boosters/opening/BoosterCard";
+import { BoosterCard, type BoosterCardShowcase, type BoosterCardStyle } from "@/features/boosters/opening/BoosterCard";
 import type { BoosterCardRevealState } from "@/features/boosters/opening/boosterOpeningMachine";
 import type { BoosterOpeningTimings } from "@/features/boosters/opening/boosterOpeningTimings";
 import type { BoosterOpeningCard } from "@/features/boosters/opening/types";
@@ -12,7 +12,11 @@ interface BoosterCardsProps {
   interactive: boolean;
   cardBackAvailable: boolean;
   timings: BoosterOpeningTimings;
+  /** Gros plan en cours ou passé, par index de carte. */
+  showcases: Readonly<Record<number, BoosterCardShowcase>>;
   onReveal: (index: number) => void;
+  onInspect: (cardId: string) => void;
+  onShowcaseDismiss: () => void;
 }
 
 /** Légère inclinaison propre à chaque carte pendant sa montée dans le sachet. */
@@ -30,7 +34,10 @@ export const BoosterCards = memo(function BoosterCards({
   interactive,
   cardBackAvailable,
   timings,
+  showcases,
   onReveal,
+  onInspect,
+  onShowcaseDismiss,
 }: BoosterCardsProps) {
   const cardStyles = useMemo(
     () =>
@@ -63,7 +70,10 @@ export const BoosterCards = memo(function BoosterCards({
           interactive={interactive && states[index] === "hidden"}
           cardBackAvailable={cardBackAvailable}
           cardStyle={cardStyles[index]!}
+          showcase={showcases[index]}
           onReveal={onReveal}
+          onInspect={onInspect}
+          onShowcaseDismiss={onShowcaseDismiss}
         />
       ))}
     </>

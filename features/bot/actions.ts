@@ -1,10 +1,11 @@
 "use server";
 
 import { createGameState, type BotDifficulty } from "@/game";
-import { createSupabaseServerClient, createSupabaseServiceRoleClient } from "@/lib/supabase/server";
+import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { generateInviteCode } from "@/features/online/inviteCode";
 import { BOT_PLAYER_ID } from "@/features/matches/matchStore";
 import { findCatalogDeck, resolveMatchDeck } from "@/features/decks/matchDeck";
+import { getSessionUser } from "@/lib/supabase/sessionUser";
 
 const DIFFICULTIES: readonly BotDifficulty[] = ["facile", "moyen", "difficile"];
 
@@ -56,10 +57,7 @@ async function createBotMatch(deckId: string, botDeckId: string, difficulty: Bot
   if (!botDeck) return { ok: false, error: "Deck inconnu." };
   if (!DIFFICULTIES.includes(difficulty)) return { ok: false, error: "Difficulté inconnue." };
 
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) return { ok: false, signedOut: true };
 
   // Le deck du JOUEUR peut être un deck personnel : il est relu en base,

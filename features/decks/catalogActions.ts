@@ -1,8 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { claimBorrowedDeck, readDeckCatalog, unlockPreconDeck, type DeckCatalogView, type UnlockResult } from "@/features/decks/catalogService";
+import { getSessionUser } from "@/lib/supabase/sessionUser";
 
 /**
  * Decks fournis par le jeu — Server Actions exposées au navigateur.
@@ -19,10 +19,7 @@ export interface DeckCatalogSummary extends DeckCatalogView {
 
 export async function fetchDeckCatalog(): Promise<DeckCatalogSummary> {
   try {
-    const supabase = createSupabaseServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getSessionUser();
     const view = await readDeckCatalog(user?.id ?? null);
     return { ...view, isSignedIn: Boolean(user) };
   } catch (error) {
@@ -34,10 +31,7 @@ export async function fetchDeckCatalog(): Promise<DeckCatalogSummary> {
 
 /** Choisit le deck d'emprunt gratuit (§3) — une seule fois par compte. */
 export async function chooseBorrowedDeck(deckId: string): Promise<UnlockResult> {
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) return { ok: false, error: "Connecte-toi pour choisir ton premier deck." };
 
   const result = await claimBorrowedDeck(user.id, deckId);
@@ -51,10 +45,7 @@ export async function chooseBorrowedDeck(deckId: string): Promise<UnlockResult> 
 
 /** Débloque un préconstruit en dépensant un Jeton de Préconstruit (§4). */
 export async function unlockPreconstructedDeck(deckId: string): Promise<UnlockResult> {
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) return { ok: false, error: "Connecte-toi pour débloquer un préconstruit." };
 
   const result = await unlockPreconDeck(user.id, deckId);

@@ -3,8 +3,12 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { fetchProgression, type ProgressionSummary } from "@/features/progression/actions";
-import { notifyProgressionChanged, onProgressionChanged, rememberProgression, rememberedProgression } from "@/features/progression/progressionSync";
+import { notifyProgressionChanged, onProgressionChanged, readProgression, rememberedProgression } from "@/features/progression/progressionSync";
+import { cardIllustrationUrl } from "@/features/decks/nameplateArt";
 import { QuestDrawer } from "@/features/quests/QuestDrawer";
+import { ProfileDrawer } from "@/features/progression/ProfileDrawer";
+import type { ProfileTab } from "@/features/progression/ProfileView";
+import { PreconToken, TideCoin } from "@/features/shell/GameIcons";
 import { ScreenToast, type ScreenToastMessage } from "@/features/shell/ScreenToast";
 import { SettingsDialog } from "@/features/settings/SettingsDialog";
 import styles from "@/features/shell/ScreenShell.module.css";
@@ -40,28 +44,6 @@ function GearIcon() {
   );
 }
 
-/** Jeton de Tides — une pièce, pas une icône de logiciel : la monnaie doit se reconnaître d'un coup d'œil. */
-export function TideCoin({ size = 15 }: { size?: number }) {
-  return (
-    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden className={styles.tideCoin}>
-      <circle cx="12" cy="12" r="9" fill="url(#tideCoinFace)" stroke="#a47b36" strokeWidth="1.3" />
-      <path
-        d="M6.6 13.4c1.4-1.5 2.7-1.5 4.1 0s2.7 1.5 4.1 0 2.7-1.5 4.1 0"
-        fill="none"
-        stroke="#6d5224"
-        strokeWidth="1.3"
-        strokeLinecap="round"
-        opacity="0.85"
-      />
-      <defs>
-        <linearGradient id="tideCoinFace" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#f0d79a" />
-          <stop offset="100%" stopColor="#c79a4e" />
-        </linearGradient>
-      </defs>
-    </svg>
-  );
-}
 
 /** Initiale du pseudo pour l'avatar. Insécable si le pseudo est vide ou ne commence pas par une lettre. */
 function avatarInitial(name: string | null): string {
@@ -99,6 +81,10 @@ export function HeaderPlayer() {
   const [summary, setSummary] = useState<ProgressionSummary | null>(rememberedProgression);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [questsOpen, setQuestsOpen] = useState(false);
+  /** Profil ouvert en panneau, et sur quel onglet (`null` : fermé). */
+  const [profileTab, setProfileTab] = useState<ProfileTab | null>(null);
+  /** Dernier nombre de récompenses à réclamer VU — même principe que les quêtes. */
+  const lastRewards = useRef<number | null>(null);
   const [toast, setToast] = useState<ScreenToastMessage | null>(null);
   /**
    * Dernier nombre de quêtes à réclamer VU. Sert à repérer une quête qui
@@ -116,16 +102,17 @@ export function HeaderPlayer() {
     // Numéro de lecture : deux relectures rapprochées (achat puis quête)
     // peuvent revenir dans le désordre — seule la dernière demandée compte.
     let latest = 0;
-    const load = () => {
+    const load = (force: boolean) => {
       const request = ++latest;
-      fetchProgression()
+      // Lecture partagée (`readProgression`) : mémorisée même si ce bandeau
+      // a été démonté entre-temps, et réutilisée par le suivant tant
+      // qu'elle est fraîche. Déconnecté : on n'en garde rien.
+      readProgression(fetchProgression, force)
         .then((result) => {
-          // Mémorisée même si ce bandeau a été démonté entre-temps : le
-          // prochain écran en profitera. Déconnecté : on n'en garde rien.
-          rememberProgression(result);
           if (cancelled || request !== latest) return;
           setSummary(result);
           announceNewQuests(result.claimableQuests);
+          announceNewRewards(result.claimableRewards);
         })
         .catch((error) => console.error("[HeaderPlayer] Lecture de la progression impossible :", error));
     };
@@ -162,9 +149,42 @@ export function HeaderPlayer() {
       });
     }
 
-    load();
+    /**
+     * Annonce les récompenses qui viennent d'arriver (un palier franchi en
+     * fin de partie, typiquement). Les quêtes ont la priorité sur l'alerte :
+     * une seule à la fois, et la pastille de l'avatar reste de toute façon.
+     */
+    function announceNewRewards(claimable: number) {
+      const previous = lastRewards.current;
+      lastRewards.current = claimable;
+      if (previous === null || claimable <= previous) return;
+      setToast((current) =>
+        current
+          ? current
+          : {
+              id: ++toastId.current,
+              tone: "success",
+              text: "Nouvelle récompense à réclamer au profil !",
+              action: (
+                <button
+                  type="button"
+                  className={styles.toastAction}
+                  onClick={() => {
+                    playButtonClick();
+                    setToast(null);
+                    setProfileTab("recompenses");
+                  }}
+                >
+                  Réclamer →
+                </button>
+              ),
+            }
+      );
+    }
+
+    load(false);
     // Relecture après un achat, une quête réclamée… — cf. `progressionSync`.
-    const unsubscribe = onProgressionChanged(load);
+    const unsubscribe = onProgressionChanged(() => load(true));
     return () => {
       cancelled = true;
       unsubscribe();
@@ -175,21 +195,48 @@ export function HeaderPlayer() {
   // rien du tout plutôt qu'un niveau 1 trompeur.
   const signedIn = summary?.isSignedIn ?? false;
 
+  /** Le profil s'ouvre en PANNEAU ; un clic molette ou Ctrl+clic garde la page `/profil`. */
+  function openProfile(event: React.MouseEvent, tab: ProfileTab) {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+    event.preventDefault();
+    playButtonClick();
+    setProfileTab(tab);
+  }
+
   return (
     <>
       {signedIn && summary && (
         <div className={styles.account}>
-          {/* Avatar : l'initiale du pseudo dans un jeton de laiton. Pas
-              d'image tant que le jeu n'en propose pas — un rond vide dirait
-              qu'il manque quelque chose. */}
-          <span className={styles.accountAvatar} aria-hidden>
-            {avatarInitial(summary.displayName)}
-          </span>
+          {/* Avatar : l'illustration choisie au profil, sinon l'initiale du
+              pseudo dans un jeton de laiton — jamais un rond vide, qui dirait
+              qu'il manque quelque chose. Le jeton mène au profil, comme le
+              pseudo. */}
+          <Link
+            href="/profil"
+            className={styles.accountAvatarLink}
+            aria-label={summary.claimableRewards > 0 ? `Profil — ${summary.claimableRewards} récompense${summary.claimableRewards > 1 ? "s" : ""} à réclamer` : "Profil"}
+            onClick={(event) => openProfile(event, summary.claimableRewards > 0 ? "recompenses" : "carnet")}
+          >
+            {summary.avatarCardId ? (
+              <span
+                className={`${styles.accountAvatar} ${styles.accountAvatarArt}`}
+                style={{ backgroundImage: `url("${cardIllustrationUrl(summary.avatarCardId)}")` }}
+              />
+            ) : (
+              <span className={styles.accountAvatar}>{avatarInitial(summary.displayName)}</span>
+            )}
+            {/* Pastille : quelque chose attend au profil. Elle pulse — c'est fait pour donner envie d'y aller. */}
+            {summary.claimableRewards > 0 && (
+              <span className={styles.rewardBadge} aria-hidden>
+                {summary.claimableRewards}
+              </span>
+            )}
+          </Link>
 
           <span className={styles.accountIdentity}>
             {/* Le pseudo mène au carnet de bord : niveau, paliers, escales
                 de connexion, exploits (Notion « Progression joueur » §12). */}
-            <Link href="/profil" className={styles.accountName} title={summary.displayName ?? undefined} onClick={() => playButtonClick()}>
+            <Link href="/profil" className={styles.accountName} title={summary.displayName ?? undefined} onClick={(event) => openProfile(event, "carnet")}>
               {summary.displayName ?? "Joueur"}
             </Link>
 
@@ -211,40 +258,32 @@ export function HeaderPlayer() {
             </span>
           </span>
 
-          <span className={styles.accountTides} title="Tides — la monnaie du jeu">
-            <TideCoin />
-            {summary.balance}
+          <span className={styles.accountWallet}>
+            <span className={styles.accountTides} title="Tides — la monnaie du jeu">
+              <TideCoin size={22} />
+              {summary.balance}
+            </span>
+            {/* Jetons de Préconstruit : la seconde monnaie, et la seule
+                façon de débloquer un deck. Elle vaut d'être lue d'un coup
+                d'œil au même endroit que les Tides, pas seulement au
+                profil. */}
+            <span
+              className={styles.accountTokens}
+              title={`${summary.preconTokens} Jeton${summary.preconTokens > 1 ? "s" : ""} de Préconstruit`}
+            >
+              <PreconToken size={22} />
+              {summary.preconTokens}
+            </span>
           </span>
         </div>
       )}
 
-      {/* Quêtes : au bout du bloc de compte, comme les Options. Réservé aux
-          joueurs connectés — un tiroir vide n'apprend rien à un visiteur. */}
-      {signedIn && (
-        <button
-          type="button"
-          className={summary && summary.claimableQuests > 0 ? styles.questsWaiting : styles.optionsButton}
-          aria-label={
-            summary && summary.claimableQuests > 0
-              ? `Quêtes — ${summary.claimableQuests} récompense${summary.claimableQuests > 1 ? "s" : ""} à réclamer`
-              : "Quêtes"
-          }
-          title="Quêtes"
-          aria-haspopup="dialog"
-          onClick={() => {
-            playButtonClick();
-            setQuestsOpen(true);
-          }}
-        >
-          <QuestIcon />
-          {/* Pastille : ce qui attend une action, et rien d'autre. Une
-              quête en cours n'a pas à réclamer l'attention. */}
-          {summary && summary.claimableQuests > 0 && (
-            <span className={styles.badge} aria-hidden>
-              {summary.claimableQuests}
-            </span>
-          )}
-        </button>
+      {/* Visiteur : la porte d'entrée du compte, là où le compte s'afficherait.
+          Seulement une fois la lecture revenue — avant, on ne sait pas. */}
+      {summary && !signedIn && (
+        <Link href="/connexion" className={styles.signInLink} onClick={() => playButtonClick()}>
+          Se connecter
+        </Link>
       )}
 
       <button
@@ -272,6 +311,16 @@ export function HeaderPlayer() {
             setQuestsOpen(false);
             // Une réclamation faite dans le tiroir change le solde et la
             // pastille : on relit en fermant.
+            notifyProgressionChanged();
+          }}
+        />
+      )}
+      {profileTab && (
+        <ProfileDrawer
+          initialTab={profileTab}
+          onClose={() => {
+            setProfileTab(null);
+            // Réclamations, pseudo, avatar : le bandeau relit en fermant.
             notifyProgressionChanged();
           }}
         />

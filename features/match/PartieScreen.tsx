@@ -119,6 +119,7 @@ export function PartieScreen({ isSignedIn, personalDecks = [], unlockedDeckIds =
             ? "La partie est arbitrée par le serveur : elle rapporte de l'XP et fait avancer tes quêtes."
             : "Hors connexion : partie d'entraînement, sans XP ni quêtes. Connecte-toi pour être récompensé."
         }
+        isSignedIn={isSignedIn}
       />
     );
   }

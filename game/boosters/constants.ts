@@ -43,18 +43,34 @@ export const RARITY_WEIGHTS: Record<CardRarity, number> = {
  * aurait rapporté 120 pour un booster à 100 — exactement la boucle
  * autosuffisante que la règle interdit.
  *
- * Les RATIOS d'origine sont donc conservés, et c'est le montant qui suit le
- * prix. Une future variation de prix ne pourra plus casser la règle en
- * silence.
+ * Les ratios ont d'abord été repris tels quels, ce qui donnait 1 Tide pour
+ * une Commune : une somme que personne ne traverse un écran pour encaisser,
+ * donc une mécanique morte. Ce sont maintenant les VALEURS DE TRAVAIL du
+ * cadrage (5 / 15 / 45 / 120) qui servent de repère, et non plus ses
+ * ratios — une Commune revaut bien 5 Tides, comme le cadrage l'écrivait.
+ *
+ * Deux choses ont poussé dans ce sens :
+ *   - le prix du booster a été divisé par cinq (500 → 100), donc garder les
+ *     ratios revenait à diviser toutes les valeurs par cinq aussi ;
+ *   - la revente ne porte plus que l'EXCÉDENT (`sellableCopies`) : il faut
+ *     posséder plus d'exemplaires qu'un deck n'en accepte, un 4ᵉ là où le
+ *     double suffisait avant. L'occasion est bien plus rare qu'elle ne
+ *     l'était : elle mérite un montant qui se remarque.
+ *
+ * Le PLAFOND, lui, reste tenu par la règle forte du cadrage — « jamais de
+ * boucle d'ouverture autosuffisante ». Les 120 Tides de la valeur de
+ * travail dépasseraient le prix du booster : l'Abyssale s'arrête donc à
+ * 48 %, sous la moitié du prix, et `tests/game/boosters.test.ts` garde
+ * cette borne comme il gardait la précédente.
  */
 const RECYCLE_SHARE_OF_BOOSTER: Record<CardRarity, number> = {
-  common: 0.01,
-  uncommon: 0.03,
-  rare: 0.09,
+  common: 0.05,
+  uncommon: 0.11,
+  rare: 0.22,
   // Intercalés entre Rare et Abyssale, en gardant l'écart croissant.
-  epic: 0.15,
-  legendary: 0.2,
-  abyssal: 0.24,
+  epic: 0.32,
+  legendary: 0.4,
+  abyssal: 0.48,
 };
 
 /** Valeur de recyclage d'un exemplaire en trop, par rareté, en Tides. */

@@ -9,8 +9,12 @@ import {
   type BotDifficulty,
   type DeckList,
 } from "@/game";
+import Link from "next/link";
+import { DeckCarousel } from "@/features/match/DeckCarousel";
+import { nameplateArtUrl } from "@/features/decks/nameplateArt";
+import { ArtPlate } from "@/features/shell/ArtPlate";
 import { GameScreen } from "@/features/shell/GameScreen";
-import { ShipPortrait, shipNameOf } from "@/features/ships/ShipPortrait";
+import { shipNameOf } from "@/features/ships/ShipPortrait";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/match/NewMatch.module.css";
 import { playButtonClick } from "@/lib/sound";
@@ -33,6 +37,8 @@ interface NewMatchScreenProps {
    * (Notion « Progression joueur » §4).
    */
   unlockedDeckIds?: readonly string[];
+  /** Compte connecté — dit quoi afficher quand l'onglet « Mes decks » est vide. */
+  isSignedIn?: boolean;
 }
 
 /**
@@ -63,12 +69,22 @@ type Mode = "pvp" | "bot";
 /** 1 : mode · 2 : deck du joueur 1 (ou le sien contre le bot) · 3 : deck du joueur 2 (local à deux seulement). */
 type Step = 1 | 2 | 3;
 
-interface DeckGroup {
-  title: string;
-  hint?: string;
+/** Les onglets de la sélection de deck, dans l'ordre de lecture. */
+type DeckTab = "mine" | "borrowed" | "test";
+
+interface DeckTabDef {
+  id: DeckTab;
+  label: string;
+  hint: string;
   decks: readonly DeckList[];
-  /** Raison affichée sur un deck non débloqué — la tuile reste visible, éteinte. */
-  lockedReason?: (deck: DeckList) => string | null;
+  /** Pourquoi un deck n'est pas jouable — la tuile reste visible, éteinte, avec la raison. */
+  issueFor: (deck: DeckList) => string | null;
+}
+
+/** Style et difficulté des listes du jeu — un deck personnel n'en a pas. */
+function catalogMeta(deck: DeckList): { style: string; difficulty: number } | null {
+  const meta = deck as Partial<{ style: string; difficulty: number }>;
+  return typeof meta.style === "string" && typeof meta.difficulty === "number" ? { style: meta.style, difficulty: meta.difficulty } : null;
 }
 
 /**
@@ -81,7 +97,15 @@ interface DeckGroup {
  * visibles, éteints, avec la raison. Contre le bot, l'adversaire est tiré
  * au sort au lancement parmi les listes du jeu.
  */
-export function NewMatchScreen({ onStart, starting = false, error = null, botNote, personalDecks = [], unlockedDeckIds = [] }: NewMatchScreenProps) {
+export function NewMatchScreen({
+  onStart,
+  starting = false,
+  error = null,
+  botNote,
+  personalDecks = [],
+  unlockedDeckIds = [],
+  isSignedIn = false,
+}: NewMatchScreenProps) {
   const [step, setStep] = useState<Step>(1);
   const [mode, setMode] = useState<Mode>("bot");
   const [botDifficulty, setBotDifficulty] = useState<BotDifficulty>("moyen");
@@ -99,24 +123,38 @@ export function NewMatchScreen({ onStart, starting = false, error = null, botNot
 
   const unlocked = useMemo(() => new Set(unlockedDeckIds), [unlockedDeckIds]);
 
-  const groups: DeckGroup[] = useMemo(() => {
-    const list: DeckGroup[] = [];
-    if (personalDecks.length > 0) {
-      list.push({ title: "Mes decks", hint: `${RULES.DECK_SIZE_MIN} à ${RULES.DECK_SIZE_MAX} cartes pour être jouable`, decks: personalDecks });
-    }
-    // Deck d'emprunt : celui que le joueur a choisi, et lui seul. Les deux
-    // autres ne sont pas « verrouillés », ils ne sont simplement pas les siens.
-    const borrowed = BORROWED_DECKS.filter((deck) => unlocked.has(deck.id));
-    if (borrowed.length > 0) list.push({ title: "Mon deck d'emprunt", hint: "Cartes prêtées tant que tu ne les possèdes pas", decks: borrowed });
-
-    list.push({
-      title: "Préconstruits",
-      hint: "Débloqués avec un Jeton de Préconstruit",
-      decks: PRECON_DECKS,
-      lockedReason: (deck) => (unlocked.has(deck.id) ? null : "Verrouillé — débloque-le dans Decks → Préconstruits (1 Jeton)."),
-    });
-    return list;
-  }, [personalDecks, unlocked]);
+  const tabs: DeckTabDef[] = useMemo(
+    () => [
+      {
+        id: "mine",
+        label: "Mes decks",
+        hint: `Tes decks montés — ${RULES.DECK_SIZE_MIN} à ${RULES.DECK_SIZE_MAX} cartes pour être jouables.`,
+        decks: personalDecks,
+        issueFor: (deck) => personalValidity.get(deck.id) ?? null,
+      },
+      {
+        id: "borrowed",
+        label: "Deck d'emprunt",
+        hint: "Cartes prêtées tant que tu ne les possèdes pas.",
+        decks: BORROWED_DECKS,
+        // Les deux autres ne sont pas « verrouillés » : ils ne sont simplement pas le sien.
+        issueFor: (deck) => (unlocked.has(deck.id) ? null : "Pas ton deck d'emprunt — il se choisit une seule fois, dans Decks."),
+      },
+      {
+        // TEMPORAIRE : toutes les listes d'archétype, ouvertes pour tester.
+        // Le serveur les accepte déjà toutes (`findCatalogDeck`).
+        id: "test",
+        label: "Decks de test",
+        hint: "Listes d'archétype ouvertes le temps des essais.",
+        decks: PRECON_DECKS,
+        issueFor: () => null,
+      },
+    ],
+    [personalDecks, personalValidity, unlocked]
+  );
+  // Premier onglet utile : ses decks s'il en a, sinon l'emprunt.
+  const [deckTab, setDeckTab] = useState<DeckTab>(() => (personalDecks.length > 0 ? "mine" : "borrowed"));
+  const activeTab = tabs.find((tab) => tab.id === deckTab) ?? tabs[0]!;
 
   const current = step === 3 ? deck2 : deck1;
   const setCurrent = step === 3 ? setDeck2 : setDeck1;
@@ -267,17 +305,54 @@ export function NewMatchScreen({ onStart, starting = false, error = null, botNot
                 </section>
               )}
 
-              {groups.map((group) => (
-                <section key={group.title} className={styles.group}>
-                  <div className={styles.groupHead}>
-                    <h2 className={game.sectionTitle}>{group.title}</h2>
-                    {group.hint && <span className={game.muted}>{group.hint}</span>}
+              {/* Les decks par onglet, en rangée qui défile : les mêmes plaques
+                  que l'écran Decks — un deck se reconnaît partout à son image. */}
+              <section className={styles.group} aria-label="Choix du deck">
+                <div className={styles.deckTabs} role="tablist" aria-label="Familles de decks">
+                  {tabs.map((tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={deckTab === tab.id}
+                      className={deckTab === tab.id ? styles.deckTabActive : styles.deckTab}
+                      onClick={() => {
+                        if (deckTab === tab.id) return;
+                        playButtonClick();
+                        setDeckTab(tab.id);
+                      }}
+                    >
+                      {tab.label}
+                      <span className={styles.deckTabCount}>{tab.decks.length}</span>
+                    </button>
+                  ))}
+                  <span className={`${game.muted} ${styles.deckTabHint}`}>{activeTab.hint}</span>
+                </div>
+
+                {activeTab.decks.length === 0 ? (
+                  <div className={`${game.panel} ${game.empty}`}>
+                    {isSignedIn ? (
+                      <>
+                        <p className={game.emptyTitle}>Tu n&apos;as pas encore monté de deck</p>
+                        <p className={game.muted}>En attendant, ton deck d&apos;emprunt et les decks de test sont prêts à jouer.</p>
+                        <Link href="/decks/nouveau" className={game.secondary} onClick={() => playButtonClick()}>
+                          + Créer un deck
+                        </Link>
+                      </>
+                    ) : (
+                      <>
+                        <p className={game.emptyTitle}>Connecte-toi pour jouer tes propres decks</p>
+                        <p className={game.muted}>Le deck d&apos;emprunt et les decks de test se jouent sans compte.</p>
+                      </>
+                    )}
                   </div>
-                  <div className={styles.decks} role="listbox" aria-label={group.title}>
-                    {group.decks.map((deck) => {
-                      const issue = personalValidity.get(deck.id) ?? group.lockedReason?.(deck) ?? null;
+                ) : (
+                  <DeckCarousel label={activeTab.label} resetKey={`${activeTab.id}-${step}`}>
+                    {activeTab.decks.map((deck) => {
+                      const issue = activeTab.issueFor(deck);
                       const selected = current?.id === deck.id;
                       const className = issue ? game.tileDisabled : selected ? game.tileActive : game.tile;
+                      const meta = catalogMeta(deck);
                       return (
                         <button
                           key={deck.id}
@@ -285,27 +360,43 @@ export function NewMatchScreen({ onStart, starting = false, error = null, botNot
                           role="option"
                           aria-selected={selected}
                           disabled={issue !== null}
-                          className={`${className} ${styles.deck}`}
+                          className={`${className} ${styles.deckTile}`}
                           onClick={() => {
                             playButtonClick();
                             setCurrent(deck);
                           }}
                           title={issue ?? deck.description}
                         >
-                          <ShipPortrait shipId={deck.shipId} width="100%" showName={false} className={styles.deckPortrait} />
-                          <span className={styles.deckName}>{deck.name}</span>
-                          <span className={styles.deckShip}>{shipNameOf(deck.shipId)}</span>
-                          <span className={styles.deckMeta}>
-                            <span>{deck.cardIds.length} cartes</span>
-                            {issue ? <span className={game.tagDanger}>Non valide</span> : selected ? <span className={game.tagCyan}>Choisi</span> : null}
+                          <ArtPlate artUrl={nameplateArtUrl(deck.cardIds, deck.shipId)} className={styles.deckPlate}>
+                            <span className={styles.deckName}>{deck.name}</span>
+                            <span className={styles.deckShip}>{shipNameOf(deck.shipId)}</span>
+                          </ArtPlate>
+                          <span className={styles.deckBody}>
+                            <span className={styles.deckMeta}>
+                              <span>{deck.cardIds.length} cartes</span>
+                              {meta && (
+                                <span>
+                                  {meta.style} · <span className={styles.deckStars}>{"★".repeat(meta.difficulty)}{"☆".repeat(Math.max(0, 5 - meta.difficulty))}</span>
+                                </span>
+                              )}
+                            </span>
+                            <span className={styles.deckText}>{issue ?? deck.description}</span>
+                            <span className={styles.deckFoot}>
+                              {issue ? (
+                                <span className={game.tagDanger}>{activeTab.id === "mine" ? "Non valide" : "Indisponible"}</span>
+                              ) : selected ? (
+                                <span className={game.tagCyan}>Choisi</span>
+                              ) : (
+                                <span className={game.tag}>Choisir</span>
+                              )}
+                            </span>
                           </span>
-                          <span className={styles.deckText}>{issue ?? deck.description}</span>
                         </button>
                       );
                     })}
-                  </div>
-                </section>
-              ))}
+                  </DeckCarousel>
+                )}
+              </section>
 
               <div className={`${game.panel} ${styles.launch}`}>
                 <div className={styles.launchSummary}>

@@ -82,6 +82,8 @@ export function MatchRewardBanner({ matchId }: MatchRewardBannerProps) {
         <>
           <span className={styles.rule} aria-hidden />
           <span className={styles.levelUp}>Niveau {reward.levelAfter}</span>
+          {/* Le palier ne se crédite plus tout seul : il attend au profil. */}
+          <span className={styles.note}>🎁 Récompense à réclamer au profil</span>
         </>
       )}
 

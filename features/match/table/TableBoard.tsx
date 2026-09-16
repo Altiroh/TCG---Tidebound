@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   canBeEquipTarget,
   computeEffectiveStats,
@@ -36,6 +36,8 @@ import { GameViewport } from "@/features/match/table/GameViewport";
 import { MotionLayer } from "@/features/match/table/MotionLayer";
 import { OpponentZone } from "@/features/match/table/OpponentZone";
 import { PlayerZone } from "@/features/match/table/PlayerZone";
+import { RainLayer } from "@/features/match/table/RainLayer";
+import { ShipInfoSheet } from "@/features/match/table/ShipInfoSheet";
 import { TableHand } from "@/features/match/table/TableHand";
 import { PhaseButton, TableHud } from "@/features/match/table/TableHud";
 import { TableOpponentHand } from "@/features/match/table/TableOpponentHand";
@@ -140,6 +142,8 @@ export function TableBoard(props: TableBoardProps) {
   const viewerShip = getShipDefinition(viewer.shipId);
   const opponentShip = getShipDefinition(opponent.shipId);
   const tideState = state.environment.tideState;
+  /** Navire dont la fiche est ouverte (clic sur un Navire hors ciblage d'attaque). */
+  const [shipInfoFor, setShipInfoFor] = useState<PlayerId | null>(null);
 
   const auraContextFor = (player: PlayerState) => ({
     controllerBoard: player.board,
@@ -383,13 +387,19 @@ export function TableBoard(props: TableBoardProps) {
     <>
       <GameViewport>
         <BackgroundLayer tideState={tideState} />
+        <RainLayer tideState={tideState} />
         <DecorLayer />
 
         {/* `gesturing` : un glisser est en cours quelque part. Il coupe
             l'agrandissement au survol sur TOUT le plateau — une carte qui
             gonfle sous le curseur pendant qu'on en traîne une autre cache
             précisément la zone visée. */}
-        <GameStage ref={stageRef} className={gesture ? styles.gesturing : undefined}>
+        <GameStage
+          ref={stageRef}
+          className={gesture ? styles.gesturing : undefined}
+          // Le plus grand des deux Navires fixe la largeur des cartes (cf. `--card-h-fit`).
+          style={{ ["--board-slots" as string]: Math.max(5, viewerShip.slotCount, opponentShip.slotCount) }}
+        >
           <div aria-hidden className={`${styles.lane} ${styles.laneOpponent}`} />
           <div aria-hidden className={`${styles.lane} ${styles.lanePlayer}`} />
 
@@ -406,8 +416,17 @@ export function TableBoard(props: TableBoardProps) {
               <div
                 data-drop="ship"
                 data-ship-target={opponent.id}
-                onClick={() => targeting?.kind === "attack" && props.onShipClick(opponent.id)}
-                className={`${styles.shipTarget} ${attackTargeting ? styles.targetable : ""} ${hover === "ship" ? styles.targetHover : ""}`}
+                onClick={() => {
+                  // Pendant un ciblage d'attaque, le Navire est une CIBLE ; sinon on consulte sa fiche.
+                  if (targeting?.kind === "attack") props.onShipClick(opponent.id);
+                  else if (!targeting) setShipInfoFor(opponent.id);
+                }}
+                onContextMenu={(event) => {
+                  event.preventDefault();
+                  setShipInfoFor(opponent.id);
+                }}
+                title={attackTargeting ? undefined : "Fiche du Navire adverse"}
+                className={`${styles.shipTarget} ${attackTargeting ? styles.targetable : styles.shipInspectable} ${hover === "ship" ? styles.targetHover : ""}`}
               >
                 {ship}
               </div>
@@ -436,7 +455,16 @@ export function TableBoard(props: TableBoardProps) {
             graveyard={viewer.graveyard.length}
             onGraveyardClick={() => props.onOpenGraveyard(viewer.id)}
             wrapShip={(ship) => (
-              <div data-ship-target={viewer.id} className={styles.shipTarget}>
+              <div
+                data-ship-target={viewer.id}
+                className={`${styles.shipTarget} ${styles.shipInspectable}`}
+                title="Fiche de ton Navire"
+                onClick={() => !targeting && setShipInfoFor(viewer.id)}
+                onContextMenu={(event) => {
+                  event.preventDefault();
+                  setShipInfoFor(viewer.id);
+                }}
+              >
                 {ship}
               </div>
             )}
@@ -514,6 +542,14 @@ export function TableBoard(props: TableBoardProps) {
       </GameViewport>
 
       <EquipLinkOverlay state={state} />
+      {shipInfoFor && (
+        <ShipInfoSheet
+          player={shipInfoFor === viewer.id ? viewer : opponent}
+          ship={shipInfoFor === viewer.id ? viewerShip : opponentShip}
+          ownerLabel={shipInfoFor === viewer.id ? "Ton Navire" : "Navire adverse"}
+          onClose={() => setShipInfoFor(null)}
+        />
+      )}
       <AttackImpactLayer attacks={props.attacks} />
     </>
   );

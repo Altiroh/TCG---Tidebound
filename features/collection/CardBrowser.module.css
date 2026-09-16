@@ -613,3 +613,9 @@
 .resetLink:disabled:hover {
   color: var(--ink-dim);
 }
+
+.countAction {
+  display: inline-flex;
+  margin-left: clamp(8px, 1vw, 14px);
+  vertical-align: middle;
+}

@@ -14,6 +14,7 @@ function run(state: BoosterOpeningState, events: BoosterOpeningEvent[]): Booster
 const INTRO: BoosterOpeningEvent[] = [
   { type: "assetsReady" },
   { type: "packSettled" },
+  { type: "openRequested" },
   { type: "packTorn" },
   { type: "cardsPlaced" },
 ];
@@ -26,7 +27,14 @@ describe("boosterOpeningReducer", () => {
       state = boosterOpeningReducer(state, event);
       return state.phase;
     });
-    expect(phases).toEqual(["enter", "opening", "cardsSpawning", "cardsReady"]);
+    expect(phases).toEqual(["enter", "ready", "opening", "cardsSpawning", "cardsReady"]);
+  });
+
+  it("attend le geste du joueur avant d'ouvrir le sachet", () => {
+    const ready = run(createBoosterOpeningState(5), INTRO.slice(0, 2));
+    expect(ready.phase).toBe("ready");
+    expect(boosterOpeningReducer(ready, { type: "packTorn" })).toBe(ready);
+    expect(boosterOpeningReducer(ready, { type: "openRequested" }).phase).toBe("opening");
   });
 
   it("ignore les événements hors séquence", () => {
@@ -36,7 +44,7 @@ describe("boosterOpeningReducer", () => {
   });
 
   it("refuse toute révélation avant que les cartes soient posées", () => {
-    const spawning = run(createBoosterOpeningState(5), INTRO.slice(0, 3));
+    const spawning = run(createBoosterOpeningState(5), INTRO.slice(0, 4));
     expect(spawning.phase).toBe("cardsSpawning");
     expect(isCardInteractive(spawning, 0)).toBe(false);
     expect(boosterOpeningReducer(spawning, { type: "revealRequested", index: 0, withPause: false })).toBe(spawning);

@@ -12,6 +12,17 @@
    large que celle des filtres — c'est là qu'on lit la composition. */
 .workspace.workspace {
   grid-template-columns: clamp(206px, 16vw, 268px) minmax(0, 1fr) clamp(250px, 19vw, 320px);
+
+  /* Palette de l'encart d'identité et des boutons de l'éditeur. */
+  --deck-bg: #061522;
+  --deck-bg-2: #071a29;
+  --deck-inner: #0a2032;
+  --deck-border: #087eb5;
+  --deck-glow: #00b7ff;
+  --deck-glow-soft: rgba(0, 183, 255, 0.25);
+  --deck-ink: #e8edf0;
+  --deck-ink-dim: #9eb3c2;
+  --deck-line: #17405a;
 }
 
 /* ──────────────────────────────────────────────────────────────
@@ -27,10 +38,67 @@
   border-bottom: 1px solid var(--line);
 }
 
-.identityPortrait {
-  align-self: center;
-  width: clamp(96px, 11vh, 150px) !important;
-  filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.55));
+/* Le Navire : son illustration, sans cadre. La toucher change de navire. */
+.shipArt {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  padding: 0;
+  border: 1px solid var(--deck-line);
+  border-radius: 8px;
+  background: var(--deck-inner) center 35% / cover no-repeat;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+
+.shipArt:hover {
+  border-color: var(--deck-glow);
+  box-shadow: 0 0 8px rgba(0, 174, 240, 0.25), 0 8px 18px rgba(0, 0, 0, 0.45);
+}
+
+.shipArt:focus-visible {
+  outline: 2px solid var(--deck-glow);
+  outline-offset: 2px;
+}
+
+.backLink,
+.shipChange {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: clamp(11px, 1.3vh, 13px);
+  cursor: pointer;
+  transition: color 140ms ease-out, text-shadow 140ms ease-out;
+}
+
+.backLink {
+  align-self: flex-start;
+  color: var(--deck-ink-dim);
+}
+
+.backLink:hover {
+  color: var(--deck-ink);
+}
+
+/* Texte cliquable : souligné, cyan — on voit qu'il agit. */
+.shipChange {
+  color: #5cc8f0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.shipChange:hover {
+  color: #9fe3ff;
+  text-shadow: 0 0 8px rgba(0, 183, 255, 0.45);
+}
+
+.backLink:focus-visible,
+.shipChange:focus-visible {
+  outline: 2px solid var(--deck-glow);
+  outline-offset: 2px;
+  border-radius: 3px;
 }
 
 .identityShip {
@@ -79,75 +147,154 @@
 }
 
 
-/* ── Plaque du nom, en tête du panneau de DROITE ────────────────
+/* ── Encart d'identité, en tête du panneau de DROITE ───────────
  *
- * Le cadre, le voile bleu et les tentacules viennent de l'`ArtPlate`
- * partagée : il n'y a ici que ce qui se pose dessus.
+ * Image à gauche, nom + crayon, variantes en dessous — compact, bleu nuit,
+ * liseré cyan lumineux. Pas de compteur de cartes : la jauge le porte.
  */
-.namePlate {
-  /* Déborde du rembourrage du panneau : elle le coiffe d'un bord à l'autre,
-     comme une enseigne, au lieu de flotter au milieu. */
-  margin: calc(-1 * clamp(10px, 1.4vh, 16px)) calc(-1 * clamp(10px, 0.9vw, 16px)) 0;
-  border-inline: none;
-  border-top: none;
-  border-radius: 0;
+.idCard {
+  display: grid;
+  grid-template-columns: 35% minmax(0, 1fr);
+  gap: 10px;
+  min-height: 84px;
+  padding: 6px;
+  border: 1px solid rgba(0, 183, 255, 0.8);
+  border-radius: 10px;
+  background: linear-gradient(180deg, var(--deck-bg-2) 0%, var(--deck-bg) 100%);
+  box-shadow:
+    0 0 5px rgba(0, 183, 255, 0.45),
+    inset 0 0 12px rgba(0, 80, 120, 0.18);
 }
 
-.nameRow {
+.idArt {
+  display: block;
+  min-height: 72px;
+  padding: 0;
+  border: 1px solid var(--deck-line);
+  border-radius: 6px;
+  background: var(--deck-inner) center 30% / cover no-repeat;
+  cursor: pointer;
+  transition: border-color 150ms ease-out, filter 150ms ease-out;
+}
+
+.idArt:hover {
+  border-color: var(--deck-border);
+  filter: brightness(1.08);
+}
+
+.idArt:focus-visible {
+  outline: 2px solid var(--deck-glow);
+  outline-offset: 2px;
+}
+
+.idBody {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 2px 4px 2px 0;
+}
+
+.idNameRow {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
 }
 
-/* Bouton d'illustration : discret, il ne concurrence pas le nom. */
-.artPick {
+.idName {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--cb-font-display);
+  font-size: clamp(15px, 1.1vw, 18px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--deck-ink);
+  text-shadow: 0 0 10px rgba(0, 183, 255, 0.18);
+}
+
+.idPencil {
   flex: 0 0 auto;
   display: grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   padding: 0;
-  border: 1px solid var(--tb-accent-line);
-  border-radius: 7px;
-  background: rgba(6, 22, 38, 0.55);
-  color: var(--tb-text);
+  border: none;
+  border-radius: 5px;
+  background: none;
+  color: var(--deck-ink);
   cursor: pointer;
-  transition: border-color 140ms ease-out, color 140ms ease-out, background-color 140ms ease-out;
+  transition: color 140ms ease-out, background-color 140ms ease-out;
 }
-.artPick:hover { border-color: var(--tb-accent-bright); color: var(--tb-text-strong); background: var(--tb-accent-soft-strong); }
-.artPick:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 2px; }
 
-/* Nom du deck : de l'encre, pas un champ de formulaire — le cadre et le
-   focus sont portés par la plaque.
+.idPencil:hover {
+  color: #fff;
+  background: rgba(0, 183, 255, 0.12);
+}
 
-   UNE SEULE LIGNE, toujours : `white-space: nowrap` empêche le retour, et
-   `useFitText` rétrécit la police jusqu'à ce que le nom tienne. Pas
-   d'ellipse — un deck tronqué ne se reconnaît plus. La taille est donc
-   posée en ligne par le hook, pas ici. */
-.deckName {
+.idPencil:focus-visible {
+  outline: 2px solid var(--deck-glow);
+  outline-offset: 1px;
+}
+
+.idNameInput {
   flex: 1 1 auto;
   width: 100%;
   min-width: 0;
-  padding: 0;
-  border: none;
-  background: none;
+  padding: 3px 6px;
+  border: 1px solid var(--deck-border);
+  border-radius: 5px;
+  background: var(--deck-inner);
   font-family: var(--cb-font-display);
-  font-weight: 600;
-  line-height: 1.25;
-  color: var(--ink-strong);
-  white-space: nowrap;
-  overflow: hidden;
-  /* Dernier recours seulement : la police a déjà rétréci jusqu'à son
-     plancher. Au-delà, mieux vaut une ellipse qu'une lettre tranchée en
-     deux — et un nom assez long pour en arriver là ne tiendrait de toute
-     façon à aucune taille lisible. */
-  text-overflow: ellipsis;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85), 0 0 12px rgba(0, 0, 0, 0.6);
+  font-size: clamp(14px, 1vw, 16px);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--deck-ink);
+  box-shadow: 0 0 5px rgba(0, 183, 255, 0.35);
 }
 
-.deckName:focus { outline: none; }
-.deckName::placeholder { color: var(--tb-text-muted); font-weight: 400; }
+.idNameInput:focus {
+  outline: none;
+}
+
+.idNameInput::placeholder {
+  color: var(--deck-ink-dim);
+  font-weight: 400;
+}
+
+.idBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.badgeStandard,
+.badgeAbyssal {
+  padding: 2px 9px;
+  border: 1px solid;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.badgeStandard {
+  border-color: #1f6fa3;
+  background: #0a2a45;
+  color: #9cd4ff;
+}
+
+.badgeAbyssal {
+  border-color: #7a4fc2;
+  background: #1f1236;
+  color: #cbb2ff;
+}
 
 /* ── Effectif et jauge ──────────────────────────────────────── */
 .capacity {
@@ -429,18 +576,55 @@
 
 .save {
   flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 8px 14px;
+  border: 1px solid #00b7ff;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #0b4265 0%, #08273d 100%);
+  box-shadow:
+    0 0 9px rgba(0, 183, 255, 0.45),
+    inset 0 0 10px rgba(0, 183, 255, 0.12);
+  color: #ffffff;
+  font: inherit;
+  font-size: clamp(11px, 1.3vh, 13px);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: background-color 140ms ease-out, border-color 140ms ease-out;
 }
 
-/* Enregistré : le bouton reste allumé deux secondes, sans glow. */
-.saveDone {
-  border-color: var(--cb-cyan);
-  background: var(--tb-accent-soft-strong);
+.save:hover:not(:disabled) { filter: brightness(1.12); }
+/* « À jour » : plus rien à faire, le bouton redevient secondaire. */
+.save:disabled {
+  border-color: #195374;
+  background: linear-gradient(180deg, #0b2638 0%, #071826 100%);
+  box-shadow: none;
+  color: #c8d7e1;
+  opacity: 0.75;
+  cursor: default;
+}
+.save:focus-visible { outline: 2px solid #00b7ff; outline-offset: 2px; }
+.saveDone { border-color: #00b7ff; box-shadow: 0 0 12px rgba(0, 183, 255, 0.6), inset 0 0 10px rgba(0, 183, 255, 0.2); }
+
+.iconButton {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  min-height: 38px;
+  border: 1px solid #195374;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #0b2638 0%, #071826 100%);
+  color: #c8d7e1;
+  cursor: pointer;
+  transition: border-color 140ms ease-out, box-shadow 140ms ease-out;
 }
 
-/* Le menu « plus » s'ouvre VERS LE HAUT : il est en bas de la colonne. */
-.menuAnchor {
-  position: relative;
-}
+.iconButton:hover { border-color: #00aef0; box-shadow: 0 0 8px rgba(0, 174, 240, 0.25); }
+.iconButton:focus-visible { outline: 2px solid #00b7ff; outline-offset: 2px; }
 
 .menuUp {
   position: absolute;
@@ -509,7 +693,24 @@
    `display` de la puce. */
 .deckToggle.deckToggle {
   display: none;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 5px 12px;
+  border: 1px solid #195374;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #0b2638 0%, #071826 100%);
+  color: #c8d7e1;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 140ms ease-out, box-shadow 140ms ease-out;
 }
+
+.deckToggle:hover,
+.deckToggle[aria-expanded="true"] { border-color: #00aef0; box-shadow: 0 0 8px rgba(0, 174, 240, 0.25); }
+.deckToggle:focus-visible { outline: 2px solid #00b7ff; outline-offset: 2px; }
 
 /* Colonne de deck étroite : la vignette est la première à céder, le nom
    est ce qu'on lit. */
@@ -566,7 +767,7 @@
 
   .deckToggle.deckToggle { display: inline-flex; }
   .summary { display: none; }
-  .identityPortrait { display: none; }
+  .shipArt { display: none; }
 }
 
 .deckScrim { display: none; }

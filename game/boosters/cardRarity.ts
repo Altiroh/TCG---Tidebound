@@ -113,23 +113,45 @@ const AUDITED_RARITY: Record<string, CardRarity> = {
   "horloge-de-maree": "rare",
   "ancre-de-tempete": "rare",
 
-  // --- Abyssales --------------------------------------------------------
-  "lhomme-revenu-de-la-fosse": "abyssal",
-  "ce-qui-suit-le-navire": "abyssal",
-  "ils-sont-sous-nous": "abyssal",
-  "loeil-sous-la-mer": "abyssal",
-  "le-fond-vous-regarde": "abyssal",
-  "cloche-du-grand-fond": "abyssal",
-  "la-mer-reclame-davantage": "abyssal",
-
   /*
-   * Les deux grandes Anomalies de la passe « nouvelle grammaire de Marée ».
-   * L'audit ne leur donne pas de ligne de rareté mais les classe en
-   * « nouvelles cartes à très haut risque », `max_copies` 1, « événement
-   * exceptionnel » : Abyssale est la seule lecture cohérente.
+   * --- Le haut du catalogue -------------------------------------------
+   *
+   * RÈGLE VERROUILLÉE (design, 2026-09-16) : **une carte Abyssale est la
+   * variante `-abyssal`, et rien d'autre.** Une carte sans ce suffixe
+   * plafonne à `legendary`, quel que soit son registre.
+   *
+   * Ces neuf entrées valaient `abyssal` parce que l'audit les désignait
+   * ainsi à une époque où la variante Abyssale n'existait pas encore comme
+   * mécanique. La rareté était restée accrochée à l'ID de base : elle
+   * suivait l'identifiant au lieu de suivre la carte. Un emplacement de
+   * booster tiré en Abyssale rendait donc la version STANDARD, annoncée
+   * « ABYSSALE » par l'écran d'ouverture — bonne étiquette, mauvaise carte.
+   *
+   * Elles se répartissent selon qu'une variante leur a été SCINDÉE :
+   *
+   *  - variante `-abyssal` existante → la carte de base n'est plus le haut
+   *    de sa lignée, c'est sa variante qui l'est : `epic`.
+   *  - aucune variante → rien ne les surclasse, elles restent le sommet de
+   *    leur ligne : `legendary`.
+   *
+   * `tests/game/cardRarity.test.ts` interdit désormais qu'une carte sans le
+   * suffixe soit Abyssale : la règle ne peut plus se perdre.
    */
-  "la-gueule-sous-la-mer": "abyssal",
-  "sept-brasses-plus-bas": "abyssal",
+
+  // Sommet de leur lignée — aucune variante ne les surclasse.
+  "lhomme-revenu-de-la-fosse": "legendary",
+  "la-gueule-sous-la-mer": "legendary",
+  "sept-brasses-plus-bas": "legendary",
+
+  // Versions STANDARD de paires scindées : leur variante `-abyssal` tient
+  // le haut du panier, elles prennent le palier juste en dessous.
+  "ce-qui-suit-le-navire": "epic",
+  "ils-sont-sous-nous": "epic",
+  "loeil-sous-la-mer": "epic",
+  "le-fond-vous-regarde": "epic",
+  "cloche-du-grand-fond": "epic",
+  "la-mer-reclame-davantage": "epic",
+
 
   /*
    * Cartes postérieures à l'audit, arbitrées par le design le 2026-09-12.

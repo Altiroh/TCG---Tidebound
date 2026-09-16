@@ -1,13 +1,10 @@
 "use client";
 
+import { useMemo, useState } from "react";
+import { getCardDefinition } from "@/game";
 import { nameplateArtUrl, plateArtUrl } from "@/features/decks/nameplateArt";
-import { useFitText } from "@/features/decks/useFitText";
-import { ArtPlate } from "@/features/shell/ArtPlate";
 import styles from "@/features/decks/DeckBuilder.module.css";
-
-/** Bornes de la police du nom : il tient sur une ligne, et reste lisible. */
-const NAME_MAX_PX = 22;
-const NAME_MIN_PX = 11;
+import { playButtonClick } from "@/lib/sound";
 
 interface DeckNamePlateProps {
   name: string;
@@ -20,42 +17,101 @@ interface DeckNamePlateProps {
   onPickArt: () => void;
 }
 
+/** Variantes présentes dans le deck — un deck vide se lit « Standard ». */
+function deckVariants(cardIds: readonly string[]): { standard: boolean; abyssal: boolean } {
+  let standard = false;
+  let abyssal = false;
+  for (const cardId of new Set(cardIds)) {
+    try {
+      if (getCardDefinition(cardId).subtype === "abyssal") abyssal = true;
+      else standard = true;
+    } catch {
+      // Carte retirée du catalogue : elle ne dit rien de la variante.
+    }
+  }
+  return { standard: standard || !abyssal, abyssal };
+}
+
 /**
- * Nom du deck, en tête du panneau de droite — juste au-dessus de la liste
- * qu'il nomme.
+ * ENCART D'IDENTITÉ du deck, en tête du panneau de droite : l'illustration
+ * à gauche, le nom et son crayon à droite, les variantes du deck en
+ * dessous. Compact, bleu nuit et liseré cyan.
  *
- * Il vivait dans la colonne de GAUCHE, sous le Navire, loin de la liste. La
- * plaque y prenait aussi beaucoup de hauteur, au détriment des filtres.
- *
- * Le nom tient sur UNE ligne : au-delà d'une certaine longueur, c'est la
- * police qui rétrécit (`useFitText`), pas le nom qui se coupe — un deck
- * tronqué ne se reconnaît plus.
+ * Le nombre de cartes n'y figure PAS : la jauge juste en dessous le porte
+ * déjà. Toucher l'illustration ouvre le choix d'illustration ; le crayon
+ * passe le nom en édition (Entrée ou sortie du champ pour valider, Échap
+ * pour annuler).
  */
 export function DeckNamePlate({ name, onNameChange, shipId, cardIds, artCardId, onPickArt }: DeckNamePlateProps) {
   const artUrl = artCardId ? plateArtUrl(artCardId, shipId) : nameplateArtUrl(cardIds, shipId);
-  const { ref, size } = useFitText(name, NAME_MAX_PX, NAME_MIN_PX);
+  const variants = useMemo(() => deckVariants(cardIds), [cardIds]);
+  const [editing, setEditing] = useState(false);
+  const [before, setBefore] = useState(name);
 
   return (
-    <ArtPlate artUrl={artUrl} size="sm" className={styles.namePlate}>
-      <div className={styles.nameRow}>
-        <input
-          ref={ref as React.RefObject<HTMLInputElement>}
-          value={name}
-          onChange={(event) => onNameChange(event.target.value)}
-          placeholder="Nom du deck"
-          aria-label="Nom du deck"
-          className={styles.deckName}
-          style={{ fontSize: `${size}px` }}
-          maxLength={60}
-        />
-        <button type="button" className={styles.artPick} onClick={onPickArt} title="Choisir l'illustration du deck" aria-label="Choisir l'illustration du deck">
-          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" aria-hidden>
-            <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" strokeWidth={1.7} />
-            <path d="M3 16l5-4 4 3 3-2 6 5" stroke="currentColor" strokeWidth={1.7} strokeLinejoin="round" />
-            <circle cx="9" cy="9.5" r="1.4" fill="currentColor" />
-          </svg>
-        </button>
+    <div className={styles.idCard}>
+      <button
+        type="button"
+        className={styles.idArt}
+        style={artUrl ? { backgroundImage: `url("${artUrl}")` } : undefined}
+        onClick={() => {
+          playButtonClick();
+          onPickArt();
+        }}
+        title="Choisir l'illustration du deck"
+        aria-label="Choisir l'illustration du deck"
+      />
+
+      <div className={styles.idBody}>
+        <div className={styles.idNameRow}>
+          {editing ? (
+            <input
+              value={name}
+              onChange={(event) => onNameChange(event.target.value)}
+              onBlur={() => setEditing(false)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") setEditing(false);
+                if (event.key === "Escape") {
+                  event.stopPropagation();
+                  onNameChange(before);
+                  setEditing(false);
+                }
+              }}
+              placeholder="Nom du deck"
+              aria-label="Nom du deck"
+              className={styles.idNameInput}
+              maxLength={60}
+              autoFocus
+            />
+          ) : (
+            <>
+              <span className={styles.idName} title={name || "Deck sans nom"}>
+                {name || "Deck sans nom"}
+              </span>
+              <button
+                type="button"
+                className={styles.idPencil}
+                onClick={() => {
+                  playButtonClick();
+                  setBefore(name);
+                  setEditing(true);
+                }}
+                title="Renommer le deck"
+                aria-label="Renommer le deck"
+              >
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" aria-hidden>
+                  <path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17v3z" stroke="currentColor" strokeWidth={1.9} strokeLinejoin="round" />
+                </svg>
+              </button>
+            </>
+          )}
+        </div>
+
+        <div className={styles.idBadges}>
+          {variants.standard && <span className={styles.badgeStandard}>Standard</span>}
+          {variants.abyssal && <span className={styles.badgeAbyssal}>Abyssal</span>}
+        </div>
       </div>
-    </ArtPlate>
+    </div>
   );
 }

@@ -39,7 +39,7 @@ export function CardDetailModal({ instance, tideState, boardUnits = [], auraCont
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center gap-8 bg-black/70 p-8 backdrop-blur-md"
+      className="fixed inset-0 z-[85] flex items-center justify-center gap-8 bg-black/70 p-8 backdrop-blur-md"
       onClick={onClose}
     >
       <button

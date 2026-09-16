@@ -306,6 +306,28 @@
   text-shadow: none;
 }
 
+.accountAvatarLink {
+  flex: 0 0 auto;
+  display: block;
+  border-radius: 50%;
+  text-decoration: none;
+  transition: transform 160ms ease-out, filter 160ms ease-out;
+}
+
+.accountAvatarLink:hover {
+  transform: scale(1.06);
+  filter: brightness(1.1);
+}
+
+/* Illustration de profil : la carte recadrée sur son sujet, dans le même
+   jeton de laiton que l'initiale. */
+.accountAvatarArt {
+  background-color: #0b1a26;
+  background-size: cover;
+  background-position: 50% 30%;
+  box-shadow: inset 0 0 0 1px rgba(3, 10, 16, 0.4), 0 1px 4px rgba(0, 0, 0, 0.55);
+}
+
 .accountIdentity {
   display: flex;
   flex-direction: column;
@@ -369,23 +391,40 @@
 
 /* Solde de Tides : la pièce puis le nombre, sans répéter le mot — l'icône
    le dit, et le titre au survol le confirme. */
-.accountTides {
+/*
+ * LE PORTEFEUILLE — les deux monnaies côte à côte, séparées du niveau par
+ * le même filet qu'avant. Les Jetons de Préconstruit y rejoignent les
+ * Tides : c'est la seule façon de débloquer un deck, et le joueur n'avait
+ * aucun moyen de savoir combien il lui en restait sans ouvrir son profil.
+ */
+.accountWallet {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: clamp(8px, 0.8vw, 14px);
   padding-left: clamp(7px, 0.7vw, 11px);
   border-left: 1px solid var(--tb-border);
+}
+
+.accountTides,
+.accountTokens {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-family: var(--cb-font-display);
-  font-size: clamp(12px, 0.98vw, 15px);
+  font-size: clamp(13px, 1.05vw, 16px);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  /* Or : c'est de l'économie. */
+}
+
+/* Or : c'est de l'économie. */
+.accountTides {
   color: var(--tb-gold);
 }
 
-.tideCoin {
-  flex: 0 0 auto;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+/* Le Jeton se distingue des Tides par sa teinte : deux monnaies côte à côte
+   qui se liraient pareil seraient deux nombres sans sens. */
+.accountTokens {
+  color: #bfe3ea;
 }
 
 /* ---------- Recherche ---------- */
@@ -694,4 +733,96 @@
 
 @media (prefers-reduced-motion: reduce) {
   .questsWaiting { animation: none; }
+}
+
+/* Visiteur non connecté : lien de connexion à la place du bloc de compte. */
+.signInLink {
+  position: relative;
+  z-index: 2;
+  padding: 6px 14px;
+  border: 1px solid rgba(88, 200, 216, 0.45);
+  border-radius: 999px;
+  background: rgba(4, 10, 17, 0.42);
+  color: #eaf8fb;
+  font-size: clamp(12px, 0.9vw, 14px);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: border-color 160ms ease-out, background-color 160ms ease-out;
+}
+
+.signInLink:hover {
+  border-color: var(--cb-teal);
+  background: rgba(13, 52, 69, 0.6);
+}
+
+/*
+ * Bandeau du MENU PRINCIPAL. Le menu n'est pas monté sur `GameScreen` (il a
+ * son décor et son coffret) : le bandeau y est posé en surimpression, avec
+ * la même palette que `.screen` — sans sa grille plein écran.
+ */
+.homeBar {
+  --cb-navy-deep: #06121c;
+  --cb-navy: #081a27;
+  --cb-brass-dark: #6d5224;
+  --cb-brass: #a47b36;
+  --cb-brass-light: #c79a4e;
+  --cb-teal: #4fc4ce;
+  --cb-ivory: #e9e2d1;
+  --cb-ivory-dim: #97917f;
+  --cb-font-ui: var(--font-ui, "Segoe UI", system-ui, sans-serif);
+  --cb-font-display: var(--font-card-title, Georgia, "Times New Roman", serif);
+
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  z-index: 30;
+  display: grid;
+  height: clamp(54px, 6.8vh, 72px);
+  font-family: var(--cb-font-ui);
+  color: var(--cb-ivory);
+  /* Un voile en haut seulement : le bandeau reste lisible sur le ciel du
+     décor sans poser de barre opaque sur le menu. */
+  background: linear-gradient(180deg, rgba(3, 8, 14, 0.72) 0%, rgba(3, 8, 14, 0.35) 70%, transparent 100%);
+}
+
+/* Téléphone : même sans onglets, le logo n'a plus la place entre la flèche et le compte. */
+@media (max-width: 640px) {
+  .header .headerBrand { display: none; }
+}
+
+
+/* Pastille « récompense à réclamer » sur l'avatar du bandeau. */
+.accountAvatarLink {
+  position: relative;
+}
+
+.rewardBadge {
+  position: absolute;
+  top: -5px;
+  right: -6px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border: 1px solid #fff1c8;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffd66e, #e0a132);
+  color: #2a1a02;
+  font-family: var(--cb-font-ui);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 15px;
+  text-align: center;
+  text-shadow: none;
+  animation: rewardBadgePulse 1.8s ease-in-out infinite;
+}
+
+@keyframes rewardBadgePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 200, 90, 0.6); transform: scale(1); }
+  50% { box-shadow: 0 0 0 5px rgba(255, 200, 90, 0); transform: scale(1.12); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rewardBadge { animation: none; }
 }

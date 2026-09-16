@@ -245,6 +245,12 @@ export function ChestButtons3D({ slots, iconSlots }: { slots: ChestSlotDef[]; ic
   const containerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
+  // Les plaques naviguent par `router.push`, que Next ne précharge pas de lui-même :
+  // sans ça, le premier clic attend tout le rendu serveur de la page visée.
+  useEffect(() => {
+    for (const slot of [...slots, ...iconSlots]) if (slot.href && !slot.disabled) router.prefetch(slot.href as string);
+  }, [slots, iconSlots, router]);
+
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;

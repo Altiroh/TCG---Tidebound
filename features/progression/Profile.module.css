@@ -2,12 +2,205 @@
  * Profil — « route maritime / carnet de marin », pas un battle pass
  * générique (Notion « Progression joueur » §12, direction visuelle).
  *
- * Trois blocs : l'état du bord (niveau, jauge, prochaine récompense), la
- * route (paliers passés et à venir, comme des escales), et le carnet
- * (connexions, exploits).
+ * Deux plans : le PANNEAU LATÉRAL (plaque du joueur, niveau, onglets,
+ * déconnexion en pied) et le contenu de l'onglet ouvert — carnet de bord,
+ * frise des récompenses de niveau, exploits.
  */
 
-.layout {
+.shell {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: clamp(260px, 22vw, 340px) minmax(0, 1fr);
+  gap: clamp(12px, 1.6vw, 24px);
+  min-height: 0;
+  padding: clamp(14px, 2.2vh, 30px) clamp(14px, 2.4vw, 44px) clamp(18px, 3vh, 40px);
+  width: min(100%, 1480px);
+  margin-inline: auto;
+}
+
+/* ── Panneau latéral ────────────────────────────────────────── */
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(10px, 1.4vh, 18px);
+  min-height: 0;
+  padding: clamp(10px, 1vw, 14px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+/* La plaque du joueur prend toute la largeur du panneau, sans marge basse
+   propre : c'est le panneau qui espace. */
+.side > :first-child {
+  margin-bottom: 0;
+}
+
+.sideLevel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 4px 0;
+}
+
+.sideLevelNumber {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border: 1px solid rgba(199, 154, 78, 0.6);
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(199, 154, 78, 0.28), rgba(40, 30, 12, 0.5));
+  font-family: var(--font-card-title), Georgia, serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #f3e7c8;
+}
+
+.sideLevelText {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.sideLevelCaption {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.sideXpBar {
+  position: relative;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.sideXpFill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #58c8d8, #7fd6a4);
+}
+
+.sideXpLine {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-dim);
+}
+
+.tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink-dim);
+  font: inherit;
+  font-family: var(--cb-font-display);
+  font-size: clamp(13px, 1vw, 15px);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 150ms ease-out, color 150ms ease-out, border-color 150ms ease-out;
+}
+
+.tab:hover {
+  background: rgba(88, 200, 216, 0.07);
+  color: var(--ink);
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--cb-cyan);
+  outline-offset: 1px;
+}
+
+.tabActive {
+  composes: tab;
+  border-color: rgba(88, 200, 216, 0.42);
+  background: linear-gradient(90deg, rgba(13, 52, 69, 0.8), rgba(13, 52, 69, 0.3));
+  color: #eaf8fb;
+  box-shadow: inset 3px 0 0 var(--cb-cyan);
+}
+
+.tabCount {
+  font-family: var(--cb-font-ui);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-faint);
+}
+
+/* Pied du panneau : poussé tout en bas, séparé d'un filet. */
+.sideFooter {
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.signOut {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid rgba(224, 122, 106, 0.32);
+  border-radius: 9px;
+  background: rgba(224, 122, 106, 0.06);
+  color: #efb9ae;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out;
+}
+
+.signOut:hover {
+  border-color: rgba(224, 122, 106, 0.7);
+  background: rgba(224, 122, 106, 0.16);
+  color: #fbd9d2;
+}
+
+.signOut:focus-visible {
+  outline: 2px solid var(--danger);
+  outline-offset: 2px;
+}
+
+.signOut:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+
+/* ── Contenu ────────────────────────────────────────────────── */
+.main {
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.tabBody {
   display: grid;
   grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
   gap: clamp(12px, 1.6vw, 24px);
@@ -24,6 +217,13 @@
 .blockWide {
   composes: block;
   grid-column: 1 / -1;
+}
+
+.blockHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 /* ── État du bord ───────────────────────────────────────────── */
@@ -89,8 +289,13 @@
   gap: 2px;
 }
 
+/* Les deux premiers compteurs portent leur jeton (Tides, Préconstruit) :
+   `flex` plutôt qu'un simple texte pour que l'icône se cale sur le chiffre. */
 .statValue {
-  font-family: var(--cb-font-display);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-card-title), Georgia, serif;
   font-size: clamp(16px, 1.6vw, 22px);
   font-weight: 700;
   color: var(--ink-strong);
@@ -103,7 +308,7 @@
   color: var(--ink-dim);
 }
 
-/* ── La route : escales de paliers ──────────────────────────── */
+/* ── Aperçu des prochains paliers ───────────────────────────── */
 .route {
   display: flex;
   flex-direction: column;
@@ -115,7 +320,7 @@
 
 .stop {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 10px;
   padding: 6px 0;
   border-bottom: 1px solid var(--line);
@@ -137,10 +342,9 @@
   text-align: center;
 }
 
-.stopLevelDone {
-  composes: stopLevel;
-  background: var(--tb-success-soft);
-  color: var(--tb-success-ink);
+.stopIcons {
+  display: flex;
+  gap: 4px;
 }
 
 .stopLabel {
@@ -150,38 +354,41 @@
 
 /* ── Connexions : sept escales ──────────────────────────────── */
 .cycle {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .escale {
   display: flex;
-  flex: 1 1 88px;
   flex-direction: column;
-  gap: 4px;
-  padding: 8px 6px;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 6px;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   background: var(--panel-inset);
   text-align: center;
   font-size: 10.5px;
-  line-height: 1.35;
+  line-height: 1.3;
   color: var(--ink-dim);
 }
 
 /* L'escale du jour : cyan, c'est celle qu'on peut réclamer. */
 .escaleCurrent {
   composes: escale;
-  border-color: var(--tb-accent-line);
-  background: var(--tb-accent-soft);
-  color: var(--tb-on-accent);
-  box-shadow: var(--tb-glow-sm);
+  border-color: rgba(88, 200, 216, 0.55);
+  background: rgba(13, 52, 69, 0.5);
+  color: #dceaec;
+  box-shadow: 0 0 0 1px rgba(88, 200, 216, 0.2), 0 0 18px rgba(88, 200, 216, 0.12);
 }
 
 .escalePassed {
   composes: escale;
-  opacity: 0.5;
+  opacity: 0.45;
 }
 
 .escaleIndex {
@@ -191,102 +398,518 @@
   color: inherit;
 }
 
-/* ── Exploits — le musée ────────────────────────────────────────
-   Une vitrine de trophées : chaque exploit est une plaque avec sa
-   médaille. Obtenu = la médaille s'allume en or et la plaque se relève ;
-   pas encore = tout est là, lisible, mais éteint. */
-.achievements {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr));
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.escaleLabel {
+  min-height: 2.6em;
 }
 
-.achievement {
-  position: relative;
+@media (max-width: 1100px) {
+  .cycle {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* ── Frise des récompenses de niveau ────────────────────────── */
+.rewards {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 10px 12px 10px 44px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  background: var(--panel-inset);
-  font-size: 11.5px;
+  gap: 12px;
+  height: 100%;
+  min-height: 0;
+  padding: clamp(14px, 1.8vw, 26px);
+}
+
+.rewardsHead {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.rewardsLevel {
+  font-size: 13px;
   color: var(--ink-dim);
 }
 
-/* La médaille : un rond en filet, éteint. */
-.achievement::before {
+.rewardsLevel b {
+  font-family: var(--font-card-title), Georgia, serif;
+  font-size: 20px;
+  color: #f3e7c8;
+}
+
+.timeline {
+  --stage-h: 78px;
+  --node: 30px;
+  --track-x: 22px;
+
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0 6px 0 0;
+  list-style: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+/* Le rail : il court du premier au dernier nœud. */
+.timelineTrack {
+  position: absolute;
+  left: calc(var(--track-x) - 2px);
+  top: calc(var(--stage-h) / 2);
+  height: calc(var(--stage-h) * 49);
+  width: 4px;
+  border-radius: 999px;
+  background: rgba(130, 178, 210, 0.16);
+  pointer-events: none;
+}
+
+/* La jauge : jusqu'au nœud du niveau courant, plus la part d'XP vers le
+   suivant. Elle se remplit à l'ouverture de l'onglet. */
+.timelineFill {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: calc(var(--stage-h) * var(--progress, 0));
+  border-radius: inherit;
+  background: linear-gradient(180deg, #7fd6a4, #58c8d8 70%, #9cf0ff);
+  box-shadow: 0 0 10px rgba(88, 200, 216, 0.55);
+  transition: height 1100ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.timelineFill::after {
   content: "";
   position: absolute;
-  top: 12px;
-  left: 12px;
-  width: 22px;
-  height: 22px;
+  left: 50%;
+  bottom: -5px;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  border-radius: 50%;
+  background: #dffbff;
+  box-shadow: 0 0 12px 3px rgba(88, 200, 216, 0.8);
+}
+
+.stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: var(--stage-h);
+  padding-left: calc(var(--track-x) - var(--node) / 2);
+}
+
+.node {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: var(--node);
+  height: var(--node);
   border: 1px solid var(--line-strong);
   border-radius: 50%;
-  background: radial-gradient(circle at 50% 35%, rgba(140, 190, 225, 0.12), transparent 70%);
-}
-
-.achievementDone {
-  composes: achievement;
-  border-color: var(--tb-gold-line);
-  background: linear-gradient(135deg, var(--tb-gold-soft), var(--panel-inset) 60%);
-  color: var(--ink);
-}
-
-/* Obtenu : la médaille se dore, avec le seul glow du bloc. */
-.achievementDone::before {
-  border-color: var(--gold);
-  background: radial-gradient(circle at 50% 35%, var(--tb-gold-bright), var(--tb-gold-deep) 80%);
-  box-shadow: var(--tb-glow-gold);
-}
-
-.achievementName {
-  font-family: var(--cb-font-display);
-  font-size: 13px;
+  background: #0a1724;
+  font-size: 11px;
   font-weight: 700;
-  color: var(--ink-strong);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-dim);
+  transition: background-color 300ms ease-out, border-color 300ms ease-out, color 300ms ease-out;
 }
 
-.achievement:not(.achievementDone) .achievementName {
+.stage[data-state="done"] .node {
+  border-color: rgba(127, 214, 164, 0.8);
+  background: linear-gradient(180deg, #2f7d63, #1d5446);
+  color: #e6fff3;
+}
+
+.stage[data-state="next"] .node {
+  border-color: var(--cb-cyan);
+  color: #eaf8fb;
+  box-shadow: 0 0 0 4px rgba(88, 200, 216, 0.16);
+  animation: nodePulse 2.4s ease-in-out infinite;
+}
+
+@keyframes nodePulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(88, 200, 216, 0.14); }
+  50% { box-shadow: 0 0 0 7px rgba(88, 200, 216, 0.06); }
+}
+
+.stageCard {
+  display: grid;
+  grid-template-columns: 58px auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: calc(var(--stage-h) - 12px);
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(8, 18, 30, 0.45);
+  transition: border-color 200ms ease-out, background-color 200ms ease-out;
+}
+
+.stage[data-milestone="true"] .stageCard {
+  border-color: rgba(199, 154, 78, 0.38);
+  background: linear-gradient(90deg, rgba(60, 44, 18, 0.35), rgba(8, 18, 30, 0.45) 60%);
+}
+
+.stage[data-state="next"] .stageCard {
+  border-color: rgba(88, 200, 216, 0.6);
+  background: linear-gradient(90deg, rgba(13, 52, 69, 0.75), rgba(8, 18, 30, 0.5));
+}
+
+.stage[data-state="locked"] .stageIcons,
+.stage[data-state="locked"] .stageLabel {
+  opacity: 0.7;
+}
+
+.stageLevel {
+  font-family: var(--font-card-title), Georgia, serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink-dim);
+}
+
+.stage[data-state="done"] .stageLevel {
+  color: #b9e6cd;
+}
+
+.stageIcons {
+  display: flex;
+  gap: 6px;
+}
+
+.stageLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: clamp(12px, 0.95vw, 14px);
   color: var(--ink);
+}
+
+.stage[data-milestone="true"] .stageLabel {
+  font-weight: 600;
+  color: #f2e6c9;
+}
+
+.stageStatus {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--ink-faint);
+}
+
+.stage[data-state="done"] .stageStatus {
+  color: var(--success);
+}
+
+.stage[data-state="next"] .stageStatus {
+  color: var(--cb-cyan);
 }
 
 @media (max-width: 900px) {
-  .layout {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+    overflow-y: auto;
+  }
+
+  .tabBody {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .blockWide {
     grid-column: auto;
   }
+
+  .stageCard {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .stageLevel,
+  .stageStatus {
+    display: none;
+  }
 }
 
-/* ──────────────────────────────────────────────────────────────
- * DOS DE CARTE — la seule famille de cosmétiques rendue pour
- * l'instant. Les vignettes sont de vraies cartes au ratio du jeu :
- * on choisit ce qu'on va voir, pas une pastille de couleur.
- *
- * Chaque dos est une TUILE COLLECTIBLE du design system
- * (`game.collectible` / `collectibleActive` / `collectibleLocked`) ;
- * ne restent ici que la grille et le ratio de la vignette.
- * ────────────────────────────────────────────────────────────── */
-.cardBacks {
+@media (prefers-reduced-motion: reduce) {
+  .timelineFill { transition: none; }
+  .stage[data-state="next"] .node { animation: none; }
+}
+
+/* ── Panneau (ouvert depuis le bandeau) ─────────────────────── */
+.drawerScrim {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  background: rgba(3, 8, 14, 0.6);
+  backdrop-filter: blur(3px);
+  animation: drawerScrimIn 180ms ease-out;
+}
+
+/* Le panneau vit hors de `GameScreen` (portail) : il porte lui-même les
+   jetons de couleur de la coquille. */
+.drawer {
+  --cb-teal: #4fc4ce;
+  --cb-cyan: #58c8d8;
+  --cb-cyan-soft: rgba(88, 200, 216, 0.14);
+  --cb-ivory: #e9e2d1;
+  --cb-ivory-dim: #97917f;
+  --cb-violet: #b388f0;
+  --cb-font-ui: var(--font-ui, "Segoe UI", system-ui, sans-serif);
+  --cb-font-display: var(--font-card-title, Georgia, "Times New Roman", serif);
+  --panel: rgba(8, 18, 30, 0.74);
+  --panel-solid: rgba(6, 14, 24, 0.9);
+  --panel-raised: rgba(14, 28, 44, 0.86);
+  --line: rgba(130, 178, 210, 0.16);
+  --line-strong: rgba(130, 178, 210, 0.3);
+  --ink: #dce8f2;
+  --ink-dim: rgba(190, 210, 228, 0.6);
+  --ink-faint: rgba(190, 210, 228, 0.38);
+  --danger: #e07a6a;
+  --success: #7fd6a4;
+  --radius: clamp(10px, 0.9vw, 16px);
+  --radius-sm: 9px;
+
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 96;
+  display: flex;
+  width: min(1240px, 96vw);
+  border-left: 1px solid rgba(0, 183, 255, 0.45);
+  background:
+    radial-gradient(90% 60% at 30% 0%, rgba(14, 52, 78, 0.5), transparent 60%),
+    linear-gradient(180deg, #071a29 0%, #061522 100%);
+  box-shadow: -24px 0 60px rgba(0, 0, 0, 0.6), -1px 0 10px rgba(0, 183, 255, 0.2);
+  color: var(--ink);
+  font-family: var(--cb-font-ui);
+  animation: drawerSlideIn 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.drawer:focus {
+  outline: none;
+}
+
+.drawer .shell {
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  padding: 16px 18px;
+}
+
+.drawerClose {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  z-index: 3;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(clamp(96px, 9vw, 132px), max-content));
-  gap: clamp(10px, 1.2vw, 18px);
-  margin: 0 0 4px;
-  padding: 0;
-  list-style: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #195374;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #0b2638 0%, #071826 100%);
+  color: #c8d7e1;
+  cursor: pointer;
 }
 
-.cardBackChoice {
-  width: clamp(96px, 9vw, 132px);
+.drawerClose:hover {
+  border-color: #00aef0;
+  box-shadow: 0 0 8px rgba(0, 174, 240, 0.25);
 }
 
-.cardBackImage {
-  aspect-ratio: 5 / 7;
+.drawerLoading {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  color: var(--ink-dim);
+  font-size: 14px;
+}
+
+@keyframes drawerScrimIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes drawerSlideIn {
+  from { transform: translateX(100%); }
+  to { transform: none; }
+}
+
+/* ── Ce qui attend le joueur ────────────────────────────────── */
+.waitingCall {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 200, 90, 0.55);
+  border-radius: 10px;
+  background: linear-gradient(90deg, rgba(90, 64, 18, 0.55), rgba(40, 28, 8, 0.4));
+  color: #ffe9b0;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  animation: waitingPulse 2.2s ease-in-out infinite;
+}
+
+
+
+.waitingGift {
+  display: inline-block;
+  font-size: 18px;
+  animation: giftWiggle 2.2s ease-in-out infinite;
+}
+
+@keyframes waitingPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 200, 90, 0); }
+  50% { box-shadow: 0 0 0 4px rgba(255, 200, 90, 0.16), 0 0 18px rgba(255, 200, 90, 0.25); }
+}
+
+@keyframes giftWiggle {
+  0%, 70%, 100% { transform: none; }
+  76% { transform: rotate(-14deg) scale(1.1); }
+  84% { transform: rotate(12deg) scale(1.1); }
+  92% { transform: rotate(-6deg); }
+}
+
+.tabBadge {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffd66e, #e0a132);
+  color: #2a1a02;
+  font-family: var(--cb-font-ui);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 20px;
+  text-align: center;
+  box-shadow: 0 0 10px rgba(255, 200, 90, 0.55);
+  animation: waitingPulse 2.2s ease-in-out infinite;
+}
+
+.claimBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 200, 90, 0.5);
+  border-radius: 10px;
+  background: linear-gradient(90deg, rgba(90, 64, 18, 0.5), rgba(8, 18, 30, 0.4));
+}
+
+.claimBannerText {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #ffe9b0;
+}
+
+.claimButton,
+.claimButtonSmall {
+  padding: 9px 20px;
+  border: 1px solid #ffc95a;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #d9982e 0%, #9a6414 100%);
+  box-shadow: 0 0 12px rgba(255, 190, 70, 0.45), inset 0 1px 0 rgba(255, 240, 200, 0.45);
+  color: #fffaf0;
+  font-family: var(--cb-font-display);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-shadow: 0 1px 2px rgba(60, 30, 0, 0.7);
+  cursor: pointer;
+  animation: claimGlow 1.8s ease-in-out infinite;
+  transition: filter 140ms ease-out, transform 140ms ease-out;
+}
+
+.claimButtonSmall {
+  padding: 5px 12px;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.claimButton:hover:not(:disabled),
+.claimButtonSmall:hover:not(:disabled) {
+  filter: brightness(1.12);
+  transform: translateY(-1px);
+}
+
+.claimButton:disabled,
+.claimButtonSmall:disabled {
+  opacity: 0.6;
+  cursor: default;
+  animation: none;
+}
+
+@keyframes claimGlow {
+  0%, 100% { box-shadow: 0 0 8px rgba(255, 190, 70, 0.35), inset 0 1px 0 rgba(255, 240, 200, 0.45); }
+  50% { box-shadow: 0 0 20px rgba(255, 190, 70, 0.7), inset 0 1px 0 rgba(255, 240, 200, 0.45); }
+}
+
+/* Palier à réclamer sur la frise. */
+.stage[data-state="claimable"] .node {
+  border-color: #ffc95a;
+  background: linear-gradient(180deg, #d9982e, #9a6414);
+  color: #fffaf0;
+  font-weight: 800;
+  animation: claimGlow 1.8s ease-in-out infinite;
+}
+
+.stage[data-state="claimable"] .stageCard {
+  border-color: rgba(255, 200, 90, 0.6);
+  background: linear-gradient(90deg, rgba(90, 64, 18, 0.55), rgba(8, 18, 30, 0.45) 70%);
+}
+
+.stage[data-state="claimable"] .stageLevel {
+  color: #ffe9b0;
+}
+
+.stage[data-state="claimable"] .stageStatus {
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.escaleCurrent[data-claimable="true"] {
+  border-color: rgba(255, 200, 90, 0.7);
+  animation: waitingPulse 2.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawer,
+  .drawerScrim,
+  .waitingCall,
+  .waitingGift,
+  .tabBadge,
+  .claimButton,
+  .claimButtonSmall,
+  .stage[data-state="claimable"] .node,
+  .escaleCurrent[data-claimable="true"] {
+    animation: none;
+  }
+}
+
+.waitingText {
+  flex: 1 1 110px;
+  min-width: 0;
+}
+
+.questPeriod {
+  font-family: var(--cb-font-ui);
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--ink-faint);
 }

@@ -662,7 +662,58 @@
 .resaleActions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
+}
+
+/* Combien d'exemplaires — un pas à pas plutôt qu'un champ libre : on ne
+   tape pas un nombre pour vendre trois cartes, et il n'y a rien à valider
+   au clavier. Les bornes (1 … possédés) sont portées par les boutons. */
+.resaleQty {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.resaleQtyStep {
+  min-width: 2em;
+  padding: 0.45em 0.6em;
+  border: 0;
+  background: rgba(10, 30, 44, 0.6);
+  font: inherit;
+  font-size: clamp(12px, 1.4vh, 14px);
+  line-height: 1;
+  color: var(--ink);
+  cursor: pointer;
+  transition: background-color 140ms ease-out, color 140ms ease-out;
+}
+
+.resaleQtyStep:hover:not(:disabled) {
+  background: rgba(16, 52, 72, 0.9);
+  color: #fff;
+}
+
+.resaleQtyStep:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.resaleQtyStep:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.resaleQtyValue {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.7em;
+  border-inline: 1px solid var(--line);
+  font-size: clamp(11px, 1.3vh, 13px);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  white-space: nowrap;
 }
 
 .resaleButton {
@@ -691,3 +742,28 @@
 .resaleNote { color: var(--ink-dim); }
 .resaleOk { color: var(--tb-success); }
 .resaleError { color: var(--tb-danger); }
+
+/* Confirmation de revente : on ne rachète pas une carte vendue. */
+.resaleConfirm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 9px 10px;
+  border: 1px solid rgba(233, 180, 90, 0.55);
+  border-radius: 9px;
+  background: rgba(60, 40, 12, 0.35);
+}
+
+.resaleConfirmText {
+  margin: 0;
+  font-size: clamp(11px, 1.3vh, 13px);
+  line-height: 1.4;
+  color: var(--ink);
+}
+
+.resaleButtonConfirm {
+  border-color: #e9b45a;
+  background: linear-gradient(180deg, rgba(150, 100, 30, 0.85), rgba(95, 60, 14, 0.85));
+  color: #fff6e0;
+}
+.resaleButtonConfirm:hover:not(:disabled) { border-color: #ffd27a; background: linear-gradient(180deg, rgba(180, 122, 38, 0.95), rgba(110, 70, 16, 0.95)); }

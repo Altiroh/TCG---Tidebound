@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createGameState } from "@/game";
 import { createSupabaseServerClient, createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { resolveMatchDeck } from "@/features/decks/matchDeck";
+import { getSessionUser } from "@/lib/supabase/sessionUser";
 
 export interface ActionResult<T> {
   ok: boolean;
@@ -13,9 +14,7 @@ export interface ActionResult<T> {
 
 async function requireUser() {
   const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) redirect("/connexion");
   return { supabase, user };
 }

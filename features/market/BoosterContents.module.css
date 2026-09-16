@@ -1,0 +1,245 @@
+/* Contenu d'un booster — fenêtre bleu nuit, liseré cyan. */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 85;
+  display: grid;
+  place-items: center;
+  padding: clamp(10px, 3vmin, 40px);
+  background: rgba(2, 6, 12, 0.72);
+  backdrop-filter: blur(6px);
+  animation: fade 180ms ease-out both;
+}
+
+@keyframes fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(1080px, 100%);
+  max-height: min(90vh, 100%);
+  padding: clamp(14px, 2vw, 24px);
+  border: 1px solid rgba(0, 183, 255, 0.7);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #071a29 0%, #061522 100%);
+  box-shadow: 0 0 8px rgba(0, 183, 255, 0.35), 0 30px 80px rgba(0, 0, 0, 0.6);
+  color: #e8edf0;
+  font-family: var(--font-ui, "Segoe UI", system-ui, sans-serif);
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #5cc8f0;
+}
+
+.title {
+  margin: 2px 0 4px;
+  font-family: var(--font-card-title, Georgia, serif);
+  font-size: clamp(20px, 2vw, 28px);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.sub {
+  margin: 0;
+  font-size: 13px;
+  color: #9eb3c2;
+}
+
+.sub b {
+  color: #7fe0a8;
+}
+
+.close {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border: 1px solid #195374;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #0b2638 0%, #071826 100%);
+  color: #c8d7e1;
+  cursor: pointer;
+}
+
+.close:hover {
+  border-color: #00aef0;
+  box-shadow: 0 0 8px rgba(0, 174, 240, 0.25);
+}
+
+.progress {
+  height: 6px;
+  border-radius: 999px;
+  background: #0a2032;
+  overflow: hidden;
+}
+
+.progressFill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2e9b6a, #7fe0a8);
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 11px;
+  border: 1px solid #195374;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #0b2638 0%, #071826 100%);
+  color: #c8d7e1;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.chip span {
+  opacity: 0.6;
+}
+
+.chip:hover {
+  border-color: #00aef0;
+}
+
+.chip[aria-pressed="true"] {
+  border-color: #00b7ff;
+  background: linear-gradient(180deg, #0b4265 0%, #08273d 100%);
+  color: #fff;
+  box-shadow: 0 0 8px rgba(0, 183, 255, 0.35);
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  font-size: 12px;
+  color: #9eb3c2;
+  cursor: pointer;
+}
+
+.empty {
+  margin: 20px 0;
+  text-align: center;
+  color: #9eb3c2;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(clamp(120px, 12vw, 150px), 1fr));
+  gap: 10px;
+  min-height: 0;
+  margin: 0;
+  padding: 2px 4px 4px 0;
+  overflow-y: auto;
+  list-style: none;
+  scrollbar-width: thin;
+}
+
+.card {
+  --rarity-color: #b9c6d2;
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  padding: 0 0 8px;
+  overflow: hidden;
+  border: 1px solid #17405a;
+  border-radius: 9px;
+  background: #0a2032;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 140ms ease-out, transform 140ms ease-out;
+}
+
+.card:hover {
+  border-color: var(--rarity-color);
+  transform: translateY(-2px);
+}
+
+.card[data-rarity="uncommon"] { --rarity-color: #8fe3a2; }
+.card[data-rarity="rare"] { --rarity-color: #6fa0ff; }
+.card[data-rarity="epic"] { --rarity-color: #c29bff; }
+.card[data-rarity="legendary"] { --rarity-color: #ffd36e; }
+.card[data-rarity="abyssal"] { --rarity-color: #b979ff; }
+
+.art {
+  display: block;
+  aspect-ratio: 4 / 3;
+  background: #061522 center 30% / cover no-repeat;
+  border-bottom: 2px solid var(--rarity-color);
+}
+
+/* Pas encore possédée : l'illustration s'éteint un peu. */
+.card[data-owned="false"] .art {
+  filter: grayscale(0.55) brightness(0.7);
+}
+
+.name {
+  padding: 2px 8px 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-card-title, Georgia, serif);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.rarity {
+  padding: 0 8px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--rarity-color);
+}
+
+.ownedMark {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid rgba(233, 226, 209, 0.35);
+  background: rgba(3, 10, 16, 0.85);
+  color: rgba(233, 226, 209, 0.7);
+}
+
+.card[data-owned="true"] .ownedMark {
+  border-color: #b8f5cc;
+  background: linear-gradient(180deg, #3fae6c, #22784a);
+  color: #fff;
+  box-shadow: 0 0 6px rgba(80, 200, 130, 0.6);
+}

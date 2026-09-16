@@ -1,7 +1,9 @@
 "use server";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { progressionView, type ProgressionView } from "@/game/progression";
+import { progressionView, utcDayKey, type ProgressionView } from "@/game/progression";
+import { claimableLevelsFor } from "@/features/progression/levelRewardService";
+import { getSessionUser } from "@/lib/supabase/sessionUser";
 
 /**
  * Progression joueur — LECTURES uniquement.
@@ -17,10 +19,14 @@ export interface ProgressionSummary {
   view: ProgressionView;
   /** Solde de Tides, affiché à côté du niveau. */
   balance: number;
+  /** Jetons de Préconstruit — la seconde monnaie du bandeau. */
+  preconTokens: number;
   matchesPlayed: number;
   pvpWins: number;
   /** Pseudo affiché à côté du niveau (`profiles.display_name`), repli sur l'e-mail. `null` hors connexion. */
   displayName: string | null;
+  /** Carte choisie comme illustration de profil (`profiles.avatar_card_id`) — l'avatar du bandeau. */
+  avatarCardId: string | null;
   /**
    * Quêtes terminées mais pas encore réclamées — la pastille du bandeau.
    *
@@ -29,17 +35,41 @@ export interface ProgressionSummary {
    * après coup ferait sauter la mise en page.
    */
   claimableQuests: number;
+  /**
+   * Récompenses qui ATTENDENT le joueur au profil : paliers de niveau à
+   * réclamer, cartes au choix à trancher, escale de connexion du jour. La
+   * pastille de l'avatar — ce qui donne envie d'y aller.
+   */
+  claimableRewards: number;
 }
 
 const SIGNED_OUT: ProgressionSummary = {
   isSignedIn: false,
   view: progressionView(0),
   balance: 0,
+  preconTokens: 0,
   matchesPlayed: 0,
   pvpWins: 0,
   displayName: null,
+  avatarCardId: null,
   claimableQuests: 0,
+  claimableRewards: 0,
 };
+
+/**
+ * Pseudo et illustration du profil. L'illustration est une colonne plus
+ * récente que le pseudo : si elle manque en base (migration pas encore
+ * passée), le pseudo doit continuer de s'afficher — d'où le repli.
+ */
+async function readProfileHeader(
+  supabase: ReturnType<typeof createSupabaseServerClient>,
+  userId: string
+): Promise<{ displayName: string | null; avatarCardId: string | null }> {
+  const full = await supabase.from("profiles").select("display_name, avatar_card_id").eq("id", userId).maybeSingle();
+  if (!full.error) return { displayName: full.data?.display_name ?? null, avatarCardId: full.data?.avatar_card_id ?? null };
+  const basic = await supabase.from("profiles").select("display_name").eq("id", userId).maybeSingle();
+  return { displayName: basic.data?.display_name ?? null, avatarCardId: null };
+}
 
 /**
  * Progression du joueur connecté, pour affichage. Ne fait jamais planter la
@@ -49,15 +79,13 @@ const SIGNED_OUT: ProgressionSummary = {
 export async function fetchProgression(): Promise<ProgressionSummary> {
   try {
     const supabase = createSupabaseServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getSessionUser();
     if (!user) return SIGNED_OUT;
 
-    const [progression, currency, profile, claimable] = await Promise.all([
+    const [progression, currency, profile, claimable, levelRewards, cardChoices, login, achievements] = await Promise.all([
       supabase.from("player_progression").select("*").eq("user_id", user.id).maybeSingle(),
       supabase.from("player_currency").select("balance").eq("user_id", user.id).maybeSingle(),
-      supabase.from("profiles").select("display_name").eq("id", user.id).maybeSingle(),
+      readProfileHeader(supabase, user.id),
       // Terminées et pas encore réclamées : `head` + `count`, on ne veut
       // que le nombre.
       supabase
@@ -66,18 +94,29 @@ export async function fetchProgression(): Promise<ProgressionSummary> {
         .eq("user_id", user.id)
         .not("completed_at", "is", null)
         .is("claimed_at", null),
+      supabase.from("player_level_rewards").select("level").eq("user_id", user.id),
+      supabase.from("player_card_choices").select("id", { count: "exact", head: true }).eq("user_id", user.id).is("resolved_at", null),
+      supabase.from("player_login_rewards").select("last_claimed_day").eq("user_id", user.id).maybeSingle(),
+      supabase.from("player_achievements").select("code", { count: "exact", head: true }).eq("user_id", user.id).is("claimed_at", null),
     ]);
+    const storedLevel = progression.data?.level ?? 1;
+    const levelsToClaim = claimableLevelsFor(storedLevel, (levelRewards.data ?? []).map((row) => row.level)).length;
+    const loginToClaim = login.error ? 0 : login.data?.last_claimed_day === utcDayKey() ? 0 : 1;
 
     return {
       isSignedIn: true,
       view: progressionView(progression.data?.xp_total ?? 0),
       balance: currency.data?.balance ?? 0,
+      preconTokens: progression.data?.precon_tokens ?? 0,
       matchesPlayed: progression.data?.matches_played ?? 0,
       pvpWins: progression.data?.pvp_wins ?? 0,
       // Repli sur l'e-mail comme le menu principal : mieux vaut un identifiant
       // qu'un vide à côté du niveau.
-      displayName: profile.data?.display_name ?? user.email ?? null,
+      displayName: profile.displayName ?? user.email ?? null,
+      avatarCardId: profile.avatarCardId,
       claimableQuests: claimable.count ?? 0,
+      // Tout ce qui se réclame au profil — quêtes comprises, elles y ont leur onglet.
+      claimableRewards: levelsToClaim + (cardChoices.count ?? 0) + loginToClaim + (claimable.count ?? 0) + (achievements.error ? 0 : (achievements.count ?? 0)),
     };
   } catch (error) {
     console.error("[fetchProgression] Lecture impossible :", error);
@@ -101,9 +140,7 @@ export interface MatchRewardSummary {
 export async function fetchMatchReward(matchId: string): Promise<MatchRewardSummary | null> {
   try {
     const supabase = createSupabaseServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getSessionUser();
     if (!user) return null;
 
     const { data } = await supabase

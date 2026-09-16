@@ -1,37 +1,31 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { fetchOnboarding } from "@/features/onboarding/actions";
-import { signOut } from "@/app/connexion/actions";
 import { TideboundMenuChest } from "@/components/menu/TideboundMenuChest";
 import { MenuAmbiance } from "@/components/menu/MenuAmbiance";
 import { AuthGateModal } from "@/components/auth/AuthGateModal";
-import { OptionsButton } from "@/features/settings/OptionsButton";
+import { HomeBar } from "@/features/shell/HomeBar";
+import { getSessionUser } from "@/lib/supabase/sessionUser";
 
 /**
  * Résout l'utilisateur connecté, sans jamais faire planter la page
  * d'accueil : une config Supabase manquante/invalide dégrade juste vers
  * "non connecté" (le menu marche toujours en local) plutôt qu'un 500 sur
  * la toute première page vue par n'importe quel visiteur.
+ *
+ * Le pseudo n'est plus lu ici : il s'affiche dans le bandeau, qui a sa
+ * propre lecture — une requête `profiles` de moins à chaque retour au menu.
  */
-async function resolveViewer(): Promise<{ displayName: string | null; isSignedIn: boolean }> {
+async function resolveIsSignedIn(): Promise<boolean> {
   try {
-    const supabase = createSupabaseServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return { displayName: null, isSignedIn: false };
-
-    const { data: profile } = await supabase.from("profiles").select("display_name").eq("id", user.id).maybeSingle();
-    return { displayName: profile?.display_name ?? user.email ?? null, isSignedIn: true };
+    return (await getSessionUser()) !== null;
   } catch (error) {
     console.error("[HomePage] Impossible de résoudre l'utilisateur connecté :", error);
-    return { displayName: null, isSignedIn: false };
+    return false;
   }
 }
 
 export default async function HomePage() {
-  const { displayName, isSignedIn } = await resolveViewer();
+  const isSignedIn = await resolveIsSignedIn();
 
   // Première connexion : le tutoriel est PROPOSÉ avant tout le reste
   // (Notion « Progression joueur » §2, étape 2 du flow). Une seule fois —
@@ -43,38 +37,19 @@ export default async function HomePage() {
 
   return (
     <main
-      className="relative flex min-h-screen items-center justify-center overflow-hidden bg-cover bg-center p-4"
+      className="relative flex h-[100dvh] items-center justify-center overflow-hidden bg-cover bg-center p-4"
       style={{ backgroundImage: "url(/assets/menu/background/fixed.webp)" }}
     >
       <div className="absolute inset-0 bg-board-background/35" />
 
       <AuthGateModal isSignedIn={isSignedIn} />
       <MenuAmbiance />
-      <OptionsButton isSignedIn={isSignedIn} />
+      {/* Le bandeau de tous les écrans : onglets, compte, quêtes, options.
+          La déconnexion vit au pied du Profil. */}
+      <HomeBar isSignedIn={isSignedIn} />
 
-      <div className="relative z-10 w-full">
+      <div className="relative z-10 w-full pt-[clamp(40px,5vh,64px)]">
         <TideboundMenuChest />
-      </div>
-
-      <div className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap text-xs text-slate-300 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
-        {isSignedIn ? (
-          <>
-            Connecté en tant que <span className="text-slate-100">{displayName}</span> ·{" "}
-            <Link href="/en-ligne" className="text-board-accent hover:underline">
-              Jouer en ligne
-            </Link>{" "}
-            ·{" "}
-            <form action={signOut} className="inline">
-              <button type="submit" className="text-board-accent hover:underline">
-                Se déconnecter
-              </button>
-            </form>
-          </>
-        ) : (
-          <Link href="/connexion" className="text-board-accent hover:underline">
-            Connexion (pour jouer en ligne)
-          </Link>
-        )}
       </div>
     </main>
   );
