@@ -265,6 +265,8 @@
 
 /* La plaque coiffe la tuile d'un bord à l'autre, comme sur l'écran Decks. */
 .deckPlate {
+  /* La plaque n'a plus de jeton de taille : la hauteur se dit ici. */
+  min-height: clamp(168px, 22vh, 224px);
   border-inline: none;
   border-top: none;
   border-radius: var(--radius) var(--radius) 0 0;

@@ -70,7 +70,7 @@ export function BorrowedDeckPrompt({ catalog }: BorrowedDeckPromptProps) {
       <div className={styles.grid}>
         {catalog.borrowed.map(({ deck, ownership }) => (
           <article key={deck.id} className={`${game.panelRaised} ${styles.tile}`} aria-label={deck.name}>
-            <ArtPlate artUrl={nameplateArtUrl(deck.cardIds, deck.shipId)} size="lg" className={styles.tilePlate}>
+            <ArtPlate artUrl={nameplateArtUrl(deck.cardIds, deck.shipId)} className={styles.tilePlate}>
               <span className={styles.tileName}>{deck.name}</span>
             </ArtPlate>
             <div className={styles.tileBody}>

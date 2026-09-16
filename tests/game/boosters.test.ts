@@ -260,12 +260,18 @@ describe("valeurs verrouillées par le cadrage", () => {
   });
 
   it("garde les valeurs de recyclage très inférieures au prix d'un booster", () => {
-    // Elles suivent désormais le prix : ce sont les RATIOS du cadrage
-    // (1 % / 3 % / 9 % / 24 %) qui sont tenus, pas des montants figés
-    // calibrés sur un booster à 500 Tides.
-    expect(RECYCLE_VALUE.common).toBe(Math.round(BOOSTER_STANDARD_PRICE * 0.01));
-    expect(RECYCLE_VALUE.rare).toBe(Math.round(BOOSTER_STANDARD_PRICE * 0.09));
-    expect(RECYCLE_VALUE.abyssal).toBe(Math.round(BOOSTER_STANDARD_PRICE * 0.24));
+    // Repère : les VALEURS DE TRAVAIL du cadrage (5 / 15 / 45 / 120), et
+    // non plus ses ratios. Les ratios avaient été retenus quand le booster
+    // est passé de 500 à 100 Tides, ce qui divisait du même coup toutes les
+    // valeurs par cinq : une Commune tombait à 1 Tide, une somme que
+    // personne ne traverse un écran pour encaisser. La Commune revaut donc
+    // les 5 Tides du cadrage.
+    expect(RECYCLE_VALUE.common).toBe(5);
+    // Rare et Abyssale restent EN DESSOUS de leur valeur de travail (45 et
+    // 120) : à 120, une seule Abyssale rembourserait plus qu'un booster à
+    // 100 — exactement la boucle autosuffisante que le cadrage interdit.
+    expect(RECYCLE_VALUE.rare).toBeLessThan(45);
+    expect(RECYCLE_VALUE.abyssal).toBeLessThan(120);
     // La règle qui compte : jamais de boucle d'ouverture autosuffisante.
     expect(RECYCLE_VALUE.abyssal).toBeLessThan(BOOSTER_STANDARD_PRICE / 2);
     // Monotone : un palier plus rare ne peut jamais recycler pour moins.

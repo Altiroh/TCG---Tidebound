@@ -361,7 +361,7 @@ export function NewMatchScreen({
                           }}
                           title={issue ?? deck.description}
                         >
-                          <ArtPlate artUrl={nameplateArtUrl(deck.cardIds, deck.shipId)} size="lg" className={styles.deckPlate}>
+                          <ArtPlate artUrl={nameplateArtUrl(deck.cardIds, deck.shipId)} className={styles.deckPlate}>
                             <span className={styles.deckName}>{deck.name}</span>
                             <span className={styles.deckShip}>{shipNameOf(deck.shipId)}</span>
                           </ArtPlate>
