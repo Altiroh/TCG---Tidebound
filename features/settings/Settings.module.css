@@ -12,9 +12,12 @@
  * voisinage, des deux côtés.
  */
 .settings {
-  --text-primary: #f2f7fb;
-  --text-secondary: rgba(190, 210, 228, 0.7);
-  --border-subtle: rgba(130, 178, 210, 0.16);
+  --text-primary: var(--tb-text-strong);
+  --text-secondary: var(--tb-text-muted);
+  --border-subtle: var(--tb-border);
+  --accent: var(--tb-accent);
+  --accent-hover: var(--tb-accent-bright);
+  --danger: var(--tb-danger);
 
   display: flex;
   flex-direction: column;
@@ -42,7 +45,7 @@
   height: 1px;
   border: 0;
   margin: 0;
-  background: linear-gradient(90deg, var(--line-strong, rgba(130, 178, 210, 0.3)), transparent 82%);
+  background: linear-gradient(90deg, var(--tb-border-strong), transparent 82%);
 }
 
 .signedOut {

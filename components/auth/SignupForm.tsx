@@ -60,8 +60,8 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
   if (status === "check-email") {
     return (
       <div className="flex flex-col gap-3 text-center">
-        <h2 className="text-xl font-semibold text-[#f2f7fb] [font-family:var(--font-card-title,Georgia,serif)]">Vérifie ta boîte mail</h2>
-        <p className="text-sm text-[rgba(190,210,228,0.6)]">
+        <h2 className="text-xl font-semibold text-[var(--tb-text-strong)] [font-family:var(--tb-font-display)]">Vérifie ta boîte mail</h2>
+        <p className="text-sm text-[var(--tb-text-muted)]">
           Un email de confirmation vient de t&apos;être envoyé. Clique sur le lien qu&apos;il contient pour activer
           ton compte, puis reviens te connecter.
         </p>
@@ -75,8 +75,8 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
   return (
     <form action={handleSubmit} className="flex flex-col gap-3">
       <div className="mb-1 flex flex-col items-center gap-1 text-center">
-        <h2 className="text-xl font-semibold text-[#f2f7fb] [font-family:var(--font-card-title,Georgia,serif)]">Créer un compte</h2>
-        <p className="text-xs text-[rgba(190,210,228,0.6)]">Rejoins Tidebound en quelques secondes.</p>
+        <h2 className="text-xl font-semibold text-[var(--tb-text-strong)] [font-family:var(--tb-font-display)]">Créer un compte</h2>
+        <p className="text-xs text-[var(--tb-text-muted)]">Rejoins Tidebound en quelques secondes.</p>
       </div>
       <input
         type="text"
@@ -101,7 +101,7 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
         value={confirmPassword}
         onChange={setConfirmPassword}
       />
-      {error && <p className="text-sm text-[#f3c3ba]">{error}</p>}
+      {error && <p className="text-sm text-[var(--tb-danger-ink)]">{error}</p>}
       <button
         type="submit"
         disabled={status === "loading" || strengthTooLow}
@@ -110,7 +110,7 @@ export function SignupForm({ onSuccess, onSwitchToLogin }: SignupFormProps) {
       >
         {status === "loading" ? "Création..." : "Créer mon compte"}
       </button>
-      <p className="text-center text-xs text-[rgba(190,210,228,0.6)]">
+      <p className="text-center text-xs text-[var(--tb-text-muted)]">
         Aucune carte au départ : tu pourras jouer avec les decks préconstruits en attendant d&apos;ouvrir des
         boosters.
       </p>

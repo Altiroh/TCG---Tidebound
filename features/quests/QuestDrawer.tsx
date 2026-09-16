@@ -7,6 +7,7 @@ import { QUEST_CATEGORY_META } from "@/game/quests";
 import { claimQuestReward, fetchQuestBoard, type QuestBoard, type QuestEntry } from "@/features/quests/actions";
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
 import styles from "@/features/quests/QuestDrawer.module.css";
+import game from "@/features/shell/GameScreen.module.css";
 import { playButtonClick } from "@/lib/sound";
 
 interface QuestDrawerProps {
@@ -116,7 +117,19 @@ export function QuestDrawer({ onClose }: QuestDrawerProps) {
         {error && <p className={styles.error}>{error}</p>}
 
         {board === null && !error ? (
-          <p className={styles.muted}>Chargement…</p>
+          // Squelettes de la forme des lignes : le tiroir ne saute pas quand
+          // les quêtes arrivent.
+          <div aria-busy aria-label="Chargement des quêtes">
+            {[0, 1, 2].map((index) => (
+              <div key={index} className={styles.skeletonRow}>
+                <span className={game.skeleton} style={{ width: 28, height: 28 }} />
+                <span style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+                  <span className={game.skeletonText} style={{ width: "60%" }} />
+                  <span className={game.skeletonText} style={{ width: "85%" }} />
+                </span>
+              </div>
+            ))}
+          </div>
         ) : !board?.isSignedIn ? (
           <p className={styles.muted}>Connecte-toi pour recevoir des quêtes.</p>
         ) : entries.length === 0 ? (

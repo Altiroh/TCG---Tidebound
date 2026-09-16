@@ -17,7 +17,7 @@
   font-family: var(--cb-font-display);
   font-size: clamp(14px, 1.05vw, 17px);
   font-weight: 600;
-  color: #f2f7fb;
+  color: var(--ink-strong);
 }
 
 .stats {

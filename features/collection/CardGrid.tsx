@@ -3,6 +3,7 @@
 import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { CardDefinition, CardInstance } from "@/game";
 import styles from "@/features/collection/CardBrowser.module.css";
+import game from "@/features/shell/GameScreen.module.css";
 import { CardTile } from "@/features/match/CardTile";
 
 /** Nombre de cartes montées par lot — ajusté pour couvrir large sans jamais monter la collection entière d'un coup. */
@@ -168,7 +169,7 @@ export function CardGrid({ cards, onCardClick, hasAnyCards, owned, emptyLabel, c
     <div ref={scrollRef} className={styles.gridScroll}>
       {cards.length === 0 ? (
         <div className={styles.emptyState}>
-          <svg viewBox="0 0 24 24" width="30" height="30" fill="none" className={styles.emptyStateMark} aria-hidden>
+          <svg viewBox="0 0 24 24" width="30" height="30" fill="none" className={game.emptyMark} aria-hidden>
             <path
               d="M12 3v12m0 0l-3-3m3 3l3-3M6 8h12M12 15v4a3 3 0 0 1-3 3m3-3a3 3 0 0 0 3 3"
               stroke="currentColor"
@@ -200,10 +201,10 @@ export function CardGrid({ cards, onCardClick, hasAnyCards, owned, emptyLabel, c
           </div>
 
           {hasMore && (
-            <div ref={sentinelRef} className={styles.loadMoreSentinel} aria-hidden>
-              <span className={`${styles.loadDot} ${isLoadingMore ? styles.loadDotActive : ""}`} />
-              <span className={`${styles.loadDot} ${isLoadingMore ? styles.loadDotActive : ""}`} />
-              <span className={`${styles.loadDot} ${isLoadingMore ? styles.loadDotActive : ""}`} />
+            <div ref={sentinelRef} className={`${game.loading} ${styles.loadMoreSentinel} ${isLoadingMore ? "" : styles.loadIdle}`} aria-hidden>
+              <span className={`${game.loadingDot} ${styles.loadingDotOff}`} />
+              <span className={`${game.loadingDot} ${styles.loadingDotOff}`} />
+              <span className={`${game.loadingDot} ${styles.loadingDotOff}`} />
             </div>
           )}
         </>

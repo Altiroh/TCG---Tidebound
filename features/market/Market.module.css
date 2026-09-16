@@ -109,24 +109,26 @@
 .shelfItem:active:not(:disabled) .shelfPack { transform: translateY(-4px) scale(0.98); }
 
 .shelfItem[data-in-cart="true"] .shelfPack {
-  filter: drop-shadow(0 10px 12px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 14px rgba(88, 200, 216, 0.3));
+  filter: drop-shadow(0 10px 12px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 14px rgba(95, 208, 230, 0.32));
 }
 
+/* Quantité au panier : la pastille cyan de la sélection, sur le sachet. */
 .cartBadge {
   position: absolute;
   top: 6%;
   right: 4%;
   min-width: 30px;
   padding: 4px 8px;
-  border: 1px solid rgba(88, 200, 216, 0.55);
-  border-radius: 999px;
+  border: 1px solid var(--tb-accent-line);
+  border-radius: var(--tb-radius-pill);
   background: var(--panel-solid);
-  color: #eaf8fb;
+  color: var(--tb-on-accent);
   font-size: 12px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1;
-  animation: badgeBump 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  box-shadow: var(--tb-shadow-sm);
+  animation: badgeBump 240ms var(--tb-ease) both;
 }
 
 @keyframes badgeBump {
@@ -150,9 +152,10 @@
   font-size: clamp(12.5px, 0.95vw, 15px);
   font-weight: 600;
   letter-spacing: 0.02em;
-  color: #f2f7fb;
+  color: var(--ink-strong);
 }
 
+/* Le prix : de l'or, comme toute valeur d'économie. */
 .shelfPrice {
   display: inline-flex;
   align-items: center;
@@ -160,7 +163,7 @@
   font-size: clamp(12px, 0.9vw, 14px);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: #e5cf9e;
+  color: var(--gold);
 }
 
 /* ── Panier ─────────────────────────────────────────────────── */
@@ -237,7 +240,7 @@
   transition: background-color 130ms ease-out, color 130ms ease-out, border-color 130ms ease-out;
 }
 
-.stepperButton:hover:not(:disabled) { border-color: var(--line-strong); background: rgba(130, 178, 210, 0.12); color: var(--ink); }
+.stepperButton:hover:not(:disabled) { border-color: var(--tb-accent-line); background: var(--tb-accent-soft); color: var(--tb-on-accent); }
 .stepperButton:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 1px; }
 .stepperButton:disabled { opacity: 0.3; cursor: not-allowed; }
 
@@ -246,7 +249,7 @@
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   text-align: center;
-  color: #f2f7fb;
+  color: var(--ink-strong);
 }
 
 /* Le total, en bas à droite : la seule somme qui compte avant de cliquer. */
@@ -276,31 +279,17 @@
   font-size: clamp(19px, 1.6vw, 26px);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: #e5cf9e;
+  color: var(--gold);
 }
 
 .totalValue[data-short="true"] { color: var(--danger); }
 
 .totalHint {
   font-size: clamp(10.5px, 0.78vw, 12px);
-  color: #f3c3ba;
+  color: var(--tb-danger-ink);
 }
 
-/* « Vider » : un simple lien, pour ne pas concurrencer « Acheter ». */
-.clearButton {
-  padding: 0.4em 0.2em;
-  border: none;
-  background: none;
-  color: var(--ink-dim);
-  font: inherit;
-  font-size: clamp(12px, 0.85vw, 13px);
-  cursor: pointer;
-  transition: color 150ms ease-out;
-}
-
-.clearButton:hover:not(:disabled) { color: var(--ink); }
-.clearButton:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 2px; border-radius: 4px; }
-.clearButton:disabled { opacity: 0.35; cursor: default; }
+/* « Vider » est un `game.ghost` : il ne concurrence pas « Acheter ». */
 
 @media (prefers-reduced-motion: reduce) {
   .shelfPack { transition: none; }

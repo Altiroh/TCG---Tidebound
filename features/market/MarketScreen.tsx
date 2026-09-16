@@ -229,7 +229,7 @@ export function MarketScreen({ inventory }: MarketScreenProps) {
                   </div>
                   <button
                     type="button"
-                    className={styles.clearButton}
+                    className={game.ghost}
                     onClick={() => {
                       playButtonClick();
                       setCart({});
@@ -238,9 +238,11 @@ export function MarketScreen({ inventory }: MarketScreenProps) {
                   >
                     Vider
                   </button>
+                  {/* Acheter, en or : c'est une dépense de Tides (charte —
+                      or = économie), pas une action cyan comme les autres. */}
                   <button
                     type="button"
-                    className={game.primary}
+                    className={game.premium}
                     onClick={() => void handleCheckout()}
                     disabled={isBuying || itemCount === 0 || shortBy > 0}
                   >

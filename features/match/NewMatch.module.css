@@ -64,7 +64,7 @@
   font-size: clamp(17px, 1.35vw, 22px);
   font-weight: 600;
   letter-spacing: 0.04em;
-  color: #f2f7fb;
+  color: var(--ink-strong);
 }
 
 .modeText {
@@ -88,30 +88,35 @@
   gap: 8px;
 }
 
+/* Une carte-radio : le bouton rond du design system (`game.choiceRadio`)
+   à gauche, le libellé et sa description à droite. */
 .difficultyChip {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  min-width: 150px;
-  padding: 8px 12px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 10px;
+  align-items: start;
+  min-width: 170px;
+  padding: 9px 12px;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  background: rgba(8, 18, 30, 0.5);
+  background: var(--panel-inset);
   color: var(--ink);
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: border-color 150ms ease-out, background-color 150ms ease-out;
+  transition: border-color 150ms ease-out, background-color 150ms ease-out, box-shadow 150ms ease-out;
 }
-.difficultyChip:hover { border-color: var(--line-strong); }
+.difficultyChip:hover { border-color: var(--tb-accent-line); }
 .difficultyChip:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 2px; }
 .difficultyChipActive {
   composes: difficultyChip;
   border-color: var(--cb-cyan);
   background: var(--cb-cyan-soft);
+  box-shadow: var(--tb-glow-sm);
 }
-.difficultyLabel { font-weight: 600; font-size: clamp(12px, 0.9vw, 14px); }
+.difficultyRadio { margin-top: 2px; }
+.difficultyText { grid-column: 2; }
+.difficultyLabel { font-weight: 600; font-size: clamp(12px, 0.9vw, 14px); color: var(--ink-strong); }
 .difficultyText { font-size: 11px; color: var(--ink-dim); }
 
 .group {
@@ -150,7 +155,7 @@
   font-size: clamp(13px, 1vw, 16px);
   font-weight: 600;
   line-height: 1.2;
-  color: #f2f7fb;
+  color: var(--ink-strong);
 }
 
 .deckShip {
@@ -205,10 +210,4 @@
   color: var(--ink-dim);
 }
 
-.launchSummary strong { color: #f2f7fb; font-weight: 600; }
-
-.launchButton {
-  min-height: 44px;
-  padding-inline: 1.8em;
-  font-size: clamp(13px, 0.95vw, 15px);
-}
+.launchSummary strong { color: var(--ink-strong); font-weight: 600; }

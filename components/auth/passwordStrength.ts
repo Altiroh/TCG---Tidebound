@@ -6,11 +6,11 @@ export interface PasswordStrength {
 }
 
 const LEVELS: Array<{ label: string; barColorClass: string }> = [
-  { label: "Très faible", barColorClass: "bg-rose-500" },
-  { label: "Faible", barColorClass: "bg-orange-500" },
-  { label: "Moyen", barColorClass: "bg-amber-400" },
-  { label: "Fort", barColorClass: "bg-emerald-400" },
-  { label: "Très fort", barColorClass: "bg-emerald-400" },
+  { label: "Très faible", barColorClass: "bg-[var(--tb-danger)]" },
+  { label: "Faible", barColorClass: "bg-[var(--tb-danger)]" },
+  { label: "Moyen", barColorClass: "bg-[var(--tb-gold)]" },
+  { label: "Fort", barColorClass: "bg-[var(--tb-success)]" },
+  { label: "Très fort", barColorClass: "bg-[var(--tb-success)]" },
 ];
 
 /** Heuristique simple (longueur + diversité de caractères) — pas de vérification contre une liste de mots de passe compromis, hors périmètre côté client. */

@@ -1,0 +1,173 @@
+/*
+ * CONTRÔLES PARTAGÉS `game-ui` — menu déroulant et info-bulle.
+ *
+ * Sur les tokens du design system (`app/tokens.css`) et non plus sur les
+ * classes Tailwind arbitraires du plateau : le sélecteur de tri de la
+ * Collection et l'info-bulle des mots-clés sont les mêmes objets que les
+ * menus et bulles du reste des écrans (`GameScreen.module.css` §7).
+ */
+
+/* ── Sélecteur ─────────────────────────────────────────────── */
+.select {
+  position: relative;
+}
+
+.trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 34px;
+  padding: 0.35em 0.75em;
+  border: 1px solid var(--tb-border);
+  border-radius: var(--tb-radius-sm);
+  background: var(--tb-surface-inset);
+  color: var(--tb-text);
+  font: inherit;
+  font-size: var(--tb-fs-caption);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--tb-duration) ease-out, background-color var(--tb-duration) ease-out, box-shadow var(--tb-duration) ease-out;
+}
+.trigger:hover { border-color: var(--tb-border-strong); }
+.trigger:focus-visible { outline: none; border-color: var(--tb-accent); box-shadow: var(--tb-glow-sm); }
+.trigger[aria-expanded="true"] { border-color: var(--tb-accent-line); background: var(--tb-accent-soft); }
+.trigger:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.triggerLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chevron {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  color: var(--tb-accent);
+  transition: transform var(--tb-duration) var(--tb-ease);
+}
+.trigger[aria-expanded="true"] .chevron { transform: rotate(180deg); }
+
+/* Le menu : la même feuille que les menus contextuels. */
+.menu {
+  position: absolute;
+  right: 0;
+  z-index: var(--tb-z-dropdown);
+  min-width: 100%;
+  padding: 4px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border: 1px solid var(--tb-border-strong);
+  border-radius: var(--tb-radius-sm);
+  background: var(--tb-surface-solid);
+  color: var(--tb-text);
+  box-shadow: var(--tb-shadow-md);
+  scrollbar-width: thin;
+  scrollbar-color: var(--tb-border-strong) transparent;
+  animation: menuIn var(--tb-duration) var(--tb-ease) both;
+}
+.menuDown { top: calc(100% + 6px); }
+.menuUp { bottom: calc(100% + 6px); }
+
+@keyframes menuIn {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+.group {
+  padding: 8px 10px 3px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--tb-text-soft);
+}
+.group:first-child { padding-top: 4px; }
+
+.option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 10px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--tb-text);
+  font: inherit;
+  font-size: var(--tb-fs-caption);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--tb-duration-fast) ease-out, color var(--tb-duration-fast) ease-out;
+}
+.option:hover { background: var(--tb-accent-soft); color: var(--tb-on-accent); }
+.option:focus-visible { outline: 2px solid var(--tb-accent); outline-offset: -2px; }
+.optionActive {
+  composes: option;
+  color: var(--tb-accent-bright);
+}
+/* La coche de l'option courante. */
+.optionActive::after {
+  content: "";
+  width: 8px;
+  height: 4px;
+  margin-top: -3px;
+  border-left: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+}
+
+/* ── Info-bulle ────────────────────────────────────────────── */
+.tooltipAnchor {
+  position: relative;
+  display: inline-flex;
+}
+
+.tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  z-index: var(--tb-z-tooltip);
+  width: max-content;
+  max-width: 280px;
+  margin-bottom: 8px;
+  padding: 0.45em 0.75em;
+  border: 1px solid var(--tb-border-strong);
+  border-radius: var(--tb-radius-sm);
+  background: var(--tb-surface-solid);
+  color: var(--tb-text);
+  font-size: var(--tb-fs-caption);
+  line-height: 1.4;
+  box-shadow: var(--tb-shadow-md);
+  transform: translateX(-50%);
+  pointer-events: none;
+  animation: tooltipIn var(--tb-duration-fast) ease-out both;
+}
+
+/* Pointe : un losange de la même feuille, sous la bulle. */
+.tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-right: 1px solid var(--tb-border-strong);
+  border-bottom: 1px solid var(--tb-border-strong);
+  background: var(--tb-surface-solid);
+  transform: rotate(45deg);
+}
+
+@keyframes tooltipIn {
+  from { opacity: 0; transform: translate(-50%, 3px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu, .tooltip { animation: none; }
+}

@@ -9,40 +9,8 @@
  * consultable et donner envie, pas être grisé sans information.
  */
 
-.categories {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.category {
-  padding: 0.5em 1.1em;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--ink-dim);
-  font: inherit;
-  font-size: clamp(12px, 1vw, 14px);
-  cursor: pointer;
-  transition: background 160ms ease-out, color 160ms ease-out, border-color 160ms ease-out;
-}
-
-.category:hover {
-  border-color: var(--line-strong);
-  color: var(--ink);
-}
-
-.categoryActive {
-  composes: category;
-  border-color: rgba(88, 200, 216, 0.5);
-  background: rgba(13, 52, 69, 0.55);
-  color: #dceaec;
-}
-
-.categoryCount {
-  margin-left: 0.5em;
-  opacity: 0.6;
-}
+/* Les rayons (Mes decks / Emprunt / Préconstruits) sont des puces du
+   design system (`game.chips`, `game.chip`, `game.chipActive`). */
 
 .grid {
   display: grid;
@@ -83,11 +51,11 @@
 }
 
 .tileName {
-  font-family: var(--font-card-title), Georgia, serif;
+  font-family: var(--cb-font-display);
   font-size: clamp(14px, 1.2vw, 18px);
   font-weight: 700;
   line-height: 1.2;
-  color: var(--ink);
+  color: var(--ink-strong);
 }
 
 .tileStyle {
@@ -100,22 +68,23 @@
   position: relative;
   height: 5px;
   margin-top: 2px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
+  border-radius: var(--tb-radius-pill);
+  background: rgba(140, 190, 225, 0.14);
   overflow: hidden;
 }
 
 .ownFill {
   position: absolute;
   inset: 0 auto 0 0;
-  border-radius: 999px;
-  background: linear-gradient(90deg, #58c8d8, #7fd6a4);
+  border-radius: var(--tb-radius-pill);
+  background: linear-gradient(90deg, var(--tb-accent-deep), var(--cb-cyan));
   transition: width 320ms ease-out;
 }
 
+/* Deck entièrement possédé : l'acquis passe au vert. */
 .ownFillComplete {
   composes: ownFill;
-  background: linear-gradient(90deg, #7fd6a4, #c79a4e);
+  background: linear-gradient(90deg, var(--cb-cyan), var(--success));
 }
 
 .ownLabel {
@@ -132,9 +101,10 @@
   padding-top: 6px;
 }
 
+/* Les étoiles de difficulté : de l'or — c'est une valeur, pas un état. */
 .difficulty {
   letter-spacing: 0.12em;
-  color: #ddc79a;
+  color: var(--gold);
 }
 
 /* ──────────────────────────────────────────────────────────────
@@ -234,7 +204,7 @@
   width: 100%;
   min-height: 2px;
   border-radius: 3px 3px 0 0;
-  background: linear-gradient(180deg, rgba(88, 200, 216, 0.85), rgba(88, 200, 216, 0.3));
+  background: linear-gradient(180deg, rgba(95, 208, 230, 0.85), rgba(95, 208, 230, 0.3));
 }
 
 .curveLabel {
@@ -272,8 +242,9 @@
 
 .cardRow:hover,
 .cardRow:focus-visible {
-  border-color: rgba(88, 200, 216, 0.45);
-  background: rgba(13, 52, 69, 0.55);
+  border-color: var(--tb-accent-line);
+  background: var(--tb-accent-soft);
+  outline: none;
 }
 
 .cardCost {
@@ -281,8 +252,8 @@
   min-width: 1.4em;
   text-align: center;
   border-radius: 4px;
-  background: rgba(88, 200, 216, 0.16);
-  color: #cfe9ee;
+  background: var(--tb-accent-soft);
+  color: var(--tb-accent-bright);
   font-variant-numeric: tabular-nums;
 }
 
@@ -307,7 +278,7 @@
 
 .cardCountOwned {
   composes: cardCount;
-  color: #7fd6a4;
+  color: var(--success);
 }
 
 .sheetActions {

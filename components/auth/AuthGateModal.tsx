@@ -6,6 +6,7 @@ import { AuthGlassPanel, AUTH_LINK_CLASS, AUTH_PRIMARY_BUTTON_CLASS, AUTH_SECOND
 import { LoginForm } from "@/components/auth/LoginForm";
 import { SignupForm } from "@/components/auth/SignupForm";
 import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm";
+import dialog from "@/features/shell/Dialog.module.css";
 
 const GUEST_DISMISS_KEY = "tidebound:guest-play";
 
@@ -65,10 +66,7 @@ export function AuthGateModal({ isSignedIn }: AuthGateModalProps) {
   if (view === "closed") return null;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-md"
-      onClick={dismissAsGuest}
-    >
+    <div className={dialog.overlay} onClick={dismissAsGuest} role="presentation">
       <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm">
         <AuthGlassPanel>
           {view !== "choice" && (

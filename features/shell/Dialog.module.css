@@ -1,19 +1,28 @@
 /*
- * Fenêtre de dialogue commune (confirmation, question, sélecteur) : la même
- * langue que les panneaux de `GameScreen` — bleu nuit translucide, un filet
- * cyan en tête, jamais de verre blanc. Les tokens ont des repli pour les
- * rares cas où le dialogue est monté hors d'un `GameScreen`.
+ * FENÊTRE DE DIALOGUE COMMUNE — confirmation, suppression, achat,
+ * renommage, erreur, détail, prévisualisation.
+ *
+ * Une seule identité pour toutes les fenêtres du jeu hors plateau, sur les
+ * tokens `--tb-*` : fond navy opaque, bordure fine bleu clair, un filet
+ * cyan en tête, titre en Cinzel très lisible, texte secondaire bleu grisé,
+ * CTA principal cyan, CTA secondaire sobre. En ton `danger`, le filet et le
+ * halo passent au rouge désaturé — discret, jamais agressif.
+ *
+ * Les tokens sont sur `:root` : le dialogue a la même tête monté par un
+ * portail, hors de tout `GameScreen`.
  */
 .overlay {
   position: fixed;
   inset: 0;
-  z-index: 80;
+  z-index: var(--tb-z-dialog);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 16px;
-  background: rgba(3, 8, 14, 0.66);
-  backdrop-filter: blur(4px);
+  /* Voile bleu nuit, pas noir : l'écran reste deviné derrière. */
+  background: radial-gradient(120% 90% at 50% 40%, rgba(6, 18, 32, 0.6), rgba(3, 9, 18, 0.82));
+  backdrop-filter: blur(6px);
+  animation: overlayIn var(--tb-duration) ease-out both;
 }
 
 .dialog {
@@ -24,16 +33,25 @@
   width: min(100%, var(--dialog-width, 440px));
   max-height: min(92vh, 900px);
   padding: clamp(18px, 2.4vh, 26px) clamp(18px, 1.8vw, 28px);
-  border: 1px solid var(--line-strong, rgba(130, 178, 210, 0.3));
-  border-radius: var(--radius, 14px);
-  background: var(--panel-solid, rgba(6, 14, 24, 0.94));
-  color: var(--ink, #dce8f2);
-  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.6);
-  animation: dialogIn 170ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  border: 1px solid var(--tb-border-strong);
+  border-radius: var(--tb-radius-lg);
+  background: linear-gradient(160deg, var(--tb-surface-solid-raised), var(--tb-surface-solid) 60%);
+  color: var(--tb-text);
+  box-shadow: var(--tb-shadow-lg), inset 0 1px 0 var(--tb-border-light);
+  animation: dialogIn 190ms var(--tb-ease) both;
   overflow: hidden;
+  /* Le ton : cyan par défaut, rouge en `danger`. Un seul point de bascule
+     pour le filet et le halo. */
+  --dialog-tone: var(--tb-accent);
+  --dialog-halo: rgba(95, 208, 230, 0.16);
 }
 
-/* Le seul accent du dialogue : un filet cyan en tête, qui s'éteint à droite. */
+.dialog[data-tone="danger"] {
+  --dialog-tone: var(--tb-danger);
+  --dialog-halo: rgba(227, 128, 111, 0.14);
+}
+
+/* Le seul accent du dialogue : un filet en tête, qui s'éteint à droite. */
 .dialog::before {
   content: "";
   position: absolute;
@@ -41,7 +59,24 @@
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(90deg, var(--cb-cyan, #58c8d8), transparent 70%);
+  background: linear-gradient(90deg, var(--dialog-tone), transparent 70%);
+}
+
+/* Halo très diffus dans le coin haut-gauche : la profondeur, sans glow. */
+.dialog::after {
+  content: "";
+  position: absolute;
+  top: -40%;
+  left: -20%;
+  width: 70%;
+  height: 90%;
+  background: radial-gradient(50% 50% at 50% 50%, var(--dialog-halo), transparent 70%);
+  pointer-events: none;
+}
+
+@keyframes overlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes dialogIn {
@@ -52,67 +87,92 @@
 /* Tête : le titre, et la croix calée au même niveau — pas flottante dans
    un coin, où elle recouvrirait un titre long. */
 .head {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
 }
 
+.headText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
 .close {
   flex: 0 0 auto;
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
-  margin: -2px -4px 0 0;
+  width: 30px;
+  height: 30px;
+  margin: -3px -6px 0 0;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: 50%;
   background: none;
-  color: var(--ink-dim, rgba(190, 210, 228, 0.7));
+  color: var(--tb-text-muted);
   cursor: pointer;
-  transition: color 140ms ease-out, background-color 140ms ease-out, border-color 140ms ease-out;
+  transition: color var(--tb-duration-fast) ease-out, background-color var(--tb-duration-fast) ease-out, border-color var(--tb-duration-fast) ease-out;
 }
 
 .close:hover {
-  border-color: var(--line-strong, rgba(130, 178, 210, 0.3));
-  background: rgba(130, 178, 210, 0.1);
-  color: #f2f7fb;
+  background: var(--tb-accent-soft);
+  color: var(--tb-text-strong);
 }
 
 .close:focus-visible {
-  outline: 2px solid var(--cb-cyan, #58c8d8);
+  outline: 2px solid var(--tb-accent);
   outline-offset: 2px;
 }
 
 .title {
   margin: 0;
-  font-family: var(--cb-font-display, Georgia, serif);
+  font-family: var(--tb-font-display);
   font-size: clamp(17px, 1.4vw, 22px);
   font-weight: 600;
-  color: #f2f7fb;
+  line-height: 1.2;
+  color: var(--tb-text-strong);
+}
+
+/* Sous-titre : la phrase qui précise l'enjeu, en bleu grisé. */
+.description {
+  margin: 0;
+  font-size: var(--tb-fs-body);
+  line-height: 1.45;
+  color: var(--tb-text-muted);
 }
 
 .body {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
   min-height: 0;
   overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: var(--line-strong, rgba(130, 178, 210, 0.3)) transparent;
-  font-size: clamp(12.5px, 0.9vw, 14px);
+  scrollbar-color: var(--tb-border-strong) transparent;
+  font-size: var(--tb-fs-body);
   line-height: 1.5;
-  color: var(--ink-dim, rgba(190, 210, 228, 0.7));
+  color: var(--tb-text-muted);
 }
 
+.body::-webkit-scrollbar { width: 6px; }
+.body::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--tb-border-strong); }
+
 .actions {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
   gap: 8px;
   padding-top: 4px;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .dialog { animation: none; }
+  .overlay, .dialog { animation: none; }
 }

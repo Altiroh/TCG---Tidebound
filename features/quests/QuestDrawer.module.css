@@ -1,14 +1,16 @@
 /*
- * Panneau de quêtes glissé depuis la droite. Volontairement dépouillé :
- * on vient y jeter un œil entre deux parties, pas s'y installer.
+ * Panneau de quêtes glissé depuis la droite — le TIROIR du design system.
+ * Volontairement dépouillé : on vient y jeter un œil entre deux parties,
+ * pas s'y installer. Même matière que les fenêtres (`Dialog.module.css`) :
+ * navy opaque, filet bleu clair sur l'arête, tokens `--tb-*`.
  */
 
 .scrim {
   position: fixed;
   inset: 0;
-  z-index: 90;
-  background: rgba(3, 8, 14, 0.55);
-  backdrop-filter: blur(2px);
+  z-index: var(--tb-z-drawer);
+  background: rgba(3, 9, 18, 0.6);
+  backdrop-filter: blur(3px);
   animation: scrimIn 180ms ease-out;
 }
 
@@ -17,7 +19,7 @@
   top: 0;
   right: 0;
   bottom: 0;
-  z-index: 91;
+  z-index: calc(var(--tb-z-drawer) + 1);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -26,12 +28,24 @@
   /* Encoches : le panneau touche les quatre bords de l'écran. */
   padding-top: calc(clamp(16px, 1.6vw, 24px) + env(safe-area-inset-top, 0px));
   padding-bottom: calc(clamp(16px, 1.6vw, 24px) + env(safe-area-inset-bottom, 0px));
-  border-left: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(7, 15, 25, 0.97);
-  box-shadow: -24px 0 60px rgba(0, 0, 0, 0.55);
-  color: var(--ink, #e8edf4);
+  border-left: 1px solid var(--tb-border-strong);
+  background: linear-gradient(180deg, var(--tb-surface-solid-raised), var(--tb-surface-solid) 40%);
+  box-shadow: -24px 0 60px rgba(2, 8, 16, 0.55);
+  color: var(--tb-text);
   overflow: hidden;
-  animation: drawerIn 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: drawerIn 220ms var(--tb-ease);
+}
+
+/* Filet cyan sur l'arête gauche, qui s'éteint vers le bas — la signature
+   des fenêtres, à la verticale. */
+.drawer::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(180deg, var(--tb-accent), transparent 60%);
 }
 
 .drawer:focus {
@@ -55,40 +69,61 @@
 
 .head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
 
 .title {
   margin: 0;
-  font-family: var(--font-card-title), Georgia, serif;
+  font-family: var(--tb-font-display);
   font-size: clamp(18px, 1.6vw, 22px);
-  color: #f3e7c8;
+  font-weight: 600;
+  color: var(--tb-text-strong);
 }
 
 .close {
-  padding: 0 6px;
-  border: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 50%;
   background: none;
-  color: var(--ink-dim, #9fb0c0);
-  font-size: 24px;
+  color: var(--tb-text-muted);
+  font-size: 22px;
   line-height: 1;
   cursor: pointer;
+  transition: color var(--tb-duration-fast) ease-out, background-color var(--tb-duration-fast) ease-out;
 }
 
-.close:hover { color: var(--ink, #e8edf4); }
+.close:hover { background: var(--tb-accent-soft); color: var(--tb-text-strong); }
+.close:focus-visible { outline: 2px solid var(--tb-accent); outline-offset: 2px; }
 
 .muted {
   margin: 0;
-  color: var(--ink-dim, #9fb0c0);
-  font-size: 13px;
+  color: var(--tb-text-muted);
+  font-size: var(--tb-fs-body);
 }
 
 .error {
   margin: 0;
-  color: #f0a3a3;
-  font-size: 13px;
+  padding: 0.5em 0.8em;
+  border: 1px solid var(--tb-danger-line);
+  border-left-width: 3px;
+  border-radius: 0 var(--tb-radius-sm) var(--tb-radius-sm) 0;
+  background: var(--tb-danger-soft);
+  color: var(--tb-danger-ink);
+  font-size: var(--tb-fs-caption);
+}
+
+/* Squelette d'attente : trois lignes de la forme d'une quête. */
+.skeletonRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
 }
 
 /* La liste est la seule zone qui défile : l'en-tête et le lien restent. */
@@ -103,6 +138,7 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
+  scrollbar-color: var(--tb-border-strong) transparent;
 }
 
 .row {
@@ -111,25 +147,24 @@
   gap: 10px;
   width: 100%;
   padding: 9px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid var(--tb-border);
+  border-radius: var(--tb-radius-md);
+  background: var(--tb-surface-inset);
   color: inherit;
   font: inherit;
   text-align: left;
 }
 
 /*
- * Quête TERMINÉE, récompense en attente. Elle doit se voir de loin dans une
- * liste : liseré et fond laiton, et une pulsation lente qui attire l'œil
- * sans clignoter.
+ * Quête TERMINÉE, récompense en attente : or (charte — récompense), liseré
+ * et fond teintés, et une pulsation lente qui attire l'œil sans clignoter.
  *
  * Toute la ligne est le bouton — d'où `cursor: pointer` sur l'ensemble : ce
  * qu'on a gagné ne se réclame pas en visant une cible de 60 pixels.
  */
 .rowClaimable {
-  border-color: rgba(240, 215, 154, 0.62);
-  background: linear-gradient(90deg, rgba(85, 62, 20, 0.5), rgba(40, 32, 14, 0.35));
+  border-color: var(--tb-gold-line);
+  background: linear-gradient(90deg, var(--tb-gold-soft), var(--tb-surface-inset) 70%);
   cursor: pointer;
   animation: questReady 2.4s ease-in-out infinite;
   transition: transform 140ms ease-out, box-shadow 140ms ease-out;
@@ -138,8 +173,9 @@
 .rowClaimable:hover:not(:disabled),
 .rowClaimable:focus-visible {
   transform: translateX(-2px);
-  box-shadow: 0 0 0 1px rgba(240, 215, 154, 0.8), 0 6px 22px rgba(199, 154, 78, 0.28);
+  box-shadow: 0 0 0 1px var(--tb-gold), var(--tb-glow-gold);
   animation: none;
+  outline: none;
 }
 
 .rowClaimable:disabled {
@@ -150,8 +186,8 @@
 
 @keyframes questReady {
   0%,
-  100% { box-shadow: 0 0 0 0 rgba(199, 154, 78, 0); }
-  50% { box-shadow: 0 0 18px 2px rgba(199, 154, 78, 0.3); }
+  100% { box-shadow: 0 0 0 0 rgba(226, 194, 122, 0); }
+  50% { box-shadow: 0 0 18px 2px rgba(226, 194, 122, 0.28); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -165,7 +201,8 @@
   flex: 0 0 auto;
   width: 28px;
   height: 28px;
-  object-fit: contain;
+  border-radius: 6px;
+  object-fit: cover;
 }
 
 .body {
@@ -179,7 +216,7 @@
 .name {
   font-size: 13px;
   font-weight: 600;
-  color: var(--ink, #e8edf4);
+  color: var(--tb-text);
 }
 
 .objective {
@@ -187,27 +224,27 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 11px;
-  color: var(--ink-dim, #9fb0c0);
+  color: var(--tb-text-muted);
 }
 
 .track {
   height: 4px;
   margin-top: 2px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--tb-radius-pill);
+  background: rgba(140, 190, 225, 0.14);
   overflow: hidden;
 }
 
 .fill {
   height: 100%;
-  border-radius: 999px;
-  background: linear-gradient(90deg, #58c8d8, #7fd6a4);
+  border-radius: var(--tb-radius-pill);
+  background: linear-gradient(90deg, var(--tb-accent-deep), var(--tb-accent));
   transition: width 420ms ease-out;
 }
 
 .fillDone {
   composes: fill;
-  background: linear-gradient(90deg, #7fd6a4, #c79a4e);
+  background: linear-gradient(90deg, var(--tb-gold-deep), var(--tb-gold-bright));
 }
 
 .side {
@@ -221,20 +258,20 @@
 .reward {
   font-size: 11px;
   white-space: nowrap;
-  color: #ddc79a;
+  color: var(--tb-gold);
 }
 
 .count {
   font-size: 11px;
   font-variant-numeric: tabular-nums;
-  color: var(--ink-dim, #9fb0c0);
+  color: var(--tb-text-muted);
 }
 
-/* Récompense d'une quête terminée : en laiton, elle est ce qu'on vient chercher. */
+/* Récompense d'une quête terminée : en or vif, elle est ce qu'on vient chercher. */
 .rewardReady {
   composes: reward;
   font-weight: 700;
-  color: #f0d79a;
+  color: var(--tb-gold-bright);
 }
 
 /* Pas un bouton : l'invite de la ligne, qui EST le bouton. */
@@ -242,15 +279,16 @@
   font-size: 11px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #f0d79a;
+  color: var(--tb-gold-bright);
 }
 
 .more {
   flex: 0 0 auto;
   padding-top: 4px;
-  color: #8fc9d6;
+  color: var(--tb-accent);
   font-size: 12px;
   text-decoration: none;
 }
 
-.more:hover { text-decoration: underline; }
+.more:hover { color: var(--tb-accent-bright); text-decoration: underline; }
+.more:focus-visible { outline: 2px solid var(--tb-accent); outline-offset: 2px; border-radius: 4px; }

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { cardBodyFont, cardTitleFont, uiFont } from "@/lib/fonts";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import { CardBackProvider } from "@/features/cosmetics/CardBackProvider";
+import "./tokens.css";
 import "./globals.css";
 
 export const metadata: Metadata = {

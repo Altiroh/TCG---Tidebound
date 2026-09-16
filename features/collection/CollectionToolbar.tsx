@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { GameSelect } from "@/components/game-ui/GameSelect";
 import { COLLECTION_SORT_OPTIONS, type SortMode } from "@/features/collection/cardFilters";
 import styles from "@/features/collection/CardBrowser.module.css";
+import game from "@/features/shell/GameScreen.module.css";
 
 interface CollectionToolbarProps {
   count: number;
@@ -36,12 +37,12 @@ export function CollectionToolbar({
 }: CollectionToolbarProps) {
   return (
     <div className={styles.toolbar}>
-      <button type="button" className={styles.filtersToggle} onClick={onOpenFilters}>
+      <button type="button" className={`${game.chip} ${styles.filtersToggle}`} onClick={onOpenFilters}>
         <svg viewBox="0 0 24 24" fill="none" width="15" height="15" aria-hidden>
           <path d="M4 6h16M7 12h10M10 18h4" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" />
         </svg>
         Filtres
-        {activeFilterCount > 0 && <span className={styles.filtersBadge}>{activeFilterCount}</span>}
+        {activeFilterCount > 0 && <span className={game.badge}>{activeFilterCount}</span>}
       </button>
 
       <p className={styles.count}>
@@ -50,7 +51,7 @@ export function CollectionToolbar({
 
       <div className={styles.sort}>
         <span className={styles.sortLabel}>Trier par</span>
-        <GameSelect value={sort} options={COLLECTION_SORT_OPTIONS} onChange={onSortChange} className={styles.sortSelect} />
+        <GameSelect value={sort} options={COLLECTION_SORT_OPTIONS} onChange={onSortChange} className={styles.sortSelect} aria-label="Trier par" />
       </div>
       {extra}
     </div>

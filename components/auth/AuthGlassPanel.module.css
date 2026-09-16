@@ -1,0 +1,25 @@
+/*
+ * Panneau d'authentification : la fenêtre commune (`Dialog.module.css`
+ * `.dialog`), posée dans le flux plutôt que sur un voile. Les tokens de
+ * texte du plateau (`--text-primary`…) que les formulaires emploient encore
+ * sont remappés ici sur l'encre du design system.
+ */
+.panel.panel {
+  --text-primary: var(--tb-text-strong);
+  --text-secondary: var(--tb-text-muted);
+  --border-subtle: var(--tb-border);
+  --accent: var(--tb-accent);
+  --accent-hover: var(--tb-accent-bright);
+  --danger: var(--tb-danger);
+
+  width: 100%;
+  max-height: none;
+  padding: 0;
+  animation: none;
+}
+
+.inner {
+  position: relative;
+  z-index: 1;
+  padding: clamp(18px, 2.4vh, 26px) clamp(18px, 1.8vw, 28px);
+}

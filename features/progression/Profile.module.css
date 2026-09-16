@@ -34,12 +34,14 @@
   gap: clamp(8px, 1.4vw, 20px);
 }
 
+/* Le niveau : de l'or — c'est la récompense de la route. */
 .levelNumber {
-  font-family: var(--font-card-title), Georgia, serif;
+  font-family: var(--cb-font-display);
   font-size: clamp(34px, 4.4vw, 60px);
   font-weight: 700;
   line-height: 1;
-  color: #f3e7c8;
+  color: var(--gold);
+  text-shadow: 0 0 24px rgba(226, 194, 122, 0.22);
 }
 
 .levelCaption {
@@ -51,18 +53,19 @@
 
 .xpBar {
   position: relative;
-  height: 10px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.1);
+  height: 8px;
+  border-radius: var(--tb-radius-pill);
+  background: rgba(140, 190, 225, 0.14);
   overflow: hidden;
 }
 
 .xpFill {
   position: absolute;
   inset: 0 auto 0 0;
-  border-radius: 999px;
-  background: linear-gradient(90deg, #58c8d8, #7fd6a4);
-  transition: width 420ms ease-out;
+  border-radius: var(--tb-radius-pill);
+  background: linear-gradient(90deg, var(--tb-accent-deep), var(--cb-cyan));
+  box-shadow: 0 0 10px rgba(95, 208, 230, 0.4);
+  transition: width 420ms var(--tb-ease);
 }
 
 .xpLine {
@@ -87,10 +90,10 @@
 }
 
 .statValue {
-  font-family: var(--font-card-title), Georgia, serif;
+  font-family: var(--cb-font-display);
   font-size: clamp(16px, 1.6vw, 22px);
   font-weight: 700;
-  color: var(--ink);
+  color: var(--ink-strong);
 }
 
 .statLabel {
@@ -115,7 +118,7 @@
   align-items: baseline;
   gap: 10px;
   padding: 6px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--line);
   font-size: clamp(11px, 0.95vw, 13px);
 }
 
@@ -127,17 +130,17 @@
   flex: 0 0 auto;
   min-width: 2.6em;
   padding: 0.15em 0.5em;
-  border-radius: 999px;
-  background: rgba(88, 200, 216, 0.14);
-  color: #cfe9ee;
+  border-radius: var(--tb-radius-pill);
+  background: var(--tb-accent-soft);
+  color: var(--tb-accent-bright);
   font-variant-numeric: tabular-nums;
   text-align: center;
 }
 
 .stopLevelDone {
   composes: stopLevel;
-  background: rgba(127, 214, 164, 0.16);
-  color: #b9e6cd;
+  background: var(--tb-success-soft);
+  color: var(--tb-success-ink);
 }
 
 .stopLabel {
@@ -159,18 +162,21 @@
   gap: 4px;
   padding: 8px 6px;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
+  background: var(--panel-inset);
   text-align: center;
   font-size: 10.5px;
   line-height: 1.35;
   color: var(--ink-dim);
 }
 
+/* L'escale du jour : cyan, c'est celle qu'on peut réclamer. */
 .escaleCurrent {
   composes: escale;
-  border-color: rgba(88, 200, 216, 0.5);
-  background: rgba(13, 52, 69, 0.45);
-  color: #dceaec;
+  border-color: var(--tb-accent-line);
+  background: var(--tb-accent-soft);
+  color: var(--tb-on-accent);
+  box-shadow: var(--tb-glow-sm);
 }
 
 .escalePassed {
@@ -179,13 +185,16 @@
 }
 
 .escaleIndex {
-  font-family: var(--font-card-title), Georgia, serif;
+  font-family: var(--cb-font-display);
   font-size: 13px;
   font-weight: 700;
   color: inherit;
 }
 
-/* ── Exploits ───────────────────────────────────────────────── */
+/* ── Exploits — le musée ────────────────────────────────────────
+   Une vitrine de trophées : chaque exploit est une plaque avec sa
+   médaille. Obtenu = la médaille s'allume en or et la plaque se relève ;
+   pas encore = tout est là, lisible, mais éteint. */
 .achievements {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr));
@@ -196,28 +205,54 @@
 }
 
 .achievement {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 8px 10px;
+  padding: 10px 12px 10px 44px;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
+  background: var(--panel-inset);
   font-size: 11.5px;
   color: var(--ink-dim);
 }
 
+/* La médaille : un rond en filet, éteint. */
+.achievement::before {
+  content: "";
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 35%, rgba(140, 190, 225, 0.12), transparent 70%);
+}
+
 .achievementDone {
   composes: achievement;
-  border-color: rgba(127, 214, 164, 0.4);
-  background: rgba(20, 44, 36, 0.35);
+  border-color: var(--tb-gold-line);
+  background: linear-gradient(135deg, var(--tb-gold-soft), var(--panel-inset) 60%);
   color: var(--ink);
 }
 
+/* Obtenu : la médaille se dore, avec le seul glow du bloc. */
+.achievementDone::before {
+  border-color: var(--gold);
+  background: radial-gradient(circle at 50% 35%, var(--tb-gold-bright), var(--tb-gold-deep) 80%);
+  box-shadow: var(--tb-glow-gold);
+}
+
 .achievementName {
-  font-family: var(--font-card-title), Georgia, serif;
+  font-family: var(--cb-font-display);
   font-size: 13px;
   font-weight: 700;
-  color: inherit;
+  color: var(--ink-strong);
+}
+
+.achievement:not(.achievementDone) .achievementName {
+  color: var(--ink);
 }
 
 @media (max-width: 900px) {
@@ -234,6 +269,10 @@
  * DOS DE CARTE — la seule famille de cosmétiques rendue pour
  * l'instant. Les vignettes sont de vraies cartes au ratio du jeu :
  * on choisit ce qu'on va voir, pas une pastille de couleur.
+ *
+ * Chaque dos est une TUILE COLLECTIBLE du design system
+ * (`game.collectible` / `collectibleActive` / `collectibleLocked`) ;
+ * ne restent ici que la grille et le ratio de la vignette.
  * ────────────────────────────────────────────────────────────── */
 .cardBacks {
   display: grid;
@@ -245,62 +284,9 @@
 }
 
 .cardBackChoice {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
   width: clamp(96px, 9vw, 132px);
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: var(--ink-dim);
-  font: inherit;
-  text-align: center;
-  cursor: pointer;
-}
-
-.cardBackChoice:disabled {
-  cursor: default;
-}
-
-.cardBackChoiceActive {
-  composes: cardBackChoice;
-  color: #dceaec;
 }
 
 .cardBackImage {
-  width: 100%;
   aspect-ratio: 5 / 7;
-  object-fit: cover;
-  border-radius: 7px;
-  border: 1px solid var(--line);
-  transition: border-color 160ms ease-out, transform 160ms ease-out, box-shadow 160ms ease-out;
-}
-
-.cardBackChoice:hover:not(:disabled) .cardBackImage {
-  transform: translateY(-2px);
-  border-color: var(--line-strong);
-}
-
-.cardBackChoiceActive .cardBackImage {
-  border-color: rgba(88, 200, 216, 0.75);
-  box-shadow: 0 0 0 1px rgba(88, 200, 216, 0.4), 0 6px 18px rgba(4, 20, 28, 0.55);
-}
-
-/* Un dos verrouillé reste LISIBLE — il doit donner envie — mais
-   visiblement hors de portée : désaturé, jamais caché. */
-.cardBackImageLocked {
-  composes: cardBackImage;
-  filter: grayscale(0.85) brightness(0.5);
-}
-
-.cardBackName {
-  font-size: clamp(11px, 0.95vw, 13px);
-  line-height: 1.2;
-  color: var(--ink);
-}
-
-.cardBackHint {
-  font-size: clamp(10px, 0.85vw, 11px);
-  letter-spacing: 0.04em;
-  color: inherit;
 }

@@ -3,14 +3,23 @@
 import { useEffect, type ReactNode } from "react";
 import styles from "@/features/shell/Dialog.module.css";
 
+export type DialogTone = "default" | "danger";
+
 interface DialogProps {
   title: string;
+  /** Une phrase sous le titre, qui précise l'enjeu (bleu grisé). */
+  description?: ReactNode;
   children?: ReactNode;
   /** Boutons, dans l'ordre de lecture : annuler d'abord, action engageante en dernier. */
   actions?: ReactNode;
   onClose: () => void;
   /** Largeur maximale (défaut 440px) — les sélecteurs visuels en demandent plus. */
   width?: number;
+  /**
+   * `danger` : suppression ou perte — le filet de tête et le halo passent au
+   * rouge désaturé. Le bouton engageant reste `game.danger`.
+   */
+  tone?: DialogTone;
   /**
    * Masque la croix de fermeture. À réserver aux dialogues où renoncer doit
    * passer par un bouton explicite ; par défaut la croix est là, parce
@@ -20,13 +29,13 @@ interface DialogProps {
 }
 
 /**
- * Dialogue commun à tous les écrans hors plateau : confirmation, question,
- * sélecteur. Remplace `PaperDialog` (papier) et `GameModal` (verre fumé) sur
- * ces écrans, pour qu'une fenêtre flottante ait la même tête partout.
+ * Dialogue commun à tous les écrans hors plateau : confirmation,
+ * suppression, achat, renommage, erreur, détail, prévisualisation. Une seule
+ * fenêtre pour tout le jeu, pour qu'elle ait la même tête partout.
  * Échap, clic sur le voile et la croix en tête ferment — trois sorties pour
  * la même porte, aucune à deviner.
  */
-export function Dialog({ title, children, actions, onClose, width, hideCloseButton = false }: DialogProps) {
+export function Dialog({ title, description, children, actions, onClose, width, tone = "default", hideCloseButton = false }: DialogProps) {
   useEffect(() => {
     function handleKey(event: KeyboardEvent) {
       if (event.key === "Escape") onClose();
@@ -39,6 +48,7 @@ export function Dialog({ title, children, actions, onClose, width, hideCloseButt
     <div className={styles.overlay} onClick={onClose} role="presentation">
       <div
         className={styles.dialog}
+        data-tone={tone}
         style={width ? ({ "--dialog-width": `${width}px` } as React.CSSProperties) : undefined}
         role="dialog"
         aria-modal
@@ -46,7 +56,10 @@ export function Dialog({ title, children, actions, onClose, width, hideCloseButt
         onClick={(event) => event.stopPropagation()}
       >
         <div className={styles.head}>
-          <h2 className={styles.title}>{title}</h2>
+          <div className={styles.headText}>
+            <h2 className={styles.title}>{title}</h2>
+            {description && <p className={styles.description}>{description}</p>}
+          </div>
           {!hideCloseButton && (
             <button type="button" className={styles.close} onClick={onClose} aria-label="Fermer">
               <svg viewBox="0 0 24 24" fill="none" width="15" height="15" aria-hidden>

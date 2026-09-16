@@ -6,6 +6,7 @@ import { AUTH_LINK_CLASS } from "@/components/auth/AuthGlassPanel";
 import { PasswordField } from "@/components/auth/PasswordField";
 import { deleteAccount } from "@/features/settings/actions";
 import { forgetProgression } from "@/features/progression/progressionSync";
+import game from "@/features/shell/GameScreen.module.css";
 
 interface DeleteAccountSectionProps {
   /** Refermer le dialogue une fois le compte supprimé — plus rien à y régler côté compte. */
@@ -45,14 +46,10 @@ export function DeleteAccountSection({ onDeleted }: DeleteAccountSectionProps) {
     return (
       <div className="flex items-center justify-between gap-4 py-2">
         <div className="min-w-0">
-          <p className="text-sm text-[var(--text-primary)]">Supprimer le compte</p>
-          <p className="text-xs text-[var(--text-secondary)]">Efface définitivement le compte et toute sa progression.</p>
+          <p className={game.controlRowLabel}>Supprimer le compte</p>
+          <p className={game.controlRowText}>Efface définitivement le compte et toute sa progression.</p>
         </div>
-        <button
-          type="button"
-          onClick={() => setConfirming(true)}
-          className="shrink-0 whitespace-nowrap text-xs text-[var(--danger)] transition-colors hover:underline"
-        >
+        <button type="button" onClick={() => setConfirming(true)} className={`${game.dangerGhost} ${game.buttonSm} shrink-0`}>
           Supprimer
         </button>
       </div>
@@ -62,11 +59,12 @@ export function DeleteAccountSection({ onDeleted }: DeleteAccountSectionProps) {
   return (
     <form
       action={handleSubmit}
-      className="mt-2 flex flex-col gap-3 rounded-[var(--radius-sm)] border border-[var(--danger)]/35 bg-[var(--danger)]/[0.07] p-3"
+      className="mt-2 flex flex-col gap-3 p-3"
+      style={{ border: "1px solid var(--tb-danger-line)", borderRadius: "var(--tb-radius-sm)", background: "var(--tb-danger-soft)" }}
     >
       <div>
-        <p className="text-sm text-[var(--text-primary)]">Supprimer définitivement le compte ?</p>
-        <p className="text-xs text-[var(--text-secondary)]">
+        <p className={game.controlRowLabel}>Supprimer définitivement le compte ?</p>
+        <p className={game.controlRowText}>
           Collection, decks, boosters, quêtes et progression seront perdus. Cette action est irréversible.
         </p>
       </div>
@@ -77,13 +75,9 @@ export function DeleteAccountSection({ onDeleted }: DeleteAccountSectionProps) {
         value={password}
         onChange={setPassword}
       />
-      {error && <p className="text-xs text-[var(--danger)]">{error}</p>}
+      {error && <p className={game.error}>{error}</p>}
       <div className="flex items-center gap-3">
-        <button
-          type="submit"
-          disabled={status === "loading" || password.length === 0}
-          className="flex-1 rounded-[var(--radius-sm)] bg-[var(--danger)] px-4 py-2 text-sm font-medium text-[#f6efe6] transition duration-150 ease-out hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100"
-        >
+        <button type="submit" disabled={status === "loading" || password.length === 0} className={`${game.danger} flex-1`}>
           {status === "loading" ? "Suppression…" : "Supprimer définitivement"}
         </button>
         <button

@@ -1,0 +1,89 @@
+/*
+ * Alerte d'erreur / d'avertissement en haut à droite — la même feuille que
+ * `ScreenToast` (tokens `--tb-*`) : bleu nuit opaque, liseré de ton à
+ * gauche, jamais de verre blanc.
+ */
+.anchor {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: var(--tb-z-toast);
+  display: flex;
+  justify-content: flex-end;
+  max-width: min(400px, calc(100vw - 24px));
+  pointer-events: none;
+}
+
+.alert {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 36px 10px 12px;
+  overflow: hidden;
+  border: 1px solid var(--tb-border-strong);
+  border-left: 3px solid var(--tone);
+  border-radius: var(--tb-radius-md);
+  background: var(--tb-surface-solid);
+  color: var(--tb-text);
+  box-shadow: var(--tb-shadow-lg);
+  pointer-events: auto;
+  animation: alertIn 280ms var(--tb-ease) both;
+}
+.alert[data-severity="error"] { --tone: var(--tb-danger); }
+.alert[data-severity="warning"] { --tone: var(--tb-warning); }
+
+@keyframes alertIn {
+  from { opacity: 0; transform: translateX(16px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+
+.icon {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin-top: 1px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--tone) 18%, transparent);
+  color: var(--tone);
+}
+
+.label {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--tone);
+}
+
+.message {
+  margin: 0;
+  font-size: var(--tb-fs-body);
+  line-height: 1.4;
+  color: var(--tb-text);
+}
+
+.close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--tb-text-soft);
+  cursor: pointer;
+  transition: background-color var(--tb-duration-fast) ease-out, color var(--tb-duration-fast) ease-out;
+}
+.close:hover { background: var(--tb-accent-soft); color: var(--tb-text); }
+.close:focus-visible { outline: 2px solid var(--tb-accent); }
+
+@media (prefers-reduced-motion: reduce) {
+  .alert { animation: none; }
+}

@@ -35,7 +35,7 @@ export function VolumeSlider({ value, onChange, label, muted = false }: VolumeSl
         onChange={(e) => onChange(Number(e.target.value) / 100)}
         className="volume-slider h-1.5 w-full cursor-pointer appearance-none rounded-full outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent)]/60"
         style={{
-          background: `linear-gradient(to right, var(--accent) 0%, var(--accent) ${percent}%, rgba(255,255,255,0.10) ${percent}%, rgba(255,255,255,0.10) 100%)`,
+          background: `linear-gradient(to right, var(--accent) 0%, var(--accent) ${percent}%, var(--tb-border) ${percent}%, var(--tb-border) 100%)`,
         }}
       />
       <span className="w-9 shrink-0 text-right text-[11px] tabular-nums text-[var(--text-secondary)]">{percent}%</span>

@@ -15,6 +15,8 @@ export function DeleteDeckDialog({ deckName, isDeleting, onConfirm, onCancel }: 
   return (
     <Dialog
       title={`Supprimer « ${deckName} » ?`}
+      tone="danger"
+      description="Cette action est définitive et supprimera toutes les cartes de ce deck."
       onClose={onCancel}
       actions={
         <>
@@ -26,8 +28,6 @@ export function DeleteDeckDialog({ deckName, isDeleting, onConfirm, onCancel }: 
           </button>
         </>
       }
-    >
-      <p style={{ margin: 0 }}>Cette action est définitive et supprimera toutes les cartes de ce deck.</p>
-    </Dialog>
+    />
   );
 }

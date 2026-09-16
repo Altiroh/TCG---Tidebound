@@ -132,10 +132,10 @@ export function QuestsScreen({ board }: QuestsScreenProps) {
                   quêtes du moment sont proposées : un filtre qui ne montre
                   rien n'apprend rien. */}
               {presentCategories.length > 1 && (
-                <div className={styles.filters} role="group" aria-label="Catégories de quêtes">
+                <div className={game.chips} role="group" aria-label="Catégories de quêtes">
                   <button
                     type="button"
-                    className={filter === null ? styles.filterActive : styles.filter}
+                    className={filter === null ? game.chipActive : game.chip}
                     onClick={() => {
                       playButtonClick();
                       setFilter(null);
@@ -147,7 +147,7 @@ export function QuestsScreen({ board }: QuestsScreenProps) {
                     <button
                       key={category}
                       type="button"
-                      className={filter === category ? styles.filterActive : styles.filter}
+                      className={`${filter === category ? game.chipActive : game.chip} ${styles.filterWithIcon}`}
                       title={QUEST_CATEGORY_META[category].description}
                       onClick={() => {
                         playButtonClick();
@@ -292,7 +292,7 @@ function QuestSection({ title, subtitle, entries, busyKey, onClaim, onReroll }: 
                   Réservé aux quêtes du jour non terminées : remplacer une
                   quête finie reviendrait à rejouer sa récompense. */}
               {!claimable && !entry.claimed && onReroll && !entry.fromPreviousPeriod && (
-                <button type="button" className={styles.reroll} onClick={() => onReroll(entry)} disabled={busy} title="Remplacer cette quête">
+                <button type="button" className={`${game.ghost} ${game.buttonSm} ${styles.reroll}`} onClick={() => onReroll(entry)} disabled={busy} title="Remplacer cette quête">
                   Remplacer
                 </button>
               )}

@@ -15,7 +15,7 @@
   font-weight: 600;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: rgba(200, 226, 240, 0.75);
+  color: var(--tb-accent-bright);
 }
 
 .nameRow {
@@ -27,11 +27,11 @@
 
 .name {
   margin: 0;
-  font-family: var(--font-card-title), Georgia, serif;
+  font-family: var(--tb-font-display);
   font-size: clamp(22px, 3.4vh, 34px);
   font-weight: 700;
   line-height: 1.1;
-  color: #f4fafd;
+  color: var(--tb-text-strong);
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -45,14 +45,14 @@
   width: 28px;
   height: 28px;
   padding: 0;
-  border: 1px solid rgba(140, 220, 245, 0.4);
+  border: 1px solid var(--tb-accent-line);
   border-radius: 50%;
   background: rgba(8, 28, 46, 0.6);
-  color: rgba(214, 238, 248, 0.9);
+  color: var(--tb-text);
   cursor: pointer;
   transition: border-color 140ms ease-out, color 140ms ease-out, background-color 140ms ease-out;
 }
-.pencil:hover { border-color: var(--cb-cyan); color: #fff; background: rgba(14, 54, 82, 0.8); }
+.pencil:hover { border-color: var(--cb-cyan); color: var(--tb-text-strong); background: var(--tb-accent-soft-strong); }
 .pencil:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 2px; }
 
 .nameEdit {
@@ -66,15 +66,15 @@
   flex: 1 1 200px;
   min-width: 0;
   padding: 6px 10px;
-  border: 1px solid rgba(140, 220, 245, 0.5);
-  border-radius: 8px;
+  border: 1px solid var(--tb-accent-line);
+  border-radius: var(--tb-radius-sm);
   background: rgba(6, 20, 34, 0.75);
-  font-family: var(--font-card-title), Georgia, serif;
+  font-family: var(--tb-font-display);
   font-size: clamp(18px, 2.6vh, 26px);
   font-weight: 700;
-  color: #f4fafd;
+  color: var(--tb-text-strong);
 }
-.nameInput:focus { outline: none; border-color: var(--cb-cyan); }
+.nameInput:focus { outline: none; border-color: var(--cb-cyan); box-shadow: var(--tb-glow-sm); }
 
 /* Ce qui porte l'illustration : un lien discret, pas un bouton de plus —
    changer d'illustration est un geste rare. */
@@ -85,7 +85,7 @@
   background: none;
   font: inherit;
   font-size: clamp(11px, 1.35vh, 13px);
-  color: rgba(190, 222, 238, 0.85);
+  color: var(--tb-text);
   text-decoration: underline;
   text-underline-offset: 3px;
   cursor: pointer;
@@ -112,19 +112,19 @@
   gap: 5px;
   padding: 0;
   border: 1px solid var(--line);
-  border-radius: 10px;
-  background: rgba(8, 22, 36, 0.6);
+  border-radius: var(--radius-sm);
+  background: var(--panel-inset);
   overflow: hidden;
   cursor: pointer;
-  transition: border-color 140ms ease-out, transform 140ms ease-out;
+  transition: border-color 140ms ease-out, transform 140ms ease-out, box-shadow 140ms ease-out;
 }
-.option:hover { border-color: rgba(88, 200, 216, 0.6); transform: translateY(-2px); }
+.option:hover { border-color: var(--tb-accent-line); transform: translateY(-2px); box-shadow: var(--tb-shadow-sm); }
 .option:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 2px; }
 .option:disabled { opacity: 0.5; cursor: progress; }
 
 .optionActive {
   border-color: var(--cb-cyan);
-  box-shadow: 0 0 0 1px rgba(88, 200, 216, 0.5);
+  box-shadow: var(--tb-glow-strong);
 }
 
 .optionArt {

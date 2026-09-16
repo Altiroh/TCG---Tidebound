@@ -18,20 +18,28 @@
  */
 
 .screen {
-  /* Bleus nuit / pétrole — le décor. */
-  --cb-navy-deep: #06121c;
-  --cb-navy: #081a27;
-  /* Laiton vieilli — accent, jamais bordure par défaut. */
-  --cb-brass-dark: #6d5224;
-  --cb-brass: #a47b36;
-  --cb-brass-light: #c79a4e;
-  /* Turquoise — accent d'état actif uniquement. */
-  --cb-teal: #4fc4ce;
-  --cb-ivory: #e9e2d1;
-  --cb-ivory-dim: #97917f;
+  /*
+   * ALIAS des tokens globaux (`app/tokens.css`). Les noms `--cb-*` sont
+   * ceux que le bandeau et les écrans consomment depuis la première
+   * refonte ; ils ne portent plus aucune valeur propre — changer une
+   * couleur se fait dans `tokens.css`, jamais ici.
+   *
+   * `--cb-ivory` n'est plus de l'ivoire : l'encre froide du design system.
+   * Le nom est gardé pour ne pas retoucher chaque sélecteur du bandeau.
+   */
+  --cb-navy-deep: var(--tb-bg-deep);
+  --cb-navy: var(--tb-bg);
+  /* Or — ressources et récompenses (Tides), jamais bordure par défaut. */
+  --cb-brass-dark: var(--tb-gold-deep);
+  --cb-brass: var(--tb-gold-deep);
+  --cb-brass-light: var(--tb-gold);
+  /* Cyan — accent d'état actif uniquement. */
+  --cb-teal: var(--tb-accent);
+  --cb-ivory: var(--tb-text);
+  --cb-ivory-dim: var(--tb-text-muted);
 
-  --cb-font-ui: var(--font-ui, "Segoe UI", system-ui, sans-serif);
-  --cb-font-display: var(--font-card-title, Georgia, "Times New Roman", serif);
+  --cb-font-ui: var(--tb-font-ui);
+  --cb-font-display: var(--tb-font-display);
 
 
   width: 100vw;
@@ -95,8 +103,9 @@
   justify-self: center;
 }
 
-/* Séparation basse : un filet de laiton qui s'éteint sur les bords, pas un
-   liseré uniforme sur toute la largeur. */
+/* Séparation basse : un filet bleu clair qui s'éteint sur les bords, pas
+   un liseré uniforme sur toute la largeur. Bleu nuit = structure (charte) :
+   l'or est réservé aux ressources, il n'a rien à faire sur une arête. */
 
 .header::after {
   content: "";
@@ -108,9 +117,9 @@
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(164, 123, 54, 0.42) 14%,
-    rgba(164, 123, 54, 0.22) 58%,
-    rgba(164, 123, 54, 0.1) 84%,
+    var(--tb-border-strong) 14%,
+    var(--tb-border) 58%,
+    rgba(140, 190, 225, 0.08) 84%,
     transparent 100%
   );
 }
@@ -178,8 +187,8 @@
 
 .navTabActive {
   composes: navTab;
-  color: #f4efe1;
-  text-shadow: 0 1px 5px rgba(3, 10, 16, 0.95), 0 0 16px rgba(79, 196, 206, 0.3);
+  color: var(--tb-text-strong);
+  text-shadow: 0 1px 5px rgba(3, 10, 16, 0.95), 0 0 16px rgba(95, 208, 230, 0.3);
 }
 
 /* Filet turquoise — court, net, sans halo lumineux qui bave. */
@@ -200,7 +209,7 @@
   width: 130%;
   height: 16px;
   transform: translateX(-50%);
-  background: radial-gradient(60% 100% at 50% 100%, rgba(79, 196, 206, 0.18) 0%, transparent 72%);
+  background: radial-gradient(60% 100% at 50% 100%, var(--tb-accent-soft) 0%, transparent 72%);
   pointer-events: none;
 }
 
@@ -242,9 +251,9 @@
 }
 
 .optionsButton:hover {
-  border-color: rgba(233, 226, 209, 0.22);
-  background: rgba(233, 226, 209, 0.08);
-  color: var(--cb-ivory);
+  border-color: var(--tb-border-strong);
+  background: var(--tb-accent-soft);
+  color: var(--tb-text-strong);
   transform: rotate(35deg);
 }
 
@@ -270,27 +279,30 @@
   gap: clamp(8px, 0.8vw, 13px);
   min-width: 0;
   padding: 4px clamp(8px, 0.8vw, 13px) 4px 4px;
-  border: 1px solid rgba(233, 226, 209, 0.1);
-  border-radius: 999px;
-  background: rgba(4, 10, 17, 0.42);
+  border: 1px solid var(--tb-border);
+  border-radius: var(--tb-radius-pill);
+  background: var(--tb-surface);
+  backdrop-filter: blur(8px);
   white-space: nowrap;
   text-shadow: 0 1px 4px rgba(3, 10, 16, 0.9);
 }
 
-/* Avatar : l'initiale du pseudo dans un jeton de laiton. */
+/* Avatar : l'initiale du pseudo dans un jeton bleu nuit cerclé de cyan —
+   c'est une identité, pas une ressource : l'or reste aux Tides. */
 .accountAvatar {
   flex: 0 0 auto;
   display: grid;
   place-items: center;
   width: clamp(26px, 3.2vh, 34px);
   height: clamp(26px, 3.2vh, 34px);
-  border: 1px solid rgba(199, 154, 78, 0.55);
+  border: 1px solid var(--tb-accent-line);
   border-radius: 50%;
-  background: linear-gradient(160deg, rgba(199, 154, 78, 0.34), rgba(109, 82, 36, 0.3));
+  background: radial-gradient(circle at 50% 30%, rgba(42, 143, 168, 0.55), rgba(10, 30, 50, 0.9) 75%);
+  box-shadow: inset 0 1px 0 var(--tb-border-light);
   font-family: var(--cb-font-display);
   font-size: clamp(12px, 1.5vh, 15px);
   font-weight: 600;
-  color: #f4ead6;
+  color: var(--tb-text-strong);
   text-shadow: none;
 }
 
@@ -313,7 +325,7 @@
   font-weight: 600;
   letter-spacing: 0.03em;
   line-height: 1.15;
-  color: #f4efe1;
+  color: var(--tb-text-strong);
 }
 
 .accountLevelRow {
@@ -342,7 +354,7 @@
   height: 3px;
   border-radius: 2px;
   overflow: hidden;
-  background: rgba(233, 226, 209, 0.14);
+  background: var(--tb-border);
   box-shadow: inset 0 0 0 1px rgba(3, 10, 16, 0.5);
 }
 
@@ -350,8 +362,8 @@
   position: absolute;
   inset: 0 auto 0 0;
   border-radius: 2px;
-  background: linear-gradient(90deg, #2b7f87, var(--cb-teal));
-  box-shadow: 0 0 8px rgba(79, 196, 206, 0.45);
+  background: linear-gradient(90deg, var(--tb-accent-deep), var(--tb-accent));
+  box-shadow: 0 0 8px rgba(95, 208, 230, 0.45);
   transition: width 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
@@ -362,12 +374,13 @@
   align-items: center;
   gap: 5px;
   padding-left: clamp(7px, 0.7vw, 11px);
-  border-left: 1px solid rgba(233, 226, 209, 0.12);
+  border-left: 1px solid var(--tb-border);
   font-family: var(--cb-font-display);
   font-size: clamp(12px, 0.98vw, 15px);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: #e5cf9e;
+  /* Or : c'est de l'économie. */
+  color: var(--tb-gold);
 }
 
 .tideCoin {
@@ -399,17 +412,17 @@
   inset-inline: 0;
   bottom: 0;
   height: 1px;
-  background: rgba(233, 226, 209, 0.16);
+  background: var(--tb-border);
   transition: background 200ms ease-out, box-shadow 200ms ease-out;
 }
 
 .searchBar:hover::after {
-  background: rgba(233, 226, 209, 0.28);
+  background: var(--tb-border-strong);
 }
 
 .searchBar:focus-within::after {
   background: var(--cb-teal);
-  box-shadow: 0 0 8px rgba(79, 196, 206, 0.4);
+  box-shadow: var(--tb-glow-md);
 }
 
 .searchIcon {
@@ -464,8 +477,8 @@
 .searchClear:hover,
 .searchClear:focus-visible {
   outline: none;
-  background: rgba(233, 226, 209, 0.08);
-  color: var(--cb-ivory);
+  background: var(--tb-accent-soft);
+  color: var(--tb-text-strong);
 }
 
 /*
@@ -480,9 +493,9 @@
   gap: 0.25em;
   flex-shrink: 0;
   padding: 0.15em 0.5em;
-  border: 1px solid rgba(233, 226, 209, 0.18);
+  border: 1px solid var(--tb-border);
   border-radius: 5px;
-  background: rgba(233, 226, 209, 0.05);
+  background: rgba(140, 190, 225, 0.06);
   color: var(--cb-ivory-dim);
   font-family: inherit;
   font-size: 0.72em;
@@ -504,7 +517,7 @@
    disparaître (pas de saut de largeur). */
 .searchBar:focus-within .searchShortcut {
   border-color: transparent;
-  color: rgba(233, 226, 209, 0.28);
+  color: var(--tb-text-soft);
 }
 
 /*
@@ -518,9 +531,9 @@
   composes: searchBar;
   height: clamp(32px, 4vh, 40px);
   padding-inline: 0.85em 0.5em;
-  border: 1px solid rgba(130, 178, 210, 0.22);
-  border-radius: 999px;
-  background: rgba(6, 14, 24, 0.62);
+  border: 1px solid var(--tb-border);
+  border-radius: var(--tb-radius-pill);
+  background: var(--tb-surface-inset);
   transition: border-color 160ms ease-out, background-color 160ms ease-out, box-shadow 160ms ease-out;
 }
 
@@ -529,13 +542,13 @@
 }
 
 .searchPill:hover {
-  border-color: rgba(130, 178, 210, 0.38);
+  border-color: var(--tb-border-strong);
 }
 
 .searchPill:focus-within {
   border-color: var(--cb-teal);
-  background: rgba(6, 14, 24, 0.8);
-  box-shadow: 0 0 0 3px rgba(79, 196, 206, 0.14);
+  background: var(--tb-surface-solid);
+  box-shadow: var(--tb-glow-sm);
 }
 
 /* ---------- Logo de marque, à gauche du header ---------- */
@@ -588,9 +601,9 @@
 }
 
 .backButton:hover {
-  border-color: rgba(233, 226, 209, 0.22);
-  background: rgba(233, 226, 209, 0.08);
-  color: var(--cb-ivory);
+  border-color: var(--tb-border-strong);
+  background: var(--tb-accent-soft);
+  color: var(--tb-text-strong);
   transform: translateX(-2px);
 }
 
@@ -639,8 +652,8 @@
   height: 16px;
   padding: 0 4px;
   border-radius: 999px;
-  background: linear-gradient(180deg, #f0d79a, #c79a4e);
-  color: #2a1d08;
+  background: linear-gradient(180deg, var(--tb-gold-bright), var(--tb-gold));
+  color: var(--tb-on-gold);
   font-size: 10px;
   font-weight: 700;
   line-height: 16px;
@@ -669,14 +682,14 @@
  */
 .questsWaiting {
   composes: optionsButton;
-  color: #f0d79a;
+  color: var(--tb-gold-bright);
   animation: questsWaitingPulse 2.6s ease-in-out infinite;
 }
 
 @keyframes questsWaitingPulse {
   0%,
-  100% { box-shadow: 0 0 0 0 rgba(199, 154, 78, 0); }
-  50% { box-shadow: 0 0 0 3px rgba(199, 154, 78, 0.22); }
+  100% { box-shadow: 0 0 0 0 rgba(226, 194, 122, 0); }
+  50% { box-shadow: 0 0 0 3px rgba(226, 194, 122, 0.24); }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -82,6 +82,7 @@ npm test                     # tests unitaires du moteur (Vitest)
 
 ```
 /app                 Pages et routes Next.js (App Router)
+  tokens.css          Design tokens globaux `--tb-*` (couleurs, effets, rayons, espacements, typographie)
 /components/ui       Composants UI génériques, sans logique métier
 /features            Fonctionnalités métier (collection, decks, parties, profils) — à construire
 /game                Moteur de jeu, indépendant de React
@@ -94,6 +95,7 @@ npm test                     # tests unitaires du moteur (Vitest)
   /state              Modèle de l'état de partie + création + traitement des morts
   /events             Journal d'événements (pour replay/debug/stats plus tard)
   engine.ts           Point d'entrée unique : dispatch(state, action) -> nouvel état
+/features/shell      Coquille des écrans hors plateau + design system (composants partagés, `DESIGN.md` = charte)
 /lib/supabase         Clients Supabase (navigateur, serveur, service role)
 /types                Types partagés hors moteur
 /tests/game           Tests unitaires du moteur

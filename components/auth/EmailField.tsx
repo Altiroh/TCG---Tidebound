@@ -1,3 +1,5 @@
+import { AUTH_INPUT_ICON_LEFT_CLASS } from "@/components/auth/AuthGlassPanel";
+
 interface EmailFieldProps {
   name: string;
   placeholder: string;
@@ -10,7 +12,7 @@ interface EmailFieldProps {
 export function EmailField({ name, placeholder, autoComplete, className, defaultValue }: EmailFieldProps) {
   return (
     <div className="relative">
-      <span aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[rgba(190,210,228,0.6)]">
+      <span aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--tb-text-muted)]">
         <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
           <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" strokeWidth={1.8} />
           <path d="m4 7 8 6 8-6" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
@@ -23,7 +25,7 @@ export function EmailField({ name, placeholder, autoComplete, className, default
         placeholder={placeholder}
         autoComplete={autoComplete}
         defaultValue={defaultValue}
-        className={`${className} pl-9`}
+        className={`${className} ${AUTH_INPUT_ICON_LEFT_CLASS}`}
       />
     </div>
   );

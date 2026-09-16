@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AUTH_INPUT_CLASS } from "@/components/auth/AuthGlassPanel";
+import { AUTH_INPUT_CLASS, AUTH_INPUT_ICON_RIGHT_CLASS } from "@/components/auth/AuthGlassPanel";
 import { evaluatePasswordStrength } from "@/components/auth/passwordStrength";
 
 interface PasswordFieldProps {
@@ -53,14 +53,14 @@ export function PasswordField({ name, placeholder, autoComplete, value, onChange
           autoComplete={autoComplete}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className={`${AUTH_INPUT_CLASS} pr-9`}
+          className={`${AUTH_INPUT_CLASS} ${AUTH_INPUT_ICON_RIGHT_CLASS}`}
         />
         <button
           type="button"
           onClick={() => setVisible((v) => !v)}
           aria-label={visible ? "Masquer le mot de passe" : "Afficher le mot de passe"}
           tabIndex={-1}
-          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[rgba(190,210,228,0.6)] transition-colors hover:text-[#58c8d8]"
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--tb-text-muted)] transition-colors hover:text-[var(--tb-accent)]"
         >
           {visible ? <EyeOffIcon /> : <EyeIcon />}
         </button>
@@ -71,11 +71,11 @@ export function PasswordField({ name, placeholder, autoComplete, value, onChange
             {[0, 1, 2, 3].map((i) => (
               <span
                 key={i}
-                className={`h-1 flex-1 rounded-full transition-colors ${i < strength.score ? strength.barColorClass : "bg-[rgba(130,178,210,0.14)]"}`}
+                className={`h-1 flex-1 rounded-full transition-colors ${i < strength.score ? strength.barColorClass : "bg-[var(--tb-border)]"}`}
               />
             ))}
           </div>
-          <span className="text-[11px] text-[rgba(190,210,228,0.6)]">Force du mot de passe : {strength.label}</span>
+          <span className="text-[11px] text-[var(--tb-text-muted)]">Force du mot de passe : {strength.label}</span>
         </div>
       )}
     </div>

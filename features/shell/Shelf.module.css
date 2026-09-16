@@ -16,8 +16,8 @@
   /* Fondu des bouts dans les dégradés eux-mêmes, pas en `mask` : un masque
      couperait aussi le reflet et l'ombre des pseudo-éléments. */
   background:
-    linear-gradient(90deg, transparent, rgba(170, 210, 232, 0.55) 12%, rgba(170, 210, 232, 0.55) 88%, transparent) top / 100% 1px no-repeat,
-    linear-gradient(90deg, transparent, rgba(14, 30, 46, 0.92) 8%, rgba(14, 30, 46, 0.92) 92%, transparent);
+    linear-gradient(90deg, transparent, var(--tb-border-light) 12%, var(--tb-border-light) 88%, transparent) top / 100% 1px no-repeat,
+    linear-gradient(90deg, transparent, var(--tb-surface-solid-raised) 8%, var(--tb-surface-solid-raised) 92%, transparent);
 }
 
 /* Reflet au pied des sachets, sur l'arête du rebord. */
@@ -28,7 +28,7 @@
   right: 12%;
   bottom: 100%;
   height: 26px;
-  background: radial-gradient(50% 100% at 50% 100%, rgba(88, 200, 216, 0.14), transparent 75%);
+  background: radial-gradient(50% 100% at 50% 100%, var(--tb-accent-soft), transparent 75%);
   pointer-events: none;
 }
 

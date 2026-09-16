@@ -34,8 +34,8 @@ export function LoginForm({ onSuccess, onForgotPassword, onSwitchToSignup }: Log
   return (
     <form action={handleSubmit} className="flex flex-col gap-3.5">
       <div className="mb-1 flex flex-col items-center gap-1 text-center">
-        <h2 className="text-xl font-semibold text-[#f2f7fb] [font-family:var(--font-card-title,Georgia,serif)]">Connexion</h2>
-        <p className="text-xs text-[rgba(190,210,228,0.6)]">Content de te revoir sur Tidebound.</p>
+        <h2 className="text-xl font-semibold text-[var(--tb-text-strong)] [font-family:var(--tb-font-display)]">Connexion</h2>
+        <p className="text-xs text-[var(--tb-text-muted)]">Content de te revoir sur Tidebound.</p>
       </div>
       <EmailField name="email" placeholder="toi@exemple.com" autoComplete="email" className={AUTH_INPUT_CLASS} />
       <PasswordField
@@ -45,7 +45,7 @@ export function LoginForm({ onSuccess, onForgotPassword, onSwitchToSignup }: Log
         value={password}
         onChange={setPassword}
       />
-      {error && <p className="text-sm text-[#f3c3ba]">{error}</p>}
+      {error && <p className="text-sm text-[var(--tb-danger-ink)]">{error}</p>}
       <button type="submit" disabled={status === "loading"} className={AUTH_PRIMARY_BUTTON_CLASS}>
         {status === "loading" ? "Connexion..." : "Se connecter"}
       </button>

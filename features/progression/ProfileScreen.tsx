@@ -120,12 +120,13 @@ export function ProfileScreen({ profile }: ProfileScreenProps) {
               )}
 
               <div className={styles.stats}>
+                {/* Tides et Jetons : de l'économie, donc en or. */}
                 <span className={styles.stat}>
-                  <span className={styles.statValue}>{profile.balance}</span>
+                  <span className={`${styles.statValue} ${game.statValueGold}`}>{profile.balance}</span>
                   <span className={styles.statLabel}>Tides</span>
                 </span>
                 <span className={styles.stat}>
-                  <span className={styles.statValue}>{profile.preconTokens}</span>
+                  <span className={`${styles.statValue} ${game.statValueGold}`}>{profile.preconTokens}</span>
                   <span className={styles.statLabel}>Jetons de Préconstruit</span>
                 </span>
                 <span className={styles.stat}>
@@ -149,7 +150,7 @@ export function ProfileScreen({ profile }: ProfileScreenProps) {
               </div>
 
               {profile.preconTokens > 0 && (
-                <Link href="/decks" className={game.primary} onClick={() => playButtonClick()}>
+                <Link href="/decks" className={game.premium} onClick={() => playButtonClick()}>
                   Dépenser un Jeton →
                 </Link>
               )}
@@ -175,10 +176,15 @@ export function ProfileScreen({ profile }: ProfileScreenProps) {
                 ))}
               </div>
 
-              <button type="button" className={game.primary} onClick={claimLogin} disabled={!profile.login.claimable || isPending}>
+              <button
+                type="button"
+                className={profile.login.claimable ? game.premium : game.secondary}
+                onClick={claimLogin}
+                disabled={!profile.login.claimable || isPending}
+              >
                 {profile.login.claimable ? "Réclamer l'escale du jour" : "Escale déjà réclamée aujourd'hui"}
               </button>
-              {message && <p className={game.muted}>{message}</p>}
+              {message && <p className={game.success}>{message}</p>}
               {error && <p className={game.error}>{error}</p>}
             </section>
 
@@ -293,15 +299,15 @@ function CardBackPicker({ collection, level }: { collection: CardBackCollection;
             <li key={option.id}>
               <button
                 type="button"
-                className={selected ? styles.cardBackChoiceActive : styles.cardBackChoice}
+                className={`${selected ? game.collectibleActive : option.owned ? game.collectible : game.collectibleLocked} ${styles.cardBackChoice}`}
                 onClick={() => choose(option.id)}
                 disabled={!option.owned || busy !== null}
                 aria-pressed={selected}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element -- asset local, taille pilotée par le conteneur */}
-                <img src={option.src} alt="" aria-hidden draggable={false} className={option.owned ? styles.cardBackImage : styles.cardBackImageLocked} />
-                <span className={styles.cardBackName}>{option.label}</span>
-                <span className={styles.cardBackHint}>
+                <img src={option.src} alt="" aria-hidden draggable={false} className={`${game.collectibleArt} ${styles.cardBackImage}`} />
+                <span className={game.collectibleName}>{option.label}</span>
+                <span className={game.collectibleHint}>
                   {option.owned
                     ? selected
                       ? "Équipé"

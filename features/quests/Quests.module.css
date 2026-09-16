@@ -50,8 +50,8 @@
  * visant une cible de 80 pixels au bout d'une rangée.
  */
 .rowClaimable {
-  border-left-color: #f0d79a;
-  background: linear-gradient(90deg, rgba(85, 62, 20, 0.42), transparent 60%);
+  border-left-color: var(--tb-gold-bright);
+  background: linear-gradient(90deg, var(--tb-gold-soft), transparent 60%), var(--panel);
   cursor: pointer;
   animation: questReady 2.4s ease-in-out infinite;
   transition: transform 140ms ease-out, box-shadow 140ms ease-out;
@@ -60,8 +60,9 @@
 .rowClaimable:hover:not(:disabled),
 .rowClaimable:focus-visible {
   transform: translateY(-2px);
-  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(240, 215, 154, 0.75);
+  box-shadow: var(--tb-shadow-lg), inset 0 0 0 1px var(--tb-gold), var(--tb-glow-gold);
   animation: none;
+  outline: none;
 }
 
 .rowClaimable:disabled {
@@ -72,8 +73,8 @@
 
 @keyframes questReady {
   0%,
-  100% { box-shadow: 0 18px 46px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(240, 215, 154, 0.25); }
-  50% { box-shadow: 0 18px 46px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(240, 215, 154, 0.75), 0 0 22px rgba(199, 154, 78, 0.22); }
+  100% { box-shadow: var(--tb-shadow-md), inset 0 0 0 1px rgba(226, 194, 122, 0.25); }
+  50% { box-shadow: var(--tb-shadow-md), inset 0 0 0 1px rgba(226, 194, 122, 0.7), var(--tb-glow-gold); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -87,7 +88,7 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   white-space: nowrap;
-  color: #f0d79a;
+  color: var(--tb-gold-bright);
 }
 
 .rowClaimed { opacity: 0.5; }
@@ -110,7 +111,7 @@
   font-size: clamp(13px, 1vw, 15px);
   font-weight: 500;
   line-height: 1.35;
-  color: #f2f7fb;
+  color: var(--ink-strong);
 }
 
 .progressLine {
@@ -120,22 +121,22 @@
   gap: 10px;
 }
 
-/* Progression : un trait fin, rempli en cyan (laiton quand c'est réclamable, l'argent est là). */
+/* Progression : un trait fin, rempli en cyan (or quand c'est réclamable, l'argent est là). */
 .track {
   height: 3px;
   border-radius: 2px;
-  background: rgba(130, 178, 210, 0.14);
+  background: rgba(140, 190, 225, 0.14);
   overflow: hidden;
 }
 
 .fill {
   height: 100%;
   border-radius: inherit;
-  background: var(--cb-cyan);
-  transition: width 400ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  background: linear-gradient(90deg, var(--tb-accent-deep), var(--cb-cyan));
+  transition: width 400ms var(--tb-ease);
 }
 
-.fillDone { background: linear-gradient(90deg, #a47b36, #ddc79a); }
+.fillDone { background: linear-gradient(90deg, var(--tb-gold-deep), var(--tb-gold-bright)); }
 
 .count {
   font-size: clamp(11px, 0.85vw, 13px);
@@ -151,7 +152,7 @@
   font-family: var(--cb-font-display);
   font-size: clamp(16px, 1.3vw, 21px);
   font-weight: 600;
-  color: #ddc79a;
+  color: var(--gold);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -162,7 +163,7 @@
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(199, 154, 78, 0.8);
+  color: var(--tb-gold-deep);
 }
 
 .action {
@@ -176,7 +177,7 @@
   font-family: var(--cb-font-display);
   font-size: clamp(15px, 1.15vw, 19px);
   font-weight: 600;
-  color: #ddc79a;
+  color: var(--gold);
 }
 
 @media (max-width: 640px) {
@@ -203,9 +204,9 @@
   flex: 0 0 auto;
   width: clamp(34px, 3.4vw, 46px);
   height: clamp(34px, 3.4vw, 46px);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--panel-inset);
   box-shadow: inset 0 0 0 1px var(--line);
 }
 
@@ -223,38 +224,11 @@
   color: var(--ink-dim);
 }
 
-/* Filtres de catégorie, au-dessus des listes. */
-.filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.filter {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0.4em 0.9em 0.4em 0.45em;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--ink-dim);
-  font: inherit;
-  font-size: clamp(11px, 0.95vw, 13px);
-  cursor: pointer;
-  transition: background 160ms ease-out, color 160ms ease-out, border-color 160ms ease-out;
-}
-
-.filter:hover {
-  border-color: var(--line-strong);
-  color: var(--ink);
-}
-
-.filterActive {
-  composes: filter;
-  border-color: rgba(88, 200, 216, 0.5);
-  background: rgba(13, 52, 69, 0.55);
-  color: #dceaec;
+/* Filtres de catégorie, au-dessus des listes : les puces du design system
+   (`game.chips`, `game.chip`, `game.chipActive`). La puce avec icône
+   resserre son rembourrage gauche pour que l'icône affleure. */
+.filterWithIcon {
+  padding-left: 0.45em;
 }
 
 .filterIcon {
@@ -282,23 +256,7 @@
   color: var(--cb-cyan);
 }
 
+/* « Remplacer » est un `game.ghost` en petite taille, sous la ligne. */
 .reroll {
-  padding: 0.3em 0.6em;
-  border: none;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--ink-dim);
-  font: inherit;
-  font-size: 11px;
-  cursor: pointer;
-}
-
-.reroll:hover:not(:disabled) {
-  background: rgba(233, 226, 209, 0.08);
-  color: var(--ink);
-}
-
-.reroll:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
+  margin-top: 2px;
 }

@@ -1,0 +1,155 @@
+/*
+ * TIDEBOUND — DESIGN TOKENS GLOBAUX (`--tb-*`)
+ * ============================================
+ *
+ * La seule source de vérité des couleurs, effets, rayons, espacements et
+ * tailles de texte de TOUTE l'interface hors plateau : Collection, Decks,
+ * éditeur, Boosters, Market, Profil, Quêtes, Jouer, authentification, et
+ * chaque fenêtre, tiroir, menu, info-bulle ou alerte posée dessus.
+ *
+ * Posés sur `:root`, donc disponibles partout — y compris dans un dialogue
+ * monté par un portail, hors de tout écran. Les feuilles de la coquille
+ * (`features/shell/ScreenShell.module.css`, `GameScreen.module.css`) ne
+ * font que les RENOMMER en alias courts (`--panel`, `--line`, `--ink`,
+ * `--cb-cyan`…) pour les écrans qui les consomment déjà : aucune valeur
+ * n'est définie ailleurs qu'ici.
+ *
+ * Charte d'usage (détaillée dans `features/shell/DESIGN.md`) :
+ *   - bleu nuit   = structure (fond, panneaux, bordures) ;
+ *   - cyan / glow = interaction, sélection, focus — jamais décoration ;
+ *   - or          = premium, économie (Tides), récompense ;
+ *   - violet      = Abyssal / rareté spéciale, rien d'autre ;
+ *   - rouge       = danger / suppression, toujours discret ;
+ *   - le fond est une ambiance, les panneaux servent la lisibilité ;
+ *   - le glow dit la hiérarchie : réservé aux éléments interactifs
+ *     importants (action primaire, sélection, focus), jamais posé partout.
+ */
+:root {
+  /* ── Couleurs : structure bleu nuit ─────────────────────────── */
+  /* Fond le plus profond : un navy, jamais un noir pur. */
+  --tb-bg-deep: #050e1a;
+  /* Fond courant des écrans (sous le décor). */
+  --tb-bg: #081626;
+  /* Panneau posé sur le décor : translucide, bleu nuit, lisible. */
+  --tb-surface: rgba(12, 28, 46, 0.72);
+  /* Panneau plus présent : tuiles sélectionnables, en-têtes. */
+  --tb-surface-raised: rgba(20, 40, 62, 0.84);
+  /* Creux : champs de saisie, zones de liste, sous-panneaux. */
+  --tb-surface-inset: rgba(5, 14, 26, 0.58);
+  /* Opaque : fenêtres flottantes, tiroirs, menus — rien ne doit
+     transparaître derrière un dialogue. */
+  --tb-surface-solid: #0b1a2c;
+  --tb-surface-solid-raised: #10243a;
+
+  --tb-border: rgba(140, 190, 225, 0.18);
+  --tb-border-strong: rgba(140, 190, 225, 0.36);
+  /* Filet de lumière sur une arête haute. */
+  --tb-border-light: rgba(190, 230, 250, 0.22);
+
+  /* ── Accent : cyan lumineux, maîtrisé ───────────────────────── */
+  --tb-accent: #5fd0e6;
+  --tb-accent-bright: #8ee6f6;
+  --tb-accent-deep: #2a8fa8;
+  /* Teintes : fond d'un élément actif, halo de focus. */
+  --tb-accent-soft: rgba(95, 208, 230, 0.14);
+  --tb-accent-soft-strong: rgba(95, 208, 230, 0.26);
+  --tb-accent-line: rgba(95, 208, 230, 0.5);
+  /* Encre posée sur un fond teinté cyan (bouton primaire). */
+  --tb-on-accent: #eafaff;
+
+  /* ── Or : premium, économie, récompense ─────────────────────── */
+  --tb-gold: #e2c27a;
+  --tb-gold-bright: #f3dca2;
+  --tb-gold-deep: #a47b36;
+  --tb-gold-soft: rgba(226, 194, 122, 0.16);
+  --tb-gold-line: rgba(226, 194, 122, 0.5);
+
+  /* ── Violet : Abyssal / rareté spéciale ─────────────────────── */
+  --tb-abyssal: #b48cf2;
+  --tb-abyssal-soft: rgba(180, 140, 242, 0.16);
+  --tb-abyssal-line: rgba(180, 140, 242, 0.5);
+
+  /* ── États ──────────────────────────────────────────────────── */
+  --tb-danger: #e3806f;
+  --tb-danger-soft: rgba(227, 128, 111, 0.12);
+  --tb-danger-line: rgba(227, 128, 111, 0.5);
+  --tb-danger-ink: #f5c8bf;
+  --tb-success: #7fd8a8;
+  --tb-success-soft: rgba(127, 216, 168, 0.12);
+  --tb-success-line: rgba(127, 216, 168, 0.5);
+  --tb-success-ink: #d2f1e0;
+  --tb-warning: #e6c46a;
+
+  /* ── Texte : encre froide, jamais grise ─────────────────────── */
+  --tb-text-strong: #f5f9fc;
+  --tb-text: #e4eef7;
+  --tb-text-muted: rgba(198, 216, 234, 0.68);
+  --tb-text-soft: rgba(198, 216, 234, 0.44);
+  /* Encre sur un fond OR (pastille de compteur). */
+  --tb-on-gold: #2a1d08;
+
+  /* ── Effets ─────────────────────────────────────────────────── */
+  --tb-shadow-sm: 0 4px 12px rgba(2, 8, 16, 0.4);
+  --tb-shadow-md: 0 14px 36px rgba(2, 8, 16, 0.45);
+  --tb-shadow-lg: 0 28px 70px rgba(2, 8, 16, 0.6);
+  /* Glow : trois intensités, du halo de focus au CTA principal. */
+  --tb-glow-sm: 0 0 0 3px rgba(95, 208, 230, 0.16);
+  --tb-glow-md: 0 0 22px rgba(95, 208, 230, 0.22);
+  --tb-glow-strong: 0 0 0 1px rgba(95, 208, 230, 0.5), 0 0 34px rgba(95, 208, 230, 0.32);
+  --tb-glow-gold: 0 0 22px rgba(226, 194, 122, 0.24);
+  --tb-glow-abyssal: 0 0 22px rgba(180, 140, 242, 0.26);
+  --tb-blur: blur(12px) saturate(1.05);
+
+  /* ── Rayons ─────────────────────────────────────────────────── */
+  --tb-radius-sm: 8px;
+  --tb-radius-md: 12px;
+  --tb-radius-lg: 16px;
+  --tb-radius-xl: 22px;
+  --tb-radius-pill: 999px;
+
+  /* ── Espacements (échelle de 4) ─────────────────────────────── */
+  --tb-space-1: 4px;
+  --tb-space-2: 8px;
+  --tb-space-3: 12px;
+  --tb-space-4: 16px;
+  --tb-space-5: 20px;
+  --tb-space-6: 24px;
+  --tb-space-7: 32px;
+  --tb-space-8: 40px;
+
+  /* ── Typographie ────────────────────────────────────────────── */
+  /* Familles : Cinzel pour ce qui porte l'identité (titres, noms),
+     Barlow pour l'interface, Crimson Pro pour la lecture continue.
+     Chargées par `lib/fonts.ts` ; les replis couvrent le rendu hors
+     `next/font`. */
+  --tb-font-display: var(--font-card-title, Georgia, "Times New Roman", serif);
+  --tb-font-ui: var(--font-ui, "Segoe UI", system-ui, sans-serif);
+  --tb-font-body: var(--font-card-body, Georgia, serif);
+
+  /* Hiérarchie — une taille par rôle, fluide entre laptop et grand écran. */
+  --tb-fs-page-title: clamp(20px, 1.7vw, 28px);
+  --tb-fs-section-title: clamp(11px, 0.78vw, 13px);
+  --tb-fs-card-title: clamp(14px, 1.15vw, 18px);
+  --tb-fs-body: clamp(12.5px, 0.92vw, 14.5px);
+  --tb-fs-caption: clamp(10.5px, 0.8vw, 12px);
+  --tb-fs-label: clamp(10px, 0.74vw, 11.5px);
+  --tb-fs-button: clamp(12px, 0.9vw, 14px);
+
+  --tb-lh-tight: 1.15;
+  --tb-lh-body: 1.5;
+  --tb-track-label: 0.14em;
+  --tb-track-caps: 0.08em;
+
+  /* ── Mouvement ──────────────────────────────────────────────── */
+  --tb-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --tb-duration-fast: 120ms;
+  --tb-duration: 160ms;
+  --tb-duration-slow: 260ms;
+
+  /* ── Plans (z-index) ────────────────────────────────────────── */
+  --tb-z-dropdown: 30;
+  --tb-z-drawer: 70;
+  --tb-z-dialog: 80;
+  --tb-z-toast: 90;
+  --tb-z-tooltip: 100;
+}

@@ -1,5 +1,6 @@
 "use client";
 
+import game from "@/features/shell/GameScreen.module.css";
 import { playButtonClick } from "@/lib/sound";
 
 interface ToggleSwitchProps {
@@ -10,10 +11,13 @@ interface ToggleSwitchProps {
 }
 
 /**
- * Ligne "libellé + interrupteur" des Options. L'interrupteur lui-même est
- * en verre (fond translucide au repos, laiton allumé quand actif) plutôt
- * qu'une case à cocher système, pour rester dans la matière du reste du
- * menu.
+ * Ligne "libellé + interrupteur" des Options. L'interrupteur est celui du
+ * design system (`game.toggle`) : capsule bleu nuit au repos, cyan allumé
+ * quand actif — la même matière dans le dialogue des Options et dans le
+ * menu de pause en partie.
+ *
+ * Toute la ligne est le bouton (`role="switch"`) : on bascule en visant le
+ * libellé comme le curseur.
  */
 export function ToggleSwitch({ checked, onChange, label, description }: ToggleSwitchProps) {
   function handleClick() {
@@ -24,33 +28,13 @@ export function ToggleSwitch({ checked, onChange, label, description }: ToggleSw
   }
 
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={handleClick}
-      className="group flex w-full items-center justify-between gap-4 rounded-[var(--radius-sm)] px-1 py-2 text-left outline-none transition duration-150 ease-out hover:bg-white/[0.03] focus-visible:ring-1 focus-visible:ring-[var(--accent)]/60"
-    >
-      <span className="min-w-0">
-        <span className="block text-sm text-[var(--text-primary)]">{label}</span>
-        {description && <span className="block text-xs text-[var(--text-secondary)]">{description}</span>}
+    <button type="button" role="switch" aria-checked={checked} onClick={handleClick} className={game.controlRow}>
+      <span style={{ minWidth: 0 }}>
+        <span className={game.controlRowLabel}>{label}</span>
+        {description && <span className={game.controlRowText}>{description}</span>}
       </span>
-
-      <span
-        aria-hidden
-        className={`relative h-6 w-11 shrink-0 rounded-full border transition duration-150 ease-out ${
-          checked
-            ? "border-[var(--accent)]/60 bg-[var(--accent)]/35 shadow-[inset_0_1px_1px_rgba(255,255,255,0.25)]"
-            : "border-white/10 bg-white/[0.06]"
-        }`}
-      >
-        <span
-          className={`absolute top-1/2 -translate-y-1/2 rounded-full shadow-[0_1px_3px_rgba(0,0,0,0.5)] transition-all duration-150 ease-out ${
-            checked ? "left-[calc(100%-1.25rem)] bg-[var(--accent-hover)]" : "left-1 bg-white/50"
-          }`}
-          style={{ height: "1.125rem", width: "1.125rem" }}
-        />
-      </span>
+      {/* Le curseur est décoratif : l'état est porté par le `role="switch"` de la ligne. */}
+      <span className={game.toggle} data-checked={checked ? "true" : "false"} aria-hidden />
     </button>
   );
 }

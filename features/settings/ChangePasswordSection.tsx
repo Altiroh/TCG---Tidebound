@@ -4,6 +4,7 @@ import { useState } from "react";
 import { AUTH_LINK_CLASS, AUTH_PRIMARY_BUTTON_CLASS } from "@/components/auth/AuthGlassPanel";
 import { PasswordField } from "@/components/auth/PasswordField";
 import { changePassword } from "@/features/settings/actions";
+import game from "@/features/shell/GameScreen.module.css";
 
 /**
  * Changement de mot de passe depuis les Options — repliée par défaut : le
@@ -43,8 +44,8 @@ export function ChangePasswordSection() {
     return (
       <div className="flex items-center justify-between gap-4 py-2">
         <div className="min-w-0">
-          <p className="text-sm text-[var(--text-primary)]">Mot de passe</p>
-          <p className="text-xs text-[var(--text-secondary)]">
+          <p className={game.controlRowLabel}>Mot de passe</p>
+          <p className={game.controlRowText}>
             {status === "done" ? "Mot de passe mis à jour." : "Change le mot de passe de ton compte."}
           </p>
         </div>
@@ -54,7 +55,7 @@ export function ChangePasswordSection() {
             setStatus("idle");
             setOpen(true);
           }}
-          className={`shrink-0 whitespace-nowrap text-xs ${AUTH_LINK_CLASS} hover:underline`}
+          className={`${game.secondary} ${game.buttonSm} shrink-0`}
         >
           Changer
         </button>
@@ -64,7 +65,7 @@ export function ChangePasswordSection() {
 
   return (
     <form action={handleSubmit} className="flex flex-col gap-3 py-2">
-      <p className="text-sm text-[var(--text-primary)]">Changer le mot de passe</p>
+      <p className={game.controlRowLabel}>Changer le mot de passe</p>
       <PasswordField
         name="currentPassword"
         placeholder="Mot de passe actuel"
@@ -87,7 +88,7 @@ export function ChangePasswordSection() {
         value={confirmPassword}
         onChange={setConfirmPassword}
       />
-      {error && <p className="text-xs text-[var(--danger)]">{error}</p>}
+      {error && <p className={game.error}>{error}</p>}
       <div className="flex items-center gap-3">
         <button type="submit" disabled={status === "loading"} className={`${AUTH_PRIMARY_BUTTON_CLASS} flex-1`}>
           {status === "loading" ? "Enregistrement…" : "Enregistrer"}

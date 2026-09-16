@@ -14,6 +14,7 @@ import {
   type VariantFilter,
 } from "@/features/collection/collectionFilters";
 import styles from "@/features/collection/CardBrowser.module.css";
+import game from "@/features/shell/GameScreen.module.css";
 import { playButtonClick } from "@/lib/sound";
 
 const VARIANTS: Array<{ value: VariantFilter; label: string; dotClassName?: string }> = [
@@ -65,6 +66,9 @@ function FilterRow({
         onClick();
       }}
     >
+      {/* La case : ce qui est coché se lit dans la colonne avant même le
+          libellé — une liste de filtres, pas une liste de liens. */}
+      <span className={styles.filterCheck} aria-hidden />
       {dotClassName && <span className={`${styles.dot} ${dotClassName}`} aria-hidden />}
       {icon && (
         // eslint-disable-next-line @next/next/no-img-element -- icône locale de type, taille fixe
@@ -231,7 +235,7 @@ export function CollectionSidebar({
       </section>
 
       {showCreateDeck && (
-        <Link href="/decks/nouveau" className={styles.createDeck} onClick={() => playButtonClick()}>
+        <Link href="/decks/nouveau" className={`${game.primary} ${styles.createDeck}`} onClick={() => playButtonClick()}>
           <span aria-hidden>+</span> Créer un deck
         </Link>
       )}

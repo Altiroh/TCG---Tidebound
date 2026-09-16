@@ -132,7 +132,7 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog }: DecksScreenPr
 
           {/* Les trois rayons. Un préconstruit verrouillé reste visible et
               consultable : c'est ce qui donne envie de dépenser un Jeton. */}
-          <div className={catalogStyles.categories} role="tablist" aria-label="Catégories de decks">
+          <div className={game.chips} role="tablist" aria-label="Catégories de decks">
             {(Object.keys(CATEGORY_LABELS) as DeckCategory[]).map((key) => {
               const count = key === "mine" ? initialDecks.length : key === "borrowed" ? catalog.borrowed.length : catalog.precon.length;
               return (
@@ -141,14 +141,14 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog }: DecksScreenPr
                   type="button"
                   role="tab"
                   aria-selected={category === key}
-                  className={category === key ? catalogStyles.categoryActive : catalogStyles.category}
+                  className={category === key ? game.chipActive : game.chip}
                   onClick={() => {
                     playButtonClick();
                     setCategory(key);
                   }}
                 >
                   {CATEGORY_LABELS[key]}
-                  <span className={catalogStyles.categoryCount}>{count}</span>
+                  <span className={game.chipCount}>{count}</span>
                 </button>
               );
             })}
@@ -204,7 +204,7 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog }: DecksScreenPr
                       )}
                     </span>
                     <div className={styles.tileActions}>
-                      <Link href={`/decks/${deck.id}`} className={`${game.secondary} ${styles.tileOpen}`} onClick={() => playButtonClick()}>
+                      <Link href={`/decks/${deck.id}`} className={`${game.secondary} ${game.buttonSm}`} onClick={() => playButtonClick()}>
                         Ouvrir
                       </Link>
                       <button type="button" className={game.link} onClick={() => setRenameTarget(deck)} disabled={isPending}>

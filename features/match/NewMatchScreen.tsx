@@ -252,6 +252,12 @@ export function NewMatchScreen({ onStart, starting = false, error = null, botNot
                           setBotDifficulty(d.id);
                         }}
                       >
+                        {/* Le rond de radio est décoratif : l'état vient du `role="radio"`. */}
+                        <span
+                          className={`${game.choiceRadio} ${styles.difficultyRadio}`}
+                          data-checked={botDifficulty === d.id ? "true" : "false"}
+                          aria-hidden
+                        />
                         <span className={styles.difficultyLabel}>{d.label}</span>
                         <span className={styles.difficultyText}>{d.description}</span>
                       </button>
@@ -320,7 +326,7 @@ export function NewMatchScreen({ onStart, starting = false, error = null, botNot
                     </span>
                   )}
                 </div>
-                <button type="button" className={`${game.primary} ${styles.launchButton}`} onClick={handleLaunch} disabled={!canLaunch || starting}>
+                <button type="button" className={`${game.primary} ${game.buttonLg}`} onClick={handleLaunch} disabled={!canLaunch || starting}>
                   {launchLabel}
                 </button>
               </div>

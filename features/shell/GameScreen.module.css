@@ -18,10 +18,12 @@
  *     blanc ; un seul flou de fond par panneau ;
  *   - aucune coordonnée calée sur une résolution : `clamp()` partout.
  *
- * La palette `--cb-*` (navy, laiton, turquoise, ivoire, polices) vient de
- * `.screen` de `ScreenShell.module.css`, avec laquelle `.screen` d'ici est
- * composée côté JSX (`GameScreen.tsx`). Ce fichier la complète avec les
- * tokens de panneau (`--panel`, `--line`, `--ink`…).
+ * Les VALEURS viennent des tokens globaux `--tb-*` (`app/tokens.css`) ; la
+ * palette `--cb-*` de `ScreenShell.module.css` et les alias de panneau
+ * (`--panel`, `--line`, `--ink`…) posés ici ne sont que des noms courts.
+ * La seconde moitié du fichier est la feuille des COMPOSANTS PARTAGÉS
+ * (boutons, puces, champs, bannières, menus, tuiles…) : la charte et
+ * les états sont documentés dans `features/shell/DESIGN.md`.
  */
 
 /*
@@ -33,21 +35,29 @@
   /* Deux rangées seulement : le bandeau, puis tout le reste. */
   grid-template-rows: clamp(54px, 6.8vh, 72px) minmax(0, 1fr);
 
-  --cb-cyan: #58c8d8;
-  --cb-cyan-soft: rgba(88, 200, 216, 0.14);
-  --cb-violet: #b388f0;
-  --panel: rgba(8, 18, 30, 0.74);
-  --panel-solid: rgba(6, 14, 24, 0.9);
-  --panel-raised: rgba(14, 28, 44, 0.86);
-  --line: rgba(130, 178, 210, 0.16);
-  --line-strong: rgba(130, 178, 210, 0.3);
-  --ink: #dce8f2;
-  --ink-dim: rgba(190, 210, 228, 0.6);
-  --ink-faint: rgba(190, 210, 228, 0.38);
-  --danger: #e07a6a;
-  --success: #7fd6a4;
-  --radius: clamp(10px, 0.9vw, 16px);
-  --radius-sm: 9px;
+  /*
+   * ALIAS des tokens globaux (`app/tokens.css`) sous les noms courts que
+   * les écrans emploient (`--panel`, `--line`, `--ink`…). Aucune valeur
+   * n'est décidée ici : une couleur se change dans `tokens.css`.
+   */
+  --cb-cyan: var(--tb-accent);
+  --cb-cyan-soft: var(--tb-accent-soft);
+  --cb-violet: var(--tb-abyssal);
+  --panel: var(--tb-surface);
+  --panel-solid: var(--tb-surface-solid);
+  --panel-raised: var(--tb-surface-raised);
+  --panel-inset: var(--tb-surface-inset);
+  --line: var(--tb-border);
+  --line-strong: var(--tb-border-strong);
+  --ink: var(--tb-text);
+  --ink-strong: var(--tb-text-strong);
+  --ink-dim: var(--tb-text-muted);
+  --ink-faint: var(--tb-text-soft);
+  --danger: var(--tb-danger);
+  --success: var(--tb-success);
+  --gold: var(--tb-gold);
+  --radius: clamp(10px, 0.9vw, var(--tb-radius-lg));
+  --radius-sm: var(--tb-radius-sm);
 
   /*
    * LE décor de tous les écrans hors plateau, nommé une fois : en changer
@@ -56,10 +66,12 @@
    */
   --screen-backdrop: url("/assets/collection/background-3.webp");
 
-  background-color: #04090f;
+  background-color: var(--tb-bg-deep);
   background-image:
-    /* Voile : sombre en haut (lisibilité du bandeau), profond en bas. */
-    linear-gradient(180deg, rgba(4, 9, 15, 0.82) 0%, rgba(4, 10, 17, 0.5) 26%, rgba(3, 8, 13, 0.72) 100%),
+    /* Voile BLEU NUIT, pas noir : assez dense en haut pour le bandeau,
+       plus léger au milieu pour que la scène respire, et un pied navy
+       qui assoit les panneaux sans les étouffer. */
+    linear-gradient(180deg, rgba(5, 14, 26, 0.7) 0%, rgba(6, 18, 32, 0.34) 30%, rgba(5, 14, 26, 0.6) 100%),
     var(--screen-backdrop);
   background-size: cover, cover;
   background-position: center, center;
@@ -75,7 +87,7 @@
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background: radial-gradient(130% 105% at 50% 45%, transparent 42%, rgba(2, 6, 11, 0.72) 100%);
+  background: radial-gradient(130% 105% at 50% 45%, transparent 46%, rgba(4, 10, 20, 0.58) 100%);
 }
 
 /* La recherche vit dans le bandeau partagé : largeur digne d'une barre
@@ -84,21 +96,64 @@
   min-width: clamp(150px, 18vw, 300px);
 }
 
-/* ── Panneau commun ─────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+ * DESIGN SYSTEM — COMPOSANTS PARTAGÉS
+ * ══════════════════════════════════════════════════════════════
+ *
+ * Tout ce qui suit est le vocabulaire commun des écrans hors plateau,
+ * consommé via `game.xxx` (`import game from ".../GameScreen.module.css"`).
+ * Les valeurs viennent des tokens `--tb-*` (`app/tokens.css`), ici sous
+ * leurs alias courts (`--panel`, `--line`, `--ink`, `--cb-cyan`…).
+ *
+ * Chaque composant définit ses états : repos / survol / actif (pression) /
+ * sélectionné / focus clavier / désactivé. Charte : `features/shell/DESIGN.md`.
+ *
+ * Sommaire :
+ *   1. Structure     — panneaux, sous-panneaux, contenu, en-têtes
+ *   2. Texte         — hiérarchie typographique
+ *   3. Boutons       — primary / secondary / tertiary / ghost / icon / danger / premium
+ *   4. Navigation    — tabs, chips, segmented, pagination
+ *   5. Formulaires   — input, select, checkbox, radio, toggle
+ *   6. Feedback      — bannières, vide, chargement, squelettes, tooltip
+ *   7. Overlays      — menu contextuel, popover
+ *   8. Contenu       — tuiles, tuile collectible, lignes de liste, stats, badges, rareté, progression
+ */
+
+/* ──────────────────────────────────────────────────────────────
+ * 1. STRUCTURE
+ * ────────────────────────────────────────────────────────────── */
+
+/* Panneau : bleu nuit translucide, filet fin, une seule ombre. Le fond
+   reste une ambiance, le panneau sert la lisibilité. */
 .panel {
   position: relative;
   min-height: 0;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--panel);
-  backdrop-filter: blur(10px) saturate(0.9);
-  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.45);
+  backdrop-filter: var(--tb-blur);
+  box-shadow: var(--tb-shadow-md), inset 0 1px 0 rgba(190, 230, 250, 0.06);
 }
 
 /* Panneau un peu plus présent — pour les objets sélectionnables (tuiles). */
 .panelRaised {
   composes: panel;
   background: var(--panel-raised);
+}
+
+/* Sous-panneau : un creux DANS un panneau (résumé, zone de liste). Pas de
+   flou ni d'ombre portée — il est déjà posé sur une surface. */
+.panelInset {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel-inset);
+}
+
+/* Panneau opaque : ce qui passe DEVANT du contenu (barre collée, tiroir). */
+.panelSolid {
+  composes: panel;
+  background: var(--panel-solid);
+  backdrop-filter: none;
 }
 
 /* ── Zone de contenu défilante (écrans « page » : Decks, Jouer, Market, Quêtes) ── */
@@ -128,7 +183,7 @@
   width: min(100%, 1480px);
 }
 
-/* ── Titres et textes ───────────────────────────────────────── */
+/* En-tête de page : surtitre + titre à gauche, actions à droite. */
 .pageHead {
   display: flex;
   align-items: flex-end;
@@ -137,39 +192,13 @@
   flex-wrap: wrap;
 }
 
-.title {
-  margin: 0;
-  font-family: var(--cb-font-display);
-  font-size: clamp(20px, 1.7vw, 28px);
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: #f2f7fb;
-  text-shadow: 0 1px 6px rgba(2, 6, 11, 0.8);
-}
-
-.eyebrow {
-  margin: 0;
-  font-size: clamp(10px, 0.72vw, 12px);
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--cb-cyan);
-}
-
-.muted {
-  margin: 0;
-  color: var(--ink-dim);
-  font-size: clamp(12px, 0.9vw, 14px);
-  line-height: 1.45;
-}
-
-.sectionTitle {
-  margin: 0;
-  font-size: clamp(11px, 0.78vw, 13px);
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--ink-dim);
+/* En-tête de section : titre à gauche, précision ou action à droite. */
+.sectionHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--tb-space-3);
+  flex-wrap: wrap;
 }
 
 /* Filet de section : un trait qui s'éteint, jamais un séparateur plein. */
@@ -180,11 +209,101 @@
   background: linear-gradient(90deg, var(--line-strong), transparent);
 }
 
-/* ── Boutons ────────────────────────────────────────────────── */
-/*
- * Un seul vocabulaire : primaire (cyan teinté, pour l'action attendue),
- * secondaire (contour fin), lien (texte seul). Jamais de dégradé brillant.
- */
+/* ──────────────────────────────────────────────────────────────
+ * 2. TEXTE — une classe par rôle de la hiérarchie
+ * ────────────────────────────────────────────────────────────── */
+
+/* Titre de page : Cinzel, l'identité du jeu. */
+.title {
+  margin: 0;
+  font-family: var(--cb-font-display);
+  font-size: var(--tb-fs-page-title);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: var(--tb-lh-tight);
+  color: var(--ink-strong);
+  text-shadow: 0 1px 6px rgba(2, 6, 11, 0.8);
+}
+
+/* Surtitre : le cyan dit « tu es ici ». */
+.eyebrow {
+  margin: 0;
+  font-size: var(--tb-fs-label);
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--cb-cyan);
+}
+
+/* Titre de section : capitales espacées, encre atténuée. */
+.sectionTitle {
+  margin: 0;
+  font-size: var(--tb-fs-section-title);
+  font-weight: 600;
+  letter-spacing: var(--tb-track-label);
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+/* Titre de carte / de tuile : Cinzel, plus petit que le titre de page. */
+.cardTitle {
+  margin: 0;
+  font-family: var(--cb-font-display);
+  font-size: var(--tb-fs-card-title);
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--ink-strong);
+}
+
+/* Corps de texte. */
+.body {
+  margin: 0;
+  font-size: var(--tb-fs-body);
+  line-height: var(--tb-lh-body);
+  color: var(--ink);
+}
+
+/* Texte secondaire : bleu grisé, jamais gris. */
+.muted {
+  margin: 0;
+  color: var(--ink-dim);
+  font-size: var(--tb-fs-body);
+  line-height: 1.45;
+}
+
+/* Légende : la plus petite lecture continue. */
+.caption {
+  margin: 0;
+  font-size: var(--tb-fs-caption);
+  line-height: 1.4;
+  color: var(--ink-dim);
+}
+
+/* Étiquette de champ / de valeur : capitales, très espacées. */
+.label {
+  margin: 0;
+  font-size: var(--tb-fs-label);
+  font-weight: 600;
+  letter-spacing: var(--tb-track-label);
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * 3. BOUTONS
+ *
+ * Un seul vocabulaire, six rôles :
+ *   primary   — L'action attendue de l'écran : cyan teinté, glow au survol.
+ *               Une seule par vue.
+ *   secondary — Contour fin, fond sobre : les autres actions.
+ *   tertiary  — Fond teinté sans contour : actions de rangée, fréquentes.
+ *   ghost     — Rien au repos ; se révèle au survol (barres d'outils).
+ *   link      — Texte seul, pour les actions mineures.
+ *   iconButton — Carré/rond pour une icône seule (toujours un `aria-label`).
+ *   danger    — Suppression : rouge discret, jamais un rouge SaaS.
+ *   premium   — Achat / récompense : or, réservé à l'économie.
+ * Jamais de dégradé brillant ; le glow n'apparaît qu'au survol de `primary`.
+ * ────────────────────────────────────────────────────────────── */
 .primary {
   display: inline-flex;
   align-items: center;
@@ -192,52 +311,119 @@
   gap: 0.5em;
   min-height: 38px;
   padding: 0.55em 1.25em;
-  border: 1px solid rgba(88, 200, 216, 0.55);
+  border: 1px solid var(--tb-accent-line);
   border-radius: var(--radius-sm);
-  background: linear-gradient(180deg, rgba(88, 200, 216, 0.22), rgba(88, 200, 216, 0.12));
-  color: #eaf8fb;
+  background: linear-gradient(180deg, var(--tb-accent-soft-strong), var(--tb-accent-soft));
+  color: var(--tb-on-accent);
   font-family: var(--cb-font-ui);
-  font-size: clamp(12px, 0.9vw, 14px);
+  font-size: var(--tb-fs-button);
   font-weight: 600;
   letter-spacing: 0.05em;
+  line-height: 1.2;
   text-decoration: none;
   white-space: nowrap;
   cursor: pointer;
-  transition: background 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out, transform 120ms ease-out;
+  transition: background var(--tb-duration) ease-out, border-color var(--tb-duration) ease-out, color var(--tb-duration) ease-out, box-shadow var(--tb-duration) ease-out, transform var(--tb-duration-fast) ease-out;
 }
 .primary:hover {
-  background: linear-gradient(180deg, rgba(88, 200, 216, 0.32), rgba(88, 200, 216, 0.18));
+  background: linear-gradient(180deg, rgba(95, 208, 230, 0.36), rgba(95, 208, 230, 0.2));
   border-color: var(--cb-cyan);
+  box-shadow: var(--tb-glow-md);
 }
-.primary:active { transform: translateY(1px); }
+.primary:active { transform: translateY(1px); box-shadow: none; }
 .primary:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 2px; }
-.primary:disabled {
+.primary:disabled,
+.primary[aria-disabled="true"] {
   opacity: 0.45;
   cursor: not-allowed;
   transform: none;
+  box-shadow: none;
 }
 
 .secondary {
   composes: primary;
   border-color: var(--line-strong);
-  background: rgba(8, 18, 30, 0.5);
+  background: var(--tb-surface-inset);
   color: var(--ink);
 }
 .secondary:hover {
-  background: rgba(88, 200, 216, 0.1);
-  border-color: rgba(88, 200, 216, 0.6);
-  color: #eaf8fb;
+  background: var(--tb-accent-soft);
+  border-color: var(--tb-accent-line);
+  color: var(--tb-on-accent);
+  box-shadow: none;
+}
+
+.tertiary {
+  composes: primary;
+  border-color: transparent;
+  background: rgba(140, 190, 225, 0.1);
+  color: var(--ink);
+}
+.tertiary:hover {
+  background: var(--tb-accent-soft);
+  border-color: transparent;
+  color: var(--tb-on-accent);
+  box-shadow: none;
+}
+
+.ghost {
+  composes: primary;
+  border-color: transparent;
+  background: transparent;
+  color: var(--ink-dim);
+}
+.ghost:hover {
+  background: rgba(140, 190, 225, 0.1);
+  border-color: transparent;
+  color: var(--ink-strong);
+  box-shadow: none;
 }
 
 .danger {
   composes: primary;
-  border-color: rgba(224, 122, 106, 0.45);
-  background: rgba(224, 122, 106, 0.1);
-  color: #f3c3ba;
+  border-color: var(--tb-danger-line);
+  background: var(--tb-danger-soft);
+  color: var(--tb-danger-ink);
 }
 .danger:hover {
-  background: rgba(224, 122, 106, 0.2);
-  border-color: rgba(224, 122, 106, 0.8);
+  background: rgba(227, 128, 111, 0.22);
+  border-color: var(--danger);
+  box-shadow: none;
+}
+
+/* Rouge encore plus discret : une action destructrice dans un menu, une rangée. */
+.dangerGhost {
+  composes: ghost;
+  color: var(--danger);
+}
+.dangerGhost:hover {
+  background: var(--tb-danger-soft);
+  color: var(--tb-danger-ink);
+}
+
+/* Or : acheter, dépenser un Jeton, réclamer. */
+.premium {
+  composes: primary;
+  border-color: var(--tb-gold-line);
+  background: linear-gradient(180deg, rgba(226, 194, 122, 0.24), rgba(226, 194, 122, 0.12));
+  color: var(--tb-gold-bright);
+}
+.premium:hover {
+  background: linear-gradient(180deg, rgba(226, 194, 122, 0.34), rgba(226, 194, 122, 0.18));
+  border-color: var(--gold);
+  box-shadow: var(--tb-glow-gold);
+}
+
+/* Tailles : petite (rangées, tuiles) et grande (barre de lancement). */
+.buttonSm {
+  min-height: 30px;
+  padding: 0.3em 0.9em;
+  font-size: var(--tb-fs-caption);
+}
+.buttonLg {
+  min-height: 44px;
+  padding-inline: 1.8em;
+  font-size: clamp(13px, 0.95vw, 15px);
 }
 
 .link {
@@ -253,33 +439,267 @@
   letter-spacing: 0.04em;
   text-decoration: none;
   cursor: pointer;
-  transition: color 150ms ease-out;
+  transition: color var(--tb-duration) ease-out;
 }
 .link:hover { color: var(--cb-cyan); }
 .link:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 2px; border-radius: 4px; }
 .link:disabled { opacity: 0.4; cursor: not-allowed; color: var(--ink-dim); }
 
-/* ── Champs ─────────────────────────────────────────────────── */
+/* Bouton d'icône : un carré aux angles doux, l'icône seule. Le contour
+   existe au repos (contrairement à `iconButtonGhost`). */
+.iconButton {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--tb-surface-inset);
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color var(--tb-duration) ease-out, background-color var(--tb-duration) ease-out, color var(--tb-duration) ease-out;
+}
+.iconButton:hover { border-color: var(--cb-cyan); background: var(--tb-accent-soft); color: var(--tb-on-accent); }
+.iconButton:active { transform: translateY(1px); }
+.iconButton:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 2px; }
+.iconButton:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.iconButton[aria-expanded="true"],
+.iconButton[aria-pressed="true"] { border-color: var(--tb-accent-line); background: var(--tb-accent-soft); color: var(--tb-on-accent); }
+
+/* Bouton d'icône sans cadre : croix de fermeture, retrait d'une rangée. */
+.iconButtonGhost {
+  composes: iconButton;
+  width: 30px;
+  height: 30px;
+  border-color: transparent;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-dim);
+}
+.iconButtonGhost:hover { border-color: transparent; background: rgba(140, 190, 225, 0.12); color: var(--ink-strong); }
+
+/* ──────────────────────────────────────────────────────────────
+ * 4. NAVIGATION
+ * ────────────────────────────────────────────────────────────── */
+
+/* Onglets secondaires : du texte et un filet, comme le bandeau — pour
+   basculer entre des VUES d'un même écran. */
+.tabs {
+  display: flex;
+  align-items: flex-end;
+  gap: clamp(4px, 0.6vw, 10px);
+  border-bottom: 1px solid var(--line);
+}
+
+.tab {
+  position: relative;
+  padding: 0.55em 0.8em 0.7em;
+  border: none;
+  background: none;
+  color: var(--ink-dim);
+  font: inherit;
+  font-size: var(--tb-fs-button);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--tb-duration) ease-out;
+}
+.tab::after {
+  content: "";
+  position: absolute;
+  left: 0.8em;
+  right: 0.8em;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--cb-cyan);
+  opacity: 0;
+  transform: scaleX(0.6);
+  transition: opacity var(--tb-duration) ease-out, transform var(--tb-duration) var(--tb-ease);
+}
+.tab:hover { color: var(--ink); }
+.tab:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: -2px; border-radius: 4px; }
+.tab:disabled { opacity: 0.4; cursor: not-allowed; }
+.tabActive {
+  composes: tab;
+  color: var(--ink-strong);
+}
+.tabActive::after { opacity: 1; transform: none; box-shadow: var(--tb-glow-md); }
+
+/* Puces (chips) : des FILTRES ou des CATÉGORIES en capsules. La puce
+   active passe en cyan teinté ; le compte, s'il y en a un, s'atténue. */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tb-space-2);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  min-height: 32px;
+  padding: 0.4em 1em;
+  border: 1px solid var(--line);
+  border-radius: var(--tb-radius-pill);
+  background: transparent;
+  color: var(--ink-dim);
+  font: inherit;
+  font-size: clamp(12px, 0.92vw, 14px);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--tb-duration) ease-out, color var(--tb-duration) ease-out, border-color var(--tb-duration) ease-out;
+}
+.chip:hover { border-color: var(--line-strong); background: rgba(140, 190, 225, 0.06); color: var(--ink); }
+.chip:active { transform: translateY(1px); }
+.chip:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 2px; }
+.chip:disabled { opacity: 0.4; cursor: not-allowed; }
+.chipActive {
+  composes: chip;
+  border-color: var(--tb-accent-line);
+  background: var(--tb-accent-soft);
+  color: var(--tb-on-accent);
+}
+.chipActive:hover { border-color: var(--cb-cyan); background: var(--tb-accent-soft-strong); }
+
+/* Effectif dans une puce. */
+.chipCount {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.65;
+}
+
+/* Contrôle segmenté : deux à quatre options exclusives dans une seule
+   capsule (grille/liste, tri croissant/décroissant). */
+.segmented {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: var(--tb-radius-pill);
+  background: var(--tb-surface-inset);
+}
+
+.segment {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4em;
+  min-height: 28px;
+  padding: 0.25em 0.9em;
+  border: none;
+  border-radius: var(--tb-radius-pill);
+  background: transparent;
+  color: var(--ink-dim);
+  font: inherit;
+  font-size: var(--tb-fs-caption);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--tb-duration) ease-out, color var(--tb-duration) ease-out;
+}
+.segment:hover { color: var(--ink); }
+.segment:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 1px; }
+.segment:disabled { opacity: 0.4; cursor: not-allowed; }
+.segmentActive {
+  composes: segment;
+  background: var(--tb-accent-soft-strong);
+  color: var(--tb-on-accent);
+  box-shadow: inset 0 0 0 1px var(--tb-accent-line);
+}
+
+/* Pagination : des ronds numérotés, le courant en cyan. */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--tb-space-1);
+}
+
+.pageButton {
+  display: inline-grid;
+  place-items: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 0.5em;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-dim);
+  font: inherit;
+  font-size: var(--tb-fs-caption);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background-color var(--tb-duration) ease-out, color var(--tb-duration) ease-out, border-color var(--tb-duration) ease-out;
+}
+.pageButton:hover { border-color: var(--line-strong); color: var(--ink); }
+.pageButton:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 2px; }
+.pageButton:disabled { opacity: 0.35; cursor: not-allowed; }
+.pageButtonActive {
+  composes: pageButton;
+  border-color: var(--tb-accent-line);
+  background: var(--tb-accent-soft-strong);
+  color: var(--tb-on-accent);
+}
+.pageEllipsis {
+  min-width: 24px;
+  text-align: center;
+  color: var(--ink-faint);
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * 5. FORMULAIRES
+ * ────────────────────────────────────────────────────────────── */
 .input {
   width: 100%;
   min-height: 40px;
   padding: 0.55em 0.85em;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  background: rgba(4, 10, 17, 0.6);
+  background: var(--tb-surface-inset);
   color: var(--ink);
   font: inherit;
   font-size: clamp(13px, 0.95vw, 15px);
-  transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+  transition: border-color var(--tb-duration) ease-out, box-shadow var(--tb-duration) ease-out, background-color var(--tb-duration) ease-out;
 }
 .input::placeholder { color: var(--ink-faint); }
 .input:hover { border-color: var(--line-strong); }
 .input:focus {
   outline: none;
   border-color: var(--cb-cyan);
-  box-shadow: 0 0 0 3px var(--cb-cyan-soft);
+  background: rgba(5, 14, 26, 0.8);
+  box-shadow: var(--tb-glow-sm);
 }
 .input:disabled { opacity: 0.5; cursor: not-allowed; }
+.input[aria-invalid="true"] { border-color: var(--tb-danger-line); }
+
+.inputSm {
+  min-height: 32px;
+  padding: 0.35em 0.7em;
+  font-size: var(--tb-fs-caption);
+}
+
+/* Champ avec une icône posée dedans (enveloppe à gauche, œil à droite) :
+   la place pour l'icône. Sélecteur doublé pour l'emporter sur le
+   rembourrage du champ quel que soit l'ordre des feuilles. */
+.input.inputIconLeft { padding-left: 2.4em; }
+.input.inputIconRight { padding-right: 2.4em; }
+
+/* `<select>` natif habillé : même champ que `.input`, un chevron cyan.
+   Pour un menu riche (groupes, tri), préférer `GameSelect`. */
+.select {
+  composes: input;
+  appearance: none;
+  padding-right: 2.2em;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='M6 9l6 6 6-6' stroke='%235fd0e6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.7em center;
+  background-size: 14px;
+  cursor: pointer;
+}
+.select option { background: var(--panel-solid); color: var(--ink); }
 
 .field {
   display: flex;
@@ -288,40 +708,232 @@
 }
 
 .fieldLabel {
-  font-size: clamp(11px, 0.78vw, 12px);
+  font-size: var(--tb-fs-label);
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink-dim);
 }
 
-/* ── Messages d'état ────────────────────────────────────────── */
-.error {
+.fieldHint {
+  font-size: var(--tb-fs-caption);
+  color: var(--ink-faint);
+}
+
+/*
+ * Case à cocher / bouton radio : une étiquette (`.choice`) qui porte
+ * l'`<input>` natif rendu invisible et une boîte dessinée (`.choiceBox`).
+ * La coche est le cyan de la sélection ; le radio est rond, la case carrée.
+ * Sans `<input>` (une ligne-bouton `aria-pressed`, une carte `role="radio"`),
+ * la boîte se pilote par `data-checked="true"`.
+ *
+ *   <label class="choice">
+ *     <input type="checkbox" class="choiceInput" />
+ *     <span class="choiceBox" aria-hidden />
+ *     Libellé
+ *   </label>
+ */
+.choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6em;
+  min-height: 30px;
+  color: var(--ink-dim);
+  font-size: var(--tb-fs-body);
+  cursor: pointer;
+  user-select: none;
+  transition: color var(--tb-duration) ease-out;
+}
+.choice:hover { color: var(--ink); }
+.choice:has(.choiceInput:disabled) { opacity: 0.45; cursor: not-allowed; }
+.choice:has(.choiceInput:checked) { color: var(--ink-strong); }
+
+.choiceInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.choiceBox {
+  position: relative;
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  background: var(--tb-surface-inset);
+  transition: border-color var(--tb-duration) ease-out, background-color var(--tb-duration) ease-out, box-shadow var(--tb-duration) ease-out;
+}
+.choice:hover .choiceBox { border-color: var(--tb-accent-line); }
+.choiceInput:focus-visible + .choiceBox { outline: 2px solid var(--cb-cyan); outline-offset: 2px; }
+.choiceInput:checked + .choiceBox,
+.choiceBox[data-checked="true"] {
+  border-color: var(--cb-cyan);
+  background: var(--tb-accent-soft-strong);
+  box-shadow: var(--tb-glow-sm);
+}
+/* La coche : deux traits en `::after`, cyan clair. */
+.choiceInput:checked + .choiceBox::after,
+.choiceBox[data-checked="true"]::after {
+  content: "";
+  width: 9px;
+  height: 5px;
+  margin-top: -2px;
+  border-left: 2px solid var(--tb-accent-bright);
+  border-bottom: 2px solid var(--tb-accent-bright);
+  transform: rotate(-45deg);
+}
+/* Radio : rond, avec un point au centre. */
+.choiceRadio {
+  composes: choiceBox;
+  border-radius: 50%;
+}
+.choiceInput:checked + .choiceRadio::after,
+.choiceRadio[data-checked="true"]::after {
+  width: 7px;
+  height: 7px;
   margin: 0;
-  padding: 0.55em 0.85em;
-  border-left: 2px solid var(--danger);
-  border-radius: 0 6px 6px 0;
-  background: rgba(224, 122, 106, 0.08);
-  color: #f3c3ba;
-  font-size: clamp(12px, 0.85vw, 13px);
-  line-height: 1.4;
+  border: none;
+  border-radius: 50%;
+  background: var(--tb-accent-bright);
+  transform: none;
+}
+
+/*
+ * Interrupteur : capsule sombre au repos, cyan teinté allumé, curseur qui
+ * glisse. L'état vient de `aria-checked` (sur un `<button role="switch">`)
+ * ou de `data-checked` (curseur décoratif dans une ligne-bouton).
+ */
+.toggle {
+  position: relative;
+  flex: 0 0 auto;
+  width: 40px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--tb-radius-pill);
+  background: var(--tb-surface-inset);
+  cursor: pointer;
+  transition: background-color var(--tb-duration) ease-out, border-color var(--tb-duration) ease-out, box-shadow var(--tb-duration) ease-out;
+}
+.toggle::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--ink-dim);
+  transform: translateY(-50%);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  transition: transform var(--tb-duration) var(--tb-ease), background-color var(--tb-duration) ease-out;
+}
+.toggle:hover { border-color: var(--tb-accent-line); }
+.toggle:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 2px; }
+.toggle:disabled { opacity: 0.45; cursor: not-allowed; }
+.toggle[aria-checked="true"],
+.toggle[data-checked="true"] {
+  border-color: var(--tb-accent-line);
+  background: var(--tb-accent-soft-strong);
+  box-shadow: inset 0 1px 0 rgba(190, 230, 250, 0.12);
+}
+.toggle[aria-checked="true"]::after,
+.toggle[data-checked="true"]::after {
+  transform: translate(18px, -50%);
+  background: var(--tb-accent-bright);
+  box-shadow: 0 0 8px rgba(95, 208, 230, 0.6), 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* Ligne « libellé + description + contrôle » (options, réglages). */
+.controlRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tb-space-4);
+  width: 100%;
+  padding: var(--tb-space-2) var(--tb-space-1);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--tb-duration) ease-out;
+}
+.controlRow:hover { background: rgba(140, 190, 225, 0.06); }
+.controlRow:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: -2px; }
+.controlRowLabel { display: block; font-size: var(--tb-fs-body); color: var(--ink); }
+.controlRowText { display: block; font-size: var(--tb-fs-caption); color: var(--ink-dim); }
+
+/* ──────────────────────────────────────────────────────────────
+ * 6. FEEDBACK
+ * ────────────────────────────────────────────────────────────── */
+
+/* Bannières d'état : un liseré de ton à gauche, un fond à peine teinté.
+   Jamais un rectangle rouge plein. */
+.error {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6em;
+  margin: 0;
+  padding: 0.6em 0.9em;
+  border: 1px solid var(--tb-danger-line);
+  border-left-width: 3px;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--tb-danger-soft);
+  color: var(--tb-danger-ink);
+  font-size: clamp(12px, 0.85vw, 13.5px);
+  line-height: 1.45;
 }
 
 .notice {
   composes: error;
-  border-left-color: var(--cb-cyan);
+  border-color: var(--tb-accent-line);
   background: var(--cb-cyan-soft);
   color: var(--ink);
 }
 
 .success {
   composes: error;
-  border-left-color: var(--success);
-  background: rgba(127, 214, 164, 0.08);
-  color: #cdeedb;
+  border-color: var(--tb-success-line);
+  background: var(--tb-success-soft);
+  color: var(--tb-success-ink);
 }
 
-/* ── État vide ──────────────────────────────────────────────── */
+.warning {
+  composes: error;
+  border-color: var(--tb-gold-line);
+  background: var(--tb-gold-soft);
+  color: var(--tb-gold-bright);
+}
+
+/* Bannière de notification : une bannière PLEINE LARGEUR avec titre,
+   texte et action (mise à jour, événement en cours). */
+.banner {
+  display: flex;
+  align-items: center;
+  gap: var(--tb-space-3);
+  padding: var(--tb-space-3) var(--tb-space-4);
+  border: 1px solid var(--tb-accent-line);
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--tb-accent-soft), var(--tb-surface) 70%);
+  color: var(--ink);
+}
+.bannerTitle { font-weight: 600; color: var(--ink-strong); }
+.bannerText { font-size: var(--tb-fs-caption); color: var(--ink-dim); }
+.bannerActions { margin-left: auto; display: flex; gap: var(--tb-space-2); }
+
+/* État vide : centré, calme, avec un titre Cinzel et une invitation. */
 .empty {
   display: flex;
   flex-direction: column;
@@ -340,28 +952,148 @@
   color: var(--ink);
 }
 
-/* ── Étiquettes d'état (tags) ───────────────────────────────── */
-.tag {
+/* Pictogramme de l'état vide : une silhouette en filet, jamais une icône pleine. */
+.emptyMark {
+  color: var(--line-strong);
+}
+
+/* Chargement : trois traits qui respirent — jamais un spinner générique. */
+.loading {
   display: inline-flex;
   align-items: center;
-  gap: 0.35em;
-  padding: 0.18em 0.6em;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  font-size: clamp(10px, 0.72vw, 11px);
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ink-dim);
-  white-space: nowrap;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px 0;
 }
-.tagCyan { composes: tag; border-color: rgba(88, 200, 216, 0.45); color: var(--cb-cyan); }
-.tagViolet { composes: tag; border-color: rgba(179, 136, 240, 0.45); color: var(--cb-violet); }
-.tagSuccess { composes: tag; border-color: rgba(127, 214, 164, 0.45); color: var(--success); }
-.tagDanger { composes: tag; border-color: rgba(224, 122, 106, 0.45); color: var(--danger); }
-.tagBrass { composes: tag; border-color: rgba(199, 154, 78, 0.45); color: #ddc79a; }
 
-/* ── Tuile sélectionnable (deck, mode de jeu…) ──────────────── */
+.loadingDot {
+  width: 16px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--line-strong);
+  animation: tbLoadingPulse 1000ms ease-in-out infinite;
+}
+.loadingDot:nth-child(2) { animation-delay: 140ms; }
+.loadingDot:nth-child(3) { animation-delay: 280ms; }
+
+@keyframes tbLoadingPulse {
+  0%, 100% { opacity: 0.35; transform: scaleX(0.7); }
+  50% { opacity: 1; transform: scaleX(1); }
+}
+
+/* Squelettes : un rectangle bleu nuit qui ondule. `skeletonText` fait une
+   ligne, `skeletonBlock` un bloc dont l'appelant fixe la hauteur. */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: rgba(140, 190, 225, 0.08);
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(140, 190, 225, 0.12), transparent);
+  animation: tbSkeletonShimmer 1.6s ease-in-out infinite;
+}
+.skeletonText {
+  composes: skeleton;
+  height: 0.9em;
+  border-radius: 4px;
+}
+.skeletonBlock {
+  composes: skeleton;
+  min-height: 48px;
+}
+
+@keyframes tbSkeletonShimmer {
+  to { transform: translateX(100%); }
+}
+
+/* Info-bulle : une petite feuille opaque, le texte en corps. Position à
+   la charge de l'appelant (`Tooltip.tsx`). */
+.tooltip {
+  z-index: var(--tb-z-tooltip);
+  max-width: 280px;
+  padding: 0.45em 0.75em;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--panel-solid);
+  color: var(--ink);
+  font-size: var(--tb-fs-caption);
+  line-height: 1.4;
+  box-shadow: var(--tb-shadow-md);
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * 7. OVERLAYS — menu contextuel, popover
+ * (les fenêtres vivent dans `Dialog.module.css`, les alertes dans
+ *  `ScreenToast.module.css`)
+ * ────────────────────────────────────────────────────────────── */
+
+/* Popover : une feuille opaque ancrée à son déclencheur. */
+.popover {
+  z-index: var(--tb-z-dropdown);
+  padding: var(--tb-space-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--panel-solid);
+  color: var(--ink);
+  box-shadow: var(--tb-shadow-md);
+  animation: tbPopIn var(--tb-duration) var(--tb-ease) both;
+}
+
+/* Menu contextuel : une colonne d'actions dans la même feuille. */
+.menu {
+  composes: popover;
+  display: flex;
+  flex-direction: column;
+  min-width: 170px;
+  padding: 4px;
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--tb-fs-caption);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--tb-duration-fast) ease-out, color var(--tb-duration-fast) ease-out;
+}
+.menuItem:hover:not(:disabled) { background: var(--tb-accent-soft); color: var(--tb-on-accent); }
+.menuItem:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: -2px; }
+.menuItem:disabled { opacity: 0.4; cursor: default; }
+.menuItemDanger {
+  composes: menuItem;
+  color: var(--danger);
+}
+.menuItemDanger:hover:not(:disabled) { background: var(--tb-danger-soft); color: var(--tb-danger-ink); }
+.menuSeparator {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--line);
+}
+
+@keyframes tbPopIn {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * 8. CONTENU
+ * ────────────────────────────────────────────────────────────── */
+
+/* Tuile sélectionnable (deck, mode de jeu, navire…) : un panneau
+   surélevé qui se soulève au survol et s'allume quand il est choisi. */
 .tile {
   composes: panelRaised;
   display: flex;
@@ -370,27 +1102,192 @@
   color: var(--ink);
   font: inherit;
   cursor: pointer;
-  transition: border-color 160ms ease-out, transform 160ms ease-out, box-shadow 160ms ease-out;
+  transition: border-color var(--tb-duration) ease-out, transform var(--tb-duration) ease-out, box-shadow var(--tb-duration) ease-out;
 }
 .tile:hover {
-  border-color: rgba(88, 200, 216, 0.5);
+  border-color: var(--tb-accent-line);
   transform: translateY(-2px);
-  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--tb-shadow-lg);
 }
+.tile:active { transform: translateY(0); }
 .tile:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 3px; }
 .tileActive {
   composes: tile;
   border-color: var(--cb-cyan);
-  box-shadow: 0 0 0 1px rgba(88, 200, 216, 0.45), 0 22px 50px rgba(0, 0, 0, 0.5), 0 0 28px rgba(88, 200, 216, 0.18);
+  box-shadow: var(--tb-glow-strong), var(--tb-shadow-lg);
 }
 .tileDisabled {
   composes: tile;
   cursor: not-allowed;
   opacity: 0.55;
 }
-.tileDisabled:hover { transform: none; border-color: var(--line); box-shadow: 0 18px 46px rgba(0, 0, 0, 0.45); }
+.tileDisabled:hover { transform: none; border-color: var(--line); box-shadow: var(--tb-shadow-md); }
+
+/*
+ * Tuile COLLECTIBLE : un objet qu'on possède ou non (dos de carte, exploit,
+ * illustration). L'image d'abord, le nom dessous ; verrouillée = désaturée
+ * mais lisible, équipée = cerclée de cyan.
+ */
+.collectible {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--ink-dim);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+}
+.collectible:disabled { cursor: default; }
+.collectible:focus-visible { outline: none; }
+
+.collectibleArt {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  transition: border-color var(--tb-duration) ease-out, transform var(--tb-duration) ease-out, box-shadow var(--tb-duration) ease-out, filter var(--tb-duration) ease-out;
+}
+.collectible:hover:not(:disabled) .collectibleArt { transform: translateY(-2px); border-color: var(--line-strong); box-shadow: var(--tb-shadow-md); }
+.collectible:focus-visible .collectibleArt { outline: 2px solid var(--cb-cyan); outline-offset: 2px; }
+.collectibleActive { composes: collectible; color: var(--tb-on-accent); }
+.collectibleActive .collectibleArt { border-color: var(--cb-cyan); box-shadow: var(--tb-glow-strong); }
+.collectibleLocked { composes: collectible; }
+.collectibleLocked .collectibleArt { filter: grayscale(0.85) brightness(0.55); }
+.collectibleName { font-size: var(--tb-fs-caption); line-height: 1.2; color: var(--ink); }
+.collectibleHint { font-size: var(--tb-fs-label); letter-spacing: 0.04em; color: inherit; }
+
+/* Ligne de liste : rien au repos, un fond léger au survol, cyan quand
+   sélectionnée. Les enfants sont libres (icône, nom, valeur, action). */
+.listRow {
+  display: flex;
+  align-items: center;
+  gap: var(--tb-space-2);
+  width: 100%;
+  min-height: 34px;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  transition: background-color var(--tb-duration-fast) ease-out, border-color var(--tb-duration-fast) ease-out;
+}
+.listRow:hover { background: rgba(140, 190, 225, 0.07); border-color: var(--line); }
+.listRow:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: -1px; }
+.listRowActive {
+  composes: listRow;
+  border-color: var(--tb-accent-line);
+  background: var(--tb-accent-soft);
+  color: var(--tb-on-accent);
+}
+
+/* Bloc de statistique : la valeur en Cinzel, l'étiquette en capitales. */
+.statBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.statValue {
+  font-family: var(--cb-font-display);
+  font-size: clamp(16px, 1.6vw, 22px);
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-strong);
+}
+.statValueGold { composes: statValue; color: var(--gold); }
+.statLabel {
+  font-size: var(--tb-fs-label);
+  letter-spacing: var(--tb-track-label);
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+/* Badge de compteur : une pastille pleine (nombre de filtres actifs,
+   quantité au panier). Cyan par défaut, or pour une récompense. */
+.badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--tb-radius-pill);
+  background: var(--cb-cyan);
+  color: #04121a;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.badgeGold {
+  composes: badge;
+  background: linear-gradient(180deg, var(--tb-gold-bright), var(--gold));
+  color: var(--tb-on-gold);
+}
+
+/* Étiquettes d'état (tags) : un contour fin, la couleur dit le sens. */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  padding: 0.18em 0.6em;
+  border: 1px solid var(--line);
+  border-radius: var(--tb-radius-pill);
+  font-size: clamp(10px, 0.72vw, 11px);
+  font-weight: 600;
+  letter-spacing: var(--tb-track-caps);
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  white-space: nowrap;
+}
+.tagCyan { composes: tag; border-color: var(--tb-accent-line); color: var(--cb-cyan); }
+.tagViolet { composes: tag; border-color: var(--tb-abyssal-line); color: var(--cb-violet); }
+.tagSuccess { composes: tag; border-color: var(--tb-success-line); color: var(--success); }
+.tagDanger { composes: tag; border-color: var(--tb-danger-line); color: var(--danger); }
+.tagBrass { composes: tag; border-color: var(--tb-gold-line); color: var(--gold); }
+
+/* Rareté : la même étiquette, la couleur fixée par la rareté. Une pastille
+   en tête, pour qu'on la lise même sans le mot. */
+.rarity { composes: tag; }
+.rarity::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 6px currentColor;
+}
+.rarityCommon { composes: rarity; color: var(--ink-dim); }
+.rarityUncommon { composes: rarity; border-color: var(--tb-accent-line); color: var(--cb-cyan); }
+.rarityRare { composes: rarity; border-color: var(--tb-gold-line); color: var(--gold); }
+.rarityAbyssal { composes: rarity; border-color: var(--tb-abyssal-line); color: var(--cb-violet); }
+
+/* Progression : un trait fin. Cyan pour ce qui avance, or quand la
+   récompense est là, vert quand c'est acquis. */
+.progressTrack {
+  position: relative;
+  height: 4px;
+  border-radius: var(--tb-radius-pill);
+  background: rgba(140, 190, 225, 0.14);
+  overflow: hidden;
+}
+.progressFill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--tb-accent-deep), var(--cb-cyan));
+  transition: width 400ms var(--tb-ease);
+}
+.progressFillGold { composes: progressFill; background: linear-gradient(90deg, var(--tb-gold-deep), var(--tb-gold-bright)); }
+.progressFillSuccess { composes: progressFill; background: linear-gradient(90deg, var(--tb-accent-deep), var(--success)); }
 
 @media (prefers-reduced-motion: reduce) {
-  .primary, .tile { transition: none; }
+  .primary, .tile, .chip, .tab::after, .toggle::after, .popover { transition: none; animation: none; }
   .tile:hover { transform: none; }
+  .loadingDot, .skeleton::after { animation: none; }
 }

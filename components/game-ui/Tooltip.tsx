@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { BORDER_SUBTLE, RADIUS_SM, SHADOW_FLOATING, TEXT_PRIMARY, TRANSITION } from "@/components/game-ui/tokens";
+import styles from "@/components/game-ui/GameUi.module.css";
 
 interface TooltipProps {
   content: ReactNode;
@@ -13,23 +13,27 @@ interface TooltipProps {
 /**
  * Info-bulle générique — remplace les tooltips HTML natifs (`title="..."`)
  * pour tout ce qui mérite d'être lisible (description de carte, option de
- * tri...). Petit chip en verre fumé, jamais un rectangle plein.
+ * tri...). Une petite feuille bleu nuit opaque avec sa pointe, la même
+ * matière que les menus (`GameUi.module.css`) — jamais un rectangle noir.
+ *
+ * S'ouvre aussi au FOCUS clavier : ce qu'on explique à la souris doit
+ * s'expliquer au clavier.
  */
 export function Tooltip({ content, children, clickToOpen = false }: TooltipProps) {
   const [open, setOpen] = useState(false);
 
   return (
     <span
-      className="relative inline-flex"
+      className={styles.tooltipAnchor}
       onMouseEnter={() => !clickToOpen && setOpen(true)}
       onMouseLeave={() => !clickToOpen && setOpen(false)}
+      onFocus={() => !clickToOpen && setOpen(true)}
+      onBlur={() => !clickToOpen && setOpen(false)}
       onClick={() => clickToOpen && setOpen((v) => !v)}
     >
       {children}
       {open && (
-        <span
-          className={`pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 w-max max-w-xs -translate-x-1/2 bg-[var(--surface-glass)] backdrop-blur-xl px-3 py-1.5 text-xs ${TEXT_PRIMARY} ${BORDER_SUBTLE} ${RADIUS_SM} ${SHADOW_FLOATING} ${TRANSITION}`}
-        >
+        <span role="tooltip" className={styles.tooltip}>
           {content}
         </span>
       )}

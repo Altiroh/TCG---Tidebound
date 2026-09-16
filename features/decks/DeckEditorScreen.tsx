@@ -369,8 +369,8 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
             onOpenFilters={() => cardBrowser.setDrawerOpen((open) => !open)}
             activeFilterCount={cardBrowser.activeFilterCount}
             extra={
-              <button type="button" className={styles.deckToggle} onClick={() => setDeckOpen((open) => !open)} aria-expanded={deckOpen}>
-                Deck · {cardIds.length}
+              <button type="button" className={`${game.chipActive} ${styles.deckToggle}`} onClick={() => setDeckOpen((open) => !open)} aria-expanded={deckOpen}>
+                Deck <span className={game.badge}>{cardIds.length}</span>
               </button>
             }
           />

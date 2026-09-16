@@ -12,6 +12,7 @@ import {
   typeBreakdown,
 } from "@/features/decks/deckComposition";
 import styles from "@/features/decks/DeckBuilder.module.css";
+import game from "@/features/shell/GameScreen.module.css";
 import { playButtonClick } from "@/lib/sound";
 
 const DRAG_MIME = "text/tidebound-card-id";
@@ -200,13 +201,13 @@ export function DeckListPanel({
         )}
       </div>
 
-      {issue && count > 0 && <p className={styles.issue}>{issue}</p>}
-      {saveError && <p className={styles.issue}>{saveError}</p>}
+      {issue && count > 0 && <p className={game.error}>{issue}</p>}
+      {saveError && <p className={game.error}>{saveError}</p>}
 
       <div className={styles.actions}>
         <button
           type="button"
-          className={`${styles.save} ${savedFlash ? styles.saveDone : ""}`}
+          className={`${game.primary} ${styles.save} ${savedFlash ? styles.saveDone : ""}`}
           onClick={() => {
             playButtonClick();
             onSave();
@@ -218,10 +219,10 @@ export function DeckListPanel({
 
         {/* `stopPropagation` : le listener global de fermeture refermerait
             le menu dans le même clic que celui qui l'ouvre. */}
-        <div style={{ position: "relative" }} onClick={(event) => event.stopPropagation()}>
+        <div className={styles.menuAnchor} onClick={(event) => event.stopPropagation()}>
           <button
             type="button"
-            className={styles.iconButton}
+            className={game.iconButton}
             onClick={() => setMenuOpen((open) => !open)}
             aria-label="Plus d'options"
             aria-expanded={menuOpen}
@@ -233,16 +234,17 @@ export function DeckListPanel({
             </svg>
           </button>
           {menuOpen && (
-            <div className={styles.menu} role="menu">
-              <button type="button" className={styles.menuItem} role="menuitem" onClick={() => { setMenuOpen(false); onNewDeck(); }}>
+            <div className={`${game.menu} ${styles.menuUp}`} role="menu">
+              <button type="button" className={game.menuItem} role="menuitem" onClick={() => { setMenuOpen(false); onNewDeck(); }}>
                 Nouveau deck
               </button>
-              <button type="button" className={styles.menuItem} role="menuitem" disabled={!isPersisted} onClick={() => { setMenuOpen(false); onDuplicate(); }}>
+              <button type="button" className={game.menuItem} role="menuitem" disabled={!isPersisted} onClick={() => { setMenuOpen(false); onDuplicate(); }}>
                 Dupliquer
               </button>
+              <div className={game.menuSeparator} role="separator" />
               <button
                 type="button"
-                className={`${styles.menuItem} ${styles.menuItemDanger}`}
+                className={game.menuItemDanger}
                 role="menuitem"
                 disabled={!isPersisted}
                 onClick={() => { setMenuOpen(false); onDelete(); }}
