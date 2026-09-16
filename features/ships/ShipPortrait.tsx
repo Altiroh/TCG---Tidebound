@@ -1,5 +1,9 @@
+"use client";
+
+import type { CSSProperties } from "react";
 import { SHIP_DATABASE, type ShipDefinition } from "@/game";
-import { SHIP_FRAME_SRC, SHIP_ILLUSTRATION_CLIP, SHIP_ILLUSTRATION_ZONE, SHIP_PLATE_TOP, shipIllustrationUrl } from "@/features/ships/shipFrame";
+import { shipIllustrationUrl } from "@/features/ships/shipFrame";
+import { useShipFrameGeometry } from "@/features/cosmetics/ShipFrameProvider";
 import styles from "@/features/ships/ShipPortrait.module.css";
 
 /** `null` au lieu de l'exception de `getShipDefinition` : un deck sauvegardé avec un `ship_id` retiré du jeu ne doit pas casser une liste entière. */
@@ -29,10 +33,14 @@ interface ShipPortraitProps {
  */
 export function ShipPortrait({ shipId, width = 120, showName = true, className }: ShipPortraitProps) {
   const ship = findShip(shipId);
+  const frame = useShipFrameGeometry();
 
   return (
-    <div className={`${styles.portrait}${className ? ` ${className}` : ""}`} style={{ width }}>
-      <div className={styles.window} style={{ ...SHIP_ILLUSTRATION_ZONE, clipPath: SHIP_ILLUSTRATION_CLIP }}>
+    <div
+      className={`${styles.portrait}${className ? ` ${className}` : ""}`}
+      style={{ width, "--frame-aspect": frame.aspect } as CSSProperties}
+    >
+      <div className={styles.window} style={{ ...frame.zone, clipPath: frame.clip }}>
         {ship?.illustration ? (
           // eslint-disable-next-line @next/next/no-img-element -- asset local, une par Navire
           <img src={shipIllustrationUrl(ship.illustration)} alt="" draggable={false} className={styles.illustration} />
@@ -41,9 +49,9 @@ export function ShipPortrait({ shipId, width = 120, showName = true, className }
         )}
       </div>
       {/* eslint-disable-next-line @next/next/no-img-element -- élément décoratif de mise en page fixe */}
-      <img src={SHIP_FRAME_SRC} alt="" aria-hidden draggable={false} className={styles.frame} />
+      <img src={frame.src} alt="" aria-hidden draggable={false} className={styles.frame} />
       {showName && (
-        <span className={styles.name} style={{ top: SHIP_PLATE_TOP }}>
+        <span className={styles.name} style={{ top: frame.plateTop }}>
           {ship?.name ?? "Navire inconnu"}
         </span>
       )}

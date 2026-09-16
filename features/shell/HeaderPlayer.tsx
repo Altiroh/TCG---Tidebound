@@ -8,6 +8,7 @@ import { cardIllustrationUrl } from "@/features/decks/nameplateArt";
 import { QuestDrawer } from "@/features/quests/QuestDrawer";
 import { ProfileDrawer } from "@/features/progression/ProfileDrawer";
 import type { ProfileTab } from "@/features/progression/ProfileView";
+import { PreconToken, TideCoin } from "@/features/shell/GameIcons";
 import { ScreenToast, type ScreenToastMessage } from "@/features/shell/ScreenToast";
 import { SettingsDialog } from "@/features/settings/SettingsDialog";
 import styles from "@/features/shell/ScreenShell.module.css";
@@ -43,28 +44,6 @@ function GearIcon() {
   );
 }
 
-/** Jeton de Tides — une pièce, pas une icône de logiciel : la monnaie doit se reconnaître d'un coup d'œil. */
-export function TideCoin({ size = 15 }: { size?: number }) {
-  return (
-    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden className={styles.tideCoin}>
-      <circle cx="12" cy="12" r="9" fill="url(#tideCoinFace)" stroke="#a47b36" strokeWidth="1.3" />
-      <path
-        d="M6.6 13.4c1.4-1.5 2.7-1.5 4.1 0s2.7 1.5 4.1 0 2.7-1.5 4.1 0"
-        fill="none"
-        stroke="#6d5224"
-        strokeWidth="1.3"
-        strokeLinecap="round"
-        opacity="0.85"
-      />
-      <defs>
-        <linearGradient id="tideCoinFace" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#f0d79a" />
-          <stop offset="100%" stopColor="#c79a4e" />
-        </linearGradient>
-      </defs>
-    </svg>
-  );
-}
 
 /** Initiale du pseudo pour l'avatar. Insécable si le pseudo est vide ou ne commence pas par une lettre. */
 function avatarInitial(name: string | null): string {
@@ -279,9 +258,22 @@ export function HeaderPlayer() {
             </span>
           </span>
 
-          <span className={styles.accountTides} title="Tides — la monnaie du jeu">
-            <TideCoin />
-            {summary.balance}
+          <span className={styles.accountWallet}>
+            <span className={styles.accountTides} title="Tides — la monnaie du jeu">
+              <TideCoin size={22} />
+              {summary.balance}
+            </span>
+            {/* Jetons de Préconstruit : la seconde monnaie, et la seule
+                façon de débloquer un deck. Elle vaut d'être lue d'un coup
+                d'œil au même endroit que les Tides, pas seulement au
+                profil. */}
+            <span
+              className={styles.accountTokens}
+              title={`${summary.preconTokens} Jeton${summary.preconTokens > 1 ? "s" : ""} de Préconstruit`}
+            >
+              <PreconToken size={22} />
+              {summary.preconTokens}
+            </span>
           </span>
         </div>
       )}
@@ -292,35 +284,6 @@ export function HeaderPlayer() {
         <Link href="/connexion" className={styles.signInLink} onClick={() => playButtonClick()}>
           Se connecter
         </Link>
-      )}
-
-      {/* Quêtes : au bout du bloc de compte, comme les Options. Réservé aux
-          joueurs connectés — un tiroir vide n'apprend rien à un visiteur. */}
-      {signedIn && (
-        <button
-          type="button"
-          className={summary && summary.claimableQuests > 0 ? styles.questsWaiting : styles.optionsButton}
-          aria-label={
-            summary && summary.claimableQuests > 0
-              ? `Quêtes — ${summary.claimableQuests} récompense${summary.claimableQuests > 1 ? "s" : ""} à réclamer`
-              : "Quêtes"
-          }
-          title="Quêtes"
-          aria-haspopup="dialog"
-          onClick={() => {
-            playButtonClick();
-            setQuestsOpen(true);
-          }}
-        >
-          <QuestIcon />
-          {/* Pastille : ce qui attend une action, et rien d'autre. Une
-              quête en cours n'a pas à réclamer l'attention. */}
-          {summary && summary.claimableQuests > 0 && (
-            <span className={styles.badge} aria-hidden>
-              {summary.claimableQuests}
-            </span>
-          )}
-        </button>
       )}
 
       <button

@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, type CSSProperties } from "react";
 import { reasonCeiling, type PlayerState, type ShipDefinition, type TideStateName } from "@/game";
 import { TIDE_STATE_LABELS } from "@/features/match/cardDisplay";
-import { SHIP_FRAME_SRC, SHIP_ILLUSTRATION_CLIP, SHIP_ILLUSTRATION_ZONE, shipIllustrationUrl } from "@/features/ships/shipFrame";
+import { shipIllustrationUrl } from "@/features/ships/shipFrame";
+import { useShipFrameGeometry } from "@/features/cosmetics/ShipFrameProvider";
 import styles from "@/features/match/table/Table.module.css";
 import sheet from "@/features/match/table/TableSheet.module.css";
 
@@ -54,6 +55,7 @@ export function ShipInfoSheet({ player, ship, ownerLabel, onClose }: ShipInfoShe
     return () => window.removeEventListener("keydown", handleKeyDown, true);
   }, [onClose]);
 
+  const frame = useShipFrameGeometry();
   const ceiling = reasonCeiling(player);
   const traits = tideTraits(ship);
   const ratio = (value: number, max: number) => `${Math.max(0, Math.min(1, max > 0 ? value / max : 0)) * 100}%`;
@@ -75,15 +77,15 @@ export function ShipInfoSheet({ player, ship, ownerLabel, onClose }: ShipInfoShe
 
         <div className={sheet.body}>
           <div className={sheet.ship}>
-            <div className={sheet.shipFrame} aria-hidden>
-              <div className={styles.shipArt} style={{ ...SHIP_ILLUSTRATION_ZONE, clipPath: SHIP_ILLUSTRATION_CLIP }}>
+            <div className={sheet.shipFrame} style={{ "--frame-aspect": frame.aspect } as CSSProperties} aria-hidden>
+              <div className={styles.shipArt} style={{ ...frame.zone, clipPath: frame.clip }}>
                 {ship.illustration && (
                   // eslint-disable-next-line @next/next/no-img-element -- illustration locale du Navire
                   <img src={shipIllustrationUrl(ship.illustration)} alt="" draggable={false} className={styles.fill} />
                 )}
               </div>
               {/* eslint-disable-next-line @next/next/no-img-element -- cadre du plateau */}
-              <img src={SHIP_FRAME_SRC} alt="" draggable={false} className={styles.shipFrame} />
+              <img src={frame.src} alt="" draggable={false} className={styles.shipFrame} />
             </div>
 
             <div>

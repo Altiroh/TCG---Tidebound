@@ -137,7 +137,16 @@ export type { BotDifficulty } from "@/game/bot/types";
 
 // --- Cosmétiques -------------------------------------------------------
 export {
+  isCosmeticUnlocked,
+  isFree,
+  unlockLabel,
+  unlockProgress,
+  type CosmeticSkin,
+  type CosmeticUnlock,
+} from "@/game/cosmetics/unlock";
+export {
   CARD_BACKS,
+  CARD_BACK_COSMETIC_KIND,
   DEFAULT_CARD_BACK_ID,
   PENDING_CARD_BACK_IDS,
   UNLOCKABLE_CARD_BACK_IDS,
@@ -145,4 +154,19 @@ export {
   cardBackSrc,
   type CardBackSkin,
 } from "@/game/cosmetics/cardBacks";
-export { DEFAULT_SHIP_FRAME_ID, SHIP_FRAMES, SHIP_FRAME_COSMETIC_KIND, type ShipFrameSkin } from "@/game/cosmetics/shipFrames";
+export {
+  DEFAULT_SHIP_FRAME_ID,
+  SHIP_FRAMES,
+  SHIP_FRAME_COSMETIC_KIND,
+  UNLOCKABLE_SHIP_FRAME_IDS,
+  shipFrameById,
+  type ShipFrameSkin,
+} from "@/game/cosmetics/shipFrames";
+export {
+  COLLECTABLE_FAMILIES,
+  collectablePrice,
+  purchasableCollectables,
+  unlockedCollectables,
+  type CollectableFamily,
+  type CollectableGrant,
+} from "@/game/cosmetics/collectables";

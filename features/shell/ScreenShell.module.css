@@ -379,22 +379,39 @@
 
 /* Solde de Tides : la pièce puis le nombre, sans répéter le mot — l'icône
    le dit, et le titre au survol le confirme. */
-.accountTides {
+/*
+ * LE PORTEFEUILLE — les deux monnaies côte à côte, séparées du niveau par
+ * le même filet qu'avant. Les Jetons de Préconstruit y rejoignent les
+ * Tides : c'est la seule façon de débloquer un deck, et le joueur n'avait
+ * aucun moyen de savoir combien il lui en restait sans ouvrir son profil.
+ */
+.accountWallet {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: clamp(8px, 0.8vw, 14px);
   padding-left: clamp(7px, 0.7vw, 11px);
   border-left: 1px solid rgba(233, 226, 209, 0.12);
+}
+
+.accountTides,
+.accountTokens {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-family: var(--cb-font-display);
-  font-size: clamp(12px, 0.98vw, 15px);
+  font-size: clamp(13px, 1.05vw, 16px);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+.accountTides {
   color: #e5cf9e;
 }
 
-.tideCoin {
-  flex: 0 0 auto;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+/* Le Jeton se distingue des Tides par sa teinte : deux monnaies côte à côte
+   qui se liraient pareil seraient deux nombres sans sens. */
+.accountTokens {
+  color: #bfe3ea;
 }
 
 /* ---------- Recherche ---------- */

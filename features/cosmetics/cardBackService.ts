@@ -1,5 +1,5 @@
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
-import { CARD_BACKS, DEFAULT_CARD_BACK_ID, cardBackById, type CardBackSkin } from "@/game";
+import { CARD_BACKS, DEFAULT_CARD_BACK_ID, cardBackById, isFree, type CardBackSkin } from "@/game";
 
 /**
  * Dos de carte — lecture et équipement côté SERVEUR. Pas de `"use server"` :
@@ -31,7 +31,7 @@ export interface CardBackCollection {
 export async function loadCardBacks(userId: string | null): Promise<CardBackCollection> {
   const base = (owned: (id: string) => boolean, equipped: string): CardBackCollection => ({
     equipped,
-    options: CARD_BACKS.map((back) => ({ ...back, owned: back.free || owned(back.id), equipped: back.id === equipped })),
+    options: CARD_BACKS.map((back) => ({ ...back, owned: isFree(back) || owned(back.id), equipped: back.id === equipped })),
   });
 
   if (!userId) return base(() => false, DEFAULT_CARD_BACK_ID);
@@ -81,7 +81,7 @@ export async function equipCardBackFor(userId: string, cardBackId: string): Prom
       p_cosmetic_kind: COSMETIC_KIND,
       // Le dos par défaut n'est jamais stocké : l'équiper, c'est n'avoir
       // aucune ligne équipée.
-      p_cosmetic_id: skin.free ? null : skin.id,
+      p_cosmetic_id: isFree(skin) ? null : skin.id,
     });
 
     if (error) return { ok: false, error: error.message };

@@ -39,6 +39,14 @@ const RULES = [
   // Icônes de catégorie de quête : affichées à ~40 px, jamais plus de 96 px
   // sur un écran à forte densité. Qualité haute, elles ont des bords nets.
   { match: /\/quests\//, maxSize: 256, quality: 92 },
+  // Icônes d'interface (pièce de Tides, Jeton de Préconstruit) : affichées
+  // de 13 à ~64 px. Qualité haute, ce sont des objets détourés sur alpha.
+  { match: /\/ui\/icons\//, maxSize: 256, quality: 92 },
+  // Hublot de Marée : le cadre et les quatre mers ne dépassent jamais la
+  // bande centrale (~240 px). Le cadre monte en qualité — ses filets sont
+  // fins et ses bords transparents.
+  { match: /\/board\/tide-porthole-frame\./, maxSize: 512, quality: 92 },
+  { match: /\/board\/tide-portholes\//, maxSize: 512, quality: 85 },
   { match: /\/(menu|ships|boosters|collection|decks|board)\//, maxSize: 1600, quality: 85 },
   { match: /.*/, maxSize: 1280, quality: 85 },
 ];

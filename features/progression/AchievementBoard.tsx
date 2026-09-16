@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { ProfileAchievement } from "@/features/progression/profileActions";
-import { TideCoin } from "@/features/shell/HeaderPlayer";
+import { TideCoin } from "@/features/shell/GameIcons";
 import styles from "@/features/progression/AchievementBoard.module.css";
 
 /** Icône peinte de chaque exploit (`public/assets/exploits/`). */

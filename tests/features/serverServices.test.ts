@@ -194,7 +194,11 @@ describe("revente", () => {
     expect(call?.args.p_quantity).toBe(2);
     expect(typeof call?.args.p_unit_value).toBe("number");
     expect(call?.args.p_unit_value as number).toBeGreaterThan(0);
-    expect(call?.args.p_min_keep as number).toBeGreaterThanOrEqual(1);
+    // Revente À LA CARTE : aucun plancher. Le joueur a choisi la quantité
+    // sur la fiche et confirmé, il peut aller jusqu'au dernier exemplaire.
+    // Le plancher n'existe plus que pour « Revendre le surplus », vérifié
+    // par le test suivant (chaque ligne y porte son `keep`).
+    expect(call?.args.p_min_keep).toBe(0);
   });
 
   it("revend le surplus avec les valeurs du catalogue et ignore l'inconnu", async () => {
@@ -209,6 +213,9 @@ describe("revente", () => {
     const items = call?.args.p_items as Array<Record<string, unknown>>;
     expect(items).toHaveLength(1);
     expect(items[0]).toMatchObject({ card_id: "murene-aveugle", quantity: 2 });
+    // Le ménage en masse, lui, GARDE de quoi jouer la carte : c'est ce qui
+    // le distingue de la revente à la carte, sans plancher.
+    expect(items[0]!.keep as number).toBeGreaterThanOrEqual(1);
   });
 
   it("refuse une liste vide avant d'atteindre la base", async () => {

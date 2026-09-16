@@ -19,7 +19,7 @@
  *   ┌─────────┬──────────────────────────┬─────────────┬────────┐
  *   │   ─────────── main adverse (dos, coupée en haut) ─────── Menu │
  *   │ navire  │  5 emplacements          │ pioche · ☠  │ Tour   │
- *   │ tuile ▲ │  piste de Marée          │             │ Journal│
+ *   │ tuile ▲ │  piste de Marée          │  hublot     │ Journal│
  *   │ navire  │  5 emplacements          │ pioche · ☠  │ Phase  │
  *   │   ─────────── main (éventail, coupée en bas) ──────── joueur │
  *   └─────────┴──────────────────────────┴─────────────┴────────┘
@@ -436,10 +436,14 @@
  * hauteur de rangée. Arche et plaque : géométrie de
  * `features/ships/shipFrame.ts` (zone passée en style inline).
  * ────────────────────────────────────────────────────────────── */
+/* Le format et la hauteur de plaque sont posés EN LIGNE par le composant,
+   depuis la géométrie du cadre équipé (`features/ships/shipFrame.ts`) : les
+   quinze cadres n'ont ni le même ratio ni la même arche. Les valeurs ci-
+   dessous ne sont donc que des replis, pour le cadre d'origine. */
 .ship {
   position: relative;
   height: 100%;
-  aspect-ratio: 512 / 640;
+  aspect-ratio: var(--frame-aspect, 0.8);
   max-width: 100%;
   filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.6));
 }
@@ -466,7 +470,7 @@
    30 % de largeur chacun, espacés de 10 % — comme `ShipInstrumentCluster`). */
 .shipGauges {
   position: absolute;
-  top: 74%;
+  top: var(--plate-top, 74%);
   left: 50%;
   display: flex;
   gap: 10%;
@@ -784,6 +788,78 @@
   aspect-ratio: 1040 / 1254;
   max-width: 100%;
   filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.6));
+}
+
+/* ── HUBLOT DE MARÉE — colonne des piles, bande centrale ─────────
+ * Le cadre (`tide-porthole-frame.webp`, 1254² détouré) porte une fenêtre
+ * ronde MESURÉE dans l'image : centre 49,5 % / 49,8 %, diamètre utile
+ * 53 %. La mer est posée dessous à 54 %, un cheveu plus large, pour que
+ * le biseau du cuivre morde sur l'eau au lieu de laisser un liseré vide.
+ * Toucher à ces valeurs sans remesurer l'image décentre la mer.
+ * ────────────────────────────────────────────────────────────── */
+.centerPorthole {
+  display: flex;
+  align-self: stretch;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
+.porthole {
+  position: relative;
+  height: min(100%, var(--cargo-w));
+  aspect-ratio: 1;
+  max-width: 100%;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.7));
+}
+
+.portholeWindow {
+  position: absolute;
+  top: 49.8%;
+  left: 49.5%;
+  width: 54%;
+  height: 54%;
+  transform: translate(-50%, -50%);
+  overflow: hidden;
+  border-radius: 50%;
+  /* Nuit de fond : le disque n'est jamais vide, même image non chargée. */
+  background: #07111c;
+}
+
+/* Les quatre mers restent montées et se relaient en fondu, comme le décor. */
+.portholeSea {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 1200ms ease-in-out;
+  user-select: none;
+}
+
+.portholeSeaOn {
+  opacity: 1;
+}
+
+/* Le verre : un reflet en écharpe et un assombrissement vers le bord, pour
+   que la mer paraisse DERRIÈRE une vitre et non collée dans un trou. */
+.portholeGlass {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    linear-gradient(150deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.06) 22%, rgba(255, 255, 255, 0) 45%),
+    radial-gradient(closest-side, rgba(0, 0, 0, 0) 58%, rgba(2, 8, 16, 0.55) 100%);
+  box-shadow: inset 0 0 12px rgba(2, 8, 16, 0.75);
+}
+
+.portholeFrame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  user-select: none;
 }
 
 /* Piste de Marée — même dessin que `TideProgressBar` de l'ancien board,

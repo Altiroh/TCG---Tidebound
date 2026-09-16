@@ -91,9 +91,15 @@
   transition: background-color 160ms ease-out, border-color 160ms ease-out;
 }
 
+/* Un rayon est un lien : il ne doit pas se lire comme du texte souligné. */
+a.section {
+  text-decoration: none;
+}
+
 .section:disabled {
   cursor: default;
   color: rgba(230, 220, 198, 0.6);
+  opacity: 0.6;
 }
 
 .section[data-active="true"] {

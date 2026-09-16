@@ -3,7 +3,7 @@
 import { CARD_BACKS, cardBackSrc } from "@/game";
 import type { LevelRewardItem, LoginRewardItem } from "@/game/progression";
 import { getBoosterPackVisual } from "@/features/boosters/opening/boosterPackVisuals";
-import { TideCoin } from "@/features/shell/HeaderPlayer";
+import { PreconToken, TideCoin } from "@/features/shell/GameIcons";
 import styles from "@/features/progression/RewardIcon.module.css";
 
 /** Une récompense, qu'elle vienne d'un palier de niveau ou d'une escale de connexion. */
@@ -17,9 +17,10 @@ function rarityOf(item: RewardItem): string | undefined {
 
 /**
  * Icône d'une récompense — les VRAIS visuels du jeu, jamais un pictogramme
- * de logiciel : la pièce de Tides du bandeau, le sachet du booster, les
- * icônes peintes des quêtes pour les cartes et les decks, le dos de carte
- * lui-même pour un dos, le cadre du Navire pour un cosmétique de Navire.
+ * de logiciel : les boulons de Tides du bandeau, la capsule du Jeton de
+ * Préconstruit, le sachet du booster, l'icône peinte des quêtes pour une
+ * carte, le dos de carte lui-même pour un dos, le cadre du Navire pour un
+ * cosmétique de Navire.
  *
  * Seuls l'XP, le titre et l'avatar n'ont pas d'asset : un dessin simple au
  * trait, dans la même encre que le reste.
@@ -63,8 +64,7 @@ export function RewardIcon({ item, size = 40 }: { item: RewardItem; size?: numbe
     case "preconToken":
       return (
         <span className={styles.icon} style={style} data-kind="token">
-          {/* eslint-disable-next-line @next/next/no-img-element -- icône peinte des quêtes */}
-          <img src="/assets/quests/icon-cat-deck.webp" alt="" draggable={false} className={styles.image} />
+          <PreconToken size={Math.round(size * 0.78)} />
         </span>
       );
     case "cosmetic":

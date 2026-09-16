@@ -33,6 +33,7 @@ import { ProfileIdentity } from "@/features/progression/ProfileIdentity";
 import { RewardIcon } from "@/features/progression/RewardIcon";
 import { RewardReveal, type RevealedLevel } from "@/features/progression/RewardReveal";
 import { AchievementBoard } from "@/features/progression/AchievementBoard";
+import { PreconToken, TideCoin } from "@/features/shell/GameIcons";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/progression/Profile.module.css";
 import { playButtonClick } from "@/lib/sound";
@@ -379,11 +380,17 @@ function LogbookTab({ profile, onRefresh, onShowRewards }: { profile: ProfileSum
 
         <div className={styles.stats}>
           <span className={styles.stat}>
-            <span className={styles.statValue}>{profile.balance}</span>
+            <span className={styles.statValue}>
+              <TideCoin size={20} />
+              {profile.balance}
+            </span>
             <span className={styles.statLabel}>Tides</span>
           </span>
           <span className={styles.stat}>
-            <span className={styles.statValue}>{profile.preconTokens}</span>
+            <span className={styles.statValue}>
+              <PreconToken size={20} />
+              {profile.preconTokens}
+            </span>
             <span className={styles.statLabel}>Jetons de Préconstruit</span>
           </span>
           <span className={styles.stat}>
@@ -407,7 +414,7 @@ function LogbookTab({ profile, onRefresh, onShowRewards }: { profile: ProfileSum
 
         {profile.preconTokens > 0 && (
           <Link href="/decks" className={game.primary} onClick={() => playButtonClick()}>
-            Dépenser un Jeton →
+            <PreconToken size={16} /> Dépenser un Jeton →
           </Link>
         )}
       </section>

@@ -9,6 +9,7 @@ import {
   type MatchReward,
 } from "@/game/progression";
 import { syncAchievements } from "@/features/achievements/achievementService";
+import { syncCollectables } from "@/features/cosmetics/collectablesService";
 
 /**
  * Octroi des récompenses de partie — module SERVEUR, volontairement sans
@@ -133,9 +134,13 @@ export async function awardMatchReward({
     }
     if (!data?.granted) return null;
 
-    // Exploits : recalculés depuis les compteurs à jour, jamais depuis
-    // l'événement — un exploit manqué se rattrape à la partie suivante.
+    // Exploits ET Collectables : recalculés depuis les compteurs à jour,
+    // jamais depuis l'événement — ce qui est manqué se rattrape à la partie
+    // suivante. Les deux suivent le même modèle et se synchronisent
+    // ensemble ; une victoire, une défaite ou un niveau peut débloquer l'un
+    // comme l'autre.
     await syncAchievements(userId);
+    await syncCollectables(userId);
 
     return { ...reward, playStreak: data.play_streak ?? 0 };
   } catch (error) {

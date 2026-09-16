@@ -1,10 +1,9 @@
+"use client";
+
+import type { CSSProperties } from "react";
 import styles from "@/features/match/table/Table.module.css";
-import {
-  SHIP_FRAME_SRC,
-  SHIP_ILLUSTRATION_CLIP,
-  SHIP_ILLUSTRATION_ZONE,
-  shipIllustrationUrl,
-} from "@/features/ships/shipFrame";
+import { useShipFrameGeometry } from "@/features/cosmetics/ShipFrameProvider";
+import { shipIllustrationUrl } from "@/features/ships/shipFrame";
 
 export interface ShipView {
   /** Nom lisible, pour les lecteurs d'écran uniquement. */
@@ -84,20 +83,22 @@ function ShipGauge({ kind, value, max }: { kind: keyof typeof GAUGE_ASSETS; valu
  * import de `@/game`).
  */
 export function TableShip({ name, illustration, hull, maxHull, reason, maxReason, deraisonDamage = 0 }: ShipView) {
+  const frame = useShipFrameGeometry();
   return (
     <div
       className={styles.ship}
+      style={{ "--frame-aspect": frame.aspect, "--plate-top": frame.plateTop } as CSSProperties}
       role="img"
       aria-label={`${name} — Ancrage ${hull}/${maxHull}, Raison ${reason}/${maxReason}`}
     >
-      <div className={styles.shipArt} style={{ ...SHIP_ILLUSTRATION_ZONE, clipPath: SHIP_ILLUSTRATION_CLIP }}>
+      <div className={styles.shipArt} style={{ ...frame.zone, clipPath: frame.clip }}>
         {illustration && (
           // eslint-disable-next-line @next/next/no-img-element -- asset local, taille pilotée par la grille
           <img src={shipIllustrationUrl(illustration)} alt="" draggable={false} className={styles.fill} />
         )}
       </div>
       {/* eslint-disable-next-line @next/next/no-img-element -- cadre décoratif */}
-      <img src={SHIP_FRAME_SRC} alt="" aria-hidden draggable={false} className={styles.shipFrame} />
+      <img src={frame.src} alt="" aria-hidden draggable={false} className={styles.shipFrame} />
       <div className={styles.shipGauges}>
         <ShipGauge kind="anchor" value={hull} max={maxHull} />
         <ShipGauge kind="reason" value={reason} max={maxReason} />

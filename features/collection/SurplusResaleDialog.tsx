@@ -7,7 +7,7 @@ import { recycleSurplus } from "@/features/collection/recycleActions";
 import type { SurplusLine } from "@/features/collection/recycleValue";
 import { cardIllustrationUrl } from "@/features/decks/nameplateArt";
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
-import { TideCoin } from "@/features/shell/HeaderPlayer";
+import { TideCoin } from "@/features/shell/GameIcons";
 import { Dialog } from "@/features/shell/Dialog";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/collection/SurplusResale.module.css";

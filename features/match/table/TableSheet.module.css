@@ -222,7 +222,7 @@
 .shipFrame {
   position: relative;
   width: 100%;
-  aspect-ratio: 512 / 640;
+  aspect-ratio: var(--frame-aspect, 0.8);
 }
 
 .gauges {

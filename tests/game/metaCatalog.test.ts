@@ -19,6 +19,7 @@ import {
   deckOwnership,
   isBorrowedDeckId,
   isPreconDeckId,
+  isFree,
   ownershipLabel,
   RULES,
   validateDeckList,
@@ -27,9 +28,11 @@ import {
 const NO_PROGRESS: AchievementStats = {
   level: 1,
   wins: 0,
+  losses: 0,
   matchesPlayed: 0,
   boostersOpened: 0,
   distinctCardsOwned: 0,
+  ownedCardIds: [],
   ownsAbyssalCard: false,
   preconDecksUnlocked: 0,
   decksFullyOwned: 0,
@@ -166,7 +169,7 @@ describe("possession d'un deck — possédé contre prêté (§3)", () => {
 describe("dos de carte", () => {
   it("le dos par défaut est gratuit et en tête du catalogue", () => {
     expect(CARD_BACKS[0]?.id).toBe(DEFAULT_CARD_BACK_ID);
-    expect(CARD_BACKS[0]?.free).toBe(true);
+    expect(CARD_BACKS[0] && isFree(CARD_BACKS[0])).toBe(true);
   });
 
   it("un identifiant inconnu retombe sur le dos par défaut plutôt que de casser l'affichage", () => {

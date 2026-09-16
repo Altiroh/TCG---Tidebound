@@ -19,6 +19,8 @@ export interface ProgressionSummary {
   view: ProgressionView;
   /** Solde de Tides, affiché à côté du niveau. */
   balance: number;
+  /** Jetons de Préconstruit — la seconde monnaie du bandeau. */
+  preconTokens: number;
   matchesPlayed: number;
   pvpWins: number;
   /** Pseudo affiché à côté du niveau (`profiles.display_name`), repli sur l'e-mail. `null` hors connexion. */
@@ -45,6 +47,7 @@ const SIGNED_OUT: ProgressionSummary = {
   isSignedIn: false,
   view: progressionView(0),
   balance: 0,
+  preconTokens: 0,
   matchesPlayed: 0,
   pvpWins: 0,
   displayName: null,
@@ -104,6 +107,7 @@ export async function fetchProgression(): Promise<ProgressionSummary> {
       isSignedIn: true,
       view: progressionView(progression.data?.xp_total ?? 0),
       balance: currency.data?.balance ?? 0,
+      preconTokens: progression.data?.precon_tokens ?? 0,
       matchesPlayed: progression.data?.matches_played ?? 0,
       pvpWins: progression.data?.pvp_wins ?? 0,
       // Repli sur l'e-mail comme le menu principal : mieux vaut un identifiant

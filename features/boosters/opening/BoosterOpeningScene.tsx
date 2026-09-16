@@ -94,6 +94,10 @@ function useSceneTimers() {
 
 function timingVariables(timings: BoosterOpeningTimings, cardCount: number): CSSProperties {
   const vars: Record<`--${string}`, string> = {
+    // Le nombre de cartes est une DIMENSION de la scène, pas seulement une
+    // boucle React : c'est lui qui borne l'unité `--u`, pour que la rangée
+    // posée tienne à l'écran quel que soit le booster ouvert.
+    "--count": `${cardCount}`,
     "--t-backdrop": `${timings.backdropIn}ms`,
     "--t-pack-enter": `${timings.packEnter}ms`,
     "--t-tension": `${timings.tension}ms`,

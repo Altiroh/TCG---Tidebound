@@ -15,11 +15,15 @@ function seededRandom(seed: number): () => number {
 const CATALOGUE_IDS = new Set(CORE_SET.map((definition) => definition.id));
 
 describe("drawTestBoosterCards", () => {
-  it("tire 5 cartes distinctes du catalogue pour le booster standard", () => {
+  // Huit, comme les `booster_slots` du vrai booster standard : le tirage de
+  // test sert à régler la MISE EN SCÈNE, il doit donc en poser autant que
+  // l'ouverture réelle — sinon il valide une rangée qui tient à l'écran
+  // alors que la vraie déborde.
+  it("tire 8 cartes distinctes du catalogue pour le booster standard", () => {
     for (let seed = 1; seed <= 50; seed += 1) {
       const cards = drawTestBoosterCards("standard", seededRandom(seed));
-      expect(cards).toHaveLength(5);
-      expect(new Set(cards.map((card) => card.cardId)).size).toBe(5);
+      expect(cards).toHaveLength(8);
+      expect(new Set(cards.map((card) => card.cardId)).size).toBe(8);
       for (const card of cards) {
         expect(CATALOGUE_IDS.has(card.cardId!)).toBe(true);
       }

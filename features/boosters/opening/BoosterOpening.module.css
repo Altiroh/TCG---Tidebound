@@ -27,7 +27,44 @@
  */
 
 .scene {
-  --u: min(1vh, 0.8vw);
+  /*
+   * Nombre de cartes de CE booster, posé en ligne par la scène. La valeur
+   * par défaut est celle du booster réel (8 emplacements, cf. la migration
+   * `20260916120000`) : si elle manquait, mieux vaut trop de place que pas
+   * assez.
+   */
+  --count: 8;
+  /* Marge minimale de chaque côté de la rangée, pour que l'éventail ne
+     vienne pas lécher le bord de l'écran. */
+  --scene-gutter: clamp(10px, 2.5vw, 48px);
+  /*
+   * Agrandissement maximal d'une carte À SA PLACE : celui du retournement
+   * (`--reveal-scale-flip`, 1,34), plus la marge du halo de rareté. C'est
+   * cette taille-là qui doit tenir, et non celle de la carte posée — la
+   * Rare et l'Abyssale tombent dans les deux DERNIERS emplacements, donc au
+   * bord, et c'est précisément là qu'on ne veut pas les couper.
+   *
+   * Le gros plan (× 1,95) n'entre pas dans le calcul : il ramène la carte
+   * au centre de l'écran (`cardShowcaseIn`), il ne grossit pas sur place.
+   */
+  --card-max-scale: 1.5;
+  /*
+   * Largeur à réserver, en u : (n − 1) pas + une carte à sa taille de gros
+   * plan.
+   */
+  --row-w-u: calc((var(--count) - 1) * var(--slot-step-u) + var(--card-w-u) * var(--card-max-scale));
+  /*
+   * L'unité de la scène. Bornée par la hauteur (1 % de la hauteur utile) ET
+   * par la largeur qu'il faut pour poser toute la rangée.
+   *
+   * La borne de largeur était un `0.8vw` fixe, qui ignorait le nombre de
+   * cartes : avec les 8 emplacements du booster réel, la rangée faisait
+   * 197 u, soit 1,97 × la hauteur — elle DÉBORDAIT de tout écran moins
+   * large que 1,97:1, donc de tout 16:9, et `overflow: hidden` coupait
+   * simplement les cartes des deux bords. Le test d'animation ne le
+   * montrait pas : son tirage local n'avait que 5 cartes.
+   */
+  --u: min(1vh, calc((100vw - 2 * var(--scene-gutter)) / var(--row-w-u)));
   /* Hauteur du sachet ouvert, en u. */
   --pack-h-u: 50;
   /* Décalage vertical du centre du sachet (vers le bas) : laisse la place aux cartes qui sortent par le haut. */
@@ -78,7 +115,15 @@
   position: fixed;
   inset: 0;
   z-index: 200;
-  overflow: hidden;
+  /*
+   * `clip` et non `hidden` : `hidden` fait de la scène une BOÎTE DÉFILANTE.
+   * Les halos de rareté débordent d'un cheveu à droite, et il suffisait de
+   * révéler une carte du bord pour que le navigateur « fasse défiler
+   * jusqu'à l'élément focalisé » — toute la scène glissait de quelques
+   * dizaines de pixels et ne revenait jamais, coupant la première carte à
+   * gauche. `clip` rogne sans jamais créer ce défilement.
+   */
+  overflow: clip;
   isolation: isolate;
   outline: none;
   color: var(--ivory);
@@ -96,7 +141,7 @@
  */
 @media (orientation: portrait) {
   .scene {
-    --u: min(0.62vh, 0.84vw);
+    --u: min(0.62vh, calc((100vw - 2 * var(--scene-gutter)) / var(--row-w-u)));
     --pack-h-u: 66;
     --pack-y-u: 6;
     --card-w-u: 21;
@@ -104,12 +149,18 @@
   }
 }
 
+/*
+ * Téléphone en portrait : la largeur est la seule contrainte qui compte, et
+ * huit cartes n'y tiennent qu'en se chevauchant franchement. On resserre le
+ * PAS (et non la carte) — mieux vaut des cartes lisibles en partie masquées
+ * qu'une rangée entière de vignettes.
+ */
 @media (orientation: portrait) and (max-width: 600px) {
   .scene {
-    --u: min(0.62vh, 1.2vw);
+    --u: min(0.62vh, calc((100vw - 2 * var(--scene-gutter)) / var(--row-w-u)));
     --pack-h-u: 70;
     --card-w-u: 19;
-    --slot-step-u: 15;
+    --slot-step-u: 11;
     --fan-deg: 2.2;
   }
 }

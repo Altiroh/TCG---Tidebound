@@ -16,16 +16,28 @@ import { TIDE_REWARD } from "@/game/economy/constants";
  * perdus, contrairement à un octroi « au moment où ça arrive ».
  */
 
-/** Compteurs à partir desquels tout exploit est évalué. */
+/**
+ * Compteurs à partir desquels tout exploit est évalué — et, depuis, les
+ * conditions des Collectables (`game/cosmetics/unlock.ts`), qui suivent le
+ * même modèle. UN seul jeu de compteurs, donc UNE seule lecture en base
+ * (`readAchievementStats`) pour les deux.
+ */
 export interface AchievementStats {
   level: number;
   /** Victoires toutes catégories (PvP et bot). */
   wins: number;
+  /** Défaites cumulées — compteur propre, et non `matchesPlayed - wins` :
+      `wins` ne compte que les victoires PvP, la soustraction gonflerait les
+      défaites de toutes les parties gagnées contre le bot. */
+  losses: number;
   matchesPlayed: number;
   /** Boosters effectivement ouverts. */
   boostersOpened: number;
   /** Cartes DISTINCTES possédées. */
   distinctCardsOwned: number;
+  /** Identifiants des cartes possédées — pour les conditions de maîtrise
+      d'archétype, qui demandent des cartes PRÉCISES et non un compte. */
+  ownedCardIds: readonly string[];
   /** `true` si au moins une carte Abyssale figure dans la collection. */
   ownsAbyssalCard: boolean;
   /** Préconstruits débloqués avec un Jeton. */

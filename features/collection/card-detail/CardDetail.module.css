@@ -660,7 +660,58 @@
 .resaleActions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
+}
+
+/* Combien d'exemplaires — un pas à pas plutôt qu'un champ libre : on ne
+   tape pas un nombre pour vendre trois cartes, et il n'y a rien à valider
+   au clavier. Les bornes (1 … possédés) sont portées par les boutons. */
+.resaleQty {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.resaleQtyStep {
+  min-width: 2em;
+  padding: 0.45em 0.6em;
+  border: 0;
+  background: rgba(10, 30, 44, 0.6);
+  font: inherit;
+  font-size: clamp(12px, 1.4vh, 14px);
+  line-height: 1;
+  color: var(--ink);
+  cursor: pointer;
+  transition: background-color 140ms ease-out, color 140ms ease-out;
+}
+
+.resaleQtyStep:hover:not(:disabled) {
+  background: rgba(16, 52, 72, 0.9);
+  color: #fff;
+}
+
+.resaleQtyStep:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.resaleQtyStep:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.resaleQtyValue {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.7em;
+  border-inline: 1px solid var(--line);
+  font-size: clamp(11px, 1.3vh, 13px);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  white-space: nowrap;
 }
 
 .resaleButton {

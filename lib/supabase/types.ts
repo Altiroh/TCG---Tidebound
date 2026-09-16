@@ -697,6 +697,14 @@ export interface Database {
         Args: { p_user_id: string; p_cosmetic_kind: string; p_cosmetic_id: string | null };
         Returns: { ok: boolean; error?: string; cosmetic_id?: string | null };
       };
+      grant_cosmetics: {
+        Args: { p_user_id: string; p_cosmetics: unknown };
+        Returns: { ok: boolean; granted: string[] };
+      };
+      purchase_cosmetic: {
+        Args: { p_user_id: string; p_cosmetic_kind: string; p_cosmetic_id: string; p_label: string; p_price: number };
+        Returns: { ok: boolean; error?: string; balance?: number; cosmetic_id?: string };
+      };
     };
     Enums: {
       card_type: CardTypeEnum;

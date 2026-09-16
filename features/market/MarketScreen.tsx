@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { GameScreen } from "@/features/shell/GameScreen";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/market/Market.module.css";
-import { TideCoin } from "@/features/shell/HeaderPlayer";
+import { TideCoin } from "@/features/shell/GameIcons";
 import { ScreenToast, type ScreenToastMessage } from "@/features/shell/ScreenToast";
 import { purchaseBooster, type BoosterInventory, type BoosterInventoryEntry } from "@/features/boosters/actions";
 import { MAX_PURCHASE_QUANTITY } from "@/features/boosters/constants";
@@ -25,12 +25,24 @@ type Cart = Record<string, number>;
 /** Trois socles par ponton (`market/pedestals.webp`) : au-delà, un ponton de plus en dessous. */
 const PACKS_PER_PLATE = 3;
 
-/** Rayons de la boutique. Seuls les boosters sont en vente aujourd'hui : les autres sont annoncés, pas cachés. */
-const SECTIONS: Array<{ id: string; label: string; icon: ReactNode; available: boolean }> = [
+/*
+ * Rayons de la boutique.
+ *
+ * `href` est la DESTINATION du rayon. Tous les rayons ne se tiennent pas
+ * dans cet écran : les decks se choisissent dans Decks, les cosmétiques se
+ * regardent et s'achètent dans Collectables, à côté de ceux qu'on possède
+ * déjà. Les y envoyer vaut mieux que de recopier ces deux vitrines ici —
+ * et un rayon qui n'amène nulle part ne sert à rien.
+ *
+ * Un rayon sans `href` est annoncé mais pas ouvert : il reste visible et
+ * désactivé, parce qu'une boutique dont on ne devine pas le programme
+ * n'appelle pas à revenir.
+ */
+const SECTIONS: Array<{ id: string; label: string; icon: ReactNode; href?: string }> = [
   {
     id: "boosters",
     label: "Boosters",
-    available: true,
+    href: "/market",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" aria-hidden>
         <path d="M6 3.5h12l-.8 2 .8 2v11l-.8 2 .8 2H6l.8-2-.8-2v-11l.8-2z" stroke="currentColor" strokeWidth={1.5} strokeLinejoin="round" />
@@ -41,7 +53,7 @@ const SECTIONS: Array<{ id: string; label: string; icon: ReactNode; available: b
   {
     id: "decks",
     label: "Decks",
-    available: false,
+    href: "/decks",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" aria-hidden>
         <rect x="4" y="6" width="11" height="15" rx="1.6" stroke="currentColor" strokeWidth={1.5} transform="rotate(-10 9.5 13.5)" />
@@ -52,7 +64,7 @@ const SECTIONS: Array<{ id: string; label: string; icon: ReactNode; available: b
   {
     id: "cosmetics",
     label: "Cosmétiques",
-    available: false,
+    href: "/collectables",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" aria-hidden>
         <path d="M7 19c-3-2.5-4-6.5-2.5-10.5M17 19c3-2.5 4-6.5 2.5-10.5M4.5 8.5L3 6.5M19.5 8.5L21 6.5M5.5 13L3.5 12.5M18.5 13l2-.5M8 17.5l-1.8 1M16 17.5l1.8 1" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
@@ -63,7 +75,6 @@ const SECTIONS: Array<{ id: string; label: string; icon: ReactNode; available: b
   {
     id: "currency",
     label: "Monnaie",
-    available: false,
     icon: (
       <svg viewBox="0 0 24 24" fill="none" aria-hidden>
         <ellipse cx="9" cy="16.5" rx="5.5" ry="2.5" stroke="currentColor" strokeWidth={1.5} />
@@ -76,7 +87,6 @@ const SECTIONS: Array<{ id: string; label: string; icon: ReactNode; available: b
   {
     id: "offers",
     label: "Offres spéciales",
-    available: false,
     icon: (
       <svg viewBox="0 0 24 24" fill="none" aria-hidden>
         <rect x="4" y="9" width="16" height="11" rx="1.4" stroke="currentColor" strokeWidth={1.5} />
@@ -205,21 +215,35 @@ export function MarketScreen({ inventory }: MarketScreenProps) {
           <div className={styles.sideInner}>
             <h1 className={styles.sideTitle}>Market</h1>
             <nav className={styles.sections}>
-              {SECTIONS.map((section) => (
-                <button
-                  key={section.id}
-                  type="button"
-                  className={styles.section}
-                  data-active={section.id === "boosters" ? "true" : undefined}
-                  disabled={!section.available}
-                  aria-current={section.id === "boosters" ? "page" : undefined}
-                  title={section.available ? undefined : "Bientôt disponible"}
-                >
-                  <span className={styles.sectionIcon}>{section.icon}</span>
-                  <span className={styles.sectionLabel}>{section.label}</span>
-                  {!section.available && <span className="sr-only">(bientôt disponible)</span>}
-                </button>
-              ))}
+              {SECTIONS.map((section) => {
+                const active = section.id === "boosters";
+                const inner = (
+                  <>
+                    <span className={styles.sectionIcon}>{section.icon}</span>
+                    <span className={styles.sectionLabel}>{section.label}</span>
+                    {!section.href && <span className="sr-only">(bientôt disponible)</span>}
+                  </>
+                );
+                if (!section.href) {
+                  return (
+                    <button key={section.id} type="button" className={styles.section} disabled title="Bientôt disponible">
+                      {inner}
+                    </button>
+                  );
+                }
+                return (
+                  <Link
+                    key={section.id}
+                    href={section.href}
+                    className={styles.section}
+                    data-active={active ? "true" : undefined}
+                    aria-current={active ? "page" : undefined}
+                    onClick={() => playButtonClick()}
+                  >
+                    {inner}
+                  </Link>
+                );
+              })}
             </nav>
 
             {inventory.isSignedIn && (

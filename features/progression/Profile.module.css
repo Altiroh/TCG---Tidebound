@@ -286,7 +286,12 @@
   gap: 2px;
 }
 
+/* Les deux premiers compteurs portent leur jeton (Tides, Préconstruit) :
+   `flex` plutôt qu'un simple texte pour que l'icône se cale sur le chiffre. */
 .statValue {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-family: var(--font-card-title), Georgia, serif;
   font-size: clamp(16px, 1.6vw, 22px);
   font-weight: 700;

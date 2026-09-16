@@ -10,6 +10,7 @@ import { notifyProgressionChanged } from "@/features/progression/progressionSync
 import { shipNameOf } from "@/features/ships/ShipPortrait";
 import { ArtPlate } from "@/features/shell/ArtPlate";
 import { nameplateArtUrl } from "@/features/decks/nameplateArt";
+import { PreconToken } from "@/features/shell/GameIcons";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/decks/DeckCatalog.module.css";
 import { playButtonClick } from "@/lib/sound";
@@ -73,6 +74,7 @@ export function DeckCatalogSection({ catalog, kind }: DeckCatalogSectionProps) {
     <>
       {kind === "precon" && (
         <p className={game.muted}>
+          <PreconToken size={16} />{" "}
           {catalog.preconTokens > 0
             ? `${catalog.preconTokens} Jeton${catalog.preconTokens > 1 ? "s" : ""} de Préconstruit à dépenser — le jeton n'impose aucun deck, prends le temps de comparer.`
             : "Les gros paliers de niveau donnent un Jeton de Préconstruit tous les 10 niveaux. En attendant, tu peux tout consulter et essayer."}
@@ -108,7 +110,9 @@ export function DeckCatalogSection({ catalog, kind }: DeckCatalogSectionProps) {
                   {unlocked ? (
                     <span className={game.tagSuccess}>{kind === "borrowed" ? "Emprunté" : "Débloqué"}</span>
                   ) : kind === "precon" ? (
-                    <span className={catalog.preconTokens > 0 ? game.tagBrass : game.tag}>1 Jeton</span>
+                    <span className={catalog.preconTokens > 0 ? game.tagBrass : game.tag}>
+                      <PreconToken size={13} /> 1 Jeton
+                    </span>
                   ) : catalog.borrowedDeckId ? (
                     <span className={game.tag}>Non choisi</span>
                   ) : (

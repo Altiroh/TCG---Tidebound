@@ -27,6 +27,19 @@ Ces éléments sont la base modulaire du cadre Navire — valeurs, icônes et
 textes se superposent séparément dans l'interface (pas incrustés dans
 l'asset).
 
+## Cadres cosmétiques (`frames/`)
+
+Un fichier par skin de cadre, au **même gabarit** que `ship-frame-empty.webp`
+(fenêtre verticale + plaque de nom vierge) : ils se substituent au cadre
+d'origine sans retouche de code. Le catalogue est
+`game/cosmetics/shipFrames.ts` ; le nom du fichier suit l'identifiant du
+skin, moins le préfixe `ship-skin-`.
+
+`dispo-bientot.webp` n'est pas un skin : c'est le voile posé sur un
+emplacement **caché** de l'écran Collectables (pendant de
+`cards/card-back/dispo-bientot.webp`), tant que sa condition n'est pas
+remplie.
+
 ## Illustrations (`illu/`)
 
 Une image carrée par Navire, référencée par `ShipDefinition.illustration`

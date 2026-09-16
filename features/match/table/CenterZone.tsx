@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import styles from "@/features/match/table/Table.module.css";
 import { TideIndicator } from "@/features/match/table/TideIndicator";
+import { TidePorthole } from "@/features/match/table/TidePorthole";
 import type { TableTideModel } from "@/features/match/table/tableModel";
 
 interface CenterZoneProps {
@@ -11,11 +12,14 @@ interface CenterZoneProps {
 
 /**
  * Bande centrale, entre les deux rangées de plateau :
- *   [ tuile de sens de Marée ] [ piste de Marée ] [ — ]
+ *   [ tuile de sens de Marée ] [ piste de Marée ] [ hublot de Marée ]
  *
  * La tuile tombe dans la colonne des navires, pile entre les deux cadres ;
  * la piste dans la colonne des plateaux, donc centrée sur eux (et non sur
- * l'écran). La colonne des piles reste libre, comme sur l'ancien board.
+ * l'écran) ; le hublot dans la colonne des piles, à mi-hauteur entre la
+ * pioche du joueur et celle de l'adversaire — la seule place du plateau qui
+ * restait libre, et la bonne : les trois éléments de Marée se lisent alors
+ * sur une même ligne, du sens à la mer elle-même.
  *
  * Tuile de sens : les deux faces (`montante` / `descendante`) restent montées et
  * se relaient en pivotant quand l'orientation change — même mouvement que
@@ -23,6 +27,7 @@ interface CenterZoneProps {
  */
 export function CenterZone({ tide, hint }: CenterZoneProps) {
   const rising = tide.orientation === "rising";
+  const current = tide.states[tide.current];
   return (
     <div className={`${styles.zone} ${styles.centerZone}`} data-zone="CenterZone">
       <div className={styles.zoneSlotShip}>
@@ -48,6 +53,9 @@ export function CenterZone({ tide, hint }: CenterZoneProps) {
           <TideIndicator tide={tide} />
           {hint}
         </div>
+      </div>
+      <div className={`${styles.zoneSlotCargo} ${styles.centerPorthole}`}>
+        {current && <TidePorthole state={current.id} label={current.label} />}
       </div>
     </div>
   );

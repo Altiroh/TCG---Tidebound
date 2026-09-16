@@ -6,6 +6,7 @@ import { ownershipLabel, type CatalogDeck, type DeckOwnership } from "@/game";
 import { CardDetailModal } from "@/features/collection/card-detail/CardDetailModal";
 import { Dialog } from "@/features/shell/Dialog";
 import { ShipPortrait, shipNameOf } from "@/features/ships/ShipPortrait";
+import { PreconToken } from "@/features/shell/GameIcons";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/decks/DeckCatalog.module.css";
 
@@ -77,15 +78,27 @@ export function DeckSheet({
   const ownedRatio = ownership.total === 0 ? 0 : ownership.owned / ownership.total;
 
   const canUnlock = kind === "precon" ? tokens >= 1 : !borrowedAlreadyChosen;
-  const unlockLabel = kind === "precon" ? "Débloquer — 1 Jeton de Préconstruit" : "Emprunter ce deck";
+  const unlockLabel =
+    kind === "precon" ? (
+      <>
+        <PreconToken size={15} /> Débloquer — 1 Jeton de Préconstruit
+      </>
+    ) : (
+      "Emprunter ce deck"
+    );
   const unlockHint =
-    kind === "precon"
-      ? tokens >= 1
-        ? `${tokens} Jeton${tokens > 1 ? "s" : ""} disponible${tokens > 1 ? "s" : ""}`
-        : "Aucun Jeton disponible — les gros paliers de niveau en donnent un tous les 10 niveaux."
-      : borrowedAlreadyChosen
-        ? "Tu as déjà choisi ton deck d'emprunt."
-        : "Gratuit, une seule fois : les cartes que tu ne possèdes pas restent prêtées.";
+    kind === "precon" ? (
+      <>
+        <PreconToken size={14} />{" "}
+        {tokens >= 1
+          ? `${tokens} Jeton${tokens > 1 ? "s" : ""} disponible${tokens > 1 ? "s" : ""}`
+          : "Aucun Jeton disponible — les gros paliers de niveau en donnent un tous les 10 niveaux."}
+      </>
+    ) : borrowedAlreadyChosen ? (
+      "Tu as déjà choisi ton deck d'emprunt."
+    ) : (
+      "Gratuit, une seule fois : les cartes que tu ne possèdes pas restent prêtées."
+    );
 
   return (
     <Dialog
