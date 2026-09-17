@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { isAbyssalVariant } from "@/game";
 import { CARD_TYPE_LABELS } from "@/features/match/cardDisplay";
 import { TYPE_FILTERS } from "@/features/collection/cardFilters";
 import {
@@ -157,8 +158,8 @@ export function CollectionSidebar({
                 variant.value === "all"
                   ? true
                   : variant.value === "abyssal"
-                    ? def.subtype === "abyssal"
-                    : def.subtype !== "abyssal"
+                    ? isAbyssalVariant(def)
+                    : !isAbyssalVariant(def)
               )}
               onClick={() => onChange({ variant: variant.value })}
             />

@@ -1,4 +1,4 @@
-import { CORE_SET, type CardDefinition, type CardType } from "@/game";
+import { CORE_SET, isAbyssalVariant, type CardDefinition, type CardType } from "@/game";
 import { normalizeSearch } from "@/features/collection/cardFilters";
 
 /**
@@ -46,7 +46,7 @@ export function costBucket(cost: number): number {
 
 function matchesVariant(def: CardDefinition, variant: VariantFilter): boolean {
   if (variant === "all") return true;
-  const isAbyssal = def.subtype === "abyssal";
+  const isAbyssal = isAbyssalVariant(def);
   return variant === "abyssal" ? isAbyssal : !isAbyssal;
 }
 

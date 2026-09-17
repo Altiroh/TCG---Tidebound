@@ -9,6 +9,10 @@
   display: flex;
   flex-direction: column;
   gap: clamp(14px, 2vh, 22px);
+  /* Jusqu'en bas du panneau, quoi qu'il y ait à montrer : la vitrine est
+     un lieu, pas une liste qui s'arrête où finit son contenu. */
+  box-sizing: border-box;
+  min-height: 100%;
   padding: clamp(14px, 1.8vw, 26px);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -47,7 +51,7 @@
   align-items: center;
   gap: 5px;
   margin: 0;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--ink-dim);
 }
 
@@ -72,24 +76,44 @@
   transition: width 700ms cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
+/* Les branches sont des COLONNES côte à côte, chacune lue de haut en bas,
+   du premier jalon au plus lointain. Trop de branches pour la largeur : la
+   vitrine défile horizontalement, colonne par colonne. */
 .branches {
+  /* Taille des tuiles, partagée par les titres de colonne et les jalons. */
+  --tile: clamp(76px, 7.2vw, 108px);
+
   display: flex;
-  flex-direction: column;
-  gap: clamp(14px, 2.2vh, 26px);
+  flex: 1 1 auto;
+  align-items: flex-start;
+  gap: clamp(18px, 2.4vw, 44px);
+  min-height: 0;
+  padding: 4px 4px 12px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
 }
 
 .branch {
   display: flex;
+  flex: 0 0 auto;
   flex-direction: column;
-  gap: 10px;
+  align-items: center;
+  gap: 14px;
+  scroll-snap-align: start;
 }
 
 .branchTitle {
   display: flex;
   align-items: baseline;
+  justify-content: center;
   gap: 10px;
   margin: 0;
-  font-size: 11px;
+  width: calc(var(--tile) + 40px);
+  text-align: center;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -97,17 +121,19 @@
 }
 
 .branchCount {
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.06em;
   color: var(--ink-faint);
 }
 
 .row {
-  --tile: clamp(72px, 7vw, 104px);
+  /* Longueur du cordage entre deux jalons d'une colonne. */
+  --link: clamp(18px, 2.6vh, 30px);
 
   display: flex;
-  flex-wrap: wrap;
-  gap: 18px clamp(22px, 2.6vw, 40px);
+  flex-direction: column;
+  align-items: center;
+  gap: var(--link);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -122,20 +148,22 @@
   width: var(--tile);
 }
 
-/* Cordage entre deux jalons d'une même branche. */
+/* Cordage entre deux jalons d'une même colonne : il monte de la tuile vers
+   la légende du jalon précédent. */
 .cell[data-link]::before {
   content: "";
   position: absolute;
-  top: calc(var(--tile) / 2 - 2px);
-  right: 100%;
-  width: clamp(22px, 2.6vw, 40px);
-  height: 4px;
-  background: repeating-linear-gradient(90deg, rgba(120, 96, 60, 0.7) 0 5px, rgba(60, 46, 26, 0.7) 5px 8px);
+  bottom: 100%;
+  left: 50%;
+  width: 4px;
+  height: var(--link);
+  transform: translateX(-50%);
+  background: repeating-linear-gradient(180deg, rgba(120, 96, 60, 0.7) 0 5px, rgba(60, 46, 26, 0.7) 5px 8px);
   border-radius: 2px;
 }
 
 .cell[data-link="lit"]::before {
-  background: repeating-linear-gradient(90deg, #e5c07a 0 5px, #a47b36 5px 8px);
+  background: repeating-linear-gradient(180deg, #e5c07a 0 5px, #a47b36 5px 8px);
   box-shadow: 0 0 8px rgba(229, 192, 122, 0.45);
 }
 
@@ -223,8 +251,8 @@
 }
 
 .caption {
-  width: calc(var(--tile) + 24px);
-  font-size: 11.5px;
+  width: calc(var(--tile) + 32px);
+  font-size: 13px;
   line-height: 1.25;
   text-align: center;
   color: var(--ink-dim);
@@ -238,8 +266,8 @@
 .tooltip {
   position: absolute;
   z-index: 20;
-  left: 50%;
-  bottom: calc(100% + 10px);
+  left: calc(100% + 12px);
+  top: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -250,22 +278,22 @@
   border-radius: 4px;
   background: rgba(16, 8, 26, 0.96);
   box-shadow: inset 0 0 0 1px #4d2f86, 0 10px 24px rgba(0, 0, 0, 0.6);
-  font-size: 12px;
+  font-size: 13px;
   opacity: 0;
   pointer-events: none;
-  transform: translate(-50%, 6px);
+  transform: translateX(-6px);
   transition: opacity 120ms ease-out, transform 120ms ease-out;
 }
 
 .tooltip[data-open="true"] {
   opacity: 1;
-  transform: translate(-50%, 0);
+  transform: none;
 }
 
 .tooltipBar {
   padding: 5px 10px;
   background: linear-gradient(180deg, #2e5e85, #1d3f5c);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -280,7 +308,7 @@
 .tooltipName {
   padding: 2px 10px 0;
   font-family: var(--cb-font-display);
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   color: #fff;
 }
@@ -311,20 +339,15 @@
   }
 }
 
-/* Dans le profil, la vitrine défile : une bulle ne doit pas sortir par le
-   haut (première branche : sous la tuile) ni par la gauche (premier jalon :
-   calée sur la tuile). */
-.branch:first-child .tooltip {
-  top: calc(var(--tile) + 8px);
-  bottom: auto;
+/* La bulle s'ouvre à DROITE de la tuile — sauf pour la dernière colonne,
+   où elle s'ouvrirait hors de la vitrine : elle passe à gauche. */
+.branch:last-child .tooltip {
+  left: auto;
+  right: calc(100% + 12px);
+  transform: translateX(6px);
 }
 
-.cell:first-child .tooltip {
-  left: 0;
-  transform: translate(0, 6px);
-}
-
-.cell:first-child .tooltip[data-open="true"] {
+.branch:last-child .tooltip[data-open="true"] {
   transform: none;
 }
 

@@ -197,11 +197,14 @@
 /* Réclamée : elle reste visible — on veut voir ce qu'on a fait — mais en retrait. */
 .rowClaimed { opacity: 0.45; }
 
+/* Une ligne de quête se lit d'un coup d'œil, à distance : icône 36 px,
+   titre 15 px, objectif 13 px. En dessous, le tiroir et le profil
+   devenaient une colonne de petits caractères. */
 .icon {
   flex: 0 0 auto;
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
+  width: 36px;
+  height: 36px;
+  border-radius: 7px;
   object-fit: cover;
 }
 
@@ -209,12 +212,12 @@
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
   min-width: 0;
 }
 
 .name {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--tb-text);
 }
@@ -223,13 +226,13 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 11px;
+  font-size: 13px;
   color: var(--tb-text-muted);
 }
 
 .track {
-  height: 4px;
-  margin-top: 2px;
+  height: 5px;
+  margin-top: 3px;
   border-radius: var(--tb-radius-pill);
   background: rgba(140, 190, 225, 0.14);
   overflow: hidden;
@@ -256,13 +259,13 @@
 }
 
 .reward {
-  font-size: 11px;
+  font-size: 13px;
   white-space: nowrap;
   color: var(--tb-gold);
 }
 
 .count {
-  font-size: 11px;
+  font-size: 13px;
   font-variant-numeric: tabular-nums;
   color: var(--tb-text-muted);
 }
@@ -276,7 +279,7 @@
 
 /* Pas un bouton : l'invite de la ligne, qui EST le bouton. */
 .claimHint {
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--tb-gold-bright);
@@ -286,7 +289,7 @@
   flex: 0 0 auto;
   padding-top: 4px;
   color: var(--tb-accent);
-  font-size: 12px;
+  font-size: 13px;
   text-decoration: none;
 }
 

@@ -435,7 +435,7 @@ function LogbookTab({ profile, onRefresh, onShowRewards }: { profile: ProfileSum
                 <span className={styles.stopLevel}>{stop.level}</span>
                 <span className={styles.stopIcons}>
                   {levelRewardItems(stop.level).map((item, index) => (
-                    <RewardIcon key={index} item={item} size={30} />
+                    <RewardIcon key={index} item={item} size={36} />
                   ))}
                 </span>
                 <span className={styles.stopLabel}>{stop.label}</span>
@@ -461,7 +461,7 @@ function LogbookTab({ profile, onRefresh, onShowRewards }: { profile: ProfileSum
             >
               <span className={styles.escaleIndex}>{step}</span>
               {loginRewardForStep(step).map((item, index) => (
-                <RewardIcon key={index} item={item} size={34} />
+                <RewardIcon key={index} item={item} size={42} />
               ))}
               <span className={styles.escaleLabel}>{loginStepLabel(step)}</span>
             </li>

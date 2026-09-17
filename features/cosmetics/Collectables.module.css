@@ -131,10 +131,13 @@ div.item,
   color: var(--ink-faint);
 }
 
-/* Verrouillé : lisible, mais visiblement hors de portée. */
+/* Verrouillé : lisible, mais visiblement hors de portée. Désaturé plutôt
+   qu'éteint (retour de test du 17/09) — à 0,5 de luminosité la vignette
+   passait au noir, et la grille mélangeait des cases sombres et des cases
+   claires selon la RAISON du masquage. */
 .itemShell[data-locked="true"] .cardBackImage,
 .itemShell[data-locked="true"] .shipFrameImage {
-  filter: grayscale(0.85) brightness(0.5);
+  filter: grayscale(0.55) brightness(0.82);
 }
 
 .badge {
@@ -193,13 +196,17 @@ div.item,
   color: var(--cb-cyan);
 }
 
-/* ── Emplacement CACHÉ ────────────────────────────────────────
+/* ── Visuel SOUS LE VOILE ─────────────────────────────────────
  * Le voile n'est pas « verrouillé en plus sombre » : c'est un objet à part,
- * qu'on montre entier et net. Le filtre de verrouillage ci-dessus le
- * rendrait illisible, alors que tout son intérêt est d'attirer l'œil.
+ * qu'on montre entier et net, et tout son intérêt est d'attirer l'œil.
+ *
+ * UN SEUL masquage, quelle que soit la raison du voile (emplacement caché
+ * ou cadre pas encore débloqué) : la même image affichée deux fois avec
+ * deux traitements donnait une grille bariolée, une case noire à côté
+ * d'une case claire (retour de test du 17/09).
  * ────────────────────────────────────────────────────────────── */
-.cardBackFrame[data-masked="true"] .cardBackImage,
-.shipFrameBox[data-masked="true"] .shipFrameImage {
+.cardBackFrame[data-veiled="true"] .cardBackImage,
+.shipFrameBox[data-veiled="true"] .shipFrameImage {
   filter: none;
   opacity: 0.9;
 }

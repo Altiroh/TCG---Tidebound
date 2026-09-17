@@ -1,4 +1,4 @@
-import { CORE_SET, getCardDefinition, getMaxCopies, UNIT_CARD_TYPES, type CardDefinition } from "@/game";
+import { CORE_SET, getCardDefinition, getMaxCopies, isAbyssalVariant, UNIT_CARD_TYPES, type CardDefinition } from "@/game";
 import { rarityForCardId } from "@/game/boosters/cardRarity";
 import type { CardRarity } from "@/game/boosters/types";
 import { GAME_TERMS } from "@/features/match/cardDisplay";
@@ -64,8 +64,8 @@ export function buildCardDetailModel(cardId: string): CardDetailModel {
   return {
     def,
     rarity: rarityForCardId(def.id),
-    isAbyssal: def.subtype === "abyssal",
-    otherSubtype: def.subtype && def.subtype !== "abyssal" ? def.subtype : null,
+    isAbyssal: isAbyssalVariant(def),
+    otherSubtype: def.subtype ?? null,
     stats,
     keywords: def.keywords ?? [],
     maxCopies: getMaxCopies(def),

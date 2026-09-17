@@ -124,6 +124,12 @@ export function CollectablesScreen({ view }: { view: CollectablesView }) {
             <p className={browser.count}>
               <strong>{current.label}</strong> · {FAMILY_HINTS[current.kind] ?? ""}
             </p>
+            {/* L'achat se fait au Market, rayon Cosmétiques : ici on regarde et on équipe. */}
+            <p className={browser.count}>
+              <Link href="/market" className={game.link} onClick={() => playButtonClick()}>
+                Acheter au Market →
+              </Link>
+            </p>
             {view.isSignedIn && (
               <p className={browser.count}>
                 <TideCoin size={14} /> {balance} Tides
@@ -255,7 +261,9 @@ function Vignette({
   imageClass: string | undefined;
 }) {
   return (
-    <span className={boxClass} data-masked={option.masked ? "true" : undefined}>
+    // `data-veiled` et non `data-masked` : c'est la présence du VOILE qui
+    // décide du traitement, pas la raison pour laquelle il est là.
+    <span className={boxClass} data-veiled={option.artHidden ? "true" : undefined}>
       {/* eslint-disable-next-line @next/next/no-img-element -- asset local, taille pilotée par le conteneur */}
       <img src={option.src} alt="" aria-hidden draggable={false} className={imageClass} />
       {option.equipped && !option.masked && <span className={styles.badge}>{option.artPending ? "Obtenu" : "Équipé"}</span>}

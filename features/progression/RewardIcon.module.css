@@ -6,6 +6,11 @@
   position: relative;
   flex: 0 0 auto;
   display: grid;
+  /* Pistes explicites : sans elles, la hauteur en pourcentage du visuel ne
+     se résout pas (piste `auto`) et un sachet de booster, plus haut que
+     large, débordait du médaillon à sa taille naturelle. */
+  grid-template-columns: 100%;
+  grid-template-rows: 100%;
   place-items: center;
   border-radius: 50%;
   background: radial-gradient(closest-side, rgba(20, 44, 62, 0.95), rgba(6, 16, 26, 0.95));
