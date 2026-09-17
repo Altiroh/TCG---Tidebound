@@ -148,7 +148,39 @@ function wantedRarityFor(
   return { rarity: null, nextSeed: seed };
 }
 
-export function drawBooster({ slots, pool, ownedCardIds, packsSinceAbyssal, seed }: DrawBoosterInput): DrawBoosterResult {
+/**
+ * Garantie de nouveauté : remplace la carte d'un slot par une carte que le
+ * joueur ne possède pas, quelle que soit sa rareté.
+ *
+ * Le slot sacrifié est celui dont la carte est la MOINS rare (un doublon
+ * commun coûte le moins cher au joueur), et la nouveauté garde SA propre
+ * rareté — le booster annonce donc honnêtement ce qu'il contient.
+ */
+function forceNewCard(
+  cards: readonly DrawnCard[],
+  pool: readonly BoosterPoolCard[],
+  ownedCardIds: ReadonlySet<string>,
+  seed: number
+): { cards: DrawnCard[]; nextSeed: number; forced: boolean } {
+  const unowned = pool.filter((card) => !ownedCardIds.has(card.id));
+  if (unowned.length === 0 || cards.length === 0) return { cards: [...cards], nextSeed: seed, forced: false };
+
+  const draw = nextInt(seed, unowned.length);
+  const replacement = unowned[draw.value];
+  if (!replacement) return { cards: [...cards], nextSeed: draw.nextState, forced: false };
+
+  const rank = (rarity: CardRarity) => RARITY_ORDER.indexOf(rarity);
+  let cheapest = 0;
+  for (let index = 1; index < cards.length; index += 1) {
+    if (rank(cards[index]!.rarity) < rank(cards[cheapest]!.rarity)) cheapest = index;
+  }
+
+  const next = [...cards];
+  next[cheapest] = { ...next[cheapest]!, cardId: replacement.id, rarity: replacement.rarity, isNew: true };
+  return { cards: next, nextSeed: draw.nextState, forced: true };
+}
+
+export function drawBooster({ slots, pool, ownedCardIds, packsSinceAbyssal, packsSinceNewCard = 0, seed }: DrawBoosterInput): DrawBoosterResult {
   const cards: DrawnCard[] = [];
   // Copie locale de la collection : une Abyssale tirée au slot 7 ne doit
   // pas être re-proposée par la protection au slot 8 du MÊME booster.
@@ -177,10 +209,24 @@ export function drawBooster({ slots, pool, ownedCardIds, packsSinceAbyssal, seed
     cards.push({ slotIndex: slot.slotIndex, cardId: picked.card.id, rarity, isNew });
   }
 
+  // Garantie de nouveauté : seulement si ce booster n'a RIEN apporté et que
+  // le compteur est arrivé au bout.
+  let finalCards = cards;
+  if (!cards.some((card) => card.isNew) && packsSinceNewCard >= PITY.newCardGuaranteeAfterPacks) {
+    const forced = forceNewCard(cards, pool, ownedCardIds, rngSeed);
+    finalCards = forced.cards;
+    rngSeed = forced.nextSeed;
+    if (forced.forced) abyssalPulled = abyssalPulled || forced.cards.some((card) => card.rarity === "abyssal" && card.isNew);
+  }
+
+  const newCardPulled = finalCards.some((card) => card.isNew);
+
   return {
-    cards,
+    cards: finalCards,
     abyssalPulled,
     nextPacksSinceAbyssal: abyssalPulled ? 0 : packsSinceAbyssal + 1,
+    newCardPulled,
+    nextPacksSinceNewCard: newCardPulled ? 0 : packsSinceNewCard + 1,
     nextSeed: rngSeed,
   };
 }

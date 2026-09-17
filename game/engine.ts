@@ -13,7 +13,7 @@ import type { ActionResult, PlayerAction } from "@/game/actions/types";
 import { openReactionWindowIfEligible } from "@/game/reactions/reactionWindow";
 import { resolveOceanJudgment } from "@/game/rules/oceanJudgment";
 import { processDeaths } from "@/game/state/processDeaths";
-import { processPowerGains, snapshotEffectivePower } from "@/game/triggers/triggerBus";
+import { processLoneCreatureChanges, processPowerGains, snapshotEffectivePower, snapshotLoneCreatures } from "@/game/triggers/triggerBus";
 import type { GameEvent } from "@/game/events/types";
 import type { GameState } from "@/game/state/types";
 
@@ -48,17 +48,20 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
   // Photo des Puissances AVANT l'action : ce qui a augmenté après coup
   // déclenchera `onPowerGained` (cf. `processPowerGains`).
   const powerBefore = snapshotEffectivePower(state);
+  // Même principe pour "devient votre seule Créature" (`onBecomeOnlyCreature`).
+  const loneBefore = snapshotLoneCreatures(state);
 
   const result = applyAction(state, action);
   if (!result.ok) return result;
 
   const deaths = processDeaths(result.state, state.turnNumber);
   const powerGains = processPowerGains(deaths.state, powerBefore, state.turnNumber);
-  const allEvents: GameEvent[] = [...result.events, ...deaths.events, ...powerGains.events];
+  const loneCreatures = processLoneCreatureChanges(powerGains.state, loneBefore, state.turnNumber);
+  const allEvents: GameEvent[] = [...result.events, ...deaths.events, ...powerGains.events, ...loneCreatures.events];
 
   const stateWithEvents: GameState = {
-    ...powerGains.state,
-    eventLog: [...powerGains.state.eventLog, ...allEvents],
+    ...loneCreatures.state,
+    eventLog: [...loneCreatures.state.eventLog, ...allEvents],
   };
 
   let finalState = checkWinCondition(stateWithEvents);

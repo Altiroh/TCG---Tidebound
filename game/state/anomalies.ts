@@ -168,6 +168,7 @@ export function findAnomalyForcedChoice(
     const spec = def.anomalyForceChoiceAtStartOfTurn;
     if (!spec) continue;
     return {
+      kind: "reasonOrAnchor",
       playerId: activePlayerId,
       sourceInstanceId: unit.instanceId,
       reasonLossAmount: spec.reasonLossAmount,

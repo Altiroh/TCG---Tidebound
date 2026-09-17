@@ -55,6 +55,7 @@ describe("runBotTurn", () => {
         testPlayer("p2", { reason: 10, anchor: 20 }),
       ],
       pendingChoice: {
+        kind: "reasonOrAnchor",
         playerId: "p2",
         sourceInstanceId: fondVousRegarde.instanceId,
         reasonLossAmount: 1,

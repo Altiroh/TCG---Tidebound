@@ -1,4 +1,4 @@
-import { resolveTideTurnStep } from "@/game/environment/resolveEnvironment";
+import { applyTideTurnEffects, resolveTideTurnStep } from "@/game/environment/resolveEnvironment";
 import { getShipDefinition } from "@/game/environment/shipData";
 import { deraisonAnchorDamage, deraisonDebt, reasonCeiling, startingReasonCap } from "@/game/state/reason";
 import type { GameEvent } from "@/game/events/types";
@@ -54,6 +54,16 @@ export function endTurn(state: GameState, action: EndTurnAction): ActionResult {
   let nextState = endOfTurnTrigger.state;
   events.push({ ...base, type: "END_TURN", playerId: action.playerId });
   events.push(...endOfTurnTrigger.events);
+
+  // --- Effets de Marée reportés (Ancre de Dérive) : "ne s'appliquent qu'à
+  // la fin du tour en cours" — c'est maintenant.
+  const deferred = nextState.environment.deferredTideEffects;
+  if (deferred) {
+    nextState = { ...nextState, environment: { ...nextState.environment, deferredTideEffects: undefined } };
+    const applied = applyTideTurnEffects(nextState, deferred.previousTideState, deferred.tideState, deferred.intensity, state.turnNumber);
+    nextState = applied.state;
+    events.push(...applied.events);
+  }
 
   // Le tour se termine : les bonus "jusqu'à la fin du tour" tombent, sur
   // les DEUX plateaux (une carte peut en donner à l'adversaire) et avant

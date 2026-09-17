@@ -12,6 +12,7 @@ import { processTrigger } from "@/game/triggers/triggerBus";
 import { applyTideChangeAnomalies } from "@/game/state/anomalies";
 import {
   consumeEquippedEffectDamageShield,
+  consumeOwnDamageTakenShield,
   consumeReasonLossShield,
   consumeTideShipDamageShield,
 } from "@/game/state/shields";
@@ -100,7 +101,7 @@ function applyAbyssesEntryOrExit(
     const players = state.players.map((player) => {
       const loss = computeAbyssesEntryLoss(player);
       const reasonMax = Math.max(0, player.reasonMax - RULES.ABYSSES_REASON_MAX_PENALTY);
-      const reason = Math.min(reasonAfterLoss({ reason: player.reason, reasonMax }, loss.extraReason), reasonMax);
+      const reason = Math.min(reasonAfterLoss({ reason: player.reason }, loss.extraReason), reasonMax);
       return { ...player, anchor: player.anchor - loss.anchor, reasonMax, reason };
     }) as [PlayerState, PlayerState];
 
@@ -208,10 +209,15 @@ function applyHouleSickness(state: GameState, turnNumber: number): { state: Game
   );
 
   for (const { playerId, instanceId } of sickPairs) {
+    // Bouclier propre à l'unité (Baleine aux Cicatrices Blanches) PUIS
+    // bouclier d'Équipement (Casque-Coquille) : les deux interceptent un
+    // dégât d'effet, et le dégât de MALADE en est un.
+    const ownShield = consumeOwnDamageTakenShield(damaged, playerId, instanceId, turnNumber);
+    damaged = ownShield.state;
     const shield = consumeEquippedEffectDamageShield(damaged, playerId, instanceId, turnNumber);
     damaged = shield.state;
     events.push(...shield.events);
-    const amount = Math.max(0, RULES.HOULE_SICKNESS_DAMAGE - shield.reduction);
+    const amount = Math.max(0, RULES.HOULE_SICKNESS_DAMAGE - ownShield.reduction - shield.reduction);
     if (amount === 0) continue;
     events.push({ ...base, type: "DAMAGE", targetInstanceId: instanceId, amount });
     damaged = {
@@ -249,6 +255,119 @@ function clearHouleSickness(state: GameState, turnNumber: number): { state: Game
   })) as [PlayerState, PlayerState];
 
   return { state: { ...state, players }, events };
+}
+
+/**
+ * Effets DE TOUR d'un état de Marée, pour les deux joueurs : dégâts
+ * d'Ancrage/Raison (boucliers de Navire compris), choc d'entrée/sortie des
+ * Abysses, maladie de la Houle. Appelé par `resolveTideTurnStep` au tick —
+ * ou, quand une Ancre de Dérive les a reportés, par `endTurn` à la fin du
+ * tour en cours (`EnvironmentState.deferredTideEffects`).
+ */
+export function applyTideTurnEffects(
+  state: GameState,
+  previousTideState: TideStateName,
+  tideState: TideStateName,
+  intensity: number,
+  turnNumber: number
+): { state: GameState; events: GameEvent[] } {
+  const events: GameEvent[] = [];
+  const base = { turnNumber, timestamp: Date.now() };
+  let nextState = state;
+
+  let players = nextState.players.map((p) => ({ ...p })) as [PlayerState, PlayerState];
+
+  for (let i = 0; i < players.length; i++) {
+    const player = players[i]!;
+    const damage = computeTideDamageForPlayer(player, tideState, intensity);
+
+    const flag = ignoreFlagFor(tideState);
+    const statusFlags = [...player.statusFlags];
+    const ignored = (damage.anchor > 0 || damage.reason > 0) && statusFlags.includes(flag);
+    if (ignored) statusFlags.splice(statusFlags.indexOf(flag), 1);
+
+    let anchorLoss = ignored ? 0 : damage.anchor;
+    let reasonLoss = ignored ? 0 : damage.reason;
+    let board = player.board;
+
+    // Boucliers "1ère fois par tour" (Brise-Vague de Fortune : dégâts de
+    // Marée au Navire ; Vieux Loup de Mer / Seconde au Visage Pâle : perte
+    // de Raison) — consommés via `nextState` (qui porte le plateau à jour)
+    // puis reportés dans `board` pour que la ré-assignation de `players[i]`
+    // ci-dessous ne perde pas le marqueur "déjà utilisé ce tour-ci".
+    if (anchorLoss > 0) {
+      const shield = consumeTideShipDamageShield(nextState, player.id, turnNumber);
+      nextState = shield.state;
+      board = getPlayer(nextState, player.id).board;
+      anchorLoss = Math.max(0, anchorLoss - shield.reduction);
+    }
+    if (reasonLoss > 0) {
+      const shield = consumeReasonLossShield(nextState, player.id, turnNumber);
+      nextState = shield.state;
+      board = getPlayer(nextState, player.id).board;
+      reasonLoss = Math.max(0, reasonLoss - shield.reduction);
+    }
+
+    let hand = player.hand;
+    let graveyard = player.graveyard;
+    if (anchorLoss > 0) {
+      const ship = getShipDefinition(player.shipId);
+      const discardCount = ship.onTideDamageTakenByState?.[tideState]?.discardCount ?? 0;
+      for (let d = 0; d < discardCount && hand.length > 0; d++) {
+        const [discarded, ...rest] = hand;
+        hand = rest;
+        graveyard = [...graveyard, { ...discarded!, graveyardCause: "discarded" as const }];
+        events.push({ ...base, type: "CARD_MOVED", instanceId: discarded!.instanceId, fromZone: "hand", toZone: "graveyard" });
+      }
+    }
+
+    players[i] = {
+      ...player,
+      board,
+      anchor: player.anchor - anchorLoss,
+      reason: reasonAfterLoss(player, reasonLoss),
+      statusFlags,
+      hand,
+      graveyard,
+    };
+
+    if (anchorLoss > 0) {
+      events.push({ ...base, type: "DAMAGE", targetPlayerId: player.id, amount: anchorLoss, targetAnchorAfter: player.anchor - anchorLoss });
+    }
+    if (reasonLoss > 0) events.push({ ...base, type: "REASON_CHANGED", playerId: player.id, delta: -reasonLoss });
+  }
+
+  nextState = { ...nextState, players };
+
+  // --- Abysses : choc d'entrée (Ancrage + Raison max) / restauration à la sortie ---
+  const abysses = applyAbyssesEntryOrExit(nextState, previousTideState, tideState, turnNumber);
+  nextState = abysses.state;
+  events.push(...abysses.events);
+
+  // --- Houle : maladie aléatoire tant qu'active / nettoyage à la sortie ---
+  if (tideState === "houle") {
+    const sickness = applyHouleSickness(nextState, turnNumber);
+    nextState = sickness.state;
+    events.push(...sickness.events);
+  } else if (previousTideState === "houle") {
+    const cleared = clearHouleSickness(nextState, turnNumber);
+    nextState = cleared.state;
+    events.push(...cleared.events);
+  }
+
+  return { state: nextState, events };
+}
+
+/** Marque `unit` comme Sabordée : `processDeaths` (voie unique) l'envoie au cimetière et réveille `onSaborde`/`onDeath` — Ancre de Dérive au changement de Marée. */
+function sabordeUnit(state: GameState, ownerId: PlayerId, unit: CardInstance): GameState {
+  return {
+    ...state,
+    players: state.players.map((p) =>
+      p.id === ownerId
+        ? { ...p, board: p.board.map((u) => (u.instanceId === unit.instanceId ? { ...u, pendingRemoval: "scuttled" as const } : u)) }
+        : p
+    ) as [PlayerState, PlayerState],
+  };
 }
 
 /**
@@ -335,84 +454,25 @@ export function resolveTideTurnStep(
     }
   }
 
-  let players = nextState.players.map((p) => ({ ...p })) as [PlayerState, PlayerState];
-
-  for (let i = 0; i < players.length; i++) {
-    const player = players[i]!;
-    const damage = computeTideDamageForPlayer(player, tick.tideState, intensity);
-
-    const flag = ignoreFlagFor(tick.tideState);
-    const statusFlags = [...player.statusFlags];
-    const ignored = (damage.anchor > 0 || damage.reason > 0) && statusFlags.includes(flag);
-    if (ignored) statusFlags.splice(statusFlags.indexOf(flag), 1);
-
-    let anchorLoss = ignored ? 0 : damage.anchor;
-    let reasonLoss = ignored ? 0 : damage.reason;
-    let board = player.board;
-
-    // Boucliers "1ère fois par tour" (Brise-Vague de Fortune : dégâts de
-    // Marée au Navire ; Vieux Loup de Mer / Seconde au Visage Pâle : perte
-    // de Raison) — consommés via `nextState` (qui porte le plateau à jour)
-    // puis reportés dans `board` pour que la ré-assignation de `players[i]`
-    // ci-dessous ne perde pas le marqueur "déjà utilisé ce tour-ci".
-    if (anchorLoss > 0) {
-      const shield = consumeTideShipDamageShield(nextState, player.id, turnNumber);
-      nextState = shield.state;
-      board = getPlayer(nextState, player.id).board;
-      anchorLoss = Math.max(0, anchorLoss - shield.reduction);
-    }
-    if (reasonLoss > 0) {
-      const shield = consumeReasonLossShield(nextState, player.id, turnNumber);
-      nextState = shield.state;
-      board = getPlayer(nextState, player.id).board;
-      reasonLoss = Math.max(0, reasonLoss - shield.reduction);
-    }
-
-    let hand = player.hand;
-    let graveyard = player.graveyard;
-    if (anchorLoss > 0) {
-      const ship = getShipDefinition(player.shipId);
-      const discardCount = ship.onTideDamageTakenByState?.[tick.tideState]?.discardCount ?? 0;
-      for (let d = 0; d < discardCount && hand.length > 0; d++) {
-        const [discarded, ...rest] = hand;
-        hand = rest;
-        graveyard = [...graveyard, { ...discarded!, graveyardCause: "discarded" as const }];
-        events.push({ ...base, type: "CARD_MOVED", instanceId: discarded!.instanceId, fromZone: "hand", toZone: "graveyard" });
-      }
-    }
-
-    players[i] = {
-      ...player,
-      board,
-      anchor: player.anchor - anchorLoss,
-      reason: reasonAfterLoss(player, reasonLoss),
-      statusFlags,
-      hand,
-      graveyard,
+  // Ancre de Dérive (`defersTideEffectsOnChangeWhileVisible`, visible dans le
+  // NOUVEL état) : Sabordée, et les effets de tour de cette Marée attendent
+  // la fin du tour en cours (`endTurn`). Sinon ils s'appliquent maintenant.
+  const anchor = tick.stateChanged
+    ? nextState.players.flatMap((p) => p.board.map((unit) => ({ unit, ownerId: p.id }))).find(({ unit }) => {
+        const def = getCardDefinition(unit.cardId);
+        return Boolean(def.defersTideEffectsOnChangeWhileVisible) && isVisibleDuringTide(def, tick.tideState);
+      })
+    : undefined;
+  if (anchor) {
+    const saborded = sabordeUnit(nextState, anchor.ownerId, anchor.unit);
+    nextState = {
+      ...saborded,
+      environment: { ...saborded.environment, deferredTideEffects: { previousTideState, tideState: tick.tideState, intensity } },
     };
-
-    if (anchorLoss > 0) {
-      events.push({ ...base, type: "DAMAGE", targetPlayerId: player.id, amount: anchorLoss, targetAnchorAfter: player.anchor - anchorLoss });
-    }
-    if (reasonLoss > 0) events.push({ ...base, type: "REASON_CHANGED", playerId: player.id, delta: -reasonLoss });
-  }
-
-  nextState = { ...nextState, players };
-
-  // --- Abysses : choc d'entrée (Ancrage + Raison max) / restauration à la sortie ---
-  const abysses = applyAbyssesEntryOrExit(nextState, previousTideState, tick.tideState, turnNumber);
-  nextState = abysses.state;
-  events.push(...abysses.events);
-
-  // --- Houle : maladie aléatoire tant qu'active / nettoyage à la sortie ---
-  if (tick.tideState === "houle") {
-    const sickness = applyHouleSickness(nextState, turnNumber);
-    nextState = sickness.state;
-    events.push(...sickness.events);
-  } else if (previousTideState === "houle") {
-    const cleared = clearHouleSickness(nextState, turnNumber);
-    nextState = cleared.state;
-    events.push(...cleared.events);
+  } else {
+    const turnEffects = applyTideTurnEffects(nextState, previousTideState, tick.tideState, intensity, turnNumber);
+    nextState = turnEffects.state;
+    events.push(...turnEffects.events);
   }
 
   if (tick.stateChanged) {
@@ -480,6 +540,7 @@ export function resolveTideTurnStep(
         const wasVisible = isVisibleDuringTide(def, previousTideState);
         const isVisible = isVisibleDuringTide(def, tick.tideState);
         if (wasVisible || !isVisible) continue;
+        events.push({ turnNumber, timestamp: Date.now(), type: "STRUCTURE_REVEALED", playerId, instanceId: unit.instanceId, cardId: unit.cardId });
         const becomeVisibleTrigger = processTrigger(
           nextState,
           { trigger: "onBecomeVisible", playerId, cardId: unit.cardId, sourceInstanceId: unit.instanceId },

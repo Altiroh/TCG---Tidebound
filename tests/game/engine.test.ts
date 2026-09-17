@@ -106,10 +106,10 @@ describe("engine.dispatch - playCard", () => {
     expect(result.events.some((e) => e.type === "SUMMON")).toBe(true);
   });
 
-  it("Déraison : permet de jouer une carte plus chère que la Raison disponible, jusqu'au plancher de -50% de la Raison max", () => {
+  it("Déraison : permet de jouer une carte plus chère que la Raison disponible, la Raison passe sous 0", () => {
     const card = instance("matelot-du-sans-nom", "p1"); // coût 3, sans effet
     const state = testGameState({
-      players: [testPlayer("p1", { hand: [card], reason: 1, reasonMax: 10 }), testPlayer("p2")], // plancher -5
+      players: [testPlayer("p1", { hand: [card], reason: 1, reasonMax: 10 }), testPlayer("p2")],
     });
 
     const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: card.instanceId });
@@ -118,15 +118,16 @@ describe("engine.dispatch - playCard", () => {
     expect(result.state.players[0].reason).toBe(-2);
   });
 
-  it("Déraison : refuse de jouer une carte qui ferait descendre sous le plancher", () => {
-    const card = instance("loeil-sous-la-mer", "p1"); // coût 5
+  it("Déraison : aucun plancher — une carte se joue même quand elle creuse la dette bien au-delà de la Raison max", () => {
+    const card = instance("matelot-du-sans-nom", "p1"); // coût 3, sans effet
     const state = testGameState({
-      players: [testPlayer("p1", { hand: [card], reason: 2, reasonMax: 4 }), testPlayer("p2")], // plancher -2, 2 - 5 = -3
-      environment: testEnvironment({ tideState: "abysses" }),
+      players: [testPlayer("p1", { hand: [card], reason: -3, reasonMax: 4 }), testPlayer("p2")], // -3 - 3 = -6, une fois et demie la Raison max
     });
 
     const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: card.instanceId });
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.players[0].reason).toBe(-6);
   });
 
   it("permet de jouer plusieurs cartes dans le même tour tant que la Raison le permet (pas de limite d'action)", () => {
@@ -179,8 +180,17 @@ describe("engine.dispatch - playCard", () => {
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    const buffedUnit = result.state.players[0].board.find((u) => u.instanceId === target.instanceId);
-    expect(computeEffectiveStats(buffedUnit!, "calme").attack).toBe(4);
+    const owner = result.state.players[0];
+    const buffedUnit = owner.board.find((u) => u.instanceId === target.instanceId);
+    // Le bonus d'un Équipement est une AURA relue en direct : il faut le
+    // contexte du plateau, comme partout dans le moteur (combat, morts, UI).
+    expect(
+      computeEffectiveStats(buffedUnit!, "calme", {
+        controllerBoard: owner.board,
+        controllerReason: owner.reason,
+        tideOrientation: result.state.environment.tideOrientation,
+      }).attack
+    ).toBe(4);
   });
 
   it("un onPlayEffect inflige une perte de Raison aux deux joueurs", () => {
@@ -754,19 +764,19 @@ describe("engine.dispatch - endTurn", () => {
     expect(result.state.players[0].reason).toBe(0);
   });
 
-  it("Déraison : une perte de Raison par effet descend sous 0 mais s'arrête au plancher", () => {
+  it("Déraison : une perte de Raison par effet continue de creuser une dette déjà profonde (aucun plancher)", () => {
     const marin = instance("marin-aux-yeux-rouges", "p1"); // "chaque joueur perd 1 Raison"
     const state = testGameState({
       players: [
         testPlayer("p1", { hand: [marin], reason: 10 }),
-        testPlayer("p2", { shipId: "lerrant", reason: -5, reasonMax: 10 }), // déjà au plancher
+        testPlayer("p2", { shipId: "lerrant", reason: -5, reasonMax: 10 }), // déjà à -50 % de sa Raison max
       ],
     });
 
     const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: marin.instanceId });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.state.players[1].reason).toBe(-5);
+    expect(result.state.players[1].reason).toBe(-6);
   });
 
   it("refuse de terminer le tour si ce n'est pas le tour du joueur", () => {
@@ -1828,13 +1838,13 @@ describe("engine.dispatch - Boucliers réactifs 'une fois par tour' (Vieux Loup 
     expect(inCalme.state.players[0].reason).toBe(7); // 10 - 2 (coût) - 1 (bouclier inactif hors Tempête/Abysses)
   });
 
-  it("Vieux Loup de Mer réduit le coût d'une carte, une seule fois par tour (y compris pour le plancher de Déraison)", () => {
+  it("Vieux Loup de Mer réduit le coût d'une carte, une seule fois par tour", () => {
     const vieuxLoup = instance("vieux-loup-de-mer", "p1");
     const cardA = instance("matelot-du-sans-nom", "p1"); // coût 3, sans effet
     const cardB = instance("matelot-du-sans-nom", "p1");
     const state = testGameState({
       players: [
-        testPlayer("p1", { board: [vieuxLoup], hand: [cardA, cardB], reason: -3, reasonMax: 10 }), // plancher -5
+        testPlayer("p1", { board: [vieuxLoup], hand: [cardA, cardB], reason: -3, reasonMax: 10 }),
         testPlayer("p2", { shipId: "lerrant", reason: 10 }),
       ],
     });
@@ -1844,11 +1854,15 @@ describe("engine.dispatch - Boucliers réactifs 'une fois par tour' (Vieux Loup 
     if (!first.ok) return;
     expect(first.state.players[0].reason).toBe(-5); // -3 - (3 - 1)
 
+    // Bouclier consommé : la seconde carte se paie plein tarif. Sans plancher
+    // de Déraison, elle passe quand même — la dette se creuse simplement.
     const noShield = dispatch(
       { ...first.state, players: [{ ...first.state.players[0], reason: -3 }, first.state.players[1]] },
       { type: "playCard", playerId: "p1", instanceId: cardB.instanceId }
     );
-    expect(noShield.ok).toBe(false); // bouclier consommé : -3 - 3 = -6 < -5
+    expect(noShield.ok).toBe(true);
+    if (!noShield.ok) return;
+    expect(noShield.state.players[0].reason).toBe(-6); // -3 - 3, sans réduction
   });
 });
 
@@ -2547,14 +2561,16 @@ describe("engine.dispatch - activateAbility : Sondeur des Mauvaises Eaux (capaci
     expect(third.state.environment.tideRemainingTurns).toBe(thirdTurnRemaining - 1);
   });
 
-  it("refuse si payer le coût ferait descendre sous le plancher de Déraison", () => {
+  it("accepte de payer le coût même en Déraison profonde : il n'y a pas de plancher", () => {
     const sondeur = instance("sondeur-des-mauvaises-eaux", "p1");
     const state = testGameState({
-      players: [testPlayer("p1", { board: [sondeur], reason: -5, reasonMax: 10 }), testPlayer("p2")], // déjà au plancher
+      players: [testPlayer("p1", { board: [sondeur], reason: -5, reasonMax: 10 }), testPlayer("p2")], // déjà à -50 % de la Raison max
     });
 
     const result = dispatch(state, { type: "activateAbility", playerId: "p1", sourceInstanceId: sondeur.instanceId });
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.players[0].reason).toBeLessThan(-5);
   });
 
   it("refuse en dehors de la Phase principale", () => {
@@ -2754,6 +2770,7 @@ describe("engine.dispatch - Le Fond Vous Regarde : choix forcé au début de cha
     if (!p2Turn.ok) return;
     expect(p2Turn.state.activePlayerId).toBe("p2");
     expect(p2Turn.state.pendingChoice).toEqual({
+      kind: "reasonOrAnchor",
       playerId: "p2",
       sourceInstanceId: fondVousRegarde.instanceId,
       reasonLossAmount: 1,
@@ -2831,8 +2848,8 @@ describe("engine.dispatch - Le Fond Vous Regarde : choix forcé au début de cha
     const p2Turn = dispatch(state, { type: "endTurn", playerId: "p1" });
     expect(p2Turn.ok).toBe(true);
     if (!p2Turn.ok) return;
-    expect(p2Turn.state.pendingChoice?.reasonLossAmount).toBe(2);
-    expect(p2Turn.state.pendingChoice?.anchorDamageAmount).toBe(2);
+    expect(p2Turn.state.pendingChoice?.kind === "reasonOrAnchor" && p2Turn.state.pendingChoice.reasonLossAmount).toBe(2);
+    expect(p2Turn.state.pendingChoice?.kind === "reasonOrAnchor" && p2Turn.state.pendingChoice.anchorDamageAmount).toBe(2);
 
     const resolved = dispatch(p2Turn.state, { type: "resolveChoice", playerId: "p2", choice: "reasonLoss" });
     expect(resolved.ok).toBe(true);

@@ -24,8 +24,14 @@ export type CardType = "marin" | "creature" | "equipement" | "structure" | "obje
 /** Types de carte considérés comme des unités (peuvent occuper un Slot de combat, attaquer). */
 export const UNIT_CARD_TYPES: readonly CardType[] = ["marin", "creature"];
 
-/** Types de permanent qu'un Équipement peut cibler pour s'y attacher — jamais un autre Équipement/Objet/Anomalie (cadrage confirmé). */
-export const EQUIPPABLE_CARD_TYPES: readonly CardType[] = ["marin", "creature", "structure"];
+/**
+ * Types de permanent qu'un Équipement peut cibler PAR DÉFAUT pour s'y
+ * attacher : les unités seulement. Une Structure ne reçoit un Équipement
+ * que si sa carte le dit (« Équipez une Structure », « Équipez un
+ * permanent » — `CardDefinition.equipTargetTypes`), décision du
+ * 2026-09-16 ; jamais un autre Équipement, un Objet ni une Anomalie.
+ */
+export const EQUIPPABLE_CARD_TYPES: readonly CardType[] = ["marin", "creature"];
 
 /** Types de carte qui restent en jeu comme permanents (par défaut) après résolution. */
 export const PERMANENT_CARD_TYPES: readonly CardType[] = [
@@ -54,8 +60,12 @@ export interface TriggerSourceFilter {
   cardIds?: string[];
   /** Ou porte ce SOUS-TYPE (ex: "marionnette" — Lot 11, qui raisonne en sous-type et non en archétype). */
   subtype?: string;
+  /** Ou est de l'un de ces TYPES de carte (ex: "quand une Structure est détruite" — Plongeur des Épaves, Mécanicien aux Mains Noires). */
+  cardTypes?: CardType[];
   /** Le déclencheur doit être contrôlé par le contrôleur de la capacité. Défaut : `true`. */
   sameController?: boolean;
+  /** Le déclencheur doit être contrôlé par l'ADVERSAIRE ("une Structure adverse" — Contremaître des Amarres). Implique `sameController: false`. */
+  opponentOnly?: boolean;
   /** Exclut la carte elle-même — "un AUTRE Cra-Poiscail". Défaut : `true`. */
   excludeSelf?: boolean;
   /** Ne réagit qu'aux cartes INVOQUÉES, pas à celles posées depuis la main (ex: Bannière en Vieille Chaussette, "que vous invoquez"). */
@@ -76,8 +86,19 @@ export interface TriggeredAbility {
   effects: EffectDefinition[];
   /** Texte optionnel affiché dans l'UI ; pas de logique attachée. */
   description?: string;
-  /** Filtre supplémentaire pour `onTideStateEntered`/`onTideStateExited` : ne se déclenche que pour cet état. */
-  condition?: { tideState?: TideStateName };
+  /**
+   * Filtres supplémentaires, évalués AVANT que `oncePerTurnKey` ne soit
+   * consommé — contrairement à une condition posée sur un effet, qui laisse
+   * le déclencheur brûler son unique usage du tour pour rien.
+   *
+   * `tideState` : pour `onTideStateEntered`/`onTideStateExited`, ne se
+   * déclenche que pour cet état. `tideStateIn` : pour TOUT déclencheur, la
+   * Marée doit être dans l'un de ces états (ex: Veilleuse des Profondeurs).
+   * `controlsAnyCardIds` : le contrôleur doit avoir au moins une de ces
+   * cartes en jeu (ex: La Quête du Grand Nénuphar, « alors que vous
+   * contrôlez un Destrier du Grand Étang »).
+   */
+  condition?: { tideState?: TideStateName; tideStateIn?: TideStateName[]; controlsAnyCardIds?: string[] };
 
   /** Réagit à ce qui arrive à une AUTRE carte (cf. `TriggerSourceFilter`). */
   triggeredBy?: TriggerSourceFilter;
@@ -89,6 +110,21 @@ export interface TriggeredAbility {
    * que l'événement se produit.
    */
   oncePerTurnKey?: string;
+  /**
+   * "La PREMIÈRE fois que..." (une seule fois par instance, jamais
+   * réarmée d'un tour à l'autre — ex: Il Capitano Naufragé). Se combine à
+   * `oncePerTurnKey`, qui fournit la clé de suivi.
+   */
+  onceEver?: boolean;
+  /**
+   * « Choisissez : A ou B » — plusieurs capacités facultatives d'une même
+   * carte, proposées ensemble dans la fenêtre de réaction, dont UNE SEULE
+   * peut être activée par déclenchement : activer l'une écarte les autres
+   * du même groupe pour le reste de la fenêtre (ex: Il Dottore des Noyés).
+   * Contrairement à `oncePerTurnKey`, une arrivée REJOUÉE dans le même tour
+   * (Colombina) repropose le choix.
+   */
+  choiceGroup?: string;
   /**
    * "auto" (défaut) : résolution automatique par le moteur, aucune
    * décision du joueur (Notion "Moteur de partie", "Effets déclenchés
@@ -132,8 +168,23 @@ export interface CardDefinition {
   id: CardId;
   name: string;
   type: CardType;
-  /** Sous-catégorie optionnelle et extensible (ex: "poisson" pour une Créature, "Abyssal" pour un Marin/Créature). */
+  /**
+   * Sous-catégorie optionnelle et extensible (ex: "marionnette",
+   * "objet-flottant"). C'est une FAMILLE de jeu, pas une variante : la
+   * version Abyssale d'une carte se déclare avec `variant`, sinon une
+   * Marionnette Abyssale devrait choisir entre les deux et sortirait de sa
+   * troupe (décision du 2026-09-17).
+   */
   subtype?: string;
+
+  /**
+   * Version de la carte : toute carte est STANDARD par défaut, ou
+   * `"abyssale"` pour sa variante. Indépendant de `subtype` et de
+   * `archetype`, et cohérent avec la rareté "abyssal" que
+   * `game/boosters/cardRarity.ts` déduit du suffixe d'identifiant
+   * `-abyssal` (invariant vérifié par `tests/game/cardConformity.test.ts`).
+   */
+  variant?: "standard" | "abyssale";
 
   /**
    * Famille de cartes à laquelle appartient cette carte
@@ -219,6 +270,50 @@ export interface CardDefinition {
    * collecte normale des morts.
    */
   destructionSubstitute?: { healthPenalty: number };
+
+  /**
+   * "La première fois à chaque tour qu'il devrait être détruit, il reste à
+   * 1 Résistance à la place" (ex: Revenante de la Fosse, en Abysses
+   * seulement). Traité dans `game/state/processDeaths.ts` : les dégâts
+   * marqués sont ramenés juste sous la vie effective, une fois par tour
+   * (`oncePerTurnFlags`). Ne sauve pas d'une destruction directe par la
+   * Marée (`destroyedByTide`).
+   */
+  survivesLethalOncePerTurn?: { tideStateIn: TideStateName[] };
+
+  /**
+   * "La première réduction de durée de Marée que vous provoquez chaque
+   * tour est augmentée de N", tant que la carte est visible (ex: Ancre de
+   * Tempête). Lu dans `resolveEffect` (`tideReduceDuration`) sur le
+   * plateau du contrôleur de l'effet, une fois par tour.
+   */
+  amplifyTideReductionOncePerTurnWhileVisible?: number;
+
+  /**
+   * Contrecoup (Cylindre flottant) : tant que la carte est visible, la
+   * première attaque directe contre le Navire de son contrôleur est
+   * ANNULÉE, `reflectedFraction` des dégâts annulés (arrondi au supérieur)
+   * est infligé au Navire de l'attaquant, puis la carte se brise et quitte
+   * le board. Résolu dans `game/actions/attack.ts`.
+   */
+  contrecoupOnDirectShipDamageWhileVisible?: { reflectedFraction: number };
+
+  /**
+   * Taxe de Bris (Cloche d'Alerte) : tant que la carte est visible, le
+   * premier Bris d'Objet de l'ADVERSAIRE à chaque tour lui coûte ce montant
+   * de Raison en plus — depuis la main (ajouté au demi-coût) comme depuis le
+   * plateau (où le Bris est sinon gratuit). Résolu dans `breakObject.ts`.
+   */
+  taxOpponentObjectBreakOncePerTurnWhileVisible?: number;
+
+  /**
+   * Ancre de Dérive : quand la Marée change d'état et que la carte est
+   * visible dans le NOUVEL état, elle est Sabordée et les effets de tour de
+   * cette Marée (dégâts d'Ancrage/Raison, choc des Abysses, maladie de la
+   * Houle) sont reportés à la fin du tour en cours
+   * (`EnvironmentState.deferredTideEffects`, appliqués par `endTurn`).
+   */
+  defersTideEffectsOnChangeWhileVisible?: boolean;
 
   /**
    * Pour un Équipement uniquement : CONTRE-INDICATION à la règle générale
@@ -424,11 +519,14 @@ export interface CardDefinition {
   /** Réduit les dégâts de MARÉE subis par le Navire de son contrôleur, dans ces états (ex: Brise-Vague de Fortune, Tempête uniquement). */
   reduceTideShipDamageOncePerTurn?: { amount: number; tideStateIn: TideStateName[] };
 
-  /** Réduit les dégâts DIRECTS (attaque d'unité contre le Navire) subis par son contrôleur (ex: Cage de Flottaison). */
-  reduceDirectShipDamageOncePerTurn?: number;
+  /** Réduit les dégâts DIRECTS (attaque d'unité contre le Navire) subis par son contrôleur (ex: Cage de Flottaison, « qu'une Créature devrait infliger »). `attackerCardTypes` restreint aux attaquants de ces types ; absent, tout attaquant compte. */
+  reduceDirectShipDamageOncePerTurn?: { amount: number; attackerCardTypes?: CardType[] };
 
-  /** Réduit la Puissance d'une unité ADVERSE qui attaque directement le Navire de son contrôleur, pour ce combat (ex: Le Filet qui Respire). */
-  reduceAttackerPowerOnDirectAttackOncePerTurn?: number;
+  /** Plafonne les dégâts DIRECTS d'une même attaque contre le Navire de son contrôleur, tant que la carte est visible (`visibleDuringTide`) — ex: Carcasse Renversée. */
+  capDirectShipDamageWhileVisible?: number;
+
+  /** Réduit la Puissance d'une unité ADVERSE qui attaque directement le Navire de son contrôleur, pour ce combat (ex: Le Filet qui Respire, « qu'une Créature adverse attaque »). `attackerCardTypes` restreint aux attaquants de ces types. */
+  reduceAttackerPowerOnDirectAttackOncePerTurn?: { amount: number; attackerCardTypes?: CardType[] };
 
   /** Réduit les dégâts subis par CETTE unité elle-même, au combat (ex: Baleine aux Cicatrices Blanches). */
   reduceOwnDamageTakenOncePerTurn?: number;
@@ -521,6 +619,17 @@ export interface CardDefinition {
    * en Houle/Tempête, Masque de Plongée Fissuré en Abysses).
    */
   equipGrantsBuffWhileTideStateIn?: { tideStateIn: TideStateName[]; attackAmount?: number; healthAmount?: number };
+
+  /**
+   * Pour un Équipement UNIQUEMENT : bonus accordé au permanent qu'il équipe,
+   * sans condition (ex: Harpon de Pont, « Il gagne +1 Puissance »).
+   *
+   * C'est une AURA, relue en direct par `computeEffectiveStats` tant que
+   * l'Équipement est attaché — jamais un modificateur posé sur le porteur :
+   * un bonus posé survivrait à la destruction de l'Équipement, alors que le
+   * texte ne l'accorde que par lui.
+   */
+  equipGrantsBuff?: { attackAmount?: number; healthAmount?: number };
 
   /**
    * La première fois par tour que l'ADVERSAIRE de son contrôleur active une
@@ -674,6 +783,20 @@ export interface CardInstance {
   hasAttackedThisTurn: boolean;
 
   /**
+   * Ce permanent DOIT quitter le plateau à la prochaine passe de
+   * `game/state/processDeaths.ts`, qui est la voie UNIQUE de sortie : elle
+   * seule envoie au cimetière, émet les événements et réveille `onDeath`
+   * (plus `onSaborde` avant lui pour un Sabordage). Les actions et les
+   * effets posent ce drapeau au lieu de retirer la carte eux-mêmes, sinon
+   * chaque site de départ doit reproduire tout le cortège.
+   *
+   * `"destroyed"` est une destruction : elle peut être esquivée par une
+   * substitution (Plaque de Fortune) ou une survie (Revenante de la Fosse).
+   * `"scuttled"` est un Sabordage, un coût consenti : rien ne l'esquive.
+   */
+  pendingRemoval?: "destroyed" | "scuttled";
+
+  /**
    * Index (1-based) de la variante d'illustration tirée à la création, pour
    * une carte à `illustrationVariants` (Péon Cra-Poiscail). Tiré avec le
    * RNG DÉTERMINISTE de la partie et stocké sur l'instance : le visuel doit
@@ -742,4 +865,11 @@ export interface StatModifier {
   attack: number;
   health: number;
   duration: StatModifierDuration;
+  /** Mots-clés accordés tant que le modificateur est en place (ex: "Pied marin jusqu'à la fin du tour" — P'tite Fesse, Grand Rêve abyssale). */
+  keywords?: string[];
+}
+
+/** Cette carte est-elle la version ABYSSALE ? Lecteur unique : l'interface ne doit jamais tester `subtype` pour ça. */
+export function isAbyssalVariant(def: CardDefinition): boolean {
+  return def.variant === "abyssale";
 }

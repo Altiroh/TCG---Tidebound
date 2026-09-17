@@ -2,7 +2,7 @@ import { computeEffectiveStats } from "@/game/cards/stats";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { hasKeyword, UNIT_CARD_TYPES, type CardInstance } from "@/game/cards/types";
 import { getShipDefinition } from "@/game/environment/shipData";
-import { canPayReason, reasonFloor } from "@/game/state/reason";
+import type { TideStateName } from "@/game/environment/types";
 import { isMainPhase, type GamePhase, type GameState, type PlayerId, type PlayerState } from "@/game/state/types";
 
 /**
@@ -12,6 +12,29 @@ import { isMainPhase, type GamePhase, type GameState, type PlayerId, type Player
  * contrôleur (`controller`, pas un joueur quelconque) ?
  */
 export function hasEffectiveKeyword(state: GameState, controller: PlayerState, unit: CardInstance, keyword: string): boolean {
+  return hasKeywordInContext(unit, keyword, {
+    tideState: state.environment.tideState,
+    controllerBoard: controller.board,
+    controllerReason: controller.reason,
+  });
+}
+
+/** Ce qu'il faut savoir du plateau pour trancher un mot-clé conditionnel, sans porter tout le `GameState` (l'interface n'en a pas toujours un). */
+export interface KeywordContext {
+  tideState: TideStateName;
+  /** Plateau du contrôleur de l'unité (elle y figure elle-même). */
+  controllerBoard: readonly CardInstance[];
+  controllerReason: number;
+}
+
+/**
+ * Même réponse que `hasEffectiveKeyword`, à partir du seul contexte de
+ * plateau. C'est CE point d'entrée que doit utiliser l'affichage : tester
+ * `hasKeyword` (mot-clé imprimé) laisse invisibles les Garde conditionnels
+ * (Chose des Hauts-Fonds), transmis par un Équipement ou temporaires.
+ */
+export function hasKeywordInContext(unit: CardInstance, keyword: string, context: KeywordContext): boolean {
+  const { tideState, controllerBoard, controllerReason } = context;
   const def = getCardDefinition(unit.cardId);
   const matches = (grant: {
     keyword: string;
@@ -20,17 +43,19 @@ export function hasEffectiveKeyword(state: GameState, controller: PlayerState, u
     controllingCardIds?: string[];
   }) => {
     if (grant.keyword !== keyword) return false;
-    if (grant.controllerReasonAtMost !== undefined && controller.reason > grant.controllerReasonAtMost) return false;
-    if (grant.tideStateIn && !grant.tideStateIn.includes(state.environment.tideState)) return false;
+    if (grant.controllerReasonAtMost !== undefined && controllerReason > grant.controllerReasonAtMost) return false;
+    if (grant.tideStateIn && !grant.tideStateIn.includes(tideState)) return false;
     // Ex: Chevalier Cra-Poiscail — Garde tant qu'un Destrier est en jeu.
-    if (grant.controllingCardIds && !controller.board.some((u) => grant.controllingCardIds!.includes(u.cardId))) return false;
+    if (grant.controllingCardIds && !controllerBoard.some((u) => grant.controllingCardIds!.includes(u.cardId))) return false;
     return true;
   };
   if ((def.conditionalKeywordSuppressions ?? []).some(matches)) return false;
   if (hasKeyword(def, keyword)) return true;
   if ((def.conditionalKeywords ?? []).some(matches)) return true;
+  // Mot-clé accordé temporairement par un modificateur (ex: "Pied marin jusqu'à la fin du tour").
+  if (unit.modifiers.some((m) => m.keywords?.includes(keyword))) return true;
   // Équipement attaché transmettant un mot-clé (ex: Chaîne de Fer Noir → Garde).
-  return controller.board.some(
+  return controllerBoard.some(
     (equip) =>
       equip.attachedToInstanceId === unit.instanceId &&
       (getCardDefinition(equip.cardId).equipGrantsKeywords ?? []).includes(keyword)
@@ -143,9 +168,10 @@ export function assertCanPayCost(
 ): ValidationResult {
   const player = state.players.find((p) => p.id === playerId);
   if (!player) return fail("Joueur introuvable.");
-  if (!canPayReason(player, cost)) {
-    return fail(`Déraison maximale atteinte : impossible de descendre sous ${reasonFloor(player)} Raison.`);
-  }
+  // Aucun plancher de Déraison (design, 2026-09-16) : un coût se paie
+  // toujours, quitte à creuser la dette. `cost` reste reçu pour garder la
+  // signature stable et le point d'ancrage d'un futur garde-fou.
+  void cost;
   return ok();
 }
 

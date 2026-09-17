@@ -32,20 +32,22 @@ describe("moteur de réactions — fenêtre facultative (Notion 'Moteur de parti
     expect(wrongPlayer.ok).toBe(false);
   });
 
-  it("n'ouvre aucune fenêtre si la Raison ne permet pas de payer le coût de la capacité facultative", () => {
+  it("ouvre la fenêtre même quand le réacteur est déjà en Déraison profonde : le coût ne l'écarte jamais (pas de plancher)", () => {
     const guetteur = instance("guetteur-mefiant", "p2");
     const cardToPlay = instance("marin-des-jetees", "p1");
+    const bigUnit = instance("baleine-aux-cicatrices-blanches", "p1"); // cible potentielle
     const state = testGameState({
       players: [
-        testPlayer("p1", { hand: [cardToPlay], reason: 5 }),
-        testPlayer("p2", { board: [guetteur], reason: -5, reasonMax: 10 }), // au plancher de Déraison : ne peut pas payer 1 Raison
+        testPlayer("p1", { hand: [cardToPlay], board: [bigUnit], reason: 5 }),
+        testPlayer("p2", { board: [guetteur], reason: -5, reasonMax: 10 }), // déjà à -50 % de sa Raison max : payer 1 Raison reste possible
       ],
     });
 
     const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: cardToPlay.instanceId });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.state.pendingReaction).toBeUndefined();
+    expect(result.state.pendingReaction).toBeDefined();
+    expect(result.state.pendingReaction?.awaitingPlayerId).toBe("p2");
   });
 
   it("passer ferme la fenêtre quand il ne reste aucun joueur éligible", () => {

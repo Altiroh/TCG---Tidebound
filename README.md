@@ -141,11 +141,11 @@ npm test                     # tests unitaires du moteur (Vitest)
   à niveau. Piste plus lente si c'est trop généreux : 20 / 40 / 60 / 80 / 100.
 - **Déraison** (`game/state/reason.ts`, piste Notion "Gameplay — Raison,
   Déraison, healing & passifs de Navires", 2026-09-12, **à prototyper**) :
-  la Raison peut passer sous 0, jusqu'à un plancher de **-50 % de la
-  Raison max** (`RULES.DERAISON_FLOOR_RATIO`). Payer un coût (carte,
+  la Raison peut passer sous 0, **sans plancher** (décision de design du
+  2026-09-16 : « il n'y a pas de Déraison max »). Payer un coût (carte,
   capacité activable, réaction) ou subir une perte de Raison peut y
-  pousser ; au-delà du plancher, le coût est refusé et les pertes s'y
-  arrêtent. **À la fin de son propre tour** (après tous les effets de fin
+  pousser aussi loin que le joueur l'accepte ; le moteur ne refuse jamais
+  un coût, c'est la dette qui freine. **À la fin de son propre tour** (après tous les effets de fin
   de tour — il peut donc encore remonter avant), chaque point de Déraison
   inflige 1 dégât d'Ancrage (`DERAISON_ANCHOR_DAMAGE_PER_POINT`, événement
   `DERAISON_SETTLED`), puis la Raison repart de 0. Remplace l'ancienne

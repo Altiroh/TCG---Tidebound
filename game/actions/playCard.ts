@@ -1,5 +1,5 @@
 import { canBeEquipTarget, getCardDefinition, hasAnyValidEquipTarget } from "@/game/cards/sets/core";
-import { isPermanentCard, UNIT_CARD_TYPES, type CardDefinition } from "@/game/cards/types";
+import { isPermanentCard, isVisibleDuringTide, UNIT_CARD_TYPES, type CardDefinition } from "@/game/cards/types";
 import type { EffectContext } from "@/game/effects/resolveEffect";
 import { discountApplies, resolveEffect } from "@/game/effects/resolveEffect";
 import type { GameEvent } from "@/game/events/types";
@@ -14,7 +14,6 @@ import {
   assertPlayerInGame,
   combine,
 } from "@/game/rules/validation";
-import { canPayReason } from "@/game/state/reason";
 import { payReasonCost, reasonCostAfterShield } from "@/game/state/shields";
 import { getPlayer, MIN_DISCOUNTED_COST, type GameState, type PlayerId, type PlayerState } from "@/game/state/types";
 import type { ActionResult, PlayCardAction } from "@/game/actions/types";
@@ -93,7 +92,9 @@ export function previewPlayCardReason(
   const card = player?.hand.find((c) => c.instanceId === instanceId);
   if (!player || !card) return undefined;
   const cost = reasonCostAfterShield(state, playerId, effectiveCost(getCardDefinition(card.cardId), state, playerId), state.turnNumber);
-  return { cost, reasonAfter: player.reason - cost, allowed: canPayReason(player, cost) };
+  // `allowed` reste dans la forme rendue : sans plancher de Déraison, un
+  // coût se paie toujours, l'UI n'a plus qu'à annoncer la dette.
+  return { cost, reasonAfter: player.reason - cost, allowed: true };
 }
 
 function validate(state: GameState, action: PlayCardAction) {
@@ -278,6 +279,27 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
     );
     nextState = enterPlayTrigger.state;
     events.push(...enterPlayTrigger.events);
+  }
+
+  // « Lorsqu'elle devient visible » : une Structure posée pendant un état où
+  // elle est DÉJÀ visible apparaît à cet instant — sans quoi son effet
+  // n'existerait qu'au prochain changement de Marée, et poser la carte au
+  // bon moment la punirait (Épave Engloutie jouée pendant les Abysses).
+  if (def.visibleDuringTide && isVisibleDuringTide(def, nextState.environment.tideState)) {
+    events.push({
+      ...base,
+      type: "STRUCTURE_REVEALED",
+      playerId: player.id,
+      instanceId: instance.instanceId,
+      cardId: def.id,
+    });
+    const revealedTrigger = processTrigger(
+      nextState,
+      { trigger: "onBecomeVisible", playerId: player.id, cardId: def.id, sourceInstanceId: instance.instanceId },
+      state.turnNumber
+    );
+    nextState = revealedTrigger.state;
+    events.push(...revealedTrigger.events);
   }
 
   return { ok: true, state: nextState, events };

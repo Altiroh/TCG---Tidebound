@@ -1,6 +1,3 @@
-import { getCardDefinition } from "@/game/cards/sets/core";
-import type { GameEvent } from "@/game/events/types";
-import { processTrigger } from "@/game/triggers/triggerBus";
 import {
   assertCardOnOwnBoard,
   assertGameActive,
@@ -36,49 +33,22 @@ export function saborder(state: GameState, action: SaborderAction): ActionResult
   if (!validation.ok) return { ok: false, error: validation.error };
 
   const player = getPlayer(state, action.playerId);
-  const unit = player.board.find((u) => u.instanceId === action.instanceId)!;
-  const def = getCardDefinition(unit.cardId);
-  const events: GameEvent[] = [];
-  const base = { turnNumber: state.turnNumber, timestamp: Date.now() };
 
-  const board = player.board.filter((u) => u.instanceId !== unit.instanceId);
-  const graveyard = [
-    ...player.graveyard,
-    { ...unit, damageMarked: 0, modifiers: [], graveyardCause: "scuttled" as const },
-  ];
-
-  const playerAfter: PlayerState = {
-    ...player,
-    board,
-    graveyard,
-  };
-
-  let nextState: GameState = {
+  // Le départ lui-même est confié à `processDeaths` (`game/state`), voie
+  // UNIQUE de sortie du plateau : elle envoie au cimetière comme « sabordé »,
+  // émet SABORDED puis DESTROY, et réveille `onSaborde` avant `onDeath`.
+  // `dispatch` l'exécute juste après cette action.
+  const nextState: GameState = {
     ...state,
-    players: state.players.map((p) => (p.id === player.id ? playerAfter : p)) as [
-      PlayerState,
-      PlayerState
-    ],
+    players: state.players.map((p) =>
+      p.id === player.id
+        ? {
+            ...p,
+            board: p.board.map((u) => (u.instanceId === action.instanceId ? { ...u, pendingRemoval: "scuttled" as const } : u)),
+          }
+        : p
+    ) as [PlayerState, PlayerState],
   };
 
-  events.push({ ...base, type: "SABORDED", playerId: player.id, instanceId: unit.instanceId });
-  events.push({ ...base, type: "DESTROY", instanceId: unit.instanceId, reason: "effect" });
-
-  const sabordeTrigger = processTrigger(
-    nextState,
-    { trigger: "onSaborde", playerId: player.id, cardId: def.id, sourceInstanceId: unit.instanceId },
-    state.turnNumber
-  );
-  nextState = sabordeTrigger.state;
-  events.push(...sabordeTrigger.events);
-
-  const deathTrigger = processTrigger(
-    nextState,
-    { trigger: "onDeath", playerId: player.id, cardId: def.id, sourceInstanceId: unit.instanceId },
-    state.turnNumber
-  );
-  nextState = deathTrigger.state;
-  events.push(...deathTrigger.events);
-
-  return { ok: true, state: nextState, events };
+  return { ok: true, state: nextState, events: [] };
 }

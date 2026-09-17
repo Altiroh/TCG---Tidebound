@@ -165,6 +165,9 @@ export function collectAuraContributions(
     if (source.attachedToInstanceId === unit.instanceId) {
       const equipBuff = sourceDef.equipGrantsBuffWhileTideStateIn;
       if (equipBuff && equipBuff.tideStateIn.includes(tideState)) add(equipBuff);
+      // Harpon de Pont, Treuil Rouillé… : bonus inconditionnel du porteur,
+      // relu en direct pour qu'il disparaisse avec l'Équipement.
+      if (sourceDef.equipGrantsBuff) add(sourceDef.equipGrantsBuff);
     }
   }
 

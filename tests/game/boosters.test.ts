@@ -282,3 +282,63 @@ describe("valeurs verrouillées par le cadrage", () => {
     expect(Math.max(...values)).toBeLessThan(BOOSTER_STANDARD_PRICE);
   });
 });
+
+describe("garantie de nouveauté (17/09/2026)", () => {
+  /** Un booster d'un seul slot commun, et un pool où la seule nouveauté est Légendaire. */
+  const slots = [{ slotIndex: 0, guaranteedRarity: "common" as const, weightedRarities: null }];
+  const pool = [
+    { id: "commune-possedee", rarity: "common" as const },
+    { id: "legendaire-manquante", rarity: "legendary" as const },
+  ];
+  const owned = new Set(["commune-possedee"]);
+
+  it("sans compteur au bout, le booster peut ne rien apporter de neuf", () => {
+    const draw = drawBooster({ slots, pool, ownedCardIds: owned, packsSinceAbyssal: 0, packsSinceNewCard: 0, seed: 7 });
+    expect(draw.cards.map((card) => card.cardId)).toEqual(["commune-possedee"]);
+    expect(draw.newCardPulled).toBe(false);
+    expect(draw.nextPacksSinceNewCard).toBe(1);
+  });
+
+  it("au seuil, une carte manquante est garantie quelle que soit sa rareté", () => {
+    const draw = drawBooster({
+      slots,
+      pool,
+      ownedCardIds: owned,
+      packsSinceAbyssal: 0,
+      packsSinceNewCard: PITY.newCardGuaranteeAfterPacks,
+      seed: 7,
+    });
+    expect(draw.cards.map((card) => card.cardId)).toEqual(["legendaire-manquante"]);
+    expect(draw.cards[0]!.rarity).toBe("legendary");
+    expect(draw.cards[0]!.isNew).toBe(true);
+    expect(draw.newCardPulled).toBe(true);
+    // Compteur remis à zéro : la garantie ne se redéclenche pas au booster suivant.
+    expect(draw.nextPacksSinceNewCard).toBe(0);
+  });
+
+  it("un booster qui apporte déjà une nouveauté ne déclenche pas la garantie", () => {
+    const draw = drawBooster({
+      slots,
+      pool: [{ id: "commune-manquante", rarity: "common" as const }],
+      ownedCardIds: owned,
+      packsSinceAbyssal: 0,
+      packsSinceNewCard: PITY.newCardGuaranteeAfterPacks,
+      seed: 7,
+    });
+    expect(draw.cards.map((card) => card.cardId)).toEqual(["commune-manquante"]);
+    expect(draw.nextPacksSinceNewCard).toBe(0);
+  });
+
+  it("collection complète : la garantie ne peut rien forcer et n'invente rien", () => {
+    const draw = drawBooster({
+      slots,
+      pool: [{ id: "commune-possedee", rarity: "common" as const }],
+      ownedCardIds: owned,
+      packsSinceAbyssal: 0,
+      packsSinceNewCard: 99,
+      seed: 7,
+    });
+    expect(draw.cards.map((card) => card.cardId)).toEqual(["commune-possedee"]);
+    expect(draw.newCardPulled).toBe(false);
+  });
+});

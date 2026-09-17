@@ -5,6 +5,7 @@ import type { TideStateName } from "@/game/environment/types";
 import type { GameEvent } from "@/game/events/types";
 import { processTrigger } from "@/game/triggers/triggerBus";
 import { reasonAfterLoss } from "@/game/state/reason";
+import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
 import type { GameState, PlayerState } from "@/game/state/types";
 
 function shouldDie(
@@ -18,6 +19,10 @@ function shouldDie(
     controllerReason: controller.reason,
     tideOrientation,
   });
+  // Un départ déjà décidé (effet `destroy`/`saborde`, action Saborder,
+  // Ancre de Dérive) ne dépend d'aucune arithmétique de Résistance : une
+  // Anomalie sans Résistance doit pouvoir partir comme une Créature.
+  if (unit.pendingRemoval) return true;
   return unit.damageMarked >= stats.health || stats.destroyedByTide;
 }
 
@@ -57,6 +62,8 @@ function applyDestructionSubstitute(
     ...unit,
     modifiers,
     damageMarked: Math.max(0, Math.min(unit.damageMarked, newEffectiveHealth - 1)),
+    // La destruction est esquivée : le départ n'a plus lieu.
+    pendingRemoval: undefined,
   };
 
   const board = player.board
@@ -79,6 +86,39 @@ function applyDestructionSubstitute(
     timestamp: Date.now(),
   };
   return { state: nextState, events: [event] };
+}
+
+const SURVIVES_LETHAL_KEY = "survivesLethal";
+
+/**
+ * "Il reste à 1 Résistance à la place" (`survivesLethalOncePerTurn`) :
+ * ramène les dégâts marqués juste sous la vie effective, une fois par
+ * tour, si la Marée est dans l'un des états requis. Retourne `undefined`
+ * si la carte ne se sauve pas (pas de capacité, Marée hors condition,
+ * déjà utilisée ce tour-ci, ou destruction directe par la Marée).
+ */
+function applySelfSurvival(
+  state: GameState,
+  turnNumber: number,
+  owner: PlayerState,
+  unit: CardInstance
+): GameState | undefined {
+  const survival = getCardDefinition(unit.cardId).survivesLethalOncePerTurn;
+  if (!survival || !survival.tideStateIn.includes(state.environment.tideState)) return undefined;
+  if (!oncePerTurnAvailable(unit, SURVIVES_LETHAL_KEY, turnNumber)) return undefined;
+  const stats = computeEffectiveStats(unit, state.environment.tideState, {
+    controllerBoard: owner.board,
+    controllerReason: owner.reason,
+    tideOrientation: state.environment.tideOrientation,
+  });
+  if (stats.destroyedByTide || stats.health < 1) return undefined;
+  const saved = markOncePerTurnUsed({ ...unit, damageMarked: stats.health - 1, pendingRemoval: undefined }, SURVIVES_LETHAL_KEY, turnNumber);
+  return {
+    ...state,
+    players: state.players.map((p) =>
+      p.id === owner.id ? { ...p, board: p.board.map((u) => (u.instanceId === unit.instanceId ? saved : u)) } : p
+    ) as [PlayerState, PlayerState],
+  };
 }
 
 /**
@@ -176,11 +216,18 @@ export function processDeaths(
       const player = current.players.find((p) => p.id === playerId);
       const unit = player?.board.find((u) => u.instanceId === unitInstanceId);
       if (!player || !unit || !shouldDie(unit, current.environment.tideState, player, current.environment.tideOrientation)) continue;
+      // Un Sabordage est un coût consenti : ni substitution ni survie.
+      if (unit.pendingRemoval === "scuttled") continue;
       const substitute = findDestructionSubstitute(player.board, unit.instanceId);
-      if (!substitute) continue;
-      const result = applyDestructionSubstitute(current, turnNumber, player.id, unit, substitute);
-      current = result.state;
-      events.push(...result.events);
+      if (substitute) {
+        const result = applyDestructionSubstitute(current, turnNumber, player.id, unit, substitute);
+        current = result.state;
+        events.push(...result.events);
+        continue;
+      }
+      // "Il reste à 1 Résistance à la place" (Revenante de la Fosse).
+      const survived = applySelfSurvival(current, turnNumber, player, unit);
+      if (survived) current = survived;
     }
 
     const tideState = current.environment.tideState;
@@ -239,9 +286,16 @@ export function processDeaths(
           })
         : boardWithoutUnit;
 
+      const scuttled = unit.pendingRemoval === "scuttled";
       const graveyard = [
         ...player.graveyard,
-        { ...unit, damageMarked: 0, modifiers: [], graveyardCause: "destroyed" as const },
+        {
+          ...unit,
+          damageMarked: 0,
+          modifiers: [],
+          pendingRemoval: undefined,
+          graveyardCause: scuttled ? ("scuttled" as const) : ("destroyed" as const),
+        },
       ];
       const updatedPlayer = {
         ...player,
@@ -253,15 +307,30 @@ export function processDeaths(
         ...next,
         players: next.players.map((p) => (p.id === player.id ? updatedPlayer : p)) as [PlayerState, PlayerState],
       };
+      // Le Sabordage est un fait distinct, que des cartes et des quêtes
+      // observent : il précède la destruction, comme dans `saborder.ts`.
+      if (scuttled) {
+        events.push({ type: "SABORDED", playerId: owner.id, instanceId: unit.instanceId, cardId: unit.cardId, turnNumber, timestamp: Date.now() });
+      }
       events.push({
         type: "DESTROY",
         instanceId: unit.instanceId,
-        reason: "lethal",
+        reason: scuttled ? "effect" : "lethal",
         turnNumber,
         timestamp: Date.now(),
       });
       if (equipReasonLoss > 0) {
         events.push({ type: "REASON_CHANGED", playerId: player.id, delta: -equipReasonLoss, turnNumber, timestamp: Date.now() });
+      }
+
+      if (scuttled) {
+        const sabordeTrigger = processTrigger(
+          next,
+          { trigger: "onSaborde", sourceInstanceId: unit.instanceId, cardId: unit.cardId, playerId: owner.id },
+          turnNumber
+        );
+        next = sabordeTrigger.state;
+        events.push(...sabordeTrigger.events);
       }
 
       const triggerResult = processTrigger(

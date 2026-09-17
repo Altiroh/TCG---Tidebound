@@ -1,7 +1,7 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { isEligibleChosenUnit } from "@/game/effects/chosenTargets";
-import { candidateKey, eligibleCandidatesFor, recomputePendingReaction } from "@/game/reactions/reactionWindow";
-import { resolveReaction } from "@/game/triggers/triggerBus";
+import { candidateKey, deriveReactionTriggerEvents, eligibleCandidatesFor, recomputePendingReaction } from "@/game/reactions/reactionWindow";
+import { processSummonEnterTriggers, resolveReaction } from "@/game/triggers/triggerBus";
 import type { PendingReactionCandidate } from "@/game/triggers/types";
 import type { GameEvent } from "@/game/events/types";
 import { assertGameActive, assertPlayerInGame, combine } from "@/game/rules/validation";
@@ -61,10 +61,30 @@ export function activateReaction(state: GameState, action: ActivateReactionActio
 
   const pending = state.pendingReaction!;
   const resolution = resolveReaction(state, validation.candidate, action.targetInstanceId, pending.turnNumber);
+  let nextState = resolution.state;
   const events: GameEvent[] = [...resolution.events];
 
-  const usedCandidateKeys = [...pending.usedCandidateKeys, candidateKey(action.sourceInstanceId, action.abilityIndex)];
-  const nextPending = recomputePendingReaction(resolution.state, { ...pending, usedCandidateKeys });
+  // Ce que la réaction vient de faire arriver (invocation, arrivée rejouée
+  // par Colombina) réveille les capacités d'arrivée AUTOMATIQUES concernées,
+  // comme après une pose.
+  const arrivals = processSummonEnterTriggers(nextState, resolution.events, pending.turnNumber);
+  nextState = arrivals.state;
+  events.push(...arrivals.events);
+
+  // « Choisissez : A ou B » : activer l'une des capacités d'un groupe écarte
+  // ses sœurs pour le reste de la fenêtre.
+  const def = getCardDefinition(validation.candidate.cardId);
+  const activated = def.abilities?.[action.abilityIndex];
+  const siblings = activated?.choiceGroup
+    ? (def.abilities ?? []).flatMap((ability, index) => (ability.choiceGroup === activated.choiceGroup ? [candidateKey(action.sourceInstanceId, index)] : []))
+    : [];
+  const usedCandidateKeys = Array.from(new Set([...pending.usedCandidateKeys, candidateKey(action.sourceInstanceId, action.abilityIndex), ...siblings]));
+
+  // « Une réaction activée peut elle-même déclencher de nouvelles
+  // réactions » : ce qu'elle a produit s'ajoute aux déclencheurs de la
+  // fenêtre — une arrivée rejouée rouvre ainsi les choix de la carte visée.
+  const triggerEvents = [...pending.events, ...deriveReactionTriggerEvents(nextState, events)];
+  const nextPending = recomputePendingReaction(nextState, { ...pending, events: triggerEvents, usedCandidateKeys });
   if (nextPending) {
     events.push({
       type: "REACTION_WINDOW_OPENED",
@@ -74,5 +94,5 @@ export function activateReaction(state: GameState, action: ActivateReactionActio
     });
   }
 
-  return { ok: true, state: { ...resolution.state, pendingReaction: nextPending }, events };
+  return { ok: true, state: { ...nextState, pendingReaction: nextPending }, events };
 }

@@ -6,10 +6,9 @@ import type { EffectContext } from "@/game/effects/resolveEffect";
 import { resolveEffect, revealRandomHandCards } from "@/game/effects/resolveEffect";
 import type { GameEvent } from "@/game/events/types";
 import { applyCardPlayedAnomalies, applyPermanentLeftAnomalies } from "@/game/state/anomalies";
-import { chosenTargetRequirement } from "@/game/effects/chosenTargets";
+import { chosenTargetRequirement, eligibleChosenUnits } from "@/game/effects/chosenTargets";
 import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
-import { canPayReason } from "@/game/state/reason";
-import { consumeOpponentReactionRevealShield, payReasonCost, reasonCostAfterShield } from "@/game/state/shields";
+import { consumeOpponentReactionRevealShield, payReasonCost } from "@/game/state/shields";
 import type { GameState, PlayerId, PlayerState } from "@/game/state/types";
 import type { PendingReactionCandidate, TriggerEvent } from "@/game/triggers/types";
 
@@ -62,6 +61,25 @@ function work(
 }
 
 
+/** `condition.tideStateIn` : la Marée est-elle dans l'un des états requis par la capacité ? (Toujours vrai sans condition.) */
+function matchesTideCondition(state: GameState, ability: TriggeredAbility): boolean {
+  const allowed = ability.condition?.tideStateIn;
+  return !allowed || allowed.includes(state.environment.tideState);
+}
+
+/**
+ * `condition.controlsAnyCardIds` : le contrôleur a-t-il l'une de ces cartes
+ * en jeu ? Évalué AVANT la consommation de `oncePerTurnKey`, pour qu'un
+ * déclenchement qui ne remplit pas la condition ne brûle pas l'unique usage
+ * du tour (ex: La Quête du Grand Nénuphar sans son Destrier).
+ */
+function matchesControlCondition(state: GameState, ability: TriggeredAbility, controllerId: PlayerId): boolean {
+  const required = ability.condition?.controlsAnyCardIds;
+  if (!required) return true;
+  const controller = state.players.find((p) => p.id === controllerId);
+  return Boolean(controller?.board.some((unit) => required.includes(unit.cardId)));
+}
+
 /**
  * La carte qui vient d'arriver/de mourir (portée par `event`) correspond-
  * elle au filtre d'une capacité d'OBSERVATEUR, vue depuis `holder` ?
@@ -73,7 +91,11 @@ function matchesTriggerSource(
   holderControllerId: PlayerId
 ): boolean {
   if ((filter.excludeSelf ?? true) && event.sourceInstanceId === holder.instanceId) return false;
-  if ((filter.sameController ?? true) && event.playerId !== holderControllerId) return false;
+  if (filter.opponentOnly) {
+    if (event.playerId === holderControllerId) return false;
+  } else if ((filter.sameController ?? true) && event.playerId !== holderControllerId) {
+    return false;
+  }
   if (filter.onlySummoned && !event.fromSummon) return false;
   // "Quand IL attaque" sur un Équipement : l'événement vise le permanent
   // équipé, pas l'Équipement lui-même (qui, lui, n'attaque jamais).
@@ -84,6 +106,8 @@ function matchesTriggerSource(
   if (filter.archetype && !(event.cardId && getCardDefinition(event.cardId).archetype === filter.archetype)) return false;
   // Même logique pour le sous-type (Lot 11, « une autre Marionnette alliée »).
   if (filter.subtype && !(event.cardId && getCardDefinition(event.cardId).subtype === filter.subtype)) return false;
+  // « quand une Structure... » : type de la carte déclencheuse.
+  if (filter.cardTypes && !(event.cardId && filter.cardTypes.includes(getCardDefinition(event.cardId).type))) return false;
   return true;
 }
 
@@ -107,7 +131,7 @@ function collectObserverWork(
       const def = getCardDefinition(holder.cardId);
       (def.abilities ?? []).forEach((ability, abilityIndex) => {
         if (ability.trigger !== event.trigger || (ability.mode ?? "auto") !== mode) return;
-        if (!ability.triggeredBy) return;
+        if (!ability.triggeredBy || !matchesTideCondition(state, ability)) return;
         if (!matchesTriggerSource(ability.triggeredBy, event, holder, player.id)) return;
         // "La première fois à chaque tour" : la capacité disparaît des
         // candidats une fois consommée ce tour-ci (le marquage, lui, se
@@ -133,7 +157,7 @@ function collectTriggeredWork(
   mode: "auto" | "optional"
 ): TriggeredWork[] {
   const result: TriggeredWork[] = [];
-  const matchesMode = (ability: TriggeredAbility) => (ability.mode ?? "auto") === mode;
+  const matchesMode = (ability: TriggeredAbility) => (ability.mode ?? "auto") === mode && matchesTideCondition(state, ability);
 
   if (event.trigger === "onDeath" || event.trigger === "onSaborde" || event.trigger === "onExpire") {
     // L'unité est déjà retirée du plateau au moment où cet événement est
@@ -240,13 +264,14 @@ function markUnitOncePerTurn(
   playerId: PlayerId,
   instanceId: string,
   key: string,
-  turnNumber: number
+  turnNumber: number,
+  onceEver = false
 ): GameState {
   return {
     ...state,
     players: state.players.map((p) =>
       p.id === playerId
-        ? { ...p, board: p.board.map((u) => (u.instanceId === instanceId ? markOncePerTurnUsed(u, key, turnNumber) : u)) }
+        ? { ...p, board: p.board.map((u) => (u.instanceId === instanceId ? markOncePerTurnUsed(u, key, turnNumber, onceEver) : u)) }
         : p
     ) as [PlayerState, PlayerState],
   };
@@ -339,10 +364,19 @@ export function processSummonEnterTriggers(
   const produced: GameEvent[] = [];
 
   for (const event of events) {
-    if (event.type !== "SUMMON") continue;
+    // Une arrivée REJOUÉE (`ENTER_EFFECTS_REPEATED`, Colombina) rallume les
+    // mêmes capacités qu'une invocation — sans être une invocation : les
+    // filtres « seulement invoqué » ne la voient pas.
+    if (event.type !== "SUMMON" && event.type !== "ENTER_EFFECTS_REPEATED") continue;
     const result = processTrigger(
       nextState,
-      { trigger: "onEnterPlay", playerId: event.playerId, cardId: event.cardId, sourceInstanceId: event.instanceId, fromSummon: true },
+      {
+        trigger: "onEnterPlay",
+        playerId: event.playerId,
+        cardId: event.cardId,
+        sourceInstanceId: event.instanceId,
+        fromSummon: event.type === "SUMMON",
+      },
       turnNumber,
       depth
     );
@@ -396,6 +430,21 @@ export function processReturnedToHandTriggers(
 }
 
 /**
+ * Capacité AUTOMATIQUE dont un effet vise « un autre X » (`chosenUnit`
+ * avec filtre) : personne ne désigne, c'est le moteur qui choisit — le
+ * premier permanent éligible dans l'ordre du plateau. Décision de design
+ * du 2026-09-16 : la Fourchette du Grand Étang et le Chevalier Abyssal
+ * « se chaînent directement » à l'attaque, sans fenêtre de réaction que le
+ * joueur pourrait ne pas voir. Un `chosenUnit` SANS filtre (pose d'un
+ * Équipement) n'est jamais deviné : il reste un vrai choix du joueur.
+ */
+function withAutoChosenTarget(state: GameState, effect: EffectDefinition, context: EffectContext): EffectContext {
+  if (effect.target.kind !== "chosenUnit" || !effect.target.among || context.chosenTargetInstanceId) return context;
+  const candidate = eligibleChosenUnits(state, effect.target, context.controllerId, context.sourceInstanceId)[0];
+  return candidate ? { ...context, chosenTargetInstanceId: candidate.unit.instanceId } : context;
+}
+
+/**
  * Traite un `TriggerEvent` : résout dans l'ordre toutes les capacités
  * AUTOMATIQUES concernées et retourne le nouvel état + les événements
  * produits (à ajouter au journal par l'appelant). Les capacités
@@ -412,8 +461,42 @@ export function processTrigger(
   const items = collectTriggeredWork(state, event, turnNumber, "auto");
   let nextState = state;
   const events: GameEvent[] = [];
+  const openedChoiceGroups = new Set<string>();
 
   for (const item of items) {
+    // Condition de capacité non remplie : ni résolution, ni consommation du
+    // « une fois par tour » (cf. `matchesControlCondition`).
+    if (!matchesControlCondition(nextState, item.ability, item.context.controllerId)) continue;
+
+    // « Choisissez : A ou B » en résolution AUTOMATIQUE (ex: Horloge de
+    // Marée au Sabordage) : rien ne se résout ici, un choix est ouvert pour
+    // le contrôleur (`GameState.pendingChoice`, résolu par `resolveChoice`).
+    // Si un choix est déjà en attente, la première option du groupe se
+    // résout d'office.
+    if (item.ability.choiceGroup && item.context.sourceInstanceId) {
+      const groupKey = `${item.context.sourceInstanceId}:${item.ability.choiceGroup}`;
+      if (openedChoiceGroups.has(groupKey)) continue;
+      openedChoiceGroups.add(groupKey);
+      const abilityIndexes = (getCardDefinition(item.cardId).abilities ?? []).flatMap((ability, index) =>
+        ability.choiceGroup === item.ability.choiceGroup && (ability.mode ?? "auto") === "auto" ? [index] : []
+      );
+      if (!nextState.pendingChoice) {
+        nextState = {
+          ...nextState,
+          pendingChoice: {
+            kind: "abilityOption",
+            playerId: item.context.controllerId,
+            sourceInstanceId: item.context.sourceInstanceId,
+            cardId: item.cardId,
+            abilityIndexes,
+            turnNumber,
+          },
+        };
+        continue;
+      }
+      if (abilityIndexes[0] !== item.abilityIndex) continue;
+    }
+
     // "La première fois à chaque tour" : marquée AVANT résolution, pour
     // qu'une capacité qui provoque elle-même l'événement auquel elle
     // réagit ne se rappelle pas en boucle.
@@ -421,11 +504,15 @@ export function processTrigger(
     if (key && item.context.sourceInstanceId) {
       const holder = findBoardUnit(nextState, item.context.sourceInstanceId);
       if (!holder || !oncePerTurnAvailable(holder.unit, key, turnNumber)) continue;
-      nextState = markUnitOncePerTurn(nextState, holder.playerId, holder.unit.instanceId, key, turnNumber);
+      nextState = markUnitOncePerTurn(nextState, holder.playerId, holder.unit.instanceId, key, turnNumber, item.ability.onceEver);
     }
 
+    // Le Bris depuis la main est une propriété de l'ÉVÉNEMENT : sans ce
+    // report, `conditionBrokenFromHand` serait toujours faux pour une
+    // capacité déclenchée (Pantalone Sans-Sou).
+    const context = event.fromHand === undefined ? item.context : { ...item.context, brokenFromHand: event.fromHand };
     for (const effect of item.effects) {
-      const result = resolveEffect(nextState, effect, item.context);
+      const result = resolveEffect(nextState, effect, withAutoChosenTarget(nextState, effect, context));
       nextState = result.state;
       events.push(...result.events);
     }
@@ -468,8 +555,9 @@ export function processTrigger(
 
 /**
  * Recense les capacités `mode: "optional"` actuellement éligibles pour
- * `forPlayerId`, en réponse à l'un des `triggerEvents` donnés — coût
- * payable et (si besoin) au moins une cible potentielle disponible.
+ * `forPlayerId`, en réponse à l'un des `triggerEvents` donnés — avec, si
+ * besoin, au moins une cible potentielle disponible. Le coût n'écarte
+ * jamais une réaction : il n'y a pas de plancher de Déraison.
  * Utilisé pour ouvrir/faire vivre une fenêtre de réaction
  * (`game/reactions/`) ; jamais pour résoudre quoi que ce soit lui-même.
  */
@@ -479,8 +567,7 @@ export function collectReactionCandidates(
   forPlayerId: PlayerId,
   turnNumber: number
 ): PendingReactionCandidate[] {
-  const player = state.players.find((p) => p.id === forPlayerId);
-  if (!player) return [];
+  if (!state.players.some((p) => p.id === forPlayerId)) return [];
 
   const candidates: PendingReactionCandidate[] = [];
   const seen = new Set<string>();
@@ -488,11 +575,13 @@ export function collectReactionCandidates(
   for (const event of triggerEvents) {
     for (const item of collectTriggeredWork(state, event, turnNumber, "optional")) {
       if (item.context.controllerId !== forPlayerId) continue;
+      if (!matchesControlCondition(state, item.ability, item.context.controllerId)) continue;
       const key = `${item.context.sourceInstanceId}:${item.abilityIndex}`;
       if (seen.has(key)) continue;
 
+      // Le coût en Raison d'une réaction ne l'écarte jamais : sans plancher
+      // de Déraison, la réaction se propose et se paie en creusant la dette.
       const reasonCost = item.ability.cost?.reason ?? 0;
-      if (!canPayReason(player, reasonCostAfterShield(state, forPlayerId, reasonCost, turnNumber))) continue;
 
       // "choisissez un Cra-Poiscail" : la capacité ne se propose que s'il
       // existe au moins une cible LÉGALE — pas seulement une carte
@@ -554,7 +643,7 @@ export function resolveReaction(
   if (ability.oncePerTurnKey) {
     const holder = findBoardUnit(nextState, candidate.sourceInstanceId);
     if (holder) {
-      nextState = markUnitOncePerTurn(nextState, holder.playerId, holder.unit.instanceId, ability.oncePerTurnKey, turnNumber);
+      nextState = markUnitOncePerTurn(nextState, holder.playerId, holder.unit.instanceId, ability.oncePerTurnKey, turnNumber, ability.onceEver);
     }
   }
 
@@ -596,5 +685,50 @@ export function resolveReaction(
     }
   }
 
+  return { state: nextState, events };
+}
+
+/**
+ * Photo des Créatures qui sont, à cet instant, la SEULE Créature du plateau
+ * de leur contrôleur — par `instanceId`. Sert de référence avant/après
+ * chaque action pour `onBecomeOnlyCreature` (ex: Méduse des Lanternes,
+ * "quand elle devient votre seule Créature en jeu").
+ */
+export function snapshotLoneCreatures(state: GameState): Set<string> {
+  const lone = new Set<string>();
+  for (const player of state.players) {
+    const creatures = player.board.filter((u) => getCardDefinition(u.cardId).type === "creature");
+    if (creatures.length === 1) lone.add(creatures[0]!.instanceId);
+  }
+  return lone;
+}
+
+/**
+ * Déclenche `onBecomeOnlyCreature` pour chaque Créature qui vient de DEVENIR
+ * la seule de son plateau (absente de la photo `before`, présente
+ * maintenant) — qu'une autre soit morte, ait été renvoyée en main, ou
+ * qu'elle arrive seule sur un plateau vide.
+ */
+export function processLoneCreatureChanges(
+  state: GameState,
+  before: Set<string>,
+  turnNumber: number
+): { state: GameState; events: GameEvent[] } {
+  let nextState = state;
+  const events: GameEvent[] = [];
+  for (const instanceId of snapshotLoneCreatures(state)) {
+    if (before.has(instanceId)) continue;
+    const owner = nextState.players.find((p) => p.board.some((u) => u.instanceId === instanceId));
+    const unit = owner?.board.find((u) => u.instanceId === instanceId);
+    if (!owner || !unit) continue;
+    const result = processTrigger(
+      nextState,
+      { trigger: "onBecomeOnlyCreature", playerId: owner.id, cardId: unit.cardId, sourceInstanceId: instanceId },
+      turnNumber,
+      1
+    );
+    nextState = result.state;
+    events.push(...result.events);
+  }
   return { state: nextState, events };
 }

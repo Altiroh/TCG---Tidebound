@@ -22,6 +22,7 @@ export type TriggerType =
   | "onObjectBroken" // le contrôleur vient de Briser un Objet (depuis le board OU depuis sa main)
   | "onPowerGained" // une carte EN JEU vient de voir sa Puissance effective augmenter, quelle qu'en soit la cause
   | "onReturnedToHand" // un permanent quitte le board pour la main de son contrôleur (Lot 11 — Théâtre Englouti)
+  | "onBecomeOnlyCreature" // la carte vient de DEVENIR la seule Créature du plateau de son contrôleur (ex: Méduse des Lanternes) — détecté par photo avant/après chaque action (`processLoneCreatureChanges`)
   | "onCondition"; // condition arbitraire évaluée par un `ConditionExpression`
 
 export interface TriggerEvent {
@@ -35,6 +36,13 @@ export interface TriggerEvent {
   tideState?: import("@/game/environment/types").TideStateName;
   /** `onEnterPlay` : la carte arrive par INVOCATION et non par une pose depuis la main (ex: un Péon). */
   fromSummon?: boolean;
+  /**
+   * `onObjectBroken` : l'Objet a été Brisé DEPUIS LA MAIN. Propagé dans
+   * `EffectContext.brokenFromHand` par `processTrigger`, sans quoi une
+   * capacité déclenchée ne peut pas lire `conditionBrokenFromHand` (ex:
+   * Pantalone Sans-Sou, « que vous Brisez directement depuis votre main »).
+   */
+  fromHand?: boolean;
 }
 
 /**

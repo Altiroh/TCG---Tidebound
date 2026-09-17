@@ -2,17 +2,17 @@ import { getShipDefinition } from "@/game/environment/shipData";
 import { RULES } from "@/game/rules/constants";
 import type { PlayerState } from "@/game/state/types";
 
-/**
+/*
  * Déraison — Raison négative (Notion "Gameplay — Raison, Déraison, healing
  * & passifs de Navires", piste à prototyper du 2026-09-12). La Raison peut
- * passer sous 0 jusqu'à un plancher de -`DERAISON_FLOOR_RATIO` × Raison max
- * (Raison max COURANTE : le malus des Abysses resserre donc aussi le
- * plancher). La dette est réglée en Ancrage à la fin du tour du joueur
- * (`game/actions/endTurn.ts`).
+ * passer sous 0 SANS PLANCHER (décision de design du 2026-09-16 : « il n'y
+ * a pas de Déraison max »). Ce qui retient le joueur n'est pas un refus du
+ * moteur mais la dette : chaque point sous 0 est réglé en Ancrage à la fin
+ * de son tour (`game/actions/endTurn.ts`), et l'écran l'annonce avant
+ * qu'il ne s'engage (`useDeraisonWarning`). Un plancher à -50 % de la
+ * Raison max avait été prototypé ; il rendait certains coups impossibles
+ * là où la règle veut qu'ils soient seulement coûteux.
  */
-export function reasonFloor(player: Pick<PlayerState, "reasonMax">): number {
-  return -Math.floor(Math.max(0, player.reasonMax) * RULES.DERAISON_FLOOR_RATIO);
-}
 
 /** Raison maximale ATTEIGNABLE en ce moment : `reasonMax`, restreint par le plafond de début de partie s'il existe encore. */
 export function reasonCeiling(player: Pick<PlayerState, "reasonMax" | "reasonCap">): number {
@@ -34,13 +34,14 @@ export function deraisonDebt(reason: number): number {
 }
 
 /**
- * Raison après une perte de `amount`, bornée par le plancher de Déraison.
- * Une perte ne fait jamais REMONTER la Raison : un joueur déjà sous le
- * plancher (plancher resserré par les Abysses après coup) y reste.
+ * Raison après une perte de `amount`. Aucune borne basse : la Déraison peut
+ * se creuser autant que le joueur l'accepte — c'est la dette de fin de tour
+ * qui le rappelle à l'ordre, pas le moteur. Une perte nulle ou négative ne
+ * touche à rien.
  */
-export function reasonAfterLoss(player: Pick<PlayerState, "reason" | "reasonMax">, amount: number): number {
+export function reasonAfterLoss(player: Pick<PlayerState, "reason">, amount: number): number {
   if (amount <= 0) return player.reason;
-  return Math.min(player.reason, Math.max(reasonFloor(player), player.reason - amount));
+  return player.reason - amount;
 }
 
 /**
@@ -54,9 +55,4 @@ export function deraisonAnchorDamage(player: Pick<PlayerState, "shipId">, reason
   if (debt === 0) return 0;
   const reduction = getShipDefinition(player.shipId).deraisonDamageReduction ?? 0;
   return Math.max(0, debt * RULES.DERAISON_ANCHOR_DAMAGE_PER_POINT - reduction);
-}
-
-/** Le joueur peut-il payer `cost` sans descendre sous son plancher de Déraison ? */
-export function canPayReason(player: Pick<PlayerState, "reason" | "reasonMax">, cost: number): boolean {
-  return cost <= 0 || player.reason - cost >= reasonFloor(player);
 }

@@ -17,12 +17,14 @@ function breakVariants(
   playerId: PlayerId,
   instanceId: string,
   def: CardDefinition,
-  fromHand: boolean,
-  allBoardUnits: readonly CardInstance[]
+  fromHand: boolean
 ): PlayerAction[] {
   const base = { type: "breakObject" as const, playerId, instanceId, ...(fromHand ? { fromHand: true } : {}) };
-  if ((def.onBreakEffects ?? []).some((e) => e.target.kind === "chosenUnit")) {
-    return allBoardUnits.map((target) => ({ ...base, targetInstanceId: target.instanceId }));
+  const targeted = (def.onBreakEffects ?? []).find((e) => e.target.kind === "chosenUnit");
+  if (targeted) {
+    // Seules les cibles LÉGALES au regard du filtre de l'effet (ex: Levier
+    // de Lest, "une Structure que vous contrôlez") — le moteur refuse le reste.
+    return eligibleChosenUnits(state, targeted.target, playerId, instanceId).map(({ unit }) => ({ ...base, targetInstanceId: unit.instanceId }));
   }
   const choices = graveyardChoicesForBreak(state, playerId, def);
   if (choices.length > 0) return choices.map((card) => ({ ...base, chosenGraveyardInstanceId: card.instanceId }));
@@ -64,6 +66,9 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
   // branches (perte d'Ancrage pondérée bien plus lourdement que la Raison),
   // aucune heuristique dédiée n'est nécessaire ici.
   if (state.pendingChoice && state.pendingChoice.playerId === playerId) {
+    if (state.pendingChoice.kind === "abilityOption") {
+      return state.pendingChoice.abilityIndexes.map((abilityIndex) => ({ type: "resolveChoice" as const, playerId, choice: { abilityIndex } }));
+    }
     return [
       { type: "resolveChoice", playerId, choice: "reasonLoss" },
       { type: "resolveChoice", playerId, choice: "anchorDamage" },
@@ -136,12 +141,12 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
         actions.push({ type: "playCard", playerId, instanceId: card.instanceId });
       }
       // Bris depuis la main (coût réduit, sans Slot) : même variantes de cible/défausse qu'un Objet posé.
-      if (def.type === "objet") actions.push(...breakVariants(state, playerId, card.instanceId, def, true, allBoardUnits));
+      if (def.type === "objet") actions.push(...breakVariants(state, playerId, card.instanceId, def, true));
     }
 
     for (const unit of player.board) {
       const def = getCardDefinition(unit.cardId);
-      if (def.type === "objet") actions.push(...breakVariants(state, playerId, unit.instanceId, def, false, allBoardUnits));
+      if (def.type === "objet") actions.push(...breakVariants(state, playerId, unit.instanceId, def, false));
       actions.push({ type: "saborder", playerId, instanceId: unit.instanceId });
     }
 

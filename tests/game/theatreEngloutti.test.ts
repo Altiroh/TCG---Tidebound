@@ -270,3 +270,88 @@ describe("répétition d'un effet d'arrivée", () => {
     expect(ability?.triggeredBy).toBeDefined();
   });
 });
+
+describe("Il Dottore des Noyés — un camp par mode", () => {
+  const attackOf = (state: ReturnType<typeof testGameState>, playerIndex: 0 | 1, instanceId: string) => {
+    const unit = state.players[playerIndex]!.board.find((u) => u.instanceId === instanceId)!;
+    return unit.modifiers.reduce((sum, modifier) => sum + modifier.attack, 0);
+  };
+
+  function arrival() {
+    const dottore = instance("il-dottore-des-noyes", "p1");
+    const ally = instance("pulcinella-gonfle", "p1");
+    // Une ennemie assez solide pour survivre au -2 / -2 (5 / 6) : on mesure le malus, pas une mort.
+    const enemy = instance("baleine-aux-cicatrices-blanches", "p2");
+    const state = testGameState({
+      players: [testPlayer("p1", { hand: [dottore], board: [ally], reason: 10 }), testPlayer("p2", { board: [enemy] })],
+    });
+    const played = dispatch(state, { type: "playCard", playerId: "p1", instanceId: dottore.instanceId });
+    expect(played.ok).toBe(true);
+    if (!played.ok) throw new Error(played.error);
+    expect(played.state.pendingReaction?.awaitingPlayerId).toBe("p1");
+    return { state: played.state, dottore, ally, enemy };
+  }
+
+  it("le +2 / +2 ne se pose que sur une créature ALLIÉE — jamais sur l'ennemie (bug du 2026-09-16)", () => {
+    const { state, dottore, enemy, ally } = arrival();
+
+    const onEnemy = dispatch(state, { type: "activateReaction", playerId: "p1", sourceInstanceId: dottore.instanceId, abilityIndex: 0, targetInstanceId: enemy.instanceId });
+    expect(onEnemy.ok).toBe(false);
+
+    const onAlly = dispatch(state, { type: "activateReaction", playerId: "p1", sourceInstanceId: dottore.instanceId, abilityIndex: 0, targetInstanceId: ally.instanceId });
+    expect(onAlly.ok).toBe(true);
+    if (!onAlly.ok) return;
+    expect(attackOf(onAlly.state, 0, ally.instanceId)).toBe(2);
+  });
+
+  it("le -2 / -2 ne se pose que sur une créature ENNEMIE, et retire bien 2 / 2", () => {
+    const { state, dottore, enemy, ally } = arrival();
+
+    const onAlly = dispatch(state, { type: "activateReaction", playerId: "p1", sourceInstanceId: dottore.instanceId, abilityIndex: 1, targetInstanceId: ally.instanceId });
+    expect(onAlly.ok).toBe(false);
+
+    const onEnemy = dispatch(state, { type: "activateReaction", playerId: "p1", sourceInstanceId: dottore.instanceId, abilityIndex: 1, targetInstanceId: enemy.instanceId });
+    expect(onEnemy.ok).toBe(true);
+    if (!onEnemy.ok) return;
+    expect(attackOf(onEnemy.state, 1, enemy.instanceId)).toBe(-2);
+  });
+
+  it("Colombina rejoue l'arrivée d'Il Dottore : le choix de mode se repropose, et s'applique", () => {
+    const colombina = instance("colombina-aux-cent-visages", "p1");
+    const dottore = instance("il-dottore-des-noyes", "p1");
+    const ally = instance("pulcinella-gonfle", "p1");
+    const enemy = instance("baleine-aux-cicatrices-blanches", "p2");
+    const state = testGameState({
+      players: [testPlayer("p1", { hand: [colombina], board: [dottore, ally], reason: 10 }), testPlayer("p2", { board: [enemy] })],
+    });
+
+    // Colombina arrive : elle demande QUELLE Marionnette rejouer.
+    const played = dispatch(state, { type: "playCard", playerId: "p1", instanceId: colombina.instanceId });
+    expect(played.ok).toBe(true);
+    if (!played.ok) return;
+    expect(played.state.pendingReaction?.awaitingPlayerId).toBe("p1");
+
+    const repeated = dispatch(played.state, { type: "activateReaction", playerId: "p1", sourceInstanceId: colombina.instanceId, abilityIndex: 0, targetInstanceId: dottore.instanceId });
+    expect(repeated.ok).toBe(true);
+    if (!repeated.ok) return;
+    expect(repeated.events.some((event) => event.type === "ENTER_EFFECTS_REPEATED")).toBe(true);
+    // L'arrivée d'Il Dottore se rejoue : sa fenêtre de choix s'ouvre à nouveau.
+    expect(repeated.state.pendingReaction?.awaitingPlayerId).toBe("p1");
+
+    const buffed = dispatch(repeated.state, { type: "activateReaction", playerId: "p1", sourceInstanceId: dottore.instanceId, abilityIndex: 1, targetInstanceId: enemy.instanceId });
+    expect(buffed.ok).toBe(true);
+    if (!buffed.ok) return;
+    expect(attackOf(buffed.state, 1, enemy.instanceId)).toBe(-2);
+  });
+
+  it("choisir un mode consomme l'autre : pas de +2 / +2 ET -2 / -2 à la même arrivée", () => {
+    const { state, dottore, enemy, ally } = arrival();
+    const first = dispatch(state, { type: "activateReaction", playerId: "p1", sourceInstanceId: dottore.instanceId, abilityIndex: 0, targetInstanceId: ally.instanceId });
+    expect(first.ok).toBe(true);
+    if (!first.ok) return;
+    // La fenêtre est refermée : la seconde capacité n'est plus proposée.
+    expect(first.state.pendingReaction).toBeUndefined();
+    const second = dispatch(first.state, { type: "activateReaction", playerId: "p1", sourceInstanceId: dottore.instanceId, abilityIndex: 1, targetInstanceId: enemy.instanceId });
+    expect(second.ok).toBe(false);
+  });
+});

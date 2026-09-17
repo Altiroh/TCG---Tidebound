@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CORE_SET, type CardDefinition } from "@/game";
+import { CORE_SET, isAbyssalVariant, type CardDefinition } from "@/game";
 import {
   EMPTY_FILTERS,
   costBucket,
@@ -35,8 +35,8 @@ describe("filtres de la Collection", () => {
     const standard = CORE_SET.filter((def) => matchesFilters(def, filters({ variant: "standard" }), NONE));
     const abyssal = CORE_SET.filter((def) => matchesFilters(def, filters({ variant: "abyssal" }), NONE));
     expect(standard.length + abyssal.length).toBe(CORE_SET.length);
-    expect(abyssal.every((def) => def.subtype === "abyssal")).toBe(true);
-    expect(standard.some((def) => def.subtype === "abyssal")).toBe(false);
+    expect(abyssal.every((def) => isAbyssalVariant(def))).toBe(true);
+    expect(standard.some((def) => isAbyssalVariant(def))).toBe(false);
   });
 
   it("partitionne Possédées / Manquantes selon la possession réelle", () => {
@@ -86,7 +86,7 @@ describe("filtres de la Collection", () => {
   });
 
   it("combine les axes par ET", () => {
-    const cible = find((def) => def.subtype !== "abyssal" && def.type === "creature");
+    const cible = find((def) => !isAbyssalVariant(def) && def.type === "creature");
     expect(matchesFilters(cible, filters({ variant: "standard", type: "creature" }), NONE)).toBe(true);
     expect(matchesFilters(cible, filters({ variant: "abyssal", type: "creature" }), NONE)).toBe(false);
   });
@@ -95,7 +95,7 @@ describe("filtres de la Collection", () => {
     // Le décompte affiché en face de « Abyssal » doit valoir ce qu'on
     // obtiendrait en cliquant dessus, même si « Standard » est actif.
     const actifs = filters({ variant: "standard" });
-    const abyssales = countMatching(actifs, NONE, "variant", (def) => def.subtype === "abyssal");
+    const abyssales = countMatching(actifs, NONE, "variant", (def) => isAbyssalVariant(def));
     const reel = CORE_SET.filter((def) => matchesFilters(def, filters({ variant: "abyssal" }), NONE)).length;
     expect(abyssales).toBe(reel);
     expect(abyssales).toBeGreaterThan(0);

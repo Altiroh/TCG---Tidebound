@@ -2,6 +2,7 @@ import type { CardInstance } from "@/game/cards/types";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { computeEffectiveStats } from "@/game/cards/stats";
 import { getShipDefinition } from "@/game/environment/shipData";
+import { isVisibleDuringTide } from "@/game/cards/types";
 import { reasonAfterLoss } from "@/game/state/reason";
 import type { GameEvent } from "@/game/events/types";
 import { processTrigger } from "@/game/triggers/triggerBus";
@@ -200,7 +201,8 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
 
     // Bouclier "1ère fois par tour" du DÉFENSEUR réduisant la Puissance de
     // l'attaquant sur une attaque directe (Le Filet qui Respire).
-    const attackerPowerShield = consumeAttackerPowerShield(nextState, opponent.id, state.turnNumber);
+    const attackerCardType = getCardDefinition(attackerUnit.cardId).type;
+    const attackerPowerShield = consumeAttackerPowerShield(nextState, opponent.id, state.turnNumber, attackerCardType);
     nextState = attackerPowerShield.state;
     const shieldedAttackerDamage = Math.max(0, attackerDamage - attackerPowerShield.reduction);
 
@@ -211,9 +213,64 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
 
     // Bouclier "1ère fois par tour" du DÉFENSEUR réduisant les dégâts directs
     // au Navire (Cage de Flottaison).
-    const directShipDamageShield = consumeDirectShipDamageShield(nextState, opponent.id, state.turnNumber);
+    const directShipDamageShield = consumeDirectShipDamageShield(nextState, opponent.id, state.turnNumber, attackerCardType);
     nextState = directShipDamageShield.state;
-    const directDamage = Math.max(0, baseDirectDamage - directShipDamageShield.reduction);
+    const shieldedDirectDamage = Math.max(0, baseDirectDamage - directShipDamageShield.reduction);
+
+    // Plafond du DÉFENSEUR "pas plus de N dégâts d'une même attaque" tant
+    // que la carte est visible (Carcasse Renversée) — le plus bas l'emporte.
+    const directDamageCap = getPlayer(nextState, opponent.id).board.reduce<number | undefined>((cap, unit) => {
+      const def = getCardDefinition(unit.cardId);
+      const value = def.capDirectShipDamageWhileVisible;
+      if (value === undefined || !isVisibleDuringTide(def, nextState.environment.tideState)) return cap;
+      return cap === undefined ? value : Math.min(cap, value);
+    }, undefined);
+    let directDamage = directDamageCap === undefined ? shieldedDirectDamage : Math.min(shieldedDirectDamage, directDamageCap);
+
+    // Contrecoup (Cylindre flottant, visible) : le DÉFENSEUR annule ces
+    // dégâts, en renvoie une fraction (arrondie au supérieur) au Navire de
+    // l'attaquant, puis la carte se brise et quitte le board.
+    const contrecoup =
+      directDamage > 0
+        ? getPlayer(nextState, opponent.id).board.find((unit) => {
+            const def = getCardDefinition(unit.cardId);
+            return def.contrecoupOnDirectShipDamageWhileVisible !== undefined && isVisibleDuringTide(def, nextState.environment.tideState);
+          })
+        : undefined;
+    if (contrecoup) {
+      const fraction = getCardDefinition(contrecoup.cardId).contrecoupOnDirectShipDamageWhileVisible!.reflectedFraction;
+      const reflected = Math.ceil(directDamage * fraction);
+      directDamage = 0;
+      nextState = {
+        ...nextState,
+        players: nextState.players.map((p) => {
+          if (p.id === attackerPlayer.id) return { ...p, anchor: p.anchor - reflected };
+          if (p.id === opponent.id) {
+            return {
+              ...p,
+              board: p.board.filter((u) => u.instanceId !== contrecoup.instanceId),
+              // « Après résolution, elle SE BRISE et quitte le board » : ce
+              // n'est pas une destruction (Briser ≠ Détruire), donc ni
+              // `onDeath` ni les observateurs « Structure détruite ».
+              graveyard: [...p.graveyard, { ...contrecoup, damageMarked: 0, modifiers: [], graveyardCause: "expired" as const }],
+            };
+          }
+          return p;
+        }) as [PlayerState, PlayerState],
+      };
+      events.push({ ...base, type: "DAMAGE", targetPlayerId: attackerPlayer.id, amount: reflected, targetAnchorAfter: getPlayer(nextState, attackerPlayer.id).anchor });
+      events.push({ ...base, type: "CARD_MOVED", instanceId: contrecoup.instanceId, fromZone: "board", toZone: "graveyard" });
+
+      // Elle quitte le board sans être détruite : `onExpire`, comme une durée
+      // qui s'achève (Radeau de Fortune lit le même déclencheur).
+      const contrecoupTrigger = processTrigger(
+        nextState,
+        { trigger: "onExpire", playerId: opponent.id, cardId: contrecoup.cardId, sourceInstanceId: contrecoup.instanceId },
+        state.turnNumber
+      );
+      nextState = contrecoupTrigger.state;
+      events.push(...contrecoupTrigger.events);
+    }
 
     nextState = {
       ...nextState,
@@ -221,13 +278,17 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
         p.id === opponent.id ? { ...p, anchor: p.anchor - directDamage } : p
       ) as [PlayerState, PlayerState],
     };
-    events.push({
-      ...base,
-      type: "DAMAGE",
-      targetPlayerId: opponent.id,
-      amount: directDamage,
-      targetAnchorAfter: getPlayer(nextState, opponent.id).anchor,
-    });
+    // Le Contrecoup a tout annulé : pas de « coup porté » de 0 dans le
+    // journal ni dans l'animation.
+    if (!contrecoup) {
+      events.push({
+        ...base,
+        type: "DAMAGE",
+        targetPlayerId: opponent.id,
+        amount: directDamage,
+        targetAnchorAfter: getPlayer(nextState, opponent.id).anchor,
+      });
+    }
 
     const reasonLoss = opponentReasonLossOnDirectAttack(attackerUnit, nextState);
     if (reasonLoss > 0) {

@@ -17,6 +17,8 @@ interface DeckRow {
   user_id: string;
   name: string;
   ship_id: string;
+  /** Mise à la corbeille (« Récemment supprimés ») : un tel deck n'entre pas en partie. */
+  deleted_at?: string | null;
 }
 
 const deckRows: DeckRow[] = [];
@@ -24,21 +26,29 @@ const deckCardRows: { deck_id: string; card_id: string; quantity: number }[] = [
 /** Erreur simulée sur la prochaine lecture — pour le cas « base injoignable ». */
 let readError: string | null = null;
 
-/** Faux client Supabase : juste assez de `from().select().eq().maybeSingle()` pour ce module. */
+/** Faux client Supabase : juste assez de `from().select().eq().is().maybeSingle()` pour ce module. */
 function fakeService() {
   return {
     from(table: string) {
       const filters: Record<string, string> = {};
+      /** Colonnes exigées NULL (`.is(column, null)`) — comme `deleted_at` pour écarter la corbeille. */
+      const nullFilters: string[] = [];
       const builder = {
         select: () => builder,
         eq(column: string, value: string) {
           filters[column] = value;
           return builder;
         },
+        is(column: string, value: null) {
+          if (value === null) nullFilters.push(column);
+          return builder;
+        },
         maybeSingle() {
           if (readError) return Promise.resolve({ data: null, error: { message: readError } });
-          const row = deckRows.find((deck) =>
-            Object.entries(filters).every(([column, value]) => deck[column as keyof DeckRow] === value)
+          const row = deckRows.find(
+            (deck) =>
+              Object.entries(filters).every(([column, value]) => deck[column as keyof DeckRow] === value) &&
+              nullFilters.every((column) => deck[column as keyof DeckRow] == null)
           );
           return Promise.resolve({ data: row ?? null, error: null });
         },
@@ -103,6 +113,12 @@ describe("resolveMatchDeck", () => {
   it("ne rend pas le deck d'un autre joueur", async () => {
     seedPersonalDeck(PLAYABLE_DECKS[0]!.cardIds);
     expect(await resolveMatchDeck(STRANGER, DECK_ID)).toEqual({ ok: false, reason: "unknown" });
+  });
+
+  it("ne rend pas un deck à la corbeille (« Récemment supprimés »), même légal et à son propriétaire", async () => {
+    seedPersonalDeck(PLAYABLE_DECKS[0]!.cardIds);
+    deckRows[0]!.deleted_at = new Date().toISOString();
+    expect(await resolveMatchDeck(OWNER, DECK_ID)).toEqual({ ok: false, reason: "unknown" });
   });
 
   it("refuse une liste illégale, même enregistrée en base", async () => {

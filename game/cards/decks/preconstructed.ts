@@ -19,6 +19,11 @@ export interface DeckList {
   /** Résumé du style de jeu, affiché à l'écran de sélection — le joueur doit savoir ce que le deck fait avant de le choisir, pas juste son nom. */
   description: string;
   cardIds: CardId[];
+  /**
+   * Deck PERSONNEL marqué « par défaut » par le joueur : présélectionné à
+   * l'écran Jouer. Jamais posé sur une liste du catalogue.
+   */
+  isDefault?: boolean;
 }
 
 function repeat(cardId: CardId, copies: number): CardId[] {

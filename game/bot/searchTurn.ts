@@ -59,12 +59,11 @@ interface Line {
 
 /** Le bot a-t-il encore quelque chose à décider dans cet état ? */
 function stillActing(state: GameState, playerId: PlayerId): boolean {
-  return (
-    state.status === "active" &&
-    (state.activePlayerId === playerId ||
-      state.pendingReaction?.awaitingPlayerId === playerId ||
-      state.pendingChoice?.playerId === playerId)
-  );
+  if (state.status !== "active") return false;
+  // Une fenêtre de réaction ou un choix ouvert n'appartient qu'au joueur attendu.
+  if (state.pendingReaction) return state.pendingReaction.awaitingPlayerId === playerId;
+  if (state.pendingChoice) return state.pendingChoice.playerId === playerId;
+  return state.activePlayerId === playerId;
 }
 
 /**

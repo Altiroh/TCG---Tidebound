@@ -1,6 +1,6 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
 import type { GameEvent } from "@/game/events/types";
-import type { CardDefinition, CardInstance } from "@/game/cards/types";
+import type { CardDefinition, CardInstance, CardType } from "@/game/cards/types";
 import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
 import { reasonAfterLoss } from "@/game/state/reason";
 import { getPlayer, type GameState, type PlayerId, type PlayerState } from "@/game/state/types";
@@ -118,13 +118,20 @@ export function consumeTideShipDamageShield(
 export function consumeDirectShipDamageShield(
   state: GameState,
   playerId: PlayerId,
-  turnNumber: number
+  turnNumber: number,
+  /** Type de la carte qui attaque : « qu'une CRÉATURE devrait infliger » (Cage de Flottaison) ne couvre pas un Marin. */
+  attackerCardType: CardType
 ): { state: GameState; reduction: number } {
-  const match = findAvailableShield(state, playerId, turnNumber, "directShipDamageShield", (def) => def.reduceDirectShipDamageOncePerTurn);
+  const match = findAvailableShield(state, playerId, turnNumber, "directShipDamageShield", (def) => {
+    const shield = def.reduceDirectShipDamageOncePerTurn;
+    if (!shield) return undefined;
+    if (shield.attackerCardTypes && !shield.attackerCardTypes.includes(attackerCardType)) return undefined;
+    return shield;
+  });
   if (!match) return { state, reduction: 0 };
   return {
     state: consumeShield(state, playerId, match.unit, "directShipDamageShield", turnNumber),
-    reduction: match.spec,
+    reduction: match.spec.amount,
   };
 }
 
@@ -132,13 +139,20 @@ export function consumeDirectShipDamageShield(
 export function consumeAttackerPowerShield(
   state: GameState,
   defenderPlayerId: PlayerId,
-  turnNumber: number
+  turnNumber: number,
+  /** Type de la carte qui attaque : « qu'une Créature adverse attaque » (Le Filet qui Respire) ne couvre pas un Marin. */
+  attackerCardType: CardType
 ): { state: GameState; reduction: number } {
-  const match = findAvailableShield(state, defenderPlayerId, turnNumber, "attackerPowerShield", (def) => def.reduceAttackerPowerOnDirectAttackOncePerTurn);
+  const match = findAvailableShield(state, defenderPlayerId, turnNumber, "attackerPowerShield", (def) => {
+    const shield = def.reduceAttackerPowerOnDirectAttackOncePerTurn;
+    if (!shield) return undefined;
+    if (shield.attackerCardTypes && !shield.attackerCardTypes.includes(attackerCardType)) return undefined;
+    return shield;
+  });
   if (!match) return { state, reduction: 0 };
   return {
     state: consumeShield(state, defenderPlayerId, match.unit, "attackerPowerShield", turnNumber),
-    reduction: match.spec,
+    reduction: match.spec.amount,
   };
 }
 

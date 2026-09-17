@@ -2,6 +2,8 @@ import { getCardDefinition } from "@/game/cards/sets/core";
 import type { EffectContext } from "@/game/effects/resolveEffect";
 import { resolveEffect } from "@/game/effects/resolveEffect";
 import { processReturnedToHandTriggers, processSummonEnterTriggers, processTrigger } from "@/game/triggers/triggerBus";
+import { isEligibleChosenUnit } from "@/game/effects/chosenTargets";
+import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
 import type { EffectDefinition } from "@/game/effects/types";
 import type { GameEvent } from "@/game/events/types";
 import {
@@ -14,8 +16,7 @@ import {
   assertPlayerInGame,
   combine,
 } from "@/game/rules/validation";
-import type { CardDefinition } from "@/game/cards/types";
-import { canPayReason } from "@/game/state/reason";
+import { isVisibleDuringTide, type CardDefinition, type CardInstance } from "@/game/cards/types";
 import { payReasonCost, reasonCostAfterShield } from "@/game/state/shields";
 import { getPlayer, type GameState, type PlayerId, type PlayerState } from "@/game/state/types";
 import type { ActionResult, BreakObjectAction } from "@/game/actions/types";
@@ -27,6 +28,9 @@ function eligibleGraveyardCards(state: GameState, playerId: string, effect: Effe
   return player.graveyard.filter((card) => {
     const cardDef = getCardDefinition(card.cardId);
     if (allowedTypes && !(allowedTypes as readonly string[]).includes(cardDef.type)) return false;
+    // « récupérez une Marionnette » (Rappel du Public) : le sous-type restreint
+    // le choix, exactement comme le type de carte.
+    if (effect.filter?.subtype && cardDef.subtype !== effect.filter.subtype) return false;
     if (effect.filter?.maxCost !== undefined && cardDef.cost > effect.filter.maxCost) return false;
     return true;
   });
@@ -43,6 +47,31 @@ export function handBreakCost(def: CardDefinition): number {
   return Math.max(1, Math.ceil(def.cost / 2));
 }
 
+/** Clé `oncePerTurnFlags` de la taxe de Bris adverse (Cloche d'Alerte). */
+const OBJECT_BREAK_TAX_KEY = "objectBreakTax";
+
+/**
+ * Taxe de Bris adverse (Cloche d'Alerte, `taxOpponentObjectBreakOncePerTurnWhileVisible`)
+ * que `playerId` devrait payer en Brisant un Objet maintenant : montant et
+ * carte qui la porte (montant 0 si aucune carte visible et encore armée).
+ */
+export function objectBreakTax(
+  state: GameState,
+  playerId: PlayerId,
+  turnNumber: number
+): { amount: number; holder?: { unit: CardInstance; ownerId: PlayerId } } {
+  const opponent = state.players.find((p) => p.id !== playerId);
+  if (!opponent) return { amount: 0 };
+  for (const unit of opponent.board) {
+    const def = getCardDefinition(unit.cardId);
+    const tax = def.taxOpponentObjectBreakOncePerTurnWhileVisible;
+    if (tax === undefined || !isVisibleDuringTide(def, state.environment.tideState)) continue;
+    if (!oncePerTurnAvailable(unit, OBJECT_BREAK_TAX_KEY, turnNumber)) continue;
+    return { amount: tax, holder: { unit, ownerId: opponent.id } };
+  }
+  return { amount: 0 };
+}
+
 /**
  * Raison que coûterait réellement le Bris depuis la main de cet Objet
  * maintenant (bouclier compris) et la Raison qui en résulterait — pour
@@ -54,13 +83,33 @@ export function previewHandBreakReason(
   playerId: PlayerId,
   instanceId: string
 ): { cost: number; reasonAfter: number; allowed: boolean } | undefined {
+  return previewBreakReason(state, playerId, instanceId, true);
+}
+
+/**
+ * Raison que coûterait ce Bris maintenant, depuis la main OU depuis le
+ * plateau, bouclier et taxe adverse comprises — pour l'annoncer avant
+ * confirmation. Un Bris depuis le plateau ne coûte rien en soi, mais une
+ * Cloche d'Alerte adverse le taxe : sans cet aperçu, le joueur entrait en
+ * Déraison sans avoir été prévenu. `undefined` si la carte n'est pas un
+ * Objet du joueur dans la zone indiquée.
+ */
+export function previewBreakReason(
+  state: GameState,
+  playerId: PlayerId,
+  instanceId: string,
+  fromHand: boolean
+): { cost: number; reasonAfter: number; allowed: boolean } | undefined {
   const player = state.players.find((p) => p.id === playerId);
-  const card = player?.hand.find((c) => c.instanceId === instanceId);
+  const card = (fromHand ? player?.hand : player?.board)?.find((c) => c.instanceId === instanceId);
   if (!player || !card) return undefined;
   const def = getCardDefinition(card.cardId);
   if (def.type !== "objet") return undefined;
-  const cost = reasonCostAfterShield(state, playerId, handBreakCost(def), state.turnNumber);
-  return { cost, reasonAfter: player.reason - cost, allowed: canPayReason(player, cost) };
+  const printed = fromHand ? handBreakCost(def) : 0;
+  const cost = reasonCostAfterShield(state, playerId, printed + objectBreakTax(state, playerId, state.turnNumber).amount, state.turnNumber);
+  // `allowed` reste dans la forme rendue : sans plancher de Déraison, un
+  // coût se paie toujours, l'UI n'a plus qu'à annoncer la dette.
+  return { cost, reasonAfter: player.reason - cost, allowed: true };
 }
 
 /**
@@ -109,6 +158,15 @@ function validate(state: GameState, action: BreakObjectAction) {
   if (needsTarget && !action.targetInstanceId) {
     return { ok: false as const, error: "Briser cet Objet nécessite une cible." };
   }
+  if (needsTarget) {
+    // La cible doit respecter le filtre du texte ("Sabordez une Structure
+    // que vous contrôlez", Levier de Lest) — refusée ici plutôt que
+    // silencieusement ignorée par `resolveEffect`.
+    const legal = (def.onBreakEffects ?? [])
+      .filter((e) => e.target.kind === "chosenUnit")
+      .every((e) => isEligibleChosenUnit(state, e.target, action.playerId, action.targetInstanceId!, action.instanceId));
+    if (!legal) return { ok: false as const, error: "Cette carte n'est pas une cible valide pour ce Bris." };
+  }
 
   // "Si possible" (même convention que le ciblage d'Équipement, cf.
   // playCard.ts) : une carte de défausse n'est réclamée que s'il en existe
@@ -120,10 +178,10 @@ function validate(state: GameState, action: BreakObjectAction) {
       // Un choix explicite doit toujours être valide, même s'il n'était pas
       // le SEUL disponible — indépendant du cas "aucune carte éligible" ci-dessous.
       if (!eligible.some((c) => c.instanceId === action.chosenGraveyardInstanceId)) {
-        return { ok: false as const, error: "Cette carte de la défausse n'est pas une cible valide." };
+        return { ok: false as const, error: "Cette carte du Cimetière n'est pas une cible valide." };
       }
     } else if (eligible.length > 0) {
-      return { ok: false as const, error: "Briser cet Objet nécessite de choisir une carte dans la défausse." };
+      return { ok: false as const, error: "Briser cet Objet nécessite de choisir une carte dans le Cimetière." };
     }
   }
 
@@ -170,8 +228,23 @@ export function breakObject(state: GameState, action: BreakObjectAction): Action
     ],
   };
 
-  if (action.fromHand) {
-    const payment = payReasonCost(nextState, player.id, handBreakCost(def), state.turnNumber);
+  // Taxe adverse (Cloche d'Alerte) : consommée pour le tour et ajoutée au
+  // coût du Bris — depuis la main comme depuis le plateau (sinon gratuit).
+  const tax = objectBreakTax(nextState, player.id, state.turnNumber);
+  if (tax.holder) {
+    const { unit: holder, ownerId } = tax.holder;
+    nextState = {
+      ...nextState,
+      players: nextState.players.map((p) =>
+        p.id === ownerId
+          ? { ...p, board: p.board.map((u) => (u.instanceId === holder.instanceId ? markOncePerTurnUsed(u, OBJECT_BREAK_TAX_KEY, state.turnNumber) : u)) }
+          : p
+      ) as [PlayerState, PlayerState],
+    };
+  }
+  const breakCost = (action.fromHand ? handBreakCost(def) : 0) + tax.amount;
+  if (breakCost > 0) {
+    const payment = payReasonCost(nextState, player.id, breakCost, state.turnNumber);
     nextState = payment.state;
     events.push({ ...base, type: "REASON_CHANGED", playerId: player.id, delta: -payment.paid });
   }
@@ -216,7 +289,7 @@ export function breakObject(state: GameState, action: BreakObjectAction): Action
   // ("la première fois à chaque tour que vous Brisez un Objet").
   const brokenTrigger = processTrigger(
     nextState,
-    { trigger: "onObjectBroken", playerId: player.id, cardId: def.id, sourceInstanceId: unit.instanceId },
+    { trigger: "onObjectBroken", playerId: player.id, cardId: def.id, sourceInstanceId: unit.instanceId, fromHand: action.fromHand === true },
     state.turnNumber
   );
   nextState = brokenTrigger.state;

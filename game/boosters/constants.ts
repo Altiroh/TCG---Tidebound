@@ -91,6 +91,16 @@ export const PITY = {
   rampStartsAfterPacks: 10,
   /** Numéro du booster où l'Abyssale est garantie. */
   guaranteeAtPack: 20,
+  /**
+   * Boosters d'affilée sans la moindre carte NOUVELLE au bout desquels le
+   * suivant en garantit une (décision du 2026-09-17).
+   *
+   * La préférence pour les cartes manquantes ne joue qu'à l'intérieur de la
+   * rareté tirée : quand les cartes qui restent à trouver sont toutes de
+   * haute rareté, un joueur peut enchaîner des dizaines de boosters sans
+   * rien découvrir. Cette garantie, elle, ignore la rareté.
+   */
+  newCardGuaranteeAfterPacks: 3,
 } as const;
 
 /**

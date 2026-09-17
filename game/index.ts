@@ -56,6 +56,8 @@ export {
   STATUS_SILENCE,
 } from "@/game/cards/types";
 export { CARD_DATABASE, CORE_SET, getCardDefinition, canBeEquipTarget, hasAnyValidEquipTarget } from "@/game/cards/sets/core";
+export { isAbyssalVariant } from "@/game/cards/types";
+export { hasKeywordInContext, type KeywordContext } from "@/game/rules/validation";
 export { collectAuraContributions } from "@/game/cards/stats";
 export type { AuraContext, AuraContribution } from "@/game/cards/stats";
 export { computeEffectiveStats, computeStatModifierDelta } from "@/game/cards/stats";
@@ -68,7 +70,7 @@ export {
   DECK_LERRANT,
   DECK_LE_BRISE_LAMES,
 } from "@/game/cards/decks/preconstructed";
-export { ARCHETYPE_DECKS, CRA_POISCAIL_TEST_DECKS, PLAYABLE_DECKS } from "@/game/cards/decks/testDecks";
+export { ARCHETYPE_DECKS, CRA_POISCAIL_TEST_DECKS, THEATRE_TEST_DECKS, PLAYABLE_DECKS } from "@/game/cards/decks/testDecks";
 export { validateDeckList } from "@/game/rules/deckValidation";
 
 // --- Catalogue de decks fournis par le jeu (Notion « Progression joueur »
@@ -105,7 +107,8 @@ export { chosenTargetFilter, eligibleChosenUnits } from "@/game/effects/chosenTa
 export { ARCHETYPE_LABELS } from "@/game/cards/archetypes";
 export type { ArchetypeId } from "@/game/cards/archetypes";
 export type { PendingReactionCandidate, TriggerEvent, TriggerType } from "@/game/triggers/types";
-export type { PendingReactionState } from "@/game/state/types";
+export type { PendingReactionState, PendingChoice } from "@/game/state/types";
+export type { ResolveChoiceAction } from "@/game/actions/types";
 export { eligibleCandidatesFor } from "@/game/reactions/reactionWindow";
 
 // --- Environnement : Marée, Navires (cadrage sections 4-14, orientation
@@ -128,9 +131,9 @@ export { resolveOceanJudgment } from "@/game/rules/oceanJudgment";
 export { RULES } from "@/game/rules/constants";
 
 // --- Déraison (Raison négative, piste à prototyper du 2026-09-12) --------
-export { reasonFloor, reasonCeiling, deraisonDebt, deraisonAnchorDamage } from "@/game/state/reason";
+export { reasonCeiling, deraisonDebt, deraisonAnchorDamage } from "@/game/state/reason";
 export { previewPlayCardReason } from "@/game/actions/playCard";
-export { graveyardChoicesForBreak, handBreakCost, previewHandBreakReason } from "@/game/actions/breakObject";
+export { graveyardChoicesForBreak, handBreakCost, previewBreakReason, previewHandBreakReason } from "@/game/actions/breakObject";
 
 export { botHasSomethingToDo, runBotTurn, runBotUntilIdle, stepBotTurn, type BotTurnStep } from "@/game/bot/runBotTurn";
 export type { BotDifficulty } from "@/game/bot/types";

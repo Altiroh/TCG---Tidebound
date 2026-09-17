@@ -50,8 +50,8 @@ export const RULES = {
   // --- Déraison (Notion "Gameplay — Raison, Déraison, healing & passifs de
   // Navires", 2026-09-12) : PISTE À PROTOTYPER, pas verrouillée — valeurs
   // regroupées ici pour être ajustées au playtest sans toucher au moteur.
-  /** La Raison peut descendre jusqu'à -(ratio × Raison max), arrondi à l'entier inférieur (10 → -5, 12 → -6, 8 → -4). */
-  DERAISON_FLOOR_RATIO: 0.5,
+  // Pas de plancher : la Raison descend aussi bas que le joueur l'accepte
+  // (design, 2026-09-16) — seule la dette de fin de tour fait office de frein.
   /** Dégâts d'Ancrage par point de Déraison, réglés à la fin du tour du joueur (après tous les effets de fin de tour). Remplace l'ancienne perte d'1 Ancrage à 0 Raison. */
   DERAISON_ANCHOR_DAMAGE_PER_POINT: 1,
   /**

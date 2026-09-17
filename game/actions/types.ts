@@ -113,7 +113,8 @@ export interface ActivateAbilityAction {
 export interface ResolveChoiceAction {
   type: "resolveChoice";
   playerId: PlayerId;
-  choice: "reasonLoss" | "anchorDamage";
+  /** Choix binaire d'une Anomalie ("reasonLoss"/"anchorDamage"), ou option d'une capacité (`{ abilityIndex }`, cf. `AbilityOptionChoice`). */
+  choice: "reasonLoss" | "anchorDamage" | { abilityIndex: number };
 }
 
 /**

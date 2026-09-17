@@ -78,6 +78,13 @@ export interface EnvironmentState {
   tideOrientation: TideOrientation;
   tideIntensity: number;
   pendingTideModifiers: PendingTideModifier[];
+  /**
+   * Effets de tour de la Marée reportés à la FIN du tour en cours (Ancre de
+   * Dérive, Sabordée au changement d'état) : dégâts d'Ancrage/Raison, choc
+   * d'entrée des Abysses, maladie de la Houle. Appliqués puis effacés par
+   * `endTurn` (`applyTideTurnEffects`).
+   */
+  deferredTideEffects?: { previousTideState: TideStateName; tideState: TideStateName; intensity: number };
 }
 
 /**

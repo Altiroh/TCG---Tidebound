@@ -15,6 +15,8 @@ export type EffectType =
   | "draw"
   | "discard"
   | "destroy"
+  /** Saborde la cible (Sabordage FORCÉ, ex: Levier de Lest, "Sabordez une Structure que vous contrôlez") : elle part au cimetière comme sabordée, `onSaborde` puis `onDeath` se déclenchent (via `processSabordedTriggers`). */
+  | "saborde"
   | "summon"
   | "buff"
   | "debuff"
@@ -41,6 +43,8 @@ export type EffectType =
   | "tideAmplifyNext"
   /** Inverse l'orientation courante de la Marée (Montante ↔ Descendante). */
   | "tideInvertOrientation"
+  /** Fixe l'orientation de la Marée à `forceTideOrientation` (ex: Veilleuse des Profondeurs, "forcez son orientation à devenir descendante"). Sans effet si elle l'est déjà. */
+  | "tideSetOrientation"
   /** Force une transition IMMÉDIATE d'un état vers les Abysses (jamais via le décompte normal). */
   | "tideForceAdvance"
   /** Force une transition IMMÉDIATE d'un état vers Calme (jamais via le décompte normal). */
@@ -110,8 +114,24 @@ export interface ChosenUnitFilter {
    * phrase parle du porteur, pas du bout de ferraille attaché).
    */
   excludeSource?: boolean;
-  /** Restreint au plateau du contrôleur de la source. Défaut : `true` — aucun texte du pool actuel ne fait choisir dans le camp adverse. */
+  /** Restreint au plateau du contrôleur de la source. Défaut : `true`. Passer `false` ouvre les deux camps. */
   sameController?: boolean;
+  /**
+   * « une créature ENNEMIE » : ne retient que le plateau adverse. Implique
+   * `sameController: false` (les deux ne peuvent pas être vrais à la fois).
+   */
+  opponentOnly?: boolean;
+  /**
+   * « une créature » : ne retient que les UNITÉS (Marins et Créatures),
+   * quel que soit leur archétype — un « +2 / +2 » n'a aucun sens sur une
+   * Structure ou un Objet.
+   */
+  unitsOnly?: boolean;
+  /**
+   * « une Créature adverse », « une autre Structure » : ne retient que ces
+   * TYPES de carte (ex: Filet à la Dérive, Mécanicien aux Mains Noires).
+   */
+  cardTypes?: import("@/game/cards/types").CardType[];
   /**
    * Coût IMPRIMÉ maximum de la carte choisie (ex: Le Régisseur Sans Visage,
    * « une Marionnette de coût 2 ou moins »). Le coût imprimé et non le coût
@@ -170,9 +190,24 @@ export interface EffectDefinition {
   rush?: boolean;
 
   /**
+   * Pour `buff` : mots-clés accordés à la cible pour la durée du
+   * modificateur (ex: P'tite Fesse, Grand Rêve abyssale — "+2 Puissance et
+   * Pied marin jusqu'à la fin du tour"). Lus par `hasEffectiveKeyword`.
+   */
+  grantKeywords?: string[];
+
+  /**
+   * Pour `tideReduceDuration` : si la réduction fait tomber la durée à 0,
+   * la Marée passe IMMÉDIATEMENT à l'état suivant au lieu d'attendre le
+   * prochain tick (ex: Régulateur de Courant — conçu pour contourner la
+   * règle "une durée ne descend jamais sous 1").
+   */
+  advanceTideOnZero?: boolean;
+
+  /**
    * Pour `summon` : bonus temporaire (jusqu'à la fin du tour) accordé aux
    * corps qui viennent d'être invoqués — ex: Le Grand Saut, "ils gagnent
-   * +1 Puissance et Ruée jusqu'à la fin du tour".
+   * +1 Puissance et Pied marin jusqu'à la fin du tour".
    */
   summonBuff?: { attackAmount?: number; healthAmount?: number };
 
@@ -227,7 +262,7 @@ export interface EffectDefinition {
   filter?: {
     cardType?: import("@/game/cards/types").CardType;
     cardTypes?: import("@/game/cards/types").CardType[];
-    /** Sous-type exact (ex: "marionnette") — utilisé par `discountNextCards`. */
+    /** Sous-type exact (ex: "marionnette") — `discountNextCards` et la récupération au Cimetière (`moveGraveyardCardToHand`, ex: Rappel du Public). */
     subtype?: string;
     maxCost?: number;
   };
@@ -283,6 +318,28 @@ export interface EffectDefinition {
    * résolution, utile pour une capacité récurrente (ex: `startOfTurn`).
    */
   conditionSelfVisible?: boolean;
+
+  /**
+   * Pour un Équipement : ne résout CET effet que si le permanent qu'il
+   * équipe est actuellement visible (ex: Kit de Calfatage, "si elle est
+   * visible"). Sans porteur, l'effet ne se résout pas.
+   */
+  conditionEquippedUnitVisible?: boolean;
+
+  /**
+   * Pour un Équipement : ne résout CET effet que si le permanent qu'il
+   * équipe a attaqué pendant le tour en cours (ex: Treuil à Chair, "à
+   * chaque fin de votre tour où elle a attaqué"). À évaluer AVANT la
+   * remise à zéro de fin de tour (`endOfTurn` se déclenche avant).
+   */
+  conditionEquippedUnitAttackedThisTurn?: boolean;
+
+  /**
+   * Ne résout CET effet que si le contrôleur a au moins ce nombre de cartes
+   * en main (ex: Épave à Fleur d'Eau, "vous pouvez défausser 1 carte. Si
+   * vous le faites, piochez 1" — sans carte à défausser, pas de pioche).
+   */
+  conditionControllerHandAtLeast?: number;
 
   /**
    * Restreint la résolution de CET effet à un plafond ABSOLU de Raison du

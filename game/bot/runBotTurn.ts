@@ -13,11 +13,12 @@ const MAX_ACTIONS_PER_TURN = 40;
 
 /** `true` si CE joueur a quelque chose à décider maintenant : soit c'est son tour, soit une fenêtre de réaction ou un choix forcé (ex: Le Fond Vous Regarde) l'attend (peut survenir hors de son tour — ex: l'adversaire vient de jouer une carte). */
 export function botHasSomethingToDo(state: GameState, playerId: PlayerId): boolean {
-  return (
-    state.activePlayerId === playerId ||
-    state.pendingReaction?.awaitingPlayerId === playerId ||
-    state.pendingChoice?.playerId === playerId
-  );
+  // Tant qu'une fenêtre de réaction ou un choix est ouvert, SEUL le joueur
+  // attendu peut agir (`dispatch` refuse tout le reste) — même si l'autre est
+  // le joueur actif.
+  if (state.pendingReaction) return state.pendingReaction.awaitingPlayerId === playerId;
+  if (state.pendingChoice) return state.pendingChoice.playerId === playerId;
+  return state.activePlayerId === playerId;
 }
 
 export interface BotTurnStep {
@@ -46,7 +47,11 @@ export function stepBotTurn(state: GameState, playerId: PlayerId, difficulty: Bo
     const fallbackAction = state.pendingReaction
       ? { type: "passReaction" as const, playerId }
       : state.pendingChoice
-        ? { type: "resolveChoice" as const, playerId, choice: "reasonLoss" as const }
+        ? {
+            type: "resolveChoice" as const,
+            playerId,
+            choice: state.pendingChoice.kind === "abilityOption" ? { abilityIndex: state.pendingChoice.abilityIndexes[0] ?? 0 } : ("reasonLoss" as const),
+          }
         : { type: "endTurn" as const, playerId };
     const fallback = dispatch(state, fallbackAction);
     return { state: fallback.ok ? fallback.state : state, done: true };

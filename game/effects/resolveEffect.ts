@@ -2,13 +2,14 @@ import { isVisibleDuringTide, type CardDefinition, type CardInstance, type StatM
 import { canBeEquipTarget, getCardDefinition } from "@/game/cards/sets/core";
 import { countArchetypeUnits } from "@/game/cards/archetypes";
 import { getShipDefinition } from "@/game/environment/shipData";
-import { forceTideJumpToAbysses, forceTideTransition } from "@/game/environment/tide";
+import { forceTideJumpToAbysses, forceTideTransition, tickTide } from "@/game/environment/tide";
 import { isEligibleChosenUnit } from "@/game/effects/chosenTargets";
 import type { EffectAmount, EffectDefinition } from "@/game/effects/types";
 import type { GameEvent } from "@/game/events/types";
 import { nextInt, type RngState } from "@/game/rng";
 import { reduceReasonGain } from "@/game/state/anomalies";
 import { reasonAfterLoss, reasonCeiling } from "@/game/state/reason";
+import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
 import {
   consumeEquippedEffectDamageShield,
   consumeOwnDamageTakenShield,
@@ -314,6 +315,9 @@ function resolveSinglePlayerTarget(
   return resolvePlayerTargets(state, effect, context)[0];
 }
 
+/** Clé `oncePerTurnFlags` de l'amplification de réduction de Marée (`amplifyTideReductionOncePerTurnWhileVisible`). */
+const AMPLIFY_TIDE_REDUCTION_KEY = "amplifyTideReduction";
+
 /** Résout un effet unique et retourne le nouvel état + les événements produits. */
 export function resolveEffect(
   state: GameState,
@@ -364,6 +368,21 @@ export function resolveEffect(
     if (!source || !isVisibleDuringTide(getCardDefinition(source.cardId), state.environment.tideState)) {
       return { state, events };
     }
+  }
+  if (effect.conditionEquippedUnitVisible || effect.conditionEquippedUnitAttackedThisTurn) {
+    // Le porteur d'un Équipement : introuvable (Équipement jamais attaché,
+    // porteur déjà parti) = condition non remplie.
+    const owner = context.sourceInstanceId ? findUnitOwner(state, context.sourceInstanceId) : undefined;
+    const source = owner?.board.find((u) => u.instanceId === context.sourceInstanceId);
+    const holder = source?.attachedToInstanceId ? owner?.board.find((u) => u.instanceId === source.attachedToInstanceId) : undefined;
+    if (!holder) return { state, events };
+    if (effect.conditionEquippedUnitVisible && !isVisibleDuringTide(getCardDefinition(holder.cardId), state.environment.tideState)) {
+      return { state, events };
+    }
+    if (effect.conditionEquippedUnitAttackedThisTurn && !holder.hasAttackedThisTurn) return { state, events };
+  }
+  if (effect.conditionControllerHandAtLeast !== undefined) {
+    if (getPlayer(state, context.controllerId).hand.length < effect.conditionControllerHandAtLeast) return { state, events };
   }
 
   switch (effect.type) {
@@ -478,15 +497,17 @@ export function resolveEffect(
       return { state: replacePlayer(state, { ...player, hand, graveyard }), events };
     }
 
-    case "destroy": {
-      const destroyTargets = resolveUnitTargets(state, effect, context);
-      let nextState = { ...state, rngState: destroyTargets.rngState };
-      for (const { unit, ownerId } of destroyTargets.targets) {
-        const owner = getPlayer(nextState, ownerId);
-        const board = owner.board.filter((u) => u.instanceId !== unit.instanceId);
-        const graveyard = [...owner.graveyard, { ...unit, graveyardCause: "destroyed" as const }];
-        nextState = replacePlayer(nextState, { ...owner, board, graveyard });
-        events.push({ ...base, type: "DESTROY", instanceId: unit.instanceId, reason: "effect" });
+    // Détruire et Saborder ne RETIRENT pas la carte ici : ils la marquent, et
+    // `processDeaths` — la voie unique de sortie, exécutée après chaque action
+    // par `dispatch` — envoie au cimetière, émet les événements, applique les
+    // substitutions et réveille `onSaborde`/`onDeath`.
+    case "destroy":
+    case "saborde": {
+      const removalTargets = resolveUnitTargets(state, effect, context);
+      let nextState = { ...state, rngState: removalTargets.rngState };
+      const removal = effect.type === "saborde" ? ("scuttled" as const) : ("destroyed" as const);
+      for (const { unit, ownerId } of removalTargets.targets) {
+        nextState = replaceUnit(nextState, ownerId, unit.instanceId, (u) => ({ ...u, pendingRemoval: removal }));
       }
       return { state: nextState, events };
     }
@@ -579,6 +600,7 @@ export function resolveEffect(
               attack: attackDelta,
               health: healthDelta,
               duration,
+              ...(effect.grantKeywords ? { keywords: effect.grantKeywords } : {}),
             },
           ],
         }));
@@ -669,18 +691,70 @@ export function resolveEffect(
 
     case "tideReduceDuration":
     case "tideExtendDuration": {
-      const amount = amountValue(effect.amount) || 1;
+      let amount = amountValue(effect.amount) || 1;
+      let nextState = state;
+      if (effect.type === "tideReduceDuration") {
+        // "La première réduction de durée que vous provoquez chaque tour est
+        // augmentée de N" (Ancre de Tempête, visible) : lue sur le plateau du
+        // contrôleur de l'effet, consommée pour le tour.
+        const controller = getPlayer(state, context.controllerId);
+        const amplifier = controller.board.find((u) => {
+          const def = getCardDefinition(u.cardId);
+          return (
+            def.amplifyTideReductionOncePerTurnWhileVisible !== undefined &&
+            isVisibleDuringTide(def, state.environment.tideState) &&
+            oncePerTurnAvailable(u, AMPLIFY_TIDE_REDUCTION_KEY, context.turnNumber)
+          );
+        });
+        if (amplifier) {
+          amount += getCardDefinition(amplifier.cardId).amplifyTideReductionOncePerTurnWhileVisible ?? 0;
+          nextState = replaceUnit(nextState, controller.id, amplifier.instanceId, (u) =>
+            markOncePerTurnUsed(u, AMPLIFY_TIDE_REDUCTION_KEY, context.turnNumber)
+          );
+        }
+      }
       const delta = effect.type === "tideReduceDuration" ? -amount : amount;
-      // Un état ne peut jamais progresser "immédiatement" via cet effet : la
+      const rawRemaining = nextState.environment.tideRemainingTurns + delta;
+      // Régulateur de Courant (`advanceTideOnZero`) : la réduction qui fait
+      // tomber la durée à 0 fait passer la Marée IMMÉDIATEMENT à l'état
+      // suivant — même convention que `tideForceAdvance` (état, durée et
+      // orientation changent ; les effets du nouvel état s'appliquent au
+      // prochain tick de début de tour).
+      if (effect.type === "tideReduceDuration" && effect.advanceTideOnZero && rawRemaining <= 0) {
+        const tick = tickTide({ ...nextState.environment, tideRemainingTurns: 1 });
+        events.push({
+          ...base,
+          type: "TIDE_ADVANCED",
+          remainingTurns: tick.tideRemainingTurns,
+          tideState: tick.tideState,
+          tideOrientation: tick.tideOrientation,
+          stateChanged: tick.stateChanged,
+        });
+        return {
+          state: {
+            ...nextState,
+            environment: {
+              ...nextState.environment,
+              tideState: tick.tideState,
+              tideRemainingTurns: tick.tideRemainingTurns,
+              tideOrientation: tick.tideOrientation,
+              tideIntensity: tick.tideIntensity,
+              pendingTideModifiers: tick.pendingTideModifiers,
+            },
+          },
+          events,
+        };
+      }
+      // Sinon, un état ne progresse jamais "immédiatement" via cet effet : la
       // durée reste au minimum à 1, l'avancée réelle se fait via le tick de
       // début de tour (`resolveTideTurnStep`), pas ici.
-      const tideRemainingTurns = Math.max(1, state.environment.tideRemainingTurns + delta);
+      const tideRemainingTurns = Math.max(1, rawRemaining);
       // `TIDE_MODIFIED` : la Marée ne change pas d'état, mais elle vient
       // bien d'être manipulée — le journal doit le dire, et les quêtes
       // « Modifier la Marée » n'ont pas d'autre trace à observer.
       events.push({ ...base, type: "TIDE_MODIFIED", change: "duration", value: tideRemainingTurns });
       return {
-        state: { ...state, environment: { ...state.environment, tideRemainingTurns } },
+        state: { ...nextState, environment: { ...nextState.environment, tideRemainingTurns } },
         events,
       };
     }
@@ -755,6 +829,16 @@ export function resolveEffect(
 
     case "tideInvertOrientation": {
       const tideOrientation = state.environment.tideOrientation === "montante" ? "descendante" : "montante";
+      events.push({ ...base, type: "TIDE_ORIENTATION_CHANGED", orientation: tideOrientation });
+      return {
+        state: { ...state, environment: { ...state.environment, tideOrientation } },
+        events,
+      };
+    }
+
+    case "tideSetOrientation": {
+      const tideOrientation = effect.forceTideOrientation;
+      if (!tideOrientation || state.environment.tideOrientation === tideOrientation) return { state, events };
       events.push({ ...base, type: "TIDE_ORIENTATION_CHANGED", orientation: tideOrientation });
       return {
         state: { ...state, environment: { ...state.environment, tideOrientation } },
@@ -863,6 +947,7 @@ export function resolveEffect(
       const card = player.graveyard.find((c) => c.instanceId === chosenId);
       if (!card) return { state, events };
       if (!matchesCardTypeFilter(effect.filter, getCardDefinition(card.cardId).type)) return { state, events };
+      if (effect.filter?.subtype && getCardDefinition(card.cardId).subtype !== effect.filter.subtype) return { state, events };
       if (effect.filter?.maxCost !== undefined && getCardDefinition(card.cardId).cost > effect.filter.maxCost) {
         return { state, events };
       }
@@ -897,43 +982,23 @@ export function resolveEffect(
     }
 
     case "repeatEnterEffects": {
+      /*
+       * On ne rejoue pas les effets ICI : on annonce que l'arrivée de la
+       * cible se rallume (`ENTER_EFFECTS_REPEATED`), et c'est le circuit
+       * normal des déclencheurs qui prend le relais — `processSummonEnterTriggers`
+       * pour ses capacités automatiques, la fenêtre de réaction pour ses
+       * capacités facultatives (Il Dottore, Arlecchino…), cibles à choisir
+       * comprises. Une première version rejouait les effets à la main, en
+       * sautant tout ce qui était facultatif ou ciblé : sur la troupe du
+       * Théâtre, c'était TOUT — Colombina ne faisait jamais rien.
+       */
       const { targets, rngState } = resolveUnitTargets(state, effect, context);
-      let nextState: GameState = { ...state, rngState };
-
+      const nextState: GameState = { ...state, rngState };
       for (const { unit, ownerId } of targets) {
         const def = safeCardDefinition(unit.cardId);
         if (!def) continue;
-
-        for (const ability of def.abilities ?? []) {
-          if (ability.trigger !== "onEnterPlay") continue;
-          // Une capacité d'observateur (« quand une AUTRE carte arrive »)
-          // n'est pas l'effet d'arrivée de CETTE carte : la répéter
-          // déclencherait une capacité qui n'a jamais été déclenchée.
-          if (ability.triggeredBy) continue;
-          // Une capacité facultative demande une décision à son contrôleur :
-          // elle ne peut pas être rejouée sans rouvrir de fenêtre.
-          if (ability.mode === "optional") continue;
-
-          for (const inner of ability.effects) {
-            // Un effet ciblé rejoué sans nouveau choix retomberait sur la
-            // cible de l'appelant, pas sur celle de l'arrivée d'origine.
-            // On saute plutôt que de viser au hasard.
-            if (inner.target.kind === "chosenUnit") continue;
-
-            const repeated = resolveEffect(nextState, inner, {
-              ...context,
-              // La source de l'effet répété est la carte dont on répète
-              // l'arrivée : un « il gagne +1 » doit la viser ELLE.
-              sourceInstanceId: unit.instanceId,
-              controllerId: ownerId,
-              triggerSourceInstanceId: unit.instanceId,
-            });
-            nextState = repeated.state;
-            events.push(...repeated.events);
-          }
-        }
+        events.push({ ...base, type: "ENTER_EFFECTS_REPEATED", playerId: ownerId, instanceId: unit.instanceId, cardId: def.id });
       }
-
       return { state: nextState, events };
     }
 

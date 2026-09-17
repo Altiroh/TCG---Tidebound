@@ -56,7 +56,13 @@ export function eligibleChosenUnits(
 
   return all.filter(({ unit, ownerId }) => {
     if (excluded.has(unit.instanceId)) return false;
-    if ((filter.sameController ?? true) && ownerId !== controllerId) return false;
+    if (filter.opponentOnly) {
+      if (ownerId === controllerId) return false;
+    } else if ((filter.sameController ?? true) && ownerId !== controllerId) {
+      return false;
+    }
+    if (filter.unitsOnly && !UNIT_CARD_TYPES.includes(getCardDefinition(unit.cardId).type)) return false;
+    if (filter.cardTypes && !filter.cardTypes.includes(getCardDefinition(unit.cardId).type)) return false;
     if (filter.archetype) {
       const def = getCardDefinition(unit.cardId);
       if (def.archetype !== filter.archetype) return false;

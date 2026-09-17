@@ -259,7 +259,9 @@ describe("environnement - malus globaux des Marées (verrouillé, Notion 'Moteur
   });
 
   it("Houle : une carte déjà MALADE perd 1 PV/Résistance à chaque tour tant que la Houle reste active", () => {
-    const sickUnit = instance("baleine-aux-cicatrices-blanches", "p1", { statuses: [STATUS_MALADE] }); // 5/6
+    // Requin Balafré : aucun bouclier de dégâts, contrairement à la Baleine —
+    // on mesure ici la règle de Houle, pas une interception.
+    const sickUnit = instance("requin-balafre", "p1", { statuses: [STATUS_MALADE] }); // 4/2
     const state = testGameState({
       players: [testPlayer("p1", { board: [sickUnit] }), testPlayer("p2")],
       environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 5 }),
@@ -347,7 +349,7 @@ describe("environnement - decks préconstruits", () => {
   });
 
   it("TOUTE liste proposée à la sélection est valide et connue du serveur — sinon l'écran offre un deck que la partie refusera", async () => {
-    const { PLAYABLE_DECKS, ARCHETYPE_DECKS, CRA_POISCAIL_TEST_DECKS } = await import("@/game/cards/decks/testDecks");
+    const { PLAYABLE_DECKS, ARCHETYPE_DECKS, CRA_POISCAIL_TEST_DECKS, THEATRE_TEST_DECKS } = await import("@/game/cards/decks/testDecks");
     const { PRECONSTRUCTED_DECKS } = await import("@/game/cards/decks/preconstructed");
 
     for (const deck of PLAYABLE_DECKS) {
@@ -358,9 +360,9 @@ describe("environnement - decks préconstruits", () => {
       expect(() => getShipDefinition(deck.shipId)).not.toThrow();
     }
 
-    // Les trois collections sont disjointes et couvrent exactement `PLAYABLE_DECKS` :
+    // Les collections sont disjointes et couvrent exactement `PLAYABLE_DECKS` :
     // un deck oublié dans l'une serait proposé sans être jouable, ou l'inverse.
-    const grouped = [...PRECONSTRUCTED_DECKS, ...ARCHETYPE_DECKS, ...CRA_POISCAIL_TEST_DECKS];
+    const grouped = [...PRECONSTRUCTED_DECKS, ...ARCHETYPE_DECKS, ...CRA_POISCAIL_TEST_DECKS, ...THEATRE_TEST_DECKS];
     expect(grouped.map((d) => d.id).sort()).toEqual(PLAYABLE_DECKS.map((d) => d.id).sort());
     expect(new Set(grouped.map((d) => d.id)).size).toBe(grouped.length);
   });

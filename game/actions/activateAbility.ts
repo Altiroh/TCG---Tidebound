@@ -12,7 +12,6 @@ import {
   combine,
 } from "@/game/rules/validation";
 import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
-import { canPayReason, reasonFloor } from "@/game/state/reason";
 import { payReasonCost, reasonCostAfterShield } from "@/game/state/shields";
 import { getPlayer, type GameState, type PlayerState } from "@/game/state/types";
 import type { ActivateAbilityAction, ActionResult } from "@/game/actions/types";
@@ -43,11 +42,8 @@ function validate(state: GameState, action: ActivateAbilityAction) {
     return { ok: false as const, error: "Cette capacité a déjà été activée ce tour-ci." };
   }
 
-  const reasonCost = spec.cost.reason ?? 0;
-  if (!canPayReason(player, reasonCostAfterShield(state, player.id, reasonCost, state.turnNumber))) {
-    return { ok: false as const, error: `Déraison maximale atteinte : impossible de descendre sous ${reasonFloor(player)} Raison.` };
-  }
-
+  // Le coût en Raison n'est jamais refusé : sans plancher de Déraison, il
+  // se paie en creusant la dette (cf. `game/state/reason.ts`).
   const needsTarget = spec.effects.some((e) => e.target.kind === "chosenUnit");
   if (needsTarget && !action.targetInstanceId) {
     return { ok: false as const, error: "Cette capacité nécessite une cible." };

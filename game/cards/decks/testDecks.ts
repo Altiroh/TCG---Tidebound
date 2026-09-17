@@ -294,6 +294,41 @@ export const DECK_LA_COUR_DU_GRAND_ETANG: DeckList = {
 };
 
 /**
+ * Liste de LABORATOIRE du Lot 11 — les Marionnettes du Théâtre Englouti,
+ * demandée le 2026-09-16 pour tester la troupe en partie : renvoyer une
+ * Marionnette en main pour rejouer son arrivée, la scène qui les rappelle,
+ * et les deux figures Abyssales en fond de troupe. Quelques cartes hors
+ * lot complètent les 40 : de quoi piocher et protéger une pièce maîtresse.
+ */
+export const DECK_LES_MASQUES_NOYES: DeckList = {
+  id: "les-masques-noyes",
+  name: "Les Masques Noyés",
+  shipId: "le-courlis",
+  description:
+    "Marionnettes du Théâtre Englouti : des arrivées en jeu qu'on rejoue en renvoyant la troupe en main, une scène qui la rappelle, et deux figures Abyssales en fond de salle.",
+  cardIds: [
+    ...repeat("pulcinella-gonfle", 3),
+    ...repeat("arlecchino-des-profondeurs", 3),
+    ...repeat("pantalone-sans-sou", 3),
+    ...repeat("colombina-aux-cent-visages", 2),
+    ...repeat("il-capitano-naufrage", 2),
+    ...repeat("il-dottore-des-noyes", 2),
+    ...repeat("le-regisseur-sans-visage", 1),
+    ...repeat("le-masque-fendu", 3),
+    ...repeat("la-clochette-du-rappel", 3),
+    ...repeat("changement-de-role", 3),
+    ...repeat("rappel-du-public", 3),
+    ...repeat("les-coulisses-inondees", 3),
+    ...repeat("le-theatre-englouti", 1),
+    ...repeat("le-rideau-se-leve", 1),
+    ...repeat("arlecchino-celui-derriere-le-masque-abyssal", 1),
+    ...repeat("le-regisseur-des-profondeurs-abyssal", 1),
+    ...repeat("cartes-des-courants", 3),
+    ...repeat("plaque-de-fortune", 2),
+  ],
+};
+
+/**
  * Decks d'archétypes, en plus des 3 decks de base système
  * (`PRECONSTRUCTED_DECKS`) — proposés côté sélection de partie locale pour
  * varier les styles de jeu sans passer par une vraie collection/deck-builder.
@@ -316,16 +351,20 @@ export const ARCHETYPE_DECKS: readonly DeckList[] = [
  */
 export const CRA_POISCAIL_TEST_DECKS: readonly DeckList[] = [DECK_LE_GRAND_BANC, DECK_LA_COUR_DU_GRAND_ETANG];
 
+/** Liste de laboratoire du Lot 11 (Théâtre Englouti), même statut que celles du Lot 10. */
+export const THEATRE_TEST_DECKS: readonly DeckList[] = [DECK_LES_MASQUES_NOYES];
+
 /**
  * TOUTES les listes qu'une partie peut utiliser — base système, archétypes
- * et laboratoire Cra-Poiscail. Source unique pour "ce deck est-il
- * jouable ?" (`findPlayableDeck`, côté serveur) : ajouter une liste à l'une
- * des trois collections suffit, il n'y a pas de second endroit à penser à
- * mettre à jour, donc pas de deck proposé à l'écran que le serveur
+ * et laboratoires (Cra-Poiscail, Théâtre). Source unique pour "ce deck
+ * est-il jouable ?" (`findPlayableDeck`, côté serveur) : ajouter une liste
+ * à l'une de ces collections suffit, il n'y a pas de second endroit à
+ * penser à mettre à jour, donc pas de deck proposé à l'écran que le serveur
  * refuserait ensuite.
  */
 export const PLAYABLE_DECKS: readonly DeckList[] = [
   ...PRECONSTRUCTED_DECKS,
   ...ARCHETYPE_DECKS,
   ...CRA_POISCAIL_TEST_DECKS,
+  ...THEATRE_TEST_DECKS,
 ];

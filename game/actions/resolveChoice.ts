@@ -1,3 +1,5 @@
+import { getCardDefinition } from "@/game/cards/sets/core";
+import { resolveEffect } from "@/game/effects/resolveEffect";
 import type { GameEvent } from "@/game/events/types";
 import { assertGameActive, assertPlayerInGame, combine } from "@/game/rules/validation";
 import { reasonAfterLoss } from "@/game/state/reason";
@@ -34,6 +36,23 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
   const events: GameEvent[] = [];
   const base = { turnNumber: choice.turnNumber, timestamp: Date.now() };
   let nextState: GameState = { ...state, pendingChoice: undefined };
+
+  // Option d'une capacité (« choisissez : A ou B », ex: Horloge de Marée) :
+  // seule la capacité désignée se résout, avec le contexte de la carte source.
+  if (choice.kind === "abilityOption") {
+    if (typeof action.choice !== "object") return { ok: false, error: "Ce choix attend une option de capacité." };
+    if (!choice.abilityIndexes.includes(action.choice.abilityIndex)) return { ok: false, error: "Cette option n'est pas proposée." };
+    const ability = getCardDefinition(choice.cardId).abilities?.[action.choice.abilityIndex];
+    if (!ability) return { ok: false, error: "Capacité introuvable." };
+    const context = { controllerId: choice.playerId, sourceInstanceId: choice.sourceInstanceId, turnNumber: choice.turnNumber };
+    for (const effect of ability.effects) {
+      const result = resolveEffect(nextState, effect, context);
+      nextState = result.state;
+      events.push(...result.events);
+    }
+    return { ok: true, state: nextState, events };
+  }
+  if (typeof action.choice !== "string") return { ok: false, error: "Ce choix attend « reasonLoss » ou « anchorDamage »." };
 
   if (action.choice === "reasonLoss") {
     const shield = consumeReasonLossShield(nextState, action.playerId, choice.turnNumber);

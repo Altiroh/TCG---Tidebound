@@ -51,6 +51,8 @@ export interface DrawBoosterInput {
   ownedCardIds: ReadonlySet<string>;
   /** Compteur de pity : boosters ouverts depuis la dernière Abyssale, pour CE type de booster. */
   packsSinceAbyssal: number;
+  /** Boosters ouverts sans la moindre carte nouvelle, pour CE type de booster (défaut 0 : aucune garantie en cours). */
+  packsSinceNewCard?: number;
   /** Graine du RNG déterministe (`game/rng.ts`). */
   seed: number;
 }
@@ -68,6 +70,10 @@ export interface DrawBoosterResult {
   abyssalPulled: boolean;
   /** Compteur de pity à persister après cette ouverture. */
   nextPacksSinceAbyssal: number;
+  /** Ce booster a apporté au moins une carte que le joueur ne possédait pas. */
+  newCardPulled: boolean;
+  /** Compteur « sans nouveauté » à persister après cette ouverture. */
+  nextPacksSinceNewCard: number;
   /** Graine du RNG après tous les tirages. */
   nextSeed: number;
 }

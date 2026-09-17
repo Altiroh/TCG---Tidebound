@@ -23,6 +23,11 @@ export function deriveReactionTriggerEvents(state: GameState, events: GameEvent[
       case "SUMMON":
         derived.push({ trigger: "onEnterPlay", playerId: event.playerId, cardId: event.cardId, sourceInstanceId: event.instanceId });
         break;
+      // Une arrivée REJOUÉE (Colombina) rouvre aussi les capacités
+      // facultatives d'arrivée de la carte visée : c'est tout l'intérêt.
+      case "ENTER_EFFECTS_REPEATED":
+        derived.push({ trigger: "onEnterPlay", playerId: event.playerId, cardId: event.cardId, sourceInstanceId: event.instanceId });
+        break;
       case "ATTACK": {
         // Même contenu que le déclenchement automatique (`attack.ts`) :
         // l'attaquant a pu mourir au combat, on retombe alors sur un
@@ -60,6 +65,14 @@ export function deriveReactionTriggerEvents(state: GameState, events: GameEvent[
       case "TIDE_ADVANCED":
         if (event.stateChanged) derived.push({ trigger: "onTideStateEntered", tideState: event.tideState });
         break;
+      case "STRUCTURE_REVEALED": {
+        // La Structure doit encore être en jeu pour réagir à sa propre
+        // apparition (même garde que pour `onDamaged`).
+        const found = findCardInstance(state, event.instanceId);
+        if (!found || found.zone !== "board") break;
+        derived.push({ trigger: "onBecomeVisible", playerId: event.playerId, cardId: event.cardId, sourceInstanceId: event.instanceId });
+        break;
+      }
       default:
         break;
     }

@@ -14,6 +14,7 @@ export type GameEventType =
   | "DAMAGE"
   | "HEAL"
   | "SUMMON"
+  | "ENTER_EFFECTS_REPEATED"
   | "DESTROY"
   | "BUFF_APPLIED"
   | "DEBUFF_APPLIED"
@@ -26,6 +27,7 @@ export type GameEventType =
   | "TIDE_MODIFIED"
   | "TIDE_ORIENTATION_CHANGED"
   | "SABORDED"
+  | "STRUCTURE_REVEALED"
   | "OBJECT_BROKEN"
   | "OCEAN_JUDGMENT"
   | "GAME_ENDED"
@@ -91,6 +93,19 @@ export interface HealEvent extends BaseGameEvent {
 
 export interface SummonEvent extends BaseGameEvent {
   type: "SUMMON";
+  playerId: PlayerId;
+  instanceId: string;
+  cardId: string;
+}
+
+/**
+ * L'effet d'arrivée d'un permanent EN JEU est rejoué (Colombina aux Cent
+ * Visages, « répétez son effet d'arrivée »). La carte ne bouge pas : c'est
+ * son déclencheur `onEnterPlay` qui se rallume — capacités automatiques
+ * comme facultatives, exactement comme à sa vraie arrivée.
+ */
+export interface EnterEffectsRepeatedEvent extends BaseGameEvent {
+  type: "ENTER_EFFECTS_REPEATED";
   playerId: PlayerId;
   instanceId: string;
   cardId: string;
@@ -210,6 +225,22 @@ export interface SabordedEvent extends BaseGameEvent {
   type: "SABORDED";
   playerId: PlayerId;
   instanceId: string;
+  /** Identité de la carte sabordée — portée par un Sabordage FORCÉ (effet `saborde`), dont les déclencheurs se réveillent après coup (`processSabordedTriggers`). */
+  cardId?: string;
+}
+
+/**
+ * Une Structure vient de DEVENIR visible (transition de Marée vers l'un de
+ * ses `visibleDuringTide`). Porte le même contenu que le déclencheur
+ * `onBecomeVisible`, pour que les réactions facultatives à cette
+ * transition (ex: Épave à Fleur d'Eau) puissent être proposées dans la
+ * fenêtre de réaction qui suit la fin de tour.
+ */
+export interface StructureRevealedEvent extends BaseGameEvent {
+  type: "STRUCTURE_REVEALED";
+  playerId: PlayerId;
+  instanceId: string;
+  cardId: string;
 }
 
 /**
@@ -318,6 +349,7 @@ export type GameEvent =
   | DamageEvent
   | HealEvent
   | SummonEvent
+  | EnterEffectsRepeatedEvent
   | DestroyEvent
   | BuffAppliedEvent
   | DebuffAppliedEvent
@@ -332,6 +364,7 @@ export type GameEvent =
   | TideModifiedEvent
   | TideOrientationChangedEvent
   | SabordedEvent
+  | StructureRevealedEvent
   | ObjectBrokenEvent
   | OceanJudgmentEvent
   | PhaseChangedEvent

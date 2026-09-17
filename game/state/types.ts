@@ -176,7 +176,9 @@ export interface GameState {
  * branches différentes élargirait ce type plutôt que de le généraliser
  * prématurément à des effets arbitraires.
  */
-export interface PendingChoice {
+/** Choix binaire forcé d'une Anomalie (ex: Le Fond Vous Regarde) : perdre de la Raison, ou subir des dégâts d'Ancrage. */
+export interface ReasonOrAnchorChoice {
+  kind: "reasonOrAnchor";
   playerId: PlayerId;
   /** Carte-source de la capacité ayant ouvert ce choix (traçabilité/debug). */
   sourceInstanceId: string;
@@ -184,6 +186,24 @@ export interface PendingChoice {
   anchorDamageAmount: number;
   turnNumber: number;
 }
+
+/**
+ * « Choisissez : A ou B » d'une capacité AUTOMATIQUE (`TriggeredAbility.choiceGroup`
+ * en mode "auto", ex: Horloge de Marée au Sabordage) : le contrôleur désigne
+ * laquelle des capacités du groupe se résout (`resolveChoice`). La carte
+ * source peut déjà avoir quitté le board (Sabordage) : `cardId` porte
+ * l'identité nécessaire.
+ */
+export interface AbilityOptionChoice {
+  kind: "abilityOption";
+  playerId: PlayerId;
+  sourceInstanceId: string;
+  cardId: string;
+  abilityIndexes: number[];
+  turnNumber: number;
+}
+
+export type PendingChoice = ReasonOrAnchorChoice | AbilityOptionChoice;
 
 export interface PendingReactionState {
   /** Événements déclencheurs ayant ouvert cette fenêtre (contexte pour l'UI/le recalcul d'éligibilité). */

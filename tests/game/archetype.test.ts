@@ -651,7 +651,7 @@ function statsOf(state: ReturnType<typeof testGameState>, playerId: string, inst
 describe("archétype Cra-Poiscail — cibles désignées par le joueur", () => {
   it("Le Tas de Trucs : briser un Objet ouvre une fenêtre où le joueur choisit QUEL Cra-Poiscail gagne +1 / +1", () => {
     const tas = instance("le-tas-de-trucs", "p1");
-    const objet = instance("levier-de-lest", "p1");
+    const objet = instance("cartes-des-courants", "p1");
     const cible = instance("tetard-fesse", "p1"); // Cra-Poiscail 1/1
     const autre = instance("ptite-fesse", "p1"); // Cra-Poiscail 1/2, l'autre choix possible
     const state = testGameState({
@@ -684,7 +684,7 @@ describe("archétype Cra-Poiscail — cibles désignées par le joueur", () => {
 
   it("Le Tas de Trucs : refuse une cible hors famille, et ne se propose pas du tout sans Cra-Poiscail à renforcer", () => {
     const tas = instance("le-tas-de-trucs", "p1");
-    const objet = instance("levier-de-lest", "p1");
+    const objet = instance("cartes-des-courants", "p1");
     const horsFamille = instance("marin-des-jetees", "p1");
     const withTarget = testGameState({
       players: [
@@ -708,7 +708,7 @@ describe("archétype Cra-Poiscail — cibles désignées par le joueur", () => {
 
     // Même plateau sans le moindre Cra-Poiscail : la fenêtre ne s'ouvre pas.
     const tasSeul = instance("le-tas-de-trucs", "p1");
-    const objetSeul = instance("levier-de-lest", "p1");
+    const objetSeul = instance("cartes-des-courants", "p1");
     const withoutTarget = testGameState({
       players: [
         testPlayer("p1", { board: [tasSeul, objetSeul, instance("marin-des-jetees", "p1")], reason: 10 }),
@@ -723,8 +723,8 @@ describe("archétype Cra-Poiscail — cibles désignées par le joueur", () => {
 
   it("Le Tas de Trucs : une seule fois par tour, quel que soit le nombre d'Objets brisés", () => {
     const tas = instance("le-tas-de-trucs", "p1");
-    const premier = instance("levier-de-lest", "p1");
-    const second = instance("levier-de-lest", "p1");
+    const premier = instance("cartes-des-courants", "p1");
+    const second = instance("cartes-des-courants", "p1");
     const cible = instance("tetard-fesse", "p1");
     const state = testGameState({
       players: [testPlayer("p1", { board: [tas, premier, second, cible], reason: 10 }), testPlayer("p2")],
@@ -749,7 +749,7 @@ describe("archétype Cra-Poiscail — cibles désignées par le joueur", () => {
     expect(secondBreak.state.pendingReaction).toBeUndefined();
   });
 
-  it("Fourchette du Grand Étang : l'attaque du PORTEUR laisse choisir un AUTRE Cra-Poiscail", () => {
+  it("Fourchette du Grand Étang : l'attaque du PORTEUR renforce directement un AUTRE Cra-Poiscail, sans fenêtre", () => {
     const porteur = instance("tetard-fesse", "p1"); // 1/1 Cra-Poiscail
     const fourchette = instance("fourchette-du-grand-etang", "p1", { attachedToInstanceId: porteur.instanceId });
     const autre = instance("ptite-fesse", "p1");
@@ -761,31 +761,31 @@ describe("archétype Cra-Poiscail — cibles désignées par le joueur", () => {
     const attacked = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: porteur.instanceId });
     expect(attacked.ok).toBe(true);
     if (!attacked.ok) return;
-    expect(attacked.state.pendingReaction?.awaitingPlayerId).toBe("p1");
 
-    // "Un AUTRE Cra-Poiscail" : ni l'Équipement, ni le porteur qui vient d'attaquer.
-    const onSelf = dispatch(attacked.state, {
-      type: "activateReaction",
-      playerId: "p1",
-      sourceInstanceId: fourchette.instanceId,
-      abilityIndex: 0,
-      targetInstanceId: porteur.instanceId,
-    });
-    expect(onSelf.ok).toBe(false);
-
-    const activated = dispatch(attacked.state, {
-      type: "activateReaction",
-      playerId: "p1",
-      sourceInstanceId: fourchette.instanceId,
-      abilityIndex: 0,
-      targetInstanceId: autre.instanceId,
-    });
-    expect(activated.ok).toBe(true);
-    if (!activated.ok) return;
-    expect(statsOf(activated.state, "p1", autre.instanceId).attack).toBe(2);
+    // Chaîné à l'attaque : aucune fenêtre à voir, l'autre Cra-Poiscail est
+    // déjà renforcé — et « un AUTRE » : ni l'Équipement, ni le porteur.
+    expect(attacked.state.pendingReaction).toBeUndefined();
+    expect(statsOf(attacked.state, "p1", autre.instanceId).attack).toBe(2);
+    // Le porteur n'a rien reçu de CETTE capacité (« un AUTRE ») : son 1 + 1
+    // vient de l'aura de la Fourchette qu'il porte, et de rien d'autre.
+    expect(statsOf(attacked.state, "p1", porteur.instanceId).attack).toBe(2);
   });
 
-  it("Chevalier Cra-Poiscail Abyssal : sa propre attaque laisse choisir un autre Cra-Poiscail, une fois par tour", () => {
+  it("Fourchette du Grand Étang : sans autre Cra-Poiscail, l'attaque passe et rien ne se déclenche", () => {
+    const porteur = instance("tetard-fesse", "p1");
+    const fourchette = instance("fourchette-du-grand-etang", "p1", { attachedToInstanceId: porteur.instanceId });
+    const state = testGameState({
+      phase: "combatPhase",
+      players: [testPlayer("p1", { board: [porteur, fourchette], reason: 10 }), testPlayer("p2")],
+    });
+
+    const attacked = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: porteur.instanceId });
+    expect(attacked.ok).toBe(true);
+    if (!attacked.ok) return;
+    expect(attacked.state.pendingReaction).toBeUndefined();
+  });
+
+  it("Chevalier Cra-Poiscail Abyssal : sa propre attaque renforce directement un autre Cra-Poiscail, une fois par tour", () => {
     const chevalier = instance("chevalier-cra-poiscail-abyssal", "p1");
     const autre = instance("tetard-fesse", "p1");
     const state = testGameState({
@@ -797,20 +797,9 @@ describe("archétype Cra-Poiscail — cibles désignées par le joueur", () => {
     expect(attacked.ok).toBe(true);
     if (!attacked.ok) return;
 
-    const activated = dispatch(attacked.state, {
-      type: "activateReaction",
-      playerId: "p1",
-      sourceInstanceId: chevalier.instanceId,
-      abilityIndex: 0,
-      targetInstanceId: autre.instanceId,
-    });
-    expect(activated.ok).toBe(true);
-    if (!activated.ok) return;
-    expect(statsOf(activated.state, "p1", autre.instanceId).attack).toBe(2);
-    expect(statsOf(activated.state, "p1", autre.instanceId).health).toBe(2);
-
-    // La capacité est consommée pour le tour : plus proposée du tout.
-    expect(activated.state.pendingReaction).toBeUndefined();
+    expect(attacked.state.pendingReaction).toBeUndefined();
+    expect(statsOf(attacked.state, "p1", autre.instanceId).attack).toBe(2);
+    expect(statsOf(attacked.state, "p1", autre.instanceId).health).toBe(2);
   });
 });
 
