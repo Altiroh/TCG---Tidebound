@@ -97,12 +97,13 @@
     /* Assombrissement vertical : transparent en haut, dense EN BAS SEULEMENT,
        sous le texte. Il commence tard (65 %) pour ne pas noyer le milieu de
        l'image, où vivent les tentacules. */
-    linear-gradient(180deg, rgba(4, 16, 30, 0) 0%, rgba(4, 18, 34, 0.14) 46%, rgba(3, 13, 24, 0.62) 78%, rgba(2, 10, 20, 0.9) 100%),
+    linear-gradient(180deg, rgba(4, 16, 30, 0) 0%, rgba(4, 18, 34, 0.06) 50%, rgba(3, 13, 24, 0.5) 80%, rgba(2, 10, 20, 0.84) 100%),
     /* Teinte bleue, tenue BASSE : à pleine force elle transformait la plaque
        en aplat — l'illustration se devinait à peine et les tentacules
        disparaissaient. Elle ramène l'image dans la palette, elle ne la
-       remplace pas. */
-    linear-gradient(112deg, rgba(18, 118, 210, 0.3) 0%, rgba(40, 165, 240, 0.22) 55%, rgba(80, 210, 255, 0.18) 100%);
+       remplace pas. Encore abaissée le 2026-09-16 : on perdait l'illustration
+       des tuiles de deck. */
+    linear-gradient(112deg, rgba(18, 118, 210, 0.16) 0%, rgba(40, 165, 240, 0.1) 55%, rgba(80, 210, 255, 0.08) 100%);
 }
 
 /* Seule la couche de TEINTE passe en `overlay` ; l'assombrissement doit
@@ -112,7 +113,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(112deg, rgba(30, 150, 235, 0.26), rgba(90, 215, 255, 0.18));
+  background: linear-gradient(112deg, rgba(30, 150, 235, 0.14), rgba(90, 215, 255, 0.1));
   mix-blend-mode: overlay;
 }
 

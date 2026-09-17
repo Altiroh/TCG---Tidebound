@@ -172,6 +172,9 @@
 
 .contentInner {
   width: min(100%, 1180px);
+  /* Au moins la hauteur visible : un écran peut ainsi étirer son dernier
+     bloc jusqu'en bas (`flex: 1`) au lieu de le laisser flotter à mi-page. */
+  min-height: 100%;
   margin-inline: auto;
   display: flex;
   flex-direction: column;
