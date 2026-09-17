@@ -109,7 +109,9 @@ export function NewMatchScreen({
   const [step, setStep] = useState<Step>(1);
   const [mode, setMode] = useState<Mode>("bot");
   const [botDifficulty, setBotDifficulty] = useState<BotDifficulty>("moyen");
-  const [deck1, setDeck1] = useState<DeckList | null>(null);
+  // Le deck PAR DÉFAUT du joueur (écran Decks) est présélectionné : on
+  // arrive prêt à jouer, pas devant une liste à relire à chaque partie.
+  const [deck1, setDeck1] = useState<DeckList | null>(() => personalDecks.find((deck) => deck.isDefault) ?? null);
   const [deck2, setDeck2] = useState<DeckList | null>(null);
 
   const personalValidity = useMemo(() => {

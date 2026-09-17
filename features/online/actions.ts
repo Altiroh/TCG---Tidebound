@@ -12,6 +12,8 @@ import {
 } from "@/features/matches/matchStore";
 import { packFrames, type PackedFrames } from "@/features/matches/matchFrames";
 import { resolveMatchDeck, type MatchDeckResult } from "@/features/decks/matchDeck";
+import { loadEquippedCosmetics } from "@/features/cosmetics/equippedCosmeticsService";
+import type { PlayerCosmetics } from "@/features/cosmetics/MatchCosmeticsProvider";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
 
 /**
@@ -114,6 +116,23 @@ export async function fetchMatchView(
   if (!snapshot) return { ok: false, error: "Partie introuvable." };
   // Emballée comme les vues d'un coup : les decks masqués ne font pas le voyage (`matchFrames`).
   return { ok: true, data: { match: snapshot.match, frames: snapshot.view ? packFrames([snapshot.view]) : null } };
+}
+
+/**
+ * Dos de carte et cadre de Navire équipés par CHAQUE joueur de la partie,
+ * par identifiant de joueur — pour que l'adversaire soit dessiné avec les
+ * siens, pas avec ceux du joueur local. Réservé aux participants : on ne
+ * lit pas les cosmétiques d'une table où l'on n'est pas assis, même s'ils
+ * n'ont rien de secret. Le bot n'a pas d'entrée : il joue avec ceux
+ * d'origine.
+ */
+export async function fetchMatchCosmetics(matchId: string): Promise<ActionResult<Record<string, PlayerCosmetics>>> {
+  const user = await requireUser();
+  const snapshot = await loadSnapshot(matchId, user.id);
+  if (!snapshot) return { ok: false, error: "Partie introuvable." };
+  const { player1_id, player2_id } = snapshot.match;
+  const cosmetics = await loadEquippedCosmetics([player1_id, player2_id].filter((id): id is string => Boolean(id)));
+  return { ok: true, data: cosmetics };
 }
 
 /**

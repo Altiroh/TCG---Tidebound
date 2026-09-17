@@ -7,7 +7,7 @@ import {
   getShipDefinition,
   graveyardChoicesForBreak,
   isMainPhase,
-  previewHandBreakReason,
+  previewBreakReason,
   UNIT_CARD_TYPES,
   type CardInstance,
   type GameState,
@@ -244,8 +244,7 @@ export function OnlineBoard({
       )}
       {state.pendingChoice?.playerId === myUserId && (
         <PendingChoicePrompt
-          reasonLossAmount={state.pendingChoice.reasonLossAmount}
-          anchorDamageAmount={state.pendingChoice.anchorDamageAmount}
+          choice={state.pendingChoice}
           onChoose={(choice) => act({ type: "resolveChoice", playerId: myUserId, choice })}
         />
       )}
@@ -261,7 +260,7 @@ export function OnlineBoard({
         <ObjectBreakPrompt
           card={breakPrompt.card}
           source={breakPrompt.source}
-          handCost={breakPrompt.source === "hand" ? previewHandBreakReason(state, myUserId, breakPrompt.card.instanceId) : undefined}
+          handCost={previewBreakReason(state, myUserId, breakPrompt.card.instanceId, breakPrompt.source === "hand")}
           onBreak={() => board.requestBreak(breakPrompt.card, breakPrompt.source === "hand")}
           onScuttle={
             breakPrompt.source === "board"

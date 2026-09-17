@@ -1,13 +1,16 @@
 "use client";
 
 import type { CSSProperties } from "react";
+import type { PlayerId } from "@/game";
 import styles from "@/features/match/table/Table.module.css";
-import { useShipFrameGeometry } from "@/features/cosmetics/ShipFrameProvider";
+import { useShipFrameGeometryFor } from "@/features/cosmetics/MatchCosmeticsProvider";
 import { shipIllustrationUrl } from "@/features/ships/shipFrame";
 
 export interface ShipView {
   /** Nom lisible, pour les lecteurs d'écran uniquement. */
   name: string;
+  /** Joueur dont c'est le Navire : le cadre est le SIEN (cosmétique équipé), pas celui du joueur local. Absent (labo) : le cadre local. */
+  ownerId?: PlayerId;
   /** Fichier de `public/assets/ships/illu/` — arche vide si absent. */
   illustration?: string;
   /** Ancrage (pastille rouge). */
@@ -82,8 +85,8 @@ function ShipGauge({ kind, value, max }: { kind: keyof typeof GAUGE_ASSETS; valu
  * La géométrie de l'arche vient de `features/ships/shipFrame.ts` (aucun
  * import de `@/game`).
  */
-export function TableShip({ name, illustration, hull, maxHull, reason, maxReason, deraisonDamage = 0 }: ShipView) {
-  const frame = useShipFrameGeometry();
+export function TableShip({ name, ownerId, illustration, hull, maxHull, reason, maxReason, deraisonDamage = 0 }: ShipView) {
+  const frame = useShipFrameGeometryFor(ownerId);
   return (
     <div
       className={styles.ship}

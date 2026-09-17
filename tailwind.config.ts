@@ -34,9 +34,12 @@ const config: Config = {
           "60%": { transform: "scale(0.95)" },
           "100%": { transform: "scale(1)" },
         },
+        // Halo d'une carte qui peut réagir : en `drop-shadow`, qui épouse les
+        // coins arrondis de la carte — un `box-shadow` dessinait un carré
+        // autour d'une carte qui n'en est pas un.
         "reaction-pulse": {
-          "0%, 100%": { boxShadow: "0 0 0 2px rgba(251,191,36,0.9), 0 0 14px 4px rgba(251,191,36,0.55)" },
-          "50%": { boxShadow: "0 0 0 2px rgba(251,191,36,0.55), 0 0 4px 1px rgba(251,191,36,0.25)" },
+          "0%, 100%": { filter: "drop-shadow(0 0 2px rgba(251,191,36,0.95)) drop-shadow(0 0 12px rgba(251,191,36,0.6))" },
+          "50%": { filter: "drop-shadow(0 0 1px rgba(251,191,36,0.6)) drop-shadow(0 0 4px rgba(251,191,36,0.25))" },
         },
         "glass-alert-in": {
           "0%": { opacity: "0", transform: "translateX(16px) scale(0.96)" },

@@ -4,7 +4,7 @@ import { useEffect, type CSSProperties } from "react";
 import { reasonCeiling, type PlayerState, type ShipDefinition, type TideStateName } from "@/game";
 import { TIDE_STATE_LABELS } from "@/features/match/cardDisplay";
 import { shipIllustrationUrl } from "@/features/ships/shipFrame";
-import { useShipFrameGeometry } from "@/features/cosmetics/ShipFrameProvider";
+import { useShipFrameGeometryFor } from "@/features/cosmetics/MatchCosmeticsProvider";
 import styles from "@/features/match/table/Table.module.css";
 import sheet from "@/features/match/table/TableSheet.module.css";
 
@@ -55,7 +55,8 @@ export function ShipInfoSheet({ player, ship, ownerLabel, onClose }: ShipInfoShe
     return () => window.removeEventListener("keydown", handleKeyDown, true);
   }, [onClose]);
 
-  const frame = useShipFrameGeometry();
+  // Le cadre du Navire consulté : celui de SON propriétaire, adversaire compris.
+  const frame = useShipFrameGeometryFor(player.id);
   const ceiling = reasonCeiling(player);
   const traits = tideTraits(ship);
   const ratio = (value: number, max: number) => `${Math.max(0, Math.min(1, max > 0 ? value / max : 0)) * 100}%`;

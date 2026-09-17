@@ -7,6 +7,7 @@ import {
   computeStatModifierDelta,
   getCardDefinition,
   hasKeyword,
+  hasKeywordInContext,
   STATUS_IMMOBILISE,
   STATUS_MALADE,
   STATUS_SILENCE,
@@ -15,9 +16,10 @@ import {
   type CardDefinition,
   type CardInstance,
   type TideStateName,
+  isAbyssalVariant,
 } from "@/game";
 import { CARD_TYPE_LABELS, THICK_TEXT_OUTLINE } from "@/features/match/cardDisplay";
-import { useCardBackSrc } from "@/features/cosmetics/CardBackProvider";
+import { useCardBackSrcFor } from "@/features/cosmetics/MatchCosmeticsProvider";
 import { StatusBadge } from "@/features/match/StatusBadge";
 import { useDecreaseFlash } from "@/features/match/useDecreaseFlash";
 import { useImageOk } from "@/features/match/useImageOk";
@@ -164,7 +166,7 @@ function getFrameUrl(def: CardDefinition): string {
   // indépendant de la famille : il servira aux Péons d'autres archétypes
   // (Notion, Lot 10 — "son cadre doit être générique").
   if (def.token) return "/assets/cards/frames/token.webp";
-  const family = def.subtype === "abyssal" ? "abyssal" : "standard";
+  const family = isAbyssalVariant(def) ? "abyssal" : "standard";
   const variant = def.attack !== undefined && def.health !== undefined
     ? "power-resistance"
     : def.health !== undefined
@@ -310,14 +312,26 @@ export function CardTile({
   onDragStart,
   liftOnHover = false,
 }: CardTileProps) {
-  const cardBack = useCardBackSrc();
+  // Face cachée : le dos est celui du PROPRIÉTAIRE de la carte (hors partie,
+  // « booster » ou « preview » n'ont pas de contexte : dos local).
+  const cardBack = useCardBackSrcFor(instance.ownerId);
   const def = getCardDefinition(instance.cardId);
-  const isAbyssal = def.subtype === "abyssal";
+  const isAbyssal = isAbyssalVariant(def);
   const stats = computeEffectiveStats(instance, tideState, auraContext);
   // Bonus actuellement reçus du plateau — alimente la puce du bloc de règles.
   const boardBonuses = auraContext ? collectAuraContributions(instance, tideState, auraContext) : [];
   const hasActiveBoardBonus = boardBonuses.length > 0;
   const isUnit = (UNIT_CARD_TYPES as readonly string[]).includes(def.type);
+  // Garde EFFECTIF : imprimé, conditionnel (Chose des Hauts-Fonds), transmis
+  // par un Équipement ou temporaire. Hors partie (pas de contexte de
+  // plateau), seul le mot-clé imprimé est connu.
+  const hasGarde = auraContext
+    ? hasKeywordInContext(instance, "garde", {
+        tideState,
+        controllerBoard: auraContext.controllerBoard,
+        controllerReason: auraContext.controllerReason,
+      })
+    : hasKeyword(def, "garde");
   const hasResistance = isUnit || def.health !== undefined;
   const resistanceRemaining = Math.max(0, stats.health - instance.damageMarked);
   const resistanceFlashing = useDecreaseFlash(resistanceRemaining);
@@ -547,7 +561,7 @@ export function CardTile({
         (stats.inactive ||
         (instance.summoningSick && isUnit) ||
         instance.turnsRemaining !== undefined ||
-        hasKeyword(def, "garde") ||
+        hasGarde ||
         (instance.statuses && instance.statuses.length > 0)) && (
         <div
           className="pointer-events-none absolute inset-x-0 z-20 flex flex-wrap items-center justify-center px-1"
@@ -569,7 +583,7 @@ export function CardTile({
               size={badgeSize}
             />
           )}
-          {hasKeyword(def, "garde") && (
+          {hasGarde && (
             <StatusBadge
               icon={GARDE_ICON_INFO.icon}
               label={GARDE_ICON_INFO.label}

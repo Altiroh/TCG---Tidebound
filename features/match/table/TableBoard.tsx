@@ -20,7 +20,7 @@ import {
   type PlayerState,
 } from "@/game";
 import { AttackImpactLayer } from "@/features/match/AttackImpactLayer";
-import { useCardBackSrc } from "@/features/cosmetics/CardBackProvider";
+import { useCardBackSrcFor } from "@/features/cosmetics/MatchCosmeticsProvider";
 import { CardTile } from "@/features/match/CardTile";
 import { TIDE_STATE_LABELS } from "@/features/match/cardDisplay";
 import { EquipLinkOverlay } from "@/features/match/EquipLinkOverlay";
@@ -33,6 +33,7 @@ import { DecorLayer } from "@/features/match/table/DecorLayer";
 import { DragLayer, type AimTone } from "@/features/match/table/DragLayer";
 import { GameStage } from "@/features/match/table/GameStage";
 import { GameViewport } from "@/features/match/table/GameViewport";
+import { HoverCardPreview } from "@/features/match/table/HoverCardPreview";
 import { MotionLayer } from "@/features/match/table/MotionLayer";
 import { OpponentZone } from "@/features/match/table/OpponentZone";
 import { PlayerZone } from "@/features/match/table/PlayerZone";
@@ -132,13 +133,14 @@ const toModel = (instance: CardInstance): TableCardModel => ({ id: instance.inst
  */
 export function TableBoard(props: TableBoardProps) {
   const { state, viewerId, canPlayCards, canAttack, targeting } = props;
-  const cardBack = useCardBackSrc();
   const stageRef = useRef<HTMLDivElement>(null);
   const metrics = useTableMetrics(stageRef);
   const badgeSize = BADGE_SIZE[metrics.breakpoint];
 
   const viewer = state.players.find((p) => p.id === viewerId)!;
   const opponent = state.players.find((p) => p.id !== viewerId)!;
+  // Dos des cartes adverses retournées sur la table : celui de l'ADVERSAIRE.
+  const opponentCardBack = useCardBackSrcFor(opponent.id);
   const viewerShip = getShipDefinition(viewer.shipId);
   const opponentShip = getShipDefinition(opponent.shipId);
   const tideState = state.environment.tideState;
@@ -169,6 +171,36 @@ export function TableBoard(props: TableBoardProps) {
     );
   }
   const motion = useTableMotion(state, viewerId, (instance) => renderFace(instance));
+
+  /*
+   * Aperçu au survol (`HoverCardPreview`) : la carte sous la souris, rendue
+   * en grand à côté d'elle. Armé avec un léger délai pour qu'un balayage de
+   * la main n'allume pas cinq aperçus à la suite ; souris seulement.
+   */
+  const [preview, setPreview] = useState<{ id: string; rect: DOMRect } | null>(null);
+  const previewTimer = useRef<number | null>(null);
+  const cancelPreview = () => {
+    if (previewTimer.current !== null) window.clearTimeout(previewTimer.current);
+    previewTimer.current = null;
+    setPreview(null);
+  };
+  function previewHandlers(id: string) {
+    return {
+      onPointerEnter: (event: React.PointerEvent<HTMLElement>) => {
+        if (event.pointerType !== "mouse") return;
+        const el = event.currentTarget;
+        if (previewTimer.current !== null) window.clearTimeout(previewTimer.current);
+        previewTimer.current = window.setTimeout(() => {
+          previewTimer.current = null;
+          setPreview({ id, rect: el.getBoundingClientRect() });
+        }, 90);
+      },
+      onPointerLeave: cancelPreview,
+    };
+  }
+  useEffect(() => () => {
+    if (previewTimer.current !== null) window.clearTimeout(previewTimer.current);
+  }, []);
 
   // ── Ce que chaque carte peut faire ─────────────────────────────────
   function attackReady(instance: CardInstance) {
@@ -324,6 +356,8 @@ export function TableBoard(props: TableBoardProps) {
         data-board-unit={card.id}
         data-drop={drop}
         data-armable={ready ? "" : undefined}
+        // Une Structure adverse invisible ne s'aperçoit pas non plus : on n'en voit que le dos.
+        {...(mine || visible ? previewHandlers(card.id) : {})}
         onPointerDown={startGesture(mine ? "aim" : "inspect", card.id)}
         onContextMenu={(e) => {
           e.preventDefault();
@@ -343,8 +377,8 @@ export function TableBoard(props: TableBoardProps) {
       >
         {!mine && !visible ? (
           // Structure invisible pour cette Marée : l'adversaire ne voit que le dos.
-          // eslint-disable-next-line @next/next/no-img-element -- dos de carte standard
-          <img src={cardBack} alt="" draggable={false} className={styles.boardCardBack} />
+          // eslint-disable-next-line @next/next/no-img-element -- dos de carte de l'adversaire
+          <img src={opponentCardBack} alt="" draggable={false} className={styles.boardCardBack} />
         ) : (
           <CardTile
             instance={instance}
@@ -373,6 +407,8 @@ export function TableBoard(props: TableBoardProps) {
 
   const shipView = (player: PlayerState, def: ReturnType<typeof getShipDefinition>) => ({
     name: def.name,
+    // Chaque Navire porte le cadre de SON joueur (`MatchCosmeticsProvider`).
+    ownerId: player.id,
     illustration: def.illustration,
     hull: player.anchor,
     maxHull: def.startingAnchor,
@@ -403,7 +439,7 @@ export function TableBoard(props: TableBoardProps) {
           <div aria-hidden className={`${styles.lane} ${styles.laneOpponent}`} />
           <div aria-hidden className={`${styles.lane} ${styles.lanePlayer}`} />
 
-          <TableOpponentHand count={opponent.hand.length} />
+          <TableOpponentHand count={opponent.hand.length} ownerId={opponent.id} />
           <OpponentZone
             ship={shipView(opponent, opponentShip)}
             board={opponent.board.map(toModel)}
@@ -493,6 +529,7 @@ export function TableBoard(props: TableBoardProps) {
                 <div
                   data-card-id={card.id}
                   data-muted={muted ? "" : undefined}
+                  {...previewHandlers(card.id)}
                   onPointerDown={startGesture(kind, card.id)}
                   onContextMenu={(e) => {
                     e.preventDefault();
@@ -530,6 +567,13 @@ export function TableBoard(props: TableBoardProps) {
         </GameStage>
 
         <MotionLayer flights={motion.flights} />
+        {/* Pendant un geste (glisser, viser), pas d'aperçu : c'est le plateau qu'on regarde. */}
+        {preview && !gesture && (() => {
+          const found = byId.get(preview.id);
+          return found ? (
+            <HoverCardPreview anchor={preview.rect}>{renderFace(found.instance, found.owner)}</HoverCardPreview>
+          ) : null;
+        })()}
         <DragLayer
           gesture={gesture}
           onTarget={hover !== null}

@@ -1,4 +1,4 @@
-import { getCardDefinition, getMaxCopies, UNIT_CARD_TYPES } from "@/game";
+import { getCardDefinition, getMaxCopies, isAbyssalVariant, UNIT_CARD_TYPES } from "@/game";
 import { CARD_TYPE_LABELS } from "@/features/match/cardDisplay";
 
 /** Paliers de taille par longueur de nom — le panneau est étroit, un nom long ne doit jamais passer sur deux lignes (calibré sur les noms du catalogue). */
@@ -45,9 +45,9 @@ interface CardInfoPanelProps {
  */
 export function CardInfoPanel({ cardId }: CardInfoPanelProps) {
   const def = getCardDefinition(cardId);
-  const isAbyssal = def.subtype === "abyssal";
+  const isAbyssal = isAbyssalVariant(def);
   const isUnit = (UNIT_CARD_TYPES as readonly string[]).includes(def.type);
-  const otherSubtype = def.subtype && def.subtype !== "abyssal" ? def.subtype : null;
+  const otherSubtype = def.subtype ?? null;
   const showAttack = isUnit || def.attack !== undefined;
   const showHealth = def.health !== undefined;
   const maxCopies = getMaxCopies(def);

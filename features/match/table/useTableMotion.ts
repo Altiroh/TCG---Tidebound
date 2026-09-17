@@ -17,7 +17,11 @@ import { playCardDraw } from "@/lib/sound";
  *                         ou depuis sa place dans la main ; une carte adverse
  *                         part de la main adverse ;
  *   plateau / main → défausse : une copie de la carte vole jusqu'au crâne ;
- *   toute autre sortie de zone visible (retour en main…) : la carte glisse.
+ *   plateau → main      : la carte glisse de son emplacement jusqu'à la main.
+ *                         Un retour en main repart d'un exemplaire NEUF
+ *                         (`instanceId` différent) : l'événement
+ *                         `CARD_MOVED.toInstanceId` relie les deux, sans quoi
+ *                         la carte paraît se téléporter.
  *
  * Ça marche pareil pour une action du joueur, du bot ou d'un adversaire en
  * ligne, et pour un effet qui déplace des cartes — sans jamais dupliquer la
@@ -86,7 +90,7 @@ function hideUntil(el: Element | null, ms: number) {
 
 export function useTableMotion(state: GameState, viewerId: PlayerId, renderFace: (instance: CardInstance) => ReactNode) {
   const motion = useCardMotion();
-  const previous = useRef<{ where: Map<string, Located>; boxes: Map<string, Box>; opponentHand: number } | null>(null);
+  const previous = useRef<{ where: Map<string, Located>; boxes: Map<string, Box>; opponentHand: number; logLength: number } | null>(null);
   /** Où le joueur a lâché une carte (pose) : elle en repartira pour glisser jusqu'à sa place. */
   const dropBoxes = useRef(new Map<string, Box>());
   const renderFaceRef = useRef(renderFace);
@@ -98,17 +102,24 @@ export function useTableMotion(state: GameState, viewerId: PlayerId, renderFace:
     const opponentHand = opponent?.hand.length ?? 0;
     const boxesNow = measureCards();
 
+    // Un déplacement qui recrée la carte (retour en main) donne son ancien
+    // exemplaire dans le journal : c'est le seul lien entre les deux ids.
+    const rebornFrom = new Map<string, string>();
+    for (const event of state.eventLog.slice(previous.current?.logLength ?? state.eventLog.length)) {
+      if (event.type === "CARD_MOVED" && event.toInstanceId) rebornFrom.set(event.toInstanceId, event.instanceId);
+    }
+
     let before = previous.current;
     if (!before) {
       // Partie qui commence : les mains de départ n'ont pas d'événement de pioche, on les distribue.
       const starting = !state.eventLog.some((event) => event.type === "END_TURN");
       if (!starting) {
-        previous.current = { where, boxes: boxesNow, opponentHand };
+        previous.current = { where, boxes: boxesNow, opponentHand, logLength: state.eventLog.length };
         return;
       }
       const dealt = new Map(where);
       for (const [id, located] of dealt) if (located.zone === "hand") dealt.set(id, { ...located, zone: "deck" });
-      before = { where: dealt, boxes: new Map(), opponentHand: 0 };
+      before = { where: dealt, boxes: new Map(), opponentHand: 0, logLength: 0 };
     }
 
     if (!reducedMotion()) {
@@ -116,7 +127,10 @@ export function useTableMotion(state: GameState, viewerId: PlayerId, renderFace:
       let viewerDraws = 0;
 
       for (const [id, now] of where) {
-        const was = before.where.get(id);
+        // L'exemplaire d'où la carte vient : lui-même, ou celui qu'un retour
+        // en main a remplacé.
+        const originId = before.where.has(id) ? id : (rebornFrom.get(id) ?? id);
+        const was = before.where.get(originId);
         if (!was || (was.zone === now.zone && was.ownerId === now.ownerId)) continue;
         const el = document.querySelector<HTMLElement>(`[data-card-id="${id}"]`);
 
@@ -136,7 +150,7 @@ export function useTableMotion(state: GameState, viewerId: PlayerId, renderFace:
 
         // Vers une défausse : copie de la carte depuis sa dernière position visible.
         if (now.zone === "graveyard") {
-          const from = before.boxes.get(id);
+          const from = before.boxes.get(originId);
           const to = boxOf(document.querySelector(`[data-graveyard="${sideOf(now.ownerId)}"]`));
           if (from && to) motion.launch({ look: { kind: "face", node: renderFaceRef.current(was.instance) }, from, to, ending: "vanish" });
           continue;
@@ -145,7 +159,7 @@ export function useTableMotion(state: GameState, viewerId: PlayerId, renderFace:
         // Arrivée sur un plateau ou en main (depuis une zone visible) : la vraie carte glisse.
         if (el && (now.zone === "board" || now.zone === "hand")) {
           const to = boxesNow.get(id);
-          let from = dropBoxes.current.get(id) ?? before.boxes.get(id);
+          let from = dropBoxes.current.get(id) ?? before.boxes.get(originId);
           if (!from && now.ownerId !== viewerId && to) {
             // Carte adverse jouée depuis sa main (cachée) : elle part de l'éventail adverse.
             const hand = document.querySelector('[data-zone="OpponentHand"]')?.getBoundingClientRect();
@@ -170,7 +184,7 @@ export function useTableMotion(state: GameState, viewerId: PlayerId, renderFace:
       }
     }
 
-    previous.current = { where, boxes: boxesNow, opponentHand };
+    previous.current = { where, boxes: boxesNow, opponentHand, logLength: state.eventLog.length };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- ne réagit qu'à un nouvel état affiché.
   }, [state]);
 

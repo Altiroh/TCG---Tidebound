@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { getCardDefinition, type PendingReactionCandidate } from "@/game";
+import { getCardDefinition, isAbyssalVariant, type PendingReactionCandidate } from "@/game";
 import { useImageOk } from "@/features/match/useImageOk";
 import { playButtonClick } from "@/lib/sound";
 
@@ -95,7 +95,7 @@ export function ReactionPrompt({ candidates, onActivateMany, onPass }: ReactionP
 /** Vignette d'illustration seule (même langage que `DeckSlotRow`) — pas la carte entière avec son cadre/stats. */
 function CardThumb({ cardId, className = "h-16 w-16" }: { cardId: string; className?: string }) {
   const def = getCardDefinition(cardId);
-  const isAbyssal = def.subtype === "abyssal";
+  const isAbyssal = isAbyssalVariant(def);
   const debordUrl = `/assets/cards/illustrations/${cardId}-debord.webp`;
   const debordOk = useImageOk(isAbyssal ? debordUrl : "");
 

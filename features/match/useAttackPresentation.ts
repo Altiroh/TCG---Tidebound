@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { GameEvent, GameState, PlayerId } from "@/game";
 
 export interface AttackAnimation {
@@ -74,6 +74,21 @@ function prefersReducedMotion(): boolean {
   return typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 }
 
+/** Ce que la mise en scène a vu passer, et ce qu'elle retient. */
+interface Presentation {
+  /** Dernier état réel examiné. */
+  live: GameState;
+  /** État AFFICHÉ à la place du réel pendant le coup — `null` hors mise en scène. */
+  held: GameState | null;
+  /** L'attaque en cours de mise en scène, s'il y en a une. */
+  attack: AttackAnimation | null;
+  /** Ce coup termine la partie : on laisse l'animation aller au bout avant l'écran de fin. */
+  finalBlow: boolean;
+}
+
+/** Après un coup qui termine la partie : le temps de voir le Navire encaisser avant l'écran de fin. */
+const FINAL_BLOW_LINGER_MS = 900;
+
 /**
  * Met en scène les attaques en retardant l'état AFFICHÉ, jamais l'état de
  * jeu : quand un nouvel état contient un `ATTACK`, le plateau continue
@@ -85,37 +100,56 @@ function prefersReducedMotion(): boolean {
  * Les appelants doivent continuer à valider/appliquer les actions sur l'état
  * RÉEL (`live`), pas sur `displayState`. Un nouvel état qui arrive pendant
  * une mise en scène l'interrompt : l'affichage rattrape aussitôt le réel.
- * `useLayoutEffect` : la bascule vers l'état retenu se fait avant la
- * peinture, sans une frame où les dégâts apparaîtraient trop tôt.
+ *
+ * La retenue est décidée PENDANT LE RENDU (mise à jour d'état en cours de
+ * rendu, pas dans un effet) : les enfants ne voient JAMAIS l'état réel
+ * avant le choc. Avec un effet — même de layout — le plateau était d'abord
+ * validé avec l'état réel, et `useTableMotion`, dont l'effet passe AVANT
+ * celui du parent, faisait déjà voler la carte détruite vers la défausse ;
+ * puis la retenue la faisait réapparaître pour le coup, et elle repartait
+ * une seconde fois. Une carte ne doit mourir qu'une fois.
  */
 export function useAttackPresentation(live: GameState): { displayState: GameState; attacks: AttackAnimation[] } {
-  const [held, setHeld] = useState<GameState | null>(null);
+  const [presentation, setPresentation] = useState<Presentation>({ live, held: null, attack: null, finalBlow: false });
   const [attacks, setAttacks] = useState<AttackAnimation[]>([]);
-  const previousLive = useRef(live);
-  const releaseTimer = useRef<ReturnType<typeof setTimeout>>();
   const nextId = useRef(0);
 
-  useLayoutEffect(() => {
-    const previous = previousLive.current;
-    previousLive.current = live;
-    if (previous === live) return;
-
-    clearTimeout(releaseTimer.current);
+  if (presentation.live !== live) {
+    const previous = presentation.live;
     const newEvents = live.eventLog.length > previous.eventLog.length ? live.eventLog.slice(previous.eventLog.length) : [];
-    const attack = deriveAttack(newEvents, live, nextId.current++);
-    if (!attack || prefersReducedMotion()) {
-      setHeld(null);
-      return;
-    }
+    const attack = deriveAttack(newEvents, live, nextId.current);
+    const staged = attack !== null && !prefersReducedMotion();
+    if (staged) nextId.current += 1;
+    setPresentation({
+      live,
+      held: staged ? previous : null,
+      attack: staged ? attack : null,
+      finalBlow: staged && live.status === "finished" && previous.status !== "finished",
+    });
+  }
 
-    setHeld(previous);
-    setAttacks((current) => [...current, attack]);
-    const holdMs = attack.defenderDies || attack.attackerDies ? ATTACK_TOTAL_MS : ATTACK_IMPACT_AT_MS;
-    releaseTimer.current = setTimeout(() => setHeld(null), holdMs);
-    setTimeout(() => setAttacks((current) => current.filter((it) => it.id !== attack.id)), ATTACK_TOTAL_MS + 900);
-  }, [live]);
+  // Minuteurs de l'attaque mise en scène : relâcher l'état retenu au bon
+  // moment, puis retirer l'animation. La relâche ne touche qu'à SA mise en
+  // scène : un état plus récent l'a peut-être déjà remplacée.
+  const staged = presentation.attack;
+  const finalBlow = presentation.finalBlow;
+  useEffect(() => {
+    if (!staged) return;
+    setAttacks((current) => (current.some((it) => it.id === staged.id) ? current : [...current, staged]));
+    // Le coup de grâce : l'écran de fin n'arrive qu'une fois le coup joué
+    // jusqu'au bout, retour compris, et le temps d'un souffle.
+    const holdMs = finalBlow
+      ? ATTACK_TOTAL_MS + FINAL_BLOW_LINGER_MS
+      : staged.defenderDies || staged.attackerDies
+        ? ATTACK_TOTAL_MS
+        : ATTACK_IMPACT_AT_MS;
+    const release = setTimeout(
+      () => setPresentation((current) => (current.attack?.id === staged.id ? { ...current, held: null } : current)),
+      holdMs
+    );
+    setTimeout(() => setAttacks((current) => current.filter((it) => it.id !== staged.id)), ATTACK_TOTAL_MS + 900);
+    return () => clearTimeout(release);
+  }, [staged, finalBlow]);
 
-  useLayoutEffect(() => () => clearTimeout(releaseTimer.current), []);
-
-  return { displayState: held ?? live, attacks };
+  return { displayState: presentation.held ?? presentation.live, attacks };
 }

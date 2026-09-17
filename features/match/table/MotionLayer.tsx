@@ -2,7 +2,7 @@
 
 import { useLayoutEffect, useRef } from "react";
 import styles from "@/features/match/table/Table.module.css";
-import { useCardBackSrc } from "@/features/cosmetics/CardBackProvider";
+import { useCardBackSrcFor } from "@/features/cosmetics/MatchCosmeticsProvider";
 import { FLIGHT_MS, type Flight } from "@/features/match/table/useCardMotion";
 
 /** Effet ponctuel à un point de l'écran : flash d'impact ou dégâts qui s'envolent. */
@@ -24,7 +24,8 @@ interface MotionLayerProps {
 }
 
 function FlyingCard({ flight }: { flight: Flight }) {
-  const cardBack = useCardBackSrc();
+  // Une carte piochée vole avec le dos de celui qui la pioche.
+  const cardBack = useCardBackSrcFor(flight.look.kind === "back" ? flight.look.ownerId : undefined);
   const ref = useRef<HTMLDivElement>(null);
   const { from, to, ending, delayMs = 0 } = flight;
 

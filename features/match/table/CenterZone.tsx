@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import styles from "@/features/match/table/Table.module.css";
 import { TideIndicator } from "@/features/match/table/TideIndicator";
-import { TidePorthole } from "@/features/match/table/TidePorthole";
 import type { TableTideModel } from "@/features/match/table/tableModel";
 
 interface CenterZoneProps {
@@ -27,7 +26,6 @@ interface CenterZoneProps {
  */
 export function CenterZone({ tide, hint }: CenterZoneProps) {
   const rising = tide.orientation === "rising";
-  const current = tide.states[tide.current];
   return (
     <div className={`${styles.zone} ${styles.centerZone}`} data-zone="CenterZone">
       <div className={styles.zoneSlotShip}>
@@ -54,9 +52,9 @@ export function CenterZone({ tide, hint }: CenterZoneProps) {
           {hint}
         </div>
       </div>
-      <div className={`${styles.zoneSlotCargo} ${styles.centerPorthole}`}>
-        {current && <TidePorthole state={current.id} label={current.label} />}
-      </div>
+      {/* La colonne des piles reste vide : les hublots de la piste montrent
+          déjà la mer de chaque état, le grand hublot a été retiré. */}
+      <div className={styles.zoneSlotCargo} />
     </div>
   );
 }

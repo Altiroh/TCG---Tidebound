@@ -38,7 +38,7 @@ export function GraveyardPickPrompt({ sourceCardId, choices, onConfirm, onCancel
     <div className="fixed inset-0 z-[85] flex items-center justify-center bg-black/70 p-6 backdrop-blur-md" onClick={onCancel}>
       <div
         role="dialog"
-        aria-label="Choisir une carte de la défausse"
+        aria-label="Choisir une carte du Cimetière"
         onClick={(event) => event.stopPropagation()}
         className="relative flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-white/15 bg-white/[0.06] shadow-[0_8px_40px_rgba(0,0,0,0.6)] backdrop-blur-2xl"
       >

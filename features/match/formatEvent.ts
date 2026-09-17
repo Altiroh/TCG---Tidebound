@@ -53,6 +53,8 @@ export function formatEvent(state: GameState, event: GameEvent, playerLabel: (pl
       return `${playerLabel(event.playerId)} joue ${cardName(state, event.cardId)}.`;
     case "SUMMON":
       return `${cardName(state, event.cardId)} entre en jeu (${playerLabel(event.playerId)}).`;
+    case "ENTER_EFFECTS_REPEATED":
+      return `L'effet d'arrivée de ${cardName(state, event.cardId)} se rejoue (${playerLabel(event.playerId)}).`;
     case "ATTACK":
       return `${playerLabel(event.playerId)} attaque${event.defenderInstanceId ? " une cible" : " le Navire adverse"}.`;
     case "DAMAGE":
@@ -76,6 +78,8 @@ export function formatEvent(state: GameState, event: GameEvent, playerLabel: (pl
       return "Une carte change de zone.";
     case "SABORDED":
       return `${playerLabel(event.playerId)} saborde un permanent.`;
+    case "STRUCTURE_REVEALED":
+      return `${cardName(state, event.cardId)} devient visible (${playerLabel(event.playerId)}).`;
     case "OBJECT_BROKEN":
       return `${playerLabel(event.playerId)} brise ${cardName(state, event.cardId)}${event.fromHand ? " depuis sa main" : ""}.`;
     case "DERAISON_SETTLED":

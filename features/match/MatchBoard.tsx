@@ -9,7 +9,7 @@ import {
   getShipDefinition,
   graveyardChoicesForBreak,
   isMainPhase,
-  previewHandBreakReason,
+  previewBreakReason,
   stepBotTurn,
   UNIT_CARD_TYPES,
   type BotDifficulty,
@@ -20,6 +20,7 @@ import {
   type PlayerId,
 } from "@/game";
 import { GlassAlert } from "@/components/ui/GlassAlert";
+import { DEFAULT_PLAYER_COSMETICS, MatchCosmeticsProvider } from "@/features/cosmetics/MatchCosmeticsProvider";
 import { ActionToastStack } from "@/features/match/ActionToastStack";
 import { CardDetailModal } from "@/features/match/CardDetailModal";
 import { EventFeed } from "@/features/match/EventFeed";
@@ -325,7 +326,22 @@ export function MatchBoard({
   // rétrécit pas à travers une fermeture, une constante si.
   const { breakPrompt, graveyardPick, detailInstance, graveyardViewerPlayerId } = board;
 
-  return (
+  /*
+   * Cosmétiques par camp. Contre le bot : le bot n'a rien équipé, il joue
+   * avec le dos et le cadre d'origine, le joueur humain avec les siens. En
+   * hot-seat, les deux camps sont sur le même appareil : aucun contexte,
+   * chacun garde les cosmétiques locaux comme avant.
+   */
+  const withCosmetics = (node: React.ReactElement) =>
+    botPlayerId && humanPlayerId ? (
+      <MatchCosmeticsProvider viewerId={humanPlayerId} byPlayer={{ [botPlayerId]: DEFAULT_PLAYER_COSMETICS }}>
+        {node}
+      </MatchCosmeticsProvider>
+    ) : (
+      node
+    );
+
+  return withCosmetics(
     <>
       <TableBoard
         state={state}
@@ -400,8 +416,7 @@ export function MatchBoard({
       )}
       {state.pendingChoice?.playerId === viewerPlayerId && (
         <PendingChoicePrompt
-          reasonLossAmount={state.pendingChoice.reasonLossAmount}
-          anchorDamageAmount={state.pendingChoice.anchorDamageAmount}
+          choice={state.pendingChoice}
           onChoose={(choice) => runReactionAction({ type: "resolveChoice", playerId: viewerPlayerId, choice })}
         />
       )}
@@ -417,7 +432,7 @@ export function MatchBoard({
         <ObjectBreakPrompt
           card={breakPrompt.card}
           source={breakPrompt.source}
-          handCost={breakPrompt.source === "hand" ? previewHandBreakReason(liveState, activePlayerId, breakPrompt.card.instanceId) : undefined}
+          handCost={previewBreakReason(liveState, activePlayerId, breakPrompt.card.instanceId, breakPrompt.source === "hand")}
           onBreak={() => board.requestBreak(breakPrompt.card, breakPrompt.source === "hand")}
           onScuttle={
             breakPrompt.source === "board"

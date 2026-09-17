@@ -55,6 +55,7 @@ export function PlayerZone({
       <div className={styles.zoneSlotCargo}>
         <TableCargo
           side="player"
+          ownerId={ship.ownerId}
           deck={deck}
           graveyard={graveyard}
           graveyardDropState={graveyardDropState}

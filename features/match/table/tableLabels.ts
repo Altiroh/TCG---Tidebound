@@ -5,6 +5,8 @@ import { PHASE_LABELS } from "@/game/rules/validation";
 const ICONS = {
   wait: "/assets/board/phase-buttons/icon-wait.webp",
   combat: "/assets/board/phase-buttons/icon-combat.webp",
+  /** La main ouverte : on repose les armes, on rejoue des cartes. */
+  mainPhase: "/assets/board/phase-buttons/icon-main-phase.webp",
   endTurn: "/assets/board/phase-buttons/icon-end-turn.webp",
 } as const;
 
@@ -15,13 +17,15 @@ const ICONS = {
  * principale 2 → fin de tour. (Les conteneurs passent déjà `mainPhase2`
  * quand aucune unité ne peut attaquer, pour sauter le combat.)
  *
- * Faute d'icône dédiée, la Phase principale 2 réutilise celle du combat :
- * le bouton dit « avancer », son libellé précise vers quoi.
+ * Chaque bouton montre la phase VERS LAQUELLE il mène : la lame pour le
+ * combat, la main pour la Phase principale 2, le sablier pour la fin de
+ * tour. Un bouton qui garderait la lame en disant « Phase principale 2 »
+ * se lirait comme une attaque de plus.
  */
 export function phaseButtonFor({ isMyTurn, phase }: { isMyTurn: boolean; phase: GamePhase }) {
   if (!isMyTurn) return { label: "En attente…", icon: ICONS.wait, action: null };
   if (phase === "mainPhase2") return { label: "Fin de tour", icon: ICONS.endTurn, action: "endTurn" as const };
-  if (phase === "combatPhase") return { label: "Phase principale 2", icon: ICONS.combat, action: "advance" as const };
+  if (phase === "combatPhase") return { label: "Phase principale 2", icon: ICONS.mainPhase, action: "advance" as const };
   return { label: "Combat", icon: ICONS.combat, action: "advance" as const };
 }
 

@@ -4,8 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { GameState, PlayerAction } from "@/game";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { fetchMatchView, submitMatchAction } from "@/features/online/actions";
+import { fetchMatchCosmetics, fetchMatchView, submitMatchAction } from "@/features/online/actions";
 import { OnlineBoard } from "@/features/online/OnlineBoard";
+import { MatchCosmeticsProvider, type PlayerCosmetics } from "@/features/cosmetics/MatchCosmeticsProvider";
 import { MatchRewardBanner } from "@/features/progression/MatchRewardBanner";
 import type { MatchRow } from "@/features/matches/matchStore";
 import { unpackFrames } from "@/features/matches/matchFrames";
@@ -50,6 +51,26 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
   const isBotMatch = match.mode === "bot";
 
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
+
+  /**
+   * Dos et cadre équipés par l'ADVERSAIRE, par identifiant de joueur. Lus
+   * une fois les deux sièges occupés (et relus si le second joueur change de
+   * `player2_id`, c'est-à-dire quand il s'assied) : avant, il n'y a personne
+   * à dessiner. Contre le bot, rien à lire : il joue avec les cosmétiques
+   * d'origine, ce que le fournisseur fait pour tout identifiant inconnu.
+   */
+  const [cosmetics, setCosmetics] = useState<Record<string, PlayerCosmetics>>({});
+  const opponentUserId = match.player1_id === myUserId ? match.player2_id : match.player1_id;
+  useEffect(() => {
+    if (isBotMatch || !opponentUserId) return;
+    let cancelled = false;
+    void fetchMatchCosmetics(matchId).then((result) => {
+      if (!cancelled && result.ok && result.data) setCosmetics(result.data);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [matchId, isBotMatch, opponentUserId]);
 
   /** Vue affichée, lisible sans attendre un rendu : les prédictions s'enchaînent sur la dernière. */
   const viewRef = useRef<GameState | null>(initialView);
@@ -205,7 +226,7 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
   const finishedOnScreen = view.status === "finished" && !replaying;
 
   return (
-    <>
+    <MatchCosmeticsProvider viewerId={myUserId} byPlayer={cosmetics}>
       <OnlineBoard
         state={view}
         myUserId={myUserId}
@@ -218,6 +239,6 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
         matchId={matchId}
       />
       {finishedOnScreen && <MatchRewardBanner matchId={matchId} />}
-    </>
+    </MatchCosmeticsProvider>
   );
 }

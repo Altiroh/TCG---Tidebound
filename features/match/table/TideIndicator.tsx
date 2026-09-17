@@ -3,11 +3,15 @@
 import { Fragment, useState, type CSSProperties } from "react";
 import type { TideStateName } from "@/game";
 import styles from "@/features/match/table/Table.module.css";
+import { PORTHOLE_FRAME, PORTHOLE_SEAS } from "@/features/match/table/TidePorthole";
 import type { TableTideModel } from "@/features/match/table/tableModel";
 
 interface TideIndicatorProps {
   tide: TableTideModel;
 }
+
+/** Le tube de verre cerclé de cuivre qui relie deux hublots. */
+const TIDE_PIPE = "/assets/board/tuyau.webp";
 
 /** Couleur de chaque état — mêmes teintes que `TideProgressBar` (sky / cyan / amber / fuchsia). */
 const TIDE_COLOR: Record<TideStateName, string> = {
@@ -27,10 +31,14 @@ const TIDE_EFFECT: Record<TideStateName, string> = {
 
 /**
  * Piste de progression de la Marée, au centre du plateau, posée directement
- * sur le décor — même dessin que `TideProgressBar` de l'ancien board :
- *   - 4 repères reliés par des segments blancs translucides ;
- *   - franchi = petit disque plein, courant = grand disque lumineux,
- *     à venir = simple contour ;
+ * sur le décor :
+ *   - 4 repères reliés par des segments blancs translucides. Chaque repère
+ *     est un HUBLOT (le cadre de cuivre de `TidePorthole`) par lequel on
+ *     voit la mer de cet état — c'est pour ça que les cadres existent, à
+ *     la place des anciens disques de couleur ;
+ *   - à venir = mer éteinte derrière le verre ; franchi = mer normale ;
+ *     courant = hublot plus grand, halo à la couleur de l'état, et le
+ *     NOMBRE DE TOURS RESTANTS gravé dans le médaillon du bas du cadre ;
  *   - le segment après l'état courant se remplit au fil de ses tours ;
  *   - un « i » au-dessus du repère courant rappelle son effet.
  * Tailles en tokens (et non en pixels fixes) pour tenir jusqu'au mobile.
@@ -54,6 +62,7 @@ export function TideIndicator({ tide }: TideIndicatorProps) {
               className={`${styles.tideStep} ${isActive ? styles.tideStepActive : ""} ${isPast ? styles.tideStepPast : ""}`}
               style={{ "--tide-rgb": TIDE_COLOR[state.id] } as CSSProperties}
               aria-current={isActive ? "step" : undefined}
+              aria-label={isActive ? `${state.label}, ${tide.remainingTurns} tour${tide.remainingTurns > 1 ? "s" : ""} restant${tide.remainingTurns > 1 ? "s" : ""}` : undefined}
             >
               <span className={styles.tideMarker}>
                 {isActive && (
@@ -72,13 +81,30 @@ export function TideIndicator({ tide }: TideIndicatorProps) {
                     i
                   </button>
                 )}
-                <span className={styles.tideDot} />
+                <span className={styles.tidePort} aria-hidden>
+                  <span className={styles.tidePortWindow}>
+                    {/* eslint-disable-next-line @next/next/no-img-element -- décor local */}
+                    <img src={PORTHOLE_SEAS[state.id]} alt="" draggable={false} className={styles.tidePortSea} />
+                    <span className={styles.tidePortGlass} />
+                  </span>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- décor local */}
+                  <img src={PORTHOLE_FRAME} alt="" draggable={false} className={styles.tidePortFrame} />
+                  {/* Le décompte, dans le médaillon du bas du cadre : la
+                      seule donnée chiffrée de la piste, là où l'œil tombe. */}
+                  {isActive && <span className={styles.tidePortCount}>{tide.remainingTurns}</span>}
+                </span>
               </span>
               <span className={styles.tideName}>{state.label}</span>
             </div>
             {!isLast && (
-              <span className={styles.tideSegment} aria-hidden>
-                <span className={styles.tideSegmentFill} style={{ width: `${fill * 100}%` }} />
+              /* Le tuyau vers l'état suivant : il se remplit d'eau, à la
+                 couleur de l'état courant, au fil de ses tours. */
+              <span className={styles.tideSegment} style={{ "--tide-rgb": TIDE_COLOR[state.id] } as CSSProperties} aria-hidden>
+                <span className={styles.tideSegmentGlass}>
+                  <span className={styles.tideSegmentFill} style={{ width: `${fill * 100}%` }} />
+                </span>
+                {/* eslint-disable-next-line @next/next/no-img-element -- décor local */}
+                <img src={TIDE_PIPE} alt="" draggable={false} className={styles.tideSegmentPipe} />
               </span>
             )}
           </Fragment>

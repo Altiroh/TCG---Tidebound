@@ -37,10 +37,11 @@ export interface Box {
 export interface Flight {
   id: number;
   /**
-   * `back` : dos de carte (pioche) ; `face` : copie figée de la carte (défausse) —
-   * elle a déjà quitté l'état quand la copie vole.
+   * `back` : dos de carte (pioche), celui de `ownerId` s'il est connu ;
+   * `face` : copie figée de la carte (défausse) — elle a déjà quitté l'état
+   * quand la copie vole.
    */
-  look: { kind: "back" } | { kind: "face"; node: ReactNode };
+  look: { kind: "back"; ownerId?: string } | { kind: "face"; node: ReactNode };
   from: Box;
   to: Box;
   /** `land` : la carte arrive pleine et opaque ; `vanish` : elle se fond dans sa destination. */

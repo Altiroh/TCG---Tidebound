@@ -790,88 +790,17 @@
   filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.6));
 }
 
-/* ── HUBLOT DE MARÉE — colonne des piles, bande centrale ─────────
- * Le cadre (`tide-porthole-frame.webp`, 1254² détouré) porte une fenêtre
- * ronde MESURÉE dans l'image : centre 49,5 % / 49,8 %, diamètre utile
- * 53 %. La mer est posée dessous à 54 %, un cheveu plus large, pour que
- * le biseau du cuivre morde sur l'eau au lieu de laisser un liseré vide.
- * Toucher à ces valeurs sans remesurer l'image décentre la mer.
- * ────────────────────────────────────────────────────────────── */
-.centerPorthole {
-  display: flex;
-  align-self: stretch;
-  align-items: center;
-  justify-content: center;
-  min-width: 0;
-}
-
-.porthole {
-  position: relative;
-  height: min(100%, var(--cargo-w));
-  aspect-ratio: 1;
-  max-width: 100%;
-  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.7));
-}
-
-.portholeWindow {
-  position: absolute;
-  top: 49.8%;
-  left: 49.5%;
-  width: 54%;
-  height: 54%;
-  transform: translate(-50%, -50%);
-  overflow: hidden;
-  border-radius: 50%;
-  /* Nuit de fond : le disque n'est jamais vide, même image non chargée. */
-  background: #07111c;
-}
-
-/* Les quatre mers restent montées et se relaient en fondu, comme le décor. */
-.portholeSea {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  opacity: 0;
-  transition: opacity 1200ms ease-in-out;
-  user-select: none;
-}
-
-.portholeSeaOn {
-  opacity: 1;
-}
-
-/* Le verre : un reflet en écharpe et un assombrissement vers le bord, pour
-   que la mer paraisse DERRIÈRE une vitre et non collée dans un trou. */
-.portholeGlass {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background:
-    linear-gradient(150deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.06) 22%, rgba(255, 255, 255, 0) 45%),
-    radial-gradient(closest-side, rgba(0, 0, 0, 0) 58%, rgba(2, 8, 16, 0.55) 100%);
-  box-shadow: inset 0 0 12px rgba(2, 8, 16, 0.75);
-}
-
-.portholeFrame {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  user-select: none;
-}
-
-/* Piste de Marée — même dessin que `TideProgressBar` de l'ancien board,
-   en tokens pour tenir jusqu'au mobile. Couleur de chaque repère : `--tide-rgb`. */
+/* Piste de Marée — quatre HUBLOTS reliés par des segments, en tokens pour
+   tenir jusqu'au mobile. Couleur de chaque repère : `--tide-rgb`.
+   Le repère courant est plus grand : c'est lui qui porte le décompte. */
 .tide {
   position: relative;
   display: flex;
   align-items: flex-start;
   width: 100%;
-  --tide-dot: clamp(9px, 2.1cqh, 22px);
-  --tide-dot-active: clamp(14px, 3.4cqh, 36px);
-  --tide-marker: var(--tide-dot-active);
+  --tide-port: clamp(30px, 7.6cqh, 84px);
+  --tide-port-active: clamp(40px, 11cqh, 120px);
+  --tide-marker: var(--tide-port-active);
 }
 
 .tideStep {
@@ -891,30 +820,95 @@
   height: var(--tide-marker);
 }
 
-/* À venir : simple contour éteint. */
-.tideDot {
-  width: var(--tide-dot);
-  height: var(--tide-dot);
-  border: 2px solid rgba(255, 255, 255, 0.75);
+/* Le hublot-repère : même cadre et même géométrie de fenêtre que le grand
+   hublot retiré : fenêtre ronde mesurée dans `tide-porthole-frame.webp`
+   (centre 49,5 % / 49,8 %, diamètre utile 54 %) — seule la taille change. */
+.tidePort {
+  position: relative;
+  width: var(--tide-port);
+  height: var(--tide-port);
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.7));
+  transition: width 500ms ease-out, height 500ms ease-out, filter 500ms ease-out;
+}
+
+.tidePortWindow {
+  position: absolute;
+  top: 49.8%;
+  left: 49.5%;
+  width: 54%;
+  height: 54%;
+  transform: translate(-50%, -50%);
+  overflow: hidden;
   border-radius: 50%;
-  background: rgba(2, 6, 23, 0.35);
-  box-shadow: 0 0 0 1px rgba(2, 6, 23, 0.35), 0 1px 5px rgba(0, 0, 0, 0.65);
-  transition: all 500ms ease-out;
+  background: #07111c;
 }
 
-/* Franchi : petit disque plein, à la couleur de son état. */
-.tideStepPast .tideDot {
-  border: 0;
-  background: rgb(var(--tide-rgb));
+/* À venir : la mer est là, mais éteinte derrière le verre. */
+.tidePortSea {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: saturate(0.2) brightness(0.45);
+  transition: filter 500ms ease-out;
+  user-select: none;
 }
 
-/* Courant : grand disque lumineux. */
-.tideStepActive .tideDot {
-  width: var(--tide-dot-active);
-  height: var(--tide-dot-active);
-  border: 0;
-  background: rgb(var(--tide-rgb));
-  box-shadow: 0 0 18px rgba(var(--tide-rgb), 0.9);
+/* Franchi : la mer se voit, un peu assombrie — c'est du passé. */
+.tideStepPast .tidePortSea {
+  filter: saturate(0.75) brightness(0.8);
+}
+
+.tidePortGlass {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    linear-gradient(150deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.06) 22%, rgba(255, 255, 255, 0) 45%),
+    radial-gradient(closest-side, rgba(0, 0, 0, 0) 58%, rgba(2, 8, 16, 0.55) 100%);
+  box-shadow: inset 0 0 6px rgba(2, 8, 16, 0.75);
+}
+
+.tidePortFrame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  user-select: none;
+}
+
+/* Courant : plus grand, mer pleine, halo à la couleur de l'état. */
+.tideStepActive .tidePort {
+  width: var(--tide-port-active);
+  height: var(--tide-port-active);
+  filter: drop-shadow(0 0 14px rgba(var(--tide-rgb), 0.85)) drop-shadow(0 2px 6px rgba(0, 0, 0, 0.7));
+}
+
+.tideStepActive .tidePortSea {
+  filter: none;
+}
+
+/* Le décompte, posé sur le médaillon du bas du cadre (mesuré dans l'image :
+   centre 49 % / 92 %, diamètre 19 %). Un disque sombre sous le chiffre, pour
+   qu'il se lise sur la perle claire du médaillon. */
+.tidePortCount {
+  position: absolute;
+  top: 92%;
+  left: 49.2%;
+  display: grid;
+  place-items: center;
+  width: 21%;
+  height: 21%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(3, 10, 18, 0.92) 0%, rgba(3, 10, 18, 0.85) 60%, rgba(3, 10, 18, 0) 100%);
+  font-family: var(--font-card-title), Georgia, serif;
+  font-size: calc(var(--tide-port-active) * 0.19);
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+  text-shadow: 0 0 6px rgba(var(--tide-rgb), 0.9), 0 1px 2px rgba(0, 0, 0, 0.9);
 }
 
 .tideName {
@@ -937,25 +931,87 @@
   filter: brightness(1.15);
 }
 
-/* Segment entre deux repères, centré sur la hauteur des repères. */
+/*
+ * TUYAU entre deux hublots (`board/tuyau.webp`, 2172 × 724) : un tube de
+ * verre cerclé de cuivre, dont l'intérieur est transparent — l'eau se
+ * remplit DERRIÈRE lui, de gauche à droite, au fil des tours de l'état
+ * courant. Fenêtre de verre mesurée dans l'image : x 21,4 % → 78,4 %,
+ * y 40,7 % → 59,1 %. Le tube garde son ratio (le cuivre ne s'étire pas) ;
+ * il est centré sur la hauteur des hublots.
+ */
 .tideSegment {
   position: relative;
   flex: 1 1 0;
-  min-width: clamp(12px, 2cqw, 40px);
-  height: clamp(3px, 0.75cqh, 8px);
-  margin: calc((var(--tide-marker) - clamp(3px, 0.75cqh, 8px)) / 2) clamp(4px, 0.8cqw, 12px) 0;
-  overflow: hidden;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.35);
-  /* Liseré sombre : la piste reste lisible sur la mer claire du Calme comme sur l'écume. */
-  box-shadow: 0 0 0 1px rgba(2, 6, 23, 0.35), 0 1px 5px rgba(0, 0, 0, 0.55);
+  align-self: flex-start;
+  min-width: clamp(24px, 4cqw, 80px);
+  aspect-ratio: 2172 / 724;
+  margin: calc(var(--tide-marker) / 2) calc(-1 * clamp(2px, 0.5cqw, 8px)) 0;
+  transform: translateY(-50%);
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.6));
 }
 
+/* Le verre : la zone où l'eau apparaît, sous le tube. */
+.tideSegmentGlass {
+  position: absolute;
+  top: 40.7%;
+  bottom: 40.9%;
+  left: 21.4%;
+  right: 21.6%;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(6, 14, 24, 0.55);
+}
+
+/* L'eau : à la couleur de l'état courant, plus claire en surface, et deux
+   vagues qui glissent en sens contraire (même recette que les jauges du
+   Navire) pour qu'elle vive au lieu de rester un aplat. */
 .tideSegmentFill {
-  display: block;
-  height: 100%;
-  background: #ffffff;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(var(--tide-rgb), 0.55) 0%, rgba(var(--tide-rgb), 0.95) 45%, rgba(var(--tide-rgb), 0.8) 100%);
+  box-shadow: 2px 0 6px rgba(var(--tide-rgb), 0.9);
   transition: width 700ms ease-out;
+}
+
+.tideSegmentFill::before,
+.tideSegmentFill::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 200%;
+  height: 100%;
+  background-repeat: repeat-x;
+  background-size: 28px 100%;
+  opacity: 0.55;
+}
+
+.tideSegmentFill::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 12' preserveAspectRatio='none'%3E%3Cpath d='M0 6c4-4 10-4 14 0s10 4 14 0v6H0z' fill='rgba(255,255,255,0.35)'/%3E%3C/svg%3E");
+  animation: gaugeWaveBack 3.2s linear infinite;
+}
+
+.tideSegmentFill::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 12' preserveAspectRatio='none'%3E%3Cpath d='M0 7c4-3 10-3 14 0s10 3 14 0v5H0z' fill='rgba(255,255,255,0.22)'/%3E%3C/svg%3E");
+  animation: gaugeWaveFront 2.4s linear infinite;
+}
+
+.tideSegmentPipe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  user-select: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tideSegmentFill::before,
+  .tideSegmentFill::after {
+    animation: none;
+  }
 }
 
 /* « i » au-dessus du repère courant. */
@@ -1385,6 +1441,34 @@
 /* Un geste en cours n'importe où : plus aucun agrandissement au survol. */
 .gesturing .boardHoverable:hover {
   transform: none;
+}
+
+/* ── APERÇU AU SURVOL — la carte survolée, rendue en grand à côté ──
+   Calque fixe, hors de la scène et de ses transformations, au-dessus de
+   tout sauf des fiches et menus. Hauteur bornée par la fenêtre : la carte
+   entière doit tenir à l'écran, texte de règles compris. Sans pointeur :
+   il ne vole jamais le survol à la carte qu'il décrit. */
+.hoverPreview {
+  --preview-h: clamp(300px, 74vh, 620px);
+  position: fixed;
+  z-index: 70;
+  width: calc(var(--preview-h) * 5 / 7);
+  pointer-events: none;
+  filter: drop-shadow(0 18px 40px rgba(0, 0, 0, 0.78));
+  opacity: 0;
+  transform: translateY(6px) scale(0.97);
+}
+
+.hoverPreview[data-ready="true"] {
+  opacity: 1;
+  transform: none;
+  transition: opacity 120ms ease-out, transform 140ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hoverPreview[data-ready="true"] {
+    transition: none;
+  }
 }
 
 /* `CardTile` est un <button> désactivé quand il n'a pas d'`onClick` : un
@@ -1949,7 +2033,6 @@
   border-color: #7ee0d0;
   color: #ffffff;
 }
-
 
 /* ══════════════════════════════════════════════════════════════
  * MODE 1 — MOBILE PAYSAGE (932×430 … 740×360, et fenêtres étroites).

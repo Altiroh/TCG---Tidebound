@@ -1,11 +1,14 @@
 import type { CSSProperties } from "react";
+import type { PlayerId } from "@/game";
 import styles from "@/features/match/table/Table.module.css";
-import { useCardBackSrc } from "@/features/cosmetics/CardBackProvider";
+import { useCardBackSrcFor } from "@/features/cosmetics/MatchCosmeticsProvider";
 
 interface PreviewOpponentHandProps {
   count: number;
   /** Clés `opp-hand-<index>` des cartes encore en vol depuis la pioche (masquées). */
   hidden?: ReadonlySet<string>;
+  /** Propriétaire de la main : c'est SON dos de carte qui s'affiche, pas celui du joueur local. Absent (labo) : le dos local. */
+  ownerId?: PlayerId;
 }
 
 /**
@@ -14,8 +17,8 @@ interface PreviewOpponentHandProps {
  * l'ancien board). Reflet exact de `TableHand` : même variables d'arc,
  * rotation de sens opposé, seule la partie basse des cartes est visible.
  */
-export function TableOpponentHand({ count, hidden }: PreviewOpponentHandProps) {
-  const cardBack = useCardBackSrc();
+export function TableOpponentHand({ count, hidden, ownerId }: PreviewOpponentHandProps) {
+  const cardBack = useCardBackSrcFor(ownerId);
   const center = (count - 1) / 2;
 
   return (

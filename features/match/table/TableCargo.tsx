@@ -1,6 +1,7 @@
 "use client";
 
-import { useCardBackSrc } from "@/features/cosmetics/CardBackProvider";
+import type { PlayerId } from "@/game";
+import { useCardBackSrcFor } from "@/features/cosmetics/MatchCosmeticsProvider";
 import styles from "@/features/match/table/Table.module.css";
 import type { BoardDropState } from "@/features/match/table/TableRow";
 
@@ -14,6 +15,8 @@ export { useCardBackSrc as usePreviewCardBack } from "@/features/cosmetics/CardB
 interface PreviewCargoProps {
   /** Camp : sert de repère aux vols de cartes (`data-deck`, `data-graveyard`). */
   side: "player" | "opponent";
+  /** Propriétaire de la pioche : c'est SON dos de carte qui la coiffe. Absent (labo) : le dos local. */
+  ownerId?: PlayerId;
   deck: number;
   graveyard: number;
   /** Crâne du joueur : zone de Sabordage (`data-drop="graveyard"`). Absent = crâne inerte (adversaire). */
@@ -29,8 +32,8 @@ interface PreviewCargoProps {
  * à la taille exacte d'une carte en jeu (`--card-w`) — la pioche montre le dos
  * de carte, la défausse un creux marqué du crâne (repris de `cargo-frame.webp`).
  */
-export function TableCargo({ side, deck, graveyard, graveyardDropState, onDraw, onGraveyardClick }: PreviewCargoProps) {
-  const cardBack = useCardBackSrc();
+export function TableCargo({ side, ownerId, deck, graveyard, graveyardDropState, onDraw, onGraveyardClick }: PreviewCargoProps) {
+  const cardBack = useCardBackSrcFor(ownerId);
 
   const deckContent = (
     <>

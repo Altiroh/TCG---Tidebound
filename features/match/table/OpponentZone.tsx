@@ -34,7 +34,7 @@ export function OpponentZone({ ship, board, capacity, renderCard, wrapShip = (no
         <TableRow zone="OpponentBoard" cards={board} capacity={capacity} renderCard={renderCard} />
       </div>
       <div className={styles.zoneSlotCargo}>
-        <TableCargo side="opponent" deck={deck} graveyard={graveyard} onGraveyardClick={onGraveyardClick} />
+        <TableCargo side="opponent" ownerId={ship.ownerId} deck={deck} graveyard={graveyard} onGraveyardClick={onGraveyardClick} />
       </div>
     </section>
   );
