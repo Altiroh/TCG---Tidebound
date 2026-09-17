@@ -15,7 +15,7 @@ import { processTrigger } from "@/game/triggers/triggerBus";
 import { eligibleCandidatesFor } from "@/game/reactions/reactionWindow";
 import { assertUnitCanAttack, hasEffectiveKeyword, hasKeywordInContext, KEYWORD_PIED_MARIN } from "@/game/rules/validation";
 import type { GameState } from "@/game/state/types";
-import { instance, testEnvironment, testGameState, testPlayer } from "./testHelpers";
+import { activateReactionFor, instance, testEnvironment, testGameState, testPlayer } from "./testHelpers";
 
 const STRUCTURE = "le-trone-de-bouchon"; // Structure toujours visible, sans capacité
 const OBJET = "cartes-des-courants"; // Objet coût 2, sans cible ni Raison en jeu
@@ -233,9 +233,13 @@ describe("Levier de Lest — Sabordage conjoint d'une Structure", () => {
     const structure = instance(STRUCTURE, "p1");
     const plongeur = instance("plongeur-des-epaves", "p1");
     const state = testGameState({ players: [testPlayer("p1", { board: [levier, structure, plongeur], reason: 5 }), testPlayer("p2")] });
-    const result = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: levier.instanceId, targetInstanceId: structure.instanceId });
+    const broken = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: levier.instanceId, targetInstanceId: structure.instanceId });
+    ok(broken);
+    expect(player(broken.state, "p1").reason).toBe(6); // +1 du Levier
+    // Le Plongeur PROPOSE sa Raison : le Sabordage forcé ouvre bien sa fenêtre.
+    const result = activateReactionFor(broken.state, "plongeur-des-epaves");
     ok(result);
-    expect(player(result.state, "p1").reason).toBe(7); // +1 Levier, +1 Plongeur
+    expect(player(result.state, "p1").reason).toBe(7);
   });
 });
 
@@ -344,15 +348,20 @@ describe("Théâtre Englouti et Cra-Poiscail — écarts relevés le 17/09/2026"
     expect(player(fromBoard.state, "p1").reason).toBe(6);
   });
 
-  it("Pulcinella Gonflé : détruit, il inflige 1 dégât à une Créature ennemie, jamais à un Marin", () => {
-    const pulcinella = instance("pulcinella-gonfle", "p1", { damageMarked: 3 }); // 3 Résistance : létal
+  it("Pulcinella Gonflé : mort, le joueur désigne une Créature ennemie à blesser, jamais un Marin", () => {
+    const pulcinella = instance("pulcinella-gonfle", "p1");
     const marin = instance("marin-des-jetees", "p2");
     const creature = instance("requin-balafre", "p2");
     const state = testGameState({
       players: [testPlayer("p1", { board: [pulcinella] }), testPlayer("p2", { board: [marin, creature] })],
     });
-    const result = processDeaths(state, 1);
-    expect(board(result.state, "p1")).toHaveLength(0);
+    // Pulcinella meurt d'une action du joueur : c'est `dispatch` qui ouvre
+    // la fenêtre, et la cible est désignée depuis le cimetière.
+    const dead = dispatch({ ...state, phase: "mainPhase" }, { type: "saborder", playerId: "p1", instanceId: pulcinella.instanceId });
+    ok(dead);
+    expect(board(dead.state, "p1")).toHaveLength(0);
+    const result = activateReactionFor(dead.state, "pulcinella-gonfle", creature.instanceId);
+    ok(result);
     expect(board(result.state, "p2").find((u) => u.instanceId === marin.instanceId)!.damageMarked).toBe(0);
     expect(board(result.state, "p2").find((u) => u.instanceId === creature.instanceId)!.damageMarked).toBe(1);
   });

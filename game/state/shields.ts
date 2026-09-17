@@ -31,9 +31,17 @@ function findAvailableShield<T>(
   return undefined;
 }
 
-function consumeShield(state: GameState, playerId: PlayerId, unit: CardInstance, key: string, turnNumber: number): GameState {
+function consumeShield(
+  state: GameState,
+  playerId: PlayerId,
+  unit: CardInstance,
+  key: string,
+  turnNumber: number,
+  /** `true` : le bouclier ne se réarme JAMAIS (« la première fois que… », Brise-Vague de Fortune). */
+  onceEver = false
+): GameState {
   const player = getPlayer(state, playerId);
-  const board = player.board.map((u) => (u.instanceId === unit.instanceId ? markOncePerTurnUsed(u, key, turnNumber) : u));
+  const board = player.board.map((u) => (u.instanceId === unit.instanceId ? markOncePerTurnUsed(u, key, turnNumber, onceEver) : u));
   return {
     ...state,
     players: state.players.map((p) => (p.id === playerId ? { ...player, board } : p)) as [PlayerState, PlayerState],
@@ -111,7 +119,10 @@ export function consumeTideShipDamageShield(
     return shield;
   });
   if (!match) return { state, reduction: 0 };
-  return { state: consumeShield(state, playerId, match.unit, "tideShipDamageShield", turnNumber), reduction: match.spec.amount };
+  return {
+    state: consumeShield(state, playerId, match.unit, "tideShipDamageShield", turnNumber, match.spec.onceEver),
+    reduction: match.spec.amount,
+  };
 }
 
 /** Réduction de dégâts DIRECTS (attaque d'unité contre le Navire) disponible (Cage de Flottaison) — 0 si aucun bouclier éligible. */

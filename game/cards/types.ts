@@ -98,7 +98,18 @@ export interface TriggeredAbility {
    * cartes en jeu (ex: La Quête du Grand Nénuphar, « alors que vous
    * contrôlez un Destrier du Grand Étang »).
    */
-  condition?: { tideState?: TideStateName; tideStateIn?: TideStateName[]; controlsAnyCardIds?: string[] };
+  condition?: {
+    tideState?: TideStateName;
+    tideStateIn?: TideStateName[];
+    controlsAnyCardIds?: string[];
+    /**
+     * « si elle est visible » : la carte porteuse doit être visible dans la
+     * Marée courante (ex: Filet à la Dérive). Indispensable pour une
+     * capacité facultative — sans elle, une Structure cachée se proposerait
+     * dans la fenêtre de réaction pour n'y rien résoudre.
+     */
+    selfVisible?: boolean;
+  };
 
   /** Réagit à ce qui arrive à une AUTRE carte (cf. `TriggerSourceFilter`). */
   triggeredBy?: TriggerSourceFilter;
@@ -516,8 +527,8 @@ export interface CardDefinition {
   /** Réduit la perte de Raison de son contrôleur, toute source confondue (ex: Vieux Loup de Mer, Seconde au Visage Pâle avec `tideStateIn`). */
   reduceOwnReasonLossOncePerTurn?: { amount: number; tideStateIn?: TideStateName[] };
 
-  /** Réduit les dégâts de MARÉE subis par le Navire de son contrôleur, dans ces états (ex: Brise-Vague de Fortune, Tempête uniquement). */
-  reduceTideShipDamageOncePerTurn?: { amount: number; tideStateIn: TideStateName[] };
+  /** Réduit les dégâts de MARÉE subis par le Navire de son contrôleur, dans ces états (ex: Brise-Vague de Fortune, Tempête uniquement). `onceEver` : un seul usage pour toute la partie, jamais réarmé d'un tour à l'autre. */
+  reduceTideShipDamageOncePerTurn?: { amount: number; tideStateIn: TideStateName[]; onceEver?: boolean };
 
   /** Réduit les dégâts DIRECTS (attaque d'unité contre le Navire) subis par son contrôleur (ex: Cage de Flottaison, « qu'une Créature devrait infliger »). `attackerCardTypes` restreint aux attaquants de ces types ; absent, tout attaquant compte. */
   reduceDirectShipDamageOncePerTurn?: { amount: number; attackerCardTypes?: CardType[] };

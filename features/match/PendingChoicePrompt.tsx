@@ -9,16 +9,19 @@ interface PendingChoicePromptProps {
 }
 
 /**
- * Choix forcé (`GameState.pendingChoice`) — même verre et mêmes pastilles
- * que la fenêtre de réaction (`PromptShell`), puisque c'est la même sorte
- * de question. Aucune croix de fermeture : ces deux choix-là sont
- * obligatoires, et `dispatch` refuse toute autre action tant qu'ils sont
- * ouverts.
+ * Choix en attente (`GameState.pendingChoice`) — même verre et mêmes
+ * pastilles que la fenêtre de réaction (`PromptShell`), puisque c'est la
+ * même sorte de question. Pas de croix de fermeture : on répond par les
+ * boutons, et `dispatch` refuse toute autre action tant que le choix est
+ * ouvert.
  *
- * Deux formes : le choix binaire d'une Anomalie (ex. Le Fond Vous Regarde,
- * « perdre X Raison ou infliger X dégâts d'Ancrage à son propre Navire »)
- * et « choisissez : A ou B » d'une capacité (ex. Horloge de Marée au
- * Sabordage).
+ * Deux formes, qui ne se refusent pas de la même façon :
+ * - « choisissez : A ou B » d'une capacité (ex. Horloge de Marée au
+ *   Sabordage) se DÉCLINE — « le joueur peut choisir de ne pas appliquer un
+ *   effet » (décision du 17/09/2026) ;
+ * - le choix binaire d'une Anomalie (ex. Le Fond Vous Regarde, « perdre X
+ *   Raison ou infliger X dégâts d'Ancrage à son propre Navire ») s'IMPOSE :
+ *   son texte ne laisse pas sortir, et le moteur refuse « pass ».
  */
 export function PendingChoicePrompt({ choice, onChoose }: PendingChoicePromptProps) {
   if (choice.kind === "abilityOption") {
@@ -38,6 +41,10 @@ export function PendingChoicePrompt({ choice, onChoose }: PendingChoicePromptPro
                 {def.abilities?.[abilityIndex]?.description ?? `Option ${position + 1}`}
               </PromptButton>
             ))}
+            {/* Refuser reste une réponse : rien ne se résout. */}
+            <PromptButton tone="neutral" onClick={() => onChoose("pass")}>
+              Ne rien appliquer
+            </PromptButton>
           </PromptActions>
         </div>
       </PromptShell>

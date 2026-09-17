@@ -113,8 +113,14 @@ export interface ActivateAbilityAction {
 export interface ResolveChoiceAction {
   type: "resolveChoice";
   playerId: PlayerId;
-  /** Choix binaire d'une Anomalie ("reasonLoss"/"anchorDamage"), ou option d'une capacité (`{ abilityIndex }`, cf. `AbilityOptionChoice`). */
-  choice: "reasonLoss" | "anchorDamage" | { abilityIndex: number };
+  /**
+   * Choix binaire d'une Anomalie ("reasonLoss"/"anchorDamage"), option d'une
+   * capacité (`{ abilityIndex }`, cf. `AbilityOptionChoice`), ou "pass" pour
+   * ne rien appliquer — un joueur peut toujours refuser un effet qu'on lui
+   * propose (décision du 17/09/2026). Une Anomalie qui IMPOSE un choix, elle,
+   * refuse "pass" : son texte ne laisse pas sortir.
+   */
+  choice: "reasonLoss" | "anchorDamage" | "pass" | { abilityIndex: number };
 }
 
 /**

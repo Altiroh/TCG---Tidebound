@@ -1,4 +1,6 @@
 import type { CardInstance } from "@/game/cards/types";
+import { dispatch } from "@/game/engine";
+import { eligibleCandidatesFor } from "@/game/reactions/reactionWindow";
 import { getShipDefinition } from "@/game/environment/shipData";
 import { RULES } from "@/game/rules/constants";
 import type { EnvironmentState } from "@/game/environment/types";
@@ -66,4 +68,34 @@ export function testGameState(overrides: Partial<GameState> = {}): GameState {
     status: "active",
     ...overrides,
   };
+}
+
+/**
+ * Réactions facultatives actuellement proposées au joueur que la fenêtre
+ * attend. Recalculées et non lues d'un cache : c'est ce que fait le moteur.
+ */
+export function pendingCandidates(state: GameState) {
+  const pending = state.pendingReaction;
+  if (!pending) return [];
+  return eligibleCandidatesFor(state, pending.events, pending.awaitingPlayerId, pending.turnNumber, pending.usedCandidateKeys);
+}
+
+/**
+ * Active la réaction facultative de `cardId` — le geste que le joueur ferait.
+ * Échoue bruyamment si la fenêtre ne la propose pas : un effet qu'on croit
+ * déclenché mais qui n'est jamais proposé est exactement le défaut que ces
+ * tests cherchent.
+ */
+export function activateReactionFor(state: GameState, cardId: string, targetInstanceId?: string) {
+  const pending = state.pendingReaction;
+  if (!pending) throw new Error(`Aucune fenêtre de réaction ouverte pour ${cardId}.`);
+  const candidate = pendingCandidates(state).find((c) => c.cardId === cardId);
+  if (!candidate) throw new Error(`${cardId} n'est pas proposée dans la fenêtre de réaction.`);
+  return dispatch(state, {
+    type: "activateReaction",
+    playerId: pending.awaitingPlayerId,
+    sourceInstanceId: candidate.sourceInstanceId,
+    abilityIndex: candidate.abilityIndex,
+    ...(targetInstanceId ? { targetInstanceId } : {}),
+  });
 }

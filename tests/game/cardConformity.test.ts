@@ -34,15 +34,14 @@ type RuleId =
   | "amounts"
   | "cost"
   | "cimetiere"
-  | "pied-marin";
+  | "pied-marin"
+  | "designation";
 
 /**
  * Écarts assumés, avec leur motif. La clé est `${cardId}:${rule}`.
  * Un motif vide fait échouer le test : on documente, on ne contourne pas.
  */
 const EXCEPTIONS: Record<string, string> = {
-  "plongeur-des-epaves:optional":
-    "« vous pouvez récupérer 1 Raison » résolu d'office : gagner de la Raison n'est jamais un désavantage, et les réactions facultatives à une mort ne sont pas recensées par le moteur.",
   "cylindre-flottant:optional":
     "Contrecoup résolu d'office (décision du 16/09/2026) : annuler des dégâts et les renvoyer n'est jamais un désavantage.",
   "cylindre-flottant:once-per-turn":
@@ -135,6 +134,20 @@ function check(def: CardDefinition): Violation[] {
   if (/vous pouvez/i.test(text)) {
     const optional = abilities.some((a) => a.mode === "optional") || Boolean(def.activatableOncePerTurn);
     if (!optional) push("optional", "« vous pouvez » sans capacité `mode: \"optional\"` : l'effet se résout d'office");
+  }
+
+  // --- Désignation : jamais d'effet automatique sur une cible choisie ------
+  // Décision du 17/09/2026 : « jamais automatique, le joueur choisit, et le
+  // joueur peut choisir de ne pas appliquer un effet ». Une capacité
+  // DÉCLENCHÉE qui vise une unité désignée (`chosenUnit`) doit donc passer
+  // par une fenêtre de réaction (`mode: "optional"`) et non laisser le
+  // moteur pointer une cible à la place du joueur. Ne concerne pas les
+  // effets de POSE ni `activatableOncePerTurn` : le joueur y désigne déjà
+  // sa cible en jouant la carte ou en activant la capacité.
+  for (const [index, ability] of abilities.entries()) {
+    if ((ability.mode ?? "auto") !== "auto") continue;
+    if (!ability.effects.some((e) => e.target.kind === "chosenUnit")) continue;
+    push("designation", `capacité #${index} (${ability.trigger}) vise une unité désignée mais se résout d'office : il faut mode: "optional"`);
   }
 
   // --- Sabordage / Bris ----------------------------------------------------

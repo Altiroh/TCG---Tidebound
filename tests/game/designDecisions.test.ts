@@ -1,0 +1,197 @@
+/**
+ * Décisions de design du 17/09/2026, une par bloc : chacune est ici pour
+ * qu'un futur remaniement ne la reprenne pas silencieusement.
+ *
+ * 1. Une « Durée : N tours » sur une CARTE compte les tours de son
+ *    contrôleur, pas les tours de table.
+ * 2. « Les trois » d'un archétype acceptent la variante Abyssale.
+ * 3. « La première fois que » sans « à chaque tour » : un seul usage pour
+ *    toute la partie (Brise-Vague de Fortune).
+ * 4. Un effet proposé peut toujours être REFUSÉ — fenêtre de réaction comme
+ *    choix entre deux options. Une Anomalie qui IMPOSE un choix, non.
+ */
+import { describe, expect, it } from "vitest";
+import { dispatch } from "@/game/engine";
+import { consumeTideShipDamageShield } from "@/game/state/shields";
+import { computeEffectiveStats } from "@/game/cards/stats";
+import type { GameState } from "@/game/state/types";
+import { instance, pendingCandidates, testEnvironment, testGameState, testPlayer } from "./testHelpers";
+
+function ok(result: { ok: boolean; error?: string }): asserts result is { ok: true; state: GameState } & typeof result {
+  if (!result.ok) throw new Error(result.error ?? "action refusée");
+}
+function board(state: GameState, playerId: string) {
+  return state.players.find((p) => p.id === playerId)!.board;
+}
+function player(state: GameState, playerId: string) {
+  return state.players.find((p) => p.id === playerId)!;
+}
+function filler(ownerId: string) {
+  return [instance("marin-des-jetees", ownerId), instance("marin-des-jetees", ownerId), instance("marin-des-jetees", ownerId)];
+}
+
+describe("durée d'une carte : les tours de son contrôleur", () => {
+  it("un permanent à durée 2 survit au tour de l'adversaire et ne perd un tour qu'au retour de son contrôleur", () => {
+    // Le Rideau se Lève promet « à chacun de vos tours » sur 2 tours : la
+    // promesse n'est tenable que si le décompte suit son contrôleur.
+    const rideau = instance("le-rideau-se-leve", "p1", { turnsRemaining: 2 });
+    let state: GameState = testGameState({
+      players: [testPlayer("p1", { board: [rideau], deck: filler("p1") }), testPlayer("p2", { deck: filler("p2") })],
+    });
+
+    // Tour de p2 : le Rideau ne bouge pas.
+    const toP2 = dispatch(state, { type: "endTurn", playerId: "p1" });
+    ok(toP2);
+    state = toP2.state;
+    expect(board(state, "p1").find((u) => u.instanceId === rideau.instanceId)?.turnsRemaining).toBe(2);
+
+    // Retour de p1 : un tour de moins, et la carte est toujours là.
+    const backToP1 = dispatch(state, { type: "endTurn", playerId: "p2" });
+    ok(backToP1);
+    state = backToP1.state;
+    expect(board(state, "p1").find((u) => u.instanceId === rideau.instanceId)?.turnsRemaining).toBe(1);
+
+    // Deux de ses tours écoulés : elle quitte le plateau à l'entame du second.
+    const toP2Again = dispatch(state, { type: "endTurn", playerId: "p1" });
+    ok(toP2Again);
+    const expired = dispatch(toP2Again.state, { type: "endTurn", playerId: "p2" });
+    ok(expired);
+    expect(board(expired.state, "p1").some((u) => u.instanceId === rideau.instanceId)).toBe(false);
+    expect(player(expired.state, "p1").graveyard.some((u) => u.instanceId === rideau.instanceId)).toBe(true);
+  });
+});
+
+describe("« les trois » acceptent la variante Abyssale", () => {
+  const setup = (chevalierId: string) => {
+    const chevalier = instance(chevalierId, "p1");
+    const destrier = instance("destrier-du-grand-etang", "p1");
+    const bourreau = instance("bourreau-cra-poiscail", "p1");
+    const tournoi = instance("le-tournoi-du-grand-etang", "p1");
+    return testGameState({
+      players: [
+        testPlayer("p1", { board: [chevalier, destrier, bourreau], hand: [tournoi], deck: filler("p1") }),
+        testPlayer("p2"),
+      ],
+    });
+  };
+  const playTournoi = (state: GameState) => {
+    const tournoi = player(state, "p1").hand[0]!;
+    const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: tournoi.instanceId });
+    ok(result);
+    return result.state;
+  };
+
+  it("le Chevalier standard fait piocher", () => {
+    const after = playTournoi(setup("chevalier-cra-poiscail"));
+    expect(player(after, "p1").hand).toHaveLength(1); // la carte piochée
+  });
+
+  it("le Chevalier Abyssal aussi : la variante reste un Chevalier", () => {
+    const after = playTournoi(setup("chevalier-cra-poiscail-abyssal"));
+    expect(player(after, "p1").hand).toHaveLength(1);
+    // Et le bonus va bien à la variante, comme avant la décision.
+    const chevalier = board(after, "p1").find((u) => u.cardId === "chevalier-cra-poiscail-abyssal")!;
+    expect(chevalier.modifiers.length).toBeGreaterThan(0);
+  });
+
+  it("sans Bourreau, personne ne pioche", () => {
+    const chevalier = instance("chevalier-cra-poiscail-abyssal", "p1");
+    const destrier = instance("destrier-du-grand-etang", "p1");
+    const tournoi = instance("le-tournoi-du-grand-etang", "p1");
+    const state = testGameState({
+      players: [
+        testPlayer("p1", { board: [chevalier, destrier], hand: [tournoi], deck: filler("p1") }),
+        testPlayer("p2"),
+      ],
+    });
+    expect(player(playTournoi(state), "p1").hand).toHaveLength(0);
+  });
+});
+
+describe("Brise-Vague de Fortune : un seul usage pour toute la partie", () => {
+  it("réduit une première fois, puis plus jamais — même au tour suivant", () => {
+    const brise = instance("brise-vague-de-fortune", "p1");
+    const state = testGameState({
+      environment: testEnvironment({ tideState: "tempete" }),
+      players: [testPlayer("p1", { board: [brise] }), testPlayer("p2")],
+    });
+
+    const first = consumeTideShipDamageShield(state, "p1", 1);
+    expect(first.reduction).toBe(1);
+
+    // Même tour : consommé.
+    expect(consumeTideShipDamageShield(first.state, "p1", 1).reduction).toBe(0);
+    // Tours suivants : « la première fois que » ne se réarme pas.
+    expect(consumeTideShipDamageShield(first.state, "p1", 3).reduction).toBe(0);
+    expect(consumeTideShipDamageShield(first.state, "p1", 99).reduction).toBe(0);
+  });
+});
+
+describe("un effet proposé peut être refusé", () => {
+  it("une réaction facultative : passer ferme la fenêtre sans rien appliquer", () => {
+    const plongeur = instance("plongeur-des-epaves", "p1");
+    const structure = instance("le-trone-de-bouchon", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { board: [plongeur, structure], reason: 4 }), testPlayer("p2")],
+    });
+    const saborded = dispatch(state, { type: "saborder", playerId: "p1", instanceId: structure.instanceId });
+    ok(saborded);
+    expect(pendingCandidates(saborded.state).some((c) => c.cardId === "plongeur-des-epaves")).toBe(true);
+
+    const passed = dispatch(saborded.state, { type: "passReaction", playerId: "p1" });
+    ok(passed);
+    expect(passed.state.pendingReaction).toBeUndefined();
+    expect(player(passed.state, "p1").reason).toBe(4);
+  });
+
+  it("un choix entre deux capacités : « pass » n'en applique aucune", () => {
+    const dottore = instance("il-dottore-des-noyes", "p1");
+    const allie = instance("marin-des-jetees", "p1");
+    const ennemi = instance("marin-des-jetees", "p2");
+    const state = testGameState({
+      players: [
+        testPlayer("p1", { board: [dottore, allie], deck: filler("p1") }),
+        testPlayer("p2", { board: [ennemi] }),
+      ],
+    });
+
+    const withChoice: GameState = {
+      ...state,
+      pendingChoice: {
+        kind: "abilityOption",
+        playerId: "p1",
+        sourceInstanceId: dottore.instanceId,
+        cardId: "il-dottore-des-noyes",
+        abilityIndexes: [0, 1],
+        turnNumber: 1,
+      },
+    };
+    const refused = dispatch(withChoice, { type: "resolveChoice", playerId: "p1", choice: "pass" });
+    ok(refused);
+    expect(refused.state.pendingChoice).toBeUndefined();
+    expect(board(refused.state, "p1").find((u) => u.instanceId === allie.instanceId)!.modifiers).toHaveLength(0);
+    expect(board(refused.state, "p2").find((u) => u.instanceId === ennemi.instanceId)!.modifiers).toHaveLength(0);
+    expect(computeEffectiveStats(board(refused.state, "p2")[0]!, "calme").attack).toBe(
+      computeEffectiveStats(ennemi, "calme").attack
+    );
+  });
+
+  it("le choix IMPOSÉ d'une Anomalie, lui, refuse « pass »", () => {
+    const state: GameState = {
+      ...testGameState({ players: [testPlayer("p1", { reason: 6, anchor: 12 }), testPlayer("p2")] }),
+      pendingChoice: {
+        kind: "reasonOrAnchor",
+        playerId: "p1",
+        sourceInstanceId: "anomalie_test",
+        reasonLossAmount: 2,
+        anchorDamageAmount: 2,
+        turnNumber: 1,
+      },
+    };
+    const refused = dispatch(state, { type: "resolveChoice", playerId: "p1", choice: "pass" });
+    expect(refused.ok).toBe(false);
+    const chosen = dispatch(state, { type: "resolveChoice", playerId: "p1", choice: "reasonLoss" });
+    ok(chosen);
+    expect(player(chosen.state, "p1").reason).toBe(4);
+  });
+});

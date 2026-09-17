@@ -67,7 +67,12 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
   // aucune heuristique dédiée n'est nécessaire ici.
   if (state.pendingChoice && state.pendingChoice.playerId === playerId) {
     if (state.pendingChoice.kind === "abilityOption") {
-      return state.pendingChoice.abilityIndexes.map((abilityIndex) => ({ type: "resolveChoice" as const, playerId, choice: { abilityIndex } }));
+      return [
+        ...state.pendingChoice.abilityIndexes.map((abilityIndex) => ({ type: "resolveChoice" as const, playerId, choice: { abilityIndex } })),
+        // Refuser est une option comme une autre : `evaluateState` la
+        // départagera si aucune branche n'est bonne à prendre.
+        { type: "resolveChoice" as const, playerId, choice: "pass" as const },
+      ];
     }
     return [
       { type: "resolveChoice", playerId, choice: "reasonLoss" },

@@ -53,6 +53,37 @@ export function deriveReactionTriggerEvents(state: GameState, events: GameEvent[
         derived.push({ trigger: "onDamaged", playerId: found.owner.id, cardId: found.card.cardId, sourceInstanceId: event.targetInstanceId });
         break;
       }
+      // Une mort ouvre une fenêtre comme le reste : la carte morte peut
+      // proposer sa propre réaction depuis le cimetière (Pulcinella
+      // Gonflé), et ses observateurs encore en jeu la leur (Plongeur des
+      // Épaves, Mécanicien aux Mains Noires). Décision du 17/09/2026 :
+      // « jamais automatique, le joueur choisit ».
+      case "DESTROY": {
+        // L'identité du défunt n'est pas portée par l'événement : on la
+        // relit dans le cimetière, où `processDeaths` vient de le poser.
+        const found = findCardInstance(state, event.instanceId);
+        if (!found) break;
+        derived.push({
+          trigger: "onDeath",
+          playerId: found.owner.id,
+          cardId: found.card.cardId,
+          sourceInstanceId: event.instanceId,
+        });
+        break;
+      }
+      // Un Sabordage émet TOUJOURS `DESTROY` juste après (cf.
+      // `processDeaths`) : les deux déclencheurs du texte sont couverts,
+      // et `collectReactionCandidates` dédoublonne par capacité.
+      case "SABORDED": {
+        const found = findCardInstance(state, event.instanceId);
+        derived.push({
+          trigger: "onSaborde",
+          playerId: found?.owner.id ?? event.playerId,
+          cardId: event.cardId ?? found?.card.cardId,
+          sourceInstanceId: event.instanceId,
+        });
+        break;
+      }
       case "OBJECT_BROKEN":
         derived.push({ trigger: "onObjectBroken", playerId: event.playerId, cardId: event.cardId, sourceInstanceId: event.instanceId });
         break;

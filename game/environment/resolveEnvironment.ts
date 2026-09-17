@@ -490,9 +490,17 @@ export function resolveTideTurnStep(
   }
 
   // --- Expiration des permanents à durée limitée (Structures/Objets) -----
-  // Décompte une fois par tour joué, tous joueurs confondus (même
-  // convention que la durée des états de Marée). Ni mort ni Sabordage.
-  for (const player of nextState.players) {
+  // « Durée : 3 tours » sur une CARTE compte les tours de SON CONTRÔLEUR,
+  // pas les tours de table (décision du 17/09/2026) : c'est ainsi que se lit
+  // « à chacun de vos tours », et une carte posée ne doit pas fondre deux
+  // fois plus vite parce que l'adversaire joue aussi. La durée d'un état de
+  // Marée, elle, reste comptée en tours de table — la mer n'appartient à
+  // personne.
+  //
+  // Le décompte a donc lieu au début du tour de son propriétaire, et
+  // `resolveTideTurnStep` est appelée juste après le passage de main : le
+  // joueur actif est celui qui commence. Ni mort ni Sabordage.
+  for (const player of nextState.players.filter((p) => p.id === nextState.activePlayerId)) {
     const expiring = player.board.filter((u) => u.turnsRemaining !== undefined && u.turnsRemaining <= 1);
     const board = player.board
       .filter((u) => !expiring.some((e) => e.instanceId === u.instanceId))

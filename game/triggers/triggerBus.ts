@@ -1,6 +1,6 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { computeEffectiveStats } from "@/game/cards/stats";
-import type { CardInstance, TriggeredAbility, TriggerSourceFilter } from "@/game/cards/types";
+import { isVisibleDuringTide, type CardInstance, type TriggeredAbility, type TriggerSourceFilter } from "@/game/cards/types";
 import type { EffectDefinition } from "@/game/effects/types";
 import type { EffectContext } from "@/game/effects/resolveEffect";
 import { resolveEffect, revealRandomHandCards } from "@/game/effects/resolveEffect";
@@ -73,7 +73,17 @@ function matchesTideCondition(state: GameState, ability: TriggeredAbility): bool
  * déclenchement qui ne remplit pas la condition ne brûle pas l'unique usage
  * du tour (ex: La Quête du Grand Nénuphar sans son Destrier).
  */
-function matchesControlCondition(state: GameState, ability: TriggeredAbility, controllerId: PlayerId): boolean {
+function matchesControlCondition(
+  state: GameState,
+  ability: TriggeredAbility,
+  controllerId: PlayerId,
+  /** Porteuse de la capacité — requise par `condition.selfVisible`. */
+  sourceInstanceId?: string
+): boolean {
+  if (ability.condition?.selfVisible) {
+    const holder = sourceInstanceId ? findBoardUnit(state, sourceInstanceId) : undefined;
+    if (!holder || !isVisibleDuringTide(getCardDefinition(holder.unit.cardId), state.environment.tideState)) return false;
+  }
   const required = ability.condition?.controlsAnyCardIds;
   if (!required) return true;
   const controller = state.players.find((p) => p.id === controllerId);
@@ -162,10 +172,11 @@ function collectTriggeredWork(
   if (event.trigger === "onDeath" || event.trigger === "onSaborde" || event.trigger === "onExpire") {
     // L'unité est déjà retirée du plateau au moment où cet événement est
     // émis : on résout ses capacités à partir des infos portées par
-    // l'événement lui-même. Les réactions "optional" à sa propre mort ne
-    // sont pas recensées ici (la source a déjà quitté le board — pas
-    // nécessaire tant qu'aucune carte ne l'exige).
-    if (mode === "optional") return result;
+    // l'événement lui-même — y compris les FACULTATIVES (décision du
+    // 17/09/2026 : « jamais automatique, le joueur choisit, et il peut
+    // choisir de ne pas appliquer un effet »). Une carte morte peut donc
+    // proposer sa réaction depuis le cimetière, et son observateur encore
+    // en jeu la proposer aussi.
     if (!event.cardId || !event.playerId || !event.sourceInstanceId) return result;
     const def = getCardDefinition(event.cardId);
     (def.abilities ?? []).forEach((ability, abilityIndex) => {
@@ -430,21 +441,6 @@ export function processReturnedToHandTriggers(
 }
 
 /**
- * Capacité AUTOMATIQUE dont un effet vise « un autre X » (`chosenUnit`
- * avec filtre) : personne ne désigne, c'est le moteur qui choisit — le
- * premier permanent éligible dans l'ordre du plateau. Décision de design
- * du 2026-09-16 : la Fourchette du Grand Étang et le Chevalier Abyssal
- * « se chaînent directement » à l'attaque, sans fenêtre de réaction que le
- * joueur pourrait ne pas voir. Un `chosenUnit` SANS filtre (pose d'un
- * Équipement) n'est jamais deviné : il reste un vrai choix du joueur.
- */
-function withAutoChosenTarget(state: GameState, effect: EffectDefinition, context: EffectContext): EffectContext {
-  if (effect.target.kind !== "chosenUnit" || !effect.target.among || context.chosenTargetInstanceId) return context;
-  const candidate = eligibleChosenUnits(state, effect.target, context.controllerId, context.sourceInstanceId)[0];
-  return candidate ? { ...context, chosenTargetInstanceId: candidate.unit.instanceId } : context;
-}
-
-/**
  * Traite un `TriggerEvent` : résout dans l'ordre toutes les capacités
  * AUTOMATIQUES concernées et retourne le nouvel état + les événements
  * produits (à ajouter au journal par l'appelant). Les capacités
@@ -466,7 +462,7 @@ export function processTrigger(
   for (const item of items) {
     // Condition de capacité non remplie : ni résolution, ni consommation du
     // « une fois par tour » (cf. `matchesControlCondition`).
-    if (!matchesControlCondition(nextState, item.ability, item.context.controllerId)) continue;
+    if (!matchesControlCondition(nextState, item.ability, item.context.controllerId, item.context.sourceInstanceId)) continue;
 
     // « Choisissez : A ou B » en résolution AUTOMATIQUE (ex: Horloge de
     // Marée au Sabordage) : rien ne se résout ici, un choix est ouvert pour
@@ -512,7 +508,13 @@ export function processTrigger(
     // capacité déclenchée (Pantalone Sans-Sou).
     const context = event.fromHand === undefined ? item.context : { ...item.context, brokenFromHand: event.fromHand };
     for (const effect of item.effects) {
-      const result = resolveEffect(nextState, effect, withAutoChosenTarget(nextState, effect, context));
+      // Aucune désignation d'office : une capacité automatique ne vise
+      // jamais une unité CHOISIE (« jamais automatique, le joueur
+      // choisit » — décision du 17/09/2026). L'invariant est tenu par
+      // `tests/game/cardConformity.test.ts`, règle "designation" : un
+      // effet `chosenUnit` impose `mode: "optional"`, donc une fenêtre de
+      // réaction où le joueur pointe sa cible.
+      const result = resolveEffect(nextState, effect, context);
       nextState = result.state;
       events.push(...result.events);
     }
@@ -575,7 +577,7 @@ export function collectReactionCandidates(
   for (const event of triggerEvents) {
     for (const item of collectTriggeredWork(state, event, turnNumber, "optional")) {
       if (item.context.controllerId !== forPlayerId) continue;
-      if (!matchesControlCondition(state, item.ability, item.context.controllerId)) continue;
+      if (!matchesControlCondition(state, item.ability, item.context.controllerId, item.context.sourceInstanceId)) continue;
       const key = `${item.context.sourceInstanceId}:${item.abilityIndex}`;
       if (seen.has(key)) continue;
 

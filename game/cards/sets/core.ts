@@ -124,12 +124,13 @@ export const CORE_SET: CardDefinition[] = [
     health: 2,
     maxCopies: 2,
     text: "Quand une Structure est détruite ou Sabordée, vous pouvez récupérer 1 Raison. Une fois par tour.",
-    // Résolu automatiquement : récupérer 1 Raison n'est jamais un désavantage,
-    // et le Sabordage déclenche toujours `onDeath` en plus de `onSaborde`
-    // (cf. `saborder.ts`) — un seul déclencheur couvre les deux cas.
+    // « vous pouvez » : proposé, jamais imposé. Le Sabordage déclenche
+    // toujours `onDeath` en plus de `onSaborde` (cf. `saborder.ts`) — un
+    // seul déclencheur couvre les deux cas du texte.
     abilities: [
       {
         trigger: "onDeath",
+        mode: "optional",
         triggeredBy: { cardTypes: ["structure"], sameController: false },
         oncePerTurnKey: "plongeurRecupere",
         description: "Quand une Structure (des deux camps) est détruite ou Sabordée : récupérez 1 Raison. Une fois par tour.",
@@ -201,11 +202,11 @@ export const CORE_SET: CardDefinition[] = [
     text:
       "Durée : 3 tours. Visible pendant Houle et Tempête. La première fois que votre Navire subit des dégâts de " +
       "Tempête, réduisez-les de 1.",
-    // Interprété comme "la première fois PAR TOUR" (même convention que les cartes similaires du catalogue,
-    // ex: Baleine aux Cicatrices Blanches) plutôt que "une seule fois pendant toute la durée de vie de la
-    // carte" — le texte est ambigu sur ce point, mais un bouclier à usage unique sur 3 tours de durée de vie
-    // serait d'une valeur dérisoire comparé à ses pairs.
-    reduceTideShipDamageOncePerTurn: { amount: 1, tideStateIn: ["tempete"] },
+    // « La première fois que » se lit au pied de la lettre : UN seul usage
+    // pour toute la partie, jamais réarmé d'un tour à l'autre (décision du
+    // 17/09/2026, tranchée contre la lecture « une fois par tour » qui
+    // valait auparavant ici).
+    reduceTideShipDamageOncePerTurn: { amount: 1, tideStateIn: ["tempete"], onceEver: true },
   },
   {
     id: "harpon-de-pont",
@@ -651,11 +652,16 @@ export const CORE_SET: CardDefinition[] = [
     text:
       "Durée : 3 tours. Visible pendant Calme et Houle. À votre début de tour, si elle est visible, une Créature " +
       "adverse perd 1 Puissance jusqu'à la fin du tour.",
-    // "une Créature adverse" sans "choisissez" : le moteur désigne la
-    // première Créature adverse du plateau (`withAutoChosenTarget`).
+    // La Créature visée est désignée par le joueur.
     abilities: [
       {
         trigger: "startOfTurn",
+        mode: "optional",
+        // « si elle est visible » : gardé au niveau de la CAPACITÉ, sinon le
+        // Filet caché se proposerait dans la fenêtre pour ne rien faire. Le
+        // `conditionSelfVisible` de l'effet reste : la Marée peut changer
+        // entre l'ouverture de la fenêtre et l'activation.
+        condition: { selfVisible: true },
         description: "À votre début de tour, si elle est visible : une Créature adverse perd 1 Puissance jusqu'à la fin du tour.",
         effects: [
           {
@@ -1262,11 +1268,12 @@ export const CORE_SET: CardDefinition[] = [
     attack: 2,
     health: 3,
     text: "Quand une Structure que vous contrôlez est détruite, une autre Structure que vous contrôlez gagne +1 Résistance. Une fois par tour.",
-    // "une autre Structure" sans "choisissez" : le moteur désigne la première
-    // Structure restante du contrôleur (`withAutoChosenTarget`).
+    // La cible est DÉSIGNÉE par le joueur, dans une fenêtre de réaction : le
+    // moteur ne choisit jamais à sa place (décision du 17/09/2026).
     abilities: [
       {
         trigger: "onDeath",
+        mode: "optional",
         triggeredBy: { cardTypes: ["structure"] },
         oncePerTurnKey: "mecanicienRepare",
         description: "Quand une de vos Structures est détruite : une autre de vos Structures gagne +1 Résistance. Une fois par tour.",
@@ -1914,8 +1921,8 @@ export const CORE_SET: CardDefinition[] = [
     health: 3,
     durationTurns: 3,
     text:
-      "Durée : 3 tours. La première fois à chaque tour qu'un Cra-Poiscail arrive en jeu, il gagne +1 Résistance " +
-      "jusqu'à votre prochain tour.",
+      "Durée : 3 tours. La première fois à chaque tour qu'un autre Cra-Poiscail que vous contrôlez arrive en " +
+      "jeu, il gagne +1 Résistance jusqu'à votre prochain tour.",
     abilities: [
       {
         trigger: "onEnterPlay",
@@ -1973,7 +1980,7 @@ export const CORE_SET: CardDefinition[] = [
     cost: 2,
     attack: 1,
     health: 3,
-    text: "La première fois à chaque tour qu'un autre Cra-Poiscail arrive en jeu, celui-ci gagne +1 Puissance jusqu'à la fin du tour.",
+    text: "La première fois à chaque tour qu'un autre Cra-Poiscail que vous contrôlez arrive en jeu, celui-ci gagne +1 Puissance jusqu'à la fin du tour.",
     abilities: [
       {
         trigger: "onEnterPlay",
@@ -1996,7 +2003,7 @@ export const CORE_SET: CardDefinition[] = [
     cost: 3,
     attack: 2,
     health: 3,
-    text: "La première fois à chaque tour qu'un autre Cra-Poiscail arrive en jeu, celui-ci gagne +1 / +1 jusqu'à la fin du tour.",
+    text: "La première fois à chaque tour qu'un autre Cra-Poiscail que vous contrôlez arrive en jeu, celui-ci gagne +1 / +1 jusqu'à la fin du tour.",
     abilities: [
       {
         trigger: "onEnterPlay",
@@ -2082,7 +2089,7 @@ export const CORE_SET: CardDefinition[] = [
     equipTargetArchetype: "cra-poiscail",
     text:
       "Équipez un Cra-Poiscail. Il gagne +1 Résistance. La première fois à chaque tour qu'un autre Cra-Poiscail " +
-      "arrive en jeu, le porteur gagne +1 Puissance jusqu'à la fin du tour.",
+      "que vous contrôlez arrive en jeu, le porteur gagne +1 Puissance jusqu'à la fin du tour.",
     onPlayEffects: [
       { type: "attachEquipment", target: { kind: "chosenUnit" } },
     ],
@@ -2187,10 +2194,12 @@ export const CORE_SET: CardDefinition[] = [
     maxCopies: 2,
     durationTurns: 2,
     text: "Pendant 2 tours, la première fois à chaque tour qu'un Cra-Poiscail que vous contrôlez est détruit, invoquez 1 Péon Cra-Poiscail 1 / 1.",
+    // « un Cra-Poiscail » sans « autre » : elle compte aussi sa propre
+    // destruction (décision du 17/09/2026).
     abilities: [
       {
         trigger: "onDeath",
-        triggeredBy: { archetype: "cra-poiscail" },
+        triggeredBy: { archetype: "cra-poiscail", excludeSelf: false },
         oncePerTurnKey: "grandeMigrationAllyDeath",
         description: "Un de vos Cra-Poiscail est détruit : invoquez 1 Péon Cra-Poiscail.",
         effects: [{ type: "summon", target: { kind: "controllerPlayer" }, cardId: "peon-cra-poiscail" }],
@@ -2249,7 +2258,7 @@ export const CORE_SET: CardDefinition[] = [
     cost: 3,
     attack: 3,
     health: 2,
-    text: "La première fois à chaque tour qu'un autre Cra-Poiscail est détruit, il gagne +1 Puissance jusqu'à la fin du tour.",
+    text: "La première fois à chaque tour qu'un autre Cra-Poiscail que vous contrôlez est détruit, il gagne +1 Puissance jusqu'à la fin du tour.",
     abilities: [
       {
         trigger: "onDeath",
@@ -2307,7 +2316,9 @@ export const CORE_SET: CardDefinition[] = [
     attack: 1,
     health: 2,
     maxCopies: 2,
-    text: "La première fois à chaque tour qu'un autre Cra-Poiscail gagne de la Puissance, elle gagne +1 Puissance jusqu'à la fin du tour.",
+    text:
+      "La première fois à chaque tour qu'un autre Cra-Poiscail que vous contrôlez gagne de la Puissance, elle " +
+      "gagne +1 Puissance jusqu'à la fin du tour.",
     abilities: [
       {
         trigger: "onPowerGained",
@@ -2336,18 +2347,16 @@ export const CORE_SET: CardDefinition[] = [
     ],
     // Aura, pas un modificateur posé : le bonus disparaît avec l'Équipement.
     equipGrantsBuff: { attackAmount: 1 },
-    // "Un autre Cra-Poiscail" se chaîne DIRECTEMENT à l'attaque du porteur
-    // (décision du 2026-09-16, qui remplace la fenêtre de réaction du
-    // 2026-09-14 : le joueur ne la voyait pas, l'effet semblait muet). Le
-    // moteur désigne le premier autre Cra-Poiscail du plateau
-    // (`withAutoChosenTarget`). `equippedUnit` fait suivre le porteur :
-    // c'est LUI qui attaque, et c'est lui que "un autre" exclut (avec
-    // l'Équipement lui-même).
+    // « un autre Cra-Poiscail » est DÉSIGNÉ par le joueur, en fenêtre de
+    // réaction (décision du 17/09/2026 : le moteur ne choisit jamais une
+    // cible à sa place, et le joueur peut refuser). `equippedUnit` fait
+    // suivre le porteur : c'est LUI qui attaque, et c'est lui que « un
+    // autre » exclut, avec l'Équipement lui-même.
     abilities: [
       {
         trigger: "onAttack",
+        mode: "optional",
         triggeredBy: { equippedUnit: true },
-        mode: "auto",
         oncePerTurnKey: "fourchetteBearerAttack",
         description: "Un autre Cra-Poiscail gagne +1 Puissance jusqu'à la fin du tour.",
         effects: [
@@ -2464,7 +2473,12 @@ export const CORE_SET: CardDefinition[] = [
         type: "draw",
         target: { kind: "controllerPlayer" },
         amount: { kind: "flat", value: 1 },
-        conditionControlsAllCardIds: ["chevalier-cra-poiscail", "destrier-du-grand-etang", "bourreau-cra-poiscail"],
+        // « les trois » : le Chevalier peut être l'une ou l'autre version.
+        conditionControlsAllCardIds: [
+          ["chevalier-cra-poiscail", "chevalier-cra-poiscail-abyssal"],
+          "destrier-du-grand-etang",
+          "bourreau-cra-poiscail",
+        ],
       },
     ],
   },
@@ -2507,7 +2521,9 @@ export const CORE_SET: CardDefinition[] = [
     attack: 2,
     health: 3,
     maxCopies: 1,
-    text: "La première fois à chaque tour qu'un autre Cra-Poiscail gagne de la Puissance, elle gagne +2 Puissance et Pied marin jusqu'à la fin du tour.",
+    text:
+      "La première fois à chaque tour qu'un autre Cra-Poiscail que vous contrôlez gagne de la Puissance, elle " +
+      "gagne +2 Puissance et Pied marin jusqu'à la fin du tour.",
     abilities: [
       {
         trigger: "onPowerGained",
@@ -2535,15 +2551,14 @@ export const CORE_SET: CardDefinition[] = [
       "chaque tour qu'il attaque, un autre Cra-Poiscail gagne +1 / +1 jusqu'à la fin du tour.",
     selfBuffWhileControllingCardIds: { cardIds: ["destrier-du-grand-etang"], attackAmount: 1 },
     conditionalKeywords: [{ keyword: "garde", controllingCardIds: ["destrier-du-grand-etang"] }],
-    // Seconde phrase : même règle que la Fourchette du Grand Étang — l'effet
-    // se chaîne directement à l'attaque, le moteur désignant le premier
-    // autre Cra-Poiscail du plateau. Déclencheur PERSONNEL ici : c'est le
-    // Chevalier lui-même qui attaque, et `excludeSource` l'écarte de ses
-    // propres cibles.
+    // Seconde phrase : même règle que la Fourchette du Grand Étang — la
+    // cible est désignée par le joueur en fenêtre de réaction. Déclencheur
+    // PERSONNEL ici : c'est le Chevalier lui-même qui attaque, et
+    // `excludeSource` l'écarte de ses propres cibles.
     abilities: [
       {
         trigger: "onAttack",
-        mode: "auto",
+        mode: "optional",
         oncePerTurnKey: "chevalierAbyssalAttack",
         description: "Un autre Cra-Poiscail gagne +1 / +1 jusqu'à la fin du tour.",
         effects: [
@@ -2587,9 +2602,10 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onDeath",
+        mode: "optional",
         description: "Détruit : 1 dégât à une créature ennemie.",
-        // Le moteur désigne la première Créature adverse éligible
-        // (`withAutoChosenTarget`) : le texte ne dit pas « choisissez ».
+        // La cible est désignée par le joueur, depuis le cimetière : Pulcinella
+        // est déjà mort quand la fenêtre s'ouvre.
         effects: [
           {
             type: "damage",

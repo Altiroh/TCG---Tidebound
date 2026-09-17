@@ -40,6 +40,8 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
   // Option d'une capacité (« choisissez : A ou B », ex: Horloge de Marée) :
   // seule la capacité désignée se résout, avec le contexte de la carte source.
   if (choice.kind === "abilityOption") {
+    // Refus : la capacité ne se résout pas, et le choix se referme.
+    if (action.choice === "pass") return { ok: true, state: nextState, events };
     if (typeof action.choice !== "object") return { ok: false, error: "Ce choix attend une option de capacité." };
     if (!choice.abilityIndexes.includes(action.choice.abilityIndex)) return { ok: false, error: "Cette option n'est pas proposée." };
     const ability = getCardDefinition(choice.cardId).abilities?.[action.choice.abilityIndex];
@@ -52,7 +54,9 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
     }
     return { ok: true, state: nextState, events };
   }
-  if (typeof action.choice !== "string") return { ok: false, error: "Ce choix attend « reasonLoss » ou « anchorDamage »." };
+  if (typeof action.choice !== "string" || action.choice === "pass") {
+    return { ok: false, error: "Ce choix attend « reasonLoss » ou « anchorDamage » : il n'est pas refusable." };
+  }
 
   if (action.choice === "reasonLoss") {
     const shield = consumeReasonLossShield(nextState, action.playerId, choice.turnNumber);

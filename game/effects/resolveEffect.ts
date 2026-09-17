@@ -348,7 +348,13 @@ export function resolveEffect(
   if (effect.conditionControlsAllCardIds) {
     const controller = getPlayer(state, context.controllerId);
     const owned = new Set(controller.board.map((u) => u.cardId));
-    if (!effect.conditionControlsAllCardIds.every((cardId) => owned.has(cardId))) return { state, events };
+    // Chaque entrée doit être satisfaite ; une entrée en LISTE accepte
+    // n'importe laquelle de ses cartes — « un Chevalier », standard ou
+    // Abyssal, reste un Chevalier (décision du 17/09/2026).
+    const satisfied = effect.conditionControlsAllCardIds.every((entry) =>
+      Array.isArray(entry) ? entry.some((cardId) => owned.has(cardId)) : owned.has(entry)
+    );
+    if (!satisfied) return { state, events };
   }
   if (effect.conditionControlsAnyCardIds) {
     const controller = getPlayer(state, context.controllerId);

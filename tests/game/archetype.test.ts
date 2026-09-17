@@ -5,7 +5,7 @@ import { canBeEquipTarget, getCardDefinition } from "@/game/cards/sets/core";
 import { resolveEffect } from "@/game/effects/resolveEffect";
 import { hasEffectiveKeyword } from "@/game/rules/validation";
 import { STATUS_MALADE } from "@/game/cards/types";
-import { instance, testEnvironment, testGameState, testPlayer } from "./testHelpers";
+import { activateReactionFor, instance, testEnvironment, testGameState, testPlayer } from "./testHelpers";
 
 const PEON = "peon-cra-poiscail";
 
@@ -749,7 +749,7 @@ describe("archétype Cra-Poiscail — cibles désignées par le joueur", () => {
     expect(secondBreak.state.pendingReaction).toBeUndefined();
   });
 
-  it("Fourchette du Grand Étang : l'attaque du PORTEUR renforce directement un AUTRE Cra-Poiscail, sans fenêtre", () => {
+  it("Fourchette du Grand Étang : l'attaque du PORTEUR propose de renforcer un AUTRE Cra-Poiscail, désigné par le joueur", () => {
     const porteur = instance("tetard-fesse", "p1"); // 1/1 Cra-Poiscail
     const fourchette = instance("fourchette-du-grand-etang", "p1", { attachedToInstanceId: porteur.instanceId });
     const autre = instance("ptite-fesse", "p1");
@@ -762,13 +762,17 @@ describe("archétype Cra-Poiscail — cibles désignées par le joueur", () => {
     expect(attacked.ok).toBe(true);
     if (!attacked.ok) return;
 
-    // Chaîné à l'attaque : aucune fenêtre à voir, l'autre Cra-Poiscail est
-    // déjà renforcé — et « un AUTRE » : ni l'Équipement, ni le porteur.
-    expect(attacked.state.pendingReaction).toBeUndefined();
-    expect(statsOf(attacked.state, "p1", autre.instanceId).attack).toBe(2);
+    // Rien n'est appliqué d'office : le joueur désigne sa cible.
+    expect(attacked.state.pendingReaction?.awaitingPlayerId).toBe("p1");
+    expect(statsOf(attacked.state, "p1", autre.instanceId).attack).toBe(1);
+
+    const applied = activateReactionFor(attacked.state, "fourchette-du-grand-etang", autre.instanceId);
+    expect(applied.ok).toBe(true);
+    if (!applied.ok) return;
+    expect(statsOf(applied.state, "p1", autre.instanceId).attack).toBe(2);
     // Le porteur n'a rien reçu de CETTE capacité (« un AUTRE ») : son 1 + 1
     // vient de l'aura de la Fourchette qu'il porte, et de rien d'autre.
-    expect(statsOf(attacked.state, "p1", porteur.instanceId).attack).toBe(2);
+    expect(statsOf(applied.state, "p1", porteur.instanceId).attack).toBe(2);
   });
 
   it("Fourchette du Grand Étang : sans autre Cra-Poiscail, l'attaque passe et rien ne se déclenche", () => {
@@ -785,7 +789,7 @@ describe("archétype Cra-Poiscail — cibles désignées par le joueur", () => {
     expect(attacked.state.pendingReaction).toBeUndefined();
   });
 
-  it("Chevalier Cra-Poiscail Abyssal : sa propre attaque renforce directement un autre Cra-Poiscail, une fois par tour", () => {
+  it("Chevalier Cra-Poiscail Abyssal : sa propre attaque propose de renforcer un autre Cra-Poiscail, désigné par le joueur", () => {
     const chevalier = instance("chevalier-cra-poiscail-abyssal", "p1");
     const autre = instance("tetard-fesse", "p1");
     const state = testGameState({
@@ -797,9 +801,12 @@ describe("archétype Cra-Poiscail — cibles désignées par le joueur", () => {
     expect(attacked.ok).toBe(true);
     if (!attacked.ok) return;
 
-    expect(attacked.state.pendingReaction).toBeUndefined();
-    expect(statsOf(attacked.state, "p1", autre.instanceId).attack).toBe(2);
-    expect(statsOf(attacked.state, "p1", autre.instanceId).health).toBe(2);
+    expect(attacked.state.pendingReaction?.awaitingPlayerId).toBe("p1");
+    const applied = activateReactionFor(attacked.state, "chevalier-cra-poiscail-abyssal", autre.instanceId);
+    expect(applied.ok).toBe(true);
+    if (!applied.ok) return;
+    expect(statsOf(applied.state, "p1", autre.instanceId).attack).toBe(2);
+    expect(statsOf(applied.state, "p1", autre.instanceId).health).toBe(2);
   });
 });
 

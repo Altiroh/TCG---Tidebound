@@ -10,7 +10,7 @@ import { processTrigger } from "@/game/triggers/triggerBus";
 import { processDeaths } from "@/game/state/processDeaths";
 import { eligibleCandidatesFor } from "@/game/reactions/reactionWindow";
 import type { GameState } from "@/game/state/types";
-import { instance, testEnvironment, testGameState, testPlayer } from "./testHelpers";
+import { activateReactionFor, instance, pendingCandidates, testEnvironment, testGameState, testPlayer } from "./testHelpers";
 
 const STRUCTURE = "le-trone-de-bouchon"; // Structure toujours visible, 4 Résistance, sans capacité
 const EPAVE = "epave-a-fleur-deau"; // visible en Houle uniquement
@@ -37,7 +37,7 @@ function candidates(state: GameState) {
 }
 
 describe("observateurs de Structures — Plongeur des Épaves, Mécanicien aux Mains Noires, Treuil Rouillé", () => {
-  it("Plongeur des Épaves : récupère 1 Raison quand une Structure (même adverse) est Sabordée, une fois par tour", () => {
+  it("Plongeur des Épaves : PROPOSE 1 Raison quand une Structure est Sabordée, une fois par tour, et se refuse", () => {
     const plongeur = instance("plongeur-des-epaves", "p1");
     const own = instance(STRUCTURE, "p1");
     const own2 = instance(STRUCTURE, "p1");
@@ -45,14 +45,24 @@ describe("observateurs de Structures — Plongeur des Épaves, Mécanicien aux M
       players: [testPlayer("p1", { board: [plongeur, own, own2], reason: 5 }), testPlayer("p2")],
     });
 
-    const first = dispatch(state, { type: "saborder", playerId: "p1", instanceId: own.instanceId });
-    ok(first);
-    expect(player(first.state, "p1").reason).toBe(6);
+    const saborded = dispatch(state, { type: "saborder", playerId: "p1", instanceId: own.instanceId });
+    ok(saborded);
+    // Rien n'est encaissé d'office : « vous pouvez ».
+    expect(player(saborded.state, "p1").reason).toBe(5);
 
-    // Une fois par tour : la seconde Structure sabordée ne rapporte rien.
-    const second = dispatch(first.state, { type: "saborder", playerId: "p1", instanceId: own2.instanceId });
+    const accepted = activateReactionFor(saborded.state, "plongeur-des-epaves");
+    ok(accepted);
+    expect(player(accepted.state, "p1").reason).toBe(6);
+
+    // Une fois par tour : la seconde Structure sabordée ne propose plus rien.
+    const second = dispatch(accepted.state, { type: "saborder", playerId: "p1", instanceId: own2.instanceId });
     ok(second);
-    expect(player(second.state, "p1").reason).toBe(6);
+    expect(pendingCandidates(second.state).some((c) => c.cardId === "plongeur-des-epaves")).toBe(false);
+
+    // Le joueur peut aussi refuser : la fenêtre se ferme, rien ne se passe.
+    const refused = dispatch(saborded.state, { type: "passReaction", playerId: "p1" });
+    ok(refused);
+    expect(player(refused.state, "p1").reason).toBe(5);
   });
 
   it("Plongeur des Épaves : réagit aussi à une Structure ADVERSE", () => {
@@ -65,23 +75,41 @@ describe("observateurs de Structures — Plongeur des Épaves, Mécanicien aux M
     });
     const result = dispatch(state, { type: "saborder", playerId: "p2", instanceId: enemy.instanceId });
     ok(result);
-    expect(player(result.state, "p1").reason).toBe(6);
+    // La fenêtre s'ouvre pour p1, propriétaire du Plongeur, hors de son tour.
+    expect(result.state.pendingReaction?.awaitingPlayerId).toBe("p1");
+    const accepted = activateReactionFor(result.state, "plongeur-des-epaves");
+    ok(accepted);
+    expect(player(accepted.state, "p1").reason).toBe(6);
   });
 
-  it("Mécanicien aux Mains Noires : une autre de vos Structures gagne +1 Résistance quand l'une est détruite", () => {
+  it("Mécanicien aux Mains Noires : le joueur DÉSIGNE l'autre Structure qui gagne +1 Résistance", () => {
     const mecanicien = instance("mecanicien-aux-mains-noires", "p1");
     const lost = instance(STRUCTURE, "p1");
     const kept = instance(STRUCTURE, "p1");
     const state = testGameState({
       players: [testPlayer("p1", { board: [mecanicien, lost, kept] }), testPlayer("p2")],
     });
-    const result = dispatch(state, { type: "saborder", playerId: "p1", instanceId: lost.instanceId });
+    const saborded = dispatch(state, { type: "saborder", playerId: "p1", instanceId: lost.instanceId });
+    ok(saborded);
+    const candidate = pendingCandidates(saborded.state).find((c) => c.cardId === "mecanicien-aux-mains-noires");
+    expect(candidate?.needsTarget).toBe(true);
+
+    const result = activateReactionFor(saborded.state, "mecanicien-aux-mains-noires", kept.instanceId);
     ok(result);
     const survivor = board(result.state, "p1").find((u) => u.instanceId === kept.instanceId)!;
     expect(computeEffectiveStats(survivor, result.state.environment.tideState).health).toBe(5);
-    // Le Marin lui-même n'est pas une Structure : il n'est jamais la cible.
+    // Le Marin lui-même n'est pas une Structure : il n'est jamais une cible légale.
     const marin = board(result.state, "p1").find((u) => u.instanceId === mecanicien.instanceId)!;
     expect(marin.modifiers).toHaveLength(0);
+    expect(
+      dispatch(saborded.state, {
+        type: "activateReaction",
+        playerId: "p1",
+        sourceInstanceId: mecanicien.instanceId,
+        abilityIndex: candidate!.abilityIndex,
+        targetInstanceId: mecanicien.instanceId,
+      }).ok
+    ).toBe(false);
   });
 
   it("Treuil Rouillé : pioche 1 carte quand la Structure équipée quitte le board", () => {
@@ -297,7 +325,7 @@ describe("Équipements récurrents — Kit de Calfatage, Treuil à Chair", () =>
 });
 
 describe("Filet à la Dérive, Radeau de Fortune, Carcasse Renversée, Il Capitano Naufragé", () => {
-  it("Filet à la Dérive : au début du tour, si visible, une Créature adverse perd 1 Puissance jusqu'à la fin du tour", () => {
+  it("Filet à la Dérive : au début du tour, si visible, le joueur DÉSIGNE une Créature adverse qui perd 1 Puissance", () => {
     const filet = instance("filet-a-la-derive", "p2");
     const marin = instance("marin-des-jetees", "p1"); // Marin : pas une Créature
     const creature = instance("requin-balafre", "p1");
@@ -305,11 +333,14 @@ describe("Filet à la Dérive, Radeau de Fortune, Carcasse Renversée, Il Capita
       environment: testEnvironment({ tideState: "calme", tideRemainingTurns: 4 }),
       players: [testPlayer("p1", { board: [marin, creature] }), testPlayer("p2", { board: [filet], deck: filler("p2") })],
     });
-    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const started = dispatch(state, { type: "endTurn", playerId: "p1" });
+    ok(started);
+    const result = activateReactionFor(started.state, "filet-a-la-derive", creature.instanceId);
     ok(result);
     const base = computeEffectiveStats(creature, "calme").attack;
     const debuffed = board(result.state, "p1").find((u) => u.instanceId === creature.instanceId)!;
     expect(computeEffectiveStats(debuffed, "calme").attack).toBe(base - 1);
+    // Un Marin n'est pas une Créature : il ne fait pas partie des cibles.
     expect(board(result.state, "p1").find((u) => u.instanceId === marin.instanceId)!.modifiers).toHaveLength(0);
 
     // Invisible (Tempête) : rien.
@@ -319,6 +350,7 @@ describe("Filet à la Dérive, Radeau de Fortune, Carcasse Renversée, Il Capita
     });
     const nothing = dispatch(hidden, { type: "endTurn", playerId: "p1" });
     ok(nothing);
+    expect(pendingCandidates(nothing.state).some((c) => c.cardId === "filet-a-la-derive")).toBe(false);
     expect(board(nothing.state, "p1").find((u) => u.instanceId === creature.instanceId)!.modifiers).toHaveLength(0);
   });
 

@@ -245,7 +245,7 @@ export interface EffectDefinition {
    * en jeu (ex: Le Tournoi du Grand Étang, "si vous contrôlez les trois à
    * la résolution, piochez 1 carte").
    */
-  conditionControlsAllCardIds?: string[];
+  conditionControlsAllCardIds?: Array<string | string[]>;
 
   /** Variante "au moins une" (ex: La Quête du Grand Nénuphar, "alors que vous contrôlez un Destrier du Grand Étang"). */
   conditionControlsAnyCardIds?: string[];
