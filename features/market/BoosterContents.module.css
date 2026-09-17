@@ -135,13 +135,8 @@
 }
 
 .toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
   margin-left: auto;
-  font-size: 12px;
-  color: #9eb3c2;
-  cursor: pointer;
+  font-size: 13px;
 }
 
 .empty {
@@ -156,11 +151,22 @@
   gap: 10px;
   min-height: 0;
   margin: 0;
-  padding: 2px 4px 4px 0;
+  padding: 2px 10px 4px 0;
   overflow-y: auto;
   list-style: none;
+  /* Ascenseur fin, aux couleurs de la fenêtre — pas la barre blanche du navigateur. */
   scrollbar-width: thin;
+  scrollbar-color: rgba(0, 183, 255, 0.35) transparent;
 }
+
+.grid::-webkit-scrollbar { width: 8px; }
+.grid::-webkit-scrollbar-track { background: transparent; }
+.grid::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background: rgba(0, 183, 255, 0.35) padding-box;
+}
+.grid::-webkit-scrollbar-thumb:hover { background: rgba(0, 183, 255, 0.6) padding-box; }
 
 .card {
   --rarity-color: #b9c6d2;
@@ -205,14 +211,19 @@
   filter: grayscale(0.55) brightness(0.7);
 }
 
+/* Le nom en entier, sur deux lignes s'il le faut : un nom tronqué ne se
+   reconnaît pas (« Cloche du Grand F… »). */
 .name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  min-height: 2.5em;
   padding: 2px 8px 0;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   font-family: var(--font-card-title, Georgia, serif);
   font-size: 12.5px;
   font-weight: 600;
+  line-height: 1.25;
 }
 
 .rarity {

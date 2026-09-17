@@ -7,6 +7,7 @@ import type { BoosterInventoryEntry } from "@/features/boosters/actions";
 import { CardDetailModal } from "@/features/collection/card-detail/CardDetailModal";
 import { cardIllustrationUrl } from "@/features/decks/nameplateArt";
 import { CARD_RARITY_LABELS } from "@/features/match/cardDisplay";
+import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/market/BoosterContents.module.css";
 import { playButtonClick } from "@/lib/sound";
 
@@ -93,8 +94,10 @@ export function BoosterContentsDialog({ booster, owned, onClose }: BoosterConten
               {CARD_RARITY_LABELS[entry]} <span>{unique.filter((card) => card.rarity === entry).length}</span>
             </button>
           ))}
-          <label className={styles.toggle}>
-            <input type="checkbox" checked={missingOnly} onChange={(event) => setMissingOnly(event.target.checked)} />
+          {/* La case du design system, pas celle du navigateur. */}
+          <label className={`${game.choice} ${styles.toggle}`}>
+            <input type="checkbox" className={game.choiceInput} checked={missingOnly} onChange={(event) => setMissingOnly(event.target.checked)} />
+            <span className={game.choiceBox} aria-hidden />
             Manquantes seulement
           </label>
         </div>

@@ -1,0 +1,304 @@
+/*
+ * Bilan d'un LOT de boosters : une rangée de cartes qui se posent l'une
+ * après l'autre, un « + » pour le reste, puis les actions.
+ *
+ * Mesures en `clamp` sur la largeur de la fenêtre : dix cartes alignées ne
+ * tiennent pas au même gabarit sur un portable et sur un écran large — la
+ * rangée se resserre (chevauchement négatif) plutôt que de déborder.
+ */
+
+.layer {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(12px, 3vw, 32px);
+  background: rgba(2, 8, 16, 0.72);
+  backdrop-filter: blur(10px);
+}
+
+.panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(14px, 2.4vh, 26px);
+  width: min(1180px, 100%);
+  padding: clamp(18px, 3vh, 34px) clamp(16px, 3vw, 40px);
+  border-radius: 24px;
+  background: rgba(8, 18, 30, 0.72);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.4),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.07),
+    0 24px 60px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(28px) brightness(1.08) saturate(1.4);
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--ink-faint);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-card-title), serif;
+  font-size: clamp(20px, 3.4vw, 30px);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.sub {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.sub b {
+  color: var(--cb-cyan);
+}
+
+/* La rangée : chevauchement léger pour tenir dix cartes, et de l'air au survol. */
+.row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 100%;
+  min-height: clamp(150px, 26vh, 260px);
+  padding-inline: clamp(8px, 2vw, 24px);
+}
+
+.slot {
+  position: relative;
+  flex: 0 0 auto;
+  width: clamp(72px, 8.2vw, 124px);
+  margin-inline-start: clamp(-26px, -1.6vw, -8px);
+  /* Posée : elle arrive de plus haut, légèrement tournée, puis se cale. */
+  transform: translateY(-14px) scale(0.9) rotate(-4deg);
+  opacity: 0;
+  transition:
+    transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 240ms ease-out;
+}
+
+.slot:first-child {
+  margin-inline-start: 0;
+}
+
+.slot[data-shown] {
+  transform: none;
+  opacity: 1;
+}
+
+.slot:hover {
+  z-index: 40 !important;
+  transform: translateY(-10px) scale(1.06);
+}
+
+/* Une nouveauté se repère sans lire : liseré cyan et pastille. */
+.slot[data-new] {
+  filter: drop-shadow(0 0 10px rgba(0, 183, 255, 0.5));
+}
+
+.newMark {
+  position: absolute;
+  inset-block-start: -8px;
+  inset-inline: 0;
+  margin-inline: auto;
+  width: fit-content;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--cb-cyan);
+  color: #04121d;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* Le reste du lot, en un seul jeton — pas quatre-vingts vignettes. */
+.more {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: clamp(72px, 8.2vw, 124px);
+  aspect-ratio: 3 / 4;
+  margin-inline-start: clamp(4px, 1vw, 16px);
+  border: 1px dashed var(--line-strong);
+  border-radius: 12px;
+  background: rgba(8, 18, 30, 0.5);
+  opacity: 0;
+  transform: scale(0.94);
+  transition:
+    transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 220ms ease-out;
+}
+
+.more[data-shown] {
+  opacity: 1;
+  transform: none;
+}
+
+.morePlus {
+  font-family: var(--font-card-title), serif;
+  font-size: clamp(18px, 2.2vw, 26px);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.moreLabel {
+  padding-inline: 6px;
+  color: var(--ink-faint);
+  font-size: 10px;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  opacity: 0;
+  transition: opacity 260ms ease-out;
+}
+
+.actions[data-shown] {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slot,
+  .more,
+  .actions {
+    transition: none;
+  }
+  .slot:hover {
+    transform: none;
+  }
+}
+
+/* ---------- Liste complète du lot (`BoosterBatchRecap`) ---------- */
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: min(56vh, 460px);
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.list::-webkit-scrollbar { width: 8px; }
+.list::-webkit-scrollbar-track { background: transparent; }
+.list::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: var(--line-strong) padding-box;
+}
+
+/* Une ligne = une carte. Colonnes fixes pour que nom, type, rareté et
+   nombre s'alignent d'une ligne à l'autre : c'est ce qui rend la liste
+   lisible en diagonale. */
+.line {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto auto 3.2rem;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+}
+
+.line:nth-child(odd) {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.line[data-new] {
+  border-color: rgba(0, 183, 255, 0.35);
+  background: rgba(0, 183, 255, 0.08);
+}
+
+.lineArt {
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  background-position: center 28%;
+  background-size: cover;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.lineName {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--ink);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lineNew {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--cb-cyan);
+  color: #04121d;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.lineType {
+  color: var(--ink-faint);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.lineRarity {
+  color: var(--rarity-color, var(--ink-soft));
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.lineRarity[data-rarity="uncommon"] { --rarity-color: #8fe3a2; }
+.lineRarity[data-rarity="rare"] { --rarity-color: #6fa0ff; }
+.lineRarity[data-rarity="epic"] { --rarity-color: #c29bff; }
+.lineRarity[data-rarity="legendary"] { --rarity-color: #ffd47a; }
+.lineRarity[data-rarity="abyssal"] { --rarity-color: #e2c4ff; }
+
+.lineCount {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  text-align: right;
+}

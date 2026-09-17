@@ -195,6 +195,10 @@ export interface Database {
           is_valid: boolean;
           created_at: string;
           updated_at: string;
+          /** Mise à la corbeille (« Récemment supprimés ») ; `null` = deck actif. Effacé 30 jours après, par l'application. */
+          deleted_at: string | null;
+          /** Deck présélectionné à l'écran Jouer — un seul par joueur (index partiel unique). */
+          is_default: boolean;
         };
         Insert: {
           art_card_id?: string | null;
@@ -205,6 +209,8 @@ export interface Database {
           is_valid?: boolean;
           created_at?: string;
           updated_at?: string;
+          deleted_at?: string | null;
+          is_default?: boolean;
         };
         Update: {
           art_card_id?: string | null;
@@ -215,6 +221,8 @@ export interface Database {
           is_valid?: boolean;
           created_at?: string;
           updated_at?: string;
+          deleted_at?: string | null;
+          is_default?: boolean;
         };
         Relationships: [];
       };
@@ -310,10 +318,18 @@ export interface Database {
           user_id: string;
           booster_definition_id: string;
           packs_since_abyssal: number;
+          /** Boosters sans nouveauté (migration 20260925120000_new_card_pity.sql). */
+          packs_since_new_card: number;
           updated_at: string;
         };
-        Insert: Record<string, never>;
-        Update: Record<string, never>;
+        Insert: {
+          user_id: string;
+          booster_definition_id: string;
+          packs_since_new_card?: number;
+        };
+        Update: {
+          packs_since_new_card?: number;
+        };
         Relationships: [];
       };
       player_currency: {

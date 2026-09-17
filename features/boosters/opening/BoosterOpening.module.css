@@ -357,10 +357,27 @@
   background: rgba(255, 244, 196, 1);
   box-shadow: 0 0 calc(var(--size) * 5) rgba(255, 196, 60, 0.95);
 }
+/* Boule ABYSSALE — retour de test du 17/09 : ni bille parfaite ni aplat
+   opaque. Un dégradé décentré et un rayon qui respire la rendent instable, et
+   le cœur reste translucide pour qu'on voie la carte à travers. */
 .revealMoteAbyssal {
   composes: revealMote;
-  background: rgba(226, 196, 255, 0.95);
-  box-shadow: 0 0 calc(var(--size) * 5) rgba(150, 70, 255, 0.9);
+  border-radius: 46% 54% 52% 48% / 52% 46% 54% 48%;
+  background:
+    radial-gradient(60% 55% at 38% 34%, rgba(240, 224, 255, 0.72) 0%, rgba(196, 150, 255, 0.4) 46%, rgba(120, 60, 220, 0.12) 78%, rgba(120, 60, 220, 0) 100%);
+  box-shadow: 0 0 calc(var(--size) * 5) rgba(150, 70, 255, 0.55);
+  filter: blur(calc(var(--size) * 0.08));
+  animation:
+    revealMote var(--dur) cubic-bezier(0.2, 0.6, 0.3, 1) var(--delay) both,
+    revealMoteWobble calc(var(--dur) * 0.42) ease-in-out var(--delay) infinite;
+}
+
+/* La bulle se déforme et tourne légèrement : une énergie qui n'a pas de forme
+   stable, pas une sphère rendue au pixel. */
+@keyframes revealMoteWobble {
+  0% { border-radius: 46% 54% 52% 48% / 52% 46% 54% 48%; rotate: 0deg; }
+  50% { border-radius: 56% 44% 45% 55% / 44% 57% 43% 56%; rotate: 8deg; }
+  100% { border-radius: 46% 54% 52% 48% / 52% 46% 54% 48%; rotate: 0deg; }
 }
 
 /* Étincelles d'une Légendaire : elles crépitent au bord de la carte. */
@@ -384,7 +401,8 @@
 
 @keyframes revealMote {
   0% { opacity: 0; transform: translate3d(0, 0, 0) scale(0.4); }
-  15% { opacity: 1; }
+  /* Jamais tout à fait opaque : la carte doit rester lisible derrière. */
+  15% { opacity: 0.82; }
   100% { opacity: 0; transform: translate3d(var(--dx), var(--dy), 0) scale(1); }
 }
 

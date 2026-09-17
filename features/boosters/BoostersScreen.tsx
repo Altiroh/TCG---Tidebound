@@ -9,7 +9,10 @@ import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/boosters/Boosters.module.css";
 import shelfStyles from "@/features/shell/Shelf.module.css";
 import { ScreenToast, type ScreenToastMessage } from "@/features/shell/ScreenToast";
-import { openBooster, type BoosterInventory } from "@/features/boosters/actions";
+import { openBoosters, type BoosterInventory } from "@/features/boosters/actions";
+import { MAX_BATCH_OPEN } from "@/features/boosters/constants";
+import { BoosterBatchRecap, type BoosterBatchLine } from "@/features/boosters/opening/BoosterBatchRecap";
+import { BoosterBatchScene } from "@/features/boosters/opening/BoosterBatchScene";
 import { ownedPacks, type OwnedPack } from "@/features/boosters/ownedPacks";
 import {
   FULL_SHELF_SLOTS,
@@ -111,8 +114,24 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
   } | null>(null);
   /** Sachet du plan d'ouverture — mesuré au lancement, pour que la scène le fasse décoller de là. */
   const dockPackRef = useRef<HTMLSpanElement>(null);
+  /** Sachets à ouvrir d'un seul geste (1 = le geste habituel). */
+  const [batchSize, setBatchSize] = useState(1);
+/**
+   * Ouverture d'un LOT : sa propre scène (rangée de cartes alignées et « + »
+   * pour le reste), puis la liste complète à la demande. Dérouler dix fois
+   * l'animation d'un sachet ferait attendre pour rien.
+   */
+  const [batch, setBatch] = useState<{
+    boosterId: string;
+    packs: number;
+    cards: BoosterOpeningCard[];
+    lines: BoosterBatchLine[];
+  } | null>(null);
+  const [recap, setRecap] = useState<{ packs: number; lines: BoosterBatchLine[] } | null>(null);
 
   const docked = packs.find((pack) => pack.key === dockedKey) ?? null;
+  /** On ne peut ouvrir que ce qu'on possède, et jamais plus que la borne du lot. */
+  const maxBatch = docked ? Math.min(MAX_BATCH_OPEN, docked.copyCount) : 1;
   const dockedEntry = docked ? inventory.boosters.find((entry) => entry.boosterId === docked.boosterId) : undefined;
 
   // AUCUNE sélection par défaut : le plan reste vide tant qu'on n'y a rien
@@ -121,6 +140,11 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
   useEffect(() => {
     setDockedKey((current) => (current && packs.some((pack) => pack.key === current) ? current : null));
   }, [packs]);
+
+  // Changer de sachet posé remet la quantité dans ce que la nouvelle pile permet.
+  useEffect(() => {
+    setBatchSize((current) => Math.min(Math.max(1, current), maxBatch));
+  }, [maxBatch]);
 
   // Images de la scène chargées et décodées en avance : l'ouverture démarre sans flash.
   const visualIdsKey = Array.from(new Set(packs.map((pack) => pack.boosterId))).join(",");
@@ -138,8 +162,8 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
     setDockedKey(key);
   }
 
-  async function handleOpen(boosterId: string) {
-    if (isOpening || opening) return;
+  async function handleOpen(boosterId: string, quantity = 1) {
+    if (isOpening || opening || batch) return;
     playButtonClick();
     setError(null);
     setIsOpening(true);
@@ -148,7 +172,7 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
     // serveur tire les cartes : l'attente devient la montée en tension, et
     // l'animation dure au moins le temps d'être vue.
     const [result] = await Promise.all([
-      openBooster(boosterId).catch(() => ({ ok: false as const, error: "Serveur injoignable — réessaie dans un instant.", data: undefined })),
+      openBoosters(boosterId, quantity).catch(() => ({ ok: false as const, error: "Serveur injoignable — réessaie dans un instant.", data: undefined })),
       new Promise((resolve) => setTimeout(resolve, DOCK_CHARGE_MS)),
     ]);
     const rect = dockPackRef.current?.getBoundingClientRect();
@@ -159,11 +183,45 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
       return;
     }
 
+    const opened = result.data.packs;
+    const first = opened[0];
+    if (!first) {
+      setError("Aucun booster n'a pu être ouvert.");
+      return;
+    }
+
+    // Lot : sa propre scène, alimentée par TOUTES les cartes tirées.
+    if (opened.length > 1) {
+      const cards: BoosterOpeningCard[] = [];
+      const byCard = new Map<string, BoosterBatchLine>();
+      opened.forEach((pack, packIndex) => {
+        for (const card of pack.cards) {
+          cards.push({
+            // Deux sachets peuvent rendre la même carte au même slot : l'index
+            // du sachet fait partie de la clé.
+            id: `${packIndex}-${card.slotIndex}-${card.cardId}`,
+            cardId: card.cardId,
+            rarity: toOpeningRarity(card.rarity),
+            isNew: card.isNew,
+          });
+          const line = byCard.get(card.cardId);
+          if (line) {
+            line.count += 1;
+            line.isNew = line.isNew || card.isNew;
+          } else {
+            byCard.set(card.cardId, { cardId: card.cardId, count: 1, isNew: card.isNew, rarity: toOpeningRarity(card.rarity) });
+          }
+        }
+      });
+      setBatch({ boosterId, packs: opened.length, cards, lines: [...byCard.values()] });
+      return;
+    }
+
     setOpening({
       boosterId,
       real: true,
       origin: rect && rect.height > 0 ? { x: rect.left, y: rect.top, width: rect.width, height: rect.height } : null,
-      cards: result.data.cards.map((card) => ({
+      cards: first.cards.map((card) => ({
         // Une même carte peut sortir deux fois du même booster : c'est le
         // slot qui rend la clé unique, pas l'identifiant de carte.
         id: `${card.slotIndex}-${card.cardId}`,
@@ -180,6 +238,12 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
     playButtonClick();
     setError(null);
     setOpening({ boosterId, real: false, cards: drawTestBoosterCards(boosterId), origin: null });
+  }
+
+  /** Fin d'une ouverture en lot : l'exemplaire est consommé, on relit l'inventaire. */
+  function handleBatchClosed() {
+    setBatch(null);
+    router.refresh();
   }
 
   function handleOpeningClosed() {
@@ -326,13 +390,53 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
                         : " · chance renforcée"}
                     </p>
                   )}
+                  {maxBatch > 1 && (
+                    <span className={styles.batchGroup} role="group" aria-label="Nombre de boosters à ouvrir">
+                      <button
+                        type="button"
+                        className={styles.batchStep}
+                        onClick={() => {
+                          playButtonClick();
+                          setBatchSize((current) => Math.max(1, current - 1));
+                        }}
+                        disabled={batchSize <= 1 || isOpening || opening !== null || batch !== null}
+                        aria-label="Un booster de moins"
+                      >
+                        −
+                      </button>
+                      <span className={styles.batchCount}>{batchSize}</span>
+                      <button
+                        type="button"
+                        className={styles.batchStep}
+                        onClick={() => {
+                          playButtonClick();
+                          setBatchSize((current) => Math.min(maxBatch, current + 1));
+                        }}
+                        disabled={batchSize >= maxBatch || isOpening || opening !== null || batch !== null}
+                        aria-label="Un booster de plus"
+                      >
+                        +
+                      </button>
+                      <button
+                        type="button"
+                        className={game.link}
+                        onClick={() => {
+                          playButtonClick();
+                          setBatchSize(maxBatch);
+                        }}
+                        disabled={batchSize >= maxBatch || isOpening || opening !== null}
+                      >
+                        Tout ({maxBatch})
+                      </button>
+                    </span>
+                  )}
                   <button
                     type="button"
                     className={game.primary}
-                    onClick={() => void handleOpen(docked.boosterId)}
-                    disabled={isOpening || opening !== null}
+                    onClick={() => void handleOpen(docked.boosterId, batchSize)}
+                    disabled={isOpening || opening !== null || batch !== null}
                   >
-                    {isOpening ? "Ouverture…" : "Ouvrir"}
+                    {isOpening ? "Ouverture…" : batchSize > 1 ? `Ouvrir ${batchSize} boosters` : "Ouvrir"}
                   </button>
                 </>
               ) : (
@@ -379,6 +483,17 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
       </div>
 
       <ScreenToast message={toast} onDismiss={() => setToast(null)} />
+
+      {batch && (
+        <BoosterBatchScene
+          cards={batch.cards}
+          packs={batch.packs}
+          onShowAll={() => setRecap({ packs: batch.packs, lines: batch.lines })}
+          onClose={handleBatchClosed}
+        />
+      )}
+
+      {recap && <BoosterBatchRecap packs={recap.packs} lines={recap.lines} onClose={() => setRecap(null)} />}
 
       {opening && (
         <BoosterOpeningScene

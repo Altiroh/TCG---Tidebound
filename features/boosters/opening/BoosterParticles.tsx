@@ -109,7 +109,7 @@ function revealParticles(variant: keyof typeof REVEAL_BURST): Particle[] {
     return {
       className: burst.className,
       style: {
-        "--size": u(0.28 + rand() * (variant === "legendary" ? 0.5 : 0.34)),
+        "--size": u(0.28 + rand() * (variant === "legendary" ? 0.5 : variant === "abyssal" ? 0.62 : 0.34)),
         "--dx": u(Math.cos(angle) * distance * 0.8),
         "--dy": u(Math.sin(angle) * distance - 3),
         "--dur": ms(burst.duration + rand() * 500),

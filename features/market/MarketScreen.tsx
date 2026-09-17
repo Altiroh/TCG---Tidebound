@@ -1,48 +1,72 @@
 "use client";
 
-import { useMemo, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { GameScreen } from "@/features/shell/GameScreen";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/market/Market.module.css";
-import { TideCoin } from "@/features/shell/GameIcons";
+import { PreconToken, TideCoin } from "@/features/shell/GameIcons";
 import { ScreenToast, type ScreenToastMessage } from "@/features/shell/ScreenToast";
 import { purchaseBooster, type BoosterInventory, type BoosterInventoryEntry } from "@/features/boosters/actions";
 import { MAX_PURCHASE_QUANTITY } from "@/features/boosters/constants";
 import { closedPackVariables, getBoosterPackVisual } from "@/features/boosters/opening/boosterPackVisuals";
+import { purchaseCollectable } from "@/features/cosmetics/collectablesActions";
+import type { CollectablesView } from "@/features/cosmetics/collectablesService";
+import { unlockPreconstructedDeck, type DeckCatalogSummary } from "@/features/decks/catalogActions";
+import type { CatalogDeckView } from "@/features/decks/catalogService";
+import { DeckBox } from "@/features/decks/DeckBox";
+import { nameplateArtUrl } from "@/features/decks/nameplateArt";
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
 import { playButtonClick } from "@/lib/sound";
 import { BoosterContentsDialog } from "@/features/market/BoosterContentsDialog";
 
 interface MarketScreenProps {
   inventory: BoosterInventory;
+  /** Les préconstruits à Jeton — le rayon Decks. */
+  catalog: DeckCatalogSummary;
+  /** Les Collectables, dont ceux en vente — le rayon Cosmétiques. */
+  collectables: CollectablesView;
 }
 
-/** Quantités du panier, par id de booster. Un booster absent vaut 0. */
-type Cart = Record<string, number>;
+/**
+ * Le panier, commun aux trois rayons : il survit au changement de rayon,
+ * pour tout acheter d'un coup. Les boosters s'y mettent par quantité, les
+ * decks (un Jeton chacun) et les cosmétiques (des Tides) à l'unité.
+ */
+interface Cart {
+  boosters: Record<string, number>;
+  decks: string[];
+  /** Clés `famille:id`. */
+  cosmetics: string[];
+}
 
-/** Trois socles par ponton (`market/pedestals.webp`) : au-delà, un ponton de plus en dessous. */
+const EMPTY_CART: Cart = { boosters: {}, decks: [], cosmetics: [] };
+
+/** Trois socles par ponton (`market/pedestals.webp`) : au-delà, un ponton de plus, à droite, qu'on atteint par les flèches. */
 const PACKS_PER_PLATE = 3;
+
+/** Les rayons qui se tiennent dans cet écran. */
+type SectionId = "boosters" | "decks" | "cosmetics";
 
 /*
  * Rayons de la boutique.
  *
- * `href` est la DESTINATION du rayon. Tous les rayons ne se tiennent pas
- * dans cet écran : les decks se choisissent dans Decks, les cosmétiques se
- * regardent et s'achètent dans Collectables, à côté de ceux qu'on possède
- * déjà. Les y envoyer vaut mieux que de recopier ces deux vitrines ici —
- * et un rayon qui n'amène nulle part ne sert à rien.
+ * Les trois premiers se tiennent ICI : changer de rayon change ce qui est
+ * posé sur les socles — sachets, decks à Jeton, cosmétiques à Tides — et le
+ * panier reste le même. Les écrans Decks et Collectables restent les
+ * vitrines complètes (fiches, équipement, possession) : un lien discret
+ * sous le ponton y mène.
  *
- * Un rayon sans `href` est annoncé mais pas ouvert : il reste visible et
- * désactivé, parce qu'une boutique dont on ne devine pas le programme
+ * Un rayon sans `section` est annoncé mais pas ouvert : il reste visible
+ * et désactivé, parce qu'une boutique dont on ne devine pas le programme
  * n'appelle pas à revenir.
  */
-const SECTIONS: Array<{ id: string; label: string; icon: ReactNode; href?: string }> = [
+const SECTIONS: Array<{ id: string; label: string; icon: ReactNode; section?: SectionId }> = [
   {
     id: "boosters",
     label: "Boosters",
-    href: "/market",
+    section: "boosters",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" aria-hidden>
         <path d="M6 3.5h12l-.8 2 .8 2v11l-.8 2 .8 2H6l.8-2-.8-2v-11l.8-2z" stroke="currentColor" strokeWidth={1.5} strokeLinejoin="round" />
@@ -53,7 +77,7 @@ const SECTIONS: Array<{ id: string; label: string; icon: ReactNode; href?: strin
   {
     id: "decks",
     label: "Decks",
-    href: "/decks",
+    section: "decks",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" aria-hidden>
         <rect x="4" y="6" width="11" height="15" rx="1.6" stroke="currentColor" strokeWidth={1.5} transform="rotate(-10 9.5 13.5)" />
@@ -64,7 +88,7 @@ const SECTIONS: Array<{ id: string; label: string; icon: ReactNode; href?: strin
   {
     id: "cosmetics",
     label: "Cosmétiques",
-    href: "/collectables",
+    section: "cosmetics",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" aria-hidden>
         <path d="M7 19c-3-2.5-4-6.5-2.5-10.5M17 19c3-2.5 4-6.5 2.5-10.5M4.5 8.5L3 6.5M19.5 8.5L21 6.5M5.5 13L3.5 12.5M18.5 13l2-.5M8 17.5l-1.8 1M16 17.5l1.8 1" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
@@ -102,29 +126,35 @@ function chunk<T>(items: readonly T[], size: number): T[][] {
   return chunks;
 }
 
+const cosmeticKey = (family: string, id: string) => `${family}:${id}`;
+
+function plural(count: number, singular: string, pluralForm = `${singular}s`): string {
+  return `${count} ${count > 1 ? pluralForm : singular}`;
+}
+
 /**
- * MARKET — la boutique : on y ACHÈTE des boosters contre des Tides. Les
- * ouvrir se fait dans « Mes boosters » (`/boosters`), toujours à portée
- * depuis le panneau de gauche.
- *
- * Un quai de nuit (`market/background.webp`) :
- *   - à gauche, l'ENSEIGNE de bois : les rayons de la boutique ;
- *   - au centre, le PONTON : chaque booster debout sur son socle, nom et
- *     prix gravés dessous. Toucher un booster en met un au panier ;
- *   - en bas, le PANIER dans son cadre de laiton : une vignette par booster
- *     choisi, quantité, sous-total et achat.
+ * MARKET — la boutique. Trois rayons sur un même quai de nuit
+ * (`market/background.webp`) :
+ *   - à gauche, l'ENSEIGNE de bois : les rayons ; en changer change ce qui
+ *     est posé sur les socles, sans quitter l'écran ni vider le panier ;
+ *   - au centre, le PONTON : trois socles ; au-delà de trois articles, un
+ *     ponton de plus glisse depuis la droite (flèches) ;
+ *   - en bas, le PANIER dans son cadre de laiton, commun aux trois rayons :
+ *     boosters par quantité, decks à Jeton et cosmétiques à l'unité, deux
+ *     sous-totaux (Tides, Jetons), un seul bouton Acheter.
  *
  * Le solde n'est PAS répété ici : le bandeau le porte, et il est relu
  * après chaque achat (`notifyProgressionChanged`).
  *
- * Rien de l'économie n'est décidé ici : `purchaseBooster` →
- * `purchase_booster` (Postgres, atomique) revérifie prix, disponibilité et
- * solde avant de débiter. Le total affiché n'est qu'une indication.
+ * Rien de l'économie n'est décidé ici : chaque achat passe par une Server
+ * Action autoritaire (`purchase_booster`, `unlockPreconDeck`,
+ * `purchase_cosmetic`) qui revérifie prix, disponibilité et solde.
  */
-export function MarketScreen({ inventory }: MarketScreenProps) {
+export function MarketScreen({ inventory, catalog, collectables }: MarketScreenProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
-  const [cart, setCart] = useState<Cart>({});
+  const [section, setSection] = useState<SectionId>("boosters");
+  const [cart, setCart] = useState<Cart>(EMPTY_CART);
   const [isBuying, setIsBuying] = useState(false);
   const [toast, setToast] = useState<ScreenToastMessage | null>(null);
   /** Booster dont on consulte le contenu. */
@@ -138,110 +168,211 @@ export function MarketScreen({ inventory }: MarketScreenProps) {
     [inventory.boosters]
   );
 
-  const total = onSale.reduce((sum, booster) => sum + (booster.price ?? 0) * (cart[booster.boosterId] ?? 0), 0);
-  const itemCount = onSale.reduce((sum, booster) => sum + (cart[booster.boosterId] ?? 0), 0);
-  const shortBy = Math.max(0, total - inventory.balance);
+  /** Les cosmétiques EN VENTE, toutes familles confondues. */
+  const cosmeticsOnSale = useMemo(
+    () =>
+      collectables.families.flatMap((family) =>
+        family.options
+          .filter((option) => option.priceTides !== null && !option.masked)
+          .map((option) => ({ key: cosmeticKey(family.kind, option.id), family: family.kind, familyLabel: family.label, option }))
+      ),
+    [collectables.families]
+  );
+
+  // ── Le panier, ligne par ligne ───────────────────────────────────
+  const boosterLines = onSale.filter((booster) => (cart.boosters[booster.boosterId] ?? 0) > 0);
+  const deckLines = catalog.precon.filter((entry) => cart.decks.includes(entry.deck.id) && !entry.unlocked);
+  const cosmeticLines = cosmeticsOnSale.filter((row) => cart.cosmetics.includes(row.key) && !row.option.owned);
+
+  const boosterCount = boosterLines.reduce((sum, booster) => sum + (cart.boosters[booster.boosterId] ?? 0), 0);
+  const itemCount = boosterCount + deckLines.length + cosmeticLines.length;
+  const tidesTotal =
+    boosterLines.reduce((sum, booster) => sum + (booster.price ?? 0) * (cart.boosters[booster.boosterId] ?? 0), 0) +
+    cosmeticLines.reduce((sum, row) => sum + (row.option.priceTides ?? 0), 0);
+  const tokensTotal = deckLines.length;
+  const shortTides = Math.max(0, tidesTotal - inventory.balance);
+  const shortTokens = Math.max(0, tokensTotal - catalog.preconTokens);
   /** Exemplaires en réserve, tous types confondus — offerts compris (Bienvenue). */
   const ownedCount = inventory.boosters.reduce((sum, booster) => sum + booster.owned, 0);
-  const cartLines = onSale.filter((booster) => (cart[booster.boosterId] ?? 0) > 0);
 
   function setQuantity(boosterId: string, quantity: number) {
-    setCart((current) => ({ ...current, [boosterId]: Math.min(MAX_PURCHASE_QUANTITY, Math.max(0, quantity)) }));
+    setCart((current) => ({
+      ...current,
+      boosters: { ...current.boosters, [boosterId]: Math.min(MAX_PURCHASE_QUANTITY, Math.max(0, quantity)) },
+    }));
   }
 
   function step(boosterId: string, delta: number) {
     playButtonClick();
-    setQuantity(boosterId, (cart[boosterId] ?? 0) + delta);
+    setQuantity(boosterId, (cart.boosters[boosterId] ?? 0) + delta);
+  }
+
+  function toggleDeck(deckId: string) {
+    playButtonClick();
+    setCart((current) => ({
+      ...current,
+      decks: current.decks.includes(deckId) ? current.decks.filter((id) => id !== deckId) : [...current.decks, deckId],
+    }));
+  }
+
+  function toggleCosmetic(key: string) {
+    playButtonClick();
+    setCart((current) => ({
+      ...current,
+      cosmetics: current.cosmetics.includes(key) ? current.cosmetics.filter((id) => id !== key) : [...current.cosmetics, key],
+    }));
+  }
+
+  function clearCart() {
+    playButtonClick();
+    setCart(EMPTY_CART);
   }
 
   function showToast(tone: ScreenToastMessage["tone"], text: React.ReactNode, action?: React.ReactNode) {
     setToast({ id: Date.now(), tone, text, action });
   }
 
+  /**
+   * Tout le panier, d'un coup : boosters, puis decks, puis cosmétiques —
+   * chaque article est une transaction atomique côté base. On s'arrête au
+   * premier refus ; ce qui n'a pas été acheté reste dans le panier, rien
+   * n'a été débité pour lui. À la fin, le récapitulatif de ce qui est parti.
+   */
   async function handleCheckout() {
     if (isBuying || itemCount === 0) return;
     playButtonClick();
     setIsBuying(true);
 
-    // Un appel par type de booster : chacun est une transaction atomique
-    // côté base. On s'arrête au premier refus — la suite du panier reste
-    // en place, rien n'a été débité pour elle.
-    let bought = 0;
+    const bought = { boosters: 0, decks: 0, cosmetics: 0, tides: 0, tokens: 0 };
     let failure: string | null = null;
-    const remaining: Cart = { ...cart };
+    const remaining: Cart = { boosters: { ...cart.boosters }, decks: [...cart.decks], cosmetics: [...cart.cosmetics] };
 
-    for (const booster of cartLines) {
-      const quantity = cart[booster.boosterId] ?? 0;
+    for (const booster of boosterLines) {
+      const quantity = cart.boosters[booster.boosterId] ?? 0;
       const result = await purchaseBooster(booster.boosterId, quantity);
       if (!result.ok) {
         failure = result.error ?? "Achat impossible.";
         break;
       }
-      bought += quantity;
-      remaining[booster.boosterId] = 0;
+      bought.boosters += quantity;
+      bought.tides += (booster.price ?? 0) * quantity;
+      remaining.boosters[booster.boosterId] = 0;
+    }
+
+    if (!failure) {
+      for (const entry of deckLines) {
+        const result = await unlockPreconstructedDeck(entry.deck.id);
+        if (!result.ok) {
+          failure = result.error ?? "Déblocage impossible.";
+          break;
+        }
+        bought.decks += 1;
+        bought.tokens += 1;
+        remaining.decks = remaining.decks.filter((id) => id !== entry.deck.id);
+      }
+    }
+
+    if (!failure) {
+      for (const row of cosmeticLines) {
+        const result = await purchaseCollectable(row.family, row.option.id);
+        if (!result.ok) {
+          failure = result.error ?? "Achat impossible.";
+          break;
+        }
+        bought.cosmetics += 1;
+        bought.tides += row.option.priceTides ?? 0;
+        remaining.cosmetics = remaining.cosmetics.filter((key) => key !== row.key);
+      }
     }
 
     setIsBuying(false);
     setCart(remaining);
 
-    if (bought > 0) {
+    const boughtCount = bought.boosters + bought.decks + bought.cosmetics;
+    if (boughtCount > 0) {
       notifyProgressionChanged();
       // `revalidatePath` côté action a invalidé le cache : on relit la
-      // réserve plutôt que de la deviner.
+      // réserve, le rayon des decks et les collectables plutôt que de deviner.
       startTransition(() => router.refresh());
     }
 
+    const recap = [
+      bought.boosters > 0 ? plural(bought.boosters, "booster") : "",
+      bought.decks > 0 ? plural(bought.decks, "deck") : "",
+      bought.cosmetics > 0 ? plural(bought.cosmetics, "cosmétique") : "",
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    const spent = [bought.tokens > 0 ? plural(bought.tokens, "Jeton") : "", bought.tides > 0 ? `${bought.tides} Tides` : ""].filter(Boolean).join(" et ");
+
     if (failure) {
-      showToast("error", bought > 0 ? `${bought} booster${bought > 1 ? "s" : ""} acheté${bought > 1 ? "s" : ""}, puis : ${failure}` : failure);
+      showToast("error", boughtCount > 0 ? `${recap} acheté${boughtCount > 1 ? "s" : ""}, puis : ${failure}` : failure);
       return;
     }
 
     showToast(
       "success",
       <>
-        {bought} booster{bought > 1 ? "s" : ""} ajouté{bought > 1 ? "s" : ""} à ta réserve
+        {recap} — {spent} dépensé{bought.tokens + bought.tides > 1 ? "s" : ""}
       </>,
-      <Link href="/boosters" onClick={() => playButtonClick()}>
-        Ouvrir →
-      </Link>
+      bought.boosters > 0 ? (
+        <Link href="/boosters" onClick={() => playButtonClick()}>
+          Ouvrir →
+        </Link>
+      ) : bought.decks > 0 ? (
+        <Link href="/partie" onClick={() => playButtonClick()}>
+          Jouer →
+        </Link>
+      ) : (
+        <Link href="/collectables" onClick={() => playButtonClick()}>
+          Équiper →
+        </Link>
+      )
     );
   }
 
+  const stageLabel = section === "boosters" ? "Boosters en vente" : section === "decks" ? "Decks à Jeton" : "Cosmétiques en vente";
+  const shortage = [shortTokens > 0 ? plural(shortTokens, "Jeton") : "", shortTides > 0 ? `${shortTides} Tides` : ""].filter(Boolean).join(" et ");
+
   return (
-    <GameScreen active="market" nav="minimal" className={styles.screen}>
+    <GameScreen active="market" nav="minimal" className={`${styles.screen}${section === "decks" ? ` ${styles.screenDecks}` : ""}`}>
       <div className={styles.market}>
         {/* ── L'enseigne : les rayons ─────────────────────────── */}
         <aside className={styles.side} aria-label="Rayons du Market">
           <div className={styles.sideInner}>
             <h1 className={styles.sideTitle}>Market</h1>
             <nav className={styles.sections}>
-              {SECTIONS.map((section) => {
-                const active = section.id === "boosters";
+              {SECTIONS.map((entry) => {
                 const inner = (
                   <>
-                    <span className={styles.sectionIcon}>{section.icon}</span>
-                    <span className={styles.sectionLabel}>{section.label}</span>
-                    {!section.href && <span className="sr-only">(bientôt disponible)</span>}
+                    <span className={styles.sectionIcon}>{entry.icon}</span>
+                    <span className={styles.sectionLabel}>{entry.label}</span>
+                    {!entry.section && <span className="sr-only">(bientôt disponible)</span>}
                   </>
                 );
-                if (!section.href) {
+                if (!entry.section) {
                   return (
-                    <button key={section.id} type="button" className={styles.section} disabled title="Bientôt disponible">
+                    <button key={entry.id} type="button" className={styles.section} disabled title="Bientôt disponible">
                       {inner}
                     </button>
                   );
                 }
+                const active = entry.section === section;
                 return (
-                  <Link
-                    key={section.id}
-                    href={section.href}
+                  <button
+                    key={entry.id}
+                    type="button"
                     className={styles.section}
                     data-active={active ? "true" : undefined}
-                    aria-current={active ? "page" : undefined}
-                    onClick={() => playButtonClick()}
+                    aria-pressed={active}
+                    onClick={() => {
+                      if (active) return;
+                      playButtonClick();
+                      setSection(entry.section!);
+                    }}
                   >
                     {inner}
-                  </Link>
+                  </button>
                 );
               })}
             </nav>
@@ -259,51 +390,101 @@ export function MarketScreen({ inventory }: MarketScreenProps) {
           </div>
         </aside>
 
-        {/* ── Le ponton : les boosters sur leurs socles ─────────── */}
-        <section className={styles.stage} aria-label="Boosters en vente">
+        {/* ── Le ponton : les articles du rayon sur leurs socles ─── */}
+        <section className={styles.stage} aria-label={stageLabel}>
           {!inventory.isSignedIn ? (
             <div className={`${game.panel} ${game.empty} ${styles.notice}`}>
-              <p className={game.emptyTitle}>Connecte-toi pour acheter des boosters</p>
+              <p className={game.emptyTitle}>Connecte-toi pour acheter</p>
               <p className={game.muted}>Tes Tides, tes boosters et ta collection sont enregistrés sur ton compte.</p>
               <Link href="/connexion" className={game.primary} onClick={() => playButtonClick()} style={{ marginTop: 6 }}>
                 Se connecter
               </Link>
             </div>
-          ) : onSale.length === 0 ? (
-            <div className={`${game.panel} ${game.empty} ${styles.notice}`}>
-              <p className={game.emptyTitle}>Rien en vente pour l&apos;instant</p>
-              <p className={game.muted}>
-                Le catalogue de boosters est vide en base. Applique les migrations Supabase, puis lance <code>npm run seed:cards</code>.
-              </p>
-            </div>
-          ) : (
-            <div className={styles.plates}>
-              {chunk(onSale, PACKS_PER_PLATE).map((plateBoosters, plateIndex) => (
-                <div key={plateIndex} className={styles.plate} data-count={plateBoosters.length}>
-                  {plateBoosters.map((booster, index) => (
-                    <PedestalItem
-                      key={booster.boosterId}
-                      booster={booster}
-                      slot={plateBoosters.length === 1 ? 1 : plateBoosters.length === 2 ? index * 2 : index}
-                      inCart={cart[booster.boosterId] ?? 0}
-                      disabled={isBuying || (cart[booster.boosterId] ?? 0) >= MAX_PURCHASE_QUANTITY}
-                      onAdd={() => step(booster.boosterId, 1)}
-                      ownedInPool={new Set(booster.pool.map((entry) => entry.cardId).filter((id) => ownedSet.has(id))).size}
-                      poolSize={new Set(booster.pool.map((entry) => entry.cardId)).size}
-                      onShowContents={() => {
-                        playButtonClick();
-                        setContentsOf(booster);
-                      }}
-                    />
-                  ))}
-                </div>
+          ) : section === "boosters" ? (
+            onSale.length === 0 ? (
+              <div className={`${game.panel} ${game.empty} ${styles.notice}`}>
+                <p className={game.emptyTitle}>Rien en vente pour l&apos;instant</p>
+                <p className={game.muted}>
+                  Le catalogue de boosters est vide en base. Applique les migrations Supabase, puis lance <code>npm run seed:cards</code>.
+                </p>
+              </div>
+            ) : (
+              <Showcase
+                key="boosters"
+                items={onSale.map((booster) => (
+                  <PedestalItem
+                    key={booster.boosterId}
+                    booster={booster}
+                    inCart={cart.boosters[booster.boosterId] ?? 0}
+                    disabled={isBuying || (cart.boosters[booster.boosterId] ?? 0) >= MAX_PURCHASE_QUANTITY}
+                    onAdd={() => step(booster.boosterId, 1)}
+                    ownedInPool={new Set(booster.pool.map((entry) => entry.cardId).filter((id) => ownedSet.has(id))).size}
+                    poolSize={new Set(booster.pool.map((entry) => entry.cardId)).size}
+                    onShowContents={() => {
+                      playButtonClick();
+                      setContentsOf(booster);
+                    }}
+                  />
+                ))}
+              />
+            )
+          ) : section === "decks" ? (
+            /* Le rayon Decks : les préconstruits en BOÎTES, trois par ponton,
+               tous au même rang — un Jeton chacun. Les deux boîtes de gauche
+               regardent vers la droite, celle de droite vers la gauche. */
+            <Showcase
+              key="decks"
+              dock="decks"
+              items={catalog.precon.map((entry, position) => (
+                <DeckGoods
+                  key={entry.deck.id}
+                  entry={entry}
+                  facing={position % PACKS_PER_PLATE === 2 ? "left" : "right"}
+                  inCart={cart.decks.includes(entry.deck.id)}
+                  disabled={isBuying}
+                  onToggle={() => toggleDeck(entry.deck.id)}
+                />
               ))}
-            </div>
+              footer={
+                <Link href="/decks" className={game.link} onClick={() => playButtonClick()}>
+                  Fiches complètes et decks d&apos;emprunt dans Decks →
+                </Link>
+              }
+            />
+          ) : (
+            <Showcase
+              key="cosmetics"
+              items={cosmeticsOnSale.map(({ key, familyLabel, option, family }) => (
+                <GoodsItem
+                  key={key}
+                  name={option.label}
+                  subtitle={familyLabel}
+                  art={option.src}
+                  fit={family === "cardBack" ? "cover" : "contain"}
+                  price={
+                    <>
+                      <TideCoin size={16} /> {option.priceTides}
+                    </>
+                  }
+                  owned={option.owned}
+                  ownedLabel="Possédé"
+                  inCart={cart.cosmetics.includes(key)}
+                  disabled={isBuying}
+                  onToggle={() => toggleCosmetic(key)}
+                />
+              ))}
+              emptyText="Aucun cosmétique en vente pour l'instant."
+              footer={
+                <Link href="/collectables" className={game.link} onClick={() => playButtonClick()}>
+                  Tout voir et équiper dans Collectables →
+                </Link>
+              }
+            />
           )}
         </section>
 
-        {/* ── Le panier ───────────────────────────────────────── */}
-        {inventory.isSignedIn && onSale.length > 0 && (
+        {/* ── Le panier, commun aux trois rayons ──────────────── */}
+        {inventory.isSignedIn && (
           <section className={styles.cart} aria-label="Panier">
             <header className={styles.cartHead}>
               <span className={styles.cartTitle}>
@@ -314,15 +495,7 @@ export function MarketScreen({ inventory }: MarketScreenProps) {
                 </svg>
                 Panier ({itemCount})
               </span>
-              <button
-                type="button"
-                className={styles.clearButton}
-                onClick={() => {
-                  playButtonClick();
-                  setCart({});
-                }}
-                disabled={isBuying || itemCount === 0}
-              >
+              <button type="button" className={styles.clearButton} onClick={clearCart} disabled={isBuying || itemCount === 0}>
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden>
                   <path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13M10 11v6M14 11v6" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
@@ -332,11 +505,11 @@ export function MarketScreen({ inventory }: MarketScreenProps) {
 
             <div className={styles.cartBody}>
               <ul className={styles.cartLines}>
-                {cartLines.length === 0 && <li className={styles.cartEmpty}>Ton panier est vide.</li>}
-                {cartLines.map((booster) => {
-                  const quantity = cart[booster.boosterId] ?? 0;
+                {itemCount === 0 && <li className={styles.cartEmpty}>Ton panier est vide.</li>}
+                {boosterLines.map((booster) => {
+                  const quantity = cart.boosters[booster.boosterId] ?? 0;
                   return (
-                    <li key={booster.boosterId} className={styles.cartLine}>
+                    <li key={`booster:${booster.boosterId}`} className={styles.cartLine}>
                       <span className={styles.cartThumb} style={closedPackVariables(getBoosterPackVisual(booster.boosterId))} aria-hidden />
                       <span className={styles.cartInfo}>
                         <span className={styles.cartName}>{booster.name}</span>
@@ -366,45 +539,81 @@ export function MarketScreen({ inventory }: MarketScreenProps) {
                           </svg>
                         </button>
                       </span>
-                      <button
-                        type="button"
-                        className={styles.removeButton}
-                        onClick={() => {
-                          playButtonClick();
-                          setQuantity(booster.boosterId, 0);
-                        }}
-                        disabled={isBuying}
-                        aria-label={`Retirer ${booster.name} du panier`}
-                      >
-                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" aria-hidden>
-                          <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
-                        </svg>
-                      </button>
+                      <RemoveButton label={`Retirer ${booster.name} du panier`} disabled={isBuying} onClick={() => setQuantity(booster.boosterId, 0)} />
                     </li>
                   );
                 })}
+                {deckLines.map((entry) => (
+                  <li key={`deck:${entry.deck.id}`} className={styles.cartLine}>
+                    <span
+                      className={`${styles.cartThumb} ${styles.cartThumbArt}`}
+                      style={{ "--art": `url("${nameplateArtUrl(entry.deck.cardIds, entry.deck.shipId) ?? ""}")` } as React.CSSProperties}
+                      aria-hidden
+                    />
+                    <span className={styles.cartInfo}>
+                      <span className={styles.cartName}>{entry.deck.name}</span>
+                      <span className={styles.cartPrice}>
+                        <PreconToken size={14} />1 Jeton
+                      </span>
+                    </span>
+                    <RemoveButton label={`Retirer ${entry.deck.name} du panier`} disabled={isBuying} onClick={() => toggleDeck(entry.deck.id)} />
+                  </li>
+                ))}
+                {cosmeticLines.map((row) => (
+                  <li key={`cosmetic:${row.key}`} className={styles.cartLine}>
+                    <span
+                      className={`${styles.cartThumb} ${row.family === "cardBack" ? styles.cartThumbArt : styles.cartThumbContain}`}
+                      style={{ "--art": `url("${row.option.src}")` } as React.CSSProperties}
+                      aria-hidden
+                    />
+                    <span className={styles.cartInfo}>
+                      <span className={styles.cartName}>{row.option.label}</span>
+                      <span className={styles.cartPrice}>
+                        <TideCoin size={14} />
+                        {row.option.priceTides}
+                      </span>
+                    </span>
+                    <RemoveButton label={`Retirer ${row.option.label} du panier`} disabled={isBuying} onClick={() => toggleCosmetic(row.key)} />
+                  </li>
+                ))}
               </ul>
 
               <div className={styles.checkout}>
+                {tokensTotal > 0 && (
+                  <span className={styles.totalBlock}>
+                    <span className={styles.totalLabel}>Jetons</span>
+                    <span className={styles.totalValue} data-short={shortTokens > 0 ? "true" : "false"}>
+                      <PreconToken size={20} />
+                      {tokensTotal}
+                    </span>
+                  </span>
+                )}
                 <span className={styles.totalBlock}>
                   <span className={styles.totalLabel}>Sous-total</span>
-                  <span className={styles.totalValue} data-short={shortBy > 0 ? "true" : "false"}>
+                  <span className={styles.totalValue} data-short={shortTides > 0 ? "true" : "false"}>
                     <TideCoin size={20} />
-                    {total}
+                    {tidesTotal}
                   </span>
                 </span>
-                <button type="button" className={styles.buyButton} onClick={() => void handleCheckout()} disabled={isBuying || itemCount === 0 || shortBy > 0}>
+                <button
+                  type="button"
+                  className={styles.buyButton}
+                  onClick={() => void handleCheckout()}
+                  disabled={isBuying || itemCount === 0 || shortTides > 0 || shortTokens > 0}
+                >
                   {isBuying ? "Achat…" : "Acheter"}
                 </button>
               </div>
             </div>
 
-            <p className={styles.cartHint} data-short={shortBy > 0 ? "true" : "false"}>
+            <p className={styles.cartHint} data-short={shortage ? "true" : "false"}>
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden>
                 <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth={1.5} />
                 <path d="M12 11v5.5M12 7.8v.2" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" />
               </svg>
-              {shortBy > 0 ? `Il manque ${shortBy} Tides pour ce panier.` : "Touchez un booster pour l'ajouter au panier."}
+              {shortage
+                ? `Il manque ${shortage} pour ce panier.`
+                : "Touchez un article pour l'ajouter au panier — le panier suit d'un rayon à l'autre, tout s'achète d'un coup."}
             </p>
           </section>
         )}
@@ -416,14 +625,110 @@ export function MarketScreen({ inventory }: MarketScreenProps) {
   );
 }
 
+function RemoveButton({ label, disabled, onClick }: { label: string; disabled: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      className={styles.removeButton}
+      onClick={() => {
+        playButtonClick();
+        onClick();
+      }}
+      disabled={disabled}
+      aria-label={label}
+    >
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" aria-hidden>
+        <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
+      </svg>
+    </button>
+  );
+}
+
+/**
+ * La vitrine : des pontons de trois socles, un seul visible, les autres à
+ * sa droite. Les flèches font glisser le suivant depuis la droite ; sans
+ * quatrième article, il n'y a pas de flèches du tout. Le rayon change → on
+ * repart du premier ponton (la clé sur `Showcase` s'en charge).
+ */
+function Showcase({ items, footer, emptyText, dock }: { items: ReactNode[]; footer?: ReactNode; emptyText?: string; dock?: "decks" }) {
+  const plates = chunk(items, PACKS_PER_PLATE);
+  const [index, setIndex] = useState(0);
+  // Le rayon a rétréci (achat, rafraîchissement) : on ne reste pas sur un ponton qui n'existe plus.
+  useEffect(() => {
+    if (index > Math.max(0, plates.length - 1)) setIndex(Math.max(0, plates.length - 1));
+  }, [index, plates.length]);
+
+  if (items.length === 0) {
+    return (
+      <div className={`${game.panel} ${game.empty} ${styles.notice}`}>
+        <p className={game.emptyTitle}>{emptyText ?? "Rien en vente pour l'instant"}</p>
+        {footer && <p className={game.muted}>{footer}</p>}
+      </div>
+    );
+  }
+
+  const go = (delta: number) => {
+    playButtonClick();
+    setIndex((current) => Math.min(plates.length - 1, Math.max(0, current + delta)));
+  };
+
+  return (
+    <div className={styles.showcase}>
+      <div className={styles.showcaseWindow}>
+        <div className={styles.showcaseTrack} style={{ transform: `translateX(-${index * 100}%)` }}>
+          {plates.map((plateItems, plateIndex) => (
+            <div key={plateIndex} className={styles.plate} data-dock={dock} data-count={plateItems.length} aria-hidden={plateIndex !== index}>
+              {plateItems.map((item, slotIndex) => (
+                <div key={slotIndex} className={styles.pedestal} data-slot={plateItems.length === 1 ? 1 : plateItems.length === 2 ? slotIndex * 2 : slotIndex}>
+                  {item}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+        {plates.length > 1 && (
+          <>
+            <button type="button" className={`${styles.showcaseArrow} ${styles.showcaseArrowLeft}`} onClick={() => go(-1)} disabled={index === 0} aria-label="Ponton précédent">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden>
+                <path d="M14.5 5.5L8 12l6.5 6.5" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className={`${styles.showcaseArrow} ${styles.showcaseArrowRight}`}
+              onClick={() => go(1)}
+              disabled={index >= plates.length - 1}
+              aria-label="Ponton suivant"
+            >
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden>
+                <path d="M9.5 5.5L16 12l-6.5 6.5" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          </>
+        )}
+      </div>
+      {(plates.length > 1 || footer) && (
+        <div className={styles.showcaseFoot}>
+          {plates.length > 1 && (
+            <span className={styles.showcaseDots} aria-label={`Ponton ${index + 1} sur ${plates.length}`}>
+              {plates.map((_, dot) => (
+                <span key={dot} className={dot === index ? styles.showcaseDotActive : styles.showcaseDot} />
+              ))}
+            </span>
+          )}
+          {footer && <span className={styles.stageLink}>{footer}</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /**
  * Un booster debout sur son socle. Le toucher en met un au panier ; la
- * pastille dit combien y sont déjà. `slot` : le socle occupé (0, 1, 2 — de
- * gauche à droite) ; un booster seul prend celui du milieu.
+ * pastille dit combien y sont déjà.
  */
 function PedestalItem({
   booster,
-  slot,
   inCart,
   disabled,
   onAdd,
@@ -432,7 +737,6 @@ function PedestalItem({
   onShowContents,
 }: {
   booster: BoosterInventoryEntry;
-  slot: number;
   inCart: number;
   disabled: boolean;
   onAdd: () => void;
@@ -441,7 +745,7 @@ function PedestalItem({
   onShowContents: () => void;
 }) {
   return (
-    <div className={styles.pedestal} data-slot={slot}>
+    <>
       <button
         type="button"
         className={styles.pack}
@@ -473,6 +777,122 @@ function PedestalItem({
           </button>
         )}
       </span>
-    </div>
+    </>
+  );
+}
+
+/**
+ * Un préconstruit sur son socle : la boîte de deck, son nom, son style, son
+ * prix (un Jeton) et le bouton qui le met au panier — ou la mention
+ * « Débloqué ». Toucher la boîte fait la même chose que le bouton, comme
+ * toucher un sachet le met au panier.
+ */
+function DeckGoods({
+  entry,
+  facing,
+  inCart,
+  disabled,
+  onToggle,
+}: {
+  entry: CatalogDeckView;
+  facing: "left" | "right";
+  inCart: boolean;
+  disabled: boolean;
+  onToggle: () => void;
+}) {
+  const art = nameplateArtUrl(entry.deck.cardIds, entry.deck.shipId);
+  return (
+    <>
+      <button
+        type="button"
+        className={styles.pack}
+        data-in-cart={inCart ? "true" : "false"}
+        onClick={onToggle}
+        disabled={disabled || entry.unlocked}
+        title={entry.unlocked ? "Déjà débloqué" : undefined}
+        aria-label={entry.unlocked ? `${entry.deck.name} — débloqué` : inCart ? `Retirer ${entry.deck.name} du panier` : `Mettre ${entry.deck.name} au panier (1 Jeton de Préconstruit)`}
+      >
+        <DeckBox art={art} facing={facing} badge={entry.unlocked ? "Débloqué" : undefined} className={styles.deckBox} />
+        {inCart && (
+          <span className={styles.cartBadge} aria-hidden>
+            ✓
+          </span>
+        )}
+      </button>
+      <span className={styles.label}>
+        <span className={styles.labelName}>{entry.deck.name}</span>
+        <span className={styles.labelSub}>{entry.deck.style}</span>
+        <span className={styles.labelPrice}>
+          <PreconToken size={16} /> 1 Jeton
+        </span>
+        {!entry.unlocked && (
+          <button type="button" className={styles.contentsButton} data-in-cart={inCart ? "true" : "false"} onClick={onToggle} disabled={disabled}>
+            {inCart ? "Retirer du panier" : "Au panier"}
+          </button>
+        )}
+      </span>
+    </>
+  );
+}
+
+/**
+ * Un article autre qu'un sachet — cosmétique à Tides — posé sur le socle,
+ * sans cadre ni fond : l'objet lui-même, debout sur son pied. Possédé : on
+ * le dit, on ne le revend pas. Sinon, un bouton qui le met au panier.
+ */
+function GoodsItem({
+  name,
+  subtitle,
+  art,
+  fit,
+  price,
+  owned,
+  ownedLabel,
+  inCart,
+  disabled,
+  onToggle,
+}: {
+  name: string;
+  subtitle?: string;
+  art: string | null;
+  fit: "cover" | "contain";
+  price: ReactNode;
+  owned: boolean;
+  ownedLabel: string;
+  inCart: boolean;
+  disabled: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <>
+      <button
+        type="button"
+        className={`${styles.pack} ${styles.goods}`}
+        data-owned={owned ? "true" : "false"}
+        data-in-cart={inCart ? "true" : "false"}
+        onClick={onToggle}
+        disabled={disabled || owned}
+        title={owned ? "Déjà possédé" : undefined}
+        aria-label={owned ? `${name} — possédé` : inCart ? `Retirer ${name} du panier` : `Mettre ${name} au panier`}
+      >
+        <span className={styles.goodsArt} data-fit={fit} style={art ? { backgroundImage: `url("${art}")` } : undefined} aria-hidden />
+        {owned && <span className={styles.goodsOwned}>{ownedLabel}</span>}
+        {inCart && (
+          <span className={styles.cartBadge} aria-hidden>
+            ✓
+          </span>
+        )}
+      </button>
+      <span className={styles.label}>
+        <span className={styles.labelName}>{name}</span>
+        {subtitle && <span className={styles.labelSub}>{subtitle}</span>}
+        <span className={styles.labelPrice}>{price}</span>
+        {!owned && (
+          <button type="button" className={styles.contentsButton} data-in-cart={inCart ? "true" : "false"} onClick={onToggle} disabled={disabled}>
+            {inCart ? "Retirer du panier" : "Au panier"}
+          </button>
+        )}
+      </span>
+    </>
   );
 }

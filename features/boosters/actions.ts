@@ -3,8 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient, createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { createSeed } from "@/game/rng";
-import { MAX_PURCHASE_QUANTITY } from "@/features/boosters/constants";
-import { drawBooster, type BoosterPoolCard, type BoosterSlotRule, type CardRarity, type DrawnCard } from "@/game/boosters";
+import { MAX_BATCH_OPEN, MAX_PURCHASE_QUANTITY } from "@/features/boosters/constants";
+import { drawBooster, rarityForCardId, type BoosterPoolCard, type BoosterSlotRule, type CardRarity, type DrawnCard } from "@/game/boosters";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
 
 /**
@@ -77,6 +77,38 @@ export interface OpenBoosterResult {
   packsSinceAbyssal: number;
 }
 
+export interface OpenBoostersResult {
+  /** Un tirage par sachet, dans l'ordre d'ouverture. */
+  packs: OpenBoosterResult[];
+}
+
+/**
+ * Ouvre PLUSIEURS sachets du même booster, l'un après l'autre.
+ *
+ * Séquentiel et non parallèle : chaque ouverture lit le pity et la
+ * collection que la précédente vient de modifier — les ouvrir en parallèle
+ * ferait tirer tous les sachets dans le même état, donc fausserait à la
+ * fois la garantie Abyssale et la préférence pour les cartes manquantes.
+ *
+ * Un échec en cours de lot ne perd rien : les sachets déjà ouverts sont
+ * acquis et rendus, l'appelant montre ce qui a été obtenu.
+ */
+export async function openBoosters(boosterId: string, quantity: number): Promise<ActionResult<OpenBoostersResult>> {
+  const count = Math.max(1, Math.min(MAX_BATCH_OPEN, Math.floor(quantity)));
+  const packs: OpenBoosterResult[] = [];
+
+  for (let index = 0; index < count; index += 1) {
+    const result = await openBooster(boosterId);
+    if (!result.ok || !result.data) {
+      if (packs.length === 0) return { ok: false, error: result.error ?? "Ouverture impossible." };
+      return { ok: true, data: { packs } };
+    }
+    packs.push(result.data);
+  }
+
+  return { ok: true, data: { packs } };
+}
+
 /**
  * Traduit un échec inattendu en message utile.
  *
@@ -134,7 +166,8 @@ export async function fetchBoosterInventory(): Promise<BoosterInventory> {
       const card = Array.isArray(row.cards) ? row.cards[0] : row.cards;
       if (!card) continue;
       const list = poolByBooster.get(row.booster_definition_id) ?? [];
-      list.push({ cardId: row.card_id, rarity: card.rarity as CardRarity });
+      // Même source de vérité que le tirage : le code.
+      list.push({ cardId: row.card_id, rarity: rarityForCardId(row.card_id) ?? (card.rarity as CardRarity) });
       poolByBooster.set(row.booster_definition_id, list);
     }
 
@@ -216,7 +249,7 @@ export async function openBooster(boosterId: string): Promise<ActionResult<OpenB
     // base qui décide de ce qui est tirable, pas le catalogue TypeScript
     // (une carte peut être désactivée ou rendue non collectionnable sans
     // toucher au moteur).
-    const [slots, pool, pity, ownedCards] = await Promise.all([
+    const [slots, pool, pity, newCardPity, ownedCards] = await Promise.all([
       service
         .from("booster_slots")
         .select("slot_index, guaranteed_rarity, weighted_rarities")
@@ -237,6 +270,15 @@ export async function openBooster(boosterId: string): Promise<ActionResult<OpenB
       service
         .from("player_pity")
         .select("packs_since_abyssal")
+        .eq("user_id", userId)
+        .eq("booster_definition_id", boosterId)
+        .maybeSingle(),
+      // Compteur « sans nouveauté » à part : tant que la migration
+      // `20260925120000_new_card_pity.sql` n'est pas appliquée, cette
+      // requête échoue seule et la garantie reste simplement inactive.
+      service
+        .from("player_pity")
+        .select("packs_since_new_card")
         .eq("user_id", userId)
         .eq("booster_definition_id", boosterId)
         .maybeSingle(),
@@ -266,10 +308,20 @@ export async function openBooster(boosterId: string): Promise<ActionResult<OpenB
     // n'avait de sens que tant que tous les boosters partageaient le même
     // pool — il ne pouvait de toute façon pas exprimer « ce booster-ci
     // contient ces cartes-là ».
-    const poolCards: BoosterPoolCard[] = pool.data.map((row) => ({
-      id: row.cards.id,
-      rarity: row.cards.rarity,
-    }));
+    // La rareté vient du CODE (`rarityForCardId`), pas de la colonne
+    // `cards.rarity` : c'est le code que `scripts/seedCards.ts` écrit en
+    // base, donc une base pas encore resemée renvoyait la rareté standard
+    // d'une variante Abyssale — et l'emplacement Abyssal tombait alors sur
+    // la version normale de la carte. La divergence est signalée, jamais suivie.
+    const poolCards: BoosterPoolCard[] = pool.data.map((row) => {
+      const fromCode = rarityForCardId(row.cards.id);
+      if (fromCode && fromCode !== row.cards.rarity) {
+        console.warn(
+          `[openBooster] Rareté périmée en base pour ${row.cards.id} : ${row.cards.rarity} en base, ${fromCode} dans le code — lance \`npm run seed:cards\`.`
+        );
+      }
+      return { id: row.cards.id, rarity: fromCode ?? (row.cards.rarity as CardRarity) };
+    });
 
     if (poolCards.length === 0) {
       return { ok: false, error: "Le pool de ce booster ne contient aucune carte éligible." };
@@ -282,6 +334,7 @@ export async function openBooster(boosterId: string): Promise<ActionResult<OpenB
       pool: poolCards,
       ownedCardIds,
       packsSinceAbyssal: pity.data?.packs_since_abyssal ?? 0,
+      packsSinceNewCard: newCardPity.data?.packs_since_new_card ?? 0,
       // Graine non déterministe : contrairement à une partie, une ouverture
       // n'a pas à être rejouable. C'est le seul endroit du code où on veut
       // explicitement de l'imprévisible.
@@ -296,6 +349,26 @@ export async function openBooster(boosterId: string): Promise<ActionResult<OpenB
 
     if (error) return { ok: false, error: error.message };
     if (!data?.ok) return { ok: false, error: data?.error ?? "Ouverture refusée." };
+
+    // Compteur « sans nouveauté », à part de la fonction atomique : un
+    // compteur qui dérive d'une unité après un incident est sans gravité,
+    // là où réécrire `open_booster` demanderait de rejouer sa définition.
+    if (newCardPity.error) {
+      console.warn(
+        "[openBooster] Garantie de nouveauté inactive : applique la migration 20260925120000_new_card_pity.sql.",
+        newCardPity.error.message
+      );
+    } else {
+      const { error: pityError } = await service.from("player_pity").upsert(
+        {
+          user_id: userId,
+          booster_definition_id: boosterId,
+          packs_since_new_card: draw.nextPacksSinceNewCard,
+        },
+        { onConflict: "user_id,booster_definition_id" }
+      );
+      if (pityError) console.error("[openBooster] Compteur de nouveauté non écrit :", pityError.message);
+    }
 
     revalidatePath("/boosters");
     revalidatePath("/market");
