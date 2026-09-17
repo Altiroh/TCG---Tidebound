@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { RULES } from "@/game";
+import { isAbyssalVariant, RULES } from "@/game";
 import { CARD_TYPE_LABELS } from "@/features/match/cardDisplay";
 import {
   CURVE_BUCKETS,
@@ -165,7 +165,7 @@ export function DeckListPanel({
           <p className={styles.listEmpty}>Clique une carte de la grille pour l&apos;ajouter — ou glisse-la ici.</p>
         ) : (
           entries.map((entry) => (
-            <div key={entry.cardId} className={`${styles.row} ${entry.def.subtype === "abyssal" ? styles.rowAbyssal : ""}`}>
+            <div key={entry.cardId} className={`${styles.row} ${isAbyssalVariant(entry.def) ? styles.rowAbyssal : ""}`}>
               <span className={styles.rowCost} title="Raison">
                 {entry.def.cost}
               </span>

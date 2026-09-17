@@ -7,8 +7,10 @@ import { CardDetailModal } from "@/features/collection/card-detail/CardDetailMod
 import { Dialog } from "@/features/shell/Dialog";
 import { ShipPortrait, shipNameOf } from "@/features/ships/ShipPortrait";
 import { PreconToken } from "@/features/shell/GameIcons";
+import { cardIllustrationUrl } from "@/features/decks/nameplateArt";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/decks/DeckCatalog.module.css";
+import mosaic from "@/features/market/BoosterContents.module.css";
 
 interface DeckSheetProps {
   deck: CatalogDeck;
@@ -180,18 +182,23 @@ export function DeckSheet({
 
           <div className={styles.sheetField}>
             <span className={styles.sheetLabel}>Cartes — possédées / demandées · clique pour voir</span>
-            <ul className={styles.cardList}>
+            {/* La même mosaïque illustrée que le contenu d'un booster au
+                Market : on reconnaît une carte à son image, pas à son nom
+                dans une colonne. Une carte qu'il manque encore s'éteint. */}
+            <ul className={`${mosaic.grid} ${styles.mosaic}`}>
               {ownership.cards.map((card) => (
                 <li key={card.cardId}>
                   <button
                     type="button"
-                    className={`${styles.cardRow} ${card.owned === 0 ? styles.cardBorrowed : ""}`}
+                    className={mosaic.card}
+                    data-owned={card.owned >= card.required ? "true" : "false"}
                     onClick={() => setInspected(card.cardId)}
-                    title={`${card.name} — voir la carte`}
+                    title={`${card.name} — ${card.owned}/${card.required} possédée${card.required > 1 ? "s" : ""} · voir la carte`}
                   >
-                    <span className={styles.cardCost}>{card.cost}</span>
-                    <span className={styles.cardName}>{card.name}</span>
-                    <span className={card.owned === card.required ? styles.cardCountOwned : styles.cardCount}>
+                    <span className={mosaic.art} style={{ backgroundImage: `url("${cardIllustrationUrl(card.cardId)}")` }} aria-hidden />
+                    <span className={mosaic.name}>{card.name}</span>
+                    <span className={mosaic.rarity}>Coût {card.cost}</span>
+                    <span className={`${mosaic.ownedMark} ${styles.mosaicCount}`} aria-label={`${card.owned} possédée${card.owned > 1 ? "s" : ""} sur ${card.required}`}>
                       {card.owned}/{card.required}
                     </span>
                   </button>

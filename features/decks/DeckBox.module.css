@@ -1,0 +1,89 @@
+/*
+ * BOÎTE DE DECK — `decks/deck-visual.webp` (1024 × 1536), vue de trois
+ * quarts, tranche à gauche. Fenêtre de la face avant mesurée dans l'image :
+ * x 21,6 % → 89,7 %, y 11 % → 87 %. Toucher à ces valeurs sans remesurer
+ * décale l'illustration hors du cadre.
+ */
+.box {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 1024 / 1536;
+  filter: drop-shadow(0 1.2cqw 1.4cqw rgba(0, 0, 0, 0.65));
+  transform-origin: 50% 100%;
+  transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1), filter 220ms ease;
+}
+
+/* La face est en légère perspective : la boîte tourne vers la droite. */
+.face {
+  position: absolute;
+  top: 11%;
+  left: 21.6%;
+  width: 68.1%;
+  height: 76%;
+  overflow: hidden;
+  border-radius: 3% / 2%;
+  background: #061522;
+  transform: perspective(900px) rotateY(6deg);
+  transform-origin: 50% 50%;
+}
+
+/* Retournée : tranche à droite, face tournée vers la gauche. */
+.box[data-facing="left"] .frame {
+  transform: scaleX(-1);
+}
+
+.box[data-facing="left"] .face {
+  left: auto;
+  right: 21.6%;
+  transform: perspective(900px) rotateY(-6deg);
+}
+
+.art {
+  position: absolute;
+  inset: -4%;
+  background: #061522 center 30% / cover no-repeat;
+  filter: saturate(1.1) contrast(1.04);
+}
+
+/* Le logo en bas de la face, comme sur la référence. */
+.logo {
+  position: absolute;
+  left: 50%;
+  bottom: 5%;
+  width: 72%;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.9)) drop-shadow(0 0 8px rgba(0, 0, 0, 0.6));
+  user-select: none;
+}
+
+.frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  user-select: none;
+}
+
+/* Pastille (« Débloqué ») : en haut de la face avant. */
+.badge {
+  position: absolute;
+  top: 6%;
+  left: 55%;
+  transform: translateX(-50%);
+  padding: 0.35cqw 1.1cqw;
+  border: 1px solid #b8f5cc;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #3fae6c, #22784a);
+  color: #fff;
+  font-size: clamp(9px, 1.1cqw, 13px);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow: 0 0 8px rgba(80, 200, 130, 0.6);
+}
+
+.box[data-facing="left"] .badge {
+  left: 45%;
+}

@@ -13,6 +13,8 @@ async function loadDeck(deckId: string) {
     .from("player_decks")
     .select("id, name, ship_id, art_card_id")
     .eq("id", deckId)
+    // Un deck à la corbeille ne s'édite pas : il faut d'abord le restaurer.
+    .is("deleted_at", null)
     .maybeSingle();
   if (!deck) return null;
 

@@ -63,6 +63,8 @@ export async function resolveMatchDeck(userId: string, deckId: string): Promise<
       .select("id, name, ship_id")
       .eq("id", deckId)
       .eq("user_id", userId)
+      // Un deck à la corbeille n'entre pas en partie.
+      .is("deleted_at", null)
       .maybeSingle();
     if (error) {
       console.error("[resolveMatchDeck] Lecture du deck impossible :", error.message);

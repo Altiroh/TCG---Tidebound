@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { getCardDefinition } from "@/game";
+import { getCardDefinition, isAbyssalVariant } from "@/game";
 import { nameplateArtUrl, plateArtUrl } from "@/features/decks/nameplateArt";
 import styles from "@/features/decks/DeckBuilder.module.css";
 import { playButtonClick } from "@/lib/sound";
@@ -23,7 +23,7 @@ function deckVariants(cardIds: readonly string[]): { standard: boolean; abyssal:
   let abyssal = false;
   for (const cardId of new Set(cardIds)) {
     try {
-      if (getCardDefinition(cardId).subtype === "abyssal") abyssal = true;
+      if (isAbyssalVariant(getCardDefinition(cardId))) abyssal = true;
       else standard = true;
     } catch {
       // Carte retirée du catalogue : elle ne dit rien de la variante.

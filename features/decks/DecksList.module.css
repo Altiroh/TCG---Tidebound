@@ -126,6 +126,98 @@
   line-height: 1;
 }
 
+/* ── Rayons de « Mes decks » : construits · brouillons · récemment supprimés ──
+   Un contrôle segmenté du design system (`game.segmented`), avec le bouton
+   « Sélectionner » en vis-à-vis : le ménage se fait rayon par rayon. */
+.shelfBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  margin-bottom: clamp(10px, 1.2vw, 16px);
+}
+
+.shelfCount {
+  margin-left: 0.35em;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.7;
+}
+
+.shelfHint {
+  margin: -4px 0 clamp(10px, 1.2vw, 16px);
+}
+
+/* Un état vide occupe tout ce qui reste sous les puces : la page ne
+   s'arrête pas à mi-hauteur sur un panneau flottant. */
+.fill {
+  flex: 1 1 auto;
+}
+
+/* ── Sélection multiple ────────────────────────────────────────────
+   En mode sélection, la tuile entière devient une case à cocher : la coche
+   du design system (`game.choiceBox`) se pose sur la plaque, et la tuile
+   choisie prend l'accent cyan — une seule couleur d'accent à la fois. */
+.tilePlate {
+  position: relative;
+}
+
+.tileSelectable {
+  cursor: pointer;
+  transition: border-color var(--tb-duration) ease-out, box-shadow var(--tb-duration) ease-out;
+}
+.tileSelectable:hover { border-color: var(--tb-accent-line); }
+.tileSelectable:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 3px; }
+
+.tile.tileSelected {
+  border-color: var(--cb-cyan);
+  box-shadow: var(--tb-glow-strong);
+}
+
+.tileCheck {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  padding: 5px;
+  border-radius: 6px;
+  background: var(--tb-surface-solid);
+  pointer-events: none;
+}
+
+/* Un deck à la corbeille : lisible, mais éteint — on doit le reconnaître
+   sans le prendre pour un deck actif. */
+.tileTrashed .tilePlate {
+  filter: saturate(0.35) brightness(0.8);
+}
+
+.tileTrashedName {
+  composes: tileName;
+  cursor: default;
+}
+.tileTrashedName:hover { color: var(--ink-strong); }
+
+/* La barre d'actions de la sélection colle au bas de l'écran pendant que
+   la grille défile : on coche en haut, on tranche en bas, sans remonter. */
+.selectionBar {
+  position: sticky;
+  bottom: clamp(10px, 1.5vh, 18px);
+  z-index: 5;
+  /* Tout en bas de l'écran, pas collée sous la grille : le conteneur fait
+     au moins la hauteur visible (`contentInner`), la barre s'y pose. */
+  margin-top: auto;
+  padding-top: clamp(12px, 1.4vw, 22px);
+}
+
+.selectionBanner {
+  flex-wrap: wrap;
+  background: var(--tb-surface-solid-raised);
+  box-shadow: var(--tb-shadow-sm);
+  backdrop-filter: blur(8px);
+}
+
 @media (max-width: 640px) {
   .grid { grid-template-columns: 1fr; }
 }

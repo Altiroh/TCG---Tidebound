@@ -461,7 +461,7 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
       )}
 
       {deleteConfirm && (
-        <DeleteDeckDialog deckName={name} isDeleting={false} onConfirm={() => void handleDelete()} onCancel={() => setDeleteConfirm(false)} />
+        <DeleteDeckDialog deckNames={[name]} permanent={false} isDeleting={false} onConfirm={() => void handleDelete()} onCancel={() => setDeleteConfirm(false)} />
       )}
     </GameScreen>
   );

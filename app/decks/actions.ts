@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getCardDefinition, type DeckList } from "@/game";
 import { validateDeckList } from "@/game/rules/deckValidation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { trashPurgeCutoff } from "@/features/decks/deckTrash";
 import { signatureCardId } from "@/features/decks/nameplateArt";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
 
@@ -14,6 +15,14 @@ export interface PlayerDeckSummary {
   cardCount: number;
   /** `is_valid` tel que recalculé par `saveDeck` (`validateDeckList`) à la dernière sauvegarde. */
   isValid: boolean;
+  /**
+   * Date de mise à la corbeille (ISO), `null` pour un deck actif. Un deck
+   * daté n'apparaît que dans le rayon « Récemment supprimés » de l'écran
+   * Decks : jamais dans Jouer, l'éditeur ni une partie (`deckTrash.ts`).
+   */
+  deletedAt: string | null;
+  /** Deck par défaut du joueur : présélectionné à l'écran Jouer. Un seul à la fois (`setDefaultDeck`). */
+  isDefault: boolean;
   /** Jusqu'à 5 `card_id` du deck, pour l'empilement d'en-tête de la tuile — ordre arbitraire pour l'instant. */
   headerCardIds: string[];
   /**
@@ -52,18 +61,53 @@ async function currentUserId(supabase: ReturnType<typeof createSupabaseServerCli
   return user?.id ?? null;
 }
 
-/** Liste les decks personnels du joueur connecté, avec de quoi peupler la tuile (nombre de cartes, aperçu d'en-tête). Tableau vide si non connecté — jamais d'erreur qui casse la page. */
+/**
+ * Liste les decks personnels du joueur connecté — actifs ET à la corbeille
+ * (`deletedAt`), c'est l'écran qui les range en rayons — avec de quoi
+ * peupler la tuile (nombre de cartes, aperçu d'en-tête). Tableau vide si
+ * non connecté — jamais d'erreur qui casse la page.
+ *
+ * C'est aussi ici que la corbeille est vidée de ce qui a dépassé les 30
+ * jours : le seul moment où le joueur regarde ses decks, donc le seul où
+ * un deck échu pourrait encore lui être montré à tort. La politique RLS
+ * (chacun gère ses propres decks) suffit, sans job de fond.
+ */
 export async function listPlayerDecks(): Promise<PlayerDeckSummary[]> {
   const supabase = createSupabaseServerClient();
   const userId = await currentUserId(supabase);
   if (!userId) return [];
 
-  const { data: decks, error: decksError } = await supabase
+  const { error: purgeError } = await supabase
     .from("player_decks")
-    .select("id, name, ship_id, is_valid, art_card_id")
+    .delete()
+    .eq("user_id", userId)
+    .lt("deleted_at", trashPurgeCutoff().toISOString());
+  if (purgeError) console.error("[listPlayerDecks] Échec du vidage de la corbeille :", purgeError.message);
+
+  let { data: decks, error: decksError } = await supabase
+    .from("player_decks")
+    .select("id, name, ship_id, is_valid, art_card_id, deleted_at, is_default")
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
-  if (decksError) console.error("[listPlayerDecks] Échec de la lecture de player_decks :", decksError.message);
+  if (decksError) {
+    // Base pas encore migrée (`20260923120000_deck_trash.sql` : colonne
+    // `deleted_at` ; `20260924120000_default_deck.sql` : `is_default`) :
+    // la liste ne doit pas se vider pour autant. On relit sans ces
+    // colonnes — tout est alors actif, sans corbeille ni deck par défaut —
+    // et on le dit dans les journaux, pour que les migrations soient passées.
+    console.error(
+      "[listPlayerDecks] Échec de la lecture de player_decks (migrations deck_trash / default_deck appliquées ?) :",
+      decksError.message
+    );
+    const fallback = await supabase
+      .from("player_decks")
+      .select("id, name, ship_id, is_valid, art_card_id")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: true });
+    decks = (fallback.data ?? []).map((deck) => ({ ...deck, deleted_at: null, is_default: false }));
+    decksError = fallback.error;
+    if (decksError) console.error("[listPlayerDecks] Échec de la relecture sans corbeille :", decksError.message);
+  }
   if (!decks || decks.length === 0) return [];
 
   const { data: cards, error: cardsError } = await supabase
@@ -89,6 +133,8 @@ export async function listPlayerDecks(): Promise<PlayerDeckSummary[]> {
       name: deck.name,
       shipId: deck.ship_id,
       isValid: Boolean(deck.is_valid),
+      deletedAt: deck.deleted_at ?? null,
+      isDefault: Boolean(deck.is_default),
       cardCount: deckCards.reduce((sum, card) => sum + card.quantity, 0),
       headerCardIds: deckCards.slice(0, 5).map((card) => card.card_id),
       // Choix explicite s'il existe, sinon la règle par défaut : la carte
@@ -109,10 +155,12 @@ export async function listPlayerDeckLists(): Promise<DeckList[]> {
     const userId = await currentUserId(supabase);
     if (!userId) return [];
 
+    // Un deck à la corbeille ne se joue pas : il ne figure pas dans Jouer.
     const { data: decks, error: decksError } = await supabase
       .from("player_decks")
-      .select("id, name, ship_id")
+      .select("id, name, ship_id, is_default")
       .eq("user_id", userId)
+      .is("deleted_at", null)
       .order("created_at", { ascending: true });
     if (decksError) console.error("[listPlayerDeckLists] Échec de la lecture de player_decks :", decksError.message);
     if (!decks || decks.length === 0) return [];
@@ -139,6 +187,7 @@ export async function listPlayerDeckLists(): Promise<DeckList[]> {
       shipId: deck.ship_id,
       description: "Deck personnel",
       cardIds: cardsByDeck.get(deck.id) ?? [],
+      isDefault: Boolean(deck.is_default),
     }));
   } catch (error) {
     console.error("[listPlayerDeckLists] Échec inattendu :", error);
@@ -342,10 +391,99 @@ async function duplicateDeckUnguarded(deckId: string): Promise<DeckActionResult>
   return { ok: true, id: created.id };
 }
 
-export async function deleteDeck(deckId: string): Promise<DeckActionResult> {
-  return guarded("deleteDeck", async () => {
+/** Identifiants dédupliqués et non vides — une sélection peut contenir des doublons ou des clés périmées. */
+function distinctIds(deckIds: readonly string[]): string[] {
+  return Array.from(new Set(deckIds.filter((id) => typeof id === "string" && id.length > 0)));
+}
+
+/**
+ * Met un ou plusieurs decks à la corbeille (« Récemment supprimés ») : ils
+ * sont DATÉS, pas effacés, et restent restaurables pendant 30 jours
+ * (`features/decks/deckTrash.ts`). Un deck déjà à la corbeille garde sa
+ * date : redater repousserait son effacement sans que le joueur l'ait
+ * voulu. La propriété est garantie par RLS : on ne peut dater que ses
+ * propres decks.
+ */
+export async function deleteDecks(deckIds: string[]): Promise<DeckActionResult> {
+  return guarded("deleteDecks", async () => {
+    const ids = distinctIds(deckIds);
+    if (ids.length === 0) return { ok: true };
     const supabase = createSupabaseServerClient();
-    const { error } = await supabase.from("player_decks").delete().eq("id", deckId);
+    // Un deck à la corbeille ne peut pas rester « par défaut » : il n'est
+    // plus proposé à l'écran Jouer.
+    const { error } = await supabase
+      .from("player_decks")
+      .update({ deleted_at: new Date().toISOString(), is_default: false })
+      .in("id", ids)
+      .is("deleted_at", null);
+    if (error) return { ok: false, error: error.message };
+    revalidatePath("/decks");
+    return { ok: true };
+  });
+}
+
+/**
+ * Marque un deck actif comme deck PAR DÉFAUT du joueur — celui que l'écran
+ * Jouer présélectionne. Un seul à la fois : l'ancien est d'abord relâché
+ * (l'index partiel unique de la base interdit de toute façon deux decks
+ * par défaut pour un même joueur). RLS garantit la propriété.
+ */
+export async function setDefaultDeck(deckId: string): Promise<DeckActionResult> {
+  return guarded("setDefaultDeck", async () => {
+    const supabase = createSupabaseServerClient();
+    const userId = await currentUserId(supabase);
+    if (!userId) return { ok: false, error: "Connecte-toi pour choisir un deck par défaut." };
+
+    const { error: clearError } = await supabase.from("player_decks").update({ is_default: false }).eq("user_id", userId).eq("is_default", true);
+    if (clearError) return { ok: false, error: clearError.message };
+
+    const { data, error } = await supabase
+      .from("player_decks")
+      .update({ is_default: true })
+      .eq("id", deckId)
+      .eq("user_id", userId)
+      .is("deleted_at", null)
+      .select("id");
+    if (error) return { ok: false, error: error.message };
+    if (!data || data.length === 0) return { ok: false, error: "Deck introuvable, ou à la corbeille." };
+
+    revalidatePath("/decks");
+    revalidatePath("/partie");
+    revalidatePath("/en-ligne");
+    return { ok: true, id: deckId };
+  });
+}
+
+/** Met UN deck à la corbeille — l'éditeur et la tuile n'en suppriment qu'un à la fois. */
+export async function deleteDeck(deckId: string): Promise<DeckActionResult> {
+  return deleteDecks([deckId]);
+}
+
+/** Sort un ou plusieurs decks de la corbeille : ils retrouvent leur rayon (construit ou brouillon) tels qu'ils étaient. */
+export async function restoreDecks(deckIds: string[]): Promise<DeckActionResult> {
+  return guarded("restoreDecks", async () => {
+    const ids = distinctIds(deckIds);
+    if (ids.length === 0) return { ok: true };
+    const supabase = createSupabaseServerClient();
+    const { error } = await supabase.from("player_decks").update({ deleted_at: null }).in("id", ids);
+    if (error) return { ok: false, error: error.message };
+    revalidatePath("/decks");
+    return { ok: true };
+  });
+}
+
+/**
+ * Efface DÉFINITIVEMENT des decks de la corbeille (leurs cartes suivent par
+ * `on delete cascade`). Refuse en silence un deck actif : seul ce qui est
+ * déjà à la corbeille peut disparaître pour de bon — la confirmation à
+ * l'écran ne remplace pas ce garde-fou, elle s'y ajoute.
+ */
+export async function purgeDecks(deckIds: string[]): Promise<DeckActionResult> {
+  return guarded("purgeDecks", async () => {
+    const ids = distinctIds(deckIds);
+    if (ids.length === 0) return { ok: true };
+    const supabase = createSupabaseServerClient();
+    const { error } = await supabase.from("player_decks").delete().in("id", ids).not("deleted_at", "is", null);
     if (error) return { ok: false, error: error.message };
     revalidatePath("/decks");
     return { ok: true };
