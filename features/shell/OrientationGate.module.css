@@ -1,0 +1,100 @@
+/*
+ * ÉCRAN « TOURNE TON TÉLÉPHONE » — le jeu se joue à l'horizontale.
+ *
+ * Le plateau est dessiné en paysage (5 à 6 emplacements par camp, deux
+ * mains en éventail, une colonne de journal) : en portrait sur un
+ * téléphone, une carte tomberait sous les 40 px de large. Les écrans hors
+ * plateau tiennent mieux, mais le bandeau (recherche + onglets + compte)
+ * n'a pas la place sous 640 px : une seule règle pour tout le produit vaut
+ * mieux que deux comportements selon l'écran.
+ *
+ * Tout est en CSS et rendu côté serveur : aucun JavaScript n'est nécessaire
+ * pour que le voile apparaisse, et il suit la rotation sans re-render.
+ * `OrientationLock` ne fait qu'AJOUTER la rotation forcée là où la
+ * plateforme l'autorise (Android installé).
+ *
+ * Cible : un appareil TACTILE en portrait, jusqu'aux petites tablettes.
+ *   - `pointer: coarse` + `hover: none` écartent le bureau, dont une
+ *     fenêtre étroite est un choix de l'utilisateur, pas une contrainte ;
+ *   - `max-width: 1024px` écarte les grandes tablettes et les écrans
+ *     tactiles de bureau, qui ont la place en portrait.
+ */
+.gate {
+  display: none;
+}
+
+@media (orientation: portrait) and (pointer: coarse) and (hover: none) and (max-width: 1024px) {
+  .gate {
+    position: fixed;
+    inset: 0;
+    /* Au-dessus de TOUT, dialogues compris : c'est un mur, pas un message. */
+    z-index: 2147483647;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(14px, 3vh, 26px);
+    padding: calc(clamp(20px, 5vw, 40px) + var(--tb-safe-top)) calc(clamp(20px, 5vw, 40px) + var(--tb-safe-right))
+      calc(clamp(20px, 5vw, 40px) + var(--tb-safe-bottom)) calc(clamp(20px, 5vw, 40px) + var(--tb-safe-left));
+    text-align: center;
+    background:
+      radial-gradient(120% 80% at 50% 0%, rgba(13, 52, 69, 0.55) 0%, transparent 70%),
+      var(--tb-bg-deep);
+    color: var(--tb-text);
+    font-family: var(--tb-font-ui);
+    /* Le contenu derrière ne doit pas défiler sous le voile. */
+    overscroll-behavior: contain;
+    touch-action: none;
+  }
+}
+
+.icon {
+  color: var(--tb-accent);
+  animation: tilt 2.6s var(--tb-ease) infinite;
+}
+
+/* Le téléphone se penche vers l'horizontale : le geste demandé, montré. */
+@keyframes tilt {
+  0%,
+  28% {
+    transform: rotate(0deg);
+  }
+  58%,
+  88% {
+    transform: rotate(-90deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+.title {
+  margin: 0;
+  font-family: var(--tb-font-display);
+  font-size: clamp(19px, 5.4vw, 26px);
+  letter-spacing: 0.01em;
+  color: var(--tb-text-strong);
+}
+
+.text {
+  margin: 0;
+  max-width: 30ch;
+  color: var(--tb-text-muted);
+  font-size: clamp(13px, 3.6vw, 15px);
+  line-height: 1.45;
+}
+
+.hint {
+  margin: 0;
+  max-width: 34ch;
+  color: var(--tb-text-soft);
+  font-size: clamp(11px, 3vw, 12.5px);
+  line-height: 1.4;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .icon {
+    animation: none;
+    transform: rotate(-90deg);
+  }
+}

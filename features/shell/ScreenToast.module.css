@@ -6,8 +6,8 @@
  */
 .anchor {
   position: fixed;
-  top: calc(clamp(54px, 6.8vh, 72px) + 10px);
-  right: clamp(12px, 1.6vw, 28px);
+  top: calc(clamp(54px, 6.8vh, 72px) + var(--tb-safe-top) + 10px);
+  right: calc(clamp(12px, 1.6vw, 28px) + var(--tb-safe-right));
   z-index: var(--tb-z-toast);
   display: flex;
   justify-content: flex-end;

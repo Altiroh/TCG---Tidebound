@@ -1,4 +1,4 @@
-import type { Metadata, Viewport } from "next";
+import type { Metadata } from "next";
 import { BoardPreviewPage } from "@/features/board-preview/BoardPreviewPage";
 
 export const metadata: Metadata = {
@@ -8,25 +8,9 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-/**
- * `viewportFit: "cover"` est indispensable pour que `env(safe-area-inset-*)`
- * renvoie autre chose que 0 sur un téléphone à encoche : sans lui, la
- * gestion de safe area de `BoardPreview.module.css` serait inopérante.
- *
- * Volontairement déclaré ICI et pas dans `app/layout.tsx` : passer tout le
- * site en `cover` changerait le rendu de tous les autres écrans, ce que
- * cette itération n'a pas à faire.
- */
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-  // Pas de `maximumScale` : seul `viewportFit` sert la safe area, et
-  // verrouiller l'échelle empêcherait le zoom par pincement (WCAG 1.4.4)
-  // — précisément le geste qui permet d'inspecter un détail de layout sur
-  // un vrai téléphone.
-  viewportFit: "cover",
-  themeColor: "#05090f",
-};
+// Pas de `viewport` propre : `viewportFit: "cover"` est déclaré une fois
+// pour tout le site dans `app/layout.tsx`, ce qui rend `env(safe-area-inset-*)`
+// utilisable ici comme ailleurs.
 
 /**
  * Route de laboratoire : `/game/board-preview`.

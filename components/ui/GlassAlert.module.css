@@ -5,8 +5,8 @@
  */
 .anchor {
   position: fixed;
-  top: 20px;
-  right: 20px;
+  top: calc(20px + var(--tb-safe-top));
+  right: calc(20px + var(--tb-safe-right));
   z-index: var(--tb-z-toast);
   display: flex;
   justify-content: flex-end;

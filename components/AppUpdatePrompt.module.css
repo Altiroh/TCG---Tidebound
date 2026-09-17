@@ -1,0 +1,101 @@
+/*
+ * Bandeau de mise à jour de l'application (`AppUpdatePrompt`). Même matière
+ * que les fenêtres du design system (`app/tokens.css`) : navy opaque, filet
+ * bleu clair, un seul accent cyan. Posé en bas au centre pour ne jamais
+ * couvrir le bandeau d'un écran ni le haut d'une partie, et au-dessus de la
+ * barre de gestes iOS (`--tb-safe-bottom`).
+ */
+.anchor {
+  position: fixed;
+  inset-inline: 0;
+  bottom: calc(14px + var(--tb-safe-bottom));
+  z-index: var(--tb-z-toast);
+  display: flex;
+  justify-content: center;
+  padding-inline: calc(12px + var(--tb-safe-left)) calc(12px + var(--tb-safe-right));
+  pointer-events: none;
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: min(460px, 100%);
+  padding: 10px 12px;
+  border: 1px solid var(--tb-border-strong);
+  border-radius: var(--tb-radius-md);
+  background: var(--tb-surface-solid);
+  box-shadow: var(--tb-shadow-lg);
+  color: var(--tb-text);
+  font-family: var(--tb-font-ui);
+  font-size: clamp(12px, 0.88vw, 13.5px);
+  line-height: 1.35;
+  pointer-events: auto;
+  animation: promptIn 260ms var(--tb-ease) both;
+}
+
+@keyframes promptIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.text {
+  margin: 0;
+  min-width: 0;
+}
+
+.hint {
+  display: block;
+  color: var(--tb-text-muted);
+  font-size: 0.86em;
+}
+
+.reload {
+  flex: 0 0 auto;
+  padding: 7px 14px;
+  border: 1px solid var(--tb-accent);
+  border-radius: var(--tb-radius-sm);
+  background: var(--tb-accent-soft);
+  color: var(--tb-text-strong);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 160ms var(--tb-ease), box-shadow 160ms var(--tb-ease);
+}
+
+.reload:hover,
+.reload:focus-visible {
+  background: color-mix(in srgb, var(--tb-accent) 32%, transparent);
+  box-shadow: var(--tb-glow-sm);
+}
+
+.dismiss {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--tb-text-muted);
+  font: inherit;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.dismiss:hover,
+.dismiss:focus-visible {
+  color: var(--tb-text-strong);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    animation: none;
+  }
+}

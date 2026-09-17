@@ -46,8 +46,14 @@
   height: 100dvh;
   display: grid;
   /* Bandeau volontairement bas : un plan de service, pas une navbar qui
-     encadre le contenu (GameScreen ne garde que deux rangées). */
-  grid-template-rows: clamp(54px, 6.8vh, 72px) minmax(0, 1fr) clamp(50px, 6.2vh, 64px);
+     encadre le contenu (GameScreen ne garde que deux rangées).
+     Les rangées haute et basse ABSORBENT la zone sûre (`--tb-safe-*`,
+     `app/globals.css`) : sur un iPhone à encoche, le bandeau garde sa
+     hauteur utile sous la barre d'état au lieu de passer dessous. */
+  grid-template-rows:
+    calc(clamp(54px, 6.8vh, 72px) + var(--tb-safe-top))
+    minmax(0, 1fr)
+    calc(clamp(50px, 6.2vh, 64px) + var(--tb-safe-bottom));
   overflow: hidden;
   font-family: var(--cb-font-ui);
   color: var(--cb-ivory);
@@ -75,11 +81,21 @@
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: clamp(10px, 1.5vw, 28px);
-  padding-inline: clamp(14px, 2vw, 36px);
+  /* Décalages de zone sûre : sous l'encoche en haut, à l'écart des coins
+     arrondis sur les côtés (paysage). */
+  padding-top: var(--tb-safe-top);
+  padding-inline: calc(clamp(14px, 2vw, 36px) + var(--tb-safe-left)) calc(clamp(14px, 2vw, 36px) + var(--tb-safe-right));
   isolation: isolate;
 }
 
 .headerLeft {
+  /*
+   * Colonne EXPLICITE. Sans elle, masquer le logo en display:none le
+   * retirait de la grille et faisait remonter la zone du compte dans la
+   * colonne du milieu : à 812 px (téléphone en paysage) elle démarrait
+   * au-dessus des onglets, et les libellés se superposaient.
+   */
+  grid-column: 1;
   display: flex;
   align-items: center;
   gap: clamp(10px, 1.5vw, 28px);
@@ -94,6 +110,7 @@
  * et passe au-dessus du filet (`z-index`).
  */
 .headerBrand {
+  grid-column: 2;
   position: relative;
   z-index: 4;
   display: flex;
@@ -216,6 +233,7 @@
 /* Groupe de droite du header : actions de l'écran + zone du compte. */
 
 .headerRight {
+  grid-column: 3;
   position: relative;
   z-index: 2;
   display: flex;
@@ -779,7 +797,10 @@
   top: 0;
   z-index: 30;
   display: grid;
-  height: clamp(54px, 6.8vh, 72px);
+  /* Comme le bandeau des autres écrans : la hauteur utile est préservée et
+     la zone sûre du haut est absorbée en plus (encoche, Dynamic Island). */
+  height: calc(clamp(54px, 6.8vh, 72px) + var(--tb-safe-top));
+  padding-top: var(--tb-safe-top);
   font-family: var(--cb-font-ui);
   color: var(--cb-ivory);
   /* Un voile en haut seulement : le bandeau reste lisible sur le ciel du
@@ -790,6 +811,34 @@
 /* Téléphone : même sans onglets, le logo n'a plus la place entre la flèche et le compte. */
 @media (max-width: 640px) {
   .header .headerBrand { display: none; }
+}
+
+/*
+ * TÉLÉPHONE EN PAYSAGE (~670 à 930 px de large) — le cas normal du mobile
+ * depuis que le produit impose l'horizontale (OrientationGate). À cette
+ * largeur, la somme « flèche + 4 onglets + recherche + bloc de compte »
+ * dépassait la ligne : les zones se chevauchaient et les libellés se
+ * superposaient. Rien n'est caché, tout est resserré — écarts, corps de
+ * texte et lettrage des onglets, et les trois zones peuvent enfin se
+ * comprimer (min-width: 0).
+ */
+@media (max-width: 930px) {
+  .header {
+    gap: 8px;
+    padding-inline: calc(10px + var(--tb-safe-left)) calc(10px + var(--tb-safe-right));
+  }
+
+  .headerLeft,
+  .headerRight {
+    min-width: 0;
+    gap: 8px;
+  }
+
+  .navTab,
+  .navTabActive {
+    font-size: 11.5px;
+    letter-spacing: 0.02em;
+  }
 }
 
 

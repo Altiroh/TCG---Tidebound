@@ -2,9 +2,33 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * ZONE SÛRE (iOS à encoche / Dynamic Island / barre de gestes, Android à
+ * découpe). Le site est en `viewport-fit=cover` (`app/layout.tsx`) : le
+ * décor passe donc SOUS la barre d'état et sous la barre de gestes, et
+ * c'est à l'interface de se tenir à l'écart. Ces quatre variables sont le
+ * seul endroit où `env()` est lu pour les écrans hors plateau ; la scène de
+ * partie a les siennes (`features/match/table/Table.module.css`).
+ *
+ * Elles valent 0 partout ailleurs (navigateur de bureau, Android sans
+ * découpe) : les `calc()` qui les emploient restent donc exacts.
+ */
+:root {
+  --tb-safe-top: env(safe-area-inset-top, 0px);
+  --tb-safe-right: env(safe-area-inset-right, 0px);
+  --tb-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --tb-safe-left: env(safe-area-inset-left, 0px);
+}
+
 html,
 body {
   height: 100%;
+}
+
+body {
+  /* iOS pose un voile gris sur tout élément touché : inutile ici, chaque
+     contrôle a déjà son état pressé. */
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {

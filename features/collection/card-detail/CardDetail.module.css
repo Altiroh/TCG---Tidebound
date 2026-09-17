@@ -164,7 +164,7 @@
      paysage), c'est la hauteur qui commande, sinon la carte déborderait
      du panneau avant même que la largeur ne pose problème.
      5/7 = le ratio de carte, donc `--card-w` reste la variable pilote. */
-  width: min(clamp(170px, 24vw, 400px), calc((100vh - 120px) * 5 / 7));
+  width: min(clamp(170px, 24vw, 400px), calc((100dvh - 120px) * 5 / 7));
   flex: 0 0 auto;
   filter: drop-shadow(0 18px 34px rgba(0, 0, 0, 0.55));
   animation: detail-card-in 260ms ease-out both;
@@ -533,7 +533,7 @@
   }
 
   .artwork {
-    width: min(clamp(150px, 21vw, 260px), calc((100vh - 90px) * 5 / 7));
+    width: min(clamp(150px, 21vw, 260px), calc((100dvh - 90px) * 5 / 7));
   }
 }
 
@@ -553,7 +553,7 @@
   /* Place regagnée par la grille : la carte peut respirer, et le texte
      s'étaler sur moins de lignes. */
   .artwork {
-    width: min(190px, calc((100vh - 46px) * 5 / 7));
+    width: min(190px, calc((100dvh - 46px) * 5 / 7));
   }
 
   .info {
@@ -576,7 +576,7 @@
   }
 
   .artwork {
-    width: min(clamp(140px, 42vw, 220px), calc((100vh - 320px) * 5 / 7));
+    width: min(clamp(140px, 42vw, 220px), calc((100dvh - 320px) * 5 / 7));
   }
 
   .info {

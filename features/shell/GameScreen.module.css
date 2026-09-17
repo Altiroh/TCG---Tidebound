@@ -32,8 +32,9 @@
  * l'ordre d'injection des deux feuilles, qui n'est pas garanti.
  */
 .screen.screen {
-  /* Deux rangées seulement : le bandeau, puis tout le reste. */
-  grid-template-rows: clamp(54px, 6.8vh, 72px) minmax(0, 1fr);
+  /* Deux rangées seulement : le bandeau, puis tout le reste. Le bandeau
+     absorbe la zone sûre du haut (cf. `ScreenShell.module.css`). */
+  grid-template-rows: calc(clamp(54px, 6.8vh, 72px) + var(--tb-safe-top)) minmax(0, 1fr);
 
   /*
    * ALIAS des tokens globaux (`app/tokens.css`) sous les noms courts que
@@ -94,6 +95,15 @@
    principale, sans toucher au composant lui-même. */
 .headerSearch {
   min-width: clamp(150px, 18vw, 300px);
+}
+
+/* Téléphone en paysage : la recherche cède la place aux onglets plutôt que
+   de les pousser hors du bandeau (cf. ScreenShell.module.css). */
+@media (max-width: 930px) {
+  .headerSearch {
+    min-width: 90px;
+    max-width: 160px;
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -165,7 +175,13 @@
   overscroll-behavior: contain;
   scrollbar-width: thin;
   scrollbar-color: var(--line-strong) transparent;
-  padding: clamp(14px, 2.2vh, 30px) clamp(14px, 2.4vw, 44px) clamp(18px, 3vh, 40px);
+  /* Le bas du défilement s'arrête au-dessus de la barre de gestes iOS, et
+     les côtés à l'écart des coins arrondis en paysage. */
+  padding:
+    clamp(14px, 2.2vh, 30px)
+    calc(clamp(14px, 2.4vw, 44px) + var(--tb-safe-right))
+    calc(clamp(18px, 3vh, 40px) + var(--tb-safe-bottom))
+    calc(clamp(14px, 2.4vw, 44px) + var(--tb-safe-left));
 }
 .content::-webkit-scrollbar { width: 8px; }
 .content::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--line-strong); }
