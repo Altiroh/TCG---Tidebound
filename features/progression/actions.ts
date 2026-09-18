@@ -2,7 +2,7 @@
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { progressionView, utcDayKey, type ProgressionView } from "@/game/progression";
-import { claimableLevelsFor } from "@/features/progression/levelRewardService";
+import { claimableLevelsFor, reachedLevel } from "@/features/progression/levelRewardService";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
 
 /**
@@ -99,8 +99,11 @@ export async function fetchProgression(): Promise<ProgressionSummary> {
       supabase.from("player_login_rewards").select("last_claimed_day").eq("user_id", user.id).maybeSingle(),
       supabase.from("player_achievements").select("code", { count: "exact", head: true }).eq("user_id", user.id).is("claimed_at", null),
     ]);
-    const storedLevel = progression.data?.level ?? 1;
-    const levelsToClaim = claimableLevelsFor(storedLevel, (levelRewards.data ?? []).map((row) => row.level)).length;
+    // Le niveau ATTEINT, pas celui de la colonne : elle n'est rafraîchie
+    // qu'en fin de partie, et la pastille doit s'allumer dès que l'XP d'une
+    // quête fait franchir un palier (cf. `reachedLevel`).
+    const reached = reachedLevel(progression.data?.xp_total ?? 0, progression.data?.level ?? 1);
+    const levelsToClaim = claimableLevelsFor(reached, (levelRewards.data ?? []).map((row) => row.level)).length;
     const loginToClaim = login.error ? 0 : login.data?.last_claimed_day === utcDayKey() ? 0 : 1;
 
     return {

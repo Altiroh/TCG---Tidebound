@@ -705,6 +705,17 @@ export interface Database {
         Args: { p_user_id: string; p_level: number; p_items: unknown };
         Returns: { ok: boolean; error?: string; already_claimed?: boolean; level?: number; tides?: number; precon_tokens?: number };
       };
+      /**
+       * Remonte `player_progression.level` au niveau calculé par le serveur
+       * applicatif, jamais à la baisse. La courbe vit en TypeScript
+       * (`game/progression/levels.ts`) : la colonne n'en est qu'un cache, et
+       * seule la fin de partie le rafraîchissait — d'où les paliers gagnés
+       * par l'XP d'une quête qui restaient invisibles.
+       */
+      sync_player_level: {
+        Args: { p_user_id: string; p_level: number };
+        Returns: number;
+      };
       resolve_card_choice: {
         Args: { p_user_id: string; p_choice_id: string; p_card_id: string };
         Returns: { ok: boolean; error?: string; card_id?: string };

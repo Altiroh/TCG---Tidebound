@@ -1,5 +1,5 @@
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
-import { MAX_REWARDED_LEVEL, levelRewardItems, type LevelRewardItem } from "@/game/progression";
+import { MAX_REWARDED_LEVEL, levelForTotalXp, levelRewardItems, type LevelRewardItem } from "@/game/progression";
 import type { CardRarity } from "@/game/boosters/types";
 import { openLevelCardChoices } from "@/features/progression/cardChoices";
 
@@ -32,6 +32,71 @@ export interface LevelRewardState {
   pendingCardChoices: PendingCardChoice[];
 }
 
+/**
+ * Le niveau RÉELLEMENT atteint, et non celui que dit la colonne.
+ *
+ * `player_progression.level` n'est pas une source de vérité : c'est un
+ * CACHE, et seule la fin de partie le rafraîchit. Les quêtes, la récompense
+ * de connexion, les exploits et le tutoriel ajoutent de l'XP sans y
+ * toucher — la migration le dit en toutes lettres : « le passage de niveau
+ * éventuel est rattrapé à la partie suivante ». Entre-temps, l'écran
+ * affichait le niveau calculé depuis l'XP pendant que les récompenses,
+ * elles, se fiaient à la colonne.
+ *
+ * Relevé le 2026-09-18 sur le compte du projet : 2300 XP, soit le niveau 10
+ * d'après la courbe, pour une colonne restée à 8. Le Jeton de Préconstruit
+ * du palier 10 n'était donc proposé nulle part, et n'aurait pu l'être
+ * qu'après une partie de plus. C'est aussi ce qui donnait l'impression que
+ * les récompenses « mettent du temps » : elles n'arrivent pas en retard,
+ * elles attendent la partie suivante.
+ *
+ * La courbe vit en TypeScript (`game/progression/levels.ts`) et nulle part
+ * ailleurs — la dupliquer en SQL ferait deux vérités. On la relit donc ici,
+ * et `jamais à la baisse` : un niveau accordé reste acquis.
+ */
+export function reachedLevel(xpTotal: number, storedLevel: number): number {
+  return Math.max(storedLevel, levelForTotalXp(xpTotal));
+}
+
+/**
+ * Remet la colonne d'aplomb quand elle a pris du retard, et rend le niveau
+ * atteint. Indispensable AVANT toute réclamation : `claim_level_reward`
+ * refuse un palier au-dessus de la colonne (« Ce palier n'est pas encore
+ * atteint »), donc l'offrir sans la remettre à jour ne ferait que déplacer
+ * le refus d'un cran.
+ */
+export interface SyncedLevel {
+  /** Niveau réellement atteint d'après la courbe. */
+  reached: number;
+  /** Ce que disait la colonne avant le rattrapage. */
+  stored: number;
+  /** `false` si la colonne est en retard ET n'a pas pu être remise à jour. */
+  ok: boolean;
+}
+
+export async function syncStoredLevel(userId: string): Promise<SyncedLevel> {
+  const service = createSupabaseServiceRoleClient();
+  const { data, error } = await service
+    .from("player_progression")
+    .select("xp_total, level")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error || !data) return { reached: 1, stored: 1, ok: true };
+
+  const stored = data.level ?? 1;
+  const reached = reachedLevel(data.xp_total ?? 0, stored);
+  if (reached <= stored) return { reached: stored, stored, ok: true };
+
+  // L'écriture passe par une fonction Postgres, jamais par un `update`
+  // direct : les tables autoritaires sont typées en lecture seule
+  // exprès (`lib/supabase/types.ts`), et c'est ce qui garantit qu'aucune
+  // règle d'économie ne s'écrit à deux endroits. `sync_player_level` ne
+  // fait que relever la colonne, jamais l'abaisser.
+  const { error: writeError } = await service.rpc("sync_player_level", { p_user_id: userId, p_level: reached });
+  if (writeError) console.error("[syncStoredLevel] Niveau non rattrapé :", writeError.message);
+  return { reached, stored, ok: !writeError };
+}
+
 export function claimableLevelsFor(level: number, claimed: Iterable<number>): number[] {
   const done = new Set(claimed);
   const levels: number[] = [];
@@ -44,12 +109,12 @@ export function claimableLevelsFor(level: number, claimed: Iterable<number>): nu
 export async function readLevelRewardState(userId: string): Promise<LevelRewardState> {
   const service = createSupabaseServiceRoleClient();
   const [progression, claimed, choices] = await Promise.all([
-    service.from("player_progression").select("level").eq("user_id", userId).maybeSingle(),
+    service.from("player_progression").select("xp_total, level").eq("user_id", userId).maybeSingle(),
     service.from("player_level_rewards").select("level").eq("user_id", userId),
     service.from("player_card_choices").select("id, source, source_ref, rarity, offered_card_ids").eq("user_id", userId).is("resolved_at", null),
   ]);
 
-  const level = progression.data?.level ?? 1;
+  const level = reachedLevel(progression.data?.xp_total ?? 0, progression.data?.level ?? 1);
   const claimedLevels = (claimed.data ?? []).map((row) => row.level);
   return {
     level,
@@ -84,6 +149,17 @@ export async function claimLevelRewardFor(userId: string, level: number): Promis
 
   try {
     const service = createSupabaseServiceRoleClient();
+    // La colonne d'abord : la base refuse tout palier au-dessus d'elle. Si
+    // elle est en retard et qu'on n'a pas su la rattraper, le dire ICI
+    // plutôt que de laisser la base répondre « ce palier n'est pas encore
+    // atteint » — ce qui serait faux, et indébrouillable côté joueur.
+    const synced = await syncStoredLevel(userId);
+    if (!synced.ok && level > synced.stored) {
+      return {
+        ok: false,
+        error: "Le niveau enregistré est en retard sur ton XP et n'a pas pu être remis à jour (migration 20260927120000 à appliquer).",
+      };
+    }
     const { data, error } = await service.rpc("claim_level_reward", {
       p_user_id: userId,
       p_level: level,

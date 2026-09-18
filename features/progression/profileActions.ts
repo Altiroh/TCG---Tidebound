@@ -27,6 +27,7 @@ import {
 import {
   claimLevelRewardFor,
   claimableLevelsFor,
+  reachedLevel,
   resolveCardChoiceFor,
   type ClaimLevelRewardResult,
   type PendingCardChoice,
@@ -203,7 +204,10 @@ export async function fetchProfile(): Promise<ProfileSummary> {
       nextLevelReward: view.level >= MAX_REWARDED_LEVEL ? "—" : levelRewardsLabel(view.level + 1),
       upcomingMilestones: nextMilestones(view.level, 3).map((level) => ({ level, label: levelRewardsLabel(level), claimed: false })),
       claimedLevelNumbers: (claimed.data ?? []).map((row) => row.level),
-      claimableLevels: claimableLevelsFor(progression.data?.level ?? 1, (claimed.data ?? []).map((row) => row.level)),
+      claimableLevels: claimableLevelsFor(
+        reachedLevel(progression.data?.xp_total ?? 0, progression.data?.level ?? 1),
+        (claimed.data ?? []).map((row) => row.level)
+      ),
       pendingCardChoices: (choices.data ?? []).map((row) => ({
         id: row.id,
         level: row.source === "level" && /^d+$/.test(row.source_ref) ? Number(row.source_ref) : null,
@@ -357,10 +361,13 @@ export async function claimAllLevelRewards(): Promise<ClaimAllLevelRewardsResult
 
   const service = createSupabaseServiceRoleClient();
   const [progression, claimedRows] = await Promise.all([
-    service.from("player_progression").select("level").eq("user_id", user.id).maybeSingle(),
+    service.from("player_progression").select("xp_total, level").eq("user_id", user.id).maybeSingle(),
     service.from("player_level_rewards").select("level").eq("user_id", user.id),
   ]);
-  const levels = claimableLevelsFor(progression.data?.level ?? 1, (claimedRows.data ?? []).map((row) => row.level));
+  const levels = claimableLevelsFor(
+    reachedLevel(progression.data?.xp_total ?? 0, progression.data?.level ?? 1),
+    (claimedRows.data ?? []).map((row) => row.level)
+  );
 
   const claimed: ClaimLevelRewardResult[] = [];
   for (const level of levels) {
