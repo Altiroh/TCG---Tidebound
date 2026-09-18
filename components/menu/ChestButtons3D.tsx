@@ -266,6 +266,9 @@ export function ChestButtons3D({ slots, iconSlots }: { slots: ChestSlotDef[]; ic
     renderer.domElement.style.position = "absolute";
     renderer.domElement.style.inset = "0";
     renderer.domElement.style.cursor = "default";
+    // Au doigt : pas de délai de double-tap, pas de zoom accidentel sur un
+    // menu qui ne fait que recevoir des appuis.
+    renderer.domElement.style.touchAction = "manipulation";
     container.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
@@ -523,15 +526,46 @@ export function ChestButtons3D({ slots, iconSlots }: { slots: ChestSlotDef[]; ic
       pointerToNdc(e);
       const hit = pick();
       pressed = hit && !hit.disabled ? hit : null;
+      // Un doigt n'a pas survolé avant d'appuyer : sans ça, le bouton ne
+      // s'enfoncerait même pas visuellement au tactile.
+      hovered = pressed;
       requestRender();
     }
-    function onUp() {
-      if (pressed && pressed === hovered && pressed.href) {
-        playButtonClick();
-        router.push(pressed.href);
-      }
-      if (pressed) requestRender();
+    /**
+     * Relâchement. On REPOINTE sous le doigt/curseur au lieu de comparer au
+     * survol : sur un écran tactile il n'y a pas de survol du tout — un
+     * appui produit `pointerdown` puis `pointerup` sans le moindre
+     * `pointermove`. `pressed === hovered` était donc toujours faux, et tout
+     * le menu restait MORT au doigt alors qu'il marchait à la souris.
+     *
+     * Repointer garde aussi le geste d'annulation, à la souris comme au
+     * doigt : glisser hors du bouton avant de relâcher ne déclenche rien,
+     * puisque le rayon ne touche plus le même bouton (ou plus rien).
+     */
+    function onUp(e: PointerEvent) {
+      const target = pressed;
       pressed = null;
+      if (target?.href && !target.disabled) {
+        pointerToNdc(e);
+        if (pick() === target) {
+          playButtonClick();
+          router.push(target.href);
+        }
+      }
+      // Le survol n'a de sens qu'à la souris : le laisser posé après un
+      // appui garderait un bouton éclairé sous un doigt qui n'est plus là.
+      if (e.pointerType !== "mouse") {
+        hovered = null;
+        pointerNdc.set(-10, -10);
+      }
+      requestRender();
+    }
+    /** Geste interrompu par le système (appel, balayage) : rien ne se déclenche. */
+    function onCancel() {
+      pressed = null;
+      hovered = null;
+      pointerNdc.set(-10, -10);
+      requestRender();
     }
     function onLeave() {
       hovered = null;
@@ -544,6 +578,7 @@ export function ChestButtons3D({ slots, iconSlots }: { slots: ChestSlotDef[]; ic
     renderer.domElement.addEventListener("pointerdown", onDown);
     window.addEventListener("pointerup", onUp);
     renderer.domElement.addEventListener("pointerleave", onLeave);
+    window.addEventListener("pointercancel", onCancel);
 
     const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
     // Les libellés procéduraux sont redessinés une fois Cinzel chargée
@@ -607,6 +642,7 @@ export function ChestButtons3D({ slots, iconSlots }: { slots: ChestSlotDef[]; ic
       renderer.domElement.removeEventListener("pointermove", onMove);
       renderer.domElement.removeEventListener("pointerdown", onDown);
       window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onCancel);
       renderer.domElement.removeEventListener("pointerleave", onLeave);
       for (const entry of entries) {
         entry.body.geometry.dispose();
