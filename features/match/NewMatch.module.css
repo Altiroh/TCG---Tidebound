@@ -287,7 +287,11 @@
   display: grid;
   grid-template-columns: minmax(250px, 32%) minmax(0, 1fr);
   gap: clamp(10px, 1.1vw, 18px);
-  align-items: start;
+  /* Les deux colonnes font la MÊME hauteur — c est l étirement par défaut
+     d une grille, qu un `align-items: start` annulait : la fiche s arrêtait
+     à son texte et laissait un vide sous elle quand la liste, elle, allait
+     jusqu à son plafond. La hauteur de la rangée est celle de la plus
+     grande des deux, et l illustration en profite. */
   min-height: 0;
 }
 
