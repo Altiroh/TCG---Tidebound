@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { CORE_SET, UN_DEAD, VEILLEE_DES_DISPARUS, getCardDefinition } from "@/game/cards/sets/core";
 import { dispatch } from "@/game/engine";
 import { hasGraveyardArrival } from "@/game/effects/resolveEffect";
+import { countArchetypeUnits } from "@/game/cards/archetypes";
 import { answerHandDiscard, instance, testEnvironment, testGameState, testPlayer } from "./testHelpers";
 
 /**
@@ -26,13 +27,25 @@ describe("catalogue du Lot 13", () => {
     expect(LOT_13.filter((def) => def.id.endsWith("-abyssal"))).toHaveLength(1);
   });
 
-  it("marque la famille d'un SOUS-TYPE, jamais d'un archétype", () => {
-    // Un archétype ferait compter les Un Dead dans les seuils Cra-Poiscail
-    // (`countArchetypeUnits`), ce qui n'a aucun sens.
+  it("porte le sous-type ET l'archétype Un Dead", () => {
+    // Le premier jet ne posait que le sous-type, en craignant que
+    // l'archétype ne fasse compter ces cartes dans les seuils Cra-Poiscail.
+    // C'était faux : `countArchetypeUnits` prend l'archétype EN PARAMÈTRE.
+    // Les Un Dead sont une famille de plein droit (décision du 18/09/2026).
     for (const def of LOT_13) {
-      expect(def.archetype).toBeUndefined();
       expect(def.subtype).toBe(UN_DEAD);
+      expect(def.archetype).toBe("un-dead");
     }
+  });
+
+  it("ne gonfle aucun seuil Cra-Poiscail", () => {
+    // La garantie que la crainte d'origine était infondée : deux familles ne
+    // se comptent jamais ensemble.
+    const board = LOT_13.map((def, i) => instance(def.id, "p1", { instanceId: `undead_${i}` }));
+    expect(countArchetypeUnits(board, "cra-poiscail")).toBe(0);
+    // Et la nouvelle famille se compte bien, unités seulement.
+    const unites = LOT_13.filter((def) => def.type === "marin" || def.type === "creature").length;
+    expect(countArchetypeUnits(board, "un-dead")).toBe(unites);
   });
 
   it("garde une Abyssale adossée à sa STANDARD, comme la règle du lot l'exige", () => {

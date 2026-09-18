@@ -1,4 +1,9 @@
-import { ARCHETYPE_DECKS, CRA_POISCAIL_TEST_DECKS, THEATRE_TEST_DECKS } from "@/game/cards/decks/testDecks";
+import {
+  ARCHETYPE_DECKS,
+  CRA_POISCAIL_TEST_DECKS,
+  THEATRE_TEST_DECKS,
+  UN_DEAD_TEST_DECKS,
+} from "@/game/cards/decks/testDecks";
 import { PRECONSTRUCTED_DECKS, type DeckList } from "@/game/cards/decks/preconstructed";
 
 /**
@@ -125,6 +130,11 @@ const DECK_META: Record<string, DeckMeta> = {
     difficulty: 4,
     mechanics: ["Retour en main et rejouer", "Arrivées en jeu répétées", "Le Théâtre Englouti"],
   },
+  "la-veillee-des-disparus": {
+    style: "Attrition / Un Dead",
+    difficulty: 5,
+    mechanics: ["Défausse volontaire", "Récupération au Cimetière", "Pression par attrition"],
+  },
 };
 
 const FALLBACK_META: DeckMeta = { style: "Polyvalent", difficulty: 3, mechanics: [] };
@@ -146,7 +156,12 @@ export const BORROWED_DECKS: readonly CatalogDeck[] = PRECONSTRUCTED_DECKS.map(w
  * riches et plus marquées que les decks d'emprunt, ce qui donne au jeton sa
  * valeur.
  */
-export const PRECON_DECKS: readonly CatalogDeck[] = [...ARCHETYPE_DECKS, ...CRA_POISCAIL_TEST_DECKS, ...THEATRE_TEST_DECKS].map(withMeta);
+export const PRECON_DECKS: readonly CatalogDeck[] = [
+  ...ARCHETYPE_DECKS,
+  ...CRA_POISCAIL_TEST_DECKS,
+  ...THEATRE_TEST_DECKS,
+  ...UN_DEAD_TEST_DECKS,
+].map(withMeta);
 
 /** Tous les decks fournis par le jeu, emprunt et préconstruits confondus. */
 export const CATALOG_DECKS: readonly CatalogDeck[] = [...BORROWED_DECKS, ...PRECON_DECKS];

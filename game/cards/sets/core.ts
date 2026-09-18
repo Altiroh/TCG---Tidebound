@@ -3916,13 +3916,19 @@ export const CORE_SET: CardDefinition[] = [
   // au Cimetière — défausse volontaire, récursion filtrée, attrition — et qui
   // convertit chaque perte en pression sur le Navire adverse.
   //
-  // Sous-type et non archétype, comme Marionnette et Volatile : les seuils
-  // Cra-Poiscail (`countArchetypeUnits`) n'ont rien à voir ici.
+  // Sous-type ET archétype (décision du 18/09/2026). Le premier jet n'avait
+  // posé que le sous-type, en craignant que l'archétype ne fasse compter ces
+  // cartes dans les seuils Cra-Poiscail : c'était faux. `countArchetypeUnits`
+  // prend l'archétype EN PARAMÈTRE, et `conditionControlledArchetypeAtLeast`
+  // nomme le sien — deux familles ne se mélangent jamais. Les Un Dead sont
+  // donc une famille de plein droit, comme les Cra-Poiscail : le sous-type
+  // porte le ciblage déjà écrit, l'archétype porte l'appartenance.
   {
     id: "ptit-bout",
     name: "P'tit Bout",
     type: "creature",
     subtype: UN_DEAD,
+    archetype: "un-dead",
     setCode: VEILLEE_DES_DISPARUS,
     cost: 1,
     attack: 1,
@@ -3943,6 +3949,7 @@ export const CORE_SET: CardDefinition[] = [
     name: "Cache-Cache",
     type: "creature",
     subtype: UN_DEAD,
+    archetype: "un-dead",
     setCode: VEILLEE_DES_DISPARUS,
     cost: 1,
     attack: 2,
@@ -3965,6 +3972,7 @@ export const CORE_SET: CardDefinition[] = [
     name: "Doudou",
     type: "equipement",
     subtype: UN_DEAD,
+    archetype: "un-dead",
     setCode: VEILLEE_DES_DISPARUS,
     cost: 1,
     health: 1,
@@ -3988,6 +3996,7 @@ export const CORE_SET: CardDefinition[] = [
     name: "Encore cinq minutes",
     type: "creature",
     subtype: UN_DEAD,
+    archetype: "un-dead",
     setCode: VEILLEE_DES_DISPARUS,
     cost: 2,
     attack: 2,
@@ -4003,6 +4012,7 @@ export const CORE_SET: CardDefinition[] = [
     name: "Le Goûter",
     type: "objet",
     subtype: UN_DEAD,
+    archetype: "un-dead",
     setCode: VEILLEE_DES_DISPARUS,
     cost: 2,
     text:
@@ -4027,6 +4037,7 @@ export const CORE_SET: CardDefinition[] = [
     name: "Papa est en mer",
     type: "marin",
     subtype: UN_DEAD,
+    archetype: "un-dead",
     setCode: VEILLEE_DES_DISPARUS,
     cost: 2,
     attack: 2,
@@ -4049,6 +4060,7 @@ export const CORE_SET: CardDefinition[] = [
     name: "Promis, j'attends",
     type: "creature",
     subtype: UN_DEAD,
+    archetype: "un-dead",
     setCode: VEILLEE_DES_DISPARUS,
     cost: 2,
     attack: 1,
@@ -4090,6 +4102,7 @@ export const CORE_SET: CardDefinition[] = [
     name: "La Petite Chanson",
     type: "objet",
     subtype: UN_DEAD,
+    archetype: "un-dead",
     setCode: VEILLEE_DES_DISPARUS,
     cost: 2,
     maxCopies: 2,
@@ -4107,6 +4120,7 @@ export const CORE_SET: CardDefinition[] = [
     name: "On rentre bientôt",
     type: "creature",
     subtype: UN_DEAD,
+    archetype: "un-dead",
     setCode: VEILLEE_DES_DISPARUS,
     cost: 3,
     attack: 3,
@@ -4142,6 +4156,7 @@ export const CORE_SET: CardDefinition[] = [
     name: "Maman revient",
     type: "marin",
     subtype: UN_DEAD,
+    archetype: "un-dead",
     setCode: VEILLEE_DES_DISPARUS,
     cost: 3,
     attack: 2,
@@ -4165,6 +4180,7 @@ export const CORE_SET: CardDefinition[] = [
     name: "Le Copain du dessous",
     type: "creature",
     subtype: UN_DEAD,
+    archetype: "un-dead",
     setCode: VEILLEE_DES_DISPARUS,
     cost: 3,
     attack: 3,
@@ -4183,6 +4199,7 @@ export const CORE_SET: CardDefinition[] = [
     name: "Tu m'avais promis",
     type: "marin",
     subtype: UN_DEAD,
+    archetype: "un-dead",
     setCode: VEILLEE_DES_DISPARUS,
     cost: 3,
     attack: 3,
@@ -4216,6 +4233,7 @@ export const CORE_SET: CardDefinition[] = [
     name: "La Marelle",
     type: "structure",
     subtype: UN_DEAD,
+    archetype: "un-dead",
     setCode: VEILLEE_DES_DISPARUS,
     cost: 3,
     health: 4,
@@ -4239,6 +4257,7 @@ export const CORE_SET: CardDefinition[] = [
     name: "Bonne nuit",
     type: "objet",
     subtype: UN_DEAD,
+    archetype: "un-dead",
     setCode: VEILLEE_DES_DISPARUS,
     cost: 3,
     maxCopies: 2,
@@ -4259,6 +4278,7 @@ export const CORE_SET: CardDefinition[] = [
     name: "Tout le monde à table",
     type: "structure",
     subtype: UN_DEAD,
+    archetype: "un-dead",
     setCode: VEILLEE_DES_DISPARUS,
     cost: 4,
     health: 5,
@@ -4285,6 +4305,7 @@ export const CORE_SET: CardDefinition[] = [
     name: "Tu viens jouer ?",
     type: "creature",
     subtype: UN_DEAD,
+    archetype: "un-dead",
     setCode: VEILLEE_DES_DISPARUS,
     cost: 4,
     attack: 4,
@@ -4322,6 +4343,7 @@ export const CORE_SET: CardDefinition[] = [
     name: "On avait dit tous ensemble",
     type: "creature",
     subtype: UN_DEAD,
+    archetype: "un-dead",
     setCode: VEILLEE_DES_DISPARUS,
     cost: 5,
     attack: 5,
@@ -4356,6 +4378,7 @@ export const CORE_SET: CardDefinition[] = [
     name: "Maman revient",
     type: "marin",
     subtype: UN_DEAD,
+    archetype: "un-dead",
     variant: "abyssale",
     setCode: VEILLEE_DES_DISPARUS,
     cost: 4,

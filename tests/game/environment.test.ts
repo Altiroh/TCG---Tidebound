@@ -349,7 +349,8 @@ describe("environnement - decks préconstruits", () => {
   });
 
   it("TOUTE liste proposée à la sélection est valide et connue du serveur — sinon l'écran offre un deck que la partie refusera", async () => {
-    const { PLAYABLE_DECKS, ARCHETYPE_DECKS, CRA_POISCAIL_TEST_DECKS, THEATRE_TEST_DECKS } = await import("@/game/cards/decks/testDecks");
+    const { PLAYABLE_DECKS, ARCHETYPE_DECKS, CRA_POISCAIL_TEST_DECKS, THEATRE_TEST_DECKS, UN_DEAD_TEST_DECKS } =
+      await import("@/game/cards/decks/testDecks");
     const { PRECONSTRUCTED_DECKS } = await import("@/game/cards/decks/preconstructed");
 
     for (const deck of PLAYABLE_DECKS) {
@@ -362,7 +363,13 @@ describe("environnement - decks préconstruits", () => {
 
     // Les collections sont disjointes et couvrent exactement `PLAYABLE_DECKS` :
     // un deck oublié dans l'une serait proposé sans être jouable, ou l'inverse.
-    const grouped = [...PRECONSTRUCTED_DECKS, ...ARCHETYPE_DECKS, ...CRA_POISCAIL_TEST_DECKS, ...THEATRE_TEST_DECKS];
+    const grouped = [
+      ...PRECONSTRUCTED_DECKS,
+      ...ARCHETYPE_DECKS,
+      ...CRA_POISCAIL_TEST_DECKS,
+      ...THEATRE_TEST_DECKS,
+      ...UN_DEAD_TEST_DECKS,
+    ];
     expect(grouped.map((d) => d.id).sort()).toEqual(PLAYABLE_DECKS.map((d) => d.id).sort());
     expect(new Set(grouped.map((d) => d.id)).size).toBe(grouped.length);
   });

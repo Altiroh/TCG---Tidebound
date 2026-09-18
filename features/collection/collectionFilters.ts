@@ -1,4 +1,4 @@
-import { CORE_SET, isAbyssalVariant, type CardDefinition, type CardType } from "@/game";
+import { ARCHETYPE_LABELS, CORE_SET, isAbyssalVariant, type CardDefinition, type CardType } from "@/game";
 import { normalizeSearch } from "@/features/collection/cardFilters";
 
 /**
@@ -56,14 +56,47 @@ function matchesOwnership(def: CardDefinition, ownership: OwnershipFilter, owned
 }
 
 /**
- * Recherche sur le nom ET le texte de règles : chercher « Garde » ou
+ * Termes de FAMILLE d'une carte : son sous-type et son archétype, sous les
+ * formes qu'un joueur peut taper.
+ *
+ * L'identifiant est en kebab-case (`un-dead`) ; on ajoute sa forme espacée
+ * (`un dead`), parce que c'est ainsi que la carte l'écrit dans son texte, et
+ * le libellé humain de l'archétype quand il en a un.
+ */
+function familyTerms(def: CardDefinition): string[] {
+  const terms: string[] = [];
+  for (const id of [def.subtype, def.archetype]) {
+    if (!id) continue;
+    terms.push(id, id.replace(/-/g, " "));
+  }
+  if (def.archetype) terms.push(ARCHETYPE_LABELS[def.archetype]);
+  return terms;
+}
+
+/**
+ * Recherche sur le nom, le texte de règles ET la famille.
+ *
+ * Le nom et le texte y étaient depuis le début : chercher « Garde » ou
  * « Sabordage » doit remonter les cartes qui en parlent, pas seulement
  * celles qui le portent dans leur nom.
+ *
+ * La FAMILLE a été ajoutée le 18/09/2026, après un cas qui ne laissait
+ * aucun doute : chercher « Un Dead » rendait 9 des 18 cartes de la famille —
+ * exactement celles dont le TEXTE écrit les mots (« choisissez une unité
+ * Un Dead… »). Les neuf autres en sont tout autant, mais ne se nomment
+ * jamais elles-mêmes. Pire, « Volatile » ne rendait RIEN : aucune des sept
+ * cartes du sous-type n'écrit le mot. Cra-Poiscail ne marchait que par
+ * accident, la famille étant dans le NOM des cartes.
+ *
+ * L'appartenance n'est donc pas « une donnée de moteur jamais montrée au
+ * joueur » : le texte des cartes la nomme, et la fiche détaillée l'affiche.
+ * C'est l'ARCHÉTYPE qui reste hors du cadre, pas ce qu'on peut y chercher.
  */
 function matchesSearch(def: CardDefinition, normalizedQuery: string): boolean {
   if (!normalizedQuery) return true;
   if (normalizeSearch(def.name).includes(normalizedQuery)) return true;
-  return def.text ? normalizeSearch(def.text).includes(normalizedQuery) : false;
+  if (def.text && normalizeSearch(def.text).includes(normalizedQuery)) return true;
+  return familyTerms(def).some((term) => normalizeSearch(term).includes(normalizedQuery));
 }
 
 /**
