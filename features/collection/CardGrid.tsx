@@ -60,6 +60,16 @@ const GridCell = memo(function GridCell({
         tideState="calme"
         widthClassName="w-full"
         scaleOnHover={false}
+        /*
+         * Pas de badges d'état hors partie. Ils décrivent une carte EN JEU
+         * (Inactive, Mal d'invocation, Garde, Durée…) et sont calculés ici à
+         * partir d'une Marée arbitraire — « calme » — donc ils ne racontent
+         * rien dans la Collection : une carte à Garde y portait le badge du
+         * plateau, comme si elle protégeait quelque chose. La fiche de carte
+         * et l'ouverture de booster les coupaient déjà ; cette grille, qui
+         * sert aussi l'Éditeur de deck, avait été oubliée.
+         */
+        showStatusBadges={false}
         liftOnHover
         onClick={() => onCardClick(def.id)}
         draggable={Boolean(onCardDragStart)}
