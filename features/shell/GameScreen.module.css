@@ -97,11 +97,22 @@
   min-width: clamp(150px, 18vw, 300px);
 }
 
-/* Téléphone en paysage : la recherche cède la place aux onglets plutôt que
-   de les pousser hors du bandeau (cf. ScreenShell.module.css). */
-@media (max-width: 930px) {
+/*
+ * Téléphone en paysage : la recherche cède la place aux onglets plutôt que
+ * de les pousser hors du bandeau (cf. ScreenShell.module.css).
+ *
+ * MÊME CONDITION que le bloc « téléphone en paysage » de la coquille, au
+ * mot près. Elle était restée à 930 px quand celui-là est passé à 1000 px
+ * et a gagné le critère de hauteur : entre les deux, la recherche gardait
+ * ses 150 px minimum alors que tout le reste du bandeau s'était resserré,
+ * et c'est ce qui restait du chevauchement sur les grands téléphones.
+ *
+ * Le plancher vaut 96 px, celui de `.searchBar` (ScreenShell) : un conteneur
+ * plus étroit que son contenu ne gagne rien — il déborde juste ailleurs.
+ */
+@media (max-width: 1000px), (max-height: 620px) {
   .headerSearch {
-    min-width: 90px;
+    min-width: 96px;
     max-width: 160px;
   }
 }

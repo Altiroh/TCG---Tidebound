@@ -835,7 +835,7 @@
  */
 @media (max-width: 1000px), (max-height: 620px) {
   .header {
-    gap: 8px;
+    gap: 6px;
     padding-inline: calc(10px + var(--tb-safe-left)) calc(10px + var(--tb-safe-right));
   }
 
@@ -878,6 +878,117 @@
   .searchBar {
     flex: 0 1 auto;
     min-width: 96px;
+  }
+
+  /*
+   * … et elle ne le POUVAIT pas. Un `<input>` porte une largeur
+   * intrinsèque — une vingtaine de caractères, 236 px mesurés ici — qui
+   * fait son minimum de CONTENU ; `min-width: 96px` posé sur la barre est
+   * un plancher, pas une autorisation de descendre, et `min-width: 0` sur
+   * le champ ne retire que le minimum AUTOMATIQUE. Seule une largeur
+   * explicite efface la largeur intrinsèque ; `flex: 1` la lui rend dès
+   * qu'il y a de la place, si bien que rien ne change à l'œil.
+   */
+  .searchInput {
+    width: 0;
+  }
+
+  /* `Ctrl K` sur un téléphone : 40 px pour une touche qui n'existe pas. */
+  .searchShortcut {
+    display: none;
+  }
+
+  /*
+   * LA ZONE DU COMPTE SE COMPRIME — c'est ce qui restait du chevauchement.
+   *
+   * Les colonnes donnent déjà aux onglets ce qu'ils demandent et au compte
+   * le reste (plus haut). Mais le compte ne SAIT pas rentrer dans ce
+   * reste : mesuré à 844 px avec les marges d'un iPhone, sa zone veut
+   * 448 px pour une colonne de 361, et comme elle est calée à droite
+   * (`justify-self: end`) les 87 px de trop repassent SOUS le dernier
+   * onglet. Ce n'était pas un manque de place, c'était un bloc qui refuse
+   * de céder : `min-content` y valait `max-content` du premier au dernier
+   * morceau.
+   *
+   * On ordonne donc ce qui cède, du plus dispensable au moins : l'écart
+   * entre les blocs, la jauge d'XP — un ornement, pas une information —,
+   * puis le pseudo, qui a une ellipse pour ça. Le niveau et les deux
+   * soldes ne cèdent jamais : ce sont des nombres, et un nombre tronqué
+   * est un faux nombre.
+   */
+  .account {
+    flex: 0 1 auto;
+    gap: 6px;
+    padding-right: 8px;
+  }
+
+  /* Sans ces deux-là, tout ce qui suit garde sa taille de contenu. */
+  .accountIdentity,
+  .accountLevelRow {
+    min-width: 0;
+  }
+
+  .accountLevel {
+    flex: 0 0 auto;
+  }
+
+  /* La jauge peut fondre jusqu'à disparaître : son `overflow: hidden` la
+     laisse descendre à zéro, et un trait de 8 px reste un trait. */
+  .progressionTrack {
+    flex: 1 1 auto;
+    width: clamp(24px, 3.4vw, 48px);
+  }
+
+  /* Un pseudo long ne prend plus la place des soldes ; l'ellipse dit le reste. */
+  .accountName {
+    max-width: clamp(44px, 7vw, 110px);
+  }
+
+  .accountWallet {
+    flex: 0 0 auto;
+    gap: 6px;
+    padding-left: 6px;
+  }
+
+  /*
+   * Les deux pièces passent de 22 à 18 px — la seule chose qui restait à
+   * prendre une fois le pseudo borné, et la dernière qui manquait pour
+   * tenir le pire des cas (pseudo long, cinq chiffres de Tides) sur un
+   * iPhone 11 Pro ou un 16 couchés. 18 px, c'est encore une pièce qu'on
+   * reconnaît, et c'est la proportion juste en face d'un onglet de
+   * 11,5 px.
+   */
+  .accountTides img,
+  .accountTokens img {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+/*
+ * TÉLÉPHONE ÉTROIT EN PAYSAGE — l'aveu qu'une ligne peut être pleine.
+ *
+ * Sous ~780 px, tout comprimer ne suffit plus : un iPhone 8 couché offre
+ * 736 px, dont l'encoche et les coins arrondis retirent ~90, et les cinq
+ * onglets en réclament 329 à eux seuls. La zone du compte, même réduite à
+ * son minimum, ne rentre plus — et ce qui ne rentre pas repasse sous le
+ * dernier onglet.
+ *
+ * Alors on CHOISIT ce qui part, au lieu de laisser le débordement choisir.
+ * Le pseudo, le niveau et la jauge d'XP quittent le bandeau : ils sont à
+ * un geste de là, dans le carnet de bord qu'ouvre l'avatar, et aucun des
+ * trois ne se consulte en cours de route. Restent l'avatar — la porte du
+ * profil, et la pastille des récompenses avec lui — et les deux soldes,
+ * qui se lisent AVANT d'acheter et n'ont pas d'autre endroit où se voir.
+ *
+ * Seulement là où le bandeau porte aussi les onglets : sur un écran en
+ * `nav="minimal"` (Jouer, Market) la ligne est presque vide, et retirer un
+ * pseudo qui tient largement serait une perte sans contrepartie.
+ */
+@media (max-width: 780px) {
+  .header[data-nav="collection"] .accountIdentity,
+  .header[data-nav="home"] .accountIdentity {
+    display: none;
   }
 }
 
