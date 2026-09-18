@@ -33,7 +33,17 @@
   grid-template-columns: clamp(206px, 16vw, 268px) minmax(0, 1fr);
   gap: clamp(10px, 1.1vw, 20px);
   min-height: 0;
-  padding: clamp(10px, 1.4vh, 22px) clamp(12px, 1.8vw, 34px) clamp(12px, 1.8vh, 26px);
+  /*
+   * Zone sûre sur les côtés et en bas : cet écran est plein cadre — il
+   * n'est PAS monté sur `GameScreen .content`, qui porte déjà ces
+   * décalages — et en paysage sur un iPhone, les deux colonnes de cartes
+   * des bords passaient sous les coins arrondis et l'encoche.
+   */
+  padding:
+    clamp(10px, 1.4vh, 22px)
+    calc(clamp(12px, 1.8vw, 34px) + var(--tb-safe-right))
+    calc(clamp(12px, 1.8vh, 26px) + var(--tb-safe-bottom))
+    calc(clamp(12px, 1.8vw, 34px) + var(--tb-safe-left));
 }
 
 
@@ -469,10 +479,10 @@
     z-index: 5;
     top: clamp(6px, 1vh, 12px);
     bottom: clamp(8px, 1.2vh, 14px);
-    left: clamp(8px, 1.4vw, 16px);
+    left: calc(clamp(8px, 1.4vw, 16px) + var(--tb-safe-left));
     width: min(270px, 72vw);
     background: var(--panel-solid);
-    transform: translateX(calc(-100% - clamp(8px, 1.4vw, 16px)));
+    transform: translateX(calc(-100% - clamp(8px, 1.4vw, 16px) - var(--tb-safe-left)));
     transition: transform 180ms cubic-bezier(0.2, 0.8, 0.3, 1);
   }
 
@@ -500,7 +510,11 @@
 @media (max-height: 560px), (max-width: 900px) {
   .workspace {
     grid-template-columns: minmax(0, 1fr);
-    padding: clamp(6px, 1vh, 12px) clamp(8px, 1.4vw, 16px) clamp(8px, 1.2vh, 14px);
+    padding:
+      clamp(6px, 1vh, 12px)
+      calc(clamp(8px, 1.4vw, 16px) + var(--tb-safe-right))
+      calc(clamp(8px, 1.2vh, 14px) + var(--tb-safe-bottom))
+      calc(clamp(8px, 1.4vw, 16px) + var(--tb-safe-left));
   }
 
   .sidebar.sidebar {
@@ -508,10 +522,10 @@
     z-index: 5;
     top: clamp(6px, 1vh, 12px);
     bottom: clamp(8px, 1.2vh, 14px);
-    left: clamp(8px, 1.4vw, 16px);
+    left: calc(clamp(8px, 1.4vw, 16px) + var(--tb-safe-left));
     width: min(270px, 72vw);
     background: var(--panel-solid);
-    transform: translateX(calc(-100% - clamp(8px, 1.4vw, 16px)));
+    transform: translateX(calc(-100% - clamp(8px, 1.4vw, 16px) - var(--tb-safe-left)));
     transition: transform 180ms cubic-bezier(0.2, 0.8, 0.3, 1);
   }
 
@@ -541,6 +555,65 @@
     grid-template-columns: repeat(auto-fill, minmax(clamp(126px, 15.5vw, 168px), 1fr));
     column-gap: 10px;
     row-gap: 14px;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+ * ÉCRAN COURT — la grille se mesure en HAUTEUR, pas en largeur.
+ * ══════════════════════════════════════════════════════════════
+ *
+ * Sur un téléphone couché, ce n'est pas la largeur qui manque : mesuré à
+ * 844 × 390, la grille montrait 1,2 rangée — cinq cartes et le bandeau
+ * d'une sixième. On ne compare rien avec une rangée, et chaque coup d'œil
+ * demandait un défilement.
+ *
+ * La largeur d'une colonne se déduit donc de la hauteur VISIBLE de la
+ * grille, pour que deux rangées y tiennent ; elle suit l'écran, ~86 px sur
+ * un iPhone 14 couché et ~99 px sur un Pro Max. À cette taille la carte
+ * n'est plus lisible — elle ne l'était déjà pas à 150 px — mais elle est
+ * RECONNAISSABLE, et c'est ce que la Collection demande : on y cherche une
+ * carte des yeux, on l'ouvre pour la lire.
+ *
+ * Bloc à part du précédent, qui se déclenche aussi sur une fenêtre
+ * ÉTROITE : là, la hauteur ne manque pas, et mesurer les cartes dessus les
+ * rendrait énormes.
+ *
+ * Et réservé à la COLLECTION. L'Éditeur de deck (`data-columns="3"`) monte
+ * la même grille, mais chacune de ses cartes porte un compteur —
+ * « − 0/2 + » et la loupe — qui demande 119 px mesurés et n'a nulle part
+ * où se replier. Une planche-contact est faite pour être parcourue, un
+ * établi pour être manœuvré : les deux ne veulent pas la même carte.
+ */
+@media (max-height: 560px) {
+  /*
+   * Dix-huit pixels rendus à la grille, pris là où ils ne portaient rien :
+   * les bords du panneau, la barre d'outils, le creux du défilement. Sur
+   * 390 px de haut, le cadre en prenait 141 — plus du tiers de l'écran.
+   */
+  .workspace {
+    padding-top: 5px;
+    padding-bottom: calc(6px + var(--tb-safe-bottom));
+  }
+
+  .toolbar {
+    padding-top: 5px;
+    padding-bottom: 5px;
+  }
+
+  /*
+   * `size` et non `inline-size` : c'est la HAUTEUR qu'on interroge. La
+   * zone de défilement tient une rangée de grille, donc sa hauteur est
+   * déjà définie et le confinement qu'exige `container-type` ne lui coûte
+   * rien.
+   */
+  .gridScroll {
+    container-type: size;
+    padding: 8px 10px 10px;
+  }
+
+  .workspace:not([data-columns="3"]) .cardGrid {
+    grid-template-columns: repeat(auto-fill, minmax(clamp(72px, 33cqh, 140px), 1fr));
+    row-gap: 10px;
   }
 }
 
