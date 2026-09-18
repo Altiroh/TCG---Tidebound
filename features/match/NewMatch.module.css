@@ -338,7 +338,17 @@
 }
 
 /* ── Barre de lancement ─────────────────────────────────────── */
-.launch {
+/*
+ * Sélecteur DOUBLÉ : la barre porte aussi `game.panel`, dont le
+ * `position: relative` est de même spécificité et se trouve injecté après
+ * cette feuille — il l'emportait, et `sticky` n'a jamais pris. Sur un
+ * écran de bureau le parcours tient en entier, donc rien ne se voyait ;
+ * sur un téléphone couché, l'action primaire (« Lancer la partie »,
+ * « Deck du joueur 2 → ») se trouvait 130 px SOUS le bas de l'écran,
+ * derrière une tuile de deck pleine hauteur. Même piège, même remède
+ * qu'au tiroir de filtres de la Collection.
+ */
+.launch.launch {
   position: sticky;
   bottom: 0;
   z-index: 2;
@@ -363,3 +373,51 @@
 }
 
 .launchSummary strong { color: var(--ink-strong); font-weight: 600; }
+
+/* ══════════════════════════════════════════════════════════════
+ * ÉCRAN COURT — un téléphone couché, 336 px de zone défilante.
+ * ══════════════════════════════════════════════════════════════
+ *
+ * Ce parcours n'avait aucune bascule : mesuré à 844 × 390, l'étape du
+ * deck demandait 647 px pour 336 disponibles, et une seule tuile de deck
+ * — 313 px de haut à elle seule — remplissait la vue. On choisissait un
+ * deck sans jamais voir le suivant ni l'action qui suit.
+ *
+ * Rien n'est retiré : la plaque du Navire perd ce qu'elle avait de
+ * décoratif, la description passe de trois lignes à deux, et la tuile
+ * rentre dans la moitié de l'écran — de quoi en voir deux et le bord du
+ * troisième, ce qu'un carrousel demande pour se comprendre.
+ */
+@media (max-height: 560px) {
+  /*
+   * Les trois modes sur UNE rangée. À `minmax(240px, 1fr)` un écran
+   * couché n'en tenait que deux : le troisième — « Contre un bot »,
+   * le seul mode jouable seul — tombait sous la ligne de flottaison.
+   */
+  .modes {
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 10px;
+  }
+
+  .mode {
+    min-height: clamp(118px, 34vh, 250px);
+    padding: clamp(12px, 1.8vw, 26px);
+  }
+
+  /* Doublé, comme la barre : `ArtPlate .plate` porte la même
+     `min-height` avec la même spécificité, et passe après. */
+  .deckPlate.deckPlate {
+    min-height: clamp(96px, 26vh, 168px);
+  }
+
+  .carouselTrack {
+    grid-auto-columns: clamp(186px, 30vw, 260px);
+    padding: 6px 4px 10px;
+  }
+
+  /* Deux lignes de description : la troisième coûtait 17 px sur 336. */
+  .deckText {
+    min-height: calc(1.4em * 2);
+    -webkit-line-clamp: 2;
+  }
+}

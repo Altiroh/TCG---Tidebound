@@ -49,9 +49,30 @@
   width: 100%;
   height: 100dvh;
   max-height: 100dvh;
-  padding: clamp(10px, 2.5dvh, 32px) clamp(12px, 4vw, 32px);
+  /* Zone sûre comprise : les boutons ne passent pas sous la barre de
+     gestes, ni le cadre sous les coins arrondis en paysage. */
+  padding:
+    calc(clamp(10px, 2.5dvh, 32px) + var(--tb-safe-top))
+    calc(clamp(12px, 4vw, 32px) + var(--tb-safe-right))
+    calc(clamp(10px, 2.5dvh, 32px) + var(--tb-safe-bottom))
+    calc(clamp(12px, 4vw, 32px) + var(--tb-safe-left));
   overflow: hidden;
   text-align: center;
+
+  /*
+   * LE BUDGET DE HAUTEUR, en un seul endroit. Le cadre le lisait en style
+   * en ligne (`MatchEndScreen.tsx`), donc rien ne pouvait le corriger par
+   * requête média — un style en ligne l'emporte sur toute classe.
+   */
+  --fin-cadre: min(60vw, 340px, 46dvh);
+  --fin-bandeau: min(70vw, 480px, 130dvh);
+}
+
+/* Le cadre du Navire : sa largeur vient du budget, ses proportions du
+   fichier d'image (elles diffèrent entre victoire et défaite, d'où le
+   style en ligne qui reste). */
+.frame {
+  width: var(--fin-cadre);
 }
 
 /*
@@ -108,7 +129,7 @@
   width: 100%;
   /* Borné en hauteur aussi : sur un écran bas, le bandeau mangeait la place
      du cadre et des boutons, et l'écran finissait par défiler. */
-  max-width: min(70vw, 480px, 130dvh);
+  max-width: var(--fin-bandeau);
 }
 .bannerIn {
   display: block;
@@ -340,4 +361,29 @@
   outline: none;
   background: rgba(233, 226, 209, 0.07);
   color: #e9e2d1;
+}
+
+/* ══════════════════════════════════════════════════════════════
+ * TÉLÉPHONE COUCHÉ — le budget ne tenait pas sa promesse.
+ * ══════════════════════════════════════════════════════════════
+ *
+ * Cet écran NE DÉFILE PAS et tout y est censé être borné pour tenir dans
+ * la fenêtre. Mesuré à 844 × 390 : 440 px de contenu pour 390 — le
+ * bandeau débordait de 14 px par le haut et les deux boutons, « Retour au
+ * menu » et « Nouvelle partie », étaient coupés en deux par le bas. Un
+ * écran de fin dont on ne peut pas sortir.
+ *
+ * Les deux plafonds en `dvh` existaient mais ne mordaient pas : 130dvh
+ * pour le bandeau et 46dvh pour le cadre, soit 507 et 179 px sur 390 de
+ * haut — le premier laissait passer le plafond fixe de 480 px, le second
+ * prenait à lui seul plus de la moitié de l'écran. Ramenés à 88 et 38
+ * dvh, les deux images et les boutons tiennent avec 13 px de marge, zone
+ * sûre comprise. Au-dessus de 560 px de haut rien ne change : les
+ * plafonds fixes y mordent les premiers.
+ */
+@media (max-height: 560px) {
+  .screen {
+    --fin-cadre: min(60vw, 340px, 38dvh);
+    --fin-bandeau: min(70vw, 480px, 88dvh);
+  }
 }

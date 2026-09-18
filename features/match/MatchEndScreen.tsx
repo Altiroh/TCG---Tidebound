@@ -148,13 +148,13 @@ export function MatchEndScreen({ outcome, player, onExit, exitHref, matchId }: M
               {/* Les rayons de gloire n'ont pas leur place dans une défaite. */}
               {!isDefeat && <span className={styles.rays} aria-hidden />}
               <div
-                className={`relative ${styles.frameIn}`}
-                style={{
-                  // Borné par la largeur ET la hauteur disponible : l'écran
-                  // de fin ne défile pas, tout doit tenir dans la fenêtre.
-                  width: "min(60vw, 340px, 46dvh)",
-                  aspectRatio: frameAspectRatio,
-                }}
+                className={`relative ${styles.frameIn} ${styles.frame}`}
+                // La LARGEUR vient du budget de hauteur de l'écran
+                // (`--fin-cadre`, dans la feuille) : l'écran de fin ne
+                // défile pas, tout doit tenir dans la fenêtre, et un style
+                // en ligne ne se corrige pas par requête média. Seules les
+                // proportions restent ici : elles changent avec l'issue.
+                style={{ aspectRatio: frameAspectRatio }}
               >
                 <div
                   className="absolute overflow-hidden"

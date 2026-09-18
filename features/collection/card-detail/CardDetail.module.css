@@ -32,7 +32,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: clamp(8px, 2vmin, 40px);
+  /* Zone sûre comprise : à 8 px de marge sur un téléphone couché, la
+     fiche mordait sur la barre de gestes et les coins arrondis. */
+  padding:
+    calc(clamp(8px, 2vmin, 40px) + var(--tb-safe-top))
+    calc(clamp(8px, 2vmin, 40px) + var(--tb-safe-right))
+    calc(clamp(8px, 2vmin, 40px) + var(--tb-safe-bottom))
+    calc(clamp(8px, 2vmin, 40px) + var(--tb-safe-left));
   /* Voile bleu nuit plutôt qu'un aplat noir : les cartes du catalogue
      restent devinables, ce qui garde le contexte de navigation. */
   background: radial-gradient(120% 90% at 50% 40%, rgba(6, 18, 32, 0.66), rgba(3, 9, 18, 0.86));
