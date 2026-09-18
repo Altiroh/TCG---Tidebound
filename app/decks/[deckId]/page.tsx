@@ -11,7 +11,7 @@ async function loadDeck(deckId: string) {
 
   const { data: deck } = await supabase
     .from("player_decks")
-    .select("id, name, ship_id, art_card_id")
+    .select("id, name, ship_id, art_card_id, description")
     .eq("id", deckId)
     // Un deck à la corbeille ne s'édite pas : il faut d'abord le restaurer.
     .is("deleted_at", null)
@@ -22,7 +22,7 @@ async function loadDeck(deckId: string) {
 
   const cardIds = (cards ?? []).flatMap((row) => Array.from({ length: row.quantity }, () => row.card_id));
 
-  return { id: deck.id, name: deck.name, shipId: deck.ship_id, cardIds, artCardId: deck.art_card_id };
+  return { id: deck.id, name: deck.name, shipId: deck.ship_id, cardIds, artCardId: deck.art_card_id, description: deck.description ?? "" };
 }
 
 export default async function DeckDetailPage({ params }: { params: { deckId: string } }) {

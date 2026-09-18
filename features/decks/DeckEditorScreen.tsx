@@ -33,8 +33,14 @@ function handleCardDragStart(def: CardDefinition, event: React.DragEvent<HTMLBut
 }
 
 /** Sérialisation grossière pour détecter des modifications non sauvegardées (nom + Navire + multiset de cartes, ordre des exemplaires sans importance). */
-function serializeState(name: string, shipId: string, cardIds: string[], artCardId: string | null): string {
-  return `${name}|${shipId}|${artCardId ?? ""}|${[...cardIds].sort().join(",")}`;
+function serializeState(
+  name: string,
+  shipId: string,
+  cardIds: string[],
+  artCardId: string | null,
+  description: string
+): string {
+  return `${name}|${shipId}|${artCardId ?? ""}|${description}|${[...cardIds].sort().join(",")}`;
 }
 
 export interface DeckEditorInitialData {
@@ -44,6 +50,8 @@ export interface DeckEditorInitialData {
   cardIds: string[];
   /** Illustration choisie, ou `null` : la règle par défaut reprend alors la main. */
   artCardId: string | null;
+  /** Résumé libre affiché sur la fiche du deck ; vide = phrase générique. */
+  description?: string;
 }
 
 interface DeckEditorScreenProps {
@@ -88,8 +96,11 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
   const [cardIds, setCardIds] = useState<string[]>(initialDeck?.cardIds ?? []);
   /** Illustration choisie, ou `null` : la carte la plus chère du deck sert alors. */
   const [artCardId, setArtCardId] = useState<string | null>(initialDeck?.artCardId ?? null);
+  // Vide par défaut : la fiche retombe alors sur sa phrase générique, et le
+  // reste de ce qu'elle montre se déduit des cartes.
+  const [description, setDescription] = useState(initialDeck?.description ?? "");
   const [artPickerOpen, setArtPickerOpen] = useState(false);
-  const [savedSnapshot, setSavedSnapshot] = useState(() => serializeState(name, shipId, cardIds, artCardId));
+  const [savedSnapshot, setSavedSnapshot] = useState(() => serializeState(name, shipId, cardIds, artCardId, description));
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savedFlash, setSavedFlash] = useState(false);
@@ -107,7 +118,7 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
   const initialFilters = useMemo(() => (isSignedIn ? { ownership: "owned" as const } : {}), [isSignedIn]);
   const cardBrowser = useCardBrowser({ owned, initialFilters });
 
-  const isDirty = serializeState(name, shipId, cardIds, artCardId) !== savedSnapshot;
+  const isDirty = serializeState(name, shipId, cardIds, artCardId, description) !== savedSnapshot;
   const issue = useMemo(() => deckRuleIssue(cardIds, shipId, name), [cardIds, shipId, name]);
   /** Un deck encore hors des règles : sauvegardable, mais comme BROUILLON — c'est ce que le dialogue de sortie propose. */
   const isDraft = issue !== null;
@@ -149,13 +160,13 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
   async function handleSave(): Promise<boolean> {
     setIsSaving(true);
     setSaveError(null);
-    const result = await saveDeck({ id: deckId, name, shipId, cardIds, artCardId });
+    const result = await saveDeck({ id: deckId, name, shipId, cardIds, artCardId, description });
     setIsSaving(false);
     if (!result.ok || !result.id) {
       setSaveError(result.error ?? "Échec de la sauvegarde.");
       return false;
     }
-    setSavedSnapshot(serializeState(name, shipId, cardIds, artCardId));
+    setSavedSnapshot(serializeState(name, shipId, cardIds, artCardId, description));
     if (!deckId) {
       setDeckId(result.id);
       router.replace(`/decks/${result.id}`);
@@ -172,7 +183,8 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
     setShipId(DEFAULT_SHIP_ID);
     setCardIds([]);
     setArtCardId(null);
-    setSavedSnapshot(serializeState("Nouveau deck", DEFAULT_SHIP_ID, [], null));
+    setDescription("");
+    setSavedSnapshot(serializeState("Nouveau deck", DEFAULT_SHIP_ID, [], null, ""));
     router.push("/decks/nouveau");
   }
 
@@ -392,6 +404,8 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
               <DeckNamePlate
                 name={name}
                 onNameChange={setName}
+                description={description}
+                onDescriptionChange={setDescription}
                 shipId={shipId}
                 cardIds={cardIds}
                 artCardId={artCardId}

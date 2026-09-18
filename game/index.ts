@@ -90,6 +90,10 @@ export {
   isPreconDeckId,
 } from "@/game/cards/decks/catalog";
 export type { CatalogDeck, DeckDifficulty } from "@/game/cards/decks/catalog";
+/* Le profil DÉDUIT d une liste de cartes — ce qu une fiche de deck affiche
+   quand la liste n a pas de métadonnées écrites (deck monté par le joueur). */
+export { deckProfile } from "@/game/cards/decks/deckProfile";
+export type { DeckProfile } from "@/game/cards/decks/deckProfile";
 export { deckOwnership, ownershipLabel } from "@/game/cards/decks/ownership";
 export type { DeckCardOwnership, DeckOwnership } from "@/game/cards/decks/ownership";
 

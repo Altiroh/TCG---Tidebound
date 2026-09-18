@@ -6,6 +6,7 @@ import {
   PRECON_DECKS,
   RULES,
   validateDeckList,
+  deckProfile,
   type BotDifficulty,
   type DeckList,
 } from "@/game";
@@ -79,11 +80,24 @@ interface DeckTabDef {
   issueFor: (deck: DeckList) => string | null;
 }
 
-/** Style, difficulté et mécaniques des listes du jeu — un deck personnel n'en a pas. */
+/** Style, difficulté et mécaniques ÉCRITS — les listes du jeu en ont, un deck personnel non. */
 function catalogMeta(deck: DeckList): { style: string; difficulty: number; mechanics: readonly string[] } | null {
   const meta = deck as Partial<{ style: string; difficulty: number; mechanics: string[] }>;
   if (typeof meta.style !== "string" || typeof meta.difficulty !== "number") return null;
   return { style: meta.style, difficulty: meta.difficulty, mechanics: meta.mechanics ?? [] };
+}
+
+/**
+ * Ce que la fiche affiche, pour N'IMPORTE QUEL deck : les métadonnées
+ * écrites si la liste vient du jeu, sinon celles que `deckProfile` lit dans
+ * la composition. Un deck monté par le joueur n'avait rien à montrer —
+ * même cadre, mêmes cases, mais toutes vides.
+ *
+ * L'ordre compte : une liste du catalogue garde SON texte. Il dit une
+ * intention de design que l'arithmétique ne retrouvera jamais.
+ */
+function deckMeta(deck: DeckList): { style: string; difficulty: number; mechanics: readonly string[] } | null {
+  return catalogMeta(deck) ?? deckProfile(deck.cardIds);
 }
 
 /**
@@ -401,7 +415,7 @@ export function NewMatchScreen({
                       {activeTab.decks.map((deck) => {
                         const issue = activeTab.issueFor(deck);
                         const selected = current?.id === deck.id;
-                        const meta = catalogMeta(deck);
+                        const meta = deckMeta(deck);
                         const art = nameplateArtUrl(deck.cardIds, deck.shipId);
                         return (
                           <li key={deck.id}>
@@ -618,7 +632,7 @@ function DeckSheet({ deck, family, issue }: { deck: DeckList | null; family: str
     );
   }
 
-  const meta = catalogMeta(deck);
+  const meta = deckMeta(deck);
   const art = nameplateArtUrl(deck.cardIds, deck.shipId);
   const size = deck.cardIds.length;
   const complete = size >= RULES.DECK_SIZE_MIN && size <= RULES.DECK_SIZE_MAX;
@@ -677,7 +691,12 @@ function DeckSheet({ deck, family, issue }: { deck: DeckList | null; family: str
 
         {meta && meta.mechanics.length > 0 && (
           <div className={styles.sheetTags}>
-            <p className={game.sectionTitle}>Archétypes</p>
+            {/* « Mécaniques » et non « Archétypes », malgré la maquette :
+                l Éditeur de deck appelle déjà cette donnée ainsi, et le moteur
+                réserve le mot « archétype » aux familles de cartes, qui ne
+                doivent JAMAIS être nommées au joueur (game/cards/archetypes.ts).
+                Deux noms pour la même chose sur deux écrans serait pire. */}
+            <p className={game.sectionTitle}>Mécaniques</p>
             <ul className={styles.tagList}>
               {meta.mechanics.map((mechanic) => (
                 <li key={mechanic} className={styles.tag}>

@@ -824,3 +824,35 @@
   color: var(--ink);
   text-align: left;
 }
+
+/*
+ * Le résumé libre du deck, sous les badges de la plaque : la seule chose
+ * qu'on demande d'écrire. Tout le reste de la fiche — rôle, difficulté,
+ * mécaniques — se déduit des cartes (`game/cards/decks/deckProfile.ts`),
+ * et une liste vide de description retombe sur sa phrase générique.
+ *
+ * Deux lignes, pas de redimensionnement : c'est la place qu'a la fiche à
+ * l'écran Jouer, autant l'écrire dans la même contrainte.
+ */
+.idDescription {
+  width: 100%;
+  margin-top: 6px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel-inset);
+  color: var(--ink);
+  font: inherit;
+  font-size: 11.5px;
+  line-height: 1.4;
+  resize: none;
+}
+
+.idDescription::placeholder {
+  color: var(--ink-faint);
+}
+
+.idDescription:focus-visible {
+  outline: 2px solid var(--cb-cyan);
+  outline-offset: 1px;
+}

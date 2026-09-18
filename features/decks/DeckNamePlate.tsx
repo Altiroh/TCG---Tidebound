@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { getCardDefinition, isAbyssalVariant } from "@/game";
+import { DECK_DESCRIPTION_MAX } from "@/features/decks/constants";
 import { nameplateArtUrl, plateArtUrl } from "@/features/decks/nameplateArt";
 import styles from "@/features/decks/DeckBuilder.module.css";
 import { playButtonClick } from "@/lib/sound";
@@ -9,6 +10,14 @@ import { playButtonClick } from "@/lib/sound";
 interface DeckNamePlateProps {
   name: string;
   onNameChange: (name: string) => void;
+  /**
+   * Résumé libre, affiché sur la fiche du deck à l'écran Jouer. Le RESTE de
+   * cette fiche — rôle, difficulté, mécaniques — se déduit des cartes
+   * (`deckProfile`) : c'est la seule chose qu'on demande d'écrire, et elle
+   * reste facultative.
+   */
+  description: string;
+  onDescriptionChange: (description: string) => void;
   shipId: string;
   /** Contenu du deck — sert d'illustration par défaut, et de choix possibles. */
   cardIds: readonly string[];
@@ -42,7 +51,16 @@ function deckVariants(cardIds: readonly string[]): { standard: boolean; abyssal:
  * passe le nom en édition (Entrée ou sortie du champ pour valider, Échap
  * pour annuler).
  */
-export function DeckNamePlate({ name, onNameChange, shipId, cardIds, artCardId, onPickArt }: DeckNamePlateProps) {
+export function DeckNamePlate({
+  name,
+  onNameChange,
+  description,
+  onDescriptionChange,
+  shipId,
+  cardIds,
+  artCardId,
+  onPickArt,
+}: DeckNamePlateProps) {
   const artUrl = artCardId ? plateArtUrl(artCardId, shipId) : nameplateArtUrl(cardIds, shipId);
   const variants = useMemo(() => deckVariants(cardIds), [cardIds]);
   const [editing, setEditing] = useState(false);
@@ -111,6 +129,18 @@ export function DeckNamePlate({ name, onNameChange, shipId, cardIds, artCardId, 
           {variants.standard && <span className={styles.badgeStandard}>Standard</span>}
           {variants.abyssal && <span className={styles.badgeAbyssal}>Abyssal</span>}
         </div>
+
+        {/* Une phrase, pas un journal : c'est ce que la fiche montre sous le
+            nom du deck, à côté de ce que les cartes disent d'elles-mêmes. */}
+        <textarea
+          className={styles.idDescription}
+          value={description}
+          onChange={(event) => onDescriptionChange(event.target.value)}
+          placeholder="Ce que ce deck cherche à faire (facultatif)"
+          aria-label="Description du deck"
+          maxLength={DECK_DESCRIPTION_MAX}
+          rows={2}
+        />
       </div>
     </div>
   );

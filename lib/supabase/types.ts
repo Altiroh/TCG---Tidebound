@@ -199,6 +199,8 @@ export interface Database {
           deleted_at: string | null;
           /** Deck présélectionné à l'écran Jouer — un seul par joueur (index partiel unique). */
           is_default: boolean;
+          /** Résumé libre écrit par le joueur (migration 20260928120000) ; `null` = repli générique. */
+          description: string | null;
         };
         Insert: {
           art_card_id?: string | null;
@@ -211,6 +213,7 @@ export interface Database {
           updated_at?: string;
           deleted_at?: string | null;
           is_default?: boolean;
+          description?: string | null;
         };
         Update: {
           art_card_id?: string | null;
@@ -223,6 +226,7 @@ export interface Database {
           updated_at?: string;
           deleted_at?: string | null;
           is_default?: boolean;
+          description?: string | null;
         };
         Relationships: [];
       };

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getCardDefinition, type DeckList } from "@/game";
 import { validateDeckList } from "@/game/rules/deckValidation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { DECK_DESCRIPTION_MAX } from "@/features/decks/constants";
 import { trashPurgeCutoff } from "@/features/decks/deckTrash";
 import { signatureCardId } from "@/features/decks/nameplateArt";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
@@ -158,7 +159,7 @@ export async function listPlayerDeckLists(): Promise<DeckList[]> {
     // Un deck à la corbeille ne se joue pas : il ne figure pas dans Jouer.
     const { data: decks, error: decksError } = await supabase
       .from("player_decks")
-      .select("id, name, ship_id, is_default")
+      .select("id, name, ship_id, is_default, description")
       .eq("user_id", userId)
       .is("deleted_at", null)
       .order("created_at", { ascending: true });
@@ -185,7 +186,9 @@ export async function listPlayerDeckLists(): Promise<DeckList[]> {
       id: deck.id,
       name: deck.name,
       shipId: deck.ship_id,
-      description: "Deck personnel",
+      // Ce que le joueur en a écrit, sinon la phrase générique : le reste
+      // de la fiche (rôle, difficulté, mécaniques) se déduit des cartes.
+      description: deck.description?.trim() || "Deck personnel",
       cardIds: cardsByDeck.get(deck.id) ?? [],
       isDefault: Boolean(deck.is_default),
     }));
@@ -208,6 +211,12 @@ export interface SaveDeckInput {
    * permet à un appelant qui ignore ce champ de ne pas l'effacer.
    */
   artCardId?: string | null;
+  /**
+   * Résumé libre, affiché sur la fiche de deck. Vide ou absent : la fiche
+   * retombe sur sa phrase générique. Le RESTE de la fiche — rôle,
+   * difficulté, mécaniques — se déduit des cartes et ne se saisit pas.
+   */
+  description?: string | null;
 }
 
 /**
@@ -305,13 +314,15 @@ async function saveDeckUnguarded(input: SaveDeckInput): Promise<DeckActionResult
    * Écartée, on retombe sur la règle par défaut.
    */
   const artCardId = input.artCardId && input.cardIds.includes(input.artCardId) ? input.artCardId : null;
+  // Bornée comme le nom : une fiche n'est pas un journal de bord.
+  const description = input.description?.trim().slice(0, DECK_DESCRIPTION_MAX) || null;
 
   let deckId = input.id;
 
   if (!deckId) {
     const { data, error } = await supabase
       .from("player_decks")
-      .insert({ user_id: userId, ship_id: input.shipId, name, is_valid: validation.ok, art_card_id: artCardId })
+      .insert({ user_id: userId, ship_id: input.shipId, name, is_valid: validation.ok, art_card_id: artCardId, description })
       .select("id")
       .single();
     if (error || !data) return { ok: false, error: error?.message ?? "Échec de la création du deck." };
@@ -319,7 +330,7 @@ async function saveDeckUnguarded(input: SaveDeckInput): Promise<DeckActionResult
   } else {
     const { error: updateError } = await supabase
       .from("player_decks")
-      .update({ name, ship_id: input.shipId, is_valid: validation.ok, art_card_id: artCardId })
+      .update({ name, ship_id: input.shipId, is_valid: validation.ok, art_card_id: artCardId, description })
       .eq("id", deckId);
     if (updateError) return { ok: false, error: updateError.message };
 
