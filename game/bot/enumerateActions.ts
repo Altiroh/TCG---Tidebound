@@ -5,6 +5,7 @@ import { graveyardChoicesForBreak } from "@/game/actions/breakObject";
 import type { PlayerAction } from "@/game/actions/types";
 import { eligibleChosenUnits } from "@/game/effects/chosenTargets";
 import { eligibleCandidatesFor } from "@/game/reactions/reactionWindow";
+import { shipAbilityView } from "@/game/state/shipAbility";
 import { isMainPhase, type GameState, type PlayerId } from "@/game/state/types";
 
 /**
@@ -122,6 +123,24 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
     }
     actions.push({ type: "passReaction", playerId });
     return actions;
+  }
+
+  // Capacité activable du NAVIRE (Le Goliath — Canon de proue). Ni les
+  // phases ni la fréquence ne sont décidées ici : c'est la capacité qui les
+  // déclare, et `shipAbilityView` — la même lecture que celle qui allume le
+  // panneau côté interface — dit si le geste est possible maintenant. Le
+  // bot ne peut donc pas proposer un canon que le joueur, lui, ne pourrait
+  // pas armer.
+  const shipAbility = shipAbilityView(state, playerId);
+  if (shipAbility?.canActivate) actions.push({ type: "activateShipAbility", playerId });
+  if (shipAbility?.canFire) {
+    // Sans cible : le Navire adverse, comme une attaque directe. Garde peut
+    // le refuser — `dispatch` écartera le candidat, et les cibles ci-dessous
+    // restent.
+    actions.push({ type: "fireShipAbility", playerId });
+    for (const target of opponent?.board ?? []) {
+      actions.push({ type: "fireShipAbility", playerId, targetInstanceId: target.instanceId });
+    }
   }
 
   if (isMainPhase(state.phase)) {

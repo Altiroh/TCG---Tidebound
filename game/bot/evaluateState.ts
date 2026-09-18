@@ -4,6 +4,7 @@ import { getCardDefinition } from "@/game/cards/sets/core";
 import { UNIT_CARD_TYPES, type CardInstance } from "@/game/cards/types";
 import { hasEffectiveKeyword } from "@/game/rules/validation";
 import { deraisonDebt } from "@/game/state/reason";
+import { isShipArmed, shipAbilityOf } from "@/game/state/shipAbility";
 import type { GameState, PlayerId, PlayerState } from "@/game/state/types";
 
 /**
@@ -87,7 +88,15 @@ function permanentValue(state: GameState, unit: CardInstance, controller: Player
   const def = getCardDefinition(unit.cardId);
   const isUnit = (UNIT_CARD_TYPES as readonly string[]).includes(def.type);
 
-  let value = stats.attack * 1.5 + stats.health * 1.2;
+  // Résistance RESTANTE, pas la Résistance imprimée : `stats.health` est un
+  // maximum, les dégâts déjà marqués n'en sortaient nulle part. Le bot ne
+  // voyait donc aucune différence entre une Créature intacte et la même à un
+  // point de la mort — et tout coup qui blesse sans tuer lui apparaissait
+  // comme strictement inutile. C'est précisément ce que fait le Canon de
+  // proue, mais ça valait déjà pour chaque attaque non létale.
+  const remaining = Math.max(0, stats.health - unit.damageMarked);
+
+  let value = stats.attack * 1.5 + remaining * 1.2;
   if (hasEffectiveKeyword(state, controller, unit, KEYWORD_GARDE)) value += GARDE_BONUS;
   if (isUnit && unit.summoningSick) value *= SUMMONING_SICK_FACTOR;
 
@@ -127,6 +136,41 @@ function unblockedThreat(state: GameState, attacker: PlayerState, defender: Play
 /** Une carte en main vaut d'autant plus qu'on a la Raison pour la jouer. */
 const CARD_IN_HAND = 0.9;
 
+/**
+ * CANON ARMÉ. Ce que vaut une capacité de Navire déjà payée mais pas encore
+ * tirée (Le Goliath — Canon de proue).
+ *
+ * Sans ce terme, armer serait un coup PUREMENT négatif pour une évaluation
+ * à un coup : 2 Raison en moins, rien en face. Les difficultés « facile » et
+ * « moyen », qui jugent le coup sur l'état qu'il produit immédiatement,
+ * n'armeraient jamais — seul « difficile » verrait le tir, au bout de sa
+ * recherche de tour.
+ *
+ * Le coefficient est délibérément BAS — en dessous de ce que le tir lui-même
+ * rapporte, même sur la plus petite cible (2 dégâts ≈ 2,4 points de
+ * Résistance, 6 points sur le Navire adverse). Un canon armé doit valoir
+ * assez pour qu'on l'arme, jamais assez pour qu'on préfère le garder chargé
+ * plutôt que de tirer — il se referme de toute façon en fin de tour.
+ */
+const ARMED_SHOT_VALUE = 1;
+
+/** Dégâts forfaitaires que le tir armé infligerait, d'après ses effets. `1` par défaut : un tir qui ne fait pas de dégâts vaut quand même mieux qu'un canon vide. */
+function armedShotDamage(player: PlayerState): number {
+  const shot = shipAbilityOf(player)?.armedShot;
+  if (!shot) return 0;
+  const damage = shot.effects.reduce((sum, effect) => {
+    if (effect.type !== "damage" || effect.amount?.kind !== "flat") return sum;
+    return sum + effect.amount.value;
+  }, 0);
+  return Math.max(1, damage);
+}
+
+/** Valeur du canon actuellement armé de ce joueur — nulle s'il ne l'est pas. */
+function armedShotValue(state: GameState, player: PlayerState): number {
+  if (!isShipArmed(player, state.turnNumber)) return 0;
+  return armedShotDamage(player) * ARMED_SHOT_VALUE;
+}
+
 function playerValue(state: GameState, player: PlayerState): number {
   const boardValue = player.board.reduce((sum, unit) => sum + permanentValue(state, unit, player), 0);
 
@@ -140,6 +184,7 @@ function playerValue(state: GameState, player: PlayerState): number {
     debt * ANCHOR_VITAL_VALUE * 1.2 +
     Math.max(0, player.reason) * 0.5 +
     boardValue +
+    armedShotValue(state, player) +
     player.hand.length * CARD_IN_HAND
   );
 }

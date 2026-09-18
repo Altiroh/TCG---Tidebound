@@ -18,9 +18,41 @@ import type { GameState } from "@/game/state/types";
  *
  * Chaque affrontement se joue dans les DEUX sens, pour que l'avantage du
  * premier joueur ne décide pas du résultat. Les seuils sont volontairement
- * larges : ces bots comportent du hasard, et ce test doit signaler une
- * échelle CASSÉE, pas osciller au gré d'un réglage.
+ * larges : ce test doit signaler une échelle CASSÉE, pas osciller au gré
+ * d'un réglage.
+ *
+ * LE HASARD DES BOTS EST FIXÉ ICI (18/09/2026). « facile » et « moyen »
+ * renoncent au meilleur coup 55 % et 25 % du temps via `Math.random()` :
+ * sur 20 parties, l'écart mesuré entre « difficile » et « moyen » (≈ 0,63)
+ * n'était qu'à une erreur-type du seuil, et le test tombait environ une
+ * fois sur six sans que rien n'ait changé. Un test qui échoue au hasard
+ * n'apprend rien à personne — et pire, on finit par le relancer au lieu de
+ * le lire. La graine rend chaque exécution identique : ce qui bouge alors,
+ * c'est le bot, pas le dé.
  */
+
+/**
+ * Générateur déterministe substitué à `Math.random()` le temps d'une
+ * mesure — même suite de "hésitations" à chaque exécution.
+ */
+function withSeededRandom<T>(seed: number, run: () => T): T {
+  const original = Math.random;
+  let state = seed >>> 0;
+  Math.random = () => {
+    // xorshift32 : court, sans dépendance, et largement assez uniforme pour
+    // tirer dans une liste de coups.
+    state ^= state << 13;
+    state ^= state >>> 17;
+    state ^= state << 5;
+    return ((state >>> 0) % 100000) / 100000;
+  };
+  try {
+    return run();
+  } finally {
+    Math.random = original;
+  }
+}
+
 function playMatch(a: BotDifficulty, b: BotDifficulty, seed: number): "A" | "B" | null {
   let state: GameState = createGameState({
     gameId: `ladder-${seed}`,
@@ -57,22 +89,22 @@ function winsOfStronger(strong: BotDifficulty, weak: BotDifficulty, seeds: numbe
 
 describe("échelle de difficulté du bot", () => {
   it("« moyen » bat « facile » — l'échelle était inversée", () => {
-    const { wins, played } = winsOfStronger("moyen", "facile", 8);
+    const { wins, played } = withSeededRandom(20260918, () => winsOfStronger("moyen", "facile", 8));
     expect(played).toBeGreaterThan(10);
     expect(wins / played).toBeGreaterThan(0.6);
   });
 
   it("« difficile » bat « moyen »", () => {
-    // L'écart mesuré est d'environ deux parties sur trois. Le seuil est
-    // placé nettement en-dessous, et sur assez de parties pour que le test
-    // signale une échelle cassée sans clignoter à chaque réglage.
-    const { wins, played } = winsOfStronger("difficile", "moyen", 10);
+    // Écart mesuré sur 80 parties (18/09/2026) : ≈ 0,63. Le seuil est placé
+    // sous cette valeur, avec assez de marge pour qu'un réglage mineur ne
+    // fasse pas tomber le test — mais pas au point d'accepter la parité.
+    const { wins, played } = withSeededRandom(20260918, () => winsOfStronger("difficile", "moyen", 10));
     expect(played).toBeGreaterThan(14);
     expect(wins / played).toBeGreaterThan(0.55);
   });
 
   it("« difficile » écrase « facile »", () => {
-    const { wins, played } = winsOfStronger("difficile", "facile", 6);
+    const { wins, played } = withSeededRandom(20260918, () => winsOfStronger("difficile", "facile", 6));
     expect(played).toBeGreaterThan(8);
     expect(wins / played).toBeGreaterThan(0.7);
   });
