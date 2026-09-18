@@ -283,9 +283,11 @@ const VEILLEE_DES_DISPARUS: readonly string[] = [
   "on-rentre-bientot",
   "maman-revient",
   "le-copain-du-dessous",
+  "tu-mavais-promis",
   "la-marelle",
   "bonne-nuit",
   "tout-le-monde-a-table",
+  "tu-viens-jouer",
   "on-avait-dit-tous-ensemble",
   "maman-revient-abyssal",
   // --- Compléments génériques : défausse et filtrage de main ---

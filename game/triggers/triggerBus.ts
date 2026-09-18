@@ -8,6 +8,7 @@ import { resolveEffectSequence } from "@/game/effects/resolveSequence";
 import type { GameEvent } from "@/game/events/types";
 import { applyCardPlayedAnomalies, applyPermanentLeftAnomalies } from "@/game/state/anomalies";
 import { chosenTargetRequirement, eligibleChosenUnits } from "@/game/effects/chosenTargets";
+import { graveyardChoicesFor } from "@/game/effects/graveyardChoices";
 import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
 import { consumeOpponentReactionRevealShield, payReasonCost } from "@/game/state/shields";
 import type { GameState, PlayerId, PlayerState } from "@/game/state/types";
@@ -719,6 +720,12 @@ export function collectReactionCandidates(
       );
       if (needsTarget && !hasEligibleTarget) continue;
 
+      // « choisissez une unité Un Dead dans votre Cimetière » : si rien n'y
+      // est éligible, la capacité se propose quand même — l'effet se résout
+      // alors sans rien récupérer (convention « si possible »), il n'y a
+      // simplement pas de question à poser.
+      const needsGraveyardTarget = graveyardChoicesFor(state, forPlayerId, item.effects).length > 0;
+
       seen.add(key);
       candidates.push({
         controllerId: forPlayerId,
@@ -728,6 +735,7 @@ export function collectReactionCandidates(
         abilityIndex: item.abilityIndex,
         reasonCost,
         needsTarget,
+        needsGraveyardTarget,
       });
     }
   }
@@ -746,7 +754,9 @@ export function resolveReaction(
   state: GameState,
   candidate: PendingReactionCandidate,
   targetInstanceId: string | undefined,
-  turnNumber: number
+  turnNumber: number,
+  /** Carte du Cimetière désignée par le joueur, quand la capacité en repêche une. */
+  chosenGraveyardInstanceId?: string
 ): { state: GameState; events: GameEvent[] } {
   const def = getCardDefinition(candidate.cardId);
   const ability = def.abilities?.[candidate.abilityIndex];
@@ -776,6 +786,7 @@ export function resolveReaction(
     controllerId: candidate.controllerId,
     sourceInstanceId: candidate.sourceInstanceId,
     chosenTargetInstanceId: targetInstanceId,
+    chosenGraveyardInstanceId,
     triggerSourceInstanceId: candidate.triggerSourceInstanceId,
     turnNumber,
   };

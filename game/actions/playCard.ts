@@ -1,5 +1,6 @@
 import { canBeEquipTarget, getCardDefinition, hasAnyValidEquipTarget } from "@/game/cards/sets/core";
 import { isPermanentCard, isVisibleDuringTide, UNIT_CARD_TYPES, type CardDefinition } from "@/game/cards/types";
+import { validateGraveyardChoice } from "@/game/effects/graveyardChoices";
 import type { EffectContext } from "@/game/effects/resolveEffect";
 import { discountApplies, resolveEffect } from "@/game/effects/resolveEffect";
 import { resolveEffectSequence } from "@/game/effects/resolveSequence";
@@ -165,6 +166,20 @@ function validate(state: GameState, action: PlayCardAction) {
     }
   }
 
+  // « À son arrivée, choisissez une unité dans votre Cimetière » : même
+  // convention « si possible » que le ciblage d'Équipement — la carte n'est
+  // réclamée que s'il en existe une éligible.
+  const graveyard = validateGraveyardChoice(state, action.playerId, def.onPlayEffects, action.chosenGraveyardInstanceId);
+  if (!graveyard.ok) {
+    return {
+      ok: false as const,
+      error:
+        graveyard.reason === "illegal"
+          ? "Cette carte du Cimetière n'est pas une cible valide."
+          : "Cette carte nécessite de choisir une carte dans le Cimetière.",
+    };
+  }
+
   return { ok: true as const };
 }
 
@@ -244,6 +259,7 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
     controllerId: player.id,
     sourceInstanceId: isUnitCard(def.type) || asPermanent ? instance.instanceId : undefined,
     chosenTargetInstanceId: action.targetInstanceId,
+    chosenGraveyardInstanceId: action.chosenGraveyardInstanceId,
     turnNumber: state.turnNumber,
   };
 

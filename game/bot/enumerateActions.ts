@@ -1,7 +1,11 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { UNIT_CARD_TYPES } from "@/game/cards/types";
 import type { CardDefinition, CardInstance } from "@/game/cards/types";
-import { graveyardChoicesForBreak } from "@/game/actions/breakObject";
+import {
+  graveyardChoicesForAbility,
+  graveyardChoicesForBreak,
+  graveyardChoicesForPlay,
+} from "@/game/effects/graveyardChoices";
 import type { PlayerAction } from "@/game/actions/types";
 import { eligibleChosenUnits } from "@/game/effects/chosenTargets";
 import { eligibleCandidatesFor } from "@/game/reactions/reactionWindow";
@@ -135,6 +139,18 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
             targetInstanceId: target.instanceId,
           });
         }
+      } else if (candidate.needsGraveyardTarget) {
+        // « choisissez une unité Un Dead dans votre Cimetière » : chaque
+        // carte éligible est un coup distinct, `evaluateState` tranche.
+        for (const card of graveyardChoicesForAbility(state, playerId, candidate.cardId, candidate.abilityIndex)) {
+          actions.push({
+            type: "activateReaction",
+            playerId,
+            sourceInstanceId: candidate.sourceInstanceId,
+            abilityIndex: candidate.abilityIndex,
+            chosenGraveyardInstanceId: card.instanceId,
+          });
+        }
       } else {
         actions.push({
           type: "activateReaction",
@@ -185,7 +201,21 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
           });
         }
       } else {
-        actions.push({ type: "playCard", playerId, instanceId: card.instanceId });
+        // « À son arrivée, choisissez une unité dans votre Cimetière » : la
+        // pose se décline par carte repêchable, comme le Bris.
+        const graveyard = graveyardChoicesForPlay(state, playerId, def);
+        if (graveyard.length > 0) {
+          for (const pick of graveyard) {
+            actions.push({
+              type: "playCard",
+              playerId,
+              instanceId: card.instanceId,
+              chosenGraveyardInstanceId: pick.instanceId,
+            });
+          }
+        } else {
+          actions.push({ type: "playCard", playerId, instanceId: card.instanceId });
+        }
       }
       // Bris depuis la main (coût réduit, sans Slot) : même variantes de cible/défausse qu'un Objet posé.
       if (def.type === "objet") actions.push(...breakVariants(state, playerId, card.instanceId, def, true));

@@ -138,7 +138,7 @@ export function hasGraveyardArrival(
   const since = condition.since === "thisTurn" ? state.turnNumber : state.turnNumber - 1;
   return (controller?.graveyardArrivals ?? []).some((entry) => {
     if (entry.turnNumber < since) return false;
-    if (condition.fromHandOnly && entry.fromZone !== "hand") return false;
+    if (condition.fromZone && entry.fromZone !== condition.fromZone) return false;
     if (condition.cardIds && !condition.cardIds.includes(entry.cardId)) return false;
     if (condition.subtype && getCardDefinition(entry.cardId).subtype !== condition.subtype) return false;
     return true;

@@ -1,7 +1,13 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { isEligibleChosenUnit } from "@/game/effects/chosenTargets";
+import { validateGraveyardChoice } from "@/game/effects/graveyardChoices";
 import { candidateKey, deriveReactionTriggerEvents, eligibleCandidatesFor, recomputePendingReaction } from "@/game/reactions/reactionWindow";
-import { processSummonEnterTriggers, resolveReaction } from "@/game/triggers/triggerBus";
+import {
+  processDiscardedFromHandTriggers,
+  processGraveyardRecoveryTriggers,
+  processSummonEnterTriggers,
+  resolveReaction,
+} from "@/game/triggers/triggerBus";
 import type { PendingReactionCandidate } from "@/game/triggers/types";
 import type { GameEvent } from "@/game/events/types";
 import { assertGameActive, assertPlayerInGame, combine } from "@/game/rules/validation";
@@ -43,6 +49,20 @@ function validate(
     if (!legal) return { ok: false, error: "Cette carte n'est pas une cible valide pour cette réaction." };
   }
 
+  // Même exigence pour le Cimetière, et le même message quand le joueur a
+  // désigné une carte que le filtre refuse.
+  const effects = getCardDefinition(candidate.cardId).abilities?.[candidate.abilityIndex]?.effects;
+  const graveyard = validateGraveyardChoice(state, action.playerId, effects, action.chosenGraveyardInstanceId);
+  if (!graveyard.ok) {
+    return {
+      ok: false,
+      error:
+        graveyard.reason === "illegal"
+          ? "Cette carte du Cimetière n'est pas une cible valide."
+          : "Cette réaction nécessite de choisir une carte dans le Cimetière.",
+    };
+  }
+
   return { ok: true, candidate };
 }
 
@@ -60,7 +80,13 @@ export function activateReaction(state: GameState, action: ActivateReactionActio
   if (!validation.ok) return { ok: false, error: validation.error };
 
   const pending = state.pendingReaction!;
-  const resolution = resolveReaction(state, validation.candidate, action.targetInstanceId, pending.turnNumber);
+  const resolution = resolveReaction(
+    state,
+    validation.candidate,
+    action.targetInstanceId,
+    pending.turnNumber,
+    action.chosenGraveyardInstanceId
+  );
   let nextState = resolution.state;
   const events: GameEvent[] = [...resolution.events];
 
@@ -70,6 +96,15 @@ export function activateReaction(state: GameState, action: ActivateReactionActio
   const arrivals = processSummonEnterTriggers(nextState, resolution.events, pending.turnNumber);
   nextState = arrivals.state;
   events.push(...arrivals.events);
+
+  // Et ce qu'elle vient de repêcher ou de défausser : une réaction n'est pas
+  // une voie à part, ses gestes réveillent les mêmes déclencheurs.
+  const recovered = processGraveyardRecoveryTriggers(nextState, resolution.events, pending.turnNumber);
+  nextState = recovered.state;
+  events.push(...recovered.events);
+  const discarded = processDiscardedFromHandTriggers(nextState, resolution.events, pending.turnNumber);
+  nextState = discarded.state;
+  events.push(...discarded.events);
 
   // « Choisissez : A ou B » : activer l'une des capacités d'un groupe écarte
   // ses sœurs pour le reste de la fenêtre.

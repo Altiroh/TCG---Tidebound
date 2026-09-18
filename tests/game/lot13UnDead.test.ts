@@ -21,8 +21,8 @@ function ok<T extends { ok: boolean }>(result: T): asserts result is T & { ok: t
 }
 
 describe("catalogue du Lot 13", () => {
-  it("apporte 15 cartes STANDARD et 1 variante Abyssale", () => {
-    expect(LOT_13).toHaveLength(16);
+  it("apporte les 17 cartes STANDARD et la variante Abyssale de la page du lot", () => {
+    expect(LOT_13).toHaveLength(18);
     expect(LOT_13.filter((def) => def.id.endsWith("-abyssal"))).toHaveLength(1);
   });
 
@@ -213,5 +213,94 @@ describe("Lot 13 — l'attrition", () => {
     expect(def.type).toBe("equipement");
     expect(def.equipTargetSubtype).toBe(UN_DEAD);
     expect((def.abilities ?? [])[0]?.triggeredBy?.equippedUnit).toBe(true);
+  });
+});
+
+describe("Lot 13 — choisir une carte du Cimetière ailleurs que sur un Bris", () => {
+  it("Tu viens jouer ? repêche à SON ARRIVÉE la carte que le joueur désigne", () => {
+    const tuViensJouer = instance("tu-viens-jouer", "p1");
+    const ptitBout = instance("ptit-bout", "p1");
+    // Hors filtre : coût 5, et pas dans le Cimetière du bon profil.
+    const trop = instance("on-avait-dit-tous-ensemble", "p1");
+    const state = testGameState({
+      players: [
+        testPlayer("p1", { hand: [tuViensJouer], graveyard: [ptitBout, trop], reason: 10 }),
+        testPlayer("p2", { shipId: "lerrant" }),
+      ],
+    });
+
+    // Sans désignation, la pose est refusée : il y avait une carte éligible,
+    // et le moteur ne choisit pas à la place du joueur.
+    const sansChoix = dispatch(state, { type: "playCard", playerId: "p1", instanceId: tuViensJouer.instanceId });
+    expect(sansChoix.ok).toBe(false);
+
+    // Une carte hors filtre est refusée elle aussi.
+    const horsFiltre = dispatch(state, {
+      type: "playCard",
+      playerId: "p1",
+      instanceId: tuViensJouer.instanceId,
+      chosenGraveyardInstanceId: trop.instanceId,
+    });
+    expect(horsFiltre.ok).toBe(false);
+
+    const joue = dispatch(state, {
+      type: "playCard",
+      playerId: "p1",
+      instanceId: tuViensJouer.instanceId,
+      chosenGraveyardInstanceId: ptitBout.instanceId,
+    });
+    ok(joue);
+    const p1 = joue.state.players.find((p) => p.id === "p1")!;
+    expect(p1.hand.map((c) => c.instanceId)).toContain(ptitBout.instanceId);
+    expect(p1.graveyard.map((c) => c.instanceId)).not.toContain(ptitBout.instanceId);
+  });
+
+  it("Tu viens jouer ? ne réduit le coût que si un Un Dead a été DÉTRUIT ce tour", () => {
+    function pose(arrivals: { cardId: string; turnNumber: number; fromZone: "hand" | "board" | "deck" }[]) {
+      const tuViensJouer = instance("tu-viens-jouer", "p1");
+      const ptitBout = instance("ptit-bout", "p1");
+      const state = testGameState({
+        players: [
+          testPlayer("p1", { hand: [tuViensJouer], graveyard: [ptitBout], graveyardArrivals: arrivals, reason: 10 }),
+          testPlayer("p2", { shipId: "lerrant" }),
+        ],
+      });
+      const joue = dispatch(state, {
+        type: "playCard",
+        playerId: "p1",
+        instanceId: tuViensJouer.instanceId,
+        chosenGraveyardInstanceId: ptitBout.instanceId,
+      });
+      ok(joue);
+      return joue.state.players.find((p) => p.id === "p1")!.costDiscounts ?? [];
+    }
+
+    // Défaussé ce tour : ce n'est pas « détruite », le texte ne paie pas.
+    expect(pose([{ cardId: "ptit-bout", turnNumber: 1, fromZone: "hand" }])).toHaveLength(0);
+    // Détruit ce tour : la réduction est posée.
+    expect(pose([{ cardId: "ptit-bout", turnNumber: 1, fromZone: "board" }])).toHaveLength(1);
+  });
+
+  it("une destruction s'inscrit au journal des arrivées, comme une défausse", () => {
+    // Sans ça, « une carte Un Dead a rejoint votre Cimetière ce tour » ne
+    // verrait que les défausses, et un Un Dead tué ne compterait pas.
+    const copain = instance("le-copain-du-dessous", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { board: [copain], reason: 10 }), testPlayer("p2", { shipId: "lerrant" })],
+    });
+    const saborde = dispatch(state, { type: "saborder", playerId: "p1", instanceId: copain.instanceId });
+    ok(saborde);
+    const arrivals = saborde.state.players.find((p) => p.id === "p1")!.graveyardArrivals ?? [];
+    expect(arrivals).toContainEqual({ cardId: "le-copain-du-dessous", turnNumber: 1, fromZone: "board" });
+  });
+
+  it("Tu m'avais promis se propose en réaction, et attend une carte du Cimetière", () => {
+    const def = getCardDefinition("tu-mavais-promis");
+    const ability = (def.abilities ?? [])[0]!;
+    // « vous pouvez » → fenêtre de réaction ; la désignation du Cimetière
+    // vient après, et `needsGraveyardTarget` la réclame.
+    expect(ability.mode).toBe("optional");
+    expect(ability.effects[0]?.type).toBe("moveGraveyardCardToHand");
+    expect(ability.effects[0]?.filter).toMatchObject({ subtype: UN_DEAD, maxCost: 1 });
   });
 });

@@ -137,8 +137,11 @@ export interface TriggeredAbility {
       subtype?: string;
       /** Ou précisément l'une de ces cartes. */
       cardIds?: string[];
-      /** Ne compte que ce qui vient de la MAIN, pas du plateau ni du deck. */
-      fromHandOnly?: boolean;
+      /**
+       * Restreint à une provenance : `"hand"` pour une défausse, `"board"`
+       * pour une destruction. Absent = d'où qu'elle vienne.
+       */
+      fromZone?: "hand" | "board" | "deck";
       since: "thisTurn" | "lastOwnTurn";
     };
   };

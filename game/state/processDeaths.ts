@@ -5,6 +5,7 @@ import type { TideStateName } from "@/game/environment/types";
 import type { GameEvent } from "@/game/events/types";
 import { processTrigger } from "@/game/triggers/triggerBus";
 import { reasonAfterLoss } from "@/game/state/reason";
+import { recordGraveyardArrival } from "@/game/state/discard";
 import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
 import type { GameState, PlayerState } from "@/game/state/types";
 
@@ -303,12 +304,19 @@ export function processDeaths(
           graveyardCause: scuttled ? ("scuttled" as const) : ("destroyed" as const),
         },
       ];
-      const updatedPlayer = {
-        ...player,
-        board,
-        graveyard,
-        reason: reasonAfterLoss(player, equipReasonLoss),
-      };
+      // Une destruction est une ARRIVÉE au Cimetière comme une autre : sans
+      // cette inscription, « une carte Un Dead a rejoint votre Cimetière ce
+      // tour » (Lot 13) ne verrait que les défausses, et un Un Dead tué au
+      // combat ne compterait pas — ce que son texte ne dit nulle part.
+      const updatedPlayer = recordGraveyardArrival(
+        {
+          ...player,
+          board,
+          graveyard,
+          reason: reasonAfterLoss(player, equipReasonLoss),
+        },
+        { cardId: unit.cardId, turnNumber, fromZone: "board" }
+      );
       next = {
         ...next,
         players: next.players.map((p) => (p.id === player.id ? updatedPlayer : p)) as [PlayerState, PlayerState],

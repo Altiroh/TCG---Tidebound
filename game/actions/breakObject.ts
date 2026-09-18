@@ -10,6 +10,7 @@ import {
   processTrigger,
 } from "@/game/triggers/triggerBus";
 import { isEligibleChosenUnit } from "@/game/effects/chosenTargets";
+import { validateGraveyardChoice } from "@/game/effects/graveyardChoices";
 import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
 import type { EffectDefinition } from "@/game/effects/types";
 import type { GameEvent } from "@/game/events/types";
@@ -27,21 +28,6 @@ import { isVisibleDuringTide, type CardDefinition, type CardInstance } from "@/g
 import { payReasonCost, reasonCostAfterShield } from "@/game/state/shields";
 import { getPlayer, type GameState, type PlayerId, type PlayerState } from "@/game/state/types";
 import type { ActionResult, BreakObjectAction } from "@/game/actions/types";
-
-/** Cartes de la défausse de `playerId` éligibles pour l'effet `moveGraveyardCardToHand` fourni (filtrées par type/coût max, cf. `EffectDefinition.filter`). */
-function eligibleGraveyardCards(state: GameState, playerId: string, effect: EffectDefinition) {
-  const player = getPlayer(state, playerId);
-  const allowedTypes = effect.filter?.cardTypes ?? (effect.filter?.cardType ? [effect.filter.cardType] : undefined);
-  return player.graveyard.filter((card) => {
-    const cardDef = getCardDefinition(card.cardId);
-    if (allowedTypes && !(allowedTypes as readonly string[]).includes(cardDef.type)) return false;
-    // « récupérez une Marionnette » (Rappel du Public) : le sous-type restreint
-    // le choix, exactement comme le type de carte.
-    if (effect.filter?.subtype && cardDef.subtype !== effect.filter.subtype) return false;
-    if (effect.filter?.maxCost !== undefined && cardDef.cost > effect.filter.maxCost) return false;
-    return true;
-  });
-}
 
 /**
  * Coût IMPRIMÉ du Bris depuis la main (Notion "Catalogue de cartes", règle
@@ -122,17 +108,6 @@ export function previewBreakReason(
   return { cost, reasonAfter: player.reason - cost, allowed };
 }
 
-/**
- * Cartes de défausse que le joueur devra choisir en brisant cet Objet (effet
- * `moveGraveyardCardToHand`, ex: Grappin de Récupération) — vide si l'Objet
- * n'a pas cet effet ou si rien n'est éligible (l'effet se résout alors sans
- * choix). Même filtre que la validation : l'UI propose exactement les cartes
- * que le moteur acceptera.
- */
-export function graveyardChoicesForBreak(state: GameState, playerId: PlayerId, def: CardDefinition) {
-  const effect = (def.onBreakEffects ?? []).find((e) => e.type === "moveGraveyardCardToHand");
-  return effect ? eligibleGraveyardCards(state, playerId, effect) : [];
-}
 
 function validate(state: GameState, action: BreakObjectAction) {
   const generalChecks = combine(
@@ -194,18 +169,15 @@ function validate(state: GameState, action: BreakObjectAction) {
   // "Si possible" (même convention que le ciblage d'Équipement, cf.
   // playCard.ts) : une carte de défausse n'est réclamée que s'il en existe
   // au moins une éligible — sinon l'effet se résout sans rien récupérer.
-  const graveyardEffect = (def.onBreakEffects ?? []).find((e) => e.type === "moveGraveyardCardToHand");
-  if (graveyardEffect) {
-    const eligible = eligibleGraveyardCards(state, action.playerId, graveyardEffect);
-    if (action.chosenGraveyardInstanceId) {
-      // Un choix explicite doit toujours être valide, même s'il n'était pas
-      // le SEUL disponible — indépendant du cas "aucune carte éligible" ci-dessous.
-      if (!eligible.some((c) => c.instanceId === action.chosenGraveyardInstanceId)) {
-        return { ok: false as const, error: "Cette carte du Cimetière n'est pas une cible valide." };
-      }
-    } else if (eligible.length > 0) {
-      return { ok: false as const, error: "Briser cet Objet nécessite de choisir une carte dans le Cimetière." };
-    }
+  const graveyard = validateGraveyardChoice(state, action.playerId, def.onBreakEffects, action.chosenGraveyardInstanceId);
+  if (!graveyard.ok) {
+    return {
+      ok: false as const,
+      error:
+        graveyard.reason === "illegal"
+          ? "Cette carte du Cimetière n'est pas une cible valide."
+          : "Briser cet Objet nécessite de choisir une carte dans le Cimetière.",
+    };
   }
 
   return { ok: true as const };

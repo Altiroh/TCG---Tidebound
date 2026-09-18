@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import {
   getCardDefinition,
   graveyardChoicesForBreak,
+  graveyardChoicesForPlay,
   type CardInstance,
   type GameState,
   type PendingReactionCandidate,
@@ -87,6 +88,18 @@ export interface BoardInteractionConfig {
   onGestureStart?: () => void;
 }
 
+/**
+ * Geste suspendu à un choix dans le Cimetière.
+ *
+ * Trois formes, parce que trois gestes différents le demandent depuis le
+ * Lot 13 — et pas une seule, parce que ce n'est pas la même action qui part
+ * ensuite. Le Bris était le seul cas quand cet écran a été écrit.
+ */
+export type GraveyardPickRequest =
+  | { kind: "break"; card: CardInstance; fromHand: boolean }
+  | { kind: "play"; card: CardInstance }
+  | { kind: "reaction"; candidate: PendingReactionCandidate };
+
 export interface BoardInteraction {
   selection: BoardSelection | null;
   setSelection: (selection: BoardSelection | null) => void;
@@ -95,9 +108,9 @@ export interface BoardInteraction {
   /** Invite « Briser ou Saborder ? » d'un Objet lâché sur le crâne. */
   breakPrompt: { card: CardInstance; source: "hand" | "board" } | null;
   setBreakPrompt: (prompt: { card: CardInstance; source: "hand" | "board" } | null) => void;
-  /** Bris qui demande de choisir une carte de sa défausse. */
-  graveyardPick: { card: CardInstance; fromHand: boolean } | null;
-  setGraveyardPick: (pick: { card: CardInstance; fromHand: boolean } | null) => void;
+  /** Geste en attente d'une carte du Cimetière (Bris, pose ou réaction). */
+  graveyardPick: GraveyardPickRequest | null;
+  setGraveyardPick: (pick: GraveyardPickRequest | null) => void;
   graveyardViewerPlayerId: PlayerId | null;
   setGraveyardViewerPlayerId: (playerId: PlayerId | null) => void;
   detailInstance: CardInstance | null;
@@ -137,7 +150,7 @@ export function useBoardInteraction({
   const [selection, setSelection] = useState<BoardSelection | null>(null);
   const [reactionQueue, setReactionQueue] = useState<PendingReactionCandidate[]>([]);
   const [breakPrompt, setBreakPrompt] = useState<{ card: CardInstance; source: "hand" | "board" } | null>(null);
-  const [graveyardPick, setGraveyardPick] = useState<{ card: CardInstance; fromHand: boolean } | null>(null);
+  const [graveyardPick, setGraveyardPick] = useState<GraveyardPickRequest | null>(null);
   const [graveyardViewerPlayerId, setGraveyardViewerPlayerId] = useState<PlayerId | null>(null);
   const [detailInstance, setDetailInstance] = useState<CardInstance | null>(null);
   const [showPauseMenu, setShowPauseMenu] = useState(false);
@@ -184,11 +197,19 @@ export function useBoardInteraction({
       clearSelection();
       return;
     }
-    if (needsPlayTarget(getCardDefinition(card.cardId), viewer.board)) {
+    const def = getCardDefinition(card.cardId);
+    if (needsPlayTarget(def, viewer.board)) {
       setSelection({ kind: "playCard", instanceId, needsTarget: true });
-    } else {
-      act({ type: "playCard", playerId: actorId, instanceId });
+      return;
     }
+    // « À son arrivée, choisissez une unité dans votre Cimetière » : la
+    // question se pose AVANT la pose, comme pour un Bris. Sur l'état VIVANT,
+    // le Cimetière affiché pouvant retarder d'une animation.
+    if (graveyardChoicesForPlay(liveState, actorId, def).length > 0) {
+      setGraveyardPick({ kind: "play", card });
+      return;
+    }
+    act({ type: "playCard", playerId: actorId, instanceId });
   }
 
   /**
@@ -239,7 +260,7 @@ export function useBoardInteraction({
     }
     // Sur l'état VIVANT : la défausse affichée peut retarder d'une animation.
     if (graveyardChoicesForBreak(liveState, actorId, def).length > 0) {
-      setGraveyardPick({ card, fromHand });
+      setGraveyardPick({ kind: "break", card, fromHand });
       return;
     }
     act({ type: "breakObject", playerId: actorId, instanceId: card.instanceId, fromHand });

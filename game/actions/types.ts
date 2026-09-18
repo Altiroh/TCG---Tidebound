@@ -7,6 +7,8 @@ export interface PlayCardAction {
   instanceId: string;
   /** Requis si la carte a un effet ciblant `chosenUnit`. */
   targetInstanceId?: string;
+  /** Requis si un `onPlayEffects` repêche au Cimetière et qu'une carte y est éligible (ex: Tu viens jouer ?). */
+  chosenGraveyardInstanceId?: string;
 }
 
 export interface AttackAction {
@@ -80,6 +82,8 @@ export interface ActivateReactionAction {
   abilityIndex: number;
   /** Requis si l'effet de cette capacité cible `chosenUnit`. */
   targetInstanceId?: string;
+  /** Requis si la capacité repêche au Cimetière et qu'une carte y est éligible (ex: Tu m'avais promis). */
+  chosenGraveyardInstanceId?: string;
 }
 
 /** Passe la priorité pendant une fenêtre de réaction — n'active rien. */

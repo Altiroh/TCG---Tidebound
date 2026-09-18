@@ -8,7 +8,8 @@
 import { describe, expect, it } from "vitest";
 import { dispatch } from "@/game/engine";
 import { computeEffectiveStats } from "@/game/cards/stats";
-import { graveyardChoicesForBreak, previewHandBreakReason } from "@/game/actions/breakObject";
+import { previewHandBreakReason } from "@/game/actions/breakObject";
+import { graveyardChoicesForBreak } from "@/game/effects/graveyardChoices";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { processDeaths } from "@/game/state/processDeaths";
 import { processTrigger } from "@/game/triggers/triggerBus";

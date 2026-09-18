@@ -74,4 +74,14 @@ export interface PendingReactionCandidate {
    * recensé que si une telle cible existe.
    */
   needsTarget: boolean;
+  /**
+   * `true` si la capacité repêche au Cimetière ET qu'au moins une carte y
+   * est éligible : `activateReaction` doit alors recevoir un
+   * `chosenGraveyardInstanceId` LÉGAL (ex: Tu m'avais promis, Lot 13).
+   *
+   * Séparé de `needsTarget` : ce sont deux questions différentes posées au
+   * joueur, l'une sur le plateau, l'autre dans son Cimetière, et une même
+   * carte pourrait un jour poser les deux.
+   */
+  needsGraveyardTarget: boolean;
 }

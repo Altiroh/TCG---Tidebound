@@ -329,6 +329,8 @@ const VEILLEE_DES_DISPARUS_RARITY: Record<string, CardRarity> = {
   "la-marelle": "rare",
   "bonne-nuit": "rare",
   "tout-le-monde-a-table": "rare",
+  "tu-mavais-promis": "rare",
+  "tu-viens-jouer": "epic",
   "on-avait-dit-tous-ensemble": "epic",
 };
 

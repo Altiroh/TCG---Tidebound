@@ -375,7 +375,8 @@ export interface EffectDefinition {
   conditionGraveyardArrival?: {
     subtype?: string;
     cardIds?: string[];
-    fromHandOnly?: boolean;
+    /** Restreint à une provenance : `"hand"` (défausse) ou `"board"` (destruction). Absent = d'où qu'elle vienne. */
+    fromZone?: "hand" | "board" | "deck";
     since: "thisTurn" | "lastOwnTurn";
   };
 

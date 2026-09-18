@@ -4163,6 +4163,39 @@ export const CORE_SET: CardDefinition[] = [
     ],
   },
   {
+    id: "tu-mavais-promis",
+    name: "Tu m'avais promis",
+    type: "marin",
+    subtype: UN_DEAD,
+    setCode: VEILLEE_DES_DISPARUS,
+    cost: 3,
+    attack: 3,
+    health: 4,
+    maxCopies: 2,
+    text:
+      "La première fois à chaque tour qu'une autre de vos unités Un Dead est détruite, vous pouvez choisir une " +
+      "unité Un Dead de coût 1 dans votre Cimetière. Remettez-la dans votre main.",
+    // « vous pouvez » → fenêtre de réaction ; le joueur y désigne ensuite la
+    // carte du Cimetière (`chosenGraveyardInstanceId`). Deux décisions, deux
+    // gestes : activer, puis choisir.
+    abilities: [
+      {
+        trigger: "onDeath",
+        mode: "optional",
+        triggeredBy: { subtype: UN_DEAD, cardTypes: ["marin", "creature"] },
+        oncePerTurnKey: "tuMavaisPromis",
+        description: "Un autre Un Dead meurt : repêchez une unité Un Dead de coût 1.",
+        effects: [
+          {
+            type: "moveGraveyardCardToHand",
+            target: { kind: "controllerPlayer" },
+            filter: { subtype: UN_DEAD, cardTypes: ["marin", "creature"], maxCost: 1 },
+          },
+        ],
+      },
+    ],
+  },
+  {
     id: "la-marelle",
     name: "La Marelle",
     type: "structure",
@@ -4228,6 +4261,43 @@ export const CORE_SET: CardDefinition[] = [
           { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
           { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
         ],
+      },
+    ],
+  },
+  {
+    id: "tu-viens-jouer",
+    name: "Tu viens jouer ?",
+    type: "creature",
+    subtype: UN_DEAD,
+    setCode: VEILLEE_DES_DISPARUS,
+    cost: 4,
+    attack: 4,
+    health: 4,
+    maxCopies: 2,
+    text:
+      "À son arrivée, choisissez une unité Un Dead de coût 2 ou moins dans votre Cimetière. Remettez-la dans " +
+      "votre main. Si une unité Un Dead a été détruite ce tour, elle coûte 1 Raison de moins à jouer ce tour, " +
+      "minimum 1.",
+    // La réduction porte sur la carte qu'on vient de repêcher. Le moteur
+    // l'exprime comme « la prochaine carte de ce profil jouée ce tour »
+    // (`discountNextCards`, un seul usage) : le filtre reprend celui de la
+    // récupération, donc la seule carte que le joueur puisse viser est bien
+    // celle qui vient de remonter.
+    //
+    // `fromZone: "board"` : « DÉTRUITE ce tour », pas défaussée — la nuance
+    // compte pour une famille qui fait les deux.
+    onPlayEffects: [
+      {
+        type: "moveGraveyardCardToHand",
+        target: { kind: "controllerPlayer" },
+        filter: { subtype: UN_DEAD, cardTypes: ["marin", "creature"], maxCost: 2 },
+      },
+      {
+        type: "discountNextCards",
+        target: { kind: "controllerPlayer" },
+        amount: { kind: "flat", value: 1 },
+        filter: { subtype: UN_DEAD, cardTypes: ["marin", "creature"], maxCost: 2 },
+        conditionGraveyardArrival: { subtype: UN_DEAD, fromZone: "board", since: "thisTurn" },
       },
     ],
   },

@@ -31,6 +31,7 @@ import { MatchPauseMenu } from "@/features/match/MatchPauseMenu";
 import { ObjectBreakPrompt } from "@/features/match/ObjectBreakPrompt";
 import { ShipAbilityPrompt } from "@/features/match/ShipAbilityPrompt";
 import { PendingChoicePrompt } from "@/features/match/PendingChoicePrompt";
+import { graveyardPickView } from "@/features/match/graveyardPickRequest";
 import { HandDiscardPrompt } from "@/features/match/HandDiscardPrompt";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ReactionPrompt } from "@/features/match/ReactionPrompt";
@@ -272,8 +273,12 @@ export function MatchBoard({
 
   /** Sélection multiple de `ReactionPrompt` : sans cible appliquées d'un coup, avec cible mises en file. */
   function activateSelectedReactions(selected: PendingReactionCandidate[]) {
-    const immediate = selected.filter((c) => !c.needsTarget);
+    const immediate = selected.filter((c) => !c.needsTarget && !c.needsGraveyardTarget);
     const queued = selected.filter((c) => c.needsTarget);
+    // « choisissez une unité dans votre Cimetière » : une seule question à la
+    // fois, donc la première capacité qui la pose ouvre l'écran et les
+    // suivantes attendront la prochaine fenêtre.
+    const graveyardFirst = selected.find((c) => !c.needsTarget && c.needsGraveyardTarget);
 
     let currentState = liveState;
     for (const candidate of immediate) {
@@ -293,6 +298,10 @@ export function MatchBoard({
     setError(null);
     setState(currentState);
 
+    if (graveyardFirst) {
+      board.setGraveyardPick({ kind: "reaction", candidate: graveyardFirst });
+      return;
+    }
     board.beginReactionTargeting(queued);
   }
 
@@ -475,23 +484,24 @@ export function MatchBoard({
           onCancel={() => board.setBreakPrompt(null)}
         />
       )}
-      {graveyardPick && (
-        <GraveyardPickPrompt
-          sourceCardId={graveyardPick.card.cardId}
-          choices={graveyardChoicesForBreak(liveState, activePlayerId, getCardDefinition(graveyardPick.card.cardId))}
-          onConfirm={(chosen) => {
-            board.setGraveyardPick(null);
-            runAction({
-              type: "breakObject",
-              playerId: activePlayerId,
-              instanceId: graveyardPick.card.instanceId,
-              fromHand: graveyardPick.fromHand,
-              chosenGraveyardInstanceId: chosen.instanceId,
-            });
-          }}
-          onCancel={() => board.setGraveyardPick(null)}
-        />
-      )}
+      {graveyardPick && (() => {
+        // Une réaction ne part pas comme une action normale (elle peut
+        // survenir hors de son tour) : `runReactionAction` pour elle,
+        // `runAction` pour le Bris et la pose.
+        const view = graveyardPickView(liveState, viewerPlayerId, graveyardPick);
+        const submit = graveyardPick.kind === "reaction" ? runReactionAction : runAction;
+        return (
+          <GraveyardPickPrompt
+            sourceCardId={view.sourceCardId}
+            choices={view.choices}
+            onConfirm={(chosen) => {
+              board.setGraveyardPick(null);
+              submit(view.actionFor(chosen));
+            }}
+            onCancel={() => board.setGraveyardPick(null)}
+          />
+        );
+      })()}
       {graveyardViewerPlayerId && (
         <GraveyardViewer
           playerLabel={graveyardViewerPlayerId === botPlayerId ? "Bot" : graveyardViewerPlayerId === "p1" ? "Joueur 1" : "Joueur 2"}

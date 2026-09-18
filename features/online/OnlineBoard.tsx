@@ -26,6 +26,7 @@ import { MatchPauseMenu } from "@/features/match/MatchPauseMenu";
 import { ObjectBreakPrompt } from "@/features/match/ObjectBreakPrompt";
 import { ShipAbilityPrompt } from "@/features/match/ShipAbilityPrompt";
 import { PendingChoicePrompt } from "@/features/match/PendingChoicePrompt";
+import { graveyardPickView } from "@/features/match/graveyardPickRequest";
 import { HandDiscardPrompt } from "@/features/match/HandDiscardPrompt";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ReactionPrompt } from "@/features/match/ReactionPrompt";
@@ -155,8 +156,15 @@ export function OnlineBoard({
    * ce geste n'est pas dans `useBoardInteraction`.
    */
   async function activateSelectedReactions(selected: PendingReactionCandidate[]) {
-    for (const candidate of selected.filter((c) => !c.needsTarget)) {
+    for (const candidate of selected.filter((c) => !c.needsTarget && !c.needsGraveyardTarget)) {
       await onAction({ type: "activateReaction", playerId: myUserId, sourceInstanceId: candidate.sourceInstanceId, abilityIndex: candidate.abilityIndex });
+    }
+    // Une seule question de Cimetière à la fois : la première capacité qui
+    // la pose ouvre l'écran, les suivantes attendront la prochaine fenêtre.
+    const graveyardFirst = selected.find((c) => !c.needsTarget && c.needsGraveyardTarget);
+    if (graveyardFirst) {
+      board.setGraveyardPick({ kind: "reaction", candidate: graveyardFirst });
+      return;
     }
     board.beginReactionTargeting(selected.filter((c) => c.needsTarget));
   }
@@ -298,23 +306,20 @@ export function OnlineBoard({
           onCancel={() => board.setBreakPrompt(null)}
         />
       )}
-      {graveyardPick && (
-        <GraveyardPickPrompt
-          sourceCardId={graveyardPick.card.cardId}
-          choices={graveyardChoicesForBreak(state, myUserId, getCardDefinition(graveyardPick.card.cardId))}
-          onConfirm={(chosen) => {
-            board.setGraveyardPick(null);
-            act({
-              type: "breakObject",
-              playerId: myUserId,
-              instanceId: graveyardPick.card.instanceId,
-              fromHand: graveyardPick.fromHand,
-              chosenGraveyardInstanceId: chosen.instanceId,
-            });
-          }}
-          onCancel={() => board.setGraveyardPick(null)}
-        />
-      )}
+      {graveyardPick && (() => {
+        const view = graveyardPickView(state, myUserId, graveyardPick);
+        return (
+          <GraveyardPickPrompt
+            sourceCardId={view.sourceCardId}
+            choices={view.choices}
+            onConfirm={(chosen) => {
+              board.setGraveyardPick(null);
+              act(view.actionFor(chosen));
+            }}
+            onCancel={() => board.setGraveyardPick(null)}
+          />
+        );
+      })()}
       {graveyardViewerPlayerId && (
         <GraveyardViewer
           playerLabel={graveyardViewerPlayerId === myUserId ? "Toi" : "Adversaire"}
