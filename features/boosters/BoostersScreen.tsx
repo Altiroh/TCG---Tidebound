@@ -116,10 +116,20 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
   const dockPackRef = useRef<HTMLSpanElement>(null);
   /** Sachets à ouvrir d'un seul geste (1 = le geste habituel). */
   const [batchSize, setBatchSize] = useState(1);
-/**
-   * Ouverture d'un LOT : sa propre scène (rangée de cartes alignées et « + »
-   * pour le reste), puis la liste complète à la demande. Dérouler dix fois
-   * l'animation d'un sachet ferait attendre pour rien.
+  /**
+   * Ouverture d'un LOT, en trois temps : le PREMIER sachet s'ouvre pour de
+   * bon (`opening`, animation complète, cartes révélées une à une), puis
+   * cette scène-ci résume tout le lot — rangée de cartes alignées et « + »
+   * pour le reste —, puis la liste complète à la demande.
+   *
+   * Le geste d'ouverture avait disparu du lot (17/09) parce que le dérouler
+   * dix fois faisait attendre pour rien. Mais le supprimer entièrement a
+   * retiré ce qu'on vient chercher en ouvrant un booster : acheter cinq
+   * sachets donnait moins de plaisir qu'en acheter un. Un seul suffit à
+   * rendre le geste ; les quatre autres se lisent.
+   *
+   * Posé EN MÊME TEMPS que `opening` au tirage, mais rendu seulement une
+   * fois la scène du premier sachet refermée.
    */
   const [batch, setBatch] = useState<{
     boosterId: string;
@@ -190,7 +200,21 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
       return;
     }
 
-    // Lot : sa propre scène, alimentée par TOUTES les cartes tirées.
+    /** Les cartes d'un sachet, dans la forme qu'attend la scène d'ouverture. */
+    const openingCards = (pack: (typeof opened)[number]): BoosterOpeningCard[] =>
+      pack.cards.map((card) => ({
+        // Une même carte peut sortir deux fois du même booster : c'est le
+        // slot qui rend la clé unique, pas l'identifiant de carte.
+        id: `${card.slotIndex}-${card.cardId}`,
+        cardId: card.cardId,
+        rarity: toOpeningRarity(card.rarity),
+        isNew: card.isNew,
+      }));
+
+    const origin: BoosterOpeningOrigin | null =
+      rect && rect.height > 0 ? { x: rect.left, y: rect.top, width: rect.width, height: rect.height } : null;
+
+    // Lot : le premier sachet s'ouvre pour de bon, le résumé attend derrière.
     if (opened.length > 1) {
       const cards: BoosterOpeningCard[] = [];
       const byCard = new Map<string, BoosterBatchLine>();
@@ -214,22 +238,11 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
         }
       });
       setBatch({ boosterId, packs: opened.length, cards, lines: [...byCard.values()] });
+      setOpening({ boosterId, real: true, origin, cards: openingCards(first) });
       return;
     }
 
-    setOpening({
-      boosterId,
-      real: true,
-      origin: rect && rect.height > 0 ? { x: rect.left, y: rect.top, width: rect.width, height: rect.height } : null,
-      cards: first.cards.map((card) => ({
-        // Une même carte peut sortir deux fois du même booster : c'est le
-        // slot qui rend la clé unique, pas l'identifiant de carte.
-        id: `${card.slotIndex}-${card.cardId}`,
-        cardId: card.cardId,
-        rarity: toOpeningRarity(card.rarity),
-        isNew: card.isNew,
-      })),
-    });
+    setOpening({ boosterId, real: true, origin, cards: openingCards(first) });
   }
 
   /** Ouverture À BLANC : un tirage local, aucun appel serveur, aucun booster consommé. */
@@ -252,7 +265,11 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
     // Une ouverture réelle a consommé l'exemplaire et crédité la collection
     // côté base : on relit l'inventaire plutôt que de deviner le nouvel
     // état. Un essai d'animation n'a rien écrit — rien à relire.
-    if (wasReal) router.refresh();
+    //
+    // Sauf si un LOT attend derrière : c'était le premier sachet des cinq,
+    // le résumé s'affiche maintenant et c'est lui qui relira en se fermant.
+    // Relire ici ferait repeindre l'étagère sous une scène qui s'ouvre.
+    if (wasReal && !batch) router.refresh();
   }
 
   if (!inventory.isSignedIn) {
@@ -484,7 +501,9 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
 
       <ScreenToast message={toast} onDismiss={() => setToast(null)} />
 
-      {batch && (
+      {/* Après la scène du premier sachet, jamais pendant : les deux sont
+          posées au même instant au tirage (cf. `handleOpen`). */}
+      {batch && !opening && (
         <BoosterBatchScene
           cards={batch.cards}
           packs={batch.packs}
