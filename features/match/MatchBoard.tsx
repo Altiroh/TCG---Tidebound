@@ -29,6 +29,7 @@ import { GraveyardViewer } from "@/features/match/GraveyardViewer";
 import { MatchEndScreen } from "@/features/match/MatchEndScreen";
 import { MatchPauseMenu } from "@/features/match/MatchPauseMenu";
 import { ObjectBreakPrompt } from "@/features/match/ObjectBreakPrompt";
+import { ShipAbilityPrompt } from "@/features/match/ShipAbilityPrompt";
 import { PendingChoicePrompt } from "@/features/match/PendingChoicePrompt";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ReactionPrompt } from "@/features/match/ReactionPrompt";
@@ -40,7 +41,8 @@ import { useAttackPresentation } from "@/features/match/useAttackPresentation";
 import { useDeraisonWarning } from "@/features/match/useDeraisonWarning";
 import { useDisplayNames } from "@/features/match/useDisplayNames";
 import { usePhaseBannerEvent } from "@/features/match/usePhaseBannerEvent";
-import { useBoardInteraction } from "@/features/match/useBoardInteraction";
+import { tableTargetingFor, useBoardInteraction } from "@/features/match/useBoardInteraction";
+import { useShipAbility } from "@/features/match/useShipAbility";
 import { playButtonClick } from "@/lib/sound";
 
 /** Pause entre deux actions du bot (`stepBotTurn`) — assez long pour voir chaque pioche/pose/Sabordage se jouer avant l'action suivante, sans donner l'impression d'attendre. */
@@ -157,6 +159,14 @@ export function MatchBoard({
   });
   const { selection: pending } = board;
   const deraison = useDeraisonWarning(state, viewerPlayer, board.draggingId);
+  const shipAbility = useShipAbility({
+    liveState,
+    viewerId: viewerPlayerId,
+    actorId: activePlayerId,
+    act: runAction,
+    selection: pending,
+    setSelection: board.setSelection,
+  });
 
   function playerLabel(id: PlayerId): string {
     if (id === botPlayerId) return "du Bot";
@@ -360,11 +370,7 @@ export function MatchBoard({
         canPlayCards={canPlayCards}
         playableHandCards={playableHandCards}
         canAttack={canAttackNow}
-        targeting={
-          pending
-            ? { kind: pending.kind, sourceInstanceId: pending.kind === "attack" ? pending.attackerId : pending.kind === "reaction" ? pending.sourceInstanceId : pending.instanceId }
-            : null
-        }
+        targeting={tableTargetingFor(pending)}
         reactionSourceIds={myReactionCandidates.map((c) => c.sourceInstanceId)}
         hint={hint}
         onCancelHint={board.clearSelection}
@@ -394,7 +400,17 @@ export function MatchBoard({
         onBreakOnTarget={(instanceId, targetInstanceId) => runAction({ type: "breakObject", playerId: activePlayerId, instanceId, targetInstanceId })}
         onDropOnGraveyard={board.handleDropOnGraveyard}
         onBoardCardClick={handleAnyBoardCardClick}
-        onShipClick={() => pending?.kind === "attack" && runAction({ type: "attack", playerId: activePlayerId, attackerInstanceId: pending.attackerId })}
+        shipAbility={shipAbility.panel}
+        opponentShipAbility={shipAbility.opponentPanel}
+        onShipClick={() => {
+          if (pending?.kind === "shipShot") {
+            // Tir sans cible désignée : le Navire adverse, comme une attaque directe.
+            runAction({ type: "fireShipAbility", playerId: activePlayerId });
+            board.clearSelection();
+            return;
+          }
+          if (pending?.kind === "attack") runAction({ type: "attack", playerId: activePlayerId, attackerInstanceId: pending.attackerId });
+        }}
         onInspect={board.setDetailInstance}
         onOpenGraveyard={board.setGraveyardViewerPlayerId}
         onHandDragChange={board.setDraggingId}
@@ -428,6 +444,9 @@ export function MatchBoard({
         <GlassAlert message={deraison.warning} severity="warning" onDismiss={deraison.dismiss} />
       )}
       <PhaseBanner text={bannerText} bannerKey={bannerEvent?.id ?? null} />
+      {shipAbility.prompt && (
+        <ShipAbilityPrompt {...shipAbility.prompt} onConfirm={shipAbility.confirm} onCancel={shipAbility.cancel} />
+      )}
       {breakPrompt && (
         <ObjectBreakPrompt
           card={breakPrompt.card}

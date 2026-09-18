@@ -466,6 +466,118 @@
   user-select: none;
 }
 
+/* ── Panneau de capacité activable du Navire (Le Goliath — Canon de proue)
+   ────────────────────────────────────────────────────────────────────────
+   Un petit cadre posé sur le cadre du Navire, fermé par deux planches qui
+   s'écartent vers le haut et vers le bas quand la capacité est armée.
+
+   Position et taille sont des variables : l'asset définitif décidera, et
+   le seul endroit à corriger sera ici. Quand l'illustration existera,
+   `--ship-ability-art` suffit à la poser sous les planches — le fond de
+   substitution ci-dessous ne sert qu'en son absence. */
+.shipAbility {
+  position: absolute;
+  /* Bas-gauche de l'arche par défaut : une trappe sur la coque, qui ne
+     recouvre pas le visage du Navire. L'asset définitif tranchera — c'est
+     à ces trois variables qu'on le recalera. */
+  top: var(--ship-ability-top, 60%);
+  left: var(--ship-ability-left, 26%);
+  z-index: 8;
+  width: var(--ship-ability-size, 26%);
+  aspect-ratio: 1;
+  padding: 0;
+  overflow: hidden;
+  transform: translate(-50%, -50%);
+  border: 0.08em solid rgba(0, 0, 0, 0.55);
+  border-radius: 12%;
+  background: rgba(18, 12, 8, 0.9);
+  box-shadow: inset 0 0 0.4em rgba(0, 0, 0, 0.8), 0 0.1em 0.3em rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  appearance: none;
+}
+
+.shipAbilityReadOnly {
+  cursor: default;
+}
+
+/* Ce qu'il y a SOUS les planches. Repli tant qu'aucun asset n'est fourni :
+   une bouche d'ombre cerclée de laiton, qui lit comme une gueule de canon. */
+.shipAbilityArt {
+  position: absolute;
+  inset: 0;
+  background:
+    var(--ship-ability-art, none) center / cover no-repeat,
+    radial-gradient(circle at 50% 50%, #05070a 0%, #05070a 26%, #6b5a3a 34%, transparent 36%),
+    linear-gradient(160deg, #4a3a25, #241a11);
+}
+
+/* Les deux planches. Fermées, elles se rejoignent au milieu ; armées, elles
+   sortent du cadre — en haut et en bas, comme demandé. */
+.shipAbilityPlank {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 52%;
+  background:
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.22) 0 1px, transparent 1px 7%),
+    linear-gradient(180deg, #8a6a43, #5c4227);
+  box-shadow: 0 0 0.25em rgba(0, 0, 0, 0.7);
+  transition: transform 260ms cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+.shipAbilityPlankTop {
+  top: 0;
+  border-bottom: 0.06em solid rgba(0, 0, 0, 0.5);
+}
+
+.shipAbilityPlankBottom {
+  bottom: 0;
+  border-top: 0.06em solid rgba(0, 0, 0, 0.5);
+}
+
+.shipAbilityArmed .shipAbilityPlankTop {
+  transform: translateY(-105%);
+}
+
+.shipAbilityArmed .shipAbilityPlankBottom {
+  transform: translateY(105%);
+}
+
+/* Le halo « c'est cliquable maintenant » : sur les planches fermées il dit
+   « ouvre-moi », sur le canon découvert il dit « tire ». Deux moments, un
+   seul signal — c'est la même invitation. */
+.shipAbilityReady {
+  animation: shipAbilityGlow 1.9s ease-in-out infinite;
+}
+
+.shipAbilityReady:hover {
+  animation-duration: 1s;
+}
+
+@keyframes shipAbilityGlow {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0.4em rgba(0, 0, 0, 0.8), 0 0 0.3em rgba(255, 196, 92, 0.45);
+  }
+  50% {
+    box-shadow: inset 0 0 0.4em rgba(0, 0, 0, 0.8), 0 0 1.1em rgba(255, 196, 92, 0.95);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shipAbilityPlank {
+    transition: none;
+  }
+
+  /* Le halo ne clignote plus, mais il reste VISIBLE : c'est lui qui dit que
+     le geste est possible, ce n'est pas de la décoration. */
+  .shipAbilityReady,
+  .shipAbilityReady:hover {
+    animation: none;
+    box-shadow: inset 0 0 0.4em rgba(0, 0, 0, 0.8), 0 0 0.7em rgba(255, 196, 92, 0.8);
+  }
+}
+
 /* Médaillons Ancrage / Raison, centrés sur la plaque (74 % de hauteur,
    30 % de largeur chacun, espacés de 10 % — comme `ShipInstrumentCluster`). */
 .shipGauges {

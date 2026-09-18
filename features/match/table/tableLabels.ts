@@ -30,10 +30,13 @@ export function phaseButtonFor({ isMyTurn, phase }: { isMyTurn: boolean; phase: 
 }
 
 /** Consigne affichée sous la piste de Marée pendant un choix de cible au clic. */
-export function targetingHint(kind: "playCard" | "break" | "attack" | null): string | null {
+export function targetingHint(kind: "playCard" | "break" | "attack" | "shipShot" | null): string | null {
   if (kind === "playCard") return "Choisissez une cible sur le plateau.";
   if (kind === "break") return "Choisissez une cible pour l'effet de bris.";
   if (kind === "attack") return "Choisissez une cible adverse, ou le Navire adverse.";
+  // Le tir vise comme une attaque : mêmes cibles légales, même consigne —
+  // seul le nom du geste change.
+  if (kind === "shipShot") return "Tirez sur une cible adverse, ou sur le Navire adverse.";
   return null;
 }
 

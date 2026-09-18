@@ -22,6 +22,86 @@ export interface ShipView {
   maxReason: number;
   /** Dégâts d'Ancrage que la Déraison infligera en fin de tour (0 = rien à annoncer). */
   deraisonDamage?: number;
+  /** Capacité activable du Navire, quand il en porte une de câblée (Le Goliath — Canon de proue). */
+  ability?: ShipAbilityPanelView;
+}
+
+/**
+ * Le petit cadre posé sur le cadre du Navire. Fermé par des planches tant
+ * que la capacité n'est pas armée ; les planches s'écartent (haut et bas) à
+ * l'armement et découvrent ce qu'il y a dessous.
+ *
+ * `onClick` absent = le panneau est en LECTURE seule : c'est le cas du
+ * Navire adverse, dont on doit voir le canon découvert — c'est une
+ * information publique, et savoir qu'il est armé change ce qu'on joue.
+ */
+export interface ShipAbilityPanelView {
+  name: string;
+  /** Texte imprimé, en info-bulle. */
+  text: string;
+  /** Planches écartées : la capacité est armée. */
+  armed: boolean;
+  /** Le panneau appelle un clic maintenant (halo) — armer, ou tirer. */
+  actionable: boolean;
+  /** Ce qui empêche d'agir, pour l'info-bulle. */
+  blockedBy?: string;
+  /** Absent : panneau d'observation, non cliquable (Navire adverse). */
+  onClick?: () => void;
+}
+
+/**
+ * Panneau de capacité — les planches, le halo, et le clic.
+ *
+ * L'illustration sous les planches n'a pas encore d'asset : le panneau
+ * peint pour l'instant un fond de substitution. Le jour où le WebP existe,
+ * il suffit de poser `--ship-ability-art` sur `.shipAbility` (cf.
+ * `Table.module.css`) — la mécanique des planches, elle, ne bouge pas.
+ */
+function ShipAbilityPanel({ name, text, armed, actionable, blockedBy, onClick }: ShipAbilityPanelView) {
+  const label = armed ? `${name} — armé` : name;
+  const title = [label, text, !actionable && blockedBy ? blockedBy : null].filter(Boolean).join(" — ");
+  const className = [
+    styles.shipAbility,
+    armed ? styles.shipAbilityArmed : "",
+    actionable ? styles.shipAbilityReady : "",
+    onClick ? "" : styles.shipAbilityReadOnly,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const content = (
+    <>
+      <span aria-hidden className={styles.shipAbilityArt} />
+      <span aria-hidden className={`${styles.shipAbilityPlank} ${styles.shipAbilityPlankTop}`} />
+      <span aria-hidden className={`${styles.shipAbilityPlank} ${styles.shipAbilityPlankBottom}`} />
+    </>
+  );
+
+  if (!onClick) {
+    return (
+      <span className={className} title={title} role="img" aria-label={label}>
+        {content}
+      </span>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      className={className}
+      title={title}
+      aria-label={title}
+      // Le cadre du Navire entier est cliquable (fiche, ciblage) : sans ça,
+      // le clic sur le panneau ouvrirait aussi la fiche derrière lui.
+      onClick={(event) => {
+        event.stopPropagation();
+        onClick();
+      }}
+      onContextMenu={(event) => event.stopPropagation()}
+    >
+      {content}
+    </button>
+  );
 }
 
 const GAUGE_ASSETS = {
@@ -85,7 +165,7 @@ function ShipGauge({ kind, value, max }: { kind: keyof typeof GAUGE_ASSETS; valu
  * La géométrie de l'arche vient de `features/ships/shipFrame.ts` (aucun
  * import de `@/game`).
  */
-export function TableShip({ name, ownerId, illustration, hull, maxHull, reason, maxReason, deraisonDamage = 0 }: ShipView) {
+export function TableShip({ name, ownerId, illustration, hull, maxHull, reason, maxReason, deraisonDamage = 0, ability }: ShipView) {
   const frame = useShipFrameGeometryFor(ownerId);
   return (
     <div
@@ -102,6 +182,7 @@ export function TableShip({ name, ownerId, illustration, hull, maxHull, reason, 
       </div>
       {/* eslint-disable-next-line @next/next/no-img-element -- cadre décoratif */}
       <img src={frame.src} alt="" aria-hidden draggable={false} className={styles.shipFrame} />
+      {ability && <ShipAbilityPanel {...ability} />}
       <div className={styles.shipGauges}>
         <ShipGauge kind="anchor" value={hull} max={maxHull} />
         <ShipGauge kind="reason" value={reason} max={maxReason} />

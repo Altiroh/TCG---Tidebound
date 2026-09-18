@@ -45,10 +45,19 @@ import { TableOpponentHand } from "@/features/match/table/TableOpponentHand";
 import type { TableCardModel } from "@/features/match/table/tableModel";
 import { useTableMetrics, type BoardPreviewBreakpoint } from "@/features/match/table/useTableMetrics";
 import { useTableGestures } from "@/features/match/table/useTableGestures";
+import type { ShipAbilityPanelView } from "@/features/match/table/TableShip";
 import { useTableMotion } from "@/features/match/table/useTableMotion";
 
-/** Ciblage en cours côté conteneur (clic sur une carte de main à effet, bris ciblé, réaction ciblée, attaque). */
-export type TableTargeting = { kind: "playCard" | "break" | "reaction" | "attack"; sourceInstanceId: string } | null;
+/**
+ * Ciblage en cours côté conteneur (clic sur une carte de main à effet, bris
+ * ciblé, réaction ciblée, attaque, tir du canon de Navire). Le tir n'a pas
+ * de `sourceInstanceId` : sa source est le Navire, qui n'est pas une carte
+ * du plateau.
+ */
+export type TableTargeting =
+  | { kind: "playCard" | "break" | "reaction" | "attack"; sourceInstanceId: string }
+  | { kind: "shipShot"; sourceInstanceId?: undefined }
+  | null;
 
 export interface TableBoardProps {
   /** État AFFICHÉ (retenu pendant une attaque, cf. `useAttackPresentation`). */
@@ -95,8 +104,12 @@ export interface TableBoardProps {
   onDropOnGraveyard: (instanceId: string, from: "hand" | "board") => void;
   /** Clic sur une carte en jeu quand un ciblage est en cours (le conteneur résout). */
   onBoardCardClick: (instanceId: string, ownerId: PlayerId) => void;
-  /** Clic sur le Navire adverse pendant un ciblage d'attaque. */
+  /** Clic sur le Navire adverse pendant un ciblage d'attaque ou un tir de canon. */
   onShipClick: (ownerId: PlayerId) => void;
+  /** Panneau de capacité du Navire du JOUEUR — absent si son Navire n'en porte pas. */
+  shipAbility?: ShipAbilityPanelView;
+  /** Panneau de capacité du Navire ADVERSE, en lecture seule (pas de `onClick`). */
+  opponentShipAbility?: ShipAbilityPanelView;
   /** Fiche détaillée d'une carte (appui long, clic droit). */
   onInspect: (instance: CardInstance) => void;
   onOpenGraveyard: (playerId: PlayerId) => void;
@@ -335,7 +348,9 @@ export function TableBoard(props: TableBoardProps) {
   }, [draggedHand, onHandDragChange]);
 
   const tone: AimTone = casting || (aimSource && !aimAttacks) ? "effect" : hover === "graveyard" ? "sabotage" : "attack";
-  const attackTargeting = targeting?.kind === "attack" || aimAttacks;
+  // Le tir du canon désigne exactement les mêmes cibles qu'une attaque —
+  // même mise en évidence, donc, plutôt qu'un second vocabulaire visuel.
+  const attackTargeting = targeting?.kind === "attack" || targeting?.kind === "shipShot" || aimAttacks;
 
   // ── Rendu d'une carte en jeu ────────────────────────────────────────
   function renderBoardCard(card: TableCardModel, owner: PlayerState) {
@@ -407,6 +422,10 @@ export function TableBoard(props: TableBoardProps) {
 
   const shipView = (player: PlayerState, def: ReturnType<typeof getShipDefinition>) => ({
     name: def.name,
+    // Panneau de capacité : celui du joueur est cliquable, celui d'en face
+    // est en lecture seule — voir son canon découvert est une information
+    // publique, qui change ce qu'on ose poser.
+    ability: player.id === viewerId ? props.shipAbility : props.opponentShipAbility,
     // Chaque Navire porte le cadre de SON joueur (`MatchCosmeticsProvider`).
     ownerId: player.id,
     illustration: def.illustration,
@@ -454,7 +473,7 @@ export function TableBoard(props: TableBoardProps) {
                 data-ship-target={opponent.id}
                 onClick={() => {
                   // Pendant un ciblage d'attaque, le Navire est une CIBLE ; sinon on consulte sa fiche.
-                  if (targeting?.kind === "attack") props.onShipClick(opponent.id);
+                  if (targeting?.kind === "attack" || targeting?.kind === "shipShot") props.onShipClick(opponent.id);
                   else if (!targeting) setShipInfoFor(opponent.id);
                 }}
                 onContextMenu={(event) => {

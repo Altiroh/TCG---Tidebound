@@ -82,6 +82,14 @@ export function formatEvent(state: GameState, event: GameEvent, playerLabel: (pl
       return `${cardName(state, event.cardId)} devient visible (${playerLabel(event.playerId)}).`;
     case "OBJECT_BROKEN":
       return `${playerLabel(event.playerId)} brise ${cardName(state, event.cardId)}${event.fromHand ? " depuis sa main" : ""}.`;
+    case "SHIP_ABILITY_ACTIVATED":
+      return event.armed
+        ? `${playerLabel(event.playerId)} arme ${event.abilityName}.`
+        : `${playerLabel(event.playerId)} active ${event.abilityName}.`;
+    case "SHIP_ABILITY_FIRED":
+      return event.targetInstanceId
+        ? `${playerLabel(event.playerId)} tire avec ${event.abilityName} sur ${instanceName(state, event.targetInstanceId)}.`
+        : `${playerLabel(event.playerId)} tire avec ${event.abilityName} sur le Navire adverse.`;
     case "DERAISON_SETTLED":
       return `${playerLabel(event.playerId)} règle sa Déraison (-${event.debt}) : ${event.anchorDamage} dégât(s) d'Ancrage.`;
     case "REASON_CHANGED":

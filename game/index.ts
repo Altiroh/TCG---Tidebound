@@ -17,6 +17,8 @@ export type {
 } from "@/game/state/types";
 export { getPlayer, getOpponent, findCardInstance, isMainPhase, MAIN_PHASES } from "@/game/state/types";
 export { hiddenZoneCards, toPlayerView } from "@/game/state/playerView";
+export { shipAbilityView, isShipArmed } from "@/game/state/shipAbility";
+export type { ShipAbilityView } from "@/game/state/shipAbility";
 export { HIDDEN_CARD_ID } from "@/game/cards/hiddenCard";
 
 export type {
@@ -29,6 +31,8 @@ export type {
   AdvancePhaseAction,
   ActivateReactionAction,
   PassReactionAction,
+  ActivateShipAbilityAction,
+  FireShipAbilityAction,
   ConcedeAction,
   ActionResult,
 } from "@/game/actions/types";
@@ -119,6 +123,8 @@ export type {
   TideOrientation,
   EnvironmentState,
   ShipDefinition,
+  ShipActivatableAbility,
+  ShipArmedShot,
   TideAffinity,
   PendingTideModifier,
 } from "@/game/environment/types";

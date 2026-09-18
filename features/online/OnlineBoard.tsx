@@ -24,6 +24,7 @@ import { GraveyardViewer } from "@/features/match/GraveyardViewer";
 import { MatchEndScreen } from "@/features/match/MatchEndScreen";
 import { MatchPauseMenu } from "@/features/match/MatchPauseMenu";
 import { ObjectBreakPrompt } from "@/features/match/ObjectBreakPrompt";
+import { ShipAbilityPrompt } from "@/features/match/ShipAbilityPrompt";
 import { PendingChoicePrompt } from "@/features/match/PendingChoicePrompt";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ReactionPrompt } from "@/features/match/ReactionPrompt";
@@ -35,7 +36,8 @@ import { useAttackPresentation } from "@/features/match/useAttackPresentation";
 import { useDeraisonWarning } from "@/features/match/useDeraisonWarning";
 import { useDisplayNames } from "@/features/match/useDisplayNames";
 import { usePhaseBannerEvent } from "@/features/match/usePhaseBannerEvent";
-import { useBoardInteraction } from "@/features/match/useBoardInteraction";
+import { tableTargetingFor, useBoardInteraction } from "@/features/match/useBoardInteraction";
+import { useShipAbility } from "@/features/match/useShipAbility";
 import { playButtonClick } from "@/lib/sound";
 
 interface OnlineBoardProps {
@@ -116,6 +118,14 @@ export function OnlineBoard({
   });
   const { selection } = board;
   const deraison = useDeraisonWarning(state, me, board.draggingId);
+  const shipAbility = useShipAbility({
+    liveState,
+    viewerId: myUserId,
+    actorId: myUserId,
+    act: act,
+    selection: selection,
+    setSelection: board.setSelection,
+  });
 
   const bannerText = bannerEvent
     ? bannerEvent.kind === "combatPhase"
@@ -194,14 +204,7 @@ export function OnlineBoard({
         }
         canPlayCards={canPlayCards}
         canAttack={canAttack}
-        targeting={
-          selection
-            ? {
-                kind: selection.kind,
-                sourceInstanceId: selection.kind === "attack" ? selection.attackerId : selection.kind === "reaction" ? selection.sourceInstanceId : selection.instanceId,
-              }
-            : null
-        }
+        targeting={tableTargetingFor(selection)}
         reactionSourceIds={myReactionCandidates.map((c) => c.sourceInstanceId)}
         hint={hint}
         onCancelHint={board.clearSelection}
@@ -228,7 +231,17 @@ export function OnlineBoard({
         onBreakOnTarget={(instanceId, targetInstanceId) => act({ type: "breakObject", playerId: myUserId, instanceId, targetInstanceId })}
         onDropOnGraveyard={board.handleDropOnGraveyard}
         onBoardCardClick={(instanceId, ownerId) => void handleAnyBoardCardClick(instanceId, ownerId)}
-        onShipClick={() => selection?.kind === "attack" && act({ type: "attack", playerId: myUserId, attackerInstanceId: selection.attackerId })}
+        shipAbility={shipAbility.panel}
+        opponentShipAbility={shipAbility.opponentPanel}
+        onShipClick={() => {
+          if (selection?.kind === "shipShot") {
+            // Tir sans cible désignée : le Navire adverse, comme une attaque directe.
+            act({ type: "fireShipAbility", playerId: myUserId });
+            board.clearSelection();
+            return;
+          }
+          if (selection?.kind === "attack") act({ type: "attack", playerId: myUserId, attackerInstanceId: selection.attackerId });
+        }}
         onInspect={board.setDetailInstance}
         onOpenGraveyard={board.setGraveyardViewerPlayerId}
         onHandDragChange={board.setDraggingId}
@@ -256,6 +269,9 @@ export function OnlineBoard({
         <GlassAlert message={deraison.warning} severity="warning" onDismiss={deraison.dismiss} />
       )}
       <PhaseBanner text={bannerText} bannerKey={bannerEvent?.id ?? null} />
+      {shipAbility.prompt && (
+        <ShipAbilityPrompt {...shipAbility.prompt} onConfirm={shipAbility.confirm} onCancel={shipAbility.cancel} />
+      )}
       {breakPrompt && (
         <ObjectBreakPrompt
           card={breakPrompt.card}

@@ -139,6 +139,13 @@ export function BoardPreviewPage() {
 
   /** Carte affichée en grand (lecture au doigt / clic droit). */
   const [inspectId, setInspectId] = useState<string | null>(null);
+  /**
+   * Panneau de capacité de Navire (Le Goliath — Canon de proue), montré ici
+   * pour que sa position, sa taille et l'écartement des planches se règlent
+   * à l'œil avant qu'un asset définitif existe. Cliquer bascule ouvert/fermé :
+   * le laboratoire ne connaît aucune règle, il montre les deux états.
+   */
+  const [cannonArmed, setCannonArmed] = useState(false);
   const closeZoom = useCallback(() => setInspectId(null), []);
   /** À la souris, le clic droit fait ce que fait l'appui long au doigt. */
   const inspectOnContextMenu = (cardId: string) => (e: React.MouseEvent) => {
@@ -360,7 +367,21 @@ export function BoardPreviewPage() {
         />
         <CenterZone tide={tide} />
         <PlayerZone
-          ship={{ name: player.shipName, illustration: player.illustration, hull: hull.player, maxHull: player.maxHull, reason: player.reason, maxReason: player.maxReason }}
+          ship={{
+            name: player.shipName,
+            illustration: player.illustration,
+            hull: hull.player,
+            maxHull: player.maxHull,
+            reason: player.reason,
+            maxReason: player.maxReason,
+            ability: {
+              name: "Canon de proue",
+              text: "Aperçu du panneau de capacité — cliquez pour ouvrir ou refermer les planches.",
+              armed: cannonArmed,
+              actionable: true,
+              onClick: () => setCannonArmed((armed) => !armed),
+            },
+          }}
           board={playerBoard}
           deck={playerDeck.length}
           onDraw={drawPlayer}

@@ -12,6 +12,7 @@ import {
   type PlayerState,
 } from "@/game";
 import { needsPlayTarget } from "@/features/match/needsPlayTarget";
+import type { TableTargeting } from "@/features/match/table/TableBoard";
 
 /**
  * Interactions du plateau, partagées par la partie LOCALE (`MatchBoard`) et
@@ -35,7 +36,25 @@ export type BoardSelection =
   | { kind: "playCard"; instanceId: string; needsTarget: boolean }
   | { kind: "attack"; attackerId: string }
   | { kind: "break"; instanceId: string; needsTarget: boolean; fromHand?: boolean }
-  | { kind: "reaction"; sourceInstanceId: string; abilityIndex: number; needsTarget: boolean };
+  | { kind: "reaction"; sourceInstanceId: string; abilityIndex: number; needsTarget: boolean }
+  /** Canon de Navire armé : le joueur désigne ce qu'il vise (un permanent adverse, ou le Navire adverse). */
+  | { kind: "shipShot" };
+
+/**
+ * Traduit la sélection du conteneur en ciblage pour le plateau. Les deux
+ * écrans (local et en ligne) faisaient la même conversion en ligne, chacun
+ * dans son JSX : un nouveau genre de sélection était à ajouter deux fois.
+ *
+ * Le tir de canon (`shipShot`) est le seul sans source sur le plateau — sa
+ * source est le Navire, qui n'est pas une carte.
+ */
+export function tableTargetingFor(selection: BoardSelection | null): TableTargeting {
+  if (!selection) return null;
+  if (selection.kind === "shipShot") return { kind: "shipShot" };
+  if (selection.kind === "attack") return { kind: "attack", sourceInstanceId: selection.attackerId };
+  if (selection.kind === "reaction") return { kind: "reaction", sourceInstanceId: selection.sourceInstanceId };
+  return { kind: selection.kind, sourceInstanceId: selection.instanceId };
+}
 
 export interface BoardInteractionConfig {
   /**
@@ -200,6 +219,11 @@ export function useBoardInteraction({
     }
     if (selection?.kind === "attack" && ownerId !== viewer.id) {
       act({ type: "attack", playerId: actorId, attackerInstanceId: selection.attackerId, defenderInstanceId: instanceId });
+      return null;
+    }
+    if (selection?.kind === "shipShot" && ownerId !== viewer.id) {
+      act({ type: "fireShipAbility", playerId: actorId, targetInstanceId: instanceId });
+      clearSelection();
     }
     return null;
   }
