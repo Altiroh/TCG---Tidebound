@@ -477,13 +477,14 @@
    substitution ci-dessous ne sert qu'en son absence. */
 .shipAbility {
   position: absolute;
-  /* Bas-gauche de l'arche par défaut : une trappe sur la coque, qui ne
-     recouvre pas le visage du Navire. L'asset définitif tranchera — c'est
-     à ces trois variables qu'on le recalera. */
-  top: var(--ship-ability-top, 60%);
-  left: var(--ship-ability-left, 26%);
+  /* Sur la rose des vents, au sommet du cadre (choix du 18/09/2026) : le
+     panneau prend la place de l'étoile plutôt que de mordre sur
+     l'illustration. Ces trois variables sont le seul point de recalage
+     quand l'asset définitif du cadre arrive. */
+  top: var(--ship-ability-top, 8.6%);
+  left: var(--ship-ability-left, 50%);
   z-index: 8;
-  width: var(--ship-ability-size, 26%);
+  width: var(--ship-ability-size, 17%);
   aspect-ratio: 1;
   padding: 0;
   overflow: hidden;
