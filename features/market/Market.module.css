@@ -978,6 +978,107 @@ a.section {
   }
 }
 
+/* ── Paysage COURT : la hauteur revient au ponton ─────────────
+ * Un téléphone couché, c'est ~390 px de haut : le panier, dessiné pour un
+ * écran debout, en prenait plus de la moitié — cadre de laiton de 36 px sur
+ * chaque bord, total et bouton renvoyés SOUS les lignes par la règle
+ * `max-width: 1100px`, et la phrase d'aide en prime. Il restait au ponton de
+ * quoi afficher des boosters de la taille d'un timbre, qu'on touchait de
+ * justesse.
+ *
+ * Ici la largeur ne manque pas, c'est la hauteur : le total et le bouton
+ * reprennent leur place À CÔTÉ des lignes, le cadre s'affine, et l'aide
+ * s'efface — sauf quand elle annonce qu'il manque de quoi payer, qui est la
+ * seule chose que ce paragraphe dit d'utile en cours d'achat.
+ * Requête sur la HAUTEUR, pas sur la largeur : c'est bien elle qui manque,
+ * et un téléphone couché est large.
+ */
+@media (max-height: 620px) {
+  .market {
+    gap: 6px 10px;
+    padding: 6px clamp(10px, 1.6vw, 28px) 8px;
+  }
+
+  .cart {
+    gap: 4px;
+    padding: 6px clamp(12px, 2vw, 32px) 4px;
+    border-width: 18px;
+    border-image-width: 18px;
+    margin: -8px;
+  }
+
+  .cartBody {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: clamp(10px, 1.6vw, 26px);
+    padding-top: 4px;
+  }
+
+  .checkout {
+    justify-content: flex-end;
+    gap: clamp(10px, 1.6vw, 26px);
+    padding-left: clamp(10px, 1.6vw, 26px);
+    padding-top: 0;
+    border-left: 1px solid rgba(199, 154, 78, 0.25);
+    border-top: none;
+  }
+
+  .cartTitle {
+    font-size: 14px;
+    gap: 8px;
+  }
+
+  .cartTitle svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .clearButton {
+    font-size: 12px;
+    padding: 2px 6px;
+  }
+
+  .cartLines {
+    max-height: 76px;
+    gap: 6px;
+  }
+
+  .cartEmpty {
+    min-height: 0;
+    font-size: 12px;
+  }
+
+  .cartLine {
+    flex-basis: clamp(200px, 30%, 320px);
+    padding: 4px 8px 4px 4px;
+    gap: 8px;
+  }
+
+  .totalLabel {
+    font-size: 11px;
+  }
+
+  .totalValue {
+    font-size: clamp(16px, 1.5vw, 22px);
+  }
+
+  .buyButton {
+    min-width: clamp(110px, 11vw, 170px);
+    padding: 7px 18px;
+    font-size: clamp(14px, 1.2vw, 18px);
+  }
+
+  /* Le conseil d'usage disparaît ; le manque de monnaie, jamais. */
+  .cartHint {
+    display: none;
+  }
+
+  .cartHint[data-short="true"] {
+    display: flex;
+    font-size: 12px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .packArt { transition: none; }
   .pack:hover:not(:disabled) .packArt,
