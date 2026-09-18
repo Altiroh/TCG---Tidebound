@@ -477,6 +477,9 @@ export function resolveEffect(
         nextState = replaceUnit(nextState, ownerId, unit.instanceId, (u) => ({
           ...u,
           damageMarked: u.damageMarked + finalAmount,
+          // Retenue pour la mort : une unité qui meurt n'a plus de source à
+          // interroger (cf. `DestructionCause`).
+          lastDamageCause: "effect" as const,
         }));
         events.push({ ...base, type: "DAMAGE", targetInstanceId: unit.instanceId, amount: finalAmount });
       }

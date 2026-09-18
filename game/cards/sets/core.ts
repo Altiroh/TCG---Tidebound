@@ -3993,11 +3993,9 @@ export const CORE_SET: CardDefinition[] = [
     attack: 2,
     health: 3,
     // `tideStateIn` absent : la survie ne dépend d'aucune Marée, contrairement
-    // à la Revenante de la Fosse. ÉCART CONNU avec le texte : le moteur ne
-    // trace pas la SOURCE des dégâts, donc « au combat » se réalise ici comme
-    // « toute destruction par dégâts », la destruction directe par la Marée
-    // restant exclue (cf. `applySelfSurvival`).
-    survivesLethalOncePerTurn: {},
+    // à la Revenante de la Fosse. `from: ["combat"]` réalise « AU COMBAT » à
+    // la lettre : ni un effet de destruction, ni la Marée ne la sauvent.
+    survivesLethalOncePerTurn: { from: ["combat"] },
     text: "La première fois à chaque tour qu'elle devrait être détruite au combat, elle reste à 1 Résistance.",
   },
   {

@@ -42,6 +42,13 @@ export interface TriggerEvent {
   /** `onDiscarded` / `onCardDiscardedFromHand` : propriétaire de la carte défaussée. */
   discardedOwnerId?: string;
   /**
+   * `onDeath` : COMMENT la carte est partie (combat, effet, Marée,
+   * Sabordage). Lue par `triggeredBy.destroyedBy` — « quand une de vos
+   * unités est détruite au combat » ne doit pas voir une destruction par
+   * effet.
+   */
+  destructionCause?: import("@/game/cards/types").DestructionCause;
+  /**
    * `onObjectBroken` : l'Objet a été Brisé DEPUIS LA MAIN. Propagé dans
    * `EffectContext.brokenFromHand` par `processTrigger`, sans quoi une
    * capacité déclenchée ne peut pas lire `conditionBrokenFromHand` (ex:

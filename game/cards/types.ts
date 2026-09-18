@@ -78,6 +78,12 @@ export interface TriggerSourceFilter {
    * porteur.
    */
   equippedUnit?: boolean;
+  /**
+   * `onDeath` seulement : ne réagit qu'aux destructions de cette CAUSE
+   * (ex: « au combat »). Absent = toutes les destructions, Sabordage
+   * compris — le comportement historique.
+   */
+  destroyedBy?: DestructionCause[];
 }
 
 /** Une capacité déclenchée : "quand X se produit, résous ces effets". */
@@ -326,7 +332,16 @@ export interface CardDefinition {
    * (`oncePerTurnFlags`). Ne sauve pas d'une destruction directe par la
    * Marée (`destroyedByTide`).
    */
-  survivesLethalOncePerTurn?: { tideStateIn?: TideStateName[] };
+  survivesLethalOncePerTurn?: {
+    tideStateIn?: TideStateName[];
+    /**
+     * « qu'elle devrait être détruite AU COMBAT » : la survie ne joue que
+     * contre ces causes. Absent = contre n'importe quelle destruction par
+     * dégâts (la destruction directe par la Marée reste exclue de toute
+     * façon, cf. `applySelfSurvival`).
+     */
+    from?: DestructionCause[];
+  };
 
   /**
    * "La première réduction de durée de Marée que vous provoquez chaque
@@ -791,6 +806,30 @@ export const STATUS_SILENCE = "silence";
  */
 export type GraveyardCause = "discarded" | "destroyed" | "scuttled" | "expired";
 
+/**
+ * COMMENT une carte a quitté le plateau — plus fin que `GraveyardCause`, qui
+ * ne dit que la zone et le geste.
+ *
+ * `GraveyardCause` répond « détruite ou sabordée ? ». Plusieurs textes
+ * posent une autre question : « détruite AU COMBAT » (Encore cinq minutes),
+ * qu'une destruction par un effet ou par la Marée ne doit pas satisfaire.
+ * Faute de cette distinction, la carte survivait à tout, ce que son texte ne
+ * dit pas.
+ *
+ * La cause est déduite à la mort dans `game/state/processDeaths.ts`, à
+ * partir de la dernière source de dégâts marquée sur l'unité
+ * (`CardInstance.lastDamageCause`) et de la façon dont elle part.
+ */
+export type DestructionCause =
+  /** Dégâts d'une attaque — ceux du défenseur comme le contrecoup de l'attaquant. */
+  | "combat"
+  /** Dégâts ou destruction provoqués par un effet de carte. */
+  | "effect"
+  /** Dégâts de Marée, ou destruction directe par l'état courant (ex: une Vigie aux Abysses). */
+  | "tide"
+  /** Sabordage : un coût consenti par son contrôleur, jamais une destruction subie. */
+  | "scuttle";
+
 export function getMaxCopies(def: CardDefinition): number {
   return def.maxCopies ?? DEFAULT_MAX_COPIES;
 }
@@ -905,6 +944,17 @@ export interface CardInstance {
 
   /** Posée uniquement une fois la carte dans un cimetière : cause de sa sortie de jeu. */
   graveyardCause?: GraveyardCause;
+
+  /**
+   * Origine des DERNIERS dégâts marqués sur cette unité. Posée à chaque
+   * marquage (combat, effet, Marée) et lue au moment de la mort pour en
+   * déduire la `DestructionCause` — une unité qui meurt n'a plus de source
+   * à interroger, il faut donc l'avoir retenue.
+   */
+  lastDamageCause?: Exclude<DestructionCause, "scuttle">;
+
+  /** Posée une fois la carte au cimetière : comment elle a quitté le plateau. */
+  destructionCause?: DestructionCause;
 
   /**
    * Pour un Équipement uniquement : `instanceId` du permanent (Marin/

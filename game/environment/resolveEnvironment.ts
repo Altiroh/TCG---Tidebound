@@ -227,7 +227,11 @@ function applyHouleSickness(state: GameState, turnNumber: number): { state: Game
         p.id === playerId
           ? {
               ...p,
-              board: p.board.map((u) => (u.instanceId === instanceId ? { ...u, damageMarked: u.damageMarked + amount } : u)),
+              board: p.board.map((u) =>
+                u.instanceId === instanceId
+                  ? { ...u, damageMarked: u.damageMarked + amount, lastDamageCause: "tide" as const }
+                  : u
+              ),
             }
           : p
       ) as [PlayerState, PlayerState],

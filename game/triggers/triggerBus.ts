@@ -116,6 +116,9 @@ function matchesTriggerSource(
     return false;
   }
   if (filter.onlySummoned && !event.fromSummon) return false;
+  // « détruite au combat » : sans cause portée par l'événement, le filtre ne
+  // matche pas — mieux vaut ne pas se déclencher que se déclencher à tort.
+  if (filter.destroyedBy && !(event.destructionCause && filter.destroyedBy.includes(event.destructionCause))) return false;
   // "Quand IL attaque" sur un Équipement : l'événement vise le permanent
   // équipé, pas l'Équipement lui-même (qui, lui, n'attaque jamais).
   if (filter.equippedUnit && event.sourceInstanceId !== holder.attachedToInstanceId) return false;

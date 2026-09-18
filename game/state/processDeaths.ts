@@ -4,6 +4,7 @@ import { hasResistance, type CardInstance } from "@/game/cards/types";
 import type { TideStateName } from "@/game/environment/types";
 import type { GameEvent } from "@/game/events/types";
 import { processTrigger } from "@/game/triggers/triggerBus";
+import type { DestructionCause } from "@/game/cards/types";
 import { reasonAfterLoss } from "@/game/state/reason";
 import { recordGraveyardArrival } from "@/game/state/discard";
 import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
@@ -93,6 +94,29 @@ function applyDestructionSubstitute(
   return { state: nextState, events: [event] };
 }
 
+/**
+ * COMMENT cette unité est en train de partir.
+ *
+ * Elle ne peut plus être interrogée une fois morte : la cause se déduit ici,
+ * au moment où elle quitte le plateau, de la dernière source de dégâts
+ * qu'elle a retenue (`lastDamageCause`) et de la façon dont elle part.
+ *
+ * L'ordre compte. Un Sabordage est un coût consenti et prime sur tout le
+ * reste ; une destruction DIRECTE par la Marée (une Vigie aux Abysses) n'est
+ * pas des dégâts et ne doit pas être imputée au dernier coup reçu ; et une
+ * unité marquée `pendingRemoval` par un effet de destruction meurt de cet
+ * effet, même si elle portait des dégâts de combat.
+ */
+export function destructionCauseOf(
+  unit: CardInstance,
+  destroyedByTide: boolean
+): DestructionCause {
+  if (unit.pendingRemoval === "scuttled") return "scuttle";
+  if (destroyedByTide) return "tide";
+  if (unit.pendingRemoval === "destroyed") return "effect";
+  return unit.lastDamageCause ?? "effect";
+}
+
 const SURVIVES_LETHAL_KEY = "survivesLethal";
 
 /**
@@ -112,6 +136,16 @@ function applySelfSurvival(
   // `tideStateIn` absent : la survie ne dépend d'aucun état de Marée.
   if (!survival) return undefined;
   if (survival.tideStateIn && !survival.tideStateIn.includes(state.environment.tideState)) return undefined;
+  // « qu'elle devrait être détruite AU COMBAT » : la survie ne joue que
+  // contre les causes que le texte nomme.
+  if (survival.from) {
+    const stats = computeEffectiveStats(unit, state.environment.tideState, {
+      controllerBoard: owner.board,
+      controllerReason: owner.reason,
+      tideOrientation: state.environment.tideOrientation,
+    });
+    if (!survival.from.includes(destructionCauseOf(unit, stats.destroyedByTide))) return undefined;
+  }
   if (!oncePerTurnAvailable(unit, SURVIVES_LETHAL_KEY, turnNumber)) return undefined;
   const stats = computeEffectiveStats(unit, state.environment.tideState, {
     controllerBoard: owner.board,
@@ -294,6 +328,14 @@ export function processDeaths(
         : boardWithoutUnit;
 
       const scuttled = unit.pendingRemoval === "scuttled";
+      const cause = destructionCauseOf(
+        unit,
+        computeEffectiveStats(unit, tideState, {
+          controllerBoard: player.board,
+          controllerReason: player.reason,
+          tideOrientation: current.environment.tideOrientation,
+        }).destroyedByTide
+      );
       const graveyard = [
         ...player.graveyard,
         {
@@ -301,7 +343,9 @@ export function processDeaths(
           damageMarked: 0,
           modifiers: [],
           pendingRemoval: undefined,
+          lastDamageCause: undefined,
           graveyardCause: scuttled ? ("scuttled" as const) : ("destroyed" as const),
+          destructionCause: cause,
         },
       ];
       // Une destruction est une ARRIVÉE au Cimetière comme une autre : sans
@@ -354,6 +398,7 @@ export function processDeaths(
           sourceInstanceId: unit.instanceId,
           cardId: unit.cardId,
           playerId: owner.id,
+          destructionCause: cause,
         },
         turnNumber
       );

@@ -200,12 +200,12 @@ describe("Lot 13 — l'attrition", () => {
     expect(saborde.state.players.find((p) => p.id === "p2")!.anchor).toBe(avant - 1);
   });
 
-  it("Encore cinq minutes se sauve une fois par tour, quelle que soit la Marée", () => {
+  it("Encore cinq minutes se sauve du COMBAT, quelle que soit la Marée — mais pas d'un effet", () => {
     const def = getCardDefinition("encore-cinq-minutes");
     // `tideStateIn` absent : la Revenante de la Fosse ne survit qu'en
-    // Abysses, celle-ci survit partout.
-    expect(def.survivesLethalOncePerTurn).toBeDefined();
+    // Abysses, celle-ci survit partout. `from` dit contre QUOI.
     expect(def.survivesLethalOncePerTurn?.tideStateIn).toBeUndefined();
+    expect(def.survivesLethalOncePerTurn?.from).toEqual(["combat"]);
   });
 
   it("Doudou ne s'équipe qu'à un Un Dead", () => {
