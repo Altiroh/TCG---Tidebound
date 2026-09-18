@@ -75,6 +75,28 @@ export interface PlayerState {
    * sur le plateau, il n'a pas d'`oncePerTurnFlags` où s'inscrire.
    */
   shipAbility?: ShipAbilityState;
+  /**
+   * Journal court des cartes ARRIVÉES au Cimetière, horodaté par tour de
+   * table (Lot 13).
+   *
+   * Le contenu du Cimetière ne suffit pas à répondre à « si une carte Un
+   * Dead a rejoint votre Cimetière ce tour » : il dit ce qui s'y trouve,
+   * jamais QUAND ni d'où c'est venu — et une carte repêchée puis
+   * redéfaussée n'y compterait que pour une. D'où ce journal, tenu par la
+   * voie unique de la défausse (`game/state/discard.ts`) et élagué au
+   * début de chaque tour aux deux derniers tours de table, ce qui couvre
+   * « ce tour » comme « depuis votre dernier tour ».
+   */
+  graveyardArrivals?: GraveyardArrival[];
+}
+
+/** Une arrivée au Cimetière, telle que la lisent les conditions du Lot 13. */
+export interface GraveyardArrival {
+  cardId: string;
+  /** Tour de table de l'arrivée. */
+  turnNumber: number;
+  /** D'où venait la carte — « depuis votre main » est une condition à part entière. */
+  fromZone: "hand" | "board" | "deck";
 }
 
 /**

@@ -3,7 +3,12 @@ import { isPermanentCard, isVisibleDuringTide, UNIT_CARD_TYPES, type CardDefinit
 import type { EffectContext } from "@/game/effects/resolveEffect";
 import { discountApplies, resolveEffect } from "@/game/effects/resolveEffect";
 import type { GameEvent } from "@/game/events/types";
-import { processReturnedToHandTriggers, processSummonEnterTriggers, processTrigger } from "@/game/triggers/triggerBus";
+import {
+  processDiscardedFromHandTriggers,
+  processReturnedToHandTriggers,
+  processSummonEnterTriggers,
+  processTrigger,
+} from "@/game/triggers/triggerBus";
 import {
   assertBoardNotFull,
   assertCanPayCost,
@@ -258,6 +263,12 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
   const recalledOnPlay = processReturnedToHandTriggers(nextState, playEffectEvents, state.turnNumber);
   nextState = recalledOnPlay.state;
   events.push(...recalledOnPlay.events);
+
+  // Cartes défaussées par la pose (Lot 13) : « quand cette carte est
+  // défaussée » et les observateurs du Cimetière doivent la voir partir.
+  const discardedOnPlay = processDiscardedFromHandTriggers(nextState, playEffectEvents, state.turnNumber);
+  nextState = discardedOnPlay.state;
+  events.push(...discardedOnPlay.events);
 
   const cardPlayedTrigger = processTrigger(
     nextState,

@@ -2,7 +2,8 @@ import { applyTideTurnEffects, resolveTideTurnStep } from "@/game/environment/re
 import { getShipDefinition } from "@/game/environment/shipData";
 import { deraisonAnchorDamage, deraisonDebt, reasonCeiling, startingReasonCap } from "@/game/state/reason";
 import type { GameEvent } from "@/game/events/types";
-import { processTrigger } from "@/game/triggers/triggerBus";
+import { processDiscardedFromHandTriggers, processTrigger } from "@/game/triggers/triggerBus";
+import { discardFromHand, pruneGraveyardArrivals } from "@/game/state/discard";
 import { RULES } from "@/game/rules/constants";
 import { assertGameActive, assertIsActivePlayer, assertPlayerInGame, combine } from "@/game/rules/validation";
 import { findAnomalyForcedChoice } from "@/game/state/anomalies";
@@ -91,20 +92,21 @@ export function endTurn(state: GameState, action: EndTurnAction): ActionResult {
   // (`game/environment/resolveEnvironment.ts`).
   const endingPlayer = nextState.players.find((p) => p.id === action.playerId)!;
   if (endingPlayer.hand.length > RULES.MAX_HAND_SIZE) {
-    let discardHand = endingPlayer.hand;
-    let discardGraveyard = endingPlayer.graveyard;
-    while (discardHand.length > RULES.MAX_HAND_SIZE) {
-      const [discarded, ...rest] = discardHand;
-      discardHand = rest;
-      discardGraveyard = [...discardGraveyard, { ...discarded!, graveyardCause: "discarded" as const }];
-      events.push({ ...base, type: "CARD_MOVED", instanceId: discarded!.instanceId, fromZone: "hand", toZone: "graveyard" });
-    }
-    nextState = {
-      ...nextState,
-      players: nextState.players.map((p) =>
-        p.id === endingPlayer.id ? { ...p, hand: discardHand, graveyard: discardGraveyard } : p
-      ) as [PlayerState, PlayerState],
-    };
+    const forced = discardFromHand(
+      nextState,
+      endingPlayer.id,
+      { count: endingPlayer.hand.length - RULES.MAX_HAND_SIZE },
+      base
+    );
+    nextState = forced.state;
+    events.push(...forced.events);
+
+    // Une carte qui part par la limite de main est défaussée comme une
+    // autre : P'tit Bout rend sa Raison, La Marelle cogne. Le texte ne
+    // distingue pas la cause de la défausse, le moteur non plus.
+    const discardTriggers = processDiscardedFromHandTriggers(nextState, forced.events, state.turnNumber);
+    nextState = discardTriggers.state;
+    events.push(...discardTriggers.events);
   }
 
   // --- Règlement de la Déraison du joueur qui TERMINE, en tout dernier
@@ -228,6 +230,15 @@ export function endTurn(state: GameState, action: EndTurnAction): ActionResult {
       PlayerState
     ],
     pendingOceanJudgment,
+  };
+
+  // Élagage du journal des arrivées au Cimetière, au tour qui COMMENCE et
+  // non à celui qui finit : « depuis votre dernier tour » doit encore voir
+  // le tour adverse qui vient de s'écouler quand les capacités de début de
+  // tour se déclenchent, juste en dessous.
+  nextState = {
+    ...nextState,
+    players: nextState.players.map((p) => pruneGraveyardArrivals(p, newTurnNumber)) as [PlayerState, PlayerState],
   };
 
   events.push({ ...newBase, type: "TURN_STARTED", playerId: refreshedPlayer.id });

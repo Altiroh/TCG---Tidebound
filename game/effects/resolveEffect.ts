@@ -12,6 +12,7 @@ import { forceTideJumpToAbysses, forceTideTransition, tickTide } from "@/game/en
 import { isEligibleChosenUnit } from "@/game/effects/chosenTargets";
 import type { EffectAmount, EffectDefinition } from "@/game/effects/types";
 import type { GameEvent } from "@/game/events/types";
+import { discardFromHand } from "@/game/state/discard";
 import { nextInt, type RngState } from "@/game/rng";
 import { reduceReasonGain } from "@/game/state/anomalies";
 import { reasonAfterLoss, reasonCeiling } from "@/game/state/reason";
@@ -514,16 +515,14 @@ export function resolveEffect(
     case "discard": {
       const amount = amountValue(effect.amount);
       const player = resolveSinglePlayerTarget(state, effect, context) ?? getPlayer(state, context.controllerId);
-      const hand = [...player.hand];
-      const graveyard = [...player.graveyard];
-
-      for (let i = 0; i < amount && hand.length > 0; i++) {
-        const card = hand.shift()!;
-        graveyard.push({ ...card, graveyardCause: "discarded" as const });
-        events.push({ ...base, type: "CARD_MOVED", instanceId: card.instanceId, fromZone: "hand", toZone: "graveyard" });
-      }
-
-      return { state: replacePlayer(state, { ...player, hand, graveyard }), events };
+      // La défausse passe par `game/state/discard.ts` : c'est là que la
+      // cause, l'identité de la carte sur l'événement et le journal des
+      // arrivées au Cimetière sont tenus, pour les trois endroits qui
+      // défaussent. Les déclencheurs, eux, sont réveillés par l'appelant
+      // (`processDiscardedFromHandTriggers`) à partir de ces événements.
+      const discarded = discardFromHand(state, player.id, { count: amount }, base);
+      events.push(...discarded.events);
+      return { state: discarded.state, events };
     }
 
     // Détruire et Saborder ne RETIRENT pas la carte ici : ils la marquent, et

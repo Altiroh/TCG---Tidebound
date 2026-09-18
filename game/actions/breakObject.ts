@@ -1,7 +1,12 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
 import type { EffectContext } from "@/game/effects/resolveEffect";
 import { resolveEffect } from "@/game/effects/resolveEffect";
-import { processReturnedToHandTriggers, processSummonEnterTriggers, processTrigger } from "@/game/triggers/triggerBus";
+import {
+  processDiscardedFromHandTriggers,
+  processReturnedToHandTriggers,
+  processSummonEnterTriggers,
+  processTrigger,
+} from "@/game/triggers/triggerBus";
 import { isEligibleChosenUnit } from "@/game/effects/chosenTargets";
 import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
 import type { EffectDefinition } from "@/game/effects/types";
@@ -300,6 +305,11 @@ export function breakObject(state: GameState, action: BreakObjectAction): Action
   const recalled = processReturnedToHandTriggers(nextState, breakEffectEvents, state.turnNumber);
   nextState = recalled.state;
   events.push(...recalled.events);
+
+  // Cartes défaussées par le Bris (ex: Le Goûter, Lot 13).
+  const discardedByBreak = processDiscardedFromHandTriggers(nextState, breakEffectEvents, state.turnNumber);
+  nextState = discardedByBreak.state;
+  events.push(...discardedByBreak.events);
 
   // Le Bris lui-même est un fait auquel des cartes réagissent
   // ("la première fois à chaque tour que vous Brisez un Objet").

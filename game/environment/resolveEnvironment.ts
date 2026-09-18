@@ -8,7 +8,8 @@ import type { CardInstance } from "@/game/cards/types";
 import { RULES } from "@/game/rules/constants";
 import { nextInt } from "@/game/rng";
 import type { GameEvent } from "@/game/events/types";
-import { processTrigger } from "@/game/triggers/triggerBus";
+import { processDiscardedFromHandTriggers, processTrigger } from "@/game/triggers/triggerBus";
+import { discardFromHandState } from "@/game/state/discard";
 import { applyTideChangeAnomalies } from "@/game/state/anomalies";
 import {
   consumeEquippedEffectDamageShield,
@@ -272,6 +273,8 @@ export function applyTideTurnEffects(
   turnNumber: number
 ): { state: GameState; events: GameEvent[] } {
   const events: GameEvent[] = [];
+  /** Défausses infligées par la Marée, relues après la boucle pour réveiller leurs déclencheurs. */
+  const discardEvents: GameEvent[] = [];
   const base = { turnNumber, timestamp: Date.now() };
   let nextState = state;
 
@@ -308,27 +311,27 @@ export function applyTideTurnEffects(
       reasonLoss = Math.max(0, reasonLoss - shield.reduction);
     }
 
-    let hand = player.hand;
-    let graveyard = player.graveyard;
+    // La défausse infligée par la Marée passe par la même voie que les
+    // autres (`game/state/discard.ts`) : même cause, même journal
+    // d'arrivées, mêmes événements complets — donc mêmes déclencheurs.
+    let discardedPlayer = player;
     if (anchorLoss > 0) {
       const ship = getShipDefinition(player.shipId);
       const discardCount = ship.onTideDamageTakenByState?.[tideState]?.discardCount ?? 0;
-      for (let d = 0; d < discardCount && hand.length > 0; d++) {
-        const [discarded, ...rest] = hand;
-        hand = rest;
-        graveyard = [...graveyard, { ...discarded!, graveyardCause: "discarded" as const }];
-        events.push({ ...base, type: "CARD_MOVED", instanceId: discarded!.instanceId, fromZone: "hand", toZone: "graveyard" });
+      if (discardCount > 0) {
+        const result = discardFromHandState(player, { count: discardCount }, base);
+        discardedPlayer = result.player;
+        events.push(...result.events);
+        discardEvents.push(...result.events);
       }
     }
 
     players[i] = {
-      ...player,
+      ...discardedPlayer,
       board,
       anchor: player.anchor - anchorLoss,
       reason: reasonAfterLoss(player, reasonLoss),
       statusFlags,
-      hand,
-      graveyard,
     };
 
     if (anchorLoss > 0) {
@@ -338,6 +341,15 @@ export function applyTideTurnEffects(
   }
 
   nextState = { ...nextState, players };
+
+  // Les cartes que la Marée vient d'arracher de la main sont défaussées
+  // comme les autres : leurs déclencheurs se réveillent ici, une fois le
+  // nouvel état des joueurs posé.
+  if (discardEvents.length > 0) {
+    const discardTriggers = processDiscardedFromHandTriggers(nextState, discardEvents, turnNumber);
+    nextState = discardTriggers.state;
+    events.push(...discardTriggers.events);
+  }
 
   // --- Abysses : choc d'entrée (Ancrage + Raison max) / restauration à la sortie ---
   const abysses = applyAbyssesEntryOrExit(nextState, previousTideState, tideState, turnNumber);

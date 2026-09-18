@@ -89,6 +89,22 @@ function matchesControlCondition(
     const holder = state.players.find((p) => p.id === controllerId);
     if (!holder || holder.hand.length < handAtLeast) return false;
   }
+  const arrival = ability.condition?.graveyardArrival;
+  if (arrival) {
+    const controller = state.players.find((p) => p.id === controllerId);
+    // « ce tour » = le tour de table courant ; « depuis votre dernier tour »
+    // remonte d'un tour de plus, celui de l'adversaire, sinon la condition
+    // ne verrait jamais ce qui est parti au Cimetière pendant qu'il jouait.
+    const since = arrival.since === "thisTurn" ? state.turnNumber : state.turnNumber - 1;
+    const seen = (controller?.graveyardArrivals ?? []).some((entry) => {
+      if (entry.turnNumber < since) return false;
+      if (arrival.fromHandOnly && entry.fromZone !== "hand") return false;
+      if (arrival.cardIds && !arrival.cardIds.includes(entry.cardId)) return false;
+      if (arrival.subtype && getCardDefinition(entry.cardId).subtype !== arrival.subtype) return false;
+      return true;
+    });
+    if (!seen) return false;
+  }
   const required = ability.condition?.controlsAnyCardIds;
   if (!required) return true;
   const controller = state.players.find((p) => p.id === controllerId);
@@ -188,6 +204,21 @@ function collectTriggeredWork(
       // Capacité personnelle uniquement : `triggeredBy` désigne une AUTRE
       // carte, elle est traitée par `collectObserverWork` juste après.
       if (ability.trigger !== event.trigger || !matchesMode(ability) || ability.triggeredBy) return;
+      result.push(work(ability, abilityIndex, def.id, event.playerId!, event.sourceInstanceId!, turnNumber));
+    });
+    result.push(...collectObserverWork(state, event, turnNumber, mode));
+    return result;
+  }
+
+  if (event.trigger === "onDiscarded") {
+    // Même cas de figure que `onDeath` : la carte n'est plus là où on
+    // pourrait la lire. Elle n'a même JAMAIS été sur le plateau — elle est
+    // passée de la main au Cimetière — donc sa capacité se lit sur sa
+    // définition, à partir de ce que l'événement porte.
+    if (!event.cardId || !event.playerId || !event.sourceInstanceId) return result;
+    const def = getCardDefinition(event.cardId);
+    (def.abilities ?? []).forEach((ability, abilityIndex) => {
+      if (ability.trigger !== "onDiscarded" || !matchesMode(ability) || ability.triggeredBy) return;
       result.push(work(ability, abilityIndex, def.id, event.playerId!, event.sourceInstanceId!, turnNumber));
     });
     result.push(...collectObserverWork(state, event, turnNumber, mode));
@@ -446,6 +477,56 @@ export function processReturnedToHandTriggers(
 }
 
 /**
+ * Déclenchements de DÉFAUSSE (Lot 13), à partir des `CARD_MOVED`
+ * main → Cimetière produits par `game/state/discard.ts`.
+ *
+ * Deux déclencheurs pour un même geste, et ils ne se recouvrent pas :
+ *
+ *   - `onDiscarded` est PERSONNEL — « quand cette carte est défaussée »,
+ *     lu sur la définition de la carte partie (P'tit Bout) ;
+ *   - `onCardDiscardedFromHand` est un déclencheur d'OBSERVATEUR — « une
+ *     carte rejoint votre Cimetière depuis votre main », pour ce qui est
+ *     en jeu et regarde (Cache-Cache, La Marelle). Il se filtre avec
+ *     `triggeredBy` comme n'importe quel observateur.
+ *
+ * Même forme et même raison que `processReturnedToHandTriggers` : la
+ * défausse est décidée ailleurs, l'appelant repasse ici les événements.
+ */
+export function processDiscardedFromHandTriggers(
+  state: GameState,
+  events: readonly GameEvent[],
+  turnNumber: number,
+  depth = 1
+): { state: GameState; events: GameEvent[] } {
+  let nextState = state;
+  const produced: GameEvent[] = [];
+
+  for (const event of events) {
+    if (event.type !== "CARD_MOVED" || event.fromZone !== "hand" || event.toZone !== "graveyard") continue;
+    if (!event.cardId || !event.ownerId) continue;
+
+    for (const trigger of ["onDiscarded", "onCardDiscardedFromHand"] as const) {
+      const result = processTrigger(
+        nextState,
+        {
+          trigger,
+          playerId: event.ownerId,
+          cardId: event.cardId,
+          sourceInstanceId: event.instanceId,
+          discardedOwnerId: event.ownerId,
+        },
+        turnNumber,
+        depth
+      );
+      nextState = result.state;
+      produced.push(...result.events);
+    }
+  }
+
+  return { state: nextState, events: produced };
+}
+
+/**
  * Traite un `TriggerEvent` : résout dans l'ordre toutes les capacités
  * AUTOMATIQUES concernées et retourne le nouvel état + les événements
  * produits (à ajouter au journal par l'appelant). Les capacités
@@ -538,6 +619,13 @@ export function processTrigger(
     const recalled = processReturnedToHandTriggers(nextState, events, turnNumber, depth + 1);
     nextState = recalled.state;
     events.push(...recalled.events);
+
+    // Et pour une défausse provoquée par une capacité (Lot 13) : une carte
+    // envoyée au Cimetière par un déclenchement est défaussée tout autant
+    // qu'une carte envoyée par une pose.
+    const discarded = processDiscardedFromHandTriggers(nextState, events, turnNumber, depth + 1);
+    nextState = discarded.state;
+    events.push(...discarded.events);
   }
 
   // Anomalies globales temporaires (`game/state/anomalies.ts`) : centralisées

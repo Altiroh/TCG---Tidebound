@@ -121,6 +121,26 @@ export interface TriggeredAbility {
      * dans la fenêtre de réaction pour n'y rien résoudre.
      */
     selfVisible?: boolean;
+    /**
+     * « si une carte Un Dead a rejoint votre Cimetière ce tour » / « depuis
+     * votre dernier tour » (Lot 13). Lue dans
+     * `PlayerState.graveyardArrivals`, pas dans le Cimetière lui-même : le
+     * Cimetière dit ce qui s'y trouve, jamais quand ni d'où c'est venu.
+     *
+     * `since` : `"thisTurn"` = le tour de table courant ; `"lastOwnTurn"` =
+     * depuis le tour précédent du contrôleur, ce qui inclut le tour adverse
+     * intercalé — la fenêtre que décrit « depuis votre dernier tour » sur
+     * une capacité de début de tour (Promis, j'attends).
+     */
+    graveyardArrival?: {
+      /** Ne compte que les cartes de ce sous-type (ex: "un-dead"). */
+      subtype?: string;
+      /** Ou précisément l'une de ces cartes. */
+      cardIds?: string[];
+      /** Ne compte que ce qui vient de la MAIN, pas du plateau ni du deck. */
+      fromHandOnly?: boolean;
+      since: "thisTurn" | "lastOwnTurn";
+    };
   };
 
   /** Réagit à ce qui arrive à une AUTRE carte (cf. `TriggerSourceFilter`). */
