@@ -270,6 +270,14 @@ function resolveUnitTargets(
       const unit = owner?.board.find((u) => u.instanceId === context.chosenTargetInstanceId);
       return noDraw(unit && owner ? [{ unit, ownerId: owner.id }] : []);
     }
+    case "shotTarget": {
+      // Aucun permanent désigné : le tir visait le Navire adverse, il n'y a
+      // donc pas d'unité à toucher (cf. `resolvePlayerTargets`).
+      if (!context.chosenTargetInstanceId) return noDraw([]);
+      const owner = findUnitOwner(state, context.chosenTargetInstanceId);
+      const unit = owner?.board.find((u) => u.instanceId === context.chosenTargetInstanceId);
+      return noDraw(unit && owner ? [{ unit, ownerId: owner.id }] : []);
+    }
     case "allAllyUnits":
       return noDraw(controller.board.map((unit) => ({ unit, ownerId: controller.id })));
     case "allEnemyUnits":
@@ -306,6 +314,11 @@ function resolvePlayerTargets(
       return [getPlayer(state, context.controllerId)];
     case "opponentPlayer":
       return [getOpponent(state, context.controllerId)];
+    // Tir sans permanent désigné = tir sur le Navire adverse, exactement
+    // comme une attaque directe. Un permanent désigné rend la main à
+    // `resolveUnitTargets` : le même effet frappe l'un OU l'autre.
+    case "shotTarget":
+      return context.chosenTargetInstanceId ? [] : [getOpponent(state, context.controllerId)];
     case "allPlayers":
       return [...state.players];
     default:

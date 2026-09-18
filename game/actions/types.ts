@@ -105,6 +105,30 @@ export interface ActivateAbilityAction {
 }
 
 /**
+ * Active la capacité activable du NAVIRE du joueur
+ * (`ShipDefinition.activatableAbility`) : paie son coût et, selon la
+ * capacité, résout ses effets immédiats ou arme son tir différé. Ne
+ * consomme pas l'action principale du tour. Aucune cible ici — une capacité
+ * en deux temps désigne la sienne au moment du tir (`FireShipAbilityAction`).
+ */
+export interface ActivateShipAbilityAction {
+  type: "activateShipAbility";
+  playerId: PlayerId;
+}
+
+/**
+ * Tire avec la capacité de Navire précédemment ARMÉE (`ShipArmedShot`). La
+ * cible suit les règles d'une attaque : `targetInstanceId` absent = le
+ * Navire adverse, comme une attaque directe.
+ */
+export interface FireShipAbilityAction {
+  type: "fireShipAbility";
+  playerId: PlayerId;
+  /** Permanent adverse visé. Absent = le Navire adverse (refusé si un permanent adverse porte Garde). */
+  targetInstanceId?: string;
+}
+
+/**
  * Résout le choix binaire en attente (`GameState.pendingChoice`, ex: Le
  * Fond Vous Regarde) — seule action acceptée tant qu'un choix est ouvert,
  * exactement comme `ActivateReactionAction`/`PassReactionAction` pour une
@@ -143,6 +167,8 @@ export type PlayerAction =
   | ActivateReactionAction
   | PassReactionAction
   | ActivateAbilityAction
+  | ActivateShipAbilityAction
+  | FireShipAbilityAction
   | ResolveChoiceAction
   | ConcedeAction;
 

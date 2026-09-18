@@ -9,13 +9,16 @@ import type { ShipDefinition } from "@/game/environment/types";
  * donc les valeurs "moyennes" proposées par cette note, à ajuster au
  * premier vrai playtest plutôt que gravées dans le marbre.
  *
- * NOTE — les capacités activables (`capacityText`) et certains éléments de
- * passif ne sont pas encore exprimables par le moteur : il n'existe pas de
- * système de capacités "une fois par partie" ni de distinction "gain de
- * Raison venant d'une carte" (cadrage section 16, volontairement complexe,
- * pas encore implémenté). Ces textes sont conservés pour l'UI/la fidélité
- * au design ; seuls les effets exprimables avec les champs numériques
- * ci-dessous sont réellement appliqués par le moteur pour l'instant.
+ * NOTE — deux fréquences de capacité, une seule câblée. `activatableAbility`
+ * (Le Goliath, Canon de proue) est réellement appliquée par le moteur :
+ * coût, limite par tour, fenêtre de phase, ciblage explicite. Les quatre
+ * autres Navires portent des capacités "une fois par PARTIE" (Virage court,
+ * Changer de cap, Tenir la ligne), fréquence encore non modélisée : elles
+ * restent en `capacityText`, informatif seulement. Même chose pour certains
+ * passifs qui demanderaient de distinguer "gain de Raison venant d'une
+ * carte" (cadrage section 16, volontairement complexe, pas encore
+ * implémenté) ; seuls les effets exprimables avec les champs numériques
+ * ci-dessous sont réellement appliqués.
  */
 export const SHIP_SET: ShipDefinition[] = [
   {
@@ -90,6 +93,39 @@ export const SHIP_SET: ShipDefinition[] = [
       "Pénitence — la première fois par tour que vous devriez subir des dégâts d'Ancrage à cause de votre " +
       "Déraison, réduisez ces dégâts de 1.",
     deraisonDamageReduction: 1,
+  },
+  {
+    // Cinquième Navire du roster de prototype (Notion "Collection des
+    // Navires" + fiche "💥 Le Goliath", 2026-09-18). Ni passif ni faiblesse
+    // au prototype : toute son identité tient dans son Canon.
+    id: "le-goliath",
+    name: "Le Goliath",
+    startingAnchor: 20,
+    reasonMax: 10,
+    slotCount: 5,
+    // Illustration non encore produite — l'arche reste vide, comme prévu.
+    text: "Profil : moyen / artillerie / pression de board.",
+    // Premier Navire dont la capacité est réellement CÂBLÉE (les quatre
+    // autres sont "une fois par partie", fréquence encore non modélisée).
+    // Geste en deux temps décidé le 18/09/2026 : la Raison se paie pour
+    // DÉCOUVRIR le canon, pas pour tirer — un canon armé et non tiré a
+    // coûté sa Raison pour rien.
+    activatableAbility: {
+      name: "Canon de proue",
+      text:
+        "Une fois par tour, pendant une Phase principale, dépensez 2 Raison pour armer le Canon de proue. " +
+        "Pendant votre Phase de combat, vous pouvez alors tirer : infligez 2 dégâts à un permanent adverse " +
+        "ou au Navire adverse, selon les mêmes règles de ciblage qu'une attaque. Le tir ne provoque aucune " +
+        "riposte et referme le canon ; il ne consomme l'attaque d'aucune unité.",
+      cost: { reason: 2 },
+      activationPhases: ["mainPhase", "mainPhase2"],
+      armedShot: {
+        phases: ["combatPhase"],
+        targeting: "attackRules",
+        // Valeur de prototype (fiche Notion : « 2 dégâts ; à confirmer par playtest »).
+        effects: [{ type: "damage", target: { kind: "shotTarget" }, amount: { kind: "flat", value: 2 } }],
+      },
+    },
   },
 ];
 

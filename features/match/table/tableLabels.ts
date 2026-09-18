@@ -1,5 +1,5 @@
 import type { GamePhase } from "@/game";
-import { PHASE_LABELS } from "@/game/rules/validation";
+import { PHASE_LABELS } from "@/game/rules/phaseLabels";
 
 /** Icônes du bouton de phase — les mêmes que `PhaseActionButton`. */
 const ICONS = {

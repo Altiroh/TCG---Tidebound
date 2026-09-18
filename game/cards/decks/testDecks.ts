@@ -224,6 +224,48 @@ export const DECK_PENITENCE: DeckList = {
 };
 
 /**
+ * Le Goliath — cinquième Navire (18/09/2026), et le premier dont la
+ * capacité est réellement câblée : sans liste jouable, son Canon de proue
+ * ne pouvait pas être essayé du tout, exactement le problème qu'avait
+ * "Pénitence" pour La Religieuse.
+ *
+ * Le deck est construit autour de ce que le Canon demande vraiment : de la
+ * Raison, tous les tours, puisque 2 en partent avant même qu'un tir soit
+ * décidé. D'où les petites récupérations et le Vieux Loup de Mer, qui allège
+ * chaque perte. Le reste est de l'achèvement : des corps bon marché pour
+ * tenir la ligne et des attaquants qui frappent fort les Structures, le
+ * Canon se chargeant de finir ce qui survit d'un point ou deux.
+ *
+ * Liste de laboratoire, pas une proposition d'équilibrage : les valeurs du
+ * Canon (2 Raison, 2 dégâts) sont elles-mêmes marquées "à confirmer par
+ * playtest" sur la fiche Notion.
+ */
+export const DECK_BORDEE: DeckList = {
+  id: "bordee",
+  name: "Bordée",
+  shipId: "le-goliath",
+  description:
+    "Artillerie : garde la Raison haute pour armer le Canon chaque tour, tient la ligne avec des corps bon marché, et achève au canon ce qui a survécu.",
+  cardIds: [
+    ...repeat("mousse-du-premier-quart", 3),
+    ...repeat("marin-des-jetees", 3),
+    ...repeat("marin-aux-yeux-rouges", 3),
+    ...repeat("guetteur-de-brume", 3),
+    ...repeat("crabe-de-fer", 3),
+    ...repeat("barracuda-des-hauts-fonds", 3),
+    ...repeat("poisson-scie-gris", 3),
+    ...repeat("filet-a-la-derive", 3),
+    ...repeat("caisses-arrimees", 3),
+    ...repeat("thermos-du-dernier-quart", 3),
+    ...repeat("vieux-loup-de-mer", 2),
+    ...repeat("capitaine-sans-sommeil", 2),
+    ...repeat("gardien-du-sondeur", 2),
+    ...repeat("treuil-rouille", 2),
+    ...repeat("corde-de-remorquage", 2),
+  ],
+};
+
+/**
  * Cra-Poiscail — deux listes de TEST du Lot 10, une par moitié de
  * l'archétype, pour que ses synergies puissent être essayées en partie
  * plutôt qu'une carte à la fois.
@@ -341,6 +383,7 @@ export const ARCHETYPE_DECKS: readonly DeckList[] = [
   DECK_EPAVISTE_SABORDAGE,
   DECK_CAPITAINE_MIDRANGE,
   DECK_PENITENCE,
+  DECK_BORDEE,
 ];
 
 /**

@@ -68,6 +68,30 @@ export interface PlayerState {
    * posées, comme leur texte l'exige.
    */
   costDiscounts?: CostDiscount[];
+  /**
+   * Où en est la capacité activable du Navire
+   * (`ShipDefinition.activatableAbility`) pour ce joueur. Absent : jamais
+   * activée. Porté par le JOUEUR et non par une carte — le Navire n'est pas
+   * sur le plateau, il n'a pas d'`oncePerTurnFlags` où s'inscrire.
+   */
+  shipAbility?: ShipAbilityState;
+}
+
+/**
+ * Suivi de la capacité de Navire. Tout est HORODATÉ plutôt que remis à zéro
+ * en fin de tour : un compteur qui porte son numéro de tour périme tout
+ * seul, là où un drapeau booléen dépend d'un nettoyage qu'on finit toujours
+ * par oublier quelque part.
+ */
+export interface ShipAbilityState {
+  /** Tour de la dernière activation, et nombre d'activations faites CE tour-là. */
+  activations: { turnNumber: number; count: number };
+  /**
+   * Tour où le Navire a été ARMÉ sans avoir encore tiré (capacité en deux
+   * temps). Le tir l'efface ; un tour qui passe le périme — un canon armé
+   * et non tiré ne reste pas chargé jusqu'au tour suivant.
+   */
+  armedOnTurn?: number;
 }
 
 /**

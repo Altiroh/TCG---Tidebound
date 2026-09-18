@@ -163,7 +163,19 @@ export type TargetSelector =
   /** Les unités alliées portant l'un de ces `cardIds` (ex: Le Tournoi du Grand Étang, qui renforce Chevalier, Destrier et Bourreau). */
   | { kind: "allyUnitsWithCardIds"; cardIds: string[] }
   /** La carte qui a DÉCLENCHÉ la capacité en cours (ex: Bannière en Vieille Chaussette, qui renforce le Cra-Poiscail qui vient d'être invoqué). */
-  | { kind: "triggerSource" };
+  | { kind: "triggerSource" }
+  /**
+   * Ce que le joueur a désigné en TIRANT avec la capacité de son Navire
+   * (`ShipArmedShot`) : le permanent adverse visé, ou — s'il n'en a désigné
+   * aucun, comme une attaque directe — le joueur adverse lui-même. Une même
+   * cible pour deux natures de destinataire, parce que c'est un seul geste
+   * du joueur : « je tire là ».
+   *
+   * La légalité de ce qui est visé n'est PAS vérifiée ici : elle l'a été à
+   * la validation du tir, avec les règles d'attaque (`assertValidDefender`),
+   * qui écartent déjà un permanent protégé par Garde ou sans Résistance.
+   */
+  | { kind: "shotTarget" };
 
 export interface EffectDefinition {
   type: EffectType;

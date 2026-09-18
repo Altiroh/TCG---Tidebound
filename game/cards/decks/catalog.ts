@@ -95,6 +95,11 @@ const DECK_META: Record<string, DeckMeta> = {
     difficulty: 5,
     mechanics: ["Raison négative assumée", "Réduction des dégâts d'Ancrage", "Cartes à coût élevé"],
   },
+  bordee: {
+    style: "Artillerie",
+    difficulty: 3,
+    mechanics: ["Canon de proue à armer chaque tour", "Économie de Raison", "Achèvement des permanents blessés"],
+  },
   "le-grand-banc": {
     style: "Agressif / swarm",
     difficulty: 2,

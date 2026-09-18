@@ -3,6 +3,7 @@ import { getCardDefinition } from "@/game/cards/sets/core";
 import { hasKeyword, hasResistance, UNIT_CARD_TYPES, type CardInstance } from "@/game/cards/types";
 import { getShipDefinition } from "@/game/environment/shipData";
 import type { TideStateName } from "@/game/environment/types";
+import { PHASE_LABELS, phaseRefusal } from "@/game/rules/phaseLabels";
 import { isMainPhase, type GamePhase, type GameState, type PlayerId, type PlayerState } from "@/game/state/types";
 
 /**
@@ -62,8 +63,8 @@ export function hasKeywordInContext(unit: CardInstance, keyword: string, context
   );
 }
 
-/** Cette unité attaquante contourne-t-elle Garde EN CE MOMENT (`bypassesGardeTideStateIn`) ? `false` si elle n'existe plus/pas sur le plateau de son contrôleur. */
-function attackerBypassesGardeNow(state: GameState, attackerOwnerId: PlayerId, attackerInstanceId: string): boolean {
+/** Cette unité attaquante contourne-t-elle Garde EN CE MOMENT (`bypassesGardeTideStateIn`) ? `false` si elle n'existe plus/pas sur le plateau de son contrôleur — et `false` sans attaquant du tout, ce qui est le cas d'un tir de Navire : aucun Navire ne contourne Garde. */
+function attackerBypassesGardeNow(state: GameState, attackerOwnerId: PlayerId, attackerInstanceId: string | undefined): boolean {
   const attackerPlayer = state.players.find((p) => p.id === attackerOwnerId);
   const attacker = attackerPlayer?.board.find((u) => u.instanceId === attackerInstanceId);
   if (!attacker) return false;
@@ -112,19 +113,6 @@ export function assertIsActivePlayer(state: GameState, playerId: PlayerId): Vali
 }
 
 /**
- * Nom de chaque phase, tel qu'on le DIT dans une phrase (« pendant la Phase
- * de combat »). Exporté : l'infobulle du bouton de phase montre la même
- * chose que les messages de refus, et deux listes finiraient par diverger.
- */
-export const PHASE_LABELS: Record<GamePhase, string> = {
-  waitingForPlayers: "l'attente des joueurs",
-  mainPhase: "la Phase principale",
-  combatPhase: "la Phase de combat",
-  mainPhase2: "la Phase principale 2",
-  finished: "la fin de partie",
-};
-
-/**
  * Structure de tour (README "Structure de tour") : Phase principale →
  * Phase de combat → Phase principale 2, chaque passage via `advancePhase`.
  * Attaquer est réservé à la Phase de combat ; jouer une carte, Saborder ou
@@ -136,6 +124,18 @@ export function assertInPhase(state: GameState, playerId: PlayerId, phase: GameP
   if (state.phase !== phase) {
     return fail(`Cette action n'est possible que pendant ${PHASE_LABELS[phase]}.`);
   }
+  return ok();
+}
+
+/**
+ * Variante de `assertInPhase` acceptant une LISTE de phases — pour les
+ * capacités qui déclarent elles-mêmes leur fenêtre (`ShipActivatableAbility`)
+ * plutôt que de la tenir du moteur.
+ */
+export function assertInAnyPhase(state: GameState, playerId: PlayerId, phases: readonly GamePhase[]): ValidationResult {
+  const player = state.players.find((p) => p.id === playerId);
+  if (!player) return fail("Joueur introuvable.");
+  if (!phases.includes(state.phase)) return fail(phaseRefusal(phases));
   return ok();
 }
 
@@ -230,7 +230,7 @@ export function assertUnitCanAttack(state: GameState, playerId: PlayerId, instan
 export function assertValidDefender(
   state: GameState,
   attackerOwnerId: PlayerId,
-  attackerInstanceId: string,
+  attackerInstanceId: string | undefined,
   defenderInstanceId?: string
 ): ValidationResult {
   const opponent = state.players.find((p) => p.id !== attackerOwnerId);

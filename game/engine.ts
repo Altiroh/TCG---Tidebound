@@ -1,10 +1,12 @@
 import { activateAbility } from "@/game/actions/activateAbility";
 import { activateReaction } from "@/game/actions/activateReaction";
+import { activateShipAbility } from "@/game/actions/activateShipAbility";
 import { advancePhase } from "@/game/actions/advancePhase";
 import { attack } from "@/game/actions/attack";
 import { breakObject } from "@/game/actions/breakObject";
 import { concede } from "@/game/actions/concede";
 import { endTurn } from "@/game/actions/endTurn";
+import { fireShipAbility } from "@/game/actions/fireShipAbility";
 import { passReaction } from "@/game/actions/passReaction";
 import { playCard } from "@/game/actions/playCard";
 import { resolveChoice } from "@/game/actions/resolveChoice";
@@ -130,6 +132,10 @@ function applyAction(state: GameState, action: PlayerAction): ActionResult {
       return passReaction(state, action);
     case "activateAbility":
       return activateAbility(state, action);
+    case "activateShipAbility":
+      return activateShipAbility(state, action);
+    case "fireShipAbility":
+      return fireShipAbility(state, action);
     case "resolveChoice":
       return resolveChoice(state, action);
     case "concede":

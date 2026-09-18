@@ -37,7 +37,9 @@ export type GameEventType =
   | "REACTION_ACTIVATED"
   | "REACTION_PASSED"
   | "HAND_CARD_REVEALED"
-  | "DERAISON_SETTLED";
+  | "DERAISON_SETTLED"
+  | "SHIP_ABILITY_ACTIVATED"
+  | "SHIP_ABILITY_FIRED";
 
 export interface BaseGameEvent {
   type: GameEventType;
@@ -342,6 +344,34 @@ export interface DeraisonSettledEvent extends BaseGameEvent {
   anchorDamage: number;
 }
 
+/**
+ * Capacité activable du Navire déclenchée par son contrôleur. `armed` dit
+ * si l'activation a ARMÉ le Navire (capacité en deux temps) plutôt que de
+ * tout résoudre sur-le-champ — c'est ce que l'interface traduit par « les
+ * planches s'écartent ».
+ */
+export interface ShipAbilityActivatedEvent extends BaseGameEvent {
+  type: "SHIP_ABILITY_ACTIVATED";
+  playerId: PlayerId;
+  shipId: string;
+  abilityName: string;
+  armed: boolean;
+}
+
+/**
+ * Tir de la capacité armée. `targetInstanceId` absent = le tir visait le
+ * Navire adverse, comme une attaque directe. Les DÉGÂTS eux-mêmes sont
+ * journalisés séparément par les `DAMAGE` que les effets produisent : cet
+ * événement dit le geste, pas son résultat.
+ */
+export interface ShipAbilityFiredEvent extends BaseGameEvent {
+  type: "SHIP_ABILITY_FIRED";
+  playerId: PlayerId;
+  shipId: string;
+  abilityName: string;
+  targetInstanceId?: string;
+}
+
 export type GameEvent =
   | DrawCardEvent
   | PlayCardEvent
@@ -373,4 +403,6 @@ export type GameEvent =
   | ReactionActivatedEvent
   | ReactionPassedEvent
   | HandCardRevealedEvent
-  | DeraisonSettledEvent;
+  | DeraisonSettledEvent
+  | ShipAbilityActivatedEvent
+  | ShipAbilityFiredEvent;

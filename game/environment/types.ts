@@ -13,6 +13,9 @@
  * `game/rules/constants.ts`.
  */
 
+import type { EffectDefinition } from "@/game/effects/types";
+import type { GamePhase } from "@/game/state/types";
+
 export type TideStateName = "calme" | "houle" | "tempete" | "abysses";
 
 export const TIDE_STATES_ORDER: readonly TideStateName[] = [
@@ -103,6 +106,76 @@ export interface TideAffinityEntry {
 export type TideAffinity = Partial<Record<TideStateName, TideAffinityEntry>>;
 
 /**
+ * Capacité activable portée par le NAVIRE lui-même (0 ou 1 par Navire,
+ * cf. Notion "Collection des Navires" — « 1 passif principal, 0 ou 1
+ * capacité activable, 0 ou 1 faiblesse explicite »).
+ *
+ * Elle n'est ni un Objet, ni un Équipement, ni une carte du plateau : sa
+ * source est le Navire, son suivi "déjà utilisée ce tour" vit donc sur le
+ * JOUEUR (`PlayerState.shipAbility`) et non sur une `CardInstance`.
+ *
+ * Deux formes, et une seule primitive pour les deux :
+ *  - **en un geste** — `onActivateEffects` résout tout de suite (un actif
+ *    qui pioche, qui soigne l'Ancrage, qui pousse la Marée…) ;
+ *  - **en deux temps** — `armedShot` : l'activation ne fait qu'ARMER, et
+ *    c'est le tir, plus tard dans le tour, qui porte l'effet (Le Goliath —
+ *    Canon de proue). Le coût se paie à l'armement : un canon armé et non
+ *    tiré a coûté sa Raison pour rien.
+ *
+ * Les deux peuvent coexister sur une même capacité (un actif qui pioche
+ * ET arme quelque chose) — rien ne l'interdit ici.
+ */
+export interface ShipActivatableAbility {
+  /** Nom imprimé, tel qu'il apparaît sur la fiche du Navire (ex: « Canon de proue »). */
+  name: string;
+  /** Texte imprimé de la capacité — source de vérité, comme pour une carte. */
+  text: string;
+  /** Coût payé à l'ACTIVATION (jamais au tir : voir `armedShot`). */
+  cost: { reason?: number };
+  /** Phases pendant lesquelles l'activation est permise, sur le tour de son contrôleur. */
+  activationPhases: readonly GamePhase[];
+  /**
+   * Nombre d'activations autorisées par tour de son contrôleur. Défaut : 1.
+   * Une capacité « une fois par partie » n'est PAS exprimable ici — c'est
+   * une autre fréquence, encore non modélisée (cf. Virage court, Changer
+   * de cap, Tenir la ligne, toujours en texte seul).
+   */
+  activationsPerTurn?: number;
+  /** Effets résolus immédiatement à l'activation. Absent : l'activation ne fait qu'armer. */
+  onActivateEffects?: EffectDefinition[];
+  /** Tir différé : l'activation arme, un second geste tire. Absent : capacité en un seul geste. */
+  armedShot?: ShipArmedShot;
+}
+
+/**
+ * Le second temps d'une capacité en deux temps : une fois le Navire armé,
+ * son contrôleur peut tirer — ou ne pas tirer. L'armement ne survit pas au
+ * tour (il est horodaté, cf. `PlayerState.shipAbility`), et le tir le
+ * consomme : au tour suivant, il faut re-payer et ré-armer.
+ */
+export interface ShipArmedShot {
+  /** Phases pendant lesquelles le tir est permis. */
+  phases: readonly GamePhase[];
+  /**
+   * Règles de ciblage du tir. `"attackRules"` : exactement celles d'une
+   * attaque (`assertValidDefender`) — Garde à viser en priorité, Navire
+   * adverse ciblable à défaut de Garde, permanent sans Résistance (un
+   * Objet) exclu. Seul mode existant ; la clé est là pour que le jour où
+   * un autre Navire vise autrement, ça se lise dans la donnée.
+   */
+  targeting: "attackRules";
+  /**
+   * Effets portés par le tir. Leur cible est `{ kind: "shotTarget" }` :
+   * le permanent désigné, ou le Navire adverse si le joueur n'en a désigné
+   * aucun. Ce sont des effets de CAPACITÉ, pas de combat — résolus par
+   * `resolveEffect` et non par le pipeline d'attaque : donc aucune riposte,
+   * aucune faiblesse d'attaque directe, et l'attaque d'aucune unité n'est
+   * consommée.
+   */
+  effects: EffectDefinition[];
+}
+
+/**
  * Navire principal : carte fixe, choisie au deck-building, jamais piochée
  * ni jouée depuis la main. Définit l'Ancrage max, la Raison max et le
  * nombre de Slots (4, 5 ou 6 selon le cadrage "Navires, Slots et Raison").
@@ -117,8 +190,19 @@ export interface ShipDefinition {
   illustration?: string;
   text?: string;
   passiveText?: string;
-  /** Capacité activable (0 ou 1 par Navire) — texte informatif uniquement tant qu'il n'existe pas de système de capacités activables/une-fois-par-partie dans le moteur. */
+  /**
+   * Capacité activable, en TEXTE seul — pour les Navires dont la capacité
+   * n'est pas encore exprimable (toutes les « une fois par partie » :
+   * Virage court, Changer de cap, Tenir la ligne). Purement informatif :
+   * le moteur n'en applique rien. Une capacité réellement câblée passe par
+   * `activatableAbility`, qui porte son propre texte.
+   */
   capacityText?: string;
+  /**
+   * Capacité activable réellement appliquée par le moteur. Exclusive de
+   * `capacityText` : un Navire n'en a qu'une, soit câblée, soit en attente.
+   */
+  activatableAbility?: ShipActivatableAbility;
   weaknessText?: string;
   /** Réduction forfaitaire des dégâts d'Ancrage environnementaux de cet état, par joueur. */
   resistanceByState?: Partial<Record<TideStateName, number>>;
