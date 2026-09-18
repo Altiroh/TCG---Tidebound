@@ -90,8 +90,8 @@ export const CORE_SET: CardDefinition[] = [
     attack: 1,
     health: 2,
     text:
-      "Quand il arrive en jeu, si la Marée est montante, il gagne +1 Résistance jusqu'à votre prochain tour. Si " +
-      "elle est descendante, récupérez 1 Raison.",
+      "À son arrivée, si la Marée est montante, il gagne +1 Résistance jusqu'à votre prochain tour. Si elle est " +
+      "descendante, récupérez 1 Raison.",
     onPlayEffects: [
       {
         type: "buff",
@@ -112,7 +112,7 @@ export const CORE_SET: CardDefinition[] = [
     attack: 2,
     health: 4,
     maxCopies: 2,
-    text: "La première fois par tour que vous perdez de la Raison, réduisez cette perte de 1.",
+    text: "La première fois à chaque tour que vous perdez de la Raison, réduisez cette perte de 1.",
     reduceOwnReasonLossOncePerTurn: { amount: 1 },
   },
   {
@@ -123,7 +123,9 @@ export const CORE_SET: CardDefinition[] = [
     attack: 2,
     health: 2,
     maxCopies: 2,
-    text: "Quand une Structure est détruite ou Sabordée, vous pouvez récupérer 1 Raison. Une fois par tour.",
+    text:
+      "La première fois à chaque tour qu'une Structure que vous contrôlez est détruite ou Sabordée, vous pouvez " +
+      "récupérer 1 Raison.",
     // « vous pouvez » : proposé, jamais imposé. Le Sabordage déclenche
     // toujours `onDeath` en plus de `onSaborde` (cf. `saborder.ts`) — un
     // seul déclencheur couvre les deux cas du texte.
@@ -154,7 +156,7 @@ export const CORE_SET: CardDefinition[] = [
     cost: 1,
     attack: 1,
     health: 1,
-    text: "Quand il arrive en jeu, si la Marée actuelle est Tempête ou Abysses, récupérez 1 Raison.",
+    text: "À son arrivée, si la Marée actuelle est Tempête ou Abysses, récupérez 1 Raison.",
     onPlayEffects: [
       {
         type: "reasonGain",
@@ -251,10 +253,10 @@ export const CORE_SET: CardDefinition[] = [
     durationTurns: 3,
     visibleDuringTide: ["houle"],
     text:
-      "Durée : 3 tours. Visible uniquement pendant Houle. La première fois à chaque tour que votre Navire devrait " +
-      "subir des dégâts directs d'une attaque, vous pouvez déclencher Contrecoup : annulez ces dégâts et infligez " +
-      "au Navire adverse la moitié des dégâts annulés, arrondie au supérieur. Après résolution, elle se brise et " +
-      "quitte le board.",
+      "Durée : 3 tours. Visible pendant Houle. La première fois à chaque tour que votre Navire devrait subir des " +
+      "dégâts directs d'une attaque, vous pouvez déclencher Contrecoup : annulez ces dégâts et infligez au Navire " +
+      "adverse la moitié des dégâts annulés, arrondie au supérieur. Après résolution, elle se brise et quitte le " +
+      "board.",
     // Contrecoup résolu automatiquement ("vous pouvez" : renvoyer les dégâts
     // n'est jamais un désavantage) — cf. `game/actions/attack.ts`.
     contrecoupOnDirectShipDamageWhileVisible: { reflectedFraction: 0.5 },
@@ -298,8 +300,8 @@ export const CORE_SET: CardDefinition[] = [
     visibleDuringTide: ["calme", "houle"],
     maxCopies: 2,
     text:
-      "Durée : 3 tours. Visible pendant Calme et Houle. La première fois à chaque tour que l'adversaire active un " +
-      "Objet, il doit payer 1 Raison supplémentaire. S'il ne peut pas, l'activation est annulée.",
+      "Durée : 3 tours. Visible pendant Calme et Houle. La première fois à chaque tour que l'adversaire Brise un " +
+      "Objet, il doit payer 1 Raison supplémentaire. S'il ne peut pas payer, l'Objet ne peut pas être Brisé.",
     // Sans plancher de Déraison, "s'il ne peut pas" n'arrive jamais : la taxe
     // s'ajoute au coût du Bris (depuis la main : demi-coût + 1 ; depuis le
     // plateau : 1 au lieu de rien) — cf. `objectBreakTax` (breakObject.ts).
@@ -328,7 +330,7 @@ export const CORE_SET: CardDefinition[] = [
     cost: 2,
     attack: 2,
     health: 2,
-    text: "Quand il arrive en jeu, chaque joueur perd 1 Raison.",
+    text: "À son arrivée, chaque joueur perd 1 Raison.",
     onPlayEffects: [{ type: "reasonLoss", target: { kind: "allPlayers" }, amount: { kind: "flat", value: 1 } }],
   },
   {
@@ -372,7 +374,7 @@ export const CORE_SET: CardDefinition[] = [
     attack: 3,
     health: 3,
     text:
-      "Quand il arrive en jeu, chaque joueur perd 1 Raison. Si la Marée est montante, l'adversaire perd 1 Raison " +
+      "À son arrivée, chaque joueur perd 1 Raison. Si la Marée est montante, l'adversaire perd 1 Raison " +
       "supplémentaire. Si elle est descendante, récupérez 1 Raison.",
     onPlayEffects: [
       { type: "reasonLoss", target: { kind: "allPlayers" }, amount: { kind: "flat", value: 1 } },
@@ -398,7 +400,7 @@ export const CORE_SET: CardDefinition[] = [
     attack: 1,
     health: 3,
     text:
-      "La première fois par tour que l'adversaire déclenche un effet pendant votre tour, regardez une carte " +
+      "La première fois à chaque tour que l'adversaire active une réaction pendant votre tour, révélez 1 carte " +
       "aléatoire de sa main.",
     revealOpponentHandOnReactionOncePerTurn: { amount: 1 },
   },
@@ -553,7 +555,7 @@ export const CORE_SET: CardDefinition[] = [
     maxCopies: 2,
     attack: 2,
     health: 4,
-    text: "La première fois par tour qu'une Structure que vous contrôlez devient visible, récupérez 1 Raison.",
+    text: "La première fois à chaque tour qu'une Structure que vous contrôlez devient visible, récupérez 1 Raison.",
     abilities: [
       {
         trigger: "onBecomeVisible",
@@ -602,7 +604,9 @@ export const CORE_SET: CardDefinition[] = [
     permanent: true,
     cost: 1,
     health: 2,
-    text: "Équipez une Structure. Elle gagne +1 Résistance. Quand cette Structure quitte le board, piochez 1 carte.",
+    text:
+      "Équipez une Structure. Elle gagne +1 Résistance. Quand la Structure équipée quitte le board, piochez 1 " +
+      "carte.",
     equipTargetTypes: ["structure"],
     onPlayEffects: [
       { type: "attachEquipment", target: { kind: "chosenUnit" } },
@@ -650,8 +654,8 @@ export const CORE_SET: CardDefinition[] = [
     durationTurns: 3,
     visibleDuringTide: ["calme", "houle"],
     text:
-      "Durée : 3 tours. Visible pendant Calme et Houle. À votre début de tour, si elle est visible, une Créature " +
-      "adverse perd 1 Puissance jusqu'à la fin du tour.",
+      "Durée : 3 tours. Visible pendant Calme et Houle. À votre début de tour, si elle est visible, vous pouvez " +
+      "choisir une Créature adverse : elle perd 1 Puissance jusqu'à la fin du tour.",
     // La Créature visée est désignée par le joueur.
     abilities: [
       {
@@ -684,8 +688,8 @@ export const CORE_SET: CardDefinition[] = [
     visibleDuringTide: ["abysses"],
     maxCopies: 2,
     text:
-      "Durée : 5 tours. Visible uniquement pendant Abysses. Lorsqu'elle devient visible, récupérez 2 Raison. " +
-      "Lorsqu'elle quitte Abysses sans avoir été détruite, Sabordez-la.",
+      "Durée : 5 tours. Visible pendant Abysses. Lorsqu'elle devient visible, récupérez 2 Raison. Lorsqu'elle " +
+      "quitte Abysses sans avoir été détruite, Sabordez-la.",
     abilities: [
       {
         trigger: "onBecomeVisible",
@@ -711,8 +715,8 @@ export const CORE_SET: CardDefinition[] = [
     visibleDuringTide: ["houle", "tempete", "abysses"],
     maxCopies: 2,
     text:
-      "Durée : 4 tours. Visible pendant Houle, Tempête et Abysses. Une fois par tour, lorsque la Marée change, " +
-      "vous pouvez perdre 1 Raison pour prolonger la nouvelle Marée d'1 tour.",
+      "Durée : 4 tours. Visible pendant Houle, Tempête et Abysses. La première fois à chaque tour que la Marée " +
+      "change, vous pouvez perdre 1 Raison. Si vous le faites, augmentez de 1 tour la durée du nouvel état.",
     abilities: [
       {
         trigger: "onTideStateEntered",
@@ -845,7 +849,7 @@ export const CORE_SET: CardDefinition[] = [
     cost: 4,
     attack: 4,
     health: 5,
-    text: "Vous ne pouvez la jouer que si vous avez 5 Raison ou moins. Lorsqu'elle arrive en jeu, perdez 1 Ancrage.",
+    text: "Vous ne pouvez la jouer que si vous avez 5 Raison ou moins. À son arrivée, perdez 1 Ancrage.",
     requiresControllerReasonAtMost: 5,
     onPlayEffects: [{ type: "damage", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
   },
@@ -861,8 +865,8 @@ export const CORE_SET: CardDefinition[] = [
     health: 6,
     maxCopies: 1,
     text:
-      "Vous devez avoir exactement 5 Raison pour jouer cette carte. Après paiement de son coût, votre Raison " +
-      "tombe donc à 0. Lorsqu'elle arrive en jeu, perdez 2 Ancrage.",
+      "Vous devez avoir exactement 5 Raison pour jouer cette carte. Après paiement de son coût, votre Raison tombe " +
+      "donc à 0. À son arrivée, perdez 2 Ancrage.",
     requiresControllerReasonExactly: 5,
     onPlayEffects: [{ type: "damage", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } }],
   },
@@ -904,8 +908,8 @@ export const CORE_SET: CardDefinition[] = [
     cost: 2,
     health: 2,
     text:
-      "Équipez un Marin. À votre début de tour, vous pouvez perdre 1 Raison : choisissez soit de réduire de 1 " +
-      "tour la durée de la Marée actuelle, soit d'inverser l'orientation de sa prochaine transition.",
+      "Équipez un Marin. À votre début de tour, vous pouvez perdre 1 Raison. Si vous le faites, choisissez : " +
+      "réduisez de 1 tour la durée de la Marée actuelle ; ou inversez l'orientation de la Marée.",
     // Deux capacités facultatives d'un même `choiceGroup` : activer l'une
     // écarte l'autre pour le tour (une seule option, comme le texte).
     equipTargetTypes: ["marin"],
@@ -939,7 +943,7 @@ export const CORE_SET: CardDefinition[] = [
     durationTurns: 4,
     visibleDuringTide: ["calme", "houle", "tempete"],
     text:
-      "Durée : 4 tours. Visible pendant Calme, Houle et Tempête. La première fois par tour qu'une Créature " +
+      "Durée : 4 tours. Visible pendant Calme, Houle et Tempête. La première fois à chaque tour qu'une Créature " +
       "devrait infliger des dégâts directs à votre Navire, réduisez ces dégâts de 1.",
     reduceDirectShipDamageOncePerTurn: { amount: 1, attackerCardTypes: ["creature"] },
   },
@@ -970,8 +974,8 @@ export const CORE_SET: CardDefinition[] = [
     durationTurns: 5,
     visibleDuringTide: ["tempete", "abysses"],
     text:
-      "Durée : 5 tours. Visible uniquement pendant Tempête et Abysses. À chaque fois qu'elle devient visible, " +
-      "regardez une carte aléatoire de la main adverse. Si vous êtes en Abysses, regardez-en 2 à la place.",
+      "Durée : 5 tours. Visible pendant Tempête et Abysses. Lorsqu'elle devient visible, révélez 1 carte aléatoire " +
+      "de la main adverse. Si la Marée est en Abysses, révélez-en 2 à la place.",
     abilities: [
       {
         trigger: "onBecomeVisible",
@@ -1063,7 +1067,7 @@ export const CORE_SET: CardDefinition[] = [
     cost: 2,
     attack: 2,
     health: 3,
-    text: "La première fois par tour qu'une Structure adverse devient visible, elle perd 1 Résistance.",
+    text: "La première fois à chaque tour qu'une Structure adverse devient visible, elle perd 1 Résistance.",
     abilities: [
       {
         trigger: "onBecomeVisible",
@@ -1126,7 +1130,7 @@ export const CORE_SET: CardDefinition[] = [
     permanent: true,
     cost: 2,
     health: 2,
-    text: "Équipez une Structure. À votre début de tour, si elle est visible, elle récupère 1 Résistance. Maximum 1 fois par tour.",
+    text: "Équipez une Structure. À votre début de tour, si elle est visible, elle récupère 1 Résistance.",
     equipTargetTypes: ["structure"],
     onPlayEffects: [{ type: "attachEquipment", target: { kind: "chosenUnit" } }],
     abilities: [
@@ -1153,7 +1157,9 @@ export const CORE_SET: CardDefinition[] = [
     health: 2,
     durationTurns: 3,
     visibleDuringTide: ["calme", "houle"],
-    text: "Durée : 3 tours. Visible : Calme et Houle. Lorsqu'il quitte le board sans avoir été détruit, récupérez 1 Ancrage.",
+    text:
+      "Durée : 3 tours. Visible pendant Calme et Houle. Lorsqu'il quitte le board sans avoir été détruit, récupérez " +
+      "1 Ancrage.",
     abilities: [
       {
         trigger: "onExpire",
@@ -1176,8 +1182,8 @@ export const CORE_SET: CardDefinition[] = [
     durationTurns: 4,
     visibleDuringTide: ["houle", "tempete"],
     text:
-      "Durée : 4 tours. Visible : Houle et Tempête. Lorsqu'une autre Structure que vous contrôlez est détruite, " +
-      "cette carte gagne +1 Résistance. Maximum +2.",
+      "Durée : 4 tours. Visible pendant Houle et Tempête. Lorsqu'une autre Structure que vous contrôlez est " +
+      "détruite, cette carte gagne +1 Résistance. Maximum +2.",
     buffSelfOnOtherOwnStructureDestroyed: { healthAmount: 1, maxStacks: 2 },
   },
   {
@@ -1227,8 +1233,8 @@ export const CORE_SET: CardDefinition[] = [
     attack: 2,
     health: 4,
     text:
-      "Tant que vous êtes en Tempête ou Abysses, la première fois par tour que vous devriez perdre de la Raison, " +
-      "réduisez cette perte de 1.",
+      "Tant que vous êtes en Tempête ou Abysses, la première fois à chaque tour que vous devriez perdre de la " +
+      "Raison, réduisez cette perte de 1.",
     reduceOwnReasonLossOncePerTurn: { amount: 1, tideStateIn: ["tempete", "abysses"] },
   },
   {
@@ -1267,7 +1273,9 @@ export const CORE_SET: CardDefinition[] = [
     maxCopies: 2,
     attack: 2,
     health: 3,
-    text: "Quand une Structure que vous contrôlez est détruite, une autre Structure que vous contrôlez gagne +1 Résistance. Une fois par tour.",
+    text:
+      "La première fois à chaque tour qu'une Structure que vous contrôlez est détruite, vous pouvez choisir une " +
+      "autre Structure que vous contrôlez : elle gagne +1 Résistance.",
     // La cible est DÉSIGNÉE par le joueur, dans une fenêtre de réaction : le
     // moteur ne choisit jamais à sa place (décision du 17/09/2026).
     abilities: [
@@ -1295,7 +1303,7 @@ export const CORE_SET: CardDefinition[] = [
     cost: 2,
     attack: 2,
     health: 2,
-    text: "Quand elle devient votre seule Créature en jeu, récupérez 1 Raison.",
+    text: "Lorsqu'elle devient la seule Créature que vous contrôlez, récupérez 1 Raison.",
     // Photo du plateau avant/après chaque action (`processLoneCreatureChanges`) :
     // se déclenche dès qu'elle devient la seule Créature de son contrôleur.
     abilities: [
@@ -1403,9 +1411,9 @@ export const CORE_SET: CardDefinition[] = [
     durationTurns: 5,
     visibleDuringTide: ["tempete", "abysses"],
     text:
-      "Durée : 5 tours. Visible uniquement pendant Tempête et Abysses. Lorsqu'elle devient visible, chaque " +
-      "joueur révèle une carte aléatoire de sa main. Le joueur ayant révélé la carte au coût le plus élevé perd " +
-      "1 Raison. En cas d'égalité, personne ne perd de Raison.",
+      "Durée : 5 tours. Visible pendant Tempête et Abysses. Lorsqu'elle devient visible, chaque joueur révèle une " +
+      "carte aléatoire de sa main. Le joueur ayant révélé la carte au coût le plus élevé perd 1 Raison. En cas " +
+      "d'égalité, personne ne perd de Raison.",
     abilities: [
       {
         trigger: "onBecomeVisible",
@@ -1424,7 +1432,7 @@ export const CORE_SET: CardDefinition[] = [
     durationTurns: 4,
     visibleDuringTide: ["houle", "abysses"],
     text:
-      "Durée : 4 tours. Visible pendant Houle et Abysses. La première fois par tour qu'une Créature adverse " +
+      "Durée : 4 tours. Visible pendant Houle et Abysses. La première fois à chaque tour qu'une Créature adverse " +
       "attaque votre Navire, elle perd 1 Puissance jusqu'à la fin de ce combat.",
     reduceAttackerPowerOnDirectAttackOncePerTurn: { amount: 1, attackerCardTypes: ["creature"] },
   },
@@ -1602,8 +1610,8 @@ export const CORE_SET: CardDefinition[] = [
     durationTurns: 3,
     visibleDuringTide: ["abysses"],
     text:
-      "Durée : 3 tours. Visible uniquement pendant Abysses. Lorsque vous entrez dans les Abysses, vous pouvez " +
-      "perdre 2 Raison. Si vous le faites, augmentez la durée des Abysses de 1 tour.",
+      "Durée : 3 tours. Visible pendant Abysses. À chaque entrée en Abysses, vous pouvez perdre 2 Raison. Si vous " +
+      "le faites, augmentez de 1 tour la durée des Abysses.",
     abilities: [
       {
         trigger: "onTideStateEntered",
@@ -1628,8 +1636,8 @@ export const CORE_SET: CardDefinition[] = [
     durationTurns: 4,
     visibleDuringTide: ["tempete", "abysses"],
     text:
-      "Durée : 4 tours. Visible uniquement pendant Tempête et Abysses. Lorsque vous entrez dans les Abysses, " +
-      "vous pouvez perdre 2 Raison. Si vous le faites, augmentez la durée des Abysses de 1 tour.",
+      "Durée : 4 tours. Visible pendant Tempête et Abysses. À chaque entrée en Abysses, vous pouvez perdre 2 " +
+      "Raison. Si vous le faites, augmentez de 1 tour la durée des Abysses.",
     abilities: [
       {
         trigger: "onTideStateEntered",
@@ -1727,7 +1735,9 @@ export const CORE_SET: CardDefinition[] = [
     cost: 3,
     attack: 2,
     health: 4,
-    text: "La première fois par tour qu'une Structure alliée perd de la Résistance, rendez-lui 1 Résistance.",
+    text:
+      "La première fois à chaque tour qu'une Structure que vous contrôlez perd de la Résistance, rendez-lui 1 " +
+      "Résistance.",
     restoreResistanceOnAllyStructureLossOncePerTurn: 1,
   },
   {
@@ -1737,7 +1747,7 @@ export const CORE_SET: CardDefinition[] = [
     cost: 3,
     attack: 2,
     health: 5,
-    text: "Si la Marée est Calme, obtient Garde.",
+    text: "Tant que la Marée est Calme, elle a Garde.",
     conditionalKeywords: [{ keyword: "garde", tideStateIn: ["calme"] }],
   },
   {
@@ -1851,7 +1861,7 @@ export const CORE_SET: CardDefinition[] = [
     cost: 2,
     attack: 1,
     health: 1,
-    text: "À son arrivée, si vous contrôlez déjà un autre Cra-Poiscail, invoquez 1 Péon Cra-Poiscail 1 / 1.",
+    text: "À son arrivée, si vous contrôlez déjà une autre unité Cra-Poiscail, invoquez 1 Péon Cra-Poiscail 1 / 1.",
     onPlayEffects: [
       {
         type: "summon",
@@ -1872,7 +1882,7 @@ export const CORE_SET: CardDefinition[] = [
     cost: 3,
     attack: 2,
     health: 3,
-    text: "Tant que vous contrôlez au moins 3 autres Cra-Poiscail, il gagne +1 Puissance.",
+    text: "Tant que vous contrôlez au moins 3 autres unités Cra-Poiscail, il gagne +1 Puissance.",
     selfBuffWhileControllingArchetype: {
       archetype: "cra-poiscail",
       atLeast: 3,
@@ -1894,8 +1904,8 @@ export const CORE_SET: CardDefinition[] = [
     // Lest, Grappin, Cartes des Courants).
     health: 1,
     text:
-      "Brisez cet Objet : invoquez 1 Péon Cra-Poiscail 1 / 1. S'il a été Brisé directement depuis votre main et " +
-      "que vous contrôlez déjà un Cra-Poiscail, invoquez-en 2 à la place.",
+      "Brisez cet Objet : invoquez 1 Péon Cra-Poiscail 1 / 1. S'il a été Brisé directement depuis votre main et que " +
+      "vous contrôlez déjà une unité Cra-Poiscail, invoquez-en 2 à la place.",
     // ORDRE IMPORTANT : le Péon supplémentaire est évalué AVANT l'invocation
     // de base. Dans l'autre sens, le Péon que la base vient de créer
     // satisferait lui-même la condition "vous contrôlez déjà un
@@ -1921,8 +1931,8 @@ export const CORE_SET: CardDefinition[] = [
     health: 3,
     durationTurns: 3,
     text:
-      "Durée : 3 tours. La première fois à chaque tour qu'un autre Cra-Poiscail que vous contrôlez arrive en " +
-      "jeu, il gagne +1 Résistance jusqu'à votre prochain tour.",
+      "Durée : 3 tours. La première fois à chaque tour qu'une autre unité Cra-Poiscail que vous contrôlez arrive en " +
+      "jeu, cette unité gagne +1 Résistance jusqu'à votre prochain tour.",
     abilities: [
       {
         trigger: "onEnterPlay",
@@ -1980,7 +1990,9 @@ export const CORE_SET: CardDefinition[] = [
     cost: 2,
     attack: 1,
     health: 3,
-    text: "La première fois à chaque tour qu'un autre Cra-Poiscail que vous contrôlez arrive en jeu, celui-ci gagne +1 Puissance jusqu'à la fin du tour.",
+    text:
+      "La première fois à chaque tour qu'une autre unité Cra-Poiscail que vous contrôlez arrive en jeu, cette unité " +
+      "gagne +1 Puissance jusqu'à la fin du tour.",
     abilities: [
       {
         trigger: "onEnterPlay",
@@ -2003,7 +2015,9 @@ export const CORE_SET: CardDefinition[] = [
     cost: 3,
     attack: 2,
     health: 3,
-    text: "La première fois à chaque tour qu'un autre Cra-Poiscail que vous contrôlez arrive en jeu, celui-ci gagne +1 / +1 jusqu'à la fin du tour.",
+    text:
+      "La première fois à chaque tour qu'une autre unité Cra-Poiscail que vous contrôlez arrive en jeu, " +
+      "Cra-Poiscail Chef de Banc gagne +1 / +1 jusqu'à la fin du tour.",
     abilities: [
       {
         trigger: "onEnterPlay",
@@ -2088,8 +2102,8 @@ export const CORE_SET: CardDefinition[] = [
     health: 2,
     equipTargetArchetype: "cra-poiscail",
     text:
-      "Équipez un Cra-Poiscail. Il gagne +1 Résistance. La première fois à chaque tour qu'un autre Cra-Poiscail " +
-      "que vous contrôlez arrive en jeu, le porteur gagne +1 Puissance jusqu'à la fin du tour.",
+      "Équipez une unité Cra-Poiscail. Il gagne +1 Résistance. La première fois à chaque tour qu'une autre unité " +
+      "Cra-Poiscail que vous contrôlez arrive en jeu, le porteur gagne +1 Puissance jusqu'à la fin du tour.",
     onPlayEffects: [
       { type: "attachEquipment", target: { kind: "chosenUnit" } },
     ],
@@ -2116,7 +2130,7 @@ export const CORE_SET: CardDefinition[] = [
     health: 1,
     equipTargetArchetype: "cra-poiscail",
     text:
-      "Équipez un Cra-Poiscail. Il gagne +1 Résistance. La première fois qu'il devrait subir des dégâts d'un " +
+      "Équipez une unité Cra-Poiscail. Il gagne +1 Résistance. La première fois qu'il devrait subir des dégâts d'un " +
       "effet, réduisez ces dégâts de 1 puis détruisez cet Équipement.",
     onPlayEffects: [
       { type: "attachEquipment", target: { kind: "chosenUnit" } },
@@ -2137,7 +2151,9 @@ export const CORE_SET: CardDefinition[] = [
     setCode: CRA_POISCAIL_BOOSTER_2,
     cost: 2,
     health: 3,
-    text: "La première fois à chaque tour que vous Brisez un Objet, choisissez un Cra-Poiscail : il gagne +1 / +1 jusqu'à la fin du tour.",
+    text:
+      "La première fois à chaque tour que vous Brisez un Objet, vous pouvez choisir une unité Cra-Poiscail que vous " +
+      "contrôlez : elle gagne +1 / +1 jusqu'à la fin du tour.",
     // "Choisissez" passe par une fenêtre de réaction (`mode: "optional"`),
     // seul mécanisme du moteur qui laisse le joueur DÉSIGNER sa cible.
     // Écart assumé (arbitrage du 2026-09-14) : l'effet devient refusable,
@@ -2176,7 +2192,7 @@ export const CORE_SET: CardDefinition[] = [
     cost: 3,
     health: 4,
     maxCopies: 2,
-    text: "Tant que vous contrôlez au moins 3 Cra-Poiscail, vos Cra-Poiscail gagnent +1 Puissance.",
+    text: "Tant que vous contrôlez au moins 3 unités Cra-Poiscail, vos unités Cra-Poiscail gagnent +1 Puissance.",
     auraBuffOtherArchetypeUnits: { archetype: "cra-poiscail", attackAmount: 1, requiresArchetypeCountAtLeast: 3 },
   },
   {
@@ -2193,7 +2209,9 @@ export const CORE_SET: CardDefinition[] = [
     health: 3,
     maxCopies: 2,
     durationTurns: 2,
-    text: "Pendant 2 tours, la première fois à chaque tour qu'un Cra-Poiscail que vous contrôlez est détruit, invoquez 1 Péon Cra-Poiscail 1 / 1.",
+    text:
+      "Pendant 2 tours, la première fois à chaque tour qu'une unité Cra-Poiscail que vous contrôlez est détruite, " +
+      "invoquez 1 Péon Cra-Poiscail 1 / 1.",
     // « un Cra-Poiscail » sans « autre » : elle compte aussi sa propre
     // destruction (décision du 17/09/2026).
     abilities: [
@@ -2258,7 +2276,9 @@ export const CORE_SET: CardDefinition[] = [
     cost: 3,
     attack: 3,
     health: 2,
-    text: "La première fois à chaque tour qu'un autre Cra-Poiscail que vous contrôlez est détruit, il gagne +1 Puissance jusqu'à la fin du tour.",
+    text:
+      "La première fois à chaque tour qu'une autre unité Cra-Poiscail que vous contrôlez est détruite, il gagne +1 " +
+      "Puissance jusqu'à la fin du tour.",
     abilities: [
       {
         trigger: "onDeath",
@@ -2279,7 +2299,7 @@ export const CORE_SET: CardDefinition[] = [
     attack: 1,
     health: 4,
     maxCopies: 2,
-    text: "Vos autres Cra-Poiscail gagnent +1 Puissance.",
+    text: "Vos autres unités Cra-Poiscail gagnent +1 Puissance.",
     auraBuffOtherArchetypeUnits: { archetype: "cra-poiscail", attackAmount: 1 },
   },
   {
@@ -2293,8 +2313,8 @@ export const CORE_SET: CardDefinition[] = [
     health: 5,
     maxCopies: 1,
     text:
-      "À son arrivée, si vous contrôlez déjà au moins 2 autres Cra-Poiscail, invoquez 2 Péons Cra-Poiscail 1 / 1. " +
-      "Vos autres Cra-Poiscail gagnent +1 Puissance.",
+      "À son arrivée, si vous contrôlez déjà au moins 2 autres unités Cra-Poiscail, invoquez 2 Péons Cra-Poiscail 1 " +
+      "/ 1. Vos autres unités Cra-Poiscail gagnent +1 Puissance.",
     onPlayEffects: [
       {
         type: "summon",
@@ -2317,8 +2337,8 @@ export const CORE_SET: CardDefinition[] = [
     health: 2,
     maxCopies: 2,
     text:
-      "La première fois à chaque tour qu'un autre Cra-Poiscail que vous contrôlez gagne de la Puissance, elle " +
-      "gagne +1 Puissance jusqu'à la fin du tour.",
+      "La première fois à chaque tour qu'une autre unité Cra-Poiscail que vous contrôlez gagne de la Puissance, " +
+      "P'tite Fesse, Grand Rêve gagne +1 Puissance jusqu'à la fin du tour.",
     abilities: [
       {
         trigger: "onPowerGained",
@@ -2340,8 +2360,9 @@ export const CORE_SET: CardDefinition[] = [
     health: 2,
     equipTargetArchetype: "cra-poiscail",
     text:
-      "Équipez un Cra-Poiscail. Il gagne +1 Puissance. La première fois à chaque tour qu'il attaque, un autre " +
-      "Cra-Poiscail gagne +1 Puissance jusqu'à la fin du tour.",
+      "Équipez une unité Cra-Poiscail. Il gagne +1 Puissance. La première fois à chaque tour qu'il attaque, vous " +
+      "pouvez choisir une autre unité Cra-Poiscail que vous contrôlez : elle gagne +1 Puissance jusqu'à la fin du " +
+      "tour.",
     onPlayEffects: [
       { type: "attachEquipment", target: { kind: "chosenUnit" } },
     ],
@@ -2381,8 +2402,8 @@ export const CORE_SET: CardDefinition[] = [
     maxCopies: 2,
     equipTargetArchetype: "cra-poiscail",
     text:
-      "Équipez un Cra-Poiscail. Il gagne +1 Résistance. La première fois à chaque tour que vous invoquez un " +
-      "Cra-Poiscail, celui-ci gagne +1 Puissance jusqu'à la fin du tour.",
+      "Équipez une unité Cra-Poiscail. Il gagne +1 Résistance. La première fois à chaque tour que vous invoquez une " +
+      "unité Cra-Poiscail, cette unité gagne +1 Puissance jusqu'à la fin du tour.",
     onPlayEffects: [
       { type: "attachEquipment", target: { kind: "chosenUnit" } },
     ],
@@ -2494,8 +2515,9 @@ export const CORE_SET: CardDefinition[] = [
     health: 7,
     maxCopies: 1,
     text:
-      "À son arrivée, invoquez 2 Péons Cra-Poiscail 1 / 1. Vos autres Cra-Poiscail gagnent +1 / +1. La première " +
-      "fois à chaque tour qu'un Péon Cra-Poiscail arrive en jeu sous votre contrôle, vous perdez 1 Raison.",
+      "À son arrivée, invoquez 2 Péons Cra-Poiscail 1 / 1. Vos autres unités Cra-Poiscail gagnent +1 / +1. La " +
+      "première fois à chaque tour qu'une unité Péon Cra-Poiscail arrive en jeu sous votre contrôle, vous perdez 1 " +
+      "Raison.",
     onPlayEffects: [
       { type: "summon", target: { kind: "controllerPlayer" }, cardId: "peon-cra-poiscail", count: 2 },
     ],
@@ -2522,8 +2544,8 @@ export const CORE_SET: CardDefinition[] = [
     health: 3,
     maxCopies: 1,
     text:
-      "La première fois à chaque tour qu'un autre Cra-Poiscail que vous contrôlez gagne de la Puissance, elle " +
-      "gagne +2 Puissance et Pied marin jusqu'à la fin du tour.",
+      "La première fois à chaque tour qu'une autre unité Cra-Poiscail que vous contrôlez gagne de la Puissance, " +
+      "P'tite Fesse, Grand Rêve gagne +2 Puissance et Pied marin jusqu'à la fin du tour.",
     abilities: [
       {
         trigger: "onPowerGained",
@@ -2548,7 +2570,8 @@ export const CORE_SET: CardDefinition[] = [
     maxCopies: 1,
     text:
       "Tant que vous contrôlez un Destrier du Grand Étang, il gagne Garde et +1 Puissance. La première fois à " +
-      "chaque tour qu'il attaque, un autre Cra-Poiscail gagne +1 / +1 jusqu'à la fin du tour.",
+      "chaque tour qu'il attaque, vous pouvez choisir une autre unité Cra-Poiscail que vous contrôlez : elle gagne " +
+      "+1 / +1 jusqu'à la fin du tour.",
     selfBuffWhileControllingCardIds: { cardIds: ["destrier-du-grand-etang"], attackAmount: 1 },
     conditionalKeywords: [{ keyword: "garde", controllingCardIds: ["destrier-du-grand-etang"] }],
     // Seconde phrase : même règle que la Fourchette du Grand Étang — la
@@ -2598,7 +2621,7 @@ export const CORE_SET: CardDefinition[] = [
     attack: 2,
     health: 3,
     maxCopies: 3,
-    text: "Quand il est détruit, infligez 1 dégât à une créature ennemie.",
+    text: "Quand il est détruit, vous pouvez choisir une Créature adverse : infligez-lui 1 dégât.",
     abilities: [
       {
         trigger: "onDeath",
@@ -2626,7 +2649,9 @@ export const CORE_SET: CardDefinition[] = [
     attack: 2,
     health: 2,
     maxCopies: 3,
-    text: "À son arrivée, vous pouvez renvoyer une autre Marionnette alliée dans votre main. Si vous le faites, il gagne +2 Puissance jusqu'à la fin du tour.",
+    text:
+      "À son arrivée, vous pouvez renvoyer une autre unité Marionnette que vous contrôlez dans votre main. Si vous " +
+      "le faites, il gagne +2 Puissance jusqu'à la fin du tour.",
     abilities: [
       {
         trigger: "onEnterPlay",
@@ -2648,7 +2673,9 @@ export const CORE_SET: CardDefinition[] = [
     cost: 2,
     health: 1,
     maxCopies: 3,
-    text: "Brisez cet Objet : renvoyez une Marionnette alliée dans votre main, puis piochez 1 carte et défaussez 1 carte.",
+    text:
+      "Brisez cet Objet : renvoyez une unité Marionnette que vous contrôlez dans votre main, puis piochez 1 carte " +
+      "et défaussez 1 carte.",
     onBreakEffects: [
       { type: "moveZone", toZone: "hand", target: { kind: "chosenUnit", among: { subtype: MARIONNETTE } } },
       { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
@@ -2665,7 +2692,9 @@ export const CORE_SET: CardDefinition[] = [
     attack: 3,
     health: 3,
     maxCopies: 2,
-    text: "À son arrivée, choisissez une autre Marionnette alliée : répétez son effet d'arrivée. Une seule fois par tour.",
+    text:
+      "À son arrivée, choisissez une autre unité Marionnette que vous contrôlez : répétez son effet d'arrivée. Une " +
+      "seule fois par tour.",
     // « Choisissez » : c'est le joueur qui désigne la Marionnette, via la
     // fenêtre de réaction. La répétition rallume l'arrivée de la cible
     // (`ENTER_EFFECTS_REPEATED`) : ses capacités automatiques se résolvent,
@@ -2717,7 +2746,7 @@ export const CORE_SET: CardDefinition[] = [
     attack: 6,
     health: 6,
     maxCopies: 2,
-    text: "La première fois qu'il subit des dégâts, il perd définitivement -3 Puissance et -2 Résistance.",
+    text: "La première fois qu'il subit des dégâts de combat, il perd 3 Puissance et 2 Résistance.",
     abilities: [
       {
         trigger: "onDamaged",
@@ -2748,7 +2777,9 @@ export const CORE_SET: CardDefinition[] = [
     attack: 3,
     health: 5,
     maxCopies: 2,
-    text: "À son arrivée, choisissez : une créature alliée gagne +2 / +2 jusqu'à votre prochain tour ; ou une créature ennemie perd -2 / -2 jusqu'à votre prochain tour.",
+    text:
+      "À son arrivée, choisissez : une unité que vous contrôlez gagne +2 / +2 jusqu'à votre prochain tour ; ou une " +
+      "unité adverse perd 2 Puissance et 2 Résistance jusqu'à votre prochain tour.",
     // Les DEUX modes sont deux capacités facultatives distinctes, proposées
     // ensemble dans la fenêtre de réaction ; elles forment un groupe de
     // choix : en activer une écarte l'autre (`choiceGroup`, pas une clé
@@ -2799,7 +2830,10 @@ export const CORE_SET: CardDefinition[] = [
     attack: 4,
     health: 6,
     maxCopies: 1,
-    text: "La première fois à chaque tour qu'une autre Marionnette alliée arrive en jeu, vous pouvez renvoyer une autre Marionnette alliée de coût 2 ou moins dans votre main. Si vous le faites, cette carte coûte 1 de moins à rejouer ce tour, minimum 1.",
+    text:
+      "La première fois à chaque tour qu'une autre unité Marionnette que vous contrôlez arrive en jeu, vous pouvez " +
+      "renvoyer une autre unité Marionnette que vous contrôlez de coût 2 ou moins dans votre main. Si vous le " +
+      "faites, la prochaine unité Marionnette que vous jouez ce tour coûte 1 de moins, minimum 1.",
     abilities: [
       {
         trigger: "onEnterPlay",
@@ -2829,7 +2863,9 @@ export const CORE_SET: CardDefinition[] = [
     cost: 3,
     health: 1,
     maxCopies: 3,
-    text: "Brisez cet Objet : renvoyez une Marionnette alliée dans votre main. La prochaine Marionnette que vous jouez ce tour coûte 1 de moins, minimum 1.",
+    text:
+      "Brisez cet Objet : renvoyez une carte Marionnette que vous contrôlez dans votre main. La prochaine carte " +
+      "Marionnette que vous jouez ce tour coûte 1 de moins, minimum 1.",
     onBreakEffects: [
       { type: "moveZone", toZone: "hand", target: { kind: "chosenUnit", among: { subtype: MARIONNETTE } } },
       { type: "discountNextCards", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, filter: { subtype: MARIONNETTE } },
@@ -2845,7 +2881,9 @@ export const CORE_SET: CardDefinition[] = [
     health: 4,
     durationTurns: 4,
     maxCopies: 1,
-    text: "Durée : 4 tours. La première fois à chaque tour qu'une Marionnette alliée revient dans votre main, récupérez 1 Raison.",
+    text:
+      "Durée : 4 tours. La première fois à chaque tour qu'une unité Marionnette que vous contrôlez revient dans " +
+      "votre main, récupérez 1 Raison.",
     abilities: [
       {
         trigger: "onReturnedToHand",
@@ -2868,7 +2906,9 @@ export const CORE_SET: CardDefinition[] = [
     health: 3,
     durationTurns: 3,
     maxCopies: 3,
-    text: "Durée : 3 tours. La première Marionnette renvoyée dans votre main à chaque tour coûte 1 de moins à rejouer ce tour, minimum 1.",
+    text:
+      "Durée : 3 tours. La première fois à chaque tour qu'une carte Marionnette que vous contrôlez revient dans " +
+      "votre main, la prochaine carte Marionnette que vous jouez ce tour coûte 1 de moins, minimum 1.",
     abilities: [
       {
         trigger: "onReturnedToHand",
@@ -2890,7 +2930,9 @@ export const CORE_SET: CardDefinition[] = [
     cost: 2,
     health: 1,
     maxCopies: 3,
-    text: "Brisez cet Objet : renvoyez une Marionnette alliée dans votre main. Une autre Marionnette de votre main coûte 1 de moins ce tour, minimum 1.",
+    text:
+      "Brisez cet Objet : renvoyez une unité Marionnette que vous contrôlez dans votre main. La prochaine unité " +
+      "Marionnette que vous jouez ce tour coûte 1 de moins, minimum 1.",
     // Réduction abaissée de 2 à 1 par l'audit : Brisé depuis la main, il ne
     // doit pas transformer un retour défensif en accélération explosive.
     onBreakEffects: [
@@ -2907,7 +2949,7 @@ export const CORE_SET: CardDefinition[] = [
     cost: 3,
     health: 1,
     maxCopies: 3,
-    text: "Brisez cet Objet : récupérez une Marionnette depuis votre Cimetière vers votre main.",
+    text: "Brisez cet Objet : choisissez une carte Marionnette dans votre Cimetière. Remettez-la dans votre main.",
     // Décision du 2026-09-16 : pas de réduction conditionnelle, le Bris
     // récupère simplement une Marionnette du Cimetière.
     onBreakEffects: [
@@ -2924,7 +2966,9 @@ export const CORE_SET: CardDefinition[] = [
     health: 3,
     durationTurns: 2,
     maxCopies: 1,
-    text: "Pendant 2 tours, la première Marionnette que vous jouez à chacun de vos tours déclenche une seconde fois son effet d'arrivée.",
+    text:
+      "Pendant 2 tours, la première carte Marionnette que vous jouez à chacun de vos tours déclenche une seconde " +
+      "fois son effet d'arrivée.",
     abilities: [
       {
         trigger: "onEnterPlay",
@@ -2948,7 +2992,10 @@ export const CORE_SET: CardDefinition[] = [
     attack: 4,
     health: 4,
     maxCopies: 1,
-    text: "À son arrivée, vous pouvez renvoyer une autre Marionnette alliée dans votre main. Si vous le faites, il gagne +2 / +2 jusqu'à votre prochain tour et la prochaine Marionnette que vous jouez ce tour coûte 2 de moins, minimum 1.",
+    text:
+      "À son arrivée, vous pouvez renvoyer une autre unité Marionnette que vous contrôlez dans votre main. Si vous " +
+      "le faites, il gagne +2 / +2 jusqu'à votre prochain tour et la prochaine carte Marionnette que vous jouez ce " +
+      "tour coûte 2 de moins, minimum 1.",
     // Décision du 2026-09-16 : la clause « le laisser en jeu » du lot initial
     // est abandonnée ; le renvoi lui donne +2 / +2, sans condition.
     abilities: [
@@ -2981,7 +3028,10 @@ export const CORE_SET: CardDefinition[] = [
     attack: 6,
     health: 8,
     maxCopies: 1,
-    text: "La première fois à chaque tour qu'une autre Marionnette alliée arrive en jeu, répétez son effet d'arrivée. La première fois à chaque tour qu'une Marionnette alliée revient dans votre main, la prochaine Marionnette que vous jouez ce tour coûte 1 de moins, minimum 1.",
+    text:
+      "La première fois à chaque tour qu'une autre unité Marionnette que vous contrôlez arrive en jeu, répétez son " +
+      "effet d'arrivée. La première fois à chaque tour qu'une unité Marionnette que vous contrôlez revient dans " +
+      "votre main, la prochaine unité Marionnette que vous jouez ce tour coûte 1 de moins, minimum 1.",
     abilities: [
       {
         trigger: "onEnterPlay",
