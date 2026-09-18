@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   BORROWED_DECKS,
   PRECON_DECKS,
@@ -10,9 +10,7 @@ import {
   type DeckList,
 } from "@/game";
 import Link from "next/link";
-import { DeckCarousel } from "@/features/match/DeckCarousel";
 import { nameplateArtUrl } from "@/features/decks/nameplateArt";
-import { ArtPlate } from "@/features/shell/ArtPlate";
 import { GameScreen } from "@/features/shell/GameScreen";
 import { shipNameOf } from "@/features/ships/ShipPortrait";
 import game from "@/features/shell/GameScreen.module.css";
@@ -81,10 +79,28 @@ interface DeckTabDef {
   issueFor: (deck: DeckList) => string | null;
 }
 
-/** Style et difficulté des listes du jeu — un deck personnel n'en a pas. */
-function catalogMeta(deck: DeckList): { style: string; difficulty: number } | null {
-  const meta = deck as Partial<{ style: string; difficulty: number }>;
-  return typeof meta.style === "string" && typeof meta.difficulty === "number" ? { style: meta.style, difficulty: meta.difficulty } : null;
+/** Style, difficulté et mécaniques des listes du jeu — un deck personnel n'en a pas. */
+function catalogMeta(deck: DeckList): { style: string; difficulty: number; mechanics: readonly string[] } | null {
+  const meta = deck as Partial<{ style: string; difficulty: number; mechanics: string[] }>;
+  if (typeof meta.style !== "string" || typeof meta.difficulty !== "number") return null;
+  return { style: meta.style, difficulty: meta.difficulty, mechanics: meta.mechanics ?? [] };
+}
+
+/**
+ * Les cinq crans de difficulté, en toutes lettres. Les étoiles se comptent,
+ * le mot se lit : c'est lui qu'on retient en parcourant une liste. L'échelle
+ * est celle de `DeckDifficulty` (1 à 5, `game/cards/decks/catalog.ts`) et
+ * n'ajoute aucun réglage — elle ne fait que la NOMMER.
+ */
+const DIFFICULTY_WORDS = ["Très accessible", "Accessible", "Moyen", "Exigeant", "Expert"] as const;
+
+function difficultyWord(difficulty: number): string {
+  return DIFFICULTY_WORDS[Math.min(DIFFICULTY_WORDS.length, Math.max(1, Math.round(difficulty))) - 1]!;
+}
+
+function stars(difficulty: number): string {
+  const filled = Math.min(5, Math.max(0, Math.round(difficulty)));
+  return "★".repeat(filled) + "☆".repeat(5 - filled);
 }
 
 /**
@@ -161,6 +177,23 @@ export function NewMatchScreen({
   const current = step === 3 ? deck2 : deck1;
   const setCurrent = step === 3 ? setDeck2 : setDeck1;
 
+  /*
+   * La liste et la fiche ne peuvent pas se contredire : si rien n'est
+   * choisi, ou si le deck choisi n'appartient pas à l'onglet ouvert, on
+   * pointe le premier deck JOUABLE de cet onglet. La fiche a donc toujours
+   * quelque chose à montrer, et la ligne surlignée est toujours celle dont
+   * on lit le détail.
+   *
+   * Ce n'est pas décider à la place du joueur : la décision reste « Lancer
+   * la partie ». C'est le même principe que le deck par défaut, déjà
+   * présélectionné à l'arrivée.
+   */
+  useEffect(() => {
+    if (current && activeTab.decks.some((deck) => deck.id === current.id)) return;
+    const first = activeTab.decks.find((deck) => activeTab.issueFor(deck) === null) ?? null;
+    if (first) setCurrent(first);
+  }, [activeTab, current, setCurrent]);
+
   function chooseMode(next: Mode) {
     playButtonClick();
     setMode(next);
@@ -199,6 +232,16 @@ export function NewMatchScreen({
               <h1 className={game.title}>
                 {step === 1 ? "Choisis un mode" : step === 3 ? "Joueur 2 — choisis ton deck" : mode === "pvp" ? "Joueur 1 — choisis ton deck" : "Choisis ton deck"}
               </h1>
+              {/* Un filet en vague plutôt qu'un trait : la même signature que
+                  les titres de la charte, et elle dit de quelle mer on parle. */}
+              <p className={styles.lead}>
+                <span className={styles.leadWave} aria-hidden />
+                {step === 1
+                  ? "Choisis comment tu veux jouer, puis ton deck."
+                  : mode === "pvp"
+                    ? "Chacun son deck, à tour de rôle, sur le même écran."
+                    : "Affronte l'IA et perfectionne tes stratégies sur les mers de Tidebound."}
+              </p>
             </div>
             <ol className={styles.steps} aria-label="Étapes">
               {stepLabels.map((label, index) => {
@@ -349,54 +392,64 @@ export function NewMatchScreen({
                     )}
                   </div>
                 ) : (
-                  <DeckCarousel label={activeTab.label} resetKey={`${activeTab.id}-${step}`}>
-                    {activeTab.decks.map((deck) => {
-                      const issue = activeTab.issueFor(deck);
-                      const selected = current?.id === deck.id;
-                      const className = issue ? game.tileDisabled : selected ? game.tileActive : game.tile;
-                      const meta = catalogMeta(deck);
-                      return (
-                        <button
-                          key={deck.id}
-                          type="button"
-                          role="option"
-                          aria-selected={selected}
-                          disabled={issue !== null}
-                          className={`${className} ${styles.deckTile}`}
-                          onClick={() => {
-                            playButtonClick();
-                            setCurrent(deck);
-                          }}
-                          title={issue ?? deck.description}
-                        >
-                          <ArtPlate artUrl={nameplateArtUrl(deck.cardIds, deck.shipId)} className={styles.deckPlate}>
-                            <span className={styles.deckName}>{deck.name}</span>
-                            <span className={styles.deckShip}>{shipNameOf(deck.shipId)}</span>
-                          </ArtPlate>
-                          <span className={styles.deckBody}>
-                            <span className={styles.deckMeta}>
-                              <span>{deck.cardIds.length} cartes</span>
-                              {meta && (
-                                <span>
-                                  {meta.style} · <span className={styles.deckStars}>{"★".repeat(meta.difficulty)}{"☆".repeat(Math.max(0, 5 - meta.difficulty))}</span>
-                                </span>
-                              )}
-                            </span>
-                            <span className={styles.deckText}>{issue ?? deck.description}</span>
-                            <span className={styles.deckFoot}>
-                              {issue ? (
-                                <span className={game.tagDanger}>{activeTab.id === "mine" ? "Non valide" : "Indisponible"}</span>
-                              ) : selected ? (
-                                <span className={game.tagCyan}>Choisi</span>
-                              ) : (
-                                <span className={game.tag}>Choisir</span>
-                              )}
-                            </span>
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </DeckCarousel>
+                  <div className={styles.picker}>
+                    {/* La LISTE : un deck par ligne, image, nom, Navire et
+                        difficulté. Elle défile pour elle seule — quatorze
+                        listes de test ne doivent pas repousser la fiche
+                        hors de l'écran. */}
+                    <ul className={styles.deckList} role="listbox" aria-label={`Decks — ${activeTab.label}`}>
+                      {activeTab.decks.map((deck) => {
+                        const issue = activeTab.issueFor(deck);
+                        const selected = current?.id === deck.id;
+                        const meta = catalogMeta(deck);
+                        const art = nameplateArtUrl(deck.cardIds, deck.shipId);
+                        return (
+                          <li key={deck.id}>
+                            <button
+                              type="button"
+                              role="option"
+                              aria-selected={selected}
+                              disabled={issue !== null}
+                              className={styles.deckRow}
+                              data-selected={selected || undefined}
+                              onClick={() => {
+                                playButtonClick();
+                                setCurrent(deck);
+                              }}
+                              title={issue ?? deck.description}
+                            >
+                              <span
+                                className={styles.rowArt}
+                                style={art ? { backgroundImage: `url("${art}")` } : undefined}
+                                aria-hidden
+                              />
+                              <span className={styles.rowText}>
+                                <span className={styles.rowName}>{deck.name}</span>
+                                <span className={styles.rowShip}>{shipNameOf(deck.shipId)}</span>
+                                {issue ? (
+                                  <span className={styles.rowIssue}>{issue}</span>
+                                ) : meta ? (
+                                  <span className={styles.rowStars} aria-label={`Difficulté : ${difficultyWord(meta.difficulty)}`}>
+                                    {stars(meta.difficulty)}
+                                  </span>
+                                ) : (
+                                  <span className={styles.rowStars}>{deck.cardIds.length} cartes</span>
+                                )}
+                              </span>
+                              {/* Le seul mot de la ligne : ce deck est CELUI qui
+                                  partira en partie. */}
+                              {selected && <span className={styles.rowMark}>Sélectionné</span>}
+                              <span className={styles.rowChevron} aria-hidden>
+                                ›
+                              </span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+
+                    <DeckSheet deck={current} family={activeTab.label} issue={current ? activeTab.issueFor(current) : null} />
+                  </div>
                 )}
               </section>
 
@@ -429,5 +482,123 @@ export function NewMatchScreen({
         </div>
       </div>
     </GameScreen>
+  );
+}
+
+/** Les trois pictogrammes des indicateurs de la fiche — rôle, taille, difficulté. */
+const SHEET_ICONS = {
+  role: (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden>
+      <path d="M4 4l10.5 10.5M20 4L9.5 14.5M4 4h3l1.5 1.5M20 4h-3l-1.5 1.5" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M14.5 14.5l4 4a1.5 1.5 0 01-2 2l-4-4M9.5 14.5l-4 4a1.5 1.5 0 002 2l4-4" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+  size: (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden>
+      <rect x="7.5" y="4" width="11" height="15" rx="1.6" stroke="currentColor" strokeWidth={1.5} />
+      <path d="M5 6.5v12A1.5 1.5 0 006.5 20H15" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
+    </svg>
+  ),
+  difficulty: (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden>
+      <path d="M12 3.6l2.4 4.9 5.4.8-3.9 3.8.9 5.3-4.8-2.5-4.8 2.5.9-5.3L4.2 9.3l5.4-.8L12 3.6z" stroke="currentColor" strokeWidth={1.4} strokeLinejoin="round" />
+    </svg>
+  ),
+};
+
+/**
+ * LA FICHE du deck pointé — ce qu'on lit avant de lancer.
+ *
+ * Elle accompagne la liste plutôt que de vivre dans chaque tuile : une
+ * rangée de tuiles répétait le même bloc de texte quinze fois, chacun trop
+ * court pour dire quoi que ce soit. Ici la liste sert à PARCOURIR, la fiche
+ * à COMPARER — nom, Navire, ce que le deck fait, ses trois indicateurs et
+ * ses archétypes, dans une seule lecture.
+ *
+ * L'illustration est posée en fond à droite et s'éteint vers le texte : un
+ * deck se reconnaît d'abord à son image, mais rien ne doit passer devant ce
+ * qui se lit.
+ */
+function DeckSheet({ deck, family, issue }: { deck: DeckList | null; family: string; issue: string | null }) {
+  if (!deck) {
+    return (
+      <aside className={`${game.panel} ${styles.sheet}`} data-empty="true">
+        <p className={game.emptyTitle}>Choisis un deck</p>
+        <p className={game.muted}>Sa fiche s&apos;affiche ici : rôle, taille, difficulté et archétypes.</p>
+      </aside>
+    );
+  }
+
+  const meta = catalogMeta(deck);
+  const art = nameplateArtUrl(deck.cardIds, deck.shipId);
+  const size = deck.cardIds.length;
+  const complete = size >= RULES.DECK_SIZE_MIN && size <= RULES.DECK_SIZE_MAX;
+
+  return (
+    <aside className={`${game.panel} ${styles.sheet}`} aria-live="polite">
+      {art && <span className={styles.sheetArt} style={{ backgroundImage: `url("${art}")` }} aria-hidden />}
+
+      <div className={styles.sheetBody}>
+        <p className={game.eyebrow}>{family}</p>
+        <h3 className={styles.sheetName}>{deck.name}</h3>
+        <p className={styles.sheetShip}>{shipNameOf(deck.shipId)}</p>
+        <p className={styles.sheetText}>{deck.description}</p>
+        {issue && <p className={styles.sheetIssue}>{issue}</p>}
+
+        <div className={styles.sheetStats}>
+          {meta && (
+            <span className={styles.stat}>
+              <span className={styles.statIcon} aria-hidden>
+                {SHEET_ICONS.role}
+              </span>
+              <span className={styles.statLines}>
+                <span className={styles.statLabel}>Rôle principal</span>
+                <span className={styles.statValue}>{meta.style}</span>
+              </span>
+            </span>
+          )}
+
+          <span className={styles.stat}>
+            <span className={styles.statIcon} aria-hidden>
+              {SHEET_ICONS.size}
+            </span>
+            <span className={styles.statLines}>
+              <span className={styles.statLabel}>{size} cartes</span>
+              <span className={styles.statValue}>{complete ? "Deck complet" : `${RULES.DECK_SIZE_MIN} minimum`}</span>
+            </span>
+          </span>
+
+          {meta && (
+            <span className={styles.stat}>
+              <span className={styles.statIcon} aria-hidden>
+                {SHEET_ICONS.difficulty}
+              </span>
+              <span className={styles.statLines}>
+                <span className={styles.statLabel}>
+                  <span className={styles.statStars} aria-hidden>
+                    {stars(meta.difficulty)}
+                  </span>{" "}
+                  Difficulté
+                </span>
+                <span className={styles.statValue}>{difficultyWord(meta.difficulty)}</span>
+              </span>
+            </span>
+          )}
+        </div>
+
+        {meta && meta.mechanics.length > 0 && (
+          <div className={styles.sheetTags}>
+            <p className={game.sectionTitle}>Archétypes</p>
+            <ul className={styles.tagList}>
+              {meta.mechanics.map((mechanic) => (
+                <li key={mechanic} className={styles.tag}>
+                  {mechanic}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </aside>
   );
 }

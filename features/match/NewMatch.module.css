@@ -82,10 +82,16 @@
 }
 
 /* ── Étape 2 : difficulté + decks ───────────────────────────── */
+
+/* Les trois difficultés se partagent la LIGNE ENTIÈRE, à parts égales :
+   trois cartes-radio de même poids se comparent d'un regard, là où une
+   rangée flexible les laissait de largeurs inégales et collées à gauche.
+   `auto-fit` les repasse en deux puis une colonne quand la place manque,
+   sans seuil à écrire. */
 .difficulty {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
 }
 
 /* Une carte-radio : le bouton rond du design system (`game.choiceRadio`)
@@ -186,157 +192,6 @@
   margin-left: 6px;
 }
 
-/* ── Carrousel ──────────────────────────────────────────────── */
-.carousel {
-  position: relative;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 8px;
-}
-
-.carouselTrack {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: clamp(240px, 19vw, 300px);
-  gap: clamp(12px, 1.2vw, 20px);
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scroll-snap-type: x mandatory;
-  scroll-padding-inline: 4px;
-  /* De la place pour l'élévation au survol et le halo de la tuile choisie. */
-  padding: 10px 4px 18px;
-  scrollbar-width: none;
-  cursor: grab;
-  /* Les bords s'estompent : la rangée continue au-delà. */
-  mask-image: linear-gradient(90deg, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%);
-}
-
-.carouselTrack::-webkit-scrollbar {
-  display: none;
-}
-
-.carouselTrack:focus-visible {
-  outline: 2px solid var(--cb-cyan);
-  outline-offset: 2px;
-}
-
-.carouselTrack[data-dragging="true"] {
-  cursor: grabbing;
-  scroll-snap-type: none;
-  user-select: none;
-}
-
-.carouselTrack[data-dragging="true"] > * {
-  pointer-events: none;
-}
-
-.carouselArrow {
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  border: 1px solid var(--line-strong);
-  border-radius: 50%;
-  background: rgba(6, 14, 24, 0.8);
-  color: var(--ink);
-  cursor: pointer;
-  transition: border-color 150ms ease-out, background-color 150ms ease-out, opacity 150ms ease-out, transform 150ms ease-out;
-}
-
-.carouselArrow:hover:not(:disabled) {
-  border-color: var(--cb-cyan);
-  background: rgba(13, 52, 69, 0.85);
-  transform: scale(1.06);
-}
-
-.carouselArrow:disabled {
-  opacity: 0.25;
-  cursor: default;
-}
-
-.carouselArrow:focus-visible {
-  outline: 2px solid var(--cb-cyan);
-  outline-offset: 2px;
-}
-
-/* ── Tuile de deck ──────────────────────────────────────────── */
-.deckTile {
-  scroll-snap-align: start;
-  overflow: hidden;
-  padding: 0;
-  gap: 0;
-}
-
-/* La plaque coiffe la tuile d'un bord à l'autre, comme sur l'écran Decks. */
-.deckPlate {
-  /* La plaque n'a plus de jeton de taille : la hauteur se dit ici. */
-  min-height: clamp(168px, 22vh, 224px);
-  border-inline: none;
-  border-top: none;
-  border-radius: var(--radius) var(--radius) 0 0;
-}
-
-.deckName {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: var(--cb-font-display);
-  font-size: clamp(15px, 1.2vw, 19px);
-  font-weight: 600;
-  line-height: 1.2;
-  color: var(--ink-strong);
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
-}
-
-.deckShip {
-  font-size: clamp(10px, 0.72vw, 11px);
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--cb-cyan);
-}
-
-.deckBody {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  gap: 6px;
-  padding: clamp(10px, 1vw, 14px);
-}
-
-.deckMeta {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 4px 10px;
-  font-size: 11.5px;
-  color: var(--ink-dim);
-  font-variant-numeric: tabular-nums;
-}
-
-.deckStars {
-  color: #e5cf9e;
-  letter-spacing: 0.04em;
-}
-
-.deckText {
-  min-height: calc(1.4em * 3);
-  font-size: 12px;
-  line-height: 1.4;
-  color: var(--ink-dim);
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.deckFoot {
-  display: flex;
-  margin-top: auto;
-}
-
 /* ── Barre de lancement ─────────────────────────────────────── */
 /*
  * Sélecteur DOUBLÉ : la barre porte aussi `game.panel`, dont le
@@ -375,18 +230,13 @@
 .launchSummary strong { color: var(--ink-strong); font-weight: 600; }
 
 /* ══════════════════════════════════════════════════════════════
- * ÉCRAN COURT — un téléphone couché, 336 px de zone défilante.
+ * ÉTAPE 1 SUR ÉCRAN COURT — un téléphone couché, 336 px utiles.
  * ══════════════════════════════════════════════════════════════
  *
- * Ce parcours n'avait aucune bascule : mesuré à 844 × 390, l'étape du
- * deck demandait 647 px pour 336 disponibles, et une seule tuile de deck
- * — 313 px de haut à elle seule — remplissait la vue. On choisissait un
- * deck sans jamais voir le suivant ni l'action qui suit.
- *
- * Rien n'est retiré : la plaque du Navire perd ce qu'elle avait de
- * décoratif, la description passe de trois lignes à deux, et la tuile
- * rentre dans la moitié de l'écran — de quoi en voir deux et le bord du
- * troisième, ce qu'un carrousel demande pour se comprendre.
+ * Ce parcours n'avait aucune bascule : mesuré à 844 × 390, l'étape du mode
+ * demandait 517 px pour 336 disponibles. L'étape du deck a depuis changé
+ * de forme et porte les siennes plus bas ; il ne reste ici que les trois
+ * tuiles de mode.
  */
 @media (max-height: 560px) {
   /*
@@ -404,20 +254,464 @@
     padding: clamp(12px, 1.8vw, 26px);
   }
 
-  /* Doublé, comme la barre : `ArtPlate .plate` porte la même
-     `min-height` avec la même spécificité, et passe après. */
-  .deckPlate.deckPlate {
-    min-height: clamp(96px, 26vh, 168px);
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+ * CHOISIS TON DECK — la liste à gauche, la fiche à droite.
+ * ══════════════════════════════════════════════════════════════
+ *
+ * Une rangée de tuiles répétait le même bloc de texte quinze fois, chacun
+ * trop court pour dire quoi que ce soit, et il fallait faire défiler pour
+ * comparer deux decks. Séparer les deux rôles règle les deux défauts : la
+ * LISTE sert à parcourir — image, nom, Navire, difficulté, rien de plus —
+ * et la FICHE à comprendre, en une seule lecture, ce que le deck pointé
+ * fait.
+ */
+
+/* Sous-titre de page, précédé d'un filet en vague. */
+.lead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 0 0;
+  font-size: clamp(12px, 0.92vw, 14.5px);
+  color: var(--ink-dim);
+}
+
+/* La vague : deux arcs en miroir, dessinés en fond — aucun asset à
+   charger, et elle suit la couleur d'accent. */
+.leadWave {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 8px;
+  background-image: radial-gradient(circle at 50% 100%, transparent 60%, var(--cb-cyan) 61%, var(--cb-cyan) 72%, transparent 73%),
+    radial-gradient(circle at 50% 0%, transparent 60%, var(--cb-cyan) 61%, var(--cb-cyan) 72%, transparent 73%);
+  background-size: 17px 8px;
+  background-position: 0 0, 17px 0;
+  background-repeat: no-repeat;
+  opacity: 0.75;
+}
+
+.picker {
+  display: grid;
+  grid-template-columns: minmax(250px, 32%) minmax(0, 1fr);
+  gap: clamp(10px, 1.1vw, 18px);
+  align-items: start;
+  min-height: 0;
+}
+
+/* ── La liste ──────────────────────────────────────────────── */
+
+/*
+ * Elle défile POUR ELLE SEULE : quatorze listes de test repousseraient
+ * sinon la fiche et la barre de lancement hors de l'écran. Le plafond se
+ * lit en `dvh` — sur iOS, `vh` déborde sous la barre d'adresse.
+ */
+.deckList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: min(44dvh, 340px);
+  margin: 0;
+  padding: 2px 6px 2px 2px;
+  overflow-y: auto;
+  list-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.deckList::-webkit-scrollbar { width: 8px; }
+.deckList::-webkit-scrollbar-track { background: transparent; }
+.deckList::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: var(--line-strong) padding-box;
+}
+
+.deckRow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel-inset);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 150ms ease-out, background-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+
+.deckRow:hover:not(:disabled) { border-color: var(--tb-accent-line); }
+.deckRow:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 2px; }
+
+/* Choisi : le cyan de l'état actif, et lui seul — c'est la seule ligne de
+   la liste qui partira en partie. */
+.deckRow[data-selected] {
+  border-color: var(--cb-cyan);
+  background: var(--cb-cyan-soft);
+  box-shadow: var(--tb-glow-sm);
+}
+
+/* Indisponible : visible, éteint, avec sa raison — un rayon vide
+   n'apprendrait rien (Notion « Progression joueur » §4). */
+.deckRow:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.rowArt {
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background-color: #0b1a26;
+  background-position: center 30%;
+  background-size: cover;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.rowText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.rowName {
+  font-family: var(--cb-font-display);
+  font-size: clamp(13px, 1vw, 16px);
+  font-weight: 600;
+  line-height: 1.15;
+  color: var(--ink-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowShip {
+  font-size: clamp(9.5px, 0.7vw, 11px);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--cb-cyan);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowStars {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: #e5cf9e;
+}
+
+.rowIssue {
+  font-size: 10.5px;
+  line-height: 1.3;
+  color: var(--ink-faint);
+}
+
+/* Le seul mot de la ligne. */
+.rowMark {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--cb-cyan);
+  color: #04121d;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.rowChevron {
+  color: var(--ink-faint);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.deckRow[data-selected] .rowChevron { color: var(--cb-cyan); }
+
+/* ── La fiche ──────────────────────────────────────────────── */
+
+.sheet {
+  position: relative;
+  overflow: hidden;
+  min-height: min(44dvh, 340px);
+  padding: clamp(14px, 1.4vw, 22px);
+}
+
+.sheet[data-empty="true"] {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+}
+
+/*
+ * L'illustration : posée à DROITE, en fond, et éteinte vers la gauche par
+ * un dégradé — un deck se reconnaît d'abord à son image, mais rien ne doit
+ * passer devant ce qui se lit.
+ */
+.sheetArt {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 46%;
+  background-position: center 28%;
+  background-size: cover;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 42%, #000 100%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 42%, #000 100%);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.sheetBody {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /*
+   * La colonne de texte s'arrête avant l'illustration, et se mesure SUR LA
+   * FICHE plutôt qu'en largeur de fenêtre : un plafond fixe la maintenait à
+   * 430 px sur une fiche de 808, ce qui repliait les trois indicateurs en
+   * deux rangées alors que la place était là.
+   */
+  padding-right: min(36%, 250px);
+}
+
+.sheetName {
+  margin: 0;
+  font-family: var(--cb-font-display);
+  font-size: clamp(19px, 2vw, 30px);
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--ink-strong);
+  text-shadow: 0 1px 6px rgba(2, 6, 11, 0.8);
+}
+
+.sheetShip {
+  margin: 0;
+  font-size: clamp(10px, 0.8vw, 12.5px);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cb-cyan);
+}
+
+.sheetText {
+  margin: 2px 0 0;
+  font-size: clamp(11.5px, 0.88vw, 14px);
+  line-height: 1.5;
+  color: var(--ink-dim);
+}
+
+.sheetIssue {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--tb-danger);
+}
+
+/* Les trois indicateurs : rôle, taille, difficulté — sur une rangée dès
+   que la fiche en a la largeur, repliés d'eux-mêmes sinon. */
+.sheetStats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(122px, 1fr));
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.stat {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel-inset);
+}
+
+.statIcon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--tb-accent-line);
+  color: var(--cb-cyan);
+}
+
+.statLines {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.statLabel {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.statStars {
+  letter-spacing: 0.02em;
+  color: #e5cf9e;
+}
+
+/* La valeur REVIENT À LA LIGNE plutôt que de se faire couper : « Tempo /
+   contrôle léger » ou « Manipulation de Marée » sont des rôles entiers, et
+   un rôle tronqué ne dit plus rien. Les trois encadrés s'alignent quand
+   même — la grille les étire à la même hauteur. */
+.statValue {
+  font-size: clamp(11.5px, 0.9vw, 14px);
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--ink-strong);
+  overflow-wrap: anywhere;
+}
+
+.sheetTags {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.tagList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tag {
+  padding: 3px 10px;
+  border: 1px solid var(--tb-accent-line);
+  border-radius: 999px;
+  background: var(--panel-inset);
+  font-size: 11px;
+  color: var(--ink);
+}
+
+/* ══════════════════════════════════════════════════════════════
+ * ÉCRAN COURT ET FENÊTRE ÉTROITE
+ * ══════════════════════════════════════════════════════════════ */
+
+/*
+ * Téléphone couché : la place manque en HAUTEUR, pas en largeur — les deux
+ * colonnes restent, ce sont les hauteurs qui cèdent. Le plafond de la
+ * liste descend pour que la fiche tienne à côté d'elle, et l'illustration
+ * s'atténue : sur 336 px de zone utile, elle prendrait la place du texte
+ * qu'elle est censée accompagner.
+ */
+@media (max-height: 560px) {
+  .deckList {
+    max-height: min(46dvh, 220px);
+    gap: 6px;
   }
 
-  .carouselTrack {
-    grid-auto-columns: clamp(186px, 30vw, 260px);
-    padding: 6px 4px 10px;
+  .deckRow {
+    gap: 9px;
+    padding: 6px 8px;
   }
 
-  /* Deux lignes de description : la troisième coûtait 17 px sur 336. */
-  .deckText {
-    min-height: calc(1.4em * 2);
+  .rowArt {
+    width: 40px;
+    height: 40px;
+  }
+
+  .sheet {
+    min-height: 0;
+    padding: 10px 12px;
+  }
+
+  .sheetArt {
+    width: 40%;
+    opacity: 0.35;
+  }
+
+  .sheetBody {
+    gap: 6px;
+    padding-right: clamp(0px, 8vw, 70px);
+  }
+
+  .sheetStats {
+    grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+    gap: 6px;
+  }
+
+  .stat { padding: 6px 8px; }
+  .statIcon { width: 24px; height: 24px; }
+  .lead { display: none; }
+
+  /*
+   * Tout ce qui se DEVINE disparaît, pour que la liste et la fiche
+   * remontent au-dessus du pli. « Facile / Moyen / Difficile » se
+   * comprend sans sa phrase, et la phrase de l onglet répète ce que le
+   * nom de l onglet dit déjà. Mesuré à 844 x 390 : l étape demandait
+   * 763 px pour 336 de zone utile.
+   */
+  .difficultyText { display: none; }
+
+  .difficultyChip {
+    align-items: center;
+    min-width: 0;
+    padding: 7px 10px;
+  }
+
+  .deckTabHint { display: none; }
+
+  /* Deux lignes de résumé : la fiche doit tenir à côté de la liste. */
+  .sheetText {
+    display: -webkit-box;
     -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+/*
+ * Fenêtre ÉTROITE — un téléphone tenu droit, une fenêtre de bureau
+ * resserrée. Deux colonnes n'y tiennent plus : la fiche passe SOUS la
+ * liste, qui se raccourcit pour qu'on voie les deux sans défiler la page
+ * entière.
+ */
+@media (max-width: 760px) {
+  .picker {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .deckList {
+    max-height: min(34dvh, 260px);
+  }
+
+  .sheet {
+    min-height: 0;
+  }
+
+  .sheetArt {
+    width: 100%;
+    -webkit-mask-image: linear-gradient(180deg, #000 0%, transparent 70%);
+    mask-image: linear-gradient(180deg, #000 0%, transparent 70%);
+    opacity: 0.22;
+  }
+
+  .sheetBody {
+    padding-right: 0;
   }
 }
