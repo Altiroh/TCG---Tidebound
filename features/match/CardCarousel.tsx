@@ -10,6 +10,8 @@ interface CardCarouselProps {
   renderCaption?: (card: CardInstance) => ReactNode;
   /** Mode sélection : un clic choisit la carte (cadre lumineux sur la carte choisie). */
   selectedInstanceId?: string | null;
+  /** Sélection MULTIPLE (ex: « défaussez 2 cartes ») — cumulable avec `selectedInstanceId`. */
+  selectedInstanceIds?: readonly string[];
   onSelect?: (card: CardInstance) => void;
   /** Clic droit sur une carte : sa fiche détaillée. */
   onInspect?: (card: CardInstance) => void;
@@ -25,7 +27,15 @@ const SCROLL_STEP_PX = 420;
  * (`scroll-snap`). Partagée par la vue du cimetière (`GraveyardViewer`) et le
  * choix d'une carte de défausse (`GraveyardPickPrompt`).
  */
-export function CardCarousel({ cards, renderCaption, selectedInstanceId, onSelect, onInspect, emptyLabel = "Aucune carte." }: CardCarouselProps) {
+export function CardCarousel({
+  cards,
+  renderCaption,
+  selectedInstanceId,
+  selectedInstanceIds,
+  onSelect,
+  onInspect,
+  emptyLabel = "Aucune carte.",
+}: CardCarouselProps) {
   const trackRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{ startX: number; startScroll: number; moved: boolean } | null>(null);
   const [edges, setEdges] = useState({ atStart: true, atEnd: true });
@@ -92,7 +102,7 @@ export function CardCarousel({ cards, renderCaption, selectedInstanceId, onSelec
         style={{ scrollPaddingInline: 48 }}
       >
         {cards.map((card) => {
-          const selected = selectedInstanceId === card.instanceId;
+          const selected = selectedInstanceId === card.instanceId || (selectedInstanceIds?.includes(card.instanceId) ?? false);
           return (
             <div key={card.instanceId} className="flex w-44 shrink-0 snap-center flex-col items-center gap-2 text-center sm:w-52">
               <div

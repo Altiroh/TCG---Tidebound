@@ -1,4 +1,5 @@
 import type { EffectContext } from "@/game/effects/resolveEffect";
+import { resolveEffectSequence } from "@/game/effects/resolveSequence";
 import { resolveEffect } from "@/game/effects/resolveEffect";
 import type { GameEvent } from "@/game/events/types";
 import {
@@ -79,11 +80,9 @@ export function fireShipAbility(state: GameState, action: FireShipAbilityAction)
     chosenTargetInstanceId: action.targetInstanceId,
     turnNumber: state.turnNumber,
   };
-  for (const effect of shot.effects) {
-    const result = resolveEffect(nextState, effect, context);
-    nextState = result.state;
-    events.push(...result.events);
-  }
+  const fired = resolveEffectSequence(nextState, shot.effects, context);
+  nextState = fired.state;
+  events.push(...fired.events);
 
   return { ok: true, state: nextState, events };
 }

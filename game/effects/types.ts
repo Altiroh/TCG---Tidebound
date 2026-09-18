@@ -354,6 +354,14 @@ export interface EffectDefinition {
   conditionControllerHandAtLeast?: number;
 
   /**
+   * `discard` uniquement — « vous POUVEZ défausser 1 carte » (ex: On rentre
+   * bientôt, Épave à Fleur d'Eau). Le choix de défausse ouvert par l'effet
+   * accepte alors « ne rien défausser » ; sans ce drapeau, le texte dit
+   * « défaussez », et le joueur choisit LAQUELLE, pas SI.
+   */
+  refusable?: boolean;
+
+  /**
    * Restreint la résolution de CET effet à un plafond ABSOLU de Raison du
    * contrôleur (ex: Thermos du Dernier Quart, "récupérez 3 Raison à la
    * place si vous avez 3 Raison ou moins" — un bonus qui s'ajoute à un

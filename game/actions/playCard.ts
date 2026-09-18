@@ -2,6 +2,7 @@ import { canBeEquipTarget, getCardDefinition, hasAnyValidEquipTarget } from "@/g
 import { isPermanentCard, isVisibleDuringTide, UNIT_CARD_TYPES, type CardDefinition } from "@/game/cards/types";
 import type { EffectContext } from "@/game/effects/resolveEffect";
 import { discountApplies, resolveEffect } from "@/game/effects/resolveEffect";
+import { resolveEffectSequence } from "@/game/effects/resolveSequence";
 import type { GameEvent } from "@/game/events/types";
 import {
   processDiscardedFromHandTriggers,
@@ -245,13 +246,10 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
     turnNumber: state.turnNumber,
   };
 
-  const playEffectEvents: GameEvent[] = [];
-  for (const effect of def.onPlayEffects ?? []) {
-    const result = resolveEffect(nextState, effect, context);
-    nextState = result.state;
-    events.push(...result.events);
-    playEffectEvents.push(...result.events);
-  }
+  const played = resolveEffectSequence(nextState, def.onPlayEffects ?? [], context);
+  nextState = played.state;
+  events.push(...played.events);
+  const playEffectEvents: GameEvent[] = [...played.events];
 
   // Les corps invoqués par la carte (ex: Fesses en Avant !) arrivent eux
   // aussi en jeu : les capacités qui guettent une arrivée doivent les voir.

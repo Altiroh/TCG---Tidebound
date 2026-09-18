@@ -1,5 +1,7 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
-import { resolveEffect } from "@/game/effects/resolveEffect";
+import { resolveEffectSequence } from "@/game/effects/resolveSequence";
+import { discardFromHand } from "@/game/state/discard";
+import { processDiscardedFromHandTriggers } from "@/game/triggers/triggerBus";
 import type { GameEvent } from "@/game/events/types";
 import { assertGameActive, assertPlayerInGame, combine } from "@/game/rules/validation";
 import { reasonAfterLoss } from "@/game/state/reason";
@@ -42,18 +44,60 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
   if (choice.kind === "abilityOption") {
     // Refus : la capacité ne se résout pas, et le choix se referme.
     if (action.choice === "pass") return { ok: true, state: nextState, events };
-    if (typeof action.choice !== "object") return { ok: false, error: "Ce choix attend une option de capacité." };
-    if (!choice.abilityIndexes.includes(action.choice.abilityIndex)) return { ok: false, error: "Cette option n'est pas proposée." };
-    const ability = getCardDefinition(choice.cardId).abilities?.[action.choice.abilityIndex];
+    if (typeof action.choice !== "object" || !("abilityIndex" in action.choice)) {
+      return { ok: false, error: "Ce choix attend une option de capacité." };
+    }
+    const { abilityIndex } = action.choice;
+    if (!choice.abilityIndexes.includes(abilityIndex)) return { ok: false, error: "Cette option n'est pas proposée." };
+    const ability = getCardDefinition(choice.cardId).abilities?.[abilityIndex];
     if (!ability) return { ok: false, error: "Capacité introuvable." };
     const context = { controllerId: choice.playerId, sourceInstanceId: choice.sourceInstanceId, turnNumber: choice.turnNumber };
-    for (const effect of ability.effects) {
-      const result = resolveEffect(nextState, effect, context);
-      nextState = result.state;
-      events.push(...result.events);
+    const applied = resolveEffectSequence(nextState, ability.effects, context);
+    nextState = applied.state;
+    events.push(...applied.events);
+    return { ok: true, state: nextState, events };
+  }
+  // « Défaussez N cartes » : le joueur a désigné lesquelles. Le moteur
+  // vérifie seulement qu'elles sont bien dans SA main et qu'il en a nommé
+  // le bon nombre — il ne choisit toujours pas à sa place.
+  if (choice.kind === "handDiscard") {
+    if (action.choice === "pass") {
+      if (!choice.refusable) return { ok: false, error: "Cette défausse n'est pas refusable : le texte dit combien, pas si." };
+      return { ok: true, state: nextState, events };
+    }
+    if (typeof action.choice !== "object" || !("discardInstanceIds" in action.choice)) {
+      return { ok: false, error: "Ce choix attend les cartes à défausser." };
+    }
+    const chosen = action.choice.discardInstanceIds;
+    if (new Set(chosen).size !== chosen.length) return { ok: false, error: "Une même carte ne peut être défaussée deux fois." };
+    if (chosen.length !== choice.count) {
+      return { ok: false, error: `Ce choix attend exactement ${choice.count} carte${choice.count > 1 ? "s" : ""}.` };
+    }
+    const hand = getPlayer(nextState, choice.playerId).hand;
+    if (chosen.some((id) => !hand.some((card) => card.instanceId === id))) {
+      return { ok: false, error: "Cette carte n'est pas dans votre main." };
+    }
+
+    const discarded = discardFromHand(nextState, choice.playerId, { instanceIds: chosen }, base);
+    nextState = discarded.state;
+    events.push(...discarded.events);
+
+    // La défausse est un fait du jeu : elle réveille ses déclencheurs, où
+    // qu'elle ait été décidée (`game/state/discard.ts`).
+    const triggered = processDiscardedFromHandTriggers(nextState, discarded.events, choice.turnNumber);
+    nextState = triggered.state;
+    events.push(...triggered.events);
+
+    // Et seulement ensuite, la suite du texte — « si vous le faites… »,
+    // « si une carte Un Dead a rejoint votre Cimetière ce tour… ».
+    if (choice.continuation) {
+      const rest = resolveEffectSequence(nextState, choice.continuation.effects, choice.continuation.context);
+      nextState = rest.state;
+      events.push(...rest.events);
     }
     return { ok: true, state: nextState, events };
   }
+
   if (typeof action.choice !== "string" || action.choice === "pass") {
     return { ok: false, error: "Ce choix attend « reasonLoss » ou « anchorDamage » : il n'est pas refusable." };
   }

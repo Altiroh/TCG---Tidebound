@@ -75,6 +75,29 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
         { type: "resolveChoice" as const, playerId, choice: "pass" as const },
       ];
     }
+    if (state.pendingChoice.kind === "handDiscard") {
+      const choice = state.pendingChoice;
+      const hand = player.hand;
+      // Une carte à défausser : chaque carte de la main est un coup
+      // distinct, et `evaluateState` tranche. Plusieurs : on se contente de
+      // fenêtres glissantes — énumérer toutes les combinaisons ferait
+      // exploser la recherche pour un gain nul, la main étant bornée à 7.
+      const selections: string[][] =
+        choice.count === 1
+          ? hand.map((card) => [card.instanceId])
+          : hand
+              .slice(0, Math.max(1, hand.length - choice.count + 1))
+              .map((_, start) => hand.slice(start, start + choice.count).map((card) => card.instanceId))
+              .filter((ids) => ids.length === choice.count);
+      const actions: PlayerAction[] = selections.map((discardInstanceIds) => ({
+        type: "resolveChoice" as const,
+        playerId,
+        choice: { discardInstanceIds },
+      }));
+      // « Vous pouvez défausser » : ne rien faire est un coup comme un autre.
+      if (choice.refusable) actions.push({ type: "resolveChoice", playerId, choice: "pass" });
+      return actions;
+    }
     return [
       { type: "resolveChoice", playerId, choice: "reasonLoss" },
       { type: "resolveChoice", playerId, choice: "anchorDamage" },

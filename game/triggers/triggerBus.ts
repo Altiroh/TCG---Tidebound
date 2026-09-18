@@ -4,6 +4,7 @@ import { isVisibleDuringTide, type CardInstance, type TriggeredAbility, type Tri
 import type { EffectDefinition } from "@/game/effects/types";
 import type { EffectContext } from "@/game/effects/resolveEffect";
 import { resolveEffect, revealRandomHandCards } from "@/game/effects/resolveEffect";
+import { resolveEffectSequence } from "@/game/effects/resolveSequence";
 import type { GameEvent } from "@/game/events/types";
 import { applyCardPlayedAnomalies, applyPermanentLeftAnomalies } from "@/game/state/anomalies";
 import { chosenTargetRequirement, eligibleChosenUnits } from "@/game/effects/chosenTargets";
@@ -593,17 +594,15 @@ export function processTrigger(
     // report, `conditionBrokenFromHand` serait toujours faux pour une
     // capacité déclenchée (Pantalone Sans-Sou).
     const context = event.fromHand === undefined ? item.context : { ...item.context, brokenFromHand: event.fromHand };
-    for (const effect of item.effects) {
-      // Aucune désignation d'office : une capacité automatique ne vise
-      // jamais une unité CHOISIE (« jamais automatique, le joueur
-      // choisit » — décision du 17/09/2026). L'invariant est tenu par
-      // `tests/game/cardConformity.test.ts`, règle "designation" : un
-      // effet `chosenUnit` impose `mode: "optional"`, donc une fenêtre de
-      // réaction où le joueur pointe sa cible.
-      const result = resolveEffect(nextState, effect, context);
-      nextState = result.state;
-      events.push(...result.events);
-    }
+    // Aucune désignation d'office : une capacité automatique ne vise jamais
+    // une unité CHOISIE (« jamais automatique, le joueur choisit » —
+    // décision du 17/09/2026). L'invariant est tenu par
+    // `tests/game/cardConformity.test.ts`, règle "designation" : un effet
+    // `chosenUnit` impose `mode: "optional"`, donc une fenêtre de réaction
+    // où le joueur pointe sa cible.
+    const resolved = resolveEffectSequence(nextState, item.effects, context);
+    nextState = resolved.state;
+    events.push(...resolved.events);
   }
 
   // Une invocation produite par ces capacités (ex: La Grande Migration)
@@ -750,11 +749,9 @@ export function resolveReaction(
     turnNumber,
   };
 
-  for (const effect of ability.effects) {
-    const result = resolveEffect(nextState, effect, context);
-    nextState = result.state;
-    events.push(...result.events);
-  }
+  const reacted = resolveEffectSequence(nextState, ability.effects, context);
+  nextState = reacted.state;
+  events.push(...reacted.events);
 
   events.push({
     ...base,

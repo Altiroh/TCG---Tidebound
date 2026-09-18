@@ -12,7 +12,6 @@ import { forceTideJumpToAbysses, forceTideTransition, tickTide } from "@/game/en
 import { isEligibleChosenUnit } from "@/game/effects/chosenTargets";
 import type { EffectAmount, EffectDefinition } from "@/game/effects/types";
 import type { GameEvent } from "@/game/events/types";
-import { discardFromHand } from "@/game/state/discard";
 import { nextInt, type RngState } from "@/game/rng";
 import { reduceReasonGain } from "@/game/state/anomalies";
 import { reasonAfterLoss, reasonCeiling } from "@/game/state/reason";
@@ -515,14 +514,30 @@ export function resolveEffect(
     case "discard": {
       const amount = amountValue(effect.amount);
       const player = resolveSinglePlayerTarget(state, effect, context) ?? getPlayer(state, context.controllerId);
-      // La défausse passe par `game/state/discard.ts` : c'est là que la
-      // cause, l'identité de la carte sur l'événement et le journal des
-      // arrivées au Cimetière sont tenus, pour les trois endroits qui
-      // défaussent. Les déclencheurs, eux, sont réveillés par l'appelant
-      // (`processDiscardedFromHandTriggers`) à partir de ces événements.
-      const discarded = discardFromHand(state, player.id, { count: amount }, base);
-      events.push(...discarded.events);
-      return { state: discarded.state, events };
+      // Rien à défausser : le texte est déjà satisfait, on n'ouvre pas une
+      // question sans réponse possible.
+      if (amount <= 0 || player.hand.length === 0) return { state, events };
+
+      // « Défaussez 1 carte » ne dit pas LAQUELLE : c'est au joueur de le
+      // dire. L'effet ne défausse donc rien lui-même — il pose la question
+      // (`pendingChoice`), et `resolveChoice` fait partir les cartes
+      // désignées par la voie unique (`game/state/discard.ts`). La suite de
+      // la séquence est accrochée au choix par `resolveEffectSequence` :
+      // un « si vous le faites… » ne peut pas se résoudre avant la réponse.
+      return {
+        state: {
+          ...state,
+          pendingChoice: {
+            kind: "handDiscard",
+            playerId: player.id,
+            count: Math.min(amount, player.hand.length),
+            refusable: effect.refusable === true,
+            sourceInstanceId: context.sourceInstanceId,
+            turnNumber: context.turnNumber,
+          },
+        },
+        events,
+      };
     }
 
     // Détruire et Saborder ne RETIRENT pas la carte ici : ils la marquent, et

@@ -1,4 +1,5 @@
 import type { EffectContext } from "@/game/effects/resolveEffect";
+import { resolveEffectSequence } from "@/game/effects/resolveSequence";
 import { resolveEffect } from "@/game/effects/resolveEffect";
 import { getShipDefinition } from "@/game/environment/shipData";
 import type { GameEvent } from "@/game/events/types";
@@ -91,11 +92,9 @@ export function activateShipAbility(state: GameState, action: ActivateShipAbilit
 
   if (ability.onActivateEffects) {
     const context: EffectContext = { controllerId: player.id, turnNumber: state.turnNumber };
-    for (const effect of ability.onActivateEffects) {
-      const result = resolveEffect(nextState, effect, context);
-      nextState = result.state;
-      events.push(...result.events);
-    }
+    const activated = resolveEffectSequence(nextState, ability.onActivateEffects, context);
+    nextState = activated.state;
+    events.push(...activated.events);
   }
 
   return { ok: true, state: nextState, events };

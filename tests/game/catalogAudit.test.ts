@@ -10,7 +10,7 @@ import { processTrigger } from "@/game/triggers/triggerBus";
 import { processDeaths } from "@/game/state/processDeaths";
 import { eligibleCandidatesFor } from "@/game/reactions/reactionWindow";
 import type { GameState } from "@/game/state/types";
-import { activateReactionFor, instance, pendingCandidates, testEnvironment, testGameState, testPlayer } from "./testHelpers";
+import { activateReactionFor, answerHandDiscard, instance, pendingCandidates, testEnvironment, testGameState, testPlayer } from "./testHelpers";
 
 const STRUCTURE = "le-trone-de-bouchon"; // Structure toujours visible, 4 Résistance, sans capacité
 const EPAVE = "epave-a-fleur-deau"; // visible en Houle uniquement
@@ -179,7 +179,14 @@ describe("Structures qui deviennent visibles — Gardien du Sondeur, Contremaît
       abilityIndex: candidate.abilityIndex,
     });
     ok(activated);
-    const after = player(activated.state, "p1");
+
+    // « Vous pouvez défausser 1 carte » : c'est le joueur qui dit laquelle.
+    // La pioche qui suit (« si vous le faites ») attend sa réponse.
+    expect(activated.state.pendingChoice?.kind).toBe("handDiscard");
+    const discarded = answerHandDiscard(activated.state);
+    ok(discarded);
+
+    const after = player(discarded.state, "p1");
     expect(after.hand).toHaveLength(before.hand.length);
     expect(after.deck).toHaveLength(before.deck.length - 1);
     expect(after.graveyard).toHaveLength(before.graveyard.length + 1);

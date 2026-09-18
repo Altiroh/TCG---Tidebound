@@ -1,6 +1,7 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { computeEffectiveStats } from "@/game/cards/stats";
 import type { EffectContext } from "@/game/effects/resolveEffect";
+import { resolveEffectSequence } from "@/game/effects/resolveSequence";
 import { resolveEffect } from "@/game/effects/resolveEffect";
 import type { GameEvent } from "@/game/events/types";
 import {
@@ -94,11 +95,9 @@ export function activateAbility(state: GameState, action: ActivateAbilityAction)
     turnNumber: state.turnNumber,
   };
 
-  for (const effect of spec.effects) {
-    const result = resolveEffect(nextState, effect, context);
-    nextState = result.state;
-    events.push(...result.events);
-  }
+  const activated = resolveEffectSequence(nextState, spec.effects, context);
+  nextState = activated.state;
+  events.push(...activated.events);
 
   return { ok: true, state: nextState, events };
 }

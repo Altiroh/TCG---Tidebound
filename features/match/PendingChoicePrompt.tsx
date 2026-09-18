@@ -51,6 +51,10 @@ export function PendingChoicePrompt({ choice, onChoose }: PendingChoicePromptPro
     );
   }
 
+  // La défausse au choix a son propre écran (`HandDiscardPrompt`) : elle ne
+  // se répond pas par un bouton mais en désignant des cartes.
+  if (choice.kind === "handDiscard") return null;
+
   return (
     <PromptShell ariaLabel="Un choix s'impose à vous">
       <div className="flex flex-col items-center gap-3 pt-1">

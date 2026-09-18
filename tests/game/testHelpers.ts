@@ -99,3 +99,24 @@ export function activateReactionFor(state: GameState, cardId: string, targetInst
     ...(targetInstanceId ? { targetInstanceId } : {}),
   });
 }
+
+/**
+ * Répond à un choix de défausse ouvert par un effet — le geste que le joueur
+ * ferait. Sans argument, il désigne le DÉBUT de sa main : c'est ce que le
+ * moteur faisait d'office avant que le choix existe, ce qui garde les
+ * anciens tests comparables.
+ *
+ * Échoue bruyamment si aucun choix n'attend : un effet qu'on croit résolu
+ * mais qui attend encore une réponse est exactement le défaut que ces tests
+ * cherchent.
+ */
+export function answerHandDiscard(state: GameState, instanceIds?: string[]) {
+  const choice = state.pendingChoice;
+  if (choice?.kind !== "handDiscard") throw new Error("Aucune défausse en attente de réponse.");
+  const hand = state.players.find((p) => p.id === choice.playerId)!.hand;
+  return dispatch(state, {
+    type: "resolveChoice",
+    playerId: choice.playerId,
+    choice: { discardInstanceIds: instanceIds ?? hand.slice(0, choice.count).map((card) => card.instanceId) },
+  });
+}

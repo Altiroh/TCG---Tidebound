@@ -1,6 +1,7 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
 import type { EffectContext } from "@/game/effects/resolveEffect";
 import { resolveEffect } from "@/game/effects/resolveEffect";
+import { resolveEffectSequence } from "@/game/effects/resolveSequence";
 import {
   processDiscardedFromHandTriggers,
   processReturnedToHandTriggers,
@@ -288,13 +289,10 @@ export function breakObject(state: GameState, action: BreakObjectAction): Action
     turnNumber: state.turnNumber,
   };
 
-  const breakEffectEvents: GameEvent[] = [];
-  for (const effect of def.onBreakEffects ?? []) {
-    const result = resolveEffect(nextState, effect, context);
-    nextState = result.state;
-    events.push(...result.events);
-    breakEffectEvents.push(...result.events);
-  }
+  const broken = resolveEffectSequence(nextState, def.onBreakEffects ?? [], context);
+  nextState = broken.state;
+  events.push(...broken.events);
+  const breakEffectEvents: GameEvent[] = [...broken.events];
 
   // Péons invoqués par le Bris (ex: Le Seau) : eux aussi arrivent en jeu.
   const summoned = processSummonEnterTriggers(nextState, breakEffectEvents, state.turnNumber);

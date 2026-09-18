@@ -3,6 +3,7 @@ import type { EnvironmentState } from "@/game/environment/types";
 import type { GameEvent } from "@/game/events/types";
 import type { RngState } from "@/game/rng";
 import type { TriggerEvent } from "@/game/triggers/types";
+import type { EffectDefinition } from "@/game/effects/types";
 
 export type PlayerId = string;
 
@@ -249,7 +250,44 @@ export interface AbilityOptionChoice {
   turnNumber: number;
 }
 
-export type PendingChoice = ReasonOrAnchorChoice | AbilityOptionChoice;
+/**
+ * « Défaussez N cartes » : le joueur désigne LESQUELLES (CLAUDE.md, « le
+ * joueur décide, jamais le moteur »). Jusqu'ici la défausse prenait le
+ * début de la main, ce qui transformait un coût en loterie de tri.
+ *
+ * Le choix porte la SUITE de la séquence d'effets (`continuation`) : le
+ * texte « défaussez 1 carte. Si une carte Un Dead a rejoint votre Cimetière
+ * ce tour, piochez 1 carte supplémentaire » évalue sa condition APRÈS la
+ * défausse, donc la pioche ne peut pas se résoudre avant que le joueur ait
+ * répondu. Ce sont des données pures (`EffectDefinition[]`), sérialisables
+ * comme le reste de l'état.
+ */
+export interface HandDiscardChoice {
+  kind: "handDiscard";
+  playerId: PlayerId;
+  /** Nombre de cartes à défausser — déjà borné à la taille de la main. */
+  count: number;
+  /** « vous POUVEZ défausser » : « Ne rien défausser » est une réponse valable. */
+  refusable: boolean;
+  /** Carte à l'origine de la défausse, pour l'écran et la traçabilité. */
+  sourceInstanceId?: string;
+  /** Effets qui restent à résoudre une fois la défausse faite. */
+  continuation?: {
+    effects: EffectDefinition[];
+    context: {
+      controllerId: PlayerId;
+      sourceInstanceId?: string;
+      chosenTargetInstanceId?: string;
+      chosenGraveyardInstanceId?: string;
+      brokenFromHand?: boolean;
+      triggerSourceInstanceId?: string;
+      turnNumber: number;
+    };
+  };
+  turnNumber: number;
+}
+
+export type PendingChoice = ReasonOrAnchorChoice | AbilityOptionChoice | HandDiscardChoice;
 
 export interface PendingReactionState {
   /** Événements déclencheurs ayant ouvert cette fenêtre (contexte pour l'UI/le recalcul d'éligibilité). */

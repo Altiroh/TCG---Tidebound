@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { dispatch } from "@/game/engine";
 import { discardFromHand, pruneGraveyardArrivals } from "@/game/state/discard";
 import { RULES } from "@/game/rules/constants";
-import { instance, testGameState, testPlayer } from "./testHelpers";
+import { answerHandDiscard, instance, testGameState, testPlayer } from "./testHelpers";
 
 /**
  * La VOIE UNIQUE de la défausse (`game/state/discard.ts`).
@@ -32,7 +32,14 @@ describe("défausse — voie unique", () => {
       ],
     });
 
-    const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: mousse.instanceId });
+    const joue = dispatch(state, { type: "playCard", playerId: "p1", instanceId: mousse.instanceId });
+    expect(joue.ok).toBe(true);
+    if (!joue.ok) return;
+
+    // « Défaussez 1 carte » pose une question au lieu de prendre le début de
+    // la main : rien n'est parti tant que le joueur n'a pas désigné.
+    expect(joue.state.pendingChoice?.kind).toBe("handDiscard");
+    const result = answerHandDiscard(joue.state);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -111,5 +118,69 @@ describe("défausse — voie unique", () => {
     // couvre le tour adverse qui vient de s'écouler : le tour 5 reste.
     const pruned = pruneGraveyardArrivals(player, 6);
     expect(pruned.graveyardArrivals!.map((a) => a.turnNumber)).toEqual([5, 6]);
+  });
+});
+
+describe("défausse — c'est le joueur qui désigne", () => {
+  /** Mousse des Quarts : « piochez 1 carte puis défaussez 1 carte » — une défausse qui ne se refuse pas. */
+  function mousseEnJeu() {
+    const mousse = instance("mousse-des-quarts", "p1");
+    const garder = instance("crabe-de-fer", "p1");
+    const sacrifier = instance("marin-des-jetees", "p1");
+    const state = testGameState({
+      players: [
+        testPlayer("p1", { hand: [mousse, garder, sacrifier], deck: [instance("poisson-lanterne", "p1")] }),
+        testPlayer("p2", { shipId: "lerrant" }),
+      ],
+    });
+    const joue = dispatch(state, { type: "playCard", playerId: "p1", instanceId: mousse.instanceId });
+    if (!joue.ok) throw new Error(joue.error);
+    return { state: joue.state, garder, sacrifier };
+  }
+
+  it("défausse la carte DÉSIGNÉE, pas la première de la main", () => {
+    const { state, garder, sacrifier } = mousseEnJeu();
+    const result = answerHandDiscard(state, [sacrifier.instanceId]);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const p1 = result.state.players.find((p) => p.id === "p1")!;
+    expect(p1.graveyard.map((c) => c.instanceId)).toContain(sacrifier.instanceId);
+    expect(p1.hand.map((c) => c.instanceId)).toContain(garder.instanceId);
+  });
+
+  it("refuse « ne rien défausser » quand le texte dit combien, pas si", () => {
+    const { state } = mousseEnJeu();
+    const result = dispatch(state, { type: "resolveChoice", playerId: "p1", choice: "pass" });
+    expect(result.ok).toBe(false);
+  });
+
+  it("refuse un compte qui ne correspond pas au texte", () => {
+    const { state, garder, sacrifier } = mousseEnJeu();
+    const trop = dispatch(state, {
+      type: "resolveChoice",
+      playerId: "p1",
+      choice: { discardInstanceIds: [garder.instanceId, sacrifier.instanceId] },
+    });
+    expect(trop.ok).toBe(false);
+
+    const rien = dispatch(state, { type: "resolveChoice", playerId: "p1", choice: { discardInstanceIds: [] } });
+    expect(rien.ok).toBe(false);
+  });
+
+  it("refuse une carte qui n'est pas dans la main du joueur", () => {
+    const { state } = mousseEnJeu();
+    const result = dispatch(state, {
+      type: "resolveChoice",
+      playerId: "p1",
+      choice: { discardInstanceIds: ["carte-qui-nexiste-pas"] },
+    });
+    expect(result.ok).toBe(false);
+  });
+
+  it("bloque toute autre action tant que la défausse n'a pas reçu de réponse", () => {
+    const { state } = mousseEnJeu();
+    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    expect(result.ok).toBe(false);
   });
 });

@@ -144,7 +144,13 @@ export interface ResolveChoiceAction {
    * propose (décision du 17/09/2026). Une Anomalie qui IMPOSE un choix, elle,
    * refuse "pass" : son texte ne laisse pas sortir.
    */
-  choice: "reasonLoss" | "anchorDamage" | "pass" | { abilityIndex: number };
+  choice:
+    | "reasonLoss"
+    | "anchorDamage"
+    | "pass"
+    | { abilityIndex: number }
+    /** Réponse à un choix de défausse : les exemplaires de SA MAIN que le joueur envoie au Cimetière. */
+    | { discardInstanceIds: string[] };
 }
 
 /**

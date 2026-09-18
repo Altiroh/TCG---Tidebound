@@ -21,7 +21,7 @@ import { CORE_SET } from "@/game/cards/sets/core";
 import { resolveEffect } from "@/game/effects/resolveEffect";
 import { previewBreakReason } from "@/game/actions/breakObject";
 import type { GameState } from "@/game/state/types";
-import { instance, pendingCandidates, testEnvironment, testGameState, testPlayer } from "./testHelpers";
+import { answerHandDiscard, instance, pendingCandidates, testEnvironment, testGameState, testPlayer } from "./testHelpers";
 
 function ok(result: { ok: boolean; error?: string }): asserts result is { ok: true; state: GameState } & typeof result {
   if (!result.ok) throw new Error(result.error ?? "action refusée");
@@ -317,7 +317,14 @@ describe("« si vous avez au moins N cartes en main » : une condition de CAPACI
     // 4 cartes en main une fois le Gabier posé.
     const joue = arrivee(4);
     ok(joue);
-    const p1 = player(joue.state, "p1");
+    // La défausse attend que le joueur désigne sa carte ; la pioche, qui la
+    // suit dans le texte, ne peut pas la devancer.
+    expect(joue.state.pendingChoice?.kind).toBe("handDiscard");
+    expect(player(joue.state, "p1").graveyard.length).toBe(0);
+
+    const defausse = answerHandDiscard(joue.state);
+    ok(defausse);
+    const p1 = player(defausse.state, "p1");
     expect(p1.graveyard.length).toBe(1); // la défausse a bien eu lieu
     expect(p1.hand.length).toBe(4); // -1 défaussée, +1 piochée
   });

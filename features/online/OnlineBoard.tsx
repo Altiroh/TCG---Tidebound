@@ -26,6 +26,7 @@ import { MatchPauseMenu } from "@/features/match/MatchPauseMenu";
 import { ObjectBreakPrompt } from "@/features/match/ObjectBreakPrompt";
 import { ShipAbilityPrompt } from "@/features/match/ShipAbilityPrompt";
 import { PendingChoicePrompt } from "@/features/match/PendingChoicePrompt";
+import { HandDiscardPrompt } from "@/features/match/HandDiscardPrompt";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ReactionPrompt } from "@/features/match/ReactionPrompt";
 import { reactionTargetHint } from "@/features/match/reactionTargetHint";
@@ -259,6 +260,14 @@ export function OnlineBoard({
         <PendingChoicePrompt
           choice={state.pendingChoice}
           onChoose={(choice) => act({ type: "resolveChoice", playerId: myUserId, choice })}
+        />
+      )}
+      {state.pendingChoice?.kind === "handDiscard" && state.pendingChoice.playerId === myUserId && (
+        <HandDiscardPrompt
+          choice={state.pendingChoice}
+          hand={me.hand}
+          onConfirm={(discardInstanceIds) => act({ type: "resolveChoice", playerId: myUserId, choice: { discardInstanceIds } })}
+          onRefuse={() => act({ type: "resolveChoice", playerId: myUserId, choice: "pass" })}
         />
       )}
 

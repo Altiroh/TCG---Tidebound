@@ -50,7 +50,19 @@ export function stepBotTurn(state: GameState, playerId: PlayerId, difficulty: Bo
         ? {
             type: "resolveChoice" as const,
             playerId,
-            choice: state.pendingChoice.kind === "abilityOption" ? { abilityIndex: state.pendingChoice.abilityIndexes[0] ?? 0 } : ("reasonLoss" as const),
+            choice:
+              state.pendingChoice.kind === "abilityOption"
+                ? { abilityIndex: state.pendingChoice.abilityIndexes[0] ?? 0 }
+                : state.pendingChoice.kind === "handDiscard"
+                  ? // Un repli doit rester LÉGAL : une défausse attend
+                    // exactement son compte de cartes, et refuser n'est
+                    // permis que si le texte le permet.
+                    {
+                      discardInstanceIds: (state.players.find((p) => p.id === playerId)?.hand ?? [])
+                        .slice(0, state.pendingChoice.count)
+                        .map((card) => card.instanceId),
+                    }
+                  : ("reasonLoss" as const),
           }
         : { type: "endTurn" as const, playerId };
     const fallback = dispatch(state, fallbackAction);
