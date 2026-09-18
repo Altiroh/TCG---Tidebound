@@ -27,7 +27,10 @@ function safeName(cardId: string): string {
 
 /**
  * CONTENU d'un booster, avant de l'acheter : toutes les cartes qui peuvent
- * en tomber, rangées par rareté, chacune marquée d'une coche si on l'a déjà.
+ * en tomber, rangées par rareté — une coche verte sur celles qu'on a,
+ * le badge « Nouveau » sur celles qu'on n'a pas. C'est ce second groupe
+ * qu'on cherche devant un rayon, et un petit « + » gris ne le disait pas :
+ * il fallait comparer deux icônes de 11 px pour savoir laquelle manquait.
  * Le compte « possédées / tirables » dit d'un coup d'œil si le booster fera
  * encore avancer la collection. Toucher une carte ouvre sa fiche.
  */
@@ -122,17 +125,15 @@ export function BoosterContentsDialog({ booster, owned, onClose }: BoosterConten
                   <span className={styles.art} style={{ backgroundImage: `url("${cardIllustrationUrl(card.cardId)}")` }} aria-hidden />
                   <span className={styles.name}>{card.name}</span>
                   <span className={styles.rarity}>{CARD_RARITY_LABELS[card.rarity]}</span>
-                  <span className={styles.ownedMark} aria-label={card.owned ? "Possédée" : "Pas encore possédée"}>
-                    {card.owned ? (
+                  {card.owned ? (
+                    <span className={styles.ownedMark} aria-label="Possédée">
                       <svg viewBox="0 0 16 16" width="11" height="11" fill="none" aria-hidden>
                         <path d="M3.5 8.5l3 3 6-7" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
-                    ) : (
-                      <svg viewBox="0 0 16 16" width="11" height="11" fill="none" aria-hidden>
-                        <path d="M8 3.5v9M3.5 8h9" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
-                      </svg>
-                    )}
-                  </span>
+                    </span>
+                  ) : (
+                    <span className={styles.newMark}>Nouveau</span>
+                  )}
                 </button>
               </li>
             ))}
