@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { createPortal } from "react-dom";
 import { getCardDefinition } from "@/game";
 import styles from "@/features/boosters/opening/BoosterOpening.module.css";
@@ -73,6 +73,11 @@ function prefersReducedMotion(): boolean {
   return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
+/** Doigt plutôt que souris : les consignes de la scène ne disent pas la même chose. */
+function hasCoarsePointer(): boolean {
+  return typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
+}
+
 /** Minuteries de la scène, toutes annulées au démontage (fermeture en cours d'animation comprise). */
 function useSceneTimers() {
   const timers = useRef(new Set<ReturnType<typeof setTimeout>>());
@@ -126,9 +131,10 @@ function timingVariables(timings: BoosterOpeningTimings, cardCount: number): CSS
  *
  * Déroulé : le sachet quitte le plan d'ouverture et vient au CENTRE, où il
  * attend qu'on le touche ; il se déchire, les cartes en sortent ; chacune se
- * retourne au survol (ou au toucher), avec la lumière de sa rareté ; une
- * Abyssale quitte la rangée pour un gros plan au milieu de l'écran. Une fois
- * une carte retournée, le clic droit ouvre sa fiche.
+ * retourne au survol, au doigt qui glisse dessus (`handleScenePointer`) ou à
+ * la tape, avec la lumière de sa rareté ; une Abyssale quitte la rangée pour
+ * un gros plan au milieu de l'écran. Une fois une carte retournée, un clic
+ * ou une tape ouvre sa fiche.
  *
  * Répartition des rôles :
  *   - `boosterOpeningMachine` : ce qui a le droit de se passer (pur)
@@ -137,6 +143,7 @@ function timingVariables(timings: BoosterOpeningTimings, cardCount: number): CSS
  */
 export function BoosterOpeningScene({ cards, visual, origin = null, onClose }: BoosterOpeningSceneProps) {
   const [reducedMotion] = useState(prefersReducedMotion);
+  const [coarsePointer] = useState(hasCoarsePointer);
   const timings = reducedMotion ? BOOSTER_OPENING_TIMINGS_REDUCED : BOOSTER_OPENING_TIMINGS;
 
   const [state, dispatch] = useReducer(boosterOpeningReducer, cards.length, createBoosterOpeningState);
@@ -294,6 +301,29 @@ export function BoosterOpeningScene({ cards, visual, origin = null, onClose }: B
     return () => returnFocusTo?.focus?.({ preventScroll: true });
   }, [returnFocusTo]);
 
+  /**
+   * DOIGT QUI GLISSE — l'équivalent tactile du survol.
+   *
+   * Sur un écran tactile il n'y a pas de survol : `pointerenter` n'arrive
+   * qu'à la carte où le doigt se pose, et le pointeur reste ensuite CAPTÉ
+   * par elle (capture implicite du tactile), si bien que traverser la rangée
+   * ne retournait rien. On lit donc la carte réellement sous le point, à
+   * chaque déplacement — c'est ce qui rend le geste possible sur iOS.
+   */
+  const handleScenePointer = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      // La souris garde son survol natif, plus fidèle (pas besoin d'appuyer).
+      if (event.pointerType === "mouse") return;
+      const under = document.elementFromPoint(event.clientX, event.clientY);
+      const target = under?.closest<HTMLElement>("[data-card-index]");
+      if (!target) return;
+      const index = Number(target.dataset.cardIndex);
+      if (Number.isNaN(index)) return;
+      handleReveal(index);
+    },
+    [handleReveal],
+  );
+
   const sceneStyle = useMemo(
     () =>
       ({
@@ -331,7 +361,7 @@ export function BoosterOpeningScene({ cards, visual, origin = null, onClose }: B
       </div>
       {!reducedMotion && <BoosterParticles variant="ambient" />}
 
-      <div className={styles.stage}>
+      <div className={styles.stage} onPointerDown={handleScenePointer} onPointerMove={handleScenePointer}>
         {showCards && (
           <BoosterCards
             cards={cards}
@@ -384,7 +414,7 @@ export function BoosterOpeningScene({ cards, visual, origin = null, onClose }: B
             showCards &&
             phase !== "cardsSpawning" && (
               <>
-                Survole chaque carte pour la retourner
+                {coarsePointer ? "Fais glisser ton doigt sur les cartes pour les retourner" : "Survole chaque carte pour la retourner"}
                 <span className={styles.hintCount}>
                   {revealedCount} / {cards.length}
                 </span>
@@ -395,7 +425,9 @@ export function BoosterOpeningScene({ cards, visual, origin = null, onClose }: B
 
         {phase === "completed" && !showcaseActive && (
           <>
-            <p className={styles.inspectHint}>Clic droit sur une carte pour voir sa fiche</p>
+            <p className={styles.inspectHint}>
+              {coarsePointer ? "Touche une carte pour voir sa fiche" : "Clique sur une carte pour voir sa fiche"}
+            </p>
             <button ref={closeButtonRef} type="button" className={styles.closeButton} onClick={handleClose}>
               Fermer
             </button>

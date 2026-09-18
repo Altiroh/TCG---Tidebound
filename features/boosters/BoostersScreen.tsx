@@ -34,6 +34,32 @@ import { playButtonClick } from "@/lib/sound";
 /** Type MIME du glisser-déposer d'un paquet vers le plan d'ouverture. */
 const DRAG_MIME = "text/tidebound-booster-id";
 
+/*
+ * GLISSER AU DOIGT — iOS n'a PAS de glisser-déposer HTML5 : `draggable`,
+ * `dragstart` et `dataTransfer` n'y existent tout simplement pas, et le
+ * geste principal de l'écran était donc inaccessible sur iPhone (retour de
+ * test du 18/09). On refait le geste avec des événements de pointeur, pour
+ * le tactile seulement — la souris garde le glisser natif, mieux intégré au
+ * système (curseur, image de glisse, dépôt hors fenêtre).
+ *
+ * APPUI MAINTENU plutôt que glisser immédiat : l'étagère défile
+ * verticalement, et un glisser immédiat rendrait le défilement impossible.
+ * Tant que le sachet n'est pas « décollé », le doigt fait défiler comme
+ * partout ailleurs ; une fois décollé, le défilement est neutralisé
+ * (`touchmove` non passif) et le sachet suit le doigt.
+ */
+const TOUCH_DRAG_HOLD_MS = 220;
+/** Au-delà de cet écart avant le décollage, le doigt défilait : ce n'est pas un glisser. */
+const TOUCH_DRAG_SLOP_PX = 12;
+
+/** Sachet décollé qui suit le doigt, et le point où il se trouve. */
+interface TouchDrag {
+  key: string;
+  boosterId: string;
+  x: number;
+  y: number;
+}
+
 /**
  * Durée MINIMALE de la mise en tension sur le plan (tremblement, rotation,
  * reflet) avant que le sachet ne décolle vers le centre. Le tirage serveur
@@ -114,6 +140,10 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
   } | null>(null);
   /** Sachet du plan d'ouverture — mesuré au lancement, pour que la scène le fasse décoller de là. */
   const dockPackRef = useRef<HTMLSpanElement>(null);
+  /** Le plan lui-même : c'est son rectangle qui dit si le doigt lâche au bon endroit. */
+  const dockRef = useRef<HTMLElement>(null);
+  /** Sachet en cours de glisser AU DOIGT (cf. `TOUCH_DRAG_HOLD_MS`). */
+  const [touchDrag, setTouchDrag] = useState<TouchDrag | null>(null);
   /** Sachets à ouvrir d'un seul geste (1 = le geste habituel). */
   const [batchSize, setBatchSize] = useState(1);
 /**
@@ -132,6 +162,13 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
   const docked = packs.find((pack) => pack.key === dockedKey) ?? null;
   /** On ne peut ouvrir que ce qu'on possède, et jamais plus que la borne du lot. */
   const maxBatch = docked ? Math.min(MAX_BATCH_OPEN, docked.copyCount) : 1;
+  /**
+   * La réserve dépasse ce qu'une ouverture peut prendre : « Tout » ne veut
+   * alors PAS dire tout le stock, et le taire faisait passer la borne pour
+   * un bug (retour de test du 18/09). Elle est volontaire — chaque sachet
+   * est tiré et écrit séparément (cf. `MAX_BATCH_OPEN`), donc on la dit.
+   */
+  const batchCapped = docked ? docked.copyCount > MAX_BATCH_OPEN : false;
   const dockedEntry = docked ? inventory.boosters.find((entry) => entry.boosterId === docked.boosterId) : undefined;
 
   // AUCUNE sélection par défaut : le plan reste vide tant qu'on n'y a rien
@@ -155,6 +192,59 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
       void preloadBoosterOpeningAssets(getBoosterPackVisual(boosterId), cardBack);
     }
   }, [visualIdsKey, cardBack]);
+
+  /*
+   * Tant qu'un sachet est décollé sous le doigt, la page ne défile plus :
+   * sans ce verrou, iOS emmène l'étagère (ou tout l'écran) au premier
+   * mouvement et le sachet ne peut jamais atteindre le plan. Non passif,
+   * sinon `preventDefault` n'a aucun effet.
+   */
+  useEffect(() => {
+    if (!touchDrag) return;
+    const block = (event: TouchEvent) => event.preventDefault();
+    document.addEventListener("touchmove", block, { passive: false });
+    return () => document.removeEventListener("touchmove", block);
+  }, [touchDrag]);
+
+  /** Le doigt est-il au-dessus du plan d'ouverture ? */
+  function isOverDock(x: number, y: number): boolean {
+    const rect = dockRef.current?.getBoundingClientRect();
+    if (!rect) return false;
+    return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+  }
+
+  function startTouchDrag(pack: OwnedPack, x: number, y: number) {
+    if (isOpening || opening || batch) return;
+    setError(null);
+    setIsDragging(true);
+    setTouchDrag({ key: pack.key, boosterId: pack.boosterId, x, y });
+    setIsOver(isOverDock(x, y));
+  }
+
+  function moveTouchDrag(x: number, y: number) {
+    setTouchDrag((current) => (current ? { ...current, x, y } : current));
+    setIsOver(isOverDock(x, y));
+  }
+
+  function endTouchDrag(x: number, y: number) {
+    const dragged = touchDrag;
+    setTouchDrag(null);
+    setIsDragging(false);
+    setIsOver(false);
+    if (!dragged) return;
+    // Lâché ailleurs que sur le plan : le sachet retourne à l'étagère, sans
+    // rien ouvrir — un geste abandonné ne consomme pas un booster.
+    if (!isOverDock(x, y)) return;
+    // Déposer OUVRE, exactement comme à la souris.
+    setDockedKey(dragged.key);
+    void handleOpen(dragged.boosterId);
+  }
+
+  function cancelTouchDrag() {
+    setTouchDrag(null);
+    setIsDragging(false);
+    setIsOver(false);
+  }
 
   function dock(key: string) {
     playButtonClick();
@@ -327,6 +417,11 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
                               setIsDragging(false);
                               setIsOver(false);
                             }}
+                            lifted={touchDrag?.key === pack.key}
+                            onTouchDragStart={(x, y) => startTouchDrag(pack, x, y)}
+                            onTouchDragMove={moveTouchDrag}
+                            onTouchDragEnd={endTouchDrag}
+                            onTouchDragCancel={cancelTouchDrag}
                           />
                         ))}
                       </div>
@@ -340,6 +435,7 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
             {/* LE plan d'ouverture : une seule zone, toujours à la même place,
                 qu'on vise à la souris comme on poserait le sachet sur la table. */}
             <section
+              ref={dockRef}
               className={styles.dock}
               data-state={isOver ? "over" : docked ? "loaded" : "empty"}
               aria-label="Plan d'ouverture"
@@ -425,10 +521,16 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
                           setBatchSize(maxBatch);
                         }}
                         disabled={batchSize >= maxBatch || isOpening || opening !== null}
+                        title={batchCapped ? `${MAX_BATCH_OPEN} sachets au maximum par ouverture` : undefined}
                       >
-                        Tout ({maxBatch})
+                        {batchCapped ? `Le maximum (${MAX_BATCH_OPEN})` : `Tout (${maxBatch})`}
                       </button>
                     </span>
+                  )}
+                  {batchCapped && docked && (
+                    <p className={styles.dockHint}>
+                      {MAX_BATCH_OPEN} sachets par ouverture — il t&apos;en restera {docked.copyCount - MAX_BATCH_OPEN}.
+                    </p>
                   )}
                   <button
                     type="button"
@@ -452,6 +554,13 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
                   <p className={styles.dockTitle}>
                     {packs.length > 0 ? "Glisse un booster ici" : "Rien à ouvrir"}
                   </p>
+                  {/* Au doigt, le geste commence par un appui maintenu : sans
+                      le dire, on ne peut pas le deviner. */}
+                  {packs.length > 0 && (
+                    <p className={styles.dockHint}>
+                      Au doigt : appuie sur un sachet jusqu&apos;à ce qu&apos;il se soulève, puis amène-le ici.
+                    </p>
+                  )}
                 </>
               )}
             </section>
@@ -481,6 +590,20 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
           </div>
         </div>
       </div>
+
+      {/* Le sachet décollé, sous le doigt : c'est lui qu'on voit voyager
+          jusqu'au plan — l'image de glisse que le tactile n'a pas. */}
+      {touchDrag && (
+        <span
+          className={styles.touchGhost}
+          style={{
+            ...closedPackVariables(getBoosterPackVisual(touchDrag.boosterId)),
+            left: touchDrag.x,
+            top: touchDrag.y,
+          }}
+          aria-hidden
+        />
+      )}
 
       <ScreenToast message={toast} onDismiss={() => setToast(null)} />
 
@@ -516,34 +639,126 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
  * et c'est le geste principal de cet écran. Le rôle, le `tabIndex` et la
  * gestion d'Entrée/Espace lui rendent le comportement d'un bouton pour qui
  * ne glisse pas.
+ *
+ * DEUX gestes de glisse, un par famille de pointeur : le glisser-déposer
+ * natif à la souris, l'appui maintenu au doigt (cf. `TOUCH_DRAG_HOLD_MS`) —
+ * iOS ne connaît pas le premier.
  */
 function ShelfPack({
   pack,
   style,
   selected,
   disabled,
+  lifted,
   onSelect,
   onDragStart,
   onDragEnd,
+  onTouchDragStart,
+  onTouchDragMove,
+  onTouchDragEnd,
+  onTouchDragCancel,
 }: {
   pack: OwnedPack;
   style: React.CSSProperties;
   selected: boolean;
   disabled: boolean;
+  /** Décollé sous le doigt : sa place sur l'étagère se vide le temps du geste. */
+  lifted: boolean;
   onSelect: () => void;
   onDragStart: (event: React.DragEvent<HTMLDivElement>) => void;
   onDragEnd: () => void;
+  onTouchDragStart: (x: number, y: number) => void;
+  onTouchDragMove: (x: number, y: number) => void;
+  onTouchDragEnd: (x: number, y: number) => void;
+  onTouchDragCancel: () => void;
 }) {
+  /** Minuterie de l'appui maintenu — annulée dès que le doigt part en défilement. */
+  const holdTimer = useRef<number | null>(null);
+  /** Point de pose du doigt, pour mesurer s'il a bougé avant le décollage. */
+  const origin = useRef<{ x: number; y: number } | null>(null);
+  const dragging = useRef(false);
+  /** Un glisser ne doit pas finir en sélection : le `click` qui suit est ignoré. */
+  const justDragged = useRef(false);
+
+  function clearHold() {
+    if (holdTimer.current === null) return;
+    window.clearTimeout(holdTimer.current);
+    holdTimer.current = null;
+  }
+
+  useEffect(() => clearHold, []);
+
+  function handlePointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    if (disabled || event.pointerType === "mouse") return;
+    // Un glisser qui ne serait suivi d'aucun `click` (c'est le cas dès que
+    // le doigt a parcouru un peu de chemin) laisserait le verrou armé et
+    // avalerait la tape SUIVANTE : on le désarme à chaque nouvel appui.
+    justDragged.current = false;
+    const { clientX, clientY } = event;
+    origin.current = { x: clientX, y: clientY };
+    clearHold();
+    holdTimer.current = window.setTimeout(() => {
+      holdTimer.current = null;
+      dragging.current = true;
+      onTouchDragStart(clientX, clientY);
+    }, TOUCH_DRAG_HOLD_MS);
+  }
+
+  function handlePointerMove(event: React.PointerEvent<HTMLDivElement>) {
+    if (event.pointerType === "mouse") return;
+    if (dragging.current) {
+      onTouchDragMove(event.clientX, event.clientY);
+      return;
+    }
+    // Le doigt s'est déplacé AVANT le décollage : c'est un défilement, on
+    // renonce à décoller le sachet et on laisse la page faire son travail.
+    const start = origin.current;
+    if (!start) return;
+    if (Math.abs(event.clientX - start.x) > TOUCH_DRAG_SLOP_PX || Math.abs(event.clientY - start.y) > TOUCH_DRAG_SLOP_PX) {
+      clearHold();
+      origin.current = null;
+    }
+  }
+
+  function handlePointerUp(event: React.PointerEvent<HTMLDivElement>) {
+    clearHold();
+    origin.current = null;
+    if (!dragging.current) return;
+    dragging.current = false;
+    justDragged.current = true;
+    onTouchDragEnd(event.clientX, event.clientY);
+  }
+
+  function handlePointerCancel() {
+    clearHold();
+    origin.current = null;
+    if (!dragging.current) return;
+    dragging.current = false;
+    justDragged.current = true;
+    onTouchDragCancel();
+  }
+
   return (
     <div
       className={styles.shelfPack}
       style={style}
       data-selected={selected ? "true" : "false"}
       data-disabled={disabled ? "true" : "false"}
+      data-lifted={lifted ? "true" : undefined}
       draggable={!disabled}
       onDragStart={disabled ? undefined : onDragStart}
       onDragEnd={onDragEnd}
-      onClick={disabled ? undefined : onSelect}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
+      onClick={() => {
+        if (justDragged.current) {
+          justDragged.current = false;
+          return;
+        }
+        if (!disabled) onSelect();
+      }}
       onKeyDown={(event) => {
         if (disabled) return;
         if (event.key !== "Enter" && event.key !== " ") return;

@@ -33,7 +33,7 @@ interface BoosterCardProps {
   cardStyle: BoosterCardStyle;
   showcase?: BoosterCardShowcase;
   onReveal: (index: number) => void;
-  /** Clic droit sur une carte révélée : sa fiche détaillée. */
+  /** Carte révélée qu'on veut lire : sa fiche détaillée. */
   onInspect: (cardId: string) => void;
   /** Clic sur la carte en gros plan : elle rejoint la rangée. */
   onShowcaseDismiss: () => void;
@@ -46,8 +46,11 @@ interface BoosterCardProps {
  *   `.cardLift`  survol et agrandissement au retournement
  *   `.cardFlip`  anticipation + retournement 3D (rotateY)
  *
- * Trois façons de la retourner : la survoler à la souris, la toucher, ou
- * Entrée/Espace au clavier. Une fois retournée, le clic droit ouvre sa fiche.
+ * Trois façons de la retourner : la survoler à la souris, la toucher (ou
+ * faire glisser le doigt dessus — cf. `BoosterOpeningScene`), ou
+ * Entrée/Espace au clavier. Une fois retournée, un simple clic ou une tape
+ * ouvre sa fiche (le clic droit aussi, pour qui a gardé l'habitude : au
+ * doigt il n'existe pas).
  *
  * `.card` est un `div role="button"` et non un `<button>` : la face rendue
  * par `CardTile` est elle-même un bouton, et un bouton ne peut pas en
@@ -76,9 +79,11 @@ export const BoosterCard = memo(function BoosterCard({
   const highRarity = card.rarity === "rare" || card.rarity === "epic" || card.rarity === "legendary" || card.rarity === "abyssal";
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    if (!interactive || (event.key !== "Enter" && event.key !== " ")) return;
+    if (event.key !== "Enter" && event.key !== " ") return;
+    if (!interactive && !(revealed && card.cardId)) return;
     event.preventDefault();
-    onReveal(index);
+    if (interactive) onReveal(index);
+    else if (card.cardId) onInspect(card.cardId);
   }
 
   /** Survol à la souris : la carte se retourne d'elle-même. Au doigt, c'est le toucher qui le fait. */
@@ -91,7 +96,13 @@ export const BoosterCard = memo(function BoosterCard({
       onShowcaseDismiss();
       return;
     }
-    if (interactive) onReveal(index);
+    if (interactive) {
+      onReveal(index);
+      return;
+    }
+    // Retournée : on veut la LIRE. Le clic droit restait le seul chemin, et
+    // il n'existe pas au doigt (retour de test iOS du 18/09).
+    if (revealed && card.cardId) onInspect(card.cardId);
   }
 
   function handleContextMenu(event: MouseEvent<HTMLDivElement>) {
@@ -102,10 +113,14 @@ export const BoosterCard = memo(function BoosterCard({
   return (
     <div
       role="button"
-      tabIndex={interactive ? 0 : -1}
-      aria-disabled={!interactive}
+      tabIndex={interactive || revealed ? 0 : -1}
+      aria-disabled={!interactive && !revealed}
       className={styles.card}
       style={cardStyle}
+      // Lu par la scène pour savoir quelle carte le doigt survole en
+      // glissant : au toucher, l'événement reste capté par la carte où le
+      // doigt s'est posé, donc seule la position compte.
+      data-card-index={index}
       data-state={state}
       data-rarity={card.rarity}
       data-interactive={interactive || undefined}
@@ -114,10 +129,10 @@ export const BoosterCard = memo(function BoosterCard({
       onClick={handleClick}
       onContextMenu={handleContextMenu}
       onKeyDown={handleKeyDown}
-      title={revealed && card.cardId ? "Clic droit : fiche de la carte" : undefined}
+      title={revealed && card.cardId ? "Voir la fiche de la carte" : undefined}
       aria-label={
         revealed
-          ? `Carte ${index + 1} sur ${count} : ${cardName}, ${rarityLabel}`
+          ? `Carte ${index + 1} sur ${count} : ${cardName}, ${rarityLabel} — voir sa fiche`
           : `Carte ${index + 1} sur ${count}, face cachée — révéler`
       }
     >

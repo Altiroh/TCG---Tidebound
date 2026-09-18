@@ -658,7 +658,7 @@ a.section {
   margin: 0;
   padding: 0;
   list-style: none;
-  max-height: clamp(70px, 18vh, 170px);
+  max-height: clamp(70px, 18dvh, 170px);
   overflow-y: auto;
   scrollbar-width: thin;
 }
@@ -875,11 +875,23 @@ a.section {
   }
 }
 
-/* ── Étroit : les rayons passent en bande au-dessus du ponton ── */
-@media (max-width: 820px) {
+/*
+ * ── Étroit OU COURT : les rayons passent en bande au-dessus du ponton ──
+ *
+ * La condition de HAUTEUR compte autant que celle de largeur. Un iPhone en
+ * paysage (l'orientation imposée par le produit) fait ~850 × 390 : trop
+ * large pour l'ancien seuil de 820 px, mais l'enseigne de bois est bornée
+ * par la hauteur de sa colonne (`width: min(100cqw, 59.3cqh)`) et tombait
+ * à ~90 px de large — une planche illisible avec trois rayons empilés
+ * dedans, dans une colonne de 210 px dont le reste était vide. En bande
+ * horizontale, elle tient (retour de test iOS du 18/09).
+ */
+@media (max-width: 820px), (max-height: 560px) {
   .market {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto minmax(220px, 1fr) auto;
+    /* Le ponton garde une hauteur utile, sans exiger 220 px sur un écran
+       qui n'en a que 290 en tout. */
+    grid-template-rows: auto minmax(clamp(150px, 42dvh, 220px), 1fr) auto;
     overflow-y: auto;
   }
 
@@ -976,6 +988,54 @@ a.section {
     min-width: 0;
     flex: 1 1 auto;
   }
+}
+
+/*
+ * ── Court : téléphone en paysage ──────────────────────────────
+ * Tout est compté en hauteur. Le cadre de laiton du panier à lui seul
+ * mangeait 48 px (deux bordures de 24 px) sur les ~290 px de contenu.
+ */
+@media (max-height: 560px) {
+  .market {
+    gap: 6px;
+    padding: 6px clamp(10px, 2vw, 24px) 8px;
+  }
+
+  .sideInner { padding: 6px 8px; }
+
+  .sideTitle { font-size: 16px; }
+
+  .section { padding: 5px 9px; font-size: 12px; }
+
+  .sectionIcon { width: 16px; height: 16px; }
+
+  .reserveTitle { font-size: 12px; }
+
+  .cart {
+    border-width: 18px;
+    border-image-width: 18px;
+    margin: -6px;
+    padding: 6px 12px 6px;
+    gap: 4px;
+  }
+
+  .cartTitle { font-size: 14px; }
+
+  .cartBody { padding-top: 4px; }
+
+  .cartLines { max-height: clamp(56px, 22dvh, 120px); }
+
+  .cartEmpty { min-height: 34px; font-size: 12px; }
+
+  .cartLine { padding: 5px 8px 5px 5px; gap: 8px; }
+
+  .cartThumb { width: 26px; height: 36px; }
+
+  .totalLabel { font-size: 10px; }
+
+  .buyButton { padding-block: 7px; }
+
+  .stageLink { font-size: 11px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

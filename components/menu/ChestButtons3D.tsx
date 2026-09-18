@@ -266,6 +266,11 @@ export function ChestButtons3D({ slots, iconSlots }: { slots: ChestSlotDef[]; ic
     renderer.domElement.style.position = "absolute";
     renderer.domElement.style.inset = "0";
     renderer.domElement.style.cursor = "default";
+    // `manipulation` : Safari iOS traite sinon un appui sur le canevas comme
+    // le DÉBUT d'un geste de page (défilement, double-tape). Dès qu'il s'en
+    // saisit il émet `pointercancel` et n'émet JAMAIS le `pointerup` — le
+    // menu paraissait alors totalement inerte au doigt.
+    renderer.domElement.style.touchAction = "manipulation";
     container.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
@@ -523,15 +528,36 @@ export function ChestButtons3D({ slots, iconSlots }: { slots: ChestSlotDef[]; ic
       pointerToNdc(e);
       const hit = pick();
       pressed = hit && !hit.disabled ? hit : null;
+      // Un doigt ne survole rien : il se pose. Sans ce report, `hovered`
+      // restait nul au toucher et le relâchement (qui exige
+      // `pressed === hovered`) ne déclenchait jamais la navigation.
+      hovered = pressed;
       requestRender();
     }
-    function onUp() {
-      if (pressed && pressed === hovered && pressed.href) {
-        playButtonClick();
-        router.push(pressed.href);
+    function onUp(e: PointerEvent) {
+      if (pressed?.href) {
+        // On revise la cible SOUS le point de relâchement plutôt que de se
+        // fier au dernier survol : c'est la seule lecture juste au doigt,
+        // où le pointeur n'existe plus une fois levé.
+        pointerToNdc(e);
+        const released = pick();
+        if (released === pressed) {
+          playButtonClick();
+          router.push(pressed.href);
+        }
       }
       if (pressed) requestRender();
       pressed = null;
+      // Le pointeur tactile cesse d'exister au relâchement : rien n'est plus
+      // survolé, sans quoi la plaque resterait allumée jusqu'au prochain appui.
+      if (e.pointerType !== "mouse") onLeave();
+    }
+    /** Le navigateur a repris la main sur le geste (défilement, appel système) : on renonce. */
+    function onCancel() {
+      if (pressed || hovered) requestRender();
+      pressed = null;
+      hovered = null;
+      pointerNdc.set(-10, -10);
     }
     function onLeave() {
       hovered = null;
@@ -543,6 +569,7 @@ export function ChestButtons3D({ slots, iconSlots }: { slots: ChestSlotDef[]; ic
     renderer.domElement.addEventListener("pointermove", onMove);
     renderer.domElement.addEventListener("pointerdown", onDown);
     window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onCancel);
     renderer.domElement.addEventListener("pointerleave", onLeave);
 
     const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -607,6 +634,7 @@ export function ChestButtons3D({ slots, iconSlots }: { slots: ChestSlotDef[]; ic
       renderer.domElement.removeEventListener("pointermove", onMove);
       renderer.domElement.removeEventListener("pointerdown", onDown);
       window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onCancel);
       renderer.domElement.removeEventListener("pointerleave", onLeave);
       for (const entry of entries) {
         entry.body.geometry.dispose();

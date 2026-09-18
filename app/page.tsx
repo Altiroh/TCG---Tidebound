@@ -48,7 +48,7 @@ export default async function HomePage() {
           La déconnexion vit au pied du Profil. */}
       <HomeBar isSignedIn={isSignedIn} />
 
-      <div className="relative z-10 w-full pt-[clamp(40px,5vh,64px)]">
+      <div className="relative z-10 w-full pt-[clamp(40px,5dvh,64px)]">
         <TideboundMenuChest />
       </div>
     </main>

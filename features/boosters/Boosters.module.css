@@ -180,6 +180,44 @@
   transform: none;
 }
 
+/*
+ * GLISSER AU DOIGT (`BoostersScreen`, `TOUCH_DRAG_HOLD_MS`).
+ *
+ * `pan-y` : un doigt qui part vers le haut ou le bas fait défiler l'étagère
+ * comme partout ailleurs ; c'est l'appui MAINTENU qui décolle le sachet, et
+ * le défilement est alors neutralisé en JavaScript. Sans cette valeur, iOS
+ * s'emparait du geste au premier pixel et le sachet ne partait jamais.
+ */
+.shelfPack {
+  touch-action: pan-y;
+}
+
+/* Décollé : sa place sur l'étagère se creuse, le sachet est sous le doigt. */
+.shelfPack[data-lifted="true"] {
+  opacity: 0.25;
+  transform: none;
+}
+
+/*
+ * Le sachet SOUS LE DOIGT. Le tactile n'a pas d'image de glisse : c'est cet
+ * élément, centré sur le point de contact, qui la remplace. Il ne reçoit
+ * aucun événement, sinon il masquerait le plan au moment du dépôt.
+ */
+.touchGhost {
+  position: fixed;
+  z-index: var(--tb-z-tooltip);
+  height: clamp(110px, 26dvh, 240px);
+  aspect-ratio: var(--pack-ratio, 5 / 7);
+  translate: -50% -55%;
+  background-image: var(--pack-art);
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 18px 26px rgba(0, 0, 0, 0.65)) drop-shadow(0 0 16px rgba(95, 208, 230, 0.4));
+  pointer-events: none;
+  rotate: -4deg;
+}
+
 .shelfPackArt {
   height: 100%;
   aspect-ratio: var(--pack-ratio, 5 / 7);
@@ -237,7 +275,7 @@
 }
 
 .dockPack {
-  height: clamp(120px, 30vh, 300px);
+  height: clamp(120px, 30dvh, 300px);
   width: auto;
   min-height: 0;
   aspect-ratio: var(--pack-ratio, 5 / 7);
@@ -354,6 +392,16 @@
   color: var(--cb-violet);
 }
 
+/* Une phrase de service : le geste tactile à connaître, ou la borne du lot.
+   Discrète — elle informe, elle n'appelle pas. */
+.dockHint {
+  margin: 0;
+  max-width: 34ch;
+  font-size: clamp(10px, 0.76vw, 12px);
+  line-height: 1.35;
+  color: var(--ink-faint);
+}
+
 /* Rangée de liens de bas de page : discrète, jamais un appel à l'action. */
 .footRow {
   display: flex;
@@ -410,6 +458,34 @@
 
 .testLabel {
   color: var(--ink-faint);
+}
+
+/*
+ * TÉLÉPHONE EN PAYSAGE — large mais très court. `max-width: 900px` faisait
+ * déjà passer l'établi sur une colonne, ce qui posait le plan d'ouverture
+ * SOUS l'étagère, hors de l'écran : les deux zones doivent rester côte à
+ * côte tant que la largeur le permet, et c'est la HAUTEUR qui manque.
+ */
+@media (max-height: 560px) and (min-width: 700px) {
+  .workbench { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
+
+  .layout { padding: 6px clamp(10px, 2vw, 28px) 8px; }
+
+  .layoutInner { gap: 6px; }
+
+  .shelves {
+    gap: 18px;
+    padding: 12px clamp(10px, 2vw, 24px) 14px;
+  }
+
+  .dock {
+    padding: 8px 10px;
+    gap: 4px;
+  }
+
+  .dockPack { height: clamp(78px, 34dvh, 150px); }
+
+  .touchGhost { height: clamp(78px, 34dvh, 150px); }
 }
 
 @media (prefers-reduced-motion: reduce) {

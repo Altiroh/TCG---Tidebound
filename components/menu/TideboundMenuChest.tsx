@@ -121,7 +121,12 @@ export function TideboundMenuChest() {
         // Contraint par la largeur ET la hauteur disponibles (sinon la
         // boîte déborde verticalement sur les écrans larges mais courts,
         // ex : un laptop en paysage) — 1448/1086 = le ratio réel de l'asset.
-        width: "min(90vw, 1400px, calc(78vh * 1448 / 1086))",
+        //
+        // `dvh` et non `vh` : sur iOS, `100vh` vaut la fenêtre SANS la barre
+        // d'adresse — le coffret dépassait donc sous le bas de l'écran, et
+        // les deux plaques basses (Market, Cartes) tombaient hors du cadre
+        // visible, là où plus aucun appui ne les atteignait.
+        width: "min(90vw, 1400px, calc(78dvh * 1448 / 1086))",
         aspectRatio: "1448 / 1086",
       }}
     >
