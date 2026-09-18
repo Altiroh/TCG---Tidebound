@@ -1,4 +1,10 @@
-import { isVisibleDuringTide, type CardDefinition, type CardInstance, type StatModifierDuration } from "@/game/cards/types";
+import {
+  hasResistance,
+  isVisibleDuringTide,
+  type CardDefinition,
+  type CardInstance,
+  type StatModifierDuration,
+} from "@/game/cards/types";
 import { canBeEquipTarget, getCardDefinition } from "@/game/cards/sets/core";
 import { countArchetypeUnits } from "@/game/cards/archetypes";
 import { getShipDefinition } from "@/game/environment/shipData";
@@ -403,6 +409,10 @@ export function resolveEffect(
       let nextState = { ...state, rngState: damageTargets.rngState };
 
       for (const { unit, ownerId } of damageTargets.targets) {
+        // Sans Résistance (un Objet), il n'y a rien à marquer : les
+        // sélecteurs de masse (`allEnemyUnits`, `allUnits`, `random*Unit`)
+        // balaient tout le board, Objets compris.
+        if (!hasResistance(getCardDefinition(unit.cardId))) continue;
         // Boucliers "1ère fois par tour" (Baleine aux Cicatrices Blanches :
         // réduction directe ; Wood Vy : restauration après coup sur une
         // Structure alliée — équivalent net à une réduction supplémentaire,

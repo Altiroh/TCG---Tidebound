@@ -766,6 +766,30 @@ export function isVisibleDuringTide(def: CardDefinition, tideState: TideStateNam
   return def.visibleDuringTide.includes(tideState);
 }
 
+/**
+ * Ce permanent a-t-il une Résistance ?
+ *
+ * Règle de conception (Notion « Catalogue de cartes » § « Objets,
+ * Équipements et effets ponctuels ») : les **Objets n'ont pas de
+ * Résistance** — seuls les Structures et les Équipements en ont, en plus
+ * des unités. Un Objet occupe un Slot et se **brise** pour produire son
+ * effet ; il ne s'encaisse pas.
+ *
+ * Conséquence mécanique, portée par ce seul prédicat plutôt que par un
+ * `if (type === "objet")` disséminé : une carte sans `health` ne peut ni
+ * subir de dégâts, ni être choisie comme cible d'attaque, ni mourir par
+ * arithmétique de Résistance. Elle quitte le board par Bris, Sabordage,
+ * expiration, destruction par la Marée (`tideAffinity.destroyed`) ou un
+ * effet `destroy`/`saborde` explicite — jamais parce qu'on l'a tapée.
+ *
+ * Le prédicat lit `health`, pas le type : une Anomalie à résolution
+ * immédiate en bénéficie de la même façon, et une Structure sans
+ * Résistance serait traitée pareil si le design en créait une.
+ */
+export function hasResistance(def: CardDefinition): boolean {
+  return def.health !== undefined;
+}
+
 export function hasKeyword(def: CardDefinition, keyword: string): boolean {
   return def.keywords?.includes(keyword) ?? false;
 }

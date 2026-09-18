@@ -233,7 +233,6 @@ export const CORE_SET: CardDefinition[] = [
     name: "Thermos du Dernier Quart",
     type: "objet",
     cost: 2,
-    health: 1,
     text: "Brisez cet Objet : récupérez 2 Raison. Si vous avez 3 Raison ou moins, récupérez-en 3 à la place.",
     onBreakEffects: [
       // Ordre important : l'effet conditionnel lit la Raison AVANT que le
@@ -286,7 +285,6 @@ export const CORE_SET: CardDefinition[] = [
     name: "Cartes des Courants",
     type: "objet",
     cost: 2,
-    health: 1,
     text: "Brisez cet Objet : inversez l'orientation de la prochaine transition de Marée (montante ↔ descendante).",
     onBreakEffects: [{ type: "tideInvertOrientation", target: { kind: "allPlayers" } }],
   },
@@ -1191,7 +1189,6 @@ export const CORE_SET: CardDefinition[] = [
     name: "Levier de Lest",
     type: "objet",
     cost: 1,
-    health: 1,
     text: "Brisez cet Objet et Sabordez une Structure que vous contrôlez : récupérez 1 Raison et 1 Ancrage.",
     // Le Sabordage est un COÛT du Bris : sans Structure à Saborder, le Bris
     // est refusé (`breakObject` exige une cible légale).
@@ -1206,7 +1203,6 @@ export const CORE_SET: CardDefinition[] = [
     name: "Grappin de Récupération",
     type: "objet",
     cost: 2,
-    health: 1,
     text:
       "Brisez cet Objet : choisissez dans votre Cimetière une Structure ou un Équipement coûtant 2 ou moins. " +
       "Remettez cette carte dans votre main.",
@@ -1798,7 +1794,6 @@ export const CORE_SET: CardDefinition[] = [
     name: "Choppe !",
     type: "objet",
     cost: 1,
-    health: 1,
     text:
       "Si la Marée est Calme, coûte 0 Raison. Brisez cet Objet : récupérez 2 Raison. Cet effet ne peut être " +
       "activé que pendant Calme.",
@@ -1902,7 +1897,6 @@ export const CORE_SET: CardDefinition[] = [
     // marqué >= 0 Résistance) : il ne pourrait jamais être Brisé plus tard.
     // 1, comme tous les autres Objets du set (Thermos, Choppe !, Levier de
     // Lest, Grappin, Cartes des Courants).
-    health: 1,
     text:
       "Brisez cet Objet : invoquez 1 Péon Cra-Poiscail 1 / 1. S'il a été Brisé directement depuis votre main et que " +
       "vous contrôlez déjà une unité Cra-Poiscail, invoquez-en 2 à la place.",
@@ -2671,7 +2665,6 @@ export const CORE_SET: CardDefinition[] = [
     subtype: MARIONNETTE,
     setCode: THEATRE_ENGLOUTI,
     cost: 2,
-    health: 1,
     maxCopies: 3,
     text:
       "Brisez cet Objet : renvoyez une unité Marionnette que vous contrôlez dans votre main, puis piochez 1 carte " +
@@ -2861,7 +2854,6 @@ export const CORE_SET: CardDefinition[] = [
     subtype: MARIONNETTE,
     setCode: THEATRE_ENGLOUTI,
     cost: 3,
-    health: 1,
     maxCopies: 3,
     text:
       "Brisez cet Objet : renvoyez une carte Marionnette que vous contrôlez dans votre main. La prochaine carte " +
@@ -2928,7 +2920,6 @@ export const CORE_SET: CardDefinition[] = [
     subtype: MARIONNETTE,
     setCode: THEATRE_ENGLOUTI,
     cost: 2,
-    health: 1,
     maxCopies: 3,
     text:
       "Brisez cet Objet : renvoyez une unité Marionnette que vous contrôlez dans votre main. La prochaine unité " +
@@ -2947,7 +2938,6 @@ export const CORE_SET: CardDefinition[] = [
     subtype: MARIONNETTE,
     setCode: THEATRE_ENGLOUTI,
     cost: 3,
-    health: 1,
     maxCopies: 3,
     text: "Brisez cet Objet : choisissez une carte Marionnette dans votre Cimetière. Remettez-la dans votre main.",
     // Décision du 2026-09-16 : pas de réduction conditionnelle, le Bris

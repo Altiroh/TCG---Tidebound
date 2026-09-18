@@ -45,6 +45,7 @@ export type {
 export {
   isPermanentCard,
   isVisibleDuringTide,
+  hasResistance,
   hasKeyword,
   getMaxCopies,
   DEFAULT_MAX_COPIES,

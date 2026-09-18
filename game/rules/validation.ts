@@ -1,6 +1,6 @@
 import { computeEffectiveStats } from "@/game/cards/stats";
 import { getCardDefinition } from "@/game/cards/sets/core";
-import { hasKeyword, UNIT_CARD_TYPES, type CardInstance } from "@/game/cards/types";
+import { hasKeyword, hasResistance, UNIT_CARD_TYPES, type CardInstance } from "@/game/cards/types";
 import { getShipDefinition } from "@/game/environment/shipData";
 import type { TideStateName } from "@/game/environment/types";
 import { isMainPhase, type GamePhase, type GameState, type PlayerId, type PlayerState } from "@/game/state/types";
@@ -248,6 +248,12 @@ export function assertValidDefender(
 
   const target = opponent.board.find((u) => u.instanceId === defenderInstanceId);
   if (!target) return fail("Cible de défense invalide.");
+
+  // Un permanent sans Résistance (un Objet) ne s'attaque pas : il n'a rien
+  // à encaisser, et le combat n'aurait aucune issue.
+  if (!hasResistance(getCardDefinition(target.cardId))) {
+    return fail("Cette carte n'a pas de Résistance : elle ne peut pas être attaquée.");
+  }
 
   if (guards.length > 0 && !hasEffectiveKeyword(state, opponent, target, "garde")) {
     return fail("Une unité adverse porte Garde : l'attaque doit la cibler en priorité.");

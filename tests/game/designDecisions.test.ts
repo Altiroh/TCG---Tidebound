@@ -9,11 +9,16 @@
  *    toute la partie (Brise-Vague de Fortune).
  * 4. Un effet proposé peut toujours être REFUSÉ — fenêtre de réaction comme
  *    choix entre deux options. Une Anomalie qui IMPOSE un choix, non.
+ * 5. Un Objet n'a PAS de Résistance (18/09/2026) : il ne s'attaque pas, ne
+ *    s'encaisse pas et ne meurt pas de dégâts. Seuls Structures et
+ *    Équipements en ont, en plus des unités.
  */
 import { describe, expect, it } from "vitest";
 import { dispatch } from "@/game/engine";
 import { consumeTideShipDamageShield } from "@/game/state/shields";
 import { computeEffectiveStats } from "@/game/cards/stats";
+import { CORE_SET } from "@/game/cards/sets/core";
+import { resolveEffect } from "@/game/effects/resolveEffect";
 import type { GameState } from "@/game/state/types";
 import { instance, pendingCandidates, testEnvironment, testGameState, testPlayer } from "./testHelpers";
 
@@ -193,5 +198,60 @@ describe("un effet proposé peut être refusé", () => {
     const chosen = dispatch(state, { type: "resolveChoice", playerId: "p1", choice: "reasonLoss" });
     ok(chosen);
     expect(player(chosen.state, "p1").reason).toBe(4);
+  });
+});
+
+describe("un Objet n'a pas de Résistance", () => {
+  it("aucun Objet du catalogue n'en déclare, contrairement aux Structures et Équipements", () => {
+    const parType = (t: string) => CORE_SET.filter((def) => def.type === t);
+    expect(parType("objet").filter((def) => def.health !== undefined)).toEqual([]);
+    // Le pendant : ceux qui DOIVENT en avoir en ont bien.
+    for (const t of ["structure", "equipement"]) {
+      const sans = parType(t).filter((def) => def.health === undefined).map((def) => def.id);
+      expect(sans, `${t} sans Résistance`).toEqual([]);
+    }
+  });
+
+  it("ne peut pas être choisi comme cible d'attaque", () => {
+    const attaquant = instance("marin-des-jetees", "p1", { summoningSick: false });
+    const objet = instance("le-seau", "p2");
+    const state = testGameState({
+      phase: "combatPhase",
+      players: [testPlayer("p1", { board: [attaquant] }), testPlayer("p2", { board: [objet] })],
+    });
+
+    const refus = dispatch(state, {
+      type: "attack",
+      playerId: "p1",
+      attackerInstanceId: attaquant.instanceId,
+      defenderInstanceId: objet.instanceId,
+    });
+    expect(refus.ok).toBe(false);
+  });
+
+  it("survit à son arrivée et à un effet de dégâts de masse, là où une Structure encaisse", () => {
+    // Sans garde-fou, `stats.health` retomberait à 0 et l'Objet mourrait
+    // dès la première passe de `processDeaths`.
+    const objet = instance("le-seau", "p2");
+    const structure = instance("le-trone-de-bouchon", "p2");
+    const source = instance("marin-des-jetees", "p1");
+    let state: GameState = testGameState({
+      players: [testPlayer("p1", { board: [source] }), testPlayer("p2", { board: [objet, structure] })],
+    });
+
+    const degats = resolveEffect(
+      state,
+      { type: "damage", target: { kind: "allEnemyUnits" }, amount: { kind: "flat", value: 2 } },
+      { controllerId: "p1", turnNumber: state.turnNumber }
+    );
+    state = degats.state;
+
+    const cibles = board(state, "p2");
+    expect(cibles.find((u) => u.cardId === "le-seau")!.damageMarked).toBe(0);
+    expect(cibles.find((u) => u.cardId === "le-trone-de-bouchon")!.damageMarked).toBe(2);
+    // Et il est toujours là après la passe de sortie.
+    const apres = dispatch(state, { type: "advancePhase", playerId: "p1" });
+    ok(apres);
+    expect(board(apres.state, "p2").some((u) => u.cardId === "le-seau")).toBe(true);
   });
 });

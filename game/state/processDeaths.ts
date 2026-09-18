@@ -1,6 +1,6 @@
 import { computeEffectiveStats } from "@/game/cards/stats";
 import { getCardDefinition } from "@/game/cards/sets/core";
-import type { CardInstance } from "@/game/cards/types";
+import { hasResistance, type CardInstance } from "@/game/cards/types";
 import type { TideStateName } from "@/game/environment/types";
 import type { GameEvent } from "@/game/events/types";
 import { processTrigger } from "@/game/triggers/triggerBus";
@@ -23,6 +23,10 @@ function shouldDie(
   // Ancre de Dérive) ne dépend d'aucune arithmétique de Résistance : une
   // Anomalie sans Résistance doit pouvoir partir comme une Créature.
   if (unit.pendingRemoval) return true;
+  // Sans Résistance (un Objet), l'arithmétique des dégâts ne s'applique
+  // pas : `stats.health` vaudrait 0 et la carte mourrait dès son arrivée.
+  // Seule la Marée peut encore l'emporter (`tideAffinity.destroyed`).
+  if (!hasResistance(getCardDefinition(unit.cardId))) return stats.destroyedByTide;
   return unit.damageMarked >= stats.health || stats.destroyedByTide;
 }
 
