@@ -814,18 +814,51 @@
 }
 
 /*
- * TÉLÉPHONE EN PAYSAGE (~670 à 930 px de large) — le cas normal du mobile
- * depuis que le produit impose l'horizontale (OrientationGate). À cette
- * largeur, la somme « flèche + 4 onglets + recherche + bloc de compte »
- * dépassait la ligne : les zones se chevauchaient et les libellés se
- * superposaient. Rien n'est caché, tout est resserré — écarts, corps de
- * texte et lettrage des onglets, et les trois zones peuvent enfin se
- * comprimer (min-width: 0).
+ * TÉLÉPHONE EN PAYSAGE — le cas normal du mobile depuis que le produit
+ * impose l'horizontale (OrientationGate). À cette largeur, la somme
+ * « flèche + 4 onglets + recherche + bloc de compte » dépassait la ligne :
+ * les zones se chevauchaient et les libellés se superposaient. Rien n'est
+ * caché, tout est resserré — écarts, corps de texte et lettrage des
+ * onglets, et les trois zones peuvent enfin se comprimer (min-width: 0).
+ *
+ * Le seuil était à 930 px, et c'est deux pixels de trop : un iPhone Pro Max
+ * couché fait 932 px (956 sur le 16), donc les téléphones les plus grands
+ * — ceux qu'on tient pour « larges » — étaient les seuls à NE PAS être
+ * resserrés. Et c'est là que la zone sûre coûte le plus cher : l'encoche
+ * et le coin arrondi mangent ~59 px de chaque côté, soit 814 px utiles sur
+ * 932. Mesuré : « Mes boosters » passait 98 px SOUS la barre de recherche.
+ *
+ * Donc 1000 px — au-dessus du plus large des téléphones, sous la plus
+ * petite des tablettes en paysage (1133 px pour un iPad mini) — et la
+ * hauteur en second critère : un écran court EST un téléphone couché,
+ * quelle que soit sa largeur, et la virgule d'une requête média est un OU.
  */
-@media (max-width: 930px) {
+@media (max-width: 1000px), (max-height: 620px) {
   .header {
     gap: 8px;
     padding-inline: calc(10px + var(--tb-safe-left)) calc(10px + var(--tb-safe-right));
+  }
+
+  /*
+   * Les colonnes cessent de partager la place À PARTS ÉGALES. Les deux
+   * `1fr` centrent le logo — c'est leur raison d'être — mais quand la
+   * zone du compte demande plus que sa moitié, elle déborde vers la
+   * GAUCHE (`justify-self: end`) et vient se glisser sous le dernier
+   * onglet : le chevauchement n'était pas un manque de place, c'était un
+   * partage immérité. Les onglets prennent ce qu'il leur faut, le compte
+   * prend le reste et se comprime dedans.
+   *
+   * Seulement là où le logo n'est pas rendu (`collection` le masque dès
+   * 1180 px, `home` n'en a pas) : sur `minimal`, il est bien au milieu et
+   * les deux `1fr` l'y gardent.
+   */
+  .header[data-nav="collection"],
+  .header[data-nav="home"] {
+    grid-template-columns: auto auto minmax(0, 1fr);
+  }
+
+  .headerLeft {
+    flex-wrap: nowrap;
   }
 
   .headerLeft,
@@ -838,6 +871,13 @@
   .navTabActive {
     font-size: 11.5px;
     letter-spacing: 0.02em;
+  }
+
+  /* La recherche cède avant les onglets : un champ étroit reste un champ,
+     un onglet tronqué n'est plus un mot. */
+  .searchBar {
+    flex: 0 1 auto;
+    min-width: 96px;
   }
 }
 

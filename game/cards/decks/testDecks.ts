@@ -477,6 +477,77 @@ export const DECK_LES_MASQUES_NOYES: DeckList = {
 };
 
 /**
+ * La Veillée des Disparus — la liste de laboratoire du Lot 13.
+ *
+ * Confiée à LA RELIGIEUSE, et pas seulement par thème. Deux raisons :
+ *
+ *  - son passif (Pénitence, la Déraison coûte 1 Ancrage de moins) est le
+ *    seul filet d'un plan qui consiste à se vider la main et à perdre ses
+ *    propres unités. « Promis, j'attends » ne paie d'ailleurs qu'en
+ *    Déraison, où la recharge de Raison n'est que partielle ;
+ *  - l'audit du 18/09/2026 lui reprochait de n'avoir QU'UNE liste
+ *    (Pénitence) : un Navire mesuré sur un seul deck est mesuré sur son
+ *    deck, pas sur lui-même.
+ *
+ * Les DIX-HUIT cartes du lot y sont, au moins en un exemplaire. C'est la
+ * règle que l'audit a posée : une carte que personne ne joue n'est pas
+ * équilibrée, elle est seulement écrite — et un lot tout neuf est
+ * exactement là où le trou se creuse.
+ *
+ * 26 Un Dead sur 40, la fourchette que demande la page du lot (« environ
+ * 22 à 26 »). Le reste est générique à dessein : le deck ne doit pas exiger
+ * 40 cartes de famille pour tourner.
+ */
+export const DECK_LA_VEILLEE_DES_DISPARUS: DeckList = {
+  id: "la-veillee-des-disparus",
+  name: "La Veillée des Disparus",
+  shipId: "la-religieuse",
+  description:
+    "Attrition : se défausser volontairement, repêcher au Cimetière, et convertir chaque perte en pression sur le Navire adverse.",
+  cardIds: [
+    // Le carburant : des corps à 1 qu'on est content de défausser, et qui
+    // paient en partant.
+    ...repeat("ptit-bout", 3),
+    ...repeat("cache-cache", 2),
+    ...repeat("doudou", 1),
+    // Ce qui tient la ligne pendant que le moteur tourne.
+    ...repeat("encore-cinq-minutes", 2),
+    ...repeat("promis-jattends", 2),
+    ...repeat("papa-est-en-mer", 1),
+    // Les exutoires de défausse : sans eux, la moitié du lot ne se
+    // déclenche jamais.
+    ...repeat("le-gouter", 2),
+    ...repeat("on-rentre-bientot", 1),
+    ...repeat("tout-le-monde-a-table", 1),
+    // La récursion, filtrée par coût comme le cadrage l'exige.
+    // Un seul exemplaire : la récursion est déjà tenue par Bonne nuit,
+    // Tu m'avais promis, Tu viens jouer ? et les deux Grappins.
+    ...repeat("la-petite-chanson", 1),
+    ...repeat("bonne-nuit", 1),
+    ...repeat("tu-mavais-promis", 1),
+    ...repeat("tu-viens-jouer", 1),
+    // Ce qui transforme le moteur en dégâts.
+    ...repeat("maman-revient", 2),
+    ...repeat("maman-revient-abyssal", 1),
+    ...repeat("la-marelle", 2),
+    ...repeat("le-copain-du-dessous", 1),
+    ...repeat("on-avait-dit-tous-ensemble", 1),
+    // --- Compléments génériques ---
+    // D'autres façons de vider sa main, que le lot n'a pas assez.
+    ...repeat("mousse-des-quarts", 2),
+    ...repeat("gabier-au-carnet-mouille", 2),
+    ...repeat("epave-a-fleur-deau", 2),
+    // Repêcher autre chose qu'une unité — et réveiller Maman revient au
+    // passage, qui compte TOUTE récupération.
+    ...repeat("grappin-de-recuperation", 2),
+    // La Raison, que la famille dépense sans jamais en rendre beaucoup.
+    ...repeat("thermos-du-dernier-quart", 2),
+    ...repeat("marin-des-jetees", 2),
+    ...repeat("crabe-de-fer", 2),
+  ],
+};
+
+/**
  * Decks d'archétypes, en plus des 3 decks de base système
  * (`PRECONSTRUCTED_DECKS`) — proposés côté sélection de partie locale pour
  * varier les styles de jeu sans passer par une vraie collection/deck-builder.
@@ -505,6 +576,9 @@ export const CRA_POISCAIL_TEST_DECKS: readonly DeckList[] = [DECK_LE_GRAND_BANC,
 /** Liste de laboratoire du Lot 11 (Théâtre Englouti), même statut que celles du Lot 10. */
 export const THEATRE_TEST_DECKS: readonly DeckList[] = [DECK_LES_MASQUES_NOYES];
 
+/** Liste de laboratoire du Lot 13 (Un Dead), même statut que celles des Lots 10 et 11. */
+export const UN_DEAD_TEST_DECKS: readonly DeckList[] = [DECK_LA_VEILLEE_DES_DISPARUS];
+
 /**
  * TOUTES les listes qu'une partie peut utiliser — base système, archétypes
  * et laboratoires (Cra-Poiscail, Théâtre). Source unique pour "ce deck
@@ -518,4 +592,5 @@ export const PLAYABLE_DECKS: readonly DeckList[] = [
   ...ARCHETYPE_DECKS,
   ...CRA_POISCAIL_TEST_DECKS,
   ...THEATRE_TEST_DECKS,
+  ...UN_DEAD_TEST_DECKS,
 ];

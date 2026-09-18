@@ -18,11 +18,12 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { UNIT_CARD_TYPES, type CardInstance } from "@/game/cards/types";
 
-export type ArchetypeId = "cra-poiscail";
+export type ArchetypeId = "cra-poiscail" | "un-dead";
 
 /** Libellé humain — outils de design, journaux, tests. Jamais rendu sur une carte. */
 export const ARCHETYPE_LABELS: Record<ArchetypeId, string> = {
   "cra-poiscail": "Cra-Poiscail",
+  "un-dead": "Un Dead",
 };
 
 /**

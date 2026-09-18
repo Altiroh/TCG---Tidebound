@@ -513,6 +513,36 @@ a.section {
   animation: badgePop 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
+/*
+ * « 3 nouvelles » : ce que ce sachet peut encore apporter, lisible sans
+ * l'ouvrir ni faire une soustraction. Le bouton « Contenu · 12/60 » en
+ * dessous dit ce qu'on a déjà ; celui-ci dit ce qu'on n'a pas, qui est
+ * la question qu'on se pose devant un rayon. Il disparaît tout seul
+ * quand le pool est complet — le sachet n'a alors plus rien de neuf à
+ * offrir, et c'est une information en soi.
+ *
+ * Mêmes codes que le badge « Nouveau » de l'ouverture de booster (or sur
+ * fond de nuit) : c'est la même promesse, tenue deux écrans plus loin.
+ */
+.newBadge {
+  position: absolute;
+  top: 3%;
+  left: 3%;
+  z-index: 2;
+  padding: 0.4cqw 1.1cqw;
+  border: 1px solid rgba(240, 206, 140, 0.55);
+  border-radius: 999px;
+  background: rgba(6, 14, 22, 0.88);
+  color: #eed9a8;
+  font-size: clamp(10px, 1.25cqw, 14px);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
 @keyframes badgePop {
   from { transform: scale(0.6); }
   to { transform: scale(1); }
@@ -975,6 +1005,107 @@ a.section {
   .buyButton {
     min-width: 0;
     flex: 1 1 auto;
+  }
+}
+
+/* ── Paysage COURT : la hauteur revient au ponton ─────────────
+ * Un téléphone couché, c'est ~390 px de haut : le panier, dessiné pour un
+ * écran debout, en prenait plus de la moitié — cadre de laiton de 36 px sur
+ * chaque bord, total et bouton renvoyés SOUS les lignes par la règle
+ * `max-width: 1100px`, et la phrase d'aide en prime. Il restait au ponton de
+ * quoi afficher des boosters de la taille d'un timbre, qu'on touchait de
+ * justesse.
+ *
+ * Ici la largeur ne manque pas, c'est la hauteur : le total et le bouton
+ * reprennent leur place À CÔTÉ des lignes, le cadre s'affine, et l'aide
+ * s'efface — sauf quand elle annonce qu'il manque de quoi payer, qui est la
+ * seule chose que ce paragraphe dit d'utile en cours d'achat.
+ * Requête sur la HAUTEUR, pas sur la largeur : c'est bien elle qui manque,
+ * et un téléphone couché est large.
+ */
+@media (max-height: 620px) {
+  .market {
+    gap: 6px 10px;
+    padding: 6px clamp(10px, 1.6vw, 28px) 8px;
+  }
+
+  .cart {
+    gap: 4px;
+    padding: 6px clamp(12px, 2vw, 32px) 4px;
+    border-width: 18px;
+    border-image-width: 18px;
+    margin: -8px;
+  }
+
+  .cartBody {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: clamp(10px, 1.6vw, 26px);
+    padding-top: 4px;
+  }
+
+  .checkout {
+    justify-content: flex-end;
+    gap: clamp(10px, 1.6vw, 26px);
+    padding-left: clamp(10px, 1.6vw, 26px);
+    padding-top: 0;
+    border-left: 1px solid rgba(199, 154, 78, 0.25);
+    border-top: none;
+  }
+
+  .cartTitle {
+    font-size: 14px;
+    gap: 8px;
+  }
+
+  .cartTitle svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .clearButton {
+    font-size: 12px;
+    padding: 2px 6px;
+  }
+
+  .cartLines {
+    max-height: 76px;
+    gap: 6px;
+  }
+
+  .cartEmpty {
+    min-height: 0;
+    font-size: 12px;
+  }
+
+  .cartLine {
+    flex-basis: clamp(200px, 30%, 320px);
+    padding: 4px 8px 4px 4px;
+    gap: 8px;
+  }
+
+  .totalLabel {
+    font-size: 11px;
+  }
+
+  .totalValue {
+    font-size: clamp(16px, 1.5vw, 22px);
+  }
+
+  .buyButton {
+    min-width: clamp(110px, 11vw, 170px);
+    padding: 7px 18px;
+    font-size: clamp(14px, 1.2vw, 18px);
+  }
+
+  /* Le conseil d'usage disparaît ; le manque de monnaie, jamais. */
+  .cartHint {
+    display: none;
+  }
+
+  .cartHint[data-short="true"] {
+    display: flex;
+    font-size: 12px;
   }
 }
 
