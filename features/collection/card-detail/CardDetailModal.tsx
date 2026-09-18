@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef } from "react";
+import { createPortal } from "react-dom";
 import { buildCardDetailModel } from "@/features/collection/card-detail/cardDetailData";
 import { CardDetailArtwork } from "@/features/collection/card-detail/CardDetailArtwork";
 import { CardDetailEffect } from "@/features/collection/card-detail/CardDetailEffect";
@@ -116,7 +117,7 @@ export function CardDetailModal({ cardId, onClose, onPrevious, onNext, onShowCar
 
   const { def, isAbyssal, stats, keywords } = model;
 
-  return (
+  const fiche = (
     <div
       className={styles.backdrop}
       data-variant={isAbyssal ? "abyssal" : "standard"}
@@ -160,4 +161,23 @@ export function CardDetailModal({ cardId, onClose, onPrevious, onNext, onShowCar
       </div>
     </div>
   );
+
+  /*
+   * Rendue DANS LE CORPS DU DOCUMENT, jamais là où on l'ouvre.
+   *
+   * Le voile est en `position: fixed`, ce qui suppose que son repère soit
+   * la fenêtre. Il cesse de l'être dès qu'un ancêtre porte une
+   * transformation — et `Dialog` en porte une en permanence (son animation
+   * d'entrée est en `animation-fill-mode: both`, la dernière image reste
+   * appliquée), en plus d'un `overflow: hidden`. Ouverte depuis une boîte
+   * de dialogue — le récapitulatif d'un lot de boosters, la fiche
+   * « Contenu » d'un sachet — la carte se retrouvait donc enfermée dans le
+   * cadre de cette boîte : centrée sur elle et non sur l'écran, et son
+   * panneau de droite coupé net au bord.
+   *
+   * Le portail la replace au niveau du `body`, où son `fixed` retrouve son
+   * sens. Rien ne change là où elle s'ouvrait déjà d'un écran (Collection,
+   * Éditeur de deck) : elle y était déjà libre.
+   */
+  return typeof document === "undefined" ? fiche : createPortal(fiche, document.body);
 }

@@ -488,7 +488,16 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
         <BoosterBatchScene
           cards={batch.cards}
           packs={batch.packs}
-          onShowAll={() => setRecap({ packs: batch.packs, lines: batch.lines })}
+          /* La scène du lot se FERME en passant à la liste complète. Les
+             deux restaient montées l'une sur l'autre : la rangée de cartes
+             continuait de vivre derrière la liste, et fermer la liste
+             ramenait un écran qu'on croyait avoir quitté. C'est la même fin
+             d'ouverture dans les deux cas — d'où `handleBatchClosed`, qui
+             relit aussi l'inventaire pendant qu'on lit la liste. */
+          onShowAll={() => {
+            setRecap({ packs: batch.packs, lines: batch.lines });
+            handleBatchClosed();
+          }}
           onClose={handleBatchClosed}
         />
       )}

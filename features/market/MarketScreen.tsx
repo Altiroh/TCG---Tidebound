@@ -744,11 +744,13 @@ function PedestalItem({
   poolSize: number;
   onShowContents: () => void;
 }) {
-  /* Ce que ce sachet peut encore APPORTER. Le bouton « Contenu · 12/60 »
-     dit l'inverse — ce qu'on a déjà — et il fallait faire la
-     soustraction de tête, sur un chiffre gris de 11 px, pour savoir si
-     acheter servait encore à quelque chose. */
-  const newInPool = Math.max(0, poolSize - ownedInPool);
+  /* Ce que ce sachet peut encore apporter ne s'affiche PAS ici. Un badge
+     « 13 nouvelles » y a vécu deux jours : posé sur l'illustration du
+     sachet, il chargeait le rayon d'un chiffre à lire sur chacun des
+     quatre, et son mot mentait à moitié — « nouveau » dit « récemment
+     sorti » dans un jeu de cartes, pas « tu ne l'as pas ». L'information
+     reste d'un geste, dans la fiche « Contenu », là où on vient
+     justement la chercher. */
   return (
     <>
       <button
@@ -757,18 +759,9 @@ function PedestalItem({
         data-in-cart={inCart > 0 ? "true" : "false"}
         onClick={onAdd}
         disabled={disabled}
-        aria-label={
-          newInPool > 0
-            ? `Ajouter un ${booster.name} au panier (${booster.price} Tides) — ${newInPool} carte${newInPool > 1 ? "s" : ""} que tu n'as pas encore`
-            : `Ajouter un ${booster.name} au panier (${booster.price} Tides)`
-        }
+        aria-label={`Ajouter un ${booster.name} au panier (${booster.price} Tides)`}
       >
         <span className={styles.packArt} style={closedPackVariables(getBoosterPackVisual(booster.boosterId))} aria-hidden />
-        {newInPool > 0 && (
-          <span className={styles.newBadge} aria-hidden>
-            {newInPool} nouvelle{newInPool > 1 ? "s" : ""}
-          </span>
-        )}
         {inCart > 0 && (
           <span key={inCart} className={styles.cartBadge} aria-hidden>
             ×{inCart}

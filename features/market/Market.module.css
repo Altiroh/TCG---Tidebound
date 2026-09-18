@@ -524,25 +524,6 @@ a.section {
  * Mêmes codes que le badge « Nouveau » de l'ouverture de booster (or sur
  * fond de nuit) : c'est la même promesse, tenue deux écrans plus loin.
  */
-.newBadge {
-  position: absolute;
-  top: 3%;
-  left: 3%;
-  z-index: 2;
-  padding: 0.4cqw 1.1cqw;
-  border: 1px solid rgba(240, 206, 140, 0.55);
-  border-radius: 999px;
-  background: rgba(6, 14, 22, 0.88);
-  color: #eed9a8;
-  font-size: clamp(10px, 1.25cqw, 14px);
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-  pointer-events: none;
-}
-
 @keyframes badgePop {
   from { transform: scale(0.6); }
   to { transform: scale(1); }

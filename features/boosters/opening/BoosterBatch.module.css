@@ -220,26 +220,49 @@
   background: var(--line-strong) padding-box;
 }
 
-/* Une ligne = une carte. Colonnes fixes pour que nom, type, rareté et
-   nombre s'alignent d'une ligne à l'autre : c'est ce qui rend la liste
-   lisible en diagonale. */
+/* Le zébrage est porté par l'ÉLÉMENT DE LISTE et non par la ligne
+   elle-même : la ligne est devenue un bouton imbriqué, donc toujours
+   premier enfant de son `li` — `:nth-child(odd)` posé dessus aurait teinté
+   toutes les lignes. */
+.list > li:nth-child(odd) {
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* Une ligne = une carte, et un BOUTON : la toucher ouvre sa fiche.
+   Colonnes fixes pour que nom, type, rareté et nombre s'alignent d'une
+   ligne à l'autre — c'est ce qui rend la liste lisible en diagonale. */
 .line {
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr) auto auto 3.2rem;
   align-items: center;
   gap: 10px;
+  width: 100%;
   padding: 5px 8px;
   border-radius: 8px;
   border: 1px solid transparent;
-}
-
-.line:nth-child(odd) {
-  background: rgba(255, 255, 255, 0.03);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 140ms ease-out, background-color 140ms ease-out;
 }
 
 .line[data-new] {
   border-color: rgba(0, 183, 255, 0.35);
   background: rgba(0, 183, 255, 0.08);
+}
+
+/* Après `[data-new]` : sur une nouveauté aussi, le survol doit se voir. */
+.line:hover {
+  border-color: var(--tb-accent-line);
+  background: var(--tb-accent-soft);
+}
+
+.line:focus-visible {
+  outline: 2px solid var(--cb-cyan);
+  outline-offset: 2px;
 }
 
 .lineArt {
