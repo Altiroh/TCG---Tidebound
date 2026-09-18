@@ -4054,16 +4054,34 @@ export const CORE_SET: CardDefinition[] = [
     attack: 1,
     health: 4,
     text:
-      "À votre début de tour, si une carte Un Dead a rejoint votre Cimetière depuis votre dernier tour, " +
-      "récupérez 1 Raison.",
+      "À votre début de tour, elle gagne +1 Puissance de façon permanente si une carte Un Dead a rejoint votre " +
+      "Cimetière depuis votre dernier tour.",
+    // Elle rendait 1 Raison. Elle ne rendait rien : la Raison se recharge à
+    // son plafond au début de votre tour, JUSTE AVANT que ses capacités ne
+    // se déclenchent, et le point était perdu — sauf en sortie de Déraison,
+    // où la recharge n'est que partielle. Un texte qui ne paie que dans un
+    // cas que rien n'annonce (décision du 18/09/2026).
+    //
+    // Le renforcement permanent, lui, tombe toujours. Il donne aussi au lot
+    // ce qui lui manquait : six de ses effets cognent le Navire adverse pour
+    // 1, et son filtrage est déjà couvert trois fois — mais aucun de ses
+    // corps ne devient une menace. Un 1/4 qui s'endurcit à chaque perte est
+    // la carte qui attend, et qui finit par ne plus attendre.
     abilities: [
       {
         trigger: "startOfTurn",
         // « depuis votre dernier tour » : la fenêtre couvre le tour adverse
         // qui vient de s'écouler, pas seulement celui qui commence.
         condition: { graveyardArrival: { subtype: UN_DEAD, since: "lastOwnTurn" } },
-        description: "Un Un Dead est parti au Cimetière depuis votre dernier tour : récupérez 1 Raison.",
-        effects: [{ type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
+        description: "Un Un Dead est parti au Cimetière depuis votre dernier tour : +1 Puissance, définitivement.",
+        effects: [
+          {
+            type: "buff",
+            target: { kind: "self" },
+            attackAmount: { kind: "flat", value: 1 },
+            permanent: true,
+          },
+        ],
       },
     ],
   },

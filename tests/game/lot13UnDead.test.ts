@@ -163,6 +163,34 @@ describe("Lot 13 — le Cimetière comme ressource", () => {
     expect(brise.state.players.find((p) => p.id === "p2")!.anchor).toBe(ancrageAvant - 1);
   });
 
+  it("Promis, j'attends s'endurcit au début du tour, mais seulement si un Un Dead est parti", () => {
+    function debutDeTour(arrivals: { cardId: string; turnNumber: number; fromZone: "hand" | "board" | "deck" }[]) {
+      const promis = instance("promis-jattends", "p1");
+      const state = testGameState({
+        turnNumber: 4,
+        activePlayerId: "p2",
+        priorityPlayerId: "p2",
+        players: [
+          testPlayer("p1", { board: [promis], graveyardArrivals: arrivals, deck: [instance("crabe-de-fer", "p1")] }),
+          testPlayer("p2", { shipId: "lerrant", deck: [instance("crabe-de-fer", "p2")] }),
+        ],
+      });
+      const fin = dispatch(state, { type: "endTurn", playerId: "p2" });
+      ok(fin);
+      const enJeu = fin.state.players.find((p) => p.id === "p1")!.board.find((u) => u.instanceId === promis.instanceId)!;
+      return enJeu.modifiers.reduce((sum, m) => sum + m.attack, 0);
+    }
+
+    // Rien au Cimetière : rien ne se passe.
+    expect(debutDeTour([])).toBe(0);
+    // Un Un Dead parti pendant le tour adverse : +1, et il reste — le
+    // modificateur est permanent, le nettoyage de début de tour ne le retire
+    // pas (c'est précisément ce que le texte promet).
+    expect(debutDeTour([{ cardId: "ptit-bout", turnNumber: 4, fromZone: "hand" }])).toBe(1);
+    // Une carte hors famille ne compte pas.
+    expect(debutDeTour([{ cardId: "marin-des-jetees", turnNumber: 4, fromZone: "hand" }])).toBe(0);
+  });
+
   it("Promis, j'attends lit la fenêtre « depuis votre dernier tour », pas seulement le tour courant", () => {
     const def = getCardDefinition("promis-jattends");
     const condition = (def.abilities ?? [])[0]?.condition?.graveyardArrival;
