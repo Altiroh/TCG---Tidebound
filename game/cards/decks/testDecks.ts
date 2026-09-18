@@ -78,27 +78,32 @@ export const DECK_MAREE_CONTROL: DeckList = {
   id: "maree-control",
   name: "Marée Control",
   shipId: "lerrant",
-  description: "Manipule la Marée au maximum pour dicter le rythme de la partie et forcer l'adversaire à jouer sous contrainte.",
+  description:
+    "Pousse la Marée vers Tempête et Abysses, puis frappe avec des corps qui n'y sont bons que là — la mer fait la moitié du travail.",
   cardIds: [
+    // Le moteur de Marée : forcer l'état, le tenir, l'amplifier.
     ...repeat("cartes-des-courants", 3),
-    ...repeat("ancre-de-derive", 2),
+    ...repeat("regulateur-de-courant", 2),
+    ...repeat("horloge-de-maree", 2),
+    ...repeat("ancre-de-tempete", 2),
     ...repeat("balise-des-profondeurs", 2),
     ...repeat("compas-aux-aiguilles-noires", 2),
-    ...repeat("bouee-de-rappel", 2),
-    ...repeat("horloge-de-maree", 2),
-    ...repeat("sondeur-des-mauvaises-eaux", 2),
-    ...repeat("ancre-de-tempete", 2),
-    ...repeat("cloche-du-grand-fond", 2),
-    ...repeat("cartographe-du-large", 3),
-    ...repeat("cloche-dalerte", 2),
-    ...repeat("guetteur-de-brume", 2),
-    ...repeat("bouee-de-derive", 3),
-    ...repeat("brise-vague-de-fortune", 3),
+    // Les corps qui encaissent le voyage et frappent à l'arrivée. La liste
+    // n'en avait que 9 pour 13 de Puissance totale (audit du 18/09/2026) :
+    // elle manipulait la mer sans jamais pouvoir conclure, et perdait
+    // 89 % de ses parties.
+    ...repeat("poisson-lanterne", 3),
+    ...repeat("masse-sombre", 3),
+    ...repeat("masse-sombre-abyssal", 2),
+    ...repeat("bat-marin", 3),
+    ...repeat("bat-marin-abyssal", 2),
+    ...repeat("harponneur-du-dernier-quai", 3),
+    ...repeat("raie-des-fosses", 2),
+    ...repeat("la-chose-qui-remonte", 2),
+    // Tenir la ligne le temps que la mer monte, et payer le voyage.
+    ...repeat("crabe-de-fer", 3),
+    ...repeat("cartographe-du-large", 2),
     ...repeat("thermos-du-dernier-quart", 2),
-    ...repeat("plaque-de-fortune", 2),
-    ...repeat("la-mer-reclame-davantage", 1),
-    ...repeat("le-chant-sous-la-ligne", 1),
-    ...repeat("crabe-de-fer", 2),
   ],
 };
 
@@ -135,26 +140,33 @@ export const DECK_EPAVISTE_SABORDAGE: DeckList = {
   id: "epaviste-sabordage",
   name: "Épaviste / Sabordage",
   shipId: "le-brise-lames",
-  description: "Boucles économiques : détruit et Saborde volontairement ses propres cartes pour recycler et récupérer des ressources.",
+  description:
+    "Boucles économiques : Saborde ses propres Structures pour piocher, rendre de l'Ancrage et les repêcher au Cimetière.",
   cardIds: [
-    ...repeat("plongeur-des-epaves", 2),
+    // Les Structures qu'on pose POUR les perdre.
     ...repeat("caisses-arrimees", 3),
-    ...repeat("epave-a-fleur-deau", 3),
-    ...repeat("epave-engloutie", 2),
-    ...repeat("mecanicien-aux-mains-noires", 2),
-    ...repeat("kit-de-calfatage", 3),
-    // Thermos du Dernier Quart, Plaque de Fortune, Brise-Vague de Fortune :
-    // 3 au lieu de 2 (voir note de tête de fichier — compense 3× "Récupérer
-    // ce qui flotte", absente du catalogue).
-    ...repeat("thermos-du-dernier-quart", 3),
-    ...repeat("treuil-rouille", 3),
-    ...repeat("plaque-de-fortune", 3),
-    ...repeat("contremaitre-des-amarres", 3),
     ...repeat("bouee-de-derive", 3),
-    ...repeat("ancre-de-derive", 2),
-    ...repeat("gardien-du-sondeur", 2),
-    ...repeat("brise-vague-de-fortune", 3),
+    ...repeat("epave-a-fleur-deau", 3),
+    ...repeat("caisse-des-dernieres-planches", 3),
+    ...repeat("atelier-de-calfatage", 2),
+    // Ce qui rend la perte payante. Le Lot 12 a écrit exactement cette
+    // moitié-là et aucune liste ne l'ouvrait (audit du 18/09/2026) : sans
+    // elle, le deck sabordait sans contrepartie et perdait 72 % de ses
+    // parties.
+    ...repeat("charpentier-des-epaves", 3),
+    ...repeat("charpentiere-de-veille", 2),
+    ...repeat("etau-du-calfat", 2),
+    ...repeat("clous-de-recuperation", 2),
+    // Les corps. La liste n'en avait que 12 pour 9 Équipements — des
+    // Équipements sans porteur ne font rien.
     ...repeat("marin-des-jetees", 3),
+    ...repeat("contremaitre-des-amarres", 3),
+    ...repeat("crabe-de-fer", 2),
+    ...repeat("plongeur-des-epaves", 2),
+    ...repeat("mecanicien-aux-mains-noires", 2),
+    // Deux Équipements seulement, et ceux qui paient en partant.
+    ...repeat("treuil-rouille", 2),
+    ...repeat("plaque-de-fortune", 3),
   ],
 };
 
@@ -220,6 +232,95 @@ export const DECK_PENITENCE: DeckList = {
     ...repeat("epave-engloutie", 2),
     ...repeat("capitaine-sans-sommeil", 2),
     ...repeat("lhomme-revenu-de-la-fosse", 3),
+  ],
+};
+
+/**
+ * Rapiécer la Coque — la liste de laboratoire du Lot 12, côté endurance.
+ *
+ * Le Lot 12 comptait 40 cartes et AUCUNE liste ne l'ouvrait : l'audit du
+ * 18/09/2026 a trouvé 72 cartes du catalogue (39 %) qui n'étaient jouées par
+ * aucun deck de test, dont ce lot en entier. Un lot qu'on ne joue pas n'est
+ * pas équilibré, il est seulement écrit.
+ *
+ * Le deck tient sur ce que le lot fait de mieux : rendre de l'Ancrage, et
+ * s'en rendre à chaque fois qu'une Structure meurt. Il a donc des Structures
+ * à sacrifier, de quoi les rendre payantes (Charpentière, Charpentier,
+ * Atelier), et — enfin — de la Garde, la ressource la plus rare du catalogue.
+ */
+export const DECK_RAPIECER_LA_COQUE: DeckList = {
+  id: "rapiecer-la-coque",
+  name: "Rapiécer la Coque",
+  shipId: "le-brise-lames",
+  description:
+    "Endurance : encaisse, se rapièce à chaque Structure perdue, et tient la ligne derrière de la Garde le temps que l'adversaire s'épuise.",
+  cardIds: [
+    // La ligne de front — les seuls porteurs de Garde du lot.
+    ...repeat("mouette-du-brise-lames", 3),
+    ...repeat("cormoran-de-fer", 3),
+    ...repeat("cormoran-de-fer-abyssal", 1),
+    ...repeat("harnois-de-vigie", 2),
+    // Ce qui transforme une Structure perdue en Ancrage regagné.
+    ...repeat("charpentiere-de-veille", 2),
+    ...repeat("charpentier-des-epaves", 3),
+    ...repeat("atelier-de-calfatage", 2),
+    ...repeat("etau-du-calfat", 2),
+    // Les Structures à sacrifier, et celles qui paient en partant.
+    ...repeat("caisse-des-dernieres-planches", 3),
+    ...repeat("caisse-des-dernieres-planches-abyssal", 1),
+    ...repeat("infirmerie-de-pont", 2),
+    ...repeat("barge-de-reparation", 2),
+    // Le rapiéçage direct, et la Raison quand elle manque.
+    ...repeat("chirurgien-de-coque", 3),
+    ...repeat("pansements-de-coque", 3),
+    ...repeat("caisse-de-pieces-seches", 2),
+    ...repeat("derniere-planche", 2),
+    ...repeat("capitaine-du-dernier-retour", 2),
+    ...repeat("arlequin-raccommodeur", 2),
+  ],
+};
+
+/**
+ * Vol de Ponton — la liste de laboratoire du Lot 12, côté tempo.
+ *
+ * Le sous-type Volatile (7 Créatures, toutes du Lot 12) n'a ni Structure ni
+ * Équipement à son nom, contrairement à Cra-Poiscail et Marionnette : ce
+ * n'est pas encore un archétype, c'est une famille de corps rapides. Le deck
+ * les prend pour ce qu'ils sont — du Pied marin qui frappe dès l'arrivée —
+ * et les accompagne du filtrage de main du lot, qui sert exactement ça :
+ * transformer une pioche morte en la carte qui manque.
+ *
+ * Confié au Courlis parce que c'est le Navire qui en a le plus besoin :
+ * l'audit le donne à 31 % de victoires sur ses trois listes, la plus basse
+ * du roster, et ses 4 Slots récompensent des corps bon marché.
+ */
+export const DECK_VOL_DE_PONTON: DeckList = {
+  id: "vol-de-ponton",
+  name: "Vol de Ponton",
+  shipId: "le-courlis",
+  description:
+    "Tempo : des corps qui frappent dès leur arrivée, et assez de filtrage pour que la main ne soit jamais à court de menace.",
+  cardIds: [
+    // Les Volatiles — Pied marin partout, coût 1 à 4.
+    ...repeat("sterne-des-embruns", 3),
+    ...repeat("goeland-chapardeur", 3),
+    ...repeat("pelican-des-cales", 3),
+    ...repeat("cormoran-de-fer", 2),
+    ...repeat("cormoran-de-fer-abyssal", 1),
+    ...repeat("albatros-de-mauvais-temps", 2),
+    ...repeat("mouette-du-brise-lames", 2),
+    // Filtrage : le lot en fait sa mécanique centrale.
+    ...repeat("mousse-des-quarts", 3),
+    ...repeat("gabier-au-carnet-mouille", 3),
+    ...repeat("quartier-maitre-des-vivres", 2),
+    ...repeat("bibliotheque-salee", 2),
+    ...repeat("journal-de-bord-detrempe", 2),
+    ...repeat("rations-du-matin-gris", 2),
+    ...repeat("lettre-jamais-ouverte", 3),
+    // Ce qui fait monter une petite bête, et ce qui la garde en vie.
+    ...repeat("longue-vue-rayee", 3),
+    ...repeat("harnois-de-vigie", 2),
+    ...repeat("sonde-des-courants-perdus", 2),
   ],
 };
 
@@ -365,8 +466,13 @@ export const DECK_LES_MASQUES_NOYES: DeckList = {
     ...repeat("le-rideau-se-leve", 1),
     ...repeat("arlecchino-celui-derriere-le-masque-abyssal", 1),
     ...repeat("le-regisseur-des-profondeurs-abyssal", 1),
-    ...repeat("cartes-des-courants", 3),
-    ...repeat("plaque-de-fortune", 2),
+    // Renforts Marionnette du Lot 12 (18/09/2026). La liste rejouait des
+    // arrivées sans jamais rien tirer du RETOUR en main lui-même, et
+    // perdait 75 % de ses parties : ces trois-là paient le geste, au lieu
+    // de le subir.
+    ...repeat("la-prima-noyee", 2),
+    ...repeat("la-prima-noyee-abyssal", 1),
+    ...repeat("trappe-du-souffleur", 2),
   ],
 };
 
@@ -384,6 +490,8 @@ export const ARCHETYPE_DECKS: readonly DeckList[] = [
   DECK_CAPITAINE_MIDRANGE,
   DECK_PENITENCE,
   DECK_BORDEE,
+  DECK_RAPIECER_LA_COQUE,
+  DECK_VOL_DE_PONTON,
 ];
 
 /**

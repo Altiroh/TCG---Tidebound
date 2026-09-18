@@ -95,6 +95,16 @@ const DECK_META: Record<string, DeckMeta> = {
     difficulty: 5,
     mechanics: ["Raison négative assumée", "Réduction des dégâts d'Ancrage", "Cartes à coût élevé"],
   },
+  "rapiecer-la-coque": {
+    style: "Endurance / rapiéçage",
+    difficulty: 3,
+    mechanics: ["Ancrage regagné à chaque Structure perdue", "Garde", "Sabordage rentable"],
+  },
+  "vol-de-ponton": {
+    style: "Tempo / Volatiles",
+    difficulty: 2,
+    mechanics: ["Pied marin", "Filtrage de main", "Petits corps équipés"],
+  },
   bordee: {
     style: "Artillerie",
     difficulty: 3,
