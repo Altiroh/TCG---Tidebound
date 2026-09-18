@@ -78,6 +78,17 @@ export const THEATRE_ENGLOUTI = "theatre-englouti";
  */
 export const MARIONNETTE = "marionnette";
 
+/** Lot 12 — Rapiécer la Coque (`CardDefinition.setCode`). */
+export const RAPIECER_LA_COQUE = "rapiecer-la-coque";
+
+/**
+ * Sous-type des volatiles du Lot 12 (Sterne, Goéland, Cormoran, Albatros,
+ * Pélican, Mouette). Comme MARIONNETTE : une famille de ciblage et une
+ * identité visuelle, pas un mot-clé — aucun volatile ne gagne quoi que ce
+ * soit du seul fait d'en être un.
+ */
+export const VOLATILE = "volatile";
+
 export const CORE_SET: CardDefinition[] = [
   // ======================================================================
   // LOT 01 — Premières cartes
@@ -3041,6 +3052,850 @@ export const CORE_SET: CardDefinition[] = [
         ],
       },
     ],
+  },
+  // ======================================================================
+  // Lot 12 — Rapiécer la Coque (Notion « Catalogue de cartes », 18/09/2026)
+  //
+  // Lot TRANSVERSAL de consolidation : pioche et filtrage, récupération
+  // d'Ancrage, Garde, Pied marin, volatiles, et renforts ciblés des familles
+  // existantes (Cra-Poiscail, Marionnettes). Aucun nouveau mot-clé, et aucune
+  // primitive nouvelle en dehors de `condition.controllerHandAtLeast` — tout
+  // le reste se dit avec ce que le moteur portait déjà.
+  //
+  // Le « piochez puis défaussez » du lot s'appuie sur l'effet `discard`
+  // existant, qui prend en TÊTE de main : le texte ne dit jamais « de votre
+  // choix », et c'est déjà ainsi que Le Masque Fendu se comporte.
+  // ======================================================================
+  {
+    id: "mousse-des-quarts",
+    name: "Mousse des Quarts",
+    type: "marin",
+    setCode: RAPIECER_LA_COQUE,
+    cost: 1,
+    attack: 1,
+    health: 2,
+    text: "À son arrivée, piochez 1 carte puis défaussez 1 carte.",
+    onPlayEffects: [
+      { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+      { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+    ],
+  },
+  {
+    // `condition.controllerHandAtLeast` plutôt qu'une condition par effet :
+    // la défausse précède la pioche, donc une condition posée sur la pioche
+    // lirait une main déjà amputée et le texte casserait pile au seuil.
+    id: "gabier-au-carnet-mouille",
+    name: "Gabier au Carnet Mouillé",
+    type: "marin",
+    setCode: RAPIECER_LA_COQUE,
+    cost: 2,
+    attack: 2,
+    health: 2,
+    text: "À son arrivée, si vous avez au moins 4 cartes en main, défaussez 1 carte puis piochez 1 carte.",
+    abilities: [
+      {
+        trigger: "onEnterPlay",
+        condition: { controllerHandAtLeast: 4 },
+        description: "À son arrivée, avec 4 cartes en main ou plus : défaussez 1 carte puis piochez 1 carte.",
+        effects: [
+          { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+          { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: "quartier-maitre-des-vivres",
+    name: "Quartier-maître des Vivres",
+    type: "marin",
+    setCode: RAPIECER_LA_COQUE,
+    cost: 3,
+    attack: 2,
+    health: 4,
+    text: "À votre début de tour, si vous avez au moins 5 cartes en main, piochez 1 carte puis défaussez 1 carte.",
+    abilities: [
+      {
+        trigger: "startOfTurn",
+        condition: { controllerHandAtLeast: 5 },
+        description: "Début de tour, main de 5 cartes ou plus : piochez 1 carte puis défaussez 1 carte.",
+        effects: [
+          { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+          { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: "charpentiere-de-veille",
+    name: "Charpentière de Veille",
+    type: "marin",
+    setCode: RAPIECER_LA_COQUE,
+    cost: 2,
+    attack: 1,
+    health: 3,
+    maxCopies: 2,
+    text:
+      "La première fois à chaque tour qu'une Structure que vous contrôlez est détruite ou Sabordée, récupérez " +
+      "1 Ancrage.",
+    abilities: [
+      {
+        // Un Sabordage émet TOUJOURS `onDeath` en plus de `onSaborde` : un
+        // seul déclencheur couvre les deux cas du texte.
+        trigger: "onDeath",
+        triggeredBy: { cardTypes: ["structure"] },
+        oncePerTurnKey: "charpentiereAncrage",
+        description: "Une de vos Structures part : récupérez 1 Ancrage.",
+        effects: [{ type: "heal", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
+      },
+    ],
+  },
+  {
+    id: "chirurgien-de-coque",
+    name: "Chirurgien de Coque",
+    type: "marin",
+    setCode: RAPIECER_LA_COQUE,
+    cost: 3,
+    attack: 2,
+    health: 3,
+    text: "À son arrivée, récupérez 1 Ancrage. Si vous avez 0 Raison ou moins, récupérez également 1 Raison.",
+    onPlayEffects: [
+      { type: "heal", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+      {
+        type: "reasonGain",
+        target: { kind: "controllerPlayer" },
+        amount: { kind: "flat", value: 1 },
+        conditionControllerReasonAtMost: 0,
+      },
+    ],
+  },
+  {
+    id: "capitaine-du-dernier-retour",
+    name: "Capitaine du Dernier Retour",
+    type: "marin",
+    setCode: RAPIECER_LA_COQUE,
+    cost: 4,
+    attack: 3,
+    health: 5,
+    maxCopies: 2,
+    text: "À la fin de votre tour, si vous avez 3 Raison ou moins, piochez 1 carte puis défaussez 1 carte.",
+    abilities: [
+      {
+        trigger: "endOfTurn",
+        description: "Fin de tour en Raison basse : piochez 1 carte puis défaussez 1 carte.",
+        effects: [
+          {
+            type: "draw",
+            target: { kind: "controllerPlayer" },
+            amount: { kind: "flat", value: 1 },
+            conditionControllerReasonAtMost: 3,
+          },
+          {
+            type: "discard",
+            target: { kind: "controllerPlayer" },
+            amount: { kind: "flat", value: 1 },
+            conditionControllerReasonAtMost: 3,
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "journal-de-bord-detrempe",
+    name: "Journal de Bord Détrempé",
+    type: "objet",
+    setCode: RAPIECER_LA_COQUE,
+    cost: 2,
+    maxCopies: 2,
+    text: "Brisez cet Objet : piochez 2 cartes puis défaussez 1 carte.",
+    onBreakEffects: [
+      { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } },
+      { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+    ],
+  },
+  {
+    id: "pansements-de-coque",
+    name: "Pansements de Coque",
+    type: "objet",
+    setCode: RAPIECER_LA_COQUE,
+    cost: 2,
+    text: "Brisez cet Objet : récupérez 1 Ancrage. Si vous avez 0 Raison ou moins, récupérez également 2 Raison.",
+    onBreakEffects: [
+      { type: "heal", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+      {
+        type: "reasonGain",
+        target: { kind: "controllerPlayer" },
+        amount: { kind: "flat", value: 2 },
+        conditionControllerReasonAtMost: 0,
+      },
+    ],
+  },
+  {
+    id: "caisse-de-pieces-seches",
+    name: "Caisse de Pièces Sèches",
+    type: "objet",
+    setCode: RAPIECER_LA_COQUE,
+    cost: 3,
+    text: "Brisez cet Objet : récupérez 2 Ancrage puis perdez 1 Raison.",
+    onBreakEffects: [
+      { type: "heal", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } },
+      { type: "reasonLoss", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+    ],
+  },
+  {
+    id: "rations-du-matin-gris",
+    name: "Rations du Matin Gris",
+    type: "objet",
+    setCode: RAPIECER_LA_COQUE,
+    cost: 2,
+    text: "Brisez cet Objet : piochez 1 carte puis défaussez 1 carte. Si vous avez 3 Raison ou moins, récupérez 1 Raison.",
+    onBreakEffects: [
+      { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+      { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+      {
+        type: "reasonGain",
+        target: { kind: "controllerPlayer" },
+        amount: { kind: "flat", value: 1 },
+        conditionControllerReasonAtMost: 3,
+      },
+    ],
+  },
+  {
+    id: "derniere-planche",
+    name: "Dernière Planche",
+    type: "objet",
+    setCode: RAPIECER_LA_COQUE,
+    cost: 3,
+    maxCopies: 2,
+    requiresTideStateForBreak: ["tempete", "abysses"],
+    text: "Brisable seulement pendant Tempête ou Abysses. Brisez cet Objet : récupérez 3 Ancrage.",
+    onBreakEffects: [{ type: "heal", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 3 } }],
+  },
+  {
+    id: "lettre-jamais-ouverte",
+    name: "Lettre Jamais Ouverte",
+    type: "objet",
+    setCode: RAPIECER_LA_COQUE,
+    cost: 1,
+    text: "Brisez cet Objet : piochez 1 carte. Pendant Abysses, piochez 1 carte supplémentaire puis défaussez 1 carte.",
+    onBreakEffects: [
+      { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+      {
+        type: "draw",
+        target: { kind: "controllerPlayer" },
+        amount: { kind: "flat", value: 1 },
+        conditionTideStateIn: ["abysses"],
+      },
+      {
+        type: "discard",
+        target: { kind: "controllerPlayer" },
+        amount: { kind: "flat", value: 1 },
+        conditionTideStateIn: ["abysses"],
+      },
+    ],
+  },
+  {
+    id: "atelier-de-calfatage",
+    name: "Atelier de Calfatage",
+    type: "structure",
+    setCode: RAPIECER_LA_COQUE,
+    cost: 3,
+    health: 4,
+    durationTurns: 4,
+    maxCopies: 2,
+    text:
+      "Durée : 4 tours. La première fois à chaque tour qu'une autre Structure que vous contrôlez est Sabordée, " +
+      "récupérez 1 Ancrage.",
+    abilities: [
+      {
+        trigger: "onSaborde",
+        triggeredBy: { cardTypes: ["structure"], excludeSelf: true },
+        oncePerTurnKey: "atelierAncrage",
+        description: "Une autre de vos Structures est Sabordée : récupérez 1 Ancrage.",
+        effects: [{ type: "heal", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
+      },
+    ],
+  },
+  {
+    id: "infirmerie-de-pont",
+    name: "Infirmerie de Pont",
+    type: "structure",
+    setCode: RAPIECER_LA_COQUE,
+    cost: 3,
+    health: 4,
+    durationTurns: 3,
+    maxCopies: 2,
+    text: "Durée : 3 tours. À la fin de votre tour, si vous avez 3 Raison ou moins, récupérez 1 Ancrage.",
+    abilities: [
+      {
+        trigger: "endOfTurn",
+        description: "Fin de tour en Raison basse : récupérez 1 Ancrage.",
+        effects: [
+          {
+            type: "heal",
+            target: { kind: "controllerPlayer" },
+            amount: { kind: "flat", value: 1 },
+            conditionControllerReasonAtMost: 3,
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "bibliotheque-salee",
+    name: "Bibliothèque Salée",
+    type: "structure",
+    setCode: RAPIECER_LA_COQUE,
+    cost: 2,
+    health: 3,
+    durationTurns: 4,
+    text: "Durée : 4 tours. À votre début de tour, piochez 1 carte puis défaussez 1 carte.",
+    abilities: [
+      {
+        trigger: "startOfTurn",
+        description: "Début de tour : piochez 1 carte puis défaussez 1 carte.",
+        effects: [
+          { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+          { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: "caisse-des-dernieres-planches",
+    name: "Caisse des Dernières Planches",
+    type: "structure",
+    setCode: RAPIECER_LA_COQUE,
+    cost: 3,
+    health: 4,
+    durationTurns: 3,
+    text: "Durée : 3 tours. Sabordage : récupérez 1 Ancrage et piochez 1 carte.",
+    abilities: [
+      {
+        trigger: "onSaborde",
+        description: "Sabordage : récupérez 1 Ancrage et piochez 1 carte.",
+        effects: [
+          { type: "heal", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+          { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: "caisse-des-dernieres-planches-abyssal",
+    name: "Caisse des Dernières Planches",
+    type: "structure",
+    variant: "abyssale",
+    setCode: RAPIECER_LA_COQUE,
+    cost: 4,
+    health: 5,
+    durationTurns: 3,
+    maxCopies: 1,
+    text:
+      "Durée : 3 tours. Sabordage : récupérez 2 Ancrage et piochez 1 carte. Si vous avez 0 Raison ou moins, " +
+      "récupérez également 1 Raison.",
+    abilities: [
+      {
+        trigger: "onSaborde",
+        description: "Sabordage : 2 Ancrage, 1 carte, et 1 Raison si vous êtes en Déraison.",
+        effects: [
+          { type: "heal", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } },
+          { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+          {
+            type: "reasonGain",
+            target: { kind: "controllerPlayer" },
+            amount: { kind: "flat", value: 1 },
+            conditionControllerReasonAtMost: 0,
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "longue-vue-rayee",
+    name: "Longue-Vue Rayée",
+    type: "equipement",
+    setCode: RAPIECER_LA_COQUE,
+    cost: 1,
+    health: 2,
+    text:
+      "Équipez un Marin ou une Créature. La première fois à chaque tour que l'unité équipée attaque, piochez " +
+      "1 carte puis défaussez 1 carte.",
+    onPlayEffects: [{ type: "attachEquipment", target: { kind: "chosenUnit" } }],
+    abilities: [
+      {
+        trigger: "onAttack",
+        triggeredBy: { equippedUnit: true },
+        oncePerTurnKey: "longueVueFiltre",
+        description: "Le porteur attaque : piochez 1 carte puis défaussez 1 carte.",
+        effects: [
+          { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+          { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+        ],
+      },
+    ],
+  },
+  // --- Volatiles : le sous-type du lot. Aucun mot-clé propre — il sert de
+  // famille de ciblage et d'identité visuelle, comme « objet flottant ».
+  {
+    id: "sterne-des-embruns",
+    name: "Sterne des Embruns",
+    type: "creature",
+    subtype: VOLATILE,
+    setCode: RAPIECER_LA_COQUE,
+    cost: 1,
+    attack: 1,
+    health: 1,
+    keywords: ["pied-marin"],
+    text: "Pied marin. Lorsqu'elle attaque, elle gagne +1 Puissance jusqu'à la fin du tour.",
+    abilities: [
+      {
+        trigger: "onAttack",
+        description: "Elle attaque : +1 Puissance jusqu'à la fin du tour.",
+        effects: [
+          {
+            type: "buff",
+            target: { kind: "self" },
+            attackAmount: { kind: "flat", value: 1 },
+            duration: "endOfTurn",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "goeland-chapardeur",
+    name: "Goéland Chapardeur",
+    type: "creature",
+    subtype: VOLATILE,
+    setCode: RAPIECER_LA_COQUE,
+    cost: 2,
+    attack: 2,
+    health: 2,
+    keywords: ["pied-marin"],
+    text: "Pied marin. La première fois à chaque tour qu'il attaque, piochez 1 carte puis défaussez 1 carte.",
+    abilities: [
+      {
+        trigger: "onAttack",
+        oncePerTurnKey: "goelandFiltre",
+        description: "Il attaque : piochez 1 carte puis défaussez 1 carte.",
+        effects: [
+          { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+          { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: "cormoran-de-fer",
+    name: "Cormoran de Fer",
+    type: "creature",
+    subtype: VOLATILE,
+    setCode: RAPIECER_LA_COQUE,
+    cost: 3,
+    attack: 2,
+    health: 4,
+    keywords: ["garde", "pied-marin"],
+    text: "Garde. Pied marin.",
+  },
+  {
+    id: "cormoran-de-fer-abyssal",
+    name: "Cormoran de Fer",
+    type: "creature",
+    subtype: VOLATILE,
+    variant: "abyssale",
+    setCode: RAPIECER_LA_COQUE,
+    cost: 4,
+    attack: 3,
+    health: 5,
+    maxCopies: 1,
+    keywords: ["garde", "pied-marin"],
+    text: "Garde. Pied marin. La première fois à chaque tour qu'il attaque, récupérez 1 Raison.",
+    abilities: [
+      {
+        trigger: "onAttack",
+        oncePerTurnKey: "cormoranRaison",
+        description: "Il attaque : récupérez 1 Raison.",
+        effects: [{ type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
+      },
+    ],
+  },
+  {
+    id: "albatros-de-mauvais-temps",
+    name: "Albatros de Mauvais Temps",
+    type: "creature",
+    subtype: VOLATILE,
+    setCode: RAPIECER_LA_COQUE,
+    cost: 4,
+    attack: 4,
+    health: 3,
+    maxCopies: 2,
+    keywords: ["pied-marin"],
+    // Le contournement de Garde est un champ de données, pas un mot-clé
+    // accordé : il ne vaut que pour CET attaquant, pendant Tempête.
+    bonusDamageInTideState: { tideStateIn: ["tempete"], amount: 1 },
+    bypassesGardeTideStateIn: ["tempete"],
+    text: "Pied marin. Pendant Tempête, il gagne +1 Puissance et ignore Garde.",
+  },
+  {
+    id: "pelican-des-cales",
+    name: "Pélican des Cales",
+    type: "creature",
+    subtype: VOLATILE,
+    setCode: RAPIECER_LA_COQUE,
+    cost: 3,
+    attack: 2,
+    health: 4,
+    text: "À son arrivée, piochez 1 carte puis défaussez 1 carte.",
+    onPlayEffects: [
+      { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+      { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+    ],
+  },
+  {
+    id: "mouette-du-brise-lames",
+    name: "Mouette du Brise-Lames",
+    type: "creature",
+    subtype: VOLATILE,
+    setCode: RAPIECER_LA_COQUE,
+    cost: 2,
+    attack: 1,
+    health: 4,
+    keywords: ["garde"],
+    text: "Garde. Quand elle est détruite, récupérez 1 Raison.",
+    abilities: [
+      {
+        trigger: "onDeath",
+        description: "Elle est détruite : récupérez 1 Raison.",
+        effects: [{ type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
+      },
+    ],
+  },
+  {
+    id: "harnois-de-vigie",
+    name: "Harnois de Vigie",
+    type: "equipement",
+    setCode: RAPIECER_LA_COQUE,
+    cost: 2,
+    health: 2,
+    equipGrantsBuff: { healthAmount: 1 },
+    equipGrantsKeywords: ["garde"],
+    text: "Équipez un Marin ou une Créature. Il gagne +1 Résistance et Garde.",
+    onPlayEffects: [{ type: "attachEquipment", target: { kind: "chosenUnit" } }],
+  },
+  {
+    id: "cra-poiscail-medecin",
+    name: "Cra-Poiscail Médecin",
+    type: "creature",
+    archetype: "cra-poiscail",
+    setCode: RAPIECER_LA_COQUE,
+    cost: 2,
+    attack: 1,
+    health: 3,
+    text: "La première fois à chaque tour que vous Brisez un Objet, récupérez 1 Ancrage.",
+    abilities: [
+      {
+        trigger: "onObjectBroken",
+        oncePerTurnKey: "medecinAncrage",
+        description: "Vous Brisez un Objet : récupérez 1 Ancrage.",
+        effects: [{ type: "heal", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
+      },
+    ],
+  },
+  {
+    id: "cra-poiscail-medecin-abyssal",
+    name: "Cra-Poiscail Médecin",
+    type: "creature",
+    archetype: "cra-poiscail",
+    variant: "abyssale",
+    setCode: RAPIECER_LA_COQUE,
+    cost: 3,
+    attack: 2,
+    health: 4,
+    maxCopies: 1,
+    text: "La première fois à chaque tour que vous Brisez un Objet, récupérez 1 Ancrage et piochez 1 carte.",
+    abilities: [
+      {
+        trigger: "onObjectBroken",
+        oncePerTurnKey: "medecinAncrage",
+        description: "Vous Brisez un Objet : récupérez 1 Ancrage et piochez 1 carte.",
+        effects: [
+          { type: "heal", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+          { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: "cra-poiscail-messager",
+    name: "Cra-Poiscail Messager",
+    type: "creature",
+    archetype: "cra-poiscail",
+    setCode: RAPIECER_LA_COQUE,
+    cost: 1,
+    attack: 1,
+    health: 1,
+    keywords: ["pied-marin"],
+    text:
+      "Pied marin. Lorsqu'il attaque, si vous contrôlez au moins 3 unités Cra-Poiscail, il gagne +1 Puissance " +
+      "jusqu'à la fin du tour.",
+    abilities: [
+      {
+        trigger: "onAttack",
+        description: "Il attaque avec un banc de 3 Cra-Poiscail : +1 Puissance jusqu'à la fin du tour.",
+        effects: [
+          {
+            type: "buff",
+            target: { kind: "self" },
+            attackAmount: { kind: "flat", value: 1 },
+            duration: "endOfTurn",
+            // « au moins 3 unités » : lui compris, d'où `excludeSelf: false`.
+            conditionControlledArchetypeAtLeast: { archetype: "cra-poiscail", count: 3, excludeSelf: false },
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "tas-de-bouts-de-bois",
+    name: "Tas de Bouts de Bois",
+    type: "structure",
+    archetype: "cra-poiscail",
+    setCode: RAPIECER_LA_COQUE,
+    cost: 2,
+    health: 3,
+    durationTurns: 3,
+    text:
+      "Durée : 3 tours. La première fois à chaque tour qu'une unité Cra-Poiscail que vous contrôlez est détruite, " +
+      "cette Structure gagne +1 Résistance. Sabordage : récupérez 1 Ancrage.",
+    abilities: [
+      {
+        trigger: "onDeath",
+        triggeredBy: { archetype: "cra-poiscail" },
+        oncePerTurnKey: "tasDeBoisRenfort",
+        description: "Un de vos Cra-Poiscail tombe : +1 Résistance, définitivement.",
+        effects: [
+          {
+            type: "buff",
+            target: { kind: "self" },
+            healthAmount: { kind: "flat", value: 1 },
+            duration: "permanent",
+          },
+        ],
+      },
+      {
+        trigger: "onSaborde",
+        description: "Sabordage : récupérez 1 Ancrage.",
+        effects: [{ type: "heal", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
+      },
+    ],
+  },
+  {
+    id: "la-prima-noyee",
+    name: "La Prima Noyée",
+    type: "marin",
+    subtype: MARIONNETTE,
+    setCode: RAPIECER_LA_COQUE,
+    cost: 3,
+    attack: 2,
+    health: 4,
+    text:
+      "La première fois à chaque tour qu'une autre unité Marionnette que vous contrôlez revient dans votre main, " +
+      "piochez 1 carte puis défaussez 1 carte.",
+    abilities: [
+      {
+        trigger: "onReturnedToHand",
+        triggeredBy: { subtype: MARIONNETTE },
+        oncePerTurnKey: "primaFiltre",
+        description: "Une autre Marionnette revient en main : piochez 1 carte puis défaussez 1 carte.",
+        effects: [
+          { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+          { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: "la-prima-noyee-abyssal",
+    name: "La Prima Noyée",
+    type: "marin",
+    subtype: MARIONNETTE,
+    variant: "abyssale",
+    setCode: RAPIECER_LA_COQUE,
+    cost: 5,
+    attack: 4,
+    health: 5,
+    maxCopies: 1,
+    text:
+      "La première fois à chaque tour qu'une autre unité Marionnette que vous contrôlez revient dans votre main, " +
+      "piochez 1 carte et récupérez 1 Raison.",
+    abilities: [
+      {
+        trigger: "onReturnedToHand",
+        triggeredBy: { subtype: MARIONNETTE },
+        oncePerTurnKey: "primaFiltre",
+        description: "Une autre Marionnette revient en main : piochez 1 carte et récupérez 1 Raison.",
+        effects: [
+          { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+          { type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: "arlequin-raccommodeur",
+    name: "Arlequin Raccommodeur",
+    type: "marin",
+    subtype: MARIONNETTE,
+    setCode: RAPIECER_LA_COQUE,
+    cost: 2,
+    attack: 2,
+    health: 3,
+    text: "Quand il est détruit, récupérez 1 Ancrage.",
+    abilities: [
+      {
+        trigger: "onDeath",
+        description: "Il est détruit : récupérez 1 Ancrage.",
+        effects: [{ type: "heal", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
+      },
+    ],
+  },
+  {
+    id: "trappe-du-souffleur",
+    name: "Trappe du Souffleur",
+    type: "structure",
+    subtype: MARIONNETTE,
+    setCode: RAPIECER_LA_COQUE,
+    cost: 3,
+    health: 3,
+    durationTurns: 3,
+    maxCopies: 2,
+    text:
+      "Durée : 3 tours. La première fois à chaque tour qu'une carte Marionnette que vous contrôlez revient dans " +
+      "votre main, récupérez 1 Ancrage.",
+    abilities: [
+      {
+        trigger: "onReturnedToHand",
+        triggeredBy: { subtype: MARIONNETTE },
+        oncePerTurnKey: "trappeAncrage",
+        description: "Une Marionnette revient en main : récupérez 1 Ancrage.",
+        effects: [{ type: "heal", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
+      },
+    ],
+  },
+  {
+    id: "charpentier-des-epaves",
+    name: "Charpentier des Épaves",
+    type: "marin",
+    setCode: RAPIECER_LA_COQUE,
+    cost: 3,
+    attack: 2,
+    health: 4,
+    text:
+      "La première fois à chaque tour qu'une Structure que vous contrôlez est détruite ou Sabordée, piochez " +
+      "1 carte puis défaussez 1 carte.",
+    abilities: [
+      {
+        trigger: "onDeath",
+        triggeredBy: { cardTypes: ["structure"] },
+        oncePerTurnKey: "charpentierFiltre",
+        description: "Une de vos Structures part : piochez 1 carte puis défaussez 1 carte.",
+        effects: [
+          { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+          { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: "barge-de-reparation",
+    name: "Barge de Réparation",
+    type: "structure",
+    subtype: "objet-flottant",
+    setCode: RAPIECER_LA_COQUE,
+    cost: 3,
+    health: 4,
+    durationTurns: 3,
+    visibleDuringTide: ["houle", "tempete"],
+    maxCopies: 2,
+    text: "Durée : 3 tours. Visible pendant Houle et Tempête. À votre début de tour, si elle est visible, récupérez 1 Ancrage.",
+    abilities: [
+      {
+        trigger: "startOfTurn",
+        condition: { selfVisible: true },
+        description: "Début de tour, si elle est visible : récupérez 1 Ancrage.",
+        effects: [{ type: "heal", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
+      },
+    ],
+  },
+  {
+    id: "clous-de-recuperation",
+    name: "Clous de Récupération",
+    type: "objet",
+    setCode: RAPIECER_LA_COQUE,
+    cost: 3,
+    text: "Brisez cet Objet : choisissez une Structure dans votre Cimetière. Remettez-la dans votre main.",
+    onBreakEffects: [
+      {
+        type: "moveGraveyardCardToHand",
+        target: { kind: "controllerPlayer" },
+        filter: { cardType: "structure" },
+      },
+    ],
+  },
+  {
+    id: "etau-du-calfat",
+    name: "Étau du Calfat",
+    type: "equipement",
+    setCode: RAPIECER_LA_COQUE,
+    cost: 2,
+    health: 3,
+    equipTargetTypes: ["structure"],
+    text: "Équipez une Structure. Quand la Structure équipée est Sabordée, récupérez 1 Ancrage.",
+    onPlayEffects: [{ type: "attachEquipment", target: { kind: "chosenUnit", among: { cardTypes: ["structure"] } } }],
+    abilities: [
+      {
+        trigger: "onSaborde",
+        triggeredBy: { equippedUnit: true },
+        description: "La Structure équipée est Sabordée : récupérez 1 Ancrage.",
+        effects: [{ type: "heal", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
+      },
+    ],
+  },
+  {
+    id: "sonde-des-courants-perdus",
+    name: "Sonde des Courants Perdus",
+    type: "structure",
+    setCode: RAPIECER_LA_COQUE,
+    cost: 2,
+    health: 3,
+    durationTurns: 4,
+    maxCopies: 2,
+    text: "Durée : 4 tours. La première fois à chaque tour que la Marée change, piochez 1 carte puis défaussez 1 carte.",
+    abilities: [
+      {
+        trigger: "onTideStateEntered",
+        oncePerTurnKey: "sondeFiltre",
+        description: "La Marée change : piochez 1 carte puis défaussez 1 carte.",
+        effects: [
+          { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+          { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: "ce-que-la-maree-rend",
+    name: "Ce que la Marée Rend",
+    type: "anomalie",
+    setCode: RAPIECER_LA_COQUE,
+    cost: 5,
+    health: 3,
+    durationTurns: 2,
+    maxCopies: 2,
+    // Choix IMPOSÉ : le joueur tranche, mais il ne peut pas refuser les deux
+    // (même primitive que Le Fond Vous Regarde).
+    anomalyForceChoiceAtStartOfTurn: { reasonLossAmount: 1, anchorDamageAmount: 1 },
+    text: "Pendant 2 tours, au début du tour de chaque joueur, celui-ci choisit : perdre 1 Raison ou subir 1 dégât d'Ancrage.",
   },
 ];
 

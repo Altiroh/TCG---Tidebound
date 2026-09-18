@@ -84,6 +84,11 @@ function matchesControlCondition(
     const holder = sourceInstanceId ? findBoardUnit(state, sourceInstanceId) : undefined;
     if (!holder || !isVisibleDuringTide(getCardDefinition(holder.unit.cardId), state.environment.tideState)) return false;
   }
+  const handAtLeast = ability.condition?.controllerHandAtLeast;
+  if (handAtLeast !== undefined) {
+    const holder = state.players.find((p) => p.id === controllerId);
+    if (!holder || holder.hand.length < handAtLeast) return false;
+  }
   const required = ability.condition?.controlsAnyCardIds;
   if (!required) return true;
   const controller = state.players.find((p) => p.id === controllerId);

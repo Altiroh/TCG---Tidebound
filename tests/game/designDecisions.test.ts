@@ -295,3 +295,38 @@ describe("Cloche d'Alerte : la taxe peut rendre le Bris impossible", () => {
     ok(brise);
   });
 });
+
+describe("« si vous avez au moins N cartes en main » : une condition de CAPACITÉ", () => {
+  // Gabier au Carnet Mouillé défausse PUIS pioche. Gatée effet par effet, la
+  // pioche lirait une main déjà amputée et le texte casserait pile au seuil :
+  // la condition vit donc sur la capacité, évaluée une fois avant le premier
+  // effet.
+  function arrivee(handSize: number) {
+    const gabier = instance("gabier-au-carnet-mouille", "p1");
+    const main = Array.from({ length: handSize }, () => instance("marin-des-jetees", "p1"));
+    const state = testGameState({
+      players: [
+        testPlayer("p1", { hand: [gabier, ...main], deck: filler("p1"), reason: 10 }),
+        testPlayer("p2", { deck: filler("p2") }),
+      ],
+    });
+    return dispatch(state, { type: "playCard", playerId: "p1", instanceId: gabier.instanceId });
+  }
+
+  it("au seuil exact, la défausse ET la pioche se produisent", () => {
+    // 4 cartes en main une fois le Gabier posé.
+    const joue = arrivee(4);
+    ok(joue);
+    const p1 = player(joue.state, "p1");
+    expect(p1.graveyard.length).toBe(1); // la défausse a bien eu lieu
+    expect(p1.hand.length).toBe(4); // -1 défaussée, +1 piochée
+  });
+
+  it("sous le seuil, rien ne se produit — ni défausse, ni pioche", () => {
+    const joue = arrivee(3);
+    ok(joue);
+    const p1 = player(joue.state, "p1");
+    expect(p1.graveyard.length).toBe(0);
+    expect(p1.hand.length).toBe(3);
+  });
+});

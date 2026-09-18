@@ -257,6 +257,54 @@ const THEATRE_ENGLOUTI_RARITY: Record<string, CardRarity> = {
   // (`-abyssal`), comme toutes les autres.
 };
 
+
+/**
+ * Lot 12 — Rapiécer la Coque. Raretés issues de la passe d'équilibrage
+ * Notion du 18/09/2026, carte par carte. Les quatre variantes Abyssales ne
+ * sont pas listées : leur suffixe `-abyssal` suffit (règle de design).
+ */
+const RAPIECER_LA_COQUE_RARITY: Record<string, CardRarity> = {
+  /* common */
+  "mousse-des-quarts": "common",
+  "gabier-au-carnet-mouille": "common",
+  "chirurgien-de-coque": "common",
+  "pansements-de-coque": "common",
+  "rations-du-matin-gris": "common",
+  "lettre-jamais-ouverte": "common",
+  "sterne-des-embruns": "common",
+  "goeland-chapardeur": "common",
+  "pelican-des-cales": "common",
+  "mouette-du-brise-lames": "common",
+  "cra-poiscail-messager": "common",
+  "arlequin-raccommodeur": "common",
+  /* uncommon */
+  "quartier-maitre-des-vivres": "uncommon",
+  "charpentiere-de-veille": "uncommon",
+  "caisse-de-pieces-seches": "uncommon",
+  "bibliotheque-salee": "uncommon",
+  "caisse-des-dernieres-planches": "uncommon",
+  "longue-vue-rayee": "uncommon",
+  "cormoran-de-fer": "uncommon",
+  "harnois-de-vigie": "uncommon",
+  "cra-poiscail-medecin": "uncommon",
+  "tas-de-bouts-de-bois": "uncommon",
+  "la-prima-noyee": "uncommon",
+  "charpentier-des-epaves": "uncommon",
+  "clous-de-recuperation": "uncommon",
+  "etau-du-calfat": "uncommon",
+  /* rare */
+  "capitaine-du-dernier-retour": "rare",
+  "journal-de-bord-detrempe": "rare",
+  "derniere-planche": "rare",
+  "atelier-de-calfatage": "rare",
+  "infirmerie-de-pont": "rare",
+  "albatros-de-mauvais-temps": "rare",
+  "trappe-du-souffleur": "rare",
+  "barge-de-reparation": "rare",
+  "sonde-des-courants-perdus": "rare",
+  "ce-que-la-maree-rend": "rare",
+};
+
 /** Ids dont la rareté n'est pas encore validée par le design. */
 export const PROVISIONAL_RARITY_CARD_IDS: readonly string[] = Object.keys(PROVISIONAL_RARITY);
 
@@ -271,7 +319,13 @@ const ABYSSAL_VARIANT_SUFFIX = "-abyssal";
  */
 export function rarityForCardId(cardId: string): CardRarity | null {
   if (cardId.endsWith(ABYSSAL_VARIANT_SUFFIX)) return "abyssal";
-  return AUDITED_RARITY[cardId] ?? THEATRE_ENGLOUTI_RARITY[cardId] ?? PROVISIONAL_RARITY[cardId] ?? null;
+  return (
+    AUDITED_RARITY[cardId] ??
+    THEATRE_ENGLOUTI_RARITY[cardId] ??
+    RAPIECER_LA_COQUE_RARITY[cardId] ??
+    PROVISIONAL_RARITY[cardId] ??
+    null
+  );
 }
 
 /** Ids du catalogue sans rareté explicite — doit toujours être vide. */

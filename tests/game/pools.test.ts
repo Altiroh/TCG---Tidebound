@@ -24,10 +24,10 @@ describe("pools de boosters", () => {
     }
   });
 
-  it("respecte les effectifs de la répartition Notion, rattachements du 18/09 compris", () => {
-    expect(BOOSTER_POOLS[BOOSTER_DEFAUT]).toHaveLength(47);
-    expect(BOOSTER_POOLS[BOOSTER_POISSONS_PAS_FRAIS]).toHaveLength(51);
-    expect(BOOSTER_POOLS[BOOSTER_ETRANGETE_SOUS_MARINE]).toHaveLength(52);
+  it("respecte les effectifs de la répartition Notion, Lot 12 compris", () => {
+    expect(BOOSTER_POOLS[BOOSTER_DEFAUT]).toHaveLength(61);
+    expect(BOOSTER_POOLS[BOOSTER_POISSONS_PAS_FRAIS]).toHaveLength(65);
+    expect(BOOSTER_POOLS[BOOSTER_ETRANGETE_SOUS_MARINE]).toHaveLength(64);
   });
 
   it("n'a que trois cartes passerelles, exactement celles que le cadrage nomme", () => {

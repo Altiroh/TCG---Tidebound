@@ -103,6 +103,18 @@ export interface TriggeredAbility {
     tideStateIn?: TideStateName[];
     controlsAnyCardIds?: string[];
     /**
+     * « si vous avez au moins N cartes en main » : taille de main MINIMALE
+     * du contrôleur pour que la capacité se déclenche (ex: Gabier au Carnet
+     * Mouillé, Lot 12).
+     *
+     * Sur la CAPACITÉ et non sur un effet, parce qu'une main change au fil
+     * de la résolution : « défaussez 1 carte puis piochez 1 carte » gatée
+     * effet par effet lirait une main déjà amputée pour la pioche, et le
+     * texte se briserait exactement au seuil. Évaluée une fois, avant le
+     * premier effet, elle décrit ce que le texte promet.
+     */
+    controllerHandAtLeast?: number;
+    /**
      * « si elle est visible » : la carte porteuse doit être visible dans la
      * Marée courante (ex: Filet à la Dérive). Indispensable pour une
      * capacité facultative — sans elle, une Structure cachée se proposerait

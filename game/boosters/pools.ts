@@ -33,7 +33,7 @@ export const BOOSTER_ETRANGETE_SOUS_MARINE = "etrangete-sous-marine";
 export const BOOSTER_BIENVENUE = "welcome_tutorial";
 
 /**
- * B1 — Défaut. 47 entrées. Pool d'apprentissage : cartes lisibles,
+ * B1 — Défaut. 61 entrées. Pool d'apprentissage : cartes lisibles,
  * fondamentaux de Raison / Marée / Structures / Équipements, premières
  * cartes Cra-Poiscail et un teaser Marionnette.
  */
@@ -85,10 +85,25 @@ const DEFAUT: readonly string[] = [
   "la-flaque-sacree", // La Flaque Sacrée
   "fesses-en-avant", // Fesses en Avant !
   "pulcinella-gonfle", // Pulcinella Gonflé
+  // --- Lot 12 — Rapiécer la Coque ---
+  "mousse-des-quarts",
+  "gabier-au-carnet-mouille",
+  "chirurgien-de-coque",
+  "journal-de-bord-detrempe",
+  "pansements-de-coque",
+  "caisse-de-pieces-seches",
+  "rations-du-matin-gris",
+  "lettre-jamais-ouverte",
+  "bibliotheque-salee",
+  "longue-vue-rayee",
+  "sterne-des-embruns",
+  "pelican-des-cales",
+  "mouette-du-brise-lames",
+  "harnois-de-vigie",
 ];
 
 /**
- * B2 — Poissons pas frais. 51 entrées. Pool intermédiaire : créatures
+ * B2 — Poissons pas frais. 65 entrées. Pool intermédiaire : créatures
  * marines plus marquées, Bris d'Objets, Cra-Poiscail développés,
  * manipulation de Marée.
  */
@@ -144,10 +159,25 @@ const POISSONS_PAS_FRAIS: readonly string[] = [
   "la-grande-migration", // La Grande Migration
   "arlecchino-des-profondeurs", // Arlecchino des Profondeurs
   "le-masque-fendu", // Le Masque Fendu
+  // --- Lot 12 — Rapiécer la Coque ---
+  "quartier-maitre-des-vivres",
+  "charpentiere-de-veille",
+  "capitaine-du-dernier-retour",
+  "derniere-planche",
+  "atelier-de-calfatage",
+  "infirmerie-de-pont",
+  "caisse-des-dernieres-planches",
+  "caisse-des-dernieres-planches-abyssal",
+  "goeland-chapardeur",
+  "cormoran-de-fer",
+  "cormoran-de-fer-abyssal",
+  "albatros-de-mauvais-temps",
+  "charpentier-des-epaves",
+  "barge-de-reparation",
 ];
 
 /**
- * B3 — Étrangeté sous-marine. 52 entrées. Pool avancé et thématique :
+ * B3 — Étrangeté sous-marine. 64 entrées. Pool avancé et thématique :
  * Marionnettes / Théâtre, étrangeté abyssale, grosses cartes de rupture et
  * branche pseudo-médiévale Cra-Poiscail.
  */
@@ -204,6 +234,19 @@ const ETRANGETE_SOUS_MARINE: readonly string[] = [
   "le-rideau-se-leve", // Le Rideau se Lève
   "arlecchino-celui-derriere-le-masque-abyssal", // Arlecchino, Celui derrière le Masque
   "le-regisseur-des-profondeurs-abyssal", // Le Régisseur des Profondeurs
+  // --- Lot 12 — Rapiécer la Coque ---
+  "cra-poiscail-medecin",
+  "cra-poiscail-medecin-abyssal",
+  "cra-poiscail-messager",
+  "tas-de-bouts-de-bois",
+  "la-prima-noyee",
+  "la-prima-noyee-abyssal",
+  "arlequin-raccommodeur",
+  "trappe-du-souffleur",
+  "clous-de-recuperation",
+  "etau-du-calfat",
+  "sonde-des-courants-perdus",
+  "ce-que-la-maree-rend",
 ];
 
 /**
