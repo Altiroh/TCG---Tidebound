@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   BORROWED_DECKS,
   PRECON_DECKS,
@@ -453,27 +453,55 @@ export function NewMatchScreen({
                 )}
               </section>
 
+              {/* LE RÉCAPITULATIF : ce qui va réellement partir en partie, une
+                  ligne par élément, chacune avec son pictogramme et sa
+                  précision — on relit sans avoir à remonter l'écran. */}
               <div className={`${game.panel} ${styles.launch}`}>
-                <div className={styles.launchSummary}>
-                  <span>
-                    Mode : <strong>{mode === "pvp" ? "Local à deux" : `Bot ${BOT_DIFFICULTIES.find((d) => d.id === botDifficulty)?.label.toLowerCase()}`}</strong>
-                  </span>
-                  <span>
-                    {mode === "pvp" ? "Joueur 1" : "Ton deck"} : <strong>{deck1?.name ?? "—"}</strong>
-                  </span>
-                  {mode === "pvp" && (
-                    <span>
-                      Joueur 2 : <strong>{deck2?.name ?? "—"}</strong>
-                    </span>
-                  )}
-                  {mode === "bot" && (
-                    <span>
-                      Adversaire : <strong>tiré au sort</strong>
-                    </span>
+                <div className={styles.launchFacts}>
+                  <Fact
+                    icon={mode === "pvp" ? LAUNCH_ICONS.duo : LAUNCH_ICONS.bot}
+                    label="Mode"
+                    value={mode === "pvp" ? "Local à deux" : `Bot ${BOT_DIFFICULTIES.find((d) => d.id === botDifficulty)?.label.toLowerCase()}`}
+                    note={mode === "pvp" ? "Deux joueurs sur le même écran" : "Adversaire contrôlé par l'IA"}
+                  />
+
+                  <Fact
+                    icon={LAUNCH_ICONS.deck}
+                    label={mode === "pvp" ? "Joueur 1" : "Ton deck"}
+                    value={deck1?.name ?? "—"}
+                    note={deck1 ? `${deck1.cardIds.length} cartes` : "Aucun deck choisi"}
+                  />
+
+                  {mode === "pvp" ? (
+                    <Fact
+                      icon={LAUNCH_ICONS.deck}
+                      label="Joueur 2"
+                      value={deck2?.name ?? "—"}
+                      note={deck2 ? `${deck2.cardIds.length} cartes` : "À choisir à l'étape suivante"}
+                    />
+                  ) : (
+                    <Fact
+                      icon={LAUNCH_ICONS.versus}
+                      label="Adversaire"
+                      value="tiré au sort"
+                      note="Un deck parmi ceux disponibles"
+                    />
                   )}
                 </div>
-                <button type="button" className={`${game.primary} ${game.buttonLg}`} onClick={handleLaunch} disabled={!canLaunch || starting}>
+
+                <button
+                  type="button"
+                  className={`${game.primary} ${game.buttonLg} ${styles.launchButton}`}
+                  onClick={handleLaunch}
+                  disabled={!canLaunch || starting}
+                >
+                  <span className={styles.launchIcon} aria-hidden>
+                    {LAUNCH_ICONS.anchor}
+                  </span>
                   {launchLabel}
+                  <span className={styles.launchArrow} aria-hidden>
+                    ›
+                  </span>
                 </button>
               </div>
               {error && <p className={game.error}>{error}</p>}
@@ -482,6 +510,67 @@ export function NewMatchScreen({
         </div>
       </div>
     </GameScreen>
+  );
+}
+
+/**
+ * Les pictogrammes de la barre de lancement — mode, deck, adversaire — et
+ * l'ancre du bouton. Tracés en ligne plutôt que chargés : ils sont quatre,
+ * ils suivent la couleur du texte, et une icône de 18 px ne vaut pas une
+ * requête.
+ */
+const LAUNCH_ICONS = {
+  bot: (
+    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" aria-hidden>
+      <rect x="4" y="8" width="16" height="11" rx="3" stroke="currentColor" strokeWidth={1.5} />
+      <path d="M12 8V4.5M9.5 4.5h5" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
+      <circle cx="9" cy="13" r="1.3" fill="currentColor" />
+      <circle cx="15" cy="13" r="1.3" fill="currentColor" />
+      <path d="M2.5 12v3M21.5 12v3" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
+    </svg>
+  ),
+  duo: (
+    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" aria-hidden>
+      <circle cx="9" cy="8.5" r="3" stroke="currentColor" strokeWidth={1.5} />
+      <path d="M3.5 19a5.5 5.5 0 0111 0" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
+      <path d="M16 6.2a3 3 0 010 4.6M17.5 19a5.6 5.6 0 00-2-4.3" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
+    </svg>
+  ),
+  deck: (
+    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" aria-hidden>
+      <rect x="8" y="4" width="11" height="15" rx="1.8" stroke="currentColor" strokeWidth={1.5} />
+      <path d="M5.5 7v11A1.8 1.8 0 007.3 19.8H15" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
+    </svg>
+  ),
+  versus: (
+    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" aria-hidden>
+      <path d="M4 4l10.5 10.5M20 4L9.5 14.5M4 4h3l1.5 1.5M20 4h-3l-1.5 1.5" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M14.5 14.5l4 4a1.5 1.5 0 01-2 2l-4-4M9.5 14.5l-4 4a1.5 1.5 0 002 2l4-4" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+  anchor: (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden>
+      <circle cx="12" cy="5" r="2.2" stroke="currentColor" strokeWidth={1.6} />
+      <path d="M12 7.2V20M8 10h8" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" />
+      <path d="M4.5 13.5A7.5 7.5 0 0012 20a7.5 7.5 0 007.5-6.5" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" />
+    </svg>
+  ),
+};
+
+/** Une ligne du récapitulatif : le pictogramme, ce que c'est, et sa précision. */
+function Fact({ icon, label, value, note }: { icon: ReactNode; label: string; value: string; note: string }) {
+  return (
+    <span className={styles.fact}>
+      <span className={styles.factIcon} aria-hidden>
+        {icon}
+      </span>
+      <span className={styles.factLines}>
+        <span className={styles.factHead}>
+          {label} : <strong>{value}</strong>
+        </span>
+        <span className={styles.factNote}>{note}</span>
+      </span>
+    </span>
   );
 }
 
