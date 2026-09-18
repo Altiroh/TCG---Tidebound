@@ -60,6 +60,12 @@ interface BoosterOpeningSceneProps {
    * au lieu de surgir du bas. Absent (essai d'animation) : entrée par le bas.
    */
   origin?: BoosterOpeningOrigin | null;
+  /**
+   * Libellé du bouton de sortie. « Fermer » par défaut ; un LOT enchaîne sur
+   * le bilan des autres sachets, et le bouton doit le dire plutôt que de
+   * laisser croire que tout est fini.
+   */
+  closeLabel?: string;
   onClose: () => void;
 }
 
@@ -141,7 +147,7 @@ function timingVariables(timings: BoosterOpeningTimings, cardCount: number): CSS
  *   - ce composant            : QUAND ça se passe (minuteries, sons, focus)
  *   - `BoosterOpening.module.css` : COMMENT ça bouge (transform/opacity)
  */
-export function BoosterOpeningScene({ cards, visual, origin = null, onClose }: BoosterOpeningSceneProps) {
+export function BoosterOpeningScene({ cards, visual, origin = null, closeLabel = "Fermer", onClose }: BoosterOpeningSceneProps) {
   const [reducedMotion] = useState(prefersReducedMotion);
   const [coarsePointer] = useState(hasCoarsePointer);
   const timings = reducedMotion ? BOOSTER_OPENING_TIMINGS_REDUCED : BOOSTER_OPENING_TIMINGS;
@@ -429,7 +435,7 @@ export function BoosterOpeningScene({ cards, visual, origin = null, onClose }: B
               {coarsePointer ? "Touche une carte pour voir sa fiche" : "Clique sur une carte pour voir sa fiche"}
             </p>
             <button ref={closeButtonRef} type="button" className={styles.closeButton} onClick={handleClose}>
-              Fermer
+              {closeLabel}
             </button>
           </>
         )}

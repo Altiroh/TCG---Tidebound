@@ -52,6 +52,14 @@ const TOUCH_DRAG_HOLD_MS = 220;
 /** Au-delà de cet écart avant le décollage, le doigt défilait : ce n'est pas un glisser. */
 const TOUCH_DRAG_SLOP_PX = 12;
 
+/** Ce qu'un LOT a rapporté : la rangée à montrer, et la liste complète derrière. */
+interface Batch {
+  boosterId: string;
+  packs: number;
+  cards: BoosterOpeningCard[];
+  lines: BoosterBatchLine[];
+}
+
 /** Sachet décollé qui suit le doigt, et le point où il se trouve. */
 interface TouchDrag {
   key: string;
@@ -151,12 +159,13 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
    * pour le reste), puis la liste complète à la demande. Dérouler dix fois
    * l'animation d'un sachet ferait attendre pour rien.
    */
-  const [batch, setBatch] = useState<{
-    boosterId: string;
-    packs: number;
-    cards: BoosterOpeningCard[];
-    lines: BoosterBatchLine[];
-  } | null>(null);
+  const [batch, setBatch] = useState<Batch | null>(null);
+  /**
+   * Bilan d'un lot qui ATTEND la fin de l'animation du premier sachet : un
+   * lot déroule l'ouverture UNE fois (décision du 18/09), puis ce bilan
+   * prend le relais pour tout le reste.
+   */
+  const [pendingBatch, setPendingBatch] = useState<Batch | null>(null);
   const [recap, setRecap] = useState<{ packs: number; lines: BoosterBatchLine[] } | null>(null);
 
   const docked = packs.find((pack) => pack.key === dockedKey) ?? null;
@@ -253,7 +262,7 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
   }
 
   async function handleOpen(boosterId: string, quantity = 1) {
-    if (isOpening || opening || batch) return;
+    if (isOpening || opening || batch || pendingBatch) return;
     playButtonClick();
     setError(null);
     setIsOpening(true);
@@ -280,7 +289,17 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
       return;
     }
 
-    // Lot : sa propre scène, alimentée par TOUTES les cartes tirées.
+    /*
+     * LOT — l'animation d'ouverture se joue UNE fois, sur le premier
+     * sachet, puis le bilan prend le relais pour tout le reste (décision du
+     * 18/09). La dérouler dix fois ferait attendre pour rien ; ne jamais la
+     * dérouler privait l'ouverture en lot de son seul moment.
+     *
+     * Les dix sachets sont déjà tirés et crédités à cet instant : la scène
+     * ne fait que montrer le premier, et le bilan couvre les dix — la carte
+     * rare d'un autre sachet reste donc mise en avant dans la rangée, qui
+     * trie par nouveauté puis par rareté.
+     */
     if (opened.length > 1) {
       const cards: BoosterOpeningCard[] = [];
       const byCard = new Map<string, BoosterBatchLine>();
@@ -303,8 +322,7 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
           }
         }
       });
-      setBatch({ boosterId, packs: opened.length, cards, lines: [...byCard.values()] });
-      return;
+      setPendingBatch({ boosterId, packs: opened.length, cards, lines: [...byCard.values()] });
     }
 
     setOpening({
@@ -339,6 +357,14 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
   function handleOpeningClosed() {
     const wasReal = opening?.real ?? false;
     setOpening(null);
+    // Lot : le bilan des autres sachets enchaîne, et c'est SA fermeture qui
+    // relira l'inventaire — le relire ici ferait remonter l'écran sous une
+    // scène encore ouverte.
+    if (pendingBatch) {
+      setBatch(pendingBatch);
+      setPendingBatch(null);
+      return;
+    }
     // Une ouverture réelle a consommé l'exemplaire et crédité la collection
     // côté base : on relit l'inventaire plutôt que de deviner le nouvel
     // état. Un essai d'animation n'a rien écrit — rien à relire.
@@ -623,6 +649,7 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
           cards={opening.cards}
           visual={getBoosterPackVisual(opening.boosterId)}
           origin={opening.origin}
+          closeLabel={pendingBatch ? `Voir les ${pendingBatch.packs - 1} autres sachets` : "Fermer"}
           onClose={handleOpeningClosed}
         />
       )}
