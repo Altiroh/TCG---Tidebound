@@ -24,10 +24,10 @@ describe("pools de boosters", () => {
     }
   });
 
-  it("respecte les effectifs de la répartition Notion du 15 septembre", () => {
-    expect(BOOSTER_POOLS[BOOSTER_DEFAUT]).toHaveLength(46);
-    expect(BOOSTER_POOLS[BOOSTER_POISSONS_PAS_FRAIS]).toHaveLength(50);
-    expect(BOOSTER_POOLS[BOOSTER_ETRANGETE_SOUS_MARINE]).toHaveLength(51);
+  it("respecte les effectifs de la répartition Notion, rattachements du 18/09 compris", () => {
+    expect(BOOSTER_POOLS[BOOSTER_DEFAUT]).toHaveLength(47);
+    expect(BOOSTER_POOLS[BOOSTER_POISSONS_PAS_FRAIS]).toHaveLength(51);
+    expect(BOOSTER_POOLS[BOOSTER_ETRANGETE_SOUS_MARINE]).toHaveLength(52);
   });
 
   it("n'a que trois cartes passerelles, exactement celles que le cadrage nomme", () => {
@@ -82,14 +82,12 @@ describe("pools de boosters", () => {
     }
   });
 
-  it("laisse hors booster exactement les trois cartes absentes de la répartition Notion", () => {
-    // Elles ne sont mentionnées dans aucun des trois pools du cadrage :
-    // elles sont donc inobtenables aujourd'hui. Constat volontairement
-    // figé ici pour qu'un ajout de carte oublié se voie tout de suite.
-    expect(unobtainableCardIds().sort()).toEqual([
-      "guetteur-mefiant",
-      "masse-sombre-abyssal",
-      "revenante-de-la-fosse-abyssal",
-    ]);
+  it("ne laisse aucune carte du catalogue hors booster", () => {
+    // Les trois dernières orphelines ont été rattachées le 18/09/2026
+    // (Guetteur Méfiant en B1, Revenante de la Fosse — ABYSSALE en B2,
+    // Masse-Sombre — ABYSSALE en B3) : tout le catalogue est obtenable.
+    // Une carte ajoutée sans booster échoue donc ici, au lieu de rester
+    // inobtenable sans que rien ne le signale.
+    expect(unobtainableCardIds().sort()).toEqual([]);
   });
 });

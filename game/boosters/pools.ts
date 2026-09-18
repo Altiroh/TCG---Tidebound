@@ -33,7 +33,7 @@ export const BOOSTER_ETRANGETE_SOUS_MARINE = "etrangete-sous-marine";
 export const BOOSTER_BIENVENUE = "welcome_tutorial";
 
 /**
- * B1 — Défaut. 46 entrées. Pool d'apprentissage : cartes lisibles,
+ * B1 — Défaut. 47 entrées. Pool d'apprentissage : cartes lisibles,
  * fondamentaux de Raison / Marée / Structures / Équipements, premières
  * cartes Cra-Poiscail et un teaser Marionnette.
  */
@@ -54,6 +54,7 @@ const DEFAUT: readonly string[] = [
   "ancre-de-derive", // Ancre de Dérive
   "marin-aux-yeux-rouges", // Marin aux Yeux Rouges
   "marin-aux-yeux-rouges-abyssal", // Marin aux Yeux Rouges
+  "guetteur-mefiant", // Guetteur Méfiant
   "guetteur-de-brume", // Guetteur de Brume
   "matelot-du-sans-nom", // Matelot du Sans-Nom
   "crabe-de-fer", // Crabe de Fer
@@ -87,7 +88,7 @@ const DEFAUT: readonly string[] = [
 ];
 
 /**
- * B2 — Poissons pas frais. 50 entrées. Pool intermédiaire : créatures
+ * B2 — Poissons pas frais. 51 entrées. Pool intermédiaire : créatures
  * marines plus marquées, Bris d'Objets, Cra-Poiscail développés,
  * manipulation de Marée.
  */
@@ -123,6 +124,7 @@ const POISSONS_PAS_FRAIS: readonly string[] = [
   "la-chose-qui-remonte", // La Chose qui Remonte
   "epave-engloutie", // Épave Engloutie
   "lhomme-revenu-de-la-fosse", // Revenante de la Fosse
+  "revenante-de-la-fosse-abyssal", // Revenante de la Fosse — ABYSSALE
   "treuil-a-chair", // Treuil à Chair
   "second-au-visage-pale", // Seconde au Visage Pâle
   "veilleur-des-profondeurs", // Veilleuse des Profondeurs
@@ -145,7 +147,7 @@ const POISSONS_PAS_FRAIS: readonly string[] = [
 ];
 
 /**
- * B3 — Étrangeté sous-marine. 51 entrées. Pool avancé et thématique :
+ * B3 — Étrangeté sous-marine. 52 entrées. Pool avancé et thématique :
  * Marionnettes / Théâtre, étrangeté abyssale, grosses cartes de rupture et
  * branche pseudo-médiévale Cra-Poiscail.
  */
@@ -153,6 +155,7 @@ const ETRANGETE_SOUS_MARINE: readonly string[] = [
   "quelque-chose-sous-la-coque", // Quelque Chose Sous la Coque
   "les-voix-dans-le-sillage", // Les Voix dans le Sillage
   "masse-sombre", // Masse-Sombre
+  "masse-sombre-abyssal", // Masse-Sombre — ABYSSALE
   "ce-qui-suit-le-navire", // Ce Qui Suit le Navire
   "ce-qui-suit-le-navire-abyssal", // Ce Qui Suit le Navire
   "lanterne-aux-verres-noirs", // Lanterne aux Verres Noirs
@@ -248,10 +251,11 @@ export function boostersContaining(cardId: string): string[] {
 
 /**
  * Cartes du catalogue qui ne tombent dans AUCUN booster — donc
- * inobtenables. Trois le sont aujourd'hui, et c'est conforme à la
- * répartition Notion, qui ne les mentionne nulle part ; le test de
- * couverture les liste explicitement plutôt que de laisser le trou passer
- * inaperçu.
+ * inobtenables. La liste est VIDE depuis le rattachement des trois
+ * dernières orphelines (Guetteur Méfiant en B1, Revenante de la Fosse —
+ * ABYSSALE en B2, Masse-Sombre — ABYSSALE en B3, arbitrage du 18/09/2026) :
+ * le test de couverture l'exige, pour qu'une carte ajoutée sans booster se
+ * voie tout de suite au lieu de rester inobtenable en silence.
  */
 export function unobtainableCardIds(): string[] {
   const inAnyPool = new Set(Object.values(BOOSTER_POOLS).flat());
