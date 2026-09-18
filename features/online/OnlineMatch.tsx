@@ -202,7 +202,7 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
 
   if (match.status === "waiting") {
     return (
-      <main className="mx-auto flex min-h-screen max-w-sm flex-col items-center justify-center gap-4 p-8 text-center">
+      <main className="mx-auto flex min-h-[100dvh] max-w-sm flex-col items-center justify-center gap-4 p-8 text-center">
         <h1 className="text-2xl font-bold">En attente d&apos;un adversaire</h1>
         <p className="text-4xl font-bold tracking-widest text-board-accent">{match.invite_code}</p>
         <p className="text-sm text-slate-400">Partage ce code. La partie démarre dès qu&apos;il/elle rejoint.</p>
@@ -215,7 +215,7 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
 
   if (!view) {
     return (
-      <main className="flex min-h-screen items-center justify-center p-8 text-slate-400">
+      <main className="flex min-h-[100dvh] items-center justify-center p-8 text-slate-400">
         Chargement de la partie...
       </main>
     );
