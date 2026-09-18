@@ -3,7 +3,7 @@ import { computeEffectiveStats } from "@/game/cards/stats";
 import { isVisibleDuringTide, type CardInstance, type TriggeredAbility, type TriggerSourceFilter } from "@/game/cards/types";
 import type { EffectDefinition } from "@/game/effects/types";
 import type { EffectContext } from "@/game/effects/resolveEffect";
-import { resolveEffect, revealRandomHandCards } from "@/game/effects/resolveEffect";
+import { hasGraveyardArrival, resolveEffect, revealRandomHandCards } from "@/game/effects/resolveEffect";
 import { resolveEffectSequence } from "@/game/effects/resolveSequence";
 import type { GameEvent } from "@/game/events/types";
 import { applyCardPlayedAnomalies, applyPermanentLeftAnomalies } from "@/game/state/anomalies";
@@ -91,21 +91,7 @@ function matchesControlCondition(
     if (!holder || holder.hand.length < handAtLeast) return false;
   }
   const arrival = ability.condition?.graveyardArrival;
-  if (arrival) {
-    const controller = state.players.find((p) => p.id === controllerId);
-    // « ce tour » = le tour de table courant ; « depuis votre dernier tour »
-    // remonte d'un tour de plus, celui de l'adversaire, sinon la condition
-    // ne verrait jamais ce qui est parti au Cimetière pendant qu'il jouait.
-    const since = arrival.since === "thisTurn" ? state.turnNumber : state.turnNumber - 1;
-    const seen = (controller?.graveyardArrivals ?? []).some((entry) => {
-      if (entry.turnNumber < since) return false;
-      if (arrival.fromHandOnly && entry.fromZone !== "hand") return false;
-      if (arrival.cardIds && !arrival.cardIds.includes(entry.cardId)) return false;
-      if (arrival.subtype && getCardDefinition(entry.cardId).subtype !== arrival.subtype) return false;
-      return true;
-    });
-    if (!seen) return false;
-  }
+  if (arrival && !hasGraveyardArrival(state, controllerId, arrival)) return false;
   const required = ability.condition?.controlsAnyCardIds;
   if (!required) return true;
   const controller = state.players.find((p) => p.id === controllerId);
@@ -528,6 +514,46 @@ export function processDiscardedFromHandTriggers(
 }
 
 /**
+ * Déclenchements de RÉCUPÉRATION (Lot 13) : « la première fois à chaque
+ * tour que vous récupérez une carte depuis votre Cimetière… » (Maman
+ * revient). Un `CARD_MOVED` Cimetière → main est le seul signal, quelle que
+ * soit la carte qui l'a provoqué.
+ *
+ * Purement observateur : la carte récupérée est en main, pas en jeu — il
+ * n'y a personne à réveiller de son côté, seulement ceux qui regardent.
+ */
+export function processGraveyardRecoveryTriggers(
+  state: GameState,
+  events: readonly GameEvent[],
+  turnNumber: number,
+  depth = 1
+): { state: GameState; events: GameEvent[] } {
+  let nextState = state;
+  const produced: GameEvent[] = [];
+
+  for (const event of events) {
+    if (event.type !== "CARD_MOVED" || event.fromZone !== "graveyard" || event.toZone !== "hand") continue;
+    if (!event.cardId || !event.ownerId) continue;
+
+    const result = processTrigger(
+      nextState,
+      {
+        trigger: "onCardRecoveredFromGraveyard",
+        playerId: event.ownerId,
+        cardId: event.cardId,
+        sourceInstanceId: event.instanceId,
+      },
+      turnNumber,
+      depth
+    );
+    nextState = result.state;
+    produced.push(...result.events);
+  }
+
+  return { state: nextState, events: produced };
+}
+
+/**
  * Traite un `TriggerEvent` : résout dans l'ordre toutes les capacités
  * AUTOMATIQUES concernées et retourne le nouvel état + les événements
  * produits (à ajouter au journal par l'appelant). Les capacités
@@ -625,6 +651,11 @@ export function processTrigger(
     const discarded = processDiscardedFromHandTriggers(nextState, events, turnNumber, depth + 1);
     nextState = discarded.state;
     events.push(...discarded.events);
+
+    // Et pour une carte repêchée au Cimetière par une capacité.
+    const recovered = processGraveyardRecoveryTriggers(nextState, events, turnNumber, depth + 1);
+    nextState = recovered.state;
+    events.push(...recovered.events);
   }
 
   // Anomalies globales temporaires (`game/state/anomalies.ts`) : centralisées

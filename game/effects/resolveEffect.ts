@@ -122,6 +122,29 @@ function matchesCardTypeFilter(filter: EffectDefinition["filter"], cardType: str
   return !allowed || (allowed as readonly string[]).includes(cardType);
 }
 
+/**
+ * « Une carte <sous-type> a-t-elle rejoint votre Cimetière ce tour / depuis
+ * votre dernier tour ? » — lecture du journal horodaté (Lot 13). Partagée
+ * par la condition de CAPACITÉ (`triggerBus`) et celle d'EFFET.
+ */
+export function hasGraveyardArrival(
+  state: GameState,
+  controllerId: PlayerId,
+  condition: NonNullable<EffectDefinition["conditionGraveyardArrival"]>
+): boolean {
+  const controller = state.players.find((p) => p.id === controllerId);
+  // « ce tour » = le tour de table courant ; « depuis votre dernier tour »
+  // remonte d'un tour de plus, celui de l'adversaire.
+  const since = condition.since === "thisTurn" ? state.turnNumber : state.turnNumber - 1;
+  return (controller?.graveyardArrivals ?? []).some((entry) => {
+    if (entry.turnNumber < since) return false;
+    if (condition.fromHandOnly && entry.fromZone !== "hand") return false;
+    if (condition.cardIds && !condition.cardIds.includes(entry.cardId)) return false;
+    if (condition.subtype && getCardDefinition(entry.cardId).subtype !== condition.subtype) return false;
+    return true;
+  });
+}
+
 export interface EffectResolution {
   state: GameState;
   events: GameEvent[];
@@ -405,6 +428,9 @@ export function resolveEffect(
       return { state, events };
     }
     if (effect.conditionEquippedUnitAttackedThisTurn && !holder.hasAttackedThisTurn) return { state, events };
+  }
+  if (effect.conditionGraveyardArrival) {
+    if (!hasGraveyardArrival(state, context.controllerId, effect.conditionGraveyardArrival)) return { state, events };
   }
   if (effect.conditionControllerHandAtLeast !== undefined) {
     if (getPlayer(state, context.controllerId).hand.length < effect.conditionControllerHandAtLeast) return { state, events };
@@ -997,7 +1023,18 @@ export function resolveEffect(
 
       const graveyard = player.graveyard.filter((c) => c.instanceId !== chosenId);
       const hand = [...player.hand, card];
-      events.push({ ...base, type: "CARD_MOVED", instanceId: card.instanceId, fromZone: "graveyard", toZone: "hand" });
+      // `cardId`/`ownerId` : la carte a quitté le Cimetière, c'est
+      // l'événement qui porte son identité pour les déclencheurs de
+      // récupération (Lot 13 — Maman revient).
+      events.push({
+        ...base,
+        type: "CARD_MOVED",
+        instanceId: card.instanceId,
+        cardId: card.cardId,
+        ownerId: player.id,
+        fromZone: "graveyard",
+        toZone: "hand",
+      });
       return { state: replacePlayer(state, { ...player, graveyard, hand }), events };
     }
 

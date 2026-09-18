@@ -1,7 +1,7 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { resolveEffectSequence } from "@/game/effects/resolveSequence";
 import { discardFromHand } from "@/game/state/discard";
-import { processDiscardedFromHandTriggers } from "@/game/triggers/triggerBus";
+import { processDiscardedFromHandTriggers, processGraveyardRecoveryTriggers } from "@/game/triggers/triggerBus";
 import type { GameEvent } from "@/game/events/types";
 import { assertGameActive, assertPlayerInGame, combine } from "@/game/rules/validation";
 import { reasonAfterLoss } from "@/game/state/reason";
@@ -55,6 +55,15 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
     const applied = resolveEffectSequence(nextState, ability.effects, context);
     nextState = applied.state;
     events.push(...applied.events);
+
+    // L'option choisie peut défausser ou repêcher : ses déclencheurs se
+    // réveillent comme partout ailleurs.
+    const discarded = processDiscardedFromHandTriggers(nextState, applied.events, choice.turnNumber);
+    nextState = discarded.state;
+    events.push(...discarded.events);
+    const recovered = processGraveyardRecoveryTriggers(nextState, applied.events, choice.turnNumber);
+    nextState = recovered.state;
+    events.push(...recovered.events);
     return { ok: true, state: nextState, events };
   }
   // « Défaussez N cartes » : le joueur a désigné lesquelles. Le moteur
@@ -94,6 +103,9 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
       const rest = resolveEffectSequence(nextState, choice.continuation.effects, choice.continuation.context);
       nextState = rest.state;
       events.push(...rest.events);
+      const recovered = processGraveyardRecoveryTriggers(nextState, rest.events, choice.turnNumber);
+      nextState = recovered.state;
+      events.push(...recovered.events);
     }
     return { ok: true, state: nextState, events };
   }

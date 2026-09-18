@@ -4,6 +4,7 @@ import { resolveEffect } from "@/game/effects/resolveEffect";
 import { resolveEffectSequence } from "@/game/effects/resolveSequence";
 import {
   processDiscardedFromHandTriggers,
+  processGraveyardRecoveryTriggers,
   processReturnedToHandTriggers,
   processSummonEnterTriggers,
   processTrigger,
@@ -308,6 +309,11 @@ export function breakObject(state: GameState, action: BreakObjectAction): Action
   const discardedByBreak = processDiscardedFromHandTriggers(nextState, breakEffectEvents, state.turnNumber);
   nextState = discardedByBreak.state;
   events.push(...discardedByBreak.events);
+
+  // Cartes repêchées au Cimetière par le Bris (ex: La Petite Chanson).
+  const recoveredByBreak = processGraveyardRecoveryTriggers(nextState, breakEffectEvents, state.turnNumber);
+  nextState = recoveredByBreak.state;
+  events.push(...recoveredByBreak.events);
 
   // Le Bris lui-même est un fait auquel des cartes réagissent
   // ("la première fois à chaque tour que vous Brisez un Objet").

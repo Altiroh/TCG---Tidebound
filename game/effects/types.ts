@@ -362,6 +362,24 @@ export interface EffectDefinition {
   refusable?: boolean;
 
   /**
+   * « Si une carte Un Dead a rejoint votre Cimetière ce tour, … » (Lot 13)
+   * posée sur UN effet et non sur la capacité entière : dans « piochez
+   * 1 carte puis défaussez 1 carte. Si une carte Un Dead a rejoint votre
+   * Cimetière ce tour, piochez 1 carte supplémentaire » (Le Goûter), la
+   * défausse qui précède peut elle-même remplir la condition. Une condition
+   * de capacité, évaluée une fois avant le premier effet, la manquerait.
+   *
+   * Même forme que `TriggeredAbility.condition.graveyardArrival` : elle lit
+   * le journal horodaté `PlayerState.graveyardArrivals`.
+   */
+  conditionGraveyardArrival?: {
+    subtype?: string;
+    cardIds?: string[];
+    fromHandOnly?: boolean;
+    since: "thisTurn" | "lastOwnTurn";
+  };
+
+  /**
    * Restreint la résolution de CET effet à un plafond ABSOLU de Raison du
    * contrôleur (ex: Thermos du Dernier Quart, "récupérez 3 Raison à la
    * place si vous avez 3 Raison ou moins" — un bonus qui s'ajoute à un

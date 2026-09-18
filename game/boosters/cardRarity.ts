@@ -309,6 +309,29 @@ const RAPIECER_LA_COQUE_RARITY: Record<string, CardRarity> = {
 export const PROVISIONAL_RARITY_CARD_IDS: readonly string[] = Object.keys(PROVISIONAL_RARITY);
 
 /** Suffixe d'une variante Abyssale (cf. convention technique de l'audit). */
+/**
+ * Lot 13 — La Veillée des Disparus. Raretés lues telles quelles dans la
+ * colonne « Rareté » de la page Notion du lot : elles ne sont pas déduites
+ * du coût ni de la puissance, elles sont données par le design.
+ */
+const VEILLEE_DES_DISPARUS_RARITY: Record<string, CardRarity> = {
+  "ptit-bout": "common",
+  "cache-cache": "common",
+  doudou: "common",
+  "encore-cinq-minutes": "common",
+  "papa-est-en-mer": "common",
+  "le-gouter": "uncommon",
+  "promis-jattends": "uncommon",
+  "la-petite-chanson": "uncommon",
+  "on-rentre-bientot": "uncommon",
+  "le-copain-du-dessous": "uncommon",
+  "maman-revient": "rare",
+  "la-marelle": "rare",
+  "bonne-nuit": "rare",
+  "tout-le-monde-a-table": "rare",
+  "on-avait-dit-tous-ensemble": "epic",
+};
+
 const ABYSSAL_VARIANT_SUFFIX = "-abyssal";
 
 /**
@@ -323,6 +346,7 @@ export function rarityForCardId(cardId: string): CardRarity | null {
     AUDITED_RARITY[cardId] ??
     THEATRE_ENGLOUTI_RARITY[cardId] ??
     RAPIECER_LA_COQUE_RARITY[cardId] ??
+    VEILLEE_DES_DISPARUS_RARITY[cardId] ??
     PROVISIONAL_RARITY[cardId] ??
     null
   );

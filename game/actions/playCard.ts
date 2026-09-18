@@ -6,6 +6,7 @@ import { resolveEffectSequence } from "@/game/effects/resolveSequence";
 import type { GameEvent } from "@/game/events/types";
 import {
   processDiscardedFromHandTriggers,
+  processGraveyardRecoveryTriggers,
   processReturnedToHandTriggers,
   processSummonEnterTriggers,
   processTrigger,
@@ -267,6 +268,11 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
   const discardedOnPlay = processDiscardedFromHandTriggers(nextState, playEffectEvents, state.turnNumber);
   nextState = discardedOnPlay.state;
   events.push(...discardedOnPlay.events);
+
+  // Cartes repêchées au Cimetière par la pose (ex: Tu viens jouer ?).
+  const recoveredOnPlay = processGraveyardRecoveryTriggers(nextState, playEffectEvents, state.turnNumber);
+  nextState = recoveredOnPlay.state;
+  events.push(...recoveredOnPlay.events);
 
   const cardPlayedTrigger = processTrigger(
     nextState,

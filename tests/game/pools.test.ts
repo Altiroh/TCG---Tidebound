@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { CORE_SET } from "@/game/cards/sets/core";
+import { CORE_SET, UN_DEAD } from "@/game/cards/sets/core";
 import {
   BOOSTER_BIENVENUE,
   BOOSTER_DEFAUT,
   BOOSTER_ETRANGETE_SOUS_MARINE,
   BOOSTER_POISSONS_PAS_FRAIS,
   BOOSTER_POOLS,
+  BOOSTER_VEILLEE_DES_DISPARUS,
   boostersContaining,
   PURCHASABLE_BOOSTER_IDS,
   unobtainableCardIds,
@@ -30,11 +31,32 @@ describe("pools de boosters", () => {
     expect(BOOSTER_POOLS[BOOSTER_ETRANGETE_SOUS_MARINE]).toHaveLength(64);
   });
 
-  it("n'a que trois cartes passerelles, exactement celles que le cadrage nomme", () => {
+  it("n'a que trois cartes passerelles ENTRE LES TROIS PREMIERS boosters, exactement celles que le cadrage nomme", () => {
+    // La règle des trois passerelles vient de la « Répartition globale des
+    // boosters » (Notion), écrite quand B1-B3 étaient tout le Market : trois
+    // cartes seulement pouvaient tomber dans deux boosters.
+    //
+    // La Veillée des Disparus (B4) est délibérément hors de ce compte : sa
+    // page de lot demande « des cartes génériques ou RÉÉDITIONS
+    // complémentaires », faute de quoi le booster serait mono-famille — un
+    // archétype fermé, exactement ce que l'audit d'équilibrage reproche. Les
+    // rééditions de B4 ne sont donc pas des passerelles au sens du cadrage.
+    const trio = [BOOSTER_DEFAUT, BOOSTER_POISSONS_PAS_FRAIS, BOOSTER_ETRANGETE_SOUS_MARINE];
     const bridges = [...CATALOGUE]
-      .filter((id) => PURCHASABLE_BOOSTER_IDS.filter((b) => BOOSTER_POOLS[b]!.includes(id)).length > 1)
+      .filter((id) => trio.filter((b) => BOOSTER_POOLS[b]!.includes(id)).length > 1)
       .sort();
     expect(bridges).toEqual(["arlecchino-des-profondeurs", "le-masque-fendu", "pulcinella-gonfle"]);
+  });
+
+  it("donne à La Veillée des Disparus son noyau Un Dead et des rééditions, pas un booster fermé", () => {
+    const pool = BOOSTER_POOLS[BOOSTER_VEILLEE_DES_DISPARUS]!;
+    const unDead = pool.filter((id) => CORE_SET.find((def) => def.id === id)?.subtype === UN_DEAD);
+    // Le cadrage du lot demande « environ 16 à 18 entrées Un Dead en
+    // comptant les variantes ».
+    expect(unDead.length).toBeGreaterThanOrEqual(16);
+    expect(unDead.length).toBeLessThanOrEqual(18);
+    // …et assez de compléments pour que le booster ne soit pas mono-famille.
+    expect(pool.length - unDead.length).toBeGreaterThanOrEqual(10);
   });
 
   it("place chaque passerelle dans les deux boosters annoncés", () => {

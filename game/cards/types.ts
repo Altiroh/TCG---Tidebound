@@ -317,12 +317,13 @@ export interface CardDefinition {
   /**
    * "La première fois à chaque tour qu'il devrait être détruit, il reste à
    * 1 Résistance à la place" (ex: Revenante de la Fosse, en Abysses
-   * seulement). Traité dans `game/state/processDeaths.ts` : les dégâts
+   * seulement ; Encore cinq minutes, en toute Marée — `tideStateIn` absent
+   * = aucune restriction d'état). Traité dans `game/state/processDeaths.ts` : les dégâts
    * marqués sont ramenés juste sous la vie effective, une fois par tour
    * (`oncePerTurnFlags`). Ne sauve pas d'une destruction directe par la
    * Marée (`destroyedByTide`).
    */
-  survivesLethalOncePerTurn?: { tideStateIn: TideStateName[] };
+  survivesLethalOncePerTurn?: { tideStateIn?: TideStateName[] };
 
   /**
    * "La première réduction de durée de Marée que vous provoquez chaque
@@ -420,6 +421,13 @@ export interface CardDefinition {
    * `equipTargetTypes` — les deux doivent être satisfaits.
    */
   equipTargetArchetype?: ArchetypeId;
+  /**
+   * Restreint la cible à un SOUS-TYPE (ex: « Équipez une unité Un Dead »,
+   * Lot 13). Même logique que `equipTargetArchetype`, pour les familles qui
+   * s'expriment en sous-type plutôt qu'en archétype (Marionnette, Volatile,
+   * Un Dead) : cumulatif avec `equipTargetTypes`.
+   */
+  equipTargetSubtype?: string;
 
   /**
    * Pour les Objets uniquement : effets résolus quand l'Objet est brisé

@@ -108,7 +108,9 @@ function applySelfSurvival(
   unit: CardInstance
 ): GameState | undefined {
   const survival = getCardDefinition(unit.cardId).survivesLethalOncePerTurn;
-  if (!survival || !survival.tideStateIn.includes(state.environment.tideState)) return undefined;
+  // `tideStateIn` absent : la survie ne dépend d'aucun état de Marée.
+  if (!survival) return undefined;
+  if (survival.tideStateIn && !survival.tideStateIn.includes(state.environment.tideState)) return undefined;
   if (!oncePerTurnAvailable(unit, SURVIVES_LETHAL_KEY, turnNumber)) return undefined;
   const stats = computeEffectiveStats(unit, state.environment.tideState, {
     controllerBoard: owner.board,

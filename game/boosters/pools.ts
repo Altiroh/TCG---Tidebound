@@ -31,6 +31,8 @@ export const BOOSTER_DEFAUT = "standard";
 export const BOOSTER_POISSONS_PAS_FRAIS = "poissons-pas-frais";
 export const BOOSTER_ETRANGETE_SOUS_MARINE = "etrangete-sous-marine";
 export const BOOSTER_BIENVENUE = "welcome_tutorial";
+/** B4 — La Veillée des Disparus (Lot 13). */
+export const BOOSTER_VEILLEE_DES_DISPARUS = "la-veillee-des-disparus";
 
 /**
  * B1 — Défaut. 61 entrées. Pool d'apprentissage : cartes lisibles,
@@ -259,6 +261,57 @@ const ETRANGETE_SOUS_MARINE: readonly string[] = [
  * carte d'archétype dans un booster de découverte n'apprend rien et ne
  * mène nulle part tant que le reste de la troupe n'est pas là.
  */
+/**
+ * B4 — La Veillée des Disparus. Noyau identitaire du Lot 13, complété par
+ * ce que le catalogue a déjà de compatible : défausse, Cimetière, attrition.
+ *
+ * Le cadrage Notion du lot le demande explicitement — « utiliser le Lot 13
+ * comme noyau identitaire sans être fermé à la famille », 16 à 18 entrées
+ * Un Dead sur le volume du booster. Un booster mono-famille ferait un
+ * archétype fermé, exactement ce que l'audit d'équilibrage reproche.
+ */
+const VEILLEE_DES_DISPARUS: readonly string[] = [
+  // --- Le noyau Un Dead (Lot 13) ---
+  "ptit-bout",
+  "cache-cache",
+  "doudou",
+  "encore-cinq-minutes",
+  "le-gouter",
+  "papa-est-en-mer",
+  "promis-jattends",
+  "la-petite-chanson",
+  "on-rentre-bientot",
+  "maman-revient",
+  "le-copain-du-dessous",
+  "la-marelle",
+  "bonne-nuit",
+  "tout-le-monde-a-table",
+  "on-avait-dit-tous-ensemble",
+  "maman-revient-abyssal",
+  // --- Compléments génériques : défausse et filtrage de main ---
+  "epave-a-fleur-deau",
+  "lettre-jamais-ouverte",
+  "journal-de-bord-detrempe",
+  "rations-du-matin-gris",
+  "bibliotheque-salee",
+  "mousse-des-quarts",
+  "gabier-au-carnet-mouille",
+  "le-masque-fendu",
+  // --- Cimetière et récupération ---
+  "grappin-de-recuperation",
+  "plongeur-des-epaves",
+  "mecanicien-aux-mains-noires",
+  "charpentier-des-epaves",
+  "caisse-des-dernieres-planches",
+  // --- Attrition et tenue de ligne ---
+  "marin-des-jetees",
+  "crabe-de-fer",
+  "chose-des-hauts-fonds",
+  "thermos-du-dernier-quart",
+  "vieux-loup-de-mer",
+  "plaque-de-fortune",
+];
+
 const BIENVENUE: readonly string[] = DEFAUT.filter((cardId) => {
   const def = CORE_SET.find((card) => card.id === cardId);
   if (!def) return false;
@@ -272,6 +325,7 @@ export const BOOSTER_POOLS: Readonly<Record<string, readonly string[]>> = {
   [BOOSTER_DEFAUT]: DEFAUT,
   [BOOSTER_POISSONS_PAS_FRAIS]: POISSONS_PAS_FRAIS,
   [BOOSTER_ETRANGETE_SOUS_MARINE]: ETRANGETE_SOUS_MARINE,
+  [BOOSTER_VEILLEE_DES_DISPARUS]: VEILLEE_DES_DISPARUS,
   [BOOSTER_BIENVENUE]: BIENVENUE,
 };
 
@@ -283,6 +337,7 @@ export const PURCHASABLE_BOOSTER_IDS: readonly string[] = [
   BOOSTER_DEFAUT,
   BOOSTER_POISSONS_PAS_FRAIS,
   BOOSTER_ETRANGETE_SOUS_MARINE,
+  BOOSTER_VEILLEE_DES_DISPARUS,
 ];
 
 /** Boosters dans lesquels cette carte peut tomber — vide si elle n'est dans aucun. */

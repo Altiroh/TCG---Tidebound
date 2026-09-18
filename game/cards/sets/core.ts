@@ -89,6 +89,17 @@ export const RAPIECER_LA_COQUE = "rapiecer-la-coque";
  */
 export const VOLATILE = "volatile";
 
+/** Lot 13 — La Veillée des Disparus (`CardDefinition.setCode`). */
+export const VEILLEE_DES_DISPARUS = "veillee-des-disparus";
+
+/**
+ * Sous-type de la famille du Lot 13. Comme MARIONNETTE et VOLATILE : une
+ * famille de ciblage, pas un mot-clé — aucun Un Dead ne gagne quoi que ce
+ * soit du seul fait d'en être un. Sous-type et non archétype, sans quoi ces
+ * cartes compteraient dans les seuils Cra-Poiscail (`countArchetypeUnits`).
+ */
+export const UN_DEAD = "un-dead";
+
 export const CORE_SET: CardDefinition[] = [
   // ======================================================================
   // LOT 01 — Premières cartes
@@ -3897,6 +3908,390 @@ export const CORE_SET: CardDefinition[] = [
     anomalyForceChoiceAtStartOfTurn: { reasonLossAmount: 1, anchorDamageAmount: 1 },
     text: "Pendant 2 tours, au début du tour de chaque joueur, celui-ci choisit : perdre 1 Raison ou subir 1 dégât d'Ancrage.",
   },
+  // ======================================================================
+  // LOT 13 — Un Dead / La Veillée des Disparus
+  // ======================================================================
+  // Les Un Dead ne sont pas les marins morts : ils naissent de la mélancolie
+  // laissée par les disparus. Mécaniquement, une famille qui CHOISIT d'aller
+  // au Cimetière — défausse volontaire, récursion filtrée, attrition — et qui
+  // convertit chaque perte en pression sur le Navire adverse.
+  //
+  // Sous-type et non archétype, comme Marionnette et Volatile : les seuils
+  // Cra-Poiscail (`countArchetypeUnits`) n'ont rien à voir ici.
+  {
+    id: "ptit-bout",
+    name: "P'tit Bout",
+    type: "creature",
+    subtype: UN_DEAD,
+    setCode: VEILLEE_DES_DISPARUS,
+    cost: 1,
+    attack: 1,
+    health: 2,
+    text: "Quand cette carte est défaussée, récupérez 1 Raison.",
+    // Le déclencheur se lit sur la DÉFINITION : la carte n'a jamais été sur
+    // le plateau, elle est passée de la main au Cimetière.
+    abilities: [
+      {
+        trigger: "onDiscarded",
+        description: "Défaussée : récupérez 1 Raison.",
+        effects: [{ type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
+      },
+    ],
+  },
+  {
+    id: "cache-cache",
+    name: "Cache-Cache",
+    type: "creature",
+    subtype: UN_DEAD,
+    setCode: VEILLEE_DES_DISPARUS,
+    cost: 1,
+    attack: 2,
+    health: 1,
+    text:
+      "La première fois pendant votre tour qu'une de vos cartes rejoint le Cimetière depuis votre main, " +
+      "elle gagne +1 Puissance jusqu'à la fin du tour.",
+    abilities: [
+      {
+        trigger: "onCardDiscardedFromHand",
+        triggeredBy: {},
+        oncePerTurnKey: "cacheCacheDefausse",
+        description: "Une de vos cartes est défaussée : +1 Puissance jusqu'à la fin du tour.",
+        effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, duration: "endOfTurn" }],
+      },
+    ],
+  },
+  {
+    id: "doudou",
+    name: "Doudou",
+    type: "equipement",
+    subtype: UN_DEAD,
+    setCode: VEILLEE_DES_DISPARUS,
+    cost: 1,
+    health: 1,
+    equipTargetSubtype: UN_DEAD,
+    text: "Équipez une unité Un Dead. Quand l'unité équipée est détruite, piochez 1 carte puis défaussez 1 carte.",
+    onPlayEffects: [{ type: "attachEquipment", target: { kind: "chosenUnit" } }],
+    abilities: [
+      {
+        trigger: "onDeath",
+        triggeredBy: { equippedUnit: true },
+        description: "Le porteur meurt : piochez 1 carte puis défaussez 1 carte.",
+        effects: [
+          { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+          { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: "encore-cinq-minutes",
+    name: "Encore cinq minutes",
+    type: "creature",
+    subtype: UN_DEAD,
+    setCode: VEILLEE_DES_DISPARUS,
+    cost: 2,
+    attack: 2,
+    health: 3,
+    // `tideStateIn` absent : la survie ne dépend d'aucune Marée, contrairement
+    // à la Revenante de la Fosse. ÉCART CONNU avec le texte : le moteur ne
+    // trace pas la SOURCE des dégâts, donc « au combat » se réalise ici comme
+    // « toute destruction par dégâts », la destruction directe par la Marée
+    // restant exclue (cf. `applySelfSurvival`).
+    survivesLethalOncePerTurn: {},
+    text: "La première fois à chaque tour qu'elle devrait être détruite au combat, elle reste à 1 Résistance.",
+  },
+  {
+    id: "le-gouter",
+    name: "Le Goûter",
+    type: "objet",
+    subtype: UN_DEAD,
+    setCode: VEILLEE_DES_DISPARUS,
+    cost: 2,
+    text:
+      "Brisez cet Objet : piochez 1 carte puis défaussez 1 carte. Si une carte Un Dead a rejoint votre Cimetière " +
+      "ce tour, piochez 1 carte supplémentaire.",
+    // La condition est portée par l'EFFET et non par la carte : la défausse
+    // qui précède peut elle-même la remplir, et c'est tout l'intérêt du
+    // texte. Évaluée après la réponse du joueur, comme la séquence l'impose.
+    onBreakEffects: [
+      { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+      { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+      {
+        type: "draw",
+        target: { kind: "controllerPlayer" },
+        amount: { kind: "flat", value: 1 },
+        conditionGraveyardArrival: { subtype: UN_DEAD, since: "thisTurn" },
+      },
+    ],
+  },
+  {
+    id: "papa-est-en-mer",
+    name: "Papa est en mer",
+    type: "marin",
+    subtype: UN_DEAD,
+    setCode: VEILLEE_DES_DISPARUS,
+    cost: 2,
+    attack: 2,
+    health: 2,
+    text:
+      "Quand une autre de vos unités Un Dead est détruite, il gagne +1 Puissance jusqu'à la fin du tour. " +
+      "Une fois par tour.",
+    abilities: [
+      {
+        trigger: "onDeath",
+        triggeredBy: { subtype: UN_DEAD, cardTypes: ["marin", "creature"] },
+        oncePerTurnKey: "papaAllieDetruit",
+        description: "Un autre Un Dead meurt : +1 Puissance jusqu'à la fin du tour.",
+        effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, duration: "endOfTurn" }],
+      },
+    ],
+  },
+  {
+    id: "promis-jattends",
+    name: "Promis, j'attends",
+    type: "creature",
+    subtype: UN_DEAD,
+    setCode: VEILLEE_DES_DISPARUS,
+    cost: 2,
+    attack: 1,
+    health: 4,
+    text:
+      "À votre début de tour, si une carte Un Dead a rejoint votre Cimetière depuis votre dernier tour, " +
+      "récupérez 1 Raison.",
+    abilities: [
+      {
+        trigger: "startOfTurn",
+        // « depuis votre dernier tour » : la fenêtre couvre le tour adverse
+        // qui vient de s'écouler, pas seulement celui qui commence.
+        condition: { graveyardArrival: { subtype: UN_DEAD, since: "lastOwnTurn" } },
+        description: "Un Un Dead est parti au Cimetière depuis votre dernier tour : récupérez 1 Raison.",
+        effects: [{ type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
+      },
+    ],
+  },
+  {
+    id: "la-petite-chanson",
+    name: "La Petite Chanson",
+    type: "objet",
+    subtype: UN_DEAD,
+    setCode: VEILLEE_DES_DISPARUS,
+    cost: 2,
+    maxCopies: 2,
+    text: "Brisez cet Objet : choisissez une unité Un Dead de coût 1 dans votre Cimetière. Remettez-la dans votre main.",
+    onBreakEffects: [
+      {
+        type: "moveGraveyardCardToHand",
+        target: { kind: "controllerPlayer" },
+        filter: { subtype: UN_DEAD, cardTypes: ["marin", "creature"], maxCost: 1 },
+      },
+    ],
+  },
+  {
+    id: "on-rentre-bientot",
+    name: "On rentre bientôt",
+    type: "creature",
+    subtype: UN_DEAD,
+    setCode: VEILLEE_DES_DISPARUS,
+    cost: 3,
+    attack: 3,
+    health: 3,
+    text:
+      "À son arrivée, vous pouvez défausser 1 carte. Si vous le faites, piochez 1 carte et elle gagne " +
+      "+1 Résistance jusqu'à votre prochain tour.",
+    // Pioche AVANT défausse, comme Épave à Fleur d'Eau : la garde « au moins
+    // 1 carte en main » lit ainsi la main d'AVANT l'échange, et « si vous le
+    // faites » ne se paie pas main vide. Le bonus vient en dernier, donc
+    // après la réponse du joueur à la défausse.
+    abilities: [
+      {
+        trigger: "onEnterPlay",
+        mode: "optional",
+        description: "Défaussez 1 carte : piochez 1 carte et +1 Résistance jusqu'à votre prochain tour.",
+        effects: [
+          { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, conditionControllerHandAtLeast: 1 },
+          { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, conditionControllerHandAtLeast: 2 },
+          {
+            type: "buff",
+            target: { kind: "self" },
+            healthAmount: { kind: "flat", value: 1 },
+            duration: "untilYourNextTurn",
+            conditionControllerHandAtLeast: 1,
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "maman-revient",
+    name: "Maman revient",
+    type: "marin",
+    subtype: UN_DEAD,
+    setCode: VEILLEE_DES_DISPARUS,
+    cost: 3,
+    attack: 2,
+    health: 4,
+    maxCopies: 2,
+    text:
+      "La première fois à chaque tour que vous récupérez une carte depuis votre Cimetière, infligez 1 dégât " +
+      "au Navire adverse.",
+    abilities: [
+      {
+        trigger: "onCardRecoveredFromGraveyard",
+        triggeredBy: {},
+        oncePerTurnKey: "mamanRecuperation",
+        description: "Vous repêchez une carte : 1 dégât au Navire adverse.",
+        effects: [{ type: "damage", target: { kind: "opponentPlayer" }, amount: { kind: "flat", value: 1 } }],
+      },
+    ],
+  },
+  {
+    id: "le-copain-du-dessous",
+    name: "Le Copain du dessous",
+    type: "creature",
+    subtype: UN_DEAD,
+    setCode: VEILLEE_DES_DISPARUS,
+    cost: 3,
+    attack: 3,
+    health: 2,
+    text: "Quand elle est détruite, infligez 1 dégât au Navire adverse.",
+    abilities: [
+      {
+        trigger: "onDeath",
+        description: "Détruite : 1 dégât au Navire adverse.",
+        effects: [{ type: "damage", target: { kind: "opponentPlayer" }, amount: { kind: "flat", value: 1 } }],
+      },
+    ],
+  },
+  {
+    id: "la-marelle",
+    name: "La Marelle",
+    type: "structure",
+    subtype: UN_DEAD,
+    setCode: VEILLEE_DES_DISPARUS,
+    cost: 3,
+    health: 4,
+    durationTurns: 4,
+    maxCopies: 2,
+    text:
+      "Durée : 4 tours. La première fois à chaque tour qu'une carte rejoint votre Cimetière depuis votre main, " +
+      "infligez 1 dégât au Navire adverse.",
+    abilities: [
+      {
+        trigger: "onCardDiscardedFromHand",
+        triggeredBy: {},
+        oncePerTurnKey: "marelleDefausse",
+        description: "Une carte part de votre main au Cimetière : 1 dégât au Navire adverse.",
+        effects: [{ type: "damage", target: { kind: "opponentPlayer" }, amount: { kind: "flat", value: 1 } }],
+      },
+    ],
+  },
+  {
+    id: "bonne-nuit",
+    name: "Bonne nuit",
+    type: "objet",
+    subtype: UN_DEAD,
+    setCode: VEILLEE_DES_DISPARUS,
+    cost: 3,
+    maxCopies: 2,
+    text:
+      "Brisez cet Objet : choisissez une unité Un Dead de coût 2 ou moins dans votre Cimetière. " +
+      "Remettez-la dans votre main. Puis perdez 1 Raison.",
+    onBreakEffects: [
+      {
+        type: "moveGraveyardCardToHand",
+        target: { kind: "controllerPlayer" },
+        filter: { subtype: UN_DEAD, cardTypes: ["marin", "creature"], maxCost: 2 },
+      },
+      { type: "reasonLoss", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+    ],
+  },
+  {
+    id: "tout-le-monde-a-table",
+    name: "Tout le monde à table",
+    type: "structure",
+    subtype: UN_DEAD,
+    setCode: VEILLEE_DES_DISPARUS,
+    cost: 4,
+    health: 5,
+    durationTurns: 4,
+    maxCopies: 2,
+    text:
+      "Durée : 4 tours. La première fois à chaque tour qu'une de vos unités est détruite, piochez 1 carte " +
+      "puis défaussez 1 carte.",
+    abilities: [
+      {
+        trigger: "onDeath",
+        triggeredBy: { cardTypes: ["marin", "creature"] },
+        oncePerTurnKey: "tableUniteDetruite",
+        description: "Une de vos unités meurt : piochez 1 carte puis défaussez 1 carte.",
+        effects: [
+          { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+          { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: "on-avait-dit-tous-ensemble",
+    name: "On avait dit tous ensemble",
+    type: "creature",
+    subtype: UN_DEAD,
+    setCode: VEILLEE_DES_DISPARUS,
+    cost: 5,
+    attack: 5,
+    health: 5,
+    maxCopies: 1,
+    text:
+      "La première fois à chaque tour qu'une autre de vos cartes Un Dead est détruite ou défaussée, " +
+      "infligez 1 dégât au Navire adverse.",
+    // « Détruite OU défaussée » : deux déclencheurs, UNE seule clé de suivi.
+    // `oncePerTurnFlags` est porté par la carte et non par la capacité, donc
+    // la même clé donne bien « une fois par tour » au total, pas une fois
+    // par voie.
+    abilities: [
+      {
+        trigger: "onDeath",
+        triggeredBy: { subtype: UN_DEAD },
+        oncePerTurnKey: "tousEnsemble",
+        description: "Un autre Un Dead meurt : 1 dégât au Navire adverse.",
+        effects: [{ type: "damage", target: { kind: "opponentPlayer" }, amount: { kind: "flat", value: 1 } }],
+      },
+      {
+        trigger: "onCardDiscardedFromHand",
+        triggeredBy: { subtype: UN_DEAD },
+        oncePerTurnKey: "tousEnsemble",
+        description: "Un autre Un Dead est défaussé : 1 dégât au Navire adverse.",
+        effects: [{ type: "damage", target: { kind: "opponentPlayer" }, amount: { kind: "flat", value: 1 } }],
+      },
+    ],
+  },
+  {
+    id: "maman-revient-abyssal",
+    name: "Maman revient",
+    type: "marin",
+    subtype: UN_DEAD,
+    variant: "abyssale",
+    setCode: VEILLEE_DES_DISPARUS,
+    cost: 4,
+    attack: 3,
+    health: 5,
+    maxCopies: 1,
+    text:
+      "La première fois à chaque tour que vous récupérez une carte depuis votre Cimetière, infligez 1 dégât " +
+      "au Navire adverse et récupérez 1 Raison.",
+    abilities: [
+      {
+        trigger: "onCardRecoveredFromGraveyard",
+        triggeredBy: {},
+        oncePerTurnKey: "mamanRecuperation",
+        description: "Vous repêchez une carte : 1 dégât au Navire adverse et 1 Raison.",
+        effects: [
+          { type: "damage", target: { kind: "opponentPlayer" }, amount: { kind: "flat", value: 1 } },
+          { type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+        ],
+      },
+    ],
+  },
 ];
 
 /**
@@ -3938,6 +4333,8 @@ export function canBeEquipTarget(
   if (!allowedTypes.includes(candidateDef.type)) return false;
   // "Équipez un Cra-Poiscail" : la famille restreint la cible en plus du type.
   if (equipmentDef.equipTargetArchetype && candidateDef.archetype !== equipmentDef.equipTargetArchetype) return false;
+  // "Équipez une unité Un Dead" : même restriction, exprimée en sous-type.
+  if (equipmentDef.equipTargetSubtype && candidateDef.subtype !== equipmentDef.equipTargetSubtype) return false;
   return !board.some(
     (u) => u.instanceId !== candidate.instanceId && u.attachedToInstanceId === candidate.instanceId
   );
