@@ -300,10 +300,11 @@ export const CORE_SET: CardDefinition[] = [
     text:
       "Durée : 3 tours. Visible pendant Calme et Houle. La première fois à chaque tour que l'adversaire Brise un " +
       "Objet, il doit payer 1 Raison supplémentaire. S'il ne peut pas payer, l'Objet ne peut pas être Brisé.",
-    // Sans plancher de Déraison, "s'il ne peut pas" n'arrive jamais : la taxe
-    // s'ajoute au coût du Bris (depuis la main : demi-coût + 1 ; depuis le
-    // plateau : 1 au lieu de rien) — cf. `objectBreakTax` (breakObject.ts).
-    taxOpponentObjectBreakOncePerTurnWhileVisible: 1,
+    // La taxe s'ajoute au coût du Bris (depuis la main : demi-coût + 1 ;
+    // depuis le plateau : 1 au lieu de rien) ET le rend impossible si la
+    // Raison ne couvre pas le total — c'est la seule entorse au « pas de
+    // plancher de Déraison », portée par la carte (cf. `objectBreakTax`).
+    taxOpponentObjectBreakOncePerTurnWhileVisible: { amount: 1, blocksIfUnpayable: true },
   },
   {
     id: "ancre-de-derive",

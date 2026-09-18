@@ -59,17 +59,17 @@ export function objectBreakTax(
   state: GameState,
   playerId: PlayerId,
   turnNumber: number
-): { amount: number; holder?: { unit: CardInstance; ownerId: PlayerId } } {
+): { amount: number; blocksIfUnpayable: boolean; holder?: { unit: CardInstance; ownerId: PlayerId } } {
   const opponent = state.players.find((p) => p.id !== playerId);
-  if (!opponent) return { amount: 0 };
+  if (!opponent) return { amount: 0, blocksIfUnpayable: false };
   for (const unit of opponent.board) {
     const def = getCardDefinition(unit.cardId);
     const tax = def.taxOpponentObjectBreakOncePerTurnWhileVisible;
     if (tax === undefined || !isVisibleDuringTide(def, state.environment.tideState)) continue;
     if (!oncePerTurnAvailable(unit, OBJECT_BREAK_TAX_KEY, turnNumber)) continue;
-    return { amount: tax, holder: { unit, ownerId: opponent.id } };
+    return { amount: tax.amount, blocksIfUnpayable: tax.blocksIfUnpayable === true, holder: { unit, ownerId: opponent.id } };
   }
-  return { amount: 0 };
+  return { amount: 0, blocksIfUnpayable: false };
 }
 
 /**
@@ -106,10 +106,13 @@ export function previewBreakReason(
   const def = getCardDefinition(card.cardId);
   if (def.type !== "objet") return undefined;
   const printed = fromHand ? handBreakCost(def) : 0;
-  const cost = reasonCostAfterShield(state, playerId, printed + objectBreakTax(state, playerId, state.turnNumber).amount, state.turnNumber);
-  // `allowed` reste dans la forme rendue : sans plancher de Déraison, un
-  // coût se paie toujours, l'UI n'a plus qu'à annoncer la dette.
-  return { cost, reasonAfter: player.reason - cost, allowed: true };
+  const tax = objectBreakTax(state, playerId, state.turnNumber);
+  const cost = reasonCostAfterShield(state, playerId, printed + tax.amount, state.turnNumber);
+  // Hors taxe bloquante, un coût se paie toujours : l'UI n'a qu'à annoncer
+  // la dette. Une Cloche d'Alerte adverse, elle, peut rendre le Bris
+  // impossible — l'aperçu doit le dire AVANT que le joueur ne tente.
+  const allowed = !tax.blocksIfUnpayable || player.reason >= cost;
+  return { cost, reasonAfter: player.reason - cost, allowed };
 }
 
 /**
@@ -152,6 +155,19 @@ function validate(state: GameState, action: BreakObjectAction) {
 
   if (def.requiresTideStateForBreak && !def.requiresTideStateForBreak.includes(state.environment.tideState)) {
     return { ok: false as const, error: "Cet Objet ne peut être brisé dans l'état de Marée actuel." };
+  }
+
+  // « S'il ne peut pas payer, l'Objet ne peut pas être Brisé » (Cloche
+  // d'Alerte) : seule une taxe adverse `blocksIfUnpayable` peut refuser un
+  // Bris faute de Raison. Hors ce cas, le coût se paie toujours, quitte à
+  // entrer en Déraison — le plancher est une règle de carte, pas du moteur.
+  const tax = objectBreakTax(state, action.playerId, state.turnNumber);
+  if (tax.blocksIfUnpayable) {
+    const printed = action.fromHand ? handBreakCost(def) : 0;
+    const total = reasonCostAfterShield(state, action.playerId, printed + tax.amount, state.turnNumber);
+    if (player.reason < total) {
+      return { ok: false as const, error: "Raison insuffisante pour payer la taxe de Bris adverse." };
+    }
   }
 
   const needsTarget = (def.onBreakEffects ?? []).some((e) => e.target.kind === "chosenUnit");

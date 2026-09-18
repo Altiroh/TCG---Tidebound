@@ -311,11 +311,19 @@ export interface CardDefinition {
 
   /**
    * Taxe de Bris (Cloche d'Alerte) : tant que la carte est visible, le
-   * premier Bris d'Objet de l'ADVERSAIRE à chaque tour lui coûte ce montant
+   * premier Bris d'Objet de l'ADVERSAIRE à chaque tour lui coûte `amount`
    * de Raison en plus — depuis la main (ajouté au demi-coût) comme depuis le
    * plateau (où le Bris est sinon gratuit). Résolu dans `breakObject.ts`.
+   *
+   * `blocksIfUnpayable` réalise « s'il ne peut pas payer, l'Objet ne peut
+   * pas être Brisé » : le Bris taxé exige alors que la Raison courante
+   * couvre le coût TOTAL, et il est refusé sinon. C'est la seule entorse au
+   * « pas de plancher de Déraison » (design du 16/09/2026), et elle est
+   * volontairement portée par la CARTE, pas par le moteur : hors taxe, un
+   * coût se paie toujours, quitte à creuser la dette. Sans ce drapeau, la
+   * taxe s'ajoute au coût et n'empêche jamais rien.
    */
-  taxOpponentObjectBreakOncePerTurnWhileVisible?: number;
+  taxOpponentObjectBreakOncePerTurnWhileVisible?: { amount: number; blocksIfUnpayable?: boolean };
 
   /**
    * Ancre de Dérive : quand la Marée change d'état et que la carte est
