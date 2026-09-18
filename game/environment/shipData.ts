@@ -103,7 +103,7 @@ export const SHIP_SET: ShipDefinition[] = [
     startingAnchor: 20,
     reasonMax: 10,
     slotCount: 5,
-    // Illustration non encore produite — l'arche reste vide, comme prévu.
+    illustration: "goliath.webp",
     text: "Profil : moyen / artillerie / pression de board.",
     // Premier Navire dont la capacité est réellement CÂBLÉE (les quatre
     // autres sont "une fois par partie", fréquence encore non modélisée).
@@ -112,6 +112,7 @@ export const SHIP_SET: ShipDefinition[] = [
     // coûté sa Raison pour rien.
     activatableAbility: {
       name: "Canon de proue",
+      illustration: "goliath.webp",
       text:
         "Une fois par tour, pendant une Phase principale, dépensez 2 Raison pour armer le Canon de proue. " +
         "Pendant votre Phase de combat, vous pouvez alors tirer : infligez 2 dégâts à un permanent adverse " +

@@ -16,6 +16,7 @@ import { EffectsLayer } from "@/features/board-preview/EffectsLayer";
 import { GameStage } from "@/features/match/table/GameStage";
 import { GameViewport } from "@/features/match/table/GameViewport";
 import { MotionLayer, type ImpactFx } from "@/features/match/table/MotionLayer";
+import { shipAbilityArtUrl } from "@/features/ships/shipFrame";
 import { OpponentZone } from "@/features/match/table/OpponentZone";
 import { PlayerZone } from "@/features/match/table/PlayerZone";
 import { PreviewGameCard } from "@/features/board-preview/PreviewGameCard";
@@ -377,6 +378,7 @@ export function BoardPreviewPage() {
             ability: {
               name: "Canon de proue",
               text: "Aperçu du panneau de capacité — cliquez pour ouvrir ou refermer les planches.",
+              artUrl: shipAbilityArtUrl("goliath.webp"),
               armed: cannonArmed,
               actionable: true,
               onClick: () => setCannonArmed((armed) => !armed),

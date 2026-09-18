@@ -2,7 +2,7 @@
 
 Cadre Navire + médaillons + illustrations, un jeu par Navire verrouillé
 (voir `game/environment/shipData.ts` — Le Courlis, L'Errant, Le
-Brise-Lames, La Religieuse).
+Brise-Lames, La Religieuse, Le Goliath).
 
 ## Assets validés (statut : validé sur Notion)
 
@@ -44,6 +44,30 @@ remplie.
 
 Une image carrée par Navire, référencée par `ShipDefinition.illustration`
 (`game/environment/shipData.ts`) : `le-courlis.webp`, `errant.webp`,
-`brise-lames.webp`, `la-religieuse.webp`. Utilisées à la fois sur le plateau
-de partie (`ShipInstrumentCluster`) et sur l'écran de victoire
+`brise-lames.webp`, `la-religieuse.webp`, `goliath.webp`. Utilisées à la fois
+sur le plateau de partie (`ShipInstrumentCluster`) et sur l'écran de victoire
 (`VictoryScreen`).
+
+## Panneau de capacité (`capacite/`)
+
+Le petit hublot posé sur le cadre, à la place de la rose des vents, pour les
+Navires qui portent une capacité activable câblée
+(`ShipDefinition.activatableAbility`). Trois pièces, assemblées par
+`features/match/table/TableShip.tsx` :
+
+- `cadre.webp` — le hublot de laiton, COMMUN à tous les Navires. Posé
+  par-dessus le reste : ses bossages débordent du rond intérieur, mesuré à
+  **70 %** du laiton (`.shipAbilityPort`).
+- `planches.webp` — le bardage qui ferme le hublot, COMMUN lui aussi. Une
+  seule image, affichée deux fois : cadrée sur sa moitié haute pour la
+  planche du haut, sur sa moitié basse pour celle du bas. Le bois se
+  raccorde donc au milieu, et les deux moitiés s'écartent à l'armement.
+- `<navire>.webp` — ce qu'on découvre dessous, PROPRE à la capacité
+  (`ShipActivatableAbility.illustration`). Une image carrée ; elle est
+  **zoomée** sur son sujet (`--ship-ability-art-zoom` / `-focus`), parce que
+  le hublot fait une trentaine de pixels à l'écran et qu'une scène entière
+  n'y serait qu'une tache grise.
+
+Placement et taille : `--ship-ability-top` / `-left` / `-size` dans
+`features/match/table/Table.module.css`. Le laboratoire `/game/board-preview`
+affiche le panneau et bascule ses deux états au clic.

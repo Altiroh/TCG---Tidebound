@@ -185,3 +185,17 @@ export function shipFrame(id: string | null | undefined): ShipFrameGeometry {
 export function shipIllustrationUrl(illustration: string): string {
   return `/assets/ships/illu/${illustration}`;
 }
+
+/**
+ * Assets du panneau de capacité de Navire. Le hublot de laiton et les
+ * planches sont COMMUNS à tous les Navires ; seule l'illustration qu'on
+ * découvre en dessous est propre à la capacité
+ * (`ShipActivatableAbility.illustration`).
+ */
+export const SHIP_ABILITY_RING_URL = "/assets/ships/capacite/cadre.webp";
+export const SHIP_ABILITY_PLANKS_URL = "/assets/ships/capacite/planches.webp";
+
+/** URL publique de ce qu'on découvre sous les planches. */
+export function shipAbilityArtUrl(illustration: string): string {
+  return `/assets/ships/capacite/${illustration}`;
+}

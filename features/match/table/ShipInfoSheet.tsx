@@ -4,6 +4,7 @@ import { useEffect, type CSSProperties } from "react";
 import { reasonCeiling, type PlayerState, type ShipDefinition, type TideStateName } from "@/game";
 import { TIDE_STATE_LABELS } from "@/features/match/cardDisplay";
 import { shipIllustrationUrl } from "@/features/ships/shipFrame";
+import { shipTraits } from "@/features/ships/shipText";
 import { useShipFrameGeometryFor } from "@/features/cosmetics/MatchCosmeticsProvider";
 import styles from "@/features/match/table/Table.module.css";
 import sheet from "@/features/match/table/TableSheet.module.css";
@@ -15,6 +16,9 @@ interface ShipInfoSheetProps {
   ownerLabel: string;
   onClose: () => void;
 }
+
+/** Attribut `data-kind` de chaque trait d'identité — il porte la couleur de la ligne. */
+const TRAIT_KIND = { Passif: "passive", "Capacité": "capacity", Faiblesse: "weakness" } as const;
 
 /** Effets de Marée du Navire, en clair : ce qui le protège, ce qui l'use. */
 function tideTraits(ship: ShipDefinition): Array<{ label: string; bad: boolean }> {
@@ -59,6 +63,12 @@ export function ShipInfoSheet({ player, ship, ownerLabel, onClose }: ShipInfoShe
   const frame = useShipFrameGeometryFor(player.id);
   const ceiling = reasonCeiling(player);
   const traits = tideTraits(ship);
+  // Passif / Capacité / Faiblesse passent par `shipTraits`, comme l'écran de
+  // sélection : c'est lui qui retire les notes d'implémentation (« (non
+  // appliqué : …) ») que la fiche affichait telles quelles au joueur, et qui
+  // sait lire une capacité réellement câblée (`activatableAbility`) en plus
+  // du `capacityText` de celles qui attendent encore le moteur.
+  const identityTraits = shipTraits(ship);
   const ratio = (value: number, max: number) => `${Math.max(0, Math.min(1, max > 0 ? value / max : 0)) * 100}%`;
 
   return (
@@ -135,24 +145,12 @@ export function ShipInfoSheet({ player, ship, ownerLabel, onClose }: ShipInfoShe
               {ship.text && <p className={sheet.profile}>{ship.text}</p>}
 
               <dl className={sheet.traits}>
-                {ship.passiveText && (
-                  <div className={sheet.trait} data-kind="passive">
-                    <dt>Passif</dt>
-                    <dd>{ship.passiveText}</dd>
+                {identityTraits.map((trait) => (
+                  <div key={trait.label} className={sheet.trait} data-kind={TRAIT_KIND[trait.label]}>
+                    <dt>{trait.label}</dt>
+                    <dd>{trait.text}</dd>
                   </div>
-                )}
-                {ship.capacityText && (
-                  <div className={sheet.trait} data-kind="capacity">
-                    <dt>Capacité</dt>
-                    <dd>{ship.capacityText}</dd>
-                  </div>
-                )}
-                {ship.weaknessText && (
-                  <div className={sheet.trait} data-kind="weakness">
-                    <dt>Faiblesse</dt>
-                    <dd>{ship.weaknessText}</dd>
-                  </div>
-                )}
+                ))}
               </dl>
 
               {traits.length > 0 && (

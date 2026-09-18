@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { getPlayer, getShipDefinition, shipAbilityView, type GameState, type PlayerAction, type PlayerId } from "@/game";
+import { shipAbilityArtUrl } from "@/features/ships/shipFrame";
 import type { ShipAbilityPanelView } from "@/features/match/table/TableShip";
 import type { BoardSelection } from "@/features/match/useBoardInteraction";
 
@@ -91,6 +92,7 @@ export function useShipAbility({
     name: mine.ability.name,
     text: mine.ability.text,
     armed: mine.armed,
+    artUrl: mine.ability.illustration ? shipAbilityArtUrl(mine.ability.illustration) : undefined,
     actionable: mine.canActivate || mine.canFire || aiming,
     blockedBy: mine.canFire ? mine.activationBlockedBy : (mine.fireBlockedBy ?? mine.activationBlockedBy),
     onClick: handleClick,
@@ -100,6 +102,7 @@ export function useShipAbility({
     name: theirs.ability.name,
     text: theirs.ability.text,
     armed: theirs.armed,
+    artUrl: theirs.ability.illustration ? shipAbilityArtUrl(theirs.ability.illustration) : undefined,
     // Jamais de halo sur le Navire d'en face : ce panneau informe, il n'invite à rien.
     actionable: false,
   };

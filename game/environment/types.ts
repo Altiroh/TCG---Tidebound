@@ -141,6 +141,12 @@ export interface ShipActivatableAbility {
    * de cap, Tenir la ligne, toujours en texte seul).
    */
   activationsPerTurn?: number;
+  /**
+   * Nom de fichier dans `public/assets/ships/capacite/` — ce qu'on découvre
+   * SOUS les planches (ex: `goliath.webp`, la gueule du canon). Absent : le
+   * panneau s'ouvre sur un fond de substitution.
+   */
+  illustration?: string;
   /** Effets résolus immédiatement à l'activation. Absent : l'activation ne fait qu'armer. */
   onActivateEffects?: EffectDefinition[];
   /** Tir différé : l'activation arme, un second geste tire. Absent : capacité en un seul geste. */

@@ -34,7 +34,14 @@ export interface ShipTrait {
 export function shipTraits(ship: ShipDefinition): ShipTrait[] {
   const traits: ShipTrait[] = [];
   const passive = playerFacingShipText(ship.passiveText);
-  const capacity = playerFacingShipText(ship.capacityText);
+  // Une capacité CÂBLÉE porte son propre texte et son propre nom ; seules
+  // celles qui attendent encore le moteur vivent en `capacityText`. Les deux
+  // se lisent à la même ligne — le joueur n'a pas à savoir laquelle est
+  // laquelle, il verra bien que l'une est cliquable et l'autre non.
+  const wired = ship.activatableAbility;
+  const capacity = wired
+    ? `${wired.name} — ${playerFacingShipText(wired.text)}`
+    : playerFacingShipText(ship.capacityText);
   const weakness = playerFacingShipText(ship.weaknessText);
   if (passive) traits.push({ label: "Passif", text: passive });
   if (capacity) traits.push({ label: "Capacité", text: capacity });

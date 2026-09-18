@@ -4,7 +4,11 @@ import type { CSSProperties } from "react";
 import type { PlayerId } from "@/game";
 import styles from "@/features/match/table/Table.module.css";
 import { useShipFrameGeometryFor } from "@/features/cosmetics/MatchCosmeticsProvider";
-import { shipIllustrationUrl } from "@/features/ships/shipFrame";
+import {
+  SHIP_ABILITY_PLANKS_URL,
+  SHIP_ABILITY_RING_URL,
+  shipIllustrationUrl,
+} from "@/features/ships/shipFrame";
 
 export interface ShipView {
   /** Nom lisible, pour les lecteurs d'écran uniquement. */
@@ -43,6 +47,8 @@ export interface ShipAbilityPanelView {
   armed: boolean;
   /** Le panneau appelle un clic maintenant (halo) — armer, ou tirer. */
   actionable: boolean;
+  /** URL de ce qu'on découvre sous les planches — absent : fond de substitution. */
+  artUrl?: string;
   /** Ce qui empêche d'agir, pour l'info-bulle. */
   blockedBy?: string;
   /** Absent : panneau d'observation, non cliquable (Navire adverse). */
@@ -50,14 +56,19 @@ export interface ShipAbilityPanelView {
 }
 
 /**
- * Panneau de capacité — les planches, le halo, et le clic.
+ * Panneau de capacité — le hublot de laiton, ce qu'il cache, les planches,
+ * le halo et le clic.
  *
- * L'illustration sous les planches n'a pas encore d'asset : le panneau
- * peint pour l'instant un fond de substitution. Le jour où le WebP existe,
- * il suffit de poser `--ship-ability-art` sur `.shipAbility` (cf.
- * `Table.module.css`) — la mécanique des planches, elle, ne bouge pas.
+ * Assemblage : l'illustration au fond, les deux planches par-dessus, le tout
+ * découpé au rond intérieur du hublot (`.shipAbilityPort`), et le hublot
+ * lui-même posé en dernier par-dessus le bord.
+ *
+ * Les deux planches sont la MÊME image (`planches.webp`, un bardage large),
+ * cadrée sur sa moitié haute pour l'une et sa moitié basse pour l'autre : le
+ * bois se raccorde donc exactement au milieu quand le panneau est fermé, et
+ * les deux moitiés s'écartent vers le haut et vers le bas à l'armement.
  */
-function ShipAbilityPanel({ name, text, armed, actionable, blockedBy, onClick }: ShipAbilityPanelView) {
+function ShipAbilityPanel({ name, text, armed, actionable, artUrl, blockedBy, onClick }: ShipAbilityPanelView) {
   const label = armed ? `${name} — armé` : name;
   const title = [label, text, !actionable && blockedBy ? blockedBy : null].filter(Boolean).join(" — ");
   const className = [
@@ -69,11 +80,19 @@ function ShipAbilityPanel({ name, text, armed, actionable, blockedBy, onClick }:
     .filter(Boolean)
     .join(" ");
 
+  const plankStyle = { backgroundImage: `url(${SHIP_ABILITY_PLANKS_URL})` };
   const content = (
     <>
-      <span aria-hidden className={styles.shipAbilityArt} />
-      <span aria-hidden className={`${styles.shipAbilityPlank} ${styles.shipAbilityPlankTop}`} />
-      <span aria-hidden className={`${styles.shipAbilityPlank} ${styles.shipAbilityPlankBottom}`} />
+      <span aria-hidden className={styles.shipAbilityPort}>
+        <span
+          className={styles.shipAbilityArt}
+          style={artUrl ? { backgroundImage: `url(${artUrl})` } : undefined}
+        />
+        <span className={`${styles.shipAbilityPlank} ${styles.shipAbilityPlankTop}`} style={plankStyle} />
+        <span className={`${styles.shipAbilityPlank} ${styles.shipAbilityPlankBottom}`} style={plankStyle} />
+      </span>
+      {/* eslint-disable-next-line @next/next/no-img-element -- hublot décoratif, taille pilotée par le cadre */}
+      <img src={SHIP_ABILITY_RING_URL} alt="" aria-hidden draggable={false} className={styles.shipAbilityRing} />
     </>
   );
 
