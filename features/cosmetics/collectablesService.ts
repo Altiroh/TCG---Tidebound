@@ -1,7 +1,9 @@
 import {
   COLLECTABLE_FAMILIES,
+  isArtVeiled,
   isCosmeticUnlocked,
   isFree,
+  isSlotMasked,
   unlockedCollectables,
   unlockLabel,
   unlockProgress,
@@ -99,23 +101,14 @@ function toOption(
   equipped: boolean,
   stats: AchievementStats
 ): CollectableOption {
-  const masked = !owned && item.hidden === true;
   /*
-   * CE QU'ON N'A PAS GAGNÉ, ON NE LE VOIT PAS (19/09/2026).
-   *
-   * Le voile ne couvrait que les emplacements cachés et les cadres de
-   * Navire : un dos verrouillé au niveau 25 se laissait donc regarder en
-   * entier, et le jour où il tombait, il n'y avait plus rien à découvrir.
-   * Toute récompense À MÉRITER est désormais sous le voile — nom et
-   * condition restent lisibles, on doit savoir ce qu'on vise.
-   *
-   * UNE exception, et elle est de bon sens : ce qui est EN VENTE se montre.
-   * Un cosmétique qu'on achète n'est pas une récompense qu'on découvre,
-   * c'est une marchandise — et on ne vend pas ce qu'on refuse de montrer.
-   * Le rayon Cosmétiques du Market lit ce même `src`.
+   * Les deux règles de visibilité vivent dans le MOTEUR
+   * (`game/cosmetics/unlock.ts`) : ce sont des règles de jeu, pas des
+   * détails d'affichage, et elles s'y testent sans base. Ce module ne fait
+   * que les appliquer.
    */
-  const forSale = item.unlock.kind === "purchase";
-  const artHidden = masked || (!owned && !forSale);
+  const masked = isSlotMasked(item, owned);
+  const artHidden = isArtVeiled(item, owned);
   return {
     id: item.id,
     label: masked ? "Collectable caché" : item.label,

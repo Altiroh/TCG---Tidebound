@@ -26,16 +26,28 @@ const FAMILY_HINTS: Record<string, string> = {
  * collection du joueur, et elle doit lui appartenir avant de lui montrer
  * ce qui lui manque. Le reste est à un clic.
  */
-type Shelf = "owned" | "locked" | "all";
+type Shelf = "owned" | "sale" | "locked" | "all";
 
+/**
+ * « En vente » existe parce que l'étagère par défaut, en ne montrant que le
+ * possédé, faisait disparaître tous les boutons d'achat : ils ne vivent que
+ * sous un objet NON possédé. Le rayon d'achat avait donc sa propre porte à
+ * retrouver, ce qui n'est pas une porte.
+ *
+ * Il ne s'affiche que s'il a quelque chose à vendre — un onglet vide
+ * n'annonce rien.
+ */
 const SHELVES: ReadonlyArray<{ id: Shelf; label: string }> = [
   { id: "owned", label: "Possédés" },
+  { id: "sale", label: "En vente" },
   { id: "locked", label: "À débloquer" },
   { id: "all", label: "Tous" },
 ];
 
 function onShelf(option: CollectableOption, shelf: Shelf): boolean {
   if (shelf === "owned") return option.owned;
+  // En vente : ce qu'on peut acheter MAINTENANT, donc pas ce qu'on a déjà.
+  if (shelf === "sale") return !option.owned && option.priceTides !== null;
   if (shelf === "locked") return !option.owned;
   return true;
 }
@@ -155,6 +167,9 @@ export function CollectablesScreen({ view }: { view: CollectablesView }) {
             <span className={styles.shelfTabs} role="group" aria-label="Ce qui est affiché">
               {SHELVES.map((entry) => {
                 const count = current.options.filter((option) => onShelf(option, entry.id)).length;
+                // « En vente » ne s'annonce que s'il a un rayon : un onglet
+                // vide ferait croire à une boutique fermée.
+                if (entry.id === "sale" && count === 0) return null;
                 return (
                   <button
                     key={entry.id}
@@ -389,11 +404,15 @@ function Showcase({
   const shown = family.options.filter((option) => onShelf(option, shelf));
 
   if (shown.length === 0) {
+    const empty =
+      shelf === "owned"
+        ? "Rien dans cette famille pour l'instant."
+        : shelf === "sale"
+          ? "Rien en vente dans cette famille."
+          : "Tout est débloqué dans cette famille.";
     return (
       <p className={game.muted}>
-        {shelf === "owned"
-          ? "Rien dans cette famille pour l'instant."
-          : "Tout est débloqué dans cette famille."}{" "}
+        {empty}{" "}
         <button type="button" className={game.link} onClick={onShowAll}>
           Tout voir
         </button>

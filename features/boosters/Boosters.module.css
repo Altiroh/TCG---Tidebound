@@ -74,16 +74,28 @@
   .shelfEntryArt { width: clamp(26px, 3vw, 40px); }
 }
 
-/* Plus étroit qu'un téléphone couché : c'est un portrait, que le jeu
-   n'accepte pas — mais l'écran ne doit pas pour autant devenir illisible
-   si on y arrive. Une seule colonne, et la page défile. */
+/*
+ * Plus étroit qu'un téléphone couché : c'est un portrait, que le jeu
+ * n'accepte pas — mais l'écran ne doit pas pour autant devenir illisible si
+ * on y arrive. Une seule colonne, et le défilement.
+ *
+ * C'est `.zones` qui défile, PAS `.layout` : la scène est posée en
+ * `position: absolute; bottom: 0` dans `.layout`, donc un `.layout`
+ * défilant l'ancrerait au bas du CONTENU et non de l'écran — le socle
+ * partait tout en bas du défilement, loin de la colonne qui lui réserve sa
+ * place.
+ */
 @media (max-width: 700px) {
-  .layout { overflow-y: auto; }
   .zones {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
   .shelf, .plan, .panel { grid-column: 1; }
+  .shelf, .panel { min-height: 0; overflow: visible; }
+  .shelfList, .panelBody { overflow: visible; }
   .plan { min-height: 46vh; }
 }
 

@@ -115,6 +115,39 @@ export function isCosmeticUnlocked(
 }
 
 /**
+ * LE VISUEL EST-IL SOUS LE VOILE ? (19/09/2026)
+ *
+ * « Ce qu'on n'a pas gagné, on ne le voit pas » : toute récompense à
+ * MÉRITER reste voilée tant qu'elle n'est pas obtenue — le nom et la
+ * condition, eux, restent lisibles, on doit savoir ce qu'on vise. Voir
+ * entier un dos verrouillé au niveau 25, c'est n'avoir plus rien à
+ * découvrir le jour où il tombe.
+ *
+ * UNE exception, et elle est de bon sens : ce qui est EN VENTE se montre.
+ * Un cosmétique qu'on achète n'est pas une récompense qu'on découvre,
+ * c'est une marchandise — et on ne vend pas ce qu'on refuse de montrer.
+ * Le rayon Cosmétiques du Market lit la même donnée.
+ *
+ * ICI et non dans le service d'affichage : c'est une règle de JEU, elle se
+ * teste sans base (`tests/features/collectableVeil.test.ts` exerce cette
+ * fonction, pas une copie de son énoncé).
+ */
+export function isArtVeiled(skin: { unlock: CosmeticUnlock; hidden?: boolean }, owned: boolean): boolean {
+  if (owned) return false;
+  if (skin.hidden === true) return true;
+  return skin.unlock.kind !== "purchase";
+}
+
+/**
+ * L'emplacement est-il MASQUÉ — ni nom, ni condition ? Réservé au
+ * Collectable déclaré caché et pas encore obtenu ; une fois obtenu, il se
+ * révèle entièrement.
+ */
+export function isSlotMasked(skin: { hidden?: boolean }, owned: boolean): boolean {
+  return !owned && skin.hidden === true;
+}
+
+/**
  * La condition, dite au joueur. Jamais « Verrouillé » tout court : ce qui
  * manque doit se lire, sinon la vignette ne sert qu'à frustrer.
  *

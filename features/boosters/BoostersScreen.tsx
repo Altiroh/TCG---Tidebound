@@ -53,6 +53,17 @@ interface ShelfRow {
 
 interface BoostersScreenProps {
   inventory: BoosterInventory;
+  /**
+   * LABORATOIRE : l'inventaire est fabriqué, l'ouverture doit l'être aussi.
+   *
+   * Sans ce drapeau, `/game/boosters-preview` affichait des compteurs
+   * inventés (« ×7 ») sur un bouton câblé à la VRAIE Server Action : un
+   * visiteur connecté y consommait ses propres boosters en croyant régler
+   * une mise en page. L'ouverture passe donc par le tirage local, celui du
+   * bouton « Tester l'animation » — aucune écriture, aucun exemplaire
+   * consommé.
+   */
+  sandbox?: boolean;
 }
 
 /**
@@ -80,7 +91,7 @@ interface BoostersScreenProps {
  * commence. Le client n'a jamais la main sur le contenu — il ne fait que
  * l'afficher (cf. l'en-tête de `features/boosters/actions.ts`).
  */
-export function BoostersScreen({ inventory }: BoostersScreenProps) {
+export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenProps) {
   const router = useRouter();
 
   /*
@@ -195,6 +206,15 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
     if (busy) return;
     playButtonClick();
     setError(null);
+
+    // LABORATOIRE : tirage local, rien n'est consommé ni écrit. Détourné
+    // ICI et non au niveau du bouton, pour que le glisser-déposer — qui
+    // ouvre lui aussi — passe par la même porte.
+    if (sandbox) {
+      setOpening({ boosterId, real: false, cards: drawTestBoosterCards(boosterId), origin: null });
+      return;
+    }
+
     setIsOpening(true);
 
     // Le sachet tremble, pivote et s'illumine sur le plan PENDANT que le

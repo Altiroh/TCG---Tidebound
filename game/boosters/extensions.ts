@@ -34,7 +34,7 @@ import {
  * commerciale, pas une étiquette de règles.
  *
  * L'archétype n'est annoncé que s'il DOMINE réellement le pool — le seuil
- * et le décompte sont vérifiés par `tests/features/boosterExtensions.test.ts`,
+ * et le décompte sont vérifiés par `tests/game/boosterExtensions.test.ts`,
  * pour qu'une promesse ne puisse pas survivre à la liste qui la fondait.
  */
 

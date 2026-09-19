@@ -69,7 +69,6 @@ export { computeEffectiveStats, computeStatModifierDelta } from "@/game/cards/st
 export type { EffectiveStats } from "@/game/cards/stats";
 
 export type { DeckList } from "@/game/cards/decks/types";
-export { repeat } from "@/game/cards/decks/types";
 export { BORROWED_DECK_LISTS } from "@/game/cards/decks/borrowed";
 export { PRECON_DECK_LISTS } from "@/game/cards/decks/precon";
 export { validateDeckList } from "@/game/rules/deckValidation";
@@ -157,8 +156,10 @@ export type { BotDifficulty } from "@/game/bot/types";
 
 // --- Cosmétiques -------------------------------------------------------
 export {
+  isArtVeiled,
   isCosmeticUnlocked,
   isFree,
+  isSlotMasked,
   unlockLabel,
   unlockProgress,
   type CosmeticSkin,
