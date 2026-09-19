@@ -3,35 +3,25 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { PITY } from "@/game/boosters";
+import { BOOSTER_EXTENSIONS, PITY, boosterExtensionLabel, type BoosterExtension } from "@/game/boosters";
 import { GameScreen } from "@/features/shell/GameScreen";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/boosters/Boosters.module.css";
-import shelfStyles from "@/features/shell/Shelf.module.css";
 import { ScreenToast, type ScreenToastMessage } from "@/features/shell/ScreenToast";
-import { openBoosters, type BoosterInventory } from "@/features/boosters/actions";
+import { openBoosters, type BoosterInventory, type BoosterInventoryEntry } from "@/features/boosters/actions";
 import { MAX_BATCH_OPEN } from "@/features/boosters/constants";
 import { BoosterBatchRecap, type BoosterBatchLine } from "@/features/boosters/opening/BoosterBatchRecap";
 import { BoosterBatchScene } from "@/features/boosters/opening/BoosterBatchScene";
-import { ownedPacks, type OwnedPack } from "@/features/boosters/ownedPacks";
-import {
-  FULL_SHELF_SLOTS,
-  PACK_SLOT_RATIO,
-  PACKS_PER_SHELF,
-  SHELF_PACK_OVERLAP,
-  splitIntoShelves,
-  stackedShelfLayout,
-  useElementSize,
-} from "@/features/boosters/stackedShelf";
 import { BoosterOpeningScene, type BoosterOpeningOrigin } from "@/features/boosters/opening/BoosterOpeningScene";
 import { preloadBoosterOpeningAssets } from "@/features/boosters/opening/boosterOpeningAssets";
 import { useCardBackSrc } from "@/features/cosmetics/CardBackProvider";
 import { closedPackVariables, getBoosterPackVisual } from "@/features/boosters/opening/boosterPackVisuals";
 import { drawTestBoosterCards } from "@/features/boosters/opening/testBoosterCards";
 import { toOpeningRarity, type BoosterOpeningCard } from "@/features/boosters/opening/types";
+import { BoosterContentsDialog } from "@/features/market/BoosterContentsDialog";
 import { playButtonClick } from "@/lib/sound";
 
-/** Type MIME du glisser-déposer d'un paquet vers le plan d'ouverture. */
+/** Type MIME du glisser-déposer d'une extension vers le plan d'ouverture. */
 const DRAG_MIME = "text/tidebound-booster-id";
 
 /**
@@ -51,51 +41,85 @@ const OPENING_TEST_BOOSTERS = [
   { boosterId: "welcome_tutorial", label: "Bienvenue" },
 ] as const;
 
+/** Une ligne du rayon : l'extension, et ce que le joueur en possède. */
+interface ShelfRow {
+  extension: BoosterExtension;
+  boosterId: string;
+  /** Nom commercial, lu en base (`booster_definitions.name`). */
+  name: string;
+  owned: number;
+  entry: BoosterInventoryEntry | null;
+}
+
 interface BoostersScreenProps {
   inventory: BoosterInventory;
 }
 
 /**
- * MES BOOSTERS — la réserve et son plan d'ouverture. L'achat vit dans le
- * Market (`/market`), écran séparé : acheter et ouvrir sont deux gestes
- * différents, à deux moments différents.
+ * MES BOOSTERS — le rayon des extensions, et le plan où on les ouvre.
+ * L'achat vit dans le Market (`/market`), écran séparé : acheter et ouvrir
+ * sont deux gestes différents, à deux moments différents.
  *
- * À gauche, l'ÉTAGÈRE : un sachet par exemplaire possédé (pas une ligne
- * par type — cf. `ownedPacks`), du plus récent au plus ancien, qui se
- * parcourt horizontalement. À droite, LE plan : on y fait glisser un
- * sachet, et il s'ouvre.
+ * TROIS ZONES (refonte du 19/09/2026) :
  *
- * L'ouverture est RÉELLE : `openBooster` consomme l'exemplaire, tire les
+ *   - à GAUCHE, le rayon : une ligne par extension qui EXISTE, possédée ou
+ *     non. C'était la lacune de l'écran précédent — il ne montrait que la
+ *     réserve, donc un joueur qui n'avait rien ne voyait rien, et personne
+ *     ne pouvait savoir ce qui existait sans passer par le Market ;
+ *   - au CENTRE, le plan : l'extension choisie y est posée. Grisée si on ne
+ *     la possède pas — on peut la regarder sans l'avoir ;
+ *   - à DROITE, sa fiche : d'où elle vient, ce qu'elle raconte, et ce qu'on
+ *     peut en faire.
+ *
+ * Deux gestes, deux intentions : CLIQUER une extension la met au centre
+ * pour la lire ; la GLISSER sur le plan l'ouvre. Un clic est trop facile à
+ * donner par erreur pour consommer un sachet.
+ *
+ * L'ouverture est RÉELLE : `openBoosters` consomme l'exemplaire, tire les
  * cartes côté serveur et crédite la collection avant que la scène ne
  * commence. Le client n'a jamais la main sur le contenu — il ne fait que
  * l'afficher (cf. l'en-tête de `features/boosters/actions.ts`).
  */
 export function BoostersScreen({ inventory }: BoostersScreenProps) {
   const router = useRouter();
-  const packs = useMemo(() => ownedPacks(inventory.boosters), [inventory.boosters]);
-  const shelfArea = useElementSize<HTMLDivElement>();
-  const shelves = useMemo(() => splitIntoShelves(packs), [packs]);
-  // Même disposition pour toutes les étagères, calculée pour une étagère
-  // PLEINE : un sachet garde sa taille et sa place d'une étagère à l'autre.
-  //
-  // Les sachets prennent quasiment toute la hauteur de la zone et se
-  // CHEVAUCHENT légèrement (demande du 15/09) : c'est le visuel du sachet
-  // qui doit porter le présentoir, pas le vide autour. Deux bornes donc —
-  // la hauteur disponible, et la largeur qu'une étagère pleine occupe une
-  // fois le chevauchement déduit (`FULL_SHELF_SLOTS`).
-  const packHeight = Math.min(shelfArea.height * 0.94, shelfArea.width / (FULL_SHELF_SLOTS * PACK_SLOT_RATIO));
-  const layout = stackedShelfLayout(PACKS_PER_SHELF, shelfArea.width, packHeight, {
-    // Écart NÉGATIF : les sachets d'une étagère pleine mordent les uns sur
-    // les autres. Une étagère moins garnie les écarte d'autant.
-    gap: -packHeight * PACK_SLOT_RATIO * SHELF_PACK_OVERLAP,
-    maxPackHeight: Number.POSITIVE_INFINITY,
-  });
 
-  /** Paquet posé sur le plan, prêt à être ouvert (sa clé d'étagère). */
-  const [dockedKey, setDockedKey] = useState<string | null>(null);
+  /*
+   * Le rayon vient du CODE (`BOOSTER_EXTENSIONS`), pas de la réserve : son
+   * ordre et sa composition ne doivent pas dépendre de ce qu'on possède.
+   * La base ne fournit que le nom, le prix et le compte — une extension
+   * qu'elle ne connaît pas encore reste affichable, à zéro.
+   */
+  const rows = useMemo<ShelfRow[]>(
+    () =>
+      BOOSTER_EXTENSIONS.map((extension) => {
+        const entry = inventory.boosters.find((booster) => booster.boosterId === extension.boosterId) ?? null;
+        return {
+          extension,
+          boosterId: extension.boosterId,
+          name: entry?.name ?? extension.boosterId,
+          owned: entry?.owned ?? 0,
+          entry,
+        };
+      }),
+    [inventory.boosters]
+  );
+
+  /*
+   * L'extension posée au centre. Contrairement à l'écran précédent, le plan
+   * n'est JAMAIS vide : il y a toujours quelque chose à lire, même sans
+   * rien posséder. On ouvre donc sur la première extension possédée, et à
+   * défaut sur la première du rayon.
+   */
+  const [selectedId, setSelectedId] = useState<string>(
+    () => rows.find((row) => row.owned > 0)?.boosterId ?? rows[0]?.boosterId ?? ""
+  );
+  const selected = rows.find((row) => row.boosterId === selectedId) ?? rows[0] ?? null;
+  const ownsSelected = (selected?.owned ?? 0) > 0;
+
   const [isDragging, setIsDragging] = useState(false);
   const [isOver, setIsOver] = useState(false);
   const [isOpening, setIsOpening] = useState(false);
+  const [contentsOf, setContentsOf] = useState<BoosterInventoryEntry | null>(null);
   const [toast, setToast] = useState<ScreenToastMessage | null>(null);
   const setError = (message: string | null) =>
     setToast(message ? { id: Date.now(), tone: "error", text: message } : null);
@@ -122,12 +146,6 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
    * cette scène-ci résume tout le lot — rangée de cartes alignées et « + »
    * pour le reste —, puis la liste complète à la demande.
    *
-   * Le geste d'ouverture avait disparu du lot (17/09) parce que le dérouler
-   * dix fois faisait attendre pour rien. Mais le supprimer entièrement a
-   * retiré ce qu'on vient chercher en ouvrant un booster : acheter cinq
-   * sachets donnait moins de plaisir qu'en acheter un. Un seul suffit à
-   * rendre le geste ; les quatre autres se lisent.
-   *
    * Posé EN MÊME TEMPS que `opening` au tirage, mais rendu seulement une
    * fois la scène du premier sachet refermée.
    */
@@ -139,41 +157,42 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
   } | null>(null);
   const [recap, setRecap] = useState<{ packs: number; lines: BoosterBatchLine[] } | null>(null);
 
-  const docked = packs.find((pack) => pack.key === dockedKey) ?? null;
   /** On ne peut ouvrir que ce qu'on possède, et jamais plus que la borne du lot. */
-  const maxBatch = docked ? Math.min(MAX_BATCH_OPEN, docked.copyCount) : 1;
-  const dockedEntry = docked ? inventory.boosters.find((entry) => entry.boosterId === docked.boosterId) : undefined;
+  const maxBatch = Math.max(1, Math.min(MAX_BATCH_OPEN, selected?.owned ?? 0));
+  const busy = isOpening || opening !== null || batch !== null;
 
-  // AUCUNE sélection par défaut : le plan reste vide tant qu'on n'y a rien
-  // posé — c'est ce vide qui dit ce qu'on attend du joueur. On ne fait donc
-  // que retirer le paquet qui n'existe plus (celui qu'on vient d'ouvrir).
+  // Le rayon ne bouge pas, mais ce qu'on en possède si : après une
+  // ouverture, l'extension choisie reste choisie — on veut voir sa réserve
+  // descendre, pas se faire déplacer ailleurs.
   useEffect(() => {
-    setDockedKey((current) => (current && packs.some((pack) => pack.key === current) ? current : null));
-  }, [packs]);
+    setSelectedId((current) => (rows.some((row) => row.boosterId === current) ? current : (rows[0]?.boosterId ?? "")));
+  }, [rows]);
 
-  // Changer de sachet posé remet la quantité dans ce que la nouvelle pile permet.
+  // Changer d'extension remet la quantité dans ce que la nouvelle pile permet.
   useEffect(() => {
     setBatchSize((current) => Math.min(Math.max(1, current), maxBatch));
   }, [maxBatch]);
 
-  // Images de la scène chargées et décodées en avance : l'ouverture démarre sans flash.
-  const visualIdsKey = Array.from(new Set(packs.map((pack) => pack.boosterId))).join(",");
+  // Images de la scène chargées et décodées en avance : l'ouverture démarre
+  // sans flash. Seulement ce qu'on possède — précharger un sachet qu'on ne
+  // peut pas ouvrir ferait payer le réseau pour rien.
+  const ownedIdsKey = rows.filter((row) => row.owned > 0).map((row) => row.boosterId).join(",");
   const cardBack = useCardBackSrc();
   useEffect(() => {
-    if (!visualIdsKey) return;
-    for (const boosterId of visualIdsKey.split(",")) {
+    if (!ownedIdsKey) return;
+    for (const boosterId of ownedIdsKey.split(",")) {
       void preloadBoosterOpeningAssets(getBoosterPackVisual(boosterId), cardBack);
     }
-  }, [visualIdsKey, cardBack]);
+  }, [ownedIdsKey, cardBack]);
 
-  function dock(key: string) {
+  function select(boosterId: string) {
     playButtonClick();
     setError(null);
-    setDockedKey(key);
+    setSelectedId(boosterId);
   }
 
   async function handleOpen(boosterId: string, quantity = 1) {
-    if (isOpening || opening || batch) return;
+    if (busy) return;
     playButtonClick();
     setError(null);
     setIsOpening(true);
@@ -182,7 +201,11 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
     // serveur tire les cartes : l'attente devient la montée en tension, et
     // l'animation dure au moins le temps d'être vue.
     const [result] = await Promise.all([
-      openBoosters(boosterId, quantity).catch(() => ({ ok: false as const, error: "Serveur injoignable — réessaie dans un instant.", data: undefined })),
+      openBoosters(boosterId, quantity).catch(() => ({
+        ok: false as const,
+        error: "Serveur injoignable — réessaie dans un instant.",
+        data: undefined,
+      })),
       new Promise((resolve) => setTimeout(resolve, DOCK_CHARGE_MS)),
     ]);
     const rect = dockPackRef.current?.getBoundingClientRect();
@@ -233,7 +256,12 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
             line.count += 1;
             line.isNew = line.isNew || card.isNew;
           } else {
-            byCard.set(card.cardId, { cardId: card.cardId, count: 1, isNew: card.isNew, rarity: toOpeningRarity(card.rarity) });
+            byCard.set(card.cardId, {
+              cardId: card.cardId,
+              count: 1,
+              isNew: card.isNew,
+              rarity: toOpeningRarity(card.rarity),
+            });
           }
         }
       });
@@ -268,7 +296,6 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
     //
     // Sauf si un LOT attend derrière : c'était le premier sachet des cinq,
     // le résumé s'affiche maintenant et c'est lui qui relira en se fermant.
-    // Relire ici ferait repeindre l'étagère sous une scène qui s'ouvre.
     if (wasReal && !batch) router.refresh();
   }
 
@@ -296,210 +323,272 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
     );
   }
 
+  const totalOwned = rows.reduce((sum, row) => sum + row.owned, 0);
+
   return (
     <GameScreen active="boosters">
       <div className={styles.layout}>
-        <div className={styles.layoutInner}>
-          {/* Pas de rappel du solde ici : le bandeau le porte déjà, deux
-              pas au-dessus. */}
-          <h1 className={game.title}>Mes boosters</h1>
+        <div className={styles.zones} data-dragging={isDragging ? "true" : "false"}>
+          {/* ── GAUCHE : le rayon, tout ce qui existe ─────────────── */}
+          <section className={styles.shelf} aria-label="Extensions">
+            <header className={styles.shelfHead}>
+              <h1 className={styles.shelfTitle}>Mes boosters</h1>
+              <span className={styles.shelfCount}>{totalOwned} au total</span>
+            </header>
 
-          <div className={styles.workbench} data-dragging={isDragging ? "true" : "false"}>
-            <section className={styles.stock} aria-label="Paquets possédés">
-              {packs.length === 0 ? (
-                <div className={styles.stockEmpty}>
-                  <span className={styles.stockEmptyMark} aria-hidden />
-                  <p className={styles.stockEmptyTitle}>Aucun booster en réserve</p>
-                  <p className={game.muted}>Les boosters achetés au Market atterrissent ici.</p>
-                  <Link href="/market" className={game.primary} onClick={() => playButtonClick()}>
-                    Aller au Market
-                  </Link>
-                </div>
-              ) : (
-                // Zone défilante mesurée : cinq sachets par étagère, une
-                // nouvelle étagère en dessous au-delà.
-                <div className={styles.shelves} ref={shelfArea.ref} role="listbox" aria-label="Paquets possédés">
-                  {shelves.map((shelfPacks, shelfIndex) => (
-                    <div key={shelfIndex} className={styles.shelf}>
-                      <div className={styles.shelfRow} style={{ height: layout.packHeight }}>
-                        {shelfPacks.map((pack, index) => (
-                          <ShelfPack
-                            key={pack.key}
-                            pack={pack}
-                            style={{
-                              left: layout.offset + index * layout.step,
-                              width: layout.slotWidth,
-                              // Le plus récent (à gauche) passe devant s'ils se chevauchent.
-                              zIndex: PACKS_PER_SHELF - index,
-                            }}
-                            selected={pack.key === dockedKey}
-                            disabled={isOpening || opening !== null}
-                            onSelect={() => dock(pack.key)}
-                            onDragStart={(event) => {
-                              event.dataTransfer.setData(DRAG_MIME, pack.boosterId);
-                              event.dataTransfer.effectAllowed = "move";
-                              setIsDragging(true);
-                            }}
-                            onDragEnd={() => {
-                              setIsDragging(false);
-                              setIsOver(false);
-                            }}
-                          />
-                        ))}
-                      </div>
-                      <div className={shelfStyles.plank} aria-hidden />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
+            <ul className={styles.shelfList} role="listbox" aria-label="Extensions" aria-activedescendant={`ext-${selectedId}`}>
+              {rows.map((row) => (
+                <ShelfEntry
+                  key={row.boosterId}
+                  row={row}
+                  selected={row.boosterId === selectedId}
+                  busy={busy}
+                  onSelect={() => select(row.boosterId)}
+                  onDragStart={(event) => {
+                    event.dataTransfer.setData(DRAG_MIME, row.boosterId);
+                    event.dataTransfer.effectAllowed = "move";
+                    setIsDragging(true);
+                    // Glisser dit déjà laquelle : le centre la montre tout de suite.
+                    setSelectedId(row.boosterId);
+                  }}
+                  onDragEnd={() => {
+                    setIsDragging(false);
+                    setIsOver(false);
+                  }}
+                />
+              ))}
+            </ul>
+          </section>
 
-            {/* LE plan d'ouverture : une seule zone, toujours à la même place,
-                qu'on vise à la souris comme on poserait le sachet sur la table. */}
-            <section
-              className={styles.dock}
-              data-state={isOver ? "over" : docked ? "loaded" : "empty"}
-              aria-label="Plan d'ouverture"
-              onDragOver={(event) => {
-                if (!event.dataTransfer.types.includes(DRAG_MIME)) return;
-                event.preventDefault();
-                event.dataTransfer.dropEffect = "move";
-                setIsOver(true);
-              }}
-              onDragLeave={(event) => {
-                // Le survol des enfants déclenche `dragleave` sur le parent :
-                // on ne l'écoute que lorsqu'on sort vraiment de la zone.
-                if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
-                setIsOver(false);
-              }}
-              onDrop={(event) => {
-                event.preventDefault();
-                setIsOver(false);
-                setIsDragging(false);
-                const boosterId = event.dataTransfer.getData(DRAG_MIME);
-                if (!boosterId) return;
-                const dropped = packs.find((pack) => pack.boosterId === boosterId);
-                if (!dropped) return;
-                // Déposer OUVRE : c'est le geste de l'écran, et le sachet
-                // qu'on lâche sur la zone est déjà un engagement. Le chemin
-                // au clic, lui, passe par le bouton « Ouvrir » — un clic
-                // est trop facile à donner par erreur.
-                setDockedKey(dropped.key);
-                void handleOpen(dropped.boosterId);
-              }}
-            >
-              {docked ? (
-                <>
-                  <span
-                    ref={dockPackRef}
-                    className={styles.dockPack}
-                    style={closedPackVariables(getBoosterPackVisual(docked.boosterId))}
-                    data-charging={isOpening || undefined}
-                    data-launched={opening !== null || undefined}
-                    aria-hidden
-                  />
-                  <p className={styles.dockName}>{docked.name}</p>
-                  {dockedEntry && dockedEntry.packsSinceAbyssal >= PITY.rampStartsAfterPacks && (
-                    <p className={styles.dockPity}>
-                      {dockedEntry.packsSinceAbyssal} sans Abyssale
-                      {dockedEntry.packsSinceAbyssal >= PITY.guaranteeAtPack - 1
-                        ? " · garantie au prochain"
-                        : " · chance renforcée"}
-                    </p>
-                  )}
-                  {maxBatch > 1 && (
-                    <span className={styles.batchGroup} role="group" aria-label="Nombre de boosters à ouvrir">
-                      <button
-                        type="button"
-                        className={styles.batchStep}
-                        onClick={() => {
-                          playButtonClick();
-                          setBatchSize((current) => Math.max(1, current - 1));
-                        }}
-                        disabled={batchSize <= 1 || isOpening || opening !== null || batch !== null}
-                        aria-label="Un booster de moins"
-                      >
-                        −
-                      </button>
-                      <span className={styles.batchCount}>{batchSize}</span>
-                      <button
-                        type="button"
-                        className={styles.batchStep}
-                        onClick={() => {
-                          playButtonClick();
-                          setBatchSize((current) => Math.min(maxBatch, current + 1));
-                        }}
-                        disabled={batchSize >= maxBatch || isOpening || opening !== null || batch !== null}
-                        aria-label="Un booster de plus"
-                      >
-                        +
-                      </button>
-                      <button
-                        type="button"
-                        className={game.link}
-                        onClick={() => {
-                          playButtonClick();
-                          setBatchSize(maxBatch);
-                        }}
-                        disabled={batchSize >= maxBatch || isOpening || opening !== null}
-                      >
-                        Tout ({maxBatch})
-                      </button>
+          {/* ── CENTRE : le plan d'ouverture ──────────────────────── */}
+          <section
+            className={styles.plan}
+            data-state={isOver ? "over" : ownsSelected ? "loaded" : "locked"}
+            aria-label="Plan d'ouverture"
+            onDragOver={(event) => {
+              if (!event.dataTransfer.types.includes(DRAG_MIME)) return;
+              event.preventDefault();
+              event.dataTransfer.dropEffect = "move";
+              setIsOver(true);
+            }}
+            onDragLeave={(event) => {
+              // Le survol des enfants déclenche `dragleave` sur le parent :
+              // on ne l'écoute que lorsqu'on sort vraiment de la zone.
+              if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+              setIsOver(false);
+            }}
+            onDrop={(event) => {
+              event.preventDefault();
+              setIsOver(false);
+              setIsDragging(false);
+              const boosterId = event.dataTransfer.getData(DRAG_MIME);
+              if (!boosterId) return;
+              const dropped = rows.find((row) => row.boosterId === boosterId);
+              if (!dropped) return;
+              setSelectedId(dropped.boosterId);
+              // Déposer OUVRE : le sachet qu'on lâche sur le plan est déjà
+              // un engagement. Une extension qu'on n'a pas ne s'ouvre pas —
+              // le plan le dit en restant verrouillé.
+              if (dropped.owned <= 0) {
+                setError("Tu ne possèdes aucun exemplaire de cette extension.");
+                return;
+              }
+              void handleOpen(dropped.boosterId);
+            }}
+          >
+            {selected && (
+              /* La scène porte l'illustration du socle et TOUT ce qui se
+                 cale dessus : sa boîte a exactement les proportions de
+                 l'image, de sorte que les pourcentages ci-dessous soient
+                 ceux de l'illustration et pas ceux de la colonne. */
+              <div className={styles.planScene}>
+                <span
+                  ref={dockPackRef}
+                  className={styles.planPack}
+                  style={closedPackVariables(getBoosterPackVisual(selected.boosterId))}
+                  data-locked={ownsSelected ? undefined : "true"}
+                  data-charging={isOpening || undefined}
+                  data-launched={opening !== null || undefined}
+                  aria-hidden
+                />
+                {/*
+                 * La plaque du socle. Elle RECOUVRE celle qui est peinte
+                 * dans l'illustration (« Glissez un booster ici ») : le
+                 * décor ne peut pas dire autre chose que l'état réel du
+                 * plan. Son calage suit celui de l'image — la déplacer
+                 * dans l'illustration demande de reprendre `.planPlate`.
+                 */}
+                <p className={styles.planPlate}>
+                  {/*
+                   * Le texte vit dans un `span` et pas directement dans la
+                   * plaque : celle-ci est un conteneur flex, où l'élision
+                   * ne s'applique pas. Sans lui, un nom trop long était
+                   * rogné DES DEUX CÔTÉS — « trangeté sous-marin » — au
+                   * lieu de se terminer par des points de suspension.
+                   * Court par nécessité : la plaque est peinte dans
+                   * l'illustration, sa largeur n'est pas négociable.
+                   */}
+                  <span className={styles.planPlateText}>
+                    {isOpening
+                      ? "Ouverture…"
+                      : !ownsSelected
+                        ? "Non possédée"
+                        : isDragging || isOver
+                          ? "Lâche pour ouvrir"
+                          : selected.name}
+                  </span>
+                </p>
+                {ownsSelected && selected.entry && selected.entry.packsSinceAbyssal >= PITY.rampStartsAfterPacks && (
+                  <p className={styles.planPity}>
+                    {selected.entry.packsSinceAbyssal} sans Abyssale
+                    {selected.entry.packsSinceAbyssal >= PITY.guaranteeAtPack - 1
+                      ? " · garantie au prochain"
+                      : " · chance renforcée"}
+                  </p>
+                )}
+              </div>
+            )}
+          </section>
+
+          {/* ── DROITE : la fiche de l'extension ──────────────────── */}
+          {selected && (
+            <aside className={styles.panel} aria-label={`Extension ${selected.name}`}>
+              {/* Seul le RÉCIT défile. Les actions restent posées au bas du
+                  panneau : « Ouvrir » ne doit jamais tomber sous la ligne de
+                  flottaison parce que le lore d'une extension est long. */}
+              <div className={styles.panelBody}>
+                <header className={styles.panelHead}>
+                  <h2 className={styles.panelTitle}>{selected.name}</h2>
+                  <p className={styles.panelKind}>{boosterExtensionLabel(selected.boosterId)}</p>
+                </header>
+
+                <span
+                  className={styles.panelArt}
+                  style={closedPackVariables(getBoosterPackVisual(selected.boosterId))}
+                  data-locked={ownsSelected ? undefined : "true"}
+                  aria-hidden
+                />
+
+                <p className={styles.panelTagline}>{selected.extension.tagline}</p>
+                <p className={styles.panelLore}>{selected.extension.lore}</p>
+              </div>
+
+              <hr className={styles.panelRule} />
+
+              <div className={styles.panelActions}>
+                <button
+                  type="button"
+                  className={game.secondary}
+                  onClick={() => {
+                    playButtonClick();
+                    if (selected.entry) setContentsOf(selected.entry);
+                  }}
+                  disabled={!selected.entry || selected.entry.pool.length === 0}
+                >
+                  Cartes de l&apos;extension
+                </button>
+
+                {/* Le Market reste ouvert quoi qu'il arrive : c'est la
+                    seule sortie utile quand on ne possède rien, et un
+                    réapprovisionnement quand on possède déjà. */}
+                <Link href="/market" className={game.secondary} onClick={() => playButtonClick()}>
+                  Aller au Market
+                </Link>
+
+                <div className={styles.openRow}>
+                  <span className={styles.batchGroup} role="group" aria-label="Nombre de boosters à ouvrir">
+                    <button
+                      type="button"
+                      className={styles.batchStep}
+                      onClick={() => {
+                        playButtonClick();
+                        setBatchSize((current) => Math.max(1, current - 1));
+                      }}
+                      disabled={!ownsSelected || batchSize <= 1 || busy}
+                      aria-label="Un booster de moins"
+                    >
+                      −
+                    </button>
+                    <span className={styles.batchCount} aria-live="polite">
+                      {batchSize}
                     </span>
-                  )}
+                    <button
+                      type="button"
+                      className={styles.batchStep}
+                      onClick={() => {
+                        playButtonClick();
+                        setBatchSize((current) => Math.min(maxBatch, current + 1));
+                      }}
+                      disabled={!ownsSelected || batchSize >= maxBatch || busy}
+                      aria-label="Un booster de plus"
+                    >
+                      +
+                    </button>
+                  </span>
+
                   <button
                     type="button"
                     className={game.primary}
-                    onClick={() => void handleOpen(docked.boosterId, batchSize)}
-                    disabled={isOpening || opening !== null || batch !== null}
+                    onClick={() => void handleOpen(selected.boosterId, batchSize)}
+                    disabled={!ownsSelected || busy}
                   >
-                    {isOpening ? "Ouverture…" : batchSize > 1 ? `Ouvrir ${batchSize} boosters` : "Ouvrir"}
+                    {isOpening ? "Ouverture…" : batchSize > 1 ? `Ouvrir ${batchSize} boosters` : "Ouvrir 1 booster"}
                   </button>
-                </>
-              ) : (
-                <>
-                  {/* Placeholder : trois cartes en attente, pas un cadre
-                      vide — la zone montre ce qu'elle rend, pas ce qui lui
-                      manque. */}
-                  <svg viewBox="0 0 48 44" width="52" height="48" fill="none" className={styles.dockMark} aria-hidden>
-                    <rect x="8" y="9" width="21" height="29" rx="3" stroke="currentColor" strokeWidth="1.6" transform="rotate(-11 18 23)" />
-                    <rect x="14" y="7" width="21" height="29" rx="3" stroke="currentColor" strokeWidth="1.6" />
-                    <rect x="20" y="9" width="21" height="29" rx="3" stroke="currentColor" strokeWidth="1.6" transform="rotate(11 30 23)" />
-                  </svg>
-                  <p className={styles.dockTitle}>
-                    {packs.length > 0 ? "Glisse un booster ici" : "Rien à ouvrir"}
+                </div>
+
+                {ownsSelected && maxBatch > 1 && (
+                  <button
+                    type="button"
+                    className={game.link}
+                    onClick={() => {
+                      playButtonClick();
+                      setBatchSize(maxBatch);
+                    }}
+                    disabled={batchSize >= maxBatch || busy}
+                  >
+                    Tout ouvrir ({maxBatch})
+                  </button>
+                )}
+
+                {!ownsSelected && (
+                  <p className={styles.panelLocked}>
+                    Tu n&apos;as aucun exemplaire de cette extension. Le Market en vend.
                   </p>
-                </>
-              )}
-            </section>
-          </div>
+                )}
+              </div>
+            </aside>
+          )}
+        </div>
 
-          <div className={styles.footRow}>
-            <Link href="/market" className={game.link} onClick={() => playButtonClick()}>
-              Acheter des boosters →
-            </Link>
-
-            {/* Réglage de l'animation : un tirage local, sans booster ni
-                écriture — le seul moyen de la revoir sans en acheter un. */}
-            <span className={styles.testGroup} role="group" aria-label="Tester l’animation d’ouverture">
-              <span className={styles.testLabel}>Tester l&apos;animation</span>
-              {OPENING_TEST_BOOSTERS.map((test) => (
-                <button
-                  key={test.boosterId}
-                  type="button"
-                  className={game.link}
-                  onClick={() => handleTestOpen(test.boosterId)}
-                  disabled={opening !== null || isOpening}
-                >
-                  {test.label}
-                </button>
-              ))}
-            </span>
-          </div>
+        <div className={styles.footRow}>
+          {/* Réglage de l'animation : un tirage local, sans booster ni
+              écriture — le seul moyen de la revoir sans en acheter un. */}
+          <span className={styles.testGroup} role="group" aria-label="Tester l’animation d’ouverture">
+            <span className={styles.testLabel}>Tester l&apos;animation</span>
+            {OPENING_TEST_BOOSTERS.map((test) => (
+              <button
+                key={test.boosterId}
+                type="button"
+                className={game.link}
+                onClick={() => handleTestOpen(test.boosterId)}
+                disabled={opening !== null || isOpening}
+              >
+                {test.label}
+              </button>
+            ))}
+          </span>
         </div>
       </div>
 
       <ScreenToast message={toast} onDismiss={() => setToast(null)} />
+
+      {contentsOf && (
+        <BoosterContentsDialog
+          booster={contentsOf}
+          owned={new Set(inventory.ownedCardIds)}
+          onClose={() => setContentsOf(null)}
+        />
+      )}
 
       {/* Après la scène du premier sachet, jamais pendant : les deux sont
           posées au même instant au tirage (cf. `handleOpen`). */}
@@ -507,12 +596,6 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
         <BoosterBatchScene
           cards={batch.cards}
           packs={batch.packs}
-          /* La scène du lot se FERME en passant à la liste complète. Les
-             deux restaient montées l'une sur l'autre : la rangée de cartes
-             continuait de vivre derrière la liste, et fermer la liste
-             ramenait un écran qu'on croyait avoir quitté. C'est la même fin
-             d'ouverture dans les deux cas — d'où `handleBatchClosed`, qui
-             relit aussi l'inventaire pendant qu'on lit la liste. */
           onShowAll={() => {
             setRecap({ packs: batch.packs, lines: batch.lines });
             handleBatchClosed();
@@ -536,56 +619,81 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
 }
 
 /**
- * Un sachet sur l'étagère, posé en absolu à la position calculée par
- * l'écran.
+ * Une extension sur le rayon : sa vignette, son nom, ce qu'on en possède.
  *
- * Une `div` et non un `button` : le glisser-déposer natif d'un `<button>`
+ * Une `li` et non un `button` : le glisser-déposer natif d'un `<button>`
  * est capricieux selon les navigateurs (le bouton avale le `dragstart`),
- * et c'est le geste principal de cet écran. Le rôle, le `tabIndex` et la
+ * et c'est le geste d'ouverture de cet écran. Le rôle, le `tabIndex` et la
  * gestion d'Entrée/Espace lui rendent le comportement d'un bouton pour qui
  * ne glisse pas.
+ *
+ * Une extension qu'on ne possède pas reste SÉLECTIONNABLE — c'est tout
+ * l'intérêt de la montrer : on veut pouvoir la lire avant de l'acheter.
+ * Seul le glisser lui est retiré, puisqu'il n'y a rien à ouvrir.
  */
-function ShelfPack({
-  pack,
-  style,
+function ShelfEntry({
+  row,
   selected,
-  disabled,
+  busy,
   onSelect,
   onDragStart,
   onDragEnd,
 }: {
-  pack: OwnedPack;
-  style: React.CSSProperties;
+  row: ShelfRow;
   selected: boolean;
-  disabled: boolean;
+  busy: boolean;
   onSelect: () => void;
-  onDragStart: (event: React.DragEvent<HTMLDivElement>) => void;
+  onDragStart: (event: React.DragEvent<HTMLLIElement>) => void;
   onDragEnd: () => void;
 }) {
+  const draggable = row.owned > 0 && !busy;
+
   return (
-    <div
-      className={styles.shelfPack}
-      style={style}
+    <li
+      id={`ext-${row.boosterId}`}
+      className={styles.shelfEntry}
       data-selected={selected ? "true" : "false"}
-      data-disabled={disabled ? "true" : "false"}
-      draggable={!disabled}
-      onDragStart={disabled ? undefined : onDragStart}
+      data-owned={row.owned > 0 ? "true" : "false"}
+      draggable={draggable}
+      onDragStart={draggable ? onDragStart : undefined}
       onDragEnd={onDragEnd}
-      onClick={disabled ? undefined : onSelect}
+      onClick={onSelect}
       onKeyDown={(event) => {
-        if (disabled) return;
         if (event.key !== "Enter" && event.key !== " ") return;
         event.preventDefault();
         onSelect();
       }}
       role="option"
       aria-selected={selected}
-      aria-disabled={disabled}
-      tabIndex={disabled ? -1 : 0}
-      aria-label={pack.name}
-      title={pack.name}
+      tabIndex={0}
+      title={row.owned > 0 ? `${row.name} — ${row.owned} en réserve` : `${row.name} — aucun exemplaire`}
     >
-      <span className={styles.shelfPackArt} style={closedPackVariables(getBoosterPackVisual(pack.boosterId))} aria-hidden />
-    </div>
+      <span
+        className={styles.shelfEntryArt}
+        style={closedPackVariables(getBoosterPackVisual(row.boosterId))}
+        data-stacked={row.owned > 1 ? "true" : undefined}
+        aria-hidden
+      />
+      <span className={styles.shelfEntryText}>
+        <span className={styles.shelfEntryName}>{row.name}</span>
+        <span className={styles.shelfEntryCount}>
+          <PackIcon />
+          {`x ${row.owned}`}
+        </span>
+      </span>
+      <span className={styles.shelfEntryChevron} aria-hidden>
+        ›
+      </span>
+    </li>
+  );
+}
+
+/** Le pictogramme de sachet du compteur — deux cartes empilées. */
+function PackIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="14" height="14" fill="none" aria-hidden>
+      <rect x="2.5" y="2.5" width="8" height="11" rx="1.2" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M12.5 4.2v8.3a1.2 1.2 0 0 1-1.2 1.2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
   );
 }

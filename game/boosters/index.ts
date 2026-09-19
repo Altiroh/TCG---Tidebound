@@ -18,6 +18,17 @@ export { abyssalChanceWithPity, drawBooster } from "@/game/boosters/draw";
 // découlent (`scripts/seedCards.ts`), jamais l'inverse.
 export { rarityForCardId, cardIdsMissingRarity, assertRarityCoverage } from "@/game/boosters/cardRarity";
 export { RARITY_ORDER } from "@/game/boosters/types";
+// De quelle EXTENSION vient un sachet, et ce qu'il raconte — du contenu de
+// jeu, relu par un test comme le texte d'une carte.
+export {
+  ARCHETYPE_DOMINANCE_THRESHOLD,
+  BOOSTER_EXTENSIONS,
+  OFF_SHELF_BOOSTER_IDS,
+  SHELF_BOOSTER_IDS,
+  boosterExtension,
+  boosterExtensionLabel,
+} from "@/game/boosters/extensions";
+export type { BoosterExtension, BoosterKind } from "@/game/boosters/extensions";
 export type {
   BoosterPoolCard,
   BoosterSlotRule,

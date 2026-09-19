@@ -1,257 +1,325 @@
 /*
- * MES BOOSTERS — la réserve et son plan d'ouverture.
+ * MES BOOSTERS — le rayon des extensions, et le plan où on les ouvre.
  *
- * Deux zones côte à côte : la pile de ce qu'on possède à gauche, LE plan
- * d'ouverture à droite. On fait passer un sachet de l'une à l'autre, à la
- * souris ou au clic — c'est tout le geste de l'écran.
+ * TROIS ZONES (refonte du 19/09/2026) :
+ *   - à gauche, le RAYON : tout ce qui existe, possédé ou non ;
+ *   - au centre, le PLAN : l'extension choisie, posée sur son socle ;
+ *   - à droite, sa FICHE : d'où elle vient, ce qu'elle raconte.
  *
  * L'ACHAT n'est pas ici : il a son propre écran (`features/market/`). Les
- * deux partagent le sachet fermé (`closedPackVariables`) et la lecture du
- * solde (`.balance`), rien de plus.
+ * deux partagent le sachet fermé (`closedPackVariables`), rien de plus.
  */
 
 /* ──────────────────────────────────────────────────────────────
- * MISE EN PAGE — tient dans la hauteur de l'écran : seules les étagères
- * défilent (verticalement), le plan d'ouverture reste toujours visible.
+ * MISE EN PAGE — tient dans la hauteur de l'écran : seul le rayon
+ * défile, le plan et la fiche restent toujours visibles.
  * ────────────────────────────────────────────────────────────── */
 .layout {
   position: relative;
   z-index: 1;
   display: flex;
   flex-direction: column;
-  gap: clamp(10px, 1.6vh, 22px);
+  gap: clamp(8px, 1.2vh, 16px);
   min-height: 0;
   overflow: hidden;
-  padding: clamp(12px, 2vh, 26px) clamp(14px, 2.4vw, 44px) clamp(14px, 2.4vh, 30px);
+  padding: clamp(10px, 1.6vh, 22px) clamp(12px, 2vw, 36px) clamp(8px, 1.4vh, 18px);
 }
 
-.layoutInner {
-  display: flex;
-  flex-direction: column;
-  gap: clamp(10px, 1.6vh, 22px);
-  width: min(100%, 1480px);
-  margin-inline: auto;
-  flex: 1 1 auto;
-  min-height: 0;
-}
-
-/* ──────────────────────────────────────────────────────────────
- * ÉTABLI — la réserve à gauche, la zone d'ouverture à droite.
- *
- * La réserve est SOBRE : pas de panneau, pas de titre, pas de compteur —
- * juste les sachets, posés côte à côte, assez grands pour qu'on ait envie
- * d'en attraper un. Tout le poids visuel va à la zone d'ouverture, qui est
- * la seule chose à faire sur cet écran.
- * ────────────────────────────────────────────────────────────── */
-.workbench {
+/*
+ * Les trois colonnes. Le plan est la plus large : c'est le seul endroit où
+ * il se passe quelque chose, et le sachet doit y tenir en grand. Les deux
+ * panneaux l'encadrent à largeur fixe — ils portent du texte, qui n'a rien
+ * à gagner à s'étirer.
+ */
+.zones {
   display: grid;
-  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
-  gap: clamp(14px, 2vw, 34px);
+  grid-template-columns: minmax(240px, 0.85fr) minmax(0, 1.6fr) minmax(250px, 0.9fr);
+  gap: clamp(10px, 1.4vw, 26px);
   align-items: stretch;
   flex: 1 1 auto;
   min-height: 0;
 }
 
-@media (max-width: 900px) {
-  .workbench { grid-template-columns: minmax(0, 1fr); }
+/*
+ * Les trois colonnes TIENNENT jusqu'en bas : sur mobile, le jeu est
+ * verrouillé en paysage (cf. CLAUDE.md), et un téléphone couché fait
+ * ~844 × 420. Empiler à cette taille donnait une fiche qui mangeait tout
+ * l'écran et poussait le rayon et le plan hors champ — c'est-à-dire tout
+ * ce qu'on est venu voir. On resserre donc les colonnes plutôt que de les
+ * casser.
+ */
+@media (max-width: 1100px) {
+  .zones { grid-template-columns: minmax(136px, 0.8fr) minmax(0, 1.5fr) minmax(158px, 0.85fr); }
 }
 
-/* ── Réserve ────────────────────────────────────────────────── */
-.stock {
+/* Écran COURT (téléphone couché) : la fiche n'a plus la hauteur de porter
+   l'illustration du sachet — il est déjà au centre, en grand. Le texte et
+   les boutons passent avant. */
+@media (max-height: 540px) {
+  .panelArt { display: none; }
+  .panelBody { gap: 4px; }
+  .shelfEntryArt { width: clamp(26px, 3vw, 40px); }
+}
+
+/* Plus étroit qu'un téléphone couché : c'est un portrait, que le jeu
+   n'accepte pas — mais l'écran ne doit pas pour autant devenir illisible
+   si on y arrive. Une seule colonne, et la page défile. */
+@media (max-width: 700px) {
+  .layout { overflow-y: auto; }
+  .zones {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto;
+  }
+  .shelf, .plan, .panel { grid-column: 1; }
+  .plan { min-height: 46vh; }
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * RAYON — tout ce qui existe, pas seulement ce qu'on a.
+ *
+ * C'était la lacune de l'écran précédent : il ne montrait que la réserve,
+ * donc un joueur qui n'avait rien ne voyait rien. Une extension à zéro
+ * reste donc listée, en retrait mais lisible et sélectionnable.
+ * ────────────────────────────────────────────────────────────── */
+.shelf {
   display: flex;
   flex-direction: column;
-  justify-content: center;
   min-height: 0;
-}
-
-.stockEmpty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  flex: 1 1 auto;
-  padding: clamp(16px, 3vh, 36px);
-  border: 1.5px dashed var(--line-strong);
+  padding: clamp(10px, 1.4vh, 18px) clamp(10px, 0.9vw, 16px);
+  border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: var(--panel-inset);
-  text-align: center;
+  background: var(--panel);
+  box-shadow: var(--tb-shadow-md);
+  backdrop-filter: blur(6px);
 }
 
-/* Silhouette de sachet en creux : la place attend ses paquets. */
-.stockEmptyMark {
-  width: clamp(54px, 9vh, 88px);
-  aspect-ratio: 5 / 7;
-  border: 1.5px dashed var(--line-strong);
-  border-radius: 8px;
-  opacity: 0.45;
+.shelfHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: clamp(8px, 1.2vh, 14px);
+  margin-bottom: clamp(6px, 1vh, 12px);
+  border-bottom: 1px solid var(--line);
 }
 
-.stockEmptyTitle {
+.shelfTitle {
   margin: 0;
   font-family: var(--cb-font-display);
-  font-size: clamp(14px, 1.1vw, 18px);
+  font-size: clamp(16px, 1.5vw, 25px);
   font-weight: 600;
+  letter-spacing: 0.02em;
   color: var(--ink-strong);
 }
 
-/*
- * Les étagères : une zone qui DÉFILE verticalement (mesurée par
- * `useElementSize`), cinq sachets par étagère. Dans chaque étagère, les
- * sachets sont posés en absolu à la position que calcule
- * `stackedShelfLayout` — du plus récent (à gauche) au plus ancien.
- */
-.shelves {
+.shelfCount {
+  font-size: clamp(10px, 0.8vw, 13px);
+  color: var(--ink-dim);
+  white-space: nowrap;
+}
+
+.shelfList {
   display: flex;
   flex-direction: column;
-  gap: clamp(34px, 6vh, 64px);
+  gap: clamp(5px, 0.7vh, 9px);
+  margin: 0;
+  padding: 2px;
+  list-style: none;
   flex: 1 1 auto;
   min-height: 0;
-  /* De la place au-dessus pour le sachet soulevé au survol. */
-  padding: clamp(22px, 3vh, 34px) clamp(14px, 2vw, 34px) clamp(24px, 4vh, 40px);
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
   scrollbar-color: var(--line-strong) transparent;
 }
 
-.shelves::-webkit-scrollbar { width: 6px; }
-.shelves::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--line-strong); }
-
-/* Une étagère seule reste centrée dans la hauteur ; au-delà, on défile. */
-.shelves > .shelf:first-child { margin-top: auto; }
-.shelves > .shelf:last-child { margin-bottom: auto; }
-
-.shelf {
-  display: flex;
-  flex-direction: column;
-  flex: 0 0 auto;
-}
-
-.shelfRow {
-  position: relative;
-  flex: 0 0 auto;
-}
+.shelfList::-webkit-scrollbar { width: 6px; }
+.shelfList::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--line-strong); }
 
 /*
- * Un sachet posé sur la planche. Pas de cadre : c'est le visuel qui porte.
- * Au survol il se soulève et passe devant ses voisins ; celui qui est posé
- * sur la zone d'ouverture reste soulevé, avec un halo cyan. Le `grab` dit
- * que ça s'attrape, le clic et Entrée font la même chose pour qui ne glisse
- * pas.
+ * Une extension du rayon. Le `grab` dit qu'elle s'attrape — mais seulement
+ * quand on en possède : une extension à zéro se lit, ne se glisse pas.
  */
-.shelfPack {
-  position: absolute;
-  bottom: 0;
-  height: 100%;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  cursor: grab;
-  /* Sans ça, un glisser qui démarre sur le sachet sélectionne la page. */
-  user-select: none;
-  -webkit-user-drag: element;
-  transition: left 260ms cubic-bezier(0.2, 0.8, 0.2, 1), transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-.shelfPack:hover,
-.shelfPack:focus-visible {
-  z-index: 999 !important;
-  transform: translateY(-14px);
-}
-
-.shelfPack:active { cursor: grabbing; }
-.shelfPack:focus-visible { outline: none; }
-.shelfPack:focus-visible .shelfPackArt { filter: drop-shadow(0 0 0 var(--cb-cyan)) drop-shadow(0 0 3px var(--cb-cyan)); }
-
-/* Sélectionné : soulevé, et le glow cyan de la sélection — le seul glow
-   de l'étagère, sur le seul sachet qui compte. */
-.shelfPack[data-selected="true"] {
-  transform: translateY(-14px);
-}
-
-.shelfPack[data-selected="true"] .shelfPackArt {
-  filter: drop-shadow(0 18px 20px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 16px rgba(95, 208, 230, 0.5));
-}
-
-.shelfPack[data-disabled="true"] {
-  opacity: 0.4;
-  cursor: default;
-  transform: none;
-}
-
-.shelfPackArt {
-  height: 100%;
-  aspect-ratio: var(--pack-ratio, 5 / 7);
-  width: auto;
-  max-width: 100%;
-  background-image: var(--pack-art);
-  background-size: contain;
-  background-position: center bottom;
-  background-repeat: no-repeat;
-  /* Ombre vers la GAUCHE aussi : c'est elle qui détache un sachet du
-     voisin qu'il recouvre en partie. */
-  filter: drop-shadow(-6px 10px 12px rgba(0, 0, 0, 0.55));
-  pointer-events: none;
-  transition: filter 180ms ease;
-}
-
-/* ──────────────────────────────────────────────────────────────
- * ZONE D'OUVERTURE — le seul geste de l'écran, donc le seul cadre.
- * ────────────────────────────────────────────────────────────── */
-.dock {
-  display: flex;
-  flex-direction: column;
+.shelfEntry {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: center;
-  gap: clamp(6px, 0.9vh, 12px);
-  min-height: 0;
-  padding: clamp(14px, 2.4vh, 30px);
-  border: 1px dashed var(--line-strong);
-  border-radius: var(--radius);
-  background: radial-gradient(120% 90% at 50% 45%, var(--tb-accent-soft) 0%, var(--panel-inset) 62%);
-  text-align: center;
-  transition: border-color 180ms ease-out, background 180ms ease-out, box-shadow 180ms ease-out;
+  gap: clamp(8px, 0.8vw, 14px);
+  padding: clamp(7px, 0.9vh, 11px) clamp(8px, 0.7vw, 12px);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: var(--panel-inset);
+  cursor: pointer;
+  /* Sans ça, un glisser qui démarre sur la ligne sélectionne la page. */
+  user-select: none;
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
 }
 
-/* Un sachet posé : le plan devient un panneau, et le halo cyan dit que
-   c'est là que ça se passe — le moment premium de l'écran. */
-.dock[data-state="loaded"] {
-  border-style: solid;
+.shelfEntry[data-owned="true"] { cursor: grab; }
+.shelfEntry[data-owned="true"]:active { cursor: grabbing; }
+
+.shelfEntry:hover { border-color: var(--line-strong); transform: translateX(2px); }
+.shelfEntry:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 2px; }
+
+.shelfEntry[data-selected="true"] {
   border-color: var(--tb-accent-line);
-  background: radial-gradient(120% 90% at 50% 40%, var(--tb-accent-soft) 0%, var(--panel) 60%);
-  box-shadow: var(--tb-shadow-md), var(--tb-glow-md);
+  background: linear-gradient(90deg, var(--tb-accent-soft) 0%, var(--panel-inset) 70%);
+  box-shadow: var(--tb-glow-md);
 }
 
-/* Survolé par un sachet en cours de dépôt. */
-.dock[data-state="over"] {
-  border-color: var(--cb-cyan);
-  background: radial-gradient(120% 90% at 50% 45%, var(--tb-accent-soft-strong) 0%, var(--panel-inset) 68%);
-  box-shadow: inset 0 0 50px rgba(95, 208, 230, 0.16), var(--tb-glow-md);
-}
+/* Aucun exemplaire : en retrait, jamais caché — c'est ce qu'on vient
+   découvrir avant de l'acheter. */
+.shelfEntry[data-owned="false"] .shelfEntryArt { filter: grayscale(0.85) brightness(0.6); }
+.shelfEntry[data-owned="false"] .shelfEntryName { color: var(--ink-dim); }
+.shelfEntry[data-owned="false"] .shelfEntryCount { color: var(--ink-faint); }
 
-/* Pendant un glisser, la zone s'allume même sans être survolée : on doit
-   voir OÙ déposer avant d'y arriver. */
-.workbench[data-dragging="true"] .dock {
-  border-color: var(--tb-accent-line);
-}
-
-.dockPack {
-  height: clamp(120px, 30vh, 300px);
-  width: auto;
-  min-height: 0;
+.shelfEntryArt {
+  width: clamp(38px, 3.4vw, 58px);
   aspect-ratio: var(--pack-ratio, 5 / 7);
   background-image: var(--pack-art);
   background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
+  transition: filter 160ms ease;
+}
+
+/* Plusieurs exemplaires : une pile, pas un compteur seul — on doit voir
+   qu'il y en a derrière. */
+.shelfEntryArt[data-stacked="true"] {
+  box-shadow:
+    4px 4px 0 -1px var(--panel-raised),
+    5px 5px 0 -1px var(--line-strong),
+    8px 8px 0 -2px var(--panel-raised),
+    9px 9px 0 -2px var(--line);
+}
+
+.shelfEntryText {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.shelfEntryName {
+  font-family: var(--cb-font-display);
+  font-size: clamp(12px, 1vw, 16px);
+  font-weight: 600;
+  color: var(--ink-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shelfEntryCount {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: clamp(10px, 0.78vw, 13px);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-dim);
+}
+
+.shelfEntryChevron {
+  font-size: 18px;
+  line-height: 1;
+  color: var(--ink-faint);
+  transition: color 160ms ease, transform 160ms ease;
+}
+
+.shelfEntry[data-selected="true"] .shelfEntryChevron {
+  color: var(--cb-cyan);
+  transform: translateX(2px);
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * PLAN D'OUVERTURE — le socle, et le sachet posé dessus.
+ *
+ * Le décor (`plan-douverture.webp`) est une illustration DÉTOURÉE, calée
+ * en bas : c'est le ponton, avec le socle au centre. Le sachet est posé
+ * par-dessus, à la verticale du socle.
+ * ────────────────────────────────────────────────────────────── */
+.plan {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  min-height: 0;
+  border-radius: var(--radius);
+  /*
+   * La zone devient une unité de mesure (`cqw`/`cqh`) : c'est ce qui permet
+   * à la scène ci-dessous de garder EXACTEMENT les proportions de
+   * l'illustration quelle que soit la place disponible. Sans ça,
+   * `background-size: contain` recadre l'image dans une boîte dont le code
+   * ignore les dimensions — et tout calage en pourcentage devient faux.
+   */
+  container-type: size;
+}
+
+/*
+ * LA SCÈNE — la boîte de l'illustration, au pixel près.
+ *
+ * `plan-douverture.webp` fait 1600 × 900. La scène garde ce rapport et
+ * prend la plus grande taille qui tienne dans la zone ; tout ce qui est
+ * posé dessus (le sachet, la plaque) se cale donc en POURCENTAGE de
+ * l'image, jamais de la zone. Recadrer l'illustration oblige à reprendre
+ * ce rapport et les calages qui en dépendent.
+ */
+.planScene {
+  position: relative;
+  width: min(100cqw, calc(100cqh * 1600 / 900));
+  aspect-ratio: 1600 / 900;
+  background-image: url("/assets/boosters/plan-douverture.webp");
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  transition: filter 200ms ease-out;
+}
+
+/* Survolé par un sachet en cours de dépôt : le socle s'allume. */
+.plan[data-state="over"] .planScene {
+  filter: brightness(1.18) saturate(1.1) drop-shadow(0 0 26px rgba(95, 208, 230, 0.45));
+}
+
+/* Pendant un glisser, la zone s'annonce même sans être survolée : on doit
+   voir OÙ déposer avant d'y arriver. */
+.zones[data-dragging="true"] .planScene {
+  filter: brightness(1.08) drop-shadow(0 0 16px rgba(95, 208, 230, 0.28));
+}
+
+/*
+ * Le sachet, DEBOUT SUR LE SOCLE. Son bas s'arrête sur le disque d'eau du
+ * socle (mesuré à 71 % de la hauteur de l'illustration), pas au bas de la
+ * zone : il est posé, il ne flotte pas.
+ */
+.planPack {
+  position: absolute;
+  left: 50.6%;
+  bottom: 29%;
+  transform: translateX(-50%);
+  height: 68%;
+  width: auto;
+  aspect-ratio: var(--pack-ratio, 5 / 7);
+  background-image: var(--pack-art);
+  background-size: contain;
+  background-position: center bottom;
+  background-repeat: no-repeat;
   filter: drop-shadow(0 18px 26px rgba(0, 0, 0, 0.6));
   animation: dockDrop 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
+/* Extension non possédée : présente, lisible, mais éteinte. On la regarde,
+   on ne l'ouvre pas. */
+.planPack[data-locked="true"] {
+  filter: grayscale(0.9) brightness(0.48) drop-shadow(0 14px 22px rgba(0, 0, 0, 0.55));
+}
+
+/* Le sachet est centré par `translateX(-50%)` : toutes les animations qui
+   le déplacent doivent repartir de là, sinon il saute d'une demi-largeur
+   au premier frame. */
 @keyframes dockDrop {
-  from { opacity: 0; transform: translateY(-14px) scale(0.94) rotate(-2deg); }
-  to { opacity: 1; transform: none; }
+  from { opacity: 0; transform: translate(-50%, -14px) scale(0.94) rotate(-2deg); }
+  to { opacity: 1; transform: translateX(-50%); }
 }
 
 /*
@@ -259,17 +327,13 @@
  * degrés et un reflet le balaie — puis il décolle vers le centre de l'écran
  * (la scène prend le relais depuis cette position exacte).
  */
-.dockPack {
-  position: relative;
-}
-
-.dockPack[data-charging] {
+.planPack[data-charging] {
   animation: dockCharge 900ms cubic-bezier(0.4, 0, 0.6, 1) both;
   filter: drop-shadow(0 18px 26px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 18px rgba(120, 214, 236, 0.35));
 }
 
 /* Le reflet est découpé à la silhouette du sachet (son visuel sert de masque). */
-.dockPack::after {
+.planPack::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -278,140 +342,308 @@
   background-position: 130% 0;
   mask-image: var(--pack-art);
   mask-size: contain;
-  mask-position: center;
+  mask-position: center bottom;
   mask-repeat: no-repeat;
   -webkit-mask-image: var(--pack-art);
   -webkit-mask-size: contain;
-  -webkit-mask-position: center;
+  -webkit-mask-position: center bottom;
   -webkit-mask-repeat: no-repeat;
   mix-blend-mode: screen;
   opacity: 0;
   pointer-events: none;
 }
 
-.dockPack[data-charging]::after {
-  animation: dockShine 900ms ease-in-out both;
-}
+.planPack[data-charging]::after { animation: dockShine 900ms ease-in-out both; }
 
 /* Parti vers le centre : il n'est plus sur le plan. */
-.dockPack[data-launched] {
-  opacity: 0;
-  animation: none;
-}
+.planPack[data-launched] { opacity: 0; animation: none; }
 
 @keyframes dockCharge {
-  0% { transform: none; }
-  10% { transform: translate(-1px, 0) rotate(-1.5deg); }
-  20% { transform: translate(1px, -1px) rotate(1.8deg); }
-  30% { transform: translate(-2px, 0) rotate(-2.4deg); }
-  40% { transform: translate(2px, -1px) rotate(2.8deg) scale(1.02); }
-  50% { transform: translate(-2px, -2px) rotate(-3deg) scale(1.03); }
-  60% { transform: translate(2px, -2px) rotate(3.2deg) scale(1.04); }
-  70% { transform: translate(-1px, -3px) rotate(-2.6deg) scale(1.05); }
-  80% { transform: translate(1px, -4px) rotate(2deg) scale(1.06); }
-  90% { transform: translate(0, -6px) rotate(-1deg) scale(1.07); }
-  100% { transform: translate(0, -8px) rotate(0deg) scale(1.08); }
+  0% { transform: translateX(-50%); }
+  15% { transform: translate(calc(-50% - 2px), 1px) rotate(-1.4deg); }
+  30% { transform: translate(calc(-50% + 2px), -1px) rotate(1.4deg); }
+  45% { transform: translate(calc(-50% - 3px), 1px) rotate(-2deg); }
+  60% { transform: translate(calc(-50% + 3px), -2px) rotate(2deg); }
+  78% { transform: translate(calc(-50% - 2px), 1px) rotate(-1.2deg) scale(1.03); }
+  100% { transform: translate(-50%, -6px) scale(1.05); }
 }
 
 @keyframes dockShine {
   0% { opacity: 0; background-position: 130% 0; }
-  20% { opacity: 1; }
-  80% { opacity: 1; }
+  25% { opacity: 0.9; }
   100% { opacity: 0; background-position: -30% 0; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .dockPack[data-charging] { animation: none; }
-  .dockPack[data-charging]::after { animation: none; }
-}
-
-/* Trois cartes en attente : la zone montre ce qu'elle rend, pas ce qui lui
-   manque. */
-.dockMark {
-  color: var(--ink-faint);
-}
-
-.dockTitle {
-  margin: 0;
-  font-family: var(--cb-font-display);
-  font-size: clamp(15px, 1.25vw, 21px);
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--ink-strong);
-}
-
-.dockName {
-  margin: 0;
-  font-family: var(--cb-font-display);
-  font-size: clamp(15px, 1.2vw, 20px);
-  font-weight: 600;
-  color: var(--ink-strong);
-}
-
-.dockPity {
-  margin: 0;
-  font-size: clamp(10px, 0.76vw, 12px);
-  color: var(--cb-violet);
-}
-
-/* Rangée de liens de bas de page : discrète, jamais un appel à l'action. */
-.footRow {
+/*
+ * LA PLAQUE DU SOCLE.
+ *
+ * Elle RECOUVRE celle qui est peinte dans l'illustration (« Glissez un
+ * booster ici ») : le décor ne peut pas dire autre chose que l'état réel
+ * du plan. Calage mesuré sur l'image 1600 × 900 — plaque de x 625 à 995 et
+ * de y 757 à 818, soit 39,1 % → 62,2 % et 84,1 % → 90,9 %. Débordée d'un
+ * demi-point sur chaque bord pour couvrir le liseré doré peint.
+ *
+ * Une illustration SANS plaque peinte rendrait tout ce bloc inutile : il
+ * suffirait alors de reposer le texte où l'on veut.
+ */
+.planPlate {
+  position: absolute;
+  left: 38.6%;
+  top: 83.6%;
+  width: 24.1%;
+  height: 7.8%;
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 6px 14px;
-  font-size: clamp(11px, 0.82vw, 13px);
-  color: var(--ink-faint);
+  justify-content: center;
+  margin: 0;
+  padding: 0 1.4%;
+  border: 1px solid rgba(197, 160, 92, 0.75);
+  border-radius: 4px;
+  background: linear-gradient(180deg, #16283a 0%, #0a1420 100%);
+  box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.65), 0 2px 10px rgba(0, 0, 0, 0.5);
+  font-family: var(--cb-font-display);
+  /*
+   * La plaque est une fraction de la LARGEUR de la scène, qui est elle-même
+   * bornée par la hauteur : le texte doit suivre la plus petite des deux,
+   * sinon il déborde d'une plaque que la hauteur a rétrécie.
+   */
+  font-size: clamp(8px, min(1.25cqw, 2.2cqh), 17px);
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
+  text-align: center;
+  overflow: hidden;
+  color: var(--ink-strong);
 }
 
+/* C'est LUI qui porte l'élision : dans un conteneur flex, `text-overflow`
+   ne s'applique pas au conteneur mais à la boîte qui déborde. */
+.planPlateText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
-/* Réglage de l'animation : posé au milieu de la rangée de bas de page,
-   assez effacé pour qu'on ne le prenne pas pour une vraie ouverture. */
-/* Nombre de sachets à ouvrir d'un coup : deux pas et un « tout », posés
-   sous le nom du sachet — le compteur est la valeur, pas un champ à remplir. */
+.plan[data-state="over"] .planPlate {
+  border-color: var(--cb-cyan);
+  color: var(--cb-cyan);
+}
+
+.plan[data-state="locked"] .planPlate { color: var(--ink-dim); }
+
+/* Le compteur de pity, sous la plaque : une information de réserve, pas
+   de décor — elle ne doit pas concurrencer le nom. */
+.planPity {
+  position: absolute;
+  left: 50.6%;
+  top: 92.6%;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 2px 10px;
+  border-radius: 999px;
+  /* Posée sur les planches du ponton, pas sur un fond d'écran : sans ce
+     voile, le texte se perd dans le bois et les reflets. */
+  background: rgba(6, 14, 24, 0.82);
+  font-size: clamp(9px, 1.15cqh, 12px);
+  color: var(--ink-dim);
+  white-space: nowrap;
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * FICHE DE L'EXTENSION — ce qu'on achète vraiment.
+ * ────────────────────────────────────────────────────────────── */
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: clamp(12px, 1.8vh, 22px) clamp(12px, 1.1vw, 20px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--tb-shadow-md);
+  backdrop-filter: blur(6px);
+}
+
+/* La partie qui RACONTE : elle seule défile. */
+.panelBody {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(5px, 0.8vh, 11px);
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.panelBody::-webkit-scrollbar { width: 6px; }
+.panelBody::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--line-strong); }
+
+.panelHead {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  text-align: center;
+}
+
+.panelTitle {
+  margin: 0;
+  font-family: var(--cb-font-display);
+  font-size: clamp(15px, 1.4vw, 24px);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: 0.01em;
+  color: var(--ink-strong);
+}
+
+/* La ligne « Extension » : d'où vient le sachet. Petites capitales, à
+   l'écart du titre — c'est une provenance, pas un sous-titre. */
+.panelKind {
+  margin: 0;
+  font-size: clamp(9px, 0.72vw, 12px);
+  font-variant: small-caps;
+  letter-spacing: 0.1em;
+  text-transform: lowercase;
+  color: var(--cb-cyan);
+}
+
+.panelArt {
+  align-self: center;
+  width: min(58%, 190px);
+  aspect-ratio: var(--pack-ratio, 5 / 7);
+  background-image: var(--pack-art);
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.55));
+  margin-block: clamp(2px, 0.6vh, 8px);
+}
+
+.panelArt[data-locked="true"] { filter: grayscale(0.9) brightness(0.5) drop-shadow(0 8px 14px rgba(0, 0, 0, 0.5)); }
+
+.panelTagline {
+  margin: 0;
+  font-family: var(--cb-font-display);
+  font-size: clamp(11px, 0.92vw, 15px);
+  font-style: italic;
+  text-align: center;
+  color: var(--gold);
+}
+
+.panelLore {
+  margin: 0;
+  font-size: clamp(10px, 0.82vw, 13.5px);
+  line-height: 1.55;
+  text-align: center;
+  text-wrap: pretty;
+  color: var(--ink-dim);
+}
+
+.panelRule {
+  width: 100%;
+  height: 1px;
+  margin: clamp(4px, 0.8vh, 10px) 0 0;
+  border: 0;
+  background: linear-gradient(90deg, transparent, var(--line-strong) 20%, var(--line-strong) 80%, transparent);
+}
+
+.panelActions {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(5px, 0.7vh, 9px);
+  flex: 0 0 auto;
+  padding-top: clamp(6px, 0.9vh, 12px);
+}
+
+.panelActions > :global(button),
+.panelActions > :global(a) { width: 100%; justify-content: center; }
+
+/* Ouvrir : le pas de quantité et le bouton sur la même ligne — un seul
+   geste, un seul endroit où regarder. */
+.openRow {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.openRow > :global(button) { flex: 1 1 auto; justify-content: center; }
+
 .batchGroup {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  margin-block: 2px 6px;
+  flex: 0 0 auto;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--panel-inset);
+  overflow: hidden;
 }
 
 .batchStep {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: rgba(8, 18, 30, 0.6);
+  display: grid;
+  place-items: center;
+  width: clamp(24px, 2vw, 32px);
+  align-self: stretch;
+  border: 0;
+  background: transparent;
   color: var(--ink);
   font-size: 15px;
   line-height: 1;
   cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
 }
 
-.batchStep:hover:not(:disabled) { border-color: var(--line-strong); }
-.batchStep:disabled { opacity: 0.4; cursor: default; }
+.batchStep:hover:not(:disabled) { background: var(--tb-accent-soft); color: var(--cb-cyan); }
+.batchStep:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: -2px; }
+.batchStep:disabled { opacity: 0.35; cursor: not-allowed; }
 
 .batchCount {
-  min-width: 2ch;
+  min-width: clamp(20px, 1.8vw, 28px);
   text-align: center;
   font-variant-numeric: tabular-nums;
-  font-weight: 600;
+  font-size: clamp(11px, 0.9vw, 14px);
+  color: var(--ink-strong);
+}
+
+.panelLocked {
+  margin: 0;
+  font-size: clamp(9px, 0.74vw, 12px);
+  line-height: 1.45;
+  text-align: center;
+  color: var(--ink-faint);
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * PIED — le réglage de l'animation, hors du chemin principal.
+ * ────────────────────────────────────────────────────────────── */
+.footRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex: 0 0 auto;
 }
 
 .testGroup {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  margin-inline: clamp(10px, 2vw, 28px);
+  gap: 8px;
+  opacity: 0.55;
+  transition: opacity 160ms ease;
 }
 
+.testGroup:hover { opacity: 1; }
+
 .testLabel {
+  font-size: clamp(9px, 0.7vw, 11px);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   color: var(--ink-faint);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .shelfPack { transition: none; }
+  .planPack,
+  .planPack[data-charging],
+  .planPack[data-charging]::after { animation: none; }
+  .shelfEntry { transition: none; }
 }
