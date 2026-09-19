@@ -414,31 +414,52 @@
  */
 .planPlate {
   position: absolute;
-  left: 38.6%;
-  top: 83.6%;
-  width: 24.1%;
-  height: 7.8%;
+  /*
+   * DANS le cadre peint, pas par-dessus. Chiffres relevés sur l'image
+   * elle-même (balayage de luminance, 1600 × 900) : les montants dorés
+   * s'arrêtent à 40,31 % et reprennent à 59,69 % ; les deux filets
+   * horizontaux courent à 84,11-84,33 % et 89,78-90,00 %. Le champ sombre
+   * du cadre est donc 40,4 % → 59,6 % sur 84,4 % → 89,8 %, et c'est
+   * exactement cette boîte-là.
+   *
+   * Deux tentatives écartées avant celle-ci, et leurs raisons :
+   *   - une plaque à cadre doré POSÉE dessus faisait deux cadres l'un sur
+   *     l'autre, un objet de plus sur un socle qui en a déjà ;
+   *   - un voile en dégradé, assez large pour déborder le cadre, noircissait
+   *     la façade du socle et l'ancre — et à 96 % d'opacité laissait encore
+   *     lire « Glissez un Booster ici » en filigrane.
+   *
+   * Se loger dans le champ ne retire rien au décor : le cadre doré reste
+   * peint, c'est LUI qui encadre le texte, et il n'y a rien à dessiner.
+   */
+  left: 40.4%;
+  top: 84.4%;
+  width: 19.2%;
+  height: 5.4%;
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0;
-  padding: 0 1.4%;
-  border: 1px solid rgba(197, 160, 92, 0.75);
-  border-radius: 4px;
-  background: linear-gradient(180deg, #16283a 0%, #0a1420 100%);
-  box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.65), 0 2px 10px rgba(0, 0, 0, 0.5);
+  padding: 0 1%;
+  /*
+   * Opaque, et de la couleur relevée à l'intérieur du cadre (rgb 3,18,24 au
+   * centre, un rien plus clair en haut) : le remplissage disparaît dans la
+   * peinture, seul le texte change.
+   */
+  background: linear-gradient(180deg, #0a1a24 0%, #03101a 100%);
   font-family: var(--cb-font-display);
   /*
-   * La plaque est une fraction de la LARGEUR de la scène, qui est elle-même
-   * bornée par la hauteur : le texte doit suivre la plus petite des deux,
-   * sinon il déborde d'une plaque que la hauteur a rétrécie.
+   * Le texte suit la LARGEUR de la scène, elle-même bornée par la hauteur :
+   * il doit donc suivre la plus petite des deux, sinon il déborde d'un
+   * socle que la hauteur a rétréci.
    */
-  font-size: clamp(8px, min(1.25cqw, 2.2cqh), 17px);
+  font-size: clamp(8px, min(1.1cqw, 2cqh), 15px);
   font-variant: small-caps;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
   text-align: center;
   overflow: hidden;
-  color: var(--ink-strong);
+  color: var(--ink-dim);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9);
 }
 
 /* C'est LUI qui porte l'élision : dans un conteneur flex, `text-overflow`
@@ -450,12 +471,9 @@
   white-space: nowrap;
 }
 
-.layout[data-plan="over"] .planPlate {
-  border-color: var(--cb-cyan);
-  color: var(--cb-cyan);
-}
+.layout[data-plan="over"] .planPlate { color: var(--cb-cyan); }
 
-.layout[data-plan="locked"] .planPlate { color: var(--ink-dim); }
+.layout[data-plan="locked"] .planPlate { color: var(--ink-faint); }
 
 /* Le compteur de pity, sous la plaque : une information de réserve, pas
    de décor — elle ne doit pas concurrencer le nom. */
