@@ -20,7 +20,7 @@
  * Usage : npm run balance  (ajouter un nombre pour changer le nombre de
  * graines par affrontement : `npm run balance -- 10`).
  */
-import { PLAYABLE_DECKS } from "@/game/cards/decks/testDecks";
+import { PLAYABLE_DECKS } from "@/game/cards/decks/catalog";
 import { CORE_SET } from "@/game/cards/sets/core";
 import { chooseBotAction } from "@/game/bot/chooseAction";
 import { botHasSomethingToDo } from "@/game/bot/runBotTurn";

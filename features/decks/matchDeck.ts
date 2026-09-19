@@ -5,7 +5,7 @@ import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
  * Résolution SERVEUR du deck qu'un joueur emmène dans une partie arbitrée.
  *
  * Deux origines, une seule sortie :
- *   - une liste du jeu (`PLAYABLE_DECKS`) — emprunt, archétype, laboratoire ;
+ *   - une liste du jeu (`PLAYABLE_DECKS`) — deck d'emprunt ou préconstruit ;
  *   - un deck MONTÉ par le joueur (`player_decks`), relu ici carte par
  *     carte.
  *

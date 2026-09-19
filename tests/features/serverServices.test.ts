@@ -70,7 +70,7 @@ const { recordMatchQuestProgress, ensureCurrentQuests } = await import("@/featur
 const { recycleCardFor, recycleSurplusFor } = await import("@/features/collection/recycleService");
 const { readLoginRewards } = await import("@/features/progression/loginService");
 const { createGameState } = await import("@/game/state/createGameState");
-const { PLAYABLE_DECKS } = await import("@/game/cards/decks/testDecks");
+const { PLAYABLE_DECKS } = await import("@/game/cards/decks/catalog");
 const { DEFAULT_CARD_BACK_ID } = await import("@/game");
 
 const USER = "11111111-1111-1111-1111-111111111111";

@@ -5,7 +5,7 @@ import { RULES } from "@/game/rules/constants";
 import { createSeed, shuffle } from "@/game/rng";
 import { startingReasonCap } from "@/game/state/reason";
 import type { GameState, PlayerId, PlayerState } from "@/game/state/types";
-import type { DeckList } from "@/game/cards/decks/preconstructed";
+import type { DeckList } from "@/game/cards/decks/types";
 
 let instanceCounter = 0;
 function createInstanceId(): string {

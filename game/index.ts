@@ -68,14 +68,10 @@ export type { AuraContext, AuraContribution } from "@/game/cards/stats";
 export { computeEffectiveStats, computeStatModifierDelta } from "@/game/cards/stats";
 export type { EffectiveStats } from "@/game/cards/stats";
 
-export type { DeckList } from "@/game/cards/decks/preconstructed";
-export {
-  PRECONSTRUCTED_DECKS,
-  DECK_LE_COURLIS,
-  DECK_LERRANT,
-  DECK_LE_BRISE_LAMES,
-} from "@/game/cards/decks/preconstructed";
-export { ARCHETYPE_DECKS, CRA_POISCAIL_TEST_DECKS, THEATRE_TEST_DECKS, PLAYABLE_DECKS } from "@/game/cards/decks/testDecks";
+export type { DeckList } from "@/game/cards/decks/types";
+export { repeat } from "@/game/cards/decks/types";
+export { BORROWED_DECK_LISTS } from "@/game/cards/decks/borrowed";
+export { PRECON_DECK_LISTS } from "@/game/cards/decks/precon";
 export { validateDeckList } from "@/game/rules/deckValidation";
 
 // --- Catalogue de decks fournis par le jeu (Notion « Progression joueur »
@@ -88,6 +84,7 @@ export {
   catalogDeckById,
   isBorrowedDeckId,
   isPreconDeckId,
+  PLAYABLE_DECKS,
 } from "@/game/cards/decks/catalog";
 export type { CatalogDeck, DeckDifficulty } from "@/game/cards/decks/catalog";
 /* Le profil DÉDUIT d une liste de cartes — ce qu une fiche de deck affiche

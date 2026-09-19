@@ -8,10 +8,10 @@ import { CORE_SET } from "@/game/cards/sets/core";
  * le joueur, qui n'a aucune métadonnée écrite.
  *
  * Ce qu'on vérifie n'est pas qu'il retrouve les libellés du catalogue : il
- * ne le peut pas, et il ne doit pas essayer. « Le Courlis » est écrit
- * « Tempo / contrôle léger » à 1,75 de coût moyen quand « Pont d'Assaut »
- * est « Agressif » à 2,10 — c'est une intention de design, pas une
- * arithmétique.
+ * ne le peut pas, et il ne doit pas essayer. « Bec dans la Brume » est
+ * écrit « Agressif / Pied marin et tempo » quand « Sous la Ligne » est
+ * « Contrôle / Abysses et Déraison » — c'est une intention de design, pas
+ * une arithmétique.
  *
  * Ce qu'on vérifie, c'est qu'il DISCRIMINE : deux decks différents doivent
  * obtenir des profils différents. Une déduction qui dit la même chose de
@@ -37,10 +37,16 @@ describe("deckProfile", () => {
   it("discrimine : ni un seul rôle, ni une seule difficulté pour tout le monde", () => {
     const styles = new Set(PROFILES.map((entry) => entry.profile.style));
     const difficulties = new Set(PROFILES.map((entry) => entry.profile.difficulty));
-    // Dix-sept listes qui s'étalent de 1,75 à 3,02 de coût moyen : au moins
-    // trois rôles et trois crans de difficulté doivent sortir.
+    // Les dix listes du catalogue v4 s'étalent de 1,88 à 3,00 de coût
+    // moyen : au moins trois rôles doivent sortir.
     expect(styles.size).toBeGreaterThanOrEqual(3);
-    expect(difficulties.size).toBeGreaterThanOrEqual(3);
+    // Deux crans de difficulté seulement, et c'est attendu : le catalogue
+    // n'est plus un échantillon large de listes hétéroclites, ce sont dix
+    // decks tous compétitifs, donc tous à peu près aussi occupants. Ce
+    // qu'on exige ici, c'est que la déduction ne dise pas LA MÊME chose de
+    // tout le monde — pas qu'elle balaie toute l'échelle sur un
+    // échantillon qui ne la contient pas.
+    expect(difficulties.size).toBeGreaterThanOrEqual(2);
   });
 
   it("ne rend jamais la même mécanique à tout le monde", () => {
@@ -56,9 +62,10 @@ describe("deckProfile", () => {
   });
 
   it("reconnaît le Sabordage et la Garde là où les listes les revendiquent", () => {
-    const briseLames = PROFILES.find((entry) => entry.deck.id === "le-brise-lames");
-    expect(briseLames?.profile.mechanics).toContain("Garde");
-    expect(briseLames?.profile.mechanics).toContain("Sabordage");
+    const sabordage = PROFILES.find((entry) => entry.deck.id === "tout-recuperer");
+    expect(sabordage?.profile.mechanics).toContain("Sabordage");
+    const garde = PROFILES.find((entry) => entry.deck.id === "grace-sous-pression");
+    expect(garde?.profile.mechanics).toContain("Garde");
   });
 
   it("ne nomme JAMAIS un archétype de moteur", () => {

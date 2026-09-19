@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createGameState } from "@/game/state/createGameState";
-import { DECK_LE_BRISE_LAMES, DECK_LE_COURLIS } from "@/game/cards/decks/preconstructed";
+import { DECK_LE_BANC_DEBORDE, DECK_BEC_DANS_LA_BRUME } from "@/game/cards/decks/borrowed";
 import { botHasSomethingToDo, runBotUntilIdle } from "@/game/bot/runBotTurn";
 import { chooseBotAction } from "@/game/bot/chooseAction";
 import { dispatch } from "@/game/engine";
@@ -16,8 +16,8 @@ import type { GameState } from "@/game/state/types";
 function newServerBotMatch(seed: number): GameState {
   return createGameState({
     gameId: "server-bot-match",
-    player1: { id: "human", deck: DECK_LE_BRISE_LAMES },
-    player2: { id: "bot", deck: DECK_LE_COURLIS },
+    player1: { id: "human", deck: DECK_LE_BANC_DEBORDE },
+    player2: { id: "bot", deck: DECK_BEC_DANS_LA_BRUME },
     seed,
   });
 }

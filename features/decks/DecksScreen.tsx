@@ -58,16 +58,16 @@ import { playButtonClick } from "@/lib/sound";
  * ouvre la marche : c'est de là qu'on voit d'un coup tout ce qu'on peut
  * jouer, chaque deck portant la pastille de sa provenance.
  *
- * « Decks de test » et non « Préconstruits » : l'écran Jouer les appelle
- * déjà ainsi, et cette famille est une série d'essai vouée à disparaître
- * (il ne restera qu'une poignée de decks d'emprunt). Le Jeton, lui, reste
- * « de Préconstruit » — c'est le vocabulaire de l'économie.
+ * « Préconstruits » depuis la Bibliothèque v4 (19/09/2026) : la famille
+ * n'est plus une série d'essai vouée à disparaître, c'est le plan
+ * spécialisé de chaque Navire, celui qu'un Jeton achète. L'écran Jouer
+ * emploie le même mot.
  */
 const CATEGORY_LABELS: Record<DeckCategory, string> = {
   all: "Tous les decks",
   mine: "Mes decks",
   borrowed: "Decks d'emprunt",
-  precon: "Decks de test",
+  precon: "Préconstruits",
 };
 
 /**

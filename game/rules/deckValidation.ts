@@ -3,7 +3,7 @@ import { getMaxCopies } from "@/game/cards/types";
 import { getShipDefinition } from "@/game/environment/shipData";
 import { RULES } from "@/game/rules/constants";
 import { fail, ok, type ValidationResult } from "@/game/rules/validation";
-import type { DeckList } from "@/game/cards/decks/preconstructed";
+import type { DeckList } from "@/game/cards/decks/types";
 
 /**
  * Valide un deck personnel côté serveur (cadrage "Règles & mécaniques

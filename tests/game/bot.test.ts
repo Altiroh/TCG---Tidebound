@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createGameState } from "@/game/state/createGameState";
-import { DECK_LE_BRISE_LAMES, DECK_LE_COURLIS } from "@/game/cards/decks/preconstructed";
+import { DECK_LE_BANC_DEBORDE, DECK_BEC_DANS_LA_BRUME } from "@/game/cards/decks/borrowed";
 import { runBotTurn } from "@/game/bot/runBotTurn";
 import type { BotDifficulty } from "@/game/bot/types";
 import { instance, testGameState, testPlayer } from "./testHelpers";
@@ -8,8 +8,8 @@ import { instance, testGameState, testPlayer } from "./testHelpers";
 function newTestGame(seed: number) {
   return createGameState({
     gameId: "bot-test-game",
-    player1: { id: "p1", deck: DECK_LE_BRISE_LAMES },
-    player2: { id: "p2", deck: DECK_LE_COURLIS },
+    player1: { id: "p1", deck: DECK_LE_BANC_DEBORDE },
+    player2: { id: "p2", deck: DECK_BEC_DANS_LA_BRUME },
     seed,
   });
 }

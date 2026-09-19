@@ -16,8 +16,9 @@ import { deckStyleLabel, type DeckStyleId } from "@/game/cards/decks/deckStyles"
  *
  * NE S'APPLIQUE QU'AUX DECKS PERSONNELS. Une liste du catalogue garde ses
  * métadonnées écrites : elles disent une INTENTION de design que l'
- * arithmétique ne retrouvera jamais — « Le Courlis » est du tempo à 1,75 de
- * coût moyen quand « Pont d'Assaut » est agressif à 2,10.
+ * arithmétique ne retrouvera jamais — « Bec dans la Brume » et
+ * « Grenouilles au Canon » ont le même coût moyen (1,90) et ne jouent pas
+ * du tout au même jeu.
  *
  * Trois règles que ce module s'impose :
  *
@@ -61,9 +62,9 @@ const POOL: readonly CardDefinition[] = CORE_SET.filter((card) => !card.token);
 
 /**
  * Bornes de courbe, en coût MOYEN par carte, ajustées sur ce que les listes
- * existantes donnent réellement : elles s'étalent de 1,75 à 3,02 pour une
- * moyenne de catalogue à 2,87. Des bornes « naturelles » (2, 3, 4…) auraient
- * rangé quinze listes sur dix-sept dans la même case.
+ * existantes donnent réellement : les dix du catalogue v4 s'étalent de 1,88
+ * à 3,00 pour une moyenne de catalogue à 2,87. Des bornes « naturelles »
+ * (2, 3, 4…) rangeraient presque toutes les listes dans la même case.
  *
  * Chaque palier désigne une valeur de l'ÉNUMÉRATION (`DECK_STYLES`), pas
  * une phrase : le type déduit et le type choisi par le joueur doivent se

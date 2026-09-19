@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createGameState } from "@/game/state/createGameState";
-import { PLAYABLE_DECKS } from "@/game/cards/decks/testDecks";
+import { PLAYABLE_DECKS } from "@/game/cards/decks/catalog";
 import { evaluateState } from "@/game/bot/evaluateState";
 import { searchBestAction } from "@/game/bot/searchTurn";
 import { dispatch } from "@/game/engine";

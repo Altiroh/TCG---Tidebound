@@ -338,20 +338,21 @@ describe("environnement - malus globaux des Marées (verrouillé, Notion 'Moteur
   });
 });
 
-describe("environnement - decks préconstruits", () => {
-  it("chaque deck de base système (Courlis, Errant, Brise-Lames) est un deck valide (40-50 cartes, max_copies respecté)", async () => {
-    const { PRECONSTRUCTED_DECKS } = await import("@/game/cards/decks/preconstructed");
-    expect(PRECONSTRUCTED_DECKS).toHaveLength(3);
-    for (const deck of PRECONSTRUCTED_DECKS) {
+describe("environnement - decks fournis par le jeu", () => {
+  it("chaque deck d’emprunt — un par Navire — est une liste valide (40-50 cartes, max_copies respecté)", async () => {
+    const { BORROWED_DECK_LISTS } = await import("@/game/cards/decks/borrowed");
+    const { SHIP_SET } = await import("@/game/environment/shipData");
+    // « Navires à couvrir » (Notion « Bibliothèque de decks — v4 ») : les
+    // cinq. Un Navire sans emprunt est un Navire que personne ne jouera.
+    expect(BORROWED_DECK_LISTS).toHaveLength(SHIP_SET.length);
+    for (const deck of BORROWED_DECK_LISTS) {
       const validation = validateDeckList(deck);
       expect(validation.ok, `${deck.name}: ${!validation.ok ? validation.error : ""}`).toBe(true);
     }
   });
 
-  it("TOUTE liste proposée à la sélection est valide et connue du serveur — sinon l'écran offre un deck que la partie refusera", async () => {
-    const { PLAYABLE_DECKS, ARCHETYPE_DECKS, CRA_POISCAIL_TEST_DECKS, THEATRE_TEST_DECKS, UN_DEAD_TEST_DECKS } =
-      await import("@/game/cards/decks/testDecks");
-    const { PRECONSTRUCTED_DECKS } = await import("@/game/cards/decks/preconstructed");
+  it("TOUTE liste proposée à la sélection est valide et connue du serveur — sinon l’écran offre un deck que la partie refusera", async () => {
+    const { PLAYABLE_DECKS, BORROWED_DECKS, PRECON_DECKS } = await import("@/game/cards/decks/catalog");
 
     for (const deck of PLAYABLE_DECKS) {
       const validation = validateDeckList(deck);
@@ -361,21 +362,16 @@ describe("environnement - decks préconstruits", () => {
       expect(() => getShipDefinition(deck.shipId)).not.toThrow();
     }
 
-    // Les collections sont disjointes et couvrent exactement `PLAYABLE_DECKS` :
-    // un deck oublié dans l'une serait proposé sans être jouable, ou l'inverse.
-    const grouped = [
-      ...PRECONSTRUCTED_DECKS,
-      ...ARCHETYPE_DECKS,
-      ...CRA_POISCAIL_TEST_DECKS,
-      ...THEATRE_TEST_DECKS,
-      ...UN_DEAD_TEST_DECKS,
-    ];
+    // Les deux familles sont disjointes et couvrent exactement
+    // `PLAYABLE_DECKS` : un deck oublié dans l’une serait proposé sans être
+    // jouable, ou l’inverse.
+    const grouped = [...BORROWED_DECKS, ...PRECON_DECKS];
     expect(grouped.map((d) => d.id).sort()).toEqual(PLAYABLE_DECKS.map((d) => d.id).sort());
     expect(new Set(grouped.map((d) => d.id)).size).toBe(grouped.length);
   });
 
   it("chaque Navire du catalogue a au moins une liste jouable — un Navire sans deck ne peut pas être essayé", async () => {
-    const { PLAYABLE_DECKS } = await import("@/game/cards/decks/testDecks");
+    const { PLAYABLE_DECKS } = await import("@/game/cards/decks/catalog");
     const { SHIP_SET } = await import("@/game/environment/shipData");
 
     for (const ship of SHIP_SET) {

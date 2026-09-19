@@ -69,7 +69,7 @@ type Mode = "pvp" | "bot";
 type Step = 1 | 2 | 3;
 
 /** Les onglets de la sélection de deck, dans l'ordre de lecture. */
-type DeckTab = "mine" | "borrowed" | "test";
+type DeckTab = "mine" | "borrowed" | "precon";
 
 interface DeckTabDef {
   id: DeckTab;
@@ -173,11 +173,12 @@ export function NewMatchScreen({
         issueFor: (deck) => (unlocked.has(deck.id) ? null : "Pas ton deck d'emprunt — il se choisit une seule fois, dans Decks."),
       },
       {
-        // TEMPORAIRE : toutes les listes d'archétype, ouvertes pour tester.
-        // Le serveur les accepte déjà toutes (`findCatalogDeck`).
-        id: "test",
-        label: "Decks de test",
-        hint: "Listes d'archétype ouvertes le temps des essais.",
+        // TEMPORAIRE : tous les préconstruits sont ouverts pour tester, sans
+        // dépenser de Jeton. Le serveur les accepte déjà tous
+        // (`findCatalogDeck`).
+        id: "precon",
+        label: "Préconstruits",
+        hint: "Le plan spécialisé de chaque Navire — ouverts le temps des essais.",
         decks: PRECON_DECKS,
         issueFor: () => null,
       },

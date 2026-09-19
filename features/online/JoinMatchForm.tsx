@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { PRECONSTRUCTED_DECKS } from "@/game";
+import { CATALOG_DECKS } from "@/game";
 import { Button } from "@/components/ui/Button";
 import { joinOnlineMatch } from "@/features/online/actions";
 
 export function JoinMatchForm() {
   const router = useRouter();
-  const [deckId, setDeckId] = useState(PRECONSTRUCTED_DECKS[0]!.id);
+  const [deckId, setDeckId] = useState(CATALOG_DECKS[0]!.id);
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -41,7 +41,7 @@ export function JoinMatchForm() {
         onChange={(e) => setDeckId(e.target.value)}
         className="rounded-md border border-slate-700 bg-board-background px-2 py-1.5 text-sm text-slate-100"
       >
-        {PRECONSTRUCTED_DECKS.map((deck) => (
+        {CATALOG_DECKS.map((deck) => (
           <option key={deck.id} value={deck.id}>
             {deck.name}
           </option>

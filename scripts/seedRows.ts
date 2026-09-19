@@ -20,7 +20,7 @@
  * faux (plus aucune Peu commune/Rare/Abyssale à tirer) sans que rien ne le
  * signale.
  */
-import { CORE_SET, PRECONSTRUCTED_DECKS, getMaxCopies } from "@/game";
+import { CATALOG_DECKS, CORE_SET, getMaxCopies } from "@/game";
 import { RARITY_WEIGHTS } from "@/game/boosters";
 import { assertRarityCoverage, rarityForCardId } from "@/game/boosters/cardRarity";
 import { BOOSTER_POOLS } from "@/game/boosters/pools";
@@ -81,9 +81,9 @@ export function boosterPoolCardRows(): SeedRow[] {
   );
 }
 
-/** Les decks préconstruits, dans la forme de la table `system_decks`. */
+/** Les decks fournis par le jeu — emprunts ET préconstruits — dans la forme de la table `system_decks`. */
 export function systemDeckRows(): SeedRow[] {
-  return PRECONSTRUCTED_DECKS.map((deck) => ({
+  return CATALOG_DECKS.map((deck) => ({
     id: deck.id,
     ship_id: deck.shipId,
     name: deck.name,
@@ -92,9 +92,9 @@ export function systemDeckRows(): SeedRow[] {
   }));
 }
 
-/** La composition des decks préconstruits, regroupée par carte (`system_deck_cards`). */
+/** La composition de ces mêmes decks, regroupée par carte (`system_deck_cards`). */
 export function systemDeckCardRows(): SeedRow[] {
-  return PRECONSTRUCTED_DECKS.flatMap((deck) => {
+  return CATALOG_DECKS.flatMap((deck) => {
     const quantities = new Map<string, number>();
     for (const cardId of deck.cardIds) quantities.set(cardId, (quantities.get(cardId) ?? 0) + 1);
     return Array.from(quantities.entries()).map(([card_id, quantity]) => ({

@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { createGameState, dispatch, getCardDefinition, HIDDEN_CARD_ID, PRECONSTRUCTED_DECKS, toPlayerView } from "@/game";
+import { createGameState, dispatch, getCardDefinition, HIDDEN_CARD_ID, CATALOG_DECKS, toPlayerView } from "@/game";
 import { instance, testGameState, testPlayer } from "./testHelpers";
 
 function newMatch() {
   return createGameState({
     gameId: "view-test",
-    player1: { id: "p1", deck: PRECONSTRUCTED_DECKS[0]! },
-    player2: { id: "p2", deck: PRECONSTRUCTED_DECKS[1]! },
+    player1: { id: "p1", deck: CATALOG_DECKS[0]! },
+    player2: { id: "p2", deck: CATALOG_DECKS[1]! },
     seed: 42,
   });
 }
