@@ -21,6 +21,8 @@
   flex-direction: column;
   gap: clamp(8px, 1.2vh, 16px);
   min-height: 0;
+  /* La scène déborde par le haut (voir `.scene`) : c'est ici qu'on la
+     recadre, sans faire apparaître de barre de défilement. */
   overflow: hidden;
   padding: clamp(10px, 1.6vh, 22px) clamp(12px, 2vw, 36px) clamp(8px, 1.4vh, 18px);
 }
@@ -32,13 +34,24 @@
  * à gagner à s'étirer.
  */
 .zones {
+  position: relative;
+  /* Au-dessus du décor plein cadre, qui passe derrière les trois panneaux. */
+  z-index: 1;
   display: grid;
   grid-template-columns: minmax(240px, 0.85fr) minmax(0, 1.6fr) minmax(250px, 0.9fr);
   gap: clamp(10px, 1.4vw, 26px);
   align-items: stretch;
   flex: 1 1 auto;
   min-height: 0;
+  /* La colonne du milieu ne doit rien intercepter : le décor est derrière,
+     et on veut pouvoir viser le socle. Seule la zone de dépôt réactive
+     les événements. */
+  pointer-events: none;
 }
+
+.shelf,
+.panel,
+.plan { pointer-events: auto; }
 
 /*
  * Les trois colonnes TIENNENT jusqu'en bas : sur mobile, le jeu est
@@ -170,7 +183,7 @@
 
 /* Aucun exemplaire : en retrait, jamais caché — c'est ce qu'on vient
    découvrir avant de l'acheter. */
-.shelfEntry[data-owned="false"] .shelfEntryArt { filter: grayscale(0.85) brightness(0.6); }
+.shelfEntry[data-owned="false"] .shelfEntryArt { filter: grayscale(0.55) brightness(0.82); }
 .shelfEntry[data-owned="false"] .shelfEntryName { color: var(--ink-dim); }
 .shelfEntry[data-owned="false"] .shelfEntryCount { color: var(--ink-faint); }
 
@@ -240,64 +253,77 @@
  * en bas : c'est le ponton, avec le socle au centre. Le sachet est posé
  * par-dessus, à la verticale du socle.
  * ────────────────────────────────────────────────────────────── */
-.plan {
-  position: relative;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  min-height: 0;
-  border-radius: var(--radius);
-  /*
-   * La zone devient une unité de mesure (`cqw`/`cqh`) : c'est ce qui permet
-   * à la scène ci-dessous de garder EXACTEMENT les proportions de
-   * l'illustration quelle que soit la place disponible. Sans ça,
-   * `background-size: contain` recadre l'image dans une boîte dont le code
-   * ignore les dimensions — et tout calage en pourcentage devient faux.
-   */
-  container-type: size;
-}
-
 /*
- * LA SCÈNE — la boîte de l'illustration, au pixel près.
+ * LA SCÈNE — l'illustration, PLEIN CADRE et DERRIÈRE les trois zones.
  *
- * `plan-douverture.webp` fait 1600 × 900. La scène garde ce rapport et
- * prend la plus grande taille qui tienne dans la zone ; tout ce qui est
- * posé dessus (le sachet, la plaque) se cale donc en POURCENTAGE de
- * l'image, jamais de la zone. Recadrer l'illustration oblige à reprendre
- * ce rapport et les calages qui en dépendent.
+ * Elle n'est pas dans la colonne du milieu : le rayon et la fiche sont
+ * POSÉS sur le ponton, ils ne l'encadrent pas. Une illustration enfermée
+ * dans une colonne montrait ses bords et rapetissait le socle ; ici elle
+ * porte tout l'écran.
+ *
+ * `plan-douverture.webp` fait 1600 × 900, détourée et calée en bas. La
+ * scène prend toute la largeur et garde ce rapport : sa hauteur peut donc
+ * dépasser l'écran, et c'est voulu — ce qui sort par le haut n'est que du
+ * ciel transparent, tandis que le socle, lui, reste sur le bas du cadre.
+ *
+ * Tout ce qui est posé dessus (le sachet, la plaque) se cale en
+ * POURCENTAGE de l'image, jamais de l'écran. Recadrer l'illustration
+ * oblige à reprendre ce rapport et les calages qui en dépendent.
  */
-.planScene {
-  position: relative;
-  width: min(100cqw, calc(100cqh * 1600 / 900));
+.scene {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
   aspect-ratio: 1600 / 900;
   background-image: url("/assets/boosters/plan-douverture.webp");
   background-size: 100% 100%;
   background-repeat: no-repeat;
+  /* La scène sert d'unité de mesure à ce qu'elle porte (`cqw`/`cqh`). */
+  container-type: size;
+  /* Le décor ne prend jamais le clic : la zone de dépôt est au-dessus. */
+  pointer-events: none;
   transition: filter 200ms ease-out;
 }
 
 /* Survolé par un sachet en cours de dépôt : le socle s'allume. */
-.plan[data-state="over"] .planScene {
+.layout[data-plan="over"] .scene {
   filter: brightness(1.18) saturate(1.1) drop-shadow(0 0 26px rgba(95, 208, 230, 0.45));
 }
 
-/* Pendant un glisser, la zone s'annonce même sans être survolée : on doit
+/* Pendant un glisser, le socle s'annonce même sans être survolé : on doit
    voir OÙ déposer avant d'y arriver. */
-.zones[data-dragging="true"] .planScene {
+.layout[data-dragging="true"] .scene {
   filter: brightness(1.08) drop-shadow(0 0 16px rgba(95, 208, 230, 0.28));
 }
 
 /*
- * Le sachet, DEBOUT SUR LE SOCLE. Son bas s'arrête sur le disque d'eau du
- * socle (mesuré à 71 % de la hauteur de l'illustration), pas au bas de la
- * zone : il est posé, il ne flotte pas.
+ * La colonne du milieu ne porte plus rien : elle ne fait que RECEVOIR le
+ * sachet qu'on lâche, au-dessus du décor qui, lui, est plein cadre.
+ */
+.plan {
+  position: relative;
+  min-height: 0;
+  border-radius: var(--radius);
+}
+
+/*
+ * Le sachet, DEBOUT SUR LE SOCLE et en grand — c'est l'objet de l'écran.
+ * Son bas s'arrête sur le disque d'eau du socle (mesuré à 71 % de la
+ * hauteur de l'illustration), pas au bas de l'écran : il est posé, il ne
+ * flotte pas.
+ *
+ * Deux bornes à sa taille. `cqh` le fait grandir avec l'illustration ;
+ * `vh` l'empêche d'aller se loger sous la barre du haut sur un écran bas,
+ * puisque la scène, elle, peut être plus haute que l'écran.
  */
 .planPack {
   position: absolute;
   left: 50.6%;
   bottom: 29%;
   transform: translateX(-50%);
-  height: 68%;
+  height: min(44cqh, 51vh);
   width: auto;
   aspect-ratio: var(--pack-ratio, 5 / 7);
   background-image: var(--pack-art);
@@ -311,7 +337,7 @@
 /* Extension non possédée : présente, lisible, mais éteinte. On la regarde,
    on ne l'ouvre pas. */
 .planPack[data-locked="true"] {
-  filter: grayscale(0.9) brightness(0.48) drop-shadow(0 14px 22px rgba(0, 0, 0, 0.55));
+  filter: grayscale(0.55) brightness(0.82) drop-shadow(0 14px 22px rgba(0, 0, 0, 0.55));
 }
 
 /* Le sachet est centré par `translateX(-50%)` : toutes les animations qui
@@ -424,12 +450,12 @@
   white-space: nowrap;
 }
 
-.plan[data-state="over"] .planPlate {
+.layout[data-plan="over"] .planPlate {
   border-color: var(--cb-cyan);
   color: var(--cb-cyan);
 }
 
-.plan[data-state="locked"] .planPlate { color: var(--ink-dim); }
+.layout[data-plan="locked"] .planPlate { color: var(--ink-dim); }
 
 /* Le compteur de pity, sous la plaque : une information de réserve, pas
    de décor — elle ne doit pas concurrencer le nom. */
@@ -520,14 +546,25 @@
   margin-block: clamp(2px, 0.6vh, 8px);
 }
 
-.panelArt[data-locked="true"] { filter: grayscale(0.9) brightness(0.5) drop-shadow(0 8px 14px rgba(0, 0, 0, 0.5)); }
+.panelArt[data-locked="true"] { filter: grayscale(0.55) brightness(0.82) drop-shadow(0 8px 14px rgba(0, 0, 0, 0.5)); }
 
+/*
+ * L'accroche. UNE LIGNE — c'est ce qui en fait une accroche et pas un
+ * second résumé : elle se lit d'un coup d'œil, au-dessus du récit qui,
+ * lui, se lit. Les textes sont écrits assez courts pour y tenir
+ * (`game/boosters/extensions.ts`) ; le jour où l'un déborde, c'est le
+ * texte qu'on raccourcit, pas la règle qu'on lève.
+ */
 .panelTagline {
   margin: 0;
   font-family: var(--cb-font-display);
-  font-size: clamp(11px, 0.92vw, 15px);
+  font-size: clamp(10px, 0.82vw, 14px);
   font-style: italic;
+  letter-spacing: 0.01em;
   text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   color: var(--gold);
 }
 

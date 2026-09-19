@@ -1,11 +1,25 @@
 /* Contenu d'un booster — fenêtre bleu nuit, liseré cyan. */
 
+/*
+ * FLEX et non grid (19/09/2026). En grille, l'unique rangée implicite était
+ * dimensionnée par son CONTENU — un pool de 61 cartes — et le
+ * `max-height: min(90vh, 100%)` du dialogue s'y référait : un pourcentage
+ * qui dépend de ce qu'il est censé borner ne borne rien. Le dialogue
+ * prenait donc la hauteur de sa liste entière, et sa fenêtre, centrée dans
+ * une rangée bien plus haute que l'écran, commençait sous la ligne de
+ * flottaison — on n'en voyait que le titre.
+ *
+ * Dans un conteneur flex à hauteur DÉFINIE (`fixed` + `inset: 0`), `100 %`
+ * se résout sur l'écran, et la liste reprend son rôle : c'est elle qui
+ * défile, pas la fenêtre qui grandit.
+ */
 .backdrop {
   position: fixed;
   inset: 0;
   z-index: 85;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: clamp(10px, 3vmin, 40px);
   background: rgba(2, 6, 12, 0.72);
   backdrop-filter: blur(6px);
@@ -22,7 +36,10 @@
   flex-direction: column;
   gap: 12px;
   width: min(1080px, 100%);
-  max-height: min(90vh, 100%);
+  /* Le fond réserve déjà sa marge en `padding` : 100 % de sa boîte de
+     contenu, c'est l'écran moins cette marge. */
+  max-height: 100%;
+  min-height: 0;
   padding: clamp(14px, 2vw, 24px);
   border: 1px solid rgba(0, 183, 255, 0.7);
   border-radius: 14px;
@@ -149,6 +166,10 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(clamp(120px, 12vw, 150px), 1fr));
   gap: 10px;
+  /* C'est la LISTE qui absorbe la hauteur restante et défile — en-tête et
+     filtres gardent la leur. Sans ce `flex`, elle ne réclamait rien et se
+     contentait de pousser la fenêtre. */
+  flex: 1 1 auto;
   min-height: 0;
   margin: 0;
   padding: 2px 10px 4px 0;

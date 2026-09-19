@@ -327,8 +327,63 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
 
   return (
     <GameScreen active="boosters">
-      <div className={styles.layout}>
-        <div className={styles.zones} data-dragging={isDragging ? "true" : "false"}>
+      <div
+        className={styles.layout}
+        data-plan={isOver ? "over" : ownsSelected ? "loaded" : "locked"}
+        data-dragging={isDragging ? "true" : "false"}
+      >
+        {/*
+         * LE DÉCOR, PLEIN CADRE — il passe DERRIÈRE les trois zones, qui
+         * flottent dessus. C'est lui qui fait la scène : le rayon et la
+         * fiche sont posés sur le ponton, ils ne l'encadrent pas.
+         *
+         * Le sachet et la plaque vivent ICI et pas dans la colonne du
+         * milieu : tous deux se calent en pourcentage de l'ILLUSTRATION
+         * (le socle, la plaque peinte), et une colonne de grille n'a pas
+         * les mêmes bords qu'elle.
+         */}
+        {selected && (
+          <div className={styles.scene}>
+            <span
+              ref={dockPackRef}
+              className={styles.planPack}
+              style={closedPackVariables(getBoosterPackVisual(selected.boosterId))}
+              data-locked={ownsSelected ? undefined : "true"}
+              data-charging={isOpening || undefined}
+              data-launched={opening !== null || undefined}
+              aria-hidden
+            />
+            {/*
+             * La plaque RECOUVRE celle qui est peinte dans l'illustration
+             * (« Glissez un booster ici ») : le décor ne peut pas dire
+             * autre chose que l'état réel du plan. Le texte vit dans un
+             * `span` — la plaque est un conteneur flex, où l'élision ne
+             * s'applique pas, et un nom trop long y était rogné DES DEUX
+             * CÔTÉS au lieu de se terminer par des points de suspension.
+             */}
+            <p className={styles.planPlate}>
+              <span className={styles.planPlateText}>
+                {isOpening
+                  ? "Ouverture…"
+                  : !ownsSelected
+                    ? "Non possédée"
+                    : isDragging || isOver
+                      ? "Lâche pour ouvrir"
+                      : selected.name}
+              </span>
+            </p>
+            {ownsSelected && selected.entry && selected.entry.packsSinceAbyssal >= PITY.rampStartsAfterPacks && (
+              <p className={styles.planPity}>
+                {selected.entry.packsSinceAbyssal} sans Abyssale
+                {selected.entry.packsSinceAbyssal >= PITY.guaranteeAtPack - 1
+                  ? " · garantie au prochain"
+                  : " · chance renforcée"}
+              </p>
+            )}
+          </div>
+        )}
+
+        <div className={styles.zones}>
           {/* ── GAUCHE : le rayon, tout ce qui existe ─────────────── */}
           <section className={styles.shelf} aria-label="Extensions">
             <header className={styles.shelfHead}>
@@ -396,58 +451,9 @@ export function BoostersScreen({ inventory }: BoostersScreenProps) {
               void handleOpen(dropped.boosterId);
             }}
           >
-            {selected && (
-              /* La scène porte l'illustration du socle et TOUT ce qui se
-                 cale dessus : sa boîte a exactement les proportions de
-                 l'image, de sorte que les pourcentages ci-dessous soient
-                 ceux de l'illustration et pas ceux de la colonne. */
-              <div className={styles.planScene}>
-                <span
-                  ref={dockPackRef}
-                  className={styles.planPack}
-                  style={closedPackVariables(getBoosterPackVisual(selected.boosterId))}
-                  data-locked={ownsSelected ? undefined : "true"}
-                  data-charging={isOpening || undefined}
-                  data-launched={opening !== null || undefined}
-                  aria-hidden
-                />
-                {/*
-                 * La plaque du socle. Elle RECOUVRE celle qui est peinte
-                 * dans l'illustration (« Glissez un booster ici ») : le
-                 * décor ne peut pas dire autre chose que l'état réel du
-                 * plan. Son calage suit celui de l'image — la déplacer
-                 * dans l'illustration demande de reprendre `.planPlate`.
-                 */}
-                <p className={styles.planPlate}>
-                  {/*
-                   * Le texte vit dans un `span` et pas directement dans la
-                   * plaque : celle-ci est un conteneur flex, où l'élision
-                   * ne s'applique pas. Sans lui, un nom trop long était
-                   * rogné DES DEUX CÔTÉS — « trangeté sous-marin » — au
-                   * lieu de se terminer par des points de suspension.
-                   * Court par nécessité : la plaque est peinte dans
-                   * l'illustration, sa largeur n'est pas négociable.
-                   */}
-                  <span className={styles.planPlateText}>
-                    {isOpening
-                      ? "Ouverture…"
-                      : !ownsSelected
-                        ? "Non possédée"
-                        : isDragging || isOver
-                          ? "Lâche pour ouvrir"
-                          : selected.name}
-                  </span>
-                </p>
-                {ownsSelected && selected.entry && selected.entry.packsSinceAbyssal >= PITY.rampStartsAfterPacks && (
-                  <p className={styles.planPity}>
-                    {selected.entry.packsSinceAbyssal} sans Abyssale
-                    {selected.entry.packsSinceAbyssal >= PITY.guaranteeAtPack - 1
-                      ? " · garantie au prochain"
-                      : " · chance renforcée"}
-                  </p>
-                )}
-              </div>
-            )}
+            {/* Zone de DEPOT, volontairement transparente : le socle est
+                peint dans le decor plein cadre, juste derriere. Cette
+                colonne ne fait que recevoir le sachet qu'on lache. */}
           </section>
 
           {/* ── DROITE : la fiche de l'extension ──────────────────── */}

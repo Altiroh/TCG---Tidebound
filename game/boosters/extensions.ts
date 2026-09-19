@@ -53,7 +53,14 @@ export interface BoosterExtension {
    * On ne promet que ce que la liste tient (voir l'en-tête).
    */
   archetype: ArchetypeId | null;
-  /** Une ligne, sous le titre — ce que le sachet dit de lui-même. */
+  /**
+   * Une ligne, sous le titre — ce que le sachet dit de lui-même.
+   *
+   * UNE seule, littéralement : la fiche l'affiche sans retour à la ligne
+   * (`.panelTagline`), dans une colonne étroite. Au-delà d'une trentaine
+   * de signes, elle s'y termine en points de suspension — le test borne
+   * donc sa longueur.
+   */
   tagline: string;
   /** L'histoire derrière le booster : trois à cinq lignes, jamais des règles. */
   lore: string;
@@ -86,7 +93,7 @@ const EXTENSIONS: readonly BoosterExtension[] = [
     boosterId: BOOSTER_DEFAUT,
     kind: "base",
     archetype: null,
-    tagline: "Le fond du coffre, celui qu'on ouvre en premier",
+    tagline: "Le fond du coffre",
     lore:
       "Tout équipage commence par le même inventaire : une lanterne, une corde, un nom qu'on répète pour ne pas " +
       "l'oublier. Le Booster Défaut rassemble ce que la mer exige avant d'exiger le reste — de quoi tenir un quart, " +
@@ -96,7 +103,7 @@ const EXTENSIONS: readonly BoosterExtension[] = [
     boosterId: BOOSTER_POISSONS_PAS_FRAIS,
     kind: "extension",
     archetype: null,
-    tagline: "Ce que le filet ramène, et ce qui monte avec",
+    tagline: "Ce que le filet ramène",
     lore:
       "Il y a la pêche, et il y a ce qui s'y accroche. Poissons pas frais rassemble ce qu'on ne mange pas : des " +
       "bêtes qui ont trop vécu en bas, des objets qu'on casse volontiers parce qu'ils rendent mieux en partant, et " +
@@ -106,7 +113,7 @@ const EXTENSIONS: readonly BoosterExtension[] = [
     boosterId: BOOSTER_ETRANGETE_SOUS_MARINE,
     kind: "extension",
     archetype: null,
-    tagline: "Sous une certaine profondeur, la mer cesse d'imiter la mer",
+    tagline: "La mer cesse d'imiter la mer",
     lore:
       "Étrangeté sous-marine réunit ce qui se joue en bas sans public. Une troupe masquée qui rejoue la même scène " +
       "jusqu'à ce qu'elle tombe juste. Une cour minuscule qui se prend pour un royaume et se bat pour de vrai. Et, " +
@@ -116,7 +123,7 @@ const EXTENSIONS: readonly BoosterExtension[] = [
     boosterId: BOOSTER_VEILLEE_DES_DISPARUS,
     kind: "extension",
     archetype: "un-dead",
-    tagline: "Lorsque la mer oublie, les ombres se souviennent",
+    tagline: "Les ombres se souviennent",
     lore:
       "Des feux se rallument dans la brume, et des voix s'élèvent depuis les flots. La Veillée des Disparus explore " +
       "la frontière entre la mémoire et l'oubli : les petits qui attendent encore sur le quai, les promesses qu'on " +

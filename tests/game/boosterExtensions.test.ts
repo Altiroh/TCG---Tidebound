@@ -53,6 +53,10 @@ describe("extensions de boosters", () => {
   it("donne à chaque extension un texte qui existe vraiment", () => {
     for (const extension of BOOSTER_EXTENSIONS) {
       expect(extension.tagline.length, extension.boosterId).toBeGreaterThan(10);
+      // L'accroche tient sur UNE ligne dans une colonne étroite : au-delà,
+      // la fiche la termine en points de suspension. C'est le texte qu'on
+      // raccourcit, pas la mise en page qu'on relâche.
+      expect(extension.tagline.length, `« ${extension.tagline} » ne tiendra pas sur une ligne`).toBeLessThanOrEqual(32);
       // Trois à cinq lignes : assez pour raconter, trop court pour un pavé
       // que personne ne lit dans un panneau latéral.
       expect(extension.lore.length, extension.boosterId).toBeGreaterThan(120);
