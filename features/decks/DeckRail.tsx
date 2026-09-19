@@ -80,6 +80,11 @@ export function DeckRail({
 
   return (
     <aside className={styles.rail} aria-label="Rayons et filtres">
+      {/*
+        La colonne NE DÉFILE PAS. Ce sont les listes qui défilent, chacune
+        sous son propre titre : « Style de jeu » et « Navire » restent en
+        place, et l'on sait toujours ce qu'on est en train de cocher.
+      */}
       <div className={styles.railScroll}>
         <section className={styles.railGroup}>
           <p className={styles.railTitle}>
@@ -160,36 +165,40 @@ export function DeckRail({
           {styleOptions.length > 0 && (
             <div className={styles.railFilter}>
               <p className={game.sectionTitle}>Style de jeu</p>
-              {styleOptions.map((id) => (
-                <label key={id} className={`${game.choice} ${styles.railCheck}`}>
-                  <input
-                    type="checkbox"
-                    className={game.choiceInput}
-                    checked={filters.styles.has(id)}
-                    onChange={() => onFilters({ ...filters, styles: toggle(filters.styles, id) })}
-                  />
-                  <span className={game.choiceBox} aria-hidden />
-                  {styleFilterLabel(id)}
-                </label>
-              ))}
+              <div className={styles.railChecks}>
+                {styleOptions.map((id) => (
+                  <label key={id} className={`${game.choice} ${styles.railCheck}`}>
+                    <input
+                      type="checkbox"
+                      className={game.choiceInput}
+                      checked={filters.styles.has(id)}
+                      onChange={() => onFilters({ ...filters, styles: toggle(filters.styles, id) })}
+                    />
+                    <span className={game.choiceBox} aria-hidden />
+                    {styleFilterLabel(id)}
+                  </label>
+                ))}
+              </div>
             </div>
           )}
 
           {availableShips.length > 0 && (
             <div className={styles.railFilter}>
               <p className={game.sectionTitle}>Navire</p>
-              {availableShips.map((shipId) => (
-                <label key={shipId} className={`${game.choice} ${styles.railCheck}`}>
-                  <input
-                    type="checkbox"
-                    className={game.choiceInput}
-                    checked={filters.ships.has(shipId)}
-                    onChange={() => onFilters({ ...filters, ships: toggle(filters.ships, shipId) })}
-                  />
-                  <span className={game.choiceBox} aria-hidden />
-                  {shipNameOf(shipId)}
-                </label>
-              ))}
+              <div className={styles.railChecks}>
+                {availableShips.map((shipId) => (
+                  <label key={shipId} className={`${game.choice} ${styles.railCheck}`}>
+                    <input
+                      type="checkbox"
+                      className={game.choiceInput}
+                      checked={filters.ships.has(shipId)}
+                      onChange={() => onFilters({ ...filters, ships: toggle(filters.ships, shipId) })}
+                    />
+                    <span className={game.choiceBox} aria-hidden />
+                    {shipNameOf(shipId)}
+                  </label>
+                ))}
+              </div>
             </div>
           )}
 

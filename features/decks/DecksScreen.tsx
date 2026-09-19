@@ -312,7 +312,7 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog }: DecksScreenPr
 
   return (
     <GameScreen active="decks">
-      <div className={game.content}>
+      <div className={`${game.content} ${styles.fullBleed}`}>
         <div className={`${game.contentWide} ${styles.screen}`}>
           <div className={styles.browser}>
             <DeckRail

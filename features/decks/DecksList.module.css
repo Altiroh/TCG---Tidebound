@@ -15,12 +15,41 @@
  * `100vh` déborde sous la barre d'adresse.
  */
 
-.screen {
+/*
+ * PLEINE LARGEUR, calée sur le bandeau.
+ *
+ * Les autres écrans se lisent comme une page : leur colonne s'arrête à
+ * 1480 px et se centre, parce qu'un paragraphe de 1900 px ne se lit pas.
+ * Celui-ci n'est pas une page, c'est un ATELIER — trois colonnes qui se
+ * regardent — et le vide de part et d'autre ne servait qu'à décaler la
+ * grille par rapport aux onglets du haut.
+ *
+ * Sélecteur doublé : `game.contentWide` pose la même propriété avec la
+ * même spécificité, et rien ne garantit l'ordre des deux feuilles.
+ */
+.screen.screen {
+  width: 100%;
+  max-width: none;
   /* La colonne de la coquille fait EXACTEMENT la hauteur visible : sans
      hauteur définie, un enfant en `flex: 1` ne peut pas rétrécir, et ce
      sont les trois colonnes qui allongeraient la page. */
   height: 100%;
   min-height: 0;
+}
+
+/*
+ * L'écart aux bords est celui du BANDEAU, au pixel près (`.header`,
+ * `ScreenShell.module.css`) : la colonne de gauche commence sous
+ * « Cartes », la fiche de droite finit sous l'engrenage. La valeur par
+ * défaut du contenu (44 px) décalait tout de 8 px vers l'intérieur — assez
+ * pour que l'œil voie deux grilles différentes.
+ */
+.fullBleed.fullBleed {
+  /* Sélecteur doublé : `.content` pose un `padding` RACCOURCI, qui écrase
+     n'importe quelle marge logique de même spécificité, quel que soit
+     l'ordre des feuilles. */
+  padding-left: calc(clamp(14px, 2vw, 36px) + var(--tb-safe-left));
+  padding-right: calc(clamp(14px, 2vw, 36px) + var(--tb-safe-right));
 }
 
 .browser {
@@ -55,19 +84,32 @@
   overflow: hidden;
 }
 
+/*
+ * LA COLONNE NE DÉFILE PAS : ce sont les LISTES qui défilent, sous des
+ * titres qui restent en place. Faire glisser la colonne entière emmenait
+ * « Style de jeu » et « Navire » hors de vue — on cochait des cases sans
+ * plus savoir ce qu'elles filtraient.
+ */
 .railScroll {
   display: flex;
   flex-direction: column;
-  gap: clamp(10px, 1.4vh, 18px);
+  gap: clamp(8px, 1.2vh, 16px);
+  flex: 1 1 0;
   min-height: 0;
-  overflow-y: auto;
-  padding: 0 6px 4px 0;
-  scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
+  overflow: hidden;
+  padding: 0 4px 2px 0;
 }
 
-.railScroll::-webkit-scrollbar { width: 7px; }
-.railScroll::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--line-strong); }
+/* Le bloc des rayons ne cède jamais : quatre lignes, c'est la carte du
+   lieu. Seul le bloc des filtres se comprime. */
+.railScroll > .railGroup:first-child {
+  flex: 0 0 auto;
+}
+
+.railScroll > .railGroup:last-child {
+  flex: 1 1 0;
+  min-height: 0;
+}
 
 .railGroup {
   display: flex;
@@ -180,21 +222,44 @@
 .railSubItem:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 2px; }
 .railSubItem[data-active] { color: var(--cb-cyan); background: rgba(12, 30, 46, 0.6); }
 
+/* Le titre reste, la liste défile — et les deux sections se partagent la
+   hauteur restante au prorata de ce qu'elles ont à montrer. */
 .railFilter {
   display: flex;
   flex-direction: column;
+  flex: 0 1 auto;
   gap: 2px;
+  min-height: 0;
 }
 
 .railFilter > p {
+  flex: 0 0 auto;
   margin-bottom: 4px;
 }
 
+.railChecks {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  /* Deux cases au minimum : une liste réduite à une ligne ne se parcourt
+     plus, autant en montrer moins ailleurs. */
+  min-height: 58px;
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.railChecks::-webkit-scrollbar { width: 6px; }
+.railChecks::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--line-strong); }
+
 .railCheck {
+  flex: 0 0 auto;
   font-size: clamp(12px, 0.9vw, 13.5px);
 }
 
 .railReset {
+  flex: 0 0 auto;
   margin-top: 6px;
   justify-content: center;
 }
@@ -479,9 +544,24 @@
   list-style: none;
 }
 
+/*
+ * LES COLONNES SONT LES MÊMES D'UNE LIGNE À L'AUTRE.
+ *
+ * Chaque ligne est sa propre grille — une grille unique demanderait un
+ * `display: contents` sur le bouton, qui lui ferait perdre son cadre et
+ * son état. Les pistes sont donc FIXES ou en fraction, jamais en `auto` :
+ * avec `auto`, chaque ligne se mesurait toute seule et le style, l'effectif
+ * et les étiquettes dansaient d'une ligne à la suivante.
+ */
 .row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1.6fr) minmax(0, 1fr) auto auto minmax(0, 0.9fr);
+  grid-template-columns:
+    56px
+    minmax(0, 1.9fr)
+    minmax(0, 1.3fr)
+    62px
+    clamp(150px, 13vw, 210px)
+    minmax(0, 1.2fr);
   align-items: center;
   gap: clamp(8px, 1vw, 16px);
   width: 100%;
@@ -554,9 +634,12 @@
   white-space: nowrap;
 }
 
+/* Les chiffres s'alignent sur la droite et en chasse fixe : deux
+   effectifs se comparent d'un coup d'œil, pas en les lisant. */
 .rowSize {
   font-size: clamp(11px, 0.8vw, 12.5px);
   font-variant-numeric: tabular-nums;
+  text-align: right;
   color: var(--ink);
   white-space: nowrap;
 }
@@ -565,6 +648,8 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .emptyActions {
