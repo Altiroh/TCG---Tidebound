@@ -22,6 +22,25 @@ const FAMILY_HINTS: Record<string, string> = {
 };
 
 /**
+ * CE QU'ON REGARDE. La vitrine s'ouvre sur ce qu'on POSSÈDE — c'est la
+ * collection du joueur, et elle doit lui appartenir avant de lui montrer
+ * ce qui lui manque. Le reste est à un clic.
+ */
+type Shelf = "owned" | "locked" | "all";
+
+const SHELVES: ReadonlyArray<{ id: Shelf; label: string }> = [
+  { id: "owned", label: "Possédés" },
+  { id: "locked", label: "À débloquer" },
+  { id: "all", label: "Tous" },
+];
+
+function onShelf(option: CollectableOption, shelf: Shelf): boolean {
+  if (shelf === "owned") return option.owned;
+  if (shelf === "locked") return !option.owned;
+  return true;
+}
+
+/**
  * COLLECTABLES — ce que la collection compte d'autre que des cartes.
  *
  * Même écran que les Cartes : les familles en colonne à gauche, la vitrine
@@ -44,6 +63,11 @@ export function CollectablesScreen({ view }: { view: CollectablesView }) {
   const { apply: applyCardBack } = useCardBack();
   const { apply: applyShipFrame } = useShipFrame();
   const [kind, setKind] = useState<string>(view.families[0]?.kind ?? "cardBack");
+  /*
+   * Hors session, « Possédés » ne montrerait que le gratuit : on ouvre
+   * alors sur tout, sinon la vitrine paraît vide au premier venu.
+   */
+  const [shelf, setShelf] = useState<Shelf>(view.isSignedIn ? "owned" : "all");
   // Le solde est affiché ET sert à décider ce qui est à portée : il doit
   // baisser dès l'achat confirmé, sans attendre le rechargement serveur.
   const [balance, setBalance] = useState(view.balance);
@@ -124,6 +148,30 @@ export function CollectablesScreen({ view }: { view: CollectablesView }) {
             <p className={browser.count}>
               <strong>{current.label}</strong> · {FAMILY_HINTS[current.kind] ?? ""}
             </p>
+
+            {/* L'étagère : ce qu'on possède, ce qu'il reste, ou tout. Le
+                compte est sur l'onglet — c'est lui qui dit s'il vaut la
+                peine d'aller voir. */}
+            <span className={styles.shelfTabs} role="group" aria-label="Ce qui est affiché">
+              {SHELVES.map((entry) => {
+                const count = current.options.filter((option) => onShelf(option, entry.id)).length;
+                return (
+                  <button
+                    key={entry.id}
+                    type="button"
+                    className={styles.shelfTab}
+                    data-active={shelf === entry.id ? "true" : undefined}
+                    aria-pressed={shelf === entry.id}
+                    onClick={() => {
+                      playButtonClick();
+                      setShelf(entry.id);
+                    }}
+                  >
+                    {entry.label} <span className={styles.shelfTabCount}>{count}</span>
+                  </button>
+                );
+              })}
+            </span>
             {/* L'achat se fait au Market, rayon Cosmétiques : ici on regarde et on équipe. */}
             <p className={browser.count}>
               <Link href="/market" className={game.link} onClick={() => playButtonClick()}>
@@ -149,10 +197,15 @@ export function CollectablesScreen({ view }: { view: CollectablesView }) {
             <Showcase
               key={current.kind}
               family={current}
+              shelf={shelf}
               isSignedIn={view.isSignedIn}
               balance={balance}
               onBought={afterPurchase}
               onEquipped={afterEquip}
+              onShowAll={() => {
+                playButtonClick();
+                setShelf("all");
+              }}
             />
           </div>
         </main>
@@ -292,16 +345,20 @@ const BOX_CLASS: Record<string, { box: string | undefined; image: string | undef
  */
 function Showcase({
   family,
+  shelf,
   isSignedIn,
   balance,
   onBought,
   onEquipped,
+  onShowAll,
 }: {
   family: CollectableFamilyView;
+  shelf: Shelf;
   isSignedIn: boolean;
   balance: number;
   onBought: (balance: number) => void;
   onEquipped: (kind: string, id: string) => void;
+  onShowAll: () => void;
 }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
@@ -329,10 +386,25 @@ function Showcase({
       .finally(() => setBusy(null));
   }
 
+  const shown = family.options.filter((option) => onShelf(option, shelf));
+
+  if (shown.length === 0) {
+    return (
+      <p className={game.muted}>
+        {shelf === "owned"
+          ? "Rien dans cette famille pour l'instant."
+          : "Tout est débloqué dans cette famille."}{" "}
+        <button type="button" className={game.link} onClick={onShowAll}>
+          Tout voir
+        </button>
+      </p>
+    );
+  }
+
   return (
     <>
       <ul className={styles.grid}>
-        {family.options.map((option) => {
+        {shown.map((option) => {
           const selected = option.id === current;
           // Un Collectable sans visuel définitif se montre mais ne s'équipe
           // pas : l'équiper reviendrait à jouer avec le voile « à venir ».

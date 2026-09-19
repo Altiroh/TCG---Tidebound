@@ -9,7 +9,6 @@ import {
 } from "@/game";
 import type { AchievementStats } from "@/game/achievements";
 import { readAchievementStats } from "@/features/achievements/achievementService";
-import { SHIP_FRAME_COSMETIC_KIND } from "@/game";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 
 /**
@@ -44,9 +43,9 @@ export interface CollectableOption {
   masked: boolean;
   /**
    * `true` : le VISUEL est sous le voile, mais le nom et la condition
-   * restent lisibles. Deux cas : un emplacement masqué (qui cache tout), et
-   * un cadre de Navire pas encore débloqué — on sait ce qu'il faut faire
-   * pour l'avoir, on ne voit pas ce qu'on aura.
+   * restent lisibles — on sait ce qu'il faut faire pour l'avoir, on ne voit
+   * pas ce qu'on aura. Vrai pour TOUT ce qui reste à mériter ; faux pour ce
+   * qui est en vente, qu'on doit pouvoir regarder avant d'acheter.
    */
   artHidden: boolean;
   /** Condition en clair (`null` si masqué ou déjà obtenu). */
@@ -101,11 +100,22 @@ function toOption(
   stats: AchievementStats
 ): CollectableOption {
   const masked = !owned && item.hidden === true;
-  // Un cadre de Navire non débloqué reste sous le voile : c'est une grande
-  // pièce montrée en grand, et la voir en entier avant de l'avoir lui ôte
-  // tout son effet le jour où elle tombe. Le nom et la condition, eux,
-  // restent lisibles — on doit savoir ce qu'on vise.
-  const artHidden = masked || (!owned && kind === SHIP_FRAME_COSMETIC_KIND);
+  /*
+   * CE QU'ON N'A PAS GAGNÉ, ON NE LE VOIT PAS (19/09/2026).
+   *
+   * Le voile ne couvrait que les emplacements cachés et les cadres de
+   * Navire : un dos verrouillé au niveau 25 se laissait donc regarder en
+   * entier, et le jour où il tombait, il n'y avait plus rien à découvrir.
+   * Toute récompense À MÉRITER est désormais sous le voile — nom et
+   * condition restent lisibles, on doit savoir ce qu'on vise.
+   *
+   * UNE exception, et elle est de bon sens : ce qui est EN VENTE se montre.
+   * Un cosmétique qu'on achète n'est pas une récompense qu'on découvre,
+   * c'est une marchandise — et on ne vend pas ce qu'on refuse de montrer.
+   * Le rayon Cosmétiques du Market lit ce même `src`.
+   */
+  const forSale = item.unlock.kind === "purchase";
+  const artHidden = masked || (!owned && !forSale);
   return {
     id: item.id,
     label: masked ? "Collectable caché" : item.label,

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { AUTH_LINK_CLASS } from "@/components/auth/AuthGlassPanel";
+import { appVersionLabel } from "@/features/settings/appVersion";
 import { AudioSettingsSection } from "@/features/settings/AudioSettingsSection";
 import { ChangePasswordSection } from "@/features/settings/ChangePasswordSection";
 import { DeleteAccountSection } from "@/features/settings/DeleteAccountSection";
@@ -55,6 +56,14 @@ export function SettingsDialog({ isSignedIn, onClose }: SettingsDialogProps) {
             </p>
           )}
         </section>
+
+        {/*
+         * La version, tout en bas et en petit : ce n'est pas un réglage.
+         * Elle sert à répondre à « quelle version as-tu ? » sans avoir à
+         * faire ouvrir une console à qui que ce soit — une capture de ce
+         * pied de dialogue suffit.
+         */}
+        <p className={styles.version}>{appVersionLabel()}</p>
       </div>
     </Dialog>
   );

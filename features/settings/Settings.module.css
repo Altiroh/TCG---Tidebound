@@ -55,3 +55,20 @@
   line-height: 1.5;
   color: var(--ink-dim, rgba(190, 210, 228, 0.7));
 }
+
+/*
+ * LA VERSION — un pied de dialogue, pas un réglage. Discrète par
+ * construction : elle ne sert qu'au jour où l'on demande « quelle version
+ * as-tu ? », et une capture de cette ligne y répond.
+ */
+.version {
+  margin: 4px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-align: center;
+  color: var(--ink-faint);
+  /* Un numéro se relit et se recopie : on doit pouvoir le sélectionner. */
+  user-select: text;
+}

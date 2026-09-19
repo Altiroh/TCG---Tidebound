@@ -1,6 +1,29 @@
+import { createRequire } from "node:module";
+
+const { version } = createRequire(import.meta.url)("./package.json");
+
+/**
+ * LA VERSION, figée à la construction.
+ *
+ * Lue une fois ici plutôt qu'importée depuis `package.json` dans un
+ * composant : un `import` du manifeste embarquerait tout le fichier —
+ * dépendances et scripts compris — dans le bundle client, pour en afficher
+ * un champ.
+ *
+ * Le commit vient de Vercel (`VERCEL_GIT_COMMIT_SHA`), et n'existe donc
+ * qu'en déploiement : en local il n'y a que la version, et c'est très bien
+ * — ce numéro sert à savoir CE QUI TOURNE quand un joueur signale quelque
+ * chose, pas à dater une session de développement.
+ */
+const commit = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? "";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  env: {
+    NEXT_PUBLIC_APP_VERSION: version,
+    NEXT_PUBLIC_APP_COMMIT: commit,
+  },
   // `typedRoutes` désactivé : nécessite que `.next/types` soit régénéré par
   // `next dev`/`next build`, ce que notre script `typecheck` (tsc --noEmit
   // seul) ne fait pas — source de faux positifs sur des routes valides.

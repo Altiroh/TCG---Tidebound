@@ -58,10 +58,24 @@
   outline-offset: 2px;
 }
 
+/*
+ * L'ÉQUIPÉ. Le même halo léger que les boutons de l'application
+ * (`--tb-glow-md`), pas un cadre plus épais : c'est la seule vignette qui
+ * doit se voir de loin, et elle le fait par la lumière — la bordure, elle,
+ * reste de la même épaisseur que les autres, sinon la grille se déforme
+ * autour d'elle.
+ */
 .itemShell[data-selected="true"] {
-  border-color: rgba(88, 200, 216, 0.7);
+  border-color: var(--tb-accent-line);
   background: linear-gradient(180deg, rgba(13, 52, 69, 0.6), rgba(8, 18, 30, 0.5));
-  box-shadow: 0 0 0 1px rgba(88, 200, 216, 0.25), 0 10px 26px rgba(4, 20, 28, 0.5);
+  box-shadow: var(--tb-glow-md), 0 10px 26px rgba(4, 20, 28, 0.5);
+}
+
+/* Le halo court aussi autour de la vignette elle-même : sur une grande
+   image, un liseré sur la carte seule se perd. */
+.itemShell[data-selected="true"] .cardBackFrame,
+.itemShell[data-selected="true"] .shipFrameBox {
+  box-shadow: var(--tb-glow-md);
 }
 
 /* `flex: 1` : toutes les vignettes d'une rangée ont la même hauteur, donc
@@ -263,3 +277,53 @@ div.item,
   font-size: 11px;
   color: #e98b7a;
 }
+
+/* ──────────────────────────────────────────────────────────────
+ * ÉTAGÈRES — ce qu'on regarde : possédés, à débloquer, ou tout.
+ *
+ * La vitrine s'ouvre sur ce qu'on POSSÈDE : c'est la collection du joueur,
+ * elle doit lui appartenir avant de lui montrer ce qui lui manque. Le
+ * compte est sur l'onglet — c'est lui qui dit s'il vaut la peine d'aller
+ * voir ailleurs.
+ * ────────────────────────────────────────────────────────────── */
+.shelfTabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(8, 18, 30, 0.55);
+}
+
+.shelfTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 11px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-dim);
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 160ms ease-out, color 160ms ease-out, box-shadow 160ms ease-out;
+}
+
+.shelfTab:hover { color: var(--ink); background: rgba(13, 34, 50, 0.6); }
+.shelfTab:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 1px; }
+
+.shelfTab[data-active="true"] {
+  background: rgba(13, 52, 69, 0.75);
+  color: var(--ink-strong);
+  box-shadow: var(--tb-glow-md);
+}
+
+.shelfTabCount {
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+.shelfTab[data-active="true"] .shelfTabCount { color: var(--cb-cyan); }
