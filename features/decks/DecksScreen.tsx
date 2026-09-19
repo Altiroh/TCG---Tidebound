@@ -1,41 +1,52 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { RULES } from "@/game";
-import { deleteDecks, duplicateDeck, purgeDecks, renameDeck, restoreDecks, setDefaultDeck, type PlayerDeckSummary } from "@/app/decks/actions";
+import { RULES, ownershipLabel } from "@/game";
+import {
+  deleteDecks,
+  duplicateDeck,
+  purgeDecks,
+  renameDeck,
+  restoreDecks,
+  setDeckArt,
+  setDefaultDeck,
+  updateDeckProfile,
+  type PlayerDeckSummary,
+} from "@/app/decks/actions";
+import { chooseBorrowedDeck, unlockPreconstructedDeck } from "@/features/decks/catalogActions";
 import type { DeckCatalogView } from "@/features/decks/catalogService";
-import { DeckCatalogSection } from "@/features/decks/DeckCatalogSection";
+import { catalogEntries, mineEntries, sizeLabel, type BrowserDeck, type DeckKind } from "@/features/decks/deckEntries";
+import {
+  DECK_SORTS,
+  EMPTY_FILTERS,
+  filterDecks,
+  hasActiveFilter,
+  relativeDate,
+  sortDecks,
+  styleFilterOf,
+  type DeckFilterState,
+  type DeckSortId,
+  type StyleFilterId,
+} from "@/features/decks/deckFilters";
+import { DeckArtPicker } from "@/features/decks/DeckArtPicker";
+import { DeckPreviewPanel } from "@/features/decks/DeckPreviewPanel";
+import { DeckProfileDialog, type DeckProfileDraft } from "@/features/decks/DeckProfileDialog";
+import { DeckRail, type RailCategory, type RailShelf } from "@/features/decks/DeckRail";
+import { DeckSheet } from "@/features/decks/DeckSheet";
 import { DeleteDeckDialog } from "@/features/decks/DeleteDeckDialog";
-import { DECK_TRASH_RETENTION_DAYS, daysLeftInTrash } from "@/features/decks/deckTrash";
+import { DECK_TRASH_RETENTION_DAYS } from "@/features/decks/deckTrash";
+import { notifyProgressionChanged } from "@/features/progression/progressionSync";
 import { Dialog } from "@/features/shell/Dialog";
 import { GameScreen } from "@/features/shell/GameScreen";
-import { SearchLine } from "@/features/shell/SearchLine";
 import { ScreenToast, type ScreenToastMessage } from "@/features/shell/ScreenToast";
 import { shipNameOf } from "@/features/ships/ShipPortrait";
-import { ArtPlate } from "@/features/shell/ArtPlate";
-import { plateArtUrl } from "@/features/decks/nameplateArt";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/decks/DecksList.module.css";
 import { playButtonClick } from "@/lib/sound";
 
-/** Insensible aux accents et à la casse. */
-function normalizeSearch(value: string): string {
-  return value
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase();
-}
-
-/**
- * Les trois rayons de l'écran Decks (Notion « Progression joueur » §4 :
- * « ajouter au minimum les catégories Mes decks / Decks d'emprunt /
- * Préconstruits »).
- */
-type DeckCategory = "mine" | "borrowed" | "precon";
-
-const CATEGORY_LABELS: Record<DeckCategory, string> = {
+const CATEGORY_LABELS: Record<DeckKind, string> = {
   mine: "Mes decks",
   borrowed: "Decks d'emprunt",
   precon: "Préconstruits",
@@ -63,6 +74,9 @@ function shelfOf(deck: PlayerDeckSummary): DeckShelf {
   return deck.isValid ? "built" : "draft";
 }
 
+/** Grille de vignettes, ou liste détaillée : le même rayon, deux façons de le parcourir. */
+type DeckView = "grid" | "list";
+
 interface DecksScreenProps {
   isSignedIn: boolean;
   initialDecks: PlayerDeckSummary[];
@@ -71,26 +85,42 @@ interface DecksScreenProps {
 }
 
 /**
- * Mes decks — la même coquille que la Collection et l'éditeur. Chaque deck
- * est une tuile dont l'identité est son Navire (dans le cadre du plateau) ;
- * on lit le nom, le Navire, l'effectif et la validité (`is_valid`, recalculé
- * par le serveur à chaque sauvegarde — jamais estimé ici). Ouvrir mène à
- * l'éditeur ; dupliquer, renommer et supprimer restent sur place.
+ * MES DECKS — trois colonnes : où l'on est, ce qu'on parcourt, ce qu'on
+ * regarde.
+ *
+ * À GAUCHE le rayon et les filtres (`DeckRail`) : ils décident du contenu
+ * de la grille sans jamais s'y mélanger. AU MILIEU la grille — des
+ * vignettes carrées pour reconnaître un deck à son image, ou une liste
+ * quand on veut comparer des chiffres. À DROITE la fiche du deck pointé
+ * (`DeckPreviewPanel`), qui porte TOUTES les actions : ouvrir, renommer,
+ * dupliquer, supprimer, et le début de la liste de cartes.
+ *
+ * Les trois rayons — les miens, l'emprunt, les préconstruits — passent par
+ * la même forme (`BrowserDeck`) : ils se trient et se filtrent ensemble,
+ * seules les actions de la fiche changent. Le déblocage d'un deck fourni
+ * garde sa fiche complète en fenêtre (`DeckSheet`), qui existait déjà et
+ * sait tout dire avant de dépenser un Jeton.
  *
  * Supprimer n'efface pas : le deck passe dans « Récemment supprimés », d'où
  * on le restaure d'un clic ou on l'efface pour de bon — cette dernière
- * action, la seule irréversible, est la seule à demander confirmation. Le
- * mode « Sélectionner » fait la même chose en lot, pour le ménage.
+ * action, la seule irréversible, est la seule à demander confirmation.
  */
 export function DecksScreen({ isSignedIn, initialDecks, catalog }: DecksScreenProps) {
   const router = useRouter();
   // Le joueur qui n'a pas encore emprunté de deck arrive directement sur le
   // rayon d'emprunt : c'est l'étape qui lui manque pour jouer.
-  const [category, setCategory] = useState<DeckCategory>(isSignedIn && catalog.borrowedDeckId === null ? "borrowed" : "mine");
-  const [search, setSearch] = useState("");
-  const [renameTarget, setRenameTarget] = useState<PlayerDeckSummary | null>(null);
-  /** Effacement définitif en attente de confirmation — un ou plusieurs decks de la corbeille. */
-  const [purgeTarget, setPurgeTarget] = useState<PlayerDeckSummary[] | null>(null);
+  const [category, setCategory] = useState<DeckKind>(isSignedIn && catalog.borrowedDeckId === null ? "borrowed" : "mine");
+  const [filters, setFilters] = useState<DeckFilterState>(EMPTY_FILTERS);
+  const [sort, setSort] = useState<DeckSortId>("updated");
+  const [view, setView] = useState<DeckView>("grid");
+  const [currentId, setCurrentId] = useState<string | null>(null);
+
+  const [renameTarget, setRenameTarget] = useState<BrowserDeck | null>(null);
+  const [purgeTarget, setPurgeTarget] = useState<BrowserDeck | null>(null);
+  const [artTarget, setArtTarget] = useState<BrowserDeck | null>(null);
+  const [profileTarget, setProfileTarget] = useState<BrowserDeck | null>(null);
+  const [catalogTarget, setCatalogTarget] = useState<BrowserDeck | null>(null);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
   const [toast, setToast] = useState<ScreenToastMessage | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -106,471 +136,303 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog }: DecksScreenPr
   // brouillon attend, c'est lui qu'on montre — l'étagère vide n'aide pas.
   const [shelf, setShelf] = useState<DeckShelf>(() => (shelves.built.length === 0 && shelves.draft.length > 0 ? "draft" : "built"));
 
-  /** Mode sélection multiple, et les identifiants cochés (limités à l'étagère courante). */
-  const [selecting, setSelecting] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(() => new Set());
+  /** Le rayon courant, avant filtrage : c'est lui qui décide des cases à proposer. */
+  const shelfDecks = useMemo<BrowserDeck[]>(() => {
+    if (category === "mine") return mineEntries(shelves[shelf]);
+    return catalogEntries(catalog, category);
+  }, [category, shelf, shelves, catalog]);
 
-  const shelfDecks = shelves[shelf];
-  const decks = useMemo(() => {
-    const query = normalizeSearch(search.trim());
-    if (!query) return shelfDecks;
-    return shelfDecks.filter((deck) => normalizeSearch(deck.name).includes(query));
-  }, [shelfDecks, search]);
+  const decks = useMemo(() => sortDecks(filterDecks(shelfDecks, filters), sort), [shelfDecks, filters, sort]);
 
-  // Un deck qui a quitté l'étagère (restauré, effacé, rafraîchi) quitte la sélection.
-  useEffect(() => {
-    setSelectedIds((current) => {
-      const next = new Set(Array.from(current).filter((id) => shelfDecks.some((deck) => deck.id === id)));
-      return next.size === current.size ? current : next;
-    });
+  const availableStyles = useMemo<ReadonlySet<StyleFilterId>>(
+    () => new Set(shelfDecks.filter((deck) => deck.style).map((deck) => styleFilterOf(deck.style))),
+    [shelfDecks]
+  );
+
+  const availableShips = useMemo(() => {
+    const seen: string[] = [];
+    for (const deck of shelfDecks) if (!seen.includes(deck.shipId)) seen.push(deck.shipId);
+    return seen.sort((a, b) => shipNameOf(a).localeCompare(shipNameOf(b), "fr"));
   }, [shelfDecks]);
 
-  const selectedDecks = decks.filter((deck) => selectedIds.has(deck.id));
-  const allVisibleSelected = decks.length > 0 && selectedDecks.length === decks.length;
+  /**
+   * Le deck POINTÉ. Le premier de la liste par défaut, et on y retombe dès
+   * que celui qu'on regardait quitte l'écran (filtré, supprimé, restauré) :
+   * une fiche vide à côté d'une grille pleine n'apprend rien.
+   */
+  const current = decks.find((deck) => deck.id === currentId) ?? decks[0] ?? null;
+
+  useEffect(() => {
+    if (current && current.id !== currentId) setCurrentId(current.id);
+    if (!current && currentId !== null) setCurrentId(null);
+  }, [current, currentId]);
+
+  const categories: RailCategory[] = [
+    { id: "mine", label: CATEGORY_LABELS.mine, count: shelves.built.length + shelves.draft.length },
+    { id: "borrowed", label: CATEGORY_LABELS.borrowed, count: catalog.borrowed.length },
+    { id: "precon", label: CATEGORY_LABELS.precon, count: catalog.precon.length },
+  ];
+
+  const railShelves: RailShelf[] =
+    category === "mine" && isSignedIn ? SHELF_ORDER.map((id) => ({ id, label: SHELF_LABELS[id], count: shelves[id].length })) : [];
+
+  const trashed = category === "mine" && shelf === "trash";
 
   function notify(tone: ScreenToastMessage["tone"], text: string, action?: ScreenToastMessage["action"]) {
     setToast({ id: Date.now(), tone, text, action });
   }
 
-  function changeShelf(next: DeckShelf) {
-    if (next === shelf) return;
-    playButtonClick();
-    setShelf(next);
-    setSelecting(false);
-    setSelectedIds(new Set());
-  }
-
-  function toggleSelecting() {
-    playButtonClick();
-    setSelecting((current) => !current);
-    setSelectedIds(new Set());
-  }
-
-  function toggleSelected(deckId: string) {
-    setSelectedIds((current) => {
-      const next = new Set(current);
-      if (next.has(deckId)) next.delete(deckId);
-      else next.add(deckId);
-      return next;
+  function act(label: string, run: () => Promise<{ ok: boolean; error?: string }>, done?: () => void) {
+    startTransition(async () => {
+      const result = await run();
+      if (!result.ok) {
+        notify("error", result.error ?? `${label} impossible.`);
+        return;
+      }
+      done?.();
+      router.refresh();
     });
-  }
-
-  function selectAllVisible() {
-    playButtonClick();
-    setSelectedIds(allVisibleSelected ? new Set() : new Set(decks.map((deck) => deck.id)));
   }
 
   function handleRenameSubmit(name: string) {
     const deck = renameTarget;
     setRenameTarget(null);
-    if (!deck || name.trim() === deck.name || !name.trim()) return;
-    startTransition(async () => {
-      const result = await renameDeck(deck.id, name);
-      if (result.ok) router.refresh();
-      else notify("error", result.error ?? "Renommage impossible.");
-    });
+    if (!deck || !name.trim() || name.trim() === deck.name) return;
+    act("Renommage", () => renameDeck(deck.id, name));
   }
 
-  function handleDuplicate(deckId: string) {
+  function handleDuplicate(deck: BrowserDeck) {
     playButtonClick();
-    startTransition(async () => {
-      const result = await duplicateDeck(deckId);
-      if (result.ok) router.refresh();
-      else notify("error", result.error ?? "Duplication impossible.");
-    });
+    act("Duplication", () => duplicateDeck(deck.id));
   }
 
   /** Deck par défaut : présélectionné à l'écran Jouer. Un seul, donc pas de « retirer » : on en choisit un autre. */
-  function handleSetDefault(deck: PlayerDeckSummary) {
+  function handleSetDefault(deck: BrowserDeck) {
     playButtonClick();
-    startTransition(async () => {
-      const result = await setDefaultDeck(deck.id);
-      if (!result.ok) {
-        notify("error", result.error ?? "Impossible de choisir ce deck par défaut.");
-        return;
-      }
-      notify("success", `« ${deck.name} » est ton deck par défaut : il t'attend à l'écran Jouer.`);
-      router.refresh();
-    });
+    act("Choix du deck par défaut", () => setDefaultDeck(deck.id), () =>
+      notify("success", `« ${deck.name} » est ton deck par défaut : il t'attend à l'écran Jouer.`)
+    );
   }
 
   /** Mise à la corbeille — récupérable : pas de confirmation, mais un « Annuler » sous la main. */
-  function handleTrash(targets: PlayerDeckSummary[]) {
-    if (targets.length === 0) return;
+  function handleTrash(deck: BrowserDeck) {
     playButtonClick();
-    const ids = targets.map((deck) => deck.id);
-    startTransition(async () => {
-      const result = await deleteDecks(ids);
-      if (!result.ok) {
-        notify("error", result.error ?? "Suppression impossible.");
-        return;
-      }
-      setSelecting(false);
-      setSelectedIds(new Set());
+    act("Suppression", () => deleteDecks([deck.id]), () =>
       notify(
         "success",
-        targets.length === 1 ? `« ${targets[0]!.name} » est dans Récemment supprimés.` : `${targets.length} decks sont dans Récemment supprimés.`,
-        <button type="button" className={game.link} onClick={() => handleRestore(targets)}>
+        `« ${deck.name} » est dans Récemment supprimés.`,
+        <button type="button" className={game.link} onClick={() => handleRestore(deck)}>
           Annuler
         </button>
-      );
-      router.refresh();
-    });
+      )
+    );
   }
 
-  function handleRestore(targets: PlayerDeckSummary[]) {
-    if (targets.length === 0) return;
+  function handleRestore(deck: BrowserDeck) {
     playButtonClick();
     setToast(null);
-    const ids = targets.map((deck) => deck.id);
-    startTransition(async () => {
-      const result = await restoreDecks(ids);
-      if (!result.ok) {
-        notify("error", result.error ?? "Restauration impossible.");
-        return;
-      }
-      setSelecting(false);
-      setSelectedIds(new Set());
-      notify("success", targets.length === 1 ? `« ${targets[0]!.name} » est de retour.` : `${targets.length} decks sont de retour.`);
-      router.refresh();
-    });
+    act("Restauration", () => restoreDecks([deck.id]), () => notify("success", `« ${deck.name} » est de retour.`));
   }
 
   /** Effacement définitif — seulement après le dialogue de confirmation. */
   function handleConfirmPurge() {
-    const targets = purgeTarget;
-    if (!targets || targets.length === 0) return;
-    const ids = targets.map((deck) => deck.id);
+    const deck = purgeTarget;
+    if (!deck) return;
+    setPurgeTarget(null);
+    act("Effacement", () => purgeDecks([deck.id]), () => notify("success", `« ${deck.name} » a été effacé.`));
+  }
+
+  function handleArtChosen(cardId: string | null) {
+    const deck = artTarget;
+    setArtTarget(null);
+    if (!deck) return;
+    act("Changement d'illustration", () => setDeckArt(deck.id, cardId));
+  }
+
+  function handleProfileSubmit(draft: DeckProfileDraft) {
+    const deck = profileTarget;
+    setProfileTarget(null);
+    if (!deck) return;
+    act("Enregistrement du profil", () => updateDeckProfile(deck.id, draft), () =>
+      notify("success", `Le profil de « ${deck.name} » est à jour.`)
+    );
+  }
+
+  /** Déblocage d'un deck fourni : emprunt gratuit, ou préconstruit payé en Jeton. */
+  function handleUnlock(deck: BrowserDeck) {
+    playButtonClick();
+    setCatalogError(null);
     startTransition(async () => {
-      const result = await purgeDecks(ids);
-      setPurgeTarget(null);
+      const result = deck.kind === "borrowed" ? await chooseBorrowedDeck(deck.id) : await unlockPreconstructedDeck(deck.id);
       if (!result.ok) {
-        notify("error", result.error ?? "Effacement impossible.");
+        setCatalogError(result.error ?? "Action impossible.");
         return;
       }
-      setSelecting(false);
-      setSelectedIds(new Set());
-      notify("success", targets.length === 1 ? `« ${targets[0]!.name} » a été effacé.` : `${targets.length} decks ont été effacés.`);
+      notifyProgressionChanged();
+      setCatalogTarget(null);
       router.refresh();
     });
   }
 
-  function handleTileKeyDown(event: KeyboardEvent<HTMLElement>, deckId: string) {
-    if (event.key !== " " && event.key !== "Enter") return;
-    event.preventDefault();
-    toggleSelected(deckId);
+  /** « Essayer » : une partie contre le bot avec le deck entièrement prêté. */
+  function handleTry(deck: BrowserDeck) {
+    playButtonClick();
+    router.push(`/partie?essai=${encodeURIComponent(deck.id)}`);
   }
 
-  const showsMine = category === "mine" && isSignedIn;
-  const titleCount = decks.length !== shelfDecks.length ? `${decks.length} sur ${shelfDecks.length}` : `${shelfDecks.length}`;
-  const title = !showsMine
-    ? category === "mine"
-      ? "Tes decks"
-      : CATEGORY_LABELS[category]
-    : shelf === "trash"
-      ? `${titleCount} deck${shelfDecks.length > 1 ? "s" : ""} supprimé${shelfDecks.length > 1 ? "s" : ""}`
-      : shelf === "draft"
-        ? `${titleCount} brouillon${shelfDecks.length > 1 ? "s" : ""}`
-        : `${titleCount} deck${shelfDecks.length > 1 ? "s" : ""} construit${shelfDecks.length > 1 ? "s" : ""}`;
-
   return (
-    <GameScreen
-      active="decks"
-      actions={
-        showsMine && shelfDecks.length > 0 ? (
-          <div className={game.headerSearch}>
-            <SearchLine variant="pill" value={search} onChange={setSearch} placeholder="Rechercher un deck…" label="Rechercher un deck" />
-          </div>
-        ) : undefined
-      }
-    >
+    <GameScreen active="decks">
       <div className={game.content}>
-        <div className={game.contentWide}>
-          <div className={game.pageHead}>
-            <div>
-              <p className={game.eyebrow}>Decks</p>
-              <h1 className={game.title}>{title}</h1>
-            </div>
-            {showsMine && shelf !== "trash" && (
-              <Link href="/decks/nouveau" className={game.primary} onClick={() => playButtonClick()}>
-                + Créer un deck
-              </Link>
-            )}
-          </div>
+        <div className={`${game.contentWide} ${styles.screen}`}>
+          <div className={styles.browser}>
+            <DeckRail
+              categories={categories}
+              category={category}
+              onCategory={(next) => {
+                setCategory(next);
+                setCurrentId(null);
+              }}
+              shelves={railShelves}
+              shelf={shelf}
+              onShelf={(next) => {
+                setShelf(next as DeckShelf);
+                setCurrentId(null);
+              }}
+              filters={filters}
+              onFilters={setFilters}
+              availableStyles={availableStyles}
+              availableShips={availableShips}
+            />
 
-          {/* Les trois rayons. Un préconstruit verrouillé reste visible et
-              consultable : c'est ce qui donne envie de dépenser un Jeton. */}
-          <div className={game.chips} role="tablist" aria-label="Catégories de decks">
-            {(Object.keys(CATEGORY_LABELS) as DeckCategory[]).map((key) => {
-              const count =
-                key === "mine" ? shelves.built.length + shelves.draft.length : key === "borrowed" ? catalog.borrowed.length : catalog.precon.length;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  role="tab"
-                  aria-selected={category === key}
-                  className={category === key ? game.chipActive : game.chip}
-                  onClick={() => {
-                    playButtonClick();
-                    setCategory(key);
-                  }}
-                >
-                  {CATEGORY_LABELS[key]}
-                  <span className={game.chipCount}>{count}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {category !== "mine" ? (
-            <>
-              {/* Le déblocage à Jeton se fait au Market, rayon Decks : ici, les fiches. */}
-              {category === "precon" && (
-                <p className={game.muted}>
-                  <Link href="/market" className={game.link} onClick={() => playButtonClick()}>
-                    Débloquer un préconstruit au Market →
-                  </Link>
-                </p>
-              )}
-              <DeckCatalogSection catalog={catalog} kind={category} />
-            </>
-          ) : !isSignedIn ? (
-            <div className={`${game.panel} ${game.empty} ${styles.fill}`}>
-              <p className={game.emptyTitle}>Connecte-toi pour gérer tes decks</p>
-              <p className={game.muted}>Tes decks sont enregistrés sur ton compte : ils te suivent d&apos;une partie à l&apos;autre.</p>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center", marginTop: 6 }}>
-                <Link href="/connexion" className={game.primary} onClick={() => playButtonClick()}>
-                  Se connecter
-                </Link>
-                <Link href="/inscription" className={game.secondary} onClick={() => playButtonClick()}>
-                  Créer un compte
-                </Link>
-              </div>
-            </div>
-          ) : (
-            <>
-              {/* Les étagères de « Mes decks », et le mode sélection pour le ménage. */}
-              <div className={styles.shelfBar}>
-                <div className={game.segmented} role="tablist" aria-label="Étagères de mes decks">
-                  {SHELF_ORDER.map((key) => (
-                    <button
-                      key={key}
-                      type="button"
-                      role="tab"
-                      aria-selected={shelf === key}
-                      className={shelf === key ? game.segmentActive : game.segment}
-                      onClick={() => changeShelf(key)}
-                    >
-                      {SHELF_LABELS[key]}
-                      <span className={styles.shelfCount}>{shelves[key].length}</span>
-                    </button>
-                  ))}
+            <section className={styles.main} aria-label={CATEGORY_LABELS[category]}>
+              <div className={styles.mainHead}>
+                <div>
+                  <p className={game.eyebrow}>Decks</p>
+                  <h1 className={styles.mainTitle}>{category === "mine" ? "Mes decks" : CATEGORY_LABELS[category]}</h1>
+                  <p className={game.muted}>{headline(category, shelf, decks.length, shelfDecks.length)}</p>
                 </div>
-                {shelfDecks.length > 0 && (
-                  <button
-                    type="button"
-                    className={`${selecting ? game.tertiary : game.secondary} ${game.buttonSm}`}
-                    aria-pressed={selecting}
-                    onClick={toggleSelecting}
-                  >
-                    {selecting ? "Terminer la sélection" : "Sélectionner"}
-                  </button>
+                {category === "mine" && isSignedIn && !trashed && (
+                  <Link href="/decks/nouveau" className={game.primary} onClick={() => playButtonClick()}>
+                    + Créer un deck
+                  </Link>
                 )}
               </div>
 
-              {shelf === "trash" && shelfDecks.length > 0 && (
+              <div className={styles.toolbar}>
+                <label className={styles.sort}>
+                  <span className={styles.sortLabel}>Trier par :</span>
+                  <select
+                    className={game.select}
+                    value={sort}
+                    onChange={(event) => setSort(event.target.value as DeckSortId)}
+                    aria-label="Trier les decks"
+                  >
+                    {DECK_SORTS.map((entry) => (
+                      <option key={entry.id} value={entry.id}>
+                        {entry.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <div className={game.segmented} role="group" aria-label="Affichage">
+                  <button
+                    type="button"
+                    className={view === "grid" ? game.segmentActive : game.segment}
+                    aria-pressed={view === "grid"}
+                    title="Vue en grille"
+                    onClick={() => {
+                      playButtonClick();
+                      setView("grid");
+                    }}
+                  >
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden>
+                      <rect x="4" y="4" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth={1.6} />
+                      <rect x="13" y="4" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth={1.6} />
+                      <rect x="4" y="13" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth={1.6} />
+                      <rect x="13" y="13" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth={1.6} />
+                    </svg>
+                    <span className={styles.viewLabel}>Grille</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={view === "list" ? game.segmentActive : game.segment}
+                    aria-pressed={view === "list"}
+                    title="Vue en liste"
+                    onClick={() => {
+                      playButtonClick();
+                      setView("list");
+                    }}
+                  >
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden>
+                      <path d="M4 6.5h16M4 12h16M4 17.5h16" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" />
+                    </svg>
+                    <span className={styles.viewLabel}>Liste</span>
+                  </button>
+                </div>
+              </div>
+
+              {trashed && shelves.trash.length > 0 && (
                 <p className={`${game.muted} ${styles.shelfHint}`}>
                   Un deck supprimé reste ici {DECK_TRASH_RETENTION_DAYS} jours : restaure-le, ou efface-le définitivement. Passé ce délai, il
                   disparaît de lui-même.
                 </p>
               )}
 
-              {shelfDecks.length === 0 ? (
-                <ShelfEmptyState shelf={shelf} hasDrafts={shelves.draft.length > 0} />
-              ) : decks.length === 0 ? (
-                <div className={`${game.panel} ${game.empty} ${styles.fill}`}>
-                  <p className={game.emptyTitle}>Aucun deck ne correspond</p>
-                  <p className={game.muted}>Essaie un autre nom, ou efface la recherche.</p>
-                </div>
-              ) : (
-                <div className={styles.grid}>
-                  {decks.map((deck) => {
-                    const trashed = shelf === "trash";
-                    const selected = selectedIds.has(deck.id);
-                    const daysLeft = deck.deletedAt ? daysLeftInTrash(deck.deletedAt) : null;
-                    return (
-                      <article
-                        key={deck.id}
-                        className={[
-                          game.panelRaised,
-                          styles.tile,
-                          selecting ? styles.tileSelectable : "",
-                          selected ? styles.tileSelected : "",
-                          trashed ? styles.tileTrashed : "",
-                        ]
-                          .filter(Boolean)
-                          .join(" ")}
-                        aria-label={deck.name}
-                        role={selecting ? "checkbox" : undefined}
-                        aria-checked={selecting ? selected : undefined}
-                        tabIndex={selecting ? 0 : undefined}
-                        onClick={selecting ? () => toggleSelected(deck.id) : undefined}
-                        onKeyDown={selecting ? (event) => handleTileKeyDown(event, deck.id) : undefined}
-                      >
-                        <ArtPlate artUrl={plateArtUrl(deck.artCardId, deck.shipId)} className={styles.tilePlate}>
-                          {selecting && (
-                            <span className={styles.tileCheck} aria-hidden>
-                              <span className={game.choiceBox} data-checked={selected ? "true" : "false"} />
-                            </span>
-                          )}
-                          {trashed || selecting ? (
-                            <span className={styles.tileTrashedName} title={deck.name}>
-                              {deck.name}
-                            </span>
-                          ) : (
-                            <button
-                              type="button"
-                              className={styles.tileName}
-                              onClick={() => {
-                                playButtonClick();
-                                router.push(`/decks/${deck.id}`);
-                              }}
-                              title={deck.name}
-                            >
-                              {deck.name}
-                            </button>
-                          )}
-                          <span className={styles.tileShip}>{shipNameOf(deck.shipId)}</span>
-                        </ArtPlate>
-                        <div className={styles.tileBody}>
-                          <span className={styles.tileMeta}>
-                            <span>
-                              {deck.cardCount} / {RULES.DECK_SIZE_MAX} cartes
-                            </span>
-                            {trashed && daysLeft !== null ? (
-                              <span className={game.tagDanger}>{daysLeft <= 1 ? "Effacé sous 24 h" : `Effacé dans ${daysLeft} j`}</span>
-                            ) : deck.isValid ? (
-                              <span className={game.tagSuccess}>Jouable</span>
-                            ) : (
-                              <span className={game.tagDanger}>{deck.cardCount < RULES.DECK_SIZE_MIN ? `Min. ${RULES.DECK_SIZE_MIN}` : "Non valide"}</span>
-                            )}
-                            {!trashed && deck.isDefault && (
-                              <span className={game.tagCyan} title="Présélectionné à l'écran Jouer">
-                                ★ Par défaut
-                              </span>
-                            )}
-                          </span>
-                          {!selecting && (
-                            <div className={styles.tileActions}>
-                              {trashed ? (
-                                <>
-                                  <button type="button" className={`${game.secondary} ${game.buttonSm}`} onClick={() => handleRestore([deck])} disabled={isPending}>
-                                    Restaurer
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className={`${game.dangerGhost} ${game.buttonSm}`}
-                                    onClick={() => {
-                                      playButtonClick();
-                                      setPurgeTarget([deck]);
-                                    }}
-                                    disabled={isPending}
-                                  >
-                                    Effacer définitivement
-                                  </button>
-                                </>
-                              ) : (
-                                <>
-                                  <Link href={`/decks/${deck.id}`} className={`${game.secondary} ${game.buttonSm}`} onClick={() => playButtonClick()}>
-                                    Ouvrir
-                                  </Link>
-                                  <button type="button" className={game.link} onClick={() => setRenameTarget(deck)} disabled={isPending}>
-                                    Renommer
-                                  </button>
-                                  <button type="button" className={game.link} onClick={() => handleDuplicate(deck.id)} disabled={isPending}>
-                                    Dupliquer
-                                  </button>
-                                  {/* Seul un deck jouable peut être celui qu'on joue par défaut. */}
-                                  {deck.isValid && !deck.isDefault && (
-                                    <button type="button" className={game.link} onClick={() => handleSetDefault(deck)} disabled={isPending}>
-                                      Par défaut
-                                    </button>
-                                  )}
-                                  <button type="button" className={game.link} onClick={() => handleTrash([deck])} disabled={isPending}>
-                                    Supprimer
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </article>
-                    );
-                  })}
+              <div className={styles.results}>
+                {category === "mine" && !isSignedIn ? (
+                  <SignedOutState />
+                ) : decks.length === 0 ? (
+                  <EmptyState
+                    filtered={hasActiveFilter(filters) && shelfDecks.length > 0}
+                    category={category}
+                    shelf={shelf}
+                    hasDrafts={shelves.draft.length > 0}
+                    onClearFilters={() => setFilters(EMPTY_FILTERS)}
+                  />
+                ) : view === "grid" ? (
+                  <ul className={styles.grid} role="listbox" aria-label="Decks">
+                    {decks.map((deck) => (
+                      <li key={deck.id}>
+                        <DeckTile deck={deck} selected={deck.id === current?.id} onSelect={() => setCurrentId(deck.id)} />
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <ul className={styles.rows} role="listbox" aria-label="Decks">
+                    {decks.map((deck) => (
+                      <li key={deck.id}>
+                        <DeckRow deck={deck} selected={deck.id === current?.id} onSelect={() => setCurrentId(deck.id)} />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </section>
 
-                  {!selecting && shelf !== "trash" && (
-                    <Link href="/decks/nouveau" className={styles.newTile} onClick={() => playButtonClick()}>
-                      <span className={styles.newTileMark} aria-hidden>
-                        +
-                      </span>
-                      Nouveau deck
-                    </Link>
-                  )}
-                </div>
-              )}
-
-              {selecting && shelfDecks.length > 0 && (
-                <div className={styles.selectionBar} role="region" aria-label="Actions sur la sélection">
-                  <div className={`${game.banner} ${styles.selectionBanner}`}>
-                    <span className={game.bannerTitle}>
-                      {selectedDecks.length} sélectionné{selectedDecks.length > 1 ? "s" : ""}
-                    </span>
-                    <button type="button" className={game.link} onClick={selectAllVisible}>
-                      {allVisibleSelected ? "Tout désélectionner" : "Tout sélectionner"}
-                    </button>
-                    <div className={game.bannerActions}>
-                      {shelf === "trash" ? (
-                        <>
-                          <button
-                            type="button"
-                            className={`${game.secondary} ${game.buttonSm}`}
-                            onClick={() => handleRestore(selectedDecks)}
-                            disabled={isPending || selectedDecks.length === 0}
-                          >
-                            Restaurer{selectedDecks.length > 0 ? ` (${selectedDecks.length})` : ""}
-                          </button>
-                          <button
-                            type="button"
-                            className={`${game.danger} ${game.buttonSm}`}
-                            onClick={() => {
-                              playButtonClick();
-                              setPurgeTarget(selectedDecks);
-                            }}
-                            disabled={isPending || selectedDecks.length === 0}
-                          >
-                            Effacer définitivement{selectedDecks.length > 0 ? ` (${selectedDecks.length})` : ""}
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          type="button"
-                          className={`${game.danger} ${game.buttonSm}`}
-                          onClick={() => handleTrash(selectedDecks)}
-                          disabled={isPending || selectedDecks.length === 0}
-                        >
-                          Supprimer{selectedDecks.length > 0 ? ` (${selectedDecks.length})` : ""}
-                        </button>
-                      )}
-                      <button type="button" className={`${game.ghost} ${game.buttonSm}`} onClick={toggleSelecting}>
-                        Annuler
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
+            <DeckPreviewPanel
+              deck={current}
+              busy={isPending}
+              trashed={trashed}
+              onRename={setRenameTarget}
+              onDuplicate={handleDuplicate}
+              onTrash={handleTrash}
+              onRestore={handleRestore}
+              onPurge={(deck) => {
+                playButtonClick();
+                setPurgeTarget(deck);
+              }}
+              onSetDefault={handleSetDefault}
+              onEditArt={setArtTarget}
+              onEditProfile={setProfileTarget}
+              onOpenCatalogSheet={(deck) => {
+                playButtonClick();
+                setCatalogError(null);
+                setCatalogTarget(deck);
+              }}
+              onTryCatalog={handleTry}
+            />
+          </div>
         </div>
       </div>
 
@@ -578,24 +440,198 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog }: DecksScreenPr
 
       {renameTarget && <RenameDeckDialog deck={renameTarget} onSubmit={handleRenameSubmit} onCancel={() => setRenameTarget(null)} />}
 
-      {purgeTarget && purgeTarget.length > 0 && (
+      {artTarget && (
+        <DeckArtPicker
+          cardIds={artTarget.cards.flatMap((card) => Array.from({ length: card.quantity }, () => card.cardId))}
+          artCardId={artTarget.mine?.artCardChosen ?? null}
+          onChoose={handleArtChosen}
+          onClose={() => setArtTarget(null)}
+        />
+      )}
+
+      {profileTarget && (
+        <DeckProfileDialog deck={profileTarget} busy={isPending} onSubmit={handleProfileSubmit} onCancel={() => setProfileTarget(null)} />
+      )}
+
+      {purgeTarget && (
         <DeleteDeckDialog
-          deckNames={purgeTarget.map((deck) => deck.name)}
+          deckNames={[purgeTarget.name]}
           permanent
           isDeleting={isPending}
           onConfirm={handleConfirmPurge}
           onCancel={() => setPurgeTarget(null)}
         />
       )}
+
+      {catalogTarget?.catalog && catalogTarget.kind !== "mine" && (
+        <DeckSheet
+          deck={catalogTarget.catalog.deck}
+          ownership={catalogTarget.catalog.ownership}
+          unlocked={catalogTarget.catalog.unlocked}
+          kind={catalogTarget.kind}
+          tokens={catalog.preconTokens}
+          borrowedAlreadyChosen={catalog.borrowedDeckId !== null}
+          busy={isPending}
+          error={catalogError}
+          onUnlock={() => handleUnlock(catalogTarget)}
+          onTry={() => handleTry(catalogTarget)}
+          onClose={() => {
+            setCatalogTarget(null);
+            setCatalogError(null);
+          }}
+        />
+      )}
     </GameScreen>
   );
 }
 
-/** État vide d'une étagère : dit ce qu'elle contiendrait, et où aller pour la remplir. */
-function ShelfEmptyState({ shelf, hasDrafts }: { shelf: DeckShelf; hasDrafts: boolean }) {
+/** La phrase sous le titre : ce que contient le rayon, et ce que le filtre en laisse. */
+function headline(category: DeckKind, shelf: DeckShelf, shown: number, total: number): string {
+  const filtered = shown !== total ? `${shown} sur ${total}` : `${total}`;
+  if (category === "borrowed") return `${filtered} deck${total > 1 ? "s" : ""} prêté${total > 1 ? "s" : ""} — un seul se choisit, pour toujours.`;
+  if (category === "precon") return `${filtered} préconstruit${total > 1 ? "s" : ""} — consultables avant de dépenser un Jeton.`;
+  if (shelf === "trash") return `${filtered} deck${total > 1 ? "s" : ""} supprimé${total > 1 ? "s" : ""} — restaurables ${DECK_TRASH_RETENTION_DAYS} jours.`;
+  if (shelf === "draft") return `${filtered} brouillon${total > 1 ? "s" : ""} — en chantier, pas encore jouable${total > 1 ? "s" : ""}.`;
+  return `${filtered} deck${total > 1 ? "s" : ""} construit${total > 1 ? "s" : ""} • Crée, modifie et gère tes decks.`;
+}
+
+/** Une vignette : l'image d'abord, le nom et l'essentiel posés dessus. */
+function DeckTile({ deck, selected, onSelect }: { deck: BrowserDeck; selected: boolean; onSelect: () => void }) {
+  return (
+    <button
+      type="button"
+      role="option"
+      aria-selected={selected}
+      className={styles.tile}
+      data-selected={selected || undefined}
+      onClick={() => {
+        playButtonClick();
+        onSelect();
+      }}
+    >
+      <span className={styles.tileArt} style={deck.artUrl ? { backgroundImage: `url("${deck.artUrl}")` } : undefined} aria-hidden />
+      <span className={styles.tileShade} aria-hidden />
+      <span className={styles.tileText}>
+        <span className={styles.tileName}>{deck.name}</span>
+        <span className={styles.tileShip}>{shipNameOf(deck.shipId)}</span>
+        <span className={styles.tileTags}>
+          <span className={game.tag}>{sizeLabel(deck.cardCount)}</span>
+          <DeckStateTag deck={deck} />
+        </span>
+        <span className={styles.tileFoot}>{footNote(deck)}</span>
+      </span>
+    </button>
+  );
+}
+
+/** Une ligne : les mêmes informations, plus nombreuses, alignées pour se comparer. */
+function DeckRow({ deck, selected, onSelect }: { deck: BrowserDeck; selected: boolean; onSelect: () => void }) {
+  return (
+    <button
+      type="button"
+      role="option"
+      aria-selected={selected}
+      className={styles.row}
+      data-selected={selected || undefined}
+      onClick={() => {
+        playButtonClick();
+        onSelect();
+      }}
+    >
+      <span className={styles.rowArt} style={deck.artUrl ? { backgroundImage: `url("${deck.artUrl}")` } : undefined} aria-hidden />
+      <span className={styles.rowText}>
+        <span className={styles.rowName}>{deck.name}</span>
+        <span className={styles.rowShip}>{shipNameOf(deck.shipId)}</span>
+      </span>
+      <span className={styles.rowStyle}>{deck.style || "—"}</span>
+      <span className={styles.rowSize}>
+        {deck.cardCount} / {RULES.DECK_SIZE_MAX}
+      </span>
+      <span className={styles.rowTags}>
+        <DeckStateTag deck={deck} />
+      </span>
+      <span className={styles.rowFoot}>{footNote(deck)}</span>
+    </button>
+  );
+}
+
+/** L'état du deck en un mot : jouable, en chantier, emprunté, verrouillé. */
+function DeckStateTag({ deck }: { deck: BrowserDeck }) {
+  if (deck.mine) {
+    if (deck.mine.deletedAt) return <span className={game.tagDanger}>Supprimé</span>;
+    if (deck.mine.isDefault) return <span className={game.tagCyan}>★ Par défaut</span>;
+    if (deck.mine.isValid) return <span className={game.tagSuccess}>Jouable</span>;
+    return <span className={game.tagDanger}>{deck.cardCount < RULES.DECK_SIZE_MIN ? `Min. ${RULES.DECK_SIZE_MIN}` : "Non valide"}</span>;
+  }
+  if (deck.catalog?.unlocked) return <span className={game.tagSuccess}>{deck.kind === "borrowed" ? "Emprunté" : "Débloqué"}</span>;
+  return <span className={game.tag}>{deck.kind === "borrowed" ? "Non choisi" : "1 Jeton"}</span>;
+}
+
+/**
+ * Le bas d'une vignette : ce qui CHANGE d'un deck à l'autre et que le reste
+ * de la tuile ne dit pas. Pour un deck qu'on modifie, c'est sa date ; pour
+ * une liste prêtée, la part qu'on en possède vraiment — répéter son style,
+ * déjà écrit deux lignes plus haut, n'aurait rien appris.
+ */
+function footNote(deck: BrowserDeck): string {
+  if (deck.mine) return `Modifié ${relativeDate(deck.updatedAt)}`;
+  return deck.catalog ? ownershipLabel(deck.catalog.ownership) : deck.style;
+}
+
+function SignedOutState() {
+  return (
+    <div className={`${game.panel} ${game.empty}`}>
+      <p className={game.emptyTitle}>Connecte-toi pour gérer tes decks</p>
+      <p className={game.muted}>Tes decks sont enregistrés sur ton compte : ils te suivent d&apos;une partie à l&apos;autre.</p>
+      <div className={styles.emptyActions}>
+        <Link href="/connexion" className={game.primary} onClick={() => playButtonClick()}>
+          Se connecter
+        </Link>
+        <Link href="/inscription" className={game.secondary} onClick={() => playButtonClick()}>
+          Créer un compte
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+/** Rayon vide, ou filtre trop serré : deux situations, deux sorties. */
+function EmptyState({
+  filtered,
+  category,
+  shelf,
+  hasDrafts,
+  onClearFilters,
+}: {
+  filtered: boolean;
+  category: DeckKind;
+  shelf: DeckShelf;
+  hasDrafts: boolean;
+  onClearFilters: () => void;
+}) {
+  if (filtered) {
+    return (
+      <div className={`${game.panel} ${game.empty}`}>
+        <p className={game.emptyTitle}>Aucun deck ne correspond</p>
+        <p className={game.muted}>Essaie un autre nom, ou relâche un filtre.</p>
+        <button type="button" className={`${game.secondary} ${game.buttonSm}`} onClick={onClearFilters}>
+          Réinitialiser les filtres
+        </button>
+      </div>
+    );
+  }
+
+  if (category !== "mine") {
+    return (
+      <div className={`${game.panel} ${game.empty}`}>
+        <p className={game.emptyTitle}>Rien à montrer ici</p>
+      </div>
+    );
+  }
+
   if (shelf === "trash") {
     return (
-      <div className={`${game.panel} ${game.empty} ${styles.fill}`}>
+      <div className={`${game.panel} ${game.empty}`}>
         <p className={game.emptyTitle}>Rien dans Récemment supprimés</p>
         <p className={game.muted}>
           Un deck supprimé attend ici {DECK_TRASH_RETENTION_DAYS} jours avant de disparaître : le temps de changer d&apos;avis.
@@ -603,32 +639,34 @@ function ShelfEmptyState({ shelf, hasDrafts }: { shelf: DeckShelf; hasDrafts: bo
       </div>
     );
   }
+
   if (shelf === "draft") {
     return (
-      <div className={`${game.panel} ${game.empty} ${styles.fill}`}>
+      <div className={`${game.panel} ${game.empty}`}>
         <p className={game.emptyTitle}>Aucun brouillon</p>
         <p className={game.muted}>Un deck en chantier — trop peu de cartes, ou une règle enfreinte — se range ici jusqu&apos;à être jouable.</p>
-        <Link href="/decks/nouveau" className={game.primary} onClick={() => playButtonClick()} style={{ marginTop: 6 }}>
+        <Link href="/decks/nouveau" className={game.primary} onClick={() => playButtonClick()}>
           + Créer un deck
         </Link>
       </div>
     );
   }
+
   return (
-    <div className={`${game.panel} ${game.empty} ${styles.fill}`}>
+    <div className={`${game.panel} ${game.empty}`}>
       <p className={game.emptyTitle}>Aucun deck construit</p>
       <p className={game.muted}>
         Un deck est construit dès qu&apos;il est jouable : entre {RULES.DECK_SIZE_MIN} et {RULES.DECK_SIZE_MAX} cartes, règles respectées.
         {hasDrafts ? " Tes brouillons t'attendent sur l'étagère d'à côté." : ""}
       </p>
-      <Link href="/decks/nouveau" className={game.primary} onClick={() => playButtonClick()} style={{ marginTop: 6 }}>
+      <Link href="/decks/nouveau" className={game.primary} onClick={() => playButtonClick()}>
         + Créer un deck
       </Link>
     </div>
   );
 }
 
-function RenameDeckDialog({ deck, onSubmit, onCancel }: { deck: PlayerDeckSummary; onSubmit: (name: string) => void; onCancel: () => void }) {
+function RenameDeckDialog({ deck, onSubmit, onCancel }: { deck: BrowserDeck; onSubmit: (name: string) => void; onCancel: () => void }) {
   const [name, setName] = useState(deck.name);
   const formId = `rename-${deck.id}`;
 

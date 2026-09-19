@@ -46,6 +46,10 @@ const RULES = [
   // de « Jouer ». Même traitement que les icônes d'interface — traits fins
   // et halo sur alpha.
   { match: /\/play\/bot-difficulty\//, maxSize: 256, quality: 92 },
+  // Coin de table de l'écran Decks : un décor, posé au bas de la colonne
+  // de gauche, jamais plus large que ~380 px (760 sur un écran dense). La
+  // règle générale `decks/` l'aurait gardé en 1600 px pour rien.
+  { match: /\/decks\/decor-/, maxSize: 760, quality: 84 },
   // Hublot de Marée : le cadre et les quatre mers ne dépassent jamais la
   // bande centrale (~240 px). Le cadre monte en qualité — ses filets sont
   // fins et ses bords transparents.

@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getCardDefinition, type DeckList } from "@/game";
+import { getCardDefinition, isDeckStyleId, type DeckList, type DeckStyleId } from "@/game";
 import { validateDeckList } from "@/game/rules/deckValidation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { DECK_DESCRIPTION_MAX } from "@/features/decks/constants";
@@ -33,6 +33,37 @@ export interface PlayerDeckSummary {
    * deck vide — le Navire prend alors le relais côté écran.
    */
   artCardId: string | null;
+  /**
+   * La carte CHOISIE par le joueur, sans le repli automatique ci-dessus :
+   * `null` veut dire « laisse la règle décider ». Les deux se distinguent
+   * dans le sélecteur d'illustration, qui doit pouvoir montrer « Choix
+   * automatique » comme l'option retenue.
+   */
+  artCardChosen: string | null;
+  /**
+   * Le CONTENU du deck, un exemplaire compté par carte. L'écran Decks en a
+   * besoin pour trois choses que l'effectif seul ne donne pas : le début de
+   * la liste dans la fiche, le style de jeu déduit (`deckProfile`) qui sert
+   * de filtre, et la courbe. Cinquante lignes par deck au plus, la table
+   * est déjà lue pour compter les cartes.
+   */
+  cards: { cardId: string; quantity: number }[];
+  /** Phrase libre du joueur (`player_decks.description`), vide si jamais écrite. */
+  description: string;
+  /**
+   * Ce que le joueur a CHOISI d'écrire lui-même sur son deck. Chaque champ
+   * à `null` veut dire « laisse le jeu deviner » : l'écran retombe alors
+   * sur `deckProfile`, déduit des cartes. La fusion se fait côté client
+   * (`features/decks/deckEntries.ts`), qui a déjà la liste sous la main.
+   */
+  profile: {
+    styleId: DeckStyleId | null;
+    difficulty: number | null;
+    mechanics: string[] | null;
+  };
+  /** Création et dernière sauvegarde (ISO) — la fiche les affiche, le tri s'en sert. */
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface DeckActionResult {
@@ -87,7 +118,7 @@ export async function listPlayerDecks(): Promise<PlayerDeckSummary[]> {
 
   let { data: decks, error: decksError } = await supabase
     .from("player_decks")
-    .select("id, name, ship_id, is_valid, art_card_id, deleted_at, is_default")
+    .select("id, name, ship_id, is_valid, art_card_id, deleted_at, is_default, description, created_at, updated_at")
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
   if (decksError) {
@@ -102,14 +133,32 @@ export async function listPlayerDecks(): Promise<PlayerDeckSummary[]> {
     );
     const fallback = await supabase
       .from("player_decks")
-      .select("id, name, ship_id, is_valid, art_card_id")
+      .select("id, name, ship_id, is_valid, art_card_id, created_at, updated_at")
       .eq("user_id", userId)
       .order("created_at", { ascending: true });
-    decks = (fallback.data ?? []).map((deck) => ({ ...deck, deleted_at: null, is_default: false }));
+    decks = (fallback.data ?? []).map((deck) => ({ ...deck, deleted_at: null, is_default: false, description: null }));
     decksError = fallback.error;
     if (decksError) console.error("[listPlayerDecks] Échec de la relecture sans corbeille :", decksError.message);
   }
   if (!decks || decks.length === 0) return [];
+
+  /*
+   * Le profil écrit à la main se lit À PART, et son échec ne coûte rien
+   * d'autre que lui-même : la migration `20260930120000` s'applique à la
+   * main, et tant qu'elle n'est pas passée, un `select` groupé ferait
+   * tomber toute la lecture sur son repli — la corbeille et le deck par
+   * défaut disparaîtraient de l'écran pour une colonne manquante qui ne
+   * les concerne pas.
+   */
+  const written = new Map<string, { style: string | null; difficulty: number | null; mechanics: string[] | null }>();
+  const { data: profiles, error: profilesError } = await supabase
+    .from("player_decks")
+    .select("id, style, difficulty, mechanics")
+    .eq("user_id", userId);
+  if (profilesError) {
+    console.error("[listPlayerDecks] Profils de deck illisibles (migration player_deck_profile appliquée ?) :", profilesError.message);
+  }
+  for (const row of profiles ?? []) written.set(row.id, { style: row.style, difficulty: row.difficulty, mechanics: row.mechanics });
 
   const { data: cards, error: cardsError } = await supabase
     .from("player_deck_cards")
@@ -137,10 +186,16 @@ export async function listPlayerDecks(): Promise<PlayerDeckSummary[]> {
       deletedAt: deck.deleted_at ?? null,
       isDefault: Boolean(deck.is_default),
       cardCount: deckCards.reduce((sum, card) => sum + card.quantity, 0),
+      cards: deckCards.map((card) => ({ cardId: card.card_id, quantity: card.quantity })),
+      description: deck.description ?? "",
+      profile: profileOf(written.get(deck.id)),
+      createdAt: deck.created_at,
+      updatedAt: deck.updated_at,
       headerCardIds: deckCards.slice(0, 5).map((card) => card.card_id),
       // Choix explicite s'il existe, sinon la règle par défaut : la carte
       // la plus chère (`signatureCardId` ignore les exemplaires).
       artCardId: deck.art_card_id ?? signatureCardId(deckCards.map((card) => card.card_id)),
+      artCardChosen: deck.art_card_id ?? null,
     };
   });
 }
@@ -330,7 +385,17 @@ async function saveDeckUnguarded(input: SaveDeckInput): Promise<DeckActionResult
   } else {
     const { error: updateError } = await supabase
       .from("player_decks")
-      .update({ name, ship_id: input.shipId, is_valid: validation.ok, art_card_id: artCardId, description })
+      .update({
+        name,
+        ship_id: input.shipId,
+        is_valid: validation.ok,
+        art_card_id: artCardId,
+        description,
+        // Écrit À LA MAIN : `updated_at` n'a pas de trigger en base, il
+        // serait resté à la date de création et la fiche aurait annoncé
+        // « modifié » le jour de la naissance du deck.
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", deckId);
     if (updateError) return { ok: false, error: updateError.message };
 
@@ -360,9 +425,101 @@ export async function renameDeck(deckId: string, name: string): Promise<DeckActi
 
   return guarded("renameDeck", async () => {
     const supabase = createSupabaseServerClient();
-    const { error } = await supabase.from("player_decks").update({ name: trimmed }).eq("id", deckId);
+    const { error } = await supabase
+      .from("player_decks")
+      .update({ name: trimmed, updated_at: new Date().toISOString() })
+      .eq("id", deckId);
     if (error) return { ok: false, error: error.message };
     revalidatePath("/decks");
+    return { ok: true };
+  });
+}
+
+/**
+ * LE PROFIL ÉCRIT À LA MAIN — type de jeu, difficulté, mécaniques.
+ *
+ * Chaque champ à `null` REND la main à la déduction : c'est l'unique façon
+ * de revenir en arrière, et c'est aussi l'état de départ de tout deck. Un
+ * champ renseigné, au contraire, fige ce que la fiche affichera, quoi que
+ * la composition devienne ensuite.
+ *
+ * Le type passe par l'énumération `deck_style` : une valeur inconnue est
+ * refusée ici plutôt que par Postgres, pour que le message reste lisible.
+ */
+export async function updateDeckProfile(
+  deckId: string,
+  profile: { styleId: string | null; difficulty: number | null; mechanics: string[] | null }
+): Promise<DeckActionResult> {
+  if (profile.styleId !== null && !isDeckStyleId(profile.styleId)) {
+    return { ok: false, error: "Type de jeu inconnu." };
+  }
+  if (profile.difficulty !== null && (!Number.isInteger(profile.difficulty) || profile.difficulty < 1 || profile.difficulty > 5)) {
+    return { ok: false, error: "La difficulté va de 1 à 5." };
+  }
+
+  // Quatre entrées courtes au plus, comme les listes du jeu : une fiche
+  // n'est pas un journal de bord, et une ligne de vingt étiquettes ne se
+  // lit plus.
+  const mechanics =
+    profile.mechanics === null
+      ? null
+      : profile.mechanics
+          .map((entry) => entry.trim().slice(0, 40))
+          .filter((entry) => entry.length > 0)
+          .slice(0, 4);
+
+  return guarded("updateDeckProfile", async () => {
+    const supabase = createSupabaseServerClient();
+    const { error } = await supabase
+      .from("player_decks")
+      .update({
+        style: profile.styleId,
+        difficulty: profile.difficulty,
+        mechanics,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", deckId);
+    if (error) {
+      console.error("[updateDeckProfile] Échec (migration player_deck_profile appliquée ?) :", error.message);
+      return { ok: false, error: error.message };
+    }
+    revalidatePath("/decks");
+    revalidatePath(`/decks/${deckId}`);
+    return { ok: true };
+  });
+}
+
+/**
+ * L'ILLUSTRATION du deck, choisie depuis la fiche sans passer par
+ * l'éditeur. `null` rend la main à la règle par défaut (la carte la plus
+ * chère, `signatureCardId`).
+ *
+ * La carte doit être DANS le deck — une plaque qui montrerait une carte
+ * absente mentirait sur son contenu, et c'est déjà la règle que `saveDeck`
+ * s'impose.
+ */
+export async function setDeckArt(deckId: string, artCardId: string | null): Promise<DeckActionResult> {
+  return guarded("setDeckArt", async () => {
+    const supabase = createSupabaseServerClient();
+
+    if (artCardId !== null) {
+      const { data: card } = await supabase
+        .from("player_deck_cards")
+        .select("card_id")
+        .eq("deck_id", deckId)
+        .eq("card_id", artCardId)
+        .maybeSingle();
+      if (!card) return { ok: false, error: "Cette carte n'est pas dans le deck." };
+    }
+
+    const { error } = await supabase
+      .from("player_decks")
+      .update({ art_card_id: artCardId, updated_at: new Date().toISOString() })
+      .eq("id", deckId);
+    if (error) return { ok: false, error: error.message };
+
+    revalidatePath("/decks");
+    revalidatePath(`/decks/${deckId}`);
     return { ok: true };
   });
 }
@@ -378,14 +535,30 @@ async function duplicateDeckUnguarded(deckId: string): Promise<DeckActionResult>
 
   const { data: original, error: fetchError } = await supabase
     .from("player_decks")
-    .select("name, ship_id")
+    .select("name, ship_id, description, art_card_id")
     .eq("id", deckId)
     .single();
   if (fetchError || !original) return { ok: false, error: "Deck introuvable." };
 
+  // La copie reprend l'IDENTITÉ du deck — sa phrase et son illustration —
+  // et pas seulement ses cartes : dupliquer pour bricoler une variante ne
+  // devrait pas obliger à tout réécrire.
+  //
+  // Le profil écrit à la main (type, difficulté, mécaniques), lui, n'est
+  // pas recopié : la copie repart du profil DÉDUIT de ses cartes, quitte à
+  // ce que son auteur le corrige comme il l'a fait pour l'original. Le
+  // recopier obligerait à écrire ici trois colonnes dont la migration
+  // (`20260930120000`) peut n'être pas encore passée, au prix d'une
+  // duplication qui échouerait pour cette seule raison.
   const { data: created, error: insertError } = await supabase
     .from("player_decks")
-    .insert({ user_id: userId, ship_id: original.ship_id, name: `${original.name} (copie)` })
+    .insert({
+      user_id: userId,
+      ship_id: original.ship_id,
+      name: `${original.name} (copie)`,
+      description: original.description,
+      art_card_id: original.art_card_id,
+    })
     .select("id")
     .single();
   if (insertError || !created) return { ok: false, error: insertError?.message ?? "Échec de la duplication." };
@@ -400,6 +573,20 @@ async function duplicateDeckUnguarded(deckId: string): Promise<DeckActionResult>
 
   revalidatePath("/decks");
   return { ok: true, id: created.id };
+}
+
+/**
+ * Le profil écrit à la main, nettoyé. Une valeur de type inconnue (colonne
+ * lue avant migration, énumération élargie puis revenue en arrière) est
+ * traitée comme un non-choix : mieux vaut deviner que propager dans
+ * l'interface une valeur qu'elle ne saurait pas afficher.
+ */
+function profileOf(row: { style: string | null; difficulty: number | null; mechanics: string[] | null } | undefined): PlayerDeckSummary["profile"] {
+  return {
+    styleId: isDeckStyleId(row?.style) ? row!.style as DeckStyleId : null,
+    difficulty: typeof row?.difficulty === "number" ? row.difficulty : null,
+    mechanics: Array.isArray(row?.mechanics) ? row!.mechanics : null,
+  };
 }
 
 /** Identifiants dédupliqués et non vides — une sélection peut contenir des doublons ou des clés périmées. */

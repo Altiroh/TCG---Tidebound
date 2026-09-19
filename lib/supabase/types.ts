@@ -201,6 +201,14 @@ export interface Database {
           is_default: boolean;
           /** Résumé libre écrit par le joueur (migration 20260928120000) ; `null` = repli générique. */
           description: string | null;
+          /**
+           * Profil ÉCRIT par le joueur (migration 20260930120000). `null` =
+           * « laisse le jeu deviner » : l'application retombe alors sur
+           * `deckProfile`, déduit des cartes.
+           */
+          style: string | null;
+          difficulty: number | null;
+          mechanics: string[] | null;
         };
         Insert: {
           art_card_id?: string | null;
@@ -214,6 +222,9 @@ export interface Database {
           deleted_at?: string | null;
           is_default?: boolean;
           description?: string | null;
+          style?: string | null;
+          difficulty?: number | null;
+          mechanics?: string[] | null;
         };
         Update: {
           art_card_id?: string | null;
@@ -227,6 +238,9 @@ export interface Database {
           deleted_at?: string | null;
           is_default?: boolean;
           description?: string | null;
+          style?: string | null;
+          difficulty?: number | null;
+          mechanics?: string[] | null;
         };
         Relationships: [];
       };

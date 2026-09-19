@@ -2,6 +2,7 @@ import { CORE_SET, getCardDefinition } from "@/game/cards/sets/core";
 import type { CardDefinition, CardId } from "@/game/cards/types";
 import type { TriggerType } from "@/game/triggers/types";
 import type { DeckDifficulty } from "@/game/cards/decks/catalog";
+import { deckStyleLabel, type DeckStyleId } from "@/game/cards/decks/deckStyles";
 
 /**
  * PROFIL D'UN DECK, lu dans ses cartes.
@@ -39,6 +40,12 @@ import type { DeckDifficulty } from "@/game/cards/decks/catalog";
 export interface DeckProfile {
   /** « Agressif », « Contrôle »… — la phrase que le joueur lit d'abord. */
   style: string;
+  /**
+   * Le même type, en valeur d'ÉNUMÉRATION (`DECK_STYLES`) : c'est lui qui
+   * se filtre, se range en base et se propose dans un menu. Le libellé
+   * ci-dessus n'est que sa traduction à l'écran.
+   */
+  styleId: DeckStyleId;
   difficulty: DeckDifficulty;
   /** 1 à 3 entrées courtes, de la plus caractéristique à la moins. */
   mechanics: string[];
@@ -57,13 +64,19 @@ const POOL: readonly CardDefinition[] = CORE_SET.filter((card) => !card.token);
  * existantes donnent réellement : elles s'étalent de 1,75 à 3,02 pour une
  * moyenne de catalogue à 2,87. Des bornes « naturelles » (2, 3, 4…) auraient
  * rangé quinze listes sur dix-sept dans la même case.
+ *
+ * Chaque palier désigne une valeur de l'ÉNUMÉRATION (`DECK_STYLES`), pas
+ * une phrase : le type déduit et le type choisi par le joueur doivent se
+ * ranger dans la même case. « Combo » ne figure pas ici et n'y figurera
+ * pas — une courbe ne voit pas un combo, seul le joueur sait qu'il en monte
+ * un, et c'est précisément pourquoi il peut corriger ce qui est déduit.
  */
-const STYLE_BY_CURVE: ReadonlyArray<{ upTo: number; style: string }> = [
-  { upTo: 2.15, style: "Agressif" },
-  { upTo: 2.45, style: "Tempo / contrôle léger" },
-  { upTo: 2.8, style: "Polyvalent / midrange" },
-  { upTo: 3.1, style: "Contrôle" },
-  { upTo: Infinity, style: "Défensif / lourd" },
+const STYLE_BY_CURVE: ReadonlyArray<{ upTo: number; style: DeckStyleId }> = [
+  { upTo: 2.15, style: "agressif" },
+  { upTo: 2.45, style: "tempo" },
+  { upTo: 2.8, style: "midrange" },
+  { upTo: 3.1, style: "controle" },
+  { upTo: Infinity, style: "defensif" },
 ];
 
 /**
@@ -149,7 +162,7 @@ export function deckProfile(cardIds: readonly CardId[]): DeckProfile | null {
   if (defs.length === 0) return null;
 
   const averageCost = defs.reduce((sum, def) => sum + def.cost, 0) / defs.length;
-  const style = STYLE_BY_CURVE.find((entry) => averageCost <= entry.upTo)!.style;
+  const styleId = STYLE_BY_CURVE.find((entry) => averageCost <= entry.upTo)!.style;
 
   const mechanics = MECHANIC_RULES.map((rule, index) => {
     const share = defs.filter(rule.matches).length / defs.length;
@@ -166,7 +179,7 @@ export function deckProfile(cardIds: readonly CardId[]): DeckProfile | null {
   // c'est une courbe, et la courbe se dit.
   if (mechanics.length === 0) mechanics.push(averageCost <= 2.6 ? "Faible courbe" : "Courbe équilibrée");
 
-  return { style, difficulty: difficultyOf(defs), mechanics };
+  return { style: deckStyleLabel(styleId), styleId, difficulty: difficultyOf(defs), mechanics };
 }
 
 /**

@@ -94,6 +94,10 @@ export type { CatalogDeck, DeckDifficulty } from "@/game/cards/decks/catalog";
    quand la liste n a pas de métadonnées écrites (deck monté par le joueur). */
 export { deckProfile } from "@/game/cards/decks/deckProfile";
 export type { DeckProfile } from "@/game/cards/decks/deckProfile";
+/* Le type de jeu d un deck : une liste FERMÉE, partagée par le profil
+   déduit, le choix du joueur et la colonne `deck_style` de la base. */
+export { DECK_STYLES, DECK_STYLE_IDS, deckStyleFromText, deckStyleLabel, isDeckStyleId } from "@/game/cards/decks/deckStyles";
+export type { DeckStyleId } from "@/game/cards/decks/deckStyles";
 export { deckOwnership, ownershipLabel } from "@/game/cards/decks/ownership";
 export type { DeckCardOwnership, DeckOwnership } from "@/game/cards/decks/ownership";
 
