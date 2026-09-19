@@ -42,8 +42,17 @@
   flex-direction: column;
   min-height: 0;
   /* Pas de panneau : la colonne est POSÉE sur le décor de l'écran, comme
-     la marge d'une carte marine. Un cadre de plus l'aurait enfermée. */
+     la marge d'une carte marine. Un cadre de plus l'aurait enfermée.
+
+     Le bas est RÉSERVÉ au coin de table : il passe devant la colonne, donc
+     rien de lisible ne doit finir dessous. La liste s'arrête à cette
+     bande et défile au-dessus si elle est longue. */
   padding-right: 2px;
+  padding-bottom: clamp(84px, 15vh, 180px);
+  /* La colonne CLIPPE : le coin de table déborde volontairement de son
+     cadre, et sans cela ce débord s'ajoutait à la hauteur de la page —
+     60 px de défilement pour un décor. */
+  overflow: hidden;
 }
 
 .railScroll {
@@ -52,7 +61,7 @@
   gap: clamp(10px, 1.4vh, 18px);
   min-height: 0;
   overflow-y: auto;
-  padding-right: 6px;
+  padding: 0 6px 4px 0;
   scrollbar-width: thin;
   scrollbar-color: var(--line-strong) transparent;
 }
@@ -191,25 +200,33 @@
 }
 
 /*
- * LE COIN DE TABLE : lanterne, compas, carte marine. Purement décoratif —
- * il ne reçoit aucun clic et se range SOUS la colonne, jamais devant ce
- * qui se lit. Il déborde volontairement à gauche et en bas : c'est un coin
- * de table, pas une vignette posée au milieu.
+ * LE COIN DE TABLE : lanterne, compas, carte marine. Il passe DEVANT la
+ * colonne — c'est un objet posé sur le bureau, pas un papier peint — mais
+ * il ne bloque rien : `pointer-events: none` laisse tous les clics
+ * traverser, et la liste des filtres se garde une marge basse pour qu'il
+ * ne recouvre aucune case (`.railScroll`).
+ *
+ * Il déborde volontairement à gauche et en bas : c'est un coin de table,
+ * pas une vignette posée au milieu.
  */
 .railDecor {
   position: absolute;
-  left: -14px;
-  bottom: -10px;
-  z-index: -1;
-  width: min(100%, 380px);
+  left: -10px;
+  bottom: -6px;
+  z-index: 2;
+  /* Il suit la HAUTEUR disponible : sur une fenêtre basse, un décor de
+     300 px mangeait la moitié de la colonne de filtres. La bande que la
+     colonne lui réserve (`.rail` padding-bottom) est calée sur sa partie
+     opaque — le haut, lui, s'éteint au masque. */
+  width: min(112%, clamp(190px, 26vh, 300px));
   aspect-ratio: 4 / 3;
   background-image: url("/assets/decks/decor-bas-gauche.webp");
   background-position: left bottom;
   background-size: contain;
   background-repeat: no-repeat;
-  opacity: 0.5;
-  -webkit-mask-image: linear-gradient(0deg, #000 30%, transparent 92%);
-  mask-image: linear-gradient(0deg, #000 30%, transparent 92%);
+  opacity: 0.92;
+  -webkit-mask-image: linear-gradient(0deg, #000 42%, transparent 96%);
+  mask-image: linear-gradient(0deg, #000 42%, transparent 96%);
   pointer-events: none;
 }
 
@@ -385,6 +402,56 @@
   white-space: nowrap;
 }
 
+/*
+ * LA PASTILLE DE PROVENANCE — construit, emprunt, test.
+ *
+ * Elle n'apparaît que dans « Tous les decks », où trois familles se
+ * mélangent dans la même grille : ailleurs, le rayon de gauche l'a déjà
+ * dit pour la colonne entière. Posée en haut à droite de la vignette,
+ * au-dessus de l'illustration, là où l'œil ne cherche pas le nom.
+ *
+ * Trois teintes, jamais trois formes : c'est une étiquette, pas un
+ * blason.
+ */
+.originTag {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  padding: 2px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: rgba(6, 16, 26, 0.82);
+  backdrop-filter: blur(6px);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+/* En liste, elle prend sa place dans la rangée plutôt que de flotter. */
+.originTag[data-inline="true"] {
+  position: static;
+  backdrop-filter: none;
+}
+
+.originTag[data-kind="mine"] {
+  border-color: rgba(95, 208, 230, 0.55);
+  color: #d8f6ff;
+}
+
+.originTag[data-kind="borrowed"] {
+  border-color: rgba(226, 194, 122, 0.5);
+  color: #f2e2bd;
+}
+
+.originTag[data-kind="precon"] {
+  border-color: rgba(180, 140, 242, 0.5);
+  color: #e6dcff;
+}
+
 .tileTags {
   display: flex;
   align-items: center;
@@ -528,17 +595,21 @@
   text-align: center;
 }
 
+/*
+ * LA FICHE NE DÉFILE PAS. Ce qu'elle cache n'existe pas : on la regarde
+ * d'un bloc, on ne la déroule pas. Elle s'ADAPTE donc à la hauteur qu'on
+ * lui donne — l'illustration se tasse, le résumé se coupe à deux lignes,
+ * et le début de la liste de cartes prend ce qui reste, en lignes
+ * entières (`cardSlot`). Sur une fenêtre basse, c'est la liste qui
+ * disparaît la première : « Voir toutes les cartes » est juste au-dessus.
+ */
 .previewScroll {
   display: flex;
   flex-direction: column;
+  flex: 1 1 0;
   min-height: 0;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
+  overflow: hidden;
 }
-
-.previewScroll::-webkit-scrollbar { width: 8px; }
-.previewScroll::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--line-strong); }
 
 /*
  * L'ILLUSTRATION, EN PLEINE IMAGE ET SANS DÉGRADÉ. Elle est le portrait du
@@ -548,8 +619,10 @@
  */
 .previewArt {
   position: relative;
-  flex: 0 0 auto;
-  aspect-ratio: 16 / 9;
+  /* Une hauteur, pas un ratio : en 16/9 une colonne large donnait 230 px
+     d'illustration et poussait les statistiques hors de l'écran. */
+  flex: 0 1 auto;
+  height: clamp(104px, 17vh, 190px);
   overflow: hidden;
   background: #0b1a26;
   border-bottom: 1px solid var(--line);
@@ -588,8 +661,21 @@
 .previewBody {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: clamp(12px, 1.2vw, 18px);
+  flex: 1 1 0;
+  gap: clamp(5px, 0.7vh, 9px);
+  min-height: 0;
+  padding: clamp(10px, 1.1vw, 16px);
+}
+
+/* Une seule chose cède dans la fiche : la liste de cartes. Tout le reste
+   garde sa taille — un bloc comprimé sous son propre texte déborderait sur
+   le suivant. */
+.previewBody > * {
+  flex-shrink: 0;
+}
+
+.previewBody > .cardSlot {
+  flex-shrink: 1;
 }
 
 .previewName {
@@ -617,10 +703,16 @@
   gap: 6px;
 }
 
+/* Deux lignes, jamais plus : le résumé situe le deck, il ne le raconte
+   pas — et c'est la place qu'on rend à la liste de cartes. */
 .previewText {
-  margin: 2px 0 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0;
   font-size: clamp(11.5px, 0.85vw, 13.5px);
-  line-height: 1.5;
+  line-height: 1.45;
   color: var(--ink-dim);
 }
 
@@ -697,10 +789,23 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 10px;
-  margin-top: 6px;
+  flex: 0 0 auto;
+  margin-top: 2px;
 }
 
 /* ── Le début de la liste de cartes ─────────────────────────── */
+
+/*
+ * LA PLACE QUI RESTE, et rien d'autre. `flex-basis: 0` : sa hauteur ne
+ * dépend PAS de son contenu, sinon la mesure qui décide du nombre de
+ * lignes (`useVisibleCardCount`) se mordrait la queue — plus de lignes,
+ * plus de place, plus de lignes.
+ */
+.cardSlot {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
 
 .cardList {
   display: flex;
@@ -815,6 +920,38 @@
 }
 
 /* ══════════════════════════════════════════════════════════════
+ * FENÊTRES BASSES — la fiche rend ce qu'elle peut
+ * ══════════════════════════════════════════════════════════════
+ *
+ * Elle ne défile pas : quand la hauteur manque, elle RENONCE, dans
+ * l'ordre de ce qui se devine le mieux. D'abord l'illustration rétrécit,
+ * puis le résumé tombe à une ligne, puis les mécaniques et le résumé
+ * disparaissent — le nom, l'état, les actions et les statistiques, eux,
+ * ne bougent jamais.
+ */
+@media (max-height: 780px) {
+  .previewArt {
+    height: clamp(88px, 13vh, 140px);
+  }
+
+  .previewText {
+    -webkit-line-clamp: 1;
+  }
+}
+
+@media (max-height: 640px) {
+  .previewText,
+  .previewMechanics,
+  .previewProfileNote {
+    display: none;
+  }
+
+  .previewProfile {
+    padding: 6px 8px;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
  * FENÊTRES PLUS ÉTROITES
  * ══════════════════════════════════════════════════════════════ */
 
@@ -851,8 +988,42 @@
     max-height: none;
   }
 
+  /*
+   * Empilée sous la grille, la fiche n'a plus de hauteur imposée : elle
+   * montre TOUT, et c'est la page qui défile. Le rationnement de lignes
+   * n'a de sens que dans la colonne, où la place est comptée.
+   */
   .preview {
-    max-height: 70dvh;
+    max-height: none;
+  }
+
+  .previewScroll {
+    flex: 0 0 auto;
+    overflow: visible;
+  }
+
+  .previewBody {
+    flex: 0 0 auto;
+  }
+
+  .cardSlot {
+    flex: 0 0 auto;
+    min-height: 120px;
+  }
+
+  /* Empilée, la fiche a toute la place du monde : ce que le rationnement
+     des fenêtres basses avait caché revient. */
+  .previewText {
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+  }
+
+  .previewMechanics {
+    display: flex;
+  }
+
+  .previewProfileNote {
+    display: block;
   }
 }
 

@@ -7,6 +7,29 @@ import type { DeckEntry } from "@/features/decks/deckFilters";
 /** D'où vient le deck : le joueur l'a monté, le jeu le prête, ou il s'achète en Jeton. */
 export type DeckKind = "mine" | "borrowed" | "precon";
 
+/**
+ * Le rayon qu'on regarde. `all` n'est pas une provenance : c'est
+ * l'étagère qui les montre TOUTES d'un coup, chaque deck portant alors sa
+ * pastille — le seul endroit d'où l'on voit tout ce qu'on peut jouer.
+ */
+export type DeckCategory = DeckKind | "all";
+
+/**
+ * La PROVENANCE, en un mot, telle qu'elle s'affiche sur une pastille.
+ *
+ * « Test » et non « Préconstruit » : cette famille est une série d'essai,
+ * ouverte le temps des tests, et l'écran Jouer l'appelle déjà « Decks de
+ * test ». Elle a vocation à disparaître — il ne restera qu'une poignée de
+ * decks d'emprunt — donc autant que les deux écrans la nomment pareil d'ici
+ * là. Le Jeton, lui, reste « de Préconstruit » : c'est le vocabulaire de
+ * l'économie, il ne bouge pas.
+ */
+export const ORIGIN_LABELS: Record<DeckKind, string> = {
+  mine: "Construit",
+  borrowed: "Emprunt",
+  precon: "Test",
+};
+
 export interface DeckCardCount {
   cardId: string;
   quantity: number;

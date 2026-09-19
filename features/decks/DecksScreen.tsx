@@ -17,7 +17,14 @@ import {
 } from "@/app/decks/actions";
 import { chooseBorrowedDeck, unlockPreconstructedDeck } from "@/features/decks/catalogActions";
 import type { DeckCatalogView } from "@/features/decks/catalogService";
-import { catalogEntries, mineEntries, sizeLabel, type BrowserDeck, type DeckKind } from "@/features/decks/deckEntries";
+import {
+  ORIGIN_LABELS,
+  catalogEntries,
+  mineEntries,
+  sizeLabel,
+  type BrowserDeck,
+  type DeckCategory,
+} from "@/features/decks/deckEntries";
 import {
   DECK_SORTS,
   EMPTY_FILTERS,
@@ -46,10 +53,21 @@ import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/decks/DecksList.module.css";
 import { playButtonClick } from "@/lib/sound";
 
-const CATEGORY_LABELS: Record<DeckKind, string> = {
+/*
+ * Les rayons, dans l'ordre de la colonne de gauche. « Tous les decks »
+ * ouvre la marche : c'est de là qu'on voit d'un coup tout ce qu'on peut
+ * jouer, chaque deck portant la pastille de sa provenance.
+ *
+ * « Decks de test » et non « Préconstruits » : l'écran Jouer les appelle
+ * déjà ainsi, et cette famille est une série d'essai vouée à disparaître
+ * (il ne restera qu'une poignée de decks d'emprunt). Le Jeton, lui, reste
+ * « de Préconstruit » — c'est le vocabulaire de l'économie.
+ */
+const CATEGORY_LABELS: Record<DeckCategory, string> = {
+  all: "Tous les decks",
   mine: "Mes decks",
   borrowed: "Decks d'emprunt",
-  precon: "Préconstruits",
+  precon: "Decks de test",
 };
 
 /**
@@ -109,7 +127,7 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog }: DecksScreenPr
   const router = useRouter();
   // Le joueur qui n'a pas encore emprunté de deck arrive directement sur le
   // rayon d'emprunt : c'est l'étape qui lui manque pour jouer.
-  const [category, setCategory] = useState<DeckKind>(isSignedIn && catalog.borrowedDeckId === null ? "borrowed" : "mine");
+  const [category, setCategory] = useState<DeckCategory>(isSignedIn && catalog.borrowedDeckId === null ? "borrowed" : "mine");
   const [filters, setFilters] = useState<DeckFilterState>(EMPTY_FILTERS);
   const [sort, setSort] = useState<DeckSortId>("updated");
   const [view, setView] = useState<DeckView>("grid");
@@ -139,7 +157,17 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog }: DecksScreenPr
   /** Le rayon courant, avant filtrage : c'est lui qui décide des cases à proposer. */
   const shelfDecks = useMemo<BrowserDeck[]>(() => {
     if (category === "mine") return mineEntries(shelves[shelf]);
-    return catalogEntries(catalog, category);
+    if (category !== "all") return catalogEntries(catalog, category);
+    /*
+     * TOUT ce qui se joue, dans l'ordre de ce qu'on possède : ses propres
+     * decks (la corbeille exceptée — un deck supprimé ne se joue pas),
+     * puis l'emprunt, puis les listes de test.
+     */
+    return [
+      ...mineEntries([...shelves.built, ...shelves.draft]),
+      ...catalogEntries(catalog, "borrowed"),
+      ...catalogEntries(catalog, "precon"),
+    ];
   }, [category, shelf, shelves, catalog]);
 
   const decks = useMemo(() => sortDecks(filterDecks(shelfDecks, filters), sort), [shelfDecks, filters, sort]);
@@ -167,8 +195,10 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog }: DecksScreenPr
     if (!current && currentId !== null) setCurrentId(null);
   }, [current, currentId]);
 
+  const mineCount = shelves.built.length + shelves.draft.length;
   const categories: RailCategory[] = [
-    { id: "mine", label: CATEGORY_LABELS.mine, count: shelves.built.length + shelves.draft.length },
+    { id: "all", label: CATEGORY_LABELS.all, count: mineCount + catalog.borrowed.length + catalog.precon.length },
+    { id: "mine", label: CATEGORY_LABELS.mine, count: mineCount },
     { id: "borrowed", label: CATEGORY_LABELS.borrowed, count: catalog.borrowed.length },
     { id: "precon", label: CATEGORY_LABELS.precon, count: catalog.precon.length },
   ];
@@ -394,7 +424,12 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog }: DecksScreenPr
                   <ul className={styles.grid} role="listbox" aria-label="Decks">
                     {decks.map((deck) => (
                       <li key={deck.id}>
-                        <DeckTile deck={deck} selected={deck.id === current?.id} onSelect={() => setCurrentId(deck.id)} />
+                        <DeckTile
+                          deck={deck}
+                          selected={deck.id === current?.id}
+                          showOrigin={category === "all"}
+                          onSelect={() => setCurrentId(deck.id)}
+                        />
                       </li>
                     ))}
                   </ul>
@@ -402,7 +437,12 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog }: DecksScreenPr
                   <ul className={styles.rows} role="listbox" aria-label="Decks">
                     {decks.map((deck) => (
                       <li key={deck.id}>
-                        <DeckRow deck={deck} selected={deck.id === current?.id} onSelect={() => setCurrentId(deck.id)} />
+                        <DeckRow
+                          deck={deck}
+                          selected={deck.id === current?.id}
+                          showOrigin={category === "all"}
+                          onSelect={() => setCurrentId(deck.id)}
+                        />
                       </li>
                     ))}
                   </ul>
@@ -486,17 +526,28 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog }: DecksScreenPr
 }
 
 /** La phrase sous le titre : ce que contient le rayon, et ce que le filtre en laisse. */
-function headline(category: DeckKind, shelf: DeckShelf, shown: number, total: number): string {
+function headline(category: DeckCategory, shelf: DeckShelf, shown: number, total: number): string {
   const filtered = shown !== total ? `${shown} sur ${total}` : `${total}`;
+  if (category === "all") return `${filtered} deck${total > 1 ? "s" : ""} — les tiens, l'emprunt et les listes de test, chacun avec sa provenance.`;
   if (category === "borrowed") return `${filtered} deck${total > 1 ? "s" : ""} prêté${total > 1 ? "s" : ""} — un seul se choisit, pour toujours.`;
-  if (category === "precon") return `${filtered} préconstruit${total > 1 ? "s" : ""} — consultables avant de dépenser un Jeton.`;
+  if (category === "precon") return `${filtered} liste${total > 1 ? "s" : ""} de test — consultables avant de dépenser un Jeton.`;
   if (shelf === "trash") return `${filtered} deck${total > 1 ? "s" : ""} supprimé${total > 1 ? "s" : ""} — restaurables ${DECK_TRASH_RETENTION_DAYS} jours.`;
   if (shelf === "draft") return `${filtered} brouillon${total > 1 ? "s" : ""} — en chantier, pas encore jouable${total > 1 ? "s" : ""}.`;
   return `${filtered} deck${total > 1 ? "s" : ""} construit${total > 1 ? "s" : ""} • Crée, modifie et gère tes decks.`;
 }
 
 /** Une vignette : l'image d'abord, le nom et l'essentiel posés dessus. */
-function DeckTile({ deck, selected, onSelect }: { deck: BrowserDeck; selected: boolean; onSelect: () => void }) {
+function DeckTile({
+  deck,
+  selected,
+  showOrigin,
+  onSelect,
+}: {
+  deck: BrowserDeck;
+  selected: boolean;
+  showOrigin: boolean;
+  onSelect: () => void;
+}) {
   return (
     <button
       type="button"
@@ -511,6 +562,9 @@ function DeckTile({ deck, selected, onSelect }: { deck: BrowserDeck; selected: b
     >
       <span className={styles.tileArt} style={deck.artUrl ? { backgroundImage: `url("${deck.artUrl}")` } : undefined} aria-hidden />
       <span className={styles.tileShade} aria-hidden />
+      {/* La provenance ne se dit QUE dans « Tous les decks » : ailleurs, le
+          rayon de gauche la dit déjà pour la colonne entière. */}
+      {showOrigin && <span className={styles.originTag} data-kind={deck.kind}>{ORIGIN_LABELS[deck.kind]}</span>}
       <span className={styles.tileText}>
         <span className={styles.tileName}>{deck.name}</span>
         <span className={styles.tileShip}>{shipNameOf(deck.shipId)}</span>
@@ -525,7 +579,17 @@ function DeckTile({ deck, selected, onSelect }: { deck: BrowserDeck; selected: b
 }
 
 /** Une ligne : les mêmes informations, plus nombreuses, alignées pour se comparer. */
-function DeckRow({ deck, selected, onSelect }: { deck: BrowserDeck; selected: boolean; onSelect: () => void }) {
+function DeckRow({
+  deck,
+  selected,
+  showOrigin,
+  onSelect,
+}: {
+  deck: BrowserDeck;
+  selected: boolean;
+  showOrigin: boolean;
+  onSelect: () => void;
+}) {
   return (
     <button
       type="button"
@@ -548,6 +612,11 @@ function DeckRow({ deck, selected, onSelect }: { deck: BrowserDeck; selected: bo
         {deck.cardCount} / {RULES.DECK_SIZE_MAX}
       </span>
       <span className={styles.rowTags}>
+        {showOrigin && (
+          <span className={styles.originTag} data-kind={deck.kind} data-inline="true">
+            {ORIGIN_LABELS[deck.kind]}
+          </span>
+        )}
         <DeckStateTag deck={deck} />
       </span>
       <span className={styles.rowFoot}>{footNote(deck)}</span>
@@ -604,7 +673,7 @@ function EmptyState({
   onClearFilters,
 }: {
   filtered: boolean;
-  category: DeckKind;
+  category: DeckCategory;
   shelf: DeckShelf;
   hasDrafts: boolean;
   onClearFilters: () => void;

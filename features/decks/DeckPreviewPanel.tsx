@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { RULES, ownershipLabel } from "@/game";
 import { cardIllustrationUrl } from "@/features/decks/nameplateArt";
@@ -12,8 +13,51 @@ import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/decks/DecksList.module.css";
 import { playButtonClick } from "@/lib/sound";
 
-/** Nombre de cartes montrées avant « Voir toutes les cartes » : le début de la liste, pas la liste. */
+/** Plafond du début de liste : au-delà, c'est l'éditeur qu'on ouvre, pas une fiche qu'on lit. */
 const PREVIEW_CARDS = 6;
+
+/** Hauteur de repli d'une ligne de carte, le temps de la mesurer pour de vrai. */
+const ROW_FALLBACK = 30;
+
+/**
+ * COMBIEN DE CARTES TIENNENT dans la place qui reste.
+ *
+ * La fiche ne défile pas : tout ce qu'elle montre doit être visible d'un
+ * seul regard, sinon ce qu'elle cache n'existe pas. Le seul bloc élastique
+ * est donc le début de la liste — il prend ce qui reste entre les actions
+ * et les statistiques, en lignes ENTIÈRES : une ligne coupée en deux par
+ * le bord du panneau serait pire qu'une ligne en moins.
+ *
+ * La mesure porte sur la place DISPONIBLE, pas sur le contenu (`flex: 1 1 0`
+ * côté CSS) : elle ne dépend donc pas du nombre de lignes affichées, et ne
+ * peut pas s'emballer d'un rendu à l'autre.
+ */
+function useVisibleCardCount(total: number): [React.RefObject<HTMLDivElement>, number] {
+  const slot = useRef<HTMLDivElement>(null);
+  const [count, setCount] = useState(Math.min(total, PREVIEW_CARDS));
+
+  useEffect(() => {
+    const element = slot.current;
+    if (!element) return;
+
+    function measure() {
+      const host = slot.current;
+      if (!host) return;
+      const row = host.querySelector("li");
+      const rowHeight = row?.getBoundingClientRect().height || ROW_FALLBACK;
+      const gap = Number.parseFloat(getComputedStyle(host.firstElementChild ?? host).gap || "4") || 4;
+      const fits = Math.floor((host.clientHeight + gap) / (rowHeight + gap));
+      setCount(Math.max(0, Math.min(total, PREVIEW_CARDS, fits)));
+    }
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [total]);
+
+  return [slot, count];
+}
 
 interface DeckPreviewPanelProps {
   deck: BrowserDeck | null;
@@ -65,6 +109,9 @@ export function DeckPreviewPanel({
   onOpenCatalogSheet,
   onTryCatalog,
 }: DeckPreviewPanelProps) {
+  // Avant tout retour anticipé : un Hook ne se saute pas.
+  const [slot, visibleCards] = useVisibleCardCount(deck?.cards.length ?? 0);
+
   if (!deck) {
     return (
       <aside className={`${game.panel} ${styles.preview}`} data-empty="true" aria-label="Fiche du deck">
@@ -182,25 +229,25 @@ export function DeckPreviewPanel({
             {mine ? (
               trashed ? (
                 <>
-                  <button type="button" className={game.primary} onClick={() => onRestore(deck)} disabled={busy}>
+                  <button type="button" className={`${game.primary} ${game.buttonSm}`} onClick={() => onRestore(deck)} disabled={busy}>
                     Restaurer
                   </button>
-                  <button type="button" className={`${game.dangerGhost}`} onClick={() => onPurge(deck)} disabled={busy}>
+                  <button type="button" className={`${game.dangerGhost} ${game.buttonSm}`} onClick={() => onPurge(deck)} disabled={busy}>
                     Effacer définitivement
                   </button>
                 </>
               ) : (
                 <>
-                  <Link href={`/decks/${deck.id}`} className={game.primary} onClick={() => playButtonClick()}>
+                  <Link href={`/decks/${deck.id}`} className={`${game.primary} ${game.buttonSm}`} onClick={() => playButtonClick()}>
                     <span aria-hidden>▶</span> Ouvrir
                   </Link>
-                  <button type="button" className={game.secondary} onClick={() => onRename(deck)} disabled={busy}>
+                  <button type="button" className={`${game.secondary} ${game.buttonSm}`} onClick={() => onRename(deck)} disabled={busy}>
                     Renommer
                   </button>
-                  <button type="button" className={game.secondary} onClick={() => onDuplicate(deck)} disabled={busy}>
+                  <button type="button" className={`${game.secondary} ${game.buttonSm}`} onClick={() => onDuplicate(deck)} disabled={busy}>
                     Dupliquer
                   </button>
-                  <button type="button" className={game.dangerGhost} onClick={() => onTrash(deck)} disabled={busy}>
+                  <button type="button" className={`${game.dangerGhost} ${game.buttonSm}`} onClick={() => onTrash(deck)} disabled={busy}>
                     Supprimer
                   </button>
                   {/* Seul un deck jouable peut être celui qu'on joue par défaut. */}
@@ -213,10 +260,10 @@ export function DeckPreviewPanel({
               )
             ) : (
               <>
-                <button type="button" className={game.primary} onClick={() => onOpenCatalogSheet(deck)} disabled={busy}>
+                <button type="button" className={`${game.primary} ${game.buttonSm}`} onClick={() => onOpenCatalogSheet(deck)} disabled={busy}>
                   Voir la fiche
                 </button>
-                <button type="button" className={game.secondary} onClick={() => onTryCatalog(deck)} disabled={busy}>
+                <button type="button" className={`${game.secondary} ${game.buttonSm}`} onClick={() => onTryCatalog(deck)} disabled={busy}>
                   Essayer contre le bot
                 </button>
                 {deck.kind === "precon" && !catalog?.unlocked && (
@@ -248,22 +295,26 @@ export function DeckPreviewPanel({
           {cards.length === 0 ? (
             <p className={game.muted}>Ce deck est vide : ouvre-le pour y mettre des cartes.</p>
           ) : (
-            <ul className={styles.cardList}>
-              {cards.slice(0, PREVIEW_CARDS).map((card, index) => (
-                <li key={card.cardId} className={styles.cardRow}>
-                  <span className={styles.cardRank} aria-hidden>
-                    {index + 1}
-                  </span>
-                  <span
-                    className={styles.cardStrip}
-                    style={{ backgroundImage: `url("${cardIllustrationUrl(card.cardId)}")` }}
-                    aria-hidden
-                  />
-                  <span className={styles.cardName}>{cardName(card.cardId)}</span>
-                  <span className={styles.cardCount}>x{card.quantity}</span>
-                </li>
-              ))}
-            </ul>
+            /* LE SEUL BLOC ÉLASTIQUE de la fiche : il prend ce qui reste
+               entre les actions et les statistiques, en lignes entières. */
+            <div className={styles.cardSlot} ref={slot}>
+              <ul className={styles.cardList}>
+                {cards.slice(0, visibleCards).map((card, index) => (
+                  <li key={card.cardId} className={styles.cardRow}>
+                    <span className={styles.cardRank} aria-hidden>
+                      {index + 1}
+                    </span>
+                    <span
+                      className={styles.cardStrip}
+                      style={{ backgroundImage: `url("${cardIllustrationUrl(card.cardId)}")` }}
+                      aria-hidden
+                    />
+                    <span className={styles.cardName}>{cardName(card.cardId)}</span>
+                    <span className={styles.cardCount}>x{card.quantity}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
 
           {/* ── Les statistiques ───────────────────────────────────── */}

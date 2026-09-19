@@ -9,13 +9,13 @@ import {
   type DeckFilterState,
   type StyleFilterId,
 } from "@/features/decks/deckFilters";
-import type { DeckKind } from "@/features/decks/deckEntries";
+import type { DeckCategory } from "@/features/decks/deckEntries";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/decks/DecksList.module.css";
 import { playButtonClick } from "@/lib/sound";
 
 export interface RailCategory {
-  id: DeckKind;
+  id: DeckCategory;
   label: string;
   count: number;
 }
@@ -28,8 +28,8 @@ export interface RailShelf {
 
 interface DeckRailProps {
   categories: readonly RailCategory[];
-  category: DeckKind;
-  onCategory: (next: DeckKind) => void;
+  category: DeckCategory;
+  onCategory: (next: DeckCategory) => void;
   /** Étagères de « Mes decks » (construits, brouillons, corbeille) — absentes ailleurs. */
   shelves: readonly RailShelf[];
   shelf: string;
