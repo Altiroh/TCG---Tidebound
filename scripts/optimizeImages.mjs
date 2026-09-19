@@ -42,6 +42,10 @@ const RULES = [
   // Icônes d'interface (pièce de Tides, Jeton de Préconstruit) : affichées
   // de 13 à ~64 px. Qualité haute, ce sont des objets détourés sur alpha.
   { match: /\/ui\/icons\//, maxSize: 256, quality: 92 },
+  // Emblèmes de difficulté du bot : affichés à ~44 px dans la carte-radio
+  // de « Jouer ». Même traitement que les icônes d'interface — traits fins
+  // et halo sur alpha.
+  { match: /\/play\/bot-difficulty\//, maxSize: 256, quality: 92 },
   // Hublot de Marée : le cadre et les quatre mers ne dépassent jamais la
   // bande centrale (~240 px). Le cadre monte en qualité — ses filets sont
   // fins et ses bords transparents.

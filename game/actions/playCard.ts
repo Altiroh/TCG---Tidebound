@@ -149,17 +149,20 @@ function validate(state: GameState, action: PlayCardAction) {
 
   if (needsTarget) {
     if (attachEffect) {
-      // "Si possible" : un Équipement ne réclame une cible que s'il en
-      // existe au moins une légale sur le plateau du joueur — sinon il se
-      // joue sans lien plutôt que d'être injouable faute de permanent.
-      if (hasAnyValidEquipTarget(def, player!.board) && !action.targetInstanceId) {
+      // « Équipez une unité Un Dead », « Équipez une Structure » : le texte
+      // ORDONNE l'attache. Un Équipement qui ne trouve personne à équiper
+      // ne se pose donc pas — il resterait sur le plateau à occuper un Slot
+      // sans jamais rien faire. La règle vaut pour tous : chaque texte
+      // d'Équipement commence par cet impératif.
+      if (!hasAnyValidEquipTarget(def, player!.board)) {
+        return { ok: false as const, error: "Aucun permanent de votre plateau ne peut recevoir cet Équipement." };
+      }
+      if (!action.targetInstanceId) {
         return { ok: false as const, error: "Cet Équipement nécessite une cible." };
       }
-      if (action.targetInstanceId) {
-        const target = player!.board.find((u) => u.instanceId === action.targetInstanceId);
-        if (!target || !canBeEquipTarget(def, player!.board, target)) {
-          return { ok: false as const, error: "Cible d'Équipement invalide." };
-        }
+      const target = player!.board.find((u) => u.instanceId === action.targetInstanceId);
+      if (!target || !canBeEquipTarget(def, player!.board, target)) {
+        return { ok: false as const, error: "Cible d'Équipement invalide." };
       }
     } else if (!action.targetInstanceId) {
       return { ok: false as const, error: "Cette carte nécessite une cible." };

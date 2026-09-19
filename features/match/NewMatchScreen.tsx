@@ -239,7 +239,15 @@ export function NewMatchScreen({
   return (
     <GameScreen active="partie" nav="minimal">
       <div className={game.content}>
-        <div className={game.contentWide}>
+        {/*
+          Étape du deck : la colonne fait EXACTEMENT la hauteur visible, ni
+          plus ni moins. C'est ce qui permet à la liste de se borner et de
+          défiler pour elle seule — avec une hauteur seulement « au moins
+          égale » (le `min-height: 100%` de la coquille), quatorze listes de
+          test allongeaient la page et passaient sous la barre de lancement.
+          L'étape du mode garde le comportement ordinaire.
+        */}
+        <div className={`${game.contentWide} ${step === 1 ? "" : styles.fill}`}>
           <div className={game.pageHead}>
             <div>
               <p className={game.eyebrow}>Jouer</p>
@@ -355,6 +363,18 @@ export function NewMatchScreen({
                           data-checked={botDifficulty === d.id ? "true" : "false"}
                           aria-hidden
                         />
+                        {/* L'emblème du cran : le chemin suit la valeur de
+                            `BotDifficulty`, rien à tenir à jour des deux côtés
+                            (public/assets/play/bot-difficulty/README.md). */}
+                        <img
+                          className={styles.difficultyEmblem}
+                          src={`/assets/play/bot-difficulty/${d.id}.webp`}
+                          alt=""
+                          width={44}
+                          height={44}
+                          draggable={false}
+                          aria-hidden
+                        />
                         <span className={styles.difficultyLabel}>{d.label}</span>
                         <span className={styles.difficultyText}>{d.description}</span>
                       </button>
@@ -364,9 +384,10 @@ export function NewMatchScreen({
                 </section>
               )}
 
-              {/* Les decks par onglet, en rangée qui défile : les mêmes plaques
-                  que l'écran Decks — un deck se reconnaît partout à son image. */}
-              <section className={styles.group} aria-label="Choix du deck">
+              {/* Les decks par onglet : la section qui PREND la place restante.
+                  C'est elle qui pousse la barre de lancement jusqu'au bas de
+                  l'écran, et la liste comme la fiche s'étirent avec elle. */}
+              <section className={`${styles.group} ${styles.deckGroup}`} aria-label="Choix du deck">
                 <div className={styles.deckTabs} role="tablist" aria-label="Familles de decks">
                   {tabs.map((tab) => (
                     <button

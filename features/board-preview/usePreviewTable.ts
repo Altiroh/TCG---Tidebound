@@ -195,9 +195,12 @@ export function unitStats(card: TableCardModel, state: PreviewTableState, tideSt
 
 /**
  * Cibles d'une carte jouée depuis la main, ou `null` si elle se pose sans
- * cible. Seul cas branché : l'Équipement (`attachEquipment`), avec la même
- * règle que `needsPlayTarget` / le moteur — cible "si possible" : sans
- * permanent équipable, il se pose librement plutôt que de rester bloqué.
+ * cible. Seul cas branché : l'Équipement (`attachEquipment`).
+ *
+ * Le moteur, lui, REFUSE un Équipement sans porteur (« Équipez une unité Un
+ * Dead » est un ordre). Ici on est dans un laboratoire de mise en scène, pas
+ * dans une partie : sans permanent équipable la carte se pose quand même,
+ * sinon on ne pourrait pas composer l'image d'un Équipement posé seul.
  */
 export function playTargetsFor(card: TableCardModel, state: PreviewTableState): string[] | null {
   const def = getCardDefinition(card.cardId);

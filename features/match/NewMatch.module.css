@@ -94,13 +94,15 @@
   gap: 10px;
 }
 
-/* Une carte-radio : le bouton rond du design system (`game.choiceRadio`)
-   à gauche, le libellé et sa description à droite. */
+/* Une carte-radio : le bouton rond du design system (`game.choiceRadio`),
+   l'emblème du cran, puis le libellé et sa description. Le rond et
+   l'emblème tiennent la hauteur des deux lignes de texte. */
 .difficultyChip {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
   column-gap: 10px;
-  align-items: start;
+  align-items: center;
   min-width: 170px;
   padding: 9px 12px;
   border: 1px solid var(--line);
@@ -116,19 +118,121 @@
 .difficultyChip:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 2px; }
 .difficultyChipActive {
   composes: difficultyChip;
-  border-color: var(--cb-cyan);
-  background: var(--cb-cyan-soft);
-  box-shadow: var(--tb-glow-sm);
+  border-color: var(--pick-line);
+  background: var(--pick-fill);
+  box-shadow: var(--pick-glow);
 }
-.difficultyRadio { margin-top: 2px; }
-.difficultyText { grid-column: 2; }
-.difficultyLabel { font-weight: 600; font-size: clamp(12px, 0.9vw, 14px); color: var(--ink-strong); }
-.difficultyText { font-size: 11px; color: var(--ink-dim); }
 
+/* Le rond et l'emblème enjambent les deux lignes de texte : sans cela la
+   grille les posait sur la première et le libellé flottait au-dessus du
+   dessin. */
+.difficultyRadio { grid-row: 1 / span 2; }
+
+.difficultyEmblem {
+  grid-row: 1 / span 2;
+  width: clamp(34px, 2.6vw, 46px);
+  height: auto;
+  /* Détouré sur alpha : la lumière de l'emblème EST l'image, aucun cadre
+     ne doit venir la border. */
+  filter: drop-shadow(0 0 8px rgba(95, 208, 230, 0.35));
+  opacity: 0.72;
+  transition: opacity 150ms ease-out, filter 150ms ease-out;
+}
+
+/* Choisi : l'emblème s'allume, comme le bouton de lancement. */
+.difficultyChipActive .difficultyEmblem {
+  opacity: 1;
+  filter: drop-shadow(0 0 12px rgba(95, 208, 230, 0.65));
+}
+
+.difficultyLabel {
+  grid-column: 3;
+  align-self: end;
+  font-weight: 600;
+  font-size: clamp(12px, 0.9vw, 14px);
+  color: var(--ink-strong);
+}
+
+.difficultyText {
+  grid-column: 3;
+  align-self: start;
+  font-size: 11px;
+  color: var(--ink-dim);
+}
+
+/*
+ * LA LUMIÈRE DE CE QUI EST CHOISI — une seule définition pour la carte de
+ * difficulté et la ligne de deck.
+ *
+ * C'est celle du bouton « Lancer la partie », d'un cran plus sourde :
+ * liseré clair en tête, halo net, halo large. L'anneau plat de
+ * `--tb-glow-sm` disait « sélectionné » dans une autre langue que le
+ * bouton, sur le même écran — deux lumières pour une seule idée.
+ */
 .group {
+  --pick-line: var(--tb-accent-bright, var(--cb-cyan));
+  --pick-fill: linear-gradient(180deg, rgba(95, 208, 230, 0.24), rgba(95, 208, 230, 0.1));
+  --pick-glow:
+    0 0 0 1px rgba(150, 235, 255, 0.26) inset,
+    0 0 14px rgba(95, 208, 230, 0.36),
+    0 0 34px rgba(95, 208, 230, 0.18);
+
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+/*
+ * La section des decks PREND la hauteur restante : c'est ce qui colle la
+ * barre de lancement au bas de l'écran (la coquille donne déjà au contenu
+ * au moins la hauteur visible, `GameScreen.module.css`). Sans elle, tout
+ * se tassait en haut et la barre flottait à mi-page, un vide sous elle.
+ *
+ * `min-height: 0` : sans quoi un enfant à `overflow` ne peut jamais
+ * rétrécir sous sa taille de contenu, et c'est la PAGE qui défilerait.
+ */
+/*
+ * `flex-basis: 0` et non `auto` : la base d'une colonne de quatorze decks
+ * vaut sa liste entière, soit ~900 px réclamés dans une boîte qui en offre
+ * 400. Le manque était alors réparti sur TOUS les blocs de la page — le
+ * titre, les onglets et la note du bot rétrécissaient sous leur texte et se
+ * chevauchaient. Avec une base nulle, la section ne demande rien et prend
+ * ce qui reste.
+ */
+.deckGroup {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+/*
+ * La colonne de l'étape du deck fait la hauteur visible, exactement.
+ * `min-height: 100%` (la coquille) ne borne rien : un enfant en `flex: 1`
+ * ne peut rétrécir que dans une boîte de hauteur DÉFINIE — sans cela la
+ * liste des quatorze decks de test poussait la colonne, la page se mettait
+ * à défiler et les dernières lignes passaient sous la barre de lancement.
+ */
+/*
+ * Seulement quand l'écran est assez HAUT pour que le parcours y tienne.
+ * Sur un téléphone couché (390 px utiles), rien ne peut tenir en entier :
+ * la colonne reprend sa hauteur naturelle, la page défile et la barre de
+ * lancement reste collée en bas — c'est ce que règle le bloc « écran
+ * court » plus bas.
+ */
+@media (min-height: 561px) {
+  .fill {
+    height: 100%;
+  }
+}
+
+/* Une seule chose cède dans cette colonne : la section des decks. Tout le
+   reste garde sa taille — un titre ou une note comprimés sous leur propre
+   texte débordent sur le bloc suivant. */
+.fill > * {
+  flex-shrink: 0;
+}
+
+.fill > .deckGroup {
+  flex-shrink: 1;
 }
 
 .groupHead {
@@ -144,6 +248,8 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
+  /* La rangée d'onglets ne se comprime pas : c'est la liste qui cède. */
+  flex-shrink: 0;
 }
 
 .deckTab {
@@ -286,6 +392,11 @@
 .picker {
   display: grid;
   grid-template-columns: minmax(250px, 32%) minmax(0, 1fr);
+  /* UNE rangée, qui vaut toute la hauteur offerte : la liste et la fiche
+     descendent jusqu'à la barre de lancement au lieu de s'arrêter à leur
+     contenu et de laisser un vide sous elles. */
+  grid-template-rows: minmax(0, 1fr);
+  flex: 1 1 auto;
   gap: clamp(10px, 1.1vw, 18px);
   /* Les deux colonnes font la MÊME hauteur — c est l étirement par défaut
      d une grille, qu un `align-items: start` annulait : la fiche s arrêtait
@@ -299,14 +410,20 @@
 
 /*
  * Elle défile POUR ELLE SEULE : quatorze listes de test repousseraient
- * sinon la fiche et la barre de lancement hors de l'écran. Le plafond se
- * lit en `dvh` — sur iOS, `vh` déborde sous la barre d'adresse.
+ * sinon la fiche et la barre de lancement hors de l'écran.
+ *
+ * Sa hauteur est celle que la rangée lui donne — plus de plafond en `dvh`.
+ * Un plafond à 340 px arrêtait la liste au milieu de l'écran sur un grand
+ * moniteur : quatre lignes visibles, et tout le reste du panneau vide
+ * sous elles. Le plancher, lui, reste : une liste réduite à deux lignes
+ * ne se parcourt plus, mieux vaut alors faire défiler la page.
  */
 .deckList {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: min(44dvh, 340px);
+  height: 100%;
+  min-height: 120px;
   margin: 0;
   padding: 2px 6px 2px 2px;
   overflow-y: auto;
@@ -343,12 +460,12 @@
 .deckRow:hover:not(:disabled) { border-color: var(--tb-accent-line); }
 .deckRow:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 2px; }
 
-/* Choisi : le cyan de l'état actif, et lui seul — c'est la seule ligne de
-   la liste qui partira en partie. */
+/* Choisi : la lumière du bouton de lancement, et elle seule — c'est la
+   seule ligne de la liste qui partira en partie. */
 .deckRow[data-selected] {
-  border-color: var(--cb-cyan);
-  background: var(--cb-cyan-soft);
-  box-shadow: var(--tb-glow-sm);
+  border-color: var(--pick-line);
+  background: var(--pick-fill);
+  box-shadow: var(--pick-glow);
 }
 
 /* Indisponible : visible, éteint, avec sa raison — un rayon vide
@@ -434,10 +551,15 @@
 
 /* ── La fiche ──────────────────────────────────────────────── */
 
+/* Même hauteur que la liste, donnée par la rangée : la fiche descend
+   jusqu'en bas du panneau, et son illustration avec elle. */
 .sheet {
   position: relative;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
-  min-height: min(44dvh, 340px);
+  height: 100%;
+  min-height: 170px;
   padding: clamp(14px, 1.4vw, 22px);
 }
 
@@ -473,6 +595,13 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  /* Sur une fenêtre basse, la fiche ne grandit plus : c'est son texte qui
+     défile, plutôt que « Mécaniques » coupé net par le bord du panneau. */
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
   /*
    * La colonne de texte s'arrête avant l'illustration, et se mesure SUR LA
    * FICHE plutôt qu'en largeur de fenêtre : un plafond fixe la maintenait à
@@ -614,8 +743,20 @@
  * qu'elle est censée accompagner.
  */
 @media (max-height: 560px) {
+  /* La colonne n'est plus bornée : la liste reprend un plafond à elle,
+     sinon elle s'étirerait sur toute la longueur de la page. */
+  .deckGroup {
+    flex: 0 0 auto;
+  }
+
+  .picker {
+    grid-template-rows: auto;
+  }
+
   .deckList {
+    height: auto;
     max-height: min(46dvh, 220px);
+    min-height: 110px;
     gap: 6px;
   }
 
@@ -630,6 +771,7 @@
   }
 
   .sheet {
+    height: auto;
     min-height: 0;
     padding: 10px 12px;
   }
@@ -663,10 +805,21 @@
   .difficultyText { display: none; }
 
   .difficultyChip {
+    grid-template-rows: auto;
     align-items: center;
     min-width: 0;
     padding: 7px 10px;
   }
+
+  /* Une seule ligne de texte : le rond et l'emblème n'ont plus qu'une
+     rangée à enjamber. */
+  .difficultyRadio,
+  .difficultyEmblem {
+    grid-row: 1;
+  }
+
+  .difficultyEmblem { width: 30px; }
+  .difficultyLabel { align-self: center; }
 
   .deckTabHint { display: none; }
 
@@ -686,15 +839,22 @@
  * entière.
  */
 @media (max-width: 760px) {
+  /* Deux blocs empilés, chacun à sa taille : une colonne unique ne se
+     partage pas une hauteur, elle se parcourt. La page reprend alors le
+     défilement, et la barre de lancement reste collée en bas (`sticky`). */
   .picker {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-content: start;
   }
 
   .deckList {
+    height: auto;
     max-height: min(34dvh, 260px);
   }
 
   .sheet {
+    height: auto;
     min-height: 0;
   }
 

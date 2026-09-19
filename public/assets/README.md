@@ -35,6 +35,7 @@ gratuits.
 | `status/` | Icônes d'état posées sur une carte en jeu : Garde, Malade, Silence, Immobilisé, Engourdi, compteur de tours |
 | `match-end/` | Bandeaux de fin de partie (victoire / défaite) |
 | `menu/` | Écran d'accueil / menu principal — fond, logo, icônes de navigation (pas de spéc Notion dédiée, voir `menu/README.md`) |
+| `play/bot-difficulty/` | Emblèmes des trois difficultés du bot, sur l'écran « Jouer » — un fichier par valeur de `BotDifficulty` |
 | `ui/decor/` | Décors d'interface hors plateau — habillages posés derrière une fenêtre ou un panneau, jamais au premier plan (voir `ui/decor/README.md`) |
 
 Chaque sous-dossier a son propre `README.md` avec le détail de la charte

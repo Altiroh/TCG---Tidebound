@@ -1004,7 +1004,7 @@ describe("engine.dispatch - playCard : attache d'Équipement", () => {
     expect(result.ok).toBe(false);
   });
 
-  it("se joue sans cible si aucun permanent équipable n'est sur le plateau (\"si possible\")", () => {
+  it("ne se joue pas si aucun permanent équipable n'est sur le plateau", () => {
     const equip = instance("plaque-de-fortune", "p1");
     const state = testGameState({
       players: [testPlayer("p1", { hand: [equip], board: [], reason: 5 }), testPlayer("p2")],
@@ -1012,13 +1012,52 @@ describe("engine.dispatch - playCard : attache d'Équipement", () => {
 
     const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: equip.instanceId });
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    const equipOnBoard = result.state.players[0].board.find((u) => u.cardId === "plaque-de-fortune");
-    expect(equipOnBoard?.attachedToInstanceId).toBeUndefined();
+    expect(result.ok).toBe(false);
+    // La carte reste en main : rien n'a été payé, rien n'est parti au Cimetière.
+    expect(state.players[0].hand).toHaveLength(1);
   });
 
-  it("exige une cible si au moins un permanent équipable existe", () => {
+  it("ne se joue pas si le seul porteur possible n'est pas du sous-type exigé (Doudou → unité Un Dead)", () => {
+    const equip = instance("doudou", "p1");
+    const vivant = instance("murene-aveugle", "p1"); // Créature, pas Un Dead
+    const state = testGameState({
+      players: [testPlayer("p1", { hand: [equip], board: [vivant], reason: 5 }), testPlayer("p2")],
+    });
+
+    const sansCible = dispatch(state, { type: "playCard", playerId: "p1", instanceId: equip.instanceId });
+    expect(sansCible.ok).toBe(false);
+
+    // Désigner quand même le vivant ne passe pas davantage.
+    const surLeVivant = dispatch(state, {
+      type: "playCard",
+      playerId: "p1",
+      instanceId: equip.instanceId,
+      targetInstanceId: vivant.instanceId,
+    });
+    expect(surLeVivant.ok).toBe(false);
+  });
+
+  it("se joue sur une unité Un Dead, qui devient son porteur (Doudou)", () => {
+    const equip = instance("doudou", "p1");
+    const porteur = instance("encore-cinq-minutes", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { hand: [equip], board: [porteur], reason: 5 }), testPlayer("p2")],
+    });
+
+    const result = dispatch(state, {
+      type: "playCard",
+      playerId: "p1",
+      instanceId: equip.instanceId,
+      targetInstanceId: porteur.instanceId,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const pose = result.state.players[0].board.find((u) => u.cardId === "doudou");
+    expect(pose?.attachedToInstanceId).toBe(porteur.instanceId);
+  });
+
+  it("exige une cible désignée si au moins un permanent équipable existe", () => {
     const equip = instance("plaque-de-fortune", "p1");
     const target = instance("murene-aveugle", "p1");
     const state = testGameState({
