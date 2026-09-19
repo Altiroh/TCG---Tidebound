@@ -142,7 +142,7 @@ export function useTableMotion(state: GameState, viewerId: PlayerId, renderFace:
             const delayMs = viewerDraws * DRAW_STAGGER_MS + (previous.current ? 0 : 250);
             viewerDraws += 1;
             hideUntil(el, delayMs + 650);
-            motion.launch({ look: { kind: "back" }, from, to, ending: "land", delayMs });
+            motion.launch({ look: { kind: "back", ownerId: viewerId }, from, to, ending: "land", delayMs });
             window.setTimeout(playCardDraw, delayMs);
           }
           continue;
@@ -171,6 +171,12 @@ export function useTableMotion(state: GameState, viewerId: PlayerId, renderFace:
       }
 
       // Pioches adverses : la main adverse n'est qu'un nombre de dos de cartes.
+      //
+      // Le dos VOLANT est celui de l'adversaire, pas le mien. Sans
+      // `ownerId`, `useCardBackSrcFor` retombait sur le fournisseur local
+      // — celui du joueur de cet appareil : l'adversaire piochait mes
+      // cartes sous mes yeux, puis elles se posaient dans sa main avec son
+      // dos à lui (`TableOpponentHand`). Le dos changeait en plein vol.
       if (opponentHand > before.opponentHand) {
         const from = boxOf(document.querySelector('[data-deck="opponent"]'));
         for (let index = before.opponentHand; index < opponentHand; index++) {
@@ -179,7 +185,7 @@ export function useTableMotion(state: GameState, viewerId: PlayerId, renderFace:
           if (!from || !to) continue;
           const delayMs = (index - before.opponentHand) * DRAW_STAGGER_MS + (previous.current ? 0 : 380);
           hideUntil(target, delayMs + 650);
-          motion.launch({ look: { kind: "back" }, from, to, ending: "land", delayMs });
+          motion.launch({ look: { kind: "back", ownerId: opponent?.id }, from, to, ending: "land", delayMs });
         }
       }
     }

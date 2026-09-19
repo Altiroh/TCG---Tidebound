@@ -258,6 +258,34 @@ describe("engine.dispatch - playCard", () => {
     expect(aheadResult.ok).toBe(true);
     if (aheadResult.ok) expect(aheadResult.state.players[0].reason).toBe(7); // seulement le coût, pas de gain
   });
+
+  it("Mousse du Premier Quart : la comparaison se fait APRÈS le paiement du coût", () => {
+    // Le cas qui prête à confusion en partie : à égalité AVANT de jouer, le
+    // coût creuse la Déraison et fait donc passer sous l'adversaire — la
+    // carte se rembourse alors elle-même, et la Raison ne bouge pas.
+    // Aucun plancher de Déraison (`assertCanPayCost`) : le coût se paie
+    // même à 0.
+    const card = instance("mousse-du-premier-quart", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { hand: [card], reason: 0 }), testPlayer("p2", { reason: 0 })],
+    });
+
+    const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: card.instanceId });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.players[0].reason).toBe(0); // 0 - 1 (coût) = -1, puis -1 < 0 → +1
+
+    // À égalité APRÈS paiement (1 avant, adversaire à 0), rien ne se
+    // déclenche : « inférieure » est strict.
+    const egal = instance("mousse-du-premier-quart", "p1");
+    const tie = testGameState({
+      players: [testPlayer("p1", { hand: [egal], reason: 1 }), testPlayer("p2", { reason: 0 })],
+    });
+    const tieResult = dispatch(tie, { type: "playCard", playerId: "p1", instanceId: egal.instanceId });
+    expect(tieResult.ok).toBe(true);
+    if (tieResult.ok) expect(tieResult.state.players[0].reason).toBe(0);
+  });
 });
 
 describe("engine.dispatch - breakObject", () => {

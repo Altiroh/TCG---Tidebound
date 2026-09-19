@@ -475,12 +475,20 @@
 
    Trois variables tiennent le placement — c'est le seul point de recalage
    si le cadre du Navire change. */
+/*
+ * TAILLE : le hublot faisait 22 % du cadre, soit une vingtaine de pixels
+ * sur un plateau d'ordinateur portable — un point sombre au sommet du
+ * cadre, que personne ne voyait et sur lequel personne ne cliquait. À
+ * 34 %, il se lit comme ce qu'il est : un bouton. Le centre descend
+ * d'autant (8,6 % → 14 %), sinon la moitié haute du hublot dépassait du
+ * cadre.
+ */
 .shipAbility {
   position: absolute;
-  top: var(--ship-ability-top, 8.6%);
+  top: var(--ship-ability-top, 14%);
   left: var(--ship-ability-left, 50%);
   z-index: 8;
-  width: var(--ship-ability-size, 22%);
+  width: var(--ship-ability-size, 34%);
   aspect-ratio: 1;
   padding: 0;
   transform: translate(-50%, -50%);
