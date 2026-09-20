@@ -66,7 +66,20 @@ function measureCards(): Map<string, Box> {
   return boxes;
 }
 
-function slide(el: HTMLElement, from: Box, to: Box) {
+/**
+ * Pose adverse : l'éventail adverse déborde du bord HAUT de l'écran
+ * (`TableOpponentHand`) et le rang adverse commence juste en dessous — la
+ * carte n'avait donc qu'une centaine de pixels de trajet, à taille
+ * constante. Elle « apparaissait » sur le plateau au lieu de s'y poser.
+ * Le trajet ne peut pas s'allonger (il n'y a pas la place), alors c'est la
+ * carte qui parle : elle arrive nettement plus GRANDE et rétrécit jusqu'à
+ * son emplacement, plus lentement — le même vocabulaire que la pose du
+ * joueur, dont le fantôme lâché est lui aussi plus grand que la case.
+ */
+const OPPONENT_PLAY_MS = 620;
+const OPPONENT_PLAY_SCALE = 1.3;
+
+function slide(el: HTMLElement, from: Box, to: Box, durationMs = 420) {
   const dx = from.x + from.width / 2 - (to.x + to.width / 2);
   const dy = from.y + from.height / 2 - (to.y + to.height / 2);
   const scale = to.width ? from.width / to.width : 1;
@@ -76,7 +89,7 @@ function slide(el: HTMLElement, from: Box, to: Box) {
       { offset: 0.8, transform: "translate(0, 0) scale(0.97) rotate(0deg)", filter: "drop-shadow(0 4px 6px rgba(0,0,0,.5))" },
       { transform: "none", filter: "none" },
     ],
-    { duration: 420, easing: "cubic-bezier(.2,.8,.2,1)" }
+    { duration: durationMs, easing: "cubic-bezier(.2,.8,.2,1)" }
   );
 }
 
@@ -160,13 +173,21 @@ export function useTableMotion(state: GameState, viewerId: PlayerId, renderFace:
         if (el && (now.zone === "board" || now.zone === "hand")) {
           const to = boxesNow.get(id);
           let from = dropBoxes.current.get(id) ?? before.boxes.get(originId);
+          let posed = false;
           if (!from && now.ownerId !== viewerId && to) {
-            // Carte adverse jouée depuis sa main (cachée) : elle part de l'éventail adverse.
+            // Carte adverse jouée depuis sa main (cachée) : elle part de
+            // l'éventail adverse, plus grande qu'elle n'arrivera
+            // (cf. `OPPONENT_PLAY_SCALE`).
             const hand = document.querySelector('[data-zone="OpponentHand"]')?.getBoundingClientRect();
-            if (hand) from = { x: hand.left + hand.width / 2 - to.width / 2, y: hand.top, width: to.width, height: to.height };
+            if (hand) {
+              const width = to.width * OPPONENT_PLAY_SCALE;
+              const height = to.height * OPPONENT_PLAY_SCALE;
+              from = { x: hand.left + hand.width / 2 - width / 2, y: hand.top, width, height };
+              posed = true;
+            }
           }
           dropBoxes.current.delete(id);
-          if (from && to) slide(el, from, to);
+          if (from && to) slide(el, from, to, posed ? OPPONENT_PLAY_MS : undefined);
         }
       }
 

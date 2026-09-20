@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   canBeEquipTarget,
   computeEffectiveStats,
@@ -23,7 +23,6 @@ import { AttackImpactLayer } from "@/features/match/AttackImpactLayer";
 import { useCardBackSrcFor } from "@/features/cosmetics/MatchCosmeticsProvider";
 import { CardTile } from "@/features/match/CardTile";
 import { TIDE_STATE_LABELS } from "@/features/match/cardDisplay";
-import { EquipLinkOverlay } from "@/features/match/EquipLinkOverlay";
 import { needsPlayTarget } from "@/features/match/needsPlayTarget";
 import type { AttackAnimation } from "@/features/match/useAttackPresentation";
 import styles from "@/features/match/table/Table.module.css";
@@ -31,6 +30,7 @@ import { BackgroundLayer } from "@/features/match/table/BackgroundLayer";
 import { CenterZone } from "@/features/match/table/CenterZone";
 import { DecorLayer } from "@/features/match/table/DecorLayer";
 import { DragLayer, type AimTone } from "@/features/match/table/DragLayer";
+import { EquipLinks } from "@/features/match/table/EquipLinks";
 import { GameStage } from "@/features/match/table/GameStage";
 import { GameViewport } from "@/features/match/table/GameViewport";
 import { HoverCardPreview } from "@/features/match/table/HoverCardPreview";
@@ -184,6 +184,21 @@ export function TableBoard(props: TableBoardProps) {
     );
   }
   const motion = useTableMotion(state, viewerId, (instance) => renderFace(instance));
+
+  // Équipement → porteur, pour le trait qui les relie. L'attachement ne
+  // traverse jamais les plateaux (`game/cards/types.ts`), mais les deux
+  // camps en posent : on lit les deux.
+  const boardKey = state.players.map((p) => p.board.map((u) => u.instanceId).join(",")).join("|");
+  const attachments = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const player of state.players) {
+      for (const unit of player.board) {
+        if (unit.attachedToInstanceId) map[unit.instanceId] = unit.attachedToInstanceId;
+      }
+    }
+    return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- indexé sur la composition des plateaux, pas sur l'objet `state` entier.
+  }, [boardKey]);
 
   /*
    * Aperçu au survol (`HoverCardPreview`) : la carte sous la souris, rendue
@@ -585,6 +600,8 @@ export function TableBoard(props: TableBoardProps) {
           />
         </GameStage>
 
+        <EquipLinks attachments={attachments} layoutKey={boardKey} />
+
         <MotionLayer flights={motion.flights} />
         {/* Pendant un geste (glisser, viser), pas d'aperçu : c'est le plateau qu'on regarde. */}
         {preview && !gesture && (() => {
@@ -604,7 +621,6 @@ export function TableBoard(props: TableBoardProps) {
         />
       </GameViewport>
 
-      <EquipLinkOverlay state={state} />
       {shipInfoFor && (
         <ShipInfoSheet
           player={shipInfoFor === viewer.id ? viewer : opponent}

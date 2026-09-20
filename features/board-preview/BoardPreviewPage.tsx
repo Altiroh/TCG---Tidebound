@@ -11,7 +11,7 @@ import { CenterZone } from "@/features/match/table/CenterZone";
 import { DebugOverlay } from "@/features/board-preview/DebugOverlay";
 import { DecorLayer } from "@/features/match/table/DecorLayer";
 import { DragLayer, type AimTone } from "@/features/match/table/DragLayer";
-import { EquipLinks } from "@/features/board-preview/EquipLinks";
+import { EquipLinks } from "@/features/match/table/EquipLinks";
 import { EffectsLayer } from "@/features/board-preview/EffectsLayer";
 import { GameStage } from "@/features/match/table/GameStage";
 import { GameViewport } from "@/features/match/table/GameViewport";
