@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createGameState } from "@/game/state/createGameState";
 import { DECK_LE_BANC_DEBORDE, DECK_BEC_DANS_LA_BRUME } from "@/game/cards/decks/borrowed";
+import { enumerateCandidateActions } from "@/game/bot/enumerateActions";
 import { runBotTurn } from "@/game/bot/runBotTurn";
 import type { BotDifficulty } from "@/game/bot/types";
 import { instance, testGameState, testPlayer } from "./testHelpers";
@@ -69,5 +70,19 @@ describe("runBotTurn", () => {
     // L'Ancrage pèse bien plus lourd que la Raison dans `evaluateState` : le bot doit préférer perdre de la Raison.
     expect(result.players[1].reason).toBe(9);
     expect(result.players[1].anchor).toBe(20);
+  });
+});
+
+describe("coups que le bot sait proposer", () => {
+  it("propose la capacité activable d'une de ses cartes (Sondeur des Mauvaises Eaux)", () => {
+    const sondeur = instance("sondeur-des-mauvaises-eaux", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { board: [sondeur] }), testPlayer("p2")],
+    });
+
+    const actions = enumerateCandidateActions(state, "p1");
+    // Le moteur accorde `activateAbility` ; tant qu'elle n'était pas
+    // énumérée, la capacité n'existait tout simplement pas pour le bot.
+    expect(actions).toContainEqual({ type: "activateAbility", playerId: "p1", sourceInstanceId: sondeur.instanceId });
   });
 });

@@ -116,6 +116,9 @@ function matchesTriggerSource(
     return false;
   }
   if (filter.onlySummoned && !event.fromSummon) return false;
+  // « depuis votre main » : la provenance du Bris écarte la capacité avant
+  // tout marquage « une fois par tour » (cf. `TriggerSourceFilter.fromHand`).
+  if (filter.fromHand !== undefined && filter.fromHand !== Boolean(event.fromHand)) return false;
   // « détruite au combat » : sans cause portée par l'événement, le filtre ne
   // matche pas — mieux vaut ne pas se déclencher que se déclencher à tort.
   if (filter.destroyedBy && !(event.destructionCause && filter.destroyedBy.includes(event.destructionCause))) return false;

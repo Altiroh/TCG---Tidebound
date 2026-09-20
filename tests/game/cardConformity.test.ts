@@ -35,7 +35,8 @@ type RuleId =
   | "cost"
   | "cimetiere"
   | "pied-marin"
-  | "designation";
+  | "designation"
+  | "observateur";
 
 /**
  * Écarts assumés, avec leur motif. La clé est `${cardId}:${rule}`.
@@ -148,6 +149,19 @@ function check(def: CardDefinition): Violation[] {
     if ((ability.mode ?? "auto") !== "auto") continue;
     if (!ability.effects.some((e) => e.target.kind === "chosenUnit")) continue;
     push("designation", `capacité #${index} (${ability.trigger}) vise une unité désignée mais se résout d'office : il faut mode: "optional"`);
+  }
+
+  // --- Observateurs : un déclencheur qui vise une AUTRE carte ---------------
+  // Ces trois déclencheurs portent l'instance de la carte qui vient de
+  // partir (l'Objet brisé, la carte défaussée, celle repêchée) : elle n'est
+  // plus sur le plateau quand l'événement part, donc le circuit
+  // « personnel » de `triggerBus.ts` ne trouve rien. Sans `triggeredBy`, la
+  // capacité n'est collectée par AUCUN circuit et ne se déclenche jamais —
+  // c'est exactement ce qui rendait les deux Cra-Poiscail Médecin inertes.
+  const OBSERVER_ONLY: TriggerType[] = ["onObjectBroken", "onCardDiscardedFromHand", "onCardRecoveredFromGraveyard"];
+  for (const [index, ability] of abilities.entries()) {
+    if (!OBSERVER_ONLY.includes(ability.trigger) || ability.triggeredBy) continue;
+    push("observateur", `capacité #${index} (${ability.trigger}) : un déclencheur d'observateur sans triggeredBy ne se déclenche jamais`);
   }
 
   // --- Sabordage / Bris ----------------------------------------------------

@@ -2743,7 +2743,11 @@ export const CORE_SET: CardDefinition[] = [
         trigger: "onObjectBroken",
         // Observateur : l'événement vise l'Objet brisé, jamais Pantalone —
         // sans ce filtre la capacité n'est collectée par aucun circuit.
-        triggeredBy: {},
+        // `fromHand` est sur le FILTRE et pas seulement sur l'effet : un Bris
+        // depuis le PLATEAU ne doit pas réveiller la capacité, sinon il
+        // consomme le « une fois par tour » sans rien rendre, et le Bris
+        // depuis la main qui suit dans le même tour ne rembourse plus rien.
+        triggeredBy: { fromHand: true },
         oncePerTurnKey: "pantaloneHandBreak",
         description: "Premier Bris depuis la main du tour : récupérez 1 Raison.",
         // Le remboursement ne vaut QUE pour un Bris depuis la main : sinon
@@ -3606,6 +3610,10 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onObjectBroken",
+        // L'événement vise l'Objet brisé, déjà parti au Cimetière : sans ce
+        // filtre d'observateur, la capacité n'est collectée par aucun
+        // circuit et ne se déclenche jamais (cf. Cra-Poiscail Ramasseur).
+        triggeredBy: {},
         oncePerTurnKey: "medecinAncrage",
         description: "Vous Brisez un Objet : récupérez 1 Ancrage.",
         effects: [{ type: "heal", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
@@ -3627,6 +3635,9 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onObjectBroken",
+        // Même observateur que la version standard : sans `triggeredBy`, la
+        // capacité n'est réveillée par aucun circuit.
+        triggeredBy: {},
         oncePerTurnKey: "medecinAncrage",
         description: "Vous Brisez un Objet : récupérez 1 Ancrage et piochez 1 carte.",
         effects: [

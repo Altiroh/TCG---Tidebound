@@ -84,6 +84,17 @@ export interface TriggerSourceFilter {
    * compris — le comportement historique.
    */
   destroyedBy?: DestructionCause[];
+  /**
+   * `onObjectBroken` seulement : ne réagit qu'à un Bris DEPUIS LA MAIN
+   * (`true`), ou au contraire qu'à un Bris depuis le plateau (`false`) —
+   * ex: Pantalone Sans-Sou, « que vous Brisez directement depuis votre
+   * main ». Porté par le FILTRE et non par une condition d'effet
+   * (`conditionBrokenFromHand`) : le filtre est évalué AVANT que
+   * `oncePerTurnKey` ne soit consommé, là où une condition d'effet
+   * laisserait un Bris depuis le plateau brûler l'unique usage du tour
+   * pour ne rien résoudre.
+   */
+  fromHand?: boolean;
 }
 
 /** Une capacité déclenchée : "quand X se produit, résous ces effets". */

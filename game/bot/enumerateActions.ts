@@ -225,6 +225,21 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
       const def = getCardDefinition(unit.cardId);
       if (def.type === "objet") actions.push(...breakVariants(state, playerId, unit.instanceId, def, false));
       actions.push({ type: "saborder", playerId, instanceId: unit.instanceId });
+
+      // Capacité activable de la carte elle-même (`activatableOncePerTurn`,
+      // ex: Sondeur des Mauvaises Eaux). Sans ça, le bot ignorait purement
+      // et simplement une action que le moteur lui accorde : ses cartes à
+      // capacité discrétionnaire n'étaient, pour lui, que des statistiques.
+      if (def.activatableOncePerTurn) {
+        const targeted = def.activatableOncePerTurn.effects.find((e) => e.target.kind === "chosenUnit");
+        if (targeted) {
+          for (const { unit: target } of eligibleChosenUnits(state, targeted.target, playerId, unit.instanceId)) {
+            actions.push({ type: "activateAbility", playerId, sourceInstanceId: unit.instanceId, targetInstanceId: target.instanceId });
+          }
+        } else {
+          actions.push({ type: "activateAbility", playerId, sourceInstanceId: unit.instanceId });
+        }
+      }
     }
 
     if (state.phase === "mainPhase") {
