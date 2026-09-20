@@ -108,11 +108,40 @@ function permanentValue(state: GameState, unit: CardInstance, controller: Player
 }
 
 /**
+ * LA PEUR. Ce que pèse une menace, selon qu'on la fait peser ou qu'on la
+ * subit — et le point qui faisait bourriner le bot.
+ *
+ * Les deux comptaient pareil (1,1), alors qu'un point d'Ancrage en vaut 3.
+ * Une créature adverse laissée en vie ne coûtait donc que 0,37 le point de
+ * Puissance, quand elle frappe à CHAQUE tour. Le calcul tombait toujours
+ * du même côté : taper le Navire pour 4 rapportait 12, tuer une 4/4 en y
+ * laissant la sienne rapportait 0. Le bot allait au visage,
+ * systématiquement, ne défendait jamais, et la partie se réduisait à une
+ * course.
+ *
+ * La menace SUBIE vaut maintenant exactement ce qu'elle va coûter : un
+ * point d'Ancrage par point de Puissance, puisque c'est précisément ce
+ * qu'elle prendra au prochain tour. L'échange équilibré reste neutre —
+ * c'est juste, une créature contre une créature n'avance personne — mais
+ * l'échange FAVORABLE passe devant les dégâts directs, et un bloqueur
+ * Garde vaut enfin ce qu'il retient.
+ *
+ * Mesuré sur 12 parties « moyen » contre « moyen » : la part des attaques
+ * portées au Navire plutôt qu'à une unité tombe de 77 % à 65 %, les
+ * parties durent plus longtemps, et le bot joue davantage de tout —
+ * Objets brisés, Équipements, réactions. L'échelle de difficulté, elle,
+ * ne bouge pas (`tests/game/botDifficultyLadder.test.ts`).
+ */
+const THREAT_MADE = 1.1;
+const THREAT_TAKEN = ANCHOR_VITAL_VALUE;
+
+/**
  * MENACE. Ce que l'adversaire peut infliger au Navire au prochain tour, une
  * fois les bloqueurs Garde déduits. Une évaluation qui ne regarde que les
  * statistiques ne voit pas la différence entre « je mène de 4 points » et
  * « je mène de 4 points et je meurs au prochain tour ».
  */
+
 function unblockedThreat(state: GameState, attacker: PlayerState, defender: PlayerState): number {
   const gardes = defender.board.filter((unit) => hasEffectiveKeyword(state, defender, unit, KEYWORD_GARDE)).length;
 
@@ -207,10 +236,11 @@ export function evaluateState(state: GameState, forPlayerId: PlayerId): number {
 
   const material = playerValue(state, me) - playerValue(state, opponent);
 
-  // Pression : la menace que je fais peser, moins celle que je subis. Fait
-  // préférer un plateau qui MENACE à un plateau qui accumule, et rend le
-  // bot attentif aux bloqueurs qu'il abandonne.
-  const pressure = unblockedThreat(state, me, opponent) - unblockedThreat(state, opponent, me);
+  // Pression : la menace que je fais peser, moins — bien plus lourdement —
+  // celle que je subis (cf. `THREAT_TAKEN`). Fait préférer un plateau qui
+  // MENACE à un plateau qui accumule, et rend le bot attentif aux bloqueurs
+  // qu'il abandonne comme aux corps adverses qu'il laisse debout.
+  const pressure = unblockedThreat(state, me, opponent) * THREAT_MADE - unblockedThreat(state, opponent, me) * THREAT_TAKEN;
 
-  return material + pressure * 1.1;
+  return material + pressure;
 }

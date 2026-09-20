@@ -6,6 +6,7 @@ import { searchBestAction } from "@/game/bot/searchTurn";
 import { dispatch } from "@/game/engine";
 import { getShipDefinition } from "@/game/environment/shipData";
 import type { GameState } from "@/game/state/types";
+import { instance, testGameState, testPlayer } from "./testHelpers";
 
 function newGame(seed = 5): GameState {
   return createGameState({
@@ -122,5 +123,49 @@ describe("recherche du bot", () => {
       if (result.state === state) break;
       state = result.state;
     }
+  });
+});
+
+describe("évaluation du bot — la peur", () => {
+  /*
+   * LE BOURRINAGE REMONTÉ EN PARTIE (retour de test du 20/09/2026) : « le
+   * bot préfère taper direct les points de vie », « pas de défense, pas de
+   * peur ». La menace subie comptait 1,1 le point de Puissance quand un
+   * point d'Ancrage en vaut 3 : un échange même FAVORABLE passait derrière
+   * les dégâts directs.
+   */
+  it("préfère un échange favorable aux dégâts directs", () => {
+    const attaquant = instance("matelot-du-sans-nom", "a"); // 3 / 4
+    const defenseur = instance("raie-des-fosses", "b"); // 3 / 3 : meurt, et le mien survit
+    const state = testGameState({
+      players: [
+        testPlayer("a", { board: [attaquant] }),
+        testPlayer("b", { board: [defenseur] }),
+      ],
+      phase: "combatPhase",
+      activePlayerId: "a",
+      priorityPlayerId: "a",
+    });
+
+    const surLUnite = dispatch(state, { type: "attack", playerId: "a", attackerInstanceId: attaquant.instanceId, defenderInstanceId: defenseur.instanceId });
+    const surLeNavire = dispatch(state, { type: "attack", playerId: "a", attackerInstanceId: attaquant.instanceId });
+    expect(surLUnite.ok).toBe(true);
+    expect(surLeNavire.ok).toBe(true);
+    if (!surLUnite.ok || !surLeNavire.ok) return;
+
+    expect(evaluateState(surLUnite.state, "a")).toBeGreaterThan(evaluateState(surLeNavire.state, "a"));
+  });
+
+  it("un corps adverse laissé debout coûte autant qu'un point de coque", () => {
+    // Deux positions identiques, à ceci près qu'un 3 / 3 adverse est là ou
+    // non : l'écart doit se lire comme une vraie perte, pas comme un détail.
+    const sans = testGameState({ players: [testPlayer("a"), testPlayer("b")] });
+    const avec = testGameState({
+      players: [testPlayer("a"), testPlayer("b", { board: [instance("raie-des-fosses", "b")] })],
+    });
+    const ecart = evaluateState(sans, "a") - evaluateState(avec, "a");
+    // Le corps vaut son matériel (≈ 8) PLUS la menace de ses 3 Puissance,
+    // désormais comptée au prix de l'Ancrage.
+    expect(ecart).toBeGreaterThan(15);
   });
 });
