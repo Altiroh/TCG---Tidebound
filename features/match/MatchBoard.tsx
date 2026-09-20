@@ -399,10 +399,10 @@ export function MatchBoard({
         }}
         onMenu={() => board.setShowPauseMenu(true)}
         onHandCardClick={(id) => board.handleHandCardClick(id)}
-        onPlayCard={(instanceId, targetInstanceId) => {
+        onPlayCard={(instanceId, targetInstanceId, boardIndex) => {
           // Le lâcher a déjà montré l'avertissement de Déraison : il vaut confirmation.
-          if (targetInstanceId) runAction({ type: "playCard", playerId: activePlayerId, instanceId, targetInstanceId });
-          else board.handleHandCardClick(instanceId, true);
+          if (targetInstanceId) runAction({ type: "playCard", playerId: activePlayerId, instanceId, targetInstanceId, boardIndex });
+          else board.handleHandCardClick(instanceId, true, boardIndex);
         }}
         onAttack={(attackerInstanceId, defenderInstanceId) =>
           runAction({ type: "attack", playerId: activePlayerId, attackerInstanceId, defenderInstanceId })

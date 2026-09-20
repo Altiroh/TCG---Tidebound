@@ -9,6 +9,18 @@ export interface PlayCardAction {
   targetInstanceId?: string;
   /** Requis si un `onPlayEffects` repêche au Cimetière et qu'une carte y est éligible (ex: Tu viens jouer ?). */
   chosenGraveyardInstanceId?: string;
+  /**
+   * Emplacement voulu dans le rang, 0 = tout à gauche. La carte s'INSÈRE
+   * là et pousse les suivantes d'un cran ; une valeur hors bornes est
+   * ramenée dans le rang. Absent : fin de rang, comme avant — sauf pour un
+   * Équipement, qui se range de lui-même juste après le permanent qu'il
+   * équipe (cf. `playCard.ts`).
+   *
+   * Le rang reste DENSE : il n'y a pas de trou entre deux cartes, donc
+   * choisir l'emplacement, c'est choisir l'ORDRE. C'est ce qui permet de
+   * poser un Équipement à côté de son porteur plutôt qu'à l'autre bout.
+   */
+  boardIndex?: number;
 }
 
 export interface AttackAction {

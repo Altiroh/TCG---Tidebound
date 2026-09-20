@@ -269,7 +269,7 @@ export function BoardPreviewPage() {
    */
   const { gesture, hover, startGesture, cancel } = useTableGestures({
     isValidDrop: (kind, sourceId, drop) => {
-      if (kind === "place") return drop === "board" && boardHasRoom;
+      if (kind === "place") return (drop === "board" || drop.startsWith("board:")) && boardHasRoom;
       if (kind === "cast") {
         return boardHasRoom && drop.startsWith("own:") && (handTargets.get(sourceId)?.includes(drop.slice(4)) ?? false);
       }

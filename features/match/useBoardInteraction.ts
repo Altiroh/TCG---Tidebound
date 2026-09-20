@@ -97,7 +97,7 @@ export interface BoardInteractionConfig {
  */
 export type GraveyardPickRequest =
   | { kind: "break"; card: CardInstance; fromHand: boolean }
-  | { kind: "play"; card: CardInstance }
+  | { kind: "play"; card: CardInstance; boardIndex?: number }
   | { kind: "reaction"; candidate: PendingReactionCandidate };
 
 export interface BoardInteraction {
@@ -130,7 +130,8 @@ export interface BoardInteraction {
    */
   beginReactionTargeting: (queued: PendingReactionCandidate[]) => boolean;
 
-  handleHandCardClick: (instanceId: string, confirmed?: boolean) => void;
+  /** `boardIndex` : emplacement visé dans le rang quand la carte a été LÂCHÉE dessus ; un simple clic n'en désigne aucun. */
+  handleHandCardClick: (instanceId: string, confirmed?: boolean, boardIndex?: number) => void;
   /** Cible désignée sur le plateau. Rend l'action de réaction à soumettre, ou `null` si le geste est déjà traité. */
   resolveBoardCardClick: (instanceId: string, ownerId: PlayerId) => PlayerAction | null;
   requestBreak: (card: CardInstance, fromHand: boolean) => void;
@@ -186,7 +187,7 @@ export function useBoardInteraction({
   }
 
   /** Clic sur une carte de main : la joue, ou entre en désignation de cible. Le glisser-déposer passe `confirmed`. */
-  function handleHandCardClick(instanceId: string, confirmed = false) {
+  function handleHandCardClick(instanceId: string, confirmed = false, boardIndex?: number) {
     if (!canPlayCards) return;
     const card = viewer.hand.find((c) => c.instanceId === instanceId);
     if (!card) return;
@@ -206,10 +207,12 @@ export function useBoardInteraction({
     // question se pose AVANT la pose, comme pour un Bris. Sur l'état VIVANT,
     // le Cimetière affiché pouvant retarder d'une animation.
     if (graveyardChoicesForPlay(liveState, actorId, def).length > 0) {
-      setGraveyardPick({ kind: "play", card });
+      // L'emplacement voyage avec la question : le joueur a déjà lâché sa
+      // carte quelque part, la réponse au Cimetière ne doit pas l'oublier.
+      setGraveyardPick({ kind: "play", card, boardIndex });
       return;
     }
-    act({ type: "playCard", playerId: actorId, instanceId });
+    act({ type: "playCard", playerId: actorId, instanceId, boardIndex });
   }
 
   /**

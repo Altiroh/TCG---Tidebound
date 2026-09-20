@@ -95,7 +95,8 @@ export interface TableBoardProps {
   /** Clic / toucher sur une carte de la main (parcours au clic : jouer, ou entrer en choix de cible). */
   onHandCardClick: (instanceId: string) => void;
   /** Carte de main lâchée sur le plateau (sans cible) ou sur sa cible. Le lâcher vaut confirmation. */
-  onPlayCard: (instanceId: string, targetInstanceId?: string) => void;
+  /** `boardIndex` : emplacement visé dans le rang (cf. `PlayCardAction`). */
+  onPlayCard: (instanceId: string, targetInstanceId?: string, boardIndex?: number) => void;
   /** Attaque — sans défenseur : le Navire adverse. */
   onAttack: (attackerInstanceId: string, defenderInstanceId?: string) => void;
   /** Objet posé lâché sur une cible (effet de bris ciblé). */
@@ -270,6 +271,22 @@ export function TableBoard(props: TableBoardProps) {
 
   const dropId = (drop: string) => drop.replace(/^(own|unit):/, "");
 
+  /**
+   * Emplacement désigné par la zone lâchée : une case vide le dit
+   * (`board:3`), une carte du plateau vaut « avant celle-ci » — lâcher sur
+   * la première carte, c'est passer devant elle. Le rang seul
+   * (`board`, entre deux cases) garde le comportement d'avant : fin de rang.
+   */
+  const slotOf = (drop: string): number | undefined => {
+    if (drop.startsWith("board:")) return Number(drop.slice("board:".length));
+    if (drop.startsWith("own:")) {
+      const index = viewer.board.findIndex((u) => u.instanceId === dropId(drop));
+      return index >= 0 ? index : undefined;
+    }
+    return undefined;
+  };
+  const isBoardDrop = (drop: string) => drop === "board" || drop.startsWith("board:") || drop.startsWith("own:");
+
   const { gesture, hover, startGesture } = useTableGestures({
     isValidDrop: (kind, sourceId, drop) => {
       const entry = byId.get(sourceId);
@@ -283,7 +300,7 @@ export function TableBoard(props: TableBoardProps) {
 
       if (kind === "place") {
         if (!canPlayCards) return false;
-        if (drop === "board") return slotsFree;
+        if (isBoardDrop(drop)) return slotsFree;
         return drop === "graveyard" && getCardDefinition(instance.cardId).type === "objet";
       }
       if (kind === "cast") {
@@ -309,7 +326,7 @@ export function TableBoard(props: TableBoardProps) {
         const el = document.querySelector<HTMLElement>(`[data-card-id="${sourceId}"]`);
         const width = (el?.offsetWidth ?? 0) * 1.08;
         if (width) motion.rememberDrop(sourceId, { x: point.x - width / 2, y: point.y - (width * 1.4) / 2, width, height: width * 1.4 });
-        props.onPlayCard(sourceId);
+        props.onPlayCard(sourceId, undefined, slotOf(drop));
         return;
       }
       if (kind === "cast") {
@@ -545,7 +562,8 @@ export function TableBoard(props: TableBoardProps) {
                   : "ready"
                 : "idle"
             }
-            dropState={placing && slotsFree ? (hover === "board" ? "over" : "ready") : "idle"}
+            dropState={placing && slotsFree ? (hover !== null && isBoardDrop(hover) ? "over" : "ready") : "idle"}
+            dropSlot={placing && hover !== null && isBoardDrop(hover) ? slotOf(hover) : undefined}
             renderCard={(card) => renderBoardCard(card, viewer)}
           />
           <TableHand

@@ -52,6 +52,7 @@ export function graveyardPickView(
         playerId,
         instanceId: request.card.instanceId,
         chosenGraveyardInstanceId: chosen.instanceId,
+        boardIndex: request.boardIndex,
       }),
     };
   }

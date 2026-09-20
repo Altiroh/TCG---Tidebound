@@ -235,11 +235,20 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
       turnsRemaining: def.durationTurns,
     };
     const owner = getPlayer(nextState, player.id);
+    // Emplacement dans le rang. Le joueur le désigne en lâchant sa carte
+    // (`boardIndex`) ; sinon un Équipement se range juste après le
+    // permanent qu'il équipe — le trait qui les relie n'a alors plus à
+    // traverser tout le plateau — et le reste prend la fin du rang.
+    const hostIndex =
+      (def.onPlayEffects ?? []).some((e) => e.type === "attachEquipment") && action.targetInstanceId
+        ? owner.board.findIndex((u) => u.instanceId === action.targetInstanceId)
+        : -1;
+    const wanted = action.boardIndex ?? (hostIndex >= 0 ? hostIndex + 1 : owner.board.length);
+    const at = Math.max(0, Math.min(Math.trunc(wanted), owner.board.length));
+    const board = [...owner.board.slice(0, at), boardUnit, ...owner.board.slice(at)];
     nextState = {
       ...nextState,
-      players: nextState.players.map((p) =>
-        p.id === owner.id ? { ...owner, board: [...owner.board, boardUnit] } : p
-      ) as [PlayerState, PlayerState],
+      players: nextState.players.map((p) => (p.id === owner.id ? { ...owner, board } : p)) as [PlayerState, PlayerState],
     };
     events.push({ ...base, type: "SUMMON", playerId: player.id, instanceId: boardUnit.instanceId, cardId: def.id });
   } else {

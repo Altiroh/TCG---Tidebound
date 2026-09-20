@@ -15,6 +15,8 @@ interface PlayerZoneProps {
   wrapShip?: (ship: ReactNode) => ReactNode;
   /** État de dépôt du plateau pendant une pose depuis la main. */
   dropState?: BoardDropState;
+  /** Emplacement visé pendant cette pose (cf. `TableRow`). */
+  dropSlot?: number;
   deck: number;
   graveyard: number;
   /** État du crâne pendant qu'une carte est prise (zone de Sabordage). */
@@ -40,6 +42,7 @@ export function PlayerZone({
   renderCard,
   wrapShip = (node) => node,
   dropState,
+  dropSlot,
   deck,
   graveyard,
   graveyardDropState,
@@ -50,7 +53,7 @@ export function PlayerZone({
     <section className={`${styles.zone} ${styles.playerZone}`} data-zone="PlayerZone" aria-label="Zone du joueur">
       <div className={styles.zoneSlotShip}>{wrapShip(<TableShip {...ship} />)}</div>
       <div className={styles.zoneSlotBoard}>
-        <TableRow zone="PlayerBoard" cards={board} capacity={capacity} renderCard={renderCard} droppable dropState={dropState} />
+        <TableRow zone="PlayerBoard" cards={board} capacity={capacity} renderCard={renderCard} droppable dropState={dropState} dropSlot={dropSlot} />
       </div>
       <div className={styles.zoneSlotCargo}>
         <TableCargo

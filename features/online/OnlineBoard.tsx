@@ -232,9 +232,9 @@ export function OnlineBoard({
         }}
         onMenu={() => board.setShowPauseMenu(true)}
         onHandCardClick={(id) => board.handleHandCardClick(id)}
-        onPlayCard={(instanceId, targetInstanceId) => {
-          if (targetInstanceId) act({ type: "playCard", playerId: myUserId, instanceId, targetInstanceId });
-          else board.handleHandCardClick(instanceId, true);
+        onPlayCard={(instanceId, targetInstanceId, boardIndex) => {
+          if (targetInstanceId) act({ type: "playCard", playerId: myUserId, instanceId, targetInstanceId, boardIndex });
+          else board.handleHandCardClick(instanceId, true, boardIndex);
         }}
         onAttack={(attackerInstanceId, defenderInstanceId) => act({ type: "attack", playerId: myUserId, attackerInstanceId, defenderInstanceId })}
         onBreakOnTarget={(instanceId, targetInstanceId) => act({ type: "breakObject", playerId: myUserId, instanceId, targetInstanceId })}
