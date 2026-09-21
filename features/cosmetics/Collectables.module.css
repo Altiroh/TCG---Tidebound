@@ -327,3 +327,94 @@ div.item,
 }
 
 .shelfTab[data-active="true"] .shelfTabCount { color: var(--cb-cyan); }
+
+/* ══════════════════════════════════════════════════════════════
+ * TÉLÉPHONE COUCHÉ — la vignette se couche, elle aussi
+ * ══════════════════════════════════════════════════════════════
+ *
+ * Une vignette debout, c'est une image en 5/7 PLUS quatre lignes de texte :
+ * à 160 px de large elle demande 320 px de haut, et sur un téléphone
+ * couché (258 px de vitrine, mesuré en 915 × 412) le nom et la description
+ * passaient SOUS le bord de l'écran — une rangée d'images dont on ne
+ * savait plus ce qu'elles étaient.
+ *
+ * Ce qui manque ici, ce n'est pas la largeur (887 px pour huit objets),
+ * c'est la hauteur. La vignette se couche donc : l'illustration à gauche,
+ * le nom, l'accroche et la condition à droite. Elle tient alors dans la
+ * hauteur de sa propre image, texte compris, et la largeur d'une colonne
+ * se déduit de la hauteur VISIBLE de la vitrine (`cqh`) — la même méthode
+ * que la planche-contact des Cartes (`CardBrowser.module.css`).
+ */
+@media (max-height: 560px) {
+  .showcase {
+    /* `size` : c'est la hauteur qu'on interroge. La vitrine tient déjà sa
+       hauteur du panneau, le confinement ne lui coûte rien. */
+    container-type: size;
+    gap: 8px;
+    padding: 8px 10px 10px;
+  }
+
+  .grid {
+    grid-template-columns: repeat(auto-fill, minmax(clamp(230px, 62cqh, 330px), 1fr));
+    gap: 10px;
+  }
+
+  .itemShell {
+    padding: 8px;
+  }
+
+  /*
+   * Couchée : l'image prend deux cinquièmes de la largeur, le texte le
+   * reste. Une GRILLE et non un `flex-wrap` — les trois lignes de texte
+   * sont des sœurs de l'image, pas les filles d'une colonne : en `wrap`
+   * elles retombaient sous l'image au lieu de se ranger à côté d'elle.
+   */
+  .item {
+    display: grid;
+    grid-template-columns: 40% minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
+    column-gap: 10px;
+    row-gap: 2px;
+  }
+
+  .cardBackFrame,
+  .shipFrameBox {
+    grid-column: 1;
+    grid-row: 1 / span 3;
+    width: 100%;
+    align-self: start;
+  }
+
+  .itemName { grid-column: 2; grid-row: 1; }
+  .itemText { grid-column: 2; grid-row: 2; }
+  .itemHint { grid-column: 2; grid-row: 3; }
+
+  .itemName {
+    font-size: 13px;
+  }
+
+  .itemText {
+    min-height: 0;
+    font-size: 11px;
+    line-height: 1.3;
+  }
+
+  /* Couchée, la condition suit le texte : la pousser en bas laisserait un
+     trou entre l'accroche et elle. */
+  .itemHint {
+    min-height: 0;
+    margin-top: 4px;
+    font-size: 10px;
+  }
+
+  .badge {
+    top: 6px;
+    right: auto;
+    left: 6px;
+  }
+
+  .shelfTab {
+    padding: 3px 9px;
+    font-size: 11px;
+  }
+}

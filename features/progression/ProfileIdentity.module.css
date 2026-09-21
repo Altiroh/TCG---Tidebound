@@ -144,3 +144,46 @@
   border-color: #00b7ff;
   box-shadow: 0 0 6px rgba(0, 183, 255, 0.35);
 }
+
+/*
+ * Téléphone couché : le portrait passe de 64 à 44 px et le pseudo d'un
+ * cran — la tête du profil prenait à elle seule le quart du panneau, et
+ * les onglets tombaient sous le bord (cf. `Profile.module.css`, bloc
+ * « téléphone couché »).
+ */
+@media (max-height: 560px) {
+  .identity {
+    gap: 10px;
+  }
+
+  .avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+  }
+
+  .avatarInitial {
+    font-size: 18px;
+  }
+
+  .avatarEdit {
+    right: -4px;
+    bottom: -4px;
+    width: 18px;
+    height: 18px;
+  }
+
+  .eyebrow {
+    font-size: 9px;
+  }
+
+  .name {
+    font-size: clamp(16px, 4.6vh, 20px);
+  }
+
+  .pencil,
+  .nameSave {
+    width: 22px;
+    height: 22px;
+  }
+}

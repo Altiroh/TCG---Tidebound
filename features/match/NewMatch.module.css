@@ -182,6 +182,12 @@
   gap: 10px;
 }
 
+/* Le panneau de difficulté : sa marge intérieure vient d'ici et non d'un
+   style en ligne, pour que le bloc « écran court » puisse la resserrer. */
+.botPanel {
+  padding: clamp(12px, 1.2vw, 18px);
+}
+
 /*
  * La section des decks PREND la hauteur restante : c'est ce qui colle la
  * barre de lancement au bas de l'écran (la coquille donne déjà au contenu
@@ -822,6 +828,40 @@
   .difficultyLabel { align-self: center; }
 
   .deckTabHint { display: none; }
+
+  /*
+   * Le bloc de difficulté rend 40 px : marge intérieure, cartes et
+   * emblème d'un cran plus petits. C'est autant de liste de decks qui
+   * remonte au-dessus de la barre de lancement.
+   */
+  .botPanel {
+    padding: 8px 10px;
+  }
+
+  .group {
+    gap: 7px;
+  }
+
+  .difficulty {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 8px;
+  }
+
+  .difficultyChip {
+    padding: 5px 9px;
+  }
+
+  .difficultyEmblem { width: 26px; }
+
+  /* La précision sur les récompenses reste lisible, en plus discret. */
+  .difficulty + p {
+    font-size: 11px;
+  }
+
+  .deckTab {
+    padding: 0.35em 0.9em;
+    font-size: 12px;
+  }
 
   /* Deux lignes de résumé : la fiche doit tenir à côté de la liste. */
   .sheetText {

@@ -63,9 +63,12 @@ export interface ScreenHeaderProps {
    * retour au menu et le logo, rien d'autre — pour les écrans qui ne font
    * pas partie de la collection (Jouer, Market). `home` : le menu
    * principal — les onglets, sans retour ni logo (le coffret porte déjà
-   * l'enseigne, et il n'y a nulle part où revenir).
+   * l'enseigne, et il n'y a nulle part où revenir). `menu` : RIEN que le
+   * compte et les options, à droite — pour un menu qui porte lui-même sa
+   * navigation (la carte marine : ses parchemins SONT les onglets, une
+   * barre par-dessus ne ferait que les doubler).
    */
-  nav?: "collection" | "minimal" | "home";
+  nav?: "collection" | "minimal" | "home" | "menu";
 }
 
 /**
@@ -84,7 +87,7 @@ export interface ScreenHeaderProps {
  */
 export function ScreenHeader({ active, actions, onNavigate, nav = "collection" }: ScreenHeaderProps) {
   const router = useRouter();
-  const tabs = nav === "minimal" ? [] : TABS;
+  const tabs = nav === "collection" || nav === "home" ? TABS : [];
 
   // Onglets et retour au menu passent par `router.push`, que Next ne
   // précharge pas : chaque clic attendait alors le rendu serveur complet de
@@ -106,7 +109,7 @@ export function ScreenHeader({ active, actions, onNavigate, nav = "collection" }
         {/* Retour au menu : une flèche, sans libellé. Le geste est assez
             courant dans un client de jeu pour se passer du mot, et le mot
             prenait la place d'un onglet. */}
-        {nav !== "home" && (
+        {(nav === "collection" || nav === "minimal") && (
           <button
             type="button"
             className={styles.backButton}
@@ -137,7 +140,7 @@ export function ScreenHeader({ active, actions, onNavigate, nav = "collection" }
       </div>
 
       <div className={styles.headerBrand}>
-        {nav !== "home" && (
+        {(nav === "collection" || nav === "minimal") && (
           <Link
             href="/"
             className={styles.brand}

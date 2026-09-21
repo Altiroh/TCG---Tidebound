@@ -67,8 +67,12 @@
 
 /* Écran COURT (téléphone couché) : la fiche n'a plus la hauteur de porter
    l'illustration du sachet — il est déjà au centre, en grand. Le texte et
-   les boutons passent avant. */
-@media (max-height: 540px) {
+   les boutons passent avant.
+
+   Seuil commun à tous les écrans qui se réagencent en paysage (560 px, cf.
+   `app/tokens.css` et `tests/features/landscapePhone.test.ts`) : à 540 px,
+   il manquait les téléphones dont la zone utile tombe entre les deux. */
+@media (max-height: 560px) {
   .panelArt { display: none; }
   .panelBody { gap: 4px; }
   .shelfEntryArt { width: clamp(26px, 3vw, 40px); }

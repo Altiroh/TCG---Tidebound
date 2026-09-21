@@ -504,9 +504,16 @@
   font-weight: 400;
 }
 
+/*
+ * L'invite s'ABRÈGE au lieu d'être tranchée : sur un téléphone couché, le
+ * champ du bandeau tombe à 96 px (`.headerSearch`,
+ * `GameScreen.module.css`) et « Rechercher une carte… » s'arrêtait net sur
+ * « Recherc », sans rien dire de ce qui manquait.
+ */
 .searchInput::placeholder {
   color: var(--cb-ivory-dim);
   opacity: 0.85;
+  text-overflow: ellipsis;
 }
 
 /* La croix native de `type="search"` ferait double emploi avec `.searchClear`. */
@@ -806,6 +813,21 @@
   /* Un voile en haut seulement : le bandeau reste lisible sur le ciel du
      décor sans poser de barre opaque sur le menu. */
   background: linear-gradient(180deg, rgba(3, 8, 14, 0.72) 0%, rgba(3, 8, 14, 0.35) 70%, transparent 100%);
+}
+
+/*
+ * Bandeau du menu « carte marine » : il ne reste que le compte et les
+ * options, à droite. Le voile sombre part avec les onglets — il n'a plus
+ * rien à rendre lisible, et sur une table éclairée à la bougie, une bande
+ * noire en haut de l'écran se voit.
+ */
+.homeBar[data-nav="menu"] {
+  background: none;
+}
+
+/* Et le filet du bandeau avec : il n'y a plus de bandeau à souligner. */
+.homeBar[data-nav="menu"] .header::after {
+  display: none;
 }
 
 /* Téléphone : même sans onglets, le logo n'a plus la place entre la flèche et le compte. */

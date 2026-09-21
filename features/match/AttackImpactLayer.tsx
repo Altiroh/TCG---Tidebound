@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { ATTACK_IMPACT_AT_MS, ATTACK_TIMINGS, ATTACK_TOTAL_MS, type AttackAnimation } from "@/features/match/useAttackPresentation";
 import { playRandomAttackSound } from "@/lib/sound";
 
@@ -87,26 +87,131 @@ function animateAttacker(attackerEl: HTMLElement, targetRect: DOMRect): Animatio
   return animation;
 }
 
+/**
+ * LA PLAQUE DE DÉGÂTS — trois planches de bois cloutées, pendues à leur
+ * corde (`public/assets/ui/*-dammage.webp`), et le chiffre peint dessus.
+ *
+ * Le choix de la plaque dit la GRAVITÉ du coup avant même qu'on lise le
+ * chiffre : un point de dégât, deux ou trois, davantage. C'est la même
+ * information, donnée deux fois — la couleur se voit du coin de l'œil, le
+ * chiffre se lit quand on regarde.
+ */
+const DAMAGE_PLATES = [
+  { max: 1, src: "/assets/ui/low-dammage.webp" },
+  { max: 3, src: "/assets/ui/medium-dammage.webp" },
+  { max: Infinity, src: "/assets/ui/strong-dammage.webp" },
+] as const;
+
+function plateFor(amount: number): string {
+  // La dernière borne est `Infinity` : la recherche aboutit toujours.
+  return (DAMAGE_PLATES.find((plate) => amount <= plate.max) ?? DAMAGE_PLATES[2]).src;
+}
+
+/**
+ * Le chiffre est PEINT sur la planche : centré sur son champ de couleur,
+ * qui occupe la moitié haute de la plaque (la corde en prend le quart du
+ * haut, le décor de vagues le bas). Mesuré sur l'illustration rognée
+ * (519 × 1222) : centre à 50 % / 53 %.
+ */
+const PLATE_TEXT_CENTER_Y = "53%";
+
 function FloatingDamage({ point, amount }: { point: Point; amount: number }) {
-  const [risen, setRisen] = useState(false);
+  const host = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    const raf = requestAnimationFrame(() => setRisen(true));
-    return () => cancelAnimationFrame(raf);
+    const el = host.current;
+    const plate = el?.firstElementChild as HTMLElement | null;
+    if (!el || !plate) return undefined;
+
+    const sobre = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+
+    // La plaque tient en l'air le temps qu'on la lise, puis s'élève et s'efface.
+    const montee = el.animate(
+      [
+        { transform: "translate(-50%, -50%)", opacity: 1, offset: 0 },
+        { transform: "translate(-50%, -50%)", opacity: 1, offset: 0.58 },
+        { transform: "translate(-50%, calc(-50% - 58px))", opacity: 0, offset: 1 },
+      ],
+      { duration: 1150, easing: "cubic-bezier(.2,.8,.3,1)", fill: "forwards" }
+    );
+
+    // L'ARRIVÉE : la plaque tombe sur la cible, dépasse, et se balance au
+    // bout de sa corde avant de se stabiliser. La rotation part du HAUT
+    // (`transform-origin`), là où la corde la tient — un pivot au centre
+    // donnerait une toupie, pas un pendule.
+    const arrivee = sobre
+      ? null
+      : plate.animate(
+          [
+            { transform: "scale(0.45) rotate(-10deg)", offset: 0 },
+            { transform: "scale(1.2) rotate(6deg)", offset: 0.26 },
+            { transform: "scale(0.95) rotate(-4deg)", offset: 0.45 },
+            { transform: "scale(1.06) rotate(2.5deg)", offset: 0.62 },
+            { transform: "scale(0.99) rotate(-1.2deg)", offset: 0.8 },
+            { transform: "scale(1) rotate(0deg)", offset: 1 },
+          ],
+          { duration: 640, easing: "cubic-bezier(.2,.9,.25,1)", fill: "forwards" }
+        );
+
+    return () => {
+      montee.cancel();
+      arrivee?.cancel();
+    };
   }, []);
+
   if (amount <= 0) return null;
+  const chiffres = String(amount).length;
+
   return (
     <div
+      ref={host}
       aria-hidden
-      className="pointer-events-none absolute z-40 text-4xl font-black text-rose-400 [text-shadow:0_2px_6px_rgba(0,0,0,0.9),0_0_10px_rgba(244,63,94,0.6)]"
-      style={{
-        left: point.x,
-        top: point.y - (risen ? 64 : 0),
-        transform: `translate(-50%, -50%) scale(${risen ? 1 : 1.6})`,
-        opacity: risen ? 0 : 1,
-        transition: "top 900ms cubic-bezier(.2,.8,.3,1), transform 220ms ease-out, opacity 900ms cubic-bezier(.7,0,.9,.4)",
-      }}
+      className="pointer-events-none absolute z-40"
+      style={{ left: point.x, top: point.y, transform: "translate(-50%, -50%)" }}
     >
-      -{amount}
+      <div
+        style={
+          {
+            position: "relative",
+            /* Hauteur mesurée sur l'ÉCRAN, pas sur le plateau : la couche
+               d'impact vit en coordonnées viewport, au-dessus de la scène
+               mise à l'échelle. Nommée une fois — le chiffre se mesure
+               dessus (un `font-size` en pourcentage suivrait la taille du
+               texte hérité, pas la plaque). */
+            "--plate-height": "clamp(58px, 11vh, 122px)",
+            height: "var(--plate-height)",
+            aspectRatio: "519 / 1222",
+            transformOrigin: "top center",
+            filter: "drop-shadow(0 6px 12px rgba(0, 0, 0, 0.55))",
+          } as CSSProperties
+        }
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element -- couche d'animation : pas de mise en page à réserver, et `next/image` n'apporte rien sur une image de 21 Ko déjà à sa taille. */}
+        <img src={plateFor(amount)} alt="" draggable={false} style={{ display: "block", height: "100%", width: "100%" }} />
+        <span
+          style={{
+            position: "absolute",
+            top: PLATE_TEXT_CENTER_Y,
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            fontFamily: "var(--font-card-title), Georgia, serif",
+            /* Deux chiffres tiennent dans le même champ : la taille cède,
+               pas la plaque. */
+            fontSize: `calc(var(--plate-height) * ${chiffres > 1 ? 0.26 : 0.34})`,
+            fontWeight: 700,
+            lineHeight: 1,
+            color: "#fff",
+            /* Bordure du chiffre : quatre ombres dures font le contour, la
+               cinquième le décolle de la planche. `-webkit-text-stroke`
+               seul rongeait l'intérieur des chiffres. */
+            textShadow:
+              "1.5px 0 0 #2b1508, -1.5px 0 0 #2b1508, 0 1.5px 0 #2b1508, 0 -1.5px 0 #2b1508, 1px 1px 0 #2b1508, -1px 1px 0 #2b1508, 1px -1px 0 #2b1508, -1px -1px 0 #2b1508, 0 3px 7px rgba(0, 0, 0, 0.65)",
+            fontVariantNumeric: "tabular-nums",
+          }}
+        >
+          {amount}
+        </span>
+      </div>
     </div>
   );
 }

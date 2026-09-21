@@ -42,6 +42,11 @@ const RULES = [
   // Icônes d'interface (pièce de Tides, Jeton de Préconstruit) : affichées
   // de 13 à ~64 px. Qualité haute, ce sont des objets détourés sur alpha.
   { match: /\/ui\/icons\//, maxSize: 256, quality: 92 },
+  // Plaques de dégâts : elles s'envolent au-dessus de la cible à ~130 px de
+  // haut, jamais plus de 264 sur un écran dense. Qualité haute — corde et
+  // rivets sont détourés sur alpha, et ce sont leurs bords qui se
+  // dégradent d'abord.
+  { match: /\/ui\/\w+-dammage\./, maxSize: 320, quality: 92 },
   // Emblèmes de difficulté du bot : affichés à ~44 px dans la carte-radio
   // de « Jouer ». Même traitement que les icônes d'interface — traits fins
   // et halo sur alpha.

@@ -124,7 +124,13 @@ export function CollectablesScreen({ view }: { view: CollectablesView }) {
 
   return (
     <GameScreen active="collectables">
-      <div className={browser.workspace}>
+      {/* `data-rail="inline"` : cette colonne ne porte que les DEUX familles,
+          jamais quatre axes de filtres. Sur un écran court ou une fenêtre
+          étroite, elle ne part donc pas en tiroir comme celle des Cartes —
+          elle se couche en bandeau de chips au-dessus de la vitrine, et
+          reste atteignable sans bouton d'ouverture
+          (`CardBrowser.module.css`, bloc « TIROIR »). */}
+      <div className={browser.workspace} data-rail="inline">
         <aside className={`${game.panel} ${browser.sidebar}`} aria-label="Familles de collectables">
           <div className={browser.sidebarInner}>
             <section className={browser.filterSection}>
