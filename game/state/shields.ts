@@ -1,6 +1,6 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
 import type { GameEvent } from "@/game/events/types";
-import type { CardDefinition, CardInstance, CardType } from "@/game/cards/types";
+import { isVisibleDuringTide, type CardDefinition, type CardInstance, type CardType } from "@/game/cards/types";
 import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
 import { reasonAfterLoss } from "@/game/state/reason";
 import { getPlayer, type GameState, type PlayerId, type PlayerState } from "@/game/state/types";
@@ -23,8 +23,15 @@ function findAvailableShield<T>(
   const player = state.players.find((p) => p.id === playerId);
   if (!player) return undefined;
   for (const unit of player.board) {
-    const spec = getSpec(getCardDefinition(unit.cardId));
+    const def = getCardDefinition(unit.cardId);
+    const spec = getSpec(def);
     if (spec === undefined) continue;
+    // Une carte MASQUÉE par la Marée est inactive, boucliers compris
+    // (21/09/2026). Le verrou posé sur les `abilities` ne couvrait pas ces
+    // boucliers-là, qui sont des champs de données : Cage de Flottaison et
+    // Brise-Vague de Fortune protégeaient donc leur Navire alors qu'elles
+    // étaient invisibles, ce que leur texte ne promet nulle part.
+    if (!isVisibleDuringTide(def, state.environment.tideState)) continue;
     if (!oncePerTurnAvailable(unit, key, turnNumber)) continue;
     return { unit, spec };
   }
@@ -130,13 +137,23 @@ export function consumeDirectShipDamageShield(
   state: GameState,
   playerId: PlayerId,
   turnNumber: number,
-  /** Type de la carte qui attaque : « qu'une CRÉATURE devrait infliger » (Cage de Flottaison) ne couvre pas un Marin. */
-  attackerCardType: CardType
+  /**
+   * Type de la carte qui attaque, quand une carte attaque. ABSENT pour un
+   * TIR DE NAVIRE (21/09/2026) : le Navire n'est pas une carte, et un
+   * bouclier restreint à certains types ne peut donc pas le reconnaître —
+   * il ne s'applique alors pas, faute de pouvoir vérifier sa condition.
+   */
+  attackerCardType?: CardType
 ): { state: GameState; reduction: number } {
   const match = findAvailableShield(state, playerId, turnNumber, "directShipDamageShield", (def) => {
     const shield = def.reduceDirectShipDamageOncePerTurn;
     if (!shield) return undefined;
-    if (shield.attackerCardTypes && !shield.attackerCardTypes.includes(attackerCardType)) return undefined;
+    if (shield.attackerCardTypes) {
+      // Restreint à certains types : un tir de Navire, qui n'a pas de carte
+      // attaquante, ne peut pas satisfaire la condition.
+      if (attackerCardType === undefined) return undefined;
+      if (!shield.attackerCardTypes.includes(attackerCardType)) return undefined;
+    }
     return shield;
   });
   if (!match) return { state, reduction: 0 };
@@ -156,8 +173,10 @@ export function consumeOwnDamageTakenShield(
   const player = state.players.find((p) => p.id === ownerId);
   const unit = player?.board.find((u) => u.instanceId === unitInstanceId);
   if (!unit) return { state, reduction: 0 };
-  const shield = getCardDefinition(unit.cardId).reduceOwnDamageTakenOncePerTurn;
-  if (!shield || !oncePerTurnAvailable(unit, "ownDamageTakenShield", turnNumber)) return { state, reduction: 0 };
+  const def = getCardDefinition(unit.cardId);
+  const shield = def.reduceOwnDamageTakenOncePerTurn;
+  if (!shield || !isVisibleDuringTide(def, state.environment.tideState)) return { state, reduction: 0 };
+  if (!oncePerTurnAvailable(unit, "ownDamageTakenShield", turnNumber)) return { state, reduction: 0 };
   return { state: consumeShield(state, ownerId, unit, "ownDamageTakenShield", turnNumber), reduction: shield };
 }
 

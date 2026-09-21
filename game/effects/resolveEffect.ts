@@ -120,6 +120,12 @@ export interface EffectContext {
    * un Navire n'est pas « une attaque » et n'en dépend jamais.
    */
   directDamageReduction?: number;
+  /**
+   * Plafond de dégâts par coup visant un JOUEUR pendant cette résolution
+   * (Carcasse Renversée face à un tir de Navire). Même provenance et même
+   * restriction que `directDamageReduction`.
+   */
+  directDamageCap?: number;
   turnNumber: number;
 }
 
@@ -507,7 +513,10 @@ export function resolveEffect(
         // Un tir de Navire intercepté par un piège : même réduction que pour
         // une attaque, parce que le texte des pièges ne distingue pas la
         // source du coup.
-        const reduit = Math.max(0, amount - (context.directDamageReduction ?? 0));
+        // Même ordre que le pipeline de combat : le plafond d'abord, la
+        // réduction ensuite.
+        const plafonne = context.directDamageCap === undefined ? amount : Math.min(amount, context.directDamageCap);
+        const reduit = Math.max(0, plafonne - (context.directDamageReduction ?? 0));
         if (reduit <= 0) continue;
         const current = getPlayer(nextState, player.id);
         nextState = replacePlayer(nextState, { ...current, anchor: current.anchor - reduit });
