@@ -3,7 +3,7 @@
 import { useLayoutEffect, useRef, type ReactNode } from "react";
 import type { CardInstance, GameState, PlayerId } from "@/game";
 import { boxOf, DRAW_STAGGER_MS, reducedMotion, useCardMotion, type Box } from "@/features/match/table/useCardMotion";
-import { playCardDraw } from "@/lib/sound";
+import { playCardDiscarded, playCardDraw, playCardPlaced, playCardToGraveyard, playMagicImpact } from "@/lib/sound";
 
 /**
  * Mouvements des cartes du VRAI plateau, pour les deux camps.
@@ -31,6 +31,11 @@ import { playCardDraw } from "@/lib/sound";
  * Les attaques restent animées par `AttackImpactLayer` : l'état affiché est
  * retenu pendant le coup (`useAttackPresentation`), une carte détruite ne
  * quitte donc le plateau — et ne vole vers la défausse — qu'après le choc.
+ *
+ * Les SONS des mêmes mouvements (pose, défausse, Cimetière) et des dégâts
+ * d'effet partent d'ici aussi, une fois par lot et par sorte — cinq cartes
+ * qui partent ensemble ne font pas cinq bruits. Ils ne dépendent pas de
+ * `prefers-reduced-motion` : réduire les animations n'est pas couper le son.
  *
  * Repères DOM : `data-card-id` (cartes visibles), `data-deck`,
  * `data-graveyard` (`player` = le joueur qui regarde, `opponent`),
@@ -101,6 +106,43 @@ function hideUntil(el: Element | null, ms: number) {
   }, ms);
 }
 
+/** Délai du son de pose : il tombe quand la carte touche sa case, pas quand elle part. */
+const PLACED_SOUND_DELAY_MS = 260;
+
+/**
+ * Un son par SORTE de mouvement dans le lot, pas un par carte.
+ *
+ * - main → plateau : carte jouée ;
+ * - main → Cimetière : défausse ;
+ * - plateau → Cimetière : sabordée, détruite, brisée ou expirée ;
+ * - `DAMAGE` sans `combat` : dégâts d'EFFET (tir de Canon, capacité,
+ *   Contrecoup, Marée) — impact « magique ». Un lot qui contient une attaque
+ *   s'en abstient : `AttackImpactLayer` joue déjà l'impact du coup.
+ */
+function playBatchSounds(
+  before: Map<string, Located>,
+  now: Map<string, Located>,
+  rebornFrom: Map<string, string>,
+  events: GameState["eventLog"]
+) {
+  let placed = false;
+  let discarded = false;
+  let toGraveyard = false;
+  for (const [id, located] of now) {
+    const was = before.get(before.has(id) ? id : (rebornFrom.get(id) ?? id));
+    if (!was || was.zone === located.zone) continue;
+    if (was.zone === "hand" && located.zone === "board") placed = true;
+    else if (was.zone === "hand" && located.zone === "graveyard") discarded = true;
+    else if (was.zone === "board" && located.zone === "graveyard") toGraveyard = true;
+  }
+  if (placed) window.setTimeout(playCardPlaced, PLACED_SOUND_DELAY_MS);
+  if (discarded) playCardDiscarded();
+  if (toGraveyard) playCardToGraveyard();
+
+  const hasAttack = events.some((event) => event.type === "ATTACK");
+  if (!hasAttack && events.some((event) => event.type === "DAMAGE" && !event.combat)) playMagicImpact();
+}
+
 export function useTableMotion(state: GameState, viewerId: PlayerId, renderFace: (instance: CardInstance) => ReactNode) {
   const motion = useCardMotion();
   const previous = useRef<{ where: Map<string, Located>; boxes: Map<string, Box>; opponentHand: number; logLength: number } | null>(null);
@@ -134,6 +176,8 @@ export function useTableMotion(state: GameState, viewerId: PlayerId, renderFace:
       for (const [id, located] of dealt) if (located.zone === "hand") dealt.set(id, { ...located, zone: "deck" });
       before = { where: dealt, boxes: new Map(), opponentHand: 0, logLength: 0 };
     }
+
+    playBatchSounds(before.where, where, rebornFrom, state.eventLog.slice(before.logLength));
 
     if (!reducedMotion()) {
       const sideOf = (ownerId: PlayerId) => (ownerId === viewerId ? "player" : "opponent");

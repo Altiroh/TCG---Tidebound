@@ -8,7 +8,7 @@ import { CardTile } from "@/features/match/CardTile";
 import { chooseRewardCard, type PendingCardChoice } from "@/features/progression/profileActions";
 import { RewardIcon, type RewardItem } from "@/features/progression/RewardIcon";
 import styles from "@/features/progression/RewardReveal.module.css";
-import { playButtonClick } from "@/lib/sound";
+import { playButtonClick, playRewardObtained } from "@/lib/sound";
 
 export interface RevealedLevel {
   level: number;
@@ -63,7 +63,14 @@ export function RewardReveal({ levels, choices, extraItems = [], title: forcedTi
   // Les récompenses d'abord ; s'il n'y en a pas (on vient seulement choisir), directement le choix.
   const [phase, setPhase] = useState<"items" | "choice">(levels.length > 0 || extraItems.length > 0 ? "items" : "choice");
 
-  useEffect(() => setMounted(true), []);
+  // La révélation s'ouvre : c'est LE moment de la récompense, il s'entend.
+  // Par une minuterie annulée au démontage : le mode strict monte l'effet
+  // deux fois en développement, le son ne doit partir qu'une.
+  useEffect(() => {
+    setMounted(true);
+    const timer = window.setTimeout(playRewardObtained, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   /** Récompenses à montrer : les Tides additionnés, le reste tel quel (les choix de carte ont leur étape). */
   const shown = useMemo(() => {

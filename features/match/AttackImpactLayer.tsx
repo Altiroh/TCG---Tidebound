@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { ATTACK_IMPACT_AT_MS, ATTACK_TIMINGS, ATTACK_TOTAL_MS, type AttackAnimation } from "@/features/match/useAttackPresentation";
-import { playRandomAttackSound } from "@/lib/sound";
+import { playAttackImpact } from "@/lib/sound";
 
 interface Point {
   x: number;
@@ -260,7 +260,7 @@ function SingleAttack({ attack }: { attack: AttackAnimation }) {
 
     const impactTimer = setTimeout(() => {
       setImpacted(true);
-      playRandomAttackSound();
+      playAttackImpact();
       // Une cible qui survit et perd de la Résistance joue déjà `animate-card-impact` (CardTile) au moment où
       // l'état réel s'affiche : on ne double le tremblement que pour un Navire, une cible détruite ou un coup à 0.
       const target = attack.defenderInstanceId ? findElement("unit", attack.defenderInstanceId) : findElement("ship", attack.defenderPlayerId!);

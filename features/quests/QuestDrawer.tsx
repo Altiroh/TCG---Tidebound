@@ -8,7 +8,7 @@ import { claimQuestReward, fetchQuestBoard, type QuestBoard, type QuestEntry } f
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
 import styles from "@/features/quests/QuestDrawer.module.css";
 import game from "@/features/shell/GameScreen.module.css";
-import { playButtonClick } from "@/lib/sound";
+import { playButtonClick, playRewardClaimed } from "@/lib/sound";
 
 interface QuestDrawerProps {
   onClose: () => void;
@@ -85,6 +85,7 @@ export function QuestDrawer({ onClose }: QuestDrawerProps) {
           setError(result.error ?? "Réclamation impossible.");
           return;
         }
+        playRewardClaimed();
         notifyProgressionChanged();
         // Ligne marquée réclamée sur place : recharger tout le panneau pour
         // une case à cocher ferait clignoter la liste entière.

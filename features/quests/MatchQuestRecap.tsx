@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { QUEST_CATEGORY_META } from "@/game/quests";
 import { fetchMatchQuestRecap, type QuestRecapEntry } from "@/features/quests/actions";
 import styles from "@/features/quests/MatchQuestRecap.module.css";
+import { playQuestCompleted } from "@/lib/sound";
 
 interface MatchQuestRecapProps {
   /** Partie arbitrée dont on montre le relevé. Absent : rien à montrer (partie locale non persistée). */
@@ -14,6 +15,8 @@ interface MatchQuestRecapProps {
 const FIRST_DELAY_MS = 900;
 /** Écart entre deux lignes : assez pour les lire une à une, pas au point d'attendre. */
 const STAGGER_MS = 550;
+/** Durée du remplissage d'une jauge (`.fill`, MatchQuestRecap.module.css) : le son tombe quand la jaune touche le bout. */
+const FILL_MS = 900;
 
 /**
  * Relevé des quêtes sous la fiche de fin de partie.
@@ -54,6 +57,10 @@ export function MatchQuestRecap({ matchId }: MatchQuestRecapProps) {
     const timers = entries.map((_, index) =>
       setTimeout(() => setShown((current) => Math.max(current, index + 1)), FIRST_DELAY_MS + index * STAGGER_MS)
     );
+    // Un seul son, sur la PREMIÈRE jauge qui arrive au bout : il dure 6 s,
+    // deux quêtes finies le superposeraient à lui-même.
+    const firstDone = entries.findIndex((entry) => entry.completed);
+    if (firstDone >= 0) timers.push(setTimeout(playQuestCompleted, FIRST_DELAY_MS + firstDone * STAGGER_MS + FILL_MS));
     return () => timers.forEach(clearTimeout);
   }, [entries]);
 

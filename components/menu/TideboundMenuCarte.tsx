@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import type { CSSProperties } from "react";
 import styles from "@/components/menu/MenuCarte.module.css";
-import { playButtonClick } from "@/lib/sound";
+import { playMenuCardClick, playMenuCardHover } from "@/lib/sound";
 
 /**
  * MENU « CARTE MARINE » — variante d'accueil en cours d'évaluation.
@@ -186,7 +186,11 @@ export function TideboundMenuCarte({ marks = false }: { marks?: boolean }) {
               href={slot.href as Route}
               className={styles.card}
               style={{ "--x": slot.boite.x, "--y": slot.boite.y, "--w": slot.boite.w } as CSSProperties}
-              onClick={() => playButtonClick()}
+              onClick={() => playMenuCardClick()}
+              // Souris seulement : au doigt, le survol arrive juste avant le clic et doublerait le son.
+              onPointerEnter={(event) => {
+                if (event.pointerType === "mouse") playMenuCardHover();
+              }}
             >
               <Image
                 src={slot.art}

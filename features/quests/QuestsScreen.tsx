@@ -9,7 +9,7 @@ import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/quests/Quests.module.css";
 import { claimQuestReward, rerollQuest, type QuestBoard, type QuestEntry } from "@/features/quests/actions";
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
-import { playButtonClick } from "@/lib/sound";
+import { playButtonClick, playRewardClaimed } from "@/lib/sound";
 
 interface QuestsScreenProps {
   board: QuestBoard;
@@ -62,6 +62,7 @@ export function QuestsScreen({ board }: QuestsScreenProps) {
           setError(result.error ?? "Réclamation impossible.");
           return;
         }
+        playRewardClaimed();
         setLastGain({ tides: result.tidesGained ?? 0, xp: result.xpGained ?? 0 });
         notifyProgressionChanged();
         startTransition(() => router.refresh());

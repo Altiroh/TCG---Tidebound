@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { advanceTideState, naturalOrientationFor, type TideOrientation } from "@/game";
-import { playCardDraw, playRandomAttackSound } from "@/lib/sound";
+import { playCardDraw, playAttackImpact } from "@/lib/sound";
 import { animateAttacker, ATTACK_IMPACT_AT_MS, ATTACK_TOTAL_MS, shake } from "@/features/board-preview/attackMotion";
 import { BackgroundLayer } from "@/features/match/table/BackgroundLayer";
 import { CardZoom } from "@/features/board-preview/CardZoom";
@@ -236,7 +236,7 @@ export function BoardPreviewPage() {
       const size = targetBox.height;
       const point = { x: targetBox.left + targetBox.width / 2, y: targetBox.top + targetBox.height / 2 };
       table.strike(sourceId, target, amount, retaliation);
-      playRandomAttackSound();
+      playAttackImpact();
       // Une carte qui encaisse des dégâts joue déjà son propre impact (`CardTile`) : on tremble le Navire, ou un coup à 0.
       if (target.kind === "ship" || amount === 0) shake(targetEl);
       addFx({ kind: "flash", ...point, size });

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { findMyActiveMatch, joinMatchmakingQueue, leaveMatchmakingQueue } from "@/features/matchmaking/actions";
+import { playGameStart } from "@/lib/sound";
 
 /** Cadence d'interrogation pendant l'attente — cf. `findMyActiveMatch` pour le choix du sondage. */
 const POLL_MS = 3000;
@@ -78,6 +79,7 @@ export function QuickMatchPanel({ decks }: QuickMatchPanelProps) {
   }, [state]);
 
   async function join() {
+    playGameStart();
     setState("joining");
     setError(null);
     setWaitedSeconds(0);

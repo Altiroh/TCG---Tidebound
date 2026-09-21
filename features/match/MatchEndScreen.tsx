@@ -1,7 +1,7 @@
 "use client";
 
 import { MatchQuestRecap } from "@/features/quests/MatchQuestRecap";
-import type { CSSProperties } from "react";
+import { useEffect, type CSSProperties } from "react";
 import Link from "next/link";
 import type { ShipDefinition } from "@/game";
 import { BoardBackdrop } from "@/features/match/BoardBackdrop";
@@ -9,6 +9,7 @@ import { useImageOk } from "@/features/match/useImageOk";
 import { Fireworks } from "@/features/match/Fireworks";
 import { SwampHaze } from "@/features/match/SwampHaze";
 import styles from "@/features/match/MatchEndScreen.module.css";
+import { playGameLost } from "@/lib/sound";
 
 export type MatchOutcome = "victory" | "defeat";
 
@@ -69,6 +70,8 @@ const NAME_LETTER_STEP_MS = 55;
 const NAMEPLATE_ZONE = { top: "73%", left: "22%", width: "56%", height: "8%" };
 /** La planche du nom du cadre de défaite est plus haute et plus étroite que la bannière de victoire (mesurée sur la bande opaque sous l'arche, ~72 → 84 % de hauteur). */
 const DEFEAT_NAMEPLATE_ZONE = { top: "73%", left: "24%", width: "52%", height: "9%" };
+/** Le son de défaite tombe avec le bandeau, qui s'abat de 150 à 770 ms (`victory-banner-slam`). */
+const DEFEAT_SOUND_AT_MS = 250;
 
 /**
  * Écran de fin de partie victorieuse — cadre `ship-frame-victory.webp`
@@ -81,6 +84,12 @@ const DEFEAT_NAMEPLATE_ZONE = { top: "73%", left: "24%", width: "52%", height: "
 export function MatchEndScreen({ outcome, player, onExit, exitHref, matchId }: MatchEndScreenProps) {
   const isDefeat = outcome === "defeat";
   const winner = player;
+
+  useEffect(() => {
+    if (!isDefeat) return;
+    const timer = window.setTimeout(playGameLost, DEFEAT_SOUND_AT_MS);
+    return () => window.clearTimeout(timer);
+  }, [isDefeat]);
 
   // Repli si un asset venait à manquer : un titre en toutes lettres plutôt
   // qu'une image cassée, comme partout ailleurs dans le jeu.

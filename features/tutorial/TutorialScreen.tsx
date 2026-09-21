@@ -10,7 +10,7 @@ import { GameScreen } from "@/features/shell/GameScreen";
 import { TutorialCoach } from "@/features/tutorial/TutorialCoach";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/tutorial/Tutorial.module.css";
-import { playButtonClick } from "@/lib/sound";
+import { playButtonClick, playGameStart } from "@/lib/sound";
 
 /**
  * Première connexion — proposition du tutoriel, puis partie guidée.
@@ -75,7 +75,7 @@ export function TutorialScreen() {
   const handleSkip = useCallback(() => finish(false), [finish]);
 
   function startTutorial() {
-    playButtonClick();
+    playGameStart();
     // Main d'ouverture GARANTIE : chaque étape demande un geste précis, et
     // une main malchanceuse rendait la suivante infranchissable.
     const created = createTutorialMatch(decks.player, decks.opponent, TUTORIAL_OPENING_TYPES);

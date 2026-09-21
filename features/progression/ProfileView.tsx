@@ -36,7 +36,7 @@ import { AchievementBoard } from "@/features/progression/AchievementBoard";
 import { PreconToken, TideCoin } from "@/features/shell/GameIcons";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/progression/Profile.module.css";
-import { playButtonClick } from "@/lib/sound";
+import { playButtonClick, playRewardClaimed } from "@/lib/sound";
 
 export type ProfileTab = "carnet" | "recompenses" | "quetes" | "exploits";
 
@@ -350,6 +350,7 @@ function LogbookTab({ profile, onRefresh, onShowRewards }: { profile: ProfileSum
       const gains = [result.tides ? `+${result.tides} Tides` : "", result.xp ? `+${result.xp} XP` : "", result.boosterId ? "1 booster" : ""]
         .filter(Boolean)
         .join(" · ");
+      playRewardClaimed();
       setMessage(gains ? `Escale franchie — ${gains}.` : "Escale franchie.");
       notifyProgressionChanged();
       onRefresh();
@@ -658,6 +659,7 @@ function QuestsTab({ profile, onRefresh, onLeave }: { profile: ProfileSummary; o
           setError(result.error ?? "Réclamation impossible.");
           return;
         }
+        playRewardClaimed();
         setClaimedKeys((current) => new Set(current).add(key));
         notifyProgressionChanged();
         onRefresh();

@@ -18,7 +18,7 @@ import type { CatalogDeckView } from "@/features/decks/catalogService";
 import { DeckBox } from "@/features/decks/DeckBox";
 import { nameplateArtUrl } from "@/features/decks/nameplateArt";
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
-import { playButtonClick } from "@/lib/sound";
+import { playAddToCart, playButtonClick, playMarketBuy } from "@/lib/sound";
 import { BoosterContentsDialog } from "@/features/market/BoosterContentsDialog";
 
 interface MarketScreenProps {
@@ -202,13 +202,20 @@ export function MarketScreen({ inventory, catalog, collectables }: MarketScreenP
     }));
   }
 
+  /** Le son d'un geste sur le panier : un article qui RENTRE a le sien, le reste garde le clic. */
+  function cartSound(adds: boolean) {
+    if (adds) playAddToCart();
+    else playButtonClick();
+  }
+
   function step(boosterId: string, delta: number) {
-    playButtonClick();
-    setQuantity(boosterId, (cart.boosters[boosterId] ?? 0) + delta);
+    const current = cart.boosters[boosterId] ?? 0;
+    cartSound(delta > 0 && current < MAX_PURCHASE_QUANTITY);
+    setQuantity(boosterId, current + delta);
   }
 
   function toggleDeck(deckId: string) {
-    playButtonClick();
+    cartSound(!cart.decks.includes(deckId));
     setCart((current) => ({
       ...current,
       decks: current.decks.includes(deckId) ? current.decks.filter((id) => id !== deckId) : [...current.decks, deckId],
@@ -216,7 +223,7 @@ export function MarketScreen({ inventory, catalog, collectables }: MarketScreenP
   }
 
   function toggleCosmetic(key: string) {
-    playButtonClick();
+    cartSound(!cart.cosmetics.includes(key));
     setCart((current) => ({
       ...current,
       cosmetics: current.cosmetics.includes(key) ? current.cosmetics.filter((id) => id !== key) : [...current.cosmetics, key],
@@ -290,6 +297,8 @@ export function MarketScreen({ inventory, catalog, collectables }: MarketScreenP
 
     const boughtCount = bought.boosters + bought.decks + bought.cosmetics;
     if (boughtCount > 0) {
+      // Même partiel, un achat a eu lieu : il s'entend.
+      playMarketBuy();
       notifyProgressionChanged();
       // `revalidatePath` côté action a invalidé le cache : on relit la
       // réserve, le rayon des decks et les collectables plutôt que de deviner.

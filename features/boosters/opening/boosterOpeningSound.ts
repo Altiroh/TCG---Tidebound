@@ -11,6 +11,7 @@
  * et au volume "Effets" des Options (`lib/settings.ts`).
  */
 
+import { playBoosterOpen } from "@/lib/sound";
 import { getAudioSettings } from "@/lib/settings";
 
 type BoosterSoundKey = "enter" | "packTear" | "packOpen" | "cardSpawn" | "cardFlip" | "rareReveal" | "abyssalReveal";
@@ -55,9 +56,14 @@ export function playBoosterEnterSound(): void {
   playBoosterSound("enter");
 }
 
-/** Début de la déchirure : la bande se décolle en plusieurs à-coups. */
+/**
+ * Début de la déchirure : la bande se décolle en plusieurs à-coups.
+ * `booster-open.mp3` (1,7 s) couvre la déchirure ET l'envol de la bande :
+ * il passe par `lib/sound` (volume mesuré, décodage partagé), et
+ * `packOpen` reste sans fichier pour ne pas doubler le son.
+ */
 export function playPackTearSound(): void {
-  playBoosterSound("packTear");
+  playBoosterOpen();
 }
 
 /** La bande cède et s'envole. */

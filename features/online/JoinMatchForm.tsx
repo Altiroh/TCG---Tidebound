@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { CATALOG_DECKS } from "@/game";
 import { Button } from "@/components/ui/Button";
 import { joinOnlineMatch } from "@/features/online/actions";
+import { playGameStart } from "@/lib/sound";
 
 export function JoinMatchForm() {
   const router = useRouter();
@@ -15,6 +16,7 @@ export function JoinMatchForm() {
 
   async function handleJoin() {
     if (!code.trim()) return;
+    playGameStart();
     setPending(true);
     setError(null);
     const result = await joinOnlineMatch(code, deckId);

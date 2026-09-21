@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { CATALOG_DECKS } from "@/game";
 import { Button } from "@/components/ui/Button";
 import { createOnlineMatch } from "@/features/online/actions";
+import { playGameStart } from "@/lib/sound";
 
 export function CreateMatchForm() {
   const router = useRouter();
@@ -13,6 +14,7 @@ export function CreateMatchForm() {
   const [pending, setPending] = useState(false);
 
   async function handleCreate() {
+    playGameStart();
     setPending(true);
     setError(null);
     const result = await createOnlineMatch(deckId);

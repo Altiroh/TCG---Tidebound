@@ -16,7 +16,7 @@ import { GameScreen } from "@/features/shell/GameScreen";
 import { shipNameOf } from "@/features/ships/ShipPortrait";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/match/NewMatch.module.css";
-import { playButtonClick } from "@/lib/sound";
+import { playButtonClick, playGameStart } from "@/lib/sound";
 
 export type MatchOpponent = { type: "pvp" } | { type: "bot"; difficulty: BotDifficulty };
 
@@ -224,11 +224,11 @@ export function NewMatchScreen({
         return;
       }
       if (!deck2) return;
-      playButtonClick();
+      playGameStart();
       void onStart(deck1, deck2, { type: "pvp" });
       return;
     }
-    playButtonClick();
+    playGameStart();
     // Contre un bot, le tirage a lieu ICI — au lancement, pas à l'affichage : relancer une partie change d'adversaire.
     void onStart(deck1, pickRandomDeck(), { type: "bot", difficulty: botDifficulty });
   }
