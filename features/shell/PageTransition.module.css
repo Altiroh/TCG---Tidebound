@@ -1,0 +1,116 @@
+/*
+ * OMBRE DE CHANGEMENT DE PAGE (`PageTransition.tsx`).
+ *
+ * Une bande horizontale traverse l'écran :
+ *
+ *   [ ombre retournée ][ corps plein, 100vw ][ ombre ]
+ *     traîne effilée                           front effilé
+ *
+ * L'image (`ombre-portee.webp`) est dense à gauche et s'effiloche à droite :
+ * posée telle quelle, elle fait le FRONT d'une bande qui avance vers la
+ * droite ; retournée, elle fait la TRAÎNE. Le corps plein, de la couleur de
+ * sa partie dense (#0d0e12, relevée sur la colonne opaque de l'image), tient
+ * l'écran entièrement couvert au point d'arrêt.
+ *
+ * Sens aléatoire : de droite à gauche, c'est tout le calque qui est
+ * retourné (`data-direction="rtl"`), les mêmes animations servent.
+ *
+ * Hauteur : la partie dense n'occupe que ~8 à 89 % de la hauteur de l'image.
+ * À 140dvh, centrée, le viewport n'en voit que la tranche 14 à 86 % —
+ * toujours dans le plein, sans trou en haut ni en bas.
+ */
+.layer {
+  --tb-shade-height: 140dvh;
+  --tb-shade-edge: calc(var(--tb-shade-height) * 1672 / 941);
+  --tb-shade-color: #0d0e12;
+
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  visibility: hidden;
+  /* Au-dessus de tout le site, dialogues compris — sous le voile d'orientation (`OrientationGate`). */
+  z-index: 2147483000;
+}
+
+.layer[data-direction="rtl"] {
+  transform: scaleX(-1);
+}
+
+.layer:not([data-phase="idle"]) {
+  visibility: visible;
+}
+
+/* Tant que l'écran se couvre ou reste couvert, un second clic ne part pas « à travers » l'ombre. */
+.layer[data-phase="covering"],
+.layer[data-phase="covered"] {
+  pointer-events: auto;
+}
+
+.strip {
+  position: absolute;
+  top: calc((100dvh - var(--tb-shade-height)) / 2);
+  left: 0;
+  display: flex;
+  width: calc(2 * var(--tb-shade-edge) + 100vw);
+  height: var(--tb-shade-height);
+  transform: translateX(-100%);
+  will-change: transform;
+}
+
+.body {
+  flex: 0 0 100vw;
+  background: var(--tb-shade-color);
+}
+
+.edge {
+  flex: 0 0 var(--tb-shade-edge);
+  /* Le dégradé fond la texture de l'image dans le corps uni : pas de coupure verticale à la jointure. */
+  background:
+    linear-gradient(to right, var(--tb-shade-color), transparent 22%),
+    url("/assets/ui/transitions/ombre-portee.webp") center / 100% 100% no-repeat;
+  /* Chevauche le corps d'un pixel : pas de liseré clair à la jointure. */
+  margin-left: -1px;
+}
+
+.trailing {
+  transform: scaleX(-1);
+  margin-left: 0;
+  margin-right: -1px;
+}
+
+.layer[data-phase="covering"] .strip {
+  animation: tb-shade-cover 620ms cubic-bezier(0.25, 0.6, 0.35, 1) forwards;
+}
+
+.layer[data-phase="covered"] .strip {
+  transform: translateX(calc(-1 * var(--tb-shade-edge)));
+}
+
+.layer[data-phase="revealing"] .strip {
+  animation: tb-shade-reveal 720ms cubic-bezier(0.55, 0, 0.75, 0.45) forwards;
+}
+
+@keyframes tb-shade-cover {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(calc(-1 * var(--tb-shade-edge)));
+  }
+}
+
+@keyframes tb-shade-reveal {
+  from {
+    transform: translateX(calc(-1 * var(--tb-shade-edge)));
+  }
+  to {
+    transform: translateX(100vw);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .layer {
+    display: none;
+  }
+}

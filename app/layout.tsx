@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { cardBodyFont, cardTitleFont, uiFont } from "@/lib/fonts";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import { OrientationGate } from "@/features/shell/OrientationGate";
+import { PageTransition } from "@/features/shell/PageTransition";
 import { CardBackProvider } from "@/features/cosmetics/CardBackProvider";
 import { ShipFrameProvider } from "@/features/cosmetics/ShipFrameProvider";
 import "./tokens.css";
@@ -81,6 +82,8 @@ export default function RootLayout({
           <ShipFrameProvider>
             {children}
             <ServiceWorkerRegister />
+            {/* Ombre qui balaie l'écran à chaque changement de page. */}
+            <PageTransition />
             {/* Paysage imposé sur mobile : le plateau est dessiné en
                 largeur. Monté ici, donc valable sur toutes les routes. */}
             <OrientationGate />

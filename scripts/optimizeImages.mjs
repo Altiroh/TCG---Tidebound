@@ -60,6 +60,9 @@ const RULES = [
   // à l'écran. Qualité haute malgré la taille — le laiton et les planches
   // sont détourés sur alpha, et ce sont leurs bords qui se dégradent d'abord.
   { match: /\/ships\/capacite\//, maxSize: 512, quality: 92 },
+  // Ombre de transition de page : étirée à 140 % de la hauteur d'écran, elle
+  // est déjà agrandie à l'affichage — on garde sa définition d'origine.
+  { match: /\/ui\/transitions\//, maxSize: 1672, quality: 82 },
   { match: /\/(menu|ships|boosters|collection|decks|board)\//, maxSize: 1600, quality: 85 },
   { match: /.*/, maxSize: 1280, quality: 85 },
 ];
