@@ -116,6 +116,114 @@
   width: 42%;
 }
 
+/* ──────────────────────────────────────────────────────────────
+ * LA TASSE DE CAFÉ — le seul objet vivant de la table.
+ * ──────────────────────────────────────────────────────────────
+ *
+ * Trois calques calés les uns sur les autres : la tasse, la surface du
+ * café au repos, et la même agitée. Plus trois volutes de fumée, qui
+ * montent du café et se relaient.
+ *
+ * Tout est en pourcentages de la TASSE (et la tasse en pourcentages du
+ * fond, comme le reste du décor) : un seul nombre à toucher pour la
+ * déplacer, et le café reste dedans.
+ */
+.propTasse {
+  position: absolute;
+  z-index: 2;
+  /*
+   * Posée à droite de la carte, assez BAS pour que la fumée ait le ciel
+   * qu'il lui faut : collée au bord haut, ses volutes sortaient de
+   * l'écran et il ne restait qu'un tremblement au ras de la tasse.
+   */
+  top: 7%;
+  left: 68.5%;
+  width: 15.5%;
+  aspect-ratio: 1207 / 1143;
+  pointer-events: none;
+}
+
+.tasse,
+.cafeCalme,
+.cafeAgite,
+.fumee {
+  position: absolute;
+  height: auto;
+  user-select: none;
+}
+
+.tasse {
+  inset: 0;
+  width: 100%;
+}
+
+/*
+ * LA SURFACE DU CAFÉ, mesurée dans la tasse (`caler-cafe`) : elle occupe
+ * 64,3 % de sa largeur, à 8,95 % du bord gauche et 20,3 % du haut. Les
+ * deux états sont rognés sur la même boîte, ils se superposent au pixel.
+ */
+.cafeCalme,
+.cafeAgite {
+  top: 20.3%;
+  left: 8.95%;
+  width: 64.3%;
+}
+
+/*
+ * LA RIDE. Le café n'est pas immobile : toutes les huit secondes, une onde
+ * le traverse et se calme. C'est un fondu entre les deux surfaces, jamais
+ * un mouvement — l'illustration fait le reste.
+ */
+.cafeAgite {
+  opacity: 0;
+  animation: cafeRide 8.5s ease-in-out infinite;
+}
+
+@keyframes cafeRide {
+  0%, 46% { opacity: 0; }
+  62% { opacity: 0.92; }
+  78% { opacity: 0.55; }
+  100% { opacity: 0; }
+}
+
+/*
+ * LA FUMÉE. Trois volutes qui montent du café, chacune sur son propre
+ * cycle et décalée d'un tiers : on ne voit jamais la même forme repartir
+ * deux fois de suite. Elles naissent au-dessus de la surface du café
+ * (41 % de la largeur de la tasse) et s'effacent en montant.
+ *
+ * `--fumee-rang` (0, 1, 2) donne à chacune sa durée et son retard.
+ */
+.fumee {
+  bottom: 62%;
+  left: 41%;
+  z-index: 1;
+  width: 62%;
+  opacity: 0;
+  transform: translate(-50%, 0);
+  transform-origin: bottom center;
+  filter: blur(0.3px);
+  animation: fumeeMonte calc(8s + var(--fumee-rang) * 1.6s) ease-out infinite;
+  animation-delay: calc(var(--fumee-rang) * -3.1s);
+}
+
+@keyframes fumeeMonte {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 14%) scale(0.72) rotate(-3deg);
+  }
+  24% {
+    opacity: 0.52;
+  }
+  62% {
+    opacity: 0.34;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -58%) scale(1.26) rotate(6deg);
+  }
+}
+
 /*
  * LE LOGO est accroché à l'ÉCRAN, pas à la scène.
  *
@@ -223,5 +331,17 @@
   .card:focus-visible,
   .card:active {
     transform: none;
+  }
+
+  /* La table s'immobilise : le café ne ride plus, et une seule volute
+     reste posée au-dessus de la tasse, sans monter. */
+  .cafeAgite {
+    animation: none;
+  }
+
+  .fumee {
+    animation: none;
+    opacity: 0.22;
+    transform: translate(-50%, 0) scale(1);
   }
 }

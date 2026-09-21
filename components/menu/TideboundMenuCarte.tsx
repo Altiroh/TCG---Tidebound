@@ -31,8 +31,22 @@ export const MENU_CARTE_ASSETS = {
   gauche: "/assets/menu/carte/left-asset.webp",
   droite: "/assets/menu/carte/right-asset.webp",
   longueVue: "/assets/menu/carte/longue-vue-bottom.webp",
+  tasse: "/assets/menu/carte/tasse-cafe.webp",
+  cafeCalme: "/assets/menu/carte/cafe_surface_normal.webp",
+  cafeAgite: "/assets/menu/carte/cafe_surface_variante.webp",
   logo: "/assets/menu/logo/tidebound-logo.webp",
 } as const;
+
+/**
+ * LES TROIS VOLUTES DE FUMÉE, jouées à tour de rôle et décalées dans le
+ * temps : trois formes qui se relaient, jamais la même boucle deux fois de
+ * suite à l'œil. Elles montent du café, pas de la tasse.
+ */
+const FUMEES = [
+  { src: "/assets/menu/carte/fumee_variante_1.webp", w: 609, h: 421 },
+  { src: "/assets/menu/carte/fumee_variante_2.webp", w: 415, h: 424 },
+  { src: "/assets/menu/carte/fumee_variante_3.webp", w: 648, h: 377 },
+] as const;
 
 interface CarteSlot {
   id: string;
@@ -134,6 +148,36 @@ export function TideboundMenuCarte({ marks = false }: { marks?: boolean }) {
           draggable={false}
           className={styles.propLongueVue}
         />
+
+        {/*
+          LA TASSE — le seul objet VIVANT de la table. Le fond ne la peint
+          plus : elle est posée ici avec sa surface de café et ses volutes,
+          qui sont les seules choses qui bougent de tout l'écran.
+
+          Les trois calques du café (tasse, café calme, café agité) sont
+          calés les uns sur les autres en pourcentages de la tasse — le
+          café occupe 64 % de sa largeur, à 9 % du bord gauche.
+        */}
+        <div className={styles.propTasse} aria-hidden>
+          {FUMEES.map((fumee, index) => (
+            <Image
+              key={fumee.src}
+              src={fumee.src}
+              alt=""
+              width={fumee.w}
+              height={fumee.h}
+              draggable={false}
+              className={styles.fumee}
+              style={{ "--fumee-rang": index } as CSSProperties}
+            />
+          ))}
+
+          <Image src={MENU_CARTE_ASSETS.tasse} alt="" width={1207} height={1143} draggable={false} className={styles.tasse} />
+          <Image src={MENU_CARTE_ASSETS.cafeCalme} alt="" width={718} height={338} draggable={false} className={styles.cafeCalme} />
+          {/* Le café agité est posé SUR le calme, à la même place : la
+              ride n'est qu'un fondu de l'un vers l'autre. */}
+          <Image src={MENU_CARTE_ASSETS.cafeAgite} alt="" width={718} height={338} draggable={false} className={styles.cafeAgite} />
+        </div>
 
         <nav aria-label="Menu Tidebound">
           {SLOTS.map((slot) => (
