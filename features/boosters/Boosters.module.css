@@ -24,7 +24,15 @@
   /* La scène déborde par le haut (voir `.scene`) : c'est ici qu'on la
      recadre, sans faire apparaître de barre de défilement. */
   overflow: hidden;
-  padding: clamp(10px, 1.6vh, 22px) clamp(12px, 2vw, 36px) clamp(8px, 1.4vh, 18px);
+  /* Les côtés et le bas s'écartent de la zone sûre, comme Cartes,
+     Collectables et Decks : sur un iPhone couché, l'encoche mangeait le
+     haut du rayon et la barre de gestes passait sur la fiche. Le haut n'en
+     a pas besoin — le bandeau de `GameScreen` l'absorbe déjà. */
+  padding:
+    clamp(10px, 1.6vh, 22px)
+    calc(clamp(12px, 2vw, 36px) + var(--tb-safe-right))
+    calc(clamp(8px, 1.4vh, 18px) + var(--tb-safe-bottom))
+    calc(clamp(12px, 2vw, 36px) + var(--tb-safe-left));
 }
 
 /*

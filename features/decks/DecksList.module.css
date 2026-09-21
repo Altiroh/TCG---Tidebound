@@ -1205,6 +1205,59 @@
     font-size: clamp(17px, 4.6vh, 24px);
   }
 
+  /*
+   * LA BARRE D'OUTILS TIENT SUR UNE SEULE LIGNE.
+   *
+   * Entre le rayon et la fiche, la colonne du milieu tombe à ~450 px sur
+   * un téléphone couché : « Trier par : », le champ de tri et les deux
+   * vues passaient à la ligne, et cette seconde rangée coûtait 34 px de
+   * grille. On rend donc à chacun sa juste part — le champ s'étire de ce
+   * qui reste, les deux vues gardent leur taille de cible tactile et
+   * restent à la droite du tri, là où on vient de les quitter.
+   */
+  .toolbar {
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+
+  .sort {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  /* « Trier par : » s'efface : le champ porte déjà le nom du tri en cours
+     (« Dernière modification »), et son `aria-label` le dit à qui ne voit
+     pas l'écran. */
+  .sortLabel {
+    display: none;
+  }
+
+  .sort select {
+    min-width: 0;
+    padding: 4px 1.8em 4px 8px;
+    font-size: 12px;
+    text-overflow: ellipsis;
+  }
+
+  /* Les deux vues n'ont plus que leur pictogramme — une grille et des
+     lignes se reconnaissent sans légende, et « Grille » / « Liste »
+     restent dans l'infobulle et pour les lecteurs d'écran. */
+  .viewLabel {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .toolbar button {
+    flex-shrink: 0;
+    padding: 0.25em 0.6em;
+  }
+
   /* Des vignettes de la taille d'une carte à jouer : deux rangées
      visibles au lieu d'une. */
   .grid {

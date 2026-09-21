@@ -1079,3 +1079,45 @@
     height: 30px;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════
+ * TÉLÉPHONE — LE CARNET S'OUVRE PLEINE PAGE
+ * ══════════════════════════════════════════════════════════════
+ *
+ * Sur un écran large, le profil est un PANNEAU : il glisse par la droite
+ * et laisse voir, derrière lui, l'écran d'où on l'a ouvert — on n'a pas
+ * quitté les lieux. Sur un téléphone, ce marché ne tient plus : 96 vw de
+ * panneau, ce sont 34 px de décor inutile d'un côté et une bordure qui
+ * rogne le carnet de l'autre, pour une illusion que personne ne voit.
+ *
+ * Le panneau prend donc TOUT l'écran, et c'est alors à lui de tenir la
+ * zone sûre : il vit hors de `GameScreen` (portail sur `document.body`),
+ * donc aucun bandeau ne l'écarte de l'encoche ni de la barre de gestes.
+ *
+ * Deux conditions, pas une : un téléphone couché est court (560 px), un
+ * iPhone SE couché est court ET étroit — mais une fenêtre étroite et haute
+ * mérite la même page pleine, et c'est ce que dit déjà `.shell` à 900 px.
+ */
+@media (max-width: 900px), (max-height: 560px) {
+  .drawer {
+    width: 100%;
+    border-left: none;
+    box-shadow: none;
+  }
+
+  /* La zone sûre se prend ICI et pas sur `.drawer` : le bouton de
+     fermeture se cale sur la boîte de rembourrage du panneau, il serait
+     repassé sous l'encoche. */
+  .drawer .shell {
+    padding:
+      calc(clamp(8px, 1.6vh, 16px) + var(--tb-safe-top))
+      calc(clamp(10px, 2vw, 18px) + var(--tb-safe-right))
+      calc(clamp(10px, 1.8vh, 18px) + var(--tb-safe-bottom))
+      calc(clamp(10px, 2vw, 18px) + var(--tb-safe-left));
+  }
+
+  .drawerClose {
+    top: calc(6px + var(--tb-safe-top));
+    right: calc(8px + var(--tb-safe-right));
+  }
+}
