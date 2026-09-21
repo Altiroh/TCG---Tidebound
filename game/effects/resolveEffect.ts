@@ -742,6 +742,30 @@ export function resolveEffect(
       return { state: nextState, events };
     }
 
+    case "durationLoss": {
+      const amount = amountValue(effect.amount);
+      const durationTargets = resolveUnitTargets(state, effect, context);
+      let nextState = { ...state, rngState: durationTargets.rngState };
+
+      for (const { unit, ownerId } of durationTargets.targets) {
+        // Un permanent SANS durée n'a rien à perdre : ni erreur, ni
+        // événement — l'effet passe simplement à côté.
+        if (unit.turnsRemaining === undefined) continue;
+        const after = Math.max(0, unit.turnsRemaining - amount);
+        if (after === unit.turnsRemaining) continue;
+        nextState = replaceUnit(nextState, ownerId, unit.instanceId, (u) => ({ ...u, turnsRemaining: after }));
+        events.push({
+          ...base,
+          type: "DURATION_CHANGED",
+          instanceId: unit.instanceId,
+          delta: after - unit.turnsRemaining,
+          turnsRemaining: after,
+        });
+      }
+
+      return { state: nextState, events };
+    }
+
     case "attachEquipment": {
       if (!context.sourceInstanceId || !context.chosenTargetInstanceId) return { state, events };
 

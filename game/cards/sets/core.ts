@@ -585,14 +585,34 @@ export const CORE_SET: CardDefinition[] = [
     maxCopies: 2,
     attack: 2,
     health: 4,
-    text: "La première fois à chaque tour qu'une Structure que vous contrôlez devient visible, récupérez 1 Raison.",
+    // Le gain se PAIE depuis le 21/09/2026 (passe de stabilisation). Avec la
+    // récupération naturelle ramenée à 1 Raison par tour, un "+1 Raison une
+    // fois par tour" DOUBLE le revenu de son contrôleur, pour un coût unique
+    // de 3 — et un deck à Structures fait tourner plusieurs fenêtres de
+    // visibilité par cycle de Marée, donc le gain était récurrent et gratuit.
+    //
+    // Le prix est pris sur la DURÉE de la Structure qui déclenche, pas sur
+    // une ressource : la carte reste un moteur de Raison (son identité), mais
+    // chaque point rendu avance la fin d'une de ses Structures. "Vous pouvez"
+    // → `mode: "optional"` : personne n'est forcé de sacrifier du temps de
+    // Structure, et le joueur peut refuser la fenêtre.
+    text:
+      "La première fois à chaque tour qu'une Structure que vous contrôlez devient visible, vous pouvez " +
+      "réduire sa durée de 1 tour : récupérez 1 Raison.",
     abilities: [
       {
         trigger: "onBecomeVisible",
         triggeredBy: { cardTypes: ["structure"] },
+        mode: "optional",
         oncePerTurnKey: "sondeurVisible",
-        description: "La première fois par tour qu'une de vos Structures devient visible : récupérez 1 Raison.",
-        effects: [{ type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
+        description:
+          "La première fois par tour qu'une de vos Structures devient visible : vous pouvez réduire sa durée de 1 tour pour récupérer 1 Raison.",
+        // Le coût d'abord, le gain ensuite — l'ordre du texte, et celui qui
+        // se lit dans le journal.
+        effects: [
+          { type: "durationLoss", target: { kind: "triggerSource" }, amount: { kind: "flat", value: 1 } },
+          { type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+        ],
       },
     ],
   },

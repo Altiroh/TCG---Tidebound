@@ -130,7 +130,11 @@ describe("observateurs de Structures — Plongeur des Épaves, Mécanicien aux M
 describe("Structures qui deviennent visibles — Gardien du Sondeur, Contremaître des Amarres, Épave à Fleur d'Eau", () => {
   /** Calme → Houle à la fin du tour de p1 : l'Épave (Houle) de p1 devient visible. */
   function revealSetup(extraP1: ReturnType<typeof instance>[], extraP2: ReturnType<typeof instance>[]) {
-    const epave = instance(EPAVE, "p1");
+    // `turnsRemaining` n'est posé que par `playCard` : une Structure montée
+    // à la main dans un test n'en a pas. On le pose donc explicitement, sans
+    // quoi le plateau de test ne ressemble pas à une vraie partie (et un
+    // effet qui touche la durée n'aurait rien à mordre).
+    const epave = instance(EPAVE, "p1", { turnsRemaining: 4 });
     const state = testGameState({
       turnNumber: 2,
       environment: testEnvironment({ tideState: "calme", tideRemainingTurns: 1, tideOrientation: "montante" }),
@@ -142,8 +146,8 @@ describe("Structures qui deviennent visibles — Gardien du Sondeur, Contremaît
     return { epave, state };
   }
 
-  it("Gardien du Sondeur : +1 Raison la première fois qu'une de vos Structures devient visible", () => {
-    const { state } = revealSetup([instance("gardien-du-sondeur", "p1")], []);
+  it("Gardien du Sondeur : PROPOSE d'échanger 1 tour de durée contre 1 Raison, sans rien imposer", () => {
+    const { epave, state } = revealSetup([instance("gardien-du-sondeur", "p1")], []);
     const control = revealSetup([], []);
 
     const withGardien = dispatch(state, { type: "endTurn", playerId: "p1" });
@@ -151,7 +155,32 @@ describe("Structures qui deviennent visibles — Gardien du Sondeur, Contremaît
     ok(withGardien);
     ok(without);
     expect(withGardien.state.environment.tideState).toBe("houle");
-    expect(player(withGardien.state, "p1").reason).toBe(player(without.state, "p1").reason + 1);
+
+    // Rien n'est appliqué d'office : le gain se paie, donc le joueur décide.
+    expect(player(withGardien.state, "p1").reason).toBe(player(without.state, "p1").reason);
+    expect(withGardien.state.pendingReaction?.awaitingPlayerId).toBe("p1");
+
+    const avant = board(withGardien.state, "p1").find((u) => u.instanceId === epave.instanceId)!;
+    const activated = activateReactionFor(withGardien.state, "gardien-du-sondeur");
+    ok(activated);
+
+    // Le gain arrive, et la Structure qui a déclenché perd un tour de durée.
+    expect(player(activated.state, "p1").reason).toBe(player(without.state, "p1").reason + 1);
+    const apres = board(activated.state, "p1").find((u) => u.instanceId === epave.instanceId)!;
+    expect(apres.turnsRemaining).toBe(avant.turnsRemaining! - 1);
+    expect(activated.events.some((e) => e.type === "DURATION_CHANGED")).toBe(true);
+  });
+
+  it("Gardien du Sondeur : refuser la fenêtre ne coûte aucune durée", () => {
+    const { epave, state } = revealSetup([instance("gardien-du-sondeur", "p1")], []);
+    const revealed = dispatch(state, { type: "endTurn", playerId: "p1" });
+    ok(revealed);
+    const avant = board(revealed.state, "p1").find((u) => u.instanceId === epave.instanceId)!;
+
+    const passed = dispatch(revealed.state, { type: "passReaction", playerId: "p1" });
+    ok(passed);
+    const apres = board(passed.state, "p1").find((u) => u.instanceId === epave.instanceId)!;
+    expect(apres.turnsRemaining).toBe(avant.turnsRemaining);
   });
 
   it("Contremaître des Amarres : une Structure ADVERSE qui devient visible perd 1 Résistance", () => {

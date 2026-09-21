@@ -27,6 +27,31 @@ export type EffectType =
   | "reasonLoss"
   /** Attache la source (un Équipement) au permanent choisi (`target: { kind: "chosenUnit" }`) — cf. `EQUIPPABLE_CARD_TYPES`, un seul Équipement par permanent. */
   | "attachEquipment"
+  /**
+   * Retire `amount` tours de durée restante aux permanents ciblés
+   * (`CardInstance.turnsRemaining`), sans jamais descendre sous 0.
+   *
+   * Sert à FAIRE PAYER un gain sur la durée d'une carte plutôt que sur une
+   * ressource : « vous pouvez réduire sa durée de 1 tour : récupérez
+   * 1 Raison » (Gardien du Sondeur). C'est un coût réel — la Structure
+   * quitte le plateau plus tôt — mais qui ne touche ni la Raison ni
+   * l'Ancrage, donc utilisable par une carte dont le but est justement d'en
+   * rendre.
+   *
+   * L'expiration n'est PAS immédiate : un permanent tombé à 0 reste en jeu
+   * jusqu'au contrôle de début de tour de son contrôleur, qui expédie au
+   * Cimetière tout ce qui est à 1 ou moins (`resolveEnvironment`). C'est
+   * cohérent avec « Durée : N tours » qui compte les tours du CONTRÔLEUR :
+   * la carte a encore le tour adverse à vivre.
+   *
+   * Sans effet sur un permanent SANS durée (`turnsRemaining` absent) : on ne
+   * peut pas retirer ce qui n'existe pas. Attention en conception — une
+   * carte qui fait payer une durée à une cible qui n'en a pas rendrait son
+   * gain gratuit. Aucune Structure sans durée ne peut aujourd'hui devenir
+   * visible, donc le cas ne se présente pas ; c'est à revérifier si une
+   * Structure sans durée reçoit une fenêtre de visibilité.
+   */
+  | "durationLoss"
   // --- Environnement : Marée, modèle "durée + intensité" -----------------
   // (cadrage "Mécaniques verrouillées" sections 20-21, orientation 2026-09-10)
   /** Réduit la durée restante de l'état de Marée courant (rapproche la progression). */

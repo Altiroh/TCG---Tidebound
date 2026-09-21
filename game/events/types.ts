@@ -21,6 +21,7 @@ export type GameEventType =
   | "RESOURCE_CHANGED"
   | "REASON_CHANGED"
   | "CARD_MOVED"
+  | "DURATION_CHANGED"
   | "TURN_STARTED"
   | "END_TURN"
   | "TIDE_ADVANCED"
@@ -144,6 +145,21 @@ export interface ReasonChangedEvent extends BaseGameEvent {
   type: "REASON_CHANGED";
   playerId: PlayerId;
   delta: number;
+}
+
+/**
+ * La durée restante d'un permanent a changé (`durationLoss`). Émis pour que
+ * le journal et l'interface puissent montrer qu'une carte vient de perdre du
+ * temps — sans quoi la Structure semblait expirer sans raison au tour
+ * suivant.
+ */
+export interface DurationChangedEvent extends BaseGameEvent {
+  type: "DURATION_CHANGED";
+  instanceId: string;
+  /** Négatif quand la durée est retirée. */
+  delta: number;
+  /** Tours restants APRÈS l'effet. 0 = expirera au prochain début de tour de son contrôleur. */
+  turnsRemaining: number;
 }
 
 export interface CardMovedEvent extends BaseGameEvent {
@@ -373,6 +389,7 @@ export interface ShipAbilityFiredEvent extends BaseGameEvent {
 }
 
 export type GameEvent =
+  | DurationChangedEvent
   | DrawCardEvent
   | PlayCardEvent
   | AttackEvent
