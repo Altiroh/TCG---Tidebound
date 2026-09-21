@@ -695,7 +695,7 @@ describe("engine.dispatch - endTurn", () => {
     expect(result.state.players[1].reason).toBe(1); // 0 + récupération naturelle
   });
 
-  it("Déraison : la dette n'est PAS réglée en fin de tour — elle reste affichée pendant tout le tour adverse", () => {
+  it("Déraison CHOISIE : terminer son tour sous zéro coûte 1 Ancrage par point, et la Raison repart de 0", () => {
     const state = testGameState({
       players: [testPlayer("p1", { reason: -4, reasonMax: 10, anchor: 18 }), testPlayer("p2", { reason: 5, anchor: 20 })],
       activePlayerId: "p1",
@@ -704,48 +704,42 @@ describe("engine.dispatch - endTurn", () => {
     const result = dispatch(state, { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    // p1 termine à -4 : rien ne tombe maintenant. Son adversaire joue en
-    // voyant la dette, et elle ne coûtera qu'au début du tour de p1.
-    expect(result.state.players[0].anchor).toBe(18);
-    expect(result.state.players[0].reason).toBe(-4);
-    expect(result.events.find((e) => e.type === "DERAISON_SETTLED")).toBeUndefined();
-  });
-
-  it("Déraison : au début de SON tour, la dette inflige ses dégâts, la Raison revient à 0, PUIS la récupération s'applique", () => {
-    const state = testGameState({
-      turnNumber: 2,
-      players: [testPlayer("p1", { reason: -4, reasonMax: 10, anchor: 18 }), testPlayer("p2", { reason: 5, anchor: 20 })],
-      activePlayerId: "p2",
-    });
-
-    // p2 termine son tour : c'est au tour de p1, donc sa dette se règle.
-    const result = dispatch(state, { type: "endTurn", playerId: "p2" });
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
     expect(result.state.players[0].anchor).toBe(14); // 18 - 4
-    // L'ORDRE compte : dégâts, puis remise à 0, puis +1. Si la récupération
-    // passait avant, la dette serait comblée sans jamais avoir coûté.
-    expect(result.state.players[0].reason).toBe(1);
+    expect(result.state.players[0].reason).toBe(0);
     expect(result.state.players[1].anchor).toBe(20); // la dette de p1 ne touche jamais p2
     const settled = result.events.find((e) => e.type === "DERAISON_SETTLED");
     expect(settled).toMatchObject({ playerId: "p1", debt: 4, anchorDamage: 4 });
   });
 
-  it("Déraison : une dette SUBIE pendant le tour adverse se règle comme la sienne propre, au début de son tour", () => {
+  it("Déraison SUBIE : aucun Ancrage perdu — elle mange la récupération du tour, une seule fois", () => {
     const state = testGameState({
-      players: [testPlayer("p1"), testPlayer("p2", { reason: -3, reasonMax: 10, anchor: 18 })],
+      players: [testPlayer("p1"), testPlayer("p2", { reason: -2, reasonMax: 10, anchor: 18 })],
       activePlayerId: "p1",
     });
 
     const result = dispatch(state, { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    // Une seule règle désormais, quelle que soit l'ORIGINE de la dette : elle
-    // coûte de l'Ancrage au début du tour de celui qui la porte. L'ancienne
-    // exception (déduite de la remise à niveau, sans dégâts) disparaît avec
-    // la remise à niveau elle-même.
-    expect(result.state.players[1].anchor).toBe(15); // 18 - 3
-    expect(result.state.players[1].reason).toBe(1); // 0 après règlement, + récupération naturelle
+    // Une dette qu'on n'a pas CHOISIE ne se paie pas en Ancrage : elle coûte
+    // du revenu. La récupération de ce tour est amputée, l'ardoise effacée.
+    expect(result.state.players[1].anchor).toBe(18);
+    expect(result.state.players[1].reason).toBe(0);
+  });
+
+  it("Déraison SUBIE : le reliquat n'est jamais reporté — c'est ce qui empêche le verrou", () => {
+    // -5 pour une récupération de 1 : le tour de revenu est perdu, mais le
+    // joueur repart de 0 et NON de -4. Sans quoi des drains répétés le
+    // laisseraient sous zéro indéfiniment, sans recours.
+    const state = testGameState({
+      players: [testPlayer("p1"), testPlayer("p2", { reason: -5, reasonMax: 10, anchor: 18 })],
+      activePlayerId: "p1",
+    });
+
+    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.players[1].anchor).toBe(18);
+    expect(result.state.players[1].reason).toBe(0);
   });
 
   it("la Raison PERSISTE d'un tour à l'autre et ne remonte que de la récupération naturelle", () => {
@@ -833,19 +827,17 @@ describe("engine.dispatch - endTurn", () => {
     expect(result.state.players[0].reason).toBe(2);
   });
 
-  it("Déraison : Pénitence (La Religieuse) réduit de 1 les dégâts de Déraison", () => {
+  it("Déraison : Pénitence (La Religieuse) réduit de 1 les dégâts de Déraison CHOISIE", () => {
     const state = testGameState({
-      turnNumber: 2,
       players: [testPlayer("p1", { shipId: "la-religieuse", reason: -3, reasonMax: 10, anchor: 20 }), testPlayer("p2")],
-      activePlayerId: "p2",
+      activePlayerId: "p1",
     });
 
-    // La dette de p1 se règle au début de SON tour, donc quand p2 rend la main.
-    const result = dispatch(state, { type: "endTurn", playerId: "p2" });
+    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.state.players[0].anchor).toBe(18); // 20 - (3 - 1)
-    expect(result.state.players[0].reason).toBe(1); // 0 après règlement, + récupération naturelle
+    expect(result.state.players[0].reason).toBe(0);
   });
 
   it("Déraison : une perte de Raison par effet continue de creuser une dette déjà profonde (aucun plancher)", () => {

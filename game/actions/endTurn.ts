@@ -109,6 +109,44 @@ export function endTurn(state: GameState, action: EndTurnAction): ActionResult {
     events.push(...discardTriggers.events);
   }
 
+  // --- Règlement de la Déraison CHOISIE, à la fin du tour de celui qui l'a
+  // prise, en tout dernier (plus aucun effet de fin de tour ne peut encore
+  // lui rendre de Raison) : chaque point sous 0 coûte
+  // `DERAISON_ANCHOR_DAMAGE_PER_POINT` Ancrage (moins la réduction éventuelle
+  // du Navire, ex: Pénitence), puis la dette est effacée. Terminer
+  // exactement à 0 ne coûte rien — il faut être SOUS zéro.
+  //
+  // Ce qui est encore négatif ICI est forcément CHOISI : une dette subie
+  // pendant le tour adverse a déjà été absorbée au début de ce tour, sans
+  // dégâts (voir l'étape 3-4). La séquence sépare donc le subi du choisi
+  // sans que le moteur ait à tracer l'origine de chaque point perdu.
+  //
+  // Seule exception assumée (arbitrage du 2026-09-21) : une réaction adverse
+  // qui draine pendant SON tour compte comme du choisi. Le joueur a eu tout
+  // son tour pour remonter ; s'il ne l'a pas fait, il paie.
+  const playerEndingTurn = nextState.players.find((p) => p.id === action.playerId)!;
+  const debt = deraisonDebt(playerEndingTurn.reason);
+  if (debt > 0) {
+    const anchorDamage = deraisonAnchorDamage(playerEndingTurn, playerEndingTurn.reason);
+    nextState = {
+      ...nextState,
+      players: nextState.players.map((p) =>
+        p.id === playerEndingTurn.id ? { ...p, anchor: p.anchor - anchorDamage, reason: 0 } : p
+      ) as [PlayerState, PlayerState],
+    };
+    events.push({ ...base, type: "DERAISON_SETTLED", playerId: playerEndingTurn.id, debt, anchorDamage });
+    // Pas de REASON_CHANGED pour la remise à 0 : DERAISON_SETTLED la porte déjà (évite un "+N Raison" trompeur dans le journal).
+    if (anchorDamage > 0) {
+      events.push({
+        ...base,
+        type: "DAMAGE",
+        targetPlayerId: playerEndingTurn.id,
+        amount: anchorDamage,
+        targetAnchorAfter: playerEndingTurn.anchor - anchorDamage,
+      });
+    }
+  }
+
   const nextPlayer = getOpponent(nextState, action.playerId);
   const newTurnNumber = state.turnNumber + 1;
   const newBase = { turnNumber: newTurnNumber, timestamp: Date.now() };
@@ -124,43 +162,6 @@ export function endTurn(state: GameState, action: EndTurnAction): ActionResult {
     phase: "mainPhase",
   };
 
-  // --- 0. Règlement de la Déraison du joueur qui PREND la main -----------
-  //
-  // Déplacé ici depuis la fin de son propre tour (passe de stabilisation du
-  // 2026-09-21). La dette se voit donc pendant TOUT le tour adverse avant de
-  // tomber : celui qui a plongé en Déraison l'affiche, et son adversaire
-  // joue en le sachant. Ordre imposé par le design : les dégâts d'Ancrage
-  // d'abord, PUIS la remise à 0, PUIS la récupération naturelle (plus bas) —
-  // sans quoi la dette serait effacée par la récupération avant d'avoir coûté
-  // quoi que ce soit.
-  //
-  // AVANT la Marée, à dessein : une perte de Raison infligée par la Marée de
-  // CE tour n'est pas une dette que le joueur a choisie, et elle ne doit pas
-  // être punie dans la seconde. Elle devient la dette de son prochain tour,
-  // qu'il a un tour entier pour rembourser.
-  const playerStartingTurn = nextState.players.find((p) => p.id === nextPlayer.id)!;
-  const debt = deraisonDebt(playerStartingTurn.reason);
-  if (debt > 0) {
-    const anchorDamage = deraisonAnchorDamage(playerStartingTurn, playerStartingTurn.reason);
-    nextState = {
-      ...nextState,
-      players: nextState.players.map((p) =>
-        p.id === playerStartingTurn.id ? { ...p, anchor: p.anchor - anchorDamage, reason: 0 } : p
-      ) as [PlayerState, PlayerState],
-    };
-    events.push({ ...newBase, type: "DERAISON_SETTLED", playerId: playerStartingTurn.id, debt, anchorDamage });
-    // Pas de REASON_CHANGED pour la remise à 0 : DERAISON_SETTLED la porte déjà (évite un "+N Raison" trompeur dans le journal).
-    if (anchorDamage > 0) {
-      events.push({
-        ...newBase,
-        type: "DAMAGE",
-        targetPlayerId: playerStartingTurn.id,
-        amount: anchorDamage,
-        targetAnchorAfter: playerStartingTurn.anchor - anchorDamage,
-      });
-    }
-  }
-
   // --- 1. Vérification de la Marée (décompte, progression, orientation, dégâts) ---
   const tideStep = resolveTideTurnStep(nextState, newTurnNumber);
   nextState = tideStep.state;
@@ -168,11 +169,11 @@ export function endTurn(state: GameState, action: EndTurnAction): ActionResult {
 
   // --- 2. Effets différés : non modélisés pour le MVP, étape ignorée -----
 
-  // --- 3-4. Remise à niveau de la Raison (courbe de début de partie), pioche
+  // --- 3-4. Récupération naturelle, absorption de la dette SUBIE, pioche ---
   const playerBeforeUpkeep = nextState.players.find((p) => p.id === nextPlayer.id)!;
 
-  // "La Gueule Sous la Mer" : verrou consommé exactement ICI — cette remise
-  // à niveau-ci est bloquée, jamais les suivantes ("jusqu'au début de
+  // "La Gueule Sous la Mer" : verrou consommé exactement ICI — cette
+  // récupération-ci est bloquée, jamais les suivantes ("jusqu'au début de
   // votre prochain tour" = jusqu'à ce moment précis, pas après).
   const reasonGainLocked = playerBeforeUpkeep.statusFlags.includes(STATUS_NO_REASON_GAIN);
   const statusFlagsAfterUpkeep = playerBeforeUpkeep.statusFlags.filter((f) => f !== STATUS_NO_REASON_GAIN);
@@ -188,20 +189,34 @@ export function endTurn(state: GameState, action: EndTurnAction): ActionResult {
   // de rampe de sauter les paliers. p1 joue les tours impairs, p2 les pairs :
   // ceil(n / 2) = numéro de CE tour pour lui.
   //
-  // La dette éventuelle a déjà été réglée à l'étape 0, donc la Raison est ici
-  // toujours ≥ 0 : la récupération s'applique sur une base saine, jamais pour
-  // combler un trou.
+  // DETTE SUBIE (arbitrage du 2026-09-21). Une Raison négative présente ICI
+  // vient forcément d'un effet adverse joué pendant le tour d'en face : la
+  // dette CHOISIE, elle, a déjà été réglée en Ancrage à la fin du tour de
+  // celui qui l'a prise. Elle ne coûte donc pas d'Ancrage — elle coûte du
+  // REVENU : la récupération de ce tour est amputée du montant de la dette,
+  // puis l'ardoise est effacée.
+  //
+  // Amputée UNE FOIS, jamais reportée : c'est ce qui empêche le verrou. Avec
+  // une récupération à +1, reporter le reliquat laisserait un adversaire
+  // drainé à répétition sous zéro pour toujours, sans recours. Conséquence
+  // assumée : au-delà du montant de la récupération, drainer plus fort ne
+  // coûte pas plus cher à qui est DÉJÀ à 0 — la valeur d'un drain vient
+  // surtout de la Raison positive qu'il emporte.
+  const dettesSubie = deraisonDebt(playerBeforeUpkeep.reason);
+  const recuperation = Math.max(0, RULES.NATURAL_REASON_RECOVERY - dettesSubie);
+  const baseApresAbsorption = Math.max(0, playerBeforeUpkeep.reason);
+
   let reasonCap = playerBeforeUpkeep.reasonCap;
   if (reasonCap !== undefined) {
     reasonCap = startingReasonCap(getShipDefinition(playerBeforeUpkeep.shipId).reasonMax, Math.ceil(newTurnNumber / 2));
   }
   const ceiling = reasonCeiling({ reasonMax: playerBeforeUpkeep.reasonMax, reasonCap });
-  // `Math.max(reason, ...)` : un joueur déjà AU-DESSUS du plafond (Abysses
-  // qui viennent d'abaisser `reasonMax`, gain de carte au tour précédent) ne
-  // se fait pas rogner ici — seul le plafond des GAINS mord, pas l'acquis.
+  // `Math.max(base, ...)` : un joueur déjà AU-DESSUS du plafond (Abysses qui
+  // viennent d'abaisser `reasonMax`, gain de carte au tour précédent) ne se
+  // fait pas rogner ici — seul le plafond des GAINS mord, pas l'acquis.
   const reason = reasonGainLocked
-    ? playerBeforeUpkeep.reason
-    : Math.max(playerBeforeUpkeep.reason, Math.min(ceiling, playerBeforeUpkeep.reason + RULES.NATURAL_REASON_RECOVERY));
+    ? baseApresAbsorption
+    : Math.max(baseApresAbsorption, Math.min(ceiling, baseApresAbsorption + recuperation));
   if (reason !== playerBeforeUpkeep.reason) {
     events.push({ ...newBase, type: "REASON_CHANGED", playerId: nextPlayer.id, delta: reason - playerBeforeUpkeep.reason });
   }

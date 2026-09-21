@@ -152,16 +152,32 @@ npm test                     # tests unitaires du moteur (Vitest)
   2026-09-16 : « il n'y a pas de Déraison max »). Payer un coût (carte,
   capacité activable, réaction) ou subir une perte de Raison peut y
   pousser aussi loin que le joueur l'accepte ; le moteur ne refuse jamais
-  un coût, c'est la dette qui freine. **Au début de son propre tour**
-  (déplacé depuis la fin de son tour le 2026-09-21), chaque point de
-  Déraison inflige 1 dégât d'Ancrage (`DERAISON_ANCHOR_DAMAGE_PER_POINT`,
-  événement `DERAISON_SETTLED`), puis la Raison repart de 0, puis seulement
-  la récupération naturelle s'applique — cet ORDRE est la règle : si la
-  récupération passait avant, la dette serait comblée sans avoir rien coûté.
-  Conséquence voulue : celui qui plonge en Déraison l'affiche pendant **tout
-  le tour adverse** avant de payer, et son adversaire joue en le sachant.
-  Une dette SUBIE pendant le tour adverse se règle exactement pareil — il
-  n'y a plus qu'une seule règle, quelle que soit l'origine de la dette. Remplace l'ancienne
+  un coût, c'est la dette qui freine. **Deux dettes, deux traitements**
+  (arbitrage du 2026-09-21) :
+  - **Déraison CHOISIE** — celle qu'on prend en dépensant pendant son
+    propre tour. **À la fin de son tour** (après tous les effets de fin de
+    tour — il peut donc encore remonter avant), chaque point sous 0
+    inflige 1 dégât d'Ancrage (`DERAISON_ANCHOR_DAMAGE_PER_POINT`,
+    événement `DERAISON_SETTLED`), puis la Raison repart de 0. Terminer à
+    exactement 0 ne coûte rien. Pénitence (La Religieuse) réduit ces
+    dégâts de 1.
+  - **Déraison SUBIE** — celle qu'un effet adverse inflige pendant le tour
+    d'en face. Elle ne coûte **aucun Ancrage** : elle coûte du **revenu**.
+    Au début du tour de sa victime, la récupération naturelle est amputée
+    du montant de la dette, puis l'ardoise est effacée. Un adversaire à 0
+    qui subit -2 commence donc son tour à **0 Raison**, sans perdre
+    d'Ancrage : il a perdu un tour de revenu. Amputée **une seule fois**,
+    jamais reportée — sans quoi, avec une récupération à +1, des drains
+    répétés maintiendraient quelqu'un sous zéro indéfiniment. Contrepartie
+    assumée : drainer au-delà de la récupération ne coûte pas plus cher à
+    qui est déjà à 0, la valeur d'un drain venant surtout de la Raison
+    positive qu'il emporte.
+
+  La séquence sépare seule le subi du choisi, sans que le moteur trace
+  l'origine de chaque point perdu : ce qui est encore négatif à la fin d'un
+  tour a forcément été choisi pendant ce tour. Exception assumée — une
+  réaction adverse qui draine pendant VOTRE tour compte comme du choisi :
+  vous avez eu tout votre tour pour remonter. Remplace l'ancienne
   règle "Raison à 0 en fin de tour = -1 Ancrage" : finir à exactement 0 ne
   coûte rien. Pénitence (La Religieuse) réduit ces dégâts de 1. Côté UI :
   jauge rouge et pastille "⚓ −N en fin de tour" sur le Navire, avertissement ambre avant de poser
@@ -216,10 +232,6 @@ Déraison (dette sous 0 → dégâts d'Ancrage, Raison remise à 0).
 
 **B. Début de tour DU JOUEUR QUI DEVIENT ACTIF** :
 
-0. Règlement de la Déraison du joueur qui prend la main : dégâts
-   d'Ancrage, puis remise de la Raison à 0. Avant la Marée, à dessein —
-   une perte infligée par la Marée de ce tour n'est pas une dette choisie,
-   elle devient celle du tour suivant.
 1. Vérification des Eaux (tirage de nouvelles Eaux si leur durée est
    épuisée — jamais une carte de deck, toujours tiré par le moteur).
 2. Vérification de la Marée : décompte de la durée restante, progression
@@ -228,7 +240,8 @@ Déraison (dette sous 0 → dégâts d'Ancrage, Raison remise à 0).
    globaux des Marées" ci-dessous.
 3. Effets différés — non modélisés pour le MVP, étape ignorée.
 4. Récupération naturelle : **+1 Raison**, bornée par le plafond de début
-   de partie. La Raison persiste, elle n'est jamais remise à niveau.
+   de partie, et **amputée d'une dette subie** éventuelle (qui est alors
+   effacée). La Raison persiste, elle n'est jamais remise à niveau.
 5. Pioche d'une carte (deck vide → Jugement de l'Océan, voir plus bas).
 6. Phase principale : dégel des unités, réinitialisation des attaques,
    nettoyage des modificateurs temporaires.
