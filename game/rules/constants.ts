@@ -59,12 +59,19 @@ export const RULES = {
    * d'un tour à l'autre et ne remonte que de ce montant, au lieu d'être
    * remise à son plafond.
    *
-   * C'est le vrai régulateur de la courbe : un départ à 2 puis +1 par tour
-   * fait d'un coût 5 une décision de son 4e tour et d'un coût 7 une décision
-   * de son 6e — sauf à prendre volontairement de la Déraison pour le jouer
-   * plus tôt, ce que la règle autorise et fait payer en Ancrage.
+   * Porté de 1 à 2 le 21/09/2026, après mesure sur ~1 300 parties de bot :
+   * à +1, le Canon du Goliath (2 Raison à armer) n'était plus payable et le
+   * deck qui punissait le swarm s'effondrait de 87 % à 52 %, laissant le
+   * swarm monter à 87 %. À +2, il remonte à 67 % et le swarm redescend à
+   * 78 %, sans revenir au rythme de l'ancienne remise à niveau (2,78 slots
+   * occupés à la fin du 3e tour, contre 3,64 avant la passe).
+   *
+   * À cette valeur, la COURBE DE PLAFOND devient la progression réelle :
+   * un Courlis suit 2 / 4 / 6 / 8, puis `STARTING_REASON_CURVE` prend le
+   * relais (9 / 11 / 12). Toute la courbe se pilote donc depuis une seule
+   * constante, celle-là.
    */
-  NATURAL_REASON_RECOVERY: 1,
+  NATURAL_REASON_RECOVERY: 2,
 
   // --- Déraison (Notion "Gameplay — Raison, Déraison, healing & passifs de
   // Navires", 2026-09-12) : PISTE À PROTOTYPER, pas verrouillée — valeurs

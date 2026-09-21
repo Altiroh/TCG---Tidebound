@@ -637,7 +637,7 @@ describe("engine.dispatch - attack", () => {
 });
 
 describe("engine.dispatch - endTurn", () => {
-  it("passe la main au joueur suivant, lui rend 1 Raison (et non plus la totalité) et pioche", () => {
+  it("passe la main au joueur suivant, lui rend la récupération naturelle (et non plus la totalité) et pioche", () => {
     const deckCard = instance("marin-des-jetees", "p2");
     const state = testGameState({
       players: [
@@ -652,7 +652,7 @@ describe("engine.dispatch - endTurn", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.state.activePlayerId).toBe("p2");
-    expect(result.state.players[1].reason).toBe(6); // 5 + 1 : la Raison persiste, elle ne se remplit plus
+    expect(result.state.players[1].reason).toBe(7); // 5 + 2 : la Raison persiste, elle ne se remplit plus
     expect(result.state.players[1].hand).toHaveLength(1);
     expect(result.state.turnNumber).toBe(2);
   });
@@ -696,7 +696,7 @@ describe("engine.dispatch - endTurn", () => {
     if (!result.ok) return;
     // p2 devient actif à 0 Raison : 0 n'est pas une dette (il faut être SOUS 0), donc aucune perte d'Ancrage.
     expect(result.state.players[1].anchor).toBe(18);
-    expect(result.state.players[1].reason).toBe(1); // 0 + récupération naturelle
+    expect(result.state.players[1].reason).toBe(2); // 0 + récupération naturelle
   });
 
   it("Déraison CHOISIE : terminer son tour sous zéro coûte 1 Ancrage par point, et la Raison repart de 0", () => {
@@ -772,20 +772,21 @@ describe("engine.dispatch - endTurn", () => {
 
     const t3 = end(state, "p2"); // 2e tour de p1
     expect(t3.players[0].reasonCap).toBe(4);
-    expect(t3.players[0].reason).toBe(3); // 2 + 1, et NON un bond au plafond
+    expect(t3.players[0].reason).toBe(4); // 2 + 2, atteint le plafond sans le dépasser
 
     const t5 = end(end(t3, "p1"), "p2"); // 3e tour de p1
     expect(t5.players[0].reasonCap).toBe(6);
-    expect(t5.players[0].reason).toBe(4); // 3 + 1
+    expect(t5.players[0].reason).toBe(6); // 4 + 2
 
-    // Le joueur qui a tout dépensé repart de 1, pas de son plafond : c'est
-    // là que la remise à niveau faisait du début de partie une course.
+    // Le joueur qui a tout dépensé repart de la seule récupération, pas de
+    // son plafond : c'est là que la remise à niveau faisait du début de
+    // partie une course.
     const t7 = end(end(withReason(t5, 0, 0), "p1"), "p2"); // 4e tour de p1
-    expect(t7.players[0].reason).toBe(1);
+    expect(t7.players[0].reason).toBe(2);
 
     // Et ce qui n'est pas dépensé reste acquis d'un tour à l'autre.
     const t9 = end(end(withReason(t7, 0, 5), "p1"), "p2"); // 5e tour de p1
-    expect(t9.players[0].reason).toBe(6);
+    expect(t9.players[0].reason).toBe(7);
   });
 
   it("le plafond de début de partie borne les gains VENANT DES CARTES, sans jamais rogner l'acquis", () => {
@@ -1252,8 +1253,8 @@ describe("engine.dispatch - endTurn : capacité de début de tour conditionnelle
     const result = dispatch(state, { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    // 3 + 1 de récupération naturelle, puis +1 de la Bouée de Dérive.
-    expect(result.state.players[1].reason).toBe(5);
+    // 3 + 2 de récupération naturelle, puis +1 de la Bouée de Dérive.
+    expect(result.state.players[1].reason).toBe(6);
   });
 
   it("ne récupère pas de Raison si l'orientation est montante", () => {
@@ -1267,7 +1268,7 @@ describe("engine.dispatch - endTurn : capacité de début de tour conditionnelle
     const result = dispatch(state, { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.state.players[1].reason).toBe(4); // récupération naturelle seule (3 + 1)
+    expect(result.state.players[1].reason).toBe(5); // récupération naturelle seule (3 + 2)
   });
 
   it("ne récupère pas de Raison si elle est actuellement invisible (Tempête)", () => {
@@ -1281,7 +1282,7 @@ describe("engine.dispatch - endTurn : capacité de début de tour conditionnelle
     const result = dispatch(state, { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.state.players[1].reason).toBe(4); // récupération naturelle seule, Bouée invisible pendant Tempête
+    expect(result.state.players[1].reason).toBe(5); // récupération naturelle seule, Bouée invisible pendant Tempête
   });
 });
 
@@ -2452,7 +2453,7 @@ describe("engine.dispatch - Cloche Immergée : compare une carte révélée de c
     // p1 a révélé la carte au coût le plus élevé (5 contre 1) : il perd 1 Raison.
     // p1 termine son tour (pas de remise à niveau pour lui) : 5 - 1 = 4.
     expect(result.state.players[0].reason).toBe(4);
-    expect(result.state.players[1].reason).toBe(6); // p2 devient actif : 5 + récupération naturelle, pas de perte
+    expect(result.state.players[1].reason).toBe(7); // p2 devient actif : 5 + récupération naturelle, pas de perte
   });
 
   it("en cas d'égalité de coût, personne ne perd de Raison", () => {

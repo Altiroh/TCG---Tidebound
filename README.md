@@ -132,12 +132,14 @@ npm test                     # tests unitaires du moteur (Vitest)
   dépensé reste acquis, ce qui l'est n'est pas rendu (ci-dessous).
 - **Persistance & récupération naturelle** (`RULES.NATURAL_REASON_RECOVERY`,
   passe de stabilisation du 2026-09-21, **à prototyper**) : au début de
-  chacun de ses tours, le joueur récupère **+1 Raison**, et rien de plus.
+  chacun de ses tours, le joueur récupère **+2 Raison**, et rien de plus.
   Remplace la remise à niveau au plafond, qui rendait la Raison gratuite et
-  laissait un deck de swarm remplir son plateau dès son 2e tour. C'est cette
-  récupération lente qui fait la courbe : départ à 2, puis +1 par tour, donc
-  un coût 5 est une décision de son 4e tour et un coût 7 de son 6e — sauf à
-  prendre volontairement de la Déraison pour le jouer plus tôt.
+  laissait un deck de swarm remplir son plateau dès son 2e tour. À cette
+  valeur, la courbe de plafond ci-dessous devient la progression RÉELLE :
+  un Courlis suit 2 / 4 / 6 / 8, puis le plafond prend le relais
+  (9 / 11 / 12). Toute la courbe se pilote donc depuis cette seule
+  constante. Prendre volontairement de la Déraison reste le moyen de jouer
+  au-dessus de ses moyens, et se paie en Ancrage.
 - **Plafond de début de partie** (`RULES.STARTING_REASON_CURVE`) : au `n`-ième
   tour du joueur, sa Raison ne peut pas **dépasser** 15 / 30 / 45 / 60 / 75 /
   90 / 100 % de sa Raison max, arrondi au supérieur (Courlis 12 →
@@ -239,7 +241,7 @@ Déraison (dette sous 0 → dégâts d'Ancrage, Raison remise à 0).
    Calme`), puis application des malus de l'état courant — voir "Malus
    globaux des Marées" ci-dessous.
 3. Effets différés — non modélisés pour le MVP, étape ignorée.
-4. Récupération naturelle : **+1 Raison**, bornée par le plafond de début
+4. Récupération naturelle : **+2 Raison**, bornée par le plafond de début
    de partie, et **amputée d'une dette subie** éventuelle (qui est alors
    effacée). La Raison persiste, elle n'est jamais remise à niveau.
 5. Pioche d'une carte (deck vide → Jugement de l'Océan, voir plus bas).
