@@ -246,7 +246,16 @@ export interface GameState {
  * telle qu'elle a été déclarée, pour la rejouer à l'identique.
  */
 export interface PendingAttack {
+  /**
+   * D'où vient le coup. Les PIÈGES ne font pas la différence — leur texte dit
+   * « des dégâts directs d'une attaque », sans préciser la source — mais la
+   * REPRISE, elle, doit savoir quoi rejouer : une attaque d'unité ou un tir
+   * de Navire (arbitrage du 21/09 : le Canon du Goliath cesse d'être
+   * intouchable).
+   */
+  kind?: "attaque" | "tirDeNavire";
   playerId: PlayerId;
+  /** Pour un tir de Navire : le Navire n'est pas une unité, ce champ vaut alors l'identifiant du joueur. */
   attackerInstanceId: string;
   /** Cible du combat, absente pour une attaque directe au Navire. */
   defenderInstanceId?: string;

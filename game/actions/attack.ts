@@ -18,7 +18,6 @@ import {
   combine,
 } from "@/game/rules/validation";
 import {
-  consumeAttackerPowerShield,
   consumeDirectShipDamageShield,
   consumeOwnDamageTakenShield,
   consumeStructureResistanceRestoreShield,
@@ -316,12 +315,12 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
   if (!action.defenderInstanceId) {
     const opponent = getOpponent(nextState, action.playerId);
 
-    // Bouclier "1ère fois par tour" du DÉFENSEUR réduisant la Puissance de
-    // l'attaquant sur une attaque directe (Le Filet qui Respire).
+    // La réduction de Puissance de l'attaquant passe désormais par une
+    // CAPACITÉ (`modifyAttackerPower`, Filet à la Dérive et Le Filet qui
+    // Respire), appliquée à la déclaration : elle est déjà dans
+    // `attackerDamage`. L'ancien bouclier de données n'avait plus de porteur.
     const attackerCardType = getCardDefinition(attackerUnit.cardId).type;
-    const attackerPowerShield = consumeAttackerPowerShield(nextState, opponent.id, etat.turnNumber, attackerCardType);
-    nextState = attackerPowerShield.state;
-    const shieldedAttackerDamage = Math.max(0, attackerDamage - attackerPowerShield.reduction);
+    const shieldedAttackerDamage = attackerDamage;
 
     // Faiblesse "Coque légère" (Le Courlis) : +1 dégât sur une attaque
     // directe contre le Navire, propre à la faiblesse du DÉFENSEUR.

@@ -188,3 +188,63 @@ describe("Pièges simultanés et cibles devenues invalides", () => {
     expect(player(active.state, "p2").anchor).toBe(20); // dégâts annulés
   });
 });
+
+describe("Le Canon du Navire passe par la fenêtre d'interception", () => {
+  /** Goliath armé, prêt à tirer sur le Navire adverse. */
+  function goliathArme(defenseurs: ReturnType<typeof instance>[]) {
+    return testGameState({
+      phase: "combatPhase",
+      // ABYSSES : la Cage y est MASQUÉE (visible en Houle et Tempête), donc
+      // sa Réaction cachée est proposable. Visible, elle n'aurait que sa
+      // réduction automatique et rien à demander au joueur.
+      environment: testEnvironment({ tideState: "abysses", tideRemainingTurns: 3 }),
+      players: [
+        testPlayer("p1", { shipId: "le-goliath", anchor: 20, shipAbility: { armedOnTurn: 1, activations: { turnNumber: 1, count: 1 } } }),
+        testPlayer("p2", { board: defenseurs, anchor: 20 }),
+      ],
+      turnNumber: 1,
+      activePlayerId: "p1",
+    });
+  }
+
+  it("un tir sur le Navire adverse ouvre la fenêtre, et la Cage peut le réduire", () => {
+    const cage = instance("cage-de-flottaison", "p2", { turnsRemaining: 4 });
+    const state = goliathArme([cage]);
+
+    const tir = dispatch(state, { type: "fireShipAbility", playerId: "p1" });
+    ok(tir);
+    // Avant l'arbitrage du 21/09, le tir traversait tout sans rien demander.
+    expect(tir.state.pendingAttack?.kind).toBe("tirDeNavire");
+    expect(tir.state.pendingReaction?.awaitingPlayerId).toBe("p2");
+
+    // Activer : la Cage se révèle, réduit de 3, et se Saborde. Le tir de 2
+    // n'atteint donc jamais la coque.
+    const active = activateReactionFor(tir.state, "cage-de-flottaison");
+    ok(active);
+    expect(active.state.pendingAttack).toBeUndefined();
+    expect(player(active.state, "p2").anchor).toBe(20);
+    expect(board(active.state, "p2").some((u) => u.cardId === "cage-de-flottaison")).toBe(false);
+  });
+
+  it("passer laisse le tir porter normalement", () => {
+    const cage = instance("cage-de-flottaison", "p2", { turnsRemaining: 4 });
+    const state = goliathArme([cage]);
+    const tir = dispatch(state, { type: "fireShipAbility", playerId: "p1" });
+    ok(tir);
+    const passe = dispatch(tir.state, { type: "passReaction", playerId: "p2" });
+    ok(passe);
+    expect(passe.state.pendingAttack).toBeUndefined();
+    expect(player(passe.state, "p2").anchor).toBe(18); // 20 - 2, la Cage masquée ne réduit rien
+  });
+
+  it("un tir sur un PERMANENT n'ouvre aucune fenêtre — ce n'est pas la coque qui est visée", () => {
+    const cage = instance("cage-de-flottaison", "p2", { turnsRemaining: 4 });
+    const cible = instance("murene-aveugle", "p2");
+    const state = goliathArme([cage, cible]);
+
+    const tir = dispatch(state, { type: "fireShipAbility", playerId: "p1", targetInstanceId: cible.instanceId });
+    ok(tir);
+    expect(tir.state.pendingAttack).toBeUndefined();
+    expect(tir.state.pendingReaction).toBeUndefined();
+  });
+});

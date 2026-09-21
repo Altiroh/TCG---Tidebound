@@ -70,11 +70,12 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
   // n'est retiré qu'une fois l'attaque résolue.
   if (result.state.status === "active" && !result.state.pendingReaction && result.state.pendingAttack) {
     const suspendue = result.state.pendingAttack;
-    const repris = applyAction(result.state, {
-      type: "attack",
-      playerId: suspendue.playerId,
-      attackerInstanceId: suspendue.attackerInstanceId,
-    });
+    const repris = applyAction(
+      result.state,
+      suspendue.kind === "tirDeNavire"
+        ? { type: "fireShipAbility", playerId: suspendue.playerId }
+        : { type: "attack", playerId: suspendue.playerId, attackerInstanceId: suspendue.attackerInstanceId }
+    );
     // Une attaque devenue illégale entre-temps (l'attaquant a été détruit
     // par le piège lui-même) ne casse rien : on abandonne la reprise et on
     // garde l'état tel que la fenêtre l'a laissé.

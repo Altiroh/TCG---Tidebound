@@ -563,7 +563,7 @@ export const CORE_SET: CardDefinition[] = [
     durationTurns: 4,
     visibleDuringTide: ["houle"],
     text:
-      "Durée : 4 tours. Visible pendant Houle uniquement. Lorsqu'elle devient visible, vous pouvez défausser 1 " +
+      "Durée : 4 tours. Visible pendant Houle uniquement. Chaque fois qu'elle devient visible, vous pouvez défausser 1 " +
       "carte. Si vous le faites, piochez 1 carte.",
     // Réaction facultative à sa propre apparition (`STRUCTURE_REVEALED`).
     // Fidélité partielle : la carte défaussée est la plus ancienne de la
@@ -1092,7 +1092,7 @@ export const CORE_SET: CardDefinition[] = [
     health: 3,
     durationTurns: 4,
     visibleDuringTide: ["houle", "tempete"],
-    text: "Durée : 4 tours. Visible pendant Houle et Tempête. Lorsqu'il devient visible, chaque joueur perd 1 Raison.",
+    text: "Durée : 4 tours. Visible pendant Houle et Tempête. Chaque fois qu'il devient visible, chaque joueur perd 1 Raison.",
     abilities: [
       {
         trigger: "onBecomeVisible",
@@ -1111,7 +1111,7 @@ export const CORE_SET: CardDefinition[] = [
     durationTurns: 5,
     visibleDuringTide: ["tempete", "abysses"],
     text:
-      "Durée : 5 tours. Visible pendant Tempête et Abysses. Lorsqu'elle devient visible, révélez 1 carte aléatoire " +
+      "Durée : 5 tours. Visible pendant Tempête et Abysses. Chaque fois qu'elle devient visible, révélez 1 carte aléatoire " +
       "de la main adverse. Si la Marée est en Abysses, révélez-en 2 à la place.",
     abilities: [
       {
@@ -1546,7 +1546,7 @@ export const CORE_SET: CardDefinition[] = [
     durationTurns: 5,
     visibleDuringTide: ["tempete", "abysses"],
     text:
-      "Durée : 5 tours. Visible pendant Tempête et Abysses. Lorsqu'elle devient visible, chaque joueur révèle une " +
+      "Durée : 5 tours. Visible pendant Tempête et Abysses. Chaque fois qu'elle devient visible, chaque joueur révèle une " +
       "carte aléatoire de sa main. Le joueur ayant révélé la carte au coût le plus élevé perd 1 Raison. En cas " +
       "d'égalité, personne ne perd de Raison.",
     abilities: [

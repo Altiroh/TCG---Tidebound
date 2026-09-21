@@ -113,6 +113,13 @@ export interface EffectContext {
   brokenFromHand?: boolean;
   /** Carte qui a DÉCLENCHÉ la capacité en cours d'exécution (capacités d'observateur) — cible `{ kind: "triggerSource" }`. */
   triggerSourceInstanceId?: string;
+  /**
+   * Réduction à appliquer aux dégâts visant un JOUEUR pendant cette
+   * résolution (tir de Navire intercepté par un piège). Posée uniquement par
+   * `fireShipAbility` sur sa propre séquence : un effet de carte qui frappe
+   * un Navire n'est pas « une attaque » et n'en dépend jamais.
+   */
+  directDamageReduction?: number;
   turnNumber: number;
 }
 
@@ -497,9 +504,14 @@ export function resolveEffect(
       }
 
       for (const player of resolvePlayerTargets(state, effect, context)) {
+        // Un tir de Navire intercepté par un piège : même réduction que pour
+        // une attaque, parce que le texte des pièges ne distingue pas la
+        // source du coup.
+        const reduit = Math.max(0, amount - (context.directDamageReduction ?? 0));
+        if (reduit <= 0) continue;
         const current = getPlayer(nextState, player.id);
-        nextState = replacePlayer(nextState, { ...current, anchor: current.anchor - amount });
-        events.push({ ...base, type: "DAMAGE", targetPlayerId: player.id, amount, targetAnchorAfter: current.anchor - amount });
+        nextState = replacePlayer(nextState, { ...current, anchor: current.anchor - reduit });
+        events.push({ ...base, type: "DAMAGE", targetPlayerId: player.id, amount: reduit, targetAnchorAfter: current.anchor - reduit });
       }
 
       return { state: nextState, events };

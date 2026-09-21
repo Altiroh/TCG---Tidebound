@@ -146,27 +146,6 @@ export function consumeDirectShipDamageShield(
   };
 }
 
-/** Réduction de Puissance de l'ATTAQUANT disponible sur le plateau du DÉFENSEUR (Le Filet qui Respire, attaque directe adverse) — 0 si aucun bouclier éligible. */
-export function consumeAttackerPowerShield(
-  state: GameState,
-  defenderPlayerId: PlayerId,
-  turnNumber: number,
-  /** Type de la carte qui attaque : « qu'une Créature adverse attaque » (Le Filet qui Respire) ne couvre pas un Marin. */
-  attackerCardType: CardType
-): { state: GameState; reduction: number } {
-  const match = findAvailableShield(state, defenderPlayerId, turnNumber, "attackerPowerShield", (def) => {
-    const shield = def.reduceAttackerPowerOnDirectAttackOncePerTurn;
-    if (!shield) return undefined;
-    if (shield.attackerCardTypes && !shield.attackerCardTypes.includes(attackerCardType)) return undefined;
-    return shield;
-  });
-  if (!match) return { state, reduction: 0 };
-  return {
-    state: consumeShield(state, defenderPlayerId, match.unit, "attackerPowerShield", turnNumber),
-    reduction: match.spec.amount,
-  };
-}
-
 /** Réduction de dégâts subis par UNE UNITÉ disponible sur son propre plateau (Baleine aux Cicatrices Blanches, "elle subit des dégâts") — 0 si aucun bouclier éligible sur CETTE instance précisément. */
 export function consumeOwnDamageTakenShield(
   state: GameState,

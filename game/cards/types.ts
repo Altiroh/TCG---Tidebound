@@ -665,8 +665,6 @@ export interface CardDefinition {
   /** Plafonne les dégâts DIRECTS d'une même attaque contre le Navire de son contrôleur, tant que la carte est visible (`visibleDuringTide`) — ex: Carcasse Renversée. */
   capDirectShipDamageWhileVisible?: number;
 
-  /** Réduit la Puissance d'une unité ADVERSE qui attaque directement le Navire de son contrôleur, pour ce combat (ex: Le Filet qui Respire, « qu'une Créature adverse attaque »). `attackerCardTypes` restreint aux attaquants de ces types. */
-  reduceAttackerPowerOnDirectAttackOncePerTurn?: { amount: number; attackerCardTypes?: CardType[] };
 
   /** Réduit les dégâts subis par CETTE unité elle-même, au combat (ex: Baleine aux Cicatrices Blanches). */
   reduceOwnDamageTakenOncePerTurn?: number;

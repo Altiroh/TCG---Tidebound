@@ -11,6 +11,8 @@ import {
   combine,
 } from "@/game/rules/validation";
 import { isShipArmed, shipAbilityOf, withArmingConsumed } from "@/game/state/shipAbility";
+import { collectReactionCandidates } from "@/game/triggers/triggerBus";
+import type { TriggerEvent } from "@/game/triggers/types";
 import { getPlayer, type GameState, type PlayerState } from "@/game/state/types";
 import type { ActionResult, FireShipAbilityAction } from "@/game/actions/types";
 
@@ -61,6 +63,47 @@ export function fireShipAbility(state: GameState, action: FireShipAbilityAction)
   const events: GameEvent[] = [];
   const base = { turnNumber: state.turnNumber, timestamp: Date.now() };
 
+  // --- FENÊTRE D'INTERCEPTION (arbitrage du 21/09/2026) ------------------
+  //
+  // Un tir visant le NAVIRE adverse est, du point de vue des pièges, « des
+  // dégâts directs » comme les autres : leur texte ne distingue pas la
+  // source du coup. Sans cette fenêtre, le Canon du Goliath traversait
+  // toutes les défenses — mesuré à 87 % de victoires contre un deck de
+  // pièges, seul deck du format dont la route de dégâts était intouchable.
+  //
+  // Un tir visant un PERMANENT n'ouvre rien : ce n'est pas la coque qui est
+  // menacée, et aucun piège actuel ne parle de ça.
+  if (!action.targetInstanceId && !state.pendingAttack) {
+    const defenseur = state.players.find((p) => p.id !== player.id)!;
+    const triggerEvents: TriggerEvent[] = [
+      { trigger: "onIncomingDirectAttack", playerId: defenseur.id, sourceInstanceId: player.id },
+    ];
+    const candidats = collectReactionCandidates(state, triggerEvents, defenseur.id, state.turnNumber);
+    if (candidats.length > 0) {
+      return {
+        ok: true,
+        state: {
+          ...state,
+          pendingAttack: {
+            kind: "tirDeNavire",
+            playerId: action.playerId,
+            // Le Navire n'est pas une unité : son « attaquant » est le joueur.
+            attackerInstanceId: player.id,
+            attackerPower: 0,
+          },
+          pendingReaction: {
+            events: triggerEvents,
+            awaitingPlayerId: defenseur.id,
+            priorityQueue: [],
+            usedCandidateKeys: [],
+            turnNumber: state.turnNumber,
+          },
+        },
+        events: [{ ...base, type: "REACTION_WINDOW_OPENED", playerId: defenseur.id }],
+      };
+    }
+  }
+
   let nextState: GameState = {
     ...state,
     players: state.players.map((p) => (p.id === player.id ? withArmingConsumed(p) : p)) as [PlayerState, PlayerState],
@@ -75,10 +118,14 @@ export function fireShipAbility(state: GameState, action: FireShipAbilityAction)
     targetInstanceId: action.targetInstanceId,
   });
 
+  // Un piège a répondu : annuler vaut réduction infinie, sinon on applique
+  // la réduction qu'il a posée.
+  const suspendu = state.pendingAttack;
   const context: EffectContext = {
     controllerId: player.id,
     chosenTargetInstanceId: action.targetInstanceId,
     turnNumber: state.turnNumber,
+    directDamageReduction: suspendu?.intercepted ? Number.MAX_SAFE_INTEGER : suspendu?.damageReduction,
   };
   const fired = resolveEffectSequence(nextState, shot.effects, context);
   nextState = fired.state;
