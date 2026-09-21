@@ -71,15 +71,12 @@
   left: 50%;
   z-index: 1;
   /*
-   * TROIS BORNES, dans cet ordre :
-   *   - au moins la largeur visible (`100%`), pour ne jamais laisser de
-   *     bande sur les côtés ;
-   *   - assez haute pour remplir l'écran (`100dvh` × le rapport de
-   *     l'image), ce qui, sur un téléphone couché, la met plein cadre ;
-   *   - au plus 132 % de la largeur visible : au-delà, le recadrage
-   *     mangerait le parchemin « Collection », qui commence à 17 %.
+   * LA SCÈNE ENTIÈRE, par défaut : bornée par la largeur ET par la
+   * hauteur visibles, donc rien n'est rogné — la tarte, la peluche, les
+   * notes et la longue-vue font partie du décor autant que la carte.
+   * L'écran court (téléphone couché) reprend la main plus bas.
    */
-  width: min(max(100%, calc(100dvh * 1672 / 645)), 132%);
+  width: min(100%, calc(100dvh * 1672 / 645));
   aspect-ratio: 1672 / 645;
   transform: translate(-50%, -50%);
 }
@@ -212,5 +209,23 @@
   .card:focus-visible,
   .card:active {
     transform: translate(-50%, -50%) rotate(var(--rot));
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+ * TÉLÉPHONE COUCHÉ — la scène occupe l'écran au lieu d'y tenir
+ * ══════════════════════════════════════════════════════════════
+ *
+ * Sur 390 à 412 px de haut, la scène entière laisserait deux bandes
+ * floutées et une carte minuscule au milieu. Elle s'agrandit donc jusqu'à
+ * remplir l'écran, et se rogne sur les côtés — mais pas plus de 132 % de
+ * la largeur visible : au-delà, le recadrage mangerait le parchemin
+ * « Collection », qui commence à 17 %.
+ *
+ * Même seuil que partout ailleurs (`app/tokens.css`).
+ */
+@media (max-height: 560px) {
+  .plate {
+    width: min(max(100%, calc(100dvh * 1672 / 645)), 132%);
   }
 }
