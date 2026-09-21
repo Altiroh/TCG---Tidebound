@@ -248,6 +248,27 @@ plateau est limité par `Navire.slotCount`, pas seulement pour les unités.
   Le SORT DE LA CARTE après coup appartient à son texte : sans mention,
   elle reste en jeu, révélée. Pour qu'elle parte, le texte le dit et la
   définition le réalise (`saborde` ou une destruction sur `self`).
+- **Fenêtre d'interception** (`onIncomingDirectAttack`, 21/09/2026) : une
+  attaque DIRECTE au Navire s'arrête **à sa déclaration** si le défenseur a
+  au moins un piège éligible. L'attaque n'est pas coupée en deux — elle
+  n'est pas encore commencée : rien n'a été calculé, aucun bouclier
+  consommé. L'état porte `pendingAttack`, la fenêtre s'ouvre chez le
+  défenseur, et `dispatch` résout l'attaque dès que la fenêtre se referme
+  (seul point que toutes les actions traversent, donc le seul où la reprise
+  ne peut pas être oubliée).
+
+  L'effet `cancelIncomingAttack` annule **les seuls dégâts à la coque**. Le
+  coup a bien été porté : l'attaquant a dépensé son attaque, son propre
+  contrecoup s'applique, et les pertes de Raison qu'il inflige aussi. Le
+  montant `incomingAttackDamage` (« autant de dégâts ») rend la Puissance
+  de l'attaquant, et non le dégât final — boucliers, plafonds et faiblesse
+  de Navire ne s'appliquent pas, puisque le coup n'a pas touché.
+
+  Les autres modificateurs de dégâts directs restent **automatiques**
+  (Le Filet qui Respire, Cage de Flottaison, Carcasse Renversée, faiblesse
+  de Navire) : ce sont des réductions pures, jamais un désavantage, donc
+  rien à décider. Seul ce qui COÛTE quelque chose — une carte qui se
+  détruit, se Saborde, ou se révèle — mérite une fenêtre.
 
 ## Structure de tour
 

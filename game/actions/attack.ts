@@ -3,6 +3,8 @@ import { getCardDefinition } from "@/game/cards/sets/core";
 import { computeEffectiveStats } from "@/game/cards/stats";
 import { getShipDefinition } from "@/game/environment/shipData";
 import { isVisibleDuringTide } from "@/game/cards/types";
+import { collectReactionCandidates } from "@/game/triggers/triggerBus";
+import type { TriggerEvent } from "@/game/triggers/types";
 import { reasonAfterLoss } from "@/game/state/reason";
 import type { GameEvent } from "@/game/events/types";
 import { processTrigger } from "@/game/triggers/triggerBus";
@@ -172,9 +174,75 @@ function validate(state: GameState, action: AttackAction) {
  * l'appelant (`engine.ts`) via `processDeaths`, pas ici : cette fonction ne
  * fait que marquer les dégâts.
  */
+/**
+ * Ouvre la fenêtre d'interception si le DÉFENSEUR a au moins un piège
+ * éligible, et suspend l'attaque. Retourne `undefined` quand il n'y a rien
+ * à proposer — cas normal, et l'attaque se résout sans détour.
+ *
+ * `hasAttackedThisTurn` n'est PAS posé ici mais à la résolution, comme pour
+ * une attaque ordinaire : le poser à la déclaration ferait échouer la
+ * reprise, que la validation rejetterait au motif que l'attaquant a déjà
+ * attaqué. Aucun risque de double attaque pour autant — tant que la fenêtre
+ * est ouverte, `dispatch` n'accepte aucune autre action que la réponse du
+ * défenseur, et la résolution suit immédiatement.
+ */
+function suspendrePourInterception(state: GameState, action: AttackAction): ActionResult | undefined {
+  const defenderId = getOpponent(state, action.playerId).id;
+  const triggerEvents: TriggerEvent[] = [
+    { trigger: "onIncomingDirectAttack", playerId: defenderId, sourceInstanceId: action.attackerInstanceId },
+  ];
+  const candidats = collectReactionCandidates(state, triggerEvents, defenderId, state.turnNumber);
+  if (candidats.length === 0) return undefined;
+
+  const base = { turnNumber: state.turnNumber, timestamp: Date.now() };
+  const attackerPlayer = getPlayer(state, action.playerId);
+  const attaquant = attackerPlayer.board.find((u) => u.instanceId === action.attackerInstanceId)!;
+  const suspended: GameState = {
+    ...state,
+    pendingAttack: {
+      playerId: action.playerId,
+      attackerInstanceId: action.attackerInstanceId,
+      attackerPower: effectiveAttack(attaquant, state) + bonusDamageInTideState(attaquant, state),
+    },
+    pendingReaction: {
+      events: triggerEvents,
+      awaitingPlayerId: defenderId,
+      priorityQueue: [],
+      usedCandidateKeys: [],
+      turnNumber: state.turnNumber,
+    },
+  };
+
+  return {
+    ok: true,
+    state: suspended,
+    events: [
+      { ...base, type: "ATTACK", playerId: action.playerId, attackerInstanceId: action.attackerInstanceId },
+      { ...base, type: "REACTION_WINDOW_OPENED", playerId: defenderId },
+    ],
+  };
+}
+
 export function attack(state: GameState, action: AttackAction): ActionResult {
   const validation = validate(state, action);
   if (!validation.ok) return { ok: false, error: validation.error };
+
+  // --- FENÊTRE D'INTERCEPTION (grammaire des pièges, 21/09/2026) --------
+  //
+  // Avant de calculer quoi que ce soit, on demande au défenseur s'il
+  // intercepte. La fenêtre s'ouvre à la DÉCLARATION, pas au milieu de la
+  // résolution : rien n'a encore été consommé, donc il n'y a pas d'attaque
+  // coupée en deux à recoller — seulement une attaque pas encore commencée.
+  //
+  // Seules les attaques DIRECTES au Navire ouvrent cette fenêtre : un
+  // combat entre deux unités n'a pas de piège à proposer aujourd'hui.
+  //
+  // `state.pendingAttack` déjà posé = on est dans la REPRISE, la fenêtre a
+  // été posée puis refermée ; on résout pour de bon.
+  if (!action.defenderInstanceId && !state.pendingAttack) {
+    const suspendu = suspendrePourInterception(state, action);
+    if (suspendu) return suspendu;
+  }
 
   const attackerPlayer = getPlayer(state, action.playerId);
   const attackerUnit = attackerPlayer.board.find((u) => u.instanceId === action.attackerInstanceId)!;
@@ -231,6 +299,13 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
     }, undefined);
     let directDamage = directDamageCap === undefined ? shieldedDirectDamage : Math.min(shieldedDirectDamage, directDamageCap);
 
+    // Un piège a intercepté : les dégâts directs sont annulés, et RIEN
+    // d'autre. Le coup a bien été porté — l'attaquant a dépensé son
+    // attaque, son propre contrecoup s'applique, les pertes de Raison
+    // qu'il inflige aussi. Il n'a simplement pas touché la coque.
+    const intercepte = state.pendingAttack?.intercepted === true;
+    if (intercepte) directDamage = 0;
+
     // Contrecoup (Cylindre flottant, visible) : le DÉFENSEUR annule ces
     // dégâts, en renvoie une fraction (arrondie au supérieur) au Navire de
     // l'attaquant, puis la carte se brise et quitte le board.
@@ -284,7 +359,7 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
     };
     // Le Contrecoup a tout annulé : pas de « coup porté » de 0 dans le
     // journal ni dans l'animation.
-    if (!contrecoup) {
+    if (!contrecoup && !intercepte) {
       events.push({
         ...base,
         type: "DAMAGE",

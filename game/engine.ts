@@ -53,8 +53,35 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
   // Même principe pour "devient votre seule Créature" (`onBecomeOnlyCreature`).
   const loneBefore = snapshotLoneCreatures(state);
 
-  const result = applyAction(state, action);
+  let result = applyAction(state, action);
   if (!result.ok) return result;
+
+  // --- REPRISE D'UNE ATTAQUE SUSPENDUE ---------------------------------
+  //
+  // Une attaque directe s'arrête à sa déclaration quand le défenseur a un
+  // piège à proposer (`attack.ts`). Dès que cette fenêtre se referme — le
+  // défenseur a activé ou passé —, l'attaque se résout pour de bon, ici et
+  // pas ailleurs : `dispatch` est le seul endroit que TOUTES les actions
+  // traversent, donc le seul où la reprise ne peut pas être oubliée.
+  //
+  // `pendingAttack` reste posé PENDANT la reprise : c'est lui qui porte le
+  // drapeau `intercepted` qu'un piège vient éventuellement de lever, et sa
+  // présence empêche `attack()` de rouvrir la même fenêtre à l'infini. Il
+  // n'est retiré qu'une fois l'attaque résolue.
+  if (result.state.status === "active" && !result.state.pendingReaction && result.state.pendingAttack) {
+    const suspendue = result.state.pendingAttack;
+    const repris = applyAction(result.state, {
+      type: "attack",
+      playerId: suspendue.playerId,
+      attackerInstanceId: suspendue.attackerInstanceId,
+    });
+    // Une attaque devenue illégale entre-temps (l'attaquant a été détruit
+    // par le piège lui-même) ne casse rien : on abandonne la reprise et on
+    // garde l'état tel que la fenêtre l'a laissé.
+    result = repris.ok
+      ? { ok: true, state: { ...repris.state, pendingAttack: undefined }, events: [...result.events, ...repris.events] }
+      : { ok: true, state: { ...result.state, pendingAttack: undefined }, events: result.events };
+  }
 
   const deaths = processDeaths(result.state, state.turnNumber);
   const powerGains = processPowerGains(deaths.state, powerBefore, state.turnNumber);

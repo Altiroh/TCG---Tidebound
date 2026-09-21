@@ -43,10 +43,6 @@ type RuleId =
  * Un motif vide fait échouer le test : on documente, on ne contourne pas.
  */
 const EXCEPTIONS: Record<string, string> = {
-  "cylindre-flottant:optional":
-    "Contrecoup résolu d'office (décision du 16/09/2026) : annuler des dégâts et les renvoyer n'est jamais un désavantage.",
-  "cylindre-flottant:once-per-turn":
-    "« la première fois à chaque tour » est inhérent : la carte se brise après son unique Contrecoup.",
   "ancre-de-derive:optional":
     "Sabordage et report résolus d'office au changement de Marée (décision du 16/09/2026) : la carte n'a pas d'autre usage.",
 };
@@ -103,7 +99,9 @@ function amountsOf(effects: EffectDefinition[]): number[] {
   const values: number[] = [];
   for (const e of effects) {
     for (const amount of [e.amount, e.attackAmount, e.healthAmount]) {
-      if (amount?.value !== undefined) values.push(Math.abs(amount.value));
+      // Les montants CONTEXTUELS (« autant de dégâts ») n'ont pas de valeur
+      // littérale à confronter au texte : ils se lisent à la résolution.
+      if (amount?.kind === "flat") values.push(Math.abs(amount.value));
     }
   }
   return values;

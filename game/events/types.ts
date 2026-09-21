@@ -22,6 +22,7 @@ export type GameEventType =
   | "REASON_CHANGED"
   | "CARD_MOVED"
   | "DURATION_CHANGED"
+  | "ATTACK_INTERCEPTED"
   | "TURN_STARTED"
   | "END_TURN"
   | "TIDE_ADVANCED"
@@ -153,6 +154,12 @@ export interface ReasonChangedEvent extends BaseGameEvent {
  * temps — sans quoi la Structure semblait expirer sans raison au tour
  * suivant.
  */
+/** Un piège a annulé les dégâts directs d'une attaque (`cancelIncomingAttack`). */
+export interface AttackInterceptedEvent extends BaseGameEvent {
+  type: "ATTACK_INTERCEPTED";
+  attackerInstanceId: string;
+}
+
 export interface DurationChangedEvent extends BaseGameEvent {
   type: "DURATION_CHANGED";
   instanceId: string;
@@ -389,6 +396,7 @@ export interface ShipAbilityFiredEvent extends BaseGameEvent {
 }
 
 export type GameEvent =
+  | AttackInterceptedEvent
   | DurationChangedEvent
   | DrawCardEvent
   | PlayCardEvent

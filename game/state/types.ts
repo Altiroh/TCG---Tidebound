@@ -212,6 +212,24 @@ export interface GameState {
    */
   pendingChoice?: PendingChoice;
 
+  /**
+   * Attaque DÉCLARÉE mais pas encore résolue, suspendue le temps que le
+   * défenseur réponde à sa fenêtre d'interception (grammaire des pièges,
+   * 21/09/2026).
+   *
+   * L'attaque n'est pas coupée en deux : elle n'est simplement pas encore
+   * commencée. Aucun dégât n'a été calculé, aucun bouclier consommé — seul
+   * `hasAttackedThisTurn` est déjà posé, parce que déclarer une attaque
+   * EST l'avoir menée, qu'elle soit interceptée ou non.
+   *
+   * Quand la fenêtre se referme (`dispatch`), l'attaque se résout avec
+   * `intercepted` pour seule différence : les dégâts directs au Navire sont
+   * annulés. Tout le reste du pipeline — contrecoup de l'attaquant, perte
+   * de Raison infligée, déclencheurs — se déroule normalement : le coup a
+   * bien eu lieu, il n'a simplement pas porté.
+   */
+  pendingAttack?: PendingAttack;
+
   status: "active" | "finished";
   winnerId?: PlayerId;
 }
@@ -223,6 +241,21 @@ export interface GameState {
  * branches différentes élargirait ce type plutôt que de le généraliser
  * prématurément à des effets arbitraires.
  */
+/**
+ * Attaque suspendue pendant sa fenêtre d'interception. Porte l'action
+ * telle qu'elle a été déclarée, pour la rejouer à l'identique.
+ */
+export interface PendingAttack {
+  playerId: PlayerId;
+  attackerInstanceId: string;
+  /** Toujours absent ici : seules les attaques DIRECTES ouvrent une fenêtre. */
+  defenderInstanceId?: string;
+  /** Puissance de l'attaquant au moment de la déclaration — ce que « autant de dégâts » renvoie. */
+  attackerPower: number;
+  /** Un piège a annulé les dégâts directs de cette attaque. */
+  intercepted?: boolean;
+}
+
 /** Choix binaire forcé d'une Anomalie (ex: Le Fond Vous Regarde) : perdre de la Raison, ou subir des dégâts d'Ancrage. */
 export interface ReasonOrAnchorChoice {
   kind: "reasonOrAnchor";

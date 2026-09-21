@@ -52,6 +52,18 @@ export type EffectType =
    * Structure sans durée reçoit une fenêtre de visibilité.
    */
   | "durationLoss"
+  /**
+   * Annule les dégâts directs de l'attaque en cours d'interception
+   * (grammaire des pièges, 21/09/2026). N'a de sens que dans une capacité
+   * `onIncomingDirectAttack` : hors de cette fenêtre, il n'y a pas
+   * d'attaque suspendue et l'effet ne fait rien.
+   *
+   * N'annule QUE la frappe sur la coque. Le coup a bien été porté :
+   * l'attaquant a dépensé son attaque, son propre contrecoup s'applique, et
+   * les pertes de Raison qu'il inflige aussi. C'est un bouclier, pas une
+   * annulation de l'échange.
+   */
+  | "cancelIncomingAttack"
   // --- Environnement : Marée, modèle "durée + intensité" -----------------
   // (cadrage "Mécaniques verrouillées" sections 20-21, orientation 2026-09-10)
   /** Réduit la durée restante de l'état de Marée courant (rapproche la progression). */
@@ -107,7 +119,19 @@ export type EffectType =
 
 /** Une valeur numérique d'effet, pour l'instant une constante — prête à
  * être étendue vers des formules (ex: "= nombre d'unités contrôlées"). */
-export type EffectAmount = { kind: "flat"; value: number };
+export type EffectAmount =
+  | { kind: "flat"; value: number }
+  /**
+   * « autant de dégâts » : la Puissance de l'attaquant dont l'attaque vient
+   * d'être interceptée (`pendingAttack.attackerPower`). 0 hors fenêtre
+   * d'interception.
+   *
+   * C'est la Puissance de l'attaquant, PAS le dégât final qu'aurait subi la
+   * coque : boucliers, plafonds et faiblesse de Navire ne s'appliquent
+   * jamais, puisque le coup n'a pas porté. C'est aussi ce que le joueur lit
+   * sur la carte qui le frappe, donc ce que le texte promet.
+   */
+  | { kind: "incomingAttackDamage" };
 
 /**
  * Restriction d'une cible `chosenUnit` : le joueur désigne, mais seulement

@@ -40,20 +40,72 @@ function candidates(state: GameState) {
 }
 
 describe("Cylindre flottant — Contrecoup", () => {
-  it("annule les dégâts directs au Navire, en renvoie la moitié (arrondie au supérieur) à l'attaquant, puis se brise", () => {
+  it("SUSPEND l'attaque et propose le piège, sans rien appliquer d'office", () => {
     const attacker = instance("baleine-aux-cicatrices-blanches", "p1"); // 5 Puissance
     const cylindre = instance("cylindre-flottant", "p2"); // visible en Houle
+    const cible = instance("murene-aveugle", "p1"); // le permanent adverse à frapper
+    const state = testGameState({
+      phase: "combatPhase",
+      environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 4 }),
+      players: [
+        testPlayer("p1", { board: [attacker, cible], anchor: 20 }),
+        testPlayer("p2", { board: [cylindre], anchor: 20 }),
+      ],
+    });
+
+    const declaree = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attacker.instanceId });
+    ok(declaree);
+    // Rien n'est encore arrivé : l'attaque attend la réponse du défenseur.
+    expect(declaree.state.pendingAttack).toBeDefined();
+    expect(declaree.state.pendingReaction?.awaitingPlayerId).toBe("p2");
+    expect(player(declaree.state, "p2").anchor).toBe(20);
+    expect(board(declaree.state, "p2")).toHaveLength(1);
+  });
+
+  it("activé, il annule les dégâts, frappe le permanent désigné, et se détruit", () => {
+    const attacker = instance("baleine-aux-cicatrices-blanches", "p1"); // 5 Puissance
+    const cylindre = instance("cylindre-flottant", "p2");
+    const cible = instance("murene-aveugle", "p1");
+    const state = testGameState({
+      phase: "combatPhase",
+      environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 4 }),
+      players: [
+        testPlayer("p1", { board: [attacker, cible], anchor: 20 }),
+        testPlayer("p2", { board: [cylindre], anchor: 20 }),
+      ],
+    });
+
+    const declaree = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attacker.instanceId });
+    ok(declaree);
+    const active = activateReactionFor(declaree.state, "cylindre-flottant", cible.instanceId);
+    ok(active);
+
+    expect(player(active.state, "p2").anchor).toBe(20); // coque intacte
+    expect(active.events.some((e) => e.type === "ATTACK_INTERCEPTED")).toBe(true);
+    // L'attaque reprend et se termine : plus rien en suspens.
+    expect(active.state.pendingAttack).toBeUndefined();
+    // Le Cylindre s'est détruit, et la cible a pris les 5 Puissance.
+    expect(board(active.state, "p2")).toHaveLength(0);
+    expect(board(active.state, "p1").some((u) => u.instanceId === cible.instanceId)).toBe(false);
+  });
+
+  it("passé, l'attaque reprend et porte normalement", () => {
+    const attacker = instance("baleine-aux-cicatrices-blanches", "p1"); // 5 Puissance
+    const cylindre = instance("cylindre-flottant", "p2");
     const state = testGameState({
       phase: "combatPhase",
       environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 4 }),
       players: [testPlayer("p1", { board: [attacker], anchor: 20 }), testPlayer("p2", { board: [cylindre], anchor: 20 })],
     });
-    const result = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attacker.instanceId });
-    ok(result);
-    expect(player(result.state, "p2").anchor).toBe(20);
-    expect(player(result.state, "p1").anchor).toBe(17); // ceil(5 / 2) = 3
-    expect(board(result.state, "p2")).toHaveLength(0);
-    expect(player(result.state, "p2").graveyard.some((u) => u.instanceId === cylindre.instanceId)).toBe(true);
+
+    const declaree = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attacker.instanceId });
+    ok(declaree);
+    const passe = dispatch(declaree.state, { type: "passReaction", playerId: "p2" });
+    ok(passe);
+
+    expect(player(passe.state, "p2").anchor).toBe(15); // les 5 dégâts portent
+    expect(passe.state.pendingAttack).toBeUndefined();
+    expect(board(passe.state, "p2")).toHaveLength(1); // le Cylindre reste en jeu
   });
 
   it("ne fait rien tant qu'il est invisible (Calme)", () => {

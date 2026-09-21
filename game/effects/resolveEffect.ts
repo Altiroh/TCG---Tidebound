@@ -150,8 +150,16 @@ export interface EffectResolution {
   events: GameEvent[];
 }
 
-function amountValue(amount: EffectAmount | undefined): number {
-  return amount?.value ?? 0;
+/**
+ * Valeur numérique d'un montant d'effet. `state` n'est requis que pour les
+ * montants CONTEXTUELS — aujourd'hui `incomingAttackDamage`, qui lit
+ * l'attaque suspendue. Un montant plat n'en a pas besoin, d'où l'argument
+ * optionnel plutôt qu'une signature imposée aux vingt autres appels.
+ */
+function amountValue(amount: EffectAmount | undefined, state?: GameState): number {
+  if (amount === undefined) return 0;
+  if (amount.kind === "incomingAttackDamage") return state?.pendingAttack?.attackerPower ?? 0;
+  return amount.value;
 }
 
 /**
@@ -443,7 +451,11 @@ export function resolveEffect(
       // par `triggerBus.ts`, qui l'appellerait en retour : cycle de
       // dépendance à éviter. Pas encore nécessaire : aucune carte actuelle
       // ne réagit aux dégâts infligés par un effet plutôt qu'un combat.
-      const amount = amountValue(effect.amount);
+      //
+      // Seul appel à passer l'état : « autant de dégâts » (Cylindre
+      // flottant) lit la Puissance de l'attaque qui vient d'être
+      // interceptée.
+      const amount = amountValue(effect.amount, state);
       const damageTargets = resolveUnitTargets(state, effect, context);
       let nextState = { ...state, rngState: damageTargets.rngState };
 
@@ -740,6 +752,17 @@ export function resolveEffect(
         nextState = replacePlayer(nextState, { ...player, reason: reasonAfterLoss(player, finalAmount) });
       }
       return { state: nextState, events };
+    }
+
+    case "cancelIncomingAttack": {
+      // Hors fenêtre d'interception, il n'y a rien à annuler — l'effet est
+      // silencieusement sans objet plutôt qu'une erreur : une carte mal
+      // écrite ne doit pas casser une partie.
+      if (!state.pendingAttack) return { state, events };
+      return {
+        state: { ...state, pendingAttack: { ...state.pendingAttack, intercepted: true } },
+        events: [...events, { ...base, type: "ATTACK_INTERCEPTED", attackerInstanceId: state.pendingAttack.attackerInstanceId }],
+      };
     }
 
     case "durationLoss": {

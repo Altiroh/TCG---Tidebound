@@ -13,6 +13,8 @@
 import { describe, expect, it } from "vitest";
 import { dispatch } from "@/game/engine";
 import { getCardDefinition } from "@/game/cards/sets/core";
+import { botHasSomethingToDo } from "@/game/bot/runBotTurn";
+import { chooseBotAction } from "@/game/bot/chooseAction";
 import { instance, pendingCandidates, testEnvironment, testGameState, testPlayer } from "./testHelpers";
 import type { GameState } from "@/game/state/types";
 
@@ -84,5 +86,39 @@ describe("Structure masquée par la Marée — inactive par défaut", () => {
     ok(tourSuivant);
     const apresSonTour = tourSuivant.state.players[0]!.board.find((u) => u.cardId === BALISE);
     expect(apresSonTour!.turnsRemaining).toBe(avant - 1);
+  });
+});
+
+describe("Fenêtre d'interception — le bot sait y répondre", () => {
+  it("ne reste jamais bloqué devant une attaque suspendue", () => {
+    // Le Cylindre flottant n'est dans aucune liste v4 : les parties de bot
+    // ne croisent donc jamais cette fenêtre d'elles-mêmes. Sans ce test, une
+    // partie en ligne se figerait le jour où la carte serait jouée.
+    const attaquant = instance("baleine-aux-cicatrices-blanches", "p1");
+    const cylindre = instance("cylindre-flottant", "p2", { turnsRemaining: 3 });
+    const cible = instance("murene-aveugle", "p1");
+    const state = testGameState({
+      phase: "combatPhase",
+      environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 4 }),
+      players: [
+        testPlayer("p1", { board: [attaquant, cible], anchor: 20 }),
+        testPlayer("p2", { board: [cylindre], anchor: 20 }),
+      ],
+    });
+
+    const declaree = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attaquant.instanceId });
+    ok(declaree);
+    expect(declaree.state.pendingAttack).toBeDefined();
+
+    // Le défenseur est le bot : il doit avoir quelque chose à décider, et
+    // le coup qu'il rend doit être légal.
+    expect(botHasSomethingToDo(declaree.state, "p2")).toBe(true);
+    const coup = chooseBotAction(declaree.state, "p2", "moyen");
+    const joue = dispatch(declaree.state, coup);
+    ok(joue);
+
+    // Quoi qu'il ait choisi, l'attaque est résolue : plus rien en suspens.
+    expect(joue.state.pendingAttack).toBeUndefined();
+    expect(joue.state.pendingReaction).toBeUndefined();
   });
 });

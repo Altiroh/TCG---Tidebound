@@ -273,14 +273,41 @@ export const CORE_SET: CardDefinition[] = [
     health: 2,
     durationTurns: 3,
     visibleDuringTide: ["houle"],
+    // CARTE ÉTALON DES STRUCTURES-PIÈGES (passe de stabilisation,
+    // 21/09/2026). Elle était résolue AUTOMATIQUEMENT — le commentaire
+    // d'alors l'assumait : « renvoyer les dégâts n'est jamais un
+    // désavantage ». C'est faux depuis qu'elle se détruit ensuite : sacrifier
+    // la carte pour annuler 1 dégât est un mauvais échange, et le texte dit
+    // « vous pouvez ». Le joueur décide donc, par une fenêtre
+    // d'interception ouverte À LA DÉCLARATION de l'attaque.
+    //
+    // Visible, elle frappe un permanent adverse DÉSIGNÉ. Masquée, elle est
+    // un piège : l'adversaire voit un Slot occupé, pas une carte, et
+    // l'activer la révèle AVANT que ses effets ne s'appliquent
+    // (`hiddenReaction`).
+    //
+    // ÉQUILIBRAGE NON VERROUILLÉ : les dégâts renvoyés passent de la moitié
+    // à la TOTALITÉ, et la cible visible du Navire adverse à un permanent
+    // choisi. C'est un renforcement net, signalé comme à valider au
+    // playtest par le cadrage lui-même.
     text:
       "Durée : 3 tours. Visible pendant Houle. La première fois à chaque tour que votre Navire devrait subir des " +
-      "dégâts directs d'une attaque, vous pouvez déclencher Contrecoup : annulez ces dégâts et infligez au Navire " +
-      "adverse la moitié des dégâts annulés, arrondie au supérieur. Après résolution, elle se brise et quitte le " +
-      "board.",
-    // Contrecoup résolu automatiquement ("vous pouvez" : renvoyer les dégâts
-    // n'est jamais un désavantage) — cf. `game/actions/attack.ts`.
-    contrecoupOnDirectShipDamageWhileVisible: { reflectedFraction: 0.5 },
+      "dégâts directs d'une attaque, vous pouvez annuler ces dégâts et infliger autant de dégâts à un permanent " +
+      "adverse. Détruisez ensuite cette carte.",
+    abilities: [
+      {
+        trigger: "onIncomingDirectAttack",
+        mode: "optional",
+        oncePerTurnKey: "cylindreContrecoup",
+        condition: { selfVisible: true },
+        description: "Annulez les dégâts directs et infligez-les à un permanent adverse, puis détruisez cette carte.",
+        effects: [
+          { type: "cancelIncomingAttack", target: { kind: "controllerPlayer" } },
+          { type: "damage", target: { kind: "chosenUnit", among: { opponentOnly: true } }, amount: { kind: "incomingAttackDamage" } },
+          { type: "destroy", target: { kind: "self" } },
+        ],
+      },
+    ],
   },
   {
     id: "quelque-chose-sous-la-coque",

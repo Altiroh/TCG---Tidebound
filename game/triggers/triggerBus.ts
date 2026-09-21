@@ -243,6 +243,30 @@ function collectTriggeredWork(
     return result;
   }
 
+  if (event.trigger === "onIncomingDirectAttack") {
+    // Fenêtre d'INTERCEPTION : la capacité se lit sur le plateau du
+    // DÉFENSEUR (`event.playerId`), jamais sur l'attaquant — alors que
+    // `event.sourceInstanceId` désigne justement l'attaquant, pour que le
+    // piège puisse le viser. Sans cette branche dédiée, l'événement tombait
+    // dans le déclenchement « personnel » plus bas et cherchait le piège sur
+    // la carte qui frappe.
+    if (!event.playerId) return result;
+    const defenseur = state.players.find((p) => p.id === event.playerId);
+    if (!defenseur) return result;
+
+    for (const unit of defenseur.board) {
+      if (isInactive(state, unit)) continue;
+      const def = getCardDefinition(unit.cardId);
+      (def.abilities ?? []).forEach((ability, abilityIndex) => {
+        if (ability.trigger !== event.trigger || !matchesMode(ability)) return;
+        if (blocqueParMasquage(state, unit, ability)) return;
+        if (ability.oncePerTurnKey && !oncePerTurnAvailable(unit, ability.oncePerTurnKey, turnNumber)) return;
+        result.push(work(ability, abilityIndex, def.id, defenseur.id, unit.instanceId, turnNumber, event.sourceInstanceId));
+      });
+    }
+    return result;
+  }
+
   if (event.trigger === "startOfTurn" || event.trigger === "endOfTurn") {
     if (!event.playerId) return result;
     const player = state.players.find((p) => p.id === event.playerId);
