@@ -7,6 +7,7 @@ import { useEffect, type ReactNode } from "react";
 import styles from "@/features/shell/ScreenShell.module.css";
 import { NavigationTab } from "@/features/shell/NavigationTab";
 import { HeaderPlayer } from "@/features/shell/HeaderPlayer";
+import { navigateWithTransition } from "@/features/shell/pageTransitionBus";
 import { playButtonClick } from "@/lib/sound";
 
 export type ScreenSection = "collection" | "collectables" | "decks" | "market" | "boosters" | "quetes" | "partie";
@@ -100,7 +101,7 @@ export function ScreenHeader({ active, actions, onNavigate, nav = "collection" }
   /** Un seul chemin pour tout déplacement du bandeau : l'écran peut le décliner. */
   function go(href: string) {
     if (onNavigate?.(href)) return;
-    router.push(href);
+    if (!navigateWithTransition(href)) router.push(href);
   }
 
   return (
@@ -145,9 +146,13 @@ export function ScreenHeader({ active, actions, onNavigate, nav = "collection" }
             href="/"
             className={styles.brand}
             aria-label="Retour au menu"
+            // La navigation passe par `go`, qui consulte d'abord `onNavigate`
+            // (modifications non enregistrées) : l'ombre ne doit pas la court-circuiter.
+            data-no-transition
             onClick={(event) => {
               if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
-              if (onNavigate?.("/")) event.preventDefault();
+              event.preventDefault();
+              go("/");
             }}
           >
             <Image

@@ -41,12 +41,15 @@ const TRANSITION_SOUNDS = [
 ];
 let lastTransitionSound = -1;
 /**
- * Instant du dernier swoosh. Un lien qui lance la transition déclenche AUSSI
- * le clic de bouton (son `onClick`), juste après : le clic, immédiat et
- * franc, couvrait le swoosh, qui ne monte qu'après ~150 ms. Dans cette
- * fenêtre, le swoosh REMPLACE le clic.
+ * Un geste qui change de page joue AUSSI le clic de bouton — avant le swoosh
+ * (bouton du bandeau : `playButtonClick` puis `router.push`) ou après lui
+ * (lien : l'ombre intercepte le clic en capture, puis le `onClick` du lien
+ * joue son clic). Le clic, immédiat et franc, couvrait le swoosh, qui ne
+ * monte qu'après ~150 ms. Dans les deux ordres, le swoosh REMPLACE le clic :
+ * un clic qui suit un swoosh se tait, un clic qui le précède est coupé.
  */
 let lastTransitionAt = -Infinity;
+let lastClick: { at: number; stop: () => void } | null = null;
 const CLICK_REPLACED_BY_SWOOSH_MS = 120;
 
 /**
@@ -84,30 +87,33 @@ function decodeSound(context: AudioContext, src: string): Promise<AudioBuffer | 
   return pending;
 }
 
+/** Arrête une lecture en cours ou à venir — sans effet si elle est déjà finie. */
+type StopPlayback = () => void;
+const NOTHING_TO_STOP: StopPlayback = () => undefined;
+
 /** Repli historique : un élément `Audio` jetable (Web Audio absent, ou son pas encore décodé). */
-function playWithElement(src: string, gain: number): void {
+function playWithElement(src: string, gain: number): StopPlayback {
   try {
     const audio = new Audio(src);
     audio.volume = gain;
     void audio.play().catch(() => {
       // Autoplay bloqué ou fichier indisponible : silencieux, jamais bloquant.
     });
+    return () => audio.pause();
   } catch {
     // Best-effort.
+    return NOTHING_TO_STOP;
   }
 }
 
-function play(src: string, volume: number): void {
+function play(src: string, volume: number): StopPlayback {
   const settings = getAudioSettings();
   // Volume à 0 : inutile de lancer une lecture que personne n'entendra.
-  if (!settings.effects || settings.effectsVolume === 0) return;
+  if (!settings.effects || settings.effectsVolume === 0) return NOTHING_TO_STOP;
   const gain = volume * settings.effectsVolume;
 
   const context = getAudioContext();
-  if (!context) {
-    playWithElement(src, gain);
-    return;
-  }
+  if (!context) return playWithElement(src, gain);
   // Suspendu tant qu'aucune interaction n'a eu lieu : un clic le réveille.
   if (context.state === "suspended") void context.resume().catch(() => undefined);
 
@@ -115,14 +121,19 @@ function play(src: string, volume: number): void {
   if (!decoded) {
     // Toute première lecture de ce son : on la joue par l'ancien chemin pour
     // ne pas la perdre, pendant que le décodage se fait pour les suivantes.
-    playWithElement(src, gain);
+    const stop = playWithElement(src, gain);
     void decodeSound(context, src);
-    return;
+    return stop;
   }
 
+  // La lecture démarre à la résolution de la promesse : un arrêt demandé
+  // avant doit l'empêcher de partir, un arrêt demandé après doit la couper.
+  let stopped = false;
+  let stopNow: StopPlayback = NOTHING_TO_STOP;
   void decoded.then((buffer) => {
+    if (stopped) return;
     if (!buffer) {
-      playWithElement(src, gain);
+      stopNow = playWithElement(src, gain);
       return;
     }
     try {
@@ -132,16 +143,25 @@ function play(src: string, volume: number): void {
       gainNode.gain.value = gain;
       source.connect(gainNode).connect(context.destination);
       source.start();
+      stopNow = () => source.stop();
     } catch {
       // Best-effort.
     }
   });
+  return () => {
+    stopped = true;
+    try {
+      stopNow();
+    } catch {
+      // Déjà terminée.
+    }
+  };
 }
 
 /** Clic générique — boutons de l'UI (menus, decks, plateau...). */
 export function playButtonClick(): void {
   if (performance.now() - lastTransitionAt < CLICK_REPLACED_BY_SWOOSH_MS) return;
-  play("/assets/sound/button-click.wav", VOLUME.click);
+  lastClick = { at: performance.now(), stop: play("/assets/sound/button-click.wav", VOLUME.click) };
 }
 
 /** Une carte est piochée (pioche → main). */
@@ -166,6 +186,8 @@ export function playTransitionSwoosh(): void {
   const index = others[Math.floor(Math.random() * others.length)]!;
   lastTransitionSound = index;
   lastTransitionAt = performance.now();
+  if (lastClick && lastTransitionAt - lastClick.at < CLICK_REPLACED_BY_SWOOSH_MS) lastClick.stop();
+  lastClick = null;
   play(TRANSITION_SOUNDS[index]!, VOLUME.transition);
 }
 

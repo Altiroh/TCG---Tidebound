@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import styles from "@/features/shell/PageTransition.module.css";
+import { registerPageTransition } from "@/features/shell/pageTransitionBus";
 import { playTransitionSwoosh, preloadTransitionSounds } from "@/lib/sound";
 
 type Phase = "idle" | "covering" | "covered" | "revealing";
@@ -87,22 +88,36 @@ export function PageTransition() {
   }, []);
 
   useEffect(() => {
-    function onClick(event: MouseEvent) {
-      const href = internalNavigationTarget(event);
-      if (!href || prefersReducedMotion()) return;
-      // L'ombre se retire déjà : ce lien-là part sans transition plutôt que d'attendre.
-      if (phaseRef.current === "revealing" || phaseRef.current === "covered") return;
-      event.preventDefault();
+    /**
+     * Lance l'ombre vers `href` ; `false` = pas de transition, l'appelant
+     * navigue normalement. Partagé entre les liens (clic intercepté) et les
+     * boutons (`navigateWithTransition`).
+     */
+    function start(href: string): boolean {
+      if (prefersReducedMotion()) return false;
+      if (href.split(/[?#]/)[0] === window.location.pathname) return false;
+      // L'ombre se retire déjà : cette navigation part sans transition plutôt que d'attendre.
+      if (phaseRef.current === "revealing" || phaseRef.current === "covered") return false;
       pendingHref.current = href;
       // Déjà en train de couvrir : même course, seule la destination change.
-      if (phaseRef.current === "covering") return;
+      if (phaseRef.current === "covering") return true;
       router.prefetch(href);
       setDirection(randomDirection());
       playTransitionSwoosh();
       go("covering");
+      return true;
+    }
+
+    function onClick(event: MouseEvent) {
+      const href = internalNavigationTarget(event);
+      if (href && start(href)) event.preventDefault();
     }
     window.addEventListener("click", onClick, true);
-    return () => window.removeEventListener("click", onClick, true);
+    const unregister = registerPageTransition(start);
+    return () => {
+      window.removeEventListener("click", onClick, true);
+      unregister();
+    };
   }, [router]);
 
   useLayoutEffect(() => {
