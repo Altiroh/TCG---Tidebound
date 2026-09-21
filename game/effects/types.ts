@@ -161,7 +161,36 @@ export type EffectAmount =
    * jamais, puisque le coup n'a pas porté. C'est aussi ce que le joueur lit
    * sur la carte qui le frappe, donc ce que le texte promet.
    */
-  | { kind: "incomingAttackDamage" };
+  | { kind: "incomingAttackDamage" }
+  /**
+   * « autant que d'unités » : montant COMPTÉ sur un plateau au moment de la
+   * résolution, et non gravé dans la carte.
+   *
+   * C'est la primitive anti-swarm (Notion « Audit systémique » § Priorités
+   * de couverture : « punition du nombre de Slots occupés »). Le pool
+   * fabrique un board large plus facilement qu'il ne sait le punir — la
+   * mesure donne 9 à 20 invocations par partie pour 5 à 9 cartes posées,
+   * donc des corps que la Raison ne paie jamais. Un montant compté rend à
+   * ces corps un coût, sans passer par un board wipe : contre deux unités,
+   * la carte est faible ; contre six, elle est décisive.
+   *
+   * Ne compte que les UNITÉS (`UNIT_CARD_TYPES`), jamais les Structures,
+   * Objets, Équipements ou Anomalies — c'est le nombre de corps qui fait
+   * le swarm, pas le nombre de Slots occupés.
+   *
+   * `above` ne compte que ce qui DÉPASSE un seuil (« pour chaque unité
+   * adverse au-delà de deux ») : c'est lui qui rend la carte inerte contre
+   * un plateau normal. `per` multiplie chaque unité comptée (défaut 1).
+   */
+  | {
+      kind: "unitCount";
+      /** `"opponent"` : le plateau d'en face. `"controller"` : le sien — pour un effet de comeback. */
+      of: "opponent" | "controller";
+      /** Seuil en dessous duquel rien n'est compté. Défaut 0. */
+      above?: number;
+      /** Multiplicateur par unité comptée. Défaut 1. */
+      per?: number;
+    };
 
 /**
  * Restriction d'une cible `chosenUnit` : le joueur désigne, mais seulement

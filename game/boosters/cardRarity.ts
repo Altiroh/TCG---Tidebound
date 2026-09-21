@@ -91,6 +91,11 @@ const AUDITED_RARITY: Record<string, CardRarity> = {
   // --- Rares ------------------------------------------------------------
   "vieux-loup-de-mer": "rare",
   "cylindre-flottant": "rare",
+  // Anti-swarm (21/09/2026) : la Nasse est une réponse ciblée et
+  // conditionnelle, donc rare ; le Rôle d'Équipage est une taxe lente et
+  // lisible, donc commune.
+  "la-nasse-trop-pleine": "rare",
+  "le-role-dequipage": "common",
   "quelque-chose-sous-la-coque": "rare",
   "le-chant-sous-la-ligne": "rare",
   "raie-des-fosses": "rare",

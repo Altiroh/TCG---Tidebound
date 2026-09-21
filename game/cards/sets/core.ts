@@ -450,6 +450,111 @@ export const CORE_SET: CardDefinition[] = [
     ],
   },
   {
+    // --- ANTI-SWARM, première paire (21/09/2026) ------------------------
+    // Notion « Audit systémique » § Priorités de couverture : « Anti-swarm
+    // — faibles dégâts de zone, punition du nombre de Slots occupés ». Le
+    // banc d'essai le confirme : Le Banc Déborde est premier du tournoi des
+    // dix listes, et la mesure dit pourquoi — 9 à 20 INVOCATIONS par partie
+    // pour 5 à 9 cartes posées. Ses corps ne passent jamais par la Raison,
+    // donc la courbe de Raison ne le freine pas.
+    //
+    // Ces deux cartes rendent un prix au nombre, sans board wipe : aucune
+    // ne détruit quoi que ce soit d'office. La Nasse tape pour 1 — ce qu'un
+    // Péon 1/1 ne survit pas, ce qu'une P'tite Fesse 1/2 encaisse — et ne
+    // s'arme qu'à quatre unités adverses. Rester à trois est une réponse
+    // complète.
+    //
+    // Les deux seuils DIFFÈRENT, et la mesure le justifie : Le Banc Déborde
+    // tient 3,6 corps en moyenne contre La Ligne Tenue, jamais 5. À 4, une
+    // carte ne mord que sur les pointes — c'est ce qu'on veut d'une punition
+    // sèche et unique (la Nasse), pas d'une goutte lente (le Rôle, à 3).
+    //
+    // ÉQUILIBRAGE NON VERROUILLÉ : seuils, dégât et coûts sont des premières
+    // valeurs. Ce que la mesure dit déjà, en revanche, c'est que ces cartes
+    // ne renversent PAS le matchup — voir le message de commit.
+    id: "la-nasse-trop-pleine",
+    name: "La Nasse Trop Pleine",
+    type: "structure",
+    cost: 3,
+    health: 3,
+    durationTurns: 3,
+    maxCopies: 2,
+    visibleDuringTide: ["tempete", "abysses"],
+    text:
+      "Durée : 3 tours. Visible pendant Tempête et Abysses. La première fois à chaque tour qu'une unité adverse " +
+      "arrive alors que l'adversaire contrôle au moins 4 unités, infligez 1 dégât à chaque unité adverse. " +
+      "Réaction cachée : lorsqu'une unité adverse arrive alors que l'adversaire contrôle au moins 4 unités, vous " +
+      "pouvez révéler La Nasse Trop Pleine : infligez 1 dégât à chaque unité adverse. Détruisez ensuite La Nasse " +
+      "Trop Pleine.",
+    abilities: [
+      {
+        // Visible, elle est une menace CONNUE : l'adversaire voit le seuil
+        // et peut s'arrêter à trois corps. C'est là toute la différence
+        // avec un board wipe, qui ne laisse rien à décider.
+        trigger: "onEnterPlay",
+        triggeredBy: { cardTypes: ["marin", "creature"], opponentOnly: true },
+        oncePerTurnKey: "nasseTropPleine",
+        condition: { selfVisible: true, opponentUnitsAtLeast: 4 },
+        description: "Une quatrième unité adverse arrive : 1 dégât à chaque unité adverse.",
+        effects: [{ type: "damage", target: { kind: "allEnemyUnits" }, amount: { kind: "flat", value: 1 } }],
+      },
+      {
+        // Masquée, elle ne prévient pas — mais elle se détruit en se
+        // déclenchant, donc elle ne mord qu'une fois et l'adversaire sait
+        // ensuite que le Slot est vide.
+        trigger: "onEnterPlay",
+        triggeredBy: { cardTypes: ["marin", "creature"], opponentOnly: true },
+        mode: "optional",
+        hiddenReaction: true,
+        condition: { selfHidden: true, opponentUnitsAtLeast: 4 },
+        description: "Révélez La Nasse Trop Pleine : 1 dégât à chaque unité adverse, puis détruisez-la.",
+        effects: [
+          { type: "damage", target: { kind: "allEnemyUnits" }, amount: { kind: "flat", value: 1 } },
+          { type: "destroy", target: { kind: "self" } },
+        ],
+      },
+    ],
+  },
+  {
+    // Deuxième moitié de la paire : la punition du NOMBRE, qui ne tue rien.
+    // Elle ne s'en prend pas aux corps mais à ce qui devrait les payer — la
+    // Raison. Un banc large voit sa récupération amputée tour après tour
+    // (dette SUBIE, cf. `endTurn`), donc ses cartes PAYANTES deviennent
+    // hors de portée pendant que ses invocations, elles, restent gratuites.
+    //
+    // Toujours visible, et c'est voulu : « ne pas transformer toutes les
+    // Structures en pièges » (Notion). Une taxe qu'on ne voit pas venir
+    // n'apprend rien ; celle-ci se lit sur la table et invite l'adversaire
+    // à s'arrêter à trois corps de lui-même.
+    id: "le-role-dequipage",
+    name: "Le Rôle d'Équipage",
+    type: "structure",
+    cost: 2,
+    health: 3,
+    durationTurns: 4,
+    maxCopies: 2,
+    text:
+      "Durée : 4 tours. À la fin de votre tour, si l'adversaire contrôle au moins 3 unités, il perd 1 Raison " +
+      "pour chaque unité qu'il contrôle au-delà de 2.",
+    abilities: [
+      {
+        trigger: "endOfTurn",
+        condition: { opponentUnitsAtLeast: 3 },
+        description: "Fin de votre tour : l'adversaire perd 1 Raison par unité au-delà de la troisième.",
+        effects: [
+          {
+            type: "reasonLoss",
+            target: { kind: "opponentPlayer" },
+            // `above: 3` est ce qui rend la carte inerte contre un plateau
+            // normal ; `per: 1` est le « 1 Raison » du texte, écrit plutôt
+            // que sous-entendu.
+            amount: { kind: "unitCount", of: "opponent", above: 2, per: 1 },
+          },
+        ],
+      },
+    ],
+  },
+  {
     id: "marin-aux-yeux-rouges",
     name: "Marin aux Yeux Rouges",
     type: "marin",

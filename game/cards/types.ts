@@ -172,6 +172,19 @@ export interface TriggeredAbility {
     tideStateIn?: TideStateName[];
     controlsAnyCardIds?: string[];
     /**
+     * « si l'adversaire contrôle au moins N unités » : porte ANTI-SWARM
+     * (Notion « Audit systémique » § Priorités de couverture, 21/09/2026).
+     *
+     * Ne compte que les UNITÉS (`UNIT_CARD_TYPES`) : c'est le nombre de
+     * corps qui fait le swarm, pas le nombre de Slots occupés — une
+     * Structure adverse ne doit pas armer une carte écrite contre un banc.
+     *
+     * Sur la CAPACITÉ et non sur un effet, comme `controllerHandAtLeast` :
+     * un déclencheur qui brûlerait son `oncePerTurnKey` contre un plateau
+     * trop étroit pour qu'il serve ne punit rien du tout.
+     */
+    opponentUnitsAtLeast?: number;
+    /**
      * « si vous avez au moins N cartes en main » : taille de main MINIMALE
      * du contrôleur pour que la capacité se déclenche (ex: Gabier au Carnet
      * Mouillé, Lot 12).

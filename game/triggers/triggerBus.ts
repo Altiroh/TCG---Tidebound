@@ -1,6 +1,6 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { computeEffectiveStats } from "@/game/cards/stats";
-import { isVisibleDuringTide, type CardInstance, type TriggeredAbility, type TriggerSourceFilter } from "@/game/cards/types";
+import { isVisibleDuringTide, UNIT_CARD_TYPES, type CardInstance, type TriggeredAbility, type TriggerSourceFilter } from "@/game/cards/types";
 import type { EffectDefinition } from "@/game/effects/types";
 import type { EffectContext } from "@/game/effects/resolveEffect";
 import { hasGraveyardArrival, resolveEffect, revealRandomHandCards } from "@/game/effects/resolveEffect";
@@ -130,6 +130,16 @@ function matchesControlCondition(
   if (handAtLeast !== undefined) {
     const holder = state.players.find((p) => p.id === controllerId);
     if (!holder || holder.hand.length < handAtLeast) return false;
+  }
+  // « si l'adversaire contrôle au moins N unités » : la porte anti-swarm.
+  // Posée sur la CAPACITÉ et non sur un effet, elle épargne le
+  // `oncePerTurnKey` — une carte qui brûle son unique usage du tour contre
+  // un plateau trop étroit pour qu'elle serve ne punit rien.
+  const seuilUnites = ability.condition?.opponentUnitsAtLeast;
+  if (seuilUnites !== undefined) {
+    const adversaire = state.players.find((p) => p.id !== controllerId);
+    const unites = (adversaire?.board ?? []).filter((u) => UNIT_CARD_TYPES.includes(getCardDefinition(u.cardId).type));
+    if (unites.length < seuilUnites) return false;
   }
   const arrival = ability.condition?.graveyardArrival;
   if (arrival && !hasGraveyardArrival(state, controllerId, arrival)) return false;

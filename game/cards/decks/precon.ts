@@ -286,6 +286,11 @@ export const DECK_LA_LIGNE_TENUE: DeckList = {
     ...repeat("le-filet-qui-respire", 3),
     ...repeat("caisses-arrimees", 3),
     ...repeat("ancre-de-derive", 2),
+    // La réponse au nombre, ajoutée le 21/09/2026 : contre un banc large,
+    // la Nasse mord et le Rôle prélève ; contre trois corps, ni l'une ni
+    // l'autre ne fait quoi que ce soit.
+    ...repeat("la-nasse-trop-pleine", 2),
+    ...repeat("le-role-dequipage", 2),
     // Les défenses qui ne se cachent pas.
     ...repeat("carcasse-renversee", 2),
     ...repeat("brise-vague-de-fortune", 3),
