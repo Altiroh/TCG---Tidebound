@@ -18,6 +18,15 @@ amenée à évoluer.
 - `icons/` : icônes diverses hors bouton — rouage (paramètres), pochette
   (deck), etc. Nommer par fonction, ex: `parametres.webp`, `deck.webp`.
 - `logo/` : logo / wordmark "Tidebound" (actuellement du texte brut, `<h1>`).
+- `carte/` : la variante « carte marine » du menu, en cours d'évaluation
+  (`/?menu=carte`, cf. `components/menu/TideboundMenuCarte.tsx`).
+  - `plateau.webp` (1672 × 941, 16/9) : la table du navigateur, la carte
+    punaisée et les trois parchemins — TOUTE la scène en une image. Le
+    menu ne fait qu'y poser le logo et trois zones cliquables, en
+    pourcentages de l'image ; changer l'illustration demande donc de
+    recaler ces gabarits (`?menu=carte&reperes=1` trace leurs contours).
+  - Pas de « carte survolée » à fournir : le survol éclaire le parchemin
+    peint (`backdrop-filter`) au lieu de le remplacer.
 
 Respecter la direction artistique verrouillée (voir
 `public/assets/README.md` et `public/assets/cards/README.md`) : maritime

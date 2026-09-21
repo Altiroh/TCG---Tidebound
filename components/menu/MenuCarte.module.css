@@ -1,0 +1,227 @@
+/*
+ * MENU « CARTE MARINE » — la table du navigateur.
+ *
+ * Une seule illustration (`/assets/menu/carte/plateau.webp`, 1672 × 941) :
+ * la table, la carte punaisée, et les trois parchemins qui portent les
+ * destinations. Tout le reste est posé PAR-DESSUS, en pourcentages de
+ * cette image — donc à la même place quelle que soit la taille de l'écran.
+ *
+ * Trois règles tenues ici :
+ *   - l'illustration n'est jamais recadrée (`contain`) : les trois
+ *     parchemins sont la navigation, en perdre un au bord de l'écran
+ *     reviendrait à perdre un bouton ;
+ *   - les bandes laissées par le `contain` ne sont pas noires : la même
+ *     image, floutée et assombrie, les remplit — la scène déborde d'elle-même ;
+ *   - le survol ne redessine rien : il ÉCLAIRE le parchemin peint
+ *     (`backdrop-filter`) et pose un halo chaud autour. C'est pourquoi il
+ *     n'y a pas d'image « carte survolée » à fournir.
+ *
+ * Les gabarits des trois zones (`--x`, `--y`, `--w`, `--h`, `--rot`) sont
+ * mesurés sur l'illustration et posés dans `TideboundMenuCarte.tsx` : ce
+ * sont les seules coordonnées de ce menu, et elles vivent à un seul
+ * endroit.
+ */
+
+.scene {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #050d16;
+}
+
+/*
+ * LE DÉBORD. L'illustration est en 16/9 ; un téléphone couché est plus
+ * large, un laptop plus carré. Plutôt que deux bandes noires, la scène se
+ * prolonge d'elle-même : la même image en `cover`, floutée et éteinte,
+ * comme la lumière de la pièce autour de la table.
+ */
+.spill {
+  position: absolute;
+  /* Débordement volontaire : le flou mange ses propres bords, et un
+     `inset: 0` laissait un liseré clair sur les quatre côtés. */
+  inset: -6%;
+  background-image: var(--plate-image);
+  background-position: center;
+  background-size: cover;
+  filter: blur(34px) brightness(0.42) saturate(0.85);
+  transform: scale(1.06);
+}
+
+/* Le voile qui assoit la scène : le décor reste un décor, les parchemins
+   sont ce qu'il y a de plus clair à l'écran. */
+.scene::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(120% 90% at 50% 45%, transparent 52%, rgba(3, 9, 16, 0.55) 100%);
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * LE PLATEAU — l'illustration, entière, centrée.
+ * ────────────────────────────────────────────────────────────── */
+.plate {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 1;
+  /* Bornée par les DEUX dimensions : la hauteur d'abord (un écran large et
+     court montrerait sinon une table coupée en haut et en bas). */
+  width: min(100%, calc(100dvh * 1672 / 941));
+  aspect-ratio: 1672 / 941;
+  transform: translate(-50%, -50%);
+}
+
+.plateImage {
+  object-fit: contain;
+  user-select: none;
+  filter: drop-shadow(0 24px 60px rgba(0, 0, 0, 0.65));
+}
+
+/*
+ * LE VOILE DU TITRE. L'illustration porte déjà son titre, peint très
+ * grand ; le jeu, lui, a un logo à lui, et on le veut plus discret.
+ *
+ * Le titre peint n'est donc pas effacé : il passe HORS FOCUS. Le voile
+ * floute et assombrit ce qu'il y a derrière lui, comme le fond d'une
+ * photographie prise sur la table — et le vrai logo, net, se pose dessus.
+ *
+ * Le masque est ce qui rend l'effet invisible : sans lui, le flou
+ * s'arrête au bord du rectangle et laisse une barre nette en travers de
+ * la carte. Avec, il s'éteint avec le dégradé.
+ */
+.titleVeil {
+  position: absolute;
+  top: -8%;
+  left: 19%;
+  z-index: 2;
+  width: 62%;
+  height: 46%;
+  pointer-events: none;
+  background: radial-gradient(
+    56% 52% at 50% 50%,
+    rgba(6, 14, 24, 0.93) 0%,
+    rgba(6, 14, 24, 0.88) 54%,
+    rgba(6, 14, 24, 0.5) 74%,
+    rgba(6, 14, 24, 0.16) 89%,
+    transparent 100%
+  );
+  backdrop-filter: blur(22px) brightness(0.6) saturate(0.8);
+  -webkit-mask-image: radial-gradient(56% 52% at 50% 50%, #000 0%, #000 58%, rgba(0, 0, 0, 0.5) 78%, transparent 100%);
+  mask-image: radial-gradient(56% 52% at 50% 50%, #000 0%, #000 58%, rgba(0, 0, 0, 0.5) 78%, transparent 100%);
+}
+
+.logo {
+  position: absolute;
+  top: 17%;
+  left: 50%;
+  z-index: 3;
+  width: clamp(130px, 22%, 350px);
+  height: auto;
+  transform: translate(-50%, -50%);
+  user-select: none;
+  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.75));
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * LES TROIS PARCHEMINS — zones pointées sur l'illustration.
+ * ────────────────────────────────────────────────────────────── */
+.card {
+  position: absolute;
+  top: var(--y);
+  left: var(--x);
+  z-index: 4;
+  width: var(--w);
+  height: var(--h);
+  border-radius: 10px;
+  /* L'ordre compte : la rotation s'applique APRÈS le recentrage, sinon le
+     parchemin pivoterait autour d'un coin et sortirait de son cadre. */
+  transform: translate(-50%, -50%) rotate(var(--rot)) scale(1);
+  transition:
+    transform 180ms var(--tb-ease, cubic-bezier(0.2, 0.8, 0.2, 1)),
+    box-shadow 180ms ease-out;
+}
+
+/*
+ * LA LUMIÈRE, posée DANS la zone et non sur elle.
+ *
+ * Le survol n'ajoute aucune image : il éclaire le parchemin peint
+ * (`backdrop-filter`, qui porte sur ce qu'il y a DERRIÈRE l'élément).
+ * Sans masque, cet éclairage s'arrêtait net au bord du rectangle et
+ * dessinait une arête droite en travers de la carte marine ; le masque
+ * radial l'éteint doucement, comme une lanterne approchée du papier.
+ *
+ * Élément à part du lien : un masque rogne aussi les ombres portées, et
+ * le halo chaud, lui, doit déborder.
+ */
+.cardLight {
+  position: absolute;
+  inset: -3%;
+  border-radius: 12px;
+  opacity: 0;
+  backdrop-filter: brightness(1.2) saturate(1.12) contrast(1.02);
+  transition: opacity 180ms ease-out;
+  -webkit-mask-image: radial-gradient(closest-side, #000 0%, #000 62%, rgba(0, 0, 0, 0.45) 84%, transparent 100%);
+  mask-image: radial-gradient(closest-side, #000 0%, #000 62%, rgba(0, 0, 0, 0.45) 84%, transparent 100%);
+}
+
+.card:hover,
+.card:focus-visible {
+  transform: translate(-50%, -50%) rotate(var(--rot)) scale(1.03);
+  /* Un halo chaud, jamais un cadre : le parchemin est déchiré, un liseré
+     droit tout autour se verrait comme un rectangle posé dessus. */
+  box-shadow: 0 8px 26px rgba(255, 176, 72, 0.22), 0 0 52px 12px rgba(255, 198, 118, 0.3);
+}
+
+.card:hover .cardLight,
+.card:focus-visible .cardLight {
+  opacity: 1;
+}
+
+.card:focus-visible {
+  outline: 2px solid var(--tb-accent, #5fd0e6);
+  outline-offset: 4px;
+}
+
+/* Enfoncé : la punaise tient, le parchemin s'écrase d'un rien. */
+.card:active {
+  transform: translate(-50%, -50%) rotate(var(--rot)) scale(0.995);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.5);
+}
+
+/* Le libellé est PEINT sur l'illustration : ici, il n'existe que pour les
+   lecteurs d'écran et la recherche dans la page. */
+.cardLabel {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/*
+ * GABARIT DE CALAGE — `?menu=carte&reperes=1`.
+ *
+ * Trace le contour des trois zones sur l'illustration : c'est ainsi
+ * qu'elles ont été calées, et c'est ainsi qu'on les recalera si
+ * l'illustration change.
+ */
+.marks .card {
+  outline: 2px dashed rgba(95, 208, 230, 0.9);
+  background: rgba(95, 208, 230, 0.16);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: box-shadow 180ms ease-out;
+  }
+
+  .card:hover,
+  .card:focus-visible,
+  .card:active {
+    transform: translate(-50%, -50%) rotate(var(--rot));
+  }
+}
