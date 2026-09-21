@@ -57,6 +57,15 @@ interface Mesures {
   premierCout: Record<5 | 6 | 7, number[]>;
   deraison: number;
   ancrageDeraison: number;
+  /**
+   * Budget de dégâts : d'où viennent les points d'Ancrage perdus, les deux
+   * joueurs confondus. C'est la métrique qui explique la DURÉE d'une partie
+   * — une réserve d'Ancrage divisée par un débit. Attribuée par l'action en
+   * cours, seule information fiable : un `DAMAGE` sur une coque ne dit pas
+   * d'où il vient, mais l'action qui l'a produit, si.
+   */
+  ancrageParPoste: Record<string, number>;
+  ancrageDepart: number;
   tours: number;
   vainqueur: "a" | "b" | "nul";
 }
@@ -73,6 +82,7 @@ function partie(deckA: DeckList, deckB: DeckList, seed: number): Mesures {
     posesParTour: [], slotsFinDeTour: [],
     premierCout: { 5: [], 6: [], 7: [] },
     deraison: 0, ancrageDeraison: 0, tours: 0, vainqueur: "nul",
+    ancrageParPoste: {}, ancrageDepart: state.players.reduce((somme, pl) => somme + pl.anchor, 0),
   };
   const vus = new Set<number>();
 
@@ -81,7 +91,8 @@ function partie(deckA: DeckList, deckB: DeckList, seed: number): Mesures {
     const acteur = state.players.map((p) => p.id).find((id) => botHasSomethingToDo(state, id));
     if (!acteur) break;
     const avant = state;
-    const res = dispatch(state, chooseBotAction(state, acteur, "moyen"));
+    const action = chooseBotAction(state, acteur, "moyen");
+    const res = dispatch(state, action);
     if (!res.ok) break;
 
     const tour = avant.turnNumber;
@@ -96,7 +107,19 @@ function partie(deckA: DeckList, deckB: DeckList, seed: number): Mesures {
           m.premierCout[cout as 5 | 6 | 7].push(tour);
         }
       }
-      if (e.type === "DERAISON_SETTLED") { m.deraison += e.debt; m.ancrageDeraison += e.anchorDamage; }
+      if (e.type === "DERAISON_SETTLED") {
+        m.deraison += e.debt;
+        m.ancrageDeraison += e.anchorDamage;
+        if (e.anchorDamage > 0) m.ancrageParPoste.Déraison = (m.ancrageParPoste.Déraison ?? 0) + e.anchorDamage;
+      }
+      if (e.type === "DAMAGE" && e.targetPlayerId) {
+        const poste =
+          action.type === "attack" ? "Attaques"
+          : action.type === "endTurn" ? "Marée et fin de tour"
+          : action.type === "fireShipAbility" ? "Canon du Navire"
+          : "Effets de cartes";
+        m.ancrageParPoste[poste] = (m.ancrageParPoste[poste] ?? 0) + e.amount;
+      }
     }
     if (res.state.turnNumber !== avant.turnNumber) {
       m.slotsFinDeTour[tour] = Math.max(...res.state.players.map((pl) => pl.board.length));
@@ -171,7 +194,22 @@ for (const c of [5, 6, 7] as const) {
   console.log(`    Premier coût ${c} joué : ${tous.length === 0 ? "JAMAIS" : `T${f2(moy(tous))} (dans ${tous.length}/${global.length} parties)`}`);
 }
 console.log(`    Déraison par partie : ${f2(moy(global.map((m) => m.deraison)))} pts, soit ${f2(moy(global.map((m) => m.ancrageDeraison)))} Ancrage`);
-console.log(`    Durée moyenne : ${f2(moy(global.map((m) => m.tours)))} tours\n`);
+console.log(`    Durée moyenne : ${f2(moy(global.map((m) => m.tours)))} tours`);
+
+// --- Budget de dégâts : la réserve d'Ancrage divisée par son débit --------
+// Une partie dure exactement le temps que met ce débit à vider cette
+// réserve. Tant que la durée moyenne ne convient pas, c'est ce tableau
+// qu'il faut lire, pas le winrate des listes.
+const postes = new Map<string, number>();
+for (const m of global) for (const [poste, n] of Object.entries(m.ancrageParPoste)) postes.set(poste, (postes.get(poste) ?? 0) + n);
+const totalAncrage = [...postes.values()].reduce((x, y) => x + y, 0);
+console.log(`\n    Ancrage au départ, les deux joueurs : ${f2(moy(global.map((m) => m.ancrageDepart)))}`);
+console.log(`    Ancrage perdu par partie            : ${f2(totalAncrage / global.length)}`);
+for (const [poste, n] of [...postes.entries()].sort((a, b) => b[1] - a[1])) {
+  const part = totalAncrage === 0 ? 0 : Math.round((n / totalAncrage) * 100);
+  console.log(`      ${f2(n / global.length).padStart(6)}  ${String(part).padStart(3)}%  ${poste}`);
+}
+console.log("");
 
 console.log("## Tournoi toutes rondes — les dix listes v4\n");
 const noms = Object.keys(DECKS);
