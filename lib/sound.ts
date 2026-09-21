@@ -20,6 +20,22 @@ const VOLUME = {
 };
 
 /**
+ * RÉVISION des fichiers son — À MONTER À CHAQUE FICHIER REMPLACÉ SOUS LE
+ * MÊME NOM (`ambiance-menu.mp3`, `card-pioche.mp3`…).
+ *
+ * `/assets/` est servi depuis deux caches qui gardent un fichier jusqu'à un
+ * jour : le service worker (`public/sw.js`, cache d'abord) et le cache HTTP
+ * (`next.config`, `max-age=86400`). Même nom = même adresse = l'ANCIEN son.
+ * La révision change l'adresse (`?v=`) : les deux caches la voient comme
+ * un fichier neuf.
+ */
+const SOUND_REV = 2;
+
+function soundUrl(src: string): string {
+  return `${src}?v=${SOUND_REV}`;
+}
+
+/**
  * Chaque effet et SON volume, fichier par fichier. Les fichiers fournis ne
  * sont pas au même niveau (de -30 à -14 dB en moyenne sur la partie
  * audible, mesurés au décodage) : un volume commun ferait crier les uns et
@@ -117,7 +133,7 @@ function getAudioContext(): AudioContext | null {
 function decodeSound(context: AudioContext, src: string): Promise<AudioBuffer | null> {
   let pending = decodedSounds.get(src);
   if (!pending) {
-    pending = fetch(src)
+    pending = fetch(soundUrl(src))
       .then((response) => (response.ok ? response.arrayBuffer() : Promise.reject(new Error(String(response.status)))))
       .then((data) => context.decodeAudioData(data))
       .catch(() => null);
@@ -133,7 +149,7 @@ const NOTHING_TO_STOP: StopPlayback = () => undefined;
 /** Repli historique : un élément `Audio` jetable (Web Audio absent, ou son pas encore décodé). */
 function playWithElement(src: string, gain: number, offset = 0): StopPlayback {
   try {
-    const audio = new Audio(src);
+    const audio = new Audio(soundUrl(src));
     audio.volume = gain;
     if (offset > 0) audio.currentTime = offset;
     void audio.play().catch(() => {
@@ -351,7 +367,7 @@ function applyAmbiance(): void {
   }
 
   if (!ambianceEl) {
-    ambianceEl = new Audio("/assets/sound/ambiance-menu.mp3");
+    ambianceEl = new Audio(soundUrl("/assets/sound/ambiance-menu.mp3"));
     ambianceEl.loop = true;
     ambianceEl.volume = VOLUME.ambiance * settings.musicVolume;
   }
