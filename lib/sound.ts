@@ -40,6 +40,14 @@ const TRANSITION_SOUNDS = [
   "/assets/sound/swoosh-transition-3.mp3",
 ];
 let lastTransitionSound = -1;
+/**
+ * Instant du dernier swoosh. Un lien qui lance la transition déclenche AUSSI
+ * le clic de bouton (son `onClick`), juste après : le clic, immédiat et
+ * franc, couvrait le swoosh, qui ne monte qu'après ~150 ms. Dans cette
+ * fenêtre, le swoosh REMPLACE le clic.
+ */
+let lastTransitionAt = -Infinity;
+const CLICK_REPLACED_BY_SWOOSH_MS = 120;
 
 /**
  * Effets joués par Web Audio, à partir de sons DÉCODÉS UNE FOIS et gardés en
@@ -132,6 +140,7 @@ function play(src: string, volume: number): void {
 
 /** Clic générique — boutons de l'UI (menus, decks, plateau...). */
 export function playButtonClick(): void {
+  if (performance.now() - lastTransitionAt < CLICK_REPLACED_BY_SWOOSH_MS) return;
   play("/assets/sound/button-click.wav", VOLUME.click);
 }
 
@@ -156,7 +165,19 @@ export function playTransitionSwoosh(): void {
   const others = TRANSITION_SOUNDS.map((_, i) => i).filter((i) => i !== lastTransitionSound);
   const index = others[Math.floor(Math.random() * others.length)]!;
   lastTransitionSound = index;
+  lastTransitionAt = performance.now();
   play(TRANSITION_SOUNDS[index]!, VOLUME.transition);
+}
+
+/**
+ * Décode les swooshes à l'avance : sans cela, le PREMIER passe par un
+ * élément `Audio` qui doit d'abord charger le fichier, et arrive en retard.
+ * Un contexte encore suspendu (aucun geste du joueur) décode quand même.
+ */
+export function preloadTransitionSounds(): void {
+  const context = getAudioContext();
+  if (!context) return;
+  for (const src of TRANSITION_SOUNDS) void decodeSound(context, src);
 }
 
 let ambianceEl: HTMLAudioElement | null = null;

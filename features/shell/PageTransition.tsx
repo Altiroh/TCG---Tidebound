@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import styles from "@/features/shell/PageTransition.module.css";
-import { playTransitionSwoosh } from "@/lib/sound";
+import { playTransitionSwoosh, preloadTransitionSounds } from "@/lib/sound";
 
 type Phase = "idle" | "covering" | "covered" | "revealing";
 type Direction = "ltr" | "rtl";
@@ -81,6 +81,10 @@ export function PageTransition() {
     phaseRef.current = next;
     setPhase(next);
   };
+
+  useEffect(() => {
+    preloadTransitionSounds();
+  }, []);
 
   useEffect(() => {
     function onClick(event: MouseEvent) {
