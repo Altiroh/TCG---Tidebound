@@ -16,9 +16,9 @@ const COVER_TIMEOUT_MS = 5000;
  * avancer les animations, et `animationend` n'y arrive jamais ; sans ce
  * filet, la navigation attendrait indéfiniment.
  */
-const COVER_MS = 620;
-const REVEAL_MS = 720;
-const ANIMATION_SLACK_MS = 250;
+const COVER_MS = 280;
+const REVEAL_MS = 340;
+const ANIMATION_SLACK_MS = 150;
 
 function randomDirection(): Direction {
   return Math.random() < 0.5 ? "ltr" : "rtl";

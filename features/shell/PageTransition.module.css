@@ -80,7 +80,7 @@
 }
 
 .layer[data-phase="covering"] .strip {
-  animation: tb-shade-cover 620ms cubic-bezier(0.25, 0.6, 0.35, 1) forwards;
+  animation: tb-shade-cover 280ms cubic-bezier(0.25, 0.6, 0.35, 1) forwards;
 }
 
 .layer[data-phase="covered"] .strip {
@@ -88,7 +88,7 @@
 }
 
 .layer[data-phase="revealing"] .strip {
-  animation: tb-shade-reveal 720ms cubic-bezier(0.55, 0, 0.75, 0.45) forwards;
+  animation: tb-shade-reveal 340ms cubic-bezier(0.55, 0, 0.75, 0.45) forwards;
 }
 
 @keyframes tb-shade-cover {
