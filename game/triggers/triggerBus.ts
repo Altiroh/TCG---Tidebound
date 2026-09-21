@@ -116,6 +116,15 @@ function matchesControlCondition(
   if (ability.condition?.selfHidden) {
     const holder = sourceInstanceId ? findBoardUnit(state, sourceInstanceId) : undefined;
     if (!holder || isVisibleDuringTide(getCardDefinition(holder.unit.cardId), state.environment.tideState)) return false;
+    // RÉVÉLÉE = plus un secret (21/09/2026). Révéler retire la dissimulation,
+    // pas le masquage : la carte reste inactive tant que la Marée la cache,
+    // mais elle ne peut plus se « révéler » une seconde fois.
+    //
+    // Sans cette garde, un piège qui RESTE en jeu après s'être révélé — Filet
+    // à la Dérive, Le Filet qui Respire — reproposait sa réaction à CHAQUE
+    // attaque, indéfiniment : 43 fenêtres de réaction par partie, mesurées.
+    // Ceux qui se détruisent ou se Sabordent ne montraient pas le problème.
+    if (holder.unit.revealed) return false;
   }
   const handAtLeast = ability.condition?.controllerHandAtLeast;
   if (handAtLeast !== undefined) {

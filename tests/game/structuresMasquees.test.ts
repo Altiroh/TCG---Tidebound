@@ -189,6 +189,76 @@ describe("Pièges simultanés et cibles devenues invalides", () => {
   });
 });
 
+describe("Une Réaction cachée déjà révélée ne se repropose pas", () => {
+  /**
+   * Révélée = plus un secret (21/09/2026). Le Filet à la Dérive et Le Filet
+   * qui Respire RESTENT en jeu après s'être révélés — les autres pièges se
+   * détruisent ou se Sabordent, ce qui masquait le défaut. Sans garde, leur
+   * Réaction cachée était reproposée à CHAQUE attaque, indéfiniment : la
+   * mesure donnait 43 fenêtres de réaction par partie contre 6 après
+   * correction.
+   */
+  function deuxAttaquantsEnAbysses() {
+    // Le Filet est visible en Calme et Houle : en Abysses il est masqué,
+    // donc sa Réaction cachée est proposable et sa défense visible se tait.
+    const premier = instance("murene-aveugle", "p1");
+    const second = instance("marin-des-jetees", "p1");
+    const filet = instance("filet-a-la-derive", "p2", { turnsRemaining: 3 });
+    return {
+      premier,
+      second,
+      filet,
+      state: testGameState({
+        phase: "combatPhase",
+        environment: testEnvironment({ tideState: "abysses", tideRemainingTurns: 4 }),
+        players: [
+          testPlayer("p1", { board: [premier, second], anchor: 20 }),
+          testPlayer("p2", { board: [filet], anchor: 20 }),
+        ],
+      }),
+    };
+  }
+
+  it("le Filet à la Dérive n'est proposé qu'une seule fois, même s'il reste en jeu", () => {
+    const { premier, second, filet, state } = deuxAttaquantsEnAbysses();
+
+    const attaque1 = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: premier.instanceId });
+    ok(attaque1);
+    expect(pendingCandidates(attaque1.state).map((c) => c.cardId)).toContain("filet-a-la-derive");
+
+    const revele = activateReactionFor(attaque1.state, "filet-a-la-derive");
+    ok(revele);
+    const enJeu = board(revele.state, "p2").find((u) => u.instanceId === filet.instanceId);
+    expect(enJeu).toBeDefined(); // il ne se détruit pas : c'est là qu'était le piège
+    expect(enJeu!.revealed).toBe(true);
+
+    // Seconde attaque, même tour : plus aucune fenêtre à ouvrir.
+    const attaque2 = dispatch(revele.state, { type: "attack", playerId: "p1", attackerInstanceId: second.instanceId });
+    ok(attaque2);
+    expect(attaque2.state.pendingReaction).toBeUndefined();
+    expect(attaque2.state.pendingAttack).toBeUndefined();
+  });
+
+  it("révéler retire la dissimulation, pas le masquage : la défense visible reste muette", () => {
+    // Une carte révélée que la Marée cache toujours n'est pas « visible »
+    // pour autant — elle reste inactive, `selfVisible` la refuse.
+    const { premier, second, state } = deuxAttaquantsEnAbysses();
+
+    const attaque1 = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: premier.instanceId });
+    ok(attaque1);
+    const revele = activateReactionFor(attaque1.state, "filet-a-la-derive");
+    ok(revele);
+
+    // Le Marin des Jetées frappe à pleine Puissance : ni les 2 de la Réaction
+    // (dépensés sur la Murène), ni le 1 de la défense visible, qui dort.
+    const avant = player(revele.state, "p2").anchor;
+    const attaque2 = dispatch(revele.state, { type: "attack", playerId: "p1", attackerInstanceId: second.instanceId });
+    ok(attaque2);
+    const puissance = getCardDefinition("marin-des-jetees").attack ?? 0;
+    expect(avant - player(attaque2.state, "p2").anchor).toBe(puissance);
+  });
+});
+
 describe("Le Canon du Navire passe par la fenêtre d'interception", () => {
   /** Goliath armé, prêt à tirer sur le Navire adverse. */
   function goliathArme(defenseurs: ReturnType<typeof instance>[]) {
