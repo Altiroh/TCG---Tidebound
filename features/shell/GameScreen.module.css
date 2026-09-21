@@ -117,6 +117,31 @@
   }
 }
 
+/*
+ * TÉLÉPHONE COUCHÉ — la page rend ses blancs.
+ *
+ * Les écarts de la zone de contenu se mesurent en `vh` : sur un téléphone
+ * couché (390 à 412 px), ils tombent déjà à leur plancher, et ce plancher
+ * a été choisi pour un laptop. Quatre blocs empilés y perdaient 40 px en
+ * gouttières et 30 en marges — l'équivalent d'une rangée de cartes.
+ *
+ * Même seuil que partout ailleurs (`--tb-fs-page-title`, `app/tokens.css`).
+ */
+@media (max-height: 560px) {
+  .contentInner {
+    gap: 10px;
+  }
+
+  .content {
+    padding-top: 10px;
+    padding-bottom: calc(12px + var(--tb-safe-bottom));
+  }
+
+  .pageHead {
+    gap: 10px;
+  }
+}
+
 /* ══════════════════════════════════════════════════════════════
  * DESIGN SYSTEM — COMPOSANTS PARTAGÉS
  * ══════════════════════════════════════════════════════════════

@@ -260,3 +260,46 @@
 .reroll {
   margin-top: 2px;
 }
+
+/*
+ * TÉLÉPHONE COUCHÉ — quatre quêtes plutôt que deux.
+ *
+ * La ligne de quête est dessinée pour une page haute : vignette de 46 px,
+ * deux lignes de texte, un trait de progression et son compte. Sur un
+ * téléphone couché (390 à 412 px, bandeau déduit), deux lignes remplissaient
+ * l'écran — et le journal, c'est justement la LISTE qu'on vient lire.
+ *
+ * Même seuil que les autres écrans (`app/tokens.css`).
+ */
+@media (max-height: 560px) {
+  .list {
+    gap: 6px;
+  }
+
+  .row {
+    gap: 10px;
+    padding: 7px 10px;
+  }
+
+  .rowMain {
+    gap: 4px;
+  }
+
+  .categoryMark {
+    width: 30px;
+    height: 30px;
+  }
+
+  .label {
+    font-size: 12.5px;
+    line-height: 1.25;
+  }
+
+  .categoryName {
+    font-size: 9px;
+  }
+
+  .section {
+    gap: 6px;
+  }
+}

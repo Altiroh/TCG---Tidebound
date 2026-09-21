@@ -343,7 +343,7 @@ export function NewMatchScreen({
               </div>
 
               {mode === "bot" && step === 2 && (
-                <section className={`${game.panel} ${styles.group}`} style={{ padding: "clamp(12px, 1.2vw, 18px)" }}>
+                <section className={`${game.panel} ${styles.group} ${styles.botPanel}`}>
                   <h2 className={game.sectionTitle}>Difficulté du bot</h2>
                   <div className={styles.difficulty} role="radiogroup" aria-label="Difficulté du bot">
                     {BOT_DIFFICULTIES.map((d) => (

@@ -504,9 +504,16 @@
   font-weight: 400;
 }
 
+/*
+ * L'invite s'ABRÈGE au lieu d'être tranchée : sur un téléphone couché, le
+ * champ du bandeau tombe à 96 px (`.headerSearch`,
+ * `GameScreen.module.css`) et « Rechercher une carte… » s'arrêtait net sur
+ * « Recherc », sans rien dire de ce qui manquait.
+ */
 .searchInput::placeholder {
   color: var(--cb-ivory-dim);
   opacity: 0.85;
+  text-overflow: ellipsis;
 }
 
 /* La croix native de `type="search"` ferait double emploi avec `.searchClear`. */
