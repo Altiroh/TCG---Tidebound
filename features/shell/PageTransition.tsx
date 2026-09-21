@@ -31,6 +31,38 @@ function prefersReducedMotion(): boolean {
 }
 
 /**
+ * Écrans qui regroupent plusieurs adresses. L'ombre marque un changement
+ * d'ÉCRAN, pas un changement d'onglet ni de contenu à l'intérieur d'un
+ * écran : passer de Cartes à Decks (onglets du bandeau), ouvrir un deck ou
+ * aller de la connexion à l'inscription se fait sans elle.
+ *
+ * Premier segment de l'adresse → écran. Hors de cette table, un segment est
+ * un écran à lui seul (`/market`, `/partie`, `/profil`…).
+ */
+const SCREEN_OF_SEGMENT: Record<string, string> = {
+  // Les onglets du bandeau (`ScreenHeader`) et ce qui s'ouvre dedans.
+  collection: "collection",
+  collectables: "collection",
+  decks: "collection",
+  boosters: "collection",
+  navires: "collection",
+  connexion: "auth",
+  inscription: "auth",
+  "reinitialiser-mot-de-passe": "auth",
+  auth: "auth",
+};
+
+function screenOf(pathname: string): string {
+  const segment = pathname.split("/")[1] ?? "";
+  return SCREEN_OF_SEGMENT[segment] ?? segment;
+}
+
+/** Même écran : la navigation se fait sans ombre. */
+function sameScreen(fromPathname: string, toHref: string): boolean {
+  return screenOf(fromPathname) === screenOf(toHref.split(/[?#]/)[0]!);
+}
+
+/**
  * Lien interne vers une AUTRE page, cliqué sans modificateur : c'est le seul
  * cas qu'on retient. Nouvel onglet, téléchargement, lien externe, simple
  * ancre ou `data-no-transition` suivent leur chemin habituel.
@@ -95,7 +127,7 @@ export function PageTransition() {
      */
     function start(href: string): boolean {
       if (prefersReducedMotion()) return false;
-      if (href.split(/[?#]/)[0] === window.location.pathname) return false;
+      if (sameScreen(window.location.pathname, href)) return false;
       // L'ombre se retire déjà : cette navigation part sans transition plutôt que d'attendre.
       if (phaseRef.current === "revealing" || phaseRef.current === "covered") return false;
       pendingHref.current = href;
@@ -122,12 +154,13 @@ export function PageTransition() {
 
   useLayoutEffect(() => {
     if (previousPathname.current === pathname) return;
+    const changedScreen = !sameScreen(previousPathname.current, pathname);
     previousPathname.current = pathname;
     if (timeout.current !== null) window.clearTimeout(timeout.current);
     timeout.current = null;
     if (phaseRef.current === "covered") {
       go("revealing");
-    } else if (phaseRef.current === "idle" && !prefersReducedMotion()) {
+    } else if (phaseRef.current === "idle" && changedScreen && !prefersReducedMotion()) {
       setDirection(randomDirection());
       playTransitionSwoosh();
       go("revealing");
