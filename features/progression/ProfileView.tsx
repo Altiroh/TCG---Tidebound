@@ -36,7 +36,7 @@ import { AchievementBoard } from "@/features/progression/AchievementBoard";
 import { PreconToken, TideCoin } from "@/features/shell/GameIcons";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/progression/Profile.module.css";
-import { playButtonClick, playRewardClaimed } from "@/lib/sound";
+import { playButtonClick, playRewardClaimed, playTabClick } from "@/lib/sound";
 
 export type ProfileTab = "carnet" | "recompenses" | "quetes" | "exploits";
 
@@ -254,7 +254,7 @@ export function ProfileView({ profile, onRefresh, initialTab = "carnet", onLeave
                 className={tab === entry.id && !picking ? styles.tabActive : styles.tab}
                 onClick={() => {
                   if (tab === entry.id && !picking) return;
-                  playButtonClick();
+                  playTabClick();
                   setPicking(false);
                   setTab(entry.id);
                 }}

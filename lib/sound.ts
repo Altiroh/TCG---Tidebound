@@ -54,9 +54,11 @@ function soundUrl(src: string): string {
  * qui attend 0,6 s avant de se faire entendre arrive après le geste.
  */
 const SOUNDS = {
+  // Clic d'interface général.
   btnInterface1: { src: "/assets/sound/btn-interface.mp3", gain: 0.71 }, // -23.9 dB · 0,05 s
+  // Changement d'onglet.
   btnInterface2: { src: "/assets/sound/btn-interface-2.mp3", gain: 1 }, // -27.3 dB · 0,78 s
-  btnInterface3: { src: "/assets/sound/btn-interface-3.mp3", gain: 0.32 }, // -17.2 dB · 1,34 s
+  // `btn-interface-3.mp3` (-17.2 dB · 1,34 s, gain 0,32) : mis de côté pour l'instant.
   swoosh1: { src: "/assets/sound/swoosh-transition.mp3", gain: 0.28 }, // -18.1 dB · 1,06 s
   swoosh2: { src: "/assets/sound/swoosh-transition-2.mp3", gain: 0.28 }, // -17.3 dB · 1,08 s
   swoosh3: { src: "/assets/sound/swoosh-transition-3.mp3", gain: 0.28 }, // -17.2 dB · 1,06 s
@@ -82,7 +84,6 @@ const SOUNDS = {
 
 type SoundId = keyof typeof SOUNDS;
 
-const BUTTON_SOUNDS: readonly SoundId[] = ["btnInterface1", "btnInterface2", "btnInterface3"];
 const TRANSITION_SOUNDS: readonly SoundId[] = ["swoosh1", "swoosh2", "swoosh3"];
 
 /** Un son de la liste, jamais le même que le précédent de cette liste. */
@@ -91,7 +92,6 @@ function pickOther(list: readonly SoundId[], last: SoundId | null): SoundId {
   return others[Math.floor(Math.random() * others.length)]!;
 }
 
-let lastButtonSound: SoundId | null = null;
 let lastTransitionSound: SoundId | null = null;
 
 /**
@@ -227,12 +227,19 @@ function playActionSound(id: SoundId): void {
   playSound(id);
 }
 
-/** Clic générique — boutons de l'UI (menus, decks, plateau...). Un des trois sons d'interface, jamais deux fois le même d'affilée. */
-export function playButtonClick(): void {
+function playClick(id: SoundId): void {
   if (performance.now() - lastActionAt < CLICK_REPLACED_BY_ACTION_MS) return;
-  const id = pickOther(BUTTON_SOUNDS, lastButtonSound);
-  lastButtonSound = id;
   lastClick = { at: performance.now(), stop: playSound(id) };
+}
+
+/** Clic générique — boutons et éléments de l'UI (menus, decks, plateau...). */
+export function playButtonClick(): void {
+  playClick("btnInterface1");
+}
+
+/** Changement d'ONGLET : bandeau (Cartes, Decks…), rayons du Market, onglets du profil, familles de decks. */
+export function playTabClick(): void {
+  playClick("btnInterface2");
 }
 
 /** Survol d'un parchemin du menu d'accueil. */
@@ -336,7 +343,7 @@ export function playTransitionSwoosh(): void {
 export function preloadInterfaceSounds(): void {
   const context = getAudioContext();
   if (!context) return;
-  for (const id of [...TRANSITION_SOUNDS, ...BUTTON_SOUNDS, "menuCardHover", "menuCardClick"] as const) void decodeSound(context, SOUNDS[id].src);
+  for (const id of [...TRANSITION_SOUNDS, "btnInterface1", "btnInterface2", "menuCardHover", "menuCardClick"] as const) void decodeSound(context, SOUNDS[id].src);
 }
 
 let ambianceEl: HTMLAudioElement | null = null;

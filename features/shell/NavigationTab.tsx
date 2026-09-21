@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import styles from "@/features/shell/ScreenShell.module.css";
-import { playButtonClick } from "@/lib/sound";
+import { playTabClick } from "@/lib/sound";
 
 interface NavigationTabProps {
   children: ReactNode;
@@ -17,13 +17,13 @@ export function NavigationTab({ children, active = false, href, onClick }: Navig
   const className = active ? styles.navTabActive : styles.navTab;
 
   function handleClick() {
-    playButtonClick();
+    playTabClick();
     onClick?.();
   }
 
   if (href) {
     return (
-      <Link href={href} className={className} onClick={() => playButtonClick()}>
+      <Link href={href} className={className} onClick={() => playTabClick()}>
         {children}
       </Link>
     );

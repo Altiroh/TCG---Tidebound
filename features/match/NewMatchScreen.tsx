@@ -16,7 +16,7 @@ import { GameScreen } from "@/features/shell/GameScreen";
 import { shipNameOf } from "@/features/ships/ShipPortrait";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/match/NewMatch.module.css";
-import { playButtonClick, playGameStart } from "@/lib/sound";
+import { playButtonClick, playGameStart, playTabClick } from "@/lib/sound";
 
 export type MatchOpponent = { type: "pvp" } | { type: "bot"; difficulty: BotDifficulty };
 
@@ -399,7 +399,7 @@ export function NewMatchScreen({
                       className={deckTab === tab.id ? styles.deckTabActive : styles.deckTab}
                       onClick={() => {
                         if (deckTab === tab.id) return;
-                        playButtonClick();
+                        playTabClick();
                         setDeckTab(tab.id);
                       }}
                     >

@@ -18,7 +18,7 @@ import type { CatalogDeckView } from "@/features/decks/catalogService";
 import { DeckBox } from "@/features/decks/DeckBox";
 import { nameplateArtUrl } from "@/features/decks/nameplateArt";
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
-import { playAddToCart, playButtonClick, playMarketBuy } from "@/lib/sound";
+import { playAddToCart, playButtonClick, playMarketBuy, playTabClick } from "@/lib/sound";
 import { BoosterContentsDialog } from "@/features/market/BoosterContentsDialog";
 
 interface MarketScreenProps {
@@ -376,7 +376,7 @@ export function MarketScreen({ inventory, catalog, collectables }: MarketScreenP
                     aria-pressed={active}
                     onClick={() => {
                       if (active) return;
-                      playButtonClick();
+                      playTabClick();
                       setSection(entry.section!);
                     }}
                   >
