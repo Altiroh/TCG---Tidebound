@@ -19,7 +19,7 @@ describe("createGameState", () => {
     expect(state.players[1].hand).toHaveLength(RULES.STARTING_HAND_SIZE + RULES.SECOND_PLAYER_EXTRA_CARD);
   });
 
-  it("installe l'Ancrage et la Raison max depuis le Navire choisi par chaque deck, mais démarre au plafond de 25 % (arrondi au supérieur)", () => {
+  it("installe l'Ancrage et la Raison max depuis le Navire choisi par chaque deck, mais démarre au plafond de 15 % (arrondi au supérieur)", () => {
     const state = newTestGame();
     expect(state.players[0].shipId).toBe("le-brise-lames");
     expect(state.players[0].anchor).toBe(24);
@@ -29,8 +29,8 @@ describe("createGameState", () => {
     expect(state.players[1].shipId).toBe("le-courlis");
     expect(state.players[1].anchor).toBe(17);
     expect(state.players[1].reasonMax).toBe(12);
-    expect(state.players[1].reason).toBe(3);
-    expect(state.players[1].reasonCap).toBe(3);
+    expect(state.players[1].reason).toBe(2);
+    expect(state.players[1].reasonCap).toBe(2);
   });
 
   it("initialise la Marée en Calme, orientation Montante, avec sa durée et son Intensité de base", () => {

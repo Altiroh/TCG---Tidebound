@@ -3,6 +3,7 @@ import { dispatch } from "@/game/engine";
 import { computeEffectiveStats } from "@/game/cards/stats";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { handBreakCost } from "@/game/actions/breakObject";
+import { reasonCeiling } from "@/game/state/reason";
 import { instance, testEnvironment, testGameState, testPlayer } from "./testHelpers";
 import type { GameState } from "@/game/state/types";
 
@@ -632,7 +633,7 @@ describe("engine.dispatch - attack", () => {
 });
 
 describe("engine.dispatch - endTurn", () => {
-  it("passe la main au joueur suivant, remet sa Raison à 100 % (hors courbe de début de partie) et pioche", () => {
+  it("passe la main au joueur suivant, lui rend 1 Raison (et non plus la totalité) et pioche", () => {
     const deckCard = instance("marin-des-jetees", "p2");
     const state = testGameState({
       players: [
@@ -647,7 +648,7 @@ describe("engine.dispatch - endTurn", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.state.activePlayerId).toBe("p2");
-    expect(result.state.players[1].reason).toBe(10); // 5 → remise à 100 % de sa Raison max
+    expect(result.state.players[1].reason).toBe(6); // 5 + 1 : la Raison persiste, elle ne se remplit plus
     expect(result.state.players[1].hand).toHaveLength(1);
     expect(result.state.turnNumber).toBe(2);
   });
@@ -689,12 +690,12 @@ describe("engine.dispatch - endTurn", () => {
     const result = dispatch(state, { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    // p2 devient actif à 0 Raison : aucune perte d'Ancrage (ce n'est pas la fin de SON tour), Raison remise à 100 %.
+    // p2 devient actif à 0 Raison : 0 n'est pas une dette (il faut être SOUS 0), donc aucune perte d'Ancrage.
     expect(result.state.players[1].anchor).toBe(18);
-    expect(result.state.players[1].reason).toBe(10);
+    expect(result.state.players[1].reason).toBe(1); // 0 + récupération naturelle
   });
 
-  it("Déraison : à la fin de SON tour, chaque point sous 0 inflige 1 dégât d'Ancrage et la Raison repart de 0", () => {
+  it("Déraison : la dette n'est PAS réglée en fin de tour — elle reste affichée pendant tout le tour adverse", () => {
     const state = testGameState({
       players: [testPlayer("p1", { reason: -4, reasonMax: 10, anchor: 18 }), testPlayer("p2", { reason: 5, anchor: 20 })],
       activePlayerId: "p1",
@@ -703,14 +704,34 @@ describe("engine.dispatch - endTurn", () => {
     const result = dispatch(state, { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
+    // p1 termine à -4 : rien ne tombe maintenant. Son adversaire joue en
+    // voyant la dette, et elle ne coûtera qu'au début du tour de p1.
+    expect(result.state.players[0].anchor).toBe(18);
+    expect(result.state.players[0].reason).toBe(-4);
+    expect(result.events.find((e) => e.type === "DERAISON_SETTLED")).toBeUndefined();
+  });
+
+  it("Déraison : au début de SON tour, la dette inflige ses dégâts, la Raison revient à 0, PUIS la récupération s'applique", () => {
+    const state = testGameState({
+      turnNumber: 2,
+      players: [testPlayer("p1", { reason: -4, reasonMax: 10, anchor: 18 }), testPlayer("p2", { reason: 5, anchor: 20 })],
+      activePlayerId: "p2",
+    });
+
+    // p2 termine son tour : c'est au tour de p1, donc sa dette se règle.
+    const result = dispatch(state, { type: "endTurn", playerId: "p2" });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
     expect(result.state.players[0].anchor).toBe(14); // 18 - 4
-    expect(result.state.players[0].reason).toBe(0);
+    // L'ORDRE compte : dégâts, puis remise à 0, puis +1. Si la récupération
+    // passait avant, la dette serait comblée sans jamais avoir coûté.
+    expect(result.state.players[0].reason).toBe(1);
     expect(result.state.players[1].anchor).toBe(20); // la dette de p1 ne touche jamais p2
     const settled = result.events.find((e) => e.type === "DERAISON_SETTLED");
     expect(settled).toMatchObject({ playerId: "p1", debt: 4, anchorDamage: 4 });
   });
 
-  it("Déraison : une dette subie pendant le tour adverse n'est pas payée en Ancrage au début de tour, elle est déduite de la remise à niveau", () => {
+  it("Déraison : une dette SUBIE pendant le tour adverse se règle comme la sienne propre, au début de son tour", () => {
     const state = testGameState({
       players: [testPlayer("p1"), testPlayer("p2", { reason: -3, reasonMax: 10, anchor: 18 })],
       activePlayerId: "p1",
@@ -719,20 +740,25 @@ describe("engine.dispatch - endTurn", () => {
     const result = dispatch(state, { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.state.players[1].anchor).toBe(18);
-    expect(result.state.players[1].reason).toBe(7); // dette subie pendant le tour adverse : déduite de la remise à niveau (10 - 3)
+    // Une seule règle désormais, quelle que soit l'ORIGINE de la dette : elle
+    // coûte de l'Ancrage au début du tour de celui qui la porte. L'ancienne
+    // exception (déduite de la remise à niveau, sans dégâts) disparaît avec
+    // la remise à niveau elle-même.
+    expect(result.state.players[1].anchor).toBe(15); // 18 - 3
+    expect(result.state.players[1].reason).toBe(1); // 0 après règlement, + récupération naturelle
   });
 
-  it("courbe de début de partie : la Raison est remise à 25 %, 50 %, 75 % puis 100 % à chaque début de tour", () => {
-    // Courlis 12 : 3 / 6 / 9 / 12 / 12… On part de la fin du 1er tour de p2 (tour 2).
+  it("la Raison PERSISTE d'un tour à l'autre et ne remonte que de la récupération naturelle", () => {
+    // Courlis 12, courbe 15/30/45/60/75/90/100 → plafonds 2/4/6/8/9/11/12.
+    // Le plafond ne fait RIEN monter : seule la récupération naturelle le fait.
     const deck = (owner: string) => [1, 2, 3, 4, 5, 6].map(() => instance("marin-des-jetees", owner)); // deck vide = Jugement de l'Océan
     const state = testGameState({
       turnNumber: 2,
       activePlayerId: "p2",
       priorityPlayerId: "p2",
       players: [
-        testPlayer("p1", { shipId: "le-courlis", reason: 3, reasonMax: 12, reasonCap: 3, deck: deck("p1") }),
-        testPlayer("p2", { shipId: "le-courlis", reason: 1, reasonMax: 12, reasonCap: 3, deck: deck("p2") }),
+        testPlayer("p1", { shipId: "le-courlis", reason: 2, reasonMax: 12, reasonCap: 2, deck: deck("p1") }),
+        testPlayer("p2", { shipId: "le-courlis", reason: 1, reasonMax: 12, reasonCap: 2, deck: deck("p2") }),
       ],
     });
 
@@ -747,22 +773,50 @@ describe("engine.dispatch - endTurn", () => {
     });
 
     const t3 = end(state, "p2"); // 2e tour de p1
-    expect(t3.players[0].reasonCap).toBe(6);
-    expect(t3.players[0].reason).toBe(6);
+    expect(t3.players[0].reasonCap).toBe(4);
+    expect(t3.players[0].reason).toBe(3); // 2 + 1, et NON un bond au plafond
 
-    const t4 = end(t3, "p1"); // 2e tour de p2 : remis à 6 même s'il avait presque tout dépensé
-    expect(t4.players[1].reason).toBe(6);
+    const t5 = end(end(t3, "p1"), "p2"); // 3e tour de p1
+    expect(t5.players[0].reasonCap).toBe(6);
+    expect(t5.players[0].reason).toBe(4); // 3 + 1
 
-    const t5 = end(withReason(t4, 0, 0), "p2"); // 3e tour de p1, qui avait tout dépensé
-    expect(t5.players[0].reasonCap).toBe(9);
-    expect(t5.players[0].reason).toBe(9);
+    // Le joueur qui a tout dépensé repart de 1, pas de son plafond : c'est
+    // là que la remise à niveau faisait du début de partie une course.
+    const t7 = end(end(withReason(t5, 0, 0), "p1"), "p2"); // 4e tour de p1
+    expect(t7.players[0].reason).toBe(1);
 
-    const t7 = end(end(t5, "p1"), "p2"); // 4e tour de p1
-    expect(t7.players[0].reason).toBe(12);
+    // Et ce qui n'est pas dépensé reste acquis d'un tour à l'autre.
+    const t9 = end(end(withReason(t7, 0, 5), "p1"), "p2"); // 5e tour de p1
+    expect(t9.players[0].reason).toBe(6);
+  });
 
-    const t9 = end(end(withReason(t7, 0, 2), "p1"), "p2"); // 5e tour de p1 : courbe terminée, remise à 100 % à chaque tour
-    expect(t9.players[0].reasonCap).toBeUndefined();
-    expect(t9.players[0].reason).toBe(12);
+  it("le plafond de début de partie borne les gains VENANT DES CARTES, sans jamais rogner l'acquis", () => {
+    // Un deck de rampe ne doit pas pouvoir sauter la courbe. Le plafond du
+    // 2e tour d'un Courlis est 4 : un gain de carte s'y arrête.
+    const state = testGameState({
+      players: [
+        testPlayer("p1", { shipId: "le-courlis", reason: 3, reasonMax: 12, reasonCap: 4 }),
+        testPlayer("p2"),
+      ],
+    });
+    expect(reasonCeiling(state.players[0])).toBe(4);
+
+    // À l'inverse, un joueur DÉJÀ au-dessus de son plafond (Abysses qui
+    // abaissent sa Raison max, gain obtenu avant que la courbe ne descende)
+    // ne se fait pas rogner au début de son tour.
+    const riche = testGameState({
+      turnNumber: 2,
+      activePlayerId: "p2",
+      priorityPlayerId: "p2",
+      players: [
+        testPlayer("p1", { shipId: "le-courlis", reason: 9, reasonMax: 12, reasonCap: 4, deck: [instance("marin-des-jetees", "p1")] }),
+        testPlayer("p2", { deck: [instance("marin-des-jetees", "p2")] }),
+      ],
+    });
+    const after = dispatch(riche, { type: "endTurn", playerId: "p2" });
+    expect(after.ok).toBe(true);
+    if (!after.ok) return;
+    expect(after.state.players[0].reason).toBe(9); // conservé, ni rogné ni augmenté
   });
 
   it("courbe de début de partie : le plafond du joueur qui termine son tour ne bouge pas (seul son propre début de tour le relève)", () => {
@@ -781,15 +835,17 @@ describe("engine.dispatch - endTurn", () => {
 
   it("Déraison : Pénitence (La Religieuse) réduit de 1 les dégâts de Déraison", () => {
     const state = testGameState({
+      turnNumber: 2,
       players: [testPlayer("p1", { shipId: "la-religieuse", reason: -3, reasonMax: 10, anchor: 20 }), testPlayer("p2")],
-      activePlayerId: "p1",
+      activePlayerId: "p2",
     });
 
-    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    // La dette de p1 se règle au début de SON tour, donc quand p2 rend la main.
+    const result = dispatch(state, { type: "endTurn", playerId: "p2" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.state.players[0].anchor).toBe(18); // 20 - (3 - 1)
-    expect(result.state.players[0].reason).toBe(0);
+    expect(result.state.players[0].reason).toBe(1); // 0 après règlement, + récupération naturelle
   });
 
   it("Déraison : une perte de Raison par effet continue de creuser une dette déjà profonde (aucun plancher)", () => {
@@ -1191,8 +1247,7 @@ describe("engine.dispatch - endTurn : capacité de début de tour conditionnelle
   it("récupère 1 Raison au début du tour si visible et orientation descendante", () => {
     const bouee = instance("bouee-de-derive", "p2");
     const state = testGameState({
-      // Raison à -4 (Déraison subie pendant le tour adverse) : la remise à niveau ne remplit pas tout, le +1 reste observable.
-      players: [testPlayer("p1"), testPlayer("p2", { board: [bouee], reason: -4 })],
+      players: [testPlayer("p1"), testPlayer("p2", { board: [bouee], reason: 3 })],
       activePlayerId: "p1",
       environment: testEnvironment({ tideState: "calme", tideOrientation: "descendante" }),
     });
@@ -1200,14 +1255,14 @@ describe("engine.dispatch - endTurn : capacité de début de tour conditionnelle
     const result = dispatch(state, { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    // Remise à niveau 10 - 4 = 6, puis +1 capacité de Bouée de Dérive.
-    expect(result.state.players[1].reason).toBe(7);
+    // 3 + 1 de récupération naturelle, puis +1 de la Bouée de Dérive.
+    expect(result.state.players[1].reason).toBe(5);
   });
 
   it("ne récupère pas de Raison si l'orientation est montante", () => {
     const bouee = instance("bouee-de-derive", "p2");
     const state = testGameState({
-      players: [testPlayer("p1"), testPlayer("p2", { board: [bouee], reason: -4 })],
+      players: [testPlayer("p1"), testPlayer("p2", { board: [bouee], reason: 3 })],
       activePlayerId: "p1",
       environment: testEnvironment({ tideState: "calme", tideOrientation: "montante" }),
     });
@@ -1215,13 +1270,13 @@ describe("engine.dispatch - endTurn : capacité de début de tour conditionnelle
     const result = dispatch(state, { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.state.players[1].reason).toBe(6); // remise à niveau seule (10 - 4)
+    expect(result.state.players[1].reason).toBe(4); // récupération naturelle seule (3 + 1)
   });
 
   it("ne récupère pas de Raison si elle est actuellement invisible (Tempête)", () => {
     const bouee = instance("bouee-de-derive", "p2");
     const state = testGameState({
-      players: [testPlayer("p1"), testPlayer("p2", { board: [bouee], reason: -4 })],
+      players: [testPlayer("p1"), testPlayer("p2", { board: [bouee], reason: 3 })],
       activePlayerId: "p1",
       environment: testEnvironment({ tideState: "tempete", tideOrientation: "descendante" }),
     });
@@ -1229,7 +1284,7 @@ describe("engine.dispatch - endTurn : capacité de début de tour conditionnelle
     const result = dispatch(state, { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.state.players[1].reason).toBe(6); // remise à niveau seule, Bouée invisible pendant Tempête
+    expect(result.state.players[1].reason).toBe(4); // récupération naturelle seule, Bouée invisible pendant Tempête
   });
 });
 
@@ -2398,7 +2453,7 @@ describe("engine.dispatch - Cloche Immergée : compare une carte révélée de c
     // p1 a révélé la carte au coût le plus élevé (5 contre 1) : il perd 1 Raison.
     // p1 termine son tour (pas de remise à niveau pour lui) : 5 - 1 = 4.
     expect(result.state.players[0].reason).toBe(4);
-    expect(result.state.players[1].reason).toBe(10); // p2 devient actif : Raison remise à 100 %, pas de perte
+    expect(result.state.players[1].reason).toBe(6); // p2 devient actif : 5 + récupération naturelle, pas de perte
   });
 
   it("en cas d'égalité de coût, personne ne perd de Raison", () => {

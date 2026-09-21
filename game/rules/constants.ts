@@ -36,16 +36,35 @@ export const RULES = {
   /** Raison max "standard" si un Navire ne la précise pas. */
   DEFAULT_REASON_MAX: 10,
   /**
-   * Courbe de début de partie (Notion "Gameplay — Raison, Déraison, healing
-   * & passifs de Navires", 2026-09-12, À PROTOTYPER — remplace l'ancien
-   * départ à 50 % ET l'ancienne récupération de +1 par tour) : au début de
-   * son 1er, 2e, 3e, 4e tour, la Raison du joueur est REMISE à cette
-   * fraction de `reasonMax` (arrondi au supérieur), qui sert aussi de
-   * plafond aux gains pendant ce tour. Au-delà de la dernière entrée : remise
-   * à 100 % à chaque début de tour (Courlis 12 : 3 / 6 / 9 / 12 / 12…).
-   * Piste plus lente déjà envisagée : [0.2, 0.4, 0.6, 0.8, 1].
+   * PLAFOND de début de partie, PAS une remise à niveau (passe de
+   * stabilisation du 2026-09-21). Au `n`-ième tour du joueur, sa Raison ne
+   * peut pas DÉPASSER cette fraction de `reasonMax` (arrondi au supérieur) ;
+   * au-delà de la dernière entrée, seul `reasonMax` la borne.
+   *
+   * Ce plafond ne fait plus RIEN monter : la Raison persiste d'un tour à
+   * l'autre et ne gagne que `NATURAL_REASON_RECOVERY` par tour. Il ne mord
+   * donc que sur les gains VENANT DES CARTES (Thermos du Dernier Quart,
+   * Gardien du Sondeur…) — c'est exactement son rôle : empêcher un deck de
+   * rampe de sauter la courbe, sans freiner le joueur qui joue normalement.
+   *
+   * Courbe volontairement LENTE (demande du 21/09 : « ça va trop vite »).
+   * Courlis (12) : 2 / 4 / 6 / 8 / 9 / 11 / 12. Brise-Lames (8) :
+   * 2 / 3 / 4 / 5 / 6 / 8 / 8. Piste plus rapide déjà envisagée, à mesurer
+   * au playtest : [0.2, 0.4, 0.6, 0.8, 1]. Rien n'est verrouillé ici.
    */
-  STARTING_REASON_CURVE: [0.25, 0.5, 0.75, 1] as readonly number[],
+  STARTING_REASON_CURVE: [0.15, 0.3, 0.45, 0.6, 0.75, 0.9, 1] as readonly number[],
+  /**
+   * Récupération naturelle au début du tour de son contrôleur (passe de
+   * stabilisation du 2026-09-21, direction de design) : la Raison PERSISTE
+   * d'un tour à l'autre et ne remonte que de ce montant, au lieu d'être
+   * remise à son plafond.
+   *
+   * C'est le vrai régulateur de la courbe : un départ à 2 puis +1 par tour
+   * fait d'un coût 5 une décision de son 4e tour et d'un coût 7 une décision
+   * de son 6e — sauf à prendre volontairement de la Déraison pour le jouer
+   * plus tôt, ce que la règle autorise et fait payer en Ancrage.
+   */
+  NATURAL_REASON_RECOVERY: 1,
 
   // --- Déraison (Notion "Gameplay — Raison, Déraison, healing & passifs de
   // Navires", 2026-09-12) : PISTE À PROTOTYPER, pas verrouillée — valeurs

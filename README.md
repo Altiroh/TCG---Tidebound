@@ -128,27 +128,40 @@ npm test                     # tests unitaires du moteur (Vitest)
   cartes, plafonnée à `reasonMax` (propre au Navire). Pendant sa Phase
   principale, un joueur peut jouer **autant de cartes qu'il peut en
   payer** : il n'existe pas de limite artificielle du type "une carte par
-  tour". **Il n'y a plus de récupération de +1 par tour** : la Raison est
-  remise à niveau au début de chaque tour du joueur (ci-dessous).
-- **Remise à niveau & courbe de début de partie** (`RULES.STARTING_REASON_CURVE`,
-  piste Notion "Gameplay — Raison, Déraison…", **à prototyper**) : au début
-  de chacun de ses tours, la Raison du joueur est **remise à 25 %** de sa
-  Raison max à son 1er tour, **50 %** au 2e, **75 %** au 3e, puis **100 % à
-  chaque tour** ensuite, arrondi au supérieur (Courlis 12 → 3 / 6 / 9 / 12,
-  Errant 10 → 3 / 5 / 8 / 10, Brise-Lames 8 → 2 / 4 / 6 / 8). Ce palier
-  (`PlayerState.reasonCap`) plafonne aussi les gains pendant le tour. Une
-  dette de Déraison subie pendant le tour adverse est déduite de la remise
-  à niveau. Piste plus lente si c'est trop généreux : 20 / 40 / 60 / 80 / 100.
+  tour". La Raison **persiste d'un tour à l'autre** : ce qui n'est pas
+  dépensé reste acquis, ce qui l'est n'est pas rendu (ci-dessous).
+- **Persistance & récupération naturelle** (`RULES.NATURAL_REASON_RECOVERY`,
+  passe de stabilisation du 2026-09-21, **à prototyper**) : au début de
+  chacun de ses tours, le joueur récupère **+1 Raison**, et rien de plus.
+  Remplace la remise à niveau au plafond, qui rendait la Raison gratuite et
+  laissait un deck de swarm remplir son plateau dès son 2e tour. C'est cette
+  récupération lente qui fait la courbe : départ à 2, puis +1 par tour, donc
+  un coût 5 est une décision de son 4e tour et un coût 7 de son 6e — sauf à
+  prendre volontairement de la Déraison pour le jouer plus tôt.
+- **Plafond de début de partie** (`RULES.STARTING_REASON_CURVE`) : au `n`-ième
+  tour du joueur, sa Raison ne peut pas **dépasser** 15 / 30 / 45 / 60 / 75 /
+  90 / 100 % de sa Raison max, arrondi au supérieur (Courlis 12 →
+  2 / 4 / 6 / 8 / 9 / 11 / 12, Brise-Lames 8 → 2 / 3 / 4 / 5 / 6 / 8 / 8).
+  Ce plafond (`PlayerState.reasonCap`) ne fait **rien monter** — il ne mord
+  que sur les gains venant des **cartes**, pour empêcher un deck de rampe de
+  sauter les paliers. Il ne rogne jamais l'acquis : un joueur déjà au-dessus
+  (Abysses qui abaissent sa Raison max) conserve sa Raison.
 - **Déraison** (`game/state/reason.ts`, piste Notion "Gameplay — Raison,
   Déraison, healing & passifs de Navires", 2026-09-12, **à prototyper**) :
   la Raison peut passer sous 0, **sans plancher** (décision de design du
   2026-09-16 : « il n'y a pas de Déraison max »). Payer un coût (carte,
   capacité activable, réaction) ou subir une perte de Raison peut y
   pousser aussi loin que le joueur l'accepte ; le moteur ne refuse jamais
-  un coût, c'est la dette qui freine. **À la fin de son propre tour** (après tous les effets de fin
-  de tour — il peut donc encore remonter avant), chaque point de Déraison
-  inflige 1 dégât d'Ancrage (`DERAISON_ANCHOR_DAMAGE_PER_POINT`, événement
-  `DERAISON_SETTLED`), puis la Raison repart de 0. Remplace l'ancienne
+  un coût, c'est la dette qui freine. **Au début de son propre tour**
+  (déplacé depuis la fin de son tour le 2026-09-21), chaque point de
+  Déraison inflige 1 dégât d'Ancrage (`DERAISON_ANCHOR_DAMAGE_PER_POINT`,
+  événement `DERAISON_SETTLED`), puis la Raison repart de 0, puis seulement
+  la récupération naturelle s'applique — cet ORDRE est la règle : si la
+  récupération passait avant, la dette serait comblée sans avoir rien coûté.
+  Conséquence voulue : celui qui plonge en Déraison l'affiche pendant **tout
+  le tour adverse** avant de payer, et son adversaire joue en le sachant.
+  Une dette SUBIE pendant le tour adverse se règle exactement pareil — il
+  n'y a plus qu'une seule règle, quelle que soit l'origine de la dette. Remplace l'ancienne
   règle "Raison à 0 en fin de tour = -1 Ancrage" : finir à exactement 0 ne
   coûte rien. Pénitence (La Religieuse) réduit ces dégâts de 1. Côté UI :
   jauge rouge et pastille "⚓ −N en fin de tour" sur le Navire, avertissement ambre avant de poser
@@ -203,6 +216,10 @@ Déraison (dette sous 0 → dégâts d'Ancrage, Raison remise à 0).
 
 **B. Début de tour DU JOUEUR QUI DEVIENT ACTIF** :
 
+0. Règlement de la Déraison du joueur qui prend la main : dégâts
+   d'Ancrage, puis remise de la Raison à 0. Avant la Marée, à dessein —
+   une perte infligée par la Marée de ce tour n'est pas une dette choisie,
+   elle devient celle du tour suivant.
 1. Vérification des Eaux (tirage de nouvelles Eaux si leur durée est
    épuisée — jamais une carte de deck, toujours tiré par le moteur).
 2. Vérification de la Marée : décompte de la durée restante, progression
@@ -210,8 +227,8 @@ Déraison (dette sous 0 → dégâts d'Ancrage, Raison remise à 0).
    Calme`), puis application des malus de l'état courant — voir "Malus
    globaux des Marées" ci-dessous.
 3. Effets différés — non modélisés pour le MVP, étape ignorée.
-4. Remise à niveau de la Raison : 25 % / 50 % / 75 % de la Raison max aux
-   trois premiers tours du joueur, puis 100 % à chaque tour.
+4. Récupération naturelle : **+1 Raison**, bornée par le plafond de début
+   de partie. La Raison persiste, elle n'est jamais remise à niveau.
 5. Pioche d'une carte (deck vide → Jugement de l'Océan, voir plus bas).
 6. Phase principale : dégel des unités, réinitialisation des attaques,
    nettoyage des modificateurs temporaires.
