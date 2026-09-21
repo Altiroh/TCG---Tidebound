@@ -15,8 +15,8 @@
  *   - le fond se comporte comme un `cover` : il remplit l'écran quitte à
  *     se faire rogner, mais jamais au point de perdre un parchemin (d'où
  *     le plafond de 133 %) ;
- *   - le survol ne redessine rien : il fait APPARAÎTRE la version allumée
- *     du parchemin, fournie avec l'autre ;
+ *   - le survol ne demande AUCUNE image : le parchemin s'allume par
+ *     filtres (lumière, saturation, halo épousant son bord déchiré) ;
  *   - rien du décor n'intercepte le clic : seuls les parchemins sont
  *     cliquables.
  */
@@ -55,6 +55,70 @@
   z-index: 3;
   pointer-events: none;
   background: radial-gradient(120% 90% at 50% 45%, transparent 54%, rgba(3, 9, 16, 0.5) 100%);
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * LA LUMIÈRE DES BOUGIES — ce qui empêche la table d'être une photo.
+ * ──────────────────────────────────────────────────────────────
+ *
+ * La scène est éclairée à la flamme : une lanterne et des bougies en haut
+ * à droite, une bougie en haut à gauche. Une lumière FIXE sur une table
+ * éclairée à la bougie se voit tout de suite — l'œil attend qu'elle
+ * respire.
+ *
+ * Deux flaques de lumière chaude, donc, qui vacillent chacune sur son
+ * propre cycle (4,7 s et 6,3 s : les deux ne retombent jamais en phase, et
+ * on ne devine pas la boucle). `screen` ajoute de la lumière au lieu d'en
+ * peindre : le papier chauffe, le bois reste sombre.
+ *
+ * Posée AU-DESSUS des parchemins : la flamme éclaire toute la table, elle
+ * ne s'arrête pas au bord de ce qui est cliquable.
+ */
+.lumiere {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+.lumiere::before,
+.lumiere::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+/* La lanterne et les bougies du coin droit — la source la plus vive. */
+.lumiere::before {
+  background: radial-gradient(58% 52% at 86% 2%, rgba(255, 184, 92, 0.34) 0%, rgba(255, 160, 60, 0.14) 42%, transparent 72%);
+  animation: flammeVacille 4.7s ease-in-out infinite;
+}
+
+/* La bougie de gauche, plus loin et plus basse. */
+.lumiere::after {
+  background: radial-gradient(46% 42% at 9% 1%, rgba(255, 172, 84, 0.26) 0%, rgba(255, 150, 56, 0.11) 44%, transparent 74%);
+  animation: flammeVacille 6.3s ease-in-out infinite reverse;
+}
+
+/*
+ * Le vacillement : des paliers irréguliers, jamais une sinusoïde. Une
+ * flamme ne pulse pas, elle hésite.
+ */
+@keyframes flammeVacille {
+  0% { opacity: 0.74; }
+  7% { opacity: 0.96; }
+  13% { opacity: 0.63; }
+  22% { opacity: 0.89; }
+  31% { opacity: 0.71; }
+  39% { opacity: 1; }
+  48% { opacity: 0.66; }
+  57% { opacity: 0.85; }
+  66% { opacity: 0.58; }
+  74% { opacity: 0.93; }
+  83% { opacity: 0.69; }
+  91% { opacity: 0.87; }
+  100% { opacity: 0.74; }
 }
 
 /* ──────────────────────────────────────────────────────────────
@@ -257,35 +321,39 @@
   transition: transform 180ms var(--tb-ease, cubic-bezier(0.2, 0.8, 0.2, 1));
 }
 
-.cardRepos,
-.cardSurvol {
+.cardArt {
   display: block;
   width: 100%;
   height: auto;
   user-select: none;
+  transition: filter 200ms ease-out;
 }
 
 /*
- * Le parchemin allumé est posé SUR l'autre, à la même place : le survol
- * n'est qu'un fondu entre les deux. Les deux calques ont été rognés sur la
- * même boîte, ils se superposent au pixel.
+ * LE SURVOL EST PEINT PAR LE NAVIGATEUR, pas par une seconde image.
+ *
+ * `drop-shadow` suit l'ALPHA du parchemin : le halo épouse le bord
+ * déchiré et la punaise, là où un `box-shadow` aurait dessiné un
+ * rectangle autour d'un papier qui n'en est pas un. Deux halos — un net et
+ * chaud contre le papier, un large et sourd pour la lueur — et le
+ * parchemin lui-même monte d'un cran en lumière.
+ *
+ * Aucune image de survol à fournir : changer l'illustration d'un
+ * parchemin ne demande plus qu'un fichier.
  */
-.cardSurvol {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  transition: opacity 160ms ease-out;
+.card:hover .cardArt,
+.card:focus-visible .cardArt {
+  filter:
+    brightness(1.11) saturate(1.14) contrast(1.02)
+    drop-shadow(0 0 7px rgba(255, 214, 140, 0.85))
+    drop-shadow(0 0 26px rgba(255, 176, 72, 0.45))
+    drop-shadow(0 10px 18px rgba(3, 9, 16, 0.5));
 }
 
 .card:hover,
 .card:focus-visible {
   /* Un rien plus grand : le parchemin se soulève de la table. */
   transform: scale(1.035);
-}
-
-.card:hover .cardSurvol,
-.card:focus-visible .cardSurvol {
-  opacity: 1;
 }
 
 .card:active {
@@ -312,7 +380,7 @@
 }
 
 /*
- * GABARIT DE CALAGE — `?menu=carte&reperes=1`.
+ * GABARIT DE CALAGE — `/?reperes=1`.
  *
  * Trace la boîte de chaque calque : c'est ainsi qu'ils ont été placés, et
  * ainsi qu'on les replacera si une illustration change.

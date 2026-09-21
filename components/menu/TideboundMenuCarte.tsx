@@ -14,15 +14,15 @@ import { playButtonClick } from "@/lib/sound";
  * parchemins qui mènent aux trois destinations du jeu.
  *
  * La scène est MONTÉE, pas peinte d'un bloc : un fond (la table et sa
- * carte), trois calques de décor détourés, et trois parchemins qui ont
- * chacun leur version allumée. Tout est posé en pourcentages du FOND, la
+ * carte), des calques de décor détourés, et trois parchemins qui
+ * s'allument au survol — sans seconde image, le navigateur s'en charge.
+ * Tout est posé en pourcentages du FOND, la
  * seule géométrie de référence — c'est ce qui garde la composition
  * identique d'un écran à l'autre, et ce qui permet de recaler un calque en
- * touchant une seule ligne (`?menu=carte&reperes=1` trace les boîtes).
+ * touchant une seule ligne (`/?reperes=1` trace les boîtes).
  *
- * L'ancien menu (le coffret, `TideboundMenuChest`) reste celui par défaut :
- * celui-ci s'ouvre depuis le bouton d'aperçu de l'accueil (`?menu=carte`),
- * le temps de trancher.
+ * C'est LE menu principal depuis le 21/09/2026 : le coffret 3D qui tenait
+ * cette place a été retiré après un temps d'essai côte à côte.
  */
 
 /** Les calques de ce menu, nommés une fois. */
@@ -52,9 +52,8 @@ interface CarteSlot {
   id: string;
   label: string;
   href: Route | string;
-  /** Le parchemin au repos, puis sa version allumée (halo doré). */
+  /** Le parchemin. Il n'a qu'une seule image : le survol est peint en CSS. */
   art: string;
-  artSurvol: string;
   /** Taille du calque : Next en tire le rapport sans charger l'image. */
   taille: { w: number; h: number };
   /** Coin haut-gauche et largeur du calque, en pourcentages du fond. */
@@ -69,7 +68,6 @@ const SLOTS: CarteSlot[] = [
     label: "Collection",
     href: "/collection",
     art: "/assets/menu/carte/collection.webp",
-    artSurvol: "/assets/menu/carte/collection-hover.webp",
     taille: { w: 1097, h: 1156 },
     boite: { x: "14.8%", y: "40.4%", w: "19.7%" },
   },
@@ -78,7 +76,6 @@ const SLOTS: CarteSlot[] = [
     label: "Jouer",
     href: "/partie",
     art: "/assets/menu/carte/play.webp",
-    artSurvol: "/assets/menu/carte/play-hover.webp",
     taille: { w: 1358, h: 958 },
     boite: { x: "35.1%", y: "41.8%", w: "28.5%" },
   },
@@ -89,7 +86,6 @@ const SLOTS: CarteSlot[] = [
     label: "Market",
     href: "/market",
     art: "/assets/menu/carte/market.webp",
-    artSurvol: "/assets/menu/carte/market-hover.webp",
     taille: { w: 1103, h: 1124 },
     boite: { x: "65.8%", y: "46.8%", w: "18.5%" },
   },
@@ -179,6 +175,10 @@ export function TideboundMenuCarte({ marks = false }: { marks?: boolean }) {
           <Image src={MENU_CARTE_ASSETS.cafeAgite} alt="" width={718} height={338} draggable={false} className={styles.cafeAgite} />
         </div>
 
+        {/* La flamme des bougies passe sur toute la table, parchemins
+            compris (cf. `MenuCarte.module.css`). */}
+        <div className={styles.lumiere} aria-hidden />
+
         <nav aria-label="Menu Tidebound">
           {SLOTS.map((slot) => (
             <Link
@@ -195,20 +195,7 @@ export function TideboundMenuCarte({ marks = false }: { marks?: boolean }) {
                 height={slot.taille.h}
                 priority
                 draggable={false}
-                className={styles.cardRepos}
-              />
-              {/* Le parchemin allumé, posé exactement sur l'autre : les deux
-                  calques ont été rognés sur la même boîte, ils se
-                  superposent au pixel. Chargé avec la page — un survol qui
-                  attend son image se voit. */}
-              <Image
-                src={slot.artSurvol}
-                alt=""
-                width={slot.taille.w}
-                height={slot.taille.h}
-                priority
-                draggable={false}
-                className={styles.cardSurvol}
+                className={styles.cardArt}
               />
               <span className={styles.cardLabel}>{slot.label}</span>
             </Link>

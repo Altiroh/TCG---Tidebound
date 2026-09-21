@@ -9,7 +9,7 @@ import { Barlow, Cinzel, Crimson_Pro } from "next/font/google";
  */
 export const cardTitleFont = Cinzel({
   subsets: ["latin"],
-  // 900 pour les plaques du menu (`menuFont`, même famille) : une seule
+  // 900 pour les titres les plus lourds (`menuFont`, même famille) : une seule
   // déclaration Cinzel, sans quoi les graisses 600/700 étaient téléchargées
   // deux fois sous deux noms de police différents.
   weight: ["600", "700", "900"],
@@ -24,12 +24,13 @@ export const cardBodyFont = Crimson_Pro({
 });
 
 /**
- * Police des libellés posés sur les plaques du coffret du menu principal
- * (`app/page.tsx`, `public/assets/menu/box/base.webp`) — gravure
- * capitale, cohérente avec le rendu du logo "TIDEBOUND" déjà peint sur
- * l'asset. C'est la MÊME police que `cardTitleFont` : seule la variable
- * CSS `--font-menu` est posée à part (cf. `app/layout.tsx`), pour qu'on
- * puisse un jour l'en distinguer sans toucher aux écrans.
+ * Police du MENU PRINCIPAL. Elle servait aux libellés gravés sur les
+ * plaques du coffret, retiré avec lui (21/09/2026) : la table du
+ * navigateur porte ses libellés peints dans ses propres illustrations.
+ *
+ * L'alias reste : c'est la MÊME police que `cardTitleFont`, et seule la
+ * variable CSS `--font-menu` est posée à part (cf. `app/layout.tsx`),
+ * pour qu'on puisse un jour l'en distinguer sans toucher aux écrans.
  */
 export const menuFont = cardTitleFont;
 
