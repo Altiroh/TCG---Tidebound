@@ -351,8 +351,15 @@ export const CORE_SET: CardDefinition[] = [
     cost: 2,
     attack: 2,
     health: 2,
-    text: "À son arrivée, chaque joueur perd 1 Raison.",
-    onPlayEffects: [{ type: "reasonLoss", target: { kind: "allPlayers" }, amount: { kind: "flat", value: 1 } }],
+    // Symétrie retirée (passe de stabilisation, 21/09/2026). Le texte
+    // "chaque joueur" était défavorable à son propre contrôleur sur DEUX
+    // plans : il a déjà payé le coût de 2, et depuis l'arbitrage du 21/09 sa
+    // perte est CHOISIE (elle peut le pousser sous zéro et lui coûter de
+    // l'Ancrage en fin de tour) quand celle de l'adversaire est SUBIE (du
+    // revenu, plafonné à un tour, sans dégâts). Le même texte produisait
+    // donc deux effets de nature différente, le plus dur pour le payeur.
+    text: "À son arrivée, l'adversaire perd 1 Raison.",
+    onPlayEffects: [{ type: "reasonLoss", target: { kind: "opponentPlayer" }, amount: { kind: "flat", value: 1 } }],
   },
   {
     // Première carte à capacité FACULTATIVE (`mode: "optional"`) du
@@ -394,11 +401,13 @@ export const CORE_SET: CardDefinition[] = [
     cost: 3,
     attack: 3,
     health: 3,
+    // Même retrait de symétrie que la Standard (21/09/2026) : "chaque
+    // joueur" → "l'adversaire". Les deux clauses d'orientation ne bougent pas.
     text:
-      "À son arrivée, chaque joueur perd 1 Raison. Si la Marée est montante, l'adversaire perd 1 Raison " +
+      "À son arrivée, l'adversaire perd 1 Raison. Si la Marée est montante, il en perd 1 " +
       "supplémentaire. Si elle est descendante, récupérez 1 Raison.",
     onPlayEffects: [
-      { type: "reasonLoss", target: { kind: "allPlayers" }, amount: { kind: "flat", value: 1 } },
+      { type: "reasonLoss", target: { kind: "opponentPlayer" }, amount: { kind: "flat", value: 1 } },
       {
         type: "reasonLoss",
         target: { kind: "opponentPlayer" },

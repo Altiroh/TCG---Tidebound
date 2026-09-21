@@ -195,18 +195,22 @@ describe("engine.dispatch - playCard", () => {
   });
 
   it("un onPlayEffect inflige une perte de Raison aux deux joueurs", () => {
-    const card = instance("marin-aux-yeux-rouges", "p1"); // à l'arrivée : chaque joueur perd 1 Raison
+    // Marin aux Yeux Rouges ne cible plus que l'adversaire (21/09) : la
+    // primitive `allPlayers` se teste désormais sur L'Œil Sous la Mer, qui
+    // garde volontairement sa symétrie (deck construit pour la supporter).
+    const card = instance("loeil-sous-la-mer", "p1"); // coût 5, Abysses only, chaque joueur perd 1 Raison
     const state = testGameState({
-      players: [testPlayer("p1", { hand: [card], reason: 5 }), testPlayer("p2", { reason: 5 })],
+      players: [testPlayer("p1", { hand: [card], reason: 10 }), testPlayer("p2", { reason: 10 })],
+      environment: testEnvironment({ tideState: "abysses" }),
     });
 
     const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: card.instanceId });
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    // p1 a payé 2 de coût (5 -> 3) puis perdu 1 de Raison via l'effet (-> 2).
-    expect(result.state.players[0].reason).toBe(2);
-    expect(result.state.players[1].reason).toBe(4);
+    // p1 a payé 5 de coût (10 -> 5) puis perdu 1 de Raison via l'effet (-> 4).
+    expect(result.state.players[0].reason).toBe(4);
+    expect(result.state.players[1].reason).toBe(9);
   });
 
   it("Marin des Jetées : Marée Montante donne +1 Résistance temporaire (pas de gain de Raison)", () => {
@@ -1212,9 +1216,10 @@ describe("engine.dispatch - playCard : effets conditionnels à l'orientation (Ma
     const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: card.instanceId });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    // Coût 3 (5→2), puis -1 de base pour les deux (p1:1, p2:4), puis -1
-    // supplémentaire pour l'adversaire car montante (p2:3).
-    expect(result.state.players[0].reason).toBe(1);
+    // Coût 3 (5→2), puis -1 pour le seul adversaire (p2:4), puis -1
+    // supplémentaire car montante (p2:3). Le contrôleur ne perd plus rien
+    // au-delà de son coût (21/09).
+    expect(result.state.players[0].reason).toBe(2);
     expect(result.state.players[1].reason).toBe(3);
   });
 
@@ -1228,9 +1233,9 @@ describe("engine.dispatch - playCard : effets conditionnels à l'orientation (Ma
     const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: card.instanceId });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    // Coût 3 (5→2), puis -1 de base pour les deux (p1:1, p2:4), puis +1 pour
-    // le contrôleur car descendante (p1:2). p2 ne subit que la perte de base.
-    expect(result.state.players[0].reason).toBe(2);
+    // Coût 3 (5→2), puis -1 pour le seul adversaire (p2:4), puis +1 pour le
+    // contrôleur car descendante (p1:3).
+    expect(result.state.players[0].reason).toBe(3);
     expect(result.state.players[1].reason).toBe(4);
   });
 });
@@ -1897,7 +1902,9 @@ describe("engine.dispatch - Harponneur du Dernier Quai : bonus de combat pendant
 describe("engine.dispatch - Boucliers réactifs 'une fois par tour' (Vieux Loup de Mer, Seconde au Visage Pâle)", () => {
   it("Vieux Loup de Mer réduit de 1 la première perte de Raison du tour, mais pas la seconde", () => {
     const vieuxLoup = instance("vieux-loup-de-mer", "p1"); // shield inconditionnel
-    const marinA = instance("marin-aux-yeux-rouges", "p1"); // coût 2, "chaque joueur perd 1 Raison"
+    // Les deux pertes du tour sont ici les deux COÛTS payés : payer EST une
+    // perte de Raison ("toute source confondue"), arbitrage conservé le 21/09.
+    const marinA = instance("marin-aux-yeux-rouges", "p1"); // coût 2
     const marinB = instance("marin-aux-yeux-rouges", "p1");
     const state = testGameState({
       players: [
@@ -1909,16 +1916,16 @@ describe("engine.dispatch - Boucliers réactifs 'une fois par tour' (Vieux Loup 
     const first = dispatch(state, { type: "playCard", playerId: "p1", instanceId: marinA.instanceId });
     expect(first.ok).toBe(true);
     if (!first.ok) return;
-    // p1 : 10 - 1 (coût de 2 réduit par le bouclier, 1ère perte du tour) - 1 (perte de 1 Raison, bouclier déjà consommé) = 8.
-    expect(first.state.players[0].reason).toBe(8);
+    // p1 : 10 - 1 (coût de 2 réduit par le bouclier, 1ère perte du tour) = 9.
+    expect(first.state.players[0].reason).toBe(9);
     // p2 : pas de bouclier sur son plateau, perd normalement 1 Raison.
     expect(first.state.players[1].reason).toBe(9);
 
     const second = dispatch(first.state, { type: "playCard", playerId: "p1", instanceId: marinB.instanceId });
     expect(second.ok).toBe(true);
     if (!second.ok) return;
-    // Bouclier déjà consommé ce tour-ci : la seconde perte de Raison s'applique intégralement.
-    expect(second.state.players[0].reason).toBe(5); // 8 - 2 (coût) - 1
+    // Bouclier déjà consommé ce tour-ci : le second coût se paie intégralement.
+    expect(second.state.players[0].reason).toBe(7); // 9 - 2 (coût plein)
     expect(second.state.players[1].reason).toBe(8); // 9 - 1
   });
 
@@ -1936,7 +1943,7 @@ describe("engine.dispatch - Boucliers réactifs 'une fois par tour' (Vieux Loup 
     const inTempete = dispatch(stateInTempete, { type: "playCard", playerId: "p1", instanceId: marin.instanceId });
     expect(inTempete.ok).toBe(true);
     if (!inTempete.ok) return;
-    expect(inTempete.state.players[0].reason).toBe(8); // 10 - 1 (coût réduit, bouclier actif en Tempête) - 1
+    expect(inTempete.state.players[0].reason).toBe(9); // 10 - 1 (coût de 2 réduit, bouclier actif en Tempête)
 
     const marinCalme = instance("marin-aux-yeux-rouges", "p1");
     const stateInCalme = testGameState({
@@ -1949,7 +1956,7 @@ describe("engine.dispatch - Boucliers réactifs 'une fois par tour' (Vieux Loup 
     const inCalme = dispatch(stateInCalme, { type: "playCard", playerId: "p1", instanceId: marinCalme.instanceId });
     expect(inCalme.ok).toBe(true);
     if (!inCalme.ok) return;
-    expect(inCalme.state.players[0].reason).toBe(7); // 10 - 2 (coût) - 1 (bouclier inactif hors Tempête/Abysses)
+    expect(inCalme.state.players[0].reason).toBe(8); // 10 - 2 (coût plein : bouclier inactif hors Tempête/Abysses)
   });
 
   it("Vieux Loup de Mer réduit le coût d'une carte, une seule fois par tour", () => {
