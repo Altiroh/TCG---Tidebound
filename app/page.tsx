@@ -66,7 +66,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       <main className="relative h-[100dvh] overflow-hidden bg-[#050d16]">
         <AuthGateModal isSignedIn={isSignedIn} />
         <MenuAmbiance />
-        <HomeBar isSignedIn={isSignedIn} />
+        {/* Ni onglets ni voile : la carte porte sa propre navigation, il ne
+            reste que le compte et les options, à droite. */}
+        <HomeBar isSignedIn={isSignedIn} nav="menu" />
 
         <TideboundMenuCarte marks={searchParams?.reperes === "1"} />
 

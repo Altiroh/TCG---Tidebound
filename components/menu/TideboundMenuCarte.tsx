@@ -15,6 +15,12 @@ import { playButtonClick } from "@/lib/sound";
  * illustration ; ce composant ne fait qu'y poser le logo et les zones
  * cliquables, en pourcentages de l'image.
  *
+ * L'illustration fournie portait son propre titre, peint très grand en
+ * haut. Il n'est pas masqué par un voile — un rectangle sombre au milieu
+ * d'une table éclairée à la bougie se voit toujours — mais RECADRÉ hors
+ * champ : `plateau.webp` commence sous lui (1672 × 645, cf. le README du
+ * dossier). Le logo du jeu se pose donc net sur la carte, à sa taille.
+ *
  * L'ancien menu (le coffret, `TideboundMenuChest`) reste celui par défaut :
  * celui-ci s'ouvre depuis le bouton d'aperçu de l'accueil (`?menu=carte`),
  * le temps de trancher.
@@ -32,7 +38,7 @@ interface CarteSlot {
   href: Route | string;
   /**
    * Gabarit du parchemin PEINT, en pourcentages de l'illustration
-   * (1672 × 941) : centre, taille, inclinaison. Mesuré sur l'image —
+   * (1672 × 645) : centre, taille, inclinaison. Mesuré sur l'image —
    * `?menu=carte&reperes=1` trace les contours pour recaler.
    */
   rect: { x: string; y: string; w: string; h: string; rot: string };
@@ -45,13 +51,13 @@ const SLOTS: CarteSlot[] = [
     id: "collection",
     label: "Collection",
     href: "/collection",
-    rect: { x: "25.3%", y: "59.8%", w: "16.5%", h: "29.2%", rot: "-7.7deg" },
+    rect: { x: "25.3%", y: "41.3%", w: "16.5%", h: "42.6%", rot: "-7.7deg" },
   },
   {
     id: "jouer",
     label: "Jouer",
     href: "/partie",
-    rect: { x: "49.4%", y: "61.6%", w: "26.1%", h: "31.2%", rot: "-4.9deg" },
+    rect: { x: "49.4%", y: "44%", w: "26.1%", h: "45.5%", rot: "-4.9deg" },
   },
   // Le Market, c'est la BOUTIQUE (achat en Tides) ; la réserve de boosters
   // et leur ouverture sont un écran voisin, atteignable depuis le bandeau.
@@ -59,7 +65,7 @@ const SLOTS: CarteSlot[] = [
     id: "market",
     label: "Market",
     href: "/market",
-    rect: { x: "75.4%", y: "62.9%", w: "16.8%", h: "29.6%", rot: "-4.4deg" },
+    rect: { x: "75.4%", y: "45.9%", w: "16.8%", h: "43.2%", rot: "-4.4deg" },
   },
 ];
 
@@ -85,8 +91,6 @@ export function TideboundMenuCarte({ marks = false }: { marks?: boolean }) {
           className={styles.plateImage}
         />
 
-        {/* Le titre peint s'éteint, le vrai logo se pose dessus. */}
-        <div className={styles.titleVeil} aria-hidden />
         <Image
           src={MENU_CARTE_ASSETS.logo}
           alt="Tidebound"

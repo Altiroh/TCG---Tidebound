@@ -1,17 +1,19 @@
 /*
  * MENU « CARTE MARINE » — la table du navigateur.
  *
- * Une seule illustration (`/assets/menu/carte/plateau.webp`, 1672 × 941) :
+ * Une seule illustration (`/assets/menu/carte/plateau.webp`, 1672 × 645) :
  * la table, la carte punaisée, et les trois parchemins qui portent les
  * destinations. Tout le reste est posé PAR-DESSUS, en pourcentages de
  * cette image — donc à la même place quelle que soit la taille de l'écran.
  *
  * Trois règles tenues ici :
- *   - l'illustration n'est jamais recadrée (`contain`) : les trois
- *     parchemins sont la navigation, en perdre un au bord de l'écran
- *     reviendrait à perdre un bouton ;
- *   - les bandes laissées par le `contain` ne sont pas noires : la même
- *     image, floutée et assombrie, les remplit — la scène déborde d'elle-même ;
+ *   - la scène remplit l'écran tant qu'on ne perd aucun parchemin : elle
+ *     s'agrandit jusqu'à 132 % de la largeur visible (un téléphone couché
+ *     est alors plein cadre), et pas au-delà — les trois parchemins sont
+ *     la navigation, en perdre un au bord reviendrait à perdre un bouton ;
+ *   - les bandes qui restent sur un écran plus carré ne sont pas noires :
+ *     la même image, floutée et assombrie, les remplit — la scène déborde
+ *     d'elle-même ;
  *   - le survol ne redessine rien : il ÉCLAIRE le parchemin peint
  *     (`backdrop-filter`) et pose un halo chaud autour. C'est pourquoi il
  *     n'y a pas d'image « carte survolée » à fournir.
@@ -65,10 +67,17 @@
   top: 50%;
   left: 50%;
   z-index: 1;
-  /* Bornée par les DEUX dimensions : la hauteur d'abord (un écran large et
-     court montrerait sinon une table coupée en haut et en bas). */
-  width: min(100%, calc(100dvh * 1672 / 941));
-  aspect-ratio: 1672 / 941;
+  /*
+   * TROIS BORNES, dans cet ordre :
+   *   - au moins la largeur visible (`100%`), pour ne jamais laisser de
+   *     bande sur les côtés ;
+   *   - assez haute pour remplir l'écran (`100dvh` × le rapport de
+   *     l'image), ce qui, sur un téléphone couché, la met plein cadre ;
+   *   - au plus 132 % de la largeur visible : au-delà, le recadrage
+   *     mangerait le parchemin « Collection », qui commence à 17 %.
+   */
+  width: min(max(100%, calc(100dvh * 1672 / 645)), 132%);
+  aspect-ratio: 1672 / 645;
   transform: translate(-50%, -50%);
 }
 
@@ -79,48 +88,25 @@
 }
 
 /*
- * LE VOILE DU TITRE. L'illustration porte déjà son titre, peint très
- * grand ; le jeu, lui, a un logo à lui, et on le veut plus discret.
+ * LE LOGO, posé NET sur la carte — pas de voile sous lui : l'illustration
+ * ne porte plus de titre (elle est recadrée sous le sien), il n'y a donc
+ * rien à éteindre. L'ombre portée suffit à le détacher du papier.
  *
- * Le titre peint n'est donc pas effacé : il passe HORS FOCUS. Le voile
- * floute et assombrit ce qu'il y a derrière lui, comme le fond d'une
- * photographie prise sur la table — et le vrai logo, net, se pose dessus.
- *
- * Le masque est ce qui rend l'effet invisible : sans lui, le flou
- * s'arrête au bord du rectangle et laisse une barre nette en travers de
- * la carte. Avec, il s'éteint avec le dégradé.
+ * En haut et au centre, au-dessus du parchemin « Jouer » : c'est la seule
+ * bande de la scène que rien n'occupe.
  */
-.titleVeil {
-  position: absolute;
-  top: -8%;
-  left: 19%;
-  z-index: 2;
-  width: 62%;
-  height: 46%;
-  pointer-events: none;
-  background: radial-gradient(
-    56% 52% at 50% 50%,
-    rgba(6, 14, 24, 0.93) 0%,
-    rgba(6, 14, 24, 0.88) 54%,
-    rgba(6, 14, 24, 0.5) 74%,
-    rgba(6, 14, 24, 0.16) 89%,
-    transparent 100%
-  );
-  backdrop-filter: blur(22px) brightness(0.6) saturate(0.8);
-  -webkit-mask-image: radial-gradient(56% 52% at 50% 50%, #000 0%, #000 58%, rgba(0, 0, 0, 0.5) 78%, transparent 100%);
-  mask-image: radial-gradient(56% 52% at 50% 50%, #000 0%, #000 58%, rgba(0, 0, 0, 0.5) 78%, transparent 100%);
-}
-
 .logo {
   position: absolute;
-  top: 17%;
+  top: 10%;
   left: 50%;
   z-index: 3;
-  width: clamp(130px, 22%, 350px);
+  /* La bande libre au-dessus des parchemins est mince : le logo tient
+     dedans, sans mordre sur le sceau de cire du parchemin « Jouer ». */
+  width: clamp(110px, 17%, 265px);
   height: auto;
   transform: translate(-50%, -50%);
   user-select: none;
-  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.75));
+  filter: drop-shadow(0 4px 10px rgba(3, 9, 16, 0.85)) drop-shadow(0 0 26px rgba(3, 9, 16, 0.6));
 }
 
 /* ──────────────────────────────────────────────────────────────

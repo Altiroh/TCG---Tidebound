@@ -20,11 +20,17 @@ amenée à évoluer.
 - `logo/` : logo / wordmark "Tidebound" (actuellement du texte brut, `<h1>`).
 - `carte/` : la variante « carte marine » du menu, en cours d'évaluation
   (`/?menu=carte`, cf. `components/menu/TideboundMenuCarte.tsx`).
-  - `plateau.webp` (1672 × 941, 16/9) : la table du navigateur, la carte
+  - `plateau.webp` (1672 × 645) : la table du navigateur, la carte
     punaisée et les trois parchemins — TOUTE la scène en une image. Le
     menu ne fait qu'y poser le logo et trois zones cliquables, en
     pourcentages de l'image ; changer l'illustration demande donc de
     recaler ces gabarits (`?menu=carte&reperes=1` trace leurs contours).
+  - L'illustration FOURNIE faisait 1672 × 941 et portait son propre titre,
+    peint en très grand sur toute la bande du haut. Elle est rognée sous
+    lui (296 px), ce qui l'efface sans rien retoucher : le logo du jeu se
+    pose ensuite net sur la carte, à sa taille, sans voile sombre en
+    dessous. Une nouvelle version de l'illustration doit donc arriver déjà
+    sans titre — ou être rognée pareil.
   - Pas de « carte survolée » à fournir : le survol éclaire le parchemin
     peint (`backdrop-filter`) au lieu de le remplacer.
 
