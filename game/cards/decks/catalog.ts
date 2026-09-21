@@ -108,6 +108,11 @@ const DECK_META: Record<string, DeckMeta> = {
     difficulty: 3,
     mechanics: ["Petites Créatures", "Canon de proue", "Bonus de groupe"],
   },
+  "la-ligne-tenue": {
+    style: "Défensif / Structures-pièges et visibilité de Marée",
+    difficulty: 4,
+    mechanics: ["Réactions cachées", "Réduction de dégâts", "Fenêtres de Marée"],
+  },
 };
 
 const FALLBACK_META: DeckMeta = { style: "Polyvalent", difficulty: 3, mechanics: [] };

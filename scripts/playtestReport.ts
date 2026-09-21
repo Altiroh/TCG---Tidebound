@@ -25,7 +25,7 @@ import {
 } from "@/game/cards/decks/borrowed";
 import {
   DECK_DERNIER_RAPPEL, DECK_SOUS_LA_LIGNE, DECK_TOUT_RECUPERER,
-  DECK_LES_PETITS_ATTENDENT, DECK_GRENOUILLES_AU_CANON,
+  DECK_LES_PETITS_ATTENDENT, DECK_GRENOUILLES_AU_CANON, DECK_LA_LIGNE_TENUE,
 } from "@/game/cards/decks/precon";
 import { botHasSomethingToDo } from "@/game/bot/runBotTurn";
 import { chooseBotAction } from "@/game/bot/chooseAction";
@@ -34,48 +34,11 @@ import { dispatch } from "@/game/engine";
 import type { GameState } from "@/game/state/types";
 import type { DeckList } from "@/game/cards/decks/types";
 
-const rep = (id: string, n: number) => Array.from({ length: n }, () => id);
 
 const N = Number(process.argv[2] ?? 20);
 
-/**
- * Deck de MESURE, pas une liste du catalogue : cinq des six Structures
- * reprises le 21/09 ne figurent dans AUCUNE liste v4, donc les
- * affrontements du cadrage ne mesureraient rien sans lui. Il vit ici, dans
- * le banc d'essai, et n'est jamais proposé à un joueur.
- *
- * Brise-Lames pour ses 6 Slots : un deck qui pose des pièges a besoin de
- * place, et c'est le Navire des listes défensives existantes.
- */
-const DECK_PIEGES_TEST: DeckList = {
-  id: "pieges-test",
-  name: "Pièges (banc d'essai)",
-  shipId: "le-brise-lames",
-  description: "Deck de mesure : les Structures-pièges de la première vague, pour les voir jouer.",
-  cardIds: [
-    // Les pièges repris le 21/09.
-    ...rep("cylindre-flottant", 2),
-    ...rep("cage-de-flottaison", 2),
-    ...rep("filet-a-la-derive", 3),
-    ...rep("le-filet-qui-respire", 3),
-    ...rep("caisses-arrimees", 3),
-    ...rep("ancre-de-derive", 2),
-    // De quoi tenir jusqu'à ce qu'ils mordent.
-    ...rep("carcasse-renversee", 2),
-    ...rep("brise-vague-de-fortune", 3),
-    ...rep("barge-de-reparation", 2),
-    ...rep("crabe-de-fer", 3),
-    ...rep("murene-aveugle", 3),
-    ...rep("matelot-du-sans-nom", 3),
-    ...rep("marin-des-jetees", 3),
-    ...rep("plongeur-des-epaves", 2),
-    ...rep("thermos-du-dernier-quart", 2),
-    ...rep("bibliotheque-salee", 2),
-  ],
-};
-
 const DECKS: Record<string, DeckList> = {
-  "Pièges (banc d'essai)": DECK_PIEGES_TEST,
+  "La Ligne Tenue": DECK_LA_LIGNE_TENUE,
   "Bec dans la Brume": DECK_BEC_DANS_LA_BRUME,
   "Cap de Fer": DECK_CAP_DE_FER,
   "Le Banc Déborde": DECK_LE_BANC_DEBORDE,
@@ -169,11 +132,11 @@ function duel(nomA: string, nomB: string, n: number) {
 
 const AFFRONTEMENTS: [string, string, string][] = [
   // Les cinq affrontements demandés pour la première vague de pièges.
-  ["swarm Cra-Poiscail vs Structures défensives", "Grenouilles au Canon", "Pièges (banc d'essai)"],
-  ["Courlis aggro vs Structures", "Bec dans la Brume", "Pièges (banc d'essai)"],
-  ["Goliath artillerie vs Structures", "À Portée", "Pièges (banc d'essai)"],
-  ["Abysses vs Structures de contrôle de Marée", "Sous la Ligne", "Pièges (banc d'essai)"],
-  ["Structures/Sabordage miroir", "Tout Récupérer", "Pièges (banc d'essai)"],
+  ["swarm Cra-Poiscail vs Structures défensives", "Grenouilles au Canon", "La Ligne Tenue"],
+  ["Courlis aggro vs Structures", "Bec dans la Brume", "La Ligne Tenue"],
+  ["Goliath artillerie vs Structures", "À Portée", "La Ligne Tenue"],
+  ["Abysses vs Structures de contrôle de Marée", "Sous la Ligne", "La Ligne Tenue"],
+  ["Structures/Sabordage miroir", "Tout Récupérer", "La Ligne Tenue"],
 ];
 
 // Mode duel ciblé : `npx tsx scripts/playtestReport.ts 60 --duel "Deck A" "Deck B"`

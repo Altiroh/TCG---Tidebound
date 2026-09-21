@@ -256,10 +256,57 @@ export const DECK_GRENOUILLES_AU_CANON: DeckList = {
  * Les cinq préconstruits, un par Navire — l'ordre est celui de la page v4,
  * donc celui du rayon à l'écran.
  */
+/**
+ * La Ligne Tenue — Le Brise-Lames. Le premier deck DÉFENSIF du format
+ * (21/09/2026), né de la première vague de Structures-pièges.
+ *
+ * Condition de victoire : ne pas perdre. Chaque attaque adverse coûte plus
+ * cher qu'elle ne rapporte — réduite, amputée de sa Puissance, ou renvoyée —
+ * jusqu'à ce que l'adversaire n'ait plus de quoi passer.
+ *
+ * Confié au Brise-Lames pour ses 6 Slots : poser des pièges demande de la
+ * place, et il faut pouvoir en tenir plusieurs masqués en même temps pour
+ * que l'adversaire ne sache jamais lequel il vient de déclencher.
+ *
+ * Mesuré au banc d'essai avant d'entrer au catalogue : il tient le swarm à
+ * 60 / 40 là où celui-ci écrasait le champ à 87 %, ramène l'aggro Courlis à
+ * l'équilibre exact, et bat l'ancien deck Structures 73 / 27.
+ */
+export const DECK_LA_LIGNE_TENUE: DeckList = {
+  id: "la-ligne-tenue",
+  name: "La Ligne Tenue",
+  shipId: "le-brise-lames",
+  description:
+    "Défense active : chaque attaque adverse est réduite, amputée ou renvoyée, et l'adversaire ne sait jamais quel piège il vient de déclencher.",
+  cardIds: [
+    // Les pièges — le cœur du plan, moitié visibles, moitié cachés.
+    ...repeat("cylindre-flottant", 2),
+    ...repeat("cage-de-flottaison", 2),
+    ...repeat("filet-a-la-derive", 3),
+    ...repeat("le-filet-qui-respire", 3),
+    ...repeat("caisses-arrimees", 3),
+    ...repeat("ancre-de-derive", 2),
+    // Les défenses qui ne se cachent pas.
+    ...repeat("carcasse-renversee", 2),
+    ...repeat("brise-vague-de-fortune", 3),
+    ...repeat("barge-de-reparation", 2),
+    // Les corps qui tiennent la ligne le temps que les pièges mordent.
+    ...repeat("crabe-de-fer", 3),
+    ...repeat("murene-aveugle", 3),
+    ...repeat("matelot-du-sans-nom", 3),
+    ...repeat("marin-des-jetees", 3),
+    // De quoi durer.
+    ...repeat("plongeur-des-epaves", 2),
+    ...repeat("thermos-du-dernier-quart", 2),
+    ...repeat("bibliotheque-salee", 2),
+  ],
+};
+
 export const PRECON_DECK_LISTS: readonly DeckList[] = [
   DECK_DERNIER_RAPPEL,
   DECK_SOUS_LA_LIGNE,
   DECK_TOUT_RECUPERER,
   DECK_LES_PETITS_ATTENDENT,
   DECK_GRENOUILLES_AU_CANON,
+  DECK_LA_LIGNE_TENUE,
 ];
