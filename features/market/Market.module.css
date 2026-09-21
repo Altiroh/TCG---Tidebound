@@ -327,7 +327,8 @@ a.section {
   flex-direction: column;
   align-items: center;
   gap: 1.2cqh;
-  width: min(98cqw, 205cqh);
+  /* Même largeur que le ponton (`.plate`), qui porte la raison du 191. */
+  width: min(98cqw, 191cqh);
   margin-top: auto;
 }
 
@@ -498,8 +499,13 @@ a.section {
   position: relative;
   flex: 0 0 auto;
   /* Pas de plafond en pixels : sur un grand écran, le ponton grandit avec la scène. */
-  width: min(98cqw, 205cqh);
-  aspect-ratio: 2.2 / 1;
+  width: min(98cqw, 191cqh);
+  /* Un sachet arrivait à 0,35 cqw du bord haut : au survol (montée de
+     1,2 cqw, +3 %, halo), la fenêtre de la vitrine le rognait. 7 % de
+     hauteur en plus, AU-DESSUS : décor et socles sont ancrés en bas, rien
+     ne bouge — et la largeur maximale baisse d'autant (205 → 191 cqh) pour
+     que le ponton tienne toujours dans la scène. */
+  aspect-ratio: 2.2 / 1.07;
   background: url("/assets/market/pedestals.webp") center bottom / 100% auto no-repeat;
   container-type: inline-size;
 }
