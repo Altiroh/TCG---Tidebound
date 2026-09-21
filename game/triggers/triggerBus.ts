@@ -109,6 +109,14 @@ function matchesControlCondition(
     const holder = sourceInstanceId ? findBoardUnit(state, sourceInstanceId) : undefined;
     if (!holder || !isVisibleDuringTide(getCardDefinition(holder.unit.cardId), state.environment.tideState)) return false;
   }
+  // « Réaction cachée » : complément exact de `selfVisible`. Sans elle, une
+  // carte portant les deux textes proposerait les deux en même temps.
+  const seuil = ability.condition?.attackerPowerAtLeast;
+  if (seuil !== undefined && (state.pendingAttack?.attackerPower ?? 0) < seuil) return false;
+  if (ability.condition?.selfHidden) {
+    const holder = sourceInstanceId ? findBoardUnit(state, sourceInstanceId) : undefined;
+    if (!holder || isVisibleDuringTide(getCardDefinition(holder.unit.cardId), state.environment.tideState)) return false;
+  }
   const handAtLeast = ability.condition?.controllerHandAtLeast;
   if (handAtLeast !== undefined) {
     const holder = state.players.find((p) => p.id === controllerId);
@@ -243,7 +251,7 @@ function collectTriggeredWork(
     return result;
   }
 
-  if (event.trigger === "onIncomingDirectAttack") {
+  if (event.trigger === "onIncomingDirectAttack" || event.trigger === "onUnitAttackDeclared") {
     // Fenêtre d'INTERCEPTION : la capacité se lit sur le plateau du
     // DÉFENSEUR (`event.playerId`), jamais sur l'attaquant — alors que
     // `event.sourceInstanceId` désigne justement l'attaquant, pour que le

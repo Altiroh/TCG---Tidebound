@@ -248,10 +248,16 @@ export interface GameState {
 export interface PendingAttack {
   playerId: PlayerId;
   attackerInstanceId: string;
-  /** Toujours absent ici : seules les attaques DIRECTES ouvrent une fenêtre. */
+  /** Cible du combat, absente pour une attaque directe au Navire. */
   defenderInstanceId?: string;
   /** Puissance de l'attaquant au moment de la déclaration — ce que « autant de dégâts » renvoie. */
   attackerPower: number;
+  /**
+   * Réduction de dégâts DIRECTS posée par un piège (`reduceIncomingDamage`,
+   * Cage de Flottaison, Caisses Arrimées). Cumulative : deux pièges qui
+   * répondent à la même attaque additionnent leurs réductions.
+   */
+  damageReduction?: number;
   /** Un piège a annulé les dégâts directs de cette attaque. */
   intercepted?: boolean;
 }

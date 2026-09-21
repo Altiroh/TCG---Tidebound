@@ -108,18 +108,44 @@ describe("Cylindre flottant — Contrecoup", () => {
     expect(board(passe.state, "p2")).toHaveLength(1); // le Cylindre reste en jeu
   });
 
-  it("ne fait rien tant qu'il est invisible (Calme)", () => {
-    const attacker = instance("baleine-aux-cicatrices-blanches", "p1");
-    const cylindre = instance("cylindre-flottant", "p2");
+  it("MASQUÉ (Calme), il propose sa Réaction cachée et frappe le NAVIRE adverse", () => {
+    // Le piège ne vise plus un permanent quand il est caché : le joueur n'a
+    // pas choisi son moment, il ne choisit pas non plus sa cible.
+    const attacker = instance("baleine-aux-cicatrices-blanches", "p1"); // 5 Puissance
+    const cylindre = instance("cylindre-flottant", "p2", { turnsRemaining: 3 });
     const state = testGameState({
       phase: "combatPhase",
       players: [testPlayer("p1", { board: [attacker], anchor: 20 }), testPlayer("p2", { board: [cylindre], anchor: 20 })],
     });
-    const result = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attacker.instanceId });
-    ok(result);
-    expect(player(result.state, "p2").anchor).toBe(15);
-    expect(player(result.state, "p1").anchor).toBe(20);
-    expect(board(result.state, "p2")).toHaveLength(1);
+
+    const declaree = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attacker.instanceId });
+    ok(declaree);
+    expect(declaree.state.pendingReaction?.awaitingPlayerId).toBe("p2");
+
+    const active = activateReactionFor(declaree.state, "cylindre-flottant");
+    ok(active);
+    expect(player(active.state, "p2").anchor).toBe(20); // coque intacte
+    expect(player(active.state, "p1").anchor).toBe(15); // 5 renvoyés au Navire adverse
+    expect(board(active.state, "p2")).toHaveLength(0); // le Cylindre s'est détruit
+  });
+
+  it("MASQUÉ, passer laisse l'attaque porter et ne révèle rien", () => {
+    const attacker = instance("baleine-aux-cicatrices-blanches", "p1");
+    const cylindre = instance("cylindre-flottant", "p2", { turnsRemaining: 3 });
+    const state = testGameState({
+      phase: "combatPhase",
+      players: [testPlayer("p1", { board: [attacker], anchor: 20 }), testPlayer("p2", { board: [cylindre], anchor: 20 })],
+    });
+    const declaree = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attacker.instanceId });
+    ok(declaree);
+    const passe = dispatch(declaree.state, { type: "passReaction", playerId: "p2" });
+    ok(passe);
+
+    expect(player(passe.state, "p2").anchor).toBe(15);
+    expect(board(passe.state, "p2")).toHaveLength(1);
+    // Passer ne révèle RIEN : l'adversaire ne sait toujours pas ce qu'il y a.
+    expect(board(passe.state, "p2")[0]!.revealed).toBeUndefined();
+    expect(passe.events.some((e) => e.type === "STRUCTURE_REVEALED")).toBe(false);
   });
 });
 
@@ -522,27 +548,30 @@ describe("écarts moteur corrigés le 17/09/2026", () => {
     expect(sabordeResult.events.some((e) => e.type === "SABORDED")).toBe(true);
   });
 
-  it("Cage de Flottaison ne réduit que les dégâts d'une Créature, pas ceux d'un Marin", () => {
+  it("Cage de Flottaison réduit de 2 quelle que soit la carte qui attaque (rework du 21/09)", () => {
+    // La restriction aux Créatures saute : une attaque est une attaque. La
+    // fenêtre perd Calme, donc les tests se jouent en Houle.
     const setup = (attackerId: string) => {
       const attacker = instance(attackerId, "p1");
-      const cage = instance("cage-de-flottaison", "p2");
+      const cage = instance("cage-de-flottaison", "p2", { turnsRemaining: 4 });
       return {
         attacker,
         state: testGameState({
           phase: "combatPhase",
+          environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 4 }),
           players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2", { board: [cage], anchor: 20 })],
         }),
       };
     };
-    const byCreature = setup("requin-balafre"); // Créature 4 Puissance
-    const creatureResult = dispatch(byCreature.state, { type: "attack", playerId: "p1", attackerInstanceId: byCreature.attacker.instanceId });
-    ok(creatureResult);
-    expect(player(creatureResult.state, "p2").anchor).toBe(17); // 20 - (4 - 1)
+    const parCreature = setup("requin-balafre"); // Créature 4 Puissance
+    const creature = dispatch(parCreature.state, { type: "attack", playerId: "p1", attackerInstanceId: parCreature.attacker.instanceId });
+    ok(creature);
+    expect(player(creature.state, "p2").anchor).toBe(18); // 20 - (4 - 2)
 
-    const bySailor = setup("harponneur-du-dernier-quai"); // Marin 3 Puissance
-    const sailorResult = dispatch(bySailor.state, { type: "attack", playerId: "p1", attackerInstanceId: bySailor.attacker.instanceId });
-    ok(sailorResult);
-    expect(player(sailorResult.state, "p2").anchor).toBe(17); // 20 - 3, sans réduction
+    const parMarin = setup("harponneur-du-dernier-quai"); // Marin 3 Puissance
+    const marin = dispatch(parMarin.state, { type: "attack", playerId: "p1", attackerInstanceId: parMarin.attacker.instanceId });
+    ok(marin);
+    expect(player(marin.state, "p2").anchor).toBe(19); // 20 - (3 - 2), le Marin est réduit lui aussi
   });
 
   it("une Structure posée dans un état où elle est déjà visible déclenche son apparition", () => {

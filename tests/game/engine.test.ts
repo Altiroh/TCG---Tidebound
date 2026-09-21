@@ -2014,12 +2014,13 @@ describe("engine.dispatch - Brise-Vague de Fortune : bouclier de dégâts de Mar
 });
 
 describe("engine.dispatch - Cage de Flottaison : bouclier de dégâts DIRECTS au Navire (une fois par tour)", () => {
-  it("réduit de 1 la première attaque directe du tour, pas la seconde", () => {
-    const cage = instance("cage-de-flottaison", "p2");
+  it("réduit de 2 la première attaque directe du tour, pas la seconde", () => {
+    const cage = instance("cage-de-flottaison", "p2", { turnsRemaining: 4 });
     const attacker1 = instance("murene-aveugle", "p1"); // 3/1
     const attacker2 = instance("poisson-lanterne", "p1"); // 1/1
     const state = testGameState({
       phase: "combatPhase",
+      environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 4 }),
       players: [
         testPlayer("p1", { board: [attacker1, attacker2] }),
         testPlayer("p2", { shipId: "lerrant", anchor: 20, board: [cage] }),
@@ -2029,37 +2030,40 @@ describe("engine.dispatch - Cage de Flottaison : bouclier de dégâts DIRECTS au
     const first = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attacker1.instanceId });
     expect(first.ok).toBe(true);
     if (!first.ok) return;
-    expect(first.state.players[1].anchor).toBe(18); // 20 - (3 - 1 bouclier)
+    expect(first.state.players[1].anchor).toBe(19); // 20 - (3 - 2 bouclier)
 
     const second = dispatch(first.state, { type: "attack", playerId: "p1", attackerInstanceId: attacker2.instanceId });
     expect(second.ok).toBe(true);
     if (!second.ok) return;
-    expect(second.state.players[1].anchor).toBe(17); // 18 - 1 (bouclier déjà consommé ce tour-ci)
+    expect(second.state.players[1].anchor).toBe(18); // 19 - 1 (bouclier déjà consommé ce tour-ci)
   });
 });
 
-describe("engine.dispatch - Le Filet qui Respire : bouclier de Puissance de l'attaquant (une fois par tour)", () => {
-  it("réduit de 1 la Puissance de la première Créature attaquant directement, pas la seconde", () => {
-    const filet = instance("le-filet-qui-respire", "p2");
-    const attacker1 = instance("murene-aveugle", "p1"); // 3/1
-    const attacker2 = instance("poisson-lanterne", "p1"); // 1/1
+describe("engine.dispatch - Le Filet qui Respire : anti-grosse menace (Puissance 4 ou plus)", () => {
+  it("retire 2 Puissance à un attaquant de 4 ou plus, et ne touche pas un petit attaquant", () => {
+    // Rework du 21/09 : un SEUIL le distingue du Filet à la Dérive, qui lui
+    // freine le swarm sans condition. Visible en Tempête et Abysses.
+    const filet = instance("le-filet-qui-respire", "p2", { turnsRemaining: 4 });
+    const gros = instance("requin-balafre", "p1"); // 4 Puissance : au-dessus du seuil
+    const petit = instance("murene-aveugle", "p1"); // 3 Puissance : en dessous
     const state = testGameState({
       phase: "combatPhase",
+      environment: testEnvironment({ tideState: "tempete", tideRemainingTurns: 4 }),
       players: [
-        testPlayer("p1", { board: [attacker1, attacker2] }),
+        testPlayer("p1", { board: [gros, petit] }),
         testPlayer("p2", { shipId: "lerrant", anchor: 20, board: [filet] }),
       ],
     });
 
-    const first = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attacker1.instanceId });
+    const first = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: gros.instanceId });
     expect(first.ok).toBe(true);
     if (!first.ok) return;
-    expect(first.state.players[1].anchor).toBe(18); // 20 - (3 - 1 bouclier de Puissance)
+    expect(first.state.players[1].anchor).toBe(18); // 20 - (4 - 2)
 
-    const second = dispatch(first.state, { type: "attack", playerId: "p1", attackerInstanceId: attacker2.instanceId });
+    const second = dispatch(first.state, { type: "attack", playerId: "p1", attackerInstanceId: petit.instanceId });
     expect(second.ok).toBe(true);
     if (!second.ok) return;
-    expect(second.state.players[1].anchor).toBe(17); // 18 - 1 (bouclier déjà consommé ce tour-ci)
+    expect(second.state.players[1].anchor).toBe(15); // 18 - 3 : sous le seuil, rien n'est retiré
   });
 });
 

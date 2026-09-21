@@ -152,6 +152,22 @@ export interface TriggeredAbility {
    * contrôlez un Destrier du Grand Étang »).
    */
   condition?: {
+    /**
+     * « Réaction cachée » : la capacité ne se propose que si sa porteuse est
+     * MASQUÉE par la Marée. Indispensable dès qu'une carte porte À LA FOIS un
+     * effet visible et une Réaction cachée — sans elle, les deux se
+     * proposeraient en même temps et le texte promettrait deux fois la même
+     * chose. Complément exact de `selfVisible`.
+     */
+    selfHidden?: boolean;
+    /**
+     * « si sa Puissance est supérieure ou égale à N » : seuil sur la
+     * Puissance DÉCLARÉE de l'attaquant (`pendingAttack.attackerPower`).
+     * N'a de sens que sur un déclencheur d'interception. Sert à distinguer
+     * une défense anti-grosse-menace (Le Filet qui Respire) d'une défense
+     * anti-swarm (Filet à la Dérive), sans dupliquer la même carte.
+     */
+    attackerPowerAtLeast?: number;
     tideState?: TideStateName;
     tideStateIn?: TideStateName[];
     controlsAnyCardIds?: string[];

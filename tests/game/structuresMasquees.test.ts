@@ -15,10 +15,13 @@ import { dispatch } from "@/game/engine";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { botHasSomethingToDo } from "@/game/bot/runBotTurn";
 import { chooseBotAction } from "@/game/bot/chooseAction";
-import { instance, pendingCandidates, testEnvironment, testGameState, testPlayer } from "./testHelpers";
+import { activateReactionFor, instance, pendingCandidates, testEnvironment, testGameState, testPlayer } from "./testHelpers";
 import type { GameState } from "@/game/state/types";
 
 const BALISE = "balise-des-profondeurs"; // optional, onTideStateEntered, SANS garde de visibilité
+
+const player = (st: GameState, id: string) => st.players.find((p) => p.id === id)!;
+const board = (st: GameState, id: string) => player(st, id).board;
 
 function ok<T extends { ok: boolean }>(r: T): asserts r is T & { ok: true } {
   expect(r.ok).toBe(true);
@@ -120,5 +123,68 @@ describe("Fenêtre d'interception — le bot sait y répondre", () => {
     // Quoi qu'il ait choisi, l'attaque est résolue : plus rien en suspens.
     expect(joue.state.pendingAttack).toBeUndefined();
     expect(joue.state.pendingReaction).toBeUndefined();
+  });
+});
+
+describe("Pièges simultanés et cibles devenues invalides", () => {
+  it("deux pièges éligibles sur la même attaque s'enchaînent sans casser la fenêtre", () => {
+    // Cage de Flottaison (−3 cachée) et Caisses Arrimées (−2 cachée) sont
+    // toutes deux masquées en Abysses. Les deux doivent pouvoir répondre, et
+    // leurs réductions s'additionner.
+    const attaquant = instance("baleine-aux-cicatrices-blanches", "p1"); // 5 Puissance
+    const cage = instance("cage-de-flottaison", "p2", { turnsRemaining: 4 });
+    const caisses = instance("caisses-arrimees", "p2", { turnsRemaining: 4 });
+    const state = testGameState({
+      phase: "combatPhase",
+      environment: testEnvironment({ tideState: "abysses", tideRemainingTurns: 3 }),
+      players: [
+        testPlayer("p1", { board: [attaquant], anchor: 20 }),
+        testPlayer("p2", { board: [cage, caisses], anchor: 20 }),
+      ],
+    });
+
+    const declaree = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attaquant.instanceId });
+    ok(declaree);
+    const noms = pendingCandidates(declaree.state).map((c) => c.cardId);
+    expect(noms).toContain("cage-de-flottaison");
+    expect(noms).toContain("caisses-arrimees");
+
+    const premier = activateReactionFor(declaree.state, "cage-de-flottaison");
+    ok(premier);
+    // La fenêtre reste ouverte pour le second piège.
+    expect(premier.state.pendingReaction).toBeDefined();
+    expect(premier.state.pendingAttack).toBeDefined();
+
+    const second = activateReactionFor(premier.state, "caisses-arrimees");
+    ok(second);
+    // 5 − 3 (Cage) − 2 (Caisses) = 0 : la coque ne prend rien. Et les Caisses
+    // rendent 2 Ancrage en se Sabordant — leur texte le dit, et le Sabordage
+    // d'une Réaction cachée est un Sabordage comme un autre.
+    expect(player(second.state, "p2").anchor).toBe(22);
+    expect(second.state.pendingAttack).toBeUndefined();
+  });
+
+  it("un piège qui détruit l'attaquant n'empêche pas l'attaque de se terminer proprement", () => {
+    // Le Cylindre renvoie 5 dégâts sur une Murène à 1 de Résistance : elle
+    // meurt AVANT que l'attaque ne reprenne. La reprise doit rester saine.
+    const attaquant = instance("murene-aveugle", "p1"); // 3/1
+    const cylindre = instance("cylindre-flottant", "p2", { turnsRemaining: 3 });
+    const state = testGameState({
+      phase: "combatPhase",
+      environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 4 }),
+      players: [
+        testPlayer("p1", { board: [attaquant], anchor: 20 }),
+        testPlayer("p2", { board: [cylindre], anchor: 20 }),
+      ],
+    });
+
+    const declaree = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attaquant.instanceId });
+    ok(declaree);
+    const active = activateReactionFor(declaree.state, "cylindre-flottant", attaquant.instanceId);
+    ok(active);
+
+    expect(active.state.pendingAttack).toBeUndefined();
+    expect(active.state.status).toBe("active");
+    expect(player(active.state, "p2").anchor).toBe(20); // dégâts annulés
   });
 });

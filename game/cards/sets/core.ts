@@ -206,12 +206,32 @@ export const CORE_SET: CardDefinition[] = [
     health: 3,
     durationTurns: 4,
     visibleDuringTide: ["calme", "houle"],
-    text: "Durée : 4 tours. Visible pendant Calme et Houle. Sabordage : récupérez 2 Ancrage.",
+    // Rework du 21/09/2026 : l'effet visible ne bouge pas, une Réaction
+    // cachée s'ajoute. Le vrai apport est le CHOIX — garder la carte pour
+    // 2 Ancrage plus tard, ou la brûler maintenant pour encaisser un coup.
+    text:
+      "Durée : 4 tours. Visible pendant Calme et Houle. Sabordage : récupérez 2 Ancrage. Réaction cachée : " +
+      "lorsque votre Navire devrait subir des dégâts directs, vous pouvez révéler puis Saborder Caisses " +
+      "Arrimées : réduisez ces dégâts de 2.",
     abilities: [
       {
         trigger: "onSaborde",
         description: "Sabordage : récupérez 2 Ancrage.",
         effects: [{ type: "heal", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } }],
+      },
+      {
+        // Le Sabordage déclenche la capacité ci-dessus : réduire les dégâts
+        // ET récupérer 2 Ancrage. C'est voulu — le texte dit « Sabordez »,
+        // et Saborder a toujours ce sens sur cette carte.
+        trigger: "onIncomingDirectAttack",
+        mode: "optional",
+        hiddenReaction: true,
+        condition: { selfHidden: true },
+        description: "Révélez puis Sabordez Caisses Arrimées : réduisez ces dégâts de 2.",
+        effects: [
+          { type: "reduceIncomingDamage", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } },
+          { type: "saborde", target: { kind: "self" } },
+        ],
       },
     ],
   },
@@ -272,7 +292,7 @@ export const CORE_SET: CardDefinition[] = [
     maxCopies: 2,
     health: 2,
     durationTurns: 3,
-    visibleDuringTide: ["houle"],
+    visibleDuringTide: ["houle", "tempete"],
     // CARTE ÉTALON DES STRUCTURES-PIÈGES (passe de stabilisation,
     // 21/09/2026). Elle était résolue AUTOMATIQUEMENT — le commentaire
     // d'alors l'assumait : « renvoyer les dégâts n'est jamais un
@@ -291,9 +311,11 @@ export const CORE_SET: CardDefinition[] = [
     // choisi. C'est un renforcement net, signalé comme à valider au
     // playtest par le cadrage lui-même.
     text:
-      "Durée : 3 tours. Visible pendant Houle. La première fois à chaque tour que votre Navire devrait subir des " +
-      "dégâts directs d'une attaque, vous pouvez annuler ces dégâts et infliger autant de dégâts à un permanent " +
-      "adverse. Détruisez ensuite cette carte.",
+      "Durée : 3 tours. Visible pendant Houle et Tempête. La première fois à chaque tour que votre Navire devrait " +
+      "subir des dégâts directs d'une attaque, vous pouvez annuler ces dégâts et infliger autant de dégâts à un " +
+      "permanent adverse de votre choix. Détruisez ensuite Cylindre flottant. Réaction cachée : lorsqu'une unité " +
+      "adverse attaque directement votre Navire, vous pouvez révéler Cylindre flottant : annulez les dégâts de " +
+      "cette attaque et infligez autant de dégâts au Navire adverse. Détruisez ensuite Cylindre flottant.",
     abilities: [
       {
         trigger: "onIncomingDirectAttack",
@@ -304,6 +326,20 @@ export const CORE_SET: CardDefinition[] = [
         effects: [
           { type: "cancelIncomingAttack", target: { kind: "controllerPlayer" } },
           { type: "damage", target: { kind: "chosenUnit", among: { opponentOnly: true } }, amount: { kind: "incomingAttackDamage" } },
+          { type: "destroy", target: { kind: "self" } },
+        ],
+      },
+      // Masqué, il frappe le NAVIRE adverse et non un permanent : le joueur
+      // ne choisit pas de cible, puisqu'il n'a pas choisi son moment non plus.
+      {
+        trigger: "onIncomingDirectAttack",
+        mode: "optional",
+        hiddenReaction: true,
+        condition: { selfHidden: true },
+        description: "Révélez Cylindre flottant : annulez les dégâts et infligez-les au Navire adverse, puis détruisez cette carte.",
+        effects: [
+          { type: "cancelIncomingAttack", target: { kind: "controllerPlayer" } },
+          { type: "damage", target: { kind: "opponentPlayer" }, amount: { kind: "incomingAttackDamage" } },
           { type: "destroy", target: { kind: "self" } },
         ],
       },
@@ -730,28 +766,31 @@ export const CORE_SET: CardDefinition[] = [
     health: 3,
     durationTurns: 3,
     visibleDuringTide: ["calme", "houle"],
+    // Rework du 21/09/2026 : l'effet de début de tour était trop passif — il
+    // fallait attendre son propre tour pour affaiblir une Créature qui avait
+    // déjà frappé. Devient une vraie défense, qui mord AU MOMENT de l'attaque.
+    // Anti-swarm : aucun seuil de Puissance, contrairement au Filet qui
+    // Respire, qui vise les grosses menaces.
     text:
-      "Durée : 3 tours. Visible pendant Calme et Houle. À votre début de tour, si elle est visible, vous pouvez " +
-      "choisir une Créature adverse : elle perd 1 Puissance jusqu'à la fin du tour.",
-    // La Créature visée est désignée par le joueur.
+      "Durée : 3 tours. Visible pendant Calme et Houle. La première fois à chaque tour qu'une unité adverse " +
+      "attaque, elle perd 1 Puissance pour cette attaque. Réaction cachée : lorsqu'une unité adverse attaque, " +
+      "vous pouvez révéler Filet à la Dérive : cette unité perd 2 Puissance pour cette attaque.",
     abilities: [
       {
-        trigger: "startOfTurn",
-        mode: "optional",
-        // « si elle est visible » : gardé au niveau de la CAPACITÉ, sinon le
-        // Filet caché se proposerait dans la fenêtre pour ne rien faire. Le
-        // `conditionSelfVisible` de l'effet reste : la Marée peut changer
-        // entre l'ouverture de la fenêtre et l'activation.
+        // Pas de « vous pouvez » : la défense visible s'applique d'elle-même.
+        trigger: "onUnitAttackDeclared",
+        oncePerTurnKey: "filetDeriveAffaiblit",
         condition: { selfVisible: true },
-        description: "À votre début de tour, si elle est visible : une Créature adverse perd 1 Puissance jusqu'à la fin du tour.",
-        effects: [
-          {
-            type: "debuff",
-            target: { kind: "chosenUnit", among: { opponentOnly: true, cardTypes: ["creature"] } },
-            attackAmount: { kind: "flat", value: 1 },
-            conditionSelfVisible: true,
-          },
-        ],
+        description: "La première fois à chaque tour qu'une unité adverse attaque : elle perd 1 Puissance pour cette attaque.",
+        effects: [{ type: "modifyAttackerPower", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
+      },
+      {
+        trigger: "onUnitAttackDeclared",
+        mode: "optional",
+        hiddenReaction: true,
+        condition: { selfHidden: true },
+        description: "Révélez Filet à la Dérive : l'unité qui attaque perd 2 Puissance pour cette attaque.",
+        effects: [{ type: "modifyAttackerPower", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } }],
       },
     ],
   },
@@ -1018,11 +1057,32 @@ export const CORE_SET: CardDefinition[] = [
     maxCopies: 2,
     health: 5,
     durationTurns: 4,
-    visibleDuringTide: ["calme", "houle", "tempete"],
+    visibleDuringTide: ["houle", "tempete"],
+    // Rework du 21/09/2026 : vraie réponse anti-aggro. La restriction aux
+    // Créatures saute (une attaque est une attaque), la réduction passe de 1
+    // à 2, et la fenêtre perd Calme. `maxCopies` reste à 2 pendant le
+    // prototype, comme demandé.
     text:
-      "Durée : 4 tours. Visible pendant Calme, Houle et Tempête. La première fois à chaque tour qu'une Créature " +
-      "devrait infliger des dégâts directs à votre Navire, réduisez ces dégâts de 1.",
-    reduceDirectShipDamageOncePerTurn: { amount: 1, attackerCardTypes: ["creature"] },
+      "Durée : 4 tours. Visible pendant Houle et Tempête. La première fois à chaque tour que votre Navire devrait " +
+      "subir des dégâts directs d'une attaque, réduisez ces dégâts de 2. Réaction cachée : lorsque votre Navire " +
+      "devrait subir des dégâts directs d'une attaque, vous pouvez révéler Cage de Flottaison : réduisez ces " +
+      "dégâts de 3. Sabordez ensuite Cage de Flottaison.",
+    // La défense VISIBLE reste une réduction automatique : c'est une
+    // réduction pure, jamais un désavantage, donc rien à décider.
+    reduceDirectShipDamageOncePerTurn: { amount: 2 },
+    abilities: [
+      {
+        trigger: "onIncomingDirectAttack",
+        mode: "optional",
+        hiddenReaction: true,
+        condition: { selfHidden: true },
+        description: "Révélez Cage de Flottaison : réduisez ces dégâts de 3, puis Sabordez-la.",
+        effects: [
+          { type: "reduceIncomingDamage", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 3 } },
+          { type: "saborde", target: { kind: "self" } },
+        ],
+      },
+    ],
   },
   {
     id: "ponton-aux-cloches",
@@ -1505,11 +1565,32 @@ export const CORE_SET: CardDefinition[] = [
     cost: 3,
     health: 3,
     durationTurns: 4,
-    visibleDuringTide: ["houle", "abysses"],
+    visibleDuringTide: ["tempete", "abysses"],
+    // Rework du 21/09/2026 : se distingue du Filet à la Dérive par un SEUIL.
+    // L'un freine le swarm (toute unité, −1), l'autre les grosses menaces
+    // (Puissance ≥ 4, −2). Sans ce seuil, les deux cartes feraient doublon.
     text:
-      "Durée : 4 tours. Visible pendant Houle et Abysses. La première fois à chaque tour qu'une Créature adverse " +
-      "attaque votre Navire, elle perd 1 Puissance jusqu'à la fin de ce combat.",
-    reduceAttackerPowerOnDirectAttackOncePerTurn: { amount: 1, attackerCardTypes: ["creature"] },
+      "Durée : 4 tours. Visible pendant Tempête et Abysses. La première fois à chaque tour qu'une unité adverse " +
+      "attaque, elle perd 2 Puissance pour cette attaque si sa Puissance est supérieure ou égale à 4. Réaction " +
+      "cachée : lorsqu'une unité adverse de Puissance 4 ou plus attaque, vous pouvez révéler Le Filet qui " +
+      "Respire : elle perd 3 Puissance pour cette attaque.",
+    abilities: [
+      {
+        trigger: "onUnitAttackDeclared",
+        oncePerTurnKey: "filetRespireAffaiblit",
+        condition: { selfVisible: true, attackerPowerAtLeast: 4 },
+        description: "La première fois à chaque tour qu'une unité adverse de Puissance 4 ou plus attaque : elle perd 2 Puissance.",
+        effects: [{ type: "modifyAttackerPower", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } }],
+      },
+      {
+        trigger: "onUnitAttackDeclared",
+        mode: "optional",
+        hiddenReaction: true,
+        condition: { selfHidden: true, attackerPowerAtLeast: 4 },
+        description: "Révélez Le Filet qui Respire : l'unité qui attaque perd 3 Puissance pour cette attaque.",
+        effects: [{ type: "modifyAttackerPower", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 3 } }],
+      },
+    ],
   },
   {
     // Version STANDARD (Notion "Catalogue de cartes", Lot 06) — coexiste avec la variante ABYSSALE ci-dessous.

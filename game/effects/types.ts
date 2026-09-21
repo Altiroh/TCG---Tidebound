@@ -64,6 +64,23 @@ export type EffectType =
    * annulation de l'échange.
    */
   | "cancelIncomingAttack"
+  /**
+   * Réduit de `amount` les dégâts DIRECTS de l'attaque en cours
+   * d'interception (Cage de Flottaison, Caisses Arrimées). Cumulative :
+   * deux pièges qui répondent à la même attaque additionnent leurs
+   * réductions. Sans objet hors fenêtre d'interception.
+   */
+  | "reduceIncomingDamage"
+  /**
+   * Retire `amount` de Puissance à l'attaquant POUR CETTE ATTAQUE (Filet à
+   * la Dérive, Le Filet qui Respire), sans jamais descendre sous 0.
+   *
+   * Agit sur la Puissance DÉCLARÉE, celle que porte l'attaque suspendue :
+   * l'effet vaut donc aussi bien pour un combat entre unités que pour une
+   * frappe sur la coque, et il disparaît avec l'attaque — ce n'est pas un
+   * modificateur posé sur la carte.
+   */
+  | "modifyAttackerPower"
   // --- Environnement : Marée, modèle "durée + intensité" -----------------
   // (cadrage "Mécaniques verrouillées" sections 20-21, orientation 2026-09-10)
   /** Réduit la durée restante de l'état de Marée courant (rapproche la progression). */

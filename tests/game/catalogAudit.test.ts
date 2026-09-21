@@ -361,33 +361,44 @@ describe("Équipements récurrents — Kit de Calfatage, Treuil à Chair", () =>
 });
 
 describe("Filet à la Dérive, Radeau de Fortune, Carcasse Renversée, Il Capitano Naufragé", () => {
-  it("Filet à la Dérive : au début du tour, si visible, le joueur DÉSIGNE une Créature adverse qui perd 1 Puissance", () => {
-    const filet = instance("filet-a-la-derive", "p2");
-    const marin = instance("marin-des-jetees", "p1"); // Marin : pas une Créature
-    const creature = instance("requin-balafre", "p1");
+  it("Filet à la Dérive : VISIBLE, il retire 1 Puissance à la première unité adverse qui attaque", () => {
+    // Rework du 21/09 : l'effet de début de tour devient une défense qui mord
+    // au moment de l'attaque. Pas de « vous pouvez » : elle s'applique seule.
+    const filet = instance("filet-a-la-derive", "p2", { turnsRemaining: 3 });
+    const attaquant = instance("requin-balafre", "p1"); // 4 Puissance
     const state = testGameState({
+      phase: "combatPhase",
       environment: testEnvironment({ tideState: "calme", tideRemainingTurns: 4 }),
-      players: [testPlayer("p1", { board: [marin, creature] }), testPlayer("p2", { board: [filet], deck: filler("p2") })],
+      players: [
+        testPlayer("p1", { board: [attaquant] }),
+        testPlayer("p2", { board: [filet], anchor: 20, deck: filler("p2") }),
+      ],
     });
-    const started = dispatch(state, { type: "endTurn", playerId: "p1" });
-    ok(started);
-    const result = activateReactionFor(started.state, "filet-a-la-derive", creature.instanceId);
-    ok(result);
-    const base = computeEffectiveStats(creature, "calme").attack;
-    const debuffed = board(result.state, "p1").find((u) => u.instanceId === creature.instanceId)!;
-    expect(computeEffectiveStats(debuffed, "calme").attack).toBe(base - 1);
-    // Un Marin n'est pas une Créature : il ne fait pas partie des cibles.
-    expect(board(result.state, "p1").find((u) => u.instanceId === marin.instanceId)!.modifiers).toHaveLength(0);
 
-    // Invisible (Tempête) : rien.
-    const hidden = testGameState({
+    const result = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attaquant.instanceId });
+    ok(result);
+    expect(player(result.state, "p2").anchor).toBe(17); // 20 - (4 - 1)
+  });
+
+  it("Filet à la Dérive : MASQUÉ (Tempête), il propose sa Réaction cachée à −2", () => {
+    const filet = instance("filet-a-la-derive", "p2", { turnsRemaining: 3 });
+    const attaquant = instance("requin-balafre", "p1"); // 4 Puissance
+    const state = testGameState({
+      phase: "combatPhase",
       environment: testEnvironment({ tideState: "tempete", tideRemainingTurns: 4 }),
-      players: [testPlayer("p1", { board: [creature] }), testPlayer("p2", { board: [filet], deck: filler("p2") })],
+      players: [
+        testPlayer("p1", { board: [attaquant] }),
+        testPlayer("p2", { board: [filet], anchor: 20, deck: filler("p2") }),
+      ],
     });
-    const nothing = dispatch(hidden, { type: "endTurn", playerId: "p1" });
-    ok(nothing);
-    expect(pendingCandidates(nothing.state).some((c) => c.cardId === "filet-a-la-derive")).toBe(false);
-    expect(board(nothing.state, "p1").find((u) => u.instanceId === creature.instanceId)!.modifiers).toHaveLength(0);
+
+    const declaree = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attaquant.instanceId });
+    ok(declaree);
+    const active = activateReactionFor(declaree.state, "filet-a-la-derive");
+    ok(active);
+    expect(player(active.state, "p2").anchor).toBe(18); // 20 - (4 - 2)
+    // Révélé avant résolution, et il RESTE en jeu : son texte ne dit pas qu'il part.
+    expect(board(active.state, "p2").find((u) => u.cardId === "filet-a-la-derive")?.revealed).toBe(true);
   });
 
   it("Radeau de Fortune : Sabordé, il rend 1 Ancrage", () => {

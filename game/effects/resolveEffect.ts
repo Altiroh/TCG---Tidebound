@@ -765,6 +765,42 @@ export function resolveEffect(
       };
     }
 
+    case "reduceIncomingDamage": {
+      if (!state.pendingAttack) return { state, events };
+      const reduction = amountValue(effect.amount);
+      if (reduction <= 0) return { state, events };
+      return {
+        state: {
+          ...state,
+          pendingAttack: {
+            ...state.pendingAttack,
+            damageReduction: (state.pendingAttack.damageReduction ?? 0) + reduction,
+          },
+        },
+        events,
+      };
+    }
+
+    case "modifyAttackerPower": {
+      if (!state.pendingAttack) return { state, events };
+      const perte = amountValue(effect.amount);
+      if (perte <= 0) return { state, events };
+      const apres = Math.max(0, state.pendingAttack.attackerPower - perte);
+      return {
+        state: { ...state, pendingAttack: { ...state.pendingAttack, attackerPower: apres } },
+        events: [
+          ...events,
+          {
+            ...base,
+            type: "DEBUFF_APPLIED",
+            targetInstanceId: state.pendingAttack.attackerInstanceId,
+            attack: -(state.pendingAttack.attackerPower - apres),
+            health: 0,
+          },
+        ],
+      };
+    }
+
     case "durationLoss": {
       const amount = amountValue(effect.amount);
       const durationTargets = resolveUnitTargets(state, effect, context);
