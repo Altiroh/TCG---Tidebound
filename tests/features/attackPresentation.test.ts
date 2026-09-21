@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { dispatch } from "@/game/engine";
-import { instance, testGameState, testPlayer } from "../game/testHelpers";
+import { deriveAttack } from "@/features/match/useAttackPresentation";
+import { instance, testEnvironment, testGameState, testPlayer } from "../game/testHelpers";
 import type { GameState } from "@/game";
 
 /**
@@ -77,5 +78,28 @@ describe("état réel contre état affiché", () => {
     // Le journal ne perd rien, et la victime est bien au cimetière.
     expect(attack.state.eventLog.length).toBeGreaterThan(before.eventLog.length);
     expect(attack.state.players[1].graveyard.map((c) => c.cardId)).toContain("poisson-lanterne");
+  });
+});
+
+describe("animation d'attaque : seul le coup porté compte", () => {
+  it("un Contrecoup renvoyé n'est pas lu comme le coup de l'attaquant", () => {
+    // Cylindre flottant (visible en Houle) annule le coup direct et en renvoie une part au Navire de l'attaquant.
+    const attacker = instance("requin-balafre", "p1");
+    const cylindre = instance("cylindre-flottant", "p2");
+    const state = testGameState({
+      phase: "combatPhase",
+      environment: testEnvironment({ tideState: "houle" }),
+      players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2", { board: [cylindre] })],
+    });
+
+    const result = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attacker.instanceId });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // Le renvoi existe bien dans le lot…
+    expect(result.events.some((e) => e.type === "DAMAGE" && e.targetPlayerId === "p1")).toBe(true);
+
+    // …mais l'animation vise toujours le Navire adverse, pour 0.
+    const animation = deriveAttack(result.events, result.state, 1);
+    expect(animation).toMatchObject({ defenderPlayerId: "p2", amount: 0 });
   });
 });

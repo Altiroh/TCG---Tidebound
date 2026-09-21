@@ -177,8 +177,7 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
   if (!validation.ok) return { ok: false, error: validation.error };
 
   const attackerPlayer = getPlayer(state, action.playerId);
-  const attackerUnit = attackerPlayer.board.find((u) => u.instanceId === action.attackerInstanceId)!;
-  const attackerDamage = effectiveAttack(attackerUnit, state) + bonusDamageInTideState(attackerUnit, state);
+  const declaredAttacker = attackerPlayer.board.find((u) => u.instanceId === action.attackerInstanceId)!;
   const events: GameEvent[] = [];
   const base = { turnNumber: state.turnNumber, timestamp: Date.now() };
 
@@ -199,6 +198,28 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
       p.id === attackerPlayer.id ? { ...p, board: p.board.map(markAttacked) } : p
     ) as [PlayerState, PlayerState],
   };
+
+  // « Lorsqu'il attaque » se résout AVANT les dégâts : un « +1 Puissance
+  // jusqu'à la fin du tour » (Sterne des Embruns, Cra-Poiscail Messager)
+  // compte dans CE coup, pas seulement au suivant. Les capacités
+  // facultatives, elles, passent par la fenêtre de réaction ouverte après
+  // l'action (`deriveReactionTriggerEvents`).
+  const attackTrigger = processTrigger(
+    nextState,
+    // `cardId` de l'attaquant : sans lui, les capacités d'observateur
+    // filtrées par identité ou par famille ("votre Chevalier attaque",
+    // "un Cra-Poiscail attaque") ne peuvent pas reconnaître l'attaquant.
+    { trigger: "onAttack", playerId: action.playerId, sourceInstanceId: action.attackerInstanceId, cardId: declaredAttacker.cardId },
+    state.turnNumber
+  );
+  nextState = attackTrigger.state;
+  events.push(...attackTrigger.events);
+
+  // Relu APRÈS les déclencheurs : ses modificateurs ont pu changer. S'il a
+  // quitté le plateau entre-temps, l'attaque ne porte plus.
+  const attackerUnit = getPlayer(nextState, action.playerId).board.find((u) => u.instanceId === action.attackerInstanceId);
+  if (!attackerUnit) return { ok: true, state: nextState, events };
+  const attackerDamage = effectiveAttack(attackerUnit, nextState) + bonusDamageInTideState(attackerUnit, nextState);
 
   if (!action.defenderInstanceId) {
     const opponent = getOpponent(nextState, action.playerId);
@@ -291,6 +312,7 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
         targetPlayerId: opponent.id,
         amount: directDamage,
         targetAnchorAfter: getPlayer(nextState, opponent.id).anchor,
+        combat: "strike",
       });
     }
 
@@ -337,7 +359,9 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
     }
   } else {
     const opponent = getOpponent(nextState, action.playerId);
-    const defenderUnit = opponent.board.find((u) => u.instanceId === action.defenderInstanceId)!;
+    const defenderUnit = opponent.board.find((u) => u.instanceId === action.defenderInstanceId);
+    // Cible partie pendant les déclencheurs « Lorsqu'il attaque » : pas de coup.
+    if (!defenderUnit) return { ok: true, state: nextState, events };
     const defenderType = getCardDefinition(defenderUnit.cardId).type;
     const totalAttackerDamage = attackerDamage + bonusDamageAgainst(attackerUnit, defenderType, nextState);
 
@@ -347,7 +371,7 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
     const defenderDamageResult = applyCombatDamageToUnit(nextState, opponent.id, defenderUnit, totalAttackerDamage, state.turnNumber);
     nextState = defenderDamageResult.state;
     if (defenderDamageResult.amountApplied > 0) {
-      events.push({ ...base, type: "DAMAGE", targetInstanceId: defenderUnit.instanceId, amount: defenderDamageResult.amountApplied });
+      events.push({ ...base, type: "DAMAGE", targetInstanceId: defenderUnit.instanceId, amount: defenderDamageResult.amountApplied, combat: "strike" });
 
       const damagedTrigger = processTrigger(
         nextState,
@@ -361,12 +385,12 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
     // Riposte : la Puissance effective du défenseur (0 pour un permanent
     // sans Puissance) blesse l'attaquant en retour, symétriquement — soumise
     // au même bouclier "1ère fois par tour" côté attaquant, cette fois.
-    const retaliationDamage = effectiveAttack(defenderUnit, state);
+    const retaliationDamage = effectiveAttack(defenderUnit, nextState);
     if (retaliationDamage > 0) {
       const attackerDamageResult = applyCombatDamageToUnit(nextState, attackerPlayer.id, attackerUnit, retaliationDamage, state.turnNumber);
       nextState = attackerDamageResult.state;
       if (attackerDamageResult.amountApplied > 0) {
-        events.push({ ...base, type: "DAMAGE", targetInstanceId: attackerUnit.instanceId, amount: attackerDamageResult.amountApplied });
+        events.push({ ...base, type: "DAMAGE", targetInstanceId: attackerUnit.instanceId, amount: attackerDamageResult.amountApplied, combat: "retaliation" });
 
         const attackerDamagedTrigger = processTrigger(
           nextState,
@@ -378,17 +402,6 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
       }
     }
   }
-
-  const attackTrigger = processTrigger(
-    nextState,
-    // `cardId` de l'attaquant : sans lui, les capacités d'observateur
-    // filtrées par identité ou par famille ("votre Chevalier attaque",
-    // "un Cra-Poiscail attaque") ne peuvent pas reconnaître l'attaquant.
-    { trigger: "onAttack", playerId: action.playerId, sourceInstanceId: action.attackerInstanceId, cardId: attackerUnit.cardId },
-    state.turnNumber
-  );
-  nextState = attackTrigger.state;
-  events.push(...attackTrigger.events);
 
   const postAttackReasonLoss = controllerReasonLossAfterAttack(attackerUnit, nextState);
   if (postAttackReasonLoss > 0) {

@@ -84,6 +84,14 @@ export interface DamageEvent extends BaseGameEvent {
    * ailleurs, puisque l'Ancrage bouge aussi par soin et par Marée.
    */
   targetAnchorAfter?: number;
+  /**
+   * Rôle de ce coup dans une attaque : `"strike"` = les dégâts que
+   * l'attaquant porte à sa cible (unité ou Navire), `"retaliation"` = la
+   * riposte du défenseur. Absent pour tout le reste (Contrecoup renvoyé,
+   * contrecoup d'attaque directe, dégâts d'une capacité) : l'animation
+   * d'attaque ne lit QUE ces deux-là, sans deviner d'après l'ordre du lot.
+   */
+  combat?: "strike" | "retaliation";
 }
 
 export interface HealEvent extends BaseGameEvent {

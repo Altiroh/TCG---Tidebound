@@ -35,7 +35,7 @@ function onAnyBoard(state: GameState, instanceId: string): boolean {
 }
 
 /** Premier `ATTACK` du lot, avec les dégâts déjà résolus par le moteur (jamais recalculés côté client). */
-function deriveAttack(events: GameEvent[], after: GameState, id: number): AttackAnimation | null {
+export function deriveAttack(events: GameEvent[], after: GameState, id: number): AttackAnimation | null {
   const index = events.findIndex((event) => event.type === "ATTACK");
   const event = events[index];
   if (!event || event.type !== "ATTACK") return null;
@@ -43,15 +43,16 @@ function deriveAttack(events: GameEvent[], after: GameState, id: number): Attack
   let amount = 0;
   let defenderPlayerId: PlayerId | undefined;
   let retaliation: number | undefined;
+  // Seuls les coups marqués par le moteur (`DamageEvent.combat`) : un
+  // Contrecoup renvoyé ou les dégâts d'une capacité ne sont pas « le coup ».
   for (const next of events.slice(index + 1)) {
     if (next.type === "ATTACK") break;
-    if (next.type !== "DAMAGE") continue;
-    if (event.defenderInstanceId) {
-      if (next.targetInstanceId === event.defenderInstanceId) amount += next.amount;
-      else if (next.targetInstanceId === event.attackerInstanceId) retaliation = (retaliation ?? 0) + next.amount;
-    } else if (next.targetPlayerId) {
+    if (next.type !== "DAMAGE" || !next.combat) continue;
+    if (next.combat === "retaliation") {
+      retaliation = (retaliation ?? 0) + next.amount;
+    } else {
       amount += next.amount;
-      defenderPlayerId = next.targetPlayerId;
+      if (next.targetPlayerId) defenderPlayerId = next.targetPlayerId;
     }
   }
 

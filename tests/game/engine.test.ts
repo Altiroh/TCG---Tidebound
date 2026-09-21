@@ -478,6 +478,42 @@ describe("engine.dispatch - attack", () => {
     expect(result.ok).toBe(true);
   });
 
+  it("« Lorsqu'il attaque, +1 Puissance » compte dans CE coup (Sterne des Embruns)", () => {
+    const sterne = instance("sterne-des-embruns", "p1", { summoningSick: true }); // 1/1, Pied marin
+    const state = testGameState({
+      phase: "combatPhase",
+      players: [testPlayer("p1", { board: [sterne] }), testPlayer("p2", { anchor: 20 })],
+    });
+
+    const result = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: sterne.instanceId });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.players[1].anchor).toBe(18);
+    const strike = result.events.find((e) => e.type === "DAMAGE" && e.combat === "strike");
+    expect(strike).toMatchObject({ targetPlayerId: "p2", amount: 2 });
+  });
+
+  it("riposte : le coup et la riposte sont marqués, chacun à sa place", () => {
+    const attacker = instance("requin-balafre", "p1"); // 4/2
+    const defender = instance("murene-aveugle", "p2"); // 3/1
+    const state = testGameState({
+      phase: "combatPhase",
+      players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2", { board: [defender] })],
+    });
+
+    const result = dispatch(state, {
+      type: "attack",
+      playerId: "p1",
+      attackerInstanceId: attacker.instanceId,
+      defenderInstanceId: defender.instanceId,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const damages = result.events.filter((e) => e.type === "DAMAGE");
+    expect(damages.find((e) => e.combat === "strike")).toMatchObject({ targetInstanceId: defender.instanceId, amount: 4 });
+    expect(damages.find((e) => e.combat === "retaliation")).toMatchObject({ targetInstanceId: attacker.instanceId, amount: 3 });
+  });
+
   it("refuse une seconde attaque de la même unité dans le même tour", () => {
     const attacker = instance("requin-balafre", "p1");
     const state = testGameState({ phase: "combatPhase", players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2")] });
