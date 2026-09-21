@@ -248,3 +248,33 @@ describe("Le Canon du Navire passe par la fenêtre d'interception", () => {
     expect(tir.state.pendingReaction).toBeUndefined();
   });
 });
+
+describe("Guetteur Méfiant — une seule fenêtre par tour", () => {
+  it("ne se propose plus à chaque carte jouée", () => {
+    // Sans limite, il ouvrait une fenêtre à CHAQUE carte : trois cartes
+    // posées, trois confirmations à donner. C'est le nombre de fenêtres qui
+    // pesait, pas leur prix en Raison.
+    const guetteur = instance("guetteur-mefiant", "p2");
+    const a = instance("marin-des-jetees", "p1");
+    const b = instance("marin-des-jetees", "p1");
+    const cible = instance("murene-aveugle", "p2");
+    const state = testGameState({
+      players: [
+        testPlayer("p1", { hand: [a, b], reason: 10 }),
+        testPlayer("p2", { board: [guetteur, cible], reason: 10 }),
+      ],
+    });
+
+    const un = dispatch(state, { type: "playCard", playerId: "p1", instanceId: a.instanceId });
+    ok(un);
+    expect(pendingCandidates(un.state).some((c) => c.cardId === "guetteur-mefiant")).toBe(true);
+
+    // Il ACTIVE, ce qui consomme son unique usage du tour.
+    const active = activateReactionFor(un.state, "guetteur-mefiant", cible.instanceId);
+    ok(active);
+
+    const deux = dispatch(active.state, { type: "playCard", playerId: "p1", instanceId: b.instanceId });
+    ok(deux);
+    expect(pendingCandidates(deux.state).some((c) => c.cardId === "guetteur-mefiant")).toBe(false);
+  });
+});

@@ -440,14 +440,24 @@ export const CORE_SET: CardDefinition[] = [
     cost: 2,
     attack: 2,
     health: 2,
-    text: "Réaction : quand une carte est jouée, vous pouvez dépenser 1 Raison : infligez 2 dégâts à une unité de votre choix.",
+    // Limitée à une fois par tour le 21/09/2026. Sans limite, elle ouvrait
+    // une fenêtre de réaction à CHAQUE carte jouée : un adversaire qui en
+    // pose trois devait confirmer trois fois, ce qui est exactement ce que
+    // le cadrage veut éviter — « le joueur doit pouvoir jouer normalement
+    // sans devoir confirmer une réaction après chaque action ». Le coût en
+    // Raison ne suffisait pas à l'autolimiter : c'est le NOMBRE de fenêtres
+    // qui pesait, pas leur prix.
+    text:
+      "La première fois à chaque tour qu'une carte est jouée, vous pouvez dépenser 1 Raison : infligez 2 dégâts " +
+      "à une unité de votre choix.",
     abilities: [
       {
         trigger: "onCardPlayed",
         mode: "optional",
+        oncePerTurnKey: "guetteurMefiant",
         cost: { reason: 1 },
         effects: [{ type: "damage", target: { kind: "chosenUnit" }, amount: { kind: "flat", value: 2 } }],
-        description: "Vous pouvez dépenser 1 Raison : infligez 2 dégâts à une unité de votre choix.",
+        description: "La première fois à chaque tour qu'une carte est jouée : dépensez 1 Raison pour infliger 2 dégâts à une unité.",
       },
     ],
   },

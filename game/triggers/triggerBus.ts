@@ -286,6 +286,11 @@ function collectTriggeredWork(
       (def.abilities ?? []).forEach((ability, abilityIndex) => {
         if (ability.trigger !== event.trigger || !matchesMode(ability)) return;
         if (blocqueParMasquage(state, unit, ability)) return;
+        // « La première fois à chaque tour » : indispensable en mode
+        // `optional`, où le marquage n'a lieu qu'à l'ACTIVATION
+        // (`resolveReaction`) et non au recensement — sans elle, la
+        // capacité est reproposée à chaque fenêtre du tour.
+        if (ability.oncePerTurnKey && !oncePerTurnAvailable(unit, ability.oncePerTurnKey, turnNumber)) return;
         result.push(work(ability, abilityIndex, def.id, player.id, unit.instanceId, turnNumber));
       });
     }
@@ -300,6 +305,11 @@ function collectTriggeredWork(
         (def.abilities ?? []).forEach((ability, abilityIndex) => {
           if (ability.trigger !== "onCardPlayed" || !matchesMode(ability)) return;
           if (blocqueParMasquage(state, unit, ability)) return;
+          // « La première fois à chaque tour » : indispensable en mode
+        // `optional`, où le marquage n'a lieu qu'à l'ACTIVATION
+        // (`resolveReaction`) et non au recensement — sans elle, la
+        // capacité est reproposée à chaque fenêtre du tour.
+        if (ability.oncePerTurnKey && !oncePerTurnAvailable(unit, ability.oncePerTurnKey, turnNumber)) return;
           result.push(work(ability, abilityIndex, def.id, player.id, unit.instanceId, turnNumber));
         });
       }
@@ -315,6 +325,11 @@ function collectTriggeredWork(
           if (ability.trigger !== event.trigger || !matchesMode(ability)) return;
           if (blocqueParMasquage(state, unit, ability)) return;
           if (ability.condition?.tideState && ability.condition.tideState !== event.tideState) return;
+          // « La première fois à chaque tour » : indispensable en mode
+        // `optional`, où le marquage n'a lieu qu'à l'ACTIVATION
+        // (`resolveReaction`) et non au recensement — sans elle, la
+        // capacité est reproposée à chaque fenêtre du tour.
+        if (ability.oncePerTurnKey && !oncePerTurnAvailable(unit, ability.oncePerTurnKey, turnNumber)) return;
           result.push(work(ability, abilityIndex, def.id, player.id, unit.instanceId, turnNumber));
         });
       }
