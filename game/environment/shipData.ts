@@ -19,12 +19,32 @@ import type { ShipDefinition } from "@/game/environment/types";
  * carte" (cadrage section 16, volontairement complexe, pas encore
  * implémenté) ; seuls les effets exprimables avec les champs numériques
  * ci-dessous sont réellement appliqués.
+ *
+ * ANCRAGE DE DÉPART, +50 % LE 21/09/2026 (17/20/24 → 26/30/36).
+ *
+ * Décision de RYTHME, prise sur mesure et non sur intuition. Une partie
+ * durait 5,8 tours par joueur — trop peu pour voir l'effet de ses cartes.
+ * Le banc d'essai dit où part l'Ancrage : 53 % en attaques, 28 % en Marée,
+ * 18 % en Déraison. Les attaques dominant, seule une réserve plus grande
+ * les ralentit — six leviers mesurés sur un tournoi complet, et celui-ci
+ * écrase les autres (+2,2 tours par joueur, contre +0,9 pour supprimer
+ * TOUS les dégâts de Marée et +0,2 pour adoucir l'entrée en Abysses).
+ *
+ * Les écarts entre Navires sont conservés au plus près : le Courlis reste
+ * le plus fragile, le Brise-Lames le plus dur. 17 × 1,5 = 25,5, arrondi à
+ * 26.
+ *
+ * VALEUR NON VERROUILLÉE, et DIVERGENTE de Notion, qui porte encore
+ * 17/20/24 : à confirmer au playtest réel avant d'y toucher là-bas.
+ * Allonger la partie ne rééquilibre rien tout seul — l'écart entre les dix
+ * listes reste le même dans les six configurations mesurées ; cela rend
+ * seulement leurs tours aux decks qui en ont besoin.
  */
 export const SHIP_SET: ShipDefinition[] = [
   {
     id: "le-courlis",
     name: "Le Courlis",
-    startingAnchor: 17,
+    startingAnchor: 26,
     reasonMax: 12,
     slotCount: 4,
     illustration: "le-courlis.webp",
@@ -45,7 +65,7 @@ export const SHIP_SET: ShipDefinition[] = [
   {
     id: "lerrant",
     name: "L'Errant",
-    startingAnchor: 20,
+    startingAnchor: 30,
     reasonMax: 10,
     slotCount: 5,
     illustration: "errant.webp",
@@ -62,7 +82,7 @@ export const SHIP_SET: ShipDefinition[] = [
   {
     id: "le-brise-lames",
     name: "Le Brise-Lames",
-    startingAnchor: 24,
+    startingAnchor: 36,
     reasonMax: 8,
     slotCount: 6,
     illustration: "brise-lames.webp",
@@ -81,7 +101,7 @@ export const SHIP_SET: ShipDefinition[] = [
   {
     id: "la-religieuse",
     name: "La Religieuse",
-    startingAnchor: 20,
+    startingAnchor: 30,
     reasonMax: 10,
     slotCount: 5,
     illustration: "la-religieuse.webp",
@@ -100,7 +120,7 @@ export const SHIP_SET: ShipDefinition[] = [
     // au prototype : toute son identité tient dans son Canon.
     id: "le-goliath",
     name: "Le Goliath",
-    startingAnchor: 20,
+    startingAnchor: 30,
     reasonMax: 10,
     slotCount: 5,
     illustration: "goliath.webp",

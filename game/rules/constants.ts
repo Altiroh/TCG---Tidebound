@@ -36,16 +36,42 @@ export const RULES = {
   /** Raison max "standard" si un Navire ne la précise pas. */
   DEFAULT_REASON_MAX: 10,
   /**
-   * Courbe de début de partie (Notion "Gameplay — Raison, Déraison, healing
-   * & passifs de Navires", 2026-09-12, À PROTOTYPER — remplace l'ancien
-   * départ à 50 % ET l'ancienne récupération de +1 par tour) : au début de
-   * son 1er, 2e, 3e, 4e tour, la Raison du joueur est REMISE à cette
-   * fraction de `reasonMax` (arrondi au supérieur), qui sert aussi de
-   * plafond aux gains pendant ce tour. Au-delà de la dernière entrée : remise
-   * à 100 % à chaque début de tour (Courlis 12 : 3 / 6 / 9 / 12 / 12…).
-   * Piste plus lente déjà envisagée : [0.2, 0.4, 0.6, 0.8, 1].
+   * PLAFOND de début de partie, PAS une remise à niveau (passe de
+   * stabilisation du 2026-09-21). Au `n`-ième tour du joueur, sa Raison ne
+   * peut pas DÉPASSER cette fraction de `reasonMax` (arrondi au supérieur) ;
+   * au-delà de la dernière entrée, seul `reasonMax` la borne.
+   *
+   * Ce plafond ne fait plus RIEN monter : la Raison persiste d'un tour à
+   * l'autre et ne gagne que `NATURAL_REASON_RECOVERY` par tour. Il ne mord
+   * donc que sur les gains VENANT DES CARTES (Thermos du Dernier Quart,
+   * Gardien du Sondeur…) — c'est exactement son rôle : empêcher un deck de
+   * rampe de sauter la courbe, sans freiner le joueur qui joue normalement.
+   *
+   * Courbe volontairement LENTE (demande du 21/09 : « ça va trop vite »).
+   * Courlis (12) : 2 / 4 / 6 / 8 / 9 / 11 / 12. Brise-Lames (8) :
+   * 2 / 3 / 4 / 5 / 6 / 8 / 8. Piste plus rapide déjà envisagée, à mesurer
+   * au playtest : [0.2, 0.4, 0.6, 0.8, 1]. Rien n'est verrouillé ici.
    */
-  STARTING_REASON_CURVE: [0.25, 0.5, 0.75, 1] as readonly number[],
+  STARTING_REASON_CURVE: [0.15, 0.3, 0.45, 0.6, 0.75, 0.9, 1] as readonly number[],
+  /**
+   * Récupération naturelle au début du tour de son contrôleur (passe de
+   * stabilisation du 2026-09-21, direction de design) : la Raison PERSISTE
+   * d'un tour à l'autre et ne remonte que de ce montant, au lieu d'être
+   * remise à son plafond.
+   *
+   * Porté de 1 à 2 le 21/09/2026, après mesure sur ~1 300 parties de bot :
+   * à +1, le Canon du Goliath (2 Raison à armer) n'était plus payable et le
+   * deck qui punissait le swarm s'effondrait de 87 % à 52 %, laissant le
+   * swarm monter à 87 %. À +2, il remonte à 67 % et le swarm redescend à
+   * 78 %, sans revenir au rythme de l'ancienne remise à niveau (2,78 slots
+   * occupés à la fin du 3e tour, contre 3,64 avant la passe).
+   *
+   * À cette valeur, la COURBE DE PLAFOND devient la progression réelle :
+   * un Courlis suit 2 / 4 / 6 / 8, puis `STARTING_REASON_CURVE` prend le
+   * relais (9 / 11 / 12). Toute la courbe se pilote donc depuis une seule
+   * constante, celle-là.
+   */
+  NATURAL_REASON_RECOVERY: 2,
 
   // --- Déraison (Notion "Gameplay — Raison, Déraison, healing & passifs de
   // Navires", 2026-09-12) : PISTE À PROTOTYPER, pas verrouillée — valeurs

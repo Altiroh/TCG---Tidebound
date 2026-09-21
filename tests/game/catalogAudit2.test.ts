@@ -40,34 +40,112 @@ function candidates(state: GameState) {
 }
 
 describe("Cylindre flottant — Contrecoup", () => {
-  it("annule les dégâts directs au Navire, en renvoie la moitié (arrondie au supérieur) à l'attaquant, puis se brise", () => {
+  it("SUSPEND l'attaque et propose le piège, sans rien appliquer d'office", () => {
     const attacker = instance("baleine-aux-cicatrices-blanches", "p1"); // 5 Puissance
     const cylindre = instance("cylindre-flottant", "p2"); // visible en Houle
+    const cible = instance("murene-aveugle", "p1"); // le permanent adverse à frapper
+    const state = testGameState({
+      phase: "combatPhase",
+      environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 4 }),
+      players: [
+        testPlayer("p1", { board: [attacker, cible], anchor: 20 }),
+        testPlayer("p2", { board: [cylindre], anchor: 20 }),
+      ],
+    });
+
+    const declaree = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attacker.instanceId });
+    ok(declaree);
+    // Rien n'est encore arrivé : l'attaque attend la réponse du défenseur.
+    expect(declaree.state.pendingAttack).toBeDefined();
+    expect(declaree.state.pendingReaction?.awaitingPlayerId).toBe("p2");
+    expect(player(declaree.state, "p2").anchor).toBe(20);
+    expect(board(declaree.state, "p2")).toHaveLength(1);
+  });
+
+  it("activé, il annule les dégâts, frappe le permanent désigné, et se détruit", () => {
+    const attacker = instance("baleine-aux-cicatrices-blanches", "p1"); // 5 Puissance
+    const cylindre = instance("cylindre-flottant", "p2");
+    const cible = instance("murene-aveugle", "p1");
+    const state = testGameState({
+      phase: "combatPhase",
+      environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 4 }),
+      players: [
+        testPlayer("p1", { board: [attacker, cible], anchor: 20 }),
+        testPlayer("p2", { board: [cylindre], anchor: 20 }),
+      ],
+    });
+
+    const declaree = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attacker.instanceId });
+    ok(declaree);
+    const active = activateReactionFor(declaree.state, "cylindre-flottant", cible.instanceId);
+    ok(active);
+
+    expect(player(active.state, "p2").anchor).toBe(20); // coque intacte
+    expect(active.events.some((e) => e.type === "ATTACK_INTERCEPTED")).toBe(true);
+    // L'attaque reprend et se termine : plus rien en suspens.
+    expect(active.state.pendingAttack).toBeUndefined();
+    // Le Cylindre s'est détruit, et la cible a pris les 5 Puissance.
+    expect(board(active.state, "p2")).toHaveLength(0);
+    expect(board(active.state, "p1").some((u) => u.instanceId === cible.instanceId)).toBe(false);
+  });
+
+  it("passé, l'attaque reprend et porte normalement", () => {
+    const attacker = instance("baleine-aux-cicatrices-blanches", "p1"); // 5 Puissance
+    const cylindre = instance("cylindre-flottant", "p2");
     const state = testGameState({
       phase: "combatPhase",
       environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 4 }),
       players: [testPlayer("p1", { board: [attacker], anchor: 20 }), testPlayer("p2", { board: [cylindre], anchor: 20 })],
     });
-    const result = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attacker.instanceId });
-    ok(result);
-    expect(player(result.state, "p2").anchor).toBe(20);
-    expect(player(result.state, "p1").anchor).toBe(17); // ceil(5 / 2) = 3
-    expect(board(result.state, "p2")).toHaveLength(0);
-    expect(player(result.state, "p2").graveyard.some((u) => u.instanceId === cylindre.instanceId)).toBe(true);
+
+    const declaree = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attacker.instanceId });
+    ok(declaree);
+    const passe = dispatch(declaree.state, { type: "passReaction", playerId: "p2" });
+    ok(passe);
+
+    expect(player(passe.state, "p2").anchor).toBe(15); // les 5 dégâts portent
+    expect(passe.state.pendingAttack).toBeUndefined();
+    expect(board(passe.state, "p2")).toHaveLength(1); // le Cylindre reste en jeu
   });
 
-  it("ne fait rien tant qu'il est invisible (Calme)", () => {
-    const attacker = instance("baleine-aux-cicatrices-blanches", "p1");
-    const cylindre = instance("cylindre-flottant", "p2");
+  it("MASQUÉ (Calme), il propose sa Réaction cachée et frappe le NAVIRE adverse", () => {
+    // Le piège ne vise plus un permanent quand il est caché : le joueur n'a
+    // pas choisi son moment, il ne choisit pas non plus sa cible.
+    const attacker = instance("baleine-aux-cicatrices-blanches", "p1"); // 5 Puissance
+    const cylindre = instance("cylindre-flottant", "p2", { turnsRemaining: 3 });
     const state = testGameState({
       phase: "combatPhase",
       players: [testPlayer("p1", { board: [attacker], anchor: 20 }), testPlayer("p2", { board: [cylindre], anchor: 20 })],
     });
-    const result = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attacker.instanceId });
-    ok(result);
-    expect(player(result.state, "p2").anchor).toBe(15);
-    expect(player(result.state, "p1").anchor).toBe(20);
-    expect(board(result.state, "p2")).toHaveLength(1);
+
+    const declaree = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attacker.instanceId });
+    ok(declaree);
+    expect(declaree.state.pendingReaction?.awaitingPlayerId).toBe("p2");
+
+    const active = activateReactionFor(declaree.state, "cylindre-flottant");
+    ok(active);
+    expect(player(active.state, "p2").anchor).toBe(20); // coque intacte
+    expect(player(active.state, "p1").anchor).toBe(15); // 5 renvoyés au Navire adverse
+    expect(board(active.state, "p2")).toHaveLength(0); // le Cylindre s'est détruit
+  });
+
+  it("MASQUÉ, passer laisse l'attaque porter et ne révèle rien", () => {
+    const attacker = instance("baleine-aux-cicatrices-blanches", "p1");
+    const cylindre = instance("cylindre-flottant", "p2", { turnsRemaining: 3 });
+    const state = testGameState({
+      phase: "combatPhase",
+      players: [testPlayer("p1", { board: [attacker], anchor: 20 }), testPlayer("p2", { board: [cylindre], anchor: 20 })],
+    });
+    const declaree = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attacker.instanceId });
+    ok(declaree);
+    const passe = dispatch(declaree.state, { type: "passReaction", playerId: "p2" });
+    ok(passe);
+
+    expect(player(passe.state, "p2").anchor).toBe(15);
+    expect(board(passe.state, "p2")).toHaveLength(1);
+    // Passer ne révèle RIEN : l'adversaire ne sait toujours pas ce qu'il y a.
+    expect(board(passe.state, "p2")[0]!.revealed).toBeUndefined();
+    expect(passe.events.some((e) => e.type === "STRUCTURE_REVEALED")).toBe(false);
   });
 });
 
@@ -105,17 +183,54 @@ describe("Cloche d'Alerte — taxe sur le Bris adverse", () => {
 });
 
 describe("Ancre de Dérive — report des effets de Marée", () => {
-  it("au changement de Marée, se Saborde et reporte les dégâts de la nouvelle Marée à la fin du tour en cours", () => {
+  /**
+   * Houle → Tempête à la fin du tour de p1. p2 joue L'Errant, sans
+   * résistance à la Tempête : 1 dégât d'Ancrage par tour.
+   */
+  function changementVersTempete(avecAncre: boolean) {
     const ancre = instance("ancre-de-derive", "p1"); // visible en Houle et Tempête
-    const state = testGameState({
-      turnNumber: 2,
-      environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 1, tideOrientation: "montante" }),
-      // p2 : L'Errant, sans résistance à la Tempête (1 dégât par tour).
-      players: [testPlayer("p1", { board: [ancre], deck: filler("p1") }), testPlayer("p2", { shipId: "lerrant", deck: filler("p2"), anchor: 20 })],
-    });
-    const entered = dispatch(state, { type: "endTurn", playerId: "p1" });
+    return {
+      ancre,
+      state: testGameState({
+        turnNumber: 2,
+        environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 1, tideOrientation: "montante" }),
+        players: [
+          testPlayer("p1", { board: avecAncre ? [ancre] : [], deck: filler("p1") }),
+          testPlayer("p2", { shipId: "lerrant", deck: filler("p2"), anchor: 20 }),
+        ],
+      }),
+    };
+  }
+
+  it("l'annonce SUSPEND l'entame du tour : ni Raison, ni pioche, ni dégâts tant que le joueur n'a pas répondu", () => {
+    // Arbitrage du 21/09/2026 : fenêtre COMPLÈTE. Avant cette passe, le
+    // Sabordage et le report étaient appliqués d'office — le moteur
+    // décidait à la place du joueur.
+    const { state } = changementVersTempete(true);
+    const mainAvant = player(state, "p2").hand.length;
+
+    const annonce = dispatch(state, { type: "endTurn", playerId: "p1" });
+    ok(annonce);
+    // La Marée a bien changé : c'est l'ANNONCE, pas une attente.
+    expect(annonce.state.environment.tideState).toBe("tempete");
+    expect(annonce.state.pendingReaction?.awaitingPlayerId).toBe("p1");
+    expect(annonce.state.pendingTideStep?.tideState).toBe("tempete");
+    // Rien de l'entame n'a eu lieu.
+    expect(player(annonce.state, "p2").anchor).toBe(20);
+    expect(player(annonce.state, "p2").hand).toHaveLength(mainAvant);
+    expect(annonce.events.some((e) => e.type === "TURN_STARTED")).toBe(false);
+  });
+
+  it("activer la fenêtre Saborde l'Ancre et reporte les effets à la fin du tour en cours", () => {
+    const { ancre, state } = changementVersTempete(true);
+    const annonce = dispatch(state, { type: "endTurn", playerId: "p1" });
+    ok(annonce);
+
+    const entered = activateReactionFor(annonce.state, "ancre-de-derive");
     ok(entered);
-    expect(entered.state.environment.tideState).toBe("tempete");
+    // La fenêtre refermée, l'entame a repris toute seule.
+    expect(entered.state.pendingTideStep).toBeUndefined();
+    expect(entered.events.some((e) => e.type === "TURN_STARTED")).toBe(true);
     expect(player(entered.state, "p2").anchor).toBe(20); // reporté
     expect(entered.state.environment.deferredTideEffects?.tideState).toBe("tempete");
     expect(board(entered.state, "p1")).toHaveLength(0);
@@ -131,14 +246,85 @@ describe("Ancre de Dérive — report des effets de Marée", () => {
     expect(ended.events.filter((e) => e.type === "DAMAGE" && e.targetPlayerId === "p2")).toHaveLength(2);
   });
 
-  it("sans Ancre, les dégâts de la nouvelle Marée s'appliquent immédiatement", () => {
+  it("passer la fenêtre garde l'Ancre et laisse la Marée frapper tout de suite", () => {
+    // Le joueur peut toujours refuser : une Ancre gardée pour un
+    // changement plus dur vaut mieux qu'une Ancre dépensée sur 1 dégât.
+    const { ancre, state } = changementVersTempete(true);
+    const annonce = dispatch(state, { type: "endTurn", playerId: "p1" });
+    ok(annonce);
+
+    const passe = dispatch(annonce.state, { type: "passReaction", playerId: "p1" });
+    ok(passe);
+    expect(passe.state.pendingTideStep).toBeUndefined();
+    expect(passe.state.environment.deferredTideEffects).toBeUndefined();
+    expect(player(passe.state, "p2").anchor).toBe(19); // la Tempête a frappé
+    expect(board(passe.state, "p1").some((u) => u.instanceId === ancre.instanceId)).toBe(true);
+    expect(passe.events.some((e) => e.type === "TURN_STARTED")).toBe(true);
+  });
+
+  it("masquée, elle agit quand même — c'est sa Réaction cachée, et elle se révèle en le faisant", () => {
+    // L'Ancre est visible en Houle et Tempête : une annonce d'Abysses la
+    // masque. La règle générale veut qu'une Structure masquée soit
+    // inactive ; son texte déclare l'exception (« Réaction cachée »), et
+    // c'est le seul chemin par lequel une carte masquée peut agir.
+    const ancre = instance("ancre-de-derive", "p1");
     const state = testGameState({
       turnNumber: 2,
-      environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 1, tideOrientation: "montante" }),
-      players: [testPlayer("p1", { deck: filler("p1") }), testPlayer("p2", { shipId: "lerrant", deck: filler("p2"), anchor: 20 })],
+      environment: testEnvironment({ tideState: "tempete", tideRemainingTurns: 1, tideOrientation: "montante" }),
+      players: [
+        testPlayer("p1", { board: [ancre], deck: filler("p1") }),
+        testPlayer("p2", { shipId: "lerrant", deck: filler("p2"), anchor: 20 }),
+      ],
     });
+    const annonce = dispatch(state, { type: "endTurn", playerId: "p1" });
+    ok(annonce);
+    expect(annonce.state.environment.tideState).toBe("abysses");
+    expect(annonce.state.pendingReaction?.awaitingPlayerId).toBe("p1");
+
+    const active = activateReactionFor(annonce.state, "ancre-de-derive");
+    ok(active);
+    // L'entrée en Abysses coûte 2 Ancrage : reportée, elle ne tombe pas ici.
+    expect(player(active.state, "p2").anchor).toBe(20);
+    expect(active.state.environment.deferredTideEffects?.tideState).toBe("abysses");
+    expect(active.events.some((e) => e.type === "STRUCTURE_REVEALED")).toBe(true);
+    expect(board(active.state, "p1")).toHaveLength(0);
+  });
+
+  it("visible ou masquée, une seule des deux moitiés est proposée", () => {
+    // Le texte promet deux fois la même chose dans deux états différents,
+    // jamais les deux à la fois : `selfVisible` et `selfHidden` sont
+    // exclusifs, et sans eux le joueur verrait deux entrées identiques.
+    const ancre = instance("ancre-de-derive", "p1");
+    const versTempete = testGameState({
+      turnNumber: 2,
+      environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 1, tideOrientation: "montante" }),
+      players: [
+        testPlayer("p1", { board: [ancre], deck: filler("p1") }),
+        testPlayer("p2", { shipId: "lerrant", deck: filler("p2"), anchor: 20 }),
+      ],
+    });
+    const visible = dispatch(versTempete, { type: "endTurn", playerId: "p1" });
+    ok(visible);
+    expect(candidates(visible.state).filter((c) => c.cardId === "ancre-de-derive")).toHaveLength(1);
+
+    const versAbysses = testGameState({
+      turnNumber: 2,
+      environment: testEnvironment({ tideState: "tempete", tideRemainingTurns: 1, tideOrientation: "montante" }),
+      players: [
+        testPlayer("p1", { board: [ancre], deck: filler("p1") }),
+        testPlayer("p2", { shipId: "lerrant", deck: filler("p2"), anchor: 20 }),
+      ],
+    });
+    const masquee = dispatch(versAbysses, { type: "endTurn", playerId: "p1" });
+    ok(masquee);
+    expect(candidates(masquee.state).filter((c) => c.cardId === "ancre-de-derive")).toHaveLength(1);
+  });
+
+  it("sans Ancre, les dégâts de la nouvelle Marée s'appliquent immédiatement", () => {
+    const { state } = changementVersTempete(false);
     const entered = dispatch(state, { type: "endTurn", playerId: "p1" });
     ok(entered);
+    expect(entered.state.pendingReaction).toBeUndefined();
     expect(player(entered.state, "p2").anchor).toBe(19);
   });
 });
@@ -470,27 +656,30 @@ describe("écarts moteur corrigés le 17/09/2026", () => {
     expect(sabordeResult.events.some((e) => e.type === "SABORDED")).toBe(true);
   });
 
-  it("Cage de Flottaison ne réduit que les dégâts d'une Créature, pas ceux d'un Marin", () => {
+  it("Cage de Flottaison réduit de 2 quelle que soit la carte qui attaque (rework du 21/09)", () => {
+    // La restriction aux Créatures saute : une attaque est une attaque. La
+    // fenêtre perd Calme, donc les tests se jouent en Houle.
     const setup = (attackerId: string) => {
       const attacker = instance(attackerId, "p1");
-      const cage = instance("cage-de-flottaison", "p2");
+      const cage = instance("cage-de-flottaison", "p2", { turnsRemaining: 4 });
       return {
         attacker,
         state: testGameState({
           phase: "combatPhase",
+          environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 4 }),
           players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2", { board: [cage], anchor: 20 })],
         }),
       };
     };
-    const byCreature = setup("requin-balafre"); // Créature 4 Puissance
-    const creatureResult = dispatch(byCreature.state, { type: "attack", playerId: "p1", attackerInstanceId: byCreature.attacker.instanceId });
-    ok(creatureResult);
-    expect(player(creatureResult.state, "p2").anchor).toBe(17); // 20 - (4 - 1)
+    const parCreature = setup("requin-balafre"); // Créature 4 Puissance
+    const creature = dispatch(parCreature.state, { type: "attack", playerId: "p1", attackerInstanceId: parCreature.attacker.instanceId });
+    ok(creature);
+    expect(player(creature.state, "p2").anchor).toBe(18); // 20 - (4 - 2)
 
-    const bySailor = setup("harponneur-du-dernier-quai"); // Marin 3 Puissance
-    const sailorResult = dispatch(bySailor.state, { type: "attack", playerId: "p1", attackerInstanceId: bySailor.attacker.instanceId });
-    ok(sailorResult);
-    expect(player(sailorResult.state, "p2").anchor).toBe(17); // 20 - 3, sans réduction
+    const parMarin = setup("harponneur-du-dernier-quai"); // Marin 3 Puissance
+    const marin = dispatch(parMarin.state, { type: "attack", playerId: "p1", attackerInstanceId: parMarin.attacker.instanceId });
+    ok(marin);
+    expect(player(marin.state, "p2").anchor).toBe(19); // 20 - (3 - 2), le Marin est réduit lui aussi
   });
 
   it("une Structure posée dans un état où elle est déjà visible déclenche son apparition", () => {

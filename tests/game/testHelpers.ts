@@ -21,7 +21,7 @@ export function instance(cardId: string, ownerId: string, overrides: Partial<Car
   };
 }
 
-/** Navire par défaut des tests : Le Brise-Lames (24 Ancrage, 8 Raison, 6 emplacements). */
+/** Navire par défaut des tests : Le Brise-Lames (36 Ancrage, 8 Raison, 6 emplacements). */
 export function testPlayer(id: string, overrides: Partial<PlayerState> = {}): PlayerState {
   const shipId = overrides.shipId ?? "le-brise-lames";
   const ship = getShipDefinition(shipId);

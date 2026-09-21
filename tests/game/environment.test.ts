@@ -37,8 +37,11 @@ describe("environnement - Marée (modèle durée + intensité)", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.state.environment.tideState).toBe("tempete");
-    expect(result.state.players[0].anchor).toBe(24); // Le Brise-Lames : résistance 2 > 1 dégât de base, clampé à 0
-    expect(result.state.players[1].anchor).toBe(19); // L'Errant : 20 - 1
+    // Lus sur le Navire et non écrits en dur : ce test parle de RÉSISTANCE à
+    // la Tempête, pas de la valeur d'Ancrage de départ, qui bouge au gré de
+    // l'équilibrage du rythme (+50 % le 21/09/2026).
+    expect(result.state.players[0].anchor).toBe(getShipDefinition("le-brise-lames").startingAnchor); // résistance 2 > 1 dégât, clampé à 0
+    expect(result.state.players[1].anchor).toBe(getShipDefinition("lerrant").startingAnchor - 1);
   });
 
   it("ne progresse PAS au tour du second joueur — seulement au retour au premier (un tour = un tour de table)", () => {
@@ -124,7 +127,7 @@ describe("environnement - Marée (modèle durée + intensité)", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.state.environment.tideState).toBe("tempete");
-    expect(result.state.players[0].anchor).toBe(20); // aurait dû perdre 1 sans l'ignore (L'Errant : 20 de départ)
+    expect(result.state.players[0].anchor).toBe(getShipDefinition("lerrant").startingAnchor); // aurait dû perdre 1 sans l'ignore
   });
 
   it("Sabordage d'une Structure de manipulation de Marée (Régulateur de Courant) réduit la durée restante", () => {
