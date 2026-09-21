@@ -374,32 +374,35 @@ export function applyTideTurnEffects(
   return { state: nextState, events };
 }
 
-/** Marque `unit` comme Sabordée : `processDeaths` (voie unique) l'envoie au cimetière et réveille `onSaborde`/`onDeath` — Ancre de Dérive au changement de Marée. */
-function sabordeUnit(state: GameState, ownerId: PlayerId, unit: CardInstance): GameState {
-  return {
-    ...state,
-    players: state.players.map((p) =>
-      p.id === ownerId
-        ? { ...p, board: p.board.map((u) => (u.instanceId === unit.instanceId ? { ...u, pendingRemoval: "scuttled" as const } : u)) }
-        : p
-    ) as [PlayerState, PlayerState],
-  };
+/**
+ * La Marée qui vient d'être annoncée, telle que l'ANNONCE l'a arrêtée.
+ * Portée par `GameState.pendingTideStep` le temps de la fenêtre, puis
+ * rendue à `appliquerMareeAnnoncee`.
+ */
+export interface AnnonceDeMaree {
+  previousTideState: TideStateName;
+  tideState: TideStateName;
+  intensity: number;
+  stateChanged: boolean;
 }
 
 /**
- * Applique une étape complète de progression de Marée pour le début d'un
- * tour (étapes 4-7 de la structure de tour verrouillée) : décompte la
- * durée restante, avance éventuellement vers l'état suivant, puis
- * applique les effets environnementaux du tour — dégâts d'Ancrage/Raison
- * aux deux joueurs à CHAQUE tour tant qu'on est en Tempête (pas seulement
- * à l'entrée), choc d'entrée/sortie unique pour les Abysses, et maladie
- * aléatoire de la Houle — avec réactions de Navire et déclenchement des
- * capacités `onTideStateEntered` en cas de changement d'état.
+ * PREMIÈRE moitié de l'étape de Marée : l'ANNONCE (étapes 4-5 de la
+ * structure de tour). Décompte la durée restante, avance éventuellement
+ * vers l'état suivant, applique les Anomalies de changement — et s'arrête
+ * là. L'état de Marée est committé et `TIDE_ADVANCED` est émis, mais AUCUN
+ * effet de tour n'est encore appliqué.
+ *
+ * Cette coupure existe pour l'Ancre de Dérive (21/09/2026) : entre
+ * l'annonce et l'application, une fenêtre `onTideAnnounced` laisse le
+ * joueur décider s'il Saborde sa carte pour repousser ces effets. « Le
+ * joueur décide, jamais le moteur » — avant cette passe, le report était
+ * appliqué d'office dès que la carte était en jeu.
  */
-export function resolveTideTurnStep(
+export function annoncerMaree(
   state: GameState,
   turnNumber: number
-): { state: GameState; events: GameEvent[] } {
+): { state: GameState; events: GameEvent[]; annonce: AnnonceDeMaree } {
   const events: GameEvent[] = [];
   const base = { turnNumber, timestamp: Date.now() };
   const previousTideState = state.environment.tideState;
@@ -470,23 +473,42 @@ export function resolveTideTurnStep(
     }
   }
 
-  // Ancre de Dérive (`defersTideEffectsOnChangeWhileVisible`, visible dans le
-  // NOUVEL état) : Sabordée, et les effets de tour de cette Marée attendent
-  // la fin du tour en cours (`endTurn`). Sinon ils s'appliquent maintenant.
-  const anchor = tick.stateChanged
-    ? nextState.players.flatMap((p) => p.board.map((unit) => ({ unit, ownerId: p.id }))).find(({ unit }) => {
-        const def = getCardDefinition(unit.cardId);
-        return Boolean(def.defersTideEffectsOnChangeWhileVisible) && isVisibleDuringTide(def, tick.tideState);
-      })
-    : undefined;
-  if (anchor) {
-    const saborded = sabordeUnit(nextState, anchor.ownerId, anchor.unit);
+  return {
+    state: nextState,
+    events,
+    annonce: { previousTideState, tideState: tick.tideState, intensity, stateChanged: tick.stateChanged },
+  };
+}
+
+/**
+ * SECONDE moitié de l'étape de Marée (étapes 6-7) : les effets de tour de
+ * la Marée annoncée, les capacités d'entrée/sortie d'état, l'expiration des
+ * permanents à durée limitée, et les Structures qui deviennent visibles.
+ *
+ * `reportee` vient de la fenêtre `onTideAnnounced` : quand elle est levée
+ * (effet `deferTideEffects`), les effets de TOUR attendent la fin du tour
+ * en cours — l'état de Marée, lui, a bel et bien changé, et les capacités
+ * `onTideStateEntered` se déclenchent à l'heure.
+ */
+export function appliquerMareeAnnoncee(
+  state: GameState,
+  turnNumber: number,
+  annonce: AnnonceDeMaree,
+  reportee: boolean
+): { state: GameState; events: GameEvent[] } {
+  const events: GameEvent[] = [];
+  const base = { turnNumber, timestamp: Date.now() };
+  const { previousTideState, tideState, intensity } = annonce;
+  const tick = { tideState, stateChanged: annonce.stateChanged };
+  let nextState = state;
+
+  if (reportee) {
     nextState = {
-      ...saborded,
-      environment: { ...saborded.environment, deferredTideEffects: { previousTideState, tideState: tick.tideState, intensity } },
+      ...nextState,
+      environment: { ...nextState.environment, deferredTideEffects: { previousTideState, tideState, intensity } },
     };
   } else {
-    const turnEffects = applyTideTurnEffects(nextState, previousTideState, tick.tideState, intensity, turnNumber);
+    const turnEffects = applyTideTurnEffects(nextState, previousTideState, tideState, intensity, turnNumber);
     nextState = turnEffects.state;
     events.push(...turnEffects.events);
   }
@@ -577,6 +599,21 @@ export function resolveTideTurnStep(
   }
 
   return { state: nextState, events };
+}
+
+/**
+ * Étape de Marée complète, annonce ET application, sans fenêtre
+ * intermédiaire. `endTurn` ne passe plus par ici — il a besoin de la
+ * coupure pour ouvrir `onTideAnnounced` — mais le reste du moteur et les
+ * tests qui n'ont que faire de la fenêtre gardent un appel en un geste.
+ */
+export function resolveTideTurnStep(
+  state: GameState,
+  turnNumber: number
+): { state: GameState; events: GameEvent[] } {
+  const annonce = annoncerMaree(state, turnNumber);
+  const applique = appliquerMareeAnnoncee(annonce.state, turnNumber, annonce.annonce, false);
+  return { state: applique.state, events: [...annonce.events, ...applique.events] };
 }
 
 export function grantIgnoreNextTideDamage(player: PlayerState, tideState: TideStateName): PlayerState {

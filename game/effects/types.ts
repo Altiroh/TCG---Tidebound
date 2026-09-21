@@ -27,6 +27,60 @@ export type EffectType =
   | "reasonLoss"
   /** Attache la source (un Équipement) au permanent choisi (`target: { kind: "chosenUnit" }`) — cf. `EQUIPPABLE_CARD_TYPES`, un seul Équipement par permanent. */
   | "attachEquipment"
+  /**
+   * Retire `amount` tours de durée restante aux permanents ciblés
+   * (`CardInstance.turnsRemaining`), sans jamais descendre sous 0.
+   *
+   * Sert à FAIRE PAYER un gain sur la durée d'une carte plutôt que sur une
+   * ressource : « vous pouvez réduire sa durée de 1 tour : récupérez
+   * 1 Raison » (Gardien du Sondeur). C'est un coût réel — la Structure
+   * quitte le plateau plus tôt — mais qui ne touche ni la Raison ni
+   * l'Ancrage, donc utilisable par une carte dont le but est justement d'en
+   * rendre.
+   *
+   * L'expiration n'est PAS immédiate : un permanent tombé à 0 reste en jeu
+   * jusqu'au contrôle de début de tour de son contrôleur, qui expédie au
+   * Cimetière tout ce qui est à 1 ou moins (`resolveEnvironment`). C'est
+   * cohérent avec « Durée : N tours » qui compte les tours du CONTRÔLEUR :
+   * la carte a encore le tour adverse à vivre.
+   *
+   * Sans effet sur un permanent SANS durée (`turnsRemaining` absent) : on ne
+   * peut pas retirer ce qui n'existe pas. Attention en conception — une
+   * carte qui fait payer une durée à une cible qui n'en a pas rendrait son
+   * gain gratuit. Aucune Structure sans durée ne peut aujourd'hui devenir
+   * visible, donc le cas ne se présente pas ; c'est à revérifier si une
+   * Structure sans durée reçoit une fenêtre de visibilité.
+   */
+  | "durationLoss"
+  /**
+   * Annule les dégâts directs de l'attaque en cours d'interception
+   * (grammaire des pièges, 21/09/2026). N'a de sens que dans une capacité
+   * `onIncomingDirectAttack` : hors de cette fenêtre, il n'y a pas
+   * d'attaque suspendue et l'effet ne fait rien.
+   *
+   * N'annule QUE la frappe sur la coque. Le coup a bien été porté :
+   * l'attaquant a dépensé son attaque, son propre contrecoup s'applique, et
+   * les pertes de Raison qu'il inflige aussi. C'est un bouclier, pas une
+   * annulation de l'échange.
+   */
+  | "cancelIncomingAttack"
+  /**
+   * Réduit de `amount` les dégâts DIRECTS de l'attaque en cours
+   * d'interception (Cage de Flottaison, Caisses Arrimées). Cumulative :
+   * deux pièges qui répondent à la même attaque additionnent leurs
+   * réductions. Sans objet hors fenêtre d'interception.
+   */
+  | "reduceIncomingDamage"
+  /**
+   * Retire `amount` de Puissance à l'attaquant POUR CETTE ATTAQUE (Filet à
+   * la Dérive, Le Filet qui Respire), sans jamais descendre sous 0.
+   *
+   * Agit sur la Puissance DÉCLARÉE, celle que porte l'attaque suspendue :
+   * l'effet vaut donc aussi bien pour un combat entre unités que pour une
+   * frappe sur la coque, et il disparaît avec l'attaque — ce n'est pas un
+   * modificateur posé sur la carte.
+   */
+  | "modifyAttackerPower"
   // --- Environnement : Marée, modèle "durée + intensité" -----------------
   // (cadrage "Mécaniques verrouillées" sections 20-21, orientation 2026-09-10)
   /** Réduit la durée restante de l'état de Marée courant (rapproche la progression). */
@@ -50,6 +104,19 @@ export type EffectType =
   /** Force une transition IMMÉDIATE d'un état vers Calme (jamais via le décompte normal). */
   | "tideForceRetreat"
   | "ignoreNextTideDamage"
+  /**
+   * Reporte à la FIN DU TOUR EN COURS les effets de la Marée qui vient
+   * d'être annoncée (Ancre de Dérive). N'a de sens que dans une capacité
+   * `onTideAnnounced` : hors de cette fenêtre il n'y a pas de Marée en
+   * attente, et l'effet est silencieusement sans objet.
+   *
+   * Ce qui est reporté, ce sont les effets de TOUR de la Marée — dégâts de
+   * Tempête, choc d'entrée/sortie des Abysses, maladie de la Houle — pas
+   * l'état lui-même : la Marée a bien changé, et les capacités
+   * `onTideStateEntered` se déclenchent à l'heure. Le report se règle dans
+   * `endTurn` via `EnvironmentState.deferredTideEffects`.
+   */
+  | "deferTideEffects"
   // --- Lecture de main (purement informatif, cf. `HandCardRevealedEvent`) -
   /** Révèle `amount` cartes aléatoires DISTINCTES de la main de la cible — aucun autre effet sur l'état (ex: Guetteur de Brume, La Bouée qui Regardait). */
   | "revealRandomHandCards"
@@ -82,7 +149,48 @@ export type EffectType =
 
 /** Une valeur numérique d'effet, pour l'instant une constante — prête à
  * être étendue vers des formules (ex: "= nombre d'unités contrôlées"). */
-export type EffectAmount = { kind: "flat"; value: number };
+export type EffectAmount =
+  | { kind: "flat"; value: number }
+  /**
+   * « autant de dégâts » : la Puissance de l'attaquant dont l'attaque vient
+   * d'être interceptée (`pendingAttack.attackerPower`). 0 hors fenêtre
+   * d'interception.
+   *
+   * C'est la Puissance de l'attaquant, PAS le dégât final qu'aurait subi la
+   * coque : boucliers, plafonds et faiblesse de Navire ne s'appliquent
+   * jamais, puisque le coup n'a pas porté. C'est aussi ce que le joueur lit
+   * sur la carte qui le frappe, donc ce que le texte promet.
+   */
+  | { kind: "incomingAttackDamage" }
+  /**
+   * « autant que d'unités » : montant COMPTÉ sur un plateau au moment de la
+   * résolution, et non gravé dans la carte.
+   *
+   * C'est la primitive anti-swarm (Notion « Audit systémique » § Priorités
+   * de couverture : « punition du nombre de Slots occupés »). Le pool
+   * fabrique un board large plus facilement qu'il ne sait le punir — la
+   * mesure donne 9 à 20 invocations par partie pour 5 à 9 cartes posées,
+   * donc des corps que la Raison ne paie jamais. Un montant compté rend à
+   * ces corps un coût, sans passer par un board wipe : contre deux unités,
+   * la carte est faible ; contre six, elle est décisive.
+   *
+   * Ne compte que les UNITÉS (`UNIT_CARD_TYPES`), jamais les Structures,
+   * Objets, Équipements ou Anomalies — c'est le nombre de corps qui fait
+   * le swarm, pas le nombre de Slots occupés.
+   *
+   * `above` ne compte que ce qui DÉPASSE un seuil (« pour chaque unité
+   * adverse au-delà de deux ») : c'est lui qui rend la carte inerte contre
+   * un plateau normal. `per` multiplie chaque unité comptée (défaut 1).
+   */
+  | {
+      kind: "unitCount";
+      /** `"opponent"` : le plateau d'en face. `"controller"` : le sien — pour un effet de comeback. */
+      of: "opponent" | "controller";
+      /** Seuil en dessous duquel rien n'est compté. Défaut 0. */
+      above?: number;
+      /** Multiplicateur par unité comptée. Défaut 1. */
+      per?: number;
+    };
 
 /**
  * Restriction d'une cible `chosenUnit` : le joueur désigne, mais seulement

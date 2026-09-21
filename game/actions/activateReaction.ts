@@ -11,7 +11,7 @@ import {
 import type { PendingReactionCandidate } from "@/game/triggers/types";
 import type { GameEvent } from "@/game/events/types";
 import { assertGameActive, assertPlayerInGame, combine } from "@/game/rules/validation";
-import type { GameState } from "@/game/state/types";
+import type { GameState, PlayerState } from "@/game/state/types";
 import type { ActionResult, ActivateReactionAction } from "@/game/actions/types";
 
 function validate(
@@ -80,15 +80,54 @@ export function activateReaction(state: GameState, action: ActivateReactionActio
   if (!validation.ok) return { ok: false, error: validation.error };
 
   const pending = state.pendingReaction!;
+
+  // --- RÉVÉLATION AVANT RÉSOLUTION (grammaire des Structures, 21/09/2026)
+  //
+  // Une Réaction cachée s'active depuis une Structure que l'adversaire ne
+  // voit pas : il sait qu'un Slot est occupé, pas par quoi. Activer expose
+  // donc la carte AVANT que ses effets ne s'appliquent — on ne se fait pas
+  // frapper par une carte qu'on n'a jamais vue, et l'adversaire peut lire ce
+  // qui l'atteint dans le journal, dans le bon ordre.
+  //
+  // La révélation est définitive (`CardInstance.revealed`) : si la Marée
+  // remasque la Structure au tour suivant, elle reste connue.
+  let revealedState = state;
+  const revealEvents: GameEvent[] = [];
+  const activatedAbility = getCardDefinition(validation.candidate.cardId).abilities?.[action.abilityIndex];
+  if (activatedAbility?.hiddenReaction) {
+    const owner = revealedState.players.find((p) => p.board.some((u) => u.instanceId === action.sourceInstanceId));
+    const holder = owner?.board.find((u) => u.instanceId === action.sourceInstanceId);
+    if (owner && holder && !holder.revealed) {
+      revealedState = {
+        ...revealedState,
+        players: revealedState.players.map((p) =>
+          p.id === owner.id
+            ? { ...p, board: p.board.map((u) => (u.instanceId === holder.instanceId ? { ...u, revealed: true } : u)) }
+            : p
+        ) as [PlayerState, PlayerState],
+      };
+      revealEvents.push({
+        type: "STRUCTURE_REVEALED",
+        turnNumber: pending.turnNumber,
+        timestamp: Date.now(),
+        playerId: owner.id,
+        instanceId: holder.instanceId,
+        cardId: holder.cardId,
+      });
+    }
+  }
+
   const resolution = resolveReaction(
-    state,
+    revealedState,
     validation.candidate,
     action.targetInstanceId,
     pending.turnNumber,
     action.chosenGraveyardInstanceId
   );
   let nextState = resolution.state;
-  const events: GameEvent[] = [...resolution.events];
+  // La révélation précède les effets DANS LE JOURNAL aussi : c'est l'ordre
+  // que lit l'adversaire.
+  const events: GameEvent[] = [...revealEvents, ...resolution.events];
 
   // Ce que la réaction vient de faire arriver (invocation, arrivée rejouée
   // par Colombina) réveille les capacités d'arrivée AUTOMATIQUES concernées,

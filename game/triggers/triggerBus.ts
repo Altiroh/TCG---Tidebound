@@ -1,6 +1,6 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { computeEffectiveStats } from "@/game/cards/stats";
-import { isVisibleDuringTide, type CardInstance, type TriggeredAbility, type TriggerSourceFilter } from "@/game/cards/types";
+import { isVisibleDuringTide, UNIT_CARD_TYPES, type CardInstance, type TriggeredAbility, type TriggerSourceFilter } from "@/game/cards/types";
 import type { EffectDefinition } from "@/game/effects/types";
 import type { EffectContext } from "@/game/effects/resolveEffect";
 import { hasGraveyardArrival, resolveEffect, revealRandomHandCards } from "@/game/effects/resolveEffect";
@@ -26,6 +26,29 @@ interface TriggeredWork {
 /** Une unité rendue inactive par la Marée ne peut pas utiliser ses capacités (sauf onDeath : mourir n'est pas "utiliser une capacité"). */
 function isInactive(state: GameState, unit: CardInstance): boolean {
   return computeEffectiveStats(unit, state.environment.tideState).inactive;
+}
+
+/**
+ * Déclencheurs de DÉPART, plus la révélation elle-même : partir ou se
+ * découvrir n'est pas « agir », donc le masquage ne les bloque pas.
+ */
+const TRIGGERS_HORS_MASQUAGE = new Set(["onDeath", "onSaborde", "onExpire", "onTideStateExited", "onBecomeVisible"]);
+
+/**
+ * Une carte MASQUÉE par la Marée est inactive : ses capacités ne se
+ * déclenchent pas (grammaire des Structures, 21/09/2026).
+ *
+ * Avant cette règle, le masquage ne bloquait rien — il fallait que chaque
+ * capacité déclare `condition: { selfVisible: true }` ou que chacun de ses
+ * effets porte `conditionSelfVisible`. Le catalogue le faisait bien, mais
+ * par discipline : rien n'empêchait une nouvelle carte d'agir masquée sans
+ * que personne ne le remarque. La règle est désormais tenue par le moteur,
+ * et l'exception doit se déclarer — `hiddenReaction`.
+ */
+function blocqueParMasquage(state: GameState, unit: CardInstance, ability: TriggeredAbility): boolean {
+  if (ability.hiddenReaction) return false;
+  if (TRIGGERS_HORS_MASQUAGE.has(ability.trigger)) return false;
+  return !isVisibleDuringTide(getCardDefinition(unit.cardId), state.environment.tideState);
 }
 
 /**
@@ -86,10 +109,37 @@ function matchesControlCondition(
     const holder = sourceInstanceId ? findBoardUnit(state, sourceInstanceId) : undefined;
     if (!holder || !isVisibleDuringTide(getCardDefinition(holder.unit.cardId), state.environment.tideState)) return false;
   }
+  // « Réaction cachée » : complément exact de `selfVisible`. Sans elle, une
+  // carte portant les deux textes proposerait les deux en même temps.
+  const seuil = ability.condition?.attackerPowerAtLeast;
+  if (seuil !== undefined && (state.pendingAttack?.attackerPower ?? 0) < seuil) return false;
+  if (ability.condition?.selfHidden) {
+    const holder = sourceInstanceId ? findBoardUnit(state, sourceInstanceId) : undefined;
+    if (!holder || isVisibleDuringTide(getCardDefinition(holder.unit.cardId), state.environment.tideState)) return false;
+    // RÉVÉLÉE = plus un secret (21/09/2026). Révéler retire la dissimulation,
+    // pas le masquage : la carte reste inactive tant que la Marée la cache,
+    // mais elle ne peut plus se « révéler » une seconde fois.
+    //
+    // Sans cette garde, un piège qui RESTE en jeu après s'être révélé — Filet
+    // à la Dérive, Le Filet qui Respire — reproposait sa réaction à CHAQUE
+    // attaque, indéfiniment : 43 fenêtres de réaction par partie, mesurées.
+    // Ceux qui se détruisent ou se Sabordent ne montraient pas le problème.
+    if (holder.unit.revealed) return false;
+  }
   const handAtLeast = ability.condition?.controllerHandAtLeast;
   if (handAtLeast !== undefined) {
     const holder = state.players.find((p) => p.id === controllerId);
     if (!holder || holder.hand.length < handAtLeast) return false;
+  }
+  // « si l'adversaire contrôle au moins N unités » : la porte anti-swarm.
+  // Posée sur la CAPACITÉ et non sur un effet, elle épargne le
+  // `oncePerTurnKey` — une carte qui brûle son unique usage du tour contre
+  // un plateau trop étroit pour qu'elle serve ne punit rien.
+  const seuilUnites = ability.condition?.opponentUnitsAtLeast;
+  if (seuilUnites !== undefined) {
+    const adversaire = state.players.find((p) => p.id !== controllerId);
+    const unites = (adversaire?.board ?? []).filter((u) => UNIT_CARD_TYPES.includes(getCardDefinition(u.cardId).type));
+    if (unites.length < seuilUnites) return false;
   }
   const arrival = ability.condition?.graveyardArrival;
   if (arrival && !hasGraveyardArrival(state, controllerId, arrival)) return false;
@@ -156,6 +206,7 @@ function collectObserverWork(
       const def = getCardDefinition(holder.cardId);
       (def.abilities ?? []).forEach((ability, abilityIndex) => {
         if (ability.trigger !== event.trigger || (ability.mode ?? "auto") !== mode) return;
+        if (blocqueParMasquage(state, holder, ability)) return;
         if (!ability.triggeredBy || !matchesTideCondition(state, ability)) return;
         if (!matchesTriggerSource(ability.triggeredBy, event, holder, player.id)) return;
         // "La première fois à chaque tour" : la capacité disparaît des
@@ -219,6 +270,30 @@ function collectTriggeredWork(
     return result;
   }
 
+  if (event.trigger === "onIncomingDirectAttack" || event.trigger === "onUnitAttackDeclared") {
+    // Fenêtre d'INTERCEPTION : la capacité se lit sur le plateau du
+    // DÉFENSEUR (`event.playerId`), jamais sur l'attaquant — alors que
+    // `event.sourceInstanceId` désigne justement l'attaquant, pour que le
+    // piège puisse le viser. Sans cette branche dédiée, l'événement tombait
+    // dans le déclenchement « personnel » plus bas et cherchait le piège sur
+    // la carte qui frappe.
+    if (!event.playerId) return result;
+    const defenseur = state.players.find((p) => p.id === event.playerId);
+    if (!defenseur) return result;
+
+    for (const unit of defenseur.board) {
+      if (isInactive(state, unit)) continue;
+      const def = getCardDefinition(unit.cardId);
+      (def.abilities ?? []).forEach((ability, abilityIndex) => {
+        if (ability.trigger !== event.trigger || !matchesMode(ability)) return;
+        if (blocqueParMasquage(state, unit, ability)) return;
+        if (ability.oncePerTurnKey && !oncePerTurnAvailable(unit, ability.oncePerTurnKey, turnNumber)) return;
+        result.push(work(ability, abilityIndex, def.id, defenseur.id, unit.instanceId, turnNumber, event.sourceInstanceId));
+      });
+    }
+    return result;
+  }
+
   if (event.trigger === "startOfTurn" || event.trigger === "endOfTurn") {
     if (!event.playerId) return result;
     const player = state.players.find((p) => p.id === event.playerId);
@@ -229,6 +304,12 @@ function collectTriggeredWork(
       const def = getCardDefinition(unit.cardId);
       (def.abilities ?? []).forEach((ability, abilityIndex) => {
         if (ability.trigger !== event.trigger || !matchesMode(ability)) return;
+        if (blocqueParMasquage(state, unit, ability)) return;
+        // « La première fois à chaque tour » : indispensable en mode
+        // `optional`, où le marquage n'a lieu qu'à l'ACTIVATION
+        // (`resolveReaction`) et non au recensement — sans elle, la
+        // capacité est reproposée à chaque fenêtre du tour.
+        if (ability.oncePerTurnKey && !oncePerTurnAvailable(unit, ability.oncePerTurnKey, turnNumber)) return;
         result.push(work(ability, abilityIndex, def.id, player.id, unit.instanceId, turnNumber));
       });
     }
@@ -242,6 +323,12 @@ function collectTriggeredWork(
         const def = getCardDefinition(unit.cardId);
         (def.abilities ?? []).forEach((ability, abilityIndex) => {
           if (ability.trigger !== "onCardPlayed" || !matchesMode(ability)) return;
+          if (blocqueParMasquage(state, unit, ability)) return;
+          // « La première fois à chaque tour » : indispensable en mode
+        // `optional`, où le marquage n'a lieu qu'à l'ACTIVATION
+        // (`resolveReaction`) et non au recensement — sans elle, la
+        // capacité est reproposée à chaque fenêtre du tour.
+        if (ability.oncePerTurnKey && !oncePerTurnAvailable(unit, ability.oncePerTurnKey, turnNumber)) return;
           result.push(work(ability, abilityIndex, def.id, player.id, unit.instanceId, turnNumber));
         });
       }
@@ -249,13 +336,19 @@ function collectTriggeredWork(
     return result;
   }
 
-  if (event.trigger === "onTideStateEntered" || event.trigger === "onTideStateExited") {
+  if (event.trigger === "onTideStateEntered" || event.trigger === "onTideStateExited" || event.trigger === "onTideAnnounced") {
     for (const player of playersActiveFirst(state)) {
       for (const unit of player.board) {
         const def = getCardDefinition(unit.cardId);
         (def.abilities ?? []).forEach((ability, abilityIndex) => {
           if (ability.trigger !== event.trigger || !matchesMode(ability)) return;
+          if (blocqueParMasquage(state, unit, ability)) return;
           if (ability.condition?.tideState && ability.condition.tideState !== event.tideState) return;
+          // « La première fois à chaque tour » : indispensable en mode
+        // `optional`, où le marquage n'a lieu qu'à l'ACTIVATION
+        // (`resolveReaction`) et non au recensement — sans elle, la
+        // capacité est reproposée à chaque fenêtre du tour.
+        if (ability.oncePerTurnKey && !oncePerTurnAvailable(unit, ability.oncePerTurnKey, turnNumber)) return;
           result.push(work(ability, abilityIndex, def.id, player.id, unit.instanceId, turnNumber));
         });
       }
@@ -272,6 +365,7 @@ function collectTriggeredWork(
       const def = getCardDefinition(unit.cardId);
       (def.abilities ?? []).forEach((ability, abilityIndex) => {
         if (ability.trigger !== event.trigger || !matchesMode(ability) || ability.triggeredBy) return;
+        if (blocqueParMasquage(state, unit, ability)) return;
         // "La première fois à chaque tour" : même garde que pour les
         // observateurs. Indispensable en mode "optional", où le marquage
         // n'a lieu qu'à l'activation (`resolveReaction`) et non au

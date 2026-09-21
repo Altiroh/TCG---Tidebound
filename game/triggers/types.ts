@@ -17,6 +17,7 @@ export type TriggerType =
   | "onCardPlayed" // n'importe quelle carte est jouée par n'importe qui
   | "onTideStateEntered" // la Marée vient d'entrer dans un nouvel état
   | "onTideStateExited" // la Marée vient de QUITTER un état (ex: Masque de Plongée Fissuré, "à chaque sortie des Abysses")
+  | "onTideAnnounced" // une nouvelle Marée vient d'être ANNONCÉE : son état est committé, ses effets de tour ne sont PAS encore appliqués (Ancre de Dérive). Fenêtre strictement antérieure à `onTideStateEntered`.
   | "onBecomeVisible" // une Structure devient visible pour l'adversaire (entrée dans un de ses `visibleDuringTide`)
   | "onExpire" // une Structure/Objet à durée limitée quitte le board par expiration (ni mort, ni Sabordage)
   | "onObjectBroken" // le contrôleur vient de Briser un Objet (depuis le board OU depuis sa main)
@@ -25,6 +26,8 @@ export type TriggerType =
   | "onDiscarded" // CETTE carte vient d'être défaussée de la main (Lot 13) — elle n'a jamais été sur le plateau, sa capacité est lue sur sa définition
   | "onCardDiscardedFromHand" // une carte rejoint le Cimetière DEPUIS UNE MAIN : déclencheur d'OBSERVATEUR, filtré par `triggeredBy` (Lot 13)
   | "onCardRecoveredFromGraveyard" // une carte remonte du Cimetière vers la main : déclencheur d'OBSERVATEUR (Lot 13 — Maman revient)
+  | "onIncomingDirectAttack" // le Navire du contrôleur va subir des dégâts directs d'une attaque — fenêtre d'INTERCEPTION, ouverte AVANT tout calcul de dégâts (pièges : Cylindre flottant, Caisses Arrimées, Cage de Flottaison)
+  | "onUnitAttackDeclared" // une unité ADVERSE vient de déclarer une attaque, quelle qu'en soit la cible — même fenêtre, mais ouverte aussi sur un combat entre unités (Filet à la Dérive, Le Filet qui Respire)
   | "onBecomeOnlyCreature" // la carte vient de DEVENIR la seule Créature du plateau de son contrôleur (ex: Méduse des Lanternes) — détecté par photo avant/après chaque action (`processLoneCreatureChanges`)
   | "onCondition"; // condition arbitraire évaluée par un `ConditionExpression`
 
@@ -35,7 +38,7 @@ export interface TriggerEvent {
   /** cardId de la carte jouée, pour onPlay / onCardPlayed. */
   cardId?: string;
   playerId?: string;
-  /** État de Marée qui vient d'être atteint, pour onTideStateEntered. */
+  /** État de Marée qui vient d'être atteint, pour onTideStateEntered / onTideAnnounced. */
   tideState?: import("@/game/environment/types").TideStateName;
   /** `onEnterPlay` : la carte arrive par INVOCATION et non par une pose depuis la main (ex: un Péon). */
   fromSummon?: boolean;

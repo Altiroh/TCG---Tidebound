@@ -26,7 +26,10 @@ describe("pools de boosters", () => {
   });
 
   it("respecte les effectifs de la répartition Notion, Lot 12 compris", () => {
-    expect(BOOSTER_POOLS[BOOSTER_DEFAUT]).toHaveLength(61);
+    // 61 à l'origine, 63 depuis les deux Structures anti-swarm du
+    // 21/09/2026 (La Nasse Trop Pleine, Le Rôle d'Équipage) : elles tiennent
+    // du même socle « fondamentaux de Structures » que B1 enseigne déjà.
+    expect(BOOSTER_POOLS[BOOSTER_DEFAUT]).toHaveLength(63);
     expect(BOOSTER_POOLS[BOOSTER_POISSONS_PAS_FRAIS]).toHaveLength(65);
     expect(BOOSTER_POOLS[BOOSTER_ETRANGETE_SOUS_MARINE]).toHaveLength(64);
   });

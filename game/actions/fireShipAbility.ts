@@ -11,6 +11,11 @@ import {
   combine,
 } from "@/game/rules/validation";
 import { isShipArmed, shipAbilityOf, withArmingConsumed } from "@/game/state/shipAbility";
+import { collectReactionCandidates } from "@/game/triggers/triggerBus";
+import { consumeDirectShipDamageShield } from "@/game/state/shields";
+import { getCardDefinition } from "@/game/cards/sets/core";
+import { isVisibleDuringTide } from "@/game/cards/types";
+import type { TriggerEvent } from "@/game/triggers/types";
 import { getPlayer, type GameState, type PlayerState } from "@/game/state/types";
 import type { ActionResult, FireShipAbilityAction } from "@/game/actions/types";
 
@@ -61,6 +66,47 @@ export function fireShipAbility(state: GameState, action: FireShipAbilityAction)
   const events: GameEvent[] = [];
   const base = { turnNumber: state.turnNumber, timestamp: Date.now() };
 
+  // --- FENÊTRE D'INTERCEPTION (arbitrage du 21/09/2026) ------------------
+  //
+  // Un tir visant le NAVIRE adverse est, du point de vue des pièges, « des
+  // dégâts directs » comme les autres : leur texte ne distingue pas la
+  // source du coup. Sans cette fenêtre, le Canon du Goliath traversait
+  // toutes les défenses — mesuré à 87 % de victoires contre un deck de
+  // pièges, seul deck du format dont la route de dégâts était intouchable.
+  //
+  // Un tir visant un PERMANENT n'ouvre rien : ce n'est pas la coque qui est
+  // menacée, et aucun piège actuel ne parle de ça.
+  if (!action.targetInstanceId && !state.pendingAttack) {
+    const defenseur = state.players.find((p) => p.id !== player.id)!;
+    const triggerEvents: TriggerEvent[] = [
+      { trigger: "onIncomingDirectAttack", playerId: defenseur.id, sourceInstanceId: player.id },
+    ];
+    const candidats = collectReactionCandidates(state, triggerEvents, defenseur.id, state.turnNumber);
+    if (candidats.length > 0) {
+      return {
+        ok: true,
+        state: {
+          ...state,
+          pendingAttack: {
+            kind: "tirDeNavire",
+            playerId: action.playerId,
+            // Le Navire n'est pas une unité : son « attaquant » est le joueur.
+            attackerInstanceId: player.id,
+            attackerPower: 0,
+          },
+          pendingReaction: {
+            events: triggerEvents,
+            awaitingPlayerId: defenseur.id,
+            priorityQueue: [],
+            usedCandidateKeys: [],
+            turnNumber: state.turnNumber,
+          },
+        },
+        events: [{ ...base, type: "REACTION_WINDOW_OPENED", playerId: defenseur.id }],
+      };
+    }
+  }
+
   let nextState: GameState = {
     ...state,
     players: state.players.map((p) => (p.id === player.id ? withArmingConsumed(p) : p)) as [PlayerState, PlayerState],
@@ -75,10 +121,45 @@ export function fireShipAbility(state: GameState, action: FireShipAbilityAction)
     targetInstanceId: action.targetInstanceId,
   });
 
+  // --- DÉFENSES DU NAVIRE VISÉ (arbitrage du 21/09/2026) ----------------
+  //
+  // Un tir sur la coque rencontre désormais les MÊMES défenses qu'une
+  // attaque : le bouclier « une fois par tour » du défenseur (Cage de
+  // Flottaison visible) et son plafond par coup (Carcasse Renversée). Sans
+  // elles, le Canon restait à moitié intouchable — la fenêtre d'interception
+  // seule ne couvrait que les pièges MASQUÉS, et À Portée gagnait encore
+  // 83 % contre un deck de défense.
+  //
+  // Un tir sur un PERMANENT n'en rencontre aucune : ce sont des défenses de
+  // coque, et la coque n'est pas visée.
+  const defenseur = nextState.players.find((p) => p.id !== player.id)!;
+  let bouclier = 0;
+  let plafond: number | undefined;
+  if (!action.targetInstanceId) {
+    // Le Navire n'est pas une carte : un bouclier restreint à certains types
+    // d'attaquant ne s'applique donc pas (cf. `consumeDirectShipDamageShield`).
+    const consomme = consumeDirectShipDamageShield(nextState, defenseur.id, state.turnNumber);
+    nextState = consomme.state;
+    bouclier = consomme.reduction;
+    plafond = getPlayer(nextState, defenseur.id).board.reduce<number | undefined>((cap, unit) => {
+      const def = getCardDefinition(unit.cardId);
+      const value = def.capDirectShipDamageWhileVisible;
+      if (value === undefined || !isVisibleDuringTide(def, nextState.environment.tideState)) return cap;
+      return cap === undefined ? value : Math.min(cap, value);
+    }, undefined);
+  }
+
+  // Un piège a répondu : annuler vaut réduction infinie, sinon sa réduction
+  // s'ajoute à celle des défenses automatiques.
+  const suspendu = state.pendingAttack;
   const context: EffectContext = {
     controllerId: player.id,
     chosenTargetInstanceId: action.targetInstanceId,
     turnNumber: state.turnNumber,
+    directDamageCap: plafond,
+    directDamageReduction: suspendu?.intercepted
+      ? Number.MAX_SAFE_INTEGER
+      : bouclier + (suspendu?.damageReduction ?? 0),
   };
   const fired = resolveEffectSequence(nextState, shot.effects, context);
   nextState = fired.state;

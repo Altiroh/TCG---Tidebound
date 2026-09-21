@@ -103,6 +103,42 @@ export interface TriggeredAbility {
   effects: EffectDefinition[];
   /** Texte optionnel affiché dans l'UI ; pas de logique attachée. */
   description?: string;
+
+  /**
+   * **RÉACTION CACHÉE** (grammaire des Structures, 21/09/2026).
+   *
+   * Une Structure masquée par la Marée existe toujours : elle occupe son
+   * Slot, sa durée continue de se consumer, et elle est **inactive par
+   * défaut** — ses capacités ne se déclenchent pas. Ce drapeau est la seule
+   * exception : il déclare qu'une capacité PEUT être utilisée alors que sa
+   * porteuse est masquée.
+   *
+   * Trois conséquences, toutes voulues :
+   *
+   * 1. **L'adversaire ne sait pas ce qu'il affronte.** La projection joueur
+   *    masque l'identité d'une Structure invisible (`playerView`) : il voit
+   *    un Slot occupé, pas une carte. Une Réaction cachée est donc un
+   *    piège, et son intérêt est précisément qu'on ignore lequel.
+   * 2. **La révélation précède la résolution.** Activer expose la carte
+   *    (`CardInstance.revealed`, événement `STRUCTURE_REVEALED`) AVANT que
+   *    ses effets ne s'appliquent — on ne se fait pas frapper par une carte
+   *    qu'on n'a jamais vue. La révélation est définitive.
+   * 3. **Le joueur décide.** Une Réaction cachée est toujours facultative :
+   *    elle passe par une fenêtre de réaction (Activer / Passer), et le
+   *    moteur ne la déclenche jamais d'office. `mode: "optional"` est donc
+   *    implicite — le déclarer est inutile, l'omettre sans danger.
+   *
+   * Le SORT DE LA CARTE APRÈS COUP appartient à son texte, pas au moteur :
+   * une Réaction cachée qui ne dit rien laisse la Structure en jeu, révélée.
+   * Pour qu'elle parte, le texte le dit et la définition le réalise avec les
+   * primitives existantes (`saborde` ou une destruction sur `self`).
+   *
+   * Les déclencheurs de DÉPART (`onDeath`, `onSaborde`, `onExpire`,
+   * `onTideStateExited`) et la révélation elle-même (`onBecomeVisible`)
+   * n'ont pas besoin de ce drapeau : partir ou se découvrir n'est pas
+   * « agir ».
+   */
+  hiddenReaction?: boolean;
   /**
    * Filtres supplémentaires, évalués AVANT que `oncePerTurnKey` ne soit
    * consommé — contrairement à une condition posée sur un effet, qui laisse
@@ -116,9 +152,38 @@ export interface TriggeredAbility {
    * contrôlez un Destrier du Grand Étang »).
    */
   condition?: {
+    /**
+     * « Réaction cachée » : la capacité ne se propose que si sa porteuse est
+     * MASQUÉE par la Marée. Indispensable dès qu'une carte porte À LA FOIS un
+     * effet visible et une Réaction cachée — sans elle, les deux se
+     * proposeraient en même temps et le texte promettrait deux fois la même
+     * chose. Complément exact de `selfVisible`.
+     */
+    selfHidden?: boolean;
+    /**
+     * « si sa Puissance est supérieure ou égale à N » : seuil sur la
+     * Puissance DÉCLARÉE de l'attaquant (`pendingAttack.attackerPower`).
+     * N'a de sens que sur un déclencheur d'interception. Sert à distinguer
+     * une défense anti-grosse-menace (Le Filet qui Respire) d'une défense
+     * anti-swarm (Filet à la Dérive), sans dupliquer la même carte.
+     */
+    attackerPowerAtLeast?: number;
     tideState?: TideStateName;
     tideStateIn?: TideStateName[];
     controlsAnyCardIds?: string[];
+    /**
+     * « si l'adversaire contrôle au moins N unités » : porte ANTI-SWARM
+     * (Notion « Audit systémique » § Priorités de couverture, 21/09/2026).
+     *
+     * Ne compte que les UNITÉS (`UNIT_CARD_TYPES`) : c'est le nombre de
+     * corps qui fait le swarm, pas le nombre de Slots occupés — une
+     * Structure adverse ne doit pas armer une carte écrite contre un banc.
+     *
+     * Sur la CAPACITÉ et non sur un effet, comme `controllerHandAtLeast` :
+     * un déclencheur qui brûlerait son `oncePerTurnKey` contre un plateau
+     * trop étroit pour qu'il serve ne punit rien du tout.
+     */
+    opponentUnitsAtLeast?: number;
     /**
      * « si vous avez au moins N cartes en main » : taille de main MINIMALE
      * du contrôleur pour que la capacité se déclenche (ex: Gabier au Carnet
@@ -388,15 +453,6 @@ export interface CardDefinition {
   taxOpponentObjectBreakOncePerTurnWhileVisible?: { amount: number; blocksIfUnpayable?: boolean };
 
   /**
-   * Ancre de Dérive : quand la Marée change d'état et que la carte est
-   * visible dans le NOUVEL état, elle est Sabordée et les effets de tour de
-   * cette Marée (dégâts d'Ancrage/Raison, choc des Abysses, maladie de la
-   * Houle) sont reportés à la fin du tour en cours
-   * (`EnvironmentState.deferredTideEffects`, appliqués par `endTurn`).
-   */
-  defersTideEffectsOnChangeWhileVisible?: boolean;
-
-  /**
    * Pour un Équipement uniquement : CONTRE-INDICATION à la règle générale
    * « un Équipement suit son porteur au cimetière ». Par défaut, quand le
    * permanent équipé quitte le plateau (destruction, Sabordage,
@@ -613,8 +669,6 @@ export interface CardDefinition {
   /** Plafonne les dégâts DIRECTS d'une même attaque contre le Navire de son contrôleur, tant que la carte est visible (`visibleDuringTide`) — ex: Carcasse Renversée. */
   capDirectShipDamageWhileVisible?: number;
 
-  /** Réduit la Puissance d'une unité ADVERSE qui attaque directement le Navire de son contrôleur, pour ce combat (ex: Le Filet qui Respire, « qu'une Créature adverse attaque »). `attackerCardTypes` restreint aux attaquants de ces types. */
-  reduceAttackerPowerOnDirectAttackOncePerTurn?: { amount: number; attackerCardTypes?: CardType[] };
 
   /** Réduit les dégâts subis par CETTE unité elle-même, au combat (ex: Baleine aux Cicatrices Blanches). */
   reduceOwnDamageTakenOncePerTurn?: number;
@@ -949,6 +1003,14 @@ export interface CardInstance {
    * n'a pas de durée limitée.
    */
   turnsRemaining?: number;
+
+  /**
+   * Cette Structure a été RÉVÉLÉE en activant une Réaction cachée alors
+   * qu'elle était masquée. Définitif : la projection joueur cesse de cacher
+   * son identité à l'adversaire, même si la Marée la remasque ensuite — on
+   * ne « désapprend » pas ce qu'on a vu.
+   */
+  revealed?: boolean;
 
   /** Statuts ponctuels actifs sur cette instance (ex: `STATUS_MALADE`). Absent = aucun. */
   statuses?: string[];

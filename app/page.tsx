@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { fetchOnboarding } from "@/features/onboarding/actions";
-import { TideboundMenuChest } from "@/components/menu/TideboundMenuChest";
+import { TideboundMenuCarte } from "@/components/menu/TideboundMenuCarte";
 import { MenuAmbiance } from "@/components/menu/MenuAmbiance";
 import { AuthGateModal } from "@/components/auth/AuthGateModal";
 import { HomeBar } from "@/features/shell/HomeBar";
@@ -24,7 +24,20 @@ async function resolveIsSignedIn(): Promise<boolean> {
   }
 }
 
-export default async function HomePage() {
+interface HomePageProps {
+  /** `?reperes=1` trace la boîte de chaque calque de la scène — le gabarit de calage. */
+  searchParams?: { reperes?: string };
+}
+
+/**
+ * ACCUEIL — la table du navigateur (`TideboundMenuCarte`).
+ *
+ * Le coffret 3D qui tenait cette place a été retiré le 21/09/2026 : la
+ * carte marine l'a remplacé après un temps d'essai côte à côte. Avec lui
+ * sont partis `ChestButtons3D`, ses plaques en Three.js, et la dépendance
+ * `three` — plus personne ne l'importait.
+ */
+export default async function HomePage({ searchParams }: HomePageProps) {
   const isSignedIn = await resolveIsSignedIn();
 
   // Première connexion : le tutoriel est PROPOSÉ avant tout le reste
@@ -36,21 +49,14 @@ export default async function HomePage() {
   }
 
   return (
-    <main
-      className="relative flex h-[100dvh] items-center justify-center overflow-hidden bg-cover bg-center p-4"
-      style={{ backgroundImage: "url(/assets/menu/background/fixed.webp)" }}
-    >
-      <div className="absolute inset-0 bg-board-background/35" />
-
+    <main className="relative h-[100dvh] overflow-hidden bg-[#050d16]">
       <AuthGateModal isSignedIn={isSignedIn} />
       <MenuAmbiance />
-      {/* Le bandeau de tous les écrans : onglets, compte, quêtes, options.
-          La déconnexion vit au pied du Profil. */}
-      <HomeBar isSignedIn={isSignedIn} />
+      {/* Ni onglets ni voile : la carte porte sa propre navigation, il ne
+          reste que le compte et les options, à droite. */}
+      <HomeBar isSignedIn={isSignedIn} nav="menu" />
 
-      <div className="relative z-10 w-full pt-[clamp(40px,5vh,64px)]">
-        <TideboundMenuChest />
-      </div>
+      <TideboundMenuCarte marks={searchParams?.reperes === "1"} />
     </main>
   );
 }

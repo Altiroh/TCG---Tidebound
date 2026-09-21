@@ -1,6 +1,7 @@
 import {
   hasResistance,
   isVisibleDuringTide,
+  UNIT_CARD_TYPES,
   type CardDefinition,
   type CardInstance,
   type StatModifierDuration,
@@ -113,6 +114,19 @@ export interface EffectContext {
   brokenFromHand?: boolean;
   /** Carte qui a DÉCLENCHÉ la capacité en cours d'exécution (capacités d'observateur) — cible `{ kind: "triggerSource" }`. */
   triggerSourceInstanceId?: string;
+  /**
+   * Réduction à appliquer aux dégâts visant un JOUEUR pendant cette
+   * résolution (tir de Navire intercepté par un piège). Posée uniquement par
+   * `fireShipAbility` sur sa propre séquence : un effet de carte qui frappe
+   * un Navire n'est pas « une attaque » et n'en dépend jamais.
+   */
+  directDamageReduction?: number;
+  /**
+   * Plafond de dégâts par coup visant un JOUEUR pendant cette résolution
+   * (Carcasse Renversée face à un tir de Navire). Même provenance et même
+   * restriction que `directDamageReduction`.
+   */
+  directDamageCap?: number;
   turnNumber: number;
 }
 
@@ -150,8 +164,33 @@ export interface EffectResolution {
   events: GameEvent[];
 }
 
-function amountValue(amount: EffectAmount | undefined): number {
-  return amount?.value ?? 0;
+/**
+ * Valeur numérique d'un montant d'effet. `state` n'est requis que pour les
+ * montants CONTEXTUELS — aujourd'hui `incomingAttackDamage`, qui lit
+ * l'attaque suspendue. Un montant plat n'en a pas besoin, d'où l'argument
+ * optionnel plutôt qu'une signature imposée aux vingt autres appels.
+ */
+/**
+ * Valeur d'un `EffectAmount` au moment de la résolution.
+ *
+ * `state` et `controllerId` sont OBLIGATOIRES : les montants comptés
+ * (`unitCount`) lisent le plateau, et un appel sans contexte rendrait
+ * silencieusement 0 — une carte anti-swarm qui ne fait rien est pire
+ * qu'une erreur de compilation.
+ */
+function amountValue(
+  amount: EffectAmount | undefined,
+  state: GameState,
+  controllerId: PlayerId
+): number {
+  if (amount === undefined) return 0;
+  if (amount.kind === "incomingAttackDamage") return state.pendingAttack?.attackerPower ?? 0;
+  if (amount.kind === "unitCount") {
+    const plateau = amount.of === "opponent" ? getOpponent(state, controllerId) : getPlayer(state, controllerId);
+    const unites = plateau.board.filter((u) => UNIT_CARD_TYPES.includes(getCardDefinition(u.cardId).type)).length;
+    return Math.max(0, unites - (amount.above ?? 0)) * (amount.per ?? 1);
+  }
+  return amount.value;
 }
 
 /**
@@ -443,7 +482,11 @@ export function resolveEffect(
       // par `triggerBus.ts`, qui l'appellerait en retour : cycle de
       // dépendance à éviter. Pas encore nécessaire : aucune carte actuelle
       // ne réagit aux dégâts infligés par un effet plutôt qu'un combat.
-      const amount = amountValue(effect.amount);
+      //
+      // Seul appel à passer l'état : « autant de dégâts » (Cylindre
+      // flottant) lit la Puissance de l'attaque qui vient d'être
+      // interceptée.
+      const amount = amountValue(effect.amount, state, context.controllerId);
       const damageTargets = resolveUnitTargets(state, effect, context);
       let nextState = { ...state, rngState: damageTargets.rngState };
 
@@ -485,16 +528,24 @@ export function resolveEffect(
       }
 
       for (const player of resolvePlayerTargets(state, effect, context)) {
+        // Un tir de Navire intercepté par un piège : même réduction que pour
+        // une attaque, parce que le texte des pièges ne distingue pas la
+        // source du coup.
+        // Même ordre que le pipeline de combat : le plafond d'abord, la
+        // réduction ensuite.
+        const plafonne = context.directDamageCap === undefined ? amount : Math.min(amount, context.directDamageCap);
+        const reduit = Math.max(0, plafonne - (context.directDamageReduction ?? 0));
+        if (reduit <= 0) continue;
         const current = getPlayer(nextState, player.id);
-        nextState = replacePlayer(nextState, { ...current, anchor: current.anchor - amount });
-        events.push({ ...base, type: "DAMAGE", targetPlayerId: player.id, amount, targetAnchorAfter: current.anchor - amount });
+        nextState = replacePlayer(nextState, { ...current, anchor: current.anchor - reduit });
+        events.push({ ...base, type: "DAMAGE", targetPlayerId: player.id, amount: reduit, targetAnchorAfter: current.anchor - reduit });
       }
 
       return { state: nextState, events };
     }
 
     case "heal": {
-      const amount = amountValue(effect.amount);
+      const amount = amountValue(effect.amount, state, context.controllerId);
       const healTargets = resolveUnitTargets(state, effect, context);
       let nextState = { ...state, rngState: healTargets.rngState };
 
@@ -516,7 +567,7 @@ export function resolveEffect(
     }
 
     case "draw": {
-      const amount = amountValue(effect.amount);
+      const amount = amountValue(effect.amount, state, context.controllerId);
       const player = resolveSinglePlayerTarget(state, effect, context) ?? getPlayer(state, context.controllerId);
       let deck = [...player.deck];
       const hand = [...player.hand];
@@ -541,7 +592,7 @@ export function resolveEffect(
     }
 
     case "discard": {
-      const amount = amountValue(effect.amount);
+      const amount = amountValue(effect.amount, state, context.controllerId);
       const player = resolveSinglePlayerTarget(state, effect, context) ?? getPlayer(state, context.controllerId);
       // Rien à défausser : le texte est déjà satisfait, on n'ouvre pas une
       // question sans réponse possible.
@@ -655,9 +706,9 @@ export function resolveEffect(
     }
 
     case "buff": {
-      const fallback = amountValue(effect.amount);
-      const attackDelta = effect.attackAmount ? amountValue(effect.attackAmount) : fallback;
-      const healthDelta = effect.healthAmount ? amountValue(effect.healthAmount) : fallback;
+      const fallback = amountValue(effect.amount, state, context.controllerId);
+      const attackDelta = effect.attackAmount ? amountValue(effect.attackAmount, state, context.controllerId) : fallback;
+      const healthDelta = effect.healthAmount ? amountValue(effect.healthAmount, state, context.controllerId) : fallback;
       const duration = effect.duration ?? (effect.permanent ? "permanent" : "endOfTurn");
       const buffTargets = resolveUnitTargets(state, effect, context);
       let nextState = { ...state, rngState: buffTargets.rngState };
@@ -682,9 +733,9 @@ export function resolveEffect(
     }
 
     case "debuff": {
-      const fallback = amountValue(effect.amount);
-      const attackDelta = effect.attackAmount ? amountValue(effect.attackAmount) : fallback;
-      const healthDelta = effect.healthAmount ? amountValue(effect.healthAmount) : 0;
+      const fallback = amountValue(effect.amount, state, context.controllerId);
+      const attackDelta = effect.attackAmount ? amountValue(effect.attackAmount, state, context.controllerId) : fallback;
+      const healthDelta = effect.healthAmount ? amountValue(effect.healthAmount, state, context.controllerId) : 0;
       const duration = effect.duration ?? (effect.permanent ? "permanent" : "endOfTurn");
       const debuffTargets = resolveUnitTargets(state, effect, context);
       let nextState = { ...state, rngState: debuffTargets.rngState };
@@ -708,7 +759,7 @@ export function resolveEffect(
     }
 
     case "reasonGain": {
-      const rawAmount = amountValue(effect.amount);
+      const rawAmount = amountValue(effect.amount, state, context.controllerId);
       const targets = resolvePlayerTargets(state, effect, context);
       const players = targets.length > 0 ? targets : [getPlayer(state, context.controllerId)];
       let nextState = state;
@@ -726,7 +777,7 @@ export function resolveEffect(
     }
 
     case "reasonLoss": {
-      const amount = amountValue(effect.amount);
+      const amount = amountValue(effect.amount, state, context.controllerId);
       const targets = resolvePlayerTargets(state, effect, context);
       const players = targets.length > 0 ? targets : [getPlayer(state, context.controllerId)];
       let nextState = state;
@@ -739,6 +790,84 @@ export function resolveEffect(
         events.push({ ...base, type: "REASON_CHANGED", playerId: player.id, delta: -finalAmount });
         nextState = replacePlayer(nextState, { ...player, reason: reasonAfterLoss(player, finalAmount) });
       }
+      return { state: nextState, events };
+    }
+
+    case "deferTideEffects": {
+      // Hors fenêtre `onTideAnnounced`, aucune Marée n'attend : sans objet
+      // plutôt qu'une erreur, comme les autres effets de fenêtre.
+      if (!state.pendingTideStep) return { state, events };
+      return { state: { ...state, pendingTideStep: { ...state.pendingTideStep, deferred: true } }, events };
+    }
+
+    case "cancelIncomingAttack": {
+      // Hors fenêtre d'interception, il n'y a rien à annuler — l'effet est
+      // silencieusement sans objet plutôt qu'une erreur : une carte mal
+      // écrite ne doit pas casser une partie.
+      if (!state.pendingAttack) return { state, events };
+      return {
+        state: { ...state, pendingAttack: { ...state.pendingAttack, intercepted: true } },
+        events: [...events, { ...base, type: "ATTACK_INTERCEPTED", attackerInstanceId: state.pendingAttack.attackerInstanceId }],
+      };
+    }
+
+    case "reduceIncomingDamage": {
+      if (!state.pendingAttack) return { state, events };
+      const reduction = amountValue(effect.amount, state, context.controllerId);
+      if (reduction <= 0) return { state, events };
+      return {
+        state: {
+          ...state,
+          pendingAttack: {
+            ...state.pendingAttack,
+            damageReduction: (state.pendingAttack.damageReduction ?? 0) + reduction,
+          },
+        },
+        events,
+      };
+    }
+
+    case "modifyAttackerPower": {
+      if (!state.pendingAttack) return { state, events };
+      const perte = amountValue(effect.amount, state, context.controllerId);
+      if (perte <= 0) return { state, events };
+      const apres = Math.max(0, state.pendingAttack.attackerPower - perte);
+      return {
+        state: { ...state, pendingAttack: { ...state.pendingAttack, attackerPower: apres } },
+        events: [
+          ...events,
+          {
+            ...base,
+            type: "DEBUFF_APPLIED",
+            targetInstanceId: state.pendingAttack.attackerInstanceId,
+            attack: -(state.pendingAttack.attackerPower - apres),
+            health: 0,
+          },
+        ],
+      };
+    }
+
+    case "durationLoss": {
+      const amount = amountValue(effect.amount, state, context.controllerId);
+      const durationTargets = resolveUnitTargets(state, effect, context);
+      let nextState = { ...state, rngState: durationTargets.rngState };
+
+      for (const { unit, ownerId } of durationTargets.targets) {
+        // Un permanent SANS durée n'a rien à perdre : ni erreur, ni
+        // événement — l'effet passe simplement à côté.
+        if (unit.turnsRemaining === undefined) continue;
+        const after = Math.max(0, unit.turnsRemaining - amount);
+        if (after === unit.turnsRemaining) continue;
+        nextState = replaceUnit(nextState, ownerId, unit.instanceId, (u) => ({ ...u, turnsRemaining: after }));
+        events.push({
+          ...base,
+          type: "DURATION_CHANGED",
+          instanceId: unit.instanceId,
+          delta: after - unit.turnsRemaining,
+          turnsRemaining: after,
+        });
+      }
+
       return { state: nextState, events };
     }
 
@@ -763,7 +892,7 @@ export function resolveEffect(
 
     case "tideReduceDuration":
     case "tideExtendDuration": {
-      let amount = amountValue(effect.amount) || 1;
+      let amount = amountValue(effect.amount, state, context.controllerId) || 1;
       let nextState = state;
       if (effect.type === "tideReduceDuration") {
         // "La première réduction de durée que vous provoquez chaque tour est
@@ -832,7 +961,7 @@ export function resolveEffect(
     }
 
     case "tideSetIntensity": {
-      const value = Math.max(1, amountValue(effect.amount));
+      const value = Math.max(1, amountValue(effect.amount, state, context.controllerId));
       events.push({ ...base, type: "TIDE_MODIFIED", change: "intensity", value });
       return {
         state: { ...state, environment: { ...state.environment, tideIntensity: value } },
@@ -841,7 +970,7 @@ export function resolveEffect(
     }
 
     case "tideModifyIntensity": {
-      const delta = amountValue(effect.amount);
+      const delta = amountValue(effect.amount, state, context.controllerId);
       const tideIntensity = Math.max(1, state.environment.tideIntensity + delta);
       events.push({ ...base, type: "TIDE_MODIFIED", change: "intensity", value: tideIntensity });
       return {
@@ -853,7 +982,7 @@ export function resolveEffect(
     case "tideMaintain":
     case "tideAmplifyNext": {
       const kind = effect.type === "tideMaintain" ? "maintain" : "amplify";
-      const remainingTriggers = amountValue(effect.amount) || 1;
+      const remainingTriggers = amountValue(effect.amount, state, context.controllerId) || 1;
       events.push({ ...base, type: "TIDE_MODIFIED", change: kind, value: remainingTriggers });
       return {
         state: {
@@ -932,7 +1061,7 @@ export function resolveEffect(
     }
 
     case "revealRandomHandCards": {
-      const amount = amountValue(effect.amount) || 1;
+      const amount = amountValue(effect.amount, state, context.controllerId) || 1;
       let nextState = state;
       for (const target of resolvePlayerTargets(state, effect, context)) {
         const result = revealRandomHandCards(nextState, target.id, amount, context.turnNumber);
@@ -943,7 +1072,7 @@ export function resolveEffect(
     }
 
     case "reasonLossToHigherRevealedHandCard": {
-      const amount = amountValue(effect.amount) || 1;
+      const amount = amountValue(effect.amount, state, context.controllerId) || 1;
       let nextState = state;
       let rngState = nextState.rngState;
       const revealed: Array<{ playerId: PlayerId; cost: number }> = [];
@@ -973,7 +1102,7 @@ export function resolveEffect(
     }
 
     case "tideForceJumpToAbysses": {
-      const extraDurationTurns = amountValue(effect.amount) || 0;
+      const extraDurationTurns = amountValue(effect.amount, state, context.controllerId) || 0;
       const tick = forceTideJumpToAbysses(state.environment, {
         extraDurationTurns,
         forceOrientation: effect.forceTideOrientation,
@@ -1086,7 +1215,7 @@ export function resolveEffect(
     }
 
     case "discountNextCards": {
-      const reduction = amountValue(effect.amount);
+      const reduction = amountValue(effect.amount, state, context.controllerId);
       if (reduction <= 0) return { state, events };
 
       const player = getPlayer(state, context.controllerId);

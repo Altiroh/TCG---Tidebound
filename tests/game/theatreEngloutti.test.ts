@@ -41,8 +41,8 @@ describe("catalogue du Lot 11", () => {
     expect([def.attack, def.health]).toEqual([6, 6]);
     const debuff = def.abilities?.[0]?.effects[0];
     expect(debuff?.type).toBe("debuff");
-    expect(debuff?.attackAmount?.value).toBe(3);
-    expect(debuff?.healthAmount?.value).toBe(2);
+    expect(debuff?.attackAmount).toEqual({ kind: "flat", value: 3 });
+    expect(debuff?.healthAmount).toEqual({ kind: "flat", value: 2 });
   });
 });
 

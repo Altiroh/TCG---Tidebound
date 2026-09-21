@@ -206,12 +206,32 @@ export const CORE_SET: CardDefinition[] = [
     health: 3,
     durationTurns: 4,
     visibleDuringTide: ["calme", "houle"],
-    text: "Durée : 4 tours. Visible pendant Calme et Houle. Sabordage : récupérez 2 Ancrage.",
+    // Rework du 21/09/2026 : l'effet visible ne bouge pas, une Réaction
+    // cachée s'ajoute. Le vrai apport est le CHOIX — garder la carte pour
+    // 2 Ancrage plus tard, ou la brûler maintenant pour encaisser un coup.
+    text:
+      "Durée : 4 tours. Visible pendant Calme et Houle. Sabordage : récupérez 2 Ancrage. Réaction cachée : " +
+      "lorsque votre Navire devrait subir des dégâts directs, vous pouvez révéler puis Saborder Caisses " +
+      "Arrimées : réduisez ces dégâts de 2.",
     abilities: [
       {
         trigger: "onSaborde",
         description: "Sabordage : récupérez 2 Ancrage.",
         effects: [{ type: "heal", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } }],
+      },
+      {
+        // Le Sabordage déclenche la capacité ci-dessus : réduire les dégâts
+        // ET récupérer 2 Ancrage. C'est voulu — le texte dit « Sabordez »,
+        // et Saborder a toujours ce sens sur cette carte.
+        trigger: "onIncomingDirectAttack",
+        mode: "optional",
+        hiddenReaction: true,
+        condition: { selfHidden: true },
+        description: "Révélez puis Sabordez Caisses Arrimées : réduisez ces dégâts de 2.",
+        effects: [
+          { type: "reduceIncomingDamage", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } },
+          { type: "saborde", target: { kind: "self" } },
+        ],
       },
     ],
   },
@@ -272,15 +292,58 @@ export const CORE_SET: CardDefinition[] = [
     maxCopies: 2,
     health: 2,
     durationTurns: 3,
-    visibleDuringTide: ["houle"],
+    visibleDuringTide: ["houle", "tempete"],
+    // CARTE ÉTALON DES STRUCTURES-PIÈGES (passe de stabilisation,
+    // 21/09/2026). Elle était résolue AUTOMATIQUEMENT — le commentaire
+    // d'alors l'assumait : « renvoyer les dégâts n'est jamais un
+    // désavantage ». C'est faux depuis qu'elle se détruit ensuite : sacrifier
+    // la carte pour annuler 1 dégât est un mauvais échange, et le texte dit
+    // « vous pouvez ». Le joueur décide donc, par une fenêtre
+    // d'interception ouverte À LA DÉCLARATION de l'attaque.
+    //
+    // Visible, elle frappe un permanent adverse DÉSIGNÉ. Masquée, elle est
+    // un piège : l'adversaire voit un Slot occupé, pas une carte, et
+    // l'activer la révèle AVANT que ses effets ne s'appliquent
+    // (`hiddenReaction`).
+    //
+    // ÉQUILIBRAGE NON VERROUILLÉ : les dégâts renvoyés passent de la moitié
+    // à la TOTALITÉ, et la cible visible du Navire adverse à un permanent
+    // choisi. C'est un renforcement net, signalé comme à valider au
+    // playtest par le cadrage lui-même.
     text:
-      "Durée : 3 tours. Visible pendant Houle. La première fois à chaque tour que votre Navire devrait subir des " +
-      "dégâts directs d'une attaque, vous pouvez déclencher Contrecoup : annulez ces dégâts et infligez au Navire " +
-      "adverse la moitié des dégâts annulés, arrondie au supérieur. Après résolution, elle se brise et quitte le " +
-      "board.",
-    // Contrecoup résolu automatiquement ("vous pouvez" : renvoyer les dégâts
-    // n'est jamais un désavantage) — cf. `game/actions/attack.ts`.
-    contrecoupOnDirectShipDamageWhileVisible: { reflectedFraction: 0.5 },
+      "Durée : 3 tours. Visible pendant Houle et Tempête. La première fois à chaque tour que votre Navire devrait " +
+      "subir des dégâts directs d'une attaque, vous pouvez annuler ces dégâts et infliger autant de dégâts à un " +
+      "permanent adverse de votre choix. Détruisez ensuite Cylindre flottant. Réaction cachée : lorsqu'une unité " +
+      "adverse attaque directement votre Navire, vous pouvez révéler Cylindre flottant : annulez les dégâts de " +
+      "cette attaque et infligez autant de dégâts au Navire adverse. Détruisez ensuite Cylindre flottant.",
+    abilities: [
+      {
+        trigger: "onIncomingDirectAttack",
+        mode: "optional",
+        oncePerTurnKey: "cylindreContrecoup",
+        condition: { selfVisible: true },
+        description: "Annulez les dégâts directs et infligez-les à un permanent adverse, puis détruisez cette carte.",
+        effects: [
+          { type: "cancelIncomingAttack", target: { kind: "controllerPlayer" } },
+          { type: "damage", target: { kind: "chosenUnit", among: { opponentOnly: true } }, amount: { kind: "incomingAttackDamage" } },
+          { type: "destroy", target: { kind: "self" } },
+        ],
+      },
+      // Masqué, il frappe le NAVIRE adverse et non un permanent : le joueur
+      // ne choisit pas de cible, puisqu'il n'a pas choisi son moment non plus.
+      {
+        trigger: "onIncomingDirectAttack",
+        mode: "optional",
+        hiddenReaction: true,
+        condition: { selfHidden: true },
+        description: "Révélez Cylindre flottant : annulez les dégâts et infligez-les au Navire adverse, puis détruisez cette carte.",
+        effects: [
+          { type: "cancelIncomingAttack", target: { kind: "controllerPlayer" } },
+          { type: "damage", target: { kind: "opponentPlayer" }, amount: { kind: "incomingAttackDamage" } },
+          { type: "destroy", target: { kind: "self" } },
+        ],
+      },
+    ],
   },
   {
     id: "quelque-chose-sous-la-coque",
@@ -337,12 +400,159 @@ export const CORE_SET: CardDefinition[] = [
     durationTurns: 3,
     visibleDuringTide: ["houle", "tempete"],
     maxCopies: 2,
+    // « Même fonction visible/cachée, mais lorsqu'elle est cachée
+    // l'adversaire ne sait pas que vous disposez de cette sécurité »
+    // (Notion, « Cartes à reprendre »). Seule carte de la première vague
+    // dont les deux textes font exactement la même chose : ce qui change
+    // n'est pas l'effet, c'est l'information.
     text:
       "Durée : 3 tours. Visible pendant Houle et Tempête. Lorsqu'une nouvelle Marée est annoncée, vous pouvez " +
-      "Saborder cette carte : les effets de cette Marée ne s'appliquent qu'à la fin du tour en cours.",
-    // Résolu automatiquement au changement d'état (Sabordage + report), tant
-    // qu'elle est visible dans la nouvelle Marée — cf. `resolveTideTurnStep`.
-    defersTideEffectsOnChangeWhileVisible: true,
+      "Saborder cette carte : les effets de cette Marée ne s'appliquent qu'à la fin du tour en cours. Réaction " +
+      "cachée : lorsqu'une nouvelle Marée est annoncée, vous pouvez révéler puis Saborder Ancre de Dérive : les " +
+      "effets de cette Marée ne s'appliquent qu'à la fin du tour en cours.",
+    abilities: [
+      {
+        // « Vous pouvez » : fenêtre COMPLÈTE à l'annonce (arbitrage du
+        // 21/09/2026). Jusqu'ici le report était appliqué d'office dès que
+        // la carte était en jeu et visible — le moteur décidait à la place
+        // du joueur, et Saborder son Ancre pour rien lui était imposé.
+        //
+        // À l'annonce, la Marée courante est DÉJÀ la nouvelle : « visible »
+        // se lit donc dans l'état annoncé, et c'est bien ce que promet
+        // « Visible pendant Houle et Tempête ».
+        trigger: "onTideAnnounced",
+        mode: "optional",
+        condition: { selfVisible: true },
+        description:
+          "Sabordez l'Ancre de Dérive : les effets de la Marée qui vient d'être annoncée attendent la fin du tour en cours.",
+        // Le Sabordage est le COÛT, et il vient en premier : `deferTideEffects`
+        // ne touche pas au plateau, l'ordre n'a donc rien à rattraper.
+        effects: [
+          { type: "saborde", target: { kind: "self" } },
+          { type: "deferTideEffects", target: { kind: "self" } },
+        ],
+      },
+      {
+        // Même effet, depuis Calme ou Abysses — où l'adversaire ne voit
+        // qu'un Slot occupé. Il pousse la Marée en croyant passer, et
+        // l'Ancre se découvre pour lui reprendre son tempo.
+        trigger: "onTideAnnounced",
+        mode: "optional",
+        hiddenReaction: true,
+        condition: { selfHidden: true },
+        description:
+          "Révélez puis Sabordez l'Ancre de Dérive : les effets de la Marée qui vient d'être annoncée attendent la fin du tour en cours.",
+        effects: [
+          { type: "saborde", target: { kind: "self" } },
+          { type: "deferTideEffects", target: { kind: "self" } },
+        ],
+      },
+    ],
+  },
+  {
+    // --- ANTI-SWARM, première paire (21/09/2026) ------------------------
+    // Notion « Audit systémique » § Priorités de couverture : « Anti-swarm
+    // — faibles dégâts de zone, punition du nombre de Slots occupés ». Le
+    // banc d'essai le confirme : Le Banc Déborde est premier du tournoi des
+    // dix listes, et la mesure dit pourquoi — 9 à 20 INVOCATIONS par partie
+    // pour 5 à 9 cartes posées. Ses corps ne passent jamais par la Raison,
+    // donc la courbe de Raison ne le freine pas.
+    //
+    // Ces deux cartes rendent un prix au nombre, sans board wipe : aucune
+    // ne détruit quoi que ce soit d'office. La Nasse tape pour 1 — ce qu'un
+    // Péon 1/1 ne survit pas, ce qu'une P'tite Fesse 1/2 encaisse — et ne
+    // s'arme qu'à quatre unités adverses. Rester à trois est une réponse
+    // complète.
+    //
+    // Les deux seuils DIFFÈRENT, et la mesure le justifie : Le Banc Déborde
+    // tient 3,6 corps en moyenne contre La Ligne Tenue, jamais 5. À 4, une
+    // carte ne mord que sur les pointes — c'est ce qu'on veut d'une punition
+    // sèche et unique (la Nasse), pas d'une goutte lente (le Rôle, à 3).
+    //
+    // ÉQUILIBRAGE NON VERROUILLÉ : seuils, dégât et coûts sont des premières
+    // valeurs. Ce que la mesure dit déjà, en revanche, c'est que ces cartes
+    // ne renversent PAS le matchup — voir le message de commit.
+    id: "la-nasse-trop-pleine",
+    name: "La Nasse Trop Pleine",
+    type: "structure",
+    cost: 3,
+    health: 3,
+    durationTurns: 3,
+    maxCopies: 2,
+    visibleDuringTide: ["tempete", "abysses"],
+    text:
+      "Durée : 3 tours. Visible pendant Tempête et Abysses. La première fois à chaque tour qu'une unité adverse " +
+      "arrive alors que l'adversaire contrôle au moins 4 unités, infligez 1 dégât à chaque unité adverse. " +
+      "Réaction cachée : lorsqu'une unité adverse arrive alors que l'adversaire contrôle au moins 4 unités, vous " +
+      "pouvez révéler La Nasse Trop Pleine : infligez 1 dégât à chaque unité adverse. Détruisez ensuite La Nasse " +
+      "Trop Pleine.",
+    abilities: [
+      {
+        // Visible, elle est une menace CONNUE : l'adversaire voit le seuil
+        // et peut s'arrêter à trois corps. C'est là toute la différence
+        // avec un board wipe, qui ne laisse rien à décider.
+        trigger: "onEnterPlay",
+        triggeredBy: { cardTypes: ["marin", "creature"], opponentOnly: true },
+        oncePerTurnKey: "nasseTropPleine",
+        condition: { selfVisible: true, opponentUnitsAtLeast: 4 },
+        description: "Une quatrième unité adverse arrive : 1 dégât à chaque unité adverse.",
+        effects: [{ type: "damage", target: { kind: "allEnemyUnits" }, amount: { kind: "flat", value: 1 } }],
+      },
+      {
+        // Masquée, elle ne prévient pas — mais elle se détruit en se
+        // déclenchant, donc elle ne mord qu'une fois et l'adversaire sait
+        // ensuite que le Slot est vide.
+        trigger: "onEnterPlay",
+        triggeredBy: { cardTypes: ["marin", "creature"], opponentOnly: true },
+        mode: "optional",
+        hiddenReaction: true,
+        condition: { selfHidden: true, opponentUnitsAtLeast: 4 },
+        description: "Révélez La Nasse Trop Pleine : 1 dégât à chaque unité adverse, puis détruisez-la.",
+        effects: [
+          { type: "damage", target: { kind: "allEnemyUnits" }, amount: { kind: "flat", value: 1 } },
+          { type: "destroy", target: { kind: "self" } },
+        ],
+      },
+    ],
+  },
+  {
+    // Deuxième moitié de la paire : la punition du NOMBRE, qui ne tue rien.
+    // Elle ne s'en prend pas aux corps mais à ce qui devrait les payer — la
+    // Raison. Un banc large voit sa récupération amputée tour après tour
+    // (dette SUBIE, cf. `endTurn`), donc ses cartes PAYANTES deviennent
+    // hors de portée pendant que ses invocations, elles, restent gratuites.
+    //
+    // Toujours visible, et c'est voulu : « ne pas transformer toutes les
+    // Structures en pièges » (Notion). Une taxe qu'on ne voit pas venir
+    // n'apprend rien ; celle-ci se lit sur la table et invite l'adversaire
+    // à s'arrêter à trois corps de lui-même.
+    id: "le-role-dequipage",
+    name: "Le Rôle d'Équipage",
+    type: "structure",
+    cost: 2,
+    health: 3,
+    durationTurns: 4,
+    maxCopies: 2,
+    text:
+      "Durée : 4 tours. À la fin de votre tour, si l'adversaire contrôle au moins 3 unités, il perd 1 Raison " +
+      "pour chaque unité qu'il contrôle au-delà de 2.",
+    abilities: [
+      {
+        trigger: "endOfTurn",
+        condition: { opponentUnitsAtLeast: 3 },
+        description: "Fin de votre tour : l'adversaire perd 1 Raison par unité au-delà de la troisième.",
+        effects: [
+          {
+            type: "reasonLoss",
+            target: { kind: "opponentPlayer" },
+            // `above: 3` est ce qui rend la carte inerte contre un plateau
+            // normal ; `per: 1` est le « 1 Raison » du texte, écrit plutôt
+            // que sous-entendu.
+            amount: { kind: "unitCount", of: "opponent", above: 2, per: 1 },
+          },
+        ],
+      },
+    ],
   },
   {
     id: "marin-aux-yeux-rouges",
@@ -351,8 +561,15 @@ export const CORE_SET: CardDefinition[] = [
     cost: 2,
     attack: 2,
     health: 2,
-    text: "À son arrivée, chaque joueur perd 1 Raison.",
-    onPlayEffects: [{ type: "reasonLoss", target: { kind: "allPlayers" }, amount: { kind: "flat", value: 1 } }],
+    // Symétrie retirée (passe de stabilisation, 21/09/2026). Le texte
+    // "chaque joueur" était défavorable à son propre contrôleur sur DEUX
+    // plans : il a déjà payé le coût de 2, et depuis l'arbitrage du 21/09 sa
+    // perte est CHOISIE (elle peut le pousser sous zéro et lui coûter de
+    // l'Ancrage en fin de tour) quand celle de l'adversaire est SUBIE (du
+    // revenu, plafonné à un tour, sans dégâts). Le même texte produisait
+    // donc deux effets de nature différente, le plus dur pour le payeur.
+    text: "À son arrivée, l'adversaire perd 1 Raison.",
+    onPlayEffects: [{ type: "reasonLoss", target: { kind: "opponentPlayer" }, amount: { kind: "flat", value: 1 } }],
   },
   {
     // Première carte à capacité FACULTATIVE (`mode: "optional"`) du
@@ -370,14 +587,24 @@ export const CORE_SET: CardDefinition[] = [
     cost: 2,
     attack: 2,
     health: 2,
-    text: "Réaction : quand une carte est jouée, vous pouvez dépenser 1 Raison : infligez 2 dégâts à une unité de votre choix.",
+    // Limitée à une fois par tour le 21/09/2026. Sans limite, elle ouvrait
+    // une fenêtre de réaction à CHAQUE carte jouée : un adversaire qui en
+    // pose trois devait confirmer trois fois, ce qui est exactement ce que
+    // le cadrage veut éviter — « le joueur doit pouvoir jouer normalement
+    // sans devoir confirmer une réaction après chaque action ». Le coût en
+    // Raison ne suffisait pas à l'autolimiter : c'est le NOMBRE de fenêtres
+    // qui pesait, pas leur prix.
+    text:
+      "La première fois à chaque tour qu'une carte est jouée, vous pouvez dépenser 1 Raison : infligez 2 dégâts " +
+      "à une unité de votre choix.",
     abilities: [
       {
         trigger: "onCardPlayed",
         mode: "optional",
+        oncePerTurnKey: "guetteurMefiant",
         cost: { reason: 1 },
         effects: [{ type: "damage", target: { kind: "chosenUnit" }, amount: { kind: "flat", value: 2 } }],
-        description: "Vous pouvez dépenser 1 Raison : infligez 2 dégâts à une unité de votre choix.",
+        description: "La première fois à chaque tour qu'une carte est jouée : dépensez 1 Raison pour infliger 2 dégâts à une unité.",
       },
     ],
   },
@@ -394,11 +621,13 @@ export const CORE_SET: CardDefinition[] = [
     cost: 3,
     attack: 3,
     health: 3,
+    // Même retrait de symétrie que la Standard (21/09/2026) : "chaque
+    // joueur" → "l'adversaire". Les deux clauses d'orientation ne bougent pas.
     text:
-      "À son arrivée, chaque joueur perd 1 Raison. Si la Marée est montante, l'adversaire perd 1 Raison " +
+      "À son arrivée, l'adversaire perd 1 Raison. Si la Marée est montante, il en perd 1 " +
       "supplémentaire. Si elle est descendante, récupérez 1 Raison.",
     onPlayEffects: [
-      { type: "reasonLoss", target: { kind: "allPlayers" }, amount: { kind: "flat", value: 1 } },
+      { type: "reasonLoss", target: { kind: "opponentPlayer" }, amount: { kind: "flat", value: 1 } },
       {
         type: "reasonLoss",
         target: { kind: "opponentPlayer" },
@@ -491,7 +720,7 @@ export const CORE_SET: CardDefinition[] = [
     durationTurns: 4,
     visibleDuringTide: ["houle"],
     text:
-      "Durée : 4 tours. Visible pendant Houle uniquement. Lorsqu'elle devient visible, vous pouvez défausser 1 " +
+      "Durée : 4 tours. Visible pendant Houle uniquement. Chaque fois qu'elle devient visible, vous pouvez défausser 1 " +
       "carte. Si vous le faites, piochez 1 carte.",
     // Réaction facultative à sa propre apparition (`STRUCTURE_REVEALED`).
     // Fidélité partielle : la carte défaussée est la plus ancienne de la
@@ -576,14 +805,34 @@ export const CORE_SET: CardDefinition[] = [
     maxCopies: 2,
     attack: 2,
     health: 4,
-    text: "La première fois à chaque tour qu'une Structure que vous contrôlez devient visible, récupérez 1 Raison.",
+    // Le gain se PAIE depuis le 21/09/2026 (passe de stabilisation). Avec la
+    // récupération naturelle ramenée à 1 Raison par tour, un "+1 Raison une
+    // fois par tour" DOUBLE le revenu de son contrôleur, pour un coût unique
+    // de 3 — et un deck à Structures fait tourner plusieurs fenêtres de
+    // visibilité par cycle de Marée, donc le gain était récurrent et gratuit.
+    //
+    // Le prix est pris sur la DURÉE de la Structure qui déclenche, pas sur
+    // une ressource : la carte reste un moteur de Raison (son identité), mais
+    // chaque point rendu avance la fin d'une de ses Structures. "Vous pouvez"
+    // → `mode: "optional"` : personne n'est forcé de sacrifier du temps de
+    // Structure, et le joueur peut refuser la fenêtre.
+    text:
+      "La première fois à chaque tour qu'une Structure que vous contrôlez devient visible, vous pouvez " +
+      "réduire sa durée de 1 tour : récupérez 1 Raison.",
     abilities: [
       {
         trigger: "onBecomeVisible",
         triggeredBy: { cardTypes: ["structure"] },
+        mode: "optional",
         oncePerTurnKey: "sondeurVisible",
-        description: "La première fois par tour qu'une de vos Structures devient visible : récupérez 1 Raison.",
-        effects: [{ type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
+        description:
+          "La première fois par tour qu'une de vos Structures devient visible : vous pouvez réduire sa durée de 1 tour pour récupérer 1 Raison.",
+        // Le coût d'abord, le gain ensuite — l'ordre du texte, et celui qui
+        // se lit dans le journal.
+        effects: [
+          { type: "durationLoss", target: { kind: "triggerSource" }, amount: { kind: "flat", value: 1 } },
+          { type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+        ],
       },
     ],
   },
@@ -674,28 +923,31 @@ export const CORE_SET: CardDefinition[] = [
     health: 3,
     durationTurns: 3,
     visibleDuringTide: ["calme", "houle"],
+    // Rework du 21/09/2026 : l'effet de début de tour était trop passif — il
+    // fallait attendre son propre tour pour affaiblir une Créature qui avait
+    // déjà frappé. Devient une vraie défense, qui mord AU MOMENT de l'attaque.
+    // Anti-swarm : aucun seuil de Puissance, contrairement au Filet qui
+    // Respire, qui vise les grosses menaces.
     text:
-      "Durée : 3 tours. Visible pendant Calme et Houle. À votre début de tour, si elle est visible, vous pouvez " +
-      "choisir une Créature adverse : elle perd 1 Puissance jusqu'à la fin du tour.",
-    // La Créature visée est désignée par le joueur.
+      "Durée : 3 tours. Visible pendant Calme et Houle. La première fois à chaque tour qu'une unité adverse " +
+      "attaque, elle perd 1 Puissance pour cette attaque. Réaction cachée : lorsqu'une unité adverse attaque, " +
+      "vous pouvez révéler Filet à la Dérive : cette unité perd 2 Puissance pour cette attaque.",
     abilities: [
       {
-        trigger: "startOfTurn",
-        mode: "optional",
-        // « si elle est visible » : gardé au niveau de la CAPACITÉ, sinon le
-        // Filet caché se proposerait dans la fenêtre pour ne rien faire. Le
-        // `conditionSelfVisible` de l'effet reste : la Marée peut changer
-        // entre l'ouverture de la fenêtre et l'activation.
+        // Pas de « vous pouvez » : la défense visible s'applique d'elle-même.
+        trigger: "onUnitAttackDeclared",
+        oncePerTurnKey: "filetDeriveAffaiblit",
         condition: { selfVisible: true },
-        description: "À votre début de tour, si elle est visible : une Créature adverse perd 1 Puissance jusqu'à la fin du tour.",
-        effects: [
-          {
-            type: "debuff",
-            target: { kind: "chosenUnit", among: { opponentOnly: true, cardTypes: ["creature"] } },
-            attackAmount: { kind: "flat", value: 1 },
-            conditionSelfVisible: true,
-          },
-        ],
+        description: "La première fois à chaque tour qu'une unité adverse attaque : elle perd 1 Puissance pour cette attaque.",
+        effects: [{ type: "modifyAttackerPower", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
+      },
+      {
+        trigger: "onUnitAttackDeclared",
+        mode: "optional",
+        hiddenReaction: true,
+        condition: { selfHidden: true },
+        description: "Révélez Filet à la Dérive : l'unité qui attaque perd 2 Puissance pour cette attaque.",
+        effects: [{ type: "modifyAttackerPower", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } }],
       },
     ],
   },
@@ -962,11 +1214,32 @@ export const CORE_SET: CardDefinition[] = [
     maxCopies: 2,
     health: 5,
     durationTurns: 4,
-    visibleDuringTide: ["calme", "houle", "tempete"],
+    visibleDuringTide: ["houle", "tempete"],
+    // Rework du 21/09/2026 : vraie réponse anti-aggro. La restriction aux
+    // Créatures saute (une attaque est une attaque), la réduction passe de 1
+    // à 2, et la fenêtre perd Calme. `maxCopies` reste à 2 pendant le
+    // prototype, comme demandé.
     text:
-      "Durée : 4 tours. Visible pendant Calme, Houle et Tempête. La première fois à chaque tour qu'une Créature " +
-      "devrait infliger des dégâts directs à votre Navire, réduisez ces dégâts de 1.",
-    reduceDirectShipDamageOncePerTurn: { amount: 1, attackerCardTypes: ["creature"] },
+      "Durée : 4 tours. Visible pendant Houle et Tempête. La première fois à chaque tour que votre Navire devrait " +
+      "subir des dégâts directs d'une attaque, réduisez ces dégâts de 2. Réaction cachée : lorsque votre Navire " +
+      "devrait subir des dégâts directs d'une attaque, vous pouvez révéler Cage de Flottaison : réduisez ces " +
+      "dégâts de 3. Sabordez ensuite Cage de Flottaison.",
+    // La défense VISIBLE reste une réduction automatique : c'est une
+    // réduction pure, jamais un désavantage, donc rien à décider.
+    reduceDirectShipDamageOncePerTurn: { amount: 2 },
+    abilities: [
+      {
+        trigger: "onIncomingDirectAttack",
+        mode: "optional",
+        hiddenReaction: true,
+        condition: { selfHidden: true },
+        description: "Révélez Cage de Flottaison : réduisez ces dégâts de 3, puis Sabordez-la.",
+        effects: [
+          { type: "reduceIncomingDamage", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 3 } },
+          { type: "saborde", target: { kind: "self" } },
+        ],
+      },
+    ],
   },
   {
     id: "ponton-aux-cloches",
@@ -976,7 +1249,7 @@ export const CORE_SET: CardDefinition[] = [
     health: 3,
     durationTurns: 4,
     visibleDuringTide: ["houle", "tempete"],
-    text: "Durée : 4 tours. Visible pendant Houle et Tempête. Lorsqu'il devient visible, chaque joueur perd 1 Raison.",
+    text: "Durée : 4 tours. Visible pendant Houle et Tempête. Chaque fois qu'il devient visible, chaque joueur perd 1 Raison.",
     abilities: [
       {
         trigger: "onBecomeVisible",
@@ -995,7 +1268,7 @@ export const CORE_SET: CardDefinition[] = [
     durationTurns: 5,
     visibleDuringTide: ["tempete", "abysses"],
     text:
-      "Durée : 5 tours. Visible pendant Tempête et Abysses. Lorsqu'elle devient visible, révélez 1 carte aléatoire " +
+      "Durée : 5 tours. Visible pendant Tempête et Abysses. Chaque fois qu'elle devient visible, révélez 1 carte aléatoire " +
       "de la main adverse. Si la Marée est en Abysses, révélez-en 2 à la place.",
     abilities: [
       {
@@ -1430,7 +1703,7 @@ export const CORE_SET: CardDefinition[] = [
     durationTurns: 5,
     visibleDuringTide: ["tempete", "abysses"],
     text:
-      "Durée : 5 tours. Visible pendant Tempête et Abysses. Lorsqu'elle devient visible, chaque joueur révèle une " +
+      "Durée : 5 tours. Visible pendant Tempête et Abysses. Chaque fois qu'elle devient visible, chaque joueur révèle une " +
       "carte aléatoire de sa main. Le joueur ayant révélé la carte au coût le plus élevé perd 1 Raison. En cas " +
       "d'égalité, personne ne perd de Raison.",
     abilities: [
@@ -1449,11 +1722,32 @@ export const CORE_SET: CardDefinition[] = [
     cost: 3,
     health: 3,
     durationTurns: 4,
-    visibleDuringTide: ["houle", "abysses"],
+    visibleDuringTide: ["tempete", "abysses"],
+    // Rework du 21/09/2026 : se distingue du Filet à la Dérive par un SEUIL.
+    // L'un freine le swarm (toute unité, −1), l'autre les grosses menaces
+    // (Puissance ≥ 4, −2). Sans ce seuil, les deux cartes feraient doublon.
     text:
-      "Durée : 4 tours. Visible pendant Houle et Abysses. La première fois à chaque tour qu'une Créature adverse " +
-      "attaque votre Navire, elle perd 1 Puissance jusqu'à la fin de ce combat.",
-    reduceAttackerPowerOnDirectAttackOncePerTurn: { amount: 1, attackerCardTypes: ["creature"] },
+      "Durée : 4 tours. Visible pendant Tempête et Abysses. La première fois à chaque tour qu'une unité adverse " +
+      "attaque, elle perd 2 Puissance pour cette attaque si sa Puissance est supérieure ou égale à 4. Réaction " +
+      "cachée : lorsqu'une unité adverse de Puissance 4 ou plus attaque, vous pouvez révéler Le Filet qui " +
+      "Respire : elle perd 3 Puissance pour cette attaque.",
+    abilities: [
+      {
+        trigger: "onUnitAttackDeclared",
+        oncePerTurnKey: "filetRespireAffaiblit",
+        condition: { selfVisible: true, attackerPowerAtLeast: 4 },
+        description: "La première fois à chaque tour qu'une unité adverse de Puissance 4 ou plus attaque : elle perd 2 Puissance.",
+        effects: [{ type: "modifyAttackerPower", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } }],
+      },
+      {
+        trigger: "onUnitAttackDeclared",
+        mode: "optional",
+        hiddenReaction: true,
+        condition: { selfHidden: true, attackerPowerAtLeast: 4 },
+        description: "Révélez Le Filet qui Respire : l'unité qui attaque perd 3 Puissance pour cette attaque.",
+        effects: [{ type: "modifyAttackerPower", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 3 } }],
+      },
+    ],
   },
   {
     // Version STANDARD (Notion "Catalogue de cartes", Lot 06) — coexiste avec la variante ABYSSALE ci-dessous.

@@ -128,27 +128,58 @@ npm test                     # tests unitaires du moteur (Vitest)
   cartes, plafonnée à `reasonMax` (propre au Navire). Pendant sa Phase
   principale, un joueur peut jouer **autant de cartes qu'il peut en
   payer** : il n'existe pas de limite artificielle du type "une carte par
-  tour". **Il n'y a plus de récupération de +1 par tour** : la Raison est
-  remise à niveau au début de chaque tour du joueur (ci-dessous).
-- **Remise à niveau & courbe de début de partie** (`RULES.STARTING_REASON_CURVE`,
-  piste Notion "Gameplay — Raison, Déraison…", **à prototyper**) : au début
-  de chacun de ses tours, la Raison du joueur est **remise à 25 %** de sa
-  Raison max à son 1er tour, **50 %** au 2e, **75 %** au 3e, puis **100 % à
-  chaque tour** ensuite, arrondi au supérieur (Courlis 12 → 3 / 6 / 9 / 12,
-  Errant 10 → 3 / 5 / 8 / 10, Brise-Lames 8 → 2 / 4 / 6 / 8). Ce palier
-  (`PlayerState.reasonCap`) plafonne aussi les gains pendant le tour. Une
-  dette de Déraison subie pendant le tour adverse est déduite de la remise
-  à niveau. Piste plus lente si c'est trop généreux : 20 / 40 / 60 / 80 / 100.
+  tour". La Raison **persiste d'un tour à l'autre** : ce qui n'est pas
+  dépensé reste acquis, ce qui l'est n'est pas rendu (ci-dessous).
+- **Persistance & récupération naturelle** (`RULES.NATURAL_REASON_RECOVERY`,
+  passe de stabilisation du 2026-09-21, **à prototyper**) : au début de
+  chacun de ses tours, le joueur récupère **+2 Raison**, et rien de plus.
+  Remplace la remise à niveau au plafond, qui rendait la Raison gratuite et
+  laissait un deck de swarm remplir son plateau dès son 2e tour. À cette
+  valeur, la courbe de plafond ci-dessous devient la progression RÉELLE :
+  un Courlis suit 2 / 4 / 6 / 8, puis le plafond prend le relais
+  (9 / 11 / 12). Toute la courbe se pilote donc depuis cette seule
+  constante. Prendre volontairement de la Déraison reste le moyen de jouer
+  au-dessus de ses moyens, et se paie en Ancrage.
+- **Plafond de début de partie** (`RULES.STARTING_REASON_CURVE`) : au `n`-ième
+  tour du joueur, sa Raison ne peut pas **dépasser** 15 / 30 / 45 / 60 / 75 /
+  90 / 100 % de sa Raison max, arrondi au supérieur (Courlis 12 →
+  2 / 4 / 6 / 8 / 9 / 11 / 12, Brise-Lames 8 → 2 / 3 / 4 / 5 / 6 / 8 / 8).
+  Ce plafond (`PlayerState.reasonCap`) ne fait **rien monter** — il ne mord
+  que sur les gains venant des **cartes**, pour empêcher un deck de rampe de
+  sauter les paliers. Il ne rogne jamais l'acquis : un joueur déjà au-dessus
+  (Abysses qui abaissent sa Raison max) conserve sa Raison.
 - **Déraison** (`game/state/reason.ts`, piste Notion "Gameplay — Raison,
   Déraison, healing & passifs de Navires", 2026-09-12, **à prototyper**) :
   la Raison peut passer sous 0, **sans plancher** (décision de design du
   2026-09-16 : « il n'y a pas de Déraison max »). Payer un coût (carte,
   capacité activable, réaction) ou subir une perte de Raison peut y
   pousser aussi loin que le joueur l'accepte ; le moteur ne refuse jamais
-  un coût, c'est la dette qui freine. **À la fin de son propre tour** (après tous les effets de fin
-  de tour — il peut donc encore remonter avant), chaque point de Déraison
-  inflige 1 dégât d'Ancrage (`DERAISON_ANCHOR_DAMAGE_PER_POINT`, événement
-  `DERAISON_SETTLED`), puis la Raison repart de 0. Remplace l'ancienne
+  un coût, c'est la dette qui freine. **Deux dettes, deux traitements**
+  (arbitrage du 2026-09-21) :
+  - **Déraison CHOISIE** — celle qu'on prend en dépensant pendant son
+    propre tour. **À la fin de son tour** (après tous les effets de fin de
+    tour — il peut donc encore remonter avant), chaque point sous 0
+    inflige 1 dégât d'Ancrage (`DERAISON_ANCHOR_DAMAGE_PER_POINT`,
+    événement `DERAISON_SETTLED`), puis la Raison repart de 0. Terminer à
+    exactement 0 ne coûte rien. Pénitence (La Religieuse) réduit ces
+    dégâts de 1.
+  - **Déraison SUBIE** — celle qu'un effet adverse inflige pendant le tour
+    d'en face. Elle ne coûte **aucun Ancrage** : elle coûte du **revenu**.
+    Au début du tour de sa victime, la récupération naturelle est amputée
+    du montant de la dette, puis l'ardoise est effacée. Un adversaire à 0
+    qui subit -2 commence donc son tour à **0 Raison**, sans perdre
+    d'Ancrage : il a perdu un tour de revenu. Amputée **une seule fois**,
+    jamais reportée — sans quoi, avec une récupération à +1, des drains
+    répétés maintiendraient quelqu'un sous zéro indéfiniment. Contrepartie
+    assumée : drainer au-delà de la récupération ne coûte pas plus cher à
+    qui est déjà à 0, la valeur d'un drain venant surtout de la Raison
+    positive qu'il emporte.
+
+  La séquence sépare seule le subi du choisi, sans que le moteur trace
+  l'origine de chaque point perdu : ce qui est encore négatif à la fin d'un
+  tour a forcément été choisi pendant ce tour. Exception assumée — une
+  réaction adverse qui draine pendant VOTRE tour compte comme du choisi :
+  vous avez eu tout votre tour pour remonter. Remplace l'ancienne
   règle "Raison à 0 en fin de tour = -1 Ancrage" : finir à exactement 0 ne
   coûte rien. Pénitence (La Religieuse) réduit ces dégâts de 1. Côté UI :
   jauge rouge et pastille "⚓ −N en fin de tour" sur le Navire, avertissement ambre avant de poser
@@ -185,11 +216,77 @@ plateau est limité par `Navire.slotCount`, pas seulement pour les unités.
   déclenche `onExpire` si la carte a une capacité qui y réagit.
 - **Visibilité** (`CardDefinition.visibleDuringTide`) : une Structure peut
   n'être visible pour l'adversaire que pendant certains états de Marée.
-  Le propriétaire la voit toujours ; elle occupe son Slot et continue
-  d'exister même invisible. La transition d'invisible à visible déclenche
-  `onBecomeVisible` (portée : la carte elle-même uniquement pour
+  Le propriétaire la voit toujours ; elle occupe son Slot et sa durée
+  continue de se consumer même masquée. La transition d'invisible à visible
+  déclenche `onBecomeVisible` (portée : la carte elle-même uniquement pour
   l'instant — un déclenchement plus large, ex: "n'importe laquelle de vos
   Structures", n'est pas encore modélisé).
+- **Masquée = INACTIVE** (règle tenue par le moteur depuis le 21/09/2026) :
+  une Structure masquée existe, occupe son Slot et vieillit, mais **ses
+  capacités ne se déclenchent pas**. Auparavant le masquage ne bloquait
+  rien — il fallait que chaque capacité déclare
+  `condition: { selfVisible: true }` ou que chacun de ses effets porte
+  `conditionSelfVisible`. Le catalogue le faisait par discipline, mais rien
+  ne le tenait : la Balise des Profondeurs se proposait bel et bien alors
+  qu'elle était invisible. Les déclencheurs de DÉPART (`onDeath`,
+  `onSaborde`, `onExpire`, `onTideStateExited`) et la révélation
+  (`onBecomeVisible`) échappent à la règle — partir ou se découvrir n'est
+  pas « agir ».
+- **Réaction cachée** (`TriggeredAbility.hiddenReaction`) : l'unique
+  exception. Une capacité ainsi déclarée PEUT s'utiliser alors que sa
+  porteuse est masquée, ce qui en fait un **piège** — l'adversaire voit un
+  Slot occupé, pas une carte (`toPlayerView`). Trois règles l'encadrent :
+  1. **La révélation précède la résolution.** Activer expose la carte
+     (`CardInstance.revealed`, événement `STRUCTURE_REVEALED`) AVANT que
+     ses effets ne s'appliquent, et dans cet ordre dans le journal — on ne
+     se fait pas frapper par une carte qu'on n'a jamais vue.
+  2. **La révélation est définitive.** Si la Marée remasque la Structure
+     ensuite, elle reste connue de l'adversaire.
+  3. **Le joueur décide.** Une Réaction cachée est toujours facultative :
+     fenêtre de réaction, Activer ou Passer, jamais d'office.
+
+  Le SORT DE LA CARTE après coup appartient à son texte : sans mention,
+  elle reste en jeu, révélée. Pour qu'elle parte, le texte le dit et la
+  définition le réalise (`saborde` ou une destruction sur `self`).
+- **Fenêtre d'interception** (`onIncomingDirectAttack`, 21/09/2026) : une
+  attaque DIRECTE au Navire s'arrête **à sa déclaration** si le défenseur a
+  au moins un piège éligible. L'attaque n'est pas coupée en deux — elle
+  n'est pas encore commencée : rien n'a été calculé, aucun bouclier
+  consommé. L'état porte `pendingAttack`, la fenêtre s'ouvre chez le
+  défenseur, et `dispatch` résout l'attaque dès que la fenêtre se referme
+  (seul point que toutes les actions traversent, donc le seul où la reprise
+  ne peut pas être oubliée).
+
+  L'effet `cancelIncomingAttack` annule **les seuls dégâts à la coque**. Le
+  coup a bien été porté : l'attaquant a dépensé son attaque, son propre
+  contrecoup s'applique, et les pertes de Raison qu'il inflige aussi. Le
+  montant `incomingAttackDamage` (« autant de dégâts ») rend la Puissance
+  de l'attaquant, et non le dégât final — boucliers, plafonds et faiblesse
+  de Navire ne s'appliquent pas, puisque le coup n'a pas touché.
+
+  Les autres modificateurs de dégâts directs restent **automatiques**
+  (Le Filet qui Respire, Cage de Flottaison, Carcasse Renversée, faiblesse
+  de Navire) : ce sont des réductions pures, jamais un désavantage, donc
+  rien à décider. Seul ce qui COÛTE quelque chose — une carte qui se
+  détruit, se Saborde, ou se révèle — mérite une fenêtre.
+- **Fenêtre d'annonce de Marée** (`onTideAnnounced`, 21/09/2026) : même
+  geste à l'autre bout du tour. L'étape de Marée est coupée en deux —
+  l'**annonce** (décompte, progression, orientation, Anomalies de
+  changement) puis l'**application** (dégâts de Tempête, choc des Abysses,
+  maladie de la Houle) — et la fenêtre s'intercale entre les deux. L'état
+  porte `pendingTideStep` ; l'entame du tour est suspendue en entier : ni
+  Raison, ni pioche, ni `TURN_STARTED` tant que le joueur n'a pas répondu.
+
+  L'effet `deferTideEffects` (Ancre de Dérive) repousse à la **fin du tour
+  en cours** les seuls effets de TOUR de cette Marée. L'état, lui, a bel et
+  bien changé : les capacités `onTideStateEntered` se déclenchent à
+  l'heure, et les Structures changent de visibilité comme prévu. La Marée
+  n'est pas retenue — c'est sa gifle qui arrive en retard.
+
+  Comme toute fenêtre, elle est refusable : passer garde l'Ancre en jeu et
+  laisse la Marée frapper tout de suite. Avant cette passe, le Sabordage et
+  le report étaient appliqués d'office dès que la carte était en jeu et
+  visible — le moteur décidait à la place du joueur.
 
 ## Structure de tour
 
@@ -205,13 +302,19 @@ Déraison (dette sous 0 → dégâts d'Ancrage, Raison remise à 0).
 
 1. Vérification des Eaux (tirage de nouvelles Eaux si leur durée est
    épuisée — jamais une carte de deck, toujours tiré par le moteur).
-2. Vérification de la Marée : décompte de la durée restante, progression
+2. **Annonce** de la Marée : décompte de la durée restante, progression
    éventuelle vers l'état suivant (`Calme → Houle → Tempête → Abysses →
-   Calme`), puis application des malus de l'état courant — voir "Malus
-   globaux des Marées" ci-dessous.
-3. Effets différés — non modélisés pour le MVP, étape ignorée.
-4. Remise à niveau de la Raison : 25 % / 50 % / 75 % de la Raison max aux
-   trois premiers tours du joueur, puis 100 % à chaque tour.
+   Calme`), orientation, Anomalies de changement. Sur un changement
+   d'état, la fenêtre `onTideAnnounced` s'ouvre ici (voir "Fenêtre
+   d'annonce de Marée") et **suspend tout ce qui suit**.
+3. **Application** de la Marée : malus de l'état courant — voir "Malus
+   globaux des Marées" ci-dessous —, capacités d'entrée/sortie d'état,
+   expiration des permanents à durée limitée, Structures qui deviennent
+   visibles. Une Ancre de Dérive activée à l'étape 2 repousse les seuls
+   malus à la fin du tour en cours (`deferredTideEffects`).
+4. Récupération naturelle : **+2 Raison**, bornée par le plafond de début
+   de partie, et **amputée d'une dette subie** éventuelle (qui est alors
+   effacée). La Raison persiste, elle n'est jamais remise à niveau.
 5. Pioche d'une carte (deck vide → Jugement de l'Océan, voir plus bas).
 6. Phase principale : dégel des unités, réinitialisation des attaques,
    nettoyage des modificateurs temporaires.
@@ -273,6 +376,14 @@ le tour suivant recommence systématiquement en Phase principale.
   l'Ancrage de départ, la Raison max, le nombre d'emplacements (4 léger,
   5 standard, ou 6 lourd — vraie caractéristique d'équilibrage), et des
   résistances/faiblesses face à la Marée (Ancrage et Raison).
+
+  L'**Ancrage de départ** est le levier de RYTHME de la partie : une partie
+  dure le temps que met le débit de dégâts à vider cette réserve. Porté de
+  17/20/24 à **26/30/36** le 21/09/2026 (+50 %), ce qui fait passer la durée
+  moyenne de 5,8 à ~10 tours par joueur. Six leviers ont été mesurés sur un
+  tournoi complet ; celui-ci écrase les autres, parce que les attaques font
+  53 % des dégâts et que rien d'autre ne les ralentit. Valeur NON
+  VERROUILLÉE et divergente de Notion, qui porte encore 17/20/24.
 - **Eaux actuelles** (`game/environment/waterData.ts`) : la région
   traversée, commune aux deux joueurs, tirée automatiquement par le
   moteur (`WATER_POOL`) et jamais choisie par un joueur. Modifie le coût

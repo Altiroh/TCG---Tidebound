@@ -117,6 +117,24 @@ describe("toPlayerView — projection par joueur", () => {
       expect(serialized(view)).not.toContain(caisses);
     });
 
+    it("RÉVÉLÉE par une Réaction cachée, elle cesse d'être masquée — et le reste", () => {
+      // Grammaire des Structures (21/09/2026) : activer une Réaction cachée
+      // expose la carte définitivement. Si la Marée la remasque ensuite,
+      // elle reste connue — on ne désapprend pas ce qu'on a vu.
+      const { state } = stateWithStructure("tempete");
+      const revele = {
+        ...state,
+        players: state.players.map((p, i) =>
+          i === 1 ? { ...p, board: p.board.map((u) => ({ ...u, revealed: true })) } : p
+        ) as typeof state.players,
+      };
+
+      const view = toPlayerView(revele, "p1");
+      const projected = view.players[1].board[0]!;
+      expect(projected.cardId).toBe(caisses);
+      expect(projected.turnsRemaining).toBe(3);
+    });
+
     it("reste visible pour son propriétaire", () => {
       const { state } = stateWithStructure("tempete");
       expect(toPlayerView(state, "p2").players[1].board[0]!.cardId).toBe(caisses);

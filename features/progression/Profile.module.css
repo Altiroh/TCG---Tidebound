@@ -920,3 +920,204 @@
   font-weight: 400;
   color: var(--ink-faint);
 }
+
+/* ══════════════════════════════════════════════════════════════
+ * TÉLÉPHONE COUCHÉ — le carnet tient dans la hauteur d'un pouce
+ * ══════════════════════════════════════════════════════════════
+ *
+ * Le profil se lit à distance de bras : chiffres de niveau à 60 px,
+ * onglets à 17 px, blocs à 30 px de marge. Sur un téléphone couché
+ * (390 à 412 px, bandeau déduit), cette échelle poussait « Quêtes »,
+ * « Exploits » et la déconnexion SOUS le bord du panneau — on ouvrait le
+ * carnet sur un seul onglet, sans savoir qu'il y en avait quatre.
+ *
+ * Tout se resserre donc d'un cran, et le panneau latéral redevient ce
+ * qu'il est : une table des matières, pas une vitrine.
+ */
+@media (max-height: 560px) {
+  .shell {
+    grid-template-columns: clamp(186px, 26vw, 250px) minmax(0, 1fr);
+    gap: 10px;
+    padding: 8px 10px 10px;
+  }
+
+  /* ── Le panneau latéral ── */
+  .side {
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .sideLevel {
+    gap: 8px;
+    padding: 0;
+  }
+
+  .sideLevelNumber {
+    width: 34px;
+    height: 34px;
+    font-size: 15px;
+  }
+
+  .sideLevelCaption {
+    font-size: 9.5px;
+  }
+
+  .sideXpLine {
+    font-size: 11px;
+  }
+
+  .tabs {
+    gap: 2px;
+    padding-top: 4px;
+  }
+
+  .tab {
+    padding: 5px 10px;
+    font-size: 13px;
+  }
+
+  .tabCount {
+    font-size: 11px;
+  }
+
+  .sideFooter {
+    padding-top: 6px;
+  }
+
+  /* L'appel « à réclamer » reste doré et pulse toujours, mais en une
+     ligne de plus, pas en pavé : ses 89 px poussaient la déconnexion sous
+     le bord du panneau. */
+  .waitingCall {
+    gap: 8px;
+    padding: 7px 9px;
+    font-size: 12px;
+  }
+
+  .waitingGift {
+    font-size: 15px;
+  }
+
+  .claimButton,
+  .claimButtonSmall {
+    padding: 6px 14px;
+    font-size: 12.5px;
+  }
+
+  .signOut {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  /* ── Le contenu de l'onglet ── */
+  .tabBody {
+    gap: 10px;
+  }
+
+  .block {
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  /* Titre et lien d'un bloc sur une ligne chacun : à 260 px de colonne,
+     « Toute la route → » se coupait en plein mot. */
+  .blockHead {
+    gap: 8px;
+  }
+
+  .blockHead > * {
+    font-size: 10.5px;
+  }
+
+  .levelNumber {
+    font-size: clamp(26px, 8vh, 36px);
+  }
+
+  .levelCaption,
+  .statLabel {
+    font-size: 10px;
+  }
+
+  .xpLine {
+    font-size: 12px;
+  }
+
+  .stats {
+    gap: 8px 18px;
+    margin-top: 2px;
+  }
+
+  .statValue {
+    font-size: clamp(16px, 5vh, 22px);
+  }
+
+  .stop {
+    padding: 6px 0;
+    font-size: 12.5px;
+  }
+
+  /* Sept escales sur une rangée de 390 px : la vignette perd ses marges,
+     pas son libellé. */
+  .escale {
+    gap: 5px;
+    padding: 8px 5px;
+    font-size: 11px;
+  }
+
+  .escaleIndex {
+    font-size: 13px;
+  }
+
+  /* ── Le panneau ouvert depuis le bandeau ── */
+  .drawer .shell {
+    padding: 8px 10px;
+  }
+
+  .drawerClose {
+    top: 6px;
+    right: 8px;
+    width: 30px;
+    height: 30px;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+ * TÉLÉPHONE — LE CARNET S'OUVRE PLEINE PAGE
+ * ══════════════════════════════════════════════════════════════
+ *
+ * Sur un écran large, le profil est un PANNEAU : il glisse par la droite
+ * et laisse voir, derrière lui, l'écran d'où on l'a ouvert — on n'a pas
+ * quitté les lieux. Sur un téléphone, ce marché ne tient plus : 96 vw de
+ * panneau, ce sont 34 px de décor inutile d'un côté et une bordure qui
+ * rogne le carnet de l'autre, pour une illusion que personne ne voit.
+ *
+ * Le panneau prend donc TOUT l'écran, et c'est alors à lui de tenir la
+ * zone sûre : il vit hors de `GameScreen` (portail sur `document.body`),
+ * donc aucun bandeau ne l'écarte de l'encoche ni de la barre de gestes.
+ *
+ * Deux conditions, pas une : un téléphone couché est court (560 px), un
+ * iPhone SE couché est court ET étroit — mais une fenêtre étroite et haute
+ * mérite la même page pleine, et c'est ce que dit déjà `.shell` à 900 px.
+ */
+@media (max-width: 900px), (max-height: 560px) {
+  .drawer {
+    width: 100%;
+    border-left: none;
+    box-shadow: none;
+  }
+
+  /* La zone sûre se prend ICI et pas sur `.drawer` : le bouton de
+     fermeture se cale sur la boîte de rembourrage du panneau, il serait
+     repassé sous l'encoche. */
+  .drawer .shell {
+    padding:
+      calc(clamp(8px, 1.6vh, 16px) + var(--tb-safe-top))
+      calc(clamp(10px, 2vw, 18px) + var(--tb-safe-right))
+      calc(clamp(10px, 1.8vh, 18px) + var(--tb-safe-bottom))
+      calc(clamp(10px, 2vw, 18px) + var(--tb-safe-left));
+  }
+
+  .drawerClose {
+    top: calc(6px + var(--tb-safe-top));
+    right: calc(8px + var(--tb-safe-right));
+  }
+}

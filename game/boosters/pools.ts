@@ -35,7 +35,9 @@ export const BOOSTER_BIENVENUE = "welcome_tutorial";
 export const BOOSTER_VEILLEE_DES_DISPARUS = "la-veillee-des-disparus";
 
 /**
- * B1 — Défaut. 61 entrées. Pool d'apprentissage : cartes lisibles,
+ * B1 — Défaut. 63 entrées (61 + les deux anti-swarm du 21/09/2026, qui
+ * appartiennent au même socle « fondamentaux de Structures » que le
+ * Cylindre et l'Ancre). Pool d'apprentissage : cartes lisibles,
  * fondamentaux de Raison / Marée / Structures / Équipements, premières
  * cartes Cra-Poiscail et un teaser Marionnette.
  */
@@ -54,6 +56,8 @@ const DEFAUT: readonly string[] = [
   "cartes-des-courants", // Cartes des Courants
   "cloche-dalerte", // Cloche d'Alerte
   "ancre-de-derive", // Ancre de Dérive
+  "la-nasse-trop-pleine", // La Nasse Trop Pleine
+  "le-role-dequipage", // Le Rôle d'Équipage
   "marin-aux-yeux-rouges", // Marin aux Yeux Rouges
   "marin-aux-yeux-rouges-abyssal", // Marin aux Yeux Rouges
   "guetteur-mefiant", // Guetteur Méfiant

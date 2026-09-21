@@ -1091,6 +1091,13 @@
     flex: 0 0 auto;
   }
 
+  /* L'illustration garde sa hauteur : dans une colonne qui défile, un
+     `flex-shrink` de 1 la laissait se tasser jusqu'à disparaître —
+     la fiche s'ouvrait sur son nom, sans portrait. */
+  .previewArt {
+    flex: 0 0 auto;
+  }
+
   .cardSlot {
     flex: 0 0 auto;
     min-height: 120px;
@@ -1148,5 +1155,300 @@
   .rowStyle,
   .rowFoot {
     display: none;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+ * TÉLÉPHONE COUCHÉ — ce qui vaut à toute largeur
+ * ══════════════════════════════════════════════════════════════
+ *
+ * Les deux bascules plus haut se déclenchent sur la LARGEUR. Elles ne
+ * disent rien de la hauteur, et sur un téléphone couché c'est elle qui
+ * manque : 390 à 412 px, bandeau déduit. Ce bloc rend de la hauteur là où
+ * elle ne portait rien — le décor, la phrase d'intention, le pied des
+ * vignettes — quelle que soit la largeur.
+ */
+@media (max-height: 560px) {
+  /*
+   * Le coin de table s'en va. C'est un objet posé sur le bureau : sur
+   * 390 px de haut, il couvrait la moitié des filtres qu'il décore, et la
+   * colonne lui réservait 84 px de bande — trois lignes de filtre.
+   */
+  .rail {
+    padding-bottom: 0;
+  }
+
+  .railDecor {
+    display: none;
+  }
+
+  .railItem {
+    padding: 5px 9px;
+    font-size: 12.5px;
+  }
+
+  .railSubItem {
+    padding: 3px 8px;
+  }
+
+  .mainHead {
+    gap: 8px;
+  }
+
+  /* L'eyebrow et la phrase d'intention cèdent la place : le titre suffit
+     à dire où l'on est, et ces deux lignes coûtaient 40 px de grille. */
+  .mainHead p {
+    display: none;
+  }
+
+  .mainTitle {
+    font-size: clamp(17px, 4.6vh, 24px);
+  }
+
+  /*
+   * LA BARRE D'OUTILS TIENT SUR UNE SEULE LIGNE.
+   *
+   * Entre le rayon et la fiche, la colonne du milieu tombe à ~450 px sur
+   * un téléphone couché : « Trier par : », le champ de tri et les deux
+   * vues passaient à la ligne, et cette seconde rangée coûtait 34 px de
+   * grille. On rend donc à chacun sa juste part — le champ s'étire de ce
+   * qui reste, les deux vues gardent leur taille de cible tactile et
+   * restent à la droite du tri, là où on vient de les quitter.
+   */
+  .toolbar {
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+
+  .sort {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  /* « Trier par : » s'efface : le champ porte déjà le nom du tri en cours
+     (« Dernière modification »), et son `aria-label` le dit à qui ne voit
+     pas l'écran. */
+  .sortLabel {
+    display: none;
+  }
+
+  .sort select {
+    min-width: 0;
+    padding: 4px 1.8em 4px 8px;
+    font-size: 12px;
+    text-overflow: ellipsis;
+  }
+
+  /* Les deux vues n'ont plus que leur pictogramme — une grille et des
+     lignes se reconnaissent sans légende, et « Grille » / « Liste »
+     restent dans l'infobulle et pour les lecteurs d'écran. */
+  .viewLabel {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .toolbar button {
+    flex-shrink: 0;
+    padding: 0.25em 0.6em;
+  }
+
+  /* Des vignettes de la taille d'une carte à jouer : deux rangées
+     visibles au lieu d'une. */
+  .grid {
+    grid-template-columns: repeat(auto-fill, minmax(clamp(104px, 13vw, 150px), 1fr));
+    gap: 8px;
+  }
+
+  /*
+   * Le texte de la vignette se resserre — sur 120 px de côté, il montait
+   * jusque sous la pastille de provenance et les deux se chevauchaient.
+   * Le nombre de cartes prêtées, lui, s'efface : la fiche le dit.
+   */
+  .tileText {
+    gap: 2px;
+    padding: 6px 7px 7px;
+  }
+
+  .tileName {
+    font-size: 12.5px;
+  }
+
+  .tileTags {
+    margin-top: 0;
+    gap: 4px;
+  }
+
+  .tileFoot {
+    display: none;
+  }
+
+  .originTag {
+    top: 5px;
+    right: 5px;
+    padding: 1px 6px;
+    font-size: 8.5px;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+ * TÉLÉPHONE COUCHÉ, LARGE — l'atelier reprend ses trois colonnes
+ * ══════════════════════════════════════════════════════════════
+ *
+ * Sous 1200 px, la fiche passe sous la grille et la page se déroule :
+ * c'est ce qu'il faut d'une fenêtre étroite et HAUTE, jamais d'un
+ * téléphone couché, où la largeur ne manque pas (915 px mesurés sur un
+ * Pixel) et la hauteur oui. Là, l'empilement mettait la fiche 400 px sous
+ * la ligne de flottaison : pointer un deck n'affichait plus rien.
+ *
+ * Les trois colonnes reviennent donc, resserrées, chacune défilant pour
+ * elle-même — l'atelier tel qu'il a été dessiné, en plus petit. Sous
+ * 760 px de large (iPhone SE couché), la fiche tomberait à 200 px et ses
+ * deux boutons ne tiendraient plus : l'empilement reste.
+ */
+@media (max-height: 560px) and (min-width: 760px) {
+  .browser {
+    grid-template-columns: clamp(126px, 19vw, 188px) minmax(0, 1fr) clamp(228px, 29vw, 300px);
+    grid-template-rows: minmax(0, 1fr);
+    gap: 8px;
+    flex: 1 1 0;
+  }
+
+  /* ── Le rayon ── */
+  .rail {
+    grid-row: auto;
+  }
+
+  /*
+   * Ici, c'est la COLONNE qui défile, pas chaque liste : à 390 px de haut,
+   * le bloc des filtres tombait sous la hauteur de son propre contenu et
+   * « Navire » se superposait à « Style de jeu ». Les deux blocs reprennent
+   * donc leur taille naturelle et se parcourent ensemble.
+   */
+  .railScroll {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
+  }
+
+  .railScroll > .railGroup:last-child {
+    flex: 0 0 auto;
+  }
+
+  .railChecks {
+    overflow: visible;
+  }
+
+  /* La colonne retrouve sa forme de colonne : le bloc « très étroit »
+     couchait les rayons en rangée de puces, ce qui n'a de sens que dans
+     une page d'une seule colonne. */
+  .railList,
+  .railSubList {
+    flex-direction: column;
+    flex-wrap: nowrap;
+  }
+
+  .railSubList {
+    margin-left: 10px;
+    padding-left: 8px;
+    border-left: 1px solid var(--line);
+  }
+
+  /* ── La grille ── */
+  .results {
+    flex: 1 1 0;
+    overflow-y: auto;
+    max-height: none;
+  }
+
+  /* ── La fiche ── */
+  .preview {
+    max-height: none;
+  }
+
+  /*
+   * ICI, ET SEULEMENT ICI, LA FICHE DÉFILE.
+   *
+   * Partout ailleurs elle renonce plutôt que de se dérouler : ce qu'elle
+   * cache n'existe pas, on la lit d'un bloc. Sur un téléphone couché, ce
+   * marché ne tient plus — 324 px de panneau mesurés en 844 × 390, et
+   * « Mes decks » aligne cinq actions, qui passent à deux rangées quoi
+   * qu'on fasse. Il ne restait rien à retrancher qui ne soit le contenu
+   * même de la fiche : le second bouton tombait simplement sous le bord.
+   *
+   * Elle garde donc TOUT et se parcourt du pouce, ce qui est le geste
+   * naturel sur cet appareil.
+   */
+  .previewScroll {
+    flex: 1 1 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
+  }
+
+  .previewScroll::-webkit-scrollbar { width: 6px; }
+  .previewScroll::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--line-strong); }
+
+  .previewBody {
+    flex: 0 0 auto;
+  }
+
+  /*
+   * La fiche RENONCE quand même au superflu (bloc « fenêtres basses » plus
+   * haut) : ce que la bascule « sous 1200 px » lui avait rendu — le
+   * résumé, les mécaniques, la note de profil — n'a pas sa place dans une
+   * colonne de 300 px.
+   */
+  .previewText,
+  .previewMechanics,
+  .previewProfileNote {
+    display: none;
+  }
+
+  /* Le début de la liste ne prend plus « ce qui reste » — il n'en reste
+     pas : il reprend la taille de ses lignes, dans le défilement. */
+  .cardSlot {
+    flex: 0 0 auto;
+    overflow: visible;
+  }
+
+  .previewName {
+    font-size: clamp(16px, 4vh, 20px);
+  }
+
+  /* Les actions se resserrent : « Mes decks » en aligne cinq, et des
+     boutons pleine taille en faisaient trois rangées. */
+  .previewActions {
+    gap: 6px;
+  }
+
+  /* Sélecteur doublé : `game.buttonSm` pose les mêmes propriétés avec la
+     même spécificité, et rien ne garantit l'ordre des deux feuilles. */
+  .previewActions.previewActions > * {
+    min-height: 28px;
+    padding-inline: 0.7em;
+    font-size: 11px;
+  }
+
+  /* « Cartes (40 / 50) » et son lien sur une ligne : à 265 px de colonne,
+     le lien passait sous le titre et doublait la hauteur du bloc. */
+  .previewSection {
+    gap: 6px;
+  }
+
+  .previewSection > * {
+    min-width: 0;
+    overflow: hidden;
+    font-size: 10px;
+    letter-spacing: 0.05em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }

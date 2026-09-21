@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { dispatch } from "@/game/engine";
 import { deriveAttack } from "@/features/match/useAttackPresentation";
-import { instance, testEnvironment, testGameState, testPlayer } from "../game/testHelpers";
-import type { GameState } from "@/game";
+import { instance, testGameState, testPlayer } from "../game/testHelpers";
+import type { GameEvent, GameState } from "@/game";
 
 /**
  * Le retard d'affichage des attaques (`useAttackPresentation`) montre l'état
@@ -82,24 +82,31 @@ describe("état réel contre état affiché", () => {
 });
 
 describe("animation d'attaque : seul le coup porté compte", () => {
-  it("un Contrecoup renvoyé n'est pas lu comme le coup de l'attaquant", () => {
-    // Cylindre flottant (visible en Houle) annule le coup direct et en renvoie une part au Navire de l'attaquant.
-    const attacker = instance("requin-balafre", "p1");
-    const cylindre = instance("cylindre-flottant", "p2");
-    const state = testGameState({
-      phase: "combatPhase",
-      environment: testEnvironment({ tideState: "houle" }),
-      players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2", { board: [cylindre] })],
-    });
+  const base = { turnNumber: 3, timestamp: 0 };
+  const attacker = instance("requin-balafre", "p1");
+  const defender = instance("murene-aveugle", "p2");
+  const after = testGameState({
+    players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2", { board: [defender] })],
+  });
 
-    const result = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attacker.instanceId });
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    // Le renvoi existe bien dans le lot…
-    expect(result.events.some((e) => e.type === "DAMAGE" && e.targetPlayerId === "p1")).toBe(true);
+  it("les dégâts d'une capacité qui suivent le coup ne s'y ajoutent pas", () => {
+    const events: GameEvent[] = [
+      { ...base, type: "ATTACK", playerId: "p1", attackerInstanceId: attacker.instanceId, defenderInstanceId: defender.instanceId },
+      { ...base, type: "DAMAGE", targetInstanceId: defender.instanceId, amount: 4, combat: "strike" },
+      // Une capacité « lorsqu'elle subit des dégâts » qui la blesse encore, puis blesse l'attaquant.
+      { ...base, type: "DAMAGE", targetInstanceId: defender.instanceId, amount: 2 },
+      { ...base, type: "DAMAGE", targetInstanceId: attacker.instanceId, amount: 5 },
+      { ...base, type: "DAMAGE", targetInstanceId: attacker.instanceId, amount: 3, combat: "retaliation" },
+    ];
+    expect(deriveAttack(events, after, 1)).toMatchObject({ amount: 4, retaliation: 3 });
+  });
 
-    // …mais l'animation vise toujours le Navire adverse, pour 0.
-    const animation = deriveAttack(result.events, result.state, 1);
-    expect(animation).toMatchObject({ defenderPlayerId: "p2", amount: 0 });
+  it("un renvoi au Navire de l'attaquant n'est pas lu comme le coup", () => {
+    const events: GameEvent[] = [
+      { ...base, type: "ATTACK", playerId: "p1", attackerInstanceId: attacker.instanceId },
+      { ...base, type: "DAMAGE", targetPlayerId: "p1", amount: 3, targetAnchorAfter: 27 },
+    ];
+    // Aucun coup marqué : l'animation vise toujours le Navire adverse, pour 0.
+    expect(deriveAttack(events, after, 1)).toMatchObject({ defenderPlayerId: "p2", amount: 0 });
   });
 });

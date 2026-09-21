@@ -153,3 +153,21 @@
   --tb-z-toast: 90;
   --tb-z-tooltip: 100;
 }
+
+/*
+ * TÉLÉPHONE COUCHÉ — un seul cran de typographie en moins.
+ *
+ * Les tailles ci-dessus se mesurent en `vw` : sur un téléphone couché,
+ * la largeur est GÉNÉREUSE (844 à 932 px) et la hauteur ne l'est pas
+ * (390 à 412 px). Un titre de page y sortait donc à sa taille de laptop,
+ * 28 px, pour 336 px de zone utile — et chaque écran perdait deux lignes
+ * de contenu en en-tête.
+ *
+ * Le seuil (560 px) est celui que tiennent déjà les écrans qui se
+ * réagencent en paysage : Collection, Decks, Jouer, Market, Profil.
+ */
+@media (max-height: 560px) {
+  :root {
+    --tb-fs-page-title: clamp(17px, 4.6vh, 22px);
+  }
+}

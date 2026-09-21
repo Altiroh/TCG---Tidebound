@@ -5,7 +5,7 @@ import { advancePhase } from "@/game/actions/advancePhase";
 import { attack } from "@/game/actions/attack";
 import { breakObject } from "@/game/actions/breakObject";
 import { concede } from "@/game/actions/concede";
-import { endTurn } from "@/game/actions/endTurn";
+import { endTurn, entameDeTour } from "@/game/actions/endTurn";
 import { fireShipAbility } from "@/game/actions/fireShipAbility";
 import { passReaction } from "@/game/actions/passReaction";
 import { playCard } from "@/game/actions/playCard";
@@ -53,8 +53,51 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
   // Même principe pour "devient votre seule Créature" (`onBecomeOnlyCreature`).
   const loneBefore = snapshotLoneCreatures(state);
 
-  const result = applyAction(state, action);
+  let result = applyAction(state, action);
   if (!result.ok) return result;
+
+  // --- REPRISE D'UNE ATTAQUE SUSPENDUE ---------------------------------
+  //
+  // Une attaque directe s'arrête à sa déclaration quand le défenseur a un
+  // piège à proposer (`attack.ts`). Dès que cette fenêtre se referme — le
+  // défenseur a activé ou passé —, l'attaque se résout pour de bon, ici et
+  // pas ailleurs : `dispatch` est le seul endroit que TOUTES les actions
+  // traversent, donc le seul où la reprise ne peut pas être oubliée.
+  //
+  // `pendingAttack` reste posé PENDANT la reprise : c'est lui qui porte le
+  // drapeau `intercepted` qu'un piège vient éventuellement de lever, et sa
+  // présence empêche `attack()` de rouvrir la même fenêtre à l'infini. Il
+  // n'est retiré qu'une fois l'attaque résolue.
+  if (result.state.status === "active" && !result.state.pendingReaction && result.state.pendingAttack) {
+    const suspendue = result.state.pendingAttack;
+    const repris = applyAction(
+      result.state,
+      suspendue.kind === "tirDeNavire"
+        ? { type: "fireShipAbility", playerId: suspendue.playerId }
+        : { type: "attack", playerId: suspendue.playerId, attackerInstanceId: suspendue.attackerInstanceId }
+    );
+    // Une attaque devenue illégale entre-temps (l'attaquant a été détruit
+    // par le piège lui-même) ne casse rien : on abandonne la reprise et on
+    // garde l'état tel que la fenêtre l'a laissé.
+    result = repris.ok
+      ? { ok: true, state: { ...repris.state, pendingAttack: undefined }, events: [...result.events, ...repris.events] }
+      : { ok: true, state: { ...result.state, pendingAttack: undefined }, events: result.events };
+  }
+
+  // --- REPRISE D'UNE ENTAME DE TOUR SUSPENDUE ---------------------------
+  //
+  // Même geste, à l'autre bout du tour : `endTurn` s'arrête à l'ANNONCE de
+  // la Marée quand une Ancre de Dérive a quelque chose à proposer. Dès que
+  // la fenêtre se referme, l'entame reprend là où elle s'était arrêtée —
+  // effets de la Marée (reportés ou non), expirations, Raison, pioche.
+  //
+  // Contrairement à une attaque, rien n'est rejoué : `entameDeTour` est la
+  // SUITE, pas une répétition, et `pendingTideStep` porte tout ce qu'il lui
+  // faut pour la reprendre à l'identique.
+  if (result.state.status === "active" && !result.state.pendingReaction && result.state.pendingTideStep) {
+    const repris = entameDeTour(result.state);
+    if (repris.ok) result = { ok: true, state: repris.state, events: [...result.events, ...repris.events] };
+  }
 
   const deaths = processDeaths(result.state, state.turnNumber);
   const powerGains = processPowerGains(deaths.state, powerBefore, state.turnNumber);
@@ -83,10 +126,16 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
   // ferme) — ne pas en ouvrir une seconde par-dessus. Pour toute autre
   // action, vérifier si ce qu'elle vient de produire en ouvre une
   // nouvelle (au moins une capacité `optional` devient éligible).
+  //
+  // `!finalState.pendingReaction` : une action qui a ouvert sa PROPRE
+  // fenêtre en cours de route — l'interception d'une attaque, l'annonce
+  // d'une Marée — a déjà dit qui doit répondre et à quoi. En ouvrir une
+  // seconde par-dessus écraserait la première et perdrait la suspension.
   if (
     finalState.status === "active" &&
     !finalState.pendingOceanJudgment &&
     !finalState.pendingChoice &&
+    !finalState.pendingReaction &&
     !REACTION_ACTION_TYPES.has(action.type)
   ) {
     const opened = openReactionWindowIfEligible(finalState, finalEvents, finalState.turnNumber);

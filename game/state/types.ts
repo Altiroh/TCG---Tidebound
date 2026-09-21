@@ -212,6 +212,36 @@ export interface GameState {
    */
   pendingChoice?: PendingChoice;
 
+  /**
+   * Attaque DÉCLARÉE mais pas encore résolue, suspendue le temps que le
+   * défenseur réponde à sa fenêtre d'interception (grammaire des pièges,
+   * 21/09/2026).
+   *
+   * L'attaque n'est pas coupée en deux : elle n'est simplement pas encore
+   * commencée. Aucun dégât n'a été calculé, aucun bouclier consommé — seul
+   * `hasAttackedThisTurn` est déjà posé, parce que déclarer une attaque
+   * EST l'avoir menée, qu'elle soit interceptée ou non.
+   *
+   * Quand la fenêtre se referme (`dispatch`), l'attaque se résout avec
+   * `intercepted` pour seule différence : les dégâts directs au Navire sont
+   * annulés. Tout le reste du pipeline — contrecoup de l'attaquant, perte
+   * de Raison infligée, déclencheurs — se déroule normalement : le coup a
+   * bien eu lieu, il n'a simplement pas porté.
+   */
+  pendingAttack?: PendingAttack;
+
+  /**
+   * Entame de tour suspendue à l'ANNONCE de la Marée (Ancre de Dérive,
+   * 21/09/2026). La nouvelle Marée est committée et annoncée, mais ses
+   * effets de tour ne sont pas encore appliqués : la fenêtre
+   * `onTideAnnounced` est ouverte et le joueur décide.
+   *
+   * Tant qu'il est posé, l'entame n'est pas finie — ni récupération de
+   * Raison, ni pioche, ni `TURN_STARTED`. `dispatch` la reprend dès que la
+   * fenêtre se referme, exactement comme une attaque suspendue.
+   */
+  pendingTideStep?: PendingTideStep;
+
   status: "active" | "finished";
   winnerId?: PlayerId;
 }
@@ -223,6 +253,59 @@ export interface GameState {
  * branches différentes élargirait ce type plutôt que de le généraliser
  * prématurément à des effets arbitraires.
  */
+/**
+ * Entame de tour suspendue le temps de la fenêtre `onTideAnnounced`.
+ *
+ * Porte tout ce qu'il faut pour reprendre : de QUI c'est le tour, et la
+ * Marée annoncée, dont les effets n'ont pas encore été appliqués. Le seul
+ * champ que la fenêtre peut changer est `deferred` — l'effet générique
+ * `deferTideEffects` le lève, et l'entame reportera alors ces effets à la
+ * fin du tour au lieu de les appliquer tout de suite.
+ */
+export interface PendingTideStep {
+  /** Joueur dont le tour commence : celui pour qui l'entame doit reprendre. */
+  playerId: PlayerId;
+  turnNumber: number;
+  /** État quitté, pour les effets d'entrée/sortie que l'application doit encore jouer. */
+  previousTideState: import("@/game/environment/types").TideStateName;
+  tideState: import("@/game/environment/types").TideStateName;
+  intensity: number;
+  /** La Marée vient-elle de CHANGER d'état, ou ne fait-elle que décompter ? */
+  stateChanged: boolean;
+  /** Levé par `deferTideEffects` : les effets de cette Marée attendront la fin du tour. */
+  deferred?: boolean;
+}
+
+/**
+ * Attaque suspendue pendant sa fenêtre d'interception. Porte l'action
+ * telle qu'elle a été déclarée, pour la rejouer à l'identique.
+ */
+export interface PendingAttack {
+  /**
+   * D'où vient le coup. Les PIÈGES ne font pas la différence — leur texte dit
+   * « des dégâts directs d'une attaque », sans préciser la source — mais la
+   * REPRISE, elle, doit savoir quoi rejouer : une attaque d'unité ou un tir
+   * de Navire (arbitrage du 21/09 : le Canon du Goliath cesse d'être
+   * intouchable).
+   */
+  kind?: "attaque" | "tirDeNavire";
+  playerId: PlayerId;
+  /** Pour un tir de Navire : le Navire n'est pas une unité, ce champ vaut alors l'identifiant du joueur. */
+  attackerInstanceId: string;
+  /** Cible du combat, absente pour une attaque directe au Navire. */
+  defenderInstanceId?: string;
+  /** Puissance de l'attaquant au moment de la déclaration — ce que « autant de dégâts » renvoie. */
+  attackerPower: number;
+  /**
+   * Réduction de dégâts DIRECTS posée par un piège (`reduceIncomingDamage`,
+   * Cage de Flottaison, Caisses Arrimées). Cumulative : deux pièges qui
+   * répondent à la même attaque additionnent leurs réductions.
+   */
+  damageReduction?: number;
+  /** Un piège a annulé les dégâts directs de cette attaque. */
+  intercepted?: boolean;
+}
+
 /** Choix binaire forcé d'une Anomalie (ex: Le Fond Vous Regarde) : perdre de la Raison, ou subir des dégâts d'Ancrage. */
 export interface ReasonOrAnchorChoice {
   kind: "reasonOrAnchor";

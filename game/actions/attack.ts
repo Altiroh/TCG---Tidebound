@@ -3,6 +3,8 @@ import { getCardDefinition } from "@/game/cards/sets/core";
 import { computeEffectiveStats } from "@/game/cards/stats";
 import { getShipDefinition } from "@/game/environment/shipData";
 import { isVisibleDuringTide } from "@/game/cards/types";
+import { collectReactionCandidates } from "@/game/triggers/triggerBus";
+import type { TriggerEvent } from "@/game/triggers/types";
 import { reasonAfterLoss } from "@/game/state/reason";
 import type { GameEvent } from "@/game/events/types";
 import { processTrigger } from "@/game/triggers/triggerBus";
@@ -16,7 +18,6 @@ import {
   combine,
 } from "@/game/rules/validation";
 import {
-  consumeAttackerPowerShield,
   consumeDirectShipDamageShield,
   consumeOwnDamageTakenShield,
   consumeStructureResistanceRestoreShield,
@@ -172,14 +173,127 @@ function validate(state: GameState, action: AttackAction) {
  * l'appelant (`engine.ts`) via `processDeaths`, pas ici : cette fonction ne
  * fait que marquer les dégâts.
  */
+/**
+ * Ouvre la fenêtre d'interception si le DÉFENSEUR a au moins un piège
+ * éligible, et suspend l'attaque. Retourne `undefined` quand il n'y a rien
+ * à proposer — cas normal, et l'attaque se résout sans détour.
+ *
+ * `hasAttackedThisTurn` n'est PAS posé ici mais à la résolution, comme pour
+ * une attaque ordinaire : le poser à la déclaration ferait échouer la
+ * reprise, que la validation rejetterait au motif que l'attaquant a déjà
+ * attaqué. Aucun risque de double attaque pour autant — tant que la fenêtre
+ * est ouverte, `dispatch` n'accepte aucune autre action que la réponse du
+ * défenseur, et la résolution suit immédiatement.
+ */
+function suspendrePourInterception(
+  state: GameState,
+  action: AttackAction
+): { suspendu: ActionResult } | { poursuivre: GameState; events: GameEvent[] } {
+  const defenderId = getOpponent(state, action.playerId).id;
+  // Deux déclencheurs pour une seule fenêtre : « une unité adverse attaque »
+  // couvre AUSSI un combat entre unités (Filet à la Dérive), là où « votre
+  // Navire devrait subir des dégâts directs » ne concerne que la coque.
+  const triggerEvents: TriggerEvent[] = [
+    { trigger: "onUnitAttackDeclared", playerId: defenderId, sourceInstanceId: action.attackerInstanceId },
+    ...(action.defenderInstanceId
+      ? []
+      : ([{ trigger: "onIncomingDirectAttack", playerId: defenderId, sourceInstanceId: action.attackerInstanceId }] as TriggerEvent[])),
+  ];
+  const base = { turnNumber: state.turnNumber, timestamp: Date.now() };
+  const attackerPlayer = getPlayer(state, action.playerId);
+  const attaquant = attackerPlayer.board.find((u) => u.instanceId === action.attackerInstanceId)!;
+
+  // L'attaque devient « déclarée » AVANT toute réponse : c'est `pendingAttack`
+  // qui porte la Puissance sur laquelle les pièges mordent, qu'ils soient
+  // automatiques ou choisis.
+  let declaree: GameState = {
+    ...state,
+    pendingAttack: {
+      playerId: action.playerId,
+      attackerInstanceId: action.attackerInstanceId,
+      defenderInstanceId: action.defenderInstanceId,
+      attackerPower: effectiveAttack(attaquant, state) + bonusDamageInTideState(attaquant, state),
+    },
+  };
+
+  // 1. Les défenses AUTOMATIQUES du défenseur s'appliquent d'abord : un texte
+  //    sans « vous pouvez » ne se propose pas, il agit (Filet à la Dérive
+  //    visible, Le Filet qui Respire visible).
+  const evenements: GameEvent[] = [];
+  for (const triggerEvent of triggerEvents) {
+    const auto = processTrigger(declaree, triggerEvent, state.turnNumber);
+    declaree = auto.state;
+    evenements.push(...auto.events);
+  }
+
+  // 2. Puis les pièges FACULTATIFS, s'il y en a : c'est eux seuls qui
+  //    suspendent l'attaque et rendent la main au défenseur.
+  const candidats = collectReactionCandidates(declaree, triggerEvents, defenderId, state.turnNumber);
+  if (candidats.length === 0) {
+    // Rien à proposer : l'attaque se poursuit dans la foulée, avec les
+    // éventuelles réductions automatiques déjà posées.
+    return { poursuivre: declaree, events: evenements };
+  }
+
+  const suspended: GameState = {
+    ...declaree,
+    pendingReaction: {
+      events: triggerEvents,
+      awaitingPlayerId: defenderId,
+      priorityQueue: [],
+      usedCandidateKeys: [],
+      turnNumber: state.turnNumber,
+    },
+  };
+
+  return {
+    suspendu: {
+      ok: true,
+      state: suspended,
+      events: [
+        { ...base, type: "ATTACK", playerId: action.playerId, attackerInstanceId: action.attackerInstanceId, defenderInstanceId: action.defenderInstanceId },
+        ...evenements,
+        { ...base, type: "REACTION_WINDOW_OPENED", playerId: defenderId },
+      ],
+    },
+  };
+}
+
 export function attack(state: GameState, action: AttackAction): ActionResult {
   const validation = validate(state, action);
   if (!validation.ok) return { ok: false, error: validation.error };
 
-  const attackerPlayer = getPlayer(state, action.playerId);
+  // --- FENÊTRE D'INTERCEPTION (grammaire des pièges, 21/09/2026) --------
+  //
+  // Avant de calculer quoi que ce soit, on demande au défenseur s'il
+  // intercepte. La fenêtre s'ouvre à la DÉCLARATION, pas au milieu de la
+  // résolution : rien n'a encore été consommé, donc il n'y a pas d'attaque
+  // coupée en deux à recoller — seulement une attaque pas encore commencée.
+  //
+  // Seules les attaques DIRECTES au Navire ouvrent cette fenêtre : un
+  // combat entre deux unités n'a pas de piège à proposer aujourd'hui.
+  //
+  // `state.pendingAttack` déjà posé = on est dans la REPRISE, la fenêtre a
+  // été posée puis refermée ; on résout pour de bon.
+  let etat = state;
+  const evenementsDeclaration: GameEvent[] = [];
+  if (!state.pendingAttack) {
+    const declaration = suspendrePourInterception(state, action);
+    if ("suspendu" in declaration) return declaration.suspendu;
+    etat = declaration.poursuivre;
+    evenementsDeclaration.push(...declaration.events);
+  }
+
+  const attackerPlayer = getPlayer(etat, action.playerId);
   const declaredAttacker = attackerPlayer.board.find((u) => u.instanceId === action.attackerInstanceId)!;
-  const events: GameEvent[] = [];
-  const base = { turnNumber: state.turnNumber, timestamp: Date.now() };
+  // À la REPRISE, la Puissance déclarée fait foi : c'est elle qu'un piège a
+  // pu amputer (`modifyAttackerPower`), et la recalculer ici effacerait sa
+  // réduction. Hors interception, elle se calcule normalement.
+  const declaredPower =
+    etat.pendingAttack?.attackerPower ?? effectiveAttack(declaredAttacker, etat) + bonusDamageInTideState(declaredAttacker, etat);
+  const powerBeforeAttackTriggers = effectiveAttack(declaredAttacker, etat);
+  const events: GameEvent[] = [...evenementsDeclaration];
+  const base = { turnNumber: etat.turnNumber, timestamp: Date.now() };
 
   events.push({
     ...base,
@@ -193,8 +307,8 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
     unit.instanceId === action.attackerInstanceId ? { ...unit, hasAttackedThisTurn: true } : unit;
 
   let nextState: GameState = {
-    ...state,
-    players: state.players.map((p) =>
+    ...etat,
+    players: etat.players.map((p) =>
       p.id === attackerPlayer.id ? { ...p, board: p.board.map(markAttacked) } : p
     ) as [PlayerState, PlayerState],
   };
@@ -210,7 +324,7 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
     // filtrées par identité ou par famille ("votre Chevalier attaque",
     // "un Cra-Poiscail attaque") ne peuvent pas reconnaître l'attaquant.
     { trigger: "onAttack", playerId: action.playerId, sourceInstanceId: action.attackerInstanceId, cardId: declaredAttacker.cardId },
-    state.turnNumber
+    etat.turnNumber
   );
   nextState = attackTrigger.state;
   events.push(...attackTrigger.events);
@@ -219,17 +333,19 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
   // quitté le plateau entre-temps, l'attaque ne porte plus.
   const attackerUnit = getPlayer(nextState, action.playerId).board.find((u) => u.instanceId === action.attackerInstanceId);
   if (!attackerUnit) return { ok: true, state: nextState, events };
-  const attackerDamage = effectiveAttack(attackerUnit, nextState) + bonusDamageInTideState(attackerUnit, nextState);
+  // La Puissance déclarée (réduction de piège comprise), plus ce que les
+  // « Lorsqu'il attaque » viennent de lui ajouter — l'un n'efface pas l'autre.
+  const attackerDamage = Math.max(0, declaredPower + effectiveAttack(attackerUnit, nextState) - powerBeforeAttackTriggers);
 
   if (!action.defenderInstanceId) {
     const opponent = getOpponent(nextState, action.playerId);
 
-    // Bouclier "1ère fois par tour" du DÉFENSEUR réduisant la Puissance de
-    // l'attaquant sur une attaque directe (Le Filet qui Respire).
+    // La réduction de Puissance de l'attaquant passe désormais par une
+    // CAPACITÉ (`modifyAttackerPower`, Filet à la Dérive et Le Filet qui
+    // Respire), appliquée à la déclaration : elle est déjà dans
+    // `attackerDamage`. L'ancien bouclier de données n'avait plus de porteur.
     const attackerCardType = getCardDefinition(attackerUnit.cardId).type;
-    const attackerPowerShield = consumeAttackerPowerShield(nextState, opponent.id, state.turnNumber, attackerCardType);
-    nextState = attackerPowerShield.state;
-    const shieldedAttackerDamage = Math.max(0, attackerDamage - attackerPowerShield.reduction);
+    const shieldedAttackerDamage = attackerDamage;
 
     // Faiblesse "Coque légère" (Le Courlis) : +1 dégât sur une attaque
     // directe contre le Navire, propre à la faiblesse du DÉFENSEUR.
@@ -238,7 +354,7 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
 
     // Bouclier "1ère fois par tour" du DÉFENSEUR réduisant les dégâts directs
     // au Navire (Cage de Flottaison).
-    const directShipDamageShield = consumeDirectShipDamageShield(nextState, opponent.id, state.turnNumber, attackerCardType);
+    const directShipDamageShield = consumeDirectShipDamageShield(nextState, opponent.id, etat.turnNumber, attackerCardType);
     nextState = directShipDamageShield.state;
     const shieldedDirectDamage = Math.max(0, baseDirectDamage - directShipDamageShield.reduction);
 
@@ -251,6 +367,19 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
       return cap === undefined ? value : Math.min(cap, value);
     }, undefined);
     let directDamage = directDamageCap === undefined ? shieldedDirectDamage : Math.min(shieldedDirectDamage, directDamageCap);
+
+    // Un piège a intercepté : les dégâts directs sont annulés, et RIEN
+    // d'autre. Le coup a bien été porté — l'attaquant a dépensé son
+    // attaque, son propre contrecoup s'applique, les pertes de Raison
+    // qu'il inflige aussi. Il n'a simplement pas touché la coque.
+    // Réduction posée par un piège (Cage de Flottaison, Caisses Arrimées),
+    // appliquée APRÈS les boucliers automatiques et le plafond : elle est le
+    // dernier rempart, celui que le joueur a choisi de dépenser.
+    const reductionPiege = etat.pendingAttack?.damageReduction ?? 0;
+    if (reductionPiege > 0) directDamage = Math.max(0, directDamage - reductionPiege);
+
+    const intercepte = etat.pendingAttack?.intercepted === true;
+    if (intercepte) directDamage = 0;
 
     // Contrecoup (Cylindre flottant, visible) : le DÉFENSEUR annule ces
     // dégâts, en renvoie une fraction (arrondie au supérieur) au Navire de
@@ -291,7 +420,7 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
       const contrecoupTrigger = processTrigger(
         nextState,
         { trigger: "onExpire", playerId: opponent.id, cardId: contrecoup.cardId, sourceInstanceId: contrecoup.instanceId },
-        state.turnNumber
+        etat.turnNumber
       );
       nextState = contrecoupTrigger.state;
       events.push(...contrecoupTrigger.events);
@@ -305,7 +434,7 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
     };
     // Le Contrecoup a tout annulé : pas de « coup porté » de 0 dans le
     // journal ni dans l'animation.
-    if (!contrecoup) {
+    if (!contrecoup && !intercepte) {
       events.push({
         ...base,
         type: "DAMAGE",
@@ -352,7 +481,7 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
       const recoilDamagedTrigger = processTrigger(
         nextState,
         { trigger: "onDamaged", playerId: attackerPlayer.id, sourceInstanceId: attackerUnit.instanceId },
-        state.turnNumber
+        etat.turnNumber
       );
       nextState = recoilDamagedTrigger.state;
       events.push(...recoilDamagedTrigger.events);
@@ -368,7 +497,7 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
     // Dégâts au défenseur, réduits par son propre bouclier "1ère fois par
     // tour" (Baleine aux Cicatrices Blanches) et, si c'est une Structure,
     // par la restauration de Résistance de Wood Vy.
-    const defenderDamageResult = applyCombatDamageToUnit(nextState, opponent.id, defenderUnit, totalAttackerDamage, state.turnNumber);
+    const defenderDamageResult = applyCombatDamageToUnit(nextState, opponent.id, defenderUnit, totalAttackerDamage, etat.turnNumber);
     nextState = defenderDamageResult.state;
     if (defenderDamageResult.amountApplied > 0) {
       events.push({ ...base, type: "DAMAGE", targetInstanceId: defenderUnit.instanceId, amount: defenderDamageResult.amountApplied, combat: "strike" });
@@ -376,7 +505,7 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
       const damagedTrigger = processTrigger(
         nextState,
         { trigger: "onDamaged", playerId: opponent.id, sourceInstanceId: defenderUnit.instanceId },
-        state.turnNumber
+        etat.turnNumber
       );
       nextState = damagedTrigger.state;
       events.push(...damagedTrigger.events);
@@ -387,7 +516,7 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
     // au même bouclier "1ère fois par tour" côté attaquant, cette fois.
     const retaliationDamage = effectiveAttack(defenderUnit, nextState);
     if (retaliationDamage > 0) {
-      const attackerDamageResult = applyCombatDamageToUnit(nextState, attackerPlayer.id, attackerUnit, retaliationDamage, state.turnNumber);
+      const attackerDamageResult = applyCombatDamageToUnit(nextState, attackerPlayer.id, attackerUnit, retaliationDamage, etat.turnNumber);
       nextState = attackerDamageResult.state;
       if (attackerDamageResult.amountApplied > 0) {
         events.push({ ...base, type: "DAMAGE", targetInstanceId: attackerUnit.instanceId, amount: attackerDamageResult.amountApplied, combat: "retaliation" });
@@ -395,7 +524,7 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
         const attackerDamagedTrigger = processTrigger(
           nextState,
           { trigger: "onDamaged", playerId: attackerPlayer.id, sourceInstanceId: attackerUnit.instanceId },
-          state.turnNumber
+          etat.turnNumber
         );
         nextState = attackerDamagedTrigger.state;
         events.push(...attackerDamagedTrigger.events);

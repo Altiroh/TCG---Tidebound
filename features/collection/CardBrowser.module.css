@@ -545,6 +545,57 @@
 
   .filtersToggle.filtersToggle { display: inline-flex; }
 
+  /*
+   * EXCEPTION — une colonne qui ne porte QUE le choix de famille
+   * (`data-rail="inline"`, les Collectables) ne part pas en tiroir : elle
+   * n'a pas de bouton d'ouverture, et un tiroir sans poignée est une
+   * colonne perdue. Elle se couche en bandeau de chips au-dessus de la
+   * vitrine — deux familles tiennent sur une ligne, là où quatre axes de
+   * filtres ne tiendraient pas.
+   */
+  .workspace[data-rail="inline"] {
+    grid-template-rows: auto minmax(0, 1fr);
+    row-gap: 8px;
+  }
+
+  .workspace[data-rail="inline"] .sidebar.sidebar {
+    position: static;
+    width: auto;
+    background: var(--panel);
+    transform: none;
+  }
+
+  .workspace[data-rail="inline"] .sidebarInner {
+    flex: 0 0 auto;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    padding: 5px 8px;
+    overflow-x: auto;
+  }
+
+  .workspace[data-rail="inline"] .filterSection {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .workspace[data-rail="inline"] .sectionTitle {
+    margin: 0;
+    white-space: nowrap;
+  }
+
+  .workspace[data-rail="inline"] .filterList {
+    flex-direction: row;
+    overflow: visible;
+  }
+
+  .workspace[data-rail="inline"] .filterRow {
+    width: auto;
+    min-height: 28px;
+    white-space: nowrap;
+  }
+
   .toolbar { padding: 7px 10px; gap: 10px; }
   .countValue { font-size: clamp(16px, 4.4vh, 22px); }
   .sortLabel { display: none; }
@@ -585,6 +636,72 @@
  * établi pour être manœuvré : les deux ne veulent pas la même carte.
  */
 @media (max-height: 560px) {
+  /*
+   * LA COLONNE DE FILTRES DÉFILE EN ENTIER.
+   *
+   * Ailleurs, elle ne défile jamais : chaque section trop longue défile
+   * seule, et les quatre axes restent visibles en même temps. Sur un
+   * téléphone couché, ce partage ne tient plus — 390 px de haut pour un
+   * en-tête, quatre sections et un bouton : chacune se comprimait sous la
+   * hauteur d'une ligne et demie, et la colonne montrait quatre demi-rangs
+   * coupés en plein milieu (« Abyssal » et « Créature » invisibles).
+   *
+   * Ici, donc, l'inverse : les sections rendent TOUTES leurs lignes, et
+   * c'est la colonne qui se parcourt. L'en-tête reste collé en haut — le
+   * lien « Réinitialiser » est ce qu'on vient chercher en dernier, il ne
+   * doit pas s'enfuir avec le défilement.
+   */
+  .sidebarInner {
+    gap: 8px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0 10px 10px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
+  }
+
+  .sidebarInner::-webkit-scrollbar { width: 6px; }
+  .sidebarInner::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--line-strong); }
+
+  .sidebarHead {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding-top: 10px;
+    background: var(--panel-solid);
+  }
+
+  .filterSection {
+    flex: 0 0 auto;
+  }
+
+  /* Plus de plafond par section : c'est la colonne qui défile. */
+  .filterList,
+  .filterList[data-scroll="true"] {
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  .filterRow {
+    min-height: 27px;
+    padding: 2px 8px;
+    font-size: 12px;
+  }
+
+  .sectionTitle {
+    margin-bottom: 2px;
+  }
+
+  /*
+   * « Créer un deck » suit le défilement au lieu d'y être collé : posé en
+   * bas, son fond dégradé laissait voir les lignes de filtre qui
+   * passaient dessous — un bouton translucide sur une liste en mouvement.
+   */
+  .createDeck.createDeck {
+    margin-top: 6px;
+  }
+
   /*
    * Dix-huit pixels rendus à la grille, pris là où ils ne portaient rien :
    * les bords du panneau, la barre d'outils, le creux du défilement. Sur

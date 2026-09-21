@@ -161,7 +161,25 @@ export function openReactionWindowIfEligible(
 ): PendingReactionState | undefined {
   const triggerEvents = deriveReactionTriggerEvents(state, events);
   if (triggerEvents.length === 0) return undefined;
+  return ouvrirFenetrePour(state, triggerEvents, turnNumber);
+}
 
+/**
+ * Ouvre une fenêtre pour des déclencheurs NOMMÉS, sans passer par le
+ * journal d'événements.
+ *
+ * `openReactionWindowIfEligible` déduit ses déclencheurs des `GameEvent`
+ * déjà produits, à la fin de `dispatch` — trop tard pour une fenêtre qui
+ * doit s'intercaler AU MILIEU d'une action : l'interception d'une attaque
+ * avant qu'elle ne porte, l'annonce d'une Marée avant que ses effets ne
+ * tombent. Ces fenêtres-là se déclarent, et c'est cette fonction qui les
+ * ouvre. `undefined` si personne n'a rien à proposer.
+ */
+export function ouvrirFenetrePour(
+  state: GameState,
+  triggerEvents: TriggerEvent[],
+  turnNumber: number
+): PendingReactionState | undefined {
   const queue = eligiblePriorityOrder(state, triggerEvents, turnNumber, []);
   if (queue.length === 0) return undefined;
 
