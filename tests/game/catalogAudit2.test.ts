@@ -262,9 +262,11 @@ describe("Ancre de Dérive — report des effets de Marée", () => {
     expect(passe.events.some((e) => e.type === "TURN_STARTED")).toBe(true);
   });
 
-  it("masquée par la Marée annoncée, elle ne propose rien", () => {
+  it("masquée, elle agit quand même — c'est sa Réaction cachée, et elle se révèle en le faisant", () => {
     // L'Ancre est visible en Houle et Tempête : une annonce d'Abysses la
-    // masque, et une carte masquée est inactive (grammaire des Structures).
+    // masque. La règle générale veut qu'une Structure masquée soit
+    // inactive ; son texte déclare l'exception (« Réaction cachée »), et
+    // c'est le seul chemin par lequel une carte masquée peut agir.
     const ancre = instance("ancre-de-derive", "p1");
     const state = testGameState({
       turnNumber: 2,
@@ -277,8 +279,45 @@ describe("Ancre de Dérive — report des effets de Marée", () => {
     const annonce = dispatch(state, { type: "endTurn", playerId: "p1" });
     ok(annonce);
     expect(annonce.state.environment.tideState).toBe("abysses");
-    expect(annonce.state.pendingReaction).toBeUndefined();
-    expect(board(annonce.state, "p1").some((u) => u.instanceId === ancre.instanceId)).toBe(true);
+    expect(annonce.state.pendingReaction?.awaitingPlayerId).toBe("p1");
+
+    const active = activateReactionFor(annonce.state, "ancre-de-derive");
+    ok(active);
+    // L'entrée en Abysses coûte 2 Ancrage : reportée, elle ne tombe pas ici.
+    expect(player(active.state, "p2").anchor).toBe(20);
+    expect(active.state.environment.deferredTideEffects?.tideState).toBe("abysses");
+    expect(active.events.some((e) => e.type === "STRUCTURE_REVEALED")).toBe(true);
+    expect(board(active.state, "p1")).toHaveLength(0);
+  });
+
+  it("visible ou masquée, une seule des deux moitiés est proposée", () => {
+    // Le texte promet deux fois la même chose dans deux états différents,
+    // jamais les deux à la fois : `selfVisible` et `selfHidden` sont
+    // exclusifs, et sans eux le joueur verrait deux entrées identiques.
+    const ancre = instance("ancre-de-derive", "p1");
+    const versTempete = testGameState({
+      turnNumber: 2,
+      environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 1, tideOrientation: "montante" }),
+      players: [
+        testPlayer("p1", { board: [ancre], deck: filler("p1") }),
+        testPlayer("p2", { shipId: "lerrant", deck: filler("p2"), anchor: 20 }),
+      ],
+    });
+    const visible = dispatch(versTempete, { type: "endTurn", playerId: "p1" });
+    ok(visible);
+    expect(candidates(visible.state).filter((c) => c.cardId === "ancre-de-derive")).toHaveLength(1);
+
+    const versAbysses = testGameState({
+      turnNumber: 2,
+      environment: testEnvironment({ tideState: "tempete", tideRemainingTurns: 1, tideOrientation: "montante" }),
+      players: [
+        testPlayer("p1", { board: [ancre], deck: filler("p1") }),
+        testPlayer("p2", { shipId: "lerrant", deck: filler("p2"), anchor: 20 }),
+      ],
+    });
+    const masquee = dispatch(versAbysses, { type: "endTurn", playerId: "p1" });
+    ok(masquee);
+    expect(candidates(masquee.state).filter((c) => c.cardId === "ancre-de-derive")).toHaveLength(1);
   });
 
   it("sans Ancre, les dégâts de la nouvelle Marée s'appliquent immédiatement", () => {

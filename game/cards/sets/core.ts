@@ -400,9 +400,16 @@ export const CORE_SET: CardDefinition[] = [
     durationTurns: 3,
     visibleDuringTide: ["houle", "tempete"],
     maxCopies: 2,
+    // « Même fonction visible/cachée, mais lorsqu'elle est cachée
+    // l'adversaire ne sait pas que vous disposez de cette sécurité »
+    // (Notion, « Cartes à reprendre »). Seule carte de la première vague
+    // dont les deux textes font exactement la même chose : ce qui change
+    // n'est pas l'effet, c'est l'information.
     text:
       "Durée : 3 tours. Visible pendant Houle et Tempête. Lorsqu'une nouvelle Marée est annoncée, vous pouvez " +
-      "Saborder cette carte : les effets de cette Marée ne s'appliquent qu'à la fin du tour en cours.",
+      "Saborder cette carte : les effets de cette Marée ne s'appliquent qu'à la fin du tour en cours. Réaction " +
+      "cachée : lorsqu'une nouvelle Marée est annoncée, vous pouvez révéler puis Saborder Ancre de Dérive : les " +
+      "effets de cette Marée ne s'appliquent qu'à la fin du tour en cours.",
     abilities: [
       {
         // « Vous pouvez » : fenêtre COMPLÈTE à l'annonce (arbitrage du
@@ -410,16 +417,31 @@ export const CORE_SET: CardDefinition[] = [
         // la carte était en jeu et visible — le moteur décidait à la place
         // du joueur, et Saborder son Ancre pour rien lui était imposé.
         //
-        // Pas de `condition: { selfVisible: true }` : le masquage est tenu
-        // par le moteur (`blocqueParMasquage`), et à l'annonce la Marée
-        // courante est DÉJÀ la nouvelle — la carte doit donc être visible
-        // dans l'état annoncé, ce que son texte dit.
+        // À l'annonce, la Marée courante est DÉJÀ la nouvelle : « visible »
+        // se lit donc dans l'état annoncé, et c'est bien ce que promet
+        // « Visible pendant Houle et Tempête ».
         trigger: "onTideAnnounced",
         mode: "optional",
+        condition: { selfVisible: true },
         description:
           "Sabordez l'Ancre de Dérive : les effets de la Marée qui vient d'être annoncée attendent la fin du tour en cours.",
         // Le Sabordage est le COÛT, et il vient en premier : `deferTideEffects`
         // ne touche pas au plateau, l'ordre n'a donc rien à rattraper.
+        effects: [
+          { type: "saborde", target: { kind: "self" } },
+          { type: "deferTideEffects", target: { kind: "self" } },
+        ],
+      },
+      {
+        // Même effet, depuis Calme ou Abysses — où l'adversaire ne voit
+        // qu'un Slot occupé. Il pousse la Marée en croyant passer, et
+        // l'Ancre se découvre pour lui reprendre son tempo.
+        trigger: "onTideAnnounced",
+        mode: "optional",
+        hiddenReaction: true,
+        condition: { selfHidden: true },
+        description:
+          "Révélez puis Sabordez l'Ancre de Dérive : les effets de la Marée qui vient d'être annoncée attendent la fin du tour en cours.",
         effects: [
           { type: "saborde", target: { kind: "self" } },
           { type: "deferTideEffects", target: { kind: "self" } },
