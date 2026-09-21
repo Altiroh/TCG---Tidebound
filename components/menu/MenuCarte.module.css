@@ -45,7 +45,10 @@
   background-image: var(--plate-image);
   background-position: center;
   background-size: cover;
-  filter: blur(34px) brightness(0.42) saturate(0.85);
+  /* Assez clair pour lire comme la table qui continue dans l'ombre, assez
+     sourd pour rester derrière la scène nette : à 0,42 les bandes d'un
+     écran 16/10 passaient pour deux barres noires. */
+  filter: blur(30px) brightness(0.58) saturate(0.9);
   transform: scale(1.06);
 }
 
