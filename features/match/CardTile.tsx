@@ -332,6 +332,16 @@ export function CardTile({
         controllerReason: auraContext.controllerReason,
       })
     : hasKeyword(def, "garde");
+  // Pied marin (effectif, même logique que Garde) : l'unité agit dès son
+  // arrivée — la marquer « Engourdie » mentirait.
+  const hasPiedMarin = auraContext
+    ? hasKeywordInContext(instance, "pied-marin", {
+        tideState,
+        controllerBoard: auraContext.controllerBoard,
+        controllerReason: auraContext.controllerReason,
+      })
+    : hasKeyword(def, "pied-marin");
+  const engourdi = instance.summoningSick && isUnit && !hasPiedMarin;
   const hasResistance = isUnit || def.health !== undefined;
   const resistanceRemaining = Math.max(0, stats.health - instance.damageMarked);
   const resistanceFlashing = useDecreaseFlash(resistanceRemaining);
@@ -559,7 +569,7 @@ export function CardTile({
           n'utilise plus `cqw`), toujours lisible même sur la plus petite carte de plateau. */}
       {showStatusBadges &&
         (stats.inactive ||
-        (instance.summoningSick && isUnit) ||
+        engourdi ||
         instance.turnsRemaining !== undefined ||
         hasGarde ||
         (instance.statuses && instance.statuses.length > 0)) && (
@@ -575,7 +585,7 @@ export function CardTile({
               Inactive
             </span>
           )}
-          {instance.summoningSick && isUnit && (
+          {engourdi && (
             <StatusBadge
               icon={ENGOURDI_ICON_INFO.icon}
               label={ENGOURDI_ICON_INFO.label}

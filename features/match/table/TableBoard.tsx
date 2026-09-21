@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   canBeEquipTarget,
-  computeEffectiveStats,
+  canUnitAttack,
   deraisonAnchorDamage,
   eligibleChosenUnits,
   getCardDefinition,
@@ -13,7 +13,6 @@ import {
   RULES,
   STATUS_SILENCE,
   TIDE_STATES_ORDER,
-  UNIT_CARD_TYPES,
   type CardInstance,
   type GameState,
   type PlayerId,
@@ -124,10 +123,6 @@ const BADGE_SIZE: Record<BoardPreviewBreakpoint, number> = {
   "desktop-large": 38,
 };
 
-function isUnit(instance: CardInstance) {
-  return (UNIT_CARD_TYPES as readonly string[]).includes(getCardDefinition(instance.cardId).type);
-}
-
 const toModel = (instance: CardInstance): TableCardModel => ({ id: instance.instanceId, cardId: instance.cardId });
 
 /**
@@ -235,11 +230,9 @@ export function TableBoard(props: TableBoardProps) {
   function attackReady(instance: CardInstance) {
     return (
       canAttack &&
-      isUnit(instance) &&
-      !instance.summoningSick &&
-      !instance.hasAttackedThisTurn &&
-      !instance.statuses?.includes(STATUS_SILENCE) &&
-      !computeEffectiveStats(instance, tideState).inactive
+      // Règle du moteur (Pied marin compris), pour une unité du joueur qui regarde.
+      canUnitAttack(state, viewerId, instance.instanceId) &&
+      !instance.statuses?.includes(STATUS_SILENCE)
     );
   }
 

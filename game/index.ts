@@ -62,7 +62,7 @@ export {
 } from "@/game/cards/types";
 export { CARD_DATABASE, CORE_SET, getCardDefinition, canBeEquipTarget, hasAnyValidEquipTarget } from "@/game/cards/sets/core";
 export { isAbyssalVariant } from "@/game/cards/types";
-export { hasKeywordInContext, type KeywordContext } from "@/game/rules/validation";
+export { canUnitAttack, hasKeywordInContext, type KeywordContext } from "@/game/rules/validation";
 export { collectAuraContributions } from "@/game/cards/stats";
 export type { AuraContext, AuraContribution } from "@/game/cards/stats";
 export { computeEffectiveStats, computeStatModifierDelta } from "@/game/cards/stats";

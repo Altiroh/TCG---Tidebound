@@ -3,6 +3,8 @@ import { dispatch } from "@/game/engine";
 import { computeEffectiveStats } from "@/game/cards/stats";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { handBreakCost } from "@/game/actions/breakObject";
+import { enumerateCandidateActions } from "@/game/bot/enumerateActions";
+import { canUnitAttack } from "@/game/rules/validation";
 import { instance, testEnvironment, testGameState, testPlayer } from "./testHelpers";
 import type { GameState } from "@/game/state/types";
 
@@ -454,6 +456,26 @@ describe("engine.dispatch - attack", () => {
 
     const result = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attacker.instanceId });
     expect(result.ok).toBe(false);
+  });
+
+  it("Pied marin : une unité fraîchement posée attaque — moteur, interface (`canUnitAttack`) et bot d'accord", () => {
+    // Cra-Poiscail Messager porte « Pied marin » imprimé.
+    const messager = instance("cra-poiscail-messager", "p1", { summoningSick: true });
+    const requin = instance("requin-balafre", "p1", { summoningSick: true });
+    const state = testGameState({
+      phase: "combatPhase",
+      players: [testPlayer("p1", { board: [messager, requin] }), testPlayer("p2")],
+    });
+
+    expect(canUnitAttack(state, "p1", messager.instanceId)).toBe(true);
+    expect(canUnitAttack(state, "p1", requin.instanceId)).toBe(false);
+
+    const attackers = enumerateCandidateActions(state, "p1").flatMap((a) => (a.type === "attack" ? [a.attackerInstanceId] : []));
+    expect(attackers).toContain(messager.instanceId);
+    expect(attackers).not.toContain(requin.instanceId);
+
+    const result = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: messager.instanceId });
+    expect(result.ok).toBe(true);
   });
 
   it("refuse une seconde attaque de la même unité dans le même tour", () => {

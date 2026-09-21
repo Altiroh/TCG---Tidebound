@@ -2,16 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  computeEffectiveStats,
+  canUnitAttack,
   dispatch,
   eligibleCandidatesFor,
-  getCardDefinition,
   getShipDefinition,
   graveyardChoicesForBreak,
   isMainPhase,
   previewBreakReason,
   stepBotTurn,
-  UNIT_CARD_TYPES,
   type BotDifficulty,
   type CardInstance,
   type GameState,
@@ -78,10 +76,6 @@ type Pending =
   | { kind: "break"; instanceId: string; needsTarget: boolean; fromHand?: boolean }
   | { kind: "reaction"; sourceInstanceId: string; abilityIndex: number; needsTarget: boolean };
 
-function isUnitType(type: string): boolean {
-  return (UNIT_CARD_TYPES as readonly string[]).includes(type);
-}
-
 /**
  * Plateau d'une partie locale (hot-seat ou contre un bot), rendu par
  * `TableBoard`.
@@ -131,10 +125,7 @@ export function MatchBoard({
   const canAttackNow = isViewerTurn && state.phase === "combatPhase" && noPendingWindow;
   // Si aucune unité du joueur actif ne peut attaquer, le bouton unique saute directement à "Fin de tour".
   const activePlayerBoard = state.players.find((p) => p.id === activePlayerId)?.board ?? [];
-  const hasAnyAttacker = activePlayerBoard.some((unit) => {
-    const def = getCardDefinition(unit.cardId);
-    return isUnitType(def.type) && !unit.summoningSick && !unit.hasAttackedThisTurn && !computeEffectiveStats(unit, state.environment.tideState).inactive;
-  });
+  const hasAnyAttacker = activePlayerBoard.some((unit) => canUnitAttack(state, state.activePlayerId, unit.instanceId));
   const myReactionCandidates =
     state.pendingReaction?.awaitingPlayerId === viewerPlayerId
       ? eligibleCandidatesFor(state, state.pendingReaction.events, viewerPlayerId, state.pendingReaction.turnNumber, state.pendingReaction.usedCandidateKeys)

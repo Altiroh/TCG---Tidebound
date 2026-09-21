@@ -1,6 +1,5 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
-import { UNIT_CARD_TYPES } from "@/game/cards/types";
-import type { CardDefinition, CardInstance } from "@/game/cards/types";
+import type { CardDefinition } from "@/game/cards/types";
 import {
   graveyardChoicesForAbility,
   graveyardChoicesForBreak,
@@ -9,6 +8,7 @@ import {
 import type { PlayerAction } from "@/game/actions/types";
 import { eligibleChosenUnits } from "@/game/effects/chosenTargets";
 import { eligibleCandidatesFor } from "@/game/reactions/reactionWindow";
+import { canUnitAttack } from "@/game/rules/validation";
 import { shipAbilityView } from "@/game/state/shipAbility";
 import { isMainPhase, type GameState, type PlayerId } from "@/game/state/types";
 
@@ -34,14 +34,6 @@ function breakVariants(
   const choices = graveyardChoicesForBreak(state, playerId, def);
   if (choices.length > 0) return choices.map((card) => ({ ...base, chosenGraveyardInstanceId: card.instanceId }));
   return [base];
-}
-
-function isEligibleAttacker(unit: CardInstance): boolean {
-  return (
-    (UNIT_CARD_TYPES as readonly string[]).includes(getCardDefinition(unit.cardId).type) &&
-    !unit.summoningSick &&
-    !unit.hasAttackedThisTurn
-  );
 }
 
 /**
@@ -248,7 +240,7 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
       // sinon `chooseAction.ts` favorise de toute façon `advancePhase` via son
       // bonus heuristique, mais autant ne pas tenter le sort avec un
       // choix aléatoire (difficulté "facile") qui zapperait une attaque gratuite.
-      if (!player.board.some(isEligibleAttacker)) {
+      if (!player.board.some((unit) => canUnitAttack(state, playerId, unit.instanceId))) {
         actions.push({ type: "endTurn", playerId });
       }
     } else {
@@ -258,7 +250,7 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
   } else if (state.phase === "combatPhase") {
     actions.push({ type: "endTurn", playerId });
     for (const unit of player.board) {
-      if (!isEligibleAttacker(unit)) continue;
+      if (!canUnitAttack(state, playerId, unit.instanceId)) continue;
       actions.push({ type: "attack", playerId, attackerInstanceId: unit.instanceId });
       for (const defender of opponent?.board ?? []) {
         actions.push({

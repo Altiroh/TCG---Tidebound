@@ -213,6 +213,16 @@ export function assertUnitCanAttack(state: GameState, playerId: PlayerId, instan
 }
 
 /**
+ * Cette unité peut-elle attaquer maintenant (hors phase et fenêtres) ? Même
+ * règle que `assertUnitCanAttack` — Pied marin compris : c'est CE point
+ * d'entrée que doivent lire l'interface et le bot, jamais un
+ * `!summoningSick` recopié.
+ */
+export function canUnitAttack(state: GameState, playerId: PlayerId, instanceId: string): boolean {
+  return assertUnitCanAttack(state, playerId, instanceId).ok;
+}
+
+/**
  * Valide la cible de défense. Applique le mot-clé Garde : si l'adversaire
  * contrôle au moins un permanent portant "garde", une attaque visant le
  * Navire (pas de `defenderInstanceId`) doit être redirigée vers un des

@@ -1,14 +1,12 @@
 "use client";
 
 import {
-  computeEffectiveStats,
+  canUnitAttack,
   eligibleCandidatesFor,
-  getCardDefinition,
   getShipDefinition,
   graveyardChoicesForBreak,
   isMainPhase,
   previewBreakReason,
-  UNIT_CARD_TYPES,
   type CardInstance,
   type GameState,
   type PendingReactionCandidate,
@@ -59,10 +57,6 @@ interface OnlineBoardProps {
   matchId?: string;
 }
 
-function isUnitType(type: string): boolean {
-  return (UNIT_CARD_TYPES as readonly string[]).includes(type);
-}
-
 /**
  * Plateau d'une partie en ligne (y compris contre le bot arbitré par le
  * serveur), sur le NOUVEAU plateau (`TableBoard`) : "moi" toujours en bas,
@@ -91,10 +85,7 @@ export function OnlineBoard({
   const canPlayCards = canPlay && isMainPhase(state.phase);
   const canAttack = canPlay && state.phase === "combatPhase";
   const activePlayerBoard = state.players.find((p) => p.id === state.activePlayerId)?.board ?? [];
-  const hasAnyAttacker = activePlayerBoard.some((unit) => {
-    const def = getCardDefinition(unit.cardId);
-    return isUnitType(def.type) && !unit.summoningSick && !unit.hasAttackedThisTurn && !computeEffectiveStats(unit, state.environment.tideState).inactive;
-  });
+  const hasAnyAttacker = activePlayerBoard.some((unit) => canUnitAttack(state, state.activePlayerId, unit.instanceId));
   const myReactionCandidates = canRespondToReaction
     ? eligibleCandidatesFor(state, state.pendingReaction!.events, myUserId, state.pendingReaction!.turnNumber, state.pendingReaction!.usedCandidateKeys)
     : [];
