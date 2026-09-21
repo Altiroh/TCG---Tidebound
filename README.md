@@ -216,11 +216,38 @@ plateau est limité par `Navire.slotCount`, pas seulement pour les unités.
   déclenche `onExpire` si la carte a une capacité qui y réagit.
 - **Visibilité** (`CardDefinition.visibleDuringTide`) : une Structure peut
   n'être visible pour l'adversaire que pendant certains états de Marée.
-  Le propriétaire la voit toujours ; elle occupe son Slot et continue
-  d'exister même invisible. La transition d'invisible à visible déclenche
-  `onBecomeVisible` (portée : la carte elle-même uniquement pour
+  Le propriétaire la voit toujours ; elle occupe son Slot et sa durée
+  continue de se consumer même masquée. La transition d'invisible à visible
+  déclenche `onBecomeVisible` (portée : la carte elle-même uniquement pour
   l'instant — un déclenchement plus large, ex: "n'importe laquelle de vos
   Structures", n'est pas encore modélisé).
+- **Masquée = INACTIVE** (règle tenue par le moteur depuis le 21/09/2026) :
+  une Structure masquée existe, occupe son Slot et vieillit, mais **ses
+  capacités ne se déclenchent pas**. Auparavant le masquage ne bloquait
+  rien — il fallait que chaque capacité déclare
+  `condition: { selfVisible: true }` ou que chacun de ses effets porte
+  `conditionSelfVisible`. Le catalogue le faisait par discipline, mais rien
+  ne le tenait : la Balise des Profondeurs se proposait bel et bien alors
+  qu'elle était invisible. Les déclencheurs de DÉPART (`onDeath`,
+  `onSaborde`, `onExpire`, `onTideStateExited`) et la révélation
+  (`onBecomeVisible`) échappent à la règle — partir ou se découvrir n'est
+  pas « agir ».
+- **Réaction cachée** (`TriggeredAbility.hiddenReaction`) : l'unique
+  exception. Une capacité ainsi déclarée PEUT s'utiliser alors que sa
+  porteuse est masquée, ce qui en fait un **piège** — l'adversaire voit un
+  Slot occupé, pas une carte (`toPlayerView`). Trois règles l'encadrent :
+  1. **La révélation précède la résolution.** Activer expose la carte
+     (`CardInstance.revealed`, événement `STRUCTURE_REVEALED`) AVANT que
+     ses effets ne s'appliquent, et dans cet ordre dans le journal — on ne
+     se fait pas frapper par une carte qu'on n'a jamais vue.
+  2. **La révélation est définitive.** Si la Marée remasque la Structure
+     ensuite, elle reste connue de l'adversaire.
+  3. **Le joueur décide.** Une Réaction cachée est toujours facultative :
+     fenêtre de réaction, Activer ou Passer, jamais d'office.
+
+  Le SORT DE LA CARTE après coup appartient à son texte : sans mention,
+  elle reste en jeu, révélée. Pour qu'elle parte, le texte le dit et la
+  définition le réalise (`saborde` ou une destruction sur `self`).
 
 ## Structure de tour
 

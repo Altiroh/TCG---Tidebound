@@ -40,6 +40,9 @@ export function toPlayerView(state: GameState, viewerId: PlayerId): GameState {
   for (const player of state.players) {
     if (player.id === viewerId) continue;
     for (const unit of player.board) {
+      // Une Structure RÉVÉLÉE par une Réaction cachée reste connue, même si
+      // la Marée la remasque ensuite : on ne désapprend pas ce qu'on a vu.
+      if (unit.revealed) continue;
       if (!isVisibleDuringTide(getCardDefinition(unit.cardId), state.environment.tideState)) {
         hiddenBoardIds.add(unit.instanceId);
       }

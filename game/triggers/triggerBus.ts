@@ -29,6 +29,29 @@ function isInactive(state: GameState, unit: CardInstance): boolean {
 }
 
 /**
+ * Déclencheurs de DÉPART, plus la révélation elle-même : partir ou se
+ * découvrir n'est pas « agir », donc le masquage ne les bloque pas.
+ */
+const TRIGGERS_HORS_MASQUAGE = new Set(["onDeath", "onSaborde", "onExpire", "onTideStateExited", "onBecomeVisible"]);
+
+/**
+ * Une carte MASQUÉE par la Marée est inactive : ses capacités ne se
+ * déclenchent pas (grammaire des Structures, 21/09/2026).
+ *
+ * Avant cette règle, le masquage ne bloquait rien — il fallait que chaque
+ * capacité déclare `condition: { selfVisible: true }` ou que chacun de ses
+ * effets porte `conditionSelfVisible`. Le catalogue le faisait bien, mais
+ * par discipline : rien n'empêchait une nouvelle carte d'agir masquée sans
+ * que personne ne le remarque. La règle est désormais tenue par le moteur,
+ * et l'exception doit se déclarer — `hiddenReaction`.
+ */
+function blocqueParMasquage(state: GameState, unit: CardInstance, ability: TriggeredAbility): boolean {
+  if (ability.hiddenReaction) return false;
+  if (TRIGGERS_HORS_MASQUAGE.has(ability.trigger)) return false;
+  return !isVisibleDuringTide(getCardDefinition(unit.cardId), state.environment.tideState);
+}
+
+/**
  * Ordre de résolution des déclenchements automatiques simultanés (cadrage
  * "Mécaniques verrouillées", règle verrouillée) : les effets automatiques
  * du joueur actif se résolvent avant ceux de l'adversaire, puis par ordre
@@ -156,6 +179,7 @@ function collectObserverWork(
       const def = getCardDefinition(holder.cardId);
       (def.abilities ?? []).forEach((ability, abilityIndex) => {
         if (ability.trigger !== event.trigger || (ability.mode ?? "auto") !== mode) return;
+        if (blocqueParMasquage(state, holder, ability)) return;
         if (!ability.triggeredBy || !matchesTideCondition(state, ability)) return;
         if (!matchesTriggerSource(ability.triggeredBy, event, holder, player.id)) return;
         // "La première fois à chaque tour" : la capacité disparaît des
@@ -229,6 +253,7 @@ function collectTriggeredWork(
       const def = getCardDefinition(unit.cardId);
       (def.abilities ?? []).forEach((ability, abilityIndex) => {
         if (ability.trigger !== event.trigger || !matchesMode(ability)) return;
+        if (blocqueParMasquage(state, unit, ability)) return;
         result.push(work(ability, abilityIndex, def.id, player.id, unit.instanceId, turnNumber));
       });
     }
@@ -242,6 +267,7 @@ function collectTriggeredWork(
         const def = getCardDefinition(unit.cardId);
         (def.abilities ?? []).forEach((ability, abilityIndex) => {
           if (ability.trigger !== "onCardPlayed" || !matchesMode(ability)) return;
+          if (blocqueParMasquage(state, unit, ability)) return;
           result.push(work(ability, abilityIndex, def.id, player.id, unit.instanceId, turnNumber));
         });
       }
@@ -255,6 +281,7 @@ function collectTriggeredWork(
         const def = getCardDefinition(unit.cardId);
         (def.abilities ?? []).forEach((ability, abilityIndex) => {
           if (ability.trigger !== event.trigger || !matchesMode(ability)) return;
+          if (blocqueParMasquage(state, unit, ability)) return;
           if (ability.condition?.tideState && ability.condition.tideState !== event.tideState) return;
           result.push(work(ability, abilityIndex, def.id, player.id, unit.instanceId, turnNumber));
         });
@@ -272,6 +299,7 @@ function collectTriggeredWork(
       const def = getCardDefinition(unit.cardId);
       (def.abilities ?? []).forEach((ability, abilityIndex) => {
         if (ability.trigger !== event.trigger || !matchesMode(ability) || ability.triggeredBy) return;
+        if (blocqueParMasquage(state, unit, ability)) return;
         // "La première fois à chaque tour" : même garde que pour les
         // observateurs. Indispensable en mode "optional", où le marquage
         // n'a lieu qu'à l'activation (`resolveReaction`) et non au
