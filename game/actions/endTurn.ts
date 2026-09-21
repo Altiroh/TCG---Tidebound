@@ -1,4 +1,4 @@
-import { applyTideTurnEffects, resolveTideTurnStep } from "@/game/environment/resolveEnvironment";
+import { annoncerMaree, applyTideTurnEffects, appliquerMareeAnnoncee } from "@/game/environment/resolveEnvironment";
 import { getShipDefinition } from "@/game/environment/shipData";
 import { deraisonAnchorDamage, deraisonDebt, reasonCeiling, startingReasonCap } from "@/game/state/reason";
 import type { GameEvent } from "@/game/events/types";
@@ -7,6 +7,8 @@ import { discardFromHand, pruneGraveyardArrivals } from "@/game/state/discard";
 import { RULES } from "@/game/rules/constants";
 import { assertGameActive, assertIsActivePlayer, assertPlayerInGame, combine } from "@/game/rules/validation";
 import { findAnomalyForcedChoice } from "@/game/state/anomalies";
+import { ouvrirFenetrePour } from "@/game/reactions/reactionWindow";
+import type { TriggerEvent } from "@/game/triggers/types";
 import { getOpponent, STATUS_NO_REASON_GAIN, type GameState, type PlayerState } from "@/game/state/types";
 import type { ActionResult, EndTurnAction } from "@/game/actions/types";
 
@@ -162,12 +164,95 @@ export function endTurn(state: GameState, action: EndTurnAction): ActionResult {
     phase: "mainPhase",
   };
 
-  // --- 1. Vérification de la Marée (décompte, progression, orientation, dégâts) ---
-  const tideStep = resolveTideTurnStep(nextState, newTurnNumber);
-  nextState = tideStep.state;
-  events.push(...tideStep.events);
+  // --- 1. ANNONCE de la Marée (décompte, progression, orientation, Anomalies) ---
+  // L'état est committé, ses effets de TOUR ne sont pas encore appliqués :
+  // entre les deux, la fenêtre `onTideAnnounced` (Ancre de Dérive).
+  const annonce = annoncerMaree(nextState, newTurnNumber);
+  nextState = annonce.state;
+  events.push(...annonce.events);
 
-  // --- 2. Effets différés : non modélisés pour le MVP, étape ignorée -----
+  // La Marée en attente est posée AVANT la fenêtre : c'est elle que
+  // l'effet `deferTideEffects` vient marquer, et c'est elle qui dit à
+  // `dispatch` que l'entame n'est pas finie.
+  nextState = {
+    ...nextState,
+    pendingTideStep: {
+      playerId: nextPlayer.id,
+      turnNumber: newTurnNumber,
+      previousTideState: annonce.annonce.previousTideState,
+      tideState: annonce.annonce.tideState,
+      intensity: annonce.annonce.intensity,
+      stateChanged: annonce.annonce.stateChanged,
+    },
+  };
+
+  if (annonce.annonce.stateChanged) {
+    // Même geste qu'à la déclaration d'une attaque : les capacités
+    // AUTOMATIQUES d'abord (il n'y en a aucune à ce jour, mais la grammaire
+    // les autorise), puis les facultatives, seules à pouvoir suspendre.
+    const evenementDeclencheur: TriggerEvent = { trigger: "onTideAnnounced", tideState: annonce.annonce.tideState };
+    const annonceTrigger = processTrigger(nextState, evenementDeclencheur, newTurnNumber);
+    nextState = annonceTrigger.state;
+    events.push(...annonceTrigger.events);
+
+    // La fenêtre doit s'ouvrir ICI et pas à la fin de `dispatch` : ce qui
+    // la suit — les effets de la Marée — ne doit pas avoir déjà eu lieu
+    // quand le joueur répond.
+    const fenetre = ouvrirFenetrePour(nextState, [evenementDeclencheur], newTurnNumber);
+    if (fenetre) {
+      // L'entame s'arrête ici. Ni Raison, ni pioche, ni `TURN_STARTED` tant
+      // que le joueur n'a pas répondu — `dispatch` reprend `entameDeTour`
+      // dès que la fenêtre se referme, comme pour une attaque suspendue.
+      events.push({
+        type: "REACTION_WINDOW_OPENED",
+        turnNumber: newTurnNumber,
+        timestamp: Date.now(),
+        playerId: fenetre.awaitingPlayerId,
+      });
+      return { ok: true, state: { ...nextState, pendingReaction: fenetre }, events };
+    }
+  }
+
+  return entameDeTour(nextState, events);
+}
+
+/**
+ * Seconde moitié de la fin de tour : l'ENTAME du tour suivant, à partir
+ * d'une Marée déjà annoncée (`GameState.pendingTideStep`).
+ *
+ * Séparée de `endTurn` pour être REPRENABLE : la fenêtre `onTideAnnounced`
+ * s'intercale entre l'annonce de la Marée et ses effets, et tout ce qui
+ * suit — effets de tour de la Marée, expirations, récupération de Raison,
+ * pioche, dégel, `TURN_STARTED` — doit attendre la réponse du joueur.
+ * L'ordre, lui, est INCHANGÉ : la Marée frappe toujours avant la
+ * récupération de Raison, jamais après.
+ *
+ * Appelée par `endTurn` quand aucune fenêtre ne s'ouvre, et par `dispatch`
+ * quand celle-ci se referme.
+ */
+export function entameDeTour(state: GameState, eventsAvant: GameEvent[] = []): ActionResult {
+  const pending = state.pendingTideStep;
+  if (!pending) return { ok: false, error: "Aucune entame de tour en attente." };
+
+  const events: GameEvent[] = [...eventsAvant];
+  const newTurnNumber = pending.turnNumber;
+  const newBase = { turnNumber: newTurnNumber, timestamp: Date.now() };
+  const nextPlayer = state.players.find((p) => p.id === pending.playerId)!;
+
+  // --- 2. Effets de la Marée annoncée, reportés ou non selon la fenêtre --
+  const applique = appliquerMareeAnnoncee(
+    { ...state, pendingTideStep: undefined },
+    newTurnNumber,
+    {
+      previousTideState: pending.previousTideState,
+      tideState: pending.tideState,
+      intensity: pending.intensity,
+      stateChanged: pending.stateChanged,
+    },
+    Boolean(pending.deferred)
+  );
+  let nextState = applique.state;
+  events.push(...applique.events);
 
   // --- 3-4. Récupération naturelle, absorption de la dette SUBIE, pioche ---
   const playerBeforeUpkeep = nextState.players.find((p) => p.id === nextPlayer.id)!;

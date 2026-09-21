@@ -42,10 +42,12 @@ type RuleId =
  * Écarts assumés, avec leur motif. La clé est `${cardId}:${rule}`.
  * Un motif vide fait échouer le test : on documente, on ne contourne pas.
  */
-const EXCEPTIONS: Record<string, string> = {
-  "ancre-de-derive:optional":
-    "Sabordage et report résolus d'office au changement de Marée (décision du 16/09/2026) : la carte n'a pas d'autre usage.",
-};
+//
+// VIDE depuis le 21/09/2026 : la seule exception qui restait — l'Ancre de
+// Dérive, Sabordée d'office au changement de Marée — a disparu avec la
+// fenêtre `onTideAnnounced`. Chaque « vous pouvez » du catalogue est
+// désormais un vrai choix du joueur.
+const EXCEPTIONS: Record<string, string> = {};
 
 interface Violation {
   cardId: string;

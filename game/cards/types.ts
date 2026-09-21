@@ -440,15 +440,6 @@ export interface CardDefinition {
   taxOpponentObjectBreakOncePerTurnWhileVisible?: { amount: number; blocksIfUnpayable?: boolean };
 
   /**
-   * Ancre de Dérive : quand la Marée change d'état et que la carte est
-   * visible dans le NOUVEL état, elle est Sabordée et les effets de tour de
-   * cette Marée (dégâts d'Ancrage/Raison, choc des Abysses, maladie de la
-   * Houle) sont reportés à la fin du tour en cours
-   * (`EnvironmentState.deferredTideEffects`, appliqués par `endTurn`).
-   */
-  defersTideEffectsOnChangeWhileVisible?: boolean;
-
-  /**
    * Pour un Équipement uniquement : CONTRE-INDICATION à la règle générale
    * « un Équipement suit son porteur au cimetière ». Par défaut, quand le
    * permanent équipé quitte le plateau (destruction, Sabordage,

@@ -269,6 +269,24 @@ plateau est limité par `Navire.slotCount`, pas seulement pour les unités.
   de Navire) : ce sont des réductions pures, jamais un désavantage, donc
   rien à décider. Seul ce qui COÛTE quelque chose — une carte qui se
   détruit, se Saborde, ou se révèle — mérite une fenêtre.
+- **Fenêtre d'annonce de Marée** (`onTideAnnounced`, 21/09/2026) : même
+  geste à l'autre bout du tour. L'étape de Marée est coupée en deux —
+  l'**annonce** (décompte, progression, orientation, Anomalies de
+  changement) puis l'**application** (dégâts de Tempête, choc des Abysses,
+  maladie de la Houle) — et la fenêtre s'intercale entre les deux. L'état
+  porte `pendingTideStep` ; l'entame du tour est suspendue en entier : ni
+  Raison, ni pioche, ni `TURN_STARTED` tant que le joueur n'a pas répondu.
+
+  L'effet `deferTideEffects` (Ancre de Dérive) repousse à la **fin du tour
+  en cours** les seuls effets de TOUR de cette Marée. L'état, lui, a bel et
+  bien changé : les capacités `onTideStateEntered` se déclenchent à
+  l'heure, et les Structures changent de visibilité comme prévu. La Marée
+  n'est pas retenue — c'est sa gifle qui arrive en retard.
+
+  Comme toute fenêtre, elle est refusable : passer garde l'Ancre en jeu et
+  laisse la Marée frapper tout de suite. Avant cette passe, le Sabordage et
+  le report étaient appliqués d'office dès que la carte était en jeu et
+  visible — le moteur décidait à la place du joueur.
 
 ## Structure de tour
 
@@ -284,11 +302,16 @@ Déraison (dette sous 0 → dégâts d'Ancrage, Raison remise à 0).
 
 1. Vérification des Eaux (tirage de nouvelles Eaux si leur durée est
    épuisée — jamais une carte de deck, toujours tiré par le moteur).
-2. Vérification de la Marée : décompte de la durée restante, progression
+2. **Annonce** de la Marée : décompte de la durée restante, progression
    éventuelle vers l'état suivant (`Calme → Houle → Tempête → Abysses →
-   Calme`), puis application des malus de l'état courant — voir "Malus
-   globaux des Marées" ci-dessous.
-3. Effets différés — non modélisés pour le MVP, étape ignorée.
+   Calme`), orientation, Anomalies de changement. Sur un changement
+   d'état, la fenêtre `onTideAnnounced` s'ouvre ici (voir "Fenêtre
+   d'annonce de Marée") et **suspend tout ce qui suit**.
+3. **Application** de la Marée : malus de l'état courant — voir "Malus
+   globaux des Marées" ci-dessous —, capacités d'entrée/sortie d'état,
+   expiration des permanents à durée limitée, Structures qui deviennent
+   visibles. Une Ancre de Dérive activée à l'étape 2 repousse les seuls
+   malus à la fin du tour en cours (`deferredTideEffects`).
 4. Récupération naturelle : **+2 Raison**, bornée par le plafond de début
    de partie, et **amputée d'une dette subie** éventuelle (qui est alors
    effacée). La Raison persiste, elle n'est jamais remise à niveau.

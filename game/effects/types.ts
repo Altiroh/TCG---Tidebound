@@ -104,6 +104,19 @@ export type EffectType =
   /** Force une transition IMMÉDIATE d'un état vers Calme (jamais via le décompte normal). */
   | "tideForceRetreat"
   | "ignoreNextTideDamage"
+  /**
+   * Reporte à la FIN DU TOUR EN COURS les effets de la Marée qui vient
+   * d'être annoncée (Ancre de Dérive). N'a de sens que dans une capacité
+   * `onTideAnnounced` : hors de cette fenêtre il n'y a pas de Marée en
+   * attente, et l'effet est silencieusement sans objet.
+   *
+   * Ce qui est reporté, ce sont les effets de TOUR de la Marée — dégâts de
+   * Tempête, choc d'entrée/sortie des Abysses, maladie de la Houle — pas
+   * l'état lui-même : la Marée a bien changé, et les capacités
+   * `onTideStateEntered` se déclenchent à l'heure. Le report se règle dans
+   * `endTurn` via `EnvironmentState.deferredTideEffects`.
+   */
+  | "deferTideEffects"
   // --- Lecture de main (purement informatif, cf. `HandCardRevealedEvent`) -
   /** Révèle `amount` cartes aléatoires DISTINCTES de la main de la cible — aucun autre effet sur l'état (ex: Guetteur de Brume, La Bouée qui Regardait). */
   | "revealRandomHandCards"

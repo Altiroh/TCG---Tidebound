@@ -403,9 +403,29 @@ export const CORE_SET: CardDefinition[] = [
     text:
       "Durée : 3 tours. Visible pendant Houle et Tempête. Lorsqu'une nouvelle Marée est annoncée, vous pouvez " +
       "Saborder cette carte : les effets de cette Marée ne s'appliquent qu'à la fin du tour en cours.",
-    // Résolu automatiquement au changement d'état (Sabordage + report), tant
-    // qu'elle est visible dans la nouvelle Marée — cf. `resolveTideTurnStep`.
-    defersTideEffectsOnChangeWhileVisible: true,
+    abilities: [
+      {
+        // « Vous pouvez » : fenêtre COMPLÈTE à l'annonce (arbitrage du
+        // 21/09/2026). Jusqu'ici le report était appliqué d'office dès que
+        // la carte était en jeu et visible — le moteur décidait à la place
+        // du joueur, et Saborder son Ancre pour rien lui était imposé.
+        //
+        // Pas de `condition: { selfVisible: true }` : le masquage est tenu
+        // par le moteur (`blocqueParMasquage`), et à l'annonce la Marée
+        // courante est DÉJÀ la nouvelle — la carte doit donc être visible
+        // dans l'état annoncé, ce que son texte dit.
+        trigger: "onTideAnnounced",
+        mode: "optional",
+        description:
+          "Sabordez l'Ancre de Dérive : les effets de la Marée qui vient d'être annoncée attendent la fin du tour en cours.",
+        // Le Sabordage est le COÛT, et il vient en premier : `deferTideEffects`
+        // ne touche pas au plateau, l'ordre n'a donc rien à rattraper.
+        effects: [
+          { type: "saborde", target: { kind: "self" } },
+          { type: "deferTideEffects", target: { kind: "self" } },
+        ],
+      },
+    ],
   },
   {
     id: "marin-aux-yeux-rouges",

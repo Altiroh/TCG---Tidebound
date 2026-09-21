@@ -230,6 +230,18 @@ export interface GameState {
    */
   pendingAttack?: PendingAttack;
 
+  /**
+   * Entame de tour suspendue à l'ANNONCE de la Marée (Ancre de Dérive,
+   * 21/09/2026). La nouvelle Marée est committée et annoncée, mais ses
+   * effets de tour ne sont pas encore appliqués : la fenêtre
+   * `onTideAnnounced` est ouverte et le joueur décide.
+   *
+   * Tant qu'il est posé, l'entame n'est pas finie — ni récupération de
+   * Raison, ni pioche, ni `TURN_STARTED`. `dispatch` la reprend dès que la
+   * fenêtre se referme, exactement comme une attaque suspendue.
+   */
+  pendingTideStep?: PendingTideStep;
+
   status: "active" | "finished";
   winnerId?: PlayerId;
 }
@@ -241,6 +253,29 @@ export interface GameState {
  * branches différentes élargirait ce type plutôt que de le généraliser
  * prématurément à des effets arbitraires.
  */
+/**
+ * Entame de tour suspendue le temps de la fenêtre `onTideAnnounced`.
+ *
+ * Porte tout ce qu'il faut pour reprendre : de QUI c'est le tour, et la
+ * Marée annoncée, dont les effets n'ont pas encore été appliqués. Le seul
+ * champ que la fenêtre peut changer est `deferred` — l'effet générique
+ * `deferTideEffects` le lève, et l'entame reportera alors ces effets à la
+ * fin du tour au lieu de les appliquer tout de suite.
+ */
+export interface PendingTideStep {
+  /** Joueur dont le tour commence : celui pour qui l'entame doit reprendre. */
+  playerId: PlayerId;
+  turnNumber: number;
+  /** État quitté, pour les effets d'entrée/sortie que l'application doit encore jouer. */
+  previousTideState: import("@/game/environment/types").TideStateName;
+  tideState: import("@/game/environment/types").TideStateName;
+  intensity: number;
+  /** La Marée vient-elle de CHANGER d'état, ou ne fait-elle que décompter ? */
+  stateChanged: boolean;
+  /** Levé par `deferTideEffects` : les effets de cette Marée attendront la fin du tour. */
+  deferred?: boolean;
+}
+
 /**
  * Attaque suspendue pendant sa fenêtre d'interception. Porte l'action
  * telle qu'elle a été déclarée, pour la rejouer à l'identique.

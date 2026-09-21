@@ -183,17 +183,54 @@ describe("Cloche d'Alerte — taxe sur le Bris adverse", () => {
 });
 
 describe("Ancre de Dérive — report des effets de Marée", () => {
-  it("au changement de Marée, se Saborde et reporte les dégâts de la nouvelle Marée à la fin du tour en cours", () => {
+  /**
+   * Houle → Tempête à la fin du tour de p1. p2 joue L'Errant, sans
+   * résistance à la Tempête : 1 dégât d'Ancrage par tour.
+   */
+  function changementVersTempete(avecAncre: boolean) {
     const ancre = instance("ancre-de-derive", "p1"); // visible en Houle et Tempête
-    const state = testGameState({
-      turnNumber: 2,
-      environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 1, tideOrientation: "montante" }),
-      // p2 : L'Errant, sans résistance à la Tempête (1 dégât par tour).
-      players: [testPlayer("p1", { board: [ancre], deck: filler("p1") }), testPlayer("p2", { shipId: "lerrant", deck: filler("p2"), anchor: 20 })],
-    });
-    const entered = dispatch(state, { type: "endTurn", playerId: "p1" });
+    return {
+      ancre,
+      state: testGameState({
+        turnNumber: 2,
+        environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 1, tideOrientation: "montante" }),
+        players: [
+          testPlayer("p1", { board: avecAncre ? [ancre] : [], deck: filler("p1") }),
+          testPlayer("p2", { shipId: "lerrant", deck: filler("p2"), anchor: 20 }),
+        ],
+      }),
+    };
+  }
+
+  it("l'annonce SUSPEND l'entame du tour : ni Raison, ni pioche, ni dégâts tant que le joueur n'a pas répondu", () => {
+    // Arbitrage du 21/09/2026 : fenêtre COMPLÈTE. Avant cette passe, le
+    // Sabordage et le report étaient appliqués d'office — le moteur
+    // décidait à la place du joueur.
+    const { state } = changementVersTempete(true);
+    const mainAvant = player(state, "p2").hand.length;
+
+    const annonce = dispatch(state, { type: "endTurn", playerId: "p1" });
+    ok(annonce);
+    // La Marée a bien changé : c'est l'ANNONCE, pas une attente.
+    expect(annonce.state.environment.tideState).toBe("tempete");
+    expect(annonce.state.pendingReaction?.awaitingPlayerId).toBe("p1");
+    expect(annonce.state.pendingTideStep?.tideState).toBe("tempete");
+    // Rien de l'entame n'a eu lieu.
+    expect(player(annonce.state, "p2").anchor).toBe(20);
+    expect(player(annonce.state, "p2").hand).toHaveLength(mainAvant);
+    expect(annonce.events.some((e) => e.type === "TURN_STARTED")).toBe(false);
+  });
+
+  it("activer la fenêtre Saborde l'Ancre et reporte les effets à la fin du tour en cours", () => {
+    const { ancre, state } = changementVersTempete(true);
+    const annonce = dispatch(state, { type: "endTurn", playerId: "p1" });
+    ok(annonce);
+
+    const entered = activateReactionFor(annonce.state, "ancre-de-derive");
     ok(entered);
-    expect(entered.state.environment.tideState).toBe("tempete");
+    // La fenêtre refermée, l'entame a repris toute seule.
+    expect(entered.state.pendingTideStep).toBeUndefined();
+    expect(entered.events.some((e) => e.type === "TURN_STARTED")).toBe(true);
     expect(player(entered.state, "p2").anchor).toBe(20); // reporté
     expect(entered.state.environment.deferredTideEffects?.tideState).toBe("tempete");
     expect(board(entered.state, "p1")).toHaveLength(0);
@@ -209,14 +246,46 @@ describe("Ancre de Dérive — report des effets de Marée", () => {
     expect(ended.events.filter((e) => e.type === "DAMAGE" && e.targetPlayerId === "p2")).toHaveLength(2);
   });
 
-  it("sans Ancre, les dégâts de la nouvelle Marée s'appliquent immédiatement", () => {
+  it("passer la fenêtre garde l'Ancre et laisse la Marée frapper tout de suite", () => {
+    // Le joueur peut toujours refuser : une Ancre gardée pour un
+    // changement plus dur vaut mieux qu'une Ancre dépensée sur 1 dégât.
+    const { ancre, state } = changementVersTempete(true);
+    const annonce = dispatch(state, { type: "endTurn", playerId: "p1" });
+    ok(annonce);
+
+    const passe = dispatch(annonce.state, { type: "passReaction", playerId: "p1" });
+    ok(passe);
+    expect(passe.state.pendingTideStep).toBeUndefined();
+    expect(passe.state.environment.deferredTideEffects).toBeUndefined();
+    expect(player(passe.state, "p2").anchor).toBe(19); // la Tempête a frappé
+    expect(board(passe.state, "p1").some((u) => u.instanceId === ancre.instanceId)).toBe(true);
+    expect(passe.events.some((e) => e.type === "TURN_STARTED")).toBe(true);
+  });
+
+  it("masquée par la Marée annoncée, elle ne propose rien", () => {
+    // L'Ancre est visible en Houle et Tempête : une annonce d'Abysses la
+    // masque, et une carte masquée est inactive (grammaire des Structures).
+    const ancre = instance("ancre-de-derive", "p1");
     const state = testGameState({
       turnNumber: 2,
-      environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 1, tideOrientation: "montante" }),
-      players: [testPlayer("p1", { deck: filler("p1") }), testPlayer("p2", { shipId: "lerrant", deck: filler("p2"), anchor: 20 })],
+      environment: testEnvironment({ tideState: "tempete", tideRemainingTurns: 1, tideOrientation: "montante" }),
+      players: [
+        testPlayer("p1", { board: [ancre], deck: filler("p1") }),
+        testPlayer("p2", { shipId: "lerrant", deck: filler("p2"), anchor: 20 }),
+      ],
     });
+    const annonce = dispatch(state, { type: "endTurn", playerId: "p1" });
+    ok(annonce);
+    expect(annonce.state.environment.tideState).toBe("abysses");
+    expect(annonce.state.pendingReaction).toBeUndefined();
+    expect(board(annonce.state, "p1").some((u) => u.instanceId === ancre.instanceId)).toBe(true);
+  });
+
+  it("sans Ancre, les dégâts de la nouvelle Marée s'appliquent immédiatement", () => {
+    const { state } = changementVersTempete(false);
     const entered = dispatch(state, { type: "endTurn", playerId: "p1" });
     ok(entered);
+    expect(entered.state.pendingReaction).toBeUndefined();
     expect(player(entered.state, "p2").anchor).toBe(19);
   });
 });

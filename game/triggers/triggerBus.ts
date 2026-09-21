@@ -326,7 +326,7 @@ function collectTriggeredWork(
     return result;
   }
 
-  if (event.trigger === "onTideStateEntered" || event.trigger === "onTideStateExited") {
+  if (event.trigger === "onTideStateEntered" || event.trigger === "onTideStateExited" || event.trigger === "onTideAnnounced") {
     for (const player of playersActiveFirst(state)) {
       for (const unit of player.board) {
         const def = getCardDefinition(unit.cardId);

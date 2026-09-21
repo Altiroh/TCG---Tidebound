@@ -775,6 +775,13 @@ export function resolveEffect(
       return { state: nextState, events };
     }
 
+    case "deferTideEffects": {
+      // Hors fenêtre `onTideAnnounced`, aucune Marée n'attend : sans objet
+      // plutôt qu'une erreur, comme les autres effets de fenêtre.
+      if (!state.pendingTideStep) return { state, events };
+      return { state: { ...state, pendingTideStep: { ...state.pendingTideStep, deferred: true } }, events };
+    }
+
     case "cancelIncomingAttack": {
       // Hors fenêtre d'interception, il n'y a rien à annuler — l'effet est
       // silencieusement sans objet plutôt qu'une erreur : une carte mal
