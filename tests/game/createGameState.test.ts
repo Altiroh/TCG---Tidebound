@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { getShipDefinition } from "@/game/environment/shipData";
 import { createGameState } from "@/game/state/createGameState";
 import { DECK_LE_BANC_DEBORDE, DECK_BEC_DANS_LA_BRUME } from "@/game/cards/decks/borrowed";
 import { RULES } from "@/game/rules/constants";
@@ -22,12 +23,14 @@ describe("createGameState", () => {
   it("installe l'Ancrage et la Raison max depuis le Navire choisi par chaque deck, mais démarre au plafond de 15 % (arrondi au supérieur)", () => {
     const state = newTestGame();
     expect(state.players[0].shipId).toBe("le-brise-lames");
-    expect(state.players[0].anchor).toBe(24);
+    // L'Ancrage est LU sur le Navire : ce test vérifie le câblage, pas la
+    // valeur, qui bouge au gré de l'équilibrage du rythme.
+    expect(state.players[0].anchor).toBe(getShipDefinition("le-brise-lames").startingAnchor);
     expect(state.players[0].reasonMax).toBe(8);
     expect(state.players[0].reason).toBe(2);
     expect(state.players[0].reasonCap).toBe(2);
     expect(state.players[1].shipId).toBe("le-courlis");
-    expect(state.players[1].anchor).toBe(17);
+    expect(state.players[1].anchor).toBe(getShipDefinition("le-courlis").startingAnchor);
     expect(state.players[1].reasonMax).toBe(12);
     expect(state.players[1].reason).toBe(2);
     expect(state.players[1].reasonCap).toBe(2);

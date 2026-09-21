@@ -376,6 +376,14 @@ le tour suivant recommence systématiquement en Phase principale.
   l'Ancrage de départ, la Raison max, le nombre d'emplacements (4 léger,
   5 standard, ou 6 lourd — vraie caractéristique d'équilibrage), et des
   résistances/faiblesses face à la Marée (Ancrage et Raison).
+
+  L'**Ancrage de départ** est le levier de RYTHME de la partie : une partie
+  dure le temps que met le débit de dégâts à vider cette réserve. Porté de
+  17/20/24 à **26/30/36** le 21/09/2026 (+50 %), ce qui fait passer la durée
+  moyenne de 5,8 à ~10 tours par joueur. Six leviers ont été mesurés sur un
+  tournoi complet ; celui-ci écrase les autres, parce que les attaques font
+  53 % des dégâts et que rien d'autre ne les ralentit. Valeur NON
+  VERROUILLÉE et divergente de Notion, qui porte encore 17/20/24.
 - **Eaux actuelles** (`game/environment/waterData.ts`) : la région
   traversée, commune aux deux joueurs, tirée automatiquement par le
   moteur (`WATER_POOL`) et jamais choisie par un joueur. Modifie le coût
