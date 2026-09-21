@@ -47,52 +47,112 @@
 .sideInner {
   position: relative;
   /* Ratio de `side-panel.webp` (652 × 1100) : la plus grande enseigne qui tienne. */
-  width: min(100cqw, 59.3cqh);
+  /* Largeur de l'enseigne, en unités du conteneur `.side` : les marges
+     s'y rapportent (un % se calculerait sur la largeur de `.side`, plus
+     large que l'enseigne quand c'est la hauteur qui la limite). */
+  --panel-w: min(100cqw, 59.3cqh);
+  width: var(--panel-w);
   aspect-ratio: 652 / 1100;
   background: url("/assets/market/side-panel.webp") center / contain no-repeat;
   filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.6));
-  /* Le contenu se pose sur les planches, entre les montants. */
-  padding: 13% 24% 14% 20%;
+  /*
+   * Le contenu se pose sur les PLANCHES, mesurées dans l'image : de 20,7 %
+   * à 75,9 % de la largeur, de 12,7 % à 87 % de la hauteur. La hauteur
+   * valant 1,687 largeur, les planches commencent à 21,4 % de la largeur
+   * sous le haut et finissent à 21,9 % au-dessus du bas.
+   *
+   * ATTENTION : à l'intérieur, `cqw` se rapporte à la largeur UTILE (sans
+   * ces marges), soit 51 % de la largeur de l'enseigne.
+   */
+  padding:
+    calc(var(--panel-w) * 0.24)
+    calc(var(--panel-w) * 0.26)
+    calc(var(--panel-w) * 0.235)
+    calc(var(--panel-w) * 0.23);
   display: flex;
   flex-direction: column;
   gap: 4%;
   container-type: inline-size;
+  /* Tournée vers la scène, pas plaquée sur l'écran. */
+  transform: perspective(1400px) rotateY(7deg);
+  transform-origin: 0 50%;
 }
 
+/* La lanterne éclaire les planches : une lumière chaude en haut à droite,
+   de l'ombre vers le bas. Découpée sur la silhouette de l'enseigne. */
+.sideInner::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 55% 38% at 82% 27%, rgba(255, 176, 84, 0.2), transparent 70%),
+    linear-gradient(180deg, transparent 55%, rgba(0, 0, 0, 0.3) 100%);
+  -webkit-mask: url("/assets/market/side-panel.webp") center / contain no-repeat;
+  mask: url("/assets/market/side-panel.webp") center / contain no-repeat;
+}
+
+.sideInner > * {
+  position: relative;
+}
+
+/* « Market », en lettres de laiton sur la poutre du haut : de 5,5 à 12,7 %
+   de la hauteur de l'image (en % du bloc, donc de sa hauteur). */
 .sideTitle {
-  margin: 0 0 2%;
+  position: absolute;
+  top: 5.6%;
+  left: 23%;
+  right: 23%;
+  height: 7%;
+  display: grid;
+  place-items: center;
+  margin: 0;
   font-family: var(--cb-font-display);
-  font-size: clamp(22px, 15cqw, 46px);
+  font-size: clamp(15px, 17cqw, 36px);
   font-weight: 700;
-  letter-spacing: 0.04em;
-  text-align: center;
-  color: #f1e6cc;
-  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.7), 0 0 18px rgba(0, 0, 0, 0.6);
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #d9ad5f;
+  background: linear-gradient(180deg, #fbe6b0 0%, #d9ad5f 48%, #8f6427 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.9)) drop-shadow(0 0 6px rgba(255, 180, 90, 0.25));
 }
 
 .sections {
   display: flex;
   flex-direction: column;
-  gap: 3cqw;
+  gap: 2cqw;
 }
 
+/*
+ * Un rayon : des lettres PEINTES sur la planche, pas un bouton posé
+ * dessus. Le relief vient de l'ombre portée du texte — sombre au-dessus,
+ * un reflet chaud en dessous : la peinture est entrée dans le bois.
+ */
 .section {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 6cqw;
+  gap: 4cqw;
   width: 100%;
-  padding: 5cqw 5cqw;
-  border: 1px solid rgba(233, 226, 209, 0.08);
-  border-radius: 6px;
-  background: rgba(8, 6, 4, 0.35);
-  color: #e6dcc6;
+  min-height: 23cqw;
+  padding: 3cqw 3.5cqw;
+  border: none;
+  border-radius: 3px;
+  background: none;
+  color: #e6d7b5;
   font: inherit;
   font-family: var(--cb-font-display);
-  font-size: clamp(11px, 8cqw, 18px);
+  font-size: clamp(10px, 9.4cqw, 20px);
+  line-height: 1.05;
+  letter-spacing: 0.02em;
   text-align: left;
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.85), 0 1px 0 rgba(255, 214, 150, 0.16);
   cursor: pointer;
-  transition: background-color 160ms ease-out, border-color 160ms ease-out;
+  transition: color 160ms ease-out, background-color 160ms ease-out, transform 180ms ease-out;
 }
 
 /* Un rayon est un lien : il ne doit pas se lire comme du texte souligné. */
@@ -100,26 +160,66 @@ a.section {
   text-decoration: none;
 }
 
-.section:disabled {
-  cursor: default;
-  color: rgba(230, 220, 198, 0.6);
-  opacity: 0.6;
+/* Survol : la lumière de la lanterne se pose sur la planche. */
+.section:hover:not(:disabled):not([data-active="true"]) {
+  color: #fbe7b8;
+  background: radial-gradient(ellipse 70% 90% at 45% 50%, rgba(255, 178, 92, 0.16), transparent 75%);
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.85), 0 0 10px rgba(255, 190, 110, 0.45);
 }
 
+.section:focus-visible {
+  outline: 2px solid var(--cb-cyan, #58c8d8);
+  outline-offset: 2px;
+}
+
+/* Pas encore ouvert : de la peinture passée, et le dire en toutes lettres. */
+.section:disabled {
+  cursor: default;
+  color: rgba(214, 200, 170, 0.4);
+}
+
+.section:disabled .sectionIcon {
+  opacity: 0.45;
+}
+
+.section:disabled .sectionLabel::after {
+  content: "Bientôt";
+  content: "Bientôt" / "";
+  display: block;
+  margin-top: 1.2cqw;
+  font-family: var(--font-ui, inherit);
+  font-size: clamp(8px, 5.4cqw, 11px);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(229, 207, 158, 0.55);
+}
+
+/*
+ * Le rayon ouvert : une plaque de laiton rivetée, accrochée un peu de
+ * travers. Lettres gravées dans le métal (sombres, reflet clair dessous).
+ */
 .section[data-active="true"] {
-  border-color: rgba(150, 200, 225, 0.6);
-  background: linear-gradient(180deg, rgba(76, 112, 132, 0.85), rgba(40, 66, 82, 0.9));
-  color: #f4f9fb;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 0 14px rgba(88, 200, 216, 0.25);
+  color: #2e1c07;
+  text-shadow: 0 1px 0 rgba(255, 238, 196, 0.55);
+  background:
+    radial-gradient(circle at 2.8cqw 50%, #f6dca2 0 1cqw, #4d300e 1.5cqw, transparent 1.9cqw),
+    radial-gradient(circle at calc(100% - 2.8cqw) 50%, #f6dca2 0 1cqw, #4d300e 1.5cqw, transparent 1.9cqw),
+    linear-gradient(180deg, #e3bb70 0%, #bf8f45 46%, #93672b 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 240, 200, 0.65),
+    inset 0 -2px 0 rgba(70, 42, 12, 0.55),
+    0 3px 6px rgba(0, 0, 0, 0.6);
+  transform: rotate(-1.2deg);
 }
 
 .sectionIcon {
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  width: clamp(18px, 13cqw, 30px);
-  height: clamp(18px, 13cqw, 30px);
-  color: #d9c79e;
+  width: clamp(13px, 12cqw, 26px);
+  height: clamp(13px, 12cqw, 26px);
+  color: #cfae6c;
+  filter: drop-shadow(0 -1px 0 rgba(0, 0, 0, 0.8));
 }
 
 .sectionIcon svg {
@@ -128,35 +228,36 @@ a.section {
 }
 
 .section[data-active="true"] .sectionIcon {
-  color: #f4f9fb;
+  color: #3a2408;
+  filter: drop-shadow(0 1px 0 rgba(255, 238, 196, 0.5));
 }
 
+/* Le libellé entier, sur deux lignes s'il le faut : jamais « Offres spécial… ». */
 .sectionLabel {
   flex: 1 1 auto;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-wrap: balance;
 }
 
-/* Accès à la réserve, au pied de l'enseigne. */
+/* Accès à la réserve, sur la dernière planche : une petite plaque cerclée de laiton. */
 .reserveLink {
   display: flex;
   align-items: center;
   gap: 5cqw;
   margin-top: auto;
-  padding: 4cqw 5cqw;
-  border: 1px solid rgba(199, 154, 78, 0.35);
-  border-radius: 6px;
-  background: rgba(8, 6, 4, 0.55);
-  color: #e6dcc6;
+  padding: 4.5cqw 5cqw;
+  border: 1px solid rgba(214, 170, 96, 0.55);
+  border-radius: 4px;
+  background: linear-gradient(180deg, rgba(30, 20, 10, 0.88), rgba(12, 8, 4, 0.92));
+  box-shadow: inset 0 1px 0 rgba(255, 220, 160, 0.14), 0 3px 8px rgba(0, 0, 0, 0.55);
+  color: #e6d7b5;
   text-decoration: none;
   transition: border-color 160ms ease-out, background-color 160ms ease-out;
 }
 
 .reserveLink:hover {
-  border-color: rgba(229, 207, 158, 0.8);
-  background: rgba(40, 28, 12, 0.6);
+  border-color: rgba(240, 210, 150, 0.9);
+  background: linear-gradient(180deg, rgba(48, 32, 14, 0.9), rgba(20, 13, 6, 0.92));
 }
 
 .reserveLink[data-waiting="true"] {
@@ -170,7 +271,7 @@ a.section {
 
 .reserveIcon {
   flex: 0 0 auto;
-  width: clamp(16px, 11cqw, 24px);
+  width: clamp(16px, 14cqw, 28px);
   aspect-ratio: 0.7;
   background-image: var(--pack-art);
   background-size: contain;
@@ -188,12 +289,12 @@ a.section {
 
 .reserveTitle {
   font-family: var(--cb-font-display);
-  font-size: clamp(11px, 6.4cqw, 15px);
+  font-size: clamp(11px, 9.5cqw, 17px);
   font-weight: 600;
 }
 
 .reserveCount {
-  font-size: clamp(9px, 4.8cqw, 11px);
+  font-size: clamp(9px, 6.4cqw, 12px);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: #e5cf9e;
@@ -912,9 +1013,20 @@ a.section {
     overflow-x: auto;
     scrollbar-width: none;
     container-type: normal;
+    transform: none;
+  }
+
+  .sideInner::before {
+    display: none;
+  }
+
+  .section:disabled .sectionLabel::after {
+    display: none;
   }
 
   .sideTitle {
+    position: static;
+    height: auto;
     margin: 0;
     font-size: 20px;
   }
@@ -926,6 +1038,7 @@ a.section {
 
   .section {
     width: auto;
+    min-height: 0;
     padding: 6px 10px;
     gap: 8px;
     font-size: 13px;
