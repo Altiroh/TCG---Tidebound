@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import styles from "@/features/shell/PageTransition.module.css";
+import { playTransitionSwoosh } from "@/lib/sound";
 
 type Phase = "idle" | "covering" | "covered" | "revealing";
 type Direction = "ltr" | "rtl";
@@ -93,6 +94,7 @@ export function PageTransition() {
       if (phaseRef.current === "covering") return;
       router.prefetch(href);
       setDirection(randomDirection());
+      playTransitionSwoosh();
       go("covering");
     }
     window.addEventListener("click", onClick, true);
@@ -108,6 +110,7 @@ export function PageTransition() {
       go("revealing");
     } else if (phaseRef.current === "idle" && !prefersReducedMotion()) {
       setDirection(randomDirection());
+      playTransitionSwoosh();
       go("revealing");
     }
     // `covering` : la page a changé avant que l'ombre ne couvre (navigation

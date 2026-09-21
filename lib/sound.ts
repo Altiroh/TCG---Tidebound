@@ -19,6 +19,10 @@ const VOLUME = {
   click: 0.35,
   draw: 0.4,
   attack: 0.55,
+  // Mesuré : un peu moins fort que le clic en moyenne (-17 dB contre -14),
+  // mais trois fois plus long (1 s) — il s'entend donc davantage. Réglé sous
+  // le clic pour rester un souffle, pas un effet qui couvre l'interface.
+  transition: 0.28,
   ambiance: 0.22,
 };
 
@@ -29,6 +33,13 @@ const ATTACK_SOUNDS = [
   "/assets/sound/attack-4.mp3",
   "/assets/sound/attack-5.mp3",
 ];
+
+const TRANSITION_SOUNDS = [
+  "/assets/sound/swoosh-transition.mp3",
+  "/assets/sound/swoosh-transition-2.mp3",
+  "/assets/sound/swoosh-transition-3.mp3",
+];
+let lastTransitionSound = -1;
 
 /**
  * Effets joués par Web Audio, à partir de sons DÉCODÉS UNE FOIS et gardés en
@@ -133,6 +144,19 @@ export function playCardDraw(): void {
 export function playRandomAttackSound(): void {
   const src = ATTACK_SOUNDS[Math.floor(Math.random() * ATTACK_SOUNDS.length)]!;
   play(src, VOLUME.attack);
+}
+
+/**
+ * Souffle de l'ombre de changement de page (`PageTransition`) — un des trois,
+ * jamais deux fois le même d'affilée. Joué au DÉPART de l'ombre : le pic des
+ * trois fichiers tombe entre 300 et 450 ms, soit au moment où l'écran est
+ * couvert et commence à se découvrir.
+ */
+export function playTransitionSwoosh(): void {
+  const others = TRANSITION_SOUNDS.map((_, i) => i).filter((i) => i !== lastTransitionSound);
+  const index = others[Math.floor(Math.random() * others.length)]!;
+  lastTransitionSound = index;
+  play(TRANSITION_SOUNDS[index]!, VOLUME.transition);
 }
 
 let ambianceEl: HTMLAudioElement | null = null;
