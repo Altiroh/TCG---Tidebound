@@ -78,30 +78,38 @@ export const RULES = {
   // regroupées ici pour être ajustées au playtest sans toucher au moteur.
   // Pas de plancher : la Raison descend aussi bas que le joueur l'accepte
   // (design, 2026-09-16) — seule la dette de fin de tour fait office de frein.
-  /** Dégâts d'Ancrage par point de Déraison, réglés à la fin du tour du joueur (après tous les effets de fin de tour). Remplace l'ancienne perte d'1 Ancrage à 0 Raison. */
+  /** Tarif de BASE d'un point de Déraison, réglé à la fin du tour du joueur (après tous les effets de fin de tour). Les points au-delà d'un palier de `DERAISON_ANCHOR_DAMAGE_TIERS` coûtent davantage. Remplace l'ancienne perte d'1 Ancrage à 0 Raison. */
   DERAISON_ANCHOR_DAMAGE_PER_POINT: 1,
   /**
-   * ESCALADE DE LA DETTE — piste de MESURE, vide par défaut : tant que ce
-   * tableau est vide, la règle en vigueur reste plate
-   * (`DERAISON_ANCHOR_DAMAGE_PER_POINT` par point, quelle que soit la dette).
+   * ESCALADE DE LA DETTE (décision de design du 2026-09-22, après mesure).
    *
    * Chaque palier dit « à partir de ce point de dette, chaque point
-   * SUPPLÉMENTAIRE coûte tant » ; le coût total est la somme point par
-   * point, pas une multiplication. Avec `[{ from: 5, perPoint: 2 }]`, une
-   * dette de 7 coûte 4x1 + 3x2 = 10 Ancrage au lieu de 7.
+   * SUPPLÉMENTAIRE coûte tant » ; le total est la somme point par point, pas
+   * une multiplication. Ici : les quatre premiers points restent à 1 Ancrage,
+   * les suivants en coûtent 2 — une dette de 7 coûte 4 + 6 = 10.
    *
-   * Pourquoi cette forme-là. La mesure du 22/09/2026 (100 parties) montre
+   * POURQUOI LÀ, ET PAS AILLEURS. La mesure du 22/09 (100 parties) montre
    * que le plateau rempli d'un coup n'est pas payé en cartes chères mais en
    * cartes bon marché achetées à crédit : un tour à 4 poses dépense 7,60
-   * pour un revenu de 2, à 1,90 la carte. Un plafond de coût frapperait
-   * donc l'inverse de la cible. Un palier de dette, lui, ne touche que les
-   * tours qui empruntent gros, ne rend AUCUN coup impossible (design du
-   * 2026-09-16) et reste annoncé avant l'engagement, puisque l'écran lit
-   * déjà `deraisonAnchorDamage` (`useDeraisonWarning`, `TableBoard`).
+   * pour un revenu de 2, à 1,90 la carte, et 96 % des cartes jouées coûtent
+   * 3 ou moins. Un plafond de coût aurait donc frappé l'inverse de la cible.
+   * Ce qui finance le burst, c'est la dette sans plancher.
    *
-   * Se mesure avec `npm run replay -- --variante deraison`.
+   * Le 5e point, parce que 78 % des tours dépensent moins de 4 : ceux-là ne
+   * devaient pas être touchés. Mesuré sur 120 parties, le barème coupe la
+   * queue sans ralentir la partie — pire dette d'un tour 9 → 5, parties
+   * atteignant 6+ de 10,8 % à 0 %, pour un Ancrage total perdu en Déraison
+   * inchangé (9,66 → 9,87) et une durée stable. C'est un coupe-queue, pas
+   * un frein.
+   *
+   * Aucun coup ne devient IMPOSSIBLE (design du 2026-09-16, qui avait rejeté
+   * un plancher de Raison pour cette raison), seulement plus cher — et le
+   * prix est annoncé avant l'engagement, l'écran lisant `deraisonAnchorDamage`
+   * (`useDeraisonWarning`, `TableBoard`).
+   *
+   * Se remesure avec `npm run replay -- --variante deraison`.
    */
-  DERAISON_ANCHOR_DAMAGE_TIERS: [] as ReadonlyArray<{ from: number; perPoint: number }>,
+  DERAISON_ANCHOR_DAMAGE_TIERS: [{ from: 5, perPoint: 2 }] as ReadonlyArray<{ from: number; perPoint: number }>,
   /**
    * Échelle de coûts en Raison verrouillée par le cadrage : 1-5 = standard,
    * 6 = exceptionnel, 7 = extrême. Le moteur ne plafonne pas le coût d'une

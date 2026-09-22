@@ -12,6 +12,11 @@ import type { PlayerState } from "@/game/state/types";
  * qu'il ne s'engage (`useDeraisonWarning`). Un plancher à -50 % de la
  * Raison max avait été prototypé ; il rendait certains coups impossibles
  * là où la règle veut qu'ils soient seulement coûteux.
+ *
+ * Le prix d'un point n'est PLUS uniforme depuis le 2026-09-22 : au-delà du
+ * 4e, il double (`RULES.DERAISON_ANCHOR_DAMAGE_TIERS`). L'esprit ne change
+ * pas — rien n'est interdit — mais emprunter gros d'un seul coup coûte
+ * désormais plus cher que d'emprunter la même chose en plusieurs fois.
  */
 
 /** Raison maximale ATTEIGNABLE en ce moment : `reasonMax`, restreint par le plafond de début de partie s'il existe encore. */

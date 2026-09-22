@@ -5,11 +5,12 @@ import { RULES } from "@/game/rules/constants";
 /**
  * LE BARÈME DE LA DETTE.
  *
- * `DERAISON_ANCHOR_DAMAGE_TIERS` est un INSTRUMENT : vide dans le dépôt, il
- * laisse la règle plate d'origine intacte. Ces tests tiennent les deux
- * bouts — que l'état par défaut n'a rien changé, et que le barème progressif
- * compte bien point par point le jour où on l'allume (`npm run replay --
- * --variante deraison`).
+ * Depuis le 22/09/2026, un point de dette ne coûte plus toujours pareil :
+ * les quatre premiers sont à 1 Ancrage, les suivants à 2
+ * (`RULES.DERAISON_ANCHOR_DAMAGE_TIERS`). Ces tests tiennent les deux bouts
+ * — que la règle EN VIGUEUR est bien celle-là, et que le barème compte
+ * point par point quelle que soit sa forme, pour que la remesurer
+ * (`npm run replay -- --variante deraison`) reste honnête.
  */
 
 type Palier = { from: number; perPoint: number };
@@ -20,22 +21,24 @@ afterEach(() => {
 });
 
 describe("barème de la Déraison", () => {
-  it("sans palier, la règle reste plate — un point, un Ancrage", () => {
-    expect(RULES.DERAISON_ANCHOR_DAMAGE_TIERS).toEqual([]);
+  it("la règle en vigueur : plate jusqu'au 4e point, double ensuite", () => {
+    expect(RULES.DERAISON_ANCHOR_DAMAGE_TIERS).toEqual([{ from: 5, perPoint: 2 }]);
+    // Les petits emprunts — 78 % des tours — ne sont pas touchés.
+    expect(deraisonAnchorCost(0)).toBe(0);
+    expect(deraisonAnchorCost(1)).toBe(1);
+    expect(deraisonAnchorCost(4)).toBe(4);
+    // Au-delà, c'est le burst qu'on fait payer.
+    expect(deraisonAnchorCost(5)).toBe(6);
+    expect(deraisonAnchorCost(7)).toBe(10);
+    // La dette de 11 observée au banc coûtait 11 ; elle en coûte 18.
+    expect(deraisonAnchorCost(11)).toBe(18);
+  });
+
+  it("sans palier, la somme revaut la multiplication d'avant", () => {
+    regles.DERAISON_ANCHOR_DAMAGE_TIERS = [];
     for (const dette of [0, 1, 3, 7, 11]) {
       expect(deraisonAnchorCost(dette)).toBe(dette * RULES.DERAISON_ANCHOR_DAMAGE_PER_POINT);
     }
-  });
-
-  it("avec un palier, chaque point paie le tarif du sien — c'est une somme, pas un multiplicateur", () => {
-    regles.DERAISON_ANCHOR_DAMAGE_TIERS = [{ from: 5, perPoint: 2 }];
-    // Sous le palier : rien ne bouge. C'est le point de la forme choisie —
-    // les tours qui empruntent peu ne sont pas touchés.
-    expect(deraisonAnchorCost(4)).toBe(4);
-    // 4 points à 1, puis 3 à 2.
-    expect(deraisonAnchorCost(7)).toBe(4 + 6);
-    // La dette de 11 réellement observée au banc : 4 + 14.
-    expect(deraisonAnchorCost(11)).toBe(18);
   });
 
   it("les paliers s'empilent, le dernier atteint l'emporte", () => {
