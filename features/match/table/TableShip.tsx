@@ -60,6 +60,8 @@ export interface ShipAbilityPanelView {
   actionable: boolean;
   /** URL de l'illustration du hublot — absent : fond de substitution. */
   artUrl?: string;
+  /** Coût en Raison, 0 si la capacité est gratuite — dit en bleu sur la carte de survol. */
+  reasonCost?: number;
   /** Ce qui empêche d'agir, dit sur la carte de survol. */
   blockedBy?: string;
   /** Absent : panneau d'observation, non cliquable (Navire adverse). */
@@ -79,7 +81,7 @@ export interface ShipAbilityPanelView {
  * bois se raccorde donc exactement au milieu quand le panneau est fermé, et
  * les deux moitiés s'écartent vers le haut et vers le bas à l'armement.
  */
-function ShipAbilityPanel({ name, text, planks, armed, actionable, artUrl, blockedBy, onClick }: ShipAbilityPanelView) {
+function ShipAbilityPanel({ name, text, planks, armed, actionable, artUrl, reasonCost = 0, blockedBy, onClick }: ShipAbilityPanelView) {
   const label = armed ? `${name} — armé` : name;
   const status = actionable ? null : blockedBy;
   const ariaLabel = [label, text, status].filter(Boolean).join(" — ");
@@ -110,12 +112,27 @@ function ShipAbilityPanel({ name, text, planks, armed, actionable, artUrl, block
       {/* eslint-disable-next-line @next/next/no-img-element -- hublot décoratif, taille pilotée par le cadre */}
       <img src={SHIP_ABILITY_RING_URL} alt="" aria-hidden draggable={false} className={styles.shipAbilityRing} />
       {/* La CARTE de survol : un hublot de trente pixels ne dit pas ce que
-          fait la capacité. Elle sort au survol et au clavier (`:focus-visible`),
-          jamais au doigt — d'où le `title` gardé en repli. */}
+          fait la capacité. L'illustration y est enfin LISIBLE, à gauche ;
+          à droite ce qu'elle fait et ce qu'elle coûte. Elle sort au survol
+          et au clavier (`:focus-visible`), jamais au doigt — d'où le
+          `title` gardé en repli. */}
       <span aria-hidden className={styles.shipAbilityCard}>
-        <span className={styles.shipAbilityCardName}>{label}</span>
-        <span className={styles.shipAbilityCardText}>{text}</span>
-        {status && <span className={styles.shipAbilityCardStatus}>{status}</span>}
+        <span
+          className={styles.shipAbilityCardArt}
+          style={artUrl ? { backgroundImage: `url(${artUrl})` } : undefined}
+        />
+        <span className={styles.shipAbilityCardBody}>
+          <span className={styles.shipAbilityCardName}>{label}</span>
+          <span className={styles.shipAbilityCardText}>{text}</span>
+          {/* Le coût porte la couleur de la Raison, celle de son médaillon :
+              on doit voir ce qu'on paie, et avec quoi. */}
+          {reasonCost > 0 && (
+            <span className={styles.shipAbilityCardCost}>
+              {reasonCost} <span className={styles.shipAbilityCardCostUnit}>Raison</span>
+            </span>
+          )}
+          {status && <span className={styles.shipAbilityCardStatus}>{status}</span>}
+        </span>
       </span>
     </>
   );
