@@ -3,7 +3,7 @@ import { computeEffectiveStats } from "@/game/cards/stats";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { UNIT_CARD_TYPES, type CardInstance } from "@/game/cards/types";
 import { hasEffectiveKeyword } from "@/game/rules/validation";
-import { deraisonDebt } from "@/game/state/reason";
+import { deraisonAnchorDamage } from "@/game/state/reason";
 import { isShipArmed, shipAbilityOf } from "@/game/state/shipAbility";
 import type { GameState, PlayerId, PlayerState } from "@/game/state/types";
 
@@ -203,14 +203,21 @@ function armedShotValue(state: GameState, player: PlayerState): number {
 function playerValue(state: GameState, player: PlayerState): number {
   const boardValue = player.board.reduce((sum, unit) => sum + permanentValue(state, unit, player), 0);
 
-  // Déraison : chaque point sous zéro sera payé en Ancrage en fin de tour —
-  // compté comme de l'Ancrage déjà perdu, un peu plus lourd pour que le bot
-  // ne plonge en dette que si le plateau le justifie clairement.
-  const debt = deraisonDebt(player.reason);
+  // Déraison : la dette sera payée en Ancrage en fin de tour — comptée comme
+  // de l'Ancrage déjà perdu, un peu plus lourd pour que le bot ne plonge en
+  // dette que si le plateau le justifie clairement.
+  //
+  // Le montant est demandé au MOTEUR (`deraisonAnchorDamage`) plutôt que
+  // recalculé à plat ici : c'est la seule façon pour le bot de voir la
+  // réduction de son propre Navire (Pénitence), et de sentir un barème
+  // progressif s'il y en a un. Un bot qui ne voit pas le prix d'un point ne
+  // peut pas être dissuadé par ce prix — et le banc d'essai, alors, ne
+  // mesure plus une dissuasion mais une simple taxe.
+  const dette = deraisonAnchorDamage(player, player.reason);
 
   return (
     anchorValue(player) -
-    debt * ANCHOR_VITAL_VALUE * 1.2 +
+    dette * ANCHOR_VITAL_VALUE * 1.2 +
     Math.max(0, player.reason) * 0.5 +
     boardValue +
     armedShotValue(state, player) +

@@ -54,5 +54,29 @@ export function deraisonAnchorDamage(player: Pick<PlayerState, "shipId">, reason
   const debt = deraisonDebt(reason);
   if (debt === 0) return 0;
   const reduction = getShipDefinition(player.shipId).deraisonDamageReduction ?? 0;
-  return Math.max(0, debt * RULES.DERAISON_ANCHOR_DAMAGE_PER_POINT - reduction);
+  return Math.max(0, deraisonAnchorCost(debt) - reduction);
+}
+
+/**
+ * Ancrage brut dû pour `debt` points de dette, avant réduction de Navire.
+ *
+ * La dette se paie POINT PAR POINT : chacun coûte le tarif de son palier
+ * (`RULES.DERAISON_ANCHOR_DAMAGE_TIERS`). Le tableau étant vide par défaut,
+ * tous les points sont au tarif de base et la somme revaut la
+ * multiplication d'avant — la forme change, pas la règle. Elle existe pour
+ * qu'une escalade puisse être MESURÉE sans toucher au moteur.
+ */
+export function deraisonAnchorCost(debt: number): number {
+  let total = 0;
+  for (let point = 1; point <= debt; point += 1) total += anchorCostOfPoint(point);
+  return total;
+}
+
+/** Tarif du `point`-ième point de dette : le dernier palier qu'il atteint. */
+function anchorCostOfPoint(point: number): number {
+  let perPoint: number = RULES.DERAISON_ANCHOR_DAMAGE_PER_POINT;
+  for (const tier of RULES.DERAISON_ANCHOR_DAMAGE_TIERS) {
+    if (point >= tier.from) perPoint = tier.perPoint;
+  }
+  return perPoint;
 }

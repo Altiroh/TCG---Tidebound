@@ -81,6 +81,28 @@ export const RULES = {
   /** Dégâts d'Ancrage par point de Déraison, réglés à la fin du tour du joueur (après tous les effets de fin de tour). Remplace l'ancienne perte d'1 Ancrage à 0 Raison. */
   DERAISON_ANCHOR_DAMAGE_PER_POINT: 1,
   /**
+   * ESCALADE DE LA DETTE — piste de MESURE, vide par défaut : tant que ce
+   * tableau est vide, la règle en vigueur reste plate
+   * (`DERAISON_ANCHOR_DAMAGE_PER_POINT` par point, quelle que soit la dette).
+   *
+   * Chaque palier dit « à partir de ce point de dette, chaque point
+   * SUPPLÉMENTAIRE coûte tant » ; le coût total est la somme point par
+   * point, pas une multiplication. Avec `[{ from: 5, perPoint: 2 }]`, une
+   * dette de 7 coûte 4x1 + 3x2 = 10 Ancrage au lieu de 7.
+   *
+   * Pourquoi cette forme-là. La mesure du 22/09/2026 (100 parties) montre
+   * que le plateau rempli d'un coup n'est pas payé en cartes chères mais en
+   * cartes bon marché achetées à crédit : un tour à 4 poses dépense 7,60
+   * pour un revenu de 2, à 1,90 la carte. Un plafond de coût frapperait
+   * donc l'inverse de la cible. Un palier de dette, lui, ne touche que les
+   * tours qui empruntent gros, ne rend AUCUN coup impossible (design du
+   * 2026-09-16) et reste annoncé avant l'engagement, puisque l'écran lit
+   * déjà `deraisonAnchorDamage` (`useDeraisonWarning`, `TableBoard`).
+   *
+   * Se mesure avec `npm run replay -- --variante deraison`.
+   */
+  DERAISON_ANCHOR_DAMAGE_TIERS: [] as ReadonlyArray<{ from: number; perPoint: number }>,
+  /**
    * Échelle de coûts en Raison verrouillée par le cadrage : 1-5 = standard,
    * 6 = exceptionnel, 7 = extrême. Le moteur ne plafonne pas le coût d'une
    * carte à 7 (ce n'est pas une règle dure), c'est une convention de design.

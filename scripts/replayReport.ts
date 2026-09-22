@@ -13,9 +13,13 @@
  * pas deux exécutions à des moments différents du dépôt, mais deux
  * variantes du même instant.
  *
- * Deux variantes mesurables, `--variante` :
+ * Trois variantes mesurables, `--variante` :
  *   - `navires`  : les capacités de Navire câblées le 22/09/2026 ;
  *   - `structures` (défaut) : les dégâts de Marée sur les Structures.
+ *   - `deraison` : une ESCALADE de la dette, éteinte dans le dépôt. Le sens
+ *     s'inverse ici — le changement n'est pas encore en vigueur, donc AVANT
+ *     c'est l'état courant et APRÈS c'est la variante allumée le temps du
+ *     relevé. Rien n'est décidé : on regarde ce que ça déplace.
  *
  * Et il ne s'arrête pas au winrate : le cadrage demande de savoir POURQUOI
  * les parties se terminent, donc durée, occupation du plateau, dégâts par
@@ -40,9 +44,21 @@ const VARIANTE = process.argv.includes("--variante")
   ? (process.argv[process.argv.indexOf("--variante") + 1] ?? "structures")
   : "structures";
 
+/**
+ * L'escalade qu'on met à l'essai. Le 5e point plutôt que le 1er : la mesure
+ * du 22/09 dit que 78 % des tours dépensent moins de 4, et ce n'est pas eux
+ * qu'on cherche — c'est le tour qui achète un plateau entier d'un coup.
+ */
+const DERAISON_ESCALADE: ReadonlyArray<{ from: number; perPoint: number }> = [{ from: 5, perPoint: 2 }];
+
 const LIBELLE_AVANT: Record<string, string> = {
   navires: "capacités de Navire non câblées",
   structures: "la Marée n'abîme pas les Structures",
+  deraison: "dette plate, 1 Ancrage le point (règle en vigueur)",
+};
+
+const LIBELLE_APRES: Record<string, string> = {
+  deraison: `dette escaladée, ${DERAISON_ESCALADE.map((t) => `${t.perPoint} à partir du point ${t.from}`).join(", ")}`,
 };
 
 /** Matchups rejoués : les mêmes que le banc d'essai, contre la référence défensive. */
@@ -75,6 +91,10 @@ function jouer(nom: string, graines: number[]): Bilan {
  * tout est remis en place aussitôt.
  */
 function avantLeChangement<T>(travail: () => T): T {
+  // L'escalade est éteinte dans le dépôt : l'état « avant », c'est
+  // simplement l'état courant, rien à mettre de côté.
+  if (VARIANTE === "deraison") return travail();
+
   if (VARIANTE === "structures") {
     const regles = RULES as { TIDE_STRUCTURE_DAMAGE: Partial<Record<string, number>> };
     const memoire = regles.TIDE_STRUCTURE_DAMAGE;
@@ -101,6 +121,23 @@ function avantLeChangement<T>(travail: () => T): T {
   }
 }
 
+/**
+ * Rejoue `travail` avec la variante ALLUMÉE, pour les leviers qui ne sont
+ * pas encore en vigueur. Pour les autres, l'état « après » est le dépôt tel
+ * quel et cette fonction ne fait rien.
+ */
+function apresLeChangement<T>(travail: () => T): T {
+  if (VARIANTE !== "deraison") return travail();
+  const regles = RULES as { DERAISON_ANCHOR_DAMAGE_TIERS: ReadonlyArray<{ from: number; perPoint: number }> };
+  const memoire = regles.DERAISON_ANCHOR_DAMAGE_TIERS;
+  regles.DERAISON_ANCHOR_DAMAGE_TIERS = DERAISON_ESCALADE;
+  try {
+    return travail();
+  } finally {
+    regles.DERAISON_ANCHOR_DAMAGE_TIERS = memoire;
+  }
+}
+
 const graines = Array.from({ length: N }, (_, i) => 3000 + i);
 
 function resume(bilan: Bilan) {
@@ -120,6 +157,8 @@ function resume(bilan: Bilan) {
     combat: (postes.get("Combat") ?? 0) / parties.length,
     maree: (postes.get("Marée") ?? 0) / parties.length,
     deraison: (postes.get("Déraison") ?? 0) / parties.length,
+    dettePic: moy(parties.map((m) => m.deraisonPic)),
+    posesPic: moy(parties.map((m) => m.posesPicUnTour)),
   };
 }
 
@@ -136,17 +175,19 @@ const COLONNES: Array<[string, keyof ReturnType<typeof resume>]> = [
   ["dgt combat", "combat"],
   ["dgt Marée", "maree"],
   ["dgt Déraison", "deraison"],
+  ["pic dette", "dettePic"],
+  ["pic poses", "posesPic"],
 ];
 
 console.log(`\n╔══ REPLAYS — ${N} parties par matchup, contre ${REFERENCE_DEFENSIVE}, mêmes graines des deux côtés ══╗\n`);
-console.log(`    AVANT = ${LIBELLE_AVANT[VARIANTE] ?? VARIANTE} · APRÈS = état courant du dépôt\n`);
+console.log(`    AVANT = ${LIBELLE_AVANT[VARIANTE] ?? VARIANTE} · APRÈS = ${LIBELLE_APRES[VARIANTE] ?? "état courant du dépôt"}\n`);
 
 const cumulAvant: Mesures[] = [];
 const cumulApres: Mesures[] = [];
 
 for (const nom of MATCHUPS) {
   const avant = avantLeChangement(() => jouer(nom, graines));
-  const apres = jouer(nom, graines);
+  const apres = apresLeChangement(() => jouer(nom, graines));
   cumulAvant.push(...avant.parties);
   cumulApres.push(...apres.parties);
 
