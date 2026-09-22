@@ -168,7 +168,9 @@ export interface ResolveChoiceAction {
     /** Réponse à un choix de défausse : les exemplaires de SA MAIN que le joueur envoie au Cimetière (ou sous sa pioche, selon la destination du choix). */
     | { discardInstanceIds: string[] }
     /** Réponse à un regard de pioche : les cartes regardées que le joueur prend en main. Les autres retournent SOUS la pioche, dans leur ordre. */
-    | { takeInstanceIds: string[] };
+    | { takeInstanceIds: string[] }
+    /** Réponse à un soin réparti : combien de Résistance verser sur chaque unité désignée. */
+    | { healAllocation: Array<{ instanceId: string; amount: number }> };
 }
 
 /**

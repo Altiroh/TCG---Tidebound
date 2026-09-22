@@ -53,6 +53,10 @@ export function stepBotTurn(state: GameState, playerId: PlayerId, difficulty: Bo
             choice:
               state.pendingChoice.kind === "abilityOption"
                 ? { abilityIndex: state.pendingChoice.abilityIndexes[0] ?? 0 }
+                : state.pendingChoice.kind === "healAllocation"
+                  ? // Ne rien répartir est légal (« jusqu'à N ») : le repli
+                    // n'a pas à être bon, seulement valide.
+                    { healAllocation: [] as Array<{ instanceId: string; amount: number }> }
                 : state.pendingChoice.kind === "deckLook"
                   ? // Ne rien prendre est toujours légal : les cartes
                     // regardées repassent sous la pioche.

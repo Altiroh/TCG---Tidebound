@@ -31,6 +31,7 @@ import { ShipAbilityPrompt } from "@/features/match/ShipAbilityPrompt";
 import { PendingChoicePrompt } from "@/features/match/PendingChoicePrompt";
 import { graveyardPickView } from "@/features/match/graveyardPickRequest";
 import { DeckLookPrompt } from "@/features/match/DeckLookPrompt";
+import { HealAllocationPrompt } from "@/features/match/HealAllocationPrompt";
 import { HandDiscardPrompt } from "@/features/match/HandDiscardPrompt";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ReactionPrompt } from "@/features/match/ReactionPrompt";
@@ -451,6 +452,15 @@ export function MatchBoard({
         <PendingChoicePrompt
           choice={state.pendingChoice}
           onChoose={(choice) => runReactionAction({ type: "resolveChoice", playerId: viewerPlayerId, choice })}
+        />
+      )}
+      {state.pendingChoice?.kind === "healAllocation" && state.pendingChoice.playerId === viewerPlayerId && (
+        <HealAllocationPrompt
+          choice={state.pendingChoice}
+          board={viewerPlayer.board}
+          onConfirm={(healAllocation) =>
+            runReactionAction({ type: "resolveChoice", playerId: viewerPlayerId, choice: { healAllocation } })
+          }
         />
       )}
       {state.pendingChoice?.kind === "deckLook" && state.pendingChoice.playerId === viewerPlayerId && (

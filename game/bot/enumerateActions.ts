@@ -71,6 +71,24 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
         { type: "resolveChoice" as const, playerId, choice: "pass" as const },
       ];
     }
+    // Soin réparti : verser tout le budget sur une seule unité blessée est
+    // le coup lisible, et `evaluateState` départage. Énumérer toutes les
+    // répartitions ferait exploser la recherche pour un gain marginal.
+    if (state.pendingChoice.kind === "healAllocation") {
+      const choice = state.pendingChoice;
+      const blessees = player.board.filter((u) => u.damageMarked > 0);
+      return [
+        ...blessees.map((unit) => ({
+          type: "resolveChoice" as const,
+          playerId,
+          choice: {
+            healAllocation: [{ instanceId: unit.instanceId, amount: Math.min(choice.budget, unit.damageMarked) }],
+          },
+        })),
+        { type: "resolveChoice" as const, playerId, choice: { healAllocation: [] as Array<{ instanceId: string; amount: number }> } },
+      ];
+    }
+
     // Regard de pioche : chaque carte prenable est un coup distinct, plus
     // « ne rien prendre ». `evaluateState` tranche, comme partout ailleurs.
     if (state.pendingChoice.kind === "deckLook") {

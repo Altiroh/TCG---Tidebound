@@ -1389,6 +1389,27 @@ export function resolveEffect(
     }
 
     case "transform":
+    case "healDistributed": {
+      const budget = amountValue(effect.amount, state, context.controllerId);
+      const player = resolveSinglePlayerTarget(state, effect, context) ?? getPlayer(state, context.controllerId);
+      // Rien à réparer, ou rien à répartir : on ne pose pas une question
+      // sans réponse utile.
+      if (budget <= 0 || !player.board.some((u) => u.damageMarked > 0)) return { state, events };
+      return {
+        state: {
+          ...state,
+          pendingChoice: {
+            kind: "healAllocation",
+            playerId: player.id,
+            budget,
+            sourceInstanceId: context.sourceInstanceId,
+            turnNumber: context.turnNumber,
+          },
+        },
+        events,
+      };
+    }
+
     case "surviveWithHealth": {
       // « empêchez cette destruction : elle reste en jeu avec N Résistance ».
       // On ramène les dégâts marqués juste assez bas pour qu'elle passe le

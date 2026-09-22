@@ -51,6 +51,8 @@ function defaultActionFor(state: GameState, playerId: string): PlayerAction {
     // repassent sous la pioche, et le joueur n'a rien perdu d'autre que
     // l'occasion.
     if (choice.kind === "deckLook") return { type: "resolveChoice", playerId, choice: { takeInstanceIds: [] } };
+    // « JUSQU'À N » : ne rien répartir est une réponse légale.
+    if (choice.kind === "healAllocation") return { type: "resolveChoice", playerId, choice: { healAllocation: [] } };
     if (choice.kind === "handDiscard") {
       // Une défausse attend son compte exact de cartes ; « ne rien
       // défausser » n'est permis que si le texte le permet.

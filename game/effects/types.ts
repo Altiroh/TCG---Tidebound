@@ -215,7 +215,16 @@ export type EffectType =
    * qui passent jusqu'à l'expiration. `target` dit QUI est taxé :
    * `allPlayers` pour « chaque joueur ».
    */
-  | "surchargeCards";
+  | "surchargeCards"
+  /**
+   * « Restaurez jusqu'à N Résistance répartie entre les unités que vous
+   * contrôlez » (Lot 14). Ne soigne rien lui-même : il pose la question
+   * (`HealAllocationChoice`) et le joueur répartit.
+   *
+   * À distinguer de `heal` sur `allAllyUnits`, qui verse le MÊME montant à
+   * chacune — ce que ces textes-là ne disent pas.
+   */
+  | "healDistributed";
 
 /** Une valeur numérique d'effet, pour l'instant une constante — prête à
  * être étendue vers des formules (ex: "= nombre d'unités contrôlées"). */

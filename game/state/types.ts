@@ -544,7 +544,33 @@ export interface DeckLookChoice {
   turnNumber: number;
 }
 
-export type PendingChoice = ReasonOrAnchorChoice | AbilityOptionChoice | HandDiscardChoice | DeckLookChoice;
+/**
+ * « Restaurez jusqu'à N Résistance RÉPARTIE entre les unités que vous
+ * contrôlez » (Lot 14 — Trousse du Bord, Chirurgien du Bord).
+ *
+ * Répartir est une décision, et le moteur ne décide pas à la place du
+ * joueur : soigner d'abord la plus blessée n'est pas toujours le bon coup
+ * (avec 4 points, une unité à 5 dégâts et une à 1, finir la seconde et
+ * verser le reste dans la première vaut souvent mieux). La question est
+ * donc posée, et le joueur répartit.
+ *
+ * « JUSQU'À » : il peut en verser moins, ou rien du tout.
+ */
+export interface HealAllocationChoice {
+  kind: "healAllocation";
+  playerId: PlayerId;
+  /** Points de Résistance à répartir, au plus. */
+  budget: number;
+  sourceInstanceId?: string;
+  turnNumber: number;
+}
+
+export type PendingChoice =
+  | ReasonOrAnchorChoice
+  | AbilityOptionChoice
+  | HandDiscardChoice
+  | DeckLookChoice
+  | HealAllocationChoice;
 
 export interface PendingReactionState {
   /** Événements déclencheurs ayant ouvert cette fenêtre (contexte pour l'UI/le recalcul d'éligibilité). */

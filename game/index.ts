@@ -116,7 +116,7 @@ export { chosenTargetFilter, eligibleChosenUnits } from "@/game/effects/chosenTa
 export { ARCHETYPE_LABELS } from "@/game/cards/archetypes";
 export type { ArchetypeId } from "@/game/cards/archetypes";
 export type { PendingReactionCandidate, TriggerEvent, TriggerType } from "@/game/triggers/types";
-export type { PendingReactionState, PendingChoice, HandDiscardChoice, DeckLookChoice } from "@/game/state/types";
+export type { PendingReactionState, PendingChoice, HandDiscardChoice, DeckLookChoice, HealAllocationChoice } from "@/game/state/types";
 export type { ResolveChoiceAction } from "@/game/actions/types";
 export { eligibleCandidatesFor } from "@/game/reactions/reactionWindow";
 

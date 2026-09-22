@@ -66,6 +66,50 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
     events.push(...recovered.events);
     return { ok: true, state: nextState, events };
   }
+  // « Restaurez jusqu'à N Résistance répartie » : le joueur a dit combien
+  // sur chaque unité. Le moteur vérifie seulement que le total tient dans
+  // le budget et que les cibles sont bien les siennes.
+  if (choice.kind === "healAllocation") {
+    const repartition =
+      action.choice === "pass"
+        ? []
+        : typeof action.choice === "object" && "healAllocation" in action.choice
+          ? action.choice.healAllocation
+          : undefined;
+    if (repartition === undefined) return { ok: false, error: "Ce choix attend une répartition de Résistance." };
+
+    const total = repartition.reduce((somme, part) => somme + part.amount, 0);
+    if (repartition.some((part) => part.amount <= 0)) return { ok: false, error: "Une part de soin doit être positive." };
+    if (total > choice.budget) return { ok: false, error: `Ce choix ne permet de répartir que ${choice.budget} Résistance.` };
+    if (new Set(repartition.map((part) => part.instanceId)).size !== repartition.length) {
+      return { ok: false, error: "Une même unité ne peut recevoir deux parts." };
+    }
+
+    const player = getPlayer(nextState, choice.playerId);
+    if (repartition.some((part) => !player.board.some((u) => u.instanceId === part.instanceId))) {
+      return { ok: false, error: "Cette unité n'est pas sur votre plateau." };
+    }
+
+    const parts = new Map(repartition.map((part) => [part.instanceId, part.amount]));
+    nextState = {
+      ...nextState,
+      players: nextState.players.map((p) =>
+        p.id === choice.playerId
+          ? {
+              ...player,
+              board: player.board.map((u) =>
+                parts.has(u.instanceId) ? { ...u, damageMarked: Math.max(0, u.damageMarked - parts.get(u.instanceId)!) } : u
+              ),
+            }
+          : p
+      ) as [PlayerState, PlayerState],
+    };
+    for (const part of repartition) {
+      events.push({ ...base, type: "HEAL", targetInstanceId: part.instanceId, amount: part.amount });
+    }
+    return { ok: true, state: nextState, events };
+  }
+
   // « Regardez les N premières cartes de votre pioche » : le joueur dit
   // lesquelles il prend. Les cartes regardées sont déjà SORTIES de la
   // pioche (cf. `lookAtDeckTop`) — quoi qu'il réponde, il faut les y
