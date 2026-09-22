@@ -172,7 +172,9 @@ export interface ResolveChoiceAction {
     /** Réponse à un soin réparti : combien de Résistance verser sur chaque unité désignée. */
     | { healAllocation: Array<{ instanceId: string; amount: number }> }
     /** Réponse à « choisissez jusqu'à N unités » : celles que le joueur garde. */
-    | { keepInstanceIds: string[] };
+    | { keepInstanceIds: string[] }
+    /** Réponse à un ciblage multiple : les unités désignées. */
+    | { pickInstanceIds: string[] };
 }
 
 /**

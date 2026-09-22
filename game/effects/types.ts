@@ -251,7 +251,19 @@ export type EffectType =
    * (`pendingObjectBreak`) : hors d'elle, il n'y a aucun effet en attente
    * et il ne fait rien.
    */
-  | "cancelObjectEffect";
+  | "cancelObjectEffect"
+  /**
+   * « Renvoyez jusqu'à N unités […] » : désigne PLUSIEURS cibles, là où
+   * `chosenUnit` n'en désigne qu'une (Panique sur le Pont, Lot 14).
+   *
+   * Ne fait rien lui-même : il recense les cibles légales avec `target` et
+   * `filter`, et pose la question (`PickUnitsChoice`). Les effets appliqués
+   * à chaque cible désignée sont dans `thenEffects`, et ils y visent
+   * `triggerSource` — la cible en cours.
+   *
+   * `uses` porte le nombre maximum de cibles (défaut 1).
+   */
+  | "pickUnits";
 
 /** Une valeur numérique d'effet, pour l'instant une constante — prête à
  * être étendue vers des formules (ex: "= nombre d'unités contrôlées"). */
@@ -555,6 +567,11 @@ export interface EffectDefinition {
    */
   persistentTax?: boolean;
   /**
+   * Pour `pickUnits` : les effets appliqués à CHAQUE cible désignée. Ils y
+   * visent `triggerSource`, qui vaut la cible en cours de traitement.
+   */
+  thenEffects?: EffectDefinition[];
+  /**
    * Pour `surchargeCards` : ne s'applique qu'à partir de la N-ième unité
    * posée dans le tour par le joueur taxé (« après la troisième unité
    * jouée »).
@@ -688,6 +705,26 @@ export interface EffectDefinition {
    * vous le faites, piochez 1" — sans carte à défausser, pas de pioche).
    */
   conditionControllerHandAtLeast?: number;
+
+  /**
+   * « si vous avez 1 carte ou moins en main » (Dernières Réserves, Lot 14) —
+   * complément exact de `conditionControllerHandAtLeast`.
+   */
+  conditionControllerHandAtMost?: number;
+
+  /**
+   * « si l'adversaire contrôle plus d'unités que vous » (Un Peu de Répit,
+   * Lot 14). Une comparaison, pas un seuil : c'est ce qui rend l'effet
+   * COMEBACK — il ne rend rien quand on mène.
+   */
+  conditionOpponentUnitsMoreThanController?: boolean;
+
+  /**
+   * « si l'adversaire contrôle au moins N unités » (Panique sur le Pont,
+   * Lot 14) — la même porte anti-swarm que sur une capacité, ici posée sur
+   * un effet de POSE, qui n'a pas de capacité où l'accrocher.
+   */
+  conditionOpponentUnitsAtLeast?: number;
 
   /**
    * `discard` uniquement — « vous POUVEZ défausser 1 carte » (ex: On rentre

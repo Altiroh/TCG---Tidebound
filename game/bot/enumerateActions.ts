@@ -72,6 +72,16 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
         { type: "resolveChoice" as const, playerId, choice: "pass" as const },
       ];
     }
+    // Ciblage multiple : prendre le maximum de cibles est le coup lisible,
+    // n'en prendre aucune l'autre extrême.
+    if (state.pendingChoice.kind === "pickUnits") {
+      const choice = state.pendingChoice;
+      return [
+        { type: "resolveChoice" as const, playerId, choice: { pickInstanceIds: choice.among.slice(0, choice.pick) } },
+        { type: "resolveChoice" as const, playerId, choice: { pickInstanceIds: [] as string[] } },
+      ];
+    }
+
     // « Gardez jusqu'à N unités » : garder les N plus solides est le coup
     // lisible, et ne rien garder l'autre extrême. `evaluateState` tranche.
     if (state.pendingChoice.kind === "keepUnits") {

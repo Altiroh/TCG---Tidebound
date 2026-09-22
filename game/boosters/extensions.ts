@@ -4,6 +4,7 @@ import {
   BOOSTER_DEFAUT,
   BOOSTER_ETRANGETE_SOUS_MARINE,
   BOOSTER_POISSONS_PAS_FRAIS,
+  BOOSTER_NECESSAIRE_DU_MARIN,
   BOOSTER_VEILLEE_DES_DISPARUS,
 } from "@/game/boosters/pools";
 
@@ -98,6 +99,21 @@ const EXTENSIONS: readonly BoosterExtension[] = [
       "Tout équipage commence par le même inventaire : une lanterne, une corde, un nom qu'on répète pour ne pas " +
       "l'oublier. Le Booster Défaut rassemble ce que la mer exige avant d'exiger le reste — de quoi tenir un quart, " +
       "lire une Marée, et comprendre pourquoi personne ne se penche au bastingage après la tombée du jour.",
+  },
+  {
+    // Le seul booster de BASE avec le Défaut : il ne raconte rien, il
+    // outille. D'où le `kind` — l'étagère annonce « Booster de base », et
+    // c'est exact : son pool n'est pas un lot narratif, c'est le socle
+    // commun que tous les decks partagent.
+    boosterId: BOOSTER_NECESSAIRE_DU_MARIN,
+    kind: "base",
+    archetype: null,
+    tagline: "Ce qu'il faut à bord",
+    lore:
+      "Aucun équipage ne part avec des histoires. Il part avec une gaffe, un filet, de quoi colmater et de quoi " +
+      "couper. Le Nécessaire du Marin rassemble ce qu'on n'a jamais assez : les pièges qu'on tend avant d'en " +
+      "avoir besoin, les objets qu'on garde en main pour le tour d'en face, et les quelques poids lourds qu'on " +
+      "n'appelle qu'une fois par traversée.",
   },
   {
     boosterId: BOOSTER_POISSONS_PAS_FRAIS,

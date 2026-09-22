@@ -89,6 +89,9 @@ export const RAPIECER_LA_COQUE = "rapiecer-la-coque";
  */
 export const VOLATILE = "volatile";
 
+/** Lot 14 — Nécessaire du Marin (`CardDefinition.setCode`). Lot de consolidation : outils génériques, sans archétype ni sous-type. */
+export const NECESSAIRE_DU_MARIN = "necessaire-du-marin";
+
 /** Lot 13 — La Veillée des Disparus (`CardDefinition.setCode`). */
 export const VEILLEE_DES_DISPARUS = "veillee-des-disparus";
 
@@ -4704,6 +4707,1074 @@ export const CORE_SET: CardDefinition[] = [
           { type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
         ],
       },
+    ],
+  },
+  // =====================================================================
+  // LOT 14 — NÉCESSAIRE DU MARIN (22/09/2026)
+  // =====================================================================
+  //
+  // Notion « Nécessaire du Marin — Lot 14 · 48 cartes ». Un lot de
+  // CONSOLIDATION : pas un archétype, pas une histoire — les outils
+  // génériques qui manquaient à tout le monde. L'audit du catalogue les
+  // avait listés comme trous béants : zéro removal visant l'adversaire, une
+  // seule carte de soin d'unité, deux anti-swarm, aucune carte au-dessus de
+  // 5 que les decks jouent vraiment.
+  //
+  // Les 48 cartes sont sans `archetype` NI `subtype`, à dessein : elles
+  // doivent entrer dans n'importe quel deck sans en trahir la famille.
+  //
+  // --- Structures-pièges : la règle de design du lot -------------------
+  //
+  // Une Structure-piège est une CARTOUCHE, pas un moteur. Sa Réaction
+  // cachée est volontairement plus puissante qu'un effet permanent de coût
+  // comparable, et la Structure est détruite après résolution — d'où le
+  // `destroy` sur `self` qui ferme chacune d'elles. C'est ce qui autorise
+  // des effets aussi durs sans qu'ils s'installent.
+  //
+  // La fenêtre de visibilité (Tempête + Abysses) n'est pas donnée par la
+  // page de lot : elle reprend celle de La Nasse Trop Pleine, seule
+  // Structure-piège déjà au catalogue et carte de référence de la même
+  // famille. À rearbitrer si le design veut autre chose.
+  {
+    id: "jugement-du-phare",
+    name: "Jugement du Phare",
+    type: "structure",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 4,
+    health: 4,
+    durationTurns: 3,
+    maxCopies: 1,
+    visibleDuringTide: ["tempete", "abysses"],
+    text:
+      "Durée : 3 tours. Visible pendant Tempête et Abysses. La première fois à chaque tour qu'une unité adverse " +
+      "arrive alors que l'adversaire contrôle au moins 4 unités, cette unité subit 2 dégâts. Réaction cachée : " +
+      "lorsqu'une unité adverse arrive alors que l'adversaire contrôle au moins 5 unités, vous pouvez payer " +
+      "3 Ancrage : détruisez toutes les unités adverses. Détruisez ensuite Jugement du Phare.",
+    abilities: [
+      {
+        trigger: "onEnterPlay",
+        triggeredBy: { cardTypes: ["marin", "creature"], opponentOnly: true },
+        oncePerTurnKey: "jugementDuPhare",
+        condition: { selfVisible: true, opponentUnitsAtLeast: 4 },
+        description: "Une quatrième unité adverse arrive : elle subit 2 dégâts.",
+        effects: [{ type: "damage", target: { kind: "triggerSource" }, amount: { kind: "flat", value: 2 } }],
+      },
+      {
+        // Volontairement nucléaire (garde-fou de playtest Notion : « ne pas
+        // l'affaiblir avant test »). Trois garde-fous le tiennent quand
+        // même : cinq corps adverses, 3 Ancrage de sa propre coque, et la
+        // Structure part avec.
+        trigger: "onEnterPlay",
+        triggeredBy: { cardTypes: ["marin", "creature"], opponentOnly: true },
+        mode: "optional",
+        hiddenReaction: true,
+        cost: { anchor: 3 },
+        condition: { selfHidden: true, opponentUnitsAtLeast: 5 },
+        description: "Payez 3 Ancrage : détruisez toutes les unités adverses, puis Jugement du Phare.",
+        effects: [
+          { type: "destroy", target: { kind: "allEnemyUnits" }, filter: { cardTypes: ["marin", "creature"] } },
+          { type: "destroy", target: { kind: "self" } },
+        ],
+      },
+    ],
+  },
+  {
+    id: "barils-de-poudre",
+    name: "Barils de Poudre",
+    type: "structure",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 3,
+    health: 3,
+    durationTurns: 3,
+    maxCopies: 2,
+    visibleDuringTide: ["tempete", "abysses"],
+    text:
+      "Durée : 3 tours. Visible pendant Tempête et Abysses. La première fois à chaque tour qu'une unité adverse " +
+      "arrive alors que l'adversaire contrôle au moins 4 unités, elle subit 1 dégât. Réaction cachée : lorsqu'une " +
+      "unité adverse arrive alors que l'adversaire en contrôle au moins 4, infligez 2 dégâts à toutes les unités " +
+      "adverses. Détruisez ensuite Barils de Poudre.",
+    abilities: [
+      {
+        trigger: "onEnterPlay",
+        triggeredBy: { cardTypes: ["marin", "creature"], opponentOnly: true },
+        oncePerTurnKey: "barilsDePoudre",
+        condition: { selfVisible: true, opponentUnitsAtLeast: 4 },
+        description: "Une quatrième unité adverse arrive : elle subit 1 dégât.",
+        effects: [{ type: "damage", target: { kind: "triggerSource" }, amount: { kind: "flat", value: 1 } }],
+      },
+      {
+        trigger: "onEnterPlay",
+        triggeredBy: { cardTypes: ["marin", "creature"], opponentOnly: true },
+        mode: "optional",
+        hiddenReaction: true,
+        condition: { selfHidden: true, opponentUnitsAtLeast: 4 },
+        description: "2 dégâts à toutes les unités adverses, puis détruisez Barils de Poudre.",
+        effects: [
+          { type: "damage", target: { kind: "allEnemyUnits" }, filter: { cardTypes: ["marin", "creature"] }, amount: { kind: "flat", value: 2 } },
+          { type: "destroy", target: { kind: "self" } },
+        ],
+      },
+    ],
+  },
+  {
+    id: "pont-mine",
+    name: "Pont Miné",
+    type: "structure",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 3,
+    health: 3,
+    durationTurns: 3,
+    maxCopies: 2,
+    visibleDuringTide: ["tempete", "abysses"],
+    text:
+      "Durée : 3 tours. Visible pendant Tempête et Abysses. La première unité adverse de Puissance 5 ou plus qui " +
+      "attaque chaque tour perd 2 Puissance pour cette attaque. Réaction cachée : lorsqu'une unité adverse de " +
+      "Puissance 5 ou plus attaque, détruisez cette unité avant qu'elle n'inflige ses dégâts. Détruisez ensuite " +
+      "Pont Miné.",
+    abilities: [
+      {
+        trigger: "onUnitAttackDeclared",
+        oncePerTurnKey: "pontMine",
+        condition: { selfVisible: true, attackerPowerAtLeast: 5 },
+        description: "Une grosse unité adverse attaque : elle perd 2 Puissance pour cette attaque.",
+        effects: [{ type: "modifyAttackerPower", target: { kind: "self" }, amount: { kind: "flat", value: 2 } }],
+      },
+      {
+        trigger: "onUnitAttackDeclared",
+        mode: "optional",
+        hiddenReaction: true,
+        condition: { selfHidden: true, attackerPowerAtLeast: 5 },
+        description: "Détruisez l'attaquant avant ses dégâts, puis Pont Miné.",
+        effects: [
+          { type: "destroy", target: { kind: "pendingAttacker" } },
+          { type: "destroy", target: { kind: "self" } },
+        ],
+      },
+    ],
+  },
+  {
+    id: "cloison-etanche",
+    name: "Cloison Étanche",
+    type: "structure",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 2,
+    health: 4,
+    durationTurns: 3,
+    maxCopies: 2,
+    visibleDuringTide: ["tempete", "abysses"],
+    text:
+      "Durée : 3 tours. Visible pendant Tempête et Abysses. Vos autres Structures ont +1 Résistance. Réaction " +
+      "cachée : lorsqu'une de vos Structures devrait être détruite, elle reste en jeu avec 1 Résistance. " +
+      "Détruisez ensuite Cloison Étanche.",
+    // L'aura ne porte que tant qu'elle est visible : une Structure masquée
+    // est inactive, ses auras comprises. Elle ne s'applique jamais à
+    // elle-même, ce qui dit « vos AUTRES Structures » sans rien déclarer.
+    auraBuffControllerCardTypes: { targetTypes: ["structure"], healthAmount: 1, whileSelfVisible: true },
+    abilities: [
+      {
+        trigger: "onPermanentWouldBeDestroyed",
+        triggeredBy: { cardTypes: ["structure"] },
+        mode: "optional",
+        hiddenReaction: true,
+        condition: { selfHidden: true },
+        description: "Votre Structure reste en jeu avec 1 Résistance, puis Cloison Étanche est détruite.",
+        effects: [
+          { type: "surviveWithHealth", target: { kind: "triggerSource" }, amount: { kind: "flat", value: 1 } },
+          { type: "destroy", target: { kind: "self" } },
+        ],
+      },
+    ],
+  },
+  {
+    id: "cale-inondable",
+    name: "Cale Inondable",
+    type: "structure",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 3,
+    health: 4,
+    durationTurns: 3,
+    maxCopies: 2,
+    visibleDuringTide: ["tempete", "abysses"],
+    text:
+      "Durée : 3 tours. Visible pendant Tempête et Abysses. Si l'adversaire contrôle plus d'unités que vous, la " +
+      "première unité adverse qui attaque chaque tour perd 1 Puissance pour cette attaque. Réaction cachée : " +
+      "lorsque la troisième unité adverse attaque pendant un même tour, toutes les unités adverses perdent " +
+      "3 Puissance jusqu'à la fin du tour. Détruisez ensuite Cale Inondable.",
+    abilities: [
+      {
+        trigger: "onUnitAttackDeclared",
+        oncePerTurnKey: "caleInondable",
+        condition: { selfVisible: true, opponentUnitsMoreThanController: true },
+        description: "L'adversaire a plus de corps : son attaquant perd 1 Puissance.",
+        effects: [{ type: "modifyAttackerPower", target: { kind: "self" }, amount: { kind: "flat", value: 1 } }],
+      },
+      {
+        trigger: "onUnitAttackDeclared",
+        mode: "optional",
+        hiddenReaction: true,
+        condition: { selfHidden: true, opponentAttacksThisTurnAtLeast: 3 },
+        description: "Toutes les unités adverses perdent 3 Puissance, puis Cale Inondable est détruite.",
+        effects: [
+          {
+            type: "debuff",
+            target: { kind: "allEnemyUnits" },
+            filter: { cardTypes: ["marin", "creature"] },
+            attackAmount: { kind: "flat", value: 3 },
+            duration: "endOfTurn",
+          },
+          { type: "destroy", target: { kind: "self" } },
+        ],
+      },
+    ],
+  },
+  {
+    id: "chaine-de-travers",
+    name: "Chaîne de Travers",
+    type: "structure",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 2,
+    health: 3,
+    durationTurns: 3,
+    maxCopies: 2,
+    visibleDuringTide: ["tempete", "abysses"],
+    text:
+      "Durée : 3 tours. Visible pendant Tempête et Abysses. La première unité adverse jouée chaque tour perd " +
+      "1 Puissance jusqu'à la fin du tour. Réaction cachée : lorsqu'une unité adverse arrive, elle ne peut ni " +
+      "attaquer ni activer ses effets jusqu'au prochain tour de son propriétaire. Détruisez ensuite Chaîne de " +
+      "Travers.",
+    abilities: [
+      {
+        trigger: "onEnterPlay",
+        triggeredBy: { cardTypes: ["marin", "creature"], opponentOnly: true },
+        oncePerTurnKey: "chaineDeTravers",
+        condition: { selfVisible: true },
+        description: "La première unité adverse du tour perd 1 Puissance.",
+        effects: [
+          { type: "debuff", target: { kind: "triggerSource" }, attackAmount: { kind: "flat", value: 1 }, duration: "endOfTurn" },
+        ],
+      },
+      {
+        trigger: "onEnterPlay",
+        triggeredBy: { cardTypes: ["marin", "creature"], opponentOnly: true },
+        mode: "optional",
+        hiddenReaction: true,
+        condition: { selfHidden: true },
+        description: "L'unité qui arrive est entravée jusqu'au tour suivant, puis Chaîne de Travers est détruite.",
+        effects: [
+          // `untilYourNextTurn` dit exactement « jusqu'au prochain tour de
+          // son propriétaire » : l'entrave se lève d'elle-même.
+          {
+            type: "debuff",
+            target: { kind: "triggerSource" },
+            attackAmount: { kind: "flat", value: 0 },
+            duration: "untilYourNextTurn",
+            silences: true,
+          },
+          { type: "destroy", target: { kind: "self" } },
+        ],
+      },
+    ],
+  },
+  {
+    id: "derniere-barricade",
+    name: "Dernière Barricade",
+    type: "structure",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 3,
+    health: 4,
+    durationTurns: 3,
+    maxCopies: 2,
+    visibleDuringTide: ["tempete", "abysses"],
+    text:
+      "Durée : 3 tours. Visible pendant Tempête et Abysses. La première fois à chaque tour que votre Navire subit " +
+      "des dégâts directs d'une attaque, réduisez-les de 1. Réaction cachée : lorsque votre Navire devrait subir " +
+      "des dégâts directs d'une attaque, annulez ces dégâts. Détruisez ensuite Dernière Barricade.",
+    abilities: [
+      {
+        trigger: "onIncomingDirectAttack",
+        oncePerTurnKey: "derniereBarricade",
+        condition: { selfVisible: true },
+        description: "Réduit de 1 les dégâts directs de l'attaque en cours.",
+        effects: [{ type: "reduceIncomingDamage", target: { kind: "self" }, amount: { kind: "flat", value: 1 } }],
+      },
+      {
+        trigger: "onIncomingDirectAttack",
+        mode: "optional",
+        hiddenReaction: true,
+        condition: { selfHidden: true },
+        description: "Annulez les dégâts directs, puis détruisez Dernière Barricade.",
+        effects: [
+          { type: "cancelIncomingAttack", target: { kind: "self" } },
+          { type: "destroy", target: { kind: "self" } },
+        ],
+      },
+    ],
+  },
+  {
+    id: "fausse-cargaison",
+    name: "Fausse Cargaison",
+    type: "structure",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 2,
+    health: 3,
+    durationTurns: 3,
+    maxCopies: 2,
+    visibleDuringTide: ["tempete", "abysses"],
+    text:
+      "Durée : 3 tours. Visible pendant Tempête et Abysses. La première activation d'Objet adverse de chaque tour " +
+      "coûte 1 Raison supplémentaire. Réaction cachée : lorsqu'un adversaire Brise un Objet, annulez l'effet de " +
+      "cet Objet. Détruisez ensuite Fausse Cargaison.",
+    // Même champ de données que la Cloche d'Alerte : une taxe de Bris
+    // adverse, une fois par tour, tant que la carte est visible.
+    taxOpponentObjectBreakOncePerTurnWhileVisible: { amount: 1 },
+    abilities: [
+      {
+        trigger: "onObjectBroken",
+        triggeredBy: { opponentOnly: true },
+        mode: "optional",
+        hiddenReaction: true,
+        condition: { selfHidden: true },
+        description: "Annulez l'effet de l'Objet adverse, puis détruisez Fausse Cargaison.",
+        effects: [
+          { type: "cancelObjectEffect", target: { kind: "self" } },
+          { type: "destroy", target: { kind: "self" } },
+        ],
+      },
+    ],
+  },
+  {
+    id: "filet-de-sauvetage",
+    name: "Filet de Sauvetage",
+    type: "structure",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 2,
+    health: 3,
+    durationTurns: 3,
+    maxCopies: 2,
+    visibleDuringTide: ["tempete", "abysses"],
+    text:
+      "Durée : 3 tours. Visible pendant Tempête et Abysses. Les unités que vous contrôlez ont +2 Résistance tant " +
+      "que Filet de Sauvetage est visible. Réaction cachée : lorsqu'une de vos unités devrait être détruite, " +
+      "empêchez cette destruction et elle gagne +2 Résistance. Détruisez ensuite Filet de Sauvetage.",
+    // BUFF DE RÉSISTANCE MAXIMALE, jamais une restauration (correction
+    // retenue, Notion) : les dégâts déjà subis ne sont pas soignés, et le
+    // bonus disparaît avec la visibilité de la Structure — une unité dont
+    // les dégâts dépassent alors sa Résistance retombée meurt au contrôle
+    // de morts suivant. C'est la différence exacte entre « +2 Résistance »
+    // et « restaurez 2 Résistance ».
+    auraBuffControllerCardTypes: { targetTypes: ["marin", "creature"], healthAmount: 2, whileSelfVisible: true },
+    abilities: [
+      {
+        trigger: "onPermanentWouldBeDestroyed",
+        triggeredBy: { cardTypes: ["marin", "creature"] },
+        mode: "optional",
+        hiddenReaction: true,
+        condition: { selfHidden: true },
+        description: "Votre unité survit et gagne +2 Résistance, puis Filet de Sauvetage est détruit.",
+        effects: [
+          { type: "surviveWithHealth", target: { kind: "triggerSource" }, amount: { kind: "flat", value: 1 } },
+          { type: "buff", target: { kind: "triggerSource" }, healthAmount: { kind: "flat", value: 2 }, attackAmount: { kind: "flat", value: 0 }, permanent: true },
+          { type: "destroy", target: { kind: "self" } },
+        ],
+      },
+    ],
+  },
+  // --- Anti-swarm / contrôle -------------------------------------------
+  // L'audit du 21/09 ne comptait que deux cartes anti-swarm au catalogue,
+  // pour un pool qui fabrique des corps bien plus vite qu'il ne sait les
+  // punir. Ces six-là rendent au nombre un prix, à des seuils différents.
+  {
+    id: "le-pont-est-plein",
+    name: "Le Pont est Plein !",
+    type: "anomalie",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 3,
+    maxCopies: 2,
+    text: "Infligez 2 dégâts à toutes les unités de Puissance 2 ou moins.",
+    // Puissance EFFECTIVE : une unité qu'un buff vient de faire passer à 3
+    // y échappe, ce que le texte promet.
+    onPlayEffects: [
+      {
+        type: "damage",
+        target: { kind: "allUnits" },
+        filter: { cardTypes: ["marin", "creature"], maxPower: 2 },
+        amount: { kind: "flat", value: 2 },
+      },
+    ],
+  },
+  {
+    id: "vague-scelerate",
+    name: "Vague Scélérate",
+    type: "anomalie",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 5,
+    maxCopies: 2,
+    text: "Infligez 2 dégâts à toutes les unités en jeu.",
+    onPlayEffects: [
+      {
+        type: "damage",
+        target: { kind: "allUnits" },
+        filter: { cardTypes: ["marin", "creature"] },
+        amount: { kind: "flat", value: 2 },
+      },
+    ],
+  },
+  {
+    id: "panique-sur-le-pont",
+    name: "Panique sur le Pont",
+    type: "anomalie",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 4,
+    maxCopies: 2,
+    text:
+      "Si l'adversaire contrôle au moins 4 unités, renvoyez jusqu'à 2 unités de coût 3 ou moins qu'il contrôle " +
+      "dans sa main.",
+    onPlayEffects: [
+      {
+        type: "pickUnits",
+        target: { kind: "allEnemyUnits" },
+        filter: { cardTypes: ["marin", "creature"], maxCost: 3 },
+        uses: 2,
+        conditionOpponentUnitsAtLeast: 4,
+        thenEffects: [{ type: "moveZone", toZone: "hand", target: { kind: "triggerSource" } }],
+      },
+    ],
+  },
+  {
+    id: "chacun-sa-place",
+    name: "Chacun sa Place",
+    type: "anomalie",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 5,
+    maxCopies: 1,
+    text: "Chaque joueur choisit jusqu'à 3 unités qu'il contrôle. Détruisez toutes les autres.",
+    onPlayEffects: [{ type: "keepUnitsDestroyRest", target: { kind: "allPlayers" }, uses: 3 }],
+  },
+  {
+    id: "pas-tous-a-la-fois",
+    name: "Pas Tous à la Fois !",
+    type: "anomalie",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 3,
+    maxCopies: 2,
+    text:
+      "Jusqu'à votre prochain tour, après la troisième unité jouée par chaque joueur, les unités supplémentaires " +
+      "coûtent +2 Raison.",
+    // Une taxe SYMÉTRIQUE : elle frappe aussi celui qui la pose. C'est ce
+    // qui en fait une carte de tempo et non un simple mur — on la joue
+    // quand on a déjà déployé, pas pour se protéger gratuitement.
+    onPlayEffects: [
+      {
+        type: "surchargeCards",
+        target: { kind: "allPlayers" },
+        amount: { kind: "flat", value: 2 },
+        filter: { cardTypes: ["marin", "creature"] },
+        afterUnitsPlayedThisTurn: 3,
+        persistentTax: true,
+        lastsExtraTurns: 1,
+      },
+    ],
+  },
+  {
+    id: "le-large-se-fache",
+    name: "Le Large se Fâche",
+    type: "anomalie",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 6,
+    maxCopies: 1,
+    text: "Infligez 3 dégâts à toutes les unités en jeu.",
+    onPlayEffects: [
+      {
+        type: "damage",
+        target: { kind: "allUnits" },
+        filter: { cardTypes: ["marin", "creature"] },
+        amount: { kind: "flat", value: 3 },
+      },
+    ],
+  },
+
+  // --- Pioche / filtrage -------------------------------------------------
+  // Le catalogue savait piocher, pas CHOISIR. Ces six Objets rendent la
+  // pioche lisible sans la rendre plus abondante — regarder, prendre une
+  // carte, remettre le reste dessous.
+  //
+  // Le « Brisez cet Objet : » de chacun n'est pas dans la table du lot, qui
+  // ne donne que la colonne « Effet ». C'est l'idiome des Objets du jeu, et
+  // celui que le reste du même lot écrit noir sur blanc (Coup de Harpon,
+  // Bandages Humides…) : un Objet occupe un Slot et se brise pour agir.
+  // Arbitrage reporté sur la page Notion du lot.
+  {
+    id: "faire-linventaire",
+    name: "Faire l'Inventaire",
+    type: "objet",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 2,
+    maxCopies: 3,
+    text:
+      "Brisez cet Objet : regardez les 3 premières cartes de votre pioche. Ajoutez-en une à votre main. Placez " +
+      "les autres sous votre pioche.",
+    onBreakEffects: [
+      { type: "lookAtDeckTop", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 3 }, uses: 1 },
+    ],
+  },
+  {
+    id: "mauvaise-main",
+    name: "Mauvaise Main",
+    type: "objet",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 2,
+    maxCopies: 3,
+    text: "Brisez cet Objet : placez jusqu'à 2 cartes de votre main sous votre pioche, puis piochez-en autant.",
+    onBreakEffects: [
+      { type: "handToDeckBottomThenDraw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } },
+    ],
+  },
+  {
+    id: "un-peu-de-repit",
+    name: "Un Peu de Répit",
+    type: "objet",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 3,
+    maxCopies: 3,
+    text: "Brisez cet Objet : si l'adversaire contrôle plus d'unités que vous, piochez 2 cartes.",
+    onBreakEffects: [
+      {
+        type: "draw",
+        target: { kind: "controllerPlayer" },
+        amount: { kind: "flat", value: 2 },
+        conditionOpponentUnitsMoreThanController: true,
+      },
+    ],
+  },
+  {
+    id: "dernieres-reserves",
+    name: "Dernières Réserves",
+    type: "objet",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 3,
+    maxCopies: 3,
+    text: "Brisez cet Objet : si vous avez 1 carte ou moins en main, piochez 2 cartes.",
+    onBreakEffects: [
+      {
+        type: "draw",
+        target: { kind: "controllerPlayer" },
+        amount: { kind: "flat", value: 2 },
+        conditionControllerHandAtMost: 1,
+      },
+    ],
+  },
+  {
+    id: "journal-de-bord",
+    name: "Journal de Bord",
+    type: "objet",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 2,
+    maxCopies: 3,
+    text:
+      "Brisez cet Objet : regardez les 4 premières cartes de votre pioche. Vous pouvez ajouter une Structure " +
+      "parmi elles à votre main. Placez les autres sous votre pioche.",
+    onBreakEffects: [
+      {
+        type: "lookAtDeckTop",
+        target: { kind: "controllerPlayer" },
+        amount: { kind: "flat", value: 4 },
+        uses: 1,
+        filter: { cardTypes: ["structure"] },
+        refusable: true,
+      },
+    ],
+  },
+  {
+    id: "fouille-de-la-cale",
+    name: "Fouille de la Cale",
+    type: "objet",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 2,
+    maxCopies: 3,
+    text:
+      "Brisez cet Objet : regardez les 4 premières cartes de votre pioche. Vous pouvez ajouter un Objet parmi " +
+      "elles à votre main. Placez les autres sous votre pioche.",
+    onBreakEffects: [
+      {
+        type: "lookAtDeckTop",
+        target: { kind: "controllerPlayer" },
+        amount: { kind: "flat", value: 4 },
+        uses: 1,
+        filter: { cardTypes: ["objet"] },
+        refusable: true,
+      },
+    ],
+  },
+  // --- Objets réactifs / défense ----------------------------------------
+  // Pendant le tour adverse, un Objet ne se Brise PAS librement : seulement
+  // quand le déclencheur écrit sur la carte survient. Chacun passe donc par
+  // une capacité `optional` accrochée à sa fenêtre, jamais par une
+  // ouverture générale.
+  //
+  // Leur coût imprimé de 4 est calibré sur le Bris DEPUIS LA MAIN, à
+  // max(1, ceil(coût / 2)) = 2 Raison (garde-fou de playtest Notion).
+  {
+    id: "harpon-a-ressort",
+    name: "Harpon à Ressort",
+    type: "objet",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 4,
+    maxCopies: 2,
+    text: "Lorsqu'une unité adverse attaque, vous pouvez Briser cet Objet : infligez-lui 2 dégâts.",
+    onBreakEffects: [{ type: "damage", target: { kind: "pendingAttacker" }, amount: { kind: "flat", value: 2 } }],
+    abilities: [
+      {
+        trigger: "onUnitAttackDeclared",
+        mode: "optional",
+        description: "Brisez Harpon à Ressort : 2 dégâts à l'attaquant.",
+        effects: [
+          { type: "damage", target: { kind: "pendingAttacker" }, amount: { kind: "flat", value: 2 } },
+          { type: "saborde", target: { kind: "self" } },
+        ],
+      },
+    ],
+  },
+  {
+    id: "bouclier-decume",
+    name: "Bouclier d'Écume",
+    type: "objet",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 4,
+    maxCopies: 2,
+    text:
+      "Lorsqu'une de vos unités devrait être détruite pendant le tour adverse, vous pouvez Briser cet Objet : " +
+      "elle reste en jeu avec 1 Résistance.",
+    onBreakEffects: [{ type: "surviveWithHealth", target: { kind: "triggerSource" }, amount: { kind: "flat", value: 1 } }],
+    abilities: [
+      {
+        trigger: "onPermanentWouldBeDestroyed",
+        triggeredBy: { cardTypes: ["marin", "creature"] },
+        mode: "optional",
+        description: "Brisez Bouclier d'Écume : votre unité reste en jeu avec 1 Résistance.",
+        effects: [
+          { type: "surviveWithHealth", target: { kind: "triggerSource" }, amount: { kind: "flat", value: 1 } },
+          { type: "saborde", target: { kind: "self" } },
+        ],
+      },
+    ],
+  },
+  {
+    id: "signal-de-detresse",
+    name: "Signal de Détresse",
+    type: "objet",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 4,
+    maxCopies: 2,
+    text:
+      "Lorsque votre Navire devrait subir des dégâts directs pendant le tour adverse, vous pouvez Briser cet " +
+      "Objet : réduisez-les de 3.",
+    onBreakEffects: [{ type: "reduceIncomingDamage", target: { kind: "self" }, amount: { kind: "flat", value: 3 } }],
+    abilities: [
+      {
+        trigger: "onIncomingDirectAttack",
+        mode: "optional",
+        description: "Brisez Signal de Détresse : 3 dégâts directs de moins.",
+        effects: [
+          { type: "reduceIncomingDamage", target: { kind: "self" }, amount: { kind: "flat", value: 3 } },
+          { type: "saborde", target: { kind: "self" } },
+        ],
+      },
+    ],
+  },
+  {
+    id: "corde-de-rappel",
+    name: "Corde de Rappel",
+    type: "objet",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 4,
+    maxCopies: 2,
+    text:
+      "Lorsqu'une de vos unités est ciblée par une attaque, vous pouvez Briser cet Objet : renvoyez cette unité " +
+      "dans votre main.",
+    onBreakEffects: [{ type: "moveZone", toZone: "hand", target: { kind: "attackTarget" } }],
+    abilities: [
+      {
+        trigger: "onUnitAttackDeclared",
+        mode: "optional",
+        description: "Brisez Corde de Rappel : l'unité visée rentre dans votre main.",
+        effects: [
+          { type: "moveZone", toZone: "hand", target: { kind: "attackTarget" } },
+          { type: "saborde", target: { kind: "self" } },
+        ],
+      },
+    ],
+  },
+  {
+    id: "planche-de-fortune",
+    name: "Planche de Fortune",
+    type: "objet",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 4,
+    maxCopies: 2,
+    text:
+      "Lorsqu'une Structure que vous contrôlez devrait être détruite pendant le tour adverse, vous pouvez Briser " +
+      "cet Objet : elle reste en jeu avec 1 Résistance.",
+    onBreakEffects: [{ type: "surviveWithHealth", target: { kind: "triggerSource" }, amount: { kind: "flat", value: 1 } }],
+    abilities: [
+      {
+        trigger: "onPermanentWouldBeDestroyed",
+        triggeredBy: { cardTypes: ["structure"] },
+        mode: "optional",
+        description: "Brisez Planche de Fortune : votre Structure reste en jeu avec 1 Résistance.",
+        effects: [
+          { type: "surviveWithHealth", target: { kind: "triggerSource" }, amount: { kind: "flat", value: 1 } },
+          { type: "saborde", target: { kind: "self" } },
+        ],
+      },
+    ],
+  },
+  {
+    id: "contre-harpon",
+    name: "Contre-Harpon",
+    type: "objet",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 4,
+    maxCopies: 2,
+    text:
+      "Lorsqu'une unité adverse inflige des dégâts directs à votre Navire, vous pouvez Briser cet Objet : " +
+      "infligez-lui 2 dégâts.",
+    onBreakEffects: [{ type: "damage", target: { kind: "pendingAttacker" }, amount: { kind: "flat", value: 2 } }],
+    abilities: [
+      {
+        // Le moteur n'a qu'une fenêtre pour « dégâts directs au Navire », et
+        // elle s'ouvre JUSTE AVANT le coup (`onIncomingDirectAttack`) : la
+        // riposte part donc au même moment que celle des autres pièges de
+        // coque, sans rien changer à ce qu'elle rend.
+        trigger: "onIncomingDirectAttack",
+        mode: "optional",
+        description: "Brisez Contre-Harpon : 2 dégâts à l'unité qui frappe votre coque.",
+        effects: [
+          { type: "damage", target: { kind: "pendingAttacker" }, amount: { kind: "flat", value: 2 } },
+          { type: "saborde", target: { kind: "self" } },
+        ],
+      },
+    ],
+  },
+
+  // --- Removal / utilitaires ---------------------------------------------
+  // L'audit du catalogue ne trouvait AUCUNE carte capable de détruire un
+  // permanent adverse : la seule destruction visait son propre plateau.
+  // Ces six-là ouvrent la réponse — ciblée, payante, et jamais gratuite.
+  {
+    id: "coup-de-harpon",
+    name: "Coup de Harpon",
+    type: "objet",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 4,
+    maxCopies: 3,
+    text: "Brisez cet Objet : infligez 2 dégâts à une unité.",
+    onBreakEffects: [
+      {
+        type: "damage",
+        target: { kind: "chosenUnit", among: { unitsOnly: true, sameController: false } },
+        amount: { kind: "flat", value: 2 },
+      },
+    ],
+  },
+  {
+    id: "par-dessus-bord",
+    name: "Par-dessus Bord !",
+    type: "anomalie",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 3,
+    maxCopies: 3,
+    text: "Renvoyez une unité de coût 3 ou moins dans la main de son propriétaire.",
+    onPlayEffects: [
+      {
+        type: "moveZone",
+        toZone: "hand",
+        target: { kind: "chosenUnit", among: { unitsOnly: true, sameController: false, maxCost: 3 } },
+      },
+    ],
+  },
+  {
+    id: "quon-en-finisse",
+    name: "Qu'on en Finisse",
+    type: "anomalie",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 5,
+    maxCopies: 2,
+    text: "Détruisez une unité ayant déjà subi des dégâts ce tour.",
+    onPlayEffects: [
+      {
+        type: "destroy",
+        target: { kind: "chosenUnit", among: { unitsOnly: true, sameController: false, damagedThisTurn: true } },
+      },
+    ],
+  },
+  {
+    id: "sabotage-discret",
+    name: "Sabotage Discret",
+    type: "objet",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 4,
+    maxCopies: 2,
+    text: "Brisez cet Objet : détruisez un Objet adverse.",
+    onBreakEffects: [
+      { type: "destroy", target: { kind: "chosenUnit", among: { opponentOnly: true, cardTypes: ["objet"] } } },
+    ],
+  },
+  {
+    id: "charge-de-demolition",
+    name: "Charge de Démolition",
+    type: "objet",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 6,
+    maxCopies: 2,
+    text: "Brisez cet Objet : détruisez une Structure adverse.",
+    onBreakEffects: [
+      { type: "destroy", target: { kind: "chosenUnit", among: { opponentOnly: true, cardTypes: ["structure"] } } },
+    ],
+  },
+  {
+    id: "coupez-les-cordages",
+    name: "Coupez les Cordages !",
+    type: "objet",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 4,
+    maxCopies: 2,
+    text: "Brisez cet Objet : détruisez un Équipement.",
+    onBreakEffects: [
+      // Sans restriction de camp : le texte dit « un Équipement », pas « un
+      // Équipement adverse ».
+      { type: "destroy", target: { kind: "chosenUnit", among: { sameController: false, cardTypes: ["equipement"] } } },
+    ],
+  },
+
+  // --- Heal / comeback ---------------------------------------------------
+  // Une seule carte du catalogue savait réparer une unité blessée. Ces
+  // quatre-là rendent l'attrition survivable sans rendre la coque infinie :
+  // le soin d'Ancrage est plafonné par le Navire (22/09/2026).
+  {
+    id: "bandages-humides",
+    name: "Bandages Humides",
+    type: "objet",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 2,
+    maxCopies: 3,
+    text: "Brisez cet Objet : restaurez 2 Résistance à une unité.",
+    onBreakEffects: [
+      {
+        type: "heal",
+        target: { kind: "chosenUnit", among: { unitsOnly: true, sameController: false, damaged: true } },
+        amount: { kind: "flat", value: 2 },
+      },
+    ],
+  },
+  {
+    id: "trousse-du-bord",
+    name: "Trousse du Bord",
+    type: "objet",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 4,
+    maxCopies: 2,
+    text: "Brisez cet Objet : restaurez jusqu'à 4 Résistance répartie entre les unités que vous contrôlez.",
+    onBreakEffects: [
+      { type: "healDistributed", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 4 } },
+    ],
+  },
+  {
+    id: "reparations-durgence",
+    name: "Réparations d'Urgence",
+    type: "objet",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 4,
+    maxCopies: 2,
+    text: "Brisez cet Objet : récupérez 1 Ancrage par emplacement libre sur votre board, maximum 3.",
+    // L'exact opposé d'une carte anti-swarm : elle rend d'autant plus que
+    // le plateau est vide. C'est ce qui en fait un comeback et non une
+    // carte de tempo.
+    onBreakEffects: [
+      { type: "heal", target: { kind: "controllerPlayer" }, amount: { kind: "freeSlots", per: 1, max: 3 } },
+    ],
+  },
+  {
+    id: "on-flotte-encore",
+    name: "On Flotte Encore",
+    type: "objet",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 5,
+    maxCopies: 2,
+    text:
+      "Brisez cet Objet : récupérez 4 Ancrage. Jouable uniquement si vous avez perdu au moins la moitié de votre " +
+      "Ancrage initial.",
+    // La condition porte sur la POSE, pas sur le Bris : une carte qu'on ne
+    // peut pas jouer reste en main, et rien n'est dépensé.
+    playableOnlyIf: { controllerAnchorAtMostRatioOfStart: 0.5 },
+    onBreakEffects: [
+      { type: "heal", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 4 } },
+    ],
+  },
+  // --- Marins / Créatures génériques de haut coût ------------------------
+  // La mesure du 22/09 est sans appel : 96 % des cartes réellement jouées
+  // coûtent 3 ou moins, et le coût 7 n'était JAMAIS joué — non par manque
+  // de Raison, mais parce qu'aucune carte ne l'occupait. Ces sept-là
+  // existent pour qu'accumuler sa Raison ait enfin un objet.
+  {
+    id: "vieux-harponneur",
+    name: "Vieux Harponneur",
+    type: "marin",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 5,
+    attack: 4,
+    health: 5,
+    maxCopies: 2,
+    text: "À son arrivée, infligez 2 dégâts à une unité déjà blessée.",
+    onPlayEffects: [
+      {
+        type: "damage",
+        target: { kind: "chosenUnit", among: { unitsOnly: true, sameController: false, damaged: true } },
+        amount: { kind: "flat", value: 2 },
+      },
+    ],
+  },
+  {
+    id: "chirurgien-du-bord",
+    name: "Chirurgien du Bord",
+    type: "marin",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 5,
+    attack: 3,
+    health: 6,
+    maxCopies: 2,
+    text: "À son arrivée, restaurez jusqu'à 3 Résistance répartie entre les unités que vous contrôlez.",
+    onPlayEffects: [
+      { type: "healDistributed", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 3 } },
+    ],
+  },
+  {
+    id: "le-brise-ligne",
+    name: "Le Brise-Ligne",
+    type: "marin",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 6,
+    attack: 5,
+    health: 6,
+    maxCopies: 2,
+    text: "À son arrivée, si l'adversaire contrôle au moins 4 unités, infligez 1 dégât à toutes ses unités.",
+    onPlayEffects: [
+      {
+        type: "damage",
+        target: { kind: "allEnemyUnits" },
+        filter: { cardTypes: ["marin", "creature"] },
+        amount: { kind: "flat", value: 1 },
+        conditionOpponentUnitsAtLeast: 4,
+      },
+    ],
+  },
+  {
+    id: "le-dernier-rempart",
+    name: "Le Dernier Rempart",
+    type: "marin",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 6,
+    attack: 4,
+    health: 8,
+    maxCopies: 2,
+    keywords: ["garde"],
+    text: "Garde.",
+  },
+  {
+    id: "lamiral-sans-pavillon",
+    name: "L'Amiral sans Pavillon",
+    type: "marin",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 7,
+    attack: 6,
+    health: 7,
+    maxCopies: 1,
+    text:
+      "À son arrivée, si l'adversaire contrôle plus d'unités que vous, détruisez une unité de coût 3 ou moins " +
+      "qu'il contrôle.",
+    onPlayEffects: [
+      {
+        type: "destroy",
+        target: { kind: "chosenUnit", among: { opponentOnly: true, unitsOnly: true, maxCost: 3 } },
+        conditionOpponentUnitsMoreThanController: true,
+      },
+    ],
+  },
+  {
+    id: "le-naufrage-impossible",
+    name: "Le Naufragé Impossible",
+    type: "marin",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 7,
+    attack: 6,
+    health: 8,
+    maxCopies: 1,
+    text: "La première fois qu'il devrait être détruit, il reste en jeu avec 1 Résistance.",
+    // `onceEver` : un seul sauvetage pour toute la partie, jamais réarmé
+    // d'un tour à l'autre — c'est ce que dit « la première fois ».
+    survivesLethalOncePerTurn: { onceEver: true },
+  },
+  {
+    id: "leviathan-balafre",
+    name: "Léviathan Balafré",
+    type: "creature",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 8,
+    attack: 8,
+    health: 9,
+    maxCopies: 1,
+    text: "À son arrivée, infligez 2 dégâts à toutes les autres unités de coût 2 ou moins.",
+    // « toutes les AUTRES » : `excludeSelf` écarte le Léviathan lui-même,
+    // qui de toute façon ne passerait pas le plafond de coût — mais le
+    // texte le dit, donc la définition le dit.
+    onPlayEffects: [
+      {
+        type: "damage",
+        target: { kind: "allUnits" },
+        filter: { cardTypes: ["marin", "creature"], maxCost: 2, excludeSelf: true },
+        amount: { kind: "flat", value: 2 },
+      },
+    ],
+  },
+
+  // --- Finishers non-unités ----------------------------------------------
+  // Trois cartes qui ferment une partie sans passer par un corps : c'est le
+  // seul endroit du lot où le coût 6-7 achète un effet, pas une statistique.
+  {
+    id: "abandonnez-le-navire",
+    name: "Abandonnez le Navire !",
+    type: "anomalie",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 6,
+    maxCopies: 1,
+    text: "Chaque joueur choisit jusqu'à 2 unités qu'il contrôle. Détruisez toutes les autres.",
+    onPlayEffects: [{ type: "keepUnitsDestroyRest", target: { kind: "allPlayers" }, uses: 2 }],
+  },
+  {
+    id: "la-mer-reprend-tout",
+    name: "La Mer Reprend Tout",
+    type: "anomalie",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 7,
+    maxCopies: 1,
+    text: "Détruisez toutes les unités en jeu.",
+    onPlayEffects: [
+      { type: "destroy", target: { kind: "allUnits" }, filter: { cardTypes: ["marin", "creature"] } },
+    ],
+  },
+  {
+    id: "dernier-jour-en-mer",
+    name: "Dernier Jour en Mer",
+    type: "anomalie",
+    setCode: NECESSAIRE_DU_MARIN,
+    cost: 7,
+    maxCopies: 1,
+    text: "Détruisez une unité ou une Structure adverse. Puis récupérez 2 Ancrage.",
+    onPlayEffects: [
+      {
+        type: "destroy",
+        target: { kind: "chosenUnit", among: { opponentOnly: true, cardTypes: ["marin", "creature", "structure"] } },
+      },
+      { type: "heal", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } },
     ],
   },
 ];

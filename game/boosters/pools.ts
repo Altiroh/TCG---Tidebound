@@ -33,6 +33,8 @@ export const BOOSTER_ETRANGETE_SOUS_MARINE = "etrangete-sous-marine";
 export const BOOSTER_BIENVENUE = "welcome_tutorial";
 /** B4 — La Veillée des Disparus (Lot 13). */
 export const BOOSTER_VEILLEE_DES_DISPARUS = "la-veillee-des-disparus";
+/** B5 — Nécessaire du Marin (Lot 14). Booster de CONSOLIDATION, pas d'extension. */
+export const BOOSTER_NECESSAIRE_DU_MARIN = "necessaire-du-marin";
 
 /**
  * B1 — Défaut. 63 entrées (61 + les deux anti-swarm du 21/09/2026, qui
@@ -318,6 +320,82 @@ const VEILLEE_DES_DISPARUS: readonly string[] = [
   "plaque-de-fortune",
 ];
 
+
+/**
+ * B5 — Nécessaire du Marin (Lot 14). Booster de CONSOLIDATION : il ne
+ * raconte rien et ne porte aucun archétype, il fournit les outils
+ * génériques qui manquaient à tous les decks — pièges, défense, removal,
+ * pioche, riposte, grosses unités.
+ *
+ * Deux choses le distinguent des extensions :
+ *
+ *  - LA NASSE TROP PLEINE y figure alors qu'elle est déjà au Défaut. C'est
+ *    exactement ce que le modèle permet : une carte appartient à un
+ *    catalogue, et ce sont les POOLS qui disent où on peut l'obtenir. Sa
+ *    définition n'est pas dupliquée, seul son slug l'est.
+ *
+ *  - LES DEUX ABYSSALES sont des RÉÉDITIONS. Le Lot 14 n'en déclare
+ *    aucune, et un booster achetable doit pouvoir remplir son slot
+ *    Profondeur — sans quoi le pity Abyssal n'aurait rien à donner. Même
+ *    solution que La Veillée des Disparus, qui rouvre elle aussi des
+ *    cartes d'autres pools plutôt que d'être un booster fermé. À revoir le
+ *    jour où le design donne des Abyssales au lot.
+ */
+const NECESSAIRE_DU_MARIN: readonly string[] = [
+  // --- Les 48 du lot (La Nasse Trop Pleine est déjà au catalogue) ---
+  "la-nasse-trop-pleine",
+  "jugement-du-phare",
+  "barils-de-poudre",
+  "pont-mine",
+  "cloison-etanche",
+  "cale-inondable",
+  "chaine-de-travers",
+  "derniere-barricade",
+  "fausse-cargaison",
+  "filet-de-sauvetage",
+  "le-pont-est-plein",
+  "vague-scelerate",
+  "panique-sur-le-pont",
+  "chacun-sa-place",
+  "pas-tous-a-la-fois",
+  "le-large-se-fache",
+  "faire-linventaire",
+  "mauvaise-main",
+  "un-peu-de-repit",
+  "dernieres-reserves",
+  "journal-de-bord",
+  "fouille-de-la-cale",
+  "harpon-a-ressort",
+  "bouclier-decume",
+  "signal-de-detresse",
+  "corde-de-rappel",
+  "planche-de-fortune",
+  "contre-harpon",
+  "coup-de-harpon",
+  "par-dessus-bord",
+  "quon-en-finisse",
+  "sabotage-discret",
+  "charge-de-demolition",
+  "coupez-les-cordages",
+  "bandages-humides",
+  "trousse-du-bord",
+  "reparations-durgence",
+  "on-flotte-encore",
+  "vieux-harponneur",
+  "chirurgien-du-bord",
+  "le-brise-ligne",
+  "le-dernier-rempart",
+  "lamiral-sans-pavillon",
+  "le-naufrage-impossible",
+  "leviathan-balafre",
+  "abandonnez-le-navire",
+  "la-mer-reprend-tout",
+  "dernier-jour-en-mer",
+  // --- Abyssales de réédition (le lot n'en déclare aucune) ---
+  "marin-aux-yeux-rouges-abyssal",
+  "maman-revient-abyssal",
+];
+
 const BIENVENUE: readonly string[] = DEFAUT.filter((cardId) => {
   const def = CORE_SET.find((card) => card.id === cardId);
   if (!def) return false;
@@ -332,6 +410,7 @@ export const BOOSTER_POOLS: Readonly<Record<string, readonly string[]>> = {
   [BOOSTER_POISSONS_PAS_FRAIS]: POISSONS_PAS_FRAIS,
   [BOOSTER_ETRANGETE_SOUS_MARINE]: ETRANGETE_SOUS_MARINE,
   [BOOSTER_VEILLEE_DES_DISPARUS]: VEILLEE_DES_DISPARUS,
+  [BOOSTER_NECESSAIRE_DU_MARIN]: NECESSAIRE_DU_MARIN,
   [BOOSTER_BIENVENUE]: BIENVENUE,
 };
 
@@ -341,6 +420,8 @@ export const BOOSTER_POOLS: Readonly<Record<string, readonly string[]>> = {
  */
 export const PURCHASABLE_BOOSTER_IDS: readonly string[] = [
   BOOSTER_DEFAUT,
+  // Juste après le Standard : découverte du jeu, puis consolidation.
+  BOOSTER_NECESSAIRE_DU_MARIN,
   BOOSTER_POISSONS_PAS_FRAIS,
   BOOSTER_ETRANGETE_SOUS_MARINE,
   BOOSTER_VEILLEE_DES_DISPARUS,

@@ -135,8 +135,15 @@ function check(def: CardDefinition): Violation[] {
 
   // --- Facultatif ----------------------------------------------------------
   if (/vous pouvez/i.test(text)) {
-    const optional = abilities.some((a) => a.mode === "optional") || Boolean(def.activatableOncePerTurn);
-    if (!optional) push("optional", "« vous pouvez » sans capacité `mode: \"optional\"` : l'effet se résout d'office");
+    // Un effet REFUSABLE réalise aussi le « vous pouvez » : le choix qu'il
+    // ouvre accepte « ne rien faire ». C'est le cas de « vous pouvez
+    // ajouter une Structure parmi elles » (Lot 14), où la décision est
+    // dans la question posée, pas dans l'activation de la capacité.
+    const optional =
+      abilities.some((a) => a.mode === "optional") ||
+      Boolean(def.activatableOncePerTurn) ||
+      effects.some((e) => e.refusable === true);
+    if (!optional) push("optional", "« vous pouvez » sans capacité `mode: \"optional\"` ni effet refusable : l'effet se résout d'office");
   }
 
   // --- Désignation : jamais d'effet automatique sur une cible choisie ------

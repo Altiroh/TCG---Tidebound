@@ -28,6 +28,7 @@ import { graveyardPickView } from "@/features/match/graveyardPickRequest";
 import { DeckLookPrompt } from "@/features/match/DeckLookPrompt";
 import { HealAllocationPrompt } from "@/features/match/HealAllocationPrompt";
 import { KeepUnitsPrompt } from "@/features/match/KeepUnitsPrompt";
+import { PickUnitsPrompt } from "@/features/match/PickUnitsPrompt";
 import { HandDiscardPrompt } from "@/features/match/HandDiscardPrompt";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ReactionPrompt } from "@/features/match/ReactionPrompt";
@@ -280,6 +281,15 @@ export function OnlineBoard({
         <PendingChoicePrompt
           choice={state.pendingChoice}
           onChoose={(choice) => act({ type: "resolveChoice", playerId: myUserId, choice })}
+        />
+      )}
+      {state.pendingChoice?.kind === "pickUnits" && state.pendingChoice.playerId === myUserId && (
+        <PickUnitsPrompt
+          choice={state.pendingChoice}
+          allUnits={state.players.flatMap((p) => p.board)}
+          onConfirm={(pickInstanceIds) =>
+            act({ type: "resolveChoice", playerId: myUserId, choice: { pickInstanceIds } })
+          }
         />
       )}
       {state.pendingChoice?.kind === "keepUnits" && state.pendingChoice.playerId === myUserId && (

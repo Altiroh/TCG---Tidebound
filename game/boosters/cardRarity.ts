@@ -339,6 +339,87 @@ const VEILLEE_DES_DISPARUS_RARITY: Record<string, CardRarity> = {
   "on-avait-dit-tous-ensemble": "epic",
 };
 
+/**
+ * Lot 14 — Nécessaire du Marin. Raretés PROVISOIRES, à valider par le
+ * design : la page de lot donne les coûts, les stats et les effets, mais
+ * pas la rareté carte par carte, contrairement aux Lots 11 à 13.
+ *
+ * Règle appliquée, faute de mieux et pour qu'elle soit relisible : la
+ * rareté suit ce que la carte VERROUILLE. Un outil qu'on veut voir dans
+ * tous les decks reste Commune ; une réponse qui décide d'un échange est
+ * Rare ; un effet qui referme une partie à lui seul est Épique ou
+ * Légendaire, et porte déjà `maxCopies: 1`.
+ *
+ * Aucune Abyssale : le lot n'en déclare pas. C'est une lacune assumée du
+ * lot, pas une omission d'implémentation — le booster tire donc ses
+ * Abyssales de rééditions, comme La Veillée des Disparus (cf.
+ * `game/boosters/pools.ts`).
+ */
+const NECESSAIRE_DU_MARIN_RARITY: Record<string, CardRarity> = {
+  // --- Structures-pièges ------------------------------------------------
+  "cloison-etanche": "common",
+  "chaine-de-travers": "common",
+  "barils-de-poudre": "uncommon",
+  "pont-mine": "uncommon",
+  "cale-inondable": "uncommon",
+  "derniere-barricade": "uncommon",
+  "fausse-cargaison": "uncommon",
+  "filet-de-sauvetage": "rare",
+  "jugement-du-phare": "epic",
+
+  // --- Anti-swarm / contrôle --------------------------------------------
+  "le-pont-est-plein": "common",
+  "vague-scelerate": "rare",
+  "panique-sur-le-pont": "rare",
+  "pas-tous-a-la-fois": "rare",
+  "chacun-sa-place": "epic",
+  "le-large-se-fache": "epic",
+
+  // --- Pioche / filtrage -------------------------------------------------
+  "faire-linventaire": "common",
+  "mauvaise-main": "common",
+  "un-peu-de-repit": "common",
+  "dernieres-reserves": "common",
+  "journal-de-bord": "uncommon",
+  "fouille-de-la-cale": "uncommon",
+
+  // --- Objets réactifs / défense ----------------------------------------
+  "harpon-a-ressort": "uncommon",
+  "bouclier-decume": "uncommon",
+  "signal-de-detresse": "uncommon",
+  "planche-de-fortune": "uncommon",
+  "contre-harpon": "uncommon",
+  "corde-de-rappel": "rare",
+
+  // --- Removal / utilitaires --------------------------------------------
+  "coup-de-harpon": "common",
+  "par-dessus-bord": "common",
+  "sabotage-discret": "uncommon",
+  "coupez-les-cordages": "uncommon",
+  "quon-en-finisse": "rare",
+  "charge-de-demolition": "rare",
+
+  // --- Heal / comeback ---------------------------------------------------
+  "bandages-humides": "common",
+  "trousse-du-bord": "uncommon",
+  "reparations-durgence": "uncommon",
+  "on-flotte-encore": "rare",
+
+  // --- Marins / Créatures de haut coût -----------------------------------
+  "vieux-harponneur": "uncommon",
+  "chirurgien-du-bord": "uncommon",
+  "le-brise-ligne": "rare",
+  "le-dernier-rempart": "rare",
+  "lamiral-sans-pavillon": "epic",
+  "le-naufrage-impossible": "epic",
+  "leviathan-balafre": "legendary",
+
+  // --- Finishers non-unités ----------------------------------------------
+  "dernier-jour-en-mer": "epic",
+  "abandonnez-le-navire": "epic",
+  "la-mer-reprend-tout": "legendary",
+};
+
 const ABYSSAL_VARIANT_SUFFIX = "-abyssal";
 
 /**
@@ -354,6 +435,7 @@ export function rarityForCardId(cardId: string): CardRarity | null {
     THEATRE_ENGLOUTI_RARITY[cardId] ??
     RAPIECER_LA_COQUE_RARITY[cardId] ??
     VEILLEE_DES_DISPARUS_RARITY[cardId] ??
+    NECESSAIRE_DU_MARIN_RARITY[cardId] ??
     PROVISIONAL_RARITY[cardId] ??
     null
   );

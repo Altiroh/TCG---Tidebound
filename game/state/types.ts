@@ -616,7 +616,34 @@ export interface KeepUnitsChoice {
   turnNumber: number;
 }
 
+/**
+ * « Renvoyez JUSQU'À 2 unités de coût 3 ou moins qu'il contrôle dans sa
+ * main » (Panique sur le Pont, Lot 14).
+ *
+ * `chosenUnit` ne désigne qu'UNE cible : un texte qui en vise plusieurs
+ * n'avait aucune façon de se dire. Ce choix-ci porte la liste des cibles
+ * légales — calculées une fois, avec le même filtre que le moteur
+ * revérifiera — et les effets à appliquer à chacune.
+ *
+ * « Jusqu'à » : en désigner moins, ou aucune, reste une réponse.
+ */
+export interface PickUnitsChoice {
+  kind: "pickUnits";
+  playerId: PlayerId;
+  /** Nombre maximum de cibles. */
+  pick: number;
+  /** Cibles légales, `instanceId` — l'interface ne propose rien d'autre, le moteur n'accepte rien d'autre. */
+  among: string[];
+  /** Effets appliqués à CHAQUE cible désignée. */
+  effects: EffectDefinition[];
+  /** Qui contrôle ces effets — pas forcément le propriétaire des cibles. */
+  controllerId: PlayerId;
+  sourceInstanceId?: string;
+  turnNumber: number;
+}
+
 export type PendingChoice =
+  | PickUnitsChoice
   | KeepUnitsChoice
   | ReasonOrAnchorChoice
   | AbilityOptionChoice

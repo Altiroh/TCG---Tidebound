@@ -109,9 +109,15 @@ describe("extensions de boosters", () => {
     expect(boosterExtension("welcome_tutorial")).toBeUndefined();
   });
 
-  it("ouvre le rayon sur le booster de base, puis les extensions", () => {
+  it("ouvre le rayon sur les boosters de base, puis les extensions", () => {
+    // Le rayon raconte une progression : ce que tout le monde peut
+    // s'offrir d'abord (Défaut, Nécessaire du Marin), les extensions
+    // ensuite. Le Lot 14 a ajouté un SECOND booster de base — la règle qui
+    // compte n'a jamais été « un seul », mais « les bases devant ».
     expect(BOOSTER_EXTENSIONS[0]?.kind).toBe("base");
-    expect(BOOSTER_EXTENSIONS.filter((entry) => entry.kind === "base")).toHaveLength(1);
+    const kinds = BOOSTER_EXTENSIONS.map((entry) => entry.kind);
+    const dernierBase = kinds.lastIndexOf("base");
+    expect(kinds.slice(0, dernierBase + 1).every((kind) => kind === "base")).toBe(true);
     expect(new Set(SHELF_BOOSTER_IDS).size).toBe(SHELF_BOOSTER_IDS.length);
   });
 });

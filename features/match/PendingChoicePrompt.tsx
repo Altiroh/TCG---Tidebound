@@ -58,7 +58,8 @@ export function PendingChoicePrompt({ choice, onChoose }: PendingChoicePromptPro
     choice.kind === "handDiscard" ||
     choice.kind === "deckLook" ||
     choice.kind === "healAllocation" ||
-    choice.kind === "keepUnits"
+    choice.kind === "keepUnits" ||
+    choice.kind === "pickUnits"
   ) {
     return null;
   }

@@ -54,6 +54,7 @@ function defaultActionFor(state: GameState, playerId: string): PlayerAction {
     // « JUSQU'À N » : ne rien répartir est une réponse légale.
     if (choice.kind === "healAllocation") return { type: "resolveChoice", playerId, choice: { healAllocation: [] } };
     if (choice.kind === "keepUnits") return { type: "resolveChoice", playerId, choice: { keepInstanceIds: [] } };
+    if (choice.kind === "pickUnits") return { type: "resolveChoice", playerId, choice: { pickInstanceIds: [] } };
     if (choice.kind === "handDiscard") {
       // Une défausse attend son compte exact de cartes ; « ne rien
       // défausser » n'est permis que si le texte le permet.

@@ -558,6 +558,19 @@ export function resolveEffect(
   if (effect.conditionGraveyardArrival) {
     if (!hasGraveyardArrival(state, context.controllerId, effect.conditionGraveyardArrival)) return { state, events };
   }
+  if (effect.conditionControllerHandAtMost !== undefined) {
+    if (getPlayer(state, context.controllerId).hand.length > effect.conditionControllerHandAtMost) return { state, events };
+  }
+  if (effect.conditionOpponentUnitsMoreThanController || effect.conditionOpponentUnitsAtLeast !== undefined) {
+    const corps = (board: readonly CardInstance[]) =>
+      board.filter((u) => UNIT_CARD_TYPES.includes(getCardDefinition(u.cardId).type)).length;
+    const miens = corps(getPlayer(state, context.controllerId).board);
+    const siens = corps(getOpponent(state, context.controllerId).board);
+    if (effect.conditionOpponentUnitsMoreThanController && siens <= miens) return { state, events };
+    if (effect.conditionOpponentUnitsAtLeast !== undefined && siens < effect.conditionOpponentUnitsAtLeast) {
+      return { state, events };
+    }
+  }
   if (effect.conditionControllerHandAtLeast !== undefined) {
     if (getPlayer(state, context.controllerId).hand.length < effect.conditionControllerHandAtLeast) return { state, events };
   }
@@ -1389,6 +1402,31 @@ export function resolveEffect(
     }
 
     case "transform":
+    case "pickUnits": {
+      // Les cibles légales sont calculées ICI, avec le sélecteur et le
+      // filtre de l'effet : l'interface ne proposera rien d'autre, et le
+      // moteur n'acceptera rien d'autre.
+      const eligibles = resolveUnitTargets(state, effect, context);
+      if (eligibles.targets.length === 0) return { state, events };
+      return {
+        state: {
+          ...state,
+          rngState: eligibles.rngState,
+          pendingChoice: {
+            kind: "pickUnits",
+            playerId: context.controllerId,
+            controllerId: context.controllerId,
+            pick: Math.max(1, effect.uses ?? 1),
+            among: eligibles.targets.map(({ unit }) => unit.instanceId),
+            effects: effect.thenEffects ?? [],
+            sourceInstanceId: context.sourceInstanceId,
+            turnNumber: context.turnNumber,
+          },
+        },
+        events,
+      };
+    }
+
     case "cancelObjectEffect": {
       // Hors d'un Bris suspendu, il n'y a rien à annuler.
       if (!state.pendingObjectBreak) return { state, events };

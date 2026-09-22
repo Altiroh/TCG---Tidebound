@@ -67,6 +67,38 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
     events.push(...recovered.events);
     return { ok: true, state: nextState, events };
   }
+  // « Renvoyez jusqu'à N unités […] » : le joueur a désigné lesquelles. Le
+  // moteur vérifie qu'elles font bien partie des cibles légales recensées
+  // au moment où la question a été posée.
+  if (choice.kind === "pickUnits") {
+    const designees =
+      action.choice === "pass"
+        ? []
+        : typeof action.choice === "object" && "pickInstanceIds" in action.choice
+          ? action.choice.pickInstanceIds
+          : undefined;
+    if (designees === undefined) return { ok: false, error: "Ce choix attend les unités à désigner." };
+    if (new Set(designees).size !== designees.length) return { ok: false, error: "Une même unité ne peut être désignée deux fois." };
+    if (designees.length > choice.pick) return { ok: false, error: `Ce choix permet d'en désigner au plus ${choice.pick}.` };
+    if (designees.some((id) => !choice.among.includes(id))) {
+      return { ok: false, error: "Cette unité n'est pas une cible légale de cet effet." };
+    }
+
+    for (const instanceId of designees) {
+      // Chaque cible est traitée l'une après l'autre, et les effets y
+      // visent `triggerSource` : c'est la cible en cours.
+      const applique = resolveEffectSequence(nextState, choice.effects, {
+        controllerId: choice.controllerId,
+        sourceInstanceId: choice.sourceInstanceId,
+        triggerSourceInstanceId: instanceId,
+        turnNumber: choice.turnNumber,
+      });
+      nextState = applique.state;
+      events.push(...applique.events);
+    }
+    return { ok: true, state: nextState, events };
+  }
+
   // « Chaque joueur choisit jusqu'à N unités qu'il contrôle. Détruisez
   // toutes les autres. » Chacun répond à son tour, et RIEN ne part avant
   // que tout le monde ait répondu : sinon le second choisirait sur un

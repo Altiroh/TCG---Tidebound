@@ -173,6 +173,38 @@ export const LA_VEILLEE_DES_DISPARUS_PACK_VISUAL: BoosterPackVisual = {
   mouth: { centerX: 0.07, width: 0.56, startTop: 0.22 },
 };
 
+/**
+ * Nécessaire du Marin — PLACEHOLDER (22/09/2026). Les trois fichiers
+ * définitifs n'existent pas encore : cette entrée pointe volontairement sur
+ * les images du Défaut, et son calage est celui du Défaut.
+ *
+ * POUR LIVRER LE VISUEL DÉFINITIF, et rien d'autre à toucher ailleurs :
+ *   1. déposer les trois WebP dans `public/assets/boosters/necessaire-du-marin/`
+ *      (`necessaire-du-marin.webp`, `-open-top.webp`, `-open-bottom.webp`),
+ *      en passant par `node scripts/optimizeImages.mjs --delete-sources` ;
+ *   2. remplacer les trois chemins ci-dessous ;
+ *   3. REMESURER le calage sur les nouvelles images — `aspectRatio`,
+ *      `closedRect`, `topRect`, `tearLineTop`, `mouth` ne se devinent pas
+ *      (cf. l'en-tête de ce fichier, qui dit d'où sortent les nombres).
+ *
+ * Tant que l'étape 3 n'est pas faite, le sachet s'affiche et s'ouvre
+ * correctement — il ressemble simplement au Défaut.
+ */
+export const NECESSAIRE_DU_MARIN_PACK_VISUAL: BoosterPackVisual = {
+  id: "necessaire-du-marin",
+  assets: {
+    closed: "/assets/boosters/defaut/defaut.webp",
+    openTop: "/assets/boosters/defaut/defaut-open-top.webp",
+    openBottom: "/assets/boosters/defaut/defaut-open-bottom.webp",
+  },
+  aspectRatio: DEFAULT_PACK_VISUAL.aspectRatio,
+  closedRect: { ...DEFAULT_PACK_VISUAL.closedRect },
+  topRect: { ...DEFAULT_PACK_VISUAL.topRect },
+  topHinge: { ...DEFAULT_PACK_VISUAL.topHinge },
+  tearLineTop: DEFAULT_PACK_VISUAL.tearLineTop,
+  mouth: { ...DEFAULT_PACK_VISUAL.mouth },
+};
+
 /** Id de booster (table `boosters`) → visuel. Tout id inconnu retombe sur le visuel par défaut. */
 const BOOSTER_VISUAL_BY_ID: Record<string, BoosterPackVisual> = {
   standard: DEFAULT_PACK_VISUAL,
@@ -180,10 +212,12 @@ const BOOSTER_VISUAL_BY_ID: Record<string, BoosterPackVisual> = {
   "poissons-pas-frais": POISSONS_PAS_FRAIS_PACK_VISUAL,
   "etrangete-sous-marine": ETRANGETE_SOUS_MARINE_PACK_VISUAL,
   "la-veillee-des-disparus": LA_VEILLEE_DES_DISPARUS_PACK_VISUAL,
+  "necessaire-du-marin": NECESSAIRE_DU_MARIN_PACK_VISUAL,
 };
 
 export const BOOSTER_PACK_VISUALS: readonly BoosterPackVisual[] = [
   DEFAULT_PACK_VISUAL,
+  NECESSAIRE_DU_MARIN_PACK_VISUAL,
   POISSONS_PAS_FRAIS_PACK_VISUAL,
   ETRANGETE_SOUS_MARINE_PACK_VISUAL,
   LA_VEILLEE_DES_DISPARUS_PACK_VISUAL,
