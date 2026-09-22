@@ -7,7 +7,6 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { fetchMatchCosmetics, fetchMatchView, submitMatchAction } from "@/features/online/actions";
 import { OnlineBoard } from "@/features/online/OnlineBoard";
 import { MatchCosmeticsProvider, type PlayerCosmetics } from "@/features/cosmetics/MatchCosmeticsProvider";
-import { MatchRewardBanner } from "@/features/progression/MatchRewardBanner";
 import type { MatchRow } from "@/features/matches/matchStore";
 import { unpackFrames } from "@/features/matches/matchFrames";
 import { predictView } from "@/features/online/predictView";
@@ -42,7 +41,6 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
   const [view, setView] = useState<GameState | null>(initialView);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-  const [replaying, setReplaying] = useState(false);
 
   const shownVersion = useRef(initialMatch.state_version);
   const latestRemoteVersion = useRef(initialMatch.state_version);
@@ -208,7 +206,6 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
         // promesse ne se résout qu'à la fin du rejeu, pour que l'activation
         // enchaînée de plusieurs réactions n'envoie jamais la suivante
         // pendant le rejeu.
-        setReplaying(true);
         await new Promise<void>((resolve) => {
           botFrames.forEach((frame, index) => {
             const timer = setTimeout(() => {
@@ -218,7 +215,6 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
             timers.current.push(timer);
           });
         });
-        setReplaying(false);
       }
 
       item.resolve();
@@ -250,10 +246,6 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
     );
   }
 
-  // Le bandeau n'attend pas la fin du rejeu : il ne s'affiche qu'une fois
-  // l'écran de victoire à l'écran, donc quand la dernière vue est posée.
-  const finishedOnScreen = view.status === "finished" && !replaying;
-
   return (
     <MatchCosmeticsProvider viewerId={myUserId} byPlayer={cosmetics}>
       <OnlineBoard
@@ -267,7 +259,6 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
         exitHref={isBotMatch ? "/partie" : "/en-ligne"}
         matchId={matchId}
       />
-      {finishedOnScreen && <MatchRewardBanner matchId={matchId} />}
     </MatchCosmeticsProvider>
   );
 }

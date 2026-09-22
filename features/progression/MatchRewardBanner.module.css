@@ -1,42 +1,38 @@
 /*
- * Bandeau de récompense de fin de partie. Volontairement autonome et posé
- * en `fixed` : il se superpose à l'écran de victoire sans rien changer à sa
- * mise en page.
+ * Bandeau de récompense de fin de partie. Il vit DANS la fiche de l'écran
+ * de fin (`MatchEndScreen`, colonne de gauche), sous le cadre du Navire
+ * qu'il récompense — il n'est plus posé en `fixed` par-dessus l'écran.
  *
  * Même registre que la coquille hors-partie (ivoire, laiton, turquoise en
  * accent) sans en importer le module : ce composant vit sur l'écran de
  * partie, qui a sa propre direction artistique.
  */
 .banner {
-  position: fixed;
-  left: 50%;
-  bottom: clamp(18px, 4vh, 54px);
-  z-index: 70;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: clamp(10px, 1.4vw, 22px);
-  padding: 0.6em 1.3em;
-  transform: translateX(-50%);
+  justify-content: center;
+  gap: clamp(8px, 1.2vw, 18px);
+  padding: 0.55em 1.2em;
   border-radius: 3px;
   background: rgba(4, 14, 22, 0.88);
   box-shadow: inset 0 0 0 1px rgba(164, 123, 54, 0.28), 0 14px 34px -12px rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
   color: #e9e2d1;
   font-family: var(--font-ui, "Segoe UI", system-ui, sans-serif);
   font-size: clamp(12px, 0.95vw, 14px);
   white-space: nowrap;
-  animation: bannerIn 340ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  /* Après le cadre et le nom (chorégraphie de `MatchEndScreen.module.css`). */
+  animation: bannerIn 340ms cubic-bezier(0.2, 0.8, 0.2, 1) 1700ms both;
 }
 
 @keyframes bannerIn {
   from {
     opacity: 0;
-    transform: translateX(-50%) translateY(10px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
-    transform: translateX(-50%);
+    transform: none;
   }
 }
 

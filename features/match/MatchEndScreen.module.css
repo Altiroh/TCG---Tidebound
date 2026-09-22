@@ -68,6 +68,60 @@
   --fin-bandeau: min(70vw, 480px, 130dvh);
 }
 
+/*
+ * DEUX COLONNES, centrées ensemble : à gauche la fiche (bandeau, cadre,
+ * gain d'XP), à droite le relevé des quêtes. Quand la colonne de droite
+ * est vide (partie locale, relevé pas encore reçu ou aucune quête
+ * touchée), elle disparaît et la fiche reprend seule le centre.
+ */
+.columns {
+  display: grid;
+  grid-template-columns: auto minmax(0, 440px);
+  align-items: center;
+  justify-content: center;
+  gap: clamp(16px, 4vw, 72px);
+  width: 100%;
+  min-height: 0;
+}
+.columns:has(> .questColumn:empty) {
+  grid-template-columns: auto;
+}
+/* À deux, la fiche n'a plus toute la largeur : son bandeau se range sur
+   la moitié de l'écran au lieu des 70 %. */
+.columns:has(> .questColumn:not(:empty)) {
+  --fin-bandeau: min(42vw, 440px, 130dvh);
+}
+
+.sheet {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(8px, 2.2dvh, 32px);
+  min-width: 0;
+}
+
+/* Le relevé suit la colonne, et défile seul s'il a beaucoup de lignes :
+   l'écran, lui, ne défile jamais. */
+.questColumn {
+  min-width: 0;
+  max-height: calc(100dvh - 140px);
+  overflow-y: auto;
+}
+.questColumn:empty {
+  display: none;
+}
+.questColumn > * {
+  width: 100%;
+}
+
+/* Écran étroit (portrait, avant que le voile d'orientation ne s'impose) :
+   les deux colonnes s'empilent. */
+@media (max-width: 640px) {
+  .columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* Le cadre du Navire : sa largeur vient du budget, ses proportions du
    fichier d'image (elles diffèrent entre victoire et défaite, d'où le
    style en ligne qui reste). */
@@ -385,5 +439,11 @@
   .screen {
     --fin-cadre: min(60vw, 340px, 38dvh);
     --fin-bandeau: min(70vw, 480px, 88dvh);
+  }
+  .columns:has(> .questColumn:not(:empty)) {
+    --fin-bandeau: min(42vw, 440px, 88dvh);
+  }
+  .questColumn {
+    max-height: calc(100dvh - 90px);
   }
 }

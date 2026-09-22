@@ -1,6 +1,7 @@
 "use client";
 
 import { MatchQuestRecap } from "@/features/quests/MatchQuestRecap";
+import { MatchRewardBanner } from "@/features/progression/MatchRewardBanner";
 import { useEffect, type CSSProperties } from "react";
 import Link from "next/link";
 import type { ShipDefinition } from "@/game";
@@ -31,8 +32,9 @@ interface MatchEndScreenProps {
   /** En ligne : redirige vers l'écran de matchmaking (`next/link`, navigation client). */
   exitHref?: string;
   /**
-   * Partie ARBITRÉE dont on montre le relevé de quêtes. Absent pour une
-   * partie locale : elle ne rapporte rien, il n'y a donc rien à relever.
+   * Partie ARBITRÉE dont on montre le gain (XP, Tides) et le relevé de
+   * quêtes. Absent pour une partie locale : elle ne rapporte rien, il n'y a
+   * donc rien à relever.
    */
   matchId?: string;
 }
@@ -119,110 +121,121 @@ export function MatchEndScreen({ outcome, player, onExit, exitHref, matchId }: M
       {winner && (isDefeat ? <SwampHaze /> : <Fireworks firstBurstAt={0.5} />)}
       {winner && <div className={isDefeat ? styles.flashDefeat : styles.flash} aria-hidden />}
       <div className={`${styles.screen} ${winner ? styles.stage : ""}`}>
-        {winner ? (
-          <>
-            <div className={styles.bannerWrap}>
-              <span className={styles.shockwave} aria-hidden />
-              <span className={styles.sparks} aria-hidden>
-                {Array.from({ length: SPARK_COUNT }).map((_, i) => (
-                  <span
-                    key={i}
-                    className={styles.spark}
-                    style={
-                      {
-                        "--angle": `${(360 / SPARK_COUNT) * i + (i % 2) * 9}deg`,
-                        "--distance": `${120 + (i % 3) * 55}px`,
-                      } as CSSProperties
-                    }
-                  />
-                ))}
-              </span>
-              {/* eslint-disable-next-line @next/next/no-img-element -- bandeau décoratif fixe */}
-              {bannerOk ? (
-              <img
-                src={bannerUrl}
-                alt={isDefeat ? "Défaite" : "Victoire"}
-                draggable={false}
-                className={`select-none ${styles.bannerIn}`}
-              />
-              ) : (
-                <h1 className={`text-center text-4xl font-bold uppercase tracking-widest ${isDefeat ? "text-[#9db487]" : "text-amber-200"}`}>
-                  {isDefeat ? "Défaite" : "Victoire"}
-                </h1>
-              )}
-              {bannerOk && <span className={styles.bannerShine} aria-hidden />}
-            </div>
-
-            <div className={styles.frameWrap}>
-              {/* Les rayons de gloire n'ont pas leur place dans une défaite. */}
-              {!isDefeat && <span className={styles.rays} aria-hidden />}
-              <div
-                className={`relative ${styles.frameIn} ${styles.frame}`}
-                // La LARGEUR vient du budget de hauteur de l'écran
-                // (`--fin-cadre`, dans la feuille) : l'écran de fin ne
-                // défile pas, tout doit tenir dans la fenêtre, et un style
-                // en ligne ne se corrige pas par requête média. Seules les
-                // proportions restent ici : elles changent avec l'issue.
-                style={{ aspectRatio: frameAspectRatio }}
-              >
-                <div
-                  className="absolute overflow-hidden"
-                  style={{ ...illustrationZone, clipPath: illustrationClip }}
-                >
-                  {winner.ship.illustration && (
-                    // eslint-disable-next-line @next/next/no-img-element -- asset local, une par Navire
-                    <img
-                      src={`/assets/ships/illu/${winner.ship.illustration}`}
-                      alt=""
-                      draggable={false}
-                      className={`h-full w-full select-none object-cover ${styles.illustrationIn}`}
-                    />
-                  )}
-                </div>
-
-                {frameOk && (
-                  // eslint-disable-next-line @next/next/no-img-element -- cadre décoratif fixe, superpose l'illustration
-                  <img
-                    src={frameUrl}
-                    alt=""
-                    draggable={false}
-                    className="pointer-events-none absolute inset-0 h-full w-full select-none"
-                  />
-                )}
-
-                <div
-                  className="absolute flex items-center justify-center"
-                  style={{ ...nameplateZone, containerType: "inline-size" }}
-                >
-                  <span
-                    aria-label={winner.name}
-                    className="max-w-full truncate text-[clamp(12px,11cqw,22px)] font-bold uppercase tracking-wide text-amber-50 [font-family:var(--font-card-title)]"
-                    style={{ textShadow: "0 1px 3px rgba(0,0,0,0.9)" }}
-                  >
-                    {Array.from(winner.name).map((letter, i) => (
+        {/* Deux colonnes centrées : à gauche la fiche (bandeau, cadre, gain
+            d'XP), à droite le relevé des quêtes. Sans relevé (partie locale,
+            ou aucune quête touchée), la colonne de droite reste vide et la
+            fiche reprend seule le centre (`.columns:has(...)`). */}
+        <div className={styles.columns}>
+          <div className={styles.sheet}>
+            {winner ? (
+              <>
+                <div className={styles.bannerWrap}>
+                  <span className={styles.shockwave} aria-hidden />
+                  <span className={styles.sparks} aria-hidden>
+                    {Array.from({ length: SPARK_COUNT }).map((_, i) => (
                       <span
                         key={i}
-                        aria-hidden
-                        className={styles.nameLetter}
-                        style={{
-                          animationDelay: `${NAME_START_MS + i * NAME_LETTER_STEP_MS}ms`,
-                        }}
-                      >
-                        {letter}
-                      </span>
+                        className={styles.spark}
+                        style={
+                          {
+                            "--angle": `${(360 / SPARK_COUNT) * i + (i % 2) * 9}deg`,
+                            "--distance": `${120 + (i % 3) * 55}px`,
+                          } as CSSProperties
+                        }
+                      />
                     ))}
                   </span>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- bandeau décoratif fixe */}
+                  {bannerOk ? (
+                  <img
+                    src={bannerUrl}
+                    alt={isDefeat ? "Défaite" : "Victoire"}
+                    draggable={false}
+                    className={`select-none ${styles.bannerIn}`}
+                  />
+                  ) : (
+                    <h1 className={`text-center text-4xl font-bold uppercase tracking-widest ${isDefeat ? "text-[#9db487]" : "text-amber-200"}`}>
+                      {isDefeat ? "Défaite" : "Victoire"}
+                    </h1>
+                  )}
+                  {bannerOk && <span className={styles.bannerShine} aria-hidden />}
                 </div>
-              </div>
-            </div>
-          </>
-        ) : (
-          <h1 className="text-3xl font-bold text-slate-100">Match nul</h1>
-        )}
+    
+                <div className={styles.frameWrap}>
+                  {/* Les rayons de gloire n'ont pas leur place dans une défaite. */}
+                  {!isDefeat && <span className={styles.rays} aria-hidden />}
+                  <div
+                    className={`relative ${styles.frameIn} ${styles.frame}`}
+                    // La LARGEUR vient du budget de hauteur de l'écran
+                    // (`--fin-cadre`, dans la feuille) : l'écran de fin ne
+                    // défile pas, tout doit tenir dans la fenêtre, et un style
+                    // en ligne ne se corrige pas par requête média. Seules les
+                    // proportions restent ici : elles changent avec l'issue.
+                    style={{ aspectRatio: frameAspectRatio }}
+                  >
+                    <div
+                      className="absolute overflow-hidden"
+                      style={{ ...illustrationZone, clipPath: illustrationClip }}
+                    >
+                      {winner.ship.illustration && (
+                        // eslint-disable-next-line @next/next/no-img-element -- asset local, une par Navire
+                        <img
+                          src={`/assets/ships/illu/${winner.ship.illustration}`}
+                          alt=""
+                          draggable={false}
+                          className={`h-full w-full select-none object-cover ${styles.illustrationIn}`}
+                        />
+                      )}
+                    </div>
+    
+                    {frameOk && (
+                      // eslint-disable-next-line @next/next/no-img-element -- cadre décoratif fixe, superpose l'illustration
+                      <img
+                        src={frameUrl}
+                        alt=""
+                        draggable={false}
+                        className="pointer-events-none absolute inset-0 h-full w-full select-none"
+                      />
+                    )}
+    
+                    <div
+                      className="absolute flex items-center justify-center"
+                      style={{ ...nameplateZone, containerType: "inline-size" }}
+                    >
+                      <span
+                        aria-label={winner.name}
+                        className="max-w-full truncate text-[clamp(12px,11cqw,22px)] font-bold uppercase tracking-wide text-amber-50 [font-family:var(--font-card-title)]"
+                        style={{ textShadow: "0 1px 3px rgba(0,0,0,0.9)" }}
+                      >
+                        {Array.from(winner.name).map((letter, i) => (
+                          <span
+                            key={i}
+                            aria-hidden
+                            className={styles.nameLetter}
+                            style={{
+                              animationDelay: `${NAME_START_MS + i * NAME_LETTER_STEP_MS}ms`,
+                            }}
+                          >
+                            {letter}
+                          </span>
+                        ))}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <h1 className="text-3xl font-bold text-slate-100">Match nul</h1>
+            )}
 
-        {/* Ce que la partie a rapporté, sous la fiche : les quêtes touchées
-            défilent une à une, jauge en train de se remplir. */}
-        {matchId && <MatchQuestRecap matchId={matchId} />}
+            {/* Le gain de la partie, sous la fiche qu'il récompense. */}
+            {matchId && <MatchRewardBanner matchId={matchId} />}
+          </div>
+
+          {/* Ce que la partie a rapporté aux quêtes : elles défilent une à
+              une, jauge en train de se remplir. */}
+          <div className={styles.questColumn}>{matchId && <MatchQuestRecap matchId={matchId} />}</div>
+        </div>
 
         {/* Secondaire à gauche, action engageante à droite — même ordre de
             lecture que les dialogues de la coquille hors-partie. */}

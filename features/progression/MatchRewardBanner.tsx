@@ -19,7 +19,7 @@ const RETRY_DELAYS_MS = [0, 1500, 4000];
  * le coup final a été enregistré (`features/matches/matchStore.ts`). Le
  * navigateur ne déclare ni l'issue, ni le gain.
  *
- * Posé en `fixed` par-dessus l'écran de victoire. Reste muet s'il n'y a rien
+ * Posé dans la fiche de l'écran de fin, sous le cadre. Reste muet s'il n'y a rien
  * à annoncer plutôt que d'afficher une erreur — une récompense absente n'est
  * pas un échec du point de vue du joueur.
  */
