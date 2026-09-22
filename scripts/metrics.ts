@@ -56,6 +56,19 @@ export interface Mesures {
   mainInjouableFinTour: number[];
   /** Points de Déraison accumulés sur la partie, les deux joueurs confondus. */
   deraison: number;
+  /**
+   * PIRE dette atteinte en un seul tour, sur toute la partie.
+   *
+   * La Déraison n'a pas de plancher : c'est un emprunt illimité, remboursé
+   * en Ancrage. Le total dit combien on a emprunté ; ce pic-ci dit si on
+   * l'a fait à petites doses ou en une fois — et c'est le second cas qui
+   * fabrique un plateau plein d'un coup.
+   */
+  deraisonPic: number;
+  /** Le plus grand nombre de cartes posées dans un SEUL tour. */
+  posesPicUnTour: number;
+  /** Raison réellement dépensée par tour, coût imprimé des cartes jouées. */
+  depenseParTour: number[];
   /** Ancrage perdu à cause de la Déraison. */
   ancrageDeraison: number;
 
@@ -97,6 +110,9 @@ function mesuresVides(ancrageDepart: number): Mesures {
     raisonFinTour: [],
     mainInjouableFinTour: [],
     deraison: 0,
+    deraisonPic: 0,
+    posesPicUnTour: 0,
+    depenseParTour: [],
     ancrageDeraison: 0,
     invocations: 0,
     invocationsParTour: [],
@@ -181,8 +197,10 @@ export function mesurerPartie(deckA: DeckList, deckB: DeckList, seed: number, di
         const carte = avant.players.flatMap((pl) => pl.hand).find((c) => c.instanceId === e.instanceId);
         const def = carte ? getCardDefinition(carte.cardId) : undefined;
         m.posesParTour[tour] = (m.posesParTour[tour] ?? 0) + 1;
+        m.posesPicUnTour = Math.max(m.posesPicUnTour, m.posesParTour[tour]!);
         if (def) {
           m.coutsJoues.push(def.cost);
+          m.depenseParTour[tour] = (m.depenseParTour[tour] ?? 0) + def.cost;
           if (isPermanentCard(def)) m.permanentsParTour[tour] = (m.permanentsParTour[tour] ?? 0) + 1;
           if ((COUTS_SUIVIS as readonly number[]).includes(def.cost) && !coutsVus.has(def.cost)) {
             coutsVus.add(def.cost);
@@ -205,6 +223,7 @@ export function mesurerPartie(deckA: DeckList, deckB: DeckList, seed: number, di
 
       if (e.type === "DERAISON_SETTLED") {
         m.deraison += e.debt;
+        m.deraisonPic = Math.max(m.deraisonPic, e.debt);
         m.ancrageDeraison += e.anchorDamage;
         if (e.anchorDamage > 0) m.ancrageParPoste.Déraison = (m.ancrageParPoste.Déraison ?? 0) + e.anchorDamage;
       }

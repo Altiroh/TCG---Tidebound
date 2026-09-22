@@ -23,6 +23,7 @@
  *   npx tsx scripts/playtestReport.ts 60 --duel "Deck A" "Deck B"
  *   npx tsx scripts/playtestReport.ts 20 --rythme     (saute le tournoi)
  */
+import { RULES } from "@/game/rules/constants";
 import { DECKS } from "@/scripts/decks";
 import {
   COUTS_SUIVIS,
@@ -109,6 +110,22 @@ function rythme(parties: Mesures[]): void {
   console.log(`    Cartes en main impayables, fin de tour : ${f2(moy(parties.flatMap((m) => m.mainInjouableFinTour)))}`);
   console.log(`    Coût moyen réellement joué           : ${f2(moy(parties.flatMap((m) => m.coutsJoues)))}`);
   console.log(`    Déraison par partie                  : ${f2(moy(parties.map((m) => m.deraison)))} pts, soit ${f2(moy(parties.map((m) => m.ancrageDeraison)))} Ancrage`);
+
+  // LE BURST À CRÉDIT. La Déraison n'a pas de plancher : c'est un emprunt
+  // illimité, remboursé en Ancrage. Le total dit combien on emprunte ; ces
+  // deux pics-ci disent si on le fait à petites doses ou en une fois — et
+  // c'est le second cas qui remplit un plateau d'un coup, irréversiblement
+  // faute de removal au catalogue.
+  const pics = parties.map((m) => m.deraisonPic);
+  const poses = parties.map((m) => m.posesPicUnTour);
+  const depenses = parties.flatMap((m) => m.depenseParTour.filter((d) => d !== undefined));
+  const part = (xs: number[], seuil: number) => `${((xs.filter((x) => x >= seuil).length / xs.length) * 100).toFixed(0)} %`;
+  console.log(`    Dépense réelle par tour              : ${f2(moy(depenses))} pour un revenu de ${RULES.NATURAL_REASON_RECOVERY}`);
+  console.log(`      tours à 4+ / 6+ / 8+               : ${part(depenses, 4)} / ${part(depenses, 6)} / ${part(depenses, 8)}`);
+  console.log(`    Pire dette en UN tour                : ${f2(moy(pics))} en moyenne, ${Math.max(...pics)} au pire`);
+  console.log(`      parties atteignant 6+ / 8+ / 10+   : ${part(pics, 6)} / ${part(pics, 8)} / ${part(pics, 10)}`);
+  console.log(`    Poses en UN tour                     : ${f2(moy(poses))} en moyenne, ${Math.max(...poses)} au pire`);
+  console.log(`      parties atteignant 4+ / 5+         : ${part(poses, 4)} / ${part(poses, 5)}`);
 
   console.log("\n    — Premier tour où un coût élevé tombe —");
   for (const c of COUTS_SUIVIS) {
