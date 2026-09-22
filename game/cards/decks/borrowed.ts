@@ -431,6 +431,22 @@ export const DECK_A_BOUT_DE_RAISON: DeckList = {
  * Le Bris depuis la main coûte max(1, ceil(coût / 2)), soit 2 Raison pour
  * les six Objets réactifs du Lot 14 : c'est sur ce prix-là qu'ils ont été
  * calibrés, et c'est ce qui rend la main jouable à deux reprises par tour.
+ *
+ * TREIZE CORPS, ET NON CINQ (relevé du 22/09/2026). La première version de
+ * cette liste jouait trente-trois Objets pour cinq unités : 3,4 % de
+ * victoires sur 1836 parties, dernière de très loin. Le relevé carte par
+ * carte ne montrait pas un problème d'Objets — Coup de Harpon partait 221
+ * fois en 204 parties, Faire l'Inventaire 162 — mais une absence totale
+ * d'horloge : le deck répondait à tout et ne tuait personne, et les Objets
+ * à 4 finissaient en main 60 à 108 fois. Un deck réactif a besoin de
+ * quelque chose à protéger. Cormoran de Fer (Garde ET Pied marin) tient la
+ * ligne pendant que la main travaille, La Chose des Hauts-Fonds et Il
+ * Capitano ferment la partie.
+ *
+ * Ce qui a sauté : Charge de Démolition (6 Raison, morte en main 96 fois
+ * sur 204) et un exemplaire de chacun des réactifs les plus lents. La page
+ * Notion exige des decks « capables de gagner, pas des listes
+ * pédagogiques volontairement faibles » — c'était le cas de celui-ci.
  */
 export const DECK_ARSENAL_DE_PONT: DeckList = {
   id: "arsenal-de-pont",
@@ -439,27 +455,31 @@ export const DECK_ARSENAL_DE_PONT: DeckList = {
   description:
     "Réactif : rien ne se voit venir, tout part de la main — et chaque Objet brisé paie le suivant.",
   cardIds: [
-    // Le moteur, et de quoi tenir le plateau en attendant.
+    // Le moteur du Bris depuis la main.
     ...repeat("pantalone-sans-sou", 3),
+    // L'horloge — ce que les réponses protègent, et ce qui finit la partie.
     ...repeat("marin-des-jetees", 2),
+    ...repeat("cormoran-de-fer", 3),
+    ...repeat("chose-des-hauts-fonds", 3),
+    ...repeat("il-capitano-naufrage", 2),
     // Les six réactifs du Lot 14 : la main devient une menace permanente.
+    // Deux exemplaires pour les deux qui partent vraiment, un pour le reste.
     ...repeat("harpon-a-ressort", 2),
-    ...repeat("bouclier-decume", 2),
-    ...repeat("signal-de-detresse", 2),
-    ...repeat("corde-de-rappel", 2),
-    ...repeat("planche-de-fortune", 2),
     ...repeat("contre-harpon", 2),
+    ...repeat("bouclier-decume", 1),
+    ...repeat("signal-de-detresse", 1),
+    ...repeat("corde-de-rappel", 1),
+    ...repeat("planche-de-fortune", 1),
     // Le removal, qui part du même endroit.
     ...repeat("coup-de-harpon", 3),
     ...repeat("sabotage-discret", 2),
-    ...repeat("charge-de-demolition", 2),
     ...repeat("coupez-les-cordages", 2),
     // Trouver l'Objet qui manque, et réparer ce qui a tenu.
     ...repeat("faire-linventaire", 3),
     ...repeat("fouille-de-la-cale", 3),
-    ...repeat("bandages-humides", 2),
-    ...repeat("thermos-du-dernier-quart", 2),
     ...repeat("chope", 2),
+    ...repeat("thermos-du-dernier-quart", 1),
+    ...repeat("bandages-humides", 1),
     // La Structure signature : elle taxe les Objets d'en face.
     ...repeat("fausse-cargaison", 2),
   ],
