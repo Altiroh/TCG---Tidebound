@@ -72,7 +72,7 @@ describe("cause de destruction — en partie", () => {
   it("marque « scuttle » sur un Sabordage", () => {
     const unit = instance("crabe-de-fer", "p1");
     const state = testGameState({
-      players: [testPlayer("p1", { board: [unit], reason: 10 }), testPlayer("p2", { shipId: "lerrant" })],
+      players: [testPlayer("p1", { board: [unit], reason: 10 }), testPlayer("p2", { shipId: "le-goliath" })],
     });
     const saborde = dispatch(state, { type: "saborder", playerId: "p1", instanceId: unit.instanceId });
     ok(saborde);
@@ -118,7 +118,7 @@ describe("« détruite au combat » — Encore cinq minutes", () => {
     // qui sert de destruction non-combat la plus courte.
     const encore = instance("encore-cinq-minutes", "p1");
     const state = testGameState({
-      players: [testPlayer("p1", { board: [encore], reason: 10 }), testPlayer("p2", { shipId: "lerrant" })],
+      players: [testPlayer("p1", { board: [encore], reason: 10 }), testPlayer("p2", { shipId: "le-goliath" })],
     });
     const saborde = dispatch(state, { type: "saborder", playerId: "p1", instanceId: encore.instanceId });
     ok(saborde);

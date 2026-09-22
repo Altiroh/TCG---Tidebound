@@ -29,12 +29,17 @@ describe("runBotTurn", () => {
     let state = newTestGame(7);
     for (let i = 0; i < 20 && state.status === "active"; i++) {
       const active = state.activePlayerId;
-      state = runBotTurn(state, active, "difficile");
+      // Qui doit jouer n'est pas toujours le joueur actif : une fenêtre de
+      // réaction ouverte à l'entame du tour d'en face (Ancre de Dérive, ou
+      // une capacité de Navire comme Virage court) attend l'ADVERSAIRE. Le
+      // serveur fait de même — il fait jouer celui que le moteur désigne.
+      const mustPlay = state.pendingReaction?.awaitingPlayerId ?? state.pendingChoice?.playerId ?? active;
+      state = runBotTurn(state, mustPlay, "difficile");
       // Le tour doit toujours progresser : soit la main passe à l'autre
       // joueur, soit la partie se termine en cours de tour (ex: une
       // attaque fatale avant même `endTurn`) — dans les deux cas ce n'est
       // jamais un blocage.
-      if (state.status === "active") {
+      if (state.status === "active" && mustPlay === active) {
         expect(state.activePlayerId).not.toBe(active);
       }
     }

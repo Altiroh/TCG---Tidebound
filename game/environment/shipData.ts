@@ -9,16 +9,17 @@ import type { ShipDefinition } from "@/game/environment/types";
  * donc les valeurs "moyennes" proposées par cette note, à ajuster au
  * premier vrai playtest plutôt que gravées dans le marbre.
  *
- * NOTE — deux fréquences de capacité, une seule câblée. `activatableAbility`
- * (Le Goliath, Canon de proue) est réellement appliquée par le moteur :
- * coût, limite par tour, fenêtre de phase, ciblage explicite. Les quatre
- * autres Navires portent des capacités "une fois par PARTIE" (Virage court,
- * Changer de cap, Tenir la ligne), fréquence encore non modélisée : elles
- * restent en `capacityText`, informatif seulement. Même chose pour certains
- * passifs qui demanderaient de distinguer "gain de Raison venant d'une
- * carte" (cadrage section 16, volontairement complexe, pas encore
- * implémenté) ; seuls les effets exprimables avec les champs numériques
- * ci-dessous sont réellement appliqués.
+ * NOTE — toutes les capacités activables sont désormais CÂBLÉES. La
+ * fréquence "une fois par PARTIE" a sa primitive générique
+ * (`activationsPerGame`, `game/state/oncePerGame.ts`), et la fenêtre
+ * "après l'annonce d'une Marée" réutilise celle que le moteur ouvrait déjà
+ * pour l'Ancre de Dérive (`activationWindow`). `capacityText` — le champ
+ * "texte seul, rien n'est appliqué" — n'a plus d'occupant.
+ *
+ * Restent en texte seul certains PASSIFS qui demanderaient de distinguer
+ * "gain de Raison venant d'une carte" (Cap sûr, cadrage section 16,
+ * volontairement complexe) ; seuls les effets exprimables avec les champs
+ * numériques ci-dessous sont réellement appliqués.
  *
  * ANCRAGE DE DÉPART, +50 % LE 21/09/2026 (17/20/24 → 26/30/36).
  *
@@ -49,14 +50,45 @@ export const SHIP_SET: ShipDefinition[] = [
     slotCount: 4,
     illustration: "le-courlis.webp",
     text: "Profil : léger / maniable / contrôle environnemental.",
+    // TIRANT LÉGER — texte remis à jour le 22/09/2026. Il nommait « un
+    // effet d'Eau ou de Marée » ; les Eaux n'existent plus depuis le
+    // cadrage du 2026-09-10, et le mot ne désignait donc plus rien.
+    // AUCUN changement d'effet : la résistance appliquée est la même.
     passiveText:
-      "Tirant léger — la première fois par tour qu'un effet d'Eau ou de Marée devrait vous infliger des " +
-      "dégâts d'Ancrage, réduisez-les de 1.",
-    capacityText:
-      "Virage court — une fois par partie, lorsqu'une nouvelle Eau est révélée, vous pouvez la refuser ; " +
-      "une autre Eau valide est immédiatement révélée à la place (non appliqué : capacité activable non modélisée).",
+      "Tirant léger — la première fois par tour qu'un effet de Marée devrait vous infliger des dégâts " +
+      "d'Ancrage, réduisez-les de 1.",
     weaknessText: "Coque légère — les attaques directes contre votre Navire lui infligent +1 dégât.",
-    // Le moteur ne calcule les dégâts de Marée/Eaux qu'une seule fois par tour
+    // VIRAGE COURT — RÉÉCRITURE PROPOSÉE, à confirmer par le design.
+    //
+    // Le texte d'origine (« lorsqu'une nouvelle Eau est révélée, vous
+    // pouvez la refuser ; une autre Eau valide est révélée à la place »)
+    // parle d'un sous-système supprimé : plus aucune Eau n'est révélée,
+    // donc la capacité n'avait plus de déclencheur ni d'objet.
+    //
+    // Ce que la Marée offre à la place, c'est l'ORIENTATION — la mécanique
+    // qui a précisément absorbé les fonctions des Eaux. « Refuser ce que la
+    // mer apporte » s'y traduit par « lui faire faire demi-tour », d'où le
+    // nom qui tient toujours. Même fenêtre que Changer de cap (l'annonce),
+    // même fréquence (une fois par partie), et le profil « contrôle
+    // environnemental » du Courlis est servi par la seule mécanique qui
+    // reste.
+    //
+    // Écart assumé avec le texte d'origine : on ne rejoue pas un tirage,
+    // on renverse une tendance. C'est plus faible sur le coup et plus fort
+    // sur la durée.
+    activatableAbility: {
+      name: "Virage court",
+      illustration: "le-courlis.webp",
+      text:
+        "Une fois par partie, après qu'une Marée a été annoncée mais avant l'application de ses effets, " +
+        "inversez son orientation.",
+      cost: {},
+      activationPhases: [],
+      activationWindow: "tideAnnounced",
+      activationsPerGame: 1,
+      onActivateEffects: [{ type: "tideInvertOrientation", target: { kind: "controllerPlayer" } }],
+    },
+    // Le moteur ne calcule les dégâts de Marée qu'une seule fois par tour
     // (`resolveTideTurnStep`), donc cette résistance forfaitaire équivaut
     // fidèlement à "la première fois par tour" de Tirant léger.
     resistanceByState: { tempete: 1, abysses: 1 },
@@ -74,9 +106,26 @@ export const SHIP_SET: ShipDefinition[] = [
       "Cap sûr — la première fois par tour que vous récupérez de la Raison grâce à une carte, récupérez 1 " +
       "Raison supplémentaire (non appliqué : nécessite de distinguer les gains de Raison venant des cartes, " +
       "pas encore modélisé).",
-    capacityText:
-      "Changer de cap — une fois par partie, après qu'une Marée a été annoncée mais avant l'application de " +
-      "ses effets, réduisez sa durée de 1 tour (non appliqué : capacité activable non modélisée).",
+    // Première capacité « une fois par partie » réellement câblée
+    // (`activationsPerGame`), et première à s'activer DANS une fenêtre :
+    // celle que le moteur ouvre déjà entre l'annonce d'une Marée et
+    // l'application de ses effets. Aucun système de réaction dupliqué —
+    // le Navire rejoint la file de priorité de cette fenêtre.
+    activatableAbility: {
+      name: "Changer de cap",
+      illustration: "errant.webp",
+      text:
+        "Une fois par partie, après qu'une Marée a été annoncée mais avant l'application de ses effets, " +
+        "réduisez sa durée de 1 tour.",
+      cost: {},
+      // Jamais utilisées : la fenêtre remplace la phase.
+      activationPhases: [],
+      activationWindow: "tideAnnounced",
+      activationsPerGame: 1,
+      onActivateEffects: [
+        { type: "tideReduceDuration", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+      ],
+    },
     // Aucune faiblesse explicite.
   },
   {
@@ -90,10 +139,34 @@ export const SHIP_SET: ShipDefinition[] = [
     passiveText:
       "Coque renforcée — la première fois à chaque tour que votre Navire devrait subir des dégâts de " +
       "Tempête, réduisez ces dégâts de 2.",
-    capacityText:
-      "Tenir la ligne — une fois par partie, au début de votre tour, jusqu'à la fin de ce tour, vos " +
-      "Structures ne peuvent pas être détruites par des effets environnementaux (non appliqué : capacité " +
-      "activable non modélisée).",
+    // « Au début de votre tour » se lit ici « pendant votre PREMIÈRE Phase
+    // principale » : le moteur n'a pas de fenêtre d'action à l'entame — la
+    // Marée y frappe avant que le joueur ne reprenne la main. La Phase
+    // principale est le premier moment où il peut agir, et la protection
+    // vaut alors pour tout le reste de son tour, y compris la Marée du
+    // tour suivant si elle est reportée.
+    activatableAbility: {
+      name: "Tenir la ligne",
+      illustration: "brise-lames.webp",
+      text:
+        "Une fois par partie, au début de votre tour, jusqu'à la fin de ce tour, vos Structures ne peuvent " +
+        "pas être détruites par des effets environnementaux.",
+      cost: {},
+      activationPhases: ["mainPhase"],
+      activationsPerGame: 1,
+      onActivateEffects: [
+        {
+          type: "protectFromDestruction",
+          target: { kind: "controllerPlayer" },
+          filter: { cardTypes: ["structure"] },
+          // « Effet environnemental » = ce que le moteur impute à la Marée
+          // (`DestructionCause.tide`) : destruction directe par l'état
+          // courant (`tideAffinity.destroyed`) comme dégâts de Marée
+          // devenus mortels.
+          protectedFrom: ["tide"],
+        },
+      ],
+    },
     weaknessText: "Équipage à bout — chaque fois que vous entrez dans les Abysses, perdez 1 Raison supplémentaire.",
     resistanceByState: { tempete: 2 },
     reasonWeaknessByState: { abysses: 1 },

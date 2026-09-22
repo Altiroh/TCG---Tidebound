@@ -197,7 +197,14 @@ export function endTurn(state: GameState, action: EndTurnAction): ActionResult {
 
     // La fenêtre doit s'ouvrir ICI et pas à la fin de `dispatch` : ce qui
     // la suit — les effets de la Marée — ne doit pas avoir déjà eu lieu
-    // quand le joueur répond.
+    // quand le joueur répond. Les capacités de NAVIRE qui déclarent cette
+    // fenêtre (Changer de cap, Virage court) y rejoignent les cartes.
+    //
+    // Sur CHANGEMENT D'ÉTAT seulement, comme depuis toujours : une Marée
+    // qui ne fait que décompter n'est pas « une nouvelle Marée », et
+    // ouvrir une fenêtre à chaque entame de tour obligerait le joueur à
+    // passer une question qu'il ne s'est pas posée, tous les tours de la
+    // partie, pour une capacité qu'il n'utilisera qu'une fois.
     const fenetre = ouvrirFenetrePour(nextState, [evenementDeclencheur], newTurnNumber);
     if (fenetre) {
       // L'entame s'arrête ici. Ni Raison, ni pioche, ni `TURN_STARTED` tant

@@ -31,10 +31,11 @@ const fire = (targetInstanceId?: string) =>
   ({ type: "fireShipAbility", playerId: "p1", ...(targetInstanceId ? { targetInstanceId } : {}) }) as const;
 
 describe("capacité activable de Navire — primitive générique", () => {
-  it("un Navire sans capacité câblée refuse les deux gestes — les capacités « une fois par partie » restent en texte seul", () => {
-    const state = testGameState();
-    expect(getShipDefinition("lerrant").activatableAbility).toBeUndefined();
-    expect(getShipDefinition("lerrant").capacityText).toContain("Changer de cap");
+  it("un Navire sans capacité activable refuse les deux gestes", () => {
+    const state = testGameState({
+      players: [testPlayer("p1", { shipId: "la-religieuse" }), testPlayer("p2", { shipId: "le-goliath" })],
+    });
+    expect(getShipDefinition("la-religieuse").activatableAbility).toBeUndefined();
 
     const refused = dispatch(state, arm);
     expect(refused.ok).toBe(false);

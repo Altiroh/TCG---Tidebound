@@ -835,10 +835,20 @@ describe("engine.dispatch - endTurn", () => {
       ],
     });
 
+    // Le Courlis porte Virage court, qui s'active à l'annonce d'une Marée :
+    // un changement d'état ouvre donc une fenêtre, et l'entame du tour
+    // n'est finie qu'une fois qu'elle s'est refermée. Ce test-ci mesure la
+    // Raison — il passe la fenêtre et laisse l'entame se terminer.
     const end = (s: GameState, playerId: string) => {
       const r = dispatch(s, { type: "endTurn", playerId });
       if (!r.ok) throw new Error(r.error);
-      return r.state;
+      let after = r.state;
+      while (after.pendingReaction) {
+        const passe = dispatch(after, { type: "passReaction", playerId: after.pendingReaction.awaitingPlayerId });
+        if (!passe.ok) throw new Error(passe.error);
+        after = passe.state;
+      }
+      return after;
     };
     const withReason = (s: GameState, index: 0 | 1, reason: number): GameState => ({
       ...s,
@@ -925,7 +935,7 @@ describe("engine.dispatch - endTurn", () => {
     const state = testGameState({
       players: [
         testPlayer("p1", { hand: [marin], reason: 10 }),
-        testPlayer("p2", { shipId: "lerrant", reason: -5, reasonMax: 10 }), // déjà à -50 % de sa Raison max
+        testPlayer("p2", { shipId: "le-goliath", reason: -5, reasonMax: 10 }), // déjà à -50 % de sa Raison max
       ],
     });
 
@@ -1678,8 +1688,8 @@ describe("engine.dispatch - capacités optionnelles via fenêtre de réaction (C
     const filler = instance("marin-des-jetees", "p2");
     const state = testGameState({
       turnNumber: 2, // pair : le endTurn suivant amène turnNumber=3 (impair), la Marée progresse.
-      // Navire "lerrant" (pas de faiblesse de Raison propre à l'entrée en Abysses) pour isoler la mécanique testée.
-      players: [testPlayer("p1", { shipId: "lerrant", board: [cloche], reason: 5 }), testPlayer("p2", { deck: [filler] })],
+      // Navire "le-goliath" (pas de faiblesse de Raison propre à l'entrée en Abysses) pour isoler la mécanique testée.
+      players: [testPlayer("p1", { shipId: "le-goliath", board: [cloche], reason: 5 }), testPlayer("p2", { deck: [filler] })],
       environment: testEnvironment({ tideState: "tempete", tideRemainingTurns: 1, tideOrientation: "montante" }),
     });
 
@@ -1985,7 +1995,7 @@ describe("engine.dispatch - Boucliers réactifs 'une fois par tour' (Vieux Loup 
     const state = testGameState({
       players: [
         testPlayer("p1", { board: [vieuxLoup], hand: [marinA, marinB], reason: 10 }),
-        testPlayer("p2", { shipId: "lerrant", reason: 10 }),
+        testPlayer("p2", { shipId: "le-goliath", reason: 10 }),
       ],
     });
 
@@ -2011,7 +2021,7 @@ describe("engine.dispatch - Boucliers réactifs 'une fois par tour' (Vieux Loup 
     const stateInTempete = testGameState({
       players: [
         testPlayer("p1", { board: [second], hand: [marin], reason: 10 }),
-        testPlayer("p2", { shipId: "lerrant", reason: 10 }),
+        testPlayer("p2", { shipId: "le-goliath", reason: 10 }),
       ],
       environment: testEnvironment({ tideState: "tempete" }),
     });
@@ -2025,7 +2035,7 @@ describe("engine.dispatch - Boucliers réactifs 'une fois par tour' (Vieux Loup 
     const stateInCalme = testGameState({
       players: [
         testPlayer("p1", { board: [instance("second-au-visage-pale", "p1")], hand: [marinCalme], reason: 10 }),
-        testPlayer("p2", { shipId: "lerrant", reason: 10 }),
+        testPlayer("p2", { shipId: "le-goliath", reason: 10 }),
       ],
       environment: testEnvironment({ tideState: "calme" }),
     });
@@ -2042,7 +2052,7 @@ describe("engine.dispatch - Boucliers réactifs 'une fois par tour' (Vieux Loup 
     const state = testGameState({
       players: [
         testPlayer("p1", { board: [vieuxLoup], hand: [cardA, cardB], reason: -3, reasonMax: 10 }),
-        testPlayer("p2", { shipId: "lerrant", reason: 10 }),
+        testPlayer("p2", { shipId: "le-goliath", reason: 10 }),
       ],
     });
 
@@ -2072,8 +2082,8 @@ describe("engine.dispatch - Brise-Vague de Fortune : bouclier de dégâts de Mar
       activePlayerId: "p1",
       priorityPlayerId: "p1",
       players: [
-        testPlayer("p1", { shipId: "lerrant", anchor: 20, board: [briseVague], reason: 5 }),
-        testPlayer("p2", { shipId: "lerrant", anchor: 20, deck: [filler], reason: 5 }),
+        testPlayer("p1", { shipId: "le-goliath", anchor: 20, board: [briseVague], reason: 5 }),
+        testPlayer("p2", { shipId: "le-goliath", anchor: 20, deck: [filler], reason: 5 }),
       ],
       environment: testEnvironment({ tideState: "tempete", tideRemainingTurns: 5 }),
     });
@@ -2098,7 +2108,7 @@ describe("engine.dispatch - Cage de Flottaison : bouclier de dégâts DIRECTS au
       environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 4 }),
       players: [
         testPlayer("p1", { board: [attacker1, attacker2] }),
-        testPlayer("p2", { shipId: "lerrant", anchor: 20, board: [cage] }),
+        testPlayer("p2", { shipId: "le-goliath", anchor: 20, board: [cage] }),
       ],
     });
 
@@ -2126,7 +2136,7 @@ describe("engine.dispatch - Le Filet qui Respire : anti-grosse menace (Puissance
       environment: testEnvironment({ tideState: "tempete", tideRemainingTurns: 4 }),
       players: [
         testPlayer("p1", { board: [gros, petit] }),
-        testPlayer("p2", { shipId: "lerrant", anchor: 20, board: [filet] }),
+        testPlayer("p2", { shipId: "le-goliath", anchor: 20, board: [filet] }),
       ],
     });
 
@@ -2276,7 +2286,7 @@ describe("engine.dispatch - Auras/stats dynamiques (computeEffectiveStats étend
     const matelot = instance("matelot-insomniaque", "p1"); // 2/3
     const lowReasonState = testGameState({
       phase: "combatPhase",
-      players: [testPlayer("p1", { board: [matelot], reason: 4 }), testPlayer("p2", { shipId: "lerrant", anchor: 20 })],
+      players: [testPlayer("p1", { board: [matelot], reason: 4 }), testPlayer("p2", { shipId: "le-goliath", anchor: 20 })],
     });
     const buffed = dispatch(lowReasonState, { type: "attack", playerId: "p1", attackerInstanceId: matelot.instanceId });
     expect(buffed.ok).toBe(true);
@@ -2285,7 +2295,7 @@ describe("engine.dispatch - Auras/stats dynamiques (computeEffectiveStats étend
 
     const highReasonState = testGameState({
       phase: "combatPhase",
-      players: [testPlayer("p1", { board: [instance("matelot-insomniaque", "p1")], reason: 5 }), testPlayer("p2", { shipId: "lerrant", anchor: 20 })],
+      players: [testPlayer("p1", { board: [instance("matelot-insomniaque", "p1")], reason: 5 }), testPlayer("p2", { shipId: "le-goliath", anchor: 20 })],
     });
     const attackerId = highReasonState.players[0].board[0]!.instanceId;
     const unbuffed = dispatch(highReasonState, { type: "attack", playerId: "p1", attackerInstanceId: attackerId });
@@ -2348,7 +2358,7 @@ describe("engine.dispatch - Auras/stats dynamiques (computeEffectiveStats étend
     const lampe = instance("lampe-de-pont-rouge", "p1", { attachedToInstanceId: marin.instanceId });
     const stateInHoule = testGameState({
       phase: "combatPhase",
-      players: [testPlayer("p1", { board: [marin, lampe] }), testPlayer("p2", { shipId: "lerrant", anchor: 20 })],
+      players: [testPlayer("p1", { board: [marin, lampe] }), testPlayer("p2", { shipId: "le-goliath", anchor: 20 })],
       environment: testEnvironment({ tideState: "houle" }),
     });
     const buffed = dispatch(stateInHoule, { type: "attack", playerId: "p1", attackerInstanceId: marin.instanceId });
@@ -2360,7 +2370,7 @@ describe("engine.dispatch - Auras/stats dynamiques (computeEffectiveStats étend
     const lampeCalme = instance("lampe-de-pont-rouge", "p1", { attachedToInstanceId: marinCalme.instanceId });
     const stateInCalme = testGameState({
       phase: "combatPhase",
-      players: [testPlayer("p1", { board: [marinCalme, lampeCalme] }), testPlayer("p2", { shipId: "lerrant", anchor: 20 })],
+      players: [testPlayer("p1", { board: [marinCalme, lampeCalme] }), testPlayer("p2", { shipId: "le-goliath", anchor: 20 })],
       environment: testEnvironment({ tideState: "calme" }),
     });
     const unbuffed = dispatch(stateInCalme, { type: "attack", playerId: "p1", attackerInstanceId: marinCalme.instanceId });
@@ -2491,7 +2501,7 @@ describe("engine.dispatch - La Bouée qui Regardait : révèle une carte adverse
     const state = testGameState({
       turnNumber: 2, // pair : le endTurn suivant amène turnNumber=3 (impair), la Marée progresse d'un cran.
       players: [
-        testPlayer("p1", { shipId: "lerrant", board: [bouee], reason: 5 }),
+        testPlayer("p1", { shipId: "le-goliath", board: [bouee], reason: 5 }),
         testPlayer("p2", { hand: [carteMain], deck: [filler] }),
       ],
       environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 1, tideOrientation: "montante" }),
@@ -2518,7 +2528,7 @@ describe("engine.dispatch - Cloche Immergée : compare une carte révélée de c
     const state = testGameState({
       turnNumber: 2, // pair : le endTurn suivant amène turnNumber=3 (impair), la Marée progresse d'un cran.
       players: [
-        testPlayer("p1", { shipId: "lerrant", board: [cloche], hand: [carteChere], reason: 5 }),
+        testPlayer("p1", { shipId: "le-goliath", board: [cloche], hand: [carteChere], reason: 5 }),
         testPlayer("p2", { hand: [carteBonMarche], deck: [filler], reason: 5 }),
       ],
       environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 1, tideOrientation: "montante" }),
@@ -2543,7 +2553,7 @@ describe("engine.dispatch - Cloche Immergée : compare une carte révélée de c
     const state = testGameState({
       turnNumber: 2, // pair : le endTurn suivant amène turnNumber=3 (impair), la Marée progresse d'un cran.
       players: [
-        testPlayer("p1", { shipId: "lerrant", board: [cloche], hand: [carteA], reason: 5 }),
+        testPlayer("p1", { shipId: "le-goliath", board: [cloche], hand: [carteA], reason: 5 }),
         testPlayer("p2", { hand: [carteB], deck: [filler], reason: 5 }),
       ],
       environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 1, tideOrientation: "montante" }),
@@ -2676,8 +2686,8 @@ describe("engine.dispatch - La Mer Réclame Davantage : réduit la durée d'entr
     const state = testGameState({
       turnNumber: 2, // pair : le endTurn suivant amène turnNumber=3 (impair), la Marée progresse d'un cran.
       players: [
-        testPlayer("p1", { shipId: "lerrant", board: [anomalie], reason: 5 }),
-        testPlayer("p2", { shipId: "lerrant", deck: [filler], reason: 5 }),
+        testPlayer("p1", { shipId: "le-goliath", board: [anomalie], reason: 5 }),
+        testPlayer("p2", { shipId: "le-goliath", deck: [filler], reason: 5 }),
       ],
       environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 1, tideOrientation: "descendante" }),
     });
@@ -2696,8 +2706,8 @@ describe("engine.dispatch - La Mer Réclame Davantage : réduit la durée d'entr
     const state = testGameState({
       turnNumber: 2,
       players: [
-        testPlayer("p1", { shipId: "lerrant", anchor: 20, board: [anomalie], reason: 5 }),
-        testPlayer("p2", { shipId: "lerrant", anchor: 20, deck: [filler], reason: 5 }),
+        testPlayer("p1", { shipId: "le-goliath", anchor: 20, board: [anomalie], reason: 5 }),
+        testPlayer("p2", { shipId: "le-goliath", anchor: 20, deck: [filler], reason: 5 }),
       ],
       environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 1, tideOrientation: "descendante" }),
     });

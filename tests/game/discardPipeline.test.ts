@@ -28,7 +28,7 @@ describe("défausse — voie unique", () => {
     const state = testGameState({
       players: [
         testPlayer("p1", { hand: [mousse, enMain], deck: [instance("crabe-de-fer", "p1")] }),
-        testPlayer("p2", { shipId: "lerrant" }),
+        testPlayer("p2", { shipId: "le-goliath" }),
       ],
     });
 
@@ -62,7 +62,7 @@ describe("défausse — voie unique", () => {
     const state = testGameState({
       players: [
         testPlayer("p1", { hand, deck: [instance("crabe-de-fer", "p1"), instance("crabe-de-fer", "p1")] }),
-        testPlayer("p2", { shipId: "lerrant", deck: [instance("crabe-de-fer", "p2")] }),
+        testPlayer("p2", { shipId: "le-goliath", deck: [instance("crabe-de-fer", "p2")] }),
       ],
     });
 
@@ -84,7 +84,7 @@ describe("défausse — voie unique", () => {
 
   it("défausse ce qu'il y a quand la main est plus courte que demandé", () => {
     const state = testGameState({
-      players: [testPlayer("p1", { hand: [instance("marin-des-jetees", "p1")] }), testPlayer("p2", { shipId: "lerrant" })],
+      players: [testPlayer("p1", { hand: [instance("marin-des-jetees", "p1")] }), testPlayer("p2", { shipId: "le-goliath" })],
     });
 
     const result = discardFromHand(state, "p1", { count: 3 }, { turnNumber: 1, timestamp: 0 });
@@ -96,7 +96,7 @@ describe("défausse — voie unique", () => {
     const premier = instance("marin-des-jetees", "p1");
     const vise = instance("crabe-de-fer", "p1");
     const state = testGameState({
-      players: [testPlayer("p1", { hand: [premier, vise] }), testPlayer("p2", { shipId: "lerrant" })],
+      players: [testPlayer("p1", { hand: [premier, vise] }), testPlayer("p2", { shipId: "le-goliath" })],
     });
 
     const result = discardFromHand(state, "p1", { instanceIds: [vise.instanceId] }, { turnNumber: 1, timestamp: 0 });
@@ -130,7 +130,7 @@ describe("défausse — c'est le joueur qui désigne", () => {
     const state = testGameState({
       players: [
         testPlayer("p1", { hand: [mousse, garder, sacrifier], deck: [instance("poisson-lanterne", "p1")] }),
-        testPlayer("p2", { shipId: "lerrant" }),
+        testPlayer("p2", { shipId: "le-goliath" }),
       ],
     });
     const joue = dispatch(state, { type: "playCard", playerId: "p1", instanceId: mousse.instanceId });

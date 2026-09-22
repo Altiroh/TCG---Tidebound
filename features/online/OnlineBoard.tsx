@@ -247,9 +247,16 @@ export function OnlineBoard({
         onHandDragChange={board.setDraggingId}
       />
 
-      {canRespondToReaction && myReactionCandidates.length > 0 && !(selection?.kind === "reaction" && selection.needsTarget) && (
-        <ReactionPrompt candidates={myReactionCandidates} onActivateMany={activateSelectedReactions} onPass={() => act({ type: "passReaction", playerId: myUserId })} />
-      )}
+      {canRespondToReaction &&
+        (myReactionCandidates.length > 0 || shipAbility.windowEntry) &&
+        !(selection?.kind === "reaction" && selection.needsTarget) && (
+          <ReactionPrompt
+            candidates={myReactionCandidates}
+            onActivateMany={activateSelectedReactions}
+            onPass={() => act({ type: "passReaction", playerId: myUserId })}
+            shipAbility={shipAbility.windowEntry}
+          />
+        )}
       {selection?.kind === "reaction" && selection.needsTarget && (
         <div className="fixed left-1/2 top-6 z-[70] -translate-x-1/2 rounded-full border border-white/25 bg-slate-950/80 px-4 py-2 text-xs text-slate-200 backdrop-blur-md">
           {reactionTargetHint([...me.board, ...opponent.board].find((u) => u.instanceId === selection.sourceInstanceId)?.cardId, selection.abilityIndex)}

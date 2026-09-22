@@ -1,4 +1,4 @@
-import type { CardInstance } from "@/game/cards/types";
+import type { CardInstance, DestructionCause } from "@/game/cards/types";
 import type { EnvironmentState } from "@/game/environment/types";
 import type { GameEvent } from "@/game/events/types";
 import type { RngState } from "@/game/rng";
@@ -77,6 +77,25 @@ export interface PlayerState {
    */
   shipAbility?: ShipAbilityState;
   /**
+   * Usages déjà consommés des capacités « une fois par partie », par clé
+   * (`game/state/oncePerGame.ts`). Compteur et non booléen : « deux fois
+   * par partie » s'exprime sans rien réécrire. Porté par le JOUEUR, donc
+   * sérialisé avec l'état — il survit à une reconnexion, et le navigateur
+   * n'en est jamais l'autorité.
+   */
+  oncePerGameUses?: Record<string, number>;
+  /**
+   * Protections de destruction en cours (« vos Structures ne peuvent pas
+   * être détruites par des effets environnementaux jusqu'à la fin de ce
+   * tour », Brise-Lames — Tenir la ligne).
+   *
+   * Portées par le JOUEUR, comme `costDiscounts`, et pour la même raison :
+   * elles valent pour des permanents qui ne sont pas encore posés autant
+   * que pour ceux qui le sont. Datées plutôt que nettoyées — une protection
+   * dont le tour est passé est inerte, sans avoir à passer derrière elle.
+   */
+  destructionProtections?: DestructionProtection[];
+  /**
    * Journal court des cartes ARRIVÉES au Cimetière, horodaté par tour de
    * table (Lot 13).
    *
@@ -133,6 +152,24 @@ export interface CostDiscount {
   /** Nombre de cartes encore concernées. Décrémenté à chaque usage. */
   uses: number;
   /** Tour au-delà duquel la réduction est perdue (« ce tour »). */
+  expiresAfterTurn: number;
+}
+
+/**
+ * Une protection de destruction en cours.
+ *
+ * Volontairement exprimée en CAUSES (`DestructionCause`) et non en
+ * mécaniques nommées : « détruite par un effet environnemental » est
+ * exactement `causes: ["tide"]`, et le jour où une carte dira « ne peut pas
+ * être détruite au combat ce tour », elle s'écrira `causes: ["combat"]`
+ * sans une ligne de moteur en plus.
+ */
+export interface DestructionProtection {
+  /** Types de cartes protégés (ex: `["structure"]`). Absent : tous les permanents du joueur. */
+  cardTypes?: string[];
+  /** Causes de destruction contre lesquelles elle protège. */
+  causes: DestructionCause[];
+  /** Dernier tour de table où elle vaut encore (« jusqu'à la fin de ce tour »). */
   expiresAfterTurn: number;
 }
 

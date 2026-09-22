@@ -97,7 +97,7 @@ describe("toPlayerView — projection par joueur", () => {
         state: {
           ...base,
           environment: { ...base.environment, tideState },
-          players: [testPlayer("p1"), testPlayer("p2", { shipId: "lerrant", board: [structure] })] as typeof base.players,
+          players: [testPlayer("p1"), testPlayer("p2", { shipId: "le-goliath", board: [structure] })] as typeof base.players,
           eventLog: [
             { type: "PLAY_CARD" as const, turnNumber: 1, timestamp: 0, playerId: "p2", instanceId: structure.instanceId, cardId: caisses },
           ],

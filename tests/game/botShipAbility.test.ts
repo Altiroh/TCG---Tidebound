@@ -55,8 +55,11 @@ describe("le bot et le Canon de proue — énumération", () => {
     expect(combat.some((a) => a.type === "activateShipAbility")).toBe(false);
   });
 
-  it("ne propose rien pour un Navire sans capacité câblée", () => {
-    const actions = enumerateCandidateActions(testGameState(), "p1");
+  it("ne propose rien pour un Navire sans capacité activable", () => {
+    const actions = enumerateCandidateActions(
+      testGameState({ players: [testPlayer("p1", { shipId: "la-religieuse" }), testPlayer("p2", { shipId: "le-goliath" })] }),
+      "p1"
+    );
     expect(actions.some((a) => a.type === "activateShipAbility" || a.type === "fireShipAbility")).toBe(false);
   });
 

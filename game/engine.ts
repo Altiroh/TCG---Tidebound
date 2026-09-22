@@ -37,7 +37,16 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
   // Exception : l'abandon, qui doit rester possible à tout instant — sinon
   // un joueur parti sans répondre laisserait l'autre coincé sur une fenêtre
   // que plus personne ne fermera.
-  if (state.pendingReaction && !REACTION_ACTION_TYPES.has(action.type) && action.type !== "concede") {
+  // `activateShipAbility` traverse aussi : une capacité de Navire peut
+  // déclarer la fenêtre pour terrain d'activation (`activationWindow`,
+  // L'Errant — Changer de cap). Elle refuse d'elle-même si ce n'est pas la
+  // sienne, donc rien ne se faufile ici qui ne soit pas éligible.
+  if (
+    state.pendingReaction &&
+    !REACTION_ACTION_TYPES.has(action.type) &&
+    action.type !== "concede" &&
+    action.type !== "activateShipAbility"
+  ) {
     return { ok: false, error: "Une fenêtre de réaction est ouverte : activez une capacité facultative éligible, ou passez." };
   }
 

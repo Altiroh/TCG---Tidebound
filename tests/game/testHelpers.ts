@@ -53,7 +53,14 @@ export function testEnvironment(overrides: Partial<EnvironmentState> = {}): Envi
 
 export function testGameState(overrides: Partial<GameState> = {}): GameState {
   const p1 = testPlayer("p1");
-  const p2 = testPlayer("p2", { shipId: "lerrant" });
+  // Le Goliath en face : même gabarit que L'Errant (30 Ancrage, 10 Raison,
+  // 5 Slots), mais ni passif ni faiblesse — et surtout aucune capacité de
+  // FENÊTRE. Depuis que Changer de cap et Virage court s'activent pendant
+  // l'annonce d'une Marée, un Navire qui en porte une ouvre une fenêtre à
+  // chaque changement d'état : légitime en partie, parasite dans un test
+  // qui mesure autre chose. Le Canon de proue, lui, ne se déclenche jamais
+  // tout seul.
+  const p2 = testPlayer("p2", { shipId: "le-goliath" });
   return {
     id: "test-game",
     createdAt: 0,

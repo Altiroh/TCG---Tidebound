@@ -30,7 +30,7 @@ function finishedState(events: GameEvent[], boards: { p1Graveyard?: ReturnType<t
     status: "finished" as const,
     players: [
       testPlayer("p1", { graveyard: boards.p1Graveyard ?? [], anchor: boards.p1Anchor ?? 20 }),
-      testPlayer("p2", { shipId: "lerrant" }),
+      testPlayer("p2", { shipId: "le-goliath" }),
     ] as typeof state.players,
     eventLog: events,
   };
@@ -223,7 +223,7 @@ describe("progression d'une partie terminée", () => {
       ]),
       players: [
         testPlayer("p1", { board: [mien], anchor: 20 }),
-        testPlayer("p2", { shipId: "lerrant", board: [ennemi] }),
+        testPlayer("p2", { shipId: "le-goliath", board: [ennemi] }),
       ],
     } as ReturnType<typeof finishedState>;
     expect(computeMatchQuestProgress({ state, playerId: "p1", vsBot: true, won: false }).deal_damage).toBe(7);
@@ -239,7 +239,7 @@ describe("progression d'une partie terminée", () => {
         { ...base, type: "TURN_STARTED", playerId: "p1" },
         { ...base, type: "DAMAGE", targetPlayerId: "p1", amount: 2 },
       ]),
-      players: [testPlayer("p1", { board: [mien], anchor: 20 }), testPlayer("p2", { shipId: "lerrant" })],
+      players: [testPlayer("p1", { board: [mien], anchor: 20 }), testPlayer("p2", { shipId: "le-goliath" })],
     } as ReturnType<typeof finishedState>;
     expect(computeMatchQuestProgress({ state, playerId: "p1", vsBot: true, won: false }).take_damage).toBe(5);
   });

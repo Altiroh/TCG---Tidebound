@@ -8,6 +8,7 @@
  * peut s'exprimer avec les effets et cibles existants.
  */
 import type { ArchetypeId } from "@/game/cards/archetypes";
+import type { DestructionCause } from "@/game/cards/types";
 
 export type EffectType =
   | "damage"
@@ -81,6 +82,23 @@ export type EffectType =
    * modificateur posé sur la carte.
    */
   | "modifyAttackerPower"
+  /**
+   * Pose une PROTECTION DE DESTRUCTION sur les permanents du contrôleur
+   * jusqu'à la fin du tour en cours (`PlayerState.destructionProtections`) :
+   * « jusqu'à la fin de ce tour, vos Structures ne peuvent pas être
+   * détruites par des effets environnementaux » (Brise-Lames — Tenir la
+   * ligne).
+   *
+   * Générique par construction : ce qu'elle protège vient de
+   * `filter.cardTypes`, ce contre quoi vient de `protectedFrom` — une cause
+   * de destruction, la même notion que celle dont le moteur se sert déjà
+   * pour attribuer une mort (`DestructionCause`). « Effet environnemental »
+   * s'écrit donc `["tide"]`, et rien dans le moteur ne connaît le nom de la
+   * capacité qui l'a posée.
+   *
+   * Le Sabordage n'est jamais couvert : c'est un coût consenti.
+   */
+  | "protectFromDestruction"
   // --- Environnement : Marée, modèle "durée + intensité" -----------------
   // (cadrage "Mécaniques verrouillées" sections 20-21, orientation 2026-09-10)
   /** Réduit la durée restante de l'état de Marée courant (rapproche la progression). */
@@ -323,6 +341,13 @@ export interface EffectDefinition {
    * règle "une durée ne descend jamais sous 1").
    */
   advanceTideOnZero?: boolean;
+
+  /**
+   * Pour `protectFromDestruction` : causes de destruction écartées. Une
+   * protection sans cause ne protégerait de rien, l'effet est alors sans
+   * objet.
+   */
+  protectedFrom?: DestructionCause[];
 
   /**
    * Pour `summon` : bonus temporaire (jusqu'à la fin du tour) accordé aux

@@ -41,6 +41,16 @@ export interface ShipAbilityUi {
   confirm: () => void;
   /** Referme la confirmation sans rien dépenser. */
   cancel: () => void;
+  /**
+   * Entrée à donner à `ReactionPrompt` quand la capacité du Navire
+   * s'active DANS la fenêtre de réaction en cours (`activationWindow` —
+   * Changer de cap, Virage court). Absente le reste du temps.
+   *
+   * Sans elle, une fenêtre ouverte pour le seul Navire n'aurait aucun
+   * candidat de carte à afficher : rien à l'écran pour accepter, et surtout
+   * rien pour refuser.
+   */
+  windowEntry?: { name: string; text: string; onActivate: () => void };
 }
 
 export interface UseShipAbilityConfig {
@@ -119,10 +129,23 @@ export function useShipAbility({
         }
       : null;
 
+  // La fenêtre attend le SPECTATEUR, pas forcément le joueur actif — en
+  // hot-seat comme en ligne, c'est lui qui répond, et c'est son nom que
+  // porte l'action.
+  const windowEntry =
+    mine?.ability.activationWindow && mine.canActivate
+      ? {
+          name: mine.ability.name,
+          text: mine.ability.text,
+          onActivate: () => act({ type: "activateShipAbility", playerId: viewerId }),
+        }
+      : undefined;
+
   return {
     panel,
     opponentPanel,
     prompt,
+    windowEntry,
     confirm: () => {
       setConfirming(false);
       act({ type: "activateShipAbility", playerId: actorId });

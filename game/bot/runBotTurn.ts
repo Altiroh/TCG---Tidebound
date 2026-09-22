@@ -70,7 +70,13 @@ export function stepBotTurn(state: GameState, playerId: PlayerId, difficulty: Bo
   }
 
   const nextState = result.state;
-  const done = action.type === "endTurn" || nextState.status !== "active" || !botHasSomethingToDo(nextState, playerId);
+  // Ce qui décide, c'est « ce joueur a-t-il encore quelque chose à
+  // décider », jamais le TYPE de la dernière action. Rendre la main peut
+  // ouvrir une fenêtre qui attend ce même joueur — l'annonce d'une Marée
+  // au tour d'en face, une capacité de Navire qui s'y active — et un
+  // `done` posé sur « c'était un endTurn » laissait alors la partie
+  // suspendue sur une question que personne ne venait plus poser.
+  const done = nextState.status !== "active" || !botHasSomethingToDo(nextState, playerId);
   return { state: nextState, done };
 }
 

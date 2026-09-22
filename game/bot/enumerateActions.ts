@@ -152,6 +152,16 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
         });
       }
     }
+    // Capacité de NAVIRE qui déclare cette fenêtre pour terrain
+    // (`activationWindow` — Changer de cap, Virage court) : elle s'active
+    // là et nulle part ailleurs, donc elle doit être proposée ICI, avant
+    // le retour anticipé. `shipAbilityView` sait déjà si la fenêtre est la
+    // sienne.
+    const windowShipAbility = shipAbilityView(state, playerId);
+    if (windowShipAbility?.ability.activationWindow && windowShipAbility.canActivate) {
+      actions.push({ type: "activateShipAbility", playerId });
+    }
+
     actions.push({ type: "passReaction", playerId });
     return actions;
   }

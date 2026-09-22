@@ -10,17 +10,49 @@ import { recordGraveyardArrival } from "@/game/state/discard";
 import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
 import type { GameState, PlayerState } from "@/game/state/types";
 
+/**
+ * Ce permanent est-il couvert, en ce moment, par une protection de son
+ * contrôleur contre CETTE cause de destruction (`PlayerState.destructionProtections`,
+ * ex: Brise-Lames — Tenir la ligne) ?
+ *
+ * Un Sabordage n'est jamais couvert : c'est un coût consenti, pas une
+ * destruction subie — même règle que pour les substitutions et les survies.
+ */
+export function isProtectedFromDestruction(
+  controller: PlayerState,
+  unit: CardInstance,
+  cause: DestructionCause,
+  turnNumber: number
+): boolean {
+  if (cause === "scuttle" || unit.pendingRemoval === "scuttled") return false;
+  const cardType = getCardDefinition(unit.cardId).type;
+  return (controller.destructionProtections ?? []).some(
+    (protection) =>
+      turnNumber <= protection.expiresAfterTurn &&
+      protection.causes.includes(cause) &&
+      (protection.cardTypes === undefined || protection.cardTypes.includes(cardType))
+  );
+}
+
 function shouldDie(
   unit: CardInstance,
   tideState: TideStateName,
   controller: PlayerState,
-  tideOrientation: "montante" | "descendante"
+  tideOrientation: "montante" | "descendante",
+  turnNumber: number
 ): boolean {
   const stats = computeEffectiveStats(unit, tideState, {
     controllerBoard: controller.board,
     controllerReason: controller.reason,
     tideOrientation,
   });
+  // Une protection en cours écarte le départ AVANT toute autre
+  // considération : « ne peut pas être détruite » se lit au pied de la
+  // lettre. Les dégâts déjà marqués, eux, restent — la protection fait
+  // gagner du temps, elle ne soigne pas.
+  if (isProtectedFromDestruction(controller, unit, destructionCauseOf(unit, stats.destroyedByTide), turnNumber)) {
+    return false;
+  }
   // Un départ déjà décidé (effet `destroy`/`saborde`, action Saborder,
   // Ancre de Dérive) ne dépend d'aucune arithmétique de Résistance : une
   // Anomalie sans Résistance doit pouvoir partir comme une Créature.
@@ -248,7 +280,7 @@ export function processDeaths(
     const lethalPairs: Array<{ playerId: string; unitInstanceId: string }> = [];
     for (const player of current.players) {
       for (const unit of player.board) {
-        if (shouldDie(unit, current.environment.tideState, player, current.environment.tideOrientation)) {
+        if (shouldDie(unit, current.environment.tideState, player, current.environment.tideOrientation, turnNumber)) {
           lethalPairs.push({ playerId: player.id, unitInstanceId: unit.instanceId });
         }
       }
@@ -256,7 +288,7 @@ export function processDeaths(
     for (const { playerId, unitInstanceId } of lethalPairs) {
       const player = current.players.find((p) => p.id === playerId);
       const unit = player?.board.find((u) => u.instanceId === unitInstanceId);
-      if (!player || !unit || !shouldDie(unit, current.environment.tideState, player, current.environment.tideOrientation)) continue;
+      if (!player || !unit || !shouldDie(unit, current.environment.tideState, player, current.environment.tideOrientation, turnNumber)) continue;
       // Un Sabordage est un coût consenti : ni substitution ni survie.
       if (unit.pendingRemoval === "scuttled") continue;
       const substitute = findDestructionSubstitute(player.board, unit.instanceId);
@@ -276,7 +308,7 @@ export function processDeaths(
 
     for (const player of current.players) {
       for (const unit of player.board) {
-        if (shouldDie(unit, tideState, player, current.environment.tideOrientation)) deaths.push({ unit, owner: player });
+        if (shouldDie(unit, tideState, player, current.environment.tideOrientation, turnNumber)) deaths.push({ unit, owner: player });
       }
     }
 

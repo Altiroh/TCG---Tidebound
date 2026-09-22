@@ -1234,6 +1234,28 @@ export function resolveEffect(
       };
     }
 
+    case "protectFromDestruction": {
+      const causes = effect.protectedFrom ?? [];
+      if (causes.length === 0) return { state, events };
+      const player = getPlayer(state, context.controllerId);
+      return {
+        state: replacePlayer(state, {
+          ...player,
+          destructionProtections: [
+            ...(player.destructionProtections ?? []),
+            {
+              causes: [...causes],
+              // « jusqu'à la fin de ce tour » : la protection meurt avec le
+              // tour où elle est posée, comme une réduction de coût.
+              expiresAfterTurn: state.turnNumber,
+              ...(effect.filter?.cardTypes ? { cardTypes: [...effect.filter.cardTypes] } : {}),
+            },
+          ],
+        }),
+        events,
+      };
+    }
+
     case "transform":
     case "searchDeck":
       // Prévus par le modèle de données pour de futures extensions ;

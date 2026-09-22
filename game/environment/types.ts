@@ -135,12 +135,32 @@ export interface ShipActivatableAbility {
   /** Phases pendant lesquelles l'activation est permise, sur le tour de son contrôleur. */
   activationPhases: readonly GamePhase[];
   /**
-   * Nombre d'activations autorisées par tour de son contrôleur. Défaut : 1.
-   * Une capacité « une fois par partie » n'est PAS exprimable ici — c'est
-   * une autre fréquence, encore non modélisée (cf. Virage court, Changer
-   * de cap, Tenir la ligne, toujours en texte seul).
+   * FENÊTRE spéciale d'activation, à la place des phases.
+   *
+   * `"tideAnnounced"` : la capacité ne s'active que pendant la fenêtre déjà
+   * ouverte par le moteur entre l'ANNONCE d'une Marée et l'application de
+   * ses effets (`GameState.pendingTideStep`) — celle de l'Ancre de Dérive.
+   * C'est la seule façon d'écrire « après qu'une Marée a été annoncée mais
+   * avant l'application de ses effets » (L'Errant — Changer de cap) sans
+   * doubler le système de réaction : le Navire rejoint la file de priorité
+   * de cette fenêtre, et s'y active ou s'y passe comme une carte.
+   *
+   * Absent : la capacité s'active normalement, pendant le tour de son
+   * contrôleur et dans `activationPhases`.
    */
+  activationWindow?: "tideAnnounced";
+  /** Nombre d'activations autorisées par tour de son contrôleur. Défaut : 1. */
   activationsPerTurn?: number;
+  /**
+   * Nombre d'activations autorisées pour TOUTE LA PARTIE — la fréquence
+   * « une fois par partie » des fiches Notion (Virage court, Changer de
+   * cap, Tenir la ligne). Absent : aucune limite de partie, seule celle du
+   * tour s'applique (Le Goliath).
+   *
+   * Compté par `game/state/oncePerGame.ts`, donc porté par l'état du
+   * joueur et non par un drapeau maison : il survit à une reconnexion.
+   */
+  activationsPerGame?: number;
   /**
    * Nom de fichier dans `public/assets/ships/capacite/` — ce qu'on découvre
    * SOUS les planches (ex: `goliath.webp`, la gueule du canon). Absent : le

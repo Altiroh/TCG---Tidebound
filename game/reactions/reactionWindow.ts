@@ -1,4 +1,5 @@
 import { collectReactionCandidates } from "@/game/triggers/triggerBus";
+import { shipWindowAbilityFor } from "@/game/state/shipAbility";
 import type { TriggerEvent } from "@/game/triggers/types";
 import type { GameEvent } from "@/game/events/types";
 import { findCardInstance, type GameState, type PendingReactionState, type PlayerId } from "@/game/state/types";
@@ -130,6 +131,33 @@ export function eligibleCandidatesFor(
 }
 
 /**
+ * Fenêtre de capacité de NAVIRE correspondant à ces déclencheurs, s'il en
+ * existe une. Le Navire n'est pas une carte : il n'apparaît donc jamais
+ * dans `collectReactionCandidates`, et c'est cette table — une seule
+ * entrée à ce jour — qui dit quelle fenêtre du moteur l'invite à répondre.
+ */
+function shipWindowFor(triggerEvents: readonly TriggerEvent[]): "tideAnnounced" | undefined {
+  return triggerEvents.some((event) => event.trigger === "onTideAnnounced") ? "tideAnnounced" : undefined;
+}
+
+/**
+ * Ce joueur a-t-il une capacité de NAVIRE à proposer dans cette fenêtre ?
+ *
+ * Contrairement aux cartes, rien n'est « déjà utilisé pendant cette
+ * fenêtre » à retenir : les réserves de la capacité (par tour, par partie)
+ * sont consommées à l'activation, donc elle cesse d'elle-même d'être
+ * éligible dès qu'elle a servi.
+ */
+export function shipReactionEligible(
+  state: GameState,
+  triggerEvents: readonly TriggerEvent[],
+  playerId: PlayerId
+): boolean {
+  const window = shipWindowFor(triggerEvents);
+  return window !== undefined && shipWindowAbilityFor(state, playerId, window) !== undefined;
+}
+
+/**
  * Construit l'ordre de priorité pour une nouvelle fenêtre de réaction :
  * joueur actif d'abord puis l'adversaire (même convention que les
  * déclenchements automatiques simultanés, `playersActiveFirst` dans
@@ -144,7 +172,9 @@ function eligiblePriorityOrder(
 ): PlayerId[] {
   const order = [state.activePlayerId, ...state.players.map((p) => p.id).filter((id) => id !== state.activePlayerId)];
   return order.filter(
-    (playerId) => eligibleCandidatesFor(state, triggerEvents, playerId, turnNumber, usedCandidateKeys).length > 0
+    (playerId) =>
+      shipReactionEligible(state, triggerEvents, playerId) ||
+      eligibleCandidatesFor(state, triggerEvents, playerId, turnNumber, usedCandidateKeys).length > 0
   );
 }
 

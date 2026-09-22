@@ -29,7 +29,7 @@ describe("environnement - Marée (modèle durée + intensité)", () => {
     const state = testGameState({
       turnNumber: 2,
       // p1: Le Brise-Lames (résiste 2 Tempête), p2: L'Errant (aucune résistance Tempête)
-      players: [testPlayer("p1"), testPlayer("p2", { shipId: "lerrant" })],
+      players: [testPlayer("p1"), testPlayer("p2", { shipId: "le-goliath" })],
       environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 1 }),
     });
 
@@ -41,7 +41,7 @@ describe("environnement - Marée (modèle durée + intensité)", () => {
     // la Tempête, pas de la valeur d'Ancrage de départ, qui bouge au gré de
     // l'équilibrage du rythme (+50 % le 21/09/2026).
     expect(result.state.players[0].anchor).toBe(getShipDefinition("le-brise-lames").startingAnchor); // résistance 2 > 1 dégât, clampé à 0
-    expect(result.state.players[1].anchor).toBe(getShipDefinition("lerrant").startingAnchor - 1);
+    expect(result.state.players[1].anchor).toBe(getShipDefinition("le-goliath").startingAnchor - 1);
   });
 
   it("ne progresse PAS au tour du second joueur — seulement au retour au premier (un tour = un tour de table)", () => {
@@ -115,7 +115,7 @@ describe("environnement - Marée (modèle durée + intensité)", () => {
   it("ignoreNextTideDamage annule la prochaine perte d'Ancrage de cet état pour ce joueur", () => {
     let state = testGameState({
       turnNumber: 2, // pair : le endTurn suivant amène turnNumber=3 (impair) => la Marée progresse.
-      players: [testPlayer("p1", { shipId: "lerrant" }), testPlayer("p2")],
+      players: [testPlayer("p1", { shipId: "le-goliath" }), testPlayer("p2")],
       environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 1 }),
     });
     state = {
@@ -127,7 +127,7 @@ describe("environnement - Marée (modèle durée + intensité)", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.state.environment.tideState).toBe("tempete");
-    expect(result.state.players[0].anchor).toBe(getShipDefinition("lerrant").startingAnchor); // aurait dû perdre 1 sans l'ignore
+    expect(result.state.players[0].anchor).toBe(getShipDefinition("le-goliath").startingAnchor); // aurait dû perdre 1 sans l'ignore
   });
 
   it("Sabordage d'une Structure de manipulation de Marée (Régulateur de Courant) réduit la durée restante", () => {
@@ -203,8 +203,8 @@ describe("environnement - malus globaux des Marées (verrouillé, Notion 'Moteur
     const state = testGameState({
       turnNumber: 2, // pair : le endTurn suivant amène turnNumber=3 (impair) => la Marée progresse.
       players: [
-        testPlayer("p1", { shipId: "lerrant", anchor: 20, reason: 9, reasonMax: 10 }),
-        testPlayer("p2", { shipId: "lerrant", anchor: 20, reason: 10, reasonMax: 10 }),
+        testPlayer("p1", { shipId: "le-goliath", anchor: 20, reason: 9, reasonMax: 10 }),
+        testPlayer("p2", { shipId: "le-goliath", anchor: 20, reason: 10, reasonMax: 10 }),
       ],
       environment: testEnvironment({ tideState: "tempete", tideRemainingTurns: 1, tideOrientation: "montante" }),
     });
@@ -229,7 +229,7 @@ describe("environnement - malus globaux des Marées (verrouillé, Notion 'Moteur
       turnNumber: 2, // pair : le endTurn suivant amène turnNumber=3 (impair) => la Marée progresse.
       players: [
         testPlayer("p1", { shipId: "le-brise-lames", anchor: 24, reason: 8, reasonMax: 8 }),
-        testPlayer("p2", { shipId: "lerrant" }),
+        testPlayer("p2", { shipId: "le-goliath" }),
       ],
       environment: testEnvironment({ tideState: "tempete", tideRemainingTurns: 1, tideOrientation: "montante" }),
     });
@@ -248,8 +248,8 @@ describe("environnement - malus globaux des Marées (verrouillé, Notion 'Moteur
     const state = testGameState({
       turnNumber: 2, // pair : le endTurn suivant amène turnNumber=3 (impair) => la Marée progresse.
       players: [
-        testPlayer("p1", { shipId: "lerrant", reasonMax: 8, reason: 5 }),
-        testPlayer("p2", { shipId: "lerrant" }),
+        testPlayer("p1", { shipId: "le-goliath", reasonMax: 8, reason: 5 }),
+        testPlayer("p2", { shipId: "le-goliath" }),
       ],
       environment: testEnvironment({ tideState: "abysses", tideRemainingTurns: 1, tideOrientation: "descendante" }),
     });

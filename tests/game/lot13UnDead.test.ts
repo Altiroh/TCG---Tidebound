@@ -72,7 +72,7 @@ describe("Lot 13 — la défausse comme moteur", () => {
           board: observateurs,
           reason: 10,
         }),
-        testPlayer("p2", { shipId: "lerrant" }),
+        testPlayer("p2", { shipId: "le-goliath" }),
       ],
     });
     const joue = dispatch(state, { type: "playCard", playerId: "p1", instanceId: mousse.instanceId });
@@ -135,7 +135,7 @@ describe("Lot 13 — le Cimetière comme ressource", () => {
           deck: [instance("crabe-de-fer", "p1"), instance("crabe-de-fer", "p1"), instance("crabe-de-fer", "p1")],
           reason: 10,
         }),
-        testPlayer("p2", { shipId: "lerrant" }),
+        testPlayer("p2", { shipId: "le-goliath" }),
       ],
     });
 
@@ -156,7 +156,7 @@ describe("Lot 13 — le Cimetière comme ressource", () => {
     const state = testGameState({
       players: [
         testPlayer("p1", { board: [chanson, maman], graveyard: [ptitBout], deck: [instance("crabe-de-fer", "p1")], reason: 10 }),
-        testPlayer("p2", { shipId: "lerrant" }),
+        testPlayer("p2", { shipId: "le-goliath" }),
       ],
     });
     const ancrageAvant = state.players.find((p) => p.id === "p2")!.anchor;
@@ -185,7 +185,7 @@ describe("Lot 13 — le Cimetière comme ressource", () => {
         priorityPlayerId: "p2",
         players: [
           testPlayer("p1", { board: [promis], graveyardArrivals: arrivals, deck: [instance("crabe-de-fer", "p1")] }),
-          testPlayer("p2", { shipId: "lerrant", deck: [instance("crabe-de-fer", "p2")] }),
+          testPlayer("p2", { shipId: "le-goliath", deck: [instance("crabe-de-fer", "p2")] }),
         ],
       });
       const fin = dispatch(state, { type: "endTurn", playerId: "p2" });
@@ -215,7 +215,7 @@ describe("Lot 13 — le Cimetière comme ressource", () => {
       turnNumber: 6,
       players: [
         testPlayer("p1", { graveyardArrivals: [{ cardId: "ptit-bout", turnNumber: 5, fromZone: "hand" }] }),
-        testPlayer("p2", { shipId: "lerrant" }),
+        testPlayer("p2", { shipId: "le-goliath" }),
       ],
     });
     expect(hasGraveyardArrival(state, "p1", { subtype: UN_DEAD, since: "lastOwnTurn" })).toBe(true);
@@ -229,7 +229,7 @@ describe("Lot 13 — l'attrition", () => {
   it("Le Copain du dessous cogne le Navire adverse en mourant", () => {
     const copain = instance("le-copain-du-dessous", "p1");
     const state = testGameState({
-      players: [testPlayer("p1", { board: [copain], reason: 10 }), testPlayer("p2", { shipId: "lerrant" })],
+      players: [testPlayer("p1", { board: [copain], reason: 10 }), testPlayer("p2", { shipId: "le-goliath" })],
     });
     const avant = state.players.find((p) => p.id === "p2")!.anchor;
 
@@ -266,7 +266,7 @@ describe("Lot 13 — choisir une carte du Cimetière ailleurs que sur un Bris", 
     const state = testGameState({
       players: [
         testPlayer("p1", { hand: [tuViensJouer], graveyard: [ptitBout, trop], reason: 10 }),
-        testPlayer("p2", { shipId: "lerrant" }),
+        testPlayer("p2", { shipId: "le-goliath" }),
       ],
     });
 
@@ -303,7 +303,7 @@ describe("Lot 13 — choisir une carte du Cimetière ailleurs que sur un Bris", 
       const state = testGameState({
         players: [
           testPlayer("p1", { hand: [tuViensJouer], graveyard: [ptitBout], graveyardArrivals: arrivals, reason: 10 }),
-          testPlayer("p2", { shipId: "lerrant" }),
+          testPlayer("p2", { shipId: "le-goliath" }),
         ],
       });
       const joue = dispatch(state, {
@@ -327,7 +327,7 @@ describe("Lot 13 — choisir une carte du Cimetière ailleurs que sur un Bris", 
     // verrait que les défausses, et un Un Dead tué ne compterait pas.
     const copain = instance("le-copain-du-dessous", "p1");
     const state = testGameState({
-      players: [testPlayer("p1", { board: [copain], reason: 10 }), testPlayer("p2", { shipId: "lerrant" })],
+      players: [testPlayer("p1", { board: [copain], reason: 10 }), testPlayer("p2", { shipId: "le-goliath" })],
     });
     const saborde = dispatch(state, { type: "saborder", playerId: "p1", instanceId: copain.instanceId });
     ok(saborde);

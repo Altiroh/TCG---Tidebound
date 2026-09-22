@@ -184,7 +184,7 @@ describe("Cloche d'Alerte — taxe sur le Bris adverse", () => {
 
 describe("Ancre de Dérive — report des effets de Marée", () => {
   /**
-   * Houle → Tempête à la fin du tour de p1. p2 joue L'Errant, sans
+   * Houle → Tempête à la fin du tour de p1. p2 joue Le Goliath, sans
    * résistance à la Tempête : 1 dégât d'Ancrage par tour.
    */
   function changementVersTempete(avecAncre: boolean) {
@@ -196,7 +196,7 @@ describe("Ancre de Dérive — report des effets de Marée", () => {
         environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 1, tideOrientation: "montante" }),
         players: [
           testPlayer("p1", { board: avecAncre ? [ancre] : [], deck: filler("p1") }),
-          testPlayer("p2", { shipId: "lerrant", deck: filler("p2"), anchor: 20 }),
+          testPlayer("p2", { shipId: "le-goliath", deck: filler("p2"), anchor: 20 }),
         ],
       }),
     };
@@ -273,7 +273,7 @@ describe("Ancre de Dérive — report des effets de Marée", () => {
       environment: testEnvironment({ tideState: "tempete", tideRemainingTurns: 1, tideOrientation: "montante" }),
       players: [
         testPlayer("p1", { board: [ancre], deck: filler("p1") }),
-        testPlayer("p2", { shipId: "lerrant", deck: filler("p2"), anchor: 20 }),
+        testPlayer("p2", { shipId: "le-goliath", deck: filler("p2"), anchor: 20 }),
       ],
     });
     const annonce = dispatch(state, { type: "endTurn", playerId: "p1" });
@@ -300,7 +300,7 @@ describe("Ancre de Dérive — report des effets de Marée", () => {
       environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 1, tideOrientation: "montante" }),
       players: [
         testPlayer("p1", { board: [ancre], deck: filler("p1") }),
-        testPlayer("p2", { shipId: "lerrant", deck: filler("p2"), anchor: 20 }),
+        testPlayer("p2", { shipId: "le-goliath", deck: filler("p2"), anchor: 20 }),
       ],
     });
     const visible = dispatch(versTempete, { type: "endTurn", playerId: "p1" });
@@ -312,7 +312,7 @@ describe("Ancre de Dérive — report des effets de Marée", () => {
       environment: testEnvironment({ tideState: "tempete", tideRemainingTurns: 1, tideOrientation: "montante" }),
       players: [
         testPlayer("p1", { board: [ancre], deck: filler("p1") }),
-        testPlayer("p2", { shipId: "lerrant", deck: filler("p2"), anchor: 20 }),
+        testPlayer("p2", { shipId: "le-goliath", deck: filler("p2"), anchor: 20 }),
       ],
     });
     const masquee = dispatch(versAbysses, { type: "endTurn", playerId: "p1" });

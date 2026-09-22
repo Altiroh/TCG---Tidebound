@@ -419,13 +419,16 @@ export function MatchBoard({
 
       {/* Invitation à réagir — priorité sur tout le reste tant qu'elle reste ouverte ; repliée dès qu'une
           capacité ciblée est choisie, remplacée par un petit rappel non bloquant. */}
-      {state.pendingReaction?.awaitingPlayerId === viewerPlayerId && myReactionCandidates.length > 0 && !(pending?.kind === "reaction" && pending.needsTarget) && (
-        <ReactionPrompt
-          candidates={myReactionCandidates}
-          onActivateMany={activateSelectedReactions}
-          onPass={() => runReactionAction({ type: "passReaction", playerId: viewerPlayerId })}
-        />
-      )}
+      {state.pendingReaction?.awaitingPlayerId === viewerPlayerId &&
+        (myReactionCandidates.length > 0 || shipAbility.windowEntry) &&
+        !(pending?.kind === "reaction" && pending.needsTarget) && (
+          <ReactionPrompt
+            candidates={myReactionCandidates}
+            onActivateMany={activateSelectedReactions}
+            onPass={() => runReactionAction({ type: "passReaction", playerId: viewerPlayerId })}
+            shipAbility={shipAbility.windowEntry}
+          />
+        )}
       {pending?.kind === "reaction" && pending.needsTarget && (
         <div className="fixed left-1/2 top-6 z-[70] -translate-x-1/2 rounded-full border border-white/25 bg-slate-950/80 px-4 py-2 text-xs text-slate-200 backdrop-blur-md">
           {reactionTargetHint([...viewerPlayer.board, ...otherPlayer.board].find((u) => u.instanceId === pending.sourceInstanceId)?.cardId, pending.abilityIndex)}
