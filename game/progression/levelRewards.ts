@@ -1,5 +1,5 @@
 import type { CardRarity } from "@/game/boosters/types";
-import { STANDARD_BOOSTER_ID, TIDE_REWARD } from "@/game/economy/constants";
+import { NECESSAIRE_DU_MARIN_BOOSTER_ID, STANDARD_BOOSTER_ID, TIDE_REWARD } from "@/game/economy/constants";
 
 /**
  * Table de récompenses de progression — niveaux 1 à 50.
@@ -55,6 +55,18 @@ export const MAX_REWARDED_LEVEL = 50;
 
 const tides = (amount: number): LevelRewardItem => ({ kind: "tides", amount });
 const booster = (count = 1): LevelRewardItem => ({ kind: "booster", boosterId: STANDARD_BOOSTER_ID, count });
+/**
+ * Booster Nécessaire du Marin (Lot 14) — la CONSOLIDATION de la courbe de
+ * progression, entre le Standard (découverte) et les Préconstruits
+ * (spécialisation).
+ *
+ * Il est donné et pas seulement vendu, à dessein : un joueur qui n'achète
+ * jamais rien doit quand même finir par tenir des pièges, du removal et de
+ * quoi piocher. Sans ça, les outils de base du deckbuilding seraient
+ * réservés à ceux qui paient — exactement ce qu'un booster de
+ * consolidation ne doit pas être.
+ */
+const necessaireDuMarin = (count = 1): LevelRewardItem => ({ kind: "booster", boosterId: NECESSAIRE_DU_MARIN_BOOSTER_ID, count });
 const cardChoice = (rarity: CardRarity, choices = 3): LevelRewardItem => ({ kind: "cardChoice", rarity, choices });
 const preconToken = (count = 1): LevelRewardItem => ({ kind: "preconToken", count });
 const cosmetic = (kind: CosmeticKind, id: string, label: string): LevelRewardItem => ({ kind: "cosmetic", cosmetic: kind, id, label });
@@ -65,6 +77,26 @@ const cosmetic = (kind: CosmeticKind, id: string, label: string): LevelRewardIte
  * montants 25/30/35/40/45/50/55/60/65/70/75/100 sont ceux de la page, et
  * `TIDE_REWARD` n'est utilisé que là où la page retombe exactement sur un
  * repère (25 = petite, 75 = belle).
+ *
+ * ÉCART ASSUMÉ AVEC LA PAGE (22/09/2026) — six paliers de Tides ont été
+ * convertis en boosters Nécessaire du Marin : 6, 11, 18, 26, 33, et 43
+ * (double). Ce qui a guidé le placement :
+ *
+ *  - on ne touche à AUCUN gros palier. Les trois principes verrouillés
+ *    tiennent toujours — une récompense à chaque niveau, un gros palier
+ *    tous les ~5 niveaux, un Jeton de Préconstruit tous les 10 ;
+ *  - les sept boosters Standard (4, 14, 24, 34, 39, 44, 49) restent en
+ *    place : le Nécessaire s'AJOUTE à la découverte, il ne la remplace pas ;
+ *  - les paliers convertis sont des niveaux de Tides « plats », espacés des
+ *    cosmétiques (5, 15, 25, 35, 45) et des Préconstruits (10, 20, 30, 40) ;
+ *  - le premier tombe au niveau 6, juste après le premier Standard : le
+ *    joueur a vu des cartes, il peut commencer à construire.
+ *
+ * Coût pour l'économie : 335 Tides de récompenses directes en moins sur
+ * 50 niveaux (35 + 40 + 50 + 60 + 65 + 75), rendus en 7 boosters valant
+ * 700 Tides au Market. Un joueur qui ne dépense rien est donc gagnant ;
+ * un joueur qui achetait déjà perd un peu de liquidité. C'est le sens de
+ * la carte : mettre les outils entre toutes les mains.
  */
 export const LEVEL_REWARDS: Readonly<Record<number, readonly LevelRewardItem[]>> = {
   1: [tides(TIDE_REWARD.small)],
@@ -72,19 +104,19 @@ export const LEVEL_REWARDS: Readonly<Record<number, readonly LevelRewardItem[]>>
   3: [tides(30)],
   4: [booster()],
   5: [cosmetic("frame", "frame-mousse", "Cadre de profil — Mousse")],
-  6: [tides(35)],
+  6: [necessaireDuMarin()],
   7: [cardChoice("uncommon")],
   8: [tides(40)],
   9: [tides(TIDE_REWARD.big)],
   10: [preconToken()],
-  11: [tides(40)],
+  11: [necessaireDuMarin()],
   12: [cardChoice("common")],
   13: [tides(45)],
   14: [booster()],
   15: [cosmetic("title", "title-marin-eau-douce", "Titre — Marin d'eau douce")],
   16: [tides(50)],
   17: [cardChoice("uncommon")],
-  18: [tides(50)],
+  18: [necessaireDuMarin()],
   19: [tides(TIDE_REWARD.big)],
   20: [preconToken(), cosmetic("avatar", "avatar-timonier", "Avatar — Timonier")],
   21: [tides(50)],
@@ -94,14 +126,14 @@ export const LEVEL_REWARDS: Readonly<Record<number, readonly LevelRewardItem[]>>
   // L'identifiant pointe sur un dos RÉEL (`game/cosmetics/cardBacks.ts`) :
   // c'est le seul cosmétique aujourd'hui équipable, depuis le profil.
   25: [cosmetic("cardBack", "back-ogee", "Dos de carte — Épave engloutie")],
-  26: [tides(60)],
+  26: [necessaireDuMarin()],
   27: [cardChoice("uncommon")],
   28: [tides(60)],
   29: [tides(TIDE_REWARD.big)],
   30: [preconToken()],
   31: [tides(65)],
   32: [cardChoice("uncommon")],
-  33: [tides(65)],
+  33: [necessaireDuMarin()],
   34: [booster()],
   35: [cosmetic("frame", "frame-vieux-loup", "Cadre de profil — Vieux Loup de Mer")],
   36: [tides(70)],
@@ -113,7 +145,7 @@ export const LEVEL_REWARDS: Readonly<Record<number, readonly LevelRewardItem[]>>
   40: [preconToken(), cosmetic("shipSkin", "ship-skin-abyssal", "Cosmétique de Navire — Coque abyssale")],
   41: [tides(TIDE_REWARD.big)],
   42: [cardChoice("uncommon")],
-  43: [tides(TIDE_REWARD.big)],
+  43: [necessaireDuMarin(2)],
   44: [booster()],
   45: [cosmetic("title", "title-capitaine", "Titre — Capitaine")],
   46: [tides(100)],

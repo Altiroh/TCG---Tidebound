@@ -42,6 +42,14 @@ export const BOOSTER_SPECIALIZED_PRICE = BOOSTER_STANDARD_PRICE + SPECIALIZED_BO
 export const STANDARD_BOOSTER_ID = "standard";
 
 /**
+ * Identifiant du booster de CONSOLIDATION (Lot 14) dans
+ * `booster_definitions`. Au même prix que le booster d'entrée : c'est le
+ * pool que tout le monde doit pouvoir s'offrir, pas un produit
+ * spécialisé.
+ */
+export const NECESSAIRE_DU_MARIN_BOOSTER_ID = "necessaire-du-marin";
+
+/**
  * Repères de récompense (Notion, section 5). Une récompense chiffrée du
  * méta-jeu doit retomber sur l'un d'eux plutôt que d'inventer un montant :
  * c'est ce qui garde la cadence « un booster tous les N jours » lisible.
