@@ -26,8 +26,8 @@ const GAP = 14;
  * fenêtre. Le calque ne reçoit aucun pointeur : le survol reste sur la
  * carte, et le geste (glisser, viser) n'est jamais gêné.
  *
- * Souris seulement : au doigt il n'y a pas de survol, l'appui long ouvre la
- * fiche complète (`onInspect`).
+ * Souris seulement : au doigt il n'y a pas de survol, et c'est l'appui long
+ * qui pose la carte en grand au milieu de l'écran (`TableCardZoom`).
  */
 export function HoverCardPreview({ anchor, children }: HoverCardPreviewProps) {
   const ref = useRef<HTMLDivElement>(null);

@@ -84,6 +84,18 @@
   .panelArt { display: none; }
   .panelBody { gap: 4px; }
   .shelfEntryArt { width: clamp(26px, 3vw, 40px); }
+
+  /* Les autres actions de la fiche tiennent toute la largeur du panneau :
+     elles peuvent donc passer à la ligne, ce que le bouton partagé
+     interdit par défaut (`white-space: nowrap`). Deux lignes centrées
+     valent mieux qu'un mot coupé au bord du panneau. */
+  .panelActions > :global(button),
+  .panelActions > :global(a) {
+    min-width: 0;
+    padding-inline: 0.7em;
+    white-space: normal;
+    text-align: center;
+  }
 }
 
 /*
@@ -646,7 +658,30 @@
   gap: 8px;
 }
 
-.openRow > :global(button) { flex: 1 1 auto; justify-content: center; }
+.openRow > :global(button) { flex: 1 1 auto; min-width: 0; justify-content: center; }
+
+/*
+ * Les deux ÉCRITURES du bouton d'ouverture (`BoostersScreen`). Le bouton
+ * partagé (`game.primary`) est en `white-space: nowrap` — il ne se coupe
+ * pas, il DÉBORDE — et la fiche ne lui laisse qu'une portion de ses
+ * ~240 px sur un téléphone couché, le pas de quantité prenant le reste.
+ * L'écran court garde donc le verbe seul ; le nombre est déjà lu juste à
+ * sa gauche, et `aria-label` porte la phrase entière.
+ */
+.openLabelShort { display: none; }
+
+/*
+ * Le basculement vit ICI, immédiatement après la règle de base, et non
+ * dans le bloc « téléphone couché » du haut du fichier : à spécificité
+ * égale c'est la DERNIÈRE règle déclarée qui gagne, et `display: none`
+ * ci-dessus écrasait le `display: inline` d'un bloc média plus haut. Les
+ * deux écritures se masquaient alors l'une l'autre et le bouton sortait
+ * vide (retour du 22/09).
+ */
+@media (max-height: 560px) {
+  .openLabelFull { display: none; }
+  .openLabelShort { display: inline; }
+}
 
 .batchGroup {
   display: inline-flex;

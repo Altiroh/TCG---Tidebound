@@ -171,6 +171,8 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
   /** On ne peut ouvrir que ce qu'on possède, et jamais plus que la borne du lot. */
   const maxBatch = Math.max(1, Math.min(MAX_BATCH_OPEN, selected?.owned ?? 0));
   const busy = isOpening || opening !== null || batch !== null;
+  /** Phrase entière du bouton d'ouverture — abrégée à l'écran sur un téléphone couché. */
+  const openLabel = batchSize > 1 ? `Ouvrir ${batchSize} boosters` : "Ouvrir 1 booster";
 
   // Le rayon ne bouge pas, mais ce qu'on en possède si : après une
   // ouverture, l'extension choisie reste choisie — on veut voir sa réserve
@@ -552,13 +554,29 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
                     </button>
                   </span>
 
+                  {/* Le libellé long ne tient pas dans la fiche d'un
+                      téléphone couché : le pas de quantité lui laisse
+                      ~150 px et le bouton ne se coupe pas (`nowrap`). Il
+                      garde donc deux écritures — la seconde n'est qu'un
+                      « Ouvrir », le nombre étant déjà lu à sa gauche. Le
+                      `aria-label` dit toujours la phrase entière. */}
                   <button
                     type="button"
                     className={game.primary}
                     onClick={() => void handleOpen(selected.boosterId, batchSize)}
                     disabled={!ownsSelected || busy}
+                    aria-label={openLabel}
                   >
-                    {isOpening ? "Ouverture…" : batchSize > 1 ? `Ouvrir ${batchSize} boosters` : "Ouvrir 1 booster"}
+                    {isOpening ? (
+                      "Ouverture…"
+                    ) : (
+                      <>
+                        <span className={styles.openLabelFull}>{openLabel}</span>
+                        <span className={styles.openLabelShort} aria-hidden>
+                          Ouvrir
+                        </span>
+                      </>
+                    )}
                   </button>
                 </div>
 

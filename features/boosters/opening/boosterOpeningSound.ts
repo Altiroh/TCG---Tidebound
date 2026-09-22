@@ -11,7 +11,7 @@
  * et au volume "Effets" des Options (`lib/settings.ts`).
  */
 
-import { playBoosterOpen } from "@/lib/sound";
+import { playBoosterOpen, playCardDraw } from "@/lib/sound";
 import { getAudioSettings } from "@/lib/settings";
 
 type BoosterSoundKey = "enter" | "packTear" | "packOpen" | "cardSpawn" | "cardFlip" | "rareReveal" | "abyssalReveal";
@@ -75,8 +75,19 @@ export function playCardSpawnSound(): void {
   playBoosterSound("cardSpawn");
 }
 
+/**
+ * La carte se retourne. En attendant un son propre à l'ouverture, c'est
+ * celui de la PIOCHE (`card-pioche.mp3`, 0,4 s) : c'est déjà le bruit
+ * d'une carte manipulée dans ce jeu, il est court — une ouverture en
+ * retourne cinq à la suite — et le retournement était jusqu'ici muet, ce
+ * qui laissait le geste sans réponse (retour du 22/09).
+ *
+ * Même montage que `playPackTearSound` : il passe par `lib/sound` (volume
+ * mesuré, décodage partagé) et `cardFlip` reste sans fichier propre pour
+ * ne pas jouer deux sons.
+ */
 export function playCardFlipSound(): void {
-  playBoosterSound("cardFlip");
+  playCardDraw();
 }
 
 export function playRareRevealSound(): void {

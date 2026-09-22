@@ -17,7 +17,22 @@
   grid-template-rows: minmax(0, 1fr);
   gap: clamp(12px, 1.6vw, 24px);
   min-height: 0;
-  padding: clamp(14px, 2.2vh, 30px) clamp(14px, 2.4vw, 44px) clamp(18px, 3vh, 40px);
+  /*
+   * ZONE SÛRE À SA CHARGE.
+   *
+   * `ProfileView` est posé DIRECTEMENT dans la grille de `GameScreen`,
+   * sans passer par `.content` — la seule page du jeu dans ce cas, parce
+   * qu'elle tient sa hauteur elle-même au lieu de défiler. Elle n'héritait
+   * donc d'aucune des marges d'encoche que `.content` donne à la
+   * Collection, aux Decks ou au Market, et sur un iPhone couché le panneau
+   * latéral passait sous l'encoche. Le bandeau absorbe déjà le HAUT
+   * (`ScreenShell.module.css`) : il ne reste que les côtés et le bas.
+   */
+  padding:
+    clamp(14px, 2.2vh, 30px)
+    calc(clamp(14px, 2.4vw, 44px) + var(--tb-safe-right))
+    calc(clamp(18px, 3vh, 40px) + var(--tb-safe-bottom))
+    calc(clamp(14px, 2.4vw, 44px) + var(--tb-safe-left));
   width: min(100%, 1480px);
   margin-inline: auto;
 }
@@ -936,9 +951,13 @@
  */
 @media (max-height: 560px) {
   .shell {
-    grid-template-columns: clamp(186px, 26vw, 250px) minmax(0, 1fr);
-    gap: 10px;
-    padding: 8px 10px 10px;
+    grid-template-columns: clamp(170px, 24vw, 230px) minmax(0, 1fr);
+    gap: 8px;
+    padding:
+      8px
+      calc(10px + var(--tb-safe-right))
+      calc(8px + var(--tb-safe-bottom))
+      calc(10px + var(--tb-safe-left));
   }
 
   /* ── Le panneau latéral ── */
@@ -1065,6 +1084,45 @@
 
   .escaleIndex {
     font-size: 13px;
+  }
+
+  /*
+   * La frise des paliers rend un cran, elle aussi : à 78 px d'escale et
+   * 30 px de pastille, on n'en voyait que trois sur 430 px de haut, et le
+   * geste attendu ici est de PARCOURIR sa route, pas de la faire défiler
+   * palier par palier.
+   */
+  .timeline {
+    --stage-h: 54px;
+    --node: 24px;
+    --track-x: 18px;
+  }
+
+  .stage {
+    gap: 10px;
+  }
+
+  /* `height` est calculée sur `--stage-h` : la marge reste horizontale,
+     sinon la vignette dépasse sa propre escale. */
+  .stageCard {
+    grid-template-columns: 46px auto minmax(0, 1fr) auto;
+    gap: 8px;
+    padding: 0 10px;
+  }
+
+  .stageLabel,
+  .stageStatus,
+  .stageLevel {
+    font-size: 10px;
+  }
+
+  .rewardsHead {
+    gap: 10px;
+  }
+
+  .rewardsLevel,
+  .rewardsLevel b {
+    font-size: 12px;
   }
 
   /* ── Le panneau ouvert depuis le bandeau ── */

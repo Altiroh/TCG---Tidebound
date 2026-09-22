@@ -110,6 +110,16 @@
      grand vide. `minmax(0, …)` lui laisse quand même le droit de se
      comprimer quand l'écran est trop étroit. */
   grid-template-columns: minmax(0, auto) minmax(0, auto);
+  /*
+   * La rangée est BORNÉE (`minmax(0, 1fr)`), elle ne se contente pas
+   * d'épouser son contenu. `max-height` sur le panneau ne rétrécit pas une
+   * rangée `auto` : elle débordait donc du cadre, et la colonne de droite
+   * se retrouvait coupée net sous le bord du panneau — sans jamais
+   * défiler, puisque son propre `max-height: 100%` se mesurait sur une
+   * rangée plus haute que le panneau. Retour du 22/09 (iPhone couché) :
+   * la revente passait sous l'écran.
+   */
+  grid-template-rows: minmax(0, 1fr);
   gap: clamp(16px, 2.6vw, 48px);
   align-items: center;
   /* Le panneau épouse son contenu plutôt que d'occuper une largeur fixe :
@@ -244,6 +254,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: clamp(5px, 0.6vw, 9px);
+  margin-top: clamp(7px, 1.2vmin, 12px);
 }
 
 .badge {
@@ -271,7 +282,14 @@
 .title {
   /* Le titre domine, sans jamais imposer sa largeur : les noms longs
      passent sur deux lignes plutôt que d'élargir la fiche. */
-  margin: 0;
+  /*
+   * L'écart aux pastilles se MESURE, comme le reste de la fiche : il
+   * venait d'un `mt-3` Tailwind, 12 px quelle que soit la taille d'écran,
+   * et sur un téléphone couché la pastille « Structure » se posait sur le
+   * nom (retour du 22/09). Une pastille est un objet cerclé : il lui faut
+   * plus d'air qu'à une ligne de texte pour ne pas coller.
+   */
+  margin: clamp(14px, 2.2vmin, 22px) 0 0;
   font-family: var(--font-card-title), Georgia, serif;
   font-size: clamp(20px, 3.1vmin, 38px);
   font-weight: 600;
@@ -534,10 +552,6 @@
     gap: clamp(12px, 2vw, 30px);
   }
 
-  .info {
-    max-height: min(84vh, 620px);
-  }
-
   .artwork {
     width: min(clamp(150px, 21vw, 260px), calc((100dvh - 90px) * 5 / 7));
   }
@@ -551,8 +565,10 @@
     gap: 14px;
   }
 
+  /* `max-height: none` ici RETIRAIT le défilement de la colonne de
+     droite : c'est précisément l'écran où elle en a besoin. Elle garde
+     donc le plafond de la rangée et se parcourt au doigt. */
   .info {
-    max-height: none;
     gap: 8px;
   }
 
@@ -577,6 +593,10 @@
 @media (max-width: 660px) and (min-height: 481px) {
   .panel {
     grid-template-columns: minmax(0, 1fr);
+    /* Deux rangées empilées qui épousent leur contenu : la rangée bornée
+       du mode deux colonnes écraserait la carte. Ici c'est le panneau
+       entier qui défile. */
+    grid-template-rows: auto auto;
     justify-items: center;
     overflow-y: auto;
   }

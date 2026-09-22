@@ -783,13 +783,25 @@ function PedestalItem({
           <TideCoin size={16} />
           {booster.price}
         </span>
+        {/* Sur un téléphone couché, le libellé s'efface et le bouton se
+            réduit à son pictogramme, à côté du prix : la ligne qu'il
+            prenait sous le socle passait hors du ponton. Le compte reste
+            porté par le nom accessible et l'infobulle. */}
         {poolSize > 0 && (
-          <button type="button" className={styles.contentsButton} onClick={onShowContents} title="Voir les cartes obtenables">
+          <button
+            type="button"
+            className={styles.contentsButton}
+            onClick={onShowContents}
+            title={`Voir les cartes obtenables — ${ownedInPool}/${poolSize} déjà en collection`}
+            aria-label={`Contenu du booster : ${ownedInPool} cartes sur ${poolSize} déjà en collection`}
+          >
             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" aria-hidden>
               <rect x="4" y="5" width="11" height="15" rx="1.5" stroke="currentColor" strokeWidth={1.6} />
               <path d="M9 3h9.5A1.5 1.5 0 0 1 20 4.5V17" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" />
             </svg>
-            Contenu · {ownedInPool}/{poolSize}
+            <span className={styles.contentsLabel}>
+              Contenu · {ownedInPool}/{poolSize}
+            </span>
           </button>
         )}
       </span>

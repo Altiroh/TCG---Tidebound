@@ -15,6 +15,16 @@
   scrollbar-color: var(--line-strong) transparent;
 }
 
+/* L'invitation à se connecter, en tête de vitrine : elle ne pousse rien,
+   et les rangées lui rendent sa hauteur (voir le bloc « téléphone
+   couché »). Le panneau ne lui donne que deux rangées de grille, pas une
+   place à elle : `.main` (`CardBrowser.module.css`) est une grille à deux
+   pistes, un troisième enfant y tomberait dans une piste implicite. */
+.signedOutNote {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(clamp(160px, 13vw, 220px), 1fr));
@@ -354,34 +364,97 @@ div.item,
     padding: 8px 10px 10px;
   }
 
+  /*
+   * DEUX RANGÉES ENTIÈRES, JAMAIS UNE RANGÉE ET DEMIE.
+   *
+   * La hauteur d'une vignette se DÉDUIT de la vitrine (`grid-auto-rows`)
+   * au lieu de se déduire de son image : deux rangées tiennent alors
+   * exactement dans la hauteur visible, et on ne défile plus pour voir le
+   * bas d'un cadre coupé par le bord de l'écran (retour du 22/09). C'est
+   * l'inverse du réflexe habituel — ici la hauteur est la ressource rare,
+   * c'est donc elle qui commande, et l'illustration suit.
+   */
   .grid {
-    grid-template-columns: repeat(auto-fill, minmax(clamp(230px, 62cqh, 330px), 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(clamp(196px, 52cqh, 300px), 1fr));
+    grid-auto-rows: calc((100cqh - 10px) / 2);
     gap: 10px;
   }
 
+  /* Une ligne d'information partage parfois la vitrine (visiteur non
+     connecté) : les rangées lui rendent alors sa hauteur, sinon la seconde
+     passait sous le bord. */
+  .showcase:has(> .signedOutNote) .grid {
+    grid-auto-rows: calc((100cqh - 34px) / 2);
+  }
+
+  .signedOutNote {
+    font-size: 11.5px;
+  }
+
   .itemShell {
+    /* La coque tient la rangée exactement : ce qui déborderait est rogné,
+       pas poussé sous le bord de la vitrine. */
+    min-height: 0;
     padding: 8px;
+    overflow: hidden;
   }
 
   /*
-   * Couchée : l'image prend deux cinquièmes de la largeur, le texte le
-   * reste. Une GRILLE et non un `flex-wrap` — les trois lignes de texte
+   * Couchée : l'illustration à gauche, le nom, l'accroche et la condition
+   * à droite. Une GRILLE et non un `flex-wrap` — les trois lignes de texte
    * sont des sœurs de l'image, pas les filles d'une colonne : en `wrap`
    * elles retombaient sous l'image au lieu de se ranger à côté d'elle.
    */
   .item {
+    /*
+     * Hauteur utile de l'illustration : la rangée, moins le rembourrage de
+     * la coque. Une valeur en PIXELS, connue avant que la grille ne se
+     * dimensionne — c'est tout l'enjeu (voir la colonne ci-dessous).
+     */
+    --tile-art-h: calc((100cqh - 10px) / 2 - 16px);
+
     display: grid;
-    grid-template-columns: 40% minmax(0, 1fr);
+    /*
+     * La colonne d'illustration a une largeur DÉFINIE : la hauteur de
+     * rangée ramenée par le ratio le plus étroit (5/7, un dos de carte).
+     * Un cadre de Navire (4/5) y tient d'autant mieux.
+     *
+     * Une colonne `auto` autour d'une image en `height: 100%` partait à
+     * une largeur arbitraire — la hauteur de la zone de grille n'est pas
+     * connue quand la colonne se dimensionne : d'où le grand vide entre
+     * l'image et le texte, et le texte poussé hors du cadre (retour du
+     * 22/09).
+     */
+    grid-template-columns: calc(var(--tile-art-h) * 5 / 7) minmax(0, 1fr);
     grid-template-rows: auto auto minmax(0, 1fr);
     column-gap: 10px;
     row-gap: 2px;
+    min-height: 0;
   }
 
+  /* Un objet en vente porte son bouton d'achat SOUS la carte, dans la même
+     rangée de grille : l'illustration lui rend sa hauteur. */
+  .itemShell:has(> .buyRow) .item {
+    --tile-art-h: calc((100cqh - 10px) / 2 - 50px);
+  }
+
+  /*
+   * L'illustration est bornée par la HAUTEUR de sa rangée, en PIXELS.
+   *
+   * `height: 100%` la renvoyait à la hauteur de sa zone de grille, qui
+   * n'est pas connue au moment où la colonne `auto` se dimensionne : la
+   * colonne partait alors à une largeur arbitraire, d'où le grand vide
+   * entre l'image et le texte et le texte poussé hors du cadre (retour du
+   * 22/09). Reprise de la hauteur de rangée — une valeur définie, elle —
+   * le ratio donne une largeur définie, et la colonne se cale dessus.
+   */
+  /* L'image remplit sa colonne ; son `aspect-ratio` fait la hauteur. */
   .cardBackFrame,
   .shipFrameBox {
     grid-column: 1;
     grid-row: 1 / span 3;
     width: 100%;
+    height: auto;
     align-self: start;
   }
 
@@ -390,11 +463,16 @@ div.item,
   .itemHint { grid-column: 2; grid-row: 3; }
 
   .itemName {
+    min-width: 0;
+    overflow-wrap: anywhere;
     font-size: 13px;
   }
 
+  /* Deux lignes, pas trois : la troisième repoussait la condition
+     (« Les Abyssales Cra-Poiscail ») sous le bord de la vignette. */
   .itemText {
     min-height: 0;
+    -webkit-line-clamp: 2;
     font-size: 11px;
     line-height: 1.3;
   }

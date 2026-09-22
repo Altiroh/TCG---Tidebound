@@ -356,6 +356,40 @@
     padding: clamp(12px, 1.8vw, 26px);
   }
 
+  /*
+   * LA BARRE DE LANCEMENT DEVIENT UN VRAI PIED DE PAGE.
+   *
+   * Collée en `sticky`, elle s'arrêtait 39 px au-dessus du bord (mesuré au
+   * navigateur) : un `sticky` ne descend jamais plus bas que le BLOC
+   * CONTENEUR, et celui-ci s'arrête au bord INTÉRIEUR de la zone de
+   * contenu, rembourrage bas déduit. Il restait donc sous la barre une
+   * bande où défilaient les tuiles de deck, et la barre semblait flotter
+   * au milieu de la page au lieu de la clore (retour du 22/09).
+   *
+   * La zone de contenu lui CÈDE donc ce rembourrage (`.contentFlush`), et
+   * la barre le reprend à son compte — zone sûre comprise, pour que le
+   * bouton reste au-dessus de la barre de gestes. Elle s'étend en prime
+   * d'un bord à l'autre : un pied de page ne s'arrête pas aux marges du
+   * texte.
+   */
+  .contentFlush {
+    padding-bottom: 0;
+  }
+
+  .launch.launch {
+    margin:
+      4px
+      calc(-1 * var(--tb-content-pad-right))
+      0
+      calc(-1 * var(--tb-content-pad-left));
+    padding:
+      clamp(8px, 1.1vh, 12px)
+      var(--tb-content-pad-right)
+      calc(clamp(8px, 1.1vh, 12px) + var(--tb-safe-bottom))
+      var(--tb-content-pad-left);
+    border-width: 1px 0 0;
+    border-radius: 0;
+  }
 }
 
 

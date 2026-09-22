@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { DECK_STYLES } from "@/game";
 import { shipNameOf } from "@/features/ships/ShipPortrait";
 import { SearchLine } from "@/features/shell/SearchLine";
@@ -70,6 +71,18 @@ export function DeckRail({
   const styleOptions: StyleFilterId[] = [...DECK_STYLES.map((entry) => entry.id), "autre" as const].filter((id) =>
     availableStyles.has(id)
   );
+
+  /*
+   * LES FILTRES SE REPLIENT.
+   *
+   * Sur un téléphone couché, les deux listes de cases mangent la moitié de
+   * la colonne et le rayon — où l'on est — se retrouve poussé hors champ.
+   * Replié, on retrouve la carte du lieu d'un coup d'œil ; le nombre de
+   * critères actifs reste affiché sur le titre, sinon on filtrerait sans
+   * le savoir.
+   */
+  const [filtersOpen, setFiltersOpen] = useState(true);
+  const activeCount = (filters.search.trim() === "" ? 0 : 1) + filters.styles.size + filters.ships.size;
 
   function toggle<T>(set: ReadonlySet<T>, value: T): Set<T> {
     const next = new Set(set);
@@ -146,15 +159,35 @@ export function DeckRail({
         <hr className={game.rule} />
 
         <section className={styles.railGroup}>
-          <p className={styles.railTitle}>
+          <button
+            type="button"
+            className={`${styles.railTitle} ${styles.railTitleToggle}`}
+            aria-expanded={filtersOpen}
+            onClick={() => {
+              playButtonClick();
+              setFiltersOpen((open) => !open);
+            }}
+          >
             <span className={styles.railTitleMark} aria-hidden>
               <svg viewBox="0 0 24 24" width="15" height="15" fill="none">
                 <path d="M4 6h16M7 12h10M10 18h4" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" />
               </svg>
             </span>
             Filtres
-          </p>
+            {activeCount > 0 && (
+              <span className={styles.railItemCount} aria-label={`${activeCount} critère${activeCount > 1 ? "s" : ""} actif${activeCount > 1 ? "s" : ""}`}>
+                {activeCount}
+              </span>
+            )}
+            <span className={styles.railTitleChevron} data-open={filtersOpen ? "true" : undefined} aria-hidden>
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none">
+                <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
+          </button>
 
+          {filtersOpen && (
+          <>
           <SearchLine
             value={filters.search}
             onChange={(search) => onFilters({ ...filters, search })}
@@ -213,6 +246,8 @@ export function DeckRail({
           >
             Réinitialiser les filtres
           </button>
+          </>
+          )}
         </section>
       </div>
 

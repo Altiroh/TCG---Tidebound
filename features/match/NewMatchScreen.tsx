@@ -239,7 +239,10 @@ export function NewMatchScreen({
 
   return (
     <GameScreen active="partie" nav="minimal">
-      <div className={game.content}>
+      {/* `contentFlush` : sur un écran court, la zone de contenu rend son
+          rembourrage bas à la barre de lancement, qui va alors jusqu'au
+          bord de l'écran (cf. `NewMatch.module.css`). */}
+      <div className={`${game.content} ${styles.contentFlush}`}>
         {/*
           Étape du deck : la colonne fait EXACTEMENT la hauteur visible, ni
           plus ni moins. C'est ce qui permet à la liste de se borner et de
