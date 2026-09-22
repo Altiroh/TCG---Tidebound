@@ -28,8 +28,8 @@ function scoreCandidates(state: GameState, playerId: PlayerId): ScoredAction[] {
   return scored;
 }
 
-function pickRandom<T>(items: T[]): T {
-  return items[Math.floor(Math.random() * items.length)]!;
+function pickRandom<T>(items: T[], random: () => number): T {
+  return items[Math.floor(random() * items.length)]!;
 }
 
 /**
@@ -42,13 +42,23 @@ function pickRandom<T>(items: T[]): T {
  *   - « difficile » cherche (`searchTurn.ts`) : il déroule son tour entier
  *     et note ce qu'il laisse à l'adversaire.
  *
- * Le hasard utilisé ici (`Math.random()`) n'a pas besoin de passer par le
- * RNG déterministe du moteur (`game/rng.ts`) : seule l'action finalement
- * soumise à `dispatch` est journalisée/rejouable, pas la façon dont le bot
- * l'a choisie — un peu comme l'hésitation de souris d'un joueur humain
- * n'est jamais consignée.
+ * Le hasard utilisé ici ne passe pas par le RNG déterministe du moteur
+ * (`game/rng.ts`) : seule l'action finalement soumise à `dispatch` est
+ * journalisée/rejouable, pas la façon dont le bot l'a choisie — un peu
+ * comme l'hésitation de souris d'un joueur humain n'est jamais consignée.
+ *
+ * `random` permet néanmoins de le RENDRE reproductible sans toucher au jeu :
+ * le banc d'essai lui passe un générateur à graine, faute de quoi rejouer un
+ * matchup après un changement ne comparerait rien — l'écart mesuré pourrait
+ * venir du changement comme d'un tirage différent. En partie, le défaut
+ * reste `Math.random`.
  */
-export function chooseBotAction(state: GameState, playerId: PlayerId, difficulty: BotDifficulty): PlayerAction {
+export function chooseBotAction(
+  state: GameState,
+  playerId: PlayerId,
+  difficulty: BotDifficulty,
+  random: () => number = Math.random
+): PlayerAction {
   let scored = scoreCandidates(state, playerId);
   if (scored.length === 0) return { type: "endTurn", playerId };
 
@@ -97,12 +107,12 @@ export function chooseBotAction(state: GameState, playerId: PlayerId, difficulty
    */
   const { mistakeChance, mistakeDepth } = difficulty === "moyen" ? MOYEN : FACILE;
 
-  if (scored.length > 1 && Math.random() < mistakeChance) {
+  if (scored.length > 1 && random() < mistakeChance) {
     // La bourde reste une bourde PLAUSIBLE : on pioche dans une fourchette
     // partant du meilleur coup, jamais dans le pire coup absolu — un bot
     // qui se saborde sans raison n'est pas « facile », il est cassé.
     const window = Math.max(2, Math.ceil(scored.length * mistakeDepth));
-    return pickRandom(scored.slice(0, Math.min(window, scored.length))).action;
+    return pickRandom(scored.slice(0, Math.min(window, scored.length)), random).action;
   }
 
   return scored[0]!.action;

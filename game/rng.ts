@@ -52,6 +52,25 @@ export function shuffle<T>(items: readonly T[], state: RngState): RngResult<T[]>
   return { value: result, nextState: rngState };
 }
 
+/**
+ * Un tirage à ÉTAT INTERNE, dans la forme qu'attend `Math.random` — pour
+ * les appelants qui veulent du hasard reproductible sans porter eux-mêmes
+ * l'état (le banc d'essai, qui passe ce générateur au bot pour que rejouer
+ * un matchup rende exactement le même résultat).
+ *
+ * Le moteur, lui, continue de faire avancer sa graine de façon PURE dans
+ * `GameState` : c'est ce qui permet de rejouer une partie depuis son état
+ * initial, et une fonction à état interne ne le permettrait pas.
+ */
+export function createSeededRandom(seed: RngState): () => number {
+  let state = seed | 0;
+  return () => {
+    const draw = nextFloat(state);
+    state = draw.nextState;
+    return draw.value;
+  };
+}
+
 export function createSeed(source?: number): RngState {
   if (source !== undefined) return source | 0;
   // Seed non-déterministe uniquement au moment de créer une toute
