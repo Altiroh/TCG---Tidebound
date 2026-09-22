@@ -136,7 +136,7 @@ function applyCombatDamageToUnit(
             ...p,
             board: p.board.map((u) =>
               u.instanceId === unit.instanceId
-                ? { ...u, damageMarked: u.damageMarked + finalAmount, lastDamageCause: "combat" as const }
+                ? { ...u, damageMarked: u.damageMarked + finalAmount, lastDamageCause: "combat" as const, lastDamageTurn: state.turnNumber }
                 : u
             ),
           }
@@ -309,7 +309,9 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
   let nextState: GameState = {
     ...etat,
     players: etat.players.map((p) =>
-      p.id === attackerPlayer.id ? { ...p, board: p.board.map(markAttacked) } : p
+      p.id === attackerPlayer.id
+        ? { ...p, board: p.board.map(markAttacked), attacksDeclaredThisTurn: (p.attacksDeclaredThisTurn ?? 0) + 1 }
+        : p
     ) as [PlayerState, PlayerState],
   };
 
@@ -469,7 +471,7 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
                   // Le contrecoup EST du combat : l'attaquant le prend en
                   // frappant, pas par un effet tiers.
                   u.instanceId === attackerUnit.instanceId
-                    ? { ...u, damageMarked: u.damageMarked + recoil, lastDamageCause: "combat" as const }
+                    ? { ...u, damageMarked: u.damageMarked + recoil, lastDamageCause: "combat" as const, lastDamageTurn: state.turnNumber }
                     : u
                 ),
               }

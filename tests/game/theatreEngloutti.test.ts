@@ -88,7 +88,12 @@ describe("retour en main", () => {
     expect(moved).toMatchObject({ fromZone: "board", toZone: "hand", cardId: "pulcinella-gonfle", ownerId: "p1" });
   });
 
-  it("ne renvoie jamais une carte du camp adverse dans la main du contrôleur", () => {
+  // Jusqu'au Lot 14, aucun texte ne renvoyait une carte ADVERSE : le moteur
+  // refusait donc simplement de la déplacer. Depuis Par-dessus Bord ! et
+  // Panique sur le Pont, il le fait — et la règle qui compte n'a pas changé
+  // d'un pouce : une carte rentre chez SON propriétaire, jamais chez celui
+  // qui la renvoie.
+  it("renvoie une carte adverse dans la main de SON propriétaire, pas dans celle du contrôleur", () => {
     const base = testGameState();
     const enemy = instance("pulcinella-gonfle", "p2");
     const state = {
@@ -103,7 +108,8 @@ describe("retour en main", () => {
     );
 
     expect(result.state.players[0].hand).toHaveLength(0);
-    expect(result.state.players[1].board).toHaveLength(1);
+    expect(result.state.players[1].hand.map((c) => c.cardId)).toEqual(["pulcinella-gonfle"]);
+    expect(result.state.players[1].board).toHaveLength(0);
   });
 });
 

@@ -345,6 +345,10 @@ export function entameDeTour(state: GameState, eventsAvant: GameEvent[] = []): A
     hand,
     board: refreshedBoard,
     statusFlags: statusFlagsAfterUpkeep,
+    // Le compteur d'attaques repart à zéro au début du tour de celui qui
+    // va attaquer : « la troisième unité adverse qui attaque pendant un
+    // même tour » se compte dans le tour où elles sont portées.
+    attacksDeclaredThisTurn: 0,
   };
 
   nextState = {

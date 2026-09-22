@@ -8,6 +8,7 @@ import {
 } from "@/game/cards/types";
 import { canBeEquipTarget, getCardDefinition } from "@/game/cards/sets/core";
 import { countArchetypeUnits } from "@/game/cards/archetypes";
+import { computeEffectiveStats } from "@/game/cards/stats";
 import { getShipDefinition } from "@/game/environment/shipData";
 import { forceTideJumpToAbysses, forceTideTransition, tickTide } from "@/game/environment/tide";
 import { isEligibleChosenUnit } from "@/game/effects/chosenTargets";
@@ -271,7 +272,59 @@ function findUnitOwner(state: GameState, instanceId: string): PlayerState | unde
  * toujours la même unité "aléatoire" tant que rien d'autre ne faisait
  * avancer la graine).
  */
+/**
+ * La cible passe-t-elle le `filter` de l'effet ? Sans filtre, tout passe —
+ * le filtrage des cibles est opt-in, carte par carte (cf.
+ * `EffectDefinition.filter`), pour qu'aucune carte existante ne change de
+ * comportement du seul fait que ce tamis existe.
+ */
+function passesTargetFilter(
+  state: GameState,
+  effect: EffectDefinition,
+  context: EffectContext,
+  unit: CardInstance,
+  ownerId: PlayerId
+): boolean {
+  const filter = effect.filter;
+  if (!filter) return true;
+  if (filter.excludeSelf && unit.instanceId === context.sourceInstanceId) return false;
+
+  const def = getCardDefinition(unit.cardId);
+  if (filter.cardType && def.type !== filter.cardType) return false;
+  if (filter.cardTypes && !filter.cardTypes.includes(def.type)) return false;
+  if (filter.subtype && def.subtype !== filter.subtype) return false;
+  if (filter.maxCost !== undefined && def.cost > filter.maxCost) return false;
+  if (filter.damaged && unit.damageMarked <= 0) return false;
+  // « ce tour » = le tour de TABLE courant, celui que porte l'action en
+  // cours de résolution.
+  if (filter.damagedThisTurn && (unit.damageMarked <= 0 || unit.lastDamageTurn !== context.turnNumber)) return false;
+  if (filter.maxPower !== undefined) {
+    // Puissance EFFECTIVE : un buff en cours compte, sans quoi « Puissance
+    // 2 ou moins » se lirait sur une valeur que la table ne montre plus.
+    const owner = getPlayer(state, ownerId);
+    const stats = computeEffectiveStats(unit, state.environment.tideState, {
+      controllerBoard: owner.board,
+      controllerReason: owner.reason,
+      tideOrientation: state.environment.tideOrientation,
+    });
+    if (stats.attack > filter.maxPower) return false;
+  }
+  return true;
+}
+
 function resolveUnitTargets(
+  state: GameState,
+  effect: EffectDefinition,
+  context: EffectContext
+): { targets: Array<{ unit: CardInstance; ownerId: PlayerId }>; rngState: RngState } {
+  const raw = resolveUnitTargetsUnfiltered(state, effect, context);
+  return {
+    targets: raw.targets.filter(({ unit, ownerId }) => passesTargetFilter(state, effect, context, unit, ownerId)),
+    rngState: raw.rngState,
+  };
+}
+
+function resolveUnitTargetsUnfiltered(
   state: GameState,
   effect: EffectDefinition,
   context: EffectContext
@@ -523,6 +576,7 @@ export function resolveEffect(
           // Retenue pour la mort : une unité qui meurt n'a plus de source à
           // interroger (cf. `DestructionCause`).
           lastDamageCause: "effect" as const,
+          lastDamageTurn: context.turnNumber,
         }));
         events.push({ ...base, type: "DAMAGE", targetInstanceId: unit.instanceId, amount: finalAmount });
       }
@@ -1191,10 +1245,12 @@ export function resolveEffect(
       let nextState: GameState = { ...state, rngState };
 
       for (const { unit, ownerId } of targets) {
-        // Un permanent ne rentre en main que chez SON contrôleur : aucun
-        // texte du pool ne renvoie une carte adverse, et le faire mettrait
-        // une carte adverse dans la mauvaise main.
-        if (ownerId !== context.controllerId) continue;
+        // Un permanent rentre TOUJOURS dans la main de son propre
+        // propriétaire, jamais dans celle de qui l'y renvoie (« renvoyez
+        // une unité dans la main de son propriétaire », Lot 14). Avant le
+        // Lot 14 aucun texte ne visait une carte adverse ; le renvoi était
+        // donc simplement refusé pour elles, ce qui aurait silencieusement
+        // annulé Par-dessus Bord ! et Panique sur le Pont.
         const moved = returnPermanentToHand(nextState, ownerId, unit.instanceId);
         nextState = moved.state;
         events.push(...moved.events);

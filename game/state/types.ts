@@ -103,6 +103,17 @@ export interface PlayerState {
    */
   missedDeadlines?: number;
   /**
+   * Attaques DÉCLARÉES par ce joueur depuis l'entame du tour de table
+   * courant, remis à zéro au début de son tour (`endTurn`).
+   *
+   * Existe pour que « la troisième unité adverse attaque pendant un même
+   * tour » (Cale Inondable, Lot 14) s'exprime sans qu'une carte ait à tenir
+   * son propre compteur. Compté à la DÉCLARATION et non à la résolution :
+   * une carte qui intercepte l'attaque doit savoir combien en ont déjà été
+   * portées, celle-ci comprise.
+   */
+  attacksDeclaredThisTurn?: number;
+  /**
    * Journal court des cartes ARRIVÉES au Cimetière, horodaté par tour de
    * table (Lot 13).
    *

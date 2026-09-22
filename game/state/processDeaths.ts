@@ -376,6 +376,7 @@ export function processDeaths(
           modifiers: [],
           pendingRemoval: undefined,
           lastDamageCause: undefined,
+          lastDamageTurn: undefined,
           graveyardCause: scuttled ? ("scuttled" as const) : ("destroyed" as const),
           destructionCause: cause,
         },

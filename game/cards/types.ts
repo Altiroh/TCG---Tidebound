@@ -231,6 +231,35 @@ export interface TriggeredAbility {
      */
     controllerHandAtLeast?: number;
     /**
+     * « si vous avez 1 carte ou moins en main » (Dernières Réserves, Lot
+     * 14) : plafond de main du contrôleur. Complément exact de
+     * `controllerHandAtLeast`, et évalué au même endroit, avant le premier
+     * effet — une pioche en cours de résolution ne doit pas invalider la
+     * condition qui l'a autorisée.
+     */
+    controllerHandAtMost?: number;
+    /**
+     * « si l'adversaire contrôle plus d'unités que vous » (Cale Inondable,
+     * Un Peu de Répit, L'Amiral sans Pavillon, Lot 14).
+     *
+     * Une comparaison, pas un seuil : c'est ce qui rend la carte
+     * COMEBACK — elle ne s'arme que quand on est en retard, et s'éteint
+     * dès qu'on a rattrapé. Compte les UNITÉS de chaque côté, comme
+     * `opponentUnitsAtLeast` : une Structure n'est pas un corps.
+     */
+    opponentUnitsMoreThanController?: boolean;
+    /**
+     * « lorsque la troisième unité adverse attaque pendant un même tour »
+     * (Cale Inondable, Lot 14) : nombre d'attaques déjà déclarées par
+     * l'adversaire pendant CE tour de table, celle en cours comprise.
+     *
+     * Lu dans `PlayerState.attacksDeclaredThisTurn`, remis à zéro à
+     * l'entame de chaque tour : compter les attaques est la seule façon
+     * d'exprimer « la troisième » sans que la carte ait à retenir un état
+     * qui lui serait propre.
+     */
+    opponentAttacksThisTurnAtLeast?: number;
+    /**
      * « si elle est visible » : la carte porteuse doit être visible dans la
      * Marée courante (ex: Filet à la Dérive). Indispensable pour une
      * capacité facultative — sans elle, une Structure cachée se proposerait
@@ -1059,6 +1088,17 @@ export interface CardInstance {
    * à interroger, il faut donc l'avoir retenue.
    */
   lastDamageCause?: Exclude<DestructionCause, "scuttle">;
+
+  /**
+   * Tour de table où les derniers dégâts ont été marqués. Posé au même
+   * moment que `lastDamageCause`, et lu par le filtre `damagedThisTurn`
+   * (« une unité ayant déjà subi des dégâts ce tour », Qu'on en Finisse).
+   *
+   * Un numéro de tour plutôt qu'un booléen : rien n'a alors à le remettre
+   * à zéro entre deux tours, et il ne peut pas se désynchroniser d'une
+   * remise à zéro oubliée quelque part.
+   */
+  lastDamageTurn?: number;
 
   /** Posée une fois la carte au cimetière : comment elle a quitté le plateau. */
   destructionCause?: DestructionCause;

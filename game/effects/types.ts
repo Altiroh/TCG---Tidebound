@@ -254,6 +254,19 @@ export interface ChosenUnitFilter {
    */
   unitsOnly?: boolean;
   /**
+   * « une unité déjà blessée » (Vieux Harponneur) : la cible doit porter
+   * des dégâts. Sur le FILTRE DE CHOIX et pas seulement sur l'effet : sans
+   * lui, l'interface proposerait des unités intactes et le texte se
+   * résoudrait dans le vide.
+   */
+  damaged?: boolean;
+  /**
+   * « une unité ayant déjà subi des dégâts ce tour » (Qu'on en Finisse) —
+   * plus étroit que `damaged`, qui ne dit pas quand la blessure a été
+   * prise.
+   */
+  damagedThisTurn?: boolean;
+  /**
    * « une Créature adverse », « une autre Structure » : ne retient que ces
    * TYPES de carte (ex: Filet à la Dérive, Mécanicien aux Mains Noires).
    */
@@ -399,10 +412,18 @@ export interface EffectDefinition {
   /** `discountNextCards` : nombre de cartes concernées par la réduction. Défaut 1. */
   uses?: number;
   /**
-   * Filtre optionnel utilisé par `searchDeck`/`moveGraveyardCardToHand` :
-   * `cardType` (un seul type) ou `cardTypes` (plusieurs types acceptés, ex:
-   * "Structure OU Équipement" pour Grappin de Récupération) ; `maxCost`
-   * plafonne le coût imprimé de la carte choisie.
+   * Filtre optionnel. Il sert deux usages, avec le même vocabulaire :
+   *
+   *  - CHOISIR une carte hors du plateau — `searchDeck`,
+   *    `moveGraveyardCardToHand` : le filtre décrit ce qui est prenable ;
+   *  - RESTREINDRE LES CIBLES d'un effet qui balaie le plateau (Lot 14).
+   *    Les sélecteurs de masse (`allUnits`, `allEnemyUnits`, `allAllyUnits`)
+   *    rendent TOUT le plateau, Structures et Objets compris ; un texte qui
+   *    dit « à toutes les UNITÉS » doit donc le déclarer, sans quoi il
+   *    frappe aussi ce qui n'est pas une unité.
+   *
+   * Un effet sans `filter` garde exactement son comportement d'avant :
+   * le filtrage est opt-in, carte par carte.
    */
   filter?: {
     cardType?: import("@/game/cards/types").CardType;
@@ -410,6 +431,32 @@ export interface EffectDefinition {
     /** Sous-type exact (ex: "marionnette") — `discountNextCards` et la récupération au Cimetière (`moveGraveyardCardToHand`, ex: Rappel du Public). */
     subtype?: string;
     maxCost?: number;
+    /**
+     * Plafond de PUISSANCE EFFECTIVE de la cible — modificateurs et auras
+     * compris, pas la valeur imprimée (« toutes les unités de Puissance 2
+     * ou moins », Le Pont est Plein !). Une unité qu'un buff vient de faire
+     * passer à 3 y échappe donc, ce que le texte promet.
+     */
+    maxPower?: number;
+    /**
+     * La cible doit déjà porter des dégâts (« une unité déjà blessée »,
+     * Vieux Harponneur). Se lit sur `damageMarked`, donc sur les dégâts
+     * ENCORE marqués : une unité soignée entre-temps n'est plus blessée.
+     */
+    damaged?: boolean;
+    /**
+     * La cible doit avoir subi des dégâts PENDANT CE TOUR DE TABLE
+     * (« une unité ayant déjà subi des dégâts ce tour », Qu'on en Finisse).
+     * Plus étroit que `damaged` : une blessure encaissée deux tours plus
+     * tôt ne compte pas.
+     */
+    damagedThisTurn?: boolean;
+    /**
+     * Écarte la carte SOURCE de l'effet (« toutes les AUTRES unités »,
+     * Léviathan Balafré). Sans lui, un balayage de masse inclut la carte
+     * qui vient de le déclencher.
+     */
+    excludeSelf?: boolean;
   };
   /**
    * État de Marée concerné par `ignoreNextTideDamage` (ex: "abysses" pour

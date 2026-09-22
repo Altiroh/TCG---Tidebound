@@ -141,6 +141,25 @@ function matchesControlCondition(
     const unites = (adversaire?.board ?? []).filter((u) => UNIT_CARD_TYPES.includes(getCardDefinition(u.cardId).type));
     if (unites.length < seuilUnites) return false;
   }
+  const handAtMost = ability.condition?.controllerHandAtMost;
+  if (handAtMost !== undefined) {
+    const holder = state.players.find((p) => p.id === controllerId);
+    if (!holder || holder.hand.length > handAtMost) return false;
+  }
+  // « si l'adversaire contrôle plus d'unités que vous » : une comparaison,
+  // pas un seuil — la carte ne s'arme que quand on est en retard.
+  if (ability.condition?.opponentUnitsMoreThanController) {
+    const moi = state.players.find((p) => p.id === controllerId);
+    const adversaire = state.players.find((p) => p.id !== controllerId);
+    const unites = (board: readonly CardInstance[] | undefined) =>
+      (board ?? []).filter((u) => UNIT_CARD_TYPES.includes(getCardDefinition(u.cardId).type)).length;
+    if (unites(adversaire?.board) <= unites(moi?.board)) return false;
+  }
+  const seuilAttaques = ability.condition?.opponentAttacksThisTurnAtLeast;
+  if (seuilAttaques !== undefined) {
+    const adversaire = state.players.find((p) => p.id !== controllerId);
+    if ((adversaire?.attacksDeclaredThisTurn ?? 0) < seuilAttaques) return false;
+  }
   const arrival = ability.condition?.graveyardArrival;
   if (arrival && !hasGraveyardArrival(state, controllerId, arrival)) return false;
   const required = ability.condition?.controlsAnyCardIds;
