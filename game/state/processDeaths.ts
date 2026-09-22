@@ -185,7 +185,7 @@ function applySelfSurvival(
     tideOrientation: state.environment.tideOrientation,
   });
   if (stats.destroyedByTide || stats.health < 1) return undefined;
-  const saved = markOncePerTurnUsed({ ...unit, damageMarked: stats.health - 1, pendingRemoval: undefined }, SURVIVES_LETHAL_KEY, turnNumber);
+  const saved = markOncePerTurnUsed({ ...unit, damageMarked: stats.health - 1, pendingRemoval: undefined }, SURVIVES_LETHAL_KEY, turnNumber, survival.onceEver);
   return {
     ...state,
     players: state.players.map((p) =>

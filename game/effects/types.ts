@@ -208,6 +208,27 @@ export type EffectAmount =
       above?: number;
       /** Multiplicateur par unité comptée. Défaut 1. */
       per?: number;
+    }
+  /**
+   * « 1 Ancrage par emplacement libre sur votre board, maximum 3 »
+   * (Réparations d'Urgence, Lot 14) : montant compté sur les Slots ENCORE
+   * LIBRES du contrôleur, au moment de la résolution.
+   *
+   * L'exact opposé de `unitCount` : celui-là récompense un plateau vide,
+   * pas un plateau plein. C'est ce qui en fait une carte de comeback — on
+   * la joue quand on vient de tout perdre, et elle ne rend presque rien
+   * quand tout va bien.
+   *
+   * Compte les SLOTS, donc tout le plateau et pas seulement les unités :
+   * une Structure occupe un emplacement, et le texte parle
+   * d'emplacements.
+   */
+  | {
+      kind: "freeSlots";
+      /** Multiplicateur par emplacement libre. Défaut 1. */
+      per?: number;
+      /** Plafond du montant obtenu (« maximum 3 »). Absent = pas de plafond. */
+      max?: number;
     };
 
 /**
@@ -411,6 +432,14 @@ export interface EffectDefinition {
   toZone?: "hand" | "deck" | "graveyard" | "board";
   /** `discountNextCards` : nombre de cartes concernées par la réduction. Défaut 1. */
   uses?: number;
+  /**
+   * Pour `debuff` : le modificateur posé ENTRAVE aussi la cible — elle ne
+   * peut ni attaquer ni activer ses effets tant qu'il tient (Chaîne de
+   * Travers, Lot 14). La durée du debuff porte l'entrave : avec
+   * `duration: "untilYourNextTurn"`, elle se lève au prochain tour de son
+   * propriétaire, exactement comme le texte le dit.
+   */
+  silences?: boolean;
   /**
    * Filtre optionnel. Il sert deux usages, avec le même vocabulaire :
    *

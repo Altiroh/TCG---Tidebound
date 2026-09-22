@@ -157,6 +157,18 @@ export function collectAuraContributions(
       add(archetypeAura);
     }
 
+    // Filet de Sauvetage / Cloison Étanche : aura par type de carte, portée
+    // tant que la source est visible. Un BUFF de Résistance maximale, pas
+    // un soin — cf. `auraBuffControllerCardTypes`.
+    const typeAura = sourceDef.auraBuffControllerCardTypes;
+    if (
+      typeAura &&
+      typeAura.targetTypes.includes(def.type) &&
+      (!typeAura.whileSelfVisible || isVisibleDuringTide(sourceDef, tideState))
+    ) {
+      add(typeAura);
+    }
+
     // Capitaine Sans Sommeil : aura conditionnée à la Raison, par type de carte.
     const reasonAura = sourceDef.auraBuffOtherUnitsWhileControllerReasonAtMost;
     if (reasonAura && reasonAura.targetType === def.type && controllerReason <= reasonAura.reasonAtMost) add(reasonAura);
@@ -200,7 +212,10 @@ export function computeEffectiveStats(unit: CardInstance, tideState: TideStateNa
   return {
     attack: baseAttack + modifierAttack + auraAttack,
     health: baseHealth + modifierHealth + auraHealth,
-    inactive: tideEntry?.inactive ?? false,
+    // Inactive par la Marée OU entravée par un modificateur (Chaîne de
+    // Travers) : les deux disent la même chose au reste du moteur — cette
+    // carte ne peut ni attaquer ni activer ses effets.
+    inactive: (tideEntry?.inactive ?? false) || unit.modifiers.some((m) => m.silenced),
     destroyedByTide: tideEntry?.destroyed ?? false,
   };
 }

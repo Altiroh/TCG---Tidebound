@@ -1,6 +1,6 @@
 import { computeEffectiveStats } from "@/game/cards/stats";
 import { getCardDefinition } from "@/game/cards/sets/core";
-import { hasKeyword, hasResistance, UNIT_CARD_TYPES, type CardInstance } from "@/game/cards/types";
+import { hasKeyword, hasResistance, UNIT_CARD_TYPES, type CardDefinition, type CardInstance } from "@/game/cards/types";
 import { getShipDefinition } from "@/game/environment/shipData";
 import type { TideStateName } from "@/game/environment/types";
 import { PHASE_LABELS, phaseRefusal } from "@/game/rules/phaseLabels";
@@ -172,6 +172,33 @@ export function assertCanPayCost(
   // toujours, quitte à creuser la dette. `cost` reste reçu pour garder la
   // signature stable et le point d'ancrage d'un futur garde-fou.
   void cost;
+  return ok();
+}
+
+/**
+ * « Jouable uniquement si… » (`CardDefinition.playableOnlyIf`) : refuse la
+ * POSE quand la condition imprimée n'est pas remplie, avant tout paiement.
+ *
+ * Une carte sans `playableOnlyIf` passe toujours — comme toutes les autres
+ * validations, celle-ci ne s'applique qu'à ce qui la déclare.
+ */
+export function assertPlayableCondition(
+  state: GameState,
+  playerId: PlayerId,
+  def: CardDefinition
+): ValidationResult {
+  const gate = def.playableOnlyIf;
+  if (!gate) return ok();
+  const player = state.players.find((p) => p.id === playerId);
+  if (!player) return fail("Joueur introuvable.");
+
+  const ratio = gate.controllerAnchorAtMostRatioOfStart;
+  if (ratio !== undefined) {
+    const depart = getShipDefinition(player.shipId).startingAnchor;
+    if (player.anchor > depart * ratio) {
+      return fail("Votre coque est encore trop intacte pour jouer cette carte.");
+    }
+  }
   return ok();
 }
 

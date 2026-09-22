@@ -329,7 +329,23 @@ export interface TriggeredAbility {
    * Coût à payer pour activer une capacité `optional` (ex: "tu peux
    * dépenser 1 Raison : ..."). Sans effet sur une capacité `auto`.
    */
-  cost?: { reason?: number };
+  cost?: {
+    reason?: number;
+    /**
+     * « vous pouvez payer 3 Ancrage » (Jugement du Phare, Lot 14) : une
+     * capacité peut se payer en COQUE plutôt qu'en Raison.
+     *
+     * Pourquoi l'Ancrage est un coût à part. La Raison n'a pas de plancher
+     * — on paie toujours, quitte à s'endetter — alors que l'Ancrage EST la
+     * condition de victoire : descendre à 0 perd la partie. Un coût en
+     * Ancrage est donc refusé s'il ne peut pas être payé en restant
+     * vivant, là où un coût en Raison ne refuse jamais rien.
+     *
+     * Il ne passe par aucun bouclier de perte de Raison : ce n'est pas de
+     * la Raison.
+     */
+    anchor?: number;
+  };
 }
 
 /**
@@ -413,6 +429,28 @@ export interface CardDefinition {
    */
   setCode?: string;
   cost: number;
+  /**
+   * « Jouable uniquement si… » : condition de JOUABILITÉ de la carte,
+   * vérifiée avant même de la payer (`game/rules/validation.ts`). Une
+   * carte dont la condition n'est pas remplie ne se pose pas — elle reste
+   * en main, et rien n'est dépensé.
+   *
+   * À distinguer d'une `condition` de capacité, qui laisse la carte se
+   * poser mais son effet sans objet. Ici le texte dit « jouable
+   * uniquement si », donc c'est la POSE elle-même qui est refusée.
+   */
+  playableOnlyIf?: {
+    /**
+     * L'Ancrage du contrôleur ne dépasse pas cette FRACTION de l'Ancrage
+     * de départ de son Navire (« si vous avez perdu au moins la moitié de
+     * votre Ancrage initial » → 0.5, On Flotte Encore).
+     *
+     * Une fraction et non un nombre : les Navires n'ont pas la même coque
+     * (26 à 36), et « la moitié » doit vouloir dire la même chose pour
+     * tous.
+     */
+    controllerAnchorAtMostRatioOfStart?: number;
+  };
   /** Texte d'ambiance / règles, affiché tel quel dans l'UI. */
   text?: string;
 
@@ -472,6 +510,12 @@ export interface CardDefinition {
    * Marée (`destroyedByTide`).
    */
   survivesLethalOncePerTurn?: {
+    /**
+     * « La PREMIÈRE fois qu'il devrait être détruit » (Le Naufragé
+     * Impossible, Lot 14) : la survie ne se réarme jamais d'un tour à
+     * l'autre — un seul sauvetage pour toute la partie, sur cette instance.
+     */
+    onceEver?: boolean;
     tideStateIn?: TideStateName[];
     /**
      * « qu'elle devrait être détruite AU COMBAT » : la survie ne joue que
@@ -819,6 +863,36 @@ export interface CardDefinition {
   auraBuffOtherUnitsWhileControllerReasonAtMost?: { reasonAtMost: number; targetType: CardType; attackAmount?: number; healthAmount?: number };
 
   /**
+   * Aura par TYPE DE CARTE sur le plateau du contrôleur (Lot 14) :
+   * « Les unités que vous contrôlez ont +2 Résistance tant que Filet de
+   * Sauvetage est visible », « Vos autres Structures ont +1 Résistance ».
+   *
+   * C'est un BUFF CONTINU, recalculé à chaque lecture des stats — pas un
+   * soin. Il augmente la Résistance MAXIMALE ; les dégâts déjà marqués
+   * restent marqués. Quand la source cesse de porter l'aura (elle se
+   * masque, elle quitte le plateau), le bonus disparaît de lui-même, et
+   * une unité dont les dégâts dépassent alors sa Résistance retombée
+   * meurt au prochain contrôle de morts. C'est la différence exacte entre
+   * « +2 Résistance » et « restaurez 2 Résistance ».
+   *
+   * L'aura ne s'applique JAMAIS à sa propre source (règle commune à toutes
+   * les auras) : « vos AUTRES Structures » est donc le comportement par
+   * défaut, sans rien à déclarer.
+   */
+  auraBuffControllerCardTypes?: {
+    /** Types de carte qui reçoivent l'aura (ex: `["marin", "creature"]` pour « les unités »). */
+    targetTypes: CardType[];
+    attackAmount?: number;
+    healthAmount?: number;
+    /**
+     * « tant que … est visible » : l'aura ne porte que si la SOURCE est
+     * visible dans la Marée courante. Une Structure-piège masquée ne
+     * trahit donc pas sa présence en gonflant le plateau.
+     */
+    whileSelfVisible?: boolean;
+  };
+
+  /**
    * Pour un Équipement UNIQUEMENT : bonus accordé à l'unité qu'il équipe
    * tant que la Marée est dans l'un de ces états (ex: Lampe de Pont Rouge
    * en Houle/Tempête, Masque de Plongée Fissuré en Abysses).
@@ -1150,6 +1224,17 @@ export interface StatModifier {
   duration: StatModifierDuration;
   /** Mots-clés accordés tant que le modificateur est en place (ex: "Pied marin jusqu'à la fin du tour" — P'tite Fesse, Grand Rêve abyssale). */
   keywords?: string[];
+  /**
+   * « elle ne peut ni attaquer ni activer ses effets » (Chaîne de Travers,
+   * Lot 14) : tant que ce modificateur tient, la carte est INACTIVE — au
+   * même sens que l'inactivité de Marée, dont elle emprunte le chemin de
+   * lecture (`EffectiveStats.inactive`).
+   *
+   * Porté par un modificateur et non par un drapeau sur l'instance : la
+   * durée fait alors tout le travail, et rien n'a à se souvenir de lever
+   * l'entrave au bon moment.
+   */
+  silenced?: boolean;
 }
 
 /** Cette carte est-elle la version ABYSSALE ? Lecteur unique : l'interface ne doit jamais tester `subtype` pour ça. */

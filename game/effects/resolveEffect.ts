@@ -191,6 +191,12 @@ function amountValue(
     const unites = plateau.board.filter((u) => UNIT_CARD_TYPES.includes(getCardDefinition(u.cardId).type)).length;
     return Math.max(0, unites - (amount.above ?? 0)) * (amount.per ?? 1);
   }
+  if (amount.kind === "freeSlots") {
+    const joueur = getPlayer(state, controllerId);
+    const libres = Math.max(0, getShipDefinition(joueur.shipId).slotCount - joueur.board.length);
+    const brut = libres * (amount.per ?? 1);
+    return amount.max === undefined ? brut : Math.min(amount.max, brut);
+  }
   return amount.value;
 }
 
@@ -814,6 +820,10 @@ export function resolveEffect(
               attack: -attackDelta,
               health: -healthDelta,
               duration,
+              // « elle ne peut ni attaquer ni activer ses effets » : porté
+              // par le modificateur, donc levé par sa durée (Chaîne de
+              // Travers, Lot 14).
+              ...(effect.silences ? { silenced: true } : {}),
             },
           ],
         }));

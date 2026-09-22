@@ -78,6 +78,12 @@ export interface PendingReactionCandidate {
   /** Coût en Raison à payer pour activer cette capacité (0 si aucun). */
   reasonCost: number;
   /**
+   * Coût en ANCRAGE (0 si aucun). Contrairement au coût en Raison, il
+   * écarte la capacité quand le joueur ne peut pas le payer en restant en
+   * vie : la coque n'a pas de découvert (cf. `TriggeredAbility.cost`).
+   */
+  anchorCost?: number;
+  /**
    * `true` si au moins un de ses effets cible `chosenUnit` :
    * `activateReaction` doit alors recevoir un `targetInstanceId` LÉGAL au
    * regard du filtre de l'effet (`ChosenUnitFilter`) — un candidat n'est

@@ -15,6 +15,7 @@ import {
 import {
   assertBoardNotFull,
   assertCanPayCost,
+  assertPlayableCondition,
   assertCardInHand,
   assertGameActive,
   assertInMainPhase,
@@ -129,6 +130,11 @@ function validate(state: GameState, action: PlayCardAction) {
   if (def.requiresControllerReasonExactly !== undefined && player!.reason !== def.requiresControllerReasonExactly) {
     return { ok: false as const, error: `Cette carte ne peut être jouée qu'avec exactement ${def.requiresControllerReasonExactly} Raison.` };
   }
+
+  // « Jouable uniquement si… » : avant le coût, puisque la carte ne se pose
+  // pas du tout — rien ne doit être dépensé pour un refus.
+  const playableCheck = assertPlayableCondition(state, action.playerId, def);
+  if (!playableCheck.ok) return playableCheck;
 
   const costCheck = assertCanPayCost(
     state,

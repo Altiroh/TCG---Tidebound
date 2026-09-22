@@ -828,6 +828,15 @@ export function collectReactionCandidates(
       // de Déraison, la réaction se propose et se paie en creusant la dette.
       const reasonCost = item.ability.cost?.reason ?? 0;
 
+      // Le coût en ANCRAGE, lui, écarte : la coque n'a pas de découvert,
+      // et proposer « payez 3 Ancrage » à un joueur qui en a 2 reviendrait
+      // à lui proposer de perdre la partie (cf. `TriggeredAbility.cost`).
+      const anchorCost = item.ability.cost?.anchor ?? 0;
+      if (anchorCost > 0) {
+        const payeur = state.players.find((p) => p.id === forPlayerId);
+        if (!payeur || payeur.anchor <= anchorCost) continue;
+      }
+
       // "choisissez un Cra-Poiscail" : la capacité ne se propose que s'il
       // existe au moins une cible LÉGALE — pas seulement une carte
       // quelconque sur un plateau.
@@ -853,6 +862,7 @@ export function collectReactionCandidates(
         cardId: item.cardId,
         abilityIndex: item.abilityIndex,
         reasonCost,
+        anchorCost,
         needsTarget,
         needsGraveyardTarget,
       });
@@ -889,6 +899,20 @@ export function resolveReaction(
     const payment = payReasonCost(nextState, candidate.controllerId, candidate.reasonCost, turnNumber);
     nextState = payment.state;
     events.push({ ...base, type: "REASON_CHANGED", playerId: candidate.controllerId, delta: -payment.paid });
+  }
+
+  // Coût en ANCRAGE : payé cash, sans bouclier — un bouclier de perte de
+  // Raison ne protège pas la coque. L'éligibilité a déjà vérifié qu'il
+  // reste de quoi survivre (`collectReactionCandidates`).
+  const anchorCost = ability.cost?.anchor ?? 0;
+  if (anchorCost > 0) {
+    nextState = {
+      ...nextState,
+      players: nextState.players.map((p) =>
+        p.id === candidate.controllerId ? { ...p, anchor: p.anchor - anchorCost } : p
+      ) as [PlayerState, PlayerState],
+    };
+    events.push({ ...base, type: "DAMAGE", targetPlayerId: candidate.controllerId, amount: anchorCost });
   }
 
   // "La première fois à chaque tour" : marquée à l'ACTIVATION (le
