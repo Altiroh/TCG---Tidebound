@@ -89,17 +89,19 @@ function animateAttacker(attackerEl: HTMLElement, targetRect: DOMRect): Animatio
 
 /**
  * LA PLAQUE DE DÉGÂTS — trois planches de bois cloutées, pendues à leur
- * corde (`public/assets/ui/*-dammage.webp`), et le chiffre peint dessus.
+ * corde (`public/assets/ui/<couleur>-dammage.webp`), et le chiffre peint dessus.
  *
  * Le choix de la plaque dit la GRAVITÉ du coup avant même qu'on lise le
- * chiffre : un point de dégât, deux ou trois, davantage. C'est la même
- * information, donnée deux fois — la couleur se voit du coin de l'œil, le
- * chiffre se lit quand on regarde.
+ * chiffre : un point de dégât (bleu), deux ou trois (jaune), davantage
+ * (rouge). C'est la même information, donnée deux fois — la couleur se voit
+ * du coin de l'œil, le chiffre se lit quand on regarde. Les fichiers sont
+ * nommés par leur COULEUR : les anciens noms low/strong étaient inversés
+ * (la plaque « low » était la rouge).
  */
 const DAMAGE_PLATES = [
-  { max: 1, src: "/assets/ui/low-dammage.webp" },
-  { max: 3, src: "/assets/ui/medium-dammage.webp" },
-  { max: Infinity, src: "/assets/ui/strong-dammage.webp" },
+  { max: 1, src: "/assets/ui/blue-dammage.webp" },
+  { max: 3, src: "/assets/ui/yellow-dammage.webp" },
+  { max: Infinity, src: "/assets/ui/red-dammage.webp" },
 ] as const;
 
 function plateFor(amount: number): string {
