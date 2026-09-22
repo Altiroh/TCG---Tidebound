@@ -3,7 +3,7 @@ import { getShipDefinition } from "@/game/environment/shipData";
 import { reasonAfterLoss } from "@/game/state/reason";
 import type { TideStateName } from "@/game/environment/types";
 import { getCardDefinition } from "@/game/cards/sets/core";
-import { isVisibleDuringTide, STATUS_MALADE, UNIT_CARD_TYPES } from "@/game/cards/types";
+import { hasResistance, isVisibleDuringTide, STATUS_MALADE, UNIT_CARD_TYPES } from "@/game/cards/types";
 import type { CardInstance } from "@/game/cards/types";
 import { RULES } from "@/game/rules/constants";
 import { nextInt } from "@/game/rng";
@@ -263,11 +263,57 @@ function clearHouleSickness(state: GameState, turnNumber: number): { state: Game
 }
 
 /**
+ * Dégâts de Marée sur les STRUCTURES (22/09/2026).
+ *
+ * La mer n'abîmait que les coques et les équipages : une Structure posée ne
+ * craignait rien de la Tempête, ce qui rendait « Tenir la ligne » sans
+ * objet — la capacité protégeait d'un danger inexistant.
+ *
+ * Seules les Structures sont touchées, et seulement celles qui ont une
+ * Résistance : un Objet ne s'encaisse pas (`hasResistance`), et un
+ * Équipement suit son porteur. Les dégâts sont marqués comme venant de la
+ * MARÉE (`lastDamageCause`), ce qui les rend à la fois imputables au bon
+ * poste dans le banc d'essai et couverts par `protectFromDestruction`.
+ *
+ * Une Structure masquée par la Marée n'est pas épargnée : elle est inactive,
+ * pas à l'abri — la mer ne demande pas si on la voit.
+ */
+function applyTideStructureDamage(
+  state: GameState,
+  tideState: TideStateName,
+  intensity: number,
+  turnNumber: number
+): { state: GameState; events: GameEvent[] } {
+  const parTour = RULES.TIDE_STRUCTURE_DAMAGE[tideState] ?? 0;
+  const amount = parTour * intensity;
+  if (amount <= 0) return { state, events: [] };
+
+  const events: GameEvent[] = [];
+  const base = { turnNumber, timestamp: Date.now() };
+  const touchee = (unit: CardInstance) => {
+    const def = getCardDefinition(unit.cardId);
+    return def.type === "structure" && hasResistance(def);
+  };
+
+  const players = state.players.map((player) => ({
+    ...player,
+    board: player.board.map((unit) => {
+      if (!touchee(unit)) return unit;
+      events.push({ ...base, type: "DAMAGE", targetInstanceId: unit.instanceId, amount });
+      return { ...unit, damageMarked: unit.damageMarked + amount, lastDamageCause: "tide" as const };
+    }),
+  })) as [PlayerState, PlayerState];
+
+  return { state: { ...state, players }, events };
+}
+
+/**
  * Effets DE TOUR d'un état de Marée, pour les deux joueurs : dégâts
- * d'Ancrage/Raison (boucliers de Navire compris), choc d'entrée/sortie des
- * Abysses, maladie de la Houle. Appelé par `resolveTideTurnStep` au tick —
- * ou, quand une Ancre de Dérive les a reportés, par `endTurn` à la fin du
- * tour en cours (`EnvironmentState.deferredTideEffects`).
+ * d'Ancrage/Raison (boucliers de Navire compris), dégâts aux Structures,
+ * choc d'entrée/sortie des Abysses, maladie de la Houle. Appelé par
+ * `resolveTideTurnStep` au tick — ou, quand une Ancre de Dérive les a
+ * reportés, par `endTurn` à la fin du tour en cours
+ * (`EnvironmentState.deferredTideEffects`).
  */
 export function applyTideTurnEffects(
   state: GameState,
@@ -354,6 +400,11 @@ export function applyTideTurnEffects(
     nextState = discardTriggers.state;
     events.push(...discardTriggers.events);
   }
+
+  // --- Structures : la Tempête ronge ce qui est posé ---------------------
+  const structures = applyTideStructureDamage(nextState, tideState, intensity, turnNumber);
+  nextState = structures.state;
+  events.push(...structures.events);
 
   // --- Abysses : choc d'entrée (Ancrage + Raison max) / restauration à la sortie ---
   const abysses = applyAbyssesEntryOrExit(nextState, previousTideState, tideState, turnNumber);

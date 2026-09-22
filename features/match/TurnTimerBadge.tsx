@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import type { GameState, PlayerId } from "@/game";
-import { nextTimeoutEndsGame } from "@/game";
+import { RULES, allowanceFor } from "@/game";
 
 /**
- * Le temps qui reste — affichage seul.
+ * Le temps qui reste avant que l'inactivité n'arrête la partie.
  *
  * Ce composant ne décide RIEN. L'échéance vient du serveur
  * (`GameState.turnTimer.deadlineAt`, posée par `game/rules/turnTimer.ts`) et
@@ -14,18 +14,40 @@ import { nextTimeoutEndsGame } from "@/game";
  * de navigateur en avance ou en retard change ce qui est dessiné, jamais ce
  * qui se produit.
  *
- * Discret tant qu'il reste du temps, et franc quand il n'en reste plus
- * beaucoup : c'est à ce moment-là qu'un joueur a besoin de le voir.
+ * Trois minutes, c'est long : un compteur qui hurlerait dès la première
+ * seconde serait du bruit. Il reste donc DISCRET tant qu'il n'y a rien à
+ * craindre, et ne prend la parole qu'aux paliers d'alerte
+ * (`RULES.INACTIVITY_WARNINGS_MS`, une minute puis deux) — c'est à ce
+ * moment-là qu'un joueur a besoin de le voir.
  */
-
-/** Sous ce seuil, le compteur passe en alerte. */
-const WARNING_MS = 15_000;
 
 interface TurnTimerBadgeProps {
   state: GameState;
   /** Le joueur qui regarde — « À toi de jouer » ne se dit pas à l'adversaire. */
   viewerId: PlayerId;
 }
+
+/** Niveau d'alerte du chrono : discret, attention, urgence. */
+type Palier = "calme" | "attention" | "urgence";
+
+/**
+ * À quel palier on en est, d'après le temps ÉCOULÉ depuis le dernier geste.
+ * Les paliers sont ceux du moteur : le joueur voit exactement l'échelle sur
+ * laquelle il est jugé.
+ */
+function palierPour(ecoule: number): Palier {
+  const paliers = [...RULES.INACTIVITY_WARNINGS_MS].sort((a, b) => a - b);
+  const dernier = paliers[paliers.length - 1];
+  if (dernier !== undefined && ecoule >= dernier) return "urgence";
+  if (paliers[0] !== undefined && ecoule >= paliers[0]) return "attention";
+  return "calme";
+}
+
+const STYLES: Record<Palier, string> = {
+  calme: "border-white/15 bg-slate-950/50 text-slate-300/80",
+  attention: "border-amber-300/40 bg-amber-950/70 text-amber-100",
+  urgence: "border-rose-300/50 bg-rose-950/80 text-rose-100",
+};
 
 export function TurnTimerBadge({ state, viewerId }: TurnTimerBadgeProps) {
   const timer = state.turnTimer;
@@ -43,21 +65,26 @@ export function TurnTimerBadge({ state, viewerId }: TurnTimerBadgeProps) {
 
   const mine = timer.awaitingPlayerId === viewerId;
   const seconds = Math.max(0, Math.ceil(remaining / 1000));
-  const warning = remaining <= WARNING_MS;
-  // Prévenir AVANT, jamais après : un joueur qui risque la partie au
-  // prochain délai manqué doit le savoir tant qu'il peut encore agir.
-  const fatal = nextTimeoutEndsGame(state, timer.awaitingPlayerId);
+  const palier = palierPour(allowanceFor(state) - remaining);
 
   return (
     <div
-      className={`pointer-events-none fixed left-1/2 top-3 z-[60] -translate-x-1/2 rounded-full border px-3 py-1 text-[11px] font-medium backdrop-blur-md transition-colors ${
-        warning ? "border-rose-300/40 bg-rose-950/70 text-rose-100" : "border-white/20 bg-slate-950/60 text-slate-200"
-      }`}
+      className={`pointer-events-none fixed left-1/2 top-3 z-[60] -translate-x-1/2 rounded-full border px-3 py-1 text-[11px] font-medium backdrop-blur-md transition-colors ${STYLES[palier]}`}
       role="timer"
-      aria-live={warning ? "polite" : "off"}
+      aria-live={palier === "calme" ? "off" : "polite"}
     >
       {mine ? "À toi de jouer" : "Tour de l'adversaire"} · {formatRemaining(seconds)}
-      {fatal && mine && <span className="ml-1.5 text-rose-200">— dernier délai</span>}
+      {palier !== "calme" && (
+        <span className="ml-1.5 font-semibold">
+          {mine
+            ? palier === "urgence"
+              ? "— joue, ou la partie s'arrête"
+              : "— sans geste, la partie s'arrêtera"
+            : palier === "urgence"
+              ? "— sans réponse, la partie s'arrête"
+              : "— l'adversaire ne joue plus"}
+        </span>
+      )}
     </div>
   );
 }

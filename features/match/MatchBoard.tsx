@@ -33,6 +33,7 @@ import { graveyardPickView } from "@/features/match/graveyardPickRequest";
 import { HandDiscardPrompt } from "@/features/match/HandDiscardPrompt";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ReactionPrompt } from "@/features/match/ReactionPrompt";
+import { ShipWindowHint } from "@/features/match/ShipWindowHint";
 import { reactionTargetHint } from "@/features/match/reactionTargetHint";
 import { TableBoard } from "@/features/match/table/TableBoard";
 import { phaseButtonFor, phaseTitle, targetingHint } from "@/features/match/table/tableLabels";
@@ -420,13 +421,24 @@ export function MatchBoard({
       {/* Invitation à réagir — priorité sur tout le reste tant qu'elle reste ouverte ; repliée dès qu'une
           capacité ciblée est choisie, remplacée par un petit rappel non bloquant. */}
       {state.pendingReaction?.awaitingPlayerId === viewerPlayerId &&
-        (myReactionCandidates.length > 0 || shipAbility.windowEntry) &&
+        myReactionCandidates.length > 0 &&
         !(pending?.kind === "reaction" && pending.needsTarget) && (
           <ReactionPrompt
             candidates={myReactionCandidates}
             onActivateMany={activateSelectedReactions}
             onPass={() => runReactionAction({ type: "passReaction", playerId: viewerPlayerId })}
-            shipAbility={shipAbility.windowEntry}
+          />
+        )}
+      {/* Le NAVIRE seul à pouvoir répondre : son panneau s'allume, et ce
+          bandeau dit pourquoi sans couper la partie. Un panneau modal à
+          chaque changement de Marée ferait répéter le même « non » toute la
+          partie, pour une capacité qui ne sert qu'une fois. */}
+      {state.pendingReaction?.awaitingPlayerId === viewerPlayerId &&
+        myReactionCandidates.length === 0 &&
+        shipAbility.windowEntry && (
+          <ShipWindowHint
+            name={shipAbility.windowEntry.name}
+            onPass={() => runReactionAction({ type: "passReaction", playerId: viewerPlayerId })}
           />
         )}
       {pending?.kind === "reaction" && pending.needsTarget && (

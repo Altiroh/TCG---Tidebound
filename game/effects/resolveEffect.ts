@@ -559,8 +559,18 @@ export function resolveEffect(
 
       for (const player of resolvePlayerTargets(state, effect, context)) {
         const current = getPlayer(nextState, player.id);
-        nextState = replacePlayer(nextState, { ...current, anchor: current.anchor + amount });
-        events.push({ ...base, type: "HEAL", targetPlayerId: player.id, amount });
+        // PLAFOND : l'Ancrage de départ du Navire fait office de maximum
+        // (22/09/2026). Sans lui, soigner était une ressource infinie — une
+        // conversion répétable comme « Réparation d'urgence » (2 Raison
+        // contre 2 Ancrage, chaque tour) aurait suffi à rendre une partie
+        // interminable. Le soin remplit une coque, il ne l'agrandit pas.
+        const plafond = getShipDefinition(current.shipId).startingAnchor;
+        const soigne = Math.max(0, Math.min(plafond, current.anchor + amount) - current.anchor);
+        if (soigne === 0) continue;
+        nextState = replacePlayer(nextState, { ...current, anchor: current.anchor + soigne });
+        // Le montant JOURNALISÉ est celui qui a porté : annoncer 3 quand la
+        // coque n'en reprend qu'un ment au joueur et au banc d'essai.
+        events.push({ ...base, type: "HEAL", targetPlayerId: player.id, amount: soigne });
       }
 
       return { state: nextState, events };

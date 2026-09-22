@@ -25,12 +25,19 @@ import type { GameState, PlayerId, TurnTimerState } from "@/game/state/types";
  *    a pas de tâche de fond : la partie n'a besoin d'avancer que quand
  *    quelqu'un la regarde.
  *
- * 3. **Une échéance manquée ne fait pas perdre la partie.** Elle fait
- *    passer le tour, et ne compte qu'un point. C'est ce qui protège du cas
- *    le plus banal — un rafraîchissement de page, un tunnel, un téléphone
- *    qui se verrouille : on perd au pire un tour, jamais la partie.
- *    `MAX_MISSED_DEADLINES` échéances CONSÉCUTIVES, elles, valent abandon :
- *    à ce stade le joueur n'est plus là, et l'autre a le droit de finir.
+ 3. **Ce qui est mesuré, c'est l'inactivité, pas le tour.** Le même délai
+ *    vaut pour tout ce que le moteur peut attendre — un tour, une fenêtre
+ *    de réaction, un choix forcé : un joueur absent l'est devant l'un comme
+ *    devant l'autre. Trois minutes sans le moindre geste, et la partie
+ *    s'arrête (décision du 22/09/2026). La marge est volontairement large :
+ *    un rafraîchissement de page, un tunnel, un téléphone qui se verrouille
+ *    tiennent tous très largement dedans, et le joueur est prévenu à une
+ *    minute puis à deux (`INACTIVITY_WARNINGS_MS`) avant que ça n'arrive.
+ *
+ *    La mécanique du COMPTEUR reste en place (`MAX_MISSED_DEADLINES`,
+ *    aujourd'hui à 1) : c'est elle qui permettrait de repasser à « on perd
+ *    un tour, pas la partie » en changeant une constante, si le playtest
+ *    disait que trois minutes sont trop courtes.
  */
 
 /** Qui le moteur attend, à cet instant — la seule réponse qui vaille pour un chrono. */
@@ -42,12 +49,25 @@ export function playerToAct(state: GameState): PlayerId | undefined {
 }
 
 /**
- * Combien de temps ce joueur a pour répondre à CETTE situation. Une fenêtre
- * de réaction ou un choix forcé sont des questions fermées, auxquelles on
- * répond vite ; un tour entier demande de réfléchir.
+ * Combien de temps ce joueur a pour agir. Le MÊME délai quelle que soit la
+ * question posée (décision du 22/09/2026) : ce qu'on mesure n'est pas « un
+ * tour » mais « du mouvement sur le plateau », et un joueur absent l'est
+ * autant devant une fenêtre de réaction que devant son tour.
  */
-export function allowanceFor(state: GameState): number {
-  return state.pendingReaction || state.pendingChoice ? RULES.REACTION_TIME_LIMIT_MS : RULES.TURN_TIME_LIMIT_MS;
+export function allowanceFor(_state: GameState): number {
+  return RULES.INACTIVITY_LIMIT_MS;
+}
+
+/**
+ * Paliers d'alerte encore à venir pour le chrono en cours, en horodatages
+ * absolus. Lus par l'interface pour prévenir à une minute, puis à deux,
+ * avant l'échéance elle-même — ils ne changent rien à l'état.
+ */
+export function warningTimes(state: GameState): number[] {
+  const timer = state.turnTimer;
+  if (!timer) return [];
+  const depart = timer.deadlineAt - allowanceFor(state);
+  return RULES.INACTIVITY_WARNINGS_MS.map((ecoule) => depart + ecoule);
 }
 
 /**

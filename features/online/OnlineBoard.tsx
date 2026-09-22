@@ -28,6 +28,7 @@ import { graveyardPickView } from "@/features/match/graveyardPickRequest";
 import { HandDiscardPrompt } from "@/features/match/HandDiscardPrompt";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ReactionPrompt } from "@/features/match/ReactionPrompt";
+import { ShipWindowHint } from "@/features/match/ShipWindowHint";
 import { TurnTimerBadge } from "@/features/match/TurnTimerBadge";
 import { reactionTargetHint } from "@/features/match/reactionTargetHint";
 import { TableBoard } from "@/features/match/table/TableBoard";
@@ -254,15 +255,19 @@ export function OnlineBoard({
       <TurnTimerBadge state={state} viewerId={myUserId} />
 
       {canRespondToReaction &&
-        (myReactionCandidates.length > 0 || shipAbility.windowEntry) &&
+        myReactionCandidates.length > 0 &&
         !(selection?.kind === "reaction" && selection.needsTarget) && (
           <ReactionPrompt
             candidates={myReactionCandidates}
             onActivateMany={activateSelectedReactions}
             onPass={() => act({ type: "passReaction", playerId: myUserId })}
-            shipAbility={shipAbility.windowEntry}
           />
         )}
+      {/* Cf. `MatchBoard` : le Navire seul à répondre s'annonce par son
+          halo et un bandeau, jamais par un panneau modal. */}
+      {canRespondToReaction && myReactionCandidates.length === 0 && shipAbility.windowEntry && (
+        <ShipWindowHint name={shipAbility.windowEntry.name} onPass={() => act({ type: "passReaction", playerId: myUserId })} />
+      )}
       {selection?.kind === "reaction" && selection.needsTarget && (
         <div className="fixed left-1/2 top-6 z-[70] -translate-x-1/2 rounded-full border border-white/25 bg-slate-950/80 px-4 py-2 text-xs text-slate-200 backdrop-blur-md">
           {reactionTargetHint([...me.board, ...opponent.board].find((u) => u.instanceId === selection.sourceInstanceId)?.cardId, selection.abilityIndex)}

@@ -110,6 +110,24 @@ export const RULES = {
   TIDE_ANCHOR_DAMAGE: { tempete: 1 } as Partial<Record<TideStateName, number>>,
   /** Perte de Raison infligée aux DEUX joueurs à chaque tour pour cet état. Plus aucun état n'en inflige pour l'instant (Abysses migré vers un malus continu de Raison max, voir plus bas). */
   TIDE_REASON_DAMAGE: {} as Partial<Record<TideStateName, number>>,
+  /**
+   * Dégâts infligés aux STRUCTURES à chaque tour où la Marée est dans cet
+   * état, multipliés par l'Intensité (décision du 22/09/2026).
+   *
+   * Jusqu'ici la mer n'abîmait que les coques et les équipages : une
+   * Structure posée ne craignait rien de la Tempête, ce qui rendait
+   * « Tenir la ligne » (Brise-Lames) littéralement sans objet — la
+   * capacité protégeait d'un danger qui n'existait pas.
+   *
+   * Un seul point par tour, et seulement en Tempête : une Structure a 2 à
+   * 4 de Résistance et une durée de 3 à 5 tours, donc la Tempête la
+   * raccourcit sans la balayer. Les Objets ne sont PAS concernés — ils
+   * n'ont pas de Résistance et ne s'encaissent pas (`hasResistance`).
+   *
+   * VALEUR DE PROTOTYPE : à confronter au banc d'essai, d'autant que les
+   * deux listes à Structures sont déjà les plus faibles du tournoi.
+   */
+  TIDE_STRUCTURE_DAMAGE: { tempete: 1 } as Partial<Record<TideStateName, number>>,
 
   // --- Houle : maladie aléatoire ("MALADE") -------------------------------
   /** Chance (sur 100) que la Houle rende MALADE une carte aléatoire du board, une fois par tour tant qu'elle est active. */
@@ -123,23 +141,28 @@ export const RULES = {
   /** Réduction de Raison maximale tant que la Marée reste dans les Abysses ; restaurée à la sortie. */
   ABYSSES_REASON_MAX_PENALTY: 2,
 
-  // --- Délai de tour (`game/rules/turnTimer.ts`) --------------------------
-  // VALEURS DE PROTOTYPE, à régler au playtest : elles n'ont pas de source
-  // de cadrage, et ce qui compte pour l'instant est qu'une partie ne puisse
-  // plus rester ouverte indéfiniment.
-  /** Temps accordé pour jouer un tour entier. */
-  TURN_TIME_LIMIT_MS: 90_000,
+  // --- Inactivité (`game/rules/turnTimer.ts`, décision du 22/09/2026) -----
+  //
+  // Un SEUL délai, et il ne compte pas « un tour » mais « du mouvement sur
+  // le plateau » : quoi que le moteur attende du joueur — son tour, une
+  // fenêtre de réaction, un choix forcé —, il a le même temps pour agir.
+  // Trois minutes laissent largement la marge d'un rafraîchissement de
+  // page, d'un tunnel ou d'un téléphone qui se verrouille ; passé ce délai,
+  // le joueur n'est plus là et l'autre a le droit de finir.
+  /** Temps sans aucun geste au bout duquel la partie s'arrête. */
+  INACTIVITY_LIMIT_MS: 180_000,
   /**
-   * Temps accordé pour répondre à une fenêtre de réaction ou à un choix
-   * forcé — une question fermée, plus courte qu'un tour. Aligné sur le
-   * décompte que l'interface affiche déjà (`ReactionPrompt`).
+   * Paliers d'ALERTE, en millisecondes écoulés depuis le dernier geste.
+   * Purement informatifs : ils ne changent rien à l'état, ils préviennent.
+   * Le dernier palier est l'échéance elle-même (`INACTIVITY_LIMIT_MS`), et
+   * n'a pas à figurer ici.
    */
-  REACTION_TIME_LIMIT_MS: 30_000,
+  INACTIVITY_WARNINGS_MS: [60_000, 120_000] as readonly number[],
   /**
-   * Échéances CONSÉCUTIVES manquées valant abandon automatique. À 3, un
-   * rafraîchissement de page ou une coupure réseau coûtent un tour, pas la
-   * partie ; une absence réelle, elle, ne bloque plus l'adversaire très
-   * longtemps.
+   * Échéances CONSÉCUTIVES manquées valant abandon automatique. À 1 : avec
+   * trois minutes de délai, laisser passer l'échéance n'est plus un
+   * accident de réseau — c'est une absence, et la faire payer deux fois ne
+   * ferait qu'ajouter six minutes d'attente à celui qui est resté.
    */
-  MAX_MISSED_DEADLINES: 3,
+  MAX_MISSED_DEADLINES: 1,
 } as const;

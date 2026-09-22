@@ -17,14 +17,6 @@ interface ReactionPromptProps {
   /** Reçoit les candidats cochés (au moins un) — MatchBoard/OnlineBoard les appliquent en une seule fois, sans rouvrir la fenêtre entre chacun. */
   onActivateMany: (candidates: PendingReactionCandidate[]) => void;
   onPass: () => void;
-  /**
-   * Capacité de NAVIRE activable dans cette même fenêtre (Changer de cap,
-   * Virage court). Le Navire n'est pas une carte : il n'apparaît donc pas
-   * dans `candidates`, et une fenêtre ouverte POUR LUI SEUL n'en a aucun —
-   * sans cette entrée, il n'y aurait rien à l'écran pour refuser, et la
-   * partie resterait suspendue.
-   */
-  shipAbility?: { name: string; text: string; onActivate: () => void };
 }
 
 /**
@@ -48,7 +40,7 @@ interface ReactionPromptProps {
  * fenêtre automatiquement — jamais bloquer la partie indéfiniment en
  * attente d'une décision facultative.
  */
-export function ReactionPrompt({ candidates, onActivateMany, onPass, shipAbility }: ReactionPromptProps) {
+export function ReactionPrompt({ candidates, onActivateMany, onPass }: ReactionPromptProps) {
   const onPassRef = useRef(onPass);
   onPassRef.current = onPass;
 
@@ -90,59 +82,12 @@ export function ReactionPrompt({ candidates, onActivateMany, onPass, shipAbility
           </svg>
         </button>
 
-        {candidates.length === 0 && shipAbility ? (
-          <ShipCandidate ability={shipAbility} onPass={handlePass} />
-        ) : candidates.length === 1 ? (
+        {candidates.length === 1 ? (
           <SingleCandidate candidate={candidates[0]!} onActivate={() => onActivateMany([candidates[0]!])} onPass={handlePass} />
         ) : (
           <MultipleCandidates candidates={candidates} onActivateMany={onActivateMany} onPass={handlePass} />
         )}
       </div>
-    </div>
-  );
-}
-
-/**
- * La capacité du NAVIRE, seule à répondre à cette fenêtre. Même question
- * Oui/Non qu'une carte, sans vignette : le Navire est déjà là, sous les
- * yeux du joueur, sur son propre cadre.
- */
-function ShipCandidate({
-  ability,
-  onPass,
-}: {
-  ability: { name: string; text: string; onActivate: () => void };
-  onPass: () => void;
-}) {
-  function handleActivate() {
-    playButtonClick();
-    ability.onActivate();
-  }
-
-  return (
-    <div className="relative flex flex-col items-center gap-3 pt-1">
-      <p className="text-sm font-semibold leading-snug text-white">{ability.name}</p>
-      <p className="text-xs leading-snug text-white/70">{ability.text}</p>
-      <p className="text-[11px] leading-snug text-white/50">Une fois par partie.</p>
-
-      <div className="mt-1 flex items-center gap-3">
-        <button
-          type="button"
-          onClick={handleActivate}
-          className="rounded-full bg-emerald-400 px-7 py-2 text-sm font-semibold text-emerald-950 outline-none transition-colors hover:bg-emerald-300 focus-visible:ring-2 focus-visible:ring-emerald-200"
-        >
-          Oui
-        </button>
-        <button
-          type="button"
-          onClick={onPass}
-          className="rounded-full bg-white/10 px-7 py-2 text-sm font-semibold text-white outline-none transition-colors hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-white/40"
-        >
-          Non
-        </button>
-      </div>
-
-      <CountdownBar />
     </div>
   );
 }

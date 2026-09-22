@@ -349,8 +349,10 @@ describe("délai de tour — l'autorité reste au serveur", () => {
     const apres = db.one("match_states", { match_id: matchId })!;
     expect(apres.version).toBeGreaterThan(versionAvant);
     expect(apres.state.players.find((p: { id: string }) => p.id === absent).missedDeadlines).toBe(1);
-    // Un tour perdu, pas la partie.
-    expect(db.one("matches", { id: matchId })!.status).toBe("active");
+    // Trois minutes sans le moindre geste : la partie s'arrête, au profit
+    // de celui qui est resté.
+    expect(db.one("matches", { id: matchId })!.status).toBe("finished");
+    expect(db.one("matches", { id: matchId })!.winner_id).toBe(present);
   });
 
   it("le joueur qui joue, fût-ce en retard, n'est jamais expiré par son propre coup", async () => {
@@ -369,7 +371,7 @@ describe("délai de tour — l'autorité reste au serveur", () => {
     expect(db.one("match_states", { match_id: matchId })!.state.players.find((p: { id: string }) => p.id === late).missedDeadlines ?? 0).toBe(0);
   });
 
-  it("après MAX_MISSED_DEADLINES absences, la partie est perdue et les récompenses sont payées", async () => {
+  it("une partie arrêtée par inactivité paie ses récompenses comme n'importe quelle autre", async () => {
     sessionUserId = USER;
     const created = await createOnlineMatch(DECK.id);
     const { matchId, inviteCode } = created.data!;
@@ -382,7 +384,7 @@ describe("délai de tour — l'autorité reste au serveur", () => {
 
     // Le joueur présent laisse filer : il rend la main dès qu'il l'a, et
     // l'absent laisse passer chacune de ses échéances.
-    for (let round = 0; round < RULES.MAX_MISSED_DEADLINES; round += 1) {
+    for (let round = 0; round < RULES.MAX_MISSED_DEADLINES + 1; round += 1) {
       expireDeadline(matchId);
       sessionUserId = present;
       await fetchMatchView(matchId);

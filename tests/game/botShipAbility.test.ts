@@ -22,6 +22,8 @@ import type { BotDifficulty } from "@/game/bot/types";
 import { dispatch } from "@/game/engine";
 import { isShipArmed } from "@/game/state/shipAbility";
 import { getPlayer, type GameState } from "@/game/state/types";
+import { SHIP_DATABASE } from "@/game/environment/shipData";
+import type { ShipDefinition } from "@/game/environment/types";
 import { instance, testGameState, testPlayer } from "./testHelpers";
 
 /**
@@ -56,11 +58,20 @@ describe("le bot et le Canon de proue — énumération", () => {
   });
 
   it("ne propose rien pour un Navire sans capacité activable", () => {
-    const actions = enumerateCandidateActions(
-      testGameState({ players: [testPlayer("p1", { shipId: "la-religieuse" }), testPlayer("p2", { shipId: "le-goliath" })] }),
-      "p1"
-    );
-    expect(actions.some((a) => a.type === "activateShipAbility" || a.type === "fireShipAbility")).toBe(false);
+    // Tous les Navires du roster en portent une : on en prive un le temps
+    // du test (cf. `shipAbility.test.ts`).
+    const base = SHIP_DATABASE as Map<string, ShipDefinition>;
+    const original = base.get("la-religieuse")!;
+    base.set("la-religieuse", { ...original, activatableAbility: undefined });
+    try {
+      const actions = enumerateCandidateActions(
+        testGameState({ players: [testPlayer("p1", { shipId: "la-religieuse" }), testPlayer("p2", { shipId: "le-goliath" })] }),
+        "p1"
+      );
+      expect(actions.some((a) => a.type === "activateShipAbility" || a.type === "fireShipAbility")).toBe(false);
+    } finally {
+      base.set("la-religieuse", original);
+    }
   });
 
   it("une fois armé, propose le tir sur le Navire adverse ET sur chaque permanent adverse", () => {

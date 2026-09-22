@@ -8,9 +8,10 @@
  * dégâts sont des dégâts de CAPACITÉ : pas de riposte, pas de faiblesse
  * d'attaque directe, aucune attaque d'unité consommée.
  */
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { dispatch } from "@/game/engine";
-import { getShipDefinition } from "@/game/environment/shipData";
+import { SHIP_DATABASE, getShipDefinition } from "@/game/environment/shipData";
+import type { ShipDefinition } from "@/game/environment/types";
 import { isShipArmed, shipAbilityView } from "@/game/state/shipAbility";
 import { getPlayer, type GameState } from "@/game/state/types";
 import { instance, testGameState, testPlayer } from "./testHelpers";
@@ -32,14 +33,25 @@ const fire = (targetInstanceId?: string) =>
 
 describe("capacité activable de Navire — primitive générique", () => {
   it("un Navire sans capacité activable refuse les deux gestes", () => {
-    const state = testGameState({
-      players: [testPlayer("p1", { shipId: "la-religieuse" }), testPlayer("p2", { shipId: "le-goliath" })],
-    });
-    expect(getShipDefinition("la-religieuse").activatableAbility).toBeUndefined();
+    // Les cinq Navires du roster en portent une désormais : on en prive un
+    // le temps du test, plutôt que d'en inventer un sixième qui ne
+    // vivrait que là. `SHIP_DATABASE` est typée en lecture seule pour le
+    // reste du projet — c'est le seul endroit qui a besoin de l'inverse.
+    const base = SHIP_DATABASE as Map<string, ShipDefinition>;
+    const original = base.get("la-religieuse")!;
+    base.set("la-religieuse", { ...original, activatableAbility: undefined });
+    try {
+      const state = testGameState({
+        players: [testPlayer("p1", { shipId: "la-religieuse" }), testPlayer("p2", { shipId: "le-goliath" })],
+      });
+      expect(getShipDefinition("la-religieuse").activatableAbility).toBeUndefined();
 
-    const refused = dispatch(state, arm);
-    expect(refused.ok).toBe(false);
-    expect(shipAbilityView(state, "p1")).toBeUndefined();
+      const refused = dispatch(state, arm);
+      expect(refused.ok).toBe(false);
+      expect(shipAbilityView(state, "p1")).toBeUndefined();
+    } finally {
+      base.set("la-religieuse", original);
+    }
   });
 
   it("l'activation est refusée hors de sa fenêtre de phase, et le tir hors de la sienne", () => {

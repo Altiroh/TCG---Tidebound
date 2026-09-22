@@ -58,30 +58,26 @@ export const SHIP_SET: ShipDefinition[] = [
       "Tirant léger — la première fois par tour qu'un effet de Marée devrait vous infliger des dégâts " +
       "d'Ancrage, réduisez-les de 1.",
     weaknessText: "Coque légère — les attaques directes contre votre Navire lui infligent +1 dégât.",
-    // VIRAGE COURT — RÉÉCRITURE PROPOSÉE, à confirmer par le design.
+    // VIRAGE COURT — texte repris de la fiche Notion (22/09/2026).
     //
-    // Le texte d'origine (« lorsqu'une nouvelle Eau est révélée, vous
-    // pouvez la refuser ; une autre Eau valide est révélée à la place »)
-    // parle d'un sous-système supprimé : plus aucune Eau n'est révélée,
-    // donc la capacité n'avait plus de déclencheur ni d'objet.
+    // Le code portait encore l'ancien texte, celui des Eaux (« lorsqu'une
+    // nouvelle Eau est révélée, vous pouvez la refuser ») : un
+    // sous-système supprimé du design, donc une capacité sans déclencheur
+    // ni objet. La fiche Notion, elle, avait déjà été réécrite autour de
+    // l'ORIENTATION — la mécanique qui a précisément absorbé les fonctions
+    // des Eaux. C'est elle qui fait foi, et c'est elle qui est appliquée
+    // ici : « refuser ce que la mer apporte » y est devenu « lui faire
+    // faire demi-tour ».
     //
-    // Ce que la Marée offre à la place, c'est l'ORIENTATION — la mécanique
-    // qui a précisément absorbé les fonctions des Eaux. « Refuser ce que la
-    // mer apporte » s'y traduit par « lui faire faire demi-tour », d'où le
-    // nom qui tient toujours. Même fenêtre que Changer de cap (l'annonce),
-    // même fréquence (une fois par partie), et le profil « contrôle
-    // environnemental » du Courlis est servi par la seule mécanique qui
-    // reste.
-    //
-    // Écart assumé avec le texte d'origine : on ne rejoue pas un tirage,
-    // on renverse une tendance. C'est plus faible sur le coup et plus fort
-    // sur la durée.
+    // « Juste avant une transition » = la fenêtre d'annonce : l'état est
+    // committé, ses effets ne sont pas encore appliqués, et l'orientation
+    // décide de la transition SUIVANTE.
     activatableAbility: {
       name: "Virage court",
       illustration: "le-courlis.webp",
       text:
-        "Une fois par partie, après qu'une Marée a été annoncée mais avant l'application de ses effets, " +
-        "inversez son orientation.",
+        "Une fois par partie, juste avant une transition de Marée, vous pouvez inverser son orientation pour " +
+        "cette transition.",
       cost: {},
       activationPhases: [],
       activationWindow: "tideAnnounced",
@@ -185,6 +181,24 @@ export const SHIP_SET: ShipDefinition[] = [
     passiveText:
       "Pénitence — la première fois par tour que vous devriez subir des dégâts d'Ancrage à cause de votre " +
       "Déraison, réduisez ces dégâts de 1.",
+    // RÉPARATION D'URGENCE (décision du 22/09/2026). La Religieuse était le
+    // seul Navire sans capacité activable ; celle-ci sert son profil —
+    // survivre devient un moteur de jeu — sans rien inventer au moteur :
+    // un coût en Raison, un gain d'Ancrage, une fois par tour.
+    //
+    // Échange VOLONTAIREMENT neutre (2 contre 2) : c'est la seule
+    // conversion Raison → Ancrage du jeu, et ce qu'elle apporte n'est pas
+    // un gain sec mais un CHOIX — payer sa coque avec le tour qu'on
+    // n'aura pas joué. Sans limite de partie : c'est un robinet, pas un
+    // coup d'éclat.
+    activatableAbility: {
+      name: "Réparation d'urgence",
+      illustration: "la-religieuse.webp",
+      text: "Une fois par tour, pendant une Phase principale, dépensez 2 Raison pour récupérer 2 Ancrage.",
+      cost: { reason: 2 },
+      activationPhases: ["mainPhase", "mainPhase2"],
+      onActivateEffects: [{ type: "heal", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } }],
+    },
     deraisonDamageReduction: 1,
   },
   {

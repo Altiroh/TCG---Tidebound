@@ -189,7 +189,7 @@ export function createGameState(input: CreateGameStateInput): GameState {
     turnTimer: {
       awaitingPlayerId: player1.id,
       kind: "turn",
-      deadlineAt: Date.now() + RULES.TURN_TIME_LIMIT_MS,
+      deadlineAt: Date.now() + RULES.INACTIVITY_LIMIT_MS,
     },
     status: "active",
   };

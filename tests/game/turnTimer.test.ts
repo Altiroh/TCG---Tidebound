@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { dispatch } from "@/game/engine";
 import { RULES } from "@/game/rules/constants";
-import { missedDeadlines, nextTimeoutEndsGame, playerToAct, turnTimerExpired } from "@/game/rules/turnTimer";
+import { allowanceFor, missedDeadlines, nextTimeoutEndsGame, playerToAct, turnTimerExpired, warningTimes } from "@/game/rules/turnTimer";
 import { createGameState } from "@/game/state/createGameState";
 import { DECK_LE_BANC_DEBORDE, DECK_BEC_DANS_LA_BRUME } from "@/game/cards/decks/borrowed";
 import { getPlayer, type GameState } from "@/game/state/types";
@@ -91,91 +91,86 @@ describe("échéance manquée", () => {
     expect(dispatch(state, { type: "timeout", playerId: "p2", now: 5_000 }).ok).toBe(false);
   });
 
-  it("passe le tour sans faire perdre la partie, et compte un point", () => {
+  it("trois minutes sans le moindre geste arrêtent la partie, au profit de celui qui est resté", () => {
     const state = expiredTurn();
+    expect(nextTimeoutEndsGame(state, "p1")).toBe(true);
+
     const result = dispatch(state, { type: "timeout", playerId: "p1", now: 5_000 });
     ok(result);
-
-    expect(result.state.status).toBe("active");
-    expect(result.state.activePlayerId).toBe("p2");
+    expect(result.state.status).toBe("finished");
+    expect(result.state.winnerId).toBe("p2");
     expect(missedDeadlines(result.state, "p1")).toBe(1);
-    expect(result.events.some((e) => e.type === "TURN_TIMED_OUT")).toBe(true);
-    // Le chrono repart, pour l'autre joueur : la partie n'attend plus le même.
-    expect(result.state.turnTimer?.awaitingPlayerId).toBe("p2");
-    expect(result.state.turnTimer!.deadlineAt).toBeGreaterThan(5_000);
+    // Les deux événements, dans l'ordre : l'échéance d'abord, la fin ensuite.
+    const types = result.events.map((e) => e.type);
+    expect(types.indexOf("TURN_TIMED_OUT")).toBeGreaterThanOrEqual(0);
+    expect(types.indexOf("GAME_ENDED")).toBeGreaterThan(types.indexOf("TURN_TIMED_OUT"));
+    expect(result.events.some((e) => e.type === "GAME_ENDED" && e.reason === "timeout")).toBe(true);
   });
 
-  it("rejouer efface les échéances manquées — un rafraîchissement de page coûte un tour, pas la partie", () => {
-    let state = expiredTurn();
-    const premier = dispatch(state, { type: "timeout", playerId: "p1", now: 5_000 });
-    ok(premier);
-    expect(missedDeadlines(premier.state, "p1")).toBe(1);
+  it("rejouer efface les échéances manquées : le compteur mesure une absence, pas une lenteur passée", () => {
+    // Avec un seuil à 1 la partie s'arrête à la première échéance ; ce qui
+    // est vérifié ici, c'est que le COMPTEUR se remet bien à zéro dès qu'un
+    // joueur agit — c'est lui qui permettrait de repasser à « on perd un
+    // tour, pas la partie » en changeant la seule constante.
+    const state = expiredTurn();
+    const absent: GameState = {
+      ...state,
+      players: state.players.map((p) => (p.id === "p1" ? { ...p, missedDeadlines: 5 } : p)) as GameState["players"],
+    };
+    expect(missedDeadlines(absent, "p1")).toBe(5);
 
-    // p2 rend la main, p1 revient et joue normalement.
-    const rendu = dispatch(premier.state, { type: "endTurn", playerId: "p2" });
-    ok(rendu);
-    const revient = dispatch(rendu.state, { type: "advancePhase", playerId: "p1" });
+    const revient = dispatch(absent, { type: "advancePhase", playerId: "p1" });
     ok(revient);
     expect(missedDeadlines(revient.state, "p1")).toBe(0);
-    expect(nextTimeoutEndsGame(revient.state, "p1")).toBe(false);
   });
 
-  it("au bout de MAX_MISSED_DEADLINES échéances consécutives, la partie est perdue", () => {
-    let state = expiredTurn();
-    for (let i = 1; i < RULES.MAX_MISSED_DEADLINES; i += 1) {
-      const manquee = dispatch({ ...state, turnTimer: { awaitingPlayerId: "p1", kind: "turn", deadlineAt: 1_000 } }, {
-        type: "timeout",
-        playerId: "p1",
-        now: 5_000,
-      });
-      ok(manquee);
-      expect(manquee.state.status).toBe("active");
-      // p2 rend la main sans jouer : c'est de nouveau à p1, toujours absent.
-      const rendu = dispatch(manquee.state, { type: "endTurn", playerId: "p2" });
-      ok(rendu);
-      state = rendu.state;
-      expect(missedDeadlines(state, "p1")).toBe(i);
-    }
-
-    expect(nextTimeoutEndsGame(state, "p1")).toBe(true);
-    const derniere = dispatch({ ...state, turnTimer: { awaitingPlayerId: "p1", kind: "turn", deadlineAt: 1_000 } }, {
-      type: "timeout",
-      playerId: "p1",
-      now: 5_000,
-    });
-    ok(derniere);
-    expect(derniere.state.status).toBe("finished");
-    expect(derniere.state.winnerId).toBe("p2");
-    expect(derniere.events.some((e) => e.type === "GAME_ENDED" && e.reason === "timeout")).toBe(true);
-  });
-
-  it("dans une fenêtre de réaction, l'échéance passe la fenêtre au lieu de rendre la main", () => {
+  it("le geste neutre est joué avant la fin — une fenêtre ouverte ne reste pas suspendue", () => {
+    // Le seuil peut redescendre : quand une échéance ne termine PAS la
+    // partie, elle doit jouer le geste le plus neutre possible. On le
+    // vérifie en donnant au joueur une marge d'échéances.
     const base = expiredTurn();
     const enReaction: GameState = {
       ...base,
+      players: base.players.map((p) => (p.id === "p2" ? { ...p, missedDeadlines: -5 } : p)) as GameState["players"],
       pendingReaction: { events: [], awaitingPlayerId: "p2", priorityQueue: [], usedCandidateKeys: [], turnNumber: base.turnNumber },
       turnTimer: { awaitingPlayerId: "p2", kind: "reaction", deadlineAt: 1_000 },
     };
+    expect(nextTimeoutEndsGame(enReaction, "p2")).toBe(false);
 
     const result = dispatch(enReaction, { type: "timeout", playerId: "p2", now: 5_000 });
     ok(result);
+    expect(result.state.status).toBe("active");
     expect(result.state.pendingReaction).toBeUndefined();
     // La main n'a pas changé de siège : seule la fenêtre s'est refermée.
     expect(result.state.activePlayerId).toBe("p1");
-    expect(missedDeadlines(result.state, "p2")).toBe(1);
   });
 
-  it("le délai d'une fenêtre est plus court que celui d'un tour", () => {
+  it("le délai est le MÊME quelle que soit la question posée — c'est l'inactivité qu'on mesure", () => {
     const state = testGameState();
     const enReaction: GameState = {
       ...state,
       pendingReaction: { events: [], awaitingPlayerId: "p2", priorityQueue: [], usedCandidateKeys: [], turnNumber: 1 },
     };
+    const enFenetre = dispatch(enReaction, { type: "advancePhase", playerId: "p1" });
+    // La fenêtre bloque l'action, mais le chrono a été posé pour p2 : même
+    // enveloppe que pour un tour.
+    expect(allowanceFor(enReaction)).toBe(RULES.INACTIVITY_LIMIT_MS);
+    expect(enFenetre.ok).toBe(false);
+
     const apres = dispatch(enReaction, { type: "passReaction", playerId: "p2" });
     ok(apres);
-    // La fenêtre s'est refermée : on retombe sur un délai de TOUR.
     expect(apres.state.turnTimer?.kind).toBe("turn");
-    expect(RULES.REACTION_TIME_LIMIT_MS).toBeLessThan(RULES.TURN_TIME_LIMIT_MS);
+    expect(allowanceFor(apres.state)).toBe(RULES.INACTIVITY_LIMIT_MS);
+  });
+
+  it("prévient AVANT l'échéance, à une minute puis à deux", () => {
+    const state = expiredTurn({ turnNumber: 1 });
+    const chrono: GameState = { ...state, turnTimer: { awaitingPlayerId: "p1", kind: "turn", deadlineAt: 1_000_000 } };
+    const paliers = warningTimes(chrono);
+    expect(paliers).toHaveLength(RULES.INACTIVITY_WARNINGS_MS.length);
+    // Tous strictement avant l'échéance, et dans l'ordre.
+    for (const palier of paliers) expect(palier).toBeLessThan(chrono.turnTimer!.deadlineAt);
+    expect([...paliers].sort((a, b) => a - b)).toEqual(paliers);
   });
 
   it("survit à une sérialisation : une reconnexion ne rouvre pas le délai", () => {

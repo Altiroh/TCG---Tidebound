@@ -230,14 +230,16 @@ describe("capacités de Navire activées dans la fenêtre d'annonce de Marée", 
     expect(vol.ok).toBe(false);
   });
 
-  it("les quatre Navires du roster portent maintenant leur capacité, sauf La Religieuse", () => {
+  it("les cinq Navires du roster portent leur capacité, et aucune ne reste en texte seul", () => {
     // `capacityText` — le champ « texte seul, rien n'est appliqué » — ne
     // doit plus servir : une capacité non câblée ne se verrait plus.
-    for (const shipId of ["le-courlis", "lerrant", "le-brise-lames", "le-goliath"]) {
+    for (const shipId of ["le-courlis", "lerrant", "le-brise-lames", "le-goliath", "la-religieuse"]) {
       expect(getShipDefinition(shipId).activatableAbility, shipId).toBeDefined();
       expect(getShipDefinition(shipId).capacityText, shipId).toBeUndefined();
     }
-    expect(getShipDefinition("la-religieuse").activatableAbility).toBeUndefined();
-    expect(getShipDefinition("la-religieuse").capacityText).toBeUndefined();
+    // Seules celles qui le disent portent une limite de partie : Réparation
+    // d'urgence est un robinet, pas un coup d'éclat.
+    expect(getShipDefinition("la-religieuse").activatableAbility!.activationsPerGame).toBeUndefined();
+    expect(getShipDefinition("lerrant").activatableAbility!.activationsPerGame).toBe(1);
   });
 });

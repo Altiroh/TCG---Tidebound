@@ -7,29 +7,43 @@
  * changement comme d'un tirage différent. Le banc est donc déterministe à
  * graine donnée, bot compris (`scripts/metrics.ts`).
  *
- * Ce script mesure UN changement en particulier : les capacités de Navire
- * câblées le 22/09/2026 (Tenir la ligne, Changer de cap, Virage court). Il
- * joue chaque matchup deux fois sur LES MÊMES GRAINES — une fois avec, une
- * fois sans — et affiche l'écart. C'est la seule forme de comparaison qui
- * isole le changement : pas deux exécutions à des moments différents du
- * dépôt, mais deux variantes du même instant.
+ * Ce script mesure UN changement à la fois. Il joue chaque matchup deux
+ * fois sur LES MÊMES GRAINES — une fois avec, une fois sans — et affiche
+ * l'écart. C'est la seule forme de comparaison qui isole le changement :
+ * pas deux exécutions à des moments différents du dépôt, mais deux
+ * variantes du même instant.
+ *
+ * Deux variantes mesurables, `--variante` :
+ *   - `navires`  : les capacités de Navire câblées le 22/09/2026 ;
+ *   - `structures` (défaut) : les dégâts de Marée sur les Structures.
  *
  * Et il ne s'arrête pas au winrate : le cadrage demande de savoir POURQUOI
  * les parties se terminent, donc durée, occupation du plateau, dégâts par
  * source, Raison, invocations, pièges déclenchés et capacités de Navire
  * sont affichés côte à côte.
  *
- *   npx tsx scripts/replayReport.ts [parties]
+ *   npx tsx scripts/replayReport.ts [parties] [--variante navires|structures]
  */
 import { SHIP_DATABASE } from "@/game/environment/shipData";
 import type { ShipDefinition } from "@/game/environment/types";
+import { RULES } from "@/game/rules/constants";
 import { DECKS, REFERENCE_DEFENSIVE } from "@/scripts/decks";
 import { cumulerInvocations, f2, mesurerPartie, moy, moyenneAuTour, type Mesures } from "@/scripts/metrics";
 
 const N = Number(process.argv[2] ?? 20);
 
 /** Navires dont la capacité vient d'être câblée — ceux dont on veut l'effet. */
-const NAVIRES_MODIFIES = ["le-brise-lames", "lerrant", "le-courlis"];
+const NAVIRES_MODIFIES = ["le-brise-lames", "lerrant", "le-courlis", "la-religieuse"];
+
+/** Ce qu'on met de côté pour obtenir l'état « avant ». */
+const VARIANTE = process.argv.includes("--variante")
+  ? (process.argv[process.argv.indexOf("--variante") + 1] ?? "structures")
+  : "structures";
+
+const LIBELLE_AVANT: Record<string, string> = {
+  navires: "capacités de Navire non câblées",
+  structures: "la Marée n'abîme pas les Structures",
+};
 
 /** Matchups rejoués : les mêmes que le banc d'essai, contre la référence défensive. */
 const MATCHUPS = Object.keys(DECKS).filter((nom) => nom !== REFERENCE_DEFENSIVE);
@@ -54,12 +68,24 @@ function jouer(nom: string, graines: number[]): Bilan {
 }
 
 /**
- * Retire temporairement les capacités activables des Navires modifiés —
- * l'état « avant », rejoué sur les mêmes graines. `SHIP_DATABASE` est typée
- * en lecture seule pour le reste du projet ; c'est le seul endroit qui a
- * besoin de la deux façons, et elle est remise en place aussitôt.
+ * Rejoue `travail` dans l'état « AVANT » de la variante mesurée.
+ *
+ * `SHIP_DATABASE` et `RULES` sont typées en lecture seule pour le reste du
+ * projet ; c'est le seul endroit qui a besoin de les prendre à l'envers, et
+ * tout est remis en place aussitôt.
  */
-function sansLesCapacites<T>(travail: () => T): T {
+function avantLeChangement<T>(travail: () => T): T {
+  if (VARIANTE === "structures") {
+    const regles = RULES as { TIDE_STRUCTURE_DAMAGE: Partial<Record<string, number>> };
+    const memoire = regles.TIDE_STRUCTURE_DAMAGE;
+    regles.TIDE_STRUCTURE_DAMAGE = {};
+    try {
+      return travail();
+    } finally {
+      regles.TIDE_STRUCTURE_DAMAGE = memoire;
+    }
+  }
+
   const base = SHIP_DATABASE as Map<string, ShipDefinition>;
   const memoire = new Map<string, ShipDefinition>();
   for (const id of NAVIRES_MODIFIES) {
@@ -113,13 +139,13 @@ const COLONNES: Array<[string, keyof ReturnType<typeof resume>]> = [
 ];
 
 console.log(`\n╔══ REPLAYS — ${N} parties par matchup, contre ${REFERENCE_DEFENSIVE}, mêmes graines des deux côtés ══╗\n`);
-console.log("    AVANT = capacités de Navire non câblées · APRÈS = état courant du dépôt\n");
+console.log(`    AVANT = ${LIBELLE_AVANT[VARIANTE] ?? VARIANTE} · APRÈS = état courant du dépôt\n`);
 
 const cumulAvant: Mesures[] = [];
 const cumulApres: Mesures[] = [];
 
 for (const nom of MATCHUPS) {
-  const avant = sansLesCapacites(() => jouer(nom, graines));
+  const avant = avantLeChangement(() => jouer(nom, graines));
   const apres = jouer(nom, graines);
   cumulAvant.push(...avant.parties);
   cumulApres.push(...apres.parties);
