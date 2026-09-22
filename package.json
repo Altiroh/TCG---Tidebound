@@ -18,6 +18,8 @@
     "balance": "tsx scripts/balanceReport.ts",
     "playtest": "tsx scripts/playtestReport.ts",
     "swarm": "tsx scripts/swarmReport.ts",
+    "coverage": "tsx scripts/catalogCoverage.ts",
+    "replay": "tsx scripts/replayReport.ts",
     "icons": "node scripts/generateAppIcons.mjs"
   },
   "dependencies": {

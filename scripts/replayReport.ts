@@ -1,0 +1,158 @@
+/**
+ * REPLAYS D'ÉQUILIBRAGE — ce qu'un changement systémique a réellement
+ * changé.
+ *
+ * Rejouer les mêmes matchups après une modification ne dit rien si les
+ * parties ne sont pas reproductibles : l'écart mesuré pourrait venir du
+ * changement comme d'un tirage différent. Le banc est donc déterministe à
+ * graine donnée, bot compris (`scripts/metrics.ts`).
+ *
+ * Ce script mesure UN changement en particulier : les capacités de Navire
+ * câblées le 22/09/2026 (Tenir la ligne, Changer de cap, Virage court). Il
+ * joue chaque matchup deux fois sur LES MÊMES GRAINES — une fois avec, une
+ * fois sans — et affiche l'écart. C'est la seule forme de comparaison qui
+ * isole le changement : pas deux exécutions à des moments différents du
+ * dépôt, mais deux variantes du même instant.
+ *
+ * Et il ne s'arrête pas au winrate : le cadrage demande de savoir POURQUOI
+ * les parties se terminent, donc durée, occupation du plateau, dégâts par
+ * source, Raison, invocations, pièges déclenchés et capacités de Navire
+ * sont affichés côte à côte.
+ *
+ *   npx tsx scripts/replayReport.ts [parties]
+ */
+import { SHIP_DATABASE } from "@/game/environment/shipData";
+import type { ShipDefinition } from "@/game/environment/types";
+import { DECKS, REFERENCE_DEFENSIVE } from "@/scripts/decks";
+import { cumulerInvocations, f2, mesurerPartie, moy, moyenneAuTour, type Mesures } from "@/scripts/metrics";
+
+const N = Number(process.argv[2] ?? 20);
+
+/** Navires dont la capacité vient d'être câblée — ceux dont on veut l'effet. */
+const NAVIRES_MODIFIES = ["le-brise-lames", "lerrant", "le-courlis"];
+
+/** Matchups rejoués : les mêmes que le banc d'essai, contre la référence défensive. */
+const MATCHUPS = Object.keys(DECKS).filter((nom) => nom !== REFERENCE_DEFENSIVE);
+
+interface Bilan {
+  victoires: number;
+  parties: Mesures[];
+}
+
+function jouer(nom: string, graines: number[]): Bilan {
+  const parties: Mesures[] = [];
+  let victoires = 0;
+  for (const [index, graine] of graines.entries()) {
+    const inverse = index % 2 === 1;
+    const m = inverse
+      ? mesurerPartie(DECKS[REFERENCE_DEFENSIVE]!, DECKS[nom]!, graine)
+      : mesurerPartie(DECKS[nom]!, DECKS[REFERENCE_DEFENSIVE]!, graine);
+    if ((inverse && m.vainqueur === "b") || (!inverse && m.vainqueur === "a")) victoires += 1;
+    parties.push(m);
+  }
+  return { victoires, parties };
+}
+
+/**
+ * Retire temporairement les capacités activables des Navires modifiés —
+ * l'état « avant », rejoué sur les mêmes graines. `SHIP_DATABASE` est typée
+ * en lecture seule pour le reste du projet ; c'est le seul endroit qui a
+ * besoin de la deux façons, et elle est remise en place aussitôt.
+ */
+function sansLesCapacites<T>(travail: () => T): T {
+  const base = SHIP_DATABASE as Map<string, ShipDefinition>;
+  const memoire = new Map<string, ShipDefinition>();
+  for (const id of NAVIRES_MODIFIES) {
+    const ship = base.get(id);
+    if (!ship?.activatableAbility) continue;
+    memoire.set(id, ship);
+    base.set(id, { ...ship, activatableAbility: undefined });
+  }
+  try {
+    return travail();
+  } finally {
+    for (const [id, ship] of memoire) base.set(id, ship);
+  }
+}
+
+const graines = Array.from({ length: N }, (_, i) => 3000 + i);
+
+function resume(bilan: Bilan) {
+  const { parties } = bilan;
+  const postes = new Map<string, number>();
+  for (const m of parties) for (const [poste, n] of Object.entries(m.ancrageParPoste)) postes.set(poste, (postes.get(poste) ?? 0) + n);
+  return {
+    winrate: (bilan.victoires / parties.length) * 100,
+    tours: moy(parties.map((m) => m.toursParJoueur)),
+    slotsT3: moyenneAuTour(parties, "slotsFinDeTour", 3),
+    raisonFin: moy(parties.flatMap((m) => m.raisonFinTour)),
+    mainBloquee: moy(parties.flatMap((m) => m.mainInjouableFinTour)),
+    coutMoyen: moy(parties.flatMap((m) => m.coutsJoues)),
+    invocations: moy(parties.map((m) => m.invocations)),
+    reactions: moy(parties.map((m) => m.reactionsActivees)),
+    navire: moy(parties.map((m) => m.capacitesNavire)),
+    combat: (postes.get("Combat") ?? 0) / parties.length,
+    maree: (postes.get("Marée") ?? 0) / parties.length,
+    deraison: (postes.get("Déraison") ?? 0) / parties.length,
+  };
+}
+
+const COLONNES: Array<[string, keyof ReturnType<typeof resume>]> = [
+  ["winrate %", "winrate"],
+  ["tours/j", "tours"],
+  ["slots T3", "slotsT3"],
+  ["Raison fin", "raisonFin"],
+  ["main bloq.", "mainBloquee"],
+  ["coût moy.", "coutMoyen"],
+  ["invoc.", "invocations"],
+  ["réactions", "reactions"],
+  ["cap. Navire", "navire"],
+  ["dgt combat", "combat"],
+  ["dgt Marée", "maree"],
+  ["dgt Déraison", "deraison"],
+];
+
+console.log(`\n╔══ REPLAYS — ${N} parties par matchup, contre ${REFERENCE_DEFENSIVE}, mêmes graines des deux côtés ══╗\n`);
+console.log("    AVANT = capacités de Navire non câblées · APRÈS = état courant du dépôt\n");
+
+const cumulAvant: Mesures[] = [];
+const cumulApres: Mesures[] = [];
+
+for (const nom of MATCHUPS) {
+  const avant = sansLesCapacites(() => jouer(nom, graines));
+  const apres = jouer(nom, graines);
+  cumulAvant.push(...avant.parties);
+  cumulApres.push(...apres.parties);
+
+  const a = resume(avant);
+  const b = resume(apres);
+  const bouge = COLONNES.filter(([, cle]) => Math.abs(b[cle] - a[cle]) >= 0.05);
+
+  console.log(`### ${nom}`);
+  console.log(`    winrate ${f2(a.winrate)} % → ${f2(b.winrate)} %   ·   durée ${f2(a.tours)} → ${f2(b.tours)} tours par joueur`);
+  if (bouge.length === 0) {
+    console.log("    aucun écart mesurable sur les autres indicateurs.");
+  } else {
+    for (const [etiquette, cle] of bouge) {
+      const delta = b[cle] - a[cle];
+      console.log(`      ${etiquette.padEnd(13)} ${f2(a[cle]).padStart(7)} → ${f2(b[cle]).padStart(7)}   (${delta > 0 ? "+" : ""}${f2(delta)})`);
+    }
+  }
+  console.log("");
+}
+
+console.log("## Toutes parties confondues\n");
+const a = resume({ victoires: 0, parties: cumulAvant });
+const b = resume({ victoires: 0, parties: cumulApres });
+for (const [etiquette, cle] of COLONNES) {
+  if (cle === "winrate") continue;
+  const delta = b[cle] - a[cle];
+  const marque = Math.abs(delta) >= 0.05 ? (delta > 0 ? "  ↑" : "  ↓") : "";
+  console.log(`    ${etiquette.padEnd(13)} ${f2(a[cle]).padStart(7)} → ${f2(b[cle]).padStart(7)}   (${delta > 0 ? "+" : ""}${f2(delta)})${marque}`);
+}
+
+console.log("\n    Invocations par carte, après :");
+for (const { carte, total } of cumulerInvocations(cumulApres).slice(0, 6)) {
+  console.log(`      ${f2(total / cumulApres.length).padStart(6)}  ${carte}`);
+}
+console.log("");
