@@ -28,6 +28,8 @@ export {
   boosterExtension,
   boosterExtensionLabel,
 } from "@/game/boosters/extensions";
+// Où une carte peut être OBTENUE : ce que la Collection filtre.
+export { boostersContaining } from "@/game/boosters/pools";
 export type { BoosterExtension, BoosterKind } from "@/game/boosters/extensions";
 export type {
   BoosterPoolCard,

@@ -48,6 +48,17 @@ export type BoosterKind = "base" | "extension";
 
 export interface BoosterExtension {
   boosterId: string;
+  /**
+   * Nom commercial, tel que `booster_definitions.name` le porte en base.
+   *
+   * Dupliqué ici À DESSEIN : la Collection filtre par booster côté client,
+   * dans un composant qui ne peut pas interroger la base, et le laboratoire
+   * de layout (`previewInventory`) en gardait déjà sa propre copie. Une
+   * seule copie vaut mieux que deux. La BASE reste la source de vérité du
+   * produit — prix, nombre de cartes, disponibilité — et
+   * `tests/game/boosterExtensions.test.ts` garde ces noms sous surveillance.
+   */
+  name: string;
   kind: BoosterKind;
   /**
    * Archétype dominant du pool, `null` si aucune famille ne s'y détache.
@@ -92,6 +103,7 @@ export const ARCHETYPE_DOMINANCE_THRESHOLD = 0.4;
 const EXTENSIONS: readonly BoosterExtension[] = [
   {
     boosterId: BOOSTER_DEFAUT,
+    name: "Booster Défaut",
     kind: "base",
     archetype: null,
     tagline: "Le fond du coffre",
@@ -106,6 +118,7 @@ const EXTENSIONS: readonly BoosterExtension[] = [
     // c'est exact : son pool n'est pas un lot narratif, c'est le socle
     // commun que tous les decks partagent.
     boosterId: BOOSTER_NECESSAIRE_DU_MARIN,
+    name: "Nécessaire du Marin",
     kind: "base",
     archetype: null,
     tagline: "Ce qu'il faut à bord",
@@ -117,6 +130,7 @@ const EXTENSIONS: readonly BoosterExtension[] = [
   },
   {
     boosterId: BOOSTER_POISSONS_PAS_FRAIS,
+    name: "Poissons pas frais",
     kind: "extension",
     archetype: null,
     tagline: "Ce que le filet ramène",
@@ -127,6 +141,7 @@ const EXTENSIONS: readonly BoosterExtension[] = [
   },
   {
     boosterId: BOOSTER_ETRANGETE_SOUS_MARINE,
+    name: "Étrangeté sous-marine",
     kind: "extension",
     archetype: null,
     tagline: "La mer cesse d'imiter la mer",
@@ -137,6 +152,7 @@ const EXTENSIONS: readonly BoosterExtension[] = [
   },
   {
     boosterId: BOOSTER_VEILLEE_DES_DISPARUS,
+    name: "La Veillée des Disparus",
     kind: "extension",
     archetype: "un-dead",
     tagline: "Les ombres se souviennent",

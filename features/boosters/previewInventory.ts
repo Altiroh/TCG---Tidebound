@@ -13,23 +13,16 @@ import type { BoosterInventory } from "@/features/boosters/actions";
  * qui est la moitié du travail.
  *
  * Ce module fabrique l'inventaire à la main : aucun accès base, aucune
- * session, aucune écriture. Les prix et les noms sont ceux de la base au
- * 19/09/2026 — s'ils divergent, c'est le laboratoire qui a tort, jamais
- * l'inverse.
+ * session, aucune écriture. Les noms viennent de `BOOSTER_EXTENSIONS`
+ * depuis le 22/09/2026 — il en gardait sa propre copie, qui avait déjà
+ * manqué l'arrivée du Nécessaire du Marin. Les prix, eux, restent écrits
+ * ici : s'ils divergent de la base, c'est le laboratoire qui a tort.
  *
  * La réserve est volontairement DÉSÉQUILIBRÉE : des extensions bien
  * fournies, une à un seul exemplaire, et deux à zéro. C'est cette dernière
  * ligne qui dit si l'état « non possédée » se lit — grisé au centre, Ouvrir
  * éteint, Market allumé.
  */
-
-/** Noms commerciaux, tels que `booster_definitions.name` les porte. */
-const NAMES: Readonly<Record<string, string>> = {
-  standard: "Booster Défaut",
-  "poissons-pas-frais": "Poissons pas frais",
-  "etrangete-sous-marine": "Étrangeté sous-marine",
-  "la-veillee-des-disparus": "La Veillée des Disparus",
-};
 
 /** Exemplaires en réserve — le cas de figure qu'on veut juger. */
 const OWNED: Readonly<Record<string, number>> = {
@@ -53,7 +46,7 @@ export function previewBoosterInventory(): BoosterInventory {
       const pool = BOOSTER_POOLS[extension.boosterId] ?? [];
       return {
         boosterId: extension.boosterId,
-        name: NAMES[extension.boosterId] ?? extension.boosterId,
+        name: extension.name,
         cardCount: 8,
         price: extension.kind === "base" ? 100 : 150,
         isPurchasable: true,

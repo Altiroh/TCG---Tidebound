@@ -1,10 +1,11 @@
 import { ARCHETYPE_LABELS, CORE_SET, isAbyssalVariant, type CardDefinition, type CardType } from "@/game";
+import { boostersContaining } from "@/game/boosters";
 import { normalizeSearch } from "@/features/collection/cardFilters";
 
 /**
  * État de filtrage de la Collection, et son évaluation.
  *
- * Les quatre axes sont indépendants et se combinent par ET. Ils vivent ici
+ * Les cinq axes sont indépendants et se combinent par ET. Ils vivent ici
  * plutôt que dans l'écran pour que le décompte par facette
  * (`countMatching`) applique EXACTEMENT les mêmes règles que le filtrage
  * réel — un compteur qui diverge du contenu de la grille est pire que pas
@@ -28,6 +29,13 @@ export interface CollectionFilterState {
   ownership: OwnershipFilter;
   /** Multi-sélection ; vide = tous les coûts. */
   costs: number[];
+  /**
+   * Boosters dans lesquels la carte peut tomber. Multi-sélection ; vide =
+   * tous. Une carte cochée par PLUSIEURS boosters sélectionnés n'apparaît
+   * qu'une fois — c'est un OU entre les boosters, un ET avec les autres
+   * axes.
+   */
+  boosters: string[];
   search: string;
 }
 
@@ -36,6 +44,7 @@ export const EMPTY_FILTERS: CollectionFilterState = {
   type: null,
   ownership: "all",
   costs: [],
+  boosters: [],
   search: "",
 };
 
@@ -53,6 +62,26 @@ function matchesVariant(def: CardDefinition, variant: VariantFilter): boolean {
 function matchesOwnership(def: CardDefinition, ownership: OwnershipFilter, owned: ReadonlySet<string>): boolean {
   if (ownership === "all") return true;
   return ownership === "owned" ? owned.has(def.id) : !owned.has(def.id);
+}
+
+/**
+ * D'OÙ VIENT UNE CARTE — l'axe ajouté le 22/09/2026.
+ *
+ * C'est un FILTRE et non un tri, parce qu'une carte n'a pas une extension :
+ * elle a les boosters qui peuvent la donner, et 24 des 254 cartes du
+ * catalogue tombent dans plusieurs. Les ranger « par extension » aurait
+ * demandé d'en élire une au hasard pour chacune ; les filtrer ne demande
+ * rien et répond à la vraie question — « qu'est-ce que j'ai, et qu'est-ce
+ * qui me manque, dans tel sachet ».
+ *
+ * La source est `BOOSTER_POOLS` : ce qui est TIRABLE, pas le `setCode` de
+ * la carte. Les deux divergent — 100 cartes n'ont aucun `setCode`, et une
+ * carte d'un vieux lot peut très bien être reprise dans un booster récent.
+ */
+function matchesBoosters(def: CardDefinition, boosters: string[]): boolean {
+  if (boosters.length === 0) return true;
+  const sources = boostersContaining(def.id);
+  return boosters.some((boosterId) => sources.includes(boosterId));
 }
 
 /**
@@ -118,6 +147,7 @@ export function matchesFilters(
   if (ignore !== "type" && filters.type && def.type !== filters.type) return false;
   if (ignore !== "ownership" && !matchesOwnership(def, filters.ownership, owned)) return false;
   if (ignore !== "costs" && filters.costs.length > 0 && !filters.costs.includes(costBucket(def.cost))) return false;
+  if (ignore !== "boosters" && !matchesBoosters(def, filters.boosters)) return false;
   if (ignore !== "search" && !matchesSearch(def, normalizeSearch(filters.search.trim()))) return false;
   return true;
 }
@@ -141,6 +171,7 @@ export function hasActiveFilters(filters: CollectionFilterState): boolean {
     filters.type !== null ||
     filters.ownership !== "all" ||
     filters.costs.length > 0 ||
+    filters.boosters.length > 0 ||
     filters.search.trim() !== ""
   );
 }

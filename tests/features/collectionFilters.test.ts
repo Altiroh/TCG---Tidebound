@@ -8,6 +8,8 @@ import {
   matchesFilters,
   type CollectionFilterState,
 } from "@/features/collection/collectionFilters";
+import { BOOSTER_EXTENSIONS, SHELF_BOOSTER_IDS, boostersContaining } from "@/game/boosters";
+import { BOOSTER_DEFAUT, BOOSTER_NECESSAIRE_DU_MARIN } from "@/game/boosters/pools";
 
 /**
  * Filtres de la Collection.
@@ -107,5 +109,73 @@ describe("filtres de la Collection", () => {
     expect(hasActiveFilters(filters({ variant: "abyssal" }))).toBe(true);
     expect(hasActiveFilters(filters({ costs: [3] }))).toBe(true);
     expect(hasActiveFilters(filters({ ownership: "missing" }))).toBe(true);
+  });
+});
+
+describe("filtre par extension (22/09/2026)", () => {
+  it("ne garde que les cartes tirables dans le booster coché", () => {
+    const passing = CORE_SET.filter((def) => matchesFilters(def, filters({ boosters: [BOOSTER_NECESSAIRE_DU_MARIN] }), NONE));
+    expect(passing.length).toBeGreaterThan(0);
+    for (const def of passing) expect(boostersContaining(def.id), def.id).toContain(BOOSTER_NECESSAIRE_DU_MARIN);
+    // Et rien de tirable n'est perdu en route.
+    const attendu = CORE_SET.filter((def) => boostersContaining(def.id).includes(BOOSTER_NECESSAIRE_DU_MARIN));
+    expect(passing.map((d) => d.id).sort()).toEqual(attendu.map((d) => d.id).sort());
+  });
+
+  it("plusieurs boosters se lisent en OU, et une carte partagée ne sort qu'une fois", () => {
+    // 24 cartes du catalogue tombent dans plusieurs sachets : cocher deux
+    // boosters doit rendre leur UNION, pas la somme de leurs effectifs.
+    const a = CORE_SET.filter((def) => matchesFilters(def, filters({ boosters: [BOOSTER_DEFAUT] }), NONE));
+    const b = CORE_SET.filter((def) => matchesFilters(def, filters({ boosters: [BOOSTER_NECESSAIRE_DU_MARIN] }), NONE));
+    const union = CORE_SET.filter((def) =>
+      matchesFilters(def, filters({ boosters: [BOOSTER_DEFAUT, BOOSTER_NECESSAIRE_DU_MARIN] }), NONE)
+    );
+
+    const attendu = new Set([...a, ...b].map((def) => def.id));
+    expect(union.map((def) => def.id).sort()).toEqual([...attendu].sort());
+    expect(new Set(union.map((def) => def.id)).size).toBe(union.length);
+    // Il y a bien recouvrement, sinon le test ne prouverait rien.
+    expect(union.length).toBeLessThan(a.length + b.length);
+  });
+
+  it("se combine en ET avec les autres axes", () => {
+    const etat = filters({ boosters: [BOOSTER_NECESSAIRE_DU_MARIN], type: "objet" });
+    const passing = CORE_SET.filter((def) => matchesFilters(def, etat, NONE));
+    expect(passing.length).toBeGreaterThan(0);
+    for (const def of passing) {
+      expect(def.type).toBe("objet");
+      expect(boostersContaining(def.id)).toContain(BOOSTER_NECESSAIRE_DU_MARIN);
+    }
+  });
+
+  it("vide = tous les boosters, et compte comme filtre actif dès qu'il est coché", () => {
+    expect(hasActiveFilters(filters({ boosters: [] }))).toBe(false);
+    expect(hasActiveFilters(filters({ boosters: [BOOSTER_DEFAUT] }))).toBe(true);
+  });
+
+  it("le compteur d'une facette annonce exactement ce que le clic rendra", () => {
+    // `countMatching` ignore l'axe Extension pour cette facette : c'est ce
+    // qui permet de cocher un sachet sans voir tous les autres tomber à 0.
+    for (const extension of BOOSTER_EXTENSIONS) {
+      const affiche = countMatching(filters({ boosters: [BOOSTER_DEFAUT] }), NONE, "boosters", (def) =>
+        boostersContaining(def.id).includes(extension.boosterId)
+      );
+      const obtenu = CORE_SET.filter((def) =>
+        matchesFilters(def, filters({ boosters: [extension.boosterId] }), NONE)
+      ).length;
+      expect(affiche, extension.boosterId).toBe(obtenu);
+    }
+  });
+
+  it("chaque booster du rayon porte un nom, et le rayon couvre tout le catalogue", () => {
+    for (const extension of BOOSTER_EXTENSIONS) {
+      expect(extension.name.trim().length, extension.boosterId).toBeGreaterThan(0);
+    }
+    // Un sachet sans nom donnerait une ligne vide dans la colonne ; une
+    // carte hors rayon serait invisible dès qu'on coche une extension.
+    const horsRayon = CORE_SET.filter(
+      (def) => !boostersContaining(def.id).some((id) => SHELF_BOOSTER_IDS.includes(id))
+    );
+    expect(horsRayon.map((def) => def.id)).toEqual([]);
   });
 });

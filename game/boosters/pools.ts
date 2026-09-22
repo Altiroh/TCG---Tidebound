@@ -427,11 +427,30 @@ export const PURCHASABLE_BOOSTER_IDS: readonly string[] = [
   BOOSTER_VEILLEE_DES_DISPARUS,
 ];
 
+/**
+ * Index carte → boosters, construit une fois.
+ *
+ * La version naïve balayait les six pools à chaque appel. C'était sans
+ * conséquence tant que seul le seed s'en servait ; la Collection, elle,
+ * l'interroge pour chaque carte ET pour chaque facette du filtre par
+ * extension — soit plusieurs milliers d'appels à chaque frappe dans la
+ * recherche.
+ */
+const BOOSTERS_BY_CARD: ReadonlyMap<string, readonly string[]> = (() => {
+  const index = new Map<string, string[]>();
+  for (const [boosterId, cardIds] of Object.entries(BOOSTER_POOLS)) {
+    for (const cardId of cardIds) {
+      const entry = index.get(cardId);
+      if (entry) entry.push(boosterId);
+      else index.set(cardId, [boosterId]);
+    }
+  }
+  return index;
+})();
+
 /** Boosters dans lesquels cette carte peut tomber — vide si elle n'est dans aucun. */
-export function boostersContaining(cardId: string): string[] {
-  return Object.entries(BOOSTER_POOLS)
-    .filter(([, cardIds]) => cardIds.includes(cardId))
-    .map(([boosterId]) => boosterId);
+export function boostersContaining(cardId: string): readonly string[] {
+  return BOOSTERS_BY_CARD.get(cardId) ?? [];
 }
 
 /**

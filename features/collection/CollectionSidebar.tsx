@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { isAbyssalVariant } from "@/game";
+import { BOOSTER_EXTENSIONS, boostersContaining } from "@/game/boosters";
 import { CARD_TYPE_LABELS } from "@/features/match/cardDisplay";
 import { TYPE_FILTERS } from "@/features/collection/cardFilters";
 import {
@@ -107,10 +108,11 @@ function FilterList({ rowCount, children }: { rowCount: number; children: ReactN
 /**
  * Colonne de filtres de la Collection.
  *
- * Quatre axes, et quatre seulement : Variante, Type, Statut de collection,
- * Raison. Aucun filtre d'ARCHÉTYPE — l'appartenance à une famille est une
- * donnée de moteur que le joueur n'a jamais à voir
- * (`game/cards/archetypes.ts`).
+ * Cinq axes : Variante, Type, Statut de collection, Raison, et Extension
+ * depuis le 22/09/2026. Aucun filtre d'ARCHÉTYPE — l'appartenance à une
+ * famille est une donnée de moteur que le joueur n'a jamais à voir
+ * (`game/cards/archetypes.ts`). Une extension, elle, est un PRODUIT : le
+ * joueur l'a achetée, il a le droit de savoir ce qu'il y reste à trouver.
  *
  * Chaque effectif est calculé en appliquant tous les autres axes mais pas
  * le sien (`countMatching`) : le nombre affiché en face d'une ligne est
@@ -207,6 +209,40 @@ export function CollectionSidebar({
           </FilterList>
         </section>
       )}
+
+      <section className={styles.filterSection}>
+        <h2 className={styles.sectionTitle}>Extension</h2>
+        <FilterList rowCount={BOOSTER_EXTENSIONS.length + 1}>
+          <FilterRow
+            label="Toutes"
+            active={filters.boosters.length === 0}
+            count={countFor("boosters", () => true)}
+            onClick={() => onChange({ boosters: [] })}
+          />
+          {BOOSTER_EXTENSIONS.map((extension) => {
+            const active = filters.boosters.includes(extension.boosterId);
+            return (
+              <FilterRow
+                key={extension.boosterId}
+                label={extension.name}
+                active={active}
+                // Le compteur ignore l'axe Extension : il annonce ce que
+                // CE booster donnerait, pas ce que la sélection courante
+                // laisse passer — sinon cocher un sachet mettrait tous les
+                // autres à zéro.
+                count={countFor("boosters", (def) => boostersContaining(def.id).includes(extension.boosterId))}
+                onClick={() =>
+                  onChange({
+                    boosters: active
+                      ? filters.boosters.filter((id) => id !== extension.boosterId)
+                      : [...filters.boosters, extension.boosterId],
+                  })
+                }
+              />
+            );
+          })}
+        </FilterList>
+      </section>
 
       <section className={styles.filterSection}>
         <h2 className={styles.sectionTitle}>Raison</h2>
