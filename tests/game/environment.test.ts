@@ -342,12 +342,18 @@ describe("environnement - malus globaux des Marées (verrouillé, Notion 'Moteur
 });
 
 describe("environnement - decks fournis par le jeu", () => {
-  it("chaque deck d’emprunt — un par Navire — est une liste valide (40-50 cartes, max_copies respecté)", async () => {
+  it("chaque deck d’emprunt est une liste valide (40-50 cartes, max_copies respecté), et aucun Navire ne reste sans deck", async () => {
     const { BORROWED_DECK_LISTS } = await import("@/game/cards/decks/borrowed");
     const { SHIP_SET } = await import("@/game/environment/shipData");
-    // « Navires à couvrir » (Notion « Bibliothèque de decks — v4 ») : les
-    // cinq. Un Navire sans emprunt est un Navire que personne ne jouera.
-    expect(BORROWED_DECK_LISTS).toHaveLength(SHIP_SET.length);
+    // « Navires à couvrir » : les cinq. Un Navire sans emprunt est un
+    // Navire que personne ne jouera. La refonte du 22/09/2026 (Notion
+    // « Decks d'emprunt — refonte depuis zéro · 12 archétypes ») range les
+    // listes par MÉCANIQUE et non plus une par coque : il y en a douze pour
+    // cinq Navires, donc c'est la couverture qui se vérifie, pas le compte.
+    const couverts = new Set(BORROWED_DECK_LISTS.map((deck) => deck.shipId));
+    for (const ship of SHIP_SET) {
+      expect(couverts.has(ship.id), `${ship.id} n'a aucun deck d'emprunt`).toBe(true);
+    }
     for (const deck of BORROWED_DECK_LISTS) {
       const validation = validateDeckList(deck);
       expect(validation.ok, `${deck.name}: ${!validation.ok ? validation.error : ""}`).toBe(true);

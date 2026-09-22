@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { getShipDefinition } from "@/game/environment/shipData";
 import { createGameState } from "@/game/state/createGameState";
-import { DECK_LE_BANC_DEBORDE, DECK_BEC_DANS_LA_BRUME } from "@/game/cards/decks/borrowed";
+import { DECK_LE_GRAND_BANC, DECK_LE_THEATRE_ENGLOUTI } from "@/game/cards/decks/borrowed";
 import { RULES } from "@/game/rules/constants";
 
 function newTestGame(seed = 42) {
   return createGameState({
     gameId: "test-game",
-    player1: { id: "p1", deck: DECK_LE_BANC_DEBORDE },
-    player2: { id: "p2", deck: DECK_BEC_DANS_LA_BRUME },
+    player1: { id: "p1", deck: DECK_LE_GRAND_BANC },
+    player2: { id: "p2", deck: DECK_LE_THEATRE_ENGLOUTI },
     seed,
   });
 }
@@ -55,6 +55,6 @@ describe("createGameState", () => {
   it("ne perd ni ne duplique de carte : deck + main = taille du deck initial", () => {
     const state = newTestGame();
     const totalP1 = state.players[0].deck.length + state.players[0].hand.length;
-    expect(totalP1).toBe(DECK_LE_BANC_DEBORDE.cardIds.length);
+    expect(totalP1).toBe(DECK_LE_GRAND_BANC.cardIds.length);
   });
 });

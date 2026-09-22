@@ -8,10 +8,10 @@ import { CORE_SET } from "@/game/cards/sets/core";
  * le joueur, qui n'a aucune métadonnée écrite.
  *
  * Ce qu'on vérifie n'est pas qu'il retrouve les libellés du catalogue : il
- * ne le peut pas, et il ne doit pas essayer. « Bec dans la Brume » est
- * écrit « Agressif / Pied marin et tempo » quand « Sous la Ligne » est
- * « Contrôle / Abysses et Déraison » — c'est une intention de design, pas
- * une arithmétique.
+ * ne le peut pas, et il ne doit pas essayer. « La Forteresse » est écrite
+ * « Défensif / Garde et Ancrage » quand « Sous la Ligne » est « Contrôle /
+ * Abysses et Déraison » — c'est une intention de design, pas une
+ * arithmétique.
  *
  * Ce qu'on vérifie, c'est qu'il DISCRIMINE : deux decks différents doivent
  * obtenir des profils différents. Une déduction qui dit la même chose de
@@ -37,12 +37,13 @@ describe("deckProfile", () => {
   it("discrimine : ni un seul rôle, ni une seule difficulté pour tout le monde", () => {
     const styles = new Set(PROFILES.map((entry) => entry.profile.style));
     const difficulties = new Set(PROFILES.map((entry) => entry.profile.difficulty));
-    // Les dix listes du catalogue v4 s'étalent de 1,88 à 3,00 de coût
+    // Les dix-huit listes du catalogue s'étalent de 2,15 à 3,98 de coût
     // moyen : au moins trois rôles doivent sortir.
     expect(styles.size).toBeGreaterThanOrEqual(3);
-    // Deux crans de difficulté seulement, et c'est attendu : le catalogue
-    // n'est plus un échantillon large de listes hétéroclites, ce sont dix
-    // decks tous compétitifs, donc tous à peu près aussi occupants. Ce
+    // Deux crans de difficulté seulement suffisent, et c'est attendu : le
+    // catalogue n'est pas un échantillon large de listes hétéroclites, ce
+    // sont des decks tous compétitifs, donc tous à peu près aussi
+    // occupants. Ce
     // qu'on exige ici, c'est que la déduction ne dise pas LA MÊME chose de
     // tout le monde — pas qu'elle balaie toute l'échelle sur un
     // échantillon qui ne la contient pas.
@@ -64,7 +65,7 @@ describe("deckProfile", () => {
   it("reconnaît le Sabordage et la Garde là où les listes les revendiquent", () => {
     const sabordage = PROFILES.find((entry) => entry.deck.id === "tout-recuperer");
     expect(sabordage?.profile.mechanics).toContain("Sabordage");
-    const garde = PROFILES.find((entry) => entry.deck.id === "grace-sous-pression");
+    const garde = PROFILES.find((entry) => entry.deck.id === "la-forteresse");
     expect(garde?.profile.mechanics).toContain("Garde");
   });
 

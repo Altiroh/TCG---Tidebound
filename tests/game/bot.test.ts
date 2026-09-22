@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createGameState } from "@/game/state/createGameState";
-import { DECK_LE_BANC_DEBORDE, DECK_BEC_DANS_LA_BRUME } from "@/game/cards/decks/borrowed";
+import { DECK_LE_GRAND_BANC, DECK_CHASSE_AU_GROS } from "@/game/cards/decks/borrowed";
 import { enumerateCandidateActions } from "@/game/bot/enumerateActions";
 import { runBotTurn } from "@/game/bot/runBotTurn";
 import type { BotDifficulty } from "@/game/bot/types";
@@ -9,8 +9,8 @@ import { instance, testGameState, testPlayer } from "./testHelpers";
 function newTestGame(seed: number) {
   return createGameState({
     gameId: "bot-test-game",
-    player1: { id: "p1", deck: DECK_LE_BANC_DEBORDE },
-    player2: { id: "p2", deck: DECK_BEC_DANS_LA_BRUME },
+    player1: { id: "p1", deck: DECK_LE_GRAND_BANC },
+    player2: { id: "p2", deck: DECK_CHASSE_AU_GROS },
     seed,
   });
 }
@@ -34,13 +34,26 @@ describe("runBotTurn", () => {
       // une capacité de Navire comme Virage court) attend l'ADVERSAIRE. Le
       // serveur fait de même — il fait jouer celui que le moteur désigne.
       const mustPlay = state.pendingReaction?.awaitingPlayerId ?? state.pendingChoice?.playerId ?? active;
+      const avant = state;
       state = runBotTurn(state, mustPlay, "difficile");
-      // Le tour doit toujours progresser : soit la main passe à l'autre
-      // joueur, soit la partie se termine en cours de tour (ex: une
-      // attaque fatale avant même `endTurn`) — dans les deux cas ce n'est
-      // jamais un blocage.
-      if (state.status === "active" && mustPlay === active) {
-        expect(state.activePlayerId).not.toBe(active);
+      if (state.status !== "active") break;
+
+      // Le tour doit toujours PROGRESSER — c'est tout ce que ce test
+      // surveille, et il faut le dire précisément, sinon il refuse du jeu
+      // légal. Rendre la main n'est pas la seule issue : une capacité
+      // déclenchée en cours de tour ouvre une fenêtre pour l'ADVERSAIRE, et
+      // le tour reste alors légitimement du même côté le temps qu'il
+      // réponde (le moteur suspend — il ne choisit jamais à sa place). Ce
+      // qui serait un blocage, c'est un état qui ne bouge plus du tout, ou
+      // un tour qui garde la main sans rien attendre de personne.
+      expect(state, `tour ${i} : l'état n'a pas bougé`).not.toBe(avant);
+      if (mustPlay === active) {
+        const enAttenteDeQuelquun =
+          state.pendingReaction !== undefined || state.pendingChoice !== undefined;
+        expect(
+          state.activePlayerId !== active || enAttenteDeQuelquun,
+          `tour ${i} : ${active} garde la main sans attendre de décision`
+        ).toBe(true);
       }
     }
     expect(["active", "finished"]).toContain(state.status);

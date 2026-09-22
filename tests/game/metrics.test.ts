@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DECK_BEC_DANS_LA_BRUME, DECK_LE_BANC_DEBORDE } from "@/game/cards/decks/borrowed";
+import { DECK_CHASSE_AU_GROS, DECK_LE_GRAND_BANC } from "@/game/cards/decks/borrowed";
 import { COUTS_SUIVIS, cumulerInvocations, mesurerPartie, moyenneAuTour } from "@/scripts/metrics";
 
 /**
@@ -11,7 +11,7 @@ import { COUTS_SUIVIS, cumulerInvocations, mesurerPartie, moyenneAuTour } from "
  * est bien relevé, et qu'ils restent cohérents entre eux.
  */
 describe("mesures d'une partie", () => {
-  const partie = mesurerPartie(DECK_LE_BANC_DEBORDE, DECK_BEC_DANS_LA_BRUME, 11);
+  const partie = mesurerPartie(DECK_LE_GRAND_BANC, DECK_CHASSE_AU_GROS, 11);
 
   it("mesure une partie entière, jusqu'à un vainqueur", () => {
     expect(partie.tours).toBeGreaterThan(1);
@@ -64,7 +64,7 @@ describe("mesures d'une partie", () => {
   });
 
   it("est déterministe à graine donnée — sinon aucune comparaison avant/après n'aurait de sens", () => {
-    const rejoue = mesurerPartie(DECK_LE_BANC_DEBORDE, DECK_BEC_DANS_LA_BRUME, 11);
+    const rejoue = mesurerPartie(DECK_LE_GRAND_BANC, DECK_CHASSE_AU_GROS, 11);
     expect(rejoue.tours).toBe(partie.tours);
     expect(rejoue.vainqueur).toBe(partie.vainqueur);
     expect(rejoue.coutsJoues).toEqual(partie.coutsJoues);

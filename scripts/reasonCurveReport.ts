@@ -13,7 +13,7 @@
  *   npx tsx scripts/reasonCurveReport.ts [nbParties]
  */
 import { createGameState } from "@/game/state/createGameState";
-import { DECK_LE_BANC_DEBORDE, DECK_BEC_DANS_LA_BRUME } from "@/game/cards/decks/borrowed";
+import { DECK_LE_GRAND_BANC, DECK_CHASSE_AU_GROS } from "@/game/cards/decks/borrowed";
 import { botHasSomethingToDo } from "@/game/bot/runBotTurn";
 import { chooseBotAction } from "@/game/bot/chooseAction";
 import { getCardDefinition } from "@/game/cards/sets/core";
@@ -35,8 +35,8 @@ interface Releve {
 function jouer(seed: number): Releve {
   let state: GameState = createGameState({
     gameId: `releve-${seed}`,
-    player1: { id: "a", deck: DECK_LE_BANC_DEBORDE },
-    player2: { id: "b", deck: DECK_BEC_DANS_LA_BRUME },
+    player1: { id: "a", deck: DECK_LE_GRAND_BANC },
+    player2: { id: "b", deck: DECK_CHASSE_AU_GROS },
     seed,
   });
 

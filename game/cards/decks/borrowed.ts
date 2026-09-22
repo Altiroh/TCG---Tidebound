@@ -1,21 +1,36 @@
 import { repeat, type DeckList } from "@/game/cards/decks/types";
 
 /**
- * DECKS D'EMPRUNT — un par Navire, gratuits, choisis UNE fois depuis la
- * Collection à la sortie du tutoriel (Notion « Progression joueur » §3).
+ * DECKS D'EMPRUNT — gratuits, choisis UNE fois depuis la Collection à la
+ * sortie du tutoriel (Notion « Progression joueur » §3).
  *
- * Source de vérité : Notion « Bibliothèque de decks — v4 · Compétitif
- * depuis zéro » (19/09/2026). Cette page a remis les compteurs à zéro :
- * « Toutes les listes précédentes sont abandonnées comme base de
- * construction. » Les listes v3 (Le Courlis, L'Errant, Le Brise-Lames et
- * les archétypes) ne sont plus canoniques et ont été retirées du code avec
- * elles — le banc d'essai du 19/09/2026 les donnait entre 9,4 % et 90,6 %
- * de victoires, ce qui n'est pas un rayon qu'on propose à un joueur.
+ * Source de vérité : Notion « Decks d'emprunt — refonte depuis zéro ·
+ * 12 archétypes » (22/09/2026). Cette page remet les compteurs à zéro une
+ * seconde fois : « les anciens decks d'emprunt sont abandonnés ». Les cinq
+ * listes v4 — un emprunt par Navire, tous des variantes du même plan
+ * direct — ont été retirées avec elle.
  *
- * Ce que la v4 demande à un deck d'emprunt : « Faciles à piloter, pas
- * faibles. Ils doivent utiliser des cartes réellement fortes et un plan
- * direct. » Un emprunt n'est donc PAS une version édulcorée d'un
- * préconstruit : c'est le meilleur deck simple de son Navire.
+ * Ce que la refonte demande, et qui change tout par rapport à la v4 : la
+ * bibliothèque ne se range plus par NAVIRE mais par MÉCANIQUE. Elle doit
+ * « couvrir les grandes mécaniques actuelles sans proposer plusieurs
+ * variantes déguisées du même plan agressif », et permettre de « passer
+ * d'un deck à l'autre avec une expérience réellement différente » :
+ *
+ *   Swarm → Formation → Cimetière → Bounce → Pièges → Forteresse →
+ *   Marée → Sabordage → Raison → Objets → Midrange → Contrôle.
+ *
+ * D'où douze listes et non cinq, et plusieurs decks par Navire : c'est la
+ * mécanique qui choisit la coque, pas l'inverse.
+ *
+ * Deux règles de la page valent d'être répétées ici, parce qu'elles se
+ * perdent vite en construisant :
+ *
+ *  - « rester des decks capables de gagner, pas des listes pédagogiques
+ *    volontairement faibles » ;
+ *  - « ne pas utiliser les dix pièges comme package générique dans tous
+ *    les decks — leur intérêt vient justement de leur spécialisation ».
+ *    La répartition des pièges suit donc le tableau de la page, et un deck
+ *    qui n'a rien à en faire n'en joue aucun.
  *
  * Rappel de §3 : les cartes d'un deck d'emprunt restent PRÊTÉES. Rien
  * n'est crédité à la collection, et les boosters remplacent peu à peu le
@@ -23,199 +38,541 @@ import { repeat, type DeckList } from "@/game/cards/decks/types";
  */
 
 /**
- * Bec dans la Brume — Le Courlis (4 Slots, Raison 12).
+ * 1 — Le Grand Banc. Cra-Poiscail, swarm agressif.
  *
- * Condition de victoire : faire assez de dégâts avant que l'adversaire
- * rentabilise ses permanents lourds. Les 4 Slots deviennent une contrainte
- * POSITIVE — peu de corps, mais presque tous attaquent dès leur arrivée
- * (Pied marin) ou filtrent la main immédiatement.
- */
-export const DECK_BEC_DANS_LA_BRUME: DeckList = {
-  id: "bec-dans-la-brume",
-  name: "Bec dans la Brume",
-  shipId: "le-courlis",
-  description:
-    "Agressif : des corps qui frappent dès leur arrivée et assez de filtrage pour que la main ne soit jamais à court de menace.",
-  cardIds: [
-    // Les corps : Pied marin partout, de 1 à 4 de Raison.
-    ...repeat("sterne-des-embruns", 3),
-    ...repeat("goeland-chapardeur", 3),
-    ...repeat("cormoran-de-fer", 3),
-    ...repeat("pelican-des-cales", 3),
-    ...repeat("marin-des-jetees", 3),
-    ...repeat("murene-aveugle", 3),
-    ...repeat("albatros-de-mauvais-temps", 2),
-    ...repeat("poisson-lanterne", 2),
-    // Ce qui fait monter une petite bête.
-    ...repeat("harpon-de-pont", 3),
-    ...repeat("longue-vue-rayee", 3),
-    ...repeat("plaque-de-fortune", 2),
-    // Le filtrage, qui transforme une pioche morte en la carte qui manque.
-    ...repeat("rations-du-matin-gris", 3),
-    ...repeat("lettre-jamais-ouverte", 3),
-    ...repeat("thermos-du-dernier-quart", 2),
-    ...repeat("cartes-des-courants", 2),
-  ],
-};
-
-/**
- * Cap de Fer — L'Errant (5 Slots, Raison 10).
+ * Le Brise-Lames et ses SIX emplacements : c'est la seule coque qui laisse
+ * la place d'aller au bout du plan. Sa Raison basse (8) ne gêne pas un
+ * deck dont rien ne dépasse 3.
  *
- * Condition de victoire : jouer une menace ou une réponse efficace à
- * presque chaque tour, sans dépendre d'un moteur unique. C'est le deck
- * témoin du rayon — celui qui ne perd jamais parce qu'il n'a pas pioché
- * SA carte.
+ * Aucun piège, et c'est voulu — la page le dit en toutes lettres : « éviter
+ * de remplir ce deck de pièges. Son identité doit rester remplir →
+ * renforcer → frapper. » Les deux seules cartes du Lot 14 sont de la
+ * stabilité, pas du contrôle.
  */
-export const DECK_CAP_DE_FER: DeckList = {
-  id: "cap-de-fer",
-  name: "Cap de Fer",
-  shipId: "lerrant",
-  description:
-    "Midrange : une menace ou une réponse à chaque tour, sans moteur unique — le deck ne dépend jamais d'une seule carte.",
-  cardIds: [
-    ...repeat("marin-des-jetees", 3),
-    ...repeat("matelot-du-sans-nom", 3),
-    ...repeat("crabe-de-fer", 3),
-    ...repeat("poisson-aux-dents-de-verre", 3),
-    ...repeat("poisson-lanterne", 3),
-    ...repeat("marin-aux-yeux-rouges", 3),
-    ...repeat("chose-des-hauts-fonds", 2),
-    ...repeat("guetteur-de-brume", 2),
-    // De quoi rendre chaque corps rentable en combat.
-    ...repeat("harpon-de-pont", 2),
-    ...repeat("plaque-de-fortune", 2),
-    ...repeat("treuil-rouille", 1),
-    // Le fond de terrain, et la main qui se renouvelle.
-    ...repeat("caisses-arrimees", 2),
-    ...repeat("bouee-de-derive", 2),
-    ...repeat("brise-vague-de-fortune", 1),
-    ...repeat("thermos-du-dernier-quart", 2),
-    ...repeat("cartes-des-courants", 2),
-    ...repeat("rations-du-matin-gris", 2),
-    ...repeat("lettre-jamais-ouverte", 2),
-  ],
-};
-
-/**
- * Le Banc Déborde — Le Brise-Lames (6 Slots, Raison 8).
- *
- * Condition de victoire : remplir les 6 Slots mieux qu'aucun autre Navire
- * ne le peut, et transformer chaque corps supplémentaire en pression
- * cumulative. Le Navire est choisi pour ses Slots, pas pour son thème.
- */
-export const DECK_LE_BANC_DEBORDE: DeckList = {
-  id: "le-banc-deborde",
-  name: "Le Banc Déborde",
+export const DECK_LE_GRAND_BANC: DeckList = {
+  id: "le-grand-banc",
+  name: "Le Grand Banc",
   shipId: "le-brise-lames",
   description:
-    "Swarm : sature les six Slots de petits corps et de Péons, puis les renforce en bloc pour que chaque attaque compte double.",
+    "Swarm : remplir le plateau de petits corps, les renforcer tous d'un coup, et frapper avant que l'adversaire ne réponde.",
   cardIds: [
-    // Les corps, le plus tôt possible.
+    // Le banc : tout ce qui coûte 1 ou 2 et se pose sans condition.
     ...repeat("tetard-fesse", 3),
     ...repeat("ptite-fesse", 3),
-    ...repeat("cra-poiscail-messager", 3),
     ...repeat("cra-poiscail-sauteur", 3),
+    ...repeat("cra-poiscail-grand-gueule", 3),
+    ...repeat("cra-poiscail-bavard", 3),
+    ...repeat("cra-poiscail-ramasseur", 3),
+    // Ce qui récompense le nombre.
     ...repeat("banc-de-cra-poiscail", 3),
-    ...repeat("cra-poiscail-grand-gueule", 2),
-    ...repeat("cra-poiscail-bavard", 2),
-    ...repeat("cra-poiscail-chef-de-banc", 2),
-    ...repeat("cra-poiscail-ramasseur", 2),
-    ...repeat("cra-poiscail-medecin", 2),
+    ...repeat("cra-poiscail-chef-de-banc", 3),
+    ...repeat("cra-poiscail-porte-etendard", 2),
+    ...repeat("le-trone-de-bouchon", 2),
+    ...repeat("la-flaque-sacree", 3),
+    ...repeat("le-tas-de-trucs", 2),
+    // Des corps de plus sans passer par la Raison, et le coup de grâce.
+    ...repeat("le-seau", 3),
+    ...repeat("fesses-en-avant", 2),
+    // Lot 14 : de la stabilité, rien d'autre.
+    ...repeat("faire-linventaire", 2),
+  ],
+};
+
+/**
+ * 2 — Chevaliers du Grand Étang. Cra-Poiscail, midrange de formation.
+ *
+ * Moins de corps que Le Grand Banc, mais des pièces qui comptent — et donc
+ * quelque chose à protéger. C'est exactement ce que demande le piège
+ * signature de la page : Filet de Sauvetage donne +2 Résistance à toute la
+ * formation tant qu'il est visible, et sauve la pièce maîtresse une fois
+ * quand il ne l'est pas.
+ */
+export const DECK_CHEVALIERS_DU_GRAND_ETANG: DeckList = {
+  id: "chevaliers-du-grand-etang",
+  name: "Chevaliers du Grand Étang",
+  shipId: "lerrant",
+  description:
+    "Midrange : assembler une formation où chaque pièce renforce les autres, et la protéger plutôt que de la remplacer.",
+  cardIds: [
+    // La formation, dans l'ordre où elle se monte.
+    ...repeat("ecuyer-cra-poiscail", 3),
+    ...repeat("destrier-du-grand-etang", 3),
+    ...repeat("chevalier-cra-poiscail", 2),
+    ...repeat("bourreau-cra-poiscail", 3),
     ...repeat("cra-poiscail-porte-etendard", 2),
     ...repeat("roi-cra-poiscail", 1),
-    // Ce qui renforce le banc, et ce qui le remplit encore.
-    ...repeat("le-seau", 2),
-    ...repeat("la-flaque-sacree", 2),
-    ...repeat("le-trone-de-bouchon", 2),
-    ...repeat("tas-de-bouts-de-bois", 2),
-    ...repeat("fesses-en-avant", 2),
-    ...repeat("thermos-du-dernier-quart", 2),
+    // Le soutien : soigner et relancer, pas ajouter des corps.
+    ...repeat("cra-poiscail-medecin", 3),
+    ...repeat("cra-poiscail-messager", 3),
+    ...repeat("ptite-fesse-grand-reve", 2),
+    // Ce qui transforme une formation en menace.
+    ...repeat("fourchette-du-grand-etang", 3),
+    ...repeat("banniere-en-vieille-chaussette", 2),
+    ...repeat("slip-de-guerre-cra-poiscail", 2),
+    ...repeat("la-quete-du-grand-nenuphar", 2),
+    ...repeat("le-tournoi-du-grand-etang", 2),
+    ...repeat("le-grand-saut", 1),
+    // Lot 14 : le piège signature, et de quoi ne pas rester sans pièce.
+    ...repeat("filet-de-sauvetage", 2),
+    ...repeat("faire-linventaire", 2),
+    ...repeat("dernieres-reserves", 2),
   ],
 };
 
 /**
- * Grâce sous pression — La Religieuse (5 Slots, Raison 10, passif
- * « Pénitence » : la Déraison coûte 1 Ancrage de moins, une fois par tour).
+ * 3 — La Veillée. Un Dead, Cimetière, attrition.
  *
- * Condition de victoire : dépenser plus de Raison que l'adversaire sans
- * mourir de cette dette, pour tenir continuellement plus de plateau et
- * plus d'actions utiles. Le Cra-Poiscail Médecin n'est pas là pour sa
- * famille : il rend 1 Ancrage à chaque Objet brisé, et le deck en brise un
- * par tour.
+ * La Religieuse : Pénitence rend la dette moins chère, et ce deck en prend
+ * beaucoup — il joue à découvert pour tenir la cadence.
+ *
+ * Le Naufragé Impossible (Lot 14) y est un vrai finisher de famille depuis
+ * qu'il porte le sous-type. Pas de Filet de Sauvetage : la page prévient
+ * que « certaines unités veulent mourir », et ce deck en compte trop pour
+ * qu'un anti-destruction ne se retourne pas contre lui.
  */
-export const DECK_GRACE_SOUS_PRESSION: DeckList = {
-  id: "grace-sous-pression",
-  name: "Grâce sous pression",
+export const DECK_LA_VEILLEE: DeckList = {
+  id: "la-veillee",
+  name: "La Veillée",
   shipId: "la-religieuse",
   description:
-    "Endurance active : dépense plus de Raison que l'adversaire, et rembourse la dette en Ancrage à chaque Objet brisé.",
+    "Attrition : la main et le Cimetière forment un circuit, et chaque perte revient sous une autre forme.",
   cardIds: [
-    // Ce qui encaisse pendant que la dette se rembourse.
-    ...repeat("mousse-du-premier-quart", 3),
-    ...repeat("poisson-lanterne", 3),
-    ...repeat("cra-poiscail-medecin", 3),
-    ...repeat("vieux-loup-de-mer", 2),
-    ...repeat("mouette-du-brise-lames", 2),
-    ...repeat("chose-des-hauts-fonds", 2),
-    // Les Objets qu'on brise — la moitié du plan tient là-dessus.
-    ...repeat("thermos-du-dernier-quart", 3),
-    ...repeat("pansements-de-coque", 3),
-    ...repeat("chope", 2),
-    ...repeat("rations-du-matin-gris", 2),
-    ...repeat("lettre-jamais-ouverte", 2),
-    ...repeat("derniere-planche", 2),
-    // Le rapiéçage de fond, et de quoi garder un corps en vie.
-    ...repeat("bouee-de-derive", 3),
-    ...repeat("infirmerie-de-pont", 2),
-    ...repeat("barge-de-reparation", 2),
-    ...repeat("plaque-de-fortune", 2),
-    ...repeat("harnois-de-vigie", 2),
+    // Les petits, qu'on est content de perdre.
+    ...repeat("ptit-bout", 3),
+    ...repeat("cache-cache", 3),
+    ...repeat("encore-cinq-minutes", 3),
+    ...repeat("papa-est-en-mer", 3),
+    ...repeat("promis-jattends", 3),
+    // Ce qui remonte du Cimetière, ou le remplit.
+    ...repeat("on-rentre-bientot", 3),
+    ...repeat("le-copain-du-dessous", 3),
+    ...repeat("maman-revient", 2),
+    ...repeat("tu-mavais-promis", 2),
+    ...repeat("le-gouter", 3),
+    ...repeat("la-petite-chanson", 2),
+    ...repeat("bonne-nuit", 2),
+    ...repeat("la-marelle", 2),
+    // Ce qui ferme la partie.
+    ...repeat("tu-viens-jouer", 2),
+    ...repeat("on-avait-dit-tous-ensemble", 1),
+    ...repeat("le-naufrage-impossible", 1),
+    // Lot 14 : de quoi choisir ce qu'on jette, ce qui est tout le deck.
+    ...repeat("mauvaise-main", 2),
   ],
 };
 
 /**
- * À Portée — Le Goliath (5 Slots, Raison 10, capacité « Canon de proue »).
+ * 4 — Le Théâtre Englouti. Marionnettes, retours en main, arrivées
+ * rejouées.
  *
- * Condition de victoire : forcer des combats où 2 dégâts de Canon
- * transforment une unité adverse rentable en échange perdant, puis
- * attaquer dans les ouvertures ainsi créées. D'où la courbe basse et la
- * Raison disponible : le Canon se paie tous les tours.
+ * Le Courlis n'a que QUATRE emplacements — une contrainte qui cesse d'en
+ * être une quand la même unité vaut trois arrivées. Ses 12 Raison paient
+ * les rappels.
+ *
+ * Corde de Rappel (Lot 14) est la carte que la page appelle de ses vœux :
+ * une Marionnette ciblée par une attaque rentre en main, et son arrivée
+ * repart. Chaîne de Travers tient le tempo pendant que le moteur se monte.
  */
-export const DECK_A_PORTEE: DeckList = {
-  id: "a-portee",
-  name: "À Portée",
-  shipId: "le-goliath",
+export const DECK_LE_THEATRE_ENGLOUTI: DeckList = {
+  id: "le-theatre-englouti-deck",
+  name: "Le Théâtre Englouti",
+  shipId: "le-courlis",
   description:
-    "Artillerie de plateau : des corps bon marché qui tiennent la ligne, et un Canon qui rend chaque échange perdant pour l'adversaire.",
+    "Tempo : les cartes reviennent sans cesse en main pour être rejouées, et chaque retour vaut une arrivée de plus.",
   cardIds: [
-    ...repeat("marin-des-jetees", 3),
-    ...repeat("poisson-lanterne", 3),
-    ...repeat("murene-aveugle", 3),
-    ...repeat("poisson-aux-dents-de-verre", 3),
-    ...repeat("guetteur-mefiant", 3),
+    // La troupe — des arrivées qu'on veut voir plusieurs fois.
+    ...repeat("pulcinella-gonfle", 3),
+    ...repeat("arlecchino-des-profondeurs", 3),
+    ...repeat("arlequin-raccommodeur", 3),
+    ...repeat("pantalone-sans-sou", 3),
+    ...repeat("la-prima-noyee", 3),
+    ...repeat("colombina-aux-cent-visages", 2),
+    ...repeat("il-dottore-des-noyes", 2),
+    ...repeat("il-capitano-naufrage", 2),
+    ...repeat("le-regisseur-sans-visage", 1),
+    // Les rappels eux-mêmes.
+    ...repeat("le-masque-fendu", 3),
+    ...repeat("la-clochette-du-rappel", 3),
+    ...repeat("changement-de-role", 2),
+    ...repeat("rappel-du-public", 2),
+    ...repeat("les-coulisses-inondees", 2),
+    ...repeat("le-theatre-englouti", 1),
+    ...repeat("le-rideau-se-leve", 1),
+    // Lot 14 : un rappel de plus, et du temps pour le monter.
+    ...repeat("corde-de-rappel", 2),
+    ...repeat("chaine-de-travers", 2),
+  ],
+};
+
+/**
+ * 5 — Mineurs de Fond. Pièges, contrôle, bluff.
+ *
+ * Le deck qui exploite le plus franchement la grammaire des
+ * Structures-pièges. Le Brise-Lames n'est pas un hasard : « Tenir la
+ * ligne » protège ses Structures de la Marée, exactement ce dont vit un
+ * plateau fait de pièges à durée limitée, et ses six emplacements
+ * permettent d'en armer plusieurs à la fois.
+ *
+ * L'adversaire doit se demander en permanence ce qui l'attend sous la
+ * Marée. C'est pour ça qu'on trouve ici les pièges de plusieurs familles —
+ * anti-swarm, anti-grosse-unité, anti-Objet — plutôt qu'une seule.
+ */
+export const DECK_MINEURS_DE_FOND: DeckList = {
+  id: "mineurs-de-fond",
+  name: "Mineurs de Fond",
+  shipId: "le-brise-lames",
+  description:
+    "Pièges : chaque Structure posée peut être n'importe laquelle, et l'adversaire paie son développement sans savoir laquelle.",
+  cardIds: [
+    // Les cartouches du Lot 14, une de chaque menace.
+    ...repeat("la-nasse-trop-pleine", 2),
+    ...repeat("jugement-du-phare", 1),
+    ...repeat("barils-de-poudre", 2),
+    ...repeat("pont-mine", 2),
+    ...repeat("chaine-de-travers", 2),
+    ...repeat("fausse-cargaison", 2),
+    ...repeat("cloison-etanche", 2),
+    ...repeat("cale-inondable", 2),
+    ...repeat("derniere-barricade", 2),
+    // Les pièges historiques, qui rendent le bluff crédible.
+    ...repeat("filet-a-la-derive", 3),
+    ...repeat("cloche-dalerte", 2),
+    ...repeat("ancre-de-derive", 2),
+    // Lot 14 : chercher le piège qui manque, et sauver celui qui tombe.
+    ...repeat("journal-de-bord", 3),
+    ...repeat("planche-de-fortune", 2),
+    ...repeat("charge-de-demolition", 2),
+    // Assez de corps pour ne pas perdre en attendant.
+    ...repeat("guetteur-de-brume", 3),
     ...repeat("crabe-de-fer", 3),
     ...repeat("matelot-du-sans-nom", 3),
-    ...repeat("mouette-du-brise-lames", 2),
-    // La Raison, que le Canon prélève avant même qu'un tir soit décidé.
-    ...repeat("thermos-du-dernier-quart", 3),
-    ...repeat("rations-du-matin-gris", 3),
-    ...repeat("lettre-jamais-ouverte", 3),
-    // De quoi survivre à l'échange qu'on vient de forcer.
-    ...repeat("bouee-de-derive", 2),
-    ...repeat("harnois-de-vigie", 2),
-    ...repeat("plaque-de-fortune", 2),
-    ...repeat("brise-vague-de-fortune", 2),
   ],
 };
 
 /**
- * Les cinq decks d'emprunt, un par Navire — l'ordre est celui de la page
- * v4, donc celui du rayon à l'écran.
+ * 6 — La Forteresse. Défense, Garde, Ancrage.
+ *
+ * Trente-six points de coque et six emplacements : le Brise-Lames est la
+ * carte de ce deck autant que ses cartes.
+ *
+ * Garde-fou explicite de la page : « le deck ne doit pas devenir une boucle
+ * de soin infinie. Son objectif est de retarder suffisamment la partie pour
+ * rendre les grosses cartes pertinentes. » D'où UN seul finisher, et un
+ * soin plafonné par l'Ancrage de départ du Navire depuis le 22/09.
+ */
+export const DECK_LA_FORTERESSE: DeckList = {
+  id: "la-forteresse",
+  name: "La Forteresse",
+  shipId: "le-brise-lames",
+  description:
+    "Défense : encaisser, réparer, et ne laisser passer que le temps — jusqu'à ce qu'une seule grosse menace suffise.",
+  cardIds: [
+    // Les murs.
+    ...repeat("crabe-de-fer", 3),
+    ...repeat("chose-des-hauts-fonds", 3),
+    ...repeat("mouette-du-brise-lames", 3),
+    ...repeat("cormoran-de-fer", 3),
+    ...repeat("le-dernier-rempart", 2),
+    // Les Structures qui tiennent la coque.
+    ...repeat("brise-vague-de-fortune", 3),
+    ...repeat("cage-de-flottaison", 2),
+    ...repeat("carcasse-renversee", 2),
+    ...repeat("barge-de-reparation", 2),
+    ...repeat("infirmerie-de-pont", 2),
+    // Lot 14 : les trois pièges défensifs de la page, et les réparations.
+    ...repeat("derniere-barricade", 2),
+    ...repeat("cloison-etanche", 2),
+    ...repeat("cale-inondable", 2),
+    ...repeat("signal-de-detresse", 2),
+    ...repeat("reparations-durgence", 2),
+    ...repeat("trousse-du-bord", 2),
+    ...repeat("on-flotte-encore", 2),
+    // Le seul finisher : il doit être rare pour rester une récompense.
+    ...repeat("lamiral-sans-pavillon", 1),
+  ],
+};
+
+/**
+ * 7 — Descente aux Abysses. Contrôle de Marée.
+ *
+ * L'Errant et « Changer de cap » : une fois par partie, l'orientation
+ * s'inverse au moment choisi. Dans un deck qui fabrique lui-même
+ * l'environnement, c'est le tour où la descente cesse d'être négociable.
+ *
+ * Pont Miné plutôt qu'un autre piège : la page le désigne pour « punir une
+ * tentative de finish rapide », ce qui est exactement ce qui tue ce deck.
+ */
+export const DECK_DESCENTE_AUX_ABYSSES: DeckList = {
+  id: "descente-aux-abysses",
+  name: "Descente aux Abysses",
+  shipId: "lerrant",
+  description:
+    "Contrôle de Marée : fabriquer soi-même l'environnement, et y être chez soi quand l'adversaire n'y survit plus.",
+  cardIds: [
+    // Ceux qui lisent et poussent la Marée.
+    ...repeat("cartographe-du-large", 3),
+    ...repeat("anguille-des-profondeurs", 3),
+    ...repeat("raie-des-fosses", 2),
+    ...repeat("sondeur-des-mauvaises-eaux", 2),
+    ...repeat("gardien-du-sondeur", 2),
+    // Les instruments : durée, intensité, orientation.
+    ...repeat("regulateur-de-courant", 3),
+    ...repeat("balise-des-profondeurs", 2),
+    ...repeat("compas-aux-aiguilles-noires", 2),
+    ...repeat("horloge-de-maree", 2),
+    ...repeat("ancre-de-tempete", 2),
+    ...repeat("cloche-du-grand-fond", 2),
+    ...repeat("sonde-des-courants-perdus", 2),
+    ...repeat("epave-engloutie", 2),
+    // Le forçage, et ce qui vit en bas.
+    ...repeat("la-gueule-sous-la-mer", 1),
+    ...repeat("sept-brasses-plus-bas", 1),
+    ...repeat("ce-que-la-maree-rend", 2),
+    ...repeat("loeil-sous-la-mer", 3),
+    ...repeat("la-chose-qui-remonte", 2),
+    // Lot 14 : de quoi survivre à un adversaire pressé.
+    ...repeat("pont-mine", 2),
+  ],
+};
+
+/**
+ * 8 — Épavistes. Structures, Sabordage, recyclage.
+ *
+ * À ne pas confondre avec Mineurs de Fond, et la page insiste : « Mineurs
+ * veut conserver un piège jusqu'à son déclenchement ; Épavistes veut
+ * volontairement faire disparaître ses propres Structures. » Les deux
+ * jouent des Structures, pour des raisons opposées.
+ *
+ * Cloison Étanche y est le seul piège, et il y sert de deux façons : son
+ * aura tient les Structures debout tant qu'elle est visible, sa Réaction
+ * cachée en sauve une qui devait partir — ce que ce deck décide.
+ */
+export const DECK_EPAVISTES: DeckList = {
+  id: "epavistes",
+  name: "Épavistes",
+  shipId: "le-goliath",
+  description:
+    "Recyclage : une Structure détruite ou Sabordée n'est pas une perte, c'est la ressource que le deck attendait.",
+  cardIds: [
+    // Ceux qui vivent de ce qui casse.
+    ...repeat("plongeur-des-epaves", 2),
+    ...repeat("charpentier-des-epaves", 3),
+    ...repeat("mecanicien-aux-mains-noires", 2),
+    // Les Structures à faire disparaître.
+    ...repeat("caisses-arrimees", 3),
+    ...repeat("epaves-accrochees", 3),
+    ...repeat("tas-de-bouts-de-bois", 3),
+    ...repeat("radeau-de-fortune", 3),
+    ...repeat("caisse-des-dernieres-planches", 3),
+    ...repeat("atelier-de-calfatage", 2),
+    // Les outils du démontage.
+    ...repeat("levier-de-lest", 2),
+    ...repeat("grappin-de-recuperation", 3),
+    ...repeat("clous-de-recuperation", 3),
+    ...repeat("derniere-planche", 2),
+    // Lot 14 : garder ce qu'on veut garder, jeter le reste.
+    ...repeat("cloison-etanche", 2),
+    ...repeat("planche-de-fortune", 2),
+    ...repeat("journal-de-bord", 2),
+  ],
+};
+
+/**
+ * 9 — À bout de Raison. Pression sur la Raison, Déraison, attrition
+ * mentale.
+ *
+ * Le Courlis et ses 12 Raison : il faut en avoir beaucoup pour se permettre
+ * d'en faire perdre à l'autre sans se retrouver à sec soi-même.
+ *
+ * Différence avec Descente aux Abysses, que la page prend soin de poser :
+ * « Descente contrôle l'environnement ; À bout de Raison attaque
+ * directement l'économie mentale adverse. » Fausse Cargaison y est la carte
+ * la plus cohérente du lot — elle augmente le prix payé par quelqu'un qui
+ * n'a déjà plus de quoi payer.
+ */
+export const DECK_A_BOUT_DE_RAISON: DeckList = {
+  id: "a-bout-de-raison",
+  name: "À bout de Raison",
+  shipId: "le-courlis",
+  description:
+    "Attrition mentale : vider la réserve de Raison adverse, puis regarder sa main devenir injouable.",
+  cardIds: [
+    // Ceux qui font payer.
+    ...repeat("marin-aux-yeux-rouges", 3),
+    ...repeat("ponton-aux-cloches", 3),
+    ...repeat("quelque-chose-sous-la-coque", 2),
+    ...repeat("le-chant-sous-la-ligne", 2),
+    ...repeat("anguille-des-profondeurs", 3),
+    ...repeat("cloche-immergee", 2),
+    // Les Anomalies, qui imposent un choix dont aucune branche n'est bonne.
+    ...repeat("les-voix-dans-le-sillage", 2),
+    ...repeat("ils-sont-sous-nous", 2),
+    ...repeat("le-fond-vous-regarde", 2),
+    ...repeat("la-mer-reclame-davantage", 2),
+    // Ce qui regarde la main d'en face pour savoir où appuyer.
+    ...repeat("guetteur-de-brume", 3),
+    ...repeat("la-bouee-qui-regardait", 2),
+    ...repeat("matelot-insomniaque", 3),
+    ...repeat("cartographe-du-large", 2),
+    // Lot 14 : taxer, retarder, renvoyer.
+    ...repeat("fausse-cargaison", 2),
+    ...repeat("chaine-de-travers", 2),
+    ...repeat("par-dessus-bord", 3),
+  ],
+};
+
+/**
+ * 10 — Arsenal de Pont. Objets, Bris depuis la main, jeu réactif.
+ *
+ * Le cœur du deck n'est pas son plateau mais SA MAIN : l'adversaire ne sait
+ * jamais quelle réponse peut partir. Pantalone Sans-Sou en est le moteur
+ * naturel — il récompense précisément le Bris direct depuis la main.
+ *
+ * Le Bris depuis la main coûte max(1, ceil(coût / 2)), soit 2 Raison pour
+ * les six Objets réactifs du Lot 14 : c'est sur ce prix-là qu'ils ont été
+ * calibrés, et c'est ce qui rend la main jouable à deux reprises par tour.
+ */
+export const DECK_ARSENAL_DE_PONT: DeckList = {
+  id: "arsenal-de-pont",
+  name: "Arsenal de Pont",
+  shipId: "lerrant",
+  description:
+    "Réactif : rien ne se voit venir, tout part de la main — et chaque Objet brisé paie le suivant.",
+  cardIds: [
+    // Le moteur, et de quoi tenir le plateau en attendant.
+    ...repeat("pantalone-sans-sou", 3),
+    ...repeat("marin-des-jetees", 2),
+    // Les six réactifs du Lot 14 : la main devient une menace permanente.
+    ...repeat("harpon-a-ressort", 2),
+    ...repeat("bouclier-decume", 2),
+    ...repeat("signal-de-detresse", 2),
+    ...repeat("corde-de-rappel", 2),
+    ...repeat("planche-de-fortune", 2),
+    ...repeat("contre-harpon", 2),
+    // Le removal, qui part du même endroit.
+    ...repeat("coup-de-harpon", 3),
+    ...repeat("sabotage-discret", 2),
+    ...repeat("charge-de-demolition", 2),
+    ...repeat("coupez-les-cordages", 2),
+    // Trouver l'Objet qui manque, et réparer ce qui a tenu.
+    ...repeat("faire-linventaire", 3),
+    ...repeat("fouille-de-la-cale", 3),
+    ...repeat("bandages-humides", 2),
+    ...repeat("thermos-du-dernier-quart", 2),
+    ...repeat("chope", 2),
+    // La Structure signature : elle taxe les Objets d'en face.
+    ...repeat("fausse-cargaison", 2),
+  ],
+};
+
+/**
+ * 11 — Chasse au Gros. Midrange tactique, dégâts ciblés.
+ *
+ * La boucle que le Lot 14 rend enfin lisible : BLESSER, puis TERMINER.
+ * Vieux Harponneur ne vise qu'une unité déjà blessée, Qu'on en Finisse
+ * qu'une unité blessée CE TOUR — les deux récompensent d'avoir frappé
+ * avant.
+ *
+ * Le Goliath et son canon : un tir arme la seconde moitié de la boucle sans
+ * dépenser de carte. Pas de combo — le deck cherche le meilleur échange à
+ * chaque tour, et finit avec ce qui reste debout.
+ */
+export const DECK_CHASSE_AU_GROS: DeckList = {
+  id: "chasse-au-gros",
+  name: "Chasse au Gros",
+  shipId: "le-goliath",
+  description:
+    "Midrange : blesser d'abord, terminer ensuite, et ne jamais offrir un échange qu'on ne gagne pas.",
+  cardIds: [
+    // Ceux qui blessent.
+    ...repeat("guetteur-mefiant", 3),
+    ...repeat("matelot-du-sans-nom", 3),
+    ...repeat("harponneur-du-dernier-quai", 3),
+    ...repeat("requin-balafre", 3),
+    ...repeat("poisson-aux-dents-de-verre", 3),
+    ...repeat("crabe-de-fer", 3),
+    // Lot 14 : ceux qui terminent.
+    ...repeat("coup-de-harpon", 3),
+    ...repeat("harpon-a-ressort", 2),
+    ...repeat("quon-en-finisse", 2),
+    ...repeat("par-dessus-bord", 2),
+    ...repeat("vieux-harponneur", 2),
+    ...repeat("pont-mine", 2),
+    // Ce qui reste debout quand l'échange est fini.
+    ...repeat("ce-qui-suit-le-navire", 3),
+    ...repeat("baleine-aux-cicatrices-blanches", 2),
+    ...repeat("le-brise-ligne", 2),
+    ...repeat("lamiral-sans-pavillon", 1),
+    ...repeat("chaine-de-fer-noir", 1),
+  ],
+};
+
+/**
+ * 12 — Après la Tempête. Contrôle lourd, wipes, finishers.
+ *
+ * Le deck accepte volontairement de laisser l'adversaire développer un
+ * plateau avant de le reprendre. Le Courlis, encore : douze Raison, c'est
+ * la seule coque qui pose une carte à 7 ou 8 sans y passer trois tours —
+ * et la mesure du 22/09 disait qu'aucun deck n'y arrivait.
+ *
+ * « Le deck doit contenir relativement peu de petites unités » : il n'y en
+ * a qu'une sorte ici, et elle est là pour tenir, pas pour attaquer. Tout le
+ * reste est du nettoyage et sept menaces lourdes, en un exemplaire chacune
+ * pour qu'un wipe ne se joue jamais deux fois de suite.
+ */
+export const DECK_APRES_LA_TEMPETE: DeckList = {
+  id: "apres-la-tempete",
+  name: "Après la Tempête",
+  shipId: "le-courlis",
+  description:
+    "Contrôle : survivre, tout nettoyer, et ne reconstruire qu'une fois — avec ce que personne d'autre ne peut payer.",
+  cardIds: [
+    // Le nettoyage, du plus léger au plus définitif.
+    ...repeat("le-pont-est-plein", 2),
+    ...repeat("panique-sur-le-pont", 2),
+    ...repeat("vague-scelerate", 2),
+    ...repeat("chacun-sa-place", 1),
+    ...repeat("le-large-se-fache", 1),
+    ...repeat("abandonnez-le-navire", 1),
+    ...repeat("la-mer-reprend-tout", 1),
+    // Les pièges qui achètent les tours qui manquent.
+    ...repeat("la-nasse-trop-pleine", 2),
+    ...repeat("jugement-du-phare", 1),
+    ...repeat("derniere-barricade", 2),
+    ...repeat("cage-de-flottaison", 2),
+    // Tenir jusque-là.
+    ...repeat("crabe-de-fer", 3),
+    ...repeat("chirurgien-du-bord", 2),
+    ...repeat("trousse-du-bord", 2),
+    // Voir venir : un deck de contrôle qui pioche mal ne contrôle rien.
+    ...repeat("un-peu-de-repit", 3),
+    ...repeat("dernieres-reserves", 3),
+    ...repeat("faire-linventaire", 3),
+    ...repeat("journal-de-bord", 2),
+    // Et de quoi conclure, une fois le plateau vide.
+    ...repeat("le-brise-ligne", 2),
+    ...repeat("lamiral-sans-pavillon", 1),
+    ...repeat("leviathan-balafre", 1),
+    ...repeat("dernier-jour-en-mer", 1),
+  ],
+};
+
+/**
+ * Les douze, dans l'ordre de la page — qui est aussi celui de la couverture
+ * mécanique : swarm, formation, cimetière, bounce, pièges, forteresse,
+ * marée, sabordage, raison, objets, midrange, contrôle.
  */
 export const BORROWED_DECK_LISTS: readonly DeckList[] = [
-  DECK_BEC_DANS_LA_BRUME,
-  DECK_CAP_DE_FER,
-  DECK_LE_BANC_DEBORDE,
-  DECK_GRACE_SOUS_PRESSION,
-  DECK_A_PORTEE,
+  DECK_LE_GRAND_BANC,
+  DECK_CHEVALIERS_DU_GRAND_ETANG,
+  DECK_LA_VEILLEE,
+  DECK_LE_THEATRE_ENGLOUTI,
+  DECK_MINEURS_DE_FOND,
+  DECK_LA_FORTERESSE,
+  DECK_DESCENTE_AUX_ABYSSES,
+  DECK_EPAVISTES,
+  DECK_A_BOUT_DE_RAISON,
+  DECK_ARSENAL_DE_PONT,
+  DECK_CHASSE_AU_GROS,
+  DECK_APRES_LA_TEMPETE,
 ];

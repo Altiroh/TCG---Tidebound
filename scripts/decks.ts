@@ -5,39 +5,37 @@
  * d'équilibrage doivent jouer exactement les mêmes listes que le rapport de
  * rythme, sinon leurs chiffres ne se comparent pas.
  *
- * `La Ligne Tenue` reste la RÉFÉRENCE DÉFENSIVE : c'est contre elle que se
- * mesure ce qui attaque.
+ * DEPUIS LE 22/09/2026, le banc joue les DECKS D'EMPRUNT et rien d'autre.
+ * Il tournait jusque-là sur une sélection composite — cinq emprunts et six
+ * préconstruits — entretenue à la main dans ce fichier. Deux problèmes, et
+ * le second est le vrai :
+ *
+ *  - elle ne se mettait à jour que si quelqu'un y pensait, donc elle
+ *    dérivait du catalogue à chaque lot ;
+ *  - elle mesurait un rayon que personne ne joue. Les douze emprunts sont
+ *    désormais ce qu'un joueur a réellement entre les mains à la sortie du
+ *    tutoriel, et ils couvrent les douze grandes mécaniques du jeu. Mesurer
+ *    autre chose, c'est mesurer à côté.
+ *
+ * Les préconstruits restent un produit (Jeton de Préconstruit) ; ils ne
+ * sont simplement plus la référence d'équilibrage.
  */
-import {
-  DECK_A_PORTEE,
-  DECK_BEC_DANS_LA_BRUME,
-  DECK_CAP_DE_FER,
-  DECK_GRACE_SOUS_PRESSION,
-  DECK_LE_BANC_DEBORDE,
-} from "@/game/cards/decks/borrowed";
-import {
-  DECK_DERNIER_RAPPEL,
-  DECK_GRENOUILLES_AU_CANON,
-  DECK_LA_LIGNE_TENUE,
-  DECK_LES_PETITS_ATTENDENT,
-  DECK_SOUS_LA_LIGNE,
-  DECK_TOUT_RECUPERER,
-} from "@/game/cards/decks/precon";
+import { BORROWED_DECK_LISTS } from "@/game/cards/decks/borrowed";
 import type { DeckList } from "@/game/cards/decks/types";
 
-export const DECKS: Record<string, DeckList> = {
-  "La Ligne Tenue": DECK_LA_LIGNE_TENUE,
-  "Bec dans la Brume": DECK_BEC_DANS_LA_BRUME,
-  "Cap de Fer": DECK_CAP_DE_FER,
-  "Le Banc Déborde": DECK_LE_BANC_DEBORDE,
-  "Grâce sous pression": DECK_GRACE_SOUS_PRESSION,
-  "À Portée": DECK_A_PORTEE,
-  "Dernier Rappel": DECK_DERNIER_RAPPEL,
-  "Sous la Ligne": DECK_SOUS_LA_LIGNE,
-  "Tout Récupérer": DECK_TOUT_RECUPERER,
-  "Les Petits Attendent": DECK_LES_PETITS_ATTENDENT,
-  "Grenouilles au Canon": DECK_GRENOUILLES_AU_CANON,
-};
+/** Les douze emprunts, indexés par leur nom affiché. */
+export const DECKS: Record<string, DeckList> = Object.fromEntries(
+  BORROWED_DECK_LISTS.map((deck) => [deck.name, deck])
+);
 
-/** La liste de référence défensive, contre laquelle tout le reste se mesure. */
-export const REFERENCE_DEFENSIVE = "La Ligne Tenue";
+/**
+ * La liste de référence DÉFENSIVE, contre laquelle tout ce qui attaque se
+ * mesure.
+ *
+ * La Forteresse remplace La Ligne Tenue : c'est le deck d'emprunt dont le
+ * plan est explicitement d'encaisser (« retarder suffisamment la partie
+ * pour rendre les grosses cartes pertinentes »). Comparaison impossible
+ * avec les relevés d'avant le 22/09 — ce n'est pas le même deck, et le
+ * catalogue a changé de 48 cartes entre-temps.
+ */
+export const REFERENCE_DEFENSIVE = "La Forteresse";

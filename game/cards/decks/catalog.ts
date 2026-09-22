@@ -5,10 +5,13 @@ import type { DeckList } from "@/game/cards/decks/types";
 /**
  * Catalogue des decks FOURNIS PAR LE JEU — decks d'emprunt et préconstruits.
  *
- * Source de vérité des LISTES : Notion « Bibliothèque de decks — v4 ·
- * Compétitif depuis zéro » (19/09/2026), reconstruite depuis le catalogue
- * de cartes ; les listes v3 (les trois decks de base système et les dix
- * archétypes/laboratoires) ont été retirées avec elle.
+ * Source de vérité des LISTES : Notion « Decks d'emprunt — refonte depuis
+ * zéro · 12 archétypes » (22/09/2026) pour les emprunts, et « Bibliothèque
+ * de decks — v4 » (19/09/2026) pour les préconstruits.
+ *
+ * Les deux familles ne se rangent plus de la même façon, et c'est voulu :
+ * un préconstruit reste attaché à SON Navire, un emprunt est désormais
+ * rangé par MÉCANIQUE et plusieurs peuvent partager une coque.
  * Source de vérité du RÔLE des deux familles : Notion « Progression
  * joueur », sections 3 et 4. Elles ne doivent pas être confondues :
  *
@@ -56,31 +59,70 @@ type DeckMeta = Omit<CatalogDeck, keyof DeckList>;
  * l'identifiant déduit sert à filtrer.
  */
 const DECK_META: Record<string, DeckMeta> = {
-  // --- Decks d'emprunt (un par Navire) ----------------------------------
-  "bec-dans-la-brume": {
-    style: "Agressif / Pied marin et tempo",
-    difficulty: 2,
-    mechanics: ["Pied marin", "Petits corps rapides", "Filtrage de main"],
-  },
-  "cap-de-fer": {
-    style: "Midrange / qualité de cartes",
-    difficulty: 2,
-    mechanics: ["Courbe équilibrée", "Marins et Créatures", "Une réponse à chaque tour"],
-  },
-  "le-banc-deborde": {
+  // --- Decks d'emprunt (12 axes, refonte du 22/09/2026) -----------------
+  //
+  // La difficulté mesure le PILOTAGE, jamais la puissance (règle de la
+  // page v4, toujours valable) : un deck qui gagne en posant ses cartes
+  // dans l'ordre est facile même s'il est fort.
+  "le-grand-banc": {
     style: "Agressif / swarm de plateau",
-    difficulty: 2,
+    difficulty: 1,
     mechanics: ["Saturation des Slots", "Bonus de groupe", "Invocation de Péons"],
   },
-  "grace-sous-pression": {
-    style: "Défensif / endurance active",
-    difficulty: 2,
-    mechanics: ["Ancrage regagné en brisant des Objets", "Soins répétés", "Économie de Raison"],
+  "chevaliers-du-grand-etang": {
+    style: "Midrange / formation Cra-Poiscail",
+    difficulty: 3,
+    mechanics: ["Unités qui se renforcent l'une l'autre", "Équipements", "Protection des pièces clés"],
   },
-  "a-portee": {
-    style: "Midrange / artillerie de plateau",
+  "la-veillee": {
+    style: "Contrôle / Cimetière et attrition",
+    difficulty: 3,
+    mechanics: ["Défausse volontaire", "Récupération au Cimetière", "Pression continue"],
+  },
+  "le-theatre-englouti-deck": {
+    style: "Tempo / Marionnettes et arrivées rejouées",
+    difficulty: 4,
+    mechanics: ["Retour en main", "Arrivées répétées", "Réduction de coût"],
+  },
+  "mineurs-de-fond": {
+    style: "Contrôle / Structures-pièges et bluff",
+    difficulty: 4,
+    mechanics: ["Réactions cachées", "Fenêtres de Marée", "Punition du développement"],
+  },
+  "la-forteresse": {
+    style: "Défensif / Garde et Ancrage",
     difficulty: 2,
-    mechanics: ["Canon de proue à armer chaque tour", "Échanges forcés", "Corps bon marché"],
+    mechanics: ["Grosse coque", "Réduction de dégâts", "Réparations"],
+  },
+  "descente-aux-abysses": {
+    style: "Contrôle / Marée et Abysses",
+    difficulty: 4,
+    mechanics: ["Forçage de Marée", "Orientation", "Créatures des profondeurs"],
+  },
+  "epavistes": {
+    style: "Contrôle / Structures, Sabordage et recyclage",
+    difficulty: 3,
+    mechanics: ["Sabordage volontaire", "Récupération au Cimetière", "Ancrage regagné"],
+  },
+  "a-bout-de-raison": {
+    style: "Contrôle / pression sur la Raison",
+    difficulty: 4,
+    mechanics: ["Perte de Raison adverse", "Déraison imposée", "Lecture de la main"],
+  },
+  "arsenal-de-pont": {
+    style: "Tempo / Objets et Bris depuis la main",
+    difficulty: 5,
+    mechanics: ["Bris depuis la main", "Réponses pendant le tour adverse", "Removal ciblé"],
+  },
+  "chasse-au-gros": {
+    style: "Midrange / dégâts ciblés",
+    difficulty: 2,
+    mechanics: ["Blesser puis terminer", "Canon de proue", "Échanges favorables"],
+  },
+  "apres-la-tempete": {
+    style: "Contrôle / nettoyages de plateau",
+    difficulty: 5,
+    mechanics: ["Board wipes", "Pièges anti-swarm", "Menaces à 6-8 Raison"],
   },
   // --- Préconstruits (Jeton de Préconstruit) ----------------------------
   "dernier-rappel": {
@@ -122,10 +164,9 @@ function withMeta(deck: DeckList): CatalogDeck {
 }
 
 /**
- * Decks d'EMPRUNT proposés à la sortie du tutoriel — un par Navire.
- * « Faciles à piloter, pas faibles » (v4) : un emprunt n'est pas une
- * version édulcorée d'un préconstruit, c'est le meilleur plan DIRECT de
- * son Navire.
+ * Decks d'EMPRUNT proposés à la sortie du tutoriel — douze axes, un par
+ * grande mécanique. « Rester des decks capables de gagner, pas des listes
+ * pédagogiques volontairement faibles » (refonte du 22/09/2026).
  */
 export const BORROWED_DECKS: readonly CatalogDeck[] = BORROWED_DECK_LISTS.map(withMeta);
 

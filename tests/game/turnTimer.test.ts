@@ -3,7 +3,7 @@ import { dispatch } from "@/game/engine";
 import { RULES } from "@/game/rules/constants";
 import { allowanceFor, missedDeadlines, nextTimeoutEndsGame, playerToAct, turnTimerExpired, warningTimes } from "@/game/rules/turnTimer";
 import { createGameState } from "@/game/state/createGameState";
-import { DECK_LE_BANC_DEBORDE, DECK_BEC_DANS_LA_BRUME } from "@/game/cards/decks/borrowed";
+import { DECK_LE_GRAND_BANC, DECK_CHASSE_AU_GROS } from "@/game/cards/decks/borrowed";
 import { getPlayer, type GameState } from "@/game/state/types";
 import { instance, testGameState, testPlayer } from "./testHelpers";
 
@@ -51,8 +51,8 @@ describe("chrono de tour", () => {
   it("une partie neuve part avec un délai, et chaque action le recale sur la question suivante", () => {
     const state = createGameState({
       gameId: "chrono",
-      player1: { id: "p1", deck: DECK_LE_BANC_DEBORDE },
-      player2: { id: "p2", deck: DECK_BEC_DANS_LA_BRUME },
+      player1: { id: "p1", deck: DECK_LE_GRAND_BANC },
+      player2: { id: "p2", deck: DECK_CHASSE_AU_GROS },
       seed: 4,
     });
     expect(state.turnTimer?.awaitingPlayerId).toBe("p1");

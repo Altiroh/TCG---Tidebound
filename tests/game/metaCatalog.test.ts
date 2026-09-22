@@ -22,6 +22,7 @@ import {
   isFree,
   ownershipLabel,
   RULES,
+  SHIP_SET,
   validateDeckList,
 } from "@/game";
 
@@ -93,9 +94,15 @@ describe("catalogue de decks fournis (§3 et §4)", () => {
     for (const deck of PRECON_DECKS) expect(isBorrowedDeckId(deck.id)).toBe(false);
   });
 
-  it("propose un deck d'emprunt par Navire de départ, tous distincts", () => {
-    const ships = BORROWED_DECKS.map((deck) => deck.shipId);
-    expect(new Set(ships).size).toBe(ships.length);
+  it("couvre chaque Navire de départ — aucun navire sans deck d'emprunt", () => {
+    // La refonte du 22/09/2026 range les douze decks d'emprunt par MÉCANIQUE
+    // et non plus par navire : plusieurs partagent la même coque. Ce qui doit
+    // rester vrai, c'est qu'un joueur qui découvre un navire trouve au moins
+    // une liste pour l'essayer.
+    const couverts = new Set(BORROWED_DECKS.map((deck) => deck.shipId));
+    for (const ship of SHIP_SET) {
+      expect(couverts.has(ship.id), `${ship.id} n'a aucun deck d'emprunt`).toBe(true);
+    }
   });
 
   it("donne à chaque deck les métadonnées que la fiche doit afficher", () => {
