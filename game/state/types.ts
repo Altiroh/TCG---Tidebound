@@ -70,6 +70,13 @@ export interface PlayerState {
    */
   costDiscounts?: CostDiscount[];
   /**
+   * Unités posées par ce joueur depuis l'entame du tour de table courant,
+   * remis à zéro au début de son tour. Lu par
+   * `CostDiscount.appliesAfterUnitsPlayedThisTurn` — « après la troisième
+   * unité jouée » n'a pas d'autre façon de se dire.
+   */
+  unitsPlayedThisTurn?: number;
+  /**
    * Où en est la capacité activable du Navire
    * (`ShipDefinition.activatableAbility`) pour ce joueur. Absent : jamais
    * activée. Porté par le JOUEUR et non par une carte — le Navire n'est pas
@@ -161,7 +168,16 @@ export interface ShipAbilityState {
  * au calcul et non carte par carte.
  */
 export interface CostDiscount {
-  /** Raison retirée au coût imprimé. */
+  /**
+   * Raison retirée au coût imprimé — NÉGATIVE pour une MAJORATION
+   * (« les unités supplémentaires coûtent +2 Raison », Pas Tous à la Fois !,
+   * Lot 14).
+   *
+   * Un seul mécanisme pour les deux sens, à dessein : une majoration est
+   * une réduction qui compte à l'envers, et en faire une structure à part
+   * aurait doublé le chemin de lecture du coût — l'endroit exact où une
+   * divergence passe inaperçue.
+   */
   amount: number;
   /** Ne s'applique qu'aux cartes de ce sous-type (ex: "marionnette"). */
   subtype?: string;
@@ -169,6 +185,18 @@ export interface CostDiscount {
   cardTypes?: string[];
   /** Nombre de cartes encore concernées. Décrémenté à chaque usage. */
   uses: number;
+  /**
+   * Ne s'applique qu'À PARTIR de la N-ième unité posée par ce joueur dans
+   * le tour (« après la troisième unité jouée par chaque joueur »). La
+   * carte en cours compte : à 3, c'est la QUATRIÈME qui paie.
+   */
+  appliesAfterUnitsPlayedThisTurn?: number;
+  /**
+   * `uses` ne se décrémente pas : le modificateur vaut pour TOUTES les
+   * cartes concernées jusqu'à son expiration. Une taxe dit « les unités
+   * supplémentaires », pas « la prochaine ».
+   */
+  persistent?: boolean;
   /** Tour au-delà duquel la réduction est perdue (« ce tour »). */
   expiresAfterTurn: number;
 }

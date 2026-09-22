@@ -95,11 +95,22 @@ function returnPermanentToHand(
 }
 
 /** Une réduction de coût s'applique-t-elle à cette carte ? */
-export function discountApplies(discount: CostDiscount, def: CardDefinition, turnNumber: number): boolean {
-  if (discount.uses <= 0) return false;
+export function discountApplies(
+  discount: CostDiscount,
+  def: CardDefinition,
+  turnNumber: number,
+  /** Unités déjà posées par le joueur ce tour-ci, celle en cours NON comprise. */
+  unitsPlayedThisTurn = 0
+): boolean {
+  if (!discount.persistent && discount.uses <= 0) return false;
   if (turnNumber > discount.expiresAfterTurn) return false;
   if (discount.subtype && def.subtype !== discount.subtype) return false;
   if (discount.cardTypes && !discount.cardTypes.includes(def.type)) return false;
+  // « après la troisième unité jouée » : la carte en cours est la
+  // (n+1)-ième, donc le seuil se compare à ce qui a DÉJÀ été posé.
+  if (discount.appliesAfterUnitsPlayedThisTurn !== undefined && unitsPlayedThisTurn < discount.appliesAfterUnitsPlayedThisTurn) {
+    return false;
+  }
   return true;
 }
 
@@ -389,6 +400,23 @@ function resolveUnitTargetsUnfiltered(
       }
       const owner = findUnitOwner(state, context.chosenTargetInstanceId);
       const unit = owner?.board.find((u) => u.instanceId === context.chosenTargetInstanceId);
+      return noDraw(unit && owner ? [{ unit, ownerId: owner.id }] : []);
+    }
+    case "pendingAttacker": {
+      // Pas d'attaque suspendue, ou un tir de Navire (dont l'« attaquant »
+      // est un joueur, pas une carte) : rien à viser.
+      const attaque = state.pendingAttack;
+      if (!attaque || attaque.kind === "tirDeNavire") return noDraw([]);
+      const owner = findUnitOwner(state, attaque.attackerInstanceId);
+      const unit = owner?.board.find((u) => u.instanceId === attaque.attackerInstanceId);
+      return noDraw(unit && owner ? [{ unit, ownerId: owner.id }] : []);
+    }
+    case "attackTarget": {
+      // Attaque directe au Navire : aucune unité n'est ciblée.
+      const defenseur = state.pendingAttack?.defenderInstanceId;
+      if (!defenseur) return noDraw([]);
+      const owner = findUnitOwner(state, defenseur);
+      const unit = owner?.board.find((u) => u.instanceId === defenseur);
       return noDraw(unit && owner ? [{ unit, ownerId: owner.id }] : []);
     }
     case "shotTarget": {
@@ -1290,6 +1318,33 @@ export function resolveEffect(
       return { state: nextState, events };
     }
 
+    case "surchargeCards": {
+      const majoration = amountValue(effect.amount, state, context.controllerId);
+      if (majoration <= 0) return { state, events };
+
+      // « chaque joueur » : la taxe se pose sur les deux, chacun avec son
+      // propre compteur d'unités posées — le seuil est individuel.
+      const taxes = resolvePlayerTargets(state, effect, context);
+      const cibles = taxes.length > 0 ? taxes : [getPlayer(state, context.controllerId)];
+      let nextState = state;
+      for (const cible of cibles) {
+        const joueur = getPlayer(nextState, cible.id);
+        const taxe: CostDiscount = {
+          amount: -majoration,
+          uses: Math.max(1, effect.uses ?? 1),
+          expiresAfterTurn: state.turnNumber + (effect.lastsExtraTurns ?? 0),
+          ...(effect.persistentTax ? { persistent: true } : {}),
+          ...(effect.afterUnitsPlayedThisTurn !== undefined
+            ? { appliesAfterUnitsPlayedThisTurn: effect.afterUnitsPlayedThisTurn }
+            : {}),
+          ...(effect.filter?.subtype ? { subtype: effect.filter.subtype } : {}),
+          ...(effect.filter?.cardTypes ? { cardTypes: [...effect.filter.cardTypes] } : {}),
+        };
+        nextState = replacePlayer(nextState, { ...joueur, costDiscounts: [...(joueur.costDiscounts ?? []), taxe] });
+      }
+      return { state: nextState, events };
+    }
+
     case "discountNextCards": {
       const reduction = amountValue(effect.amount, state, context.controllerId);
       if (reduction <= 0) return { state, events };
@@ -1298,8 +1353,9 @@ export function resolveEffect(
       const discount: CostDiscount = {
         amount: reduction,
         uses: Math.max(1, effect.uses ?? 1),
-        // « ce tour » : la réduction meurt avec le tour où elle est posée.
-        expiresAfterTurn: state.turnNumber,
+        // « ce tour » : la réduction meurt avec le tour où elle est posée,
+        // sauf mention explicite d'une portée plus longue.
+        expiresAfterTurn: state.turnNumber + (effect.lastsExtraTurns ?? 0),
         ...(effect.filter?.subtype ? { subtype: effect.filter.subtype } : {}),
         ...(effect.filter?.cardTypes ? { cardTypes: [...effect.filter.cardTypes] } : {}),
       };

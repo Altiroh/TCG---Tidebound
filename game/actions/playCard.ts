@@ -58,10 +58,15 @@ function effectiveCost(def: CardDefinition, state: GameState, playerId?: PlayerI
   if (playerId === undefined) return printed;
 
   const player = state.players.find((p) => p.id === playerId);
+  const poseesCeTour = player?.unitsPlayedThisTurn ?? 0;
   const reduction = (player?.costDiscounts ?? [])
-    .filter((discount) => discountApplies(discount, def, state.turnNumber))
+    .filter((discount) => discountApplies(discount, def, state.turnNumber, poseesCeTour))
     .reduce((sum, discount) => sum + discount.amount, 0);
-  if (reduction <= 0) return printed;
+  if (reduction === 0) return printed;
+  // Une MAJORATION (`amount` négatif, Pas Tous à la Fois !) n'est bornée
+  // par rien : le plancher existe pour empêcher une réduction de rendre une
+  // carte gratuite, pas pour empêcher une taxe de coûter cher.
+  if (reduction < 0) return printed - reduction;
 
   return Math.max(Math.min(printed, MIN_DISCOUNTED_COST), printed - reduction);
 }
@@ -76,9 +81,16 @@ function consumeCostDiscounts(state: GameState, playerId: PlayerId, def: CardDef
   const player = state.players.find((p) => p.id === playerId);
   if (!player?.costDiscounts?.length) return state;
 
+  const poseesCeTour = player.unitsPlayedThisTurn ?? 0;
   const remaining = player.costDiscounts
-    .map((discount) => (discountApplies(discount, def, state.turnNumber) ? { ...discount, uses: discount.uses - 1 } : discount))
-    .filter((discount) => discount.uses > 0 && state.turnNumber <= discount.expiresAfterTurn);
+    .map((discount) =>
+      // Un modificateur PERSISTANT ne se consomme pas : « les unités
+      // supplémentaires », ce n'est pas « la prochaine ».
+      !discount.persistent && discountApplies(discount, def, state.turnNumber, poseesCeTour)
+        ? { ...discount, uses: discount.uses - 1 }
+        : discount
+    )
+    .filter((discount) => (discount.persistent || discount.uses > 0) && state.turnNumber <= discount.expiresAfterTurn);
 
   return {
     ...state,
@@ -225,6 +237,17 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
   // La réduction est dépensée en même temps que la Raison, jamais avant :
   // une pose refusée plus haut ne doit pas avoir consommé la charge.
   nextState = consumeCostDiscounts(payment.state, player.id, def);
+  // Compté APRÈS le paiement : « après la troisième unité jouée », c'est la
+  // quatrième qui paie, donc la carte en cours ne doit pas s'être déjà
+  // comptée quand son propre coût est calculé.
+  if ((UNIT_CARD_TYPES as readonly string[]).includes(def.type)) {
+    nextState = {
+      ...nextState,
+      players: nextState.players.map((p) =>
+        p.id === player.id ? { ...p, unitsPlayedThisTurn: (p.unitsPlayedThisTurn ?? 0) + 1 } : p
+      ) as GameState["players"],
+    };
+  }
 
   events.push({ ...base, type: "PLAY_CARD", playerId: player.id, instanceId: instance.instanceId, cardId: def.id });
   events.push({ ...base, type: "REASON_CHANGED", playerId: player.id, delta: -payment.paid });

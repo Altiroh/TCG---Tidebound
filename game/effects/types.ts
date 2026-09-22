@@ -201,7 +201,21 @@ export type EffectType =
    * arbitrairement une carte en bonne santé à 1 Résistance. Il ne fait donc
    * rien si la cible n'est pas condamnée.
    */
-  | "surviveWithHealth";
+  | "surviveWithHealth"
+  /**
+   * « après la troisième unité jouée par chaque joueur, les unités
+   * supplémentaires coûtent +2 Raison » (Pas Tous à la Fois !, Lot 14).
+   *
+   * L'exact opposé de `discountNextCards`, et le même mécanisme dans
+   * l'état (`CostDiscount`, dont le montant peut être négatif) : une
+   * majoration est une réduction qui compte à l'envers.
+   *
+   * `amount` porte la majoration, `filter` sa restriction, `uses` le
+   * nombre de cartes concernées — ou, avec `persistentTax`, toutes celles
+   * qui passent jusqu'à l'expiration. `target` dit QUI est taxé :
+   * `allPlayers` pour « chaque joueur ».
+   */
+  | "surchargeCards";
 
 /** Une valeur numérique d'effet, pour l'instant une constante — prête à
  * être étendue vers des formules (ex: "= nombre d'unités contrôlées"). */
@@ -363,6 +377,27 @@ export type TargetSelector =
   /** La carte qui a DÉCLENCHÉ la capacité en cours (ex: Bannière en Vieille Chaussette, qui renforce le Cra-Poiscail qui vient d'être invoqué). */
   | { kind: "triggerSource" }
   /**
+   * L'ATTAQUANT de l'attaque en cours d'interception
+   * (`pendingAttack.attackerInstanceId`) — ex: Pont Miné, « détruisez cette
+   * unité avant qu'elle n'inflige ses dégâts » ; Harpon à Ressort,
+   * « infligez-lui 2 dégâts ».
+   *
+   * N'a de sens que dans une fenêtre d'interception : hors d'elle il n'y a
+   * pas d'attaque suspendue, et la cible est vide. Un TIR DE NAVIRE n'a pas
+   * de carte attaquante — la cible est alors vide aussi, plutôt que de
+   * désigner quelque chose qui n'existe pas.
+   */
+  | { kind: "pendingAttacker" }
+  /**
+   * La CIBLE de l'attaque en cours d'interception
+   * (`pendingAttack.defenderInstanceId`) — ex: Corde de Rappel, « lorsqu'une
+   * de vos unités est ciblée par une attaque […] renvoyez cette unité dans
+   * votre main ».
+   *
+   * Vide pour une attaque directe au Navire : il n'y a pas d'unité ciblée.
+   */
+  | { kind: "attackTarget" }
+  /**
    * Ce que le joueur a désigné en TIRANT avec la capacité de son Navire
    * (`ShipArmedShot`) : le permanent adverse visé, ou — s'il n'en a désigné
    * aucun, comme une attaque directe — le joueur adverse lui-même. Une même
@@ -478,6 +513,24 @@ export interface EffectDefinition {
    * propriétaire, exactement comme le texte le dit.
    */
   silences?: boolean;
+  /**
+   * Pour `surchargeCards` : la taxe ne se consomme pas carte par carte,
+   * elle vaut pour toutes celles qui passent jusqu'à son expiration.
+   */
+  persistentTax?: boolean;
+  /**
+   * Pour `surchargeCards` : ne s'applique qu'à partir de la N-ième unité
+   * posée dans le tour par le joueur taxé (« après la troisième unité
+   * jouée »).
+   */
+  afterUnitsPlayedThisTurn?: number;
+  /**
+   * Pour `surchargeCards`/`discountNextCards` : dernier tour de table où le
+   * modificateur vaut encore, compté À PARTIR du tour courant. `0` (défaut)
+   * = « ce tour » ; `1` = « jusqu'à votre prochain tour », qui couvre le
+   * tour adverse intercalé.
+   */
+  lastsExtraTurns?: number;
   /**
    * Filtre optionnel. Il sert deux usages, avec le même vocabulaire :
    *

@@ -349,6 +349,7 @@ export function entameDeTour(state: GameState, eventsAvant: GameEvent[] = []): A
     // va attaquer : « la troisième unité adverse qui attaque pendant un
     // même tour » se compte dans le tour où elles sont portées.
     attacksDeclaredThisTurn: 0,
+    unitsPlayedThisTurn: 0,
   };
 
   nextState = {
