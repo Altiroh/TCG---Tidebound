@@ -1389,6 +1389,15 @@ export function resolveEffect(
     }
 
     case "transform":
+    case "cancelObjectEffect": {
+      // Hors d'un Bris suspendu, il n'y a rien à annuler.
+      if (!state.pendingObjectBreak) return { state, events };
+      return {
+        state: { ...state, pendingObjectBreak: { ...state.pendingObjectBreak, cancelled: true } },
+        events,
+      };
+    }
+
     case "keepUnitsDestroyRest": {
       const garde = Math.max(0, effect.uses ?? 1);
       // Le contrôleur d'abord, l'adversaire ensuite : c'est lui qui joue la

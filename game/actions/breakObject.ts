@@ -3,6 +3,7 @@ import type { EffectContext } from "@/game/effects/resolveEffect";
 import { resolveEffect } from "@/game/effects/resolveEffect";
 import { resolveEffectSequence } from "@/game/effects/resolveSequence";
 import {
+  collectReactionCandidates,
   processDiscardedFromHandTriggers,
   processGraveyardRecoveryTriggers,
   processReturnedToHandTriggers,
@@ -38,6 +39,131 @@ import type { ActionResult, BreakObjectAction } from "@/game/actions/types";
  */
 export function handBreakCost(def: CardDefinition): number {
   return Math.max(1, Math.ceil(def.cost / 2));
+}
+
+/**
+ * Un adversaire peut-il ANNULER l'effet de ce Bris (Fausse Cargaison) ?
+ *
+ * On ne suspend que si la réponse est oui. La question se pose en termes
+ * STRUCTURELS — une capacité éligible dont l'un des effets est
+ * `cancelObjectEffect` — et jamais en nommant une carte : le jour où une
+ * deuxième carte annule un Bris, elle marchera sans une ligne de plus.
+ */
+function peutAnnulerLeBris(
+  state: GameState,
+  briseurId: PlayerId,
+  instanceId: string,
+  cardId: string,
+  fromHand: boolean,
+  turnNumber: number
+): boolean {
+  const evenement = {
+    trigger: "onObjectBroken" as const,
+    playerId: briseurId,
+    cardId,
+    sourceInstanceId: instanceId,
+    fromHand,
+  };
+  return state.players.some((joueur) => {
+    if (joueur.id === briseurId) return false;
+    return collectReactionCandidates(state, [evenement], joueur.id, turnNumber).some((candidat) =>
+      (getCardDefinition(candidat.cardId).abilities?.[candidat.abilityIndex]?.effects ?? []).some(
+        (effet) => effet.type === "cancelObjectEffect"
+      )
+    );
+  });
+}
+
+
+/**
+ * Ce qui suit un Bris une fois l'Objet parti : ses propres effets, les
+ * déclenchements qu'ils réveillent, puis le fait « vous avez Brisé un
+ * Objet » lui-même.
+ *
+ * Extrait pour être appelable aux DEUX moments où il peut se produire —
+ * tout de suite, ou après une fenêtre d'annulation (`pendingObjectBreak`).
+ * `sansEffetsPropres` couvre le second cas quand l'annulation a été
+ * activée : l'Objet reste brisé, et tout ce qui réagit à un Bris se
+ * déclenche — seul ce que SON texte allait faire est jeté.
+ */
+function resoudreEffetsDeBris(
+  state: GameState,
+  def: CardDefinition,
+  context: EffectContext,
+  sansEffetsPropres: boolean
+): { state: GameState; events: GameEvent[] } {
+  const events: GameEvent[] = [];
+  let nextState = state;
+  const turnNumber = context.turnNumber;
+
+  let breakEffectEvents: GameEvent[] = [];
+  if (!sansEffetsPropres) {
+    const broken = resolveEffectSequence(nextState, def.onBreakEffects ?? [], context);
+    nextState = broken.state;
+    events.push(...broken.events);
+    breakEffectEvents = [...broken.events];
+  }
+
+  // Péons invoqués par le Bris (ex: Le Seau) : eux aussi arrivent en jeu.
+  const summoned = processSummonEnterTriggers(nextState, breakEffectEvents, turnNumber);
+  nextState = summoned.state;
+  events.push(...summoned.events);
+
+  // Marionnettes renvoyées en main par le Bris (ex: La Clochette du Rappel).
+  const recalled = processReturnedToHandTriggers(nextState, breakEffectEvents, turnNumber);
+  nextState = recalled.state;
+  events.push(...recalled.events);
+
+  // Cartes défaussées par le Bris (ex: Le Goûter, Lot 13).
+  const discardedByBreak = processDiscardedFromHandTriggers(nextState, breakEffectEvents, turnNumber);
+  nextState = discardedByBreak.state;
+  events.push(...discardedByBreak.events);
+
+  // Cartes repêchées au Cimetière par le Bris (ex: La Petite Chanson).
+  const recoveredByBreak = processGraveyardRecoveryTriggers(nextState, breakEffectEvents, turnNumber);
+  nextState = recoveredByBreak.state;
+  events.push(...recoveredByBreak.events);
+
+  // Le Bris lui-même est un fait auquel des cartes réagissent
+  // ("la première fois à chaque tour que vous Brisez un Objet").
+  const brokenTrigger = processTrigger(
+    nextState,
+    {
+      trigger: "onObjectBroken",
+      playerId: context.controllerId,
+      cardId: def.id,
+      sourceInstanceId: context.sourceInstanceId,
+      fromHand: context.brokenFromHand === true,
+    },
+    turnNumber
+  );
+  nextState = brokenTrigger.state;
+  events.push(...brokenTrigger.events);
+
+  return { state: nextState, events };
+}
+
+/**
+ * Reprend un Bris que `dispatch` avait suspendu le temps d'une fenêtre
+ * d'annulation. Appelé par le moteur, jamais par une action.
+ */
+export function resumeObjectBreakEffects(
+  state: GameState,
+  suspendu: NonNullable<GameState["pendingObjectBreak"]>
+): { state: GameState; events: GameEvent[] } {
+  return resoudreEffetsDeBris(
+    state,
+    getCardDefinition(suspendu.cardId),
+    {
+      controllerId: suspendu.playerId,
+      sourceInstanceId: suspendu.instanceId,
+      chosenTargetInstanceId: suspendu.chosenTargetInstanceId,
+      chosenGraveyardInstanceId: suspendu.chosenGraveyardInstanceId,
+      brokenFromHand: suspendu.brokenFromHand,
+      turnNumber: suspendu.turnNumber,
+    },
+    suspendu.cancelled === true
+  );
 }
 
 /** Clé `oncePerTurnFlags` de la taxe de Bris adverse (Cloche d'Alerte). */
@@ -262,40 +388,32 @@ export function breakObject(state: GameState, action: BreakObjectAction): Action
     turnNumber: state.turnNumber,
   };
 
-  const broken = resolveEffectSequence(nextState, def.onBreakEffects ?? [], context);
-  nextState = broken.state;
-  events.push(...broken.events);
-  const breakEffectEvents: GameEvent[] = [...broken.events];
+  // --- SUSPENSION POUR ANNULATION (Fausse Cargaison, Lot 14) -----------
+  //
+  // L'Objet est brisé et payé ; ce qui attend, c'est ce que son texte
+  // allait faire. On ne s'arrête QUE si quelqu'un a de quoi l'annuler :
+  // sans cette garde, tous les Bris du jeu changeraient de rythme pour une
+  // seule carte, et le moment où « la première fois que vous Brisez un
+  // Objet » se déclenche bougerait sous les pieds des cartes existantes.
+  if (peutAnnulerLeBris(nextState, player.id, unit.instanceId, def.id, action.fromHand === true, state.turnNumber)) {
+    return {
+      ok: true,
+      state: {
+        ...nextState,
+        pendingObjectBreak: {
+          playerId: player.id,
+          instanceId: unit.instanceId,
+          cardId: def.id,
+          brokenFromHand: action.fromHand === true,
+          ...(action.targetInstanceId ? { chosenTargetInstanceId: action.targetInstanceId } : {}),
+          ...(action.chosenGraveyardInstanceId ? { chosenGraveyardInstanceId: action.chosenGraveyardInstanceId } : {}),
+          turnNumber: state.turnNumber,
+        },
+      },
+      events,
+    };
+  }
 
-  // Péons invoqués par le Bris (ex: Le Seau) : eux aussi arrivent en jeu.
-  const summoned = processSummonEnterTriggers(nextState, breakEffectEvents, state.turnNumber);
-  nextState = summoned.state;
-  events.push(...summoned.events);
-
-  // Marionnettes renvoyées en main par le Bris (ex: La Clochette du Rappel).
-  const recalled = processReturnedToHandTriggers(nextState, breakEffectEvents, state.turnNumber);
-  nextState = recalled.state;
-  events.push(...recalled.events);
-
-  // Cartes défaussées par le Bris (ex: Le Goûter, Lot 13).
-  const discardedByBreak = processDiscardedFromHandTriggers(nextState, breakEffectEvents, state.turnNumber);
-  nextState = discardedByBreak.state;
-  events.push(...discardedByBreak.events);
-
-  // Cartes repêchées au Cimetière par le Bris (ex: La Petite Chanson).
-  const recoveredByBreak = processGraveyardRecoveryTriggers(nextState, breakEffectEvents, state.turnNumber);
-  nextState = recoveredByBreak.state;
-  events.push(...recoveredByBreak.events);
-
-  // Le Bris lui-même est un fait auquel des cartes réagissent
-  // ("la première fois à chaque tour que vous Brisez un Objet").
-  const brokenTrigger = processTrigger(
-    nextState,
-    { trigger: "onObjectBroken", playerId: player.id, cardId: def.id, sourceInstanceId: unit.instanceId, fromHand: action.fromHand === true },
-    state.turnNumber
-  );
-  nextState = brokenTrigger.state;
-  events.push(...brokenTrigger.events);
-
-  return { ok: true, state: nextState, events };
+  const suite = resoudreEffetsDeBris(nextState, def, context, false);
+  return { ok: true, state: suite.state, events: [...events, ...suite.events] };
 }

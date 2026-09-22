@@ -3,7 +3,7 @@ import { activateReaction } from "@/game/actions/activateReaction";
 import { activateShipAbility } from "@/game/actions/activateShipAbility";
 import { advancePhase } from "@/game/actions/advancePhase";
 import { attack } from "@/game/actions/attack";
-import { breakObject } from "@/game/actions/breakObject";
+import { breakObject, resumeObjectBreakEffects } from "@/game/actions/breakObject";
 import { concede } from "@/game/actions/concede";
 import { endTurn, entameDeTour } from "@/game/actions/endTurn";
 import { fireShipAbility } from "@/game/actions/fireShipAbility";
@@ -109,6 +109,23 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
   if (result.state.status === "active" && !result.state.pendingReaction && result.state.pendingTideStep) {
     const repris = entameDeTour(result.state);
     if (repris.ok) result = { ok: true, state: repris.state, events: [...result.events, ...repris.events] };
+  }
+
+  // --- REPRISE D'UN BRIS SUSPENDU ---------------------------------------
+  //
+  // Le Bris s'était arrêté avant ses effets pour laisser un adversaire les
+  // annuler (Fausse Cargaison, Lot 14). La fenêtre vient de se refermer :
+  // on résout ce qui attendait — ou on le jette si l'annulation a été
+  // activée. L'Objet, lui, est brisé dans les deux cas.
+  if (result.state.pendingObjectBreak && !result.state.pendingReaction) {
+    const suspendu = result.state.pendingObjectBreak;
+    const etatSansBris: GameState = { ...result.state, pendingObjectBreak: undefined };
+    if (suspendu.cancelled) {
+      result = { ok: true, state: etatSansBris, events: result.events };
+    } else {
+      const reprise = resumeObjectBreakEffects(etatSansBris, suspendu);
+      result = { ok: true, state: reprise.state, events: [...result.events, ...reprise.events] };
+    }
   }
 
   // --- REPRISE D'UNE DESTRUCTION SUSPENDUE ------------------------------

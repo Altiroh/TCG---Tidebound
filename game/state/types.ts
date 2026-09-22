@@ -339,6 +339,29 @@ export interface GameState {
   pendingDestruction?: { instanceIds: string[]; turnNumber: number };
 
   /**
+   * Bris d'Objet suspendu le temps de laisser quelqu'un en ANNULER l'effet
+   * (Fausse Cargaison, Lot 14).
+   *
+   * L'Objet est déjà parti au Cimetière et son coût est payé : ce qui
+   * attend, ce sont ses `onBreakEffects`. `dispatch` les résout dès que la
+   * fenêtre se referme — ou les jette si `cancelled` a été levé.
+   *
+   * Posé UNIQUEMENT quand un adversaire a de quoi répondre : sans cette
+   * garde, tous les Bris du jeu changeraient de rythme pour une carte.
+   */
+  pendingObjectBreak?: {
+    playerId: PlayerId;
+    instanceId: string;
+    cardId: string;
+    brokenFromHand: boolean;
+    chosenTargetInstanceId?: string;
+    chosenGraveyardInstanceId?: string;
+    turnNumber: number;
+    /** Un adversaire a annulé l'effet : il ne se résoudra pas. */
+    cancelled?: boolean;
+  };
+
+  /**
    * DÉLAI DE TOUR : jusqu'à quand le joueur attendu a pour agir
    * (`game/rules/turnTimer.ts`).
    *

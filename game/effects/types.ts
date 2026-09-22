@@ -237,7 +237,21 @@ export type EffectType =
    * `allUnits`, et ce qui en fait une carte jouable des deux côtés de la
    * table.
    */
-  | "keepUnitsDestroyRest";
+  | "keepUnitsDestroyRest"
+  /**
+   * « Lorsqu'un adversaire Brise un Objet : annulez l'effet de cet Objet »
+   * (Fausse Cargaison, Lot 14).
+   *
+   * L'Objet est bien BRISÉ — il est parti au Cimetière, son coût a été payé,
+   * et les déclencheurs « lorsque vous Brisez un Objet » se déclencheront
+   * comme d'habitude. Ce qui est annulé, c'est ce que son texte allait
+   * faire, et rien d'autre.
+   *
+   * N'a de sens que dans la fenêtre ouverte par un Bris suspendu
+   * (`pendingObjectBreak`) : hors d'elle, il n'y a aucun effet en attente
+   * et il ne fait rien.
+   */
+  | "cancelObjectEffect";
 
 /** Une valeur numérique d'effet, pour l'instant une constante — prête à
  * être étendue vers des formules (ex: "= nombre d'unités contrôlées"). */
