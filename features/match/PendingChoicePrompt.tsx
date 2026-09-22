@@ -54,7 +54,14 @@ export function PendingChoicePrompt({ choice, onChoose }: PendingChoicePromptPro
   // La défausse au choix et le regard de pioche ont leurs propres écrans
   // (`HandDiscardPrompt`, `DeckLookPrompt`) : ils ne se répondent pas par un
   // bouton mais en désignant des cartes.
-  if (choice.kind === "handDiscard" || choice.kind === "deckLook" || choice.kind === "healAllocation") return null;
+  if (
+    choice.kind === "handDiscard" ||
+    choice.kind === "deckLook" ||
+    choice.kind === "healAllocation" ||
+    choice.kind === "keepUnits"
+  ) {
+    return null;
+  }
 
   return (
     <PromptShell ariaLabel="Un choix s'impose à vous">

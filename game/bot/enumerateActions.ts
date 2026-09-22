@@ -1,4 +1,5 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
+import { UNIT_CARD_TYPES } from "@/game/cards/types";
 import type { CardDefinition } from "@/game/cards/types";
 import {
   graveyardChoicesForAbility,
@@ -71,6 +72,20 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
         { type: "resolveChoice" as const, playerId, choice: "pass" as const },
       ];
     }
+    // « Gardez jusqu'à N unités » : garder les N plus solides est le coup
+    // lisible, et ne rien garder l'autre extrême. `evaluateState` tranche.
+    if (state.pendingChoice.kind === "keepUnits") {
+      const choice = state.pendingChoice;
+      const unites = player.board
+        .filter((u) => UNIT_CARD_TYPES.includes(getCardDefinition(u.cardId).type))
+        .slice()
+        .sort((a, b) => getCardDefinition(b.cardId).cost - getCardDefinition(a.cardId).cost);
+      return [
+        { type: "resolveChoice" as const, playerId, choice: { keepInstanceIds: unites.slice(0, choice.keep).map((u) => u.instanceId) } },
+        { type: "resolveChoice" as const, playerId, choice: { keepInstanceIds: [] as string[] } },
+      ];
+    }
+
     // Soin réparti : verser tout le budget sur une seule unité blessée est
     // le coup lisible, et `evaluateState` départage. Énumérer toutes les
     // répartitions ferait exploser la recherche pour un gain marginal.

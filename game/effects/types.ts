@@ -224,7 +224,20 @@ export type EffectType =
    * À distinguer de `heal` sur `allAllyUnits`, qui verse le MÊME montant à
    * chacune — ce que ces textes-là ne disent pas.
    */
-  | "healDistributed";
+  | "healDistributed"
+  /**
+   * « Chaque joueur choisit jusqu'à N unités qu'il contrôle. Détruisez
+   * toutes les autres. » (Lot 14 — Chacun sa Place, Abandonnez le Navire !).
+   *
+   * Ne détruit rien lui-même : il ouvre la question au premier joueur
+   * (`KeepUnitsChoice`), et la destruction n'a lieu qu'une fois les deux
+   * passés. `uses` porte le nombre d'unités gardables (défaut 1).
+   *
+   * Un board wipe À CHOIX : c'est ce qui le distingue d'un `destroy` sur
+   * `allUnits`, et ce qui en fait une carte jouable des deux côtés de la
+   * table.
+   */
+  | "keepUnitsDestroyRest";
 
 /** Une valeur numérique d'effet, pour l'instant une constante — prête à
  * être étendue vers des formules (ex: "= nombre d'unités contrôlées"). */

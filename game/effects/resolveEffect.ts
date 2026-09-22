@@ -1389,6 +1389,29 @@ export function resolveEffect(
     }
 
     case "transform":
+    case "keepUnitsDestroyRest": {
+      const garde = Math.max(0, effect.uses ?? 1);
+      // Le contrôleur d'abord, l'adversaire ensuite : c'est lui qui joue la
+      // carte, c'est lui qui répond en premier.
+      const controleur = getPlayer(state, context.controllerId);
+      const adversaire = getOpponent(state, context.controllerId);
+      return {
+        state: {
+          ...state,
+          pendingChoice: {
+            kind: "keepUnits",
+            playerId: controleur.id,
+            remainingPlayerIds: [adversaire.id],
+            keep: garde,
+            kept: [],
+            sourceInstanceId: context.sourceInstanceId,
+            turnNumber: context.turnNumber,
+          },
+        },
+        events,
+      };
+    }
+
     case "healDistributed": {
       const budget = amountValue(effect.amount, state, context.controllerId);
       const player = resolveSinglePlayerTarget(state, effect, context) ?? getPlayer(state, context.controllerId);

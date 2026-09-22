@@ -1,4 +1,5 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
+import { UNIT_CARD_TYPES } from "@/game/cards/types";
 import { resolveEffectSequence } from "@/game/effects/resolveSequence";
 import { discardFromHand } from "@/game/state/discard";
 import { processDiscardedFromHandTriggers, processGraveyardRecoveryTriggers } from "@/game/triggers/triggerBus";
@@ -66,6 +67,54 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
     events.push(...recovered.events);
     return { ok: true, state: nextState, events };
   }
+  // « Chaque joueur choisit jusqu'à N unités qu'il contrôle. Détruisez
+  // toutes les autres. » Chacun répond à son tour, et RIEN ne part avant
+  // que tout le monde ait répondu : sinon le second choisirait sur un
+  // plateau déjà amputé par le premier, ce que le texte ne dit pas.
+  if (choice.kind === "keepUnits") {
+    const gardees =
+      action.choice === "pass"
+        ? []
+        : typeof action.choice === "object" && "keepInstanceIds" in action.choice
+          ? action.choice.keepInstanceIds
+          : undefined;
+    if (gardees === undefined) return { ok: false, error: "Ce choix attend les unités à garder." };
+    if (new Set(gardees).size !== gardees.length) return { ok: false, error: "Une même unité ne peut être gardée deux fois." };
+    if (gardees.length > choice.keep) return { ok: false, error: `Ce choix permet d'en garder au plus ${choice.keep}.` };
+
+    const repondant = getPlayer(nextState, choice.playerId);
+    const unites = repondant.board.filter((u) => UNIT_CARD_TYPES.includes(getCardDefinition(u.cardId).type));
+    if (gardees.some((id) => !unites.some((u) => u.instanceId === id))) {
+      return { ok: false, error: "Cette unité n'est pas l'une des vôtres." };
+    }
+
+    const cumul = [...choice.kept, ...gardees];
+    const [suivant, ...reste] = choice.remainingPlayerIds;
+    if (suivant !== undefined) {
+      return {
+        ok: true,
+        state: { ...nextState, pendingChoice: { ...choice, playerId: suivant, remainingPlayerIds: reste, kept: cumul } },
+        events,
+      };
+    }
+
+    // Tout le monde a répondu : ce qui n'a pas été gardé part. `destroy`
+    // marque, `processDeaths` emporte — la voie unique de sortie.
+    const epargnees = new Set(cumul);
+    nextState = {
+      ...nextState,
+      players: nextState.players.map((p) => ({
+        ...p,
+        board: p.board.map((u) =>
+          UNIT_CARD_TYPES.includes(getCardDefinition(u.cardId).type) && !epargnees.has(u.instanceId)
+            ? { ...u, pendingRemoval: "destroyed" as const }
+            : u
+        ),
+      })) as [PlayerState, PlayerState],
+    };
+    return { ok: true, state: nextState, events };
+  }
+
   // « Restaurez jusqu'à N Résistance répartie » : le joueur a dit combien
   // sur chaque unité. Le moteur vérifie seulement que le total tient dans
   // le budget et que les cibles sont bien les siennes.

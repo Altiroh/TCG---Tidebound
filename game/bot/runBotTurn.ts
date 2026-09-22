@@ -53,6 +53,10 @@ export function stepBotTurn(state: GameState, playerId: PlayerId, difficulty: Bo
             choice:
               state.pendingChoice.kind === "abilityOption"
                 ? { abilityIndex: state.pendingChoice.abilityIndexes[0] ?? 0 }
+                : state.pendingChoice.kind === "keepUnits"
+                  ? // Ne rien garder est légal ; le repli n'a pas à être
+                    // bon, seulement valide.
+                    { keepInstanceIds: [] as string[] }
                 : state.pendingChoice.kind === "healAllocation"
                   ? // Ne rien répartir est légal (« jusqu'à N ») : le repli
                     // n'a pas à être bon, seulement valide.

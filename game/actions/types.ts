@@ -170,7 +170,9 @@ export interface ResolveChoiceAction {
     /** Réponse à un regard de pioche : les cartes regardées que le joueur prend en main. Les autres retournent SOUS la pioche, dans leur ordre. */
     | { takeInstanceIds: string[] }
     /** Réponse à un soin réparti : combien de Résistance verser sur chaque unité désignée. */
-    | { healAllocation: Array<{ instanceId: string; amount: number }> };
+    | { healAllocation: Array<{ instanceId: string; amount: number }> }
+    /** Réponse à « choisissez jusqu'à N unités » : celles que le joueur garde. */
+    | { keepInstanceIds: string[] };
 }
 
 /**

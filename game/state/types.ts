@@ -565,7 +565,36 @@ export interface HealAllocationChoice {
   turnNumber: number;
 }
 
+/**
+ * « Chaque joueur choisit jusqu'à N unités qu'il contrôle. Détruisez toutes
+ * les autres. » (Lot 14 — Chacun sa Place, Abandonnez le Navire !).
+ *
+ * Les deux joueurs choisissent, l'un après l'autre : `remainingPlayerIds`
+ * porte ceux qu'il reste à consulter, et `kept` ce qui a déjà été mis de
+ * côté. La destruction n'a lieu qu'une fois tout le monde passé — sans
+ * quoi le second choisirait en connaissant déjà le plateau amputé du
+ * premier, ce que le texte ne dit pas.
+ *
+ * Les gardes de chaque joueur sont une information PUBLIQUE une fois
+ * l'effet résolu, mais pas avant : `toPlayerView` masque donc `kept` à
+ * celui qui n'a pas encore répondu.
+ */
+export interface KeepUnitsChoice {
+  kind: "keepUnits";
+  /** Joueur à qui la question est posée MAINTENANT. */
+  playerId: PlayerId;
+  /** Joueurs qu'il reste à consulter après lui, dans l'ordre. */
+  remainingPlayerIds: PlayerId[];
+  /** Nombre maximum d'unités qu'un joueur peut garder. */
+  keep: number;
+  /** Unités déjà mises de côté, tous joueurs confondus. */
+  kept: string[];
+  sourceInstanceId?: string;
+  turnNumber: number;
+}
+
 export type PendingChoice =
+  | KeepUnitsChoice
   | ReasonOrAnchorChoice
   | AbilityOptionChoice
   | HandDiscardChoice
