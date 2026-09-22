@@ -183,6 +183,14 @@ export function createGameState(input: CreateGameStateInput): GameState {
         playerId: player1.id,
       },
     ],
+    // Le chrono du premier tour part avec la partie : sans lui, le premier
+    // joueur pourrait ne jamais jouer sans que rien ne l'y oblige
+    // (`game/rules/turnTimer.ts`).
+    turnTimer: {
+      awaitingPlayerId: player1.id,
+      kind: "turn",
+      deadlineAt: Date.now() + RULES.TURN_TIME_LIMIT_MS,
+    },
     status: "active",
   };
 }

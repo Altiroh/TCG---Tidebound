@@ -28,6 +28,7 @@ import { graveyardPickView } from "@/features/match/graveyardPickRequest";
 import { HandDiscardPrompt } from "@/features/match/HandDiscardPrompt";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ReactionPrompt } from "@/features/match/ReactionPrompt";
+import { TurnTimerBadge } from "@/features/match/TurnTimerBadge";
 import { reactionTargetHint } from "@/features/match/reactionTargetHint";
 import { TableBoard } from "@/features/match/table/TableBoard";
 import { phaseButtonFor, phaseTitle, targetingHint } from "@/features/match/table/tableLabels";
@@ -246,6 +247,11 @@ export function OnlineBoard({
         onOpenGraveyard={board.setGraveyardViewerPlayerId}
         onHandDragChange={board.setDraggingId}
       />
+
+      {/* Le temps qui reste, sur une partie ARBITRÉE seulement : la partie
+          locale n'a pas de serveur pour constater une échéance, et un
+          compteur qui ne compte pour rien vaut mieux ne pas être montré. */}
+      <TurnTimerBadge state={state} viewerId={myUserId} />
 
       {canRespondToReaction &&
         (myReactionCandidates.length > 0 || shipAbility.windowEntry) &&

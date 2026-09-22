@@ -88,6 +88,35 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
     showView(result.data.frames ? unpackFrames(result.data.frames)[0]! : null);
   }
 
+  /**
+   * RELANCE À L'ÉCHÉANCE — pour que la table ne reste pas figée quand
+   * l'adversaire ne revient pas.
+   *
+   * Le serveur ne tourne pas en tâche de fond : il constate l'heure quand
+   * quelqu'un le sollicite. C'est donc au joueur PRÉSENT de le solliciter,
+   * une fois l'échéance de l'autre passée — `fetchMatchView` applique alors
+   * ce qui doit l'être (`settleExpiredDeadlines`).
+   *
+   * Jamais pour SA PROPRE échéance : on ne se déclare pas absent soi-même,
+   * et le serveur exempte de toute façon celui qui joue. La pression du
+   * chrono vient de l'autre siège, pas du sien.
+   */
+  const awaiting = view?.turnTimer?.awaitingPlayerId;
+  const deadlineAt = view?.turnTimer?.deadlineAt;
+  useEffect(() => {
+    if (!deadlineAt || !awaiting || awaiting === myUserId) return;
+    if (match.status !== "active") return;
+    // Une seconde de marge : l'horloge du navigateur n'est pas celle du
+    // serveur, et une relance en avance ne ferait rien qu'un aller-retour
+    // pour rien.
+    const delay = Math.max(1000, deadlineAt - Date.now() + 1000);
+    const id = setTimeout(() => {
+      if (!busy.current) void refresh();
+    }, delay);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `refresh` est stable pour une partie donnée.
+  }, [deadlineAt, awaiting, myUserId, match.status]);
+
   useEffect(() => {
     // Contre le bot, le seul joueur humain est l'appelant : chaque coup
     // renvoie déjà l'état à jour, Realtime n'apporterait rien.

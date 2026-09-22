@@ -1,4 +1,4 @@
-import { dispatch, runBotUntilIdle, toPlayerView, type GameState, type PlayerAction } from "@/game";
+import { dispatch, runBotUntilIdle, toPlayerView, turnTimerExpired, type GameState, type PlayerAction } from "@/game";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
 import { awardMatchReward } from "@/features/progression/rewards";
@@ -108,19 +108,104 @@ export async function submitAction(matchId: string, userId: string, action: Play
   if (match.status !== "active") return { ok: false, error: "Cette partie n'est pas en cours." };
   if (!full) return { ok: false, error: "Cette partie n'est pas en cours." };
 
-  const result = dispatch(full.state, action);
+  // Le délai de l'ADVERSAIRE d'abord : s'il a laissé filer son tour, c'est
+  // au moment où quelqu'un touche la partie que ça se constate. Jamais le
+  // délai de l'appelant — il vient précisément de jouer, fût-ce en retard.
+  const frames: GameState[] = [];
+  const rattrape = applyExpiredDeadlines(full.state, match, Date.now(), userId);
+  frames.push(...rattrape.frames);
+  const beforeAction = rattrape.state;
+
+  // Le rattrapage a pu terminer la partie (abandon automatique) : le coup
+  // qui suit n'a plus lieu d'être, mais ce qui vient d'arriver, si.
+  if (beforeAction.status !== "active") {
+    return await commitAndSettle(matchId, userId, match, full.version, frames, beforeAction);
+  }
+
+  const result = dispatch(beforeAction, action);
   if (!result.ok) return { ok: false, error: result.error };
 
-  const frames = [result.state];
+  frames.push(result.state);
   if (match.mode === "bot") {
     frames.push(...runBotUntilIdle(result.state, BOT_PLAYER_ID, match.bot_difficulty ?? "moyen"));
   }
-  const finalState = frames[frames.length - 1]!;
+  return await commitAndSettle(matchId, userId, match, full.version, frames, frames[frames.length - 1]!);
+}
+
+/**
+ * Garde-fou : nombre d'échéances rattrapées d'affilée en une passe. Chaque
+ * échéance appliquée repose un chrono dans le FUTUR, donc la boucle sort
+ * d'elle-même ; cette borne n'est là que pour qu'un état inattendu ne
+ * puisse pas la faire tourner.
+ */
+const MAX_DEADLINES_PER_PASS = 4;
+
+/**
+ * Applique les échéances de tour ÉCHUES, l'heure du serveur en main.
+ *
+ * C'est ici — et seulement ici — que le temps devient une décision de jeu.
+ * Le navigateur ne déclare jamais une expiration : il reçoit une échéance à
+ * afficher, et le serveur la constate à la prochaine occasion où il touche
+ * la partie (un coup de l'un, une lecture de la table par l'autre). Aucune
+ * tâche de fond n'est nécessaire — une partie que plus personne ne regarde
+ * n'a pas besoin d'avancer.
+ *
+ * `exemptPlayerId` protège l'appelant d'un coup qu'il est en train de
+ * jouer : arriver en retard vaut mieux que ne pas arriver.
+ */
+function applyExpiredDeadlines(
+  state: GameState,
+  match: MatchRow,
+  now: number,
+  exemptPlayerId?: string
+): { state: GameState; frames: GameState[] } {
+  const frames: GameState[] = [];
+  let current = state;
+
+  for (let pass = 0; pass < MAX_DEADLINES_PER_PASS; pass += 1) {
+    if (current.status !== "active") break;
+    const awaiting = current.turnTimer?.awaitingPlayerId;
+    if (!awaiting || awaiting === exemptPlayerId) break;
+    if (!turnTimerExpired(current, now)) break;
+
+    const timedOut = dispatch(current, { type: "timeout", playerId: awaiting, now });
+    if (!timedOut.ok) break;
+    current = timedOut.state;
+    frames.push(current);
+
+    // Passer le tour d'un joueur absent peut rendre la main au bot : il
+    // joue le sien comme après n'importe quel coup.
+    if (match.mode === "bot" && current.status === "active") {
+      const botFrames = runBotUntilIdle(current, BOT_PLAYER_ID, match.bot_difficulty ?? "moyen");
+      if (botFrames.length > 0) {
+        frames.push(...botFrames);
+        current = botFrames[botFrames.length - 1]!;
+      }
+    }
+  }
+
+  return { state: current, frames };
+}
+
+/**
+ * Enregistre l'état final sous verrou optimiste, puis — s'il termine la
+ * partie — déclenche récompenses et quêtes. Extrait de `submitAction` parce
+ * qu'un rattrapage d'échéance emprunte exactement le même chemin : ce qui
+ * décide d'une fin de partie ne doit exister qu'une fois.
+ */
+async function commitAndSettle(
+  matchId: string,
+  userId: string,
+  match: MatchRow,
+  expectedVersion: number,
+  frames: GameState[],
+  finalState: GameState
+): Promise<StoreResult<MatchUpdate>> {
   const finished = finalState.status === "finished";
 
   const { data: commit, error } = await service().rpc("commit_match_state", {
     p_match_id: matchId,
-    p_expected_version: full.version,
+    p_expected_version: expectedVersion,
     p_state: finalState,
     p_status: finished ? "finished" : "active",
     p_winner_id: winnerUserId(match, finalState),
@@ -146,6 +231,27 @@ export async function submitAction(matchId: string, userId: string, action: Play
   if (finished) await settleFinishedMatch(updatedMatch, finalState);
 
   return { ok: true, data: { match: updatedMatch, frames: packFrames(frames.map((frame) => toPlayerView(frame, userId))) } };
+}
+
+/**
+ * Fait avancer une partie dont le délai est écoulé, SANS qu'un coup soit
+ * joué — le chemin de LECTURE (`fetchMatchView`).
+ *
+ * C'est ce qui permet au joueur présent de sortir d'une table abandonnée :
+ * son écran interroge le serveur, le serveur constate l'heure, et la partie
+ * avance (ou se termine) sans que le navigateur n'ait rien décidé. Rend
+ * `null` quand il n'y avait rien à rattraper.
+ */
+export async function settleExpiredDeadlines(matchId: string, userId: string): Promise<MatchSnapshot | null> {
+  const [match, full] = await Promise.all([loadMatchRow(matchId), loadFullState(matchId)]);
+  if (!match || !isParticipant(match, userId) || !full || match.status !== "active") return null;
+
+  const rattrape = applyExpiredDeadlines(full.state, match, Date.now());
+  if (rattrape.frames.length === 0) return null;
+
+  const committed = await commitAndSettle(matchId, userId, match, full.version, rattrape.frames, rattrape.state);
+  if (!committed.ok) return null;
+  return { match: committed.data.match, view: toPlayerView(rattrape.state, userId) };
 }
 
 /** Récompenses et quêtes de chaque participant HUMAIN d'une partie terminée. */

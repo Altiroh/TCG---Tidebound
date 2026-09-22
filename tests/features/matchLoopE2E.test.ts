@@ -47,6 +47,7 @@ const { claimQuestReward, fetchQuestBoard } = await import("@/features/quests/ac
 const { claimAllLevelRewards } = await import("@/features/progression/profileActions");
 const { purchaseBooster, openBooster } = await import("@/features/boosters/actions");
 const { chooseBotAction } = await import("@/game/bot/chooseAction");
+const { RULES } = await import("@/game/rules/constants");
 const { PLAYABLE_DECKS } = await import("@/game");
 const { cardRows, questRows, boosterPoolCardRows } = await import("@/scripts/seedRows");
 
@@ -313,5 +314,91 @@ describe("boucle complète — partie en ligne entre deux joueurs", () => {
     sessionUserId = "33333333-3333-3333-3333-333333333333";
     const third = await joinOnlineMatch(inviteCode, OTHER_DECK.id);
     expect(third.ok).toBe(false);
+  });
+});
+
+describe("délai de tour — l'autorité reste au serveur", () => {
+  /** Recule l'échéance du chrono dans le passé, comme si le joueur s'était absenté. */
+  function expireDeadline(matchId: string): void {
+    const row = db.one("match_states", { match_id: matchId })!;
+    row.state = { ...row.state, turnTimer: { ...row.state.turnTimer, deadlineAt: Date.now() - 1_000 } };
+  }
+
+  it("une simple lecture fait avancer une partie que l'adversaire a quittée", async () => {
+    sessionUserId = USER;
+    const created = await createOnlineMatch(DECK.id);
+    const { matchId, inviteCode } = created.data!;
+    sessionUserId = OPPONENT;
+    await joinOnlineMatch(inviteCode, OTHER_DECK.id);
+
+    const state = db.one("match_states", { match_id: matchId })!.state;
+    const absent: string = state.turnTimer.awaitingPlayerId;
+    const present = absent === USER ? OPPONENT : USER;
+    const versionAvant = db.one("match_states", { match_id: matchId })!.version;
+
+    // Tant que l'échéance court, la lecture ne change rien : le serveur ne
+    // punit pas un joueur qui réfléchit.
+    sessionUserId = present;
+    await fetchMatchView(matchId);
+    expect(db.one("match_states", { match_id: matchId })!.version).toBe(versionAvant);
+
+    // Une fois l'échéance passée, c'est la LECTURE du joueur présent qui la
+    // constate — aucune tâche de fond, et rien de déclaré par le navigateur.
+    expireDeadline(matchId);
+    await fetchMatchView(matchId);
+    const apres = db.one("match_states", { match_id: matchId })!;
+    expect(apres.version).toBeGreaterThan(versionAvant);
+    expect(apres.state.players.find((p: { id: string }) => p.id === absent).missedDeadlines).toBe(1);
+    // Un tour perdu, pas la partie.
+    expect(db.one("matches", { id: matchId })!.status).toBe("active");
+  });
+
+  it("le joueur qui joue, fût-ce en retard, n'est jamais expiré par son propre coup", async () => {
+    sessionUserId = USER;
+    const created = await createOnlineMatch(DECK.id);
+    const { matchId, inviteCode } = created.data!;
+    sessionUserId = OPPONENT;
+    await joinOnlineMatch(inviteCode, OTHER_DECK.id);
+
+    expireDeadline(matchId);
+    const state = db.one("match_states", { match_id: matchId })!.state;
+    const late: string = state.turnTimer.awaitingPlayerId;
+    sessionUserId = late;
+    const result = await submitMatchAction(matchId, chooseBotAction(state, late, "moyen"));
+    expect(result.ok).toBe(true);
+    expect(db.one("match_states", { match_id: matchId })!.state.players.find((p: { id: string }) => p.id === late).missedDeadlines ?? 0).toBe(0);
+  });
+
+  it("après MAX_MISSED_DEADLINES absences, la partie est perdue et les récompenses sont payées", async () => {
+    sessionUserId = USER;
+    const created = await createOnlineMatch(DECK.id);
+    const { matchId, inviteCode } = created.data!;
+    sessionUserId = OPPONENT;
+    await joinOnlineMatch(inviteCode, OTHER_DECK.id);
+
+    const first = db.one("match_states", { match_id: matchId })!.state;
+    const absent: string = first.turnTimer.awaitingPlayerId;
+    const present = absent === USER ? OPPONENT : USER;
+
+    // Le joueur présent laisse filer : il rend la main dès qu'il l'a, et
+    // l'absent laisse passer chacune de ses échéances.
+    for (let round = 0; round < RULES.MAX_MISSED_DEADLINES; round += 1) {
+      expireDeadline(matchId);
+      sessionUserId = present;
+      await fetchMatchView(matchId);
+      if (db.one("matches", { id: matchId })!.status !== "active") break;
+      const state = db.one("match_states", { match_id: matchId })!.state;
+      if (state.turnTimer.awaitingPlayerId === present) {
+        await submitMatchAction(matchId, { type: "endTurn", playerId: present });
+      }
+    }
+
+    const match = db.one("matches", { id: matchId })!;
+    expect(match.status).toBe("finished");
+    expect(match.winner_id).toBe(present);
+    // La fin par délai emprunte le même chemin que n'importe quelle autre :
+    // les deux joueurs sont payés, une fois chacun.
+    expect(db.one("match_rewards", { match_id: matchId, user_id: USER })).toBeTruthy();
+    expect(db.one("match_rewards", { match_id: matchId, user_id: OPPONENT })).toBeTruthy();
   });
 });

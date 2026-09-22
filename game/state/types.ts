@@ -96,6 +96,13 @@ export interface PlayerState {
    */
   destructionProtections?: DestructionProtection[];
   /**
+   * Échéances de tour manquées CONSÉCUTIVEMENT par ce joueur
+   * (`game/rules/turnTimer.ts`). Remis à zéro dès qu'il rejoue : ce qui
+   * compte, c'est « il n'est plus là », pas « il a été lent une fois il y a
+   * dix tours ».
+   */
+  missedDeadlines?: number;
+  /**
    * Journal court des cartes ARRIVÉES au Cimetière, horodaté par tour de
    * table (Lot 13).
    *
@@ -279,8 +286,34 @@ export interface GameState {
    */
   pendingTideStep?: PendingTideStep;
 
+  /**
+   * DÉLAI DE TOUR : jusqu'à quand le joueur attendu a pour agir
+   * (`game/rules/turnTimer.ts`).
+   *
+   * Dans l'état, donc persisté avec lui et rendu tel quel après une
+   * reconnexion — et projeté aux deux joueurs, qui ont tous deux besoin de
+   * voir le temps qui reste. Information PUBLIQUE : elle ne dit rien que
+   * l'ordre du tour ne dise déjà.
+   */
+  turnTimer?: TurnTimerState;
+
   status: "active" | "finished";
   winnerId?: PlayerId;
+}
+
+/**
+ * Le chrono en cours. `deadlineAt` est un horodatage absolu (ms epoch) posé
+ * par le SERVEUR : le client s'en sert pour dessiner un décompte, jamais
+ * pour décider quoi que ce soit — deux horloges ne tombent jamais d'accord,
+ * et une seule fait autorité.
+ */
+export interface TurnTimerState {
+  /** Joueur dont on attend l'action — `playerToAct` au moment où le chrono a été posé. */
+  awaitingPlayerId: PlayerId;
+  /** Ce qu'on attend de lui : son tour, une réponse à une fenêtre, ou un choix forcé. */
+  kind: "turn" | "reaction" | "choice";
+  /** Horodatage absolu (ms epoch) au-delà duquel l'échéance est manquée. */
+  deadlineAt: number;
 }
 
 /**

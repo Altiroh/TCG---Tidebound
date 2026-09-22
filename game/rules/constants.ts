@@ -122,4 +122,24 @@ export const RULES = {
   ABYSSES_ENTRY_ANCHOR_LOSS: 2,
   /** Réduction de Raison maximale tant que la Marée reste dans les Abysses ; restaurée à la sortie. */
   ABYSSES_REASON_MAX_PENALTY: 2,
+
+  // --- Délai de tour (`game/rules/turnTimer.ts`) --------------------------
+  // VALEURS DE PROTOTYPE, à régler au playtest : elles n'ont pas de source
+  // de cadrage, et ce qui compte pour l'instant est qu'une partie ne puisse
+  // plus rester ouverte indéfiniment.
+  /** Temps accordé pour jouer un tour entier. */
+  TURN_TIME_LIMIT_MS: 90_000,
+  /**
+   * Temps accordé pour répondre à une fenêtre de réaction ou à un choix
+   * forcé — une question fermée, plus courte qu'un tour. Aligné sur le
+   * décompte que l'interface affiche déjà (`ReactionPrompt`).
+   */
+  REACTION_TIME_LIMIT_MS: 30_000,
+  /**
+   * Échéances CONSÉCUTIVES manquées valant abandon automatique. À 3, un
+   * rafraîchissement de page ou une coupure réseau coûtent un tour, pas la
+   * partie ; une absence réelle, elle, ne bloque plus l'adversaire très
+   * longtemps.
+   */
+  MAX_MISSED_DEADLINES: 3,
 } as const;

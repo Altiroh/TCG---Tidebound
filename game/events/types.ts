@@ -41,7 +41,8 @@ export type GameEventType =
   | "HAND_CARD_REVEALED"
   | "DERAISON_SETTLED"
   | "SHIP_ABILITY_ACTIVATED"
-  | "SHIP_ABILITY_FIRED";
+  | "SHIP_ABILITY_FIRED"
+  | "TURN_TIMED_OUT";
 
 export interface BaseGameEvent {
   type: GameEventType;
@@ -215,7 +216,23 @@ export interface GameStartedEvent extends BaseGameEvent {
 export interface GameEndedEvent extends BaseGameEvent {
   type: "GAME_ENDED";
   winnerId?: PlayerId;
-  reason?: "anchorZero" | "oceanJudgment" | "concede" | "other";
+  reason?: "anchorZero" | "oceanJudgment" | "concede" | "timeout" | "other";
+}
+
+/**
+ * Un joueur a laissé passer son délai (`game/rules/turnTimer.ts`). Émis par
+ * le serveur, jamais par un navigateur. `missedDeadlines` atteignant
+ * `limit` signifie que la partie s'arrête juste après, par abandon
+ * automatique — l'événement `GAME_ENDED` qui suit le dit avec
+ * `reason: "timeout"`.
+ */
+export interface TurnTimedOutEvent extends BaseGameEvent {
+  type: "TURN_TIMED_OUT";
+  playerId: PlayerId;
+  /** Échéances consécutives manquées, celle-ci comprise. */
+  missedDeadlines: number;
+  /** Nombre au-delà duquel la partie est perdue (`RULES.MAX_MISSED_DEADLINES`). */
+  limit: number;
 }
 
 export interface TideAdvancedEvent extends BaseGameEvent {
@@ -438,4 +455,5 @@ export type GameEvent =
   | HandCardRevealedEvent
   | DeraisonSettledEvent
   | ShipAbilityActivatedEvent
-  | ShipAbilityFiredEvent;
+  | ShipAbilityFiredEvent
+  | TurnTimedOutEvent;

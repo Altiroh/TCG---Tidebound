@@ -11,9 +11,11 @@ import { passReaction } from "@/game/actions/passReaction";
 import { playCard } from "@/game/actions/playCard";
 import { resolveChoice } from "@/game/actions/resolveChoice";
 import { saborder } from "@/game/actions/saborder";
+import { timeout, withDeadlineMet } from "@/game/actions/timeout";
 import type { ActionResult, PlayerAction } from "@/game/actions/types";
 import { openReactionWindowIfEligible } from "@/game/reactions/reactionWindow";
 import { resolveOceanJudgment } from "@/game/rules/oceanJudgment";
+import { refreshTurnTimer } from "@/game/rules/turnTimer";
 import { processDeaths } from "@/game/state/processDeaths";
 import { processLoneCreatureChanges, processPowerGains, snapshotEffectivePower, snapshotLoneCreatures } from "@/game/triggers/triggerBus";
 import type { GameEvent } from "@/game/events/types";
@@ -45,6 +47,7 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
     state.pendingReaction &&
     !REACTION_ACTION_TYPES.has(action.type) &&
     action.type !== "concede" &&
+    action.type !== "timeout" &&
     action.type !== "activateShipAbility"
   ) {
     return { ok: false, error: "Une fenêtre de réaction est ouverte : activez une capacité facultative éligible, ou passez." };
@@ -52,7 +55,7 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
 
   // Même principe pour un choix forcé en attente (ex: Le Fond Vous
   // Regarde) : seule `resolveChoice` est acceptée tant qu'il reste ouvert.
-  if (state.pendingChoice && action.type !== "resolveChoice" && action.type !== "concede") {
+  if (state.pendingChoice && action.type !== "resolveChoice" && action.type !== "concede" && action.type !== "timeout") {
     return { ok: false, error: "Un choix est en attente : résolvez-le avant toute autre action." };
   }
 
@@ -167,6 +170,16 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
     finalState = { ...finalState, pendingChoice: undefined };
   }
 
+  // --- DÉLAI DE TOUR ----------------------------------------------------
+  //
+  // Ici et nulle part ailleurs : `dispatch` est le seul passage obligé de
+  // toutes les actions, donc le seul endroit où le chrono ne peut pas être
+  // oublié. Deux gestes, dans cet ordre : le joueur qui vient d'agir a
+  // prouvé qu'il est là (son compteur d'échéances retombe à zéro), puis le
+  // chrono se recale sur la question suivante.
+  if (action.type !== "timeout") finalState = withDeadlineMet(finalState, action.playerId);
+  finalState = refreshTurnTimer(finalState, Date.now());
+
   return { ok: true, state: finalState, events: finalEvents };
 }
 
@@ -198,6 +211,11 @@ function applyAction(state: GameState, action: PlayerAction): ActionResult {
       return resolveChoice(state, action);
     case "concede":
       return concede(state, action);
+    case "timeout":
+      // Le geste neutre joué à la place du joueur absent repasse par
+      // `applyAction`, jamais par `dispatch` : une action ne doit pas en
+      // relancer une autre au milieu du pipeline.
+      return timeout(state, action, applyAction);
     default: {
       const exhaustiveCheck: never = action;
       return { ok: false, error: `Action inconnue: ${JSON.stringify(exhaustiveCheck)}` };

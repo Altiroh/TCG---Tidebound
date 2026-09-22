@@ -120,6 +120,18 @@ export type { PendingReactionState, PendingChoice, HandDiscardChoice } from "@/g
 export type { ResolveChoiceAction } from "@/game/actions/types";
 export { eligibleCandidatesFor } from "@/game/reactions/reactionWindow";
 
+// --- Délai de tour (`game/rules/turnTimer.ts`) : le serveur constate
+// l'heure, le moteur décide de ce qu'elle produit -----------------------
+export {
+  allowanceFor,
+  missedDeadlines,
+  nextTimeoutEndsGame,
+  playerToAct,
+  refreshTurnTimer,
+  turnTimerExpired,
+} from "@/game/rules/turnTimer";
+export type { TurnTimerState } from "@/game/state/types";
+
 // --- Environnement : Marée, Navires (cadrage sections 4-14, orientation
 // de Marée et éviction des Eaux : 2026-09-10) ---------------------------
 export type {

@@ -179,6 +179,22 @@ export interface ConcedeAction {
   playerId: PlayerId;
 }
 
+/**
+ * ÉCHÉANCE DE TOUR MANQUÉE (`game/rules/turnTimer.ts`).
+ *
+ * Jamais émise par un navigateur : c'est le SERVEUR qui la construit quand
+ * il constate, l'heure en main, qu'un joueur n'a pas répondu. Le moteur la
+ * refuse si le chrono n'attend pas ce joueur-là, ou s'il n'est pas écoulé —
+ * elle ne se force donc pas.
+ */
+export interface TimeoutAction {
+  type: "timeout";
+  /** Le joueur qui n'a PAS joué. */
+  playerId: PlayerId;
+  /** Heure du serveur (ms epoch). Absente : `Date.now()`, pour les tests et les appels internes. */
+  now?: number;
+}
+
 export type PlayerAction =
   | PlayCardAction
   | AttackAction
@@ -192,7 +208,8 @@ export type PlayerAction =
   | ActivateShipAbilityAction
   | FireShipAbilityAction
   | ResolveChoiceAction
-  | ConcedeAction;
+  | ConcedeAction
+  | TimeoutAction;
 
 export type ActionResult =
   | { ok: true; state: GameState; events: GameEvent[] }
