@@ -383,6 +383,20 @@ export const DECK_DESCENTE_AUX_ABYSSES: DeckList = {
  * Cloison Étanche y est le seul piège, et il y sert de deux façons : son
  * aura tient les Structures debout tant qu'elle est visible, sa Réaction
  * cachée en sauve une qui devait partir — ce que ce deck décide.
+ *
+ * TREIZE CORPS, ET NON SEPT (relevé du 22/09/2026). La maladie d'Arsenal de
+ * Pont, à l'identique : 17 % de victoires, dix-neuf Structures et sept
+ * unités. Le moteur de recyclage tournait très bien — Charpentier des
+ * Épaves sortait 178 fois en 132 parties, Caisses Arrimées 141 — mais rien
+ * ne convertissait la valeur en dégâts. Le deck recyclait jusqu'à la fin du
+ * temps.
+ *
+ * Les corps ajoutés restent dans le sujet : Charpentière de Veille et
+ * Wood-Vy lisent la destruction de leurs propres Structures, Matelot du
+ * Sans-Nom est le corps neutre qui manquait pour tenir la ligne.
+ *
+ * Ce qui a sauté : Clous de Récupération (12 poses pour 77 morts en main),
+ * Dernière Planche (2 poses) et un Journal de Bord.
  */
 export const DECK_EPAVISTES: DeckList = {
   id: "epavistes",
@@ -395,6 +409,10 @@ export const DECK_EPAVISTES: DeckList = {
     ...repeat("plongeur-des-epaves", 2),
     ...repeat("charpentier-des-epaves", 3),
     ...repeat("mecanicien-aux-mains-noires", 2),
+    ...repeat("charpentiere-de-veille", 2),
+    ...repeat("wood-vy", 2),
+    // Le corps neutre : de quoi tenir la ligne pendant que ça recycle.
+    ...repeat("matelot-du-sans-nom", 2),
     // Les Structures à faire disparaître.
     ...repeat("caisses-arrimees", 3),
     ...repeat("epaves-accrochees", 3),
@@ -405,12 +423,10 @@ export const DECK_EPAVISTES: DeckList = {
     // Les outils du démontage.
     ...repeat("levier-de-lest", 2),
     ...repeat("grappin-de-recuperation", 3),
-    ...repeat("clous-de-recuperation", 3),
-    ...repeat("derniere-planche", 2),
     // Lot 14 : garder ce qu'on veut garder, jeter le reste.
     ...repeat("cloison-etanche", 2),
     ...repeat("planche-de-fortune", 2),
-    ...repeat("journal-de-bord", 2),
+    ...repeat("journal-de-bord", 1),
   ],
 };
 
@@ -426,6 +442,21 @@ export const DECK_EPAVISTES: DeckList = {
  * directement l'économie mentale adverse. » Fausse Cargaison y est la carte
  * la plus cohérente du lot — elle augmente le prix payé par quelqu'un qui
  * n'a déjà plus de quoi payer.
+ *
+ * LES ANOMALIES À 5 SONT PARTIES (relevé du 22/09/2026). 14 % de victoires,
+ * dernier du banc. La liste portait douze Anomalies à 4 et 5 Raison,
+ * lancées ONZE fois en tout sur 132 parties : Ils Sont Sous Nous finissait
+ * en main 118 fois sur 132 sans jamais être jouée une seule fois, Quelque
+ * Chose Sous la Coque 40 fois pour zéro pose. Le défaut est structurel et
+ * non conjoncturel — un deck dont le plan consiste à dépenser sa Raison
+ * pour faire perdre celle d'en face n'a, par construction, jamais les cinq
+ * Raison que ses propres finishers réclament.
+ *
+ * Elles laissent la place à ce que le deck peut réellement payer : Mousse
+ * du Premier Quart, qui rend de la Raison précisément quand on en a moins
+ * que l'adversaire — c'est-à-dire tout le temps dans ce deck —, la Marin
+ * aux Yeux Rouges Abyssale que la page Notion nomme, et deux corps bon
+ * marché pour convertir la pression en dégâts.
  */
 export const DECK_A_BOUT_DE_RAISON: DeckList = {
   id: "a-bout-de-raison",
@@ -436,19 +467,22 @@ export const DECK_A_BOUT_DE_RAISON: DeckList = {
   cardIds: [
     // Ceux qui font payer.
     ...repeat("marin-aux-yeux-rouges", 3),
+    ...repeat("marin-aux-yeux-rouges-abyssal", 1),
     ...repeat("ponton-aux-cloches", 3),
-    ...repeat("quelque-chose-sous-la-coque", 2),
-    ...repeat("le-chant-sous-la-ligne", 2),
     ...repeat("anguille-des-profondeurs", 3),
     ...repeat("cloche-immergee", 2),
+    ...repeat("le-chant-sous-la-ligne", 1),
     // Les Anomalies, qui imposent un choix dont aucune branche n'est bonne.
-    ...repeat("les-voix-dans-le-sillage", 2),
-    ...repeat("ils-sont-sous-nous", 2),
-    ...repeat("le-fond-vous-regarde", 2),
-    ...repeat("la-mer-reclame-davantage", 2),
+    // Une seule de chaque : à 5 Raison, ce deck n'en joue pas deux.
+    ...repeat("le-fond-vous-regarde", 1),
+    ...repeat("la-mer-reclame-davantage", 1),
+    // Ce qui rend la Raison que le plan dépense, et ce qui la convertit.
+    ...repeat("mousse-du-premier-quart", 3),
+    ...repeat("murene-aveugle", 3),
+    ...repeat("requin-balafre", 3),
     // Ce qui regarde la main d'en face pour savoir où appuyer.
     ...repeat("guetteur-de-brume", 3),
-    ...repeat("la-bouee-qui-regardait", 2),
+    ...repeat("la-bouee-qui-regardait", 1),
     ...repeat("matelot-insomniaque", 3),
     ...repeat("cartographe-du-large", 2),
     // Lot 14 : taxer, retarder, renvoyer.
