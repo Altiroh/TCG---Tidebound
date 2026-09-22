@@ -1,4 +1,5 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 /**
@@ -43,13 +44,90 @@ function ruleBody(source: string, selector: string): string {
  */
 const OUTSIDE_CONTENT = [
   { file: "features/progression/Profile.module.css", selector: ".shell" },
+  { file: "features/market/Market.module.css", selector: ".market" },
   { file: "features/match/table/Table.module.css", selector: ".cardZoom" },
 ];
 
+/** Toutes les feuilles de module du produit. */
+function cssModules(dir: string, out: string[] = []): string[] {
+  for (const entry of readdirSync(dir)) {
+    const full = path.join(dir, entry);
+    if (statSync(full).isDirectory()) cssModules(full, out);
+    else if (entry.endsWith(".module.css")) out.push(full.split(path.sep).join("/"));
+  }
+  return out;
+}
+
+/**
+ * Les classes qu'un bloc `@media` ALLUME (`display` autre que `none`), avec
+ * la position du bloc — et les classes qu'une règle de base ÉTEINT
+ * (`display: none`), avec la leur.
+ *
+ * Analyse volontairement grossière : on ne lit que les blocs `{ … }` d'un
+ * seul niveau et la seule propriété `display`. C'est assez pour le piège
+ * visé, et assez peu pour ne jamais crier au loup.
+ */
+function displayRules(source: string) {
+  const lit: { cls: string; at: number }[] = [];
+  const eteint: { cls: string; at: number }[] = [];
+  let depth = 0;
+  const re = /@media[^{]*\{|([.#][\w-]+)(?:[^{};]*?)\{([^{}]*)\}|\{|\}/g;
+
+  for (let match = re.exec(source); match; match = re.exec(source)) {
+    const [text, selector, body] = match;
+    if (text.startsWith("@media")) {
+      depth += 1;
+      continue;
+    }
+    if (text === "{") {
+      depth += 1;
+      continue;
+    }
+    if (text === "}") {
+      depth = Math.max(0, depth - 1);
+      continue;
+    }
+    if (!selector || !body) continue;
+    const display = /(?:^|[;{\s])display:\s*([\w-]+)/.exec(body)?.[1];
+    if (!display) continue;
+    if (depth > 0 && display !== "none") lit.push({ cls: selector, at: match.index });
+    if (depth === 0 && display === "none") eteint.push({ cls: selector, at: match.index });
+  }
+  return { lit, eteint };
+}
+
+describe("Cascade — une règle de base n'éteint pas ce qu'un bloc média allume", () => {
+  it("aucune classe allumée en écran court n'est réécrasée plus bas", () => {
+    /*
+     * À SPÉCIFICITÉ ÉGALE, C'EST LA DERNIÈRE RÈGLE ÉCRITE QUI GAGNE.
+     *
+     * Le bouton d'ouverture d'un booster porte deux écritures, dont la
+     * courte est masquée par défaut. La règle de base était déclarée 580
+     * lignes SOUS le bloc « téléphone couché » qui l'allume : les deux
+     * écritures se masquaient l'une l'autre et le bouton sortait vide, sur
+     * l'écran même que la manœuvre devait servir (retour du 22/09).
+     *
+     * Rien ne le signale — ni le typage, ni le linter, ni l'œil sur un
+     * écran de bureau, où la règle média ne s'applique pas.
+     */
+    const offenders: string[] = [];
+    for (const file of cssModules("features")) {
+      const { lit, eteint } = displayRules(read(file));
+      for (const on of lit) {
+        const off = eteint.find((entry) => entry.cls === on.cls && entry.at > on.at);
+        if (off) offenders.push(`${file} (${on.cls})`);
+      }
+    }
+
+    expect(offenders, "déplacer le basculement APRÈS la règle de base").toEqual([]);
+  });
+});
+
 describe("Téléphone couché — rien ne passe sous le bord", () => {
   it("les écrans qui court-circuitent `.content` tiennent eux-mêmes la zone sûre", () => {
-    // Le profil a mis trois retours de test à être repéré : il est le seul
-    // onglet du jeu dans ce cas, et il ressemblait de loin aux autres.
+    // Ces écrans ressemblent de loin à tous les autres : rien dans leur
+    // balisage ne dit qu'ils sautent `.content`. Le profil a mis trois
+    // retours de test à être repéré, le Market un de plus.
     const offenders = OUTSIDE_CONTENT.filter(({ file, selector }) => {
       const body = ruleBody(read(file), selector);
       return !body.includes("--tb-safe-");

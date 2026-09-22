@@ -33,7 +33,18 @@
   grid-template-rows: minmax(0, 1fr) auto;
   gap: clamp(8px, 1.4vh, 18px) clamp(10px, 1.6vw, 28px);
   min-height: 0;
-  padding: clamp(8px, 1.4vh, 20px) clamp(12px, 2vw, 40px) clamp(10px, 1.8vh, 26px);
+  /*
+   * ZONE SÛRE À SA CHARGE : le Market est posé DIRECTEMENT dans la grille
+   * de `GameScreen`, sans passer par `.content` — il tient sa hauteur
+   * lui-même plutôt que de défiler. Sans ces marges, l'enseigne des rayons
+   * partait sous l'encoche d'un iPhone couché et s'y trouvait tronquée
+   * (retour du 22/09). Le bandeau absorbe déjà le HAUT.
+   */
+  padding:
+    clamp(8px, 1.4vh, 20px)
+    calc(clamp(12px, 2vw, 40px) + var(--tb-safe-right))
+    calc(clamp(10px, 1.8vh, 26px) + var(--tb-safe-bottom))
+    calc(clamp(12px, 2vw, 40px) + var(--tb-safe-left));
 }
 
 /* ── Enseigne : les rayons ──────────────────────────────────── */
@@ -1126,7 +1137,11 @@ a.section {
 @media (max-height: 620px) {
   .market {
     gap: 5px 10px;
-    padding: 5px clamp(10px, 1.6vw, 28px) 6px;
+    padding:
+      5px
+      calc(clamp(10px, 1.6vw, 28px) + var(--tb-safe-right))
+      calc(6px + var(--tb-safe-bottom))
+      calc(clamp(10px, 1.6vw, 28px) + var(--tb-safe-left));
   }
 
   /*
@@ -1238,6 +1253,39 @@ a.section {
 
   .stageLink {
     font-size: 11px;
+  }
+
+  /*
+   * LE PONTON GAGNE UNE LIGNE : le prix et l'accès au contenu se partagent
+   * la seconde.
+   *
+   * Sous le socle, l'étiquette n'a qu'une dizaine de `cqw` avant le bord du
+   * ponton. Sur trois lignes — nom, prix, « Contenu · 12/60 » — la
+   * troisième passait dessous et le bouton devenait invisible, alors que
+   * c'est lui qui dit ce qu'un sachet peut encore apporter (retour du
+   * 22/09). Le libellé s'efface donc au profit du seul pictogramme, posé à
+   * côté du prix.
+   */
+  .label {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    column-gap: 1.4cqw;
+    width: 30cqw;
+  }
+
+  .labelName {
+    flex-basis: 100%;
+  }
+
+  .contentsLabel {
+    display: none;
+  }
+
+  .contentsButton {
+    margin-top: 0;
+    padding: 0.5cqw;
+    border-radius: 50%;
   }
 
   /* Le conseil d'usage disparaît ; le manque de monnaie, jamais. */

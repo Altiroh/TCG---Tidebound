@@ -254,6 +254,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: clamp(5px, 0.6vw, 9px);
+  margin-top: clamp(7px, 1.2vmin, 12px);
 }
 
 .badge {
@@ -281,7 +282,14 @@
 .title {
   /* Le titre domine, sans jamais imposer sa largeur : les noms longs
      passent sur deux lignes plutôt que d'élargir la fiche. */
-  margin: 0;
+  /*
+   * L'écart aux pastilles se MESURE, comme le reste de la fiche : il
+   * venait d'un `mt-3` Tailwind, 12 px quelle que soit la taille d'écran,
+   * et sur un téléphone couché la pastille « Structure » se posait sur le
+   * nom (retour du 22/09). Une pastille est un objet cerclé : il lui faut
+   * plus d'air qu'à une ligne de texte pour ne pas coller.
+   */
+  margin: clamp(14px, 2.2vmin, 22px) 0 0;
   font-family: var(--font-card-title), Georgia, serif;
   font-size: clamp(20px, 3.1vmin, 38px);
   font-weight: 600;

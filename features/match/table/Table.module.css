@@ -2264,6 +2264,22 @@
     --fs-label: clamp(7px, 2cqh, 10px);
     --fs-value: clamp(9px, 3cqh, 14px);
     --fs-title: clamp(10px, 3.4cqh, 16px);
+
+    /*
+     * LA BARRE DE GESTES REND LA MOITIÉ DE SA BANDE.
+     *
+     * `safe-area-inset-bottom` vaut 21 px sur un iPhone couché : c'est la
+     * marge qu'Apple recommande pour du CONTENU À LIRE, et elle poussait
+     * toute la scène de 21 px vers le haut — 5 % de la hauteur d'un
+     * téléphone couché, pris sur les deux rangées de jeu (retour du
+     * 22/09).
+     *
+     * Ici la bande du bas porte la MAIN, dont les cartes ne dépassent que
+     * du tiers (`--hand-peek`) : ce qu'on attrape est déjà bien au-dessus
+     * de l'indicateur. La moitié de la marge suffit donc à ne pas poser de
+     * carte SOUS lui, et jamais moins que la gouttière ordinaire.
+     */
+    padding-bottom: max(var(--gutter-y), calc(var(--safe-bottom) / 2));
   }
 
   /* Pas la place d’un titre de journal : les entrées, elles, restent. */

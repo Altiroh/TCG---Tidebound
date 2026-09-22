@@ -212,12 +212,22 @@
   scrollbar-width: thin;
   scrollbar-color: var(--line-strong) transparent;
   /* Le bas du défilement s'arrête au-dessus de la barre de gestes iOS, et
-     les côtés à l'écart des coins arrondis en paysage. */
+     les côtés à l'écart des coins arrondis en paysage.
+
+     NOMMÉ, parce qu'un écran a parfois besoin d'en SORTIR : une barre
+     d'action collée au bas (`NewMatch`) doit atteindre le bord réel, sinon
+     il reste une bande de décor sous elle et elle ne se lit plus comme un
+     pied de page. Elle annule alors ces marges et les reprend à son
+     compte — sans avoir à recopier les `clamp()`. */
+  --tb-content-pad-top: clamp(14px, 2.2vh, 30px);
+  --tb-content-pad-right: calc(clamp(14px, 2.4vw, 44px) + var(--tb-safe-right));
+  --tb-content-pad-bottom: calc(clamp(18px, 3vh, 40px) + var(--tb-safe-bottom));
+  --tb-content-pad-left: calc(clamp(14px, 2.4vw, 44px) + var(--tb-safe-left));
   padding:
-    clamp(14px, 2.2vh, 30px)
-    calc(clamp(14px, 2.4vw, 44px) + var(--tb-safe-right))
-    calc(clamp(18px, 3vh, 40px) + var(--tb-safe-bottom))
-    calc(clamp(14px, 2.4vw, 44px) + var(--tb-safe-left));
+    var(--tb-content-pad-top)
+    var(--tb-content-pad-right)
+    var(--tb-content-pad-bottom)
+    var(--tb-content-pad-left);
 }
 .content::-webkit-scrollbar { width: 8px; }
 .content::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--line-strong); }

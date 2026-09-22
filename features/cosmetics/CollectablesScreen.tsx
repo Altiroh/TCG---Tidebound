@@ -199,16 +199,16 @@ export function CollectablesScreen({ view }: { view: CollectablesView }) {
                 Acheter au Market →
               </Link>
             </p>
-            {view.isSignedIn && (
-              <p className={browser.count}>
-                <TideCoin size={14} /> {balance} Tides
-              </p>
-            )}
+            {/* Pas de solde ici : le bandeau le porte déjà en haut de
+                chaque écran, et sur un téléphone couché cette troisième
+                ligne poussait la barre d'outils sur deux rangées. Il reste
+                affiché là où il décide de quelque chose — sur le bouton
+                d'achat, qui dit ce qu'il manque. */}
           </div>
 
           <div className={styles.showcase}>
             {!view.isSignedIn && (
-              <p className={game.muted}>
+              <p className={`${game.muted} ${styles.signedOutNote}`}>
                 <Link href="/connexion" className={game.link} onClick={() => playButtonClick()}>
                   Connecte-toi
                 </Link>{" "}

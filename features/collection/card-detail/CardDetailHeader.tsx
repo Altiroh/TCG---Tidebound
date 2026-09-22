@@ -26,7 +26,7 @@ export function CardDetailHeader({ model, titleId }: { model: CardDetailModel; t
         {def.token && <span>Jeton</span>}
       </div>
 
-      <div className={`${styles.badges} mt-2`}>
+      <div className={styles.badges}>
         {/* Pas d'icône de type ici : les assets `type-*.webp` sont
             des pastilles avec le mot déjà écrit dedans — les afficher à côté
             du libellé donnait « structure STRUCTURE ». Le texte seul est
@@ -36,7 +36,7 @@ export function CardDetailHeader({ model, titleId }: { model: CardDetailModel; t
         {otherSubtype && <span className={styles.badge}>{otherSubtype}</span>}
       </div>
 
-      <h2 id={titleId} className={`${styles.title} mt-3`}>
+      <h2 id={titleId} className={styles.title}>
         {def.name}
       </h2>
     </header>
