@@ -80,7 +80,7 @@ interface Options {
   onDrop: (kind: GestureKind, sourceId: string, drop: string, point: { x: number; y: number }) => void;
   /** Un toucher sur cette carte l'arme-t-il ? (unités capables d'attaquer) */
   canArm: (sourceId: string) => boolean;
-  /** Afficher la carte en grand (appui long, ou toucher sans autre effet). */
+  /** Poser la carte en grand par-dessus le plateau (appui long, ou toucher sans autre effet). */
   onInspect: (sourceId: string) => void;
   /** Toucher / clic simple : `true` = la page l'a traité, rien d'autre ne se passe. */
   onTap?: (kind: GestureKind, sourceId: string) => boolean;

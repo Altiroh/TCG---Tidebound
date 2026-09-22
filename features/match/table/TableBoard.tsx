@@ -38,6 +38,7 @@ import { OpponentZone } from "@/features/match/table/OpponentZone";
 import { PlayerZone } from "@/features/match/table/PlayerZone";
 import { RainLayer } from "@/features/match/table/RainLayer";
 import { ShipInfoSheet } from "@/features/match/table/ShipInfoSheet";
+import { TableCardZoom } from "@/features/match/table/TableCardZoom";
 import { TableHand } from "@/features/match/table/TableHand";
 import { PhaseButton, TableHud } from "@/features/match/table/TableHud";
 import { TableOpponentHand } from "@/features/match/table/TableOpponentHand";
@@ -202,6 +203,8 @@ export function TableBoard(props: TableBoardProps) {
    * la main n'allume pas cinq aperçus à la suite ; souris seulement.
    */
   const [preview, setPreview] = useState<{ id: string; rect: DOMRect } | null>(null);
+  /** Carte lue en grand par-dessus le plateau (`TableCardZoom`), au doigt. */
+  const [zoomId, setZoomId] = useState<string | null>(null);
   const previewTimer = useRef<number | null>(null);
   const cancelPreview = () => {
     if (previewTimer.current !== null) window.clearTimeout(previewTimer.current);
@@ -336,9 +339,14 @@ export function TableBoard(props: TableBoardProps) {
       const entry = byId.get(sourceId);
       return Boolean(entry && entry.owner.id === viewerId && attackReady(entry.instance));
     },
+    /*
+     * Appui long (ou simple toucher là où rien d'autre ne le réclame) :
+     * la carte s'affiche EN GRAND par-dessus le plateau, le temps de la
+     * lire — pas la fiche détaillée, qui est un second écran et ferme le
+     * plateau. La fiche reste à un bouton de là, et au clic droit.
+     */
     onInspect: (sourceId) => {
-      const entry = byId.get(sourceId);
-      if (entry) props.onInspect(entry.instance);
+      if (byId.has(sourceId)) setZoomId(sourceId);
     },
     onTap: (kind, sourceId) => {
       const entry = byId.get(sourceId);
@@ -631,6 +639,25 @@ export function TableBoard(props: TableBoardProps) {
           }}
         />
       </GameViewport>
+
+      {/* La carte agrandie vit HORS de `GameViewport` : la scène y est mise
+          à l'échelle pour tenir dans la fenêtre, et l'agrandissement se
+          mesure, lui, à la fenêtre entière. */}
+      {(() => {
+        const found = zoomId ? byId.get(zoomId) : undefined;
+        if (!found) return null;
+        return (
+          <TableCardZoom
+            onClose={() => setZoomId(null)}
+            onDetail={() => {
+              setZoomId(null);
+              props.onInspect(found.instance);
+            }}
+          >
+            {renderFace(found.instance, found.owner)}
+          </TableCardZoom>
+        );
+      })()}
 
       {shipInfoFor && (
         <ShipInfoSheet

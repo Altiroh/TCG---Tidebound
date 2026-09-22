@@ -354,13 +354,28 @@ div.item,
     padding: 8px 10px 10px;
   }
 
+  /*
+   * DEUX RANGÉES ENTIÈRES, JAMAIS UNE RANGÉE ET DEMIE.
+   *
+   * La hauteur d'une vignette se DÉDUIT de la vitrine (`grid-auto-rows`)
+   * au lieu de se déduire de son image : deux rangées tiennent alors
+   * exactement dans la hauteur visible, et on ne défile plus pour voir le
+   * bas d'un cadre coupé par le bord de l'écran (retour du 22/09). C'est
+   * l'inverse du réflexe habituel — ici la hauteur est la ressource rare,
+   * c'est donc elle qui commande, et l'illustration suit.
+   */
   .grid {
-    grid-template-columns: repeat(auto-fill, minmax(clamp(230px, 62cqh, 330px), 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(clamp(196px, 52cqh, 300px), 1fr));
+    grid-auto-rows: calc((100cqh - 10px) / 2);
     gap: 10px;
   }
 
   .itemShell {
+    /* La coque tient la rangée exactement : ce qui déborderait est rogné,
+       pas poussé sous le bord de la vitrine. */
+    min-height: 0;
     padding: 8px;
+    overflow: hidden;
   }
 
   /*
@@ -371,18 +386,27 @@ div.item,
    */
   .item {
     display: grid;
-    grid-template-columns: 40% minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, 1fr);
     grid-template-rows: auto auto minmax(0, 1fr);
     column-gap: 10px;
     row-gap: 2px;
+    min-height: 0;
   }
 
+  /*
+   * L'illustration est bornée par la HAUTEUR de sa rangée, pas par une
+   * part de la largeur : c'est elle qui donnait des vignettes plus hautes
+   * que la vitrine. Elle garde son ratio et ne dépasse jamais la moitié
+   * de la coque.
+   */
   .cardBackFrame,
   .shipFrameBox {
     grid-column: 1;
     grid-row: 1 / span 3;
-    width: 100%;
-    align-self: start;
+    width: auto;
+    max-width: 44%;
+    height: 100%;
+    align-self: stretch;
   }
 
   .itemName { grid-column: 2; grid-row: 1; }

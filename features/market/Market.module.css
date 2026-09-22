@@ -1125,16 +1125,22 @@ a.section {
  */
 @media (max-height: 620px) {
   .market {
-    gap: 6px 10px;
-    padding: 6px clamp(10px, 1.6vw, 28px) 8px;
+    gap: 5px 10px;
+    padding: 5px clamp(10px, 1.6vw, 28px) 6px;
   }
 
+  /*
+   * Le cadre de laiton rend encore la moitié de ce qui lui restait. Mesuré
+   * sur un iPhone couché (932 × 430) : le panier tenait 116 px, soit plus
+   * du quart de l'écran, pour une ligne de total et un bouton — et ces
+   * pixels manquaient au ponton, qui est ce qu'on est venu voir.
+   */
   .cart {
-    gap: 4px;
-    padding: 6px clamp(12px, 2vw, 32px) 4px;
-    border-width: 18px;
-    border-image-width: 18px;
-    margin: -8px;
+    gap: 3px;
+    padding: 4px clamp(12px, 2vw, 32px) 3px;
+    border-width: 12px;
+    border-image-width: 12px;
+    margin: -6px;
   }
 
   .cartBody {
@@ -1154,28 +1160,28 @@ a.section {
   }
 
   .cartTitle {
-    font-size: 14px;
-    gap: 8px;
+    font-size: 12.5px;
+    gap: 6px;
   }
 
   .cartTitle svg {
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
   }
 
   .clearButton {
-    font-size: 12px;
-    padding: 2px 6px;
+    font-size: 11px;
+    padding: 1px 6px;
   }
 
   .cartLines {
-    max-height: 76px;
-    gap: 6px;
+    max-height: 56px;
+    gap: 5px;
   }
 
   .cartEmpty {
     min-height: 0;
-    font-size: 12px;
+    font-size: 11px;
   }
 
   .cartLine {
@@ -1185,17 +1191,53 @@ a.section {
   }
 
   .totalLabel {
-    font-size: 11px;
+    font-size: 10px;
   }
 
   .totalValue {
-    font-size: clamp(16px, 1.5vw, 22px);
+    font-size: clamp(15px, 1.4vw, 20px);
   }
 
   .buyButton {
-    min-width: clamp(110px, 11vw, 170px);
-    padding: 7px 18px;
-    font-size: clamp(14px, 1.2vw, 18px);
+    min-width: clamp(100px, 10vw, 150px);
+    padding: 5px 14px;
+    font-size: clamp(13px, 1.1vw, 16px);
+  }
+
+  /*
+   * LE PONTON TIENT ENTIER, PIED COMPRIS.
+   *
+   * `.plate` se bornait à 191 cqh de large, soit 93 % de la hauteur de la
+   * scène une fois son ratio appliqué : il ne restait rien pour les
+   * pastilles et le lien qui vivent SOUS lui, et le bas du ponton — le
+   * prix, le bouton « Contenu » — passait sous le panier. On rend donc au
+   * pied la hauteur qui lui revient.
+   */
+  .showcase,
+  .plate {
+    width: min(98cqw, 170cqh);
+  }
+
+  .showcase {
+    gap: 2px;
+  }
+
+  .showcaseFoot {
+    gap: 3px;
+  }
+
+  .showcaseDot,
+  .showcaseDotActive {
+    width: 6px;
+    height: 6px;
+  }
+
+  .showcaseDots {
+    gap: 5px;
+  }
+
+  .stageLink {
+    font-size: 11px;
   }
 
   /* Le conseil d'usage disparaît ; le manque de monnaie, jamais. */
@@ -1206,6 +1248,76 @@ a.section {
   .cartHint[data-short="true"] {
     display: flex;
     font-size: 12px;
+  }
+}
+
+/* ── Paysage COURT et LARGE : l'enseigne cède la place aux rayons ──
+ *
+ * L'enseigne peinte est un objet PORTRAIT (652 × 1100) : dans une colonne
+ * courte, c'est la hauteur qui la borne, et elle tombait à 142 px de large
+ * au fond d'une colonne de 210 — les rayons y devenaient illisibles et la
+ * moitié de la colonne restait vide. Mesuré sur un iPhone couché.
+ *
+ * Elle laisse donc la place à ce qu'elle encadrait : un panneau sobre, aux
+ * dimensions de la colonne, où « Boosters », « Decks » et « Cosmétiques »
+ * reprennent leur taille de cible tactile. Le bois est un décor ; les
+ * rayons sont la navigation, et c'est elle qui passe d'abord.
+ *
+ * `min-width: 821px` : sous cette largeur, la règle des fenêtres étroites
+ * couche déjà les rayons en bande au-dessus du ponton, ce qui vaut mieux
+ * qu'une colonne d'un tiers d'écran.
+ */
+@media (max-height: 620px) and (min-width: 821px) {
+  .sideInner {
+    /*
+     * La colonne entière, et non plus le gabarit d'une image. Le
+     * confinement reste en `inline-size` : tout ce qui habite les planches
+     * (rayons, pictogrammes, rivets de la plaque active) se mesure en
+     * `cqw`, et retrouve ici la largeur PLEINE de la colonne au lieu des
+     * 51 % que lui laissaient les marges de l'enseigne. Les rayons se
+     * redimensionnent donc seuls, sans une valeur à réécrire.
+     */
+    width: 100%;
+    height: 100%;
+    aspect-ratio: auto;
+    gap: 6px;
+    padding: 8px 10px 10px;
+    border: 1px solid rgba(199, 154, 78, 0.35);
+    border-radius: 10px;
+    background: linear-gradient(180deg, rgba(34, 24, 14, 0.92), rgba(18, 12, 6, 0.92));
+    filter: none;
+    /* À plat : la perspective n'avait de sens que pour la planche peinte. */
+    transform: none;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+
+  /* La lanterne était découpée sur la silhouette de l'enseigne. */
+  .sideInner::before {
+    display: none;
+  }
+
+  /* Plus de poutre sur laquelle se poser : le titre reprend le fil. */
+  .sideTitle {
+    position: static;
+    height: auto;
+    font-size: 17px;
+  }
+
+  /* Cinq rayons et la réserve dans 295 px : la planche rend un peu de sa
+     hauteur, sans descendre sous la cible tactile. */
+  .section {
+    min-height: 19cqw;
+    padding: 2cqw 3cqw;
+    font-size: clamp(11px, 8cqw, 18px);
+  }
+
+  .section:disabled .sectionLabel::after {
+    margin-top: 0.4cqw;
+  }
+
+  .reserveLink {
+    padding: 3cqw 4cqw;
   }
 }
 

@@ -1568,6 +1568,17 @@
   position: relative;
   /* Le geste doit rester à nous : ni défilement ni zoom au doigt. */
   touch-action: none;
+  /*
+   * iOS ouvre son menu contextuel (« Copier l'image », « Ajouter aux
+   * photos ») sur un appui long, et ANNULE le pointeur en le faisant :
+   * l'appui long du plateau ne se déclenchait jamais sur un iPhone. La
+   * bulle est de toute façon sans objet ici — la carte n'est pas un
+   * contenu à emporter.
+   */
+  -webkit-touch-callout: none;
+  /* Même raison : une sélection de texte qui s'amorce annule le pointeur. */
+  -webkit-user-select: none;
+  user-select: none;
   transform-origin: 50% 50%;
   transition: transform 140ms ease-out, opacity 140ms ease-out, filter 140ms ease-out;
 }
@@ -1880,14 +1891,23 @@
   stroke-linejoin: round;
 }
 
-/* Carte agrandie (`CardZoom`) : lecture au doigt. */
+/* Carte agrandie (`CardZoom`, `TableCardZoom`) : lecture au doigt. */
 .cardZoom {
   position: fixed;
   inset: 0;
   z-index: 50;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: clamp(6px, 1.4dvh, 14px);
+  /* Le calque couvre l'écran entier (`position: fixed`) : la zone sûre est
+     donc la sienne à tenir, aucun bandeau ne l'en écarte. */
+  padding:
+    calc(clamp(6px, 1.6dvh, 16px) + var(--tb-safe-top))
+    calc(clamp(8px, 2vw, 20px) + var(--tb-safe-right))
+    calc(clamp(6px, 1.6dvh, 16px) + var(--tb-safe-bottom))
+    calc(clamp(8px, 2vw, 20px) + var(--tb-safe-left));
   background: rgba(2, 6, 23, 0.72);
   backdrop-filter: blur(2px);
   touch-action: none;
@@ -1895,14 +1915,52 @@
 }
 
 .cardZoomCard {
-  /* Aussi grande que l'écran le permet, au ratio 5:7. */
-  width: min(calc(88cqh * 5 / 7), 82cqw);
+  /*
+   * PLEINE HAUTEUR, au ratio 5:7 — c'est tout l'intérêt du geste : sur un
+   * téléphone couché, une carte de plateau fait ~50 px de large et son
+   * texte de règles est illisible.
+   *
+   * Mesuré sur la FENÊTRE (`dvh`/`vw`) et non sur un conteneur (`cqh`) :
+   * le calque est posé hors de la scène de partie, qui est mise à
+   * l'échelle — il n'a aucun conteneur de requête au-dessus de lui, et
+   * `cqh` retombait alors sur une base qui n'était pas la sienne.
+   */
+  /* 86 dvh et non 100 : le bouton de sortie et les marges de zone sûre
+     passent en dessous, et la carte ne doit jamais avoir à rétrécir pour
+     leur faire place — elle se déformerait. */
+  flex: 0 0 auto;
+  width: min(calc(86dvh * 5 / 7), 82vw);
   filter: drop-shadow(0 24px 40px rgba(0, 0, 0, 0.7));
   animation: cardZoomIn 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .cardZoomCard button {
   pointer-events: none;
+}
+
+/* Sortie vers la fiche détaillée — le seul contrôle du calque, tout le
+   reste referme (`TableCardZoom`). */
+.cardZoomDetail {
+  flex: 0 0 auto;
+  padding: 6px 16px;
+  border: 1px solid rgba(199, 154, 78, 0.55);
+  border-radius: 999px;
+  background: rgba(6, 16, 26, 0.9);
+  color: #e5cf9e;
+  font: inherit;
+  font-size: clamp(11px, 1.6dvh, 14px);
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.cardZoomDetail:hover {
+  border-color: #e5cf9e;
+  color: #f7ecd4;
+}
+
+.cardZoomDetail:focus-visible {
+  outline: 2px solid var(--cb-cyan, #58c8d8);
+  outline-offset: 2px;
 }
 
 @keyframes cardZoomFade {

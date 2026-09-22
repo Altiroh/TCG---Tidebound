@@ -1191,6 +1191,70 @@
     padding: 3px 8px;
   }
 
+  /*
+   * LES FILTRES PASSENT EN PASTILLES.
+   *
+   * Une case à cocher par ligne, c'est une ligne de 30 px pour un mot de
+   * six lettres : sur un téléphone couché, « Style de jeu » et « Navire »
+   * montraient UNE entrée chacun et le reste se cherchait au défilement —
+   * autant dire qu'ils ne filtraient plus rien (retour du 22/09).
+   *
+   * Les mêmes cases deviennent donc des pastilles qui s'enroulent : le
+   * carré de coche s'efface (c'est la pastille entière qui s'allume) et
+   * deux à trois tiennent par rangée. Aucun changement de balisage —
+   * ce sont toujours des `<input type="checkbox">` étiquetés, le clavier
+   * et les lecteurs d'écran ne voient pas la différence.
+   */
+  .railChecks {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 4px;
+    min-height: 0;
+    padding-right: 2px;
+  }
+
+  .railCheck {
+    gap: 0;
+    min-height: 0;
+    padding: 3px 9px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--tb-surface-inset);
+    font-size: 11.5px;
+    line-height: 1.4;
+  }
+
+  /* Le carré de coche (`game.choiceBox`) : seul `<span>` de l'étiquette. */
+  .railCheck > span {
+    display: none;
+  }
+
+  .railCheck:has(input:checked) {
+    border-color: var(--cb-cyan);
+    background: var(--tb-accent-soft);
+    color: var(--ink-strong);
+  }
+
+  .railCheck:has(input:focus-visible) {
+    outline: 2px solid var(--cb-cyan);
+    outline-offset: 1px;
+  }
+
+  .railFilter {
+    gap: 0;
+  }
+
+  .railFilter > p {
+    margin-bottom: 2px;
+  }
+
+  .railReset {
+    margin-top: 4px;
+    padding: 4px 10px;
+    min-height: 0;
+    font-size: 11.5px;
+  }
+
   .mainHead {
     gap: 8px;
   }
