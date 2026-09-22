@@ -1,7 +1,10 @@
-import { readdirSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { CORE_SET } from "@/game/cards/sets/core";
+import { SHELF_BOOSTER_IDS } from "@/game/boosters/extensions";
+import { DEFAULT_PACK_VISUAL, getBoosterPackVisual } from "@/features/boosters/opening/boosterPackVisuals";
+import { STANDARD_BOOSTER_ID } from "@/game/economy/constants";
 
 /**
  * COUVERTURE DES ILLUSTRATIONS.
@@ -22,21 +25,18 @@ import { CORE_SET } from "@/game/cards/sets/core";
 const DOSSIER = path.join(process.cwd(), "public", "assets", "cards", "illustrations");
 
 /**
- * Cartes dont le visuel manque encore, avec la raison. ANTÉRIEURES au
- * Lot 14 — toutes deux ajoutées sans leur illustration :
+ * Cartes dont le visuel manque encore, avec la raison.
  *
- *  - `le-role-dequipage` : deuxième carte de la paire anti-swarm du
- *    21/09/2026, livrée en même temps que La Nasse Trop Pleine, qui a eu
- *    son visuel et pas elle ;
- *  - `albatros-de-mauvais-temps` : volatile du Lot 12.
+ * VIDE depuis le 22/09/2026 : les deux dernières — Le Rôle d'Équipage et
+ * Albatros de Mauvais Temps, toutes deux livrées sans leur illustration
+ * dans des lots antérieurs — ont reçu la leur le jour même où ce test les
+ * a nommées. C'était tout son objet.
  *
- * Cette liste doit RÉTRÉCIR. Y ajouter une entrée demande la même chose
- * qu'ailleurs : une raison écrite, pas un contournement.
+ * Y ajouter une entrée demande la même chose qu'ailleurs : une raison
+ * écrite, pas un contournement. Et l'exception ne survit pas à l'arrivée
+ * de son visuel — le troisième test le refuse.
  */
-const SANS_VISUEL: Record<string, string> = {
-  "le-role-dequipage": "Lot anti-swarm du 21/09/2026 : livrée sans son illustration.",
-  "albatros-de-mauvais-temps": "Lot 12 — Rapiécer la Coque : livrée sans son illustration.",
-};
+const SANS_VISUEL: Record<string, string> = {};
 
 const fichiers = new Set(readdirSync(DOSSIER));
 
@@ -63,6 +63,36 @@ describe("illustrations du catalogue", () => {
       // Le visuel est arrivé : l'exception doit partir avec lui.
       expect(fichiers.has(`${cardId}.webp`), `${cardId} a désormais son illustration — retire-le de SANS_VISUEL`).toBe(false);
       expect(CORE_SET.some((def) => def.id === cardId), `${cardId} n'existe plus au catalogue`).toBe(true);
+    }
+  });
+});
+
+describe("visuels de sachet", () => {
+  /**
+   * Un booster dont le visuel pointe encore sur celui d'un autre s'affiche
+   * et s'ouvre parfaitement — c'est bien le problème. Le Nécessaire du
+   * Marin a vécu une journée avec les images du Défaut, et rien ne l'aurait
+   * signalé.
+   */
+  it("chaque booster du rayon a ses trois images, et ne les emprunte à personne", () => {
+    for (const boosterId of SHELF_BOOSTER_IDS) {
+      const visual = getBoosterPackVisual(boosterId);
+
+      // Retomber sur le visuel par défaut, c'est n'en avoir aucun. Seul le
+      // Défaut lui-même a le droit d'être le défaut — et son dossier
+      // s'appelle « defaut » là où son identifiant de booster est
+      // « standard », un écart de nommage historique.
+      if (boosterId !== STANDARD_BOOSTER_ID) {
+        expect(visual.id, `${boosterId} retombe sur le visuel par défaut`).not.toBe(DEFAULT_PACK_VISUAL.id);
+      }
+
+      for (const [role, url] of Object.entries(visual.assets)) {
+        const chemin = path.join(process.cwd(), "public", url.replace(/^\//, ""));
+        expect(existsSync(chemin), `${boosterId} / ${role} : ${url} est introuvable`).toBe(true);
+        // Les trois fichiers d'un sachet vivent dans SON dossier : un
+        // chemin qui pointe ailleurs est un emprunt, pas un visuel.
+        expect(url.startsWith(`/assets/boosters/${visual.id}/`), `${boosterId} / ${role} emprunte ${url}`).toBe(true);
+      }
     }
   });
 });
