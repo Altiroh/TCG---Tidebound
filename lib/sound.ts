@@ -52,6 +52,12 @@ function soundUrl(src: string): string {
  *
  * `offset` (secondes) saute un BLANC en tête de fichier : un son de survol
  * qui attend 0,6 s avant de se faire entendre arrive après le geste.
+ *
+ * `duration` (secondes, à partir d'`offset`) COUPE la queue d'un fichier
+ * trop long — un clic qui traîne quatre secondes couvre tout ce qui suit.
+ * La coupe se fait à la lecture, pas dans le fichier : le son d'origine
+ * reste intact, et aucun cache n'a à être contourné. Les dernières
+ * `CUT_FADE_S` sont fondues, sinon la coupe nette claque.
  */
 const SOUNDS = {
   // Clic d'interface général.
@@ -79,8 +85,11 @@ const SOUNDS = {
   // Menu d'accueil (parchemins de la carte marine). Survol plus discret
   // qu'un clic : on le déclenche souvent, en promenant la souris.
   menuCardHover: { src: "/assets/sound/menu-card-hover.mp3", gain: 0.55, offset: 0.55 }, // -26.3 dB · 2,3 s, 0,6 s de blanc
-  menuCardClick: { src: "/assets/sound/menu-card-clic.mp3", gain: 1, offset: 0.18 }, // -32.9 dB · 4,5 s, 0,2 s de blanc
-} satisfies Record<string, { src: string; gain: number; offset?: number }>;
+  menuCardClick: { src: "/assets/sound/menu-card-clic.mp3", gain: 1, offset: 0.18, duration: 1 }, // -32.9 dB · 4,5 s, 0,2 s de blanc, coupé à 1 s
+} satisfies Record<string, { src: string; gain: number; offset?: number; duration?: number }>;
+
+/** Fondu de fin appliqué à un son coupé par `duration`. */
+const CUT_FADE_S = 0.08;
 
 type SoundId = keyof typeof SOUNDS;
 
@@ -147,7 +156,7 @@ type StopPlayback = () => void;
 const NOTHING_TO_STOP: StopPlayback = () => undefined;
 
 /** Repli historique : un élément `Audio` jetable (Web Audio absent, ou son pas encore décodé). */
-function playWithElement(src: string, gain: number, offset = 0): StopPlayback {
+function playWithElement(src: string, gain: number, offset = 0, duration?: number): StopPlayback {
   try {
     const audio = new Audio(soundUrl(src));
     audio.volume = gain;
@@ -155,21 +164,27 @@ function playWithElement(src: string, gain: number, offset = 0): StopPlayback {
     void audio.play().catch(() => {
       // Autoplay bloqué ou fichier indisponible : silencieux, jamais bloquant.
     });
-    return () => audio.pause();
+    // Coupe sans fondu : ce chemin de repli ne sert qu'à la toute première
+    // lecture d'un son, avant qu'il ne soit décodé.
+    const cut = duration ? window.setTimeout(() => audio.pause(), duration * 1000) : undefined;
+    return () => {
+      if (cut) window.clearTimeout(cut);
+      audio.pause();
+    };
   } catch {
     // Best-effort.
     return NOTHING_TO_STOP;
   }
 }
 
-function play(src: string, volume: number, offset = 0): StopPlayback {
+function play(src: string, volume: number, offset = 0, duration?: number): StopPlayback {
   const settings = getAudioSettings();
   // Volume à 0 : inutile de lancer une lecture que personne n'entendra.
   if (!settings.effects || settings.effectsVolume === 0) return NOTHING_TO_STOP;
   const gain = volume * settings.effectsVolume;
 
   const context = getAudioContext();
-  if (!context) return playWithElement(src, gain, offset);
+  if (!context) return playWithElement(src, gain, offset, duration);
   // Suspendu tant qu'aucune interaction n'a eu lieu : un clic le réveille.
   if (context.state === "suspended") void context.resume().catch(() => undefined);
 
@@ -177,7 +192,7 @@ function play(src: string, volume: number, offset = 0): StopPlayback {
   if (!decoded) {
     // Toute première lecture de ce son : on la joue par l'ancien chemin pour
     // ne pas la perdre, pendant que le décodage se fait pour les suivantes.
-    const stop = playWithElement(src, gain, offset);
+    const stop = playWithElement(src, gain, offset, duration);
     void decodeSound(context, src);
     return stop;
   }
@@ -189,7 +204,7 @@ function play(src: string, volume: number, offset = 0): StopPlayback {
   void decoded.then((buffer) => {
     if (stopped) return;
     if (!buffer) {
-      stopNow = playWithElement(src, gain, offset);
+      stopNow = playWithElement(src, gain, offset, duration);
       return;
     }
     try {
@@ -198,7 +213,17 @@ function play(src: string, volume: number, offset = 0): StopPlayback {
       const gainNode = context.createGain();
       gainNode.gain.value = gain;
       source.connect(gainNode).connect(context.destination);
-      source.start(0, offset);
+      if (duration) {
+        // Fondu sur la fin de la tranche jouée, puis arrêt : sans lui, la
+        // coupe en plein milieu d'une onde s'entend comme un claquement.
+        const startedAt = context.currentTime;
+        const fadeFrom = Math.max(startedAt, startedAt + duration - CUT_FADE_S);
+        gainNode.gain.setValueAtTime(gain, fadeFrom);
+        gainNode.gain.linearRampToValueAtTime(0, startedAt + duration);
+        source.start(0, offset, duration);
+      } else {
+        source.start(0, offset);
+      }
       stopNow = () => source.stop();
     } catch {
       // Best-effort.
@@ -215,8 +240,8 @@ function play(src: string, volume: number, offset = 0): StopPlayback {
 }
 
 function playSound(id: SoundId): StopPlayback {
-  const sound: { src: string; gain: number; offset?: number } = SOUNDS[id];
-  return play(sound.src, sound.gain, sound.offset);
+  const sound: { src: string; gain: number; offset?: number; duration?: number } = SOUNDS[id];
+  return play(sound.src, sound.gain, sound.offset, sound.duration);
 }
 
 /** Son d'ACTION : prend la place du clic de bouton qui l'accompagne (cf. `lastActionAt`). */
