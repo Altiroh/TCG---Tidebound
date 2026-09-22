@@ -1174,6 +1174,17 @@ export interface CardInstance {
    */
   lastDamageTurn?: number;
 
+  /**
+   * Une fenêtre de sauvetage a déjà été ouverte pour CETTE destruction-ci
+   * (`onPermanentWouldBeDestroyed`). Sans ce drapeau, la passe de morts
+   * rouvrirait la même question à chaque reprise, indéfiniment.
+   *
+   * Il ne survit pas à ce qu'il borne : une carte sauvée n'est plus
+   * condamnée, et le drapeau est retiré ; une carte qui part l'emporte au
+   * Cimetière, où il ne veut plus rien dire.
+   */
+  rescueWindowOffered?: boolean;
+
   /** Posée une fois la carte au cimetière : comment elle a quitté le plateau. */
   destructionCause?: DestructionCause;
 

@@ -298,6 +298,19 @@ export interface GameState {
   pendingTideStep?: PendingTideStep;
 
   /**
+   * Destruction suspendue le temps d'une fenêtre de SAUVETAGE (Lot 14).
+   *
+   * `processDeaths` s'arrête avant d'emporter ces permanents et rend la
+   * main ; `dispatch` ouvre alors la fenêtre `onPermanentWouldBeDestroyed`,
+   * puis relance la passe de morts dès qu'elle se referme. Ceux qui n'ont
+   * pas été sauvés partent à ce moment-là.
+   *
+   * Même geste que `pendingAttack` et `pendingTideStep` : un point du
+   * déroulement où le moteur s'arrête pour laisser quelqu'un décider.
+   */
+  pendingDestruction?: { instanceIds: string[]; turnNumber: number };
+
+  /**
    * DÉLAI DE TOUR : jusqu'à quand le joueur attendu a pour agir
    * (`game/rules/turnTimer.ts`).
    *

@@ -13,13 +13,13 @@ import { resolveChoice } from "@/game/actions/resolveChoice";
 import { saborder } from "@/game/actions/saborder";
 import { timeout, withDeadlineMet } from "@/game/actions/timeout";
 import type { ActionResult, PlayerAction } from "@/game/actions/types";
-import { openReactionWindowIfEligible } from "@/game/reactions/reactionWindow";
+import { openReactionWindowIfEligible, ouvrirFenetrePour } from "@/game/reactions/reactionWindow";
 import { resolveOceanJudgment } from "@/game/rules/oceanJudgment";
 import { refreshTurnTimer } from "@/game/rules/turnTimer";
 import { processDeaths } from "@/game/state/processDeaths";
 import { processLoneCreatureChanges, processPowerGains, snapshotEffectivePower, snapshotLoneCreatures } from "@/game/triggers/triggerBus";
 import type { GameEvent } from "@/game/events/types";
-import type { GameState } from "@/game/state/types";
+import { findCardInstance, type GameState } from "@/game/state/types";
 
 /** Actions réservées à une fenêtre de réaction ouverte — jamais soumises à `openReactionWindowIfEligible` sur leurs propres résultats, elles déterminent déjà elles-mêmes le prochain état de `pendingReaction`. */
 const REACTION_ACTION_TYPES = new Set<PlayerAction["type"]>(["activateReaction", "passReaction"]);
@@ -111,7 +111,46 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
     if (repris.ok) result = { ok: true, state: repris.state, events: [...result.events, ...repris.events] };
   }
 
-  const deaths = processDeaths(result.state, state.turnNumber);
+  // --- REPRISE D'UNE DESTRUCTION SUSPENDUE ------------------------------
+  //
+  // La passe précédente s'était arrêtée pour laisser quelqu'un empêcher une
+  // destruction (`pendingDestruction`, Lot 14). La fenêtre vient de se
+  // refermer : on relance la passe, et ce qui n'a pas été sauvé part
+  // maintenant. Le drapeau posé sur chaque instance garantit qu'on ne
+  // repose pas la même question.
+  if (result.state.pendingDestruction && !result.state.pendingReaction) {
+    result = { ...result, state: { ...result.state, pendingDestruction: undefined } };
+  }
+
+  let deaths = processDeaths(result.state, state.turnNumber);
+
+  // La passe s'arrête d'elle-même quand un sauvetage est possible. On ouvre
+  // alors la fenêtre ICI, avec les événements qui la justifient : c'est le
+  // seul endroit qui voit à la fois les morts en attente et le recensement
+  // des réactions.
+  if (deaths.state.pendingDestruction && !deaths.state.pendingReaction) {
+    const attente = deaths.state.pendingDestruction;
+    const evenements = attente.instanceIds
+      .map((instanceId) => {
+        const trouve = findCardInstance(deaths.state, instanceId);
+        return trouve
+          ? {
+              trigger: "onPermanentWouldBeDestroyed" as const,
+              sourceInstanceId: instanceId,
+              cardId: trouve.card.cardId,
+              playerId: trouve.owner.id,
+            }
+          : undefined;
+      })
+      .filter((e): e is NonNullable<typeof e> => e !== undefined);
+    const fenetre = ouvrirFenetrePour(deaths.state, evenements, attente.turnNumber);
+    // Personne ne peut finalement répondre (la cible a changé entre-temps) :
+    // on ne laisse pas la destruction en suspens, la passe reprend.
+    deaths = fenetre
+      ? { ...deaths, state: { ...deaths.state, pendingReaction: fenetre } }
+      : processDeaths({ ...deaths.state, pendingDestruction: undefined }, state.turnNumber);
+  }
+
   const powerGains = processPowerGains(deaths.state, powerBefore, state.turnNumber);
   const loneCreatures = processLoneCreatureChanges(powerGains.state, loneBefore, state.turnNumber);
   const allEvents: GameEvent[] = [...result.events, ...deaths.events, ...powerGains.events, ...loneCreatures.events];

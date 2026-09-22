@@ -185,7 +185,23 @@ export type EffectType =
    * lesquelles — mais les cartes vont SOUS LA PIOCHE et non au Cimetière :
    * aucun déclencheur de défausse ne s'en mêle.
    */
-  | "handToDeckBottomThenDraw";
+  | "handToDeckBottomThenDraw"
+  /**
+   * « empêchez cette destruction : elle reste en jeu avec N Résistance »
+   * (Lot 14 — Filet de Sauvetage, Cloison Étanche, Bouclier d'Écume,
+   * Planche de Fortune).
+   *
+   * Ramène les dégâts marqués juste assez bas pour que la cible survive au
+   * contrôle de morts en cours, en lui laissant exactement `amount` de
+   * Résistance (1 partout dans le Lot 14). Ce n'est PAS un soin : la cible
+   * ressort au bord du gouffre, pas réparée.
+   *
+   * N'a de sens que dans une fenêtre `onPermanentWouldBeDestroyed` : hors
+   * d'elle, il n'y a pas de destruction à empêcher, et l'effet ramènerait
+   * arbitrairement une carte en bonne santé à 1 Résistance. Il ne fait donc
+   * rien si la cible n'est pas condamnée.
+   */
+  | "surviveWithHealth";
 
 /** Une valeur numérique d'effet, pour l'instant une constante — prête à
  * être étendue vers des formules (ex: "= nombre d'unités contrôlées"). */

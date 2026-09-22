@@ -3,7 +3,7 @@ import { getCardDefinition } from "@/game/cards/sets/core";
 import { hasResistance, type CardInstance } from "@/game/cards/types";
 import type { TideStateName } from "@/game/environment/types";
 import type { GameEvent } from "@/game/events/types";
-import { processTrigger } from "@/game/triggers/triggerBus";
+import { collectReactionCandidates, processTrigger } from "@/game/triggers/triggerBus";
 import type { DestructionCause } from "@/game/cards/types";
 import { reasonAfterLoss } from "@/game/state/reason";
 import { recordGraveyardArrival } from "@/game/state/discard";
@@ -262,6 +262,29 @@ function destroyOrphanedEquipment(state: GameState, turnNumber: number): { state
  * capacités `onDeath`. Boucle jusqu'à stabilisation, avec une garde-fou
  * anti-boucle infinie.
  */
+/**
+ * Au moins un joueur a-t-il, en jeu, une capacité facultative capable de
+ * répondre à la destruction de l'un de ces permanents ?
+ *
+ * On ne l'ouvre QUE si quelqu'un peut vraiment répondre : une fenêtre vide
+ * ferait attendre les deux joueurs pour rien à chaque échange de combat.
+ * Le recensement est celui de tout le monde (`collectReactionCandidates`) :
+ * les conditions, les coûts et les cibles y sont déjà évalués.
+ */
+function hasRescueCandidate(
+  state: GameState,
+  doomed: Array<{ unit: CardInstance; owner: PlayerState }>,
+  turnNumber: number
+): boolean {
+  const events = doomed.map(({ unit, owner }) => ({
+    trigger: "onPermanentWouldBeDestroyed" as const,
+    sourceInstanceId: unit.instanceId,
+    cardId: unit.cardId,
+    playerId: owner.id,
+  }));
+  return state.players.some((p) => collectReactionCandidates(state, events, p.id, turnNumber).length > 0);
+}
+
 export function processDeaths(
   state: GameState,
   turnNumber: number
@@ -310,6 +333,37 @@ export function processDeaths(
       for (const unit of player.board) {
         if (shouldDie(unit, tideState, player, current.environment.tideOrientation, turnNumber)) deaths.push({ unit, owner: player });
       }
+    }
+
+    // --- FENÊTRE DE SAUVETAGE (Lot 14) --------------------------------
+    //
+    // « Lorsqu'une de vos unités devrait être détruite… » : avant d'emporter
+    // quoi que ce soit, on marque les condamnés et on rend la main. C'est
+    // `dispatch` qui ouvrira la fenêtre `onPermanentWouldBeDestroyed` et
+    // reprendra cette passe une fois qu'elle se sera refermée.
+    //
+    // Un Sabordage n'ouvre rien : c'est un coût consenti, comme pour les
+    // substitutions et les survies.
+    //
+    // Le drapeau posé sur l'instance empêche la question de se reposer à
+    // chaque reprise. Il ne survit pas à ce qu'il borne : une carte sauvée
+    // le perd (`surviveWithHealth`), une carte qui part l'emporte.
+    const aSauver = deaths.filter(
+      ({ unit }) => !unit.rescueWindowOffered && unit.pendingRemoval !== "scuttled"
+    );
+    if (aSauver.length > 0 && hasRescueCandidate(current, aSauver, turnNumber)) {
+      const marques = new Set(aSauver.map(({ unit }) => unit.instanceId));
+      return {
+        state: {
+          ...current,
+          players: current.players.map((p) => ({
+            ...p,
+            board: p.board.map((u) => (marques.has(u.instanceId) ? { ...u, rescueWindowOffered: true } : u)),
+          })) as [PlayerState, PlayerState],
+          pendingDestruction: { instanceIds: [...marques], turnNumber },
+        },
+        events,
+      };
     }
 
     if (deaths.length === 0) {

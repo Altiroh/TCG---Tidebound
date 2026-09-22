@@ -1333,6 +1333,37 @@ export function resolveEffect(
     }
 
     case "transform":
+    case "surviveWithHealth": {
+      // « empêchez cette destruction : elle reste en jeu avec N Résistance ».
+      // On ramène les dégâts marqués juste assez bas pour qu'elle passe le
+      // contrôle de morts, pas plus : ce n'est pas un soin.
+      const restante = Math.max(1, amountValue(effect.amount, state, context.controllerId));
+      const rescapes = resolveUnitTargets(state, effect, context);
+      let nextState = { ...state, rngState: rescapes.rngState };
+      for (const { unit, ownerId } of rescapes.targets) {
+        const owner = getPlayer(nextState, ownerId);
+        const stats = computeEffectiveStats(unit, nextState.environment.tideState, {
+          controllerBoard: owner.board,
+          controllerReason: owner.reason,
+          tideOrientation: nextState.environment.tideOrientation,
+        });
+        // Une carte que la Marée emporte directement ne se sauve pas comme
+        // ça, et une destruction déjà décidée par un effet (`pendingRemoval`)
+        // s'annule ici : c'est bien elle que le texte empêche.
+        if (stats.destroyedByTide || stats.health < 1) continue;
+        nextState = replaceUnit(nextState, ownerId, unit.instanceId, (u) => ({
+          ...u,
+          damageMarked: Math.max(0, stats.health - restante),
+          pendingRemoval: undefined,
+          // Sauvée : elle n'est plus condamnée, donc le drapeau de fenêtre
+          // déjà proposée n'a plus lieu d'être.
+          rescueWindowOffered: undefined,
+        }));
+        events.push({ ...base, type: "HEAL", targetInstanceId: unit.instanceId, amount: 0 });
+      }
+      return { state: nextState, events };
+    }
+
     case "lookAtDeckTop": {
       const amount = amountValue(effect.amount, state, context.controllerId);
       const player = resolveSinglePlayerTarget(state, effect, context) ?? getPlayer(state, context.controllerId);
