@@ -80,7 +80,7 @@ function seedReferenceData(): void {
   ];
   for (const slot of standardSlots) db.table("booster_slots").push({ booster_definition_id: STANDARD, ...slot });
 
-  // `20260927120000_booster_necessaire_du_marin.sql`.
+  // `20261002120000_booster_necessaire_du_marin.sql`.
   const necessaireSlots = [
     { slot_index: 1, guaranteed_rarity: "common", weighted_rarities: null },
     { slot_index: 2, guaranteed_rarity: "common", weighted_rarities: null },
