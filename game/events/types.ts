@@ -42,7 +42,8 @@ export type GameEventType =
   | "DERAISON_SETTLED"
   | "SHIP_ABILITY_ACTIVATED"
   | "SHIP_ABILITY_FIRED"
-  | "TURN_TIMED_OUT";
+  | "TURN_TIMED_OUT"
+  | "STRUCTURE_REHIDDEN";
 
 export interface BaseGameEvent {
   type: GameEventType;
@@ -226,6 +227,22 @@ export interface GameEndedEvent extends BaseGameEvent {
  * automatique — l'événement `GAME_ENDED` qui suit le dit avec
  * `reason: "timeout"`.
  */
+/**
+ * Une Structure-piège s'est REFERMÉE après avoir tiré
+ * (`TriggeredAbility.afterHiddenReaction: "remasquable"`). Elle redevient
+ * masquable par la Marée, et sa Réaction cachée redevient éligible.
+ *
+ * Consigné pour que le journal raconte la transition — l'adversaire a vu la
+ * carte, il doit voir aussi qu'elle s'est refermée, sans quoi il croirait
+ * l'avoir devant les yeux pour le reste de la partie.
+ */
+export interface StructureRehiddenEvent extends BaseGameEvent {
+  type: "STRUCTURE_REHIDDEN";
+  playerId: PlayerId;
+  instanceId: string;
+  cardId: string;
+}
+
 export interface TurnTimedOutEvent extends BaseGameEvent {
   type: "TURN_TIMED_OUT";
   playerId: PlayerId;
@@ -456,4 +473,5 @@ export type GameEvent =
   | DeraisonSettledEvent
   | ShipAbilityActivatedEvent
   | ShipAbilityFiredEvent
-  | TurnTimedOutEvent;
+  | TurnTimedOutEvent
+  | StructureRehiddenEvent;

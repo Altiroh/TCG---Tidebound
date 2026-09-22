@@ -89,8 +89,10 @@ export function activateReaction(state: GameState, action: ActivateReactionActio
   // frapper par une carte qu'on n'a jamais vue, et l'adversaire peut lire ce
   // qui l'atteint dans le journal, dans le bon ordre.
   //
-  // La révélation est définitive (`CardInstance.revealed`) : si la Marée
-  // remasque la Structure au tour suivant, elle reste connue.
+  // La révélation est définitive par DÉFAUT (`CardInstance.revealed`) : si
+  // la Marée remasque la Structure au tour suivant, elle reste connue. Une
+  // carte peut en décider autrement — `afterHiddenReaction: "remasquable"`,
+  // appliqué plus bas, une fois les effets résolus.
   let revealedState = state;
   const revealEvents: GameEvent[] = [];
   const activatedAbility = getCardDefinition(validation.candidate.cardId).abilities?.[action.abilityIndex];
@@ -144,6 +146,39 @@ export function activateReaction(state: GameState, action: ActivateReactionActio
   const discarded = processDiscardedFromHandTriggers(nextState, resolution.events, pending.turnNumber);
   nextState = discarded.state;
   events.push(...discarded.events);
+
+  // --- REFERMETURE (grammaire des Structures-pièges, 22/09/2026) --------
+  //
+  // Une Réaction cachée déclarée `afterHiddenReaction: "remasquable"` ne se
+  // découvre QUE le temps de sa résolution : la révélation retombe une fois
+  // les effets appliqués, et la Structure redevient masquable par la Marée,
+  // invisible pour l'adversaire, et de nouveau capable de tirer.
+  //
+  // Ici et pas avant : la carte a pu quitter le plateau entre-temps (elle
+  // s'est Sabordée, un effet l'a détruite) — on ne referme que ce qui est
+  // encore là.
+  if (activatedAbility?.hiddenReaction && activatedAbility.afterHiddenReaction === "remasquable") {
+    const owner = nextState.players.find((p) => p.board.some((u) => u.instanceId === action.sourceInstanceId));
+    const holder = owner?.board.find((u) => u.instanceId === action.sourceInstanceId);
+    if (owner && holder?.revealed) {
+      nextState = {
+        ...nextState,
+        players: nextState.players.map((p) =>
+          p.id === owner.id
+            ? { ...p, board: p.board.map((u) => (u.instanceId === holder.instanceId ? { ...u, revealed: undefined } : u)) }
+            : p
+        ) as [PlayerState, PlayerState],
+      };
+      events.push({
+        type: "STRUCTURE_REHIDDEN",
+        turnNumber: pending.turnNumber,
+        timestamp: Date.now(),
+        playerId: owner.id,
+        instanceId: holder.instanceId,
+        cardId: holder.cardId,
+      });
+    }
+  }
 
   // « Choisissez : A ou B » : activer l'une des capacités d'un groupe écarte
   // ses sœurs pour le reste de la fenêtre.

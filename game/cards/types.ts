@@ -131,7 +131,8 @@ export interface TriggeredAbility {
    * Le SORT DE LA CARTE APRÈS COUP appartient à son texte, pas au moteur :
    * une Réaction cachée qui ne dit rien laisse la Structure en jeu, révélée.
    * Pour qu'elle parte, le texte le dit et la définition le réalise avec les
-   * primitives existantes (`saborde` ou une destruction sur `self`).
+   * primitives existantes (`saborde` ou une destruction sur `self`) ; pour
+   * qu'elle se remasque, il le dit aussi — `afterHiddenReaction`.
    *
    * Les déclencheurs de DÉPART (`onDeath`, `onSaborde`, `onExpire`,
    * `onTideStateExited`) et la révélation elle-même (`onBecomeVisible`)
@@ -139,6 +140,39 @@ export interface TriggeredAbility {
    * « agir ».
    */
   hiddenReaction?: boolean;
+
+  /**
+   * CE QUE DEVIENT LA STRUCTURE une fois sa Réaction cachée résolue
+   * (grammaire des Structures-pièges, 22/09/2026).
+   *
+   * La grammaire de design prévoit trois issues après déclenchement, et
+   * deux existaient déjà : **rester révélée** (le défaut, rien à déclarer)
+   * et **être détruite** (un effet `saborde`/`destroy` sur soi, comme
+   * n'importe quelle autre carte). Manquait la troisième.
+   *
+   *  - `"revelee"` — défaut. La révélation est définitive : la carte reste
+   *    en jeu, connue, et sa moitié VISIBLE prend le relais si elle en a
+   *    une (Filet à la Dérive, Le Filet qui Respire).
+   *  - `"remasquable"` — la révélation ne vaut que pour cette résolution.
+   *    Dès qu'elle est refermée, `CardInstance.revealed` retombe, donc la
+   *    Marée peut de nouveau la masquer, la projection joueur la cache de
+   *    nouveau à l'adversaire, et sa Réaction cachée redevient éligible.
+   *
+   * Ce que « remasquable » NE fait PAS : effacer le journal. L'adversaire a
+   * vu la carte se découvrir, l'événement `STRUCTURE_REVEALED` reste
+   * consigné, et il sait donc ce qui l'a frappé. Ce qui revient, c'est la
+   * capacité d'agir masquée — pas l'amnésie de l'autre.
+   *
+   * EXIGE une limite de fréquence (`oncePerTurnKey`, ou `onceEver`). Sans
+   * elle, un piège qui se remasque reproposerait sa fenêtre à chaque
+   * déclencheur, indéfiniment — c'est précisément le défaut de 43 fenêtres
+   * par partie que la garde `revealed` avait corrigé. La conformité du
+   * catalogue le vérifie.
+   *
+   * N'a de sens que sur une capacité `hiddenReaction` : ailleurs, il n'y a
+   * rien à remasquer.
+   */
+  afterHiddenReaction?: "revelee" | "remasquable";
   /**
    * Filtres supplémentaires, évalués AVANT que `oncePerTurnKey` ne soit
    * consommé — contrairement à une condition posée sur un effet, qui laisse

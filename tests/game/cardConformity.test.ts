@@ -36,7 +36,9 @@ type RuleId =
   | "cimetiere"
   | "pied-marin"
   | "designation"
-  | "observateur";
+  | "observateur"
+  /** Structure-piège qui se referme après avoir tiré (`afterHiddenReaction`). */
+  | "remasquable";
 
 /**
  * Écarts assumés, avec leur motif. La clé est `${cardId}:${rule}`.
@@ -274,6 +276,17 @@ function check(def: CardDefinition): Violation[] {
       push("cost", `une capacité coûte ${a.cost.reason} Raison, mais le texte ne l'annonce pas`);
     }
     if (a.effects.length === 0) push("trigger", "capacité sans effet");
+
+    // Structure-piège qui se REFERME (grammaire du 22/09/2026) : sans
+    // limite de fréquence, elle reproposerait sa fenêtre à chaque
+    // déclencheur, indéfiniment — c'est exactement le défaut que la garde
+    // `revealed` avait corrigé (43 fenêtres par partie, mesurées).
+    if (a.afterHiddenReaction === "remasquable") {
+      if (!a.hiddenReaction) push("remasquable", "`afterHiddenReaction` sur une capacité qui n'est pas une Réaction cachée");
+      if (!a.oncePerTurnKey && !a.onceEver) {
+        push("remasquable", "une Réaction cachée remasquable doit porter `oncePerTurnKey` ou `onceEver`");
+      }
+    }
   }
 
   return out;
