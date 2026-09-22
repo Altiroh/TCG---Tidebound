@@ -1333,6 +1333,63 @@ export function resolveEffect(
     }
 
     case "transform":
+    case "lookAtDeckTop": {
+      const amount = amountValue(effect.amount, state, context.controllerId);
+      const player = resolveSinglePlayerTarget(state, effect, context) ?? getPlayer(state, context.controllerId);
+      const regardees = player.deck.slice(0, Math.max(0, amount));
+      // Pioche vide : le texte est sans objet, on ne pose pas une question
+      // dont aucune réponse n'existe.
+      if (regardees.length === 0) return { state, events };
+
+      // Les cartes SORTENT de la pioche maintenant : elles vivent dans le
+      // choix jusqu'à la réponse, sans quoi une pioche résolue entre-temps
+      // les rendrait obsolètes.
+      const reste = player.deck.slice(regardees.length);
+      return {
+        state: {
+          ...replacePlayer(state, { ...player, deck: reste }),
+          pendingChoice: {
+            kind: "deckLook",
+            playerId: player.id,
+            revealed: regardees,
+            take: effect.uses ?? 1,
+            ...(effect.filter?.cardTypes ? { takeableCardTypes: effect.filter.cardTypes } : {}),
+            refusable: effect.refusable === true,
+            sourceInstanceId: context.sourceInstanceId,
+            turnNumber: context.turnNumber,
+          },
+        },
+        events,
+      };
+    }
+
+    case "handToDeckBottomThenDraw": {
+      const amount = amountValue(effect.amount, state, context.controllerId);
+      const player = resolveSinglePlayerTarget(state, effect, context) ?? getPlayer(state, context.controllerId);
+      if (amount <= 0 || player.hand.length === 0) return { state, events };
+
+      // Même question qu'une défausse — c'est au joueur de désigner — mais
+      // la destination change, et avec elle le fait qu'aucun déclencheur de
+      // défausse ne s'en mêle.
+      return {
+        state: {
+          ...state,
+          pendingChoice: {
+            kind: "handDiscard",
+            playerId: player.id,
+            count: Math.min(amount, player.hand.length),
+            atMost: true,
+            destination: "deckBottom",
+            drawBackAfterwards: true,
+            refusable: true,
+            sourceInstanceId: context.sourceInstanceId,
+            turnNumber: context.turnNumber,
+          },
+        },
+        events,
+      };
+    }
+
     case "searchDeck":
       // Prévus par le modèle de données pour de futures extensions ;
       // pas encore nécessaires pour le catalogue actuel.

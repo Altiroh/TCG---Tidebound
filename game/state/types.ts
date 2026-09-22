@@ -431,6 +431,26 @@ export interface HandDiscardChoice {
   playerId: PlayerId;
   /** Nombre de cartes à défausser — déjà borné à la taille de la main. */
   count: number;
+  /**
+   * « Placez JUSQU'À 2 cartes » (Mauvaise Main, Lot 14) : `count` devient
+   * un maximum et non un compte exact. Absent = le texte dit combien, et
+   * le moteur exige ce nombre-là.
+   */
+  atMost?: boolean;
+  /**
+   * Où partent les cartes désignées. `"graveyard"` (défaut) est la
+   * défausse ordinaire ; `"deckBottom"` les remet SOUS la pioche —
+   * ce n'est pas une défausse, donc elle ne réveille aucun déclencheur de
+   * défausse et rien ne les repêchera au Cimetière.
+   */
+  destination?: "graveyard" | "deckBottom";
+  /**
+   * « puis piochez-en autant » : une fois les cartes replacées, le joueur
+   * en pioche exactement le nombre qu'il a rendu. Porté par le choix
+   * plutôt que par une `continuation`, parce que le montant n'est connu
+   * qu'APRÈS la réponse — des effets statiques ne peuvent pas l'exprimer.
+   */
+  drawBackAfterwards?: boolean;
   /** « vous POUVEZ défausser » : « Ne rien défausser » est une réponse valable. */
   refusable: boolean;
   /** Carte à l'origine de la défausse, pour l'écran et la traçabilité. */
@@ -451,7 +471,39 @@ export interface HandDiscardChoice {
   turnNumber: number;
 }
 
-export type PendingChoice = ReasonOrAnchorChoice | AbilityOptionChoice | HandDiscardChoice;
+/**
+ * « Regardez les N premières cartes de votre pioche. Ajoutez-en une à votre
+ * main. Placez les autres sous votre pioche. » (Lot 14 — Faire l'Inventaire,
+ * Journal de Bord, Fouille de la Cale).
+ *
+ * Les cartes regardées sont SORTIES de la pioche au moment où la question
+ * est posée, et vivent ici jusqu'à la réponse : sans ça, une pioche qui se
+ * résoudrait entre-temps rendrait les cartes proposées obsolètes.
+ *
+ * Information PRIVÉE : `toPlayerView` ne montre `revealed` qu'à celui qui
+ * regarde — c'est toute la valeur du filtrage que l'adversaire n'ait pas
+ * vu passer les trois cartes.
+ */
+export interface DeckLookChoice {
+  kind: "deckLook";
+  playerId: PlayerId;
+  /** Cartes retirées du dessus de la pioche, dans l'ordre où elles y étaient. */
+  revealed: CardInstance[];
+  /** Nombre maximum de cartes à prendre en main (1 pour tout le Lot 14). */
+  take: number;
+  /**
+   * Restreint ce qui est PRENABLE (« vous pouvez ajouter une Structure
+   * parmi elles ») — pas ce qui est regardé : le joueur voit les quatre
+   * cartes, il n'en prend qu'une d'un type donné.
+   */
+  takeableCardTypes?: import("@/game/cards/types").CardType[];
+  /** « vous POUVEZ ajouter » : ne rien prendre est une réponse valable. */
+  refusable: boolean;
+  sourceInstanceId?: string;
+  turnNumber: number;
+}
+
+export type PendingChoice = ReasonOrAnchorChoice | AbilityOptionChoice | HandDiscardChoice | DeckLookChoice;
 
 export interface PendingReactionState {
   /** Événements déclencheurs ayant ouvert cette fenêtre (contexte pour l'UI/le recalcul d'éligibilité). */

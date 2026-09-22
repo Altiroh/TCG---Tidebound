@@ -58,6 +58,13 @@ export function toPlayerView(state: GameState, viewerId: PlayerId): GameState {
     ...state,
     players,
     rngState: 0,
+    // Les cartes qu'un joueur REGARDE au-dessus de sa pioche sont une
+    // information privée — c'est même toute la valeur du filtrage. L'autre
+    // voit qu'une question est posée, jamais ce qu'elle propose.
+    pendingChoice:
+      state.pendingChoice?.kind === "deckLook" && state.pendingChoice.playerId !== viewerId
+        ? { ...state.pendingChoice, revealed: hiddenZoneCards(state.pendingChoice.revealed.length, state.pendingChoice.playerId, "deck") }
+        : state.pendingChoice,
     eventLog: state.eventLog.map((event) => projectEvent(event, viewerId, hiddenBoardIds)),
     pendingReaction: state.pendingReaction && {
       ...state.pendingReaction,

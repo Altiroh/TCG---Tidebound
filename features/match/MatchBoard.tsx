@@ -30,6 +30,7 @@ import { ObjectBreakPrompt } from "@/features/match/ObjectBreakPrompt";
 import { ShipAbilityPrompt } from "@/features/match/ShipAbilityPrompt";
 import { PendingChoicePrompt } from "@/features/match/PendingChoicePrompt";
 import { graveyardPickView } from "@/features/match/graveyardPickRequest";
+import { DeckLookPrompt } from "@/features/match/DeckLookPrompt";
 import { HandDiscardPrompt } from "@/features/match/HandDiscardPrompt";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ReactionPrompt } from "@/features/match/ReactionPrompt";
@@ -450,6 +451,15 @@ export function MatchBoard({
         <PendingChoicePrompt
           choice={state.pendingChoice}
           onChoose={(choice) => runReactionAction({ type: "resolveChoice", playerId: viewerPlayerId, choice })}
+        />
+      )}
+      {state.pendingChoice?.kind === "deckLook" && state.pendingChoice.playerId === viewerPlayerId && (
+        <DeckLookPrompt
+          choice={state.pendingChoice}
+          onConfirm={(takeInstanceIds) =>
+            runReactionAction({ type: "resolveChoice", playerId: viewerPlayerId, choice: { takeInstanceIds } })
+          }
+          onRefuse={() => runReactionAction({ type: "resolveChoice", playerId: viewerPlayerId, choice: "pass" })}
         />
       )}
       {state.pendingChoice?.kind === "handDiscard" && state.pendingChoice.playerId === viewerPlayerId && (

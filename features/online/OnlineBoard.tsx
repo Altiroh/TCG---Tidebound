@@ -25,6 +25,7 @@ import { ObjectBreakPrompt } from "@/features/match/ObjectBreakPrompt";
 import { ShipAbilityPrompt } from "@/features/match/ShipAbilityPrompt";
 import { PendingChoicePrompt } from "@/features/match/PendingChoicePrompt";
 import { graveyardPickView } from "@/features/match/graveyardPickRequest";
+import { DeckLookPrompt } from "@/features/match/DeckLookPrompt";
 import { HandDiscardPrompt } from "@/features/match/HandDiscardPrompt";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ReactionPrompt } from "@/features/match/ReactionPrompt";
@@ -277,6 +278,15 @@ export function OnlineBoard({
         <PendingChoicePrompt
           choice={state.pendingChoice}
           onChoose={(choice) => act({ type: "resolveChoice", playerId: myUserId, choice })}
+        />
+      )}
+      {state.pendingChoice?.kind === "deckLook" && state.pendingChoice.playerId === myUserId && (
+        <DeckLookPrompt
+          choice={state.pendingChoice}
+          onConfirm={(takeInstanceIds) =>
+            act({ type: "resolveChoice", playerId: myUserId, choice: { takeInstanceIds } })
+          }
+          onRefuse={() => act({ type: "resolveChoice", playerId: myUserId, choice: "pass" })}
         />
       )}
       {state.pendingChoice?.kind === "handDiscard" && state.pendingChoice.playerId === myUserId && (

@@ -163,7 +163,29 @@ export type EffectType =
    * `filter` la restriction éventuelle (sous-type, type), `uses` le nombre
    * de cartes concernées (défaut 1).
    */
-  | "discountNextCards";
+  | "discountNextCards"
+  /**
+   * « Regardez les N premières cartes de votre pioche. Ajoutez-en une à
+   * votre main. Placez les autres sous votre pioche. » (Lot 14).
+   *
+   * Ne prend RIEN lui-même : il sort les N cartes du dessus et pose la
+   * question (`DeckLookChoice`). C'est le joueur qui désigne, comme pour
+   * toute décision (CLAUDE.md, « le joueur décide, jamais le moteur »).
+   *
+   * `amount` dit combien de cartes sont regardées, `uses` combien peuvent
+   * être prises (défaut 1), `filter.cardTypes` ce qui est prenable parmi
+   * elles, et `refusable` si ne rien prendre est permis.
+   */
+  | "lookAtDeckTop"
+  /**
+   * « Placez jusqu'à N cartes de votre main sous votre pioche, puis
+   * piochez-en autant » (Mauvaise Main, Lot 14).
+   *
+   * Passe par la même question qu'une défausse — c'est au joueur de dire
+   * lesquelles — mais les cartes vont SOUS LA PIOCHE et non au Cimetière :
+   * aucun déclencheur de défausse ne s'en mêle.
+   */
+  | "handToDeckBottomThenDraw";
 
 /** Une valeur numérique d'effet, pour l'instant une constante — prête à
  * être étendue vers des formules (ex: "= nombre d'unités contrôlées"). */

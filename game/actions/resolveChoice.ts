@@ -66,6 +66,50 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
     events.push(...recovered.events);
     return { ok: true, state: nextState, events };
   }
+  // « Regardez les N premières cartes de votre pioche » : le joueur dit
+  // lesquelles il prend. Les cartes regardées sont déjà SORTIES de la
+  // pioche (cf. `lookAtDeckTop`) — quoi qu'il réponde, il faut les y
+  // remettre, sous peine de les perdre.
+  if (choice.kind === "deckLook") {
+    const prises =
+      action.choice === "pass"
+        ? []
+        : typeof action.choice === "object" && "takeInstanceIds" in action.choice
+          ? action.choice.takeInstanceIds
+          : undefined;
+    if (prises === undefined) return { ok: false, error: "Ce choix attend les cartes à prendre en main." };
+    if (prises.length === 0 && !choice.refusable && choice.revealed.length > 0) {
+      return { ok: false, error: "Ce choix n'est pas refusable : le texte dit d'en prendre une." };
+    }
+    if (new Set(prises).size !== prises.length) return { ok: false, error: "Une même carte ne peut être prise deux fois." };
+    if (prises.length > choice.take) return { ok: false, error: `Ce choix permet d'en prendre au plus ${choice.take}.` };
+
+    const regardees = choice.revealed;
+    for (const id of prises) {
+      const carte = regardees.find((c) => c.instanceId === id);
+      if (!carte) return { ok: false, error: "Cette carte ne fait pas partie de celles que vous regardez." };
+      if (choice.takeableCardTypes && !choice.takeableCardTypes.includes(getCardDefinition(carte.cardId).type)) {
+        return { ok: false, error: "Ce texte ne permet pas de prendre une carte de ce type." };
+      }
+    }
+
+    const player = getPlayer(nextState, choice.playerId);
+    const gardees = regardees.filter((c) => prises.includes(c.instanceId));
+    // « Placez les autres SOUS votre pioche », dans l'ordre où elles
+    // étaient : le joueur a vu cet ordre, il doit le retrouver.
+    const rendues = regardees.filter((c) => !prises.includes(c.instanceId));
+    nextState = {
+      ...nextState,
+      players: nextState.players.map((p) =>
+        p.id === choice.playerId ? { ...player, hand: [...player.hand, ...gardees], deck: [...player.deck, ...rendues] } : p
+      ) as [PlayerState, PlayerState],
+    };
+    for (const carte of gardees) {
+      events.push({ ...base, type: "DRAW_CARD", playerId: choice.playerId, instanceId: carte.instanceId });
+    }
+    return { ok: true, state: nextState, events };
+  }
+
   // « Défaussez N cartes » : le joueur a désigné lesquelles. Le moteur
   // vérifie seulement qu'elles sont bien dans SA main et qu'il en a nommé
   // le bon nombre — il ne choisit toujours pas à sa place.
@@ -79,12 +123,51 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
     }
     const chosen = action.choice.discardInstanceIds;
     if (new Set(chosen).size !== chosen.length) return { ok: false, error: "Une même carte ne peut être défaussée deux fois." };
-    if (chosen.length !== choice.count) {
-      return { ok: false, error: `Ce choix attend exactement ${choice.count} carte${choice.count > 1 ? "s" : ""}.` };
+    // « jusqu'à N » : le compte est un maximum, pas une exigence.
+    if (choice.atMost ? chosen.length > choice.count : chosen.length !== choice.count) {
+      return {
+        ok: false,
+        error: choice.atMost
+          ? `Ce choix permet d'en désigner au plus ${choice.count}.`
+          : `Ce choix attend exactement ${choice.count} carte${choice.count > 1 ? "s" : ""}.`,
+      };
     }
     const hand = getPlayer(nextState, choice.playerId).hand;
     if (chosen.some((id) => !hand.some((card) => card.instanceId === id))) {
       return { ok: false, error: "Cette carte n'est pas dans votre main." };
+    }
+
+    // SOUS LA PIOCHE plutôt qu'au Cimetière (Mauvaise Main) : ce n'est pas
+    // une défausse, donc `processDiscardedFromHandTriggers` n'a rien à y
+    // réveiller et rien ne les repêchera.
+    if (choice.destination === "deckBottom") {
+      const player = getPlayer(nextState, choice.playerId);
+      const rendues = chosen
+        .map((id) => player.hand.find((c) => c.instanceId === id))
+        .filter((c): c is NonNullable<typeof c> => c !== undefined);
+      const restante = player.hand.filter((c) => !chosen.includes(c.instanceId));
+      let apres: PlayerState = { ...player, hand: restante, deck: [...player.deck, ...rendues] };
+      for (const carte of rendues) {
+        events.push({ ...base, type: "CARD_MOVED", ownerId: choice.playerId, instanceId: carte.instanceId, cardId: carte.cardId, fromZone: "hand", toZone: "deck" });
+      }
+      // « puis piochez-en autant » : exactement ce qui vient d'être rendu.
+      if (choice.drawBackAfterwards) {
+        const piochees = apres.deck.slice(0, rendues.length);
+        apres = { ...apres, deck: apres.deck.slice(piochees.length), hand: [...apres.hand, ...piochees] };
+        for (const carte of piochees) {
+          events.push({ ...base, type: "DRAW_CARD", playerId: choice.playerId, instanceId: carte.instanceId });
+        }
+      }
+      nextState = {
+        ...nextState,
+        players: nextState.players.map((p) => (p.id === choice.playerId ? apres : p)) as [PlayerState, PlayerState],
+      };
+      if (choice.continuation) {
+        const rest = resolveEffectSequence(nextState, choice.continuation.effects, choice.continuation.context);
+        nextState = rest.state;
+        events.push(...rest.events);
+      }
+      return { ok: true, state: nextState, events };
     }
 
     const discarded = discardFromHand(nextState, choice.playerId, { instanceIds: chosen }, base);

@@ -71,6 +71,22 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
         { type: "resolveChoice" as const, playerId, choice: "pass" as const },
       ];
     }
+    // Regard de pioche : chaque carte prenable est un coup distinct, plus
+    // « ne rien prendre ». `evaluateState` tranche, comme partout ailleurs.
+    if (state.pendingChoice.kind === "deckLook") {
+      const choice = state.pendingChoice;
+      const prenables = choice.revealed.filter(
+        (carte) => !choice.takeableCardTypes || choice.takeableCardTypes.includes(getCardDefinition(carte.cardId).type)
+      );
+      return [
+        ...prenables.map((carte) => ({
+          type: "resolveChoice" as const,
+          playerId,
+          choice: { takeInstanceIds: [carte.instanceId] },
+        })),
+        { type: "resolveChoice" as const, playerId, choice: { takeInstanceIds: [] as string[] } },
+      ];
+    }
     if (state.pendingChoice.kind === "handDiscard") {
       const choice = state.pendingChoice;
       const hand = player.hand;

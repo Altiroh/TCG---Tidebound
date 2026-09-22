@@ -53,14 +53,20 @@ export function stepBotTurn(state: GameState, playerId: PlayerId, difficulty: Bo
             choice:
               state.pendingChoice.kind === "abilityOption"
                 ? { abilityIndex: state.pendingChoice.abilityIndexes[0] ?? 0 }
-                : state.pendingChoice.kind === "handDiscard"
+                : state.pendingChoice.kind === "deckLook"
+                  ? // Ne rien prendre est toujours légal : les cartes
+                    // regardées repassent sous la pioche.
+                    { takeInstanceIds: [] }
+                  : state.pendingChoice.kind === "handDiscard"
                   ? // Un repli doit rester LÉGAL : une défausse attend
-                    // exactement son compte de cartes, et refuser n'est
-                    // permis que si le texte le permet.
+                    // exactement son compte de cartes (un « jusqu'à N » se
+                    // satisfait, lui, de n'en désigner aucune).
                     {
-                      discardInstanceIds: (state.players.find((p) => p.id === playerId)?.hand ?? [])
-                        .slice(0, state.pendingChoice.count)
-                        .map((card) => card.instanceId),
+                      discardInstanceIds: state.pendingChoice.atMost
+                        ? []
+                        : (state.players.find((p) => p.id === playerId)?.hand ?? [])
+                            .slice(0, state.pendingChoice.count)
+                            .map((card) => card.instanceId),
                     }
                   : ("reasonLoss" as const),
           }

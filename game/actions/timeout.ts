@@ -47,10 +47,15 @@ function defaultActionFor(state: GameState, playerId: string): PlayerAction {
   if (state.pendingReaction) return { type: "passReaction", playerId };
   if (state.pendingChoice) {
     const choice = state.pendingChoice;
+    // Un regard de pioche se referme sans rien prendre : les cartes
+    // repassent sous la pioche, et le joueur n'a rien perdu d'autre que
+    // l'occasion.
+    if (choice.kind === "deckLook") return { type: "resolveChoice", playerId, choice: { takeInstanceIds: [] } };
     if (choice.kind === "handDiscard") {
       // Une défausse attend son compte exact de cartes ; « ne rien
       // défausser » n'est permis que si le texte le permet.
       if (choice.refusable) return { type: "resolveChoice", playerId, choice: "pass" };
+      if (choice.atMost) return { type: "resolveChoice", playerId, choice: { discardInstanceIds: [] } };
       const hand = state.players.find((p) => p.id === playerId)?.hand ?? [];
       return {
         type: "resolveChoice",

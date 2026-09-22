@@ -28,7 +28,12 @@ interface HandDiscardPromptProps {
  */
 export function HandDiscardPrompt({ choice, hand, onConfirm, onRefuse }: HandDiscardPromptProps) {
   const [selected, setSelected] = useState<string[]>([]);
-  const complete = selected.length === choice.count;
+  // « jusqu'à N » : n'importe quelle quantité jusqu'au plafond convient,
+  // là où un compte exact n'est atteint qu'au dernier clic.
+  const complete = choice.atMost ? selected.length > 0 : selected.length === choice.count;
+  // Sous la pioche, ce n'est pas une défausse : ni le titre, ni la phrase,
+  // ni le bouton ne doivent le dire.
+  const versPioche = choice.destination === "deckBottom";
 
   function toggle(card: CardInstance) {
     setSelected((current) => {
@@ -53,9 +58,21 @@ export function HandDiscardPrompt({ choice, hand, onConfirm, onRefuse }: HandDis
         <div className="relative flex flex-col items-center gap-1 px-6 pb-3 pt-7 text-center">
           {source && <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{getCardDefinition(source.cardId).name}</p>}
           <h2 className="text-2xl font-semibold text-white [font-family:var(--font-card-title)]">
-            {choice.count > 1 ? `Choisis ${choice.count} cartes à défausser` : "Choisis la carte à défausser"}
+            {versPioche
+              ? choice.count > 1
+                ? `Choisis jusqu'à ${choice.count} cartes à remettre`
+                : "Choisis la carte à remettre"
+              : choice.count > 1
+                ? `Choisis ${choice.count} cartes à défausser`
+                : "Choisis la carte à défausser"}
           </h2>
-          <p className="max-w-2xl text-sm text-slate-300">Elles rejoignent ton Cimetière.</p>
+          <p className="max-w-2xl text-sm text-slate-300">
+            {versPioche
+              ? choice.drawBackAfterwards
+                ? "Elles repassent sous ta pioche, et tu en repioches autant."
+                : "Elles repassent sous ta pioche."
+              : "Elles rejoignent ton Cimetière."}
+          </p>
         </div>
 
         <div className="relative pb-2">
@@ -64,7 +81,7 @@ export function HandDiscardPrompt({ choice, hand, onConfirm, onRefuse }: HandDis
 
         <div className="relative flex items-center justify-end gap-2 border-t border-white/10 px-6 py-4">
           <span className="mr-auto text-sm text-slate-400">
-            {complete
+            {selected.length > 0
               ? selected.map((id) => getCardDefinition(hand.find((c) => c.instanceId === id)!.cardId).name).join(", ")
               : `${selected.length} / ${choice.count} sélectionnée${choice.count > 1 ? "s" : ""}`}
           </span>
@@ -74,7 +91,7 @@ export function HandDiscardPrompt({ choice, hand, onConfirm, onRefuse }: HandDis
               onClick={onRefuse}
               className="rounded-md px-3 py-2 text-sm text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
             >
-              Ne rien défausser
+              {versPioche ? "Ne rien remettre" : "Ne rien défausser"}
             </button>
           )}
           <button
@@ -83,7 +100,7 @@ export function HandDiscardPrompt({ choice, hand, onConfirm, onRefuse }: HandDis
             onClick={() => complete && onConfirm(selected)}
             className="rounded-md bg-sky-600/80 px-4 py-2 text-sm font-semibold text-white shadow-[inset_0_0_0_1px_rgba(125,211,252,0.4)] transition-colors hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            Défausser
+            {versPioche ? "Remettre" : "Défausser"}
           </button>
         </div>
       </div>
