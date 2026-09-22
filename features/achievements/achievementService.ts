@@ -104,9 +104,11 @@ async function readStats(userId: string): Promise<AchievementStats | null> {
  * Ne lève jamais — un exploit manqué ne doit pas faire échouer l'action qui
  * l'a déclenché.
  */
-export async function syncAchievements(userId: string): Promise<string[]> {
+export async function syncAchievements(userId: string, preloaded?: AchievementStats | null): Promise<string[]> {
   try {
-    const stats = await readAchievementStats(userId);
+    // `preloaded` : compteurs déjà lus par l'appelant (le profil s'en sert
+    // aussi pour les jauges) — inutile de refaire les six lectures.
+    const stats = preloaded === undefined ? await readAchievementStats(userId) : preloaded;
     if (!stats) return [];
 
     const candidates = unlockedAchievements(stats);

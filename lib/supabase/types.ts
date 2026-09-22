@@ -426,6 +426,17 @@ export interface Database {
           },
         ];
       };
+      /** Titre porté par le joueur — une ligne au plus, écrite par `set_player_title` seulement. */
+      player_titles: {
+        Row: {
+          user_id: string;
+          title_id: string;
+          equipped_at: string;
+        };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
       player_cosmetics: {
         Row: {
           user_id: string;
@@ -738,6 +749,10 @@ export interface Database {
       resolve_card_choice: {
         Args: { p_user_id: string; p_choice_id: string; p_card_id: string };
         Returns: { ok: boolean; error?: string; card_id?: string };
+      };
+      set_player_title: {
+        Args: { p_user_id: string; p_title_id: string | null; p_required_achievement: string | null };
+        Returns: { ok: boolean; error?: string; title_id?: string | null };
       };
       equip_cosmetic: {
         Args: { p_user_id: string; p_cosmetic_kind: string; p_cosmetic_id: string | null };

@@ -1,203 +1,275 @@
 /*
- * EXPLOITS — une vitrine façon succès de Minecraft, habillée à bord :
- * tuiles carrées à cadre de laiton, cadenas sur ce qui reste à décrocher,
- * bulle sombre à bandeau pour le détail, et branches reliées par un
- * cordage qui s'allume.
+ * EXPLOITS — grammaire de la coquille hors-partie (`features/shell/DESIGN.md`) :
+ * panneau bleu nuit, cyan pour la progression, or pour ce qui attend d'être
+ * réclamé, vert pour l'acquis. Aucune couleur décidée ici : tokens seulement.
  */
 
 .board {
   display: flex;
   flex-direction: column;
   gap: clamp(14px, 2vh, 22px);
-  /* Jusqu'en bas du panneau, quoi qu'il y ait à montrer : la vitrine est
-     un lieu, pas une liste qui s'arrête où finit son contenu. */
   box-sizing: border-box;
   min-height: 100%;
   padding: clamp(14px, 1.8vw, 26px);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background:
-    radial-gradient(120% 70% at 50% 0%, rgba(20, 52, 70, 0.45), transparent 60%),
-    var(--panel);
-  backdrop-filter: blur(10px) saturate(0.9);
-  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--tb-border);
+  border-radius: var(--radius, var(--tb-radius-lg));
+  background: var(--tb-surface);
+  backdrop-filter: blur(var(--tb-blur));
+  box-shadow: var(--tb-shadow-md);
+  color: var(--tb-text);
 }
+
+/* ── En-tête : titre et progression globale ─────────────────── */
 
 .head {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 16px;
+  gap: 16px 28px;
   flex-wrap: wrap;
 }
 
 .headText {
   display: flex;
+  flex: 1 1 280px;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
 }
 
 .title {
   margin: 0;
-  font-family: var(--cb-font-display);
+  font-family: var(--tb-font-display);
   font-size: clamp(20px, 1.8vw, 28px);
   font-weight: 700;
-  letter-spacing: 0.04em;
-  color: #f2e6c9;
+  color: var(--tb-text-strong);
 }
 
 .subtitle {
+  margin: 0;
+  max-width: 52ch;
+  font-size: 13.5px;
+  line-height: var(--tb-lh-body);
+  color: var(--tb-text-muted);
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: auto minmax(160px, 1fr);
+  align-items: center;
+  gap: 6px 14px;
+  flex: 0 1 380px;
+  padding: 10px 14px;
+  border: 1px solid var(--tb-border);
+  border-radius: var(--tb-radius-md);
+  background: var(--tb-surface-inset);
+}
+
+.summaryMain {
+  display: flex;
+  flex-direction: column;
+  grid-row: span 2;
+}
+
+.summaryValue {
+  font-family: var(--tb-font-display);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--tb-text-strong);
+}
+
+.summaryTotal {
+  font-size: 16px;
+  color: var(--tb-text-muted);
+}
+
+.summaryLabel {
+  font-size: 12px;
+  color: var(--tb-text-muted);
+}
+
+.globalTrack,
+.track {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border-radius: var(--tb-radius-pill);
+  background: var(--tb-accent-soft);
+}
+
+.globalTrack {
+  height: 8px;
+}
+
+.globalFill,
+.fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--tb-accent-deep), var(--tb-accent));
+  transition: width var(--tb-duration-slow) var(--tb-ease);
+}
+
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12.5px;
+  color: var(--tb-text-muted);
+}
+
+.facts li {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  margin: 0;
-  font-size: 14px;
-  color: var(--ink-dim);
 }
 
-.progress {
-  position: relative;
-  flex: 0 1 320px;
-  height: 12px;
-  border: 1px solid rgba(164, 123, 54, 0.55);
-  border-radius: 3px;
-  background: rgba(3, 10, 16, 0.7);
-  overflow: hidden;
-}
+/* ── Filtres ─────────────────────────────────────────────────── */
 
-/* Barre segmentée, comme une jauge d'expérience de jeu vidéo. */
-.progressFill {
-  position: absolute;
-  inset: 0 auto 0 0;
-  background:
-    repeating-linear-gradient(90deg, transparent 0 18px, rgba(3, 10, 16, 0.5) 18px 20px),
-    linear-gradient(180deg, #b6f06a, #5ea832);
-  box-shadow: 0 0 10px rgba(140, 220, 90, 0.45);
-  transition: width 700ms cubic-bezier(0.2, 0.7, 0.2, 1);
-}
-
-/* Les branches sont des COLONNES côte à côte, chacune lue de haut en bas,
-   du premier jalon au plus lointain. Trop de branches pour la largeur : la
-   vitrine défile horizontalement, colonne par colonne. */
-.branches {
-  /* Taille des tuiles, partagée par les titres de colonne et les jalons. */
-  --tile: clamp(76px, 7.2vw, 108px);
-
+.filters {
   display: flex;
-  flex: 1 1 auto;
-  align-items: flex-start;
-  gap: clamp(18px, 2.4vw, 44px);
-  min-height: 0;
-  padding: 4px 4px 12px;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scroll-snap-type: x proximity;
-  scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
-.branch {
-  display: flex;
-  flex: 0 0 auto;
-  flex-direction: column;
+.filter {
+  display: inline-flex;
   align-items: center;
-  gap: 14px;
-  scroll-snap-align: start;
+  gap: 7px;
+  padding: 5px 12px;
+  border: 1px solid var(--tb-border);
+  border-radius: var(--tb-radius-pill);
+  background: transparent;
+  color: var(--tb-text-muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color var(--tb-duration-fast) var(--tb-ease), color var(--tb-duration-fast) var(--tb-ease), background var(--tb-duration-fast) var(--tb-ease);
 }
 
-.branchTitle {
+.filter:hover {
+  border-color: var(--tb-accent-line);
+  color: var(--tb-text);
+}
+
+.filter[data-active="true"] {
+  border-color: var(--tb-accent);
+  background: var(--tb-accent-soft);
+  color: var(--tb-text-strong);
+}
+
+.filter:focus-visible,
+.claim:focus-visible {
+  outline: 2px solid var(--tb-accent);
+  outline-offset: 2px;
+}
+
+.filterCount {
+  font-size: 11.5px;
+  color: var(--tb-text-soft);
+}
+
+/* ── Sections ────────────────────────────────────────────────── */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sectionTitle {
   display: flex;
   align-items: baseline;
-  justify-content: center;
   gap: 10px;
   margin: 0;
-  width: calc(var(--tile) + 40px);
-  text-align: center;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--ink-dim);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--tb-text-strong);
 }
 
-.branchCount {
-  font-size: 12px;
-  letter-spacing: 0.06em;
-  color: var(--ink-faint);
-}
-
-.row {
-  /* Longueur du cordage entre deux jalons d'une colonne. */
-  --link: clamp(18px, 2.6vh, 30px);
-
-  display: flex;
-  flex-direction: column;
+.sectionMeta {
+  display: inline-flex;
   align-items: center;
-  gap: var(--link);
+  gap: 4px;
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--tb-text-soft);
+}
+
+.grid,
+.gridCompact {
+  display: grid;
+  gap: 10px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.cell {
+.grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+}
+
+.gridCompact {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+}
+
+.empty {
+  margin: 12px 0;
+  font-size: 13.5px;
+  color: var(--tb-text-muted);
+}
+
+/* ── Carte d'exploit ─────────────────────────────────────────── */
+
+.card {
   position: relative;
   display: flex;
-  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1px solid var(--tb-border);
+  border-radius: var(--tb-radius-md);
+  background: var(--tb-surface-raised);
+}
+
+.card[data-state="claimable"] {
+  border-color: var(--tb-gold-line);
+  background: linear-gradient(180deg, var(--tb-gold-soft), transparent 70%), var(--tb-surface-raised);
+  box-shadow: var(--tb-glow-gold);
+}
+
+.card[data-compact="true"] {
   align-items: center;
-  gap: 8px;
-  width: var(--tile);
+  padding: 10px;
 }
 
-/* Cordage entre deux jalons d'une même colonne : il monte de la tuile vers
-   la légende du jalon précédent. */
-.cell[data-link]::before {
-  content: "";
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  width: 4px;
-  height: var(--link);
-  transform: translateX(-50%);
-  background: repeating-linear-gradient(180deg, rgba(120, 96, 60, 0.7) 0 5px, rgba(60, 46, 26, 0.7) 5px 8px);
-  border-radius: 2px;
-}
-
-.cell[data-link="lit"]::before {
-  background: repeating-linear-gradient(180deg, #e5c07a 0 5px, #a47b36 5px 8px);
-  box-shadow: 0 0 8px rgba(229, 192, 122, 0.45);
-}
-
-.tile {
+.iconFrame {
   position: relative;
-  display: block;
-  width: var(--tile);
-  height: var(--tile);
-  padding: 4px;
-  border: 2px solid #3b3222;
-  border-radius: 6px;
-  background: linear-gradient(180deg, #2a241a, #15110b);
-  box-shadow: inset 0 0 0 1px rgba(233, 226, 209, 0.08), 0 6px 14px rgba(0, 0, 0, 0.5);
-  cursor: help;
-  transition: transform 160ms ease-out, border-color 160ms ease-out, box-shadow 160ms ease-out;
+  flex: 0 0 auto;
+  width: 56px;
+  height: 56px;
+  border: 1px solid var(--tb-border-strong);
+  border-radius: var(--tb-radius-sm);
+  background: var(--tb-surface-inset);
 }
 
-.tile:focus-visible {
-  outline: 2px solid var(--cb-cyan);
-  outline-offset: 3px;
+.card[data-compact="true"] .iconFrame {
+  width: 44px;
+  height: 44px;
 }
 
-.cell[data-unlocked="true"] .tile {
-  border-color: #c79a4e;
-  background: linear-gradient(180deg, #5a4520, #2c2110);
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 230, 170, 0.35),
-    0 0 16px rgba(229, 192, 122, 0.35),
-    0 6px 14px rgba(0, 0, 0, 0.5);
+.card[data-state="done"] .iconFrame {
+  border-color: var(--tb-success-line);
 }
 
-.tile:hover,
-.tile:focus-visible {
-  transform: translateY(-3px) scale(1.04);
+.card[data-state="claimable"] .iconFrame {
+  border-color: var(--tb-gold-line);
 }
 
 .icon,
@@ -205,203 +277,190 @@
   display: block;
   width: 100%;
   height: 100%;
-  border-radius: 3px;
+  border-radius: inherit;
   object-fit: cover;
 }
 
 .iconFallback {
   display: grid;
   place-items: center;
-  font-size: 28px;
-  color: #e5c07a;
+  font-size: 22px;
+  color: var(--tb-text-muted);
 }
 
-/* Pas encore obtenu : l'icône reste lisible, mais éteinte. */
-.cell[data-unlocked="false"] .icon {
-  filter: grayscale(0.9) brightness(0.45) contrast(0.95);
-}
-
-.lock {
-  position: absolute;
-  right: -7px;
-  bottom: -7px;
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  border: 1px solid rgba(233, 226, 209, 0.3);
-  border-radius: 50%;
-  background: #0b141c;
-  color: rgba(233, 226, 209, 0.75);
+/* À décrocher : l'icône reste reconnaissable, mais éteinte. */
+.card[data-state="progress"] .icon {
+  filter: grayscale(0.85) brightness(0.6);
 }
 
 .check {
   position: absolute;
-  right: -7px;
-  bottom: -7px;
+  right: -5px;
+  bottom: -5px;
   display: grid;
   place-items: center;
-  width: 24px;
-  height: 24px;
-  border: 1px solid #f0d79a;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
-  background: linear-gradient(180deg, #7ac943, #3f8a22);
-  color: #fff;
-  box-shadow: 0 0 8px rgba(122, 201, 67, 0.6);
+  background: var(--tb-success);
+  color: var(--tb-bg-deep);
 }
 
-.caption {
-  width: calc(var(--tile) + 32px);
-  font-size: 13px;
-  line-height: 1.25;
-  text-align: center;
-  color: var(--ink-dim);
-}
-
-.cell[data-unlocked="true"] .caption {
-  color: #f2e6c9;
-}
-
-/* ── Bulle ──────────────────────────────────────────────────── */
-.tooltip {
-  position: absolute;
-  z-index: 20;
-  left: calc(100% + 12px);
-  top: 0;
+.body {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
-  gap: 4px;
-  width: max-content;
-  max-width: 240px;
-  padding: 0 0 10px;
-  border: 2px solid #2a1f3d;
-  border-radius: 4px;
-  background: rgba(16, 8, 26, 0.96);
-  box-shadow: inset 0 0 0 1px #4d2f86, 0 10px 24px rgba(0, 0, 0, 0.6);
-  font-size: 13px;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateX(-6px);
-  transition: opacity 120ms ease-out, transform 120ms ease-out;
+  gap: 3px;
+  min-width: 0;
 }
 
-.tooltip[data-open="true"] {
-  opacity: 1;
-  transform: none;
+.family {
+  font-size: 11.5px;
+  color: var(--tb-text-soft);
 }
 
-.tooltipBar {
-  padding: 5px 10px;
-  background: linear-gradient(180deg, #2e5e85, #1d3f5c);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #ffe98a;
-}
-
-.cell[data-unlocked="false"] .tooltipBar {
-  background: linear-gradient(180deg, #3a3a3a, #262626);
-  color: #d6d6d6;
-}
-
-.tooltipName {
-  padding: 2px 10px 0;
-  font-family: var(--cb-font-display);
+.name {
+  margin: 0;
+  font-family: var(--tb-font-display);
   font-size: 15px;
   font-weight: 700;
-  color: #fff;
+  line-height: var(--tb-lh-tight);
+  color: var(--tb-text-strong);
 }
 
-.tooltipText {
-  padding: 0 10px;
+.description {
+  margin: 0;
+  font-size: 13px;
   line-height: 1.35;
-  color: #a8e070;
+  color: var(--tb-text-muted);
 }
 
-.cell[data-unlocked="false"] .tooltipText {
-  color: rgba(220, 232, 242, 0.75);
+.card[data-compact="true"] .family,
+.card[data-compact="true"] .description {
+  display: none;
 }
 
-.tooltipReward {
+.progressRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.track {
+  flex: 1 1 auto;
+  height: 5px;
+}
+
+.count {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--tb-text-muted);
+}
+
+.rewards {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  margin-top: 6px;
+}
+
+.card[data-compact="true"] .rewards {
+  margin-top: 2px;
+}
+
+.reward {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 0 10px;
-  color: #e5cf9e;
+  font-size: 12.5px;
+  color: var(--tb-text-muted);
+}
+
+.reward[data-state="claimable"] {
+  font-weight: 600;
+  color: var(--tb-gold-bright);
+}
+
+.reward[data-state="done"] {
+  color: var(--tb-text-soft);
+}
+
+/* Le titre qu'apporte l'exploit : une étiquette, cyan une fois gagné. */
+.titleReward {
+  padding: 1px 8px;
+  border: 1px dashed var(--tb-border-strong);
+  border-radius: var(--tb-radius-pill);
+  font-size: 12px;
+  font-style: italic;
+  white-space: nowrap;
+  color: var(--tb-text-muted);
+}
+
+.titleReward[data-earned="true"] {
+  border-style: solid;
+  border-color: var(--tb-accent-line);
+  background: var(--tb-accent-soft);
+  color: var(--tb-accent-bright);
+}
+
+.claim {
+  flex: 0 0 auto;
+  align-self: center;
+  padding: 7px 14px;
+  border: 1px solid var(--tb-gold-line);
+  border-radius: var(--tb-radius-sm);
+  background: linear-gradient(180deg, var(--tb-gold-bright), var(--tb-gold-deep));
+  color: var(--tb-on-gold);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: box-shadow var(--tb-duration-fast) var(--tb-ease), transform var(--tb-duration-fast) var(--tb-ease);
+}
+
+.claim:hover:not(:disabled) {
+  box-shadow: var(--tb-glow-gold);
+  transform: translateY(-1px);
+}
+
+.claim:disabled {
+  opacity: 0.5;
+  cursor: progress;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .progressFill,
-  .tile,
-  .tooltip {
+  .globalFill,
+  .fill,
+  .filter,
+  .claim {
     transition: none;
   }
 }
 
-/* La bulle s'ouvre à DROITE de la tuile — sauf pour la dernière colonne,
-   où elle s'ouvrirait hors de la vitrine : elle passe à gauche. */
-.branch:last-child .tooltip {
-  left: auto;
-  right: calc(100% + 12px);
-  transform: translateX(6px);
-}
+/* Téléphone couché : on resserre. */
+@media (max-height: 560px) {
+  .board {
+    gap: 12px;
+    padding: 12px;
+  }
 
-.branch:last-child .tooltip[data-open="true"] {
-  transform: none;
-}
+  .subtitle {
+    display: none;
+  }
 
-/* Débloqué, Tides à réclamer : la tuile pulse et le cadeau remplace la coche. */
-.toClaim {
-  color: #ffe08a;
-  font-weight: 600;
-}
+  .summary {
+    padding: 8px 10px;
+  }
 
-.cell[data-claimable="true"] .tile {
-  cursor: pointer;
-  border-color: #ffc95a;
-  animation: tileClaim 1.8s ease-in-out infinite;
-}
+  .summaryValue {
+    font-size: 22px;
+  }
 
-.cell[data-claimable="true"] .caption {
-  color: #ffe9b0;
-}
-
-@keyframes tileClaim {
-  0%, 100% { box-shadow: inset 0 0 0 1px rgba(255, 230, 170, 0.35), 0 0 10px rgba(255, 190, 70, 0.35), 0 6px 14px rgba(0, 0, 0, 0.5); }
-  50% { box-shadow: inset 0 0 0 1px rgba(255, 230, 170, 0.6), 0 0 24px rgba(255, 190, 70, 0.75), 0 6px 14px rgba(0, 0, 0, 0.5); }
-}
-
-.gift {
-  position: absolute;
-  right: -8px;
-  bottom: -8px;
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border: 1px solid #fff1c8;
-  border-radius: 50%;
-  background: linear-gradient(180deg, #ffd66e, #e0a132);
-  font-size: 15px;
-  box-shadow: 0 0 10px rgba(255, 200, 90, 0.7);
-  animation: giftBounce 1.8s ease-in-out infinite;
-}
-
-@keyframes giftBounce {
-  0%, 60%, 100% { transform: none; }
-  70% { transform: translateY(-4px) rotate(-10deg); }
-  85% { transform: translateY(0) rotate(8deg); }
-}
-
-.cell[data-claimable="true"] .tooltipBar {
-  background: linear-gradient(180deg, #b77a1f, #7a4d0f);
-  color: #fff2c4;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .cell[data-claimable="true"] .tile,
-  .gift {
-    animation: none;
+  .iconFrame {
+    width: 44px;
+    height: 44px;
   }
 }

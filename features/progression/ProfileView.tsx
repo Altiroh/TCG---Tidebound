@@ -25,6 +25,7 @@ import {
 import { claimQuestReward, type QuestEntry } from "@/features/quests/actions";
 import { QUEST_CATEGORY_META } from "@/game/quests";
 import { IllustrationPicker } from "@/features/progression/IllustrationPicker";
+import { TitlePicker } from "@/features/progression/TitlePicker";
 import type { RewardItem } from "@/features/progression/RewardIcon";
 import questStyles from "@/features/quests/QuestDrawer.module.css";
 import { useCardBack } from "@/features/cosmetics/CardBackProvider";
@@ -83,8 +84,10 @@ export function ProfileView({ profile, onRefresh, initialTab = "carnet", onLeave
   const [reveal, setReveal] = useState<{ levels: RevealedLevel[]; choices: PendingCardChoice[]; extraItems?: RewardItem[]; title?: string } | null>(null);
   const [claiming, setClaiming] = useState<number | "all" | "everything" | string | null>(null);
   const [claimError, setClaimError] = useState<string | null>(null);
-  /** Choix d'illustration ouvert à la place de l'onglet. */
-  const [picking, setPicking] = useState(false);
+  /** Choix (illustration ou titre) ouvert à la place de l'onglet. */
+  const [picker, setPicker] = useState<"illustration" | "title" | null>(null);
+  const picking = picker !== null;
+  const equippedTitleName = profile.titles.options.find((option) => option.id === profile.titles.equipped)?.name ?? null;
 
   // Le profil lit la base : il réaligne au passage le miroir local du dos
   // équipé (un appareil neuf repart juste, même sans ouvrir Collectables).
@@ -206,7 +209,9 @@ export function ProfileView({ profile, onRefresh, initialTab = "carnet", onLeave
           displayName={profile.displayName}
           avatarCardId={profile.avatarCardId}
           onChanged={onRefresh}
-          onPickIllustration={() => setPicking(true)}
+          onPickIllustration={() => setPicker("illustration")}
+          titleName={equippedTitleName}
+          onPickTitle={() => setPicker("title")}
         />
 
         <div className={styles.sideLevel}>
@@ -255,7 +260,7 @@ export function ProfileView({ profile, onRefresh, initialTab = "carnet", onLeave
                 onClick={() => {
                   if (tab === entry.id && !picking) return;
                   playTabClick();
-                  setPicking(false);
+                  setPicker(null);
                   setTab(entry.id);
                 }}
               >
@@ -287,14 +292,15 @@ export function ProfileView({ profile, onRefresh, initialTab = "carnet", onLeave
       </aside>
 
       <main className={styles.main} role="tabpanel">
-        {picking && (
+        {picker === "illustration" && (
           <IllustrationPicker
             avatarCardId={profile.avatarCardId}
             ownedCardIds={profile.ownedCardIds}
-            onClose={() => setPicking(false)}
+            onClose={() => setPicker(null)}
             onChanged={onRefresh}
           />
         )}
+        {picker === "title" && <TitlePicker titles={profile.titles} onClose={() => setPicker(null)} onChanged={onRefresh} />}
         {!picking && tab === "carnet" && <LogbookTab profile={profile} onRefresh={onRefresh} onShowRewards={() => setTab("recompenses")} />}
         {!picking && tab === "quetes" && <QuestsTab profile={profile} onRefresh={onRefresh} onLeave={onLeave} />}
         {!picking && tab === "recompenses" && (

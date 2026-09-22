@@ -145,6 +145,56 @@
   box-shadow: 0 0 6px rgba(0, 183, 255, 0.35);
 }
 
+/* Le titre porté, sous le nom : une ligne discrète, cyan parce qu'elle se
+   touche. Sans titre, une invite plus effacée. */
+.titleLine,
+.titleLineEmpty {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 6px;
+  max-width: 100%;
+  margin: 0;
+  padding: 1px 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  font-style: italic;
+  color: var(--tb-accent-bright);
+  cursor: pointer;
+  transition: color var(--tb-duration-fast) var(--tb-ease);
+}
+
+.titleLineEmpty {
+  font-style: normal;
+  color: var(--tb-text-soft);
+}
+
+.titleLine svg,
+.titleLineEmpty svg {
+  flex: 0 0 auto;
+  opacity: 0.6;
+}
+
+.titleLine:hover,
+.titleLineEmpty:hover {
+  color: var(--tb-accent);
+}
+
+.titleLine:focus-visible,
+.titleLineEmpty:focus-visible {
+  outline: 2px solid var(--tb-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.titleText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /*
  * Téléphone couché : le portrait passe de 64 à 44 px et le pseudo d'un
  * cran — la tête du profil prenait à elle seule le quart du panneau, et
@@ -185,5 +235,10 @@
   .nameSave {
     width: 22px;
     height: 22px;
+  }
+
+  .titleLine,
+  .titleLineEmpty {
+    font-size: 11.5px;
   }
 }
