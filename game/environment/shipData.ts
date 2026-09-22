@@ -74,7 +74,8 @@ export const SHIP_SET: ShipDefinition[] = [
     // décide de la transition SUIVANTE.
     activatableAbility: {
       name: "Virage court",
-      illustration: "le-courlis.webp",
+      illustration: "courlis.webp",
+      activationSound: "tide",
       text:
         "Une fois par partie, juste avant une transition de Marée, vous pouvez inverser son orientation pour " +
         "cette transition.",
@@ -110,6 +111,7 @@ export const SHIP_SET: ShipDefinition[] = [
     activatableAbility: {
       name: "Changer de cap",
       illustration: "errant.webp",
+      activationSound: "tide",
       text:
         "Une fois par partie, après qu'une Marée a été annoncée mais avant l'application de ses effets, " +
         "réduisez sa durée de 1 tour.",
@@ -144,6 +146,7 @@ export const SHIP_SET: ShipDefinition[] = [
     activatableAbility: {
       name: "Tenir la ligne",
       illustration: "brise-lames.webp",
+      activationSound: "protect",
       text:
         "Une fois par partie, au début de votre tour, jusqu'à la fin de ce tour, vos Structures ne peuvent " +
         "pas être détruites par des effets environnementaux.",
@@ -193,7 +196,8 @@ export const SHIP_SET: ShipDefinition[] = [
     // coup d'éclat.
     activatableAbility: {
       name: "Réparation d'urgence",
-      illustration: "la-religieuse.webp",
+      illustration: "religieuse.webp",
+      activationSound: "heal",
       text: "Une fois par tour, pendant une Phase principale, dépensez 2 Raison pour récupérer 2 Ancrage.",
       cost: { reason: 2 },
       activationPhases: ["mainPhase", "mainPhase2"],

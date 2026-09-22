@@ -31,9 +31,18 @@ export interface ShipView {
 }
 
 /**
- * Le petit cadre posé sur le cadre du Navire. Fermé par des planches tant
- * que la capacité n'est pas armée ; les planches s'écartent (haut et bas) à
- * l'armement et découvrent ce qu'il y a dessous.
+ * Le petit cadre posé sur le cadre du Navire.
+ *
+ * DEUX SORTES de capacités, deux habillages :
+ *   - en DEUX TEMPS (le Canon de proue du Goliath, `planks`) : le hublot est
+ *     fermé par des planches qui s'écartent à l'armement et découvrent la
+ *     gueule du canon. Les planches DISENT l'armement — c'est leur seul
+ *     rôle, d'où leur absence ailleurs ;
+ *   - en UN SEUL geste (les quatre autres, une fois par tour ou par partie) :
+ *     l'illustration est visible en permanence, rien à découvrir.
+ *
+ * Le HALO ne décore pas : il dit « ce clic est possible maintenant ». Pas de
+ * halo si la capacité est hors de sa phase, trop chère, ou déjà utilisée.
  *
  * `onClick` absent = le panneau est en LECTURE seule : c'est le cas du
  * Navire adverse, dont on doit voir le canon découvert — c'est une
@@ -41,15 +50,17 @@ export interface ShipView {
  */
 export interface ShipAbilityPanelView {
   name: string;
-  /** Texte imprimé, en info-bulle. */
+  /** Texte imprimé, montré en entier sur la carte de survol. */
   text: string;
+  /** Capacité en deux temps : le hublot porte des planches, qui s'écartent une fois armé. */
+  planks: boolean;
   /** Planches écartées : la capacité est armée. */
   armed: boolean;
-  /** Le panneau appelle un clic maintenant (halo) — armer, ou tirer. */
+  /** Le panneau appelle un clic maintenant (halo) — activer, armer, ou tirer. */
   actionable: boolean;
-  /** URL de ce qu'on découvre sous les planches — absent : fond de substitution. */
+  /** URL de l'illustration du hublot — absent : fond de substitution. */
   artUrl?: string;
-  /** Ce qui empêche d'agir, pour l'info-bulle. */
+  /** Ce qui empêche d'agir, dit sur la carte de survol. */
   blockedBy?: string;
   /** Absent : panneau d'observation, non cliquable (Navire adverse). */
   onClick?: () => void;
@@ -68,9 +79,10 @@ export interface ShipAbilityPanelView {
  * bois se raccorde donc exactement au milieu quand le panneau est fermé, et
  * les deux moitiés s'écartent vers le haut et vers le bas à l'armement.
  */
-function ShipAbilityPanel({ name, text, armed, actionable, artUrl, blockedBy, onClick }: ShipAbilityPanelView) {
+function ShipAbilityPanel({ name, text, planks, armed, actionable, artUrl, blockedBy, onClick }: ShipAbilityPanelView) {
   const label = armed ? `${name} — armé` : name;
-  const title = [label, text, !actionable && blockedBy ? blockedBy : null].filter(Boolean).join(" — ");
+  const status = actionable ? null : blockedBy;
+  const ariaLabel = [label, text, status].filter(Boolean).join(" — ");
   const className = [
     styles.shipAbility,
     armed ? styles.shipAbilityArmed : "",
@@ -88,17 +100,29 @@ function ShipAbilityPanel({ name, text, armed, actionable, artUrl, blockedBy, on
           className={styles.shipAbilityArt}
           style={artUrl ? { backgroundImage: `url(${artUrl})` } : undefined}
         />
-        <span className={`${styles.shipAbilityPlank} ${styles.shipAbilityPlankTop}`} style={plankStyle} />
-        <span className={`${styles.shipAbilityPlank} ${styles.shipAbilityPlankBottom}`} style={plankStyle} />
+        {planks && (
+          <>
+            <span className={`${styles.shipAbilityPlank} ${styles.shipAbilityPlankTop}`} style={plankStyle} />
+            <span className={`${styles.shipAbilityPlank} ${styles.shipAbilityPlankBottom}`} style={plankStyle} />
+          </>
+        )}
       </span>
       {/* eslint-disable-next-line @next/next/no-img-element -- hublot décoratif, taille pilotée par le cadre */}
       <img src={SHIP_ABILITY_RING_URL} alt="" aria-hidden draggable={false} className={styles.shipAbilityRing} />
+      {/* La CARTE de survol : un hublot de trente pixels ne dit pas ce que
+          fait la capacité. Elle sort au survol et au clavier (`:focus-visible`),
+          jamais au doigt — d'où le `title` gardé en repli. */}
+      <span aria-hidden className={styles.shipAbilityCard}>
+        <span className={styles.shipAbilityCardName}>{label}</span>
+        <span className={styles.shipAbilityCardText}>{text}</span>
+        {status && <span className={styles.shipAbilityCardStatus}>{status}</span>}
+      </span>
     </>
   );
 
   if (!onClick) {
     return (
-      <span className={className} title={title} role="img" aria-label={label}>
+      <span className={className} title={ariaLabel} role="img" aria-label={ariaLabel}>
         {content}
       </span>
     );
@@ -108,8 +132,8 @@ function ShipAbilityPanel({ name, text, armed, actionable, artUrl, blockedBy, on
     <button
       type="button"
       className={className}
-      title={title}
-      aria-label={title}
+      title={ariaLabel}
+      aria-label={ariaLabel}
       // Le cadre du Navire entier est cliquable (fiche, ciblage) : sans ça,
       // le clic sur le panneau ouvrirait aussi la fiche derrière lui.
       onClick={(event) => {

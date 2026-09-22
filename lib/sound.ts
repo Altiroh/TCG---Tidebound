@@ -82,6 +82,12 @@ const SOUNDS = {
   cardPlaced: { src: "/assets/sound/card-placment.mp3", gain: 0.62 }, // -23.8 dB · 0,6 s
   cardToGraveyard: { src: "/assets/sound/card-saborde.mp3", gain: 1 }, // -28.6 dB · 0,5 s
   cardDiscarded: { src: "/assets/sound/card-defausse.mp3", gain: 1 }, // -30.3 dB · 1 s
+  // Capacités de Navire, une sonorité par FAMILLE d'effet — pas une par
+  // Navire : deux capacités qui font la même chose s'entendent pareil. Le
+  // Navire dit laquelle lui revient (`activationSound`, `game/environment/types.ts`).
+  shipAbilityHeal: { src: "/assets/sound/healing-sort.mp3", gain: 0.92 }, // -24.3 dB · 8 s, son audible jusqu'à 1,5 s
+  shipAbilityProtect: { src: "/assets/sound/protacte-boat.mp3", gain: 0.61 }, // -20.7 dB · 0,8 s
+  shipAbilityTide: { src: "/assets/sound/switch-marree.mp3", gain: 0.51 }, // -19.2 dB · 2,2 s
   // Menu d'accueil (parchemins de la carte marine). Survol plus discret
   // qu'un clic : on le déclenche souvent, en promenant la souris.
   menuCardHover: { src: "/assets/sound/menu-card-hover.mp3", gain: 0.55, offset: 0.55 }, // -26.3 dB · 2,3 s, 0,6 s de blanc
@@ -302,9 +308,27 @@ export function playAttackImpact(): void {
   playSound("attackImpact");
 }
 
-/** Impact NON physique : tir de Navire (Canon), dégâts infligés par un effet. */
+/** Impact NON physique : dégâts infligés par un effet (le tir du Canon, lui, sonne comme un coup porté). */
 export function playMagicImpact(): void {
   playSound("magicImpact");
+}
+
+/**
+ * Familles de sons des capacités de Navire. Le Navire nomme la sienne dans
+ * sa définition (`activationSound`) : aucun appelant n'a à savoir quel
+ * Navire fait quoi.
+ */
+const SHIP_ABILITY_SOUNDS = {
+  heal: "shipAbilityHeal",
+  protect: "shipAbilityProtect",
+  tide: "shipAbilityTide",
+} as const satisfies Record<string, SoundId>;
+
+export type ShipAbilitySoundKind = keyof typeof SHIP_ABILITY_SOUNDS;
+
+/** Activation d'une capacité de Navire (soin, protection, bascule de Marée). */
+export function playShipAbility(kind: ShipAbilitySoundKind): void {
+  playSound(SHIP_ABILITY_SOUNDS[kind]);
 }
 
 /** Une récompense se révèle (profil : « voici ce que tu as obtenu »). */

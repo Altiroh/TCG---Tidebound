@@ -469,9 +469,11 @@
 /* ── Panneau de capacité activable du Navire (Le Goliath — Canon de proue)
    ────────────────────────────────────────────────────────────────────────
    Un hublot de laiton posé sur le cadre du Navire, à la place de la rose
-   des vents (choix du 18/09/2026). Il est fermé par deux planches qui
-   s'écartent vers le haut et vers le bas quand la capacité est armée, et
-   découvrent ce qu'il y a dessous.
+   des vents (choix du 18/09/2026). Une capacité en DEUX TEMPS (le Canon de
+   proue) le ferme de deux planches qui s'écartent vers le haut et vers le
+   bas à l'armement, et découvrent ce qu'il y a dessous ; les capacités qui
+   se jouent d'un seul geste montrent leur illustration en permanence —
+   elles n'ont pas d'état « armé » à annoncer.
 
    Trois variables tiennent le placement — c'est le seul point de recalage
    si le cadre du Navire change. */
@@ -589,6 +591,63 @@
 
 .shipAbilityReady:hover {
   animation-duration: 1s;
+}
+
+/*
+ * LA CARTE DE SURVOL — un hublot de trente pixels ne dit pas ce que fait la
+ * capacité, et une info-bulle de navigateur arrive après une seconde, dans
+ * la typographie du système. Celle-ci sort tout de suite, dans celle du jeu.
+ *
+ * Posée à DROITE du hublot pour les deux camps : le cadre de Navire vit
+ * dans la colonne de gauche du plateau, il y a toujours de la place de ce
+ * côté-là, jamais à gauche. `z-index` au-dessus du cadre, et aucun pointeur
+ * — le survol doit rester sur le hublot, sans quoi la carte clignoterait.
+ */
+.shipAbilityCard {
+  position: absolute;
+  top: 50%;
+  left: 106%;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25em;
+  width: max-content;
+  max-width: 15em;
+  padding: 0.5em 0.7em;
+  transform: translateY(-50%) scale(0.96);
+  transform-origin: left center;
+  border-radius: 0.4em;
+  background: rgba(6, 12, 20, 0.95);
+  box-shadow: inset 0 0 0 1px rgba(199, 154, 78, 0.45), 0 0.5em 1.4em rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  pointer-events: none;
+  text-align: left;
+  transition: opacity 140ms ease-out, transform 140ms ease-out;
+}
+
+.shipAbility:hover .shipAbilityCard,
+.shipAbility:focus-visible .shipAbilityCard {
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
+}
+
+.shipAbilityCardName {
+  font-family: var(--font-card-title), Georgia, serif;
+  font-size: var(--fs-label);
+  letter-spacing: 0.03em;
+  color: #f0d79a;
+}
+
+.shipAbilityCardText {
+  font-size: calc(var(--fs-label) * 0.92);
+  line-height: 1.35;
+  color: #e8edf4;
+}
+
+/* Ce qui empêche d'agir — la raison du hublot éteint, dite en toutes lettres. */
+.shipAbilityCardStatus {
+  font-size: calc(var(--fs-label) * 0.86);
+  color: #9fb0c0;
 }
 
 @keyframes shipAbilityGlow {

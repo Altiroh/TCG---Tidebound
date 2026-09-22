@@ -101,6 +101,9 @@ export function useShipAbility({
   const panel: ShipAbilityPanelView | undefined = mine && {
     name: mine.ability.name,
     text: mine.ability.text,
+    // Les planches ne servent qu'à dire « armé / pas armé » : une capacité
+    // qui se joue d'un seul geste n'a rien à cacher.
+    planks: Boolean(mine.ability.armedShot),
     armed: mine.armed,
     artUrl: mine.ability.illustration ? shipAbilityArtUrl(mine.ability.illustration) : undefined,
     actionable: mine.canActivate || mine.canFire || aiming,
@@ -111,6 +114,7 @@ export function useShipAbility({
   const opponentPanel: ShipAbilityPanelView | undefined = theirs && {
     name: theirs.ability.name,
     text: theirs.ability.text,
+    planks: Boolean(theirs.ability.armedShot),
     armed: theirs.armed,
     artUrl: theirs.ability.illustration ? shipAbilityArtUrl(theirs.ability.illustration) : undefined,
     // Jamais de halo sur le Navire d'en face : ce panneau informe, il n'invite à rien.
