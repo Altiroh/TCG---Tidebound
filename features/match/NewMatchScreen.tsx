@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
-  BORROWED_DECKS,
   PRECON_DECKS,
   RULES,
   validateDeckList,
@@ -30,8 +29,8 @@ interface NewMatchScreenProps {
   /** Decks personnels du joueur connecté (`listPlayerDeckLists`) — vide hors connexion. */
   personalDecks?: readonly DeckList[];
   /**
-   * Decks FOURNIS par le jeu que ce joueur a débloqués : son deck
-   * d'emprunt et ses préconstruits payés en Jetons. Les autres restent
+   * Préconstruits que ce joueur a débloqués : le sien, pris avec le choix
+   * gratuit, et ceux payés en Jetons. Les autres restent
    * affichés, éteints, avec la raison — un rayon vide n'apprendrait rien
    * (Notion « Progression joueur » §4).
    */
@@ -52,7 +51,7 @@ interface NewMatchScreenProps {
  * `Math.random` est ici un choix d'INTERFACE, pas un aléa de moteur : il
  * ne touche pas `GameState.rngState`, qui doit rester déterministe.
  */
-const BOT_DECK_POOL: readonly DeckList[] = [...BORROWED_DECKS, ...PRECON_DECKS];
+const BOT_DECK_POOL: readonly DeckList[] = PRECON_DECKS;
 
 function pickRandomDeck(): DeckList {
   return BOT_DECK_POOL[Math.floor(Math.random() * BOT_DECK_POOL.length)]!;
@@ -69,7 +68,7 @@ type Mode = "pvp" | "bot";
 type Step = 1 | 2 | 3;
 
 /** Les onglets de la sélection de deck, dans l'ordre de lecture. */
-type DeckTab = "mine" | "borrowed" | "precon";
+type DeckTab = "mine" | "precon";
 
 interface DeckTabDef {
   id: DeckTab;
@@ -165,28 +164,23 @@ export function NewMatchScreen({
         issueFor: (deck) => personalValidity.get(deck.id) ?? null,
       },
       {
-        id: "borrowed",
-        label: "Deck d'emprunt",
-        hint: "Cartes prêtées tant que tu ne les possèdes pas.",
-        decks: BORROWED_DECKS,
-        // Les deux autres ne sont pas « verrouillés » : ils ne sont simplement pas le sien.
-        issueFor: (deck) => (unlocked.has(deck.id) ? null : "Pas ton deck d'emprunt — il se choisit une seule fois, dans Decks."),
-      },
-      {
-        // TEMPORAIRE : tous les préconstruits sont ouverts pour tester, sans
-        // dépenser de Jeton. Le serveur les accepte déjà tous
-        // (`findCatalogDeck`).
+        // UN SEUL RAYON depuis le 22/09/2026 : « Deck d'emprunt » et
+        // « Préconstruits » étaient deux onglets pour la même chose, qui ne
+        // se distinguaient que par la façon de l'obtenir.
+        //
+        // TEMPORAIRE : tous sont ouverts pour tester, sans dépenser de
+        // Jeton. Le serveur les accepte déjà tous (`findCatalogDeck`).
         id: "precon",
         label: "Préconstruits",
-        hint: "Le plan spécialisé de chaque Navire — ouverts le temps des essais.",
+        hint: "Douze plans, un par grande mécanique — cartes prêtées tant que tu ne les possèdes pas.",
         decks: PRECON_DECKS,
         issueFor: () => null,
       },
     ],
     [personalDecks, personalValidity, unlocked]
   );
-  // Premier onglet utile : ses decks s'il en a, sinon l'emprunt.
-  const [deckTab, setDeckTab] = useState<DeckTab>(() => (personalDecks.length > 0 ? "mine" : "borrowed"));
+  // Premier onglet utile : ses decks s'il en a, sinon les préconstruits.
+  const [deckTab, setDeckTab] = useState<DeckTab>(() => (personalDecks.length > 0 ? "mine" : "precon"));
   const activeTab = tabs.find((tab) => tab.id === deckTab) ?? tabs[0]!;
 
   const current = step === 3 ? deck2 : deck1;
@@ -418,7 +412,7 @@ export function NewMatchScreen({
                     {isSignedIn ? (
                       <>
                         <p className={game.emptyTitle}>Tu n&apos;as pas encore monté de deck</p>
-                        <p className={game.muted}>En attendant, ton deck d&apos;emprunt et les decks de test sont prêts à jouer.</p>
+                        <p className={game.muted}>En attendant, les préconstruits sont prêts à jouer.</p>
                         <Link href="/decks/nouveau" className={game.secondary} onClick={() => playButtonClick()}>
                           + Créer un deck
                         </Link>
@@ -426,7 +420,7 @@ export function NewMatchScreen({
                     ) : (
                       <>
                         <p className={game.emptyTitle}>Connecte-toi pour jouer tes propres decks</p>
-                        <p className={game.muted}>Le deck d&apos;emprunt et les decks de test se jouent sans compte.</p>
+                        <p className={game.muted}>Les préconstruits se jouent sans compte.</p>
                       </>
                     )}
                   </div>

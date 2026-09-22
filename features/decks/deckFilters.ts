@@ -4,7 +4,7 @@ import { deckStyleFromText, deckStyleLabel, type DeckStyleId } from "@/game";
  * LE TRI ET LES FILTRES de l'écran Decks — logique pure, sans React.
  *
  * L'écran range trois familles de decks dans la même grille (les miens,
- * l'emprunt, les préconstruits). Pour les filtrer ensemble il leur faut une
+ * les préconstruits). Pour les filtrer ensemble il leur faut une
  * forme COMMUNE : `DeckEntry`. Chaque famille la remplit à sa façon — un
  * deck du catalogue porte son style écrit à la main, un deck personnel le
  * fait déduire de ses cartes (`deckProfile`) — et tout ce qui suit ignore

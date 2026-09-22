@@ -110,7 +110,7 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
     id: "play-unit",
     title: "Un corps sur le pont",
     // Marin OU Créature, et surtout pas « une Créature » seule. Le deck
-    // d'emprunt du tutoriel compte 13 Marins pour 12 Créatures : une main
+    // du tutoriel compte 13 Marins pour 12 Créatures : une main
     // d'ouverture sans la moindre Créature est banale, et le joueur posait
     // alors carte sur carte sans que l'étape avance ni que rien ne le lui
     // explique. La leçon de cette étape est le GESTE — mettre un corps sur

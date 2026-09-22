@@ -47,7 +47,7 @@ interface DeckRailProps {
  * LA COLONNE DE GAUCHE de l'écran Decks : où l'on est, et ce qu'on veut
  * voir.
  *
- * Deux blocs et rien d'autre. En haut le RAYON — mes decks, l'emprunt, les
+ * Deux blocs et rien d'autre. En haut le RAYON — mes decks, les
  * préconstruits — qui change ce qu'on regarde. En dessous les FILTRES, qui
  * réduisent ce rayon sans jamais en changer. Un onglet qu'on quitte ne
  * remet pas les filtres à zéro : on compare deux rayons sous le même

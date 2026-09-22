@@ -482,7 +482,8 @@ export interface Database {
         Update: Record<string, never>;
         Relationships: [];
       };
-      /** Decks fournis par le jeu débloqués : deck d'emprunt (un seul) ou préconstruits à Jeton. */
+      /** Préconstruits débloqués. `source` dit par quelle PORTE : le choix gratuit
+       *  (`borrowed`, nom historique, un seul par compte) ou un Jeton. */
       player_deck_unlocks: {
         Row: {
           user_id: string;

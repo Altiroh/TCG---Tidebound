@@ -10,7 +10,7 @@ import { playGameStart } from "@/lib/sound";
 const POLL_MS = 3000;
 
 interface QuickMatchPanelProps {
-  /** Decks que ce joueur peut engager : emprunt et préconstruits débloqués, plus ses decks personnels. */
+  /** Decks que ce joueur peut engager : ses préconstruits débloqués, plus ses decks personnels. */
   decks: { id: string; name: string }[];
 }
 
@@ -106,7 +106,7 @@ export function QuickMatchPanel({ decks }: QuickMatchPanelProps) {
       <div className="flex flex-1 flex-col gap-3 rounded-md border border-slate-800 bg-board-surface p-4 text-left">
         <h2 className="text-sm font-medium text-slate-300">Recherche rapide</h2>
         <p className="text-xs text-slate-400">
-          Il te faut un deck jouable pour être apparié. Choisis ton deck d&apos;emprunt dans la Collection, ou monte le tien.
+          Il te faut un deck jouable pour être apparié. Choisis ton préconstruit gratuit dans la Collection, ou monte le tien.
         </p>
       </div>
     );

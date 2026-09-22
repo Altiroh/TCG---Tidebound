@@ -514,15 +514,16 @@
 }
 
 /*
- * LA PASTILLE DE PROVENANCE — construit, emprunt, test.
+ * LA PASTILLE DE PROVENANCE — construit, préconstruit.
  *
- * Elle n'apparaît que dans « Tous les decks », où trois familles se
+ * Elle n'apparaît que dans « Tous les decks », où les deux familles se
  * mélangent dans la même grille : ailleurs, le rayon de gauche l'a déjà
  * dit pour la colonne entière. Posée en haut à droite de la vignette,
  * au-dessus de l'illustration, là où l'œil ne cherche pas le nom.
  *
- * Trois teintes, jamais trois formes : c'est une étiquette, pas un
- * blason.
+ * Deux teintes, jamais deux formes : c'est une étiquette, pas un blason.
+ * La troisième, « emprunt », est partie avec la fusion des deux rayons
+ * fournis (22/09/2026).
  */
 .originTag {
   position: absolute;
@@ -553,10 +554,6 @@
   color: #d8f6ff;
 }
 
-.originTag[data-kind="borrowed"] {
-  border-color: rgba(226, 194, 122, 0.5);
-  color: #f2e2bd;
-}
 
 .originTag[data-kind="precon"] {
   border-color: rgba(180, 140, 242, 0.5);

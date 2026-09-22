@@ -3,7 +3,7 @@ import { dispatch } from "@/game/engine";
 import { RULES } from "@/game/rules/constants";
 import { allowanceFor, missedDeadlines, nextTimeoutEndsGame, playerToAct, turnTimerExpired, warningTimes } from "@/game/rules/turnTimer";
 import { createGameState } from "@/game/state/createGameState";
-import { DECK_LE_GRAND_BANC, DECK_CHASSE_AU_GROS } from "@/game/cards/decks/borrowed";
+import { DECK_LE_GRAND_BANC, DECK_CHASSE_AU_GROS } from "@/game/cards/decks/precon";
 import { getPlayer, type GameState } from "@/game/state/types";
 import { instance, testGameState, testPlayer } from "./testHelpers";
 

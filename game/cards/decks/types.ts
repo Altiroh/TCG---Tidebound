@@ -2,7 +2,7 @@ import type { CardId } from "@/game/cards/types";
 
 /**
  * UNE LISTE DE DECK — la forme commune à tout ce qui se joue : les decks
- * fournis par le jeu (`borrowed.ts`, `precon.ts`) comme les decks montés
+ * fournis par le jeu (`precon.ts`) comme les decks montés
  * par le joueur, relus depuis la base.
  *
  * Taille : 40 à 50 cartes (`RULES.DECK_SIZE_MIN`/`DECK_SIZE_MAX`), chaque

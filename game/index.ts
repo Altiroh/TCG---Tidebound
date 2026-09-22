@@ -69,19 +69,16 @@ export { computeEffectiveStats, computeStatModifierDelta } from "@/game/cards/st
 export type { EffectiveStats } from "@/game/cards/stats";
 
 export type { DeckList } from "@/game/cards/decks/types";
-export { BORROWED_DECK_LISTS } from "@/game/cards/decks/borrowed";
 export { PRECON_DECK_LISTS } from "@/game/cards/decks/precon";
 export { validateDeckList } from "@/game/rules/deckValidation";
 
 // --- Catalogue de decks fournis par le jeu (Notion « Progression joueur »
-// §3 et §4) : decks d'emprunt gratuits et préconstruits à Jeton, plus le
-// calcul « possédé / prêté » qui les accompagne partout dans l'interface.
+// §3 et §4) : les préconstruits — le premier gratuit, les suivants à Jeton
+// — plus le calcul « possédé / prêté » qui les accompagne dans l'interface.
 export {
-  BORROWED_DECKS,
   CATALOG_DECKS,
   PRECON_DECKS,
   catalogDeckById,
-  isBorrowedDeckId,
   isPreconDeckId,
   PLAYABLE_DECKS,
 } from "@/game/cards/decks/catalog";

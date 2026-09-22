@@ -138,7 +138,7 @@ export function DeckPreviewPanel({
                 <span aria-hidden>★</span> Deck par défaut
               </span>
             )}
-            {catalog?.unlocked && <span className={game.tagSuccess}>{deck.kind === "borrowed" ? "Emprunté" : "Débloqué"}</span>}
+            {catalog?.unlocked && <span className={game.tagSuccess}>Débloqué</span>}
             {mine && !trashed && (
               <button
                 type="button"

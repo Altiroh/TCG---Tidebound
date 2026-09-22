@@ -92,16 +92,15 @@ describe("catalogue de decks", () => {
     const catalog = await readDeckCatalog(USER);
     // Le catalogue est du CODE, pas de la base : il doit sortir entier même
     // quand plus rien ne répond — sinon l'écran Decks se vide.
-    expect(catalog.borrowed.length).toBeGreaterThan(0);
-    expect(catalog.precon.length).toBeGreaterThan(0);
+    expect(catalog.decks.length).toBeGreaterThan(0);
     expect(catalog.preconTokens).toBe(0);
-    expect(catalog.borrowedDeckId).toBeNull();
+    expect(catalog.freeDeckId).toBeNull();
   });
 
   it("hors connexion, ne consulte pas la base du tout", async () => {
     mode = "throw";
     const catalog = await readDeckCatalog(null);
-    expect(catalog.borrowed.length).toBeGreaterThan(0);
+    expect(catalog.decks.length).toBeGreaterThan(0);
   });
 });
 

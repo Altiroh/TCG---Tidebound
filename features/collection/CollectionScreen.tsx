@@ -5,7 +5,7 @@ import type { CardDefinition } from "@/game";
 import { CardGrid } from "@/features/collection/CardGrid";
 import { CollectionSidebar } from "@/features/collection/CollectionSidebar";
 import { CollectionToolbar } from "@/features/collection/CollectionToolbar";
-import { BorrowedDeckPrompt } from "@/features/collection/BorrowedDeckPrompt";
+import { FirstDeckPrompt } from "@/features/collection/FirstDeckPrompt";
 import { CardDetailModal } from "@/features/collection/card-detail/CardDetailModal";
 import { SurplusResaleDialog } from "@/features/collection/SurplusResaleDialog";
 import { surplusPlan } from "@/features/collection/recycleValue";
@@ -22,12 +22,12 @@ interface CollectionScreenProps {
   isSignedIn: boolean;
   /**
    * Decks fournis par le jeu + possession. Sert à l'invite de PREMIER DECK :
-   * après le tutoriel, le joueur est conduit ici pour emprunter son premier
+   * après le tutoriel, le joueur est conduit ici pour prendre son premier
    * équipage (Notion « Progression joueur » §2, étape 5).
    */
   catalog?: DeckCatalogView;
-  /** `true` tant que le joueur n'a pas choisi son deck d'emprunt. */
-  needsBorrowedDeck?: boolean;
+  /** `true` tant que le joueur n'a pas pris son préconstruit gratuit. */
+  needsFirstDeck?: boolean;
   /** Cartes possédées (`player_cards.card_id`, quantité > 0). Ignoré si `isSignedIn` est `false`. */
   ownedCardIds: string[];
   /** Exemplaires possédés par carte — affichés en pastille sous chaque carte possédée. */
@@ -52,7 +52,7 @@ interface CollectionScreenProps {
  * « Manquantes ». Un visiteur non connecté n'a pas de possession connue :
  * il feuillette sans estompage ni section « Statut de collection ».
  */
-export function CollectionScreen({ isSignedIn, ownedCardIds, ownedCounts, catalog, needsBorrowedDeck = false }: CollectionScreenProps) {
+export function CollectionScreen({ isSignedIn, ownedCardIds, ownedCounts, catalog, needsFirstDeck = false }: CollectionScreenProps) {
   const owned = useMemo(() => (isSignedIn ? new Set(ownedCardIds) : null), [isSignedIn, ownedCardIds]);
   const browser = useCardBrowser({ owned });
   const [detailCardId, setDetailCardId] = useState<string | null>(null);
@@ -153,7 +153,7 @@ export function CollectionScreen({ isSignedIn, ownedCardIds, ownedCounts, catalo
         </main>
       </div>
 
-      {needsBorrowedDeck && catalog && <BorrowedDeckPrompt catalog={catalog} />}
+      {needsFirstDeck && catalog && <FirstDeckPrompt catalog={catalog} />}
 
       {surplusOpen && <SurplusResaleDialog lines={surplusLines} onClose={() => setSurplusOpen(false)} />}
 

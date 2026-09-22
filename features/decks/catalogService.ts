@@ -1,10 +1,8 @@
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import {
-  BORROWED_DECKS,
   PRECON_DECKS,
   catalogDeckById,
   deckOwnership,
-  isBorrowedDeckId,
   isPreconDeckId,
   type CatalogDeck,
   type DeckOwnership,
@@ -12,11 +10,18 @@ import {
 import { syncAchievements } from "@/features/achievements/achievementService";
 
 /**
- * Decks fournis par le jeu — opérations SERVEUR (pas de `"use server"`).
+ * Préconstruits — opérations SERVEUR (pas de `"use server"`).
  *
- * Deux familles, deux règles (Notion « Progression joueur » §3 et §4) :
- *   - un SEUL deck d'emprunt, gratuit, choisi depuis la Collection ;
- *   - autant de préconstruits que de Jetons dépensés.
+ * UN SEUL RAYON, DEUX PORTES (Notion « Progression joueur » §3 et §4) :
+ *   - le PREMIER préconstruit est gratuit, choisi une fois depuis la
+ *     Collection ;
+ *   - les SUIVANTS coûtent chacun un Jeton de Préconstruit.
+ *
+ * La base ne change pas avec la fusion du 22/09/2026 : `player_deck_unlocks
+ * .source` valait déjà 'borrowed' ou 'precon', et c'est exactement ce qu'on
+ * veut continuer à noter — par quelle porte le deck est entré. Les RPC
+ * gardent donc leurs noms (`claim_borrowed_deck`, `unlock_precon_deck`) ;
+ * ce qui disparaît, c'est l'idée qu'il existait deux ESPÈCES de decks.
  *
  * Dans les deux cas, AUCUNE carte n'est créditée à la collection : c'est
  * tout le principe du prêt. « Le premier deck ne doit pas injecter un gros
@@ -28,15 +33,15 @@ import { syncAchievements } from "@/features/achievements/achievementService";
 export interface CatalogDeckView {
   deck: CatalogDeck;
   ownership: DeckOwnership;
-  /** `true` si le joueur a débloqué ce deck (emprunt choisi, ou préconstruit payé). */
+  /** `true` si le joueur a débloqué ce deck (choix gratuit, ou Jeton dépensé). */
   unlocked: boolean;
 }
 
 export interface DeckCatalogView {
-  borrowed: CatalogDeckView[];
-  precon: CatalogDeckView[];
-  /** Deck d'emprunt déjà choisi — un seul, pour toujours. */
-  borrowedDeckId: string | null;
+  /** Tout le rayon, verrouillés compris — un seul, depuis la fusion. */
+  decks: CatalogDeckView[];
+  /** Le préconstruit pris avec le choix GRATUIT — un seul, pour toujours. */
+  freeDeckId: string | null;
   preconTokens: number;
 }
 
@@ -55,14 +60,14 @@ export async function readOwnedCounts(userId: string): Promise<Record<string, nu
 }
 
 /**
- * Tout le rayon, possession calculée. Les préconstruits VERROUILLÉS sont
- * inclus : « les préconstruits verrouillés doivent rester visibles » et
- * « consultables avant achat » (§4, §13).
+ * Tout le rayon, possession calculée. Les VERROUILLÉS sont inclus : « les
+ * préconstruits verrouillés doivent rester visibles » et « consultables
+ * avant achat » (§4, §13).
  */
 export async function readDeckCatalog(userId: string | null): Promise<DeckCatalogView> {
   const ownedCounts = userId ? await readOwnedCounts(userId) : {};
   let unlockedIds = new Set<string>();
-  let borrowedDeckId: string | null = null;
+  let freeDeckId: string | null = null;
   let preconTokens = 0;
 
   if (userId) {
@@ -73,7 +78,9 @@ export async function readDeckCatalog(userId: string | null): Promise<DeckCatalo
         service.from("player_progression").select("precon_tokens").eq("user_id", userId).maybeSingle(),
       ]);
       unlockedIds = new Set((unlocks.data ?? []).map((row) => row.deck_id));
-      borrowedDeckId = (unlocks.data ?? []).find((row) => row.source === "borrowed")?.deck_id ?? null;
+      // `source = 'borrowed'` reste le marqueur du choix gratuit en base :
+      // c'est la PORTE d'entrée, pas une famille de deck.
+      freeDeckId = (unlocks.data ?? []).find((row) => row.source === "borrowed")?.deck_id ?? null;
       preconTokens = progression.data?.precon_tokens ?? 0;
     } catch (error) {
       console.error("[readDeckCatalog] Lecture impossible :", error);
@@ -86,12 +93,7 @@ export async function readDeckCatalog(userId: string | null): Promise<DeckCatalo
     unlocked: unlockedIds.has(deck.id),
   });
 
-  return {
-    borrowed: BORROWED_DECKS.map(view),
-    precon: PRECON_DECKS.map(view),
-    borrowedDeckId,
-    preconTokens,
-  };
+  return { decks: PRECON_DECKS.map(view), freeDeckId, preconTokens };
 }
 
 export interface UnlockResult {
@@ -102,20 +104,20 @@ export interface UnlockResult {
   tokens?: number;
 }
 
-/** Choisit le deck d'emprunt gratuit — une seule fois par compte. */
-export async function claimBorrowedDeck(userId: string, deckId: string): Promise<UnlockResult> {
-  if (!isBorrowedDeckId(deckId)) return { ok: false, error: "Ce deck n'est pas proposé à l'emprunt." };
+/** Prend le préconstruit GRATUIT — une seule fois par compte. */
+export async function claimFreePreconDeck(userId: string, deckId: string): Promise<UnlockResult> {
+  if (!isPreconDeckId(deckId)) return { ok: false, error: "Ce deck n'est pas un préconstruit." };
   try {
     const service = createSupabaseServiceRoleClient();
     const { data, error } = await service.rpc("claim_borrowed_deck", { p_user_id: userId, p_deck_id: deckId });
     if (error) {
-      console.error("[claimBorrowedDeck] Refusé :", error.message);
+      console.error("[claimFreePreconDeck] Refusé :", error.message);
       return { ok: false, error: "Choix impossible pour le moment." };
     }
     if (!data?.ok) return { ok: false, error: data?.error ?? "Choix impossible." };
     return { ok: true, deckId };
   } catch (error) {
-    console.error("[claimBorrowedDeck] Échec :", error);
+    console.error("[claimFreePreconDeck] Échec :", error);
     return { ok: false, error: "Choix impossible pour le moment." };
   }
 }
@@ -140,7 +142,7 @@ export async function unlockPreconDeck(userId: string, deckId: string): Promise<
   }
 }
 
-/** Les decks fournis que le joueur peut JOUER — emprunt et préconstruits débloqués. */
+/** Les préconstruits que le joueur peut JOUER — ceux qu'il a débloqués. */
 export async function readPlayableCatalogDecks(userId: string): Promise<CatalogDeck[]> {
   try {
     const service = createSupabaseServiceRoleClient();

@@ -15,7 +15,7 @@ import {
   updateDeckProfile,
   type PlayerDeckSummary,
 } from "@/app/decks/actions";
-import { chooseBorrowedDeck, unlockPreconstructedDeck } from "@/features/decks/catalogActions";
+import { chooseFreePreconDeck, unlockPreconstructedDeck } from "@/features/decks/catalogActions";
 import type { DeckCatalogView } from "@/features/decks/catalogService";
 import {
   ORIGIN_LABELS,
@@ -58,15 +58,14 @@ import { playButtonClick } from "@/lib/sound";
  * ouvre la marche : c'est de là qu'on voit d'un coup tout ce qu'on peut
  * jouer, chaque deck portant la pastille de sa provenance.
  *
- * « Préconstruits » depuis la Bibliothèque v4 (19/09/2026) : la famille
- * n'est plus une série d'essai vouée à disparaître, c'est le plan
- * spécialisé de chaque Navire, celui qu'un Jeton achète. L'écran Jouer
- * emploie le même mot.
+ * UN SEUL RAYON FOURNI depuis le 22/09/2026 : « Decks d'emprunt » et
+ * « Préconstruits » étaient deux catégories pour le même objet, qui ne se
+ * distinguaient que par la porte d'entrée — le premier gratuit, les
+ * suivants à un Jeton. L'écran Jouer emploie le même mot.
  */
 const CATEGORY_LABELS: Record<DeckCategory, string> = {
   all: "Tous les decks",
   mine: "Mes decks",
-  borrowed: "Decks d'emprunt",
   precon: "Préconstruits",
 };
 
@@ -113,7 +112,7 @@ interface DecksScreenProps {
  * (`DeckPreviewPanel`), qui porte TOUTES les actions : ouvrir, renommer,
  * dupliquer, supprimer, et le début de la liste de cartes.
  *
- * Les trois rayons — les miens, l'emprunt, les préconstruits — passent par
+ * Les deux rayons — les miens, les préconstruits — passent par
  * la même forme (`BrowserDeck`) : ils se trient et se filtrent ensemble,
  * seules les actions de la fiche changent. Le déblocage d'un deck fourni
  * garde sa fiche complète en fenêtre (`DeckSheet`), qui existait déjà et
@@ -125,9 +124,9 @@ interface DecksScreenProps {
  */
 export function DecksScreen({ isSignedIn, initialDecks, catalog }: DecksScreenProps) {
   const router = useRouter();
-  // Le joueur qui n'a pas encore emprunté de deck arrive directement sur le
-  // rayon d'emprunt : c'est l'étape qui lui manque pour jouer.
-  const [category, setCategory] = useState<DeckCategory>(isSignedIn && catalog.borrowedDeckId === null ? "borrowed" : "mine");
+  // Le joueur qui n'a pas encore pris son préconstruit gratuit arrive
+  // directement sur le rayon : c'est l'étape qui lui manque pour jouer.
+  const [category, setCategory] = useState<DeckCategory>(isSignedIn && catalog.freeDeckId === null ? "precon" : "mine");
   const [filters, setFilters] = useState<DeckFilterState>(EMPTY_FILTERS);
   const [sort, setSort] = useState<DeckSortId>("updated");
   const [view, setView] = useState<DeckView>("grid");
@@ -157,17 +156,13 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog }: DecksScreenPr
   /** Le rayon courant, avant filtrage : c'est lui qui décide des cases à proposer. */
   const shelfDecks = useMemo<BrowserDeck[]>(() => {
     if (category === "mine") return mineEntries(shelves[shelf]);
-    if (category !== "all") return catalogEntries(catalog, category);
+    if (category !== "all") return catalogEntries(catalog);
     /*
      * TOUT ce qui se joue, dans l'ordre de ce qu'on possède : ses propres
-     * decks (la corbeille exceptée — un deck supprimé ne se joue pas),
-     * puis l'emprunt, puis les listes de test.
+     * decks (la corbeille exceptée — un deck supprimé ne se joue pas), puis
+     * les préconstruits.
      */
-    return [
-      ...mineEntries([...shelves.built, ...shelves.draft]),
-      ...catalogEntries(catalog, "borrowed"),
-      ...catalogEntries(catalog, "precon"),
-    ];
+    return [...mineEntries([...shelves.built, ...shelves.draft]), ...catalogEntries(catalog)];
   }, [category, shelf, shelves, catalog]);
 
   const decks = useMemo(() => sortDecks(filterDecks(shelfDecks, filters), sort), [shelfDecks, filters, sort]);
@@ -197,10 +192,9 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog }: DecksScreenPr
 
   const mineCount = shelves.built.length + shelves.draft.length;
   const categories: RailCategory[] = [
-    { id: "all", label: CATEGORY_LABELS.all, count: mineCount + catalog.borrowed.length + catalog.precon.length },
+    { id: "all", label: CATEGORY_LABELS.all, count: mineCount + catalog.decks.length },
     { id: "mine", label: CATEGORY_LABELS.mine, count: mineCount },
-    { id: "borrowed", label: CATEGORY_LABELS.borrowed, count: catalog.borrowed.length },
-    { id: "precon", label: CATEGORY_LABELS.precon, count: catalog.precon.length },
+    { id: "precon", label: CATEGORY_LABELS.precon, count: catalog.decks.length },
   ];
 
   const railShelves: RailShelf[] =
@@ -288,12 +282,13 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog }: DecksScreenPr
     );
   }
 
-  /** Déblocage d'un deck fourni : emprunt gratuit, ou préconstruit payé en Jeton. */
+  /** Déblocage d'un préconstruit : le premier est gratuit, les suivants coûtent un Jeton. */
   function handleUnlock(deck: BrowserDeck) {
     playButtonClick();
     setCatalogError(null);
+    const gratuit = catalog.freeDeckId === null;
     startTransition(async () => {
-      const result = deck.kind === "borrowed" ? await chooseBorrowedDeck(deck.id) : await unlockPreconstructedDeck(deck.id);
+      const result = gratuit ? await chooseFreePreconDeck(deck.id) : await unlockPreconstructedDeck(deck.id);
       if (!result.ok) {
         setCatalogError(result.error ?? "Action impossible.");
         return;
@@ -508,9 +503,8 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog }: DecksScreenPr
           deck={catalogTarget.catalog.deck}
           ownership={catalogTarget.catalog.ownership}
           unlocked={catalogTarget.catalog.unlocked}
-          kind={catalogTarget.kind}
           tokens={catalog.preconTokens}
-          borrowedAlreadyChosen={catalog.borrowedDeckId !== null}
+          freeChoiceAvailable={catalog.freeDeckId === null}
           busy={isPending}
           error={catalogError}
           onUnlock={() => handleUnlock(catalogTarget)}
@@ -528,9 +522,9 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog }: DecksScreenPr
 /** La phrase sous le titre : ce que contient le rayon, et ce que le filtre en laisse. */
 function headline(category: DeckCategory, shelf: DeckShelf, shown: number, total: number): string {
   const filtered = shown !== total ? `${shown} sur ${total}` : `${total}`;
-  if (category === "all") return `${filtered} deck${total > 1 ? "s" : ""} — les tiens, l'emprunt et les listes de test, chacun avec sa provenance.`;
-  if (category === "borrowed") return `${filtered} deck${total > 1 ? "s" : ""} prêté${total > 1 ? "s" : ""} — un seul se choisit, pour toujours.`;
-  if (category === "precon") return `${filtered} liste${total > 1 ? "s" : ""} de test — consultables avant de dépenser un Jeton.`;
+  if (category === "all") return `${filtered} deck${total > 1 ? "s" : ""} — les tiens et les préconstruits, chacun avec sa provenance.`;
+  if (category === "precon")
+    return `${filtered} préconstruit${total > 1 ? "s" : ""} — le premier est gratuit, les suivants coûtent un Jeton.`;
   if (shelf === "trash") return `${filtered} deck${total > 1 ? "s" : ""} supprimé${total > 1 ? "s" : ""} — restaurables ${DECK_TRASH_RETENTION_DAYS} jours.`;
   if (shelf === "draft") return `${filtered} brouillon${total > 1 ? "s" : ""} — en chantier, pas encore jouable${total > 1 ? "s" : ""}.`;
   return `${filtered} deck${total > 1 ? "s" : ""} construit${total > 1 ? "s" : ""} • Crée, modifie et gère tes decks.`;
@@ -624,7 +618,7 @@ function DeckRow({
   );
 }
 
-/** L'état du deck en un mot : jouable, en chantier, emprunté, verrouillé. */
+/** L'état du deck en un mot : jouable, en chantier, débloqué, verrouillé. */
 function DeckStateTag({ deck }: { deck: BrowserDeck }) {
   if (deck.mine) {
     if (deck.mine.deletedAt) return <span className={game.tagDanger}>Supprimé</span>;
@@ -632,8 +626,8 @@ function DeckStateTag({ deck }: { deck: BrowserDeck }) {
     if (deck.mine.isValid) return <span className={game.tagSuccess}>Jouable</span>;
     return <span className={game.tagDanger}>{deck.cardCount < RULES.DECK_SIZE_MIN ? `Min. ${RULES.DECK_SIZE_MIN}` : "Non valide"}</span>;
   }
-  if (deck.catalog?.unlocked) return <span className={game.tagSuccess}>{deck.kind === "borrowed" ? "Emprunté" : "Débloqué"}</span>;
-  return <span className={game.tag}>{deck.kind === "borrowed" ? "Non choisi" : "1 Jeton"}</span>;
+  if (deck.catalog?.unlocked) return <span className={game.tagSuccess}>Débloqué</span>;
+  return <span className={game.tag}>Verrouillé</span>;
 }
 
 /**

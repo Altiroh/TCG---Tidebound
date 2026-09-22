@@ -1,33 +1,32 @@
-import { BORROWED_DECK_LISTS } from "@/game/cards/decks/borrowed";
 import { PRECON_DECK_LISTS } from "@/game/cards/decks/precon";
 import type { DeckList } from "@/game/cards/decks/types";
 
 /**
- * Catalogue des decks FOURNIS PAR LE JEU — decks d'emprunt et préconstruits.
+ * Catalogue des decks FOURNIS PAR LE JEU — les préconstruits.
  *
  * Source de vérité des LISTES : Notion « Decks d'emprunt — refonte depuis
- * zéro · 12 archétypes » (22/09/2026) pour les emprunts, et « Bibliothèque
- * de decks — v4 » (19/09/2026) pour les préconstruits.
+ * zéro · 12 archétypes » (22/09/2026).
  *
- * Les deux familles ne se rangent plus de la même façon, et c'est voulu :
- * un préconstruit reste attaché à SON Navire, un emprunt est désormais
- * rangé par MÉCANIQUE et plusieurs peuvent partager une coque.
- * Source de vérité du RÔLE des deux familles : Notion « Progression
- * joueur », sections 3 et 4. Elles ne doivent pas être confondues :
+ * UN SEUL RAYON depuis le 22/09/2026. Le jeu séparait auparavant des
+ * « decks d'emprunt » et des « préconstruits » ; la distinction ne portait
+ * que sur la PORTE d'entrée, jamais sur le deck lui-même, et elle obligeait
+ * chaque écran à ranger deux rayons qui disaient la même chose. Ce qui
+ * subsiste, et qui suffit (Notion « Progression joueur » §3 et §4) :
  *
- *   - **Deck d'emprunt** (§3) — gratuit, choisi UNE fois depuis la
- *     Collection à la sortie du tutoriel. « Le premier deck ne doit pas
- *     injecter un gros volume de cartes gratuites dans la collection » : ses
- *     cartes non possédées restent PRÊTÉES, et les boosters permettent
- *     progressivement de les posséder réellement.
- *   - **Préconstruit** (§4) — déblocable en dépensant un Jeton de
- *     Préconstruit, gagné aux gros paliers de niveau. « Le jeton n'impose
- *     aucun deck précis » : le joueur analyse tout le rayon avant de choisir.
+ *   - le PREMIER préconstruit est gratuit, choisi une fois depuis la
+ *     Collection à la sortie du tutoriel ;
+ *   - les SUIVANTS coûtent un Jeton de Préconstruit, gagné aux gros
+ *     paliers de niveau.
  *
- * Les listes elles-mêmes vivent dans `borrowed.ts` et `precon.ts`. Ce module
- * ne fait que les CLASSER et leur attacher les métadonnées que la fiche de
- * deck doit afficher (style, difficulté, mécaniques) — il n'y a donc jamais
- * deux définitions d'un même deck à maintenir.
+ * Dans les deux cas les cartes restent PRÊTÉES : « le premier deck ne doit
+ * pas injecter un gros volume de cartes gratuites dans la collection ».
+ * C'est donc l'ACQUISITION qui se note (colonne `source` en base), pas une
+ * nature du deck — et il n'y a plus qu'une liste de decks à maintenir.
+ *
+ * Les listes elles-mêmes vivent dans `precon.ts`. Ce module ne fait que
+ * leur attacher les métadonnées que la fiche de deck doit afficher (style,
+ * difficulté, mécaniques) — il n'y a donc jamais deux définitions d'un même
+ * deck à maintenir.
  */
 
 /** Difficulté affichée en étoiles sur la fiche (§4). */
@@ -59,7 +58,6 @@ type DeckMeta = Omit<CatalogDeck, keyof DeckList>;
  * l'identifiant déduit sert à filtrer.
  */
 const DECK_META: Record<string, DeckMeta> = {
-  // --- Decks d'emprunt (12 axes, refonte du 22/09/2026) -----------------
   //
   // La difficulté mesure le PILOTAGE, jamais la puissance (règle de la
   // page v4, toujours valable) : un deck qui gagne en posant ses cartes
@@ -124,37 +122,6 @@ const DECK_META: Record<string, DeckMeta> = {
     difficulty: 5,
     mechanics: ["Board wipes", "Pièges anti-swarm", "Menaces à 6-8 Raison"],
   },
-  // --- Préconstruits (Jeton de Préconstruit) ----------------------------
-  "dernier-rappel": {
-    style: "Tempo / Marionnettes et arrivées rejouées",
-    difficulty: 4,
-    mechanics: ["Retour en main et rejouer", "Arrivées en jeu répétées", "Le Théâtre Englouti"],
-  },
-  "sous-la-ligne": {
-    style: "Contrôle / Abysses et Déraison",
-    difficulty: 4,
-    mechanics: ["Forçage de Marée", "Abysses", "Menaces lourdes jouées tôt"],
-  },
-  "tout-recuperer": {
-    style: "Contrôle / Structures, Sabordage et recyclage",
-    difficulty: 3,
-    mechanics: ["Sabordage", "Récupération au Cimetière", "Ancrage regagné à chaque Structure perdue"],
-  },
-  "les-petits-attendent": {
-    style: "Contrôle / attrition et Cimetière",
-    difficulty: 3,
-    mechanics: ["Défausse volontaire", "Récupération au Cimetière", "Pression par attrition"],
-  },
-  "grenouilles-au-canon": {
-    style: "Agressif / swarm et artillerie",
-    difficulty: 3,
-    mechanics: ["Petites Créatures", "Canon de proue", "Bonus de groupe"],
-  },
-  "la-ligne-tenue": {
-    style: "Défensif / Structures-pièges et visibilité de Marée",
-    difficulty: 4,
-    mechanics: ["Réactions cachées", "Réduction de dégâts", "Fenêtres de Marée"],
-  },
 };
 
 const FALLBACK_META: DeckMeta = { style: "Polyvalent", difficulty: 3, mechanics: [] };
@@ -164,36 +131,24 @@ function withMeta(deck: DeckList): CatalogDeck {
 }
 
 /**
- * Decks d'EMPRUNT proposés à la sortie du tutoriel — douze axes, un par
- * grande mécanique. « Rester des decks capables de gagner, pas des listes
- * pédagogiques volontairement faibles » (refonte du 22/09/2026).
- */
-export const BORROWED_DECKS: readonly CatalogDeck[] = BORROWED_DECK_LISTS.map(withMeta);
-
-/**
- * PRÉCONSTRUITS déblocables avec un Jeton — le plan SPÉCIALISÉ de chaque
- * Navire, plus marqué et plus exigeant à piloter que son emprunt, ce qui
- * donne au Jeton sa valeur.
+ * Les douze préconstruits — un par grande mécanique. « Rester des decks
+ * capables de gagner, pas des listes pédagogiques volontairement faibles »
+ * (refonte du 22/09/2026).
  */
 export const PRECON_DECKS: readonly CatalogDeck[] = PRECON_DECK_LISTS.map(withMeta);
 
-/** Tous les decks fournis par le jeu, emprunt et préconstruits confondus. */
-export const CATALOG_DECKS: readonly CatalogDeck[] = [...BORROWED_DECKS, ...PRECON_DECKS];
-
 /**
- * TOUTES les listes qu'une partie peut utiliser. Source unique pour « ce
- * deck est-il jouable ? » (`findPlayableDeck`, côté serveur) : il n'y a pas
- * de second endroit à penser à mettre à jour, donc pas de deck proposé à
- * l'écran que le serveur refuserait ensuite.
+ * Alias historique de `PRECON_DECKS`, conservé parce que « tous les decks
+ * fournis par le jeu » et « les préconstruits » désignent désormais le même
+ * ensemble. Les deux noms disent la même chose ; celui-ci se lit mieux là
+ * où l'on parle du catalogue plutôt que du produit.
  */
+export const CATALOG_DECKS: readonly CatalogDeck[] = PRECON_DECKS;
+
 export const PLAYABLE_DECKS: readonly DeckList[] = CATALOG_DECKS;
 
 export function catalogDeckById(deckId: string): CatalogDeck | undefined {
   return CATALOG_DECKS.find((deck) => deck.id === deckId);
-}
-
-export function isBorrowedDeckId(deckId: string): boolean {
-  return BORROWED_DECKS.some((deck) => deck.id === deckId);
 }
 
 export function isPreconDeckId(deckId: string): boolean {

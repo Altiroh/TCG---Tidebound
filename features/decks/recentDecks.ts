@@ -7,7 +7,7 @@ import { NEW_DECK_WINDOW_HOURS } from "@/game/quests";
  * Deux façons d'avoir un deck neuf entre les mains, et la quête ne doit pas
  * privilégier l'une :
  *   - l'avoir CRÉÉ soi-même (`player_decks.created_at`) ;
- *   - l'avoir OBTENU, deck d'emprunt ou préconstruit débloqué avec un Jeton
+ *   - l'avoir OBTENU, préconstruit pris gratuitement ou payé avec un Jeton
  *     (`player_deck_unlocks.unlocked_at`).
  *
  * Les deux branches travaillent : depuis `resolveMatchDeck`

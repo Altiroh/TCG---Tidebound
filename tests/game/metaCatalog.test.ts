@@ -7,7 +7,6 @@ import {
 } from "@/game/achievements";
 import { MAX_REWARDED_LEVEL, levelRewardItems } from "@/game/progression";
 import {
-  BORROWED_DECKS,
   CARD_BACKS,
   CATALOG_DECKS,
   DEFAULT_CARD_BACK_ID,
@@ -17,7 +16,6 @@ import {
   PRECON_DECKS,
   catalogDeckById,
   deckOwnership,
-  isBorrowedDeckId,
   isPreconDeckId,
   isFree,
   ownershipLabel,
@@ -84,24 +82,26 @@ describe("catalogue d'exploits (Notion « Progression joueur » §10)", () => {
 });
 
 describe("catalogue de decks fournis (§3 et §4)", () => {
-  it("sépare decks d'emprunt et préconstruits, sans recouvrement", () => {
-    expect(BORROWED_DECKS.length).toBeGreaterThan(0);
+  it("n'a plus qu'UNE famille : tout deck fourni est un préconstruit", () => {
+    // La fusion du 22/09/2026 supprime les « decks d'emprunt ». Les deux
+    // familles ne différaient que par la PORTE d'entrée — premier gratuit,
+    // suivants à un Jeton — ce que la base note déjà dans `source` sans
+    // avoir besoin de deux catalogues. Ce test est la sentinelle : si une
+    // seconde famille réapparaît, `CATALOG_DECKS` cessera de coïncider.
     expect(PRECON_DECKS.length).toBeGreaterThan(0);
-    for (const deck of BORROWED_DECKS) {
-      expect(isBorrowedDeckId(deck.id)).toBe(true);
-      expect(isPreconDeckId(deck.id)).toBe(false);
-    }
-    for (const deck of PRECON_DECKS) expect(isBorrowedDeckId(deck.id)).toBe(false);
+    expect(CATALOG_DECKS.map((deck) => deck.id)).toEqual(PRECON_DECKS.map((deck) => deck.id));
+    for (const deck of CATALOG_DECKS) expect(isPreconDeckId(deck.id), deck.id).toBe(true);
+    expect(isPreconDeckId("deck-qui-nexiste-pas")).toBe(false);
   });
 
-  it("couvre chaque Navire de départ — aucun navire sans deck d'emprunt", () => {
-    // La refonte du 22/09/2026 range les douze decks d'emprunt par MÉCANIQUE
-    // et non plus par navire : plusieurs partagent la même coque. Ce qui doit
+  it("couvre chaque Navire de départ — aucun navire sans préconstruit", () => {
+    // La refonte du 22/09/2026 range les douze listes par MÉCANIQUE et non
+    // plus par navire : plusieurs partagent la même coque. Ce qui doit
     // rester vrai, c'est qu'un joueur qui découvre un navire trouve au moins
     // une liste pour l'essayer.
-    const couverts = new Set(BORROWED_DECKS.map((deck) => deck.shipId));
+    const couverts = new Set(PRECON_DECKS.map((deck) => deck.shipId));
     for (const ship of SHIP_SET) {
-      expect(couverts.has(ship.id), `${ship.id} n'a aucun deck d'emprunt`).toBe(true);
+      expect(couverts.has(ship.id), `${ship.id} n'a aucun préconstruit`).toBe(true);
     }
   });
 
@@ -115,7 +115,7 @@ describe("catalogue de decks fournis (§3 et §4)", () => {
     }
   });
 
-  it("ne propose que des listes réellement jouables — un deck d'emprunt ne doit jamais être refusé par le serveur", () => {
+  it("ne propose que des listes réellement jouables — un préconstruit ne doit jamais être refusé par le serveur", () => {
     for (const deck of CATALOG_DECKS) {
       const result = validateDeckList(deck);
       expect(result.ok, `${deck.id} : ${result.ok ? "" : result.error}`).toBe(true);
@@ -156,7 +156,7 @@ describe("possession d'un deck — possédé contre prêté (§3)", () => {
   });
 
   it("résout les noms et coûts réels pour un vrai deck du catalogue", () => {
-    const real = BORROWED_DECKS[0]!;
+    const real = PRECON_DECKS[0]!;
     const ownership = deckOwnership(real.cardIds, {});
     expect(ownership.total).toBe(real.cardIds.length);
     expect(ownership.cards.every((card) => card.name !== card.cardId)).toBe(true);

@@ -4,8 +4,8 @@ import type { CatalogDeckView, DeckCatalogView } from "@/features/decks/catalogS
 import { plateArtUrl, nameplateArtUrl } from "@/features/decks/nameplateArt";
 import type { DeckEntry } from "@/features/decks/deckFilters";
 
-/** D'où vient le deck : le joueur l'a monté, le jeu le prête, ou il s'achète en Jeton. */
-export type DeckKind = "mine" | "borrowed" | "precon";
+/** D'où vient le deck : le joueur l'a monté, ou le jeu le fournit. */
+export type DeckKind = "mine" | "precon";
 
 /**
  * Le rayon qu'on regarde. `all` n'est pas une provenance : c'est
@@ -17,17 +17,16 @@ export type DeckCategory = DeckKind | "all";
 /**
  * La PROVENANCE, en un mot, telle qu'elle s'affiche sur une pastille.
  *
- * « Test » et non « Préconstruit » : cette famille est une série d'essai,
- * ouverte le temps des tests, et l'écran Jouer l'appelle déjà « Decks de
- * test ». Elle a vocation à disparaître — il ne restera qu'une poignée de
- * decks d'emprunt — donc autant que les deux écrans la nomment pareil d'ici
- * là. Le Jeton, lui, reste « de Préconstruit » : c'est le vocabulaire de
- * l'économie, il ne bouge pas.
+ * DEUX VALEURS DEPUIS LE 22/09/2026, et non trois. « Emprunt » et
+ * « Préconstruit » désignaient le même objet — une liste fournie par le
+ * jeu, dont les cartes restent prêtées — et ne se distinguaient que par la
+ * porte d'entrée : le premier est gratuit, les suivants coûtent un Jeton.
+ * Une porte n'est pas une provenance, et l'écran n'a donc plus qu'un rayon
+ * à ranger.
  */
 export const ORIGIN_LABELS: Record<DeckKind, string> = {
   mine: "Construit",
-  borrowed: "Emprunt",
-  precon: "Test",
+  precon: "Préconstruit",
 };
 
 export interface DeckCardCount {
@@ -124,11 +123,9 @@ export function mineEntries(decks: readonly PlayerDeckSummary[]): BrowserDeck[] 
  * `game/cards/decks/deckProfile.ts`). Ni création ni modification — ils ne
  * bougent pas.
  */
-export function catalogEntries(catalog: DeckCatalogView, kind: "borrowed" | "precon"): BrowserDeck[] {
-  const views = kind === "borrowed" ? catalog.borrowed : catalog.precon;
-
-  return views.map((view) => ({
-    kind,
+export function catalogEntries(catalog: DeckCatalogView): BrowserDeck[] {
+  return catalog.decks.map((view) => ({
+    kind: "precon" as const,
     id: view.deck.id,
     name: view.deck.name,
     shipId: view.deck.shipId,

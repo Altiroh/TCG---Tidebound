@@ -16,7 +16,7 @@ export default async function CollectionPage() {
       ownedCardIds={ownedCardIds}
       ownedCounts={ownedCounts}
       catalog={catalog}
-      needsBorrowedDeck={onboarding.needsBorrowedDeck}
+      needsFirstDeck={onboarding.needsFirstDeck}
     />
   );
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { getShipDefinition } from "@/game/environment/shipData";
 import { createGameState } from "@/game/state/createGameState";
-import { DECK_LE_GRAND_BANC, DECK_LE_THEATRE_ENGLOUTI } from "@/game/cards/decks/borrowed";
+import { DECK_LE_GRAND_BANC, DECK_LE_THEATRE_ENGLOUTI } from "@/game/cards/decks/precon";
 import { RULES } from "@/game/rules/constants";
 
 function newTestGame(seed = 42) {

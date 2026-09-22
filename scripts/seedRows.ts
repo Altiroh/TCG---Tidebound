@@ -81,7 +81,7 @@ export function boosterPoolCardRows(): SeedRow[] {
   );
 }
 
-/** Les decks fournis par le jeu — emprunts ET préconstruits — dans la forme de la table `system_decks`. */
+/** Les préconstruits — tout le rayon fourni — dans la forme de la table `system_decks`. */
 export function systemDeckRows(): SeedRow[] {
   return CATALOG_DECKS.map((deck) => ({
     id: deck.id,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DECK_CHASSE_AU_GROS, DECK_LE_GRAND_BANC } from "@/game/cards/decks/borrowed";
+import { DECK_CHASSE_AU_GROS, DECK_LE_GRAND_BANC } from "@/game/cards/decks/precon";
 import { COUTS_SUIVIS, cumulerInvocations, mesurerPartie, moyenneAuTour } from "@/scripts/metrics";
 
 /**

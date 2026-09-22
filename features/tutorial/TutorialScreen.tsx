@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { BORROWED_DECKS, TUTORIAL_OPENING_TYPES, TUTORIAL_STEPS, tutorialProgress, type GameState } from "@/game";
+import { PRECON_DECKS, TUTORIAL_OPENING_TYPES, TUTORIAL_STEPS, tutorialProgress, type GameState } from "@/game";
 import { completeTutorial } from "@/features/onboarding/actions";
 import { createTutorialMatch } from "@/features/match/createLocalMatch";
 import { MatchBoard } from "@/features/match/MatchBoard";
@@ -21,14 +21,14 @@ import { playButtonClick, playGameStart } from "@/lib/sound";
  *   2. **Faire le tutoriel** → partie guidée → 1 booster ;
  *      **Passer** → accès direct, aucun booster ;
  *   3. dans les DEUX cas, redirection vers la Collection, où le joueur
- *      choisit son premier deck d'emprunt.
+ *      choisit son premier préconstruit.
  *
  * Le booster n'est jamais accordé côté client : `completeTutorial` est une
  * Server Action, et c'est la base qui décide (`finish_tutorial`) — un
  * navigateur ne peut pas déclarer une complétion qu'il n'a pas jouée.
  *
  * La partie du tutoriel est une VRAIE partie locale contre le bot facile,
- * avec deux decks d'emprunt : le joueur apprend sur le matériel qu'il
+ * avec deux préconstruits : le joueur apprend sur le matériel qu'il
  * s'apprête à recevoir, pas sur une main truquée.
  */
 export function TutorialScreen() {
@@ -49,8 +49,8 @@ export function TutorialScreen() {
 
   // Tiré une fois : un nouveau rendu ne doit pas redistribuer la partie.
   const decks = useMemo(() => {
-    const player = BORROWED_DECKS[1] ?? BORROWED_DECKS[0]!;
-    const opponent = BORROWED_DECKS.find((deck) => deck.id !== player.id) ?? player;
+    const player = PRECON_DECKS[1] ?? PRECON_DECKS[0]!;
+    const opponent = PRECON_DECKS.find((deck) => deck.id !== player.id) ?? player;
     return { player, opponent };
   }, []);
 
@@ -97,9 +97,9 @@ export function TutorialScreen() {
         <p className={styles.rewardText}>
           {completed
             ? boosterGranted
-              ? "Tu as terminé ton premier quart. Un booster t'attend dans ta réserve — ouvre-le, puis choisis le deck que tu emprunteras pour tes premières parties."
-              : "Tu as terminé ton premier quart. Choisis maintenant le deck que tu emprunteras pour tes premières parties."
-            : "Tutoriel passé — il n'y a donc pas de booster. Choisis le deck que tu emprunteras pour tes premières parties."}
+              ? "Tu as terminé ton premier quart. Un booster t'attend dans ta réserve — ouvre-le, puis choisis ton premier préconstruit."
+              : "Tu as terminé ton premier quart. Choisis maintenant ton premier préconstruit."
+            : "Tutoriel passé — il n'y a donc pas de booster. Choisis ton premier préconstruit."}
         </p>
         <div className={styles.choiceFoot}>
           {completed && boosterGranted && (

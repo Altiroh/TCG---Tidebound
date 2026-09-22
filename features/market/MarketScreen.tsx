@@ -181,7 +181,7 @@ export function MarketScreen({ inventory, catalog, collectables }: MarketScreenP
 
   // ── Le panier, ligne par ligne ───────────────────────────────────
   const boosterLines = onSale.filter((booster) => (cart.boosters[booster.boosterId] ?? 0) > 0);
-  const deckLines = catalog.precon.filter((entry) => cart.decks.includes(entry.deck.id) && !entry.unlocked);
+  const deckLines = catalog.decks.filter((entry) => cart.decks.includes(entry.deck.id) && !entry.unlocked);
   const cosmeticLines = cosmeticsOnSale.filter((row) => cart.cosmetics.includes(row.key) && !row.option.owned);
 
   const boosterCount = boosterLines.reduce((sum, booster) => sum + (cart.boosters[booster.boosterId] ?? 0), 0);
@@ -444,7 +444,7 @@ export function MarketScreen({ inventory, catalog, collectables }: MarketScreenP
             <Showcase
               key="decks"
               dock="decks"
-              items={catalog.precon.map((entry, position) => (
+              items={catalog.decks.map((entry, position) => (
                 <DeckGoods
                   key={entry.deck.id}
                   entry={entry}
@@ -456,7 +456,7 @@ export function MarketScreen({ inventory, catalog, collectables }: MarketScreenP
               ))}
               footer={
                 <Link href="/decks" className={game.link} onClick={() => playButtonClick()}>
-                  Fiches complètes et decks d&apos;emprunt dans Decks →
+                  Fiches complètes et préconstruits dans Decks →
                 </Link>
               }
             />

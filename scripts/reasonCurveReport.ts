@@ -13,7 +13,7 @@
  *   npx tsx scripts/reasonCurveReport.ts [nbParties]
  */
 import { createGameState } from "@/game/state/createGameState";
-import { DECK_LE_GRAND_BANC, DECK_CHASSE_AU_GROS } from "@/game/cards/decks/borrowed";
+import { DECK_LE_GRAND_BANC, DECK_CHASSE_AU_GROS } from "@/game/cards/decks/precon";
 import { botHasSomethingToDo } from "@/game/bot/runBotTurn";
 import { chooseBotAction } from "@/game/bot/chooseAction";
 import { getCardDefinition } from "@/game/cards/sets/core";

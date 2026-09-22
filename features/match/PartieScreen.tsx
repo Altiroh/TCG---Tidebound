@@ -12,7 +12,7 @@ interface PartieScreenProps {
   isSignedIn: boolean;
   /** Decks personnels jouables du joueur connecté — vide hors connexion. */
   personalDecks?: DeckList[];
-  /** Decks fournis par le jeu que ce joueur a débloqués (emprunt + préconstruits). */
+  /** Préconstruits que ce joueur a débloqués (choix gratuit + Jetons). */
   unlockedDeckIds?: string[];
 }
 

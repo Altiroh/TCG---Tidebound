@@ -16,12 +16,16 @@ interface DeckSheetProps {
   deck: CatalogDeck;
   ownership: DeckOwnership;
   unlocked: boolean;
-  /** Famille du deck : elle décide de l'action proposée en bas de fiche. */
-  kind: "borrowed" | "precon";
   /** Jetons de Préconstruit disponibles — pour un préconstruit verrouillé. */
   tokens: number;
-  /** Le joueur a-t-il déjà choisi son deck d'emprunt ? (un seul par compte) */
-  borrowedAlreadyChosen: boolean;
+  /**
+   * Le choix GRATUIT est-il encore disponible ? (un seul par compte)
+   *
+   * C'est lui, et non une famille de deck, qui décide de l'action proposée
+   * en bas de fiche depuis la fusion des deux rayons (22/09/2026) : le
+   * premier préconstruit ne coûte rien, les suivants coûtent un Jeton.
+   */
+  freeChoiceAvailable: boolean;
   busy: boolean;
   error: string | null;
   onUnlock: () => void;
@@ -50,9 +54,8 @@ export function DeckSheet({
   deck,
   ownership,
   unlocked,
-  kind,
   tokens,
-  borrowedAlreadyChosen,
+  freeChoiceAvailable,
   busy,
   error,
   onUnlock,
@@ -79,28 +82,24 @@ export function DeckSheet({
   const peak = Math.max(1, ...curve);
   const ownedRatio = ownership.total === 0 ? 0 : ownership.owned / ownership.total;
 
-  const canUnlock = kind === "precon" ? tokens >= 1 : !borrowedAlreadyChosen;
-  const unlockLabel =
-    kind === "precon" ? (
-      <>
-        <PreconToken size={15} /> Débloquer — 1 Jeton de Préconstruit
-      </>
-    ) : (
-      "Emprunter ce deck"
-    );
-  const unlockHint =
-    kind === "precon" ? (
-      <>
-        <PreconToken size={14} />{" "}
-        {tokens >= 1
-          ? `${tokens} Jeton${tokens > 1 ? "s" : ""} disponible${tokens > 1 ? "s" : ""}`
-          : "Aucun Jeton disponible — les gros paliers de niveau en donnent un tous les 10 niveaux."}
-      </>
-    ) : borrowedAlreadyChosen ? (
-      "Tu as déjà choisi ton deck d'emprunt."
-    ) : (
-      "Gratuit, une seule fois : les cartes que tu ne possèdes pas restent prêtées."
-    );
+  const canUnlock = freeChoiceAvailable || tokens >= 1;
+  const unlockLabel = freeChoiceAvailable ? (
+    "Choisir ce deck — gratuit"
+  ) : (
+    <>
+      <PreconToken size={15} /> Débloquer — 1 Jeton de Préconstruit
+    </>
+  );
+  const unlockHint = freeChoiceAvailable ? (
+    "Ton premier préconstruit est gratuit : les cartes que tu ne possèdes pas restent prêtées."
+  ) : (
+    <>
+      <PreconToken size={14} />{" "}
+      {tokens >= 1
+        ? `${tokens} Jeton${tokens > 1 ? "s" : ""} disponible${tokens > 1 ? "s" : ""}`
+        : "Aucun Jeton disponible — les gros paliers de niveau en donnent un tous les 10 niveaux."}
+    </>
+  );
 
   return (
     <Dialog
@@ -209,12 +208,12 @@ export function DeckSheet({
 
           <div className={styles.sheetActions}>
             {unlocked ? (
-              <span className={game.tagSuccess}>{kind === "borrowed" ? "Deck d'emprunt" : "Débloqué"}</span>
+              <span className={game.tagSuccess}>Débloqué</span>
             ) : (
               <span className={game.muted}>{unlockHint}</span>
             )}
             {/* « Essayer » : tester avant de dépenser son jeton (§4). */}
-            {!unlocked && kind === "precon" && (
+            {!unlocked && !freeChoiceAvailable && (
               <button type="button" className={game.link} onClick={onTry}>
                 Essayer contre le bot →
               </button>

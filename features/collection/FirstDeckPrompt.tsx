@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ownershipLabel } from "@/game";
 import type { DeckCatalogView } from "@/features/decks/catalogService";
-import { chooseBorrowedDeck } from "@/features/decks/catalogActions";
+import { chooseFreePreconDeck } from "@/features/decks/catalogActions";
 import { Dialog } from "@/features/shell/Dialog";
 import { shipNameOf } from "@/features/ships/ShipPortrait";
 import { ArtPlate } from "@/features/shell/ArtPlate";
@@ -13,7 +13,7 @@ import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/decks/DeckCatalog.module.css";
 import { playButtonClick } from "@/lib/sound";
 
-interface BorrowedDeckPromptProps {
+interface FirstDeckPromptProps {
   catalog: DeckCatalogView;
 }
 
@@ -25,21 +25,23 @@ function difficultyStars(difficulty: number): string {
  * Choix du PREMIER DECK, dans la Collection.
  *
  * Étape 5 du flow de la spec (Notion « Progression joueur » §2/§3) : après
- * le tutoriel — fait ou passé —, le joueur est conduit ici pour choisir un
- * deck d'emprunt gratuit et pouvoir jouer immédiatement.
+ * le tutoriel — fait ou passé —, le joueur est conduit ici pour prendre un
+ * préconstruit gratuit et pouvoir jouer immédiatement. C'est la PORTE
+ * gratuite du rayon ; les suivants coûtent un Jeton, et se prennent depuis
+ * l'écran Decks.
  *
  * Deux règles que cet écran incarne, et qu'il faut lire ensemble :
  *   - « Le premier deck jouable ne doit PAS être un déblocage du niveau 1 » :
  *     rien à atteindre, le deck est donné ;
- *   - « Le deck d'emprunt permet de jouer immédiatement SANS donner
- *     artificiellement toutes ses cartes au joueur » : d'où le compteur
- *     possédées/prêtées affiché dès le choix, pour que le prêt soit clair
- *     avant de commencer, pas découvert plus tard.
+ *   - il « permet de jouer immédiatement SANS donner artificiellement
+ *     toutes ses cartes au joueur » : d'où le compteur possédées/prêtées
+ *     affiché dès le choix, pour que le prêt soit clair avant de commencer,
+ *     pas découvert plus tard.
  *
  * Volontairement non refermable sans choisir : c'est la dernière étape
  * avant de jouer, et le choix est gratuit.
  */
-export function BorrowedDeckPrompt({ catalog }: BorrowedDeckPromptProps) {
+export function FirstDeckPrompt({ catalog }: FirstDeckPromptProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [chosen, setChosen] = useState<string | null>(null);
@@ -50,7 +52,7 @@ export function BorrowedDeckPrompt({ catalog }: BorrowedDeckPromptProps) {
     setError(null);
     setChosen(deckId);
     startTransition(async () => {
-      const result = await chooseBorrowedDeck(deckId);
+      const result = await chooseFreePreconDeck(deckId);
       if (!result.ok) {
         setError(result.error ?? "Choix impossible.");
         setChosen(null);
@@ -68,7 +70,7 @@ export function BorrowedDeckPrompt({ catalog }: BorrowedDeckPromptProps) {
       </p>
 
       <div className={styles.grid}>
-        {catalog.borrowed.map(({ deck, ownership }) => (
+        {catalog.decks.map(({ deck, ownership }) => (
           <article key={deck.id} className={`${game.panelRaised} ${styles.tile}`} aria-label={deck.name}>
             <ArtPlate artUrl={nameplateArtUrl(deck.cardIds, deck.shipId)} className={styles.tilePlate}>
               <span className={styles.tileName}>{deck.name}</span>
@@ -88,7 +90,7 @@ export function BorrowedDeckPrompt({ catalog }: BorrowedDeckPromptProps) {
               <span className={styles.ownLabel}>{ownershipLabel(ownership)}</span>
               <span className={styles.tileFoot}>
                 <button type="button" className={game.primary} onClick={() => choose(deck.id)} disabled={isPending}>
-                  {isPending && chosen === deck.id ? "…" : "Emprunter"}
+                  {isPending && chosen === deck.id ? "…" : "Choisir"}
                 </button>
               </span>
             </div>

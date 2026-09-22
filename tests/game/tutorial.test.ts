@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { TUTORIAL_STEPS, tutorialProgress } from "@/game/tutorial/steps";
-import { BORROWED_DECKS } from "@/game";
+import { PRECON_DECKS } from "@/game";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { UNIT_CARD_TYPES } from "@/game/cards/types";
 import { COACH_GAP, placeCoach } from "@/features/tutorial/coachPlacement";
@@ -33,7 +33,7 @@ describe("étapes du tutoriel", () => {
   });
 
   it("valide « un corps sur le pont » avec un Marin comme avec une Créature", () => {
-    // LE bug remonté : le deck d'emprunt compte plus de Marins que de
+    // LE bug remonté : le deck du tutoriel compte plus de Marins que de
     // Créatures, et une main d'ouverture sans Créature bloquait l'étape
     // pendant que le joueur posait carte sur carte.
     const withMarin = tutorialProgress(stateAfterPlaying(["marin-des-jetees"]), "p1");
@@ -52,7 +52,7 @@ describe("étapes du tutoriel", () => {
   it("reste franchissable avec le deck réellement distribué au joueur", () => {
     // Garde-fou contre la classe de bug remontée : une étape dont l'objectif
     // n'existe pas dans le deck du tutoriel est un cul-de-sac.
-    const deck = BORROWED_DECKS[1] ?? BORROWED_DECKS[0]!;
+    const deck = PRECON_DECKS[1] ?? PRECON_DECKS[0]!;
     const types = new Set(deck.cardIds.map((id) => getCardDefinition(id).type));
     expect([...UNIT_CARD_TYPES].some((type) => types.has(type)), "aucune unité dans le deck").toBe(true);
     expect(types.has("objet"), "aucun Objet : deux étapes deviennent infranchissables").toBe(true);
@@ -69,8 +69,8 @@ describe("étapes du tutoriel", () => {
 
 describe("main d'ouverture garantie", () => {
   const decks = (() => {
-    const player = BORROWED_DECKS[1] ?? BORROWED_DECKS[0]!;
-    return { player, opponent: BORROWED_DECKS.find((d) => d.id !== player.id) ?? player };
+    const player = PRECON_DECKS[1] ?? PRECON_DECKS[0]!;
+    return { player, opponent: PRECON_DECKS.find((d) => d.id !== player.id) ?? player };
   })();
 
   function openingTypes(seed: number): string[] {

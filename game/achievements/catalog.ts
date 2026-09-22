@@ -42,7 +42,7 @@ export interface AchievementStats {
   ownsAbyssalCard: boolean;
   /** Préconstruits débloqués avec un Jeton. */
   preconDecksUnlocked: number;
-  /** Préconstruits ou decks d'emprunt dont le joueur possède réellement toutes les cartes. */
+  /** Préconstruits dont le joueur possède réellement toutes les cartes. */
   decksFullyOwned: number;
   /** Tutoriel terminé (et non passé). */
   tutorialCompleted: boolean;

@@ -89,7 +89,7 @@ function main() {
   const sql = [
     "-- Seed du catalogue Tidebound — généré par `npm run seed:sql`.",
     "-- NE PAS ÉDITER À LA MAIN : régénérer depuis le catalogue TypeScript",
-    "-- (`game/cards/sets/core.ts`, `game/cards/decks/borrowed.ts`,",
+    "-- (`game/cards/sets/core.ts`, `game/cards/decks/precon.ts`,",
     "-- `game/quests/catalog.ts`) via `scripts/seedRows.ts`.",
     "--",
     "-- Idempotent : rejouable sans risque, rien n'est supprimé.",

@@ -37,7 +37,7 @@ describe("deckProfile", () => {
   it("discrimine : ni un seul rôle, ni une seule difficulté pour tout le monde", () => {
     const styles = new Set(PROFILES.map((entry) => entry.profile.style));
     const difficulties = new Set(PROFILES.map((entry) => entry.profile.difficulty));
-    // Les dix-huit listes du catalogue s'étalent de 2,15 à 3,98 de coût
+    // Les douze listes du catalogue s'étalent de 2,15 à 3,98 de coût
     // moyen : au moins trois rôles doivent sortir.
     expect(styles.size).toBeGreaterThanOrEqual(3);
     // Deux crans de difficulté seulement suffisent, et c'est attendu : le
@@ -63,7 +63,7 @@ describe("deckProfile", () => {
   });
 
   it("reconnaît le Sabordage et la Garde là où les listes les revendiquent", () => {
-    const sabordage = PROFILES.find((entry) => entry.deck.id === "tout-recuperer");
+    const sabordage = PROFILES.find((entry) => entry.deck.id === "epavistes");
     expect(sabordage?.profile.mechanics).toContain("Sabordage");
     const garde = PROFILES.find((entry) => entry.deck.id === "la-forteresse");
     expect(garde?.profile.mechanics).toContain("Garde");

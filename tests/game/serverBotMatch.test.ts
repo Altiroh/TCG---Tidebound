@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createGameState } from "@/game/state/createGameState";
-import { DECK_LE_GRAND_BANC, DECK_CHASSE_AU_GROS } from "@/game/cards/decks/borrowed";
+import { DECK_LE_GRAND_BANC, DECK_CHASSE_AU_GROS } from "@/game/cards/decks/precon";
 import { botHasSomethingToDo, runBotUntilIdle } from "@/game/bot/runBotTurn";
 import { chooseBotAction } from "@/game/bot/chooseAction";
 import { dispatch } from "@/game/engine";

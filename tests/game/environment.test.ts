@@ -342,26 +342,26 @@ describe("environnement - malus globaux des Marées (verrouillé, Notion 'Moteur
 });
 
 describe("environnement - decks fournis par le jeu", () => {
-  it("chaque deck d’emprunt est une liste valide (40-50 cartes, max_copies respecté), et aucun Navire ne reste sans deck", async () => {
-    const { BORROWED_DECK_LISTS } = await import("@/game/cards/decks/borrowed");
+  it("chaque préconstruit est une liste valide (40-50 cartes, max_copies respecté), et aucun Navire ne reste sans deck", async () => {
+    const { PRECON_DECK_LISTS } = await import("@/game/cards/decks/precon");
     const { SHIP_SET } = await import("@/game/environment/shipData");
-    // « Navires à couvrir » : les cinq. Un Navire sans emprunt est un
-    // Navire que personne ne jouera. La refonte du 22/09/2026 (Notion
-    // « Decks d'emprunt — refonte depuis zéro · 12 archétypes ») range les
-    // listes par MÉCANIQUE et non plus une par coque : il y en a douze pour
-    // cinq Navires, donc c'est la couverture qui se vérifie, pas le compte.
-    const couverts = new Set(BORROWED_DECK_LISTS.map((deck) => deck.shipId));
+    // « Navires à couvrir » : les cinq. Un Navire sans liste est un Navire
+    // que personne ne jouera. La refonte du 22/09/2026 (Notion « Decks
+    // d'emprunt — refonte depuis zéro · 12 archétypes ») range les listes
+    // par MÉCANIQUE et non plus une par coque : il y en a douze pour cinq
+    // Navires, donc c'est la couverture qui se vérifie, pas le compte.
+    const couverts = new Set(PRECON_DECK_LISTS.map((deck) => deck.shipId));
     for (const ship of SHIP_SET) {
-      expect(couverts.has(ship.id), `${ship.id} n'a aucun deck d'emprunt`).toBe(true);
+      expect(couverts.has(ship.id), `${ship.id} n'a aucun préconstruit`).toBe(true);
     }
-    for (const deck of BORROWED_DECK_LISTS) {
+    for (const deck of PRECON_DECK_LISTS) {
       const validation = validateDeckList(deck);
       expect(validation.ok, `${deck.name}: ${!validation.ok ? validation.error : ""}`).toBe(true);
     }
   });
 
   it("TOUTE liste proposée à la sélection est valide et connue du serveur — sinon l’écran offre un deck que la partie refusera", async () => {
-    const { PLAYABLE_DECKS, BORROWED_DECKS, PRECON_DECKS } = await import("@/game/cards/decks/catalog");
+    const { PLAYABLE_DECKS, PRECON_DECKS } = await import("@/game/cards/decks/catalog");
 
     for (const deck of PLAYABLE_DECKS) {
       const validation = validateDeckList(deck);
@@ -371,12 +371,13 @@ describe("environnement - decks fournis par le jeu", () => {
       expect(() => getShipDefinition(deck.shipId)).not.toThrow();
     }
 
-    // Les deux familles sont disjointes et couvrent exactement
-    // `PLAYABLE_DECKS` : un deck oublié dans l’une serait proposé sans être
-    // jouable, ou l’inverse.
-    const grouped = [...BORROWED_DECKS, ...PRECON_DECKS];
-    expect(grouped.map((d) => d.id).sort()).toEqual(PLAYABLE_DECKS.map((d) => d.id).sort());
-    expect(new Set(grouped.map((d) => d.id)).size).toBe(grouped.length);
+    // Le rayon fourni couvre exactement `PLAYABLE_DECKS`, sans doublon : un
+    // deck oublié serait proposé sans être jouable, ou l’inverse. Depuis la
+    // fusion du 22/09/2026 il n’y a plus qu’une famille — ce que ce test
+    // vérifie au passage, puisqu’une seconde ferait diverger les deux
+    // listes.
+    expect(PRECON_DECKS.map((d) => d.id).sort()).toEqual(PLAYABLE_DECKS.map((d) => d.id).sort());
+    expect(new Set(PRECON_DECKS.map((d) => d.id)).size).toBe(PRECON_DECKS.length);
   });
 
   it("chaque Navire du catalogue a au moins une liste jouable — un Navire sans deck ne peut pas être essayé", async () => {

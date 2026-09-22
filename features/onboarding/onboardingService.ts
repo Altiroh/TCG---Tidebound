@@ -24,24 +24,31 @@ export interface OnboardingState {
   tutorialStatus: TutorialStatus;
   /** `true` si le booster de tutoriel a déjà été crédité. */
   tutorialRewardClaimed: boolean;
-  /** Deck d'emprunt choisi (`player_deck_unlocks`, source `borrowed`), ou `null`. */
-  borrowedDeckId: string | null;
+  /**
+   * Préconstruit pris avec le choix GRATUIT, ou `null`.
+   *
+   * En base la ligne porte toujours `source = 'borrowed'` : depuis la
+   * fusion des deux rayons (22/09/2026), cette valeur ne désigne plus une
+   * famille de deck mais la PORTE par laquelle il est entré — le choix
+   * gratuit, par opposition au Jeton.
+   */
+  freeDeckId: string | null;
 }
 
-const UNKNOWN: OnboardingState = { tutorialStatus: "not_started", tutorialRewardClaimed: false, borrowedDeckId: null };
+const UNKNOWN: OnboardingState = { tutorialStatus: "not_started", tutorialRewardClaimed: false, freeDeckId: null };
 
 /** État d'onboarding d'un joueur — jamais d'exception, la page appelante doit survivre à une base absente. */
 export async function readOnboarding(userId: string): Promise<OnboardingState> {
   try {
     const service = createSupabaseServiceRoleClient();
-    const [onboarding, borrowed] = await Promise.all([
+    const [onboarding, gratuit] = await Promise.all([
       service.from("player_onboarding").select("tutorial_status, tutorial_reward_claimed").eq("user_id", userId).maybeSingle(),
       service.from("player_deck_unlocks").select("deck_id").eq("user_id", userId).eq("source", "borrowed").maybeSingle(),
     ]);
     return {
       tutorialStatus: (onboarding.data?.tutorial_status as TutorialStatus | undefined) ?? "not_started",
       tutorialRewardClaimed: onboarding.data?.tutorial_reward_claimed ?? false,
-      borrowedDeckId: borrowed.data?.deck_id ?? null,
+      freeDeckId: gratuit.data?.deck_id ?? null,
     };
   } catch (error) {
     console.error("[readOnboarding] Lecture impossible :", error);

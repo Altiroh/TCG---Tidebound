@@ -1,6 +1,6 @@
 /*
- * Rayon des decks fournis par le jeu — decks d'emprunt et préconstruits
- * (Notion « Progression joueur » §3 et §4).
+ * Rayon des decks fournis par le jeu — les préconstruits (Notion
+ * « Progression joueur » §3 et §4).
  *
  * Même grammaire que « Mes decks » : des tuiles coiffées de la PLAQUE
  * partagée (`features/shell/ArtPlate`) — une illustration tirée du deck
@@ -9,8 +9,8 @@
  * consultable et donner envie, pas être grisé sans information.
  */
 
-/* Les rayons (Mes decks / Emprunt / Préconstruits) sont des puces du
-   design system (`game.chips`, `game.chip`, `game.chipActive`). */
+/* Les rayons (Mes decks / Préconstruits) sont des puces du design system
+   (`game.chips`, `game.chip`, `game.chipActive`). */
 
 .grid {
   display: grid;

@@ -12,33 +12,33 @@ import { getSessionUser } from "@/lib/supabase/sessionUser";
  * autre compte et lui faire créditer un booster.
  */
 
-const SIGNED_OUT: OnboardingState = { tutorialStatus: "not_started", tutorialRewardClaimed: false, borrowedDeckId: null };
+const SIGNED_OUT: OnboardingState = { tutorialStatus: "not_started", tutorialRewardClaimed: false, freeDeckId: null };
 
 export interface OnboardingSummary extends OnboardingState {
   isSignedIn: boolean;
   /** `true` tant que le joueur n'a ni terminé ni passé le tutoriel : l'écran de proposition s'affiche. */
   needsTutorialChoice: boolean;
-  /** `true` si le joueur n'a pas encore choisi son deck d'emprunt (§3). */
-  needsBorrowedDeck: boolean;
+  /** `true` si le joueur n'a pas encore pris son préconstruit gratuit (§3). */
+  needsFirstDeck: boolean;
 }
 
 export async function fetchOnboarding(): Promise<OnboardingSummary> {
   try {
     const user = await getSessionUser();
-    if (!user) return { ...SIGNED_OUT, isSignedIn: false, needsTutorialChoice: false, needsBorrowedDeck: false };
+    if (!user) return { ...SIGNED_OUT, isSignedIn: false, needsTutorialChoice: false, needsFirstDeck: false };
 
     const state = await readOnboarding(user.id);
     return {
       ...state,
       isSignedIn: true,
       needsTutorialChoice: state.tutorialStatus === "not_started",
-      // Le deck d'emprunt ne se propose qu'APRÈS le tutoriel (terminé ou
+      // Le préconstruit gratuit ne se propose qu'APRÈS le tutoriel (terminé ou
       // passé) : c'est l'étape 4 du flow de la spec, pas un choix parallèle.
-      needsBorrowedDeck: state.tutorialStatus !== "not_started" && state.borrowedDeckId === null,
+      needsFirstDeck: state.tutorialStatus !== "not_started" && state.freeDeckId === null,
     };
   } catch (error) {
     console.error("[fetchOnboarding] Lecture impossible :", error);
-    return { ...SIGNED_OUT, isSignedIn: false, needsTutorialChoice: false, needsBorrowedDeck: false };
+    return { ...SIGNED_OUT, isSignedIn: false, needsTutorialChoice: false, needsFirstDeck: false };
   }
 }
 
