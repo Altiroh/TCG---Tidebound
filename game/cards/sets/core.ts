@@ -89,8 +89,21 @@ export const RAPIECER_LA_COQUE = "rapiecer-la-coque";
  */
 export const VOLATILE = "volatile";
 
-/** Lot 14 — Nécessaire du Marin (`CardDefinition.setCode`). Lot de consolidation : outils génériques, sans archétype ni sous-type. */
+/**
+ * Lot 14 — Nécessaire du Marin (`CardDefinition.setCode`). Lot de
+ * consolidation : ses cartes sont génériques, à DEUX exceptions près
+ * (Notion, 22/09/2026) — Le Naufragé Impossible rejoint les Un Dead, et
+ * Le Dernier Rempart ouvre l'archétype Cavalerie.
+ */
 export const NECESSAIRE_DU_MARIN = "necessaire-du-marin";
+
+/**
+ * Sous-type de l'archétype Cavalerie, ouvert par Le Dernier Rempart. Même
+ * convention que MARIONNETTE, VOLATILE et UN_DEAD : une famille de ciblage
+ * et une identité, pas un mot-clé — aucune Cavalerie ne gagne quoi que ce
+ * soit du seul fait d'en être une.
+ */
+export const CAVALERIE = "cavalerie";
 
 /** Lot 13 — La Veillée des Disparus (`CardDefinition.setCode`). */
 export const VEILLEE_DES_DISPARUS = "veillee-des-disparus";
@@ -5671,6 +5684,12 @@ export const CORE_SET: CardDefinition[] = [
     id: "le-dernier-rempart",
     name: "Le Dernier Rempart",
     type: "marin",
+    // Première carte de la CAVALERIE (Notion, 22/09/2026). Sous-type ET
+    // archétype, comme les Un Dead : le premier sert au ciblage et à
+    // l'identité visuelle, le second aux comptages et aux conditions que
+    // la famille recevra.
+    subtype: CAVALERIE,
+    archetype: "cavalerie",
     setCode: NECESSAIRE_DU_MARIN,
     cost: 6,
     attack: 4,
@@ -5703,6 +5722,11 @@ export const CORE_SET: CardDefinition[] = [
     id: "le-naufrage-impossible",
     name: "Le Naufragé Impossible",
     type: "marin",
+    // Rejoint les UN DEAD (Notion, 22/09/2026) : un noyé qui refuse de
+    // couler a sa place dans la famille du Lot 13. Il compte donc dans
+    // leurs seuils et répond à leurs conditions de Cimetière.
+    subtype: UN_DEAD,
+    archetype: "un-dead",
     setCode: NECESSAIRE_DU_MARIN,
     cost: 7,
     attack: 6,

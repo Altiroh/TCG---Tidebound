@@ -18,12 +18,18 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { UNIT_CARD_TYPES, type CardInstance } from "@/game/cards/types";
 
-export type ArchetypeId = "cra-poiscail" | "un-dead";
+export type ArchetypeId = "cra-poiscail" | "un-dead" | "cavalerie";
 
 /** Libellé humain — outils de design, journaux, tests. Jamais rendu sur une carte. */
 export const ARCHETYPE_LABELS: Record<ArchetypeId, string> = {
   "cra-poiscail": "Cra-Poiscail",
   "un-dead": "Un Dead",
+  // Ouvert par le Lot 14 (Notion, 22/09/2026), avec UNE seule carte : Le
+  // Dernier Rempart. Un archétype d'un membre ne compte rien et ne
+  // conditionne rien — il existe pour que la famille ait un nom avant
+  // d'avoir un banc, et pour que les cartes qui la rejoindront n'aient
+  // pas à réécrire celles d'avant.
+  cavalerie: "Cavalerie",
 };
 
 /**
