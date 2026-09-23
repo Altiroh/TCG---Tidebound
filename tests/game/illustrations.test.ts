@@ -38,11 +38,13 @@ const DOSSIER = path.join(process.cwd(), "public", "assets", "cards", "illustrat
  */
 const SANS_VISUEL: Record<string, string> = Object.fromEntries(
   // Lot 15 — Éclats en Selle, transcrit le 23/09/2026 depuis Notion : le lot
-  // est arrivé en texte, ses 59 illustrations sont à produire. Chaque entrée
-  // tombe d'elle-même dès que son WebP est déposé (troisième test).
-  CORE_SET.filter((def) => def.setCode === "eclats-en-selle").map((def) => [
+  // est arrivé en texte. Les 25 Sentinelles Chromatiques ont reçu leurs
+  // illustrations le 23/09 ; restent l'Équipage de Verre, la Cavalerie et
+  // La Mauvaise Réputation. Le troisième test refuse une exception survivant
+  // à son WebP.
+  CORE_SET.filter((def) => def.setCode === "eclats-en-selle" && def.archetype !== "sentinelle-chromatique").map((def) => [
     def.id,
-    "Lot 15 — Éclats en Selle : illustration pas encore livrée (le lot est arrivé en texte seul).",
+    "Lot 15 — Éclats en Selle : illustration pas encore livrée.",
   ])
 );
 
