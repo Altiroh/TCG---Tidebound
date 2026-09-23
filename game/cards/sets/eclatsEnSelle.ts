@@ -85,7 +85,7 @@ const EQUIPAGE_DE_VERRE: CardDefinition[] = [
     setCode: ECLATS_EN_SELLE,
     cost: 1,
     maxCopies: 3,
-    attack: 2,
+    attack: 1,
     health: 3,
     text: "La première fois à chaque tour qu'il survit à des dégâts, il gagne +1 Puissance.",
     abilities: [
@@ -190,11 +190,11 @@ const EQUIPAGE_DE_VERRE: CardDefinition[] = [
     archetype: "equipage-de-verre",
     setCode: ECLATS_EN_SELLE,
     cost: 3,
-    maxCopies: 2,
+    maxCopies: 3,
     attack: 3,
     health: 4,
     text:
-      "À son arrivée, il subit 1 dégât et inflige 2 dégâts à une unité adverse. La première fois à chaque tour " +
+      "À son arrivée, il subit 1 dégât et inflige 1 dégât à une unité adverse. La première fois à chaque tour " +
       "qu'il survit à des dégâts, il gagne +1 Puissance.",
     // Le coup de recul se prend à la pose ; le tir, lui, se VISE dans la
     // fenêtre d'arrivée — sans quoi la carte ne se jouerait pas face à un
@@ -204,12 +204,12 @@ const EQUIPAGE_DE_VERRE: CardDefinition[] = [
       {
         trigger: "onEnterPlay",
         mode: "optional",
-        description: "Tir de mise en batterie : 2 dégâts à une unité adverse.",
+        description: "Tir de mise en batterie : 1 dégât à une unité adverse.",
         effects: [
           {
             type: "damage",
             target: { kind: "chosenUnit", among: { unitsOnly: true, opponentOnly: true } },
-            amount: { kind: "flat", value: 2 },
+            amount: { kind: "flat", value: 1 },
           },
         ],
       },
@@ -510,7 +510,7 @@ const CAVALERIE_LOT: CardDefinition[] = [
     setCode: ECLATS_EN_SELLE,
     cost: 2,
     maxCopies: 3,
-    attack: 3,
+    attack: 2,
     health: 3,
     text: "Lorsqu'elle attaque une unité ayant Garde, elle gagne +1 Puissance pour cette attaque.",
     bonusDamageVsKeyword: { keyword: "garde", amount: 1 },
@@ -940,7 +940,8 @@ const SENTINELLES: CardDefinition[] = [
     chromatic: { colors: ["bleu"], emitsSignal: true },
     text:
       "Signal Bleu — La première fois à chaque tour qu'une autre Sentinelle que vous contrôlez attaque une unité " +
-      "adverse, cette unité adverse perd 1 Puissance jusqu'à votre prochain tour.",
+      "adverse, cette unité adverse perd 1 Puissance jusqu'à votre prochain tour. Plusieurs Signaux Bleus ne lui retirent jamais plus de " +
+      "1 Puissance par attaque.",
   },
   {
     id: "stratege-de-lazur",

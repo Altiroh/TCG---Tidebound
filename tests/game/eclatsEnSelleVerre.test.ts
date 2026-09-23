@@ -57,17 +57,17 @@ describe("survivre à des dégâts", () => {
     ok(r1);
     state = r1.state;
     expect(unite(state, matelot.instanceId)!.damageMarked).toBe(1);
-    expect(puissance(state, matelot.instanceId)).toBe(3);
+    expect(puissance(state, matelot.instanceId)).toBe(2);
 
     // Deuxième survie le même tour : « la première fois à chaque tour ».
     const r2 = briser(state, eclat2, matelot.instanceId);
     ok(r2);
-    expect(puissance(r2.state, matelot.instanceId)).toBe(3);
+    expect(puissance(r2.state, matelot.instanceId)).toBe(2);
 
     // Le gain est conservé : il survit au changement de tour.
     const fin = dispatch(r2.state, { type: "endTurn", playerId: "p1" });
     ok(fin);
-    expect(puissance(fin.state, matelot.instanceId)).toBe(3);
+    expect(puissance(fin.state, matelot.instanceId)).toBe(2);
   });
 
   it("une unité tuée par ses dégâts n'a pas survécu : aucun gain", () => {
@@ -210,7 +210,7 @@ describe("gestes du Verre", () => {
     expect(puissance(r.state, canonnier.instanceId)).toBe(4);
     const tir = activateReactionFor(r.state, "canonnier-fele", cible.instanceId);
     ok(tir);
-    expect(unite(tir.state, cible.instanceId)!.damageMarked).toBe(2);
+    expect(unite(tir.state, cible.instanceId)!.damageMarked).toBe(1);
   });
 
   it("Canonnier Fêlé se joue face à un plateau vide", () => {
@@ -290,12 +290,12 @@ describe("Jusqu'à ce que ça casse", () => {
     const eclat = instance("eclat-de-bouteille", "p1");
     const r = briser(table({ board: [anomalie, matelot, eclat] }), eclat, matelot.instanceId);
     ok(r);
-    expect(puissance(r.state, matelot.instanceId)).toBe(3);
+    expect(puissance(r.state, matelot.instanceId)).toBe(2);
     const encore = activateReactionFor(r.state, "jusqua-ce-que-ca-casse");
     ok(encore);
     expect(unite(encore.state, matelot.instanceId)!.damageMarked).toBe(2);
     // Survie redéclenchée malgré « une fois par tour » : +1 de plus.
-    expect(puissance(encore.state, matelot.instanceId)).toBe(4);
+    expect(puissance(encore.state, matelot.instanceId)).toBe(3);
   });
 
   it("ne se propose qu'une fois par unité, et part au Cimetière à la fin du tour", () => {

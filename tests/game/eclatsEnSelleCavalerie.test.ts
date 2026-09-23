@@ -54,7 +54,7 @@ describe("combat et Garde", () => {
     const state = table({ board: [monture] }, { board: [rempart] }, { phase: "combatPhase" });
     const r = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: monture.instanceId, defenderInstanceId: rempart.instanceId });
     ok(r);
-    expect(unite(r.state, rempart.instanceId)!.damageMarked).toBe(4);
+    expect(unite(r.state, rempart.instanceId)!.damageMarked).toBe(3);
   });
 
   it("Bête de Percée retire Garde à une unité adverse jusqu'à la fin du tour", () => {
@@ -80,7 +80,7 @@ describe("combat et Garde", () => {
     state = { ...b.state, phase: "combatPhase" };
     const a = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attaquant.instanceId });
     ok(a);
-    expect(joueur(a.state, "p2").anchor).toBe(joueur(state, "p2").anchor - 3);
+    expect(joueur(a.state, "p2").anchor).toBe(joueur(state, "p2").anchor - 2);
   });
 
   it("Ouvrez la Ligne ! : +2 contre la Garde, pour ce seul combat", () => {
@@ -196,7 +196,7 @@ describe("Bêtes et remplacements", () => {
     expect(unite(r1.state, selle.instanceId)!.damageMarked).toBe(5);
     const r2 = dispatch(r1.state, { type: "attack", playerId: "p1", attackerInstanceId: petit.instanceId, defenderInstanceId: selle.instanceId });
     ok(r2);
-    expect(unite(r2.state, selle.instanceId)!.damageMarked).toBe(7);
+    expect(unite(r2.state, selle.instanceId)!.damageMarked).toBe(6);
   });
 
   it("Mange-Fer grandit quand une Structure adverse est détruite", () => {

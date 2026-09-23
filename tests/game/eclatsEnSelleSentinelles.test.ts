@@ -84,7 +84,7 @@ describe("Signaux Rouge et Jaune : des bonus continus", () => {
   it("une unité qui n'est pas une Sentinelle ne reçoit rien", () => {
     const heros = instance("heros-de-la-flamme", "p1");
     const matelot = instance("matelot-fele", "p1");
-    expect(stats(table({ board: [heros, matelot] }), matelot.instanceId).attack).toBe(2);
+    expect(stats(table({ board: [heros, matelot] }), matelot.instanceId).attack).toBe(1);
   });
 
   it("Rempart du Soleil a Garde tant qu'une Sentinelle d'une autre couleur est là", () => {
@@ -97,15 +97,19 @@ describe("Signaux Rouge et Jaune : des bonus continus", () => {
 });
 
 describe("Signaux Bleu, Vert et Violet : une fois par tour", () => {
-  it("Bleu : deux émetteurs, deux fois -1 Puissance pour la cible — jusqu'au prochain tour de l'attaquant", () => {
+  it("Bleu : plafonné à -1 par attaque, le second émetteur sert à l'attaque suivante", () => {
     const t1 = instance("tacticien-de-lecume", "p1");
     const t2 = instance("stratege-de-lazur", "p1");
     const attaquant = instance("heros-de-la-flamme", "p1");
     const cible = instance("vieille-selle", "p2");
-    const state = table({ board: [t1, t2, attaquant] }, { board: [cible] }, { phase: "combatPhase" });
+    const second = instance("gardienne-de-leclat", "p1");
+    const state = table({ board: [t1, t2, attaquant, second] }, { board: [cible] }, { phase: "combatPhase" });
     const r = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attaquant.instanceId, defenderInstanceId: cible.instanceId });
     ok(r);
-    expect(stats(r.state, cible.instanceId).attack).toBe(2);
+    expect(stats(r.state, cible.instanceId).attack).toBe(3);
+    const r2 = dispatch(passerTout(r.state), { type: "attack", playerId: "p1", attackerInstanceId: second.instanceId, defenderInstanceId: cible.instanceId });
+    ok(r2);
+    expect(stats(r2.state, cible.instanceId).attack).toBe(2);
   });
 
   it("Bleu : l'unité adverse attaquée par une autre Sentinelle perd 1 Puissance, jusqu'au prochain tour de l'attaquant", () => {

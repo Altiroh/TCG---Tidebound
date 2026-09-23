@@ -429,12 +429,11 @@ const NECESSAIRE_DU_MARIN_RARITY: Record<string, CardRarity> = {
  *  - Commune : corps d'identité au niveau de la courbe, outils qu'on veut en
  *    trois exemplaires — un plan à deux couleurs ou un Verre de base doit se
  *    monter sans chance au tirage.
- *  - Peu commune : au-dessus de la courbe (Matelot Fêlé 2/3 pour 1, Monture
- *    de Brèche 3/3 pour 2), ou moteur de famille (Vigie, Verrier, Signal Vert
- *    cumulatif).
- *  - Rare : retourne un échange à elle seule — removal attaché à un corps
- *    (Canonnier Fêlé), sauvetage (Porte-Éclats), ressource répétable (Maître
- *    Verrier), anti-Garde (Bête de Percée, Débusquer), enablers de couleur.
+ *  - Peu commune : moteur de famille (Vigie, Verrier, Signal Vert cumulatif),
+ *    ou corps qui apporte un effet réel (Canonnier Fêlé).
+ *  - Rare : retourne un échange à elle seule — sauvetage (Porte-Éclats),
+ *    ressource répétable (Maître Verrier), anti-Garde (Bête de Percée,
+ *    Débusquer), enablers de couleur.
  *  - Épique : ce qui referme une partie — La Grande Fissure, Jusqu'à ce que
  *    ça casse, Formation Prismatique.
  * Aucune Légendaire : le palier se replie au tirage. La variante Abyssale du
@@ -443,12 +442,12 @@ const NECESSAIRE_DU_MARIN_RARITY: Record<string, CardRarity> = {
 const ECLATS_EN_SELLE_RARITY: Record<string, CardRarity> = {
   // --- Équipage de Verre -----------------------------------------------------
   "eclaireur-ebreche": "common",
-  "matelot-fele": "uncommon",
+  "matelot-fele": "common",
   "duelliste-de-verre": "common",
   "polisseuse-des-felures": "common",
   "vigie-aux-fissures": "uncommon",
   "verrier-de-pont": "uncommon",
-  "canonnier-fele": "rare",
+  "canonnier-fele": "uncommon",
   "bretteuse-au-bord": "uncommon",
   "porte-eclats": "rare",
   "maitre-verrier": "rare",
@@ -460,7 +459,7 @@ const ECLATS_EN_SELLE_RARITY: Record<string, CardRarity> = {
   "pont-de-verre": "uncommon",
   "jusqua-ce-que-ca-casse": "epic",
   // --- Cavalerie -------------------------------------------------------------
-  "monture-de-breche": "uncommon",
+  "monture-de-breche": "common",
   "bete-de-halage": "common",
   "destrier-du-ressac": "common",
   "eclaireur-a-cornes": "uncommon",

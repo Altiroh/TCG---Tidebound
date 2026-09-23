@@ -16,8 +16,8 @@ import type { GameState, PlayerId, PlayerState } from "@/game/state/types";
  *
  *  - Bleu — « la première fois à chaque tour qu'une autre Sentinelle attaque
  *    une unité adverse, cette unité adverse perd 1 Puissance jusqu'à votre
- *    prochain tour ». Appliqué au COMBAT, avant les dégâts : la riposte en
- *    tient compte (`applyBlueSignal`).
+ *    prochain tour », jamais plus de 1 par attaque. Appliqué au COMBAT, avant
+ *    les dégâts : la riposte en tient compte (`applyBlueSignal`).
  *  - Vert — « la première fois pendant chacun de vos tours que vous jouez une
  *    autre Sentinelle, récupérez 1 Raison ».
  *  - Violet — « la première fois à chaque tour qu'une autre Sentinelle est
@@ -119,7 +119,10 @@ export function applyBlueSignal(
 ): { state: GameState; events: GameEvent[] } {
   const player = state.players.find((p) => p.id === attackerPlayerId);
   if (!player || !isSentinel(attacker)) return { state, events: [] };
-  const emetteurs = availableSignalSources(attacker, "bleu", player.board, turnNumber);
+  // PLAFONNÉ à -1 par attaque (arbitrage du 23/09/2026) : un seul émetteur
+  // répond, les autres restent disponibles pour les attaques suivantes du
+  // tour. Cumulé, le Bleu retirait toute la riposte d'un coup.
+  const emetteurs = availableSignalSources(attacker, "bleu", player.board, turnNumber).slice(0, 1);
   if (emetteurs.length === 0) return { state, events: [] };
   const malus: StatModifier = {
     id: `mod_${Math.random().toString(36).slice(2, 8)}`,
