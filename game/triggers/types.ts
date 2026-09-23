@@ -30,6 +30,8 @@ export type TriggerType =
   | "onUnitAttackDeclared" // une unité ADVERSE vient de déclarer une attaque, quelle qu'en soit la cible — même fenêtre, mais ouverte aussi sur un combat entre unités (Filet à la Dérive, Le Filet qui Respire)
   | "onBecomeOnlyCreature" // la carte vient de DEVENIR la seule Créature du plateau de son contrôleur (ex: Méduse des Lanternes) — détecté par photo avant/après chaque action (`processLoneCreatureChanges`)
   | "onPermanentWouldBeDestroyed" // un permanent est sur le point de partir au Cimetière — fenêtre de SAUVETAGE, ouverte AVANT que `processDeaths` ne l'emporte (Lot 14 : Filet de Sauvetage, Cloison Étanche, Bouclier d'Écume, Planche de Fortune)
+  | "onSurvivedDamage" // une unité a subi des dégâts ET est toujours en jeu une fois les morts réglées (Lot 15 — Équipage de Verre) : personnel, ou observateur avec `triggeredBy`
+  | "onReasonGained" // le contrôleur vient de récupérer de la Raison GRÂCE À UNE CARTE — jamais la régénération de début de tour (Lot 15 — Survivant de la Mousse)
   | "onCondition"; // condition arbitraire évaluée par un `ConditionExpression`
 
 export interface TriggerEvent {
@@ -59,6 +61,14 @@ export interface TriggerEvent {
    * Pantalone Sans-Sou, « que vous Brisez directement depuis votre main »).
    */
   fromHand?: boolean;
+  /**
+   * `onSurvivedDamage` : les coups encaissés pendant l'action, avec leur
+   * cause et le joueur dont l'effet les a portés — lus par
+   * `triggeredBy.damageCauses` / `damageByController`.
+   */
+  damage?: Array<{ cause?: import("@/game/cards/types").DestructionCause; byPlayerId?: string }>;
+  /** `onCardDiscardedFromHand` : la défausse vient d'un effet de carte, pas de la limite de main. */
+  discardByEffect?: boolean;
 }
 
 /**

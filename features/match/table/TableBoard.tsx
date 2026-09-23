@@ -161,6 +161,8 @@ export function TableBoard(props: TableBoardProps) {
     controllerBoard: player.board,
     controllerReason: player.reason,
     tideOrientation: state.environment.tideOrientation,
+    // Signal Rouge (Lot 15) : un bonus « pendant votre tour ».
+    controllerIsActive: state.activePlayerId === player.id,
   });
 
   const byId = new Map<string, { instance: CardInstance; owner: PlayerState }>();

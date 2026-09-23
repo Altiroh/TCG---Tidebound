@@ -1,6 +1,6 @@
 "use client";
 
-import { getCardDefinition, type PendingChoice, type ResolveChoiceAction } from "@/game";
+import { CHROMATIC_COLOR_LABELS, getCardDefinition, type PendingChoice, type ResolveChoiceAction } from "@/game";
 import { PromptActions, PromptButton, PromptEffect, PromptEyebrow, PromptQuestion, PromptShell } from "@/features/match/PromptShell";
 
 interface PendingChoicePromptProps {
@@ -44,6 +44,58 @@ export function PendingChoicePrompt({ choice, onChoose }: PendingChoicePromptPro
             {/* Refuser reste une réponse : rien ne se résout. */}
             <PromptButton tone="neutral" onClick={() => onChoose("pass")}>
               Ne rien appliquer
+            </PromptButton>
+          </PromptActions>
+        </div>
+      </PromptShell>
+    );
+  }
+
+  // « Choisissez une couleur » (Lot 15 — Émissaire de Quartz, La Première
+  // Pierre, Géant Chromatique ABYSSALE) : une pastille par couleur proposée.
+  if (choice.kind === "chromaticColor") {
+    const source = choice.context.sourceInstanceId;
+    return (
+      <PromptShell ariaLabel="Choisir une couleur">
+        <div className="flex flex-col items-center gap-3 pt-1">
+          <PromptEyebrow>Sentinelles Chromatiques</PromptEyebrow>
+          <PromptEffect>Choisissez une couleur</PromptEffect>
+          {source && <PromptQuestion>La pierre prend la couleur que vous lui donnez.</PromptQuestion>}
+          <PromptActions>
+            {choice.options.map((color, position) => (
+              <PromptButton key={color} tone={position === 0 ? "accept" : "neutral"} onClick={() => onChoose({ color })}>
+                {CHROMATIC_COLOR_LABELS[color]}
+              </PromptButton>
+            ))}
+            {choice.refusable && (
+              <PromptButton tone="neutral" onClick={() => onChoose("pass")}>
+                Ne rien choisir
+              </PromptButton>
+            )}
+          </PromptActions>
+        </div>
+      </PromptShell>
+    );
+  }
+
+  // « Regardez la première carte de la pioche adverse. Vous pouvez la placer
+  // sous sa pioche. » (Éclaireur à Cornes)
+  if (choice.kind === "deckTopDecision") {
+    const def = getCardDefinition(choice.card.cardId);
+    return (
+      <PromptShell ariaLabel="Carte du dessus de la pioche adverse">
+        <div className="flex flex-col items-center gap-3 pt-1">
+          <PromptEyebrow>Dessus de la pioche adverse</PromptEyebrow>
+          <PromptEffect>
+            {def.name} — {def.cost} Raison
+          </PromptEffect>
+          {def.text && <PromptQuestion>{def.text}</PromptQuestion>}
+          <PromptActions>
+            <PromptButton tone="accept" onClick={() => onChoose({ deckTop: "bottom" })}>
+              Sous sa pioche
+            </PromptButton>
+            <PromptButton tone="neutral" onClick={() => onChoose({ deckTop: "keep" })}>
+              La laisser dessus
             </PromptButton>
           </PromptActions>
         </div>

@@ -1,7 +1,9 @@
 import { countArchetypeUnits } from "@/game/cards/archetypes";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { isVisibleDuringTide, UNIT_CARD_TYPES, type CardInstance } from "@/game/cards/types";
+import { benefitsFromSignal, signalEmitter } from "@/game/rules/chromatic";
 import type { TideStateName } from "@/game/environment/types";
+import type { GameState } from "@/game/state/types";
 
 export interface EffectiveStats {
   attack: number;
@@ -34,6 +36,31 @@ export interface AuraContext {
    * de base, sans elles.
    */
   tideOrientation?: "montante" | "descendante";
+  /**
+   * Le contrôleur de l'unité est-il le joueur ACTIF ? Lu par le Signal Rouge
+   * (« +1 Puissance pendant votre tour », Lot 15). Absent : on ne sait pas,
+   * donc aucun bonus « pendant votre tour » — plutôt que d'en donner un à
+   * tort sur le tour adverse.
+   */
+  controllerIsActive?: boolean;
+}
+
+/**
+ * Contexte d'aura COMPLET du joueur `controllerId` dans cet état : son
+ * plateau, sa Raison, le sens de la Marée, et s'il est le joueur actif.
+ *
+ * Les sites qui construisent le contexte à la main oubliaient
+ * immanquablement un champ le jour où il en apparaissait un — c'est ce
+ * point d'entrée que le moteur utilise désormais là où la Puissance compte.
+ */
+export function auraContextOf(state: Pick<GameState, "players" | "activePlayerId" | "environment">, controllerId: string): AuraContext {
+  const controller = state.players.find((p) => p.id === controllerId);
+  return {
+    controllerBoard: controller?.board ?? [],
+    controllerReason: controller?.reason ?? 0,
+    tideOrientation: state.environment.tideOrientation,
+    controllerIsActive: state.activePlayerId === controllerId,
+  };
 }
 
 /**
@@ -126,6 +153,35 @@ export function collectAuraContributions(
     addSelf(archetypeSelfBuff);
   }
 
+  // Duelliste de Verre : bonus tant qu'il porte des dégâts.
+  if (def.selfBuffWhileDamaged && unit.damageMarked > 0) addSelf(def.selfBuffWhileDamaged);
+
+  // Destrier du Ressac : bonus tant qu'il est la SEULE unité de son camp.
+  const onlyUnitBuff = def.selfBuffWhileOnlyUnit;
+  if (
+    onlyUnitBuff &&
+    controllerBoard.filter((other) => UNIT_CARD_TYPES.includes(getCardDefinition(other.cardId).type)).length === 1
+  ) {
+    addSelf(onlyUnitBuff);
+  }
+
+  // Signaux Chromatiques (Lot 15) : Rouge prête +1 Puissance pendant le tour
+  // de son contrôleur, Jaune +1 Résistance maximale — aux Sentinelles d'une
+  // AUTRE couleur. La contribution est attribuée à l'émetteur, pour que la
+  // fiche de carte dise d'où vient le bonus.
+  const addSignal = (color: "rouge" | "jaune", spec: { attackAmount?: number; healthAmount?: number }) => {
+    if (!benefitsFromSignal(unit, color, controllerBoard)) return;
+    const emitter = signalEmitter(unit, color, controllerBoard);
+    contributions.push({
+      sourceCardId: emitter?.cardId ?? unit.cardId,
+      sourceInstanceId: emitter?.instanceId,
+      attack: spec.attackAmount ?? 0,
+      health: spec.healthAmount ?? 0,
+    });
+  };
+  if (aura.controllerIsActive) addSignal("rouge", { attackAmount: 1 });
+  addSignal("jaune", { healthAmount: 1 });
+
   for (const source of controllerBoard) {
     if (source.instanceId === unit.instanceId) continue;
     const sourceDef = getCardDefinition(source.cardId);
@@ -164,6 +220,7 @@ export function collectAuraContributions(
     if (
       typeAura &&
       typeAura.targetTypes.includes(def.type) &&
+      (typeAura.targetSubtype === undefined || typeAura.targetSubtype === def.subtype) &&
       (!typeAura.whileSelfVisible || isVisibleDuringTide(sourceDef, tideState))
     ) {
       add(typeAura);
@@ -180,6 +237,9 @@ export function collectAuraContributions(
       // Harpon de Pont, Treuil Rouillé… : bonus inconditionnel du porteur,
       // relu en direct pour qu'il disparaisse avec l'Équipement.
       if (sourceDef.equipGrantsBuff) add(sourceDef.equipGrantsBuff);
+      // Selle de Guerre : un supplément réservé aux porteurs assez lourds.
+      const heavyBuff = sourceDef.equipGrantsBuffIfBearerCostAtLeast;
+      if (heavyBuff && def.cost >= heavyBuff.cost) add(heavyBuff);
     }
   }
 

@@ -10,6 +10,7 @@ import { applyCardPlayedAnomalies, applyPermanentLeftAnomalies } from "@/game/st
 import { chosenTargetRequirement, eligibleChosenUnits } from "@/game/effects/chosenTargets";
 import { graveyardChoicesFor } from "@/game/effects/graveyardChoices";
 import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
+import { chromaticColorsOf } from "@/game/rules/chromatic";
 import { consumeOpponentReactionRevealShield, payReasonCost } from "@/game/state/shields";
 import type { GameState, PlayerId, PlayerState } from "@/game/state/types";
 import type { PendingReactionCandidate, TriggerEvent } from "@/game/triggers/types";
@@ -103,8 +104,11 @@ function matchesControlCondition(
   ability: TriggeredAbility,
   controllerId: PlayerId,
   /** Porteuse de la capacité — requise par `condition.selfVisible`. */
-  sourceInstanceId?: string
+  sourceInstanceId?: string,
+  /** Carte qui a déclenché la capacité — requise par les conditions qui la regardent (Lot 15). */
+  triggerSourceInstanceId?: string
 ): boolean {
+  if (!matchesLot15Condition(state, ability, controllerId, sourceInstanceId, triggerSourceInstanceId)) return false;
   if (ability.condition?.selfVisible) {
     const holder = sourceInstanceId ? findBoardUnit(state, sourceInstanceId) : undefined;
     if (!holder || !isVisibleDuringTide(getCardDefinition(holder.unit.cardId), state.environment.tideState)) return false;
@@ -169,6 +173,117 @@ function matchesControlCondition(
 }
 
 /**
+ * Conditions de capacité ouvertes par le Lot 15. Même règle que les autres :
+ * évaluées AVANT que `oncePerTurnKey` ne soit consommé.
+ */
+function matchesLot15Condition(
+  state: GameState,
+  ability: TriggeredAbility,
+  controllerId: PlayerId,
+  sourceInstanceId: string | undefined,
+  triggerSourceInstanceId: string | undefined
+): boolean {
+  const condition = ability.condition;
+  if (!condition) return true;
+  // « pendant votre tour » / « pendant chacun de vos tours ».
+  if (condition.duringOwnTurn && state.activePlayerId !== controllerId) return false;
+  const moi = state.players.find((p) => p.id === controllerId);
+  const adversaire = state.players.find((p) => p.id !== controllerId);
+  // « si vous contrôlez au moins N AUTRES unités » (Le Déserteur Gris).
+  if (condition.controllerOtherUnitsAtLeast !== undefined) {
+    const autres = (moi?.board ?? []).filter(
+      (u) => u.instanceId !== sourceInstanceId && UNIT_CARD_TYPES.includes(getCardDefinition(u.cardId).type)
+    ).length;
+    if (autres < condition.controllerOtherUnitsAtLeast) return false;
+  }
+  // « si votre Navire a moins d'Ancrage que le Navire adverse ».
+  if (condition.controllerAnchorBelowOpponent && !((moi?.anchor ?? 0) < (adversaire?.anchor ?? 0))) return false;
+  // « À son arrivée par Assemblage ».
+  if (condition.selfArrivedByAssemblage) {
+    const porteuse = sourceInstanceId ? findBoardUnit(state, sourceInstanceId) : undefined;
+    if (!porteuse?.unit.arrivedByAssemblage) return false;
+  }
+  // « une Sentinelle d'une couleur que vous ne contrôliez pas encore » : la
+  // carte déclencheuse apporte une couleur qu'aucune AUTRE carte ne porte.
+  if (condition.triggerSourceBringsNewChromaticColor) {
+    const arrivee = triggerSourceInstanceId ? findBoardUnit(state, triggerSourceInstanceId) : undefined;
+    if (!arrivee || !moi) return false;
+    const siennes = chromaticColorsOf(arrivee.unit, moi.board);
+    const dejaLa = new Set(
+      moi.board.filter((u) => u.instanceId !== arrivee.unit.instanceId).flatMap((u) => chromaticColorsOf(u, moi.board))
+    );
+    for (const claim of moi.claimedChromaticColors ?? []) {
+      if (state.turnNumber <= claim.expiresAfterTurn) dejaLa.add(claim.color);
+    }
+    if (!siennes.some((color) => !dejaLa.has(color))) return false;
+  }
+  // « devrait être détruite PAR DES DÉGÂTS » : ni un effet de destruction,
+  // ni un Sabordage, ni la Marée qui l'emporte directement.
+  if (condition.triggerSourceDoomedByDamage) {
+    const condamnee = triggerSourceInstanceId ? findBoardUnit(state, triggerSourceInstanceId) : undefined;
+    if (!condamnee || condamnee.unit.pendingRemoval) return false;
+    const proprietaire = state.players.find((p) => p.id === condamnee.playerId)!;
+    const stats = computeEffectiveStats(condamnee.unit, state.environment.tideState, {
+      controllerBoard: proprietaire.board,
+      controllerReason: proprietaire.reason,
+      tideOrientation: state.environment.tideOrientation,
+      controllerIsActive: state.activePlayerId === proprietaire.id,
+    });
+    if (stats.destroyedByTide || condamnee.unit.damageMarked < stats.health) return false;
+  }
+  return true;
+}
+
+/**
+ * Où se lit — et s'inscrit — le « une fois par tour » d'une capacité : sur
+ * sa porteuse, ou sur la carte DÉCLENCHEUSE quand le texte dit « chacune de
+ * vos unités » (`oncePerTurnPerTriggerSource`). La clé est alors préfixée
+ * par la porteuse, pour que deux porteuses ne se partagent pas la marque.
+ */
+function oncePerTurnSlot(
+  ability: TriggeredAbility,
+  holderInstanceId: string | undefined,
+  triggerSourceInstanceId: string | undefined
+): { instanceId: string; key: string } | undefined {
+  const key = ability.oncePerTurnKey;
+  if (!key) return undefined;
+  if (ability.oncePerTurnPerTriggerSource) {
+    if (!triggerSourceInstanceId || !holderInstanceId) return undefined;
+    return { instanceId: triggerSourceInstanceId, key: `${holderInstanceId}:${key}` };
+  }
+  return holderInstanceId ? { instanceId: holderInstanceId, key } : undefined;
+}
+
+/** La capacité est-elle encore disponible ce tour-ci, là où son « une fois par tour » se lit ? */
+function oncePerTurnSlotAvailable(
+  state: GameState,
+  ability: TriggeredAbility,
+  holderInstanceId: string | undefined,
+  triggerSourceInstanceId: string | undefined,
+  turnNumber: number
+): boolean {
+  const slot = oncePerTurnSlot(ability, holderInstanceId, triggerSourceInstanceId);
+  if (!slot) return !ability.oncePerTurnKey || !ability.oncePerTurnPerTriggerSource;
+  const found = findBoardUnit(state, slot.instanceId);
+  return found ? oncePerTurnAvailable(found.unit, slot.key, turnNumber) : false;
+}
+
+/** Inscrit le « une fois par tour » là où il se lit. Sans objet si la carte a quitté le plateau. */
+function markOncePerTurnSlot(
+  state: GameState,
+  ability: TriggeredAbility,
+  holderInstanceId: string | undefined,
+  triggerSourceInstanceId: string | undefined,
+  turnNumber: number
+): GameState {
+  const slot = oncePerTurnSlot(ability, holderInstanceId, triggerSourceInstanceId);
+  if (!slot) return state;
+  const found = findBoardUnit(state, slot.instanceId);
+  if (!found) return state;
+  return markUnitOncePerTurn(state, found.playerId, found.unit.instanceId, slot.key, turnNumber, ability.onceEver);
+}
+
+/**
  * La carte qui vient d'arriver/de mourir (portée par `event`) correspond-
  * elle au filtre d'une capacité d'OBSERVATEUR, vue depuis `holder` ?
  */
@@ -202,6 +317,19 @@ function matchesTriggerSource(
   if (filter.subtype && !(event.cardId && getCardDefinition(event.cardId).subtype === filter.subtype)) return false;
   // « quand une Structure... » : type de la carte déclencheuse.
   if (filter.cardTypes && !(event.cardId && filter.cardTypes.includes(getCardDefinition(event.cardId).type))) return false;
+  // « des dégâts infligés par l'un de VOS effets » (Maître Verrier, Pont de
+  // Verre) : au moins un des coups encaissés doit remplir les deux filtres.
+  if (filter.damageCauses || filter.damageByController) {
+    const coups = event.damage ?? [];
+    const retenu = coups.some(
+      (coup) =>
+        (!filter.damageCauses || (coup.cause !== undefined && filter.damageCauses.includes(coup.cause))) &&
+        (!filter.damageByController || coup.byPlayerId === holderControllerId)
+    );
+    if (!retenu) return false;
+  }
+  // « par un effet de carte » : la limite de main en fin de tour n'en est pas un.
+  if (filter.discardByEffect && !event.discardByEffect) return false;
   return true;
 }
 
@@ -230,8 +358,9 @@ function collectObserverWork(
         if (!matchesTriggerSource(ability.triggeredBy, event, holder, player.id)) return;
         // "La première fois à chaque tour" : la capacité disparaît des
         // candidats une fois consommée ce tour-ci (le marquage, lui, se
-        // fait à la résolution — cf. `processTrigger`).
-        if (ability.oncePerTurnKey && !oncePerTurnAvailable(holder, ability.oncePerTurnKey, turnNumber)) return;
+        // fait à la résolution — cf. `processTrigger`). Lue sur la porteuse,
+        // ou sur la déclencheuse pour « chacune de vos unités ».
+        if (!oncePerTurnSlotAvailable(state, ability, holder.instanceId, event.sourceInstanceId, turnNumber)) return;
         result.push(work(ability, abilityIndex, def.id, player.id, holder.instanceId, turnNumber, event.sourceInstanceId));
       });
     }
@@ -313,7 +442,9 @@ function collectTriggeredWork(
     return result;
   }
 
-  if (event.trigger === "startOfTurn" || event.trigger === "endOfTurn") {
+  // `onReasonGained` : un fait du JOUEUR, pas d'une carte — ses capacités se
+  // lisent sur tout son plateau, comme un début ou une fin de tour.
+  if (event.trigger === "startOfTurn" || event.trigger === "endOfTurn" || event.trigger === "onReasonGained") {
     if (!event.playerId) return result;
     const player = state.players.find((p) => p.id === event.playerId);
     if (!player) return result;
@@ -452,6 +583,7 @@ export function snapshotEffectivePower(state: GameState): Map<string, number> {
           controllerBoard: player.board,
           controllerReason: player.reason,
           tideOrientation: state.environment.tideOrientation,
+          controllerIsActive: state.activePlayerId === player.id,
         }).attack
       );
     }
@@ -621,6 +753,7 @@ export function processDiscardedFromHandTriggers(
           cardId: event.cardId,
           sourceInstanceId: event.instanceId,
           discardedOwnerId: event.ownerId,
+          ...(event.discardByEffect ? { discardByEffect: true } : {}),
         },
         turnNumber,
         depth
@@ -695,7 +828,17 @@ export function processTrigger(
   for (const item of items) {
     // Condition de capacité non remplie : ni résolution, ni consommation du
     // « une fois par tour » (cf. `matchesControlCondition`).
-    if (!matchesControlCondition(nextState, item.ability, item.context.controllerId, item.context.sourceInstanceId)) continue;
+    if (
+      !matchesControlCondition(
+        nextState,
+        item.ability,
+        item.context.controllerId,
+        item.context.sourceInstanceId,
+        item.context.triggerSourceInstanceId
+      )
+    ) {
+      continue;
+    }
 
     // « Choisissez : A ou B » en résolution AUTOMATIQUE (ex: Horloge de
     // Marée au Sabordage) : rien ne se résout ici, un choix est ouvert pour
@@ -730,7 +873,12 @@ export function processTrigger(
     // qu'une capacité qui provoque elle-même l'événement auquel elle
     // réagit ne se rappelle pas en boucle.
     const key = item.ability.oncePerTurnKey;
-    if (key && item.context.sourceInstanceId) {
+    if (key && item.ability.oncePerTurnPerTriggerSource) {
+      // « la première fois que CHACUNE de vos unités… » : la marque vit sur
+      // la déclencheuse.
+      if (!oncePerTurnSlotAvailable(nextState, item.ability, item.context.sourceInstanceId, item.context.triggerSourceInstanceId, turnNumber)) continue;
+      nextState = markOncePerTurnSlot(nextState, item.ability, item.context.sourceInstanceId, item.context.triggerSourceInstanceId, turnNumber);
+    } else if (key && item.context.sourceInstanceId) {
       const holder = findBoardUnit(nextState, item.context.sourceInstanceId);
       if (!holder || !oncePerTurnAvailable(holder.unit, key, turnNumber)) continue;
       nextState = markUnitOncePerTurn(nextState, holder.playerId, holder.unit.instanceId, key, turnNumber, item.ability.onceEver);
@@ -820,7 +968,17 @@ export function collectReactionCandidates(
   for (const event of triggerEvents) {
     for (const item of collectTriggeredWork(state, event, turnNumber, "optional")) {
       if (item.context.controllerId !== forPlayerId) continue;
-      if (!matchesControlCondition(state, item.ability, item.context.controllerId, item.context.sourceInstanceId)) continue;
+      if (
+        !matchesControlCondition(
+          state,
+          item.ability,
+          item.context.controllerId,
+          item.context.sourceInstanceId,
+          item.context.triggerSourceInstanceId
+        )
+      ) {
+        continue;
+      }
       const key = `${item.context.sourceInstanceId}:${item.abilityIndex}`;
       if (seen.has(key)) continue;
 
@@ -844,7 +1002,8 @@ export function collectReactionCandidates(
         state,
         item.effects,
         forPlayerId,
-        item.context.sourceInstanceId
+        item.context.sourceInstanceId,
+        item.context.triggerSourceInstanceId
       );
       if (needsTarget && !hasEligibleTarget) continue;
 
@@ -918,7 +1077,9 @@ export function resolveReaction(
   // "La première fois à chaque tour" : marquée à l'ACTIVATION (le
   // recensement, lui, ne fait que la lire — cf. `collectTriggeredWork`).
   // Même ordre qu'en résolution automatique : marquer avant de résoudre.
-  if (ability.oncePerTurnKey) {
+  if (ability.oncePerTurnKey && ability.oncePerTurnPerTriggerSource) {
+    nextState = markOncePerTurnSlot(nextState, ability, candidate.sourceInstanceId, candidate.triggerSourceInstanceId, turnNumber);
+  } else if (ability.oncePerTurnKey) {
     const holder = findBoardUnit(nextState, candidate.sourceInstanceId);
     if (holder) {
       nextState = markUnitOncePerTurn(nextState, holder.playerId, holder.unit.instanceId, ability.oncePerTurnKey, turnNumber, ability.onceEver);
@@ -963,6 +1124,86 @@ export function resolveReaction(
   }
 
   return { state: nextState, events };
+}
+
+/**
+ * SURVIVRE AUX DÉGÂTS (Lot 15 — Équipage de Verre) : pour chaque unité qui a
+ * encaissé des dégâts pendant l'action et qui est ENCORE EN JEU une fois les
+ * morts réglées, déclenche `onSurvivedDamage`.
+ *
+ * Appelée par `dispatch` après `processDeaths`, et pas plus tôt : « survivre »
+ * ne se sait qu'une fois la passe de morts faite — une unité à 0 Résistance
+ * sauvée par un Porte-Éclats survit, une autre au même compte ne survit pas.
+ *
+ * Un seul déclenchement par unité et par action, quel que soit le nombre de
+ * coups : le texte dit « la première fois à chaque tour qu'il survit à des
+ * dégâts », pas « à chaque coup ». Les coups sont portés par l'événement,
+ * avec leur cause et le joueur qui les a infligés, pour les capacités qui
+ * ne regardent que « des dégâts infligés par l'un de vos effets ».
+ */
+export function processSurvivedDamage(
+  state: GameState,
+  events: readonly GameEvent[],
+  turnNumber: number
+): { state: GameState; events: GameEvent[] } {
+  const coups = new Map<string, Array<{ cause?: "combat" | "effect" | "tide"; byPlayerId?: string }>>();
+  for (const event of events) {
+    if (event.type !== "DAMAGE" || !event.targetInstanceId || event.amount <= 0) continue;
+    const liste = coups.get(event.targetInstanceId) ?? [];
+    liste.push({ cause: event.cause, byPlayerId: event.sourcePlayerId });
+    coups.set(event.targetInstanceId, liste);
+  }
+
+  let nextState = state;
+  const produced: GameEvent[] = [];
+  for (const [instanceId, damage] of coups) {
+    const found = findBoardUnit(nextState, instanceId);
+    if (!found) continue;
+    const owner = nextState.players.find((p) => p.id === found.playerId)!;
+    const stats = computeEffectiveStats(found.unit, nextState.environment.tideState, {
+      controllerBoard: owner.board,
+      controllerReason: owner.reason,
+      tideOrientation: nextState.environment.tideOrientation,
+      controllerIsActive: nextState.activePlayerId === owner.id,
+    });
+    // Toujours condamnée (une fenêtre de sauvetage est peut-être en cours) :
+    // elle n'a pas encore survécu.
+    if (found.unit.pendingRemoval || stats.destroyedByTide || found.unit.damageMarked >= stats.health) continue;
+    const result = processTrigger(
+      nextState,
+      { trigger: "onSurvivedDamage", playerId: owner.id, cardId: found.unit.cardId, sourceInstanceId: instanceId, damage },
+      turnNumber,
+      1
+    );
+    nextState = result.state;
+    produced.push(...result.events);
+  }
+  return { state: nextState, events: produced };
+}
+
+/**
+ * « la première fois … que vous récupérez de la Raison GRÂCE À UNE CARTE »
+ * (Survivant de la Mousse) : un déclenchement par joueur qui a récupéré de la
+ * Raison par un effet pendant l'action. La régénération de début de tour ne
+ * porte pas `source: "card"`, elle ne compte donc pas.
+ */
+export function processReasonGained(
+  state: GameState,
+  events: readonly GameEvent[],
+  turnNumber: number
+): { state: GameState; events: GameEvent[] } {
+  const joueurs = new Set<string>();
+  for (const event of events) {
+    if (event.type === "REASON_CHANGED" && event.delta > 0 && event.source === "card") joueurs.add(event.playerId);
+  }
+  let nextState = state;
+  const produced: GameEvent[] = [];
+  for (const playerId of joueurs) {
+    const result = processTrigger(nextState, { trigger: "onReasonGained", playerId }, turnNumber, 1);
+    nextState = result.state;
+    produced.push(...result.events);
+  }
+  return { state: nextState, events: produced };
 }
 
 /**

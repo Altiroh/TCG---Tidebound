@@ -70,6 +70,15 @@ function defaultActionFor(state: GameState, playerId: string): PlayerAction {
     if (choice.kind === "abilityOption") {
       return { type: "resolveChoice", playerId, choice: "pass" };
     }
+    // « Choisissez une couleur » : refuser si le texte le permet, sinon la
+    // première proposée — un choix imposé ne reste pas sans réponse.
+    if (choice.kind === "chromaticColor") {
+      return choice.refusable
+        ? { type: "resolveChoice", playerId, choice: "pass" }
+        : { type: "resolveChoice", playerId, choice: { color: choice.options[0]! } };
+    }
+    // « Vous pouvez la placer sous sa pioche » : ne rien faire la laisse dessus.
+    if (choice.kind === "deckTopDecision") return { type: "resolveChoice", playerId, choice: "pass" };
     // Anomalie qui IMPOSE un choix (Le Fond Vous Regarde) : perdre de la
     // Raison plutôt que de l'Ancrage — le moins irréversible des deux.
     return { type: "resolveChoice", playerId, choice: "reasonLoss" };

@@ -244,7 +244,10 @@ function destroyOrphanedEquipment(state: GameState, turnNumber: number): { state
       events.push({ type: "DESTROY", instanceId: orphan.instanceId, reason: "effect", turnNumber, timestamp: Date.now() });
       const triggerResult = processTrigger(
         next,
-        { trigger: "onDeath", sourceInstanceId: orphan.instanceId, cardId: orphan.cardId, playerId: player.id },
+        // Un Équipement qui suit son porteur est DÉTRUIT par la règle — une
+        // cause « effet », sans quoi « un Équipement adverse est détruit »
+        // (Mange-Fer) ne le verrait jamais.
+        { trigger: "onDeath", sourceInstanceId: orphan.instanceId, cardId: orphan.cardId, playerId: player.id, destructionCause: "effect" },
         turnNumber
       );
       next = triggerResult.state;

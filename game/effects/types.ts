@@ -263,7 +263,47 @@ export type EffectType =
    *
    * `uses` porte le nombre maximum de cibles (défaut 1).
    */
-  | "pickUnits";
+  | "pickUnits"
+  // --- Lot 15 — Éclats en Selle -------------------------------------------
+  /**
+   * « déclenchez à nouveau ses effets liés au fait de survivre à des
+   * dégâts » (Jusqu'à ce que ça casse) : RÉARME les capacités de la cible
+   * dont le déclencheur est `rearmTrigger`, en effaçant leur marque « une
+   * fois par tour ». L'effet ne déclenche rien lui-même : c'est le prochain
+   * événement (la survie suivante) qui les rallume, par le circuit normal.
+   */
+  | "rearmTriggers"
+  /**
+   * Donne une identité chromatique à la cible (Lot 15) : une couleur
+   * (`chromaticColor`, ou lue ailleurs avec `chromaticColorFrom`), le
+   * Signal correspondant (`chromaticEmits`), ou le droit de bénéficier de
+   * ses propres Signaux (`chromaticBenefitsOwn`).
+   *
+   * `permanent` (ou `duration: "permanent"`) l'inscrit sur l'INSTANCE ;
+   * toute autre durée passe par un modificateur, qui tombe avec elle.
+   */
+  | "chromaticModify"
+  /**
+   * « choisissez une couleur » : pose la question
+   * (`ChromaticColorChoice`), puis résout `thenEffects` avec la couleur
+   * désignée (`EffectContext.chosenColor`). Une seule option possible (la
+   * « cinquième couleur non utilisée ») se résout sans question : il n'y a
+   * rien à décider.
+   */
+  | "chooseChromaticColor"
+  /**
+   * « vous êtes considéré comme contrôlant cette couleur pour vos effets
+   * Chromatiques » (La Première Pierre) : une couleur REVENDIQUÉE par le
+   * joueur, sans carte qui la porte ni Signal.
+   */
+  | "claimChromaticColor"
+  /**
+   * « regardez la première carte de la pioche adverse. Vous pouvez la
+   * placer sous sa pioche. » (Éclaireur à Cornes) : pose la question
+   * (`DeckTopDecisionChoice`) à celui qui regarde. Rien ne sort de la
+   * pioche tant qu'il n'a pas répondu.
+   */
+  | "deckTopDecision";
 
 /** Une valeur numérique d'effet, pour l'instant une constante — prête à
  * être étendue vers des formules (ex: "= nombre d'unités contrôlées"). */
@@ -399,6 +439,17 @@ export interface ChosenUnitFilter {
    * la cible légale ou non selon l'ordre des effets.
    */
   maxCost?: number;
+  /**
+   * « une Sentinelle d'une autre couleur » (Briseur du Brasier) : une
+   * Sentinelle dont aucune couleur n'est celle de la SOURCE
+   * (`isOtherColorSentinel`, `game/rules/chromatic.ts`).
+   */
+  otherChromaticColorThanSource?: boolean;
+  /**
+   * « une AUTRE unité » relativement à la carte DÉCLENCHEUSE (Pont de
+   * Verre : l'unité qui vient de survivre n'est pas « une autre »).
+   */
+  excludeTriggerSource?: boolean;
 }
 
 export type TargetSelector =
@@ -630,7 +681,100 @@ export interface EffectDefinition {
      * qui vient de le déclencher.
      */
     excludeSelf?: boolean;
+    /**
+     * Membres d'une famille (« toutes vos Sentinelles Chromatiques »,
+     * « une Sentinelle parmi elles »). Comme partout, l'archétype ne
+     * retient que les UNITÉS de la famille.
+     */
+    archetype?: ArchetypeId;
+    /**
+     * Écarte la cible DÉSIGNÉE de l'action (`chosenTargetInstanceId`) :
+     * « restaurez 1 Résistance à une AUTRE unité » après avoir frappé la
+     * première (Verrier de Pont).
+     */
+    excludeChosenTarget?: boolean;
   };
+  /**
+   * Lot 15 — « Si elle survit, … » : ne résout CET effet que si la cible
+   * désignée (`chosenTargetInstanceId`) est encore en jeu et que ses dégâts
+   * restent SOUS sa Résistance effective (Encore Debout ?, Verrier de Pont).
+   */
+  conditionChosenTargetSurvives?: boolean;
+  /** `rearmTriggers` : le déclencheur dont les capacités sont réarmées. */
+  rearmTrigger?: import("@/game/triggers/types").TriggerType;
+  /** `chromaticModify` / `claimChromaticColor` : couleur fixe. */
+  chromaticColor?: import("@/game/cards/types").ChromaticColor;
+  /**
+   * `chromaticModify` / `claimChromaticColor` : où lire la couleur quand elle
+   * n'est pas fixe — la cible désignée, la carte déclencheuse (l'Éclat
+   * désigné par `pickUnits`), ou la couleur choisie (`chooseChromaticColor`).
+   */
+  chromaticColorFrom?: "chosenUnit" | "triggerSource" | "chosenColor";
+  /** `chromaticModify` : la cible émet aussi le Signal de ces couleurs. */
+  chromaticEmits?: boolean;
+  /** `chromaticModify` : le Signal SANS la couleur (« émet également le Signal de cet Éclat »). */
+  chromaticEmitOnly?: boolean;
+  /**
+   * `chromaticModify` : qui reçoit la couleur quand la CIBLE en est la source
+   * — l'Éclat désigné (Héraut de Nacre : « elle prend sa couleur » ;
+   * Bracelets : « la Sentinelle équipée »).
+   */
+  chromaticRecipient?: "self" | "equippedUnit";
+  /**
+   * `pickUnits` : lit la couleur de la cible désignée au moment où la
+   * question est posée, et la transmet aux effets appliqués
+   * (`EffectContext.chosenColor`) — Transfert de Pierre, dont l'Éclat part
+   * avant que le joueur ait désigné sa Sentinelle.
+   */
+  captureChromaticColorFrom?: "chosenUnit";
+  /** `chromaticModify` : « elle bénéficie également de son propre Signal ». */
+  chromaticBenefitsOwn?: boolean;
+  /**
+   * `chooseChromaticColor` : `"all"` — les cinq ; `"missingOnSelf"` — celles
+   * que la source n'a pas encore (« la cinquième couleur non utilisée »).
+   */
+  chromaticOptions?: "all" | "missingOnSelf";
+  /**
+   * `lookAtDeckTop` : seules les cartes de la couleur lue sur la cible
+   * désignée sont prenables (« une Sentinelle de cette couleur », Coffret
+   * aux Cinq Pierres).
+   */
+  takeableColorFrom?: "chosenUnit";
+  /**
+   * `buff`/`debuff`/`chromaticModify` avec `duration: "untilYourNextTurn"` :
+   * le modificateur tombe au début du prochain tour de CELUI QUI L'A POSÉ,
+   * même s'il vise une unité adverse (« elle perd 2 Puissance jusqu'à VOTRE
+   * prochain tour », Stratège de l'Azur). Sans ce drapeau, la durée se lit
+   * sur le propriétaire du plateau — « jusqu'au prochain tour de son
+   * propriétaire », comme Chaîne de Travers le demande.
+   */
+  expiresOnControllersTurn?: boolean;
+  /** `buff`/`debuff` : mots-clés RETIRÉS pour la durée (« elle perd Garde »). */
+  removeKeywords?: string[];
+  /**
+   * `buff` : la Puissance n'est accordée que pour le prochain combat contre
+   * une cible portant ce mot-clé (Ouvrez la Ligne !). Le montant vient de
+   * `attackAmount`.
+   */
+  nextCombatVsKeyword?: string;
+  /** `summon` : invoque la carte du Cimetière désignée (Pierre Retrouvée : « un Éclat de cette couleur »). */
+  cardIdFrom?: "chosenGraveyardCard";
+  /**
+   * `summon` : invoque l'Éclat Chromatique de la couleur de la source,
+   * relue sur l'instance — même partie au Cimetière (Émissaire de Quartz,
+   * « à sa destruction, créez un Éclat Chromatique de cette couleur »).
+   */
+  chromaticShardOf?: "self";
+  /**
+   * `discountNextCards` : la carte qui profite de la réduction subit ces
+   * dégâts à son arrivée (La Mauvaise Réputation).
+   */
+  arrivalDamage?: number;
+  /**
+   * `pickUnits` : les unités désignées doivent être de couleurs
+   * chromatiques différentes (Les Couleurs Répondent).
+   */
+  distinctChromaticColors?: boolean;
   /**
    * État de Marée concerné par `ignoreNextTideDamage` (ex: "abysses" pour
    * "Bouchons de Cire : ignorez la prochaine perte d'Ancrage abyssale").

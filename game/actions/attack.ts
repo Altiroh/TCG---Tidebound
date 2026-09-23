@@ -1,6 +1,6 @@
 import type { CardInstance } from "@/game/cards/types";
 import { getCardDefinition } from "@/game/cards/sets/core";
-import { computeEffectiveStats } from "@/game/cards/stats";
+import { auraContextOf, computeEffectiveStats } from "@/game/cards/stats";
 import { getShipDefinition } from "@/game/environment/shipData";
 import { isVisibleDuringTide } from "@/game/cards/types";
 import { collectReactionCandidates } from "@/game/triggers/triggerBus";
@@ -16,7 +16,9 @@ import {
   assertUnitCanAttack,
   assertValidDefender,
   combine,
+  hasEffectiveKeyword,
 } from "@/game/rules/validation";
+import { applyBlueSignal } from "@/game/rules/chromaticSignals";
 import {
   consumeDirectShipDamageShield,
   consumeOwnDamageTakenShield,
@@ -26,12 +28,9 @@ import { getOpponent, getPlayer, type GameState, type PlayerState } from "@/game
 import type { ActionResult, AttackAction } from "@/game/actions/types";
 
 function effectiveAttack(unit: CardInstance, state: GameState): number {
-  const controller = getPlayer(state, unit.ownerId);
-  return computeEffectiveStats(unit, state.environment.tideState, {
-    controllerBoard: controller.board,
-    controllerReason: controller.reason,
-    tideOrientation: state.environment.tideOrientation,
-  }).attack;
+  // Contexte complet, joueur actif compris : le Signal Rouge ne prête sa
+  // Puissance que pendant le tour de son contrôleur.
+  return computeEffectiveStats(unit, state.environment.tideState, auraContextOf(state, getPlayer(state, unit.ownerId).id)).attack;
 }
 
 /**
@@ -56,6 +55,48 @@ function bonusDamageAgainst(attacker: CardInstance, defenderType: string, state:
     }
   }
   return bonus;
+}
+
+/**
+ * Bonus contre une cible portant un MOT-CLÉ (Lot 15) : « Lorsqu'elle attaque
+ * une unité ayant Garde, elle gagne +1 Puissance pour cette attaque »
+ * (Monture de Brèche), plus le bonus en attente « pour son prochain combat
+ * contre une unité ayant Garde » (Ouvrez la Ligne !), que ce combat
+ * consomme. Retourne le bonus et l'état où le bonus en attente a été
+ * dépensé.
+ */
+function bonusVsKeyword(
+  state: GameState,
+  attackerPlayerId: string,
+  attacker: CardInstance,
+  defender: CardInstance
+): { bonus: number; state: GameState } {
+  const defenderOwner = getOpponent(state, attackerPlayerId);
+  const porte = (keyword: string) => hasEffectiveKeyword(state, defenderOwner, defender, keyword);
+  let bonus = 0;
+  const vsKeyword = getCardDefinition(attacker.cardId).bonusDamageVsKeyword;
+  if (vsKeyword && porte(vsKeyword.keyword)) bonus += vsKeyword.amount;
+
+  const enAttente = attacker.modifiers.filter((m) => m.nextCombatBonusVsKeyword && porte(m.nextCombatBonusVsKeyword.keyword));
+  if (enAttente.length === 0) return { bonus, state };
+  bonus += enAttente.reduce((sum, m) => sum + m.nextCombatBonusVsKeyword!.amount, 0);
+  const depenses = new Set(enAttente.map((m) => m.id));
+  return {
+    bonus,
+    state: {
+      ...state,
+      players: state.players.map((p) =>
+        p.id === attackerPlayerId
+          ? {
+              ...p,
+              board: p.board.map((u) =>
+                u.instanceId === attacker.instanceId ? { ...u, modifiers: u.modifiers.filter((m) => !depenses.has(m.id)) } : u
+              ),
+            }
+          : p
+      ) as [PlayerState, PlayerState],
+    },
+  };
 }
 
 /** Somme `selfDamageOnDirectAttack` de l'attaquant et de tout Équipement qui lui serait attaché (ex: Requin Balafré, Harpon de Pont). */
@@ -126,6 +167,9 @@ function applyCombatDamageToUnit(
     nextState = restoreShield.state;
     reduction += restoreShield.restore;
   }
+  // Vieille-Selle : un coup de 3 ou plus, d'une seule source, perd 1.
+  const peau = getCardDefinition(unit.cardId).reduceLargeDamageTaken;
+  if (peau && amount >= peau.atLeast) reduction += peau.amount;
   const finalAmount = Math.max(0, amount - reduction);
   if (finalAmount <= 0) return { state: nextState, amountApplied: 0 };
   nextState = {
@@ -478,7 +522,7 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
             : p
         ) as [PlayerState, PlayerState],
       };
-      events.push({ ...base, type: "DAMAGE", targetInstanceId: attackerUnit.instanceId, amount: recoil });
+      events.push({ ...base, type: "DAMAGE", targetInstanceId: attackerUnit.instanceId, amount: recoil, cause: "combat" });
 
       const recoilDamagedTrigger = processTrigger(
         nextState,
@@ -490,11 +534,21 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
     }
   } else {
     const opponent = getOpponent(nextState, action.playerId);
-    const defenderUnit = opponent.board.find((u) => u.instanceId === action.defenderInstanceId);
+    const cibleDeclaree = opponent.board.find((u) => u.instanceId === action.defenderInstanceId);
     // Cible partie pendant les déclencheurs « Lorsqu'il attaque » : pas de coup.
-    if (!defenderUnit) return { ok: true, state: nextState, events };
+    if (!cibleDeclaree) return { ok: true, state: nextState, events };
+
+    // Signal Bleu (Lot 15) : la cible perd 1 Puissance AVANT l'échange —
+    // c'est sa riposte qu'il affaiblit.
+    const bleu = applyBlueSignal(nextState, attackerPlayer.id, attackerUnit, cibleDeclaree, etat.turnNumber);
+    nextState = bleu.state;
+    events.push(...bleu.events);
+    const defenderUnit = getOpponent(nextState, action.playerId).board.find((u) => u.instanceId === action.defenderInstanceId)!;
+
     const defenderType = getCardDefinition(defenderUnit.cardId).type;
-    const totalAttackerDamage = attackerDamage + bonusDamageAgainst(attackerUnit, defenderType, nextState);
+    const contreMotCle = bonusVsKeyword(nextState, attackerPlayer.id, attackerUnit, defenderUnit);
+    nextState = contreMotCle.state;
+    const totalAttackerDamage = attackerDamage + bonusDamageAgainst(attackerUnit, defenderType, nextState) + contreMotCle.bonus;
 
     // Dégâts au défenseur, réduits par son propre bouclier "1ère fois par
     // tour" (Baleine aux Cicatrices Blanches) et, si c'est une Structure,
@@ -502,7 +556,14 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
     const defenderDamageResult = applyCombatDamageToUnit(nextState, opponent.id, defenderUnit, totalAttackerDamage, etat.turnNumber);
     nextState = defenderDamageResult.state;
     if (defenderDamageResult.amountApplied > 0) {
-      events.push({ ...base, type: "DAMAGE", targetInstanceId: defenderUnit.instanceId, amount: defenderDamageResult.amountApplied, combat: "strike" });
+      events.push({
+        ...base,
+        type: "DAMAGE",
+        targetInstanceId: defenderUnit.instanceId,
+        amount: defenderDamageResult.amountApplied,
+        combat: "strike",
+        cause: "combat",
+      });
 
       const damagedTrigger = processTrigger(
         nextState,
@@ -521,7 +582,14 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
       const attackerDamageResult = applyCombatDamageToUnit(nextState, attackerPlayer.id, attackerUnit, retaliationDamage, etat.turnNumber);
       nextState = attackerDamageResult.state;
       if (attackerDamageResult.amountApplied > 0) {
-        events.push({ ...base, type: "DAMAGE", targetInstanceId: attackerUnit.instanceId, amount: attackerDamageResult.amountApplied, combat: "retaliation" });
+        events.push({
+          ...base,
+          type: "DAMAGE",
+          targetInstanceId: attackerUnit.instanceId,
+          amount: attackerDamageResult.amountApplied,
+          combat: "retaliation",
+          cause: "combat",
+        });
 
         const attackerDamagedTrigger = processTrigger(
           nextState,
@@ -532,6 +600,37 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
         events.push(...attackerDamagedTrigger.events);
       }
     }
+  }
+
+  // « Après qu'elle attaque, elle subit 1 dégât » (Bretteuse au Bord) : le
+  // combat est fini, la carte paie son élan — par son PROPRE effet, ce qui
+  // en fait « des dégâts infligés par l'un de vos effets » (Maître Verrier).
+  const apresAttaque = getCardDefinition(attackerUnit.cardId).selfDamageAfterAttack ?? 0;
+  const encoreLa = getPlayer(nextState, attackerPlayer.id).board.find((u) => u.instanceId === attackerUnit.instanceId);
+  if (apresAttaque > 0 && encoreLa) {
+    nextState = {
+      ...nextState,
+      players: nextState.players.map((p) =>
+        p.id === attackerPlayer.id
+          ? {
+              ...p,
+              board: p.board.map((u) =>
+                u.instanceId === attackerUnit.instanceId
+                  ? { ...u, damageMarked: u.damageMarked + apresAttaque, lastDamageCause: "effect" as const, lastDamageTurn: state.turnNumber }
+                  : u
+              ),
+            }
+          : p
+      ) as [PlayerState, PlayerState],
+    };
+    events.push({
+      ...base,
+      type: "DAMAGE",
+      targetInstanceId: attackerUnit.instanceId,
+      amount: apresAttaque,
+      cause: "effect",
+      sourcePlayerId: attackerPlayer.id,
+    });
   }
 
   const postAttackReasonLoss = controllerReasonLossAfterAttack(attackerUnit, nextState);

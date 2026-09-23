@@ -6,6 +6,32 @@ import type { TriggerType } from "@/game/triggers/types";
 export type CardId = string;
 
 /**
+ * Couleurs des Sentinelles Chromatiques (Lot 15 — Éclats en Selle). Chaque
+ * pierre donne accès à une couleur, et chaque couleur émet un SIGNAL dont
+ * les règles vivent dans `game/rules/chromatic.ts` : c'est une mécanique de
+ * famille, écrite une fois, pas un texte recopié carte par carte.
+ */
+export type ChromaticColor = "rouge" | "jaune" | "bleu" | "vert" | "violet";
+
+export const CHROMATIC_COLORS: readonly ChromaticColor[] = ["rouge", "jaune", "bleu", "vert", "violet"];
+
+/**
+ * Identité chromatique GAGNÉE en jeu (instance ou modificateur).
+ *
+ * Deux notions distinctes, que le Lot 15 sépare à dessein :
+ *  - `colors` — ce que la carte EST (« considérée comme étant de cette
+ *    couleur ») : c'est ce que comptent Formation Prismatique, l'Assemblage
+ *    ou « une Sentinelle d'une autre couleur » ;
+ *  - `emits` — les Signaux qu'elle ÉMET. Un Éclat Chromatique a une couleur
+ *    mais n'émet rien, et le Bracelet Chromatique ajoute une couleur sans
+ *    ajouter de Signal (« elle n'émet toujours qu'un seul Signal »).
+ */
+export interface ChromaticIdentity {
+  colors?: ChromaticColor[];
+  emits?: ChromaticColor[];
+}
+
+/**
  * Taxonomie verrouillée par le cadrage (`TCG_DATABASE.md` + "Règles &
  * mécaniques verrouillées", verrouillage du 2026-09-08) : Marin et
  * Créature sont des permanents "unité" (attaquent, défendent) ; Équipement
@@ -95,6 +121,25 @@ export interface TriggerSourceFilter {
    * pour ne rien résoudre.
    */
   fromHand?: boolean;
+  /**
+   * `onSurvivedDamage` seulement : la carte n'a survécu qu'à des dégâts de
+   * ces CAUSES (« des dégâts infligés par l'un de vos effets » → `["effect"]`,
+   * Maître Verrier, Pont de Verre). Absent = quels que soient les dégâts.
+   */
+  damageCauses?: DestructionCause[];
+  /**
+   * `onSurvivedDamage` seulement : ces dégâts ont été infligés par un effet
+   * que CONTRÔLE le porteur de la capacité (« par l'un de VOS effets »).
+   * Se combine avec `damageCauses` : au moins un des coups encaissés doit
+   * remplir les deux.
+   */
+  damageByController?: boolean;
+  /**
+   * `onCardDiscardedFromHand` seulement : la défausse vient d'un EFFET de
+   * carte, pas de la limite de main en fin de tour (Oracle d'Améthyste,
+   * « que vous piochez puis défaussez par un effet de carte »).
+   */
+  discardByEffect?: boolean;
 }
 
 /** Une capacité déclenchée : "quand X se produit, résous ces effets". */
@@ -289,7 +334,47 @@ export interface TriggeredAbility {
       fromZone?: "hand" | "board" | "deck";
       since: "thisTurn" | "lastOwnTurn";
     };
+    /**
+     * « pendant votre tour », « pendant chacun de vos tours » (Lot 15) : la
+     * capacité ne se déclenche que si son contrôleur est le joueur actif.
+     * Sur la CAPACITÉ, pour ne pas brûler le « une fois par tour » pendant
+     * le tour adverse.
+     */
+    duringOwnTurn?: boolean;
+    /**
+     * « si vous contrôlez au moins N autres unités » (Le Déserteur Gris) :
+     * compte les UNITÉS du contrôleur, la porteuse exclue.
+     */
+    controllerOtherUnitsAtLeast?: number;
+    /**
+     * « si votre Navire a moins d'Ancrage que le Navire adverse » (La Bête
+     * qu'on n'attend plus) : une comparaison, comme toutes les portes de
+     * comeback — elle s'éteint dès qu'on a rattrapé.
+     */
+    controllerAnchorBelowOpponent?: boolean;
+    /**
+     * « une Sentinelle d'une couleur que vous ne contrôliez pas encore »
+     * (Poste Chromatique) : la carte DÉCLENCHEUSE apporte au moins une
+     * couleur qu'aucune autre carte de votre plateau ne portait.
+     */
+    triggerSourceBringsNewChromaticColor?: boolean;
+    /** « À son arrivée PAR ASSEMBLAGE » (Le Géant Chromatique — ABYSSALE). */
+    selfArrivedByAssemblage?: boolean;
+    /**
+     * `onPermanentWouldBeDestroyed` : la carte condamnée part sous des
+     * DÉGÂTS (« devrait être détruite par des dégâts », Porte-Éclats) — pas
+     * sous un effet de destruction, un Sabordage ou la Marée.
+     */
+    triggerSourceDoomedByDamage?: boolean;
   };
+
+  /**
+   * « la première fois que CHACUNE de vos unités… » (Jusqu'à ce que ça
+   * casse) : le « une fois par tour » de `oncePerTurnKey` se suit sur la
+   * carte DÉCLENCHEUSE et non sur la porteuse. Une seule porteuse peut ainsi
+   * répondre une fois pour chaque unité, et non une fois en tout.
+   */
+  oncePerTurnPerTriggerSource?: boolean;
 
   /** Réagit à ce qui arrive à une AUTRE carte (cf. `TriggerSourceFilter`). */
   triggeredBy?: TriggerSourceFilter;
@@ -363,6 +448,18 @@ export interface ConditionalKeywordGrant {
   controllerReasonAtMost?: number;
   /** La Marée courante doit être l'un de ces états. */
   tideStateIn?: TideStateName[];
+  /** « Tant qu'il est blessé, il a Garde » (Mufle au Fanion) : la carte porte des dégâts. */
+  selfDamaged?: boolean;
+  /**
+   * « Tant qu'elle a 3 Résistance ou moins » (La Grande Fissure) : la
+   * Résistance RESTANTE — Résistance effective moins dégâts marqués.
+   */
+  selfResistanceAtMost?: number;
+  /**
+   * « Tant que vous contrôlez une Sentinelle d'une autre couleur » (Rempart
+   * du Soleil) — cf. `isOtherColorSentinel`, `game/rules/chromatic.ts`.
+   */
+  controllingOtherColorSentinel?: boolean;
 }
 
 /**
@@ -450,7 +547,97 @@ export interface CardDefinition {
      * tous.
      */
     controllerAnchorAtMostRatioOfStart?: number;
+    /**
+     * « si vous contrôlez au moins 3 couleurs différentes » (Formation
+     * Prismatique) : couleurs chromatiques CONTRÔLÉES, Éclats et couleurs
+     * revendiquées compris (`controlledChromaticColors`).
+     */
+    controllerChromaticColorsAtLeast?: number;
   };
+
+  /**
+   * Identité chromatique IMPRIMÉE (Lot 15). `colors` : ce que la carte est ;
+   * `emitsSignal` : elle émet le Signal de chacune de ses couleurs (une
+   * Sentinelle), là où un Éclat Chromatique n'émet rien.
+   * `benefitsFromOwnSignals` : elle bénéficie aussi des Signaux de ses
+   * propres couleurs (Le Géant Chromatique) — par défaut, une Sentinelle ne
+   * reçoit que ceux des AUTRES couleurs.
+   */
+  chromatic?: { colors?: ChromaticColor[]; emitsSignal?: boolean; benefitsFromOwnSignals?: boolean };
+
+  /**
+   * « Assemblage Chromatique » (Le Géant Chromatique) : coût ALTERNATIF.
+   * Placer au Cimetière `sentinels` Sentinelles de couleurs différentes que
+   * l'on contrôle, sans les détruire, et payer `reasonCost` au lieu du
+   * coût. La carte prend alors les couleurs utilisées, et les émet.
+   */
+  chromaticAssemblage?: { sentinels: number; reasonCost: number };
+
+  /**
+   * Pour un Équipement : les couleurs qu'il PORTE (gagnées en jeu) sont
+   * aussi celles de l'unité qu'il équipe, sans Signal de plus (Bracelet
+   * Chromatique, « elle n'émet toujours qu'un seul Signal »).
+   */
+  equipSharesChromaticColors?: boolean;
+
+  /** « Tant qu'il est blessé, il a +1 Puissance » (Duelliste de Verre). */
+  selfBuffWhileDamaged?: { attackAmount?: number; healthAmount?: number };
+
+  /** « Tant qu'il est votre seule unité, il a +1 Puissance » (Destrier du Ressac). */
+  selfBuffWhileOnlyUnit?: { attackAmount?: number; healthAmount?: number };
+
+  /**
+   * « Lorsqu'elle attaque une unité ayant Garde, elle gagne +1 Puissance
+   * pour cette attaque » (Monture de Brèche) : bonus de dégâts contre une
+   * CIBLE portant ce mot-clé, recalculé à chaque combat comme
+   * `bonusDamageVsTargetType`.
+   */
+  bonusDamageVsKeyword?: { keyword: string; amount: number };
+
+  /**
+   * « Après qu'elle attaque, elle subit 1 dégât » (Bretteuse au Bord) :
+   * après TOUTE attaque, directe ou contre une unité, une fois le combat
+   * résolu. À distinguer de `selfDamageOnDirectAttack`, réservé à la coque.
+   */
+  selfDamageAfterAttack?: number;
+
+  /**
+   * « Lorsqu'elle devrait subir 3 dégâts ou plus d'une seule source,
+   * réduisez ces dégâts de 1 » (Vieille-Selle). Chaque fois, sans limite :
+   * c'est une peau épaisse, pas un bouclier qui s'use.
+   */
+  reduceLargeDamageTaken?: { atLeast: number; amount: number };
+
+  /**
+   * « La première fois à chaque tour qu'elle devrait être renvoyée en main,
+   * déplacée ou détruite par un effet adverse, (vous pouvez) lui retirer
+   * 1 Résistance à la place » (Bête de Halage). Remplacement appliqué là où
+   * le renvoi et la destruction se décident — cf. l'exception motivée dans
+   * `tests/game/cardConformity.test.ts`.
+   */
+  opponentRemovalShieldOncePerTurn?: { healthLoss: number };
+
+  /**
+   * Pour un Équipement : « La première fois que l'unité équipée devrait
+   * être renvoyée en main par un effet adverse, détruisez cet Équipement à
+   * la place » (Harnais de Retenue). Consommé par sa propre destruction.
+   */
+  bounceSubstituteThenDestroy?: boolean;
+
+  /**
+   * Pour un Équipement : bonus accordé au porteur seulement s'il coûte au
+   * moins `cost` (Selle de Guerre, « si elle coûte 4 ou plus, elle gagne
+   * aussi +1 Résistance »). Coût IMPRIMÉ du porteur.
+   */
+  equipGrantsBuffIfBearerCostAtLeast?: { cost: number; attackAmount?: number; healthAmount?: number };
+
+  /**
+   * « Jusqu'à la fin du tour, … » porté par un PERMANENT (Jusqu'à ce que ça
+   * casse) : la carte reste en jeu le temps du tour, pour que sa capacité
+   * puisse répondre, et part au Cimetière quand le tour se termine — une
+   * expiration, ni mort ni Sabordage.
+   */
+  expiresAtEndOfTurn?: boolean;
   /** Texte d'ambiance / règles, affiché tel quel dans l'UI. */
   text?: string;
 
@@ -882,6 +1069,8 @@ export interface CardDefinition {
   auraBuffControllerCardTypes?: {
     /** Types de carte qui reçoivent l'aura (ex: `["marin", "creature"]` pour « les unités »). */
     targetTypes: CardType[];
+    /** Et, en plus, de ce sous-type (« Vos Éclats Chromatiques ont +1 Résistance », Coffret aux Cinq Pierres). */
+    targetSubtype?: string;
     attackAmount?: number;
     healthAmount?: number;
     /**
@@ -1006,7 +1195,13 @@ export const STATUS_SILENCE = "silence";
  * rejoint `PlayerState.graveyard`, pour qu'une future vue de défausse
  * puisse distinguer défausse/destruction/sabordage/expiration.
  */
-export type GraveyardCause = "discarded" | "destroyed" | "scuttled" | "expired";
+export type GraveyardCause =
+  | "discarded"
+  | "destroyed"
+  | "scuttled"
+  | "expired"
+  /** Placée au Cimetière pour un Assemblage Chromatique : ni détruite, ni Sabordée (Lot 15). */
+  | "assembled";
 
 /**
  * COMMENT une carte a quitté le plateau — plus fin que `GraveyardCause`, qui
@@ -1122,6 +1317,25 @@ export interface CardInstance {
    * `"scuttled"` est un Sabordage, un coût consenti : rien ne l'esquive.
    */
   pendingRemoval?: "destroyed" | "scuttled";
+
+  /**
+   * Joueur dont l'EFFET a décidé `pendingRemoval` (« détruite par un effet
+   * adverse », Bête de Halage). Absent : un départ décidé par une action ou
+   * par la Marée.
+   */
+  pendingRemovalBy?: string;
+
+  /**
+   * Identité chromatique GAGNÉE durablement (Lot 15) : la couleur choisie
+   * par l'Émissaire de Quartz, prise par le Héraut de Nacre, portée par un
+   * Bracelet, ou celles d'un Assemblage. Sur l'INSTANCE et non dans un
+   * modificateur : elle doit survivre jusqu'au Cimetière, où l'Émissaire
+   * la relit pour créer son Éclat.
+   */
+  chromatic?: ChromaticIdentity;
+
+  /** Arrivée en jeu par Assemblage Chromatique (Le Géant Chromatique). */
+  arrivedByAssemblage?: boolean;
 
   /**
    * Index (1-based) de la variante d'illustration tirée à la création, pour
@@ -1246,6 +1460,32 @@ export interface StatModifier {
    * l'entrave au bon moment.
    */
   silenced?: boolean;
+  /**
+   * « elle perd Garde jusqu'à la fin du tour » (Bête de Percée, Débusquer) :
+   * mots-clés RETIRÉS tant que le modificateur tient, quelle que soit leur
+   * source (imprimés, conditionnels, transmis). Prioritaire sur tout octroi.
+   */
+  removesKeywords?: string[];
+  /**
+   * Identité chromatique TEMPORAIRE (Transfert de Pierre, Bracelet de
+   * Résonance, Synchronisation !) — `benefitsOwnSignals` : « elle bénéficie
+   * également de son propre Signal ».
+   */
+  chromatic?: ChromaticIdentity & { benefitsOwnSignals?: boolean };
+  /**
+   * Joueur au début du tour DUQUEL tombe un modificateur `untilYourNextTurn`
+   * (`EffectDefinition.expiresOnControllersTurn`) : « jusqu'à VOTRE prochain
+   * tour » posé sur une unité adverse (Stratège de l'Azur, Signal Bleu).
+   * Absent = le propriétaire du plateau, comportement historique — celui que
+   * Chaîne de Travers demande (« jusqu'au prochain tour de son propriétaire »).
+   */
+  appliedBy?: string;
+  /**
+   * « +2 Puissance pour son prochain combat contre une unité ayant Garde ce
+   * tour » (Ouvrez la Ligne !) : bonus réservé au prochain combat contre
+   * une cible portant ce mot-clé, CONSOMMÉ par ce combat.
+   */
+  nextCombatBonusVsKeyword?: { keyword: string; amount: number };
 }
 
 /** Cette carte est-elle la version ABYSSALE ? Lecteur unique : l'interface ne doit jamais tester `subtype` pour ça. */

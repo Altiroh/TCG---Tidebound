@@ -1,3 +1,4 @@
+import type { ChromaticColor } from "@/game/cards/types";
 import type { GameEvent } from "@/game/events/types";
 import type { GameState, PlayerId } from "@/game/state/types";
 
@@ -21,6 +22,13 @@ export interface PlayCardAction {
    * poser un Équipement à côté de son porteur plutôt qu'à l'autre bout.
    */
   boardIndex?: number;
+  /**
+   * « Assemblage Chromatique » (Le Géant Chromatique, Lot 15) : les
+   * Sentinelles que le joueur place au Cimetière pour jouer la carte à son
+   * coût alternatif, chacune avec la couleur qu'il lui fait porter. Absent :
+   * la carte se paie à son coût normal.
+   */
+  assemblage?: Array<{ instanceId: string; color: ChromaticColor }>;
 }
 
 export interface AttackAction {
@@ -174,7 +182,11 @@ export interface ResolveChoiceAction {
     /** Réponse à « choisissez jusqu'à N unités » : celles que le joueur garde. */
     | { keepInstanceIds: string[] }
     /** Réponse à un ciblage multiple : les unités désignées. */
-    | { pickInstanceIds: string[] };
+    | { pickInstanceIds: string[] }
+    /** Réponse à « choisissez une couleur » (Lot 15). */
+    | { color: ChromaticColor }
+    /** Réponse au regard de la pioche adverse : la laisser dessus, ou la placer dessous (Éclaireur à Cornes). */
+    | { deckTop: "keep" | "bottom" };
 }
 
 /**

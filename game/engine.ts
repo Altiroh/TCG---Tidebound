@@ -17,7 +17,15 @@ import { openReactionWindowIfEligible, ouvrirFenetrePour } from "@/game/reaction
 import { resolveOceanJudgment } from "@/game/rules/oceanJudgment";
 import { refreshTurnTimer } from "@/game/rules/turnTimer";
 import { processDeaths } from "@/game/state/processDeaths";
-import { processLoneCreatureChanges, processPowerGains, snapshotEffectivePower, snapshotLoneCreatures } from "@/game/triggers/triggerBus";
+import { processChromaticSignals } from "@/game/rules/chromaticSignals";
+import {
+  processLoneCreatureChanges,
+  processPowerGains,
+  processReasonGained,
+  processSurvivedDamage,
+  snapshotEffectivePower,
+  snapshotLoneCreatures,
+} from "@/game/triggers/triggerBus";
 import type { GameEvent } from "@/game/events/types";
 import { findCardInstance, type GameState } from "@/game/state/types";
 
@@ -140,6 +148,28 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
   }
 
   let deaths = processDeaths(result.state, state.turnNumber);
+
+  // --- CE QUI NE SE SAIT QU'APRÈS LES MORTS (Lot 15) ---------------------
+  //
+  // « Survivre à des dégâts » n'a de sens qu'une fois la passe de morts
+  // faite ; les Signaux Vert et Violet lisent la carte posée ou la cible
+  // désignée telles que l'action les a laissées ; « récupérer de la Raison
+  // grâce à une carte » se lit sur tout ce qui précède, Signal Vert compris.
+  // Une destruction encore en suspens (fenêtre de sauvetage) repousse tout
+  // cela à la reprise : on ne sait pas encore qui a survécu.
+  if (!deaths.state.pendingDestruction) {
+    const tour = deaths.state.turnNumber;
+    const signaux = processChromaticSignals(deaths.state, result.events, tour);
+    const survies = processSurvivedDamage(signaux.state, [...result.events, ...deaths.events], tour);
+    const raison = processReasonGained(survies.state, [...result.events, ...signaux.events, ...survies.events], tour);
+    const produits = [...signaux.events, ...survies.events, ...raison.events];
+    if (produits.length > 0) {
+      const encore = processDeaths(raison.state, state.turnNumber);
+      deaths = { state: encore.state, events: [...deaths.events, ...produits, ...encore.events] };
+    } else {
+      deaths = { ...deaths, state: raison.state };
+    }
+  }
 
   // La passe s'arrête d'elle-même quand un sauvetage est possible. On ouvre
   // alors la fenêtre ICI, avec les événements qui la justifient : c'est le
