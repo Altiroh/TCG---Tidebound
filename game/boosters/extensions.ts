@@ -2,6 +2,7 @@ import { ARCHETYPE_LABELS, type ArchetypeId } from "@/game/cards/archetypes";
 import {
   BOOSTER_BIENVENUE,
   BOOSTER_DEFAUT,
+  BOOSTER_ECLATS_EN_SELLE,
   BOOSTER_ETRANGETE_SOUS_MARINE,
   BOOSTER_POISSONS_PAS_FRAIS,
   BOOSTER_NECESSAIRE_DU_MARIN,
@@ -160,6 +161,21 @@ const EXTENSIONS: readonly BoosterExtension[] = [
       "Des feux se rallument dans la brume, et des voix s'élèvent depuis les flots. La Veillée des Disparus explore " +
       "la frontière entre la mémoire et l'oubli : les petits qui attendent encore sur le quai, les promesses qu'on " +
       "leur a faites pour qu'ils patientent, et tout ce qu'un équipage laisse derrière lui sans jamais l'avouer.",
+  },
+  {
+    // Trois familles dans un même sachet. Les Sentinelles y pèsent 25 cartes
+    // sur 61 (41 %), au-dessus du seuil d'annonce : la règle du rayon impose
+    // de les nommer, et le récit dit les deux autres.
+    boosterId: BOOSTER_ECLATS_EN_SELLE,
+    name: "Éclats en Selle",
+    kind: "extension",
+    archetype: "sentinelle-chromatique",
+    tagline: "Du verre, des bêtes, des pierres",
+    lore:
+      "Un équipage qui se fêle et tient quand même, des Bêtes de guerre que personne n'appelle plus qu'à la " +
+      "dernière extrémité, et des marins qui ont trouvé au fond des pierres de couleur qui répondent les unes aux " +
+      "autres. Éclats en Selle réunit ce qui brille parce que ça a été brisé — et ce qui charge quand plus rien ne " +
+      "tient la ligne.",
   },
 ];
 

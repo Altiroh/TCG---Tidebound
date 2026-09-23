@@ -420,6 +420,92 @@ const NECESSAIRE_DU_MARIN_RARITY: Record<string, CardRarity> = {
   "la-mer-reprend-tout": "legendary",
 };
 
+/**
+ * Lot 15 — Éclats en Selle. Raretés PROVISOIRES, à valider par le design :
+ * la page de lot le dit elle-même (« Aucun pool de raretés / Abyssales
+ * n'est encore verrouillé »), et seule la version STANDARD du Géant
+ * Chromatique y porte une rareté (Rare).
+ *
+ * Même règle relisible que le Lot 14 : la rareté suit ce que la carte
+ * VERROUILLE. Les corps d'identité bon marché et les soutiens qu'on veut en
+ * trois exemplaires sont Communs ; ce qui fait tourner un moteur de famille
+ * est Peu commun ; ce qui retourne un échange à lui seul est Rare ; ce qui
+ * referme une partie, Épique. Aucune Légendaire : le lot n'a pas de carte de
+ * ce registre, le palier se replie sur le plus proche au tirage.
+ *
+ * La variante Abyssale du Géant n'est pas listée : son suffixe suffit.
+ */
+const ECLATS_EN_SELLE_RARITY: Record<string, CardRarity> = {
+  // --- Équipage de Verre ---------------------------------------------------
+  "eclaireur-ebreche": "common",
+  "matelot-fele": "common",
+  "duelliste-de-verre": "common",
+  "polisseuse-des-felures": "common",
+  "vigie-aux-fissures": "uncommon",
+  "verrier-de-pont": "uncommon",
+  "canonnier-fele": "uncommon",
+  "bretteuse-au-bord": "uncommon",
+  "porte-eclats": "rare",
+  "maitre-verrier": "rare",
+  "la-grande-fissure": "epic",
+  "eclat-de-bouteille": "common",
+  "encore-debout": "common",
+  "bouclier-fendu": "common",
+  "trinquer-trop-fort": "uncommon",
+  "pont-de-verre": "uncommon",
+  "jusqua-ce-que-ca-casse": "epic",
+  // --- Cavalerie -------------------------------------------------------------
+  "monture-de-breche": "common",
+  "bete-de-halage": "common",
+  "destrier-du-ressac": "common",
+  "eclaireur-a-cornes": "uncommon",
+  "mufle-au-fanion": "uncommon",
+  "chargeur-des-ecueils": "uncommon",
+  "vieille-selle": "uncommon",
+  // L'anti-Garde : « juste assez pour enseigner que ce contre existe et
+  // donner envie d'obtenir le booster » — une réponse qui décide d'un
+  // échange, donc Rare pour la Bête, Peu commune pour l'Objet qui s'use.
+  "bete-de-percee": "rare",
+  "mange-fer": "rare",
+  "le-deserteur-gris": "rare",
+  "la-bete-quon-nattend-plus": "epic",
+  "selle-de-guerre": "common",
+  "harnais-de-retenue": "common",
+  "ouvrez-la-ligne": "common",
+  debusquer: "uncommon",
+  "pas-un-pas-de-plus": "uncommon",
+  "la-mauvaise-reputation": "rare",
+  // --- Sentinelles Chromatiques -------------------------------------------
+  // Les Sentinelles « à Signal pur », qu'il faut réunir pour jouer la
+  // famille, sont Communes : un plan à deux couleurs doit se monter sans
+  // chance au tirage.
+  "heros-de-la-flamme": "common",
+  "gardienne-de-leclat": "common",
+  "tacticien-de-lecume": "common",
+  "porteur-de-jade": "common",
+  "veilleuse-de-lombre": "common",
+  "briseur-du-brasier": "uncommon",
+  "rempart-du-soleil": "uncommon",
+  "stratege-de-lazur": "uncommon",
+  "survivant-de-la-mousse": "uncommon",
+  "oracle-damethyste": "uncommon",
+  "emissaire-de-quartz": "rare",
+  "heraut-de-nacre": "rare",
+  "appel-des-sentinelles": "common",
+  "pierre-retrouvee": "common",
+  "poste-chromatique": "common",
+  "bracelet-chromatique": "uncommon",
+  "transfert-de-pierre": "uncommon",
+  "la-premiere-pierre": "uncommon",
+  "bracelet-de-resonance": "rare",
+  "coffret-aux-cinq-pierres": "rare",
+  synchronisation: "rare",
+  "les-couleurs-repondent": "rare",
+  "formation-prismatique": "epic",
+  // Seule rareté donnée par Notion pour le lot (« Rare · À playtester »).
+  "le-geant-chromatique": "rare",
+};
+
 const ABYSSAL_VARIANT_SUFFIX = "-abyssal";
 
 /**
@@ -436,6 +522,7 @@ export function rarityForCardId(cardId: string): CardRarity | null {
     RAPIECER_LA_COQUE_RARITY[cardId] ??
     VEILLEE_DES_DISPARUS_RARITY[cardId] ??
     NECESSAIRE_DU_MARIN_RARITY[cardId] ??
+    ECLATS_EN_SELLE_RARITY[cardId] ??
     PROVISIONAL_RARITY[cardId] ??
     null
   );

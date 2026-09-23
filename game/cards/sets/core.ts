@@ -1,5 +1,6 @@
 import { HIDDEN_CARD_DEFINITION, HIDDEN_CARD_ID } from "@/game/cards/hiddenCard";
 import { TOKEN_SET } from "@/game/cards/sets/tokens";
+import { ECLATS_EN_SELLE_SET } from "@/game/cards/sets/eclatsEnSelle";
 import { EQUIPPABLE_CARD_TYPES, type CardDefinition, type CardInstance } from "@/game/cards/types";
 
 /**
@@ -5664,6 +5665,9 @@ export const CORE_SET: CardDefinition[] = [
     id: "le-brise-ligne",
     name: "Le Brise-Ligne",
     type: "marin",
+    // Rattaché à l'Équipage de Verre par le Lot 15 (Notion, 23/09/2026) —
+    // sans rien changer à son texte : la famille ne compte pas ses membres.
+    archetype: "equipage-de-verre",
     setCode: NECESSAIRE_DU_MARIN,
     cost: 6,
     attack: 5,
@@ -5801,6 +5805,9 @@ export const CORE_SET: CardDefinition[] = [
       { type: "heal", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } },
     ],
   },
+  // Lot 15 — Éclats en Selle : 59 cartes, dans leur propre module
+  // (`game/cards/sets/eclatsEnSelle.ts`).
+  ...ECLATS_EN_SELLE_SET,
 ];
 
 /**

@@ -30,6 +30,7 @@ const OWNED: Readonly<Record<string, number>> = {
   "poissons-pas-frais": 1,
   "etrangete-sous-marine": 5,
   "la-veillee-des-disparus": 7,
+  "eclats-en-selle": 3,
 };
 
 /** Boosters ouverts depuis la dernière Abyssale, pour voir le compteur de pity. */
