@@ -220,23 +220,24 @@ export const NECESSAIRE_DU_MARIN_PACK_VISUAL: BoosterPackVisual = {
 };
 
 /**
- * Éclats en Selle — sixième booster (23/09/2026), le Lot 15. PLACEHOLDER :
- * l'illustration du sachet (un bébé Cavalerie en couche culotte jouant avec
- * une pierre de verre et une pierre chromatique, bracelet métallique en vue
- * — Notion, « Direction visuelle du booster ») n'existe pas encore.
+ * Éclats en Selle — sixième booster (23/09/2026), le Lot 15. Un bébé
+ * Cavalerie en couche culotte, une pierre de verre dans une patte et une
+ * pierre chromatique dans l'autre.
  *
- * Les trois planches sont générées au calage le plus simple : même largeur
- * partout, la bande est EXACTEMENT le haut du sachet fermé (280 px sur
- * 1350), et le corps en est le reste. D'où des rectangles pleins et une
- * déchirure droite à 20,7 %.
+ * Livré comme le Nécessaire : une planche fermée, une planche ouverte
+ * portant la bande ET le corps. Ici un vide sépare les deux morceaux sur
+ * toute la largeur : la découpe suit la première ligne vide sous la bande.
+ * Le corps est pris depuis le HAUT du sachet (zone de la bande laissée
+ * transparente), pour que bande et fermé se calent dans son repère.
  *
- * POUR LIVRER LE VISUEL DÉFINITIF, et rien d'autre à toucher ailleurs :
- *   1. déposer les trois fichiers dans `public/assets/boosters/eclats-en-selle/`
- *      sous les mêmes noms, en passant par
- *      `node scripts/optimizeImages.mjs --delete-sources` ;
- *   2. REMESURER le calage sur les nouvelles images (`aspectRatio`,
- *      `closedRect`, `topRect`, `tearLineTop`, `mouth`), comme pour les
- *      autres sachets — ces nombres-ci ne valent que pour le placeholder.
+ * Mesures, sur les planches 1024 × 1536 :
+ *   - corps 688 × 1488 px, bande 669 × 216 px à 14 px du bord gauche,
+ *     fermé 734 × 1486 px, décalé de 25 px à gauche ;
+ *   - déchirure : première ligne où le sachet couvre 85 % de sa largeur,
+ *     à 18 % de la hauteur ;
+ *   - `mouth` : étendue des dos de cartes peints à mi-hauteur entre leur
+ *     sommet et la déchirure (72 % de la largeur, centrée), la vraie carte
+ *     partant 6 % sous le bord peint.
  */
 export const ECLATS_EN_SELLE_PACK_VISUAL: BoosterPackVisual = {
   id: "eclats-en-selle",
@@ -245,14 +246,15 @@ export const ECLATS_EN_SELLE_PACK_VISUAL: BoosterPackVisual = {
     openTop: "/assets/boosters/eclats-en-selle/eclats-en-selle-open-top.webp",
     openBottom: "/assets/boosters/eclats-en-selle/eclats-en-selle-open-bottom.webp",
   },
-  // Corps 800 × 1350 px (bande transparente comprise).
-  aspectRatio: 800 / 1350,
-  closedRect: { left: 0, top: 0, width: 100, height: 100 },
-  // Bande 800 × 280 px → 100 % × 20.74 %, posée à sa place exacte.
-  topRect: { left: 0, top: 0, width: 100, height: 20.74 },
+  // Corps 688 × 1488 px.
+  aspectRatio: 688 / 1488,
+  // Fermé 734 × 1486 px.
+  closedRect: { left: -3.63, top: 0.07, width: 106.69, height: 99.87 },
+  // Bande 669 × 216 px → 97.24 % × 14.52 %.
+  topRect: { left: 2.03, top: 0, width: 97.24, height: 14.52 },
   topHinge: { x: 96, y: 84 },
-  tearLineTop: 21,
-  mouth: { centerX: 0, width: 0.56, startTop: 0.24 },
+  tearLineTop: 18,
+  mouth: { centerX: 0, width: 0.72, startTop: 0.24 },
 };
 
 /** Id de booster (table `boosters`) → visuel. Tout id inconnu retombe sur le visuel par défaut. */
