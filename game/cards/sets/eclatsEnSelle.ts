@@ -13,10 +13,11 @@ import type { CardDefinition } from "@/game/cards/types";
  *  - la CAVALERIE, des Bêtes puissantes, peu nombreuses, non-swarm — de
  *    bonnes cartes seules, pas de tribal obligatoire, et juste assez
  *    d'anti-Garde pour apprendre que le contre existe ;
- *  - les SENTINELLES CHROMATIQUES, dont chaque couleur émet un Signal au
- *    profit des autres (`game/rules/chromatic.ts`). Le texte « Signal
- *    Rouge — … » décrit la règle de la couleur, écrite une fois dans le
- *    moteur, et la définition ne porte que la couleur.
+ *  - les SENTINELLES CHROMATIQUES, dont chacune émet le Signal de sa
+ *    couleur au profit de toutes les autres, en cumul
+ *    (`game/rules/chromatic.ts`). Le texte « Signal Rouge — … » décrit la
+ *    règle de la couleur, écrite une fois dans le moteur, et la définition
+ *    ne porte que la couleur.
  *
  * Valeurs chiffrées : celles de Notion, « à playtester » — rien n'est
  * rééquilibré ici. Aucune limite d'exemplaires n'est donnée par le lot : la
@@ -52,6 +53,7 @@ const EQUIPAGE_DE_VERRE: CardDefinition[] = [
     archetype: "equipage-de-verre",
     setCode: ECLATS_EN_SELLE,
     cost: 1,
+    maxCopies: 3,
     attack: 1,
     health: 2,
     text:
@@ -82,6 +84,7 @@ const EQUIPAGE_DE_VERRE: CardDefinition[] = [
     archetype: "equipage-de-verre",
     setCode: ECLATS_EN_SELLE,
     cost: 1,
+    maxCopies: 3,
     attack: 2,
     health: 3,
     text: "La première fois à chaque tour qu'il survit à des dégâts, il gagne +1 Puissance.",
@@ -103,6 +106,7 @@ const EQUIPAGE_DE_VERRE: CardDefinition[] = [
     archetype: "equipage-de-verre",
     setCode: ECLATS_EN_SELLE,
     cost: 2,
+    maxCopies: 3,
     attack: 1,
     health: 4,
     text:
@@ -128,6 +132,7 @@ const EQUIPAGE_DE_VERRE: CardDefinition[] = [
     archetype: "equipage-de-verre",
     setCode: ECLATS_EN_SELLE,
     cost: 2,
+    maxCopies: 3,
     attack: 2,
     health: 4,
     text:
@@ -162,6 +167,7 @@ const EQUIPAGE_DE_VERRE: CardDefinition[] = [
     archetype: "equipage-de-verre",
     setCode: ECLATS_EN_SELLE,
     cost: 2,
+    maxCopies: 3,
     attack: 2,
     health: 3,
     text: "La première fois à chaque tour qu'il survit à des dégâts, il gagne +1 Puissance. Tant qu'il est blessé, il a +1 Puissance.",
@@ -184,6 +190,7 @@ const EQUIPAGE_DE_VERRE: CardDefinition[] = [
     archetype: "equipage-de-verre",
     setCode: ECLATS_EN_SELLE,
     cost: 3,
+    maxCopies: 2,
     attack: 3,
     health: 4,
     text:
@@ -223,6 +230,7 @@ const EQUIPAGE_DE_VERRE: CardDefinition[] = [
     archetype: "equipage-de-verre",
     setCode: ECLATS_EN_SELLE,
     cost: 3,
+    maxCopies: 2,
     attack: 2,
     health: 5,
     text:
@@ -250,6 +258,7 @@ const EQUIPAGE_DE_VERRE: CardDefinition[] = [
     archetype: "equipage-de-verre",
     setCode: ECLATS_EN_SELLE,
     cost: 3,
+    maxCopies: 3,
     attack: 2,
     health: 4,
     text: "Au début de votre tour, restaurez 1 Résistance à une autre unité blessée que vous contrôlez.",
@@ -275,6 +284,7 @@ const EQUIPAGE_DE_VERRE: CardDefinition[] = [
     archetype: "equipage-de-verre",
     setCode: ECLATS_EN_SELLE,
     cost: 4,
+    maxCopies: 3,
     attack: 4,
     health: 4,
     text: "Après qu'elle attaque, elle subit 1 dégât. La première fois à chaque tour qu'elle survit à des dégâts, elle gagne +1 Puissance.",
@@ -297,6 +307,7 @@ const EQUIPAGE_DE_VERRE: CardDefinition[] = [
     archetype: "equipage-de-verre",
     setCode: ECLATS_EN_SELLE,
     cost: 4,
+    maxCopies: 2,
     attack: 3,
     health: 6,
     text:
@@ -321,6 +332,7 @@ const EQUIPAGE_DE_VERRE: CardDefinition[] = [
     archetype: "equipage-de-verre",
     setCode: ECLATS_EN_SELLE,
     cost: 5,
+    maxCopies: 2,
     attack: 5,
     health: 7,
     text:
@@ -351,6 +363,7 @@ const EQUIPAGE_DE_VERRE: CardDefinition[] = [
     type: "objet",
     setCode: ECLATS_EN_SELLE,
     cost: 1,
+    maxCopies: 3,
     text: "Brisez cet Objet : infligez 1 dégât à une unité.",
     onBreakEffects: [
       { type: "damage", target: { kind: "chosenUnit", among: { unitsOnly: true, sameController: false } }, amount: { kind: "flat", value: 1 } },
@@ -362,6 +375,7 @@ const EQUIPAGE_DE_VERRE: CardDefinition[] = [
     type: "objet",
     setCode: ECLATS_EN_SELLE,
     cost: 2,
+    maxCopies: 3,
     text: "Brisez cet Objet : infligez 1 dégât à une unité blessée. Si elle survit, restaurez-lui ensuite 2 Résistance.",
     onBreakEffects: [
       {
@@ -383,6 +397,7 @@ const EQUIPAGE_DE_VERRE: CardDefinition[] = [
     type: "objet",
     setCode: ECLATS_EN_SELLE,
     cost: 2,
+    maxCopies: 3,
     text: "Brisez cet Objet : infligez 1 dégât à jusqu'à deux unités.",
     onBreakEffects: [
       {
@@ -401,6 +416,7 @@ const EQUIPAGE_DE_VERRE: CardDefinition[] = [
     permanent: true,
     setCode: ECLATS_EN_SELLE,
     cost: 2,
+    maxCopies: 3,
     health: 2,
     text: "L'unité équipée gagne +2 Résistance maximale. Sabordez cet Équipement : restaurez 2 Résistance à l'unité équipée.",
     onPlayEffects: [{ type: "attachEquipment", target: { kind: "chosenUnit" } }],
@@ -421,6 +437,7 @@ const EQUIPAGE_DE_VERRE: CardDefinition[] = [
     type: "structure",
     setCode: ECLATS_EN_SELLE,
     cost: 3,
+    maxCopies: 3,
     health: 3,
     durationTurns: 4,
     text:
@@ -450,6 +467,7 @@ const EQUIPAGE_DE_VERRE: CardDefinition[] = [
     type: "anomalie",
     setCode: ECLATS_EN_SELLE,
     cost: 5,
+    maxCopies: 1,
     text:
       "Jusqu'à la fin du tour, la première fois que chacune de vos unités survit à des dégâts, vous pouvez lui " +
       "infliger 1 dégât supplémentaire. Si elle survit encore, déclenchez à nouveau ses effets liés au fait de " +
@@ -491,6 +509,7 @@ const CAVALERIE_LOT: CardDefinition[] = [
     archetype: "cavalerie",
     setCode: ECLATS_EN_SELLE,
     cost: 2,
+    maxCopies: 3,
     attack: 3,
     health: 3,
     text: "Lorsqu'elle attaque une unité ayant Garde, elle gagne +1 Puissance pour cette attaque.",
@@ -504,6 +523,7 @@ const CAVALERIE_LOT: CardDefinition[] = [
     archetype: "cavalerie",
     setCode: ECLATS_EN_SELLE,
     cost: 2,
+    maxCopies: 3,
     attack: 2,
     health: 4,
     text:
@@ -519,6 +539,7 @@ const CAVALERIE_LOT: CardDefinition[] = [
     archetype: "cavalerie",
     setCode: ECLATS_EN_SELLE,
     cost: 3,
+    maxCopies: 3,
     attack: 4,
     health: 3,
     text: "À son arrivée, regardez la première carte de la pioche adverse. Vous pouvez la placer sous sa pioche.",
@@ -533,6 +554,7 @@ const CAVALERIE_LOT: CardDefinition[] = [
     archetype: "cavalerie",
     setCode: ECLATS_EN_SELLE,
     cost: 3,
+    maxCopies: 3,
     attack: 3,
     health: 5,
     text: "Tant qu'il est votre seule unité, il a +1 Puissance.",
@@ -546,6 +568,7 @@ const CAVALERIE_LOT: CardDefinition[] = [
     archetype: "cavalerie",
     setCode: ECLATS_EN_SELLE,
     cost: 4,
+    maxCopies: 3,
     attack: 4,
     health: 6,
     text: "Tant qu'il est blessé, il a Garde.",
@@ -559,6 +582,7 @@ const CAVALERIE_LOT: CardDefinition[] = [
     archetype: "cavalerie",
     setCode: ECLATS_EN_SELLE,
     cost: 4,
+    maxCopies: 3,
     attack: 5,
     health: 4,
     text: "À son arrivée, si l'adversaire contrôle plus d'unités que vous, il a Pied marin jusqu'à la fin du tour.",
@@ -588,6 +612,7 @@ const CAVALERIE_LOT: CardDefinition[] = [
     archetype: "cavalerie",
     setCode: ECLATS_EN_SELLE,
     cost: 4,
+    maxCopies: 2,
     attack: 4,
     health: 5,
     text: "À son arrivée, choisissez une unité adverse : elle perd Garde jusqu'à la fin du tour.",
@@ -618,6 +643,7 @@ const CAVALERIE_LOT: CardDefinition[] = [
     archetype: "cavalerie",
     setCode: ECLATS_EN_SELLE,
     cost: 5,
+    maxCopies: 2,
     attack: 5,
     health: 7,
     text: "La première fois à chaque tour qu'un Équipement ou une Structure adverse est détruit, il gagne +1 Puissance.",
@@ -642,6 +668,7 @@ const CAVALERIE_LOT: CardDefinition[] = [
     archetype: "cavalerie",
     setCode: ECLATS_EN_SELLE,
     cost: 5,
+    maxCopies: 2,
     attack: 4,
     health: 8,
     text: "Lorsqu'elle devrait subir 3 dégâts ou plus d'une seule source, réduisez ces dégâts de 1.",
@@ -655,6 +682,7 @@ const CAVALERIE_LOT: CardDefinition[] = [
     archetype: "cavalerie",
     setCode: ECLATS_EN_SELLE,
     cost: 5,
+    maxCopies: 3,
     attack: 6,
     health: 5,
     text: "À la fin de votre tour, si vous contrôlez au moins 3 autres unités, renvoyez-le dans votre main.",
@@ -675,6 +703,7 @@ const CAVALERIE_LOT: CardDefinition[] = [
     archetype: "cavalerie",
     setCode: ECLATS_EN_SELLE,
     cost: 6,
+    maxCopies: 2,
     attack: 6,
     health: 7,
     text: "À son arrivée, si votre Navire a moins d'Ancrage que le Navire adverse, récupérez 2 Ancrage.",
@@ -696,6 +725,7 @@ const CAVALERIE_LOT: CardDefinition[] = [
     permanent: true,
     setCode: ECLATS_EN_SELLE,
     cost: 2,
+    maxCopies: 3,
     health: 2,
     text: "L'unité équipée gagne +1 Puissance. Si elle coûte 4 ou plus, elle gagne aussi +1 Résistance.",
     onPlayEffects: [{ type: "attachEquipment", target: { kind: "chosenUnit" } }],
@@ -709,6 +739,7 @@ const CAVALERIE_LOT: CardDefinition[] = [
     permanent: true,
     setCode: ECLATS_EN_SELLE,
     cost: 2,
+    maxCopies: 3,
     health: 2,
     text:
       "La première fois que l'unité équipée devrait être renvoyée en main par un effet adverse, détruisez cet " +
@@ -722,6 +753,7 @@ const CAVALERIE_LOT: CardDefinition[] = [
     type: "objet",
     setCode: ECLATS_EN_SELLE,
     cost: 2,
+    maxCopies: 2,
     text: "Brisez cet Objet : une unité adverse perd Garde jusqu'à la fin du tour.",
     onBreakEffects: [
       {
@@ -739,6 +771,7 @@ const CAVALERIE_LOT: CardDefinition[] = [
     type: "objet",
     setCode: ECLATS_EN_SELLE,
     cost: 3,
+    maxCopies: 3,
     text: "Brisez cet Objet : une unité que vous contrôlez gagne +2 Puissance pour son prochain combat contre une unité ayant Garde ce tour.",
     onBreakEffects: [
       {
@@ -757,6 +790,7 @@ const CAVALERIE_LOT: CardDefinition[] = [
     type: "objet",
     setCode: ECLATS_EN_SELLE,
     cost: 3,
+    maxCopies: 2,
     text:
       "Lorsqu'une unité adverse déclare une attaque directe contre votre Navire, Brisez cet Objet : une unité que " +
       "vous contrôlez gagne Garde jusqu'à la fin du tour.",
@@ -801,6 +835,7 @@ const CAVALERIE_LOT: CardDefinition[] = [
     permanent: false,
     setCode: ECLATS_EN_SELLE,
     cost: 4,
+    maxCopies: 3,
     text:
       "Jusqu'à votre prochain tour, la première unité que vous jouez coûte 1 Raison de moins. À son arrivée, " +
       "elle subit 1 dégât.",
@@ -830,10 +865,11 @@ const SENTINELLES: CardDefinition[] = [
     archetype: "sentinelle-chromatique",
     setCode: ECLATS_EN_SELLE,
     cost: 2,
+    maxCopies: 3,
     attack: 3,
     health: 2,
     chromatic: { colors: ["rouge"], emitsSignal: true },
-    text: "Signal Rouge — Vos Sentinelles d'une autre couleur ont +1 Puissance pendant votre tour.",
+    text: "Signal Rouge — Vos autres Sentinelles ont +1 Puissance pendant votre tour.",
   },
   {
     id: "briseur-du-brasier",
@@ -842,6 +878,7 @@ const SENTINELLES: CardDefinition[] = [
     archetype: "sentinelle-chromatique",
     setCode: ECLATS_EN_SELLE,
     cost: 4,
+    maxCopies: 3,
     attack: 4,
     health: 4,
     chromatic: { colors: ["rouge"], emitsSignal: true },
@@ -870,10 +907,11 @@ const SENTINELLES: CardDefinition[] = [
     archetype: "sentinelle-chromatique",
     setCode: ECLATS_EN_SELLE,
     cost: 2,
+    maxCopies: 3,
     attack: 1,
     health: 4,
     chromatic: { colors: ["jaune"], emitsSignal: true },
-    text: "Signal Jaune — Vos Sentinelles d'une autre couleur ont +1 Résistance maximale.",
+    text: "Signal Jaune — Vos autres Sentinelles ont +1 Résistance maximale.",
   },
   {
     id: "rempart-du-soleil",
@@ -882,6 +920,7 @@ const SENTINELLES: CardDefinition[] = [
     archetype: "sentinelle-chromatique",
     setCode: ECLATS_EN_SELLE,
     cost: 4,
+    maxCopies: 3,
     attack: 3,
     health: 5,
     chromatic: { colors: ["jaune"], emitsSignal: true },
@@ -895,11 +934,12 @@ const SENTINELLES: CardDefinition[] = [
     archetype: "sentinelle-chromatique",
     setCode: ECLATS_EN_SELLE,
     cost: 2,
+    maxCopies: 3,
     attack: 2,
     health: 3,
     chromatic: { colors: ["bleu"], emitsSignal: true },
     text:
-      "Signal Bleu — La première fois à chaque tour qu'une Sentinelle d'une autre couleur attaque une unité " +
+      "Signal Bleu — La première fois à chaque tour qu'une autre Sentinelle que vous contrôlez attaque une unité " +
       "adverse, cette unité adverse perd 1 Puissance jusqu'à votre prochain tour.",
   },
   {
@@ -909,6 +949,7 @@ const SENTINELLES: CardDefinition[] = [
     archetype: "sentinelle-chromatique",
     setCode: ECLATS_EN_SELLE,
     cost: 4,
+    maxCopies: 3,
     attack: 3,
     health: 5,
     chromatic: { colors: ["bleu"], emitsSignal: true },
@@ -939,12 +980,13 @@ const SENTINELLES: CardDefinition[] = [
     archetype: "sentinelle-chromatique",
     setCode: ECLATS_EN_SELLE,
     cost: 2,
+    maxCopies: 2,
     attack: 2,
     health: 3,
     chromatic: { colors: ["vert"], emitsSignal: true },
     text:
-      "Signal Vert — La première fois pendant chacun de vos tours que vous jouez une Sentinelle d'une autre " +
-      "couleur, récupérez 1 Raison.",
+      "Signal Vert — La première fois pendant chacun de vos tours que vous jouez une autre Sentinelle, récupérez " +
+      "1 Raison.",
   },
   {
     id: "survivant-de-la-mousse",
@@ -953,6 +995,7 @@ const SENTINELLES: CardDefinition[] = [
     archetype: "sentinelle-chromatique",
     setCode: ECLATS_EN_SELLE,
     cost: 3,
+    maxCopies: 2,
     attack: 3,
     health: 4,
     chromatic: { colors: ["vert"], emitsSignal: true },
@@ -978,12 +1021,13 @@ const SENTINELLES: CardDefinition[] = [
     archetype: "sentinelle-chromatique",
     setCode: ECLATS_EN_SELLE,
     cost: 3,
+    maxCopies: 3,
     attack: 2,
     health: 4,
     chromatic: { colors: ["violet"], emitsSignal: true },
     text:
-      "Signal Violet — La première fois à chaque tour qu'une Sentinelle d'une autre couleur est ciblée par un " +
-      "effet adverse, piochez 1 carte puis défaussez-en 1.",
+      "Signal Violet — La première fois à chaque tour qu'une autre Sentinelle que vous contrôlez est ciblée par " +
+      "un effet adverse, piochez 1 carte puis défaussez-en 1.",
   },
   {
     id: "oracle-damethyste",
@@ -992,6 +1036,7 @@ const SENTINELLES: CardDefinition[] = [
     archetype: "sentinelle-chromatique",
     setCode: ECLATS_EN_SELLE,
     cost: 4,
+    maxCopies: 3,
     attack: 3,
     health: 5,
     chromatic: { colors: ["violet"], emitsSignal: true },
@@ -1019,6 +1064,7 @@ const SENTINELLES: CardDefinition[] = [
     archetype: "sentinelle-chromatique",
     setCode: ECLATS_EN_SELLE,
     cost: 3,
+    maxCopies: 2,
     attack: 3,
     health: 3,
     text:
@@ -1054,6 +1100,7 @@ const SENTINELLES: CardDefinition[] = [
     archetype: "sentinelle-chromatique",
     setCode: ECLATS_EN_SELLE,
     cost: 5,
+    maxCopies: 2,
     attack: 4,
     health: 5,
     // « elle émet le Signal correspondant » : une Sentinelle qui émet ce
@@ -1090,6 +1137,7 @@ const SENTINELLES: CardDefinition[] = [
     archetype: "sentinelle-chromatique",
     setCode: ECLATS_EN_SELLE,
     cost: 2,
+    maxCopies: 3,
     health: 2,
     text:
       "Équipez une Sentinelle. Choisissez un Éclat Chromatique que vous contrôlez : elle est également considérée " +
@@ -1123,6 +1171,7 @@ const SENTINELLES: CardDefinition[] = [
     archetype: "sentinelle-chromatique",
     setCode: ECLATS_EN_SELLE,
     cost: 3,
+    maxCopies: 2,
     health: 2,
     text:
       "Équipez une Sentinelle. Sabordez cet Équipement et détruisez un Éclat Chromatique : jusqu'à votre prochain " +
@@ -1155,6 +1204,7 @@ const SENTINELLES: CardDefinition[] = [
     archetype: "sentinelle-chromatique",
     setCode: ECLATS_EN_SELLE,
     cost: 2,
+    maxCopies: 3,
     text:
       "Brisez cet Objet : regardez les 4 premières cartes de votre pioche. Vous pouvez ajouter une Sentinelle " +
       "Chromatique parmi elles à votre main. Placez les autres sous votre pioche.",
@@ -1176,6 +1226,7 @@ const SENTINELLES: CardDefinition[] = [
     archetype: "sentinelle-chromatique",
     setCode: ECLATS_EN_SELLE,
     cost: 2,
+    maxCopies: 3,
     text: "Brisez cet Objet : choisissez un Éclat Chromatique dans votre Cimetière et créez un Éclat de cette couleur sur votre terrain.",
     onBreakEffects: [
       { type: "summon", target: { kind: "controllerPlayer" }, cardIdFrom: "chosenGraveyardCard", filter: { subtype: ECLAT } },
@@ -1188,6 +1239,7 @@ const SENTINELLES: CardDefinition[] = [
     archetype: "sentinelle-chromatique",
     setCode: ECLATS_EN_SELLE,
     cost: 2,
+    maxCopies: 3,
     text:
       "Détruisez un Éclat Chromatique que vous contrôlez : une Sentinelle que vous contrôlez devient également de " +
       "cette couleur jusqu'à votre prochain tour.",
@@ -1215,6 +1267,7 @@ const SENTINELLES: CardDefinition[] = [
     archetype: "sentinelle-chromatique",
     setCode: ECLATS_EN_SELLE,
     cost: 2,
+    maxCopies: 3,
     health: 3,
     durationTurns: 4,
     text:
@@ -1246,6 +1299,7 @@ const SENTINELLES: CardDefinition[] = [
     archetype: "sentinelle-chromatique",
     setCode: ECLATS_EN_SELLE,
     cost: 3,
+    maxCopies: 2,
     health: 3,
     text:
       "Vos Éclats Chromatiques ont +1 Résistance. Une fois par tour, vous pouvez Saborder un Éclat : regardez les " +
@@ -1276,6 +1330,7 @@ const SENTINELLES: CardDefinition[] = [
     archetype: "sentinelle-chromatique",
     setCode: ECLATS_EN_SELLE,
     cost: 4,
+    maxCopies: 3,
     text: "Brisez cet Objet : choisissez une Sentinelle Chromatique. Jusqu'à la fin du tour, elle bénéficie également de son propre Signal Chromatique.",
     onBreakEffects: [
       {
@@ -1295,6 +1350,7 @@ const SENTINELLES: CardDefinition[] = [
     archetype: "sentinelle-chromatique",
     setCode: ECLATS_EN_SELLE,
     cost: 4,
+    maxCopies: 2,
     text:
       "Choisissez jusqu'à 3 Sentinelles Chromatiques de couleurs différentes. Elles gagnent +1 Puissance et " +
       "+1 Résistance jusqu'à votre prochain tour.",
@@ -1326,6 +1382,7 @@ const SENTINELLES: CardDefinition[] = [
     archetype: "sentinelle-chromatique",
     setCode: ECLATS_EN_SELLE,
     cost: 6,
+    maxCopies: 1,
     text:
       "Jouable uniquement si vous contrôlez au moins 3 couleurs différentes. Jusqu'à la fin du tour, toutes vos " +
       "Sentinelles Chromatiques bénéficient également de leur propre Signal.",
@@ -1347,6 +1404,7 @@ const SENTINELLES: CardDefinition[] = [
     archetype: "sentinelle-chromatique",
     setCode: ECLATS_EN_SELLE,
     cost: 3,
+    maxCopies: 2,
     text:
       "Brisez cet Objet : choisissez une couleur. Jusqu'à votre prochain tour, vous êtes considéré comme " +
       "contrôlant cette couleur pour vos effets Chromatiques. Cette carte n'émet aucun Signal.",
@@ -1372,6 +1430,7 @@ const SENTINELLES: CardDefinition[] = [
     archetype: "sentinelle-chromatique",
     setCode: ECLATS_EN_SELLE,
     cost: 8,
+    maxCopies: 1,
     attack: 8,
     health: 9,
     // Ses couleurs sont celles de son Assemblage (`CardInstance.chromatic`) :
@@ -1393,6 +1452,7 @@ const SENTINELLES: CardDefinition[] = [
     archetype: "sentinelle-chromatique",
     setCode: ECLATS_EN_SELLE,
     cost: 9,
+    maxCopies: 1,
     attack: 10,
     health: 11,
     chromatic: { emitsSignal: true, benefitsFromOwnSignals: true },

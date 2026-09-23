@@ -2,7 +2,8 @@ import type { CardInstance, ChromaticColor, StatModifier } from "@/game/cards/ty
 import { resolveEffectSequence } from "@/game/effects/resolveSequence";
 import type { EffectDefinition } from "@/game/effects/types";
 import type { GameEvent } from "@/game/events/types";
-import { benefitsFromSignal, isSentinel, markSignalUsed, signalAvailable, signalEmitter } from "@/game/rules/chromatic";
+import { availableSignalSources, isSentinel, signalKey } from "@/game/rules/chromatic";
+import { markOncePerTurnUsed } from "@/game/state/oncePerTurn";
 import type { GameState, PlayerId, PlayerState } from "@/game/state/types";
 
 /**
@@ -10,38 +11,44 @@ import type { GameState, PlayerId, PlayerState } from "@/game/state/types";
  *
  * Rouge et Jaune sont des bonus continus, lus avec les statistiques
  * (`game/cards/stats.ts`). Bleu, Vert et Violet, eux, répondent à un fait de
- * jeu, « la première fois à chaque tour » — une fois par JOUEUR et par
- * couleur, puisque deux Signaux de même couleur ne se cumulent pas :
+ * jeu, « la première fois à chaque tour » — une fois par ÉMETTEUR, puisque
+ * les Signaux se cumulent : deux Porteurs de Jade rendent 2 Raison.
  *
- *  - Bleu — « la première fois à chaque tour qu'une Sentinelle d'une autre
- *    couleur attaque une unité adverse, cette unité adverse perd
- *    1 Puissance jusqu'à votre prochain tour ». Appliqué au COMBAT, avant
- *    les dégâts : la riposte en tient compte (`applyBlueSignal`).
+ *  - Bleu — « la première fois à chaque tour qu'une autre Sentinelle attaque
+ *    une unité adverse, cette unité adverse perd 1 Puissance jusqu'à votre
+ *    prochain tour ». Appliqué au COMBAT, avant les dégâts : la riposte en
+ *    tient compte (`applyBlueSignal`).
  *  - Vert — « la première fois pendant chacun de vos tours que vous jouez une
- *    Sentinelle d'une autre couleur, récupérez 1 Raison ».
- *  - Violet — « la première fois à chaque tour qu'une Sentinelle d'une autre
- *    couleur est ciblée par un effet adverse, piochez 1 carte puis
- *    défaussez-en 1 ».
+ *    autre Sentinelle, récupérez 1 Raison ».
+ *  - Violet — « la première fois à chaque tour qu'une autre Sentinelle est
+ *    ciblée par un effet adverse, piochez 1 carte puis défaussez-en 1 ».
  *
  * Vert et Violet se lisent dans le journal de l'action qui vient de se
  * résoudre (`processChromaticSignals`, appelée par `dispatch`) : la carte
- * jouée est alors posée, la cible désignée connue.
+ * jouée est alors posée, la cible désignée connue. Plusieurs émetteurs d'un
+ * coup se résolvent en UN geste (« récupérez 2 Raison », « piochez 2 puis
+ * défaussez-en 2 ») : deux défausses successives se marcheraient dessus.
  */
 
-function replacePlayer(state: GameState, player: PlayerState): GameState {
-  return { ...state, players: state.players.map((p) => (p.id === player.id ? player : p)) as [PlayerState, PlayerState] };
+/** Inscrit « ce Signal a servi ce tour » sur chacun de ces émetteurs. */
+function marquerEmetteurs(state: GameState, emetteurs: readonly CardInstance[], color: ChromaticColor, turnNumber: number): GameState {
+  const ids = new Set(emetteurs.map((u) => u.instanceId));
+  return {
+    ...state,
+    players: state.players.map((p) => ({
+      ...p,
+      board: p.board.map((u) => (ids.has(u.instanceId) ? markOncePerTurnUsed(u, signalKey(color), turnNumber) : u)),
+    })) as [PlayerState, PlayerState],
+  };
 }
 
-function withSignalUsed(state: GameState, playerId: PlayerId, color: ChromaticColor, turnNumber: number): GameState {
-  const player = state.players.find((p) => p.id === playerId);
-  return player ? replacePlayer(state, markSignalUsed(player, color, turnNumber)) : state;
-}
+const vert = (n: number): EffectDefinition[] => [
+  { type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: n } },
+];
 
-const VERT: EffectDefinition[] = [{ type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }];
-
-const VIOLET: EffectDefinition[] = [
-  { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
-  { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+const violet = (n: number): EffectDefinition[] => [
+  { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: n } },
+  { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: n } },
 ];
 
 /** Signaux Vert et Violet, lus dans les événements d'une action. */
@@ -61,11 +68,12 @@ export function processChromaticSignals(
       // « pendant chacun de VOS tours » : une carte ne se joue que pendant
       // son propre tour, mais la garde dit ce que le texte dit.
       if (next.activePlayerId !== player.id) continue;
-      if (!signalAvailable(player, "vert", turnNumber) || !benefitsFromSignal(posee, "vert", player.board)) continue;
-      next = withSignalUsed(next, player.id, "vert", turnNumber);
-      const resolved = resolveEffectSequence(next, VERT, {
+      const emetteurs = availableSignalSources(posee, "vert", player.board, turnNumber);
+      if (emetteurs.length === 0) continue;
+      next = marquerEmetteurs(next, emetteurs, "vert", turnNumber);
+      const resolved = resolveEffectSequence(next, vert(emetteurs.length), {
         controllerId: player.id,
-        sourceInstanceId: signalEmitter(posee, "vert", player.board)?.instanceId,
+        sourceInstanceId: emetteurs[0]!.instanceId,
         turnNumber,
       });
       next = resolved.state;
@@ -77,15 +85,16 @@ export function processChromaticSignals(
       const owner = next.players.find((p) => p.board.some((u) => u.instanceId === event.instanceId));
       const cible = owner?.board.find((u) => u.instanceId === event.instanceId);
       if (!owner || !cible || event.byPlayerId === owner.id) continue;
-      if (!signalAvailable(owner, "violet", turnNumber) || !benefitsFromSignal(cible, "violet", owner.board)) continue;
+      const emetteurs = availableSignalSources(cible, "violet", owner.board, turnNumber);
+      if (emetteurs.length === 0) continue;
       // Une question est déjà posée (l'effet adverse en attend une réponse) :
-      // la défausse du Signal l'écraserait. Le Signal attend, sans être
-      // consommé, la prochaine fois qu'on vise une de ces Sentinelles.
+      // la défausse du Signal l'écraserait. Les émetteurs restent disponibles
+      // pour la prochaine fois qu'on vise une de ces Sentinelles.
       if (next.pendingChoice) continue;
-      next = withSignalUsed(next, owner.id, "violet", turnNumber);
-      const resolved = resolveEffectSequence(next, VIOLET, {
+      next = marquerEmetteurs(next, emetteurs, "violet", turnNumber);
+      const resolved = resolveEffectSequence(next, violet(emetteurs.length), {
         controllerId: owner.id,
-        sourceInstanceId: signalEmitter(cible, "violet", owner.board)?.instanceId,
+        sourceInstanceId: emetteurs[0]!.instanceId,
         turnNumber,
       });
       next = resolved.state;
@@ -98,8 +107,8 @@ export function processChromaticSignals(
 
 /**
  * Signal Bleu, au moment où une Sentinelle attaque une UNITÉ adverse : la
- * cible perd 1 Puissance jusqu'au prochain tour de l'attaquant, une fois par
- * tour. Appliqué avant les dégâts — c'est la riposte qu'il affaiblit.
+ * cible perd 1 Puissance par émetteur disponible, jusqu'au prochain tour de
+ * l'attaquant. Appliqué avant les dégâts — c'est la riposte qu'il affaiblit.
  */
 export function applyBlueSignal(
   state: GameState,
@@ -110,19 +119,18 @@ export function applyBlueSignal(
 ): { state: GameState; events: GameEvent[] } {
   const player = state.players.find((p) => p.id === attackerPlayerId);
   if (!player || !isSentinel(attacker)) return { state, events: [] };
-  if (!signalAvailable(player, "bleu", turnNumber) || !benefitsFromSignal(attacker, "bleu", player.board)) {
-    return { state, events: [] };
-  }
+  const emetteurs = availableSignalSources(attacker, "bleu", player.board, turnNumber);
+  if (emetteurs.length === 0) return { state, events: [] };
   const malus: StatModifier = {
     id: `mod_${Math.random().toString(36).slice(2, 8)}`,
-    source: signalEmitter(attacker, "bleu", player.board)?.cardId ?? attacker.cardId,
-    attack: -1,
+    source: emetteurs[0]!.cardId,
+    attack: -emetteurs.length,
     health: 0,
     // « jusqu'à VOTRE prochain tour » : celui de l'attaquant (`appliedBy`).
     duration: "untilYourNextTurn",
     appliedBy: attackerPlayerId,
   };
-  let next = withSignalUsed(state, attackerPlayerId, "bleu", turnNumber);
+  let next = marquerEmetteurs(state, emetteurs, "bleu", turnNumber);
   next = {
     ...next,
     players: next.players.map((p) => ({
@@ -132,6 +140,8 @@ export function applyBlueSignal(
   };
   return {
     state: next,
-    events: [{ type: "DEBUFF_APPLIED", targetInstanceId: defender.instanceId, attack: -1, health: 0, turnNumber, timestamp: Date.now() }],
+    events: [
+      { type: "DEBUFF_APPLIED", targetInstanceId: defender.instanceId, attack: -emetteurs.length, health: 0, turnNumber, timestamp: Date.now() },
+    ],
   };
 }

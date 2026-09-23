@@ -1,7 +1,7 @@
 import { countArchetypeUnits } from "@/game/cards/archetypes";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { isVisibleDuringTide, UNIT_CARD_TYPES, type CardInstance } from "@/game/cards/types";
-import { benefitsFromSignal, signalEmitter } from "@/game/rules/chromatic";
+import { signalSources } from "@/game/rules/chromatic";
 import type { TideStateName } from "@/game/environment/types";
 import type { GameState } from "@/game/state/types";
 
@@ -165,19 +165,19 @@ export function collectAuraContributions(
     addSelf(onlyUnitBuff);
   }
 
-  // Signaux Chromatiques (Lot 15) : Rouge prête +1 Puissance pendant le tour
-  // de son contrôleur, Jaune +1 Résistance maximale — aux Sentinelles d'une
-  // AUTRE couleur. La contribution est attribuée à l'émetteur, pour que la
-  // fiche de carte dise d'où vient le bonus.
+  // Signaux Chromatiques (Lot 15) : chaque Rouge prête +1 Puissance pendant
+  // le tour de son contrôleur, chaque Jaune +1 Résistance maximale, à toutes
+  // les AUTRES Sentinelles — même couleur comprise, et en cumul. Une
+  // contribution par émetteur, pour que la fiche dise d'où vient chaque +1.
   const addSignal = (color: "rouge" | "jaune", spec: { attackAmount?: number; healthAmount?: number }) => {
-    if (!benefitsFromSignal(unit, color, controllerBoard)) return;
-    const emitter = signalEmitter(unit, color, controllerBoard);
-    contributions.push({
-      sourceCardId: emitter?.cardId ?? unit.cardId,
-      sourceInstanceId: emitter?.instanceId,
-      attack: spec.attackAmount ?? 0,
-      health: spec.healthAmount ?? 0,
-    });
+    for (const emitter of signalSources(unit, color, controllerBoard)) {
+      contributions.push({
+        sourceCardId: emitter.cardId,
+        sourceInstanceId: emitter.instanceId,
+        attack: spec.attackAmount ?? 0,
+        health: spec.healthAmount ?? 0,
+      });
+    }
   };
   if (aura.controllerIsActive) addSignal("rouge", { attackAmount: 1 });
   addSignal("jaune", { healthAmount: 1 });

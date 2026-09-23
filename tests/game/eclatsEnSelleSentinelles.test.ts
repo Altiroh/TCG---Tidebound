@@ -8,8 +8,10 @@ import type { GameState } from "@/game/state/types";
 import { activateReactionFor, instance, pendingCandidates, testEnvironment, testGameState, testPlayer } from "./testHelpers";
 
 /**
- * LOT 15 — SENTINELLES CHROMATIQUES : chaque couleur émet un Signal dont
- * profitent les Sentinelles des AUTRES couleurs (`game/rules/chromatic.ts`).
+ * LOT 15 — SENTINELLES CHROMATIQUES : chaque Sentinelle émet le Signal de sa
+ * couleur au profit de toutes les AUTRES Sentinelles, même couleur comprise,
+ * et les Signaux se cumulent (`game/rules/chromatic.ts`, arbitrage du
+ * 23/09/2026).
  */
 
 function ok<T extends { ok: boolean }>(r: T): asserts r is T & { ok: true } {
@@ -50,18 +52,25 @@ function passerTout(state: GameState): GameState {
 }
 
 describe("Signaux Rouge et Jaune : des bonus continus", () => {
-  it("Rouge prête +1 Puissance aux Sentinelles d'une AUTRE couleur, pendant le tour de son contrôleur seulement", () => {
+  it("chaque Rouge prête +1 Puissance à TOUTES les autres Sentinelles, en cumul, pendant son tour seulement", () => {
     const heros = instance("heros-de-la-flamme", "p1");
     const gardienne = instance("gardienne-de-leclat", "p1");
     const autreRouge = instance("briseur-du-brasier", "p1");
     const state = table({ board: [heros, gardienne, autreRouge] });
-    expect(stats(state, gardienne.instanceId).attack).toBe(2);
-    // Deux émetteurs rouges ne se cumulent pas, et un Rouge ne reçoit pas le Rouge.
-    expect(stats(state, heros.instanceId).attack).toBe(3);
-    expect(stats(state, autreRouge.instanceId).attack).toBe(4);
+    // Deux émetteurs rouges : +2 pour la Jaune.
+    expect(stats(state, gardienne.instanceId).attack).toBe(3);
+    // Deux Rouges se donnent +1 l'un à l'autre — jamais à soi-même.
+    expect(stats(state, heros.instanceId).attack).toBe(4);
+    expect(stats(state, autreRouge.instanceId).attack).toBe(5);
     // Au tour adverse, plus rien.
     const tourAdverse = { ...state, activePlayerId: "p2" };
     expect(stats(tourAdverse, gardienne.instanceId).attack).toBe(1);
+    expect(stats(tourAdverse, heros.instanceId).attack).toBe(3);
+  });
+
+  it("une Sentinelle seule ne reçoit pas son propre Signal", () => {
+    const heros = instance("heros-de-la-flamme", "p1");
+    expect(stats(table({ board: [heros] }), heros.instanceId).attack).toBe(3);
   });
 
   it("Jaune prête +1 Résistance maximale aux autres couleurs, à toute heure", () => {
@@ -88,7 +97,18 @@ describe("Signaux Rouge et Jaune : des bonus continus", () => {
 });
 
 describe("Signaux Bleu, Vert et Violet : une fois par tour", () => {
-  it("Bleu : l'unité adverse attaquée par une Sentinelle d'une autre couleur perd 1 Puissance, jusqu'au prochain tour de l'attaquant", () => {
+  it("Bleu : deux émetteurs, deux fois -1 Puissance pour la cible — jusqu'au prochain tour de l'attaquant", () => {
+    const t1 = instance("tacticien-de-lecume", "p1");
+    const t2 = instance("stratege-de-lazur", "p1");
+    const attaquant = instance("heros-de-la-flamme", "p1");
+    const cible = instance("vieille-selle", "p2");
+    const state = table({ board: [t1, t2, attaquant] }, { board: [cible] }, { phase: "combatPhase" });
+    const r = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attaquant.instanceId, defenderInstanceId: cible.instanceId });
+    ok(r);
+    expect(stats(r.state, cible.instanceId).attack).toBe(2);
+  });
+
+  it("Bleu : l'unité adverse attaquée par une autre Sentinelle perd 1 Puissance, jusqu'au prochain tour de l'attaquant", () => {
     const tacticien = instance("tacticien-de-lecume", "p1");
     const heros = instance("heros-de-la-flamme", "p1");
     const cible = instance("vieille-selle", "p2");
@@ -103,7 +123,8 @@ describe("Signaux Bleu, Vert et Violet : une fois par tour", () => {
     expect(stats(fin.state, cible.instanceId).attack).toBe(3);
   });
 
-  it("Vert : jouer une Sentinelle d'une autre couleur rend 1 Raison, et Survivant de la Mousse s'en nourrit", () => {
+  it("Vert : chaque émetteur rend 1 Raison à la pose d'une autre Sentinelle, une fois par tour chacun", () => {
+    // Porteur de Jade et Survivant de la Mousse émettent tous deux le Vert.
     const jade = instance("porteur-de-jade", "p1");
     const survivant = instance("survivant-de-la-mousse", "p1");
     const heros = instance("heros-de-la-flamme", "p1");
@@ -111,12 +132,22 @@ describe("Signaux Bleu, Vert et Violet : une fois par tour", () => {
     const state = table({ board: [jade, survivant], hand: [heros, heros2], reason: 6 });
     const r = dispatch(state, { type: "playCard", playerId: "p1", instanceId: heros.instanceId });
     ok(r);
-    expect(joueur(r.state, "p1").reason).toBe(5);
-    expect(stats(r.state, survivant.instanceId).attack).toBe(4 + 1);
-    // Une seule fois par tour.
+    // 2 payées, 2 rendues.
+    expect(joueur(r.state, "p1").reason).toBe(6);
+    // Survivant : 3 + 1 (Rouge du Héros) + 1 (Raison récupérée grâce à une carte).
+    expect(stats(r.state, survivant.instanceId).attack).toBe(5);
+    // Les deux émetteurs ont servi ce tour.
     const r2 = dispatch(r.state, { type: "playCard", playerId: "p1", instanceId: heros2.instanceId });
     ok(r2);
-    expect(joueur(r2.state, "p1").reason).toBe(3);
+    expect(joueur(r2.state, "p1").reason).toBe(4);
+  });
+
+  it("Vert : une Sentinelle VERTE jouée profite aussi du Vert des autres", () => {
+    const jade = instance("porteur-de-jade", "p1");
+    const autreVert = instance("porteur-de-jade", "p1");
+    const r = dispatch(table({ board: [jade], hand: [autreVert], reason: 6 }), { type: "playCard", playerId: "p1", instanceId: autreVert.instanceId });
+    ok(r);
+    expect(joueur(r.state, "p1").reason).toBe(5);
   });
 
   it("Violet : une Sentinelle d'une autre couleur ciblée par un effet adverse fait piocher puis défausser", () => {
@@ -294,7 +325,8 @@ describe("jouer les couleurs ensemble", () => {
     expect(dispatch(r.state, { type: "resolveChoice", playerId: "p1", choice: { pickInstanceIds: [r1.instanceId, r2.instanceId] } }).ok).toBe(false);
     const bon = dispatch(r.state, { type: "resolveChoice", playerId: "p1", choice: { pickInstanceIds: [r1.instanceId, j.instanceId] } });
     ok(bon);
-    expect(stats(bon.state, j.instanceId).attack).toBe(1 + 1 + 1);
+    // 1 imprimé + 2 Rouges (en cumul) + 1 des Couleurs Répondent.
+    expect(stats(bon.state, j.instanceId).attack).toBe(1 + 2 + 1);
   });
 
   it("Briseur du Brasier ne pousse qu'une Sentinelle d'une AUTRE couleur", () => {
@@ -306,8 +338,8 @@ describe("jouer les couleurs ensemble", () => {
     expect(activateReactionFor(r.state, "briseur-du-brasier", rouge.instanceId).ok).toBe(false);
     const pousse = activateReactionFor(r.state, "briseur-du-brasier", bleu.instanceId);
     ok(pousse);
-    // 2 imprimé + 1 Rouge (deux émetteurs, un seul Signal) + 2 du Briseur.
-    expect(stats(pousse.state, bleu.instanceId).attack).toBe(5);
+    // 2 imprimé + 2 Rouges (Héros et Briseur, en cumul) + 2 du Briseur.
+    expect(stats(pousse.state, bleu.instanceId).attack).toBe(6);
   });
 
   it("Stratège de l'Azur : le malus tient pendant le tour adverse, et tombe à votre prochain tour", () => {

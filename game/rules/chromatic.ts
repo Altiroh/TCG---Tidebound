@@ -7,11 +7,15 @@ import type { PlayerState } from "@/game/state/types";
  * « Éclats en Selle » § Règle centrale — Signaux Chromatiques).
  *
  * Des marins ont trouvé des pierres qui réagissent à leur porteur. Chaque
- * pierre donne une COULEUR, et chaque couleur émet un SIGNAL dont profitent
- * les Sentinelles des AUTRES couleurs : avec Rouge + Jaune + Bleu en jeu,
- * Rouge reçoit Jaune et Bleu, Jaune reçoit Rouge et Bleu, Bleu reçoit Rouge
- * et Jaune. Une Sentinelle ne reçoit pas naturellement son propre Signal, et
- * deux Signaux de même couleur ne se cumulent pas.
+ * pierre donne une COULEUR, et chaque Sentinelle émet le SIGNAL de sa
+ * couleur au profit de toutes les AUTRES Sentinelles — même couleur
+ * comprise. Les Signaux se CUMULENT : chaque émetteur compte (arbitrage du
+ * 23/09/2026 : « un Rouge donne +1 Puissance à un autre Rouge, et c'est
+ * réciproque »). Deux Rouges se donnent donc +1 l'un à l'autre, et une
+ * Jaune à côté d'eux reçoit +2.
+ *
+ * Seule limite : une Sentinelle ne reçoit pas son PROPRE Signal, sauf texte
+ * contraire (Le Géant Chromatique, Synchronisation !).
  *
  * Ce module ne fait que LIRE : qui porte quelle couleur, qui émet quoi, qui
  * en bénéficie. Ce que fait chaque Signal est appliqué là où le moteur le
@@ -94,30 +98,36 @@ function benefitsFromOwnSignals(unit: CardInstance): boolean {
   return Boolean(getCardDefinition(unit.cardId).chromatic?.benefitsFromOwnSignals) || unit.modifiers.some((m) => m.chromatic?.benefitsOwnSignals);
 }
 
-/** Signaux actifs sur ce plateau — un par couleur, quel que soit le nombre d'émetteurs. */
-export function activeSignals(board: readonly CardInstance[]): Set<ChromaticColor> {
-  const active = new Set<ChromaticColor>();
-  for (const unit of board) for (const color of emittedSignalsOf(unit)) active.add(color);
-  return active;
+/**
+ * Les émetteurs du Signal de cette couleur dont cette Sentinelle profite.
+ * CHACUN compte : les Signaux se cumulent. Ce sont les autres cartes du
+ * plateau qui émettent cette couleur, et la Sentinelle elle-même seulement
+ * si elle bénéficie de son propre Signal (Géant, Synchronisation !).
+ */
+export function signalSources(unit: CardInstance, color: ChromaticColor, board: readonly CardInstance[]): CardInstance[] {
+  if (!isSentinel(unit)) return [];
+  const siens = benefitsFromOwnSignals(unit);
+  return board.filter((other) => (siens || other.instanceId !== unit.instanceId) && emittedSignalsOf(other).includes(color));
+}
+
+/** Clé `oncePerTurnFlags` d'un Signal déclenché : « la première fois à chaque tour » se suit sur l'ÉMETTEUR. */
+export function signalKey(color: ChromaticColor): string {
+  return `signal:${color}`;
 }
 
 /**
- * Cette Sentinelle bénéficie-t-elle du Signal de cette couleur ?
- *
- * Il faut qu'une AUTRE carte l'émette, et qu'elle-même ne soit pas de cette
- * couleur — « vos Sentinelles d'une autre couleur ». Bénéficier de son
- * propre Signal est l'exception, et elle se déclare (Géant, Synchronisation).
+ * Les émetteurs dont le Signal déclenché (Bleu, Vert, Violet) n'a pas encore
+ * servi ce tour. Chaque émetteur a son « première fois à chaque tour » :
+ * deux Tacticiens de l'Écume retirent 2 Puissance, une fois par tour chacun.
  */
-export function benefitsFromSignal(unit: CardInstance, color: ChromaticColor, board: readonly CardInstance[]): boolean {
-  if (!isSentinel(unit)) return false;
-  if (benefitsFromOwnSignals(unit)) return activeSignals(board).has(color);
-  if (chromaticColorsOf(unit, board).includes(color)) return false;
-  return board.some((other) => other.instanceId !== unit.instanceId && emittedSignalsOf(other).includes(color));
-}
-
-/** Première carte, autre que `unit`, qui émet ce Signal — la source que la fiche de carte cite. */
-export function signalEmitter(unit: CardInstance, color: ChromaticColor, board: readonly CardInstance[]): CardInstance | undefined {
-  return board.find((other) => other.instanceId !== unit.instanceId && emittedSignalsOf(other).includes(color)) ?? (emittedSignalsOf(unit).includes(color) ? unit : undefined);
+export function availableSignalSources(
+  unit: CardInstance,
+  color: ChromaticColor,
+  board: readonly CardInstance[],
+  turnNumber: number
+): CardInstance[] {
+  const key = signalKey(color);
+  return signalSources(unit, color, board).filter((source) => (source.oncePerTurnFlags ?? {})[key] !== turnNumber);
 }
 
 /**
@@ -146,19 +156,6 @@ export function controlledChromaticColors(player: PlayerState, turnNumber: numbe
   return uniques(colors);
 }
 
-/**
- * Ce Signal a-t-il déjà servi ce tour-ci pour ce joueur ? « La première fois
- * à chaque tour… » se lit sur le JOUEUR : deux émetteurs de la même couleur
- * ne donnent qu'un Signal, donc qu'un usage.
- */
-export function signalAvailable(player: PlayerState, color: ChromaticColor, turnNumber: number): boolean {
-  return player.chromaticSignalTurns?.[color] !== turnNumber;
-}
-
-/** Marque ce Signal comme utilisé ce tour-ci. */
-export function markSignalUsed(player: PlayerState, color: ChromaticColor, turnNumber: number): PlayerState {
-  return { ...player, chromaticSignalTurns: { ...(player.chromaticSignalTurns ?? {}), [color]: turnNumber } };
-}
 
 /**
  * Affectation d'un Assemblage : chaque Sentinelle désignée doit porter la

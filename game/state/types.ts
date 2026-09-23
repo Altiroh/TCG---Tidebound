@@ -140,14 +140,6 @@ export interface PlayerState {
    * sans que rien n'ait à passer derrière elles.
    */
   claimedChromaticColors?: Array<{ color: ChromaticColor; expiresAfterTurn: number }>;
-  /**
-   * Tour de table où chaque Signal Chromatique a servi pour la dernière fois
-   * (« la première fois à chaque tour… », Signaux Bleu, Vert et Violet).
-   * Porté par le JOUEUR et non par une carte : « les Signaux d'une même
-   * couleur ne se cumulent pas », deux émetteurs bleus ne donnent donc
-   * qu'un seul usage.
-   */
-  chromaticSignalTurns?: Partial<Record<ChromaticColor, number>>;
 }
 
 /** Une arrivée au Cimetière, telle que la lisent les conditions du Lot 13. */

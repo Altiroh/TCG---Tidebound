@@ -82,6 +82,9 @@ describe("extensions de boosters", () => {
     // L'inverse du test précédent, et le plus utile des deux : le jour où
     // un booster devient celui d'une famille, il doit le dire.
     for (const extension of BOOSTER_EXTENSIONS) {
+      // Un libellé de famille TRANCHÉ par le design (`familyLabel`) prime :
+      // c'est une décision écrite, pas une promesse tacite (Éclats en Selle).
+      if (extension.familyLabel) continue;
       for (const archetype of Object.keys(ARCHETYPE_LABELS)) {
         const share = archetypeShare(extension.boosterId, archetype);
         if (share < ARCHETYPE_DOMINANCE_THRESHOLD) continue;
@@ -97,6 +100,7 @@ describe("extensions de boosters", () => {
     expect(boosterExtensionLabel("standard")).toBe("Booster de base");
     expect(boosterExtensionLabel("etrangete-sous-marine")).toBe("Booster d'extension");
     expect(boosterExtensionLabel("la-veillee-des-disparus")).toBe("Booster d'extension · Un Dead");
+    expect(boosterExtensionLabel("eclats-en-selle")).toBe("Booster d'extension · Éclats en Selle");
     // Un booster inconnu ne fait pas planter la fiche : il reste « Booster ».
     expect(boosterExtensionLabel("booster-qui-nexiste-pas")).toBe("Booster");
   });

@@ -67,6 +67,13 @@ export interface BoosterExtension {
    */
   archetype: ArchetypeId | null;
   /**
+   * Nom annoncé à la place d'une famille, quand le design le TRANCHE pour un
+   * pool qui en réunit plusieurs (Éclats en Selle : Verre, Cavalerie et
+   * Sentinelles — « le libellé reste sur Éclats en Selle », 23/09/2026).
+   * Il prime sur la règle du seuil : c'est une décision, pas une mesure.
+   */
+  familyLabel?: string;
+  /**
    * Une ligne, sous le titre — ce que le sachet dit de lui-même.
    *
    * UNE seule, littéralement : la fiche l'affiche sans retour à la ligne
@@ -164,12 +171,13 @@ const EXTENSIONS: readonly BoosterExtension[] = [
   },
   {
     // Trois familles dans un même sachet. Les Sentinelles y pèsent 25 cartes
-    // sur 61 (41 %), au-dessus du seuil d'annonce : la règle du rayon impose
-    // de les nommer, et le récit dit les deux autres.
+    // sur 61 (41 %), au-dessus du seuil d'annonce — mais le design a tranché
+    // (23/09/2026) : le rayon annonce le LOT, pas l'une de ses trois familles.
     boosterId: BOOSTER_ECLATS_EN_SELLE,
     name: "Éclats en Selle",
     kind: "extension",
-    archetype: "sentinelle-chromatique",
+    archetype: null,
+    familyLabel: "Éclats en Selle",
     tagline: "Du verre, des bêtes, des pierres",
     lore:
       "Un équipage qui se fêle et tient quand même, des Bêtes de guerre que personne n'appelle plus qu'à la " +
@@ -212,6 +220,7 @@ export function boosterExtensionLabel(boosterId: string): string {
   const entry = BY_ID.get(boosterId);
   if (!entry) return "Booster";
   if (entry.kind === "base") return "Booster de base";
+  if (entry.familyLabel) return `Booster d'extension · ${entry.familyLabel}`;
   if (!entry.archetype) return "Booster d'extension";
   return `Booster d'extension · ${ARCHETYPE_LABELS[entry.archetype]}`;
 }
