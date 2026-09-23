@@ -160,10 +160,17 @@ export function hasGraveyardArrival(
 ): boolean {
   const controller = state.players.find((p) => p.id === controllerId);
   // « ce tour » = le tour de table courant ; « depuis votre dernier tour »
-  // remonte d'un tour de plus, celui de l'adversaire.
-  const since = condition.since === "thisTurn" ? state.turnNumber : state.turnNumber - 1;
+  // remonte au tour précédent du contrôleur (N-2) : le tour adverse, mais
+  // aussi tout ce qui est parti pendant son propre tour APRÈS ses capacités
+  // de début de tour — un Un Dead tué au combat, une défausse de fin de tour.
+  // Ce qui précédait ces capacités, elles l'ont déjà vu à ce tour-là.
+  const lastOwnTurn = state.turnNumber - 2;
   return (controller?.graveyardArrivals ?? []).some((entry) => {
-    if (entry.turnNumber < since) return false;
+    if (condition.since === "thisTurn") {
+      if (entry.turnNumber < state.turnNumber) return false;
+    } else if (entry.turnNumber < lastOwnTurn || (entry.turnNumber === lastOwnTurn && entry.beforeOwnTurnStart)) {
+      return false;
+    }
     if (condition.fromZone && entry.fromZone !== condition.fromZone) return false;
     if (condition.cardIds && !condition.cardIds.includes(entry.cardId)) return false;
     if (condition.subtype && getCardDefinition(entry.cardId).subtype !== condition.subtype) return false;

@@ -38,7 +38,9 @@ type RuleId =
   | "designation"
   | "observateur"
   /** Structure-piège qui se referme après avoir tiré (`afterHiddenReaction`). */
-  | "remasquable";
+  | "remasquable"
+  /** Anomalie à résolution immédiate : part au Cimetière (`permanent: false`). */
+  | "anomalie-ephemere";
 
 /**
  * Écarts assumés, avec leur motif. La clé est `${cardId}:${rule}`.
@@ -122,6 +124,14 @@ function check(def: CardDefinition): Violation[] {
   const effects = allEffects(def);
   const abilities: TriggeredAbility[] = def.abilities ?? [];
   const push = (rule: RuleId, detail: string) => out.push({ cardId: def.id, rule, detail });
+
+  // --- Anomalie éphémère ---------------------------------------------------
+  // Sans durée ni capacité, une Anomalie n'a plus rien à faire une fois
+  // résolue : restée en jeu, elle occupait un Slot pour rien (retour du
+  // 23/09, Par-dessus Bord ! posée sur le plateau après usage).
+  if (def.type === "anomalie" && def.durationTurns === undefined && abilities.length === 0 && def.permanent !== false) {
+    push("anomalie-ephemere", "Anomalie sans durée ni capacité : il manque `permanent: false` pour qu'elle parte au Cimetière après résolution");
+  }
 
   // --- Fréquence -----------------------------------------------------------
   if (/(une (seule )?fois par tour|la premi[èe]re fois [àa] chaque tour|maximum 1 fois par tour|1x par tour)/i.test(text)) {

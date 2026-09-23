@@ -223,6 +223,45 @@ describe("Lot 13 — le Cimetière comme ressource", () => {
     // Et le sous-type filtre bien : une carte hors famille ne compte pas.
     expect(hasGraveyardArrival(state, "p1", { subtype: "volatile", since: "lastOwnTurn" })).toBe(false);
   });
+
+  it("« depuis votre dernier tour » voit aussi la fin de votre tour précédent, sans recompter son entame", () => {
+    const aTour = (arrival: { turnNumber: number; beforeOwnTurnStart?: boolean }) =>
+      testGameState({
+        turnNumber: 7,
+        players: [
+          testPlayer("p1", { graveyardArrivals: [{ cardId: "ptit-bout", fromZone: "board", ...arrival }] }),
+          testPlayer("p2", { shipId: "le-goliath" }),
+        ],
+      });
+    const fenetre = { subtype: UN_DEAD, since: "lastOwnTurn" } as const;
+
+    // Un Un Dead tué au combat pendant votre tour 5 : vu au début du tour 7.
+    expect(hasGraveyardArrival(aTour({ turnNumber: 5 }), "p1", fenetre)).toBe(true);
+    // Parti pendant l'ENTAME du tour 5 : déjà vu au début du tour 5.
+    expect(hasGraveyardArrival(aTour({ turnNumber: 5, beforeOwnTurnStart: true }), "p1", fenetre)).toBe(false);
+    // Avant votre dernier tour : hors fenêtre.
+    expect(hasGraveyardArrival(aTour({ turnNumber: 4 }), "p1", fenetre)).toBe(false);
+  });
+
+  it("un Objet Un Dead brisé rejoint le journal du Cimetière, comme une défausse ou une mort", () => {
+    const chanson = instance("la-petite-chanson", "p1");
+    const ptitBout = instance("ptit-bout", "p1");
+    const state = testGameState({
+      turnNumber: 3,
+      players: [
+        testPlayer("p1", { board: [chanson], graveyard: [ptitBout], deck: [instance("crabe-de-fer", "p1")], reason: 10 }),
+        testPlayer("p2", { shipId: "le-goliath" }),
+      ],
+    });
+    const brise = dispatch(state, {
+      type: "breakObject",
+      playerId: "p1",
+      instanceId: chanson.instanceId,
+      chosenGraveyardInstanceId: ptitBout.instanceId,
+    });
+    ok(brise);
+    expect(hasGraveyardArrival(brise.state, "p1", { cardIds: ["la-petite-chanson"], since: "thisTurn" })).toBe(true);
+  });
 });
 
 describe("Lot 13 — l'attrition", () => {

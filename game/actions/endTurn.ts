@@ -3,7 +3,7 @@ import { getShipDefinition } from "@/game/environment/shipData";
 import { deraisonAnchorDamage, deraisonDebt, reasonCeiling, startingReasonCap } from "@/game/state/reason";
 import type { GameEvent } from "@/game/events/types";
 import { processDiscardedFromHandTriggers, processTrigger } from "@/game/triggers/triggerBus";
-import { discardFromHand, pruneGraveyardArrivals } from "@/game/state/discard";
+import { discardFromHand, markArrivalsBeforeTurnStart, pruneGraveyardArrivals } from "@/game/state/discard";
 import { RULES } from "@/game/rules/constants";
 import { assertGameActive, assertIsActivePlayer, assertPlayerInGame, combine } from "@/game/rules/validation";
 import { findAnomalyForcedChoice } from "@/game/state/anomalies";
@@ -363,11 +363,15 @@ export function entameDeTour(state: GameState, eventsAvant: GameEvent[] = []): A
 
   // Élagage du journal des arrivées au Cimetière, au tour qui COMMENCE et
   // non à celui qui finit : « depuis votre dernier tour » doit encore voir
-  // le tour adverse qui vient de s'écouler quand les capacités de début de
-  // tour se déclenchent, juste en dessous.
+  // les tours écoulés quand les capacités de début de tour se déclenchent,
+  // juste en dessous. Ce que l'entame a déjà envoyé au Cimetière du joueur
+  // actif est vu MAINTENANT, et marqué pour ne pas l'être deux fois.
   nextState = {
     ...nextState,
-    players: nextState.players.map((p) => pruneGraveyardArrivals(p, newTurnNumber)) as [PlayerState, PlayerState],
+    players: nextState.players.map((p) => {
+      const pruned = pruneGraveyardArrivals(p, newTurnNumber);
+      return p.id === refreshedPlayer.id ? markArrivalsBeforeTurnStart(pruned, newTurnNumber) : pruned;
+    }) as [PlayerState, PlayerState],
   };
 
   events.push({ ...newBase, type: "TURN_STARTED", playerId: refreshedPlayer.id });

@@ -127,10 +127,11 @@ export interface PlayerState {
    * Le contenu du Cimetière ne suffit pas à répondre à « si une carte Un
    * Dead a rejoint votre Cimetière ce tour » : il dit ce qui s'y trouve,
    * jamais QUAND ni d'où c'est venu — et une carte repêchée puis
-   * redéfaussée n'y compterait que pour une. D'où ce journal, tenu par la
-   * voie unique de la défausse (`game/state/discard.ts`) et élagué au
-   * début de chaque tour aux deux derniers tours de table, ce qui couvre
-   * « ce tour » comme « depuis votre dernier tour ».
+   * redéfaussée n'y compterait que pour une. D'où ce journal, que TOUTE
+   * voie vers le Cimetière alimente (`recordGraveyardArrival`, dans
+   * `game/state/discard.ts`) et qui est élagué au début de chaque tour aux
+   * trois derniers tours de table : « depuis votre dernier tour » remonte
+   * jusqu'au tour précédent du contrôleur, pas seulement au tour adverse.
    */
   graveyardArrivals?: GraveyardArrival[];
 }
@@ -142,6 +143,13 @@ export interface GraveyardArrival {
   turnNumber: number;
   /** D'où venait la carte — « depuis votre main » est une condition à part entière. */
   fromZone: "hand" | "board" | "deck";
+  /**
+   * Arrivée survenue pendant l'entame du tour de son propriétaire, AVANT que
+   * ses capacités de début de tour ne se déclenchent (effets de Marée). Sa
+   * capacité « depuis votre dernier tour » l'a donc déjà vue à ce tour-là :
+   * elle ne doit pas la recompter deux tours plus tard.
+   */
+  beforeOwnTurnStart?: boolean;
 }
 
 /**

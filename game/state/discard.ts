@@ -30,21 +30,42 @@ import type { GameState, GraveyardArrival, PlayerId, PlayerState } from "@/game/
 /** Ce que la défausse retire de la main : les N premières cartes, ou des exemplaires désignés. */
 export type DiscardSelection = { count: number } | { instanceIds: readonly string[] };
 
+/**
+ * Inscrit une arrivée au Cimetière. TOUTE voie qui y pose une carte
+ * l'appelle — défausse, destruction, Objet brisé, Équipement consommé,
+ * durée échue : « a rejoint votre Cimetière » ne distingue pas la façon.
+ */
 export function recordGraveyardArrival(player: PlayerState, arrival: GraveyardArrival): PlayerState {
   return { ...player, graveyardArrivals: [...(player.graveyardArrivals ?? []), arrival] };
 }
 
 /**
  * Élague le journal des arrivées au Cimetière : seules comptent celles des
- * deux derniers tours de table, ce qui couvre « ce tour » comme « depuis
- * votre dernier tour » (le tour adverse intercalé) sans laisser l'état
- * grossir toute la partie.
+ * trois derniers tours de table. « Depuis votre dernier tour » remonte au
+ * tour précédent du contrôleur (N-2) — ce qui y est parti APRÈS ses
+ * capacités de début de tour (un combat, une défausse de fin de tour) n'a
+ * encore été vu par personne.
  */
 export function pruneGraveyardArrivals(player: PlayerState, turnNumber: number): PlayerState {
   const arrivals = player.graveyardArrivals ?? [];
   if (arrivals.length === 0) return player;
-  const kept = arrivals.filter((a) => a.turnNumber >= turnNumber - 1);
+  const kept = arrivals.filter((a) => a.turnNumber >= turnNumber - 2);
   return kept.length === arrivals.length ? player : { ...player, graveyardArrivals: kept };
+}
+
+/**
+ * Juste avant les capacités de début de tour : les arrivées déjà inscrites
+ * pour CE tour (effets de Marée de l'entame) sont vues maintenant par
+ * « depuis votre dernier tour » ; on les marque pour que le tour suivant du
+ * même joueur ne les recompte pas.
+ */
+export function markArrivalsBeforeTurnStart(player: PlayerState, turnNumber: number): PlayerState {
+  const arrivals = player.graveyardArrivals ?? [];
+  if (!arrivals.some((a) => a.turnNumber === turnNumber && !a.beforeOwnTurnStart)) return player;
+  return {
+    ...player,
+    graveyardArrivals: arrivals.map((a) => (a.turnNumber === turnNumber ? { ...a, beforeOwnTurnStart: true } : a)),
+  };
 }
 
 function replacePlayer(state: GameState, player: PlayerState): GameState {

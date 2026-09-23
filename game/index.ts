@@ -154,7 +154,7 @@ export { RULES } from "@/game/rules/constants";
 // --- Déraison (Raison négative, piste à prototyper du 2026-09-12) --------
 export { reasonCeiling, deraisonDebt, deraisonAnchorDamage } from "@/game/state/reason";
 export { previewPlayCardReason } from "@/game/actions/playCard";
-export { handBreakCost, previewBreakReason, previewHandBreakReason } from "@/game/actions/breakObject";
+export { breaksOnlyInReaction, handBreakCost, previewBreakReason, previewHandBreakReason } from "@/game/actions/breakObject";
 export {
   graveyardChoicesForAbility,
   graveyardChoicesForBreak,

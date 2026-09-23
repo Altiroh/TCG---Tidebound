@@ -228,14 +228,17 @@ function destroyOrphanedEquipment(state: GameState, turnNumber: number): { state
       ...next,
       players: next.players.map((p) =>
         p.id === player.id
-          ? {
-              ...p,
-              board: current.board.filter((u) => !orphanIds.has(u.instanceId)),
-              graveyard: [
-                ...current.graveyard,
-                ...orphans.map((u) => ({ ...u, damageMarked: 0, modifiers: [], attachedToInstanceId: undefined, graveyardCause: "destroyed" as const })),
-              ],
-            }
+          ? orphans.reduce<PlayerState>(
+              (acc, u) => recordGraveyardArrival(acc, { cardId: u.cardId, turnNumber, fromZone: "board" }),
+              {
+                ...p,
+                board: current.board.filter((u) => !orphanIds.has(u.instanceId)),
+                graveyard: [
+                  ...current.graveyard,
+                  ...orphans.map((u) => ({ ...u, damageMarked: 0, modifiers: [], attachedToInstanceId: undefined, graveyardCause: "destroyed" as const })),
+                ],
+              }
+            )
           : p
       ) as [PlayerState, PlayerState],
     };

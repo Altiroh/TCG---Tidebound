@@ -25,6 +25,7 @@ import {
 } from "@/game/rules/validation";
 import { payReasonCost, reasonCostAfterShield } from "@/game/state/shields";
 import { getPlayer, MIN_DISCOUNTED_COST, type GameState, type PlayerId, type PlayerState } from "@/game/state/types";
+import { recordGraveyardArrival } from "@/game/state/discard";
 import type { ActionResult, PlayCardAction } from "@/game/actions/types";
 
 function isUnitCard(type: string): boolean {
@@ -288,7 +289,12 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
     nextState = {
       ...nextState,
       players: nextState.players.map((p) =>
-        p.id === owner.id ? { ...owner, graveyard: [...owner.graveyard, instance] } : p
+        p.id === owner.id
+          ? recordGraveyardArrival(
+              { ...owner, graveyard: [...owner.graveyard, instance] },
+              { cardId: instance.cardId, turnNumber: state.turnNumber, fromZone: "hand" }
+            )
+          : p
       ) as [PlayerState, PlayerState],
     };
     // Pas de cause de cimetière ici : un Équipement consommable est

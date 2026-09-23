@@ -5098,6 +5098,8 @@ export const CORE_SET: CardDefinition[] = [
   // punir. Ces six-là rendent au nombre un prix, à des seuils différents.
   {
     id: "le-pont-est-plein",
+    // Résolution immédiate : part au Cimetière, n'occupe pas de Slot.
+    permanent: false,
     name: "Le Pont est Plein !",
     type: "anomalie",
     setCode: NECESSAIRE_DU_MARIN,
@@ -5117,6 +5119,8 @@ export const CORE_SET: CardDefinition[] = [
   },
   {
     id: "vague-scelerate",
+    // Résolution immédiate : part au Cimetière, n'occupe pas de Slot.
+    permanent: false,
     name: "Vague Scélérate",
     type: "anomalie",
     setCode: NECESSAIRE_DU_MARIN,
@@ -5134,6 +5138,8 @@ export const CORE_SET: CardDefinition[] = [
   },
   {
     id: "panique-sur-le-pont",
+    // Résolution immédiate : part au Cimetière, n'occupe pas de Slot.
+    permanent: false,
     name: "Panique sur le Pont",
     type: "anomalie",
     setCode: NECESSAIRE_DU_MARIN,
@@ -5155,6 +5161,8 @@ export const CORE_SET: CardDefinition[] = [
   },
   {
     id: "chacun-sa-place",
+    // Résolution immédiate : part au Cimetière, n'occupe pas de Slot.
+    permanent: false,
     name: "Chacun sa Place",
     type: "anomalie",
     setCode: NECESSAIRE_DU_MARIN,
@@ -5165,6 +5173,8 @@ export const CORE_SET: CardDefinition[] = [
   },
   {
     id: "pas-tous-a-la-fois",
+    // Résolution immédiate : part au Cimetière, n'occupe pas de Slot.
+    permanent: false,
     name: "Pas Tous à la Fois !",
     type: "anomalie",
     setCode: NECESSAIRE_DU_MARIN,
@@ -5190,6 +5200,8 @@ export const CORE_SET: CardDefinition[] = [
   },
   {
     id: "le-large-se-fache",
+    // Résolution immédiate : part au Cimetière, n'occupe pas de Slot.
+    permanent: false,
     name: "Le Large se Fâche",
     type: "anomalie",
     setCode: NECESSAIRE_DU_MARIN,
@@ -5491,6 +5503,8 @@ export const CORE_SET: CardDefinition[] = [
   },
   {
     id: "par-dessus-bord",
+    // Résolution immédiate : part au Cimetière, n'occupe pas de Slot.
+    permanent: false,
     name: "Par-dessus Bord !",
     type: "anomalie",
     setCode: NECESSAIRE_DU_MARIN,
@@ -5507,6 +5521,8 @@ export const CORE_SET: CardDefinition[] = [
   },
   {
     id: "quon-en-finisse",
+    // Résolution immédiate : part au Cimetière, n'occupe pas de Slot.
+    permanent: false,
     name: "Qu'on en Finisse",
     type: "anomalie",
     setCode: NECESSAIRE_DU_MARIN,
@@ -5765,6 +5781,8 @@ export const CORE_SET: CardDefinition[] = [
   // seul endroit du lot où le coût 6-7 achète un effet, pas une statistique.
   {
     id: "abandonnez-le-navire",
+    // Résolution immédiate : part au Cimetière, n'occupe pas de Slot.
+    permanent: false,
     name: "Abandonnez le Navire !",
     type: "anomalie",
     setCode: NECESSAIRE_DU_MARIN,
@@ -5775,6 +5793,8 @@ export const CORE_SET: CardDefinition[] = [
   },
   {
     id: "la-mer-reprend-tout",
+    // Résolution immédiate : part au Cimetière, n'occupe pas de Slot.
+    permanent: false,
     name: "La Mer Reprend Tout",
     type: "anomalie",
     setCode: NECESSAIRE_DU_MARIN,
@@ -5787,6 +5807,8 @@ export const CORE_SET: CardDefinition[] = [
   },
   {
     id: "dernier-jour-en-mer",
+    // Résolution immédiate : part au Cimetière, n'occupe pas de Slot.
+    permanent: false,
     name: "Dernier Jour en Mer",
     type: "anomalie",
     setCode: NECESSAIRE_DU_MARIN,

@@ -23,6 +23,7 @@ import {
   consumeStructureResistanceRestoreShield,
 } from "@/game/state/shields";
 import { getOpponent, getPlayer, type GameState, type PlayerState } from "@/game/state/types";
+import { recordGraveyardArrival } from "@/game/state/discard";
 import type { ActionResult, AttackAction } from "@/game/actions/types";
 
 function effectiveAttack(unit: CardInstance, state: GameState): number {
@@ -402,14 +403,17 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
         players: nextState.players.map((p) => {
           if (p.id === attackerPlayer.id) return { ...p, anchor: p.anchor - reflected };
           if (p.id === opponent.id) {
-            return {
-              ...p,
-              board: p.board.filter((u) => u.instanceId !== contrecoup.instanceId),
-              // « Après résolution, elle SE BRISE et quitte le board » : ce
-              // n'est pas une destruction (Briser ≠ Détruire), donc ni
-              // `onDeath` ni les observateurs « Structure détruite ».
-              graveyard: [...p.graveyard, { ...contrecoup, damageMarked: 0, modifiers: [], graveyardCause: "expired" as const }],
-            };
+            return recordGraveyardArrival(
+              {
+                ...p,
+                board: p.board.filter((u) => u.instanceId !== contrecoup.instanceId),
+                // « Après résolution, elle SE BRISE et quitte le board » : ce
+                // n'est pas une destruction (Briser ≠ Détruire), donc ni
+                // `onDeath` ni les observateurs « Structure détruite ».
+                graveyard: [...p.graveyard, { ...contrecoup, damageMarked: 0, modifiers: [], graveyardCause: "expired" as const }],
+              },
+              { cardId: contrecoup.cardId, turnNumber: state.turnNumber, fromZone: "board" }
+            );
           }
           return p;
         }) as [PlayerState, PlayerState],
