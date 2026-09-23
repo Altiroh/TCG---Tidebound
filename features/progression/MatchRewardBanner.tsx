@@ -6,7 +6,9 @@ import { notifyProgressionChanged } from "@/features/progression/progressionSync
 import styles from "@/features/progression/MatchRewardBanner.module.css";
 
 interface MatchRewardBannerProps {
-  matchId: string;
+  matchId?: string;
+  /** Gain FABRIQUÉ (labo `/game/fin-preview`) : aucune lecture serveur. */
+  preview?: MatchRewardSummary;
 }
 
 /** Nouvelles tentatives de lecture : en PvP, l'adversaire peut voir la fin de partie avant que l'octroi soit écrit. */
@@ -23,10 +25,11 @@ const RETRY_DELAYS_MS = [0, 1500, 4000];
  * à annoncer plutôt que d'afficher une erreur — une récompense absente n'est
  * pas un échec du point de vue du joueur.
  */
-export function MatchRewardBanner({ matchId }: MatchRewardBannerProps) {
-  const [reward, setReward] = useState<MatchRewardSummary | null>(null);
+export function MatchRewardBanner({ matchId, preview }: MatchRewardBannerProps) {
+  const [reward, setReward] = useState<MatchRewardSummary | null>(preview ?? null);
 
   useEffect(() => {
+    if (!matchId || preview) return;
     let cancelled = false;
     const timers: ReturnType<typeof setTimeout>[] = [];
 
@@ -55,7 +58,7 @@ export function MatchRewardBanner({ matchId }: MatchRewardBannerProps) {
       cancelled = true;
       timers.forEach(clearTimeout);
     };
-  }, [matchId]);
+  }, [matchId, preview]);
 
   if (!reward) return null;
 

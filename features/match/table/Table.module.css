@@ -598,6 +598,12 @@
  * capacité, et une info-bulle de navigateur arrive après une seconde, dans
  * la typographie du système. Celle-ci sort tout de suite, dans celle du jeu.
  *
+ * Même VERRE que les invites d'activation d'effet (`ReactionPrompt`,
+ * `PromptShell`) : fond flouté, reflet en haut à gauche, vignette arrondie,
+ * intitulé en petites capitales, effet en blanc appuyé, coût en pastille.
+ * Une capacité de Navire est un effet qu'on active : elle se lit dans la
+ * même langue que les autres.
+ *
  * Posée à DROITE du hublot pour les deux camps : le cadre de Navire vit
  * dans la colonne de gauche du plateau, il y a toujours de la place de ce
  * côté-là, jamais à gauche. `z-index` au-dessus du cadre, et aucun pointeur
@@ -610,17 +616,29 @@
   z-index: 30;
   display: flex;
   align-items: stretch;
-  gap: 0.7em;
+  gap: 0.9em;
   /* La largeur vient de l'illustration et de la colonne de texte (bornée
      plus bas), pas d'un plafond posé ici : sinon les deux se disputent la
      place et le texte finit en colonne de trois mots. */
   width: max-content;
-  padding: 0.6em;
+  padding: 0.9em;
+  overflow: hidden;
   transform: translateY(-50%) scale(0.96);
   transform-origin: left center;
-  border-radius: 0.4em;
-  background: rgba(6, 12, 20, 0.95);
-  box-shadow: inset 0 0 0 1px rgba(199, 154, 78, 0.45), 0 0.5em 1.4em rgba(0, 0, 0, 0.6);
+  border-radius: 1.4em;
+  /* Verre FUMÉ, et non le 6 % de blanc des invites : le hublot anime un
+     `filter` (son halo), ce qui borne le flou d'arrière-plan à lui-même —
+     sur le plateau, le verre clair laissait voir les cartes nettes au
+     travers et le texte devenait illisible. Le fond tient donc seul ; le
+     flou, quand le navigateur peut l'appliquer, n'est qu'un plus. */
+  background: linear-gradient(160deg, rgba(40, 50, 64, 0.9), rgba(14, 20, 30, 0.92));
+  -webkit-backdrop-filter: blur(32px) brightness(1.1) saturate(1.5);
+  backdrop-filter: blur(32px) brightness(1.1) saturate(1.5);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.5),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    inset 0 -12px 24px -12px rgba(255, 255, 255, 0.06),
+    0 24px 60px rgba(0, 0, 0, 0.6);
   opacity: 0;
   pointer-events: none;
   text-align: left;
@@ -633,6 +651,21 @@
   font-size: clamp(12px, 1.45vh, 16px);
 }
 
+/* Le reflet du verre, comme sur les invites : une courbure qui capte la
+   lumière, pas un aplat qui masquerait le flou du fond. */
+.shipAbilityCard::before {
+  content: "";
+  position: absolute;
+  top: -2.5em;
+  left: -1.5em;
+  width: 8em;
+  height: 8em;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  filter: blur(40px);
+  pointer-events: none;
+}
+
 .shipAbility:hover .shipAbilityCard,
 .shipAbility:focus-visible .shipAbilityCard {
   opacity: 1;
@@ -640,70 +673,76 @@
 }
 
 /* L'illustration, EN GRAND : dans le hublot elle est rognée en rond et
-   zoomée sur son sujet ; ici elle a la place de se montrer. */
+   zoomée sur son sujet ; ici elle a la place de se montrer. Vignette
+   arrondie et ombrée, celle de la fenêtre de réaction. */
 .shipAbilityCardArt {
+  position: relative;
   flex: 0 0 auto;
   width: clamp(110px, 13vh, 170px);
   align-self: center;
   aspect-ratio: 1;
-  border-radius: 0.3em;
+  border-radius: 0.8em;
   background-color: #241a11;
   background-image: linear-gradient(160deg, #4a3a25, #241a11);
   background-repeat: no-repeat;
   background-size: cover;
   background-position: center;
-  box-shadow: inset 0 0 0 1px rgba(199, 154, 78, 0.35);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
 }
 
 .shipAbilityCardBody {
+  position: relative;
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
-  gap: 0.3em;
+  justify-content: center;
+  gap: 0.45em;
   min-width: 0;
   max-width: 16em;
 }
 
+/* Le nom en intitulé, petites capitales discrètes (`PromptEyebrow`) : ce
+   qui se lit d'abord, c'est l'effet. */
 .shipAbilityCardName {
-  font-family: var(--font-card-title), Georgia, serif;
-  font-size: 1.15em;
-  letter-spacing: 0.03em;
-  color: #f0d79a;
+  font-size: 0.8em;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
 }
 
-/* Le COÛT, dans le bleu de la Raison (le médaillon du cadre) : la couleur
-   dit avec quelle ressource on paie, avant même de lire le mot. */
+/* Le coût en pastille, au gabarit de la fenêtre de réaction — le chiffre
+   garde le bleu de la Raison (son médaillon) : on voit avec quoi on paie. */
 .shipAbilityCardCost {
   align-self: flex-start;
-  margin-top: 0.15em;
-  padding: 0.12em 0.5em;
+  padding: 0.15em 0.75em;
   border-radius: 999px;
-  background: rgba(38, 104, 140, 0.35);
-  box-shadow: inset 0 0 0 1px rgba(88, 200, 216, 0.45);
-  font-size: 1em;
-  font-weight: 700;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 0.85em;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: #7fd6dd;
 }
 
 .shipAbilityCardCostUnit {
   font-weight: 500;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  font-size: 0.82em;
-  opacity: 0.85;
+  color: rgba(255, 255, 255, 0.7);
 }
 
+/* L'effet, en blanc appuyé (`PromptEffect`). */
 .shipAbilityCardText {
   font-size: 1em;
-  line-height: 1.4;
-  color: #e8edf4;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #fff;
 }
 
-/* Ce qui empêche d'agir — la raison du hublot éteint, dite en toutes lettres. */
+/* Ce qui empêche d'agir — la raison du hublot éteint, dite en toutes
+   lettres, sur le ton de la question des invites. */
 .shipAbilityCardStatus {
-  font-size: 0.92em;
-  color: #9fb0c0;
+  font-size: 0.85em;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.6);
 }
 
 @keyframes shipAbilityGlow {

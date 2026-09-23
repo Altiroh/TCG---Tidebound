@@ -10,7 +10,7 @@ interface ObjectBreakPromptProps {
   /** "hand" : Bris depuis la main (coût réduit). "board" : Objet posé — le Sabordage reste proposé en alternative. */
   source: "hand" | "board";
   /** Coût réellement dû et Raison résultante (`previewHandBreakReason`) — taxe adverse comprise. */
-  handCost?: { cost: number; reasonAfter: number; allowed: boolean };
+  handCost?: { cost: number; reasonAfter: number; allowed: boolean; reactionOnly: boolean };
   onBreak: () => void;
   onScuttle?: () => void;
   onCancel: () => void;
@@ -41,7 +41,9 @@ export function ObjectBreakPrompt({ card, source, handCost, onBreak, onScuttle, 
     return () => window.removeEventListener("keydown", handleKeyDown, true);
   }, [onCancel]);
 
-  const blocked = source === "hand" && handCost !== undefined && !handCost.allowed;
+  const blocked = handCost !== undefined && !handCost.allowed;
+  // Objet réactif : il se Brise par sa fenêtre de réaction, jamais à la main.
+  const reactionOnly = handCost?.reactionOnly === true;
   const deraison = handCost !== undefined && handCost.allowed && handCost.reasonAfter < 0;
 
   return (
@@ -66,7 +68,13 @@ export function ObjectBreakPrompt({ card, source, handCost, onBreak, onScuttle, 
               Ta Raison passera à {handCost!.reasonAfter} : tu entreras en Déraison.
             </PromptQuestion>
           )}
-          {blocked && <p className="text-xs leading-snug text-rose-300">Pas assez de Raison pour briser cet Objet depuis la main.</p>}
+          {blocked && (
+            <p className="text-xs leading-snug text-rose-300">
+              {reactionOnly
+                ? "Cet Objet se Brise en réaction : quand la situation de son texte se présente, une fenêtre te le proposera."
+                : "Pas assez de Raison pour briser cet Objet."}
+            </p>
+          )}
           {source === "board" && <PromptQuestion>Saborder l&apos;envoie au cimetière sans résoudre son effet.</PromptQuestion>}
 
           <PromptActions>

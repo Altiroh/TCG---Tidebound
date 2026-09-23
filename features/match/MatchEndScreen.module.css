@@ -1,16 +1,12 @@
 /*
- * Actions de l'écran de fin de partie.
+ * Écran de fin de partie.
  *
- * Même grammaire que la coquille hors-partie (`features/shell`) : surface
- * plate et désaturée pour l'action primaire, simple texte pour la
- * secondaire, turquoise en accent, sentence case. Sans dégradé, sans
- * anneau de laiton, sans lueur au survol — ce sont ces trois signes qui
- * donnaient au bouton son air de jeu Flash.
- *
- * Volontairement autonome plutôt qu'un import du module de la coquille :
- * celui-ci définit sa palette `--cb-*` sur `.screen`, absent ici, et son
- * `font-family: inherit` prendrait la typographie du plateau. Les valeurs
- * sont donc explicites, au prix d'une petite duplication assumée.
+ * Tout ce qui n'est pas la fiche peinte (bandeau, cadre) parle la langue des
+ * invites d'effet en partie (`PromptShell`, `ReactionPrompt`) : verre
+ * flouté, reflet, pastilles arrondies, vert d'acceptation pour l'action
+ * qui engage (retour du 23/09 : « l'UI des effets en partie, je kiffe »).
+ * Le relevé des quêtes et le gain gardent leurs propres modules, mais
+ * reprennent les mêmes valeurs.
  */
 
 /*
@@ -37,9 +33,16 @@
  * (bandeau, cadre, boutons). `100dvh` plutôt que `100vh` : sur mobile, les
  * barres d'interface du navigateur ne doivent pas repousser les boutons
  * sous le pli.
+ *
+ * FIXE, et non dans le flux (retour du 23/09, barre de défilement de la
+ * page) : la secousse d'impact (`.stage`) le décale de quelques pixels, et
+ * un bloc de 100dvh décalé dans le flux fait déborder la page — la barre
+ * apparaissait. Un élément fixe ne compte jamais dans la hauteur du
+ * document.
  */
 .screen {
-  position: relative;
+  position: fixed;
+  inset: 0;
   z-index: 10;
   display: flex;
   flex-direction: column;
@@ -101,11 +104,16 @@
 }
 
 /* Le relevé suit la colonne, et défile seul s'il a beaucoup de lignes :
-   l'écran, lui, ne défile jamais. */
+   l'écran, lui, ne défile jamais. Défilement sans barre visible — une
+   barre de système sur un panneau de verre casse tout l'effet. */
 .questColumn {
   min-width: 0;
   max-height: calc(100dvh - 140px);
   overflow-y: auto;
+  scrollbar-width: none;
+}
+.questColumn::-webkit-scrollbar {
+  display: none;
 }
 .questColumn:empty {
   display: none;
@@ -366,55 +374,55 @@
 }
 
 /*
- * Base commune : c'est la TYPOGRAPHIE qui fait le gros du travail
- * (sans-serif, casse normale, graisse moyenne), pas la décoration.
+ * Les boutons de `PromptButton` : pastille pleine, même gabarit partout.
+ * Le vert dit « on continue », le verre dit « on s'en va » — exactement
+ * le Oui / Non des fenêtres de réaction.
  */
 .action {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5em;
-  padding: 0.72em 1.5em;
+  padding: 0.6em 1.9em;
   border: none;
-  border-radius: 3px;
+  border-radius: 999px;
   background: transparent;
   font-family: var(--font-ui, "Segoe UI", system-ui, sans-serif);
   font-size: clamp(13px, 1vw, 15px);
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  line-height: 1;
+  font-weight: 600;
+  line-height: 1.2;
   white-space: nowrap;
   text-decoration: none;
   cursor: pointer;
-  transition: background 170ms ease-out, box-shadow 170ms ease-out, color 170ms ease-out;
+  outline: none;
+  transition: background 150ms ease-out, box-shadow 150ms ease-out, color 150ms ease-out;
 }
 
-/* Action primaire : une seule surface, un seul filet turquoise très discret. */
 .primary {
   composes: action;
-  background: rgba(13, 52, 69, 0.62);
-  box-shadow: inset 0 0 0 1px rgba(79, 196, 206, 0.22);
-  color: #dceaec;
+  background: #34d399;
+  color: #022c22;
+  box-shadow: 0 8px 24px -8px rgba(52, 211, 153, 0.55);
 }
-.primary:hover,
+.primary:hover {
+  background: #6ee7b7;
+}
 .primary:focus-visible {
-  outline: none;
-  background: rgba(17, 68, 88, 0.85);
-  box-shadow: inset 0 0 0 1px rgba(79, 196, 206, 0.5);
-  color: #f0f7f8;
+  box-shadow: 0 0 0 2px #a7f3d0;
 }
 
-/* Action secondaire : du texte. Aucune surface au repos. */
 .ghost {
   composes: action;
-  padding-inline: 1.1em;
-  color: rgba(233, 226, 209, 0.62);
+  background: rgba(255, 255, 255, 0.1);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  color: #fff;
 }
-.ghost:hover,
+.ghost:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
 .ghost:focus-visible {
-  outline: none;
-  background: rgba(233, 226, 209, 0.07);
-  color: #e9e2d1;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.4);
 }
 
 /* ══════════════════════════════════════════════════════════════
