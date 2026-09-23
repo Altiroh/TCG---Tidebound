@@ -420,6 +420,89 @@ const NECESSAIRE_DU_MARIN_RARITY: Record<string, CardRarity> = {
   "la-mer-reprend-tout": "legendary",
 };
 
+/**
+ * Lot 15 — Éclats en Selle. Raretés ÉVALUÉES le 23/09/2026 (Notion n'en
+ * donnait qu'une : le Géant Chromatique, Rare), à confirmer en playtest.
+ *
+ * Critère : la puissance réelle d'une carte à son coût, et ce qu'elle fait
+ * tourner.
+ *  - Commune : corps d'identité au niveau de la courbe, outils qu'on veut en
+ *    trois exemplaires — un plan à deux couleurs ou un Verre de base doit se
+ *    monter sans chance au tirage.
+ *  - Peu commune : moteur de famille (Vigie, Verrier, Signal Vert cumulatif),
+ *    ou corps qui apporte un effet réel (Canonnier Fêlé).
+ *  - Rare : retourne un échange à elle seule — sauvetage (Porte-Éclats),
+ *    ressource répétable (Maître Verrier), anti-Garde (Bête de Percée,
+ *    Débusquer), enablers de couleur.
+ *  - Épique : ce qui referme une partie — La Grande Fissure, Jusqu'à ce que
+ *    ça casse, Formation Prismatique.
+ * Aucune Légendaire : le palier se replie au tirage. La variante Abyssale du
+ * Géant n'est pas listée, son suffixe suffit.
+ */
+const ECLATS_EN_SELLE_RARITY: Record<string, CardRarity> = {
+  // --- Équipage de Verre -----------------------------------------------------
+  "eclaireur-ebreche": "common",
+  "matelot-fele": "common",
+  "duelliste-de-verre": "common",
+  "polisseuse-des-felures": "common",
+  "vigie-aux-fissures": "uncommon",
+  "verrier-de-pont": "uncommon",
+  "canonnier-fele": "uncommon",
+  "bretteuse-au-bord": "uncommon",
+  "porte-eclats": "rare",
+  "maitre-verrier": "rare",
+  "la-grande-fissure": "epic",
+  "eclat-de-bouteille": "common",
+  "encore-debout": "common",
+  "bouclier-fendu": "common",
+  "trinquer-trop-fort": "uncommon",
+  "pont-de-verre": "uncommon",
+  "jusqua-ce-que-ca-casse": "epic",
+  // --- Cavalerie -------------------------------------------------------------
+  "monture-de-breche": "common",
+  "bete-de-halage": "common",
+  "destrier-du-ressac": "common",
+  "eclaireur-a-cornes": "uncommon",
+  "mufle-au-fanion": "uncommon",
+  "chargeur-des-ecueils": "uncommon",
+  "vieille-selle": "uncommon",
+  "bete-de-percee": "rare",
+  "mange-fer": "rare",
+  "le-deserteur-gris": "uncommon",
+  "la-bete-quon-nattend-plus": "rare",
+  "selle-de-guerre": "common",
+  "harnais-de-retenue": "common",
+  "ouvrez-la-ligne": "common",
+  debusquer: "rare",
+  "pas-un-pas-de-plus": "uncommon",
+  "la-mauvaise-reputation": "common",
+  // --- Sentinelles Chromatiques ----------------------------------------------
+  "heros-de-la-flamme": "common",
+  "gardienne-de-leclat": "common",
+  "tacticien-de-lecume": "common",
+  "veilleuse-de-lombre": "common",
+  "porteur-de-jade": "uncommon",
+  "survivant-de-la-mousse": "uncommon",
+  "briseur-du-brasier": "uncommon",
+  "rempart-du-soleil": "uncommon",
+  "stratege-de-lazur": "uncommon",
+  "oracle-damethyste": "uncommon",
+  "emissaire-de-quartz": "rare",
+  "heraut-de-nacre": "rare",
+  "appel-des-sentinelles": "common",
+  "pierre-retrouvee": "common",
+  "poste-chromatique": "common",
+  "bracelet-chromatique": "uncommon",
+  "transfert-de-pierre": "uncommon",
+  "la-premiere-pierre": "uncommon",
+  synchronisation: "uncommon",
+  "les-couleurs-repondent": "uncommon",
+  "bracelet-de-resonance": "rare",
+  "coffret-aux-cinq-pierres": "rare",
+  "formation-prismatique": "epic",
+  "le-geant-chromatique": "rare",
+};
+
 const ABYSSAL_VARIANT_SUFFIX = "-abyssal";
 
 /**
@@ -436,6 +519,7 @@ export function rarityForCardId(cardId: string): CardRarity | null {
     RAPIECER_LA_COQUE_RARITY[cardId] ??
     VEILLEE_DES_DISPARUS_RARITY[cardId] ??
     NECESSAIRE_DU_MARIN_RARITY[cardId] ??
+    ECLATS_EN_SELLE_RARITY[cardId] ??
     PROVISIONAL_RARITY[cardId] ??
     null
   );

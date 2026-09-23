@@ -8,6 +8,7 @@ import {
 } from "@/game/effects/graveyardChoices";
 import type { PlayerAction } from "@/game/actions/types";
 import { eligibleChosenUnits } from "@/game/effects/chosenTargets";
+import { findAssemblage } from "@/game/rules/chromatic";
 import { eligibleCandidatesFor } from "@/game/reactions/reactionWindow";
 import { canUnitAttack } from "@/game/rules/validation";
 import { shipAbilityView } from "@/game/state/shipAbility";
@@ -72,6 +73,22 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
         { type: "resolveChoice" as const, playerId, choice: "pass" as const },
       ];
     }
+    // « Choisissez une couleur » : chaque couleur proposée est un coup, et
+    // `evaluateState` départage (Lot 15).
+    if (state.pendingChoice.kind === "chromaticColor") {
+      const choice = state.pendingChoice;
+      return [
+        ...choice.options.map((color) => ({ type: "resolveChoice" as const, playerId, choice: { color } })),
+        ...(choice.refusable ? [{ type: "resolveChoice" as const, playerId, choice: "pass" as const }] : []),
+      ];
+    }
+    // Carte du dessus de la pioche adverse : la laisser ou l'enterrer.
+    if (state.pendingChoice.kind === "deckTopDecision") {
+      return [
+        { type: "resolveChoice" as const, playerId, choice: { deckTop: "keep" as const } },
+        { type: "resolveChoice" as const, playerId, choice: { deckTop: "bottom" as const } },
+      ];
+    }
     // Ciblage multiple : prendre le maximum de cibles est le coup lisible,
     // n'en prendre aucune l'autre extrême.
     if (state.pendingChoice.kind === "pickUnits") {
@@ -118,9 +135,15 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
     // « ne rien prendre ». `evaluateState` tranche, comme partout ailleurs.
     if (state.pendingChoice.kind === "deckLook") {
       const choice = state.pendingChoice;
-      const prenables = choice.revealed.filter(
-        (carte) => !choice.takeableCardTypes || choice.takeableCardTypes.includes(getCardDefinition(carte.cardId).type)
-      );
+      const prenables = choice.revealed.filter((carte) => {
+        const def = getCardDefinition(carte.cardId);
+        if (choice.takeableCardTypes && !choice.takeableCardTypes.includes(def.type)) return false;
+        if (choice.takeableArchetype && def.archetype !== choice.takeableArchetype) return false;
+        if (choice.takeableChromaticColors && !(def.chromatic?.colors ?? []).some((c) => choice.takeableChromaticColors!.includes(c))) {
+          return false;
+        }
+        return true;
+      });
       return [
         ...prenables.map((carte) => ({
           type: "resolveChoice" as const,
@@ -179,7 +202,9 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
         const abilityEffects = getCardDefinition(candidate.cardId).abilities?.[candidate.abilityIndex]?.effects ?? [];
         const targeting = abilityEffects.find((e) => e.target.kind === "chosenUnit");
         const legalTargets = targeting
-          ? eligibleChosenUnits(state, targeting.target, playerId, candidate.sourceInstanceId).map((c) => c.unit)
+          ? eligibleChosenUnits(state, targeting.target, playerId, candidate.sourceInstanceId, candidate.triggerSourceInstanceId).map(
+              (c) => c.unit
+            )
           : allBoardUnits;
         for (const target of legalTargets) {
           actions.push({
@@ -277,6 +302,13 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
         } else {
           actions.push({ type: "playCard", playerId, instanceId: card.instanceId });
         }
+      }
+      // Assemblage Chromatique (Lot 15) : un coup de plus quand il est
+      // possible. Une affectation suffit — `evaluateState` départage la pose
+      // assemblée et la pose au coût normal, pas les façons d'assembler.
+      if (def.chromaticAssemblage) {
+        const assemblage = findAssemblage(player.board, def.chromaticAssemblage.sentinels);
+        if (assemblage) actions.push({ type: "playCard", playerId, instanceId: card.instanceId, assemblage });
       }
       // Bris depuis la main (coût réduit, sans Slot) : même variantes de cible/défausse qu'un Objet posé.
       if (def.type === "objet") actions.push(...breakVariants(state, playerId, card.instanceId, def, true));

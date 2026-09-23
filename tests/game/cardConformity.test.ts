@@ -40,18 +40,38 @@ type RuleId =
   /** Structure-piège qui se referme après avoir tiré (`afterHiddenReaction`). */
   | "remasquable"
   /** Anomalie à résolution immédiate : part au Cimetière (`permanent: false`). */
-  | "anomalie-ephemere";
+  | "anomalie-ephemere"
+  /** « Signal Rouge » annoncé par le texte, porté par l'identité chromatique (Lot 15). */
+  | "signal";
 
 /**
  * Écarts assumés, avec leur motif. La clé est `${cardId}:${rule}`.
  * Un motif vide fait échouer le test : on documente, on ne contourne pas.
  */
 //
-// VIDE depuis le 21/09/2026 : la seule exception qui restait — l'Ancre de
-// Dérive, Sabordée d'office au changement de Marée — a disparu avec la
-// fenêtre `onTideAnnounced`. Chaque « vous pouvez » du catalogue est
-// désormais un vrai choix du joueur.
-const EXCEPTIONS: Record<string, string> = {};
+// Vide du 21/09/2026 au Lot 15 : la dernière exception d'alors — l'Ancre de
+// Dérive, Sabordée d'office au changement de Marée — avait disparu avec la
+// fenêtre `onTideAnnounced`.
+const EXCEPTIONS: Record<string, string> = {
+  "bete-de-halage:optional":
+    "Le remplacement se décide AU MILIEU de l'effet adverse qui renvoie ou détruit la Bête, là où aucune fenêtre " +
+    "de réaction ne peut s'ouvrir. Il est appliqué d'office, une fois par tour : refuser reviendrait à perdre " +
+    "l'unité plutôt qu'1 Résistance, et la Bête n'a aucun effet d'arrivée qu'un renvoi permettrait de rejouer.",
+  "jusqua-ce-que-ca-casse:once-ever":
+    "« La première fois que chacune de vos unités » vaut pour la durée de l'Anomalie, qui ne vit que jusqu'à la " +
+    "fin du tour (`expiresAtEndOfTurn`) : le « une fois par tour » suivi PAR UNITÉ (`oncePerTurnPerTriggerSource`) " +
+    "en est la lecture exacte, sans `onceEver`.",
+};
+
+/**
+ * « Signal Rouge — Vos Sentinelles d'une autre couleur ont +1 Puissance… »
+ * (Lot 15) : la phrase décrit la RÈGLE de la couleur, tenue une fois par le
+ * moteur (`game/rules/chromatic.ts`), pas une capacité de la carte. Elle est
+ * donc retirée du texte avant les autres règles — qui chercheraient sinon un
+ * `oncePerTurnKey` ou un montant que la carte n'a pas à porter — et vérifiée
+ * à part (règle « signal »).
+ */
+const SIGNAL_CLAUSE = /Signal (Rouge|Jaune|Bleu|Vert|Violet)(?:\s*—[^.]*)?\./g;
 
 interface Violation {
   cardId: string;
@@ -120,7 +140,6 @@ function textAmounts(text: string, pattern: RegExp): number[] {
 
 function check(def: CardDefinition): Violation[] {
   const out: Violation[] = [];
-  const text = def.text ?? "";
   const effects = allEffects(def);
   const abilities: TriggeredAbility[] = def.abilities ?? [];
   const push = (rule: RuleId, detail: string) => out.push({ cardId: def.id, rule, detail });
@@ -132,6 +151,16 @@ function check(def: CardDefinition): Violation[] {
   if (def.type === "anomalie" && def.durationTurns === undefined && abilities.length === 0 && def.permanent !== false) {
     push("anomalie-ephemere", "Anomalie sans durée ni capacité : il manque `permanent: false` pour qu'elle parte au Cimetière après résolution");
   }
+
+  // --- Signaux Chromatiques (Lot 15) -------------------------------------------
+  const texteComplet = def.text ?? "";
+  for (const match of texteComplet.matchAll(SIGNAL_CLAUSE)) {
+    const couleur = match[1]!.toLowerCase();
+    if (!def.chromatic?.emitsSignal || !(def.chromatic.colors ?? []).includes(couleur as never)) {
+      push("signal", `« Signal ${match[1]} » annoncé, mais la carte n'émet pas ce Signal (\`chromatic\`)`);
+    }
+  }
+  const text = texteComplet.replace(SIGNAL_CLAUSE, "").trim();
 
   // --- Fréquence -----------------------------------------------------------
   if (/(une (seule )?fois par tour|la premi[èe]re fois [àa] chaque tour|maximum 1 fois par tour|1x par tour)/i.test(text)) {
@@ -149,9 +178,12 @@ function check(def: CardDefinition): Violation[] {
     // ouvre accepte « ne rien faire ». C'est le cas de « vous pouvez
     // ajouter une Structure parmi elles » (Lot 14), où la décision est
     // dans la question posée, pas dans l'activation de la capacité.
+    // L'Assemblage Chromatique est un coût ALTERNATIF : c'est au joueur de
+    // le choisir en jouant la carte (`PlayCardAction.assemblage`).
     const optional =
       abilities.some((a) => a.mode === "optional") ||
       Boolean(def.activatableOncePerTurn) ||
+      Boolean(def.chromaticAssemblage) ||
       effects.some((e) => e.refusable === true);
     if (!optional) push("optional", "« vous pouvez » sans capacité `mode: \"optional\"` ni effet refusable : l'effet se résout d'office");
   }
@@ -255,7 +287,16 @@ function check(def: CardDefinition): Violation[] {
     if (!ok) push("keyword", "« Pied marin » cité sans `keywords`, `grantKeywords` ni invocation `rush`");
   }
   if (/\bGarde\b/.test(text) && def.type !== "objet" && !Object.keys(def).some((k) => /bypassesGarde/.test(k))) {
-    const ok = def.keywords?.includes("garde") || (def.conditionalKeywords ?? []).some((k) => k.keyword === "garde") || def.equipGrantsKeywords?.includes("garde") || grants.includes("garde");
+    // Un texte peut citer Garde pour la RETIRER (« elle perd Garde ») ou pour
+    // frapper qui la porte (« une unité ayant Garde ») : la définition le
+    // réalise alors par le retrait ou par le bonus, pas par un octroi.
+    const ok =
+      def.keywords?.includes("garde") ||
+      (def.conditionalKeywords ?? []).some((k) => k.keyword === "garde") ||
+      def.equipGrantsKeywords?.includes("garde") ||
+      grants.includes("garde") ||
+      effects.some((e) => e.removeKeywords?.includes("garde")) ||
+      def.bonusDamageVsKeyword?.keyword === "garde";
     if (!ok) push("keyword", "« Garde » cité sans mot-clé statique, conditionnel, transmis par Équipement ni accordé");
   }
   if (/\bRu[ée]e\b/.test(text)) push("pied-marin", "« Ruée » est proscrit : le mot-clé s'appelle « Pied marin »");

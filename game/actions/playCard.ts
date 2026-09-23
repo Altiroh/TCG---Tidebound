@@ -24,8 +24,9 @@ import {
   combine,
 } from "@/game/rules/validation";
 import { payReasonCost, reasonCostAfterShield } from "@/game/state/shields";
-import { getPlayer, MIN_DISCOUNTED_COST, type GameState, type PlayerId, type PlayerState } from "@/game/state/types";
 import { recordGraveyardArrival } from "@/game/state/discard";
+import { assemblageError } from "@/game/rules/chromatic";
+import { getPlayer, MIN_DISCOUNTED_COST, type GameState, type PlayerId, type PlayerState } from "@/game/state/types";
 import type { ActionResult, PlayCardAction } from "@/game/actions/types";
 
 function isUnitCard(type: string): boolean {
@@ -149,6 +150,14 @@ function validate(state: GameState, action: PlayCardAction) {
   const playableCheck = assertPlayableCondition(state, action.playerId, def);
   if (!playableCheck.ok) return playableCheck;
 
+  // « Assemblage Chromatique » : un coût ALTERNATIF, qui n'existe que si la
+  // carte le déclare et que les Sentinelles désignées le remplissent.
+  if (action.assemblage) {
+    if (!def.chromaticAssemblage) return { ok: false as const, error: "Cette carte ne se joue pas par Assemblage." };
+    const erreur = assemblageError(player!.board, action.assemblage, def.chromaticAssemblage.sentinels);
+    if (erreur) return { ok: false as const, error: erreur };
+  }
+
   const costCheck = assertCanPayCost(
     state,
     action.playerId,
@@ -156,7 +165,8 @@ function validate(state: GameState, action: PlayCardAction) {
   );
   if (!costCheck.ok) return costCheck;
 
-  if (isPermanentCard(def)) {
+  // Un Assemblage libère au moins une place avant de poser la carte.
+  if (isPermanentCard(def) && !action.assemblage) {
     // Slots universels : tout permanent (unité, Structure, Objet, Équipement,
     // Anomalie) occupe un Slot, pas seulement les unités.
     const boardCheck = assertBoardNotFull(state, action.playerId);
@@ -234,10 +244,51 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
       PlayerState
     ],
   };
-  const payment = payReasonCost(nextState, player.id, effectiveCost(def, state, player.id), state.turnNumber);
+
+  // --- ASSEMBLAGE CHROMATIQUE (Lot 15) ---------------------------------
+  // Les Sentinelles désignées sont PLACÉES au Cimetière : ni détruites, ni
+  // Sabordées. Aucun `onDeath` ne s'éveille — « cela ne compte pas comme une
+  // destruction » —, et leurs Équipements orphelins partent au prochain
+  // passage de `processDeaths`, comme ceux de toute unité qui quitte le jeu.
+  const assemblage = action.assemblage && def.chromaticAssemblage ? action.assemblage : undefined;
+  if (assemblage) {
+    const retirees = new Set(assemblage.map((part) => part.instanceId));
+    const owner = getPlayer(nextState, player.id);
+    const partantes = owner.board.filter((u) => retirees.has(u.instanceId));
+    let apres: PlayerState = {
+      ...owner,
+      board: owner.board.filter((u) => !retirees.has(u.instanceId)),
+      graveyard: [
+        ...owner.graveyard,
+        ...partantes.map((u) => ({ ...u, damageMarked: 0, modifiers: [], graveyardCause: "assembled" as const })),
+      ],
+    };
+    for (const carte of partantes) {
+      apres = recordGraveyardArrival(apres, { cardId: carte.cardId, turnNumber: state.turnNumber, fromZone: "board" });
+      events.push({ ...base, type: "CARD_MOVED", instanceId: carte.instanceId, cardId: carte.cardId, ownerId: player.id, fromZone: "board", toZone: "graveyard" });
+    }
+    nextState = { ...nextState, players: nextState.players.map((p) => (p.id === player.id ? apres : p)) as [PlayerState, PlayerState] };
+  }
+
+  // La Mauvaise Réputation : la réduction qui s'applique à CETTE carte dit
+  // aussi ce qu'elle subit à son arrivée. Lu avant de consommer la charge.
+  const degatsArrivee = assemblage
+    ? []
+    : (player.costDiscounts ?? []).filter(
+        (discount) => discount.arrivalDamage && discountApplies(discount, def, state.turnNumber, player.unitsPlayedThisTurn ?? 0)
+      );
+
+  // « en payant 2 Raison au lieu de son coût » : l'Assemblage remplace le
+  // coût, il ne s'y ajoute pas, et aucune réduction ne s'y applique.
+  const payment = payReasonCost(
+    nextState,
+    player.id,
+    assemblage ? def.chromaticAssemblage!.reasonCost : effectiveCost(def, state, player.id),
+    state.turnNumber
+  );
   // La réduction est dépensée en même temps que la Raison, jamais avant :
   // une pose refusée plus haut ne doit pas avoir consommé la charge.
-  nextState = consumeCostDiscounts(payment.state, player.id, def);
+  nextState = assemblage ? payment.state : consumeCostDiscounts(payment.state, player.id, def);
   // Compté APRÈS le paiement : « après la troisième unité jouée », c'est la
   // quatrième qui paie, donc la carte en cours ne doit pas s'être déjà
   // comptée quand son propre coût est calculé.
@@ -263,6 +314,14 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
       damageMarked: 0,
       modifiers: [],
       turnsRemaining: def.durationTurns,
+      // « considéré comme ayant les quatre couleurs utilisées pour son
+      // Assemblage. Il émet … les Signaux correspondant à ces couleurs. »
+      ...(assemblage
+        ? {
+            chromatic: { colors: assemblage.map((part) => part.color), emits: assemblage.map((part) => part.color) },
+            arrivedByAssemblage: true,
+          }
+        : {}),
     };
     const owner = getPlayer(nextState, player.id);
     // Emplacement dans le rang. Le joueur le désigne en lâchant sa carte
@@ -300,6 +359,19 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
     // Pas de cause de cimetière ici : un Équipement consommable est
     // "utilisé", pas défaussé/détruit/sabordé au sens de la traçabilité
     // (Notion "Moteur de partie", section "Défausse").
+  }
+
+  // « À son arrivée, elle subit 1 dégât » (La Mauvaise Réputation) : un
+  // effet de celui qui a posé la réduction — ses propres dégâts, donc, pour
+  // tout ce qui regarde « l'un de vos effets ».
+  for (const discount of degatsArrivee) {
+    const blessee = resolveEffect(
+      nextState,
+      { type: "damage", target: { kind: "self" }, amount: { kind: "flat", value: discount.arrivalDamage! } },
+      { controllerId: discount.grantedBy ?? player.id, sourceInstanceId: instance.instanceId, turnNumber: state.turnNumber }
+    );
+    nextState = blessee.state;
+    events.push(...blessee.events);
   }
 
   const context: EffectContext = {

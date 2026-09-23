@@ -2,6 +2,7 @@ import { ARCHETYPE_LABELS, type ArchetypeId } from "@/game/cards/archetypes";
 import {
   BOOSTER_BIENVENUE,
   BOOSTER_DEFAUT,
+  BOOSTER_ECLATS_EN_SELLE,
   BOOSTER_ETRANGETE_SOUS_MARINE,
   BOOSTER_POISSONS_PAS_FRAIS,
   BOOSTER_NECESSAIRE_DU_MARIN,
@@ -65,6 +66,13 @@ export interface BoosterExtension {
    * On ne promet que ce que la liste tient (voir l'en-tête).
    */
   archetype: ArchetypeId | null;
+  /**
+   * Nom annoncé à la place d'une famille, quand le design le TRANCHE pour un
+   * pool qui en réunit plusieurs (Éclats en Selle : Verre, Cavalerie et
+   * Sentinelles — « le libellé reste sur Éclats en Selle », 23/09/2026).
+   * Il prime sur la règle du seuil : c'est une décision, pas une mesure.
+   */
+  familyLabel?: string;
   /**
    * Une ligne, sous le titre — ce que le sachet dit de lui-même.
    *
@@ -161,6 +169,22 @@ const EXTENSIONS: readonly BoosterExtension[] = [
       "la frontière entre la mémoire et l'oubli : les petits qui attendent encore sur le quai, les promesses qu'on " +
       "leur a faites pour qu'ils patientent, et tout ce qu'un équipage laisse derrière lui sans jamais l'avouer.",
   },
+  {
+    // Trois familles dans un même sachet. Les Sentinelles y pèsent 25 cartes
+    // sur 61 (41 %), au-dessus du seuil d'annonce — mais le design a tranché
+    // (23/09/2026) : le rayon annonce le LOT, pas l'une de ses trois familles.
+    boosterId: BOOSTER_ECLATS_EN_SELLE,
+    name: "Éclats en Selle",
+    kind: "extension",
+    archetype: null,
+    familyLabel: "Éclats en Selle",
+    tagline: "Du verre, des bêtes, des pierres",
+    lore:
+      "Un équipage qui se fêle et tient quand même, des Bêtes de guerre que personne n'appelle plus qu'à la " +
+      "dernière extrémité, et des marins qui ont trouvé au fond des pierres de couleur qui répondent les unes aux " +
+      "autres. Éclats en Selle réunit ce qui brille parce que ça a été brisé — et ce qui charge quand plus rien ne " +
+      "tient la ligne.",
+  },
 ];
 
 const BY_ID: ReadonlyMap<string, BoosterExtension> = new Map(EXTENSIONS.map((entry) => [entry.boosterId, entry]));
@@ -196,6 +220,7 @@ export function boosterExtensionLabel(boosterId: string): string {
   const entry = BY_ID.get(boosterId);
   if (!entry) return "Booster";
   if (entry.kind === "base") return "Booster de base";
+  if (entry.familyLabel) return `Booster d'extension · ${entry.familyLabel}`;
   if (!entry.archetype) return "Booster d'extension";
   return `Booster d'extension · ${ARCHETYPE_LABELS[entry.archetype]}`;
 }

@@ -18,7 +18,7 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { UNIT_CARD_TYPES, type CardInstance } from "@/game/cards/types";
 
-export type ArchetypeId = "cra-poiscail" | "un-dead" | "cavalerie";
+export type ArchetypeId = "cra-poiscail" | "un-dead" | "cavalerie" | "equipage-de-verre" | "sentinelle-chromatique";
 
 /** Libellé humain — outils de design, journaux, tests. Jamais rendu sur une carte. */
 export const ARCHETYPE_LABELS: Record<ArchetypeId, string> = {
@@ -30,6 +30,13 @@ export const ARCHETYPE_LABELS: Record<ArchetypeId, string> = {
   // d'avoir un banc, et pour que les cartes qui la rejoindront n'aient
   // pas à réécrire celles d'avant.
   cavalerie: "Cavalerie",
+  // Lot 15 — Éclats en Selle (Notion, 23/09/2026). La Cavalerie y reçoit son
+  // banc ; deux familles s'ouvrent. L'Équipage de Verre ne compte rien :
+  // ses cartes ne se nomment jamais entre elles, les synergies passent par
+  // le fait de SURVIVRE aux dégâts. Les Sentinelles, elles, raisonnent en
+  // couleurs (`game/rules/chromatic.ts`), et la famille dit qui en a une.
+  "equipage-de-verre": "Équipage de Verre",
+  "sentinelle-chromatique": "Sentinelles Chromatiques",
 };
 
 /**

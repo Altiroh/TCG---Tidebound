@@ -1,14 +1,17 @@
 import {
+  CHROMATIC_COLORS,
   hasResistance,
   isVisibleDuringTide,
   UNIT_CARD_TYPES,
   type CardDefinition,
   type CardInstance,
+  type ChromaticColor,
+  type StatModifier,
   type StatModifierDuration,
 } from "@/game/cards/types";
 import { canBeEquipTarget, getCardDefinition } from "@/game/cards/sets/core";
 import { countArchetypeUnits } from "@/game/cards/archetypes";
-import { computeEffectiveStats } from "@/game/cards/stats";
+import { auraContextOf, computeEffectiveStats } from "@/game/cards/stats";
 import { getShipDefinition } from "@/game/environment/shipData";
 import { forceTideJumpToAbysses, forceTideTransition, tickTide } from "@/game/environment/tide";
 import { isEligibleChosenUnit } from "@/game/effects/chosenTargets";
@@ -18,6 +21,7 @@ import { nextInt, type RngState } from "@/game/rng";
 import { reduceReasonGain } from "@/game/state/anomalies";
 import { reasonAfterLoss, reasonCeiling } from "@/game/state/reason";
 import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
+import { chromaticColorsOf, chromaticShardCardId } from "@/game/rules/chromatic";
 import {
   consumeEquippedEffectDamageShield,
   consumeOwnDamageTakenShield,
@@ -25,6 +29,7 @@ import {
   consumeStructureResistanceRestoreShield,
 } from "@/game/state/shields";
 import {
+  findCardInstance,
   getOpponent,
   getPlayer,
   MIN_DISCOUNTED_COST,
@@ -139,6 +144,8 @@ export interface EffectContext {
    * restriction que `directDamageReduction`.
    */
   directDamageCap?: number;
+  /** Couleur désignée par le joueur (`chooseChromaticColor`), lue par `chromaticColorFrom: "chosenColor"`. */
+  chosenColor?: ChromaticColor;
   turnNumber: number;
 }
 
@@ -313,7 +320,10 @@ function passesTargetFilter(
   if (!filter) return true;
   if (filter.excludeSelf && unit.instanceId === context.sourceInstanceId) return false;
 
+  if (filter.excludeChosenTarget && unit.instanceId === context.chosenTargetInstanceId) return false;
+
   const def = getCardDefinition(unit.cardId);
+  if (filter.archetype && (def.archetype !== filter.archetype || !UNIT_CARD_TYPES.includes(def.type))) return false;
   if (filter.cardType && def.type !== filter.cardType) return false;
   if (filter.cardTypes && !filter.cardTypes.includes(def.type)) return false;
   if (filter.subtype && def.subtype !== filter.subtype) return false;
@@ -330,6 +340,7 @@ function passesTargetFilter(
       controllerBoard: owner.board,
       controllerReason: owner.reason,
       tideOrientation: state.environment.tideOrientation,
+      controllerIsActive: state.activePlayerId === owner.id,
     });
     if (stats.attack > filter.maxPower) return false;
   }
@@ -383,10 +394,24 @@ function resolveUnitTargetsUnfiltered(
       if (!context.sourceInstanceId) return noDraw([]);
       const owner = findUnitOwner(state, context.sourceInstanceId);
       const equipment = owner?.board.find((u) => u.instanceId === context.sourceInstanceId);
-      const carried = equipment?.attachedToInstanceId
-        ? owner?.board.find((u) => u.instanceId === equipment.attachedToInstanceId)
-        : undefined;
-      return noDraw(carried && owner ? [{ unit: carried, ownerId: owner.id }] : []);
+      if (owner && equipment) {
+        const carried = equipment.attachedToInstanceId
+          ? owner.board.find((u) => u.instanceId === equipment.attachedToInstanceId)
+          : undefined;
+        return noDraw(carried ? [{ unit: carried, ownerId: owner.id }] : []);
+      }
+      // « Sabordez cet Équipement : restaurez 2 Résistance à l'unité
+      // équipée » (Bouclier Fendu) : quand `onSaborde` se résout,
+      // l'Équipement est déjà au Cimetière. Il y garde sa référence de
+      // porteur — c'est elle qu'on suit, jusqu'au plateau où l'unité est
+      // restée.
+      for (const player of state.players) {
+        const departed = player.graveyard.find((c) => c.instanceId === context.sourceInstanceId);
+        if (!departed?.attachedToInstanceId) continue;
+        const carried = player.board.find((u) => u.instanceId === departed.attachedToInstanceId);
+        return noDraw(carried ? [{ unit: carried, ownerId: player.id }] : []);
+      }
+      return noDraw([]);
     }
     case "chosenUnit": {
       if (!context.chosenTargetInstanceId) return noDraw([]);
@@ -400,7 +425,8 @@ function resolveUnitTargetsUnfiltered(
           effect.target,
           context.controllerId,
           context.chosenTargetInstanceId,
-          context.sourceInstanceId
+          context.sourceInstanceId,
+          context.triggerSourceInstanceId
         )
       ) {
         return noDraw([]);
@@ -488,6 +514,99 @@ function resolveSinglePlayerTarget(
   context: EffectContext
 ): PlayerState | undefined {
   return resolvePlayerTargets(state, effect, context)[0];
+}
+
+/**
+ * « Si elle survit » : la cible désignée est encore en jeu, n'est pas
+ * condamnée, et ses dégâts restent sous sa Résistance effective. Lu APRÈS
+ * les dégâts de l'effet qui précède — c'est tout le sens de « ensuite ».
+ */
+function chosenTargetSurvives(state: GameState, context: EffectContext): boolean {
+  const id = context.chosenTargetInstanceId;
+  if (!id) return false;
+  const owner = findUnitOwner(state, id);
+  const unit = owner?.board.find((u) => u.instanceId === id);
+  if (!owner || !unit || unit.pendingRemoval) return false;
+  const stats = computeEffectiveStats(unit, state.environment.tideState, auraContextOf(state, owner.id));
+  return !stats.destroyedByTide && unit.damageMarked < stats.health;
+}
+
+/** Clé `oncePerTurnFlags` du remplacement de Bête de Halage (`opponentRemovalShieldOncePerTurn`). */
+const REMOVAL_SHIELD_KEY = "opponentRemovalShield";
+
+/**
+ * Bête de Halage : « la première fois à chaque tour qu'elle devrait être
+ * renvoyée en main, déplacée ou détruite par un effet adverse, … lui retirer
+ * 1 Résistance à la place ». Retourne l'état où le remplacement a eu lieu,
+ * ou `undefined` si la carte n'en a pas (ou l'a déjà utilisé ce tour).
+ */
+function applyOpponentRemovalShield(
+  state: GameState,
+  ownerId: PlayerId,
+  unit: CardInstance,
+  turnNumber: number,
+  base: { turnNumber: number; timestamp: number }
+): EffectResolution | undefined {
+  const shield = getCardDefinition(unit.cardId).opponentRemovalShieldOncePerTurn;
+  if (!shield || !oncePerTurnAvailable(unit, REMOVAL_SHIELD_KEY, turnNumber)) return undefined;
+  const malus: StatModifier = {
+    id: `mod_${Math.random().toString(36).slice(2, 8)}`,
+    source: unit.cardId,
+    attack: 0,
+    health: -shield.healthLoss,
+    duration: "permanent",
+  };
+  const next = replaceUnit(state, ownerId, unit.instanceId, (u) =>
+    markOncePerTurnUsed({ ...u, modifiers: [...u.modifiers, malus] }, REMOVAL_SHIELD_KEY, turnNumber)
+  );
+  return {
+    state: next,
+    events: [{ ...base, type: "DEBUFF_APPLIED", targetInstanceId: unit.instanceId, attack: 0, health: -shield.healthLoss }],
+  };
+}
+
+/**
+ * Harnais de Retenue : « la première fois que l'unité équipée devrait être
+ * renvoyée en main par un effet adverse, détruisez cet Équipement à la
+ * place ». Retourne l'état où l'Équipement part à la place de son porteur.
+ */
+function applyBounceSubstitute(state: GameState, ownerId: PlayerId, unit: CardInstance, controllerId: PlayerId): GameState | undefined {
+  const owner = getPlayer(state, ownerId);
+  const harnais = owner.board.find(
+    (u) => u.attachedToInstanceId === unit.instanceId && !u.pendingRemoval && getCardDefinition(u.cardId).bounceSubstituteThenDestroy
+  );
+  if (!harnais) return undefined;
+  return replaceUnit(state, ownerId, harnais.instanceId, (u) => ({ ...u, pendingRemoval: "destroyed", pendingRemovalBy: controllerId }));
+}
+
+/**
+ * Couleurs qu'un effet chromatique donne : fixe (`chromaticColor`), ou lue
+ * sur la cible désignée, la carte déclencheuse ou la couleur choisie.
+ */
+function chromaticColorsForEffect(state: GameState, effect: EffectDefinition, context: EffectContext): ChromaticColor[] {
+  if (effect.chromaticColor) return [effect.chromaticColor];
+  const lireSur = (instanceId: string | undefined): ChromaticColor[] => {
+    if (!instanceId) return [];
+    const owner = findUnitOwner(state, instanceId);
+    const unit = owner?.board.find((u) => u.instanceId === instanceId);
+    return owner && unit ? chromaticColorsOf(unit, owner.board) : [];
+  };
+  switch (effect.chromaticColorFrom) {
+    case "chosenUnit":
+      return lireSur(context.chosenTargetInstanceId);
+    case "triggerSource":
+      return lireSur(context.triggerSourceInstanceId);
+    case "chosenColor":
+      return context.chosenColor ? [context.chosenColor] : [];
+    default:
+      return [];
+  }
+}
+
+/** Réunit deux listes de couleurs sans doublon, dans l'ordre canonique. */
+function mergeColors(a: readonly ChromaticColor[] | undefined, b: readonly ChromaticColor[]): ChromaticColor[] {
+  const set = new Set([...(a ?? []), ...b]);
+  return CHROMATIC_COLORS.filter((color) => set.has(color));
 }
 
 /** Clé `oncePerTurnFlags` de l'amplification de réduction de Marée (`amplifyTideReductionOncePerTurnWhileVisible`). */
@@ -581,6 +700,17 @@ export function resolveEffect(
   if (effect.conditionControllerHandAtLeast !== undefined) {
     if (getPlayer(state, context.controllerId).hand.length < effect.conditionControllerHandAtLeast) return { state, events };
   }
+  if (effect.conditionChosenTargetSurvives && !chosenTargetSurvives(state, context)) return { state, events };
+
+  // « est ciblée par un effet adverse » (Signal Violet, Lot 15) : le fait est
+  // consigné ici, au seul endroit où une cible désignée est LUE par un effet,
+  // quel que soit le chemin qui l'a amené là (pose, Bris, réaction, capacité).
+  if (effect.target.kind === "chosenUnit" && context.chosenTargetInstanceId) {
+    const cible = findUnitOwner(state, context.chosenTargetInstanceId);
+    if (cible && cible.id !== context.controllerId) {
+      events.push({ ...base, type: "UNIT_TARGETED", instanceId: context.chosenTargetInstanceId, byPlayerId: context.controllerId });
+    }
+  }
 
   switch (effect.type) {
     case "damage": {
@@ -621,6 +751,10 @@ export function resolveEffect(
           nextState = restoreShield.state;
           reduction += restoreShield.restore;
         }
+        // Vieille-Selle : « 3 dégâts ou plus d'une seule source » se lit sur
+        // le coup tel qu'il arrive, avant toute autre réduction.
+        const peau = getCardDefinition(unit.cardId).reduceLargeDamageTaken;
+        if (peau && amount >= peau.atLeast) reduction += peau.amount;
         const finalAmount = Math.max(0, amount - reduction);
         if (finalAmount <= 0) continue;
 
@@ -632,7 +766,14 @@ export function resolveEffect(
           lastDamageCause: "effect" as const,
           lastDamageTurn: context.turnNumber,
         }));
-        events.push({ ...base, type: "DAMAGE", targetInstanceId: unit.instanceId, amount: finalAmount });
+        events.push({
+          ...base,
+          type: "DAMAGE",
+          targetInstanceId: unit.instanceId,
+          amount: finalAmount,
+          cause: "effect",
+          sourcePlayerId: context.controllerId,
+        });
       }
 
       for (const player of resolvePlayerTargets(state, effect, context)) {
@@ -748,15 +889,47 @@ export function resolveEffect(
       let nextState = { ...state, rngState: removalTargets.rngState };
       const removal = effect.type === "saborde" ? ("scuttled" as const) : ("destroyed" as const);
       for (const { unit, ownerId } of removalTargets.targets) {
-        nextState = replaceUnit(nextState, ownerId, unit.instanceId, (u) => ({ ...u, pendingRemoval: removal }));
+        // Bête de Halage : une destruction décidée par un effet ADVERSE se
+        // remplace par une perte de Résistance, une fois par tour.
+        if (removal === "destroyed" && ownerId !== context.controllerId) {
+          const remplace = applyOpponentRemovalShield(nextState, ownerId, unit, context.turnNumber, base);
+          if (remplace) {
+            nextState = remplace.state;
+            events.push(...remplace.events);
+            continue;
+          }
+        }
+        nextState = replaceUnit(nextState, ownerId, unit.instanceId, (u) => ({
+          ...u,
+          pendingRemoval: removal,
+          pendingRemovalBy: context.controllerId,
+        }));
       }
       return { state: nextState, events };
     }
 
     case "summon": {
-      if (!effect.cardId) return { state, events };
+      // Ce qu'on invoque : la carte nommée, ou — Lot 15 — la carte du
+      // Cimetière désignée (Pierre Retrouvée), ou l'Éclat de la couleur de la
+      // source, relue sur l'instance même partie (Émissaire de Quartz).
+      let summonCardId = effect.cardId;
+      if (effect.cardIdFrom === "chosenGraveyardCard") {
+        const choisie = getPlayer(state, context.controllerId).graveyard.find((c) => c.instanceId === context.chosenGraveyardInstanceId);
+        summonCardId =
+          choisie && (!effect.filter?.subtype || getCardDefinition(choisie.cardId).subtype === effect.filter.subtype)
+            ? choisie.cardId
+            : undefined;
+      }
+      if (effect.chromaticShardOf === "self" && context.sourceInstanceId) {
+        const trouvee = findCardInstance(state, context.sourceInstanceId);
+        const couleurs = trouvee
+          ? mergeColors(getCardDefinition(trouvee.card.cardId).chromatic?.colors, trouvee.card.chromatic?.colors ?? [])
+          : [];
+        summonCardId = couleurs[0] ? chromaticShardCardId(couleurs[0]) : undefined;
+      }
+      if (!summonCardId) return { state, events };
       const player = resolveSinglePlayerTarget(state, effect, context) ?? getPlayer(state, context.controllerId);
-      const summonedDef = getCardDefinition(effect.cardId); // valide l'existence de la carte à invoquer
+      const summonedDef = getCardDefinition(summonCardId); // valide l'existence de la carte à invoquer
 
       // Les Slots du Navire s'appliquent à l'invocation comme à la pose :
       // on remplit les places libres et on s'arrête là ("on n'invoque pas
@@ -787,7 +960,7 @@ export function resolveEffect(
 
         summoned.push({
           instanceId: `inst_summon_${idDraw.value.toString(36)}_${i}`,
-          cardId: effect.cardId,
+          cardId: summonCardId,
           ownerId: player.id,
           damageMarked: 0,
           modifiers: [],
@@ -810,7 +983,7 @@ export function resolveEffect(
               ...token.modifiers,
               {
                 id: `mod_summon_${token.instanceId}`,
-                source: effect.cardId ?? "summon",
+                source: summonCardId,
                 attack: effect.summonBuff?.attackAmount ?? 0,
                 health: effect.summonBuff?.healthAmount ?? 0,
                 duration: (effect.duration ?? "endOfTurn") as StatModifierDuration,
@@ -830,6 +1003,10 @@ export function resolveEffect(
       const duration = effect.duration ?? (effect.permanent ? "permanent" : "endOfTurn");
       const buffTargets = resolveUnitTargets(state, effect, context);
       let nextState = { ...state, rngState: buffTargets.rngState };
+      // « +2 Puissance pour son prochain combat contre une unité ayant Garde »
+      // (Ouvrez la Ligne !) : la Puissance n'est pas posée, elle attend son
+      // combat — `attack.ts` la consomme.
+      const differe = effect.nextCombatVsKeyword !== undefined;
       for (const { unit, ownerId } of buffTargets.targets) {
         nextState = replaceUnit(nextState, ownerId, unit.instanceId, (u) => ({
           ...u,
@@ -838,14 +1015,23 @@ export function resolveEffect(
             {
               id: `mod_${Math.random().toString(36).slice(2, 8)}`,
               source: effect.cardId ?? "unknown",
-              attack: attackDelta,
+              attack: differe ? 0 : attackDelta,
               health: healthDelta,
               duration,
+              ...(effect.expiresOnControllersTurn ? { appliedBy: context.controllerId } : {}),
               ...(effect.grantKeywords ? { keywords: effect.grantKeywords } : {}),
+              ...(effect.removeKeywords ? { removesKeywords: effect.removeKeywords } : {}),
+              ...(differe ? { nextCombatBonusVsKeyword: { keyword: effect.nextCombatVsKeyword!, amount: attackDelta } } : {}),
             },
           ],
         }));
-        events.push({ ...base, type: "BUFF_APPLIED", targetInstanceId: unit.instanceId, attack: attackDelta, health: healthDelta });
+        events.push({
+          ...base,
+          type: "BUFF_APPLIED",
+          targetInstanceId: unit.instanceId,
+          attack: differe ? 0 : attackDelta,
+          health: healthDelta,
+        });
       }
       return { state: nextState, events };
     }
@@ -868,6 +1054,8 @@ export function resolveEffect(
               attack: -attackDelta,
               health: -healthDelta,
               duration,
+              ...(effect.expiresOnControllersTurn ? { appliedBy: context.controllerId } : {}),
+              ...(effect.removeKeywords ? { removesKeywords: effect.removeKeywords } : {}),
               // « elle ne peut ni attaquer ni activer ses effets » : porté
               // par le modificateur, donc levé par sa durée (Chaîne de
               // Travers, Lot 14).
@@ -892,7 +1080,9 @@ export function resolveEffect(
         // "Le Chant Sous la Ligne" : réduit TOUT gain de Raison tant qu'elle est en jeu.
         const amount = reduceReasonGain(nextState, rawAmount);
         if (amount <= 0) continue;
-        events.push({ ...base, type: "REASON_CHANGED", playerId: player.id, delta: amount });
+        // `source: "card"` : récupérée GRÂCE À UNE CARTE (Survivant de la
+        // Mousse), par opposition à la régénération de début de tour.
+        events.push({ ...base, type: "REASON_CHANGED", playerId: player.id, delta: amount, source: "card" });
         nextState = replacePlayer(nextState, { ...player, reason: Math.min(reasonCeiling(player), player.reason + amount) });
       }
       return { state: nextState, events };
@@ -1303,6 +1493,21 @@ export function resolveEffect(
       let nextState: GameState = { ...state, rngState };
 
       for (const { unit, ownerId } of targets) {
+        // Renvoi décidé par un effet ADVERSE : Harnais de Retenue se détruit
+        // à la place, sinon Bête de Halage paie en Résistance (Lot 15).
+        if (ownerId !== context.controllerId) {
+          const harnais = applyBounceSubstitute(nextState, ownerId, unit, context.controllerId);
+          if (harnais) {
+            nextState = harnais;
+            continue;
+          }
+          const remplace = applyOpponentRemovalShield(nextState, ownerId, unit, context.turnNumber, base);
+          if (remplace) {
+            nextState = remplace.state;
+            events.push(...remplace.events);
+            continue;
+          }
+        }
         // Un permanent rentre TOUJOURS dans la main de son propre
         // propriétaire, jamais dans celle de qui l'y renvoie (« renvoyez
         // une unité dans la main de son propriétaire », Lot 14). Avant le
@@ -1378,6 +1583,9 @@ export function resolveEffect(
         expiresAfterTurn: state.turnNumber + (effect.lastsExtraTurns ?? 0),
         ...(effect.filter?.subtype ? { subtype: effect.filter.subtype } : {}),
         ...(effect.filter?.cardTypes ? { cardTypes: [...effect.filter.cardTypes] } : {}),
+        // La Mauvaise Réputation : la carte qui en profite « subit 1 dégât »
+        // à son arrivée — porté par la réduction, qui sait laquelle c'est.
+        ...(effect.arrivalDamage ? { arrivalDamage: effect.arrivalDamage, grantedBy: context.controllerId } : {}),
       };
 
       return {
@@ -1427,6 +1635,17 @@ export function resolveEffect(
             among: eligibles.targets.map(({ unit }) => unit.instanceId),
             effects: effect.thenEffects ?? [],
             sourceInstanceId: context.sourceInstanceId,
+            ...(context.chosenTargetInstanceId ? { chosenTargetInstanceId: context.chosenTargetInstanceId } : {}),
+            ...(effect.distinctChromaticColors ? { distinctChromaticColors: true } : {}),
+            // « Détruisez un Éclat : une Sentinelle devient de cette couleur »
+            // (Transfert de Pierre) : la couleur est lue MAINTENANT, avant
+            // que l'Éclat ne parte, et voyage avec la question.
+            ...(effect.captureChromaticColorFrom === "chosenUnit"
+              ? (() => {
+                  const [couleur] = chromaticColorsForEffect(state, { ...effect, chromaticColorFrom: "chosenUnit" }, context);
+                  return couleur ? { chosenColor: couleur } : {};
+                })()
+              : {}),
             turnNumber: context.turnNumber,
           },
         },
@@ -1539,6 +1758,12 @@ export function resolveEffect(
             revealed: regardees,
             take: effect.uses ?? 1,
             ...(effect.filter?.cardTypes ? { takeableCardTypes: effect.filter.cardTypes } : {}),
+            ...(effect.filter?.archetype ? { takeableArchetype: effect.filter.archetype } : {}),
+            // « une Sentinelle de cette couleur » : la couleur de l'Éclat
+            // désigné, lue AVANT qu'il ne soit Sabordé par l'effet suivant.
+            ...(effect.takeableColorFrom === "chosenUnit"
+              ? { takeableChromaticColors: chromaticColorsForEffect(state, { ...effect, chromaticColorFrom: "chosenUnit" }, context) }
+              : {}),
             refusable: effect.refusable === true,
             sourceInstanceId: context.sourceInstanceId,
             turnNumber: context.turnNumber,
@@ -1567,6 +1792,167 @@ export function resolveEffect(
             destination: "deckBottom",
             drawBackAfterwards: true,
             refusable: true,
+            sourceInstanceId: context.sourceInstanceId,
+            turnNumber: context.turnNumber,
+          },
+        },
+        events,
+      };
+    }
+
+    case "rearmTriggers": {
+      // « déclenchez à nouveau ses effets liés au fait de survivre » : on
+      // efface la marque « une fois par tour » de CES capacités-là, et rien
+      // d'autre. Ce qui se déclenche ensuite passe par le circuit normal.
+      const trigger = effect.rearmTrigger;
+      if (!trigger) return { state, events };
+      const { targets, rngState } = resolveUnitTargets(state, effect, context);
+      let nextState: GameState = { ...state, rngState };
+      for (const { unit, ownerId } of targets) {
+        const cles = (getCardDefinition(unit.cardId).abilities ?? [])
+          .filter((a) => a.trigger === trigger && a.oncePerTurnKey && !a.onceEver)
+          .map((a) => a.oncePerTurnKey!);
+        if (cles.length === 0) continue;
+        nextState = replaceUnit(nextState, ownerId, unit.instanceId, (u) => {
+          const flags = { ...(u.oncePerTurnFlags ?? {}) };
+          for (const cle of cles) if (flags[cle] === context.turnNumber) delete flags[cle];
+          return { ...u, oncePerTurnFlags: flags };
+        });
+      }
+      return { state: nextState, events };
+    }
+
+    case "chromaticModify": {
+      // Deux lectures du même effet :
+      //  - sans `chromaticRecipient`, la CIBLE reçoit la couleur (fixe, ou
+      //    lue avec `chromaticColorFrom`) ;
+      //  - avec, la cible est la SOURCE de la couleur — l'Éclat que le
+      //    joueur désigne — et c'est `chromaticRecipient` qui la reçoit
+      //    (Héraut de Nacre, Bracelets). La désignation passe alors par le
+      //    circuit normal des cibles choisies, filtre compris.
+      const { targets: lues, rngState } = resolveUnitTargets(state, effect, context);
+      let couleurs = chromaticColorsForEffect(state, effect, context);
+      let targets = lues;
+      if (effect.chromaticRecipient) {
+        const source = lues[0];
+        couleurs = source ? chromaticColorsOf(source.unit, getPlayer(state, source.ownerId).board) : [];
+        targets = resolveUnitTargets(state, { ...effect, target: { kind: effect.chromaticRecipient }, filter: undefined }, context).targets;
+      }
+      // Une couleur était attendue (fixe ou lue quelque part) et il n'y en a
+      // pas : l'Éclat désigné a disparu, rien à transmettre.
+      if ((effect.chromaticColor || effect.chromaticColorFrom || effect.chromaticRecipient) && couleurs.length === 0) {
+        return { state, events };
+      }
+      // « émet également le Signal de cet Éclat » (Bracelet de Résonance) :
+      // le Signal sans la couleur.
+      const couleursPortees = effect.chromaticEmitOnly ? [] : couleurs;
+      const duration: StatModifierDuration = effect.duration ?? (effect.permanent ? "permanent" : "endOfTurn");
+      let nextState: GameState = { ...state, rngState };
+      for (const { unit, ownerId } of targets) {
+        if (duration === "permanent" && !effect.chromaticBenefitsOwn) {
+          // Durable : inscrite sur l'INSTANCE, pour survivre jusqu'au
+          // Cimetière (l'Émissaire y relit sa couleur).
+          nextState = replaceUnit(nextState, ownerId, unit.instanceId, (u) => ({
+            ...u,
+            chromatic: {
+              colors: mergeColors(u.chromatic?.colors, couleursPortees),
+              emits: mergeColors(u.chromatic?.emits, effect.chromaticEmits ? couleurs : []),
+            },
+          }));
+          continue;
+        }
+        const modifier: StatModifier = {
+          id: `mod_${Math.random().toString(36).slice(2, 8)}`,
+          source: effect.cardId ?? "unknown",
+          attack: 0,
+          health: 0,
+          duration,
+          ...(effect.expiresOnControllersTurn ? { appliedBy: context.controllerId } : {}),
+          chromatic: {
+            ...(couleursPortees.length > 0 ? { colors: couleursPortees } : {}),
+            ...(effect.chromaticEmits && couleurs.length > 0 ? { emits: couleurs } : {}),
+            ...(effect.chromaticBenefitsOwn ? { benefitsOwnSignals: true } : {}),
+          },
+        };
+        nextState = replaceUnit(nextState, ownerId, unit.instanceId, (u) => ({ ...u, modifiers: [...u.modifiers, modifier] }));
+      }
+      return { state: nextState, events };
+    }
+
+    case "chooseChromaticColor": {
+      let options: ChromaticColor[] = [...CHROMATIC_COLORS];
+      if (effect.chromaticOptions === "missingOnSelf" && context.sourceInstanceId) {
+        const owner = findUnitOwner(state, context.sourceInstanceId);
+        const source = owner?.board.find((u) => u.instanceId === context.sourceInstanceId);
+        const deja = source && owner ? chromaticColorsOf(source, owner.board) : [];
+        options = options.filter((color) => !deja.includes(color));
+      }
+      if (options.length === 0) return { state, events };
+      const suite = effect.thenEffects ?? [];
+      // Une seule couleur possible : il n'y a rien à décider, et poser la
+      // question serait demander au joueur de cliquer pour rien.
+      if (options.length === 1) {
+        let nextState = state;
+        for (const next of suite) {
+          const applied = resolveEffect(nextState, next, { ...context, chosenColor: options[0] });
+          nextState = applied.state;
+          events.push(...applied.events);
+        }
+        return { state: nextState, events };
+      }
+      return {
+        state: {
+          ...state,
+          pendingChoice: {
+            kind: "chromaticColor",
+            playerId: context.controllerId,
+            options,
+            effects: suite,
+            context: {
+              controllerId: context.controllerId,
+              sourceInstanceId: context.sourceInstanceId,
+              chosenTargetInstanceId: context.chosenTargetInstanceId,
+              triggerSourceInstanceId: context.triggerSourceInstanceId,
+              turnNumber: context.turnNumber,
+            },
+            refusable: effect.refusable === true,
+            turnNumber: context.turnNumber,
+          },
+        },
+        events,
+      };
+    }
+
+    case "claimChromaticColor": {
+      const couleurs = chromaticColorsForEffect(state, effect, context);
+      if (couleurs.length === 0) return { state, events };
+      const player = getPlayer(state, context.controllerId);
+      const expiresAfterTurn = state.turnNumber + (effect.lastsExtraTurns ?? 0);
+      return {
+        state: replacePlayer(state, {
+          ...player,
+          claimedChromaticColors: [
+            ...(player.claimedChromaticColors ?? []).filter((claim) => claim.expiresAfterTurn >= state.turnNumber),
+            ...couleurs.map((color) => ({ color, expiresAfterTurn })),
+          ],
+        }),
+        events,
+      };
+    }
+
+    case "deckTopDecision": {
+      const proprietaire = resolveSinglePlayerTarget(state, effect, context) ?? getOpponent(state, context.controllerId);
+      const dessus = proprietaire.deck[0];
+      // Pioche vide : rien à regarder, pas de question.
+      if (!dessus) return { state, events };
+      return {
+        state: {
+          ...state,
+          pendingChoice: {
+            kind: "deckTopDecision",
+            playerId: context.controllerId,
+            deckOwnerId: proprietaire.id,
+            card: dessus,
             sourceInstanceId: context.sourceInstanceId,
             turnNumber: context.turnNumber,
           },

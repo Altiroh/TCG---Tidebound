@@ -4,6 +4,7 @@ import { hasKeyword, hasResistance, UNIT_CARD_TYPES, type CardDefinition, type C
 import { getShipDefinition } from "@/game/environment/shipData";
 import type { TideStateName } from "@/game/environment/types";
 import { PHASE_LABELS, phaseRefusal } from "@/game/rules/phaseLabels";
+import { chromaticColorsOf, controlledChromaticColors, isOtherColorSentinel } from "@/game/rules/chromatic";
 import { isMainPhase, type GamePhase, type GameState, type PlayerId, type PlayerState } from "@/game/state/types";
 
 /**
@@ -42,14 +43,35 @@ export function hasKeywordInContext(unit: CardInstance, keyword: string, context
     controllerReasonAtMost?: number;
     tideStateIn?: string[];
     controllingCardIds?: string[];
+    selfDamaged?: boolean;
+    selfResistanceAtMost?: number;
+    controllingOtherColorSentinel?: boolean;
   }) => {
     if (grant.keyword !== keyword) return false;
     if (grant.controllerReasonAtMost !== undefined && controllerReason > grant.controllerReasonAtMost) return false;
     if (grant.tideStateIn && !grant.tideStateIn.includes(tideState)) return false;
     // Ex: Chevalier Cra-Poiscail — Garde tant qu'un Destrier est en jeu.
     if (grant.controllingCardIds && !controllerBoard.some((u) => grant.controllingCardIds!.includes(u.cardId))) return false;
+    // Mufle au Fanion — Garde tant qu'il est blessé.
+    if (grant.selfDamaged && unit.damageMarked <= 0) return false;
+    // La Grande Fissure — Garde tant qu'il lui reste 3 Résistance ou moins.
+    if (grant.selfResistanceAtMost !== undefined) {
+      const stats = computeEffectiveStats(unit, tideState, { controllerBoard, controllerReason });
+      if (stats.health - unit.damageMarked > grant.selfResistanceAtMost) return false;
+    }
+    // Rempart du Soleil — Garde tant qu'une Sentinelle d'une autre couleur est là.
+    if (grant.controllingOtherColorSentinel) {
+      const own = chromaticColorsOf(unit, controllerBoard);
+      if (!controllerBoard.some((other) => other.instanceId !== unit.instanceId && isOtherColorSentinel(other, own, controllerBoard))) {
+        return false;
+      }
+    }
     return true;
   };
+  // « elle perd Garde jusqu'à la fin du tour » (Bête de Percée, Débusquer) :
+  // un retrait posé par modificateur l'emporte sur TOUT octroi, imprimé,
+  // conditionnel ou transmis — c'est exactement ce que le texte promet.
+  if (unit.modifiers.some((m) => m.removesKeywords?.includes(keyword))) return false;
   if ((def.conditionalKeywordSuppressions ?? []).some(matches)) return false;
   if (hasKeyword(def, keyword)) return true;
   if ((def.conditionalKeywords ?? []).some(matches)) return true;
@@ -198,6 +220,11 @@ export function assertPlayableCondition(
     if (player.anchor > depart * ratio) {
       return fail("Votre coque est encore trop intacte pour jouer cette carte.");
     }
+  }
+  // « si vous contrôlez au moins 3 couleurs différentes » (Formation Prismatique).
+  const couleurs = gate.controllerChromaticColorsAtLeast;
+  if (couleurs !== undefined && controlledChromaticColors(player, state.turnNumber).length < couleurs) {
+    return fail(`Il vous faut au moins ${couleurs} couleurs chromatiques en jeu pour jouer cette carte.`);
   }
   return ok();
 }

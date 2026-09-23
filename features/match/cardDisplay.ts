@@ -42,6 +42,7 @@ export const GRAVEYARD_CAUSE_LABELS: Record<GraveyardCause, string> = {
   destroyed: "Détruite",
   scuttled: "Sabordée",
   expired: "Expirée",
+  assembled: "Assemblée",
 };
 
 export const GRAVEYARD_CAUSE_COLORS: Record<GraveyardCause, string> = {
@@ -49,6 +50,7 @@ export const GRAVEYARD_CAUSE_COLORS: Record<GraveyardCause, string> = {
   destroyed: "text-rose-300",
   scuttled: "text-amber-300",
   expired: "text-cyan-300",
+  assembled: "text-violet-300",
 };
 
 /**

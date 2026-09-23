@@ -44,7 +44,14 @@ function validate(
     const legal = effects
       .filter((e) => e.target.kind === "chosenUnit")
       .every((e) =>
-        isEligibleChosenUnit(state, e.target, action.playerId, action.targetInstanceId!, candidate.sourceInstanceId)
+        isEligibleChosenUnit(
+          state,
+          e.target,
+          action.playerId,
+          action.targetInstanceId!,
+          candidate.sourceInstanceId,
+          candidate.triggerSourceInstanceId
+        )
       );
     if (!legal) return { ok: false, error: "Cette carte n'est pas une cible valide pour cette réaction." };
   }

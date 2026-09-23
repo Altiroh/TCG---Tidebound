@@ -64,7 +64,12 @@ export function toPlayerView(state: GameState, viewerId: PlayerId): GameState {
     pendingChoice:
       state.pendingChoice?.kind === "deckLook" && state.pendingChoice.playerId !== viewerId
         ? { ...state.pendingChoice, revealed: hiddenZoneCards(state.pendingChoice.revealed.length, state.pendingChoice.playerId, "deck") }
-        : state.pendingChoice,
+        : // La carte du dessus que l'Éclaireur à Cornes regarde : seul celui
+          // qui regarde la voit — son propriétaire ne connaît pas plus sa
+          // pioche qu'avant.
+          state.pendingChoice?.kind === "deckTopDecision" && state.pendingChoice.playerId !== viewerId
+          ? { ...state.pendingChoice, card: hiddenZoneCards(1, state.pendingChoice.deckOwnerId, "deck")[0]! }
+          : state.pendingChoice,
     eventLog: state.eventLog.map((event) => projectEvent(event, viewerId, hiddenBoardIds)),
     pendingReaction: state.pendingReaction && {
       ...state.pendingReaction,

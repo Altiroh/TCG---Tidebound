@@ -35,6 +35,8 @@ export const BOOSTER_BIENVENUE = "welcome_tutorial";
 export const BOOSTER_VEILLEE_DES_DISPARUS = "la-veillee-des-disparus";
 /** B5 — Nécessaire du Marin (Lot 14). Booster de CONSOLIDATION, pas d'extension. */
 export const BOOSTER_NECESSAIRE_DU_MARIN = "necessaire-du-marin";
+/** B6 — Éclats en Selle (Lot 15). Trois familles : Équipage de Verre, Cavalerie, Sentinelles Chromatiques. */
+export const BOOSTER_ECLATS_EN_SELLE = "eclats-en-selle";
 
 /**
  * B1 — Défaut. 63 entrées (61 + les deux anti-swarm du 21/09/2026, qui
@@ -396,6 +398,83 @@ const NECESSAIRE_DU_MARIN: readonly string[] = [
   "maman-revient-abyssal",
 ];
 
+/**
+ * B6 — Éclats en Selle. Les 59 cartes du Lot 15, plus les deux cartes du
+ * Nécessaire du Marin que le lot RATTACHE à ses familles : Le Brise-Ligne
+ * (Verre) et Le Dernier Rempart (Cavalerie). Leur définition n'est pas
+ * dupliquée — seul leur slug entre dans ce pool, comme La Nasse Trop Pleine
+ * dans le Nécessaire.
+ *
+ * Son Abyssale est la sienne : Le Géant Chromatique — ABYSSALE. Le slot
+ * Profondeur a donc de quoi tirer sans réédition.
+ */
+const ECLATS_EN_SELLE_POOL: readonly string[] = [
+  // --- Équipage de Verre ---
+  "eclaireur-ebreche",
+  "matelot-fele",
+  "vigie-aux-fissures",
+  "verrier-de-pont",
+  "duelliste-de-verre",
+  "canonnier-fele",
+  "porte-eclats",
+  "polisseuse-des-felures",
+  "bretteuse-au-bord",
+  "maitre-verrier",
+  "la-grande-fissure",
+  "le-brise-ligne",
+  "eclat-de-bouteille",
+  "encore-debout",
+  "trinquer-trop-fort",
+  "bouclier-fendu",
+  "pont-de-verre",
+  "jusqua-ce-que-ca-casse",
+  // --- Cavalerie ---
+  "monture-de-breche",
+  "bete-de-halage",
+  "eclaireur-a-cornes",
+  "destrier-du-ressac",
+  "mufle-au-fanion",
+  "chargeur-des-ecueils",
+  "bete-de-percee",
+  "mange-fer",
+  "vieille-selle",
+  "le-deserteur-gris",
+  "la-bete-quon-nattend-plus",
+  "le-dernier-rempart",
+  "selle-de-guerre",
+  "harnais-de-retenue",
+  "debusquer",
+  "ouvrez-la-ligne",
+  "pas-un-pas-de-plus",
+  "la-mauvaise-reputation",
+  // --- Sentinelles Chromatiques ---
+  "heros-de-la-flamme",
+  "briseur-du-brasier",
+  "gardienne-de-leclat",
+  "rempart-du-soleil",
+  "tacticien-de-lecume",
+  "stratege-de-lazur",
+  "porteur-de-jade",
+  "survivant-de-la-mousse",
+  "veilleuse-de-lombre",
+  "oracle-damethyste",
+  "emissaire-de-quartz",
+  "heraut-de-nacre",
+  "bracelet-chromatique",
+  "bracelet-de-resonance",
+  "appel-des-sentinelles",
+  "pierre-retrouvee",
+  "transfert-de-pierre",
+  "poste-chromatique",
+  "coffret-aux-cinq-pierres",
+  "synchronisation",
+  "les-couleurs-repondent",
+  "formation-prismatique",
+  "la-premiere-pierre",
+  "le-geant-chromatique",
+  "le-geant-chromatique-abyssal",
+];
+
 const BIENVENUE: readonly string[] = DEFAUT.filter((cardId) => {
   const def = CORE_SET.find((card) => card.id === cardId);
   if (!def) return false;
@@ -411,6 +490,7 @@ export const BOOSTER_POOLS: Readonly<Record<string, readonly string[]>> = {
   [BOOSTER_ETRANGETE_SOUS_MARINE]: ETRANGETE_SOUS_MARINE,
   [BOOSTER_VEILLEE_DES_DISPARUS]: VEILLEE_DES_DISPARUS,
   [BOOSTER_NECESSAIRE_DU_MARIN]: NECESSAIRE_DU_MARIN,
+  [BOOSTER_ECLATS_EN_SELLE]: ECLATS_EN_SELLE_POOL,
   [BOOSTER_BIENVENUE]: BIENVENUE,
 };
 
@@ -425,6 +505,7 @@ export const PURCHASABLE_BOOSTER_IDS: readonly string[] = [
   BOOSTER_POISSONS_PAS_FRAIS,
   BOOSTER_ETRANGETE_SOUS_MARINE,
   BOOSTER_VEILLEE_DES_DISPARUS,
+  BOOSTER_ECLATS_EN_SELLE,
 ];
 
 /**

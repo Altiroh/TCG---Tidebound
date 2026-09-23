@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
+  CHROMATIC_COLOR_LABELS,
+  chromaticColorsOf,
   collectAuraContributions,
   computeEffectiveStats,
   computeStatModifierDelta,
@@ -15,6 +17,7 @@ import {
   type AuraContext,
   type CardDefinition,
   type CardInstance,
+  type ChromaticColor,
   type TideStateName,
   isAbyssalVariant,
 } from "@/game";
@@ -106,6 +109,15 @@ const GARDE_ICON_INFO = {
   icon: "/assets/status/garde.webp",
   label: "Garde",
   description: "Les attaques adverses visant votre Navire doivent cibler en priorité les permanents portant Garde.",
+};
+
+/** Pastille de chaque couleur chromatique (Lot 15), lisible sur fond sombre. */
+const CHROMATIC_SWATCHES: Record<ChromaticColor, string> = {
+  rouge: "#e0483e",
+  jaune: "#f2c230",
+  bleu: "#3f8fe0",
+  vert: "#3fbf6a",
+  violet: "#9b59d0",
 };
 
 /** Icône du badge "Durée" (Structure/Objet à durée limitée, `instance.turnsRemaining`) — le nombre de tours restants est superposé au centre. */
@@ -342,6 +354,9 @@ export function CardTile({
       })
     : hasKeyword(def, "pied-marin");
   const engourdi = instance.summoningSick && isUnit && !hasPiedMarin;
+  // Couleurs chromatiques EN JEU (Lot 15) : celle qu'un Émissaire a choisie,
+  // qu'un Héraut a prise, qu'un Bracelet prête — rien ne les montrait.
+  const couleursChromatiques = auraContext ? chromaticColorsOf(instance, auraContext.controllerBoard) : [];
   const hasResistance = isUnit || def.health !== undefined;
   const resistanceRemaining = Math.max(0, stats.health - instance.damageMarked);
   const resistanceFlashing = useDecreaseFlash(resistanceRemaining);
@@ -572,6 +587,7 @@ export function CardTile({
         engourdi ||
         instance.turnsRemaining !== undefined ||
         hasGarde ||
+        couleursChromatiques.length > 0 ||
         (instance.statuses && instance.statuses.length > 0)) && (
         <div
           className="pointer-events-none absolute inset-x-0 z-20 flex flex-wrap items-center justify-center px-1"
@@ -606,6 +622,22 @@ export function CardTile({
             if (!info) return null;
             return <StatusBadge key={status} icon={info.icon} label={info.label} description={info.description} size={badgeSize} />;
           })}
+          {couleursChromatiques.length > 0 && (
+            <span
+              className="pointer-events-auto flex items-center rounded-full border border-white/30 bg-black/85 shadow-md"
+              style={{ padding: `${badgeSize / 10}px ${badgeSize / 6}px`, gap: badgeSize / 12 }}
+              title={`Couleur${couleursChromatiques.length > 1 ? "s" : ""} : ${couleursChromatiques.map((c) => CHROMATIC_COLOR_LABELS[c]).join(", ")}`}
+              aria-label={`Couleurs chromatiques : ${couleursChromatiques.map((c) => CHROMATIC_COLOR_LABELS[c]).join(", ")}`}
+            >
+              {couleursChromatiques.map((color) => (
+                <span
+                  key={color}
+                  className="block rounded-full"
+                  style={{ width: badgeSize / 3.4, height: badgeSize / 3.4, background: CHROMATIC_SWATCHES[color] }}
+                />
+              ))}
+            </span>
+          )}
           {instance.turnsRemaining !== undefined && (
             <StatusBadge
               icon={TOUR_ICON}

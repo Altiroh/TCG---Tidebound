@@ -205,6 +205,44 @@ export const NECESSAIRE_DU_MARIN_PACK_VISUAL: BoosterPackVisual = {
   mouth: { centerX: -0.02, width: 0.74, startTop: 0.23 },
 };
 
+/**
+ * Éclats en Selle — sixième booster (23/09/2026), le Lot 15. Un bébé
+ * Cavalerie en couche culotte, une pierre de verre dans une patte et une
+ * pierre chromatique dans l'autre.
+ *
+ * Livré comme le Nécessaire : une planche fermée, une planche ouverte
+ * portant la bande ET le corps. Ici un vide sépare les deux morceaux sur
+ * toute la largeur : la découpe suit la première ligne vide sous la bande.
+ * Le corps est pris depuis le HAUT du sachet (zone de la bande laissée
+ * transparente), pour que bande et fermé se calent dans son repère.
+ *
+ * Mesures, sur les planches 1024 × 1536 :
+ *   - corps 688 × 1488 px, bande 669 × 216 px à 14 px du bord gauche,
+ *     fermé 734 × 1486 px, décalé de 25 px à gauche ;
+ *   - déchirure : première ligne où le sachet couvre 85 % de sa largeur,
+ *     à 18 % de la hauteur ;
+ *   - `mouth` : étendue des dos de cartes peints à mi-hauteur entre leur
+ *     sommet et la déchirure (72 % de la largeur, centrée), la vraie carte
+ *     partant 6 % sous le bord peint.
+ */
+export const ECLATS_EN_SELLE_PACK_VISUAL: BoosterPackVisual = {
+  id: "eclats-en-selle",
+  assets: {
+    closed: "/assets/boosters/eclats-en-selle/eclats-en-selle.webp",
+    openTop: "/assets/boosters/eclats-en-selle/eclats-en-selle-open-top.webp",
+    openBottom: "/assets/boosters/eclats-en-selle/eclats-en-selle-open-bottom.webp",
+  },
+  // Corps 688 × 1488 px.
+  aspectRatio: 688 / 1488,
+  // Fermé 734 × 1486 px.
+  closedRect: { left: -3.63, top: 0.07, width: 106.69, height: 99.87 },
+  // Bande 669 × 216 px → 97.24 % × 14.52 %.
+  topRect: { left: 2.03, top: 0, width: 97.24, height: 14.52 },
+  topHinge: { x: 96, y: 84 },
+  tearLineTop: 18,
+  mouth: { centerX: 0, width: 0.72, startTop: 0.24 },
+};
+
 /** Id de booster (table `boosters`) → visuel. Tout id inconnu retombe sur le visuel par défaut. */
 const BOOSTER_VISUAL_BY_ID: Record<string, BoosterPackVisual> = {
   standard: DEFAULT_PACK_VISUAL,
@@ -213,6 +251,7 @@ const BOOSTER_VISUAL_BY_ID: Record<string, BoosterPackVisual> = {
   "etrangete-sous-marine": ETRANGETE_SOUS_MARINE_PACK_VISUAL,
   "la-veillee-des-disparus": LA_VEILLEE_DES_DISPARUS_PACK_VISUAL,
   "necessaire-du-marin": NECESSAIRE_DU_MARIN_PACK_VISUAL,
+  "eclats-en-selle": ECLATS_EN_SELLE_PACK_VISUAL,
 };
 
 export const BOOSTER_PACK_VISUALS: readonly BoosterPackVisual[] = [
@@ -221,6 +260,7 @@ export const BOOSTER_PACK_VISUALS: readonly BoosterPackVisual[] = [
   POISSONS_PAS_FRAIS_PACK_VISUAL,
   ETRANGETE_SOUS_MARINE_PACK_VISUAL,
   LA_VEILLEE_DES_DISPARUS_PACK_VISUAL,
+  ECLATS_EN_SELLE_PACK_VISUAL,
   WELCOME_PACK_VISUAL,
 ];
 

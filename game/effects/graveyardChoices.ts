@@ -34,9 +34,15 @@ export function eligibleGraveyardCards(state: GameState, playerId: PlayerId, eff
   });
 }
 
-/** Le premier effet d'une liste qui repêche au Cimetière — `undefined` si aucun ne le fait. */
+/**
+ * Le premier effet d'une liste qui DÉSIGNE une carte du Cimetière — pour la
+ * repêcher, ou pour en créer une copie en jeu (Pierre Retrouvée : « créez
+ * un Éclat de cette couleur », Lot 15). `undefined` si aucun ne le fait.
+ */
 export function graveyardEffectIn(effects: readonly EffectDefinition[] | undefined): EffectDefinition | undefined {
-  return (effects ?? []).find((e) => e.type === "moveGraveyardCardToHand");
+  return (effects ?? []).find(
+    (e) => e.type === "moveGraveyardCardToHand" || (e.type === "summon" && e.cardIdFrom === "chosenGraveyardCard")
+  );
 }
 
 /** Choix à poser pour une liste d'effets donnée — vide si elle ne repêche pas, ou si rien n'est éligible. */
