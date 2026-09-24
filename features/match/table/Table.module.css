@@ -2294,25 +2294,30 @@
   --aim-rgb: 203, 213, 225;
 }
 
-/* Trait de visée (`DragLayer`) : tirets ÉPAIS et arrondis, qui défilent vers
-   la cible (`stroke-dashoffset` animé) ; l'ombre, continue, le détache du
-   plateau. */
+/* Flèche de visée (`DragLayer`), à la Hearthstone : tirets ÉPAIS et
+   arrondis, fixes ; l'ombre, continue, la détache du plateau. */
 .aimLineShadow {
   fill: none;
   stroke: rgba(2, 6, 23, 0.55);
-  stroke-width: 9;
+  stroke-width: 12;
   stroke-linecap: round;
-  stroke-linejoin: round;
 }
 
 .aimLine {
   fill: none;
   stroke: rgba(var(--aim-rgb), 0.95);
-  stroke-width: 5.5;
+  stroke-width: 8;
   stroke-linecap: round;
+  stroke-dasharray: 10 12;
+  filter: drop-shadow(0 0 4px rgba(var(--aim-rgb), 0.5));
+}
+
+.aimHead {
+  fill: rgba(var(--aim-rgb), 1);
+  stroke: rgba(2, 6, 23, 0.7);
+  stroke-width: 2.5;
   stroke-linejoin: round;
-  stroke-dasharray: 14 11;
-  filter: drop-shadow(0 0 4px rgba(var(--aim-rgb), 0.55));
+  filter: drop-shadow(0 0 5px rgba(var(--aim-rgb), 0.6)) drop-shadow(0 3px 4px rgba(0, 0, 0, 0.6));
 }
 
 .aimReticle {

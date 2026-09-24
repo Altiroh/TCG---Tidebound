@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { centerOf, findElement, FloatingDamage, ImpactFlash, shake, SmokeBurst, type Point } from "@/features/match/AttackImpactLayer";
-import { keywordLabel } from "@/features/match/cardDisplay";
+import { keywordLabel, THICK_TEXT_OUTLINE } from "@/features/match/cardDisplay";
 import {
   BUFF_LAND_MS,
   HEAL_APPLY_MS,
@@ -23,8 +23,8 @@ import {
  *     vers sa cible en arc ; toutes les cibles d'un même effet sont visées
  *     EN MÊME TEMPS. À l'arrivée : flash, plaque de dégâts, tremblement ;
  *   - soin : un voile lumineux descend sur la cible, scintille et s'efface ;
- *   - gain / perte : une pastille surgit au-dessus de la carte, se montre,
- *     puis file se ranger sur la valeur qu'elle modifie (Puissance,
+ *   - gain / perte : le chiffre (+1, −1…) surgit au-dessus de la carte, se montre,
+ *     puis file se ranger sur la valeur qu’il modifie (Puissance,
  *     Résistance, ou la rangée des badges pour un mot-clé).
  */
 
@@ -261,18 +261,24 @@ function HealVeil({ box, amount }: { box: Box; amount: number }) {
 interface Chip {
   key: string;
   text: string;
-  /** Couleur de la pastille. */
+  /** Couleur du chiffre (`CHIP_TONES`). */
   tone: "attack" | "health" | "keyword" | "loss";
   start: Point;
   end: Point;
   size: number;
 }
 
+/**
+ * Couleur du chiffre — les MÊMES que celles des caractéristiques sur la
+ * carte (`statColorClass`, `CardTile`) : un gain vert, une perte rouge. Pas
+ * de pastille ni de cadre : c'est le chiffre lui-même qui surgit, puis va
+ * se fondre dans celui de la carte.
+ */
 const CHIP_TONES = {
-  attack: { background: "linear-gradient(180deg, #fcd34d, #d97706)", color: "#1c1003", border: "#fef3c7" },
-  health: { background: "linear-gradient(180deg, #6ee7b7, #059669)", color: "#022c22", border: "#d1fae5" },
-  keyword: { background: "linear-gradient(180deg, #c4b5fd, #7c3aed)", color: "#faf5ff", border: "#ede9fe" },
-  loss: { background: "linear-gradient(180deg, #fda4af, #be123c)", color: "#fff1f2", border: "#ffe4e6" },
+  attack: "#6ee7b7",
+  health: "#6ee7b7",
+  keyword: "#c4b5fd",
+  loss: "#fb7185",
 } as const;
 
 function signed(value: number): string {
@@ -292,17 +298,17 @@ function chipsFor(buff: EffectBuff): Chip[] {
 
   const entries: Array<Omit<Chip, "start" | "size">> = [];
   if (buff.attack !== 0) {
-    entries.push({ key: "attack", text: `${signed(buff.attack)} ⚔`, tone: buff.loss || buff.attack < 0 ? "loss" : "attack", end: statCenter("attack") });
+    entries.push({ key: "attack", text: signed(buff.attack), tone: buff.loss || buff.attack < 0 ? "loss" : "attack", end: statCenter("attack") });
   }
   if (buff.health !== 0) {
-    entries.push({ key: "health", text: `${signed(buff.health)} ⛨`, tone: buff.loss || buff.health < 0 ? "loss" : "health", end: statCenter("resistance") });
+    entries.push({ key: "health", text: signed(buff.health), tone: buff.loss || buff.health < 0 ? "loss" : "health", end: statCenter("resistance") });
   }
   for (const keyword of buff.keywords) {
     // Les badges de mot-clé flottent au-dessus de la carte (`CardTile`).
     entries.push({ key: `kw-${keyword}`, text: keywordLabel(keyword), tone: "keyword", end: { x: box.left + box.width / 2, y: box.top - 4 } });
   }
   // Rangées côte à côte au-dessus de la carte, centrées.
-  const gap = size * 2.3;
+  const gap = size * 1.8;
   return entries.map((entry, index) => ({
     ...entry,
     size,
@@ -332,7 +338,6 @@ function BuffChip({ chip }: { chip: Chip }) {
     return () => animation.cancel();
   }, [chip]);
 
-  const tone = CHIP_TONES[chip.tone];
   return (
     <span
       ref={ref}
@@ -342,17 +347,14 @@ function BuffChip({ chip }: { chip: Chip }) {
         left: chip.start.x,
         top: chip.start.y,
         opacity: 0,
-        padding: `${chip.size * 0.12}px ${chip.size * 0.36}px`,
-        borderRadius: 9999,
-        border: `2px solid ${tone.border}`,
-        background: tone.background,
-        color: tone.color,
+        color: CHIP_TONES[chip.tone],
         fontFamily: "var(--font-card-title), Georgia, serif",
-        fontSize: chip.size * 0.5,
+        // Un mot-clé est plus long qu'un chiffre : il se lit plus petit.
+        fontSize: chip.size * (chip.tone === "keyword" ? 0.55 : 0.85),
         fontWeight: 800,
-        lineHeight: 1.1,
+        lineHeight: 1,
         whiteSpace: "nowrap",
-        boxShadow: "0 4px 10px rgba(0,0,0,0.55), 0 0 12px rgba(255,255,255,0.35)",
+        textShadow: THICK_TEXT_OUTLINE,
       }}
     >
       {chip.text}

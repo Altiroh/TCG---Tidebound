@@ -119,17 +119,28 @@ const CHROMATIC_SWATCHES: Record<ChromaticColor, string> = {
   violet: "#9b59d0",
 };
 
+/** Mélange une couleur `#rrggbb` avec une autre, `t` = part de la seconde (0 → 1). */
+function mixHex(from: string, to: string, t: number): string {
+  const channel = (hex: string, i: number) => parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16);
+  return `#${[0, 1, 2]
+    .map((i) => Math.round(channel(from, i) + (channel(to, i) - channel(from, i)) * t).toString(16).padStart(2, "0"))
+    .join("")}`;
+}
+
 /**
- * Fond du médaillon de couleurs : une couleur seule en verre bombé (clair
- * au centre), plusieurs en dégradé qui passe de l'une à l'autre — la même
- * pastille pour une Sentinelle unicolore ou arc-en-ciel.
+ * Fond du médaillon de couleurs, peint dans le verre de `tour.webp` (qui
+ * donne déjà reflet et ombrage). Une couleur seule : un bombé doux, à
+ * peine éclairci en haut, assombri en bas — pas de point blanc. Plusieurs :
+ * un dégradé qui passe de l'une à l'autre, avec le même bombé par-dessus.
  */
 function chromaticFill(colors: readonly ChromaticColor[]): string {
+  const relief = "radial-gradient(circle at 50% 30%, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 55%, rgba(0,0,0,0.22) 100%)";
   if (colors.length === 1) {
     const color = CHROMATIC_SWATCHES[colors[0]!];
-    return `radial-gradient(circle at 38% 34%, #ffffff 0%, ${color} 55%, ${color} 100%)`;
+    return `radial-gradient(circle at 50% 35%, ${mixHex(color, "#ffffff", 0.22)} 0%, ${color} 55%, ${mixHex(color, "#000000", 0.25)} 100%)`;
   }
-  return `linear-gradient(135deg, ${colors.map((c, i) => `${CHROMATIC_SWATCHES[c]} ${Math.round((i / (colors.length - 1)) * 100)}%`).join(", ")})`;
+  const stops = colors.map((c, i) => `${CHROMATIC_SWATCHES[c]} ${Math.round((i / (colors.length - 1)) * 100)}%`).join(", ");
+  return `${relief}, linear-gradient(135deg, ${stops})`;
 }
 
 /** Ce que fait le Signal de chaque couleur (texte des émetteurs du Lot 15), pour l'info-bulle du médaillon. */
