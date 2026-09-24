@@ -16,6 +16,23 @@ interface CardCarouselProps {
   /** Clic droit sur une carte : sa fiche détaillée. */
   onInspect?: (card: CardInstance) => void;
   emptyLabel?: string;
+  /**
+   * Carte VISIBLE mais pas sélectionnable (« prenez une Sentinelle parmi
+   * elles ») : la raison, lue au survol — `null` si elle se sélectionne.
+   * La carte est grisée et barrée d'un gros symbole, et le clic l'ignore.
+   */
+  unavailableReason?: (card: CardInstance) => string | null;
+}
+
+/** Symbole « carte non prenable » : une carte barrée, dans un disque. */
+function CrossedCardIcon() {
+  return (
+    <svg viewBox="0 0 64 64" className="h-full w-full" aria-hidden>
+      <circle cx="32" cy="32" r="30" fill="rgba(15,23,42,0.82)" stroke="rgba(251,113,133,0.95)" strokeWidth="3" />
+      <rect x="21" y="15" width="22" height="31" rx="3" fill="none" stroke="#e2e8f0" strokeWidth="3" />
+      <path d="M14 50 L50 14" stroke="rgba(251,113,133,1)" strokeWidth="5" strokeLinecap="round" />
+    </svg>
+  );
 }
 
 const SCROLL_STEP_PX = 420;
@@ -35,6 +52,7 @@ export function CardCarousel({
   onSelect,
   onInspect,
   emptyLabel = "Aucune carte.",
+  unavailableReason,
 }: CardCarouselProps) {
   const trackRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{ startX: number; startScroll: number; moved: boolean } | null>(null);
@@ -103,14 +121,17 @@ export function CardCarousel({
       >
         {cards.map((card) => {
           const selected = selectedInstanceId === card.instanceId || (selectedInstanceIds?.includes(card.instanceId) ?? false);
+          const unavailable = unavailableReason?.(card) ?? null;
           return (
             <div key={card.instanceId} className="flex w-44 shrink-0 snap-center flex-col items-center gap-2 text-center sm:w-52">
               <div
-                className={`w-full rounded-xl transition-transform duration-150 ${onSelect ? "cursor-pointer hover:-translate-y-1" : ""} ${
-                  selected ? "ring-2 ring-board-accent ring-offset-2 ring-offset-black/60" : ""
-                }`}
+                title={unavailable ?? undefined}
+                aria-disabled={unavailable ? true : undefined}
+                className={`relative w-full rounded-xl transition-transform duration-150 ${
+                  unavailable ? "cursor-not-allowed" : onSelect ? "cursor-pointer hover:-translate-y-1" : ""
+                } ${selected ? "ring-2 ring-board-accent ring-offset-2 ring-offset-black/60" : ""}`}
                 onClick={() => {
-                  if (drag.current?.moved) return;
+                  if (drag.current?.moved || unavailable) return;
                   onSelect?.(card);
                 }}
                 onContextMenu={(event) => {
@@ -121,9 +142,16 @@ export function CardCarousel({
               >
                 {/* `CardTile` sans `onClick` rend un bouton désactivé, qui avalerait clics et glissements : on les capte
                     sur ce conteneur (les badges de statut restent survolables, ils réactivent leurs propres pointer-events). */}
-                <div className="pointer-events-none">
+                <div className={`pointer-events-none ${unavailable ? "opacity-45 grayscale" : ""}`}>
                   <CardTile instance={card} tideState="calme" widthClassName="w-full" scaleOnHover={false} badgeSize={44} />
                 </div>
+                {unavailable && (
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                    <div className="w-1/2 drop-shadow-[0_4px_10px_rgba(0,0,0,0.7)]">
+                      <CrossedCardIcon />
+                    </div>
+                  </div>
+                )}
               </div>
               {renderCaption?.(card)}
             </div>

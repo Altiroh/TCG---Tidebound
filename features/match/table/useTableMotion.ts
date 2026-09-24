@@ -1,7 +1,7 @@
 "use client";
 
 import { useLayoutEffect, useRef, type ReactNode } from "react";
-import { getPlayer, getShipDefinition, type CardInstance, type GameState, type PlayerId } from "@/game";
+import { getPlayer, getShipDefinition, type CardInstance, type DeckLookChoice, type GameState, type PlayerId } from "@/game";
 import { boxOf, DRAW_STAGGER_MS, reducedMotion, useCardMotion, type Box } from "@/features/match/table/useCardMotion";
 import {
   playAttackImpact,
@@ -27,6 +27,9 @@ import {
  *   plateau / main → défausse : une copie de la carte vole jusqu'au crâne ;
  *                         une carte DÉTRUITE (ou un Objet brisé) se brise
  *                         d'abord sur place, et ce sont ses éclats qui volent ;
+ *   regard de pioche    : la carte prise vole de la pioche à la main, face
+ *                         visible ; les autres se soulèvent en éventail et
+ *                         repassent sous la pioche ;
  *   plateau → main      : la carte glisse de son emplacement jusqu'à la main.
  *                         Un retour en main repart d'un exemplaire NEUF
  *                         (`instanceId` différent) : l'événement
@@ -172,7 +175,14 @@ function playBatchSounds(
 
 export function useTableMotion(state: GameState, viewerId: PlayerId, renderFace: (instance: CardInstance) => ReactNode) {
   const motion = useCardMotion();
-  const previous = useRef<{ where: Map<string, Located>; boxes: Map<string, Box>; opponentHand: number; logLength: number } | null>(null);
+  const previous = useRef<{
+    where: Map<string, Located>;
+    boxes: Map<string, Box>;
+    opponentHand: number;
+    logLength: number;
+    /** Regard de pioche en cours (`DeckLookChoice`) : ses cartes sont hors de toute zone jusqu'à la réponse. */
+    looking: DeckLookChoice | null;
+  } | null>(null);
   /** Où le joueur a lâché une carte (pose) : elle en repartira pour glisser jusqu'à sa place. */
   const dropBoxes = useRef(new Map<string, Box>());
   const renderFaceRef = useRef(renderFace);
@@ -183,6 +193,7 @@ export function useTableMotion(state: GameState, viewerId: PlayerId, renderFace:
     const opponent = state.players.find((p) => p.id !== viewerId);
     const opponentHand = opponent?.hand.length ?? 0;
     const boxesNow = measureCards();
+    const looking = state.pendingChoice?.kind === "deckLook" ? state.pendingChoice : null;
 
     // Un déplacement qui recrée la carte (retour en main) donne son ancien
     // exemplaire dans le journal : c'est le seul lien entre les deux ids.
@@ -196,12 +207,12 @@ export function useTableMotion(state: GameState, viewerId: PlayerId, renderFace:
       // Partie qui commence : les mains de départ n'ont pas d'événement de pioche, on les distribue.
       const starting = !state.eventLog.some((event) => event.type === "END_TURN");
       if (!starting) {
-        previous.current = { where, boxes: boxesNow, opponentHand, logLength: state.eventLog.length };
+        previous.current = { where, boxes: boxesNow, opponentHand, logLength: state.eventLog.length, looking };
         return;
       }
       const dealt = new Map(where);
       for (const [id, located] of dealt) if (located.zone === "hand") dealt.set(id, { ...located, zone: "deck" });
-      before = { where: dealt, boxes: new Map(), opponentHand: 0, logLength: 0 };
+      before = { where: dealt, boxes: new Map(), opponentHand: 0, logLength: 0, looking: null };
     }
 
     playBatchSounds(before.where, where, rebornFrom, state.eventLog.slice(before.logLength), state);
@@ -277,6 +288,36 @@ export function useTableMotion(state: GameState, viewerId: PlayerId, renderFace:
         }
       }
 
+      // Regard de pioche résolu (« regardez les 4 premières cartes, prenez-en
+      // une, placez les autres sous votre pioche ») : les cartes regardées
+      // n'étaient dans aucune zone, la boucle ci-dessus ne les voit pas. La
+      // carte prise vole FACE VISIBLE de la pioche à la main (pour le
+      // joueur qui regarde ; en face, c'est une pioche adverse comme une
+      // autre, plus bas) ; les autres se soulèvent en éventail et repassent
+      // sous la pioche.
+      const looked = before.looking;
+      if (looked && looking?.revealed !== looked.revealed) {
+        const side = sideOf(looked.playerId);
+        const deckBox = boxOf(document.querySelector(`[data-deck="${side}"]`));
+        const tucked = looked.revealed.filter((card) => where.get(card.instanceId)?.zone === "deck");
+        if (deckBox) {
+          tucked.forEach((card, index) => {
+            const fan = tucked.length > 1 ? (index / (tucked.length - 1)) * 2 - 1 : 0;
+            motion.launch({ look: { kind: "back", ownerId: looked.playerId }, from: deckBox, to: deckBox, ending: "tuck", fan, delayMs: 180 + index * 110 });
+          });
+          if (looked.playerId === viewerId) {
+            for (const card of looked.revealed) {
+              if (where.get(card.instanceId)?.zone !== "hand") continue;
+              const to = boxesNow.get(card.instanceId);
+              if (!to) continue;
+              hideUntil(document.querySelector(`[data-card-id="${card.instanceId}"]`), 650);
+              motion.launch({ look: { kind: "face", node: renderFaceRef.current(card) }, from: deckBox, to, ending: "land" });
+              playCardDraw();
+            }
+          }
+        }
+      }
+
       // Pioches adverses : la main adverse n'est qu'un nombre de dos de cartes.
       //
       // Le dos VOLANT est celui de l'adversaire, pas le mien. Sans
@@ -297,7 +338,7 @@ export function useTableMotion(state: GameState, viewerId: PlayerId, renderFace:
       }
     }
 
-    previous.current = { where, boxes: boxesNow, opponentHand, logLength: state.eventLog.length };
+    previous.current = { where, boxes: boxesNow, opponentHand, logLength: state.eventLog.length, looking };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- ne réagit qu'à un nouvel état affiché.
   }, [state]);
 

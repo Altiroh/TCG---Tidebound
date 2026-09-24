@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { getCardDefinition, type DeckLookChoice } from "@/game";
+import { deckLookRefusal, getCardDefinition, isDeckLookTakeable, type CardInstance, type DeckLookChoice } from "@/game";
+import { CARD_TYPE_LABELS } from "@/features/match/cardDisplay";
 import { CardCarousel } from "@/features/match/CardCarousel";
 
 interface DeckLookPromptProps {
@@ -26,18 +27,26 @@ interface DeckLookPromptProps {
  * cliquer.
  *
  * Quand le texte restreint ce qui est prenable (« une Structure parmi
- * elles »), les cartes hors-type restent AFFICHÉES — il les a regardées,
- * c'est l'intérêt de la carte — mais ne se sélectionnent pas.
+ * elles », « une Sentinelle »), les autres cartes restent AFFICHÉES — il
+ * les a regardées, c'est l'intérêt de la carte — mais grisées, barrées d'un
+ * symbole « non prenable », et ne se sélectionnent pas.
  */
 export function DeckLookPrompt({ choice, onConfirm, onRefuse }: DeckLookPromptProps) {
   const [selected, setSelected] = useState<string[]>([]);
 
   const prenable = (instanceId: string) => {
     const carte = choice.revealed.find((c) => c.instanceId === instanceId);
-    if (!carte) return false;
-    if (!choice.takeableCardTypes) return true;
-    return choice.takeableCardTypes.includes(getCardDefinition(carte.cardId).type);
+    return carte !== undefined && isDeckLookTakeable(choice, carte);
   };
+
+  /** Ce que le texte demande, pour dire pourquoi une carte ne se prend pas. */
+  function raison(card: CardInstance): string | null {
+    const refus = deckLookRefusal(choice, card);
+    if (refus === "type") return `Ce texte ne permet de prendre que : ${choice.takeableCardTypes!.map((t) => CARD_TYPE_LABELS[t]).join(", ")}.`;
+    if (refus === "archetype") return "Ce texte ne permet de prendre qu'une carte de cette famille.";
+    if (refus === "color") return "Ce texte ne permet de prendre qu'une carte de cette couleur.";
+    return null;
+  }
 
   function toggle(card: { instanceId: string }) {
     if (!prenable(card.instanceId)) return;
@@ -80,6 +89,7 @@ export function DeckLookPrompt({ choice, onConfirm, onRefuse }: DeckLookPromptPr
             cards={choice.revealed}
             selectedInstanceIds={selected}
             onSelect={toggle}
+            unavailableReason={raison}
             emptyLabel="Ta pioche est vide."
           />
         </div>

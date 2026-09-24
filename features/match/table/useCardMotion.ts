@@ -49,16 +49,25 @@ export interface Flight {
    * sa destination ; `shatter` : elle se BRISE sur place (carte détruite),
    * puis ses éclats filent jusqu'à la destination (`to`).
    */
-  ending: "land" | "vanish" | "shatter";
+  ending: "land" | "vanish" | "shatter" | "tuck";
   /** Attente avant le départ (pioches d'un même lot) : la carte reste invisible jusque-là. */
   delayMs?: number;
+  /**
+   * `tuck` seulement : place dans l'éventail, de −1 (à gauche) à 1 (à
+   * droite). Les cartes remises sous la pioche se soulèvent en éventail
+   * avant de repasser dessous.
+   */
+  fan?: number;
 }
+
+/** Durée d'une remise sous la pioche : soulèvement en éventail, puis glissé dessous. */
+export const TUCK_MS = 950;
 
 /** Durée d'un bris : fissures, éclatement, puis trajet des éclats jusqu'au Cimetière. */
 export const SHATTER_MS = 1300;
 
 export function flightDuration(flight: Pick<Flight, "ending">): number {
-  return flight.ending === "shatter" ? SHATTER_MS : FLIGHT_MS;
+  return flight.ending === "shatter" ? SHATTER_MS : flight.ending === "tuck" ? TUCK_MS : FLIGHT_MS;
 }
 
 export function boxOf(el: Element | null): Box | null {

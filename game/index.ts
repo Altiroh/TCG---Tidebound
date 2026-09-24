@@ -117,6 +117,7 @@ export { ACHIEVEMENT_CATALOG, achievementByCode, unlockedAchievements } from "@/
 export type { AchievementDefinition, AchievementStats } from "@/game/achievements";
 
 export type { EffectOrigin, GameEvent, GameEventType } from "@/game/events/types";
+export { deckLookRefusal, isDeckLookTakeable, type DeckLookRefusal } from "@/game/rules/deckLook";
 
 export type { ChosenUnitFilter, EffectDefinition, EffectType, TargetSelector } from "@/game/effects/types";
 export { chosenTargetFilter, eligibleChosenUnits } from "@/game/effects/chosenTargets";
