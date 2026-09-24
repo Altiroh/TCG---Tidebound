@@ -658,7 +658,7 @@ Cadrage : Notion "Catalogue de quêtes — Tidebound" et "Progression joueur"
   vient de l'environnement n'est donc crédité à personne, ce qui est voulu.
   `record_match_quest_progress()` applique le tout une seule fois par partie
   (`match_quest_progress`) et respecte `bot_progress_allowed` quête par quête.
-- **Réclamation** : écran `/quetes` (onglet « Quêtes » du bandeau) ;
+- **Réclamation** : onglet « Quêtes » du profil (`/profil?onglet=quetes`, avec les Traversées) ;
   `claim_quest_reward()` relit montant ET XP en base et empêche d'encaisser
   deux fois. Une quête terminée reste réclamable après la fin de sa période.
 

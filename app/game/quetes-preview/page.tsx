@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { QuestsScreen } from "@/features/quests/QuestsScreen";
-import { previewQuestBoard, previewVoyageBoard } from "@/features/quests/previewQuestBoard";
+import { QuestJournalPreview } from "@/features/quests/QuestJournalPreview";
 
 export const metadata: Metadata = {
   title: "Quêtes Preview · Tidebound",
@@ -19,5 +18,5 @@ export const metadata: Metadata = {
  * qu'il n'ait pas déjà gagné.
  */
 export default function QuetesPreviewRoute() {
-  return <QuestsScreen board={previewQuestBoard()} voyages={previewVoyageBoard()} />;
+  return <QuestJournalPreview />;
 }

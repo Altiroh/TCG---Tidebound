@@ -14,13 +14,12 @@ import styles from "@/features/shell/ScreenShell.module.css";
 import { playButtonClick } from "@/lib/sound";
 
 /*
- * Tiroirs de quêtes et de profil CHARGÉS À L'OUVERTURE (audit du 24/09) :
+ * Tiroir de profil CHARGÉ À L'OUVERTURE (audit du 24/09) :
  * cet en-tête est sur chaque écran, et le profil — son sélecteur
  * d'illustration, ses exploits — tire tout le catalogue de cartes
  * (~370 Ko). Monté statiquement, il le faisait télécharger dès la page de
  * connexion, tiroir fermé.
  */
-const QuestDrawer = dynamic(() => import("@/features/quests/QuestDrawer").then((m) => m.QuestDrawer), { ssr: false });
 const ProfileDrawer = dynamic(() => import("@/features/progression/ProfileDrawer").then((m) => m.ProfileDrawer), {
   ssr: false,
 });
@@ -91,7 +90,6 @@ export function HeaderPlayer() {
   // relecture se fait quand même en arrière-plan et corrige l'affichage.
   const [summary, setSummary] = useState<ProgressionSummary | null>(rememberedProgression);
   const [optionsOpen, setOptionsOpen] = useState(false);
-  const [questsOpen, setQuestsOpen] = useState(false);
   /** Profil ouvert en panneau, et sur quel onglet (`null` : fermé). */
   const [profileTab, setProfileTab] = useState<ProfileTab | null>(null);
   /** Dernier nombre de récompenses à réclamer VU — même principe que les quêtes. */
@@ -151,7 +149,8 @@ export function HeaderPlayer() {
             onClick={() => {
               playButtonClick();
               setToast(null);
-              setQuestsOpen(true);
+              // Les quêtes vivent dans l'onglet « Quêtes » du profil.
+              setProfileTab("quetes");
             }}
           >
             Voir →
@@ -316,16 +315,6 @@ export function HeaderPlayer() {
           progression. */}
       <ScreenToast message={toast} onDismiss={() => setToast(null)} />
 
-      {questsOpen && (
-        <QuestDrawer
-          onClose={() => {
-            setQuestsOpen(false);
-            // Une réclamation faite dans le tiroir change le solde et la
-            // pastille : on relit en fermant.
-            notifyProgressionChanged();
-          }}
-        />
-      )}
       {profileTab && (
         <ProfileDrawer
           initialTab={profileTab}

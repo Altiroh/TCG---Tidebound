@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/quests/VoyagePanel.module.css";
 import { claimVoyageTier, type VoyageBoard, type VoyageView } from "@/features/quests/voyageActions";
@@ -28,7 +27,7 @@ function initialVoyageId(voyages: readonly VoyageView[]): string | undefined {
 }
 
 /**
- * TRAVERSÉES — la suite de quêtes à paliers, en tête de l'écran Quêtes.
+ * TRAVERSÉES — la suite de quêtes à paliers, en tête de l'onglet Quêtes du profil.
  *
  * Une route de cinq escales façon carte marine : les escales faites sont
  * des bouées allumées, l'escale en cours porte sa jauge, celles à venir
@@ -40,9 +39,7 @@ function initialVoyageId(voyages: readonly VoyageView[]): string | undefined {
  * reste consultable (et réclamable si on y a laissé des paliers), une
  * verrouillée montre ce qui attend sans pouvoir avancer.
  */
-export function VoyagePanel({ board }: { board: VoyageBoard }) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+export function VoyagePanel({ board, onChanged }: { board: VoyageBoard; /** Relit Traversées et profil après une réclamation. */ onChanged: () => void }) {
   const [selectedId, setSelectedId] = useState(() => initialVoyageId(board.voyages));
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ tone: "success" | "error"; text: string } | null>(null);
@@ -69,7 +66,7 @@ export function VoyagePanel({ board }: { board: VoyageBoard }) {
         ].filter(Boolean);
         setMessage({ tone: "success", text: `Palier ${result.tier} : ${gains.join(" · ")}` });
         notifyProgressionChanged();
-        startTransition(() => router.refresh());
+        onChanged();
       })
       .finally(() => setBusy(false));
   }
@@ -157,7 +154,7 @@ export function VoyagePanel({ board }: { board: VoyageBoard }) {
           </p>
         )}
         {voyage.claimableTier !== null && (
-          <button type="button" className={game.primary} onClick={handleClaim} disabled={busy || isPending}>
+          <button type="button" className={game.primary} onClick={handleClaim} disabled={busy}>
             {busy ? "…" : `Réclamer le palier ${voyage.claimableTier}`}
           </button>
         )}

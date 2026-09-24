@@ -450,7 +450,6 @@ export async function claimEverything(): Promise<ClaimEverythingResult> {
   }
   const result = await claimEverythingFor(user.id);
   revalidatePath("/profil");
-  revalidatePath("/quetes");
   revalidatePath("/boosters");
   revalidatePath("/collectables");
   return result;

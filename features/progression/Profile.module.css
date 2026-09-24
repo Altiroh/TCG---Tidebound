@@ -929,13 +929,6 @@
   min-width: 0;
 }
 
-.questPeriod {
-  font-family: var(--cb-font-ui);
-  font-size: 11px;
-  font-weight: 400;
-  color: var(--ink-faint);
-}
-
 /* ══════════════════════════════════════════════════════════════
  * TÉLÉPHONE COUCHÉ — le carnet tient dans la hauteur d'un pouce
  * ══════════════════════════════════════════════════════════════

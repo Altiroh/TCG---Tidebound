@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -22,12 +22,12 @@ import {
   type PendingCardChoice,
   type ProfileSummary,
 } from "@/features/progression/profileActions";
-import { claimQuestReward, type QuestEntry } from "@/features/quests/actions";
-import { QUEST_CATEGORY_META } from "@/game/quests";
+import { fetchQuestBoard, type QuestBoard } from "@/features/quests/actions";
+import { fetchVoyageBoard, type VoyageBoard } from "@/features/quests/voyageActions";
+import { QuestJournal } from "@/features/quests/QuestJournal";
 import { IllustrationPicker } from "@/features/progression/IllustrationPicker";
 import { TitlePicker } from "@/features/progression/TitlePicker";
 import type { RewardItem } from "@/features/progression/RewardIcon";
-import questStyles from "@/features/quests/QuestDrawer.module.css";
 import { useCardBack } from "@/features/cosmetics/CardBackProvider";
 import { forgetProgression, notifyProgressionChanged } from "@/features/progression/progressionSync";
 import { ProfileIdentity } from "@/features/progression/ProfileIdentity";
@@ -38,8 +38,9 @@ import { PreconToken, TideCoin } from "@/features/shell/GameIcons";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/progression/Profile.module.css";
 import { playButtonClick, playRewardClaimed, playTabClick } from "@/lib/sound";
+import type { ProfileTab } from "@/features/progression/profileTabs";
 
-export type ProfileTab = "carnet" | "recompenses" | "quetes" | "exploits";
+export type { ProfileTab };
 
 const TABS: Array<{ id: ProfileTab; label: string }> = [
   { id: "carnet", label: "Carnet de bord" },
@@ -302,7 +303,7 @@ export function ProfileView({ profile, onRefresh, initialTab = "carnet", onLeave
         )}
         {picker === "title" && <TitlePicker titles={profile.titles} onClose={() => setPicker(null)} onChanged={onRefresh} />}
         {!picking && tab === "carnet" && <LogbookTab profile={profile} onRefresh={onRefresh} onShowRewards={() => setTab("recompenses")} />}
-        {!picking && tab === "quetes" && <QuestsTab profile={profile} onRefresh={onRefresh} onLeave={onLeave} />}
+        {!picking && tab === "quetes" && <QuestsTab onRefresh={onRefresh} />}
         {!picking && tab === "recompenses" && (
           <LevelRewardsTab
             profile={profile}
@@ -640,100 +641,46 @@ function LevelRewardsTab({ profile, claiming, error, onClaim, onChooseCards }: L
 /* ── Quêtes ─────────────────────────────────────────────────────── */
 
 /**
- * Les quêtes du jour et de la semaine, au profil : les terminées en tête,
- * toute la ligne encaisse. L'écran complet (`/quetes`) garde les filtres,
- * les échéances et les remplacements.
+ * L'onglet « Quêtes » : la Traversée puis le journal complet (filtres,
+ * échéances, remplacements). Il n'y a plus d'écran `/quetes` — tout vit ici.
+ *
+ * Le journal se lit à l'ouverture de l'onglet, pas avec le profil : le
+ * profil s'ouvre sur le carnet de bord, et deux lectures de plus à chaque
+ * ouverture pour un onglet qu'on ne regarde pas toujours coûteraient pour
+ * rien. Après une réclamation, journal ET profil sont relus (pastilles,
+ * niveau).
  */
-function QuestsTab({ profile, onRefresh, onLeave }: { profile: ProfileSummary; onRefresh: () => void; onLeave?: () => void }) {
-  const [busyKey, setBusyKey] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [claimedKeys, setClaimedKeys] = useState<Set<string>>(new Set());
+function QuestsTab({ onRefresh }: { onRefresh: () => void }) {
+  const [boards, setBoards] = useState<{ quests: QuestBoard; voyages: VoyageBoard } | null>(null);
+  const [failed, setFailed] = useState(false);
 
-  const entries = useMemo(() => {
-    const rank = (entry: QuestEntry) => (entry.completed && !entry.claimed ? 0 : entry.claimed ? 2 : 1);
-    return [...profile.quests].sort((a, b) => rank(a) - rank(b) || b.progress / b.target - a.progress / a.target);
-  }, [profile.quests]);
+  const load = useCallback(() => {
+    Promise.all([fetchQuestBoard(), fetchVoyageBoard()])
+      .then(([quests, voyages]) => setBoards({ quests, voyages }))
+      .catch((cause) => {
+        console.error("[ProfileView] Lecture des quêtes impossible :", cause);
+        setFailed(true);
+      });
+  }, []);
 
-  function claim(entry: QuestEntry) {
-    const key = `${entry.questId}|${entry.periodKey}`;
-    playButtonClick();
-    setError(null);
-    setBusyKey(key);
-    void claimQuestReward(entry.questId, entry.periodKey)
-      .then((result) => {
-        if (!result.ok) {
-          setError(result.error ?? "Réclamation impossible.");
-          return;
-        }
-        playRewardClaimed();
-        setClaimedKeys((current) => new Set(current).add(key));
-        notifyProgressionChanged();
-        onRefresh();
-      })
-      .finally(() => setBusyKey(null));
+  useEffect(load, [load]);
+
+  if (!boards) {
+    return (
+      <section className={`${game.panel} ${styles.block}`} aria-label="Quêtes">
+        <p className={game.muted}>{failed ? "Tes quêtes n'ont pas pu être chargées." : "Chargement du journal de bord…"}</p>
+      </section>
+    );
   }
 
   return (
-    <section className={`${game.panel} ${styles.block}`} aria-label="Quêtes">
-      <div className={styles.blockHead}>
-        <h2 className={game.sectionTitle}>Quêtes du jour et de la semaine</h2>
-        <Link
-          href="/quetes"
-          className={game.link}
-          onClick={() => {
-            playButtonClick();
-            onLeave?.();
-          }}
-        >
-          Journal complet →
-        </Link>
-      </div>
-      {error && <p className={game.error}>{error}</p>}
-      {entries.length === 0 ? (
-        <p className={game.muted}>Aucune quête en cours pour l&apos;instant.</p>
-      ) : (
-        <ul className={questStyles.list}>
-          {entries.map((entry) => {
-            const key = `${entry.questId}|${entry.periodKey}`;
-            const claimed = entry.claimed || claimedKeys.has(key);
-            const claimable = entry.completed && !claimed;
-            const ratio = Math.min(1, entry.progress / entry.target);
-            const meta = QUEST_CATEGORY_META[entry.category];
-            const Row = claimable ? "button" : "div";
-            return (
-              <li key={key}>
-                <Row
-                  {...(claimable ? { type: "button" as const, onClick: () => claim(entry), disabled: busyKey === key } : {})}
-                  className={`${questStyles.row} ${claimable ? questStyles.rowClaimable : ""} ${claimed ? questStyles.rowClaimed : ""}`}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element -- icône locale, taille fixe */}
-                  <img src={meta.icon} alt="" aria-hidden draggable={false} className={questStyles.icon} />
-                  <div className={questStyles.body}>
-                    <span className={questStyles.name}>
-                      {entry.name || entry.label}
-                      <span className={styles.questPeriod}>{entry.questType === "weekly" ? " · semaine" : " · jour"}</span>
-                    </span>
-                    <span className={questStyles.objective}>{entry.label}</span>
-                    <div className={questStyles.track}>
-                      <div className={entry.completed ? questStyles.fillDone : questStyles.fill} style={{ width: `${ratio * 100}%` }} />
-                    </div>
-                  </div>
-                  <div className={questStyles.side}>
-                    <span className={claimable ? questStyles.rewardReady : questStyles.reward}>
-                      {entry.rewardBoosterId ? "1 booster" : `${entry.rewardTides} Tides`}
-                    </span>
-                    {claimable ? (
-                      <span className={styles.claimButtonSmall}>{busyKey === key ? "…" : "Réclamer"}</span>
-                    ) : (
-                      <span className={questStyles.count}>{claimed ? "Réclamée" : `${Math.min(entry.progress, entry.target)} / ${entry.target}`}</span>
-                    )}
-                  </div>
-                </Row>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </section>
+    <QuestJournal
+      board={boards.quests}
+      voyages={boards.voyages}
+      onChanged={() => {
+        load();
+        onRefresh();
+      }}
+    />
   );
 }

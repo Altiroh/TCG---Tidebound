@@ -10,7 +10,7 @@ import { HeaderPlayer } from "@/features/shell/HeaderPlayer";
 import { navigateWithTransition } from "@/features/shell/pageTransitionBus";
 import { playButtonClick } from "@/lib/sound";
 
-export type ScreenSection = "collection" | "collectables" | "decks" | "market" | "boosters" | "quetes" | "partie";
+export type ScreenSection = "collection" | "collectables" | "decks" | "market" | "boosters" | "partie";
 
 /**
  * Les onglets de la COLLECTION, dans l'ordre de lecture.
@@ -29,11 +29,9 @@ export type ScreenSection = "collection" | "collectables" | "decks" | "market" |
  * dont le bandeau n'a plus que le retour au menu et le logo.
  */
 /*
- * Onglets du bandeau. « Quêtes » n'y est plus : l'accès se fait par le
- * tiroir du bloc de compte, à droite, qui montre la même chose sans quitter
- * l'écran en cours. La route `/quetes` reste servie — elle porte ce que le
- * tiroir laisse de côté (filtres, échéances, remplacements) et le tiroir y
- * mène.
+ * Onglets du bandeau. « Quêtes » n'y est plus : quêtes et Traversées vivent
+ * dans l'onglet « Quêtes » du profil, ouvert depuis le bloc de compte à
+ * droite. L'ancienne route `/quetes` y redirige.
  */
 const TABS: Array<{ section: ScreenSection; label: string; href: string }> = [
   // « Cartes » plutôt que « Collection » : la collection du joueur, c'est

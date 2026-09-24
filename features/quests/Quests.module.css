@@ -303,3 +303,11 @@
     gap: 6px;
   }
 }
+
+/* Le journal entier, tel que l'onglet « Quêtes » du profil le pose. */
+.journal {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(12px, 2dvh, 20px);
+  min-width: 0;
+}

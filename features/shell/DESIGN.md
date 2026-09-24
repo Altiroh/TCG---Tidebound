@@ -19,7 +19,7 @@ surcharge ornementale, le pirate décoratif kitsch, un style par écran.
 | Tokens | `app/tokens.css` | Les valeurs (`--tb-*`) : couleurs, effets, rayons, espacements, typographie, mouvement, plans. **Seul endroit où une couleur est décidée.** |
 | Coquille | `features/shell/ScreenShell.module.css`, `GameScreen.module.css` (haut) | Décor, bandeau, navigation, compte, recherche. Les alias courts `--cb-*`, `--panel`, `--line`, `--ink`… pointent sur les tokens. |
 | Composants partagés | `features/shell/GameScreen.module.css` (§1–§8) | Panneaux, texte, boutons, tabs/chips/segmented/pagination, champs, bannières, états vide/chargement/squelettes, menus, tuiles, badges, rareté, progression. Consommés via `game.xxx`. |
-| Overlays | `features/shell/Dialog.*`, `ScreenToast.*`, `components/ui/GlassAlert.*`, `components/game-ui/GameUi.module.css` (sélecteur, info-bulle), `features/quests/QuestDrawer.module.css` | Fenêtres, alertes, menus déroulants, info-bulles, tiroirs. |
+| Overlays | `features/shell/Dialog.*`, `ScreenToast.*`, `components/ui/GlassAlert.*`, `components/game-ui/GameUi.module.css` (sélecteur, info-bulle), `features/progression/Profile.module.css` (tiroir de profil) | Fenêtres, alertes, menus déroulants, info-bulles, tiroirs. |
 | Écrans | `features/<écran>/*.module.css` | Uniquement ce qui est propre à l'écran (grilles, dispositions, objets métier). **Aucune couleur codée en dur** : tokens ou alias. |
 
 Le plateau de partie (`features/match/*`, `components/game-ui/tokens.ts`) garde
@@ -109,7 +109,7 @@ Squelettes : `skeleton` / `skeletonText` / `skeletonBlock`.
 ### Overlays (`§7` + fichiers dédiés)
 Fenêtre : `features/shell/Dialog` (`tone="danger"` pour une suppression,
 `description` pour le sous-titre, `width` pour une prévisualisation).
-Tiroir : `QuestDrawer`. Menu contextuel : `menu` + `menuItem` /
+Tiroir : `ProfileDrawer`. Menu contextuel : `menu` + `menuItem` /
 `menuItemDanger` / `menuSeparator`. Popover : `popover`.
 
 ### Contenu (`§8`)

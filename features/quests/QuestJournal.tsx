@@ -1,10 +1,7 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
 import { QUEST_CATEGORIES, QUEST_CATEGORY_META, type QuestCategory } from "@/game/quests";
-import { GameScreen } from "@/features/shell/GameScreen";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/quests/Quests.module.css";
 import { claimQuestReward, rerollQuest, type QuestBoard, type QuestEntry } from "@/features/quests/actions";
@@ -15,10 +12,12 @@ import { playButtonClick, playRewardClaimed } from "@/lib/sound";
 import { oneOf } from "@/lib/persistCodecs";
 import { usePersistedState } from "@/lib/persistedState";
 
-interface QuestsScreenProps {
+interface QuestJournalProps {
   board: QuestBoard;
   /** Traversées ; `available: false` tant que leur migration n'est pas appliquée — le panneau s'efface. */
   voyages?: VoyageBoard;
+  /** Relit quêtes et profil après une réclamation ou un remplacement. */
+  onChanged: () => void;
 }
 
 function formatRemaining(endsAtIso: string): string {
@@ -32,7 +31,9 @@ function formatRemaining(endsAtIso: string): string {
 }
 
 /**
- * Quêtes — sur la coquille commune.
+ * JOURNAL DE BORD — la Traversée en cours, puis les quêtes du jour et de la
+ * semaine. Il vit dans l'onglet « Quêtes » du profil : plus d'écran à part,
+ * tout ce qui se réclame se réclame au même endroit.
  *
  * Organisation par CATÉGORIE (Notion « Catalogue de quêtes — Tidebound ») :
  * Cartes, Parties, Decks, Stats, Marée. Chaque ligne porte l'icône de sa
@@ -43,9 +44,7 @@ function formatRemaining(endsAtIso: string): string {
  * la fin de chaque partie arbitrée (`features/matches/matchStore.ts`), et
  * la réclamation comme le remplacement sont des Server Actions autoritaires.
  */
-export function QuestsScreen({ board, voyages }: QuestsScreenProps) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+export function QuestJournal({ board, voyages, onChanged }: QuestJournalProps) {
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastGain, setLastGain] = useState<{ tides: number; xp: number } | null>(null);
@@ -73,7 +72,7 @@ export function QuestsScreen({ board, voyages }: QuestsScreenProps) {
         playRewardClaimed();
         setLastGain({ tides: result.tidesGained ?? 0, xp: result.xpGained ?? 0 });
         notifyProgressionChanged();
-        startTransition(() => router.refresh());
+        onChanged();
       })
       .finally(() => setBusyKey(null));
   }
@@ -91,117 +90,94 @@ export function QuestsScreen({ board, voyages }: QuestsScreenProps) {
           setError(result.error ?? "Remplacement impossible.");
           return;
         }
-        startTransition(() => router.refresh());
+        onChanged();
       })
       .finally(() => setBusyKey(null));
   }
 
-  const hasQuests = all.length > 0;
-  const claimableCount = all.filter((entry) => entry.completed && !entry.claimed).length;
+  if (board.unavailable) {
+    return (
+      <div className={`${game.panel} ${game.empty}`}>
+        <p className={game.emptyTitle}>Quêtes indisponibles pour le moment</p>
+        <p className={game.muted}>Le serveur n&apos;a pas pu charger tes quêtes. Réessaie dans un instant.</p>
+      </div>
+    );
+  }
 
   return (
-    <GameScreen active="quetes">
-      <div className={game.content}>
-        <div className={game.contentInner}>
-          <div className={game.pageHead}>
-            <div>
-              <p className={game.eyebrow}>Quêtes</p>
-              <h1 className={game.title}>{claimableCount > 0 ? `${claimableCount} récompense${claimableCount > 1 ? "s" : ""} à réclamer` : "Journal de bord"}</h1>
-            </div>
-            {board.isSignedIn && (
-              <Link href="/partie" className={game.secondary} onClick={() => playButtonClick()}>
-                Jouer une partie
-              </Link>
-            )}
-          </div>
+    <div className={styles.journal}>
+      {/* La Traversée en tête : c'est la progression longue, celle qu'on
+          suit d'une semaine à l'autre. */}
+      {voyages && <VoyagePanel board={voyages} onChanged={onChanged} />}
 
-          {!board.isSignedIn ? (
-            <div className={`${game.panel} ${game.empty}`}>
-              <p className={game.emptyTitle}>Connecte-toi pour recevoir des quêtes</p>
-              <p className={game.muted}>Tes quêtes avancent à chaque partie en ligne ou contre le bot, et rapportent des Tides et de l&apos;XP.</p>
-              <Link href="/connexion" className={game.primary} onClick={() => playButtonClick()} style={{ marginTop: 6 }}>
-                Se connecter
-              </Link>
-            </div>
-          ) : board.unavailable ? (
-            <div className={`${game.panel} ${game.empty}`}>
-              <p className={game.emptyTitle}>Quêtes indisponibles pour le moment</p>
-              <p className={game.muted}>Le serveur n&apos;a pas pu charger tes quêtes. Réessaie dans un instant.</p>
-            </div>
-          ) : !hasQuests ? (
-            <div className={`${game.panel} ${game.empty}`}>
-              <p className={game.emptyTitle}>Aucune quête disponible</p>
-              <p className={game.muted}>
-                Le catalogue de quêtes est vide en base. Applique les migrations Supabase, puis lance <code>npm run seed:cards</code>.
-              </p>
-            </div>
-          ) : (
-            <>
-              {/* Filtres de catégorie. Seules les familles présentes dans les
-                  quêtes du moment sont proposées : un filtre qui ne montre
-                  rien n'apprend rien. */}
-              {presentCategories.length > 1 && (
-                <div className={game.chips} role="group" aria-label="Catégories de quêtes">
-                  <button
-                    type="button"
-                    className={filter === null ? game.chipActive : game.chip}
-                    onClick={() => {
-                      playButtonClick();
-                      setFilter(null);
-                    }}
-                  >
-                    Toutes
-                  </button>
-                  {presentCategories.map((category) => (
-                    <button
-                      key={category}
-                      type="button"
-                      className={`${filter === category ? game.chipActive : game.chip} ${styles.filterWithIcon}`}
-                      title={QUEST_CATEGORY_META[category].description}
-                      onClick={() => {
-                        playButtonClick();
-                        setFilter(filter === category ? null : category);
-                      }}
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element -- icône locale, taille fixe */}
-                      <img src={QUEST_CATEGORY_META[category].icon} alt="" aria-hidden className={styles.filterIcon} />
-                      {QUEST_CATEGORY_META[category].label}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {error && <p className={game.error}>{error}</p>}
-              {lastGain !== null && (lastGain.tides > 0 || lastGain.xp > 0) && (
-                <p className={`${game.success} ${styles.gain}`} role="status">
-                  {[lastGain.tides > 0 ? `+${lastGain.tides} Tides` : "", lastGain.xp > 0 ? `+${lastGain.xp} XP` : ""].filter(Boolean).join(" · ")}
-                </p>
-              )}
-
-              {/* La Traversée en tête : c'est la progression longue, celle
-                  qu'on suit d'une semaine à l'autre. */}
-              {voyages && <VoyagePanel board={voyages} />}
-
-              <QuestSection
-                title="Quotidiennes"
-                subtitle={`${formatRemaining(board.dailyEndsAt)}${board.dailyRerollsLeft > 0 ? ` · ${board.dailyRerollsLeft} remplacement gratuit` : ""}`}
-                entries={visible(board.daily)}
-                busyKey={isPending ? "*" : busyKey}
-                onClaim={handleClaim}
-                onReroll={board.dailyRerollsLeft > 0 ? handleReroll : undefined}
-              />
-              <QuestSection
-                title="Hebdomadaires"
-                subtitle={formatRemaining(board.weeklyEndsAt)}
-                entries={visible(board.weekly)}
-                busyKey={isPending ? "*" : busyKey}
-                onClaim={handleClaim}
-              />
-            </>
-          )}
+      {all.length === 0 ? (
+        <div className={`${game.panel} ${game.empty}`}>
+          <p className={game.emptyTitle}>Aucune quête disponible</p>
+          <p className={game.muted}>
+            Le catalogue de quêtes est vide en base. Applique les migrations Supabase, puis lance <code>npm run seed:cards</code>.
+          </p>
         </div>
-      </div>
-    </GameScreen>
+      ) : (
+        <>
+          {/* Filtres de catégorie. Seules les familles présentes dans les
+              quêtes du moment sont proposées : un filtre qui ne montre rien
+              n'apprend rien. */}
+          {presentCategories.length > 1 && (
+            <div className={game.chips} role="group" aria-label="Catégories de quêtes">
+              <button
+                type="button"
+                className={filter === null ? game.chipActive : game.chip}
+                onClick={() => {
+                  playButtonClick();
+                  setFilter(null);
+                }}
+              >
+                Toutes
+              </button>
+              {presentCategories.map((category) => (
+                <button
+                  key={category}
+                  type="button"
+                  className={`${filter === category ? game.chipActive : game.chip} ${styles.filterWithIcon}`}
+                  title={QUEST_CATEGORY_META[category].description}
+                  onClick={() => {
+                    playButtonClick();
+                    setFilter(filter === category ? null : category);
+                  }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element -- icône locale, taille fixe */}
+                  <img src={QUEST_CATEGORY_META[category].icon} alt="" aria-hidden className={styles.filterIcon} />
+                  {QUEST_CATEGORY_META[category].label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {error && <p className={game.error}>{error}</p>}
+          {lastGain !== null && (lastGain.tides > 0 || lastGain.xp > 0) && (
+            <p className={`${game.success} ${styles.gain}`} role="status">
+              {[lastGain.tides > 0 ? `+${lastGain.tides} Tides` : "", lastGain.xp > 0 ? `+${lastGain.xp} XP` : ""].filter(Boolean).join(" · ")}
+            </p>
+          )}
+
+          <QuestSection
+            title="Quotidiennes"
+            subtitle={`${formatRemaining(board.dailyEndsAt)}${board.dailyRerollsLeft > 0 ? ` · ${board.dailyRerollsLeft} remplacement gratuit` : ""}`}
+            entries={visible(board.daily)}
+            busyKey={busyKey}
+            onClaim={handleClaim}
+            onReroll={board.dailyRerollsLeft > 0 ? handleReroll : undefined}
+          />
+          <QuestSection
+            title="Hebdomadaires"
+            subtitle={formatRemaining(board.weeklyEndsAt)}
+            entries={visible(board.weekly)}
+            busyKey={busyKey}
+            onClaim={handleClaim}
+          />
+        </>
+      )}
+    </div>
   );
 }
 
