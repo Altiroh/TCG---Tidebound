@@ -1,5 +1,5 @@
 /**
- * Le Navire de Verre — Pique à Glace : une capacité de Navire CIBLÉE en un
+ * La Verrière — Pique à Glace : une capacité de Navire CIBLÉE en un
  * seul geste (`ShipActivatableAbility.targeting: "anyTarget"`).
  *
  * « Une fois par tour, pendant une Phase principale, dépensez 1 Raison :
@@ -15,7 +15,7 @@ import { instance, testGameState, testPlayer } from "./testHelpers";
 function verreState(p1: Partial<PlayerState> = {}, p2: Partial<PlayerState> = {}, overrides: Partial<GameState> = {}): GameState {
   return testGameState({
     players: [
-      testPlayer("p1", { shipId: "navire-de-verre", reason: 10, reasonMax: 10, ...p1 }),
+      testPlayer("p1", { shipId: "la-verriere", reason: 10, reasonMax: 10, ...p1 }),
       testPlayer("p2", { shipId: "le-brise-lames", ...p2 }),
     ],
     ...overrides,
@@ -25,7 +25,7 @@ function verreState(p1: Partial<PlayerState> = {}, p2: Partial<PlayerState> = {}
 const pique = (target: { targetInstanceId?: string; targetPlayerId?: string }) =>
   ({ type: "activateShipAbility", playerId: "p1", ...target }) as const;
 
-describe("Le Navire de Verre — Pique à Glace", () => {
+describe("La Verrière — Pique à Glace", () => {
   it("frappe une unité adverse, même derrière une Garde : c'est un effet, pas une attaque", () => {
     const garde = instance("le-dernier-rempart", "p2");
     const cible = instance("marin-des-jetees", "p2");

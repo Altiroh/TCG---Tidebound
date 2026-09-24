@@ -185,7 +185,7 @@ export interface ShipActivatableAbility {
    *
    * `"anyTarget"` : n'importe quel permanent doté de Résistance, allié ou
    * adverse (unité, Structure…), ou n'importe quel des deux Navires, le sien
-   * compris (Le Navire de Verre — Pique à Glace). Ni Garde ni règle
+   * compris (La Verrière — Pique à Glace). Ni Garde ni règle
    * d'attaque : c'est un effet, pas une attaque — donc ni riposte, ni
    * faiblesse d'attaque directe, ni fenêtre d'interception des pièges.
    *

@@ -2,7 +2,7 @@
 
 Cadre Navire + médaillons + illustrations, un jeu par Navire verrouillé
 (voir `game/environment/shipData.ts` — Le Courlis, L'Errant, Le
-Brise-Lames, La Religieuse, Le Goliath, Le Navire de Verre).
+Brise-Lames, La Religieuse, Le Goliath, La Verrière).
 
 ## Assets validés (statut : validé sur Notion)
 
@@ -46,10 +46,10 @@ Une image carrée par Navire, référencée par `ShipDefinition.illustration`
 (`game/environment/shipData.ts`) : `le-courlis.webp`, `errant.webp`,
 `brise-lames.webp`, `la-religieuse.webp`, `goliath.webp`.
 
-**En attente (24/09/2026) :** Le Navire de Verre — `illu/verre.webp` et
+**En attente (24/09/2026) :** La Verrière — `illu/verre.webp` et
 `capacite/verre.webp` (Pique à Glace). Une fois déposés, renseigner
 `illustration` sur le Navire et sur sa capacité (`shipData.ts`), et retirer
-`navire-de-verre` de `ILLUSTRATIONS_ATTENDUES`
+`la-verriere` de `ILLUSTRATIONS_ATTENDUES`
 (`tests/game/shipAbilityPresentation.test.ts`). Utilisées à la fois
 sur le plateau de partie (`ShipInstrumentCluster`) et sur l'écran de victoire
 (`VictoryScreen`).

@@ -508,7 +508,7 @@ export type TargetSelector =
    * qui écartent déjà un permanent protégé par Garde ou sans Résistance.
    *
    * Même cible, même lecture, pour une capacité de Navire CIBLÉE en un seul
-   * geste (`ShipActivatableAbility.targeting`, Le Navire de Verre — Pique à
+   * geste (`ShipActivatableAbility.targeting`, La Verrière — Pique à
    * Glace) : là, le joueur peut aussi désigner un Navire nommément,
    * le sien compris (`EffectContext.chosenTargetPlayerId`).
    */

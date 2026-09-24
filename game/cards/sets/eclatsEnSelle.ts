@@ -184,9 +184,10 @@ const EQUIPAGE_DE_VERRE: CardDefinition[] = [
     ],
   },
   {
+    // Créature, et non plus Marin (décision de design du 24/09/2026).
     id: "canonnier-fele",
     name: "Canonnier Fêlé",
-    type: "marin",
+    type: "creature",
     archetype: "equipage-de-verre",
     setCode: ECLATS_EN_SELLE,
     cost: 3,
@@ -301,9 +302,10 @@ const EQUIPAGE_DE_VERRE: CardDefinition[] = [
     ],
   },
   {
+    // Créature, et non plus Marin (décision de design du 24/09/2026).
     id: "maitre-verrier",
     name: "Maître Verrier",
-    type: "marin",
+    type: "creature",
     archetype: "equipage-de-verre",
     setCode: ECLATS_EN_SELLE,
     cost: 4,

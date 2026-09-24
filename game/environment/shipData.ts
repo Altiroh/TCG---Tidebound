@@ -245,8 +245,8 @@ export const SHIP_SET: ShipDefinition[] = [
     // celles de la coque moyenne (L'Errant, Le Goliath) — et ni passif ni
     // faiblesse, comme Le Goliath à son entrée : toute son identité tient
     // dans sa capacité, et c'est elle que le labo a mesurée.
-    id: "navire-de-verre",
-    name: "Le Navire de Verre",
+    id: "la-verriere",
+    name: "La Verrière",
     startingAnchor: 30,
     reasonMax: 10,
     slotCount: 5,

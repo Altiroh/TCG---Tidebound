@@ -13,7 +13,7 @@ import { SHIP_SET } from "@/game/environment/shipData";
  * oubli : l'interface montre le fond de substitution en attendant. À vider
  * dès que le fichier est déposé dans `public/assets/ships/capacite/`.
  */
-const ILLUSTRATIONS_ATTENDUES = new Set(["navire-de-verre"]); // 24/09/2026
+const ILLUSTRATIONS_ATTENDUES = new Set(["la-verriere"]); // 24/09/2026
 
 const ABILITIES = SHIP_SET.filter((ship) => ship.activatableAbility).map((ship) => ({
   ship,

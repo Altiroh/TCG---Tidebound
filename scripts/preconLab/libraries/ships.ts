@@ -19,7 +19,7 @@ import { LIBRARY as RAYON } from "@/scripts/preconLab/libraries/lot15";
 
 const base = (id: string) => SHIP_DATABASE.get(id)!;
 const courlis = base("le-courlis");
-const verre = base("navire-de-verre");
+const verre = base("la-verriere");
 
 const VARIANTES: ShipDefinition[] = [
   { ...courlis, id: "lab-courlis-30", name: "Courlis 30 Ancrage", startingAnchor: 30 },
@@ -57,7 +57,7 @@ const COQUES = (process.env.LAB_SHIPS?.split(",") ?? [
   "lab-courlis-30",
   "lab-courlis-5",
   "lab-courlis-sans-coque",
-  "navire-de-verre",
+  "la-verriere",
   "lab-verre-gratuit",
   "lab-verre-26",
 ]).map((s) => s.trim());
