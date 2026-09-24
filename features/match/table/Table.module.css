@@ -2294,25 +2294,36 @@
   --aim-rgb: 203, 213, 225;
 }
 
+/* Trait de visée (`DragLayer`) : tirets ÉPAIS et arrondis, qui défilent vers
+   la cible (`stroke-dashoffset` animé) ; l'ombre, continue, le détache du
+   plateau. */
 .aimLineShadow {
-  stroke: rgba(2, 6, 23, 0.5);
-  stroke-width: 4.5;
+  fill: none;
+  stroke: rgba(2, 6, 23, 0.55);
+  stroke-width: 9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .aimLine {
-  stroke: rgba(var(--aim-rgb), 0.92);
-  stroke-width: 2;
-  stroke-dasharray: 12 6;
+  fill: none;
+  stroke: rgba(var(--aim-rgb), 0.95);
+  stroke-width: 5.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 14 11;
+  filter: drop-shadow(0 0 4px rgba(var(--aim-rgb), 0.55));
 }
 
 .aimReticle {
   fill: rgba(2, 6, 23, 0.35);
   stroke: rgba(var(--aim-rgb), 0.95);
-  stroke-width: 2;
+  stroke-width: 3;
+  transition: r 120ms ease-out;
 }
 
 .aimDot {
-  fill: rgba(254, 202, 202, 0.95);
+  fill: rgba(var(--aim-rgb), 1);
 }
 
 /* ──────────────────────────────────────────────────────────────
