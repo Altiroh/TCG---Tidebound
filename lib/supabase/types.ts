@@ -405,6 +405,29 @@ export interface Database {
         Update: Record<string, never>;
         Relationships: [];
       };
+      /** Traversées : progression par joueur (`20261007120000_voyages.sql`). */
+      player_voyages: {
+        Row: {
+          user_id: string;
+          voyage_id: string;
+          step_index: number;
+          step_progress: number;
+          step_meta: string[];
+          claimed_tiers: number;
+          completed_at: string | null;
+          updated_at: string;
+        };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      /** Traversées : idempotence par partie, et relevé pour l'écran de fin. */
+      match_voyage_progress: {
+        Row: { match_id: string; user_id: string; voyage_recap: VoyageRecapRow | Record<string, never> };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
       /** Quelles cartes peuvent tomber dans quel booster — source d'autorité de l'éligibilité. */
       booster_pool_cards: {
         Row: {
@@ -688,6 +711,26 @@ export interface Database {
         Returns: { ok: boolean; error?: string; tides_gained?: number; xp_gained?: number; booster_id?: string | null; balance?: number };
       };
       /** Remplacement gratuit d'une quête non terminée, dans la limite du quota de la période. */
+      /** Traversées : écriture conditionnelle de l'avancement d'une partie. */
+      apply_voyage_progress: {
+        Args: {
+          p_match_id: string;
+          p_user_id: string;
+          p_voyage_id: string;
+          p_expected_step: number;
+          p_expected_progress: number;
+          p_step_index: number;
+          p_step_progress: number;
+          p_step_meta: string[];
+          p_recap: VoyageRecapRow;
+        };
+        Returns: { ok: boolean; recorded?: boolean; conflict?: boolean; recap?: VoyageRecapRow | Record<string, never> };
+      };
+      /** Traversées : réclamer le prochain palier atteint. */
+      claim_voyage_tier: {
+        Args: { p_user_id: string; p_voyage_id: string; p_tier: number; p_xp: number; p_tides: number; p_booster_id?: string | null };
+        Returns: { ok: boolean; error?: string; tier?: number; tides_gained?: number; xp_gained?: number; booster_id?: string | null; balance?: number };
+      };
       reroll_player_quest: {
         Args: { p_user_id: string; p_period_key: string; p_quest_id: string; p_new_quest_code: string; p_max_rerolls: number };
         Returns: { ok: boolean; error?: string; quest_id?: string; remaining?: number };
@@ -783,6 +826,16 @@ type CardTypeEnum = "marin" | "creature" | "equipement" | "structure" | "objet" 
  * Une ligne du relevé de quêtes d'une partie (`match_quest_progress.quest_recap`).
  * Miroir du `jsonb_build_object` de `record_match_quest_progress`.
  */
+/** Ce qu'une partie a fait à l'escale en cours d'une Traversée (`match_voyage_progress.voyage_recap`). */
+export interface VoyageRecapRow {
+  voyage_id: string;
+  step_index: number;
+  before: number;
+  after: number;
+  target: number;
+  completed_step: boolean;
+}
+
 export interface QuestRecapRow {
   quest_id: string;
   period_key: string;

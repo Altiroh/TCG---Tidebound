@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { getCardDefinition } from "@/game";
 import { recycleSurplus } from "@/features/collection/recycleActions";
 import type { SurplusLine } from "@/features/collection/recycleValue";
-import { cardIllustrationUrl } from "@/features/decks/nameplateArt";
+import { cardIllustrationThumbUrl } from "@/features/decks/cardArtUrl";
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
 import { TideCoin } from "@/features/shell/GameIcons";
 import { Dialog } from "@/features/shell/Dialog";
@@ -109,7 +109,7 @@ export function SurplusResaleDialog({ lines, onClose }: SurplusResaleDialogProps
       <ul className={styles.list}>
         {lines.map((line) => (
           <li key={line.cardId} className={styles.line}>
-            <span className={styles.art} style={{ backgroundImage: `url("${cardIllustrationUrl(line.cardId)}")` }} aria-hidden />
+            <span className={styles.art} style={{ backgroundImage: `url("${cardIllustrationThumbUrl(line.cardId)}")` }} aria-hidden />
             <span className={styles.name}>
               {cardName(line.cardId)}
               <span className={styles.keep}>

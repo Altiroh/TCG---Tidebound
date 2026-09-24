@@ -38,3 +38,15 @@ export type {
   QuestProgressKind,
   QuestType,
 } from "@/game/quests/types";
+export {
+  VOYAGE_CATALOG,
+  VOYAGE_STEP_COUNT,
+  advanceVoyage,
+  currentVoyage,
+  freshVoyageProgress,
+  isVoyageComplete,
+  nextClaimableTier,
+  voyageById,
+  voyageStepLabel,
+} from "@/game/quests/voyages";
+export type { VoyageAdvance, VoyageDefinition, VoyageProgress, VoyageReward, VoyageStep } from "@/game/quests/voyages";

@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { getCardDefinition } from "@/game";
-import { cardIllustrationUrl } from "@/features/decks/nameplateArt";
+import { cardIllustrationThumbUrl } from "@/features/decks/cardArtUrl";
 import { updateProfileIdentity } from "@/features/progression/profileActions";
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
 import styles from "@/features/progression/IllustrationPicker.module.css";
@@ -117,7 +117,7 @@ export function IllustrationPicker({ avatarCardId, ownedCardIds, onClose, onChan
                 disabled={isPending}
                 title={name}
               >
-                <span className={styles.art} style={{ backgroundImage: `url("${cardIllustrationUrl(cardId)}")` }} aria-hidden />
+                <span className={styles.art} style={{ backgroundImage: `url("${cardIllustrationThumbUrl(cardId)}")` }} aria-hidden />
                 <span className={styles.name}>{name}</span>
               </button>
             </li>

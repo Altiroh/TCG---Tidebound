@@ -164,6 +164,10 @@ describe("boucle complète — partie contre bot, arbitrée côté serveur", () 
     const advanced = db.table("player_quest_progress").filter((row) => row.user_id === USER && row.progress_value > 0);
     expect(advanced.length, "aucune quête n'a avancé après une partie complète").toBeGreaterThan(0);
 
+    // --- Traversée : la même partie fait avancer la première escale -------
+    expect(db.one("player_voyages", { user_id: USER, voyage_id: "premier-quart" })).toMatchObject({ step_index: 0, step_progress: 1 });
+    expect(db.one("match_voyage_progress", { match_id: matchId, user_id: USER })).toBeTruthy();
+
     const board = await fetchQuestBoard();
     expect(board.isSignedIn).toBe(true);
     expect(board.unavailable).toBeFalsy();

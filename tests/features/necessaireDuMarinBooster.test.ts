@@ -32,7 +32,7 @@ vi.mock("@/lib/supabase/sessionUser", () => ({
 
 vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
 
-const { purchaseBooster, openBooster, fetchBoosterInventory } = await import("@/features/boosters/actions");
+const { purchaseBooster, openBooster, openBoosters, fetchBoosterInventory } = await import("@/features/boosters/actions");
 const { cardRows, boosterPoolCardRows } = await import("@/scripts/seedRows");
 const { BOOSTER_POOLS } = await import("@/game/boosters/pools");
 const { rarityForCardId } = await import("@/game/boosters/cardRarity");
@@ -222,6 +222,62 @@ describe("Nécessaire du Marin — ouverture", () => {
 
     expect(db.one("player_pity", { user_id: USER, booster_definition_id: NECESSAIRE })).toBeDefined();
     expect(db.one("player_pity", { user_id: USER, booster_definition_id: STANDARD })).toBeUndefined();
+  });
+});
+
+describe("ouverture en lot", () => {
+  it("dix sachets d'un geste : dix écritures atomiques, une par sachet, et rien d'autre à rejouer", async () => {
+    crediterTides(10_000);
+    await purchaseBooster(NECESSAIRE, 10);
+    db.rpcCalls.length = 0;
+
+    const result = await openBoosters(NECESSAIRE, 10);
+
+    expect(result.ok).toBe(true);
+    expect(result.data!.packs).toHaveLength(10);
+    expect(db.rpcCalls.filter((call) => call.fn === "open_booster")).toHaveLength(10);
+    expect(db.one("player_boosters", { user_id: USER, booster_definition_id: NECESSAIRE })!.quantity).toBe(0);
+  });
+
+  it("enchaîne la collection d'un sachet au suivant : une carte n'est « nouvelle » qu'une fois dans le lot", async () => {
+    crediterTides(10_000);
+    await purchaseBooster(NECESSAIRE, 10);
+
+    const result = await openBoosters(NECESSAIRE, 10);
+    const vues = new Set<string>();
+    for (const pack of result.data!.packs) {
+      for (const card of pack.cards) {
+        if (card.isNew) expect(vues.has(card.cardId), card.cardId).toBe(false);
+        vues.add(card.cardId);
+      }
+    }
+  });
+
+  it("enchaîne le pity Abyssal : 19 sans Abyssale, le 1er sachet du lot la garantit", async () => {
+    crediterTides(10_000);
+    await purchaseBooster(NECESSAIRE, 3);
+    db.upsert(
+      "player_pity",
+      { user_id: USER, booster_definition_id: NECESSAIRE, packs_since_abyssal: 19, packs_since_new_card: 0 },
+      (row) => {
+        row.packs_since_abyssal = 19;
+      }
+    );
+
+    const result = await openBoosters(NECESSAIRE, 3);
+    expect(result.data!.packs[0]!.abyssalPulled).toBe(true);
+    expect(result.data!.packs.at(-1)!.packsSinceAbyssal).toBe(
+      db.one("player_pity", { user_id: USER, booster_definition_id: NECESSAIRE })!.packs_since_abyssal
+    );
+  });
+
+  it("s'arrête à la réserve : 3 possédés, 10 demandés → 3 ouverts, rendus", async () => {
+    crediterTides(10_000);
+    await purchaseBooster(NECESSAIRE, 3);
+
+    const result = await openBoosters(NECESSAIRE, 10);
+    expect(result.ok).toBe(true);
+    expect(result.data!.packs).toHaveLength(3);
   });
 });
 

@@ -1,18 +1,29 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import { fetchProgression, type ProgressionSummary } from "@/features/progression/actions";
 import { notifyProgressionChanged, onProgressionChanged, readProgression, rememberedProgression } from "@/features/progression/progressionSync";
-import { cardIllustrationUrl } from "@/features/decks/nameplateArt";
-import { QuestDrawer } from "@/features/quests/QuestDrawer";
-import { ProfileDrawer } from "@/features/progression/ProfileDrawer";
+import { cardIllustrationThumbUrl } from "@/features/decks/cardArtUrl";
 import type { ProfileTab } from "@/features/progression/ProfileView";
 import { PreconToken, TideCoin } from "@/features/shell/GameIcons";
 import { ScreenToast, type ScreenToastMessage } from "@/features/shell/ScreenToast";
 import { SettingsDialog } from "@/features/settings/SettingsDialog";
 import styles from "@/features/shell/ScreenShell.module.css";
 import { playButtonClick } from "@/lib/sound";
+
+/*
+ * Tiroirs de quêtes et de profil CHARGÉS À L'OUVERTURE (audit du 24/09) :
+ * cet en-tête est sur chaque écran, et le profil — son sélecteur
+ * d'illustration, ses exploits — tire tout le catalogue de cartes
+ * (~370 Ko). Monté statiquement, il le faisait télécharger dès la page de
+ * connexion, tiroir fermé.
+ */
+const QuestDrawer = dynamic(() => import("@/features/quests/QuestDrawer").then((m) => m.QuestDrawer), { ssr: false });
+const ProfileDrawer = dynamic(() => import("@/features/progression/ProfileDrawer").then((m) => m.ProfileDrawer), {
+  ssr: false,
+});
 
 /** Parchemin roulé — le journal de bord, pas une coche de logiciel. */
 function QuestIcon() {
@@ -220,7 +231,7 @@ export function HeaderPlayer() {
             {summary.avatarCardId ? (
               <span
                 className={`${styles.accountAvatar} ${styles.accountAvatarArt}`}
-                style={{ backgroundImage: `url("${cardIllustrationUrl(summary.avatarCardId)}")` }}
+                style={{ backgroundImage: `url("${cardIllustrationThumbUrl(summary.avatarCardId)}")` }}
               />
             ) : (
               <span className={styles.accountAvatar}>{avatarInitial(summary.displayName)}</span>

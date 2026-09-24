@@ -11,7 +11,6 @@ import { ScreenToast, type ScreenToastMessage } from "@/features/shell/ScreenToa
 import { openBoosters, type BoosterInventory, type BoosterInventoryEntry } from "@/features/boosters/actions";
 import { MAX_BATCH_OPEN } from "@/features/boosters/constants";
 import { BoosterBatchRecap, type BoosterBatchLine } from "@/features/boosters/opening/BoosterBatchRecap";
-import { BoosterBatchScene } from "@/features/boosters/opening/BoosterBatchScene";
 import { BoosterOpeningScene, type BoosterOpeningOrigin } from "@/features/boosters/opening/BoosterOpeningScene";
 import { preloadBoosterOpeningAssets } from "@/features/boosters/opening/boosterOpeningAssets";
 import { useCardBackSrc } from "@/features/cosmetics/CardBackProvider";
@@ -152,10 +151,10 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
   /** Sachets à ouvrir d'un seul geste (1 = le geste habituel). */
   const [batchSize, setBatchSize] = useState(1);
   /**
-   * Ouverture d'un LOT, en trois temps : le PREMIER sachet s'ouvre pour de
+   * Ouverture d'un LOT, en deux temps : le PREMIER sachet s'ouvre pour de
    * bon (`opening`, animation complète, cartes révélées une à une), puis
-   * cette scène-ci résume tout le lot — rangée de cartes alignées et « + »
-   * pour le reste —, puis la liste complète à la demande.
+   * le récapitulatif du lot entier — liste à gauche, carte choisie en
+   * grand à droite (`BoosterBatchRecap`).
    *
    * Posé EN MÊME TEMPS que `opening` au tirage, mais rendu seulement une
    * fois la scène du premier sachet refermée.
@@ -163,10 +162,8 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
   const [batch, setBatch] = useState<{
     boosterId: string;
     packs: number;
-    cards: BoosterOpeningCard[];
     lines: BoosterBatchLine[];
   } | null>(null);
-  const [recap, setRecap] = useState<{ packs: number; lines: BoosterBatchLine[] } | null>(null);
 
   /** On ne peut ouvrir que ce qu'on possède, et jamais plus que la borne du lot. */
   const maxBatch = Math.max(1, Math.min(MAX_BATCH_OPEN, selected?.owned ?? 0));
@@ -194,16 +191,17 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
   }, [maxBatch]);
 
   // Images de la scène chargées et décodées en avance : l'ouverture démarre
-  // sans flash. Seulement ce qu'on possède — précharger un sachet qu'on ne
-  // peut pas ouvrir ferait payer le réseau pour rien.
-  const ownedIdsKey = rows.filter((row) => row.owned > 0).map((row) => row.boosterId).join(",");
+  // sans flash. Seulement celle qu'on regarde ET qu'on possède (audit du
+  // 24/09) : précharger tous les sachets de la réserve coûtait jusqu'à
+  // 4 Mo à l'arrivée sur l'écran, pour des scènes qu'on n'ouvrira pas.
+  // Changer d'extension précharge la suivante — le glisser-déposer la
+  // sélectionne aussi, avant même le lâcher.
   const cardBack = useCardBackSrc();
+  const preloadId = ownsSelected ? (selected?.boosterId ?? null) : null;
   useEffect(() => {
-    if (!ownedIdsKey) return;
-    for (const boosterId of ownedIdsKey.split(",")) {
-      void preloadBoosterOpeningAssets(getBoosterPackVisual(boosterId), cardBack);
-    }
-  }, [ownedIdsKey, cardBack]);
+    if (!preloadId) return;
+    void preloadBoosterOpeningAssets(getBoosterPackVisual(preloadId), cardBack);
+  }, [preloadId, cardBack]);
 
   function select(boosterId: string) {
     playButtonClick();
@@ -220,7 +218,9 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
     // ICI et non au niveau du bouton, pour que le glisser-déposer — qui
     // ouvre lui aussi — passe par la même porte.
     if (sandbox) {
-      setOpening({ boosterId, real: false, cards: drawTestBoosterCards(boosterId), origin: null });
+      const packs = Array.from({ length: quantity }, () => drawTestBoosterCards(boosterId));
+      if (packs.length > 1) setBatch({ boosterId, packs: packs.length, lines: batchLines(packs) });
+      setOpening({ boosterId, real: false, cards: packs[0] ?? [], origin: null });
       return;
     }
 
@@ -268,33 +268,7 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
 
     // Lot : le premier sachet s'ouvre pour de bon, le résumé attend derrière.
     if (opened.length > 1) {
-      const cards: BoosterOpeningCard[] = [];
-      const byCard = new Map<string, BoosterBatchLine>();
-      opened.forEach((pack, packIndex) => {
-        for (const card of pack.cards) {
-          cards.push({
-            // Deux sachets peuvent rendre la même carte au même slot : l'index
-            // du sachet fait partie de la clé.
-            id: `${packIndex}-${card.slotIndex}-${card.cardId}`,
-            cardId: card.cardId,
-            rarity: toOpeningRarity(card.rarity),
-            isNew: card.isNew,
-          });
-          const line = byCard.get(card.cardId);
-          if (line) {
-            line.count += 1;
-            line.isNew = line.isNew || card.isNew;
-          } else {
-            byCard.set(card.cardId, {
-              cardId: card.cardId,
-              count: 1,
-              isNew: card.isNew,
-              rarity: toOpeningRarity(card.rarity),
-            });
-          }
-        }
-      });
-      setBatch({ boosterId, packs: opened.length, cards, lines: [...byCard.values()] });
+      setBatch({ boosterId, packs: opened.length, lines: batchLines(opened.map(openingCards)) });
       setOpening({ boosterId, real: true, origin, cards: openingCards(first) });
       return;
     }
@@ -648,19 +622,7 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
 
       {/* Après la scène du premier sachet, jamais pendant : les deux sont
           posées au même instant au tirage (cf. `handleOpen`). */}
-      {batch && !opening && (
-        <BoosterBatchScene
-          cards={batch.cards}
-          packs={batch.packs}
-          onShowAll={() => {
-            setRecap({ packs: batch.packs, lines: batch.lines });
-            handleBatchClosed();
-          }}
-          onClose={handleBatchClosed}
-        />
-      )}
-
-      {recap && <BoosterBatchRecap packs={recap.packs} lines={recap.lines} onClose={() => setRecap(null)} />}
+      {batch && !opening && <BoosterBatchRecap packs={batch.packs} lines={batch.lines} onClose={handleBatchClosed} />}
 
       {opening && (
         <BoosterOpeningScene
@@ -669,7 +631,7 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
           origin={opening.origin}
           /* Un lot attend derrière : le bouton dit ce qui vient après, pour
              que l'enchaînement se lise au lieu de surprendre. */
-          closeLabel={batch && opening.real ? `Voir les ${batch.packs - 1} autres sachets` : "Fermer"}
+          closeLabel={batch ? `Voir le bilan des ${batch.packs} sachets` : "Fermer"}
           onClose={handleOpeningClosed}
         />
       )}
@@ -755,4 +717,20 @@ function PackIcon() {
       <path d="M12.5 4.2v8.3a1.2 1.2 0 0 1-1.2 1.2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
     </svg>
   );
+}
+
+/** Une ligne par carte du lot, doublons additionnés : ce que le récapitulatif liste. */
+function batchLines(packs: readonly (readonly BoosterOpeningCard[])[]): BoosterBatchLine[] {
+  const byCard = new Map<string, BoosterBatchLine>();
+  for (const card of packs.flat()) {
+    if (!card.cardId) continue;
+    const line = byCard.get(card.cardId);
+    if (line) {
+      line.count += 1;
+      line.isNew = line.isNew || Boolean(card.isNew);
+    } else {
+      byCard.set(card.cardId, { cardId: card.cardId, count: 1, isNew: Boolean(card.isNew), rarity: card.rarity });
+    }
+  }
+  return [...byCard.values()];
 }

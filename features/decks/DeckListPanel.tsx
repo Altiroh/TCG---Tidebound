@@ -14,6 +14,7 @@ import {
 import styles from "@/features/decks/DeckBuilder.module.css";
 import game from "@/features/shell/GameScreen.module.css";
 import { playButtonClick } from "@/lib/sound";
+import { cardIllustrationThumbUrl } from "@/features/decks/cardArtUrl";
 
 const DRAG_MIME = "text/tidebound-card-id";
 
@@ -180,7 +181,7 @@ export function DeckListPanel({
               </button>
               <span className={styles.rowThumb} aria-hidden>
                 {/* eslint-disable-next-line @next/next/no-img-element -- vignette de liste */}
-                <img src={`/assets/cards/illustrations/${entry.cardId}.webp`} alt="" loading="lazy" decoding="async" />
+                <img src={cardIllustrationThumbUrl(entry.cardId)} alt="" loading="lazy" decoding="async" />
               </span>
               <span className={styles.rowQty}>×{entry.count}</span>
               <button

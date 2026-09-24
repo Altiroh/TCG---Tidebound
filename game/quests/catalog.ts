@@ -124,6 +124,9 @@ export const LONG_MATCH_TURNS = 8;
 /** Dégâts en un seul tour pour « Gros calibre ». */
 export const BIG_TURN_DAMAGE = 10;
 
+/** Coût à partir duquel une carte compte comme « gros calibre » (« Les gros calibres »). */
+export const BIG_CARD_MIN_COST = 5;
+
 /**
  * Fenêtre pendant laquelle un deck est considéré comme « récemment créé »
  * (« Essayer un deck fraîchement monté »).
@@ -189,6 +192,25 @@ export const QUEST_OBJECTIVE_LABELS: Record<QuestObjectiveKey, (target: number) 
     n > 1
       ? `Achever ${n} Navires en portant exactement les dégâts nécessaires`
       : "Achever un Navire en portant exactement les dégâts nécessaires",
+  // Identité Tidebound
+  ship_ability_uses: (n) => `Activer la capacité de votre Navire ${n} fois`,
+  deraison_turns: (n) => `Terminer ${n} tour${n > 1 ? "s" : ""} en Déraison`,
+  destroy_enemy_permanents: (n) => `Détruire ${n} permanent${n > 1 ? "s" : ""} adverse${n > 1 ? "s" : ""}`,
+  scuttle_permanents: (n) => `Saborder ${n} permanent${n > 1 ? "s" : ""}`,
+  play_big_cards: (n) => `Jouer ${n} carte${n > 1 ? "s" : ""} coûtant ${BIG_CARD_MIN_COST} Raison ou plus`,
+  play_in_abysses: (n) => `Jouer ${n} carte${n > 1 ? "s" : ""} pendant les Abysses`,
+  turns_in_tempete: (n) => `Commencer ${n} de vos tours en Tempête`,
+  activate_reactions: (n) => `Activer ${n} réaction${n > 1 ? "s" : ""}`,
+  summon_units: (n) => `Faire entrer ${n} unités par des effets`,
+  reveal_traps: (n) => `Révéler ${n} Structure${n > 1 ? "s" : ""} cachée${n > 1 ? "s" : ""}`,
+  heal_anchor: (n) => `Récupérer ${n} Ancrage`,
+  play_anomalies: (n) => `Jouer ${n} Anomalie${n > 1 ? "s" : ""}`,
+  win_after_low_anchor: (n) =>
+    n > 1
+      ? `Gagner ${n} parties après être tombé à ${LOW_ANCHOR_THRESHOLD} Ancrage ou moins`
+      : `Gagner une partie après être tombé à ${LOW_ANCHOR_THRESHOLD} Ancrage ou moins`,
+  win_without_deraison: (n) =>
+    n > 1 ? `Gagner ${n} parties sans finir un seul tour en Déraison` : "Gagner une partie sans finir un seul tour en Déraison",
 };
 
 /** Barème des quotidiennes (« environ 30 à 50 Tides + XP »). */
@@ -293,6 +315,29 @@ export const QUEST_CATALOG: readonly QuestDefinition[] = [
   { code: "weekly_tide_rise_12", name: "Montée des eaux", category: "maree", questType: "weekly", objectiveKey: "tide_rise", targetValue: 12, ...WEEKLY.standard, botProgressAllowed: true },
   { code: "weekly_tide_fall_12", name: "Marée basse", category: "maree", questType: "weekly", objectiveKey: "tide_fall", targetValue: 12, ...WEEKLY.standard, botProgressAllowed: true },
   { code: "weekly_reach_abysses_8", name: "Descente répétée", category: "maree", questType: "weekly", objectiveKey: "reach_abysses", targetValue: 8, ...WEEKLY.standard, botProgressAllowed: true },
+
+  // ======================================================================
+  // 6. IDENTITÉ TIDEBOUND — audit du 24/09/2026.
+  // ======================================================================
+  // Le catalogue ne demandait que des volumes génériques (jouer N cartes,
+  // infliger N dégâts) ; rien ne touchait la Déraison, les capacités de
+  // Navire, les pièges, la Tempête ou les Abysses. Chaque cible est
+  // calibrée au banc (`npm run quests`) pour tomber dans la fourchette du
+  // cadrage : 3 à 6 parties pour une journalière. Détail et mesures :
+  // Notion « Audit des quêtes & Traversées ».
+  { code: "daily_ship_ability_5", name: "Barre en main", category: "parties", questType: "daily", objectiveKey: "ship_ability_uses", targetValue: 5, ...DAILY.standard, botProgressAllowed: true },
+  { code: "daily_deraison_turns_8", name: "Vivre à crédit", category: "stats", questType: "daily", objectiveKey: "deraison_turns", targetValue: 8, ...DAILY.standard, botProgressAllowed: true },
+  { code: "daily_destroy_enemy_12", name: "Nettoyer le pont", category: "stats", questType: "daily", objectiveKey: "destroy_enemy_permanents", targetValue: 12, ...DAILY.standard, botProgressAllowed: true },
+  { code: "daily_scuttle_permanents_3", name: "Par-dessus bord", category: "cartes", questType: "daily", objectiveKey: "scuttle_permanents", targetValue: 3, ...DAILY.standard, botProgressAllowed: true },
+  { code: "daily_play_big_cards_3", name: "Les gros calibres", category: "cartes", questType: "daily", objectiveKey: "play_big_cards", targetValue: 3, ...DAILY.heavy, botProgressAllowed: true },
+  { code: "daily_play_in_abysses_3", name: "Jouer dans le noir", category: "maree", questType: "daily", objectiveKey: "play_in_abysses", targetValue: 3, ...DAILY.standard, botProgressAllowed: true },
+  { code: "daily_turns_in_tempete_4", name: "Tenir dans la tempête", category: "maree", questType: "daily", objectiveKey: "turns_in_tempete", targetValue: 4, ...DAILY.standard, botProgressAllowed: true },
+  { code: "daily_activate_reactions_3", name: "Pas si vite", category: "stats", questType: "daily", objectiveKey: "activate_reactions", targetValue: 3, ...DAILY.heavy, botProgressAllowed: true },
+  { code: "daily_summon_units_25", name: "Recrues de fortune", category: "cartes", questType: "daily", objectiveKey: "summon_units", targetValue: 25, ...DAILY.standard, botProgressAllowed: true },
+  { code: "weekly_reveal_traps_12", name: "Tapi sous l'eau", category: "maree", questType: "weekly", objectiveKey: "reveal_traps", targetValue: 12, ...WEEKLY.standard, botProgressAllowed: true },
+  { code: "weekly_heal_anchor_15", name: "Radoub", category: "stats", questType: "weekly", objectiveKey: "heal_anchor", targetValue: 15, ...WEEKLY.standard, botProgressAllowed: true },
+  { code: "weekly_play_anomalies_4", name: "Ça vient d'en bas", category: "cartes", questType: "weekly", objectiveKey: "play_anomalies", targetValue: 4, ...WEEKLY.standard, botProgressAllowed: true },
+  { code: "weekly_win_after_low_anchor_2", name: "Dernier souffle", category: "stats", questType: "weekly", objectiveKey: "win_after_low_anchor", targetValue: 2, ...WEEKLY.standard, botProgressAllowed: true },
 ];
 
 export function questLabel(quest: Pick<QuestDefinition, "objectiveKey" | "targetValue">): string {

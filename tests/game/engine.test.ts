@@ -5,7 +5,7 @@ import { getCardDefinition } from "@/game/cards/sets/core";
 import { handBreakCost } from "@/game/actions/breakObject";
 import { enumerateCandidateActions } from "@/game/bot/enumerateActions";
 import { canUnitAttack } from "@/game/rules/validation";
-import { reasonCeiling } from "@/game/state/reason";
+import { naturalReasonRecovery, reasonCeiling } from "@/game/state/reason";
 import { instance, TEST_COQUE_LEGERE, testEnvironment, testGameState, testPlayer, withTestShip } from "./testHelpers";
 import type { GameState } from "@/game/state/types";
 
@@ -839,7 +839,9 @@ describe("engine.dispatch - endTurn", () => {
 
   it("la Raison PERSISTE d'un tour à l'autre et ne remonte que de la récupération naturelle", () => {
     // Courlis 12, courbe 15/30/45/60/75/90/100 → plafonds 2/4/6/8/9/11/12.
-    // Le plafond ne fait RIEN monter : seule la récupération naturelle le fait.
+    // Le plafond ne fait RIEN monter : seule la récupération naturelle le
+    // fait, et elle suit la partie (`REASON_RECOVERY_CURVE`) : +2 au 2e tour
+    // du joueur, +3 aux 3e et 4e, +4 ensuite.
     const deck = (owner: string) => [1, 2, 3, 4, 5, 6].map(() => instance("marin-des-jetees", owner)); // deck vide = Jugement de l'Océan
     const state = testGameState({
       turnNumber: 2,
@@ -877,17 +879,25 @@ describe("engine.dispatch - endTurn", () => {
 
     const t5 = end(end(t3, "p1"), "p2"); // 3e tour de p1
     expect(t5.players[0].reasonCap).toBe(6);
-    expect(t5.players[0].reason).toBe(6); // 4 + 2
+    expect(t5.players[0].reason).toBe(6); // 4 + 3, borné par le plafond
 
     // Le joueur qui a tout dépensé repart de la seule récupération, pas de
     // son plafond : c'est là que la remise à niveau faisait du début de
-    // partie une course.
+    // partie une course. Mais cette récupération GRANDIT : au 4e tour, on
+    // ne vit plus à 2.
     const t7 = end(end(withReason(t5, 0, 0), "p1"), "p2"); // 4e tour de p1
-    expect(t7.players[0].reason).toBe(2);
+    expect(t7.players[0].reason).toBe(3);
 
     // Et ce qui n'est pas dépensé reste acquis d'un tour à l'autre.
     const t9 = end(end(withReason(t7, 0, 5), "p1"), "p2"); // 5e tour de p1
-    expect(t9.players[0].reason).toBe(7);
+    expect(t9.players[0].reason).toBe(9); // 5 + 4, pile au plafond du 5e tour
+  });
+
+  it("la récupération naturelle grandit avec la partie : 2, 2, 3, 3, puis 4 pour de bon", () => {
+    // Retour de jeu du 24/09 : à +2 fixe, un joueur qui joue chaque tour vit
+    // à 2 de Raison toute la partie, et une grosse carte coûte deux tours
+    // sans rien poser.
+    expect([1, 2, 3, 4, 5, 6, 12].map(naturalReasonRecovery)).toEqual([2, 2, 3, 3, 4, 4, 4]);
   });
 
   it("le plafond de début de partie borne les gains VENANT DES CARTES, sans jamais rogner l'acquis", () => {

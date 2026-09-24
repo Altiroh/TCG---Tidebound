@@ -33,6 +33,17 @@ export function startingReasonCap(shipReasonMax: number, ownTurnIndex: number): 
   return ratio === undefined ? undefined : Math.ceil(shipReasonMax * ratio);
 }
 
+/**
+ * Raison regagnée à l'entame du `ownTurnIndex`-ième tour du joueur
+ * (`RULES.REASON_RECOVERY_CURVE`), avant plafond et avant absorption d'une
+ * dette subie. Au-delà de la courbe, sa dernière valeur.
+ */
+export function naturalReasonRecovery(ownTurnIndex: number): number {
+  const curve = RULES.REASON_RECOVERY_CURVE;
+  if (curve.length === 0) return 0;
+  return curve[Math.min(Math.max(1, ownTurnIndex), curve.length) - 1]!;
+}
+
 /** Dette de Déraison (points sous 0), 0 si la Raison est positive ou nulle. */
 export function deraisonDebt(reason: number): number {
   return Math.max(0, -reason);

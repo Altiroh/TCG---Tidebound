@@ -92,6 +92,7 @@ const NO_STATS: AchievementStats = {
   preconDecksUnlocked: 0,
   decksFullyOwned: 0,
   tutorialCompleted: false,
+  voyagesCompleted: [],
 };
 
 function toOption(

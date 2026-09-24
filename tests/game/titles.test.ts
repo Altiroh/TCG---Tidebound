@@ -96,6 +96,7 @@ describe("jauge des exploits", () => {
     preconDecksUnlocked: 0,
     decksFullyOwned: 0,
     tutorialCompleted: true,
+    voyagesCompleted: [],
   };
 
   it("chaque exploit donne une jauge cohérente avec son déblocage", () => {

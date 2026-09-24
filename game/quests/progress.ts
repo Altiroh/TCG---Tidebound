@@ -1,7 +1,10 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
 import type { CardDefinition } from "@/game/cards/types";
 import type { GameState, PlayerId } from "@/game/state/types";
+import { RULES } from "@/game/rules/constants";
+import type { TideStateName } from "@/game/environment/types";
 import {
+  BIG_CARD_MIN_COST,
   BIG_TURN_DAMAGE,
   HIGH_ANCHOR_THRESHOLD,
   LONG_MATCH_TURNS,
@@ -134,6 +137,20 @@ export function computeMatchQuestContribution({
     reach_abysses: 0,
     tide_both_ways_in_match: 0,
     exact_lethal: 0,
+    ship_ability_uses: 0,
+    deraison_turns: 0,
+    destroy_enemy_permanents: 0,
+    scuttle_permanents: 0,
+    play_big_cards: 0,
+    play_in_abysses: 0,
+    turns_in_tempete: 0,
+    activate_reactions: 0,
+    summon_units: 0,
+    reveal_traps: 0,
+    heal_anchor: 0,
+    play_anomalies: 0,
+    win_after_low_anchor: 0,
+    win_without_deraison: 0,
   };
 
   const defByInstance = new Map<string, CardDefinition>();
@@ -170,6 +187,18 @@ export function computeMatchQuestContribution({
   const damagingCreatures = new Set<string>();
   let tideRose = false;
   let tideFell = false;
+  /** Marée telle que le journal la raconte : état, sens de la prochaine transition, tours restants. */
+  let tideState: TideStateName = "calme";
+  let tideOrientation: "montante" | "descendante" = "montante";
+  let tideRemaining: number = RULES.TIDE_STATE_DURATION.calme;
+  /**
+   * Une montée (ou descente) HÂTÉE vient d'être comptée pour l'action en
+   * cours : si le raccourcissement a mené la Marée à sa transition, le
+   * `TIDE_ADVANCED` qui suit est le même geste, pas un second.
+   */
+  let hastenedThisAction = false;
+  /** Le joueur est tombé à `LOW_ANCHOR_THRESHOLD` Ancrage ou moins, sans couler. */
+  let wasLow = false;
 
   const closeTurn = () => {
     bestTurnDamage = Math.max(bestTurnDamage, damageThisTurn);
@@ -182,7 +211,12 @@ export function computeMatchQuestContribution({
   for (const event of state.eventLog) {
     switch (event.type) {
       case "TURN_STARTED":
-        if (event.playerId === playerId) ownTurns += 1;
+        if (event.playerId === playerId) {
+          ownTurns += 1;
+          // L'annonce de Marée précède `TURN_STARTED` : l'état lu ici est
+          // bien celui dans lequel le tour commence.
+          if (tideState === "tempete") progress.turns_in_tempete += 1;
+        }
         closeTurn();
         break;
       case "END_TURN":
@@ -196,12 +230,16 @@ export function computeMatchQuestContribution({
 
       case "PLAY_CARD": {
         actor = event.playerId;
+        hastenedThisAction = false;
         awaitingDirectDamage = false;
         currentAttacker = null;
         if (event.playerId !== playerId) break;
         progress.play_cards += 1;
+        if (tideState === "abysses") progress.play_in_abysses += 1;
         const def = safeDef(event.cardId);
         if (!def) break;
+        if (def.cost >= BIG_CARD_MIN_COST) progress.play_big_cards += 1;
+        if (def.type === "anomalie") progress.play_anomalies += 1;
         if (def.type === "creature") {
           progress.play_creatures += 1;
           if (def.cost <= LOW_COST_CREATURE_MAX) progress.play_low_cost_creatures += 1;
@@ -213,6 +251,7 @@ export function computeMatchQuestContribution({
 
       case "OBJECT_BROKEN":
         actor = event.playerId;
+        hastenedThisAction = false;
         awaitingDirectDamage = false;
         currentAttacker = null;
         // `OBJECT_BROKEN` porte le fait de jeu « Briser », main comprise —
@@ -222,11 +261,56 @@ export function computeMatchQuestContribution({
 
       case "SABORDED":
         actor = event.playerId;
+        hastenedThisAction = false;
         awaitingDirectDamage = false;
         currentAttacker = null;
-        if (event.playerId === playerId && defByInstance.get(event.instanceId)?.type === "structure") {
-          progress.scuttle_structures += 1;
+        if (event.playerId === playerId) {
+          progress.scuttle_permanents += 1;
+          if (defByInstance.get(event.instanceId)?.type === "structure") progress.scuttle_structures += 1;
         }
+        break;
+
+      // Une capacité de Navire est une action du joueur au même titre
+      // qu'une pose : ce qu'elle provoque lui revient. Sans ce cas, les
+      // changements de Marée de « Changer de cap » (la grande majorité des
+      // modifications de Marée mesurées au banc, audit du 24/09) et les
+      // dégâts du Canon n'étaient crédités à personne.
+      case "SHIP_ABILITY_ACTIVATED":
+      case "SHIP_ABILITY_FIRED":
+        actor = event.playerId;
+        awaitingDirectDamage = false;
+        currentAttacker = null;
+        hastenedThisAction = false;
+        // Le tir d'une capacité ARMÉE est la suite du même geste : seule
+        // l'activation compte comme un usage.
+        if (event.type === "SHIP_ABILITY_ACTIVATED" && event.playerId === playerId) progress.ship_ability_uses += 1;
+        break;
+
+      case "REACTION_ACTIVATED":
+        if (event.playerId === playerId) progress.activate_reactions += 1;
+        break;
+
+      case "STRUCTURE_REVEALED":
+        if (ownerByInstance.get(event.instanceId) === playerId) progress.reveal_traps += 1;
+        break;
+
+      case "SUMMON":
+        if (event.playerId === playerId) progress.summon_units += 1;
+        break;
+
+      case "HEAL":
+        if (event.targetPlayerId === playerId) progress.heal_anchor += event.amount;
+        break;
+
+      case "DERAISON_SETTLED":
+        if (event.playerId === playerId && event.debt > 0) progress.deraison_turns += 1;
+        break;
+
+      case "DESTROY":
+        // Un permanent adverse qui tombe pendant VOTRE action : votre
+        // attaque, votre effet, votre capacité. La Marée ne compte pour
+        // personne, comme pour les dégâts.
+        if (actor === playerId && ownerByInstance.get(event.instanceId) === opponentId) progress.destroy_enemy_permanents += 1;
         break;
 
       case "ATTACK": {
@@ -240,6 +324,9 @@ export function computeMatchQuestContribution({
       case "DAMAGE": {
         const targetsOwnUnit = event.targetInstanceId !== undefined && ownerByInstance.get(event.targetInstanceId) === playerId;
         const targetsOwnShip = event.targetPlayerId === playerId;
+        if (targetsOwnShip && event.targetAnchorAfter !== undefined && event.targetAnchorAfter > 0 && event.targetAnchorAfter <= LOW_ANCHOR_THRESHOLD) {
+          wasLow = true;
+        }
         // Dégâts SUBIS : comptés quelle que soit l'origine (Marée comprise).
         if (targetsOwnUnit || targetsOwnShip) progress.take_damage += event.amount;
 
@@ -269,7 +356,7 @@ export function computeMatchQuestContribution({
         // Une progression NATURELLE arrive hors action (`actor` nul) : seule
         // une transition forcée par une carte du joueur compte comme une
         // modification de Marée.
-        if (actor === playerId) {
+        if (actor === playerId && !hastenedThisAction) {
           progress.modify_tide += 1;
           if (event.tideOrientation === "montante") {
             progress.tide_rise += 1;
@@ -279,20 +366,52 @@ export function computeMatchQuestContribution({
             tideFell = true;
           }
         }
+        hastenedThisAction = false;
         if (event.stateChanged && event.tideState === "abysses") progress.reach_abysses += 1;
+        tideState = event.tideState;
+        tideOrientation = event.tideOrientation;
+        tideRemaining = event.remainingTurns;
         break;
 
       case "TIDE_MODIFIED":
-      case "TIDE_ORIENTATION_CHANGED":
+      case "TIDE_ORIENTATION_CHANGED": {
+        // HÂTER la Marée, c'est la faire monter (ou descendre) : raccourcir
+        // la durée de l'état pendant qu'elle monte rapproche la montée
+        // (arbitrage du 24/09/2026, « Ça monte » était infaisable). La
+        // valeur portée est la durée RÉSULTANTE, d'où la comparaison.
+        const hastened = event.type === "TIDE_MODIFIED" && event.change === "duration" && event.value < tideRemaining;
+        if (event.type === "TIDE_MODIFIED" && event.change === "duration") tideRemaining = event.value;
+        if (event.type === "TIDE_ORIENTATION_CHANGED") tideOrientation = event.orientation;
         // Ces deux-là ne sont émis QUE par un effet de carte.
         if (actor === playerId) {
           progress.modify_tide += 1;
+          if (hastened) {
+            hastenedThisAction = true;
+            if (tideOrientation === "montante") {
+              progress.tide_rise += 1;
+              tideRose = true;
+            } else {
+              progress.tide_fall += 1;
+              tideFell = true;
+            }
+          }
+          // Inverser l'orientation, c'est FAIRE monter (ou descendre) la
+          // Marée : c'est le geste de presque toutes les cartes et capacités
+          // qui la touchent. Ne compter que les changements d'état forcés
+          // rendait « Ça monte » et « Ça redescend » infaisables — zéro
+          // progression sur 90 parties de banc (audit du 24/09).
           if (event.type === "TIDE_ORIENTATION_CHANGED") {
-            if (event.orientation === "montante") tideRose = true;
-            else tideFell = true;
+            if (event.orientation === "montante") {
+              progress.tide_rise += 1;
+              tideRose = true;
+            } else {
+              progress.tide_fall += 1;
+              tideFell = true;
+            }
           }
         }
         break;
+      }
 
       default:
         break;
@@ -321,6 +440,8 @@ export function computeMatchQuestContribution({
   if (anchor > 0 && anchor <= LOW_ANCHOR_THRESHOLD) progress.finish_low_anchor = 1;
 
   if (won) progress.win_matches = 1;
+  if (won && wasLow) progress.win_after_low_anchor = 1;
+  if (won && progress.deraison_turns === 0) progress.win_without_deraison = 1;
   if (vsBot) {
     progress.pvp_ship_damage = 0;
   } else if (won) {

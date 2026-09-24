@@ -8,6 +8,8 @@ import { GameScreen } from "@/features/shell/GameScreen";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/quests/Quests.module.css";
 import { claimQuestReward, rerollQuest, type QuestBoard, type QuestEntry } from "@/features/quests/actions";
+import { VoyagePanel } from "@/features/quests/VoyagePanel";
+import type { VoyageBoard } from "@/features/quests/voyageActions";
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
 import { playButtonClick, playRewardClaimed } from "@/lib/sound";
 import { oneOf } from "@/lib/persistCodecs";
@@ -15,6 +17,8 @@ import { usePersistedState } from "@/lib/persistedState";
 
 interface QuestsScreenProps {
   board: QuestBoard;
+  /** Traversées ; `available: false` tant que leur migration n'est pas appliquée — le panneau s'efface. */
+  voyages?: VoyageBoard;
 }
 
 function formatRemaining(endsAtIso: string): string {
@@ -39,7 +43,7 @@ function formatRemaining(endsAtIso: string): string {
  * la fin de chaque partie arbitrée (`features/matches/matchStore.ts`), et
  * la réclamation comme le remplacement sont des Server Actions autoritaires.
  */
-export function QuestsScreen({ board }: QuestsScreenProps) {
+export function QuestsScreen({ board, voyages }: QuestsScreenProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [busyKey, setBusyKey] = useState<string | null>(null);
@@ -173,6 +177,10 @@ export function QuestsScreen({ board }: QuestsScreenProps) {
                   {[lastGain.tides > 0 ? `+${lastGain.tides} Tides` : "", lastGain.xp > 0 ? `+${lastGain.xp} XP` : ""].filter(Boolean).join(" · ")}
                 </p>
               )}
+
+              {/* La Traversée en tête : c'est la progression longue, celle
+                  qu'on suit d'une semaine à l'autre. */}
+              {voyages && <VoyagePanel board={voyages} />}
 
               <QuestSection
                 title="Quotidiennes"

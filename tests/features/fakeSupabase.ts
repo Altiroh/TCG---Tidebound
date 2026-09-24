@@ -44,6 +44,8 @@ const PRIMARY_KEYS: Record<string, string[]> = {
   booster_pool_cards: ["booster_definition_id", "card_id"],
   booster_openings: ["id"],
   player_decks: ["id"],
+  player_voyages: ["user_id", "voyage_id"],
+  match_voyage_progress: ["match_id", "user_id"],
 };
 
 let uuidCounter = 0;
@@ -182,6 +184,13 @@ class QueryBuilder implements PromiseLike<QueryResponse> {
 
   is(column: string, value: null) {
     this.filters.push((row) => (row[column] ?? null) === value);
+    return this;
+  }
+
+  /** `not`, dans la seule forme employée : `.not(colonne, "is", null)`. */
+  not(column: string, operator: "is", value: null) {
+    if (operator !== "is") throw new Error(`not(${operator}) non transcrit dans le harnais`);
+    this.filters.push((row) => (row[column] ?? null) !== value);
     return this;
   }
 
@@ -785,6 +794,67 @@ function runRpc(db: FakeDatabase, fn: string, args: Row): any {
         abyssal_pulled: abyssal,
         packs_since_abyssal: db.one("player_pity", { user_id: args.p_user_id, booster_definition_id: args.p_booster_id })!
           .packs_since_abyssal,
+      };
+    }
+
+    // `20261007120000_voyages.sql`.
+    case "apply_voyage_progress": {
+      const key = { match_id: args.p_match_id, user_id: args.p_user_id };
+      if (!db.insertIfAbsent("match_voyage_progress", { ...key, voyage_recap: args.p_recap ?? {} })) {
+        return { ok: true, recorded: false, recap: db.one("match_voyage_progress", key)!.voyage_recap };
+      }
+      db.insertIfAbsent("player_voyages", {
+        user_id: args.p_user_id,
+        voyage_id: args.p_voyage_id,
+        step_index: 0,
+        step_progress: 0,
+        step_meta: [],
+        claimed_tiers: 0,
+        completed_at: null,
+      });
+      const row = db.one("player_voyages", { user_id: args.p_user_id, voyage_id: args.p_voyage_id })!;
+      if (row.step_index !== args.p_expected_step || row.step_progress !== args.p_expected_progress) {
+        db.tables.match_voyage_progress = db.table("match_voyage_progress").filter(
+          (r) => !(r.match_id === key.match_id && r.user_id === key.user_id)
+        );
+        return { ok: false, conflict: true };
+      }
+      row.step_index = args.p_step_index;
+      row.step_progress = args.p_step_progress;
+      row.step_meta = args.p_step_meta ?? [];
+      if (args.p_step_index >= 5 && !row.completed_at) row.completed_at = nowIso();
+      return { ok: true, recorded: true, recap: args.p_recap };
+    }
+
+    case "claim_voyage_tier": {
+      const row = db.one("player_voyages", { user_id: args.p_user_id, voyage_id: args.p_voyage_id });
+      if (!row) return { ok: false, error: "Traversée pas encore commencée." };
+      if (args.p_tier !== row.claimed_tiers + 1) return { ok: false, error: "Ce palier est déjà réclamé, ou un palier précédent attend." };
+      if (args.p_tier > row.step_index) return { ok: false, error: "Ce palier n'est pas encore atteint." };
+      row.claimed_tiers = args.p_tier;
+      if ((args.p_tides ?? 0) > 0) {
+        db.upsert("player_currency", { user_id: args.p_user_id, balance: args.p_tides }, (existing) => {
+          existing.balance += args.p_tides;
+        });
+        db.table("currency_transactions").push({ user_id: args.p_user_id, amount: args.p_tides, reason: "voyage_reward" });
+      }
+      if ((args.p_xp ?? 0) > 0) {
+        db.upsert("player_progression", { user_id: args.p_user_id, xp_total: args.p_xp }, (existing) => {
+          existing.xp_total += args.p_xp;
+        });
+      }
+      if (args.p_booster_id) {
+        db.upsert("player_boosters", { user_id: args.p_user_id, booster_definition_id: args.p_booster_id, quantity: 1 }, (existing) => {
+          existing.quantity += 1;
+        });
+      }
+      return {
+        ok: true,
+        tier: args.p_tier,
+        tides_gained: args.p_tides ?? 0,
+        xp_gained: args.p_xp ?? 0,
+        booster_id: args.p_booster_id ?? null,
+        balance: db.one("player_currency", { user_id: args.p_user_id })?.balance ?? 0,
       };
     }
 

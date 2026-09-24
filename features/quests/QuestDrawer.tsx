@@ -3,7 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { createPortal } from "react-dom";
-import { QUEST_CATEGORY_META } from "@/game/quests";
+// Import direct du catalogue de quêtes et non de `@/game/quests` : ce tiroir
+// est monté par l'en-tête de CHAQUE écran, et le point d'entrée des quêtes
+// tire leur calcul de progression — donc tout le catalogue de cartes.
+import { QUEST_CATEGORY_META } from "@/game/quests/catalog";
 import { claimQuestReward, fetchQuestBoard, type QuestBoard, type QuestEntry } from "@/features/quests/actions";
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
 import styles from "@/features/quests/QuestDrawer.module.css";

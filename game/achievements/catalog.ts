@@ -46,6 +46,13 @@ export interface AchievementStats {
   decksFullyOwned: number;
   /** Tutoriel terminé (et non passé). */
   tutorialCompleted: boolean;
+  /**
+   * Traversées BOUCLÉES (les cinq escales faites), par identifiant
+   * (`game/quests/voyages.ts`). Vide tant que la migration des Traversées
+   * n'est pas appliquée : les exploits correspondants attendent, rien ne
+   * casse.
+   */
+  voyagesCompleted: readonly string[];
 }
 
 export interface AchievementDefinition {
@@ -163,6 +170,23 @@ export const ACHIEVEMENT_CATALOG: readonly AchievementDefinition[] = [
   },
   ...collectionAchievements,
   ...levelAchievements,
+  // Traversées (audit du 24/09/2026) : l'exploit tombe quand la cinquième
+  // escale est bouclée, et c'est lui qui débloque le titre. La plus petite
+  // récompense d'exploit : la Traversée a déjà payé ses cinq paliers.
+  ...[
+    { voyageId: "premier-quart", code: "voyage_premier_quart", name: "Le Premier Quart", description: "Boucler la Traversée I, « Le Premier Quart »." },
+    { voyageId: "eaux-troubles", code: "voyage_eaux_troubles", name: "Les Eaux Troubles", description: "Boucler la Traversée II, « Les Eaux Troubles »." },
+    { voyageId: "grand-fond", code: "voyage_grand_fond", name: "Le Grand Fond", description: "Boucler la Traversée III, « Le Grand Fond »." },
+  ].map(
+    ({ voyageId, code, name, description }): AchievementDefinition => ({
+      code,
+      name,
+      description,
+      rewardTides: TIDE_REWARD.small,
+      isUnlocked: (stats) => stats.voyagesCompleted.includes(voyageId),
+      progress: (stats) => flag(stats.voyagesCompleted.includes(voyageId)),
+    })
+  ),
 ];
 
 /** Exploits actuellement remplis d'après ces compteurs. L'appelant en retire ceux déjà octroyés. */

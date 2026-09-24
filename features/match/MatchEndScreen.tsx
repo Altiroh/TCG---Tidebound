@@ -12,6 +12,7 @@ import { SwampHaze } from "@/features/match/SwampHaze";
 import styles from "@/features/match/MatchEndScreen.module.css";
 import { playGameLost } from "@/lib/sound";
 import type { QuestRecapEntry } from "@/features/quests/actions";
+import type { VoyageRecap } from "@/features/quests/voyageActions";
 import type { MatchRewardSummary } from "@/features/progression/actions";
 
 export type MatchOutcome = "victory" | "defeat";
@@ -43,7 +44,7 @@ interface MatchEndScreenProps {
    * Gain et relevé FABRIQUÉS, pour le labo `/game/fin-preview` : l'écran
    * se règle sans avoir à finir une vraie partie arbitrée.
    */
-  preview?: { reward: MatchRewardSummary; quests: QuestRecapEntry[] };
+  preview?: { reward: MatchRewardSummary; quests: QuestRecapEntry[]; voyage?: VoyageRecap | null };
 }
 
 /**
@@ -241,7 +242,7 @@ export function MatchEndScreen({ outcome, player, onExit, exitHref, matchId, pre
 
           {/* Ce que la partie a rapporté aux quêtes : elles défilent une à
               une, jauge en train de se remplir. */}
-          <div className={styles.questColumn}>{(matchId || preview) && <MatchQuestRecap matchId={matchId} preview={preview?.quests} />}</div>
+          <div className={styles.questColumn}>{(matchId || preview) && <MatchQuestRecap matchId={matchId} preview={preview?.quests} voyagePreview={preview?.voyage} />}</div>
         </div>
 
         {/* Secondaire à gauche, action engageante à droite — même ordre de

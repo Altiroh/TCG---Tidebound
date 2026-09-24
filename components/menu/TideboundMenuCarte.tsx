@@ -30,6 +30,13 @@ import { playMenuCardClick, playMenuCardHover } from "@/lib/sound";
 /** Les calques de ce menu, nommés une fois. */
 export const MENU_CARTE_ASSETS = {
   fond: "/assets/menu/carte/home-background.webp",
+  /**
+   * Le même fond en 96 px, pour le débordement flouté (`.spill`) : sous un
+   * flou de 30 px la différence ne se voit pas, et c'était la SOURCE
+   * entière (364 Ko) qui repartait sur le réseau en plus de la version
+   * optimisée du `<Image>`.
+   */
+  fondFlou: "/assets/menu/carte/home-background-flou.webp",
   gauche: "/assets/menu/carte/left-asset.webp",
   droite: "/assets/menu/carte/right-asset.webp",
   longueVue: "/assets/menu/carte/longue-vue-bottom.webp",
@@ -138,7 +145,7 @@ export function TideboundMenuCarte({ marks = false }: { marks?: boolean }) {
   return (
     <div
       className={`${styles.scene} ${marks ? styles.marks : ""}`}
-      style={{ "--plate-image": `url(${MENU_CARTE_ASSETS.fond})` } as CSSProperties}
+      style={{ "--plate-image": `url(${MENU_CARTE_ASSETS.fondFlou})` } as CSSProperties}
     >
       {/* La scène déborde d'elle-même : pas de bande noire sur une fenêtre
           plus étroite que le fond. */}
@@ -146,11 +153,15 @@ export function TideboundMenuCarte({ marks = false }: { marks?: boolean }) {
 
       {/* Accroché à l'écran et non à la scène : le recadrage d'un téléphone
           couché le coupait en deux (cf. `MenuCarte.module.css`). */}
+      {/* Chaque `sizes` suit la largeur CSS du calque (en % d'une scène qui
+          va jusqu'à 133vw) : sans lui, Next servait la source entière —
+          1600 à 2100 px — pour des décors affichés quatre fois plus petits. */}
       <Image
         src={MENU_CARTE_ASSETS.logo}
         alt="Tidebound"
         width={1600}
         height={631}
+        sizes="18vw"
         priority
         draggable={false}
         className={styles.logo}
@@ -167,6 +178,7 @@ export function TideboundMenuCarte({ marks = false }: { marks?: boolean }) {
           alt=""
           width={1100}
           height={1385}
+          sizes="46vw"
           draggable={false}
           className={styles.propGauche}
         />
@@ -175,6 +187,7 @@ export function TideboundMenuCarte({ marks = false }: { marks?: boolean }) {
           alt=""
           width={1337}
           height={1011}
+          sizes="32vw"
           draggable={false}
           className={styles.propDroite}
         />
@@ -183,6 +196,7 @@ export function TideboundMenuCarte({ marks = false }: { marks?: boolean }) {
           alt=""
           width={2119}
           height={683}
+          sizes="56vw"
           draggable={false}
           className={styles.propLongueVue}
         />
@@ -203,13 +217,14 @@ export function TideboundMenuCarte({ marks = false }: { marks?: boolean }) {
               alt=""
               width={fumee.w}
               height={fumee.h}
+              sizes="14vw"
               draggable={false}
               className={styles.fumee}
               style={{ "--fumee-rang": index } as CSSProperties}
             />
           ))}
 
-          <Image src={MENU_CARTE_ASSETS.tasse} alt="" width={1207} height={1143} draggable={false} className={styles.tasse} />
+          <Image src={MENU_CARTE_ASSETS.tasse} alt="" width={1207} height={1143} sizes="21vw" draggable={false} className={styles.tasse} />
           <CafeOnde />
         </div>
 
@@ -240,6 +255,7 @@ export function TideboundMenuCarte({ marks = false }: { marks?: boolean }) {
                 alt=""
                 width={slot.taille.w}
                 height={slot.taille.h}
+                sizes="38vw"
                 priority
                 draggable={false}
                 className={styles.cardArt}

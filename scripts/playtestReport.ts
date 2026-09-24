@@ -120,7 +120,7 @@ function rythme(parties: Mesures[]): void {
   const poses = parties.map((m) => m.posesPicUnTour);
   const depenses = parties.flatMap((m) => m.depenseParTour.filter((d) => d !== undefined));
   const part = (xs: number[], seuil: number) => `${((xs.filter((x) => x >= seuil).length / xs.length) * 100).toFixed(0)} %`;
-  console.log(`    Dépense réelle par tour              : ${f2(moy(depenses))} pour un revenu de ${RULES.NATURAL_REASON_RECOVERY}`);
+  console.log(`    Dépense réelle par tour              : ${f2(moy(depenses))} pour un revenu de ${RULES.REASON_RECOVERY_CURVE.slice(1).join(" / ")}`);
   console.log(`      tours à 4+ / 6+ / 8+               : ${part(depenses, 4)} / ${part(depenses, 6)} / ${part(depenses, 8)}`);
   console.log(`    Pire dette en UN tour                : ${f2(moy(pics))} en moyenne, ${Math.max(...pics)} au pire`);
   console.log(`      parties atteignant 6+ / 8+ / 10+   : ${part(pics, 6)} / ${part(pics, 8)} / ${part(pics, 10)}`);

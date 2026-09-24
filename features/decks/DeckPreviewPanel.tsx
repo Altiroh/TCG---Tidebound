@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { RULES, ownershipLabel } from "@/game";
-import { cardIllustrationUrl } from "@/features/decks/nameplateArt";
+import { cardIllustrationThumbUrl } from "@/features/decks/nameplateArt";
 import { cardName, sizeLabel, sortedCards, type BrowserDeck } from "@/features/decks/deckEntries";
 import { absoluteDate, relativeDate } from "@/features/decks/deckFilters";
 import { daysLeftInTrash } from "@/features/decks/deckTrash";
@@ -306,7 +306,7 @@ export function DeckPreviewPanel({
                     </span>
                     <span
                       className={styles.cardStrip}
-                      style={{ backgroundImage: `url("${cardIllustrationUrl(card.cardId)}")` }}
+                      style={{ backgroundImage: `url("${cardIllustrationThumbUrl(card.cardId)}")` }}
                       aria-hidden
                     />
                     <span className={styles.cardName}>{cardName(card.cardId)}</span>

@@ -1,7 +1,10 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { CARD_BACKS, DEFAULT_CARD_BACK_ID, cardBackSrc } from "@/game";
+// Import direct et non par `@/game` : ce fournisseur vit dans la mise en
+// page RACINE, et le point d'entrée du moteur tire tout le catalogue de
+// cartes (~370 Ko) dans le paquet de CHAQUE page, connexion comprise.
+import { CARD_BACKS, DEFAULT_CARD_BACK_ID, cardBackSrc } from "@/game/cosmetics/cardBacks";
 
 /**
  * Dos de carte équipé — diffusé à tout ce qui affiche une carte face cachée.

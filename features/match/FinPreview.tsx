@@ -36,6 +36,22 @@ function Ecran() {
       preview={{
         reward: { xp: defaite ? 60 : 125, tides: defaite ? 0 : 30, levelBefore: 4, levelAfter: 4, firstWinOfDay: !defaite },
         quests: params.get("quetes") === "0" ? [] : QUETES,
+        // Escale de Traversée : `?escale=0` la retire, `?escale=fin` la boucle.
+        voyage:
+          params.get("escale") === "0"
+            ? null
+            : {
+                voyageId: "premier-quart",
+                voyageName: "Le Premier Quart",
+                numeral: "I",
+                stepName: "Barre en main",
+                stepLabel: "Activer la capacité de votre Navire 3 fois",
+                tier: 2,
+                before: 1,
+                after: params.get("escale") === "fin" ? 3 : 2,
+                target: 3,
+                completedStep: params.get("escale") === "fin",
+              },
       }}
     />
   );

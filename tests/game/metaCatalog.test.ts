@@ -36,6 +36,7 @@ const NO_PROGRESS: AchievementStats = {
   preconDecksUnlocked: 0,
   decksFullyOwned: 0,
   tutorialCompleted: false,
+  voyagesCompleted: [],
 };
 
 describe("catalogue d'exploits (Notion « Progression joueur » §10)", () => {

@@ -13,11 +13,15 @@
  * supprimées que si `--delete-sources` est passé — l'historique Git reste
  * de toute façon la sauvegarde des originaux.
  *
+ * Il fabrique aussi les VIGNETTES d'illustration (`illustrations/mini/`,
+ * voir `THUMBNAILS` plus bas) : une vignette manquante ou plus ancienne que
+ * son illustration est refaite, les autres sont ignorées.
+ *
  * Usage :
  *   node scripts/optimizeImages.mjs            # convertit, garde les sources
  *   node scripts/optimizeImages.mjs --delete-sources
  */
-import { readdir, stat, unlink } from "node:fs/promises";
+import { mkdir, readdir, stat, unlink } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import sharp from "sharp";
@@ -65,9 +69,19 @@ const RULES = [
   // à l'écran. Qualité haute malgré la taille — le laiton et les planches
   // sont détourés sur alpha, et ce sont leurs bords qui se dégradent d'abord.
   { match: /\/ships\/capacite\//, maxSize: 512, quality: 92 },
+  // Pastilles d'état des cartes (Garde, Malade, Tour…) : 38 px sur le
+  // plateau, 90 px au plus dans la fiche en jeu. Elles sortaient en 1254 px
+  // (≈ 150 Ko pièce, 19 Ko après) — audit du 24/09.
+  { match: /\/status\//, maxSize: 256, quality: 92 },
+  // Tuile d'orientation de la Marée : posée dans l'emplacement du Navire,
+  // jamais plus de ~380 px de haut. 1254 → 760 px (audit du 24/09).
+  { match: /\/board\/tide-orientation\//, maxSize: 760, quality: 86 },
   // Ombre de transition de page : étirée à 140 % de la hauteur d'écran, elle
-  // est déjà agrandie à l'affichage — on garde sa définition d'origine.
-  { match: /\/ui\/transitions\//, maxSize: 1672, quality: 82 },
+  // est déjà agrandie à l'affichage. Ramenée de 1672 à 1254 px (audit du
+  // 24/09, 330 → 134 Ko) : c'est une ombre floue qui traverse l'écran en
+  // quelques centaines de millisecondes, la différence ne se voit pas — et
+  // elle est téléchargée à la première visite de CHAQUE joueur.
+  { match: /\/ui\/transitions\//, maxSize: 1254, quality: 75 },
   { match: /\/(menu|ships|boosters|collection|decks|board)\//, maxSize: 1600, quality: 85 },
   { match: /.*/, maxSize: 1280, quality: 85 },
 ];
@@ -128,6 +142,51 @@ for await (const file of walk(ROOT)) {
 
   if (DELETE_SOURCES) await unlink(file);
 }
+
+/*
+ * VIGNETTES D'ILLUSTRATION (audit du 24/09/2026).
+ *
+ * Une carte en main, sur le plateau ou dans la grille de la Collection
+ * mesure 110 à 180 px : son illustration de 768 px (≈ 124 Ko) y était
+ * téléchargée entière, quarante fois par écran. `CardTile` propose donc
+ * les deux au navigateur (`srcset` + `sizes="auto"`), qui prend la
+ * vignette tant que la carte est petite et l'originale en gros plan ; les
+ * listes et avatars (34 à 64 px) n'utilisent que la vignette.
+ *
+ * 360 px : deux fois la plus grande carte « petite » (≈ 180 px), pour les
+ * écrans à forte densité. ≈ 26 Ko pièce.
+ *
+ * `tests/features/illustrationThumbnails.test.ts` vérifie qu'aucune
+ * illustration n'est sans vignette : sans elle, le navigateur qui choisit
+ * la vignette tomberait sur un 404 et n'afficherait rien.
+ */
+const THUMBNAILS = [
+  { source: path.join(ROOT, "cards", "illustrations"), width: 360, quality: 78 },
+  // Les cadres suivent la même logique que les illustrations, avec une
+  // qualité plus haute : filets fins et bords transparents.
+  { source: path.join(ROOT, "cards", "frames"), width: 400, quality: 88 },
+];
+
+const thumbs = { made: 0, skipped: 0 };
+for (const family of THUMBNAILS) {
+  const targetDir = path.join(family.source, "mini");
+  for (const entry of await readdir(family.source, { withFileTypes: true })) {
+    if (!entry.isFile() || !entry.name.endsWith(".webp")) continue;
+    const source = path.join(family.source, entry.name);
+    const target = path.join(targetDir, entry.name);
+    if (existsSync(target) && (await stat(target)).mtimeMs >= (await stat(source)).mtimeMs) {
+      thumbs.skipped++;
+      continue;
+    }
+    await mkdir(targetDir, { recursive: true });
+    await sharp(source)
+      .resize({ width: family.width, withoutEnlargement: true })
+      .webp({ quality: family.quality, effort: 6 })
+      .toFile(target);
+    thumbs.made++;
+  }
+}
+console.log(`${thumbs.made} vignettes fabriquées (${thumbs.skipped} déjà à jour).`);
 
 console.log(
   `\n${totals.converted} images converties (${totals.skipped} déjà à jour) : ` +

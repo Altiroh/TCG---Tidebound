@@ -42,7 +42,7 @@ export const RULES = {
    * au-delà de la dernière entrée, seul `reasonMax` la borne.
    *
    * Ce plafond ne fait plus RIEN monter : la Raison persiste d'un tour à
-   * l'autre et ne gagne que `NATURAL_REASON_RECOVERY` par tour. Il ne mord
+   * l'autre et ne gagne que `REASON_RECOVERY_CURVE` par tour. Il ne mord
    * donc que sur les gains VENANT DES CARTES (Thermos du Dernier Quart,
    * Gardien du Sondeur…) — c'est exactement son rôle : empêcher un deck de
    * rampe de sauter la courbe, sans freiner le joueur qui joue normalement.
@@ -54,24 +54,32 @@ export const RULES = {
    */
   STARTING_REASON_CURVE: [0.15, 0.3, 0.45, 0.6, 0.75, 0.9, 1] as readonly number[],
   /**
-   * Récupération naturelle au début du tour de son contrôleur (passe de
-   * stabilisation du 2026-09-21, direction de design) : la Raison PERSISTE
-   * d'un tour à l'autre et ne remonte que de ce montant, au lieu d'être
-   * remise à son plafond.
+   * Récupération naturelle au début du tour de son contrôleur, PAR TOUR du
+   * joueur : l'entrée `n - 1` est ce que regagne son `n`-ième tour. Au-delà
+   * de la dernière entrée, c'est elle qui vaut. La première ne compte que
+   * pour le SECOND joueur (le premier démarre sans entame) et bute de toute
+   * façon sur le plafond du 1er tour, sauf si on l'a drainé entre-temps.
    *
-   * Porté de 1 à 2 le 21/09/2026, après mesure sur ~1 300 parties de bot :
-   * à +1, le Canon du Goliath (2 Raison à armer) n'était plus payable et le
-   * deck qui punissait le swarm s'effondrait de 87 % à 52 %, laissant le
-   * swarm monter à 87 %. À +2, il remonte à 67 % et le swarm redescend à
-   * 78 %, sans revenir au rythme de l'ancienne remise à niveau (2,78 slots
-   * occupés à la fin du 3e tour, contre 3,64 avant la passe).
+   * HISTORIQUE. La passe de stabilisation du 2026-09-21 a remplacé la
+   * remise à niveau au plafond par une Raison qui PERSISTE et ne remonte que
+   * d'un montant fixe — d'abord +1, puis +2 après mesure sur ~1 300 parties
+   * de bot (à +1, le Canon du Goliath n'était plus payable et le deck qui
+   * punissait le swarm s'effondrait de 87 % à 52 %).
    *
-   * À cette valeur, la COURBE DE PLAFOND devient la progression réelle :
-   * un Courlis suit 2 / 4 / 6 / 8, puis `STARTING_REASON_CURVE` prend le
-   * relais (9 / 11 / 12). Toute la courbe se pilote donc depuis une seule
-   * constante, celle-là.
+   * PROGRESSIVE depuis le 2026-09-24 (retour de jeu : « constamment à 2 de
+   * Raison, sauf à passer un tour ; c'est punitif, ça ralentit le jeu et ça
+   * brime les grosses cartes »). À +2 fixe, un joueur qui joue chaque tour
+   * vit à 2 pour toute la partie : une carte à 5 demande de ne rien poser
+   * pendant deux tours, alors que la courbe de plafond l'autoriserait dès
+   * le 3e ou le 4e. Le revenu suit désormais la partie — 2, puis 3, puis 4
+   * — et le plafond (`STARTING_REASON_CURVE`) reste la borne qui empêche
+   * de sauter les paliers : on ENVISAGE une grosse carte au 3e tour, on la
+   * POSE au 4e en gardant un peu de Raison du tour d'avant.
+   *
+   * Se remesure avec `npm run replay -- --variante recuperation` (état
+   * « avant » : +2 fixe).
    */
-  NATURAL_REASON_RECOVERY: 2,
+  REASON_RECOVERY_CURVE: [2, 2, 3, 3, 4] as readonly number[],
 
   // --- Déraison (Notion "Gameplay — Raison, Déraison, healing & passifs de
   // Navires", 2026-09-12) : PISTE À PROTOTYPER, pas verrouillée — valeurs
