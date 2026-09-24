@@ -2294,21 +2294,21 @@
   --aim-rgb: 203, 213, 225;
 }
 
-/* Flèche de visée (`DragLayer`), à la Hearthstone : tirets ÉPAIS et
+/* Flèche de visée (`DragLayer`), à la Hearthstone : tirets fins et
    arrondis, fixes ; l'ombre, continue, la détache du plateau. */
 .aimLineShadow {
   fill: none;
-  stroke: rgba(2, 6, 23, 0.55);
-  stroke-width: 12;
+  stroke: rgba(2, 6, 23, 0.5);
+  stroke-width: 6;
   stroke-linecap: round;
 }
 
 .aimLine {
   fill: none;
   stroke: rgba(var(--aim-rgb), 0.95);
-  stroke-width: 8;
+  stroke-width: 3.5;
   stroke-linecap: round;
-  stroke-dasharray: 10 12;
+  stroke-dasharray: 9 8;
   filter: drop-shadow(0 0 4px rgba(var(--aim-rgb), 0.5));
 }
 
@@ -2637,4 +2637,37 @@
 
 @media (prefers-reduced-motion: reduce) {
   .phaseTip { transition: none; }
+}
+
+/* Bouton « Activer » d'une capacité activable (`activatableOncePerTurn`),
+   posé au bas de la carte, au-dessus de son illustration. */
+.abilityButton {
+  position: absolute;
+  left: 50%;
+  bottom: 6%;
+  z-index: 25;
+  transform: translateX(-50%);
+  padding: 0.25em 0.9em;
+  border-radius: 9999px;
+  border: 1.5px solid rgba(254, 243, 199, 0.9);
+  background: linear-gradient(180deg, #fbbf24, #b45309);
+  color: #1c1003;
+  font-family: var(--font-card-title), Georgia, serif;
+  font-size: clamp(10px, calc(var(--card-w, 90px) * 0.13), 15px);
+  font-weight: 800;
+  white-space: nowrap;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.6), 0 0 10px rgba(251, 191, 36, 0.55);
+  cursor: pointer;
+  transition: transform 120ms ease-out, filter 120ms ease-out;
+}
+
+/* Exception à `.tableCard button { pointer-events: none }` : ce bouton-là
+   est fait pour être cliqué. */
+.tableCard .abilityButton {
+  pointer-events: auto;
+}
+
+.abilityButton:hover {
+  transform: translateX(-50%) scale(1.08);
+  filter: brightness(1.1);
 }

@@ -412,6 +412,7 @@ export function MatchBoard({
         onBoardCardClick={handleAnyBoardCardClick}
         shipAbility={shipAbility.panel}
         opponentShipAbility={shipAbility.opponentPanel}
+        onActivateAbility={board.requestAbility}
         onShipClick={(ownerId) => {
           if (pending?.kind === "shipTarget") {
             runAction({ type: "activateShipAbility", playerId: activePlayerId, targetPlayerId: ownerId });

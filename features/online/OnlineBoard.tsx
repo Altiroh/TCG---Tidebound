@@ -243,6 +243,7 @@ export function OnlineBoard({
         onBoardCardClick={(instanceId, ownerId) => void handleAnyBoardCardClick(instanceId, ownerId)}
         shipAbility={shipAbility.panel}
         opponentShipAbility={shipAbility.opponentPanel}
+        onActivateAbility={board.requestAbility}
         onShipClick={(ownerId) => {
           if (selection?.kind === "shipTarget") {
             act({ type: "activateShipAbility", playerId: myUserId, targetPlayerId: ownerId });

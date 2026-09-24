@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
+  canActivateAbility,
   canBeEquipTarget,
   canUnitAttack,
   deraisonAnchorDamage,
@@ -58,7 +59,7 @@ import { useTableMotion } from "@/features/match/table/useTableMotion";
  * du plateau.
  */
 export type TableTargeting =
-  | { kind: "playCard" | "break" | "reaction" | "attack"; sourceInstanceId: string }
+  | { kind: "playCard" | "break" | "reaction" | "attack" | "ability"; sourceInstanceId: string }
   | { kind: "shipShot" | "shipTarget"; sourceInstanceId?: undefined }
   | null;
 
@@ -110,6 +111,11 @@ export interface TableBoardProps {
   onDropOnGraveyard: (instanceId: string, from: "hand" | "board") => void;
   /** Clic sur une carte en jeu quand un ciblage est en cours (le conteneur résout). */
   onBoardCardClick: (instanceId: string, ownerId: PlayerId) => void;
+  /**
+   * Bouton « Activer » d'une carte du joueur dont la capacité activable est
+   * utilisable maintenant (`canActivateAbility`). Absent : pas de bouton.
+   */
+  onActivateAbility?: (instanceId: string) => void;
   /** Clic sur un Navire pendant un ciblage : l'adverse (attaque, tir de canon), ou l'un des deux (capacité ciblée). */
   onShipClick: (ownerId: PlayerId) => void;
   /** Panneau de capacité du Navire du JOUEUR — absent si son Navire n'en porte pas. */
@@ -395,6 +401,14 @@ export function TableBoard(props: TableBoardProps) {
   // côtés, et les deux Navires — le ton « effet », puisque ce n'est pas une attaque.
   const anyTargeting = targeting?.kind === "shipTarget";
 
+  // Capacité activable qui attend sa cible : ce sont SES cibles légales qu'on éclaire.
+  const abilityTargets = (() => {
+    if (targeting?.kind !== "ability") return null;
+    const source = viewer.board.find((u) => u.instanceId === targeting.sourceInstanceId);
+    const effect = source && getCardDefinition(source.cardId).activatableOncePerTurn?.effects.find((e) => e.target.kind === "chosenUnit");
+    return effect ? new Set(eligibleChosenUnits(state, effect.target, viewerId, source.instanceId).map((c) => c.unit.instanceId)) : null;
+  })();
+
   // ── Rendu d'une carte en jeu ────────────────────────────────────────
   function renderBoardCard(card: TableCardModel, owner: PlayerState) {
     const instance = byId.get(card.id)?.instance;
@@ -405,7 +419,13 @@ export function TableBoard(props: TableBoardProps) {
     const drop = `${mine ? "own" : "unit"}:${card.id}`;
     const ready = mine && attackReady(instance);
     const effectTarget =
-      (castTargets?.has(card.id) ?? false) || (aimBreakTargets?.has(card.id) ?? false) || (anyTargeting && hasResistance(def));
+      (castTargets?.has(card.id) ?? false) ||
+      (aimBreakTargets?.has(card.id) ?? false) ||
+      (abilityTargets?.has(card.id) ?? false) ||
+      (anyTargeting && hasResistance(def));
+    // « Une fois par tour, vous pouvez… » : proposé seulement quand le moteur l'accepterait.
+    const activatable =
+      mine && canPlayCards && !gesture && !targeting && props.onActivateAbility !== undefined && canActivateAbility(state, viewerId, card.id);
     const attackTarget = !mine && attackTargeting;
     const targetable = effectTarget || attackTarget;
 
@@ -431,7 +451,7 @@ export function TableBoard(props: TableBoardProps) {
           targetable ? `${styles.targetable} ${effectTarget ? styles.effectTone : ""}` : "",
           targetable && hover === drop ? styles.targetHover : "",
           targeting?.sourceInstanceId === card.id ? styles.aimSource : "",
-          props.reactionSourceIds?.includes(card.id) ? "animate-reaction-pulse" : "",
+          props.reactionSourceIds?.includes(card.id) || activatable ? "animate-reaction-pulse" : "",
         ].join(" ")}
       >
         {!mine && !visible ? (
@@ -448,6 +468,22 @@ export function TableBoard(props: TableBoardProps) {
             faceDown={mine && !visible}
             auraContext={auraContextFor(owner)}
           />
+        )}
+        {/* APRÈS la carte : posé avant, il était recouvert par elle et ne recevait aucun clic. */}
+        {activatable && (
+          <button
+            type="button"
+            className={styles.abilityButton}
+            title={getCardDefinition(instance.cardId).text}
+            // Le bouton vit DANS la carte, qui démarre un geste au pointeur : il ne doit pas l'armer.
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              props.onActivateAbility?.(card.id);
+            }}
+          >
+            Activer
+          </button>
         )}
       </div>
     );

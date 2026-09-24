@@ -121,6 +121,7 @@ export { deckLookRefusal, isDeckLookTakeable, type DeckLookRefusal } from "@/gam
 
 export type { ChosenUnitFilter, EffectDefinition, EffectType, TargetSelector } from "@/game/effects/types";
 export { chosenTargetFilter, eligibleChosenUnits } from "@/game/effects/chosenTargets";
+export { canActivateAbility } from "@/game/actions/activateAbility";
 export { ARCHETYPE_LABELS } from "@/game/cards/archetypes";
 export type { ArchetypeId } from "@/game/cards/archetypes";
 export type { PendingReactionCandidate, TriggerEvent, TriggerType } from "@/game/triggers/types";

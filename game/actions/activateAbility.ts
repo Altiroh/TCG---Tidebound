@@ -14,7 +14,8 @@ import {
 } from "@/game/rules/validation";
 import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
 import { payReasonCost, reasonCostAfterShield } from "@/game/state/shields";
-import { getPlayer, type GameState, type PlayerState } from "@/game/state/types";
+import { getPlayer, type GameState, type PlayerId, type PlayerState } from "@/game/state/types";
+import { eligibleChosenUnits } from "@/game/effects/chosenTargets";
 import type { ActivateAbilityAction, ActionResult } from "@/game/actions/types";
 
 /** Clé de suivi "1ère fois par tour" partagée par toute capacité activable — chaque instance de carte suit la sienne (`CardInstance.oncePerTurnFlags`), donc aucun risque de collision entre deux cartes différentes. */
@@ -51,6 +52,23 @@ function validate(state: GameState, action: ActivateAbilityAction) {
   }
 
   return { ok: true as const };
+}
+
+/**
+ * La capacité activable de cette carte peut-elle être activée MAINTENANT ?
+ * Mêmes vérifications que l'action, sans la cible — et, si elle en demande
+ * une, au moins une cible légale doit exister (Coffret aux Cinq Pierres
+ * sans Éclat en jeu : rien à Saborder, rien à proposer). C'est ce que lit
+ * l'interface pour offrir le bouton « Activer ».
+ */
+export function canActivateAbility(state: GameState, playerId: PlayerId, sourceInstanceId: string): boolean {
+  const unit = state.players.find((p) => p.id === playerId)?.board.find((u) => u.instanceId === sourceInstanceId);
+  const spec = unit ? getCardDefinition(unit.cardId).activatableOncePerTurn : undefined;
+  if (!spec) return false;
+  const targeted = spec.effects.find((e) => e.target.kind === "chosenUnit");
+  if (targeted && eligibleChosenUnits(state, targeted.target, playerId, sourceInstanceId).length === 0) return false;
+  // Une cible factice passe la seule vérification qui l'exige : le reste est celui de l'action.
+  return validate(state, { type: "activateAbility", playerId, sourceInstanceId, targetInstanceId: targeted ? "__cible__" : undefined }).ok;
 }
 
 /**

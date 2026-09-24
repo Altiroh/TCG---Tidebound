@@ -17,7 +17,7 @@ interface DragLayerProps {
 }
 
 /** Longueur de la pointe de flèche, en px. */
-const HEAD = 30;
+const HEAD = 22;
 
 /**
  * Géométrie de la flèche de visée, à la Hearthstone : un ARC régulier de la
@@ -60,8 +60,8 @@ function aimArrow(origin: { x: number; y: number }, pointer: { x: number; y: num
  * Couche de glisser, au-dessus de tout et en `pointer-events: none` (le
  * test de dépôt lit ce qu'il y a SOUS le pointeur) :
  *   - POSE : la carte suit le pointeur, à plat, légèrement agrandie ;
- *   - CIBLAGE : une flèche en arc, à la Hearthstone — tirets épais, grande
- *     pointe — de la carte au pointeur ; rouge pour une attaque, turquoise
+ *   - CIBLAGE : une flèche en arc, à la Hearthstone — tirets fins, pointe
+ *     marquée — de la carte au pointeur ; rouge pour une attaque, turquoise
  *     pour un effet, gris au-dessus du crâne. Elle ne s'anime pas d'elle-même
  *     (retour du 24/09 : un trait qui ondule en permanence fatigue l'œil).
  *

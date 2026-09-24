@@ -46,7 +46,13 @@ export type BoardSelection =
    * quel permanent doté de Résistance, des deux côtés, ou n'importe quel
    * Navire — le sien compris. L'activation part au clic sur la cible.
    */
-  | { kind: "shipTarget" };
+  | { kind: "shipTarget" }
+  /**
+   * Capacité activable d'une carte du plateau (`activatableOncePerTurn`) qui
+   * demande une cible (Coffret aux Cinq Pierres : l'Éclat à Saborder).
+   * L'activation part au clic sur la cible.
+   */
+  | { kind: "ability"; instanceId: string };
 
 /**
  * Traduit la sélection du conteneur en ciblage pour le plateau. Les deux
@@ -62,6 +68,7 @@ export function tableTargetingFor(selection: BoardSelection | null): TableTarget
   if (selection.kind === "shipTarget") return { kind: "shipTarget" };
   if (selection.kind === "attack") return { kind: "attack", sourceInstanceId: selection.attackerId };
   if (selection.kind === "reaction") return { kind: "reaction", sourceInstanceId: selection.sourceInstanceId };
+  if (selection.kind === "ability") return { kind: "ability", sourceInstanceId: selection.instanceId };
   return { kind: selection.kind, sourceInstanceId: selection.instanceId };
 }
 
@@ -150,6 +157,8 @@ export interface BoardInteraction {
   resolveBoardCardClick: (instanceId: string, ownerId: PlayerId) => PlayerAction | null;
   requestBreak: (card: CardInstance, fromHand: boolean) => void;
   handleDropOnGraveyard: (instanceId: string, from: "hand" | "board") => void;
+  /** Bouton « Activer » d'une carte du plateau (`activatableOncePerTurn`). */
+  requestAbility: (instanceId: string) => void;
 }
 
 export function useBoardInteraction({
@@ -263,6 +272,11 @@ export function useBoardInteraction({
       act({ type: "breakObject", playerId: actorId, instanceId: selection.instanceId, targetInstanceId: instanceId, fromHand: selection.fromHand });
       return null;
     }
+    if (selection?.kind === "ability") {
+      act({ type: "activateAbility", playerId: actorId, sourceInstanceId: selection.instanceId, targetInstanceId: instanceId });
+      clearSelection();
+      return null;
+    }
     if (selection?.kind === "attack" && ownerId !== viewer.id) {
       act({ type: "attack", playerId: actorId, attackerInstanceId: selection.attackerId, defenderInstanceId: instanceId });
       return null;
@@ -276,6 +290,28 @@ export function useBoardInteraction({
       clearSelection();
     }
     return null;
+  }
+
+  /**
+   * Bouton « Activer » d'une carte du plateau : l'activation part tout de
+   * suite, ou — si un effet vise une unité désignée — le joueur désigne
+   * d'abord la cible. Le moteur ne choisit jamais à sa place.
+   */
+  function requestAbility(instanceId: string) {
+    if (!canAct) return;
+    const card = viewer.board.find((c) => c.instanceId === instanceId);
+    if (!card) return;
+    onGestureStart?.();
+    if (selection?.kind === "ability" && selection.instanceId === instanceId) {
+      clearSelection();
+      return;
+    }
+    const spec = getCardDefinition(card.cardId).activatableOncePerTurn;
+    if (spec?.effects.some((effect) => effect.target.kind === "chosenUnit")) {
+      setSelection({ kind: "ability", instanceId });
+      return;
+    }
+    act({ type: "activateAbility", playerId: actorId, sourceInstanceId: instanceId });
   }
 
   /** Brise un Objet, posé ou depuis la main : cible ou carte de défausse d'abord si l'effet en demande une. */
@@ -310,6 +346,7 @@ export function useBoardInteraction({
   return {
     selection,
     setSelection,
+    requestAbility,
     clearSelection,
     breakPrompt,
     setBreakPrompt,
