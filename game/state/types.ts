@@ -1,4 +1,4 @@
-import type { CardInstance, DestructionCause } from "@/game/cards/types";
+import type { CardInstance, ChromaticColor, DestructionCause } from "@/game/cards/types";
 import type { EnvironmentState } from "@/game/environment/types";
 import type { GameEvent } from "@/game/events/types";
 import type { RngState } from "@/game/rng";
@@ -127,12 +127,20 @@ export interface PlayerState {
    * Le contenu du Cimetière ne suffit pas à répondre à « si une carte Un
    * Dead a rejoint votre Cimetière ce tour » : il dit ce qui s'y trouve,
    * jamais QUAND ni d'où c'est venu — et une carte repêchée puis
-   * redéfaussée n'y compterait que pour une. D'où ce journal, tenu par la
-   * voie unique de la défausse (`game/state/discard.ts`) et élagué au
-   * début de chaque tour aux deux derniers tours de table, ce qui couvre
-   * « ce tour » comme « depuis votre dernier tour ».
+   * redéfaussée n'y compterait que pour une. D'où ce journal, que TOUTE
+   * voie vers le Cimetière alimente (`recordGraveyardArrival`, dans
+   * `game/state/discard.ts`) et qui est élagué au début de chaque tour aux
+   * trois derniers tours de table : « depuis votre dernier tour » remonte
+   * jusqu'au tour précédent du contrôleur, pas seulement au tour adverse.
    */
   graveyardArrivals?: GraveyardArrival[];
+  /**
+   * Couleurs chromatiques REVENDIQUÉES sans carte qui les porte (La Première
+   * Pierre, « vous êtes considéré comme contrôlant cette couleur pour vos
+   * effets Chromatiques »). Datées : périmées au-delà de `expiresAfterTurn`,
+   * sans que rien n'ait à passer derrière elles.
+   */
+  claimedChromaticColors?: Array<{ color: ChromaticColor; expiresAfterTurn: number }>;
 }
 
 /** Une arrivée au Cimetière, telle que la lisent les conditions du Lot 13. */
@@ -142,6 +150,13 @@ export interface GraveyardArrival {
   turnNumber: number;
   /** D'où venait la carte — « depuis votre main » est une condition à part entière. */
   fromZone: "hand" | "board" | "deck";
+  /**
+   * Arrivée survenue pendant l'entame du tour de son propriétaire, AVANT que
+   * ses capacités de début de tour ne se déclenchent (effets de Marée). Sa
+   * capacité « depuis votre dernier tour » l'a donc déjà vue à ce tour-là :
+   * elle ne doit pas la recompter deux tours plus tard.
+   */
+  beforeOwnTurnStart?: boolean;
 }
 
 /**
@@ -197,6 +212,13 @@ export interface CostDiscount {
    * supplémentaires », pas « la prochaine ».
    */
   persistent?: boolean;
+  /**
+   * Dégâts que subit, à son arrivée, la carte qui a profité de la réduction
+   * (La Mauvaise Réputation, « À son arrivée, elle subit 1 dégât »).
+   */
+  arrivalDamage?: number;
+  /** Joueur dont l'effet a posé la réduction — celui qui « inflige » `arrivalDamage`. */
+  grantedBy?: PlayerId;
   /** Tour au-delà duquel la réduction est perdue (« ce tour »). */
   expiresAfterTurn: number;
 }
@@ -561,6 +583,10 @@ export interface DeckLookChoice {
    * cartes, il n'en prend qu'une d'un type donné.
    */
   takeableCardTypes?: import("@/game/cards/types").CardType[];
+  /** Et, en plus, de cette famille (« une Sentinelle Chromatique parmi elles », Appel des Sentinelles). */
+  takeableArchetype?: import("@/game/cards/archetypes").ArchetypeId;
+  /** Et de l'une de ces couleurs (« une Sentinelle de cette couleur », Coffret aux Cinq Pierres). */
+  takeableChromaticColors?: ChromaticColor[];
   /** « vous POUVEZ ajouter » : ne rien prendre est une réponse valable. */
   refusable: boolean;
   sourceInstanceId?: string;
@@ -639,10 +665,62 @@ export interface PickUnitsChoice {
   /** Qui contrôle ces effets — pas forcément le propriétaire des cibles. */
   controllerId: PlayerId;
   sourceInstanceId?: string;
+  /**
+   * Cible DÉSIGNÉE de l'action qui a posé la question, transmise aux effets
+   * appliqués : « une Sentinelle devient de la couleur de l'Éclat que vous
+   * détruisez » (Transfert de Pierre) vise la Sentinelle désignée ET l'Éclat
+   * choisi ici.
+   */
+  chosenTargetInstanceId?: string;
+  /** Les unités désignées doivent être de couleurs différentes (Les Couleurs Répondent). */
+  distinctChromaticColors?: boolean;
+  /** Couleur capturée à la question, transmise aux effets (`captureChromaticColorFrom`). */
+  chosenColor?: ChromaticColor;
+  turnNumber: number;
+}
+
+/**
+ * « Choisissez une couleur » (Lot 15 — Émissaire de Quartz, La Première
+ * Pierre, Le Géant Chromatique ABYSSALE) : le joueur désigne une couleur,
+ * puis `effects` se résolvent avec elle (`EffectContext.chosenColor`).
+ */
+export interface ChromaticColorChoice {
+  kind: "chromaticColor";
+  playerId: PlayerId;
+  options: ChromaticColor[];
+  effects: EffectDefinition[];
+  context: {
+    controllerId: PlayerId;
+    sourceInstanceId?: string;
+    chosenTargetInstanceId?: string;
+    triggerSourceInstanceId?: string;
+    turnNumber: number;
+  };
+  /** « Ne rien choisir » est-il une réponse ? Non quand le texte impose la couleur. */
+  refusable: boolean;
+  turnNumber: number;
+}
+
+/**
+ * « Regardez la première carte de la pioche adverse. Vous pouvez la placer
+ * sous sa pioche. » (Éclaireur à Cornes). La carte reste EN PIOCHE tant que
+ * le joueur n'a pas répondu ; seul celui qui regarde la voit
+ * (`toPlayerView`).
+ */
+export interface DeckTopDecisionChoice {
+  kind: "deckTopDecision";
+  playerId: PlayerId;
+  /** Propriétaire de la pioche regardée. */
+  deckOwnerId: PlayerId;
+  /** La carte du dessus, telle qu'elle a été vue. */
+  card: CardInstance;
+  sourceInstanceId?: string;
   turnNumber: number;
 }
 
 export type PendingChoice =
+  | ChromaticColorChoice
+  | DeckTopDecisionChoice
   | PickUnitsChoice
   | KeepUnitsChoice
   | ReasonOrAnchorChoice

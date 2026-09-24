@@ -17,6 +17,10 @@ interface ProfileIdentityProps {
   onChanged?: () => void;
   /** Ouvre le choix d'illustration, dans la partie droite du profil (`IllustrationPicker`). */
   onPickIllustration: () => void;
+  /** Titre porté, en toutes lettres, ou `null`. */
+  titleName?: string | null;
+  /** Ouvre le choix du titre (`TitlePicker`). Absent : pas de ligne de titre. */
+  onPickTitle?: () => void;
 }
 
 /** Nom lisible d'une carte, son identifiant à défaut — jamais d'exception à l'affichage. */
@@ -39,7 +43,7 @@ function cardName(cardId: string): string {
  * (`set_profile_identity`) : le navigateur ne peut pas s'attribuer une
  * carte qu'il n'a pas.
  */
-export function ProfileIdentity({ displayName, avatarCardId, onChanged, onPickIllustration }: ProfileIdentityProps) {
+export function ProfileIdentity({ displayName, avatarCardId, onChanged, onPickIllustration, titleName = null, onPickTitle }: ProfileIdentityProps) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [draftName, setDraftName] = useState(displayName ?? "");
@@ -142,6 +146,25 @@ export function ProfileIdentity({ displayName, avatarCardId, onChanged, onPickIl
                 </svg>
               </button>
             </div>
+          )}
+          {/* Le titre, sous le nom : le toucher ouvre le choix. */}
+          {onPickTitle && (
+            <button
+              type="button"
+              className={titleName ? styles.titleLine : styles.titleLineEmpty}
+              onClick={() => {
+                playButtonClick();
+                setError(null);
+                onPickTitle();
+              }}
+              aria-label={titleName ? `Titre : ${titleName} — changer` : "Choisir un titre"}
+              title={titleName ? "Changer de titre" : "Choisir un titre"}
+            >
+              <span className={styles.titleText}>{titleName ?? "Choisir un titre"}</span>
+              <svg viewBox="0 0 24 24" width="11" height="11" fill="none" aria-hidden>
+                <path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17v3z" stroke="currentColor" strokeWidth={2} strokeLinejoin="round" />
+              </svg>
+            </button>
           )}
         </div>
       </div>

@@ -14,7 +14,9 @@ import {
 import { ACHIEVEMENT_CATALOG } from "@/game/achievements";
 import { DEFAULT_CARD_BACK_ID } from "@/game";
 import { claimLoginReward, readLoginRewards } from "@/features/progression/loginService";
-import { syncAchievements } from "@/features/achievements/achievementService";
+import { readAchievementStats, syncAchievements } from "@/features/achievements/achievementService";
+import { equipTitleFor, loadTitles, type EquipTitleResult, type ProfileTitles } from "@/features/progression/titleService";
+import { titleForAchievement } from "@/game/titles";
 import { equipCardBackFor, loadCardBacks, type CardBackCollection } from "@/features/cosmetics/cardBackService";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
 import { fetchQuestBoard, type QuestEntry } from "@/features/quests/actions";
@@ -58,6 +60,13 @@ export interface ProfileAchievement {
   unlocked: boolean;
   /** Débloqué et Tides pas encore réclamées. */
   claimable: boolean;
+  /**
+   * Avancement vers la condition, d'après les compteurs persistés — `null`
+   * si les compteurs n'ont pas pu être lus (la jauge ne s'affiche pas).
+   */
+  progress: { current: number; target: number } | null;
+  /** Titre que cet exploit débloque, s'il y en a un. */
+  titleName: string | null;
 }
 
 export interface ProfileSummary {
@@ -104,6 +113,8 @@ export interface ProfileSummary {
    * portées par le jeu.
    */
   cardBacks: CardBackCollection;
+  /** Titres : le catalogue vu par ce joueur et celui qu'il porte. */
+  titles: ProfileTitles;
   /** `true` si le niveau maximum récompensé de cette version est atteint. */
   maxRewardedLevelReached: boolean;
 }
@@ -129,6 +140,7 @@ const SIGNED_OUT: ProfileSummary = {
   login: { step: 1, items: [], claimable: false, totalClaims: 0 },
   achievements: [],
   cardBacks: { options: [], equipped: DEFAULT_CARD_BACK_ID },
+  titles: { options: [], equipped: null, available: false },
   maxRewardedLevelReached: false,
 };
 
@@ -160,7 +172,9 @@ export async function fetchProfile(): Promise<ProfileSummary> {
 
     // Rattrape les exploits dus mais pas encore octroyés : le profil est
     // l'endroit naturel pour ça, et l'opération est idempotente.
-    await syncAchievements(user.id);
+    // Les compteurs sont lus UNE fois : ils servent à l'octroi et aux jauges.
+    const stats = await readAchievementStats(user.id);
+    await syncAchievements(user.id, stats);
 
     const service = createSupabaseServiceRoleClient();
     const [progression, currency, profile, claimed, unlocked, login, cardBacks, ownedCards, choices, questBoard] = await Promise.all([
@@ -181,6 +195,8 @@ export async function fetchProfile(): Promise<ProfileSummary> {
     const view = progressionView(progression.data?.xp_total ?? 0);
     const unlockedCodes = new Set(unlocked.map((row) => row.code));
     const claimableCodes = new Set(unlocked.filter((row) => row.claimable).map((row) => row.code));
+    // Le déblocage des titres se lit dans les exploits EN BASE, pas dans les compteurs.
+    const titles = await loadTitles(user.id, unlockedCodes);
 
     return {
       isSignedIn: true,
@@ -223,9 +239,12 @@ export async function fetchProfile(): Promise<ProfileSummary> {
         rewardTides: achievement.rewardTides,
         unlocked: unlockedCodes.has(achievement.code),
         claimable: claimableCodes.has(achievement.code),
+        progress: stats ? achievement.progress(stats) : null,
+        titleName: titleForAchievement(achievement.code)?.name ?? null,
       })),
       quests: questBoard?.isSignedIn ? [...questBoard.daily, ...questBoard.weekly] : [],
       cardBacks,
+      titles,
       maxRewardedLevelReached: view.level >= MAX_REWARDED_LEVEL,
     };
   } catch (error) {
@@ -276,6 +295,22 @@ export async function equipCardBack(cardBackId: string): Promise<EquipCardBackAc
     revalidatePath("/profil");
     revalidatePath("/collectables");
   }
+  return result;
+}
+
+export type EquipTitleActionResult = EquipTitleResult;
+
+/**
+ * Porte un titre (`null` : n'en porter aucun). Le joueur vient de sa
+ * SESSION ; le déblocage est vérifié côté serveur (`equipTitleFor`, puis
+ * `set_player_title` en base) — le navigateur ne peut pas s'attribuer un
+ * titre qu'il n'a pas gagné.
+ */
+export async function equipTitle(titleId: string | null): Promise<EquipTitleActionResult> {
+  const user = await getSessionUser();
+  if (!user) return { ok: false, error: "Connecte-toi pour choisir un titre." };
+  const result = await equipTitleFor(user.id, titleId);
+  if (result.ok) revalidatePath("/profil");
   return result;
 }
 

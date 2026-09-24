@@ -379,6 +379,8 @@ export function BoardPreviewPage() {
               name: "Canon de proue",
               text: "Aperçu du panneau de capacité — cliquez pour ouvrir ou refermer les planches.",
               artUrl: shipAbilityArtUrl("goliath.webp"),
+              // Le labo montre le Canon : c'est la seule capacité à planches.
+              planks: true,
               armed: cannonArmed,
               actionable: true,
               onClick: () => setCannonArmed((armed) => !armed),

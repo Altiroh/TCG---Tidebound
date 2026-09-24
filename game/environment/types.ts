@@ -162,11 +162,21 @@ export interface ShipActivatableAbility {
    */
   activationsPerGame?: number;
   /**
-   * Nom de fichier dans `public/assets/ships/capacite/` — ce qu'on découvre
-   * SOUS les planches (ex: `goliath.webp`, la gueule du canon). Absent : le
-   * panneau s'ouvre sur un fond de substitution.
+   * Nom de fichier dans `public/assets/ships/capacite/` — l'illustration du
+   * hublot (ex: `goliath.webp`, la gueule du canon). Pour une capacité en
+   * deux temps, c'est ce qu'on découvre sous les planches ; pour les
+   * autres, elle est visible en permanence. Absent : fond de substitution.
    */
   illustration?: string;
+  /**
+   * FAMILLE de son jouée à l'activation — pas un fichier : deux capacités
+   * qui font la même chose s'entendent pareil, et l'interface n'a jamais à
+   * tester quel Navire est en jeu. Les fichiers sont dans `lib/sound.ts`.
+   *
+   * Une capacité en deux temps (`armedShot`) n'en porte pas : l'armement
+   * est silencieux, c'est le TIR qui s'entend (impact d'attaque).
+   */
+  activationSound?: "heal" | "protect" | "tide";
   /** Effets résolus immédiatement à l'activation. Absent : l'activation ne fait qu'armer. */
   onActivateEffects?: EffectDefinition[];
   /** Tir différé : l'activation arme, un second geste tire. Absent : capacité en un seul geste. */

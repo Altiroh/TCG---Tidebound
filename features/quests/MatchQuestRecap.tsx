@@ -9,6 +9,8 @@ import { playQuestCompleted } from "@/lib/sound";
 interface MatchQuestRecapProps {
   /** Partie arbitrée dont on montre le relevé. Absent : rien à montrer (partie locale non persistée). */
   matchId?: string;
+  /** Relevé FABRIQUÉ (labo `/game/fin-preview`) : aucune lecture serveur. */
+  preview?: QuestRecapEntry[];
 }
 
 /** Délai avant la première ligne — la fiche Victoire/Défaite a le temps de s'installer. */
@@ -34,19 +36,19 @@ const FILL_MS = 900;
  * Le relevé vient du serveur, figé à l'arbitrage (`fetchMatchQuestRecap`) :
  * il ne bouge plus, même si le joueur réclame une récompense entre-temps.
  */
-export function MatchQuestRecap({ matchId }: MatchQuestRecapProps) {
-  const [entries, setEntries] = useState<QuestRecapEntry[]>([]);
+export function MatchQuestRecap({ matchId, preview }: MatchQuestRecapProps) {
+  const [entries, setEntries] = useState<QuestRecapEntry[]>(() => preview ?? []);
   /** Nombre de lignes déjà entrées en scène. */
   const [shown, setShown] = useState(0);
 
   useEffect(() => {
-    if (!matchId) return;
+    if (!matchId || preview) return;
     let cancelled = false;
     void fetchMatchQuestRecap(matchId).then((result) => !cancelled && setEntries(result));
     return () => {
       cancelled = true;
     };
-  }, [matchId]);
+  }, [matchId, preview]);
 
   // Une minuterie par ligne, toutes posées d'un coup : plus simple à
   // annuler qu'une chaîne de `setTimeout` qui se relance elle-même, et le
@@ -70,9 +72,12 @@ export function MatchQuestRecap({ matchId }: MatchQuestRecapProps) {
 
   return (
     <section className={styles.recap} aria-label="Quêtes de la partie">
-      <h3 className={styles.title}>
-        {finished > 0 ? `${finished} quête${finished > 1 ? "s" : ""} terminée${finished > 1 ? "s" : ""}` : "Progression des quêtes"}
-      </h3>
+      <header className={styles.head}>
+        <p className={styles.eyebrow}>Quêtes de la partie</p>
+        <h3 className={styles.title}>
+          {finished > 0 ? `${finished} quête${finished > 1 ? "s" : ""} terminée${finished > 1 ? "s" : ""}` : "Tes quêtes avancent"}
+        </h3>
+      </header>
 
       <ul className={styles.list}>
         {entries.map((entry, index) => {

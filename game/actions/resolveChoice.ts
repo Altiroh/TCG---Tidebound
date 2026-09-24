@@ -1,5 +1,6 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { UNIT_CARD_TYPES } from "@/game/cards/types";
+import { chromaticColorsOf } from "@/game/rules/chromatic";
 import { resolveEffectSequence } from "@/game/effects/resolveSequence";
 import { discardFromHand } from "@/game/state/discard";
 import { processDiscardedFromHandTriggers, processGraveyardRecoveryTriggers } from "@/game/triggers/triggerBus";
@@ -67,6 +68,58 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
     events.push(...recovered.events);
     return { ok: true, state: nextState, events };
   }
+  // « Choisissez une couleur » (Lot 15) : la suite du texte se résout avec
+  // la couleur désignée. Refuser n'est permis que si le texte ne l'impose pas.
+  if (choice.kind === "chromaticColor") {
+    if (action.choice === "pass") {
+      if (!choice.refusable) return { ok: false, error: "Ce texte impose de choisir une couleur." };
+      return { ok: true, state: nextState, events };
+    }
+    if (typeof action.choice !== "object" || !("color" in action.choice)) {
+      return { ok: false, error: "Ce choix attend une couleur." };
+    }
+    const color = action.choice.color;
+    if (!choice.options.includes(color)) return { ok: false, error: "Cette couleur n'est pas proposée." };
+    const applied = resolveEffectSequence(nextState, choice.effects, { ...choice.context, chosenColor: color });
+    nextState = applied.state;
+    events.push(...applied.events);
+    return { ok: true, state: nextState, events };
+  }
+
+  // « Regardez la première carte de la pioche adverse. Vous pouvez la placer
+  // sous sa pioche. » Laisser la carte dessus est la réponse par défaut.
+  if (choice.kind === "deckTopDecision") {
+    const decision =
+      action.choice === "pass"
+        ? "keep"
+        : typeof action.choice === "object" && "deckTop" in action.choice
+          ? action.choice.deckTop
+          : undefined;
+    if (decision === undefined) return { ok: false, error: "Ce choix attend « keep » ou « bottom »." };
+    if (decision === "bottom") {
+      const owner = getPlayer(nextState, choice.deckOwnerId);
+      // Elle doit toujours être la carte du dessus : si la pioche a bougé
+      // entre-temps, on ne déplace pas une autre carte à sa place.
+      if (owner.deck[0]?.instanceId === choice.card.instanceId) {
+        nextState = {
+          ...nextState,
+          players: nextState.players.map((p) =>
+            p.id === owner.id ? { ...owner, deck: [...owner.deck.slice(1), owner.deck[0]!] } : p
+          ) as [PlayerState, PlayerState],
+        };
+        events.push({
+          ...base,
+          type: "CARD_MOVED",
+          ownerId: owner.id,
+          instanceId: choice.card.instanceId,
+          fromZone: "deck",
+          toZone: "deck",
+        });
+      }
+    }
+    return { ok: true, state: nextState, events };
+  }
+
   // « Renvoyez jusqu'à N unités […] » : le joueur a désigné lesquelles. Le
   // moteur vérifie qu'elles font bien partie des cibles légales recensées
   // au moment où la question a été posée.
@@ -83,6 +136,20 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
     if (designees.some((id) => !choice.among.includes(id))) {
       return { ok: false, error: "Cette unité n'est pas une cible légale de cet effet." };
     }
+    // « de couleurs différentes » (Les Couleurs Répondent) : deux unités
+    // désignées ne partagent aucune couleur.
+    if (choice.distinctChromaticColors) {
+      const vues = new Set<string>();
+      for (const id of designees) {
+        const owner = nextState.players.find((p) => p.board.some((u) => u.instanceId === id));
+        const unit = owner?.board.find((u) => u.instanceId === id);
+        const colors = unit && owner ? chromaticColorsOf(unit, owner.board) : [];
+        if (colors.length === 0 || colors.some((c) => vues.has(c))) {
+          return { ok: false, error: "Ces Sentinelles doivent être de couleurs différentes." };
+        }
+        colors.forEach((c) => vues.add(c));
+      }
+    }
 
     for (const instanceId of designees) {
       // Chaque cible est traitée l'une après l'autre, et les effets y
@@ -90,7 +157,9 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
       const applique = resolveEffectSequence(nextState, choice.effects, {
         controllerId: choice.controllerId,
         sourceInstanceId: choice.sourceInstanceId,
+        chosenTargetInstanceId: choice.chosenTargetInstanceId,
         triggerSourceInstanceId: instanceId,
+        chosenColor: choice.chosenColor,
         turnNumber: choice.turnNumber,
       });
       nextState = applique.state;
@@ -216,6 +285,15 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
       if (choice.takeableCardTypes && !choice.takeableCardTypes.includes(getCardDefinition(carte.cardId).type)) {
         return { ok: false, error: "Ce texte ne permet pas de prendre une carte de ce type." };
       }
+      if (choice.takeableArchetype && getCardDefinition(carte.cardId).archetype !== choice.takeableArchetype) {
+        return { ok: false, error: "Ce texte ne permet pas de prendre une carte de cette famille." };
+      }
+      if (choice.takeableChromaticColors) {
+        const couleurs = getCardDefinition(carte.cardId).chromatic?.colors ?? [];
+        if (!couleurs.some((c) => choice.takeableChromaticColors!.includes(c))) {
+          return { ok: false, error: "Ce texte ne permet de prendre qu'une carte de cette couleur." };
+        }
+      }
     }
 
     const player = getPlayer(nextState, choice.playerId);
@@ -297,6 +375,12 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
 
     const discarded = discardFromHand(nextState, choice.playerId, { instanceIds: chosen }, base);
     nextState = discarded.state;
+    // Une défausse CHOISIE vient toujours d'un effet de carte : c'est ce qui
+    // la distingue de la limite de main (Oracle d'Améthyste, Lot 15).
+    const defausses = discarded.events.map((event) =>
+      event.type === "CARD_MOVED" ? { ...event, discardByEffect: true } : event
+    );
+    discarded.events.splice(0, discarded.events.length, ...defausses);
     events.push(...discarded.events);
 
     // La défausse est un fait du jeu : elle réveille ses déclencheurs, où

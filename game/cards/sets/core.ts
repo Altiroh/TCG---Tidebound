@@ -1,5 +1,6 @@
 import { HIDDEN_CARD_DEFINITION, HIDDEN_CARD_ID } from "@/game/cards/hiddenCard";
 import { TOKEN_SET } from "@/game/cards/sets/tokens";
+import { ECLATS_EN_SELLE_SET } from "@/game/cards/sets/eclatsEnSelle";
 import { EQUIPPABLE_CARD_TYPES, type CardDefinition, type CardInstance } from "@/game/cards/types";
 
 /**
@@ -5098,6 +5099,8 @@ export const CORE_SET: CardDefinition[] = [
   // punir. Ces six-là rendent au nombre un prix, à des seuils différents.
   {
     id: "le-pont-est-plein",
+    // Résolution immédiate : part au Cimetière, n'occupe pas de Slot.
+    permanent: false,
     name: "Le Pont est Plein !",
     type: "anomalie",
     setCode: NECESSAIRE_DU_MARIN,
@@ -5117,6 +5120,8 @@ export const CORE_SET: CardDefinition[] = [
   },
   {
     id: "vague-scelerate",
+    // Résolution immédiate : part au Cimetière, n'occupe pas de Slot.
+    permanent: false,
     name: "Vague Scélérate",
     type: "anomalie",
     setCode: NECESSAIRE_DU_MARIN,
@@ -5134,6 +5139,8 @@ export const CORE_SET: CardDefinition[] = [
   },
   {
     id: "panique-sur-le-pont",
+    // Résolution immédiate : part au Cimetière, n'occupe pas de Slot.
+    permanent: false,
     name: "Panique sur le Pont",
     type: "anomalie",
     setCode: NECESSAIRE_DU_MARIN,
@@ -5155,6 +5162,8 @@ export const CORE_SET: CardDefinition[] = [
   },
   {
     id: "chacun-sa-place",
+    // Résolution immédiate : part au Cimetière, n'occupe pas de Slot.
+    permanent: false,
     name: "Chacun sa Place",
     type: "anomalie",
     setCode: NECESSAIRE_DU_MARIN,
@@ -5165,6 +5174,8 @@ export const CORE_SET: CardDefinition[] = [
   },
   {
     id: "pas-tous-a-la-fois",
+    // Résolution immédiate : part au Cimetière, n'occupe pas de Slot.
+    permanent: false,
     name: "Pas Tous à la Fois !",
     type: "anomalie",
     setCode: NECESSAIRE_DU_MARIN,
@@ -5190,6 +5201,8 @@ export const CORE_SET: CardDefinition[] = [
   },
   {
     id: "le-large-se-fache",
+    // Résolution immédiate : part au Cimetière, n'occupe pas de Slot.
+    permanent: false,
     name: "Le Large se Fâche",
     type: "anomalie",
     setCode: NECESSAIRE_DU_MARIN,
@@ -5491,6 +5504,8 @@ export const CORE_SET: CardDefinition[] = [
   },
   {
     id: "par-dessus-bord",
+    // Résolution immédiate : part au Cimetière, n'occupe pas de Slot.
+    permanent: false,
     name: "Par-dessus Bord !",
     type: "anomalie",
     setCode: NECESSAIRE_DU_MARIN,
@@ -5507,6 +5522,8 @@ export const CORE_SET: CardDefinition[] = [
   },
   {
     id: "quon-en-finisse",
+    // Résolution immédiate : part au Cimetière, n'occupe pas de Slot.
+    permanent: false,
     name: "Qu'on en Finisse",
     type: "anomalie",
     setCode: NECESSAIRE_DU_MARIN,
@@ -5664,6 +5681,9 @@ export const CORE_SET: CardDefinition[] = [
     id: "le-brise-ligne",
     name: "Le Brise-Ligne",
     type: "marin",
+    // Rattaché à l'Équipage de Verre par le Lot 15 (Notion, 23/09/2026) —
+    // sans rien changer à son texte : la famille ne compte pas ses membres.
+    archetype: "equipage-de-verre",
     setCode: NECESSAIRE_DU_MARIN,
     cost: 6,
     attack: 5,
@@ -5765,6 +5785,8 @@ export const CORE_SET: CardDefinition[] = [
   // seul endroit du lot où le coût 6-7 achète un effet, pas une statistique.
   {
     id: "abandonnez-le-navire",
+    // Résolution immédiate : part au Cimetière, n'occupe pas de Slot.
+    permanent: false,
     name: "Abandonnez le Navire !",
     type: "anomalie",
     setCode: NECESSAIRE_DU_MARIN,
@@ -5775,6 +5797,8 @@ export const CORE_SET: CardDefinition[] = [
   },
   {
     id: "la-mer-reprend-tout",
+    // Résolution immédiate : part au Cimetière, n'occupe pas de Slot.
+    permanent: false,
     name: "La Mer Reprend Tout",
     type: "anomalie",
     setCode: NECESSAIRE_DU_MARIN,
@@ -5787,6 +5811,8 @@ export const CORE_SET: CardDefinition[] = [
   },
   {
     id: "dernier-jour-en-mer",
+    // Résolution immédiate : part au Cimetière, n'occupe pas de Slot.
+    permanent: false,
     name: "Dernier Jour en Mer",
     type: "anomalie",
     setCode: NECESSAIRE_DU_MARIN,
@@ -5801,6 +5827,9 @@ export const CORE_SET: CardDefinition[] = [
       { type: "heal", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } },
     ],
   },
+  // Lot 15 — Éclats en Selle : 59 cartes, dans leur propre module
+  // (`game/cards/sets/eclatsEnSelle.ts`).
+  ...ECLATS_EN_SELLE_SET,
 ];
 
 /**

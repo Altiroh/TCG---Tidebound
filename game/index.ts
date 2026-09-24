@@ -45,7 +45,17 @@ export type {
   GraveyardCause,
   StatModifier,
   StatModifierDuration,
+  ChromaticColor,
 } from "@/game/cards/types";
+export { CHROMATIC_COLORS } from "@/game/cards/types";
+// --- Sentinelles Chromatiques (Lot 15) -------------------------------------
+export {
+  CHROMATIC_COLOR_LABELS,
+  chromaticColorsOf,
+  emittedSignalsOf,
+  findAssemblage,
+  isSentinel,
+} from "@/game/rules/chromatic";
 export {
   isPermanentCard,
   isVisibleDuringTide,
@@ -63,7 +73,7 @@ export {
 export { CARD_DATABASE, CORE_SET, getCardDefinition, canBeEquipTarget, hasAnyValidEquipTarget } from "@/game/cards/sets/core";
 export { isAbyssalVariant } from "@/game/cards/types";
 export { canUnitAttack, hasKeywordInContext, type KeywordContext } from "@/game/rules/validation";
-export { collectAuraContributions } from "@/game/cards/stats";
+export { auraContextOf, collectAuraContributions } from "@/game/cards/stats";
 export type { AuraContext, AuraContribution } from "@/game/cards/stats";
 export { computeEffectiveStats, computeStatModifierDelta } from "@/game/cards/stats";
 export type { EffectiveStats } from "@/game/cards/stats";
@@ -154,7 +164,7 @@ export { RULES } from "@/game/rules/constants";
 // --- Déraison (Raison négative, piste à prototyper du 2026-09-12) --------
 export { reasonCeiling, deraisonDebt, deraisonAnchorDamage } from "@/game/state/reason";
 export { previewPlayCardReason } from "@/game/actions/playCard";
-export { handBreakCost, previewBreakReason, previewHandBreakReason } from "@/game/actions/breakObject";
+export { breaksOnlyInReaction, handBreakCost, previewBreakReason, previewHandBreakReason } from "@/game/actions/breakObject";
 export {
   graveyardChoicesForAbility,
   graveyardChoicesForBreak,

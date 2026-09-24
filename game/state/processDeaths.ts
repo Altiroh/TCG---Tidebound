@@ -228,14 +228,17 @@ function destroyOrphanedEquipment(state: GameState, turnNumber: number): { state
       ...next,
       players: next.players.map((p) =>
         p.id === player.id
-          ? {
-              ...p,
-              board: current.board.filter((u) => !orphanIds.has(u.instanceId)),
-              graveyard: [
-                ...current.graveyard,
-                ...orphans.map((u) => ({ ...u, damageMarked: 0, modifiers: [], attachedToInstanceId: undefined, graveyardCause: "destroyed" as const })),
-              ],
-            }
+          ? orphans.reduce<PlayerState>(
+              (acc, u) => recordGraveyardArrival(acc, { cardId: u.cardId, turnNumber, fromZone: "board" }),
+              {
+                ...p,
+                board: current.board.filter((u) => !orphanIds.has(u.instanceId)),
+                graveyard: [
+                  ...current.graveyard,
+                  ...orphans.map((u) => ({ ...u, damageMarked: 0, modifiers: [], attachedToInstanceId: undefined, graveyardCause: "destroyed" as const })),
+                ],
+              }
+            )
           : p
       ) as [PlayerState, PlayerState],
     };
@@ -244,7 +247,10 @@ function destroyOrphanedEquipment(state: GameState, turnNumber: number): { state
       events.push({ type: "DESTROY", instanceId: orphan.instanceId, reason: "effect", turnNumber, timestamp: Date.now() });
       const triggerResult = processTrigger(
         next,
-        { trigger: "onDeath", sourceInstanceId: orphan.instanceId, cardId: orphan.cardId, playerId: player.id },
+        // Un Équipement qui suit son porteur est DÉTRUIT par la règle — une
+        // cause « effet », sans quoi « un Équipement adverse est détruit »
+        // (Mange-Fer) ne le verrait jamais.
+        { trigger: "onDeath", sourceInstanceId: orphan.instanceId, cardId: orphan.cardId, playerId: player.id, destructionCause: "effect" },
         turnNumber
       );
       next = triggerResult.state;

@@ -10,6 +10,7 @@
  */
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { UNIT_CARD_TYPES, type CardInstance } from "@/game/cards/types";
+import { chromaticColorsOf, isOtherColorSentinel } from "@/game/rules/chromatic";
 import type { ChosenUnitFilter, EffectDefinition, TargetSelector } from "@/game/effects/types";
 import type { GameState, PlayerId } from "@/game/state/types";
 
@@ -36,7 +37,9 @@ export function eligibleChosenUnits(
   state: GameState,
   target: TargetSelector,
   controllerId: PlayerId,
-  sourceInstanceId?: string
+  sourceInstanceId?: string,
+  /** Carte qui a déclenché la capacité — écartée par `excludeTriggerSource` (« une AUTRE unité »). */
+  triggerSourceInstanceId?: string
 ): ChosenUnitCandidate[] {
   if (target.kind !== "chosenUnit") return [];
 
@@ -53,6 +56,14 @@ export function eligibleChosenUnits(
     const source = all.find((c) => c.unit.instanceId === sourceInstanceId)?.unit;
     if (source?.attachedToInstanceId) excluded.add(source.attachedToInstanceId);
   }
+  if (filter.excludeTriggerSource && triggerSourceInstanceId) excluded.add(triggerSourceInstanceId);
+
+  // « une Sentinelle d'une autre couleur » que la SOURCE : ses couleurs
+  // sont lues une fois, sur son propre plateau.
+  const sourceEntry = sourceInstanceId ? all.find((c) => c.unit.instanceId === sourceInstanceId) : undefined;
+  const sourceColors = sourceEntry
+    ? chromaticColorsOf(sourceEntry.unit, state.players.find((p) => p.id === sourceEntry.ownerId)?.board ?? [])
+    : [];
 
   return all.filter(({ unit, ownerId }) => {
     if (excluded.has(unit.instanceId)) return false;
@@ -75,6 +86,10 @@ export function eligibleChosenUnits(
     if (filter.maxCost !== undefined && getCardDefinition(unit.cardId).cost > filter.maxCost) return false;
     if (filter.damaged && unit.damageMarked <= 0) return false;
     if (filter.damagedThisTurn && (unit.damageMarked <= 0 || unit.lastDamageTurn !== state.turnNumber)) return false;
+    if (filter.otherChromaticColorThanSource) {
+      const board = state.players.find((p) => p.id === ownerId)?.board ?? [];
+      if (!isOtherColorSentinel(unit, sourceColors, board)) return false;
+    }
     return true;
   });
 }
@@ -85,9 +100,10 @@ export function isEligibleChosenUnit(
   target: TargetSelector,
   controllerId: PlayerId,
   chosenInstanceId: string,
-  sourceInstanceId?: string
+  sourceInstanceId?: string,
+  triggerSourceInstanceId?: string
 ): boolean {
-  return eligibleChosenUnits(state, target, controllerId, sourceInstanceId).some(
+  return eligibleChosenUnits(state, target, controllerId, sourceInstanceId, triggerSourceInstanceId).some(
     (c) => c.unit.instanceId === chosenInstanceId
   );
 }
@@ -103,14 +119,15 @@ export function chosenTargetRequirement(
   state: GameState,
   effects: readonly EffectDefinition[],
   controllerId: PlayerId,
-  sourceInstanceId?: string
+  sourceInstanceId?: string,
+  triggerSourceInstanceId?: string
 ): { needsTarget: boolean; hasEligibleTarget: boolean } {
   const targeting = effects.filter((e) => e.target.kind === "chosenUnit");
   if (targeting.length === 0) return { needsTarget: false, hasEligibleTarget: true };
   return {
     needsTarget: true,
     hasEligibleTarget: targeting.every(
-      (e) => eligibleChosenUnits(state, e.target, controllerId, sourceInstanceId).length > 0
+      (e) => eligibleChosenUnits(state, e.target, controllerId, sourceInstanceId, triggerSourceInstanceId).length > 0
     ),
   };
 }

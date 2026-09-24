@@ -9,7 +9,7 @@ import { RULES } from "@/game/rules/constants";
 import { nextInt } from "@/game/rng";
 import type { GameEvent } from "@/game/events/types";
 import { processDiscardedFromHandTriggers, processTrigger } from "@/game/triggers/triggerBus";
-import { discardFromHandState } from "@/game/state/discard";
+import { discardFromHandState, recordGraveyardArrival } from "@/game/state/discard";
 import { applyTideChangeAnomalies } from "@/game/state/anomalies";
 import {
   consumeEquippedEffectDamageShield,
@@ -604,9 +604,13 @@ export function appliquerMareeAnnoncee(
       expiring.length > 0
         ? [...player.graveyard, ...expiring.map((u) => ({ ...u, damageMarked: 0, modifiers: [], graveyardCause: "expired" as const }))]
         : player.graveyard;
+    const withArrivals = expiring.reduce<PlayerState>(
+      (acc, u) => recordGraveyardArrival(acc, { cardId: u.cardId, turnNumber, fromZone: "board" }),
+      { ...player, board, graveyard }
+    );
     nextState = {
       ...nextState,
-      players: nextState.players.map((p) => (p.id === player.id ? { ...p, board, graveyard } : p)) as [
+      players: nextState.players.map((p) => (p.id === player.id ? withArrivals : p)) as [
         PlayerState,
         PlayerState
       ],

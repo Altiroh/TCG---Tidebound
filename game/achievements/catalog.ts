@@ -57,6 +57,27 @@ export interface AchievementDefinition {
   rewardTides: number;
   /** Rempli ? Fonction PURE des compteurs persistés. */
   isUnlocked: (stats: AchievementStats) => boolean;
+  /**
+   * Où en est le joueur, en chiffres — pour la jauge de l'écran des
+   * exploits. Une condition qui ne se compte pas (tutoriel, première
+   * Abyssale) vaut 0 ou 1 sur 1.
+   */
+  progress: (stats: AchievementStats) => AchievementProgress;
+}
+
+export interface AchievementProgress {
+  current: number;
+  target: number;
+}
+
+/** Jauge d'un compteur, bornée à la cible. */
+function counter(current: number, target: number): AchievementProgress {
+  return { current: Math.max(0, Math.min(current, target)), target };
+}
+
+/** Jauge d'une condition tout-ou-rien. */
+function flag(done: boolean): AchievementProgress {
+  return { current: done ? 1 : 0, target: 1 };
 }
 
 /** Paliers de niveau qui donnent un exploit (§10). */
@@ -71,6 +92,7 @@ const levelAchievements: AchievementDefinition[] = ACHIEVEMENT_LEVEL_MILESTONES.
   description: `Atteindre le niveau ${level}.`,
   rewardTides: level >= 40 ? TIDE_REWARD.big : TIDE_REWARD.standard,
   isUnlocked: (stats) => stats.level >= level,
+  progress: (stats) => counter(stats.level, level),
 }));
 
 const collectionAchievements: AchievementDefinition[] = ACHIEVEMENT_COLLECTION_MILESTONES.map((count) => ({
@@ -79,6 +101,7 @@ const collectionAchievements: AchievementDefinition[] = ACHIEVEMENT_COLLECTION_M
   description: `Posséder ${count} cartes différentes.`,
   rewardTides: TIDE_REWARD.standard,
   isUnlocked: (stats) => stats.distinctCardsOwned >= count,
+  progress: (stats) => counter(stats.distinctCardsOwned, count),
 }));
 
 export const ACHIEVEMENT_CATALOG: readonly AchievementDefinition[] = [
@@ -88,6 +111,7 @@ export const ACHIEVEMENT_CATALOG: readonly AchievementDefinition[] = [
     description: "Terminer le tutoriel.",
     rewardTides: TIDE_REWARD.small,
     isUnlocked: (stats) => stats.tutorialCompleted,
+    progress: (stats) => flag(stats.tutorialCompleted),
   },
   {
     code: "first_win",
@@ -95,6 +119,7 @@ export const ACHIEVEMENT_CATALOG: readonly AchievementDefinition[] = [
     description: "Remporter votre première partie.",
     rewardTides: TIDE_REWARD.small,
     isUnlocked: (stats) => stats.wins >= 1,
+    progress: (stats) => counter(stats.wins, 1),
   },
   {
     code: "first_booster",
@@ -102,6 +127,7 @@ export const ACHIEVEMENT_CATALOG: readonly AchievementDefinition[] = [
     description: "Ouvrir votre premier booster.",
     rewardTides: TIDE_REWARD.small,
     isUnlocked: (stats) => stats.boostersOpened >= 1,
+    progress: (stats) => counter(stats.boostersOpened, 1),
   },
   {
     code: "first_abyssal",
@@ -109,6 +135,7 @@ export const ACHIEVEMENT_CATALOG: readonly AchievementDefinition[] = [
     description: "Obtenir votre première carte Abyssale.",
     rewardTides: TIDE_REWARD.big,
     isUnlocked: (stats) => stats.ownsAbyssalCard,
+    progress: (stats) => flag(stats.ownsAbyssalCard),
   },
   {
     code: "first_precon",
@@ -116,6 +143,7 @@ export const ACHIEVEMENT_CATALOG: readonly AchievementDefinition[] = [
     description: "Débloquer votre premier préconstruit avec un Jeton.",
     rewardTides: TIDE_REWARD.standard,
     isUnlocked: (stats) => stats.preconDecksUnlocked >= 1,
+    progress: (stats) => counter(stats.preconDecksUnlocked, 1),
   },
   {
     code: "deck_fully_owned",
@@ -123,6 +151,7 @@ export const ACHIEVEMENT_CATALOG: readonly AchievementDefinition[] = [
     description: "Posséder réellement toutes les cartes d'un deck.",
     rewardTides: TIDE_REWARD.big,
     isUnlocked: (stats) => stats.decksFullyOwned >= 1,
+    progress: (stats) => counter(stats.decksFullyOwned, 1),
   },
   {
     code: "ten_matches",
@@ -130,6 +159,7 @@ export const ACHIEVEMENT_CATALOG: readonly AchievementDefinition[] = [
     description: "Terminer 10 parties.",
     rewardTides: TIDE_REWARD.small,
     isUnlocked: (stats) => stats.matchesPlayed >= 10,
+    progress: (stats) => counter(stats.matchesPlayed, 10),
   },
   ...collectionAchievements,
   ...levelAchievements,

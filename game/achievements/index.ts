@@ -12,4 +12,4 @@ export {
   achievementByCode,
   unlockedAchievements,
 } from "@/game/achievements/catalog";
-export type { AchievementDefinition, AchievementStats } from "@/game/achievements/catalog";
+export type { AchievementDefinition, AchievementProgress, AchievementStats } from "@/game/achievements/catalog";

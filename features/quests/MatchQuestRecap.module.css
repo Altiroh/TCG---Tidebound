@@ -1,31 +1,95 @@
 /*
- * Relevé de quêtes sous la fiche de fin de partie. Les lignes entrent une à
- * une, jauge en train de se remplir : c'est le seul moment où l'on voit ce
- * qu'une partie a rapporté.
+ * Relevé de quêtes de l'écran de fin. Les lignes entrent une à une, jauge
+ * en train de se remplir : c'est le seul moment où l'on voit ce qu'une
+ * partie a rapporté.
+ *
+ * Habillé comme les invites d'effet en partie (`PromptShell`,
+ * `ReactionPrompt`) : panneau de verre flouté avec son reflet, intitulé en
+ * petites capitales, lignes en pastilles arrondies, vert d'acceptation pour
+ * ce qui est acquis. Les valeurs sont recopiées, pas importées : ce module
+ * vit hors de Tailwind, comme le reste de l'écran de fin.
  */
 
 .recap {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  width: min(460px, 88vw);
+  gap: 12px;
+  width: min(420px, 88vw);
   margin: 0 auto;
+  padding: 20px;
+  overflow: hidden;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.06);
+  -webkit-backdrop-filter: blur(32px) brightness(1.1) saturate(1.5);
+  backdrop-filter: blur(32px) brightness(1.1) saturate(1.5);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.5),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    inset 0 -12px 24px -12px rgba(255, 255, 255, 0.06),
+    0 24px 60px rgba(0, 0, 0, 0.6);
+  font-family: var(--font-ui, "Segoe UI", system-ui, sans-serif);
+  text-align: left;
+  animation: recapIn 420ms cubic-bezier(0.2, 0.8, 0.2, 1) 700ms both;
 }
 
+/* Le reflet du verre : une courbure qui capte la lumière, pas un aplat. */
+.recap::before {
+  content: "";
+  position: absolute;
+  top: -40px;
+  left: -24px;
+  width: 128px;
+  height: 128px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  filter: blur(40px);
+  pointer-events: none;
+}
+
+@keyframes recapIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.head {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: center;
+}
+
+/* `PromptEyebrow` */
+.eyebrow {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* `PromptEffect` */
 .title {
   margin: 0;
-  font-family: var(--font-card-title), Georgia, serif;
-  font-size: clamp(13px, 1.1vw, 15px);
-  letter-spacing: 0.06em;
-  text-align: center;
-  color: #e6d9b4;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: #fff;
 }
 
 .list {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -34,18 +98,18 @@
 /*
  * Une ligne non encore entrée occupe déjà sa place : sans ça, chaque
  * arrivée pousserait les précédentes et la fiche sauterait à chaque fois.
+ * Pastille des lignes à cocher de la fenêtre de réaction.
  */
 .row {
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 6px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 9px;
-  background: rgba(6, 14, 24, 0.66);
+  gap: 12px;
+  padding: 8px 12px 8px 8px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.05);
   opacity: 0;
   transform: translateY(6px);
-  transition: opacity 320ms ease-out, transform 320ms ease-out, border-color 320ms ease-out;
+  transition: opacity 320ms ease-out, transform 320ms ease-out, background 320ms ease-out, box-shadow 320ms ease-out;
 }
 
 .rowIn {
@@ -53,15 +117,21 @@
   transform: none;
 }
 
+/* Terminée : la ligne « cochée » — fond plus clair et liseré vert. */
 .rowDone {
-  border-color: rgba(199, 154, 78, 0.55);
-  box-shadow: 0 0 16px rgba(199, 154, 78, 0.16);
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(110, 231, 183, 0.45), 0 0 18px rgba(52, 211, 153, 0.15);
 }
 
+/* Vignette arrondie et ombrée, comme la miniature de carte des invites. */
 .icon {
   flex: 0 0 auto;
-  width: 24px;
-  height: 24px;
+  width: 36px;
+  height: 36px;
+  padding: 5px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
   object-fit: contain;
 }
 
@@ -69,7 +139,7 @@
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   min-width: 0;
 }
 
@@ -77,14 +147,15 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12px;
-  color: #e8edf4;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
 }
 
 .track {
-  height: 4px;
+  height: 5px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.11);
+  background: rgba(255, 255, 255, 0.15);
   overflow: hidden;
 }
 
@@ -95,37 +166,63 @@
 .fill {
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, #58c8d8, #7fd6a4);
+  background: rgba(255, 255, 255, 0.7);
   transition: width 900ms cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
 .fillDone {
   composes: fill;
-  background: linear-gradient(90deg, #7fd6a4, #f0d79a);
+  background: #34d399;
 }
 
 .count {
   flex: 0 0 auto;
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-  color: #9fb0c0;
+  color: rgba(255, 255, 255, 0.6);
 }
 
+/* Le gain à encaisser, en pastille verte : c'est acquis. */
 .claimable {
-  color: #f0d79a;
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: rgba(52, 211, 153, 0.18);
   font-weight: 600;
+  color: #a7f3d0;
 }
 
+/* `PromptQuestion` */
 .foot {
-  margin: 2px 0 0;
-  font-size: 11px;
+  position: relative;
+  margin: 0;
+  font-size: 12px;
   text-align: center;
-  color: #9fb0c0;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Téléphone couché : l'écran de fin ne défile pas, le panneau se resserre. */
+@media (max-height: 560px) {
+  .recap {
+    gap: 8px;
+    padding: 14px;
+  }
+  .row {
+    padding-block: 5px;
+  }
+  .icon {
+    width: 30px;
+    height: 30px;
+  }
 }
 
 /* Sans animation : tout est là d'emblée, y compris les jauges pleines. */
 @media (prefers-reduced-motion: reduce) {
+  .recap {
+    animation: none;
+  }
   .row {
     opacity: 1;
     transform: none;

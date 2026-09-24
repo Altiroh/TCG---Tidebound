@@ -302,6 +302,23 @@ describe("Objets réactifs : seulement dans leur fenêtre", () => {
   });
 });
 
+describe("Objets réactifs : pas de Bris à la main", () => {
+  it("Harpon à Ressort refuse un Bris manuel — sans attaque, il partait au Cimetière pour rien", () => {
+    const harpon = instance("harpon-a-ressort", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { board: [harpon] }), testPlayer("p2", { shipId: "le-goliath" })],
+    });
+    const result = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: harpon.instanceId });
+    expect(result.ok).toBe(false);
+    // Depuis la main non plus : l'effet n'aurait pas davantage de cible.
+    const enMain = instance("harpon-a-ressort", "p1");
+    const depuisLaMain = testGameState({
+      players: [testPlayer("p1", { hand: [enMain], reason: 5 }), testPlayer("p2", { shipId: "le-goliath" })],
+    });
+    expect(dispatch(depuisLaMain, { type: "breakObject", playerId: "p1", instanceId: enMain.instanceId, fromHand: true }).ok).toBe(false);
+  });
+});
+
 describe("Bris depuis la main : la formule ne bouge pas", () => {
   it("reste max(1, ceil(coût imprimé / 2))", () => {
     // La règle citée par le cadrage, vérifiée sur ses propres exemples.

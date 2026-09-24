@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { ProfileAchievement } from "@/features/progression/profileActions";
 import { TideCoin } from "@/features/shell/GameIcons";
 import styles from "@/features/progression/AchievementBoard.module.css";
@@ -29,16 +29,31 @@ export function achievementIconUrl(code: string): string | null {
   return icon ? `/assets/exploits/${icon}.webp` : null;
 }
 
-/**
- * Les exploits en BRANCHES, comme un arbre de progrès : chaque branche se lit
- * de gauche à droite, du premier jalon au plus lointain, reliés par un
- * cordage qui s'allume à mesure qu'on avance.
- */
-const BRANCHES: Array<{ id: string; title: string; codes: string[] }> = [
-  { id: "voyage", title: "Premières escales", codes: ["tutorial_completed", "first_win", "ten_matches"] },
-  { id: "cale", title: "La cale", codes: ["first_booster", "collection_25", "collection_60", "collection_100", "first_abyssal"] },
-  { id: "equipage", title: "L'équipage", codes: ["first_precon", "deck_fully_owned"] },
-  { id: "phare", title: "Les phares", codes: ["level_10", "level_20", "level_30", "level_40", "level_50"] },
+/** Famille de chaque exploit — un repère sur la carte, plus un classement. */
+const FAMILIES: Array<{ id: string; label: string; codes: string[] }> = [
+  { id: "voyage", label: "Premières escales", codes: ["tutorial_completed", "first_win", "ten_matches"] },
+  { id: "cale", label: "La cale", codes: ["first_booster", "collection_25", "collection_60", "collection_100", "first_abyssal"] },
+  { id: "equipage", label: "L'équipage", codes: ["first_precon", "deck_fully_owned"] },
+  { id: "phare", label: "Les phares", codes: ["level_10", "level_20", "level_30", "level_40", "level_50"] },
+];
+
+function familyOf(code: string): { id: string; label: string } {
+  return FAMILIES.find((family) => family.codes.includes(code)) ?? { id: "autres", label: "Autres" };
+}
+
+/** Part accomplie, de 0 à 1. Un exploit obtenu vaut 1 ; sans compteur connu, 0. */
+function ratioOf(achievement: ProfileAchievement): number {
+  if (achievement.unlocked) return 1;
+  if (!achievement.progress || achievement.progress.target <= 0) return 0;
+  return Math.min(1, achievement.progress.current / achievement.progress.target);
+}
+
+type Filter = "tous" | "en-cours" | "obtenus";
+
+const FILTERS: Array<{ id: Filter; label: string }> = [
+  { id: "tous", label: "Tous" },
+  { id: "en-cours", label: "En cours" },
+  { id: "obtenus", label: "Obtenus" },
 ];
 
 interface AchievementBoardProps {
@@ -50,133 +65,237 @@ interface AchievementBoardProps {
 }
 
 /**
- * Exploits — une vitrine à la manière des succès de Minecraft : des tuiles
- * carrées à l'icône peinte, éteintes et cadenassées tant qu'elles ne sont
- * pas obtenues, dorées une fois gagnées. Survoler (ou focaliser) une tuile
- * ouvre sa bulle : nom, condition, récompense.
+ * EXPLOITS — ce qu'on a accompli, et ce qui vient ensuite.
  *
- * Les exploits sans branche connue (ajoutés au catalogue après coup) ne
- * disparaissent pas : ils tombent dans « Autres ».
+ * Trois paliers de lecture, du plus pressant au plus acquis :
+ *   1. À réclamer — l'exploit est obtenu, ses Tides attendent (or, seul
+ *      endroit où l'écran brille) ;
+ *   2. En cours — triés du plus proche au plus lointain, chacun avec sa
+ *      jauge, sa récompense et le titre qu'il débloque ;
+ *   3. Obtenus — en grille compacte, le trophée et ce qu'il a rapporté.
+ *
+ * Grammaire de la coquille (`features/shell/DESIGN.md`) : panneaux bleu
+ * nuit, cyan pour la progression, or pour la récompense, vert pour l'acquis.
  */
 export function AchievementBoard({ achievements, onClaim, claimingCode = null }: AchievementBoardProps) {
-  const [focused, setFocused] = useState<string | null>(null);
-  const byCode = new Map(achievements.map((achievement) => [achievement.code, achievement]));
-  const placed = new Set(BRANCHES.flatMap((branch) => branch.codes));
-  const others = achievements.filter((achievement) => !placed.has(achievement.code)).map((achievement) => achievement.code);
-  const branches = others.length > 0 ? [...BRANCHES, { id: "autres", title: "Autres", codes: others }] : BRANCHES;
+  const [filter, setFilter] = useState<Filter>("tous");
 
-  const unlocked = achievements.filter((achievement) => achievement.unlocked).length;
-  const ratio = achievements.length > 0 ? unlocked / achievements.length : 0;
-  const earnedTides = achievements.filter((achievement) => achievement.unlocked && !achievement.claimable).reduce((sum, achievement) => sum + achievement.rewardTides, 0);
-  const toClaim = achievements.filter((achievement) => achievement.claimable).length;
+  const { toClaim, inProgress, done } = useMemo(() => {
+    const catalogOrder = new Map(achievements.map((achievement, index) => [achievement.code, index]));
+    const byOrder = (a: ProfileAchievement, b: ProfileAchievement) => (catalogOrder.get(a.code) ?? 0) - (catalogOrder.get(b.code) ?? 0);
+    return {
+      toClaim: achievements.filter((achievement) => achievement.claimable).sort(byOrder),
+      // Le plus proche du but d'abord ; à égalité, l'ordre du catalogue (le plus simple avant).
+      inProgress: achievements.filter((achievement) => !achievement.unlocked).sort((a, b) => ratioOf(b) - ratioOf(a) || byOrder(a, b)),
+      done: achievements.filter((achievement) => achievement.unlocked && !achievement.claimable).sort(byOrder),
+    };
+  }, [achievements]);
+
+  const unlockedCount = toClaim.length + done.length;
+  const total = achievements.length;
+  const ratio = total > 0 ? unlockedCount / total : 0;
+  const earnedTides = done.reduce((sum, achievement) => sum + achievement.rewardTides, 0);
+  const waitingTides = toClaim.reduce((sum, achievement) => sum + achievement.rewardTides, 0);
+  const titlesEarned = [...toClaim, ...done].filter((achievement) => achievement.titleName).length;
+  const titlesTotal = achievements.filter((achievement) => achievement.titleName).length;
+
+  const showInProgress = filter !== "obtenus";
+  const showDone = filter !== "en-cours";
 
   return (
     <section className={styles.board} aria-label="Exploits">
       <header className={styles.head}>
         <div className={styles.headText}>
           <h2 className={styles.title}>Exploits</h2>
-          <p className={styles.subtitle}>
-            {unlocked} / {achievements.length} obtenus · <TideCoin size={13} /> {earnedTides} Tides gagnés
-            {toClaim > 0 && <span className={styles.toClaim}> · 🎁 {toClaim} à réclamer</span>}
-          </p>
+          <p className={styles.subtitle}>Des jalons permanents : chacun rapporte des Tides une seule fois, certains débloquent un titre.</p>
         </div>
-        <div className={styles.progress} role="progressbar" aria-valuenow={unlocked} aria-valuemin={0} aria-valuemax={achievements.length}>
-          <span className={styles.progressFill} style={{ width: `${ratio * 100}%` }} />
+
+        <div className={styles.summary}>
+          <div className={styles.summaryMain}>
+            <span className={styles.summaryValue}>
+              {unlockedCount}
+              <span className={styles.summaryTotal}> / {total}</span>
+            </span>
+            <span className={styles.summaryLabel}>obtenus</span>
+          </div>
+          <div
+            className={styles.globalTrack}
+            role="progressbar"
+            aria-label="Exploits obtenus"
+            aria-valuenow={unlockedCount}
+            aria-valuemin={0}
+            aria-valuemax={total}
+          >
+            <span className={styles.globalFill} style={{ width: `${ratio * 100}%` }} />
+          </div>
+          <ul className={styles.facts}>
+            <li>
+              <TideCoin size={13} /> {earnedTides} Tides gagnés
+            </li>
+            {titlesTotal > 0 && (
+              <li>
+                {titlesEarned} / {titlesTotal} titres
+              </li>
+            )}
+          </ul>
         </div>
       </header>
 
-      <div className={styles.branches}>
-        {branches.map((branch) => {
-          const items = branch.codes.map((code) => byCode.get(code)).filter((item): item is ProfileAchievement => item !== undefined);
-          if (items.length === 0) return null;
-          const done = items.filter((item) => item.unlocked).length;
-          return (
-            <section key={branch.id} className={styles.branch} aria-label={branch.title}>
-              <h3 className={styles.branchTitle}>
-                {branch.title}
-                <span className={styles.branchCount}>
-                  {done}/{items.length}
-                </span>
-              </h3>
-              <ol className={styles.row}>
-                {items.map((achievement, index) => {
-                  const icon = achievementIconUrl(achievement.code);
-                  const previousDone = index === 0 || items[index - 1]!.unlocked;
-                  return (
-                    <li
-                      key={achievement.code}
-                      className={styles.cell}
-                      data-unlocked={achievement.unlocked ? "true" : "false"}
-                      data-claimable={achievement.claimable ? "true" : undefined}
-                      data-link={index > 0 ? (achievement.unlocked && previousDone ? "lit" : "dim") : undefined}
-                    >
-                      <button
-                        type="button"
-                        className={styles.tile}
-                        aria-describedby={`achievement-${achievement.code}`}
-                        onMouseEnter={() => setFocused(achievement.code)}
-                        onMouseLeave={() => setFocused((current) => (current === achievement.code ? null : current))}
-                        onFocus={() => setFocused(achievement.code)}
-                        onBlur={() => setFocused((current) => (current === achievement.code ? null : current))}
-                        onClick={() => achievement.claimable && onClaim?.(achievement.code)}
-                        disabled={claimingCode === achievement.code}
-                        aria-label={achievement.claimable ? `${achievement.name} — réclamer ${achievement.rewardTides} Tides` : achievement.name}
-                      >
-                        {icon ? (
-                          // eslint-disable-next-line @next/next/no-img-element -- icône peinte locale
-                          <img src={icon} alt="" draggable={false} className={styles.icon} />
-                        ) : (
-                          <span className={styles.iconFallback} aria-hidden>
-                            ★
-                          </span>
-                        )}
-                        {!achievement.unlocked && (
-                          <span className={styles.lock} aria-hidden>
-                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
-                              <rect x="5" y="10.5" width="14" height="10" rx="2" fill="rgba(3,10,16,0.85)" stroke="currentColor" strokeWidth={1.6} />
-                              <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" stroke="currentColor" strokeWidth={1.6} />
-                            </svg>
-                          </span>
-                        )}
-                        {achievement.claimable && (
-                          <span className={styles.gift} aria-hidden>
-                            🎁
-                          </span>
-                        )}
-                        {achievement.unlocked && !achievement.claimable && (
-                          <span className={styles.check} aria-hidden>
-                            <svg viewBox="0 0 16 16" width="12" height="12" fill="none">
-                              <path d="M3.5 8.5l3 3 6-7" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                          </span>
-                        )}
-                      </button>
-                      <span className={styles.caption}>{achievement.name}</span>
+      {toClaim.length > 0 && (
+        <section className={styles.section} aria-label="À réclamer">
+          <h3 className={styles.sectionTitle}>
+            À réclamer
+            <span className={styles.sectionMeta}>
+              {toClaim.length} · <TideCoin size={12} /> {waitingTides} Tides
+            </span>
+          </h3>
+          <ul className={styles.grid}>
+            {toClaim.map((achievement) => (
+              <li key={achievement.code}>
+                <AchievementCard achievement={achievement} onClaim={onClaim} claiming={claimingCode === achievement.code} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
-                      {/* Bulle à la Minecraft : bandeau de titre, puis le détail. */}
-                      <span
-                        id={`achievement-${achievement.code}`}
-                        role="tooltip"
-                        className={styles.tooltip}
-                        data-open={focused === achievement.code ? "true" : "false"}
-                      >
-                        <span className={styles.tooltipBar}>
-                          {achievement.claimable ? "Touche pour réclamer !" : achievement.unlocked ? "Exploit obtenu !" : "Exploit à décrocher"}
-                        </span>
-                        <span className={styles.tooltipName}>{achievement.name}</span>
-                        <span className={styles.tooltipText}>{achievement.description}</span>
-                        <span className={styles.tooltipReward}>
-                          <TideCoin size={13} /> +{achievement.rewardTides} Tides
-                        </span>
-                      </span>
-                    </li>
-                  );
-                })}
-              </ol>
-            </section>
+      <div className={styles.filters} role="tablist" aria-label="Filtrer les exploits">
+        {FILTERS.map((entry) => {
+          const count = entry.id === "tous" ? total : entry.id === "en-cours" ? inProgress.length : done.length + toClaim.length;
+          return (
+            <button
+              key={entry.id}
+              type="button"
+              role="tab"
+              aria-selected={filter === entry.id}
+              className={styles.filter}
+              data-active={filter === entry.id ? "true" : undefined}
+              onClick={() => setFilter(entry.id)}
+            >
+              {entry.label}
+              <span className={styles.filterCount}>{count}</span>
+            </button>
           );
         })}
       </div>
+
+      {showInProgress && inProgress.length > 0 && (
+        <section className={styles.section} aria-label="En cours">
+          <h3 className={styles.sectionTitle}>
+            En cours
+            <span className={styles.sectionMeta}>du plus proche au plus lointain</span>
+          </h3>
+          <ul className={styles.grid}>
+            {inProgress.map((achievement) => (
+              <li key={achievement.code}>
+                <AchievementCard achievement={achievement} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {showDone && done.length > 0 && (
+        <section className={styles.section} aria-label="Obtenus">
+          <h3 className={styles.sectionTitle}>
+            Obtenus
+            <span className={styles.sectionMeta}>{done.length}</span>
+          </h3>
+          <ul className={styles.gridCompact}>
+            {done.map((achievement) => (
+              <li key={achievement.code}>
+                <AchievementCard achievement={achievement} compact />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {showInProgress && !showDone && inProgress.length === 0 && <p className={styles.empty}>Tous les exploits sont obtenus. Bravo, capitaine.</p>}
+      {showDone && !showInProgress && unlockedCount === 0 && <p className={styles.empty}>Aucun exploit obtenu pour l&apos;instant : le premier est souvent le tutoriel.</p>}
     </section>
+  );
+}
+
+interface AchievementCardProps {
+  achievement: ProfileAchievement;
+  onClaim?: (code: string) => void;
+  claiming?: boolean;
+  /** Obtenu et réclamé : version resserrée, sans jauge. */
+  compact?: boolean;
+}
+
+function AchievementCard({ achievement, onClaim, claiming = false, compact = false }: AchievementCardProps) {
+  const icon = achievementIconUrl(achievement.code);
+  const family = familyOf(achievement.code);
+  const state = achievement.claimable ? "claimable" : achievement.unlocked ? "done" : "progress";
+  const progress = achievement.progress;
+  const ratio = ratioOf(achievement);
+
+  return (
+    <article className={styles.card} data-state={state} data-compact={compact ? "true" : undefined}>
+      <span className={styles.iconFrame} aria-hidden>
+        {icon ? (
+          // eslint-disable-next-line @next/next/no-img-element -- icône peinte locale
+          <img src={icon} alt="" draggable={false} className={styles.icon} />
+        ) : (
+          <span className={styles.iconFallback}>★</span>
+        )}
+        {state === "done" && (
+          <span className={styles.check}>
+            <svg viewBox="0 0 16 16" width="10" height="10" fill="none">
+              <path d="M3.5 8.5l3 3 6-7" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
+        )}
+      </span>
+
+      <div className={styles.body}>
+        <span className={styles.family}>{family.label}</span>
+        <h4 className={styles.name}>{achievement.name}</h4>
+        <p className={styles.description}>{achievement.description}</p>
+
+        {state === "progress" && progress && (
+          <div className={styles.progressRow}>
+            <span
+              className={styles.track}
+              role="progressbar"
+              aria-label={`Avancement : ${progress.current} sur ${progress.target}`}
+              aria-valuenow={progress.current}
+              aria-valuemin={0}
+              aria-valuemax={progress.target}
+            >
+              <span className={styles.fill} style={{ width: `${ratio * 100}%` }} />
+            </span>
+            <span className={styles.count}>
+              {progress.target === 1 ? "À faire" : `${progress.current} / ${progress.target}`}
+            </span>
+          </div>
+        )}
+
+        <div className={styles.rewards}>
+          <span className={styles.reward} data-state={state}>
+            <TideCoin size={12} /> {state === "done" ? `${achievement.rewardTides} Tides reçus` : `+${achievement.rewardTides} Tides`}
+          </span>
+          {achievement.titleName && (
+            <span className={styles.titleReward} data-earned={achievement.unlocked ? "true" : undefined} title="Titre débloqué par cet exploit — à choisir sous ton nom">
+              Titre « {achievement.titleName} »
+            </span>
+          )}
+        </div>
+      </div>
+
+      {state === "claimable" && (
+        <button
+          type="button"
+          className={styles.claim}
+          onClick={() => onClaim?.(achievement.code)}
+          disabled={claiming || !onClaim}
+          aria-label={`${achievement.name} — réclamer ${achievement.rewardTides} Tides`}
+        >
+          {claiming ? "…" : "Réclamer"}
+        </button>
+      )}
+    </article>
   );
 }

@@ -36,7 +36,17 @@ const DOSSIER = path.join(process.cwd(), "public", "assets", "cards", "illustrat
  * écrite, pas un contournement. Et l'exception ne survit pas à l'arrivée
  * de son visuel — le troisième test le refuse.
  */
-const SANS_VISUEL: Record<string, string> = {};
+const SANS_VISUEL: Record<string, string> = Object.fromEntries(
+  // Lot 15 — Éclats en Selle, transcrit le 23/09/2026 depuis Notion : le lot
+  // est arrivé en texte. Les 25 Sentinelles Chromatiques ont reçu leurs
+  // illustrations le 23/09 ; restent l'Équipage de Verre, la Cavalerie et
+  // La Mauvaise Réputation. Le troisième test refuse une exception survivant
+  // à son WebP.
+  CORE_SET.filter((def) => def.setCode === "eclats-en-selle" && def.archetype !== "sentinelle-chromatique").map((def) => [
+    def.id,
+    "Lot 15 — Éclats en Selle : illustration pas encore livrée.",
+  ])
+);
 
 const fichiers = new Set(readdirSync(DOSSIER));
 
@@ -112,6 +122,8 @@ describe("identités d'archétype du Lot 14", () => {
   it("le reste du lot n'appartient à aucune famille — c'est un lot de consolidation", () => {
     const lot = CORE_SET.filter((def) => def.setCode === "necessaire-du-marin");
     const familiales = lot.filter((def) => def.archetype !== undefined).map((def) => def.id);
-    expect(familiales.sort()).toEqual(["le-dernier-rempart", "le-naufrage-impossible"]);
+    // Le Brise-Ligne a rejoint l'Équipage de Verre avec le Lot 15 (Notion,
+    // 23/09/2026) : un rattachement de famille, pas un changement de texte.
+    expect(familiales.sort()).toEqual(["le-brise-ligne", "le-dernier-rempart", "le-naufrage-impossible"]);
   });
 });

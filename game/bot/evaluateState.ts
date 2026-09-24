@@ -151,6 +151,8 @@ function unblockedThreat(state: GameState, attacker: PlayerState, defender: Play
       computeEffectiveStats(unit, state.environment.tideState, {
         controllerBoard: attacker.board,
         controllerReason: attacker.reason,
+        // La menace se mesure au tour où ces unités attaqueront : le leur.
+        controllerIsActive: true,
       })
     )
     .filter((stats) => !stats.inactive && stats.attack > 0)

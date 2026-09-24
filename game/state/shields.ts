@@ -4,6 +4,7 @@ import { isVisibleDuringTide, type CardDefinition, type CardInstance, type CardT
 import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
 import { reasonAfterLoss } from "@/game/state/reason";
 import { getPlayer, type GameState, type PlayerId, type PlayerState } from "@/game/state/types";
+import { recordGraveyardArrival } from "@/game/state/discard";
 
 /**
  * Boucliers "la première fois PAR TOUR que..." (cf. `CardInstance.oncePerTurnFlags`).
@@ -241,11 +242,14 @@ export function consumeEquippedEffectDamageShield(
   if (!equipment) return { state, reduction: 0, events: [] };
 
   const reduction = getCardDefinition(equipment.cardId).reduceEquippedEffectDamageThenDestroy!;
-  const updated: PlayerState = {
-    ...player,
-    board: player.board.filter((u) => u.instanceId !== equipment.instanceId),
-    graveyard: [...player.graveyard, { ...equipment, damageMarked: 0, modifiers: [], graveyardCause: "destroyed" as const }],
-  };
+  const updated: PlayerState = recordGraveyardArrival(
+    {
+      ...player,
+      board: player.board.filter((u) => u.instanceId !== equipment.instanceId),
+      graveyard: [...player.graveyard, { ...equipment, damageMarked: 0, modifiers: [], graveyardCause: "destroyed" as const }],
+    },
+    { cardId: equipment.cardId, turnNumber, fromZone: "board" }
+  );
 
   return {
     state: {

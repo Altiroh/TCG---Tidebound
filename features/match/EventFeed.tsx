@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { getCardDefinition, getShipDefinition, type GameState, type PlayerId } from "@/game";
+import { getCardDefinition, getShipDefinition, type GameEvent, type GameState, type PlayerId } from "@/game";
 import { CardThumb } from "@/features/match/CardThumb";
 import { findInstanceCardId } from "@/features/match/formatEvent";
 
@@ -30,7 +30,65 @@ type Highlight =
       /** Récapitulatif en toutes lettres, affiché en infobulle au survol. */
       summary: string;
     }
-  | { kind: "effect"; key: string; targetCardId?: string; attack: number; health: number; summary: string };
+  | { kind: "effect"; key: string; targetCardId?: string; attack: number; health: number; summary: string }
+  | {
+      kind: "destroy";
+      key: string;
+      /** Carte détruite. */
+      cardId?: string;
+      /** Ce qui l'a détruite, quand le journal permet de le retrouver. */
+      cause?: DestroyCause;
+      summary: string;
+    };
+
+/**
+ * Cause d'une destruction hors attaque. `DESTROY` ne porte pas sa source :
+ * on la retrouve en remontant le journal jusqu'au dernier GESTE qui a pu la
+ * provoquer (carte jouée, Objet brisé, réaction, capacité de Navire, Marée,
+ * Sabordage). Sans geste retrouvé dans le tour, la ligne dit seulement
+ * « détruite » — jamais une cause devinée.
+ */
+type DestroyCause =
+  | { kind: "card"; cardId: string }
+  | { kind: "ship"; playerId: PlayerId; name: string }
+  | { kind: "tide" }
+  | { kind: "scuttle" }
+  | { kind: "combat" };
+
+function destroyCause(state: GameState, events: GameEvent[], index: number, instanceId: string): DestroyCause | undefined {
+  for (let i = index - 1; i >= 0; i--) {
+    const event = events[i]!;
+    switch (event.type) {
+      case "SABORDED":
+        if (event.instanceId === instanceId) return { kind: "scuttle" };
+        break;
+      case "PLAY_CARD":
+      case "OBJECT_BROKEN":
+        return { kind: "card", cardId: event.cardId };
+      case "REACTION_ACTIVATED": {
+        const cardId = findInstanceCardId(state, event.sourceInstanceId);
+        return cardId ? { kind: "card", cardId } : undefined;
+      }
+      case "SHIP_ABILITY_ACTIVATED":
+      case "SHIP_ABILITY_FIRED":
+        return { kind: "ship", playerId: event.playerId, name: event.abilityName };
+      case "TIDE_ADVANCED":
+      case "TIDE_MODIFIED":
+        return { kind: "tide" };
+      case "ATTACK":
+        return { kind: "combat" };
+      case "END_TURN":
+      case "TURN_STARTED":
+        return undefined;
+    }
+  }
+  return undefined;
+}
+
+/** Propriétaire d'une carte partie au Cimetière (ou encore en jeu). */
+function ownerOf(state: GameState, instanceId: string): PlayerId | undefined {
+  return state.players.find((p) => [...p.graveyard, ...p.board].some((c) => c.instanceId === instanceId))?.id;
+}
 
 /** Variation abrégée pour la version compacte ("+1 Rés.", "-2 Puis."). */
 function shortDelta(value: number, unit: string): string {
@@ -72,6 +130,33 @@ function buildHighlights(state: GameState, label: PlayerLabel): Highlight[] {
         attack: event.attack,
         health: event.health,
         summary: `${cardLabel(targetCardId)} : ${parts.join(" et ") || "aucune variation"}.`,
+      });
+      continue;
+    }
+    if (event.type === "DESTROY") {
+      // La cible d'une attaque est déjà marquée ☠ sur la ligne d'attaque.
+      if (isAttackTarget(events, index, event.instanceId)) continue;
+      const cardId = findInstanceCardId(state, event.instanceId);
+      const cause = destroyCause(state, events, index, event.instanceId);
+      const owner = ownerOf(state, event.instanceId);
+      const causeText =
+        cause?.kind === "card"
+          ? ` par ${cardLabel(cause.cardId)}`
+          : cause?.kind === "ship"
+            ? ` par ${cause.name} (${label(cause.playerId)})`
+            : cause?.kind === "tide"
+              ? " par la Marée"
+              : cause?.kind === "scuttle"
+                ? " : sabordée"
+                : cause?.kind === "combat"
+                  ? " au combat"
+                  : "";
+      highlights.push({
+        kind: "destroy",
+        key: `${index}`,
+        cardId,
+        cause,
+        summary: `${cardLabel(cardId)}${owner ? ` (${label(owner)})` : ""} est détruite${causeText}.`,
       });
       continue;
     }
@@ -121,6 +206,19 @@ function buildHighlights(state: GameState, label: PlayerLabel): Highlight[] {
   return highlights.reverse();
 }
 
+/**
+ * Cette destruction est-elle celle de la CIBLE d'une attaque, dans le même
+ * échange ? La ligne d'attaque la montre déjà (☠) : pas de doublon.
+ */
+function isAttackTarget(events: GameEvent[], index: number, instanceId: string): boolean {
+  for (let i = index - 1; i >= 0; i--) {
+    const event = events[i]!;
+    if (event.type === "ATTACK") return event.defenderInstanceId === instanceId;
+    if (event.type === "END_TURN" || event.type === "PHASE_CHANGED") return false;
+  }
+  return false;
+}
+
 function shipIllustration(state: GameState, playerId: PlayerId): string | undefined {
   const player = state.players.find((p) => p.id === playerId);
   const illustration = player ? getShipDefinition(player.shipId).illustration : undefined;
@@ -141,6 +239,25 @@ function deltaToneClass(value: number): string {
 function HighlightRow({ state, highlight, thumbSize = 20 }: { state: GameState; highlight: Highlight; thumbSize?: number }) {
   // Le texte suit la taille des miniatures (variante « colonne » du nouveau plateau, plus grande).
   const text = { fontSize: Math.max(10, Math.round(thumbSize * 0.42)) };
+  if (highlight.kind === "destroy") {
+    const cause = highlight.cause;
+    return (
+      <div className="flex items-center gap-1">
+        {cause?.kind === "card" && <CardThumb cardId={cause.cardId} size={thumbSize} />}
+        {cause?.kind === "ship" && <CardThumb src={shipIllustration(state, cause.playerId)} glyph="⚓" size={thumbSize} />}
+        {cause?.kind === "tide" && <CardThumb glyph="≋" size={thumbSize} />}
+        {cause && cause.kind !== "scuttle" && cause.kind !== "combat" && (
+          <span className="text-rose-300" style={text} aria-label="détruit">
+            ✦
+          </span>
+        )}
+        <CardThumb cardId={highlight.cardId} size={thumbSize} className="border-rose-500/70 opacity-60" />
+        <span className="font-semibold text-rose-300" style={text}>
+          ☠
+        </span>
+      </div>
+    );
+  }
   if (highlight.kind === "effect") {
     // Bordure de la miniature : teinte du signe DOMINANT, faute de pouvoir
     // en afficher deux — le texte, lui, garde une couleur par composante.

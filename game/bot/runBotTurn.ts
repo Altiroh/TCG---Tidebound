@@ -55,6 +55,11 @@ export function stepBotTurn(state: GameState, playerId: PlayerId, difficulty: Bo
                 ? { abilityIndex: state.pendingChoice.abilityIndexes[0] ?? 0 }
                 : state.pendingChoice.kind === "pickUnits"
                   ? { pickInstanceIds: [] as string[] }
+                : state.pendingChoice.kind === "chromaticColor"
+                  ? // Une couleur imposée doit être choisie : la première suffit.
+                    { color: state.pendingChoice.options[0]! }
+                : state.pendingChoice.kind === "deckTopDecision"
+                  ? { deckTop: "keep" as const }
                 : state.pendingChoice.kind === "keepUnits"
                   ? // Ne rien garder est légal ; le repli n'a pas à être
                     // bon, seulement valide.

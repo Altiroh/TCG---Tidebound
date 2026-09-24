@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import {
+  findAssemblage,
   getCardDefinition,
   graveyardChoicesForBreak,
   graveyardChoicesForPlay,
@@ -111,6 +112,12 @@ export interface BoardInteraction {
   /** Geste en attente d'une carte du Cimetière (Bris, pose ou réaction). */
   graveyardPick: GraveyardPickRequest | null;
   setGraveyardPick: (pick: GraveyardPickRequest | null) => void;
+  /**
+   * Carte à Assemblage en attente (Le Géant Chromatique, Lot 15) : le joueur
+   * choisit entre l'Assemblage — et ses Sentinelles — et le coût normal.
+   */
+  assemblagePick: { card: CardInstance; boardIndex?: number } | null;
+  setAssemblagePick: (pick: { card: CardInstance; boardIndex?: number } | null) => void;
   graveyardViewerPlayerId: PlayerId | null;
   setGraveyardViewerPlayerId: (playerId: PlayerId | null) => void;
   detailInstance: CardInstance | null;
@@ -152,6 +159,7 @@ export function useBoardInteraction({
   const [reactionQueue, setReactionQueue] = useState<PendingReactionCandidate[]>([]);
   const [breakPrompt, setBreakPrompt] = useState<{ card: CardInstance; source: "hand" | "board" } | null>(null);
   const [graveyardPick, setGraveyardPick] = useState<GraveyardPickRequest | null>(null);
+  const [assemblagePick, setAssemblagePick] = useState<{ card: CardInstance; boardIndex?: number } | null>(null);
   const [graveyardViewerPlayerId, setGraveyardViewerPlayerId] = useState<PlayerId | null>(null);
   const [detailInstance, setDetailInstance] = useState<CardInstance | null>(null);
   const [showPauseMenu, setShowPauseMenu] = useState(false);
@@ -160,7 +168,7 @@ export function useBoardInteraction({
   // Échap : bascule le menu de pause, sauf si une fenêtre est déjà ouverte —
   // Échap y vaut « annuler », jamais « quitter la partie ».
   useEffect(() => {
-    const overlayOpen = Boolean(detailInstance || graveyardViewerPlayerId || breakPrompt || graveyardPick);
+    const overlayOpen = Boolean(detailInstance || graveyardViewerPlayerId || breakPrompt || graveyardPick || assemblagePick);
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key !== "Escape") return;
       if (overlayOpen) return;
@@ -168,7 +176,7 @@ export function useBoardInteraction({
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [detailInstance, graveyardViewerPlayerId, breakPrompt, graveyardPick]);
+  }, [detailInstance, graveyardViewerPlayerId, breakPrompt, graveyardPick, assemblagePick]);
 
   function clearSelection() {
     setSelection(null);
@@ -199,6 +207,13 @@ export function useBoardInteraction({
       return;
     }
     const def = getCardDefinition(card.cardId);
+    // « Assemblage Chromatique » : dès qu'il est possible, la question se
+    // pose — Assembler, ou payer le coût normal. Jamais décidée à la place
+    // du joueur.
+    if (def.chromaticAssemblage && findAssemblage(viewer.board, def.chromaticAssemblage.sentinels)) {
+      setAssemblagePick({ card, boardIndex });
+      return;
+    }
     if (needsPlayTarget(def, viewer.board)) {
       setSelection({ kind: "playCard", instanceId, needsTarget: true });
       return;
@@ -289,6 +304,8 @@ export function useBoardInteraction({
     setBreakPrompt,
     graveyardPick,
     setGraveyardPick,
+    assemblagePick,
+    setAssemblagePick,
     graveyardViewerPlayerId,
     setGraveyardViewerPlayerId,
     detailInstance,

@@ -23,6 +23,7 @@ import { ActionToastStack } from "@/features/match/ActionToastStack";
 import { CardDetailModal } from "@/features/match/CardDetailModal";
 import { EventFeed } from "@/features/match/EventFeed";
 import { GraveyardPickPrompt } from "@/features/match/GraveyardPickPrompt";
+import { AssemblagePrompt } from "@/features/match/AssemblagePrompt";
 import { GraveyardViewer } from "@/features/match/GraveyardViewer";
 import { MatchEndScreen } from "@/features/match/MatchEndScreen";
 import { MatchPauseMenu } from "@/features/match/MatchPauseMenu";
@@ -140,6 +141,8 @@ export function MatchBoard({
     controllerBoard: player.board,
     controllerReason: player.reason,
     tideOrientation: state.environment.tideOrientation,
+    // Signal Rouge (Lot 15) : un bonus « pendant votre tour ».
+    controllerIsActive: state.activePlayerId === player.id,
   });
   const bannerEvent = usePhaseBannerEvent(state);
   const actionToasts = useActionToasts(state);
@@ -545,6 +548,24 @@ export function MatchBoard({
               submit(view.actionFor(chosen));
             }}
             onCancel={() => board.setGraveyardPick(null)}
+          />
+        );
+      })()}
+      {board.assemblagePick && (() => {
+        const { card, boardIndex } = board.assemblagePick;
+        return (
+          <AssemblagePrompt
+            card={card}
+            board={liveState.players.find((p) => p.id === activePlayerId)?.board ?? []}
+            onAssemble={(assemblage) => {
+              board.setAssemblagePick(null);
+              runAction({ type: "playCard", playerId: activePlayerId, instanceId: card.instanceId, boardIndex, assemblage });
+            }}
+            onPlayNormally={() => {
+              board.setAssemblagePick(null);
+              runAction({ type: "playCard", playerId: activePlayerId, instanceId: card.instanceId, boardIndex });
+            }}
+            onCancel={() => board.setAssemblagePick(null)}
           />
         );
       })()}

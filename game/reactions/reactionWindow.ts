@@ -52,6 +52,17 @@ export function deriveReactionTriggerEvents(state: GameState, events: GameEvent[
         const found = findCardInstance(state, event.targetInstanceId);
         if (!found || found.zone !== "board") break;
         derived.push({ trigger: "onDamaged", playerId: found.owner.id, cardId: found.card.cardId, sourceInstanceId: event.targetInstanceId });
+        // La fenêtre s'ouvre APRÈS la passe de morts : une unité encore en
+        // jeu a donc survécu à ces dégâts (Lot 15 — Jusqu'à ce que ça casse).
+        if (!found.card.pendingRemoval) {
+          derived.push({
+            trigger: "onSurvivedDamage",
+            playerId: found.owner.id,
+            cardId: found.card.cardId,
+            sourceInstanceId: event.targetInstanceId,
+            damage: [{ cause: event.cause, byPlayerId: event.sourcePlayerId }],
+          });
+        }
         break;
       }
       // Une mort ouvre une fenêtre comme le reste : la carte morte peut

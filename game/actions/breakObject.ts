@@ -28,6 +28,7 @@ import {
 import { isVisibleDuringTide, type CardDefinition, type CardInstance } from "@/game/cards/types";
 import { payReasonCost, reasonCostAfterShield } from "@/game/state/shields";
 import { getPlayer, type GameState, type PlayerId, type PlayerState } from "@/game/state/types";
+import { recordGraveyardArrival } from "@/game/state/discard";
 import type { ActionResult, BreakObjectAction } from "@/game/actions/types";
 
 /**
@@ -39,6 +40,27 @@ import type { ActionResult, BreakObjectAction } from "@/game/actions/types";
  */
 export function handBreakCost(def: CardDefinition): number {
   return Math.max(1, Math.ceil(def.cost / 2));
+}
+
+/**
+ * Cibles qui n'existent que DANS une fenêtre de réaction : l'attaquant ou la
+ * cible de l'attaque suspendue, la carte qui a déclenché la capacité.
+ */
+const REACTION_ONLY_TARGETS: ReadonlySet<string> = new Set(["pendingAttacker", "attackTarget", "triggerSource"]);
+
+/**
+ * Objet RÉACTIF : son effet de Bris vise ce qu'une fenêtre de réaction
+ * fournit (Harpon à Ressort, « lorsqu'une unité adverse attaque […]
+ * infligez-lui 2 dégâts » ; Bouclier d'Écume). Il ne se Brise que par sa
+ * capacité, quand la situation se présente.
+ *
+ * Un Bris MANUEL — pendant sa propre Phase principale, sans attaque en
+ * cours — résolvait l'effet sur une cible vide : l'Objet partait au
+ * Cimetière sans rien faire (retour du 23/09). Il est donc refusé, et
+ * l'invite le dit.
+ */
+export function breaksOnlyInReaction(def: CardDefinition): boolean {
+  return (def.onBreakEffects ?? []).some((effect) => REACTION_ONLY_TARGETS.has(effect.target.kind));
 }
 
 /**
@@ -201,7 +223,7 @@ export function previewHandBreakReason(
   state: GameState,
   playerId: PlayerId,
   instanceId: string
-): { cost: number; reasonAfter: number; allowed: boolean } | undefined {
+): { cost: number; reasonAfter: number; allowed: boolean; reactionOnly: boolean } | undefined {
   return previewBreakReason(state, playerId, instanceId, true);
 }
 
@@ -218,7 +240,7 @@ export function previewBreakReason(
   playerId: PlayerId,
   instanceId: string,
   fromHand: boolean
-): { cost: number; reasonAfter: number; allowed: boolean } | undefined {
+): { cost: number; reasonAfter: number; allowed: boolean; reactionOnly: boolean } | undefined {
   const player = state.players.find((p) => p.id === playerId);
   const card = (fromHand ? player?.hand : player?.board)?.find((c) => c.instanceId === instanceId);
   if (!player || !card) return undefined;
@@ -230,8 +252,9 @@ export function previewBreakReason(
   // Hors taxe bloquante, un coût se paie toujours : l'UI n'a qu'à annoncer
   // la dette. Une Cloche d'Alerte adverse, elle, peut rendre le Bris
   // impossible — l'aperçu doit le dire AVANT que le joueur ne tente.
-  const allowed = !tax.blocksIfUnpayable || player.reason >= cost;
-  return { cost, reasonAfter: player.reason - cost, allowed };
+  const reactionOnly = breaksOnlyInReaction(def);
+  const allowed = !reactionOnly && (!tax.blocksIfUnpayable || player.reason >= cost);
+  return { cost, reasonAfter: player.reason - cost, allowed, reactionOnly };
 }
 
 
@@ -259,6 +282,10 @@ function validate(state: GameState, action: BreakObjectAction) {
       reasonCostAfterShield(state, action.playerId, handBreakCost(def), state.turnNumber)
     );
     if (!costCheck.ok) return costCheck;
+  }
+
+  if (breaksOnlyInReaction(def)) {
+    return { ok: false as const, error: "Cet Objet ne se Brise qu'en réaction, quand la situation de son texte se présente." };
   }
 
   if (def.requiresTideStateForBreak && !def.requiresTideStateForBreak.includes(state.environment.tideState)) {
@@ -334,12 +361,15 @@ export function breakObject(state: GameState, action: BreakObjectAction): Action
   const base = { turnNumber: state.turnNumber, timestamp: Date.now() };
 
   // Depuis la main : ne prend jamais de Slot, va directement en défausse après résolution.
-  const playerAfter: PlayerState = {
-    ...player,
-    hand: action.fromHand ? player.hand.filter((c) => c.instanceId !== unit.instanceId) : player.hand,
-    board: action.fromHand ? player.board : player.board.filter((u) => u.instanceId !== unit.instanceId),
-    graveyard: [...player.graveyard, { ...unit, damageMarked: 0, modifiers: [] }],
-  };
+  const playerAfter: PlayerState = recordGraveyardArrival(
+    {
+      ...player,
+      hand: action.fromHand ? player.hand.filter((c) => c.instanceId !== unit.instanceId) : player.hand,
+      board: action.fromHand ? player.board : player.board.filter((u) => u.instanceId !== unit.instanceId),
+      graveyard: [...player.graveyard, { ...unit, damageMarked: 0, modifiers: [] }],
+    },
+    { cardId: unit.cardId, turnNumber: state.turnNumber, fromZone }
+  );
 
   let nextState: GameState = {
     ...state,

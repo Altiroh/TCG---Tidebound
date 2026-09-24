@@ -43,7 +43,8 @@ export type GameEventType =
   | "SHIP_ABILITY_ACTIVATED"
   | "SHIP_ABILITY_FIRED"
   | "TURN_TIMED_OUT"
-  | "STRUCTURE_REHIDDEN";
+  | "STRUCTURE_REHIDDEN"
+  | "UNIT_TARGETED";
 
 export interface BaseGameEvent {
   type: GameEventType;
@@ -96,6 +97,14 @@ export interface DamageEvent extends BaseGameEvent {
    * d'attaque ne lit QUE ces deux-là, sans deviner d'après l'ordre du lot.
    */
   combat?: "strike" | "retaliation";
+  /**
+   * D'où viennent ces dégâts (Lot 15) : combat, effet de carte ou Marée —
+   * et, pour un effet, QUEL joueur le contrôlait. C'est ce que lisent « des
+   * dégâts infligés par l'un de vos effets » (Maître Verrier, Pont de Verre).
+   * Absent sur les coups que rien ne qualifie encore.
+   */
+  cause?: "combat" | "effect" | "tide";
+  sourcePlayerId?: PlayerId;
 }
 
 export interface HealEvent extends BaseGameEvent {
@@ -156,6 +165,12 @@ export interface ReasonChangedEvent extends BaseGameEvent {
   type: "REASON_CHANGED";
   playerId: PlayerId;
   delta: number;
+  /**
+   * `"card"` : un gain obtenu GRÂCE À UNE CARTE (effet `reasonGain`), par
+   * opposition à la régénération de début de tour — « la première fois que
+   * vous récupérez de la Raison grâce à une carte » (Survivant de la Mousse).
+   */
+  source?: "card";
 }
 
 /**
@@ -198,6 +213,23 @@ export interface CardMovedEvent extends BaseGameEvent {
   toInstanceId?: string;
   /** Propriétaire de la carte déplacée. */
   ownerId?: PlayerId;
+  /**
+   * Défausse décidée par un EFFET de carte (`true`) ou par la limite de main
+   * en fin de tour (`false`). Absent sur les autres déplacements.
+   */
+  discardByEffect?: boolean;
+}
+
+/**
+ * Une unité vient d'être DÉSIGNÉE par l'effet d'un joueur qui ne la contrôle
+ * pas (Lot 15 — Signal Violet, « est ciblée par un effet adverse »). Émis par
+ * `resolveEffect` au moment où l'effet lit sa cible désignée.
+ */
+export interface UnitTargetedEvent extends BaseGameEvent {
+  type: "UNIT_TARGETED";
+  instanceId: string;
+  /** Joueur dont l'effet vise l'unité. */
+  byPlayerId: PlayerId;
 }
 
 export interface TurnStartedEvent extends BaseGameEvent {
@@ -474,4 +506,5 @@ export type GameEvent =
   | ShipAbilityActivatedEvent
   | ShipAbilityFiredEvent
   | TurnTimedOutEvent
-  | StructureRehiddenEvent;
+  | StructureRehiddenEvent
+  | UnitTargetedEvent;

@@ -1,9 +1,10 @@
+import { getCardDefinition } from "@/game/cards/sets/core";
 import { annoncerMaree, applyTideTurnEffects, appliquerMareeAnnoncee } from "@/game/environment/resolveEnvironment";
 import { getShipDefinition } from "@/game/environment/shipData";
 import { deraisonAnchorDamage, deraisonDebt, reasonCeiling, startingReasonCap } from "@/game/state/reason";
 import type { GameEvent } from "@/game/events/types";
 import { processDiscardedFromHandTriggers, processTrigger } from "@/game/triggers/triggerBus";
-import { discardFromHand, pruneGraveyardArrivals } from "@/game/state/discard";
+import { discardFromHand, markArrivalsBeforeTurnStart, pruneGraveyardArrivals } from "@/game/state/discard";
 import { RULES } from "@/game/rules/constants";
 import { assertGameActive, assertIsActivePlayer, assertPlayerInGame, combine } from "@/game/rules/validation";
 import { findAnomalyForcedChoice } from "@/game/state/anomalies";
@@ -84,6 +85,40 @@ export function endTurn(state: GameState, action: EndTurnAction): ActionResult {
       })),
     })) as [PlayerState, PlayerState],
   };
+
+  // « Jusqu'à la fin du tour » porté par un PERMANENT (Jusqu'à ce que ça
+  // casse, Lot 15) : la carte a tenu son tour, elle part. Une expiration —
+  // ni mort ni Sabordage —, qui réveille `onExpire` comme une durée échue.
+  for (const player of nextState.players) {
+    const echues = player.board.filter((u) => getCardDefinition(u.cardId).expiresAtEndOfTurn);
+    if (echues.length === 0) continue;
+    const ids = new Set(echues.map((u) => u.instanceId));
+    nextState = {
+      ...nextState,
+      players: nextState.players.map((p) =>
+        p.id === player.id
+          ? {
+              ...p,
+              board: p.board.filter((u) => !ids.has(u.instanceId)),
+              graveyard: [
+                ...p.graveyard,
+                ...echues.map((u) => ({ ...u, damageMarked: 0, modifiers: [], graveyardCause: "expired" as const })),
+              ],
+            }
+          : p
+      ) as [PlayerState, PlayerState],
+    };
+    for (const carte of echues) {
+      events.push({ ...base, type: "CARD_MOVED", instanceId: carte.instanceId, cardId: carte.cardId, ownerId: player.id, fromZone: "board", toZone: "graveyard" });
+      const expire = processTrigger(
+        nextState,
+        { trigger: "onExpire", playerId: player.id, cardId: carte.cardId, sourceInstanceId: carte.instanceId },
+        state.turnNumber
+      );
+      nextState = expire.state;
+      events.push(...expire.events);
+    }
+  }
 
   // --- Défausse forcée (cadrage "Règles & mécaniques verrouillées" : main
   // maximale 7) : appliquée en fin de tour, pour le joueur qui vient de
@@ -334,7 +369,11 @@ export function entameDeTour(state: GameState, eventsAvant: GameEvent[] = []): A
     hasAttackedThisTurn: false,
     // Début du tour de ce joueur : ses bonus "jusqu'à votre prochain tour"
     // ont fait leur office (ils l'ont couvert pendant le tour adverse).
-    modifiers: u.modifiers.filter((m) => m.duration === "permanent"),
+    // Sauf ceux qu'un ADVERSAIRE a posés « jusqu'à SON prochain tour »
+    // (`appliedBy`, Lot 15) : ils tiennent jusqu'au tour de celui-là.
+    modifiers: u.modifiers.filter(
+      (m) => m.duration === "permanent" || (m.duration === "untilYourNextTurn" && m.appliedBy !== undefined && m.appliedBy !== nextPlayer.id)
+    ),
   }));
 
   const refreshedPlayer: PlayerState = {
@@ -354,20 +393,33 @@ export function entameDeTour(state: GameState, eventsAvant: GameEvent[] = []): A
 
   nextState = {
     ...nextState,
-    players: nextState.players.map((p) => (p.id === refreshedPlayer.id ? refreshedPlayer : p)) as [
-      PlayerState,
-      PlayerState
-    ],
+    players: nextState.players.map((p) =>
+      p.id === refreshedPlayer.id
+        ? refreshedPlayer
+        : {
+            // Et, sur le plateau d'en face, ce que CE joueur y avait posé
+            // « jusqu'à votre prochain tour » : c'est maintenant.
+            ...p,
+            board: p.board.map((u) => ({
+              ...u,
+              modifiers: u.modifiers.filter((m) => !(m.duration === "untilYourNextTurn" && m.appliedBy === nextPlayer.id)),
+            })),
+          }
+    ) as [PlayerState, PlayerState],
     pendingOceanJudgment,
   };
 
   // Élagage du journal des arrivées au Cimetière, au tour qui COMMENCE et
   // non à celui qui finit : « depuis votre dernier tour » doit encore voir
-  // le tour adverse qui vient de s'écouler quand les capacités de début de
-  // tour se déclenchent, juste en dessous.
+  // les tours écoulés quand les capacités de début de tour se déclenchent,
+  // juste en dessous. Ce que l'entame a déjà envoyé au Cimetière du joueur
+  // actif est vu MAINTENANT, et marqué pour ne pas l'être deux fois.
   nextState = {
     ...nextState,
-    players: nextState.players.map((p) => pruneGraveyardArrivals(p, newTurnNumber)) as [PlayerState, PlayerState],
+    players: nextState.players.map((p) => {
+      const pruned = pruneGraveyardArrivals(p, newTurnNumber);
+      return p.id === refreshedPlayer.id ? markArrivalsBeforeTurnStart(pruned, newTurnNumber) : pruned;
+    }) as [PlayerState, PlayerState],
   };
 
   events.push({ ...newBase, type: "TURN_STARTED", playerId: refreshedPlayer.id });
