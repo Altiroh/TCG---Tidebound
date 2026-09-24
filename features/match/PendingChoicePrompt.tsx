@@ -1,6 +1,7 @@
 "use client";
 
 import { CHROMATIC_COLOR_LABELS, getCardDefinition, type PendingChoice, type ResolveChoiceAction } from "@/game";
+import { CardTile } from "@/features/match/CardTile";
 import { PromptActions, PromptButton, PromptEffect, PromptEyebrow, PromptQuestion, PromptShell } from "@/features/match/PromptShell";
 
 interface PendingChoicePromptProps {
@@ -80,24 +81,31 @@ export function PendingChoicePrompt({ choice, onChoose }: PendingChoicePromptPro
 
   // « Regardez la première carte de la pioche adverse. Vous pouvez la placer
   // sous sa pioche. » (Éclaireur à Cornes)
+  // La carte vue est MONTRÉE, pas seulement nommée : c'est elle qu'on juge.
+  // Même mise en page que le bris d'Objet (`ObjectBreakPrompt`).
   if (choice.kind === "deckTopDecision") {
     const def = getCardDefinition(choice.card.cardId);
     return (
-      <PromptShell ariaLabel="Carte du dessus de la pioche adverse">
-        <div className="flex flex-col items-center gap-3 pt-1">
-          <PromptEyebrow>Dessus de la pioche adverse</PromptEyebrow>
-          <PromptEffect>
-            {def.name} — {def.cost} Raison
-          </PromptEffect>
-          {def.text && <PromptQuestion>{def.text}</PromptQuestion>}
-          <PromptActions>
-            <PromptButton tone="accept" onClick={() => onChoose({ deckTop: "bottom" })}>
-              Sous sa pioche
-            </PromptButton>
-            <PromptButton tone="neutral" onClick={() => onChoose({ deckTop: "keep" })}>
-              La laisser dessus
-            </PromptButton>
-          </PromptActions>
+      <PromptShell ariaLabel="Carte du dessus de la pioche adverse" width="wide">
+        <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:text-left">
+          <div className="pointer-events-none mx-auto w-36 shrink-0">
+            <CardTile instance={choice.card} tideState="calme" widthClassName="w-36" scaleOnHover={false} badgeSize={38} />
+          </div>
+          <div className="flex flex-1 flex-col items-center gap-3 sm:items-start">
+            <PromptEyebrow>Dessus de la pioche adverse</PromptEyebrow>
+            <PromptEffect>
+              {def.name} — {def.cost} Raison
+            </PromptEffect>
+            {def.text && <PromptQuestion>{def.text}</PromptQuestion>}
+            <PromptActions>
+              <PromptButton tone="accept" onClick={() => onChoose({ deckTop: "bottom" })}>
+                Sous sa pioche
+              </PromptButton>
+              <PromptButton tone="neutral" onClick={() => onChoose({ deckTop: "keep" })}>
+                La laisser dessus
+              </PromptButton>
+            </PromptActions>
+          </div>
         </div>
       </PromptShell>
     );
