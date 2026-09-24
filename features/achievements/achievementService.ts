@@ -39,7 +39,7 @@ export async function readAchievementStats(userId: string): Promise<AchievementS
 async function readStats(userId: string): Promise<AchievementStats | null> {
   const service = createSupabaseServiceRoleClient();
 
-  const [progression, onboarding, unlocks, cards, boosters, losses] = await Promise.all([
+  const [progression, onboarding, unlocks, cards, boosters, losses, voyages] = await Promise.all([
     service.from("player_progression").select("level, xp_total, matches_played, pvp_wins").eq("user_id", userId).maybeSingle(),
     service.from("player_onboarding").select("tutorial_status").eq("user_id", userId).maybeSingle(),
     service.from("player_deck_unlocks").select("deck_id, source").eq("user_id", userId),
@@ -52,6 +52,10 @@ async function readStats(userId: string): Promise<AchievementStats | null> {
     // Collectable, pour un compteur qui n'en concerne que deux. Isolée, elle
     // retombe à zéro et le reste continue de vivre.
     service.from("player_progression").select("losses").eq("user_id", userId).maybeSingle(),
+    // Isolée pour la même raison : `player_voyages` arrive par la migration
+    // des Traversées (`20261007120000_voyages`). Absente, aucune Traversée
+    // n'est bouclée, et le reste des exploits vit sa vie.
+    service.from("player_voyages").select("voyage_id").eq("user_id", userId).not("completed_at", "is", null),
   ]);
 
   if (!progression.data) return null;
@@ -95,6 +99,7 @@ async function readStats(userId: string): Promise<AchievementStats | null> {
     preconDecksUnlocked: (unlocks.data ?? []).filter((row) => row.source === "precon_token").length,
     decksFullyOwned,
     tutorialCompleted: onboarding.data?.tutorial_status === "completed",
+    voyagesCompleted: voyages.error ? [] : (voyages.data ?? []).map((row) => row.voyage_id),
   };
 }
 

@@ -53,6 +53,10 @@ export const TITLE_CATALOG: readonly TitleDefinition[] = [
   { id: "second", name: "Second", unlock: { kind: "achievement", code: "level_30" } },
   { id: "capitaine", name: "Capitaine", unlock: { kind: "achievement", code: "level_40" } },
   { id: "amiral-des-marees", name: "Amiral des marées", unlock: { kind: "achievement", code: "level_50" } },
+  // Traversées bouclées (audit du 24/09/2026).
+  { id: "timonier", name: "Timonier", unlock: { kind: "achievement", code: "voyage_premier_quart" } },
+  { id: "revenant-des-brumes", name: "Revenant des brumes", unlock: { kind: "achievement", code: "voyage_eaux_troubles" } },
+  { id: "maitre-de-manoeuvre", name: "Maître de manœuvre", unlock: { kind: "achievement", code: "voyage_grand_fond" } },
 ];
 
 export function titleById(id: string | null | undefined): TitleDefinition | undefined {

@@ -26,6 +26,7 @@ const NOTHING: AchievementStats = {
   preconDecksUnlocked: 0,
   decksFullyOwned: 0,
   tutorialCompleted: false,
+  voyagesCompleted: [],
 };
 
 const NONE = new Set<string>();

@@ -2,6 +2,7 @@ import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import type { GameState, PlayerId } from "@/game";
 import { computeMatchQuestContribution, questPeriodKey, selectQuestsForPeriod, type QuestType } from "@/game/quests";
 import { utcDayKey } from "@/game/progression";
+import { recordMatchVoyageProgress } from "@/features/quests/voyageService";
 
 /**
  * Quêtes — opérations SERVEUR (attribution, progression). Pas de directive
@@ -103,6 +104,10 @@ export async function recordMatchQuestProgress(input: RecordMatchQuestProgressIn
       p_sets: sets as Record<string, string[]>,
     });
     if (error) console.error("[recordMatchQuestProgress] Progression refusée :", error.message);
+
+    // L'escale de la Traversée en cours avance sur la MÊME contribution :
+    // une partie, un seul calcul, et aucune chance que les deux divergent.
+    await recordMatchVoyageProgress({ matchId: input.matchId, userId: input.userId, contribution: { progress, sets } });
   } catch (error) {
     console.error("[recordMatchQuestProgress] Échec :", error);
   }
