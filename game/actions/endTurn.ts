@@ -36,7 +36,9 @@ function validate(state: GameState, action: EndTurnAction) {
  *    resynchronisée 2026-09-10 après éviction du sous-système des Eaux) :
  *   1. Vérification de la Marée (décompte + progression + orientation + dégâts du tour)
  *   2. Effets différés — non modélisés pour le MVP, étape ignorée
- *   3. Remise à niveau de la Raison : 25 % / 50 % / 75 % de la Raison max aux 3 premiers tours du joueur, puis 100 %
+ *   3. Récupération naturelle de la Raison (`RULES.REASON_RECOVERY_CURVE` :
+ *      +2, +3, +3, puis +4), bornée par le plafond de début de partie
+ *      (`RULES.STARTING_REASON_CURVE`), après absorption d'une dette subie
  *   4. Pioche d'une carte
  *   5. Phase principale : dégel des unités (résiliation des attaques,
  *      nettoyage des modificateurs temporaires) — aucune action à
