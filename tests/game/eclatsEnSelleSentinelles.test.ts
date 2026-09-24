@@ -193,6 +193,44 @@ describe("pierres et Éclats", () => {
     ok(fin);
     expect(unite(fin.state, emissaire.instanceId)).toBeUndefined();
     expect(joueur(fin.state, "p1").board.map((u) => u.cardId)).toContain("eclat-chromatique-vert");
+    // Son texte crée déjà son Éclat : la règle de famille n'en ajoute pas un second.
+    expect(joueur(fin.state, "p1").board.filter((u) => u.cardId.startsWith("eclat-chromatique"))).toHaveLength(1);
+  });
+
+  describe("la pierre survit à son porteur (règle de famille, 24/09/2026)", () => {
+    const eclats = (state: GameState, id: string) =>
+      joueur(state, id).board.filter((u) => u.cardId.startsWith("eclat-chromatique")).map((u) => u.cardId);
+
+    it("une Sentinelle tuée au combat laisse un Éclat de sa couleur à son contrôleur", () => {
+      // Gardienne de l'Éclat (Jaune, 4 Résistance) déjà à 1 : la riposte du Poisson-lanterne l'achève.
+      const gardienne = instance("gardienne-de-leclat", "p1", { damageMarked: 3 });
+      const poisson = instance("poisson-lanterne", "p2");
+      const r = dispatch(table({ board: [gardienne] }, { board: [poisson] }, { phase: "combatPhase" }), {
+        type: "attack",
+        playerId: "p1",
+        attackerInstanceId: gardienne.instanceId,
+        defenderInstanceId: poisson.instanceId,
+      });
+      ok(r);
+      const fin = passerTout(r.state);
+      expect(unite(fin, gardienne.instanceId)).toBeUndefined();
+      expect(eclats(fin, "p1")).toEqual(["eclat-chromatique-jaune"]);
+      expect(eclats(fin, "p2")).toEqual([]);
+    });
+
+    it("sabordée aussi : c'est une destruction, comme pour Émissaire de Quartz", () => {
+      const heros = instance("heros-de-la-flamme", "p1");
+      const r = dispatch(table({ board: [heros] }), { type: "saborder", playerId: "p1", instanceId: heros.instanceId });
+      ok(r);
+      expect(eclats(passerTout(r.state), "p1")).toEqual(["eclat-chromatique-rouge"]);
+    });
+
+    it("une unité qui n'est pas une Sentinelle ne laisse rien", () => {
+      const requin = instance("requin-balafre", "p1");
+      const r = dispatch(table({ board: [requin] }), { type: "saborder", playerId: "p1", instanceId: requin.instanceId });
+      ok(r);
+      expect(eclats(passerTout(r.state), "p1")).toEqual([]);
+    });
   });
 
   it("Héraut de Nacre prend la couleur d'un Éclat, et en émet le Signal", () => {
