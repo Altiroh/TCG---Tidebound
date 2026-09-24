@@ -160,6 +160,9 @@ export function ScreenHeader({ active, actions, onNavigate, nav = "collection" }
               alt="Tidebound"
               width={1600}
               height={631}
+              // Affiché à 62 px de haut au plus (≈ 160 px de large) : sans
+              // `sizes`, Next servait la source entière (1600 px) à chaque écran.
+              sizes="160px"
               priority
               className={styles.brandLogo}
             />

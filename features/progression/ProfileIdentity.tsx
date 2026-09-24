@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { getCardDefinition } from "@/game";
-import { cardIllustrationUrl } from "@/features/decks/nameplateArt";
+import { cardIllustrationThumbUrl } from "@/features/decks/cardArtUrl";
 import { updateProfileIdentity } from "@/features/progression/profileActions";
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
 import game from "@/features/shell/GameScreen.module.css";
@@ -86,7 +86,7 @@ export function ProfileIdentity({ displayName, avatarCardId, onChanged, onPickIl
         <button
           type="button"
           className={styles.avatar}
-          style={avatarCardId ? { backgroundImage: `url("${cardIllustrationUrl(avatarCardId)}")` } : undefined}
+          style={avatarCardId ? { backgroundImage: `url("${cardIllustrationThumbUrl(avatarCardId)}")` } : undefined}
           onClick={() => {
             playButtonClick();
             setError(null);

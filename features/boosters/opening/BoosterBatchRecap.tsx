@@ -5,7 +5,7 @@ import { getCardDefinition, type CardInstance } from "@/game";
 import { RARITY_ORDER } from "@/game/boosters";
 import { CardTile } from "@/features/match/CardTile";
 import { CARD_RARITY_LABELS, CARD_TYPE_LABELS } from "@/features/match/cardDisplay";
-import { cardIllustrationUrl } from "@/features/decks/nameplateArt";
+import { cardIllustrationThumbUrl } from "@/features/decks/cardArtUrl";
 import { CardDetailModal } from "@/features/collection/card-detail/CardDetailModal";
 import { playButtonClick } from "@/lib/sound";
 import game from "@/features/shell/GameScreen.module.css";
@@ -182,7 +182,7 @@ export function BoosterBatchRecap({ packs, lines, onClose }: BoosterBatchRecapPr
                   >
                     <span
                       className={styles.lineArt}
-                      style={{ backgroundImage: `url("${cardIllustrationUrl(line.cardId)}")` }}
+                      style={{ backgroundImage: `url("${cardIllustrationThumbUrl(line.cardId)}")` }}
                       aria-hidden
                     />
                     <span className={styles.lineName}>

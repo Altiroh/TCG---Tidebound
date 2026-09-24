@@ -1,4 +1,5 @@
 import { getCardDefinition, SHIP_DATABASE } from "@/game";
+import { cardIllustrationUrl } from "@/features/decks/cardArtUrl";
 import { shipIllustrationUrl } from "@/features/ships/shipFrame";
 
 /**
@@ -33,10 +34,9 @@ export function plateArtUrl(cardId: string | null, shipId: string): string | nul
   return ship?.illustration ? shipIllustrationUrl(ship.illustration) : null;
 }
 
-/** Illustration d'une carte, telle que servie par `public/assets`. */
-export function cardIllustrationUrl(cardId: string): string {
-  return `/assets/cards/illustrations/${cardId}.webp`;
-}
+// Les URLs vivent dans `cardArtUrl.ts`, sans dépendance au moteur ; elles
+// restent exportées d'ici pour les appelants existants.
+export { cardIllustrationThumbUrl, cardIllustrationUrl } from "@/features/decks/cardArtUrl";
 
 /** La carte qui résume le deck : coût le plus élevé, puis nom, puis identifiant. */
 export function signatureCardId(cardIds: readonly string[]): string | null {

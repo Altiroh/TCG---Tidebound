@@ -70,6 +70,38 @@ describe("illustrations du catalogue", () => {
   });
 });
 
+describe("vignettes d'illustration", () => {
+  /**
+   * `CardTile` propose l'illustration ET sa vignette (`illustrations/mini/`)
+   * au navigateur, qui prend la vignette tant que la carte est petite. Une
+   * vignette manquante, c'est donc une carte SANS IMAGE en main et sur le
+   * plateau — alors que l'original, lui, est bien là. Elles se fabriquent
+   * avec `node scripts/optimizeImages.mjs`.
+   */
+  const MINI = path.join(DOSSIER, "mini");
+  const illustrations = [...fichiers].filter((nom) => nom.endsWith(".webp"));
+
+  // Présence seulement, pas fraîcheur : Git ne conserve pas les dates de
+  // fichiers, un clone les remet toutes à l'heure du checkout.
+  it("chaque illustration a sa vignette", () => {
+    const absentes = illustrations.filter((nom) => !existsSync(path.join(MINI, nom)));
+    expect(absentes, `\nÀ (re)fabriquer : node scripts/optimizeImages.mjs\n${absentes.join("\n")}\n`).toEqual([]);
+  });
+
+  it("aucune vignette orpheline", () => {
+    const orphelines = readdirSync(MINI).filter((nom) => !fichiers.has(nom));
+    expect(orphelines).toEqual([]);
+  });
+
+  it("chaque cadre de carte a aussi sa vignette", () => {
+    const cadres = path.join(process.cwd(), "public", "assets", "cards", "frames");
+    const absentes = readdirSync(cadres)
+      .filter((nom) => nom.endsWith(".webp"))
+      .filter((nom) => !existsSync(path.join(cadres, "mini", nom)));
+    expect(absentes, "\nÀ fabriquer : node scripts/optimizeImages.mjs\n").toEqual([]);
+  });
+});
+
 describe("visuels de sachet", () => {
   /**
    * Un booster dont le visuel pointe encore sur celui d'un autre s'affiche

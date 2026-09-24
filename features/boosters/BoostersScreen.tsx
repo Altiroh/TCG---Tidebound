@@ -191,16 +191,17 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
   }, [maxBatch]);
 
   // Images de la scène chargées et décodées en avance : l'ouverture démarre
-  // sans flash. Seulement ce qu'on possède — précharger un sachet qu'on ne
-  // peut pas ouvrir ferait payer le réseau pour rien.
-  const ownedIdsKey = rows.filter((row) => row.owned > 0).map((row) => row.boosterId).join(",");
+  // sans flash. Seulement celle qu'on regarde ET qu'on possède (audit du
+  // 24/09) : précharger tous les sachets de la réserve coûtait jusqu'à
+  // 4 Mo à l'arrivée sur l'écran, pour des scènes qu'on n'ouvrira pas.
+  // Changer d'extension précharge la suivante — le glisser-déposer la
+  // sélectionne aussi, avant même le lâcher.
   const cardBack = useCardBackSrc();
+  const preloadId = ownsSelected ? (selected?.boosterId ?? null) : null;
   useEffect(() => {
-    if (!ownedIdsKey) return;
-    for (const boosterId of ownedIdsKey.split(",")) {
-      void preloadBoosterOpeningAssets(getBoosterPackVisual(boosterId), cardBack);
-    }
-  }, [ownedIdsKey, cardBack]);
+    if (!preloadId) return;
+    void preloadBoosterOpeningAssets(getBoosterPackVisual(preloadId), cardBack);
+  }, [preloadId, cardBack]);
 
   function select(boosterId: string) {
     playButtonClick();

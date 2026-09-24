@@ -229,6 +229,17 @@ function getIllustrationUrl(def: CardDefinition, instance: CardInstance): string
   return `${directory}/${instance.cardId}${variant}.webp`;
 }
 
+/**
+ * Vignette d'une illustration ou d'un cadre (`<dossier>/mini/`, fabriquée
+ * par `scripts/optimizeImages.mjs`), `null` hors de ces deux dossiers — un
+ * jeton n'en a pas, il n'est jamais qu'en petit.
+ */
+const THUMB_DIRECTORIES = ["/assets/cards/illustrations/", "/assets/cards/frames/"] as const;
+function getThumbUrl(url: string): string | null {
+  const directory = THUMB_DIRECTORIES.find((prefix) => url.startsWith(prefix));
+  return directory ? `${directory}mini/${url.slice(directory.length)}` : null;
+}
+
 /** Calque optionnel, Abyssales uniquement — silhouette à fond transparent qui déborde du cadre, posée par-dessus. */
 function getDebordUrl(cardId: string): string {
   return `/assets/cards/illustrations/${cardId}-debord.webp`;
@@ -399,9 +410,19 @@ export function CardTile({
   // Le débord n'existe que pour les Abyssales (`public/assets/cards/README.md`) :
   // inutile d'aller le chercher pour toutes les autres cartes.
   const debordUrl = isAbyssal ? getDebordUrl(instance.cardId) : null;
-  const frameOk = useImageOk(frameUrl);
+  const frameThumbUrl = getThumbUrl(frameUrl);
+  // Le cadre, lui, reste sondé (sa présence décide de la mise en page) —
+  // mais sur sa VIGNETTE : ~65 Ko au lieu de ~245.
+  const frameOk = useImageOk(frameThumbUrl ?? frameUrl);
   const typeIconOk = useImageOk(typeIconUrl);
-  const illustrationOk = useImageOk(illustrationUrl);
+  const illustrationThumbUrl = getThumbUrl(illustrationUrl);
+  // L'illustration n'est PLUS sondée d'avance par `useImageOk` (audit du
+  // 24/09) : la sonde est un `new Image()` IMMÉDIAT, qui téléchargeait
+  // l'original de chaque carte montée — toute la grille de la Collection,
+  // hors écran compris — et rendait le `loading="lazy"` sans effet. La
+  // balise est posée directement ; si le fichier manque, elle se retire.
+  const [illustrationFailed, setIllustrationFailed] = useState<string | null>(null);
+  const illustrationOk = illustrationFailed !== illustrationUrl;
   const debordOk = useImageOk(debordUrl);
 
   const rulesZone = isUnit || hasResistance ? RULES_ZONE_WITH_STATS : RULES_ZONE_NO_STATS;
@@ -476,8 +497,21 @@ export function CardTile({
             style={frameOk ? zoneStyle(illustrationZone) : { position: "absolute", inset: 0 }}
           >
             {illustrationOk && (
+              // Vignette tant que la carte est petite (main, plateau, grille), original en gros
+              // plan : `sizes="auto"` laisse le navigateur mesurer la carte lui-même — seul
+              // `CardTile` ne sait pas à quelle taille on l'affiche. Un navigateur qui ne connaît
+              // pas `auto` lit `100vw` et prend l'original : rien de pire qu'avant.
               // eslint-disable-next-line @next/next/no-img-element -- asset local, une par carte
-              <img src={illustrationUrl} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+              <img
+                loading="lazy"
+                decoding="async"
+                sizes={illustrationThumbUrl ? "auto, 100vw" : undefined}
+                srcSet={illustrationThumbUrl ? `${illustrationThumbUrl} 360w, ${illustrationUrl} 768w` : undefined}
+                src={illustrationUrl}
+                alt=""
+                onError={() => setIllustrationFailed(illustrationUrl)}
+                className="h-full w-full object-cover"
+              />
             )}
           </div>
         </div>
@@ -485,7 +519,15 @@ export function CardTile({
         {/* Couche 2 : le cadre PNG — contour, bandeaux, bloc de règles et découpes de stats déjà peints */}
         {frameOk && (
           // eslint-disable-next-line @next/next/no-img-element -- asset local, cadre réutilisé par famille/variante de stats
-          <img src={frameUrl} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
+          <img
+            loading="lazy"
+            decoding="async"
+            sizes={frameThumbUrl ? "auto, 100vw" : undefined}
+            srcSet={frameThumbUrl ? `${frameThumbUrl} 400w, ${frameUrl} 858w` : undefined}
+            src={frameUrl}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+          />
         )}
 
         {/* Couche 2.5 : débord Abyssal — silhouette à fond transparent qui déborde du cadre, posée par-dessus */}

@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { getCardDefinition } from "@/game";
-import { cardIllustrationUrl, signatureCardId } from "@/features/decks/nameplateArt";
+import { cardIllustrationThumbUrl, signatureCardId } from "@/features/decks/nameplateArt";
 import { Dialog } from "@/features/shell/Dialog";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/decks/DeckBuilder.module.css";
@@ -82,7 +82,7 @@ export function DeckArtPicker({ cardIds, artCardId, onChoose, onClose }: DeckArt
               }}
               title={name}
             >
-              <span className={styles.artOptionArt} style={{ backgroundImage: `url("${cardIllustrationUrl(cardId)}")` }} aria-hidden />
+              <span className={styles.artOptionArt} style={{ backgroundImage: `url("${cardIllustrationThumbUrl(cardId)}")` }} aria-hidden />
               <span className={styles.artOptionName}>{name}</span>
             </button>
           ))}

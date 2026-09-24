@@ -115,8 +115,14 @@ export function PageTransition() {
     setPhase(next);
   };
 
+  // Sons d'interface décodés une fois la page AU REPOS (audit du 24/09) :
+  // ~350 Ko de MP3 à télécharger et décoder se disputaient sinon le réseau
+  // et le processeur avec le premier affichage de chaque visite.
   useEffect(() => {
-    preloadInterfaceSounds();
+    const idle = window.requestIdleCallback ?? ((callback: () => void) => window.setTimeout(callback, 1500));
+    const cancel = window.cancelIdleCallback ?? window.clearTimeout;
+    const id = idle(() => preloadInterfaceSounds(), { timeout: 5000 });
+    return () => cancel(id);
   }, []);
 
   useEffect(() => {

@@ -30,8 +30,10 @@ export const metadata: Metadata = {
       { url: "/icons/favicon-16.png", sizes: "16x16", type: "image/png" },
       { url: "/icons/favicon-32.png", sizes: "32x32", type: "image/png" },
       { url: "/icons/favicon-48.png", sizes: "48x48", type: "image/png" },
-      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+      // PAS de 192/512 ici (audit du 24/09) : certains navigateurs
+      // téléchargent la plus grande icône déclarée pour un onglet de 16 px
+      // (155 Ko à chaque première visite). Ces tailles-là servent à
+      // l'installation, et le manifeste les porte déjà.
     ],
     shortcut: [{ url: "/favicon.ico", sizes: "any" }],
     // iOS ne lit pas le manifeste pour l'icône d'accueil, et n'accepte pas

@@ -7,7 +7,7 @@ import { CardDetailModal } from "@/features/collection/card-detail/CardDetailMod
 import { Dialog } from "@/features/shell/Dialog";
 import { ShipPortrait, shipNameOf } from "@/features/ships/ShipPortrait";
 import { PreconToken } from "@/features/shell/GameIcons";
-import { cardIllustrationUrl } from "@/features/decks/nameplateArt";
+import { cardIllustrationThumbUrl } from "@/features/decks/nameplateArt";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/decks/DeckCatalog.module.css";
 import mosaic from "@/features/market/BoosterContents.module.css";
@@ -194,7 +194,7 @@ export function DeckSheet({
                     onClick={() => setInspected(card.cardId)}
                     title={`${card.name} — ${card.owned}/${card.required} possédée${card.required > 1 ? "s" : ""} · voir la carte`}
                   >
-                    <span className={mosaic.art} style={{ backgroundImage: `url("${cardIllustrationUrl(card.cardId)}")` }} aria-hidden />
+                    <span className={mosaic.art} style={{ backgroundImage: `url("${cardIllustrationThumbUrl(card.cardId)}")` }} aria-hidden />
                     <span className={mosaic.name}>{card.name}</span>
                     <span className={mosaic.rarity}>Coût {card.cost}</span>
                     <span className={`${mosaic.ownedMark} ${styles.mosaicCount}`} aria-label={`${card.owned} possédée${card.owned > 1 ? "s" : ""} sur ${card.required}`}>
