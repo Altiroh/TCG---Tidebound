@@ -774,15 +774,41 @@ const CAVALERIE_LOT: CardDefinition[] = [
     setCode: ECLATS_EN_SELLE,
     cost: 3,
     maxCopies: 3,
-    text: "Brisez cet Objet : une unité que vous contrôlez gagne +2 Puissance pour son prochain combat contre une unité ayant Garde ce tour.",
+    // RÉACTION, et non plus Bris à froid (décision de design du 24/09/2026) :
+    // l'ancien texte faisait choisir une unité en Phase principale, avant de
+    // savoir si elle croiserait une Garde. Désormais l'Objet répond au combat
+    // lui-même — que votre unité attaque la Garde ou que la Garde l'attaque —
+    // dans la fenêtre ouverte à la déclaration de l'attaque. Le bonus est
+    // « en attente » (`nextCombatVsKeyword`) : ce combat-ci le dépense.
+    text:
+      "Lorsqu'une de vos unités combat une unité adverse ayant Garde, vous pouvez Briser cet Objet : elle gagne " +
+      "+2 Puissance pour ce combat.",
     onBreakEffects: [
       {
         type: "buff",
-        target: { kind: "chosenUnit", among: { unitsOnly: true } },
+        target: { kind: "triggerSource" },
         attackAmount: { kind: "flat", value: 2 },
         healthAmount: { kind: "flat", value: 0 },
         nextCombatVsKeyword: "garde",
         duration: "endOfTurn",
+      },
+    ],
+    abilities: [
+      {
+        trigger: "onCombatVsGarde",
+        mode: "optional",
+        description: "Brisez Ouvrez la Ligne ! : votre unité gagne +2 Puissance pour ce combat.",
+        effects: [
+          {
+            type: "buff",
+            target: { kind: "triggerSource" },
+            attackAmount: { kind: "flat", value: 2 },
+            healthAmount: { kind: "flat", value: 0 },
+            nextCombatVsKeyword: "garde",
+            duration: "endOfTurn",
+          },
+          { type: "saborde", target: { kind: "self" } },
+        ],
       },
     ],
   },

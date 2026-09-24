@@ -94,7 +94,15 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
       result.state,
       suspendue.kind === "tirDeNavire"
         ? { type: "fireShipAbility", playerId: suspendue.playerId }
-        : { type: "attack", playerId: suspendue.playerId, attackerInstanceId: suspendue.attackerInstanceId }
+        : {
+            type: "attack",
+            playerId: suspendue.playerId,
+            attackerInstanceId: suspendue.attackerInstanceId,
+            // La CIBLE déclarée aussi : sans elle, une attaque contre une
+            // unité reprenait en attaque directe contre le Navire (corrigé
+            // le 24/09/2026 — Corde de Rappel passée = coque frappée).
+            defenderInstanceId: suspendue.defenderInstanceId,
+          }
     );
     // Une attaque devenue illégale entre-temps (l'attaquant a été détruit
     // par le piège lui-même) ne casse rien : on abandonne la reprise et on

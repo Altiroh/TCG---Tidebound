@@ -2,7 +2,7 @@ import type { CardInstance } from "@/game/cards/types";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { auraContextOf, computeEffectiveStats } from "@/game/cards/stats";
 import { getShipDefinition } from "@/game/environment/shipData";
-import { isVisibleDuringTide } from "@/game/cards/types";
+import { isVisibleDuringTide, UNIT_CARD_TYPES } from "@/game/cards/types";
 import { collectReactionCandidates } from "@/game/triggers/triggerBus";
 import type { TriggerEvent } from "@/game/triggers/types";
 import { reasonAfterLoss } from "@/game/state/reason";
@@ -73,25 +73,42 @@ function bonusVsKeyword(
   defender: CardInstance
 ): { bonus: number; state: GameState } {
   const defenderOwner = getOpponent(state, attackerPlayerId);
-  const porte = (keyword: string) => hasEffectiveKeyword(state, defenderOwner, defender, keyword);
   let bonus = 0;
   const vsKeyword = getCardDefinition(attacker.cardId).bonusDamageVsKeyword;
-  if (vsKeyword && porte(vsKeyword.keyword)) bonus += vsKeyword.amount;
+  if (vsKeyword && hasEffectiveKeyword(state, defenderOwner, defender, vsKeyword.keyword)) bonus += vsKeyword.amount;
+  const enAttente = consumePendingBonusVsKeyword(state, attackerPlayerId, attacker, defender);
+  return { bonus: bonus + enAttente.bonus, state: enAttente.state };
+}
 
-  const enAttente = attacker.modifiers.filter((m) => m.nextCombatBonusVsKeyword && porte(m.nextCombatBonusVsKeyword.keyword));
-  if (enAttente.length === 0) return { bonus, state };
-  bonus += enAttente.reduce((sum, m) => sum + m.nextCombatBonusVsKeyword!.amount, 0);
+/**
+ * Le bonus EN ATTENTE « pour son prochain combat contre une unité ayant
+ * <mot-clé> » (`nextCombatBonusVsKeyword`) : dépensé par ce combat si
+ * l'unité d'en face porte le mot-clé — que son porteur attaque OU riposte.
+ * Un combat se livre des deux côtés : une unité qu'une Garde attaque
+ * « combat une unité ayant Garde » tout autant (Ouvrez la Ligne !).
+ */
+function consumePendingBonusVsKeyword(
+  state: GameState,
+  holderOwnerId: string,
+  holder: CardInstance,
+  opposing: CardInstance
+): { bonus: number; state: GameState } {
+  const opposingOwner = getOpponent(state, holderOwnerId);
+  const porte = (keyword: string) => hasEffectiveKeyword(state, opposingOwner, opposing, keyword);
+  const enAttente = holder.modifiers.filter((m) => m.nextCombatBonusVsKeyword && porte(m.nextCombatBonusVsKeyword.keyword));
+  if (enAttente.length === 0) return { bonus: 0, state };
+  const bonus = enAttente.reduce((sum, m) => sum + m.nextCombatBonusVsKeyword!.amount, 0);
   const depenses = new Set(enAttente.map((m) => m.id));
   return {
     bonus,
     state: {
       ...state,
       players: state.players.map((p) =>
-        p.id === attackerPlayerId
+        p.id === holderOwnerId
           ? {
               ...p,
               board: p.board.map((u) =>
-                u.instanceId === attacker.instanceId ? { ...u, modifiers: u.modifiers.filter((m) => !depenses.has(m.id)) } : u
+                u.instanceId === holder.instanceId ? { ...u, modifiers: u.modifiers.filter((m) => !depenses.has(m.id)) } : u
               ),
             }
           : p
@@ -248,6 +265,24 @@ function suspendrePourInterception(
   const attackerPlayer = getPlayer(state, action.playerId);
   const attaquant = attackerPlayer.board.find((u) => u.instanceId === action.attackerInstanceId)!;
 
+  // « Lorsqu'une de vos unités combat une unité adverse ayant Garde » : un
+  // combat entre deux UNITÉS, dont l'une porte Garde — chaque camp dont
+  // l'unité fait face à cette Garde reçoit son déclencheur. L'attaquant
+  // peut donc répondre à SA propre attaque, dans la même fenêtre.
+  if (action.defenderInstanceId) {
+    const defenseur = getPlayer(state, defenderId);
+    const cible = defenseur.board.find((u) => u.instanceId === action.defenderInstanceId);
+    const estUnite = (unit: CardInstance) => UNIT_CARD_TYPES.includes(getCardDefinition(unit.cardId).type);
+    if (cible && estUnite(cible) && estUnite(attaquant)) {
+      if (hasEffectiveKeyword(state, defenseur, cible, "garde")) {
+        triggerEvents.push({ trigger: "onCombatVsGarde", playerId: action.playerId, sourceInstanceId: attaquant.instanceId });
+      }
+      if (hasEffectiveKeyword(state, attackerPlayer, attaquant, "garde")) {
+        triggerEvents.push({ trigger: "onCombatVsGarde", playerId: defenderId, sourceInstanceId: cible.instanceId });
+      }
+    }
+  }
+
   // L'attaque devient « déclarée » AVANT toute réponse : c'est `pendingAttack`
   // qui porte la Puissance sur laquelle les pièges mordent, qu'ils soient
   // automatiques ou choisis.
@@ -271,10 +306,13 @@ function suspendrePourInterception(
     evenements.push(...auto.events);
   }
 
-  // 2. Puis les pièges FACULTATIFS, s'il y en a : c'est eux seuls qui
-  //    suspendent l'attaque et rendent la main au défenseur.
-  const candidats = collectReactionCandidates(declaree, triggerEvents, defenderId, state.turnNumber);
-  if (candidats.length === 0) {
+  // 2. Puis les réponses FACULTATIVES, s'il y en a : c'est elles seules qui
+  //    suspendent l'attaque. Le défenseur répond d'abord (pièges), puis
+  //    l'attaquant (Ouvrez la Ligne ! contre une Garde).
+  const file = [defenderId, action.playerId].filter(
+    (playerId) => collectReactionCandidates(declaree, triggerEvents, playerId, state.turnNumber).length > 0
+  );
+  if (file.length === 0) {
     // Rien à proposer : l'attaque se poursuit dans la foulée, avec les
     // éventuelles réductions automatiques déjà posées.
     return { poursuivre: declaree, events: evenements };
@@ -284,8 +322,8 @@ function suspendrePourInterception(
     ...declaree,
     pendingReaction: {
       events: triggerEvents,
-      awaitingPlayerId: defenderId,
-      priorityQueue: [],
+      awaitingPlayerId: file[0]!,
+      priorityQueue: file.slice(1),
       usedCandidateKeys: [],
       turnNumber: state.turnNumber,
     },
@@ -298,7 +336,7 @@ function suspendrePourInterception(
       events: [
         { ...base, type: "ATTACK", playerId: action.playerId, attackerInstanceId: action.attackerInstanceId, defenderInstanceId: action.defenderInstanceId },
         ...evenements,
-        { ...base, type: "REACTION_WINDOW_OPENED", playerId: defenderId },
+        { ...base, type: "REACTION_WINDOW_OPENED", playerId: file[0]! },
       ],
     },
   };
@@ -581,7 +619,11 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
     // Riposte : la Puissance effective du défenseur (0 pour un permanent
     // sans Puissance) blesse l'attaquant en retour, symétriquement — soumise
     // au même bouclier "1ère fois par tour" côté attaquant, cette fois.
-    const retaliationDamage = effectiveAttack(defenderUnit, nextState);
+    // Un bonus « pour son prochain combat contre une Garde » vaut aussi en
+    // riposte, quand c'est la Garde qui attaque.
+    const riposteMotCle = consumePendingBonusVsKeyword(nextState, opponent.id, defenderUnit, attackerUnit);
+    nextState = riposteMotCle.state;
+    const retaliationDamage = effectiveAttack(defenderUnit, nextState) + riposteMotCle.bonus;
     if (retaliationDamage > 0) {
       const attackerDamageResult = applyCombatDamageToUnit(nextState, attackerPlayer.id, attackerUnit, retaliationDamage, etat.turnNumber);
       nextState = attackerDamageResult.state;

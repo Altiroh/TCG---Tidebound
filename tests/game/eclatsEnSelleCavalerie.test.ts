@@ -83,29 +83,67 @@ describe("combat et Garde", () => {
     expect(joueur(a.state, "p2").anchor).toBe(joueur(state, "p2").anchor - 2);
   });
 
-  it("Ouvrez la Ligne ! : +2 contre la Garde, pour ce seul combat", () => {
+  it("Ouvrez la Ligne ! : votre unité attaque une Garde — la fenêtre s'ouvre pour VOUS, +2 pour ce combat", () => {
+    // 3 Puissance — pas seul sur le plateau, sinon +1 (Destrier du Ressac).
     const attaquant = instance("destrier-du-ressac", "p1");
-    const autre = instance("matelot-fele", "p1");
     const objet = instance("ouvrez-la-ligne", "p1");
-    const rempart = instance("le-dernier-rempart", "p2");
-    const b = dispatch(table({ board: [attaquant, autre, objet] }, { board: [rempart] }), {
-      type: "breakObject",
-      playerId: "p1",
-      instanceId: objet.instanceId,
-      targetInstanceId: attaquant.instanceId,
-    });
-    ok(b);
-    // Rien de visible avant le combat : le bonus attend.
-    expect(stats(b.state, attaquant.instanceId).attack).toBe(3);
-    const a = dispatch({ ...b.state, phase: "combatPhase" }, {
+    const rempart = instance("le-dernier-rempart", "p2"); // Garde
+    const state = table({ board: [attaquant, instance("matelot-fele", "p1"), objet] }, { board: [rempart] }, { phase: "combatPhase" });
+    const a = dispatch(state, {
       type: "attack",
       playerId: "p1",
       attackerInstanceId: attaquant.instanceId,
       defenderInstanceId: rempart.instanceId,
     });
     ok(a);
-    expect(unite(a.state, rempart.instanceId)!.damageMarked).toBe(5);
-    expect(unite(a.state, attaquant.instanceId)!.modifiers.some((m) => m.nextCombatBonusVsKeyword)).toBe(false);
+    // L'attaque est suspendue, et c'est l'ATTAQUANT qu'on attend.
+    expect(a.state.pendingReaction?.awaitingPlayerId).toBe("p1");
+    const r = activateReactionFor(a.state, "ouvrez-la-ligne");
+    ok(r);
+    // Reprise : 3 + 2 sur le Rempart, l'Objet est parti, le bonus est dépensé.
+    expect(r.state.pendingReaction).toBeUndefined();
+    expect(unite(r.state, rempart.instanceId)!.damageMarked).toBe(5);
+    expect(unite(r.state, objet.instanceId)).toBeUndefined();
+    expect(unite(r.state, attaquant.instanceId)!.modifiers.some((m) => m.nextCombatBonusVsKeyword)).toBe(false);
+  });
+
+  it("Ouvrez la Ligne ! : refusée, la cible reçoit l'attaque sans bonus — et c'est bien l'unité visée qui encaisse", () => {
+    const attaquant = instance("destrier-du-ressac", "p1");
+    const objet = instance("ouvrez-la-ligne", "p1");
+    const rempart = instance("le-dernier-rempart", "p2");
+    const state = table({ board: [attaquant, instance("matelot-fele", "p1"), objet] }, { board: [rempart] }, { phase: "combatPhase" });
+    const a = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attaquant.instanceId, defenderInstanceId: rempart.instanceId });
+    ok(a);
+    const p = dispatch(a.state, { type: "passReaction", playerId: "p1" });
+    ok(p);
+    expect(unite(p.state, rempart.instanceId)!.damageMarked).toBe(3);
+    expect(joueur(p.state, "p2").anchor).toBe(joueur(state, "p2").anchor);
+    expect(unite(p.state, objet.instanceId)).toBeDefined();
+  });
+
+  it("Ouvrez la Ligne ! : une Garde attaque votre unité — +2 sur sa riposte", () => {
+    const rempart = instance("le-dernier-rempart", "p2"); // Garde, 4 Puissance
+    const destrier = instance("destrier-du-ressac", "p1"); // 3 Puissance
+    const objet = instance("ouvrez-la-ligne", "p1");
+    const state = table({ board: [destrier, instance("matelot-fele", "p1"), objet] }, { board: [rempart] }, { phase: "combatPhase", activePlayerId: "p2" });
+    const a = dispatch(state, { type: "attack", playerId: "p2", attackerInstanceId: rempart.instanceId, defenderInstanceId: destrier.instanceId });
+    ok(a);
+    expect(a.state.pendingReaction?.awaitingPlayerId).toBe("p1");
+    const r = activateReactionFor(a.state, "ouvrez-la-ligne");
+    ok(r);
+    expect(unite(r.state, rempart.instanceId)!.damageMarked).toBe(5);
+  });
+
+  it("Ouvrez la Ligne ! : ni fenêtre sans Garde en face, ni Bris à froid", () => {
+    const attaquant = instance("destrier-du-ressac", "p1");
+    const objet = instance("ouvrez-la-ligne", "p1");
+    const matelot = instance("matelot-fele", "p2");
+    const state = table({ board: [attaquant, objet] }, { board: [matelot] }, { phase: "combatPhase" });
+    const a = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attaquant.instanceId, defenderInstanceId: matelot.instanceId });
+    ok(a);
+    expect(a.state.pendingReaction).toBeUndefined();
+    const froid = dispatch(table({ board: [attaquant, objet] }), { type: "breakObject", playerId: "p1", instanceId: objet.instanceId });
+    expect(froid.ok).toBe(false);
   });
 
   it("Mufle au Fanion a Garde tant qu'il est blessé", () => {

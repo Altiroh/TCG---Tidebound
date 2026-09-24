@@ -418,7 +418,15 @@ function collectTriggeredWork(
     return result;
   }
 
-  if (event.trigger === "onIncomingDirectAttack" || event.trigger === "onUnitAttackDeclared") {
+  // `onCombatVsGarde` suit la même lecture : ses capacités vivent sur le
+  // plateau du joueur NOMMÉ par l'événement (celui dont l'unité fait face à
+  // la Garde), et `sourceInstanceId` — son unité au combat — devient la
+  // carte déclencheuse (`triggerSource`).
+  if (
+    event.trigger === "onIncomingDirectAttack" ||
+    event.trigger === "onUnitAttackDeclared" ||
+    event.trigger === "onCombatVsGarde"
+  ) {
     // Fenêtre d'INTERCEPTION : la capacité se lit sur le plateau du
     // DÉFENSEUR (`event.playerId`), jamais sur l'attaquant — alors que
     // `event.sourceInstanceId` désigne justement l'attaquant, pour que le
