@@ -53,7 +53,7 @@ function validate(state: GameState, action: FireShipAbilityAction) {
  *
  * Ce sont des effets de CAPACITÉ : ils passent par `resolveEffect` et non
  * par le pipeline de combat. Donc aucune riposte, aucune faiblesse d'attaque
- * directe (« Coque légère » du Courlis ne s'applique pas), aucun bouclier
+ * directe, aucun bouclier
  * anti-attaque, et l'attaque d'aucune unité n'est consommée.
  */
 export function fireShipAbility(state: GameState, action: FireShipAbilityAction): ActionResult {

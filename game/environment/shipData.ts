@@ -57,7 +57,11 @@ export const SHIP_SET: ShipDefinition[] = [
     passiveText:
       "Tirant léger — la première fois par tour qu'un effet de Marée devrait vous infliger des dégâts " +
       "d'Ancrage, réduisez-les de 1.",
-    weaknessText: "Coque légère — les attaques directes contre votre Navire lui infligent +1 dégât.",
+    // COQUE LÉGÈRE RETIRÉE (décision du 24/09/2026). « +1 dégât en attaque
+    // directe » coûtait à elle seule 9 des 11 points que le Courlis cédait à
+    // L'Errant au labo (15 listes × chaque coque, bot moyen ; −7 → +1 au bot
+    // difficile). Sans elle, le Courlis revient au niveau de L'Errant et
+    // garde ce qui le distingue : 26 Ancrage, 4 Slots, 12 Raison.
     // VIRAGE COURT — texte repris de la fiche Notion (22/09/2026).
     //
     // Le code portait encore l'ancien texte, celui des Eaux (« lorsqu'une
@@ -89,7 +93,6 @@ export const SHIP_SET: ShipDefinition[] = [
     // (`resolveTideTurnStep`), donc cette résistance forfaitaire équivaut
     // fidèlement à "la première fois par tour" de Tirant léger.
     resistanceByState: { tempete: 1, abysses: 1 },
-    directAttackWeakness: 1,
   },
   {
     id: "lerrant",
@@ -250,6 +253,7 @@ export const SHIP_SET: ShipDefinition[] = [
     startingAnchor: 30,
     reasonMax: 10,
     slotCount: 5,
+    illustration: "verriere.webp",
     text: "Profil : précision / contrôle fin — une pointe qui touche partout, y compris chez soi.",
     // PIQUE À GLACE — la seule capacité qui vise N'IMPORTE QUOI, son propre
     // camp compris : achever une unité blessée, briser une Structure,
@@ -259,9 +263,9 @@ export const SHIP_SET: ShipDefinition[] = [
     // Garde ne la détourne pas, et rien ne riposte.
     activatableAbility: {
       name: "Pique à Glace",
-      // Ni son d'activation ni illustration de hublot : c'est l'impact qu'on
-      // entend (celui de tout dégât d'effet), et l'illustration est en
-      // production.
+      illustration: "pique-a-glace.webp",
+      // Pas de son d'activation : c'est l'impact qu'on entend, celui de tout
+      // dégât d'effet.
       text:
         "Une fois par tour, pendant une Phase principale, dépensez 1 Raison : infligez 1 dégât à n'importe " +
         "quelle cible — une unité ou une Structure, alliée ou adverse, ou un Navire, le vôtre compris.",

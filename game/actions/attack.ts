@@ -394,8 +394,8 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
     const attackerCardType = getCardDefinition(attackerUnit.cardId).type;
     const shieldedAttackerDamage = attackerDamage;
 
-    // Faiblesse "Coque légère" (Le Courlis) : +1 dégât sur une attaque
-    // directe contre le Navire, propre à la faiblesse du DÉFENSEUR.
+    // Faiblesse d'attaque directe du DÉFENSEUR (`directAttackWeakness` —
+    // ex-« Coque légère » du Courlis, retirée le 24/09/2026) : +N dégâts.
     const directWeakness = getShipDefinition(opponent.shipId).directAttackWeakness ?? 0;
     const baseDirectDamage = shieldedAttackerDamage + directWeakness;
 

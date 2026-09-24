@@ -6,7 +6,7 @@ import { handBreakCost } from "@/game/actions/breakObject";
 import { enumerateCandidateActions } from "@/game/bot/enumerateActions";
 import { canUnitAttack } from "@/game/rules/validation";
 import { reasonCeiling } from "@/game/state/reason";
-import { instance, testEnvironment, testGameState, testPlayer } from "./testHelpers";
+import { instance, TEST_COQUE_LEGERE, testEnvironment, testGameState, testPlayer, withTestShip } from "./testHelpers";
 import type { GameState } from "@/game/state/types";
 
 describe("engine.dispatch - phases", () => {
@@ -437,22 +437,38 @@ describe("engine.dispatch - attack", () => {
     expect(result.ok).toBe(false);
   });
 
-  it("Coque légère (Le Courlis) : une attaque directe contre son Navire lui inflige +1 dégât", () => {
+  it("faiblesse d'attaque directe (`directAttackWeakness`) : une attaque directe contre ce Navire lui inflige +1 dégât", () => {
+    // Plus aucun Navire du roster ne la porte (Coque légère retirée du
+    // Courlis le 24/09/2026) : la primitive s'éprouve sur un Navire fictif.
+    withTestShip(TEST_COQUE_LEGERE, () => {
+      const attacker = instance("requin-balafre", "p1"); // 4/2
+      const state = testGameState({
+        phase: "combatPhase",
+        players: [
+          testPlayer("p1", { board: [attacker] }),
+          testPlayer("p2", { shipId: TEST_COQUE_LEGERE.id, anchor: 17 }),
+        ],
+      });
+
+      const result = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attacker.instanceId });
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      // 4 d'attaque + 1 de faiblesse = 5 dégâts.
+      expect(result.state.players[1].anchor).toBe(12);
+    });
+  });
+
+  it("Le Courlis n'a plus Coque légère : une attaque directe lui inflige ses dégâts nus", () => {
     const attacker = instance("requin-balafre", "p1"); // 4/2
     const state = testGameState({
       phase: "combatPhase",
-      players: [
-        testPlayer("p1", { board: [attacker] }),
-        testPlayer("p2", { shipId: "le-courlis", anchor: 17 }),
-      ],
+      players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2", { shipId: "le-courlis", anchor: 17 })],
     });
-
     const result = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attacker.instanceId });
-
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    // 4 d'attaque + 1 de faiblesse "Coque légère" = 5 dégâts.
-    expect(result.state.players[1].anchor).toBe(12);
+    expect(result.state.players[1].anchor).toBe(13);
   });
 
   it("refuse d'attaquer avec une unité malade d'invocation", () => {

@@ -5,15 +5,12 @@
  * Règle tenue ici plutôt que dans une revue : une capacité muette ou sans
  * image passe inaperçue en partie, et rien dans le moteur ne s'en plaint.
  */
+import { existsSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { SHIP_SET } from "@/game/environment/shipData";
 
-/**
- * Illustrations de hublot EN PRODUCTION — un écart assumé et daté, pas un
- * oubli : l'interface montre le fond de substitution en attendant. À vider
- * dès que le fichier est déposé dans `public/assets/ships/capacite/`.
- */
-const ILLUSTRATIONS_ATTENDUES = new Set(["la-verriere"]); // 24/09/2026
+const SHIPS = path.join(process.cwd(), "public", "assets", "ships");
 
 const ABILITIES = SHIP_SET.filter((ship) => ship.activatableAbility).map((ship) => ({
   ship,
@@ -25,9 +22,14 @@ describe("présentation des capacités de Navire", () => {
     expect(ABILITIES).toHaveLength(SHIP_SET.length);
   });
 
-  it.each(ABILITIES)("$ship.name — son hublot a une illustration", ({ ship, ability }) => {
-    if (ILLUSTRATIONS_ATTENDUES.has(ship.id)) expect(ability.illustration).toBeUndefined();
-    else expect(ability.illustration).toMatch(/\.webp$/);
+  it.each(ABILITIES)("$ship.name — son hublot a une illustration, et le fichier existe", ({ ability }) => {
+    expect(ability.illustration).toMatch(/\.webp$/);
+    expect(existsSync(path.join(SHIPS, "capacite", ability.illustration!))).toBe(true);
+  });
+
+  it.each(ABILITIES)("$ship.name — son illustration de Navire existe", ({ ship }) => {
+    expect(ship.illustration).toMatch(/\.webp$/);
+    expect(existsSync(path.join(SHIPS, "illu", ship.illustration!))).toBe(true);
   });
 
   /**

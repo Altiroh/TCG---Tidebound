@@ -14,7 +14,7 @@ import { SHIP_DATABASE, getShipDefinition } from "@/game/environment/shipData";
 import type { ShipDefinition } from "@/game/environment/types";
 import { isShipArmed, shipAbilityView } from "@/game/state/shipAbility";
 import { getPlayer, type GameState } from "@/game/state/types";
-import { instance, testGameState, testPlayer } from "./testHelpers";
+import { instance, TEST_COQUE_LEGERE, testGameState, testPlayer, withTestShip } from "./testHelpers";
 
 /** Partie où p1 mène Le Goliath, p2 Le Brise-Lames — sans rien sur les plateaux. */
 function goliathState(overrides: Partial<GameState> = {}): GameState {
@@ -143,22 +143,24 @@ describe("Le Goliath — Canon de proue", () => {
     expect(dispatch(shot.state, fire(defender.instanceId)).ok).toBe(false);
   });
 
-  it("sans cible désignée, le tir frappe le Navire adverse — et la faiblesse « Coque légère » ne s'applique pas", () => {
-    // Le Courlis prend +1 sur une ATTAQUE directe : un tir de capacité n'en est pas une.
-    const state = goliathState({
-      players: [testPlayer("p1", { shipId: "le-goliath" }), testPlayer("p2", { shipId: "le-courlis" })],
+  it("sans cible désignée, le tir frappe le Navire adverse — et la faiblesse d'attaque directe ne s'applique pas", () => {
+    // Une coque légère prend +1 sur une ATTAQUE directe : un tir de capacité n'en est pas une.
+    withTestShip(TEST_COQUE_LEGERE, () => {
+      const state = goliathState({
+        players: [testPlayer("p1", { shipId: "le-goliath" }), testPlayer("p2", { shipId: TEST_COQUE_LEGERE.id })],
+      });
+      const anchorBefore = getPlayer(state, "p2").anchor;
+      expect(getShipDefinition(TEST_COQUE_LEGERE.id).directAttackWeakness).toBe(1);
+
+      const armed = dispatch(state, arm);
+      expect(armed.ok).toBe(true);
+      if (!armed.ok) return;
+      const shot = dispatch({ ...armed.state, phase: "combatPhase" }, fire());
+      expect(shot.ok).toBe(true);
+      if (!shot.ok) return;
+
+      expect(getPlayer(shot.state, "p2").anchor).toBe(anchorBefore - 2);
     });
-    const anchorBefore = getPlayer(state, "p2").anchor;
-    expect(getShipDefinition("le-courlis").directAttackWeakness).toBe(1);
-
-    const armed = dispatch(state, arm);
-    expect(armed.ok).toBe(true);
-    if (!armed.ok) return;
-    const shot = dispatch({ ...armed.state, phase: "combatPhase" }, fire());
-    expect(shot.ok).toBe(true);
-    if (!shot.ok) return;
-
-    expect(getPlayer(shot.state, "p2").anchor).toBe(anchorBefore - 2);
   });
 
   it("Garde s'applique au tir comme à une attaque : le porteur doit être visé en priorité", () => {

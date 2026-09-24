@@ -1,12 +1,38 @@
 import type { CardInstance } from "@/game/cards/types";
 import { dispatch } from "@/game/engine";
 import { eligibleCandidatesFor } from "@/game/reactions/reactionWindow";
-import { getShipDefinition } from "@/game/environment/shipData";
+import { getShipDefinition, SHIP_DATABASE } from "@/game/environment/shipData";
 import { RULES } from "@/game/rules/constants";
-import type { EnvironmentState } from "@/game/environment/types";
+import type { EnvironmentState, ShipDefinition } from "@/game/environment/types";
 import type { GameState, PlayerState } from "@/game/state/types";
 
 let counter = 0;
+
+/**
+ * Enregistre un Navire FICTIF le temps d'un test — pour éprouver une
+ * primitive de Navire qu'aucun Navire du roster ne porte plus (ex:
+ * `directAttackWeakness`, depuis que Le Courlis a perdu Coque légère).
+ * `SHIP_DATABASE` est typée en lecture seule pour le reste du projet.
+ */
+export function withTestShip<T>(ship: ShipDefinition, run: () => T): T {
+  const table = SHIP_DATABASE as Map<string, ShipDefinition>;
+  table.set(ship.id, ship);
+  try {
+    return run();
+  } finally {
+    table.delete(ship.id);
+  }
+}
+
+/** Navire fictif à coque légère : +1 dégât par attaque directe subie. */
+export const TEST_COQUE_LEGERE: ShipDefinition = {
+  id: "test-coque-legere",
+  name: "Coque légère (test)",
+  startingAnchor: 26,
+  reasonMax: 10,
+  slotCount: 5,
+  directAttackWeakness: 1,
+};
 export function instance(cardId: string, ownerId: string, overrides: Partial<CardInstance> = {}): CardInstance {
   counter += 1;
   return {
