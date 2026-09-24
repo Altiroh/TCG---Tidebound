@@ -29,7 +29,12 @@ interface MatchEndScreenProps {
    * ceux du vainqueur. `undefined` pour un match nul — dans ce cas, pas de
    * cadre/navire à montrer.
    */
-  player?: { name: string; ship: ShipDefinition };
+  player?: {
+    name: string;
+    ship: ShipDefinition;
+    /** Titre équipé au profil, écrit sous le nom sur la plaque. Absent : le nom seul. */
+    title?: string | null;
+  };
   /** Local (hot-seat/bot) : relance une partie sans navigation. Fournir soit `onExit`, soit `exitHref`. */
   onExit?: () => void;
   /** En ligne : redirige vers l'écran de matchmaking (`next/link`, navigation client). */
@@ -207,12 +212,12 @@ export function MatchEndScreen({ outcome, player, onExit, exitHref, matchId, pre
                     )}
     
                     <div
-                      className="absolute flex items-center justify-center"
+                      className={`absolute flex flex-col items-center justify-center ${winner.title ? styles.nameplateTitled : ""}`}
                       style={{ ...nameplateZone, containerType: "inline-size" }}
                     >
                       <span
                         aria-label={winner.name}
-                        className="max-w-full truncate text-[clamp(12px,11cqw,22px)] font-bold uppercase tracking-wide text-amber-50 [font-family:var(--font-card-title)]"
+                        className="max-w-full truncate text-[clamp(12px,11cqw,22px)] leading-none font-bold uppercase tracking-wide text-amber-50 [font-family:var(--font-card-title)]"
                         style={{ textShadow: "0 1px 3px rgba(0,0,0,0.9)" }}
                       >
                         {Array.from(winner.name).map((letter, i) => (
@@ -228,6 +233,16 @@ export function MatchEndScreen({ outcome, player, onExit, exitHref, matchId, pre
                           </span>
                         ))}
                       </span>
+                      {/* Le TITRE équipé, sous le nom : il se pose une fois le
+                          nom écrit, comme une signature. */}
+                      {winner.title && (
+                        <span
+                          className={`max-w-full truncate ${styles.nameplateTitle}`}
+                          style={{ animationDelay: `${NAME_START_MS + Array.from(winner.name).length * NAME_LETTER_STEP_MS + 120}ms` }}
+                        >
+                          {winner.title}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>

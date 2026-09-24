@@ -45,7 +45,7 @@ import { phaseButtonFor, phaseTitle, targetingHint } from "@/features/match/tabl
 import { useActionToasts } from "@/features/match/useActionToasts";
 import { useAttackPresentation } from "@/features/match/useAttackPresentation";
 import { useDeraisonWarning } from "@/features/match/useDeraisonWarning";
-import { useDisplayNames } from "@/features/match/useDisplayNames";
+import { useDisplayNames, useEquippedTitle } from "@/features/match/useDisplayNames";
 import { usePhaseBannerEvent } from "@/features/match/usePhaseBannerEvent";
 import { tableTargetingFor, useBoardInteraction } from "@/features/match/useBoardInteraction";
 import { useShipAbility } from "@/features/match/useShipAbility";
@@ -116,6 +116,8 @@ export function MatchBoard({
   const [error, setError] = useState<string | null>(null);
   // Contre le bot, le joueur humain est le compte connecté (s'il y en a un) ; en hot-seat, personne n'est identifiable.
   const displayNames = useDisplayNames(botPlayerId ? ["me"] : []);
+  // Contre le bot, la plaque de fin est celle du compte connecté : son titre y figure. En hot-seat, personne.
+  const myTitle = useEquippedTitle(botPlayerId ? "me" : null);
 
   const activePlayerId = state.activePlayerId;
   const humanPlayerId = botPlayerId ? state.players.find((p) => p.id !== botPlayerId)!.id : null;
@@ -333,7 +335,7 @@ export function MatchBoard({
     const subjectShip = getShipDefinition(state.players.find((p) => p.id === subjectId)?.shipId ?? viewerPlayer.shipId);
     return (
       // Partie LOCALE (hot-seat, ou bot hors connexion) : jouée entièrement dans le navigateur, elle ne rapporte jamais rien.
-      <MatchEndScreen outcome={isDefeat ? "defeat" : "victory"} player={state.winnerId ? { name: subjectName, ship: subjectShip } : undefined} onExit={onExit} />
+      <MatchEndScreen outcome={isDefeat ? "defeat" : "victory"} player={state.winnerId ? { name: subjectName, ship: subjectShip, title: humanPlayerId ? myTitle : null } : undefined} onExit={onExit} />
     );
   }
 

@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+// Catalogue seul : le point d'entrée des titres n'apporte rien de plus ici.
+import { titleById } from "@/game/titles/catalog";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -60,4 +62,46 @@ export function useDisplayNames(ids: readonly string[]): Record<string, string> 
   }, [key]);
 
   return names;
+}
+
+/**
+ * Nom du TITRE équipé d'un compte (`player_titles`, lisible par tout
+ * compte connecté), pour la plaque du cadre de fin de partie. `"me"`
+ * désigne le compte connecté ; `null` (hot-seat, bot) ne lit rien. Un
+ * titre sorti du catalogue, une erreur ou l'absence de choix laissent la
+ * plaque au seul pseudo.
+ */
+export function useEquippedTitle(id: string | null): string | null {
+  const [title, setTitle] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+
+    async function load() {
+      try {
+        const supabase = createSupabaseBrowserClient();
+        let userId = id;
+        if (id === "me") {
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          userId = user?.id ?? null;
+        }
+        if (!userId || !UUID_PATTERN.test(userId)) return;
+
+        const { data } = await supabase.from("player_titles").select("title_id").eq("user_id", userId).maybeSingle();
+        if (!cancelled) setTitle(titleById(data?.title_id)?.name ?? null);
+      } catch {
+        // Pas de titre : la plaque garde le pseudo seul.
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  return title;
 }

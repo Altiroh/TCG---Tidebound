@@ -31,7 +31,8 @@ function Ecran() {
   return (
     <MatchEndScreen
       outcome={defaite ? "defeat" : "victory"}
-      player={{ name: "Alti", ship: getShipDefinition("le-goliath") }}
+      // Titre sous le nom : `?titre=0` le retire, `?titre=…` en essaie un autre.
+      player={{ name: "Alti", ship: getShipDefinition("le-goliath"), title: params.get("titre") === "0" ? null : (params.get("titre") ?? "Amiral des marées") }}
       onExit={() => window.location.reload()}
       preview={{
         reward: { xp: defaite ? 60 : 125, tides: defaite ? 0 : 30, levelBefore: 4, levelAfter: 4, firstWinOfDay: !defaite },

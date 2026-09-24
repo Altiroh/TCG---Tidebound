@@ -274,6 +274,31 @@
   white-space: pre;
   animation: victory-letter 420ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
 }
+/*
+ * Plaque avec TITRE : le nom remonte d'un cran pour laisser la place, sous
+ * lui, au titre équipé — plus petit, en laiton, en italique, comme une
+ * devise gravée sous un nom de navire.
+ */
+.nameplateTitled {
+  gap: 0.4cqw;
+}
+.nameplateTitled > * {
+  flex-shrink: 0;
+}
+.nameplateTitled > :first-child {
+  font-size: clamp(8px, 8.5cqw, 18px);
+}
+.nameplateTitle {
+  font-family: var(--font-card-title);
+  font-size: clamp(6px, 5cqw, 12px);
+  font-style: italic;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: 0.04em;
+  color: var(--tb-gold-bright, #e2c27a);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  animation: victory-fade-in 500ms ease-out both;
+}
 .actionsIn {
   animation: victory-actions-in 450ms ease-out 2000ms both;
 }
@@ -355,6 +380,7 @@
   .frameIn,
   .illustrationIn,
   .nameLetter,
+  .nameplateTitle,
   .actionsIn {
     animation: none;
   }
