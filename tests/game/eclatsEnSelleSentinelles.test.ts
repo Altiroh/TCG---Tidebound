@@ -225,6 +225,31 @@ describe("pierres et Éclats", () => {
       expect(eclats(passerTout(r.state), "p1")).toEqual(["eclat-chromatique-rouge"]);
     });
 
+    it("deux Rouges qui meurent ensemble laissent deux Éclats Rouges", () => {
+      // Vague Scélérate : 2 dégâts à toutes les unités — deux Héros de la Flamme (3 / 2) y restent.
+      const vague = instance("vague-scelerate", "p1");
+      const heros = [instance("heros-de-la-flamme", "p1"), instance("heros-de-la-flamme", "p1")];
+      const r = dispatch(table({ hand: [vague], board: heros }), { type: "playCard", playerId: "p1", instanceId: vague.instanceId });
+      ok(r);
+      const fin = passerTout(r.state);
+      expect(heros.every((h) => unite(fin, h.instanceId) === undefined)).toBe(true);
+      expect(eclats(fin, "p1")).toEqual(["eclat-chromatique-rouge", "eclat-chromatique-rouge"]);
+    });
+
+    it("l'Éclat ne peut pas attaquer, mais se Saborde s'il gêne", () => {
+      const eclat = instance("eclat-chromatique-rouge", "p1");
+      const poisson = instance("poisson-lanterne", "p2");
+      const combat = table({ board: [eclat] }, { board: [poisson] }, { phase: "combatPhase" });
+      expect(dispatch(combat, { type: "attack", playerId: "p1", attackerInstanceId: eclat.instanceId }).ok).toBe(false);
+      expect(
+        dispatch(combat, { type: "attack", playerId: "p1", attackerInstanceId: eclat.instanceId, defenderInstanceId: poisson.instanceId }).ok
+      ).toBe(false);
+
+      const r = dispatch(table({ board: [eclat] }), { type: "saborder", playerId: "p1", instanceId: eclat.instanceId });
+      ok(r);
+      expect(eclats(passerTout(r.state), "p1")).toEqual([]);
+    });
+
     it("une unité qui n'est pas une Sentinelle ne laisse rien", () => {
       const requin = instance("requin-balafre", "p1");
       const r = dispatch(table({ board: [requin] }), { type: "saborder", playerId: "p1", instanceId: requin.instanceId });
