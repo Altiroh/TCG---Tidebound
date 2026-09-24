@@ -15,7 +15,7 @@
 // recharger : couper l'app sous une partie en cours pour changer de version
 // serait le pire moment possible. Le client répond en postant
 // `{ type: "SKIP_WAITING" }`, et c'est seulement là que la relève a lieu.
-const CACHE_VERSION = "tidebound-shell-v2";
+const CACHE_VERSION = "tidebound-shell-v3";
 const APP_SHELL_URLS = ["/offline.html", "/manifest.webmanifest"];
 
 /** Préfixes servis depuis le cache (assets versionnés par leur contenu ou remplacés sous le même nom). */
@@ -62,8 +62,14 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       caches.open(CACHE_VERSION).then(async (cache) => {
         const cached = await cache.match(request);
+        // `no-cache` : le worker a SON cache, qui ne garde que les succès ; il
+        // demande donc toujours au serveur plutôt qu'au cache HTTP du
+        // navigateur. Celui-ci gardait aussi les 404 un jour entier — l'en-tête
+        // `Cache-Control` de `/assets` (next.config.mjs) vaut pour toute
+        // réponse —, et une illustration livrée après avoir été demandée
+        // restait introuvable malgré un rechargement (retour du 24/09/2026).
         const refresh = () =>
-          fetch(request)
+          fetch(request, { cache: "no-cache" })
             .then((response) => {
               // 200 uniquement : une réponse partielle (206, lecture d'un son
               // par plages) ne peut pas être mise en cache.
