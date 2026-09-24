@@ -170,6 +170,13 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
 
   /** On ne peut ouvrir que ce qu'on possède, et jamais plus que la borne du lot. */
   const maxBatch = Math.max(1, Math.min(MAX_BATCH_OPEN, selected?.owned ?? 0));
+  /**
+   * La réserve dépasse ce qu'une ouverture peut prendre : « Tout » ne veut
+   * alors PAS dire tout le stock, et le taire faisait passer la borne pour
+   * un bug (retour de test du 18/09). Chaque sachet d'un lot est tiré et
+   * écrit séparément (cf. `MAX_BATCH_OPEN`), donc on la dit.
+   */
+  const batchCapped = (selected?.owned ?? 0) > MAX_BATCH_OPEN;
   const busy = isOpening || opening !== null || batch !== null;
   /** Phrase entière du bouton d'ouverture — abrégée à l'écran sur un téléphone couché. */
   const openLabel = batchSize > 1 ? `Ouvrir ${batchSize} boosters` : "Ouvrir 1 booster";
@@ -589,8 +596,13 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
                       setBatchSize(maxBatch);
                     }}
                     disabled={batchSize >= maxBatch || busy}
+                    title={
+                      batchCapped
+                        ? `${MAX_BATCH_OPEN} sachets au plus par ouverture — il t'en restera ${(selected?.owned ?? 0) - MAX_BATCH_OPEN}.`
+                        : undefined
+                    }
                   >
-                    Tout ouvrir ({maxBatch})
+                    {batchCapped ? `Ouvrir le maximum (${maxBatch} par ouverture)` : `Tout ouvrir (${maxBatch})`}
                   </button>
                 )}
 
@@ -655,6 +667,9 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
           cards={opening.cards}
           visual={getBoosterPackVisual(opening.boosterId)}
           origin={opening.origin}
+          /* Un lot attend derrière : le bouton dit ce qui vient après, pour
+             que l'enchaînement se lise au lieu de surprendre. */
+          closeLabel={batch && opening.real ? `Voir les ${batch.packs - 1} autres sachets` : "Fermer"}
           onClose={handleOpeningClosed}
         />
       )}

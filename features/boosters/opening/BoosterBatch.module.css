@@ -10,7 +10,13 @@
 .layer {
   position: fixed;
   inset: 0;
-  z-index: 90;
+  /*
+   * SOUS le plan des dialogues (`--tb-z-dialog`) : le récap « Voir toutes
+   * les cartes reçues » EST un `Dialog`, et à 90 cette couche passait
+   * par-dessus lui — le bouton semblait ne rien faire, la fenêtre s'ouvrant
+   * derrière (retour de test iOS du 18/09).
+   */
+  z-index: calc(var(--tb-z-dialog) - 5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -77,7 +83,7 @@
   align-items: flex-end;
   justify-content: center;
   width: 100%;
-  min-height: clamp(150px, 26vh, 260px);
+  min-height: clamp(150px, 26dvh, 260px);
   padding-inline: clamp(8px, 2vw, 24px);
 }
 
@@ -172,6 +178,21 @@
   letter-spacing: 0.08em;
 }
 
+/* Ce que le « + » recouvre, et où le lire — sinon le jeton ressemble à une
+   carte de plus qu'on pourrait retourner. */
+.rowHint {
+  margin: 0;
+  color: var(--ink-faint);
+  font-size: 11.5px;
+  text-align: center;
+  opacity: 0;
+  transition: opacity 260ms ease-out;
+}
+
+.rowHint[data-shown] {
+  opacity: 1;
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;
@@ -186,10 +207,59 @@
   opacity: 1;
 }
 
+/*
+ * TÉLÉPHONE EN PAYSAGE — large mais très court (~850 × 390). Le panneau
+ * prenait la hauteur de l'écran et débordait : la rangée à `26dvh`, le
+ * titre, l'indice et les deux boutons ne tiennent pas ensemble dans 390 px.
+ * On resserre tout et on fait défiler le panneau plutôt que de le couper.
+ */
+@media (max-height: 560px) {
+  .layer {
+    padding: 8px;
+  }
+
+  .panel {
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: 16px;
+    max-height: 100%;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .eyebrow {
+    font-size: 10px;
+  }
+
+  .title {
+    font-size: clamp(16px, 4.4vh, 22px);
+  }
+
+  .sub,
+  .rowHint {
+    font-size: 11px;
+  }
+
+  .row {
+    min-height: 0;
+    padding-block: 4px;
+  }
+
+  .slot,
+  .more {
+    width: clamp(56px, 20dvh, 104px);
+  }
+
+  .actions {
+    gap: 10px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .slot,
   .more,
-  .actions {
+  .actions,
+  .rowHint {
     transition: none;
   }
   .slot:hover {
@@ -203,7 +273,7 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  max-height: min(56vh, 460px);
+  max-height: min(56dvh, 460px);
   margin: 0;
   padding: 0;
   overflow-y: auto;
@@ -234,7 +304,7 @@
    ligne à l'autre — c'est ce qui rend la liste lisible en diagonale. */
 .line {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) auto auto 3.2rem;
+  grid-template-columns: 34px minmax(0, 1fr) 7.5rem 7rem 3.2rem;
   align-items: center;
   gap: 10px;
   width: 100%;
@@ -324,4 +394,30 @@
   font-variant-numeric: tabular-nums;
   font-weight: 600;
   text-align: right;
+}
+
+/*
+ * Téléphone en paysage : la colonne du type mange le nom sans rien apprendre
+ * (la rareté suffit à trier du regard). Elle disparaît, les autres gardent
+ * leurs largeurs — donc leur alignement.
+ */
+@media (max-width: 900px), (max-height: 560px) {
+  .line {
+    grid-template-columns: 28px minmax(0, 1fr) 6.2rem 2.8rem;
+    gap: 8px;
+    padding: 4px 6px;
+  }
+
+  .lineArt {
+    width: 28px;
+    height: 28px;
+  }
+
+  .lineType {
+    display: none;
+  }
+
+  .list {
+    max-height: min(52dvh, 460px);
+  }
 }

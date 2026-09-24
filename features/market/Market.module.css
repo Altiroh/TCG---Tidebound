@@ -787,7 +787,7 @@ a.section {
   margin: 0;
   padding: 0;
   list-style: none;
-  max-height: clamp(70px, 18vh, 170px);
+  max-height: clamp(70px, 18dvh, 170px);
   overflow-y: auto;
   scrollbar-width: thin;
 }
