@@ -234,20 +234,96 @@
 }
 
 /*
- * LA RIDE. Le café n'est pas immobile : toutes les huit secondes, une onde
- * le traverse et se calme. C'est un fondu entre les deux surfaces, jamais
- * un mouvement — l'illustration fait le reste.
+ * LE CAFÉ AU CLIC. Plus de ride périodique (retour du 24/09 : la surface
+ * « en transition » attirait l'œil pour rien) : c'est le joueur qui agite
+ * le café. Un clic SUR LE LIQUIDE — la zone cliquable est une ellipse
+ * (`clip-path`, qui limite aussi le pointeur), la tasse ne réagit pas —
+ * fait partir une onde de l'endroit touché.
+ *
+ * L'onde vit dans `.cafeOnde`, masquée par la surface du café elle-même
+ * (`mask-image`) : les anneaux ne débordent jamais sur la tasse. La surface
+ * agitée, posée sur la calme, s'y fond le temps de l'onde.
  */
 .cafeAgite {
   opacity: 0;
-  animation: cafeRide 8.5s ease-in-out infinite;
 }
 
-@keyframes cafeRide {
-  0%, 46% { opacity: 0; }
-  62% { opacity: 0.92; }
-  78% { opacity: 0.55; }
+.cafeAgite[data-agite="true"] {
+  animation: cafeAgite 1400ms ease-out;
+}
+
+@keyframes cafeAgite {
+  0% { opacity: 0; }
+  18% { opacity: 0.85; }
   100% { opacity: 0; }
+}
+
+.cafeClic {
+  position: absolute;
+  top: 20.3%;
+  left: 8.95%;
+  width: 64.3%;
+  aspect-ratio: 718 / 338;
+  z-index: 2;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  pointer-events: auto;
+  clip-path: ellipse(50% 46% at 50% 50%);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cafeClic:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px rgba(254, 243, 199, 0.6);
+}
+
+.cafeOnde {
+  position: absolute;
+  top: 20.3%;
+  left: 8.95%;
+  width: 64.3%;
+  aspect-ratio: 718 / 338;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+  mask-image: url("/assets/menu/carte/cafe_surface_normal.webp");
+  -webkit-mask-image: url("/assets/menu/carte/cafe_surface_normal.webp");
+  mask-size: 100% 100%;
+  -webkit-mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  -webkit-mask-repeat: no-repeat;
+}
+
+/* Un anneau : crête claire et creux sombre, aplati par la perspective
+   (la surface est vue en biais : 338 / 718 de hauteur). */
+.cafeAnneau {
+  position: absolute;
+  width: 90%;
+  aspect-ratio: 718 / 338;
+  border-radius: 50%;
+  translate: -50% -50%;
+  box-shadow:
+    0 0 0 1.5px rgba(255, 236, 205, 0.55),
+    inset 0 0 0 2px rgba(20, 10, 4, 0.45),
+    0 0 6px 1px rgba(255, 236, 205, 0.25);
+  opacity: 0;
+  animation: cafeAnneau 1300ms cubic-bezier(0.2, 0.6, 0.35, 1) forwards;
+}
+
+@keyframes cafeAnneau {
+  0% {
+    transform: scale(0.02);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.95;
+  }
+  100% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
 }
 
 /*
@@ -285,6 +361,119 @@
   100% {
     opacity: 0;
     transform: translate(-50%, -58%) scale(1.26) rotate(6deg);
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * LES GROSEILLES (`MenuGroseilles`) : trois fruits posés à côté de la
+ * tarte, à l'échelle de ceux qu'elle a répandus. Intacte → éclatement →
+ * flaque. Largeur de la groseille : `--groseille`, en % de la scène.
+ * ────────────────────────────────────────────────────────────── */
+.stage {
+  --groseille: 1.45%;
+}
+
+.groseille,
+.groseilleEclat,
+.groseilleFlaque {
+  position: absolute;
+  z-index: 2;
+  translate: -50% -50%;
+  user-select: none;
+}
+
+.groseille img,
+.groseilleEclat img,
+.groseilleFlaque img {
+  display: block;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+}
+
+.groseille {
+  width: var(--groseille);
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.55));
+  transition: transform 140ms ease-out, filter 140ms ease-out;
+}
+
+/* Au survol, elle frémit — on devine qu'elle se touche. */
+.groseille:hover {
+  transform: scale(1.18);
+  filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.6)) brightness(1.12);
+}
+
+.groseille:focus-visible {
+  outline: 2px solid rgba(254, 226, 226, 0.8);
+  outline-offset: 2px;
+  border-radius: 9999px;
+}
+
+/* L'éclatement : la planche crevée surgit, gonfle, et ses gouttes volent. */
+.groseilleEclat {
+  width: calc(var(--groseille) * var(--ratio));
+  pointer-events: none;
+  animation: groseilleEclate 420ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+@keyframes groseilleEclate {
+  0% {
+    transform: scale(0.55) rotate(-8deg);
+    opacity: 1;
+  }
+  45% {
+    transform: scale(1.18) rotate(4deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 0.85;
+  }
+}
+
+/* Une goutte : une boîte de la taille de la groseille, centrée sur elle,
+   qui file dans sa direction (`--dx`, `--dy` en largeurs de groseille). */
+.groseilleGoutte {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(100% / var(--ratio));
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  background: radial-gradient(circle, #b3122e 0%, #8a0a22 calc(var(--taille) * 0.35), transparent calc(var(--taille) * 0.5));
+  animation: groseilleGoutte 520ms cubic-bezier(0.1, 0.7, 0.3, 1) forwards;
+}
+
+@keyframes groseilleGoutte {
+  from {
+    transform: translate(0, 0) scale(0.6);
+    opacity: 1;
+  }
+  to {
+    transform: translate(calc(var(--dx) * 100%), calc(var(--dy) * 100% + 35%)) scale(1);
+    opacity: 0;
+  }
+}
+
+/* Ce qui reste : la flaque, qui s'étale un instant puis ne bouge plus. */
+.groseilleFlaque {
+  width: calc(var(--groseille) * var(--ratio));
+  pointer-events: none;
+  opacity: 0.94;
+  animation: groseilleEtale 300ms ease-out both;
+}
+
+@keyframes groseilleEtale {
+  from {
+    transform: scale(0.7);
+    opacity: 0.4;
+  }
+  to {
+    transform: scale(1);
+    opacity: 0.94;
   }
 }
 
@@ -403,7 +592,7 @@
 
   /* La table s'immobilise : le café ne ride plus, et une seule volute
      reste posée au-dessus de la tasse, sans monter. */
-  .cafeAgite {
+  .cafeAgite[data-agite="true"] {
     animation: none;
   }
 

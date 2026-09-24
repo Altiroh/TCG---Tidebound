@@ -3,7 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Route } from "next";
-import type { CSSProperties } from "react";
+import { useRef, useState, type CSSProperties } from "react";
+import { MenuGroseilles } from "@/components/menu/MenuGroseilles";
 import styles from "@/components/menu/MenuCarte.module.css";
 import { playMenuCardClick, playMenuCardHover } from "@/lib/sound";
 
@@ -91,6 +92,59 @@ const SLOTS: CarteSlot[] = [
   },
 ];
 
+/**
+ * LE CAFÉ QU'ON TOUCHE. Un clic sur le liquide — et seulement sur lui : la
+ * zone est une ellipse — lance une onde depuis le point touché : trois
+ * anneaux qui s'élargissent, masqués par la surface du café, et la surface
+ * agitée qui s'y fond un instant. Plusieurs clics se superposent.
+ */
+function CafeOnde() {
+  const [ondes, setOndes] = useState<Array<{ id: number; x: number; y: number }>>([]);
+  const [agite, setAgite] = useState(0);
+  const suivante = useRef(0);
+
+  return (
+    <>
+      {/* Le café agité est posé SUR le calme, à la même place : il s'y fond le temps de l'onde. */}
+      <Image
+        key={agite}
+        src={MENU_CARTE_ASSETS.cafeAgite}
+        alt=""
+        width={718}
+        height={338}
+        draggable={false}
+        className={styles.cafeAgite}
+        data-agite={agite > 0 ? "true" : undefined}
+      />
+      <div className={styles.cafeOnde} aria-hidden>
+        {ondes.flatMap((onde) =>
+          [0, 1, 2].map((rang) => (
+            <span
+              key={`${onde.id}-${rang}`}
+              className={styles.cafeAnneau}
+              style={{ left: `${onde.x}%`, top: `${onde.y}%`, animationDelay: `${rang * 170}ms` }}
+            />
+          ))
+        )}
+      </div>
+      <button
+        type="button"
+        aria-label="Remuer le café"
+        className={styles.cafeClic}
+        onClick={(event) => {
+          const r = event.currentTarget.getBoundingClientRect();
+          const id = suivante.current++;
+          const x = r.width ? ((event.clientX - r.left) / r.width) * 100 : 50;
+          const y = r.height ? ((event.clientY - r.top) / r.height) * 100 : 50;
+          setOndes((current) => [...current, { id, x, y }]);
+          setAgite((n) => n + 1);
+          window.setTimeout(() => setOndes((current) => current.filter((o) => o.id !== id)), 1800);
+        }}
+      />
+    </>
+  );
+}
+
 /** `true` trace le contour des calques : le gabarit de calage. */
 export function TideboundMenuCarte({ marks = false }: { marks?: boolean }) {
   return (
@@ -146,11 +200,11 @@ export function TideboundMenuCarte({ marks = false }: { marks?: boolean }) {
         />
 
         {/*
-          LA TASSE — le seul objet VIVANT de la table. Le fond ne la peint
-          plus : elle est posée ici avec sa surface de café et ses volutes,
-          qui sont les seules choses qui bougent de tout l'écran.
+          LA TASSE. Le fond ne la peint plus : elle est posée ici avec sa
+          surface de café et ses volutes. Le café réagit au clic
+          (`CafeOnde`), comme les groseilles de la tarte.
 
-          Les trois calques du café (tasse, café calme, café agité) sont
+          Les calques du café (tasse, café calme, café agité, onde) sont
           calés les uns sur les autres en pourcentages de la tasse — le
           café occupe 64 % de sa largeur, à 9 % du bord gauche.
         */}
@@ -170,10 +224,11 @@ export function TideboundMenuCarte({ marks = false }: { marks?: boolean }) {
 
           <Image src={MENU_CARTE_ASSETS.tasse} alt="" width={1207} height={1143} draggable={false} className={styles.tasse} />
           <Image src={MENU_CARTE_ASSETS.cafeCalme} alt="" width={718} height={338} draggable={false} className={styles.cafeCalme} />
-          {/* Le café agité est posé SUR le calme, à la même place : la
-              ride n'est qu'un fondu de l'un vers l'autre. */}
-          <Image src={MENU_CARTE_ASSETS.cafeAgite} alt="" width={718} height={338} draggable={false} className={styles.cafeAgite} />
+          <CafeOnde />
         </div>
+
+        {/* Les groseilles à côté de la tarte : on les écrase au clic. */}
+        <MenuGroseilles />
 
         {/* La flamme des bougies passe sur toute la table, parchemins
             compris (cf. `MenuCarte.module.css`). */}

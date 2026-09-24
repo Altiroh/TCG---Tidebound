@@ -26,10 +26,18 @@ navigateur (`carte/`) l'a remplacé. L'historique Git les garde.
     illustration.
   - `tasse-cafe.webp`, `cafe_surface_normal.webp`,
     `cafe_surface_variante.webp`, `fumee_variante_1/2/3.webp` : la tasse,
-    le seul objet qui BOUGE. La surface du café est calée dans la tasse
+    qui fume en continu. La surface du café est calée dans la tasse
     (64,3 % de sa largeur, à 8,95 % / 20,3 %) et les deux états s'y
     fondent l'un dans l'autre ; les trois volutes montent du café, chacune
     sur son cycle.
+  - Plus de ride périodique sur le café : un CLIC sur le liquide y lance
+    une onde (anneaux masqués par `cafe_surface_normal.webp`, la surface
+    agitée s'y fond le temps de l'onde).
+  - `groseille-1/2/3.webp` (intactes), `groseille-eclat-1/2/3.webp`
+    (qui éclatent), `groseille-flaque-1/2.webp` (ce qui reste) : les
+    groseilles qu'on écrase à côté de la tarte
+    (`components/menu/MenuGroseilles.tsx`). Découpées d'une même planche
+    (`groseilles-assets.png`, retirée après découpe) : même échelle.
   - Les fichiers d'un même GROUPE (repos/survol, café calme/agité) sont
     rognés sur une boîte COMMUNE : c'est ce qui leur permet de se
     superposer au pixel une fois posés.
