@@ -7,6 +7,7 @@ import {
   graveyardChoicesForBreak,
   graveyardChoicesForPlay,
   type CardInstance,
+  type ChromaticColor,
   type GameState,
   type PendingReactionCandidate,
   type PlayerAction,
@@ -33,6 +34,17 @@ import type { TableTargeting } from "@/features/match/table/TableBoard";
  * en local et s'attend coup par coup en ligne.
  */
 
+/**
+ * Question d'Assemblage en cours. `proposal` : l'Assemblage proposé quand
+ * la carte a été lâchée sur une Sentinelle (invite Oui / Non) ; absent, le
+ * joueur désigne lui-même ses Sentinelles (carte touchée dans la main).
+ */
+export interface AssemblagePick {
+  card: CardInstance;
+  boardIndex?: number;
+  proposal?: Array<{ instanceId: string; color: ChromaticColor }>;
+}
+
 /** Ce que le joueur a commencé et doit terminer en désignant une cible. */
 export type BoardSelection =
   | { kind: "playCard"; instanceId: string; needsTarget: boolean }
@@ -46,7 +58,13 @@ export type BoardSelection =
    * quel permanent doté de Résistance, des deux côtés, ou n'importe quel
    * Navire — le sien compris. L'activation part au clic sur la cible.
    */
-  | { kind: "shipTarget" };
+  | { kind: "shipTarget" }
+  /**
+   * Capacité activable d'une carte du plateau (`activatableOncePerTurn`) qui
+   * demande une cible (Coffret aux Cinq Pierres : l'Éclat à Saborder).
+   * L'activation part au clic sur la cible.
+   */
+  | { kind: "ability"; instanceId: string };
 
 /**
  * Traduit la sélection du conteneur en ciblage pour le plateau. Les deux
@@ -62,6 +80,7 @@ export function tableTargetingFor(selection: BoardSelection | null): TableTarget
   if (selection.kind === "shipTarget") return { kind: "shipTarget" };
   if (selection.kind === "attack") return { kind: "attack", sourceInstanceId: selection.attackerId };
   if (selection.kind === "reaction") return { kind: "reaction", sourceInstanceId: selection.sourceInstanceId };
+  if (selection.kind === "ability") return { kind: "ability", sourceInstanceId: selection.instanceId };
   return { kind: selection.kind, sourceInstanceId: selection.instanceId };
 }
 
@@ -123,8 +142,14 @@ export interface BoardInteraction {
    * Carte à Assemblage en attente (Le Géant Chromatique, Lot 15) : le joueur
    * choisit entre l'Assemblage — et ses Sentinelles — et le coût normal.
    */
-  assemblagePick: { card: CardInstance; boardIndex?: number } | null;
-  setAssemblagePick: (pick: { card: CardInstance; boardIndex?: number } | null) => void;
+  assemblagePick: AssemblagePick | null;
+  setAssemblagePick: (pick: AssemblagePick | null) => void;
+  /**
+   * Carte à Assemblage lâchée SUR une Sentinelle : la question se pose en
+   * Oui / Non, avec un Assemblage qui inclut cette Sentinelle. `false` si
+   * aucun Assemblage ne passe par elle.
+   */
+  handleAssemblageDrop: (instanceId: string, sentinelId: string) => boolean;
   graveyardViewerPlayerId: PlayerId | null;
   setGraveyardViewerPlayerId: (playerId: PlayerId | null) => void;
   detailInstance: CardInstance | null;
@@ -150,6 +175,8 @@ export interface BoardInteraction {
   resolveBoardCardClick: (instanceId: string, ownerId: PlayerId) => PlayerAction | null;
   requestBreak: (card: CardInstance, fromHand: boolean) => void;
   handleDropOnGraveyard: (instanceId: string, from: "hand" | "board") => void;
+  /** Bouton « Activer » d'une carte du plateau (`activatableOncePerTurn`). */
+  requestAbility: (instanceId: string) => void;
 }
 
 export function useBoardInteraction({
@@ -166,7 +193,7 @@ export function useBoardInteraction({
   const [reactionQueue, setReactionQueue] = useState<PendingReactionCandidate[]>([]);
   const [breakPrompt, setBreakPrompt] = useState<{ card: CardInstance; source: "hand" | "board" } | null>(null);
   const [graveyardPick, setGraveyardPick] = useState<GraveyardPickRequest | null>(null);
-  const [assemblagePick, setAssemblagePick] = useState<{ card: CardInstance; boardIndex?: number } | null>(null);
+  const [assemblagePick, setAssemblagePick] = useState<AssemblagePick | null>(null);
   const [graveyardViewerPlayerId, setGraveyardViewerPlayerId] = useState<PlayerId | null>(null);
   const [detailInstance, setDetailInstance] = useState<CardInstance | null>(null);
   const [showPauseMenu, setShowPauseMenu] = useState(false);
@@ -214,10 +241,12 @@ export function useBoardInteraction({
       return;
     }
     const def = getCardDefinition(card.cardId);
-    // « Assemblage Chromatique » : dès qu'il est possible, la question se
-    // pose — Assembler, ou payer le coût normal. Jamais décidée à la place
-    // du joueur.
-    if (def.chromaticAssemblage && findAssemblage(viewer.board, def.chromaticAssemblage.sentinels)) {
+    // « Assemblage Chromatique » : carte TOUCHÉE, la question se pose —
+    // Assembler, ou payer le coût normal. Jamais décidée à la place du
+    // joueur. Carte LÂCHÉE sur un emplacement libre (`confirmed`), le geste
+    // a déjà répondu : il la pose, au coût normal. L'Assemblage, lui, se
+    // demande en la lâchant sur une Sentinelle (`handleAssemblageDrop`).
+    if (!confirmed && def.chromaticAssemblage && findAssemblage(viewer.board, def.chromaticAssemblage.sentinels)) {
       setAssemblagePick({ card, boardIndex });
       return;
     }
@@ -263,6 +292,11 @@ export function useBoardInteraction({
       act({ type: "breakObject", playerId: actorId, instanceId: selection.instanceId, targetInstanceId: instanceId, fromHand: selection.fromHand });
       return null;
     }
+    if (selection?.kind === "ability") {
+      act({ type: "activateAbility", playerId: actorId, sourceInstanceId: selection.instanceId, targetInstanceId: instanceId });
+      clearSelection();
+      return null;
+    }
     if (selection?.kind === "attack" && ownerId !== viewer.id) {
       act({ type: "attack", playerId: actorId, attackerInstanceId: selection.attackerId, defenderInstanceId: instanceId });
       return null;
@@ -276,6 +310,45 @@ export function useBoardInteraction({
       clearSelection();
     }
     return null;
+  }
+
+  function handleAssemblageDrop(instanceId: string, sentinelId: string): boolean {
+    if (!canPlayCards) return false;
+    const card = viewer.hand.find((c) => c.instanceId === instanceId);
+    const requis = card && getCardDefinition(card.cardId).chromaticAssemblage?.sentinels;
+    if (!card || !requis) return false;
+    const proposal = findAssemblage(viewer.board, requis, sentinelId);
+    if (!proposal) return false;
+    onGestureStart?.();
+    // Le Géant prend la place de la Sentinelle sur laquelle on l'a lâché :
+    // son rang une fois les Sentinelles Assemblées retirées.
+    const parties = new Set(proposal.map((part) => part.instanceId));
+    const rang = viewer.board.findIndex((u) => u.instanceId === sentinelId);
+    const boardIndex = viewer.board.slice(0, rang).filter((u) => !parties.has(u.instanceId)).length;
+    setAssemblagePick({ card, proposal, boardIndex });
+    return true;
+  }
+
+  /**
+   * Bouton « Activer » d'une carte du plateau : l'activation part tout de
+   * suite, ou — si un effet vise une unité désignée — le joueur désigne
+   * d'abord la cible. Le moteur ne choisit jamais à sa place.
+   */
+  function requestAbility(instanceId: string) {
+    if (!canAct) return;
+    const card = viewer.board.find((c) => c.instanceId === instanceId);
+    if (!card) return;
+    onGestureStart?.();
+    if (selection?.kind === "ability" && selection.instanceId === instanceId) {
+      clearSelection();
+      return;
+    }
+    const spec = getCardDefinition(card.cardId).activatableOncePerTurn;
+    if (spec?.effects.some((effect) => effect.target.kind === "chosenUnit")) {
+      setSelection({ kind: "ability", instanceId });
+      return;
+    }
+    act({ type: "activateAbility", playerId: actorId, sourceInstanceId: instanceId });
   }
 
   /** Brise un Objet, posé ou depuis la main : cible ou carte de défausse d'abord si l'effet en demande une. */
@@ -310,6 +383,7 @@ export function useBoardInteraction({
   return {
     selection,
     setSelection,
+    requestAbility,
     clearSelection,
     breakPrompt,
     setBreakPrompt,
@@ -317,6 +391,7 @@ export function useBoardInteraction({
     setGraveyardPick,
     assemblagePick,
     setAssemblagePick,
+    handleAssemblageDrop,
     graveyardViewerPlayerId,
     setGraveyardViewerPlayerId,
     detailInstance,

@@ -1,4 +1,5 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
+import { deckLookRefusal } from "@/game/rules/deckLook";
 import { UNIT_CARD_TYPES } from "@/game/cards/types";
 import { chromaticColorsOf } from "@/game/rules/chromatic";
 import { resolveEffectSequence } from "@/game/effects/resolveSequence";
@@ -282,18 +283,10 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
     for (const id of prises) {
       const carte = regardees.find((c) => c.instanceId === id);
       if (!carte) return { ok: false, error: "Cette carte ne fait pas partie de celles que vous regardez." };
-      if (choice.takeableCardTypes && !choice.takeableCardTypes.includes(getCardDefinition(carte.cardId).type)) {
-        return { ok: false, error: "Ce texte ne permet pas de prendre une carte de ce type." };
-      }
-      if (choice.takeableArchetype && getCardDefinition(carte.cardId).archetype !== choice.takeableArchetype) {
-        return { ok: false, error: "Ce texte ne permet pas de prendre une carte de cette famille." };
-      }
-      if (choice.takeableChromaticColors) {
-        const couleurs = getCardDefinition(carte.cardId).chromatic?.colors ?? [];
-        if (!couleurs.some((c) => choice.takeableChromaticColors!.includes(c))) {
-          return { ok: false, error: "Ce texte ne permet de prendre qu'une carte de cette couleur." };
-        }
-      }
+      const refus = deckLookRefusal(choice, carte);
+      if (refus === "type") return { ok: false, error: "Ce texte ne permet pas de prendre une carte de ce type." };
+      if (refus === "archetype") return { ok: false, error: "Ce texte ne permet pas de prendre une carte de cette famille." };
+      if (refus === "color") return { ok: false, error: "Ce texte ne permet de prendre qu'une carte de cette couleur." };
     }
 
     const player = getPlayer(nextState, choice.playerId);

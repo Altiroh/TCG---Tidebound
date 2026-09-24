@@ -3,7 +3,7 @@
 import { useLayoutEffect, useRef } from "react";
 import styles from "@/features/match/table/Table.module.css";
 import { useCardBackSrcFor } from "@/features/cosmetics/MatchCosmeticsProvider";
-import { FLIGHT_MS, SHATTER_MS, type Flight } from "@/features/match/table/useCardMotion";
+import { FLIGHT_MS, SHATTER_MS, TUCK_MS, type Flight } from "@/features/match/table/useCardMotion";
 
 /** Effet ponctuel à un point de l'écran : flash d'impact ou dégâts qui s'envolent. */
 export interface ImpactFx {
@@ -36,6 +36,25 @@ function FlyingCard({ flight }: { flight: Flight }) {
     const dx = from.x + from.width / 2 - (to.x + to.width / 2);
     const dy = from.y + from.height / 2 - (to.y + to.height / 2);
     const scale = from.width / to.width;
+    if (ending === "tuck") {
+      // Remise SOUS la pioche : la carte se soulève du tas en éventail, se
+      // montre un instant, puis redescend et glisse sous le paquet — elle
+      // s'efface en passant dessous (la couche de vol est au-dessus de la
+      // pioche, c'est le fondu qui la fait « passer derrière »).
+      const fan = flight.fan ?? 0;
+      const h = to.height;
+      el.animate(
+        [
+          { transform: "translate(0, 0) rotate(0deg) scale(1)", opacity: 1, easing: "cubic-bezier(.2,.8,.3,1)" },
+          { offset: 0.38, transform: `translate(${fan * to.width * 0.55}px, ${-h * 0.62}px) rotate(${fan * 12}deg) scale(1.06)`, opacity: 1, easing: "cubic-bezier(.5,0,.5,1)" },
+          { offset: 0.55, transform: `translate(${fan * to.width * 0.5}px, ${-h * 0.58}px) rotate(${fan * 10}deg) scale(1.06)`, opacity: 1, easing: "cubic-bezier(.4,0,.7,1)" },
+          { offset: 0.85, transform: `translate(${fan * to.width * 0.08}px, ${h * 0.22}px) rotate(0deg) scale(0.96)`, opacity: 0.85 },
+          { transform: `translate(0, ${h * 0.12}px) rotate(0deg) scale(0.94)`, opacity: 0 },
+        ],
+        { duration: TUCK_MS, delay: delayMs, fill: "forwards" }
+      );
+      return;
+    }
     const keyframes =
       ending === "land"
         ? [
@@ -48,7 +67,7 @@ function FlyingCard({ flight }: { flight: Flight }) {
             { transform: "translate(0, 0) scale(0.7) rotate(6deg)", opacity: 0 },
           ];
     el.animate(keyframes, { duration: FLIGHT_MS, delay: delayMs, easing: "cubic-bezier(.3,.7,.3,1)", fill: "forwards" });
-  }, [from, to, ending, delayMs]);
+  }, [from, to, ending, delayMs, flight.fan]);
 
   return (
     <div

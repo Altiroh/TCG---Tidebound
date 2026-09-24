@@ -1,4 +1,5 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
+import { isDeckLookTakeable } from "@/game/rules/deckLook";
 import { hasResistance, UNIT_CARD_TYPES } from "@/game/cards/types";
 import type { CardDefinition } from "@/game/cards/types";
 import {
@@ -135,15 +136,7 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
     // « ne rien prendre ». `evaluateState` tranche, comme partout ailleurs.
     if (state.pendingChoice.kind === "deckLook") {
       const choice = state.pendingChoice;
-      const prenables = choice.revealed.filter((carte) => {
-        const def = getCardDefinition(carte.cardId);
-        if (choice.takeableCardTypes && !choice.takeableCardTypes.includes(def.type)) return false;
-        if (choice.takeableArchetype && def.archetype !== choice.takeableArchetype) return false;
-        if (choice.takeableChromaticColors && !(def.chromatic?.colors ?? []).some((c) => choice.takeableChromaticColors!.includes(c))) {
-          return false;
-        }
-        return true;
-      });
+      const prenables = choice.revealed.filter((carte) => isDeckLookTakeable(choice, carte));
       return [
         ...prenables.map((carte) => ({
           type: "resolveChoice" as const,

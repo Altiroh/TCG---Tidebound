@@ -4,6 +4,7 @@ import { hasResistance, type CardInstance } from "@/game/cards/types";
 import type { TideStateName } from "@/game/environment/types";
 import type { GameEvent } from "@/game/events/types";
 import { collectReactionCandidates, processTrigger } from "@/game/triggers/triggerBus";
+import { leaveChromaticShard } from "@/game/rules/chromaticShards";
 import type { DestructionCause } from "@/game/cards/types";
 import { reasonAfterLoss } from "@/game/state/reason";
 import { recordGraveyardArrival } from "@/game/state/discard";
@@ -497,6 +498,12 @@ export function processDeaths(
       );
       next = triggerResult.state;
       events.push(...triggerResult.events);
+
+      // Sentinelle Chromatique : sa pierre lui survit, un Éclat de sa couleur
+      // (règle de famille, `game/rules/chromaticShards.ts`).
+      const eclat = leaveChromaticShard(next, unit, owner.id, turnNumber);
+      next = eclat.state;
+      events.push(...eclat.events);
     }
 
     current = next;

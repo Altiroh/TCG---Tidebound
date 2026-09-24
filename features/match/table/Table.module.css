@@ -2294,25 +2294,30 @@
   --aim-rgb: 203, 213, 225;
 }
 
-/* Trait de visée (`DragLayer`) : tirets ÉPAIS et arrondis, qui défilent vers
-   la cible (`stroke-dashoffset` animé) ; l'ombre, continue, le détache du
-   plateau. */
+/* Flèche de visée (`DragLayer`), à la Hearthstone : tirets fins et
+   arrondis, fixes ; l'ombre, continue, la détache du plateau. */
 .aimLineShadow {
   fill: none;
-  stroke: rgba(2, 6, 23, 0.55);
-  stroke-width: 9;
+  stroke: rgba(2, 6, 23, 0.5);
+  stroke-width: 6;
   stroke-linecap: round;
-  stroke-linejoin: round;
 }
 
 .aimLine {
   fill: none;
   stroke: rgba(var(--aim-rgb), 0.95);
-  stroke-width: 5.5;
+  stroke-width: 3.5;
   stroke-linecap: round;
+  stroke-dasharray: 9 8;
+  filter: drop-shadow(0 0 4px rgba(var(--aim-rgb), 0.5));
+}
+
+.aimHead {
+  fill: rgba(var(--aim-rgb), 1);
+  stroke: rgba(2, 6, 23, 0.7);
+  stroke-width: 2.5;
   stroke-linejoin: round;
-  stroke-dasharray: 14 11;
-  filter: drop-shadow(0 0 4px rgba(var(--aim-rgb), 0.55));
+  filter: drop-shadow(0 0 5px rgba(var(--aim-rgb), 0.6)) drop-shadow(0 3px 4px rgba(0, 0, 0, 0.6));
 }
 
 .aimReticle {
@@ -2632,4 +2637,73 @@
 
 @media (prefers-reduced-motion: reduce) {
   .phaseTip { transition: none; }
+}
+
+/* Bouton « Activer » d'une capacité activable (`activatableOncePerTurn`),
+   posé au bas de la carte, au-dessus de son illustration. */
+.abilityButton {
+  position: absolute;
+  left: 50%;
+  bottom: 6%;
+  z-index: 25;
+  transform: translateX(-50%);
+  padding: 0.25em 0.9em;
+  border-radius: 9999px;
+  border: 1.5px solid rgba(254, 243, 199, 0.9);
+  background: linear-gradient(180deg, #fbbf24, #b45309);
+  color: #1c1003;
+  font-family: var(--font-card-title), Georgia, serif;
+  font-size: clamp(10px, calc(var(--card-w, 90px) * 0.13), 15px);
+  font-weight: 800;
+  white-space: nowrap;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.6), 0 0 10px rgba(251, 191, 36, 0.55);
+  cursor: pointer;
+  transition: transform 120ms ease-out, filter 120ms ease-out;
+}
+
+/* Exception à `.tableCard button { pointer-events: none }` : ce bouton-là
+   est fait pour être cliqué. */
+.tableCard .abilityButton {
+  pointer-events: auto;
+}
+
+.abilityButton:hover {
+  transform: translateX(-50%) scale(1.08);
+  filter: brightness(1.1);
+}
+
+/* Prix d'une carte glissée (`ReasonCostPreview`) : il surgit au-dessus de
+   la jauge de Raison et y flotte, en respirant, tant qu'on n'a pas lâché. */
+.reasonPreview {
+  transform: translate(-50%, -50%);
+  animation:
+    reason-preview-in 220ms cubic-bezier(0.2, 1.4, 0.4, 1) both,
+    reason-preview-float 1.6s ease-in-out 220ms infinite;
+}
+
+@keyframes reason-preview-in {
+  from {
+    transform: translate(-50%, -20%) scale(0.4);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes reason-preview-float {
+  0%,
+  100% {
+    transform: translate(-50%, -50%);
+  }
+  50% {
+    transform: translate(-50%, calc(-50% - 4px));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reasonPreview {
+    animation: none;
+  }
 }

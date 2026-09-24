@@ -191,9 +191,18 @@ export function assemblageError(
  */
 export function findAssemblage(
   board: readonly CardInstance[],
-  required: number
+  required: number,
+  /**
+   * Sentinelle qui DOIT en faire partie — celle sur laquelle le joueur a
+   * lâché la carte à Assemblage. Absente : n'importe quelle affectation.
+   */
+  mustInclude?: string
 ): Array<{ instanceId: string; color: ChromaticColor }> | undefined {
-  const sentinels = board.filter(isSentinel).map((unit) => ({ unit, colors: chromaticColorsOf(unit, board) }));
+  const all = board.filter(isSentinel).map((unit) => ({ unit, colors: chromaticColorsOf(unit, board) }));
+  // La Sentinelle imposée passe en tête, et ne peut pas être sautée (cf. `search`).
+  const forced = mustInclude ? all.find((s) => s.unit.instanceId === mustInclude) : undefined;
+  if (mustInclude && !forced) return undefined;
+  const sentinels = forced ? [forced, ...all.filter((s) => s !== forced)] : all;
   const chosen: Array<{ instanceId: string; color: ChromaticColor }> = [];
   const usedColors = new Set<ChromaticColor>();
 
@@ -209,6 +218,7 @@ export function findAssemblage(
       chosen.pop();
       usedColors.delete(color);
     }
+    if (forced && index === 0) return false;
     return search(index + 1);
   };
 

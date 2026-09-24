@@ -66,14 +66,36 @@ export function TurnTimerBadge({ state, viewerId }: TurnTimerBadgeProps) {
   const mine = timer.awaitingPlayerId === viewerId;
   const seconds = Math.max(0, Math.ceil(remaining / 1000));
   const palier = palierPour(allowanceFor(state) - remaining);
+  // Ce qu'on attend, et de qui. Pendant SON tour, le joueur qui voit la
+  // partie s'arrêter doit savoir que c'est l'adversaire qui a la main
+  // (fenêtre de réaction, choix imposé) : « Tour de l'adversaire » était
+  // faux, et rien ne disait pourquoi plus rien ne bougeait.
+  const monTour = state.activePlayerId === viewerId;
+  const repond = state.pendingReaction?.awaitingPlayerId === timer.awaitingPlayerId;
+  const choisit = state.pendingChoice !== undefined && state.pendingChoice !== null && !repond;
+  const libelle = mine
+    ? monTour
+      ? "À toi de jouer"
+      : "À toi de répondre"
+    : monTour
+      ? repond
+        ? "L'adversaire répond…"
+        : choisit
+          ? "L'adversaire fait un choix…"
+          : "En attente de l'adversaire…"
+      : "Tour de l'adversaire";
+  // L'attente pendant son propre tour se voit : c'est là qu'on croit à une panne.
+  const enAttente = !mine && monTour && palier === "calme";
 
   return (
     <div
-      className={`pointer-events-none fixed left-1/2 top-3 z-[60] -translate-x-1/2 rounded-full border px-3 py-1 text-[11px] font-medium backdrop-blur-md transition-colors ${STYLES[palier]}`}
+      className={`pointer-events-none fixed left-1/2 top-3 z-[60] -translate-x-1/2 rounded-full border px-3 py-1 text-[11px] font-medium backdrop-blur-md transition-colors ${
+        enAttente ? "animate-pulse border-sky-300/50 bg-sky-950/80 text-sky-100" : STYLES[palier]
+      }`}
       role="timer"
       aria-live={palier === "calme" ? "off" : "polite"}
     >
-      {mine ? "À toi de jouer" : "Tour de l'adversaire"} · {formatRemaining(seconds)}
+      {libelle} · {formatRemaining(seconds)}
       {palier !== "calme" && (
         <span className="ml-1.5 font-semibold">
           {mine

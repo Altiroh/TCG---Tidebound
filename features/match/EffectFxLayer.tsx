@@ -2,13 +2,16 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { centerOf, findElement, FloatingDamage, ImpactFlash, shake, SmokeBurst, type Point } from "@/features/match/AttackImpactLayer";
-import { keywordLabel } from "@/features/match/cardDisplay";
+import { keywordLabel, THICK_TEXT_OUTLINE } from "@/features/match/cardDisplay";
 import {
   BUFF_LAND_MS,
   HEAL_APPLY_MS,
+  REASON_COUNT_MS,
+  REASON_FALL_MS,
   HEAL_TOTAL_MS,
   SHOT_FLIGHT_MS,
   type EffectBuff,
+  type EffectReason,
   type EffectShot,
   type EffectVolley,
   type FxTarget,
@@ -23,8 +26,8 @@ import {
  *     vers sa cible en arc ; toutes les cibles d'un même effet sont visées
  *     EN MÊME TEMPS. À l'arrivée : flash, plaque de dégâts, tremblement ;
  *   - soin : un voile lumineux descend sur la cible, scintille et s'efface ;
- *   - gain / perte : une pastille surgit au-dessus de la carte, se montre,
- *     puis file se ranger sur la valeur qu'elle modifie (Puissance,
+ *   - gain / perte : le chiffre (+1, −1…) surgit au-dessus de la carte, se montre,
+ *     puis file se ranger sur la valeur qu’il modifie (Puissance,
  *     Résistance, ou la rangée des badges pour un mot-clé).
  */
 
@@ -261,18 +264,24 @@ function HealVeil({ box, amount }: { box: Box; amount: number }) {
 interface Chip {
   key: string;
   text: string;
-  /** Couleur de la pastille. */
+  /** Couleur du chiffre (`CHIP_TONES`). */
   tone: "attack" | "health" | "keyword" | "loss";
   start: Point;
   end: Point;
   size: number;
 }
 
+/**
+ * Couleur du chiffre — les MÊMES que celles des caractéristiques sur la
+ * carte (`statColorClass`, `CardTile`) : un gain vert, une perte rouge. Pas
+ * de pastille ni de cadre : c'est le chiffre lui-même qui surgit, puis va
+ * se fondre dans celui de la carte.
+ */
 const CHIP_TONES = {
-  attack: { background: "linear-gradient(180deg, #fcd34d, #d97706)", color: "#1c1003", border: "#fef3c7" },
-  health: { background: "linear-gradient(180deg, #6ee7b7, #059669)", color: "#022c22", border: "#d1fae5" },
-  keyword: { background: "linear-gradient(180deg, #c4b5fd, #7c3aed)", color: "#faf5ff", border: "#ede9fe" },
-  loss: { background: "linear-gradient(180deg, #fda4af, #be123c)", color: "#fff1f2", border: "#ffe4e6" },
+  attack: "#6ee7b7",
+  health: "#6ee7b7",
+  keyword: "#c4b5fd",
+  loss: "#fb7185",
 } as const;
 
 function signed(value: number): string {
@@ -292,17 +301,17 @@ function chipsFor(buff: EffectBuff): Chip[] {
 
   const entries: Array<Omit<Chip, "start" | "size">> = [];
   if (buff.attack !== 0) {
-    entries.push({ key: "attack", text: `${signed(buff.attack)} ⚔`, tone: buff.loss || buff.attack < 0 ? "loss" : "attack", end: statCenter("attack") });
+    entries.push({ key: "attack", text: signed(buff.attack), tone: buff.loss || buff.attack < 0 ? "loss" : "attack", end: statCenter("attack") });
   }
   if (buff.health !== 0) {
-    entries.push({ key: "health", text: `${signed(buff.health)} ⛨`, tone: buff.loss || buff.health < 0 ? "loss" : "health", end: statCenter("resistance") });
+    entries.push({ key: "health", text: signed(buff.health), tone: buff.loss || buff.health < 0 ? "loss" : "health", end: statCenter("resistance") });
   }
   for (const keyword of buff.keywords) {
     // Les badges de mot-clé flottent au-dessus de la carte (`CardTile`).
     entries.push({ key: `kw-${keyword}`, text: keywordLabel(keyword), tone: "keyword", end: { x: box.left + box.width / 2, y: box.top - 4 } });
   }
   // Rangées côte à côte au-dessus de la carte, centrées.
-  const gap = size * 2.3;
+  const gap = size * 1.8;
   return entries.map((entry, index) => ({
     ...entry,
     size,
@@ -332,7 +341,6 @@ function BuffChip({ chip }: { chip: Chip }) {
     return () => animation.cancel();
   }, [chip]);
 
-  const tone = CHIP_TONES[chip.tone];
   return (
     <span
       ref={ref}
@@ -342,20 +350,145 @@ function BuffChip({ chip }: { chip: Chip }) {
         left: chip.start.x,
         top: chip.start.y,
         opacity: 0,
-        padding: `${chip.size * 0.12}px ${chip.size * 0.36}px`,
-        borderRadius: 9999,
-        border: `2px solid ${tone.border}`,
-        background: tone.background,
-        color: tone.color,
+        color: CHIP_TONES[chip.tone],
         fontFamily: "var(--font-card-title), Georgia, serif",
-        fontSize: chip.size * 0.5,
+        // Un mot-clé est plus long qu'un chiffre : il se lit plus petit.
+        fontSize: chip.size * (chip.tone === "keyword" ? 0.55 : 0.85),
         fontWeight: 800,
-        lineHeight: 1.1,
+        lineHeight: 1,
         whiteSpace: "nowrap",
-        boxShadow: "0 4px 10px rgba(0,0,0,0.55), 0 0 12px rgba(255,255,255,0.35)",
+        textShadow: THICK_TEXT_OUTLINE,
       }}
     >
       {chip.text}
+    </span>
+  );
+}
+
+// ── Raison qui s'abat sur la jauge ──────────────────────────────────────
+
+/** Jauge de Raison d'un Navire (`data-reason-gauge`, `TableShip`). */
+export function reasonGaugeOf(playerId: string): HTMLElement | null {
+  return document.querySelector<HTMLElement>(`[data-reason-gauge="${playerId}"]`);
+}
+
+/** Où flotte un chiffre de Raison : au-dessus du médaillon, centré. */
+export function reasonAnchor(gauge: HTMLElement): { x: number; y: number; size: number } {
+  const r = gauge.getBoundingClientRect();
+  return { x: r.left + r.width / 2, y: r.top - r.height * 0.55, size: Math.max(20, Math.min(40, r.height * 0.75)) };
+}
+
+function signedReason(value: number): string {
+  return value > 0 ? `+${value}` : `−${Math.abs(value)}`;
+}
+
+/**
+ * Le prix d'une carte (ou un gain de Raison) : le chiffre flotte au-dessus
+ * de la jauge — là même où l'aperçu du glisser l'affichait —, se décompte
+ * s'il a été payé moins que son coût imprimé (Assemblage : −8 … −2), puis
+ * s'abat sur la jauge, qui encaisse. La Raison affichée ne change qu'à
+ * l'impact (`patchedDisplay`).
+ */
+function ReasonDrop({ entry }: { entry: EffectReason }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [anchor, setAnchor] = useState<{ x: number; y: number; size: number; fall: number } | null>(null);
+  const [shown, setShown] = useState(entry.printed !== undefined ? -entry.printed : entry.amount);
+
+  useLayoutEffect(() => {
+    const gauge = reasonGaugeOf(entry.playerId);
+    if (!gauge) return;
+    const a = reasonAnchor(gauge);
+    const r = gauge.getBoundingClientRect();
+    setAnchor({ ...a, fall: r.top + r.height / 2 - a.y });
+  }, [entry.playerId]);
+
+  // Un chiffre qui attend son tour (`delayMs`) reste invisible jusque-là.
+  const [visible, setVisible] = useState(!entry.delayMs);
+  useEffect(() => {
+    if (!entry.delayMs) return undefined;
+    const id = window.setTimeout(() => setVisible(true), entry.delayMs);
+    return () => window.clearTimeout(id);
+  }, [entry.delayMs]);
+
+  useEffect(() => {
+    if (!anchor || !visible) return undefined;
+    const el = ref.current;
+    const timers: number[] = [];
+    const animations: Animation[] = [];
+    const countMs = entry.printed !== undefined ? REASON_COUNT_MS : 0;
+
+    // Décompte : du coût imprimé au prix payé, un cran à la fois, chaque cran marqué d'un sursaut.
+    if (entry.printed !== undefined) {
+      const from = entry.printed;
+      const to = -entry.amount;
+      const steps = Math.max(1, from - to);
+      for (let i = 1; i <= steps; i++) {
+        timers.push(
+          window.setTimeout(() => {
+            setShown(-(from - i));
+            el?.animate([{ transform: "translate(-50%, -50%) scale(1.25)" }, { transform: "translate(-50%, -50%) scale(1)" }], { duration: 160, easing: "ease-out" });
+          }, 120 + ((countMs - 160) * i) / steps)
+        );
+      }
+    }
+
+    // La chute : le chiffre s'abat sur la jauge, qui encaisse (éclair, léger enfoncement).
+    timers.push(
+      window.setTimeout(() => {
+        if (el) {
+          animations.push(
+            el.animate(
+              [
+                { transform: "translate(-50%, -50%) translateY(0) scale(1)", opacity: 1 },
+                { transform: "translate(-50%, -50%) translateY(-10px) scale(1.12)", opacity: 1, offset: 0.25, easing: "cubic-bezier(.6,0,.9,.4)" },
+                { transform: `translate(-50%, -50%) translateY(${anchor.fall}px) scale(0.7)`, opacity: 0.95, offset: 0.9 },
+                { transform: `translate(-50%, -50%) translateY(${anchor.fall}px) scale(0.5)`, opacity: 0 },
+              ],
+              { duration: REASON_FALL_MS, fill: "forwards" }
+            )
+          );
+        }
+        timers.push(
+          window.setTimeout(() => {
+            reasonGaugeOf(entry.playerId)?.animate(
+              [
+                { transform: "scale(1)", filter: "brightness(1)" },
+                { transform: "scale(0.9)", filter: entry.amount < 0 ? "brightness(1.7) drop-shadow(0 0 8px rgba(251,113,133,.9))" : "brightness(1.7) drop-shadow(0 0 8px rgba(110,231,183,.9))" },
+                { transform: "scale(1)", filter: "brightness(1)" },
+              ],
+              { duration: 320, easing: "ease-out" }
+            );
+          }, REASON_FALL_MS * 0.9)
+        );
+      }, countMs)
+    );
+    return () => {
+      timers.forEach((timer) => window.clearTimeout(timer));
+      animations.forEach((animation) => animation.cancel());
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- une seule chute par paiement.
+  }, [anchor, visible]);
+
+  if (!anchor || !visible) return null;
+  return (
+    <span
+      ref={ref}
+      aria-hidden
+      className="pointer-events-none absolute z-40"
+      style={{
+        left: anchor.x,
+        top: anchor.y,
+        transform: "translate(-50%, -50%)",
+        color: entry.amount < 0 ? CHIP_TONES.loss : CHIP_TONES.health,
+        fontFamily: "var(--font-card-title), Georgia, serif",
+        fontSize: anchor.size,
+        fontWeight: 800,
+        lineHeight: 1,
+        whiteSpace: "nowrap",
+        textShadow: THICK_TEXT_OUTLINE,
+      }}
+    >
+      {signedReason(shown)}
     </span>
   );
 }
@@ -435,6 +568,8 @@ export function EffectFxLayer({ volleys }: { volleys: EffectVolley[] }) {
       {volleys.map((volley) => (
         <Volley key={volley.id} volley={volley} />
       ))}
+      {/* Le prix se paie à la pose : il n'attend pas le délai d'arrivée de la volée. */}
+      {volleys.flatMap((volley) => volley.reason.map((entry, index) => <ReasonDrop key={`${volley.id}-r${index}`} entry={entry} />))}
     </div>
   );
 }

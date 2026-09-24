@@ -119,17 +119,28 @@ const CHROMATIC_SWATCHES: Record<ChromaticColor, string> = {
   violet: "#9b59d0",
 };
 
+/** Mélange une couleur `#rrggbb` avec une autre, `t` = part de la seconde (0 → 1). */
+function mixHex(from: string, to: string, t: number): string {
+  const channel = (hex: string, i: number) => parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16);
+  return `#${[0, 1, 2]
+    .map((i) => Math.round(channel(from, i) + (channel(to, i) - channel(from, i)) * t).toString(16).padStart(2, "0"))
+    .join("")}`;
+}
+
 /**
- * Fond du médaillon de couleurs : une couleur seule en verre bombé (clair
- * au centre), plusieurs en dégradé qui passe de l'une à l'autre — la même
- * pastille pour une Sentinelle unicolore ou arc-en-ciel.
+ * Fond du médaillon de couleurs, peint dans le verre de `tour.webp` (qui
+ * donne déjà reflet et ombrage). Une couleur seule : un bombé doux, à
+ * peine éclairci en haut, assombri en bas — pas de point blanc. Plusieurs :
+ * un dégradé qui passe de l'une à l'autre, avec le même bombé par-dessus.
  */
 function chromaticFill(colors: readonly ChromaticColor[]): string {
+  const relief = "radial-gradient(circle at 50% 30%, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 55%, rgba(0,0,0,0.22) 100%)";
   if (colors.length === 1) {
     const color = CHROMATIC_SWATCHES[colors[0]!];
-    return `radial-gradient(circle at 38% 34%, #ffffff 0%, ${color} 55%, ${color} 100%)`;
+    return `radial-gradient(circle at 50% 35%, ${mixHex(color, "#ffffff", 0.22)} 0%, ${color} 55%, ${mixHex(color, "#000000", 0.25)} 100%)`;
   }
-  return `linear-gradient(135deg, ${colors.map((c, i) => `${CHROMATIC_SWATCHES[c]} ${Math.round((i / (colors.length - 1)) * 100)}%`).join(", ")})`;
+  const stops = colors.map((c, i) => `${CHROMATIC_SWATCHES[c]} ${Math.round((i / (colors.length - 1)) * 100)}%`).join(", ");
+  return `${relief}, linear-gradient(135deg, ${stops})`;
 }
 
 /** Ce que fait le Signal de chaque couleur (texte des émetteurs du Lot 15), pour l'info-bulle du médaillon. */
@@ -198,7 +209,9 @@ function getFrameUrl(def: CardDefinition): string {
   // Les jetons (Péons) ont leur propre cadre générique, volontairement
   // indépendant de la famille : il servira aux Péons d'autres archétypes
   // (Notion, Lot 10 — "son cadre doit être générique").
-  if (def.token) return "/assets/cards/frames/token.webp";
+  // Jeton sans Puissance (Éclat Chromatique) : son cadre n'a que la plaque
+  // de Résistance — une case d'attaque vide y mentirait.
+  if (def.token) return def.attack === undefined ? "/assets/cards/frames/token-no-attack.webp" : "/assets/cards/frames/token.webp";
   const family = isAbyssalVariant(def) ? "abyssal" : "standard";
   const variant = def.attack !== undefined && def.health !== undefined
     ? "power-resistance"
@@ -293,6 +306,26 @@ const TYPE_RIBBON_ZONE: Zone = { top: 3.8, left: 64, width: 31, height: 7 };
 const TOKEN_ILLUSTRATION_ZONE: Zone = { top: 3.5, left: 9.5, width: 81, height: 83 };
 const TOKEN_ILLUSTRATION_MASK = "/assets/cards/frames/token-mask.webp";
 const TOKEN_NAME_ZONE: Zone = { top: 72.5, left: 14, width: 72, height: 8 };
+/**
+ * Texte d'un jeton (Éclat Chromatique) : le cadre n'a pas de bloc de
+ * règles, et la zone des cartes normales tombait sur l'illustration ET sur
+ * le nom — illisible. Un cartouche sombre, dans l'ovale, juste au-dessus du
+ * nom.
+ */
+const TOKEN_RULES_ZONE: Zone = { top: 53, left: 17, width: 66, height: 18.5 };
+
+/**
+ * Cadre de jeton SANS Puissance (`token-no-attack.webp`, Éclat
+ * Chromatique) : ovale plus large, une seule plaque — la Résistance, en bas
+ * à droite. Il a sa propre découpe (`token-no-attack-mask.webp`, tirée de
+ * la transparence du cadre) ; nom et texte remontent un peu pour laisser
+ * la plaque dégagée.
+ */
+const TOKEN_NO_ATTACK_MASK = "/assets/cards/frames/token-no-attack-mask.webp";
+const TOKEN_NO_ATTACK_ILLUSTRATION_ZONE: Zone = { top: 2, left: 4, width: 92, height: 88 };
+const TOKEN_NO_ATTACK_NAME_ZONE: Zone = { top: 68.5, left: 14, width: 72, height: 8 };
+const TOKEN_NO_ATTACK_RULES_ZONE: Zone = { top: 49, left: 15, width: 70, height: 18.5 };
+const TOKEN_NO_ATTACK_RESISTANCE_ZONE: Zone = { top: 81, left: 71, width: 15, height: 8.5 };
 const TOKEN_ATTACK_ZONE: Zone = { top: 82.5, left: 21.5, width: 14, height: 7.5 };
 const TOKEN_RESISTANCE_ZONE: Zone = { top: 82.5, left: 71.5, width: 14, height: 7.5 };
 
@@ -427,10 +460,13 @@ export function CardTile({
 
   const rulesZone = isUnit || hasResistance ? RULES_ZONE_WITH_STATS : RULES_ZONE_NO_STATS;
   const isToken = def.token === true;
-  const illustrationZone = isToken ? TOKEN_ILLUSTRATION_ZONE : ILLUSTRATION_ZONE;
-  const nameZone = isToken ? TOKEN_NAME_ZONE : NAME_BANNER_ZONE;
+  const tokenNoAttack = isToken && def.attack === undefined;
+  const illustrationZone = tokenNoAttack ? TOKEN_NO_ATTACK_ILLUSTRATION_ZONE : isToken ? TOKEN_ILLUSTRATION_ZONE : ILLUSTRATION_ZONE;
+  const nameZone = tokenNoAttack ? TOKEN_NO_ATTACK_NAME_ZONE : isToken ? TOKEN_NAME_ZONE : NAME_BANNER_ZONE;
   const attackZone = isToken ? TOKEN_ATTACK_ZONE : ATTACK_ZONE;
-  const resistanceZone = isToken ? TOKEN_RESISTANCE_ZONE : RESISTANCE_ZONE;
+  const resistanceZone = tokenNoAttack ? TOKEN_NO_ATTACK_RESISTANCE_ZONE : isToken ? TOKEN_RESISTANCE_ZONE : RESISTANCE_ZONE;
+  const tokenRulesZone = tokenNoAttack ? TOKEN_NO_ATTACK_RULES_ZONE : TOKEN_RULES_ZONE;
+  const tokenMask = tokenNoAttack ? TOKEN_NO_ATTACK_MASK : TOKEN_ILLUSTRATION_MASK;
 
   const hoverable = Boolean(onClick) && !disabled;
   const scalesOnHover = hoverable && scaleOnHover;
@@ -480,8 +516,8 @@ export function CardTile({
           style={
             isToken && frameOk
               ? {
-                  maskImage: `url(${TOKEN_ILLUSTRATION_MASK})`,
-                  WebkitMaskImage: `url(${TOKEN_ILLUSTRATION_MASK})`,
+                  maskImage: `url(${tokenMask})`,
+                  WebkitMaskImage: `url(${tokenMask})`,
                   maskSize: "100% 100%",
                   WebkitMaskSize: "100% 100%",
                   maskRepeat: "no-repeat",
@@ -593,12 +629,14 @@ export function CardTile({
 
           {def.text && (
             <div
-              className={`overflow-hidden rounded-sm border px-[3%] text-left leading-snug [font-family:var(--font-card-body)] ${
-                frameOk
-                  ? `text-slate-800 ${isAbyssal ? "border-slate-600/70" : "border-sky-600/50"}`
-                  : "border-transparent bg-black/50 text-slate-100"
+              className={`overflow-hidden border px-[3%] leading-snug [font-family:var(--font-card-body)] ${
+                isToken
+                  ? "flex items-center justify-center rounded-md border-white/25 bg-slate-950/70 text-center text-slate-50"
+                  : frameOk
+                    ? `rounded-sm text-left text-slate-800 ${isAbyssal ? "border-slate-600/70" : "border-sky-600/50"}`
+                    : "rounded-sm border-transparent bg-black/50 text-left text-slate-100"
               }`}
-              style={{ ...zoneStyle(rulesZone), fontSize: `${rulesFontSizeCqw(def.text)}cqw` }}
+              style={{ ...zoneStyle(isToken ? tokenRulesZone : rulesZone), fontSize: `${rulesFontSizeCqw(def.text)}cqw` }}
             >
               {/* Puce discrète : une condition de plateau est REMPLIE en ce
                   moment (banc assez grand, Destrier présent, Marée dans le

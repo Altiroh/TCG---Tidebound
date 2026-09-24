@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { dispatch } from "@/game/engine";
+import { canActivateAbility } from "@/game/actions/activateAbility";
 import { auraContextOf, computeEffectiveStats } from "@/game/cards/stats";
 import { chromaticColorsOf, emittedSignalsOf, findAssemblage } from "@/game/rules/chromatic";
 import { hasEffectiveKeyword } from "@/game/rules/validation";
@@ -193,6 +194,69 @@ describe("pierres et Éclats", () => {
     ok(fin);
     expect(unite(fin.state, emissaire.instanceId)).toBeUndefined();
     expect(joueur(fin.state, "p1").board.map((u) => u.cardId)).toContain("eclat-chromatique-vert");
+    // Son texte crée déjà son Éclat : la règle de famille n'en ajoute pas un second.
+    expect(joueur(fin.state, "p1").board.filter((u) => u.cardId.startsWith("eclat-chromatique"))).toHaveLength(1);
+  });
+
+  describe("la pierre survit à son porteur (règle de famille, 24/09/2026)", () => {
+    const eclats = (state: GameState, id: string) =>
+      joueur(state, id).board.filter((u) => u.cardId.startsWith("eclat-chromatique")).map((u) => u.cardId);
+
+    it("une Sentinelle tuée au combat laisse un Éclat de sa couleur à son contrôleur", () => {
+      // Gardienne de l'Éclat (Jaune, 4 Résistance) déjà à 1 : la riposte du Poisson-lanterne l'achève.
+      const gardienne = instance("gardienne-de-leclat", "p1", { damageMarked: 3 });
+      const poisson = instance("poisson-lanterne", "p2");
+      const r = dispatch(table({ board: [gardienne] }, { board: [poisson] }, { phase: "combatPhase" }), {
+        type: "attack",
+        playerId: "p1",
+        attackerInstanceId: gardienne.instanceId,
+        defenderInstanceId: poisson.instanceId,
+      });
+      ok(r);
+      const fin = passerTout(r.state);
+      expect(unite(fin, gardienne.instanceId)).toBeUndefined();
+      expect(eclats(fin, "p1")).toEqual(["eclat-chromatique-jaune"]);
+      expect(eclats(fin, "p2")).toEqual([]);
+    });
+
+    it("sabordée aussi : c'est une destruction, comme pour Émissaire de Quartz", () => {
+      const heros = instance("heros-de-la-flamme", "p1");
+      const r = dispatch(table({ board: [heros] }), { type: "saborder", playerId: "p1", instanceId: heros.instanceId });
+      ok(r);
+      expect(eclats(passerTout(r.state), "p1")).toEqual(["eclat-chromatique-rouge"]);
+    });
+
+    it("deux Rouges qui meurent ensemble laissent deux Éclats Rouges", () => {
+      // Vague Scélérate : 2 dégâts à toutes les unités — deux Héros de la Flamme (3 / 2) y restent.
+      const vague = instance("vague-scelerate", "p1");
+      const heros = [instance("heros-de-la-flamme", "p1"), instance("heros-de-la-flamme", "p1")];
+      const r = dispatch(table({ hand: [vague], board: heros }), { type: "playCard", playerId: "p1", instanceId: vague.instanceId });
+      ok(r);
+      const fin = passerTout(r.state);
+      expect(heros.every((h) => unite(fin, h.instanceId) === undefined)).toBe(true);
+      expect(eclats(fin, "p1")).toEqual(["eclat-chromatique-rouge", "eclat-chromatique-rouge"]);
+    });
+
+    it("l'Éclat ne peut pas attaquer, mais se Saborde s'il gêne", () => {
+      const eclat = instance("eclat-chromatique-rouge", "p1");
+      const poisson = instance("poisson-lanterne", "p2");
+      const combat = table({ board: [eclat] }, { board: [poisson] }, { phase: "combatPhase" });
+      expect(dispatch(combat, { type: "attack", playerId: "p1", attackerInstanceId: eclat.instanceId }).ok).toBe(false);
+      expect(
+        dispatch(combat, { type: "attack", playerId: "p1", attackerInstanceId: eclat.instanceId, defenderInstanceId: poisson.instanceId }).ok
+      ).toBe(false);
+
+      const r = dispatch(table({ board: [eclat] }), { type: "saborder", playerId: "p1", instanceId: eclat.instanceId });
+      ok(r);
+      expect(eclats(passerTout(r.state), "p1")).toEqual([]);
+    });
+
+    it("une unité qui n'est pas une Sentinelle ne laisse rien", () => {
+      const requin = instance("requin-balafre", "p1");
+      const r = dispatch(table({ board: [requin] }), { type: "saborder", playerId: "p1", instanceId: requin.instanceId });
+      ok(r);
+      expect(eclats(passerTout(r.state), "p1")).toEqual([]);
+    });
   });
 
   it("Héraut de Nacre prend la couleur d'un Éclat, et en émet le Signal", () => {
@@ -277,6 +341,23 @@ describe("pierres et Éclats", () => {
     const prise = dispatch(r.state, { type: "resolveChoice", playerId: "p1", choice: { takeInstanceIds: [jaune.instanceId] } });
     ok(prise);
     expect(joueur(prise.state, "p1").hand.map((c) => c.instanceId)).toContain(jaune.instanceId);
+  });
+
+  it("le bouton « Activer » du Coffret : proposé avec un Éclat à Saborder, plus après usage ni sans Éclat", () => {
+    const coffret = instance("coffret-aux-cinq-pierres", "p1");
+    const eclat = instance("eclat-chromatique-jaune", "p1");
+    const avec = table({ board: [coffret, eclat], deck: [instance("matelot-fele", "p1")] });
+    expect(canActivateAbility(avec, "p1", coffret.instanceId)).toBe(true);
+    // Rien à Saborder : rien à proposer.
+    expect(canActivateAbility(table({ board: [coffret] }), "p1", coffret.instanceId)).toBe(false);
+    // Pas pendant le tour adverse, et une fois par tour.
+    expect(canActivateAbility(avec, "p2", coffret.instanceId)).toBe(false);
+    const r = dispatch(avec, { type: "activateAbility", playerId: "p1", sourceInstanceId: coffret.instanceId, targetInstanceId: eclat.instanceId });
+    ok(r);
+    const apres = { ...r.state, pendingChoice: undefined };
+    const autreEclat = instance("eclat-chromatique-rouge", "p1");
+    const encore = { ...apres, players: apres.players.map((p) => (p.id === "p1" ? { ...p, board: [...p.board, autreEclat] } : p)) as GameState["players"] };
+    expect(canActivateAbility(encore, "p1", coffret.instanceId)).toBe(false);
   });
 
   it("Appel des Sentinelles ne laisse prendre qu'une Sentinelle", () => {
@@ -424,6 +505,18 @@ describe("Le Géant Chromatique : l'Assemblage", () => {
     expect(couleurs(r.state, geant.instanceId)).toEqual(["rouge", "jaune", "bleu", "vert"]);
     // Il émet ses quatre Signaux ET en bénéficie : Rouge (+1) pendant son tour, Jaune (+1).
     expect([stats(r.state, geant.instanceId).attack, stats(r.state, geant.instanceId).health]).toEqual([9, 10]);
+  });
+
+  it("un Assemblage peut être cherché AUTOUR d'une Sentinelle donnée (celle où l'on lâche le Géant)", () => {
+    const sentinelles = quatre();
+    const requin = instance("requin-balafre", "p1");
+    const board = [requin, ...sentinelles];
+    const autour = findAssemblage(board, 4, sentinelles[3]!.instanceId)!;
+    expect(autour.map((p) => p.instanceId)).toContain(sentinelles[3]!.instanceId);
+    // Pas une Sentinelle : aucun Assemblage ne passe par elle.
+    expect(findAssemblage(board, 4, requin.instanceId)).toBeUndefined();
+    // Trois couleurs seulement : rien, avec ou sans Sentinelle imposée.
+    expect(findAssemblage(sentinelles.slice(0, 3), 4, sentinelles[0]!.instanceId)).toBeUndefined();
   });
 
   it("refuse un Assemblage à trois couleurs, ou dont une Sentinelle ne porte pas la couleur annoncée", () => {

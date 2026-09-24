@@ -412,6 +412,8 @@ export function MatchBoard({
         onBoardCardClick={handleAnyBoardCardClick}
         shipAbility={shipAbility.panel}
         opponentShipAbility={shipAbility.opponentPanel}
+        onActivateAbility={board.requestAbility}
+        onAssemblageDrop={board.handleAssemblageDrop}
         onShipClick={(ownerId) => {
           if (pending?.kind === "shipTarget") {
             runAction({ type: "activateShipAbility", playerId: activePlayerId, targetPlayerId: ownerId });
@@ -558,10 +560,12 @@ export function MatchBoard({
         );
       })()}
       {board.assemblagePick && (() => {
-        const { card, boardIndex } = board.assemblagePick;
+        const { card, boardIndex, proposal } = board.assemblagePick;
         return (
           <AssemblagePrompt
             card={card}
+            proposal={proposal}
+            onChooseOthers={() => board.setAssemblagePick({ card, boardIndex })}
             board={liveState.players.find((p) => p.id === activePlayerId)?.board ?? []}
             onAssemble={(assemblage) => {
               board.setAssemblagePick(null);
