@@ -32,15 +32,24 @@ const nextConfig = {
    * Cache HTTP des fichiers de `public/assets`. Par défaut, Vercel les sert
    * en `max-age=0, must-revalidate` : chaque visite revérifiait chaque
    * image. Les noms ne sont PAS versionnés (un visuel remplacé garde son
-   * nom), d'où une journée de fraîcheur puis une semaine de
-   * `stale-while-revalidate` plutôt qu'un `immutable` : l'image en cache
-   * s'affiche tout de suite, et la nouvelle version arrive en arrière-plan.
+   * nom), d'où un `stale-while-revalidate` d'une semaine plutôt qu'un
+   * `immutable` : l'image en cache s'affiche tout de suite, et la nouvelle
+   * version arrive en arrière-plan.
+   *
+   * CINQ MINUTES de fraîcheur, et non plus une journée (24/09/2026). Cet
+   * en-tête vaut pour TOUTE réponse sous `/assets`, 404 compris — Next ne
+   * sait pas le conditionner au statut. Une illustration demandée avant
+   * d'être déployée restait donc introuvable un jour entier dans le
+   * navigateur de chaque joueur, rechargement ordinaire ou non. Le
+   * service worker garde de toute façon les images réussies dans son
+   * propre cache (`public/sw.js`) : la fraîcheur HTTP ne sert plus qu'aux
+   * pages qu'il ne contrôle pas encore.
    */
   async headers() {
     return [
       {
         source: "/assets/:path*",
-        headers: [{ key: "Cache-Control", value: "public, max-age=86400, stale-while-revalidate=604800" }],
+        headers: [{ key: "Cache-Control", value: "public, max-age=300, stale-while-revalidate=604800" }],
       },
     ];
   },

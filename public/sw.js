@@ -64,10 +64,10 @@ self.addEventListener("fetch", (event) => {
         const cached = await cache.match(request);
         // `no-cache` : le worker a SON cache, qui ne garde que les succès ; il
         // demande donc toujours au serveur plutôt qu'au cache HTTP du
-        // navigateur. Celui-ci gardait aussi les 404 un jour entier — l'en-tête
-        // `Cache-Control` de `/assets` (next.config.mjs) vaut pour toute
-        // réponse —, et une illustration livrée après avoir été demandée
-        // restait introuvable malgré un rechargement (retour du 24/09/2026).
+        // navigateur. Celui-ci garde aussi les 404 — l'en-tête `Cache-Control`
+        // de `/assets` (next.config.mjs) vaut pour toute réponse —, et une
+        // illustration livrée après avoir été demandée y restait introuvable
+        // malgré un rechargement (retour du 24/09/2026).
         const refresh = () =>
           fetch(request, { cache: "no-cache" })
             .then((response) => {
