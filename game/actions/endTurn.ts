@@ -1,7 +1,7 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { annoncerMaree, applyTideTurnEffects, appliquerMareeAnnoncee } from "@/game/environment/resolveEnvironment";
 import { getShipDefinition } from "@/game/environment/shipData";
-import { deraisonAnchorDamage, deraisonDebt, reasonCeiling, startingReasonCap } from "@/game/state/reason";
+import { deraisonAnchorDamage, deraisonDebt, naturalReasonRecovery, reasonCeiling, startingReasonCap } from "@/game/state/reason";
 import type { GameEvent } from "@/game/events/types";
 import { processDiscardedFromHandTriggers, processTrigger } from "@/game/triggers/triggerBus";
 import { discardFromHand, markArrivalsBeforeTurnStart, pruneGraveyardArrivals } from "@/game/state/discard";
@@ -306,7 +306,8 @@ export function entameDeTour(state: GameState, eventsAvant: GameEvent[] = []): A
   const statusFlagsAfterUpkeep = playerBeforeUpkeep.statusFlags.filter((f) => f !== STATUS_NO_REASON_GAIN);
 
   // La Raison PERSISTE d'un tour à l'autre et ne remonte que de
-  // `RULES.NATURAL_REASON_RECOVERY` (passe de stabilisation du 2026-09-21).
+  // `RULES.REASON_RECOVERY_CURVE` (passe de stabilisation du 2026-09-21 ;
+  // progressive depuis le 2026-09-24 : 2, puis 3, puis 4).
   // Ce qui n'a pas été dépensé reste acquis ; ce qui l'a été n'est PAS rendu.
   // Remplace la remise à niveau au plafond, qui rendait la Raison gratuite
   // et permettait de remplir son plateau dès le 2e tour.
@@ -329,13 +330,14 @@ export function entameDeTour(state: GameState, eventsAvant: GameEvent[] = []): A
   // assumée : au-delà du montant de la récupération, drainer plus fort ne
   // coûte pas plus cher à qui est DÉJÀ à 0 — la valeur d'un drain vient
   // surtout de la Raison positive qu'il emporte.
+  const ownTurnIndex = Math.ceil(newTurnNumber / 2);
   const dettesSubie = deraisonDebt(playerBeforeUpkeep.reason);
-  const recuperation = Math.max(0, RULES.NATURAL_REASON_RECOVERY - dettesSubie);
+  const recuperation = Math.max(0, naturalReasonRecovery(ownTurnIndex) - dettesSubie);
   const baseApresAbsorption = Math.max(0, playerBeforeUpkeep.reason);
 
   let reasonCap = playerBeforeUpkeep.reasonCap;
   if (reasonCap !== undefined) {
-    reasonCap = startingReasonCap(getShipDefinition(playerBeforeUpkeep.shipId).reasonMax, Math.ceil(newTurnNumber / 2));
+    reasonCap = startingReasonCap(getShipDefinition(playerBeforeUpkeep.shipId).reasonMax, ownTurnIndex);
   }
   const ceiling = reasonCeiling({ reasonMax: playerBeforeUpkeep.reasonMax, reasonCap });
   // `Math.max(base, ...)` : un joueur déjà AU-DESSUS du plafond (Abysses qui

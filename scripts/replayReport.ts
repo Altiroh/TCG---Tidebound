@@ -17,13 +17,15 @@
  *   - `navires`  : les capacités de Navire câblées le 22/09/2026 ;
  *   - `structures` (défaut) : les dégâts de Marée sur les Structures.
  *   - `deraison` : l'escalade de la dette, allumée le 22/09/2026.
+ *   - `recuperation` : la récupération de Raison progressive (2 / 3 / 3 / 4),
+ *     allumée le 24/09/2026 — « avant » = +2 fixe.
  *
  * Et il ne s'arrête pas au winrate : le cadrage demande de savoir POURQUOI
  * les parties se terminent, donc durée, occupation du plateau, dégâts par
  * source, Raison, invocations, pièges déclenchés et capacités de Navire
  * sont affichés côte à côte.
  *
- *   npx tsx scripts/replayReport.ts [parties] [--variante navires|structures]
+ *   npx tsx scripts/replayReport.ts [parties] [--variante navires|structures|deraison|recuperation]
  */
 import { SHIP_DATABASE } from "@/game/environment/shipData";
 import type { ShipDefinition } from "@/game/environment/types";
@@ -45,6 +47,7 @@ const LIBELLE_AVANT: Record<string, string> = {
   navires: "capacités de Navire non câblées",
   structures: "la Marée n'abîme pas les Structures",
   deraison: "dette plate, 1 Ancrage le point, sans palier",
+  recuperation: "récupération de Raison fixe à +2",
 };
 
 /** Matchups rejoués : les mêmes que le banc d'essai, contre la référence défensive. */
@@ -85,6 +88,17 @@ function avantLeChangement<T>(travail: () => T): T {
       return travail();
     } finally {
       regles.DERAISON_ANCHOR_DAMAGE_TIERS = memoire;
+    }
+  }
+
+  if (VARIANTE === "recuperation") {
+    const regles = RULES as { REASON_RECOVERY_CURVE: readonly number[] };
+    const memoire = regles.REASON_RECOVERY_CURVE;
+    regles.REASON_RECOVERY_CURVE = [2];
+    try {
+      return travail();
+    } finally {
+      regles.REASON_RECOVERY_CURVE = memoire;
     }
   }
 
