@@ -204,6 +204,27 @@
 }
 
 /* Téléphone couché : l'écran de fin ne défile pas, le panneau se resserre. */
+/* L'escale de Traversée : un médaillon au numéro de la Traversée, à la place de l'icône de catégorie. */
+.voyageMark {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(243, 220, 162, 0.6);
+  border-radius: 50%;
+  background: rgba(226, 194, 122, 0.16);
+  color: #f3dca2;
+  font-family: var(--font-card-title), serif;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.voyageOf {
+  color: rgba(198, 216, 234, 0.68);
+  font-weight: 500;
+}
+
 @media (max-height: 560px) {
   .recap {
     gap: 8px;

@@ -1,0 +1,321 @@
+/*
+ * TRAVERSÉE — la route des cinq escales, en tête de l'écran Quêtes.
+ *
+ * Trois états d'escale, lisibles sans lire : faite (bouée de laiton
+ * allumée), en cours (bouée cyan dont l'anneau se remplit), à venir (bouée
+ * éteinte). Le fil qui les relie se colore jusqu'à l'escale en cours.
+ */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(12px, 2dvh, 20px);
+  padding: clamp(14px, 2dvh, 22px) clamp(14px, 1.8vw, 26px);
+  border-left: 2px solid var(--tb-accent-line);
+}
+
+.panel[data-status="done"] {
+  border-left-color: var(--tb-gold-line);
+}
+
+.panel[data-status="locked"] {
+  border-left-color: var(--tb-border);
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px 20px;
+  flex-wrap: wrap;
+}
+
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-card-title), serif;
+  font-size: clamp(18px, 2.4vw, 24px);
+  font-weight: 600;
+  color: var(--tb-text-strong);
+}
+
+.tagline {
+  margin: 0;
+  color: var(--tb-text-muted);
+  font-size: 13px;
+  font-style: italic;
+}
+
+/* ---------- Choix de la Traversée ---------- */
+
+.voyageTabs {
+  display: flex;
+  gap: 6px;
+}
+
+.voyageTab {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--tb-border-strong);
+  border-radius: 50%;
+  background: var(--tb-surface-solid);
+  color: var(--tb-text-muted);
+  font-family: var(--font-card-title), serif;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 140ms ease-out, background-color 140ms ease-out, color 140ms ease-out;
+}
+
+.voyageTab[data-status="done"] {
+  border-color: var(--tb-gold-line);
+  color: var(--tb-gold-bright);
+}
+
+.voyageTab[data-status="current"] {
+  border-color: var(--tb-accent-line);
+  color: var(--tb-accent-bright);
+}
+
+.voyageTab[data-status="locked"] {
+  opacity: 0.55;
+}
+
+.voyageTab[data-selected] {
+  background: var(--tb-accent-soft-strong);
+  box-shadow: var(--tb-glow-sm);
+}
+
+/* Un palier attend dans cette Traversée : une pastille le dit, même quand on en regarde une autre. */
+.voyageTab[data-claimable]::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--tb-gold-bright);
+  box-shadow: 0 0 8px var(--tb-gold);
+}
+
+.voyageTab:focus-visible {
+  outline: 2px solid var(--tb-accent);
+  outline-offset: 2px;
+}
+
+/* ---------- La route ---------- */
+
+.route {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stop {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  text-align: center;
+}
+
+/* Le fil jusqu'à l'escale suivante, tiré du centre de la bouée. */
+.stop:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 21px;
+  left: calc(50% + 24px);
+  right: calc(-50% + 24px - 8px);
+  border-top: 2px dashed var(--tb-border-strong);
+}
+
+.stop[data-state="done"]:not(:last-child)::after {
+  border-top-style: solid;
+  border-top-color: var(--tb-gold-line);
+}
+
+.buoy {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  /* Anneau de progression : un dégradé conique, rempli à `--ratio`. */
+  background:
+    radial-gradient(circle, var(--tb-surface-solid) 58%, transparent 60%),
+    conic-gradient(var(--ring, var(--tb-border-strong)) calc(var(--ratio, 0) * 360deg), var(--tb-border) 0);
+}
+
+.buoyNumber {
+  color: var(--tb-text-soft);
+  font-family: var(--font-card-title), serif;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.stop[data-state="current"] .buoy {
+  --ring: var(--tb-accent);
+  box-shadow: var(--tb-glow-md);
+  animation: buoyBob 2.8s ease-in-out infinite;
+}
+
+.stop[data-state="current"] .buoyNumber {
+  color: var(--tb-accent-bright);
+}
+
+.stop[data-state="done"] .buoy {
+  --ratio: 1;
+  --ring: var(--tb-gold);
+  background:
+    radial-gradient(circle, var(--tb-gold-soft) 58%, transparent 60%),
+    conic-gradient(var(--tb-gold) 360deg, var(--tb-gold) 0);
+}
+
+.stop[data-state="done"] .buoyNumber {
+  color: var(--tb-on-gold);
+}
+
+/* Palier atteint, pas encore encaissé : la bouée respire en laiton. */
+.stop[data-claimable] .buoy {
+  box-shadow: 0 0 0 3px var(--tb-gold-soft), 0 0 18px var(--tb-gold-line);
+  animation: buoyReady 2.2s ease-in-out infinite;
+}
+
+.stop[data-claimable] .stopReward {
+  color: var(--tb-gold-bright);
+}
+
+/* Palier déjà encaissé : la bouée reste allumée, mais s'éteint un peu. */
+.stop[data-claimed] .buoy {
+  opacity: 0.72;
+}
+
+@keyframes buoyReady {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px var(--tb-gold-soft), 0 0 10px var(--tb-gold-line);
+  }
+  50% {
+    box-shadow: 0 0 0 5px var(--tb-gold-soft), 0 0 24px var(--tb-gold);
+  }
+}
+
+@keyframes buoyBob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+.stopName {
+  color: var(--tb-text-strong);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.stop[data-state="upcoming"] .stopName {
+  color: var(--tb-text-muted);
+}
+
+.stopLabel {
+  color: var(--tb-text-muted);
+  font-size: 11.5px;
+  line-height: 1.3;
+}
+
+.stopCount {
+  color: var(--tb-accent-bright);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.stopReward {
+  color: var(--tb-gold);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.stop[data-claimed] .stopReward {
+  color: var(--tb-text-soft);
+}
+
+.foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  flex-wrap: wrap;
+}
+
+.foot p {
+  margin: 0;
+}
+
+/*
+ * TÉLÉPHONE EN PAYSAGE : la route reste sur une ligne (le paysage est
+ * imposé, la largeur ne manque pas), mais le libellé d'objectif s'efface
+ * au profit du nom et de la jauge — sauf pour l'escale en cours, qui garde
+ * le sien.
+ */
+@media (max-height: 560px) {
+  .panel {
+    gap: 8px;
+    padding: 10px 14px;
+  }
+
+  .tagline {
+    display: none;
+  }
+
+  .buoy {
+    width: 34px;
+    height: 34px;
+  }
+
+  .stop:not(:last-child)::after {
+    top: 16px;
+    left: calc(50% + 19px);
+    right: calc(-50% + 19px - 8px);
+  }
+
+  .stopLabel {
+    display: none;
+  }
+
+  /* Sauf pour l'escale en cours : c'est elle qu'on est venu lire. */
+  .stop[data-state="current"] .stopLabel {
+    display: block;
+  }
+
+  .voyageTab {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stop[data-state="current"] .buoy,
+  .stop[data-claimable] .buoy {
+    animation: none;
+  }
+}
