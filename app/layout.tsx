@@ -3,6 +3,7 @@ import { cardBodyFont, cardTitleFont, uiFont } from "@/lib/fonts";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import { OrientationGate } from "@/features/shell/OrientationGate";
 import { PageTransition } from "@/features/shell/PageTransition";
+import { PinchZoomGuard } from "@/features/shell/PinchZoomGuard";
 import { CardBackProvider } from "@/features/cosmetics/CardBackProvider";
 import { ShipFrameProvider } from "@/features/cosmetics/ShipFrameProvider";
 import "./tokens.css";
@@ -49,12 +50,20 @@ export const metadata: Metadata = {
  * les variables `--tb-safe-*` (`app/globals.css`), posées sur la coquille
  * partagée : rien ne passe sous l'encoche ni sous la barre de gestes.
  *
- * Pas de `maximumScale` ni `userScalable: false` : verrouiller l'échelle
- * empêcherait le zoom par pincement (WCAG 1.4.4).
+ * ÉCHELLE VERROUILLÉE (décision du 18/09, retour de test iOS) : un
+ * pincement involontaire décalait toute l'interface sans que le joueur
+ * comprenne ce qui venait d'arriver. Le jeu tient déjà dans la fenêtre
+ * (paysage imposé, tailles en `clamp`, hauteurs en `dvh`) : le zoom n'y
+ * ajoutait qu'un décalage. Ces deux clés suffisent à Android ; iOS ignore
+ * `user-scalable=no` depuis iOS 10, d'où `PinchZoomGuard`
+ * (`features/shell/PinchZoomGuard.tsx`) et le `touch-action` de
+ * `app/globals.css` — les trois verrous se complètent, aucun ne suffit.
  */
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
   viewportFit: "cover",
   themeColor: "#050e1a",
 };
@@ -87,6 +96,8 @@ export default function RootLayout({
             {/* Paysage imposé sur mobile : le plateau est dessiné en
                 largeur. Monté ici, donc valable sur toutes les routes. */}
             <OrientationGate />
+            {/* Pincement neutralisé là où le viewport ne suffit pas (iOS). */}
+            <PinchZoomGuard />
           </ShipFrameProvider>
         </CardBackProvider>
       </body>

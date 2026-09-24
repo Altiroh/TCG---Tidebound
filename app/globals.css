@@ -25,6 +25,17 @@ body {
   height: 100%;
 }
 
+/*
+ * ÉCHELLE VERROUILLÉE — cf. `features/shell/PinchZoomGuard.tsx`.
+ * `manipulation` = tout le comportement tactile habituel MOINS le zoom par
+ * double-tape, qui décalait l'interface sur un simple appui répété. Le
+ * pincement, lui, est arrêté par le viewport et le garde JavaScript : un
+ * `touch-action` ne suffit pas à l'empêcher au niveau du document.
+ */
+html {
+  touch-action: manipulation;
+}
+
 body {
   /* iOS pose un voile gris sur tout élément touché : inutile ici, chaque
      contrôle a déjà son état pressé. */

@@ -131,7 +131,14 @@
   user-select: none;
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
+  /*
+   * `none` et non `manipulation` : le doigt qui glisse d'une carte à l'autre
+   * pour les retourner est un geste de la SCÈNE. Laissé à `manipulation`,
+   * Safari iOS y voyait le début d'un défilement de page, se saisissait du
+   * pointeur et émettait `pointercancel` — la rangée ne se retournait plus
+   * qu'à la tape, une carte à la fois. Rien ne défile ici de toute façon.
+   */
+  touch-action: none;
 }
 
 /*
