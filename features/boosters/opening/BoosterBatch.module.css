@@ -1,53 +1,54 @@
 /*
- * Bilan d'un LOT de boosters : une rangée de cartes qui se posent l'une
- * après l'autre, un « + » pour le reste, puis les actions.
+ * Bilan d'un LOT de boosters (`BoosterBatchRecap`) : un seul écran, la
+ * liste des cartes reçues à gauche, la carte sélectionnée en grand à
+ * droite.
  *
- * Mesures en `clamp` sur la largeur de la fenêtre : dix cartes alignées ne
- * tiennent pas au même gabarit sur un portable et sur un écran large — la
- * rangée se resserre (chevauchement négatif) plutôt que de déborder.
+ * Plein cadre et non `Dialog` : l'aperçu a besoin de hauteur, et la
+ * fenêtre de dialogue standard (620 px) ne laissait la place qu'à la liste.
  */
 
 .layer {
   position: fixed;
   inset: 0;
-  /*
-   * SOUS le plan des dialogues (`--tb-z-dialog`) : le récap « Voir toutes
-   * les cartes reçues » EST un `Dialog`, et à 90 cette couche passait
-   * par-dessus lui — le bouton semblait ne rien faire, la fenêtre s'ouvrant
-   * derrière (retour de test iOS du 18/09).
-   */
+  /* SOUS le plan des dialogues : la fiche complète (`CardDetailModal`)
+     s'ouvre par-dessus ce bilan, jamais derrière. */
   z-index: calc(var(--tb-z-dialog) - 5);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: clamp(12px, 3vw, 32px);
-  background: rgba(2, 8, 16, 0.72);
-  backdrop-filter: blur(10px);
+  padding:
+    max(clamp(10px, 2.4vw, 28px), var(--tb-safe-top, 0px))
+    max(clamp(10px, 2.4vw, 28px), var(--tb-safe-right, 0px))
+    max(clamp(10px, 2.4vw, 28px), var(--tb-safe-bottom, 0px))
+    max(clamp(10px, 2.4vw, 28px), var(--tb-safe-left, 0px));
+  /* Voile opaque plutôt que flou : un `backdrop-filter` plein écran se
+     recalcule à chaque image tant que la scène d'ouverture s'efface
+     derrière, et c'est le premier poste de coût sur un téléphone. */
+  background: rgba(2, 8, 16, 0.86);
 }
 
-.panel {
-  position: relative;
+.recap {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: clamp(14px, 2.4vh, 26px);
+  gap: clamp(10px, 2dvh, 20px);
   width: min(1180px, 100%);
-  padding: clamp(18px, 3vh, 34px) clamp(16px, 3vw, 40px);
-  border-radius: 24px;
-  background: rgba(8, 18, 30, 0.72);
+  max-height: 100%;
+  padding: clamp(14px, 2.6dvh, 28px) clamp(14px, 2.4vw, 32px);
+  border-radius: 22px;
+  background: rgba(8, 18, 30, 0.94);
   box-shadow:
-    inset 0 1px 1px rgba(255, 255, 255, 0.4),
+    inset 0 1px 1px rgba(255, 255, 255, 0.28),
     inset 0 0 0 1px rgba(255, 255, 255, 0.07),
     0 24px 60px rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(28px) brightness(1.08) saturate(1.4);
 }
 
-.head {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  text-align: center;
+/* Titre | pastilles de rareté | « Fermer » : les pastilles se replient
+   sur elles-mêmes, jamais le bouton sous le titre. */
+.recapHead {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px 20px;
 }
 
 .eyebrow {
@@ -62,7 +63,7 @@
 .title {
   margin: 0;
   font-family: var(--font-card-title), serif;
-  font-size: clamp(20px, 3.4vw, 30px);
+  font-size: clamp(20px, 3vw, 28px);
   font-weight: 600;
   color: var(--ink);
 }
@@ -77,46 +78,72 @@
   color: var(--cb-cyan);
 }
 
-/* La rangée : chevauchement léger pour tenir dix cartes, et de l'air au survol. */
-.row {
+/* Le bilan par rareté, en pastilles : ce qu'on cherche du regard en premier. */
+.rarityTally {
   display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  width: 100%;
-  min-height: clamp(150px, 26dvh, 260px);
-  padding-inline: clamp(8px, 2vw, 24px);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-.slot {
+.rarityTally > li {
+  padding: 3px 9px;
+  border: 1px solid color-mix(in srgb, var(--rarity-color, var(--ink-soft)) 45%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--rarity-color, var(--ink-soft)) 12%, transparent);
+}
+
+.recapBody {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(200px, 26vw, 320px);
+  gap: clamp(12px, 2vw, 28px);
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+/* ---------- Aperçu de la carte sélectionnée ---------- */
+
+.preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  min-height: 0;
+}
+
+.previewCard {
   position: relative;
-  flex: 0 0 auto;
-  width: clamp(72px, 8.2vw, 124px);
-  margin-inline-start: clamp(-26px, -1.6vw, -8px);
-  /* Posée : elle arrive de plus haut, légèrement tournée, puis se cale. */
-  transform: translateY(-14px) scale(0.9) rotate(-4deg);
-  opacity: 0;
-  transition:
-    transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1),
-    opacity 240ms ease-out;
+  /* Largeur bornée par la HAUTEUR disponible : sur un téléphone couché,
+     c'est elle qui manque. Rapport d'une carte ≈ 5 / 7. */
+  width: min(100%, calc((100dvh - 230px) * 0.7));
+  min-width: 120px;
+  cursor: zoom-in;
+  animation: previewIn 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-.slot:first-child {
-  margin-inline-start: 0;
+.previewCard[data-new] {
+  filter: drop-shadow(0 0 12px rgba(0, 183, 255, 0.45));
 }
 
-.slot[data-shown] {
-  transform: none;
-  opacity: 1;
+@keyframes previewIn {
+  from {
+    opacity: 0.4;
+    transform: translateY(6px) scale(0.98);
+  }
 }
 
-.slot:hover {
-  z-index: 40 !important;
-  transform: translateY(-10px) scale(1.06);
-}
-
-/* Une nouveauté se repère sans lire : liseré cyan et pastille. */
-.slot[data-new] {
-  filter: drop-shadow(0 0 10px rgba(0, 183, 255, 0.5));
+.previewMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 12px;
 }
 
 .newMark {
@@ -136,134 +163,55 @@
   white-space: nowrap;
 }
 
-/* Le reste du lot, en un seul jeton — pas quatre-vingts vignettes. */
-.more {
-  display: flex;
+.recapClose {
   flex: 0 0 auto;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  width: clamp(72px, 8.2vw, 124px);
-  aspect-ratio: 3 / 4;
-  margin-inline-start: clamp(4px, 1vw, 16px);
-  border: 1px dashed var(--line-strong);
-  border-radius: 12px;
-  background: rgba(8, 18, 30, 0.5);
-  opacity: 0;
-  transform: scale(0.94);
-  transition:
-    transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1),
-    opacity 220ms ease-out;
-}
-
-.more[data-shown] {
-  opacity: 1;
-  transform: none;
-}
-
-.morePlus {
-  font-family: var(--font-card-title), serif;
-  font-size: clamp(18px, 2.2vw, 26px);
-  font-weight: 600;
-  color: var(--ink);
-}
-
-.moreLabel {
-  padding-inline: 6px;
-  color: var(--ink-faint);
-  font-size: 10px;
-  text-align: center;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-/* Ce que le « + » recouvre, et où le lire — sinon le jeton ressemble à une
-   carte de plus qu'on pourrait retourner. */
-.rowHint {
-  margin: 0;
-  color: var(--ink-faint);
-  font-size: 11.5px;
-  text-align: center;
-  opacity: 0;
-  transition: opacity 260ms ease-out;
-}
-
-.rowHint[data-shown] {
-  opacity: 1;
-}
-
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  opacity: 0;
-  transition: opacity 260ms ease-out;
-}
-
-.actions[data-shown] {
-  opacity: 1;
 }
 
 /*
- * TÉLÉPHONE EN PAYSAGE — large mais très court (~850 × 390). Le panneau
- * prenait la hauteur de l'écran et débordait : la rangée à `26dvh`, le
- * titre, l'indice et les deux boutons ne tiennent pas ensemble dans 390 px.
- * On resserre tout et on fait défiler le panneau plutôt que de le couper.
+ * TÉLÉPHONE EN PAYSAGE — large mais très court (~850 × 390) : on resserre
+ * l'en-tête, et l'aperçu garde sa colonne (le paysage est imposé, il y a
+ * toujours la largeur pour deux colonnes).
  */
 @media (max-height: 560px) {
-  .layer {
-    padding: 8px;
-  }
-
-  .panel {
+  .recap {
     gap: 8px;
     padding: 10px 14px;
     border-radius: 16px;
-    max-height: 100%;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-  }
-
-  .eyebrow {
-    font-size: 10px;
   }
 
   .title {
-    font-size: clamp(16px, 4.4vh, 22px);
+    font-size: clamp(16px, 4.4dvh, 22px);
   }
 
-  .sub,
-  .rowHint {
+  .sub {
     font-size: 11px;
   }
 
-  .row {
-    min-height: 0;
-    padding-block: 4px;
+  .recapBody {
+    grid-template-columns: minmax(0, 1fr) clamp(150px, 24vw, 220px);
   }
 
-  .slot,
-  .more {
-    width: clamp(56px, 20dvh, 104px);
+  .previewCard {
+    width: min(100%, calc((100dvh - 140px) * 0.7));
+    min-width: 96px;
   }
 
-  .actions {
-    gap: 10px;
+  /* La carte elle-même ouvre la fiche, et sa ligne de la liste dit déjà
+     rareté, type et nombre : lien et infos sont des doublons qui coûtent
+     une hauteur qu'on n'a pas. */
+  .previewLink,
+  .previewMeta {
+    display: none;
+  }
+
+  .rarityTally > li {
+    padding: 2px 7px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .slot,
-  .more,
-  .actions,
-  .rowHint {
-    transition: none;
-  }
-  .slot:hover {
-    transform: none;
+  .previewCard {
+    animation: none;
   }
 }
 
@@ -273,7 +221,8 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  max-height: min(56dvh, 460px);
+  min-height: 0;
+  max-height: 100%;
   margin: 0;
   padding: 0;
   overflow-y: auto;
@@ -330,6 +279,13 @@
   background: var(--tb-accent-soft);
 }
 
+/* La ligne montrée à droite : repérable même en faisant défiler. */
+.line[data-selected] {
+  border-color: var(--cb-cyan);
+  background: rgba(0, 183, 255, 0.2);
+  box-shadow: inset 3px 0 0 var(--cb-cyan);
+}
+
 .line:focus-visible {
   outline: 2px solid var(--cb-cyan);
   outline-offset: 2px;
@@ -351,6 +307,12 @@
   min-width: 0;
   color: var(--ink);
   font-weight: 600;
+}
+
+/* L'élision sur un `span` à part : sur le conteneur flex, elle ne
+   s'applique pas, et la pastille « Nouveau » était rognée avec le nom. */
+.lineNameText {
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -383,6 +345,7 @@
   letter-spacing: 0.06em;
 }
 
+.lineRarity[data-rarity="common"] { --rarity-color: #c9d4de; }
 .lineRarity[data-rarity="uncommon"] { --rarity-color: #8fe3a2; }
 .lineRarity[data-rarity="rare"] { --rarity-color: #6fa0ff; }
 .lineRarity[data-rarity="epic"] { --rarity-color: #c29bff; }
@@ -417,7 +380,4 @@
     display: none;
   }
 
-  .list {
-    max-height: min(52dvh, 460px);
-  }
 }
