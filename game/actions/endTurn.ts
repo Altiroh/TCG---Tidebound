@@ -3,14 +3,14 @@ import { annoncerMaree, applyTideTurnEffects, appliquerMareeAnnoncee } from "@/g
 import { getShipDefinition } from "@/game/environment/shipData";
 import { deraisonAnchorDamage, deraisonDebt, naturalReasonRecovery, reasonCeiling, startingReasonCap } from "@/game/state/reason";
 import type { GameEvent } from "@/game/events/types";
-import { processDiscardedFromHandTriggers, processTrigger } from "@/game/triggers/triggerBus";
-import { discardFromHand, markArrivalsBeforeTurnStart, pruneGraveyardArrivals } from "@/game/state/discard";
+import { processTrigger } from "@/game/triggers/triggerBus";
+import { markArrivalsBeforeTurnStart, pruneGraveyardArrivals } from "@/game/state/discard";
 import { RULES } from "@/game/rules/constants";
 import { assertGameActive, assertIsActivePlayer, assertPlayerInGame, combine } from "@/game/rules/validation";
 import { findAnomalyForcedChoice } from "@/game/state/anomalies";
 import { ouvrirFenetrePour } from "@/game/reactions/reactionWindow";
 import type { TriggerEvent } from "@/game/triggers/types";
-import { getOpponent, STATUS_NO_REASON_GAIN, type GameState, type PlayerState } from "@/game/state/types";
+import { getOpponent, STATUS_NO_REASON_GAIN, type GameState, type PlayerId, type PlayerState } from "@/game/state/types";
 import type { ActionResult, EndTurnAction } from "@/game/actions/types";
 
 function validate(state: GameState, action: EndTurnAction) {
@@ -122,31 +122,47 @@ export function endTurn(state: GameState, action: EndTurnAction): ActionResult {
     }
   }
 
-  // --- Défausse forcée (cadrage "Règles & mécaniques verrouillées" : main
-  // maximale 7) : appliquée en fin de tour, pour le joueur qui vient de
-  // jouer, avant de passer la main. Aucun choix de joueur n'existe encore
-  // pour sélectionner les cartes défaussées ("Choix de joueur en cours de
-  // résolution" non modélisé) : on défausse déterministiquement depuis le
-  // début de la main, comme pour la défausse liée aux dégâts de Marée
-  // (`game/environment/resolveEnvironment.ts`).
+  // --- Limite de main (cadrage "Règles & mécaniques verrouillées" : main
+  // maximale 7) : en fin de tour, pour le joueur qui vient de jouer, avant
+  // de passer la main. C'est LUI qui choisit ce qui part — le moteur ne
+  // défausse jamais à sa place. Le tour s'arrête donc ici sur une question
+  // (`pendingChoice`, `handLimit`) ; `resolveChoice` fait partir les cartes
+  // désignées puis reprend la fin du tour par `finirTour`.
   const endingPlayer = nextState.players.find((p) => p.id === action.playerId)!;
   if (endingPlayer.hand.length > RULES.MAX_HAND_SIZE) {
-    const forced = discardFromHand(
-      nextState,
-      endingPlayer.id,
-      { count: endingPlayer.hand.length - RULES.MAX_HAND_SIZE },
-      base
-    );
-    nextState = forced.state;
-    events.push(...forced.events);
-
-    // Une carte qui part par la limite de main est défaussée comme une
-    // autre : P'tit Bout rend sa Raison, La Marelle cogne. Le texte ne
-    // distingue pas la cause de la défausse, le moteur non plus.
-    const discardTriggers = processDiscardedFromHandTriggers(nextState, forced.events, state.turnNumber);
-    nextState = discardTriggers.state;
-    events.push(...discardTriggers.events);
+    return {
+      ok: true,
+      state: {
+        ...nextState,
+        pendingChoice: {
+          kind: "handDiscard",
+          playerId: endingPlayer.id,
+          count: endingPlayer.hand.length - RULES.MAX_HAND_SIZE,
+          refusable: false,
+          handLimit: true,
+          turnNumber: state.turnNumber,
+        },
+      },
+      events,
+    };
   }
+
+  return finirTour(nextState, action.playerId, events);
+}
+
+/**
+ * Fin du tour APRÈS la limite de main : règlement de la Déraison choisie,
+ * passage de la main, annonce de la Marée — puis l'entame du tour suivant.
+ *
+ * Séparée de `endTurn` pour être REPRENABLE, comme `entameDeTour` : quand
+ * le joueur doit choisir les cartes à défausser, `endTurn` s'arrête sur la
+ * question et `resolveChoice` reprend ici, sans rejouer les effets de fin
+ * de tour déjà résolus.
+ */
+export function finirTour(state: GameState, endingPlayerId: PlayerId, eventsAvant: GameEvent[] = []): ActionResult {
+  const events: GameEvent[] = [...eventsAvant];
+  const base = { turnNumber: state.turnNumber, timestamp: Date.now() };
+  let nextState = state;
 
   // --- Règlement de la Déraison CHOISIE, à la fin du tour de celui qui l'a
   // prise, en tout dernier (plus aucun effet de fin de tour ne peut encore
@@ -163,7 +179,7 @@ export function endTurn(state: GameState, action: EndTurnAction): ActionResult {
   // Seule exception assumée (arbitrage du 2026-09-21) : une réaction adverse
   // qui draine pendant SON tour compte comme du choisi. Le joueur a eu tout
   // son tour pour remonter ; s'il ne l'a pas fait, il paie.
-  const playerEndingTurn = nextState.players.find((p) => p.id === action.playerId)!;
+  const playerEndingTurn = nextState.players.find((p) => p.id === endingPlayerId)!;
   const debt = deraisonDebt(playerEndingTurn.reason);
   if (debt > 0) {
     const anchorDamage = deraisonAnchorDamage(playerEndingTurn, playerEndingTurn.reason);
@@ -186,7 +202,7 @@ export function endTurn(state: GameState, action: EndTurnAction): ActionResult {
     }
   }
 
-  const nextPlayer = getOpponent(nextState, action.playerId);
+  const nextPlayer = getOpponent(nextState, endingPlayerId);
   const newTurnNumber = state.turnNumber + 1;
   const newBase = { turnNumber: newTurnNumber, timestamp: Date.now() };
 

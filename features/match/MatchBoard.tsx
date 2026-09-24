@@ -36,6 +36,7 @@ import { HealAllocationPrompt } from "@/features/match/HealAllocationPrompt";
 import { KeepUnitsPrompt } from "@/features/match/KeepUnitsPrompt";
 import { PickUnitsPrompt } from "@/features/match/PickUnitsPrompt";
 import { HandDiscardPrompt } from "@/features/match/HandDiscardPrompt";
+import { useHandLimitDiscard } from "@/features/match/useHandLimitDiscard";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ReactionPrompt } from "@/features/match/ReactionPrompt";
 import { ShipWindowHint } from "@/features/match/ShipWindowHint";
@@ -131,6 +132,10 @@ export function MatchBoard({
   const noPendingWindow = !state.pendingReaction && !state.pendingChoice;
   const canPlayCards = isViewerTurn && isMainPhase(state.phase) && noPendingWindow;
   const canAttackNow = isViewerTurn && state.phase === "combatPhase" && noPendingWindow;
+  // Main trop pleine en fin de tour : les cartes à jeter se glissent au Cimetière.
+  const handLimit = useHandLimitDiscard(state, viewerPlayerId, (discardInstanceIds) =>
+    runReactionAction({ type: "resolveChoice", playerId: viewerPlayerId, choice: { discardInstanceIds } })
+  );
   // Si aucune unité du joueur actif ne peut attaquer, le bouton unique saute directement à "Fin de tour".
   const activePlayerBoard = state.players.find((p) => p.id === activePlayerId)?.board ?? [];
   const hasAnyAttacker = activePlayerBoard.some((unit) => canUnitAttack(state, state.activePlayerId, unit.instanceId));
@@ -341,7 +346,7 @@ export function MatchBoard({
 
   // Rien à attaquer : le bouton saute le combat ET la Phase principale 2 (on y est déjà, en pratique) et propose la fin du tour.
   const phase = phaseButtonFor({ isMyTurn: isViewerTurn, phase: state.phase === "mainPhase" && !hasAnyAttacker ? "mainPhase2" : state.phase });
-  const hint = targetingHint(pending?.kind === "reaction" ? null : pending?.kind ?? null);
+  const hint = handLimit.hint ?? targetingHint(pending?.kind === "reaction" ? null : pending?.kind ?? null);
 
   // Objets d'invite en constantes locales : `board.breakPrompt` ne se
   // rétrécit pas à travers une fermeture, une constante si.
@@ -385,7 +390,8 @@ export function MatchBoard({
         targeting={tableTargetingFor(pending)}
         reactionSourceIds={myReactionCandidates.map((c) => c.sourceInstanceId)}
         hint={hint}
-        onCancelHint={board.clearSelection}
+        onCancelHint={handLimit.mode ? handLimit.cancel : board.clearSelection}
+        handLimitDiscard={handLimit.mode}
         phaseButton={{
           label: phase.label,
           // La phase EN COURS, pas celle vers laquelle le bouton mène :
@@ -505,7 +511,7 @@ export function MatchBoard({
           onRefuse={() => runReactionAction({ type: "resolveChoice", playerId: viewerPlayerId, choice: "pass" })}
         />
       )}
-      {state.pendingChoice?.kind === "handDiscard" && state.pendingChoice.playerId === viewerPlayerId && (
+      {state.pendingChoice?.kind === "handDiscard" && !state.pendingChoice.handLimit && state.pendingChoice.playerId === viewerPlayerId && (
         <HandDiscardPrompt
           choice={state.pendingChoice}
           hand={viewerPlayer.hand}

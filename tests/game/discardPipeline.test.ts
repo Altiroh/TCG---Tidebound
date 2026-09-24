@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { dispatch } from "@/game/engine";
 import { discardFromHand, pruneGraveyardArrivals } from "@/game/state/discard";
 import { RULES } from "@/game/rules/constants";
+import { runBotTurn } from "@/game/bot/runBotTurn";
 import { answerHandDiscard, instance, testGameState, testPlayer } from "./testHelpers";
 
 /**
@@ -66,7 +67,10 @@ describe("défausse — voie unique", () => {
       ],
     });
 
-    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const paused = dispatch(state, { type: "endTurn", playerId: "p1" });
+    expect(paused.ok).toBe(true);
+    if (!paused.ok) return;
+    const result = answerHandDiscard(paused.state);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -80,6 +84,21 @@ describe("défausse — voie unique", () => {
     const p1 = result.state.players.find((p) => p.id === "p1")!;
     expect(p1.hand).toHaveLength(RULES.MAX_HAND_SIZE);
     expect(p1.graveyardArrivals?.every((a) => a.fromZone === "hand")).toBe(true);
+  });
+
+  it("le bot répond lui-même à la limite de main, et son tour passe", () => {
+    const hand = Array.from({ length: RULES.MAX_HAND_SIZE + 2 }, () => instance("marin-des-jetees", "p1"));
+    const state = testGameState({
+      players: [
+        testPlayer("p1", { hand, reason: 0, deck: [instance("crabe-de-fer", "p1")] }),
+        testPlayer("p2", { deck: [instance("crabe-de-fer", "p2")] }),
+      ],
+    });
+
+    const after = runBotTurn(state, "p1", "moyen");
+    expect(after.pendingChoice).toBeUndefined();
+    expect(after.activePlayerId).toBe("p2");
+    expect(after.players[0].hand.length).toBeLessThanOrEqual(RULES.MAX_HAND_SIZE);
   });
 
   it("défausse ce qu'il y a quand la main est plus courte que demandé", () => {

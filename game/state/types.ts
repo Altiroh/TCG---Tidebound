@@ -539,6 +539,13 @@ export interface HandDiscardChoice {
   drawBackAfterwards?: boolean;
   /** « vous POUVEZ défausser » : « Ne rien défausser » est une réponse valable. */
   refusable: boolean;
+  /**
+   * LIMITE DE MAIN en fin de tour (`RULES.MAX_HAND_SIZE`) plutôt qu'un
+   * effet de carte : les cartes désignées ne sont pas « défaussées par un
+   * effet » (Oracle d'Améthyste ne s'y réveille pas), et la réponse reprend
+   * la fin du tour là où `endTurn` l'a suspendue (`finirTour`).
+   */
+  handLimit?: boolean;
   /** Carte à l'origine de la défausse, pour l'écran et la traçabilité. */
   sourceInstanceId?: string;
   /** Effets qui restent à résoudre une fois la défausse faite. */

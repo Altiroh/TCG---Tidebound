@@ -5,6 +5,7 @@ import { chromaticColorsOf } from "@/game/rules/chromatic";
 import { resolveEffectSequence } from "@/game/effects/resolveSequence";
 import { discardFromHand } from "@/game/state/discard";
 import { processDiscardedFromHandTriggers, processGraveyardRecoveryTriggers } from "@/game/triggers/triggerBus";
+import { finirTour } from "@/game/actions/endTurn";
 import type { GameEvent } from "@/game/events/types";
 import { assertGameActive, assertPlayerInGame, combine } from "@/game/rules/validation";
 import { reasonAfterLoss } from "@/game/state/reason";
@@ -368,6 +369,18 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
 
     const discarded = discardFromHand(nextState, choice.playerId, { instanceIds: chosen }, base);
     nextState = discarded.state;
+
+    // LIMITE DE MAIN : une défausse de règle, pas d'effet. Elle réveille les
+    // déclencheurs de défausse comme une autre (P'tit Bout rend sa Raison,
+    // La Marelle cogne : le texte ne distingue pas la cause), puis la fin
+    // du tour reprend là où `endTurn` l'avait suspendue.
+    if (choice.handLimit) {
+      events.push(...discarded.events);
+      const triggered = processDiscardedFromHandTriggers(nextState, discarded.events, choice.turnNumber);
+      events.push(...triggered.events);
+      return finirTour(triggered.state, choice.playerId, events);
+    }
+
     // Une défausse CHOISIE vient toujours d'un effet de carte : c'est ce qui
     // la distingue de la limite de main (Oracle d'Améthyste, Lot 15).
     const defausses = discarded.events.map((event) =>

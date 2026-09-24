@@ -30,6 +30,7 @@ import { TIDE_STATE_LABELS } from "@/features/match/cardDisplay";
 import { needsPlayTarget } from "@/features/match/needsPlayTarget";
 import type { AttackAnimation } from "@/features/match/useAttackPresentation";
 import type { EffectVolley } from "@/features/match/effectPresentation";
+import type { HandLimitDiscardMode } from "@/features/match/useHandLimitDiscard";
 import { EffectFxLayer, reasonAnchor, reasonGaugeOf } from "@/features/match/EffectFxLayer";
 import { THICK_TEXT_OUTLINE } from "@/features/match/cardDisplay";
 import styles from "@/features/match/table/Table.module.css";
@@ -113,6 +114,12 @@ export interface TableBoardProps {
   onBreakOnTarget: (objectInstanceId: string, targetInstanceId: string) => void;
   /** Carte lâchée sur le crâne du joueur : Sabordage, ou invite de bris pour un Objet. */
   onDropOnGraveyard: (instanceId: string, from: "hand" | "board") => void;
+  /**
+   * Limite de main en fin de tour : les cartes de la main se glissent sur
+   * le Cimetière pour être jetées (`useHandLimitDiscard`). Tant qu'il est
+   * posé, c'est le SEUL geste que la main accepte.
+   */
+  handLimitDiscard?: HandLimitDiscardMode | null;
   /** Clic sur une carte en jeu quand un ciblage est en cours (le conteneur résout). */
   onBoardCardClick: (instanceId: string, ownerId: PlayerId) => void;
   /**
@@ -329,6 +336,7 @@ export function TableBoard(props: TableBoardProps) {
   const slotsFree = viewer.board.length < viewerShip.slotCount;
   /** La carte est-elle jouable, restriction du tutoriel comprise ? */
   const isPlayable = (instanceId: string) => canPlayCards && (props.playableHandCards?.has(instanceId) ?? true);
+  const discardMode = props.handLimitDiscard ?? null;
   const handTargets = new Map(viewer.hand.map((card) => [card.instanceId, isPlayable(card.instanceId) ? playTargets(card) : null] as const));
 
   const dropId = (drop: string) => drop.replace(/^(own|unit):/, "");
@@ -372,6 +380,8 @@ export function TableBoard(props: TableBoardProps) {
       // crâne pour Briser — est soumis à la restriction du tutoriel ; les
       // gestes qui partent du plateau (attaquer, Saborder) n'y sont pas.
       const fromHand = viewer.hand.some((card) => card.instanceId === sourceId);
+      // Main trop pleine en fin de tour : la carte ne va qu'au Cimetière.
+      if (fromHand && discardMode) return kind === "place" && drop === "graveyard" && !discardMode.staged.has(sourceId);
       if (fromHand && !isPlayable(sourceId)) return false;
 
       if (kind === "place") {
@@ -398,6 +408,10 @@ export function TableBoard(props: TableBoardProps) {
     onDrop: (kind, sourceId, drop, point) => {
       props.onHandDragChange?.(null);
       if (kind === "place") {
+        if (drop === "graveyard" && discardMode) {
+          discardMode.onDiscard(sourceId);
+          return;
+        }
         if (drop === "graveyard") {
           props.onDropOnGraveyard(sourceId, "hand");
           return;
@@ -695,7 +709,11 @@ export function TableBoard(props: TableBoardProps) {
               </div>
             )}
             graveyardDropState={
-              (aiming && !aiming.armed && canPlayCards) || (placing && getCardDefinition(byId.get(placing.sourceId)?.instance.cardId ?? "").type === "objet")
+              // Défausse de fin de tour : le Cimetière luit dès la question
+              // posée, avant même qu'on saisisse une carte — c'est là qu'on va.
+              discardMode ||
+              (aiming && !aiming.armed && canPlayCards) ||
+              (placing && getCardDefinition(byId.get(placing.sourceId)?.instance.cardId ?? "").type === "objet")
                 ? hover === "graveyard"
                   ? "over"
                   : "ready"
@@ -706,7 +724,7 @@ export function TableBoard(props: TableBoardProps) {
             renderCard={(card) => renderBoardCard(card, viewer)}
           />
           <TableHand
-            cards={viewer.hand.map(toModel)}
+            cards={(discardMode ? viewer.hand.filter((card) => !discardMode.staged.has(card.instanceId)) : viewer.hand).map(toModel)}
             dragging={placing !== null || casting !== null}
             renderCard={(card) => {
               const instance = byId.get(card.id)?.instance;
@@ -728,7 +746,7 @@ export function TableBoard(props: TableBoardProps) {
                   }}
                   className={[
                     styles.tableCard,
-                    canPlayCards && !muted ? styles.handGrab : "",
+                    (canPlayCards || discardMode) && !muted ? styles.handGrab : "",
                     muted ? styles.handCardMuted : "",
                     placing?.sourceId === card.id ? styles.dragSource : "",
                     casting?.sourceId === card.id || targeting?.sourceInstanceId === card.id ? styles.castSource : "",

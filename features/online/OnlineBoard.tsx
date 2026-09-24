@@ -31,6 +31,7 @@ import { HealAllocationPrompt } from "@/features/match/HealAllocationPrompt";
 import { KeepUnitsPrompt } from "@/features/match/KeepUnitsPrompt";
 import { PickUnitsPrompt } from "@/features/match/PickUnitsPrompt";
 import { HandDiscardPrompt } from "@/features/match/HandDiscardPrompt";
+import { useHandLimitDiscard } from "@/features/match/useHandLimitDiscard";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ReactionPrompt } from "@/features/match/ReactionPrompt";
 import { ShipWindowHint } from "@/features/match/ShipWindowHint";
@@ -86,6 +87,10 @@ export function OnlineBoard({
   const opponent = state.players.find((p) => p.id !== myUserId)!;
   const displayNames = useDisplayNames([me.id, opponent.id]);
   const myTitle = useEquippedTitle(me.id);
+  // Main trop pleine en fin de tour : les cartes à jeter se glissent au Cimetière.
+  const handLimit = useHandLimitDiscard(state, myUserId, (discardInstanceIds) =>
+    act({ type: "resolveChoice", playerId: myUserId, choice: { discardInstanceIds } })
+  );
   const myShip = getShipDefinition(me.shipId);
   const isMyTurn = state.activePlayerId === myUserId;
   const canRespondToReaction = state.pendingReaction?.awaitingPlayerId === myUserId;
@@ -192,7 +197,7 @@ export function OnlineBoard({
   }
 
   const phase = phaseButtonFor({ isMyTurn, phase: state.phase === "mainPhase" && !hasAnyAttacker ? "mainPhase2" : state.phase });
-  const hint = targetingHint(selection?.kind === "reaction" ? null : selection?.kind ?? null);
+  const hint = handLimit.hint ?? targetingHint(selection?.kind === "reaction" ? null : selection?.kind ?? null);
 
   // Objets d'invite en constantes locales : `board.breakPrompt` ne se
   // rétrécit pas à travers une fermeture, une constante si.
@@ -218,7 +223,8 @@ export function OnlineBoard({
         targeting={tableTargetingFor(selection)}
         reactionSourceIds={myReactionCandidates.map((c) => c.sourceInstanceId)}
         hint={hint}
-        onCancelHint={board.clearSelection}
+        onCancelHint={handLimit.mode ? handLimit.cancel : board.clearSelection}
+        handLimitDiscard={handLimit.mode}
         phaseButton={{
           label: phase.label,
           // La phase EN COURS, pas celle vers laquelle le bouton mène :
@@ -331,7 +337,7 @@ export function OnlineBoard({
           onRefuse={() => act({ type: "resolveChoice", playerId: myUserId, choice: "pass" })}
         />
       )}
-      {state.pendingChoice?.kind === "handDiscard" && state.pendingChoice.playerId === myUserId && (
+      {state.pendingChoice?.kind === "handDiscard" && !state.pendingChoice.handLimit && state.pendingChoice.playerId === myUserId && (
         <HandDiscardPrompt
           choice={state.pendingChoice}
           hand={me.hand}

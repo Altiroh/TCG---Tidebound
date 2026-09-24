@@ -1032,17 +1032,29 @@ describe("engine.dispatch - condition de victoire", () => {
 });
 
 describe("engine.dispatch - endTurn : défausse forcée (RULES.MAX_HAND_SIZE)", () => {
-  it("défausse les cartes excédentaires du joueur qui termine son tour, depuis le début de sa main", () => {
+  it("suspend la fin du tour sur un choix : c'est le joueur qui désigne les cartes à défausser", () => {
     const keepCard = instance("murene-aveugle", "p1");
     const discardedCard = instance("murene-aveugle", "p1");
-    const hand = [discardedCard, ...Array.from({ length: 6 }, () => instance("murene-aveugle", "p1")), keepCard];
+    const hand = [keepCard, ...Array.from({ length: 6 }, () => instance("murene-aveugle", "p1")), discardedCard];
     const state = testGameState({
       players: [testPlayer("p1", { hand }), testPlayer("p2")],
       activePlayerId: "p1",
     });
 
-    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const paused = dispatch(state, { type: "endTurn", playerId: "p1" });
+    expect(paused.ok).toBe(true);
+    if (!paused.ok) return;
+    // Rien n'est parti tout seul, et le tour n'est pas encore passé.
+    expect(paused.state.pendingChoice).toMatchObject({ kind: "handDiscard", playerId: "p1", count: 1, refusable: false, handLimit: true });
+    expect(paused.state.activePlayerId).toBe("p1");
+    expect(paused.state.players[0].hand).toHaveLength(8);
+    // Tant que le choix est ouvert, rien d'autre ne passe.
+    expect(dispatch(paused.state, { type: "endTurn", playerId: "p1" }).ok).toBe(false);
+    // Et la défausse attend son compte exact : pas de refus.
+    expect(dispatch(paused.state, { type: "resolveChoice", playerId: "p1", choice: "pass" }).ok).toBe(false);
 
+    // Le joueur désigne la DERNIÈRE carte : c'est bien elle qui part.
+    const result = dispatch(paused.state, { type: "resolveChoice", playerId: "p1", choice: { discardInstanceIds: [discardedCard.instanceId] } });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     const p1 = result.state.players.find((p) => p.id === "p1")!;
@@ -1050,9 +1062,13 @@ describe("engine.dispatch - endTurn : défausse forcée (RULES.MAX_HAND_SIZE)", 
     expect(p1.hand.some((c) => c.instanceId === discardedCard.instanceId)).toBe(false);
     expect(p1.hand.some((c) => c.instanceId === keepCard.instanceId)).toBe(true);
     expect(p1.graveyard.some((c) => c.instanceId === discardedCard.instanceId)).toBe(true);
-    expect(
-      result.events.some((e) => e.type === "CARD_MOVED" && e.instanceId === discardedCard.instanceId && e.toZone === "graveyard")
-    ).toBe(true);
+    // Défausse de RÈGLE, pas d'effet : pas de marque « par un effet ».
+    const moved = result.events.find((e) => e.type === "CARD_MOVED" && e.instanceId === discardedCard.instanceId);
+    expect(moved).toMatchObject({ toZone: "graveyard" });
+    expect((moved as { discardByEffect?: boolean }).discardByEffect).toBeUndefined();
+    // Puis la fin du tour reprend : la main passe.
+    expect(result.state.pendingChoice).toBeUndefined();
+    expect(result.state.activePlayerId).toBe("p2");
   });
 
   it("ne défausse rien si la main ne dépasse pas la limite", () => {
