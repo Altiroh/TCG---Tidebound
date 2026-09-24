@@ -40,7 +40,13 @@ export type BoardSelection =
   | { kind: "break"; instanceId: string; needsTarget: boolean; fromHand?: boolean }
   | { kind: "reaction"; sourceInstanceId: string; abilityIndex: number; needsTarget: boolean }
   /** Canon de Navire armé : le joueur désigne ce qu'il vise (un permanent adverse, ou le Navire adverse). */
-  | { kind: "shipShot" };
+  | { kind: "shipShot" }
+  /**
+   * Capacité de Navire CIBLÉE (Pique à Glace) : le joueur désigne n'importe
+   * quel permanent doté de Résistance, des deux côtés, ou n'importe quel
+   * Navire — le sien compris. L'activation part au clic sur la cible.
+   */
+  | { kind: "shipTarget" };
 
 /**
  * Traduit la sélection du conteneur en ciblage pour le plateau. Les deux
@@ -53,6 +59,7 @@ export type BoardSelection =
 export function tableTargetingFor(selection: BoardSelection | null): TableTargeting {
   if (!selection) return null;
   if (selection.kind === "shipShot") return { kind: "shipShot" };
+  if (selection.kind === "shipTarget") return { kind: "shipTarget" };
   if (selection.kind === "attack") return { kind: "attack", sourceInstanceId: selection.attackerId };
   if (selection.kind === "reaction") return { kind: "reaction", sourceInstanceId: selection.sourceInstanceId };
   return { kind: selection.kind, sourceInstanceId: selection.instanceId };
@@ -262,6 +269,10 @@ export function useBoardInteraction({
     }
     if (selection?.kind === "shipShot" && ownerId !== viewer.id) {
       act({ type: "fireShipAbility", playerId: actorId, targetInstanceId: instanceId });
+      clearSelection();
+    }
+    if (selection?.kind === "shipTarget") {
+      act({ type: "activateShipAbility", playerId: actorId, targetInstanceId: instanceId });
       clearSelection();
     }
     return null;

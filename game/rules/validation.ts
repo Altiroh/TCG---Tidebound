@@ -326,6 +326,31 @@ export function assertValidDefender(
   return ok();
 }
 
+/**
+ * Cible d'une capacité « n'importe quelle cible » (`ShipActivatableAbility
+ * .targeting: "anyTarget"`) : EXACTEMENT un permanent doté de Résistance,
+ * de n'importe quel côté de la table, OU un des deux Navires. Ni Garde ni
+ * règle d'attaque — ce n'est pas une attaque.
+ */
+export function assertValidAnyTarget(
+  state: GameState,
+  targetInstanceId: string | undefined,
+  targetPlayerId: PlayerId | undefined
+): ValidationResult {
+  if (Boolean(targetInstanceId) === Boolean(targetPlayerId)) {
+    return fail("Désignez une cible : un permanent en jeu, ou un Navire.");
+  }
+  if (targetPlayerId) {
+    return state.players.some((p) => p.id === targetPlayerId) ? ok() : fail("Navire introuvable.");
+  }
+  const target = state.players.flatMap((p) => p.board).find((u) => u.instanceId === targetInstanceId);
+  if (!target) return fail("Cible invalide.");
+  if (!hasResistance(getCardDefinition(target.cardId))) {
+    return fail("Cette carte n'a pas de Résistance : elle ne peut pas subir de dégâts.");
+  }
+  return ok();
+}
+
 /** Combine plusieurs validations, retourne la première erreur rencontrée. */
 export function combine(...results: ValidationResult[]): ValidationResult {
   for (const result of results) {

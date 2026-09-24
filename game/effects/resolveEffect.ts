@@ -125,6 +125,13 @@ export interface EffectContext {
   controllerId: PlayerId;
   sourceInstanceId?: string;
   chosenTargetInstanceId?: string;
+  /**
+   * Navire désigné NOMMÉMENT par le joueur — lu par `shotTarget` à la place
+   * du « Navire adverse par défaut ». Posé seulement par une capacité de
+   * Navire ciblée (`ShipActivatableAbility.targeting: "anyTarget"`), qui
+   * peut viser son propre Navire.
+   */
+  chosenTargetPlayerId?: PlayerId;
   /** instanceId d'une carte de la DÉFAUSSE choisie par le joueur (`moveGraveyardCardToHand`, ex: Grappin de Récupération) — toujours dans la défausse de `controllerId`, jamais celle de l'adversaire. */
   chosenGraveyardInstanceId?: string;
   /** Résolution d'un `onBreakEffects` déclenché par un Bris DEPUIS LA MAIN (`breakObject` avec `fromHand`) — lu par `conditionBrokenFromHand` (ex: Le Seau). */
@@ -500,6 +507,7 @@ function resolvePlayerTargets(
     // comme une attaque directe. Un permanent désigné rend la main à
     // `resolveUnitTargets` : le même effet frappe l'un OU l'autre.
     case "shotTarget":
+      if (context.chosenTargetPlayerId) return [getPlayer(state, context.chosenTargetPlayerId)];
       return context.chosenTargetInstanceId ? [] : [getOpponent(state, context.controllerId)];
     case "allPlayers":
       return [...state.players];

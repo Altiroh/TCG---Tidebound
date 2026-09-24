@@ -174,9 +174,25 @@ export interface ShipActivatableAbility {
    * tester quel Navire est en jeu. Les fichiers sont dans `lib/sound.ts`.
    *
    * Une capacité en deux temps (`armedShot`) n'en porte pas : l'armement
-   * est silencieux, c'est le TIR qui s'entend (impact d'attaque).
+   * est silencieux, c'est le TIR qui s'entend (impact d'attaque). Une
+   * capacité ciblée (`targeting`) non plus : ce qu'on entend, c'est l'impact
+   * de ses dégâts sur la cible.
    */
   activationSound?: "heal" | "protect" | "tide";
+  /**
+   * CIBLE désignée à l'activation même — une capacité ciblée en un seul
+   * geste, sans armement. Ses effets visent `{ kind: "shotTarget" }`.
+   *
+   * `"anyTarget"` : n'importe quel permanent doté de Résistance, allié ou
+   * adverse (unité, Structure…), ou n'importe quel des deux Navires, le sien
+   * compris (Le Navire de Verre — Pique à Glace). Ni Garde ni règle
+   * d'attaque : c'est un effet, pas une attaque — donc ni riposte, ni
+   * faiblesse d'attaque directe, ni fenêtre d'interception des pièges.
+   *
+   * Absent : la capacité ne désigne rien à l'activation (les autres
+   * Navires ; le Goliath désigne la sienne au TIR, cf. `armedShot`).
+   */
+  targeting?: "anyTarget";
   /** Effets résolus immédiatement à l'activation. Absent : l'activation ne fait qu'armer. */
   onActivateEffects?: EffectDefinition[];
   /** Tir différé : l'activation arme, un second geste tire. Absent : capacité en un seul geste. */

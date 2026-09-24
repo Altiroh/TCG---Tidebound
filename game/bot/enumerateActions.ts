@@ -1,5 +1,5 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
-import { UNIT_CARD_TYPES } from "@/game/cards/types";
+import { hasResistance, UNIT_CARD_TYPES } from "@/game/cards/types";
 import type { CardDefinition } from "@/game/cards/types";
 import {
   graveyardChoicesForAbility,
@@ -257,7 +257,21 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
   // bot ne peut donc pas proposer un canon que le joueur, lui, ne pourrait
   // pas armer.
   const shipAbility = shipAbilityView(state, playerId);
-  if (shipAbility?.canActivate) actions.push({ type: "activateShipAbility", playerId });
+  if (shipAbility?.canActivate && shipAbility.ability.targeting === "anyTarget") {
+    // Capacité CIBLÉE (Pique à Glace) : chaque cible légale est un geste
+    // distinct — tout permanent doté de Résistance, des deux côtés, et les
+    // deux Navires. C'est l'évaluation qui départage, jamais un choix d'office.
+    for (const p of state.players) {
+      actions.push({ type: "activateShipAbility", playerId, targetPlayerId: p.id });
+      for (const unit of p.board) {
+        if (hasResistance(getCardDefinition(unit.cardId))) {
+          actions.push({ type: "activateShipAbility", playerId, targetInstanceId: unit.instanceId });
+        }
+      }
+    }
+  } else if (shipAbility?.canActivate) {
+    actions.push({ type: "activateShipAbility", playerId });
+  }
   if (shipAbility?.canFire) {
     // Sans cible : le Navire adverse, comme une attaque directe. Garde peut
     // le refuser — `dispatch` écartera le candidat, et les cibles ci-dessous

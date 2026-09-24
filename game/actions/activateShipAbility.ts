@@ -8,6 +8,7 @@ import {
   assertInAnyPhase,
   assertIsActivePlayer,
   assertPlayerInGame,
+  assertValidAnyTarget,
   combine,
 } from "@/game/rules/validation";
 import { payReasonCost } from "@/game/state/shields";
@@ -76,6 +77,15 @@ function validate(state: GameState, action: ActivateShipAbilityAction) {
     return { ok: false as const, error: `${ability.name} a déjà été utilisée cette partie.` };
   }
 
+  // Capacité CIBLÉE : la cible est désignée maintenant, et une capacité qui
+  // n'en attend pas n'en accepte pas — le moteur ne devine jamais.
+  if (ability.targeting === "anyTarget") {
+    const targetCheck = assertValidAnyTarget(state, action.targetInstanceId, action.targetPlayerId);
+    if (!targetCheck.ok) return targetCheck;
+  } else if (action.targetInstanceId || action.targetPlayerId) {
+    return { ok: false as const, error: `${ability.name} ne désigne aucune cible.` };
+  }
+
   // Le coût en Raison n'est jamais refusé, ici comme pour une capacité de
   // carte : sans plancher de Déraison, il se paie en creusant la dette
   // (`game/state/reason.ts`). Le Goliath peut donc tirer à crédit — c'est
@@ -128,7 +138,12 @@ export function activateShipAbility(state: GameState, action: ActivateShipAbilit
   });
 
   if (ability.onActivateEffects) {
-    const context: EffectContext = { controllerId: player.id, turnNumber: state.turnNumber };
+    const context: EffectContext = {
+      controllerId: player.id,
+      turnNumber: state.turnNumber,
+      chosenTargetInstanceId: action.targetInstanceId,
+      chosenTargetPlayerId: action.targetPlayerId,
+    };
     const activated = resolveEffectSequence(nextState, ability.onActivateEffects, context);
     nextState = activated.state;
     events.push(...activated.events);

@@ -506,6 +506,11 @@ export type TargetSelector =
    * La légalité de ce qui est visé n'est PAS vérifiée ici : elle l'a été à
    * la validation du tir, avec les règles d'attaque (`assertValidDefender`),
    * qui écartent déjà un permanent protégé par Garde ou sans Résistance.
+   *
+   * Même cible, même lecture, pour une capacité de Navire CIBLÉE en un seul
+   * geste (`ShipActivatableAbility.targeting`, Le Navire de Verre — Pique à
+   * Glace) : là, le joueur peut aussi désigner un Navire nommément,
+   * le sien compris (`EffectContext.chosenTargetPlayerId`).
    */
   | { kind: "shotTarget" };
 

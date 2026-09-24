@@ -411,7 +411,12 @@ export function MatchBoard({
         onBoardCardClick={handleAnyBoardCardClick}
         shipAbility={shipAbility.panel}
         opponentShipAbility={shipAbility.opponentPanel}
-        onShipClick={() => {
+        onShipClick={(ownerId) => {
+          if (pending?.kind === "shipTarget") {
+            runAction({ type: "activateShipAbility", playerId: activePlayerId, targetPlayerId: ownerId });
+            board.clearSelection();
+            return;
+          }
           if (pending?.kind === "shipShot") {
             // Tir sans cible désignée : le Navire adverse, comme une attaque directe.
             runAction({ type: "fireShipAbility", playerId: activePlayerId });

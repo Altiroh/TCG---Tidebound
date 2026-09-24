@@ -132,12 +132,18 @@ export interface ActivateAbilityAction {
  * Active la capacité activable du NAVIRE du joueur
  * (`ShipDefinition.activatableAbility`) : paie son coût et, selon la
  * capacité, résout ses effets immédiats ou arme son tir différé. Ne
- * consomme pas l'action principale du tour. Aucune cible ici — une capacité
- * en deux temps désigne la sienne au moment du tir (`FireShipAbilityAction`).
+ * consomme pas l'action principale du tour. Une capacité en deux temps
+ * désigne sa cible au moment du tir (`FireShipAbilityAction`) ; une
+ * capacité CIBLÉE (`ShipActivatableAbility.targeting`) la désigne ici —
+ * exactement une des deux clés ci-dessous.
  */
 export interface ActivateShipAbilityAction {
   type: "activateShipAbility";
   playerId: PlayerId;
+  /** Permanent visé (allié ou adverse), pour une capacité ciblée. */
+  targetInstanceId?: string;
+  /** Navire visé (le sien ou l'adverse), pour une capacité ciblée. */
+  targetPlayerId?: PlayerId;
 }
 
 /**

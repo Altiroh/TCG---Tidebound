@@ -110,7 +110,7 @@ const DECK_META: Record<string, DeckMeta> = {
   "arsenal-de-pont": {
     style: "Tempo / Objets et Bris depuis la main",
     difficulty: 5,
-    mechanics: ["Bris depuis la main", "Réponses pendant le tour adverse", "Removal ciblé"],
+    mechanics: ["Bris depuis la main", "Réponses pendant le tour adverse", "Removal ciblé", "Pique à Glace"],
   },
   "chasse-au-gros": {
     style: "Midrange / dégâts ciblés",

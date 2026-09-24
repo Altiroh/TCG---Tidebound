@@ -8,6 +8,7 @@ import {
   eligibleChosenUnits,
   getCardDefinition,
   getShipDefinition,
+  hasResistance,
   isVisibleDuringTide,
   reasonCeiling,
   RULES,
@@ -56,7 +57,7 @@ import { useTableMotion } from "@/features/match/table/useTableMotion";
  */
 export type TableTargeting =
   | { kind: "playCard" | "break" | "reaction" | "attack"; sourceInstanceId: string }
-  | { kind: "shipShot"; sourceInstanceId?: undefined }
+  | { kind: "shipShot" | "shipTarget"; sourceInstanceId?: undefined }
   | null;
 
 export interface TableBoardProps {
@@ -105,7 +106,7 @@ export interface TableBoardProps {
   onDropOnGraveyard: (instanceId: string, from: "hand" | "board") => void;
   /** Clic sur une carte en jeu quand un ciblage est en cours (le conteneur résout). */
   onBoardCardClick: (instanceId: string, ownerId: PlayerId) => void;
-  /** Clic sur le Navire adverse pendant un ciblage d'attaque ou un tir de canon. */
+  /** Clic sur un Navire pendant un ciblage : l'adverse (attaque, tir de canon), ou l'un des deux (capacité ciblée). */
   onShipClick: (ownerId: PlayerId) => void;
   /** Panneau de capacité du Navire du JOUEUR — absent si son Navire n'en porte pas. */
   shipAbility?: ShipAbilityPanelView;
@@ -386,6 +387,9 @@ export function TableBoard(props: TableBoardProps) {
   // Le tir du canon désigne exactement les mêmes cibles qu'une attaque —
   // même mise en évidence, donc, plutôt qu'un second vocabulaire visuel.
   const attackTargeting = targeting?.kind === "attack" || targeting?.kind === "shipShot" || aimAttacks;
+  // Capacité de Navire ciblée : tout ce qui a une Résistance, des deux
+  // côtés, et les deux Navires — le ton « effet », puisque ce n'est pas une attaque.
+  const anyTargeting = targeting?.kind === "shipTarget";
 
   // ── Rendu d'une carte en jeu ────────────────────────────────────────
   function renderBoardCard(card: TableCardModel, owner: PlayerState) {
@@ -396,7 +400,8 @@ export function TableBoard(props: TableBoardProps) {
     const visible = isVisibleDuringTide(def, tideState);
     const drop = `${mine ? "own" : "unit"}:${card.id}`;
     const ready = mine && attackReady(instance);
-    const effectTarget = (castTargets?.has(card.id) ?? false) || (aimBreakTargets?.has(card.id) ?? false);
+    const effectTarget =
+      (castTargets?.has(card.id) ?? false) || (aimBreakTargets?.has(card.id) ?? false) || (anyTargeting && hasResistance(def));
     const attackTarget = !mine && attackTargeting;
     const targetable = effectTarget || attackTarget;
 
@@ -508,15 +513,15 @@ export function TableBoard(props: TableBoardProps) {
                 data-ship-target={opponent.id}
                 onClick={() => {
                   // Pendant un ciblage d'attaque, le Navire est une CIBLE ; sinon on consulte sa fiche.
-                  if (targeting?.kind === "attack" || targeting?.kind === "shipShot") props.onShipClick(opponent.id);
+                  if (targeting?.kind === "attack" || targeting?.kind === "shipShot" || anyTargeting) props.onShipClick(opponent.id);
                   else if (!targeting) setShipInfoFor(opponent.id);
                 }}
                 onContextMenu={(event) => {
                   event.preventDefault();
                   setShipInfoFor(opponent.id);
                 }}
-                title={attackTargeting ? undefined : "Fiche du Navire adverse"}
-                className={`${styles.shipTarget} ${attackTargeting ? styles.targetable : styles.shipInspectable} ${hover === "ship" ? styles.targetHover : ""}`}
+                title={attackTargeting || anyTargeting ? undefined : "Fiche du Navire adverse"}
+                className={`${styles.shipTarget} ${attackTargeting || anyTargeting ? styles.targetable : styles.shipInspectable} ${hover === "ship" ? styles.targetHover : ""}`}
               >
                 {ship}
               </div>
@@ -547,9 +552,13 @@ export function TableBoard(props: TableBoardProps) {
             wrapShip={(ship) => (
               <div
                 data-ship-target={viewer.id}
-                className={`${styles.shipTarget} ${styles.shipInspectable}`}
-                title="Fiche de ton Navire"
-                onClick={() => !targeting && setShipInfoFor(viewer.id)}
+                className={`${styles.shipTarget} ${anyTargeting ? `${styles.targetable} ${styles.effectTone}` : styles.shipInspectable}`}
+                title={anyTargeting ? undefined : "Fiche de ton Navire"}
+                onClick={() => {
+                  // Seule une capacité ciblée vise son propre Navire.
+                  if (anyTargeting) props.onShipClick(viewer.id);
+                  else if (!targeting) setShipInfoFor(viewer.id);
+                }}
                 onContextMenu={(event) => {
                   event.preventDefault();
                   setShipInfoFor(viewer.id);

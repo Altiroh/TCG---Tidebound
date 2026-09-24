@@ -81,7 +81,7 @@ export function useShipAbility({
   const mine = shipAbilityView(liveState, viewerId);
   const theirs = opponent ? shipAbilityView(liveState, opponent.id) : undefined;
 
-  const aiming = selection?.kind === "shipShot";
+  const aiming = selection?.kind === "shipShot" || selection?.kind === "shipTarget";
 
   function handleClick() {
     if (!mine) return;
@@ -93,6 +93,13 @@ export function useShipAbility({
     }
     if (mine.canFire) {
       setSelection({ kind: "shipShot" });
+      return;
+    }
+    // Capacité CIBLÉE : pas de confirmation à part — désigner la cible EST
+    // la confirmation, et recliquer le hublot l'annule. Le coût est affiché
+    // sur le hublot même.
+    if (mine.canActivate && mine.ability.targeting) {
+      setSelection({ kind: "shipTarget" });
       return;
     }
     if (mine.canActivate) setConfirming(true);

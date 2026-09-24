@@ -518,11 +518,19 @@ export const DECK_A_BOUT_DE_RAISON: DeckList = {
  * sur 204) et un exemplaire de chacun des réactifs les plus lents. La page
  * Notion exige des decks « capables de gagner, pas des listes
  * pédagogiques volontairement faibles » — c'était le cas de celui-ci.
+ *
+ * LE NAVIRE DE VERRE (24/09/2026), et non plus L'Errant. Il fallait un
+ * préconstruit au sixième Navire ; L'Errant en portait trois, il en garde
+ * deux. Pique à Glace est du removal ciblé en coque — le mot même de la
+ * fiche de ce deck : 1 dégât pour finir ce que Coup de Harpon a entamé, ou
+ * pour achever un corps à 1 avant qu'il ne bloque. Mesuré au labo (bot
+ * moyen, 180 parties contre le rayon) : 39 % sous L'Errant, 49 % sous le
+ * Navire de Verre.
  */
 export const DECK_ARSENAL_DE_PONT: DeckList = {
   id: "arsenal-de-pont",
   name: "Arsenal de Pont",
-  shipId: "lerrant",
+  shipId: "navire-de-verre",
   description:
     "Réactif : rien ne se voit venir, tout part de la main — et chaque Objet brisé paie le suivant.",
   cardIds: [

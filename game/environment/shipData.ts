@@ -239,6 +239,38 @@ export const SHIP_SET: ShipDefinition[] = [
       },
     },
   },
+  {
+    // Sixième Navire (demande du 24/09/2026). Une coque de verre : aucune
+    // armure, mais une pointe qui touche PARTOUT. Stats de prototype —
+    // celles de la coque moyenne (L'Errant, Le Goliath) — et ni passif ni
+    // faiblesse, comme Le Goliath à son entrée : toute son identité tient
+    // dans sa capacité, et c'est elle que le labo a mesurée.
+    id: "navire-de-verre",
+    name: "Le Navire de Verre",
+    startingAnchor: 30,
+    reasonMax: 10,
+    slotCount: 5,
+    text: "Profil : précision / contrôle fin — une pointe qui touche partout, y compris chez soi.",
+    // PIQUE À GLACE — la seule capacité qui vise N'IMPORTE QUOI, son propre
+    // camp compris : achever une unité blessée, briser une Structure,
+    // gratter la coque adverse, ou s'infliger 1 dégât pour déclencher une
+    // carte qui aime être blessée (un Un Dead qui doit mourir, une
+    // Structure qu'on veut voir Sabordée). C'est un EFFET, pas une attaque :
+    // Garde ne la détourne pas, et rien ne riposte.
+    activatableAbility: {
+      name: "Pique à Glace",
+      // Ni son d'activation ni illustration de hublot : c'est l'impact qu'on
+      // entend (celui de tout dégât d'effet), et l'illustration est en
+      // production.
+      text:
+        "Une fois par tour, pendant une Phase principale, dépensez 1 Raison : infligez 1 dégât à n'importe " +
+        "quelle cible — une unité ou une Structure, alliée ou adverse, ou un Navire, le vôtre compris.",
+      cost: { reason: 1 },
+      activationPhases: ["mainPhase", "mainPhase2"],
+      targeting: "anyTarget",
+      onActivateEffects: [{ type: "damage", target: { kind: "shotTarget" }, amount: { kind: "flat", value: 1 } }],
+    },
+  },
 ];
 
 export const SHIP_DATABASE: ReadonlyMap<string, ShipDefinition> = new Map(

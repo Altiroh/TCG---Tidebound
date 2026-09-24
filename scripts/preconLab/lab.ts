@@ -17,6 +17,11 @@
  * chacun joue seulement contre ceux du champ. C'est le mode « variantes »
  * (une carte glissée dans un deck neutre, mesurée contre le rayon).
  *
+ * `--setup module` : module importé AVANT toute partie, dans l'orchestrateur
+ * et dans chaque travailleur — de quoi enregistrer des variantes de Navire
+ * (`SHIP_DATABASE`) que les listes de `--lib` peuvent ensuite désigner
+ * (cf. `libraries/ships.ts`).
+ *
  * Chaque paire est jouée dans les deux sens, graines identiques d'une
  * exécution à l'autre : deux mesures ne diffèrent que par les listes.
  */
@@ -40,18 +45,22 @@ interface WorkerInput {
   decks: DeckList[];
   jobs: Job[];
   bot: BotDifficulty;
+  setup?: string;
 }
 
 // --- Mode travailleur -----------------------------------------------------
 
 if (process.argv[2] === "--worker") {
-  const input = JSON.parse(readFileSync(process.argv[3]!, "utf8")) as WorkerInput;
-  const out: GameRecord[] = [];
-  for (const job of input.jobs) {
-    out.push(playInstrumentedGame(input.decks[job.a]!, input.decks[job.b]!, job.seed, input.bot));
-  }
-  writeFileSync(process.argv[4]!, JSON.stringify(out));
-  process.exit(0);
+  void (async () => {
+    const input = JSON.parse(readFileSync(process.argv[3]!, "utf8")) as WorkerInput;
+    if (input.setup) await import(pathToFileURL(input.setup).href);
+    const out: GameRecord[] = [];
+    for (const job of input.jobs) {
+      out.push(playInstrumentedGame(input.decks[job.a]!, input.decks[job.b]!, job.seed, input.bot));
+    }
+    writeFileSync(process.argv[4]!, JSON.stringify(out));
+    process.exit(0);
+  })();
 }
 
 // --- Arguments ------------------------------------------------------------
@@ -300,6 +309,9 @@ async function main() {
   const games = Number(arg("--games") ?? 20);
   const bot = (arg("--bot") ?? "moyen") as BotDifficulty;
   const workers = Number(arg("--workers") ?? 15);
+  const setupPath = arg("--setup");
+  const setup = setupPath ? resolve(setupPath) : undefined;
+  if (setup) await import(pathToFileURL(setup).href);
   const only = arg("--only")?.split(",").map((s) => s.trim());
   const base = await loadLibrary(arg("--lib"));
   const fieldPath = arg("--field");
@@ -368,7 +380,7 @@ async function main() {
           new Promise<GameRecord[]>((ok, ko) => {
             const input = join(dir, `in-${k}.json`);
             const output = join(dir, `out-${k}.json`);
-            writeFileSync(input, JSON.stringify({ decks, jobs: chunk, bot } satisfies WorkerInput));
+            writeFileSync(input, JSON.stringify({ decks, jobs: chunk, bot, setup } satisfies WorkerInput));
             const child = fork(__filename, ["--worker", input, output], { execArgv: ["--import", "tsx"], stdio: "inherit" });
             children.push(child);
             child.on("exit", (code) => (code === 0 ? ok(JSON.parse(readFileSync(output, "utf8"))) : ko(new Error(`travailleur ${k} : code ${code}`))));
@@ -384,4 +396,4 @@ async function main() {
   if (json) writeFileSync(json, JSON.stringify({ bot, games, decks, aggs: Object.fromEntries(aggs) }, null, 1));
 }
 
-void main();
+if (process.argv[2] !== "--worker") void main();
