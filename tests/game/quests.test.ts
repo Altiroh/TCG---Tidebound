@@ -461,3 +461,127 @@ describe("objectifs ajoutés avec leur mécanique", () => {
     expect(progress.complete_daily_quests).toBeUndefined();
   });
 });
+
+describe("objectifs d'identité Tidebound (audit du 24/09)", () => {
+  function stateWith(events: GameEvent[], opts: { p2Board?: ReturnType<typeof instance>[]; p1Board?: ReturnType<typeof instance>[] } = {}) {
+    const state = testGameState();
+    return {
+      ...state,
+      status: "finished" as const,
+      players: [testPlayer("p1", { board: opts.p1Board ?? [] }), testPlayer("p2", { board: opts.p2Board ?? [] })] as typeof state.players,
+      eventLog: events,
+    };
+  }
+  const tide = (tideState: "calme" | "houle" | "tempete" | "abysses", remainingTurns = 1) =>
+    ({ ...base, type: "TIDE_ADVANCED", remainingTurns, tideState, tideOrientation: "montante", stateChanged: true }) as GameEvent;
+
+  it("compte capacités de Navire (l'activation, pas le tir), réactions, invocations, soins et Anomalies", () => {
+    const progress = computeMatchQuestProgress({
+      state: stateWith([
+        { ...base, type: "SHIP_ABILITY_ACTIVATED", playerId: "p1", shipId: "le-goliath", abilityName: "Canon", armed: true },
+        { ...base, type: "SHIP_ABILITY_FIRED", playerId: "p1", shipId: "le-goliath", abilityName: "Canon" },
+        { ...base, type: "REACTION_ACTIVATED", playerId: "p1", sourceInstanceId: "x" },
+        { ...base, type: "REACTION_ACTIVATED", playerId: "p2", sourceInstanceId: "y" },
+        { ...base, type: "SUMMON", playerId: "p1", instanceId: "t1", cardId: "tetard-fesse" },
+        { ...base, type: "HEAL", targetPlayerId: "p1", amount: 3 },
+        { ...base, type: "HEAL", targetPlayerId: "p2", amount: 5 },
+        { ...base, type: "PLAY_CARD", playerId: "p1", instanceId: "a1", cardId: "quelque-chose-sous-la-coque" },
+        { ...base, type: "PLAY_CARD", playerId: "p1", instanceId: "b1", cardId: "la-chose-qui-remonte" },
+      ] as GameEvent[]),
+      playerId: "p1",
+      vsBot: true,
+      won: false,
+    });
+    expect(progress).toMatchObject({ ship_ability_uses: 1, activate_reactions: 1, summon_units: 1, heal_anchor: 3, play_anomalies: 1, play_big_cards: 1 });
+  });
+
+  it("Tempête et Abysses se lisent dans l'état de Marée courant", () => {
+    const progress = computeMatchQuestProgress({
+      state: stateWith([
+        tide("tempete"),
+        { ...base, type: "TURN_STARTED", playerId: "p1" },
+        { ...base, type: "TURN_STARTED", playerId: "p2" },
+        tide("abysses"),
+        { ...base, type: "TURN_STARTED", playerId: "p1" },
+        { ...base, type: "PLAY_CARD", playerId: "p1", instanceId: "a1", cardId: "tetard-fesse" },
+      ] as GameEvent[]),
+      playerId: "p1",
+      vsBot: true,
+      won: false,
+    });
+    expect(progress).toMatchObject({ turns_in_tempete: 1, play_in_abysses: 1 });
+  });
+
+  it("ne crédite une destruction adverse qu'à celui dont l'action l'a provoquée", () => {
+    const foe = instance("tetard-fesse", "p2");
+    const foe2 = instance("tetard-fesse", "p2");
+    const progress = computeMatchQuestProgress({
+      state: stateWith(
+        [
+          { ...base, type: "ATTACK", playerId: "p1", attackerInstanceId: "z", defenderInstanceId: foe.instanceId },
+          { ...base, type: "DESTROY", instanceId: foe.instanceId, reason: "combat" },
+          { ...base, type: "END_TURN", playerId: "p1" },
+          // Hors action (Marée) : personne.
+          { ...base, type: "DESTROY", instanceId: foe2.instanceId, reason: "effect" },
+        ] as GameEvent[],
+        { p2Board: [foe, foe2] }
+      ),
+      playerId: "p1",
+      vsBot: true,
+      won: false,
+    });
+    expect(progress.destroy_enemy_permanents).toBe(1);
+  });
+
+  it("Déraison : tours en dette, victoire au fil du rasoir, victoire la tête froide", () => {
+    const risky = stateWith([
+      { ...base, type: "DERAISON_SETTLED", playerId: "p1", debt: 2, anchorDamage: 2 },
+      { ...base, type: "DAMAGE", targetPlayerId: "p1", amount: 4, targetAnchorAfter: LOW_ANCHOR_THRESHOLD },
+    ] as GameEvent[]);
+    expect(computeMatchQuestProgress({ state: risky, playerId: "p1", vsBot: true, won: true })).toMatchObject({ deraison_turns: 1, win_after_low_anchor: 1 });
+    expect(computeMatchQuestProgress({ state: risky, playerId: "p1", vsBot: true, won: true }).win_without_deraison).toBeUndefined();
+
+    const clean = stateWith([]);
+    expect(computeMatchQuestProgress({ state: clean, playerId: "p1", vsBot: true, won: true }).win_without_deraison).toBe(1);
+    expect(computeMatchQuestProgress({ state: clean, playerId: "p1", vsBot: true, won: false }).win_without_deraison).toBeUndefined();
+  });
+
+  it("saborder compte tout permanent ; révéler compte ses propres Structures", () => {
+    const own = instance("tetard-fesse", "p1");
+    const progress = computeMatchQuestProgress({
+      state: stateWith(
+        [
+          { ...base, type: "SABORDED", playerId: "p1", instanceId: own.instanceId },
+          { ...base, type: "STRUCTURE_REVEALED", playerId: "p1", instanceId: own.instanceId, cardId: "tetard-fesse" },
+        ] as GameEvent[],
+        { p1Board: [own] }
+      ),
+      playerId: "p1",
+      vsBot: true,
+      won: false,
+    });
+    expect(progress).toMatchObject({ scuttle_permanents: 1, reveal_traps: 1 });
+  });
+
+  it("HÂTER la Marée qui monte la fait monter, une seule fois même si elle passe l'état", () => {
+    const progress = computeMatchQuestProgress({
+      state: stateWith([
+        { ...base, type: "PLAY_CARD", playerId: "p1", instanceId: "c1", cardId: "levier-de-lest" },
+        // Calme, 2 tours restants → 1 : montée hâtée.
+        { ...base, type: "TIDE_MODIFIED", change: "duration", value: 1 },
+        { ...base, type: "PLAY_CARD", playerId: "p1", instanceId: "c2", cardId: "levier-de-lest" },
+        // → 0 : la transition suit, c'est le même geste.
+        { ...base, type: "TIDE_MODIFIED", change: "duration", value: 0 },
+        { ...base, type: "TIDE_ADVANCED", remainingTurns: 2, tideState: "houle", tideOrientation: "montante", stateChanged: true },
+        // Allonger n'est pas hâter.
+        { ...base, type: "PLAY_CARD", playerId: "p1", instanceId: "c3", cardId: "levier-de-lest" },
+        { ...base, type: "TIDE_MODIFIED", change: "duration", value: 4 },
+      ] as GameEvent[]),
+      playerId: "p1",
+      vsBot: true,
+      won: false,
+    });
+    expect(progress.tide_rise).toBe(2);
+    expect(progress.modify_tide).toBe(3);
+  });
+});

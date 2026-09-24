@@ -114,7 +114,38 @@ export type QuestObjectiveKey =
    * — ni trop peu, ni dépassement. Observable grâce à
    * `DamageEvent.targetAnchorAfter`.
    */
-  | "exact_lethal";
+  | "exact_lethal"
+  // --- Identité Tidebound (audit du 24/09/2026) -------------------------
+  // Tous observables dans le journal d'événements existant ; calibrés au
+  // banc (`npm run quests`) avant d'entrer au catalogue.
+  /** Cumul : capacités de Navire activées. */
+  | "ship_ability_uses"
+  /** Cumul : tours terminés en Déraison (dette réglée en fin de tour). */
+  | "deraison_turns"
+  /** Cumul : permanents adverses détruits par vos actions. */
+  | "destroy_enemy_permanents"
+  /** Cumul : permanents sabordés, quel que soit leur type. */
+  | "scuttle_permanents"
+  /** Cumul : cartes jouées coûtant `BIG_CARD_MIN_COST` Raison ou plus. */
+  | "play_big_cards"
+  /** Cumul : cartes jouées pendant que la Marée est aux Abysses. */
+  | "play_in_abysses"
+  /** Cumul : tours commencés alors que la Marée est en Tempête. */
+  | "turns_in_tempete"
+  /** Cumul : réactions activées depuis une fenêtre (pièges compris). */
+  | "activate_reactions"
+  /** Cumul : unités entrées en jeu par un effet (invocations). */
+  | "summon_units"
+  /** Cumul : vos Structures révélées (pièges qui se découvrent). */
+  | "reveal_traps"
+  /** Cumul : Ancrage récupéré par votre Navire. */
+  | "heal_anchor"
+  /** Cumul : Anomalies jouées. */
+  | "play_anomalies"
+  /** Seuil par partie : gagner après être tombé à `LOW_ANCHOR_THRESHOLD` Ancrage ou moins. */
+  | "win_after_low_anchor"
+  /** Seuil par partie : gagner sans avoir fini un seul tour en Déraison. */
+  | "win_without_deraison";
 
 /**
  * Comment la progression d'un objectif s'agrège d'une partie à l'autre.
