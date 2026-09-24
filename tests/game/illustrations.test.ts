@@ -36,20 +36,10 @@ const DOSSIER = path.join(process.cwd(), "public", "assets", "cards", "illustrat
  * écrite, pas un contournement. Et l'exception ne survit pas à l'arrivée
  * de son visuel — le troisième test le refuse.
  */
-const SANS_VISUEL: Record<string, string> = Object.fromEntries(
-  // Lot 15 — Éclats en Selle, transcrit le 23/09/2026 depuis Notion : le lot
-  // est arrivé en texte. Les 25 Sentinelles Chromatiques ont reçu leurs
-  // illustrations le 23/09, l'Équipage de Verre et ses cartes neutres le
-  // 24/09 ; restent la Cavalerie, ses cartes neutres et La Mauvaise
-  // Réputation (en production). Le troisième test refuse une exception
-  // survivant à son WebP.
-  CORE_SET.filter(
-    (def) =>
-      def.setCode === "eclats-en-selle" &&
-      (def.archetype === "cavalerie" ||
-        ["selle-de-guerre", "harnais-de-retenue", "debusquer", "ouvrez-la-ligne", "pas-un-pas-de-plus", "la-mauvaise-reputation"].includes(def.id))
-  ).map((def) => [def.id, "Lot 15 — Éclats en Selle : illustration pas encore livrée."])
-);
+const SANS_VISUEL: Record<string, string> = {
+  // VIDE depuis le 24/09/2026 : le Lot 15 — Éclats en Selle — a reçu ses
+  // derniers visuels (Cavalerie et cartes neutres).
+};
 
 const fichiers = new Set(readdirSync(DOSSIER));
 
