@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
+import { oneOf } from "@/lib/persistCodecs";
+import { usePersistedState } from "@/lib/persistedState";
 import type { ProfileAchievement } from "@/features/progression/profileActions";
 import { TideCoin } from "@/features/shell/GameIcons";
 import styles from "@/features/progression/AchievementBoard.module.css";
@@ -78,7 +80,9 @@ interface AchievementBoardProps {
  * nuit, cyan pour la progression, or pour la récompense, vert pour l'acquis.
  */
 export function AchievementBoard({ achievements, onClaim, claimingCode = null }: AchievementBoardProps) {
-  const [filter, setFilter] = useState<Filter>("tous");
+  const [filter, setFilter] = usePersistedState<Filter>("exploits", "tous", {
+    decode: (raw) => oneOf(FILTERS.map((option) => option.id), raw),
+  });
 
   const { toClaim, inProgress, done } = useMemo(() => {
     const catalogOrder = new Map(achievements.map((achievement, index) => [achievement.code, index]));

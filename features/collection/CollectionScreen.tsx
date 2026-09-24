@@ -54,7 +54,7 @@ interface CollectionScreenProps {
  */
 export function CollectionScreen({ isSignedIn, ownedCardIds, ownedCounts, catalog, needsFirstDeck = false }: CollectionScreenProps) {
   const owned = useMemo(() => (isSignedIn ? new Set(ownedCardIds) : null), [isSignedIn, ownedCardIds]);
-  const browser = useCardBrowser({ owned });
+  const browser = useCardBrowser({ owned, persistKey: "collection" });
   const [detailCardId, setDetailCardId] = useState<string | null>(null);
   const [surplusOpen, setSurplusOpen] = useState(false);
   // Figé à l'ouverture : le récapitulatif confirmé ne bouge pas sous les yeux

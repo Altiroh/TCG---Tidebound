@@ -16,6 +16,7 @@ import { shipNameOf } from "@/features/ships/ShipPortrait";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/match/NewMatch.module.css";
 import { playButtonClick, playGameStart, playTabClick } from "@/lib/sound";
+import { usePersistedState } from "@/lib/persistedState";
 
 export type MatchOpponent = { type: "pvp" } | { type: "bot"; difficulty: BotDifficulty };
 
@@ -180,7 +181,13 @@ export function NewMatchScreen({
     [personalDecks, personalValidity, unlocked]
   );
   // Premier onglet utile : ses decks s'il en a, sinon les préconstruits.
-  const [deckTab, setDeckTab] = useState<DeckTab>(() => (personalDecks.length > 0 ? "mine" : "precon"));
+  // Onglet MÉMORISÉ sur l'appareil — sauf « Mes decks » quand il n'y en a
+  // plus aucun : on ne rouvre pas sur une liste vide.
+  const [deckTab, setDeckTab] = usePersistedState<DeckTab>(
+    "nouvelle-partie:onglet",
+    () => (personalDecks.length > 0 ? "mine" : "precon"),
+    { decode: (raw) => (raw === "precon" || (raw === "mine" && personalDecks.length > 0) ? raw : undefined) }
+  );
   const activeTab = tabs.find((tab) => tab.id === deckTab) ?? tabs[0]!;
 
   const current = step === 3 ? deck2 : deck1;

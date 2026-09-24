@@ -1,4 +1,5 @@
-import { deckStyleFromText, deckStyleLabel, type DeckStyleId } from "@/game";
+import { DECK_STYLE_IDS, deckStyleFromText, deckStyleLabel, SHIP_SET, type DeckStyleId } from "@/game";
+import { asRecord, subsetOf } from "@/lib/persistCodecs";
 
 /**
  * LE TRI ET LES FILTRES de l'écran Decks — logique pure, sans React.
@@ -67,6 +68,23 @@ export interface DeckFilterState {
 }
 
 export const EMPTY_FILTERS: DeckFilterState = { search: "", styles: new Set(), ships: new Set() };
+
+/**
+ * Relecture des filtres MÉMORISÉS (`lib/persistedState.ts`) : styles et
+ * Navires cochés, vérifiés contre ce qui existe encore. La recherche tapée
+ * n'est pas retenue, et les `Set` voyagent en tableaux.
+ */
+export function encodeDeckFilters(filters: DeckFilterState): unknown {
+  return { styles: [...filters.styles], ships: [...filters.ships] };
+}
+
+export function decodeDeckFilters(raw: unknown): DeckFilterState | undefined {
+  const record = asRecord(raw);
+  if (!record) return undefined;
+  const styles = subsetOf<StyleFilterId>([...DECK_STYLE_IDS, "autre"], record.styles) ?? [];
+  const ships = subsetOf<string>(SHIP_SET.map((ship) => ship.id), record.ships) ?? [];
+  return { search: "", styles: new Set(styles), ships: new Set(ships) };
+}
 
 export function hasActiveFilter(filters: DeckFilterState): boolean {
   return filters.search.trim() !== "" || filters.styles.size > 0 || filters.ships.size > 0;
