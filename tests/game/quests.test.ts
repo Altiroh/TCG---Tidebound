@@ -308,6 +308,35 @@ describe("progression d'une partie terminée", () => {
     expect(computeMatchQuestProgress({ state, playerId: "p1", vsBot: true, won: false }).modify_tide).toBe(2);
   });
 
+  it("crédite au joueur ce que provoque SA capacité de Navire (Marée, dégâts du Canon)", () => {
+    // Audit du 24/09 : au banc, 18 modifications de Marée sur 21 venaient
+    // d'une capacité de Navire, et aucune n'était créditée.
+    const state = finishedState([
+      { ...base, type: "SHIP_ABILITY_ACTIVATED", playerId: "p1", shipId: "lerrant", abilityName: "Changer de cap", armed: false },
+      { ...base, type: "TIDE_MODIFIED", change: "duration", value: -1 },
+      { ...base, type: "TIDE_ORIENTATION_CHANGED", orientation: "montante" },
+      { ...base, type: "SHIP_ABILITY_FIRED", playerId: "p1", shipId: "le-goliath", abilityName: "Canon de proue" },
+      { ...base, type: "DAMAGE", targetPlayerId: "p2", amount: 2, targetAnchorAfter: 12 },
+      // Celle de l'adversaire ne compte pas pour p1.
+      { ...base, type: "SHIP_ABILITY_ACTIVATED", playerId: "p2", shipId: "lerrant", abilityName: "Changer de cap", armed: false },
+      { ...base, type: "TIDE_MODIFIED", change: "duration", value: 1 },
+    ] as GameEvent[]);
+    const progress = computeMatchQuestProgress({ state, playerId: "p1", vsBot: true, won: false });
+    expect(progress.modify_tide).toBe(2);
+    expect(progress.deal_damage).toBe(2);
+  });
+
+  it("inverser l'orientation de la Marée la fait « monter » ou « descendre »", () => {
+    const state = finishedState([
+      { ...base, type: "PLAY_CARD", playerId: "p1", instanceId: "c1", cardId: "levier-de-lest" },
+      { ...base, type: "TIDE_ORIENTATION_CHANGED", orientation: "montante" },
+      { ...base, type: "PLAY_CARD", playerId: "p1", instanceId: "c2", cardId: "levier-de-lest" },
+      { ...base, type: "TIDE_ORIENTATION_CHANGED", orientation: "descendante" },
+    ]);
+    const progress = computeMatchQuestProgress({ state, playerId: "p1", vsBot: true, won: false });
+    expect(progress).toMatchObject({ tide_rise: 1, tide_fall: 1, tide_both_ways_in_match: 1 });
+  });
+
   it("compte les pioches SUPPLÉMENTAIRES, au-delà de celle de début de tour", () => {
     const state = finishedState([
       { ...base, type: "TURN_STARTED", playerId: "p1" },

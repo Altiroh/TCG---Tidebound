@@ -229,6 +229,18 @@ export function computeMatchQuestContribution({
         }
         break;
 
+      // Une capacité de Navire est une action du joueur au même titre
+      // qu'une pose : ce qu'elle provoque lui revient. Sans ce cas, les
+      // changements de Marée de « Changer de cap » (la grande majorité des
+      // modifications de Marée mesurées au banc, audit du 24/09) et les
+      // dégâts du Canon n'étaient crédités à personne.
+      case "SHIP_ABILITY_ACTIVATED":
+      case "SHIP_ABILITY_FIRED":
+        actor = event.playerId;
+        awaitingDirectDamage = false;
+        currentAttacker = null;
+        break;
+
       case "ATTACK": {
         actor = event.playerId;
         awaitingDirectDamage = event.playerId === playerId && !event.defenderInstanceId;
@@ -287,9 +299,19 @@ export function computeMatchQuestContribution({
         // Ces deux-là ne sont émis QUE par un effet de carte.
         if (actor === playerId) {
           progress.modify_tide += 1;
+          // Inverser l'orientation, c'est FAIRE monter (ou descendre) la
+          // Marée : c'est le geste de presque toutes les cartes et capacités
+          // qui la touchent. Ne compter que les changements d'état forcés
+          // rendait « Ça monte » et « Ça redescend » infaisables — zéro
+          // progression sur 90 parties de banc (audit du 24/09).
           if (event.type === "TIDE_ORIENTATION_CHANGED") {
-            if (event.orientation === "montante") tideRose = true;
-            else tideFell = true;
+            if (event.orientation === "montante") {
+              progress.tide_rise += 1;
+              tideRose = true;
+            } else {
+              progress.tide_fall += 1;
+              tideFell = true;
+            }
           }
         }
         break;
