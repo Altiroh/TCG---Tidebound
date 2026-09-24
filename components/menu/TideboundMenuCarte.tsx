@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { useRef, useState, type CSSProperties } from "react";
 import { MenuGroseilles } from "@/components/menu/MenuGroseilles";
+import { MenuPieces } from "@/components/menu/MenuPieces";
 import styles from "@/components/menu/MenuCarte.module.css";
 import { playMenuCardClick, playMenuCardHover } from "@/lib/sound";
 
@@ -33,8 +34,6 @@ export const MENU_CARTE_ASSETS = {
   droite: "/assets/menu/carte/right-asset.webp",
   longueVue: "/assets/menu/carte/longue-vue-bottom.webp",
   tasse: "/assets/menu/carte/tasse-cafe.webp",
-  cafeCalme: "/assets/menu/carte/cafe_surface_normal.webp",
-  cafeAgite: "/assets/menu/carte/cafe_surface_variante.webp",
   logo: "/assets/menu/logo/tidebound-logo.webp",
 } as const;
 
@@ -93,29 +92,19 @@ const SLOTS: CarteSlot[] = [
 ];
 
 /**
- * LE CAFÉ QU'ON TOUCHE. Un clic sur le liquide — et seulement sur lui : la
- * zone est une ellipse — lance une onde depuis le point touché : trois
- * anneaux qui s'élargissent, masqués par la surface du café, et la surface
- * agitée qui s'y fond un instant. Plusieurs clics se superposent.
+ * LE CAFÉ QU'ON TOUCHE. Le café est celui que la tasse PEINT : aucune image
+ * de surface par-dessus (elle ne tombait jamais tout à fait dans la tasse).
+ * Un clic sur le liquide — et seulement sur lui : la zone est l'ellipse du
+ * café peint — lance une onde depuis le point touché : trois anneaux qui
+ * s'élargissent, découpés par cette même ellipse. Rien d'autre ne change.
+ * Plusieurs clics se superposent.
  */
 function CafeOnde() {
   const [ondes, setOndes] = useState<Array<{ id: number; x: number; y: number }>>([]);
-  const [agite, setAgite] = useState(0);
   const suivante = useRef(0);
 
   return (
     <>
-      {/* Le café agité est posé SUR le calme, à la même place : il s'y fond le temps de l'onde. */}
-      <Image
-        key={agite}
-        src={MENU_CARTE_ASSETS.cafeAgite}
-        alt=""
-        width={718}
-        height={338}
-        draggable={false}
-        className={styles.cafeAgite}
-        data-agite={agite > 0 ? "true" : undefined}
-      />
       <div className={styles.cafeOnde} aria-hidden>
         {ondes.flatMap((onde) =>
           [0, 1, 2].map((rang) => (
@@ -137,7 +126,6 @@ function CafeOnde() {
           const x = r.width ? ((event.clientX - r.left) / r.width) * 100 : 50;
           const y = r.height ? ((event.clientY - r.top) / r.height) * 100 : 50;
           setOndes((current) => [...current, { id, x, y }]);
-          setAgite((n) => n + 1);
           window.setTimeout(() => setOndes((current) => current.filter((o) => o.id !== id)), 1800);
         }}
       />
@@ -204,9 +192,8 @@ export function TideboundMenuCarte({ marks = false }: { marks?: boolean }) {
           surface de café et ses volutes. Le café réagit au clic
           (`CafeOnde`), comme les groseilles de la tarte.
 
-          Les calques du café (tasse, café calme, café agité, onde) sont
-          calés les uns sur les autres en pourcentages de la tasse — le
-          café occupe 64 % de sa largeur, à 9 % du bord gauche.
+          L'onde du café est calée sur le café PEINT par la tasse, en
+          pourcentages de la tasse (cf. `.cafeOnde`).
         */}
         <div className={styles.propTasse} aria-hidden>
           {FUMEES.map((fumee, index) => (
@@ -223,12 +210,13 @@ export function TideboundMenuCarte({ marks = false }: { marks?: boolean }) {
           ))}
 
           <Image src={MENU_CARTE_ASSETS.tasse} alt="" width={1207} height={1143} draggable={false} className={styles.tasse} />
-          <Image src={MENU_CARTE_ASSETS.cafeCalme} alt="" width={718} height={338} draggable={false} className={styles.cafeCalme} />
           <CafeOnde />
         </div>
 
-        {/* Les groseilles à côté de la tarte : on les écrase au clic. */}
+        {/* Les groseilles à côté de la tarte : on les écrase au clic. Les
+            pièces sautent. */}
         <MenuGroseilles />
+        <MenuPieces />
 
         {/* La flamme des bougies passe sur toute la table, parchemins
             compris (cf. `MenuCarte.module.css`). */}

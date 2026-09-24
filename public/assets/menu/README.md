@@ -24,21 +24,21 @@ navigateur (`carte/`) l'a remplacé. L'historique Git les garde.
     UNE image chacun — le survol (lumière, saturation, halo épousant le
     bord déchiré) est peint par le navigateur, pas par une seconde
     illustration.
-  - `tasse-cafe.webp`, `cafe_surface_normal.webp`,
-    `cafe_surface_variante.webp`, `fumee_variante_1/2/3.webp` : la tasse,
-    qui fume en continu. La surface du café est calée dans la tasse
-    (64,3 % de sa largeur, à 8,95 % / 20,3 %) et les deux états s'y
-    fondent l'un dans l'autre ; les trois volutes montent du café, chacune
-    sur son cycle.
-  - Plus de ride périodique sur le café : un CLIC sur le liquide y lance
-    une onde (anneaux masqués par `cafe_surface_normal.webp`, la surface
-    agitée s'y fond le temps de l'onde).
+  - `tasse-cafe.webp`, `fumee_variante_1/2/3.webp` : la tasse, qui fume
+    en continu ; les trois volutes montent du café, chacune sur son cycle.
+    Le café est celui que la tasse PEINT (les images de surface posées
+    dessus ont été retirées le 24/09 : elles tombaient à côté). Un CLIC sur
+    le liquide y lance une onde, calée sur l'ellipse du café peint.
   - `groseille-1/2/3.webp` (intactes), `groseille-eclat-1/2/3.webp`
-    (qui éclatent), `groseille-flaque-1/2.webp` (ce qui reste) : les
+    (écrasées), `groseille-flaque-1/2.webp` (le jus qui gicle) : les
     groseilles qu'on écrase à côté de la tarte
     (`components/menu/MenuGroseilles.tsx`). Découpées d'une même planche
     (`groseilles-assets.png`, retirée après découpe) : même échelle.
-  - Les fichiers d'un même GROUPE (repos/survol, café calme/agité) sont
+  - `piece-1/2/3.webp` : trois pièces à l'ancre, de la plus grande à la
+    plus petite, qui sautent en tournant sur elles-mêmes au clic
+    (`components/menu/MenuPieces.tsx`). Découpées de `piece-assets.png`,
+    retirée après découpe.
+  - Les fichiers d'un même GROUPE (repos/survol) sont
     rognés sur une boîte COMMUNE : c'est ce qui leur permet de se
     superposer au pixel une fois posés.
 

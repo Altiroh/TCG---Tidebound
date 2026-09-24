@@ -208,8 +208,6 @@
 }
 
 .tasse,
-.cafeCalme,
-.cafeAgite,
 .fumee {
   position: absolute;
   height: auto;
@@ -222,55 +220,34 @@
 }
 
 /*
- * LA SURFACE DU CAFÉ, mesurée dans la tasse (`caler-cafe`) : elle occupe
- * 64,3 % de sa largeur, à 8,95 % du bord gauche et 20,3 % du haut. Les
- * deux états sont rognés sur la même boîte, ils se superposent au pixel.
- */
-.cafeCalme,
-.cafeAgite {
-  top: 20.3%;
-  left: 8.95%;
-  width: 64.3%;
-}
-
-/*
- * LE CAFÉ AU CLIC. Plus de ride périodique (retour du 24/09 : la surface
- * « en transition » attirait l'œil pour rien) : c'est le joueur qui agite
- * le café. Un clic SUR LE LIQUIDE — la zone cliquable est une ellipse
- * (`clip-path`, qui limite aussi le pointeur), la tasse ne réagit pas —
- * fait partir une onde de l'endroit touché.
+ * LE CAFÉ AU CLIC. Le café est celui que PEINT la tasse — plus d'image de
+ * surface posée dessus (retour du 24/09 : elle tombait à côté du liquide,
+ * et changer d'image au clic se voyait). Un clic sur le liquide fait partir
+ * une onde de l'endroit touché, et rien d'autre ne bouge.
  *
- * L'onde vit dans `.cafeOnde`, masquée par la surface du café elle-même
- * (`mask-image`) : les anneaux ne débordent jamais sur la tasse. La surface
- * agitée, posée sur la calme, s'y fond le temps de l'onde.
+ * L'ELLIPSE DU CAFÉ PEINT, mesurée sur `tasse-cafe.webp` (plus longue plage
+ * sombre, ligne par ligne) : 7,5 % → 73,5 % de la largeur de la tasse,
+ * 15,5 % → 51,5 % de sa hauteur. La zone cliquable (`clip-path`, qui
+ * limite aussi le pointeur) et l'onde (`border-radius` + `overflow`) la
+ * reprennent : les anneaux ne débordent jamais sur la tasse.
  */
-.cafeAgite {
-  opacity: 0;
-}
-
-.cafeAgite[data-agite="true"] {
-  animation: cafeAgite 1400ms ease-out;
-}
-
-@keyframes cafeAgite {
-  0% { opacity: 0; }
-  18% { opacity: 0.85; }
-  100% { opacity: 0; }
+.cafeClic,
+.cafeOnde {
+  position: absolute;
+  top: 15.5%;
+  left: 7.5%;
+  width: 66%;
+  height: 36%;
 }
 
 .cafeClic {
-  position: absolute;
-  top: 20.3%;
-  left: 8.95%;
-  width: 64.3%;
-  aspect-ratio: 718 / 338;
   z-index: 2;
   padding: 0;
   border: 0;
   background: none;
   cursor: pointer;
   pointer-events: auto;
-  clip-path: ellipse(50% 46% at 50% 50%);
+  clip-path: ellipse(50% 50% at 50% 50%);
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -280,28 +257,18 @@
 }
 
 .cafeOnde {
-  position: absolute;
-  top: 20.3%;
-  left: 8.95%;
-  width: 64.3%;
-  aspect-ratio: 718 / 338;
   z-index: 1;
   overflow: hidden;
+  border-radius: 50%;
   pointer-events: none;
-  mask-image: url("/assets/menu/carte/cafe_surface_normal.webp");
-  -webkit-mask-image: url("/assets/menu/carte/cafe_surface_normal.webp");
-  mask-size: 100% 100%;
-  -webkit-mask-size: 100% 100%;
-  mask-repeat: no-repeat;
-  -webkit-mask-repeat: no-repeat;
 }
 
 /* Un anneau : crête claire et creux sombre, aplati par la perspective
-   (la surface est vue en biais : 338 / 718 de hauteur). */
+   (la surface est vue en biais, comme l'ellipse qui la contient). */
 .cafeAnneau {
   position: absolute;
   width: 90%;
-  aspect-ratio: 718 / 338;
+  height: 90%;
   border-radius: 50%;
   translate: -50% -50%;
   box-shadow:
@@ -373,32 +340,33 @@
   --groseille: 1.45%;
 }
 
+/* La boîte d'une groseille : sa taille à elle (`--taille-groseille`) ;
+   écrasée, le jus et le fruit crevé se centrent dessus, plus larges
+   qu'elle (`--ratio`, lu sur la planche). */
 .groseille,
-.groseilleEclat,
-.groseilleFlaque {
+.groseilleEcrasee {
   position: absolute;
   z-index: 2;
+  width: calc(var(--groseille) * var(--taille-groseille, 1));
+  aspect-ratio: 1;
   translate: -50% -50%;
   user-select: none;
 }
 
-.groseille img,
-.groseilleEclat img,
-.groseilleFlaque img {
-  display: block;
-  width: 100%;
-  height: auto;
-  pointer-events: none;
-}
-
 .groseille {
-  width: var(--groseille);
   padding: 0;
   border: 0;
   background: none;
   cursor: pointer;
   filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.55));
   transition: transform 140ms ease-out, filter 140ms ease-out;
+}
+
+.groseille img {
+  display: block;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
 }
 
 /* Au survol, elle frémit — on devine qu'elle se touche. */
@@ -413,24 +381,64 @@
   border-radius: 9999px;
 }
 
-/* L'éclatement : la planche crevée surgit, gonfle, et ses gouttes volent. */
-.groseilleEclat {
-  width: calc(var(--groseille) * var(--ratio));
+.groseilleEcrasee {
   pointer-events: none;
-  animation: groseilleEclate 420ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
 }
 
-@keyframes groseilleEclate {
+.groseilleJus,
+.groseilleEcraseeImg {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(100% * var(--ratio));
+  max-width: none;
+  height: auto;
+  translate: -50% -50%;
+}
+
+/* LE JUS gicle en premier : il jaillit de sous le fruit, s'étale, puis
+   sèche en tache sur la table. */
+.groseilleJus {
+  animation: groseilleJus 620ms cubic-bezier(0.15, 0.9, 0.3, 1) both;
+}
+
+@keyframes groseilleJus {
   0% {
-    transform: scale(0.55) rotate(-8deg);
+    transform: scale(0.15);
+    opacity: 0;
+  }
+  18% {
     opacity: 1;
   }
-  45% {
-    transform: scale(1.18) rotate(4deg);
+  55% {
+    transform: scale(1.08);
+    opacity: 1;
   }
   100% {
-    transform: scale(1) rotate(0deg);
-    opacity: 0.85;
+    transform: scale(1);
+    opacity: 0.7;
+  }
+}
+
+/* LE FRUIT s'écrase ensuite : il s'aplatit sous le doigt, puis reste là,
+   crevé, sur sa tache. */
+.groseilleEcraseeImg {
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.5));
+  animation: groseilleEcrase 520ms cubic-bezier(0.3, 1.5, 0.5, 1) 140ms both;
+}
+
+@keyframes groseilleEcrase {
+  0% {
+    transform: scale(0.72, 0.72);
+    opacity: 0;
+  }
+  35% {
+    transform: scale(1.12, 0.7);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1, 1);
+    opacity: 1;
   }
 }
 
@@ -440,11 +448,11 @@
   position: absolute;
   left: 50%;
   top: 50%;
-  width: calc(100% / var(--ratio));
+  width: 100%;
   aspect-ratio: 1;
   translate: -50% -50%;
   background: radial-gradient(circle, #b3122e 0%, #8a0a22 calc(var(--taille) * 0.35), transparent calc(var(--taille) * 0.5));
-  animation: groseilleGoutte 520ms cubic-bezier(0.1, 0.7, 0.3, 1) forwards;
+  animation: groseilleGoutte 560ms cubic-bezier(0.1, 0.7, 0.3, 1) forwards;
 }
 
 @keyframes groseilleGoutte {
@@ -458,22 +466,112 @@
   }
 }
 
-/* Ce qui reste : la flaque, qui s'étale un instant puis ne bouge plus. */
-.groseilleFlaque {
-  width: calc(var(--groseille) * var(--ratio));
-  pointer-events: none;
-  opacity: 0.94;
-  animation: groseilleEtale 300ms ease-out both;
+/* ──────────────────────────────────────────────────────────────
+ * LES PIÈCES (`MenuPieces`) : posées sur la table, elles sautent au clic,
+ * tournent sur elles-mêmes (sur la tranche, comme une pièce qu'on lance)
+ * et retombent à leur place avec un petit rebond. Leur ombre reste au
+ * sol et rétrécit pendant le saut.
+ * ────────────────────────────────────────────────────────────── */
+.piece {
+  position: absolute;
+  z-index: 2;
+  width: var(--largeur);
+  translate: -50% -50%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  perspective: 600px;
+  -webkit-tap-highlight-color: transparent;
 }
 
-@keyframes groseilleEtale {
-  from {
-    transform: scale(0.7);
-    opacity: 0.4;
+.piece img {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+  rotate: var(--rotate, 0deg);
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.55));
+}
+
+.piece:hover img {
+  filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.6)) brightness(1.15);
+}
+
+.piece:focus-visible {
+  outline: 2px solid rgba(253, 230, 138, 0.8);
+  outline-offset: 2px;
+  border-radius: 9999px;
+}
+
+/* L'ombre au sol, sous la pièce : elle ne suit pas le saut, elle pâlit. */
+.pieceOmbre {
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: 2%;
+  height: 22%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(0, 0, 0, 0.45), transparent 70%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+.piece[data-saute="true"] img {
+  animation: pieceSaute 950ms cubic-bezier(0.3, 0, 0.4, 1) both;
+}
+
+.piece[data-saute="true"] .pieceOmbre {
+  animation: pieceOmbre 950ms ease-in-out both;
+}
+
+@keyframes pieceSaute {
+  0% {
+    transform: translateY(0) rotateY(0deg) scale(1);
   }
-  to {
+  12% {
+    transform: translateY(8%) rotateY(0deg) scale(1.04, 0.92);
+    animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1);
+  }
+  48% {
+    transform: translateY(-170%) rotateY(540deg) scale(1.08);
+    animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.4);
+  }
+  82% {
+    transform: translateY(0) rotateY(1080deg) scale(1);
+  }
+  90% {
+    transform: translateY(-14%) rotateY(1080deg) scale(1);
+  }
+  100% {
+    transform: translateY(0) rotateY(1080deg) scale(1);
+  }
+}
+
+@keyframes pieceOmbre {
+  0%,
+  100% {
     transform: scale(1);
-    opacity: 0.94;
+    opacity: 1;
+  }
+  48% {
+    transform: scale(0.45);
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .groseilleJus,
+  .groseilleEcraseeImg,
+  .groseilleGoutte,
+  .piece[data-saute="true"] img,
+  .piece[data-saute="true"] .pieceOmbre {
+    animation: none;
+  }
+
+  .groseilleGoutte {
+    display: none;
   }
 }
 
@@ -590,12 +688,8 @@
     transform: none;
   }
 
-  /* La table s'immobilise : le café ne ride plus, et une seule volute
-     reste posée au-dessus de la tasse, sans monter. */
-  .cafeAgite[data-agite="true"] {
-    animation: none;
-  }
-
+  /* La table s'immobilise : une seule volute reste posée au-dessus de la
+     tasse, sans monter. */
   .fumee {
     animation: none;
     opacity: 0.22;
