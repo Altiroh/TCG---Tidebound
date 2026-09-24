@@ -116,7 +116,7 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
   const isSignedIn = ownedCardIds.length > 0;
   const owned = useMemo(() => (isSignedIn ? new Set(ownedCardIds) : null), [isSignedIn, ownedCardIds]);
   const initialFilters = useMemo(() => (isSignedIn ? { ownership: "owned" as const } : {}), [isSignedIn]);
-  const cardBrowser = useCardBrowser({ owned, initialFilters });
+  const cardBrowser = useCardBrowser({ owned, initialFilters, persistKey: "editeur-de-deck" });
 
   const isDirty = serializeState(name, shipId, cardIds, artCardId, description) !== savedSnapshot;
   const issue = useMemo(() => deckRuleIssue(cardIds, shipId, name), [cardIds, shipId, name]);

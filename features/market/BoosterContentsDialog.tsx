@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { getCardDefinition } from "@/game";
 import { RARITY_ORDER, type CardRarity } from "@/game/boosters/types";
+import { oneOf } from "@/lib/persistCodecs";
+import { usePersistedState } from "@/lib/persistedState";
 import type { BoosterInventoryEntry } from "@/features/boosters/actions";
 import { CardDetailModal } from "@/features/collection/card-detail/CardDetailModal";
 import { cardIllustrationUrl } from "@/features/decks/nameplateArt";
@@ -35,8 +37,13 @@ function safeName(cardId: string): string {
  * encore avancer la collection. Toucher une carte ouvre sa fiche.
  */
 export function BoosterContentsDialog({ booster, owned, onClose }: BoosterContentsDialogProps) {
-  const [rarity, setRarity] = useState<CardRarity | null>(null);
-  const [missingOnly, setMissingOnly] = useState(false);
+  // Mémorisés sur l'appareil : d'un booster à l'autre, on cherche la même chose.
+  const [rarity, setRarity] = usePersistedState<CardRarity | null>("contenu-booster:rarete", null, {
+    decode: (raw) => oneOf<CardRarity | null>([null, ...RARITY_ORDER], raw),
+  });
+  const [missingOnly, setMissingOnly] = usePersistedState<boolean>("contenu-booster:manquantes", false, {
+    decode: (raw) => (typeof raw === "boolean" ? raw : undefined),
+  });
   const [detail, setDetail] = useState<string | null>(null);
 
   useEffect(() => {

@@ -1,10 +1,14 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import { oneOf } from "@/lib/persistCodecs";
+import { usePersistedState } from "@/lib/persistedState";
 import { CORE_SET, type CardDefinition } from "@/game";
-import { compareCards, type SortMode } from "@/features/collection/cardFilters";
+import { compareCards, COLLECTION_SORT_OPTIONS, SORT_OPTIONS, type SortMode } from "@/features/collection/cardFilters";
 import {
+  decodeCollectionFilters,
   EMPTY_FILTERS,
+  encodeCollectionFilters,
   matchesFilters,
   type CollectionFilterState,
 } from "@/features/collection/collectionFilters";
@@ -15,7 +19,15 @@ interface UseCardBrowserOptions {
   owned: ReadonlySet<string> | null;
   /** Filtres de départ — le Deck Builder ouvre sur les cartes possédées, la Collection sur tout. */
   initialFilters?: Partial<CollectionFilterState>;
+  /**
+   * Clé sous laquelle filtres et tri sont MÉMORISÉS sur l'appareil
+   * (`lib/persistedState.ts`) — une par écran : la Collection et le Deck
+   * Builder ne partagent pas leurs réglages. Absente : rien n'est retenu.
+   */
+  persistKey?: string;
 }
+
+const SORT_MODES: readonly SortMode[] = [...new Set([...SORT_OPTIONS, ...COLLECTION_SORT_OPTIONS].map((option) => option.value))];
 
 /**
  * Tout ce qu'un écran qui FEUILLETTE le catalogue a en commun : l'état des
@@ -27,12 +39,21 @@ interface UseCardBrowserOptions {
  * deck à droite. Un filtre qui se comporterait différemment d'un écran à
  * l'autre serait un bug — d'où un seul hook plutôt que deux copies.
  */
-export function useCardBrowser({ owned, initialFilters }: UseCardBrowserOptions) {
+export function useCardBrowser({ owned, initialFilters, persistKey }: UseCardBrowserOptions) {
   /** Ensemble utilisé par les filtres : vide plutôt que `null`, pour ne pas avoir à tester partout. */
   const ownedForFilters = useMemo(() => owned ?? new Set<string>(), [owned]);
 
-  const [filters, setFilters] = useState<CollectionFilterState>(() => ({ ...EMPTY_FILTERS, ...initialFilters }));
-  const [sort, setSort] = useState<SortMode>("name");
+  const [filters, setFilters] = usePersistedState<CollectionFilterState>(
+    persistKey ?? null,
+    () => ({ ...EMPTY_FILTERS, ...initialFilters }),
+    {
+      encode: encodeCollectionFilters,
+      decode: (raw) => decodeCollectionFilters(raw, { ...EMPTY_FILTERS, ...initialFilters }),
+    }
+  );
+  const [sort, setSort] = usePersistedState<SortMode>(persistKey ? `${persistKey}:tri` : null, "name", {
+    decode: (raw) => oneOf(SORT_MODES, raw),
+  });
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   // Le champ reste réactif à chaque frappe ; seul le filtrage réel attend
@@ -51,9 +72,12 @@ export function useCardBrowser({ owned, initialFilters }: UseCardBrowserOptions)
     [appliedFilters, ownedForFilters, sort]
   );
 
-  const patchFilters = useCallback((patch: Partial<CollectionFilterState>) => {
-    setFilters((current) => ({ ...current, ...patch }));
-  }, []);
+  const patchFilters = useCallback(
+    (patch: Partial<CollectionFilterState>) => {
+      setFilters((current) => ({ ...current, ...patch }));
+    },
+    [setFilters]
+  );
 
   const resetFilters = useCallback(() => {
     setFilters({ ...EMPTY_FILTERS, ...initialFilters });

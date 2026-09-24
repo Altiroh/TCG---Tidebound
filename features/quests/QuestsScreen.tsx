@@ -10,6 +10,8 @@ import styles from "@/features/quests/Quests.module.css";
 import { claimQuestReward, rerollQuest, type QuestBoard, type QuestEntry } from "@/features/quests/actions";
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
 import { playButtonClick, playRewardClaimed } from "@/lib/sound";
+import { oneOf } from "@/lib/persistCodecs";
+import { usePersistedState } from "@/lib/persistedState";
 
 interface QuestsScreenProps {
   board: QuestBoard;
@@ -43,7 +45,9 @@ export function QuestsScreen({ board }: QuestsScreenProps) {
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastGain, setLastGain] = useState<{ tides: number; xp: number } | null>(null);
-  const [filter, setFilter] = useState<QuestCategory | null>(null);
+  const [filter, setFilter] = usePersistedState<QuestCategory | null>("quetes", null, {
+    decode: (raw) => oneOf<QuestCategory | null>([null, ...QUEST_CATEGORIES], raw),
+  });
 
   const all = useMemo(() => [...board.daily, ...board.weekly], [board.daily, board.weekly]);
   const presentCategories = useMemo(() => QUEST_CATEGORIES.filter((category) => all.some((entry) => entry.category === category)), [all]);

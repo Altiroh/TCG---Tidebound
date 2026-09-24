@@ -1,5 +1,6 @@
 import { ARCHETYPE_LABELS, CORE_SET, isAbyssalVariant, type CardDefinition, type CardType } from "@/game";
-import { boostersContaining } from "@/game/boosters";
+import { BOOSTER_EXTENSIONS, boostersContaining } from "@/game/boosters";
+import { asRecord, oneOf, subsetOf } from "@/lib/persistCodecs";
 import { normalizeSearch } from "@/features/collection/cardFilters";
 
 /**
@@ -47,6 +48,34 @@ export const EMPTY_FILTERS: CollectionFilterState = {
   boosters: [],
   search: "",
 };
+
+const CARD_TYPES: readonly (CardType | null)[] = [null, "marin", "creature", "equipement", "structure", "objet", "anomalie"];
+
+/**
+ * Relecture des filtres MÉMORISÉS (`lib/persistedState.ts`). La recherche
+ * tapée n'est jamais retenue — on revient sur l'écran pour feuilleter, pas
+ * pour retrouver une frappe d'hier —, et chaque axe relu est vérifié : un
+ * booster retiré du rayon ou un palier inconnu tombe, au lieu de vider la
+ * grille sans que le joueur comprenne pourquoi.
+ */
+export function encodeCollectionFilters(filters: CollectionFilterState): unknown {
+  const { search: _search, ...rest } = filters;
+  return rest;
+}
+
+export function decodeCollectionFilters(raw: unknown, base: CollectionFilterState): CollectionFilterState | undefined {
+  const record = asRecord(raw);
+  if (!record) return undefined;
+  const type = oneOf(CARD_TYPES, record.type);
+  return {
+    ...base,
+    variant: oneOf<VariantFilter>(["all", "standard", "abyssal"], record.variant) ?? base.variant,
+    type: type === undefined ? base.type : type,
+    ownership: oneOf<OwnershipFilter>(["all", "owned", "missing"], record.ownership) ?? base.ownership,
+    costs: subsetOf<number>(COST_BUCKETS, record.costs) ?? base.costs,
+    boosters: subsetOf<string>(BOOSTER_EXTENSIONS.map((extension) => extension.boosterId), record.boosters) ?? base.boosters,
+  };
+}
 
 /** Palier de Raison d'une carte (tout ce qui dépasse retombe sur `6+`). */
 export function costBucket(cost: number): number {

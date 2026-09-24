@@ -27,7 +27,9 @@ import {
 } from "@/features/decks/deckEntries";
 import {
   DECK_SORTS,
+  decodeDeckFilters,
   EMPTY_FILTERS,
+  encodeDeckFilters,
   filterDecks,
   hasActiveFilter,
   relativeDate,
@@ -52,6 +54,8 @@ import { shipNameOf } from "@/features/ships/ShipPortrait";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/decks/DecksList.module.css";
 import { playButtonClick } from "@/lib/sound";
+import { oneOf } from "@/lib/persistCodecs";
+import { usePersistedState } from "@/lib/persistedState";
 
 /*
  * Les rayons, dans l'ordre de la colonne de gauche. « Tous les decks »
@@ -127,9 +131,17 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog }: DecksScreenPr
   // Le joueur qui n'a pas encore pris son préconstruit gratuit arrive
   // directement sur le rayon : c'est l'étape qui lui manque pour jouer.
   const [category, setCategory] = useState<DeckCategory>(isSignedIn && catalog.freeDeckId === null ? "precon" : "mine");
-  const [filters, setFilters] = useState<DeckFilterState>(EMPTY_FILTERS);
-  const [sort, setSort] = useState<DeckSortId>("updated");
-  const [view, setView] = useState<DeckView>("grid");
+  // Filtres, tri et vue MÉMORISÉS sur l'appareil (`lib/persistedState.ts`).
+  const [filters, setFilters] = usePersistedState<DeckFilterState>("decks", EMPTY_FILTERS, {
+    encode: encodeDeckFilters,
+    decode: decodeDeckFilters,
+  });
+  const [sort, setSort] = usePersistedState<DeckSortId>("decks:tri", "updated", {
+    decode: (raw) => oneOf(DECK_SORTS.map((option) => option.id), raw),
+  });
+  const [view, setView] = usePersistedState<DeckView>("decks:vue", "grid", {
+    decode: (raw) => oneOf<DeckView>(["grid", "list"], raw),
+  });
   const [currentId, setCurrentId] = useState<string | null>(null);
 
   const [renameTarget, setRenameTarget] = useState<BrowserDeck | null>(null);
