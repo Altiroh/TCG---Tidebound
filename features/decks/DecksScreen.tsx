@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { RULES, ownershipLabel } from "@/game";
 import {
+  copyDeck,
   deleteDecks,
   duplicateDeck,
   purgeDecks,
@@ -149,6 +150,8 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog }: DecksScreenPr
   const [artTarget, setArtTarget] = useState<BrowserDeck | null>(null);
   const [profileTarget, setProfileTarget] = useState<BrowserDeck | null>(null);
   const [catalogTarget, setCatalogTarget] = useState<BrowserDeck | null>(null);
+  /** Deck du jeu à copier alors qu'il manque des cartes : l'avertissement est ouvert. */
+  const [copyTarget, setCopyTarget] = useState<BrowserDeck | null>(null);
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [toast, setToast] = useState<ScreenToastMessage | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -240,6 +243,32 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog }: DecksScreenPr
   function handleDuplicate(deck: BrowserDeck) {
     playButtonClick();
     act("Duplication", () => duplicateDeck(deck.id));
+  }
+
+  /**
+   * COPIER un deck du jeu dans ses decks : seules les cartes possédées
+   * suivent. S'il en manque, on le dit AVANT — la copie n'est alors qu'une
+   * base, à compléter dans l'éditeur, qui s'ouvre dessus.
+   */
+  function handleCopy(deck: BrowserDeck) {
+    playButtonClick();
+    if (deck.catalog && !deck.catalog.ownership.complete) {
+      setCopyTarget(deck);
+      return;
+    }
+    runCopy(deck);
+  }
+
+  function runCopy(deck: BrowserDeck) {
+    setCopyTarget(null);
+    startTransition(async () => {
+      const result = await copyDeck(deck.id);
+      if (!result.ok || !result.id) {
+        notify("error", result.error ?? "Copie impossible.");
+        return;
+      }
+      router.push(`/decks/${result.id}`);
+    });
   }
 
   /** Deck par défaut : présélectionné à l'écran Jouer. Un seul, donc pas de « retirer » : on en choisit un autre. */
@@ -478,6 +507,7 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog }: DecksScreenPr
                 setCatalogTarget(deck);
               }}
               onTryCatalog={handleTry}
+              onCopy={isSignedIn ? handleCopy : undefined}
             />
           </div>
         </div>
@@ -508,6 +538,10 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog }: DecksScreenPr
           onConfirm={handleConfirmPurge}
           onCancel={() => setPurgeTarget(null)}
         />
+      )}
+
+      {copyTarget?.catalog && (
+        <CopyDeckDialog deck={copyTarget} busy={isPending} onConfirm={() => runCopy(copyTarget)} onCancel={() => setCopyTarget(null)} />
       )}
 
       {catalogTarget?.catalog && catalogTarget.kind !== "mine" && (
@@ -773,6 +807,48 @@ function RenameDeckDialog({ deck, onSubmit, onCancel }: { deck: BrowserDeck; onS
         </label>
         <input id={`${formId}-input`} className={game.input} value={name} onChange={(event) => setName(event.target.value)} maxLength={60} autoFocus />
       </form>
+    </Dialog>
+  );
+}
+
+/**
+ * L'AVERTISSEMENT avant de copier un deck incomplet : combien de cartes
+ * suivront, et lesquelles resteront de côté — le joueur sait ce qu'il
+ * devra compléter avant de valider.
+ */
+function CopyDeckDialog({ deck, busy, onConfirm, onCancel }: { deck: BrowserDeck; busy: boolean; onConfirm: () => void; onCancel: () => void }) {
+  const ownership = deck.catalog!.ownership;
+  const missing = ownership.cards.filter((card) => card.borrowed > 0);
+
+  return (
+    <Dialog
+      title="Il te manque des cartes"
+      description={
+        ownership.owned === 0
+          ? `Tu ne possèdes aucune carte de « ${deck.name} » : la copie partira vide, avec son Navire.`
+          : `Seules les cartes que tu possèdes seront copiées : ${ownership.owned} sur ${ownership.total}.`
+      }
+      onClose={onCancel}
+      actions={
+        <>
+          <button type="button" className={game.secondary} onClick={onCancel}>
+            Annuler
+          </button>
+          <button type="button" className={game.primary} onClick={onConfirm} disabled={busy}>
+            Copier quand même
+          </button>
+        </>
+      }
+    >
+      <p className={game.muted}>Laissées de côté :</p>
+      <ul className={styles.copyMissing}>
+        {missing.map((card) => (
+          <li key={card.cardId} className={styles.copyMissingRow}>
+            <span>{card.name}</span>
+            <span className={styles.copyMissingCount}>×{card.borrowed}</span>
+          </li>
+        ))}
+      </ul>
     </Dialog>
   );
 }

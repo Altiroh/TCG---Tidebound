@@ -1,10 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getCardDefinition, isDeckStyleId, type DeckList, type DeckStyleId } from "@/game";
+import { catalogDeckById, getCardDefinition, isDeckStyleId, type DeckList, type DeckStyleId } from "@/game";
 import { validateDeckList } from "@/game/rules/deckValidation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { DECK_DESCRIPTION_MAX } from "@/features/decks/constants";
+import { readOwnedCounts } from "@/features/decks/catalogService";
+import { ownedPartOf } from "@/features/decks/deckComposition";
 import { trashPurgeCutoff } from "@/features/decks/deckTrash";
 import { signatureCardId } from "@/features/decks/nameplateArt";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
@@ -573,6 +575,78 @@ async function duplicateDeckUnguarded(deckId: string): Promise<DeckActionResult>
 
   revalidatePath("/decks");
   return { ok: true, id: created.id };
+}
+
+export interface CopyDeckResult extends DeckActionResult {
+  /** Exemplaires recopiés, et ceux laissés de côté faute d'être possédés. */
+  copied?: number;
+  skipped?: number;
+}
+
+/**
+ * COPIER UN DECK pour en monter un à soi — un préconstruit du catalogue,
+ * typiquement, ou un de ses propres decks.
+ *
+ * Seules les cartes POSSÉDÉES sont recopiées, chacune au plus autant de
+ * fois que le joueur en a (`ownedPartOf`) : c'est une base de travail, pas
+ * un prêt. L'écran prévient avant, quand il en manque ; le serveur recompte
+ * quand même sur la collection réelle, jamais sur ce que le client a vu.
+ */
+export async function copyDeck(deckId: string): Promise<CopyDeckResult> {
+  try {
+    return await copyDeckUnguarded(deckId);
+  } catch (error) {
+    console.error("[copyDeck] Échec inattendu :", error);
+    return { ok: false, error: "Copie indisponible pour le moment : réessaie dans un instant." };
+  }
+}
+
+async function copyDeckUnguarded(deckId: string): Promise<CopyDeckResult> {
+  const supabase = createSupabaseServerClient();
+  const userId = await currentUserId(supabase);
+  if (!userId) return { ok: false, error: "Connecte-toi pour copier un deck." };
+
+  let source: { name: string; shipId: string; description: string | null; cardIds: string[] } | null = null;
+  const precon = catalogDeckById(deckId);
+  if (precon) {
+    source = { name: precon.name, shipId: precon.shipId, description: precon.description || null, cardIds: [...precon.cardIds] };
+  } else {
+    // Un deck personnel : RLS ne laisse lire que les siens.
+    const { data: original } = await supabase.from("player_decks").select("name, ship_id, description").eq("id", deckId).maybeSingle();
+    if (original) {
+      const { data: rows } = await supabase.from("player_deck_cards").select("card_id, quantity").eq("deck_id", deckId);
+      source = {
+        name: original.name,
+        shipId: original.ship_id,
+        description: original.description,
+        cardIds: (rows ?? []).flatMap((row) => Array.from({ length: row.quantity }, () => row.card_id as string)),
+      };
+    }
+  }
+  if (!source) return { ok: false, error: "Deck introuvable." };
+
+  const { kept, missing } = ownedPartOf(source.cardIds, await readOwnedCounts(userId));
+  const name = `${source.name} (copie)`.slice(0, 60);
+  const validation = validateDeckList({ id: "draft", name, shipId: source.shipId, description: "", cardIds: kept });
+
+  const { data: created, error: insertError } = await supabase
+    .from("player_decks")
+    .insert({ user_id: userId, ship_id: source.shipId, name, description: source.description, is_valid: validation.ok })
+    .select("id")
+    .single();
+  if (insertError || !created) return { ok: false, error: insertError?.message ?? "Échec de la copie." };
+
+  const quantities = new Map<string, number>();
+  for (const cardId of kept) quantities.set(cardId, (quantities.get(cardId) ?? 0) + 1);
+  if (quantities.size > 0) {
+    const { error: cardsError } = await supabase
+      .from("player_deck_cards")
+      .insert(Array.from(quantities, ([card_id, quantity]) => ({ deck_id: created.id, card_id, quantity })));
+    if (cardsError) return { ok: false, error: cardsError.message };
+  }
+
+  revalidatePath("/decks");
+  return { ok: true, id: created.id, copied: kept.length, skipped: missing.reduce((sum, entry) => sum + entry.count, 0) };
 }
 
 /**

@@ -85,3 +85,33 @@ export function deckRuleIssue(cardIds: readonly string[], shipId: string, name: 
   const result = validateDeckList({ id: "draft", name, shipId, description: "", cardIds: [...cardIds] });
   return result.ok ? null : result.error;
 }
+
+/**
+ * La PART POSSÉDÉE d'une liste — ce qu'on recopie quand on part d'un deck
+ * existant (un préconstruit, typiquement) pour en monter un à soi.
+ *
+ * Chaque carte est gardée au plus autant de fois que le joueur en possède :
+ * un deck personnel ne se joue qu'avec sa propre collection, une copie qui
+ * embarquerait des cartes prêtées ne serait jamais jouable. L'ordre de la
+ * liste d'origine est conservé ; `missing` compte ce qui reste de côté,
+ * carte par carte, pour l'avertissement.
+ */
+export function ownedPartOf(
+  cardIds: readonly string[],
+  ownedCounts: Readonly<Record<string, number>>
+): { kept: string[]; missing: Array<{ cardId: string; count: number }> } {
+  const used = new Map<string, number>();
+  const missing = new Map<string, number>();
+  const kept: string[] = [];
+  for (const cardId of cardIds) {
+    const owned = Math.max(0, Math.floor(ownedCounts[cardId] ?? 0));
+    const taken = used.get(cardId) ?? 0;
+    if (taken < owned) {
+      used.set(cardId, taken + 1);
+      kept.push(cardId);
+    } else {
+      missing.set(cardId, (missing.get(cardId) ?? 0) + 1);
+    }
+  }
+  return { kept, missing: Array.from(missing, ([cardId, count]) => ({ cardId, count })) };
+}

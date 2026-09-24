@@ -774,7 +774,14 @@
   flex-wrap: wrap;
 }
 
+/* « Deck par défaut » : une étiquette de laiton sur fond opaque, à la
+   hauteur du bouton voisin — une pastille de compteur (`badge`) empilait
+   l'étoile au-dessus du texte, qui débordait. */
 .previewBadge {
+  align-self: center;
+  padding: 0.4em 0.8em;
+  white-space: nowrap;
+  background: rgba(6, 16, 26, 0.82);
   backdrop-filter: blur(6px);
 }
 
@@ -1620,4 +1627,28 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+}
+
+/* Avertissement de copie : les cartes qui ne suivront pas. */
+.copyMissing {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: min(40dvh, 280px);
+  margin: 6px 0 0;
+  padding: 0 4px 0 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.copyMissingRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.copyMissingCount {
+  color: var(--danger);
+  font-variant-numeric: tabular-nums;
 }

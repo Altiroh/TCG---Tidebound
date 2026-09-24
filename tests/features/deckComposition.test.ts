@@ -8,6 +8,7 @@ import {
   deckRuleIssue,
   deckSizeStatus,
   groupDeck,
+  ownedPartOf,
   typeBreakdown,
 } from "@/features/decks/deckComposition";
 
@@ -78,5 +79,22 @@ describe("composition de deck", () => {
       for (let i = 0; i < getMaxCopies(def) && playable.length < RULES.DECK_SIZE_MIN; i++) playable.push(def.id);
     }
     expect(deckRuleIssue(playable, DEFAULT_SHIP_ID, "Test")).toBeNull();
+  });
+});
+
+describe("ownedPartOf — copier un deck avec ses seules cartes possédées", () => {
+  it("garde chaque carte au plus autant de fois qu'on la possède, dans l'ordre, et compte le reste", () => {
+    const list = ["a", "b", "a", "c", "a", "b"];
+    const { kept, missing } = ownedPartOf(list, { a: 2, b: 5 });
+    expect(kept).toEqual(["a", "b", "a", "b"]);
+    expect(missing).toEqual([
+      { cardId: "c", count: 1 },
+      { cardId: "a", count: 1 },
+    ]);
+  });
+
+  it("ne garde rien d'une collection vide, et tout d'une collection complète", () => {
+    expect(ownedPartOf(["a", "a"], {}).kept).toEqual([]);
+    expect(ownedPartOf(["a", "a"], { a: 3 })).toEqual({ kept: ["a", "a"], missing: [] });
   });
 });

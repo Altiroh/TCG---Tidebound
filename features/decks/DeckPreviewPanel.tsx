@@ -75,6 +75,8 @@ interface DeckPreviewPanelProps {
   /** Decks fournis par le jeu : la fiche complète (déblocage compris) reste celle du catalogue. */
   onOpenCatalogSheet: (deck: BrowserDeck) => void;
   onTryCatalog: (deck: BrowserDeck) => void;
+  /** Copier un deck du jeu dans ses decks, cartes possédées seulement. Absent hors connexion. */
+  onCopy?: (deck: BrowserDeck) => void;
 }
 
 function difficultyStars(difficulty: number): string {
@@ -108,6 +110,7 @@ export function DeckPreviewPanel({
   onEditProfile,
   onOpenCatalogSheet,
   onTryCatalog,
+  onCopy,
 }: DeckPreviewPanelProps) {
   // Avant tout retour anticipé : un Hook ne se saute pas.
   const [slot, visibleCards] = useVisibleCardCount(deck?.cards.length ?? 0);
@@ -134,7 +137,7 @@ export function DeckPreviewPanel({
 
           <div className={styles.previewArtTop}>
             {mine?.isDefault && (
-              <span className={`${game.badge} ${styles.previewBadge}`}>
+              <span className={`${game.tagBrass} ${styles.previewBadge}`}>
                 <span aria-hidden>★</span> Deck par défaut
               </span>
             )}
@@ -266,6 +269,17 @@ export function DeckPreviewPanel({
                 <button type="button" className={`${game.secondary} ${game.buttonSm}`} onClick={() => onTryCatalog(deck)} disabled={busy}>
                   Essayer contre le bot
                 </button>
+                {onCopy && (
+                  <button
+                    type="button"
+                    className={`${game.secondary} ${game.buttonSm}`}
+                    onClick={() => onCopy(deck)}
+                    disabled={busy}
+                    title="Crée un deck à toi à partir de celui-ci, avec les cartes que tu possèdes"
+                  >
+                    Copier dans mes decks
+                  </button>
+                )}
                 {deck.kind === "precon" && !catalog?.unlocked && (
                   <span className={`${game.tagBrass} ${styles.previewCost}`}>
                     <PreconToken size={13} /> 1 Jeton
