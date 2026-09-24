@@ -1,0 +1,39 @@
+# Seed du catalogue (cartes, préconstruits, quêtes, boosters) dans Supabase,
+# lancé à la main depuis GitHub : onglet Actions → « Seed du catalogue » →
+# Run workflow. Même script que `npm run seed:cards`, sans poste local.
+#
+# Idempotent : rejouable sans risque, rien n'est supprimé.
+#
+# Secrets requis (Settings → Secrets and variables → Actions) :
+#   NEXT_PUBLIC_SUPABASE_URL      l'URL du projet Supabase
+#   SUPABASE_SERVICE_ROLE_KEY     la clé service_role — elle ne sort jamais
+#                                 des secrets GitHub, le journal la masque.
+name: Seed du catalogue
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Tapez SEED pour écrire dans la base de PRODUCTION"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  seed:
+    if: inputs.confirmation == 'SEED'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      # Sans `--env-file` : les valeurs viennent des secrets, pas de `.env.local`.
+      - run: npx tsx scripts/seedCards.ts
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
