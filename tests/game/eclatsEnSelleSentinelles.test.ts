@@ -507,6 +507,18 @@ describe("Le Géant Chromatique : l'Assemblage", () => {
     expect([stats(r.state, geant.instanceId).attack, stats(r.state, geant.instanceId).health]).toEqual([9, 10]);
   });
 
+  it("un Assemblage peut être cherché AUTOUR d'une Sentinelle donnée (celle où l'on lâche le Géant)", () => {
+    const sentinelles = quatre();
+    const requin = instance("requin-balafre", "p1");
+    const board = [requin, ...sentinelles];
+    const autour = findAssemblage(board, 4, sentinelles[3]!.instanceId)!;
+    expect(autour.map((p) => p.instanceId)).toContain(sentinelles[3]!.instanceId);
+    // Pas une Sentinelle : aucun Assemblage ne passe par elle.
+    expect(findAssemblage(board, 4, requin.instanceId)).toBeUndefined();
+    // Trois couleurs seulement : rien, avec ou sans Sentinelle imposée.
+    expect(findAssemblage(sentinelles.slice(0, 3), 4, sentinelles[0]!.instanceId)).toBeUndefined();
+  });
+
   it("refuse un Assemblage à trois couleurs, ou dont une Sentinelle ne porte pas la couleur annoncée", () => {
     const geant = instance("le-geant-chromatique", "p1");
     const sentinelles = quatre();

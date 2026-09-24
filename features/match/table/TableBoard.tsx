@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   canActivateAbility,
+  findAssemblage,
   canBeEquipTarget,
   canUnitAttack,
   deraisonAnchorDamage,
@@ -116,6 +117,12 @@ export interface TableBoardProps {
    * utilisable maintenant (`canActivateAbility`). Absent : pas de bouton.
    */
   onActivateAbility?: (instanceId: string) => void;
+  /**
+   * Carte à Assemblage (Le Géant Chromatique) lâchée SUR une de ses
+   * Sentinelles : le conteneur pose la question Oui / Non. Lâchée sur un
+   * emplacement libre, elle se pose normalement (`onPlayCard`).
+   */
+  onAssemblageDrop?: (instanceId: string, sentinelId: string) => boolean;
   /** Clic sur un Navire pendant un ciblage : l'adverse (attaque, tir de canon), ou l'un des deux (capacité ciblée). */
   onShipClick: (ownerId: PlayerId) => void;
   /** Panneau de capacité du Navire du JOUEUR — absent si son Navire n'en porte pas. */
@@ -296,6 +303,20 @@ export function TableBoard(props: TableBoardProps) {
   };
   const isBoardDrop = (drop: string) => drop === "board" || drop.startsWith("board:") || drop.startsWith("own:");
 
+  /**
+   * Sentinelles sur lesquelles on peut lâcher cette carte de main pour
+   * l'Assembler (`null` : ce n'est pas une carte à Assemblage, ou aucun
+   * Assemblage n'est possible). Une Sentinelle en fait partie si au moins un
+   * Assemblage passe par elle.
+   */
+  function assemblageSentinels(instanceId: string): Set<string> | null {
+    const instance = viewer.hand.find((c) => c.instanceId === instanceId);
+    const requis = instance && getCardDefinition(instance.cardId).chromaticAssemblage?.sentinels;
+    if (!requis || !props.onAssemblageDrop || !isPlayable(instanceId)) return null;
+    const ids = viewer.board.filter((unit) => findAssemblage(viewer.board, requis, unit.instanceId)).map((unit) => unit.instanceId);
+    return ids.length > 0 ? new Set(ids) : null;
+  }
+
   const { gesture, hover, startGesture } = useTableGestures({
     isValidDrop: (kind, sourceId, drop) => {
       const entry = byId.get(sourceId);
@@ -309,6 +330,9 @@ export function TableBoard(props: TableBoardProps) {
 
       if (kind === "place") {
         if (!canPlayCards) return false;
+        // Sur une Sentinelle d'un Assemblage possible : même plateau plein,
+        // l'Assemblage libère ses places.
+        if (drop.startsWith("own:") && assemblageSentinels(sourceId)?.has(dropId(drop))) return true;
         if (isBoardDrop(drop)) return slotsFree;
         return drop === "graveyard" && getCardDefinition(instance.cardId).type === "objet";
       }
@@ -330,6 +354,10 @@ export function TableBoard(props: TableBoardProps) {
       if (kind === "place") {
         if (drop === "graveyard") {
           props.onDropOnGraveyard(sourceId, "hand");
+          return;
+        }
+        if (drop.startsWith("own:") && assemblageSentinels(sourceId)?.has(dropId(drop))) {
+          props.onAssemblageDrop?.(sourceId, dropId(drop));
           return;
         }
         const el = document.querySelector<HTMLElement>(`[data-card-id="${sourceId}"]`);
@@ -387,6 +415,8 @@ export function TableBoard(props: TableBoardProps) {
   const aimAttacks = aimSource ? attackReady(aimSource) : false;
   const aimBreakTargets = aimSource ? breakTargets(aimSource) : null;
   const castTargets = casting ? handTargets.get(casting.sourceId) ?? null : null;
+  // Le Géant en cours de glisser : ses Sentinelles s'éclairent, c'est là qu'on le lâche pour Assembler.
+  const placingAssemblage = placing ? assemblageSentinels(placing.sourceId) : null;
   const draggedHand = placing?.sourceId ?? casting?.sourceId ?? null;
   const onHandDragChange = props.onHandDragChange;
   useEffect(() => {
@@ -422,6 +452,7 @@ export function TableBoard(props: TableBoardProps) {
       (castTargets?.has(card.id) ?? false) ||
       (aimBreakTargets?.has(card.id) ?? false) ||
       (abilityTargets?.has(card.id) ?? false) ||
+      (placingAssemblage?.has(card.id) ?? false) ||
       (anyTargeting && hasResistance(def));
     // « Une fois par tour, vous pouvez… » : proposé seulement quand le moteur l'accepterait.
     const activatable =
@@ -645,6 +676,8 @@ export function TableBoard(props: TableBoardProps) {
                     muted ? styles.handCardMuted : "",
                     placing?.sourceId === card.id ? styles.dragSource : "",
                     casting?.sourceId === card.id || targeting?.sourceInstanceId === card.id ? styles.castSource : "",
+                    // Son effet est applicable maintenant (Assemblage possible) : elle luit dans la main.
+                    !gesture && assemblageSentinels(card.id) ? "animate-reaction-pulse" : "",
                   ].join(" ")}
                 >
                   <CardTile instance={instance} tideState={tideState} widthClassName="w-full" scaleOnHover={false} showStatusBadges={false} />

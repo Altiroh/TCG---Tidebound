@@ -244,6 +244,7 @@ export function OnlineBoard({
         shipAbility={shipAbility.panel}
         opponentShipAbility={shipAbility.opponentPanel}
         onActivateAbility={board.requestAbility}
+        onAssemblageDrop={board.handleAssemblageDrop}
         onShipClick={(ownerId) => {
           if (selection?.kind === "shipTarget") {
             act({ type: "activateShipAbility", playerId: myUserId, targetPlayerId: ownerId });
@@ -380,10 +381,12 @@ export function OnlineBoard({
         );
       })()}
       {board.assemblagePick && (() => {
-        const { card, boardIndex } = board.assemblagePick;
+        const { card, boardIndex, proposal } = board.assemblagePick;
         return (
           <AssemblagePrompt
             card={card}
+            proposal={proposal}
+            onChooseOthers={() => board.setAssemblagePick({ card, boardIndex })}
             board={state.players.find((p) => p.id === myUserId)?.board ?? []}
             onAssemble={(assemblage) => {
               board.setAssemblagePick(null);
