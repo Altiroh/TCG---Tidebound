@@ -192,12 +192,17 @@ const GAUGE_LABELS = { anchor: "Ancrage", reason: "Raison" } as const;
  *  - Déraison (Raison négative) : disque entièrement vidé, voile rouge qui
  *    pulse, valeur en rouge.
  */
-function ShipGauge({ kind, value, max }: { kind: keyof typeof GAUGE_ASSETS; value: number; max: number }) {
+function ShipGauge({ kind, value, max, ownerId }: { kind: keyof typeof GAUGE_ASSETS; value: number; max: number; ownerId?: string }) {
   const level = max > 0 ? Math.max(0, Math.min(1, value / max)) : 0;
   const inDebt = value < 0;
 
   return (
-    <span className={styles.shipGauge} title={`${GAUGE_LABELS[kind]} ${value} / ${max}`}>
+    <span
+      className={styles.shipGauge}
+      title={`${GAUGE_LABELS[kind]} ${value} / ${max}`}
+      // Repère des chiffres de coût qui s'abattent sur la Raison (`EffectFxLayer`, `ReasonCostPreview`).
+      data-reason-gauge={kind === "reason" ? ownerId : undefined}
+    >
       {/* eslint-disable-next-line @next/next/no-img-element -- médaillon décoratif */}
       <img src={GAUGE_ASSETS[kind]} alt="" aria-hidden draggable={false} className={styles.fill} />
       <span aria-hidden className={styles.shipGaugeBowl}>
@@ -249,7 +254,7 @@ export function TableShip({ name, ownerId, illustration, hull, maxHull, reason, 
       {ability && <ShipAbilityPanel {...ability} />}
       <div className={styles.shipGauges}>
         <ShipGauge kind="anchor" value={hull} max={maxHull} />
-        <ShipGauge kind="reason" value={reason} max={maxReason} />
+        <ShipGauge kind="reason" value={reason} max={maxReason} ownerId={ownerId} />
       </div>
       {/* Dette de Déraison : la conséquence à venir, lisible sans survol (comme `ShipInstrumentCluster`). */}
       {reason < 0 && deraisonDamage > 0 && (

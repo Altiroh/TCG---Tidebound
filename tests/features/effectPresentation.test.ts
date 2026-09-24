@@ -4,6 +4,8 @@ import {
   BUFF_LAND_MS,
   deriveEffectVolley,
   patchedDisplay,
+  REASON_COUNT_MS,
+  REASON_FALL_MS,
   SHOT_FLIGHT_MS,
   volleyLandingMs,
 } from "@/features/match/effectPresentation";
@@ -125,5 +127,44 @@ describe("état affiché pendant la volée", () => {
     // Le Navire touché garde son Ancrage d'avant ; le journal aussi attend l'impact.
     expect(shown.players[1].anchor).toBe(30);
     expect(shown.eventLog).toBe(before.eventLog);
+  });
+});
+
+describe("la Raison qui s'abat sur la jauge", () => {
+  const s = state([], []);
+
+  it("un Assemblage montre le coût imprimé (8) qui se décompte jusqu'au prix payé (2)", () => {
+    const events: GameEvent[] = [
+      { ...base, type: "PLAY_CARD", playerId: "p1", instanceId: "g", cardId: "le-geant-chromatique" },
+      { ...base, type: "REASON_CHANGED", playerId: "p1", delta: -2 },
+    ];
+    const volley = deriveEffectVolley(events, s, s, 1)!;
+    expect(volley.reason).toEqual([{ playerId: "p1", amount: -2, printed: 8 }]);
+    expect(volleyLandingMs(volley)).toBe(REASON_COUNT_MS + REASON_FALL_MS);
+  });
+
+  it("une carte payée plein tarif tombe sans décompte ; la régénération de début de tour ne s'anime pas", () => {
+    const events: GameEvent[] = [
+      { ...base, type: "REASON_CHANGED", playerId: "p1", delta: 3 },
+      { ...base, type: "PLAY_CARD", playerId: "p1", instanceId: "x", cardId: "poisson-lanterne" },
+      { ...base, type: "REASON_CHANGED", playerId: "p1", delta: -1 },
+      { ...base, type: "REASON_CHANGED", playerId: "p1", delta: 2, source: "card" },
+    ];
+    // Les deux chiffres du même Navire se suivent : le gain attend que le prix soit tombé.
+    expect(deriveEffectVolley(events, s, s, 1)!.reason).toEqual([
+      { playerId: "p1", amount: -1 },
+      { playerId: "p1", amount: 2, delayMs: REASON_FALL_MS },
+    ]);
+  });
+
+  it("la Raison affichée reste celle d'avant jusqu'à l'impact", () => {
+    const before = testGameState({ players: [testPlayer("p1", { reason: 10 }), testPlayer("p2")] });
+    const after = testGameState({ players: [testPlayer("p1", { reason: 8 }), testPlayer("p2")] });
+    const events: GameEvent[] = [
+      { ...base, type: "PLAY_CARD", playerId: "p1", instanceId: "g", cardId: "le-geant-chromatique" },
+      { ...base, type: "REASON_CHANGED", playerId: "p1", delta: -2 },
+    ];
+    const shown = patchedDisplay(before, after, deriveEffectVolley(events, before, after, 1)!);
+    expect(shown.players[0].reason).toBe(10);
   });
 });

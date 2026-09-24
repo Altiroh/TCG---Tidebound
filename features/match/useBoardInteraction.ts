@@ -320,7 +320,12 @@ export function useBoardInteraction({
     const proposal = findAssemblage(viewer.board, requis, sentinelId);
     if (!proposal) return false;
     onGestureStart?.();
-    setAssemblagePick({ card, proposal });
+    // Le Géant prend la place de la Sentinelle sur laquelle on l'a lâché :
+    // son rang une fois les Sentinelles Assemblées retirées.
+    const parties = new Set(proposal.map((part) => part.instanceId));
+    const rang = viewer.board.findIndex((u) => u.instanceId === sentinelId);
+    const boardIndex = viewer.board.slice(0, rang).filter((u) => !parties.has(u.instanceId)).length;
+    setAssemblagePick({ card, proposal, boardIndex });
     return true;
   }
 

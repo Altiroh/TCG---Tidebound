@@ -261,7 +261,11 @@ export function useTableMotion(state: GameState, viewerId: PlayerId, renderFace:
         if (now.zone === "graveyard") {
           const from = before.boxes.get(originId);
           const to = boxOf(document.querySelector(`[data-graveyard="${sideOf(now.ownerId)}"]`));
-          const ending = was.zone === "board" && destroyed.has(originId) ? "shatter" : "vanish";
+          // Une Sentinelle Assemblée (Le Géant Chromatique) se brise aussi à
+          // l'écran : ce n'est pas une destruction pour les règles (elle ne
+          // laisse pas d'Éclat), mais elle disparaît dans le colosse.
+          const brisee = destroyed.has(originId) || now.instance.graveyardCause === "assembled";
+          const ending = was.zone === "board" && brisee ? "shatter" : "vanish";
           if (from && to) motion.launch({ look: { kind: "face", node: renderFaceRef.current(was.instance) }, from, to, ending });
           continue;
         }

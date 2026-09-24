@@ -6,9 +6,12 @@ import { keywordLabel, THICK_TEXT_OUTLINE } from "@/features/match/cardDisplay";
 import {
   BUFF_LAND_MS,
   HEAL_APPLY_MS,
+  REASON_COUNT_MS,
+  REASON_FALL_MS,
   HEAL_TOTAL_MS,
   SHOT_FLIGHT_MS,
   type EffectBuff,
+  type EffectReason,
   type EffectShot,
   type EffectVolley,
   type FxTarget,
@@ -362,6 +365,134 @@ function BuffChip({ chip }: { chip: Chip }) {
   );
 }
 
+// ── Raison qui s'abat sur la jauge ──────────────────────────────────────
+
+/** Jauge de Raison d'un Navire (`data-reason-gauge`, `TableShip`). */
+export function reasonGaugeOf(playerId: string): HTMLElement | null {
+  return document.querySelector<HTMLElement>(`[data-reason-gauge="${playerId}"]`);
+}
+
+/** Où flotte un chiffre de Raison : au-dessus du médaillon, centré. */
+export function reasonAnchor(gauge: HTMLElement): { x: number; y: number; size: number } {
+  const r = gauge.getBoundingClientRect();
+  return { x: r.left + r.width / 2, y: r.top - r.height * 0.55, size: Math.max(20, Math.min(40, r.height * 0.75)) };
+}
+
+function signedReason(value: number): string {
+  return value > 0 ? `+${value}` : `−${Math.abs(value)}`;
+}
+
+/**
+ * Le prix d'une carte (ou un gain de Raison) : le chiffre flotte au-dessus
+ * de la jauge — là même où l'aperçu du glisser l'affichait —, se décompte
+ * s'il a été payé moins que son coût imprimé (Assemblage : −8 … −2), puis
+ * s'abat sur la jauge, qui encaisse. La Raison affichée ne change qu'à
+ * l'impact (`patchedDisplay`).
+ */
+function ReasonDrop({ entry }: { entry: EffectReason }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [anchor, setAnchor] = useState<{ x: number; y: number; size: number; fall: number } | null>(null);
+  const [shown, setShown] = useState(entry.printed !== undefined ? -entry.printed : entry.amount);
+
+  useLayoutEffect(() => {
+    const gauge = reasonGaugeOf(entry.playerId);
+    if (!gauge) return;
+    const a = reasonAnchor(gauge);
+    const r = gauge.getBoundingClientRect();
+    setAnchor({ ...a, fall: r.top + r.height / 2 - a.y });
+  }, [entry.playerId]);
+
+  // Un chiffre qui attend son tour (`delayMs`) reste invisible jusque-là.
+  const [visible, setVisible] = useState(!entry.delayMs);
+  useEffect(() => {
+    if (!entry.delayMs) return undefined;
+    const id = window.setTimeout(() => setVisible(true), entry.delayMs);
+    return () => window.clearTimeout(id);
+  }, [entry.delayMs]);
+
+  useEffect(() => {
+    if (!anchor || !visible) return undefined;
+    const el = ref.current;
+    const timers: number[] = [];
+    const animations: Animation[] = [];
+    const countMs = entry.printed !== undefined ? REASON_COUNT_MS : 0;
+
+    // Décompte : du coût imprimé au prix payé, un cran à la fois, chaque cran marqué d'un sursaut.
+    if (entry.printed !== undefined) {
+      const from = entry.printed;
+      const to = -entry.amount;
+      const steps = Math.max(1, from - to);
+      for (let i = 1; i <= steps; i++) {
+        timers.push(
+          window.setTimeout(() => {
+            setShown(-(from - i));
+            el?.animate([{ transform: "translate(-50%, -50%) scale(1.25)" }, { transform: "translate(-50%, -50%) scale(1)" }], { duration: 160, easing: "ease-out" });
+          }, 120 + ((countMs - 160) * i) / steps)
+        );
+      }
+    }
+
+    // La chute : le chiffre s'abat sur la jauge, qui encaisse (éclair, léger enfoncement).
+    timers.push(
+      window.setTimeout(() => {
+        if (el) {
+          animations.push(
+            el.animate(
+              [
+                { transform: "translate(-50%, -50%) translateY(0) scale(1)", opacity: 1 },
+                { transform: "translate(-50%, -50%) translateY(-10px) scale(1.12)", opacity: 1, offset: 0.25, easing: "cubic-bezier(.6,0,.9,.4)" },
+                { transform: `translate(-50%, -50%) translateY(${anchor.fall}px) scale(0.7)`, opacity: 0.95, offset: 0.9 },
+                { transform: `translate(-50%, -50%) translateY(${anchor.fall}px) scale(0.5)`, opacity: 0 },
+              ],
+              { duration: REASON_FALL_MS, fill: "forwards" }
+            )
+          );
+        }
+        timers.push(
+          window.setTimeout(() => {
+            reasonGaugeOf(entry.playerId)?.animate(
+              [
+                { transform: "scale(1)", filter: "brightness(1)" },
+                { transform: "scale(0.9)", filter: entry.amount < 0 ? "brightness(1.7) drop-shadow(0 0 8px rgba(251,113,133,.9))" : "brightness(1.7) drop-shadow(0 0 8px rgba(110,231,183,.9))" },
+                { transform: "scale(1)", filter: "brightness(1)" },
+              ],
+              { duration: 320, easing: "ease-out" }
+            );
+          }, REASON_FALL_MS * 0.9)
+        );
+      }, countMs)
+    );
+    return () => {
+      timers.forEach((timer) => window.clearTimeout(timer));
+      animations.forEach((animation) => animation.cancel());
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- une seule chute par paiement.
+  }, [anchor, visible]);
+
+  if (!anchor || !visible) return null;
+  return (
+    <span
+      ref={ref}
+      aria-hidden
+      className="pointer-events-none absolute z-40"
+      style={{
+        left: anchor.x,
+        top: anchor.y,
+        transform: "translate(-50%, -50%)",
+        color: entry.amount < 0 ? CHIP_TONES.loss : CHIP_TONES.health,
+        fontFamily: "var(--font-card-title), Georgia, serif",
+        fontSize: anchor.size,
+        fontWeight: 800,
+        lineHeight: 1,
+        whiteSpace: "nowrap",
+        textShadow: THICK_TEXT_OUTLINE,
+      }}
+    >
+      {signedReason(shown)}
+    </span>
+  );
+}
+
 // ── Une volée ───────────────────────────────────────────────────────────
 
 interface Launched {
@@ -437,6 +568,8 @@ export function EffectFxLayer({ volleys }: { volleys: EffectVolley[] }) {
       {volleys.map((volley) => (
         <Volley key={volley.id} volley={volley} />
       ))}
+      {/* Le prix se paie à la pose : il n'attend pas le délai d'arrivée de la volée. */}
+      {volleys.flatMap((volley) => volley.reason.map((entry, index) => <ReasonDrop key={`${volley.id}-r${index}`} entry={entry} />))}
     </div>
   );
 }

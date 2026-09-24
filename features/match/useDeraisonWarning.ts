@@ -9,8 +9,8 @@ import { deraisonAnchorDamage, previewPlayCardReason, type GameState, type Playe
  * valider une carte combien de Raison négative et combien de dégâts futurs
  * cette action provoquera").
  *
- * - Glisser-déposer : l'avertissement s'affiche pendant tout le glisser, le
- *   dépôt vaut validation.
+ * - Glisser-déposer : le prix flotte au-dessus de la jauge de Raison pendant
+ *   tout le glisser (`ReasonCostPreview`), le dépôt vaut validation.
  * - Clic : le premier clic sur une carte qui ferait passer (ou rester) sous
  *   0 n'arme qu'une confirmation ; un second clic sur la même carte la joue.
  */
@@ -39,11 +39,11 @@ export function useDeraisonWarning(state: GameState, player: PlayerState | undef
   }
 
   const confirmWarning = confirmId ? warningFor(confirmId) : null;
-  const warning = draggingId
-    ? warningFor(draggingId)
-    : confirmWarning
-      ? `${confirmWarning} Cliquez à nouveau sur la carte pour la jouer.`
-      : null;
+  // Pendant un glisser, plus de bandeau : le prix flotte au-dessus de la
+  // jauge de Raison, en rouge avec l'Ancrage en jeu s'il fait entrer en
+  // Déraison (`ReasonCostPreview`, `TableBoard`). Le bandeau reste pour le
+  // clic, qui n'a pas d'autre moment pour le dire.
+  const warning = draggingId ? null : confirmWarning ? `${confirmWarning} Cliquez à nouveau sur la carte pour la jouer.` : null;
 
   return { warning, interceptClick, dismiss: () => setConfirmId(null) };
 }

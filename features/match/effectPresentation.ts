@@ -1,4 +1,4 @@
-import type { CardInstance, GameEvent, GameState, PlayerId } from "@/game";
+import { getCardDefinition, type CardInstance, type GameEvent, type GameState, type PlayerId } from "@/game";
 
 /**
  * Mise en scène des EFFETS (hors coup d'attaque) — la partie pure, testable
@@ -10,7 +10,10 @@ import type { CardInstance, GameEvent, GameState, PlayerId } from "@/game";
  *     en même temps ;
  *   - soin : un voile se pose sur la carte ou le Navire soigné ;
  *   - gain / perte de caractéristiques ou de mot-clé : une pastille surgit
- *     au-dessus de la carte, puis file se ranger là où la valeur s'affiche.
+ *     au-dessus de la carte, puis file se ranger là où la valeur s'affiche ;
+ *   - Raison payée ou gagnée : le chiffre flotte au-dessus de la jauge du
+ *     Navire, puis s'abat dessus. Une carte payée MOINS que son coût imprimé
+ *     (Assemblage) montre le coût imprimé qui se décompte jusqu'au prix payé.
  *
  * Pendant ce temps, l'affichage montre un état RAPIÉCÉ (`patchedDisplay`) :
  * l'état réel, sauf les cibles (et un lanceur qui vient de quitter le
@@ -29,6 +32,10 @@ export const HEAL_TOTAL_MS = 1150;
 export const BUFF_LAND_MS = 900;
 /** Carte qui vient d'être posée : on la laisse atterrir avant qu'elle ne tire (`useTableMotion`, glissé de pose). */
 export const ARRIVAL_DELAY_MS = 460;
+/** Décompte du coût imprimé jusqu'au prix payé (Assemblage : 8 → 2). */
+export const REASON_COUNT_MS = 700;
+/** Le chiffre s'abat sur la jauge de Raison : la valeur change à l'impact. */
+export const REASON_FALL_MS = 420;
 
 export type FxTarget = { kind: "unit"; id: string } | { kind: "ship"; id: PlayerId };
 
@@ -56,6 +63,25 @@ export interface EffectBuff {
   loss: boolean;
 }
 
+/** Raison payée (négatif) ou gagnée grâce à une carte (positif), sur le Navire de `playerId`. */
+export interface EffectReason {
+  playerId: PlayerId;
+  amount: number;
+  /** Coût imprimé, quand la carte a été payée moins cher : le chiffre part de là et se décompte. */
+  printed?: number;
+  /**
+   * Attente avant d'apparaître : les chiffres d'un même Navire tombent L'UN
+   * APRÈS L'AUTRE (le prix de l'Assemblage, puis la Raison rendue par le
+   * Signal Vert), jamais superposés.
+   */
+  delayMs?: number;
+}
+
+/** Durée d'un chiffre de Raison, de son apparition à son impact. */
+function reasonDurationMs(entry: Pick<EffectReason, "printed">): number {
+  return (entry.printed !== undefined ? REASON_COUNT_MS : 0) + REASON_FALL_MS;
+}
+
 export interface EffectVolley {
   id: number;
   /** Attente avant le départ (lanceur tout juste posé). */
@@ -63,6 +89,7 @@ export interface EffectVolley {
   shots: EffectShot[];
   heals: EffectHeal[];
   buffs: EffectBuff[];
+  reason: EffectReason[];
 }
 
 type Located = { ownerId: PlayerId; index: number; instance: CardInstance };
@@ -88,8 +115,33 @@ export function deriveEffectVolley(events: GameEvent[], before: GameState, after
   const shots: EffectShot[] = [];
   const heals: EffectHeal[] = [];
   const buffs: EffectBuff[] = [];
+  const reason: EffectReason[] = [];
+  /** Dernière carte jouée, en attente de son paiement : le `REASON_CHANGED` qui suit est son prix. */
+  let jouee: { playerId: PlayerId; cardId: string } | null = null;
 
   for (const event of events) {
+    if (event.type === "PLAY_CARD") {
+      jouee = { playerId: event.playerId, cardId: event.cardId };
+      continue;
+    }
+    if (event.type === "REASON_CHANGED" && event.delta !== 0) {
+      const paiement = event.delta < 0 && jouee?.playerId === event.playerId ? jouee : null;
+      jouee = null;
+      // La régénération de début de tour n'est pas un fait de carte : seuls
+      // les coûts et les gains obtenus grâce à une carte se mettent en scène.
+      if (event.delta > 0 && event.source !== "card") continue;
+      const printed = paiement ? getCardDefinition(paiement.cardId).cost : undefined;
+      // Après le dernier chiffre du même Navire : ils se suivent.
+      const precedent = [...reason].reverse().find((r) => r.playerId === event.playerId);
+      const delayMs = precedent ? (precedent.delayMs ?? 0) + reasonDurationMs(precedent) : 0;
+      reason.push({
+        playerId: event.playerId,
+        amount: event.delta,
+        ...(printed !== undefined && printed > -event.delta ? { printed } : {}),
+        ...(delayMs > 0 ? { delayMs } : {}),
+      });
+      continue;
+    }
     if (event.type === "DAMAGE" && event.origin && !event.combat && event.amount > 0) {
       const to: FxTarget | null = event.targetInstanceId
         ? { kind: "unit", id: event.targetInstanceId }
@@ -133,8 +185,8 @@ export function deriveEffectVolley(events: GameEvent[], before: GameState, after
     }
   }
 
-  if (shots.length === 0 && heals.length === 0 && buffs.length === 0) return null;
-  return { id, delayMs: arrived ? ARRIVAL_DELAY_MS : 0, shots, heals, buffs };
+  if (shots.length === 0 && heals.length === 0 && buffs.length === 0 && reason.length === 0) return null;
+  return { id, delayMs: arrived ? ARRIVAL_DELAY_MS : 0, shots, heals, buffs, reason };
 }
 
 /** Instant, depuis le début du lot, où tous les effets ont « touché » : l'état réel peut s'afficher. */
@@ -144,7 +196,13 @@ export function volleyLandingMs(volley: EffectVolley): number {
     volley.heals.length > 0 ? HEAL_APPLY_MS : 0,
     volley.buffs.length > 0 ? BUFF_LAND_MS : 0,
   ];
-  return volley.delayMs + Math.max(...landings);
+  // Le prix se paie à la pose, pas après l'atterrissage : il ne subit pas le délai d'arrivée.
+  return Math.max(volley.delayMs + Math.max(...landings), reasonLandingMs(volley));
+}
+
+/** Instant où le dernier chiffre de Raison touche sa jauge (0 : aucun). */
+export function reasonLandingMs(volley: Pick<EffectVolley, "reason">): number {
+  return Math.max(0, ...volley.reason.map((r) => (r.delayMs ?? 0) + reasonDurationMs(r)));
 }
 
 /**
@@ -199,6 +257,8 @@ export function patchedDisplay(before: GameState, after: GameState, volley: Effe
       deck: strip(player.deck),
       graveyard: strip(player.graveyard),
       anchor: ships.has(player.id) && previous ? previous.anchor : player.anchor,
+      // La Raison ne bouge qu'à l'impact du chiffre sur sa jauge.
+      reason: volley.reason.some((r) => r.playerId === player.id) && previous ? previous.reason : player.reason,
     };
   }) as GameState["players"];
 

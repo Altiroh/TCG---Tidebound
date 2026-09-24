@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   canActivateAbility,
   findAssemblage,
+  previewBreakReason,
+  previewPlayCardReason,
   canBeEquipTarget,
   canUnitAttack,
   deraisonAnchorDamage,
@@ -28,7 +30,8 @@ import { TIDE_STATE_LABELS } from "@/features/match/cardDisplay";
 import { needsPlayTarget } from "@/features/match/needsPlayTarget";
 import type { AttackAnimation } from "@/features/match/useAttackPresentation";
 import type { EffectVolley } from "@/features/match/effectPresentation";
-import { EffectFxLayer } from "@/features/match/EffectFxLayer";
+import { EffectFxLayer, reasonAnchor, reasonGaugeOf } from "@/features/match/EffectFxLayer";
+import { THICK_TEXT_OUTLINE } from "@/features/match/cardDisplay";
 import styles from "@/features/match/table/Table.module.css";
 import { BackgroundLayer } from "@/features/match/table/BackgroundLayer";
 import { CenterZone } from "@/features/match/table/CenterZone";
@@ -143,6 +146,49 @@ const BADGE_SIZE: Record<BoardPreviewBreakpoint, number> = {
 };
 
 const toModel = (instance: CardInstance): TableCardModel => ({ id: instance.instanceId, cardId: instance.cardId });
+
+/**
+ * Aperçu du PRIX pendant qu'on glisse une carte de la main : le chiffre
+ * flotte au-dessus de la jauge de Raison du Navire, là où il s'abattra si
+ * on lâche (`EffectFxLayer`, `ReasonDrop`). En rouge, avec l'Ancrage qu'il
+ * coûtera en fin de tour, quand il fait entrer en Déraison — c'est
+ * l'avertissement, sans bandeau par-dessus le plateau.
+ */
+function ReasonCostPreview({ playerId, cost, debtDamage }: { playerId: PlayerId; cost: number; debtDamage: number }) {
+  const [anchor, setAnchor] = useState<{ x: number; y: number; size: number } | null>(null);
+  useEffect(() => {
+    const gauge = reasonGaugeOf(playerId);
+    setAnchor(gauge ? reasonAnchor(gauge) : null);
+  }, [playerId]);
+  if (!anchor || cost <= 0) return null;
+  const debt = debtDamage > 0;
+  return (
+    <div
+      aria-live="polite"
+      className={`pointer-events-none fixed z-[46] flex flex-col items-center ${styles.reasonPreview}`}
+      // La jauge est au bord gauche de l'écran : la ligne de Déraison, plus large que le chiffre, ne doit pas en sortir.
+      style={{ left: debt ? Math.max(anchor.x, 96) : anchor.x, top: anchor.y }}
+    >
+      <span
+        style={{
+          color: debt ? "#fb7185" : "#fde68a",
+          fontFamily: "var(--font-card-title), Georgia, serif",
+          fontSize: anchor.size,
+          fontWeight: 800,
+          lineHeight: 1,
+          textShadow: THICK_TEXT_OUTLINE,
+        }}
+      >
+        −{cost}
+      </span>
+      {debt && (
+        <span className="mt-0.5 whitespace-nowrap rounded-full bg-rose-950/85 px-1.5 py-px text-[10px] font-semibold text-rose-100">
+          Déraison · ⚓ −{debtDamage} en fin de tour
+        </span>
+      )}
+    </div>
+  );
+}
 
 /**
  * NOUVEAU PLATEAU de partie — rendu partagé par la partie locale
@@ -454,6 +500,16 @@ export function TableBoard(props: TableBoardProps) {
       (abilityTargets?.has(card.id) ?? false) ||
       (placingAssemblage?.has(card.id) ?? false) ||
       (anyTargeting && hasResistance(def));
+    // Objet posé qui peut être Brisé maintenant (son effet s'applique) : il luit, comme une capacité activable.
+    const breakable =
+      mine &&
+      canPlayCards &&
+      !gesture &&
+      !targeting &&
+      def.type === "objet" &&
+      (previewBreakReason(state, viewerId, card.id, false)?.allowed ?? false) &&
+      (!def.requiresTideStateForBreak || def.requiresTideStateForBreak.includes(tideState)) &&
+      (breakTargets(instance)?.size ?? 1) > 0;
     // « Une fois par tour, vous pouvez… » : proposé seulement quand le moteur l'accepterait.
     const activatable =
       mine && canPlayCards && !gesture && !targeting && props.onActivateAbility !== undefined && canActivateAbility(state, viewerId, card.id);
@@ -482,7 +538,7 @@ export function TableBoard(props: TableBoardProps) {
           targetable ? `${styles.targetable} ${effectTarget ? styles.effectTone : ""}` : "",
           targetable && hover === drop ? styles.targetHover : "",
           targeting?.sourceInstanceId === card.id ? styles.aimSource : "",
-          props.reactionSourceIds?.includes(card.id) || activatable ? "animate-reaction-pulse" : "",
+          props.reactionSourceIds?.includes(card.id) || activatable || breakable ? "animate-reaction-pulse" : "",
         ].join(" ")}
       >
         {!mine && !visible ? (
@@ -706,6 +762,19 @@ export function TableBoard(props: TableBoardProps) {
         <EquipLinks attachments={attachments} layoutKey={boardKey} />
 
         <MotionLayer flights={motion.flights} />
+        {(() => {
+          // Carte de main en cours de glisser : son prix au-dessus de la jauge.
+          const dragged = placing?.sourceId ?? casting?.sourceId;
+          const preview = dragged ? previewPlayCardReason(state, viewerId, dragged) : undefined;
+          if (!preview || !preview.allowed) return null;
+          return (
+            <ReasonCostPreview
+              playerId={viewerId}
+              cost={preview.cost}
+              debtDamage={preview.reasonAfter < 0 ? deraisonAnchorDamage(viewer, preview.reasonAfter) : 0}
+            />
+          );
+        })()}
         {/* Pendant un geste (glisser, viser), pas d'aperçu : c'est le plateau qu'on regarde. */}
         {preview && !gesture && (() => {
           const found = byId.get(preview.id);
