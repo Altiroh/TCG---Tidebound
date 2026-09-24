@@ -122,6 +122,22 @@ const DECK_META: Record<string, DeckMeta> = {
     difficulty: 5,
     mechanics: ["Board wipes", "Pièges anti-swarm", "Menaces à 6-8 Raison"],
   },
+  // Lot 15 — Éclats en Selle (24/09/2026).
+  "equipage-de-verre": {
+    style: "Midrange / survie aux dégâts",
+    difficulty: 3,
+    mechanics: ["Survivre pour grandir", "Se blesser soi-même", "Pique à Glace"],
+  },
+  cavalerie: {
+    style: "Agressif / Bêtes lourdes et anti-Garde",
+    difficulty: 2,
+    mechanics: ["Percer la Garde", "Peu d'unités, lourdes", "Canon de proue"],
+  },
+  "sentinelles-chromatiques": {
+    style: "Midrange / Sentinelles et couleurs",
+    difficulty: 4,
+    mechanics: ["Couleurs qui se répondent", "Signaux Chromatiques", "Assemblage"],
+  },
 };
 
 const FALLBACK_META: DeckMeta = { style: "Polyvalent", difficulty: 3, mechanics: [] };
