@@ -16,7 +16,7 @@ import { getShipDefinition } from "@/game/environment/shipData";
 import { forceTideJumpToAbysses, forceTideTransition, tickTide } from "@/game/environment/tide";
 import { isEligibleChosenUnit } from "@/game/effects/chosenTargets";
 import type { EffectAmount, EffectDefinition } from "@/game/effects/types";
-import type { GameEvent } from "@/game/events/types";
+import type { EffectOrigin, GameEvent } from "@/game/events/types";
 import { nextInt, type RngState } from "@/game/rng";
 import { reduceReasonGain } from "@/game/state/anomalies";
 import { reasonAfterLoss, reasonCeiling } from "@/game/state/reason";
@@ -617,6 +617,13 @@ function mergeColors(a: readonly ChromaticColor[] | undefined, b: readonly Chrom
   return CHROMATIC_COLORS.filter((color) => set.has(color));
 }
 
+/** Lanceur de l'effet, pour l'interface (`DamageEvent.origin`) : le contrôleur, et la carte source s'il y en a une. */
+function originOf(context: EffectContext): EffectOrigin {
+  return context.sourceInstanceId
+    ? { playerId: context.controllerId, instanceId: context.sourceInstanceId }
+    : { playerId: context.controllerId };
+}
+
 /** Clé `oncePerTurnFlags` de l'amplification de réduction de Marée (`amplifyTideReductionOncePerTurnWhileVisible`). */
 const AMPLIFY_TIDE_REDUCTION_KEY = "amplifyTideReduction";
 
@@ -781,6 +788,7 @@ export function resolveEffect(
           amount: finalAmount,
           cause: "effect",
           sourcePlayerId: context.controllerId,
+          origin: originOf(context),
         });
       }
 
@@ -795,7 +803,14 @@ export function resolveEffect(
         if (reduit <= 0) continue;
         const current = getPlayer(nextState, player.id);
         nextState = replacePlayer(nextState, { ...current, anchor: current.anchor - reduit });
-        events.push({ ...base, type: "DAMAGE", targetPlayerId: player.id, amount: reduit, targetAnchorAfter: current.anchor - reduit });
+        events.push({
+          ...base,
+          type: "DAMAGE",
+          targetPlayerId: player.id,
+          amount: reduit,
+          targetAnchorAfter: current.anchor - reduit,
+          origin: originOf(context),
+        });
       }
 
       return { state: nextState, events };
@@ -1039,6 +1054,7 @@ export function resolveEffect(
           targetInstanceId: unit.instanceId,
           attack: differe ? 0 : attackDelta,
           health: healthDelta,
+          ...(effect.grantKeywords?.length ? { keywords: [...effect.grantKeywords] } : {}),
         });
       }
       return { state: nextState, events };

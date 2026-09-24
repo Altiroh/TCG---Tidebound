@@ -106,7 +106,7 @@ export function MatchBoard({
   const [liveState, setState] = useState<GameState>(initialState);
   // `state` = état AFFICHÉ (retenu avant le choc pendant une attaque, cf. `useAttackPresentation`) ; toute
   // action se valide et s'applique sur `liveState`, l'état de jeu réel.
-  const { displayState: state, attacks } = useAttackPresentation(liveState);
+  const { displayState: state, attacks, volleys } = useAttackPresentation(liveState);
   // Observateur externe (tutoriel) : notifié de l'état RÉEL, pas de l'état
   // affiché — une étape ne doit pas attendre la fin d'une animation.
   useEffect(() => {
@@ -367,6 +367,7 @@ export function MatchBoard({
         viewerId={viewerPlayerId}
         turnOwnerLabel={turnOwnerLabel}
         attacks={attacks}
+        volleys={volleys}
         journal={
           <EventFeed
             variant="rail"

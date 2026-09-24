@@ -51,6 +51,15 @@ const config: Config = {
           "85%": { opacity: "1", transform: "translateY(0) scale(1)" },
           "100%": { opacity: "0", transform: "translateY(-4px) scale(0.98)" },
         },
+        // Badge de mot-clé tout juste gagné : il tombe d'au-dessus de la
+        // carte, un peu trop grand, et se cale à sa place (la pastille de
+        // gain d'`EffectFxLayer` vient de s'y poser).
+        "badge-arrive": {
+          "0%": { transform: "translateY(-70%) scale(1.8)", opacity: "0" },
+          "40%": { transform: "translateY(0) scale(0.85)", opacity: "1" },
+          "70%": { transform: "translateY(0) scale(1.12)" },
+          "100%": { transform: "translateY(0) scale(1)", opacity: "1" },
+        },
         // Impact de combat (carte qui encaisse des dégâts) — tremblement +
         // flash rouge sur la carte ENTIÈRE, plus visible que le seul chiffre
         // de Résistance (`stat-hit`, conservé pour ce chiffre en plus).
@@ -79,6 +88,7 @@ const config: Config = {
         // Alerte d'erreur/avertissement en haut à droite (`components/ui/GlassAlert.tsx`).
         "glass-alert-in": "glass-alert-in 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.2) both",
         "card-impact": "card-impact 0.45s ease-out",
+        "badge-arrive": "badge-arrive 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.2)",
       },
     },
   },

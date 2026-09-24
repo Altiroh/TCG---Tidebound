@@ -114,8 +114,12 @@ function ShipAbilityPanel({ name, text, planks, armed, actionable, artUrl, reaso
       {/* La CARTE de survol : un hublot de trente pixels ne dit pas ce que
           fait la capacité. L'illustration y est enfin LISIBLE, à gauche ;
           à droite ce qu'elle fait et ce qu'elle coûte. Elle sort au survol
-          et au clavier (`:focus-visible`), jamais au doigt — d'où le
-          `title` gardé en repli. */}
+          et au clavier (`:focus-visible`), jamais au doigt. Pas de `title`
+          natif : sa bulle système se superposait à la carte de survol ;
+          `aria-label` garde le nom et le texte pour les lecteurs d'écran.
+          Le `title=""` du panneau n'est pas un oubli : il empêche la bulle
+          du cadre de Navire qui l'entoure (« Fiche du Navire… ») de
+          remonter jusqu'ici. */}
       <span aria-hidden className={styles.shipAbilityCard}>
         <span
           className={styles.shipAbilityCardArt}
@@ -139,7 +143,7 @@ function ShipAbilityPanel({ name, text, planks, armed, actionable, artUrl, reaso
 
   if (!onClick) {
     return (
-      <span className={className} title={ariaLabel} role="img" aria-label={ariaLabel}>
+      <span className={className} title="" role="img" aria-label={ariaLabel}>
         {content}
       </span>
     );
@@ -149,7 +153,7 @@ function ShipAbilityPanel({ name, text, planks, armed, actionable, artUrl, reaso
     <button
       type="button"
       className={className}
-      title={ariaLabel}
+      title=""
       aria-label={ariaLabel}
       // Le cadre du Navire entier est cliquable (fiche, ciblage) : sans ça,
       // le clic sur le panneau ouvrirait aussi la fiche derrière lui.

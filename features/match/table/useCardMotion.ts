@@ -44,10 +44,21 @@ export interface Flight {
   look: { kind: "back"; ownerId?: string } | { kind: "face"; node: ReactNode };
   from: Box;
   to: Box;
-  /** `land` : la carte arrive pleine et opaque ; `vanish` : elle se fond dans sa destination. */
-  ending: "land" | "vanish";
+  /**
+   * `land` : la carte arrive pleine et opaque ; `vanish` : elle se fond dans
+   * sa destination ; `shatter` : elle se BRISE sur place (carte détruite),
+   * puis ses éclats filent jusqu'à la destination (`to`).
+   */
+  ending: "land" | "vanish" | "shatter";
   /** Attente avant le départ (pioches d'un même lot) : la carte reste invisible jusque-là. */
   delayMs?: number;
+}
+
+/** Durée d'un bris : fissures, éclatement, puis trajet des éclats jusqu'au Cimetière. */
+export const SHATTER_MS = 1300;
+
+export function flightDuration(flight: Pick<Flight, "ending">): number {
+  return flight.ending === "shatter" ? SHATTER_MS : FLIGHT_MS;
 }
 
 export function boxOf(el: Element | null): Box | null {
@@ -94,7 +105,7 @@ export function useCardMotion() {
     window.setTimeout(() => {
       setFlights((current) => current.filter((f) => f.id !== id));
       onDone?.();
-    }, FLIGHT_MS + (flight.delayMs ?? 0));
+    }, flightDuration(flight) + (flight.delayMs ?? 0));
   }, []);
 
   /** Pioche : à appeler JUSTE AVANT l'action qui ajoute la carte en main. */

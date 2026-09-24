@@ -6,7 +6,6 @@ import {
   chromaticColorsOf,
   collectAuraContributions,
   computeEffectiveStats,
-  computeStatModifierDelta,
   getCardDefinition,
   hasKeyword,
   hasKeywordInContext,
@@ -120,6 +119,28 @@ const CHROMATIC_SWATCHES: Record<ChromaticColor, string> = {
   violet: "#9b59d0",
 };
 
+/**
+ * Fond du médaillon de couleurs : une couleur seule en verre bombé (clair
+ * au centre), plusieurs en dégradé qui passe de l'une à l'autre — la même
+ * pastille pour une Sentinelle unicolore ou arc-en-ciel.
+ */
+function chromaticFill(colors: readonly ChromaticColor[]): string {
+  if (colors.length === 1) {
+    const color = CHROMATIC_SWATCHES[colors[0]!];
+    return `radial-gradient(circle at 38% 34%, #ffffff 0%, ${color} 55%, ${color} 100%)`;
+  }
+  return `linear-gradient(135deg, ${colors.map((c, i) => `${CHROMATIC_SWATCHES[c]} ${Math.round((i / (colors.length - 1)) * 100)}%`).join(", ")})`;
+}
+
+/** Ce que fait le Signal de chaque couleur (texte des émetteurs du Lot 15), pour l'info-bulle du médaillon. */
+const CHROMATIC_SIGNAL_TEXT: Record<ChromaticColor, string> = {
+  rouge: "Vos autres Sentinelles ont +1 Puissance pendant votre tour.",
+  jaune: "Vos autres Sentinelles ont +1 Résistance maximale.",
+  bleu: "La première fois à chaque tour qu'une autre Sentinelle que vous contrôlez attaque une unité adverse, cette unité adverse perd 1 Puissance jusqu'à votre prochain tour.",
+  vert: "La première fois pendant chacun de vos tours que vous jouez une autre Sentinelle, récupérez 1 Raison.",
+  violet: "La première fois à chaque tour qu'une autre Sentinelle que vous contrôlez est ciblée par un effet adverse, piochez 1 carte puis défaussez-en 1.",
+};
+
 /** Icône du badge "Durée" (Structure/Objet à durée limitée, `instance.turnsRemaining`) — le nombre de tours restants est superposé au centre. */
 const TOUR_ICON = "/assets/status/tour.webp";
 
@@ -159,8 +180,8 @@ function useChangeFlash(value: number): boolean {
 /**
  * Lisibilité des modificateurs (Notion "Moteur de partie", "Modificateurs
  * de stats & lisibilité visuelle") : vert si la valeur affichée dépasse
- * la base imprimée (éventuellement ajustée par la Marée), rouge si elle
- * est en-dessous, couleur normale sinon.
+ * la base imprimée, rouge si elle est en-dessous (blessure comprise pour
+ * la Résistance), couleur normale sinon.
  */
 function statColorClass(delta: number): string {
   if (delta > 0) return "text-emerald-300";
@@ -344,6 +365,8 @@ export function CardTile({
         controllerReason: auraContext.controllerReason,
       })
     : hasKeyword(def, "garde");
+  // Garde tout juste gagnée : son badge arrive en surgissant, pas en apparaissant.
+  const gardeGained = useChangeFlash(hasGarde ? 1 : 0) && hasGarde;
   // Pied marin (effectif, même logique que Garde) : l'unité agit dès son
   // arrivée — la marquer « Engourdie » mentirait.
   const hasPiedMarin = auraContext
@@ -360,9 +383,15 @@ export function CardTile({
   const hasResistance = isUnit || def.health !== undefined;
   const resistanceRemaining = Math.max(0, stats.health - instance.damageMarked);
   const resistanceFlashing = useDecreaseFlash(resistanceRemaining);
-  const modifierDelta = computeStatModifierDelta(instance);
-  const attackChanged = useChangeFlash(modifierDelta.attack);
-  const healthChanged = useChangeFlash(modifierDelta.health);
+  // Couleur des chiffres : la valeur AFFICHÉE comparée à la base IMPRIMÉE.
+  // Une unité blessée voit donc sa Résistance passer au rouge, une unité
+  // renforcée — modificateur, aura de plateau, Signal — passer au vert.
+  // Avant, seuls les modificateurs comptaient : une unité à 1/3 restante
+  // de Résistance restait blanche.
+  const attackDelta = def.attack !== undefined ? stats.attack - def.attack : 0;
+  const resistanceDelta = def.health !== undefined ? resistanceRemaining - def.health : 0;
+  const attackChanged = useChangeFlash(stats.attack);
+  const healthChanged = useChangeFlash(stats.health);
 
   const frameUrl = getFrameUrl(def);
   const typeIconUrl = getTypeIconUrl(def);
@@ -553,9 +582,11 @@ export function CardTile({
 
           {isUnit && (
             <div
+              // Repère des pastilles de gain (`EffectFxLayer`) : elles viennent se ranger ICI.
+              data-stat="attack"
               className={`flex items-center font-bold [font-family:var(--font-card-title)] ${
                 isToken ? "justify-center" : "justify-start"
-              } ${statColorClass(modifierDelta.attack)} ${attackChanged ? "animate-stat-buff" : ""}`}
+              } ${statColorClass(attackDelta)} ${attackChanged ? "animate-stat-buff" : ""}`}
               style={{ ...zoneStyle(attackZone), fontSize: "7.5cqw", textShadow: THICK_TEXT_OUTLINE }}
             >
               {stats.attack}
@@ -563,10 +594,11 @@ export function CardTile({
           )}
           {hasResistance && (
             <div
+              data-stat="resistance"
               className={`flex items-center font-bold [font-family:var(--font-card-title)] ${
                 isToken ? "justify-center" : "justify-start"
               } ${
-                resistanceFlashing ? "animate-stat-hit text-white" : `${statColorClass(modifierDelta.health)} ${healthChanged ? "animate-stat-buff" : ""}`
+                resistanceFlashing ? "animate-stat-hit text-white" : `${statColorClass(resistanceDelta)} ${healthChanged ? "animate-stat-buff" : ""}`
               }`}
               style={{ ...zoneStyle(resistanceZone), fontSize: "7.5cqw", textShadow: THICK_TEXT_OUTLINE }}
             >
@@ -610,12 +642,14 @@ export function CardTile({
             />
           )}
           {hasGarde && (
-            <StatusBadge
-              icon={GARDE_ICON_INFO.icon}
-              label={GARDE_ICON_INFO.label}
-              description={GARDE_ICON_INFO.description}
-              size={badgeSize}
-            />
+            <span className={gardeGained ? "animate-badge-arrive" : undefined} style={{ display: "inline-flex" }}>
+              <StatusBadge
+                icon={GARDE_ICON_INFO.icon}
+                label={GARDE_ICON_INFO.label}
+                description={GARDE_ICON_INFO.description}
+                size={badgeSize}
+              />
+            </span>
           )}
           {instance.statuses?.map((status) => {
             const info = STATUS_ICON_INFO[status];
@@ -623,20 +657,45 @@ export function CardTile({
             return <StatusBadge key={status} icon={info.icon} label={info.label} description={info.description} size={badgeSize} />;
           })}
           {couleursChromatiques.length > 0 && (
-            <span
-              className="pointer-events-auto flex items-center rounded-full border border-white/30 bg-black/85 shadow-md"
-              style={{ padding: `${badgeSize / 10}px ${badgeSize / 6}px`, gap: badgeSize / 12 }}
-              title={`Couleur${couleursChromatiques.length > 1 ? "s" : ""} : ${couleursChromatiques.map((c) => CHROMATIC_COLOR_LABELS[c]).join(", ")}`}
-              aria-label={`Couleurs chromatiques : ${couleursChromatiques.map((c) => CHROMATIC_COLOR_LABELS[c]).join(", ")}`}
-            >
-              {couleursChromatiques.map((color) => (
-                <span
-                  key={color}
-                  className="block rounded-full"
-                  style={{ width: badgeSize / 3.4, height: badgeSize / 3.4, background: CHROMATIC_SWATCHES[color] }}
-                />
-              ))}
-            </span>
+            // Même médaillon que les autres badges (le vierge, `tour.webp`),
+            // la ou les couleurs peintes dans son verre.
+            <StatusBadge
+              icon={TOUR_ICON}
+              fill={chromaticFill(couleursChromatiques)}
+              label={`${
+                def.chromatic?.emitsSignal
+                  ? couleursChromatiques.length > 1
+                    ? "Signaux"
+                    : "Signal"
+                  : couleursChromatiques.length > 1
+                    ? "Couleurs"
+                    : "Couleur"
+              } : ${couleursChromatiques
+                .map((c) => CHROMATIC_COLOR_LABELS[c])
+                .join(", ")}`}
+              description={
+                <>
+                  <p className="mb-1.5">
+                    {def.chromatic?.emitsSignal
+                      ? "Cette Sentinelle émet le Signal de sa couleur :"
+                      : "Couleur de cette carte — elle compte pour les Signaux et les effets qui lisent la couleur :"}
+                  </p>
+                  {couleursChromatiques.map((color) => (
+                    <p key={color} className="mt-1 flex gap-1.5">
+                      <span
+                        aria-hidden
+                        className="mt-[3px] inline-block h-2.5 w-2.5 shrink-0 rounded-full"
+                        style={{ background: chromaticFill([color]) }}
+                      />
+                      <span>
+                        <strong className="text-white">Signal {CHROMATIC_COLOR_LABELS[color]}</strong> — {CHROMATIC_SIGNAL_TEXT[color]}
+                      </span>
+                    </p>
+                  ))}
+                </>
+              }
+              size={badgeSize}
+            />
           )}
           {instance.turnsRemaining !== undefined && (
             <StatusBadge

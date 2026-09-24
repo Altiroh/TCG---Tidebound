@@ -25,6 +25,8 @@ import {
  *                         ou depuis sa place dans la main ; une carte adverse
  *                         part de la main adverse ;
  *   plateau / main → défausse : une copie de la carte vole jusqu'au crâne ;
+ *                         une carte DÉTRUITE (ou un Objet brisé) se brise
+ *                         d'abord sur place, et ce sont ses éclats qui volent ;
  *   plateau → main      : la carte glisse de son emplacement jusqu'à la main.
  *                         Un retour en main repart d'un exemplaire NEUF
  *                         (`instanceId` différent) : l'événement
@@ -207,6 +209,18 @@ export function useTableMotion(state: GameState, viewerId: PlayerId, renderFace:
     if (!reducedMotion()) {
       const sideOf = (ownerId: PlayerId) => (ownerId === viewerId ? "player" : "opponent");
       let viewerDraws = 0;
+      // Cartes détruites ou brisées dans ce lot — pas celles sabordées ou expirées, qui partent entières.
+      const destroyed = new Set<string>();
+      for (const event of state.eventLog.slice(before.logLength)) {
+        if (event.type === "DESTROY" || event.type === "OBJECT_BROKEN") destroyed.add(event.instanceId);
+      }
+
+      // Détruite sans rejoindre de Cimetière (jeton) : elle se brise sur place et ses éclats s'éteignent là.
+      for (const [id, was] of before.where) {
+        if (was.zone !== "board" || where.has(id) || !destroyed.has(id)) continue;
+        const from = before.boxes.get(id);
+        if (from) motion.launch({ look: { kind: "face", node: renderFaceRef.current(was.instance) }, from, to: from, ending: "shatter" });
+      }
 
       for (const [id, now] of where) {
         // L'exemplaire d'où la carte vient : lui-même, ou celui qu'un retour
@@ -230,11 +244,14 @@ export function useTableMotion(state: GameState, viewerId: PlayerId, renderFace:
           continue;
         }
 
-        // Vers une défausse : copie de la carte depuis sa dernière position visible.
+        // Vers une défausse : copie de la carte depuis sa dernière position
+        // visible. Une carte DÉTRUITE (ou un Objet brisé) se brise d'abord
+        // sur place, puis ses éclats rejoignent le Cimetière.
         if (now.zone === "graveyard") {
           const from = before.boxes.get(originId);
           const to = boxOf(document.querySelector(`[data-graveyard="${sideOf(now.ownerId)}"]`));
-          if (from && to) motion.launch({ look: { kind: "face", node: renderFaceRef.current(was.instance) }, from, to, ending: "vanish" });
+          const ending = was.zone === "board" && destroyed.has(originId) ? "shatter" : "vanish";
+          if (from && to) motion.launch({ look: { kind: "face", node: renderFaceRef.current(was.instance) }, from, to, ending });
           continue;
         }
 

@@ -2166,6 +2166,39 @@
   border: 1px solid rgba(71, 85, 105, 0.9);
 }
 
+/* Carte détruite (`ShatteringCard`) : les éclats sont des copies de la face,
+   chacune découpée par son `clip-path`, empilées exactement l'une sur l'autre. */
+.shatteringCard {
+  position: fixed;
+  filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.55));
+}
+
+.shard {
+  position: absolute;
+  inset: 0;
+  will-change: transform, opacity;
+}
+
+.shard button {
+  pointer-events: none;
+}
+
+.cracks {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  overflow: visible;
+}
+
+.cracks line {
+  stroke: rgba(255, 255, 255, 0.95);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 2px rgba(15, 23, 42, 0.95));
+}
+
 /* Choc d'une attaque — flash et dégâts de l'ancien `AttackImpactLayer`. */
 .fxFlash {
   position: fixed;

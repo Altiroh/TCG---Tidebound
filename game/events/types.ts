@@ -105,6 +105,21 @@ export interface DamageEvent extends BaseGameEvent {
    */
   cause?: "combat" | "effect" | "tide";
   sourcePlayerId?: PlayerId;
+  /**
+   * LANCEUR d'un effet de carte ou de Navire qui inflige ces dégâts — lu par
+   * l'interface pour faire partir le projectile du bon endroit : de la
+   * carte `instanceId` si elle est (ou était) sur un plateau, sinon du
+   * Navire de `playerId` (sort joué de la main, capacité de Navire).
+   * Présentation seulement : aucune règle ne le lit (celles qui qualifient
+   * la source lisent `cause` / `sourcePlayerId`).
+   */
+  origin?: EffectOrigin;
+}
+
+/** Lanceur d'un effet : le joueur qui le contrôle et, s'il y en a une, la carte d'où il part. */
+export interface EffectOrigin {
+  playerId: PlayerId;
+  instanceId?: string;
 }
 
 export interface HealEvent extends BaseGameEvent {
@@ -145,6 +160,8 @@ export interface BuffAppliedEvent extends BaseGameEvent {
   targetInstanceId: string;
   attack: number;
   health: number;
+  /** Mots-clés accordés par ce même modificateur (« gagne Garde »), pour que l'interface les montre arriver. */
+  keywords?: string[];
 }
 
 export interface DebuffAppliedEvent extends BaseGameEvent {

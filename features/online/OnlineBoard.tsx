@@ -81,7 +81,7 @@ export function OnlineBoard({
   matchId,
 }: OnlineBoardProps) {
   // `state` = état AFFICHÉ, retenu avant le choc pendant une attaque (cf. `useAttackPresentation`).
-  const { displayState: state, attacks } = useAttackPresentation(liveState);
+  const { displayState: state, attacks, volleys } = useAttackPresentation(liveState);
   const me = state.players.find((p) => p.id === myUserId)!;
   const opponent = state.players.find((p) => p.id !== myUserId)!;
   const displayNames = useDisplayNames([me.id, opponent.id]);
@@ -204,6 +204,7 @@ export function OnlineBoard({
         viewerId={myUserId}
         turnOwnerLabel={isMyTurn ? "À toi" : opponentLabel}
         attacks={attacks}
+        volleys={volleys}
         journal={
           <EventFeed
             variant="rail"

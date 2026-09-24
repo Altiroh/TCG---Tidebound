@@ -25,6 +25,8 @@ import { CardTile } from "@/features/match/CardTile";
 import { TIDE_STATE_LABELS } from "@/features/match/cardDisplay";
 import { needsPlayTarget } from "@/features/match/needsPlayTarget";
 import type { AttackAnimation } from "@/features/match/useAttackPresentation";
+import type { EffectVolley } from "@/features/match/effectPresentation";
+import { EffectFxLayer } from "@/features/match/EffectFxLayer";
 import styles from "@/features/match/table/Table.module.css";
 import { BackgroundLayer } from "@/features/match/table/BackgroundLayer";
 import { CenterZone } from "@/features/match/table/CenterZone";
@@ -67,6 +69,8 @@ export interface TableBoardProps {
   /** « À vous », « Au bot », « À l'adversaire »… */
   turnOwnerLabel: string;
   attacks: AttackAnimation[];
+  /** Effets mis en scène : projectiles, voiles de soin, pastilles de gain (cf. `effectPresentation.ts`). */
+  volleys: EffectVolley[];
   /** Journal (`EventFeed` variante colonne). */
   journal: ReactNode;
 
@@ -679,6 +683,7 @@ export function TableBoard(props: TableBoardProps) {
         />
       )}
       <AttackImpactLayer attacks={props.attacks} />
+      <EffectFxLayer volleys={props.volleys} />
     </>
   );
 }

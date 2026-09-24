@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { GameEvent, GameState, PlayerId } from "@/game";
+import { deriveEffectVolley, patchedDisplay, volleyLandingMs, type EffectVolley } from "@/features/match/effectPresentation";
 
 export interface AttackAnimation {
   id: number;
@@ -79,10 +80,12 @@ function prefersReducedMotion(): boolean {
 interface Presentation {
   /** Dernier état réel examiné. */
   live: GameState;
-  /** État AFFICHÉ à la place du réel pendant le coup — `null` hors mise en scène. */
+  /** État AFFICHÉ à la place du réel pendant le coup ou la volée — `null` hors mise en scène. */
   held: GameState | null;
   /** L'attaque en cours de mise en scène, s'il y en a une. */
   attack: AttackAnimation | null;
+  /** Les effets en cours de mise en scène (projectiles, soins, gains), s'il y en a. */
+  volley: EffectVolley | null;
   /** Ce coup termine la partie : on laisse l'animation aller au bout avant l'écran de fin. */
   finalBlow: boolean;
 }
@@ -91,12 +94,20 @@ interface Presentation {
 const FINAL_BLOW_LINGER_MS = 900;
 
 /**
- * Met en scène les attaques en retardant l'état AFFICHÉ, jamais l'état de
- * jeu : quand un nouvel état contient un `ATTACK`, le plateau continue
+ * Met en scène les attaques ET les effets en retardant l'état AFFICHÉ,
+ * jamais l'état de jeu.
+ *
+ * Attaque : quand un nouvel état contient un `ATTACK`, le plateau continue
  * d'afficher l'état d'avant l'attaque (attaquant et cible encore en place,
  * Résistances intactes) pendant que `AttackImpactLayer` anime la vraie carte,
  * puis bascule sur l'état réel au choc — ou à la fin du retour si une carte
  * meurt, pour qu'elle encaisse le coup avant de partir au cimetière.
+ *
+ * Effets (`effectPresentation.ts`) : dégâts d'effet, soins, gains. Le
+ * plateau affiche l'état réel RAPIÉCÉ — les cibles telles qu'avant — le
+ * temps que `EffectFxLayer` fasse voler les projectiles, pose les voiles et
+ * range les pastilles ; l'état réel s'affiche quand tout a touché. Dans un
+ * lot qui contient aussi une attaque, c'est l'attaque qui retient l'état.
  *
  * Les appelants doivent continuer à valider/appliquer les actions sur l'état
  * RÉEL (`live`), pas sur `displayState`. Un nouvel état qui arrive pendant
@@ -110,47 +121,65 @@ const FINAL_BLOW_LINGER_MS = 900;
  * puis la retenue la faisait réapparaître pour le coup, et elle repartait
  * une seconde fois. Une carte ne doit mourir qu'une fois.
  */
-export function useAttackPresentation(live: GameState): { displayState: GameState; attacks: AttackAnimation[] } {
-  const [presentation, setPresentation] = useState<Presentation>({ live, held: null, attack: null, finalBlow: false });
+export function useAttackPresentation(live: GameState): {
+  displayState: GameState;
+  attacks: AttackAnimation[];
+  volleys: EffectVolley[];
+} {
+  const [presentation, setPresentation] = useState<Presentation>({ live, held: null, attack: null, volley: null, finalBlow: false });
   const [attacks, setAttacks] = useState<AttackAnimation[]>([]);
+  const [volleys, setVolleys] = useState<EffectVolley[]>([]);
   const nextId = useRef(0);
 
   if (presentation.live !== live) {
     const previous = presentation.live;
     const newEvents = live.eventLog.length > previous.eventLog.length ? live.eventLog.slice(previous.eventLog.length) : [];
-    const attack = deriveAttack(newEvents, live, nextId.current);
-    const staged = attack !== null && !prefersReducedMotion();
-    if (staged) nextId.current += 1;
+    const animate = newEvents.length > 0 && !prefersReducedMotion();
+    const attack = animate ? deriveAttack(newEvents, live, nextId.current) : null;
+    if (attack) nextId.current += 1;
+    const volley = animate ? deriveEffectVolley(newEvents, previous, live, nextId.current) : null;
+    if (volley) nextId.current += 1;
+    const staged = attack !== null || volley !== null;
     setPresentation({
       live,
-      held: staged ? previous : null,
-      attack: staged ? attack : null,
+      held: attack ? previous : volley ? patchedDisplay(previous, live, volley) : null,
+      attack,
+      volley,
       finalBlow: staged && live.status === "finished" && previous.status !== "finished",
     });
   }
 
-  // Minuteurs de l'attaque mise en scène : relâcher l'état retenu au bon
-  // moment, puis retirer l'animation. La relâche ne touche qu'à SA mise en
-  // scène : un état plus récent l'a peut-être déjà remplacée.
+  // Minuteurs de la mise en scène : relâcher l'état retenu au bon moment,
+  // puis retirer l'animation. La relâche ne touche qu'à SA mise en scène :
+  // un état plus récent l'a peut-être déjà remplacée.
   const staged = presentation.attack;
+  const volley = presentation.volley;
   const finalBlow = presentation.finalBlow;
   useEffect(() => {
-    if (!staged) return;
-    setAttacks((current) => (current.some((it) => it.id === staged.id) ? current : [...current, staged]));
+    if (!staged && !volley) return;
+    if (staged) setAttacks((current) => (current.some((it) => it.id === staged.id) ? current : [...current, staged]));
+    if (volley) setVolleys((current) => (current.some((it) => it.id === volley.id) ? current : [...current, volley]));
+
+    // L'attaque retient l'état si elle est là ; sinon, la volée jusqu'à son dernier impact.
+    const baseHold = staged
+      ? staged.defenderDies || staged.attackerDies
+        ? ATTACK_TOTAL_MS
+        : ATTACK_IMPACT_AT_MS
+      : volleyLandingMs(volley!);
     // Le coup de grâce : l'écran de fin n'arrive qu'une fois le coup joué
     // jusqu'au bout, retour compris, et le temps d'un souffle.
-    const holdMs = finalBlow
-      ? ATTACK_TOTAL_MS + FINAL_BLOW_LINGER_MS
-      : staged.defenderDies || staged.attackerDies
-        ? ATTACK_TOTAL_MS
-        : ATTACK_IMPACT_AT_MS;
+    const holdMs = finalBlow ? Math.max(baseHold, staged ? ATTACK_TOTAL_MS : 0) + FINAL_BLOW_LINGER_MS : baseHold;
     const release = setTimeout(
-      () => setPresentation((current) => (current.attack?.id === staged.id ? { ...current, held: null } : current)),
+      () =>
+        setPresentation((current) =>
+          current.attack === staged && current.volley === volley ? { ...current, held: null } : current
+        ),
       holdMs
     );
-    setTimeout(() => setAttacks((current) => current.filter((it) => it.id !== staged.id)), ATTACK_TOTAL_MS + 900);
+    if (staged) setTimeout(() => setAttacks((current) => current.filter((it) => it.id !== staged.id)), ATTACK_TOTAL_MS + 900);
+    if (volley) setTimeout(() => setVolleys((current) => current.filter((it) => it.id !== volley.id)), volleyLandingMs(volley) + 1400);
     return () => clearTimeout(release);
-  }, [staged, finalBlow]);
+  }, [staged, volley, finalBlow]);
 
-  return { displayState: presentation.held ?? presentation.live, attacks };
+  return { displayState: presentation.held ?? presentation.live, attacks, volleys };
 }

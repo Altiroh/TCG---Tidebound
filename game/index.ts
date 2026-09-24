@@ -116,7 +116,7 @@ export type { TutorialProgress, TutorialStep } from "@/game/tutorial";
 export { ACHIEVEMENT_CATALOG, achievementByCode, unlockedAchievements } from "@/game/achievements";
 export type { AchievementDefinition, AchievementStats } from "@/game/achievements";
 
-export type { GameEvent, GameEventType } from "@/game/events/types";
+export type { EffectOrigin, GameEvent, GameEventType } from "@/game/events/types";
 
 export type { ChosenUnitFilter, EffectDefinition, EffectType, TargetSelector } from "@/game/effects/types";
 export { chosenTargetFilter, eligibleChosenUnits } from "@/game/effects/chosenTargets";

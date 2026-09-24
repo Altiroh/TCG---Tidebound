@@ -1,12 +1,12 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 interface StatusBadgeProps {
   icon: string;
   label: string;
-  description: string;
+  description: ReactNode;
   /** Taille en pixels réels (PAS en `cqw`) — ce badge flotte désormais au-dessus de la carte, en dehors du conteneur à requête de conteneur (`container-type: inline-size`) de `CardTile` : un `cqw` y résoudrait à 0. Une taille fixe garantit aussi qu'il reste "assez gros pour le voir à l'œil nu" même sur les plus petites cartes de plateau. Défaut : 38. */
   size?: number;
   /** Texte superposé au centre de l'icône (ex: nombre de tours restants pour le badge "Durée"). */
@@ -18,7 +18,17 @@ interface StatusBadgeProps {
    * avec un léger halo clair, lisible sur n'importe quel fond.
    */
   overlayTextClassName?: string;
+  /**
+   * Fond CSS peint DANS le verre du médaillon (couleurs d'une Sentinelle,
+   * en dégradé). À poser sur le médaillon vierge (`status/tour.webp`) : le
+   * fond est multiplié sur son verre clair, qui garde ainsi son reflet et
+   * son ombrage — la couleur a l'air d'être dans le verre, pas collée dessus.
+   */
+  fill?: string;
 }
+
+/** Verre du médaillon vierge (`tour.webp`, 1254 px) : disque centré, rayon ≈ 36 % du côté. */
+const MEDALLION_GLASS_INSET = "14%";
 
 /**
  * Icône de statut/mot-clé posée sur une carte (`status/malade.webp`,
@@ -40,6 +50,7 @@ export function StatusBadge({
   size = 38,
   overlayText,
   overlayTextClassName = "text-slate-900",
+  fill,
 }: StatusBadgeProps) {
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState<{ left: number; top: number } | null>(null);
@@ -77,6 +88,13 @@ export function StatusBadge({
           draggable={false}
           className="h-full w-full select-none rounded-full object-cover shadow-[0_2px_8px_rgba(0,0,0,0.75)]"
         />
+        {fill && (
+          <span
+            aria-hidden
+            className="absolute rounded-full"
+            style={{ inset: MEDALLION_GLASS_INSET, background: fill, mixBlendMode: "multiply" }}
+          />
+        )}
         {overlayText !== undefined && (
           <span
             className={`absolute inset-0 flex items-center justify-center text-base font-bold ${overlayTextClassName}`}
@@ -95,7 +113,7 @@ export function StatusBadge({
             style={{ left: coords.left, top: coords.top - 10 }}
           >
             <p className="text-sm font-semibold text-white">{label}</p>
-            <p className="mt-1 text-xs leading-snug text-slate-300">{description}</p>
+            <div className="mt-1 text-xs leading-snug text-slate-300">{description}</div>
           </div>,
           document.body
         )}

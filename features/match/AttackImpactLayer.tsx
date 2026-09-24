@@ -4,23 +4,23 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import { ATTACK_IMPACT_AT_MS, ATTACK_TIMINGS, ATTACK_TOTAL_MS, type AttackAnimation } from "@/features/match/useAttackPresentation";
 import { playAttackImpact } from "@/lib/sound";
 
-interface Point {
+export interface Point {
   x: number;
   y: number;
 }
 
-function centerOf(rect: DOMRect): Point {
+export function centerOf(rect: DOMRect): Point {
   return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
 }
 
 /** Élément d'une unité de plateau ou d'un Navire ciblé — attributs `data-board-unit`/`data-ship-target` posés par `MatchBoard`/`OnlineBoard`. */
-function findElement(kind: "unit" | "ship", id: string): HTMLElement | null {
+export function findElement(kind: "unit" | "ship", id: string): HTMLElement | null {
   const selector = kind === "unit" ? `[data-board-unit="${id}"]` : `[data-ship-target="${id}"]`;
   return document.querySelector<HTMLElement>(selector);
 }
 
 /** Léger tremblement + flash, joué au choc sur la cible (et sur l'attaquant en cas de riposte). */
-function shake(el: HTMLElement) {
+export function shake(el: HTMLElement) {
   el.animate(
     [
       { transform: "translateX(0)", filter: "brightness(1)" },
@@ -117,7 +117,7 @@ function plateFor(amount: number): string {
  */
 const PLATE_TEXT_CENTER_Y = "53%";
 
-function FloatingDamage({ point, amount }: { point: Point; amount: number }) {
+export function FloatingDamage({ point, amount }: { point: Point; amount: number }) {
   const host = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -218,7 +218,14 @@ function FloatingDamage({ point, amount }: { point: Point; amount: number }) {
   );
 }
 
-function ImpactFlash({ point }: { point: Point }) {
+/** Teintes du flash de choc : blanc-rouge pour un coup, bleu-violet pour un effet, orangé pour un boulet. */
+const FLASH_TINTS = {
+  strike: "radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(255,241,214,0.7) 35%, rgba(239,68,68,0) 72%)",
+  magic: "radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(165,243,252,0.75) 30%, rgba(167,139,250,0.35) 55%, rgba(129,140,248,0) 74%)",
+  cannon: "radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(254,215,170,0.8) 30%, rgba(234,88,12,0.35) 55%, rgba(234,88,12,0) 74%)",
+} as const;
+
+export function ImpactFlash({ point, tint = "strike" }: { point: Point; tint?: keyof typeof FLASH_TINTS }) {
   const [done, setDone] = useState(false);
   useEffect(() => {
     const raf = requestAnimationFrame(() => setDone(true));
@@ -235,15 +242,68 @@ function ImpactFlash({ point }: { point: Point }) {
         height: 110,
         transform: `translate(-50%, -50%) scale(${done ? 1.3 : 0.3})`,
         opacity: done ? 0 : 0.95,
-        background: "radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(255,241,214,0.7) 35%, rgba(239,68,68,0) 72%)",
+        background: FLASH_TINTS[tint],
         transition: "transform 320ms ease-out, opacity 380ms ease-in",
       }}
     />
   );
 }
 
+/**
+ * Un peu de FUMÉE au point de choc : quelques volutes grises qui gonflent,
+ * s'écartent en montant et se dissipent. `size` est la hauteur de la cible
+ * à l'écran — la fumée suit la taille du plateau. Déterministe (pas de
+ * hasard au rendu) : les volutes sont réparties en éventail.
+ */
+export function SmokeBurst({ point, size, puffs = 7 }: { point: Point; size: number; puffs?: number }) {
+  const host = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = host.current;
+    if (!el) return undefined;
+    const animations = Array.from(el.children).map((child, index) => {
+      // Éventail vers le haut : de -160° à -20°, alterné pour ne pas tourner en rond.
+      const angle = ((-160 + (140 * index) / Math.max(1, puffs - 1)) * Math.PI) / 180;
+      const reach = size * (0.28 + ((index * 37) % 5) * 0.05);
+      const dx = Math.cos(angle) * reach;
+      const dy = Math.sin(angle) * reach - size * 0.12;
+      return (child as HTMLElement).animate(
+        [
+          { transform: "translate(-50%, -50%) scale(0.25)", opacity: 0 },
+          { transform: `translate(calc(-50% + ${dx * 0.35}px), calc(-50% + ${dy * 0.35}px)) scale(0.8)`, opacity: 0.75, offset: 0.2 },
+          { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(1.6)`, opacity: 0 },
+        ],
+        { duration: 820 + index * 40, delay: index * 18, easing: "cubic-bezier(.2,.7,.3,1)", fill: "forwards" }
+      );
+    });
+    return () => animations.forEach((animation) => animation.cancel());
+  }, [puffs, size]);
+
+  const puff = size * 0.3;
+  return (
+    <div ref={host} aria-hidden className="pointer-events-none absolute z-30" style={{ left: point.x, top: point.y }}>
+      {Array.from({ length: puffs }, (_, index) => (
+        <span
+          key={index}
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: puff,
+            height: puff,
+            borderRadius: "9999px",
+            opacity: 0,
+            background: "radial-gradient(circle, rgba(226,232,240,0.85) 0%, rgba(148,163,184,0.55) 45%, rgba(100,116,139,0) 72%)",
+            filter: "blur(2px)",
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 function SingleAttack({ attack }: { attack: AttackAnimation }) {
-  const [geometry, setGeometry] = useState<{ from: Point; to: Point } | null>(null);
+  const [geometry, setGeometry] = useState<{ from: Point; to: Point; size: number } | null>(null);
   const [impacted, setImpacted] = useState(false);
 
   // `useLayoutEffect` : l'état affiché est encore celui d'avant l'attaque (`useAttackPresentation`), attaquant et cible sont en place.
@@ -257,7 +317,7 @@ function SingleAttack({ attack }: { attack: AttackAnimation }) {
     if (!attackerEl || !targetEl) return undefined;
 
     const targetRect = targetEl.getBoundingClientRect();
-    setGeometry({ from: centerOf(attackerEl.getBoundingClientRect()), to: centerOf(targetRect) });
+    setGeometry({ from: centerOf(attackerEl.getBoundingClientRect()), to: centerOf(targetRect), size: Math.min(targetRect.height, 220) });
     const attackerAnimation = animateAttacker(attackerEl, targetRect);
 
     const impactTimer = setTimeout(() => {
@@ -282,6 +342,7 @@ function SingleAttack({ attack }: { attack: AttackAnimation }) {
       {impacted && (
         <>
           <ImpactFlash point={geometry.to} />
+          <SmokeBurst point={geometry.to} size={geometry.size} />
           <FloatingDamage point={geometry.to} amount={attack.amount} />
           {attack.retaliation !== undefined && <FloatingDamage point={geometry.from} amount={attack.retaliation} />}
         </>
@@ -293,8 +354,8 @@ function SingleAttack({ attack }: { attack: AttackAnimation }) {
 /**
  * Mise en scène d'une attaque (`useAttackPresentation`) :
  * mouvement de la vraie carte attaquante (soulèvement, élan, frappe, retour),
- * puis au choc un flash, un léger tremblement, le son et les dégâts qui
- * s'envolent — riposte comprise en combat mutuel. Coordonnées VIEWPORT
+ * puis au choc un flash, un peu de fumée, un léger tremblement, le son et
+ * la plaque de dégâts — riposte comprise en combat mutuel. Coordonnées VIEWPORT
  * directes (`fixed inset-0`), mesurées sur les éléments du plateau.
  */
 export function AttackImpactLayer({ attacks }: { attacks: AttackAnimation[] }) {
