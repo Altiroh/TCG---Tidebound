@@ -66,15 +66,19 @@ function FlyingCard({ flight }: { flight: Flight }) {
             { offset: 0.7, opacity: 0.9 },
             { transform: "translate(0, 0) scale(0.7) rotate(6deg)", opacity: 0 },
           ];
-    el.animate(keyframes, { duration: FLIGHT_MS, delay: delayMs, easing: "cubic-bezier(.3,.7,.3,1)", fill: "forwards" });
-  }, [from, to, ending, delayMs, flight.fan]);
+    // Une copie de carte (face) qui attend son tour reste VISIBLE à sa place
+    // (`both`) : elle ne quitte pas l'écran avant que l'action précédente
+    // ne soit jouée. Un dos de pioche, lui, n'existe qu'à son départ.
+    const holds = flight.look.kind === "face";
+    el.animate(keyframes, { duration: FLIGHT_MS, delay: delayMs, easing: "cubic-bezier(.3,.7,.3,1)", fill: holds ? "both" : "forwards" });
+  }, [from, to, ending, delayMs, flight.fan, flight.look.kind]);
 
   return (
     <div
       ref={ref}
       className={styles.flyingCard}
-      // Invisible pendant son attente : l'animation (fill forwards) la rend visible à son départ.
-      style={{ left: to.x, top: to.y, width: to.width, opacity: delayMs > 0 ? 0 : undefined }}
+      // Dos de pioche invisible pendant son attente (l'animation le rend visible à son départ) ; une face attend, visible, à sa place.
+      style={{ left: to.x, top: to.y, width: to.width, opacity: delayMs > 0 && flight.look.kind !== "face" ? 0 : undefined }}
     >
       {flight.look.kind === "back" ? (
         // eslint-disable-next-line @next/next/no-img-element -- dos de carte standard : une pioche ne révèle jamais la face en vol
@@ -155,7 +159,8 @@ function ShatteringCard({ flight }: { flight: Flight }) {
               opacity: 0,
             },
           ],
-          { duration: SHATTER_MS, delay: index * 14, easing: "linear", fill: "forwards" }
+          // Une carte qui attend la fin de l'action se tient entière à sa place (`both`), puis se brise.
+          { duration: SHATTER_MS, delay: (flight.delayMs ?? 0) + index * 14, easing: "linear", fill: "both" }
         )
       );
     });
@@ -171,12 +176,12 @@ function ShatteringCard({ flight }: { flight: Flight }) {
             { opacity: 0, offset: 0.34 },
             { opacity: 0 },
           ],
-          { duration: SHATTER_MS, fill: "forwards" }
+          { duration: SHATTER_MS, delay: flight.delayMs ?? 0, fill: "both" }
         )
       );
     }
     return () => animations.forEach((animation) => animation.cancel());
-  }, [from, to]);
+  }, [from, to, flight.delayMs]);
 
   const node = flight.look.kind === "face" ? flight.look.node : null;
   return (

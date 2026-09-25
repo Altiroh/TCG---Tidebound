@@ -3,6 +3,7 @@
 import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { getPlayer, getShipDefinition, type CardInstance, type DeckLookChoice, type GameState, type PlayerId } from "@/game";
 import { boxOf, DRAW_STAGGER_MS, reducedMotion, useCardMotion, type Box } from "@/features/match/table/useCardMotion";
+import { ARRIVAL_DELAY_MS } from "@/features/match/effectPresentation";
 import {
   playAttackImpact,
   playCardDiscarded,
@@ -173,6 +174,11 @@ function playBatchSounds(
   if (!hasAttack && !fired && events.some((event) => event.type === "DAMAGE" && !event.combat)) playMagicImpact();
 }
 
+/** Une défausse provoquée par la carte jouée attend qu'elle ait atterri et fait effet. */
+const DISCARD_AFTER_PLAY_MS = ARRIVAL_DELAY_MS + 420;
+/** Plusieurs cartes défaussées d'un coup : elles partent l'une après l'autre. */
+const DISCARD_STAGGER_MS = 160;
+
 export function useTableMotion(state: GameState, viewerId: PlayerId, renderFace: (instance: CardInstance) => ReactNode) {
   const motion = useCardMotion();
   const previous = useRef<{
@@ -220,6 +226,13 @@ export function useTableMotion(state: GameState, viewerId: PlayerId, renderFace:
     if (!reducedMotion()) {
       const sideOf = (ownerId: PlayerId) => (ownerId === viewerId ? "player" : "opponent");
       let viewerDraws = 0;
+      // Laisser finir l'action : une carte jouée dans ce lot (posée, ou
+      // sort qui se résout) arrive d'abord ; les défausses qu'elle provoque
+      // depuis la main partent APRÈS, l'une après l'autre.
+      const batch = state.eventLog.slice(before.logLength);
+      const played = new Set(batch.flatMap((event) => (event.type === "PLAY_CARD" ? [event.instanceId] : [])));
+      const discardWait = played.size > 0 ? DISCARD_AFTER_PLAY_MS : 0;
+      let discards = 0;
       // Cartes détruites ou brisées dans ce lot — pas celles sabordées ou expirées, qui partent entières.
       const destroyed = new Set<string>();
       for (const event of state.eventLog.slice(before.logLength)) {
@@ -266,7 +279,10 @@ export function useTableMotion(state: GameState, viewerId: PlayerId, renderFace:
           // laisse pas d'Éclat), mais elle disparaît dans le colosse.
           const brisee = destroyed.has(originId) || now.instance.graveyardCause === "assembled";
           const ending = was.zone === "board" && brisee ? "shatter" : "vanish";
-          if (from && to) motion.launch({ look: { kind: "face", node: renderFaceRef.current(was.instance) }, from, to, ending });
+          // Défausse depuis la main provoquée par la carte jouée : après elle, en file.
+          const fromHandByEffect = was.zone === "hand" && !played.has(originId) && discardWait > 0;
+          const delayMs = fromHandByEffect ? discardWait + discards++ * DISCARD_STAGGER_MS : undefined;
+          if (from && to) motion.launch({ look: { kind: "face", node: renderFaceRef.current(was.instance) }, from, to, ending, delayMs });
           continue;
         }
 
