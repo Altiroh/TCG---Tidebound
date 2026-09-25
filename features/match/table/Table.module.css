@@ -1681,6 +1681,62 @@
  * il ne doit jamais tirer l'œil du joueur.
  */
 .liveAudience {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--hud-h) * 0.14);
+  height: calc(var(--hud-h) * 0.7);
+  padding: 0 calc(var(--hud-h) * 0.22) 0 calc(var(--hud-h) * 0.12);
+  border: 1px solid rgba(95, 208, 230, 0.22);
+  border-radius: 999px;
+  background: rgba(3, 10, 18, 0.62);
+  transition: color 600ms ease, box-shadow 600ms ease, border-color 600ms ease;
+}
+.liveAudience svg {
+  width: calc(var(--hud-h) * 0.44);
+  height: calc(var(--hud-h) * 0.44);
+  flex: none;
+}
+.liveAudienceCount {
+  font-family: var(--tb-font-display, inherit);
+  font-size: calc(var(--hud-h) * 0.3);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.liveAudience[data-level="cold"] { color: rgba(170, 190, 205, 0.55); }
+.liveAudience[data-level="calm"] { color: rgba(170, 205, 220, 0.85); }
+.liveAudience[data-level="warm"] {
+  color: var(--tb-accent, #5fd0e6);
+  border-color: rgba(95, 208, 230, 0.45);
+  box-shadow: 0 0 calc(var(--hud-h) * 0.25) rgba(95, 208, 230, 0.25);
+}
+.liveAudience[data-level="hot"] {
+  color: #f3c86b;
+  border-color: rgba(243, 200, 107, 0.55);
+  box-shadow: 0 0 calc(var(--hud-h) * 0.3) rgba(243, 200, 107, 0.35);
+}
+
+.hudCornerBottom {
+  grid-column: 4;
+  position: relative;
+  z-index: 20;
+  justify-self: end;
+  min-width: 0;
+}
+
+.hudCornerTop {
+  grid-row: 1;
+  align-self: start;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--hud-h) * 0.25);
+}
+
+/*
+ * Le public en direct (`LiveAudience`) : un œil, à peine visible quand la
+ * salle s'ennuie, qui s'éclaire quand elle s'enflamme. Aucune animation :
+ * il ne doit jamais tirer l'œil du joueur.
+ */
+.liveAudience {
   display: inline-grid;
   place-items: center;
   width: calc(var(--hud-h) * 0.7);

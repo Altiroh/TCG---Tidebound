@@ -513,6 +513,13 @@ export interface Database {
         Update: Record<string, never>;
         Relationships: [];
       };
+      /** Parties déjà jugées par le public (une fois par joueur). */
+      player_audience_matches: {
+        Row: { match_id: string; user_id: string; spectacle: number; judged_at: string };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
       /** Intérêt cumulé de chaque Commanditaire pour le joueur. */
       player_sponsor_interest: {
         Row: { user_id: string; sponsor_id: string; points: number; updated_at: string };

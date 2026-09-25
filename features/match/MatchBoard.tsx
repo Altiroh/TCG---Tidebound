@@ -1,5 +1,6 @@
 "use client";
 
+import { analyzeMatch } from "@/game/audience";
 import { useEffect, useRef, useState } from "react";
 import {
   canUnitAttack,
@@ -340,7 +341,12 @@ export function MatchBoard({
     const subjectShip = getShipDefinition(state.players.find((p) => p.id === subjectId)?.shipId ?? viewerPlayer.shipId);
     return (
       // Partie LOCALE (hot-seat, ou bot hors connexion) : jouée entièrement dans le navigateur, elle ne rapporte jamais rien.
-      <MatchEndScreen outcome={isDefeat ? "defeat" : "victory"} player={state.winnerId ? { name: subjectName, ship: subjectShip, title: humanPlayerId ? myTitle : null } : undefined} onExit={onExit} />
+      <MatchEndScreen
+        outcome={isDefeat ? "defeat" : "victory"}
+        player={state.winnerId ? { name: subjectName, ship: subjectShip, title: humanPlayerId ? myTitle : null } : undefined}
+        onExit={onExit}
+        audience={subjectId ? analyzeMatch(state, subjectId) : undefined}
+      />
     );
   }
 

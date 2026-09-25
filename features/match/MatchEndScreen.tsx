@@ -2,6 +2,8 @@
 
 import { MatchQuestRecap } from "@/features/quests/MatchQuestRecap";
 import { MatchRewardBanner } from "@/features/progression/MatchRewardBanner";
+import { MatchAudienceRecap, type MatchAudienceVerdict } from "@/features/audience/MatchAudienceRecap";
+import type { MatchAudienceSummary } from "@/features/audience/actions";
 import { useEffect, type CSSProperties } from "react";
 import Link from "next/link";
 import type { ShipDefinition } from "@/game";
@@ -49,7 +51,12 @@ interface MatchEndScreenProps {
    * Gain et relevé FABRIQUÉS, pour le labo `/game/fin-preview` : l'écran
    * se règle sans avoir à finir une vraie partie arbitrée.
    */
-  preview?: { reward: MatchRewardSummary; quests: QuestRecapEntry[]; voyage?: VoyageRecap | null };
+  preview?: { reward: MatchRewardSummary; quests: QuestRecapEntry[]; voyage?: VoyageRecap | null; audience?: MatchAudienceSummary };
+  /**
+   * Le jugement du public sur la partie (`analyzeMatch`, calculé par
+   * l'appelant sur l'état final). Absent : pas de récap « Le public ».
+   */
+  audience?: MatchAudienceVerdict;
 }
 
 /**
@@ -96,7 +103,7 @@ const DEFEAT_SOUND_AT_MS = 250;
  * Le bandeau "VICTOIRE" (`victory.webp`) surmonte le cadre plutôt que
  * d'être incrusté dedans, pour rester lisible à toutes les tailles.
  */
-export function MatchEndScreen({ outcome, player, onExit, exitHref, matchId, preview }: MatchEndScreenProps) {
+export function MatchEndScreen({ outcome, player, onExit, exitHref, matchId, preview, audience }: MatchEndScreenProps) {
   const isDefeat = outcome === "defeat";
   const winner = player;
 
@@ -253,6 +260,8 @@ export function MatchEndScreen({ outcome, player, onExit, exitHref, matchId, pre
 
             {/* Le gain de la partie, sous la fiche qu'il récompense. */}
             {(matchId || preview) && <MatchRewardBanner matchId={matchId} preview={preview?.reward} />}
+            {/* Le public : sa note, son humeur, ses temps forts, et ce que la partie a fait à l'audience. */}
+            {audience && <MatchAudienceRecap verdict={audience} matchId={matchId} preview={preview?.audience} />}
           </div>
 
           {/* Ce que la partie a rapporté aux quêtes : elles défilent une à

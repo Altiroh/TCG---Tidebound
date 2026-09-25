@@ -1,5 +1,6 @@
 "use client";
 
+import { analyzeMatch } from "@/game/audience";
 import {
   canUnitAttack,
   eligibleCandidatesFor,
@@ -192,6 +193,7 @@ export function OnlineBoard({
         player={state.winnerId ? { name: displayNames[myUserId] ?? "Toi", ship: myShip, title: myTitle } : undefined}
         exitHref={exitHref}
         matchId={matchId}
+        audience={analyzeMatch(state, myUserId)}
       />
     );
   }

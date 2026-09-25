@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import { AudienceTip } from "@/features/audience/AudienceTip";
 import { useEffect, useRef, useState } from "react";
 import { fetchProgression, type ProgressionSummary } from "@/features/progression/actions";
 import { audienceMood } from "@/game/audience";
@@ -384,15 +385,12 @@ export function HeaderPlayer() {
 
           <span className={styles.accountWallet}>
             {/* Audience : le public qui suit les parties — ouverte à tous, dès le premier jour. */}
-            <span
-              className={styles.accountAudience}
-              title={`Audience : ${summary.audience.toLocaleString("fr-FR")} spectateurs${
-                summary.lastSpectacle !== null ? ` — dernière partie : ${audienceMood(summary.lastSpectacle).toLowerCase()}` : ""
-              }. Le public juge chaque partie : une partie disputée et bien jouée l'attire, une partie expédiée le lasse.`}
-            >
-              <AudienceIcon />
-              {formatAudience(summary.audience)}
-            </span>
+            <AudienceTip count={summary.audience} mood={summary.lastSpectacle !== null ? `Dernière partie : ${audienceMood(summary.lastSpectacle).toLowerCase()}` : null}>
+              <span className={styles.accountAudience}>
+                <AudienceIcon />
+                {formatAudience(summary.audience)}
+              </span>
+            </AudienceTip>
             <span className={styles.accountTides} title="Tides — la monnaie du jeu">
               <TideCoin size={22} />
               {summary.balance}

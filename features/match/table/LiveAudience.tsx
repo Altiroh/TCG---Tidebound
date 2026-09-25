@@ -1,20 +1,38 @@
 "use client";
 
-import { useMemo } from "react";
-import { analyzeMatch, audienceMood } from "@/game/audience";
+import { useEffect, useMemo, useState } from "react";
+import { analyzeMatch, audienceMood, nextAudience } from "@/game/audience";
 import type { GameState, PlayerId } from "@/game";
+import { fetchMyAudience } from "@/features/audience/actions";
+import { AudienceTip } from "@/features/audience/AudienceTip";
+import { RollingNumber } from "@/features/audience/RollingNumber";
 import styles from "@/features/match/table/Table.module.css";
 
 /**
- * Le public, EN DIRECT, dans le coin haut droit de la table — volontairement
- * discret : un œil dont la lueur suit l'humeur de la salle, rien d'autre.
- * Pas de chiffre, pas d'alerte, pas d'animation qui réclame l'attention : le
- * joueur joue sans s'en soucier ; celui qui veut savoir survole l'œil.
+ * Le public, EN DIRECT, dans le coin haut droit de la table : un œil dont
+ * la lueur suit l'humeur de la salle, et le nombre de spectateurs dont les
+ * chiffres roulent au fil de la partie. Aucune alerte, rien à cliquer : le
+ * joueur joue sans s'en soucier ; celui qui veut savoir survole.
+ *
+ * Le nombre, c'est l'audience que la partie laisserait si elle s'arrêtait
+ * maintenant (`nextAudience` sur le spectacle du moment) : il part de
+ * l'audience du joueur et monte ou descend avec ce qui se passe.
  *
  * Même moteur que le verdict de fin de partie (`game/audience/`), lu sur
  * l'état courant — recalculé seulement quand le journal s'allonge.
  */
 export function LiveAudience({ state, viewerId }: { state: GameState; viewerId: PlayerId }) {
+  const [base, setBase] = useState<number | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetchMyAudience()
+      .then((audience) => !cancelled && setBase(audience))
+      .catch(() => !cancelled && setBase(0));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const spectacle = useMemo(
     () => analyzeMatch(state, viewerId).spectacle,
     // Le journal ne fait que s'allonger : sa longueur suffit à savoir s'il a changé.
@@ -22,12 +40,18 @@ export function LiveAudience({ state, viewerId }: { state: GameState; viewerId: 
     [state.eventLog.length, state.status, viewerId]
   );
   const level = spectacle >= 70 ? "hot" : spectacle >= 45 ? "warm" : spectacle >= 25 ? "calm" : "cold";
+  const mood = audienceMood(spectacle);
+  const live = base === null ? null : nextAudience(base, spectacle);
+
   return (
-    <span className={styles.liveAudience} data-level={level} title={`${audienceMood(spectacle)}.`} aria-label={`Public : ${audienceMood(spectacle).toLowerCase()}`}>
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden>
-        <path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 12 2 12z" stroke="currentColor" strokeWidth={1.6} strokeLinejoin="round" />
-        <circle cx="12" cy="12" r="2.8" stroke="currentColor" strokeWidth={1.6} />
-      </svg>
-    </span>
+    <AudienceTip mood={mood} placement="below">
+      <span className={styles.liveAudience} data-level={level} aria-label={`Public : ${mood.toLowerCase()}`}>
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden>
+          <path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 12 2 12z" stroke="currentColor" strokeWidth={1.6} strokeLinejoin="round" />
+          <circle cx="12" cy="12" r="2.8" stroke="currentColor" strokeWidth={1.6} />
+        </svg>
+        {live !== null && <RollingNumber value={live} className={styles.liveAudienceCount} />}
+      </span>
+    </AudienceTip>
   );
 }

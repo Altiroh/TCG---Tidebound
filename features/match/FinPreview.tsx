@@ -34,7 +34,13 @@ function Ecran() {
       // Titre sous le nom : `?titre=0` le retire, `?titre=…` en essaie un autre.
       player={{ name: "Alti", ship: getShipDefinition("le-goliath"), title: params.get("titre") === "0" ? null : (params.get("titre") ?? "Amiral des marées") }}
       onExit={() => window.location.reload()}
+      audience={
+        params.get("public") === "0"
+          ? undefined
+          : { spectacle: defaite ? 34 : 78, highlights: defaite ? ["Trop vite expédiée"] : ["Retournement de situation", "Partie disputée"] }
+      }
       preview={{
+        audience: { spectacle: defaite ? 34 : 78, before: 1240, after: defaite ? 1162 : 1382 },
         reward: { xp: defaite ? 60 : 125, tides: defaite ? 0 : 30, levelBefore: 4, levelAfter: 4, firstWinOfDay: !defaite },
         quests: params.get("quetes") === "0" ? [] : QUETES,
         // Escale de Traversée : `?escale=0` la retire, `?escale=fin` la boucle.

@@ -480,4 +480,9 @@
   .questColumn {
     max-height: calc(100dvh - 90px);
   }
+  /* Le récap « Le public » prend une ligne sous le gain : le cadre cède la place. */
+  .sheet:has([data-audience-recap]) {
+    --fin-cadre: min(60vw, 340px, 30dvh);
+    gap: 6px;
+  }
 }
