@@ -311,14 +311,15 @@
   flex: 0 0 auto;
   display: grid;
   place-items: center;
-  width: clamp(26px, 3.2vh, 34px);
-  height: clamp(26px, 3.2vh, 34px);
-  border: 1px solid var(--tb-accent-line);
+  /* Assez grand pour qu'on RECONNAISSE l'illustration choisie (25/09/2026). */
+  width: clamp(36px, 4.8vh, 50px);
+  height: clamp(36px, 4.8vh, 50px);
+  border: 1.5px solid var(--tb-accent-line);
   border-radius: 50%;
   background: radial-gradient(circle at 50% 30%, rgba(42, 143, 168, 0.55), rgba(10, 30, 50, 0.9) 75%);
   box-shadow: inset 0 1px 0 var(--tb-border-light);
   font-family: var(--cb-font-display);
-  font-size: clamp(12px, 1.5vh, 15px);
+  font-size: clamp(14px, 2vh, 19px);
   font-weight: 600;
   color: var(--tb-text-strong);
   text-shadow: none;
@@ -343,25 +344,25 @@
   background-color: #0b1a26;
   background-size: cover;
   background-position: 50% 30%;
-  box-shadow: inset 0 0 0 1px rgba(3, 10, 16, 0.4), 0 1px 4px rgba(0, 0, 0, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(3, 10, 16, 0.4), 0 1px 4px rgba(0, 0, 0, 0.55), 0 0 10px rgba(95, 208, 230, 0.25);
 }
 
 .accountIdentity {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   min-width: 0;
 }
 
 /* Pseudo borné : un pseudo long ne doit pas repousser les Tides et
    l'engrenage hors du bandeau. */
 .accountName {
-  max-width: clamp(70px, 9vw, 160px);
+  max-width: clamp(80px, 10vw, 180px);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--cb-font-display);
-  font-size: clamp(11.5px, 0.92vw, 14px);
+  font-size: clamp(13px, 1.05vw, 16.5px);
   font-weight: 600;
   letter-spacing: 0.03em;
   line-height: 1.15;
@@ -375,9 +376,9 @@
 }
 
 .accountLevel {
-  font-size: clamp(8.5px, 0.66vw, 10.5px);
-  font-weight: 500;
-  letter-spacing: 0.12em;
+  font-size: clamp(10px, 0.78vw, 12.5px);
+  font-weight: 600;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--cb-ivory-dim);
 }
@@ -390,8 +391,8 @@
 /* Jauge d'XP : un trait, pas une barre de progression de logiciel. */
 .progressionTrack {
   position: relative;
-  width: clamp(38px, 5vw, 86px);
-  height: 3px;
+  width: clamp(44px, 5.6vw, 100px);
+  height: 4px;
   border-radius: 2px;
   overflow: hidden;
   background: var(--tb-border);
@@ -949,6 +950,12 @@
     flex: 0 1 auto;
     gap: 6px;
     padding-right: 8px;
+  }
+
+  /* Bandeau serré : l'avatar reprend une taille de jeton. */
+  .accountAvatar {
+    width: 32px;
+    height: 32px;
   }
 
   /* Sans ces deux-là, tout ce qui suit garde sa taille de contenu. */

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { AudienceTip } from "@/features/audience/AudienceTip";
+import { RewardShortcuts } from "@/features/shell/RewardShortcuts";
 import { useEffect, useRef, useState } from "react";
 import { fetchProgression, type ProgressionSummary } from "@/features/progression/actions";
 import { audienceMood } from "@/game/audience";
@@ -357,6 +358,17 @@ export function HeaderPlayer() {
               </span>
             )}
           </Link>
+
+          {/* Ce qui attend d'être réclamé, en raccourcis flottants sous le bloc. */}
+          {!profileTab && (
+            <RewardShortcuts
+              summary={summary}
+              onOpen={(tab) => {
+                playButtonClick();
+                setProfileTab(tab);
+              }}
+            />
+          )}
 
           <span className={styles.accountIdentity}>
             {/* Le pseudo mène au carnet de bord : niveau, paliers, escales

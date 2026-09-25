@@ -41,6 +41,11 @@ export interface ProgressionSummary {
    * pastille de l'avatar — ce qui donne envie d'y aller.
    */
   claimableRewards: number;
+  /**
+   * Le détail de `claimableRewards`, par endroit où le réclamer : les
+   * raccourcis flottants sous le bandeau en font une icône chacun.
+   */
+  claimableBreakdown: { levels: number; cardChoices: number; login: number; quests: number; achievements: number };
   /** L'escale de connexion du jour n'est pas encore réclamée : première venue de la journée (popup de série). */
   loginClaimable: boolean;
   /** Spectateurs qui suivent le joueur (moteur d'audience, `game/audience/`). Visible en haut à droite. */
@@ -66,6 +71,7 @@ const SIGNED_OUT: ProgressionSummary = {
   avatarCardId: null,
   claimableQuests: 0,
   claimableRewards: 0,
+  claimableBreakdown: { levels: 0, cardChoices: 0, login: 0, quests: 0, achievements: 0 },
   loginClaimable: false,
   audience: 0,
   lastSpectacle: null,
@@ -140,6 +146,13 @@ export async function fetchProgression(): Promise<ProgressionSummary> {
       claimableQuests: claimable.count ?? 0,
       // Tout ce qui se réclame au profil — quêtes comprises, elles y ont leur onglet.
       claimableRewards: levelsToClaim + (cardChoices.count ?? 0) + loginToClaim + (claimable.count ?? 0) + (achievements.error ? 0 : (achievements.count ?? 0)),
+      claimableBreakdown: {
+        levels: levelsToClaim,
+        cardChoices: cardChoices.count ?? 0,
+        login: loginToClaim,
+        quests: claimable.count ?? 0,
+        achievements: achievements.error ? 0 : (achievements.count ?? 0),
+      },
       loginClaimable: loginToClaim === 1,
       audience: audience.error ? 0 : (audience.data?.audience ?? 0),
       lastSpectacle: audience.error ? null : (audience.data?.last_spectacle ?? null),
