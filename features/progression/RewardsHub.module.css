@@ -136,11 +136,16 @@
 
 /* ── Route des paliers ─────────────────────────────────────────────── */
 
+/*
+ * Grille de la scène (25/09/2026) : deux colonnes en haut calées sur les
+ * panneaux du bas — la route de 1,2 % (bord gauche des Quêtes) à 73,8 %,
+ * la colonne Série / Coffre de 75 % à 98,8 % (exactement les Objectifs).
+ */
 .route {
   position: absolute;
-  left: 7.5%;
+  left: 1.2%;
   top: 4.5%;
-  width: 66%;
+  width: 72.6%;
   height: 44%;
 }
 
@@ -291,6 +296,9 @@
 
 .palierIcon {
   display: grid;
+  /* Pistes FIXÉES : en piste `auto`, le médaillon prenait la hauteur de son
+     visuel — un sachet de booster (plus haut que large) débordait, rogné. */
+  grid-template: 100% / 100%;
   place-items: center;
   width: 4.6cqw;
   height: 4.6cqw;
@@ -342,12 +350,14 @@
 /* Le fil de la route : il s'allume jusqu'au niveau atteint. */
 .routeTrack {
   position: absolute;
-  left: 2.7cqw;
-  right: 2.7cqw;
+  /* Même largeur que la rangée de tuiles : flèche (1.8cqw) + écart (0.5cqw) de chaque côté. */
+  left: 2.3cqw;
+  right: 2.3cqw;
   bottom: 3%;
   height: 0.3cqw;
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
+  column-gap: 1.1cqw;
   align-items: center;
   justify-items: center;
   background: rgba(0, 0, 0, 0.55);
@@ -376,9 +386,9 @@
 
 .streak {
   position: absolute;
-  left: 74.4%;
+  left: 75%;
   top: 4.2%;
-  width: 24%;
+  width: 23.8%;
   aspect-ratio: 1100 / 335;
   background: url("/assets/rewards/streak-panel.webp") center / 100% 100% no-repeat;
   filter: drop-shadow(0 0.6cqw 1cqw rgba(0, 0, 0, 0.6));
@@ -515,9 +525,9 @@
 
 .chest {
   position: absolute;
-  left: 74.4%;
-  top: 23.5%;
-  width: 24%;
+  left: 75%;
+  top: 25.5%;
+  width: 23.8%;
   /* `chest-panel.webp` (1400 × 466) : le panneau sans coffre, le quai à droite. */
   aspect-ratio: 1400 / 466;
   padding: 0.95cqw 0 0.8cqw 1.25cqw;
@@ -533,8 +543,8 @@
   z-index: 2;
   display: flex;
   flex-direction: column;
-  gap: 0.45cqw;
-  width: 56%;
+  gap: 0.35cqw;
+  width: 62%;
   height: 100%;
 }
 
@@ -545,10 +555,10 @@
 .chestArt {
   position: absolute;
   /* Posé sur le quai, il dépasse du cadre par le haut. */
-  right: 4%;
+  right: 2%;
   bottom: 10%;
   z-index: 1;
-  width: 38%;
+  width: 33%;
   aspect-ratio: 820 / 749;
   padding: 0;
   border: 0;
@@ -694,13 +704,14 @@
 
 .chestCount {
   display: flex;
-  flex-direction: column;
+  align-items: baseline;
+  gap: 0.45cqw;
   margin: 0;
-  line-height: 1.05;
+  line-height: 1;
 }
 .chestCount strong {
   font-family: var(--tb-font-display);
-  font-size: 1.9cqw;
+  font-size: 1.6cqw;
   color: #f4ead4;
 }
 .chestCount span {

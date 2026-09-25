@@ -236,7 +236,12 @@ function RouteOfLevels({ profile, claiming, onClaimLevel }: Pick<RewardsHubProps
 
       {/* Le fil de la route : il s'allume jusqu'au niveau atteint. */}
       <div className={styles.routeTrack} aria-hidden>
-        <span className={styles.routeTrackFill} style={{ width: `${Math.max(0, Math.min(1, (view.level - start + view.ratio) / ROUTE_WINDOW)) * 100}%` }} />
+        {/* Le fil passe par le CENTRE de chaque tuile : il atteint le losange
+            du niveau atteint, puis avance vers le suivant au rythme de l'XP. */}
+        <span
+          className={styles.routeTrackFill}
+          style={{ width: `${Math.max(0, Math.min(1, (view.level - start + 0.5 + (view.level >= MAX_REWARDED_LEVEL ? 0 : view.ratio)) / ROUTE_WINDOW)) * 100}%` }}
+        />
         {levels.map((level) => (
           <span key={level} className={styles.routeDot} data-reached={level <= view.level ? "" : undefined} />
         ))}
@@ -334,7 +339,7 @@ function ChestPanel({ chest, busy, onOpen }: { chest: NonNullable<ProfileSummary
           <strong>
             {played}/{chest.goal}
           </strong>
-          <span>Parties jouées</span>
+          <span>parties jouées</span>
         </p>
         <span className={styles.bar}>
           <span className={styles.barFill} style={{ width: `${(played / chest.goal) * 100}%` }} />
