@@ -824,8 +824,8 @@ const CAVALERIE_LOT: CardDefinition[] = [
       "vous contrôlez gagne Garde jusqu'à la fin du tour.",
     // Même grammaire que les Objets réactifs du Lot 14 (Corde de Rappel) :
     // l'effet de Bris, et la réponse à l'attaque qui Brise l'Objet. Une unité
-    // qui prend Garde pendant la fenêtre rend l'attaque directe illégale à
-    // la reprise : l'attaquant devra viser la Garde.
+    // qui prend Garde pendant la fenêtre INTERCEPTE l'attaque directe : à la
+    // reprise, le coup se porte sur elle (`gardeQuiIntercepte`, engine.ts).
     onBreakEffects: [
       {
         type: "buff",

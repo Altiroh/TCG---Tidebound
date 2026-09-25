@@ -374,3 +374,74 @@
     animation: none;
   }
 }
+
+/* ── Cimetière : tuiles + carte entière au survol ───────────── */
+.graveyardLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(180px, 24vw, 280px);
+  gap: 20px;
+  align-items: start;
+}
+
+.graveyardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 14px 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.graveyardCell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  outline: none;
+}
+
+.graveyardTile {
+  width: 100%;
+  border-radius: 10px;
+  opacity: 0.82;
+  transition: transform 140ms ease, opacity 140ms ease, box-shadow 140ms ease;
+}
+
+.graveyardCell[data-focus] .graveyardTile,
+.graveyardCell:focus-visible .graveyardTile {
+  opacity: 1;
+  transform: translateY(-3px);
+  box-shadow: 0 0 0 2px rgba(229, 192, 122, 0.85), 0 8px 18px rgba(0, 0, 0, 0.5);
+}
+
+.graveyardPreview {
+  position: sticky;
+  top: 0;
+  animation: sheetFade 140ms ease-out both;
+}
+
+/* Écran étroit : la carte entière passe au-dessus des tuiles. */
+@media (max-width: 720px) {
+  .graveyardLayout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .graveyardPreview {
+    order: -1;
+    width: min(200px, 60%);
+    justify-self: center;
+    position: static;
+  }
+}
+
+/* Paysage bas (mobile) : la carte entière tient dans la hauteur visible. */
+@media (max-height: 520px) and (min-width: 721px), (max-height: 520px) and (orientation: landscape) {
+  .graveyardLayout {
+    grid-template-columns: minmax(0, 1fr) min(150px, 30vw);
+  }
+  .graveyardPreview {
+    order: 0;
+    width: auto;
+    position: sticky;
+  }
+}

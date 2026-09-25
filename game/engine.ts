@@ -16,6 +16,7 @@ import type { ActionResult, PlayerAction } from "@/game/actions/types";
 import { openReactionWindowIfEligible, ouvrirFenetrePour } from "@/game/reactions/reactionWindow";
 import { resolveOceanJudgment } from "@/game/rules/oceanJudgment";
 import { refreshTurnTimer } from "@/game/rules/turnTimer";
+import { assertValidDefender, hasEffectiveKeyword } from "@/game/rules/validation";
 import { processDeaths } from "@/game/state/processDeaths";
 import { processChromaticSignals } from "@/game/rules/chromaticSignals";
 import {
@@ -101,11 +102,13 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
             // La CIBLE déclarée aussi : sans elle, une attaque contre une
             // unité reprenait en attaque directe contre le Navire (corrigé
             // le 24/09/2026 — Corde de Rappel passée = coque frappée).
-            defenderInstanceId: suspendue.defenderInstanceId,
+            defenderInstanceId: suspendue.defenderInstanceId ?? gardeQuiIntercepte(result.state, suspendue),
           }
     );
-    // Une attaque devenue illégale entre-temps (l'attaquant a été détruit
-    // par le piège lui-même) ne casse rien : on abandonne la reprise et on
+    // Une Garde levée pendant la fenêtre (Pas un Pas de Plus) INTERCEPTE
+    // l'attaque directe : elle prend le coup à la place du Navire
+    // (`gardeQuiIntercepte`). Une attaque devenue illégale entre-temps
+    // (l'attaquant a été détruit par le piège lui-même) ne casse rien : on abandonne la reprise et on
     // garde l'état tel que la fenêtre l'a laissé.
     result = repris.ok
       ? { ok: true, state: { ...repris.state, pendingAttack: undefined }, events: [...result.events, ...repris.events] }
@@ -346,4 +349,24 @@ function checkWinCondition(state: GameState): GameState {
       },
     ],
   };
+}
+
+/**
+ * Une attaque DIRECTE suspendue que la fenêtre a rendue illégale en levant
+ * une Garde (« une unité que vous contrôlez gagne Garde », Pas un Pas de
+ * Plus) : c'est cette Garde qui intercepte, le coup se porte sur elle au
+ * lieu d'être rendu à l'attaquant. Une seule Garde : rien à décider. Plusieurs
+ * Gardes : le choix revient à l'attaquant, qui redéclare — `undefined`, la
+ * reprise échoue et l'attaque est rendue comme avant.
+ */
+function gardeQuiIntercepte(state: GameState, attaque: NonNullable<GameState["pendingAttack"]>): string | undefined {
+  if (attaque.kind === "tirDeNavire" || !attaque.attackerInstanceId) return undefined;
+  if (assertValidDefender(state, attaque.playerId, attaque.attackerInstanceId).ok) return undefined;
+  const defenseur = state.players.find((p) => p.id !== attaque.playerId);
+  if (!defenseur) return undefined;
+  const gardes = defenseur.board.filter((u) => hasEffectiveKeyword(state, defenseur, u, "garde"));
+  if (gardes.length !== 1) return undefined;
+  return assertValidDefender(state, attaque.playerId, attaque.attackerInstanceId, gardes[0]!.instanceId).ok
+    ? gardes[0]!.instanceId
+    : undefined;
 }

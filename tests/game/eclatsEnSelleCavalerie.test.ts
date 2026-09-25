@@ -155,7 +155,7 @@ describe("combat et Garde", () => {
     expect(hasEffectiveKeyword(s2, joueur(s2, "p1"), blesse, "garde")).toBe(true);
   });
 
-  it("Pas un Pas de Plus : une attaque directe déclarée, une Garde qui se lève — l'attaque ne passe pas", () => {
+  it("Pas un Pas de Plus : une attaque directe déclarée, une Garde qui se lève — elle intercepte le coup", () => {
     const attaquant = instance("destrier-du-ressac", "p1");
     const piege = instance("pas-un-pas-de-plus", "p2");
     const defenseur = instance("matelot-fele", "p2");
@@ -166,9 +166,12 @@ describe("combat et Garde", () => {
     const garde = activateReactionFor(r.state, "pas-un-pas-de-plus", defenseur.instanceId);
     ok(garde);
     expect(joueur(garde.state, "p2").anchor).toBe(joueur(state, "p2").anchor);
-    expect(hasEffectiveKeyword(garde.state, joueur(garde.state, "p2"), unite(garde.state, defenseur.instanceId)!, "garde")).toBe(true);
-    // L'attaquant n'a rien dépensé : il peut encore viser la Garde.
-    expect(unite(garde.state, attaquant.instanceId)!.hasAttackedThisTurn).toBe(false);
+    // La Garde prend le coup à la place du Navire (ici elle y reste) :
+    // l'attaque est dépensée, le combat a eu lieu contre elle.
+    expect(garde.events.some((e) => e.type === "BUFF_APPLIED")).toBe(true);
+    expect(unite(garde.state, attaquant.instanceId)?.hasAttackedThisTurn ?? true).toBe(true);
+    const combat = garde.events.find((e) => e.type === "ATTACK" && "defenderInstanceId" in e && e.defenderInstanceId === defenseur.instanceId);
+    expect(combat).toBeDefined();
   });
 });
 
