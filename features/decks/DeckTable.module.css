@@ -39,7 +39,6 @@
 }
 
 /* ── Décor ─────────────────────────────────────────────────────────── */
-.inkwell,
 .quill,
 .candle,
 .bottle {
@@ -49,10 +48,59 @@
 }
 
 .inkwell {
+  position: absolute;
   left: -1.5%;
   top: -3%;
+  z-index: 4;
   width: 8.5%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
   transform: rotate(-8deg);
+  filter: drop-shadow(0 0.8cqw 1cqw rgba(0, 0, 0, 0.55));
+  transition: filter 150ms ease;
+}
+
+.inkwell img {
+  display: block;
+  width: 100%;
+}
+
+.inkwell:hover,
+.inkwell:focus-visible {
+  filter: drop-shadow(0 0 0.8cqw rgba(95, 208, 230, 0.55)) drop-shadow(0 0.8cqw 1cqw rgba(0, 0, 0, 0.55));
+  outline: none;
+}
+
+.inkwell[data-shaking] {
+  animation: inkShake 420ms ease-in-out;
+}
+
+@keyframes inkShake {
+  0%, 100% { transform: rotate(-8deg); }
+  20% { transform: rotate(-14deg) translateX(-2%); }
+  40% { transform: rotate(-3deg) translateX(2%); }
+  60% { transform: rotate(-12deg); }
+  80% { transform: rotate(-6deg); }
+}
+
+/* Tache d'encre renversée : elle éclabousse, puis sèche sur la page. */
+.blot {
+  position: absolute;
+  z-index: 0;
+  aspect-ratio: 1;
+  background: center / contain no-repeat;
+  opacity: 0.82;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  transform: translate(-50%, -50%) rotate(var(--turn));
+  animation: blotIn 420ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+@keyframes blotIn {
+  from { opacity: 0; transform: translate(-50%, -50%) rotate(var(--turn)) scale(0.2); }
+  to { opacity: 0.82; transform: translate(-50%, -50%) rotate(var(--turn)) scale(1); }
 }
 
 .quill {
@@ -68,17 +116,44 @@
   width: 6.5%;
 }
 
+/* La flamme : un halo serré qui vacille vite… */
 .candleGlow {
   position: absolute;
-  right: 25%;
-  top: -14%;
-  width: 16%;
+  right: 26.2%;
+  top: -12%;
+  width: 9%;
   aspect-ratio: 1;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 196, 110, 0.35), rgba(255, 150, 60, 0.12) 40%, transparent 68%);
+  background: radial-gradient(circle, rgba(255, 225, 150, 0.85), rgba(255, 170, 70, 0.35) 35%, transparent 70%);
   mix-blend-mode: screen;
   pointer-events: none;
-  animation: flicker 3.4s ease-in-out infinite;
+  animation: flicker 1.7s steps(1, end) infinite, flickerSoft 2.3s ease-in-out infinite;
+}
+
+/* …et sa lumière chaude portée sur le livre, qui oscille plus lentement. */
+.candleCast {
+  position: absolute;
+  right: 12%;
+  top: -30%;
+  width: 36%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 190, 110, 0.28), rgba(255, 150, 70, 0.1) 45%, transparent 70%);
+  mix-blend-mode: screen;
+  pointer-events: none;
+  animation: castSway 4.2s ease-in-out infinite;
+}
+
+@keyframes flickerSoft {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.12) translateY(-3%); }
+}
+
+@keyframes castSway {
+  0%, 100% { opacity: 0.8; transform: translateX(0) scale(1); }
+  25% { opacity: 1; transform: translateX(-1.5%) scale(1.04); }
+  55% { opacity: 0.65; transform: translateX(1%) scale(0.97); }
+  80% { opacity: 0.95; transform: translateX(-0.5%) scale(1.02); }
 }
 
 .bottle {
@@ -89,10 +164,14 @@
 }
 
 @keyframes flicker {
-  0%,
-  100% { opacity: 0.8; transform: scale(1); }
-  30% { opacity: 1; transform: scale(1.05); }
-  60% { opacity: 0.7; transform: scale(0.97); }
+  0% { opacity: 0.85; }
+  12% { opacity: 1; }
+  24% { opacity: 0.7; }
+  38% { opacity: 0.95; }
+  52% { opacity: 0.8; }
+  66% { opacity: 1; }
+  80% { opacity: 0.75; }
+  100% { opacity: 0.9; }
 }
 
 /* ── Onglets : une bande de parchemin, légèrement de biais ─────────── */
@@ -243,13 +322,13 @@
 /* ── Les piles de decks ───────────────────────────────────────────── */
 .stacks {
   position: absolute;
-  left: 4.4%;
-  top: 31%;
-  width: 65.6%;
-  height: 44%;
+  left: 3.6%;
+  top: 28.5%;
+  width: 67.6%;
+  height: 50%;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 0.9%;
+  gap: 0.4%;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -376,26 +455,6 @@
   text-transform: uppercase;
 }
 
-/* Le sceau du Navire, sous le bandeau. */
-.seal {
-  position: absolute;
-  left: 50%;
-  top: 97%;
-  z-index: 3;
-  width: 20%;
-  aspect-ratio: 1;
-  border: 0.22cqw solid #b88a3e;
-  border-radius: 50%;
-  background: #2a1b10 center / cover no-repeat;
-  box-shadow: 0 0 0 0.12cqw #2a1b10, 0 0.3cqw 0.5cqw rgba(0, 0, 0, 0.6);
-  transform: translate(-50%, -50%);
-}
-
-.seal[data-selected] {
-  border-color: #b3261e;
-  box-shadow: 0 0 0 0.12cqw #5c0f0b, 0 0 0.8cqw rgba(179, 38, 30, 0.7), 0 0.3cqw 0.5cqw rgba(0, 0, 0, 0.6);
-}
-
 /* Tache d'encre qui éclot sous le deck choisi (encre-1 → 2 → 3). */
 .splash {
   position: absolute;
@@ -438,11 +497,11 @@
 }
 
 .bigArrowLeft {
-  left: 0.8%;
+  left: 0.4%;
 }
 
 .bigArrowRight {
-  left: 70.6%;
+  left: 71.3%;
   transform: scaleX(-1);
 }
 
@@ -461,8 +520,8 @@
 
 .pager {
   position: absolute;
-  left: 24%;
-  top: 80%;
+  left: 25%;
+  top: 83%;
   width: 24%;
   height: 6%;
   display: flex;
@@ -836,7 +895,10 @@
 
 @media (prefers-reduced-motion: reduce) {
   .splash,
-  .candleGlow {
+  .candleGlow,
+  .candleCast,
+  .blot,
+  .inkwell[data-shaking] {
     animation: none;
   }
 }

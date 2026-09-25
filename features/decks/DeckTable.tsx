@@ -2,11 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { RULES, getShipDefinition, ownershipLabel } from "@/game";
+import { RULES, ownershipLabel } from "@/game";
 import { cardIllustrationThumbUrl } from "@/features/decks/nameplateArt";
 import { cardName, sortedCards, type BrowserDeck } from "@/features/decks/deckEntries";
 import { DECK_SORTS, type DeckSortId } from "@/features/decks/deckFilters";
-import { shipIllustrationUrl } from "@/features/ships/shipFrame";
 import { shipNameOf } from "@/features/ships/ShipPortrait";
 import { PreconToken } from "@/features/shell/GameIcons";
 import styles from "@/features/decks/DeckTable.module.css";
@@ -29,6 +28,14 @@ const PER_PAGE = 5;
 /** Inclinaisons et décalages des piles, comme posées à la main sur la carte (ordre de la rangée). */
 const TILTS = [-4.5, 1.5, 3.5, -2.8, 4];
 const LIFTS = [2.2, -1.2, 1.4, 2.8, 0.4];
+/** Coins libres du livre où l'encre peut tomber (en % de la scène). */
+const INK_ZONES = [
+  { x: 8, y: 82, w: 12, h: 8 },
+  { x: 52, y: 82, w: 9, h: 9 },
+  { x: 30, y: 6, w: 12, h: 5 },
+  { x: 48, y: 24, w: 4, h: 3 },
+];
+
 /** Lignes de la liste de cartes dans la fiche. */
 const FICHE_CARDS = 6;
 
@@ -70,14 +77,6 @@ function stars(difficulty: number): string {
   return "★".repeat(filled) + "☆".repeat(5 - filled);
 }
 
-function shipArt(shipId: string): string | null {
-  try {
-    const illustration = getShipDefinition(shipId).illustration;
-    return illustration ? shipIllustrationUrl(illustration) : null;
-  } catch {
-    return null;
-  }
-}
 
 /**
  * LA TABLE DES DECKS — nouvelle liste des decks (maquette du 25/09/2026).
@@ -113,6 +112,28 @@ export function DeckTable(props: DeckTableProps) {
   const [splash, setSplash] = useState(0);
   useEffect(() => setSplash((value) => value + 1), [current?.id]);
 
+  // Encrier : jusqu'à trois taches à la fois, la plus ancienne s'efface.
+  const [blots, setBlots] = useState<Array<{ id: number; x: number; y: number; size: number; variant: number; turn: number }>>([]);
+  const [shaking, setShaking] = useState(false);
+  function spill() {
+    setShaking(true);
+    setTimeout(() => setShaking(false), 420);
+    setBlots((current) => {
+      const id = (current.at(-1)?.id ?? 0) + 1;
+      // Dans un coin LIBRE du livre (ni sous les piles, ni sous la fiche), un autre à chaque fois.
+      const zone = INK_ZONES[id % INK_ZONES.length]!;
+      const blot = {
+        id,
+        x: zone.x + Math.random() * zone.w,
+        y: zone.y + Math.random() * zone.h,
+        size: 7 + Math.random() * 6,
+        variant: 1 + Math.floor(Math.random() * 3),
+        turn: Math.round(Math.random() * 360),
+      };
+      return [...current, blot].slice(-3);
+    });
+  }
+
   function step(delta: number) {
     const decksOnly = decks;
     if (decksOnly.length === 0) return;
@@ -127,12 +148,33 @@ export function DeckTable(props: DeckTableProps) {
       <div className={styles.stage}>
         {/* ── Décor posé sur la table ── */}
         {/* eslint-disable @next/next/no-img-element -- décor peint, positionné à la main */}
-        <img className={styles.inkwell} src={`${ASSETS}/encrier.webp`} alt="" draggable={false} />
         <img className={styles.quill} src={`${ASSETS}/plume.webp`} alt="" draggable={false} />
         <img className={styles.candle} src={`${ASSETS}/bougie.webp`} alt="" draggable={false} />
         <img className={styles.bottle} src={`${ASSETS}/bouteille.webp`} alt="" draggable={false} />
         {/* eslint-enable @next/next/no-img-element */}
         <span className={styles.candleGlow} aria-hidden />
+        <span className={styles.candleCast} aria-hidden />
+
+        {/* Les taches d'encre renversées (trois au plus). */}
+        {blots.map((blot) => (
+          <span
+            key={blot.id}
+            className={styles.blot}
+            style={{
+              left: `${blot.x}%`,
+              top: `${blot.y}%`,
+              width: `${blot.size}%`,
+              backgroundImage: `url("${ASSETS}/encre-${blot.variant}.webp")`,
+              ["--turn" as string]: `${blot.turn}deg`,
+            }}
+            aria-hidden
+          />
+        ))}
+        {/* L'encrier : un toucher le fait trembler, et l'encre éclabousse le livre. */}
+        <button type="button" className={styles.inkwell} data-shaking={shaking || undefined} onClick={spill} aria-label="Renverser un peu d'encre">
+          {/* eslint-disable-next-line @next/next/no-img-element -- décor peint */}
+          <img src={`${ASSETS}/encrier.webp`} alt="" draggable={false} />
+        </button>
 
         {/* ── Onglets ── */}
         <nav className={styles.tabs} role="tablist" aria-label="Rayons">
@@ -211,7 +253,6 @@ export function DeckTable(props: DeckTableProps) {
               );
             }
             const selected = deck.id === current?.id;
-            const art = shipArt(deck.shipId);
             return (
               <li key={deck.id} className={styles.slot} style={{ ["--tilt" as string]: `${tilt}deg`, ["--lift" as string]: `${lift}%` }}>
                 {selected && <span key={splash} className={styles.splash} aria-hidden />}
@@ -236,7 +277,6 @@ export function DeckTable(props: DeckTableProps) {
                     <span className={styles.bannerName}>{deck.name}</span>
                     <span className={styles.bannerShip}>{shipNameOf(deck.shipId)}</span>
                   </span>
-                  <span className={styles.seal} data-selected={selected || undefined} style={art ? { backgroundImage: `url("${art}")` } : undefined} aria-hidden />
                 </button>
               </li>
             );
