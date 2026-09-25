@@ -197,6 +197,9 @@ export async function claimLoginReward(userId: string, now: Date = new Date()): 
       return { ok: false, error: "Réclamation impossible pour le moment." };
     }
     if (!data?.ok) return { ok: false, error: data?.error ?? "Réclamation impossible." };
+    // L'ancienne fonction (avant `20261008120000`) ne renvoie pas de série :
+    // l'escale avance, la série reste à 0 sans que personne ne le voie.
+    if (data.streak === undefined) console.error("[claimLoginReward] claim_login_reward ne compte pas la série : migration 20261011120000 à appliquer.");
 
     return {
       ok: true,
