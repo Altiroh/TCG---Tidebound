@@ -75,6 +75,162 @@
   scrollbar-width: thin;
 }
 
+/* ── Panneau latéral : la moitié droite de l'écran, sans cadre doré ── */
+.backdrop[data-side] {
+  place-items: stretch end;
+  padding: 0;
+  background: linear-gradient(90deg, rgba(2, 6, 11, 0.25), rgba(2, 6, 11, 0.75));
+}
+
+.sidePanel {
+  display: flex;
+  flex-direction: column;
+  width: min(50vw, 100%);
+  min-width: min(560px, 100vw);
+  height: 100dvh;
+  padding-top: var(--tb-safe-top, 0px);
+  padding-right: var(--tb-safe-right, 0px);
+  overflow: hidden;
+  background:
+    radial-gradient(90% 50% at 70% 0%, rgba(20, 52, 70, 0.6), transparent 70%),
+    linear-gradient(180deg, #0b1c28 0%, #06111a 100%);
+  box-shadow: -30px 0 60px rgba(0, 0, 0, 0.55);
+  color: #e3eef3;
+  animation: slideIn 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.sidePanel .head {
+  border-bottom: 0;
+}
+
+@keyframes slideIn {
+  from { transform: translateX(40%); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+/* ── Le public ── */
+.audience {
+  position: relative;
+  display: grid;
+  place-items: end center;
+  height: clamp(170px, 28dvh, 260px);
+  flex: none;
+  margin: 0 22px 14px;
+  overflow: hidden;
+  border-radius: 14px;
+  background:
+    radial-gradient(60% 90% at 50% 100%, rgba(255, 190, 110, 0.28), transparent 70%),
+    linear-gradient(180deg, #102636 0%, #0a1822 100%);
+}
+
+/* La foule : des silhouettes en contre-jour ; les présents se lèvent et
+   leurs lanternes s'allument. */
+.crowd {
+  position: absolute;
+  inset: auto 0 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  height: 52%;
+  padding: 0 2%;
+}
+
+.person {
+  position: relative;
+  flex: none;
+  border-radius: 45% 45% 10% 10% / 30% 30% 8% 8%;
+  background: #050c12;
+  opacity: 0.35;
+  transform: translateY(35%);
+  transition: transform 600ms ease, opacity 600ms ease;
+}
+
+/* La tête. */
+.person::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -22%;
+  width: 70%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: inherit;
+  transform: translateX(-50%);
+}
+
+.person[data-present] {
+  opacity: 1;
+  transform: none;
+  animation: sway 3.2s ease-in-out infinite;
+}
+
+/* Une lanterne sur une tête sur trois. */
+.person[data-present]:nth-child(3n)::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -48%;
+  width: 60%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffd88a, rgba(255, 170, 70, 0.4) 45%, transparent 70%);
+  transform: translateX(-50%);
+  animation: lantern 2.4s ease-in-out infinite;
+}
+
+@keyframes sway {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  50% { transform: translateY(-4%) rotate(1.5deg); }
+}
+
+@keyframes lantern {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+.audienceText {
+  position: relative;
+  z-index: 1;
+  padding: 4px 26px 8px;
+  border-radius: 999px;
+  background: radial-gradient(closest-side, rgba(6, 17, 26, 0.85), transparent);
+  display: grid;
+  justify-items: center;
+  align-self: start;
+  margin-top: 14px;
+  text-align: center;
+}
+
+.audienceEyebrow {
+  color: rgba(214, 228, 238, 0.7);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.audienceCount {
+  color: #f3c86b;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: clamp(38px, 5vw, 60px);
+  line-height: 1;
+  text-shadow: 0 0 24px rgba(255, 190, 90, 0.55), 0 3px 0 rgba(0, 0, 0, 0.5);
+}
+
+.audienceUnit {
+  color: #f4ead4;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: 14px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.audienceMeta {
+  margin-top: 2px;
+  color: rgba(214, 228, 238, 0.6);
+  font-size: 11.5px;
+}
+
 /* ── Mécènes ── */
 .sponsorsLayout {
   display: grid;
@@ -187,20 +343,21 @@
   align-items: start;
 }
 
+/* Pas de cadre : le portrait (sur fond sombre) se fond dans le panneau,
+   sa couleur en halo derrière lui. */
 .portrait {
   position: relative;
   aspect-ratio: 650 / 900;
-  overflow: hidden;
-  border: 2px solid var(--sponsor);
-  border-radius: 12px;
-  background: #07121c;
-  box-shadow: 0 0 24px color-mix(in srgb, var(--sponsor) 30%, transparent), 0 14px 30px rgba(0, 0, 0, 0.5);
+  background: radial-gradient(60% 55% at 50% 45%, color-mix(in srgb, var(--sponsor) 32%, transparent), transparent 72%);
 }
 
 .portrait img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  mix-blend-mode: lighten;
+  -webkit-mask: radial-gradient(75% 70% at 50% 45%, #000 55%, transparent 100%);
+  mask: radial-gradient(75% 70% at 50% 45%, #000 55%, transparent 100%);
 }
 
 /* Inconnu : une silhouette dans sa couleur, rien de plus. */
@@ -484,7 +641,7 @@
     overflow-x: auto;
   }
   .portrait {
-    max-width: 200px;
+    max-width: 220px;
   }
 }
 
@@ -502,5 +659,27 @@
   }
   .body {
     padding: 12px 16px 16px;
+  }
+}
+
+/* Dans le panneau latéral : les mécènes en rangée, le détail dessous. */
+.sidePanel .sponsorsLayout {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+}
+
+.sidePanel .sponsorList {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.sidePanel .detail {
+  grid-template-columns: minmax(150px, 38%) minmax(0, 1fr);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .person[data-present],
+  .person::after,
+  .sidePanel {
+    animation: none;
   }
 }

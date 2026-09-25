@@ -10,7 +10,20 @@ import styles from "@/features/progression/HubSheets.module.css";
 import { playButtonClick } from "@/lib/sound";
 
 /** Fenêtre plein écran des extensions du hub : fermée par Échap, le fond ou la croix. */
-function Sheet({ title, subtitle, onClose, children }: { title: string; subtitle?: ReactNode; onClose: () => void; children: ReactNode }) {
+function Sheet({
+  title,
+  subtitle,
+  onClose,
+  children,
+  side = false,
+}: {
+  title: string;
+  subtitle?: ReactNode;
+  onClose: () => void;
+  children: ReactNode;
+  /** Panneau latéral (la moitié droite de l'écran) plutôt qu'une fenêtre centrée. */
+  side?: boolean;
+}) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   useEffect(() => {
@@ -20,8 +33,8 @@ function Sheet({ title, subtitle, onClose, children }: { title: string; subtitle
   }, [onClose]);
   if (!mounted) return null;
   return createPortal(
-    <div className={styles.backdrop} onClick={onClose} role="presentation">
-      <div className={styles.sheet} role="dialog" aria-modal aria-label={title} onClick={(event) => event.stopPropagation()}>
+    <div className={styles.backdrop} data-side={side || undefined} onClick={onClose} role="presentation">
+      <div className={side ? styles.sidePanel : styles.sheet} role="dialog" aria-modal aria-label={title} onClick={(event) => event.stopPropagation()}>
         <header className={styles.head}>
           <div>
             <h2 className={styles.title}>{title}</h2>
@@ -35,6 +48,51 @@ function Sheet({ title, subtitle, onClose, children }: { title: string; subtitle
       </div>
     </div>,
     document.body
+  );
+}
+
+/* ── Le public, en grand ───────────────────────────────────────────── */
+
+/** Silhouettes de la foule, de gauche à droite : hauteur (%), largeur (%), décalage (%). */
+const CROWD = Array.from({ length: 34 }, (_, index) => ({
+  height: 44 + ((index * 37) % 34),
+  width: 3.6 + ((index * 13) % 3),
+  lift: (index * 17) % 9,
+}));
+
+/**
+ * LES SPECTATEURS, mis en scène : une foule de silhouettes qui se lève à
+ * mesure que l'audience grandit (plus de monde debout, plus de lanternes
+ * allumées), et le nombre en grand. Le meilleur score et l'humeur de la
+ * dernière partie en dessous.
+ */
+function AudienceStage({ audience }: { audience: AudienceView }) {
+  // 0 → personne ; 1 500 et plus → la salle est pleine.
+  const filled = Math.min(1, audience.audience / 1500);
+  const standing = Math.round(CROWD.length * (0.15 + 0.85 * filled));
+  return (
+    <section className={styles.audience} aria-label={`${audience.audience.toLocaleString("fr-FR")} spectateurs`}>
+      <div className={styles.crowd} aria-hidden>
+        {CROWD.map((person, index) => {
+          // Les présents se répartissent sur toute la largeur, pas tassés à gauche.
+          const present = (index * standing) % CROWD.length < standing;
+          return (
+            <span
+              key={index}
+              className={styles.person}
+              data-present={present || undefined}
+              style={{ height: `${person.height}%`, width: `${person.width}%`, marginBottom: `${person.lift}%`, animationDelay: `${(index % 7) * 0.35}s` }}
+            />
+          );
+        })}
+      </div>
+      <div className={styles.audienceText}>
+        <span className={styles.audienceEyebrow}>Le public vous regarde</span>
+        <strong className={styles.audienceCount}>{audience.audience.toLocaleString("fr-FR")}</strong>
+        <span className={styles.audienceUnit}>spectateurs</span>
+        <span className={styles.audienceMeta}>Record : {audience.best.toLocaleString("fr-FR")}</span>
+      </div>
+    </section>
   );
 }
 
@@ -68,14 +126,11 @@ export function SponsorsSheet({
   return (
     <Sheet
       title="Mécènes"
-      subtitle={
-        <>
-          Le public vous regarde — <strong>{audience.audience.toLocaleString("fr-FR")}</strong> spectateurs. Certains, derrière lui, vous observent
-          {unlocked ? "." : ` : ils remarquent les marins à partir du niveau ${SPONSORS_UNLOCK_LEVEL}.`}
-        </>
-      }
+      side
+      subtitle={unlocked ? "Derrière le public, certains vous observent." : `Ils remarquent les marins à partir du niveau ${SPONSORS_UNLOCK_LEVEL}.`}
       onClose={onClose}
     >
+      <AudienceStage audience={audience} />
       <div className={styles.sponsorsLayout}>
         <ul className={styles.sponsorList}>
           {sponsors.map((entry) => (
