@@ -18,6 +18,9 @@ import { predictView } from "@/features/online/predictView";
  */
 const BOT_FRAME_DELAY_MS = 1100;
 
+/** Intervalle des relances tant qu'une échéance passée n'a pas encore été constatée par le serveur. */
+const DEADLINE_RETRY_MS = 5_000;
+
 interface OnlineMatchProps {
   matchId: string;
   initialMatch: MatchRow;
@@ -36,6 +39,7 @@ interface OnlineMatchProps {
  * suite des vues (le coup du joueur, puis chaque action du bot), rejouées
  * une par une.
  */
+
 export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: OnlineMatchProps) {
   const [match, setMatch] = useState<MatchRow>(initialMatch);
   const [view, setView] = useState<GameState | null>(initialView);
@@ -87,33 +91,38 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
   }
 
   /**
-   * RELANCE À L'ÉCHÉANCE — pour que la table ne reste pas figée quand
-   * l'adversaire ne revient pas.
+   * RELANCE À L'ÉCHÉANCE — pour que la table ne reste pas figée quand le
+   * joueur attendu ne joue plus.
    *
    * Le serveur ne tourne pas en tâche de fond : il constate l'heure quand
-   * quelqu'un le sollicite. C'est donc au joueur PRÉSENT de le solliciter,
-   * une fois l'échéance de l'autre passée — `fetchMatchView` applique alors
-   * ce qui doit l'être (`settleExpiredDeadlines`).
+   * quelqu'un le sollicite. C'est donc à l'écran ouvert de le solliciter une
+   * fois l'échéance passée — `fetchMatchView` applique alors ce qui doit
+   * l'être (`settleExpiredDeadlines`).
    *
-   * Jamais pour SA PROPRE échéance : on ne se déclare pas absent soi-même,
-   * et le serveur exempte de toute façon celui qui joue. La pression du
-   * chrono vient de l'autre siège, pas du sien.
+   * Y compris quand l'échéance est la NÔTRE : contre le bot, personne
+   * d'autre ne relancerait, et le chrono annonçait « joue, ou la partie
+   * s'arrête » sans que rien ne s'arrête jamais. L'écran ne décide rien
+   * pour autant — c'est le serveur, l'heure en main, qui constate le délai.
+   *
+   * La relance se RÉPÈTE tant que l'échéance n'a pas bougé : l'horloge du
+   * navigateur n'est pas celle du serveur, et une relance arrivée un peu
+   * trop tôt ne doit pas laisser la partie figée pour de bon.
    */
   const awaiting = view?.turnTimer?.awaitingPlayerId;
   const deadlineAt = view?.turnTimer?.deadlineAt;
   useEffect(() => {
-    if (!deadlineAt || !awaiting || awaiting === myUserId) return;
+    if (!deadlineAt || !awaiting) return;
     if (match.status !== "active") return;
-    // Une seconde de marge : l'horloge du navigateur n'est pas celle du
-    // serveur, et une relance en avance ne ferait rien qu'un aller-retour
-    // pour rien.
-    const delay = Math.max(1000, deadlineAt - Date.now() + 1000);
-    const id = setTimeout(() => {
+    let id: ReturnType<typeof setTimeout>;
+    const relance = () => {
       if (!busy.current) void refresh();
-    }, delay);
+      id = setTimeout(relance, DEADLINE_RETRY_MS);
+    };
+    // Une seconde de marge : une relance en avance ne ferait qu'un aller-retour pour rien.
+    id = setTimeout(relance, Math.max(1000, deadlineAt - Date.now() + 1000));
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `refresh` est stable pour une partie donnée.
-  }, [deadlineAt, awaiting, myUserId, match.status]);
+  }, [deadlineAt, awaiting, match.status]);
 
   useEffect(() => {
     // Contre le bot, le seul joueur humain est l'appelant : chaque coup

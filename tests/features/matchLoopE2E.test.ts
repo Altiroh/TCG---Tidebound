@@ -359,6 +359,24 @@ describe("délai de tour — l'autorité reste au serveur", () => {
     expect(db.one("matches", { id: matchId })!.winner_id).toBe(present);
   });
 
+  it("contre le bot, l'humain qui laisse filer SA propre échéance voit la partie s'arrêter à la lecture suivante", async () => {
+    // C'était le trou : l'écran ne relançait le serveur que pour l'échéance
+    // de l'AUTRE — contre le bot, personne ne relançait, et « joue, ou la
+    // partie s'arrête » restait affiché à 0 s pour toujours.
+    sessionUserId = USER;
+    const started = await startBotMatch(DECK.id, OTHER_DECK.id, "facile");
+    const matchId = started.matchId!;
+    const state = db.one("match_states", { match_id: matchId })!.state;
+    expect(state.turnTimer.awaitingPlayerId).toBe(USER);
+
+    expireDeadline(matchId);
+    await fetchMatchView(matchId);
+
+    const match = db.one("matches", { id: matchId })!;
+    expect(match.status).toBe("finished");
+    expect(match.winner_id).not.toBe(USER);
+  });
+
   it("le joueur qui joue, fût-ce en retard, n'est jamais expiré par son propre coup", async () => {
     sessionUserId = USER;
     const created = await createOnlineMatch(DECK.id);
