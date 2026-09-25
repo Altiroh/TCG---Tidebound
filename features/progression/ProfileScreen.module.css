@@ -6,18 +6,24 @@
 .screen.screen.screen {
   background-image:
     linear-gradient(180deg, rgba(5, 12, 22, 0.55) 0%, rgba(5, 12, 22, 0) 12%),
+    url("/assets/profile/lantern-glow.svg"),
     url("/assets/profile/background.webp");
-  background-size: cover, cover;
-  background-position: center, center bottom;
+  background-size: cover, cover, cover;
+  background-position: center, center bottom, center bottom;
+  /* Les lueurs des lanternes (même cadrage que le décor) éclaircissent sans voiler. */
+  background-blend-mode: normal, screen, normal;
 }
 
 /* Onglet Récompenses : le port (`public/assets/rewards/background.webp`). */
 .screenPort.screenPort.screenPort {
   background-image:
     linear-gradient(180deg, rgba(5, 12, 22, 0.55) 0%, rgba(5, 12, 22, 0) 12%),
+    url("/assets/rewards/lantern-glow.svg"),
     url("/assets/rewards/background.webp");
-  background-size: cover, cover;
-  background-position: center, center bottom;
+  background-size: cover, cover, cover;
+  background-position: center, center bottom, center bottom;
+  /* Les lueurs des lanternes (même cadrage que le décor) éclaircissent sans voiler. */
+  background-blend-mode: normal, screen, normal;
 }
 
 /* Pastille « à réclamer » d'un onglet du bandeau. */

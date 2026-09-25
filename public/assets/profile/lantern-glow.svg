@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1855" height="848" viewBox="0 0 1855 848">
+<!-- Lueurs des lanternes peintes du décor (1855 × 848) : calque de fond posé au-dessus de l'image, mêmes cover / center bottom, fusionné en screen. -->
+<defs>
+<radialGradient id="halo"><stop offset="0" stop-color="#ffd27a" stop-opacity="0.85"/><stop offset="0.25" stop-color="#ffa53d" stop-opacity="0.5"/><stop offset="0.6" stop-color="#e0661a" stop-opacity="0.18"/><stop offset="1" stop-color="#b8420c" stop-opacity="0"/></radialGradient>
+<radialGradient id="coeur"><stop offset="0" stop-color="#fff2c9" stop-opacity="0.9"/><stop offset="1" stop-color="#ffb347" stop-opacity="0"/></radialGradient>
+</defs>
+<style>
+.l{transform-box:fill-box;transform-origin:center;animation:vacille 3.2s ease-in-out infinite}
+.l:nth-of-type(2){animation-duration:2.6s;animation-delay:-1.1s}
+.l:nth-of-type(3){animation-duration:3.8s;animation-delay:-2.3s}
+.c{animation:flamme .9s steps(2,jump-none) infinite alternate}
+@keyframes vacille{0%,100%{opacity:.78;transform:scale(1)}22%{opacity:.95;transform:scale(1.04)}41%{opacity:.7;transform:scale(.97)}63%{opacity:1;transform:scale(1.06)}80%{opacity:.82;transform:scale(1)}}
+@keyframes flamme{from{opacity:.55}to{opacity:.9}}
+@media (prefers-reduced-motion:reduce){.l,.c{animation:none}}
+</style>
+<g class="l"><circle cx="92" cy="430" r="234" fill="url(#halo)"/><circle class="c" cx="92" cy="430" r="30" fill="url(#coeur)"/></g>
+<g class="l"><circle cx="436" cy="368" r="156" fill="url(#halo)"/><circle class="c" cx="436" cy="368" r="20" fill="url(#coeur)"/></g>
+<g class="l"><circle cx="1778" cy="335" r="195" fill="url(#halo)"/><circle class="c" cx="1778" cy="335" r="25" fill="url(#coeur)"/></g>
+</svg>
