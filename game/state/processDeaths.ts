@@ -500,10 +500,14 @@ export function processDeaths(
       events.push(...triggerResult.events);
 
       // Sentinelle Chromatique : sa pierre lui survit, un Éclat de sa couleur
-      // (règle de famille, `game/rules/chromaticShards.ts`).
-      const eclat = leaveChromaticShard(next, unit, owner.id, turnNumber);
-      next = eclat.state;
-      events.push(...eclat.events);
+      // (règle de famille, `game/rules/chromaticShards.ts`) — sauf si son
+      // contrôleur l'a SABORDÉE : un départ voulu, pour faire de la place,
+      // ne doit pas la reprendre aussitôt (décision du 25/09/2026).
+      if (!scuttled) {
+        const eclat = leaveChromaticShard(next, unit, owner.id, turnNumber);
+        next = eclat.state;
+        events.push(...eclat.events);
+      }
     }
 
     current = next;

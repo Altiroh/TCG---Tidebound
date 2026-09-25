@@ -219,11 +219,13 @@ describe("pierres et Éclats", () => {
       expect(eclats(fin, "p2")).toEqual([]);
     });
 
-    it("sabordée aussi : c'est une destruction, comme pour Émissaire de Quartz", () => {
+    it("sabordée : un départ voulu pour faire de la place, elle ne laisse PAS de pierre (25/09/2026)", () => {
       const heros = instance("heros-de-la-flamme", "p1");
       const r = dispatch(table({ board: [heros] }), { type: "saborder", playerId: "p1", instanceId: heros.instanceId });
       ok(r);
-      expect(eclats(passerTout(r.state), "p1")).toEqual(["eclat-chromatique-rouge"]);
+      const fin = passerTout(r.state);
+      expect(unite(fin, heros.instanceId)).toBeUndefined();
+      expect(eclats(fin, "p1")).toEqual([]);
     });
 
     it("deux Rouges qui meurent ensemble laissent deux Éclats Rouges", () => {

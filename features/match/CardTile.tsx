@@ -581,9 +581,8 @@ export function CardTile({
                   ? {
                       ...zoneStyle(TOKEN_TILE_OVAL),
                       borderRadius: "50%",
-                      // Cerclage : un filet sombre puis un liseré de laiton, comme le cadre des jetons.
-                      border: "1cqw solid rgba(10, 16, 26, 0.92)",
-                      boxShadow: "0 0 0 0.9cqw #b48a3c, 0 1.5cqw 3cqw rgba(0, 0, 0, 0.55)",
+                      // Pas de cerclage (25/09/2026) : l'illustration seule, détachée du feutre par son ombre.
+                      boxShadow: "0 1.5cqw 3cqw rgba(0, 0, 0, 0.55)",
                     }
                   : { inset: 0 }
               }

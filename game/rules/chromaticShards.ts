@@ -14,10 +14,11 @@ import type { GameState, PlayerId } from "@/game/state/types";
  * son contrôleur crée un Éclat Chromatique de sa couleur. Écrite UNE fois
  * ici, comme les Signaux, et pas recopiée sur chaque définition.
  *
- * - Même périmètre que « à sa destruction » d'Émissaire de Quartz (déclencheur
- *   `onDeath`) : combat, effet, Sabordage. Un Assemblage (Le Géant
- *   Chromatique) place ses Sentinelles au Cimetière SANS les détruire : il
- *   ne passe pas par ici, et ne laisse donc pas d'Éclat.
+ * - Destruction SUBIE seulement : combat ou effet. Un Sabordage est un
+ *   départ VOULU (le joueur fait de la place) : il ne laisse pas d'Éclat
+ *   (décision du 25/09/2026 — l'appelant, `processDeaths`, ne l'appelle pas
+ *   pour une unité sabordée). Un Assemblage (Le Géant Chromatique) place ses
+ *   Sentinelles au Cimetière SANS les détruire : pas d'Éclat non plus.
  * - Couleur : celle de la carte au moment où elle part (imprimée, ou gagnée
  *   sur l'instance comme la couleur choisie de l'Émissaire) — la première
  *   si elle en a plusieurs, comme l'Émissaire.
