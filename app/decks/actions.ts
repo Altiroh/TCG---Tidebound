@@ -761,3 +761,36 @@ export async function purgeDecks(deckIds: string[]): Promise<DeckActionResult> {
     return { ok: true };
   });
 }
+
+/**
+ * Favoris de la liste des decks, lus sur le COMPTE. `null` si la table
+ * n'existe pas encore (migration `20261012120000` pas passée) ou hors
+ * connexion : l'écran garde alors ses favoris de l'appareil.
+ */
+export async function listDeckFavorites(): Promise<string[] | null> {
+  try {
+    const supabase = createSupabaseServerClient();
+    const userId = await currentUserId(supabase);
+    if (!userId) return null;
+    const { data, error } = await supabase.from("player_deck_favorites").select("deck_id").eq("user_id", userId);
+    if (error) return null;
+    return (data ?? []).map((row) => row.deck_id);
+  } catch {
+    return null;
+  }
+}
+
+/** Ajoute ou retire un deck des favoris du compte. */
+export async function setDeckFavorite(deckId: string, favorite: boolean): Promise<DeckActionResult> {
+  return guarded("setDeckFavorite", async () => {
+    if (!deckId || deckId.length > 120) return { ok: false, error: "Deck invalide." };
+    const supabase = createSupabaseServerClient();
+    const userId = await currentUserId(supabase);
+    if (!userId) return { ok: false, error: "Connecte-toi pour garder tes favoris." };
+    const { error } = favorite
+      ? await supabase.from("player_deck_favorites").upsert({ user_id: userId, deck_id: deckId }, { onConflict: "user_id,deck_id", ignoreDuplicates: true })
+      : await supabase.from("player_deck_favorites").delete().eq("user_id", userId).eq("deck_id", deckId);
+    if (error) return { ok: false, error: "Favori non enregistré (base pas à jour ?)." };
+    return { ok: true, id: deckId };
+  });
+}

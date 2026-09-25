@@ -12,6 +12,7 @@ import {
   renameDeck,
   restoreDecks,
   setDeckArt,
+  setDeckFavorite,
   setDefaultDeck,
   updateDeckProfile,
   type PlayerDeckSummary,
@@ -109,6 +110,11 @@ interface DecksScreenProps {
   initialDecks: PlayerDeckSummary[];
   /** Ids des decks joués récemment, du plus récent au plus ancien (onglet « Récemment joués »). */
   recentDeckIds?: string[];
+  /**
+   * Favoris du COMPTE (`player_deck_favorites`). `null` : hors connexion ou
+   * table absente — les favoris restent alors ceux de l'appareil.
+   */
+  accountFavorites?: string[] | null;
   /** Decks fournis par le jeu, avec la possession réelle du joueur. */
   catalog: DeckCatalogView;
 }
@@ -134,7 +140,7 @@ interface DecksScreenProps {
  * on le restaure d'un clic ou on l'efface pour de bon — cette dernière
  * action, la seule irréversible, est la seule à demander confirmation.
  */
-export function DecksScreen({ isSignedIn, initialDecks, catalog, recentDeckIds = [] }: DecksScreenProps) {
+export function DecksScreen({ isSignedIn, initialDecks, catalog, recentDeckIds = [], accountFavorites = null }: DecksScreenProps) {
   const router = useRouter();
   // Le joueur qui n'a pas encore pris son préconstruit gratuit arrive
   // directement sur le rayon : c'est l'étape qui lui manque pour jouer.
@@ -157,10 +163,53 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog, recentDeckIds =
   });
   const [tableTab, setTableTab] = useState<TableTab>(isSignedIn && catalog.freeDeckId === null ? "precon" : "mine");
   const [tableTrash, setTableTrash] = useState(false);
-  const [favorites, setFavorites] = usePersistedState<ReadonlySet<string>>("decks:favoris", new Set<string>(), {
+  // Favoris de l'APPAREIL : le repli hors connexion (ou sans la table en base).
+  const [localFavorites, setLocalFavorites] = usePersistedState<ReadonlySet<string>>("decks:favoris", new Set<string>(), {
     encode: (value) => Array.from(value),
     decode: (raw) => (Array.isArray(raw) ? new Set(raw.filter((id): id is string => typeof id === "string")) : undefined),
   });
+  // Favoris du COMPTE : ils suivent le joueur d'un appareil à l'autre.
+  const onAccount = accountFavorites !== null;
+  const [accountSet, setAccountSet] = useState<ReadonlySet<string>>(() => new Set(accountFavorites ?? []));
+  const favorites = onAccount ? accountSet : localFavorites;
+
+  // Première visite connectée : les favoris gardés sur cet appareil passent sur le compte, une fois.
+  useEffect(() => {
+    if (!onAccount || localFavorites.size === 0) return;
+    const missing = Array.from(localFavorites).filter((id) => !accountSet.has(id));
+    setLocalFavorites(new Set());
+    if (missing.length === 0) return;
+    setAccountSet((current) => new Set([...current, ...missing]));
+    void Promise.all(missing.map((id) => setDeckFavorite(id, true)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onAccount, localFavorites.size]);
+
+  function toggleFavorite(id: string) {
+    if (!onAccount) {
+      setLocalFavorites((value) => {
+        const next = new Set(value);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        return next;
+      });
+      return;
+    }
+    const favorite = !accountSet.has(id);
+    const apply = (on: boolean) =>
+      setAccountSet((current) => {
+        const next = new Set(current);
+        if (on) next.add(id);
+        else next.delete(id);
+        return next;
+      });
+    // Tout de suite à l'écran ; en cas d'échec, l'étoile revient et on le dit.
+    apply(favorite);
+    void setDeckFavorite(id, favorite).then((result) => {
+      if (result.ok) return;
+      apply(!favorite);
+      setToast({ id: Date.now(), tone: "error", text: result.error ?? "Favori non enregistré." });
+    });
+  }
 
   const [renameTarget, setRenameTarget] = useState<BrowserDeck | null>(null);
   const [purgeTarget, setPurgeTarget] = useState<BrowserDeck | null>(null);
@@ -472,14 +521,7 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog, recentDeckIds =
           search={filters.search}
           onSearch={(search) => setFilters({ ...filters, search })}
           favorites={favorites}
-          onToggleFavorite={(id) =>
-            setFavorites((value) => {
-              const next = new Set(value);
-              if (next.has(id)) next.delete(id);
-              else next.add(id);
-              return next;
-            })
-          }
+          onToggleFavorite={toggleFavorite}
           canCreate={tableTab === "mine" && isSignedIn && !tableTrash}
           trashed={trashed}
           trash={

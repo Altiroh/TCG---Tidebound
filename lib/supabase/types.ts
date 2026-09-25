@@ -513,6 +513,13 @@ export interface Database {
         Update: Record<string, never>;
         Relationships: [];
       };
+      /** Decks marqués favoris (liste des decks) — `deck_id` : uuid d'un deck du joueur OU id d'un préconstruit. */
+      player_deck_favorites: {
+        Row: { user_id: string; deck_id: string; created_at: string };
+        Insert: { user_id: string; deck_id: string; created_at?: string };
+        Update: Record<string, never>;
+        Relationships: [];
+      };
       /** Parties déjà jugées par le public (une fois par joueur). */
       player_audience_matches: {
         Row: { match_id: string; user_id: string; spectacle: number; judged_at: string };

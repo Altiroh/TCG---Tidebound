@@ -1,4 +1,4 @@
-import { listPlayerDecks } from "@/app/decks/actions";
+import { listDeckFavorites, listPlayerDecks } from "@/app/decks/actions";
 import { fetchDeckCatalog } from "@/features/decks/catalogActions";
 import { DecksScreen } from "@/features/decks/DecksScreen";
 import { readRecentlyPlayedDecks } from "@/features/decks/recentDecks";
@@ -20,11 +20,20 @@ export default async function DecksPage() {
   // Le catalogue est lu même hors connexion : les decks fournis par le jeu
   // sont consultables sans compte (§4, « les préconstruits verrouillés
   // doivent rester visibles »). Seule la possession est alors vide.
-  const [initialDecks, catalog, recent] = await Promise.all([
+  const [initialDecks, catalog, recent, favorites] = await Promise.all([
     isSignedIn ? listPlayerDecks() : [],
     fetchDeckCatalog(),
     userId ? readRecentlyPlayedDecks(userId) : [],
+    isSignedIn ? listDeckFavorites() : null,
   ]);
 
-  return <DecksScreen isSignedIn={isSignedIn} initialDecks={initialDecks} catalog={catalog} recentDeckIds={recent.map((entry) => entry.deckId)} />;
+  return (
+    <DecksScreen
+      isSignedIn={isSignedIn}
+      initialDecks={initialDecks}
+      catalog={catalog}
+      recentDeckIds={recent.map((entry) => entry.deckId)}
+      accountFavorites={favorites}
+    />
+  );
 }
