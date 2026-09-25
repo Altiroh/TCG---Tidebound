@@ -23,11 +23,11 @@ const TABS: Array<{ id: TableTab; label: string; icon: string }> = [
   { id: "recent", label: "Récemment joués", icon: "icone-recemment-joues" },
 ];
 
-/** Decks visibles d'un coup sur la table. */
-const PER_PAGE = 5;
+/** Decks visibles d'un coup sur la table : deux rangées de six. */
+const PER_PAGE = 12;
 /** Inclinaisons et décalages des piles, comme posées à la main sur la carte (ordre de la rangée). */
-const TILTS = [-4.5, 1.5, 3.5, -2.8, 4];
-const LIFTS = [2.2, -1.2, 1.4, 2.8, 0.4];
+const TILTS = [-4.5, 1.5, 3.5, -2.8, 4, -1.6, 2.6, -3.4, 0.8, 3.8, -2.2, 1.9];
+const LIFTS = [2.2, -1.2, 1.4, 2.8, 0.4, -0.8, 1.6, -0.4, 2.4, 0.2, 1.8, -1];
 /** Coins libres du livre où l'encre peut tomber (en % de la scène). */
 const INK_ZONES = [
   { x: 8, y: 82, w: 12, h: 8 },

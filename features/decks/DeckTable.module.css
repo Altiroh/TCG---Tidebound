@@ -336,15 +336,19 @@
 }
 
 /* ── Les piles de decks ───────────────────────────────────────────── */
+/* Deux rangées de six, bien espacées (la navigation passe par les flèches). */
 .stacks {
   position: absolute;
-  left: 3.6%;
-  top: 33%;
-  width: 67.6%;
-  height: 50%;
+  left: 4.4%;
+  top: 27%;
+  width: 66%;
+  height: 68%;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 0.4%;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-auto-rows: max-content;
+  column-gap: 2.2%;
+  row-gap: 3.2cqw;
+  align-content: start;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -352,7 +356,13 @@
 
 .slot {
   position: relative;
+  z-index: 1;
   transform: translateY(var(--lift, 0%)) rotate(var(--tilt, 0deg));
+}
+
+/* La pile choisie passe devant ses voisines : sa tache d'encre déborde sur elles. */
+.slot:has([data-selected]) {
+  z-index: 2;
 }
 
 .empty {
@@ -459,7 +469,7 @@
   overflow: hidden;
   color: #2c1c0f;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: max(10px, 1.12cqw);
+  font-size: max(9px, 0.95cqw);
   font-weight: 700;
   line-height: 1.1;
   text-overflow: ellipsis;
@@ -474,27 +484,49 @@
   text-transform: uppercase;
 }
 
-/* Tache d'encre qui éclot sous le deck choisi (encre-1 → 2 → 3). */
-.splash {
+/* Tache d'encre qui éclot sous le deck choisi : trois taches superposées
+   (encre-1 → 2 → 3) qui s'ouvrent l'une après l'autre. Pas d'image animée :
+   le navigateur ne dessine pas une interpolation entre deux images. */
+.splash,
+.splash::before,
+.splash::after {
   position: absolute;
-  left: 50%;
-  top: 45%;
-  z-index: -1;
-  width: 150%;
   aspect-ratio: 1;
-  background: url("/assets/decks/liste/encre-1.webp") center / contain no-repeat;
-  opacity: 0;
-  transform: translate(-50%, -50%) scale(0.6);
+  background: center / contain no-repeat;
   pointer-events: none;
-  animation: inkBloom 700ms ease-out both;
 }
 
-@keyframes inkBloom {
-  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); background-image: url("/assets/decks/liste/encre-1.webp"); }
-  25% { opacity: 0.85; background-image: url("/assets/decks/liste/encre-1.webp"); }
-  45% { background-image: url("/assets/decks/liste/encre-2.webp"); }
-  70% { opacity: 0.7; background-image: url("/assets/decks/liste/encre-3.webp"); }
-  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.05); background-image: url("/assets/decks/liste/encre-3.webp"); }
+.splash {
+  left: 50%;
+  top: 42%;
+  z-index: -1;
+  width: 240%;
+  background-image: url("/assets/decks/liste/encre-1.webp");
+  transform: translate(-50%, -50%);
+  animation: inkStage 1600ms ease-out both;
+}
+
+.splash::before,
+.splash::after {
+  content: "";
+  inset: 0;
+}
+
+.splash::before {
+  background-image: url("/assets/decks/liste/encre-2.webp");
+  animation: inkStage 1600ms 150ms ease-out both;
+}
+
+.splash::after {
+  background-image: url("/assets/decks/liste/encre-3.webp");
+  animation: inkStage 1600ms 300ms ease-out both;
+}
+
+@keyframes inkStage {
+  0% { opacity: 0; scale: 0.35; }
+  18% { opacity: 0.9; scale: 1; }
+  65% { opacity: 0.75; }
+  100% { opacity: 0; scale: 1.06; }
 }
 
 /* ── Flèches ──────────────────────────────────────────────────────── */
