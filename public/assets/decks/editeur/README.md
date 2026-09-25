@@ -8,3 +8,5 @@ Visuels de l'éditeur (`features/decks/DeckEditorBook.module.css`), convertis de
 - `plaque.webp` — plaque sombre à bouts de laiton : barre de quantité sous les cartes, bouton d'enregistrement, bascule d'affichage, puce « Sélectionné » de la liste des decks.
 - `bouton-moins.webp`, `bouton-plus.webp` — boutons ronds −/+ de la barre de quantité.
 - `decor-bas.webp` — longue-vue, pièces, gemmes et carte posées au bas de la table.
+- `cadre-navire.webp` — cadre de parchemin de l'illustration du Navire (fenêtre : 8,9 % des côtés, 19 % en haut, 16 % en bas).
+- `bouton-changer-navire.webp` — bouton peint « Changer de navire » (texte compris).

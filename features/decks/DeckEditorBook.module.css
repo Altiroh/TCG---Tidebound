@@ -244,16 +244,84 @@
   background: rgba(90, 58, 30, 0.14);
 }
 
-/* Le nom du Navire et « Changer de navire » : lisibles sous l'image. */
-.workspace [class*="_identityShipName__"] {
-  font-size: clamp(12px, 1.5vh, 14px);
-  color: #1c6d86;
+/* ── Tête de la colonne de gauche (maquette) : le NOM du Navire en titre,
+   son illustration dans le cadre de parchemin (`cadre-navire.webp`), puis
+   le bouton peint « Changer de navire ». ── */
+.left [class*="_identity__"] {
+  gap: clamp(4px, 0.7vh, 8px);
+  padding-top: 0;
+  border-bottom: 0;
 }
 
-.workspace [class*="_shipChange__"],
-.workspace [class*="_backLink__"] {
+.left [class*="_identityShip__"] {
+  display: contents;
+}
+
+.left [class*="_backLink__"] {
+  order: 0;
   color: #5a3a1c;
   font-weight: 600;
+}
+
+.left [class*="_identityShipName__"] {
+  order: 1;
+  align-self: center;
+  color: var(--tb-text-strong);
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: clamp(16px, 2.2vh, 22px);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+/* L'illustration peinte DANS la fenêtre du cadre (fenêtre : 8,9 % des côtés,
+   19 % en haut, 16 % en bas — un peu moins, pour qu'elle file sous les
+   bords déchirés), le cadre posé par-dessus. */
+.left [class*="_shipArt__"] {
+  order: 2;
+  position: relative;
+  aspect-ratio: 1442 / 855;
+  padding: 10.2% 7.6% 8.4%;
+  border: 0;
+  border-radius: 0;
+  background-clip: content-box;
+  background-origin: content-box;
+  box-shadow: none;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.5));
+}
+
+.left [class*="_shipArt__"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url("/assets/decks/editeur/cadre-navire.webp") center / 100% 100% no-repeat;
+  pointer-events: none;
+}
+
+.left [class*="_shipArt__"]:hover {
+  box-shadow: none;
+  filter: brightness(1.08) drop-shadow(0 0 7px rgba(255, 214, 140, 0.7)) drop-shadow(0 6px 10px rgba(0, 0, 0, 0.5));
+}
+
+/* Le bouton peint porte déjà son texte : celui du DOM reste pour les lecteurs d'écran. */
+.left [class*="_shipChange__"] {
+  order: 3;
+  align-self: center;
+  width: 92%;
+  aspect-ratio: 640 / 147;
+  overflow: hidden;
+  background: url("/assets/decks/editeur/bouton-changer-navire.webp") center / 100% 100% no-repeat;
+  color: transparent;
+  text-decoration: none;
+  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.5));
+  transition: filter 200ms ease-out, scale 180ms ease-out;
+}
+
+.left [class*="_shipChange__"]:hover {
+  color: transparent;
+  text-shadow: none;
+  scale: 1.03;
+  filter: brightness(1.11) saturate(1.14) contrast(1.02) drop-shadow(0 0 7px rgba(255, 214, 140, 0.85)) drop-shadow(0 0 20px rgba(255, 176, 72, 0.4));
 }
 
 /* La barre du haut de la grille (compte, tri) : à l'encre pleine. */
