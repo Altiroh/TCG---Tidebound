@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { fetchMatchAudience, fetchMyAudience, type MatchAudienceSummary } from "@/features/audience/actions";
 import { RollingNumber } from "@/features/audience/RollingNumber";
+import { useStockTicker } from "@/features/audience/useStockTicker";
 import styles from "@/features/audience/MatchAudienceTicker.module.css";
 
 /** Le jugement du public sur la partie, tel que l'écran de fin l'a calculé. */
@@ -13,13 +14,8 @@ export interface MatchAudienceVerdict {
 
 /** Relectures : le jugement serveur s'écrit juste après l'octroi de la partie. */
 const RETRY_DELAYS_MS = [600, 2000, 4500];
-/** Attente avant que le compteur ne se mette à rouler. */
+/** Attente avant que le compteur ne se mette à défiler. */
 const START_MS = 700;
-/** Durée du défilement, en crans successifs comme un cours de bourse. */
-const TICK_MS = 140;
-const TICKS = 14;
-/** Le temps de lire la nouvelle valeur en couleur, avant le retour au blanc. */
-const SETTLE_MS = 1400;
 
 /**
  * Le compteur de spectateurs de l'écran de fin, en haut à gauche : un œil et
@@ -32,8 +28,8 @@ const SETTLE_MS = 1400;
  */
 export function MatchAudienceTicker({ matchId, preview }: { matchId?: string; preview?: MatchAudienceSummary }) {
   const [summary, setSummary] = useState<MatchAudienceSummary | null>(preview ?? null);
-  const [shown, setShown] = useState<number | null>(preview ? preview.before : null);
-  const [trend, setTrend] = useState<"up" | "down" | null>(null);
+  const [current, setCurrent] = useState<number | null>(null);
+  const [settled, setSettled] = useState(false);
 
   // Partie jugée : relue quelques fois, le temps que le serveur l'écrive.
   useEffect(() => {
@@ -41,7 +37,7 @@ export function MatchAudienceTicker({ matchId, preview }: { matchId?: string; pr
     let cancelled = false;
     if (!matchId) {
       fetchMyAudience()
-        .then((audience) => !cancelled && setShown(audience))
+        .then((audience) => !cancelled && setCurrent(audience))
         .catch(() => undefined);
       return () => {
         cancelled = true;
@@ -55,7 +51,6 @@ export function MatchAudienceTicker({ matchId, preview }: { matchId?: string; pr
             if (cancelled || !found) return;
             cancelled = true;
             setSummary(found);
-            setShown(found.before);
           })
           .catch(() => undefined);
       }, delay)
@@ -66,20 +61,14 @@ export function MatchAudienceTicker({ matchId, preview }: { matchId?: string; pr
     };
   }, [matchId, preview]);
 
-  // Le défilement : de l'ancienne valeur à la nouvelle, en crans réguliers.
+  // L'ancienne audience d'abord, puis la nouvelle : le compteur défile de l'une à l'autre.
   useEffect(() => {
-    if (!summary || summary.after === summary.before) return;
-    const { before, after } = summary;
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    timers.push(setTimeout(() => setTrend(after > before ? "up" : "down"), START_MS));
-    for (let tick = 1; tick <= TICKS; tick += 1) {
-      // Rapide au départ, qui ralentit à l'approche de la valeur finale.
-      const progress = 1 - (1 - tick / TICKS) ** 2;
-      timers.push(setTimeout(() => setShown(Math.round(before + (after - before) * progress)), START_MS + tick * TICK_MS));
-    }
-    timers.push(setTimeout(() => setTrend(null), START_MS + TICKS * TICK_MS + SETTLE_MS));
-    return () => timers.forEach(clearTimeout);
+    if (!summary) return;
+    const timer = setTimeout(() => setSettled(true), START_MS);
+    return () => clearTimeout(timer);
   }, [summary]);
+
+  const { shown, trend } = useStockTicker(summary ? (settled ? summary.after : summary.before) : current);
 
   if (shown === null) return null;
   return (

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyzeMatch, audienceMood, nextAudience, readMatchFacts } from "@/game/audience";
+import { analyzeMatch, audienceMood, liveAudience, nextAudience, readMatchFacts, readMoments } from "@/game/audience";
 import { getShipDefinition } from "@/game";
 import type { GameState } from "@/game";
 
@@ -85,5 +85,50 @@ describe("moteur d'audience", () => {
     expect(audience).toBeLessThanOrEqual(2000);
     const after = nextAudience(audience, 10);
     expect(after).toBeLessThan(audience);
+  });
+});
+
+describe("moments — le public réagit coup par coup", () => {
+  const attack = (attackerInstanceId: string, defenderInstanceId?: string, playerId = "p1") => ({ ...base, type: "ATTACK", playerId, attackerInstanceId, defenderInstanceId });
+  const destroy = (instanceId: string) => ({ ...base, type: "DESTROY", instanceId, reason: "combat" });
+  const summon = (instanceId: string, playerId: string) => ({ ...base, type: "SUMMON", playerId, instanceId, cardId: "x" });
+  const endTurnOf = (playerId: string) => ({ ...base, type: "END_TURN", playerId });
+  const live = (events: unknown[]) => liveAudience(1000, game(events, { status: "active" }), "p1");
+
+  it("abattre une unité adverse fait monter la salle ; en perdre une la fait baisser", () => {
+    const kill = readMoments(game([summon("a", "p1"), summon("d", "p2"), attack("a", "d"), destroy("d")], { status: "active" }), "p1");
+    expect(kill.map((m) => m.id)).toEqual(["moment.kill"]);
+    expect(live([summon("a", "p1"), summon("d", "p2"), attack("a", "d"), destroy("d")])).toBeGreaterThan(1000);
+    expect(live([summon("a", "p1"), summon("u", "p1"), { ...base, type: "DESTROY", instanceId: "u", reason: "effect" }])).toBeLessThan(1000);
+  });
+
+  it("une attaque mal engagée (l'attaquant tombe, la cible tient) coûte de l'audience", () => {
+    const moments = readMoments(game([summon("a", "p1"), summon("d", "p2"), attack("a", "d"), destroy("a"), endTurnOf("p1")], { status: "active" }), "p1");
+    expect(moments.map((m) => m.id)).toEqual(["moment.badTrade"]);
+    expect(moments[0]!.weight).toBeLessThan(0);
+  });
+
+  it("un sort qui détruit une unité adverse, hors combat, est un coup d'éclat", () => {
+    const moments = readMoments(game([summon("d", "p2"), { ...base, type: "DESTROY", instanceId: "d", reason: "effect" }], { status: "active" }), "p1");
+    expect(moments.map((m) => m.id)).toEqual(["moment.spellKill"]);
+  });
+
+  it("se faire remonter par l'adversaire fait baisser la salle", () => {
+    // Je mène (l'adversaire à moitié), puis il me fait tomber bien plus bas : l'avance change de camp.
+    const moments = readMoments(game([hit("p2", START / 2), hit("p1", START / 4)], { status: "active" }), "p1");
+    expect(moments.map((m) => m.id)).toContain("moment.leadLost");
+    expect(live([hit("p2", START / 2), hit("p1", START / 4)])).toBeLessThan(live([hit("p2", START / 2)]));
+  });
+
+  it("un tour passé sans rien tenter est sanctionné, pas un tour joué", () => {
+    expect(readMoments(game([endTurnOf("p1")], { status: "active" }), "p1").map((m) => m.id)).toEqual(["moment.idle"]);
+    expect(readMoments(game([play("chope"), endTurnOf("p1")], { status: "active" }), "p1")).toEqual([]);
+  });
+
+  it("le bilan des moments infléchit le spectacle de fin, borné", () => {
+    const kills = Array.from({ length: 20 }, (_, i) => [summon(`d${i}`, "p2"), { ...base, type: "DESTROY", instanceId: `d${i}`, reason: "effect" }]).flat();
+    const brilliant = analyzeMatch(game(kills, { winnerId: "p1" }), "p1");
+    const plain = analyzeMatch(game([], { winnerId: "p1" }), "p1");
+    expect(brilliant.spectacle - plain.spectacle).toBe(12);
   });
 });

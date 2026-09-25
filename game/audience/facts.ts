@@ -2,6 +2,7 @@ import { getCardDefinition } from "@/game/cards/sets/core";
 import { getShipDefinition } from "@/game/environment/shipData";
 import type { GameState, PlayerId } from "@/game/state/types";
 import type { MatchFacts } from "@/game/audience/types";
+import { readMoments } from "@/game/audience/moments";
 
 function startingAnchorOf(shipId: string | undefined): number {
   try {
@@ -130,5 +131,6 @@ export function readMatchFacts(state: GameState, playerId: PlayerId): MatchFacts
     idleTurns,
     deraisons,
     conceded,
+    momentsTotal: readMoments(state, playerId).reduce((sum, moment) => sum + moment.weight, 0),
   };
 }

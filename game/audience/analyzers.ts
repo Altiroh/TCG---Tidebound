@@ -74,4 +74,21 @@ const errors: Analyzer = (facts) => {
   return signals;
 };
 
-export const ANALYZERS: readonly Analyzer[] = [tempo, tension, mastery, errors];
+/**
+ * Le fil des coups (`moments.ts`) : ce que la salle a vécu en direct, bons
+ * coups et mauvaises décisions. Compté à moitié et borné — la partie se
+ * juge d'abord sur l'ensemble, le détail ne fait que l'infléchir.
+ */
+const MOMENTS_CAP = 24;
+const moments: Analyzer = (facts) => {
+  const total = Math.max(-MOMENTS_CAP, Math.min(MOMENTS_CAP, facts.momentsTotal));
+  const weight = Math.round(total / 2);
+  if (weight === 0) return [];
+  return [
+    weight > 0
+      ? { id: "moments.brilliant", family: "maitrise", label: "Des coups d'éclat qui ont porté", weight, salience: weight >= 6 ? 6 : 2 }
+      : { id: "moments.costly", family: "erreur", label: "Des erreurs qui ont coûté", weight, salience: weight <= -6 ? 6 : 2 },
+  ];
+};
+
+export const ANALYZERS: readonly Analyzer[] = [tempo, tension, mastery, errors, moments];

@@ -59,6 +59,8 @@ export interface MatchFacts {
   idleTurns: number;
   deraisons: number;
   conceded: boolean;
+  /** Bilan des moments de la partie (`moments.ts`), en points — le fil des coups, bons et mauvais. */
+  momentsTotal: number;
 }
 
 /** Ce que la partie dit du style du joueur (0 à 100), lu par les mécènes. */
