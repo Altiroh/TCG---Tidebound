@@ -33,6 +33,7 @@ import { HealAllocationPrompt } from "@/features/match/HealAllocationPrompt";
 import { KeepUnitsPrompt } from "@/features/match/KeepUnitsPrompt";
 import { PickUnitsPrompt } from "@/features/match/PickUnitsPrompt";
 import { HandDiscardPrompt } from "@/features/match/HandDiscardPrompt";
+import { ChoiceBanner } from "@/features/match/ChoiceBanner";
 import { useHandLimitDiscard } from "@/features/match/useHandLimitDiscard";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ReactionPrompt } from "@/features/match/ReactionPrompt";
@@ -89,9 +90,9 @@ export function OnlineBoard({
   const opponent = state.players.find((p) => p.id !== myUserId)!;
   const displayNames = useDisplayNames([me.id, opponent.id]);
   const myTitle = useEquippedTitle(me.id);
-  // Main trop pleine en fin de tour : les cartes à jeter se glissent au Cimetière.
-  const handLimit = useHandLimitDiscard(state, myUserId, (discardInstanceIds) =>
-    act({ type: "resolveChoice", playerId: myUserId, choice: { discardInstanceIds } })
+  // Défausse depuis la main (limite de main comme effet) : les cartes se glissent au Cimetière.
+  const handLimit = useHandLimitDiscard(state, myUserId, (answer) =>
+    act({ type: "resolveChoice", playerId: myUserId, choice: answer })
   );
   const myShip = getShipDefinition(me.shipId);
   const isMyTurn = state.activePlayerId === myUserId;
@@ -204,7 +205,7 @@ export function OnlineBoard({
   }
 
   const phase = phaseButtonFor({ isMyTurn, phase: state.phase === "mainPhase" && !hasAnyAttacker ? "mainPhase2" : state.phase });
-  const hint = handLimit.hint ?? targetingHint(selection?.kind === "reaction" ? null : selection?.kind ?? null);
+  const hint = targetingHint(selection?.kind === "reaction" ? null : selection?.kind ?? null);
 
   // Objets d'invite en constantes locales : `board.breakPrompt` ne se
   // rétrécit pas à travers une fermeture, une constante si.
@@ -234,7 +235,7 @@ export function OnlineBoard({
         targeting={tableTargetingFor(selection)}
         reactionSourceIds={myReactionCandidates.map((c) => c.sourceInstanceId)}
         hint={hint}
-        onCancelHint={handLimit.mode ? handLimit.cancel : board.clearSelection}
+        onCancelHint={board.clearSelection}
         handLimitDiscard={handLimit.mode}
         phaseButton={{
           label: phase.label,
@@ -348,7 +349,18 @@ export function OnlineBoard({
           onRefuse={() => act({ type: "resolveChoice", playerId: myUserId, choice: "pass" })}
         />
       )}
-      {state.pendingChoice?.kind === "handDiscard" && !state.pendingChoice.handLimit && state.pendingChoice.playerId === myUserId && (
+      {/* Défausse au Cimetière : sur la table (bandeau + glisser). Sous la pioche : la fenêtre. */}
+      {handLimit.banner && (
+        <ChoiceBanner
+          choiceKey={handLimit.banner.choiceKey}
+          source={handLimit.banner.source}
+          title={handLimit.banner.title}
+          detail={handLimit.banner.detail}
+          actions={handLimit.banner.actions}
+          onExpire={handLimit.banner.onExpire}
+        />
+      )}
+      {state.pendingChoice?.kind === "handDiscard" && state.pendingChoice.destination === "deckBottom" && state.pendingChoice.playerId === myUserId && (
         <HandDiscardPrompt
           choice={state.pendingChoice}
           hand={me.hand}

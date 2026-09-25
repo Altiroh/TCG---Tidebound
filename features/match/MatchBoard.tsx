@@ -38,6 +38,7 @@ import { HealAllocationPrompt } from "@/features/match/HealAllocationPrompt";
 import { KeepUnitsPrompt } from "@/features/match/KeepUnitsPrompt";
 import { PickUnitsPrompt } from "@/features/match/PickUnitsPrompt";
 import { HandDiscardPrompt } from "@/features/match/HandDiscardPrompt";
+import { ChoiceBanner } from "@/features/match/ChoiceBanner";
 import { useHandLimitDiscard } from "@/features/match/useHandLimitDiscard";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ReactionPrompt } from "@/features/match/ReactionPrompt";
@@ -134,9 +135,9 @@ export function MatchBoard({
   const noPendingWindow = !state.pendingReaction && !state.pendingChoice;
   const canPlayCards = isViewerTurn && isMainPhase(state.phase) && noPendingWindow;
   const canAttackNow = isViewerTurn && state.phase === "combatPhase" && noPendingWindow;
-  // Main trop pleine en fin de tour : les cartes à jeter se glissent au Cimetière.
-  const handLimit = useHandLimitDiscard(state, viewerPlayerId, (discardInstanceIds) =>
-    runReactionAction({ type: "resolveChoice", playerId: viewerPlayerId, choice: { discardInstanceIds } })
+  // Défausse depuis la main (limite de main comme effet) : les cartes se glissent au Cimetière.
+  const handLimit = useHandLimitDiscard(state, viewerPlayerId, (answer) =>
+    runReactionAction({ type: "resolveChoice", playerId: viewerPlayerId, choice: answer })
   );
   // Si aucune unité du joueur actif ne peut attaquer, le bouton unique saute directement à "Fin de tour".
   const activePlayerBoard = state.players.find((p) => p.id === activePlayerId)?.board ?? [];
@@ -358,7 +359,7 @@ export function MatchBoard({
 
   // Rien à attaquer : le bouton saute le combat ET la Phase principale 2 (on y est déjà, en pratique) et propose la fin du tour.
   const phase = phaseButtonFor({ isMyTurn: isViewerTurn, phase: state.phase === "mainPhase" && !hasAnyAttacker ? "mainPhase2" : state.phase });
-  const hint = handLimit.hint ?? targetingHint(pending?.kind === "reaction" ? null : pending?.kind ?? null);
+  const hint = targetingHint(pending?.kind === "reaction" ? null : pending?.kind ?? null);
 
   // Objets d'invite en constantes locales : `board.breakPrompt` ne se
   // rétrécit pas à travers une fermeture, une constante si.
@@ -402,7 +403,7 @@ export function MatchBoard({
         targeting={tableTargetingFor(pending)}
         reactionSourceIds={myReactionCandidates.map((c) => c.sourceInstanceId)}
         hint={hint}
-        onCancelHint={handLimit.mode ? handLimit.cancel : board.clearSelection}
+        onCancelHint={board.clearSelection}
         handLimitDiscard={handLimit.mode}
         phaseButton={{
           label: phase.label,
@@ -528,7 +529,18 @@ export function MatchBoard({
           onRefuse={() => runReactionAction({ type: "resolveChoice", playerId: viewerPlayerId, choice: "pass" })}
         />
       )}
-      {state.pendingChoice?.kind === "handDiscard" && !state.pendingChoice.handLimit && state.pendingChoice.playerId === viewerPlayerId && (
+      {/* Défausse au Cimetière : sur la table (bandeau + glisser). Sous la pioche : la fenêtre. */}
+      {handLimit.banner && (
+        <ChoiceBanner
+          choiceKey={handLimit.banner.choiceKey}
+          source={handLimit.banner.source}
+          title={handLimit.banner.title}
+          detail={handLimit.banner.detail}
+          actions={handLimit.banner.actions}
+          onExpire={handLimit.banner.onExpire}
+        />
+      )}
+      {state.pendingChoice?.kind === "handDiscard" && state.pendingChoice.destination === "deckBottom" && state.pendingChoice.playerId === viewerPlayerId && (
         <HandDiscardPrompt
           choice={state.pendingChoice}
           hand={viewerPlayer.hand}
