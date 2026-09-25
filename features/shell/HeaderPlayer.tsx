@@ -24,6 +24,30 @@ const ProfileDrawer = dynamic(() => import("@/features/progression/ProfileDrawer
   ssr: false,
 });
 
+/** Popup de série (première venue du jour) — chargé seulement quand il s'ouvre. */
+const DailyStreakPopup = dynamic(() => import("@/features/progression/DailyStreakPopup").then((m) => m.DailyStreakPopup), {
+  ssr: false,
+});
+
+/** Clé du jour (UTC, celui des escales) où le popup de série a déjà été montré sur cet appareil. */
+const STREAK_POPUP_KEY = "tb:streak-popup-day";
+
+function streakPopupSeen(day: string): boolean {
+  try {
+    return window.localStorage.getItem(STREAK_POPUP_KEY) === day;
+  } catch {
+    return false;
+  }
+}
+
+function markStreakPopupSeen(day: string): void {
+  try {
+    window.localStorage.setItem(STREAK_POPUP_KEY, day);
+  } catch {
+    // Stockage indisponible (navigation privée) : le popup pourra revenir, rien de grave.
+  }
+}
+
 /** Parchemin roulé — le journal de bord, pas une coche de logiciel. */
 function QuestIcon() {
   return (
@@ -95,6 +119,8 @@ export function HeaderPlayer() {
   /** Dernier nombre de récompenses à réclamer VU — même principe que les quêtes. */
   const lastRewards = useRef<number | null>(null);
   const [toast, setToast] = useState<ScreenToastMessage | null>(null);
+  /** Popup de série ouvert : première venue de la journée, escale pas encore réclamée. */
+  const [streakOpen, setStreakOpen] = useState(false);
   /**
    * Dernier nombre de quêtes à réclamer VU. Sert à repérer une quête qui
    * vient de tomber : c'est une AUGMENTATION qui s'annonce, pas un total —
@@ -120,6 +146,12 @@ export function HeaderPlayer() {
         .then((result) => {
           if (cancelled || request !== latest) return;
           setSummary(result);
+          // Première venue du jour : le popup de série, une fois par jour et par appareil.
+          const today = new Date().toISOString().slice(0, 10);
+          if (result.isSignedIn && result.loginClaimable && !streakPopupSeen(today)) {
+            markStreakPopupSeen(today);
+            setStreakOpen(true);
+          }
           announceNewQuests(result.claimableQuests);
           announceNewRewards(result.claimableRewards);
         })
@@ -326,6 +358,7 @@ export function HeaderPlayer() {
         />
       )}
       {optionsOpen && <SettingsDialog isSignedIn={signedIn} onClose={() => setOptionsOpen(false)} />}
+      {streakOpen && <DailyStreakPopup onClose={() => setStreakOpen(false)} />}
     </>
   );
 }

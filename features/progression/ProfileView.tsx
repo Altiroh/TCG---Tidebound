@@ -14,7 +14,7 @@ import {
   loginRewardForStep,
   loginRewardLabel,
 } from "@/game/progression";
-import { getCardDefinition } from "@/game";
+import { loginGainsText } from "@/features/progression/dailyLogin";
 import { rarityForCardId } from "@/game/boosters";
 import { signOut } from "@/app/connexion/actions";
 import {
@@ -41,6 +41,8 @@ import { AchievementBoard } from "@/features/progression/AchievementBoard";
 import { PreconToken, TideCoin } from "@/features/shell/GameIcons";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/progression/Profile.module.css";
+import sceneStyles from "@/features/progression/ProfileScene.module.css";
+import { ProfileScene } from "@/features/progression/ProfileScene";
 import { playButtonClick, playRewardClaimed, playTabClick } from "@/lib/sound";
 import type { ProfileTab } from "@/features/progression/profileTabs";
 
@@ -54,7 +56,7 @@ const TABS: Array<{ id: ProfileTab; label: string }> = [
 ];
 
 /** Ce qui attend le joueur, famille par famille — les pastilles et le « tout réclamer ». */
-function waitingCounts(profile: ProfileSummary) {
+export function waitingCounts(profile: ProfileSummary) {
   const levels = profile.claimableLevels.length + profile.pendingCardChoices.length;
   const quests = profile.quests.filter((quest) => quest.completed && !quest.claimed).length;
   const achievements = profile.achievements.filter((achievement) => achievement.claimable).length;
@@ -69,6 +71,16 @@ interface ProfileViewProps {
   initialTab?: ProfileTab;
   /** Panneau : ferme le panneau avant de quitter (quêtes, déconnexion). */
   onLeave?: () => void;
+  /**
+   * `drawer` (défaut) : panneau latéral + contenu, tel qu'ouvert depuis le
+   * bandeau. `page` : la page `/profil` — les onglets vivent dans le
+   * bandeau de l'écran (`tab` / `onTabChange`), et l'onglet Profil est la
+   * scène de la cabine (`ProfileScene`).
+   */
+  layout?: "drawer" | "page";
+  /** Onglet affiché, piloté par l'écran (`layout="page"`). */
+  tab?: ProfileTab;
+  onTabChange?: (tab: ProfileTab) => void;
 }
 
 /**
@@ -81,9 +93,11 @@ interface ProfileViewProps {
  * geste de réclamer ouvre une révélation (`RewardReveal`) — c'est le
  * moment qu'on vient chercher.
  */
-export function ProfileView({ profile, onRefresh, initialTab = "carnet", onLeave }: ProfileViewProps) {
+export function ProfileView({ profile, onRefresh, initialTab = "carnet", onLeave, layout = "drawer", tab: controlledTab, onTabChange }: ProfileViewProps) {
   const router = useRouter();
-  const [tab, setTab] = useState<ProfileTab>(initialTab);
+  const [ownTab, setOwnTab] = useState<ProfileTab>(initialTab);
+  const tab = controlledTab ?? ownTab;
+  const setTab = (next: ProfileTab) => (onTabChange ? onTabChange(next) : setOwnTab(next));
   const [signingOut, startSignOut] = useTransition();
   const { apply: applyCardBack } = useCardBack();
   const [reveal, setReveal] = useState<{ levels: RevealedLevel[]; choices: PendingCardChoice[]; extraItems?: RewardItem[]; title?: string } | null>(null);
@@ -209,6 +223,78 @@ export function ProfileView({ profile, onRefresh, initialTab = "carnet", onLeave
 
   const { view } = profile;
 
+  const revealLayer = reveal && (
+    <RewardReveal
+      levels={reveal.levels}
+      choices={reveal.choices}
+      extraItems={reveal.extraItems}
+      title={reveal.title}
+      onDone={() => {
+        setReveal(null);
+        notifyProgressionChanged();
+        onRefresh();
+      }}
+    />
+  );
+
+  if (layout === "page") {
+    // Un choix (illustration, titre) s'ouvre à la place de la scène ; le fermer y ramène.
+    if (picking || tab !== "carnet") {
+      return (
+        <div className={sceneStyles.tabPage}>
+          {claimError && <p className={`${game.error} ${sceneStyles.claimError}`}>{claimError}</p>}
+          <div className={sceneStyles.tabPanel} role="tabpanel">
+            {picker === "illustration" && (
+              <IllustrationPicker
+                avatarCardId={profile.avatarCardId}
+                ownedCardIds={profile.ownedCardIds}
+                onClose={() => setPicker(null)}
+                onChanged={onRefresh}
+              />
+            )}
+            {picker === "title" && <TitlePicker titles={profile.titles} onClose={() => setPicker(null)} onChanged={onRefresh} />}
+            {!picking && tab === "quetes" && <QuestsTab onRefresh={onRefresh} />}
+            {!picking && tab === "recompenses" && (
+              <LevelRewardsTab
+                profile={profile}
+                claiming={claiming}
+                error={claimError}
+                onClaim={(level) => void claim(level)}
+                onChooseCards={chooseCards}
+              />
+            )}
+            {!picking && tab === "exploits" && (
+              <AchievementBoard
+                achievements={profile.achievements}
+                onClaim={(code) => void claimOneAchievement(code)}
+                claimingCode={typeof claiming === "string" ? claiming : null}
+              />
+            )}
+          </div>
+          {revealLayer}
+        </div>
+      );
+    }
+    return (
+      <>
+        <ProfileScene
+          profile={profile}
+          titleName={equippedTitleName}
+          waitingTotal={waiting.total}
+          claimingAll={claiming === "everything"}
+          onClaimAll={() => void claimAllRewards()}
+          onPickIllustration={() => setPicker("illustration")}
+          onPickTitle={() => setPicker("title")}
+          onShowRoute={() => setTab("recompenses")}
+          onRefresh={onRefresh}
+          onSignOut={handleSignOut}
+          signingOut={signingOut}
+        />
+        {revealLayer}
+      </>
+    );
+  }
+
   return (
     <div className={styles.shell}>
       <aside className={`${game.panel} ${styles.side}`} aria-label="Profil">
@@ -324,19 +410,7 @@ export function ProfileView({ profile, onRefresh, initialTab = "carnet", onLeave
         )}
       </main>
 
-      {reveal && (
-        <RewardReveal
-          levels={reveal.levels}
-          choices={reveal.choices}
-          extraItems={reveal.extraItems}
-          title={reveal.title}
-          onDone={() => {
-            setReveal(null);
-            notifyProgressionChanged();
-            onRefresh();
-          }}
-        />
-      )}
+      {revealLayer}
     </div>
   );
 }
@@ -360,15 +434,7 @@ function LogbookTab({ profile, onRefresh, onShowRewards }: { profile: ProfileSum
         setError(result.error ?? "Réclamation impossible.");
         return;
       }
-      const gains = [
-        result.tides ? `+${result.tides} Tides` : "",
-        result.xp ? `+${result.xp} XP` : "",
-        result.boosterId ? `1 booster ${loginBoosterName(result.boosterId)}` : "",
-        result.cardId ? `carte : ${getCardDefinition(result.cardId).name}` : "",
-        result.streakCardId ? `${LOGIN_STREAK_MILESTONE} jours d'affilée, carte Abyssale : ${getCardDefinition(result.streakCardId).name}` : "",
-      ]
-        .filter(Boolean)
-        .join(" · ");
+      const gains = loginGainsText(result);
       playRewardClaimed();
       setMessage(gains ? `Escale franchie — ${gains}.` : "Escale franchie.");
       notifyProgressionChanged();

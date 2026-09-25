@@ -277,6 +277,16 @@ export interface ClaimLoginActionResult {
   streakCardId?: string | null;
 }
 
+/**
+ * L'escale du jour et la série, pour le popup de première connexion de la
+ * journée (`DailyStreakPopup`). `null` hors connexion.
+ */
+export async function fetchDailyLogin(): Promise<LoginRewardView | null> {
+  const user = await getSessionUser();
+  if (!user) return null;
+  return readLoginRewards(user.id);
+}
+
 /** Réclame la récompense de connexion du jour (§8). Une par jour UTC, jamais de remise à zéro. */
 export async function claimDailyLogin(): Promise<ClaimLoginActionResult> {
   const user = await getSessionUser();

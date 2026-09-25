@@ -1,0 +1,29 @@
+/*
+ * La page `/profil` : la cabine du navire en décor plein écran, sous le
+ * bandeau commun. Le voile du décor par défaut est allégé — la cabine est
+ * déjà sombre, et c'est elle qu'on vient voir.
+ */
+.screen.screen.screen {
+  background-image:
+    linear-gradient(180deg, rgba(5, 12, 22, 0.55) 0%, rgba(5, 12, 22, 0) 12%),
+    url("/assets/profile/background.webp");
+  background-size: cover, cover;
+  background-position: center, center bottom;
+}
+
+/* Pastille « à réclamer » d'un onglet du bandeau. */
+.tabBadge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 17px;
+  height: 17px;
+  margin-left: 6px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--tb-accent);
+  color: #04202b;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1;
+  vertical-align: 2px;
+}

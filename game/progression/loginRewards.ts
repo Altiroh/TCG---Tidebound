@@ -227,7 +227,8 @@ const RARITY_LABELS: Record<CardRarity, string> = {
 
 /** Nom affiché d'un booster (repli : son identifiant). */
 export function loginBoosterName(boosterId: string): string {
-  return boosterExtension(boosterId)?.name ?? boosterId;
+  // « Booster Défaut » : le mot est déjà dans chaque libellé (« 1 booster … »).
+  return (boosterExtension(boosterId)?.name ?? boosterId).replace(/^Booster\s+/i, "");
 }
 
 /** Libellé joueur d'une récompense de connexion. */

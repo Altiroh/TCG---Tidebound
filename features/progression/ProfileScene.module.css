@@ -1,0 +1,660 @@
+/*
+ * SCÈNE DU PROFIL — la cabine du navire (`public/assets/profile/`).
+ *
+ * `.page` occupe la rangée sous le bandeau et en mesure la place
+ * (`container-type: size`) ; `.stage` y tient au format de la maquette
+ * (1855 × 778, bandeau exclu) le plus grand possible, centré. Tout y est
+ * posé en pourcentages de la scène, et les textes en `cqw` de la scène :
+ * la composition ne dépend pas de l'écran.
+ */
+
+.page {
+  position: relative;
+  z-index: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 0 max(var(--tb-safe-right), 1.2vw) max(var(--tb-safe-bottom), 1vh) max(var(--tb-safe-left), 1.2vw);
+  container-type: size;
+  overflow: hidden;
+}
+
+.stage {
+  position: relative;
+  width: min(100cqw, 100cqh * 1855 / 778);
+  aspect-ratio: 1855 / 778;
+  container-type: inline-size;
+  color: #e9edf1;
+}
+
+/* ── Décor ─────────────────────────────────────────────────────────── */
+
+.cannon {
+  position: absolute;
+  left: -2%;
+  bottom: -2%;
+  width: 25%;
+  pointer-events: none;
+  user-select: none;
+  filter: drop-shadow(0 1cqw 1.4cqw rgba(0, 0, 0, 0.55));
+}
+
+/* ── Photo ─────────────────────────────────────────────────────────── */
+
+.photo {
+  position: absolute;
+  left: 7.5%;
+  top: 3.9%;
+  width: 22.4%;
+  aspect-ratio: 419 / 454;
+  filter: drop-shadow(0 1.2cqw 1.6cqw rgba(0, 0, 0, 0.55));
+}
+
+.photoFrame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  user-select: none;
+}
+
+/*
+ * Fenêtre de la photo, mesurée sur `photo-frame.webp` (419 × 454) : centre
+ * à 48,7 % / 43,3 %, 71,2 % × 59,5 % du cadre, inclinée de −11,3°.
+ */
+.photoWindow {
+  position: absolute;
+  left: calc(48.66% - 71.2% / 2);
+  top: calc(43.31% - 59.5% / 2);
+  width: 71.2%;
+  height: 59.5%;
+  transform: rotate(-11.3deg);
+  padding: 0;
+  border: 0;
+  background-color: transparent;
+  background-size: cover;
+  background-position: center 25%;
+  cursor: pointer;
+  box-shadow: inset 0 0 0.6cqw rgba(0, 0, 0, 0.55);
+  transition: filter 160ms ease-out;
+}
+/* Sans illustration choisie : le portrait peint du cadre reste visible. */
+.photoWindow[data-empty] {
+  box-shadow: none;
+}
+.photoWindow:hover,
+.photoWindow:focus-visible {
+  filter: brightness(1.12);
+  outline: none;
+}
+
+/* Bas de la photo : le nom et le titre, écrits sur le papier, inclinés comme lui. */
+.photoCaption {
+  position: absolute;
+  left: calc(56% - 64% / 2);
+  top: calc(86.5% - 13% / 2);
+  width: 64%;
+  height: 13%;
+  transform: rotate(-11.3deg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15cqw;
+  color: #2b1c10;
+}
+
+.nameRow,
+.nameEdit {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5cqw;
+}
+
+.name {
+  font-family: var(--tb-font-display);
+  font-size: 2.2cqw;
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  max-width: 11cqw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pencil,
+.nameSave {
+  display: inline-grid;
+  place-items: center;
+  width: 1.7cqw;
+  height: 1.7cqw;
+  padding: 0;
+  border: 1px solid rgba(43, 28, 16, 0.4);
+  border-radius: 50%;
+  background: rgba(43, 28, 16, 0.85);
+  color: #f1e6cf;
+  font-size: 0.9cqw;
+  cursor: pointer;
+}
+.pencil svg {
+  width: 60%;
+  height: 60%;
+}
+
+.nameInput {
+  width: 10cqw;
+  padding: 0.15cqw 0.4cqw;
+  border: 1px solid rgba(43, 28, 16, 0.5);
+  border-radius: 0.3cqw;
+  background: rgba(255, 248, 232, 0.9);
+  color: #2b1c10;
+  font-family: var(--tb-font-display);
+  font-size: 1.3cqw;
+}
+
+.title {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #5a3b1f;
+  font-family: var(--tb-font-display);
+  font-size: 1.2cqw;
+  font-style: italic;
+  cursor: pointer;
+}
+.title:hover,
+.title:focus-visible {
+  color: #2b1c10;
+  text-decoration: underline;
+  outline: none;
+}
+
+.nameError {
+  font-size: 0.8cqw;
+  color: #8c1d12;
+}
+
+/* ── Anneau de niveau ──────────────────────────────────────────────── */
+
+.ring {
+  position: absolute;
+  left: 33.3%;
+  top: 3.9%;
+  width: 20.9%;
+  aspect-ratio: 443 / 442;
+  background: url("/assets/profile/level-ring.webp") center / 100% 100% no-repeat;
+  filter: drop-shadow(0 1cqw 1.6cqw rgba(0, 0, 0, 0.6));
+}
+
+.ringArc {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  /* Le tracé part du bas et monte par la gauche, comme sur la maquette. */
+  transform: rotate(90deg);
+  overflow: visible;
+}
+
+.ringTrack {
+  fill: none;
+  stroke: rgba(95, 208, 230, 0.12);
+  stroke-width: 1.4;
+}
+
+.ringFill {
+  fill: none;
+  stroke: var(--tb-accent);
+  stroke-width: 1.3;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 1.2px rgba(95, 208, 230, 0.9));
+}
+
+.ringText {
+  position: absolute;
+  inset: 24%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.ringCaption {
+  font-family: var(--tb-font-display);
+  font-size: 1.15cqw;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--tb-accent);
+}
+
+.ringLevel {
+  font-family: var(--tb-font-display);
+  font-size: 4.8cqw;
+  font-weight: 700;
+  line-height: 1;
+  color: #f4ead4;
+  text-shadow: 0 0.2cqw 0.8cqw rgba(0, 0, 0, 0.6);
+}
+
+.ringXp {
+  margin-top: 0.4cqw;
+  font-size: 1.05cqw;
+  color: #e9edf1;
+}
+
+.ringRule {
+  width: 70%;
+  height: 1px;
+  margin: 0.6cqw 0;
+  background: linear-gradient(90deg, transparent, rgba(226, 194, 122, 0.55), transparent);
+}
+
+.ringNext {
+  font-size: 0.8cqw;
+  line-height: 1.35;
+  color: #cfd8df;
+}
+
+/* ── Losanges ──────────────────────────────────────────────────────── */
+
+.diamond {
+  position: absolute;
+  width: 10.5%;
+  aspect-ratio: 331 / 327;
+  background: url("/assets/profile/stat-diamond.webp") center / 100% 100% no-repeat;
+  filter: drop-shadow(0 0.8cqw 1.2cqw rgba(0, 0, 0, 0.55));
+}
+.diamond[data-slot="1"] { left: 63.1%; top: 7.1%; }
+.diamond[data-slot="2"] { left: 73.9%; top: 7.1%; }
+.diamond[data-slot="3"] { left: 67.3%; top: 25.7%; }
+.diamond[data-slot="4"] { left: 78.4%; top: 25.7%; }
+
+.diamondBody {
+  position: absolute;
+  inset: 16%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.diamondIcon {
+  display: grid;
+  place-items: center;
+  width: 3.2cqw;
+  height: 3.2cqw;
+  margin-bottom: 0.2cqw;
+}
+.diamondIcon > img,
+.diamondIcon > span {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain;
+}
+
+.diamondValue {
+  font-family: var(--tb-font-display);
+  font-size: 1.9cqw;
+  font-weight: 700;
+  line-height: 1.05;
+  color: #f4ead4;
+}
+
+.diamondLabel {
+  max-width: 7cqw;
+  font-size: 0.72cqw;
+  line-height: 1.15;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #d5dde3;
+}
+
+/* ── Prochaines escales (parchemin) ────────────────────────────────── */
+
+.route {
+  position: absolute;
+  left: 17.3%;
+  top: 59.5%;
+  width: 29%;
+  height: 33.4%;
+  padding: 2.2% 2.4% 1.6%;
+  background: url("/assets/profile/parchment-panel.webp") center / 100% 100% no-repeat;
+  color: #2b1c10;
+  filter: drop-shadow(0 0.8cqw 1.2cqw rgba(0, 0, 0, 0.5));
+  display: flex;
+  flex-direction: column;
+}
+
+.routeHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1cqw;
+  padding-bottom: 0.5cqw;
+  border-bottom: 1px solid rgba(43, 28, 16, 0.2);
+}
+
+.routeTitle {
+  margin: 0;
+  font-family: var(--tb-font-display);
+  font-size: 1.15cqw;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.routeLink {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #2b1c10;
+  font-size: 0.8cqw;
+  cursor: pointer;
+}
+.routeLink:hover,
+.routeLink:focus-visible {
+  text-decoration: underline;
+  outline: none;
+}
+
+.routeList {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* Le fil qui relie les paliers. */
+.routeList::before {
+  content: "";
+  position: absolute;
+  left: 1.1cqw;
+  top: 12%;
+  bottom: 12%;
+  width: 2px;
+  background: rgba(33, 88, 128, 0.55);
+}
+
+.routeRow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 1cqw;
+}
+
+.routeLevel {
+  display: grid;
+  place-items: center;
+  width: 2.2cqw;
+  height: 2.2cqw;
+  flex: none;
+  border: 1px solid rgba(160, 220, 240, 0.55);
+  border-radius: 0.3cqw;
+  background: linear-gradient(180deg, #1f5f8c, #133c5c);
+  color: #f1f7fb;
+  font-weight: 700;
+  font-size: 0.95cqw;
+  box-shadow: 0 0.15cqw 0.4cqw rgba(0, 0, 0, 0.35);
+}
+
+.routeIcons {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2cqw;
+  flex: none;
+}
+.routeIcons > * {
+  width: 2.2cqw !important;
+  height: 2.2cqw !important;
+}
+
+.routeLabel {
+  font-size: 0.85cqw;
+  line-height: 1.25;
+}
+
+.routeEmpty {
+  margin: auto 0;
+  font-size: 0.9cqw;
+  font-style: italic;
+}
+
+/* ── Escales de connexion (panneau sombre) ─────────────────────────── */
+
+.login {
+  position: absolute;
+  left: 46.9%;
+  top: 59.1%;
+  width: 49.4%;
+  height: 34.7%;
+  padding: 1.6% 2% 1.4%;
+  background: url("/assets/profile/dark-panel.webp") center / 100% 100% no-repeat;
+  filter: drop-shadow(0 0.8cqw 1.2cqw rgba(0, 0, 0, 0.55));
+  display: flex;
+  flex-direction: column;
+  gap: 0.6cqw;
+}
+
+.loginHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1cqw;
+}
+
+.loginTitle {
+  margin: 0;
+  font-family: var(--tb-font-display);
+  font-size: 1.15cqw;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #f1f4f6;
+}
+
+.loginSub {
+  margin: 0.2cqw 0 0;
+  font-size: 0.78cqw;
+  color: #b9c6cf;
+}
+
+.claimAll {
+  flex: none;
+  padding: 0.35cqw 0.8cqw;
+  border: 1px solid rgba(95, 208, 230, 0.6);
+  border-radius: 999px;
+  background: rgba(13, 52, 69, 0.8);
+  color: #dff6fb;
+  font-size: 0.78cqw;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 0 0.8cqw rgba(95, 208, 230, 0.35);
+}
+.claimAll:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.loginCells {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.55cqw;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-height: 0;
+}
+
+.loginCell {
+  min-height: 0;
+}
+
+.loginCellButton {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.2cqw;
+  padding: 0.5cqw 0.3cqw 0.6cqw;
+  border: 1px solid rgba(140, 170, 190, 0.28);
+  border-radius: 0.4cqw;
+  background: rgba(6, 16, 26, 0.72);
+  color: #e3e9ee;
+  font: inherit;
+  text-align: center;
+  cursor: default;
+}
+
+.loginCell[data-state="current"] .loginCellButton {
+  border-color: rgba(95, 208, 230, 0.85);
+  background: rgba(13, 52, 69, 0.8);
+  box-shadow: 0 0 0 1px rgba(95, 208, 230, 0.35), 0 0 1.2cqw rgba(95, 208, 230, 0.3);
+}
+
+.loginCell[data-claimable] .loginCellButton {
+  cursor: pointer;
+  animation: escaleCall 1.8s ease-in-out infinite;
+}
+@keyframes escaleCall {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(95, 208, 230, 0.35), 0 0 0.8cqw rgba(95, 208, 230, 0.25); }
+  50% { box-shadow: 0 0 0 1px rgba(95, 208, 230, 0.7), 0 0 1.8cqw rgba(95, 208, 230, 0.55); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loginCell[data-claimable] .loginCellButton {
+    animation: none;
+  }
+}
+
+.loginIndex {
+  position: relative;
+  width: 100%;
+  font-family: var(--tb-font-display);
+  font-size: 0.95cqw;
+  font-weight: 700;
+}
+
+.loginCheck {
+  position: absolute;
+  right: 12%;
+  top: 50%;
+  width: 1.1cqw;
+  height: 1.1cqw;
+  transform: translateY(-50%);
+  color: var(--tb-accent);
+}
+
+.loginIcon > * {
+  width: 2.6cqw !important;
+  height: 2.6cqw !important;
+}
+
+.loginLabel {
+  font-size: 0.7cqw;
+  line-height: 1.2;
+  min-height: 2.4em;
+  display: flex;
+  align-items: center;
+}
+
+.loginCell[data-claimable] .loginLabel {
+  color: var(--tb-accent);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Le fil des escales sous les cases : une perle au centre de chaque colonne. */
+.loginTrack {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.55cqw;
+  height: 1.2cqw;
+  align-items: center;
+  justify-items: center;
+}
+.loginTrack::before {
+  content: "";
+  position: absolute;
+  left: calc(100% / 14);
+  right: calc(100% / 14);
+  top: 50%;
+  height: 2px;
+  transform: translateY(-50%);
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.85), rgba(95, 208, 230, 0.7));
+}
+
+.loginDot {
+  position: relative;
+  width: 0.7cqw;
+  height: 0.7cqw;
+  border-radius: 50%;
+  background: var(--tb-accent);
+}
+.loginDot[data-state="passed"] {
+  background: #fff;
+}
+.loginDot[data-state="current"] {
+  width: 1.1cqw;
+  height: 1.1cqw;
+  background: #0d3445;
+  border: 0.25cqw solid var(--tb-accent);
+  box-shadow: 0 0 0.8cqw rgba(95, 208, 230, 0.8);
+}
+
+/* ── Déconnexion ───────────────────────────────────────────────────── */
+
+.signOut {
+  position: absolute;
+  left: 1.2%;
+  bottom: 1.2%;
+  padding: 0.35cqw 0.8cqw;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(5, 12, 20, 0.62);
+  color: #cfd8df;
+  font-size: 0.75cqw;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+}
+.signOut:hover,
+.signOut:focus-visible {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.4);
+  outline: none;
+}
+.signOut:disabled {
+  opacity: 0.6;
+}
+
+/* ── Les autres onglets, posés sur la même cabine ──────────────────── */
+
+.tabPage {
+  position: relative;
+  z-index: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: clamp(10px, 2vh, 24px) max(var(--tb-safe-right), clamp(12px, 3vw, 56px)) max(var(--tb-safe-bottom), 24px) max(var(--tb-safe-left), clamp(12px, 3vw, 56px));
+}
+
+/* Pas de cadre propre : chaque onglet porte déjà ses panneaux. */
+.tabPanel {
+  width: min(1200px, 100%);
+  margin: 0 auto;
+}
+
+.claimError {
+  width: min(1200px, 100%);
+  margin: 0 auto 10px;
+}

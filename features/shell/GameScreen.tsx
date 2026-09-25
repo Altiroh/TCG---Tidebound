@@ -13,6 +13,8 @@ interface GameScreenProps {
   onNavigate?: ScreenHeaderProps["onNavigate"];
   /** `minimal` retire les onglets de collection — cf. `ScreenHeaderProps.nav`. */
   nav?: ScreenHeaderProps["nav"];
+  /** Onglets propres à l'écran — cf. `ScreenHeaderProps.tabs`. */
+  tabs?: ScreenHeaderProps["tabs"];
   /** Classe additionnelle posée sur la racine (grille propre à l'écran, tokens…). */
   className?: string;
   children: ReactNode;
@@ -26,10 +28,10 @@ interface GameScreenProps {
  * La racine compose `shell.screen` (palette `--cb-*`, grille, polices) et
  * `styles.screen` (décor, tokens de panneau, deux rangées seulement).
  */
-export function GameScreen({ active, actions, onNavigate, nav, className, children }: GameScreenProps) {
+export function GameScreen({ active, actions, onNavigate, nav, tabs, className, children }: GameScreenProps) {
   return (
     <div className={`${shell.screen} ${styles.screen}${className ? ` ${className}` : ""}`}>
-      <ScreenHeader active={active} actions={actions} onNavigate={onNavigate} nav={nav} />
+      <ScreenHeader active={active} actions={actions} onNavigate={onNavigate} nav={nav} tabs={tabs} />
       {children}
     </div>
   );

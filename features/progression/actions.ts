@@ -41,6 +41,8 @@ export interface ProgressionSummary {
    * pastille de l'avatar — ce qui donne envie d'y aller.
    */
   claimableRewards: number;
+  /** L'escale de connexion du jour n'est pas encore réclamée : première venue de la journée (popup de série). */
+  loginClaimable: boolean;
 }
 
 const SIGNED_OUT: ProgressionSummary = {
@@ -54,6 +56,7 @@ const SIGNED_OUT: ProgressionSummary = {
   avatarCardId: null,
   claimableQuests: 0,
   claimableRewards: 0,
+  loginClaimable: false,
 };
 
 /**
@@ -120,6 +123,7 @@ export async function fetchProgression(): Promise<ProgressionSummary> {
       claimableQuests: claimable.count ?? 0,
       // Tout ce qui se réclame au profil — quêtes comprises, elles y ont leur onglet.
       claimableRewards: levelsToClaim + (cardChoices.count ?? 0) + loginToClaim + (claimable.count ?? 0) + (achievements.error ? 0 : (achievements.count ?? 0)),
+      loginClaimable: loginToClaim === 1,
     };
   } catch (error) {
     console.error("[fetchProgression] Lecture impossible :", error);

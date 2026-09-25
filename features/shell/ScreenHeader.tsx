@@ -45,6 +45,14 @@ const TABS: Array<{ section: ScreenSection; label: string; href: string }> = [
   { section: "boosters", label: "Mes boosters", href: "/boosters" },
 ];
 
+/** Onglet propre à un écran (le profil), posé à la place de ceux de la collection. */
+export interface ScreenHeaderTab {
+  id: string;
+  label: ReactNode;
+  active: boolean;
+  onSelect: () => void;
+}
+
 export interface ScreenHeaderProps {
   /** Section en cours — reçoit le filet turquoise et le halo. `null` : aucun onglet actif (authentification). */
   active: ScreenSection | null;
@@ -68,6 +76,12 @@ export interface ScreenHeaderProps {
    * barre par-dessus ne ferait que les doubler).
    */
   nav?: "collection" | "minimal" | "home" | "menu";
+  /**
+   * Onglets PROPRES à l'écran (le profil : Profil, Récompenses, Quêtes,
+   * Exploits), rendus à gauche comme ceux de la collection, logo au centre.
+   * Ils remplacent les onglets de collection ; le retour au menu reste.
+   */
+  tabs?: ScreenHeaderTab[];
 }
 
 /**
@@ -84,7 +98,7 @@ export interface ScreenHeaderProps {
  * Le logo déborde sous le filet du bandeau, comme une enseigne accrochée
  * au-dessus de l'écran plutôt qu'un élément de barre d'outils.
  */
-export function ScreenHeader({ active, actions, onNavigate, nav = "collection" }: ScreenHeaderProps) {
+export function ScreenHeader({ active, actions, onNavigate, nav = "collection", tabs: screenTabs }: ScreenHeaderProps) {
   const router = useRouter();
   const tabs = nav === "collection" || nav === "home" ? TABS : [];
 
@@ -125,7 +139,20 @@ export function ScreenHeader({ active, actions, onNavigate, nav = "collection" }
           </button>
         )}
 
-        {tabs.map((tab) => (
+        {screenTabs?.map((tab) => (
+          <NavigationTab
+            key={tab.id}
+            active={tab.active}
+            onClick={() => {
+              if (!tab.active) tab.onSelect();
+            }}
+          >
+            {tab.label}
+          </NavigationTab>
+        ))}
+
+        {!screenTabs &&
+          tabs.map((tab) => (
           <NavigationTab
             key={tab.section}
             active={active === tab.section}
@@ -135,7 +162,7 @@ export function ScreenHeader({ active, actions, onNavigate, nav = "collection" }
           >
             {tab.label}
           </NavigationTab>
-        ))}
+          ))}
       </div>
 
       <div className={styles.headerBrand}>
