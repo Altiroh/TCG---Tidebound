@@ -284,16 +284,30 @@ export function TableBoard(props: TableBoardProps) {
     previewTimer.current = null;
     setPreview(null);
   };
+  /**
+   * Les badges de statut flottent au-dessus de la carte mais vivent DANS son
+   * bloc : les survoler armait l'aperçu, qui recouvrait leur bulle. Sur un
+   * badge (`data-status-badge`), l'aperçu se retire ; revenir sur la carte le
+   * rouvre.
+   */
+  const overStatusBadge = (target: EventTarget) => target instanceof Element && target.closest("[data-status-badge]") !== null;
   function previewHandlers(id: string) {
+    const arm = (el: HTMLElement) => {
+      if (previewTimer.current !== null) window.clearTimeout(previewTimer.current);
+      previewTimer.current = window.setTimeout(() => {
+        previewTimer.current = null;
+        setPreview({ id, rect: el.getBoundingClientRect() });
+      }, 90);
+    };
     return {
       onPointerEnter: (event: React.PointerEvent<HTMLElement>) => {
+        if (event.pointerType !== "mouse" || overStatusBadge(event.target)) return;
+        arm(event.currentTarget);
+      },
+      onPointerOver: (event: React.PointerEvent<HTMLElement>) => {
         if (event.pointerType !== "mouse") return;
-        const el = event.currentTarget;
-        if (previewTimer.current !== null) window.clearTimeout(previewTimer.current);
-        previewTimer.current = window.setTimeout(() => {
-          previewTimer.current = null;
-          setPreview({ id, rect: el.getBoundingClientRect() });
-        }, 90);
+        if (overStatusBadge(event.target)) cancelPreview();
+        else if (preview?.id !== id && previewTimer.current === null) arm(event.currentTarget);
       },
       onPointerLeave: cancelPreview,
     };

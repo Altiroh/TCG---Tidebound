@@ -73,6 +73,8 @@ export function StatusBadge({
       <div
         ref={ref}
         tabIndex={0}
+        // Repère de `TableBoard` : survoler un badge n'ouvre pas l'aperçu de la carte, qui masquerait sa bulle.
+        data-status-badge=""
         onMouseEnter={show}
         onMouseLeave={hide}
         onFocus={show}
