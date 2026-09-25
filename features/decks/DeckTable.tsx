@@ -98,7 +98,7 @@ export function DeckTable(props: DeckTableProps) {
   const [page, setPage] = useState(0);
   const pages = Math.max(1, Math.ceil(slots.length / PER_PAGE));
 
-  // La page suit le deck choisi (flèches du bas, changement d'onglet).
+  // La page suit le deck choisi (changement d'onglet, deck ouvert ailleurs).
   useEffect(() => {
     if (currentIndex >= 0) setPage(Math.floor(currentIndex / PER_PAGE));
   }, [currentIndex]);
@@ -112,10 +112,14 @@ export function DeckTable(props: DeckTableProps) {
   const [splash, setSplash] = useState(0);
   useEffect(() => setSplash((value) => value + 1), [current?.id]);
 
-  // Encrier : jusqu'à trois taches à la fois, la plus ancienne s'efface.
+  // Encrier : trois taches, pas une de plus.
   const [blots, setBlots] = useState<Array<{ id: number; x: number; y: number; size: number; variant: number; turn: number }>>([]);
   const [shaking, setShaking] = useState(false);
+  /** L'encrier ne contient que trois gouttes. */
+  const [drops, setDrops] = useState(0);
   function spill() {
+    if (drops >= 3) return;
+    setDrops((value) => value + 1);
     setShaking(true);
     setTimeout(() => setShaking(false), 420);
     setBlots((current) => {
@@ -134,17 +138,9 @@ export function DeckTable(props: DeckTableProps) {
     });
   }
 
-  function step(delta: number) {
-    const decksOnly = decks;
-    if (decksOnly.length === 0) return;
-    const index = current ? decksOnly.findIndex((deck) => deck.id === current.id) : -1;
-    const next = decksOnly[(index + delta + decksOnly.length) % decksOnly.length]!;
-    playButtonClick();
-    onSelect(next.id);
-  }
-
   return (
     <div className={styles.page}>
+      <span className={styles.lanternGlow} aria-hidden />
       <div className={styles.stage}>
         {/* ── Décor posé sur la table ── */}
         {/* eslint-disable @next/next/no-img-element -- décor peint, positionné à la main */}
@@ -171,7 +167,14 @@ export function DeckTable(props: DeckTableProps) {
           />
         ))}
         {/* L'encrier : un toucher le fait trembler, et l'encre éclabousse le livre. */}
-        <button type="button" className={styles.inkwell} data-shaking={shaking || undefined} onClick={spill} aria-label="Renverser un peu d'encre">
+        <button
+          type="button"
+          className={styles.inkwell}
+          data-shaking={shaking || undefined}
+          onClick={spill}
+          disabled={drops >= 3}
+          aria-label={drops >= 3 ? "L'encrier est vide" : "Renverser un peu d'encre"}
+        >
           {/* eslint-disable-next-line @next/next/no-img-element -- décor peint */}
           <img src={`${ASSETS}/encrier.webp`} alt="" draggable={false} />
         </button>
@@ -292,19 +295,6 @@ export function DeckTable(props: DeckTableProps) {
             setPage((value) => Math.min(pages - 1, value + 1));
           }}
         />
-
-        {/* ── Position dans la liste ── */}
-        {decks.length > 0 && (
-          <div className={styles.pager}>
-            <button type="button" className={`${styles.smallArrow} ${styles.smallArrowLeft}`} aria-label="Deck précédent" onClick={() => step(-1)} />
-            <span className={styles.pagerDiamond} aria-hidden />
-            <span className={styles.pagerCount}>
-              {current ? decks.findIndex((deck) => deck.id === current.id) + 1 : 0} / {decks.length}
-            </span>
-            <span className={styles.pagerDiamond} aria-hidden />
-            <button type="button" className={`${styles.smallArrow} ${styles.smallArrowRight}`} aria-label="Deck suivant" onClick={() => step(1)} />
-          </div>
-        )}
 
         {/* ── La fiche ── */}
         <DeckFiche {...props} deck={current} />

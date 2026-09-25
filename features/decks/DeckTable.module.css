@@ -49,10 +49,10 @@
 
 .inkwell {
   position: absolute;
-  left: -1.5%;
-  top: -3%;
+  left: 0.5%;
+  top: -1%;
   z-index: 4;
-  width: 8.5%;
+  width: 8%;
   padding: 0;
   border: 0;
   background: none;
@@ -67,10 +67,13 @@
   width: 100%;
 }
 
-.inkwell:hover,
+/* Pas de lueur : un objet du décor, pas un bouton. Trois gouttes, puis il est vide. */
 .inkwell:focus-visible {
-  filter: drop-shadow(0 0 0.8cqw rgba(95, 208, 230, 0.55)) drop-shadow(0 0.8cqw 1cqw rgba(0, 0, 0, 0.55));
   outline: none;
+}
+
+.inkwell:disabled {
+  cursor: default;
 }
 
 .inkwell[data-shaking] {
@@ -104,23 +107,23 @@
 }
 
 .quill {
-  left: -2.5%;
-  top: 58%;
-  width: 10%;
-  transform: rotate(-24deg);
+  left: -4.5%;
+  top: 60%;
+  width: 13%;
+  transform: rotate(-8deg);
 }
 
 .candle {
-  right: 25.5%;
-  top: -8%;
-  width: 6.5%;
+  left: 8.8%;
+  top: -1.5%;
+  width: 6%;
 }
 
 /* La flamme : un halo serré qui vacille vite… */
 .candleGlow {
   position: absolute;
-  right: 26.2%;
-  top: -12%;
+  left: 7.4%;
+  top: -5.5%;
   width: 9%;
   aspect-ratio: 1;
   border-radius: 50%;
@@ -133,8 +136,8 @@
 /* …et sa lumière chaude portée sur le livre, qui oscille plus lentement. */
 .candleCast {
   position: absolute;
-  right: 12%;
-  top: -30%;
+  left: -6%;
+  top: -24%;
   width: 36%;
   aspect-ratio: 1;
   border-radius: 50%;
@@ -156,11 +159,12 @@
   80% { opacity: 0.95; transform: translateX(-0.5%) scale(1.02); }
 }
 
+/* Posée SOUS la fiche, elle en dépasse vers la gauche. */
 .bottle {
   left: 64%;
-  top: 74%;
-  width: 7.5%;
-  transform: rotate(18deg);
+  top: 72%;
+  width: 8.5%;
+  transform: rotate(62deg);
 }
 
 @keyframes flicker {
@@ -175,19 +179,17 @@
 }
 
 /* ── Onglets : une bande de parchemin, légèrement de biais ─────────── */
+/* Une TUILE de parchemin par onglet, chacune un peu de biais. */
 .tabs {
   position: absolute;
-  left: 7.5%;
-  top: 14%;
-  width: 41.5%;
-  height: 8.6%;
+  left: 7%;
+  top: 9%;
+  width: 43%;
+  height: 7.6%;
   display: grid;
   grid-template-columns: 1fr 1.15fr 0.85fr 1.35fr;
-  align-items: center;
-  padding: 0 1.8%;
-  background: url("/assets/decks/liste/onglet.webp") center / 100% 100% no-repeat;
-  transform: rotate(2.2deg);
-  filter: drop-shadow(0 0.4cqw 0.6cqw rgba(0, 0, 0, 0.55));
+  align-items: stretch;
+  gap: 0.6%;
 }
 
 .tab {
@@ -196,11 +198,11 @@
   align-items: center;
   justify-content: center;
   gap: 0.45cqw;
-  height: 78%;
-  padding: 0 0.4cqw;
+  height: 100%;
+  padding: 0 0.8cqw;
   border: 0;
-  border-right: 0.08cqw solid rgba(90, 58, 30, 0.45);
-  background: none;
+  background: url("/assets/decks/liste/onglet.webp") center / 100% 100% no-repeat;
+  filter: drop-shadow(0 0.4cqw 0.6cqw rgba(0, 0, 0, 0.55));
   color: #3a2616;
   font-family: var(--tb-font-display, Georgia, serif);
   font-size: max(9px, 0.86cqw);
@@ -209,8 +211,14 @@
   cursor: pointer;
 }
 
-.tab:last-child {
-  border-right: 0;
+.tab:nth-child(1) { transform: rotate(-1.6deg); }
+.tab:nth-child(2) { transform: rotate(1.2deg) translateY(4%); }
+.tab:nth-child(3) { transform: rotate(-0.8deg) translateY(-3%); }
+.tab:nth-child(4) { transform: rotate(1.8deg) translateY(2%); }
+
+/* L'onglet ouvert se soulève un peu. */
+.tab[data-active] {
+  translate: 0 -6%;
 }
 
 .tab img {
@@ -235,7 +243,7 @@
 
 /* Survol : la lueur chaude du menu principal (`MenuCarte.module.css`, `.card:hover`). */
 .tab {
-  transition: filter 200ms ease-out, transform 180ms var(--tb-ease, cubic-bezier(0.2, 0.8, 0.2, 1));
+  transition: filter 200ms ease-out, scale 180ms var(--tb-ease, cubic-bezier(0.2, 0.8, 0.2, 1)), translate 180ms ease-out;
 }
 
 .tab:hover,
@@ -243,15 +251,15 @@
   color: #18100a;
   outline: none;
   filter: brightness(1.11) saturate(1.14) contrast(1.02) drop-shadow(0 0 7px rgba(255, 214, 140, 0.85))
-    drop-shadow(0 0 26px rgba(255, 176, 72, 0.45));
-  transform: scale(1.035);
+    drop-shadow(0 0 26px rgba(255, 176, 72, 0.45)) drop-shadow(0 0.4cqw 0.6cqw rgba(0, 0, 0, 0.55));
+  scale: 1.04;
 }
 
 /* ── Tri et recherche ─────────────────────────────────────────────── */
 .sort {
   position: absolute;
-  left: 51%;
-  top: 12.5%;
+  left: 51.5%;
+  top: 8.5%;
   width: 21.5%;
   height: 7.2%;
   display: flex;
@@ -286,7 +294,7 @@
 .search {
   position: absolute;
   left: 53.5%;
-  top: 21.5%;
+  top: 17%;
   width: 19%;
   height: 5.6%;
   display: flex;
@@ -313,7 +321,7 @@
 .trashLink {
   position: absolute;
   left: 53.5%;
-  top: 28%;
+  top: 23.5%;
   padding: 0.2cqw 0.6cqw;
   border: 0;
   border-radius: 0.3cqw;
@@ -331,7 +339,7 @@
 .stacks {
   position: absolute;
   left: 3.6%;
-  top: 28.5%;
+  top: 33%;
   width: 67.6%;
   height: 50%;
   display: grid;
@@ -490,8 +498,7 @@
 }
 
 /* ── Flèches ──────────────────────────────────────────────────────── */
-.bigArrow,
-.smallArrow {
+.bigArrow {
   position: absolute;
   padding: 0;
   border: 0;
@@ -502,7 +509,7 @@
 }
 
 .bigArrow {
-  top: 42%;
+  top: 47%;
   width: 2.8%;
   aspect-ratio: 300 / 471;
 }
@@ -529,74 +536,18 @@
   transform: scaleX(-1) translateX(-8%);
 }
 
-.pager {
-  position: absolute;
-  left: 25%;
-  top: 83%;
-  width: 24%;
-  height: 6%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1cqw;
-}
-
-.smallArrow {
-  position: relative;
-  width: 3.4cqw;
-  height: 100%;
-  background-image: none;
-  border: 0.12cqw solid #b88a3e;
-  border-radius: 0.3cqw;
-  background: linear-gradient(180deg, #4a3220, #2a1b10);
-  clip-path: polygon(22% 0, 100% 0, 100% 100%, 22% 100%, 0 50%);
-}
-
-.smallArrow::after {
-  content: "";
-  position: absolute;
-  left: 42%;
-  top: 30%;
-  border-block: 0.6cqw solid transparent;
-  border-right: 0.9cqw solid #e6c77e;
-  transform: translateY(-5%);
-}
-
-.smallArrowRight {
-  transform: scaleX(-1);
-}
-
-.pagerDiamond {
-  width: 0.7cqw;
-  height: 0.7cqw;
-  border: 0.1cqw solid #b88a3e;
-  background: #1c6d86;
-  transform: rotate(45deg);
-}
-
-.pagerCount {
-  min-width: 6cqw;
-  padding: 0.35cqw 1.4cqw;
-  border-radius: 0.4cqw;
-  background: url("/assets/decks/liste/onglet.webp") center / 100% 100% no-repeat;
-  color: #2c1c0f;
-  font-family: var(--tb-font-display, Georgia, serif);
-  font-size: 1.3cqw;
-  font-weight: 700;
-  text-align: center;
-}
 
 /* ── La fiche du deck ─────────────────────────────────────────────── */
 /* La fiche : penchée, et qui déborde du bord droit de l'écran (maquette). */
 .fiche {
   position: absolute;
-  left: 75.5%;
-  top: 2.5%;
-  width: 27.5%;
+  left: 72.5%;
+  top: -2%;
+  width: 29.5%;
   aspect-ratio: 760 / 1305;
   background: url("/assets/decks/liste/fiche.webp") center / 100% 100% no-repeat;
   filter: drop-shadow(0 1cqw 1.4cqw rgba(0, 0, 0, 0.65));
-  transform: rotate(-3.2deg);
+  transform: rotate(3.4deg);
   transform-origin: 30% 50%;
 }
 
@@ -910,6 +861,28 @@
   .candleCast,
   .blot,
   .inkwell[data-shaking] {
+    animation: none;
+  }
+}
+
+/* La lanterne peinte en haut à droite du FOND (hors scène : le fond couvre
+   tout l'écran) — sa lueur respire derrière la fiche. */
+.lanternGlow {
+  position: fixed;
+  top: -6vh;
+  right: -4vw;
+  z-index: 0;
+  width: 26vw;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 200, 120, 0.45), rgba(255, 150, 60, 0.16) 40%, transparent 68%);
+  mix-blend-mode: screen;
+  pointer-events: none;
+  animation: castSway 3.6s ease-in-out infinite, flicker 2.1s steps(1, end) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lanternGlow {
     animation: none;
   }
 }
