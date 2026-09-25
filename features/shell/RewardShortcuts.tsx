@@ -3,7 +3,8 @@
 import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import type { ProgressionSummary } from "@/features/progression/actions";
-import type { ProfileTab } from "@/features/progression/profileTabs";
+import type { PROFILE_PANELS, ProfileTab } from "@/features/progression/profileTabs";
+import { useInterfaceSettings } from "@/lib/settings";
 import styles from "@/features/shell/RewardShortcuts.module.css";
 
 interface Shortcut {
@@ -11,6 +12,8 @@ interface Shortcut {
   label: string;
   count: number;
   tab: ProfileTab;
+  /** Fenêtre du hub à ouvrir en arrivant (colis de mécène → la fenêtre des mécènes). */
+  panel?: keyof typeof PROFILE_PANELS;
   icon: ReactNode;
 }
 
@@ -35,8 +38,16 @@ function Picture({ src }: { src: string }) {
  * n'apparaît. Jamais en partie (la table n'a pas ce bandeau), ni sur la
  * page du profil, où tout est déjà sous les yeux.
  */
-export function RewardShortcuts({ summary, onOpen }: { summary: ProgressionSummary; onOpen: (tab: ProfileTab) => void }) {
+export function RewardShortcuts({
+  summary,
+  onOpen,
+}: {
+  summary: ProgressionSummary;
+  onOpen: (tab: ProfileTab, panel?: keyof typeof PROFILE_PANELS) => void;
+}) {
   const pathname = usePathname();
+  // Options › Interface › « Afficher les informations de récompenses rapides ».
+  const { rewardShortcuts } = useInterfaceSettings();
   const b = summary.claimableBreakdown;
   const all: Shortcut[] = [
     {
@@ -62,6 +73,14 @@ export function RewardShortcuts({ summary, onOpen }: { summary: ProgressionSumma
       icon: <Picture src="/assets/quests/icon-cat-partie.webp" />,
     },
     {
+      id: "sponsorGifts",
+      label: b.sponsorGifts > 1 ? `${b.sponsorGifts} colis de mécènes à ouvrir` : "Un mécène vous a envoyé un colis",
+      count: b.sponsorGifts,
+      tab: "recompenses",
+      panel: "mecenes",
+      icon: <Glyph d="M4 10h16v10H4zM3 7h18v3H3zM12 7v13M12 7c-1.5-3-5-3.5-5-1s3 1 5 1zm0 0c1.5-3 5-3.5 5-1s-3 1-5 1z" />,
+    },
+    {
       id: "achievements",
       label: b.achievements > 1 ? `${b.achievements} exploits à réclamer` : "Un exploit à réclamer",
       count: b.achievements,
@@ -72,7 +91,7 @@ export function RewardShortcuts({ summary, onOpen }: { summary: ProgressionSumma
   const shortcuts = all.filter((shortcut) => shortcut.count > 0);
 
   // Sur la page du profil, tout est déjà sous les yeux : la colonne ferait doublon.
-  if (shortcuts.length === 0 || pathname?.startsWith("/profil")) return null;
+  if (!rewardShortcuts || shortcuts.length === 0 || pathname?.startsWith("/profil")) return null;
 
   return (
     <nav className={styles.stack} aria-label="Récompenses à réclamer">
@@ -82,9 +101,10 @@ export function RewardShortcuts({ summary, onOpen }: { summary: ProgressionSumma
           type="button"
           className={styles.shortcut}
           style={{ animationDelay: `${index * 70}ms` }}
-          onClick={() => onOpen(shortcut.tab)}
+          onClick={() => onOpen(shortcut.tab, shortcut.panel)}
           aria-label={shortcut.label}
         >
+          <span className={styles.diamond} aria-hidden />
           <span className={styles.icon}>{shortcut.icon}</span>
           <span className={styles.dot} aria-hidden>
             {shortcut.count > 1 ? shortcut.count : ""}

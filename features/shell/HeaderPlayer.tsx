@@ -2,13 +2,15 @@
 
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { AudienceTip } from "@/features/audience/AudienceTip";
 import { RewardShortcuts } from "@/features/shell/RewardShortcuts";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchProgression, type ProgressionSummary } from "@/features/progression/actions";
 import { audienceMood } from "@/game/audience";
-import { notifyProgressionChanged, onProgressionChanged, readProgression, rememberedProgression } from "@/features/progression/progressionSync";
+import { onProgressionChanged, readProgression, rememberedProgression } from "@/features/progression/progressionSync";
 import { cardIllustrationThumbUrl } from "@/features/decks/cardArtUrl";
+import { profileHref, type PROFILE_PANELS } from "@/features/progression/profileTabs";
 import type { ProfileTab } from "@/features/progression/ProfileView";
 import { PreconToken, TideCoin } from "@/features/shell/GameIcons";
 import { ScreenToast, type ScreenToastMessage } from "@/features/shell/ScreenToast";
@@ -23,9 +25,6 @@ import { playButtonClick } from "@/lib/sound";
  * (~370 Ko). Monté statiquement, il le faisait télécharger dès la page de
  * connexion, tiroir fermé.
  */
-const ProfileDrawer = dynamic(() => import("@/features/progression/ProfileDrawer").then((m) => m.ProfileDrawer), {
-  ssr: false,
-});
 
 /** Popup de série (première venue du jour) — chargé seulement quand il s'ouvre. */
 const DailyStreakPopup = dynamic(() => import("@/features/progression/DailyStreakPopup").then((m) => m.DailyStreakPopup), {
@@ -154,7 +153,9 @@ export function HeaderPlayer() {
   const [summary, setSummary] = useState<ProgressionSummary | null>(rememberedProgression);
   const [optionsOpen, setOptionsOpen] = useState(false);
   /** Profil ouvert en panneau, et sur quel onglet (`null` : fermé). */
-  const [profileTab, setProfileTab] = useState<ProfileTab | null>(null);
+  const router = useRouter();
+  /** Le profil n'est plus un panneau : on va sur la page, au bon onglet (et la bonne fenêtre). */
+  const goToProfile = useCallback((tab: ProfileTab, panel?: keyof typeof PROFILE_PANELS) => router.push(profileHref(tab, panel)), [router]);
   /** Dernier nombre de récompenses à réclamer VU — même principe que les quêtes. */
   const lastRewards = useRef<number | null>(null);
   const [toast, setToast] = useState<ScreenToastMessage | null>(null);
@@ -222,7 +223,7 @@ export function HeaderPlayer() {
               playButtonClick();
               setToast(null);
               // Les quêtes vivent dans l'onglet « Quêtes » du profil.
-              setProfileTab("quetes");
+              goToProfile("quetes");
             }}
           >
             Voir →
@@ -270,7 +271,7 @@ export function HeaderPlayer() {
                   onClick={() => {
                     playButtonClick();
                     setToast(null);
-                    setProfileTab("recompenses");
+                    goToProfile("recompenses", "mecenes");
                   }}
                 >
                   Voir →
@@ -298,7 +299,7 @@ export function HeaderPlayer() {
                   onClick={() => {
                     playButtonClick();
                     setToast(null);
-                    setProfileTab("recompenses");
+                    goToProfile("recompenses");
                   }}
                 >
                   Réclamer →
@@ -315,18 +316,16 @@ export function HeaderPlayer() {
       cancelled = true;
       unsubscribe();
     };
-  }, []);
+  }, [goToProfile]);
 
   // Joueur non connecté : la progression n'existe pas encore, on n'affiche
   // rien du tout plutôt qu'un niveau 1 trompeur.
   const signedIn = summary?.isSignedIn ?? false;
 
-  /** Le profil s'ouvre en PANNEAU ; un clic molette ou Ctrl+clic garde la page `/profil`. */
-  function openProfile(event: React.MouseEvent, tab: ProfileTab) {
+  /** Le profil est une PAGE : le lien y mène sur le bon onglet ; un clic molette ou Ctrl+clic l'ouvre ailleurs. */
+  function openProfile(event: React.MouseEvent) {
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
-    event.preventDefault();
     playButtonClick();
-    setProfileTab(tab);
   }
 
   return (
@@ -338,10 +337,10 @@ export function HeaderPlayer() {
               qu'il manque quelque chose. Le jeton mène au profil, comme le
               pseudo. */}
           <Link
-            href="/profil"
+            href={profileHref(summary.claimableRewards > 0 ? "recompenses" : "carnet")}
             className={styles.accountAvatarLink}
             aria-label={summary.claimableRewards > 0 ? `Profil — ${summary.claimableRewards} récompense${summary.claimableRewards > 1 ? "s" : ""} à réclamer` : "Profil"}
-            onClick={(event) => openProfile(event, summary.claimableRewards > 0 ? "recompenses" : "carnet")}
+            onClick={openProfile}
           >
             {summary.avatarCardId ? (
               <span
@@ -360,20 +359,18 @@ export function HeaderPlayer() {
           </Link>
 
           {/* Ce qui attend d'être réclamé, en raccourcis flottants sous le bloc. */}
-          {!profileTab && (
-            <RewardShortcuts
-              summary={summary}
-              onOpen={(tab) => {
-                playButtonClick();
-                setProfileTab(tab);
-              }}
-            />
-          )}
+          <RewardShortcuts
+            summary={summary}
+            onOpen={(tab, panel) => {
+              playButtonClick();
+              goToProfile(tab, panel);
+            }}
+          />
 
           <span className={styles.accountIdentity}>
             {/* Le pseudo mène au carnet de bord : niveau, paliers, escales
                 de connexion, exploits (Notion « Progression joueur » §12). */}
-            <Link href="/profil" className={styles.accountName} title={summary.displayName ?? undefined} onClick={(event) => openProfile(event, "carnet")}>
+            <Link href={profileHref("carnet")} className={styles.accountName} title={summary.displayName ?? undefined} onClick={openProfile}>
               {summary.displayName ?? "Joueur"}
             </Link>
 
@@ -449,16 +446,6 @@ export function HeaderPlayer() {
           progression. */}
       <ScreenToast message={toast} onDismiss={() => setToast(null)} />
 
-      {profileTab && (
-        <ProfileDrawer
-          initialTab={profileTab}
-          onClose={() => {
-            setProfileTab(null);
-            // Réclamations, pseudo, avatar : le bandeau relit en fermant.
-            notifyProgressionChanged();
-          }}
-        />
-      )}
       {optionsOpen && <SettingsDialog isSignedIn={signedIn} onClose={() => setOptionsOpen(false)} />}
       {streakOpen && <DailyStreakPopup onClose={() => setStreakOpen(false)} />}
     </>

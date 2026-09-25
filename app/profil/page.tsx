@@ -1,18 +1,19 @@
 import { fetchProfile } from "@/features/progression/profileActions";
 import { ProfileScreen } from "@/features/progression/ProfileScreen";
-import { parseProfileTab } from "@/features/progression/profileTabs";
+import { parseProfilePanel, parseProfileTab } from "@/features/progression/profileTabs";
 
 /**
  * Profil joueur — niveau, paliers, connexions, quêtes et Traversées,
  * exploits (Notion « Progression joueur » §12). `?onglet=quetes` ouvre
- * directement un onglet.
+ * directement un onglet ; `&panneau=mecenes` (ou `maitrises`) y ouvre en plus
+ * la fenêtre correspondante du hub des Récompenses.
  *
  * Rendu dynamiquement : la progression change à chaque partie, et un profil
  * mis en cache afficherait un niveau périmé juste après une victoire.
  */
 export const dynamic = "force-dynamic";
 
-export default async function ProfilPage({ searchParams }: { searchParams: { onglet?: string | string[] } }) {
+export default async function ProfilPage({ searchParams }: { searchParams: { onglet?: string | string[]; panneau?: string | string[] } }) {
   const profile = await fetchProfile();
-  return <ProfileScreen profile={profile} initialTab={parseProfileTab(searchParams.onglet)} />;
+  return <ProfileScreen profile={profile} initialTab={parseProfileTab(searchParams.onglet)} initialPanel={parseProfilePanel(searchParams.panneau)} />;
 }

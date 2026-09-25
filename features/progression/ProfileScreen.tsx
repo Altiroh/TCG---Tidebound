@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ProfileSummary } from "@/features/progression/profileActions";
 import { ProfileView, waitingCounts, type ProfileTab } from "@/features/progression/ProfileView";
+import type { ProfilePanel } from "@/features/progression/profileTabs";
 import sceneStyles from "@/features/progression/ProfileScreen.module.css";
 import { GameScreen } from "@/features/shell/GameScreen";
 import game from "@/features/shell/GameScreen.module.css";
@@ -13,12 +14,14 @@ import { playButtonClick } from "@/lib/sound";
 interface ProfileScreenProps {
   profile: ProfileSummary;
   initialTab?: ProfileTab;
+  /** Fenêtre du hub à ouvrir d'emblée (`?panneau=`). */
+  initialPanel?: ProfilePanel;
 }
 
 /**
- * Page `/profil` — le même contenu que le panneau ouvert depuis le bandeau
- * (`ProfileDrawer`), pour les liens directs et les retours arrière. Le
- * bandeau, lui, ouvre le panneau sans quitter l'écran en cours.
+ * Page `/profil` — la SEULE porte du profil (25/09/2026 : plus de panneau
+ * par-dessus l'écran en cours). Le bandeau, les raccourcis et les alertes
+ * y mènent sur le bon onglet (`profileHref`).
  */
 /** Onglets de la page, dans le bandeau commun (à gauche, le logo reste au centre). */
 const PAGE_TABS: Array<{ id: ProfileTab; label: string }> = [
@@ -28,9 +31,13 @@ const PAGE_TABS: Array<{ id: ProfileTab; label: string }> = [
   { id: "exploits", label: "Exploits" },
 ];
 
-export function ProfileScreen({ profile, initialTab }: ProfileScreenProps) {
+export function ProfileScreen({ profile, initialTab, initialPanel }: ProfileScreenProps) {
   const router = useRouter();
   const [tab, setTab] = useState<ProfileTab>(initialTab ?? "carnet");
+  // Déjà sur la page, un raccourci du bandeau change l'URL : l'onglet suit.
+  useEffect(() => {
+    if (initialTab) setTab(initialTab);
+  }, [initialTab]);
 
   if (!profile.isSignedIn) {
     return (
@@ -78,7 +85,7 @@ export function ProfileScreen({ profile, initialTab }: ProfileScreenProps) {
         };
       })}
     >
-      <ProfileView profile={profile} layout="page" tab={tab} onTabChange={setTab} onRefresh={() => router.refresh()} />
+      <ProfileView profile={profile} layout="page" tab={tab} onTabChange={setTab} onRefresh={() => router.refresh()} initialPanel={initialPanel} />
     </GameScreen>
   );
 }

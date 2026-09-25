@@ -4,6 +4,7 @@ import Link from "next/link";
 import { AUTH_LINK_CLASS } from "@/components/auth/AuthGlassPanel";
 import { appVersionLabel } from "@/features/settings/appVersion";
 import { AudioSettingsSection } from "@/features/settings/AudioSettingsSection";
+import { InterfaceSettingsSection } from "@/features/settings/InterfaceSettingsSection";
 import { ChangePasswordSection } from "@/features/settings/ChangePasswordSection";
 import { DeleteAccountSection } from "@/features/settings/DeleteAccountSection";
 import { Dialog } from "@/features/shell/Dialog";
@@ -25,7 +26,7 @@ interface SettingsDialogProps {
  * cyan en tête, la même croix, les mêmes sorties (Échap, voile, croix). Il
  * ne restait de l'ancienne version qu'une matière de plus à entretenir.
  *
- * Deux sections seulement (Audio, Compte) séparées par un filet : tout ce
+ * Trois sections (Audio, Interface, Compte) séparées par un filet : tout ce
  * qui se règle aujourd'hui tient sur un écran, sans onglets ni page dédiée.
  */
 export function SettingsDialog({ isSignedIn, onClose }: SettingsDialogProps) {
@@ -35,6 +36,13 @@ export function SettingsDialog({ isSignedIn, onClose }: SettingsDialogProps) {
         <section className={styles.section}>
           <h3 className={styles.sectionTitle}>Audio</h3>
           <AudioSettingsSection />
+        </section>
+
+        <hr className={styles.divider} />
+
+        <section className={styles.section}>
+          <h3 className={styles.sectionTitle}>Interface</h3>
+          <InterfaceSettingsSection />
         </section>
 
         <hr className={styles.divider} />

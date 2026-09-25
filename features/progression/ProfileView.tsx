@@ -79,6 +79,8 @@ interface ProfileViewProps {
    * scène de la cabine (`ProfileScene`).
    */
   layout?: "drawer" | "page";
+  /** Fenêtre du hub des Récompenses à ouvrir d'emblée (`/profil?panneau=`). */
+  initialPanel?: "sponsors" | "masteries";
   /** Onglet affiché, piloté par l'écran (`layout="page"`). */
   tab?: ProfileTab;
   onTabChange?: (tab: ProfileTab) => void;
@@ -87,14 +89,23 @@ interface ProfileViewProps {
 /**
  * Le PROFIL — panneau latéral (portrait, niveau, onglets, déconnexion) et
  * contenu de l'onglet. Rendu tel quel dans le panneau ouvert depuis le
- * bandeau (`ProfileDrawer`) et sur la page `/profil`.
+ * page `/profil` (l'ancien panneau du bandeau a été retiré le 25/09/2026).
  *
  * Tout ce qui attend le joueur BRILLE : une pastille sur l'onglet, un
  * bandeau « à réclamer » en tête, un bouton qui pulse sur chaque palier. Le
  * geste de réclamer ouvre une révélation (`RewardReveal`) — c'est le
  * moment qu'on vient chercher.
  */
-export function ProfileView({ profile, onRefresh, initialTab = "carnet", onLeave, layout = "drawer", tab: controlledTab, onTabChange }: ProfileViewProps) {
+export function ProfileView({
+  profile,
+  onRefresh,
+  initialTab = "carnet",
+  onLeave,
+  layout = "drawer",
+  tab: controlledTab,
+  onTabChange,
+  initialPanel,
+}: ProfileViewProps) {
   const router = useRouter();
   const [ownTab, setOwnTab] = useState<ProfileTab>(initialTab);
   const tab = controlledTab ?? ownTab;
@@ -251,6 +262,7 @@ export function ProfileView({ profile, onRefresh, initialTab = "carnet", onLeave
             onRefresh={onRefresh}
             onShowQuests={() => setTab("quetes")}
             onShowAchievements={() => setTab("exploits")}
+            initialSheet={initialPanel}
           />
           {revealLayer}
         </>

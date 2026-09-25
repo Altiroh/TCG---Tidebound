@@ -36,6 +36,8 @@ interface RewardsHubProps {
   onRefresh: () => void;
   onShowQuests: () => void;
   onShowAchievements: () => void;
+  /** Fenêtre ouverte d'emblée (lien direct vers les mécènes, par exemple). */
+  initialSheet?: "sponsors" | "masteries";
 }
 
 /** Paliers affichés d'un coup sur la route. */
@@ -53,13 +55,16 @@ const ROUTE_WINDOW = 6;
  *
  * Un seul signal fort à la fois : ce qui se réclame luit, le reste attend.
  */
-export function RewardsHub({ profile, claiming, onClaimLevel, onReveal, onRefresh, onShowQuests, onShowAchievements }: RewardsHubProps) {
+export function RewardsHub({ profile, claiming, onClaimLevel, onReveal, onRefresh, onShowQuests, onShowAchievements, initialSheet }: RewardsHubProps) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   /** Coffret de mécène en train de s'ouvrir (scène plein écran, `GiftOpening`). */
   const [gift, setGift] = useState<{ color: string; name: string | null } | null>(null);
   /** Extension ouverte en grand : tous les mécènes, ou toutes les maîtrises. */
-  const [sheet, setSheet] = useState<"sponsors" | "masteries" | null>(null);
+  const [sheet, setSheet] = useState<"sponsors" | "masteries" | null>(initialSheet ?? null);
+  useEffect(() => {
+    if (initialSheet) setSheet(initialSheet);
+  }, [initialSheet]);
 
   /** Une réclamation du hub : erreur affichée, révélation, relecture. */
   function run(action: () => Promise<{ ok: boolean; error?: string; items?: RewardItem[] }>, title: string, revealDelayMs = 0) {

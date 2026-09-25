@@ -89,3 +89,54 @@ export function subscribeAudioSettings(listener: () => void): () => void {
 export function useAudioSettings(): AudioSettings {
   return useSyncExternalStore(subscribeAudioSettings, getAudioSettings, () => DEFAULTS);
 }
+
+/* ── Interface ────────────────────────────────────────────────────── */
+
+/** Préférences d'affichage, même principe que l'audio : sur l'appareil, pas sur le compte. */
+export interface InterfaceSettings {
+  /**
+   * Raccourcis flottants vers les récompenses à réclamer, sous le bloc du
+   * compte (`RewardShortcuts`). Oui par défaut (décision du 25/09/2026).
+   */
+  rewardShortcuts: boolean;
+}
+
+const INTERFACE_DEFAULTS: InterfaceSettings = { rewardShortcuts: true };
+const INTERFACE_KEY = "tidebound:interface-settings";
+let interfaceCached: InterfaceSettings | null = null;
+const interfaceListeners = new Set<() => void>();
+
+function readInterface(): InterfaceSettings {
+  if (interfaceCached) return interfaceCached;
+  if (typeof window === "undefined") return INTERFACE_DEFAULTS;
+  interfaceCached = INTERFACE_DEFAULTS;
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(INTERFACE_KEY) ?? "null") as Partial<InterfaceSettings> | null;
+    interfaceCached = {
+      rewardShortcuts: typeof parsed?.rewardShortcuts === "boolean" ? parsed.rewardShortcuts : INTERFACE_DEFAULTS.rewardShortcuts,
+    };
+  } catch {
+    // Stockage indisponible ou JSON corrompu : valeurs par défaut.
+  }
+  return interfaceCached;
+}
+
+export function setInterfaceSetting<K extends keyof InterfaceSettings>(key: K, value: InterfaceSettings[K]): void {
+  const next = { ...readInterface(), [key]: value };
+  interfaceCached = next;
+  try {
+    window.localStorage.setItem(INTERFACE_KEY, JSON.stringify(next));
+  } catch {
+    // Appliqué pour la session, simplement pas retenu.
+  }
+  for (const listener of interfaceListeners) listener();
+}
+
+function subscribeInterfaceSettings(listener: () => void): () => void {
+  interfaceListeners.add(listener);
+  return () => interfaceListeners.delete(listener);
+}
+
+export function useInterfaceSettings(): InterfaceSettings {
+  return useSyncExternalStore(subscribeInterfaceSettings, readInterface, () => INTERFACE_DEFAULTS);
+}
