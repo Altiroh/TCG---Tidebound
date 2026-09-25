@@ -609,7 +609,8 @@ export function TableBoard(props: TableBoardProps) {
           <button
             type="button"
             className={styles.abilityButton}
-            title={getCardDefinition(instance.cardId).text}
+            title={`Activer — ${getCardDefinition(instance.cardId).text}`}
+            aria-label={`Activer ${getCardDefinition(instance.cardId).name}`}
             // Le bouton vit DANS la carte, qui démarre un geste au pointeur : il ne doit pas l'armer.
             onPointerDown={(event) => event.stopPropagation()}
             onClick={(event) => {
@@ -617,7 +618,17 @@ export function TableBoard(props: TableBoardProps) {
               props.onActivateAbility?.(card.id);
             }}
           >
-            Activer
+            {/* Un doigt qui touche : « à cliquer », sans bouton qui masque la carte. */}
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path
+                d="M9 11V5.5a1.5 1.5 0 013 0V10m0-1.5a1.5 1.5 0 013 0V11m0-1a1.5 1.5 0 013 0v4.5a6 6 0 01-6 6h-.6a6 6 0 01-4.6-2.2L4.6 15.4a1.5 1.5 0 012.2-2L9 15V11"
+                stroke="currentColor"
+                strokeWidth={1.7}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path d="M6.5 4.5L5 3M10.5 2.5V1M14.5 4.5L16 3" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
+            </svg>
           </button>
         )}
       </div>
