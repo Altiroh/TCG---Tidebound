@@ -309,8 +309,11 @@
 /* Le bouton peint porte déjà son texte : celui du DOM reste pour les lecteurs d'écran. */
 .left [class*="_shipChange__"] {
   order: 3;
-  align-self: center;
-  width: 92%;
+  /* Collé sous le cadre, de la même largeur que lui. */
+  align-self: stretch;
+  width: auto;
+  margin-inline: calc(-1 * clamp(10px, 0.8vw, 16px) - clamp(8px, 0.7vw, 12px));
+  margin-top: calc(-1 * clamp(4px, 0.7vh, 8px) - 3px);
   aspect-ratio: 640 / 147;
   overflow: hidden;
   background: url("/assets/decks/editeur/bouton-changer-navire.webp") center / 100% 100% no-repeat;
