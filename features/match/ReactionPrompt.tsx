@@ -6,7 +6,7 @@ import { useImageOk } from "@/features/match/useImageOk";
 import { playButtonClick } from "@/lib/sound";
 
 /** Le joueur a ce temps pour répondre avant que la fenêtre se referme d'elle-même (équivaut à "Non"). */
-const TIMEOUT_MS = 30_000;
+const TIMEOUT_MS = 60_000;
 
 function candidateKey(candidate: PendingReactionCandidate): string {
   return `${candidate.sourceInstanceId}:${candidate.abilityIndex}`;
@@ -36,7 +36,7 @@ interface ReactionPromptProps {
  * confirmation plutôt que de faire réapparaître la fenêtre carte par
  * carte.
  *
- * Un compte à rebours de 30s (barre sous le bouton de refus) referme la
+ * Un compte à rebours d'une minute (barre sous le bouton de refus) referme la
  * fenêtre automatiquement — jamais bloquer la partie indéfiniment en
  * attente d'une décision facultative.
  */

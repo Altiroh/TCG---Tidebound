@@ -1,10 +1,12 @@
 "use client";
 
+import { useEffect } from "react";
 import { analyzeMatch } from "@/game/audience";
 import { FinalBlowOverlay, useEndScreenHold } from "@/features/match/FinalBlowOverlay";
 import {
   canUnitAttack,
   eligibleCandidatesFor,
+  getCardDefinition,
   getShipDefinition,
   graveyardChoicesForBreak,
   isMainPhase,
@@ -105,6 +107,16 @@ export function OnlineBoard({
   const myReactionCandidates = canRespondToReaction
     ? eligibleCandidatesFor(state, state.pendingReaction!.events, myUserId, state.pendingReaction!.turnNumber, state.pendingReaction!.usedCandidateKeys)
     : [];
+
+  // Une seule capacité à proposer, et elle vise une unité : pas de question
+  // « Oui / Non » d'abord — on passe DIRECTEMENT à la désignation sur le
+  // plateau (bandeau en haut, « Ne rien faire », une minute).
+  const directTarget = myReactionCandidates.length === 1 && myReactionCandidates[0]!.needsTarget ? myReactionCandidates[0]! : null;
+  const directTargetKey = directTarget ? `${directTarget.sourceInstanceId}:${directTarget.abilityIndex}:${state.pendingReaction?.usedCandidateKeys.length ?? 0}` : null;
+  useEffect(() => {
+    if (directTarget && !(selection?.kind === "reaction" && selection.needsTarget)) board.beginReactionTargeting([directTarget]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [directTargetKey]);
 
   const auraContextFor = (player: typeof me) => ({
     controllerBoard: player.board,
@@ -290,6 +302,7 @@ export function OnlineBoard({
 
       {canRespondToReaction &&
         myReactionCandidates.length > 0 &&
+        !directTarget &&
         !(selection?.kind === "reaction" && selection.needsTarget) && (
           <ReactionPrompt
             candidates={myReactionCandidates}
@@ -302,11 +315,23 @@ export function OnlineBoard({
       {canRespondToReaction && myReactionCandidates.length === 0 && shipAbility.windowEntry && (
         <ShipWindowHint name={shipAbility.windowEntry.name} onPass={() => act({ type: "passReaction", playerId: myUserId })} />
       )}
-      {selection?.kind === "reaction" && selection.needsTarget && (
-        <div className="fixed left-1/2 top-6 z-[70] -translate-x-1/2 rounded-full border border-white/25 bg-slate-950/80 px-4 py-2 text-xs text-slate-200 backdrop-blur-md">
-          {reactionTargetHint([...me.board, ...opponent.board].find((u) => u.instanceId === selection.sourceInstanceId)?.cardId, selection.abilityIndex)}
-        </div>
-      )}
+      {selection?.kind === "reaction" && selection.needsTarget && (() => {
+        const sourceCardId = [...me.board, ...opponent.board].find((u) => u.instanceId === selection.sourceInstanceId)?.cardId;
+        const decline = () => {
+          board.clearSelection();
+          act({ type: "passReaction", playerId: myUserId });
+        };
+        return (
+          <ChoiceBanner
+            choiceKey={`${selection.sourceInstanceId}:${selection.abilityIndex}`}
+            source={sourceCardId ? getCardDefinition(sourceCardId).name : null}
+            title={reactionTargetHint(sourceCardId, selection.abilityIndex)}
+            detail="Touche l'unité sur le plateau. Sans réponse, l'effet ne s'applique pas."
+            actions={[{ label: "Ne rien faire", onClick: decline }]}
+            onExpire={decline}
+          />
+        );
+      })()}
       {state.pendingChoice?.playerId === myUserId && (
         <PendingChoicePrompt
           choice={state.pendingChoice}

@@ -7,6 +7,7 @@ import {
   canUnitAttack,
   dispatch,
   eligibleCandidatesFor,
+  getCardDefinition,
   getShipDefinition,
   graveyardChoicesForBreak,
   isMainPhase,
@@ -146,6 +147,16 @@ export function MatchBoard({
     state.pendingReaction?.awaitingPlayerId === viewerPlayerId
       ? eligibleCandidatesFor(state, state.pendingReaction.events, viewerPlayerId, state.pendingReaction.turnNumber, state.pendingReaction.usedCandidateKeys)
       : [];
+
+  // Une seule capacité à proposer, et elle vise une unité : pas de question
+  // « Oui / Non » d'abord — on passe DIRECTEMENT à la désignation sur le
+  // plateau (bandeau en haut, « Ne rien faire », une minute).
+  const directTarget = myReactionCandidates.length === 1 && myReactionCandidates[0]!.needsTarget ? myReactionCandidates[0]! : null;
+  const directTargetKey = directTarget ? `${directTarget.sourceInstanceId}:${directTarget.abilityIndex}:${state.pendingReaction?.usedCandidateKeys.length ?? 0}` : null;
+  useEffect(() => {
+    if (directTarget && !(pending?.kind === "reaction" && pending.needsTarget)) board.beginReactionTargeting([directTarget]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [directTargetKey]);
 
   const auraContextFor = (player: typeof viewerPlayer) => ({
     controllerBoard: player.board,
@@ -463,6 +474,7 @@ export function MatchBoard({
           capacité ciblée est choisie, remplacée par un petit rappel non bloquant. */}
       {state.pendingReaction?.awaitingPlayerId === viewerPlayerId &&
         myReactionCandidates.length > 0 &&
+        !directTarget &&
         !(pending?.kind === "reaction" && pending.needsTarget) && (
           <ReactionPrompt
             candidates={myReactionCandidates}
@@ -482,11 +494,23 @@ export function MatchBoard({
             onPass={() => runReactionAction({ type: "passReaction", playerId: viewerPlayerId })}
           />
         )}
-      {pending?.kind === "reaction" && pending.needsTarget && (
-        <div className="fixed left-1/2 top-6 z-[70] -translate-x-1/2 rounded-full border border-white/25 bg-slate-950/80 px-4 py-2 text-xs text-slate-200 backdrop-blur-md">
-          {reactionTargetHint([...viewerPlayer.board, ...otherPlayer.board].find((u) => u.instanceId === pending.sourceInstanceId)?.cardId, pending.abilityIndex)}
-        </div>
-      )}
+      {pending?.kind === "reaction" && pending.needsTarget && (() => {
+        const sourceCardId = [...viewerPlayer.board, ...otherPlayer.board].find((u) => u.instanceId === pending.sourceInstanceId)?.cardId;
+        const decline = () => {
+          board.clearSelection();
+          runReactionAction({ type: "passReaction", playerId: viewerPlayerId });
+        };
+        return (
+          <ChoiceBanner
+            choiceKey={`${pending.sourceInstanceId}:${pending.abilityIndex}`}
+            source={sourceCardId ? getCardDefinition(sourceCardId).name : null}
+            title={reactionTargetHint(sourceCardId, pending.abilityIndex)}
+            detail="Touche l'unité sur le plateau. Sans réponse, l'effet ne s'applique pas."
+            actions={[{ label: "Ne rien faire", onClick: decline }]}
+            onExpire={decline}
+          />
+        );
+      })()}
       {state.pendingChoice?.playerId === viewerPlayerId && (
         <PendingChoicePrompt
           choice={state.pendingChoice}
