@@ -2,7 +2,7 @@
 
 import { MatchQuestRecap } from "@/features/quests/MatchQuestRecap";
 import { MatchRewardBanner } from "@/features/progression/MatchRewardBanner";
-import { MatchAudienceRecap, type MatchAudienceVerdict } from "@/features/audience/MatchAudienceRecap";
+import { MatchAudienceTicker, type MatchAudienceVerdict } from "@/features/audience/MatchAudienceTicker";
 import type { MatchAudienceSummary } from "@/features/audience/actions";
 import { useEffect, type CSSProperties } from "react";
 import Link from "next/link";
@@ -127,6 +127,8 @@ export function MatchEndScreen({ outcome, player, onExit, exitHref, matchId, pre
   const nameplateZone = isDefeat ? DEFEAT_NAMEPLATE_ZONE : NAMEPLATE_ZONE;
   return (
     <>
+      {/* Le public, en haut à gauche : son compteur défile avec ce que la partie lui a fait. */}
+      {audience && <MatchAudienceTicker matchId={matchId} preview={preview?.audience} />}
       {/* Le plateau peint (`board.webp`) porte ses propres cadres de Navire
           vides et ses dos de carte : à peine voilé, on les lisait derrière
           l'écran de fin (retour du 15/09). Il ne sert plus que de matière —
@@ -260,8 +262,7 @@ export function MatchEndScreen({ outcome, player, onExit, exitHref, matchId, pre
 
             {/* Le gain de la partie, sous la fiche qu'il récompense. */}
             {(matchId || preview) && <MatchRewardBanner matchId={matchId} preview={preview?.reward} />}
-            {/* Le public : sa note, son humeur, ses temps forts, et ce que la partie a fait à l'audience. */}
-            {audience && <MatchAudienceRecap verdict={audience} matchId={matchId} preview={preview?.audience} />}
+
           </div>
 
           {/* Ce que la partie a rapporté aux quêtes : elles défilent une à

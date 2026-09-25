@@ -2,9 +2,10 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { getCardDefinition, getShipDefinition, type GameEvent, type GameState, type PlayerId } from "@/game";
+import { getCardDefinition, getShipDefinition, HIDDEN_CARD_ID, type GameEvent, type GameState, type PlayerId } from "@/game";
 import { CardThumb } from "@/features/match/CardThumb";
 import { findInstanceCardId } from "@/features/match/formatEvent";
+import railStyles from "@/features/match/EventFeed.module.css";
 
 type PlayerLabel = (playerId?: string) => string;
 
@@ -30,7 +31,16 @@ type Highlight =
       /** Récapitulatif en toutes lettres, affiché en infobulle au survol. */
       summary: string;
     }
-  | { kind: "effect"; key: string; targetCardId?: string; attack: number; health: number; summary: string }
+  | {
+      kind: "effect";
+      key: string;
+      targetCardId?: string;
+      /** D'où vient l'effet, quand le journal permet de le retrouver (même lecture que les destructions). */
+      cause?: DestroyCause;
+      attack: number;
+      health: number;
+      summary: string;
+    }
   | {
       kind: "destroy";
       key: string;
@@ -123,10 +133,12 @@ function buildHighlights(state: GameState, label: PlayerLabel): Highlight[] {
         event.attack !== 0 ? `${shortDelta(event.attack, "Puissance")}` : "",
         event.health !== 0 ? `${shortDelta(event.health, "Résistance")}` : "",
       ].filter(Boolean);
+      const cause = destroyCause(state, events, index, event.targetInstanceId);
       highlights.push({
         kind: "effect",
         key: `${index}`,
         targetCardId,
+        cause: cause?.kind === "scuttle" || cause?.kind === "combat" ? undefined : cause,
         attack: event.attack,
         health: event.health,
         summary: `${cardLabel(targetCardId)} : ${parts.join(" et ") || "aucune variation"}.`,
@@ -299,6 +311,105 @@ function HighlightRow({ state, highlight, thumbSize = 20 }: { state: GameState; 
 }
 
 /**
+ * Miniature du journal en COLONNE (nouveau plateau) : un carré qui prend
+ * toute la largeur de sa case, avec la conséquence posée en pastille sur
+ * son coin (dégâts, destruction, variation de stats).
+ */
+function RailThumb({ src, glyph, badge, badgeTone, faded }: { src?: string; glyph?: string; badge?: string; badgeTone?: "harm" | "boon"; faded?: boolean }) {
+  return (
+    <span className={`${railStyles.thumb} ${faded ? railStyles.thumbFaded : ""}`} style={src ? { backgroundImage: `url("${src}")` } : undefined}>
+      {!src && glyph && <span className={railStyles.thumbGlyph}>{glyph}</span>}
+      {badge && (
+        <span className={railStyles.badge} data-tone={badgeTone ?? "harm"}>
+          {badge}
+        </span>
+      )}
+    </span>
+  );
+}
+
+function cardIllu(cardId: string | undefined): string | undefined {
+  return cardId && cardId !== HIDDEN_CARD_ID ? `/assets/cards/illustrations/${cardId}.webp` : undefined;
+}
+
+/** Le médaillon entre les deux illustrations : ce qui s'est passé (combat, magie, Marée…). */
+function RailIcon({ glyph, tone, label }: { glyph: string; tone: "combat" | "magic" | "tide" | "boon" | "harm" | "neutral"; label: string }) {
+  return (
+    <span className={railStyles.icon} data-tone={tone} aria-label={label} role="img">
+      {glyph}
+    </span>
+  );
+}
+
+/** Source d'un effet ou d'une destruction, en miniature (carte, Navire, Marée). */
+function causeThumb(state: GameState, cause: DestroyCause | undefined) {
+  if (cause?.kind === "card") return <RailThumb src={cardIllu(cause.cardId)} glyph="?" />;
+  if (cause?.kind === "ship") return <RailThumb src={shipIllustration(state, cause.playerId)} glyph="⚓" />;
+  if (cause?.kind === "tide") return <RailThumb glyph="≋" />;
+  return <RailThumb glyph="?" />;
+}
+
+/**
+ * Ligne du journal en colonne : TOUJOURS la même grille — illustration de
+ * la source, médaillon de ce qui s'est passé, illustration de la cible
+ * (combat : attaquant ⚔ défenseur ; sort : carte ✦ cible). Le résultat se
+ * lit sur la cible, en pastille.
+ */
+function RailRow({ state, highlight }: { state: GameState; highlight: Highlight }) {
+  if (highlight.kind === "attack") {
+    const target =
+      "playerId" in highlight.target ? (
+        <RailThumb src={shipIllustration(state, highlight.target.playerId)} glyph="⚓" badge={`−${highlight.amount}`} />
+      ) : (
+        <RailThumb
+          src={cardIllu(highlight.target.cardId)}
+          glyph="?"
+          badge={highlight.defenderDestroyed ? "☠" : `−${highlight.amount}`}
+          faded={highlight.defenderDestroyed}
+        />
+      );
+    return (
+      <div className={railStyles.row}>
+        <RailThumb src={cardIllu(highlight.attackerCardId)} glyph="?" badge={highlight.retaliation > 0 ? `−${highlight.retaliation}` : undefined} />
+        <RailIcon glyph="⚔" tone="combat" label="attaque" />
+        {target}
+      </div>
+    );
+  }
+  if (highlight.kind === "effect") {
+    const parts = [highlight.attack !== 0 ? `${highlight.attack > 0 ? "+" : ""}${highlight.attack}` : "", highlight.health !== 0 ? `${highlight.health > 0 ? "+" : ""}${highlight.health}` : ""]
+      .filter(Boolean)
+      .join("/");
+    const dominant = Math.abs(highlight.attack) >= Math.abs(highlight.health) ? highlight.attack : highlight.health;
+    const tone = dominant >= 0 ? "boon" : "harm";
+    return (
+      <div className={railStyles.row}>
+        {causeThumb(state, highlight.cause)}
+        <RailIcon glyph="✦" tone={tone} label={dominant >= 0 ? "renforcement" : "affaiblissement"} />
+        <RailThumb src={cardIllu(highlight.targetCardId)} glyph="?" badge={parts} badgeTone={tone} />
+      </div>
+    );
+  }
+  const cause = highlight.cause;
+  if (cause?.kind === "scuttle" || cause?.kind === "combat" || !cause) {
+    return (
+      <div className={railStyles.row}>
+        <RailThumb src={cardIllu(highlight.cardId)} glyph="?" faded badge="☠" />
+        <RailIcon glyph={cause?.kind === "scuttle" ? "⚓" : "☠"} tone="neutral" label={cause?.kind === "scuttle" ? "sabordée" : "détruite"} />
+        <span />
+      </div>
+    );
+  }
+  return (
+    <div className={railStyles.row}>
+      {causeThumb(state, cause)}
+      <RailIcon glyph={cause.kind === "tide" ? "≋" : "✦"} tone={cause.kind === "tide" ? "tide" : "magic"} label="détruite par un effet" />
+      <RailThumb src={cardIllu(highlight.cardId)} glyph="?" faded badge="☠" />
+    </div>
+  );
+}
+
+/**
  * Infobulle du journal : posée en coordonnées VIEWPORT via un portail, pour
  * ne pas être rognée par le `overflow: hidden` de la colonne ni décalée par
  * ses transformations. Ancrée à gauche de la ligne survolée (la colonne
@@ -354,7 +465,7 @@ export function EventFeed({ state, playerLabel, variant = "panel" }: EventFeedPr
         onPointerLeave={() => setHovered(null)}
         className="cursor-default rounded transition-colors hover:bg-white/10"
       >
-        <HighlightRow state={state} highlight={highlight} thumbSize={thumbSize} />
+        {rail ? <RailRow state={state} highlight={highlight} /> : <HighlightRow state={state} highlight={highlight} thumbSize={thumbSize} />}
       </div>
     ));
   }
@@ -369,7 +480,7 @@ export function EventFeed({ state, playerLabel, variant = "panel" }: EventFeedPr
         )}
         {/* Aucun défilement : les lignes les plus récentes sont ancrées en
             bas (`justify-end`) et ce qui ne tient pas est simplement masqué. */}
-        <div className={`flex flex-1 flex-col justify-end overflow-hidden ${rail ? "gap-2 py-1" : "gap-1.5 p-1.5"}`}>{body}</div>
+        <div className={`flex flex-1 flex-col justify-end overflow-hidden ${rail ? railStyles.list : "gap-1.5 p-1.5"}`}>{body}</div>
       </div>
       {hovered && <JournalTooltip text={hovered.text} anchor={hovered.anchor} />}
     </>

@@ -1,0 +1,95 @@
+/*
+ * Journal en colonne (nouveau plateau) : chaque ligne est la même grille,
+ * illustration — médaillon — illustration, sur une bande sombre qui se
+ * détache du feutre. Le résultat se lit en pastille sur la cible.
+ */
+.list {
+  gap: clamp(4px, 0.9cqh, 10px);
+  padding: 2px 0;
+}
+
+/* Les deux illustrations prennent toute la largeur ; le médaillon se pose
+   à cheval sur leur jointure (la colonne est étroite). */
+.row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid rgba(241, 227, 196, 0.16);
+  border-radius: 8px;
+  background: rgba(3, 8, 14, 0.72);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+
+.thumb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 5 / 4;
+  border: 1px solid rgba(199, 154, 75, 0.55);
+  border-radius: 6px;
+  background: #16202b center 28% / cover no-repeat;
+}
+
+.thumbFaded {
+  filter: grayscale(0.65) brightness(0.7);
+}
+
+.thumbGlyph {
+  color: #cbd5e1;
+  font-size: clamp(14px, 1.6cqh, 20px);
+  font-weight: 700;
+}
+
+.badge {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  min-width: 1.5em;
+  padding: 1px 4px;
+  border-radius: 999px;
+  background: #b91c1c;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: clamp(9px, 1.15cqh, 12px);
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
+  filter: none;
+}
+
+.thumbFaded .badge {
+  filter: grayscale(0) brightness(1.4);
+}
+
+.badge[data-tone="boon"] {
+  background: #15803d;
+}
+
+.icon {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 1;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  width: clamp(18px, 2.4cqh, 26px);
+  height: clamp(18px, 2.4cqh, 26px);
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  background: rgba(4, 8, 14, 0.92);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+  font-size: clamp(11px, 1.45cqh, 15px);
+  line-height: 1;
+}
+
+.icon[data-tone="combat"] { color: #fb7185; }
+.icon[data-tone="magic"] { color: #c4b5fd; box-shadow: 0 0 6px rgba(167, 139, 250, 0.5); }
+.icon[data-tone="tide"] { color: #5fd0e6; }
+.icon[data-tone="boon"] { color: #6ee7a0; }
+.icon[data-tone="harm"] { color: #fb7185; }
+.icon[data-tone="neutral"] { color: #cbd5e1; }

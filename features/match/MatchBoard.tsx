@@ -2,7 +2,7 @@
 
 import { useNoMenuAmbiance } from "@/components/menu/MenuAmbiance";
 import { analyzeMatch } from "@/game/audience";
-import { FinalBlowOverlay, useEndScreenHold } from "@/features/match/FinalBlowOverlay";
+import { useEndScreenHold } from "@/features/match/useEndScreenHold";
 import { useEffect, useRef, useState } from "react";
 import {
   canUnitAttack,
@@ -474,10 +474,6 @@ export function MatchBoard({
         onHandDragChange={board.setDraggingId}
       />
 
-      {/* Tenue de fin : le coup fatal, dit sur la table avant l'écran de fin. */}
-      {state.status === "finished" && !hideEndScreen && !endHold.showEnd && (
-        <FinalBlowOverlay state={state} viewerId={humanPlayerId} playerLabel={tableLabel} onSkip={endHold.skip} />
-      )}
 
       {/* Invitation à réagir — priorité sur tout le reste tant qu'elle reste ouverte ; repliée dès qu'une
           capacité ciblée est choisie, remplacée par un petit rappel non bloquant. */}

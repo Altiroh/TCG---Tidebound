@@ -3,7 +3,7 @@
 import { useNoMenuAmbiance } from "@/components/menu/MenuAmbiance";
 import { useEffect } from "react";
 import { analyzeMatch } from "@/game/audience";
-import { FinalBlowOverlay, useEndScreenHold } from "@/features/match/FinalBlowOverlay";
+import { useEndScreenHold } from "@/features/match/useEndScreenHold";
 import {
   canUnitAttack,
   eligibleCandidatesFor,
@@ -232,10 +232,6 @@ export function OnlineBoard({
 
   return (
     <>
-      {/* Tenue de fin : le coup fatal, dit sur la table avant l'écran de fin. */}
-      {state.status === "finished" && !endHold.showEnd && (
-        <FinalBlowOverlay state={state} viewerId={myUserId} playerLabel={tableLabel} onSkip={endHold.skip} />
-      )}
       <TableBoard
         state={state}
         viewerId={myUserId}

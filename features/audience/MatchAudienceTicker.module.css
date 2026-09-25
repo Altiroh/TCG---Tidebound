@@ -1,0 +1,48 @@
+/*
+ * Le compteur de spectateurs de l'écran de fin : en haut à gauche, bien
+ * visible, un œil et un nombre. Blanc au repos ; vert qui monte, rouge qui
+ * baisse pendant le défilement.
+ */
+.ticker {
+  position: fixed;
+  top: calc(var(--tb-safe-top, 0px) + 18px);
+  left: calc(var(--tb-safe-left, 0px) + 20px);
+  z-index: 60;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 20px 8px 14px;
+  border: 1px solid rgba(241, 227, 196, 0.28);
+  border-radius: 999px;
+  background: rgba(4, 10, 18, 0.72);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+  color: #f8fafc;
+  transition: color 300ms ease, border-color 300ms ease, box-shadow 300ms ease, text-shadow 300ms ease;
+}
+
+.ticker svg {
+  width: clamp(26px, 3vw, 38px);
+  height: clamp(26px, 3vw, 38px);
+  flex: none;
+}
+
+.value {
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: clamp(26px, 3.2vw, 44px);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.ticker[data-trend="up"] {
+  border-color: rgba(74, 222, 128, 0.65);
+  box-shadow: 0 0 18px rgba(74, 222, 128, 0.35), 0 6px 18px rgba(0, 0, 0, 0.55);
+  color: #6ef29a;
+  text-shadow: 0 0 12px rgba(74, 222, 128, 0.6);
+}
+
+.ticker[data-trend="down"] {
+  border-color: rgba(248, 113, 113, 0.65);
+  box-shadow: 0 0 18px rgba(248, 113, 113, 0.35), 0 6px 18px rgba(0, 0, 0, 0.55);
+  color: #ff7b72;
+  text-shadow: 0 0 12px rgba(248, 113, 113, 0.6);
+}
