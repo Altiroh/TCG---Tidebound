@@ -98,6 +98,11 @@ export default function ProfilPreviewRoute({ searchParams }: { searchParams: { s
         ["lerrant", 1220],
         ["le-courlis", 390],
       ]),
+      matchesByShip: new Map([
+        ["le-goliath", 31],
+        ["lerrant", 12],
+        ["le-courlis", 5],
+      ]),
       pointsBySponsor: new Map([
         ["compagnie-du-phare", 75],
         ["amiral-sans-pavillon", 46],

@@ -293,6 +293,23 @@ describe("hub de progression", () => {
     expect(rpcCalls[0]!.args.p_key).toBe(String(hub.weeklyChest.weekIndex));
   });
 
+  it("les Maîtrises montrent d'abord les Navires les plus utilisés, pas les plus riches en XP", async () => {
+    // L'Errant : 3 parties à 50 XP ; Le Goliath : 1 victoire à 200 XP.
+    rows.match_rewards = [
+      { match_id: "a", xp_granted: 50, granted_at: "2026-09-29T12:00:00Z" },
+      { match_id: "b", xp_granted: 50, granted_at: "2026-09-29T12:00:00Z" },
+      { match_id: "c", xp_granted: 50, granted_at: "2026-09-29T12:00:00Z" },
+      { match_id: "d", xp_granted: 200, granted_at: "2026-09-29T12:00:00Z" },
+    ];
+    const errant = PLAYABLE_DECKS.find((deck) => deck.shipId === "lerrant")!.id;
+    const goliath = PLAYABLE_DECKS.find((deck) => deck.shipId === "le-goliath")!.id;
+    rows.matches = ["a", "b", "c", "d"].map((id) => ({ id, player1_id: USER, player1_deck_id: id === "d" ? goliath : errant, player2_deck_id: null }));
+    const hub = await readProgressionHub(USER, 12);
+    expect(hub.masteries[0]!.shipId).toBe("lerrant");
+    expect(hub.masteries[0]!.matchesPlayed).toBe(3);
+    expect(hub.masteries[1]!.shipId).toBe("le-goliath");
+  });
+
   it("aucun colis de Commanditaire sous le niveau 10", async () => {
     rows.player_sponsor_interest = [{ sponsor_id: "compagnie-du-phare", points: 80 }];
     expect((await readProgressionHub(USER, 9)).sponsors.every((sponsor) => sponsor.giftStages.length === 0)).toBe(true);

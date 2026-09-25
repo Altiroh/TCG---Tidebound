@@ -765,6 +765,13 @@
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
 }
 
+.shipPlayed {
+  margin-top: -0.3cqw;
+  text-align: center;
+  font-size: 0.56cqw;
+  color: #aebdc7;
+}
+
 .shipLevel {
   display: flex;
   align-items: center;

@@ -431,6 +431,9 @@ function MasteriesPanel({ masteries, busy, onClaim }: { masteries: MasteryView[]
                 aria-hidden
               />
               <h3 className={styles.shipName}>{mastery.shipName}</h3>
+              <span className={styles.shipPlayed}>
+                {mastery.matchesPlayed} partie{mastery.matchesPlayed > 1 ? "s" : ""}
+              </span>
               <div className={styles.shipLevel}>
                 <span className={styles.shipLevelRing}>{mastery.level}</span>
                 <span className={styles.shipXp}>

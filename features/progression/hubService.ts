@@ -52,6 +52,8 @@ export interface MasteryView {
   shipId: string;
   shipName: string;
   illustration: string;
+  /** Parties jouées à son bord — c'est l'ordre d'affichage : les plus utilisés d'abord. */
+  matchesPlayed: number;
   xpTotal: number;
   level: number;
   xpInto: number;
@@ -125,6 +127,7 @@ async function readMatchHistory(service: Service, userId: string, weekStart: str
   const playedThisWeek = rows.filter((row) => row.granted_at.slice(0, 10) >= weekStart).length;
 
   const xpByShip = new Map<string, number>();
+  const matchesByShip = new Map<string, number>();
   const matchIds = rows.map((row) => row.match_id);
   for (let start = 0; start < matchIds.length; start += 200) {
     const chunk = matchIds.slice(start, start + 200);
@@ -138,13 +141,16 @@ async function readMatchHistory(service: Service, userId: string, weekStart: str
     for (const row of rows.slice(start, start + 200)) {
       const deckId = deckOf.get(row.match_id);
       const shipId = deckId ? ships.get(deckId) : undefined;
-      if (shipId) xpByShip.set(shipId, (xpByShip.get(shipId) ?? 0) + row.xp_granted);
+      if (shipId) {
+        xpByShip.set(shipId, (xpByShip.get(shipId) ?? 0) + row.xp_granted);
+        matchesByShip.set(shipId, (matchesByShip.get(shipId) ?? 0) + 1);
+      }
     }
   }
-  return { playedThisWeek, xpByShip };
+  return { playedThisWeek, xpByShip, matchesByShip };
 }
 
-function masteryView(shipId: string, xpTotal: number, claims: Set<string>): MasteryView {
+function masteryView(shipId: string, xpTotal: number, matchesPlayed: number, claims: Set<string>): MasteryView {
   const progress = masteryProgress(xpTotal);
   const claimableLevels: number[] = [];
   for (let level = 2; level <= progress.level; level += 1) {
@@ -156,6 +162,7 @@ function masteryView(shipId: string, xpTotal: number, claims: Set<string>): Mast
     shipId,
     shipName: ship.name,
     illustration: ship.illustration ?? "",
+    matchesPlayed,
     xpTotal,
     ...progress,
     claimableLevels,
@@ -181,6 +188,7 @@ export async function readProgressionHub(userId: string, accountLevel: number, n
       accountLevel,
       playedThisWeek: history.playedThisWeek,
       xpByShip: history.xpByShip,
+      matchesByShip: history.matchesByShip,
       pointsBySponsor: new Map((interest.error ? [] : (interest.data ?? [])).map((row) => [row.sponsor_id, row.points])),
       claims,
     });
@@ -199,6 +207,7 @@ export function hubViewFrom({
   accountLevel,
   playedThisWeek,
   xpByShip,
+  matchesByShip,
   pointsBySponsor,
   claims,
 }: {
@@ -206,6 +215,8 @@ export function hubViewFrom({
   accountLevel: number;
   playedThisWeek: number;
   xpByShip: ReadonlyMap<string, number>;
+  /** Parties jouées par Navire. Absent : l'XP sert seule à ordonner. */
+  matchesByShip?: ReadonlyMap<string, number>;
   pointsBySponsor: ReadonlyMap<string, number>;
   claims: Set<string>;
 }): ProgressionHubView {
@@ -219,8 +230,11 @@ export function hubViewFrom({
       claimed,
       claimable: !claimed && playedThisWeek >= WEEKLY_CHEST_GOAL,
     },
-    // Les Navires joués d'abord, du plus maîtrisé au moins ; les autres ensuite, pour qu'on sache qu'ils existent.
-    masteries: SHIP_SET.map((ship) => masteryView(ship.id, xpByShip.get(ship.id) ?? 0, claims)).sort((a, b) => b.xpTotal - a.xpTotal),
+    // Les Navires les plus UTILISÉS d'abord (parties jouées, l'XP départage) ;
+    // les autres ensuite, pour qu'on sache qu'ils existent.
+    masteries: SHIP_SET.map((ship) => masteryView(ship.id, xpByShip.get(ship.id) ?? 0, matchesByShip?.get(ship.id) ?? 0, claims)).sort(
+      (a, b) => b.matchesPlayed - a.matchesPlayed || b.xpTotal - a.xpTotal
+    ),
     sponsorsUnlocked: accountLevel >= SPONSORS_UNLOCK_LEVEL,
     sponsors: SPONSORS.map((sponsor) => sponsorView(sponsor.id, pointsBySponsor.get(sponsor.id) ?? 0, claims, accountLevel)).sort(
       (a, b) => b.points - a.points
