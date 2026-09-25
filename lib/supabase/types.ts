@@ -491,6 +491,20 @@ export interface Database {
         Relationships: [];
       };
       /** Cycle de connexion — une ÉTAPE, jamais un streak à réinitialiser. */
+      /** Récompenses du hub prises (coffre de la semaine, palier de Maîtrise, colis) — migration 20261009120000. */
+      player_progression_claims: {
+        Row: { user_id: string; kind: "weekly_chest" | "mastery" | "sponsor_gift"; claim_key: string; claimed_at: string };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      /** Intérêt cumulé de chaque Commanditaire pour le joueur. */
+      player_sponsor_interest: {
+        Row: { user_id: string; sponsor_id: string; points: number; updated_at: string };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
       player_login_rewards: {
         Row: {
           user_id: string;
@@ -586,6 +600,21 @@ export interface Database {
     };
     Views: Record<string, never>;
     Functions: {
+      claim_progression_reward: {
+        Args: {
+          p_user_id: string;
+          p_kind: "weekly_chest" | "mastery" | "sponsor_gift";
+          p_key: string;
+          p_tides?: number;
+          p_booster_id?: string | null;
+          p_card_id?: string | null;
+        };
+        Returns: { ok: boolean; error?: string };
+      };
+      record_sponsor_interest: {
+        Args: { p_user_id: string; p_match_id: string; p_points: Record<string, number> };
+        Returns: { ok: boolean; recorded?: boolean };
+      };
       claim_matchmaking_opponent: {
         Args: Record<string, never>;
         Returns: { opponent_user_id: string; opponent_deck_id: string }[];

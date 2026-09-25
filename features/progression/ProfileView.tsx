@@ -43,6 +43,7 @@ import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/progression/Profile.module.css";
 import sceneStyles from "@/features/progression/ProfileScene.module.css";
 import { ProfileScene } from "@/features/progression/ProfileScene";
+import { RewardsHub } from "@/features/progression/RewardsHub";
 import { playButtonClick, playRewardClaimed, playTabClick } from "@/lib/sound";
 import type { ProfileTab } from "@/features/progression/profileTabs";
 
@@ -238,6 +239,23 @@ export function ProfileView({ profile, onRefresh, initialTab = "carnet", onLeave
   );
 
   if (layout === "page") {
+    // Récompenses : le hub du port (route, série, coffre, Maîtrises, Commanditaires…).
+    if (!picking && tab === "recompenses") {
+      return (
+        <>
+          <RewardsHub
+            profile={profile}
+            claiming={claiming}
+            onClaimLevel={(level) => void claim(level)}
+            onReveal={(items, title) => setReveal({ levels: [], choices: [], extraItems: items, title })}
+            onRefresh={onRefresh}
+            onShowQuests={() => setTab("quetes")}
+            onShowAchievements={() => setTab("exploits")}
+          />
+          {revealLayer}
+        </>
+      );
+    }
     // Un choix (illustration, titre) s'ouvre à la place de la scène ; le fermer y ramène.
     if (picking || tab !== "carnet") {
       return (

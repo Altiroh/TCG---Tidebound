@@ -58,7 +58,7 @@ export function ProfileScreen({ profile, initialTab }: ProfileScreenProps) {
     <GameScreen
       active={null}
       nav="minimal"
-      className={sceneStyles.screen}
+      className={tab === "recompenses" ? sceneStyles.screenPort : sceneStyles.screen}
       tabs={PAGE_TABS.map((entry) => {
         const badge = badgeFor(entry.id);
         return {

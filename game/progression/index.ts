@@ -67,3 +67,25 @@ export type {
   ProgressionState,
   ProgressionView,
 } from "@/game/progression/types";
+
+export {
+  MASTERY_MAX_LEVEL,
+  PATRONAGE_UNLOCK_LEVEL,
+  SPONSORS,
+  SPONSORS_UNLOCK_LEVEL,
+  SPONSOR_MAX_POINTS,
+  SPONSOR_STAGES,
+  WEEKLY_CHEST_GOAL,
+  masteryProgress,
+  masteryRewardForLevel,
+  masteryXpForLevel,
+  sponsorGift,
+  sponsorGiftStagesReached,
+  sponsorInterestPercent,
+  sponsorPointsForMatch,
+  sponsorRevealed,
+  sponsorStage,
+  sponsorStageLabel,
+  weeklyChestContents,
+} from "@/game/progression/hub";
+export type { MasteryProgress, SponsorDefinition, SponsorId, SponsorStage } from "@/game/progression/hub";

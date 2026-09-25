@@ -14,6 +14,15 @@ import {
 import { ACHIEVEMENT_CATALOG } from "@/game/achievements";
 import { DEFAULT_CARD_BACK_ID, STANDARD_BOOSTER_ID } from "@/game";
 import { claimLoginReward, readLoginRewards, type LoginRewardView } from "@/features/progression/loginService";
+import {
+  claimMasteryReward,
+  claimSponsorGift,
+  claimWeeklyChest,
+  readProgressionHub,
+  type HubClaimResult,
+  type ProgressionHubView,
+} from "@/features/progression/hubService";
+import type { SponsorId, SponsorStage } from "@/game/progression";
 import { readAchievementStats, syncAchievements } from "@/features/achievements/achievementService";
 import { equipTitleFor, loadTitles, type EquipTitleResult, type ProfileTitles } from "@/features/progression/titleService";
 import { titleForAchievement } from "@/game/titles";
@@ -117,6 +126,8 @@ export interface ProfileSummary {
   titles: ProfileTitles;
   /** `true` si le niveau maximum récompensé de cette version est atteint. */
   maxRewardedLevelReached: boolean;
+  /** Coffre hebdomadaire, Maîtrises, Commanditaires (hub des récompenses). `null` hors connexion. */
+  hub: ProgressionHubView | null;
 }
 
 const SIGNED_OUT: ProfileSummary = {
@@ -152,6 +163,7 @@ const SIGNED_OUT: ProfileSummary = {
   cardBacks: { options: [], equipped: DEFAULT_CARD_BACK_ID },
   titles: { options: [], equipped: null, available: false },
   maxRewardedLevelReached: false,
+  hub: null,
 };
 
 /**
@@ -256,6 +268,7 @@ export async function fetchProfile(): Promise<ProfileSummary> {
       cardBacks,
       titles,
       maxRewardedLevelReached: view.level >= MAX_REWARDED_LEVEL,
+      hub: await readProgressionHub(user.id, view.level),
     };
   } catch (error) {
     console.error("[fetchProfile] Lecture impossible :", error);
@@ -285,6 +298,40 @@ export async function fetchDailyLogin(): Promise<LoginRewardView | null> {
   const user = await getSessionUser();
   if (!user) return null;
   return readLoginRewards(user.id);
+}
+
+/** Niveau de compte du joueur connecté — les réclamations du hub en dépendent (Commanditaires). */
+async function accountLevelOf(userId: string): Promise<number> {
+  const service = createSupabaseServiceRoleClient();
+  const { data } = await service.from("player_progression").select("xp_total").eq("user_id", userId).maybeSingle();
+  return progressionView(data?.xp_total ?? 0).level;
+}
+
+/** Ouvre le coffre hebdomadaire (10 parties dans la semaine). */
+export async function openWeeklyChest(): Promise<HubClaimResult> {
+  const user = await getSessionUser();
+  if (!user) return { ok: false, error: "Connecte-toi pour ouvrir le coffre." };
+  const result = await claimWeeklyChest(user.id, await accountLevelOf(user.id));
+  if (result.ok) revalidatePath("/profil");
+  return result;
+}
+
+/** Réclame un palier de Maîtrise d'un Navire. */
+export async function claimMasteryLevel(shipId: string, level: number): Promise<HubClaimResult> {
+  const user = await getSessionUser();
+  if (!user) return { ok: false, error: "Connecte-toi pour réclamer." };
+  const result = await claimMasteryReward(user.id, await accountLevelOf(user.id), shipId, level);
+  if (result.ok) revalidatePath("/profil");
+  return result;
+}
+
+/** Ouvre le colis d'un Commanditaire. */
+export async function openSponsorGift(sponsorId: SponsorId, stage: SponsorStage): Promise<HubClaimResult> {
+  const user = await getSessionUser();
+  if (!user) return { ok: false, error: "Connecte-toi pour ouvrir le colis." };
+  const result = await claimSponsorGift(user.id, await accountLevelOf(user.id), sponsorId, stage);
+  if (result.ok) revalidatePath("/profil");
+  return result;
 }
 
 /** Réclame la récompense de connexion du jour (§8). Une par jour UTC, jamais de remise à zéro. */

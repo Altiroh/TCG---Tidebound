@@ -4,6 +4,7 @@ import type { Database } from "@/lib/supabase/types";
 import { awardMatchReward } from "@/features/progression/rewards";
 import { botCountsAsPvp } from "@/features/progression/botRewardPolicy";
 import { recordMatchQuestProgress } from "@/features/quests/questService";
+import { recordSponsorInterest } from "@/features/progression/hubService";
 import { isRecentDeck } from "@/features/decks/recentDecks";
 import { packFrames, type PackedFrames } from "@/features/matches/matchFrames";
 
@@ -283,6 +284,9 @@ async function settleFinishedMatch(match: MatchRow, finalState: GameState): Prom
         enginePlayerId: userId,
         botCountsAsPvp: botAsPvp,
       });
+      // Les Commanditaires lisent le journal de la partie — une seule fois
+      // (`reward` est nul quand la partie avait déjà été payée).
+      if (reward) await recordSponsorInterest(match.id, userId, finalState, reward.levelAfter);
       await recordMatchQuestProgress({
         matchId: match.id,
         userId,

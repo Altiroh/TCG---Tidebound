@@ -11,6 +11,15 @@
   background-position: center, center bottom;
 }
 
+/* Onglet Récompenses : le port (`public/assets/rewards/background.webp`). */
+.screenPort.screenPort.screenPort {
+  background-image:
+    linear-gradient(180deg, rgba(5, 12, 22, 0.55) 0%, rgba(5, 12, 22, 0) 12%),
+    url("/assets/rewards/background.webp");
+  background-size: cover, cover;
+  background-position: center, center bottom;
+}
+
 /* Pastille « à réclamer » d'un onglet du bandeau. */
 .tabBadge {
   display: inline-grid;
@@ -26,4 +35,18 @@
   font-weight: 700;
   line-height: 1;
   vertical-align: 2px;
+}
+
+/* Bandeau étroit : quatre onglets et leurs pastilles ne tiennent plus à côté
+   du logo — la pastille devient un simple point. */
+@media (max-width: 1000px) {
+  .tabBadge {
+    min-width: 7px;
+    width: 7px;
+    height: 7px;
+    margin-left: 4px;
+    padding: 0;
+    font-size: 0;
+    vertical-align: 6px;
+  }
 }

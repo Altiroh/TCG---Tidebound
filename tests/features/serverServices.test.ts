@@ -70,6 +70,7 @@ const { recordMatchQuestProgress, ensureCurrentQuests } = await import("@/featur
 const { recycleCardFor, recycleSurplusFor } = await import("@/features/collection/recycleService");
 const { readLoginRewards, claimLoginReward } = await import("@/features/progression/loginService");
 const { loginCardPool, loginWeekIndex, loginWeekProgramme } = await import("@/game/progression");
+const { readProgressionHub, claimWeeklyChest, claimSponsorGift } = await import("@/features/progression/hubService");
 const { createGameState } = await import("@/game/state/createGameState");
 const { PLAYABLE_DECKS } = await import("@/game/cards/decks/catalog");
 const { DEFAULT_CARD_BACK_ID } = await import("@/game");
@@ -262,5 +263,40 @@ describe("récompenses de connexion", () => {
     expect(streakCardId.endsWith("-abyssal")).toBe(true);
     expect(result.streak).toBe(30);
     expect(result.streakCardId).toBe("bat-marin-abyssal");
+  });
+});
+
+describe("hub de progression", () => {
+  it.each(REGIMES)("rend toujours un hub lisible (base : %s)", async (regime) => {
+    mode = regime;
+    const hub = await readProgressionHub(USER, 12);
+    expect(hub.weeklyChest.goal).toBe(10);
+    expect(hub.masteries.length).toBeGreaterThan(0);
+    expect(hub.sponsors).toHaveLength(6);
+  });
+
+  it("le coffre compte les parties de la semaine et ne s'ouvre qu'à 10", async () => {
+    const now = new Date("2026-09-30T10:00:00Z"); // mercredi ; la semaine commence le lundi 28
+    rows.match_rewards = Array.from({ length: 9 }, (_, i) => ({ match_id: `m${i}`, xp_granted: 50, granted_at: "2026-09-29T12:00:00Z" }))
+      .concat([{ match_id: "old", xp_granted: 50, granted_at: "2026-09-27T12:00:00Z" }]);
+    let hub = await readProgressionHub(USER, 12, now);
+    expect(hub.weeklyChest.played).toBe(9);
+    expect((await claimWeeklyChest(USER, 12, now)).ok).toBe(false);
+    expect(rpcCalls).toEqual([]);
+
+    rows.match_rewards.push({ match_id: "m9", xp_granted: 50, granted_at: "2026-09-30T08:00:00Z" });
+    hub = await readProgressionHub(USER, 12, now);
+    expect(hub.weeklyChest.claimable).toBe(true);
+    const result = await claimWeeklyChest(USER, 12, now);
+    expect(result.ok).toBe(true);
+    expect(rpcCalls[0]!.fn).toBe("claim_progression_reward");
+    expect(rpcCalls[0]!.args.p_key).toBe(String(hub.weeklyChest.weekIndex));
+  });
+
+  it("aucun colis de Commanditaire sous le niveau 10", async () => {
+    rows.player_sponsor_interest = [{ sponsor_id: "compagnie-du-phare", points: 80 }];
+    expect((await readProgressionHub(USER, 9)).sponsors.every((sponsor) => sponsor.giftStages.length === 0)).toBe(true);
+    expect((await claimSponsorGift(USER, 9, "compagnie-du-phare", "intrigue")).ok).toBe(false);
+    expect((await readProgressionHub(USER, 10)).sponsors.find((sponsor) => sponsor.id === "compagnie-du-phare")!.giftStages).toEqual(["intrigue", "interesse"]);
   });
 });
