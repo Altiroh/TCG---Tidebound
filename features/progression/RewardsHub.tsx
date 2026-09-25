@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { GIFT_OPEN_MS, GiftOpening } from "@/features/progression/GiftOpening";
+import { MasteriesSheet, SponsorsSheet } from "@/features/progression/HubSheets";
 import {
   LOGIN_CYCLE_LENGTH,
   MAX_REWARDED_LEVEL,
@@ -57,6 +58,8 @@ export function RewardsHub({ profile, claiming, onClaimLevel, onReveal, onRefres
   const [pending, startTransition] = useTransition();
   /** Coffret de mécène en train de s'ouvrir (scène plein écran, `GiftOpening`). */
   const [gift, setGift] = useState<{ color: string; name: string | null } | null>(null);
+  /** Extension ouverte en grand : tous les mécènes, ou toutes les maîtrises. */
+  const [sheet, setSheet] = useState<"sponsors" | "masteries" | null>(null);
 
   /** Une réclamation du hub : erreur affichée, révélation, relecture. */
   function run(action: () => Promise<{ ok: boolean; error?: string; items?: RewardItem[] }>, title: string, revealDelayMs = 0) {
@@ -82,6 +85,18 @@ export function RewardsHub({ profile, claiming, onClaimLevel, onReveal, onRefres
       notifyProgressionChanged();
       onRefresh();
     });
+  }
+
+  function claimMastery(mastery: MasteryView, level: number) {
+    run(() => claimMasteryLevel(mastery.shipId, level), `Maîtrise — ${mastery.shipName}, niveau ${level}`);
+  }
+
+  function openGift(sponsor: SponsorView) {
+    const stage = sponsor.giftStages[0];
+    if (!stage || pending || gift) return;
+    // Le coffret s'ouvre à l'écran pendant que le serveur répond ; la révélation attend la fin.
+    setGift({ color: sponsor.color, name: sponsor.name });
+    run(() => openSponsorGift(sponsor.id, stage), `Un colis de ${sponsor.name ?? "votre admirateur"}`, GIFT_OPEN_MS);
   }
 
   return (
@@ -116,11 +131,13 @@ export function RewardsHub({ profile, claiming, onClaimLevel, onReveal, onRefres
 
         <QuestsPanel profile={profile} onShowQuests={onShowQuests} />
 
+
         {profile.hub && (
           <MasteriesPanel
             masteries={profile.hub.masteries}
             busy={pending}
-            onClaim={(mastery, level) => run(() => claimMasteryLevel(mastery.shipId, level), `Maîtrise — ${mastery.shipName}, niveau ${level}`)}
+            onClaim={claimMastery}
+            onShowAll={() => setSheet("masteries")}
           />
         )}
 
@@ -130,17 +147,26 @@ export function RewardsHub({ profile, claiming, onClaimLevel, onReveal, onRefres
             sponsors={profile.hub.sponsors}
             unlocked={profile.hub.sponsorsUnlocked}
             busy={pending}
-            onOpenGift={(sponsor) => {
-              const stage = sponsor.giftStages[0];
-              if (!stage || pending || gift) return;
-              // Le coffret s'ouvre à l'écran pendant que le serveur répond ; la révélation attend la fin.
-              setGift({ color: sponsor.color, name: sponsor.name });
-              run(() => openSponsorGift(sponsor.id, stage), `Un colis de ${sponsor.name ?? "votre admirateur"}`, GIFT_OPEN_MS);
-            }}
+            onOpenGift={openGift}
+            onShowAll={() => setSheet("sponsors")}
           />
         )}
 
         <LongGoalsPanel profile={profile} onShowAchievements={onShowAchievements} />
+
+        {sheet === "sponsors" && profile.hub && (
+          <SponsorsSheet
+            sponsors={profile.hub.sponsors}
+            audience={profile.hub.audience}
+            unlocked={profile.hub.sponsorsUnlocked}
+            busy={pending}
+            onOpenGift={openGift}
+            onClose={() => setSheet(null)}
+          />
+        )}
+        {sheet === "masteries" && profile.hub && (
+          <MasteriesSheet masteries={profile.hub.masteries} busy={pending} onClaim={claimMastery} onClose={() => setSheet(null)} />
+        )}
 
         {gift && <GiftOpening color={gift.color} name={gift.name} onDone={() => setGift(null)} />}
 
@@ -483,7 +509,17 @@ function QuestsPanel({ profile, onShowQuests }: { profile: ProfileSummary; onSho
 
 /* ── Maîtrises ─────────────────────────────────────────────────────── */
 
-function MasteriesPanel({ masteries, busy, onClaim }: { masteries: MasteryView[]; busy: boolean; onClaim: (mastery: MasteryView, level: number) => void }) {
+function MasteriesPanel({
+  masteries,
+  busy,
+  onClaim,
+  onShowAll,
+}: {
+  masteries: MasteryView[];
+  busy: boolean;
+  onClaim: (mastery: MasteryView, level: number) => void;
+  onShowAll: () => void;
+}) {
   const [start, setStart] = useState(0);
   const visible = masteries.slice(start, start + 3);
   return (
@@ -550,6 +586,16 @@ function MasteriesPanel({ masteries, busy, onClaim }: { masteries: MasteryView[]
           ›
         </button>
       )}
+      <button
+        type="button"
+        className={styles.footButton}
+        onClick={() => {
+          playButtonClick();
+          onShowAll();
+        }}
+      >
+        Voir tous les navires ({masteries.length})
+      </button>
     </section>
   );
 }
@@ -562,15 +608,16 @@ function SponsorsPanel({
   unlocked,
   busy,
   onOpenGift,
+  onShowAll,
 }: {
   audience: AudienceView;
   sponsors: SponsorView[];
   unlocked: boolean;
   busy: boolean;
   onOpenGift: (sponsor: SponsorView) => void;
+  onShowAll: () => void;
 }) {
-  const [all, setAll] = useState(false);
-  const shown = all ? sponsors : sponsors.slice(0, 3);
+  const shown = sponsors.slice(0, 3);
   return (
     <section className={`${styles.panel} ${styles.sponsors}`} aria-label="Mécènes">
       <header className={styles.panelHead}>
@@ -598,7 +645,7 @@ function SponsorsPanel({
           </p>
         </div>
       ) : (
-        <ul className={`${styles.rows} ${all ? styles.rowsScroll : ""}`}>
+        <ul className={styles.rows}>
           {shown.map((sponsor) => {
             const gift = sponsor.giftStages.length > 0;
             return (
@@ -640,13 +687,12 @@ function SponsorsPanel({
       <button
         type="button"
         className={styles.footButton}
-        disabled={!unlocked}
         onClick={() => {
           playButtonClick();
-          setAll((value) => !value);
+          onShowAll();
         }}
       >
-        {all ? "Voir les trois premiers" : "Voir tous les mécènes"}
+        Voir tous les mécènes
       </button>
     </section>
   );

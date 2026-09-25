@@ -73,6 +73,9 @@ export interface SponsorView {
   name: string | null;
   /** Ce qui l'attire — `null` tant qu'il est anonyme. */
   style: string | null;
+  /** Qui il est et son histoire — `null` tant qu'il est anonyme. */
+  figure: string | null;
+  lore: string | null;
   color: SponsorColor;
   /** Audience qu'il exige avant de s'intéresser au joueur. */
   audienceRequired: number;
@@ -282,6 +285,8 @@ function sponsorView(id: SponsorId, points: number, claims: Set<string>, account
     id,
     name: revealed ? definition.name : null,
     style: revealed ? definition.attraction : null,
+    figure: revealed ? definition.figure : null,
+    lore: revealed ? definition.lore : null,
     color: definition.color,
     audienceRequired: definition.audienceRequired,
     meetsAudience: audience >= definition.audienceRequired,

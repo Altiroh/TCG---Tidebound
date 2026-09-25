@@ -100,6 +100,12 @@ export interface SponsorDefinition {
    */
   attraction: string;
   /**
+   * Son histoire (Notion « Dynamique de progression », section Mécènes —
+   * premier jet du 25/09/2026, À CORRIGER par le design : le texte suit
+   * Notion, jamais l'inverse).
+   */
+  lore: string;
+  /**
    * Audience minimale pour qu'il s'intéresse vraiment au joueur : le public
    * est le prérequis, chaque mécène a le sien.
    */
@@ -114,6 +120,11 @@ export const SPONSORS: readonly SponsorDefinition[] = [
     color: "marron",
     figure: "Une femme du peuple",
     attraction: "Les marins qui reviennent jouer, jour après jour.",
+    lore:
+      "Tout le monde connaît Béladone sur les quais. Elle ne possède ni navire ni titre, mais elle plie des " +
+      "bateaux de papier sur lesquels elle écrit le nom des marins en qui elle croit, et les laisse filer " +
+      "sur la marée. On dit que ceux dont le nom revient souvent finissent par être connus. Elle n'aime pas " +
+      "les coups d'éclat : elle aime ceux qui reviennent, jour après jour.",
     audienceRequired: 300,
   },
   {
@@ -122,6 +133,11 @@ export const SPONSORS: readonly SponsorDefinition[] = [
     color: "bleu",
     figure: "Un Cra-Poiscail",
     attraction: "Les parties longues et disputées.",
+    lore:
+      "Délégation diplomatique installée à quai, l'Ambassade tient d'immenses registres où sont consignés " +
+      "les duels les plus longs de la saison. Pour les Cra-Poiscail, la patience est une vertu diplomatique " +
+      ": un capitaine qui tient bon, qui négocie chaque tour avec la marée, mérite qu'on lui ouvre les " +
+      "portes des eaux profondes.",
     audienceRequired: 700,
   },
   {
@@ -130,6 +146,10 @@ export const SPONSORS: readonly SponsorDefinition[] = [
     color: "jaune",
     figure: "Un chat homme-bête",
     attraction: "Les victoires qui ont du panache.",
+    lore:
+      "Compagnie de duellistes félins, bretteurs et tireurs, la Compagnie du Mousquet ne jure que par " +
+      "l'honneur et le style. Gagner ne suffit pas : il faut gagner avec élégance, de face, sous les yeux " +
+      "de tous. Elle finance volontiers les capitaines dont les victoires font lever les chapeaux.",
     audienceRequired: 1000,
   },
   {
@@ -138,6 +158,10 @@ export const SPONSORS: readonly SponsorDefinition[] = [
     color: "violet",
     figure: "Une Sentinelle chromatique blanche",
     attraction: "Ce que le public acclame.",
+    lore:
+      "Élu par la foule — ou peut-être façonné par elle — le Représentant du Peuple est la voix de ceux qui " +
+      "regardent. Il ne remarque que les capitaines que le public acclame ; quand les gradins se lèvent, il " +
+      "se lève avec eux.",
     audienceRequired: 1500,
   },
 ];
