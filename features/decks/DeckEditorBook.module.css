@@ -280,6 +280,9 @@
 .left [class*="_shipArt__"] {
   order: 2;
   position: relative;
+  /* Jusqu'au bord de la page de parchemin : au-delà de la marge de la colonne. */
+  width: auto;
+  margin-inline: calc(-1 * clamp(10px, 0.8vw, 16px) - clamp(8px, 0.7vw, 12px));
   aspect-ratio: 1442 / 855;
   padding: 10.2% 7.6% 8.4%;
   border: 0;
