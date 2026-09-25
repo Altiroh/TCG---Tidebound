@@ -579,7 +579,10 @@
   flex-direction: column;
   gap: 0.5cqw;
   padding: 1.1% 1.4% 1%;
-  background: url("/assets/rewards/panel.webp") center / 100% 100% no-repeat;
+  /* Découpe en 9 (coins de 115 px sur 1000) : le panneau paysage se pose sur
+     une case presque carrée sans que ses coins de laiton ne s'écrasent. */
+  border: 0 solid transparent;
+  border-image: url("/assets/rewards/panel.webp") 115 fill / 2.6cqw / 0 stretch;
   filter: drop-shadow(0 0.6cqw 1cqw rgba(0, 0, 0, 0.6));
 }
 .quests { left: 1.2%; width: 24%; }

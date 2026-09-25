@@ -1,6 +1,7 @@
 "use client";
 
 import { analyzeMatch } from "@/game/audience";
+import { FinalBlowOverlay, useEndScreenHold } from "@/features/match/FinalBlowOverlay";
 import {
   canUnitAttack,
   eligibleCandidatesFor,
@@ -184,7 +185,11 @@ export function OnlineBoard({
     board.beginReactionTargeting(board.reactionQueue);
   }
 
-  if (state.status === "finished") {
+  // La partie finie, la table reste le temps de VOIR le coup qui l'a finie.
+  const endHold = useEndScreenHold(state);
+  const tableLabel = (id?: string) => (id === myUserId ? (displayNames[id] ?? "Toi") : id ? (displayNames[id] ?? opponentName) : "?");
+
+  if (state.status === "finished" && endHold.showEnd) {
     const iWon = state.winnerId === myUserId;
     return (
       <MatchEndScreen
@@ -207,6 +212,10 @@ export function OnlineBoard({
 
   return (
     <>
+      {/* Tenue de fin : le coup fatal, dit sur la table avant l'écran de fin. */}
+      {state.status === "finished" && !endHold.showEnd && (
+        <FinalBlowOverlay state={state} viewerId={myUserId} playerLabel={tableLabel} onSkip={endHold.skip} />
+      )}
       <TableBoard
         state={state}
         viewerId={myUserId}

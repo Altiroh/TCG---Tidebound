@@ -1,6 +1,7 @@
 "use client";
 
 import { analyzeMatch } from "@/game/audience";
+import { FinalBlowOverlay, useEndScreenHold } from "@/features/match/FinalBlowOverlay";
 import { useEffect, useRef, useState } from "react";
 import {
   canUnitAttack,
@@ -332,7 +333,12 @@ export function MatchBoard({
     board.beginReactionTargeting(board.reactionQueue);
   }
 
-  if (state.status === "finished" && !hideEndScreen) {
+  // La partie finie, la table reste le temps de VOIR le coup qui l'a finie.
+  const endHold = useEndScreenHold(state);
+  const tableLabel = (id?: string) =>
+    id === botPlayerId ? "Le bot" : id === humanPlayerId ? (displayNames.me ?? "Joueur 1") : id === "p1" ? "Joueur 1" : id === "p2" ? "Joueur 2" : "?";
+
+  if (state.status === "finished" && !hideEndScreen && endHold.showEnd) {
     // Contre un bot, l'écran appartient au joueur humain ; en hot-seat, c'est celui du vainqueur.
     const subjectId = humanPlayerId ?? state.winnerId;
     const isDefeat = Boolean(humanPlayerId && state.winnerId && state.winnerId !== humanPlayerId);
@@ -446,6 +452,11 @@ export function MatchBoard({
         onOpenGraveyard={board.setGraveyardViewerPlayerId}
         onHandDragChange={board.setDraggingId}
       />
+
+      {/* Tenue de fin : le coup fatal, dit sur la table avant l'écran de fin. */}
+      {state.status === "finished" && !hideEndScreen && !endHold.showEnd && (
+        <FinalBlowOverlay state={state} viewerId={humanPlayerId} playerLabel={tableLabel} onSkip={endHold.skip} />
+      )}
 
       {/* Invitation à réagir — priorité sur tout le reste tant qu'elle reste ouverte ; repliée dès qu'une
           capacité ciblée est choisie, remplacée par un petit rappel non bloquant. */}
