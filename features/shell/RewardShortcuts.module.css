@@ -1,117 +1,78 @@
 /*
- * Colonne de raccourcis sous le bloc du compte : des losanges bleus et
- * lumineux (jetons --tb-btn-*), la pastille jaune commune (--tb-notif-*) dans
- * le coin. Le libellé glisse à gauche au survol.
+ * Colonne de raccourcis sous le bloc du compte : le LOSANGE des statistiques
+ * du profil (`stat-diamond.webp`, 331 × 327), le visuel de la récompense en
+ * haut, le compte au centre, deux mots dessous — comme « 2 JETONS DE
+ * PRÉCONSTRUIT » au profil. Au survol, la lueur chaude du menu principal.
  */
 .stack {
   position: absolute;
-  top: calc(100% + 12px);
-  right: 6px;
+  top: calc(100% + 10px);
+  right: -4px;
   z-index: 3;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 10px;
+  gap: 4px;
   pointer-events: none;
 }
 
-/* Un LOSANGE bleu lumineux (carré tourné à 45°, `.diamond`) ; l'icône et la
-   pastille restent droites par-dessus. */
 .shortcut {
   position: relative;
   display: grid;
-  place-items: center;
-  width: 46px;
-  height: 46px;
-  padding: 0;
+  grid-template-rows: 42% 26% 16%;
+  justify-items: center;
+  align-content: center;
+  width: 124px;
+  aspect-ratio: 331 / 327;
+  padding: 10% 0 6%;
   border: 0;
-  background: none;
-  color: var(--tb-btn-text);
+  background: url("/assets/profile/stat-diamond.webp") center / 100% 100% no-repeat;
+  color: #f4ead4;
   cursor: pointer;
   pointer-events: auto;
-  animation: shortcutIn 380ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both, shortcutFloat 4s ease-in-out 600ms infinite;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.55));
+  animation: shortcutIn 380ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+  transition: filter 200ms ease-out, scale 180ms var(--tb-ease, cubic-bezier(0.2, 0.8, 0.2, 1));
 }
 
-.shortcut:nth-child(2n) {
-  animation-duration: 380ms, 4.6s;
-}
-
-.diamond {
-  position: absolute;
-  inset: 13%;
-  border: 1.5px solid var(--tb-btn-border);
-  border-radius: 5px;
-  background: var(--tb-btn-bg);
-  box-shadow: var(--tb-btn-glow), 0 4px 10px rgba(0, 0, 0, 0.45);
-  transform: rotate(45deg);
-  transition: box-shadow 150ms ease-out, background 150ms ease-out;
-}
-
-.shortcut:hover .diamond,
-.shortcut:focus-visible .diamond {
-  background: var(--tb-btn-bg-hover);
-  box-shadow: var(--tb-btn-glow-hover), 0 4px 10px rgba(0, 0, 0, 0.45);
-}
-
+/* Même lueur que les parchemins du menu principal (`MenuCarte.module.css`). */
+.shortcut:hover,
 .shortcut:focus-visible {
+  scale: 1.05;
   outline: none;
+  filter: brightness(1.11) saturate(1.14) contrast(1.02) drop-shadow(0 0 7px rgba(255, 214, 140, 0.85))
+    drop-shadow(0 0 26px rgba(255, 176, 72, 0.45)) drop-shadow(0 6px 10px rgba(0, 0, 0, 0.55));
 }
 
 .icon {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 46%;
-  height: 46%;
-}
-
-.icon svg,
-.icon img {
-  width: 100%;
+  align-self: end;
+  width: 36%;
   height: 100%;
   object-fit: contain;
-}
-
-.dot {
-  position: absolute;
-  top: 0;
-  right: 0;
-  min-width: 15px;
-  height: 15px;
-  padding: 0 3px;
-  border: 1px solid var(--tb-notif-border);
-  border-radius: 999px;
-  background: var(--tb-notif-bg);
-  box-shadow: var(--tb-notif-glow);
-  color: var(--tb-notif-text);
-  font-size: 9.5px;
-  font-weight: 800;
-  line-height: 13px;
-  text-align: center;
-  animation: tbNotifPulse 1.9s ease-in-out infinite;
-}
-
-.label {
-  position: absolute;
-  top: 50%;
-  right: calc(100% + 10px);
-  padding: 5px 10px;
-  border: 1px solid rgba(95, 208, 230, 0.35);
-  border-radius: 8px;
-  background: rgba(5, 15, 24, 0.94);
-  color: var(--tb-text-strong, #eef6fa);
-  font-size: 12.5px;
-  white-space: nowrap;
-  opacity: 0;
-  transform: translate(6px, -50%);
-  transition: opacity 140ms ease, transform 140ms ease;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6));
   pointer-events: none;
 }
 
-.shortcut:hover .label,
-.shortcut:focus-visible .label {
-  opacity: 1;
-  transform: translate(0, -50%);
+.count {
+  align-self: center;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: 25px;
+  font-weight: 700;
+  line-height: 1;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.caption {
+  align-self: start;
+  max-width: 62%;
+  overflow: hidden;
+  color: rgba(244, 234, 212, 0.85);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 @keyframes shortcutIn {
@@ -119,25 +80,21 @@
   to { opacity: 1; transform: none; }
 }
 
-@keyframes shortcutFloat {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-3px); }
-}
-
-/* Bandeau de téléphone : jetons plus petits, la colonne reste à droite. */
+/* Écran bas (téléphone couché) : losanges plus petits. */
 @media (max-height: 520px) {
-  .stack {
-    gap: 7px;
-  }
   .shortcut {
-    width: 38px;
-    height: 38px;
+    width: 76px;
+  }
+  .count {
+    font-size: 16px;
+  }
+  .caption {
+    font-size: 7px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .shortcut,
-  .dot {
+  .shortcut {
     animation: none;
   }
 }

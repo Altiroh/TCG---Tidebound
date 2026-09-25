@@ -1,7 +1,7 @@
 "use server";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { SPONSORS, SPONSORS_UNLOCK_LEVEL, progressionView, sponsorGiftStagesReached, sponsorRevealed, utcDayKey, type ProgressionView } from "@/game/progression";
+import { SPONSORS, SPONSORS_UNLOCK_LEVEL, WEEKLY_CHEST_GOAL, loginWeekIndex, progressionView, sponsorGiftStagesReached, sponsorRevealed, utcDayKey, type ProgressionView } from "@/game/progression";
 import { claimableLevelsFor, reachedLevel } from "@/features/progression/levelRewardService";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
 
@@ -46,6 +46,10 @@ export interface ProgressionSummary {
    * raccourcis flottants sous le bandeau en font une icône chacun.
    */
   claimableBreakdown: { levels: number; cardChoices: number; login: number; quests: number; achievements: number; sponsorGifts: number };
+  /** Mécènes qui ont un colis à ouvrir (ids), pour montrer LEUR insigne sur le raccourci. */
+  sponsorGiftFrom: string[];
+  /** Le coffre de la semaine est plein et pas encore ouvert. */
+  weeklyChestReady: boolean;
   /** L'escale de connexion du jour n'est pas encore réclamée : première venue de la journée (popup de série). */
   loginClaimable: boolean;
   /** Spectateurs qui suivent le joueur (moteur d'audience, `game/audience/`). Visible en haut à droite. */
@@ -72,6 +76,8 @@ const SIGNED_OUT: ProgressionSummary = {
   claimableQuests: 0,
   claimableRewards: 0,
   claimableBreakdown: { levels: 0, cardChoices: 0, login: 0, quests: 0, achievements: 0, sponsorGifts: 0 },
+  sponsorGiftFrom: [],
+  weeklyChestReady: false,
   loginClaimable: false,
   audience: 0,
   lastSpectacle: null,
@@ -105,7 +111,11 @@ export async function fetchProgression(): Promise<ProgressionSummary> {
     const user = await getSessionUser();
     if (!user) return SIGNED_OUT;
 
-    const [progression, currency, profile, claimable, levelRewards, cardChoices, login, achievements, audience, sponsors, giftClaims] = await Promise.all([
+    const today = utcDayKey();
+    const weekday = (new Date(`${today}T00:00:00Z`).getUTCDay() + 6) % 7;
+    const weekStart = new Date(Date.parse(`${today}T00:00:00Z`) - weekday * 86_400_000).toISOString();
+    const weekIndex = loginWeekIndex(today);
+    const [progression, currency, profile, claimable, levelRewards, cardChoices, login, achievements, audience, sponsors, giftClaims, weekMatches, chestClaim] = await Promise.all([
       supabase.from("player_progression").select("*").eq("user_id", user.id).maybeSingle(),
       supabase.from("player_currency").select("balance").eq("user_id", user.id).maybeSingle(),
       readProfileHeader(supabase, user.id),
@@ -125,6 +135,15 @@ export async function fetchProgression(): Promise<ProgressionSummary> {
       supabase.from("player_audience").select("audience, last_spectacle").eq("user_id", user.id).maybeSingle(),
       supabase.from("player_sponsor_interest").select("sponsor_id, points").eq("user_id", user.id),
       supabase.from("player_progression_claims").select("claim_key").eq("user_id", user.id).eq("kind", "sponsor_gift"),
+      // Coffre de la semaine : parties de la semaine (compte seul) et déjà ouvert ?
+      supabase.from("match_rewards").select("match_id", { count: "exact", head: true }).eq("user_id", user.id).gte("granted_at", weekStart),
+      supabase
+        .from("player_progression_claims")
+        .select("claim_key")
+        .eq("user_id", user.id)
+        .eq("kind", "weekly_chest")
+        .eq("claim_key", String(weekIndex))
+        .maybeSingle(),
     ]);
     // Le niveau ATTEINT, pas celui de la colonne : elle n'est rafraîchie
     // qu'en fin de partie, et la pastille doit s'allumer dès que l'XP d'une
@@ -134,12 +153,17 @@ export async function fetchProgression(): Promise<ProgressionSummary> {
     const loginToClaim = login.error ? 0 : login.data?.last_claimed_day === utcDayKey() ? 0 : 1;
     // Colis de mécènes arrivés et pas encore ouverts (même règle que le hub, `sponsorView`).
     const openedGifts = new Set(giftClaims.error ? [] : (giftClaims.data ?? []).map((row) => row.claim_key));
-    const sponsorGifts =
+    const giftsBySponsor =
       reached >= SPONSORS_UNLOCK_LEVEL && !sponsors.error
         ? (sponsors.data ?? [])
             .filter((row) => KNOWN_SPONSORS.has(row.sponsor_id))
-            .reduce((sum, row) => sum + sponsorGiftStagesReached(row.points).filter((stage) => !openedGifts.has(`${row.sponsor_id}:${stage}`)).length, 0)
-        : 0;
+            .map((row) => ({
+              id: row.sponsor_id,
+              count: sponsorGiftStagesReached(row.points).filter((stage) => !openedGifts.has(`${row.sponsor_id}:${stage}`)).length,
+            }))
+            .filter((entry) => entry.count > 0)
+        : [];
+    const sponsorGifts = giftsBySponsor.reduce((sum, entry) => sum + entry.count, 0);
 
     return {
       isSignedIn: true,
@@ -164,6 +188,8 @@ export async function fetchProgression(): Promise<ProgressionSummary> {
         achievements: achievements.error ? 0 : (achievements.count ?? 0),
         sponsorGifts,
       },
+      sponsorGiftFrom: giftsBySponsor.map((entry) => entry.id),
+      weeklyChestReady: !weekMatches.error && (weekMatches.count ?? 0) >= WEEKLY_CHEST_GOAL && !chestClaim.error && !chestClaim.data,
       loginClaimable: loginToClaim === 1,
       audience: audience.error ? 0 : (audience.data?.audience ?? 0),
       lastSpectacle: audience.error ? null : (audience.data?.last_spectacle ?? null),
