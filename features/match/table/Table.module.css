@@ -1091,6 +1091,13 @@
   color: #e2e8f0;
 }
 
+/* Lâcher refusé (capacité glissée sur une cible impossible) : la même bulle, liseré rouge. */
+.centerHintError {
+  padding-right: 1em;
+  border-color: rgba(248, 113, 113, 0.65);
+  color: #fecaca;
+}
+
 .centerHintButton {
   padding: 0.25em 0.8em;
   border: 1px solid rgba(207, 224, 240, 0.35);
@@ -1675,46 +1682,6 @@
   gap: calc(var(--hud-h) * 0.25);
 }
 
-/*
- * Le public en direct (`LiveAudience`) : un œil, à peine visible quand la
- * salle s'ennuie, qui s'éclaire quand elle s'enflamme. Aucune animation :
- * il ne doit jamais tirer l'œil du joueur.
- */
-.liveAudience {
-  display: inline-flex;
-  align-items: center;
-  gap: calc(var(--hud-h) * 0.14);
-  height: calc(var(--hud-h) * 0.7);
-  padding: 0 calc(var(--hud-h) * 0.22) 0 calc(var(--hud-h) * 0.12);
-  border: 1px solid rgba(95, 208, 230, 0.22);
-  border-radius: 999px;
-  background: rgba(3, 10, 18, 0.62);
-  transition: color 600ms ease, box-shadow 600ms ease, border-color 600ms ease;
-}
-.liveAudience svg {
-  width: calc(var(--hud-h) * 0.44);
-  height: calc(var(--hud-h) * 0.44);
-  flex: none;
-}
-.liveAudienceCount {
-  font-family: var(--tb-font-display, inherit);
-  font-size: calc(var(--hud-h) * 0.3);
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-.liveAudience[data-level="cold"] { color: rgba(170, 190, 205, 0.55); }
-.liveAudience[data-level="calm"] { color: rgba(170, 205, 220, 0.85); }
-.liveAudience[data-level="warm"] {
-  color: var(--tb-accent, #5fd0e6);
-  border-color: rgba(95, 208, 230, 0.45);
-  box-shadow: 0 0 calc(var(--hud-h) * 0.25) rgba(95, 208, 230, 0.25);
-}
-.liveAudience[data-level="hot"] {
-  color: #f3c86b;
-  border-color: rgba(243, 200, 107, 0.55);
-  box-shadow: 0 0 calc(var(--hud-h) * 0.3) rgba(243, 200, 107, 0.35);
-}
-
 .hudCornerBottom {
   grid-column: 4;
   position: relative;
@@ -1732,30 +1699,105 @@
 }
 
 /*
- * Le public en direct (`LiveAudience`) : un œil, à peine visible quand la
- * salle s'ennuie, qui s'éclaire quand elle s'enflamme. Aucune animation :
- * il ne doit jamais tirer l'œil du joueur.
+ * Le public en direct (`LiveAudience`) : un grand œil, à peine visible
+ * quand la salle s'ennuie, qui s'éclaire quand elle s'enflamme, et le
+ * nombre de spectateurs centré dessous. À chaque variation, l'œil
+ * s'allume comme une lampe : vert quand le public monte, rouge quand il
+ * descend — un clignotement bref, puis il retombe.
  */
 .liveAudience {
-  display: inline-grid;
-  place-items: center;
-  width: calc(var(--hud-h) * 0.7);
-  height: calc(var(--hud-h) * 0.7);
-  border-radius: 50%;
-  background: rgba(3, 10, 18, 0.55);
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--hud-h) * 0.06);
   cursor: help;
-  transition: color 600ms ease, box-shadow 600ms ease;
 }
-.liveAudience svg {
-  width: 62%;
-  height: 62%;
+
+.liveAudienceEye {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: calc(var(--hud-h) * 1.05);
+  height: calc(var(--hud-h) * 1.05);
+  border: 1px solid rgba(95, 208, 230, 0.25);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(10, 24, 36, 0.8), rgba(3, 10, 18, 0.7));
+  box-shadow: inset 0 0 calc(var(--hud-h) * 0.15) rgba(0, 0, 0, 0.6);
+  transition: color 600ms ease, box-shadow 600ms ease, border-color 600ms ease;
 }
-.liveAudience[data-level="cold"] { color: rgba(170, 190, 205, 0.4); }
-.liveAudience[data-level="calm"] { color: rgba(170, 205, 220, 0.7); }
+
+.liveAudienceEye svg {
+  width: 64%;
+  height: 64%;
+}
+
+.liveAudienceCount {
+  min-width: calc(var(--hud-h) * 1.05);
+  padding: 0 calc(var(--hud-h) * 0.12);
+  border-radius: 999px;
+  background: rgba(3, 10, 18, 0.62);
+  font-family: var(--tb-font-display, inherit);
+  font-size: calc(var(--hud-h) * 0.3);
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: 0.02em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.liveAudience[data-level="cold"] { color: rgba(170, 190, 205, 0.55); }
+.liveAudience[data-level="calm"] { color: rgba(170, 205, 220, 0.85); }
 .liveAudience[data-level="warm"] { color: var(--tb-accent, #5fd0e6); }
-.liveAudience[data-level="hot"] {
-  color: #f3c86b;
-  box-shadow: 0 0 calc(var(--hud-h) * 0.3) rgba(243, 200, 107, 0.35);
+.liveAudience[data-level="warm"] .liveAudienceEye {
+  border-color: rgba(95, 208, 230, 0.5);
+  box-shadow: 0 0 calc(var(--hud-h) * 0.25) rgba(95, 208, 230, 0.3);
+}
+.liveAudience[data-level="hot"] { color: #f3c86b; }
+.liveAudience[data-level="hot"] .liveAudienceEye {
+  border-color: rgba(243, 200, 107, 0.6);
+  box-shadow: 0 0 calc(var(--hud-h) * 0.3) rgba(243, 200, 107, 0.4);
+}
+
+/* La lampe : un halo coloré qui s'allume, vacille et s'éteint. */
+.liveAudienceFlash {
+  position: absolute;
+  inset: -22%;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: audienceLamp 1400ms ease-out both;
+}
+
+.liveAudienceFlash[data-trend="up"] {
+  background: radial-gradient(circle, rgba(120, 255, 150, 0.75), rgba(60, 220, 110, 0.35) 45%, transparent 70%);
+}
+
+.liveAudienceFlash[data-trend="down"] {
+  background: radial-gradient(circle, rgba(255, 110, 100, 0.8), rgba(230, 50, 40, 0.35) 45%, transparent 70%);
+}
+
+.liveAudience[data-trend="up"] .liveAudienceCount { animation: audienceCountUp 1400ms ease-out; }
+.liveAudience[data-trend="down"] .liveAudienceCount { animation: audienceCountDown 1400ms ease-out; }
+
+@keyframes audienceLamp {
+  0% { opacity: 0; transform: scale(0.6); }
+  12% { opacity: 1; transform: scale(1); }
+  24% { opacity: 0.35; }
+  36% { opacity: 1; }
+  52% { opacity: 0.5; }
+  64% { opacity: 0.9; }
+  100% { opacity: 0; transform: scale(1.1); }
+}
+
+@keyframes audienceCountUp {
+  0%, 60% { color: #8dffa6; text-shadow: 0 0 calc(var(--hud-h) * 0.15) rgba(80, 230, 120, 0.8); }
+}
+
+@keyframes audienceCountDown {
+  0%, 60% { color: #ff8a80; text-shadow: 0 0 calc(var(--hud-h) * 0.15) rgba(230, 60, 50, 0.8); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .liveAudienceFlash { animation-duration: 1ms; }
 }
 
 .hudCornerBottom {
@@ -1770,8 +1812,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: calc(var(--hud-h) * 1.15);
-  height: calc(var(--hud-h) * 1.15);
+  width: calc(var(--hud-h) * 1.35);
+  height: calc(var(--hud-h) * 1.35);
   filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.6));
   cursor: pointer;
 }
@@ -2745,11 +2787,11 @@
   .phaseTip { transition: none; }
 }
 
-/* Bouton « Activer » d'une capacité activable (`activatableOncePerTurn`),
-   posé au bas de la carte, au-dessus de son illustration. */
 /* Capacité activable : une pastille ronde au coin haut droit de la carte,
    un doigt qui touche — le glow de la carte dit déjà « jouable », la
-   pastille dit « c'est ici qu'on clique » sans cacher l'illustration. */
+   pastille dit « c'est ici qu'on touche (ou d'où l'on tire le trait vers
+   la cible) » sans cacher l'illustration. Laiton et bois sombre, comme le
+   bouton Menu et le cadre des cartes, pas le bleu des boutons d'écran. */
 .abilityButton {
   position: absolute;
   top: -6%;
@@ -2760,12 +2802,13 @@
   width: clamp(22px, calc(var(--card-w, 90px) * 0.3), 34px);
   aspect-ratio: 1;
   padding: 0;
-  border: 1.5px solid var(--tb-btn-border);
+  border: 2px solid #c79a4b;
   border-radius: 50%;
-  background: var(--tb-btn-bg);
-  color: #f7fbfd;
-  box-shadow: var(--tb-btn-glow), 0 3px 8px rgba(0, 0, 0, 0.6);
-  cursor: pointer;
+  background: radial-gradient(circle at 50% 35%, #4a3220, #1c120a 75%);
+  color: #f3d48a;
+  box-shadow: inset 0 0 0 1px rgba(255, 226, 160, 0.25), 0 0 8px rgba(255, 196, 100, 0.45), 0 3px 8px rgba(0, 0, 0, 0.6);
+  cursor: grab;
+  touch-action: none;
   animation: ability-tap 1.8s ease-in-out infinite;
   transition: transform 120ms ease-out, box-shadow 120ms ease-out;
 }
@@ -2791,11 +2834,13 @@
   pointer-events: auto;
 }
 
-.abilityButton:hover {
+/* Sous le pointeur, la pastille cesse de bouger : un toucher qui la vise la trouve. */
+.abilityButton:hover,
+.abilityButton:active {
   animation: none;
   transform: scale(1.12);
-  background: var(--tb-btn-bg-hover);
-  box-shadow: var(--tb-btn-glow-hover), 0 3px 8px rgba(0, 0, 0, 0.6);
+  box-shadow: inset 0 0 0 1px rgba(255, 226, 160, 0.35), 0 0 7px rgba(255, 214, 140, 0.85), 0 0 22px rgba(255, 176, 72, 0.5),
+    0 3px 8px rgba(0, 0, 0, 0.6);
 }
 
 /* Prix d'une carte glissée (`ReasonCostPreview`) : il surgit au-dessus de

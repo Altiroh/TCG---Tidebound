@@ -131,6 +131,8 @@ export interface TableBoardProps {
    * utilisable maintenant (`canActivateAbility`). Absent : pas de bouton.
    */
   onActivateAbility?: (instanceId: string) => void;
+  /** Pastille d'une capacité activable glissée jusqu'à la cible de son effet : l'activation part sur cette cible. */
+  onAbilityDrop?: (instanceId: string, targetInstanceId: string) => void;
   /**
    * Carte à Assemblage (Le Géant Chromatique) lâchée SUR une de ses
    * Sentinelles : le conteneur pose la question Oui / Non. Lâchée sur un
@@ -407,6 +409,24 @@ export function TableBoard(props: TableBoardProps) {
     return ids.length > 0 ? new Set(ids) : null;
   }
 
+  /**
+   * Cibles légales de la capacité activable d'une unité du joueur (celles de
+   * son effet « unité désignée ») ; `null` : sa capacité ne vise personne.
+   */
+  function abilityTargetsOf(sourceId: string): Set<string> | null {
+    const source = viewer.board.find((u) => u.instanceId === sourceId);
+    const effect = source && getCardDefinition(source.cardId).activatableOncePerTurn?.effects.find((e) => e.target.kind === "chosenUnit");
+    return effect ? new Set(eligibleChosenUnits(state, effect.target, viewerId, source.instanceId).map((c) => c.unit.instanceId)) : null;
+  }
+
+  // Lâcher refusé : un mot bref au centre de la table, qui s'efface seul.
+  const [dropError, setDropError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!dropError) return;
+    const timer = window.setTimeout(() => setDropError(null), 2600);
+    return () => window.clearTimeout(timer);
+  }, [dropError]);
+
   const { gesture, hover, startGesture } = useTableGestures({
     isValidDrop: (kind, sourceId, drop) => {
       const entry = byId.get(sourceId);
@@ -431,6 +451,9 @@ export function TableBoard(props: TableBoardProps) {
       if (kind === "cast") {
         const targets = handTargets.get(sourceId);
         return Boolean(canPlayCards && targets && (drop.startsWith("own:") || drop.startsWith("unit:")) && targets.has(dropId(drop)));
+      }
+      if (kind === "ability") {
+        return Boolean((drop.startsWith("own:") || drop.startsWith("unit:")) && abilityTargetsOf(sourceId)?.has(dropId(drop)));
       }
       if (kind === "aim") {
         if (drop === "graveyard") return canPlayCards;
@@ -466,6 +489,10 @@ export function TableBoard(props: TableBoardProps) {
         props.onPlayCard(sourceId, dropId(drop));
         return;
       }
+      if (kind === "ability") {
+        props.onAbilityDrop?.(sourceId, dropId(drop));
+        return;
+      }
       const entry = byId.get(sourceId);
       if (drop === "graveyard") props.onDropOnGraveyard(sourceId, "board");
       else if (drop === "ship") props.onAttack(sourceId);
@@ -488,6 +515,11 @@ export function TableBoard(props: TableBoardProps) {
     onTap: (kind, sourceId) => {
       const entry = byId.get(sourceId);
       if (!entry) return false;
+      // La pastille touchée : l'activation (ou, si l'effet vise une unité, le choix de sa cible).
+      if (kind === "ability") {
+        props.onActivateAbility?.(sourceId);
+        return true;
+      }
       if (kind === "place" || kind === "cast") {
         // Même règle qu'au glisser : une carte écartée par le tutoriel ne
         // réagit pas non plus au toucher.
@@ -502,9 +534,20 @@ export function TableBoard(props: TableBoardProps) {
       }
       return false;
     },
+    onInvalidDrop: (kind, sourceId, drops) => {
+      if (kind !== "ability") return;
+      // Relâchée sur place (ou hors de toute zone) : rien, comme on repose un objet.
+      if (drops.length === 0) return;
+      if (!abilityTargetsOf(sourceId)) {
+        setDropError("Cette capacité ne vise personne : touchez la pastille pour l'activer.");
+        return;
+      }
+      setDropError("Cette unité n'est pas une cible possible pour cette capacité.");
+    },
   });
 
   const placing = gesture?.kind === "place" ? gesture : null;
+  const abilityDrag = gesture?.kind === "ability" ? gesture : null;
   const casting = gesture?.kind === "cast" ? gesture : null;
   const aiming = gesture?.kind === "aim" ? gesture : null;
   const aimSource = aiming ? byId.get(aiming.sourceId)?.instance : undefined;
@@ -519,7 +562,7 @@ export function TableBoard(props: TableBoardProps) {
     onHandDragChange?.(draggedHand);
   }, [draggedHand, onHandDragChange]);
 
-  const tone: AimTone = casting || (aimSource && !aimAttacks) ? "effect" : hover === "graveyard" ? "sabotage" : "attack";
+  const tone: AimTone = casting || abilityDrag || (aimSource && !aimAttacks) ? "effect" : hover === "graveyard" ? "sabotage" : "attack";
   // Le tir du canon désigne exactement les mêmes cibles qu'une attaque —
   // même mise en évidence, donc, plutôt qu'un second vocabulaire visuel.
   const attackTargeting = targeting?.kind === "attack" || targeting?.kind === "shipShot" || aimAttacks;
@@ -528,12 +571,9 @@ export function TableBoard(props: TableBoardProps) {
   const anyTargeting = targeting?.kind === "shipTarget";
 
   // Capacité activable qui attend sa cible : ce sont SES cibles légales qu'on éclaire.
-  const abilityTargets = (() => {
-    if (targeting?.kind !== "ability") return null;
-    const source = viewer.board.find((u) => u.instanceId === targeting.sourceInstanceId);
-    const effect = source && getCardDefinition(source.cardId).activatableOncePerTurn?.effects.find((e) => e.target.kind === "chosenUnit");
-    return effect ? new Set(eligibleChosenUnits(state, effect.target, viewerId, source.instanceId).map((c) => c.unit.instanceId)) : null;
-  })();
+  // Pendant le glisser de sa pastille aussi.
+  const abilityTargets =
+    targeting?.kind === "ability" ? abilityTargetsOf(targeting.sourceInstanceId) : abilityDrag ? abilityTargetsOf(abilityDrag.sourceId) : null;
 
   // ── Rendu d'une carte en jeu ────────────────────────────────────────
   function renderBoardCard(card: TableCardModel, owner: PlayerState) {
@@ -562,7 +602,12 @@ export function TableBoard(props: TableBoardProps) {
       (breakTargets(instance)?.size ?? 1) > 0;
     // « Une fois par tour, vous pouvez… » : proposé seulement quand le moteur l'accepterait.
     const activatable =
-      mine && canPlayCards && !gesture && !targeting && props.onActivateAbility !== undefined && canActivateAbility(state, viewerId, card.id);
+      mine &&
+      canPlayCards &&
+      (!gesture || abilityDrag?.sourceId === card.id) &&
+      !targeting &&
+      props.onActivateAbility !== undefined &&
+      canActivateAbility(state, viewerId, card.id);
     const attackTarget = !mine && attackTargeting;
     const allocation = mine ? (props.boardAllocation ?? null) : null;
     const allocated = allocation?.amounts.get(card.id) ?? 0;
@@ -630,13 +675,18 @@ export function TableBoard(props: TableBoardProps) {
           <button
             type="button"
             className={styles.abilityButton}
-            title={`Activer — ${getCardDefinition(instance.cardId).text}`}
+            title={`Activer (toucher, ou glisser jusqu'à la cible) — ${getCardDefinition(instance.cardId).text}`}
             aria-label={`Activer ${getCardDefinition(instance.cardId).name}`}
-            // Le bouton vit DANS la carte, qui démarre un geste au pointeur : il ne doit pas l'armer.
-            onPointerDown={(event) => event.stopPropagation()}
+            // Le bouton vit DANS la carte, qui démarre son propre geste au pointeur : c'est
+            // celui de la PASTILLE qui part (toucher = activer, glisser = viser la cible).
+            onPointerDown={(event) => {
+              event.stopPropagation();
+              startGesture("ability", card.id)(event);
+            }}
             onClick={(event) => {
               event.stopPropagation();
-              props.onActivateAbility?.(card.id);
+              // Au clavier seulement (Entrée, Espace) : le pointeur passe par le geste.
+              if (event.detail === 0) props.onActivateAbility?.(card.id);
             }}
           >
             {/* Un doigt qui touche : « à cliquer », sans bouton qui masque la carte. */}
@@ -738,7 +788,11 @@ export function TableBoard(props: TableBoardProps) {
           <CenterZone
             tide={tide}
             hint={
-              props.hint ? (
+              dropError ? (
+                <div className={`${styles.centerHint} ${styles.centerHintError}`} role="alert">
+                  <span>{dropError}</span>
+                </div>
+              ) : props.hint ? (
                 <div className={styles.centerHint} role="status">
                   <span>{props.hint}</span>
                   {props.onCancelHint && (

@@ -340,16 +340,19 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
       className={onBook ? book.screen : undefined}
       onNavigate={handleNavigate}
       actions={
-        <div className={game.headerSearch}>
-          <SearchLine
-            variant="pill"
-            value={cardBrowser.filters.search}
-            onChange={(search) => cardBrowser.patchFilters({ search })}
-            placeholder="Rechercher une carte…"
-            label="Rechercher une carte"
-            shortcut
-          />
-        </div>
+        // Vue « livre » : la recherche descend dans la barre de la grille (maquette).
+        onBook ? undefined : (
+          <div className={game.headerSearch}>
+            <SearchLine
+              variant="pill"
+              value={cardBrowser.filters.search}
+              onChange={(search) => cardBrowser.patchFilters({ search })}
+              placeholder="Rechercher une carte…"
+              label="Rechercher une carte"
+              shortcut
+            />
+          </div>
+        )
       }
     >
       <div
@@ -389,6 +392,19 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
             onSortChange={cardBrowser.setSort}
             onOpenFilters={() => cardBrowser.setDrawerOpen((open) => !open)}
             activeFilterCount={cardBrowser.activeFilterCount}
+            search={
+              onBook ? (
+                <label className={book.search}>
+                  <span className={book.visuallyHidden}>Rechercher une carte</span>
+                  <input
+                    type="search"
+                    value={cardBrowser.filters.search}
+                    onChange={(event) => cardBrowser.patchFilters({ search: event.target.value })}
+                    placeholder="Rechercher une carte…"
+                  />
+                </label>
+              ) : undefined
+            }
             extra={
               <button type="button" className={`${game.chipActive} ${styles.deckToggle}`} onClick={() => setDeckOpen((open) => !open)} aria-expanded={deckOpen}>
                 Deck <span className={game.badge}>{cardIds.length}</span>

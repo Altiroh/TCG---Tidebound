@@ -261,3 +261,178 @@
 .center [class*="_toolbar"] * {
   color: var(--tb-text-strong);
 }
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ── Barre du haut de la grille (maquette) : l'effectif sur sa tuile de
+   parchemin avec la pile de cartes des quêtes, la recherche sombre de la
+   liste des decks, le tri sur sa tuile. ── */
+.center [class*="_toolbar__"] {
+  gap: clamp(8px, 1vw, 16px);
+  padding: 0 0 clamp(8px, 1vh, 12px);
+  border-bottom: 0;
+}
+
+.center [class*="_count__"] {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: clamp(40px, 5.4vh, 54px);
+  padding: 0 clamp(16px, 1.6vw, 26px) 0 clamp(8px, 0.8vw, 14px);
+  background: url("/assets/decks/liste/onglet.webp") center / 100% 100% no-repeat;
+  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.45));
+  color: var(--tb-text-strong);
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: clamp(13px, 1.7vh, 16px);
+}
+
+.center [class*="_count__"]::before {
+  content: "";
+  width: clamp(30px, 4vh, 42px);
+  height: clamp(30px, 4vh, 42px);
+  margin-right: 4px;
+  background: url("/assets/quests/icon-cat-deck.webp") center / contain no-repeat;
+}
+
+.center [class*="_countValue__"] {
+  font-size: clamp(20px, 3vh, 30px);
+}
+
+.search {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  min-width: 120px;
+  /* Au-delà, la loupe peinte se déformerait. */
+  max-width: 440px;
+  height: clamp(36px, 4.8vh, 48px);
+  padding: 0 clamp(14px, 1.4vw, 22px) 0 clamp(46px, 4vw, 64px);
+  background: url("/assets/decks/liste/recherche.webp") center / 100% 100% no-repeat;
+  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.45));
+}
+
+.search input {
+  width: 100%;
+  border: 0;
+  background: none;
+  color: #f1e3c4;
+  font-size: 13px;
+  outline: none;
+}
+
+.search input::placeholder {
+  color: rgba(241, 227, 196, 0.55);
+}
+
+.center [class*="_sort__"] {
+  height: clamp(40px, 5.4vh, 54px);
+  padding: 0 clamp(12px, 1.2vw, 20px);
+  background: url("/assets/decks/liste/onglet.webp") center / 100% 100% no-repeat;
+  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.45));
+}
+
+.center [class*="_sortLabel__"] {
+  color: var(--tb-text-strong);
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Le menu de tri : le bois sombre de la liste des decks, lettres claires. */
+.center [class*="GameUi_trigger__"] {
+  border: 1px solid rgba(199, 154, 75, 0.6);
+  background: linear-gradient(180deg, #3b2616, #24170d);
+  color: #f1e3c4;
+}
+
+.center [class*="GameUi_triggerLabel__"],
+.center [class*="GameUi_chevron__"] {
+  color: #f1e3c4;
+}
+
+.center [class*="GameUi_menu__"] {
+  --ink: #f1e3c4;
+  --ink-dim: rgba(241, 227, 196, 0.75);
+  border-color: rgba(199, 154, 75, 0.6);
+  background: #24170d;
+  color: #f1e3c4;
+}
+
+/* ── Colonne de gauche : les filtres « sombres » de la maquette. Titre de
+   section à l'encre, entre deux ancres ; la ligne cochée sur le panneau
+   sombre du profil, lettres claires. ── */
+.left [class*="_sectionTitle__"] {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--tb-text-strong);
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.left [class*="_sectionTitle__"]::before,
+.left [class*="_sectionTitle__"]::after {
+  content: "⚓";
+  color: #6b4a22;
+  font-size: 13px;
+  letter-spacing: 0;
+}
+
+.left [class*="_sectionTitle__"]::after {
+  margin-left: auto;
+}
+
+.left [class*="_filterRow__"] {
+  border-radius: 6px;
+  color: var(--tb-text);
+}
+
+.left [class*="_filterRow__"]:hover {
+  background: rgba(90, 58, 30, 0.12);
+  color: var(--tb-text-strong);
+}
+
+.left [class*="_filterRowActive__"],
+.left [class*="_filterRowActive__"]:hover {
+  border-color: transparent;
+  background: url("/assets/profile/dark-panel.webp") center / 100% 100% no-repeat;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+  color: #f1e3c4;
+}
+
+.left [class*="_filterRowActive__"] [class*="_filterCheck__"] {
+  border-color: #5fd0e6;
+  border-radius: 50%;
+  background: #0c2b36;
+}
+
+.left [class*="_filterRowActive__"] [class*="_filterCheck__"]::after {
+  border-color: #8fe8f7;
+}
+
+.left [class*="_filterRowActive__"] [class*="_filterCount__"] {
+  color: #8fe8f7;
+}
+
+/* Les icônes de type retrouvent leur encre (sur panneau clair) ; blanches sur la ligne cochée. */
+.left [class*="_filterIcon__"] {
+  filter: none;
+  opacity: 0.85;
+}
+
+.left [class*="_filterRowActive__"] [class*="_filterIcon__"] {
+  filter: invert(1) brightness(1.7);
+  opacity: 1;
+}

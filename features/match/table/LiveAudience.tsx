@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { analyzeMatch, audienceMood, nextAudience } from "@/game/audience";
 import type { GameState, PlayerId } from "@/game";
 import { fetchMyAudience } from "@/features/audience/actions";
@@ -43,13 +43,27 @@ export function LiveAudience({ state, viewerId }: { state: GameState; viewerId: 
   const mood = audienceMood(spectacle);
   const live = base === null ? null : nextAudience(base, spectacle);
 
+  // La lampe : à chaque variation du nombre, un éclat vert (le public monte) ou rouge (il descend).
+  const previous = useRef<number | null>(null);
+  const [flash, setFlash] = useState<{ trend: "up" | "down"; id: number } | null>(null);
+  useEffect(() => {
+    if (live === null) return;
+    const before = previous.current;
+    previous.current = live;
+    if (before === null || before === live) return;
+    setFlash((current) => ({ trend: live > before ? "up" : "down", id: (current?.id ?? 0) + 1 }));
+  }, [live]);
+
   return (
     <AudienceTip mood={mood} placement="below">
-      <span className={styles.liveAudience} data-level={level} aria-label={`Public : ${mood.toLowerCase()}`}>
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden>
-          <path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 12 2 12z" stroke="currentColor" strokeWidth={1.6} strokeLinejoin="round" />
-          <circle cx="12" cy="12" r="2.8" stroke="currentColor" strokeWidth={1.6} />
-        </svg>
+      <span className={styles.liveAudience} data-level={level} data-trend={flash?.trend} aria-label={`Public : ${mood.toLowerCase()}`}>
+        <span className={styles.liveAudienceEye}>
+          {flash && <span key={flash.id} className={styles.liveAudienceFlash} data-trend={flash.trend} aria-hidden />}
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden>
+            <path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 12 2 12z" stroke="currentColor" strokeWidth={1.6} strokeLinejoin="round" />
+            <circle cx="12" cy="12" r="2.8" stroke="currentColor" strokeWidth={1.6} />
+          </svg>
+        </span>
         {live !== null && <RollingNumber value={live} className={styles.liveAudienceCount} />}
       </span>
     </AudienceTip>

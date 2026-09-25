@@ -453,6 +453,7 @@ export function MatchBoard({
         shipAbility={shipAbility.panel}
         opponentShipAbility={shipAbility.opponentPanel}
         onActivateAbility={board.requestAbility}
+        onAbilityDrop={board.activateAbilityOn}
         onAssemblageDrop={board.handleAssemblageDrop}
         onShipClick={(ownerId) => {
           if (pending?.kind === "shipTarget") {

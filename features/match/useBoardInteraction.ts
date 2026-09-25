@@ -177,6 +177,8 @@ export interface BoardInteraction {
   handleDropOnGraveyard: (instanceId: string, from: "hand" | "board") => void;
   /** Bouton « Activer » d'une carte du plateau (`activatableOncePerTurn`). */
   requestAbility: (instanceId: string) => void;
+  /** Pastille de capacité glissée jusqu'à une cible : l'activation part sur elle, sans étape de sélection. */
+  activateAbilityOn: (instanceId: string, targetInstanceId: string) => void;
 }
 
 export function useBoardInteraction({
@@ -351,6 +353,14 @@ export function useBoardInteraction({
     act({ type: "activateAbility", playerId: actorId, sourceInstanceId: instanceId });
   }
 
+  /** La cible a été désignée D'UN GESTE (glisser la pastille jusqu'à elle) : le joueur a choisi, on active. */
+  function activateAbilityOn(instanceId: string, targetInstanceId: string) {
+    if (!canAct) return;
+    onGestureStart?.();
+    clearSelection();
+    act({ type: "activateAbility", playerId: actorId, sourceInstanceId: instanceId, targetInstanceId });
+  }
+
   /** Brise un Objet, posé ou depuis la main : cible ou carte de défausse d'abord si l'effet en demande une. */
   function requestBreak(card: CardInstance, fromHand: boolean) {
     if (!canAct) return;
@@ -384,6 +394,7 @@ export function useBoardInteraction({
     selection,
     setSelection,
     requestAbility,
+    activateAbilityOn,
     clearSelection,
     breakPrompt,
     setBreakPrompt,

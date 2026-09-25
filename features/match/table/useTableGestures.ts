@@ -15,7 +15,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
  *   - `cast`  : une carte de main qui demande une cible (Équipement) → trait ;
  *   - `aim`   : une carte du plateau → trait. C'est la zone relâchée qui
  *     décide : cible adverse = attaque, crâne = Sabordage (comme l'ancien
- *     board, un seul geste « prendre la carte »).
+ *     board, un seul geste « prendre la carte ») ;
+ *   - `ability` : la pastille d'une capacité activable → trait jusqu'à la
+ *     cible de son effet (un toucher l'active comme un bouton).
  *
  * Une carte du plateau peut aussi s'ARMER d'un toucher (si `canArm`), puis
  * désigner sa cible d'un second toucher — le ciblage ne dépend donc pas
@@ -44,7 +46,7 @@ const DRAG_THRESHOLD = 6;
 const LONG_PRESS_MS = 450;
 
 /** `inspect` : carte qu'on ne prend pas (adverse) — seulement lisible au doigt. */
-export type GestureKind = "place" | "cast" | "aim" | "inspect";
+export type GestureKind = "place" | "cast" | "aim" | "ability" | "inspect";
 
 export interface GestureOrigin {
   /** Centre de la carte source, coordonnées viewport. */
@@ -84,6 +86,8 @@ interface Options {
   onInspect: (sourceId: string) => void;
   /** Toucher / clic simple : `true` = la page l'a traité, rien d'autre ne se passe. */
   onTap?: (kind: GestureKind, sourceId: string) => boolean;
+  /** Glisser lâché ailleurs que sur une zone valide (`drops` : les zones sous le pointeur, peut-être aucune). */
+  onInvalidDrop?: (kind: GestureKind, sourceId: string, drops: string[]) => void;
 }
 
 /** Toutes les zones `data-drop` sous le point, de la plus proche à la plus englobante. */
@@ -96,7 +100,7 @@ function dropsAt(x: number, y: number): string[] {
   return drops;
 }
 
-export function useTableGestures({ isValidDrop, onDrop, canArm, onInspect, onTap }: Options) {
+export function useTableGestures({ isValidDrop, onDrop, canArm, onInspect, onTap, onInvalidDrop }: Options) {
   const [gesture, setGesture] = useState<Gesture | null>(null);
   /** Zone `data-drop` survolée ET valide pour le geste en cours. */
   const [hover, setHover] = useState<string | null>(null);
@@ -105,8 +109,8 @@ export function useTableGestures({ isValidDrop, onDrop, canArm, onInspect, onTap
   const longPress = useRef<number | null>(null);
   const gestureRef = useRef(gesture);
   gestureRef.current = gesture;
-  const optionsRef = useRef({ isValidDrop, onDrop, canArm, onInspect, onTap });
-  optionsRef.current = { isValidDrop, onDrop, canArm, onInspect, onTap };
+  const optionsRef = useRef({ isValidDrop, onDrop, canArm, onInspect, onTap, onInvalidDrop });
+  optionsRef.current = { isValidDrop, onDrop, canArm, onInspect, onTap, onInvalidDrop };
 
   const clearLongPress = useCallback(() => {
     if (longPress.current !== null) window.clearTimeout(longPress.current);
@@ -162,6 +166,7 @@ export function useTableGestures({ isValidDrop, onDrop, canArm, onInspect, onTap
 
       const drop = validDropAt(p.kind, p.sourceId, e.clientX, e.clientY);
       if (drop) optionsRef.current.onDrop(p.kind, p.sourceId, drop, { x: e.clientX, y: e.clientY });
+      else optionsRef.current.onInvalidDrop?.(p.kind, p.sourceId, dropsAt(e.clientX, e.clientY));
       end();
     }
 

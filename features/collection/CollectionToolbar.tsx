@@ -18,6 +18,8 @@ interface CollectionToolbarProps {
   extra?: ReactNode;
   /** Action posée juste à côté de l'effectif (ex : « Revendre le surplus »). */
   countAction?: ReactNode;
+  /** Recherche posée dans la barre, entre l'effectif et le tri (sinon elle vit dans l'en-tête). */
+  search?: ReactNode;
 }
 
 /**
@@ -37,6 +39,7 @@ export function CollectionToolbar({
   activeFilterCount,
   extra,
   countAction,
+  search,
 }: CollectionToolbarProps) {
   return (
     <div className={styles.toolbar}>
@@ -52,6 +55,8 @@ export function CollectionToolbar({
         <span className={styles.countValue}>{count}</span> carte{count > 1 ? "s" : ""}
         {countAction && <span className={styles.countAction}>{countAction}</span>}
       </p>
+
+      {search}
 
       <div className={styles.sort}>
         <span className={styles.sortLabel}>Trier par</span>
