@@ -233,10 +233,18 @@
   box-shadow: 0 0 0.5cqw rgba(95, 208, 230, 0.7);
 }
 
+/* Survol : la lueur chaude du menu principal (`MenuCarte.module.css`, `.card:hover`). */
+.tab {
+  transition: filter 200ms ease-out, transform 180ms var(--tb-ease, cubic-bezier(0.2, 0.8, 0.2, 1));
+}
+
 .tab:hover,
 .tab:focus-visible {
   color: #18100a;
   outline: none;
+  filter: brightness(1.11) saturate(1.14) contrast(1.02) drop-shadow(0 0 7px rgba(255, 214, 140, 0.85))
+    drop-shadow(0 0 26px rgba(255, 176, 72, 0.45));
+  transform: scale(1.035);
 }
 
 /* ── Tri et recherche ─────────────────────────────────────────────── */
@@ -362,7 +370,7 @@
   text-decoration: none;
   cursor: pointer;
   filter: drop-shadow(0 0.8cqw 1cqw rgba(0, 0, 0, 0.6));
-  transition: transform 180ms ease, filter 180ms ease;
+  transition: transform 180ms var(--tb-ease, cubic-bezier(0.2, 0.8, 0.2, 1)), filter 200ms ease-out;
 }
 
 /* Le cadre de la pile par-dessus l'illustration (sa fenêtre est transparente). */
@@ -374,10 +382,13 @@
   pointer-events: none;
 }
 
-.stack:hover,
-.stack:focus-visible {
-  transform: translateY(-3%);
+/* Survol : la même lueur chaude que le menu principal ; le deck CHOISI garde son halo bleu. */
+.stack:hover:not([data-selected]),
+.stack:focus-visible:not([data-selected]) {
+  transform: translateY(-3%) scale(1.035);
   outline: none;
+  filter: brightness(1.11) saturate(1.14) contrast(1.02) drop-shadow(0 0 7px rgba(255, 214, 140, 0.85))
+    drop-shadow(0 0 26px rgba(255, 176, 72, 0.45)) drop-shadow(0 10px 18px rgba(3, 9, 16, 0.5));
 }
 
 .stack[data-selected] {
