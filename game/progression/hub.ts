@@ -1,5 +1,4 @@
-import { getCardDefinition } from "@/game/cards/sets/core";
-import type { GameState, PlayerId } from "@/game/state/types";
+import type { MatchAnalysis } from "@/game/audience/types";
 import { BOOSTER_DEFAUT } from "@/game/boosters/pools";
 import { loginWeekProgramme, type LoginRewardItem } from "@/game/progression/loginRewards";
 
@@ -82,31 +81,65 @@ export function masteryRewardForLevel(level: number): readonly LoginRewardItem[]
   return [{ kind: "tides", amount: 30 }];
 }
 
-/* ── Commanditaires ────────────────────────────────────────────────── */
+/* ── Mécènes (Commanditaires) ──────────────────────────────────────── */
 
-export type SponsorId =
-  | "compagnie-du-phare"
-  | "veuve-des-profondeurs"
-  | "comptoir-des-trois-ancres"
-  | "roi-cra-poiscail"
-  | "amiral-sans-pavillon"
-  | "le-collectionneur";
+export type SponsorId = "compagnie-du-mousquet" | "ambassade-cra-poiscail" | "representant-du-peuple" | "beladone";
+
+export type SponsorColor = "jaune" | "bleu" | "violet" | "marron";
 
 export interface SponsorDefinition {
   id: SponsorId;
   name: string;
-  /** Ce qu'il remarque, en une ligne (Notion). */
-  style: string;
+  /** Couleur du mécène — son sceau, sa jauge. */
+  color: SponsorColor;
+  /** Qui il est, pour l'illustration à venir. */
+  figure: string;
+  /**
+   * Ce qui l'attire, en une ligne — volontairement LARGE (décision du
+   * 25/09/2026 : pas de style trop visé pour l'instant).
+   */
+  attraction: string;
+  /**
+   * Audience minimale pour qu'il s'intéresse vraiment au joueur : le public
+   * est le prérequis, chaque mécène a le sien.
+   */
+  audienceRequired: number;
 }
 
-/** Les six Commanditaires de la page Notion, dans son ordre. */
+/** Les quatre mécènes (décision du 25/09/2026), du plus accessible au plus exigeant. */
 export const SPONSORS: readonly SponsorDefinition[] = [
-  { id: "compagnie-du-phare", name: "La Compagnie du Phare", style: "Défense, Structures, contrôle, parties méthodiques." },
-  { id: "veuve-des-profondeurs", name: "La Veuve des Profondeurs", style: "Abysse, sacrifices, faible Raison, prises de risque." },
-  { id: "comptoir-des-trois-ancres", name: "Le Comptoir des Trois Ancres", style: "Objets, Bris, économie et matériel." },
-  { id: "roi-cra-poiscail", name: "Le Roi Cra-Poiscail", style: "Cra-Poiscail et interactions improbables." },
-  { id: "amiral-sans-pavillon", name: "L'Amiral sans Pavillon", style: "Agressivité, canons, dégâts directs, victoires rapides." },
-  { id: "le-collectionneur", name: "Le Collectionneur", style: "Diversité des decks et des cartes utilisées." },
+  {
+    id: "beladone",
+    name: "Béladone",
+    color: "marron",
+    figure: "Une femme du peuple",
+    attraction: "Les marins qui reviennent jouer, jour après jour.",
+    audienceRequired: 300,
+  },
+  {
+    id: "ambassade-cra-poiscail",
+    name: "L'Ambassade Cra-Poiscail",
+    color: "bleu",
+    figure: "Un Cra-Poiscail",
+    attraction: "Les parties longues et disputées.",
+    audienceRequired: 700,
+  },
+  {
+    id: "compagnie-du-mousquet",
+    name: "La Compagnie du Mousquet",
+    color: "jaune",
+    figure: "Un chat homme-bête",
+    attraction: "Les victoires qui ont du panache.",
+    audienceRequired: 1000,
+  },
+  {
+    id: "representant-du-peuple",
+    name: "Le Représentant du Peuple",
+    color: "violet",
+    figure: "Une Sentinelle chromatique blanche",
+    attraction: "Ce que le public acclame.",
+    audienceRequired: 1500,
+  },
 ];
 
 /**
@@ -173,53 +206,36 @@ export function sponsorGiftStagesReached(points: number): SponsorStage[] {
   return SPONSOR_STAGES.filter((entry) => entry.id !== "indifferent" && points >= entry.minPoints).map((entry) => entry.id);
 }
 
-/** Plafond de points qu'une seule partie peut apporter à un Commanditaire. */
+/** Plafond de points qu'une seule partie peut apporter à un mécène. */
 const SPONSOR_POINTS_PER_MATCH = 10;
 
+export interface SponsorMatchContext {
+  /** Audience du joueur APRÈS cette partie. */
+  audience: number;
+  /** Verdict du public sur la partie (`analyzeMatch`). */
+  analysis: Pick<MatchAnalysis, "spectacle" | "traits">;
+  /** Jours d'affilée joués après cette partie (série de jeu). */
+  playStreak?: number;
+}
+
 /**
- * Points d'intérêt qu'UNE partie terminée rapporte au joueur `playerId`,
- * par Commanditaire (PROVISOIRE). Lu dans le journal de la partie : ce que
- * le joueur a VRAIMENT fait, pas son deck.
+ * Points d'intérêt qu'UNE partie terminée rapporte, par mécène
+ * (PROVISOIRE). Aucun tant que l'audience n'atteint pas son seuil : c'est
+ * le public qui attire leur regard. Ils lisent les TRAITS du moteur
+ * d'audience — ce qui les attire reste large : la régularité, la durée, le
+ * panache, la ferveur du public.
  */
-export function sponsorPointsForMatch(state: GameState, playerId: PlayerId): Record<SponsorId, number> {
-  let structures = 0;
-  let abyssal = 0;
-  let saborded = 0;
-  let objects = 0;
-  let broken = 0;
-  let craPoiscail = 0;
-  let directAttacks = 0;
-  const distinct = new Set<string>();
-
-  for (const event of state.eventLog) {
-    if (event.type === "PLAY_CARD" && event.playerId === playerId) {
-      distinct.add(event.cardId);
-      let def;
-      try {
-        def = getCardDefinition(event.cardId);
-      } catch {
-        continue;
-      }
-      if (def.type === "structure") structures += 1;
-      if (def.type === "objet" || def.type === "equipement") objects += 1;
-      if (event.cardId.endsWith("-abyssal")) abyssal += 1;
-      if (def.archetype === "cra-poiscail") craPoiscail += 1;
-    } else if (event.type === "SABORDED" && event.playerId === playerId) saborded += 1;
-    else if (event.type === "OBJECT_BROKEN" && event.playerId === playerId) broken += 1;
-    else if (event.type === "ATTACK" && event.playerId === playerId && !event.defenderInstanceId) directAttacks += 1;
-  }
-
-  const won = state.winnerId === playerId;
-  // `turnNumber` compte les tours des DEUX joueurs.
-  const tableTurns = Math.ceil(state.turnNumber / 2);
-  const cap = (value: number) => Math.min(SPONSOR_POINTS_PER_MATCH, value);
-
-  return {
-    "compagnie-du-phare": cap(structures * 2 + (tableTurns >= 8 ? 3 : 0)),
-    "veuve-des-profondeurs": cap(abyssal * 3 + saborded * 2),
-    "comptoir-des-trois-ancres": cap(objects + broken * 2),
-    "roi-cra-poiscail": cap(craPoiscail),
-    "amiral-sans-pavillon": cap(directAttacks + (won && tableTurns <= 6 ? 4 : 0)),
-    "le-collectionneur": distinct.size >= 12 ? 5 : distinct.size >= 8 ? 3 : 0,
+export function sponsorPointsForMatch(context: SponsorMatchContext): Record<SponsorId, number> {
+  const { traits } = context.analysis;
+  const raw: Record<SponsorId, number> = {
+    beladone: 2 + ((context.playStreak ?? 0) >= 3 ? 3 : 0),
+    "ambassade-cra-poiscail": Math.round(traits.endurance / 12),
+    "compagnie-du-mousquet": Math.round(traits.panache / 10),
+    "representant-du-peuple": traits.ferveur >= 75 ? 8 : traits.ferveur >= 55 ? 4 : 0,
   };
+  const points = {} as Record<SponsorId, number>;
+  for (const sponsor of SPONSORS) {
+    points[sponsor.id] = context.audience >= sponsor.audienceRequired ? Math.min(SPONSOR_POINTS_PER_MATCH, raw[sponsor.id]) : 0;
+  }
+  return points;
 }

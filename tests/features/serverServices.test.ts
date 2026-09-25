@@ -272,7 +272,7 @@ describe("hub de progression", () => {
     const hub = await readProgressionHub(USER, 12);
     expect(hub.weeklyChest.goal).toBe(10);
     expect(hub.masteries.length).toBeGreaterThan(0);
-    expect(hub.sponsors).toHaveLength(6);
+    expect(hub.sponsors).toHaveLength(4);
   });
 
   it("le coffre compte les parties de la semaine et ne s'ouvre qu'à 10", async () => {
@@ -310,10 +310,10 @@ describe("hub de progression", () => {
     expect(hub.masteries[1]!.shipId).toBe("le-goliath");
   });
 
-  it("aucun colis de Commanditaire sous le niveau 10", async () => {
-    rows.player_sponsor_interest = [{ sponsor_id: "compagnie-du-phare", points: 80 }];
+  it("aucun colis de mécène sous le niveau 10", async () => {
+    rows.player_sponsor_interest = [{ sponsor_id: "beladone", points: 80 }];
     expect((await readProgressionHub(USER, 9)).sponsors.every((sponsor) => sponsor.giftStages.length === 0)).toBe(true);
-    expect((await claimSponsorGift(USER, 9, "compagnie-du-phare", "intrigue")).ok).toBe(false);
-    expect((await readProgressionHub(USER, 10)).sponsors.find((sponsor) => sponsor.id === "compagnie-du-phare")!.giftStages).toEqual(["intrigue", "interesse"]);
+    expect((await claimSponsorGift(USER, 9, "beladone", "intrigue")).ok).toBe(false);
+    expect((await readProgressionHub(USER, 10)).sponsors.find((sponsor) => sponsor.id === "beladone")!.giftStages).toEqual(["intrigue", "interesse"]);
   });
 });

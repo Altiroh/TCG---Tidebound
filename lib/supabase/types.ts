@@ -498,6 +498,21 @@ export interface Database {
         Update: Record<string, never>;
         Relationships: [];
       };
+      /** Audience du joueur : le public qui suit ses parties — migration 20261010120000. */
+      player_audience: {
+        Row: {
+          user_id: string;
+          audience: number;
+          best_audience: number;
+          last_spectacle: number | null;
+          last_highlights: string[];
+          matches_judged: number;
+          updated_at: string;
+        };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
       /** Intérêt cumulé de chaque Commanditaire pour le joueur. */
       player_sponsor_interest: {
         Row: { user_id: string; sponsor_id: string; points: number; updated_at: string };
@@ -610,6 +625,10 @@ export interface Database {
           p_card_id?: string | null;
         };
         Returns: { ok: boolean; error?: string };
+      };
+      record_match_audience: {
+        Args: { p_user_id: string; p_match_id: string; p_spectacle: number; p_highlights?: string[] };
+        Returns: { ok: boolean; recorded?: boolean; audience?: number };
       };
       record_sponsor_interest: {
         Args: { p_user_id: string; p_match_id: string; p_points: Record<string, number> };

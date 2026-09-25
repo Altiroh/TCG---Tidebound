@@ -49,6 +49,7 @@ import { RainLayer } from "@/features/match/table/RainLayer";
 import { ShipInfoSheet } from "@/features/match/table/ShipInfoSheet";
 import { TableCardZoom } from "@/features/match/table/TableCardZoom";
 import { TableHand } from "@/features/match/table/TableHand";
+import { LiveAudience } from "@/features/match/table/LiveAudience";
 import { PhaseButton, TableHud } from "@/features/match/table/TableHud";
 import { TableOpponentHand } from "@/features/match/table/TableOpponentHand";
 import type { TableCardModel } from "@/features/match/table/tableModel";
@@ -800,6 +801,7 @@ export function TableBoard(props: TableBoardProps) {
             turnOwner={props.turnOwnerLabel}
             viewerTurn={state.activePlayerId === viewerId}
             onMenu={props.onMenu}
+            audience={<LiveAudience state={state} viewerId={viewerId} />}
             journal={props.journal}
             phaseButton={
               <PhaseButton

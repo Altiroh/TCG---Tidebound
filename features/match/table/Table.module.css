@@ -1670,6 +1670,36 @@
 .hudCornerTop {
   grid-row: 1;
   align-self: start;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--hud-h) * 0.25);
+}
+
+/*
+ * Le public en direct (`LiveAudience`) : un œil, à peine visible quand la
+ * salle s'ennuie, qui s'éclaire quand elle s'enflamme. Aucune animation :
+ * il ne doit jamais tirer l'œil du joueur.
+ */
+.liveAudience {
+  display: inline-grid;
+  place-items: center;
+  width: calc(var(--hud-h) * 0.7);
+  height: calc(var(--hud-h) * 0.7);
+  border-radius: 50%;
+  background: rgba(3, 10, 18, 0.55);
+  cursor: help;
+  transition: color 600ms ease, box-shadow 600ms ease;
+}
+.liveAudience svg {
+  width: 62%;
+  height: 62%;
+}
+.liveAudience[data-level="cold"] { color: rgba(170, 190, 205, 0.4); }
+.liveAudience[data-level="calm"] { color: rgba(170, 205, 220, 0.7); }
+.liveAudience[data-level="warm"] { color: var(--tb-accent, #5fd0e6); }
+.liveAudience[data-level="hot"] {
+  color: #f3c86b;
+  box-shadow: 0 0 calc(var(--hud-h) * 0.3) rgba(243, 200, 107, 0.35);
 }
 
 .hudCornerBottom {

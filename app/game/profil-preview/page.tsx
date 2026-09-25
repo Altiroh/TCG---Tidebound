@@ -104,11 +104,12 @@ export default function ProfilPreviewRoute({ searchParams }: { searchParams: { s
         ["le-courlis", 5],
       ]),
       pointsBySponsor: new Map([
-        ["compagnie-du-phare", 75],
-        ["amiral-sans-pavillon", 46],
-        ["veuve-des-profondeurs", 14],
+        ["beladone", 75],
+        ["ambassade-cra-poiscail", 46],
+        ["compagnie-du-mousquet", 6],
       ]),
-      claims: new Set(["sponsor_gift|compagnie-du-phare:intrigue", "mastery|le-goliath:2", "mastery|le-goliath:3"]),
+      claims: new Set(["sponsor_gift|beladone:intrigue", "mastery|le-goliath:2", "mastery|le-goliath:3"]),
+      audience: { audience: 1240, best: 1480, lastSpectacle: 68 },
     }),
   };
   return (

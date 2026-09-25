@@ -15,6 +15,8 @@ interface PreviewHudProps {
   phaseButton: ReactNode;
   /** Ouvre le menu de pause. */
   onMenu: () => void;
+  /** Le public en direct (`LiveAudience`), à gauche du bouton Menu. */
+  audience?: ReactNode;
 }
 
 /**
@@ -28,10 +30,11 @@ interface PreviewHudProps {
  * Le bouton Menu est posé au-dessus de la colonne, dans le coin haut droit
  * laissé libre par la main adverse.
  */
-export function TableHud({ turn, turnOwner, viewerTurn, journal, phaseButton, onMenu }: PreviewHudProps) {
+export function TableHud({ turn, turnOwner, viewerTurn, journal, phaseButton, onMenu, audience }: PreviewHudProps) {
   return (
     <>
       <div className={styles.hudCornerTop}>
+        {audience}
         <button type="button" className={styles.hudButton} onClick={onMenu} aria-label="Menu" title="Menu">
           {/* eslint-disable-next-line @next/next/no-img-element -- cadre décoratif, même asset que le bouton de phase */}
           <img src="/assets/board/phase-buttons/frame.webp" alt="" aria-hidden draggable={false} className={styles.fill} />

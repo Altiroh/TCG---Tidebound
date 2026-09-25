@@ -1,7 +1,7 @@
 "use server";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { progressionView, utcDayKey, type ProgressionView } from "@/game/progression";
+import { SPONSORS, progressionView, sponsorRevealed, utcDayKey, type ProgressionView } from "@/game/progression";
 import { claimableLevelsFor, reachedLevel } from "@/features/progression/levelRewardService";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
 
@@ -43,7 +43,17 @@ export interface ProgressionSummary {
   claimableRewards: number;
   /** L'escale de connexion du jour n'est pas encore réclamée : première venue de la journée (popup de série). */
   loginClaimable: boolean;
+  /** Spectateurs qui suivent le joueur (moteur d'audience, `game/audience/`). Visible en haut à droite. */
+  audience: number;
+  /** Spectacle de la dernière partie (0 à 100), `null` avant la première. */
+  lastSpectacle: number | null;
+  /** Mécènes qui ont commencé à l'observer, et ceux qui se sont fait connaître — pour la notification. */
+  sponsorsWatching: number;
+  sponsorsRevealed: number;
 }
+
+/** Mécènes du catalogue actuel — une ligne d'un mécène retiré ne compte plus. */
+const KNOWN_SPONSORS: ReadonlySet<string> = new Set(SPONSORS.map((sponsor) => sponsor.id));
 
 const SIGNED_OUT: ProgressionSummary = {
   isSignedIn: false,
@@ -57,6 +67,10 @@ const SIGNED_OUT: ProgressionSummary = {
   claimableQuests: 0,
   claimableRewards: 0,
   loginClaimable: false,
+  audience: 0,
+  lastSpectacle: null,
+  sponsorsWatching: 0,
+  sponsorsRevealed: 0,
 };
 
 /**
@@ -85,7 +99,7 @@ export async function fetchProgression(): Promise<ProgressionSummary> {
     const user = await getSessionUser();
     if (!user) return SIGNED_OUT;
 
-    const [progression, currency, profile, claimable, levelRewards, cardChoices, login, achievements] = await Promise.all([
+    const [progression, currency, profile, claimable, levelRewards, cardChoices, login, achievements, audience, sponsors] = await Promise.all([
       supabase.from("player_progression").select("*").eq("user_id", user.id).maybeSingle(),
       supabase.from("player_currency").select("balance").eq("user_id", user.id).maybeSingle(),
       readProfileHeader(supabase, user.id),
@@ -101,6 +115,9 @@ export async function fetchProgression(): Promise<ProgressionSummary> {
       supabase.from("player_card_choices").select("id", { count: "exact", head: true }).eq("user_id", user.id).is("resolved_at", null),
       supabase.from("player_login_rewards").select("last_claimed_day").eq("user_id", user.id).maybeSingle(),
       supabase.from("player_achievements").select("code", { count: "exact", head: true }).eq("user_id", user.id).is("claimed_at", null),
+      // Tables récentes : absentes (migration pas encore passée), elles valent zéro.
+      supabase.from("player_audience").select("audience, last_spectacle").eq("user_id", user.id).maybeSingle(),
+      supabase.from("player_sponsor_interest").select("sponsor_id, points").eq("user_id", user.id),
     ]);
     // Le niveau ATTEINT, pas celui de la colonne : elle n'est rafraîchie
     // qu'en fin de partie, et la pastille doit s'allumer dès que l'XP d'une
@@ -124,6 +141,10 @@ export async function fetchProgression(): Promise<ProgressionSummary> {
       // Tout ce qui se réclame au profil — quêtes comprises, elles y ont leur onglet.
       claimableRewards: levelsToClaim + (cardChoices.count ?? 0) + loginToClaim + (claimable.count ?? 0) + (achievements.error ? 0 : (achievements.count ?? 0)),
       loginClaimable: loginToClaim === 1,
+      audience: audience.error ? 0 : (audience.data?.audience ?? 0),
+      lastSpectacle: audience.error ? null : (audience.data?.last_spectacle ?? null),
+      sponsorsWatching: sponsors.error ? 0 : (sponsors.data ?? []).filter((row) => KNOWN_SPONSORS.has(row.sponsor_id) && row.points > 0).length,
+      sponsorsRevealed: sponsors.error ? 0 : (sponsors.data ?? []).filter((row) => KNOWN_SPONSORS.has(row.sponsor_id) && sponsorRevealed(row.points)).length,
     };
   } catch (error) {
     console.error("[fetchProgression] Lecture impossible :", error);

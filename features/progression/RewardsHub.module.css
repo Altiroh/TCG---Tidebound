@@ -850,6 +850,24 @@
   width: 62%;
   height: 62%;
 }
+.sigil img {
+  width: 78%;
+  height: 78%;
+  object-fit: contain;
+}
+
+/* Couleur de chaque mécène : son sceau et sa jauge. */
+.sponsor[data-color="jaune"] { --sponsor: #e8b92f; }
+.sponsor[data-color="bleu"] { --sponsor: #2f7be8; }
+.sponsor[data-color="violet"] { --sponsor: #8a3fe0; }
+.sponsor[data-color="marron"] { --sponsor: #a8672b; }
+.sponsor[data-revealed] .sigil {
+  border-color: var(--sponsor);
+}
+.sponsor[data-revealed] .barFill {
+  background: var(--sponsor);
+  box-shadow: 0 0 0.6cqw var(--sponsor);
+}
 .sigil[data-unknown] {
   color: #7fb4c9;
   border-color: rgba(127, 180, 201, 0.5);

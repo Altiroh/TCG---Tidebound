@@ -15,14 +15,6 @@ import {
   sponsorStage,
   weeklyChestContents,
 } from "@/game/progression";
-import { getCardDefinition } from "@/game";
-import type { GameState } from "@/game";
-
-/** Partie terminée réduite à ce que lit `sponsorPointsForMatch` : le journal, le vainqueur, le tour. */
-function finished(events: unknown[], turnNumber = 10, winnerId = "p2"): GameState {
-  return { eventLog: events, turnNumber, winnerId } as unknown as GameState;
-}
-const play = (cardId: string, playerId = "p1") => ({ type: "PLAY_CARD", playerId, instanceId: cardId, cardId, turnNumber: 1, timestamp: 0 });
 
 describe("coffre hebdomadaire", () => {
   it("se remplit en 10 parties et suit le booster de la semaine", () => {
@@ -56,9 +48,21 @@ describe("maîtrises", () => {
   });
 });
 
-describe("commanditaires", () => {
-  it("les six de la page Notion", () => {
-    expect(SPONSORS.map((sponsor) => sponsor.id)).toHaveLength(6);
+describe("mécènes", () => {
+  const analysis = (spectacle: number, traits: Partial<{ panache: number; endurance: number; ferveur: number }> = {}) => ({
+    spectacle,
+    traits: { panache: 0, endurance: 0, ferveur: spectacle, ...traits },
+  });
+
+  it("les quatre mécènes, chacun sa couleur et son seuil d'audience", () => {
+    expect(SPONSORS.map((sponsor) => [sponsor.id, sponsor.color])).toEqual([
+      ["beladone", "marron"],
+      ["ambassade-cra-poiscail", "bleu"],
+      ["compagnie-du-mousquet", "jaune"],
+      ["representant-du-peuple", "violet"],
+    ]);
+    const thresholds = SPONSORS.map((sponsor) => sponsor.audienceRequired);
+    expect([...thresholds].sort((a, b) => a - b)).toEqual(thresholds);
   });
 
   it("Indifférent → Intrigué → Intéressé → Fasciné ; anonyme tant qu'indifférent", () => {
@@ -83,35 +87,24 @@ describe("commanditaires", () => {
     }
   });
 
-  it("une partie lit ce que le joueur a FAIT : Structures, Abysse, Objets, attaques directes", () => {
-    // Des cartes réelles du catalogue, pour que la lecture du type soit vraie.
-    expect(getCardDefinition("epave-engloutie").type).toBe("structure");
-    expect(getCardDefinition("chope").type).toBe("objet");
-    const points = sponsorPointsForMatch(
-      finished([
-        play("epave-engloutie"),
-        play("epave-engloutie"),
-        play("bat-marin-abyssal"),
-        play("chope"),
-        { type: "OBJECT_BROKEN", playerId: "p1", instanceId: "x", cardId: "chope", fromHand: false, turnNumber: 2, timestamp: 0 },
-        { type: "ATTACK", playerId: "p1", attackerInstanceId: "a", turnNumber: 3, timestamp: 0 },
-        // Les gestes de l'adversaire ne comptent pas.
-        play("epave-engloutie", "p2"),
-      ]),
-      "p1"
-    );
-    expect(points["compagnie-du-phare"]).toBe(4);
-    expect(points["veuve-des-profondeurs"]).toBe(3);
-    expect(points["comptoir-des-trois-ancres"]).toBe(3);
-    expect(points["amiral-sans-pavillon"]).toBe(1);
-    expect(points["le-collectionneur"]).toBe(0);
+  it("sans l'audience requise, personne ne regarde — c'est le public qui ouvre leur œil", () => {
+    const none = sponsorPointsForMatch({ audience: 0, analysis: analysis(90, { panache: 100, endurance: 100 }), playStreak: 5 });
+    expect(Object.values(none).every((points) => points === 0)).toBe(true);
+
+    const some = sponsorPointsForMatch({ audience: 800, analysis: analysis(90, { panache: 100, endurance: 100 }), playStreak: 5 });
+    expect(some.beladone).toBeGreaterThan(0);
+    expect(some["ambassade-cra-poiscail"]).toBeGreaterThan(0);
+    expect(some["compagnie-du-mousquet"]).toBe(0); // exige 1000
+    expect(some["representant-du-peuple"]).toBe(0); // exige 1500
   });
 
-  it("une victoire éclair attire l'Amiral, une longue partie la Compagnie ; plafond par partie", () => {
-    expect(sponsorPointsForMatch(finished([], 10, "p1"), "p1")["amiral-sans-pavillon"]).toBe(4);
-    expect(sponsorPointsForMatch(finished([], 10, "p2"), "p1")["amiral-sans-pavillon"]).toBe(0);
-    expect(sponsorPointsForMatch(finished([], 16), "p1")["compagnie-du-phare"]).toBe(3);
-    const many = Array.from({ length: 20 }, () => play("epave-engloutie"));
-    expect(sponsorPointsForMatch(finished(many), "p1")["compagnie-du-phare"]).toBe(10);
+  it("des attirances larges : panache, durée, ferveur, régularité — plafonnées par partie", () => {
+    const points = sponsorPointsForMatch({ audience: 5000, analysis: analysis(80, { panache: 90, endurance: 84 }), playStreak: 1 });
+    expect(points.beladone).toBe(2);
+    expect(points["ambassade-cra-poiscail"]).toBe(7);
+    expect(points["compagnie-du-mousquet"]).toBe(9);
+    expect(points["representant-du-peuple"]).toBe(8);
+    const max = sponsorPointsForMatch({ audience: 5000, analysis: analysis(100, { panache: 500, endurance: 500 }), playStreak: 9 });
+    expect(Math.max(...Object.values(max))).toBeLessThanOrEqual(10);
   });
 });

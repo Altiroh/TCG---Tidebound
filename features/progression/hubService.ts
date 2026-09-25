@@ -1,6 +1,7 @@
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { PLAYABLE_DECKS, getShipDefinition, type GameState } from "@/game";
 import { SHIP_SET } from "@/game/environment/shipData";
+import { analyzeMatch } from "@/game/audience";
 import {
   MASTERY_MAX_LEVEL,
   SPONSORS,
@@ -21,6 +22,7 @@ import {
   utcDayKey,
   weeklyChestContents,
   type LoginRewardItem,
+  type SponsorColor,
   type SponsorId,
   type SponsorStage,
 } from "@/game/progression";
@@ -69,7 +71,15 @@ export interface SponsorView {
   id: SponsorId;
   /** `null` tant qu'il ne s'est pas fait connaître (« Quelqu'un vous observe… »). */
   name: string | null;
+  /** Ce qui l'attire — `null` tant qu'il est anonyme. */
   style: string | null;
+  color: SponsorColor;
+  /** Audience qu'il exige avant de s'intéresser au joueur. */
+  audienceRequired: number;
+  /** L'audience du joueur atteint son seuil. */
+  meetsAudience: boolean;
+  /** Il a commencé à regarder (au moins un point d'intérêt). */
+  watching: boolean;
   points: number;
   stage: SponsorStage;
   stageLabel: string;
@@ -78,7 +88,16 @@ export interface SponsorView {
   giftStages: SponsorStage[];
 }
 
+export interface AudienceView {
+  /** Spectateurs qui suivent le joueur. */
+  audience: number;
+  best: number;
+  /** Spectacle de la dernière partie (0 à 100), `null` avant la première. */
+  lastSpectacle: number | null;
+}
+
 export interface ProgressionHubView {
+  audience: AudienceView;
   weeklyChest: WeeklyChestView;
   masteries: MasteryView[];
   /** `false` sous le niveau d'ouverture des Commanditaires. */
@@ -107,6 +126,13 @@ async function shipsOfDecks(service: Service, deckIds: string[]): Promise<Map<st
     for (const row of data ?? []) ships.set(row.id, row.ship_id);
   }
   return ships;
+}
+
+/** Audience du joueur (`player_audience`) — zéro tant qu'il n'a rien joué, ou que la migration manque. */
+export async function readAudience(service: Service, userId: string): Promise<AudienceView> {
+  const { data, error } = await service.from("player_audience").select("audience, best_audience, last_spectacle").eq("user_id", userId).maybeSingle();
+  if (error || !data) return { audience: 0, best: 0, lastSpectacle: null };
+  return { audience: data.audience, best: data.best_audience, lastSpectacle: data.last_spectacle };
 }
 
 async function readClaims(service: Service, userId: string): Promise<Set<string>> {
@@ -178,10 +204,11 @@ export async function readProgressionHub(userId: string, accountLevel: number, n
 
   try {
     const service = createSupabaseServiceRoleClient();
-    const [claims, history, interest] = await Promise.all([
+    const [claims, history, interest, audience] = await Promise.all([
       readClaims(service, userId),
       readMatchHistory(service, userId, weekStartDay(today)),
       service.from("player_sponsor_interest").select("sponsor_id, points").eq("user_id", userId),
+      readAudience(service, userId),
     ]);
     return hubViewFrom({
       weekIndex,
@@ -191,6 +218,7 @@ export async function readProgressionHub(userId: string, accountLevel: number, n
       matchesByShip: history.matchesByShip,
       pointsBySponsor: new Map((interest.error ? [] : (interest.data ?? [])).map((row) => [row.sponsor_id, row.points])),
       claims,
+      audience,
     });
   } catch (error) {
     console.error("[readProgressionHub] Lecture impossible :", error);
@@ -210,6 +238,7 @@ export function hubViewFrom({
   matchesByShip,
   pointsBySponsor,
   claims,
+  audience = { audience: 0, best: 0, lastSpectacle: null },
 }: {
   weekIndex: number;
   accountLevel: number;
@@ -219,6 +248,7 @@ export function hubViewFrom({
   matchesByShip?: ReadonlyMap<string, number>;
   pointsBySponsor: ReadonlyMap<string, number>;
   claims: Set<string>;
+  audience?: AudienceView;
 }): ProgressionHubView {
   const claimed = claims.has(`weekly_chest|${weekIndex}`);
   return {
@@ -236,20 +266,26 @@ export function hubViewFrom({
       (a, b) => b.matchesPlayed - a.matchesPlayed || b.xpTotal - a.xpTotal
     ),
     sponsorsUnlocked: accountLevel >= SPONSORS_UNLOCK_LEVEL,
-    sponsors: SPONSORS.map((sponsor) => sponsorView(sponsor.id, pointsBySponsor.get(sponsor.id) ?? 0, claims, accountLevel)).sort(
-      (a, b) => b.points - a.points
+    audience,
+    // Ceux qui regardent d'abord, puis du plus accessible au plus exigeant.
+    sponsors: SPONSORS.map((sponsor) => sponsorView(sponsor.id, pointsBySponsor.get(sponsor.id) ?? 0, claims, accountLevel, audience.audience)).sort(
+      (a, b) => b.points - a.points || a.audienceRequired - b.audienceRequired
     ),
   };
 }
 
-function sponsorView(id: SponsorId, points: number, claims: Set<string>, accountLevel: number): SponsorView {
+function sponsorView(id: SponsorId, points: number, claims: Set<string>, accountLevel: number, audience: number): SponsorView {
   const definition = SPONSORS.find((sponsor) => sponsor.id === id)!;
   const revealed = sponsorRevealed(points);
   const stage = sponsorStage(points);
   return {
     id,
     name: revealed ? definition.name : null,
-    style: revealed ? definition.style : null,
+    style: revealed ? definition.attraction : null,
+    color: definition.color,
+    audienceRequired: definition.audienceRequired,
+    meetsAudience: audience >= definition.audienceRequired,
+    watching: points > 0,
     points,
     stage,
     stageLabel: sponsorStageLabel(stage),
@@ -353,20 +389,40 @@ export async function claimSponsorGift(userId: string, accountLevel: number, spo
 }
 
 /**
- * Fin de partie : l'intérêt que les gestes du joueur ont éveillé chez les
- * Commanditaires (`sponsorPointsForMatch`). Seulement à partir du niveau
- * d'ouverture, et une seule fois par partie (la fonction Postgres s'en
- * assure). Ne lève jamais : une fin de partie ne doit pas échouer pour ça.
+ * Fin de partie, pour UN joueur : le public juge la partie (spectacle,
+ * audience — ouverte à tous, dès le premier jour), puis les mécènes qui la
+ * regardaient y puisent leur intérêt — à partir du niveau d'ouverture, et
+ * seulement ceux dont le seuil d'audience est atteint. Une fois par partie
+ * (les fonctions Postgres s'en assurent). Ne lève jamais : une fin de
+ * partie ne doit pas échouer pour ça.
  */
-export async function recordSponsorInterest(matchId: string, userId: string, finalState: GameState, accountLevel: number): Promise<void> {
-  if (accountLevel < SPONSORS_UNLOCK_LEVEL) return;
+export async function recordMatchAudience(
+  matchId: string,
+  userId: string,
+  finalState: GameState,
+  context: { accountLevel: number; playStreak?: number }
+): Promise<void> {
   try {
-    const points = sponsorPointsForMatch(finalState, userId);
-    if (!Object.values(points).some((value) => value > 0)) return;
     const service = createSupabaseServiceRoleClient();
-    const { error } = await service.rpc("record_sponsor_interest", { p_user_id: userId, p_match_id: matchId, p_points: points });
-    if (error) console.error("[recordSponsorInterest] Refusé :", error.message);
+    const analysis = analyzeMatch(finalState, userId);
+    const { data, error } = await service.rpc("record_match_audience", {
+      p_user_id: userId,
+      p_match_id: matchId,
+      p_spectacle: analysis.spectacle,
+      p_highlights: analysis.highlights,
+    });
+    if (error) {
+      console.error("[recordMatchAudience] Refusé :", error.message);
+      return;
+    }
+    // Déjà comptée (rejeu) : les mécènes l'ont déjà vue aussi.
+    if (!data?.recorded || context.accountLevel < SPONSORS_UNLOCK_LEVEL) return;
+
+    const points = sponsorPointsForMatch({ audience: data.audience ?? 0, analysis, playStreak: context.playStreak });
+    if (!Object.values(points).some((value) => value > 0)) return;
+    const interest = await service.rpc("record_sponsor_interest", { p_user_id: userId, p_match_id: matchId, p_points: points });
+    if (interest.error) console.error("[recordMatchAudience] Intérêt refusé :", interest.error.message);
   } catch (error) {
-    console.error("[recordSponsorInterest] Échec :", error);
+    console.error("[recordMatchAudience] Échec :", error);
   }
 }

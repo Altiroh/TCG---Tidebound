@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useState, useTransition } from "react";
 import {
   LOGIN_CYCLE_LENGTH,
   MAX_REWARDED_LEVEL,
@@ -17,7 +17,7 @@ import {
   openWeeklyChest,
   type ProfileSummary,
 } from "@/features/progression/profileActions";
-import type { MasteryView, SponsorView } from "@/features/progression/hubService";
+import type { AudienceView, MasteryView, SponsorView } from "@/features/progression/hubService";
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
 import { RewardIcon, type RewardItem } from "@/features/progression/RewardIcon";
 import { shipIllustrationUrl } from "@/features/ships/shipFrame";
@@ -114,6 +114,7 @@ export function RewardsHub({ profile, claiming, onClaimLevel, onReveal, onRefres
 
         {profile.hub && (
           <SponsorsPanel
+            audience={profile.hub.audience}
             sponsors={profile.hub.sponsors}
             unlocked={profile.hub.sponsorsUnlocked}
             busy={pending}
@@ -480,11 +481,13 @@ function MasteriesPanel({ masteries, busy, onClaim }: { masteries: MasteryView[]
 /* ── Commanditaires ────────────────────────────────────────────────── */
 
 function SponsorsPanel({
+  audience,
   sponsors,
   unlocked,
   busy,
   onOpenGift,
 }: {
+  audience: AudienceView;
   sponsors: SponsorView[];
   unlocked: boolean;
   busy: boolean;
@@ -493,19 +496,22 @@ function SponsorsPanel({
   const [all, setAll] = useState(false);
   const shown = all ? sponsors : sponsors.slice(0, 3);
   return (
-    <section className={`${styles.panel} ${styles.sponsors}`} aria-label="Commanditaires">
+    <section className={`${styles.panel} ${styles.sponsors}`} aria-label="Mécènes">
       <header className={styles.panelHead}>
         <h2 className={styles.panelTitle}>
-          Commanditaires
+          Mécènes
           <span
             className={styles.help}
-            title={`Des personnages de Tidebound remarquent ta manière de jouer. Ils ne s'éveillent qu'à partir du niveau ${SPONSORS_UNLOCK_LEVEL}, et envoient un colis à chaque palier d'intérêt.`}
+            title={`Le public juge chacune de tes parties : c'est ton Audience. Passé le niveau ${SPONSORS_UNLOCK_LEVEL}, quand elle est assez grande, des mécènes commencent à t'observer — chacun a ses exigences — et envoient un colis à chaque palier d'intérêt.`}
           >
             ?
           </span>
         </h2>
+        <span className={styles.panelMeta} title="Spectateurs qui suivent tes parties">
+          👁 {audience.audience.toLocaleString("fr-FR")}
+        </span>
       </header>
-      <p className={styles.panelSub}>Vos exploits attirent l&apos;attention. Certains vous observent.</p>
+      <p className={styles.panelSub}>Le public vous regarde. Certains, derrière lui, vous observent.</p>
       {!unlocked ? (
         <div className={styles.locked}>
           <SponsorGlyph id={null} />
@@ -520,11 +526,19 @@ function SponsorsPanel({
           {shown.map((sponsor) => {
             const gift = sponsor.giftStages.length > 0;
             return (
-              <li key={sponsor.id} className={styles.sponsor} data-revealed={sponsor.name ? "" : undefined} title={sponsor.style ?? undefined}>
+              <li
+                key={sponsor.id}
+                className={styles.sponsor}
+                data-color={sponsor.color}
+                data-revealed={sponsor.name ? "" : undefined}
+                title={sponsor.style ?? undefined}
+              >
                 <SponsorGlyph id={sponsor.name ? sponsor.id : null} />
                 <span className={styles.rowBody}>
-                  <span className={styles.rowTitle}>{sponsor.name ?? "Quelqu'un vous observe…"}</span>
-                  <span className={styles.sponsorStage}>{sponsor.stageLabel}</span>
+                  <span className={styles.rowTitle}>{sponsor.name ?? (sponsor.watching ? "Quelqu'un vous observe…" : "Un regard dans la foule")}</span>
+                  <span className={styles.sponsorStage}>
+                    {sponsor.meetsAudience ? sponsor.stageLabel : `Attend ${sponsor.audienceRequired.toLocaleString("fr-FR")} spectateurs`}
+                  </span>
                   <span className={styles.bar}>
                     <span className={styles.barFill} style={{ width: `${sponsor.percent}%` }} />
                   </span>
@@ -556,7 +570,7 @@ function SponsorsPanel({
           setAll((value) => !value);
         }}
       >
-        {all ? "Voir les trois premiers" : "Voir tous les commanditaires"}
+        {all ? "Voir les trois premiers" : "Voir tous les mécènes"}
       </button>
     </section>
   );
@@ -631,21 +645,18 @@ function GiftGlyph() {
   );
 }
 
-/** Sceau de chaque Commanditaire — un trait simple, dans l'encre du reste. `null` : l'œil de l'inconnu. */
+/** Sceau d'un mécène : son insigne (`public/assets/mecenes/`). `null` : l'œil de l'inconnu, qui ne trahit personne. */
 function SponsorGlyph({ id }: { id: SponsorView["id"] | null }) {
-  const paths: Record<string, ReactNode> = {
-    "compagnie-du-phare": <path d="M10 21h4l-.8-11h-2.4zM9.2 10h5.6L12 5zM3 9l5 1M21 9l-5 1M4 13l4-1M20 13l-4-1" />,
-    "veuve-des-profondeurs": <path d="M12 4c-3.3 0-5.5 2.4-5.5 5.2 0 1.8.9 3 2 3.8L6 19M12 4c3.3 0 5.5 2.4 5.5 5.2 0 1.8-.9 3-2 3.8L18 19M10 13l-1 7M14 13l1 7M9.8 9h.01M14.2 9h.01" />,
-    "comptoir-des-trois-ancres": <path d="M12 5v15M8 8h8M5 14c0 3.5 3.2 6 7 6s7-2.5 7-6M5 14l-1.5 1.5M19 14l1.5 1.5M12 5a1.6 1.6 0 1 0 0-.01" />,
-    "roi-cra-poiscail": <path d="M4 17h16l1-9-5 4-4-6-4 6-5-4zM5 20h14" />,
-    "amiral-sans-pavillon": <path d="M8.5 11a3.5 3.5 0 1 1 7 0c0 1.4-.8 2.3-1.5 2.8V16h-4v-2.2c-.7-.5-1.5-1.4-1.5-2.8zM10.5 11h.01M13.5 11h.01M5 19l14-6M5 13l14 6" />,
-    "le-collectionneur": <path d="M6 6h9v13H6zM9 3h9v13M8.5 10h4M8.5 13h4" />,
-  };
   return (
     <span className={styles.sigil} data-unknown={id ? undefined : ""} aria-hidden>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-        {id ? paths[id] : <path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 12 2 12zm10 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />}
-      </svg>
+      {id ? (
+        // eslint-disable-next-line @next/next/no-img-element -- insigne local
+        <img src={`/assets/mecenes/${id}-insigne.webp`} alt="" draggable={false} />
+      ) : (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 12 2 12zm10 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
+        </svg>
+      )}
     </span>
   );
 }

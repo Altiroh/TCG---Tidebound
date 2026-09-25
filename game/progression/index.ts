@@ -88,4 +88,5 @@ export {
   sponsorStageLabel,
   weeklyChestContents,
 } from "@/game/progression/hub";
-export type { MasteryProgress, SponsorDefinition, SponsorId, SponsorStage } from "@/game/progression/hub";
+export type { MasteryProgress, SponsorColor, SponsorDefinition, SponsorId, SponsorMatchContext, SponsorStage } from "@/game/progression/hub";
+

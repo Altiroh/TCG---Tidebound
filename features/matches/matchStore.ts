@@ -4,7 +4,7 @@ import type { Database } from "@/lib/supabase/types";
 import { awardMatchReward } from "@/features/progression/rewards";
 import { botCountsAsPvp } from "@/features/progression/botRewardPolicy";
 import { recordMatchQuestProgress } from "@/features/quests/questService";
-import { recordSponsorInterest } from "@/features/progression/hubService";
+import { recordMatchAudience } from "@/features/progression/hubService";
 import { isRecentDeck } from "@/features/decks/recentDecks";
 import { packFrames, type PackedFrames } from "@/features/matches/matchFrames";
 
@@ -284,10 +284,13 @@ async function settleFinishedMatch(match: MatchRow, finalState: GameState): Prom
         enginePlayerId: userId,
         botCountsAsPvp: botAsPvp,
       });
-      // Les Commanditaires lisent le journal de la partie — une seule fois
-      // (`reward` est nul quand la partie avait déjà été payée).
-      if (reward) await recordSponsorInterest(match.id, userId, finalState, reward.levelAfter);
-      await recordMatchQuestProgress({
+      // Le public juge la partie, puis les mécènes y puisent leur intérêt —
+      // une seule fois (`reward` est nul quand la partie avait déjà été
+      // payée). En parallèle des quêtes : le joueur n'attend rien de plus.
+      const audience = reward
+        ? recordMatchAudience(match.id, userId, finalState, { accountLevel: reward.levelAfter, playStreak: reward.playStreak })
+        : Promise.resolve();
+      const quests = recordMatchQuestProgress({
         matchId: match.id,
         userId,
         playerId: userId,
@@ -306,6 +309,7 @@ async function settleFinishedMatch(match: MatchRow, finalState: GameState): Prom
         playStreak: reward?.playStreak,
         deckIsNew: await isRecentDeck(userId, deckId),
       });
+      await Promise.all([audience, quests]);
     })
   );
 }

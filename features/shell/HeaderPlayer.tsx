@@ -4,6 +4,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import { fetchProgression, type ProgressionSummary } from "@/features/progression/actions";
+import { audienceMood } from "@/game/audience";
 import { notifyProgressionChanged, onProgressionChanged, readProgression, rememberedProgression } from "@/features/progression/progressionSync";
 import { cardIllustrationThumbUrl } from "@/features/decks/cardArtUrl";
 import type { ProfileTab } from "@/features/progression/ProfileView";
@@ -46,6 +47,42 @@ function markStreakPopupSeen(day: string): void {
   } catch {
     // Stockage indisponible (navigation privée) : le popup pourra revenir, rien de grave.
   }
+}
+
+/** Mécènes vus par le joueur sur cet appareil : on n'annonce que ce qui est NOUVEAU, une fois. */
+const SPONSORS_SEEN_KEY = "tb:sponsors-seen";
+
+function readSponsorsSeen(): { watching: number; revealed: number } | null {
+  try {
+    const raw = window.localStorage.getItem(SPONSORS_SEEN_KEY);
+    return raw ? (JSON.parse(raw) as { watching: number; revealed: number }) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeSponsorsSeen(seen: { watching: number; revealed: number }): void {
+  try {
+    window.localStorage.setItem(SPONSORS_SEEN_KEY, JSON.stringify(seen));
+  } catch {
+    // Stockage indisponible : l'annonce pourra revenir, rien de grave.
+  }
+}
+
+/** « 1 240 » → « 1,2 k » au-delà de 10 000 : le bandeau n'a pas la place d'un compteur de stade. */
+function formatAudience(value: number): string {
+  if (value >= 10_000) return `${(value / 1000).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} k`;
+  return value.toLocaleString("fr-FR");
+}
+
+/** L'œil du public. */
+function AudienceIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" width="18" height="18" aria-hidden>
+      <path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 12 2 12z" stroke="currentColor" strokeWidth={1.6} strokeLinejoin="round" />
+      <circle cx="12" cy="12" r="2.8" stroke="currentColor" strokeWidth={1.6} />
+    </svg>
+  );
 }
 
 /** Parchemin roulé — le journal de bord, pas une coche de logiciel. */
@@ -153,6 +190,7 @@ export function HeaderPlayer() {
             setStreakOpen(true);
           }
           announceNewQuests(result.claimableQuests);
+          announceSponsors(result);
           announceNewRewards(result.claimableRewards);
         })
         .catch((error) => console.error("[HeaderPlayer] Lecture de la progression impossible :", error));
@@ -196,6 +234,50 @@ export function HeaderPlayer() {
      * fin de partie, typiquement). Les quêtes ont la priorité sur l'alerte :
      * une seule à la fois, et la pastille de l'avatar reste de toute façon.
      */
+    /**
+     * Un mécène a commencé à observer le joueur, ou s'est fait connaître :
+     * une ligne discrète, hors partie, une seule fois — le joueur joue sans
+     * s'en soucier, le monde le remarque quand même.
+     */
+    function announceSponsors(result: ProgressionSummary) {
+      if (!result.isSignedIn) return;
+      const now = { watching: result.sponsorsWatching, revealed: result.sponsorsRevealed };
+      const seen = readSponsorsSeen();
+      writeSponsorsSeen(now);
+      if (!seen) return;
+      const text =
+        now.revealed > seen.revealed
+          ? "Un mécène s'est fait connaître — il vous a à l'œil."
+          : now.watching > seen.watching
+            ? now.watching - seen.watching > 1
+              ? "Plusieurs regards se posent sur vous…"
+              : "Quelqu'un vous observe…"
+            : null;
+      if (!text) return;
+      setToast((current) =>
+        current
+          ? current
+          : {
+              id: ++toastId.current,
+              tone: "success",
+              text,
+              action: (
+                <button
+                  type="button"
+                  className={styles.toastAction}
+                  onClick={() => {
+                    playButtonClick();
+                    setToast(null);
+                    setProfileTab("recompenses");
+                  }}
+                >
+                  Voir →
+                </button>
+              ),
+            }
+      );
+    }
+
     function announceNewRewards(claimable: number) {
       const previous = lastRewards.current;
       lastRewards.current = claimable;
@@ -301,6 +383,16 @@ export function HeaderPlayer() {
           </span>
 
           <span className={styles.accountWallet}>
+            {/* Audience : le public qui suit les parties — ouverte à tous, dès le premier jour. */}
+            <span
+              className={styles.accountAudience}
+              title={`Audience : ${summary.audience.toLocaleString("fr-FR")} spectateurs${
+                summary.lastSpectacle !== null ? ` — dernière partie : ${audienceMood(summary.lastSpectacle).toLowerCase()}` : ""
+              }. Le public juge chaque partie : une partie disputée et bien jouée l'attire, une partie expédiée le lasse.`}
+            >
+              <AudienceIcon />
+              {formatAudience(summary.audience)}
+            </span>
             <span className={styles.accountTides} title="Tides — la monnaie du jeu">
               <TideCoin size={22} />
               {summary.balance}

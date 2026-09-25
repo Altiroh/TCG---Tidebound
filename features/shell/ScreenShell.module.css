@@ -423,6 +423,7 @@
   border-left: 1px solid var(--tb-border);
 }
 
+.accountAudience,
 .accountTides,
 .accountTokens {
   display: inline-flex;
@@ -432,6 +433,12 @@
   font-size: clamp(13px, 1.05vw, 16px);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+/* Cyan : ce n'est pas une monnaie, c'est un regard. */
+.accountAudience {
+  color: var(--tb-accent);
+  cursor: help;
 }
 
 /* Or : c'est de l'économie. */
@@ -980,6 +987,7 @@
    * reconnaît, et c'est la proportion juste en face d'un onglet de
    * 11,5 px.
    */
+  .accountAudience svg,
   .accountTides img,
   .accountTokens img {
     width: 18px;
