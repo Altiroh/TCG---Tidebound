@@ -4,6 +4,7 @@ import { memo, type CSSProperties } from "react";
 import styles from "@/features/boosters/opening/BoosterOpening.module.css";
 import type { BoosterPackVisual } from "@/features/boosters/opening/boosterPackVisuals";
 import { BoosterParticles } from "@/features/boosters/opening/BoosterParticles";
+import { useCardBackSrc } from "@/features/cosmetics/CardBackProvider";
 
 interface BoosterPackProps {
   visual: BoosterPackVisual;
@@ -32,6 +33,8 @@ interface BoosterPackProps {
  * `retreating`, qui ne repassent jamais à `false`.
  */
 export const BoosterPack = memo(function BoosterPack({ visual, ready, torn, retreating, enterStyle, onOpen }: BoosterPackProps) {
+  const cardBack = useCardBackSrc();
+  const backs = visual.cardBacks;
   return (
     <div
       className={styles.packAnchor}
@@ -55,6 +58,20 @@ export const BoosterPack = memo(function BoosterPack({ visual, ready, torn, retr
           <span className={styles.packReadyHalo} />
 
           <span className={styles.packOpenLayer}>
+            {/* Trois dos DU JOUEUR glissés dans l'ouverture, derrière le corps : les vraies cartes montent
+                derrière eux avant d'en sortir (`mouth`). */}
+            {backs && (
+              <span
+                className={styles.packCardBacks}
+                style={{ "--backs-top": backs.top, "--backs-w": backs.width } as CSSProperties}
+                aria-hidden
+              >
+                {[0, 1, 2].map((index) => (
+                  // eslint-disable-next-line @next/next/no-img-element -- dos équipé, déjà préchargé par la scène
+                  <img key={index} className={styles.packCardBack} src={cardBack} alt="" draggable={false} />
+                ))}
+              </span>
+            )}
             {/* eslint-disable-next-line @next/next/no-img-element -- asset préchargé et décodé, animé en transform */}
             <img className={styles.packBottom} src={visual.assets.openBottom} alt="" draggable={false} />
           </span>

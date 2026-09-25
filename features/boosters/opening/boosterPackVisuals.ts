@@ -14,6 +14,19 @@ import type { CSSProperties } from "react";
  * Ajouter un visuel = livrer une planche, en découper les trois images,
  * ajouter une entrée ici, et la relier à un id de booster dans
  * `BOOSTER_VISUAL_BY_ID`.
+ *
+ * Planches UNIFORMISÉES du 25/09/2026 (les six boosters en vente) : un même
+ * gabarit de sachet, livré en deux PNG — le sachet fermé, et une planche
+ * ouverte où la bande arrachée flotte au-dessus du corps. Aucun dos de carte
+ * n'y est peint : ce sont ceux DU JOUEUR (`cardBacks`) que la scène glisse
+ * dans l'ouverture. Découpe et mesures :
+ *   - bande et corps : les deux blocs non vides de la planche ouverte, de
+ *     haut en bas, recadrés à leur silhouette ;
+ *   - échelle du fermé : rapport des largeurs de silhouette entre 60 % et
+ *     80 % de la hauteur (là où le sachet est droit), puis aligné par le bas
+ *     et centré sur l'axe ;
+ *   - bande : même planche que le corps, donc même échelle ; son bord haut
+ *     posé sur celui du fermé, son décalage horizontal repris de la planche.
  */
 
 /** Rectangle en % de la boîte du corps ouvert (left/width → largeur, top/height → hauteur). */
@@ -56,8 +69,28 @@ export interface BoosterPackVisual {
     /** Sommet de départ d'une carte cachée, en fraction de la hauteur du sachet (sous le bord peint). */
     startTop: number;
   };
+  /**
+   * Dos de cartes que la scène pose ELLE-MÊME dans l'ouverture, derrière le
+   * corps — le dos équipé par le joueur, pas un dos peint. Absent : le corps
+   * en peint déjà (Mini Booster de Bienvenue).
+   */
+  cardBacks?: {
+    /** Sommet de la pile, en fraction de la hauteur du sachet (négatif : au-dessus du bord). */
+    top: number;
+    /** Largeur d'une carte, en fraction de la largeur du sachet. */
+    width: number;
+  };
 }
 
+/**
+ * Ouverture des planches uniformisées : la pile de dos du joueur dépasse de
+ * 6 % au-dessus du corps, sur 60 % de sa largeur ; la vraie carte qui monte
+ * a cette largeur et part cachée derrière elle.
+ */
+const PACK_CARD_BACKS = { top: -0.06, width: 0.6 } as const;
+const PACK_MOUTH = { centerX: 0, width: 0.6, startTop: 0.03 } as const;
+
+/** Défaut — planches du 25/09/2026. */
 export const DEFAULT_PACK_VISUAL: BoosterPackVisual = {
   id: "defaut",
   assets: {
@@ -65,15 +98,14 @@ export const DEFAULT_PACK_VISUAL: BoosterPackVisual = {
     openTop: "/assets/boosters/defaut/defaut-open-top.webp",
     openBottom: "/assets/boosters/defaut/defaut-open-bottom.webp",
   },
-  // Corps 816 × 1351 px.
-  aspectRatio: 816 / 1351,
-  // Fermé 943 × 1585 px, ramené à 81.52 % (rapport des silhouettes).
-  closedRect: { left: 3.21, top: 4.35, width: 94.21, height: 95.65 },
-  // Bande 805 × 283 px → 98.65 % × 20.95 %, bord bas sur la déchirure.
-  topRect: { left: 0.67, top: -3.95, width: 98.65, height: 20.95 },
+  // Corps 846 × 1380 px, bande 786 × 168 px, fermé 931 × 1573 px ramené à 91.58 %.
+  aspectRatio: 846 / 1380,
+  closedRect: { left: -0.3, top: -4.39, width: 100.78, height: 104.39 },
+  topRect: { left: 4.14, top: -4.39, width: 92.91, height: 12.17 },
   topHinge: { x: 96, y: 84 },
-  tearLineTop: 17,
-  mouth: { centerX: 0.02, width: 0.56, startTop: 0.24 },
+  tearLineTop: 6,
+  mouth: PACK_MOUTH,
+  cardBacks: PACK_CARD_BACKS,
 };
 
 export const WELCOME_PACK_VISUAL: BoosterPackVisual = {
@@ -94,24 +126,7 @@ export const WELCOME_PACK_VISUAL: BoosterPackVisual = {
   mouth: { centerX: 0.055, width: 0.56, startTop: 0.15 },
 };
 
-/**
- * Les trois boosters spécialisés. Leurs trois fichiers ne sont PAS à la même
- * échelle : le sachet fermé et la planche ouverte sont deux dessins séparés.
- * D'où la façon de les recaler, qui n'est pas celle de la boîte englobante :
- *
- *   - l'ÉCHELLE vient du rapport des SILHOUETTES entre 60 % et 80 % de la
- *     hauteur, là où le sachet est droit. La boîte englobante du corps ne
- *     convient pas : elle inclut les cartes qui dépassent et l'évasement de
- *     l'ouverture, deux choses que le sachet fermé n'a pas ;
- *   - le sachet fermé est ensuite aligné par le BAS (même objet, même
- *     sertissage) et centré sur l'axe du sachet, pas sur celui de l'image ;
- *   - la bande arrachée vient de la MÊME planche que le corps, donc déjà à
- *     la bonne échelle : centrée, bord inférieur posé sur la déchirure ;
- *   - `tearLineTop` et `mouth` sont relevés à la règle sur le corps — la
- *     ligne de déchirure entre ses pointes et son creux, la bouche sur la
- *     carte de devant PEINTE, pour que la vraie carte qui monte ait sa
- *     largeur et son axe.
- */
+/** Poissons pas frais — planches du 25/09/2026. */
 export const POISSONS_PAS_FRAIS_PACK_VISUAL: BoosterPackVisual = {
   id: "poissons-pas-frais",
   assets: {
@@ -119,17 +134,17 @@ export const POISSONS_PAS_FRAIS_PACK_VISUAL: BoosterPackVisual = {
     openTop: "/assets/boosters/poissons-pas-frais/poissons-pas-frais-open-top.webp",
     openBottom: "/assets/boosters/poissons-pas-frais/poissons-pas-frais-open-bottom.webp",
   },
-  // Corps 723 × 1289 px.
-  aspectRatio: 723 / 1289,
-  // Fermé 869 × 1495 px, ramené à 80.55 %.
-  closedRect: { left: 1.27, top: 6.58, width: 96.81, height: 93.42 },
-  // Bande 710 × 240 px → 98.2 % × 18.62 %.
-  topRect: { left: 0.9, top: -2.62, width: 98.2, height: 18.62 },
+  // Corps 860 × 1403 px, bande 799 × 171 px, fermé 941 × 1587 px ramené à 93.12 %.
+  aspectRatio: 860 / 1403,
+  closedRect: { left: -0.78, top: -5.34, width: 101.89, height: 105.34 },
+  topRect: { left: 4.19, top: -5.34, width: 92.91, height: 12.19 },
   topHinge: { x: 96, y: 84 },
-  tearLineTop: 16,
-  mouth: { centerX: 0.01, width: 0.58, startTop: 0.23 },
+  tearLineTop: 5,
+  mouth: PACK_MOUTH,
+  cardBacks: PACK_CARD_BACKS,
 };
 
+/** Étrangeté sous-marine — planches du 25/09/2026. */
 export const ETRANGETE_SOUS_MARINE_PACK_VISUAL: BoosterPackVisual = {
   id: "etrangete-sous-marine",
   assets: {
@@ -137,24 +152,17 @@ export const ETRANGETE_SOUS_MARINE_PACK_VISUAL: BoosterPackVisual = {
     openTop: "/assets/boosters/etrangete-sous-marine/etrangete-sous-marine-open-top.webp",
     openBottom: "/assets/boosters/etrangete-sous-marine/etrangete-sous-marine-open-bottom.webp",
   },
-  // Corps 738 × 1346 px.
-  aspectRatio: 738 / 1346,
-  // Fermé 855 × 1461 px, ramené à 82.81 %.
-  closedRect: { left: 2.69, top: 10.12, width: 95.94, height: 89.88 },
-  // Bande 741 × 203 px → 100.41 % × 15.08 % : elle déborde le corps, ses
-  // pointes s'écartent en se détachant.
-  topRect: { left: -0.2, top: -2.08, width: 100.41, height: 15.08 },
+  // Corps 856 × 1356 px, bande 778 × 164 px, fermé 900 × 1499 px ramené à 96.5 %.
+  aspectRatio: 856 / 1356,
+  closedRect: { left: -1.17, top: -6.68, width: 101.46, height: 106.68 },
+  topRect: { left: 4.32, top: -6.68, width: 90.89, height: 12.09 },
   topHinge: { x: 96, y: 84 },
-  tearLineTop: 13,
-  mouth: { centerX: 0.005, width: 0.57, startTop: 0.19 },
+  tearLineTop: 3,
+  mouth: PACK_MOUTH,
+  cardBacks: PACK_CARD_BACKS,
 };
 
-/**
- * La Veillée des Disparus — quatrième booster (18/09/2026), noyau du Lot 13.
- * Son éventail de cartes penche nettement à droite : `mouth.centerX` vaut
- * 0.07 là où les trois autres sont à peu près centrés, sinon la vraie carte
- * monterait à côté de celles qui sont peintes dans l'ouverture.
- */
+/** La Veillée des Disparus — planches du 25/09/2026. */
 export const LA_VEILLEE_DES_DISPARUS_PACK_VISUAL: BoosterPackVisual = {
   id: "la-veillee-des-disparus",
   assets: {
@@ -162,31 +170,17 @@ export const LA_VEILLEE_DES_DISPARUS_PACK_VISUAL: BoosterPackVisual = {
     openTop: "/assets/boosters/la-veillee-des-disparus/la-veillee-des-disparus-open-top.webp",
     openBottom: "/assets/boosters/la-veillee-des-disparus/la-veillee-des-disparus-open-bottom.webp",
   },
-  // Corps 737 × 1300 px.
-  aspectRatio: 737 / 1300,
-  // Fermé 868 × 1598 px, ramené à 82.13 %.
-  closedRect: { left: 1.67, top: -0.96, width: 96.73, height: 100.96 },
-  // Bande 710 × 250 px → 96.34 % × 19.23 %.
-  topRect: { left: 1.83, top: -4.23, width: 96.34, height: 19.23 },
+  // Corps 814 × 1322 px, bande 746 × 154 px, fermé 941 × 1588 px ramené à 87.27 %.
+  aspectRatio: 814 / 1322,
+  closedRect: { left: -0.39, top: -4.83, width: 100.89, height: 104.83 },
+  topRect: { left: 3.81, top: -4.83, width: 91.65, height: 11.65 },
   topHinge: { x: 96, y: 84 },
-  tearLineTop: 15,
-  mouth: { centerX: 0.07, width: 0.56, startTop: 0.22 },
+  tearLineTop: 5,
+  mouth: PACK_MOUTH,
+  cardBacks: PACK_CARD_BACKS,
 };
 
-/**
- * Nécessaire du Marin — cinquième booster (22/09/2026), le Lot 14. Visuel
- * REFAIT le 23/09/2026 (le chat noir sur le pont vert), livré comme le
- * précédent : une planche fermée, une planche ouverte portant la bande et le
- * corps. Un vide les sépare sur toute la largeur : la découpe suit la
- * première ligne vide sous la bande, et le corps est pris depuis le HAUT du
- * sachet (zone de la bande transparente) pour que bande et fermé se calent
- * dans son repère — même méthode qu'Éclats en Selle.
- *
- * Mesures, sur les planches 1024 × 1536 : corps 676 × 1470 px, bande
- * 682 × 191 px, fermé 733 × 1485 px ; déchirure à 17 % (première ligne où
- * le sachet couvre 85 % de sa largeur) ; dos de cartes peints sur 74 % de
- * la largeur, la vraie carte partant 6 % sous le bord peint.
- */
+/** Nécessaire du Marin — planches du 25/09/2026. */
 export const NECESSAIRE_DU_MARIN_PACK_VISUAL: BoosterPackVisual = {
   id: "necessaire-du-marin",
   assets: {
@@ -194,37 +188,17 @@ export const NECESSAIRE_DU_MARIN_PACK_VISUAL: BoosterPackVisual = {
     openTop: "/assets/boosters/necessaire-du-marin/necessaire-du-marin-open-top.webp",
     openBottom: "/assets/boosters/necessaire-du-marin/necessaire-du-marin-open-bottom.webp",
   },
-  // Corps 676 × 1470 px.
-  aspectRatio: 676 / 1470,
-  // Fermé 733 × 1485 px.
-  closedRect: { left: -3.55, top: 0.2, width: 108.43, height: 101.02 },
-  // Bande 682 × 191 px → 100.89 % × 12.99 %.
-  topRect: { left: -0.15, top: 0, width: 100.89, height: 12.99 },
+  // Corps 854 × 1395 px, bande 795 × 171 px, fermé 943 × 1585 px ramené à 92.24 %.
+  aspectRatio: 854 / 1395,
+  closedRect: { left: -0.92, top: -4.81, width: 101.86, height: 104.81 },
+  topRect: { left: 3.98, top: -4.81, width: 93.09, height: 12.26 },
   topHinge: { x: 96, y: 84 },
-  tearLineTop: 17,
-  mouth: { centerX: -0.02, width: 0.74, startTop: 0.23 },
+  tearLineTop: 5,
+  mouth: PACK_MOUTH,
+  cardBacks: PACK_CARD_BACKS,
 };
 
-/**
- * Éclats en Selle — sixième booster (23/09/2026), le Lot 15. Un bébé
- * Cavalerie en couche culotte, une pierre de verre dans une patte et une
- * pierre chromatique dans l'autre.
- *
- * Livré comme le Nécessaire : une planche fermée, une planche ouverte
- * portant la bande ET le corps. Ici un vide sépare les deux morceaux sur
- * toute la largeur : la découpe suit la première ligne vide sous la bande.
- * Le corps est pris depuis le HAUT du sachet (zone de la bande laissée
- * transparente), pour que bande et fermé se calent dans son repère.
- *
- * Mesures, sur les planches 1024 × 1536 :
- *   - corps 688 × 1488 px, bande 669 × 216 px à 14 px du bord gauche,
- *     fermé 734 × 1486 px, décalé de 25 px à gauche ;
- *   - déchirure : première ligne où le sachet couvre 85 % de sa largeur,
- *     à 18 % de la hauteur ;
- *   - `mouth` : étendue des dos de cartes peints à mi-hauteur entre leur
- *     sommet et la déchirure (72 % de la largeur, centrée), la vraie carte
- *     partant 6 % sous le bord peint.
- */
+/** Éclats en Selle — planches du 25/09/2026. */
 export const ECLATS_EN_SELLE_PACK_VISUAL: BoosterPackVisual = {
   id: "eclats-en-selle",
   assets: {
@@ -232,15 +206,14 @@ export const ECLATS_EN_SELLE_PACK_VISUAL: BoosterPackVisual = {
     openTop: "/assets/boosters/eclats-en-selle/eclats-en-selle-open-top.webp",
     openBottom: "/assets/boosters/eclats-en-selle/eclats-en-selle-open-bottom.webp",
   },
-  // Corps 688 × 1488 px.
-  aspectRatio: 688 / 1488,
-  // Fermé 734 × 1486 px.
-  closedRect: { left: -3.63, top: 0.07, width: 106.69, height: 99.87 },
-  // Bande 669 × 216 px → 97.24 % × 14.52 %.
-  topRect: { left: 2.03, top: 0, width: 97.24, height: 14.52 },
+  // Corps 843 × 1381 px, bande 786 × 167 px, fermé 942 × 1584 px ramené à 90.88 %.
+  aspectRatio: 843 / 1381,
+  closedRect: { left: -0.78, top: -4.24, width: 101.56, height: 104.24 },
+  topRect: { left: 3.91, top: -4.24, width: 93.24, height: 12.09 },
   topHinge: { x: 96, y: 84 },
-  tearLineTop: 18,
-  mouth: { centerX: 0, width: 0.72, startTop: 0.24 },
+  tearLineTop: 6,
+  mouth: PACK_MOUTH,
+  cardBacks: PACK_CARD_BACKS,
 };
 
 /** Id de booster (table `boosters`) → visuel. Tout id inconnu retombe sur le visuel par défaut. */
