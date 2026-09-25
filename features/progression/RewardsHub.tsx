@@ -635,7 +635,7 @@ function SponsorsPanel({
             ?
           </span>
         </h2>
-        <span className={styles.panelMeta} title="Spectateurs qui suivent tes parties">
+        <span className={`${styles.panelMeta} ${styles.audienceMeta}`} title="Spectateurs qui suivent tes parties">
           👁 {audience.audience.toLocaleString("fr-FR")}
         </span>
       </header>
