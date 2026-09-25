@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { levelRewardsLabel, LOGIN_CYCLE_LENGTH, LOGIN_STREAK_MILESTONE, loginRewardForStep, loginWeekIndex, loginWeekProgramme, nextMilestones, progressionView, utcDayKey } from "@/game/progression";
+import { totalXpForLevel, levelRewardsLabel, LOGIN_CYCLE_LENGTH, LOGIN_STREAK_MILESTONE, loginRewardForStep, loginWeekIndex, loginWeekProgramme, nextMilestones, progressionView, utcDayKey } from "@/game/progression";
 import { DEFAULT_CARD_BACK_ID } from "@/game";
 import type { ProfileSummary } from "@/features/progression/profileActions";
 import { ProfileScreen } from "@/features/progression/ProfileScreen";
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
  * de série de la première venue du jour.
  */
 export default function ProfilPreviewRoute({ searchParams }: { searchParams: { serie?: string } }) {
-  const view = progressionView(4_850);
+  const view = progressionView(totalXpForLevel(17) + 535);
   const week = loginWeekIndex(utcDayKey());
   const profile: ProfileSummary = {
     isSignedIn: true,

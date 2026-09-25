@@ -273,9 +273,14 @@
 .diamond[data-slot="3"] { left: 67.3%; top: 25.7%; }
 .diamond[data-slot="4"] { left: 78.4%; top: 25.7%; }
 
+/*
+ * Zone de texte du losange. Un losange rétrécit vers ses pointes : le
+ * contenu est remonté vers la diagonale (la partie la plus large) et le
+ * libellé borné à la largeur que le losange garde à cette hauteur.
+ */
 .diamondBody {
   position: absolute;
-  inset: 16%;
+  inset: 13% 18% 24%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -286,9 +291,9 @@
 .diamondIcon {
   display: grid;
   place-items: center;
-  width: 3.2cqw;
-  height: 3.2cqw;
-  margin-bottom: 0.2cqw;
+  width: 2.7cqw;
+  height: 2.7cqw;
+  margin-bottom: 0.1cqw;
 }
 .diamondIcon > img,
 .diamondIcon > span {
@@ -299,17 +304,17 @@
 
 .diamondValue {
   font-family: var(--tb-font-display);
-  font-size: 1.9cqw;
+  font-size: 1.75cqw;
   font-weight: 700;
   line-height: 1.05;
   color: #f4ead4;
 }
 
 .diamondLabel {
-  max-width: 7cqw;
-  font-size: 0.72cqw;
+  max-width: 5.4cqw;
+  font-size: 0.6cqw;
   line-height: 1.15;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
   color: #d5dde3;
 }
@@ -405,11 +410,13 @@
   box-shadow: 0 0.15cqw 0.4cqw rgba(0, 0, 0, 0.35);
 }
 
+/* Largeur de deux icônes, même quand il n'y en a qu'une : les libellés partent tous du même bord. */
 .routeIcons {
   display: inline-flex;
   align-items: center;
   gap: 0.2cqw;
   flex: none;
+  width: calc(2 * 2.2cqw + 0.2cqw);
 }
 .routeIcons > * {
   width: 2.2cqw !important;
@@ -417,8 +424,9 @@
 }
 
 .routeLabel {
-  font-size: 0.85cqw;
-  line-height: 1.25;
+  min-width: 0;
+  font-size: 0.8cqw;
+  line-height: 1.2;
 }
 
 .routeEmpty {
@@ -492,6 +500,8 @@
   padding: 0;
   list-style: none;
   min-height: 0;
+  /* Une seule rangée, à la hauteur du panneau : la case ne déborde jamais par le bas. */
+  grid-template-rows: minmax(0, 1fr);
 }
 
 .loginCell {
@@ -505,8 +515,9 @@
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
-  gap: 0.2cqw;
-  padding: 0.5cqw 0.3cqw 0.6cqw;
+  gap: 0.15cqw;
+  padding: 0.4cqw 0.3cqw 0.45cqw;
+  overflow: hidden;
   border: 1px solid rgba(140, 170, 190, 0.28);
   border-radius: 0.4cqw;
   background: rgba(6, 16, 26, 0.72);
@@ -555,14 +566,14 @@
 }
 
 .loginIcon > * {
-  width: 2.6cqw !important;
-  height: 2.6cqw !important;
+  width: 2.2cqw !important;
+  height: 2.2cqw !important;
 }
 
 .loginLabel {
-  font-size: 0.7cqw;
-  line-height: 1.2;
-  min-height: 2.4em;
+  font-size: 0.66cqw;
+  line-height: 1.15;
+  min-height: 2.3em;
   display: flex;
   align-items: center;
 }
