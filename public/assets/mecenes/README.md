@@ -13,3 +13,8 @@ Les quatre mécènes (`game/progression/hub.ts`, `SPONSORS`), livrés le
 Illustrations en pied, détourées (≈ 650 × 900) ; insignes détourés, 400 px
 au plus. Un mécène encore anonyme (« Quelqu'un vous observe… ») ne montre
 ni l'un ni l'autre.
+
+## Coffret des colis (25/09/2026)
+
+- `coffret/coffret-ferme.webp` : le coffret fermé (source `mecene-coffret.png`).
+- `coffret/coffret-caisse.webp` et `coffret/coffret-couvercle.webp` : la vue éclatée `mecene--open.png`, séparée en deux calques au même cadrage (700 × 700) — le couvercle saute à l'ouverture (`GiftOpening`).

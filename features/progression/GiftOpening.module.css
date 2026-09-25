@@ -1,0 +1,139 @@
+.scene {
+  --gift: #5fd0e6;
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 18px;
+  background: radial-gradient(60% 55% at 50% 48%, color-mix(in srgb, var(--gift) 22%, transparent), rgba(2, 6, 11, 0.86) 70%);
+  animation: sceneIn 260ms ease-out both;
+}
+
+.scene[data-color="jaune"] { --gift: #e8b92f; }
+.scene[data-color="bleu"] { --gift: #2f7be8; }
+.scene[data-color="violet"] { --gift: #8a3fe0; }
+.scene[data-color="marron"] { --gift: #c98a4b; }
+
+.box {
+  position: relative;
+  width: min(360px, 60vmin);
+  aspect-ratio: 1;
+}
+
+.box img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.6));
+}
+
+.glow {
+  position: absolute;
+  left: 50%;
+  top: 55%;
+  width: 130%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--gift) 75%, white) 0%, color-mix(in srgb, var(--gift) 30%, transparent) 40%, transparent 70%);
+  opacity: 0.35;
+  transform: translate(-50%, -50%) scale(0.7);
+}
+
+.scene[data-phase="arrive"] .closed {
+  animation: giftArrive 380ms cubic-bezier(0.2, 1.3, 0.4, 1) both;
+}
+
+.scene[data-phase="shake"] .closed {
+  animation: giftShake 620ms linear both;
+  transform-origin: 50% 85%;
+}
+
+.scene[data-phase="shake"] .glow {
+  opacity: 0.8;
+  transform: translate(-50%, -50%) scale(1);
+  transition: opacity 600ms ease-in, transform 600ms ease-in;
+}
+
+.scene[data-phase="burst"] .lid {
+  animation: giftLid 900ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+
+.scene[data-phase="burst"] .base {
+  animation: giftLand 380ms ease-out both;
+  transform-origin: 50% 100%;
+}
+
+.scene[data-phase="burst"] .glow {
+  animation: giftBurst 900ms ease-out both;
+}
+
+.rays {
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  width: 190%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--gift) 60%, white) 0deg 5deg, transparent 5deg 20deg);
+  -webkit-mask: radial-gradient(circle, #000 18%, transparent 66%);
+  mask: radial-gradient(circle, #000 18%, transparent 66%);
+  transform: translate(-50%, -50%);
+  animation: giftRays 900ms ease-out both;
+}
+
+.caption {
+  margin: 0;
+  color: #f4ead4;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: clamp(18px, 2.2vw, 26px);
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 16px color-mix(in srgb, var(--gift) 60%, transparent), 0 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+@keyframes sceneIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes giftArrive {
+  from { opacity: 0; transform: translateY(-30%) scale(0.6); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes giftShake {
+  0% { transform: none; }
+  15% { transform: rotate(-4deg) translateY(-2%); }
+  30% { transform: rotate(4deg) translateY(-3%); }
+  45% { transform: rotate(-5deg) translateY(-3%); }
+  60% { transform: rotate(5deg) translateY(-5%); }
+  80% { transform: rotate(-3deg) translateY(-4%) scale(1.04); }
+  100% { transform: translateY(-2%) scale(1.06); }
+}
+@keyframes giftLid {
+  0% { transform: translateY(20%) rotate(0deg); }
+  45% { transform: translateY(-30%) rotate(-12deg); }
+  100% { transform: translateY(-12%) rotate(-6deg); }
+}
+@keyframes giftLand {
+  from { transform: scale(1.06, 0.94); }
+  to { transform: none; }
+}
+@keyframes giftBurst {
+  0% { opacity: 0.4; transform: translate(-50%, -50%) scale(0.6); }
+  30% { opacity: 1; transform: translate(-50%, -50%) scale(1.35); }
+  100% { opacity: 0.55; transform: translate(-50%, -50%) scale(1.1); }
+}
+@keyframes giftRays {
+  0% { opacity: 0; transform: translate(-50%, -50%) rotate(0deg) scale(0.4); }
+  30% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) rotate(35deg) scale(1.1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scene *,
+  .scene {
+    animation-duration: 1ms !important;
+  }
+}

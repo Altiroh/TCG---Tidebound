@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { GIFT_OPEN_MS, GiftOpening } from "@/features/progression/GiftOpening";
 import {
   LOGIN_CYCLE_LENGTH,
   MAX_REWARDED_LEVEL,
@@ -54,22 +55,28 @@ const ROUTE_WINDOW = 6;
 export function RewardsHub({ profile, claiming, onClaimLevel, onReveal, onRefresh, onShowQuests, onShowAchievements }: RewardsHubProps) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  /** Coffret de mécène en train de s'ouvrir (scène plein écran, `GiftOpening`). */
+  const [gift, setGift] = useState<{ color: string; name: string | null } | null>(null);
 
   /** Une réclamation du hub : erreur affichée, révélation, relecture. */
   function run(action: () => Promise<{ ok: boolean; error?: string; items?: RewardItem[] }>, title: string, revealDelayMs = 0) {
     if (pending) return;
     playButtonClick();
     setError(null);
+    const startedAt = Date.now();
     startTransition(async () => {
       const result = await action().catch(() => ({ ok: false, error: "Serveur injoignable — réessaie." }) as { ok: boolean; error?: string });
       if (!result.ok) {
         setError(result.error ?? "Réclamation impossible.");
+        setGift(null);
         return;
       }
       if ("items" in result && result.items && result.items.length > 0) {
         const items = result.items;
         // Le coffre finit de s'ouvrir sous les yeux du joueur avant la révélation.
-        if (revealDelayMs > 0) await new Promise((resolve) => setTimeout(resolve, revealDelayMs));
+        // Compté depuis le clic : la révélation suit la scène sans trou, quelle que soit la réponse du serveur.
+        const wait = revealDelayMs - (Date.now() - startedAt);
+        if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
         onReveal(items, title);
       }
       notifyProgressionChanged();
@@ -125,12 +132,17 @@ export function RewardsHub({ profile, claiming, onClaimLevel, onReveal, onRefres
             busy={pending}
             onOpenGift={(sponsor) => {
               const stage = sponsor.giftStages[0];
-              if (stage) run(() => openSponsorGift(sponsor.id, stage), `Un colis de ${sponsor.name ?? "votre admirateur"}`);
+              if (!stage || pending || gift) return;
+              // Le coffret s'ouvre à l'écran pendant que le serveur répond ; la révélation attend la fin.
+              setGift({ color: sponsor.color, name: sponsor.name });
+              run(() => openSponsorGift(sponsor.id, stage), `Un colis de ${sponsor.name ?? "votre admirateur"}`, GIFT_OPEN_MS);
             }}
           />
         )}
 
         <LongGoalsPanel profile={profile} onShowAchievements={onShowAchievements} />
+
+        {gift && <GiftOpening color={gift.color} name={gift.name} onDone={() => setGift(null)} />}
 
         {error && (
           <p className={styles.error} role="alert">
