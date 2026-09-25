@@ -1,5 +1,6 @@
 "use client";
 
+import { useNoMenuAmbiance } from "@/components/menu/MenuAmbiance";
 import { analyzeMatch } from "@/game/audience";
 import { FinalBlowOverlay, useEndScreenHold } from "@/features/match/FinalBlowOverlay";
 import { useEffect, useRef, useState } from "react";
@@ -108,6 +109,8 @@ export function MatchBoard({
   playableHandCards,
   hideEndScreen = false,
 }: MatchBoardProps) {
+  // En partie, la musique du menu se tait.
+  useNoMenuAmbiance();
   const [liveState, setState] = useState<GameState>(initialState);
   // `state` = état AFFICHÉ (retenu avant le choc pendant une attaque, cf. `useAttackPresentation`) ; toute
   // action se valide et s'applique sur `liveState`, l'état de jeu réel.

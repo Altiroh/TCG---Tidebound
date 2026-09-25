@@ -1,5 +1,6 @@
 "use client";
 
+import { useNoMenuAmbiance } from "@/components/menu/MenuAmbiance";
 import { useEffect } from "react";
 import { analyzeMatch } from "@/game/audience";
 import { FinalBlowOverlay, useEndScreenHold } from "@/features/match/FinalBlowOverlay";
@@ -86,6 +87,8 @@ export function OnlineBoard({
   exitHref = "/en-ligne",
   matchId,
 }: OnlineBoardProps) {
+  // En partie, la musique du menu se tait.
+  useNoMenuAmbiance();
   // `state` = état AFFICHÉ, retenu avant le choc pendant une attaque (cf. `useAttackPresentation`).
   const { displayState: state, attacks, volleys } = useAttackPresentation(liveState);
   const me = state.players.find((p) => p.id === myUserId)!;

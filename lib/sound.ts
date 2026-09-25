@@ -443,14 +443,37 @@ if (typeof window !== "undefined") {
   subscribeAudioSettings(applyAmbiance);
 }
 
-/** Lance l'ambiance du menu principal en boucle (sauf si la musique est coupée dans les Options). */
-export function startMenuAmbiance(): void {
-  ambianceWanted = true;
+/**
+ * Écrans qui veulent l'ambiance (compteur) et écrans qui l'interdisent (une
+ * table de partie montée). L'ambiance joue s'il y a au moins un demandeur
+ * et AUCUN interdit : le menu la garde partout, sauf en partie.
+ */
+let ambianceRequests = 0;
+let ambianceSilencers = 0;
+
+function syncAmbianceWanted(): void {
+  ambianceWanted = ambianceRequests > 0 && ambianceSilencers === 0;
   applyAmbiance();
 }
 
-/** Coupe l'ambiance du menu (ex: en quittant l'écran d'accueil). */
+/** Lance l'ambiance du menu en boucle (sauf si la musique est coupée dans les Options). */
+export function startMenuAmbiance(): void {
+  ambianceRequests += 1;
+  syncAmbianceWanted();
+}
+
+/** Retire une demande d'ambiance. */
 export function stopMenuAmbiance(): void {
-  ambianceWanted = false;
-  applyAmbiance();
+  ambianceRequests = Math.max(0, ambianceRequests - 1);
+  syncAmbianceWanted();
+}
+
+/** Une partie commence à l'écran : l'ambiance du menu se tait tant qu'elle est montée. */
+export function silenceMenuAmbiance(): () => void {
+  ambianceSilencers += 1;
+  syncAmbianceWanted();
+  return () => {
+    ambianceSilencers = Math.max(0, ambianceSilencers - 1);
+    syncAmbianceWanted();
+  };
 }

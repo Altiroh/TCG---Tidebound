@@ -1,3 +1,4 @@
+import { MenuAmbiance } from "@/components/menu/MenuAmbiance";
 import type { Metadata, Viewport } from "next";
 import { cardBodyFont, cardTitleFont, uiFont } from "@/lib/fonts";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
@@ -92,6 +93,8 @@ export default function RootLayout({
         <CardBackProvider>
           <ShipFrameProvider>
             {children}
+            {/* Musique du menu sur tous les écrans ; une partie la fait taire. */}
+            <MenuAmbiance />
             <ServiceWorkerRegister />
             {/* Ombre qui balaie l'écran à chaque changement de page. */}
             <PageTransition />

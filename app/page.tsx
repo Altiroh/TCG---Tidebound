@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { fetchOnboarding } from "@/features/onboarding/actions";
 import { TideboundMenuCarte } from "@/components/menu/TideboundMenuCarte";
-import { MenuAmbiance } from "@/components/menu/MenuAmbiance";
 import { AuthGateModal } from "@/components/auth/AuthGateModal";
 import { HomeBar } from "@/features/shell/HomeBar";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
@@ -51,7 +50,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   return (
     <main className="relative h-[100dvh] overflow-hidden bg-[#050d16]">
       <AuthGateModal isSignedIn={isSignedIn} />
-      <MenuAmbiance />
       {/* Ni onglets ni voile : la carte porte sa propre navigation, il ne
           reste que le compte et les options, à droite. */}
       <HomeBar isSignedIn={isSignedIn} nav="menu" />
