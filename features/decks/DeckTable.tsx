@@ -324,6 +324,7 @@ function DeckFiche(props: DeckTableProps & { deck: BrowserDeck | null }) {
   return (
     <aside className={styles.fiche} aria-label={`Fiche de ${deck.name}`} aria-live="polite">
       <span className={styles.ficheArt} style={deck.artUrl ? { backgroundImage: `url("${deck.artUrl}")` } : undefined} />
+      <span className={styles.ficheRope} aria-hidden />
       <button
         type="button"
         className={styles.ficheFavorite}
