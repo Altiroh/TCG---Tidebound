@@ -518,17 +518,176 @@
   left: 74.4%;
   top: 23.5%;
   width: 24%;
-  aspect-ratio: 1100 / 364;
-  padding: 3.2% 4% 2.8%;
+  /* `chest-panel.webp` (1400 × 466) : le panneau sans coffre, le quai à droite. */
+  aspect-ratio: 1400 / 466;
+  padding: 0.95cqw 0 0.8cqw 1.25cqw;
   background: url("/assets/rewards/chest-panel.webp") center / 100% 100% no-repeat;
   filter: drop-shadow(0 0.6cqw 1cqw rgba(0, 0, 0, 0.6));
+}
+.chest[data-claimable] {
+  filter: drop-shadow(0 0 1.2cqw rgba(95, 208, 230, 0.4)) drop-shadow(0 0.6cqw 1cqw rgba(0, 0, 0, 0.6));
+}
+
+.chestText {
+  position: relative;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   gap: 0.45cqw;
+  width: 56%;
+  height: 100%;
 }
-.chest[data-claimable] {
-  filter: drop-shadow(0 0 1.2cqw rgba(243, 200, 107, 0.55)) drop-shadow(0 0.6cqw 1cqw rgba(0, 0, 0, 0.6));
+
+/*
+ * Le coffre, posé sur le quai du panneau. Trois calques tirés des visuels
+ * (`coffre/`) : fermé, caisse, couvercle — le couvercle saute à l'ouverture.
+ */
+.chestArt {
+  position: absolute;
+  /* Posé sur le quai, il dépasse du cadre par le haut. */
+  right: 4%;
+  bottom: 10%;
+  z-index: 1;
+  width: 38%;
+  aspect-ratio: 820 / 749;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: default;
 }
+.chestArt:not(:disabled) {
+  cursor: pointer;
+}
+.chestArt img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0 0.35cqw 0.4cqw rgba(0, 0, 0, 0.65));
+}
+/* Le fermé (820 × 683) se pose sur le même sol que la caisse. */
+.chestClosed {
+  top: auto !important;
+  height: 91% !important;
+}
+
+.chestGlow {
+  position: absolute;
+  left: 50%;
+  top: 55%;
+  width: 120%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 214, 120, 0.55), rgba(255, 170, 60, 0.18) 45%, transparent 70%);
+  transform: translate(-50%, -50%) scale(0.6);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* En train de se remplir : immobile, un peu dans l'ombre. */
+.chestArt[data-state="filling"] img {
+  filter: drop-shadow(0 0.35cqw 0.4cqw rgba(0, 0, 0, 0.65)) brightness(0.85) saturate(0.85);
+}
+
+/* Prêt : il respire, la lueur passe sous le couvercle. */
+.chestArt[data-state="ready"] .chestClosed {
+  animation: chestReady 2.4s ease-in-out infinite;
+  transform-origin: 50% 90%;
+}
+.chestArt[data-state="ready"] .chestGlow {
+  animation: chestGlowPulse 2.4s ease-in-out infinite;
+}
+.chestArt[data-state="ready"]:hover .chestClosed {
+  animation-duration: 0.9s;
+}
+
+/* Ouverture, 1 : il tremble. */
+.chestArt[data-state="shake"] .chestClosed {
+  animation: chestShake 650ms linear both;
+  transform-origin: 50% 90%;
+}
+.chestArt[data-state="shake"] .chestGlow {
+  opacity: 0.9;
+  transform: translate(-50%, -50%) scale(0.9);
+  transition: opacity 600ms ease-in, transform 600ms ease-in;
+}
+
+/* Ouverture, 2 : le couvercle saute, la lumière jaillit. */
+.chestArt[data-state="burst"] .chestLid {
+  animation: chestLidPop 900ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  transform-origin: 30% 40%;
+}
+.chestArt[data-state="burst"] .chestGlow {
+  animation: chestBurst 1200ms ease-out both;
+}
+.chestArt[data-state="burst"] .chestBase {
+  animation: chestLand 400ms ease-out both;
+  transform-origin: 50% 100%;
+}
+
+.chestRays {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 170%;
+  aspect-ratio: 1;
+  background: repeating-conic-gradient(from 0deg, rgba(255, 225, 150, 0.5) 0deg 6deg, transparent 6deg 22deg);
+  border-radius: 50%;
+  -webkit-mask: radial-gradient(circle, #000 20%, transparent 68%);
+  mask: radial-gradient(circle, #000 20%, transparent 68%);
+  transform: translate(-50%, -55%);
+  pointer-events: none;
+  animation: chestRays 1400ms ease-out both;
+}
+
+@keyframes chestReady {
+  0%, 82%, 100% { transform: none; }
+  86% { transform: rotate(-3deg) translateY(-2%); }
+  90% { transform: rotate(3deg) translateY(-3%); }
+  94% { transform: rotate(-2deg); }
+}
+@keyframes chestGlowPulse {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 0.6; }
+}
+@keyframes chestShake {
+  0% { transform: none; }
+  15% { transform: rotate(-4deg) translateY(-2%); }
+  30% { transform: rotate(4deg) translateY(-4%); }
+  45% { transform: rotate(-5deg) translateY(-3%); }
+  60% { transform: rotate(5deg) translateY(-6%); }
+  75% { transform: rotate(-3deg) translateY(-4%) scale(1.03); }
+  100% { transform: translateY(-2%) scale(1.05); }
+}
+@keyframes chestLidPop {
+  0% { transform: translateY(18%) rotate(0deg); }
+  45% { transform: translateY(-22%) rotate(-10deg); }
+  100% { transform: translateY(-6%) rotate(-4deg); }
+}
+@keyframes chestLand {
+  0% { transform: scale(1.05, 0.95); }
+  100% { transform: none; }
+}
+@keyframes chestBurst {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+  25% { opacity: 1; transform: translate(-50%, -50%) scale(1.3); }
+  100% { opacity: 0.35; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes chestRays {
+  0% { opacity: 0; transform: translate(-50%, -55%) rotate(0deg) scale(0.4); }
+  30% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -55%) rotate(40deg) scale(1.1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chestArt *,
+  .chestArt img {
+    animation: none !important;
+  }
+}
+
 .chest .bar {
   width: 58%;
 }

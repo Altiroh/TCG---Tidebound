@@ -56,7 +56,7 @@ export function RewardsHub({ profile, claiming, onClaimLevel, onReveal, onRefres
   const [pending, startTransition] = useTransition();
 
   /** Une réclamation du hub : erreur affichée, révélation, relecture. */
-  function run(action: () => Promise<{ ok: boolean; error?: string; items?: RewardItem[] }>, title: string) {
+  function run(action: () => Promise<{ ok: boolean; error?: string; items?: RewardItem[] }>, title: string, revealDelayMs = 0) {
     if (pending) return;
     playButtonClick();
     setError(null);
@@ -66,7 +66,12 @@ export function RewardsHub({ profile, claiming, onClaimLevel, onReveal, onRefres
         setError(result.error ?? "Réclamation impossible.");
         return;
       }
-      if ("items" in result && result.items && result.items.length > 0) onReveal(result.items, title);
+      if ("items" in result && result.items && result.items.length > 0) {
+        const items = result.items;
+        // Le coffre finit de s'ouvrir sous les yeux du joueur avant la révélation.
+        if (revealDelayMs > 0) await new Promise((resolve) => setTimeout(resolve, revealDelayMs));
+        onReveal(items, title);
+      }
       notifyProgressionChanged();
       onRefresh();
     });
@@ -98,7 +103,7 @@ export function RewardsHub({ profile, claiming, onClaimLevel, onReveal, onRefres
           <ChestPanel
             chest={profile.hub.weeklyChest}
             busy={pending}
-            onOpen={() => run(() => openWeeklyChest(), "Coffre hebdomadaire ouvert !")}
+            onOpen={() => run(() => openWeeklyChest(), "Coffre hebdomadaire ouvert !", CHEST_OPEN_MS)}
           />
         )}
 
@@ -286,41 +291,95 @@ function StreakPanel({ profile, busy, onClaim }: { profile: ProfileSummary; busy
 
 /* ── Coffre hebdomadaire ───────────────────────────────────────────── */
 
+/** Durée de l'ouverture (secousse, couvercle qui saute) avant la révélation. */
+const CHEST_OPEN_MS = 1500;
+/** Secousse du coffre fermé avant que le couvercle ne saute. */
+const CHEST_SHAKE_MS = 650;
+
+/**
+ * Le coffre de la semaine, posé sur le quai du panneau : FERMÉ tant qu'il
+ * se remplit (il s'agite doucement quand il est prêt), il tremble puis
+ * saute son couvercle dans un éclat de lumière à l'ouverture, et reste
+ * OUVERT, vide, jusqu'au lundi suivant.
+ */
 function ChestPanel({ chest, busy, onOpen }: { chest: NonNullable<ProfileSummary["hub"]>["weeklyChest"]; busy: boolean; onOpen: () => void }) {
   const played = Math.min(chest.played, chest.goal);
+  const [phase, setPhase] = useState<"idle" | "shake" | "burst">("idle");
+  const state = phase !== "idle" ? phase : chest.claimed ? "open" : chest.claimable ? "ready" : "filling";
+
+  function open() {
+    if (phase !== "idle" || !chest.claimable || busy) return;
+    setPhase("shake");
+    setTimeout(() => {
+      setPhase("burst");
+      onOpen();
+    }, CHEST_SHAKE_MS);
+  }
+
+  // Une fois la réclamation passée, le coffre reste ouvert (`chest.claimed`).
+  useEffect(() => {
+    if (chest.claimed) setPhase("idle");
+  }, [chest.claimed]);
+
   return (
     <section className={styles.chest} aria-label="Coffre hebdomadaire" data-claimable={chest.claimable ? "" : undefined}>
-      <h2 className={styles.panelTitle}>
-        Coffre hebdomadaire
-        <span className={styles.help} title="Il se remplit à chaque partie de la semaine (du lundi au dimanche) et s'ouvre à 10 parties. Son contenu suit le booster de la semaine.">
-          ?
+      <div className={styles.chestText}>
+        <h2 className={styles.panelTitle}>
+          Coffre hebdomadaire
+          <span className={styles.help} title="Il se remplit à chaque partie de la semaine (du lundi au dimanche) et s'ouvre à 10 parties. Son contenu suit le booster de la semaine.">
+            ?
+          </span>
+        </h2>
+        <p className={styles.chestCount}>
+          <strong>
+            {played}/{chest.goal}
+          </strong>
+          <span>Parties jouées</span>
+        </p>
+        <span className={styles.bar}>
+          <span className={styles.barFill} style={{ width: `${(played / chest.goal) * 100}%` }} />
         </span>
-      </h2>
-      <p className={styles.chestCount}>
-        <strong>
-          {played}/{chest.goal}
-        </strong>
-        <span>Parties jouées</span>
-      </p>
-      <span className={styles.bar}>
-        <span className={styles.barFill} style={{ width: `${(played / chest.goal) * 100}%` }} />
-      </span>
-      <div className={styles.chestFoot}>
-        <span className={styles.chestContents} aria-label="Contenu du coffre">
-          {chest.contents.map((item, index) => (
-            <span key={index} title={loginRewardLabel(item)}>
-              <RewardIcon item={item} size={36} />
-            </span>
-          ))}
-        </span>
-        {chest.claimed ? (
-          <span className={styles.chestDone}>Ouvert — un nouveau lundi</span>
-        ) : (
-          <button type="button" className={styles.claimButton} onClick={onOpen} disabled={!chest.claimable || busy}>
-            {chest.claimable ? "Ouvrir le coffre" : `Encore ${chest.goal - played}`}
-          </button>
-        )}
+        <div className={styles.chestFoot}>
+          <span className={styles.chestContents} aria-label="Contenu du coffre">
+            {chest.contents.map((item, index) => (
+              <span key={index} title={loginRewardLabel(item)}>
+                <RewardIcon item={item} size={36} />
+              </span>
+            ))}
+          </span>
+          {chest.claimed ? (
+            <span className={styles.chestDone}>Ouvert — un nouveau lundi</span>
+          ) : (
+            <button type="button" className={styles.claimButton} onClick={open} disabled={!chest.claimable || busy || phase !== "idle"}>
+              {chest.claimable ? "Ouvrir le coffre" : `Encore ${chest.goal - played}`}
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Le coffre, sur le quai : cliquable lui aussi quand il est prêt. */}
+      <button
+        type="button"
+        className={styles.chestArt}
+        data-state={state}
+        onClick={open}
+        disabled={!chest.claimable || busy || phase !== "idle"}
+        aria-label={chest.claimable ? "Ouvrir le coffre" : "Coffre hebdomadaire"}
+        tabIndex={chest.claimable ? 0 : -1}
+      >
+        <span className={styles.chestGlow} aria-hidden />
+        {/* eslint-disable @next/next/no-img-element -- calques du coffre, animés séparément */}
+        {state === "open" || state === "burst" ? (
+          <>
+            <img className={styles.chestBase} src="/assets/rewards/coffre/coffre-caisse.webp" alt="" draggable={false} />
+            <img className={styles.chestLid} src="/assets/rewards/coffre/coffre-couvercle.webp" alt="" draggable={false} />
+          </>
+        ) : (
+          <img className={styles.chestClosed} src="/assets/rewards/coffre/coffre-ferme.webp" alt="" draggable={false} />
+        )}
+        {/* eslint-enable @next/next/no-img-element */}
+        {state === "burst" && <span className={styles.chestRays} aria-hidden />}
+      </button>
     </section>
   );
 }

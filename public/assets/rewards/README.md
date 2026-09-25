@@ -17,3 +17,9 @@ pas de PNG commité).
 
 Positions : pourcentages d'une scène 1672 × 880 (bandeau exclu),
 `RewardsHub.module.css`.
+
+## Coffre hebdomadaire (25/09/2026)
+
+- `chest-panel.webp` (1400 × 466) : le panneau SANS coffre, rogné sur son cadre (source `tile-coffre.png`).
+- `coffre/coffre-ferme.webp` : le coffre fermé (source `coffre.png`).
+- `coffre/coffre-caisse.webp` et `coffre/coffre-couvercle.webp` : la vue éclatée `coffre ouvert.png`, séparée en deux calques (composantes connexes) au MÊME cadrage (820 × 749) — le couvercle saute à l'ouverture.

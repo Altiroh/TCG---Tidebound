@@ -22,7 +22,7 @@ export const metadata: Metadata = {
  * (« connecte-toi »), rien n'est écrit. `?serie=1` ouvre en plus le popup
  * de série de la première venue du jour.
  */
-export default function ProfilPreviewRoute({ searchParams }: { searchParams: { serie?: string; onglet?: string } }) {
+export default function ProfilPreviewRoute({ searchParams }: { searchParams: { serie?: string; onglet?: string; coffre?: string } }) {
   const view = progressionView(totalXpForLevel(17) + 535);
   const week = loginWeekIndex(utcDayKey());
   const profile: ProfileSummary = {
@@ -92,7 +92,8 @@ export default function ProfilPreviewRoute({ searchParams }: { searchParams: { s
     hub: hubViewFrom({
       weekIndex: week,
       accountLevel: view.level,
-      playedThisWeek: 4,
+      // `?coffre=pret` : plein, prêt à ouvrir ; `?coffre=ouvert` : déjà ouvert cette semaine.
+      playedThisWeek: searchParams.coffre ? 10 : 4,
       xpByShip: new Map([
         ["le-goliath", 3220],
         ["lerrant", 1220],
@@ -108,7 +109,12 @@ export default function ProfilPreviewRoute({ searchParams }: { searchParams: { s
         ["ambassade-cra-poiscail", 46],
         ["compagnie-du-mousquet", 6],
       ]),
-      claims: new Set(["sponsor_gift|beladone:intrigue", "mastery|le-goliath:2", "mastery|le-goliath:3"]),
+      claims: new Set([
+        "sponsor_gift|beladone:intrigue",
+        "mastery|le-goliath:2",
+        "mastery|le-goliath:3",
+        ...(searchParams.coffre === "ouvert" ? [`weekly_chest|${week}`] : []),
+      ]),
       audience: { audience: 1240, best: 1480, lastSpectacle: 68 },
     }),
   };
