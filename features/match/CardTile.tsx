@@ -76,6 +76,14 @@ interface CardTileProps {
    * inchangé partout ailleurs : plateau, éditeur de deck, fiche détail).
    */
   liftOnHover?: boolean;
+  /**
+   * `"board"` : tuile simplifiée d'une carte POSÉE — l'illustration plein
+   * cadre, l'indicateur de Raison en haut à gauche, l'étiquette de type en
+   * haut à droite, et en pied le nom, un soulignement, puis Puissance et
+   * Résistance. Pas de texte de règles : l'aperçu au survol et la fiche
+   * rendent la carte entière. Défaut : `"full"` (main, survol, fiches).
+   */
+  variant?: "full" | "board";
 }
 
 /**
@@ -253,6 +261,49 @@ function getThumbUrl(url: string): string | null {
   return directory ? `${directory}mini/${url.slice(directory.length)}` : null;
 }
 
+/**
+ * Habillage de la tuile de plateau (`variant="board"`) — voir
+ * `public/assets/ui/card-board/README.md`. Tant qu'un asset manque, un
+ * repli CSS le remplace.
+ */
+const BOARD_REASON_BANNER = "/assets/ui/card-board/raison.webp";
+const BOARD_UNDERLINE = "/assets/ui/card-board/soulignement.webp";
+
+/**
+ * Zones de la tuile de plateau, en % de la carte (même format 5:7 que les
+ * cadres). Le pied (nom → soulignement → stats) est ancré en bas ; sans
+ * stats, nom et soulignement descendent d'un cran.
+ */
+const BOARD_REASON_ZONE: Zone = { top: 0, left: 3, width: 26, height: 31.7 };
+/** Chiffre de coût : centré sur le panneau intérieur de la bannière (liseré clair), dans sa moitié haute. */
+const BOARD_COST_ZONE: Zone = { top: 5, left: 7.8, width: 14, height: 11 };
+const BOARD_TYPE_ZONE: Zone = { top: 3, left: 58, width: 39, height: 8.5 };
+/** Le soulignement (1316 × 170) garde ses proportions : son filet passe à mi-hauteur de sa zone. */
+const BOARD_NAME_ZONE: Zone = { top: 73.5, left: 5, width: 90, height: 10 };
+const BOARD_UNDERLINE_ZONE: Zone = { top: 81, left: 10, width: 80, height: 7.4 };
+const BOARD_STATS_ZONE: Zone = { top: 88, left: 8, width: 84, height: 10 };
+const BOARD_NAME_ZONE_NO_STATS: Zone = { top: 81.5, left: 5, width: 90, height: 10 };
+const BOARD_UNDERLINE_ZONE_NO_STATS: Zone = { top: 89, left: 10, width: 80, height: 7.4 };
+
+/** Épée de Puissance (tuile de plateau), blanche, en `em` pour suivre le chiffre. */
+function SwordGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden className="h-[0.95em] w-[0.95em] shrink-0" fill="currentColor">
+      <path d="M20.5 2.5 21.5 3.5 13 13.4 10.6 11z" />
+      <path d="M6.3 12.9 8 11.2 12.8 16 11.1 17.7 9.9 16.5 5.2 21.2Q4 22.4 2.8 21.2 1.6 20 2.8 18.8L7.5 14.1z" />
+    </svg>
+  );
+}
+
+/** Bouclier de Résistance (tuile de plateau), même poids visuel que l'épée. */
+function ShieldGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden className="h-[0.95em] w-[0.95em] shrink-0" fill="currentColor">
+      <path d="M12 2 20 5v6.2c0 5-3.4 9.1-8 10.8-4.6-1.7-8-5.8-8-10.8V5zm0 2.2L6 6.4v4.8c0 3.8 2.5 7 6 8.6z" />
+    </svg>
+  );
+}
+
 /** Calque optionnel, Abyssales uniquement — silhouette à fond transparent qui déborde du cadre, posée par-dessus. */
 function getDebordUrl(cardId: string): string {
   return `/assets/cards/illustrations/${cardId}-debord.webp`;
@@ -388,6 +439,7 @@ export function CardTile({
   draggable = false,
   onDragStart,
   liftOnHover = false,
+  variant = "full",
 }: CardTileProps) {
   // Face cachée : le dos est celui du PROPRIÉTAIRE de la carte (hors partie,
   // « booster » ou « preview » n'ont pas de contexte : dos local).
@@ -457,6 +509,10 @@ export function CardTile({
   const [illustrationFailed, setIllustrationFailed] = useState<string | null>(null);
   const illustrationOk = illustrationFailed !== illustrationUrl;
   const debordOk = useImageOk(debordUrl);
+  const isBoardTile = variant === "board";
+  // Assets d'habillage de la tuile : sondés seulement quand la tuile est rendue.
+  const reasonBannerOk = useImageOk(isBoardTile ? BOARD_REASON_BANNER : null);
+  const underlineOk = useImageOk(isBoardTile ? BOARD_UNDERLINE : null);
 
   const rulesZone = isUnit || hasResistance ? RULES_ZONE_WITH_STATS : RULES_ZONE_NO_STATS;
   const isToken = def.token === true;
@@ -507,6 +563,148 @@ export function CardTile({
             decoding="async"
             className="h-full w-full select-none object-cover"
           />
+        ) : isBoardTile ? (
+          <>
+            {/* Tuile de plateau — couche 1 : l'illustration, plein cadre. */}
+            <div className={`absolute inset-0 ${TYPE_BG_CLASSES[def.type] ?? "bg-board-surface"}`}>
+              {illustrationOk && (
+                // eslint-disable-next-line @next/next/no-img-element -- asset local, une par carte
+                <img
+                  loading="lazy"
+                  decoding="async"
+                  sizes={illustrationThumbUrl ? "auto, 100vw" : undefined}
+                  srcSet={illustrationThumbUrl ? `${illustrationThumbUrl} 360w, ${illustrationUrl} 768w` : undefined}
+                  src={illustrationUrl}
+                  alt=""
+                  onError={() => setIllustrationFailed(illustrationUrl)}
+                  className="h-full w-full object-cover"
+                />
+              )}
+            </div>
+            {/* Couche 2 : un voile sombre en pied, pour que nom et stats se lisent sur n'importe quelle illustration. */}
+            <div
+              className="pointer-events-none absolute inset-0"
+              style={{
+                background:
+                  "linear-gradient(to bottom, rgba(4,10,24,0) 55%, rgba(4,10,24,0.72) 74%, rgba(4,10,24,0.94) 100%), linear-gradient(to bottom, rgba(4,10,24,0.35) 0%, rgba(4,10,24,0) 18%)",
+              }}
+            />
+            <div className="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-inset ring-black/60" />
+
+            {/* Couche 3 : habillage. */}
+            <div className="absolute inset-0">
+              {!isToken && (
+                <>
+                  {reasonBannerOk ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- asset d'habillage unique
+                    <img src={BOARD_REASON_BANNER} alt="" className="object-contain object-top" style={zoneStyle(BOARD_REASON_ZONE)} />
+                  ) : (
+                    // Repli tant que l'asset manque : une bannière à pointe, bleu nuit.
+                    <div
+                      className="border-x border-white/20 bg-[#16305f] shadow-[0_4px_10px_rgba(0,0,0,0.5)]"
+                      style={{ ...zoneStyle({ ...BOARD_REASON_ZONE, height: 26 }), clipPath: "polygon(0 0, 100% 0, 100% 100%, 50% 84%, 0 100%)" }}
+                    />
+                  )}
+                  <div
+                    className="flex items-center justify-center text-center font-bold leading-none text-white [font-family:var(--font-card-title)]"
+                    style={{ ...zoneStyle(BOARD_COST_ZONE), fontSize: "15cqw", textShadow: "0 2px 4px rgba(0,0,0,0.7)" }}
+                  >
+                    {def.cost}
+                  </div>
+
+                  {/* Étiquette de type : l'icône (bleu nuit) sur un papier clair à bord cranté. */}
+                  <div
+                    className="flex items-center justify-center bg-slate-100/95 px-[7%] shadow-[0_2px_6px_rgba(0,0,0,0.45)]"
+                    style={{ ...zoneStyle(BOARD_TYPE_ZONE), clipPath: "polygon(9% 0, 100% 0, 97% 50%, 100% 100%, 9% 100%, 0 50%)" }}
+                  >
+                    {typeIconOk ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- asset local, icône + libellé de type réunis
+                      <img src={typeIconUrl} alt={CARD_TYPE_LABELS[def.type]} className="h-[80%] w-auto max-w-full object-contain" />
+                    ) : (
+                      <span className="font-bold uppercase text-[#16305f] [font-family:var(--font-card-title)]" style={{ fontSize: "4.5cqw" }}>
+                        {CARD_TYPE_LABELS[def.type]}
+                      </span>
+                    )}
+                  </div>
+                </>
+              )}
+
+              <div
+                className="flex items-end justify-center overflow-hidden px-[2%] pb-[1%] text-center font-semibold uppercase leading-tight text-white [font-family:var(--font-card-title)]"
+                style={{ ...zoneStyle(isUnit || hasResistance ? BOARD_NAME_ZONE : BOARD_NAME_ZONE_NO_STATS), textShadow: THICK_TEXT_OUTLINE }}
+              >
+                {/* Même puce muette que dans le bloc de règles : un effet de plateau agit sur la carte. */}
+                {hasActiveBoardBonus && (
+                  <span
+                    aria-hidden
+                    title="Un effet de plateau est actif sur cette carte"
+                    className="mb-[0.45em] mr-[0.35em] inline-block shrink-0"
+                    style={{ width: "0.5em", height: "0.5em", borderRadius: "9999px", background: "var(--accent)", boxShadow: "0 0 0.35em var(--accent)" }}
+                  />
+                )}
+                <span
+                  className="inline-block max-w-full overflow-hidden text-ellipsis whitespace-nowrap"
+                  style={{ fontSize: `${nameFontSizeCqw(def.name) * 1.15}cqw` }}
+                >
+                  <span style={{ fontSize: "1.35em" }}>{def.name.charAt(0)}</span>
+                  {def.name.slice(1)}
+                </span>
+              </div>
+
+              {underlineOk ? (
+                // eslint-disable-next-line @next/next/no-img-element -- asset d'habillage unique
+                <img
+                  src={BOARD_UNDERLINE}
+                  alt=""
+                  className="object-contain"
+                  style={zoneStyle(isUnit || hasResistance ? BOARD_UNDERLINE_ZONE : BOARD_UNDERLINE_ZONE_NO_STATS)}
+                />
+              ) : (
+                // Repli : un filet clair qui s'efface vers les bords, un losange au centre.
+                <div className="flex items-center" style={zoneStyle(isUnit || hasResistance ? BOARD_UNDERLINE_ZONE : BOARD_UNDERLINE_ZONE_NO_STATS)}>
+                  <span className="h-px flex-1 bg-gradient-to-r from-transparent to-white/80" />
+                  <span className="mx-[3%] h-[1.4cqw] w-[1.4cqw] rotate-45 bg-white/90" />
+                  <span className="h-px flex-1 bg-gradient-to-l from-transparent to-white/80" />
+                </div>
+              )}
+
+              {(isUnit || hasResistance) && (
+                <div
+                  className="flex items-center justify-evenly font-bold leading-none [font-family:var(--font-card-title)]"
+                  style={{ ...zoneStyle(BOARD_STATS_ZONE), fontSize: "10cqw", textShadow: THICK_TEXT_OUTLINE }}
+                >
+                  {isUnit && (
+                    <span className="flex items-center gap-[0.3em]">
+                      <span className="text-white">
+                        <SwordGlyph />
+                      </span>
+                      {/* Repère des pastilles de gain (`EffectFxLayer`). */}
+                      <span data-stat="attack" className={`${statColorClass(attackDelta)} ${attackChanged ? "animate-stat-buff" : ""}`}>
+                        {stats.attack}
+                      </span>
+                    </span>
+                  )}
+                  {hasResistance && (
+                    <span className="flex items-center gap-[0.3em]">
+                      <span className="text-white">
+                        <ShieldGlyph />
+                      </span>
+                      <span
+                        data-stat="resistance"
+                        className={
+                          resistanceFlashing
+                            ? "animate-stat-hit text-white"
+                            : `${statColorClass(resistanceDelta)} ${healthChanged ? "animate-stat-buff" : ""}`
+                        }
+                      >
+                        {resistanceRemaining}
+                      </span>
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          </>
         ) : (
         <>
         {/* Couche 1 : illustration, dans la découpe du cadre (ou plein cadre si le cadre est absent).

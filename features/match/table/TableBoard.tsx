@@ -568,6 +568,7 @@ export function TableBoard(props: TableBoardProps) {
             badgeSize={badgeSize}
             faceDown={mine && !visible}
             auraContext={auraContextFor(owner)}
+            variant="board"
           />
         )}
         {/* APRÈS la carte : posé avant, il était recouvert par elle et ne recevait aucun clic. */}

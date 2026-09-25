@@ -16,6 +16,8 @@ interface PreviewGameCardProps {
   badgeSize?: number;
   /** Dégâts marqués : la Résistance affichée baisse, et `CardTile` joue son propre impact. */
   damage?: number;
+  /** `"board"` sur un rang de plateau : la tuile simplifiée (`CardTile`). */
+  variant?: "full" | "board";
 }
 
 /**
@@ -29,7 +31,7 @@ interface PreviewGameCardProps {
  * L'instance est fabriquée ici, comme le fait `BoosterCard` : aucun état de
  * partie, aucune action — seulement la lecture du catalogue de cartes.
  */
-export function PreviewGameCard({ card, tideState, showStatusBadges = true, badgeSize, damage = 0 }: PreviewGameCardProps) {
+export function PreviewGameCard({ card, tideState, showStatusBadges = true, badgeSize, damage = 0, variant }: PreviewGameCardProps) {
   return (
     <CardTile
       instance={{
@@ -46,6 +48,7 @@ export function PreviewGameCard({ card, tideState, showStatusBadges = true, badg
       scaleOnHover={false}
       showStatusBadges={showStatusBadges}
       badgeSize={badgeSize}
+      variant={variant}
     />
   );
 }

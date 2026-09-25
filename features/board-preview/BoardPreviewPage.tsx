@@ -353,7 +353,7 @@ export function BoardPreviewPage() {
                 onContextMenu={inspectOnContextMenu(card.id)}
                 className={`${styles.tableCard} ${styles.boardHoverable} ${aimingAttacker ? styles.targetable : ""} ${hover === drop ? styles.targetHover : ""}`}
               >
-                <PreviewGameCard card={card} tideState={tideState} badgeSize={badgeSize} damage={damage[card.id]} />
+                <PreviewGameCard card={card} tideState={tideState} badgeSize={badgeSize} damage={damage[card.id]} variant="board" />
               </div>
             );
           }}
@@ -420,7 +420,7 @@ export function BoardPreviewPage() {
                     : "Glisser sur le crâne pour saborder. Clic droit : agrandir."
                 }
               >
-                <PreviewGameCard card={card} tideState={tideState} badgeSize={badgeSize} damage={damage[card.id]} />
+                <PreviewGameCard card={card} tideState={tideState} badgeSize={badgeSize} damage={damage[card.id]} variant="board" />
               </div>
             );
           }}
