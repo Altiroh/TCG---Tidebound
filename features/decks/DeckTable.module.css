@@ -440,21 +440,20 @@
   filter: drop-shadow(0 1.2cqw 1.3cqw rgba(0, 0, 0, 0.7));
 }
 
+/* La puce du deck choisi : la plaque sombre à bouts de laiton de l'interface, lettres dorées. */
 .selectedChip {
   position: absolute;
   left: 50%;
-  bottom: -3%;
+  bottom: -4%;
   z-index: 3;
-  padding: 0.18cqw 0.7cqw;
-  border: 0.08cqw solid #8fe8f7;
-  border-radius: 999px;
-  background: linear-gradient(180deg, #1f7f99, #0f4b5c);
-  box-shadow: 0 0.2cqw 0.5cqw rgba(0, 0, 0, 0.55);
-  color: #eafcff;
-  font-size: max(8px, 0.6cqw);
+  padding: 0.3cqw 1.3cqw;
+  background: url("/assets/decks/editeur/plaque.webp") center / 100% 100% no-repeat;
+  filter: drop-shadow(0 0.2cqw 0.35cqw rgba(0, 0, 0, 0.6));
+  color: #f1d38a;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: max(8px, 0.62cqw);
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0.06em;
   white-space: nowrap;
   transform: translateX(-50%);
 }
@@ -511,8 +510,10 @@
   display: grid;
   align-content: center;
   justify-items: center;
-  padding: 0 14% 9%;
-  gap: 0.1cqw;
+  /* Le texte tient dans la face avant du bandeau (8 à 56 % de sa hauteur,
+     soit 2,2 % et 12,2 % de sa LARGEUR en padding) — jamais sur les plis. */
+  padding: 2.2% 15% 12.2%;
+  gap: 0.05cqw;
   background: url("/assets/decks/liste/bandeau-titre.webp") center / 100% 100% no-repeat;
   text-align: center;
 }
@@ -523,16 +524,20 @@
   color: #2c1c0f;
   font-family: var(--tb-font-display, Georgia, serif);
   /* Le nom ENTIER, quitte à rapetisser : ~12 cqw de bandeau pour --len lettres. */
-  font-size: min(0.95cqw, calc(11cqw / var(--len, 10)));
+  font-size: min(0.74cqw, calc(9.5cqw / var(--len, 10)));
   font-weight: 700;
-  line-height: 1.1;
+  line-height: 1;
   text-overflow: clip;
   white-space: nowrap;
 }
 
 .bannerShip {
+  max-width: 100%;
+  overflow: hidden;
   color: #5a3d22;
-  font-size: max(7px, 0.62cqw);
+  font-size: 0.46cqw;
+  line-height: 1;
+  white-space: nowrap;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -762,30 +767,35 @@
   cursor: pointer;
 }
 
+/* L'action principale : bois sombre teinté de mer, cerclé de laiton (maquette). */
 .btnPrimary {
-  border: 0.1cqw solid var(--tb-btn-border);
-  background: var(--tb-btn-bg);
-  box-shadow: var(--tb-btn-glow);
-  color: var(--tb-btn-text);
-}
-
-.btnPrimary:hover {
-  background: var(--tb-btn-bg-hover);
-  box-shadow: var(--tb-btn-glow-hover);
+  border: 0.1cqw solid #c79a4b;
+  background: linear-gradient(180deg, #1f5f70, #0d3440);
+  box-shadow: inset 0 0.08cqw 0 rgba(255, 236, 190, 0.25), 0 0.2cqw 0.4cqw rgba(0, 0, 0, 0.45);
+  color: #f6e7c4;
 }
 
 .btnWood {
-  border: 0.1cqw solid #7a5530;
+  border: 0.1cqw solid #a67c3d;
   background: linear-gradient(180deg, #4a3220, #2a1b10);
   color: #f1e3c4;
 }
 
-.btnWood:hover:not(:disabled) {
-  border-color: #c79a4b;
+/* Survol : la lueur chaude du menu principal, pour toutes les actions de la fiche. */
+.btnPrimary,
+.btnWood,
+.btnDanger {
+  transition: filter 200ms ease-out;
+}
+
+.btnPrimary:hover:not(:disabled),
+.btnWood:hover:not(:disabled),
+.btnDanger:hover:not(:disabled) {
+  filter: brightness(1.11) saturate(1.14) contrast(1.02) drop-shadow(0 0 5px rgba(255, 214, 140, 0.8)) drop-shadow(0 0 16px rgba(255, 176, 72, 0.4));
 }
 
 .btnDanger {
-  border: 0.1cqw solid #d9584d;
+  border: 0.1cqw solid #c79a4b;
   background: linear-gradient(180deg, #a3261d, #6e140f);
   color: #fff1ee;
 }
@@ -906,20 +916,21 @@
   left: calc(12px + var(--tb-safe-left, 0px));
   bottom: calc(12px + var(--tb-safe-bottom, 0px));
   z-index: 40;
-  padding: 7px 14px;
-  border: 1px solid var(--tb-btn-border);
-  border-radius: 999px;
-  background: var(--tb-btn-bg);
-  box-shadow: var(--tb-btn-glow);
-  color: var(--tb-btn-text);
+  padding: 9px 26px;
+  border: 0;
+  background: url("/assets/decks/editeur/plaque.webp") center / 100% 100% no-repeat;
+  color: #f1d38a;
+  font-family: var(--tb-font-display, Georgia, serif);
   font-size: 12.5px;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   cursor: pointer;
+  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.6));
+  transition: filter 200ms ease-out;
 }
 
 .layoutToggle:hover {
-  background: var(--tb-btn-bg-hover);
-  box-shadow: var(--tb-btn-glow-hover);
+  filter: brightness(1.11) saturate(1.14) drop-shadow(0 0 7px rgba(255, 214, 140, 0.85)) drop-shadow(0 0 20px rgba(255, 176, 72, 0.4));
 }
 
 @media (prefers-reduced-motion: reduce) {

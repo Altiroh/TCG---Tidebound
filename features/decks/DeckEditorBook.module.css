@@ -67,26 +67,45 @@
   color: var(--tb-text);
 }
 
-/* Les trois colonnes : du parchemin dans le cadre de bois de la fiche
-   (découpe en 9, les coins de laiton restent nets). */
+/* Les trois colonnes dans LEURS cadres (assets `editeur/`). Les panneaux
+   latéraux en découpe en 9 : le gouvernail et les rivets des coins restent
+   nets quelle que soit la hauteur. Le panneau central, lui, s'étire d'une
+   pièce : sa longue-vue court le long du bord bas. */
 .frame.frame {
-  /* Bordure RÉELLE de l'épaisseur du cadre : le contenu reste dans le parchemin. */
-  border: clamp(14px, 1.6vw, 26px) solid transparent;
   border-radius: 0;
-  border-image: url("/assets/decks/liste/fiche.webp") 70 fill / clamp(16px, 1.9vw, 30px) / clamp(2px, 0.3vw, 4px) stretch;
   background: none;
   backdrop-filter: none;
   box-shadow: none;
   filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.55));
 }
 
-/* Un soupçon d'inclinaison, comme posé sur la table. */
-.left {
+.left.left {
+  border: clamp(24px, 2.3vw, 40px) solid transparent;
+  border-image: url("/assets/decks/editeur/panneau-gauche.webp") 100 fill / clamp(40px, 3.6vw, 66px) / clamp(4px, 0.4vw, 8px) stretch;
   transform: rotate(-0.6deg);
 }
 
-.right {
+.right.right {
+  border: clamp(16px, 1.5vw, 26px) solid transparent;
+  border-image: url("/assets/decks/editeur/panneau-droite.webp") 70 fill / clamp(30px, 2.6vw, 48px) / clamp(3px, 0.3vw, 6px) stretch;
   transform: rotate(0.8deg);
+}
+
+.center.center {
+  border: 0;
+  padding: clamp(26px, 3.1vw, 54px) clamp(24px, 2.9vw, 50px) clamp(28px, 3.3vw, 58px);
+  background: url("/assets/decks/editeur/panneau-central.webp") center / 100% 100% no-repeat;
+}
+
+/* La longue-vue, les pièces et les gemmes posées au bas de la table. */
+.decor {
+  position: fixed;
+  left: 14vw;
+  bottom: calc(-1.5vw - var(--tb-safe-bottom, 0px));
+  z-index: 3;
+  width: 36vw;
+  pointer-events: none;
+  filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.6));
 }
 
 /* Les boutons d'action restent bleus et lumineux sur le parchemin. */
@@ -100,20 +119,21 @@
   left: calc(12px + var(--tb-safe-left, 0px));
   bottom: calc(12px + var(--tb-safe-bottom, 0px));
   z-index: 40;
-  padding: 7px 14px;
-  border: 1px solid var(--tb-btn-border);
-  border-radius: 999px;
-  background: var(--tb-btn-bg);
-  box-shadow: var(--tb-btn-glow);
-  color: var(--tb-btn-text);
+  padding: 9px 26px;
+  border: 0;
+  background: url("/assets/decks/editeur/plaque.webp") center / 100% 100% no-repeat;
+  color: #f1d38a;
+  font-family: var(--tb-font-display, Georgia, serif);
   font-size: 12.5px;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   cursor: pointer;
+  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.6));
+  transition: filter 200ms ease-out;
 }
 
 .layoutToggle:hover {
-  background: var(--tb-btn-bg-hover);
-  box-shadow: var(--tb-btn-glow-hover);
+  filter: brightness(1.11) saturate(1.14) drop-shadow(0 0 7px rgba(255, 214, 140, 0.85)) drop-shadow(0 0 20px rgba(255, 176, 72, 0.4));
 }
 
 /* Encarts (résumé, description, barres −/+) : un parchemin plus clair,
@@ -125,15 +145,99 @@
   color: var(--tb-text);
 }
 
+/* La barre de quantité : la plaque sombre à bouts de laiton, et les deux
+   boutons ronds de bois cerclés de laiton qui la mordent aux extrémités. */
 .workspace [class*="_cellBar__"] {
-  border-color: rgba(90, 58, 30, 0.55);
-  background: linear-gradient(180deg, #f8ead0, #e8d3a8);
-  box-shadow: 0 2px 6px rgba(40, 24, 10, 0.45);
+  position: relative;
+  gap: 0;
+  height: 30px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 0;
+  background: url("/assets/decks/editeur/plaque.webp") center / 100% 100% no-repeat;
+  box-shadow: none;
+  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.55));
+}
+
+.workspace [class*="_cellQty__"] {
+  min-width: 46px;
+  justify-content: center;
+  color: #f1d38a;
+  font-size: 12px;
+}
+
+.workspace [class*="_cellQtyMax__"] {
+  color: rgba(241, 211, 138, 0.7);
+}
+
+.workspace [class*="_cellQtyFull__"] {
+  color: #8fe8f7;
 }
 
 .workspace [class*="_cellButton__"] {
-  color: #3a2616;
-  font-weight: 700;
+  color: #f1d38a;
+}
+
+.workspace [class*="_cellButton__"][aria-label^="Retirer"],
+.workspace [class*="_cellButton__"][aria-label^="Ajouter"] {
+  width: 32px;
+  height: 32px;
+  margin: -2px -6px;
+  border-radius: 50%;
+  background: url("/assets/decks/editeur/bouton-moins.webp") center / contain no-repeat;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6));
+  transition: transform 120ms ease-out, filter 160ms ease-out;
+}
+
+.workspace [class*="_cellButton__"][aria-label^="Ajouter"] {
+  background-image: url("/assets/decks/editeur/bouton-plus.webp");
+}
+
+/* Les boutons peints portent déjà leur signe. */
+.workspace [class*="_cellButton__"][aria-label^="Retirer"] svg,
+.workspace [class*="_cellButton__"][aria-label^="Ajouter"] svg {
+  display: none;
+}
+
+.workspace [class*="_cellButton__"][aria-label^="Retirer"]:hover:not(:disabled),
+.workspace [class*="_cellButton__"][aria-label^="Ajouter"]:hover:not(:disabled) {
+  background-color: transparent;
+  transform: scale(1.08);
+  filter: brightness(1.11) saturate(1.14) drop-shadow(0 0 5px rgba(255, 214, 140, 0.85)) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6));
+}
+
+.workspace [class*="_cellButton__"][aria-label^="Retirer"]:disabled,
+.workspace [class*="_cellButton__"][aria-label^="Ajouter"]:disabled {
+  opacity: 0.5;
+  filter: grayscale(0.5) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6));
+}
+
+/* « Voir la carte » : un petit œil de laiton, à côté du +. */
+.workspace [class*="_cellButton__"][aria-label^="Voir"] {
+  width: 22px;
+  height: 22px;
+  margin-left: 6px;
+}
+
+.workspace [class*="_cellButton__"][aria-label^="Voir"]:hover {
+  background: rgba(241, 211, 138, 0.18);
+  color: #fff3cf;
+}
+
+/* Le bouton d'enregistrement : la même plaque sombre, lettres dorées. */
+.workspace [class*="_save__"] {
+  border: 0;
+  border-radius: 0;
+  background: url("/assets/decks/editeur/plaque.webp") center / 100% 100% no-repeat;
+  box-shadow: none;
+  color: #f1d38a;
+  font-family: var(--tb-font-display, Georgia, serif);
+  letter-spacing: 0.04em;
+  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.55));
+}
+
+.workspace [class*="_save__"]:hover:not(:disabled) {
+  filter: brightness(1.11) saturate(1.14) drop-shadow(0 0 7px rgba(255, 214, 140, 0.85)) drop-shadow(0 0 20px rgba(255, 176, 72, 0.4));
 }
 
 .workspace [class*="_curveFillEmpty__"] {
@@ -150,4 +254,10 @@
 .workspace [class*="_backLink__"] {
   color: #5a3a1c;
   font-weight: 600;
+}
+
+/* La barre du haut de la grille (compte, tri) : à l'encre pleine. */
+.center [class*="_toolbar"],
+.center [class*="_toolbar"] * {
+  color: var(--tb-text-strong);
 }

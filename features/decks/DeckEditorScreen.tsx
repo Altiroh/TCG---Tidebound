@@ -382,7 +382,7 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
           />
         </aside>
 
-        <main className={`${game.panel} ${browser.main} ${onBook ? book.frame : ""}`}>
+        <main className={`${game.panel} ${browser.main} ${onBook ? `${book.frame} ${book.center}` : ""}`}>
           <CollectionToolbar
             count={cardBrowser.cards.length}
             sort={cardBrowser.sort}
@@ -437,6 +437,11 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
           />
         </aside>
       </div>
+
+      {onBook && (
+        // eslint-disable-next-line @next/next/no-img-element -- décor peint, positionné à la main
+        <img className={book.decor} src="/assets/decks/editeur/decor-bas.webp" alt="" draggable={false} />
+      )}
 
       <button
         type="button"
