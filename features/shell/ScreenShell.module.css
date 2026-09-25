@@ -1035,22 +1035,18 @@
   min-width: 17px;
   height: 17px;
   padding: 0 4px;
-  border: 1px solid #fff1c8;
-  border-radius: 999px;
-  background: linear-gradient(180deg, #ffd66e, #e0a132);
-  color: #2a1a02;
   font-family: var(--cb-font-ui);
   font-size: 10px;
   font-weight: 800;
   line-height: 15px;
   text-align: center;
   text-shadow: none;
-  animation: rewardBadgePulse 1.8s ease-in-out infinite;
-}
-
-@keyframes rewardBadgePulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 200, 90, 0.6); transform: scale(1); }
-  50% { box-shadow: 0 0 0 5px rgba(255, 200, 90, 0); transform: scale(1.12); }
+  border: 1px solid var(--tb-notif-border);
+  border-radius: 999px;
+  background: var(--tb-notif-bg);
+  color: var(--tb-notif-text);
+  box-shadow: var(--tb-notif-glow);
+  animation: tbNotifPulse 1.9s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {

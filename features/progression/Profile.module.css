@@ -832,16 +832,17 @@
   min-width: 20px;
   height: 20px;
   padding: 0 6px;
-  border-radius: 999px;
-  background: linear-gradient(180deg, #ffd66e, #e0a132);
-  color: #2a1a02;
   font-family: var(--cb-font-ui);
   font-size: 11px;
   font-weight: 800;
-  line-height: 20px;
+  line-height: 18px;
   text-align: center;
-  box-shadow: 0 0 10px rgba(255, 200, 90, 0.55);
-  animation: waitingPulse 2.2s ease-in-out infinite;
+  border: 1px solid var(--tb-notif-border);
+  border-radius: 999px;
+  background: var(--tb-notif-bg);
+  color: var(--tb-notif-text);
+  box-shadow: var(--tb-notif-glow);
+  animation: tbNotifPulse 1.9s ease-in-out infinite;
 }
 
 .claimBanner {
@@ -867,16 +868,16 @@
 .claimButton,
 .claimButtonSmall {
   padding: 9px 20px;
-  border: 1px solid #ffc95a;
   border-radius: 8px;
-  background: linear-gradient(180deg, #d9982e 0%, #9a6414 100%);
-  box-shadow: 0 0 12px rgba(255, 190, 70, 0.45), inset 0 1px 0 rgba(255, 240, 200, 0.45);
-  color: #fffaf0;
+  border: 1px solid var(--tb-btn-border);
+  background: var(--tb-btn-bg);
+  box-shadow: var(--tb-btn-glow);
+  color: var(--tb-btn-text);
   font-family: var(--cb-font-display);
   font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.03em;
-  text-shadow: 0 1px 2px rgba(60, 30, 0, 0.7);
+  text-shadow: 0 1px 2px rgba(0, 20, 30, 0.6);
   cursor: pointer;
   animation: claimGlow 1.8s ease-in-out infinite;
   transition: filter 140ms ease-out, transform 140ms ease-out;
@@ -905,8 +906,8 @@
 }
 
 @keyframes claimGlow {
-  0%, 100% { box-shadow: 0 0 8px rgba(255, 190, 70, 0.35), inset 0 1px 0 rgba(255, 240, 200, 0.45); }
-  50% { box-shadow: 0 0 20px rgba(255, 190, 70, 0.7), inset 0 1px 0 rgba(255, 240, 200, 0.45); }
+  0%, 100% { box-shadow: var(--tb-btn-glow); }
+  50% { box-shadow: var(--tb-btn-glow-hover); }
 }
 
 /* Palier à réclamer sur la frise. */

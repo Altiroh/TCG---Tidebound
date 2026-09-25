@@ -203,11 +203,11 @@
 .primary {
   min-width: 220px;
   padding: 12px 28px;
-  border: 1px solid #00b7ff;
   border-radius: 8px;
-  background: linear-gradient(180deg, #0b4265 0%, #08273d 100%);
-  box-shadow: 0 0 9px rgba(0, 183, 255, 0.45), inset 0 0 10px rgba(0, 183, 255, 0.12);
-  color: #fff;
+  border: 1px solid var(--tb-btn-border);
+  background: var(--tb-btn-bg);
+  box-shadow: var(--tb-btn-glow);
+  color: var(--tb-btn-text);
   font-family: var(--font-card-title, Georgia, serif);
   font-size: 17px;
   font-weight: 600;
@@ -219,7 +219,8 @@
 }
 
 .primary:hover:not(:disabled) {
-  filter: brightness(1.15);
+  background: var(--tb-btn-bg-hover);
+  box-shadow: var(--tb-btn-glow-hover);
 }
 
 .primary:disabled {

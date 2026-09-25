@@ -49,18 +49,26 @@
 
 .claimButton {
   padding: 0.35cqw 0.9cqw;
-  border: 1px solid rgba(255, 214, 140, 0.85);
   border-radius: 0.35cqw;
-  background: linear-gradient(180deg, #f3c86b, #c98f2f);
-  color: #2b1703;
+  border: 1px solid var(--tb-btn-border);
+  background: var(--tb-btn-bg);
+  box-shadow: var(--tb-btn-glow);
+  color: var(--tb-btn-text);
   font-family: var(--tb-font-display);
   font-size: 0.78cqw;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   cursor: pointer;
-  box-shadow: 0 0 1.2cqw rgba(243, 200, 107, 0.45);
   white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0, 20, 30, 0.6);
+  transition: background 150ms ease-out, box-shadow 150ms ease-out;
+}
+.claimButton:hover:not(:disabled),
+.claimButton:focus-visible {
+  background: var(--tb-btn-bg-hover);
+  box-shadow: var(--tb-btn-glow-hover);
+  outline: none;
 }
 .claimButton:disabled {
   cursor: default;
@@ -87,12 +95,14 @@
   place-items: center;
   width: 1.3cqw;
   height: 1.3cqw;
-  border-radius: 50%;
-  background: #d8342b;
-  color: #fff;
   font-size: 0.8cqw;
   font-weight: 800;
-  box-shadow: 0 0 0.5cqw rgba(216, 52, 43, 0.8);
+  border: 1px solid var(--tb-notif-border);
+  border-radius: 999px;
+  background: var(--tb-notif-bg);
+  color: var(--tb-notif-text);
+  box-shadow: var(--tb-notif-glow);
+  animation: tbNotifPulse 1.9s ease-in-out infinite;
 }
 
 .help {
@@ -697,10 +707,11 @@
   flex: none;
   width: 100%;
   padding: 0.55cqw;
-  border: 1px solid rgba(140, 190, 215, 0.4);
   border-radius: 0.4cqw;
-  background: rgba(6, 18, 30, 0.8);
-  color: #e3eef3;
+  border: 1px solid var(--tb-btn-border);
+  background: var(--tb-btn-bg);
+  box-shadow: var(--tb-btn-glow);
+  color: var(--tb-btn-text);
   font-size: 0.7cqw;
   font-weight: 600;
   letter-spacing: 0.06em;
@@ -709,7 +720,8 @@
 }
 .footButton:hover:not(:disabled),
 .footButton:focus-visible {
-  border-color: rgba(95, 208, 230, 0.7);
+  background: var(--tb-btn-bg-hover);
+  box-shadow: var(--tb-btn-glow-hover);
   outline: none;
 }
 .footButton:disabled {

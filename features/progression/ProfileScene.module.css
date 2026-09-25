@@ -401,13 +401,13 @@
   width: 2.2cqw;
   height: 2.2cqw;
   flex: none;
-  border: 1px solid rgba(160, 220, 240, 0.55);
+  border: 1px solid var(--tb-btn-border);
   border-radius: 0.3cqw;
-  background: linear-gradient(180deg, #1f5f8c, #133c5c);
-  color: #f1f7fb;
+  background: var(--tb-btn-bg);
+  color: var(--tb-btn-text);
   font-weight: 700;
   font-size: 0.95cqw;
-  box-shadow: 0 0.15cqw 0.4cqw rgba(0, 0, 0, 0.35);
+  box-shadow: var(--tb-btn-glow);
 }
 
 /* Largeur de deux icônes, même quand il n'y en a qu'une : les libellés partent tous du même bord. */
@@ -477,14 +477,18 @@
 .claimAll {
   flex: none;
   padding: 0.35cqw 0.8cqw;
-  border: 1px solid rgba(95, 208, 230, 0.6);
   border-radius: 999px;
-  background: rgba(13, 52, 69, 0.8);
-  color: #dff6fb;
+  border: 1px solid var(--tb-btn-border);
+  background: var(--tb-btn-bg);
+  color: var(--tb-btn-text);
   font-size: 0.78cqw;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 0 0.8cqw rgba(95, 208, 230, 0.35);
+  box-shadow: var(--tb-btn-glow);
+}
+.claimAll:hover:not(:disabled) {
+  background: var(--tb-btn-bg-hover);
+  box-shadow: var(--tb-btn-glow-hover);
 }
 .claimAll:disabled {
   opacity: 0.6;

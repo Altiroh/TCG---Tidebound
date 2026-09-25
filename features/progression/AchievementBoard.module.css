@@ -410,10 +410,11 @@
   flex: 0 0 auto;
   align-self: center;
   padding: 7px 14px;
-  border: 1px solid var(--tb-gold-line);
   border-radius: var(--tb-radius-sm);
-  background: linear-gradient(180deg, var(--tb-gold-bright), var(--tb-gold-deep));
-  color: var(--tb-on-gold);
+  border: 1px solid var(--tb-btn-border);
+  background: var(--tb-btn-bg);
+  box-shadow: var(--tb-btn-glow);
+  color: var(--tb-btn-text);
   font: inherit;
   font-size: 13px;
   font-weight: 600;
@@ -422,7 +423,8 @@
 }
 
 .claim:hover:not(:disabled) {
-  box-shadow: var(--tb-glow-gold);
+  background: var(--tb-btn-bg-hover);
+  box-shadow: var(--tb-btn-glow-hover);
   transform: translateY(-1px);
 }
 

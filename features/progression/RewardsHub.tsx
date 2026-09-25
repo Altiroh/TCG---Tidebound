@@ -194,7 +194,7 @@ function RouteOfLevels({ profile, claiming, onClaimLevel }: Pick<RewardsHubProps
             return (
               <li key={level} className={styles.palier} data-state={state} data-current={level === view.level ? "" : undefined}>
                 <span className={styles.palierLevel}>{level}</span>
-                {state === "claimable" && <span className={styles.alert} aria-hidden>!</span>}
+                {state === "claimable" && <span className={styles.alert} aria-hidden />}
                 <span className={styles.palierIcon}>{items[0] && <RewardIcon item={items[0]} size={64} />}</span>
                 <span className={styles.palierLabel}>{items.map(levelRewardLabel).join(" · ")}</span>
                 {state === "claimable" ? (
@@ -554,7 +554,7 @@ function SponsorsPanel({
                   title={gift ? "Un colis vous attend" : "Pas de colis pour l'instant"}
                 >
                   <GiftGlyph />
-                  {gift && <span className={styles.alert}>!</span>}
+                  {gift && <span className={styles.alert} aria-label="Colis à réclamer" />}
                 </button>
               </li>
             );

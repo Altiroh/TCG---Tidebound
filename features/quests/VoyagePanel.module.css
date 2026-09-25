@@ -104,8 +104,9 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: var(--tb-gold-bright);
-  box-shadow: 0 0 8px var(--tb-gold);
+  background: var(--tb-notif-bg);
+  box-shadow: var(--tb-notif-glow);
+  animation: tbNotifPulse 1.9s ease-in-out infinite;
 }
 
 .voyageTab:focus-visible {

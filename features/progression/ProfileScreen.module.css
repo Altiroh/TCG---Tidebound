@@ -34,13 +34,16 @@
   height: 17px;
   margin-left: 6px;
   padding: 0 4px;
-  border-radius: 999px;
-  background: var(--tb-accent);
-  color: #04202b;
   font-size: 10.5px;
-  font-weight: 700;
+  font-weight: 800;
   line-height: 1;
   vertical-align: 2px;
+  border: 1px solid var(--tb-notif-border);
+  border-radius: 999px;
+  background: var(--tb-notif-bg);
+  color: var(--tb-notif-text);
+  box-shadow: var(--tb-notif-glow);
+  animation: tbNotifPulse 1.9s ease-in-out infinite;
 }
 
 /* Bandeau étroit : quatre onglets et leurs pastilles ne tiennent plus à côté

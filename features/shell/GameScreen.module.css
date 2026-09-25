@@ -367,7 +367,7 @@
  *   iconButton — Carré/rond pour une icône seule (toujours un `aria-label`).
  *   danger    — Suppression : rouge discret, jamais un rouge SaaS.
  *   premium   — Achat / récompense : or, réservé à l'économie.
- * Jamais de dégradé brillant ; le glow n'apparaît qu'au survol de `primary`.
+ * `primary` : le bouton bleu LUMINEUX commun (jetons `--tb-btn-*`) — jamais à plat.
  * ────────────────────────────────────────────────────────────── */
 .primary {
   display: inline-flex;
@@ -376,10 +376,11 @@
   gap: 0.5em;
   min-height: 38px;
   padding: 0.55em 1.25em;
-  border: 1px solid var(--tb-accent-line);
+  border: 1px solid var(--tb-btn-border);
   border-radius: var(--radius-sm);
-  background: linear-gradient(180deg, var(--tb-accent-soft-strong), var(--tb-accent-soft));
-  color: var(--tb-on-accent);
+  background: var(--tb-btn-bg);
+  box-shadow: var(--tb-btn-glow);
+  color: var(--tb-btn-text);
   font-family: var(--cb-font-ui);
   font-size: var(--tb-fs-button);
   font-weight: 600;
@@ -391,9 +392,9 @@
   transition: background var(--tb-duration) ease-out, border-color var(--tb-duration) ease-out, color var(--tb-duration) ease-out, box-shadow var(--tb-duration) ease-out, transform var(--tb-duration-fast) ease-out;
 }
 .primary:hover {
-  background: linear-gradient(180deg, rgba(95, 208, 230, 0.36), rgba(95, 208, 230, 0.2));
+  background: var(--tb-btn-bg-hover);
   border-color: var(--cb-cyan);
-  box-shadow: var(--tb-glow-md);
+  box-shadow: var(--tb-btn-glow-hover);
 }
 .primary:active { transform: translateY(1px); box-shadow: none; }
 .primary:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 2px; }

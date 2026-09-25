@@ -178,19 +178,20 @@
 .primary {
   width: 100%;
   padding: 11px 16px;
-  border: 1px solid rgba(95, 208, 230, 0.7);
   border-radius: 10px;
-  background: linear-gradient(180deg, #1c6d86, #0f4659);
-  color: #f1fbfd;
+  border: 1px solid var(--tb-btn-border);
+  background: var(--tb-btn-bg);
+  color: var(--tb-btn-text);
   font-size: 15px;
   font-weight: 700;
   letter-spacing: 0.02em;
   cursor: pointer;
-  box-shadow: 0 0 18px rgba(95, 208, 230, 0.3);
+  box-shadow: var(--tb-btn-glow);
 }
 .primary:hover,
 .primary:focus-visible {
-  filter: brightness(1.12);
+  background: var(--tb-btn-bg-hover);
+  box-shadow: var(--tb-btn-glow-hover);
   outline: none;
 }
 .primary:disabled {

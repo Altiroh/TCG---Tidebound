@@ -314,3 +314,9 @@ body {
     opacity: 0;
   }
 }
+
+/* Pastille « à réclamer » (jetons --tb-notif-*) : un souffle lumineux, partout le même. */
+@keyframes tbNotifPulse {
+  0%, 100% { box-shadow: var(--tb-notif-glow); transform: scale(1); }
+  50% { box-shadow: 0 0 12px rgba(255, 214, 110, 1), 0 0 24px rgba(255, 190, 70, 0.6); transform: scale(1.12); }
+}

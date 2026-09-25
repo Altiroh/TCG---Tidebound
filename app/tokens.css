@@ -100,6 +100,24 @@
   --tb-glow-abyssal: 0 0 22px rgba(180, 140, 242, 0.26);
   --tb-blur: blur(12px) saturate(1.05);
 
+  /* ── Bouton d'action : UN seul bleu, toujours lumineux ──────────
+     Décision du 25/09/2026 : jamais de bouton bleu à plat. Le halo est
+     là au repos et s'intensifie au survol. Tous les boutons d'action
+     (réclamer, ouvrir, lancer, voir tout…) lisent ces jetons. */
+  --tb-btn-bg: linear-gradient(180deg, #1f7893 0%, #115066 55%, #0c3d4f 100%);
+  --tb-btn-bg-hover: linear-gradient(180deg, #2a8fac 0%, #16627c 55%, #0f4a5f 100%);
+  --tb-btn-border: rgba(120, 222, 240, 0.75);
+  --tb-btn-text: #f1fbfd;
+  --tb-btn-glow: 0 0 14px rgba(95, 208, 230, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  --tb-btn-glow-hover: 0 0 24px rgba(95, 208, 230, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+
+  /* ── Pastille « à réclamer » : UN seul rond jaune, lumineux ─────
+     Même pastille partout (bandeau, onglets, paliers, mécènes…). */
+  --tb-notif-bg: radial-gradient(circle at 35% 30%, #fff3c4 0%, #ffd66e 38%, #e8a531 100%);
+  --tb-notif-border: #fff1c8;
+  --tb-notif-text: #2a1a02;
+  --tb-notif-glow: 0 0 8px rgba(255, 205, 95, 0.85), 0 0 16px rgba(255, 190, 70, 0.45);
+
   /* ── Rayons ─────────────────────────────────────────────────── */
   --tb-radius-sm: 8px;
   --tb-radius-md: 12px;

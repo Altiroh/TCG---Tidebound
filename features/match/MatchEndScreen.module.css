@@ -426,15 +426,17 @@
 
 .primary {
   composes: action;
-  background: #34d399;
-  color: #022c22;
-  box-shadow: 0 8px 24px -8px rgba(52, 211, 153, 0.55);
+  border: 1px solid var(--tb-btn-border);
+  background: var(--tb-btn-bg);
+  box-shadow: var(--tb-btn-glow);
+  color: var(--tb-btn-text);
 }
 .primary:hover {
-  background: #6ee7b7;
+  background: var(--tb-btn-bg-hover);
+  box-shadow: var(--tb-btn-glow-hover);
 }
 .primary:focus-visible {
-  box-shadow: 0 0 0 2px #a7f3d0;
+  box-shadow: var(--tb-btn-glow-hover), 0 0 0 2px var(--tb-accent-bright);
 }
 
 .ghost {
