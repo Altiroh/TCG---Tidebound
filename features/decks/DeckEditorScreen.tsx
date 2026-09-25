@@ -24,6 +24,9 @@ import browser from "@/features/collection/CardBrowser.module.css";
 import styles from "@/features/decks/DeckBuilder.module.css";
 import game from "@/features/shell/GameScreen.module.css";
 import { playButtonClick } from "@/lib/sound";
+import book from "@/features/decks/DeckEditorBook.module.css";
+import { oneOf } from "@/lib/persistCodecs";
+import { usePersistedState } from "@/lib/persistedState";
 
 const DRAG_MIME = "text/tidebound-card-id";
 
@@ -109,6 +112,11 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
   const [detailCardId, setDetailCardId] = useState<string | null>(null);
   const [deckOpen, setDeckOpen] = useState(false);
   const savedFlashTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Nouvel affichage « sur le livre » ou l'ancien, le temps de valider (mémorisé).
+  const [layout, setLayout] = usePersistedState<"livre" | "classic">("editeur:affichage", "livre", {
+    decode: (raw) => oneOf<"livre" | "classic">(["livre", "classic"], raw),
+  });
+  const onBook = layout === "livre";
 
   // Possession : un joueur non connecté peut composer (le serveur refusera
   // la sauvegarde avec un message clair), mais n'a pas de possession
@@ -329,6 +337,7 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
   return (
     <GameScreen
       active="decks"
+      className={onBook ? book.screen : undefined}
       onNavigate={handleNavigate}
       actions={
         <div className={game.headerSearch}>
@@ -344,7 +353,7 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
       }
     >
       <div
-        className={`${browser.workspace} ${styles.workspace}`}
+        className={`${browser.workspace} ${styles.workspace} ${onBook ? book.workspace : ""}`}
         data-columns="3"
         data-drawer={cardBrowser.drawerOpen ? "open" : "closed"}
         data-deck={deckOpen ? "open" : "closed"}
@@ -357,7 +366,7 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
         <button type="button" className={browser.drawerScrim} aria-label="Fermer les filtres" onClick={() => cardBrowser.setDrawerOpen(false)} />
         <button type="button" className={styles.deckScrim} aria-label="Fermer le deck" onClick={() => setDeckOpen(false)} />
 
-        <aside className={`${game.panel} ${browser.sidebar}`} aria-label="Identité du deck et filtres">
+        <aside className={`${game.panel} ${browser.sidebar} ${onBook ? `${book.frame} ${book.left}` : ""}`} aria-label="Identité du deck et filtres">
           <DeckIdentity
             shipId={shipId}
             onChangeShip={() => setShipPickerOpen(true)}
@@ -373,7 +382,7 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
           />
         </aside>
 
-        <main className={`${game.panel} ${browser.main}`}>
+        <main className={`${game.panel} ${browser.main} ${onBook ? book.frame : ""}`}>
           <CollectionToolbar
             count={cardBrowser.cards.length}
             sort={cardBrowser.sort}
@@ -397,7 +406,7 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
           />
         </main>
 
-        <aside className={`${game.panel} ${styles.deckPanel}`} aria-label="Deck en construction">
+        <aside className={`${game.panel} ${styles.deckPanel} ${onBook ? `${book.frame} ${book.right}` : ""}`} aria-label="Deck en construction">
           <DeckListPanel
             cardIds={cardIds}
             namePlate={
@@ -428,6 +437,17 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
           />
         </aside>
       </div>
+
+      <button
+        type="button"
+        className={book.layoutToggle}
+        onClick={() => {
+          playButtonClick();
+          setLayout(onBook ? "classic" : "livre");
+        }}
+      >
+        {onBook ? "Ancien affichage" : "Nouvel affichage"}
+      </button>
 
       {detailCardId && (
         <CardDetailModal

@@ -1,0 +1,153 @@
+/*
+ * L'ÉDITEUR DE DECK « SUR LE LIVRE » (maquette du 25/09/2026) — le même
+ * éditeur (mêmes composants, mêmes actions), habillé comme la liste des
+ * decks : le livre de bord en fond, trois colonnes de parchemin dans leur
+ * cadre de bois, l'encre sombre à la place du texte clair.
+ *
+ * Tout passe par les JETONS du thème, redéfinis dans la zone de travail :
+ * les composants partagés avec la Collection (filtres, grille, liste du
+ * deck) suivent sans être retouchés un à un. Les cartes gardent leurs
+ * propres couleurs.
+ */
+.screen.screen.screen {
+  background: #1a0f08 url("/assets/decks/liste/fond.webp") center / cover no-repeat;
+}
+
+/* Double classe : l'emporte sur `.workspace.workspace` de DeckBuilder. */
+.workspace.workspace.workspace {
+  /* Alias déjà résolus plus haut (écran, éditeur) : redéfinis ICI. */
+  --ink: #3a2616;
+  --ink-strong: #24160b;
+  --ink-dim: rgba(58, 38, 22, 0.74);
+  --ink-faint: rgba(58, 38, 22, 0.5);
+  --deck-bg: rgba(246, 232, 202, 0.7);
+  --deck-bg-2: rgba(250, 238, 212, 0.85);
+  --deck-inner: rgba(90, 60, 30, 0.1);
+  --deck-border: rgba(90, 58, 30, 0.45);
+  --deck-glow: #1c7d98;
+  --deck-glow-soft: rgba(28, 125, 152, 0.2);
+  --deck-ink: #24160b;
+  --deck-ink-dim: rgba(58, 38, 22, 0.72);
+  --deck-line: rgba(90, 58, 30, 0.3);
+  --cb-cyan: #1c7d98;
+  /* Encre et parchemin. */
+  --tb-text-strong: #24160b;
+  --tb-text: #3a2616;
+  --tb-text-muted: rgba(58, 38, 22, 0.74);
+  --tb-text-soft: rgba(58, 38, 22, 0.5);
+  --tb-surface: rgba(246, 232, 202, 0.55);
+  --tb-surface-raised: rgba(250, 238, 212, 0.8);
+  --tb-surface-inset: rgba(90, 60, 30, 0.1);
+  --tb-surface-solid: #efdcb4;
+  --tb-surface-solid-raised: #f5e6c4;
+  --tb-border: rgba(90, 58, 30, 0.28);
+  --tb-border-strong: rgba(90, 58, 30, 0.5);
+  --tb-border-light: rgba(90, 58, 30, 0.2);
+  --panel: var(--tb-surface);
+  --panel-raised: var(--tb-surface-raised);
+  --panel-inset: rgba(255, 246, 224, 0.62);
+  --panel-solid: #f3e2bd;
+  --tb-panel-inset: var(--panel-inset);
+  --line: var(--tb-border);
+  --line-strong: var(--tb-border-strong);
+  --cb-ivory: var(--tb-text);
+  --cb-ivory-dim: var(--tb-text-muted);
+  /* L'accent reste le bleu du jeu, un ton plus profond pour l'encre. */
+  --tb-accent: #1c7d98;
+  --tb-accent-bright: #1c6d86;
+  --tb-accent-soft: rgba(28, 125, 152, 0.14);
+  --tb-accent-soft-strong: rgba(28, 125, 152, 0.24);
+  --tb-accent-line: rgba(28, 125, 152, 0.5);
+  --tb-on-accent: #0b2a33;
+  --danger: #a3261b;
+  --tb-danger: #a3261b;
+  --tb-danger-ink: #8a1f15;
+  --tb-danger-soft: rgba(163, 38, 27, 0.1);
+  --tb-danger-line: rgba(163, 38, 27, 0.45);
+  color: var(--tb-text);
+}
+
+/* Les trois colonnes : du parchemin dans le cadre de bois de la fiche
+   (découpe en 9, les coins de laiton restent nets). */
+.frame.frame {
+  /* Bordure RÉELLE de l'épaisseur du cadre : le contenu reste dans le parchemin. */
+  border: clamp(14px, 1.6vw, 26px) solid transparent;
+  border-radius: 0;
+  border-image: url("/assets/decks/liste/fiche.webp") 70 fill / clamp(16px, 1.9vw, 30px) / clamp(2px, 0.3vw, 4px) stretch;
+  background: none;
+  backdrop-filter: none;
+  box-shadow: none;
+  filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.55));
+}
+
+/* Un soupçon d'inclinaison, comme posé sur la table. */
+.left {
+  transform: rotate(-0.6deg);
+}
+
+.right {
+  transform: rotate(0.8deg);
+}
+
+/* Les boutons d'action restent bleus et lumineux sur le parchemin. */
+.workspace button[class*="primary"] {
+  color: var(--tb-btn-text);
+}
+
+/* Bascule entre l'ancien et le nouvel affichage (le temps de valider). */
+.layoutToggle {
+  position: fixed;
+  left: calc(12px + var(--tb-safe-left, 0px));
+  bottom: calc(12px + var(--tb-safe-bottom, 0px));
+  z-index: 40;
+  padding: 7px 14px;
+  border: 1px solid var(--tb-btn-border);
+  border-radius: 999px;
+  background: var(--tb-btn-bg);
+  box-shadow: var(--tb-btn-glow);
+  color: var(--tb-btn-text);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.layoutToggle:hover {
+  background: var(--tb-btn-bg-hover);
+  box-shadow: var(--tb-btn-glow-hover);
+}
+
+/* Encarts (résumé, description, barres −/+) : un parchemin plus clair,
+   bordé d'un trait d'encre, pour qu'ils se lisent sur le fond. */
+.workspace [class*="_summary__"],
+.workspace textarea {
+  border-color: rgba(90, 58, 30, 0.38);
+  background: rgba(255, 246, 224, 0.62);
+  color: var(--tb-text);
+}
+
+.workspace [class*="_cellBar__"] {
+  border-color: rgba(90, 58, 30, 0.55);
+  background: linear-gradient(180deg, #f8ead0, #e8d3a8);
+  box-shadow: 0 2px 6px rgba(40, 24, 10, 0.45);
+}
+
+.workspace [class*="_cellButton__"] {
+  color: #3a2616;
+  font-weight: 700;
+}
+
+.workspace [class*="_curveFillEmpty__"] {
+  background: rgba(90, 58, 30, 0.14);
+}
+
+/* Le nom du Navire et « Changer de navire » : lisibles sous l'image. */
+.workspace [class*="_identityShipName__"] {
+  font-size: clamp(12px, 1.5vh, 14px);
+  color: #1c6d86;
+}
+
+.workspace [class*="_shipChange__"],
+.workspace [class*="_backLink__"] {
+  color: #5a3a1c;
+  font-weight: 600;
+}
