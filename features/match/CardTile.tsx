@@ -78,8 +78,7 @@ interface CardTileProps {
   liftOnHover?: boolean;
   /**
    * `"board"` : tuile simplifiée d'une carte POSÉE — l'illustration plein
-   * cadre, l'indicateur de Raison en haut à gauche, l'étiquette de type en
-   * haut à droite, et en pied le nom, un soulignement, puis Puissance et
+   * cadre, l'indicateur de Raison en haut à gauche, et en pied le nom, un soulignement, puis Puissance et
    * Résistance. Pas de texte de règles : l'aperçu au survol et la fiche
    * rendent la carte entière. Défaut : `"full"` (main, survol, fiches).
    */
@@ -268,7 +267,6 @@ function getThumbUrl(url: string): string | null {
  */
 const BOARD_REASON_BANNER = "/assets/ui/card-board/raison.webp";
 const BOARD_UNDERLINE = "/assets/ui/card-board/soulignement.webp";
-const BOARD_TYPE_PLATE = "/assets/ui/card-board/type.webp";
 
 /**
  * Zones de la tuile de plateau, en % de la carte (même format 5:7 que les
@@ -278,13 +276,6 @@ const BOARD_TYPE_PLATE = "/assets/ui/card-board/type.webp";
 const BOARD_REASON_ZONE: Zone = { top: 0, left: 3, width: 26, height: 31.7 };
 /** Chiffre de coût : centré sur le panneau intérieur de la bannière (liseré clair), dans sa moitié haute. */
 const BOARD_COST_ZONE: Zone = { top: 5, left: 7.8, width: 14, height: 11 };
-/**
- * Plaque de type (1080 × 287, fanion compris) et, dedans, la zone de l'icône :
- * le panneau clair n'occupe que ~7 → 87 % de sa largeur et ~12 → 58 % de sa
- * hauteur, le fanion pend dessous à droite.
- */
-const BOARD_TYPE_ZONE: Zone = { top: 1.5, left: 36, width: 61, height: 11.6 };
-const BOARD_TYPE_ICON_ZONE: Zone = { top: 3, left: 41, width: 47, height: 5 };
 /** Le soulignement (1316 × 170) garde ses proportions : son filet passe à mi-hauteur de sa zone. */
 const BOARD_NAME_ZONE: Zone = { top: 73.5, left: 5, width: 90, height: 10 };
 const BOARD_UNDERLINE_ZONE: Zone = { top: 81, left: 10, width: 80, height: 7.4 };
@@ -520,7 +511,6 @@ export function CardTile({
   // Assets d'habillage de la tuile : sondés seulement quand la tuile est rendue.
   const reasonBannerOk = useImageOk(isBoardTile ? BOARD_REASON_BANNER : null);
   const underlineOk = useImageOk(isBoardTile ? BOARD_UNDERLINE : null);
-  const typePlateOk = useImageOk(isBoardTile ? BOARD_TYPE_PLATE : null);
 
   const rulesZone = isUnit || hasResistance ? RULES_ZONE_WITH_STATS : RULES_ZONE_NO_STATS;
   const isToken = def.token === true;
@@ -531,16 +521,6 @@ export function CardTile({
   const resistanceZone = tokenNoAttack ? TOKEN_NO_ATTACK_RESISTANCE_ZONE : isToken ? TOKEN_RESISTANCE_ZONE : RESISTANCE_ZONE;
   const tokenRulesZone = tokenNoAttack ? TOKEN_NO_ATTACK_RULES_ZONE : TOKEN_RULES_ZONE;
   const tokenMask = tokenNoAttack ? TOKEN_NO_ATTACK_MASK : TOKEN_ILLUSTRATION_MASK;
-
-  // Icône de type de la tuile de plateau (ou son libellé si l'icône manque).
-  const typeIconLabel = typeIconOk ? (
-    // eslint-disable-next-line @next/next/no-img-element -- asset local, icône + libellé de type réunis
-    <img src={typeIconUrl} alt={CARD_TYPE_LABELS[def.type]} className="h-[88%] w-auto max-w-full object-contain" />
-  ) : (
-    <span className="font-bold uppercase text-[#16305f] [font-family:var(--font-card-title)]" style={{ fontSize: "4.5cqw" }}>
-      {CARD_TYPE_LABELS[def.type]}
-    </span>
-  );
 
   const hoverable = Boolean(onClick) && !disabled;
   const scalesOnHover = hoverable && scaleOnHover;
@@ -629,25 +609,6 @@ export function CardTile({
                   >
                     {def.cost}
                   </div>
-
-                  {/* Étiquette de type : l'icône (bleu nuit) posée sur la plaque claire. */}
-                  {typePlateOk ? (
-                    <>
-                      {/* eslint-disable-next-line @next/next/no-img-element -- asset d'habillage unique */}
-                      <img src={BOARD_TYPE_PLATE} alt="" className="object-contain" style={zoneStyle(BOARD_TYPE_ZONE)} />
-                      <div className="flex items-center justify-center" style={zoneStyle(BOARD_TYPE_ICON_ZONE)}>
-                        {typeIconLabel}
-                      </div>
-                    </>
-                  ) : (
-                    // Repli tant que la plaque manque : un papier clair à bord cranté.
-                    <div
-                      className="flex items-center justify-center bg-slate-100/95 px-[7%] shadow-[0_2px_6px_rgba(0,0,0,0.45)]"
-                      style={{ ...zoneStyle({ top: 3, left: 58, width: 39, height: 8.5 }), clipPath: "polygon(9% 0, 100% 0, 97% 50%, 100% 100%, 9% 100%, 0 50%)" }}
-                    >
-                      {typeIconLabel}
-                    </div>
-                  )}
                 </>
               )}
 
