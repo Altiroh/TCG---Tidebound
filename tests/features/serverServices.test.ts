@@ -68,7 +68,8 @@ const { loadCardBacks, equipCardBackFor } = await import("@/features/cosmetics/c
 const { readAchievementStats } = await import("@/features/achievements/achievementService");
 const { recordMatchQuestProgress, ensureCurrentQuests } = await import("@/features/quests/questService");
 const { recycleCardFor, recycleSurplusFor } = await import("@/features/collection/recycleService");
-const { readLoginRewards } = await import("@/features/progression/loginService");
+const { readLoginRewards, claimLoginReward } = await import("@/features/progression/loginService");
+const { loginCardPool, loginWeekIndex, loginWeekProgramme } = await import("@/game/progression");
 const { createGameState } = await import("@/game/state/createGameState");
 const { PLAYABLE_DECKS } = await import("@/game/cards/decks/catalog");
 const { DEFAULT_CARD_BACK_ID } = await import("@/game");
@@ -230,5 +231,36 @@ describe("récompenses de connexion", () => {
     const view = await readLoginRewards(USER);
     expect(view.step).toBeGreaterThanOrEqual(1);
     expect(view.items.length).toBeGreaterThan(0);
+    expect(view.cycle).toHaveLength(7);
+  });
+
+  it("l'escale « carte » tire une vraie carte du pool de la semaine, même au 2e tour du cycle", async () => {
+    // Lundi 28/09/2026 ; l'étape « carte » de ce programme, déjà franchie une fois (total_claims = 11).
+    const now = new Date("2026-09-28T10:00:00Z");
+    const programme = loginWeekProgramme(loginWeekIndex("2026-09-28"));
+    const cardStep = programme.cycle.findIndex((items) => items.some((item) => item.kind === "card")) + 1;
+    const cardItem = programme.cycle[cardStep - 1]!.find((item) => item.kind === "card")!;
+    rows.player_login_rewards = [{ step: cardStep, last_claimed_day: "2026-09-20", total_claims: 11, streak: 4, best_streak: 6 }];
+
+    const result = await claimLoginReward(USER, now);
+    expect(result.ok).toBe(true);
+    expect(rpcCalls).toHaveLength(1);
+    const cardId = rpcCalls[0]!.args.p_card_id as string;
+    expect(cardItem.kind === "card" && loginCardPool(cardItem)).toContain(cardId);
+    expect(result.cardId).toBe(cardId);
+    // Absence : la série repart, aucune carte de palier n'est envoyée.
+    expect(rpcCalls[0]!.args).not.toHaveProperty("p_streak_card_id");
+  });
+
+  it("le 30e jour d'affilée envoie une carte Abyssale à la fonction", async () => {
+    rows.player_login_rewards = [{ step: 2, last_claimed_day: "2026-09-27", total_claims: 40, streak: 29, best_streak: 29 }];
+    rpcResults.claim_login_reward = { ok: true, streak: 30, streak_card_id: "bat-marin-abyssal" };
+
+    const result = await claimLoginReward(USER, new Date("2026-09-28T10:00:00Z"));
+    expect(result.ok).toBe(true);
+    const streakCardId = rpcCalls[0]!.args.p_streak_card_id as string;
+    expect(streakCardId.endsWith("-abyssal")).toBe(true);
+    expect(result.streak).toBe(30);
+    expect(result.streakCardId).toBe("bat-marin-abyssal");
   });
 });

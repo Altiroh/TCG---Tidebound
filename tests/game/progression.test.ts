@@ -6,6 +6,14 @@ import {
   LEVEL_REWARDS,
   LOGIN_CYCLE_LENGTH,
   LOGIN_REWARD_CYCLE,
+  LOGIN_STREAK_MILESTONE,
+  LOGIN_WEEKLY_PROGRAMMES,
+  currentLoginStreak,
+  daysUntilStreakBonus,
+  loginCardPool,
+  loginStreakBonus,
+  loginWeekIndex,
+  loginWeekProgramme,
   MATCH_TIDES,
   MATCH_XP,
   MAX_REWARDED_LEVEL,
@@ -28,6 +36,7 @@ import {
   utcDayKey,
   xpForLevel,
   type LevelRewardItem,
+  type LoginRewardItem,
   type LoginRewardState,
   type MatchActivity,
   type ProgressionState,
@@ -267,6 +276,87 @@ describe("récompenses de connexion (§8)", () => {
   it("boucle de l'étape 7 vers l'étape 1", () => {
     expect(advanceLoginStep({ step: 7, lastClaimedDay: null }, "2026-09-15").step).toBe(1);
     expect(loginRewardForStep(8)).toEqual(loginRewardForStep(1));
+  });
+});
+
+describe("escales de connexion : programme de la semaine", () => {
+  const sum = (cycle: readonly (readonly LoginRewardItem[])[], kind: "tides" | "xp") =>
+    cycle.flat().reduce((total, item) => total + (item.kind === kind ? item.amount : 0), 0);
+
+  it.each(LOGIN_WEEKLY_PROGRAMMES.map((programme, index) => [index, programme] as const))(
+    "la semaine %i garde l'enveloppe : 7 escales, une carte, son booster à l'escale 7",
+    (_, programme) => {
+      expect(programme.cycle).toHaveLength(LOGIN_CYCLE_LENGTH);
+      expect(sum(programme.cycle, "tides")).toBe(sum(LOGIN_REWARD_CYCLE, "tides"));
+      expect(sum(programme.cycle, "xp")).toBe(sum(LOGIN_REWARD_CYCLE, "xp"));
+      expect(programme.cycle.flat().filter((item) => item.kind === "card")).toHaveLength(1);
+      expect(programme.cycle[6]).toEqual([{ kind: "booster", boosterId: programme.boosterId, count: 1 }]);
+    }
+  );
+
+  it("la pioche de chaque carte d'escale n'est jamais vide (c'était le bug : une carte promise, rien reçu)", () => {
+    for (const programme of LOGIN_WEEKLY_PROGRAMMES) {
+      for (const item of programme.cycle.flat()) {
+        if (item.kind === "card") expect(loginCardPool(item).length, JSON.stringify(item)).toBeGreaterThan(0);
+      }
+    }
+    expect(loginCardPool({ kind: "card", rarity: "abyssal" }).every((id) => id.endsWith("-abyssal"))).toBe(true);
+    expect(loginCardPool({ kind: "card", rarity: "abyssal" }).length).toBeGreaterThan(0);
+  });
+
+  it("le programme change le lundi (UTC) et tient toute la semaine", () => {
+    // 28/09/2026 est un lundi.
+    expect(loginWeekIndex("2026-09-28")).toBe(loginWeekIndex("2026-09-27") + 1);
+    expect(loginWeekIndex("2026-10-04")).toBe(loginWeekIndex("2026-09-28"));
+    const week = loginWeekIndex("2026-09-28");
+    expect(loginWeekProgramme(week)).not.toEqual(loginWeekProgramme(week + 1));
+    expect(loginWeekProgramme(week + LOGIN_WEEKLY_PROGRAMMES.length)).toEqual(loginWeekProgramme(week));
+    expect(loginRewardForStep(4, week)).toEqual(loginWeekProgramme(week).cycle[3]);
+  });
+
+  it("le booster offert change au fil des semaines", () => {
+    expect(new Set(LOGIN_WEEKLY_PROGRAMMES.map((programme) => programme.boosterId)).size).toBeGreaterThan(3);
+  });
+});
+
+describe("escales de connexion : série de jours consécutifs", () => {
+  it("la série monte d'un jour sur l'autre et repart à 1 après une absence — sans toucher à l'étape", () => {
+    let state: LoginRewardState = { step: 6, lastClaimedDay: null };
+    state = advanceLoginStep(state, "2026-09-10");
+    state = advanceLoginStep(state, "2026-09-11");
+    state = advanceLoginStep(state, "2026-09-12");
+    expect(state).toEqual({ step: 2, lastClaimedDay: "2026-09-12", streak: 3 });
+
+    state = advanceLoginStep(state, "2026-09-14");
+    expect(state).toEqual({ step: 3, lastClaimedDay: "2026-09-14", streak: 1 });
+  });
+
+  it("la série affichée tombe à 0 dès qu'un jour a été manqué", () => {
+    const state: LoginRewardState = { step: 3, lastClaimedDay: "2026-09-14", streak: 9 };
+    expect(currentLoginStreak(state, "2026-09-14")).toBe(9);
+    expect(currentLoginStreak(state, "2026-09-15")).toBe(9);
+    expect(currentLoginStreak(state, "2026-09-16")).toBe(0);
+  });
+
+  it("un mois d'affilée donne une carte Abyssale, et chaque mois suivant aussi", () => {
+    expect(LOGIN_STREAK_MILESTONE).toBe(30);
+    expect(loginStreakBonus(29)).toEqual([]);
+    expect(loginStreakBonus(30)).toEqual([{ kind: "card", rarity: "abyssal" }]);
+    expect(loginStreakBonus(31)).toEqual([]);
+    expect(loginStreakBonus(60)).toEqual([{ kind: "card", rarity: "abyssal" }]);
+    expect(daysUntilStreakBonus(0)).toBe(30);
+    expect(daysUntilStreakBonus(29)).toBe(1);
+    expect(daysUntilStreakBonus(30)).toBe(30);
+  });
+
+  it("la 30e réclamation consécutive, à cheval sur un mois, atteint le palier", () => {
+    let state: LoginRewardState = { step: 1, lastClaimedDay: null };
+    for (let day = 0; day < 30; day += 1) {
+      const date = new Date(Date.UTC(2026, 8, 20 + day)).toISOString().slice(0, 10);
+      state = advanceLoginStep(state, date);
+    }
+    expect(state.streak).toBe(30);
+    expect(loginStreakBonus(state.streak ?? 0)).toHaveLength(1);
   });
 });
 

@@ -424,6 +424,33 @@
   min-height: 2.6em;
 }
 
+/* Série de jours consécutifs, sous les escales. */
+.streakRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel-inset);
+}
+
+.streakText {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ink-dim);
+}
+
+.streakText strong {
+  color: #dceaec;
+}
+
+.streakBest {
+  opacity: 0.75;
+}
+
 @media (max-width: 1100px) {
   .cycle {
     grid-template-columns: repeat(4, minmax(0, 1fr));

@@ -3,17 +3,17 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import {
+  LOGIN_STREAK_MILESTONE,
   MAX_REWARDED_LEVEL,
   levelRewardsLabel,
   nextMilestones,
   progressionView,
   utcDayKey,
-  type LoginRewardItem,
   type ProgressionView,
 } from "@/game/progression";
 import { ACHIEVEMENT_CATALOG } from "@/game/achievements";
-import { DEFAULT_CARD_BACK_ID } from "@/game";
-import { claimLoginReward, readLoginRewards } from "@/features/progression/loginService";
+import { DEFAULT_CARD_BACK_ID, STANDARD_BOOSTER_ID } from "@/game";
+import { claimLoginReward, readLoginRewards, type LoginRewardView } from "@/features/progression/loginService";
 import { readAchievementStats, syncAchievements } from "@/features/achievements/achievementService";
 import { equipTitleFor, loadTitles, type EquipTitleResult, type ProfileTitles } from "@/features/progression/titleService";
 import { titleForAchievement } from "@/game/titles";
@@ -104,8 +104,8 @@ export interface ProfileSummary {
   pendingCardChoices: PendingCardChoice[];
   /** Quêtes du jour et de la semaine — elles se consultent et se réclament aussi au profil. */
   quests: QuestEntry[];
-  /** Cycle de connexion : étape à réclamer et disponibilité du jour. */
-  login: { step: number; items: readonly LoginRewardItem[]; claimable: boolean; totalClaims: number };
+  /** Cycle de connexion : étape à réclamer, escales de la semaine, disponibilité du jour et série. */
+  login: LoginRewardView;
   achievements: ProfileAchievement[];
   /**
    * Dos de carte débloqués et celui équipé. Seule famille de cosmétiques
@@ -137,7 +137,17 @@ const SIGNED_OUT: ProfileSummary = {
   claimableLevels: [],
   pendingCardChoices: [],
   quests: [],
-  login: { step: 1, items: [], claimable: false, totalClaims: 0 },
+  login: {
+    step: 1,
+    items: [],
+    cycle: [],
+    weekBoosterId: STANDARD_BOOSTER_ID,
+    claimable: false,
+    totalClaims: 0,
+    streak: 0,
+    bestStreak: 0,
+    daysToStreakBonus: LOGIN_STREAK_MILESTONE,
+  },
   achievements: [],
   cardBacks: { options: [], equipped: DEFAULT_CARD_BACK_ID },
   titles: { options: [], equipped: null, available: false },
@@ -259,6 +269,12 @@ export interface ClaimLoginActionResult {
   tides?: number;
   xp?: number;
   boosterId?: string | null;
+  /** Carte aléatoire de l'escale. */
+  cardId?: string | null;
+  /** Série après la réclamation. */
+  streak?: number;
+  /** Carte Abyssale du palier de série. */
+  streakCardId?: string | null;
 }
 
 /** Réclame la récompense de connexion du jour (§8). Une par jour UTC, jamais de remise à zéro. */
@@ -271,7 +287,16 @@ export async function claimDailyLogin(): Promise<ClaimLoginActionResult> {
     revalidatePath("/profil");
     revalidatePath("/");
   }
-  return { ok: result.ok, error: result.error, tides: result.tides, xp: result.xp, boosterId: result.boosterId ?? null };
+  return {
+    ok: result.ok,
+    error: result.error,
+    tides: result.tides,
+    xp: result.xp,
+    boosterId: result.boosterId ?? null,
+    cardId: result.cardId ?? null,
+    streak: result.streak,
+    streakCardId: result.streakCardId ?? null,
+  };
 }
 
 export interface EquipCardBackActionResult {

@@ -5,13 +5,17 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   LOGIN_CYCLE_LENGTH,
+  LOGIN_STREAK_MILESTONE,
   MAX_REWARDED_LEVEL,
   isMilestoneLevel,
   levelRewardItems,
   levelRewardLabel,
+  loginBoosterName,
   loginRewardForStep,
-  loginStepLabel,
+  loginRewardLabel,
 } from "@/game/progression";
+import { getCardDefinition } from "@/game";
+import { rarityForCardId } from "@/game/boosters";
 import { signOut } from "@/app/connexion/actions";
 import {
   claimAchievement,
@@ -115,6 +119,8 @@ export function ProfileView({ profile, onRefresh, initialTab = "carnet", onLeave
           if (login.tides) extra.push({ kind: "tides", amount: login.tides });
           if (login.xp) extra.push({ kind: "xp", amount: login.xp });
           if (login.boosterId) extra.push({ kind: "booster", boosterId: login.boosterId, count: 1 });
+          if (login.cardId) extra.push({ kind: "card", rarity: rarityForCardId(login.cardId) ?? "common", cardId: login.cardId });
+          if (login.streakCardId) extra.push({ kind: "card", rarity: "abyssal", cardId: login.streakCardId });
         }
       }
       const result = await claimEverything();
@@ -354,7 +360,13 @@ function LogbookTab({ profile, onRefresh, onShowRewards }: { profile: ProfileSum
         setError(result.error ?? "Réclamation impossible.");
         return;
       }
-      const gains = [result.tides ? `+${result.tides} Tides` : "", result.xp ? `+${result.xp} XP` : "", result.boosterId ? "1 booster" : ""]
+      const gains = [
+        result.tides ? `+${result.tides} Tides` : "",
+        result.xp ? `+${result.xp} XP` : "",
+        result.boosterId ? `1 booster ${loginBoosterName(result.boosterId)}` : "",
+        result.cardId ? `carte : ${getCardDefinition(result.cardId).name}` : "",
+        result.streakCardId ? `${LOGIN_STREAK_MILESTONE} jours d'affilée, carte Abyssale : ${getCardDefinition(result.streakCardId).name}` : "",
+      ]
         .filter(Boolean)
         .join(" · ");
       playRewardClaimed();
@@ -457,24 +469,44 @@ function LogbookTab({ profile, onRefresh, onShowRewards }: { profile: ProfileSum
         <h2 className={game.sectionTitle}>Escales de connexion</h2>
         <p className={game.muted}>
           Sept escales, une par jour de retour. Une absence ne te fait jamais repartir de zéro : tu reprends là où tu t&apos;étais arrêté.
+          Les escales changent chaque lundi — cette semaine, le cap est mis sur le booster{" "}
+          <strong>{loginBoosterName(profile.login.weekBoosterId)}</strong>.
         </p>
 
         <ol className={styles.cycle}>
-          {Array.from({ length: LOGIN_CYCLE_LENGTH }, (_, index) => index + 1).map((step) => (
-            <li
-              key={step}
-              className={step === profile.login.step ? styles.escaleCurrent : step < profile.login.step ? styles.escalePassed : styles.escale}
-              data-claimable={step === profile.login.step && profile.login.claimable ? "true" : undefined}
-              title={loginStepLabel(step)}
-            >
-              <span className={styles.escaleIndex}>{step}</span>
-              {loginRewardForStep(step).map((item, index) => (
-                <RewardIcon key={index} item={item} size={42} />
-              ))}
-              <span className={styles.escaleLabel}>{loginStepLabel(step)}</span>
-            </li>
-          ))}
+          {Array.from({ length: LOGIN_CYCLE_LENGTH }, (_, index) => index + 1).map((step) => {
+            const items = profile.login.cycle[step - 1] ?? loginRewardForStep(step);
+            const label = items.map(loginRewardLabel).join(" · ");
+            return (
+              <li
+                key={step}
+                className={step === profile.login.step ? styles.escaleCurrent : step < profile.login.step ? styles.escalePassed : styles.escale}
+                data-claimable={step === profile.login.step && profile.login.claimable ? "true" : undefined}
+                title={label}
+              >
+                <span className={styles.escaleIndex}>{step}</span>
+                {items.map((item, itemIndex) => (
+                  <RewardIcon key={itemIndex} item={item} size={42} />
+                ))}
+                <span className={styles.escaleLabel}>{label}</span>
+              </li>
+            );
+          })}
         </ol>
+
+        {/* Série : comptée À PART du cycle — la manquer ne fait pas reculer les escales. */}
+        <div className={styles.streakRow}>
+          <RewardIcon item={{ kind: "card", rarity: "abyssal" }} size={36} />
+          <p className={styles.streakText}>
+            <strong>
+              Série : {profile.login.streak} jour{profile.login.streak > 1 ? "s" : ""} d&apos;affilée
+            </strong>
+            {" — "}
+            {LOGIN_STREAK_MILESTONE} jours sans en manquer un offrent une carte Abyssale
+            {` (encore ${profile.login.daysToStreakBonus} escale${profile.login.daysToStreakBonus > 1 ? "s" : ""}).`}
+            {profile.login.bestStreak > 0 && <span className={styles.streakBest}> Record : {profile.login.bestStreak}.</span>}
+          </p>
+        </div>
 
         <button
           type="button"

@@ -497,6 +497,9 @@ export interface Database {
           step: number;
           last_claimed_day: string | null;
           total_claims: number;
+          /** Jours consécutifs réclamés (migration 20261008120000). */
+          streak: number;
+          best_streak: number;
           updated_at: string;
         };
         Insert: Record<string, never>;
@@ -750,8 +753,10 @@ export interface Database {
           p_xp: number;
           p_booster_id?: string | null;
           p_card_id?: string | null;
+          /** Carte Abyssale du palier de série, accordée seulement si la série calculée en base y tombe. */
+          p_streak_card_id?: string | null;
         };
-        Returns: { ok: boolean; error?: string; step?: number; tides?: number; xp?: number };
+        Returns: { ok: boolean; error?: string; step?: number; tides?: number; xp?: number; streak?: number; streak_card_id?: string | null };
       };
       claim_borrowed_deck: {
         Args: { p_user_id: string; p_deck_id: string };

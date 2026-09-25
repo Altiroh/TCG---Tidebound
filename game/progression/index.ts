@@ -38,14 +38,25 @@ export type { MatchRewardInput } from "@/game/progression/matchRewards";
 export {
   LOGIN_CYCLE_LENGTH,
   LOGIN_REWARD_CYCLE,
+  LOGIN_STREAK_MILESTONE,
+  LOGIN_WEEKLY_PROGRAMMES,
   advanceLoginStep,
   canClaimLoginReward,
+  currentLoginStreak,
+  daysUntilStreakBonus,
+  loginBoosterName,
+  loginCardPool,
   loginRewardForStep,
   loginRewardLabel,
   loginStepLabel,
+  loginStreakBonus,
+  loginWeekIndex,
+  loginWeekProgramme,
+  nextLoginStreak,
   normalizeStep,
+  shiftDayKey,
 } from "@/game/progression/loginRewards";
-export type { LoginRewardItem, LoginRewardState } from "@/game/progression/loginRewards";
+export type { LoginRewardItem, LoginRewardState, LoginWeekProgramme } from "@/game/progression/loginRewards";
 
 export type {
   LevelReward,
