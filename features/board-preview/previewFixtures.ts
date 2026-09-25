@@ -26,8 +26,9 @@ function makeCards(prefix: string, cardIds: CardId[]): TableCardModel[] {
 }
 
 export const PREVIEW_FIXTURES = {
-  opponentBoard: makeCards("opp-board", ["chevalier-cra-poiscail", "bat-marin-abyssal", "crabe-de-fer"]),
-  playerBoard: makeCards("own-board", ["capitaine-sans-sommeil", "murene-aveugle", "epave-engloutie", "harpon-de-pont"]),
+  // Un jeton de chaque sorte (avec et sans Puissance) : la tuile ovale se règle ici.
+  opponentBoard: makeCards("opp-board", ["chevalier-cra-poiscail", "bat-marin-abyssal", "crabe-de-fer", "peon-cra-poiscail"]),
+  playerBoard: makeCards("own-board", ["capitaine-sans-sommeil", "murene-aveugle", "epave-engloutie", "harpon-de-pont", "eclat-chromatique-bleu"]),
   /** Le Harpon de pont (4e carte) équipe déjà le Capitaine (1re) : le lien se voit dès l'ouverture. */
   playerAttachments: { "own-board-4": "own-board-1" } as Record<string, string>,
   /** 8 cartes : la taille de main de référence du cahier des charges (7 ou 8). */
@@ -68,6 +69,8 @@ export const PREVIEW_FIXTURES = {
     maxReason: 8,
     deck: 24,
     graveyard: 2,
+    /** Dernière carte de son Cimetière, en tuile sous le crâne (fixe : le labo ne suit que le compte). */
+    graveyardTopCardId: "bat-marin",
   },
   player: {
     name: "Joueur",
@@ -79,6 +82,7 @@ export const PREVIEW_FIXTURES = {
     maxReason: 10,
     deck: 21,
     graveyard: 4,
+    graveyardTopCardId: "vieux-loup-de-mer",
   },
   tide: {
     /** Tuile de sens, entre les deux navires. */

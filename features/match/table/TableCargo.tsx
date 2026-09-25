@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import type { PlayerId } from "@/game";
 import { useCardBackSrcFor } from "@/features/cosmetics/MatchCosmeticsProvider";
 import styles from "@/features/match/table/Table.module.css";
@@ -19,6 +20,12 @@ interface PreviewCargoProps {
   ownerId?: PlayerId;
   deck: number;
   graveyard: number;
+  /**
+   * Dernière carte défaussée, en tuile de plateau (`CardTile variant="board"`),
+   * posée ASSOMBRIE sous le crâne : on voit ce qui vient de tomber sans ouvrir
+   * la consultation. Absent (pile vide, labo) : le creux seul.
+   */
+  graveyardTop?: ReactNode;
   /** Crâne du joueur : zone de Sabordage (`data-drop="graveyard"`). Absent = crâne inerte (adversaire). */
   graveyardDropState?: BoardDropState;
   /** Pioche cliquable (joueur) : pioche une carte. */
@@ -32,7 +39,7 @@ interface PreviewCargoProps {
  * à la taille exacte d'une carte en jeu (`--card-w`) — la pioche montre le dos
  * de carte, la défausse un creux marqué du crâne (repris de `cargo-frame.webp`).
  */
-export function TableCargo({ side, ownerId, deck, graveyard, graveyardDropState, onDraw, onGraveyardClick }: PreviewCargoProps) {
+export function TableCargo({ side, ownerId, deck, graveyard, graveyardTop, graveyardDropState, onDraw, onGraveyardClick }: PreviewCargoProps) {
   const cardBack = useCardBackSrcFor(ownerId);
 
   const deckContent = (
@@ -75,6 +82,11 @@ export function TableCargo({ side, ownerId, deck, graveyard, graveyardDropState,
         style={onGraveyardClick ? { cursor: "pointer" } : undefined}
         data-drop={graveyardDropState ? "graveyard" : undefined}
       >
+        {graveyard > 0 && graveyardTop && (
+          <span className={styles.graveyardTop} aria-hidden>
+            {graveyardTop}
+          </span>
+        )}
         {/* eslint-disable-next-line @next/next/no-img-element -- icône décorative */}
         <img src="/assets/board/graveyard-skull.webp" alt="" aria-hidden draggable={false} className={styles.graveyardSkull} />
         <span className={styles.pileCount}>{graveyard}</span>

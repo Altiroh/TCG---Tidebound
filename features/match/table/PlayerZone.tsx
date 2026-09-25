@@ -19,6 +19,8 @@ interface PlayerZoneProps {
   dropSlot?: number;
   deck: number;
   graveyard: number;
+  /** Dernière carte défaussée, en tuile (cf. `TableCargo`). */
+  graveyardTop?: ReactNode;
   /** État du crâne pendant qu'une carte est prise (zone de Sabordage). */
   graveyardDropState: BoardDropState;
   /** Toucher / cliquer la pioche (labo : piocher). Absent = pioche inerte. */
@@ -45,6 +47,7 @@ export function PlayerZone({
   dropSlot,
   deck,
   graveyard,
+  graveyardTop,
   graveyardDropState,
   onDraw,
   onGraveyardClick,
@@ -61,6 +64,7 @@ export function PlayerZone({
           ownerId={ship.ownerId}
           deck={deck}
           graveyard={graveyard}
+          graveyardTop={graveyardTop}
           graveyardDropState={graveyardDropState}
           onDraw={onDraw}
           onGraveyardClick={onGraveyardClick}

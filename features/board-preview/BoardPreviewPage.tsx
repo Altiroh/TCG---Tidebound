@@ -342,6 +342,9 @@ export function BoardPreviewPage() {
           board={opponentBoard}
           deck={opponentDeck}
           graveyard={opponentGraveyard}
+          graveyardTop={
+            <PreviewGameCard card={{ id: "opp-graveyard-top", cardId: PREVIEW_FIXTURES.opponent.graveyardTopCardId }} tideState={tideState} showStatusBadges={false} variant="board" />
+          }
           renderCard={(card) => {
             const drop = `unit:${card.id}`;
             return (
@@ -390,6 +393,9 @@ export function BoardPreviewPage() {
           deck={playerDeck.length}
           onDraw={drawPlayer}
           graveyard={playerGraveyard}
+          graveyardTop={
+            <PreviewGameCard card={{ id: "own-graveyard-top", cardId: PREVIEW_FIXTURES.player.graveyardTopCardId }} tideState={tideState} showStatusBadges={false} variant="board" />
+          }
           // Le crâne ne s'annonce que pendant un vrai glisser (pas pour une unité armée au toucher).
           graveyardDropState={aiming && !aiming.armed ? (hover === "graveyard" ? "over" : "ready") : "idle"}
           // Plateau plein : il ne s'allume pas, la carte relâchée retourne en main.

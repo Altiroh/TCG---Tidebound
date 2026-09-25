@@ -283,6 +283,16 @@ const BOARD_STATS_ZONE: Zone = { top: 88, left: 8, width: 84, height: 10 };
 const BOARD_NAME_ZONE_NO_STATS: Zone = { top: 81.5, left: 5, width: 90, height: 10 };
 const BOARD_UNDERLINE_ZONE_NO_STATS: Zone = { top: 89, left: 10, width: 80, height: 7.4 };
 
+/**
+ * Tuile de plateau d'un JETON : pas de carte, un médaillon ovale — même
+ * principe que les tuiles (illustration d'abord, nom, soulignement, stats),
+ * resserré au centre de l'ovale, qui rétrécit vers le bas.
+ */
+const TOKEN_TILE_OVAL: Zone = { top: 1.5, left: 4, width: 92, height: 95 };
+const TOKEN_TILE_NAME_ZONE: Zone = { top: 58, left: 12, width: 76, height: 9 };
+const TOKEN_TILE_UNDERLINE_ZONE: Zone = { top: 66, left: 16, width: 68, height: 6.2 };
+const TOKEN_TILE_STATS_ZONE: Zone = { top: 72.5, left: 18, width: 64, height: 11 };
+
 /** Épée de Puissance (tuile de plateau), blanche, en `em` pour suivre le chiffre. */
 function SwordGlyph() {
   return (
@@ -563,8 +573,21 @@ export function CardTile({
           />
         ) : isBoardTile ? (
           <>
-            {/* Tuile de plateau — couche 1 : l'illustration, plein cadre. */}
-            <div className={`absolute inset-0 ${TYPE_BG_CLASSES[def.type] ?? "bg-board-surface"}`}>
+            {/* Tuile de plateau — couche 1 : l'illustration, plein cadre (jeton : dans son médaillon ovale). */}
+            <div
+              className={`absolute overflow-hidden ${TYPE_BG_CLASSES[def.type] ?? "bg-board-surface"}`}
+              style={
+                isToken
+                  ? {
+                      ...zoneStyle(TOKEN_TILE_OVAL),
+                      borderRadius: "50%",
+                      // Cerclage : un filet sombre puis un liseré de laiton, comme le cadre des jetons.
+                      border: "1cqw solid rgba(10, 16, 26, 0.92)",
+                      boxShadow: "0 0 0 0.9cqw #b48a3c, 0 1.5cqw 3cqw rgba(0, 0, 0, 0.55)",
+                    }
+                  : { inset: 0 }
+              }
+            >
               {illustrationOk && (
                 // eslint-disable-next-line @next/next/no-img-element -- asset local, une par carte
                 <img
@@ -578,16 +601,17 @@ export function CardTile({
                   className="h-full w-full object-cover"
                 />
               )}
+              {/* Couche 2 : un voile sombre en pied, pour que nom et stats se lisent sur n'importe quelle illustration. */}
+              <div
+                className="pointer-events-none absolute inset-0"
+                style={{
+                  background: isToken
+                    ? "linear-gradient(to bottom, rgba(4,10,24,0) 42%, rgba(4,10,24,0.78) 60%, rgba(4,10,24,0.95) 100%)"
+                    : "linear-gradient(to bottom, rgba(4,10,24,0) 55%, rgba(4,10,24,0.72) 74%, rgba(4,10,24,0.94) 100%), linear-gradient(to bottom, rgba(4,10,24,0.35) 0%, rgba(4,10,24,0) 18%)",
+                }}
+              />
             </div>
-            {/* Couche 2 : un voile sombre en pied, pour que nom et stats se lisent sur n'importe quelle illustration. */}
-            <div
-              className="pointer-events-none absolute inset-0"
-              style={{
-                background:
-                  "linear-gradient(to bottom, rgba(4,10,24,0) 55%, rgba(4,10,24,0.72) 74%, rgba(4,10,24,0.94) 100%), linear-gradient(to bottom, rgba(4,10,24,0.35) 0%, rgba(4,10,24,0) 18%)",
-              }}
-            />
-            <div className="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-inset ring-black/60" />
+            {!isToken && <div className="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-inset ring-black/60" />}
 
             {/* Couche 3 : habillage. */}
             <div className="absolute inset-0">
@@ -614,7 +638,10 @@ export function CardTile({
 
               <div
                 className="flex items-end justify-center overflow-hidden px-[2%] pb-[1%] text-center font-semibold uppercase leading-tight text-white [font-family:var(--font-card-title)]"
-                style={{ ...zoneStyle(isUnit || hasResistance ? BOARD_NAME_ZONE : BOARD_NAME_ZONE_NO_STATS), textShadow: THICK_TEXT_OUTLINE }}
+                style={{
+                  ...zoneStyle(isToken ? TOKEN_TILE_NAME_ZONE : isUnit || hasResistance ? BOARD_NAME_ZONE : BOARD_NAME_ZONE_NO_STATS),
+                  textShadow: THICK_TEXT_OUTLINE,
+                }}
               >
                 {/* Même puce muette que dans le bloc de règles : un effet de plateau agit sur la carte. */}
                 {hasActiveBoardBonus && (
@@ -627,7 +654,7 @@ export function CardTile({
                 )}
                 <span
                   className="inline-block max-w-full overflow-hidden text-ellipsis whitespace-nowrap"
-                  style={{ fontSize: `${nameFontSizeCqw(def.name) * 1.15}cqw` }}
+                  style={{ fontSize: `${nameFontSizeCqw(def.name) * (isToken ? 1 : 1.15)}cqw` }}
                 >
                   <span style={{ fontSize: "1.35em" }}>{def.name.charAt(0)}</span>
                   {def.name.slice(1)}
@@ -640,11 +667,14 @@ export function CardTile({
                   src={BOARD_UNDERLINE}
                   alt=""
                   className="object-contain"
-                  style={zoneStyle(isUnit || hasResistance ? BOARD_UNDERLINE_ZONE : BOARD_UNDERLINE_ZONE_NO_STATS)}
+                  style={zoneStyle(isToken ? TOKEN_TILE_UNDERLINE_ZONE : isUnit || hasResistance ? BOARD_UNDERLINE_ZONE : BOARD_UNDERLINE_ZONE_NO_STATS)}
                 />
               ) : (
                 // Repli : un filet clair qui s'efface vers les bords, un losange au centre.
-                <div className="flex items-center" style={zoneStyle(isUnit || hasResistance ? BOARD_UNDERLINE_ZONE : BOARD_UNDERLINE_ZONE_NO_STATS)}>
+                <div
+                  className="flex items-center"
+                  style={zoneStyle(isToken ? TOKEN_TILE_UNDERLINE_ZONE : isUnit || hasResistance ? BOARD_UNDERLINE_ZONE : BOARD_UNDERLINE_ZONE_NO_STATS)}
+                >
                   <span className="h-px flex-1 bg-gradient-to-r from-transparent to-white/80" />
                   <span className="mx-[3%] h-[1.4cqw] w-[1.4cqw] rotate-45 bg-white/90" />
                   <span className="h-px flex-1 bg-gradient-to-l from-transparent to-white/80" />
@@ -654,7 +684,7 @@ export function CardTile({
               {(isUnit || hasResistance) && (
                 <div
                   className="flex items-center justify-evenly font-bold leading-none [font-family:var(--font-card-title)]"
-                  style={{ ...zoneStyle(BOARD_STATS_ZONE), fontSize: "10cqw", textShadow: THICK_TEXT_OUTLINE }}
+                  style={{ ...zoneStyle(isToken ? TOKEN_TILE_STATS_ZONE : BOARD_STATS_ZONE), fontSize: isToken ? "9cqw" : "10cqw", textShadow: THICK_TEXT_OUTLINE }}
                 >
                   {isUnit && (
                     <span className="flex items-center gap-[0.3em]">

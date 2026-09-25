@@ -42,6 +42,8 @@ export function PreviewGameCard({ card, tideState, showStatusBadges = true, badg
         modifiers: [],
         summoningSick: false,
         hasAttackedThisTurn: false,
+        // Visuel fixe pour les cartes à plusieurs illustrations (Péon) — ignoré des autres.
+        illustrationVariant: 1,
       }}
       tideState={tideState}
       widthClassName="w-full"

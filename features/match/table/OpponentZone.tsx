@@ -15,6 +15,8 @@ interface OpponentZoneProps {
   wrapShip?: (ship: ReactNode) => ReactNode;
   deck: number;
   graveyard: number;
+  /** Dernière carte défaussée, en tuile (cf. `TableCargo`). */
+  graveyardTop?: ReactNode;
   onGraveyardClick?: () => void;
 }
 
@@ -26,7 +28,7 @@ interface OpponentZoneProps {
  * colonnes de la scène avec la bande centrale et la rangée du joueur, donc
  * les deux plateaux et la piste de Marée restent sur le même axe.
  */
-export function OpponentZone({ ship, board, capacity, renderCard, wrapShip = (node) => node, deck, graveyard, onGraveyardClick }: OpponentZoneProps) {
+export function OpponentZone({ ship, board, capacity, renderCard, wrapShip = (node) => node, deck, graveyard, graveyardTop, onGraveyardClick }: OpponentZoneProps) {
   return (
     <section className={`${styles.zone} ${styles.opponentZone}`} data-zone="OpponentZone" aria-label="Zone adverse">
       <div className={styles.zoneSlotShip}>{wrapShip(<TableShip {...ship} />)}</div>
@@ -34,7 +36,7 @@ export function OpponentZone({ ship, board, capacity, renderCard, wrapShip = (no
         <TableRow zone="OpponentBoard" cards={board} capacity={capacity} renderCard={renderCard} />
       </div>
       <div className={styles.zoneSlotCargo}>
-        <TableCargo side="opponent" ownerId={ship.ownerId} deck={deck} graveyard={graveyard} onGraveyardClick={onGraveyardClick} />
+        <TableCargo side="opponent" ownerId={ship.ownerId} deck={deck} graveyard={graveyard} graveyardTop={graveyardTop} onGraveyardClick={onGraveyardClick} />
       </div>
     </section>
   );

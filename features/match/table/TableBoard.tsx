@@ -253,6 +253,24 @@ export function TableBoard(props: TableBoardProps) {
       />
     );
   }
+  /**
+   * La dernière carte du Cimetière, en tuile de plateau — valeurs IMPRIMÉES :
+   * une carte défaussée n'a plus de blessure ni de modificateur à montrer.
+   */
+  function graveyardTile(player: PlayerState) {
+    const top = player.graveyard[player.graveyard.length - 1];
+    if (!top) return undefined;
+    return (
+      <CardTile
+        instance={{ ...top, damageMarked: 0, modifiers: [], statuses: undefined, summoningSick: false, turnsRemaining: undefined, attachedToInstanceId: undefined }}
+        tideState={tideState}
+        widthClassName="w-full"
+        scaleOnHover={false}
+        showStatusBadges={false}
+        variant="board"
+      />
+    );
+  }
   const motion = useTableMotion(state, viewerId, (instance) => renderFace(instance));
 
   // Équipement → porteur, pour le trait qui les relie. L'attachement ne
@@ -661,6 +679,7 @@ export function TableBoard(props: TableBoardProps) {
             capacity={opponentShip.slotCount}
             deck={opponent.deck.length}
             graveyard={opponent.graveyard.length}
+            graveyardTop={graveyardTile(opponent)}
             onGraveyardClick={() => props.onOpenGraveyard(opponent.id)}
             renderCard={(card) => renderBoardCard(card, opponent)}
             wrapShip={(ship) => (
@@ -704,6 +723,7 @@ export function TableBoard(props: TableBoardProps) {
             capacity={viewerShip.slotCount}
             deck={viewer.deck.length}
             graveyard={viewer.graveyard.length}
+            graveyardTop={graveyardTile(viewer)}
             onGraveyardClick={() => props.onOpenGraveyard(viewer.id)}
             wrapShip={(ship) => (
               <div
