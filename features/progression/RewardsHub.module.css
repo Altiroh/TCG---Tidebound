@@ -1068,30 +1068,48 @@
   color: #aebdc7;
 }
 
+/* Le colis du mécène : son coffret peint (`mecenes/coffret/`). Éteint et
+   grisé tant qu'il n'y a rien ; doré, qui luit et frémit quand un colis attend. */
 .giftButton {
   position: relative;
   flex: none;
   display: grid;
   place-items: center;
-  width: 2.2cqw;
-  height: 2.2cqw;
+  width: 3cqw;
+  height: 3cqw;
   padding: 0;
-  border: 1px solid rgba(140, 170, 190, 0.3);
-  border-radius: 0.35cqw;
-  background: rgba(6, 18, 30, 0.8);
-  color: #7f8f99;
+  border: 0;
+  background: none;
   cursor: default;
 }
-.giftButton svg {
-  width: 65%;
-  height: 65%;
+.giftButton img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: grayscale(0.85) brightness(0.55) drop-shadow(0 0.15cqw 0.25cqw rgba(0, 0, 0, 0.6));
+  transition: filter 200ms ease-out, transform 180ms ease-out;
 }
 .giftButton[data-ready] {
-  border-color: rgba(243, 200, 107, 0.85);
-  background: linear-gradient(180deg, #5d4418, #2a1d08);
-  color: #f3c86b;
   cursor: pointer;
-  box-shadow: 0 0 0.8cqw rgba(243, 200, 107, 0.45);
+}
+.giftButton[data-ready] img {
+  filter: drop-shadow(0 0 0.5cqw rgba(243, 200, 107, 0.75)) drop-shadow(0 0.15cqw 0.25cqw rgba(0, 0, 0, 0.6));
+  animation: giftWobble 2.4s ease-in-out infinite;
+}
+.giftButton[data-ready]:hover img {
+  animation: none;
+  transform: scale(1.1);
+  filter: brightness(1.11) saturate(1.14) drop-shadow(0 0 7px rgba(255, 214, 140, 0.85)) drop-shadow(0 0 20px rgba(255, 176, 72, 0.45));
+}
+@keyframes giftWobble {
+  0%, 70%, 100% { transform: none; }
+  76% { transform: rotate(-6deg); }
+  82% { transform: rotate(5deg); }
+  88% { transform: rotate(-3deg); }
+  94% { transform: rotate(1deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .giftButton[data-ready] img { animation: none; }
 }
 .giftButton .alert {
   top: -0.5cqw;

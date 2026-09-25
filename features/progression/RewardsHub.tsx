@@ -681,7 +681,8 @@ function SponsorsPanel({
                   aria-label={gift ? "Ouvrir le colis" : "Pas de colis pour l'instant"}
                   title={gift ? "Un colis vous attend" : "Pas de colis pour l'instant"}
                 >
-                  <GiftGlyph />
+                  {/* eslint-disable-next-line @next/next/no-img-element -- coffret peint */}
+                  <img src="/assets/mecenes/coffret/coffret-ferme.webp" alt="" draggable={false} />
                   {gift && <span className={styles.alert} aria-label="Colis à réclamer" />}
                 </button>
               </li>
@@ -759,15 +760,6 @@ function CheckGlyph() {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden>
       <path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function GiftGlyph() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden>
-      <rect x="4" y="10" width="16" height="10" rx="1.5" stroke="currentColor" strokeWidth={1.7} />
-      <path d="M3 7h18v3H3zM12 7v13M12 7c-1.5-3-5-3.2-5-1.2S10 7 12 7zm0 0c1.5-3 5-3.2 5-1.2S14 7 12 7z" stroke="currentColor" strokeWidth={1.5} strokeLinejoin="round" />
     </svg>
   );
 }
