@@ -659,6 +659,14 @@
   top: calc(var(--backs-top) * 100%);
   width: calc(var(--backs-w) * 100%);
   aspect-ratio: 5 / 7;
+  /* Cachée tant que la bande est en place : elle dépasse AU-DESSUS du
+     corps, et la bande (plus basse que le haut de la pile) laissait voir
+     son liseré doré avant même la déchirure. Elle paraît quand la bande
+     commence à se soulever. */
+  opacity: 0;
+}
+.packFloat[data-torn] .packCardBacks {
+  animation: showStep 1ms linear var(--t-tear-start) both;
 }
 
 .packCardBack {

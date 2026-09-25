@@ -127,24 +127,26 @@ export function BoosterBatchRecap({ packs, lines, onClose }: BoosterBatchRecapPr
     <div className={styles.layer} role="dialog" aria-modal="true" aria-label={`${packs} boosters ouverts`}>
       <div className={styles.recap}>
         <header className={styles.recapHead}>
-          <div>
-            <p className={styles.eyebrow}>
-              {packs} booster{packs > 1 ? "s" : ""} ouvert{packs > 1 ? "s" : ""}
-            </p>
-            <h2 className={styles.title}>
-              {total} carte{total > 1 ? "s" : ""} récupérée{total > 1 ? "s" : ""}
-            </h2>
-            <p className={styles.sub}>
-              dont <b>{newCount}</b> nouvelle{newCount > 1 ? "s" : ""} pour la collection
-            </p>
+          <div className={styles.recapHeadMain}>
+            <div>
+              <p className={styles.eyebrow}>
+                {packs} booster{packs > 1 ? "s" : ""} ouvert{packs > 1 ? "s" : ""}
+              </p>
+              <h2 className={styles.title}>
+                {total} carte{total > 1 ? "s" : ""} récupérée{total > 1 ? "s" : ""}
+              </h2>
+              <p className={styles.sub}>
+                dont <b>{newCount}</b> nouvelle{newCount > 1 ? "s" : ""} pour la collection
+              </p>
+            </div>
+            <ul className={styles.rarityTally} aria-label="Répartition par rareté">
+              {byRarity.map(([rarity, count]) => (
+                <li key={rarity} className={styles.lineRarity} data-rarity={rarity}>
+                  {count} {CARD_RARITY_LABELS[rarity]}
+                </li>
+              ))}
+            </ul>
           </div>
-          <ul className={styles.rarityTally} aria-label="Répartition par rareté">
-            {byRarity.map(([rarity, count]) => (
-              <li key={rarity} className={styles.lineRarity} data-rarity={rarity}>
-                {count} {CARD_RARITY_LABELS[rarity]}
-              </li>
-            ))}
-          </ul>
           <button
             ref={closeRef}
             type="button"

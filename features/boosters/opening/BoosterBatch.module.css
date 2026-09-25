@@ -28,6 +28,10 @@
 }
 
 .recap {
+  /* Largeur de la colonne d'aperçu, partagée par l'en-tête et le corps :
+     « Fermer » tombe au-dessus de la carte, les pastilles au bout de la liste. */
+  --preview-col: clamp(200px, 26vw, 320px);
+  --body-gap: clamp(12px, 2vw, 28px);
   display: flex;
   flex-direction: column;
   gap: clamp(10px, 2dvh, 20px);
@@ -42,13 +46,26 @@
     0 24px 60px rgba(0, 0, 0, 0.6);
 }
 
-/* Titre | pastilles de rareté | « Fermer » : les pastilles se replient
-   sur elles-mêmes, jamais le bouton sous le titre. */
+/*
+ * L'en-tête suit les DEUX colonnes du corps : à gauche le titre et les
+ * pastilles de rareté (calées sur le bord droit de la liste), à droite
+ * « Fermer », au-dessus de l'aperçu. Pastilles et bouton sont centrés sur
+ * la même ligne ; les pastilles se replient sur elles-mêmes, jamais le
+ * bouton sous le titre.
+ */
 .recapHead {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: end;
+  grid-template-columns: minmax(0, 1fr) var(--preview-col);
+  align-items: center;
+  gap: 8px var(--body-gap);
+}
+
+.recapHeadMain {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px 20px;
+  min-width: 0;
 }
 
 .eyebrow {
@@ -84,6 +101,7 @@
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 6px;
+  min-width: 0;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -98,8 +116,8 @@
 
 .recapBody {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) clamp(200px, 26vw, 320px);
-  gap: clamp(12px, 2vw, 28px);
+  grid-template-columns: minmax(0, 1fr) var(--preview-col);
+  gap: var(--body-gap);
   min-height: 0;
   flex: 1 1 auto;
 }
@@ -164,7 +182,7 @@
 }
 
 .recapClose {
-  flex: 0 0 auto;
+  justify-self: end;
 }
 
 /*
@@ -187,8 +205,8 @@
     font-size: 11px;
   }
 
-  .recapBody {
-    grid-template-columns: minmax(0, 1fr) clamp(150px, 24vw, 220px);
+  .recap {
+    --preview-col: clamp(150px, 24vw, 220px);
   }
 
   .previewCard {
