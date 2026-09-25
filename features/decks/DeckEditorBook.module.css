@@ -314,7 +314,7 @@
   /* Au-delà, la loupe peinte se déformerait. */
   max-width: 440px;
   height: clamp(36px, 4.8vh, 48px);
-  padding: 0 clamp(14px, 1.4vw, 22px) 0 clamp(46px, 4vw, 64px);
+  padding: 0 clamp(14px, 1.4vw, 22px) 0 clamp(56px, 4.8vw, 76px);
   background: url("/assets/decks/liste/recherche.webp") center / 100% 100% no-repeat;
   filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.45));
 }
