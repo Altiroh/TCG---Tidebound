@@ -20,7 +20,25 @@
   overflow: hidden;
 }
 
+/* Écarts entre la scène (ratio fixe, centrée) et les bords de l'écran :
+   ce qui doit DÉBORDER de l'écran (fiche, encrier, bouteille) s'y cale,
+   quelle que soit la forme de la fenêtre. Enregistrées en longueurs pour
+   être calculées ICI, contre la page, et non contre la scène. */
+@property --tb-gutter-x {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
+@property --tb-gutter-y {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
 .stage {
+  --tb-gutter-x: calc(max(0px, (100cqw - 100cqh * 1672 / 880) / 2) + max(var(--tb-safe-left), 1vw));
+  --tb-gutter-y: calc(max(0px, (100cqh - 100cqw * 880 / 1672) / 2) + max(var(--tb-safe-bottom), 1vh));
   position: relative;
   width: min(100cqw, 100cqh * 1672 / 880);
   aspect-ratio: 1672 / 880;
@@ -47,9 +65,10 @@
   filter: drop-shadow(0 0.8cqw 1cqw rgba(0, 0, 0, 0.55));
 }
 
+/* L'encrier dépasse un peu du bord gauche de l'écran. */
 .inkwell {
   position: absolute;
-  left: 0.5%;
+  left: calc(-0.6% - var(--tb-gutter-x));
   top: -1%;
   z-index: 4;
   width: 8%;
@@ -161,9 +180,9 @@
 
 /* Posée SOUS la fiche, elle en dépasse vers la gauche. */
 .bottle {
-  left: 64%;
-  top: 72%;
-  width: 8.5%;
+  left: 63%;
+  top: calc(76% + var(--tb-gutter-y));
+  width: 13%;
   transform: rotate(62deg);
 }
 
@@ -291,6 +310,12 @@
   cursor: pointer;
 }
 
+/* La liste déroulante native : fond sombre, texte clair (sinon clair sur blanc). */
+.sortSelect option {
+  background: #24170d;
+  color: #f1e3c4;
+}
+
 .search {
   position: absolute;
   left: 53.5%;
@@ -360,7 +385,7 @@
   transform: translateY(var(--lift, 0%)) rotate(var(--tilt, 0deg));
 }
 
-/* La pile choisie passe devant ses voisines : sa tache d'encre déborde sur elles. */
+/* La pile choisie passe devant ses voisines. */
 .slot:has([data-selected]) {
   z-index: 2;
 }
@@ -409,9 +434,29 @@
     drop-shadow(0 0 26px rgba(255, 176, 72, 0.45)) drop-shadow(0 10px 18px rgba(3, 9, 16, 0.5));
 }
 
+/* Le deck CHOISI se soulève, et une puce le dit (pas de halo). */
 .stack[data-selected] {
   transform: translateY(-5%) scale(1.04);
-  filter: drop-shadow(0 0 0.35cqw #8fe8f7) drop-shadow(0 0 1.3cqw rgba(95, 208, 230, 0.75)) drop-shadow(0 1cqw 1.2cqw rgba(0, 0, 0, 0.6));
+  filter: drop-shadow(0 1.2cqw 1.3cqw rgba(0, 0, 0, 0.7));
+}
+
+.selectedChip {
+  position: absolute;
+  left: 50%;
+  bottom: -3%;
+  z-index: 3;
+  padding: 0.18cqw 0.7cqw;
+  border: 0.08cqw solid #8fe8f7;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #1f7f99, #0f4b5c);
+  box-shadow: 0 0.2cqw 0.5cqw rgba(0, 0, 0, 0.55);
+  color: #eafcff;
+  font-size: max(8px, 0.6cqw);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transform: translateX(-50%);
 }
 
 .stackWindow {
@@ -437,14 +482,22 @@
   text-shadow: 0 0 1cqw rgba(0, 0, 0, 0.7);
 }
 
+/* L'étoile, pile dans le coin haut droit de l'illustration (fenêtre : x 13–91 %, y 4–81 %). */
 .stackFavorite {
   position: absolute;
-  top: 6%;
-  right: 12%;
+  top: 4%;
+  right: 9%;
   z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 1.5cqw;
+  height: 1.5cqw;
+  border-radius: 0 0.4cqw 0 0.4cqw;
+  background: rgba(24, 16, 10, 0.78);
   color: #f3c86b;
-  font-size: 1.4cqw;
-  text-shadow: 0 0 0.4cqw rgba(0, 0, 0, 0.9);
+  font-size: 1cqw;
+  line-height: 1;
+  text-shadow: 0 0 0.4cqw rgba(243, 200, 107, 0.7);
 }
 
 /* Le bandeau de parchemin du nom, qui déborde de la pile. */
@@ -469,10 +522,11 @@
   overflow: hidden;
   color: #2c1c0f;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: max(9px, 0.95cqw);
+  /* Le nom ENTIER, quitte à rapetisser : ~12 cqw de bandeau pour --len lettres. */
+  font-size: min(0.95cqw, calc(11cqw / var(--len, 10)));
   font-weight: 700;
   line-height: 1.1;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   white-space: nowrap;
 }
 
@@ -482,51 +536,6 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-}
-
-/* Tache d'encre qui éclot sous le deck choisi : trois taches superposées
-   (encre-1 → 2 → 3) qui s'ouvrent l'une après l'autre. Pas d'image animée :
-   le navigateur ne dessine pas une interpolation entre deux images. */
-.splash,
-.splash::before,
-.splash::after {
-  position: absolute;
-  aspect-ratio: 1;
-  background: center / contain no-repeat;
-  pointer-events: none;
-}
-
-.splash {
-  left: 50%;
-  top: 42%;
-  z-index: -1;
-  width: 240%;
-  background-image: url("/assets/decks/liste/encre-1.webp");
-  transform: translate(-50%, -50%);
-  animation: inkStage 1600ms ease-out both;
-}
-
-.splash::before,
-.splash::after {
-  content: "";
-  inset: 0;
-}
-
-.splash::before {
-  background-image: url("/assets/decks/liste/encre-2.webp");
-  animation: inkStage 1600ms 150ms ease-out both;
-}
-
-.splash::after {
-  background-image: url("/assets/decks/liste/encre-3.webp");
-  animation: inkStage 1600ms 300ms ease-out both;
-}
-
-@keyframes inkStage {
-  0% { opacity: 0; scale: 0.35; }
-  18% { opacity: 0.9; scale: 1; }
-  65% { opacity: 0.75; }
-  100% { opacity: 0; scale: 1.06; }
 }
 
 /* ── Flèches ──────────────────────────────────────────────────────── */
@@ -579,6 +588,8 @@
   aspect-ratio: 760 / 1305;
   background: url("/assets/decks/liste/fiche.webp") center / 100% 100% no-repeat;
   filter: drop-shadow(0 1cqw 1.4cqw rgba(0, 0, 0, 0.65));
+  /* Calée sur le bord de l'ÉCRAN (pas de la scène), dont elle déborde. */
+  translate: calc(var(--tb-gutter-x) + 3%) 0;
   transform: rotate(3.4deg);
   transform-origin: 30% 50%;
 }
@@ -610,10 +621,11 @@
   pointer-events: none;
 }
 
+/* En haut à droite de la partie VISIBLE de l'illustration (le bord droit sort de l'écran). */
 .ficheFavorite {
   position: absolute;
-  right: 16%;
-  top: 8%;
+  right: 15.5%;
+  top: 6.6%;
   z-index: 2;
   width: 2.2cqw;
   height: 2.2cqw;
@@ -635,9 +647,9 @@
   position: absolute;
   /* Le bord droit de la fiche sort de l'écran : le contenu s'arrête avant. */
   left: 11%;
-  right: 15%;
+  right: 16%;
   top: 32.5%;
-  bottom: 7%;
+  bottom: 11%;
   display: flex;
   flex-direction: column;
   gap: 0.55cqw;
@@ -818,8 +830,13 @@
   font-style: italic;
 }
 
+/* Une ligne qui ne tient pas ENTIÈRE part dans une colonne suivante, masquée :
+   jamais de ligne coupée sur le cadre. */
 .cardList {
-  display: grid;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+  align-content: flex-start;
   gap: 0.3cqw;
   min-height: 0;
   margin: 0;
@@ -830,6 +847,8 @@
 
 .cardRow {
   position: relative;
+  flex: none;
+  width: 100%;
   display: grid;
   grid-template-columns: 1.6cqw minmax(0, 1fr) auto;
   align-items: center;
@@ -904,7 +923,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .splash,
   .candleGlow,
   .candleCast,
   .blot,

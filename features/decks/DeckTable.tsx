@@ -108,10 +108,6 @@ export function DeckTable(props: DeckTableProps) {
 
   const visible = slots.slice(page * PER_PAGE, page * PER_PAGE + PER_PAGE);
 
-  // Une tache d'encre éclot sous le deck qu'on vient de choisir.
-  const [splash, setSplash] = useState(0);
-  useEffect(() => setSplash((value) => value + 1), [current?.id]);
-
   // Encrier : trois taches, pas une de plus.
   const [blots, setBlots] = useState<Array<{ id: number; x: number; y: number; size: number; variant: number; turn: number }>>([]);
   const [shaking, setShaking] = useState(false);
@@ -258,7 +254,6 @@ export function DeckTable(props: DeckTableProps) {
             const selected = deck.id === current?.id;
             return (
               <li key={deck.id} className={styles.slot} style={{ ["--tilt" as string]: `${tilt}deg`, ["--lift" as string]: `${lift}%` }}>
-                {selected && <span key={splash} className={styles.splash} aria-hidden />}
                 <button
                   type="button"
                   role="option"
@@ -276,8 +271,11 @@ export function DeckTable(props: DeckTableProps) {
                       ★
                     </span>
                   )}
+                  {selected && <span className={styles.selectedChip}>Sélectionné</span>}
                   <span className={styles.banner}>
-                    <span className={styles.bannerName}>{deck.name}</span>
+                    <span className={styles.bannerName} style={{ ["--len" as string]: Math.max(10, deck.name.length) }}>
+                      {deck.name}
+                    </span>
                     <span className={styles.bannerShip}>{shipNameOf(deck.shipId)}</span>
                   </span>
                 </button>
