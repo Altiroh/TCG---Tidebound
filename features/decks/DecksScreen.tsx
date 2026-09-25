@@ -45,6 +45,8 @@ import { DeckPreviewPanel } from "@/features/decks/DeckPreviewPanel";
 import { DeckProfileDialog, type DeckProfileDraft } from "@/features/decks/DeckProfileDialog";
 import { DeckRail, type RailCategory, type RailShelf } from "@/features/decks/DeckRail";
 import { DeckSheet } from "@/features/decks/DeckSheet";
+import { DeckTable, type TableTab } from "@/features/decks/DeckTable";
+import tableStyles from "@/features/decks/DeckTable.module.css";
 import { DeleteDeckDialog } from "@/features/decks/DeleteDeckDialog";
 import { DECK_TRASH_RETENTION_DAYS } from "@/features/decks/deckTrash";
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
@@ -99,9 +101,14 @@ function shelfOf(deck: PlayerDeckSummary): DeckShelf {
 /** Grille de vignettes, ou liste détaillée : le même rayon, deux façons de le parcourir. */
 type DeckView = "grid" | "list";
 
+/** Nouvel affichage (la table, maquette du 25/09/2026) ou l'ancien, le temps de valider. */
+type DeckLayout = "table" | "classic";
+
 interface DecksScreenProps {
   isSignedIn: boolean;
   initialDecks: PlayerDeckSummary[];
+  /** Ids des decks joués récemment, du plus récent au plus ancien (onglet « Récemment joués »). */
+  recentDeckIds?: string[];
   /** Decks fournis par le jeu, avec la possession réelle du joueur. */
   catalog: DeckCatalogView;
 }
@@ -127,7 +134,7 @@ interface DecksScreenProps {
  * on le restaure d'un clic ou on l'efface pour de bon — cette dernière
  * action, la seule irréversible, est la seule à demander confirmation.
  */
-export function DecksScreen({ isSignedIn, initialDecks, catalog }: DecksScreenProps) {
+export function DecksScreen({ isSignedIn, initialDecks, catalog, recentDeckIds = [] }: DecksScreenProps) {
   const router = useRouter();
   // Le joueur qui n'a pas encore pris son préconstruit gratuit arrive
   // directement sur le rayon : c'est l'étape qui lui manque pour jouer.
@@ -144,6 +151,16 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog }: DecksScreenPr
     decode: (raw) => oneOf<DeckView>(["grid", "list"], raw),
   });
   const [currentId, setCurrentId] = useState<string | null>(null);
+  // Bascule ancien / nouvel affichage, mémorisée sur l'appareil.
+  const [layout, setLayout] = usePersistedState<DeckLayout>("decks:affichage", "table", {
+    decode: (raw) => oneOf<DeckLayout>(["table", "classic"], raw),
+  });
+  const [tableTab, setTableTab] = useState<TableTab>(isSignedIn && catalog.freeDeckId === null ? "precon" : "mine");
+  const [tableTrash, setTableTrash] = useState(false);
+  const [favorites, setFavorites] = usePersistedState<ReadonlySet<string>>("decks:favoris", new Set<string>(), {
+    encode: (value) => Array.from(value),
+    decode: (raw) => (Array.isArray(raw) ? new Set(raw.filter((id): id is string => typeof id === "string")) : undefined),
+  });
 
   const [renameTarget, setRenameTarget] = useState<BrowserDeck | null>(null);
   const [purgeTarget, setPurgeTarget] = useState<BrowserDeck | null>(null);
@@ -182,6 +199,24 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog }: DecksScreenPr
 
   const decks = useMemo(() => sortDecks(filterDecks(shelfDecks, filters), sort), [shelfDecks, filters, sort]);
 
+  /** Les decks de la TABLE (nouvel affichage) : onglet, recherche et tri — pas les filtres de la colonne de l'ancien écran. */
+  const tableDecks = useMemo<BrowserDeck[]>(() => {
+    const everything = [...mineEntries([...shelves.built, ...shelves.draft]), ...catalogEntries(catalog)];
+    const search = { ...EMPTY_FILTERS, search: filters.search };
+    if (tableTab === "recent") {
+      const byId = new Map(everything.map((deck) => [deck.id, deck]));
+      const played = recentDeckIds.map((id) => byId.get(id)).filter((deck): deck is BrowserDeck => Boolean(deck));
+      return filterDecks(played, search);
+    }
+    const base =
+      tableTab === "mine"
+        ? mineEntries(tableTrash ? shelves.trash : [...shelves.built, ...shelves.draft])
+        : tableTab === "precon"
+          ? catalogEntries(catalog)
+          : everything.filter((deck) => favorites.has(deck.id));
+    return sortDecks(filterDecks(base, search), sort);
+  }, [tableTab, tableTrash, shelves, catalog, filters.search, sort, favorites, recentDeckIds]);
+
   const availableStyles = useMemo<ReadonlySet<StyleFilterId>>(
     () => new Set(shelfDecks.filter((deck) => deck.style).map((deck) => styleFilterOf(deck.style))),
     [shelfDecks]
@@ -198,7 +233,10 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog }: DecksScreenPr
    * que celui qu'on regardait quitte l'écran (filtré, supprimé, restauré) :
    * une fiche vide à côté d'une grille pleine n'apprend rien.
    */
-  const current = decks.find((deck) => deck.id === currentId) ?? decks[0] ?? null;
+  const current =
+    layout === "table"
+      ? (tableDecks.find((deck) => deck.id === currentId) ?? tableDecks[0] ?? null)
+      : (decks.find((deck) => deck.id === currentId) ?? decks[0] ?? null);
 
   useEffect(() => {
     if (current && current.id !== currentId) setCurrentId(current.id);
@@ -215,7 +253,7 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog }: DecksScreenPr
   const railShelves: RailShelf[] =
     category === "mine" && isSignedIn ? SHELF_ORDER.map((id) => ({ id, label: SHELF_LABELS[id], count: shelves[id].length })) : [];
 
-  const trashed = category === "mine" && shelf === "trash";
+  const trashed = layout === "table" ? tableTab === "mine" && tableTrash : category === "mine" && shelf === "trash";
 
   function notify(tone: ScreenToastMessage["tone"], text: string, action?: ScreenToastMessage["action"]) {
     setToast({ id: Date.now(), tone, text, action });
@@ -346,8 +384,145 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog }: DecksScreenPr
     router.push(`/partie?essai=${encodeURIComponent(deck.id)}`);
   }
 
+  /** Les fenêtres (renommer, effacer, fiche du catalogue…), communes aux deux affichages. */
+  function renderDialogs() {
+    return (
+      <>
+      {renameTarget && <RenameDeckDialog deck={renameTarget} onSubmit={handleRenameSubmit} onCancel={() => setRenameTarget(null)} />}
+
+      {artTarget && (
+        <DeckArtPicker
+          cardIds={artTarget.cards.flatMap((card) => Array.from({ length: card.quantity }, () => card.cardId))}
+          artCardId={artTarget.mine?.artCardChosen ?? null}
+          onChoose={handleArtChosen}
+          onClose={() => setArtTarget(null)}
+        />
+      )}
+
+      {profileTarget && (
+        <DeckProfileDialog deck={profileTarget} busy={isPending} onSubmit={handleProfileSubmit} onCancel={() => setProfileTarget(null)} />
+      )}
+
+      {purgeTarget && (
+        <DeleteDeckDialog
+          deckNames={[purgeTarget.name]}
+          permanent
+          isDeleting={isPending}
+          onConfirm={handleConfirmPurge}
+          onCancel={() => setPurgeTarget(null)}
+        />
+      )}
+
+      {copyTarget?.catalog && (
+        <CopyDeckDialog deck={copyTarget} busy={isPending} onConfirm={() => runCopy(copyTarget)} onCancel={() => setCopyTarget(null)} />
+      )}
+
+      {catalogTarget?.catalog && catalogTarget.kind !== "mine" && (
+        <DeckSheet
+          deck={catalogTarget.catalog.deck}
+          ownership={catalogTarget.catalog.ownership}
+          unlocked={catalogTarget.catalog.unlocked}
+          tokens={catalog.preconTokens}
+          freeChoiceAvailable={catalog.freeDeckId === null}
+          busy={isPending}
+          error={catalogError}
+          onUnlock={() => handleUnlock(catalogTarget)}
+          onTry={() => handleTry(catalogTarget)}
+          onClose={() => {
+            setCatalogTarget(null);
+            setCatalogError(null);
+          }}
+        />
+      )}
+      </>
+    );
+  }
+
+  const layoutToggle = (
+    <button
+      type="button"
+      className={tableStyles.layoutToggle}
+      onClick={() => {
+        playButtonClick();
+        setLayout(layout === "table" ? "classic" : "table");
+        setCurrentId(null);
+      }}
+    >
+      {layout === "table" ? "Ancien affichage" : "Nouvel affichage"}
+    </button>
+  );
+
+  const dialogs = renderDialogs();
+
+  if (layout === "table") {
+    return (
+      <GameScreen active="decks" className={tableStyles.screen}>
+        <DeckTable
+          tab={tableTab}
+          onTab={(next) => {
+            setTableTab(next);
+            setTableTrash(false);
+            setCurrentId(null);
+          }}
+          decks={tableDecks}
+          current={current}
+          onSelect={setCurrentId}
+          sort={sort}
+          onSort={setSort}
+          search={filters.search}
+          onSearch={(search) => setFilters({ ...filters, search })}
+          favorites={favorites}
+          onToggleFavorite={(id) =>
+            setFavorites((value) => {
+              const next = new Set(value);
+              if (next.has(id)) next.delete(id);
+              else next.add(id);
+              return next;
+            })
+          }
+          canCreate={tableTab === "mine" && isSignedIn && !tableTrash}
+          trashed={trashed}
+          trash={
+            tableTab === "mine" && isSignedIn && (shelves.trash.length > 0 || tableTrash)
+              ? {
+                  count: shelves.trash.length,
+                  active: tableTrash,
+                  onToggle: () => {
+                    playButtonClick();
+                    setTableTrash((value) => !value);
+                    setCurrentId(null);
+                  },
+                }
+              : null
+          }
+          emptyLabel={tableEmptyLabel(tableTab, isSignedIn, tableTrash, filters.search)}
+          busy={isPending}
+          onRename={setRenameTarget}
+          onDuplicate={handleDuplicate}
+          onTrash={handleTrash}
+          onRestore={handleRestore}
+          onPurge={(deck) => {
+            playButtonClick();
+            setPurgeTarget(deck);
+          }}
+          onOpenCatalogSheet={(deck) => {
+            playButtonClick();
+            setCatalogError(null);
+            setCatalogTarget(deck);
+          }}
+          onTryCatalog={handleTry}
+          onCopy={isSignedIn ? handleCopy : undefined}
+        />
+        {layoutToggle}
+        <ScreenToast message={toast} onDismiss={() => setToast(null)} />
+        {dialogs}
+      </GameScreen>
+    );
+  }
+
   return (
     <GameScreen active="decks">
+      {layoutToggle}
       <div className={`${game.content} ${styles.fullBleed}`}>
         <div className={`${game.contentWide} ${styles.screen}`}>
           <div className={styles.browser}>
@@ -514,55 +689,18 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog }: DecksScreenPr
       </div>
 
       <ScreenToast message={toast} onDismiss={() => setToast(null)} />
-
-      {renameTarget && <RenameDeckDialog deck={renameTarget} onSubmit={handleRenameSubmit} onCancel={() => setRenameTarget(null)} />}
-
-      {artTarget && (
-        <DeckArtPicker
-          cardIds={artTarget.cards.flatMap((card) => Array.from({ length: card.quantity }, () => card.cardId))}
-          artCardId={artTarget.mine?.artCardChosen ?? null}
-          onChoose={handleArtChosen}
-          onClose={() => setArtTarget(null)}
-        />
-      )}
-
-      {profileTarget && (
-        <DeckProfileDialog deck={profileTarget} busy={isPending} onSubmit={handleProfileSubmit} onCancel={() => setProfileTarget(null)} />
-      )}
-
-      {purgeTarget && (
-        <DeleteDeckDialog
-          deckNames={[purgeTarget.name]}
-          permanent
-          isDeleting={isPending}
-          onConfirm={handleConfirmPurge}
-          onCancel={() => setPurgeTarget(null)}
-        />
-      )}
-
-      {copyTarget?.catalog && (
-        <CopyDeckDialog deck={copyTarget} busy={isPending} onConfirm={() => runCopy(copyTarget)} onCancel={() => setCopyTarget(null)} />
-      )}
-
-      {catalogTarget?.catalog && catalogTarget.kind !== "mine" && (
-        <DeckSheet
-          deck={catalogTarget.catalog.deck}
-          ownership={catalogTarget.catalog.ownership}
-          unlocked={catalogTarget.catalog.unlocked}
-          tokens={catalog.preconTokens}
-          freeChoiceAvailable={catalog.freeDeckId === null}
-          busy={isPending}
-          error={catalogError}
-          onUnlock={() => handleUnlock(catalogTarget)}
-          onTry={() => handleTry(catalogTarget)}
-          onClose={() => {
-            setCatalogTarget(null);
-            setCatalogError(null);
-          }}
-        />
-      )}
+      {dialogs}
     </GameScreen>
   );
+}
+
+/** La table vide : dire pourquoi, onglet par onglet. */
+function tableEmptyLabel(tab: TableTab, isSignedIn: boolean, trash: boolean, search: string): string {
+  if (search.trim()) return "Aucun deck ne correspond à la recherche.";
+  if (tab === "mine") return !isSignedIn ? "Connecte-toi pour construire tes decks." : trash ? "La corbeille est vide." : "Aucun deck pour l'instant.";
+  if (tab === "favorites") return "Aucun favori : touche l'étoile d'une fiche pour l'épingler ici.";
+  if (tab === "recent") return isSignedIn ? "Aucune partie jouée pour l'instant." : "Connecte-toi pour retrouver tes decks joués.";
+  return "Aucun préconstruit.";
 }
 
 /** La phrase sous le titre : ce que contient le rayon, et ce que le filtre en laisse. */

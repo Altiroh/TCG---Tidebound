@@ -1,24 +1,30 @@
 import { listPlayerDecks } from "@/app/decks/actions";
 import { fetchDeckCatalog } from "@/features/decks/catalogActions";
 import { DecksScreen } from "@/features/decks/DecksScreen";
+import { readRecentlyPlayedDecks } from "@/features/decks/recentDecks";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
 
-async function resolveIsSignedIn(): Promise<boolean> {
+async function resolveUserId(): Promise<string | null> {
   try {
     const user = await getSessionUser();
-    return Boolean(user);
+    return user?.id ?? null;
   } catch (error) {
     console.error("[DecksPage] Impossible de résoudre l'utilisateur connecté :", error);
-    return false;
+    return null;
   }
 }
 
 export default async function DecksPage() {
-  const isSignedIn = await resolveIsSignedIn();
+  const userId = await resolveUserId();
+  const isSignedIn = userId !== null;
   // Le catalogue est lu même hors connexion : les decks fournis par le jeu
   // sont consultables sans compte (§4, « les préconstruits verrouillés
   // doivent rester visibles »). Seule la possession est alors vide.
-  const [initialDecks, catalog] = await Promise.all([isSignedIn ? listPlayerDecks() : [], fetchDeckCatalog()]);
+  const [initialDecks, catalog, recent] = await Promise.all([
+    isSignedIn ? listPlayerDecks() : [],
+    fetchDeckCatalog(),
+    userId ? readRecentlyPlayedDecks(userId) : [],
+  ]);
 
-  return <DecksScreen isSignedIn={isSignedIn} initialDecks={initialDecks} catalog={catalog} />;
+  return <DecksScreen isSignedIn={isSignedIn} initialDecks={initialDecks} catalog={catalog} recentDeckIds={recent.map((entry) => entry.deckId)} />;
 }

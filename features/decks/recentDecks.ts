@@ -54,3 +54,33 @@ export async function isRecentDeck(userId: string, deckId: string | null | undef
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Decks JOUÉS récemment par le joueur, du plus récent au plus ancien —
+ * lus dans `matches` (deck de chaque joueur, `created_at` de la partie).
+ * Un deck n'y figure qu'une fois, à sa dernière partie. L'onglet
+ * « Récemment joués » de la liste des decks en découle.
+ *
+ * Ne lève jamais : sans lecture possible, la liste est vide.
+ */
+export async function readRecentlyPlayedDecks(userId: string, limit = 40): Promise<Array<{ deckId: string; playedAt: string }>> {
+  try {
+    const service = createSupabaseServiceRoleClient();
+    const { data, error } = await service
+      .from("matches")
+      .select("player1_id, player1_deck_id, player2_id, player2_deck_id, created_at")
+      .or(`player1_id.eq.${userId},player2_id.eq.${userId}`)
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (error || !data) return [];
+    const seen = new Map<string, string>();
+    for (const row of data) {
+      const deckId = row.player1_id === userId ? row.player1_deck_id : row.player2_deck_id;
+      if (deckId && !seen.has(deckId)) seen.set(deckId, row.created_at);
+      if (seen.size >= limit) break;
+    }
+    return Array.from(seen, ([deckId, playedAt]) => ({ deckId, playedAt }));
+  } catch {
+    return [];
+  }
+}
