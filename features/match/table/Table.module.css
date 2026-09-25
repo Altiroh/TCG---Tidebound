@@ -2833,3 +2833,28 @@
     animation: none;
   }
 }
+
+/* Répartition de soins : les points versés sur une unité, en pastille verte. */
+.allocationBadge {
+  position: absolute;
+  top: 38%;
+  left: 50%;
+  z-index: 24;
+  padding: 0.15em 0.55em;
+  border: 1.5px solid rgba(190, 255, 214, 0.9);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #2fb36b, #16733f);
+  box-shadow: 0 0 12px rgba(80, 230, 140, 0.65), 0 3px 8px rgba(0, 0, 0, 0.55);
+  color: #f2fff7;
+  font-family: var(--font-card-title), Georgia, serif;
+  font-size: clamp(12px, calc(var(--card-w, 90px) * 0.2), 22px);
+  font-weight: 800;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  animation: allocationPop 260ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+@keyframes allocationPop {
+  from { transform: translate(-50%, -50%) scale(0.4); opacity: 0; }
+  to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}

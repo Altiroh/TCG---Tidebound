@@ -35,12 +35,12 @@ import { ShipAbilityPrompt } from "@/features/match/ShipAbilityPrompt";
 import { PendingChoicePrompt } from "@/features/match/PendingChoicePrompt";
 import { graveyardPickView } from "@/features/match/graveyardPickRequest";
 import { DeckLookPrompt } from "@/features/match/DeckLookPrompt";
-import { HealAllocationPrompt } from "@/features/match/HealAllocationPrompt";
 import { KeepUnitsPrompt } from "@/features/match/KeepUnitsPrompt";
 import { PickUnitsPrompt } from "@/features/match/PickUnitsPrompt";
 import { HandDiscardPrompt } from "@/features/match/HandDiscardPrompt";
 import { ChoiceBanner } from "@/features/match/ChoiceBanner";
 import { useHandLimitDiscard } from "@/features/match/useHandLimitDiscard";
+import { useHealAllocation } from "@/features/match/useHealAllocation";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ReactionPrompt } from "@/features/match/ReactionPrompt";
 import { ShipWindowHint } from "@/features/match/ShipWindowHint";
@@ -139,6 +139,10 @@ export function MatchBoard({
   // Défausse depuis la main (limite de main comme effet) : les cartes se glissent au Cimetière.
   const handLimit = useHandLimitDiscard(state, viewerPlayerId, (answer) =>
     runReactionAction({ type: "resolveChoice", playerId: viewerPlayerId, choice: answer })
+  );
+  // Répartition de soins : sur le plateau, toucher = +1 (bandeau en haut, une minute).
+  const healAllocation = useHealAllocation(state, viewerPlayerId, (allocation) =>
+    runReactionAction({ type: "resolveChoice", playerId: viewerPlayerId, choice: { healAllocation: allocation } })
   );
   // Si aucune unité du joueur actif ne peut attaquer, le bouton unique saute directement à "Fin de tour".
   const activePlayerBoard = state.players.find((p) => p.id === activePlayerId)?.board ?? [];
@@ -416,6 +420,7 @@ export function MatchBoard({
         hint={hint}
         onCancelHint={board.clearSelection}
         handLimitDiscard={handLimit.mode}
+        boardAllocation={healAllocation.mode}
         phaseButton={{
           label: phase.label,
           // La phase EN COURS, pas celle vers laquelle le bouton mène :
@@ -535,13 +540,14 @@ export function MatchBoard({
           }
         />
       )}
-      {state.pendingChoice?.kind === "healAllocation" && state.pendingChoice.playerId === viewerPlayerId && (
-        <HealAllocationPrompt
-          choice={state.pendingChoice}
-          board={viewerPlayer.board}
-          onConfirm={(healAllocation) =>
-            runReactionAction({ type: "resolveChoice", playerId: viewerPlayerId, choice: { healAllocation } })
-          }
+      {healAllocation.banner && (
+        <ChoiceBanner
+          choiceKey={healAllocation.banner.choiceKey}
+          source={healAllocation.banner.source}
+          title={healAllocation.banner.title}
+          detail={healAllocation.banner.detail}
+          actions={healAllocation.banner.actions}
+          onExpire={healAllocation.banner.onExpire}
         />
       )}
       {state.pendingChoice?.kind === "deckLook" && state.pendingChoice.playerId === viewerPlayerId && (

@@ -31,12 +31,12 @@ import { ShipAbilityPrompt } from "@/features/match/ShipAbilityPrompt";
 import { PendingChoicePrompt } from "@/features/match/PendingChoicePrompt";
 import { graveyardPickView } from "@/features/match/graveyardPickRequest";
 import { DeckLookPrompt } from "@/features/match/DeckLookPrompt";
-import { HealAllocationPrompt } from "@/features/match/HealAllocationPrompt";
 import { KeepUnitsPrompt } from "@/features/match/KeepUnitsPrompt";
 import { PickUnitsPrompt } from "@/features/match/PickUnitsPrompt";
 import { HandDiscardPrompt } from "@/features/match/HandDiscardPrompt";
 import { ChoiceBanner } from "@/features/match/ChoiceBanner";
 import { useHandLimitDiscard } from "@/features/match/useHandLimitDiscard";
+import { useHealAllocation } from "@/features/match/useHealAllocation";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ReactionPrompt } from "@/features/match/ReactionPrompt";
 import { ShipWindowHint } from "@/features/match/ShipWindowHint";
@@ -95,6 +95,10 @@ export function OnlineBoard({
   // Défausse depuis la main (limite de main comme effet) : les cartes se glissent au Cimetière.
   const handLimit = useHandLimitDiscard(state, myUserId, (answer) =>
     act({ type: "resolveChoice", playerId: myUserId, choice: answer })
+  );
+  // Répartition de soins : sur le plateau, toucher = +1 (bandeau en haut, une minute).
+  const healAllocation = useHealAllocation(state, myUserId, (allocation) =>
+    act({ type: "resolveChoice", playerId: myUserId, choice: { healAllocation: allocation } })
   );
   const myShip = getShipDefinition(me.shipId);
   const isMyTurn = state.activePlayerId === myUserId;
@@ -249,6 +253,7 @@ export function OnlineBoard({
         hint={hint}
         onCancelHint={board.clearSelection}
         handLimitDiscard={handLimit.mode}
+        boardAllocation={healAllocation.mode}
         phaseButton={{
           label: phase.label,
           // La phase EN COURS, pas celle vers laquelle le bouton mène :
@@ -356,13 +361,14 @@ export function OnlineBoard({
           }
         />
       )}
-      {state.pendingChoice?.kind === "healAllocation" && state.pendingChoice.playerId === myUserId && (
-        <HealAllocationPrompt
-          choice={state.pendingChoice}
-          board={me.board}
-          onConfirm={(healAllocation) =>
-            act({ type: "resolveChoice", playerId: myUserId, choice: { healAllocation } })
-          }
+      {healAllocation.banner && (
+        <ChoiceBanner
+          choiceKey={healAllocation.banner.choiceKey}
+          source={healAllocation.banner.source}
+          title={healAllocation.banner.title}
+          detail={healAllocation.banner.detail}
+          actions={healAllocation.banner.actions}
+          onExpire={healAllocation.banner.onExpire}
         />
       )}
       {state.pendingChoice?.kind === "deckLook" && state.pendingChoice.playerId === myUserId && (

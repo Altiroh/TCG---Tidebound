@@ -31,6 +31,7 @@ import { needsPlayTarget } from "@/features/match/needsPlayTarget";
 import type { AttackAnimation } from "@/features/match/useAttackPresentation";
 import type { EffectVolley } from "@/features/match/effectPresentation";
 import type { HandLimitDiscardMode } from "@/features/match/useHandLimitDiscard";
+import type { BoardAllocationMode } from "@/features/match/useHealAllocation";
 import { EffectFxLayer, reasonAnchor, reasonGaugeOf } from "@/features/match/EffectFxLayer";
 import { THICK_TEXT_OUTLINE } from "@/features/match/cardDisplay";
 import styles from "@/features/match/table/Table.module.css";
@@ -121,6 +122,8 @@ export interface TableBoardProps {
    * posé, c'est le SEUL geste que la main accepte.
    */
   handLimitDiscard?: HandLimitDiscardMode | null;
+  /** Répartition de soins sur le plateau (`useHealAllocation`) : toucher = +1, clic droit = −1. */
+  boardAllocation?: BoardAllocationMode | null;
   /** Clic sur une carte en jeu quand un ciblage est en cours (le conteneur résout). */
   onBoardCardClick: (instanceId: string, ownerId: PlayerId) => void;
   /**
@@ -561,7 +564,10 @@ export function TableBoard(props: TableBoardProps) {
     const activatable =
       mine && canPlayCards && !gesture && !targeting && props.onActivateAbility !== undefined && canActivateAbility(state, viewerId, card.id);
     const attackTarget = !mine && attackTargeting;
-    const targetable = effectTarget || attackTarget;
+    const allocation = mine ? (props.boardAllocation ?? null) : null;
+    const allocated = allocation?.amounts.get(card.id) ?? 0;
+    const allocatable = allocation?.eligible.has(card.id) ?? false;
+    const targetable = effectTarget || attackTarget || allocatable;
 
     return (
       <div
@@ -571,10 +577,20 @@ export function TableBoard(props: TableBoardProps) {
         data-armable={ready ? "" : undefined}
         // Une Structure adverse invisible ne s'aperçoit pas non plus : on n'en voit que le dos.
         {...(mine || visible ? previewHandlers(card.id) : {})}
-        onPointerDown={startGesture(mine ? "aim" : "inspect", card.id)}
+        onPointerDown={
+          allocation
+            ? (event) => {
+                // Répartition en cours : un toucher verse un point, rien d'autre.
+                if (event.button !== 0) return;
+                event.stopPropagation();
+                allocation.onAdd(card.id);
+              }
+            : startGesture(mine ? "aim" : "inspect", card.id)
+        }
         onContextMenu={(e) => {
           e.preventDefault();
-          props.onInspect(instance);
+          if (allocation && allocated > 0) allocation.onRemove(card.id);
+          else props.onInspect(instance);
         }}
         className={[
           styles.tableCard,
@@ -582,7 +598,7 @@ export function TableBoard(props: TableBoardProps) {
           mine ? styles.boardGrab : "",
           ready && !gesture ? styles.attacker : "",
           aiming?.sourceId === card.id ? styles.aimSource : "",
-          targetable ? `${styles.targetable} ${effectTarget ? styles.effectTone : ""}` : "",
+          targetable ? `${styles.targetable} ${effectTarget || allocatable ? styles.effectTone : ""}` : "",
           targetable && hover === drop ? styles.targetHover : "",
           targeting?.sourceInstanceId === card.id ? styles.aimSource : "",
           props.reactionSourceIds?.includes(card.id) || activatable || breakable ? "animate-reaction-pulse" : "",
@@ -603,6 +619,11 @@ export function TableBoard(props: TableBoardProps) {
             auraContext={auraContextFor(owner)}
             variant="board"
           />
+        )}
+        {allocated > 0 && (
+          <span className={styles.allocationBadge} aria-label={`${allocated} point${allocated > 1 ? "s" : ""} de Résistance versé${allocated > 1 ? "s" : ""}`}>
+            +{allocated}
+          </span>
         )}
         {/* APRÈS la carte : posé avant, il était recouvert par elle et ne recevait aucun clic. */}
         {activatable && (
