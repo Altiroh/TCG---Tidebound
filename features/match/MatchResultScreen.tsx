@@ -48,6 +48,8 @@ const OUTCOMES = {
     titleAlt: "Défaite",
     // Coins relevés : 23,0/9,7 · 79,8/19,8 · 73,6/79,6 · 19,4/65,3 ; bords à 6,8° (haut) et 10° (bas).
     window: { x: 48.96, y: 43.56, w: 56.1, h: 58.2, angle: 8.4, clip: "polygon(21.4% 7.7%, 81.6% 18.2%, 75.2% 81.8%, 17.6% 67.2%)" },
+    // Milieu de la marge basse du papier, mesuré dans l'axe incliné de la photo.
+    caption: { x: 46.25, y: 80.95 },
     titleLeft: 2.8,
   },
   victory: {
@@ -55,6 +57,7 @@ const OUTCOMES = {
     titleAlt: "Victoire",
     // Coins relevés : 24,4/11,1 · 79,3/23,3 · 72,3/79,4 · 22,9/69,6 ; bords à 8,4° (haut) et 7,6° (bas).
     window: { x: 49.71, y: 45.84, w: 52.68, h: 57.8, angle: 8.0, clip: "polygon(22.6% 9.1%, 81.1% 21.6%, 74% 81.6%, 21% 71.8%)" },
+    caption: { x: 46.8, y: 82.4 },
     // Les lettres de ce titre commencent plus loin dans son image : le « V » s'aligne sur le « D » de la défaite.
     titleLeft: 2.1,
   },
@@ -199,6 +202,8 @@ export function MatchResultScreen({ outcome, player, matchId, preview, audience,
     "--win-h": `${look.window.h}%`,
     "--win-angle": `${look.window.angle}deg`,
     "--win-clip": look.window.clip,
+    "--caption-x": `${look.caption.x}%`,
+    "--caption-y": `${look.caption.y}%`,
   } as CSSProperties;
 
   return (
@@ -221,9 +226,9 @@ export function MatchResultScreen({ outcome, player, matchId, preview, audience,
               </p>
             )}
             <p className={styles.viewersLabel}>Spectateurs</p>
-            {/* La victoire dit aussi l'humeur de la salle, comme ses planches de référence. */}
+            {/* La victoire dit aussi l'humeur de la salle, comme ses planches de référence.
+                Le chiffre du spectacle, lui, n'a pas sa place ici (retour du 26/09/2026). */}
             {isVictory && audience && <p className={styles.mood}>{audienceMood(audience.spectacle)}</p>}
-            {audience && <p className={styles.spectacle}>Spectacle {audience.spectacle}</p>}
             <span className={styles.flourish} aria-hidden />
           </section>
         )}
