@@ -1157,3 +1157,33 @@
 .left [class*="_sectionTitle__"]::after {
   font-size: 11px;
 }
+/* ── Recherche : la barre de bois cerclée de laiton, et sa loupe à part ──
+   Découpe en 9 horizontale (`barre-recherche.webp`, 2150 × 400) : les bouts
+   ouvragés (360 px à gauche) et la rose des vents (460 px à droite) gardent
+   leurs proportions, seul le milieu s'étire — la barre prend toute la place
+   entre l'effectif et le tri, comme la maquette. */
+.search {
+  --search-h: clamp(38px, 4.8vh, 48px);
+  max-width: none;
+  height: var(--search-h);
+  padding: 0;
+  border-style: solid;
+  border-width: 0 calc(var(--search-h) * 1.15) 0 calc(var(--search-h) * 0.9);
+  border-image: url("/assets/decks/editeur/barre-recherche.webp") 0 460 0 360 fill / 0 calc(var(--search-h) * 1.15) 0 calc(var(--search-h) * 0.9) stretch;
+  background: none;
+  gap: calc(var(--search-h) * 0.18);
+}
+
+/* La loupe dans le creux sombre de la barre, juste après le bout gauche. */
+.searchIcon {
+  flex: none;
+  width: calc(var(--search-h) * 0.64);
+  height: calc(var(--search-h) * 0.64);
+  margin-left: calc(var(--search-h) * -0.4);
+  background: url("/assets/decks/editeur/icone-loupe.webp") center / contain no-repeat;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.6));
+}
+
+.search input {
+  font-size: clamp(12.5px, 1.5vh, 14px);
+}

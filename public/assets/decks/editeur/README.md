@@ -10,3 +10,5 @@ Visuels de l'éditeur (`features/decks/DeckEditorBook.module.css`), convertis de
 - `decor-bas.webp` — longue-vue, pièces, gemmes et carte posées au bas de la table.
 - `cadre-navire.webp` — cadre de parchemin de l'illustration du Navire (fenêtre : 8,9 % des côtés, 19 % en haut, 16 % en bas).
 - `bouton-changer-navire.webp` — bouton peint « Changer de navire » (texte compris).
+- `barre-recherche.webp` — barre de recherche en bois cerclée de laiton (2150 × 400) ; découpe en 9 horizontale : 360 px de bout à gauche, 460 px à droite (la rose des vents), le milieu s'étire.
+- `icone-loupe.webp` — loupe de laiton posée dans le creux gauche de la barre (256 px).

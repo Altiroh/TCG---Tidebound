@@ -408,6 +408,8 @@ function DeckEditorScreenBody({ ownedCardIds, initialDeck }: DeckEditorScreenPro
             search={
               onBook ? (
                 <label className={book.search}>
+                  {/* La loupe de laiton, posée à part sur la barre (maquette). */}
+                  <span className={book.searchIcon} aria-hidden />
                   <span className={book.visuallyHidden}>Rechercher une carte</span>
                   <input
                     type="search"
