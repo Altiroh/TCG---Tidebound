@@ -94,7 +94,7 @@
 .center.center {
   border: 0;
   padding: clamp(26px, 3.1vw, 54px) clamp(24px, 2.9vw, 50px) clamp(28px, 3.3vw, 58px);
-  background: url("/assets/decks/editeur/panneau-central.webp") center / 100% 100% no-repeat;
+  background: url("/assets/decks/editeur/panneau-central-grand.webp") center / 100% 100% no-repeat;
 }
 
 /* La longue-vue, les pièces et les gemmes posées au bas de la table. */
@@ -1084,7 +1084,7 @@
 .center.center.center {
   padding: clamp(8px, 1.2vh, 14px) clamp(4px, 0.4vw, 8px) clamp(10px, 1.4vh, 16px);
   border: clamp(14px, 1.2vw, 20px) solid transparent;
-  border-image: url("/assets/decks/editeur/panneau-central.webp") 56 fill / clamp(14px, 1.2vw, 20px) / 0 stretch;
+  border-image: url("/assets/decks/editeur/panneau-central-grand.webp") 114 fill / clamp(14px, 1.2vw, 20px) / 0 stretch;
   background: none;
 }
 /* La zone de défilement ne garde qu'un filet : les cartes vont au cadre. */

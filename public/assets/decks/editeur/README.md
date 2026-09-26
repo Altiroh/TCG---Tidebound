@@ -3,7 +3,7 @@
 Visuels de l'éditeur (`features/decks/DeckEditorBook.module.css`), convertis depuis les PNG du commit « asset detail deck » (bords transparents rognés) :
 
 - `panneau-gauche.webp` — colonne navire + filtres (gouvernail en coin) ; découpe en 9, tranche 100.
-- `panneau-central.webp` — grand parchemin de la grille ; étiré d'une pièce (la longue-vue suit le bord bas).
+- `panneau-central-grand.webp` — grand parchemin de la grille (1334 × 1077, version haute définition du 26/09/2026) ; découpe en 9, tranche 114 : la corde garde une épaisseur fine, la longue-vue suit le bord bas.
 - `panneau-droite.webp` — colonne du deck ; découpe en 9, tranche 70.
 - `plaque.webp` — plaque sombre à bouts de laiton : barre de quantité sous les cartes, bouton d'enregistrement, bascule d'affichage, puce « Sélectionné » de la liste des decks.
 - `bouton-moins.webp`, `bouton-plus.webp` — boutons ronds −/+ de la barre de quantité.
