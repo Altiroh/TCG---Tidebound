@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCardShelf } from "@/features/collection/shelf/CardShelfProvider";
+import { isStaleShelfFilter, shelfCardSet } from "@/features/collection/shelf/shelf";
 import { oneOf } from "@/lib/persistCodecs";
 import { usePersistedState } from "@/lib/persistedState";
 import { CORE_SET, type CardDefinition } from "@/game";
@@ -64,12 +66,24 @@ export function useCardBrowser({ owned, initialFilters, persistKey }: UseCardBro
     [filters, debouncedSearch]
   );
 
+  // L'étagère de l'écran (favoris, carnets) — `null` hors d'un `CardShelfProvider`.
+  const shelfContext = useCardShelf();
+  const shelf = shelfContext?.available ? shelfContext.shelf : null;
+  /** Cartes du favori ou du carnet choisi ; `null` : l'axe ne restreint rien. */
+  const shelfCards = useMemo(() => (shelf ? shelfCardSet(shelf, appliedFilters.shelf) : null), [shelf, appliedFilters.shelf]);
+
+  // Un carnet supprimé ailleurs (autre écran, autre appareil) ne doit pas
+  // laisser un filtre fantôme : il retombe sur « tout le catalogue ».
+  useEffect(() => {
+    if (shelfContext?.ready && shelf && isStaleShelfFilter(shelf, filters.shelf)) setFilters((current) => ({ ...current, shelf: null }));
+  }, [shelfContext?.ready, shelf, filters.shelf, setFilters]);
+
   const cards = useMemo<CardDefinition[]>(
     () =>
-      CORE_SET.filter((def) => matchesFilters(def, appliedFilters, ownedForFilters)).sort((a, b) =>
+      CORE_SET.filter((def) => matchesFilters(def, appliedFilters, ownedForFilters, undefined, shelfCards)).sort((a, b) =>
         compareCards(a, b, sort)
       ),
-    [appliedFilters, ownedForFilters, sort]
+    [appliedFilters, ownedForFilters, shelfCards, sort]
   );
 
   const patchFilters = useCallback(
@@ -102,7 +116,8 @@ export function useCardBrowser({ owned, initialFilters, persistKey }: UseCardBro
     (filters.type ? 1 : 0) +
     (filters.ownership !== "all" ? 1 : 0) +
     (filters.costs.length > 0 ? 1 : 0) +
-    (filters.boosters.length > 0 ? 1 : 0);
+    (filters.boosters.length > 0 ? 1 : 0) +
+    (filters.shelf !== null ? 1 : 0);
 
   return {
     filters,
@@ -112,6 +127,7 @@ export function useCardBrowser({ owned, initialFilters, persistKey }: UseCardBro
     setSort,
     cards,
     ownedForFilters,
+    shelfCards,
     activeFilterCount,
     drawerOpen,
     setDrawerOpen,

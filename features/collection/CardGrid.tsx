@@ -5,6 +5,7 @@ import type { CardDefinition, CardInstance } from "@/game";
 import styles from "@/features/collection/CardBrowser.module.css";
 import game from "@/features/shell/GameScreen.module.css";
 import { CardTile } from "@/features/match/CardTile";
+import { FavoriteToggle } from "@/features/collection/shelf/FavoriteToggle";
 
 /** Nombre de cartes montées par lot — ajusté pour couvrir large sans jamais monter la collection entière d'un coup. */
 const BATCH_SIZE = 24;
@@ -76,6 +77,8 @@ const GridCell = memo(function GridCell({
         onDragStart={onCardDragStart ? (event) => onCardDragStart(def, event) : undefined}
       />
       {cellExtras && <div className={styles.cellExtras}>{cellExtras(def)}</div>}
+      {/* Le cœur des favoris — rien hors d'un écran qui fournit l'étagère. */}
+      <FavoriteToggle cardId={def.id} cardName={def.name} />
     </div>
   );
 });

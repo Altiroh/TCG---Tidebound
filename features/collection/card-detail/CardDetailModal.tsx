@@ -11,6 +11,7 @@ import { CardDetailMeta } from "@/features/collection/card-detail/CardDetailMeta
 import { CardDetailNavigation } from "@/features/collection/card-detail/CardDetailNavigation";
 import { CardDetailResale } from "@/features/collection/card-detail/CardDetailResale";
 import { CardDetailStats } from "@/features/collection/card-detail/CardDetailStats";
+import { CardShelfControls } from "@/features/collection/shelf/CardShelfControls";
 import styles from "@/features/collection/card-detail/CardDetail.module.css";
 
 interface CardDetailModalProps {
@@ -152,6 +153,8 @@ export function CardDetailModal({ cardId, onClose, onPrevious, onNext, onShowCar
 
         <div className={styles.info}>
           <CardDetailHeader model={model} titleId={titleId} />
+          {/* Favori et carnets — seulement dans un écran qui fournit l'étagère (Collection, Éditeur de deck). */}
+          <CardShelfControls cardId={cardId} />
           <CardDetailStats stats={stats} />
           {def.text && <CardDetailEffect text={def.text} />}
           {keywords.length > 0 && <CardDetailKeywords keywords={keywords} />}

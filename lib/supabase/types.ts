@@ -520,6 +520,27 @@ export interface Database {
         Update: Record<string, never>;
         Relationships: [];
       };
+      /** Cartes favorites (le cœur du catalogue) — migration 20261014120000. */
+      player_card_favorites: {
+        Row: { user_id: string; card_id: string; created_at: string };
+        Insert: { user_id: string; card_id: string; created_at?: string };
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      /** Carnets : groupes NOMMÉS de cartes, façon Pinterest — migration 20261014120000. */
+      player_card_notebooks: {
+        Row: { id: string; user_id: string; name: string; cover_card_id: string | null; created_at: string; updated_at: string };
+        Insert: { id?: string; user_id: string; name: string; cover_card_id?: string | null; created_at?: string; updated_at?: string };
+        Update: { name?: string; cover_card_id?: string | null; updated_at?: string };
+        Relationships: [];
+      };
+      /** Cartes rangées dans un carnet. */
+      player_card_notebook_cards: {
+        Row: { notebook_id: string; card_id: string; added_at: string };
+        Insert: { notebook_id: string; card_id: string; added_at?: string };
+        Update: Record<string, never>;
+        Relationships: [];
+      };
       /**
        * Parties déjà jugées par le public (une fois par joueur). Audience
        * avant/après et `vs_bot` : migration 20261013120000 (nuls sur les

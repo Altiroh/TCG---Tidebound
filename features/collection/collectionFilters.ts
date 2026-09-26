@@ -2,6 +2,7 @@ import { ARCHETYPE_LABELS, CORE_SET, isAbyssalVariant, type CardDefinition, type
 import { BOOSTER_EXTENSIONS, boostersContaining } from "@/game/boosters";
 import { asRecord, oneOf, subsetOf } from "@/lib/persistCodecs";
 import { normalizeSearch } from "@/features/collection/cardFilters";
+import { decodeShelfFilter, type ShelfFilter } from "@/features/collection/shelf/shelf";
 
 /**
  * État de filtrage de la Collection, et son évaluation.
@@ -37,6 +38,12 @@ export interface CollectionFilterState {
    * axes.
    */
   boosters: string[];
+  /**
+   * Favoris ou un carnet du joueur (`features/collection/shelf/shelf.ts`) ;
+   * `null` = tout le catalogue. Les cartes du carnet sont fournies à
+   * l'évaluation (`shelfCards`) : ce module ne sait rien de l'étagère.
+   */
+  shelf: ShelfFilter;
   search: string;
 }
 
@@ -46,6 +53,7 @@ export const EMPTY_FILTERS: CollectionFilterState = {
   ownership: "all",
   costs: [],
   boosters: [],
+  shelf: null,
   search: "",
 };
 
@@ -74,6 +82,7 @@ export function decodeCollectionFilters(raw: unknown, base: CollectionFilterStat
     ownership: oneOf<OwnershipFilter>(["all", "owned", "missing"], record.ownership) ?? base.ownership,
     costs: subsetOf<number>(COST_BUCKETS, record.costs) ?? base.costs,
     boosters: subsetOf<string>(BOOSTER_EXTENSIONS.map((extension) => extension.boosterId), record.boosters) ?? base.boosters,
+    shelf: decodeShelfFilter(record.shelf) ?? base.shelf,
   };
 }
 
@@ -165,13 +174,18 @@ function matchesSearch(def: CardDefinition, normalizedQuery: string): boolean {
  * plutôt qu'un décompte figé : le compteur du type Créature applique la
  * variante, la possession, le coût et la recherche courants, mais pas le
  * filtre de type lui-même.
+ *
+ * `shelfCards` : cartes du favori ou du carnet choisi (`shelfCardSet`),
+ * `null` quand l'axe ne restreint rien.
  */
 export function matchesFilters(
   def: CardDefinition,
   filters: CollectionFilterState,
   owned: ReadonlySet<string>,
-  ignore?: keyof CollectionFilterState
+  ignore?: keyof CollectionFilterState,
+  shelfCards: ReadonlySet<string> | null = null
 ): boolean {
+  if (ignore !== "shelf" && shelfCards && !shelfCards.has(def.id)) return false;
   if (ignore !== "variant" && !matchesVariant(def, filters.variant)) return false;
   if (ignore !== "type" && filters.type && def.type !== filters.type) return false;
   if (ignore !== "ownership" && !matchesOwnership(def, filters.ownership, owned)) return false;
@@ -186,10 +200,11 @@ export function countMatching(
   filters: CollectionFilterState,
   owned: ReadonlySet<string>,
   ignore: keyof CollectionFilterState,
-  extra: (def: CardDefinition) => boolean
+  extra: (def: CardDefinition) => boolean,
+  shelfCards: ReadonlySet<string> | null = null
 ): number {
   let total = 0;
-  for (const def of CORE_SET) if (matchesFilters(def, filters, owned, ignore) && extra(def)) total += 1;
+  for (const def of CORE_SET) if (matchesFilters(def, filters, owned, ignore, shelfCards) && extra(def)) total += 1;
   return total;
 }
 
@@ -201,6 +216,7 @@ export function hasActiveFilters(filters: CollectionFilterState): boolean {
     filters.ownership !== "all" ||
     filters.costs.length > 0 ||
     filters.boosters.length > 0 ||
+    filters.shelf !== null ||
     filters.search.trim() !== ""
   );
 }

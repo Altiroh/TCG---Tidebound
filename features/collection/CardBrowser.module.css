@@ -257,6 +257,34 @@
 
 .filterRowActive .filterIcon { opacity: 1; }
 
+/* Pictogramme dessiné d'une ligne (cœur des favoris, carnet). */
+.filterGlyph {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  opacity: 0.75;
+}
+
+.filterRowActive .filterGlyph { opacity: 1; }
+
+/* Lien discret dans un titre de section (« Mur des carnets »). */
+.sectionTitle:has(.sectionLink) {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sectionLink {
+  color: var(--cb-cyan);
+  font-size: 0.95em;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  text-transform: none;
+}
+
+.sectionLink:hover { text-decoration: underline; }
+
 .dot {
   width: 7px;
   height: 7px;

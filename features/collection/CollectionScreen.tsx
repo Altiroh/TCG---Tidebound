@@ -1,7 +1,9 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CardDefinition } from "@/game";
+import { CardShelfProvider, type ShelfBackend } from "@/features/collection/shelf/CardShelfProvider";
+import type { ShelfFilter } from "@/features/collection/shelf/shelf";
 import { CardGrid } from "@/features/collection/CardGrid";
 import { CollectionSidebar } from "@/features/collection/CollectionSidebar";
 import { CollectionToolbar } from "@/features/collection/CollectionToolbar";
@@ -32,6 +34,22 @@ interface CollectionScreenProps {
   ownedCardIds: string[];
   /** Exemplaires possédés par carte — affichés en pastille sous chaque carte possédée. */
   ownedCounts: Record<string, number>;
+  /** Ouvrir la grille sur les favoris ou un carnet (`/collection?carnet=…`, depuis le mur des carnets). */
+  openShelf?: ShelfFilter;
+  /** Étagère en mémoire du laboratoire `/game/carnets-preview` ; absente : le compte. */
+  shelfBackend?: ShelfBackend;
+}
+
+/**
+ * L'écran Collection et son ÉTAGÈRE (favoris, carnets) : un visiteur n'en a
+ * pas, on ne la lit donc que pour un compte connecté.
+ */
+export function CollectionScreen(props: CollectionScreenProps) {
+  return (
+    <CardShelfProvider initialShelf={props.isSignedIn ? undefined : null} backend={props.shelfBackend}>
+      <CollectionScreenBody {...props} />
+    </CardShelfProvider>
+  );
 }
 
 /**
@@ -52,9 +70,14 @@ interface CollectionScreenProps {
  * « Manquantes ». Un visiteur non connecté n'a pas de possession connue :
  * il feuillette sans estompage ni section « Statut de collection ».
  */
-export function CollectionScreen({ isSignedIn, ownedCardIds, ownedCounts, catalog, needsFirstDeck = false }: CollectionScreenProps) {
+function CollectionScreenBody({ isSignedIn, ownedCardIds, ownedCounts, catalog, needsFirstDeck = false, openShelf }: CollectionScreenProps) {
   const owned = useMemo(() => (isSignedIn ? new Set(ownedCardIds) : null), [isSignedIn, ownedCardIds]);
   const browser = useCardBrowser({ owned, persistKey: "collection" });
+  // Arrivée depuis le mur des carnets : la grille s'ouvre sur le carnet choisi.
+  const { patchFilters } = browser;
+  useEffect(() => {
+    if (openShelf !== undefined) patchFilters({ shelf: openShelf });
+  }, [openShelf, patchFilters]);
   const [detailCardId, setDetailCardId] = useState<string | null>(null);
   const [surplusOpen, setSurplusOpen] = useState(false);
   // Figé à l'ouverture : le récapitulatif confirmé ne bouge pas sous les yeux
@@ -110,6 +133,7 @@ export function CollectionScreen({ isSignedIn, ownedCardIds, ownedCounts, catalo
             onReset={browser.resetFilters}
             owned={browser.ownedForFilters}
             showOwnership={isSignedIn}
+            shelfCards={browser.shelfCards}
           />
         </aside>
 

@@ -8,6 +8,7 @@ import { CardGrid } from "@/features/collection/CardGrid";
 import { CollectionSidebar } from "@/features/collection/CollectionSidebar";
 import { CollectionToolbar } from "@/features/collection/CollectionToolbar";
 import { CardDetailModal } from "@/features/collection/card-detail/CardDetailModal";
+import { CardShelfProvider } from "@/features/collection/shelf/CardShelfProvider";
 import { useCardBrowser } from "@/features/collection/useCardBrowser";
 import { DEFAULT_SHIP_ID } from "@/features/decks/constants";
 import { countInDeck, deckRuleIssue } from "@/features/decks/deckComposition";
@@ -90,7 +91,17 @@ type PendingLeave = { kind: "new" } | { kind: "navigate"; href: string } | null;
  * d'ajouter une carte qu'on ne possède pas ; un deck incomplet se
  * sauvegarde quand même, marqué non jouable côté serveur.
  */
-export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreenProps) {
+export function DeckEditorScreen(props: DeckEditorScreenProps) {
+  // L'étagère (favoris, carnets) sert aussi à construire : filtrer la grille
+  // sur un carnet, c'est partir de ses idées de deck. Un visiteur n'en a pas.
+  return (
+    <CardShelfProvider initialShelf={props.ownedCardIds.length > 0 ? undefined : null}>
+      <DeckEditorScreenBody {...props} />
+    </CardShelfProvider>
+  );
+}
+
+function DeckEditorScreenBody({ ownedCardIds, initialDeck }: DeckEditorScreenProps) {
   const router = useRouter();
   const [deckId, setDeckId] = useState<string | null>(initialDeck?.id ?? null);
   const [name, setName] = useState(initialDeck?.name ?? "Nouveau deck");
@@ -382,6 +393,7 @@ export function DeckEditorScreen({ ownedCardIds, initialDeck }: DeckEditorScreen
             owned={cardBrowser.ownedForFilters}
             showOwnership={isSignedIn}
             showCreateDeck={false}
+            shelfCards={cardBrowser.shelfCards}
           />
         </aside>
 

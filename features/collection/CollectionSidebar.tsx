@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { isAbyssalVariant } from "@/game";
+import { isAbyssalVariant, type CardDefinition } from "@/game";
+import { useCardShelf } from "@/features/collection/shelf/CardShelfProvider";
+import { FAVORITES_FILTER, notebookFilter } from "@/features/collection/shelf/shelf";
 import { BOOSTER_EXTENSIONS, boostersContaining } from "@/game/boosters";
 import { CARD_TYPE_LABELS } from "@/features/match/cardDisplay";
 import { TYPE_FILTERS } from "@/features/collection/cardFilters";
@@ -40,6 +42,8 @@ interface CollectionSidebarProps {
   showOwnership: boolean;
   /** Le Deck Builder n'a pas à proposer d'en créer un autre depuis sa colonne de filtres. Défaut : `true`. */
   showCreateDeck?: boolean;
+  /** Cartes du favori ou du carnet choisi (`useCardBrowser`) — les compteurs des autres axes en tiennent compte. */
+  shelfCards?: ReadonlySet<string> | null;
 }
 
 /** Une ligne de filtre : libellé à gauche, effectif à droite. */
@@ -50,6 +54,7 @@ function FilterRow({
   onClick,
   dotClassName,
   icon,
+  glyph,
 }: {
   label: string;
   count?: number;
@@ -57,6 +62,8 @@ function FilterRow({
   onClick: () => void;
   dotClassName?: string;
   icon?: string;
+  /** Petit pictogramme dessiné (cœur des favoris, carnet). */
+  glyph?: ReactNode;
 }) {
   return (
     <button
@@ -75,6 +82,11 @@ function FilterRow({
       {icon && (
         // eslint-disable-next-line @next/next/no-img-element -- icône locale de type, taille fixe
         <img src={icon} alt="" className={styles.filterIcon} />
+      )}
+      {glyph && (
+        <span className={styles.filterGlyph} aria-hidden>
+          {glyph}
+        </span>
       )}
       <span className={styles.filterLabel}>{label}</span>
       {count !== undefined && <span className={styles.filterCount}>{count}</span>}
@@ -105,6 +117,88 @@ function FilterList({ rowCount, children }: { rowCount: number; children: ReactN
   );
 }
 
+/** Le cœur des favoris, dessiné (même tracé que `FavoriteToggle`). */
+export function HeartGlyph({ filled = true }: { filled?: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden>
+      <path
+        d="M12 20.5s-7.5-4.6-9.2-9.3C1.6 7.8 3.9 4.5 7.3 4.5c2 0 3.6 1.1 4.7 2.8 1.1-1.7 2.7-2.8 4.7-2.8 3.4 0 5.7 3.3 4.5 6.7-1.7 4.7-9.2 9.3-9.2 9.3z"
+        fill={filled ? "currentColor" : "none"}
+        stroke="currentColor"
+        strokeWidth={1.8}
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** Un carnet, dessiné : couverture et reliure. */
+export function NotebookGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" aria-hidden>
+      <rect x="5" y="3.5" width="14" height="17" rx="1.6" stroke="currentColor" strokeWidth={1.7} />
+      <path d="M8.5 3.5v17M11.5 8h4.5M11.5 11.5h4.5" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/**
+ * FAVORIS & CARNETS — l'axe du joueur lui-même, en tête de colonne : ce
+ * qu'il aime et ce qu'il a rangé (`features/collection/shelf/`). N'apparaît
+ * que s'il a une étagère (connecté, dans un écran qui la fournit).
+ *
+ * Un seul choix à la fois : tout le catalogue, les favoris, ou UN carnet —
+ * comme ouvrir un tableau Pinterest. Le mur des carnets les montre tous.
+ */
+function ShelfSection({
+  filters,
+  onChange,
+  countFor,
+}: {
+  filters: CollectionFilterState;
+  onChange: (patch: Partial<CollectionFilterState>) => void;
+  countFor: (ignore: keyof CollectionFilterState, extra: (def: CardDefinition) => boolean) => number;
+}) {
+  const shelf = useCardShelf();
+  if (!shelf?.available) return null;
+  const favorites = new Set(shelf.shelf.favorites);
+  const notebooks = shelf.shelf.notebooks;
+  return (
+    <section className={styles.filterSection}>
+      <h2 className={styles.sectionTitle}>
+        Favoris &amp; carnets
+        <Link href="/collection/carnets" className={styles.sectionLink} onClick={() => playButtonClick()}>
+          Mur des carnets
+        </Link>
+      </h2>
+      <FilterList rowCount={notebooks.length + 2}>
+        <FilterRow label="Tout le catalogue" active={filters.shelf === null} count={countFor("shelf", () => true)} onClick={() => onChange({ shelf: null })} />
+        <FilterRow
+          label="Favoris"
+          glyph={<HeartGlyph />}
+          active={filters.shelf === FAVORITES_FILTER}
+          count={countFor("shelf", (def) => favorites.has(def.id))}
+          onClick={() => onChange({ shelf: filters.shelf === FAVORITES_FILTER ? null : FAVORITES_FILTER })}
+        />
+        {notebooks.map((notebook) => {
+          const filter = notebookFilter(notebook.id);
+          const cards = new Set(notebook.cardIds);
+          return (
+            <FilterRow
+              key={notebook.id}
+              label={notebook.name}
+              glyph={<NotebookGlyph />}
+              active={filters.shelf === filter}
+              count={countFor("shelf", (def) => cards.has(def.id))}
+              onClick={() => onChange({ shelf: filters.shelf === filter ? null : filter })}
+            />
+          );
+        })}
+      </FilterList>
+    </section>
+  );
+}
+
 /**
  * Colonne de filtres de la Collection.
  *
@@ -126,10 +220,11 @@ export function CollectionSidebar({
   owned,
   showOwnership,
   showCreateDeck = true,
+  shelfCards = null,
 }: CollectionSidebarProps) {
   const canReset = hasActiveFilters(filters);
   const countFor = (ignore: keyof CollectionFilterState, extra: Parameters<typeof countMatching>[3]) =>
-    countMatching(filters, owned, ignore, extra);
+    countMatching(filters, owned, ignore, extra, shelfCards);
 
   return (
     <div className={styles.sidebarInner}>
@@ -146,6 +241,8 @@ export function CollectionSidebar({
           Réinitialiser
         </button>
       </div>
+
+      <ShelfSection filters={filters} onChange={onChange} countFor={countFor} />
 
       <section className={styles.filterSection}>
         <h2 className={styles.sectionTitle}>Variante</h2>
