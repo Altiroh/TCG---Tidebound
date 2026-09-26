@@ -437,9 +437,37 @@
 .center [class*="GameUi_menu__"] {
   --ink: #f1e3c4;
   --ink-dim: rgba(241, 227, 196, 0.75);
+  /* Le menu est du BOIS SOMBRE : il reprend les jetons clairs que la zone
+     de travail avait passés à l'encre (options, groupes, survol, coche). */
+  --tb-text: #f1e3c4;
+  --tb-text-soft: rgba(241, 227, 196, 0.55);
+  --tb-accent: #5fd0e6;
+  --tb-accent-bright: #8ee6f6;
+  --tb-accent-soft: rgba(95, 208, 230, 0.16);
+  --tb-on-accent: #fff5da;
+  --tb-border-strong: rgba(199, 154, 75, 0.6);
   border-color: rgba(199, 154, 75, 0.6);
   background: #24170d;
   color: #f1e3c4;
+}
+
+/* Les options, à l'ivoire : la règle « tout à l'encre » de la barre
+   (`.center [class*="_toolbar"] *`) les passait en brun-noir sur le bois
+   — le menu s'ouvrait vide. */
+.center [class*="_toolbar"] [class*="GameUi_option"] {
+  color: #f1e3c4;
+}
+
+.center [class*="_toolbar"] [class*="GameUi_option"]:hover {
+  color: #fff5da;
+}
+
+.center [class*="_toolbar"] [class*="GameUi_optionActive"] {
+  color: #8ee6f6;
+}
+
+.center [class*="_toolbar"] [class*="GameUi_group"] {
+  color: rgba(241, 227, 196, 0.55);
 }
 
 /* ── Colonne de gauche : les filtres « sombres » de la maquette. Titre de
@@ -1751,4 +1779,76 @@
   background: var(--tb-notif-bg);
   box-shadow: var(--tb-notif-glow);
   color: var(--tb-notif-text);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+ * BARRE DE LA GRILLE — effectif, recherche (Éditeur et Collection)
+ * ══════════════════════════════════════════════════════════════════════ */
+
+/* L'effectif garde UNE largeur : celle de « 313 cartes », le plus large du
+   catalogue (3,75 fois la hauteur de l'onglet, mesuré). Il ne rétrécit plus
+   quand un filtre ne laisse que « 2 cartes » — la barre ne bouge pas. */
+.center [class*="_count__"] {
+  justify-content: center;
+  width: calc(clamp(40px, 5.4vh, 54px) * 3.75);
+  padding-inline: clamp(8px, 0.8vw, 14px);
+}
+
+/* Le texte tapé, à l'ivoire sur le bois : la règle « tout à l'encre » de la
+   barre (`.center [class*="_toolbar"] *`) le passait en brun-noir — on ne
+   voyait pas ce qu'on écrivait. */
+.center [class*="_toolbar"] .search input {
+  color: #f1e3c4;
+  caret-color: #f1d38a;
+}
+
+.center [class*="_toolbar"] .search input::placeholder {
+  color: rgba(241, 227, 196, 0.55);
+}
+
+/* La croix du navigateur s'efface : `BookSearch` pose la sienne. */
+.search input::-webkit-search-cancel-button {
+  display: none;
+  -webkit-appearance: none;
+}
+
+/* La croix d'effacement : un bouton rond de bois cerclé de laiton, comme le
+   « + » de la bannière du deck, posé avant la rose des vents. */
+.searchClear {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: calc(var(--search-h) * 0.5);
+  height: calc(var(--search-h) * 0.5);
+  padding: calc(var(--search-h) * 0.1);
+  border: 1px solid rgba(199, 154, 75, 0.7);
+  border-radius: 50%;
+  background: radial-gradient(circle at 45% 35%, #4a2f18, #1e1209 80%);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+  transition: border-color 140ms ease-out, filter 140ms ease-out;
+}
+
+.center [class*="_toolbar"] .searchClear,
+.center [class*="_toolbar"] .searchClear * {
+  color: #f1d38a;
+}
+
+.searchClear:hover {
+  border-color: #f1d38a;
+  filter: brightness(1.15) drop-shadow(0 0 5px rgba(255, 214, 140, 0.7));
+}
+
+.searchClear:focus-visible {
+  outline: 2px solid #5fd0e6;
+  outline-offset: 2px;
+}
+
+/* Le menu de tri passait SOUS les cartes : l'ombre de l'onglet (`filter`)
+   l'enferme dans son propre plan, et les cartes — animées à l'apparition,
+   donc chacune dans le sien — venaient après lui dans la page. La barre
+   entière passe au-dessus de la grille. */
+.center [class*="_toolbar__"] {
+  position: relative;
+  z-index: 20;
 }
