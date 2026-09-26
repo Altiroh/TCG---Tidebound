@@ -32,7 +32,13 @@ function Ecran() {
     <MatchEndScreen
       outcome={defaite ? "defeat" : "victory"}
       // Titre sous le nom : `?titre=0` le retire, `?titre=…` en essaie un autre.
-      player={{ name: "Alti", ship: getShipDefinition("le-goliath"), title: params.get("titre") === "0" ? null : (params.get("titre") ?? "Amiral des marées") }}
+      // Illustration de la photo : `?avatar=0` la retire (le Navire la remplace), `?avatar=<carte>` en essaie une autre.
+      player={{
+        name: "Alti",
+        ship: getShipDefinition("le-goliath"),
+        title: params.get("titre") === "0" ? null : (params.get("titre") ?? "Amiral des marées"),
+        avatarCardId: params.get("avatar") === "0" ? null : (params.get("avatar") ?? "bat-marin-abyssal"),
+      }}
       onExit={() => window.location.reload()}
       audience={
         params.get("public") === "0"

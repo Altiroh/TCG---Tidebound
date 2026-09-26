@@ -74,7 +74,10 @@ const SOUNDS = {
   marketBuy: { src: "/assets/sound/market-buy.mp3", gain: 0.31 }, // -16.9 dB · 1,5 s
   gameStart: { src: "/assets/sound/game-start.mp3", gain: 0.53 }, // -21.5 dB · 0,8 s
   addToCart: { src: "/assets/sound/booster-add-panier.mp3", gain: 1 }, // -27.3 dB · 1 s
-  gameLost: { src: "/assets/sound/loose-game.mp3", gain: 0.33 }, // -15.4 dB · 1,3 s
+  // Le bruitage de l'écran de fin, UNE fois à son entrée (26/09/2026 ; remplace
+  // `loose-game.mp3`). La victoire est déjà discrète : gain plafonné à 1.
+  endDefeat: { src: "/assets/sound/fin-defaite.mp3", gain: 0.29 }, // -14.3 dB · 1,1 s
+  endVictory: { src: "/assets/sound/fin-victoire.mp3", gain: 1 }, // -33.9 dB · 3,9 s
   boosterOpen: { src: "/assets/sound/booster-open.mp3", gain: 0.36 }, // -17.5 dB · 1,7 s
   attackImpact: { src: "/assets/sound/attack-impact.mp3", gain: 0.3 }, // -14.5 dB · 2 s
   magicImpact: { src: "/assets/sound/magic-impact.mp3", gain: 0.35 }, // -16.6 dB · 8 s
@@ -361,9 +364,9 @@ export function playGameStart(): void {
   playActionSound("gameStart");
 }
 
-/** La partie est perdue. */
-export function playGameLost(): void {
-  playSound("gameLost");
+/** L'écran de fin de partie s'ouvre : son bruitage, une fois. */
+export function playMatchEnd(outcome: "victory" | "defeat"): void {
+  playSound(outcome === "victory" ? "endVictory" : "endDefeat");
 }
 
 /** La partie supérieure d'un booster est arrachée. */
@@ -475,5 +478,101 @@ export function silenceMenuAmbiance(): () => void {
   return () => {
     ambianceSilencers = Math.max(0, ambianceSilencers - 1);
     syncAmbianceWanted();
+  };
+}
+
+/*
+ * LE THÈME DE L'ÉCRAN DE FIN — une musique de fond en boucle, À PEINE
+ * AUDIBLE (demande du 26/09/2026 : « très léger »), tant que l'écran de
+ * victoire ou de défaite est monté. Il suit l'interrupteur « Musique » et son
+ * curseur, comme l'ambiance du menu (qu'une partie fait déjà taire).
+ *
+ * Gains mesurés au décodage (niveau moyen de la partie audible) et ramenés
+ * vers -42 dB : environ 8 dB SOUS l'ambiance du menu (-20,4 dB × 0,22 ≈
+ * -33,6 dB), pour rester un fond, jamais une musique qu'on écoute.
+ */
+const END_THEMES = {
+  victory: { src: "/assets/sound/theme-fin-victoire.mp3", gain: 0.068 }, // -18.6 dB · 4 min 20
+  defeat: { src: "/assets/sound/theme-fin-defaite.mp3", gain: 0.035 }, // -12.8 dB · 2 min 05
+} as const;
+
+/** Montée et retombée du thème : il s'installe sous le bruitage, il ne claque pas. */
+const END_THEME_FADE_IN_MS = 2500;
+const END_THEME_FADE_OUT_MS = 600;
+
+let endThemeEl: HTMLAudioElement | null = null;
+let endThemeGain = 0;
+/** 0 → 1 : le fondu en cours, multiplié au gain et au curseur « Musique ». */
+let endThemeFade = 0;
+let endThemeFadeTimer: number | null = null;
+
+function endThemeVolume(): number {
+  return endThemeGain * getAudioSettings().musicVolume * endThemeFade;
+}
+
+function fadeEndTheme(to: number, durationMs: number, done?: () => void): void {
+  if (endThemeFadeTimer !== null) window.clearInterval(endThemeFadeTimer);
+  const from = endThemeFade;
+  const start = performance.now();
+  endThemeFadeTimer = window.setInterval(() => {
+    const t = Math.min(1, (performance.now() - start) / durationMs);
+    endThemeFade = from + (to - from) * t;
+    if (endThemeEl) endThemeEl.volume = Math.min(1, endThemeVolume());
+    if (t >= 1) {
+      if (endThemeFadeTimer !== null) window.clearInterval(endThemeFadeTimer);
+      endThemeFadeTimer = null;
+      done?.();
+    }
+  }, 50);
+}
+
+/** Aligne le thème sur les Options : coupé si la musique l'est, volume suivant le curseur. */
+function applyEndTheme(): void {
+  if (!endThemeEl) return;
+  const settings = getAudioSettings();
+  if (!settings.music) {
+    endThemeEl.pause();
+    return;
+  }
+  endThemeEl.volume = Math.min(1, endThemeVolume());
+  const el = endThemeEl;
+  if (el.paused) {
+    el.play().catch(() => {
+      // Autoplay bloqué : on retente au premier geste, si le thème est encore voulu.
+      const retry = () => applyEndTheme();
+      window.addEventListener("pointerdown", retry, { once: true });
+      window.addEventListener("keydown", retry, { once: true });
+    });
+  }
+}
+
+if (typeof window !== "undefined") {
+  subscribeAudioSettings(applyEndTheme);
+}
+
+/**
+ * Lance le thème de l'écran de fin (fondu d'entrée) ; la fonction rendue
+ * l'arrête (fondu de sortie). Un seul thème à la fois : en lancer un autre
+ * coupe le précédent.
+ */
+export function startEndTheme(outcome: "victory" | "defeat"): () => void {
+  if (typeof window === "undefined") return () => undefined;
+  const theme = END_THEMES[outcome];
+  if (endThemeEl) endThemeEl.pause();
+  const el = new Audio(soundUrl(theme.src));
+  el.loop = true;
+  endThemeEl = el;
+  endThemeGain = theme.gain;
+  endThemeFade = 0;
+  el.volume = 0;
+  applyEndTheme();
+  fadeEndTheme(1, END_THEME_FADE_IN_MS);
+
+  return () => {
+    if (endThemeEl !== el) return;
+    fadeEndTheme(0, END_THEME_FADE_OUT_MS, () => {
+      el.pause();
+      if (endThemeEl === el) endThemeEl = null;
+    });
   };
 }

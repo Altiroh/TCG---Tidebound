@@ -1,22 +1,23 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
-import type { ShipDefinition } from "@/game";
+import { getCardDefinition, isAbyssalVariant, type ShipDefinition } from "@/game";
+import { audienceMood } from "@/game/audience";
 import { QUEST_CATEGORY_META } from "@/game/quests";
 import type { MatchAudienceSummary } from "@/features/audience/actions";
 import { RollingNumber } from "@/features/audience/RollingNumber";
 import { useMatchAudience } from "@/features/audience/useMatchAudience";
 import { weightiestSignals, type MatchAudienceVerdict } from "@/features/audience/verdict";
+import { cardIllustrationUrl } from "@/features/decks/cardArtUrl";
 import type { MatchRewardSummary } from "@/features/progression/actions";
 import { useMatchReward } from "@/features/progression/useMatchReward";
 import type { QuestRecapEntry } from "@/features/quests/actions";
 import { useMatchQuestRecap } from "@/features/quests/useMatchQuestRecap";
 import type { VoyageRecap } from "@/features/quests/voyageActions";
-import { playQuestCompleted } from "@/lib/sound";
-import styles from "@/features/match/DefeatScreen.module.css";
-
-const ASSETS = "/assets/match-end/defaite";
+import { useNoMenuAmbiance } from "@/components/menu/MenuAmbiance";
+import { playMatchEnd, playQuestCompleted, startEndTheme } from "@/lib/sound";
+import styles from "@/features/match/MatchResultScreen.module.css";
 
 /** Quatre quêtes au plus sur la ligne, comme la composition de référence. */
 const QUEST_SLOTS = 4;
@@ -25,9 +26,43 @@ const FILL_START_MS = 1500;
 const FILL_STAGGER_MS = 350;
 /** Durée du remplissage (`.questFill`) : le son tombe quand la jauge touche le bout. */
 const FILL_MS = 900;
+/** Le bruitage de l'issue tombe avec le titre, qui s'imprime de 200 à 900 ms (`title-in`). */
+const END_SOUND_AT_MS = 250;
 
-interface DefeatScreenProps {
-  player: { name: string; ship: ShipDefinition; title?: string | null };
+/**
+ * Ce qui change d'une issue à l'autre : les assets peints, la fenêtre du
+ * cadre photo et l'intitulé de ce qui a pesé. Tout le reste — composition,
+ * encres, chorégraphie — est commun.
+ *
+ * LA FENÊTRE de chaque cadre (1536 × 1024, peint déjà incliné) a été
+ * relevée sur ses pixels : une droite ajustée sur chacun des quatre bords
+ * (hors coins, mordus par le ruban), leurs intersections pour les coins.
+ * L'illustration y est posée comme un vrai tirage — un rectangle aux
+ * dimensions de la fenêtre, centré sur elle, tourné de son angle (moyenne
+ * des bords haut et bas) —, puis découpée par la fenêtre élargie de ~2 % :
+ * ce surplus disparaît sous le cadre opaque.
+ */
+const OUTCOMES = {
+  defeat: {
+    assets: "/assets/match-end/defaite",
+    titleAlt: "Défaite",
+    // Coins relevés : 23,0/9,7 · 79,8/19,8 · 73,6/79,6 · 19,4/65,3 ; bords à 6,8° (haut) et 10° (bas).
+    window: { x: 48.96, y: 43.56, w: 56.1, h: 58.2, angle: 8.4, clip: "polygon(21.4% 7.7%, 81.6% 18.2%, 75.2% 81.8%, 17.6% 67.2%)" },
+    titleLeft: 2.8,
+  },
+  victory: {
+    assets: "/assets/match-end/victoire",
+    titleAlt: "Victoire",
+    // Coins relevés : 24,4/11,1 · 79,3/23,3 · 72,3/79,4 · 22,9/69,6 ; bords à 8,4° (haut) et 7,6° (bas).
+    window: { x: 49.71, y: 45.84, w: 52.68, h: 57.8, angle: 8.0, clip: "polygon(22.6% 9.1%, 81.1% 21.6%, 74% 81.6%, 21% 71.8%)" },
+    // Les lettres de ce titre commencent plus loin dans son image : le « V » s'aligne sur le « D » de la défaite.
+    titleLeft: 2.1,
+  },
+} as const;
+
+interface MatchResultScreenProps {
+  outcome: "victory" | "defeat";
+  player: { name: string; ship: ShipDefinition; title?: string | null; avatarCardId?: string | null };
   matchId?: string;
   preview?: { reward: MatchRewardSummary; quests: QuestRecapEntry[]; voyage?: VoyageRecap | null; audience?: MatchAudienceSummary };
   audience?: MatchAudienceVerdict;
@@ -47,29 +82,64 @@ interface QuestSlot {
   completed: boolean;
 }
 
+/** L'illustration de la photo : l'avatar du joueur (et son débord s'il est Abyssal), sinon le Navire. */
+function photoLayers(player: MatchResultScreenProps["player"]): { src: string | null; debord: string | null } {
+  if (player.avatarCardId) {
+    let abyssal = false;
+    try {
+      abyssal = isAbyssalVariant(getCardDefinition(player.avatarCardId));
+    } catch {
+      // Carte retirée du catalogue : son illustration seule, si elle existe encore.
+    }
+    return {
+      src: cardIllustrationUrl(player.avatarCardId),
+      // Une Abyssale n'a que son décor dans l'illustration : le sujet vit dans le calque de débord.
+      debord: abyssal ? `/assets/cards/illustrations/${player.avatarCardId}-debord.webp` : null,
+    };
+  }
+  return { src: player.ship.illustration ? `/assets/ships/illu/${player.ship.illustration}` : null, debord: null };
+}
+
 /**
- * ÉCRAN DE DÉFAITE — reconstruit d'après la composition de référence du
- * 26/09/2026 (`public/references/screen-play/`), avec ses assets peints
- * (`public/assets/match-end/defaite/`).
+ * ÉCRAN DE FIN DE PARTIE — victoire ou défaite, d'après la composition de
+ * référence du 26/09/2026 (`public/references/screen-play/`), avec les
+ * assets peints de chaque issue (`public/assets/match-end/defaite|victoire/`).
  *
  * Une scène au format du fond peint (1672 × 941) posée par-dessus lui :
  * chaque élément y est placé en POURCENTAGE de la scène et ses textes en
  * unités de conteneur (`cqw`), si bien que les proportions de la référence
  * tiennent à toutes les tailles. À gauche, l'information — titre, public,
  * ce qui a pesé, quêtes — imprimée à l'encre sur le ciel clair ; à droite,
- * la photo du Navire, inclinée, en contrepoids du titre ; en pied, le gain
+ * la photo du joueur, inclinée, en contrepoids du titre ; en pied, le gain
  * et les deux boutons peints.
  *
  * Toutes les valeurs sont celles de la partie : spectateurs, spectacle et
  * ce qui a pesé (`useMatchAudience`, verdict), XP et Tides
- * (`useMatchReward`), quêtes et Traversée (`useMatchQuestRecap`), Navire,
- * nom et titre du joueur.
+ * (`useMatchReward`), quêtes et Traversée (`useMatchQuestRecap`),
+ * illustration choisie, Navire, nom et titre du joueur.
  */
-export function DefeatScreen({ player, matchId, preview, audience, onExit, exitHref }: DefeatScreenProps) {
+export function MatchResultScreen({ outcome, player, matchId, preview, audience, onExit, exitHref }: MatchResultScreenProps) {
+  const look = OUTCOMES[outcome];
+  const isVictory = outcome === "victory";
   const { shown } = useMatchAudience({ matchId, preview: preview?.audience, verdict: audience });
   const reward = useMatchReward(matchId, preview?.reward);
   const { entries, voyage } = useMatchQuestRecap(matchId, preview?.quests, preview?.voyage);
   const [filled, setFilled] = useState(false);
+  const [debordFailed, setDebordFailed] = useState(false);
+
+  // Le son, à l'ENTRÉE dans l'écran et nulle part ailleurs : le bruitage de
+  // l'issue une fois, puis son thème en boucle, à peine audible, jusqu'au
+  // départ. L'ambiance du menu se tait (une partie la coupe déjà ; le labo,
+  // monté hors partie, en a besoin).
+  useNoMenuAmbiance();
+  useEffect(() => {
+    const timer = window.setTimeout(() => playMatchEnd(outcome), END_SOUND_AT_MS);
+    const stopTheme = startEndTheme(outcome);
+    return () => {
+      window.clearTimeout(timer);
+      stopTheme();
+    };
+  }, [outcome]);
 
   const slots: QuestSlot[] = [
     ...entries.slice(0, voyage ? QUEST_SLOTS - 1 : QUEST_SLOTS).map((entry) => ({
@@ -118,17 +188,28 @@ export function DefeatScreen({ player, matchId, preview, audience, onExit, exitH
   }, [slotCount, firstDone]);
 
   const signals = audience ? weightiestSignals(audience.signals) : [];
+  const anyPositive = signals.some((signal) => signal.weight > 0);
+  const signalsTitle = isVictory ? "Moments forts" : anyPositive ? "Malgré tout…" : "Ce qui a pesé";
   const leveledUp = reward ? reward.levelAfter > reward.levelBefore : false;
+  const photo = photoLayers(player);
+  const windowStyle = {
+    "--win-x": `${look.window.x}%`,
+    "--win-y": `${look.window.y}%`,
+    "--win-w": `${look.window.w}%`,
+    "--win-h": `${look.window.h}%`,
+    "--win-angle": `${look.window.angle}deg`,
+    "--win-clip": look.window.clip,
+  } as CSSProperties;
 
   return (
-    <div className={styles.screen}>
-      <div className={styles.backdrop} aria-hidden />
+    <div className={styles.screen} data-outcome={outcome}>
+      <div className={styles.backdrop} style={{ backgroundImage: `url("${look.assets}/fond.webp")` }} aria-hidden />
 
       <div className={styles.stage}>
         {/* eslint-disable-next-line @next/next/no-img-element -- enseigne du jeu, taille fixe */}
         <img className={styles.logo} src="/assets/menu/logo/tidebound-logo.webp" alt="Tidebound" draggable={false} />
         {/* eslint-disable-next-line @next/next/no-img-element -- titre peint */}
-        <img className={styles.title} src={`${ASSETS}/titre.webp`} alt="Défaite" draggable={false} />
+        <img className={styles.title} style={{ left: `${look.titleLeft}%` }} src={`${look.assets}/titre.webp`} alt={look.titleAlt} draggable={false} />
 
         {/* ── Le public ── */}
         {(shown !== null || audience) && (
@@ -140,6 +221,8 @@ export function DefeatScreen({ player, matchId, preview, audience, onExit, exitH
               </p>
             )}
             <p className={styles.viewersLabel}>Spectateurs</p>
+            {/* La victoire dit aussi l'humeur de la salle, comme ses planches de référence. */}
+            {isVictory && audience && <p className={styles.mood}>{audienceMood(audience.spectacle)}</p>}
             {audience && <p className={styles.spectacle}>Spectacle {audience.spectacle}</p>}
             <span className={styles.flourish} aria-hidden />
           </section>
@@ -148,7 +231,7 @@ export function DefeatScreen({ player, matchId, preview, audience, onExit, exitH
         {/* ── Ce qui a pesé ── */}
         {signals.length > 0 && (
           <section className={styles.recap} aria-label="Ce qui a pesé">
-            <h2 className={styles.recapTitle}>{signals.some((signal) => signal.weight > 0) ? "Malgré tout…" : "Ce qui a pesé"}</h2>
+            <h2 className={styles.recapTitle}>{signalsTitle}</h2>
             <ul className={styles.signals}>
               {signals.map((signal, index) => (
                 <li key={signal.id} data-sign={signal.weight > 0 ? "up" : "down"}>
@@ -209,20 +292,27 @@ export function DefeatScreen({ player, matchId, preview, audience, onExit, exitH
                 <span className={styles.rewardTides}>+{reward.tides} Tides</span>
               </>
             )}
-            {leveledUp && <span className={styles.rewardLevel}>Niveau {reward.levelAfter} atteint</span>}
+            {reward.firstWinOfDay && <span className={styles.rewardNote}>Première victoire du jour</span>}
+            {leveledUp && <span className={styles.rewardNote}>Niveau {reward.levelAfter} atteint</span>}
           </div>
         )}
 
-        {/* ── La photo du Navire, collée de travers ── */}
-        <figure className={styles.photo}>
+        {/* ── La photo du joueur, collée de travers ── */}
+        <figure className={styles.photo} style={windowStyle}>
           <div className={styles.photoWindow}>
-            {player.ship.illustration && (
-              // eslint-disable-next-line @next/next/no-img-element -- illustration locale du Navire
-              <img src={`/assets/ships/illu/${player.ship.illustration}`} alt="" draggable={false} />
+            {photo.src && (
+              <div className={styles.photoPrint}>
+                {/* eslint-disable-next-line @next/next/no-img-element -- illustration locale du joueur */}
+                <img src={photo.src} alt="" draggable={false} />
+                {photo.debord && !debordFailed && (
+                  // eslint-disable-next-line @next/next/no-img-element -- calque de débord de l'avatar Abyssal
+                  <img className={styles.photoDebord} src={photo.debord} alt="" draggable={false} onError={() => setDebordFailed(true)} />
+                )}
+              </div>
             )}
           </div>
           {/* eslint-disable-next-line @next/next/no-img-element -- cadre photo peint, par-dessus l'illustration */}
-          <img className={styles.photoFrame} src={`${ASSETS}/cadre-photo.webp`} alt="" draggable={false} />
+          <img className={styles.photoFrame} src={`${look.assets}/cadre-photo.webp`} alt="" draggable={false} />
           <figcaption className={styles.photoCaption}>
             <span className={styles.photoName}>{player.name}</span>
             {player.title && <span className={styles.photoTitle}>{player.title}</span>}

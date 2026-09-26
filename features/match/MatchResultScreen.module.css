@@ -1,5 +1,7 @@
 /*
- * ÉCRAN DE DÉFAITE — composition de référence du 26/09/2026.
+ * ÉCRAN DE FIN DE PARTIE — victoire ou défaite, composition de référence du
+ * 26/09/2026. Les deux issues partagent tout, sauf leurs assets peints
+ * (fond, titre, cadre photo : `MatchResultScreen.tsx`, `OUTCOMES`).
  *
  * Coordonnées relevées sur la référence (1672 × 941, le format du fond
  * peint) et reportées en POURCENTAGE de la scène ; textes en `cqw` (1 cqw =
@@ -24,11 +26,11 @@
   color: var(--ink);
 }
 
-/* Le fond peint couvre la fenêtre ; la scène, elle, garde son format. */
+/* Le fond peint de l'issue (posé en ligne) couvre la fenêtre ; la scène, elle, garde son format. */
 .backdrop {
   position: absolute;
   inset: 0;
-  background: url("/assets/match-end/defaite/fond.webp") center / cover no-repeat;
+  background: center / cover no-repeat;
   animation: fade-in 700ms ease-out both;
 }
 
@@ -139,6 +141,39 @@
   letter-spacing: 0.2em;
   text-transform: uppercase;
   line-height: 1;
+}
+
+/* L'humeur de la salle (victoire) : en capitales, entre « Spectateurs » et le
+   spectacle. Elle ajoute une ligne : le bloc du public se resserre, et ce qui
+   a pesé descend d'un cran, pour que le filet ne touche pas son intitulé. */
+.screen[data-outcome="victory"] .viewersLabel {
+  margin-top: 0.55cqw;
+}
+
+.screen[data-outcome="victory"] .flourish {
+  margin-top: 0.25cqw;
+}
+
+.screen[data-outcome="victory"] .recap {
+  top: 49.4%;
+}
+
+.screen[data-outcome="victory"] .signals li {
+  height: 2cqw;
+}
+
+.mood {
+  margin: 0.5cqw 0 0;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: 1.2cqw;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.mood + .spectacle {
+  margin-top: 0.35cqw;
 }
 
 .spectacle {
@@ -382,10 +417,12 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  column-gap: 1.8cqw;
+  column-gap: 1.4cqw;
   row-gap: 0.3cqw;
+  max-width: 23.5%;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: 2.4cqw;
+  /* 2,4 cqw sur la référence, mais la Cinzel y est ~20 % plus large : 2,05 tient dans la marge. */
+  font-size: 2.05cqw;
   font-weight: 700;
   line-height: 1.1;
   white-space: nowrap;
@@ -399,7 +436,7 @@
 
 .rewardRule {
   width: 1px;
-  height: 2.4cqw;
+  height: 2.1cqw;
   background: rgba(241, 227, 196, 0.6);
 }
 
@@ -409,8 +446,8 @@
   text-shadow: 0 0 10px rgba(234, 198, 98, 0.4), 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
-/* Un niveau franchi : seulement quand il y en a un, sous le gain. */
-.rewardLevel {
+/* Une note sous le gain, seulement quand elle existe : première victoire du jour, niveau franchi. */
+.rewardNote {
   flex-basis: 100%;
   color: var(--gold);
   font-size: 1.05cqw;
@@ -419,13 +456,13 @@
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
 }
 
-/* ── La photo du Navire ────────────────────────────────────── */
+/* ── La photo du joueur ─────────────────────────────────────── */
 
 /*
  * Le cadre (1536 × 1024) est peint DÉJÀ incliné. Sa fenêtre, relevée sur ses
- * pixels, est un quadrilatère tourné de ~9° ; l'illustration y est découpée
- * par un quadrilatère un peu plus large, entièrement caché sous le cadre
- * opaque, et tournée d'autant.
+ * pixels (`OUTCOMES`, dans le composant), arrive en variables : centre
+ * (--win-x/y), dimensions (--win-w/h), angle (--win-angle), découpe
+ * (--win-clip, la fenêtre élargie de ~2 %, cachée sous le cadre opaque).
  */
 .photo {
   left: 48%;
@@ -440,19 +477,54 @@
 .photoWindow {
   position: absolute;
   inset: 0;
-  clip-path: polygon(21% 9%, 80.5% 17%, 76.5% 80%, 18.5% 66%);
+  clip-path: var(--win-clip);
   background: #1a1511;
 }
 
-.photoWindow img {
+/*
+ * LE TIRAGE : un rectangle aux dimensions de la fenêtre, centré sur elle et
+ * tourné vers la droite de SON angle — l'illustration est dans la photo,
+ * pas posée derrière elle. Agrandi de 6 % pour que ses bords filent sous le
+ * cadre. Un voile de vieux papier la fond dans le tirage.
+ */
+.photoPrint {
   position: absolute;
-  left: 16%;
-  top: 6%;
-  width: 68%;
-  height: 78%;
-  object-fit: cover;
-  transform: rotate(8.5deg) scale(1.1);
+  left: var(--win-x);
+  top: var(--win-y);
+  width: var(--win-w);
+  height: var(--win-h);
+  overflow: hidden;
+  transform: translate(-50%, -50%) rotate(var(--win-angle)) scale(1.06);
   filter: sepia(0.35) saturate(0.7) brightness(0.78) contrast(1.08);
+}
+
+.screen[data-outcome="victory"] .photoPrint {
+  filter: sepia(0.18) saturate(0.92) brightness(0.95) contrast(1.04);
+}
+
+.photoPrint::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 75% 70% at 50% 45%, transparent 55%, rgba(40, 26, 14, 0.4) 100%);
+  pointer-events: none;
+}
+
+.photoPrint img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+}
+
+/* Avatar Abyssal : le sujet vit dans son calque de débord, debout sur le décor. */
+.photoPrint .photoDebord {
+  top: 4%;
+  height: 96%;
+  object-fit: contain;
+  object-position: center bottom;
 }
 
 .photoFrame {

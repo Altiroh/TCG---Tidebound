@@ -48,7 +48,7 @@ import { phaseButtonFor, phaseTitle, targetingHint } from "@/features/match/tabl
 import { useActionToasts } from "@/features/match/useActionToasts";
 import { useAttackPresentation } from "@/features/match/useAttackPresentation";
 import { useDeraisonWarning } from "@/features/match/useDeraisonWarning";
-import { useDisplayNames, useEquippedTitle } from "@/features/match/useDisplayNames";
+import { useAvatarCardId, useDisplayNames, useEquippedTitle } from "@/features/match/useDisplayNames";
 import { usePhaseBannerEvent } from "@/features/match/usePhaseBannerEvent";
 import { tableTargetingFor, useBoardInteraction } from "@/features/match/useBoardInteraction";
 import { useShipAbility } from "@/features/match/useShipAbility";
@@ -95,6 +95,7 @@ export function OnlineBoard({
   const opponent = state.players.find((p) => p.id !== myUserId)!;
   const displayNames = useDisplayNames([me.id, opponent.id]);
   const myTitle = useEquippedTitle(me.id);
+  const myAvatar = useAvatarCardId(me.id);
   // Défausse depuis la main (limite de main comme effet) : les cartes se glissent au Cimetière.
   const handLimit = useHandLimitDiscard(state, myUserId, (answer) =>
     act({ type: "resolveChoice", playerId: myUserId, choice: answer })
@@ -215,7 +216,7 @@ export function OnlineBoard({
       <MatchEndScreen
         outcome={iWon ? "victory" : "defeat"}
         // Toujours le joueur qui regarde, jamais le vainqueur : il se reconnaît sur la plaque, avec son propre Navire.
-        player={state.winnerId ? { name: displayNames[myUserId] ?? "Toi", ship: myShip, title: myTitle } : undefined}
+        player={state.winnerId ? { name: displayNames[myUserId] ?? "Toi", ship: myShip, title: myTitle, avatarCardId: myAvatar } : undefined}
         exitHref={exitHref}
         matchId={matchId}
         audience={matchAudienceVerdict(state, myUserId)}

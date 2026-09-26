@@ -86,13 +86,13 @@ const RULES = [
   // 18 à ~40 px dans la fiche et l'éditeur. Même traitement que les icônes
   // d'interface — traits fins et vagues détourés sur alpha.
   { match: /\/decks\/styles\//, maxSize: 256, quality: 92 },
-  // Écran de DÉFAITE (composition du 26/09/2026) : le fond peint couvre
-  // l'écran, il garde sa pleine taille (1672 px) ; le cadre photo occupe la
-  // moitié droite (~810 px, 1536 sur écran dense) ; le titre ~560 px ; les
-  // boutons ~256 px (plaques peintes aux bords détourés, qualité haute).
-  { match: /\/match-end\/defaite\/fond\./, maxSize: 1920, quality: 84 },
-  { match: /\/match-end\/defaite\/cadre-photo\./, maxSize: 1536, quality: 88 },
-  { match: /\/match-end\/defaite\/titre\./, maxSize: 1200, quality: 90 },
+  // Écrans de DÉFAITE et de VICTOIRE (composition du 26/09/2026) : le fond
+  // peint couvre l'écran, il garde sa pleine taille (1672 px) ; le cadre
+  // photo occupe la moitié droite (~810 px, 1536 sur écran dense) ; le titre
+  // ~560 px ; les boutons ~256 px (plaques peintes aux bords détourés).
+  { match: /\/match-end\/(defaite|victoire)\/fond\./, maxSize: 1920, quality: 84 },
+  { match: /\/match-end\/(defaite|victoire)\/cadre-photo\./, maxSize: 1536, quality: 88 },
+  { match: /\/match-end\/(defaite|victoire)\/titre\./, maxSize: 1200, quality: 90 },
   { match: /\/match-end\/defaite\/bouton-/, maxSize: 640, quality: 90 },
   { match: /\/(menu|ships|boosters|collection|decks|board)\//, maxSize: 1600, quality: 85 },
   { match: /.*/, maxSize: 1280, quality: 85 },

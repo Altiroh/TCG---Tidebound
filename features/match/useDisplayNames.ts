@@ -105,3 +105,45 @@ export function useEquippedTitle(id: string | null): string | null {
 
   return title;
 }
+
+/**
+ * ILLUSTRATION choisie par un compte (`profiles.avatar_card_id`, la carte
+ * de son avatar) — posée dans la photo de l'écran de fin de partie. `"me"`
+ * désigne le compte connecté ; `null` (hot-seat, bot) ne lit rien. Colonne
+ * absente (migration pas encore passée), erreur ou aucun choix : `null`, et
+ * la photo retombe sur l'illustration du Navire.
+ */
+export function useAvatarCardId(id: string | null): string | null {
+  const [cardId, setCardId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+
+    async function load() {
+      try {
+        const supabase = createSupabaseBrowserClient();
+        let userId = id;
+        if (id === "me") {
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          userId = user?.id ?? null;
+        }
+        if (!userId || !UUID_PATTERN.test(userId)) return;
+
+        const { data, error } = await supabase.from("profiles").select("avatar_card_id").eq("id", userId).maybeSingle();
+        if (!cancelled && !error) setCardId(data?.avatar_card_id ?? null);
+      } catch {
+        // Pas d'illustration : la photo montre le Navire.
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  return cardId;
+}

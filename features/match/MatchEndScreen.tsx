@@ -4,16 +4,15 @@ import { MatchQuestRecap } from "@/features/quests/MatchQuestRecap";
 import { MatchRewardBanner } from "@/features/progression/MatchRewardBanner";
 import { MatchAudienceTicker, type MatchAudienceVerdict } from "@/features/audience/MatchAudienceTicker";
 import type { MatchAudienceSummary } from "@/features/audience/actions";
-import { useEffect, type CSSProperties } from "react";
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import type { ShipDefinition } from "@/game";
 import { BoardBackdrop } from "@/features/match/BoardBackdrop";
-import { DefeatScreen } from "@/features/match/DefeatScreen";
+import { MatchResultScreen } from "@/features/match/MatchResultScreen";
 import { useImageOk } from "@/features/match/useImageOk";
 import { Fireworks } from "@/features/match/Fireworks";
 import { SwampHaze } from "@/features/match/SwampHaze";
 import styles from "@/features/match/MatchEndScreen.module.css";
-import { playGameLost } from "@/lib/sound";
 import type { QuestRecapEntry } from "@/features/quests/actions";
 import type { VoyageRecap } from "@/features/quests/voyageActions";
 import type { MatchRewardSummary } from "@/features/progression/actions";
@@ -37,6 +36,8 @@ interface MatchEndScreenProps {
     ship: ShipDefinition;
     /** Titre équipé au profil, écrit sous le nom sur la plaque. Absent : le nom seul. */
     title?: string | null;
+    /** Carte de l'avatar du joueur : son illustration remplit la photo. Absente : le Navire. */
+    avatarCardId?: string | null;
   };
   /** Local (hot-seat/bot) : relance une partie sans navigation. Fournir soit `onExit`, soit `exitHref`. */
   onExit?: () => void;
@@ -105,8 +106,6 @@ const TITLE_ZONE = { top: "82.6%", left: "27%", width: "46%", height: "6%" };
 /** Défaite (`ship-frame-loose.webp`) : planches du nom 70,5 → 81 %, 27 → 73 % ; planche basse 83 → 91,5 %. */
 const DEFEAT_NAMEPLATE_ZONE = { top: "71.5%", left: "27%", width: "46%", height: "9%" };
 const DEFEAT_TITLE_ZONE = { top: "84%", left: "27%", width: "46%", height: "7%" };
-/** Le son de défaite tombe avec le bandeau, qui s'abat de 150 à 770 ms (`victory-banner-slam`). */
-const DEFEAT_SOUND_AT_MS = 250;
 
 /**
  * Écran de fin de partie victorieuse — cadre `ship-frame-victory.webp`
@@ -119,12 +118,6 @@ const DEFEAT_SOUND_AT_MS = 250;
 export function MatchEndScreen({ outcome, player, onExit, exitHref, matchId, preview, audience }: MatchEndScreenProps) {
   const isDefeat = outcome === "defeat";
   const winner = player;
-
-  useEffect(() => {
-    if (!isDefeat) return;
-    const timer = window.setTimeout(playGameLost, DEFEAT_SOUND_AT_MS);
-    return () => window.clearTimeout(timer);
-  }, [isDefeat]);
 
   // Repli si un asset venait à manquer : un titre en toutes lettres plutôt
   // qu'une image cassée, comme partout ailleurs dans le jeu.
@@ -140,10 +133,21 @@ export function MatchEndScreen({ outcome, player, onExit, exitHref, matchId, pre
   const nameplateZone = isDefeat ? DEFEAT_NAMEPLATE_ZONE : NAMEPLATE_ZONE;
   const titleZone = isDefeat ? DEFEAT_TITLE_ZONE : TITLE_ZONE;
 
-  // La DÉFAITE a sa propre composition (26/09/2026) : le décor peint, la
-  // photo du Navire de travers, l'information imprimée à l'encre à gauche.
-  if (isDefeat && player) {
-    return <DefeatScreen player={player} matchId={matchId} preview={preview} audience={audience} onExit={onExit} exitHref={exitHref} />;
+  // Victoire comme défaite ont leur composition peinte (26/09/2026) : le
+  // décor, la photo du joueur collée de travers, l'information imprimée à
+  // l'encre à gauche. Seul le match nul garde l'écran ci-dessous.
+  if (player) {
+    return (
+      <MatchResultScreen
+        outcome={outcome}
+        player={player}
+        matchId={matchId}
+        preview={preview}
+        audience={audience}
+        onExit={onExit}
+        exitHref={exitHref}
+      />
+    );
   }
 
   return (
