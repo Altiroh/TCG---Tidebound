@@ -1,19 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { audienceMood } from "@/game/audience";
-import { fetchMatchAudience, fetchMyAudience, type MatchAudienceSummary } from "@/features/audience/actions";
+import type { MatchAudienceSummary } from "@/features/audience/actions";
 import { RollingNumber } from "@/features/audience/RollingNumber";
-import { useStockTicker } from "@/features/audience/useStockTicker";
+import { useMatchAudience } from "@/features/audience/useMatchAudience";
 import { weightiestSignals, type MatchAudienceVerdict } from "@/features/audience/verdict";
 import styles from "@/features/audience/MatchAudienceTicker.module.css";
 
 export type { MatchAudienceVerdict } from "@/features/audience/verdict";
-
-/** Relectures : le jugement serveur s'écrit juste après l'octroi de la partie. */
-const RETRY_DELAYS_MS = [600, 2000, 4500];
-/** Attente avant que le compteur ne se mette à défiler. */
-const START_MS = 700;
 
 /**
  * Le public de l'écran de fin, dans son VOLET de gauche, en grand (26/09/2026 :
@@ -31,49 +25,7 @@ const START_MS = 700;
  * montre simplement celle du joueur ; le verdict, lui, se lit quand même.
  */
 export function MatchAudienceTicker({ matchId, preview, verdict }: { matchId?: string; preview?: MatchAudienceSummary; verdict?: MatchAudienceVerdict }) {
-  const [summary, setSummary] = useState<MatchAudienceSummary | null>(preview ?? null);
-  const [current, setCurrent] = useState<number | null>(null);
-  const [settled, setSettled] = useState(false);
-
-  // Partie jugée : relue quelques fois, le temps que le serveur l'écrive.
-  useEffect(() => {
-    if (preview) return;
-    let cancelled = false;
-    if (!matchId) {
-      fetchMyAudience()
-        .then((audience) => !cancelled && setCurrent(audience))
-        .catch(() => undefined);
-      return () => {
-        cancelled = true;
-      };
-    }
-    const timers = RETRY_DELAYS_MS.map((delay) =>
-      setTimeout(() => {
-        if (cancelled) return;
-        fetchMatchAudience(matchId)
-          .then((found) => {
-            if (cancelled || !found) return;
-            cancelled = true;
-            setSummary(found);
-          })
-          .catch(() => undefined);
-      }, delay)
-    );
-    return () => {
-      cancelled = true;
-      timers.forEach(clearTimeout);
-    };
-  }, [matchId, preview]);
-
-  // Là où le direct s'était arrêté d'abord, puis la nouvelle audience : le compteur défile de l'un à l'autre.
-  useEffect(() => {
-    if (!summary) return;
-    const timer = setTimeout(() => setSettled(true), START_MS);
-    return () => clearTimeout(timer);
-  }, [summary]);
-
-  const liveEnd = summary ? Math.max(0, summary.before + (verdict?.liveDelta ?? 0)) : null;
-  const { shown, trend } = useStockTicker(summary ? (settled ? summary.after : liveEnd) : current);
+  const { shown, trend, summary } = useMatchAudience({ matchId, preview, verdict });
 
   if (shown === null && !verdict) return null;
   const weighed = verdict ? weightiestSignals(verdict.signals) : [];

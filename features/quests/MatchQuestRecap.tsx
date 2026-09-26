@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { QUEST_CATEGORY_META } from "@/game/quests";
-import { fetchMatchQuestRecap, type QuestRecapEntry } from "@/features/quests/actions";
-import { fetchMatchVoyageRecap, type VoyageRecap } from "@/features/quests/voyageActions";
+import type { QuestRecapEntry } from "@/features/quests/actions";
+import type { VoyageRecap } from "@/features/quests/voyageActions";
+import { useMatchQuestRecap } from "@/features/quests/useMatchQuestRecap";
 import styles from "@/features/quests/MatchQuestRecap.module.css";
 import { playQuestCompleted } from "@/lib/sound";
 
@@ -40,21 +41,10 @@ const FILL_MS = 900;
  * il ne bouge plus, même si le joueur réclame une récompense entre-temps.
  */
 export function MatchQuestRecap({ matchId, preview, voyagePreview }: MatchQuestRecapProps) {
-  const [entries, setEntries] = useState<QuestRecapEntry[]>(() => preview ?? []);
-  /** L'escale de la Traversée en cours, si la partie l'a fait avancer — elle entre en dernier. */
-  const [voyage, setVoyage] = useState<VoyageRecap | null>(() => voyagePreview ?? null);
+  /** Les quêtes avancées, et l'escale de la Traversée si la partie l'a fait bouger — elle entre en dernier. */
+  const { entries, voyage } = useMatchQuestRecap(matchId, preview, voyagePreview);
   /** Nombre de lignes déjà entrées en scène. */
   const [shown, setShown] = useState(0);
-
-  useEffect(() => {
-    if (!matchId || preview) return;
-    let cancelled = false;
-    void fetchMatchQuestRecap(matchId).then((result) => !cancelled && setEntries(result));
-    void fetchMatchVoyageRecap(matchId).then((result) => !cancelled && setVoyage(result));
-    return () => {
-      cancelled = true;
-    };
-  }, [matchId, preview]);
 
   // Une minuterie par ligne, toutes posées d'un coup : plus simple à
   // annuler qu'une chaîne de `setTimeout` qui se relance elle-même, et le

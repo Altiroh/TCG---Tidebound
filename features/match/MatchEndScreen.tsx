@@ -8,6 +8,7 @@ import { useEffect, type CSSProperties } from "react";
 import Link from "next/link";
 import type { ShipDefinition } from "@/game";
 import { BoardBackdrop } from "@/features/match/BoardBackdrop";
+import { DefeatScreen } from "@/features/match/DefeatScreen";
 import { useImageOk } from "@/features/match/useImageOk";
 import { Fireworks } from "@/features/match/Fireworks";
 import { SwampHaze } from "@/features/match/SwampHaze";
@@ -138,6 +139,13 @@ export function MatchEndScreen({ outcome, player, onExit, exitHref, matchId, pre
   const frameAspectRatio = isDefeat ? "1178 / 1335" : "1161 / 1354";
   const nameplateZone = isDefeat ? DEFEAT_NAMEPLATE_ZONE : NAMEPLATE_ZONE;
   const titleZone = isDefeat ? DEFEAT_TITLE_ZONE : TITLE_ZONE;
+
+  // La DÉFAITE a sa propre composition (26/09/2026) : le décor peint, la
+  // photo du Navire de travers, l'information imprimée à l'encre à gauche.
+  if (isDefeat && player) {
+    return <DefeatScreen player={player} matchId={matchId} preview={preview} audience={audience} onExit={onExit} exitHref={exitHref} />;
+  }
+
   return (
     <>
       {/* Le plateau peint (`board.webp`) porte ses propres cadres de Navire
