@@ -1135,6 +1135,33 @@ export function resolveReaction(
 }
 
 /**
+ * Cette carte, qui vient d'encaisser des dégâts, y a-t-elle SURVÉCU ?
+ *
+ * Encore sur le plateau, pas en partance, pas emportée par la Marée, et des
+ * dégâts marqués sous sa Résistance. Le dernier point compte : une passe de
+ * morts n'a pas toujours eu lieu quand on pose la question — une réaction
+ * qui porte un coup mortel (Jusqu'à ce que ça casse) laisse sa cible sur le
+ * plateau jusqu'à la passe suivante, et elle n'a pas « survécu » pour autant.
+ * Une unité condamnée en attente d'une fenêtre de sauvetage non plus.
+ *
+ * Point de vérité partagé entre les déclenchements automatiques
+ * (`processSurvivedDamage`) et les fenêtres de réaction
+ * (`deriveReactionTriggerEvents`) : les deux doivent dire la même chose.
+ */
+export function aSurvecuAuxDegats(state: GameState, instanceId: string): boolean {
+  const found = findBoardUnit(state, instanceId);
+  if (!found || found.unit.pendingRemoval) return false;
+  const owner = state.players.find((p) => p.id === found.playerId)!;
+  const stats = computeEffectiveStats(found.unit, state.environment.tideState, {
+    controllerBoard: owner.board,
+    controllerReason: owner.reason,
+    tideOrientation: state.environment.tideOrientation,
+    controllerIsActive: state.activePlayerId === owner.id,
+  });
+  return !stats.destroyedByTide && found.unit.damageMarked < stats.health;
+}
+
+/**
  * SURVIVRE AUX DÉGÂTS (Lot 15 — Équipage de Verre) : pour chaque unité qui a
  * encaissé des dégâts pendant l'action et qui est ENCORE EN JEU une fois les
  * morts réglées, déclenche `onSurvivedDamage`.
@@ -1165,18 +1192,9 @@ export function processSurvivedDamage(
   let nextState = state;
   const produced: GameEvent[] = [];
   for (const [instanceId, damage] of coups) {
-    const found = findBoardUnit(nextState, instanceId);
-    if (!found) continue;
+    if (!aSurvecuAuxDegats(nextState, instanceId)) continue;
+    const found = findBoardUnit(nextState, instanceId)!;
     const owner = nextState.players.find((p) => p.id === found.playerId)!;
-    const stats = computeEffectiveStats(found.unit, nextState.environment.tideState, {
-      controllerBoard: owner.board,
-      controllerReason: owner.reason,
-      tideOrientation: nextState.environment.tideOrientation,
-      controllerIsActive: nextState.activePlayerId === owner.id,
-    });
-    // Toujours condamnée (une fenêtre de sauvetage est peut-être en cours) :
-    // elle n'a pas encore survécu.
-    if (found.unit.pendingRemoval || stats.destroyedByTide || found.unit.damageMarked >= stats.health) continue;
     const result = processTrigger(
       nextState,
       { trigger: "onSurvivedDamage", playerId: owner.id, cardId: found.unit.cardId, sourceInstanceId: instanceId, damage },

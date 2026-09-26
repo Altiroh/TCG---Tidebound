@@ -3,6 +3,7 @@ import { getCardDefinition } from "@/game/cards/sets/core";
 import { isVisibleDuringTide, type CardInstance } from "@/game/cards/types";
 import type { GameEvent } from "@/game/events/types";
 import type { GameState, PlayerId, PlayerState } from "@/game/state/types";
+import type { TriggerEvent } from "@/game/triggers/types";
 
 /**
  * Projection d'une partie pour UN destinataire — la seule forme de
@@ -73,13 +74,21 @@ export function toPlayerView(state: GameState, viewerId: PlayerId): GameState {
     eventLog: state.eventLog.map((event) => projectEvent(event, viewerId, hiddenBoardIds)),
     pendingReaction: state.pendingReaction && {
       ...state.pendingReaction,
-      events: state.pendingReaction.events.map((event) =>
-        event.sourceInstanceId && hiddenBoardIds.has(event.sourceInstanceId) && event.cardId
-          ? { ...event, cardId: HIDDEN_CARD_ID }
-          : event
-      ),
+      events: state.pendingReaction.events.map((event) => projectTriggerEvent(event, hiddenBoardIds)),
     },
+    // Les déclencheurs en attente d'une table libre sont la même matière
+    // qu'une fenêtre ouverte : même masquage.
+    ...(state.reactionsEnAttente
+      ? { reactionsEnAttente: state.reactionsEnAttente.map((event) => projectTriggerEvent(event, hiddenBoardIds)) }
+      : {}),
   };
+}
+
+/** Un déclencheur de réaction porté par une Structure masquée ne dit pas quelle carte elle est. */
+function projectTriggerEvent(event: TriggerEvent, hiddenBoardIds: Set<string>): TriggerEvent {
+  return event.sourceInstanceId && hiddenBoardIds.has(event.sourceInstanceId) && event.cardId
+    ? { ...event, cardId: HIDDEN_CARD_ID }
+    : event;
 }
 
 /**

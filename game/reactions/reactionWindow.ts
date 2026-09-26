@@ -1,4 +1,4 @@
-import { collectReactionCandidates } from "@/game/triggers/triggerBus";
+import { aSurvecuAuxDegats, collectReactionCandidates } from "@/game/triggers/triggerBus";
 import { shipWindowAbilityFor } from "@/game/state/shipAbility";
 import type { TriggerEvent } from "@/game/triggers/types";
 import type { GameEvent } from "@/game/events/types";
@@ -52,9 +52,13 @@ export function deriveReactionTriggerEvents(state: GameState, events: GameEvent[
         const found = findCardInstance(state, event.targetInstanceId);
         if (!found || found.zone !== "board") break;
         derived.push({ trigger: "onDamaged", playerId: found.owner.id, cardId: found.card.cardId, sourceInstanceId: event.targetInstanceId });
-        // La fenêtre s'ouvre APRÈS la passe de morts : une unité encore en
-        // jeu a donc survécu à ces dégâts (Lot 15 — Jusqu'à ce que ça casse).
-        if (!found.card.pendingRemoval) {
+        // Survivre se juge sur les MÊMES critères que les déclenchements
+        // automatiques (`aSurvecuAuxDegats`). « Encore en jeu » ne suffit
+        // pas : une réaction qui porte un coup mortel (Jusqu'à ce que ça
+        // casse) est dérivée AVANT la passe de morts — sa cible est encore
+        // sur le plateau, et elle n'a pas survécu pour autant. Pont de Verre
+        // se proposait ainsi pour une unité déjà condamnée.
+        if (aSurvecuAuxDegats(state, event.targetInstanceId)) {
           derived.push({
             trigger: "onSurvivedDamage",
             playerId: found.owner.id,

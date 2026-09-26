@@ -13,7 +13,7 @@ import { resolveChoice } from "@/game/actions/resolveChoice";
 import { saborder } from "@/game/actions/saborder";
 import { timeout, withDeadlineMet } from "@/game/actions/timeout";
 import type { ActionResult, PlayerAction } from "@/game/actions/types";
-import { openReactionWindowIfEligible, ouvrirFenetrePour } from "@/game/reactions/reactionWindow";
+import { deriveReactionTriggerEvents, ouvrirFenetrePour } from "@/game/reactions/reactionWindow";
 import { resolveOceanJudgment } from "@/game/rules/oceanJudgment";
 import { refreshTurnTimer } from "@/game/rules/turnTimer";
 import { assertValidDefender, hasEffectiveKeyword } from "@/game/rules/validation";
@@ -28,9 +28,10 @@ import {
   snapshotLoneCreatures,
 } from "@/game/triggers/triggerBus";
 import type { GameEvent } from "@/game/events/types";
+import type { TriggerEvent } from "@/game/triggers/types";
 import { findCardInstance, type GameState } from "@/game/state/types";
 
-/** Actions réservées à une fenêtre de réaction ouverte — jamais soumises à `openReactionWindowIfEligible` sur leurs propres résultats, elles déterminent déjà elles-mêmes le prochain état de `pendingReaction`. */
+/** Actions réservées à une fenêtre de réaction ouverte — leurs propres résultats ne rouvrent pas de fenêtre, elles déterminent déjà elles-mêmes le prochain état de `pendingReaction` (seul ce qui les SUIT dans `dispatch` se propose). */
 const REACTION_ACTION_TYPES = new Set<PlayerAction["type"]>(["activateReaction", "passReaction"]);
 
 /**
@@ -76,6 +77,11 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
 
   let result = applyAction(state, action);
   if (!result.ok) return result;
+
+  // Ce que l'action a produit ELLE-MÊME. Pour une réaction, ses déclencheurs
+  // ont déjà été versés à la fenêtre en cours (`activateReaction`) : seuls
+  // ceux qui suivent — reprises, morts, survies — restent à proposer.
+  const evenementsDeLAction = result.events.length;
 
   // --- REPRISE D'UNE ATTAQUE SUSPENDUE ---------------------------------
   //
@@ -154,11 +160,16 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
   // refermer : on relance la passe, et ce qui n'a pas été sauvé part
   // maintenant. Le drapeau posé sur chaque instance garantit qu'on ne
   // repose pas la même question.
+  //
+  // Les coups encaissés avant la suspension reviennent avec elle : c'est à
+  // la reprise, et seulement là, qu'on sait qui leur a survécu.
+  const coupsReportes = result.state.pendingDestruction?.coupsEnSuspens ?? [];
   if (result.state.pendingDestruction && !result.state.pendingReaction) {
     result = { ...result, state: { ...result.state, pendingDestruction: undefined } };
   }
 
   let deaths = processDeaths(result.state, state.turnNumber);
+  let survieJugee = false;
 
   // --- CE QUI NE SE SAIT QU'APRÈS LES MORTS (Lot 15) ---------------------
   //
@@ -169,9 +180,10 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
   // Une destruction encore en suspens (fenêtre de sauvetage) repousse tout
   // cela à la reprise : on ne sait pas encore qui a survécu.
   if (!deaths.state.pendingDestruction) {
+    survieJugee = true;
     const tour = deaths.state.turnNumber;
     const signaux = processChromaticSignals(deaths.state, result.events, tour);
-    const survies = processSurvivedDamage(signaux.state, [...result.events, ...deaths.events], tour);
+    const survies = processSurvivedDamage(signaux.state, [...coupsReportes, ...result.events, ...deaths.events], tour);
     const raison = processReasonGained(survies.state, [...result.events, ...signaux.events, ...survies.events], tour);
     const produits = [...signaux.events, ...survies.events, ...raison.events];
     if (produits.length > 0) {
@@ -180,6 +192,17 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
     } else {
       deaths = { ...deaths, state: raison.state };
     }
+  } else {
+    // Toujours en suspens : les coups de CETTE action rejoignent ceux déjà
+    // reportés, pour être jugés tous ensemble à la reprise.
+    const coups = [...result.events, ...deaths.events].filter((e) => e.type === "DAMAGE" && e.targetInstanceId !== undefined);
+    deaths = {
+      ...deaths,
+      state: {
+        ...deaths.state,
+        pendingDestruction: { ...deaths.state.pendingDestruction, coupsEnSuspens: [...coupsReportes, ...coups] },
+      },
+    };
   }
 
   // La passe s'arrête d'elle-même quand un sauvetage est possible. On ouvre
@@ -230,24 +253,43 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
     finalEvents = [...finalEvents, ...judgment.events];
   }
 
-  // Fenêtre de réaction : `activateReaction`/`passReaction` ont déjà
-  // recalculé `pendingReaction` elles-mêmes (chaîne continue, ou se
-  // ferme) — ne pas en ouvrir une seconde par-dessus. Pour toute autre
-  // action, vérifier si ce qu'elle vient de produire en ouvre une
-  // nouvelle (au moins une capacité `optional` devient éligible).
+  // --- FENÊTRE DE RÉACTION ----------------------------------------------
   //
-  // `!finalState.pendingReaction` : une action qui a ouvert sa PROPRE
-  // fenêtre en cours de route — l'interception d'une attaque, l'annonce
-  // d'une Marée — a déjà dit qui doit répondre et à quoi. En ouvrir une
-  // seconde par-dessus écraserait la première et perdrait la suspension.
-  if (
+  // Déclencheurs à proposer : tout ce que l'action a produit — sauf, pour
+  // `activateReaction`/`passReaction`, ce que la réaction a produit ELLE-MÊME,
+  // déjà versé à la fenêtre en cours (chaîne continue, ou se ferme). Ce qui
+  // la SUIT, en revanche (reprise d'une attaque, d'un Bris, d'une entame de
+  // tour ou d'une destruction, morts, survies), est neuf et se propose comme
+  // le reste. Plus les coups reportés par une fenêtre de sauvetage, dont la
+  // survie vient seulement d'être jugée.
+  const aDeriver: GameEvent[] = [
+    ...(survieJugee ? coupsReportes : []),
+    ...(REACTION_ACTION_TYPES.has(action.type) ? finalEvents.slice(evenementsDeLAction) : finalEvents),
+  ];
+  const declencheurs = sansDoublons([
+    ...(finalState.reactionsEnAttente ?? []),
+    ...deriveReactionTriggerEvents(finalState, aDeriver),
+  ]);
+
+  // Table OCCUPÉE — un choix attend sa réponse (le soin du Verrier de Pont,
+  // la défausse de la Vigie aux Fissures), une fenêtre est déjà ouverte
+  // (interception, annonce de Marée, sauvetage, chaîne en cours), un
+  // Jugement de l'Océan est en cours : on n'ouvre rien par-dessus, ce qui
+  // écraserait la question posée. Mais on ne JETTE rien non plus : les
+  // déclencheurs attendent (`reactionsEnAttente`) et s'ouvrent dès que la
+  // table se libère. Avant, ils étaient perdus — la survie au coup du
+  // Verrier ne réveillait jamais Pont de Verre.
+  const tableLibre =
     finalState.status === "active" &&
     !finalState.pendingOceanJudgment &&
     !finalState.pendingChoice &&
-    !finalState.pendingReaction &&
-    !REACTION_ACTION_TYPES.has(action.type)
-  ) {
-    const opened = openReactionWindowIfEligible(finalState, finalEvents, finalState.turnNumber);
+    !finalState.pendingReaction;
+  if (tableLibre) {
+    if (finalState.reactionsEnAttente) {
+      const { reactionsEnAttente: _proposees, ...sansAttente } = finalState;
+      finalState = sansAttente;
+    }
+    const opened = declencheurs.length > 0 ? ouvrirFenetrePour(finalState, declencheurs, finalState.turnNumber) : undefined;
     if (opened) {
       finalState = { ...finalState, pendingReaction: opened };
       finalEvents = [
@@ -255,6 +297,8 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
         { type: "REACTION_WINDOW_OPENED", turnNumber: opened.turnNumber, timestamp: Date.now(), playerId: opened.awaitingPlayerId },
       ];
     }
+  } else if (finalState.status === "active" && declencheurs.length > 0) {
+    finalState = { ...finalState, reactionsEnAttente: declencheurs };
   }
 
   // La partie peut se terminer en cours de chaîne (ex: une réaction
@@ -265,6 +309,9 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
   }
   if (finalState.status !== "active" && finalState.pendingChoice) {
     finalState = { ...finalState, pendingChoice: undefined };
+  }
+  if (finalState.status !== "active" && finalState.reactionsEnAttente) {
+    finalState = { ...finalState, reactionsEnAttente: undefined };
   }
 
   // --- DÉLAI DE TOUR ----------------------------------------------------
@@ -349,6 +396,22 @@ function checkWinCondition(state: GameState): GameState {
       },
     ],
   };
+}
+
+/**
+ * Un même fait peut arriver deux fois jusqu'à la fenêtre — mis en attente
+ * pendant un choix, puis redérivé à la reprise d'une destruction. Le
+ * recensement des réactions dédoublonne déjà par capacité ; on garde
+ * simplement la liste propre pour l'interface qui la lit.
+ */
+function sansDoublons(declencheurs: TriggerEvent[]): TriggerEvent[] {
+  const vus = new Set<string>();
+  return declencheurs.filter((declencheur) => {
+    const cle = JSON.stringify(declencheur);
+    if (vus.has(cle)) return false;
+    vus.add(cle);
+    return true;
+  });
 }
 
 /**

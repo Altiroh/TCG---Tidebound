@@ -306,6 +306,26 @@ export interface GameState {
   pendingReaction?: PendingReactionState;
 
   /**
+   * Déclencheurs de réaction produits pendant que la table était OCCUPÉE —
+   * un choix en attente (`pendingChoice`), une fenêtre déjà ouverte, un
+   * Jugement de l'Océan — et qui n'ont donc pas encore pu être proposés.
+   *
+   * Une action ne se résout pas toujours d'une traite : le Verrier de Pont
+   * demande à qui restaurer sa Résistance, la Vigie aux Fissures quelle
+   * carte défausser. Les déclencheurs que l'action a produits AVANT cette
+   * question (une unité a survécu au coup du Verrier) attendent ici, et
+   * `dispatch` les propose dès que la table se libère, avec ceux de l'action
+   * qui la libère. Avant ce champ, ils étaient perdus : la fenêtre ne
+   * s'ouvrait pas tant qu'un choix attendait, et la réponse au choix ne
+   * connaissait plus les événements d'avant.
+   *
+   * Même forme et même lecture que `PendingReactionState.events` : la
+   * fenêtre qui s'ouvre réévalue l'éligibilité de chaque capacité à cet
+   * instant-là.
+   */
+  reactionsEnAttente?: TriggerEvent[];
+
+  /**
    * Choix forcé en attente pour `playerId` (Notion "Choix de joueur en
    * cours de résolution", ex: Le Fond Vous Regarde — "au début de chaque
    * tour, le joueur actif choisit : perdre X Raison, ou infliger X dégâts
@@ -358,7 +378,21 @@ export interface GameState {
    * Même geste que `pendingAttack` et `pendingTideStep` : un point du
    * déroulement où le moteur s'arrête pour laisser quelqu'un décider.
    */
-  pendingDestruction?: { instanceIds: string[]; turnNumber: number };
+  pendingDestruction?: {
+    instanceIds: string[];
+    turnNumber: number;
+    /**
+     * Coups encaissés par des unités (`DAMAGE` à une instance) pendant
+     * l'action suspendue et pendant la fenêtre elle-même.
+     *
+     * « Survivre à des dégâts » ne se sait qu'à la reprise de la passe
+     * (`processSurvivedDamage`) — or la reprise a lieu dans une AUTRE action,
+     * qui n'a plus ces événements sous la main. Sans ce report, l'unité qui
+     * tenait au même Bris qu'une autre condamnée ne « survivait » jamais aux
+     * yeux du moteur (Matelot Fêlé sans sa Puissance, Pont de Verre muet).
+     */
+    coupsEnSuspens?: GameEvent[];
+  };
 
   /**
    * Bris d'Objet suspendu le temps de laisser quelqu'un en ANNULER l'effet
