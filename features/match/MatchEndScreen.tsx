@@ -89,9 +89,21 @@ const SPARK_COUNT = 18;
 /** Le nom s'écrit lettre par lettre une fois le cadre posé (cf. chorégraphie dans `VictoryScreen.module.css`). */
 const NAME_START_MS = 1350;
 const NAME_LETTER_STEP_MS = 55;
-const NAMEPLATE_ZONE = { top: "73%", left: "22%", width: "56%", height: "8%" };
-/** La planche du nom du cadre de défaite est plus haute et plus étroite que la bannière de victoire (mesurée sur la bande opaque sous l'arche, ~72 → 84 % de hauteur). */
-const DEFEAT_NAMEPLATE_ZONE = { top: "73%", left: "24%", width: "52%", height: "9%" };
+/**
+ * LA PLAQUE DU NOM et LA PLANCHE DU TITRE, mesurées sur les pixels des
+ * cadres (profil de luminosité, 26/09/2026). Le nom tient DANS l'intérieur
+ * de la plaque de laiton ; le titre se grave sur la planche sombre en
+ * dessous. Avant, les deux s'empilaient dans la plaque : le nom montait sur
+ * sa bordure haute et le titre débordait sur sa bordure basse.
+ *
+ * Victoire (`ship-frame-victory.webp`) : intérieur de la plaque 72,4 → 80 %
+ * de hauteur, 30 → 69 % de largeur ; planche 82,5 → 89 %, 27 → 73 %.
+ */
+const NAMEPLATE_ZONE = { top: "72.4%", left: "30%", width: "40%", height: "7.6%" };
+const TITLE_ZONE = { top: "82.6%", left: "27%", width: "46%", height: "6%" };
+/** Défaite (`ship-frame-loose.webp`) : planches du nom 70,5 → 81 %, 27 → 73 % ; planche basse 83 → 91,5 %. */
+const DEFEAT_NAMEPLATE_ZONE = { top: "71.5%", left: "27%", width: "46%", height: "9%" };
+const DEFEAT_TITLE_ZONE = { top: "84%", left: "27%", width: "46%", height: "7%" };
 /** Le son de défaite tombe avec le bandeau, qui s'abat de 150 à 770 ms (`victory-banner-slam`). */
 const DEFEAT_SOUND_AT_MS = 250;
 
@@ -125,10 +137,9 @@ export function MatchEndScreen({ outcome, player, onExit, exitHref, matchId, pre
   // l'autre décalerait l'arche par rapport à l'illustration.
   const frameAspectRatio = isDefeat ? "1178 / 1335" : "1161 / 1354";
   const nameplateZone = isDefeat ? DEFEAT_NAMEPLATE_ZONE : NAMEPLATE_ZONE;
+  const titleZone = isDefeat ? DEFEAT_TITLE_ZONE : TITLE_ZONE;
   return (
     <>
-      {/* Le public, en haut à gauche : son compteur défile avec ce que la partie lui a fait. */}
-      {audience && <MatchAudienceTicker matchId={matchId} preview={preview?.audience} verdict={audience} />}
       {/* Le plateau peint (`board.webp`) porte ses propres cadres de Navire
           vides et ses dos de carte : à peine voilé, on les lisait derrière
           l'écran de fin (retour du 15/09). Il ne sert plus que de matière —
@@ -143,11 +154,16 @@ export function MatchEndScreen({ outcome, player, onExit, exitHref, matchId, pre
       {winner && (isDefeat ? <SwampHaze /> : <Fireworks firstBurstAt={0.5} />)}
       {winner && <div className={isDefeat ? styles.flashDefeat : styles.flash} aria-hidden />}
       <div className={`${styles.screen} ${winner ? styles.stage : ""}`}>
-        {/* Deux colonnes centrées : à gauche la fiche (bandeau, cadre, gain
-            d'XP), à droite le relevé des quêtes. Sans relevé (partie locale,
-            ou aucune quête touchée), la colonne de droite reste vide et la
-            fiche reprend seule le centre (`.columns:has(...)`). */}
+        {/* TROIS VOLETS sur toute la hauteur (26/09/2026) : à gauche le
+            public, en grand ; au centre la fiche (bandeau, cadre, gain,
+            boutons) ; à droite le relevé des quêtes. Un volet sans contenu
+            (partie locale, pas de verdict) s'efface, la fiche reste au centre. */}
         <div className={styles.columns}>
+          {/* Le public : son compteur défile avec ce que la partie lui a fait. */}
+          <div className={styles.audienceColumn}>
+            {audience && <MatchAudienceTicker matchId={matchId} preview={preview?.audience} verdict={audience} />}
+          </div>
+
           <div className={styles.sheet}>
             {winner ? (
               <>
@@ -220,15 +236,9 @@ export function MatchEndScreen({ outcome, player, onExit, exitHref, matchId, pre
                       />
                     )}
     
-                    <div
-                      className={`absolute flex flex-col items-center justify-center ${winner.title ? styles.nameplateTitled : ""}`}
-                      style={{ ...nameplateZone, containerType: "inline-size" }}
-                    >
-                      <span
-                        aria-label={winner.name}
-                        className="max-w-full truncate text-[clamp(12px,11cqw,22px)] leading-none font-bold uppercase tracking-wide text-amber-50 [font-family:var(--font-card-title)]"
-                        style={{ textShadow: "0 1px 3px rgba(0,0,0,0.9)" }}
-                      >
+                    {/* Le NOM, dans l'intérieur de la plaque de laiton. */}
+                    <div className={`absolute flex items-center justify-center ${styles.nameplate}`} style={nameplateZone}>
+                      <span aria-label={winner.name} className={styles.nameplateName}>
                         {Array.from(winner.name).map((letter, i) => (
                           <span
                             key={i}
@@ -242,17 +252,19 @@ export function MatchEndScreen({ outcome, player, onExit, exitHref, matchId, pre
                           </span>
                         ))}
                       </span>
-                      {/* Le TITRE équipé, sous le nom : il se pose une fois le
-                          nom écrit, comme une signature. */}
-                      {winner.title && (
+                    </div>
+                    {/* Le TITRE équipé, gravé sur la planche sous la plaque : il
+                        se pose une fois le nom écrit, comme une signature. */}
+                    {winner.title && (
+                      <div className={`absolute flex items-center justify-center ${styles.nameplate}`} style={titleZone}>
                         <span
-                          className={`max-w-full truncate ${styles.nameplateTitle}`}
+                          className={styles.nameplateTitle}
                           style={{ animationDelay: `${NAME_START_MS + Array.from(winner.name).length * NAME_LETTER_STEP_MS + 120}ms` }}
                         >
                           {winner.title}
                         </span>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </>
@@ -263,29 +275,29 @@ export function MatchEndScreen({ outcome, player, onExit, exitHref, matchId, pre
             {/* Le gain de la partie, sous la fiche qu'il récompense. */}
             {(matchId || preview) && <MatchRewardBanner matchId={matchId} preview={preview?.reward} />}
 
+            {/* Les boutons du jeu, sous la fiche : secondaire à gauche, action
+                engageante à droite — même ordre de lecture que les dialogues
+                de la coquille hors-partie. */}
+            <div className={`${styles.actions} ${winner ? styles.actionsIn : ""}`}>
+              <Link href="/" className={styles.ghost}>
+                Retour au menu
+              </Link>
+
+              {exitHref ? (
+                <Link href={exitHref} className={styles.primary}>
+                  Nouvelle partie
+                </Link>
+              ) : (
+                <button type="button" onClick={onExit} className={styles.primary}>
+                  Nouvelle partie
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Ce que la partie a rapporté aux quêtes : elles défilent une à
               une, jauge en train de se remplir. */}
           <div className={styles.questColumn}>{(matchId || preview) && <MatchQuestRecap matchId={matchId} preview={preview?.quests} voyagePreview={preview?.voyage} />}</div>
-        </div>
-
-        {/* Secondaire à gauche, action engageante à droite — même ordre de
-            lecture que les dialogues de la coquille hors-partie. */}
-        <div className={`${styles.actions} ${winner ? styles.actionsIn : ""}`}>
-          <Link href="/" className={styles.ghost}>
-            Retour au menu
-          </Link>
-
-          {exitHref ? (
-            <Link href={exitHref} className={styles.primary}>
-              Nouvelle partie
-            </Link>
-          ) : (
-            <button type="button" onClick={onExit} className={styles.primary}>
-              Nouvelle partie
-            </button>
-          )}
         </div>
       </div>
     </>

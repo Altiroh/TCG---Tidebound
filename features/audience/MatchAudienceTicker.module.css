@@ -1,27 +1,80 @@
 /*
- * Le public de l'écran de fin : en haut à gauche, bien visible, un œil et
- * un nombre — blanc au repos ; vert qui monte, rouge qui baisse pendant le
- * défilement — et dessous, le verdict de la salle.
+ * Le public de l'écran de fin : le VOLET DE GAUCHE, sur toute la hauteur
+ * (26/09/2026). Même verre que le relevé des quêtes à droite, pour que les
+ * deux volets se répondent. En tête, en grand, un œil et un nombre — blanc
+ * au repos ; vert qui monte, rouge qui baisse pendant le défilement — et
+ * dessous, le verdict de la salle.
+ *
+ * C'est l'écran de fin qui place ce volet (`MatchEndScreen.module.css`,
+ * `.audienceColumn`) : il ne se positionne plus lui-même.
  */
 .audience {
-  position: fixed;
-  top: calc(var(--tb-safe-top, 0px) + 18px);
-  left: calc(var(--tb-safe-left, 0px) + 20px);
-  z-index: 60;
+  position: relative;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
-  /* Assez étroit pour loger dans la marge gauche, sans mordre sur le bandeau VICTOIRE / DÉFAITE. */
-  max-width: min(250px, calc(100vw - var(--tb-safe-left, 0px) - var(--tb-safe-right, 0px) - 40px));
+  align-items: stretch;
+  gap: clamp(10px, 2dvh, 22px);
+  min-height: 0;
+  padding: clamp(16px, 2.6dvh, 28px) clamp(16px, 1.6vw, 26px);
+  overflow: hidden;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.06);
+  -webkit-backdrop-filter: blur(32px) brightness(1.1) saturate(1.5);
+  backdrop-filter: blur(32px) brightness(1.1) saturate(1.5);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.5),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    inset 0 -12px 24px -12px rgba(255, 255, 255, 0.06),
+    0 24px 60px rgba(0, 0, 0, 0.6);
+  color: #e8e0cf;
+  font-family: var(--font-ui, Georgia, serif);
+  text-align: left;
+  animation: verdict-in 420ms cubic-bezier(0.2, 0.8, 0.2, 1) 500ms both;
+}
+
+/* Le reflet du verre, comme sur le relevé des quêtes. */
+.audience::before {
+  content: "";
+  position: absolute;
+  top: -40px;
+  left: -24px;
+  width: 128px;
+  height: 128px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  filter: blur(40px);
   pointer-events: none;
 }
 
+/* L'intitulé du volet, comme « Quêtes de la partie » en face. */
+.eyebrow {
+  position: relative;
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-align: center;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Les vues et le verdict se centrent dans la hauteur du volet, sous son
+   intitulé : le volet est pleine hauteur, son contenu ne reste pas collé en haut. */
+.eyebrow + * {
+  margin-top: auto;
+}
+.audience > :last-child {
+  margin-bottom: auto;
+}
+
+/* LES VUES, en grand : la vedette du volet. */
 .ticker {
-  display: inline-flex;
+  position: relative;
+  display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 20px 8px 14px;
+  justify-content: center;
+  gap: clamp(10px, 1vw, 18px);
+  padding: clamp(10px, 1.8dvh, 18px) clamp(16px, 1.6vw, 26px);
   border: 1px solid rgba(241, 227, 196, 0.28);
   border-radius: 999px;
   background: rgba(4, 10, 18, 0.72);
@@ -31,16 +84,17 @@
 }
 
 .ticker svg {
-  width: clamp(26px, 3vw, 38px);
-  height: clamp(26px, 3vw, 38px);
+  width: clamp(34px, 5.4dvh, 60px);
+  height: clamp(34px, 5.4dvh, 60px);
   flex: none;
 }
 
 .value {
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: clamp(26px, 3.2vw, 44px);
+  font-size: clamp(40px, 7.6dvh, 88px);
   font-weight: 700;
   letter-spacing: 0.02em;
+  line-height: 1;
 }
 
 .ticker[data-trend="up"] {
@@ -57,15 +111,13 @@
   text-shadow: 0 0 12px rgba(248, 113, 113, 0.6);
 }
 
-/* Le verdict : une carte sombre et mate, qui arrive après le compteur. */
+/* Le verdict, sous les vues : il arrive après le compteur. */
 .verdict {
-  padding: 10px 14px 12px;
-  border: 1px solid rgba(241, 227, 196, 0.2);
-  border-radius: 10px;
-  background: rgba(4, 10, 18, 0.74);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
-  color: #e8e0cf;
-  font-size: clamp(12px, 1.2vw, 14px);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(8px, 1.4dvh, 14px);
+  font-size: clamp(14px, 1.9dvh, 17px);
   line-height: 1.35;
   opacity: 0;
   animation: verdict-in 500ms ease 900ms forwards;
@@ -74,32 +126,38 @@
 .mood {
   margin: 0;
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 10px;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: 1.15em;
+  font-size: clamp(20px, 3dvh, 28px);
+  font-weight: 700;
+  line-height: 1.15;
+  text-align: center;
   color: #f1e3c4;
 }
 
 .score {
   font-family: inherit;
-  font-size: 0.78em;
+  font-size: 0.55em;
+  font-weight: 600;
   color: rgba(241, 227, 196, 0.6);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 /* La prime du public : l'or du bandeau de récompense, sans lui voler la vedette. */
 .prize {
-  margin: 6px 0 0;
+  margin: 0;
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
+  align-items: baseline;
   gap: 0 10px;
-  padding: 4px 8px;
+  padding: 8px 12px;
   white-space: nowrap;
   border: 1px solid rgba(243, 200, 107, 0.45);
-  border-radius: 6px;
+  border-radius: 12px;
   background: rgba(107, 74, 23, 0.35);
   color: #f7dc9c;
   font-weight: 700;
@@ -112,7 +170,7 @@
 
 .highlights,
 .signals {
-  margin: 6px 0 0;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
@@ -130,16 +188,18 @@
   content: " »";
 }
 
+/* Ce qui a pesé : des lignes pleines, le chiffre aligné en colonne. */
 .signals {
   display: grid;
-  gap: 2px;
-  padding-top: 6px;
+  gap: clamp(4px, 0.9dvh, 10px);
+  padding-top: clamp(8px, 1.4dvh, 14px);
   border-top: 1px solid rgba(241, 227, 196, 0.12);
 }
 
 .signals li {
   display: flex;
-  gap: 8px;
+  align-items: baseline;
+  gap: 10px;
   color: rgba(232, 224, 207, 0.85);
 }
 
@@ -150,6 +210,7 @@
 }
 
 .weight {
+  flex: none;
   min-width: 2.6em;
   text-align: right;
   font-variant-numeric: tabular-nums;
@@ -175,20 +236,65 @@
   }
 }
 
-/* Écran étroit : la marge gauche ne loge plus le détail — l'humeur de la salle seule. */
+/* Écran moyen ou bas : le volet est empilé au-dessus des quêtes — les vues et l'humeur seules. */
 @media (max-width: 1100px), (max-height: 560px) {
   .highlights,
   .signals {
     display: none;
   }
 
+  .audience {
+    padding: 12px 16px;
+    gap: 10px;
+  }
+}
+
+/* Téléphone couché : le volet partage 390 px avec les quêtes — le compteur se resserre. */
+@media (max-height: 560px) {
+  .audience {
+    gap: 6px;
+    padding: 8px 14px;
+  }
+
+  .eyebrow {
+    display: none;
+  }
+
+  .ticker {
+    padding: 4px 16px;
+  }
+
+  .ticker svg {
+    width: 26px;
+    height: 26px;
+  }
+
+  .value {
+    font-size: clamp(26px, 8dvh, 36px);
+  }
+
   .verdict {
-    padding: 6px 12px;
+    gap: 6px;
+    font-size: 13px;
+  }
+
+  .mood {
+    flex-direction: row;
+    justify-content: center;
+    align-items: baseline;
+    gap: 10px;
+    font-size: 17px;
+  }
+
+  .prize {
+    padding: 4px 10px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .verdict {
+  .audience,
+  .verdict,
+  .prize {
     animation: none;
     opacity: 1;
   }

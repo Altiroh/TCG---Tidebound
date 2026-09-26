@@ -203,6 +203,72 @@
   color: rgba(255, 255, 255, 0.6);
 }
 
+/*
+ * LE VOLET DE DROITE, PLEINE HAUTEUR (26/09/2026) : le relevé remplit la
+ * colonne de l'écran de fin, en face du volet du public — même verre, même
+ * intitulé, même titre en Cinzel. Les lignes grandissent en proportion ;
+ * « À réclamer » tombe en pied de volet.
+ */
+.recap {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  gap: clamp(12px, 2dvh, 22px);
+  padding: clamp(16px, 2.6dvh, 28px) clamp(16px, 1.6vw, 26px);
+}
+
+.title {
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: clamp(20px, 3dvh, 28px);
+  font-weight: 700;
+  line-height: 1.15;
+  color: #f1e3c4;
+}
+
+.list {
+  gap: clamp(8px, 1.4dvh, 14px);
+}
+
+.row {
+  gap: clamp(12px, 1vw, 16px);
+  padding: clamp(10px, 1.6dvh, 16px) 16px clamp(10px, 1.6dvh, 16px) 10px;
+  border-radius: 18px;
+}
+
+.icon {
+  width: clamp(40px, 5.6dvh, 52px);
+  height: clamp(40px, 5.6dvh, 52px);
+  padding: 6px;
+  border-radius: 14px;
+}
+
+.voyageMark {
+  width: clamp(40px, 5.6dvh, 52px);
+  height: clamp(40px, 5.6dvh, 52px);
+  font-size: clamp(15px, 2.2dvh, 19px);
+}
+
+.body {
+  gap: 8px;
+}
+
+.name {
+  font-size: clamp(14px, 1.9dvh, 17px);
+}
+
+.track {
+  height: 7px;
+}
+
+.count {
+  font-size: clamp(13px, 1.7dvh, 15px);
+}
+
+.foot {
+  margin-top: auto;
+  font-size: clamp(13px, 1.7dvh, 15px);
+}
+
 /* Téléphone couché : l'écran de fin ne défile pas, le panneau se resserre. */
 /* L'escale de Traversée : un médaillon au numéro de la Traversée, à la place de l'icône de catégorie. */
 .voyageMark {

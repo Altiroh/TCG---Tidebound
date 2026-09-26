@@ -16,9 +16,10 @@ const RETRY_DELAYS_MS = [600, 2000, 4500];
 const START_MS = 700;
 
 /**
- * Le public de l'écran de fin, en haut à gauche : le compteur de
- * spectateurs, et dessous le VERDICT — l'humeur de la salle, ses temps
- * forts, ce qui a pesé en plus et en moins.
+ * Le public de l'écran de fin, dans son VOLET de gauche, en grand (26/09/2026 :
+ * « j'aime bien avoir en grand les vues ») : le compteur de spectateurs, et
+ * dessous le VERDICT — l'humeur de la salle, ses temps forts, ce qui a pesé
+ * en plus et en moins. C'est l'écran de fin qui le place (`MatchEndScreen`).
  *
  * Une fois la partie jugée côté serveur, le compteur DÉFILE vers la nouvelle
  * audience, cran après cran comme un cours de bourse : vert quand il monte,
@@ -78,6 +79,7 @@ export function MatchAudienceTicker({ matchId, preview, verdict }: { matchId?: s
   const weighed = verdict ? weightiestSignals(verdict.signals) : [];
   return (
     <div className={styles.audience} data-audience-ticker="">
+      <p className={styles.eyebrow}>Le public</p>
       {shown !== null && (
         <div className={styles.ticker} data-trend={trend ?? undefined} aria-label={`${shown} spectateurs`}>
           <svg viewBox="0 0 24 24" fill="none" aria-hidden>

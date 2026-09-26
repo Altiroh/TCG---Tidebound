@@ -67,66 +67,118 @@
    * en ligne (`MatchEndScreen.tsx`), donc rien ne pouvait le corriger par
    * requête média — un style en ligne l'emporte sur toute classe.
    */
-  --fin-cadre: min(60vw, 340px, 46dvh);
-  --fin-bandeau: min(70vw, 480px, 130dvh);
+  /*
+   * Le cadre prend ce qui reste de la hauteur une fois posés le bandeau
+   * (~16 dvh), le gain et les boutons (~12 dvh) et les écarts : ~52 dvh de
+   * large, soit ~61 dvh de haut (cadre 1161 × 1354). Il ne dépasse jamais
+   * un tiers de la largeur, pour laisser leurs volets au public et aux quêtes.
+   */
+  --fin-cadre: min(32vw, 52dvh);
+  --fin-bandeau: min(40vw, 56dvh);
 }
 
 /*
- * DEUX COLONNES, centrées ensemble : à gauche la fiche (bandeau, cadre,
- * gain d'XP), à droite le relevé des quêtes. Quand la colonne de droite
- * est vide (partie locale, relevé pas encore reçu ou aucune quête
- * touchée), elle disparaît et la fiche reprend seule le centre.
+ * TROIS VOLETS SUR TOUTE LA HAUTEUR (26/09/2026) : le public à gauche, la
+ * fiche au centre, les quêtes à droite. Les volets s'étirent du haut au bas
+ * de l'écran, à largeur égale : la fiche tombe au centre exact. Un volet
+ * vide (partie locale, pas de verdict, aucune quête touchée) s'efface
+ * sans décaler la fiche.
  */
 .columns {
   display: grid;
-  grid-template-columns: auto minmax(0, 440px);
-  align-items: center;
-  justify-content: center;
-  gap: clamp(16px, 4vw, 72px);
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-areas: "audience sheet quests";
+  align-items: stretch;
+  gap: clamp(16px, 2.6vw, 48px);
   width: 100%;
+  height: 100%;
   min-height: 0;
-}
-.columns:has(> .questColumn:empty) {
-  grid-template-columns: auto;
-}
-/* À deux, la fiche n'a plus toute la largeur : son bandeau se range sur
-   la moitié de l'écran au lieu des 70 %. */
-.columns:has(> .questColumn:not(:empty)) {
-  --fin-bandeau: min(42vw, 440px, 130dvh);
 }
 
 .sheet {
+  grid-area: sheet;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: clamp(8px, 2.2dvh, 32px);
+  justify-content: center;
+  gap: clamp(8px, 2dvh, 26px);
   min-width: 0;
+  min-height: 0;
 }
 
-/* Le relevé suit la colonne, et défile seul s'il a beaucoup de lignes :
-   l'écran, lui, ne défile jamais. Défilement sans barre visible — une
-   barre de système sur un panneau de verre casse tout l'effet. */
+/* Les deux volets : pleine hauteur, largeur bornée, calés contre la fiche. */
+.audienceColumn,
 .questColumn {
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 460px);
   min-width: 0;
-  max-height: calc(100dvh - 140px);
+  min-height: 0;
+}
+.audienceColumn {
+  grid-area: audience;
+  justify-self: end;
+}
+.questColumn {
+  grid-area: quests;
+  justify-self: start;
+  /* Le relevé défile seul s'il a beaucoup de lignes ; l'écran, jamais.
+     Sans barre visible : une barre système sur un panneau de verre casse
+     tout l'effet. */
   overflow-y: auto;
   scrollbar-width: none;
 }
 .questColumn::-webkit-scrollbar {
   display: none;
 }
+.audienceColumn:empty,
 .questColumn:empty {
-  display: none;
+  visibility: hidden;
 }
+.audienceColumn > *,
 .questColumn > * {
+  flex: 1 1 auto;
   width: 100%;
 }
 
+/*
+ * Écran moyen (laptop 13", tablette couchée) : trois volets n'y tiennent
+ * plus. La fiche garde la gauche, le public et les quêtes s'empilent à
+ * droite — le public en tête, compact, les quêtes dessous.
+ */
+@media (max-width: 1100px) {
+  .columns {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas:
+      "sheet audience"
+      "sheet quests";
+  }
+  .audienceColumn,
+  .questColumn {
+    justify-self: stretch;
+    width: min(100%, 520px);
+  }
+  .audienceColumn:empty,
+  .questColumn:empty {
+    display: none;
+  }
+  .audienceColumn > * {
+    flex: 0 0 auto;
+  }
+  .screen {
+    --fin-cadre: min(40vw, 52dvh);
+    --fin-bandeau: min(48vw, 56dvh);
+  }
+}
+
 /* Écran étroit (portrait, avant que le voile d'orientation ne s'impose) :
-   les deux colonnes s'empilent. */
+   tout s'empile. */
 @media (max-width: 640px) {
   .columns {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    grid-template-areas: "audience" "sheet" "quests";
   }
 }
 
@@ -275,28 +327,43 @@
   animation: victory-letter 420ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
 }
 /*
- * Plaque avec TITRE : le nom remonte d'un cran pour laisser la place, sous
- * lui, au titre équipé — plus petit, en laiton, en italique, comme une
- * devise gravée sous un nom de navire.
+ * La plaque du NOM et la planche du TITRE (zones mesurées dans
+ * `MatchEndScreen.tsx`) : chacune est un conteneur, le texte s'y mesure en
+ * `cqh` — il suit la taille du cadre, et ne sort jamais de sa zone.
  */
-.nameplateTitled {
-  gap: 0.4cqw;
+.nameplate {
+  container-type: size;
+  overflow: hidden;
 }
-.nameplateTitled > * {
-  flex-shrink: 0;
-}
-.nameplateTitled > :first-child {
-  font-size: clamp(8px, 8.5cqw, 18px);
-}
-.nameplateTitle {
+/* Le nom : Cinzel gras, capitales, ivoire — 58 % de la hauteur de la plaque. */
+.nameplateName {
+  max-width: 100%;
+  overflow: hidden;
+  color: #fff7e6;
   font-family: var(--font-card-title);
-  font-size: clamp(6px, 5cqw, 12px);
+  font-size: min(58cqh, 13cqw);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+/* Le titre : gravé sur la planche, en laiton, en italique — une devise sous un nom de navire. */
+.nameplateTitle {
+  max-width: 100%;
+  overflow: hidden;
+  font-family: var(--font-card-title);
+  font-size: min(62cqh, 9cqw);
   font-style: italic;
   font-weight: 600;
-  line-height: 1.1;
-  letter-spacing: 0.04em;
+  line-height: 1;
+  letter-spacing: 0.05em;
   color: var(--tb-gold-bright, #e2c27a);
+  text-overflow: ellipsis;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  white-space: nowrap;
   animation: victory-fade-in 500ms ease-out both;
 }
 .actionsIn {
@@ -391,42 +458,53 @@
   }
 }
 
+/* Les deux boutons prennent ensemble la largeur du cadre : ils ferment la fiche. */
 .actions {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
-  gap: clamp(6px, 1.2vw, 18px);
+  gap: clamp(8px, 1vw, 14px);
+  width: max(var(--fin-cadre), 320px);
+  max-width: 100%;
 }
 
 /*
- * Les boutons de `PromptButton` : pastille pleine, même gabarit partout.
- * Le vert dit « on continue », le verre dit « on s'en va » — exactement
- * le Oui / Non des fenêtres de réaction.
+ * LES BOUTONS DU JEU (26/09/2026) — le gabarit de `GameScreen.module.css`
+ * (`.primary` / `.secondary`), lu sur les jetons globaux : rectangle aux
+ * coins adoucis, Spectral demi-gras, un seul bleu lumineux pour l'action
+ * qui engage, un creux bordé pour celle qui ramène. Ils étaient en pilules
+ * de verre, les seuls du jeu à l'être.
  */
 .action {
+  flex: 1 1 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5em;
-  padding: 0.6em 1.9em;
-  border: none;
-  border-radius: 999px;
+  min-height: clamp(40px, 5.4dvh, 50px);
+  padding: 0.55em 1.25em;
+  border: 1px solid transparent;
+  border-radius: var(--tb-radius-sm);
   background: transparent;
-  font-family: var(--font-ui, Georgia, serif);
-  font-size: clamp(13px, 1vw, 15px);
+  font-family: var(--tb-font-ui, Georgia, serif);
+  font-size: clamp(14px, 1.9dvh, 17px);
   font-weight: 600;
+  letter-spacing: 0.05em;
   line-height: 1.2;
   white-space: nowrap;
   text-decoration: none;
   cursor: pointer;
   outline: none;
-  transition: background 150ms ease-out, box-shadow 150ms ease-out, color 150ms ease-out;
+  transition:
+    background var(--tb-duration) ease-out,
+    border-color var(--tb-duration) ease-out,
+    color var(--tb-duration) ease-out,
+    box-shadow var(--tb-duration) ease-out;
 }
 
 .primary {
   composes: action;
-  border: 1px solid var(--tb-btn-border);
+  border-color: var(--tb-btn-border);
   background: var(--tb-btn-bg);
   box-shadow: var(--tb-btn-glow);
   color: var(--tb-btn-text);
@@ -436,21 +514,22 @@
   box-shadow: var(--tb-btn-glow-hover);
 }
 .primary:focus-visible {
-  box-shadow: var(--tb-btn-glow-hover), 0 0 0 2px var(--tb-accent-bright);
+  box-shadow: var(--tb-btn-glow-hover), var(--tb-glow-sm);
 }
 
 .ghost {
   composes: action;
-  background: rgba(255, 255, 255, 0.1);
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
-  color: #fff;
+  border-color: var(--tb-border-strong);
+  background: var(--tb-surface-inset);
+  color: var(--tb-text);
 }
 .ghost:hover {
-  background: rgba(255, 255, 255, 0.2);
+  border-color: var(--tb-accent-line);
+  background: var(--tb-surface-raised);
+  color: var(--tb-text-strong);
 }
 .ghost:focus-visible {
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.4);
+  box-shadow: var(--tb-glow-sm);
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -473,13 +552,10 @@
  */
 @media (max-height: 560px) {
   .screen {
-    --fin-cadre: min(60vw, 340px, 38dvh);
-    --fin-bandeau: min(70vw, 480px, 88dvh);
+    --fin-cadre: min(30vw, 46dvh);
+    --fin-bandeau: min(34vw, 36dvh);
   }
-  .columns:has(> .questColumn:not(:empty)) {
-    --fin-bandeau: min(42vw, 440px, 88dvh);
-  }
-  .questColumn {
-    max-height: calc(100dvh - 90px);
+  .actions {
+    width: max(var(--fin-cadre), 260px);
   }
 }
