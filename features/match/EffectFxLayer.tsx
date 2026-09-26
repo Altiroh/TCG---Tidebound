@@ -22,8 +22,8 @@ import {
  * VIEWPORT (`fixed inset-0`), mesuré sur les éléments du plateau au moment
  * du départ :
  *
- *   - projectile : une orbe (ou le boulet du canon) part du lanceur et file
- *     vers sa cible en arc ; toutes les cibles d'un même effet sont visées
+ *   - projectile : un HARPON (ou le boulet du canon) part du lanceur et file
+ *     vers sa cible en arc, la pointe dans le sens du vol ; toutes les cibles d'un même effet sont visées
  *     EN MÊME TEMPS. À l'arrivée : flash, plaque de dégâts, tremblement ;
  *   - soin : un voile lumineux descend sur la cible, scintille et s'efface ;
  *   - gain / perte : le chiffre (+1, −1…) surgit au-dessus de la carte, se montre,
@@ -89,8 +89,67 @@ const ORB_LOOKS = {
   },
 } as const;
 
-/** L'orbe et sa traînée : trois échos plus petits qui suivent le même arc avec un léger retard. */
+/**
+ * LE HARPON des projectiles d'effet (26/09/2026 : « un harpon pour tout ce
+ * qui est projectile lancé »). Peint pointe en haut à droite, à -14,5° de
+ * l'horizontale (mesuré sur l'image) : il est tourné, à chaque point de
+ * l'arc, selon la TANGENTE du vol — la pointe mène, il plonge sur sa cible.
+ */
+const HARPOON_SRC = "/assets/fx/harpon.webp";
+const HARPOON_NATIVE_DEG = -14.5;
+const HARPOON_RATIO = 512 / 167;
+
+function Harpoon({ geometry }: { geometry: ShotGeometry }) {
+  const host = useRef<HTMLImageElement>(null);
+  const { from, to, size } = geometry;
+  const length = Math.max(70, Math.min(170, size * 0.95));
+
+  useLayoutEffect(() => {
+    const el = host.current;
+    if (!el) return undefined;
+    const points = arc(from, to, 16);
+    const keyframes = points.map((point, i) => {
+      const a = points[Math.max(0, i - 1)]!;
+      const b = points[Math.min(points.length - 1, i + 1)]!;
+      const heading = (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI;
+      return {
+        transform: `translate(${point.x - from.x}px, ${point.y - from.y}px) translate(-50%, -50%) rotate(${heading - HARPOON_NATIVE_DEG}deg)`,
+        opacity: i === 0 ? 0 : 1,
+      };
+    });
+    const animation = el.animate(keyframes, { duration: SHOT_FLIGHT_MS, easing: "cubic-bezier(.45,.05,.75,.95)", fill: "forwards" });
+    return () => animation.cancel();
+  }, [from, to]);
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- projectile peint, animé à la main
+    <img
+      ref={host}
+      src={HARPOON_SRC}
+      alt=""
+      aria-hidden
+      draggable={false}
+      className="pointer-events-none absolute z-30 select-none"
+      style={{
+        left: from.x,
+        top: from.y,
+        width: length,
+        height: length / HARPOON_RATIO,
+        opacity: 0,
+        filter: "drop-shadow(0 6px 6px rgba(0,0,0,0.55))",
+      }}
+    />
+  );
+}
+
+/** Un projectile d'effet : le harpon ; le tir de canon du Navire garde son boulet. */
 function Projectile({ geometry }: { geometry: ShotGeometry }) {
+  if (geometry.shot.look === "magic") return <Harpoon geometry={geometry} />;
+  return <CannonBall geometry={geometry} />;
+}
+
+/** Le boulet du canon et sa traînée : trois échos plus petits qui suivent le même arc avec un léger retard. */
+function CannonBall({ geometry }: { geometry: ShotGeometry }) {
   const host = useRef<HTMLDivElement>(null);
   const { shot, from, to, size } = geometry;
   const orb = Math.max(18, Math.min(44, size * 0.22));

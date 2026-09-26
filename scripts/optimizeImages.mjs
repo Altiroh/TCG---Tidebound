@@ -94,6 +94,12 @@ const RULES = [
   { match: /\/match-end\/(defaite|victoire)\/cadre-photo\./, maxSize: 1536, quality: 88 },
   { match: /\/match-end\/(defaite|victoire)\/titre\./, maxSize: 1200, quality: 90 },
   { match: /\/match-end\/defaite\/bouton-/, maxSize: 640, quality: 90 },
+  // Planche des confettis de la victoire : ~60 pièces découpées à l'affichage
+  // (coordonnées en % de la planche, indépendantes de sa taille). Les plus
+  // grandes tombent à ~110 px : 1600 px de planche suffisent.
+  { match: /\/match-end\/victoire\/confettis\./, maxSize: 1600, quality: 88 },
+  // Le harpon des projectiles d'effet : il vole à ~150 px de long au plus.
+  { match: /\/fx\/harpon\./, maxSize: 512, quality: 90 },
   { match: /\/(menu|ships|boosters|collection|decks|board)\//, maxSize: 1600, quality: 85 },
   { match: /.*/, maxSize: 1280, quality: 85 },
 ];
