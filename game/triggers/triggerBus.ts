@@ -151,12 +151,16 @@ function matchesControlCondition(
     if (!holder || holder.hand.length > handAtMost) return false;
   }
   // « si l'adversaire contrôle plus d'unités que vous » : une comparaison,
-  // pas un seuil — la carte ne s'arme que quand on est en retard.
+  // pas un seuil — la carte ne s'arme que quand on est en retard. La
+  // porteuse ne se compte pas elle-même : « à son arrivée » se lit sur le
+  // plateau où elle arrive (cf. `opponentUnitsMoreThanController`).
   if (ability.condition?.opponentUnitsMoreThanController) {
     const moi = state.players.find((p) => p.id === controllerId);
     const adversaire = state.players.find((p) => p.id !== controllerId);
     const unites = (board: readonly CardInstance[] | undefined) =>
-      (board ?? []).filter((u) => UNIT_CARD_TYPES.includes(getCardDefinition(u.cardId).type)).length;
+      (board ?? []).filter(
+        (u) => u.instanceId !== sourceInstanceId && UNIT_CARD_TYPES.includes(getCardDefinition(u.cardId).type)
+      ).length;
     if (unites(adversaire?.board) <= unites(moi?.board)) return false;
   }
   const seuilAttaques = ability.condition?.opponentAttacksThisTurnAtLeast;

@@ -291,6 +291,12 @@ export interface TriggeredAbility {
      * COMEBACK — elle ne s'arme que quand on est en retard, et s'éteint
      * dès qu'on a rattrapé. Compte les UNITÉS de chaque côté, comme
      * `opponentUnitsAtLeast` : une Structure n'est pas un corps.
+     *
+     * La carte qui porte la capacité n'entre PAS dans votre compte : « à
+     * son arrivée, si l'adversaire contrôle plus d'unités que vous » se lit
+     * sur le plateau où elle ARRIVE (Chargeur des Écueils, 26/09/2026 — une
+     * unité contre deux en face, il doit prendre Pied marin ; compté avec
+     * lui, le retard d'une unité, le plus courant, ne l'armait jamais).
      */
     opponentUnitsMoreThanController?: boolean;
     /**

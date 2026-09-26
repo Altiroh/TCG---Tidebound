@@ -275,23 +275,35 @@ describe("Bêtes et conditions", () => {
     expect(stats(table({ board: [destrier, instance("matelot-fele", "p1")] }), destrier.instanceId).attack).toBe(3);
   });
 
-  it("Chargeur des Écueils a Pied marin s'il arrive en retard d'unités", () => {
-    const chargeur = instance("chargeur-des-ecueils", "p1");
-    const r = dispatch(table({ hand: [chargeur] }, { board: [instance("matelot-fele", "p2"), instance("matelot-fele", "p2")] }), {
-      type: "playCard",
-      playerId: "p1",
-      instanceId: chargeur.instanceId,
-    });
-    ok(r);
-    expect(hasEffectiveKeyword(r.state, joueur(r.state, "p1"), unite(r.state, chargeur.instanceId)!, "pied-marin")).toBe(true);
+  it("Chargeur des Écueils a Pied marin s'il arrive en retard d'unités — lui-même non compté", () => {
+    const pied = (state: GameState, id: string) => hasEffectiveKeyword(state, joueur(state, "p1"), unite(state, id)!, "pied-marin");
+    const jouer = (state: GameState, chargeur: CardInstance) => {
+      const r = dispatch(state, { type: "playCard", playerId: "p1", instanceId: chargeur.instanceId });
+      ok(r);
+      return r.state;
+    };
 
-    const egal = dispatch(table({ hand: [chargeur] }, { board: [instance("matelot-fele", "p2")] }), {
-      type: "playCard",
-      playerId: "p1",
-      instanceId: chargeur.instanceId,
-    });
-    ok(egal);
-    expect(hasEffectiveKeyword(egal.state, joueur(egal.state, "p1"), unite(egal.state, chargeur.instanceId)!, "pied-marin")).toBe(false);
+    // La partie du 26/09/2026 : une unité de notre côté, deux en face. Le
+    // Chargeur arrive — compté avec lui, c'était 2 contre 2 et rien ne se
+    // passait. Il prend Pied marin, et peut attaquer dans la foulée.
+    const chargeur = instance("chargeur-des-ecueils", "p1");
+    const enRetard = jouer(
+      table({ hand: [chargeur], board: [instance("mufle-au-fanion", "p1")] }, { board: [instance("matelot-fele", "p2"), instance("matelot-fele", "p2")] }),
+      chargeur
+    );
+    expect(pied(enRetard, chargeur.instanceId)).toBe(true);
+    const charge = dispatch({ ...passerTout(enRetard), phase: "combatPhase" }, { type: "attack", playerId: "p1", attackerInstanceId: chargeur.instanceId });
+    ok(charge);
+
+    // Seul contre une unité : en retard aussi.
+    const seul = instance("chargeur-des-ecueils", "p1");
+    expect(pied(jouer(table({ hand: [seul] }, { board: [instance("matelot-fele", "p2")] }), seul), seul.instanceId)).toBe(true);
+
+    // À égalité (une unité de chaque côté avant son arrivée) : rien.
+    const egal = instance("chargeur-des-ecueils", "p1");
+    expect(
+      pied(jouer(table({ hand: [egal], board: [instance("mufle-au-fanion", "p1")] }, { board: [instance("matelot-fele", "p2")] }), egal), egal.instanceId)
+    ).toBe(false);
   });
 
   it("Le Déserteur Gris rentre en main à la fin du tour s'il a au moins 3 autres unités", () => {
