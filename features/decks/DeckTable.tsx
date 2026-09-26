@@ -273,8 +273,11 @@ export function DeckTable(props: DeckTableProps) {
                     </span>
                   )}
                   {selected && <span className={styles.selectedChip}>Sélectionné</span>}
-                  <span className={styles.banner}>
-                    <span className={styles.bannerName} style={{ ["--len" as string]: Math.max(10, deck.name.length) }}>
+                  <span className={styles.banner} data-style={styleIdOf(deck) ? "" : undefined}>
+                    {/* L'emblème du style, à gauche du nom — comme sur la fiche et dans l'éditeur. */}
+                    {styleIdOf(deck) && <DeckStyleIcon styleId={styleIdOf(deck)!} className={styles.bannerStyle} />}
+                    {/* Au-delà de 16 lettres, le nom passe sur deux lignes plutôt que de rapetisser. */}
+                    <span className={styles.bannerName} data-long={deck.name.length > 16 || undefined}>
                       {deck.name}
                     </span>
                     <span className={styles.bannerShip}>{shipNameOf(deck.shipId)}</span>

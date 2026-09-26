@@ -518,29 +518,68 @@
   text-align: center;
 }
 
+/* Avec un emblème de style à gauche, le texte se centre sur ce qui reste de la face. */
+.banner[data-style] {
+  padding-left: 21%;
+  padding-right: 11%;
+}
+
+/* L'emblème du style, épinglé sur le pli gauche du bandeau, à hauteur du nom
+   (centre de la face avant : 32 % de la hauteur du bandeau). */
+.bannerStyle {
+  position: absolute;
+  left: -3%;
+  top: 33%;
+  width: 26%;
+  aspect-ratio: 1;
+  object-fit: contain;
+  transform: translateY(-50%);
+  filter: drop-shadow(0 0.15cqw 0.2cqw rgba(0, 0, 0, 0.55));
+  pointer-events: none;
+}
+
+/*
+ * LE NOM : Cinzel gras à l'encre, UNE taille pour toutes les piles — la
+ * rangée se lit d'un trait. Un nom long ne rapetisse plus jusqu'à
+ * l'illisible : il passe sur deux lignes équilibrées, un cran plus petit.
+ */
 .bannerName {
   max-width: 100%;
   overflow: hidden;
-  color: #2c1c0f;
+  color: #1d120a;
   font-family: var(--tb-font-display, Georgia, serif);
-  /* Le nom ENTIER, quitte à rapetisser : ~12 cqw de bandeau pour --len lettres. */
-  font-size: min(0.74cqw, calc(9.5cqw / var(--len, 10)));
+  font-size: 0.7cqw;
   font-weight: 700;
+  letter-spacing: 0.01em;
   line-height: 1;
-  text-overflow: clip;
+  text-shadow: 0 1px 0 rgba(255, 244, 222, 0.55);
   white-space: nowrap;
 }
 
+.bannerName[data-long] {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 0.56cqw;
+  line-height: 0.98;
+  white-space: normal;
+  text-wrap: balance;
+}
+
+/* LE NAVIRE : Spectral italique, bas de casse, brun — il se lit comme une
+   légende sous le nom, pas comme un second titre en capitales. */
 .bannerShip {
   max-width: 100%;
   overflow: hidden;
-  color: #5a3d22;
-  font-size: 0.46cqw;
-  line-height: 1;
+  margin-top: 0.08cqw;
+  color: #6b4a22;
+  font-family: var(--tb-font-ui, Georgia, serif);
+  font-size: 0.5cqw;
+  font-style: italic;
+  font-weight: 600;
+  line-height: 1.05;
+  text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 /* ── Flèches ──────────────────────────────────────────────────────── */
@@ -647,13 +686,13 @@
 }
 
 /* L'emblème du style, sur le sceau de cire peint à gauche de la corde
-   (centre du sceau : 9,8 % de la largeur de la corde, à mi-hauteur ; son
-   diamètre : 15 %). Un peu plus grand que lui, pour le couvrir entièrement. */
+   (centre du sceau : 9,8 % de la largeur de la corde, à mi-hauteur), au
+   diamètre du sceau : 15 %. Plus grand, il mordait sur le cadre de bois. */
 .ficheStyleIcon {
   position: absolute;
   left: 9.8%;
   top: 50%;
-  width: 17%;
+  width: 15%;
   aspect-ratio: 1;
   object-fit: contain;
   transform: translate(-50%, -50%);
