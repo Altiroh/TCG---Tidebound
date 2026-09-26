@@ -475,15 +475,8 @@ function DeckEditorScreenBody({ ownedCardIds, initialDeck }: DeckEditorScreenPro
         <>
           {/* eslint-disable-next-line @next/next/no-img-element -- décor peint, positionné à la main */}
           <img className={book.decor} src="/assets/decks/editeur/decor-bas.webp" alt="" draggable={false} />
-          {/* Les objets du HAUT de la table : ils mordent sur le bandeau et
-              sur la corde des panneaux — c'est l'occlusion qui fait la
-              profondeur, pas l'ombre. Trois groupes sur l'écran, jamais plus. */}
-          <span className={book.decorTopLeft} aria-hidden>
-            {/* eslint-disable-next-line @next/next/no-img-element -- décor peint */}
-            <img src="/assets/decks/liste/encrier.webp" alt="" draggable={false} />
-            {/* eslint-disable-next-line @next/next/no-img-element -- décor peint */}
-            <img src="/assets/decks/liste/plume.webp" alt="" draggable={false} />
-          </span>
+          {/* La bougie et le café de la référence : entre l'enseigne et le
+              compte, posés sur le haut du parchemin. */}
           <span className={book.decorTopRight} aria-hidden>
             {/* eslint-disable-next-line @next/next/no-img-element -- décor peint */}
             <img src="/assets/decks/liste/bougie.webp" alt="" draggable={false} />

@@ -1189,20 +1189,16 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════════
- * MISE EN SCÈNE (26/09/2026, soir) — la finition de la référence.
+ * CONVERGENCE VERS LA RÉFÉRENCE (26/09/2026, soir)
  * ══════════════════════════════════════════════════════════════════════
- * L'encre plus noire, les objets qui mordent les cadres, la colonne du
- * deck pleine même à vide, la colonne des filtres en plaques de bois, la
- * grille serrée sur ses emplacements, le bandeau sur sa traverse rivetée.
- * Tout lit les jetons `--book-*` (`app/tokens.css`). Cette section vient
- * EN DERNIER : à spécificité égale, elle l'emporte sur ce qui précède.
- *
- * Accroches : `data-part` (bandeau) quand le composant en pose une ;
- * `[class*="_nom__"]` sinon — à remplacer par des `data-part` au fil des
- * retouches des composants partagés.
+ * Pas une autre direction : les MESURES de la maquette (1672 × 941),
+ * relevées et reportées — encre, gouttières, hauteurs de ligne, tailles,
+ * densité de la colonne du deck. Rien qui n'y figure pas. Tout lit les
+ * jetons `--book-*` (`app/tokens.css`). Cette section vient EN DERNIER :
+ * à spécificité égale, elle l'emporte sur ce qui précède.
  */
 
-/* ── 1. Encre : un brun-noir pour le texte, le brun reste aux filets ── */
+/* ── 1. Encre : la référence écrit en brun-noir, le brun reste aux filets ── */
 .workspace.workspace.workspace {
   --ink: var(--book-ink);
   --ink-strong: var(--book-ink);
@@ -1220,126 +1216,39 @@
   color: var(--book-ink);
 }
 
-/* Le bois de la table sous une vignette : le regard reste sur les panneaux. */
+/* Les coins de la table sont plus sombres que son centre (référence). */
 .screen.screen.screen {
   background:
-    radial-gradient(ellipse 72% 62% at 50% 44%, transparent 42%, rgba(0, 0, 0, 0.52) 100%),
+    radial-gradient(ellipse 76% 66% at 50% 46%, transparent 48%, rgba(0, 0, 0, 0.42) 100%),
     #1a0f08 url("/assets/decks/liste/fond.webp") center / cover no-repeat;
 }
 
-/* ── 2. Bandeau : le retour et les onglets sur une traverse de bois rivetée ── */
-.screen [data-part="header-nav"] {
-  position: relative;
-  gap: clamp(2px, 0.3vw, 6px);
-  padding: 0 clamp(10px, 0.9vw, 16px);
-  border: 1px solid var(--book-brass-line);
-  border-radius: 5px;
-  background: var(--book-wood-dim);
-  box-shadow: var(--book-shadow-contact), 0 5px 10px rgba(0, 0, 0, 0.5);
-}
-
-/* Deux rivets de laiton aux extrémités. */
-.screen [data-part="header-nav"]::before,
-.screen [data-part="header-nav"]::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 40% 35%, #f0d48a, #a67a2e 60%, #5a3d14);
-  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.7);
-  transform: translateY(-50%);
-  pointer-events: none;
-}
-
-.screen [data-part="header-nav"]::before { left: 4px; }
-.screen [data-part="header-nav"]::after { right: 4px; }
-
-.screen [data-part="nav-tab"] {
-  padding: 0.55em 0.85em 0.65em;
-  color: var(--book-ivory-dim);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
-}
-
-.screen [data-part="nav-tab"]:hover {
-  color: var(--book-ivory);
-}
-
-.screen [data-part="nav-tab"][data-active] {
-  color: var(--book-ivory-strong);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9), 0 0 12px rgba(95, 208, 230, 0.35);
-}
-
-/* Le filet bas du bandeau passe au laiton. */
-.screen header::after {
-  background: linear-gradient(90deg, transparent 0%, var(--book-brass-line) 18%, rgba(199, 154, 75, 0.35) 60%, rgba(199, 154, 75, 0.1) 86%, transparent 100%);
-}
-
-/* L'enseigne, un cran plus grande, avec son halo. */
-.screen header img[alt="Tidebound"] {
-  height: clamp(40px, 7.6vh, 74px);
-  filter: drop-shadow(0 3px 10px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 14px rgba(95, 208, 230, 0.28));
-}
-
-/* ── 3. Décor : trois groupes d'objets, tous par-dessus les cadres ── */
+/* ── 2. La bougie et le café (référence : entre l'enseigne et le compte,
+   posés sur le haut du parchemin). Le décor du bas, lui, passe DEVANT
+   les cadres, comme dans la référence. ── */
 .decor {
   z-index: 5;
-  filter: drop-shadow(0 14px 18px rgba(0, 0, 0, 0.65));
 }
 
-.decorTopLeft,
 .decorTopRight {
   position: fixed;
+  right: 27vw;
+  top: calc(var(--tb-safe-top, 0px) - 0.2vw);
   z-index: 5;
   display: flex;
   align-items: flex-end;
+  height: clamp(66px, 11vh, 120px);
   pointer-events: none;
-  filter: drop-shadow(0 14px 18px rgba(0, 0, 0, 0.65));
+  filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.6));
 }
 
-.decorTopLeft img,
 .decorTopRight img {
   display: block;
   width: auto;
 }
 
-/* L'encrier et sa plume, entre les onglets et l'enseigne, à cheval sur la corde du parchemin. */
-.decorTopLeft {
-  left: 36.5vw;
-  top: calc(var(--tb-safe-top, 0px) - 0.4vw);
-  height: clamp(54px, 9.2vh, 100px);
-}
-
-/* Sous 1200 px, les onglets courent jusque-là : l'encrier s'efface. */
-@media (max-width: 1200px) {
-  .decorTopLeft {
-    display: none;
-  }
-}
-
-.decorTopLeft img:first-child {
-  height: 100%;
-}
-
-.decorTopLeft img:last-child {
-  height: 96%;
-  margin-left: -1.6vw;
-  margin-bottom: -6%;
-  transform: rotate(14deg);
-  transform-origin: 20% 90%;
-}
-
-/* La bougie et le café, entre l'enseigne et le compte — la source de lumière de la table. */
-.decorTopRight {
-  right: 27vw;
-  top: calc(var(--tb-safe-top, 0px) - 0.2vw);
-  height: clamp(66px, 11vh, 120px);
-}
-
 .decorTopRight img:first-child {
   height: 100%;
-  filter: drop-shadow(0 0 16px rgba(255, 170, 60, 0.45));
 }
 
 .decorTopRight img:last-child {
@@ -1347,142 +1256,84 @@
   margin-left: -0.6vw;
 }
 
-/* ── 4. Colonne gauche : un sommaire de carnet, chaque option est une plaque ── */
+/* ── 3. Colonne gauche : le rythme de la référence ──
+   Titre de section 11–12 px en capitales, l'ancre à droite ; une option =
+   un médaillon rond sombre et son libellé, 2,3 vh de haut ; SEULE la ligne
+   cochée est une plaque sombre. Pas de case à cocher. */
 .left [class*="_sidebarInner__"] {
-  gap: var(--book-block-gap);
-}
-
-.left [class*="_identityShipName__"] {
-  font-size: clamp(17px, 2.4vh, 23px);
+  gap: clamp(8px, 1.4vh, 14px);
 }
 
 .left [class*="_sectionTitle__"] {
-  gap: 7px;
-  margin-bottom: 4px;
+  gap: 6px;
+  margin-bottom: 3px;
   color: var(--book-ink);
-  font-size: clamp(12px, 1.5vh, 14px);
-  letter-spacing: 0.08em;
+  font-size: clamp(11px, 1.4vh, 13px);
 }
 
+/* Une seule ancre, à droite (référence). */
 .left [class*="_sectionTitle__"]::before {
-  color: var(--book-brass-deep);
-  font-size: 13px;
-}
-
-/* Le filet de laiton qui file jusqu'au bord, à la place de la seconde ancre. */
-.left [class*="_sectionTitle__"]::after {
-  content: "";
-  flex: 1 1 auto;
-  height: 1px;
-  margin-left: 4px;
-  background: linear-gradient(90deg, var(--book-brass-line), rgba(199, 154, 75, 0.08));
+  content: none;
 }
 
 .left [class*="_filterList__"],
 .left [class*="_filterList__"][data-scroll="true"] {
   display: flex;
   flex-direction: column;
-  gap: var(--book-row-gap);
+  gap: 2px;
 }
 
 .left [class*="_filterRow__"] {
-  min-height: var(--book-row-h);
-  padding: 0 9px 0 5px;
-  gap: 8px;
-  border: 1px solid rgba(20, 12, 5, 0.9);
-  border-radius: 4px;
-  background: var(--book-wood-dim);
-  box-shadow: var(--book-shadow-contact);
-  color: var(--book-ivory-dim);
-  font-size: clamp(12.5px, 1.5vh, 14px);
-  font-weight: 600;
-  transition: background 130ms ease-out, color 130ms ease-out, border-color 130ms ease-out, box-shadow 130ms ease-out;
+  min-height: clamp(22px, 2.5vh, 26px);
+  padding: 1px 8px 1px 4px;
+  gap: 7px;
+  font-size: clamp(12px, 1.45vh, 13.5px);
 }
 
-.left [class*="_filterRow__"]:hover {
-  border-color: var(--book-brass-line);
-  background: var(--book-wood-lit);
-  color: var(--book-ivory);
-}
-
-.left [class*="_filterRowActive__"],
-.left [class*="_filterRowActive__"]:hover {
-  border-color: var(--book-brass-line);
-  background: var(--book-wood-lit);
-  box-shadow: var(--book-shadow-contact), inset 0 -2px 0 var(--book-teal-bright);
-  color: var(--book-ivory-strong);
-}
-
-/* La plaque dit l'état : plus de case à cocher. */
 .left [class*="_filterCheck__"] {
   display: none;
 }
 
-/* Le médaillon de laiton, et sa marque. */
+/* Le médaillon : un rond bleu nuit, sa marque en clair ; bleu clair sur la ligne cochée. */
 .left [class*="_filterMedallion__"] {
-  width: 22px;
-  height: 22px;
-  border: 1px solid var(--book-brass-deep);
+  width: 18px;
+  height: 18px;
+  border: 1px solid rgba(20, 12, 5, 0.7);
   border-radius: 50%;
-  background: radial-gradient(circle at 40% 32%, #f0d48a, #b98a3a 55%, #6e4d1c 100%);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 240, 200, 0.5);
-  color: #2a1a08;
-  transition: background 130ms ease-out, border-color 130ms ease-out, box-shadow 130ms ease-out;
+  background: radial-gradient(circle at 45% 35%, #1f3a5c, #0b1a2c 70%);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  color: #e6eef6;
 }
 
 .left [class*="_filterRowActive__"] [class*="_filterMedallion__"] {
-  border-color: var(--book-teal-bright);
-  background: radial-gradient(circle at 40% 32%, #9ae9f7, #2a8fae 55%, #0c2b36 100%);
-  box-shadow: 0 0 6px rgba(95, 208, 230, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.35);
-  color: #eafaff;
+  border-color: #5fd0e6;
+  background: radial-gradient(circle at 45% 35%, #2a8fae, #0c2b36 75%);
+  box-shadow: 0 0 5px rgba(95, 208, 230, 0.55);
+  color: #ffffff;
 }
 
 .left [class*="_filterMedallion__"] [class*="_filterIcon__"] {
-  height: 12px;
-  filter: none;
+  height: 10px;
+  filter: invert(1) brightness(1.8);
   opacity: 1;
 }
 
-.left [class*="_filterRowActive__"] [class*="_filterMedallion__"] [class*="_filterIcon__"] {
-  filter: invert(1) brightness(1.8);
-}
-
 .left [class*="_filterMedallion__"] [class*="_dot__"] {
-  width: 9px;
-  height: 9px;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45);
+  width: 8px;
+  height: 8px;
 }
 
 .left [class*="_filterMedallion__"] [class*="_filterGlyph__"] {
   opacity: 1;
 }
 
-.left [class*="_rarityRow__"] {
-  padding-top: var(--book-row-gap);
-}
-
-/* ── 5. Centre : le parchemin vieilli, sa carte marine, la grille sur ses emplacements ── */
+/* ── 4. Centre : la carte marine qui affleure en haut du parchemin (référence),
+   la barre d'outils, la grille aux gouttières de la référence ── */
 .center.center.center {
   position: relative;
   isolation: isolate;
 }
 
-/* Les taches et les bords assombris du parchemin — derrière le contenu, devant le fond. */
-.center.center.center::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background:
-    linear-gradient(180deg, rgba(60, 38, 18, 0.14) 0%, transparent 16%),
-    radial-gradient(ellipse at 10% 6%, rgba(120, 80, 30, 0.16), transparent 30%),
-    radial-gradient(ellipse at 90% 94%, rgba(120, 80, 30, 0.14), transparent 28%),
-    radial-gradient(ellipse at 72% 12%, rgba(120, 80, 30, 0.08), transparent 24%);
-  box-shadow: inset 0 0 44px rgba(60, 38, 18, 0.3);
-  pointer-events: none;
-}
-
-/* La carte marine qui affleure dans le tiers haut, sous la barre d'outils. */
 .center.center.center::after {
   content: "";
   position: absolute;
@@ -1497,7 +1348,7 @@
   pointer-events: none;
 }
 
-/* La barre d'outils : le numéral en vedette, le mot en bas de casse. */
+/* « 270 cartes » : le numéral en Cinzel, le mot en bas de casse (référence). */
 .center [class*="_count__"] {
   gap: 6px;
   font-family: var(--tb-font-ui);
@@ -1514,34 +1365,24 @@
   font-weight: 700;
 }
 
-/* La grille : gouttières serrées, chaque carte dans son emplacement. */
+/* Gouttières relevées sur la référence : ≈ 1,2 vw entre colonnes, ≈ 1,9 vh entre rangées. */
 .center [class*="_cardGrid__"] {
-  column-gap: clamp(8px, 0.7vw, 12px);
-  row-gap: clamp(8px, 1vh, 12px);
+  column-gap: clamp(10px, 1.2vw, 20px);
+  row-gap: clamp(10px, 1.9vh, 20px);
   padding: 2px 4px 6px;
 }
 
-/* L'emplacement : un bezel sombre qui porte la carte ET sa barre de quantité. */
+/* La barre de quantité est le pied de la carte : dans le flux, collée sous elle (référence). */
 .center [class*="_cardCell__"] {
   display: flex;
   flex-direction: column;
-  padding: 4px 4px 0;
-  border-radius: 6px;
-  background: rgba(20, 12, 5, 0.5);
-  box-shadow: inset 0 0 0 1px rgba(199, 154, 75, 0.28), 0 4px 8px rgba(0, 0, 0, 0.45);
-  transition: transform 140ms ease-out, box-shadow 140ms ease-out;
 }
 
-.center [class*="_cardCell__"]:hover {
-  transform: translateY(-2px);
-  box-shadow: inset 0 0 0 1px rgba(199, 154, 75, 0.6), 0 8px 14px rgba(0, 0, 0, 0.55);
-}
-
-/* La barre de quantité quitte le flottement : elle est le pied de l'emplacement. */
 .center [class*="_cellExtras__"] {
   position: static;
   inset: auto;
   margin-top: -3px;
+  padding: 0 6%;
 }
 
 .center [class*="_cellExtras__"] > [class*="_cellBar__"] {
@@ -1555,57 +1396,30 @@
   bottom: auto;
 }
 
-/* ── 6. Colonne droite : quatre étages pleins (identité, résumé, liste, action) ── */
+/* ── 5. Colonne droite : la densité de la référence ──
+   Bannière ≈ 16/7,3 ; nom, badges et effectif serrés ; résumé toujours là
+   (courbe à gauche, tableau sombre des types à droite — c'est la référence) ;
+   liste de plaques ; plaque d'action. */
 .right [class*="_deckInner__"] {
-  gap: var(--book-block-gap);
+  gap: clamp(6px, 1vh, 10px);
 }
 
-/* Étage 1 — la bannière, cadrée de laiton, plus haute. */
 .headArt {
-  aspect-ratio: 16 / 7.2;
+  aspect-ratio: 16 / 7.3;
   border: 0;
   border-radius: 3px;
   box-shadow:
-    inset 0 0 0 2px rgba(199, 154, 75, 0.55),
+    inset 0 0 0 2px rgba(199, 154, 75, 0.5),
     inset 0 0 0 4px rgba(20, 12, 5, 0.7),
-    inset 0 0 26px rgba(0, 0, 0, 0.5),
-    0 8px 16px rgba(0, 0, 0, 0.5);
-}
-
-.headCorner {
-  position: absolute;
-  width: 18px;
-  height: 18px;
-  border: 3px solid var(--book-brass);
-  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.75));
-  pointer-events: none;
-}
-
-.headCorner[data-corner="tl"] { top: 4px; left: 4px; border-right: 0; border-bottom: 0; border-top-left-radius: 3px; }
-.headCorner[data-corner="tr"] { top: 4px; right: 4px; border-left: 0; border-bottom: 0; border-top-right-radius: 3px; }
-.headCorner[data-corner="bl"] { bottom: 4px; left: 4px; border-right: 0; border-top: 0; border-bottom-left-radius: 3px; }
-.headCorner[data-corner="br"] { bottom: 4px; right: 4px; border-left: 0; border-top: 0; border-bottom-right-radius: 3px; }
-
-.headArtPlus {
-  top: 10px;
-  right: 10px;
-}
-
-.headNameRow {
-  gap: 10px;
-}
-
-.seal {
-  width: clamp(34px, 4.4vh, 44px);
-  height: clamp(34px, 4.4vh, 44px);
+    inset 0 0 22px rgba(0, 0, 0, 0.45),
+    0 6px 14px rgba(0, 0, 0, 0.45);
 }
 
 .headName {
   color: var(--book-ink);
-  font-size: clamp(22px, 3vh, 30px);
 }
 
-/* Une seule ligne de badges : format(s) à gauche, statut poussé à droite. */
+/* Une seule ligne : format(s) à gauche, statut poussé à droite (référence). */
 .headBadges {
   flex-wrap: nowrap;
   gap: 8px;
@@ -1613,7 +1427,7 @@
 
 .headBadges [class*="_badgeStandard__"],
 .headBadges [class*="_badgeAbyssal__"] {
-  padding: 3px 12px;
+  padding: 2px 12px;
   font-family: var(--tb-font-ui);
   font-size: 12px;
   font-weight: 700;
@@ -1621,23 +1435,15 @@
 }
 
 .headStatus {
-  padding: 3px 10px;
-  font-size: 11.5px;
   white-space: nowrap;
 }
 
 .headCount {
   color: var(--book-ink);
-  font-size: clamp(13px, 1.7vh, 15px);
-}
-
-.headCount strong {
-  font-size: 1.25em;
 }
 
 .workspace textarea.headDescription {
   color: var(--book-ink-2);
-  font-size: clamp(12.5px, 1.5vh, 14px);
   font-style: italic;
 }
 
@@ -1646,26 +1452,18 @@
   font-style: italic;
 }
 
-/* Étage 2 — le résumé, toujours là. */
 .right [class*="_summary__"] {
-  padding-top: 8px;
+  padding-top: 6px;
   border-top: 1px solid var(--book-brass-line);
 }
 
 .right [class*="_summaryTitle__"],
 .listTitle {
   color: var(--book-ink);
-  font-size: clamp(12px, 1.6vh, 14px);
-  letter-spacing: 0.08em;
-}
-
-.summaryCurve [class*="_curve__"] {
-  height: clamp(48px, 7.5vh, 76px);
 }
 
 .summaryCurve [class*="_curveFill__"] {
   background: linear-gradient(180deg, #2f9fbf, #17607a);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 
 .summaryCurve [class*="_curveFillEmpty__"] {
@@ -1673,57 +1471,40 @@
   box-shadow: inset 0 0 0 1px rgba(58, 38, 22, 0.14);
 }
 
-.summaryCurve [class*="_curveValue__"] {
-  color: var(--book-ink-2);
-  font-size: 10px;
-  font-weight: 700;
-}
-
+.summaryCurve [class*="_curveValue__"],
 .summaryCurve [class*="_curveLabels__"] {
   color: var(--book-ink-2);
 }
 
-.typeTable {
-  gap: 2px;
-  padding: 7px 9px;
-  border-color: var(--book-brass-line);
-  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.55), 0 3px 6px rgba(0, 0, 0, 0.4);
-}
-
 .typeTable li {
-  gap: 7px;
-  min-height: 18px;
-  color: var(--book-ivory);
-  font-size: clamp(12px, 1.45vh, 13.5px);
   font-variant-numeric: tabular-nums;
 }
 
 .typeTable li[data-empty] {
-  color: var(--book-ivory-dim);
+  color: rgba(233, 215, 176, 0.55);
 }
 
 .typeTable li[data-empty] img {
   opacity: 0.5;
 }
 
-.typeTable strong {
-  color: var(--book-ivory-strong);
-}
-
-/* Étage 3 — la liste : des plaques, et une plaque quand elle est vide. */
 .listTitle {
-  padding-top: 8px;
+  padding-top: 6px;
   border-top: 1px solid var(--book-brass-line);
 }
 
 .right [class*="_list__"] {
-  gap: var(--book-row-gap);
+  gap: 3px;
   /* Deux lignes au moins : le résumé, toujours affiché, ne mange jamais la liste. */
-  min-height: calc(2 * var(--book-row-h) + var(--book-row-gap));
+  min-height: calc(2 * clamp(28px, 3.4vh, 32px) + 3px);
 }
 
-/* Écran moyen (1600 × 900, laptop 15") : la bannière s'aplatit, la courbe
-   et la description se resserrent — tout reste visible, l'action comprise. */
+.right [class*="_rowQty__"] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Écran moyen (1600 × 900) : la bannière s'aplatit, la courbe et la
+   description se resserrent — tout reste visible, l'action comprise. */
 @media (max-height: 920px) {
   .headArt {
     aspect-ratio: 16 / 6;
@@ -1736,10 +1517,6 @@
   .summaryCurve [class*="_curve__"] {
     height: clamp(40px, 5.6vh, 56px);
   }
-
-  .typeTable li {
-    min-height: 16px;
-  }
 }
 
 /* Écran bas (laptop 13", téléphone couché) : le résumé s'efface — la
@@ -1748,56 +1525,4 @@
   .right [class*="_summary__"] {
     display: none;
   }
-}
-
-.right [class*="_row__"] {
-  min-height: var(--book-row-h);
-  background: var(--book-wood-dim);
-  box-shadow: var(--book-shadow-contact);
-  color: var(--book-ivory);
-}
-
-.right [class*="_row__"]:hover {
-  border-color: var(--book-brass-line);
-  background: var(--book-wood-lit);
-}
-
-.right [class*="_rowName__"] {
-  color: var(--book-ivory) !important;
-  font-size: clamp(12.5px, 1.5vh, 14px) !important;
-  font-weight: 600;
-}
-
-.right [class*="_rowQty__"] {
-  font-variant-numeric: tabular-nums;
-}
-
-.right [class*="_listEmpty__"] {
-  margin: 0;
-  padding: 10px 12px;
-  border: 1px solid rgba(20, 12, 5, 0.9);
-  border-radius: 4px;
-  background: var(--book-wood-dim);
-  box-shadow: var(--book-shadow-contact);
-  color: var(--book-ivory-dim);
-  font-size: clamp(12px, 1.45vh, 13.5px);
-  font-style: italic;
-  text-align: center;
-}
-
-/* Étage 4 — l'action : calme quand tout est à jour, lumineuse quand il y a à enregistrer. */
-.right [class*="_save__"]:not(:disabled) {
-  color: var(--book-ivory-strong);
-  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 9px rgba(95, 208, 230, 0.55));
-}
-
-.right [class*="_save__"]:not(:disabled):hover {
-  filter: brightness(1.1) drop-shadow(0 3px 5px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 16px rgba(95, 208, 230, 0.8));
-}
-
-/* « … » : un médaillon rond, à la hauteur de la plaque. */
-.right [class*="_actions__"] [aria-label="Plus d'options"] {
-  border-color: var(--book-brass-line);
-  border-radius: 50%;
-  box-shadow: var(--book-shadow-contact);
 }

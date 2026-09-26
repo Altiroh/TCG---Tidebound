@@ -23,14 +23,14 @@ export function NavigationTab({ children, active = false, href, onClick }: Navig
 
   if (href) {
     return (
-      <Link href={href} className={className} data-part="nav-tab" data-active={active || undefined} onClick={() => playTabClick()}>
+      <Link href={href} className={className} onClick={() => playTabClick()}>
         {children}
       </Link>
     );
   }
 
   return (
-    <button type="button" className={className} data-part="nav-tab" data-active={active || undefined} onClick={handleClick}>
+    <button type="button" className={className} onClick={handleClick}>
       {children}
     </button>
   );
