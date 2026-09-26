@@ -1547,3 +1547,208 @@
     display: none;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+ * LA COLLECTION « SUR LE LIVRE » (26/09/2026) — `CollectionScreen`
+ * ══════════════════════════════════════════════════════════════════════
+ * Le même habillage que l'Éditeur, SANS la colonne du deck : deux colonnes,
+ * la grille prend la place libérée (plus de cartes par rangée, à la même
+ * taille). Ce qui n'appartient qu'à la Collection garde sa place et prend
+ * la matière du livre : l'en-tête « Filtres / Réinitialiser », les
+ * effectifs des filtres, la réglette de Raison, « Créer un deck », la
+ * pastille « ×N » sous chaque carte possédée, « Revendre le surplus ».
+ *
+ * Sur téléphone (≤ 900 px de large ou ≤ 560 px de haut), la Collection
+ * garde son repli : une colonne, les filtres en tiroir.
+ */
+.workspace.workspace.workspace.collection {
+  grid-template-columns: clamp(250px, 18vw, 320px) minmax(0, 1fr);
+}
+
+/* Le cadre peint (panneau-gauche) est plus large que la bordure de la
+   colonne, et ses ancres de laiton débordent vers l'intérieur : le contenu
+   commence APRÈS le bois peint, jamais dessous. La colonne est élargie
+   d'autant — la Collection n'a pas de colonne de deck à ménager. */
+.collection .left [class*="_sidebarInner__"] {
+  padding-left: clamp(24px, 2.2vw, 40px);
+}
+
+@media (max-height: 560px), (max-width: 900px) {
+  .workspace.workspace.workspace.collection {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Le tiroir de filtres : l'inclinaison du cadre (\`.left.left\`, même force
+     que \`.sidebar.sidebar\`) écrasait la translation qui le range hors de
+     l'écran — il restait ouvert par-dessus la grille. */
+  .collection .left.left.left {
+    transform: translateX(calc(-100% - clamp(8px, 1.4vw, 16px) - var(--tb-safe-left, 0px)));
+  }
+
+  .collection[data-drawer="open"] .left.left.left {
+    transform: rotate(-0.6deg);
+  }
+}
+
+/* ── La colonne : son en-tête reste — « Réinitialiser » sert ici ── */
+.collection .left [class*="_sidebarHead__"] {
+  display: flex;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--book-brass-line);
+}
+
+.collection .left [class*="_sidebarTitle__"] {
+  color: var(--book-ink);
+  font-size: clamp(15px, 2vh, 19px);
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+
+.collection .left [class*="_resetLink__"] {
+  color: var(--book-teal);
+  font-weight: 600;
+}
+
+.collection .left [class*="_resetLink__"]:disabled {
+  color: var(--book-ink-3);
+  text-decoration: none;
+  cursor: default;
+}
+
+/* « Mur des carnets », dans le titre de la section. */
+.collection .left [class*="_sectionLink__"] {
+  color: var(--book-teal);
+  font-family: var(--tb-font-ui);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+/* Les effectifs restent : ce qu'on obtiendra en cochant la ligne. */
+.collection .left [class*="_filterCount__"] {
+  display: inline;
+  color: var(--book-ink-3);
+  font-size: clamp(11px, 1.3vh, 12.5px);
+  font-variant-numeric: tabular-nums;
+}
+
+.collection .left [class*="_filterRowActive__"] [class*="_filterCount__"] {
+  color: #8fe8f7;
+}
+
+/* La réglette de Raison : les médaillons ronds des lignes de filtre. */
+.collection .left [class*="_costChip__"] {
+  border: 1px solid rgba(20, 12, 5, 0.7);
+  background: radial-gradient(circle at 45% 35%, #1f3a5c, #0b1a2c 70%);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  color: #e6eef6;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-weight: 700;
+}
+
+.collection .left [class*="_costChipActive__"] {
+  border-color: #5fd0e6;
+  background: radial-gradient(circle at 45% 35%, #2a8fae, #0c2b36 75%);
+  box-shadow: 0 0 5px rgba(95, 208, 230, 0.55);
+  color: #ffffff;
+}
+
+/* « Créer un deck » : la plaque à bouts de laiton, lettres dorées. */
+.collection .left [class*="_createDeck__"] {
+  min-height: clamp(36px, 4.6vh, 44px);
+  border: 0;
+  border-radius: 0;
+  background: url("/assets/decks/editeur/plaque.webp") center / 100% 100% no-repeat;
+  box-shadow: none;
+  color: #f1d38a;
+  font-family: var(--tb-font-display, Georgia, serif);
+  letter-spacing: 0.04em;
+  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.55));
+}
+
+.collection .left [class*="_createDeck__"]:hover {
+  filter: brightness(1.11) saturate(1.14) drop-shadow(0 0 7px rgba(255, 214, 140, 0.85)) drop-shadow(0 0 20px rgba(255, 176, 72, 0.4));
+}
+
+/* ── La grille : la place de la colonne du deck devient des colonnes de cartes,
+   à la taille de celles de l'Éditeur ── */
+@media (min-width: 901px) and (min-height: 561px) {
+  .collection .center [class*="_cardGrid__"] {
+    grid-template-columns: repeat(auto-fill, minmax(clamp(150px, 10vw, 204px), 1fr));
+  }
+}
+
+/* La pastille des exemplaires possédés, au pied de la carte : la plaque de
+   la barre −/+ de l'Éditeur, en petit. Une ligne réservée même sous une
+   carte non possédée : toutes les cartes d'une rangée s'alignent. */
+.collection .center [class*="_cellExtras__"] {
+  justify-content: center;
+  min-height: clamp(24px, 2.8vh, 28px);
+  margin-top: -2px;
+}
+
+.collection .center [class*="_ownedCount__"] {
+  align-items: center;
+  min-width: 0;
+  height: clamp(24px, 2.8vh, 28px);
+  padding: 0 clamp(16px, 1.4vw, 22px);
+  border: 0;
+  border-radius: 0;
+  background: url("/assets/decks/editeur/plaque.webp") center / 100% 100% no-repeat;
+  box-shadow: none;
+  color: #f1d38a;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: clamp(12px, 1.5vh, 14px);
+  letter-spacing: 0.06em;
+  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.55));
+}
+
+.collection .center [class*="_ownedCountTimes__"] {
+  color: rgba(241, 211, 138, 0.7);
+}
+
+/* Le cœur : TOUJOURS visible dans la Collection, sur la ligne de la pastille, à droite. */
+.collection .center [class*="Shelf_heart__"] {
+  top: auto;
+  bottom: 1px;
+  right: 3%;
+  opacity: 1;
+}
+
+/* ── « Revendre le surplus » : en bout de barre, sur la plaque ── */
+.workspace .surplusButton {
+  flex: 0 0 auto;
+  min-height: clamp(36px, 4.8vh, 46px);
+  padding: 0 clamp(18px, 1.6vw, 26px);
+  border: 0;
+  border-radius: 0;
+  background: url("/assets/decks/editeur/plaque.webp") center / 100% 100% no-repeat;
+  box-shadow: none;
+  color: #f1d38a;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: clamp(12.5px, 1.6vh, 14px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.5));
+  transition: filter 200ms ease-out;
+}
+
+.workspace .surplusButton:hover:not(:disabled) {
+  border: 0;
+  box-shadow: none;
+  color: #fff3cf;
+  filter: brightness(1.11) saturate(1.14) drop-shadow(0 0 7px rgba(255, 214, 140, 0.85)) drop-shadow(0 0 20px rgba(255, 176, 72, 0.4));
+}
+
+.workspace .surplusButton:disabled {
+  opacity: 0.6;
+  filter: grayscale(0.4) drop-shadow(0 3px 5px rgba(0, 0, 0, 0.5));
+}
+
+/* Le compte à revendre : la pastille « à réclamer » du jeu. */
+.workspace .surplusButton > span {
+  border: 1px solid var(--tb-notif-border);
+  background: var(--tb-notif-bg);
+  box-shadow: var(--tb-notif-glow);
+  color: var(--tb-notif-text);
+}

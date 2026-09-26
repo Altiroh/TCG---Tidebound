@@ -47,11 +47,13 @@ interface CollectionSidebarProps {
   /** Cartes du favori ou du carnet choisi (`useCardBrowser`) — les compteurs des autres axes en tiennent compte. */
   shelfCards?: ReadonlySet<string> | null;
   /**
-   * Disposition de l'Éditeur « sur le livre » (maquette du 26/09/2026) :
-   * pas de filtre de Raison, et « Favoris & carnets » en bas de colonne
-   * plutôt qu'en tête. Défaut : la disposition de la Collection.
+   * `collection` (défaut) : la colonne sombre de la Collection.
+   * `livre` : l'Éditeur « sur le livre » (maquette du 26/09/2026) — lignes
+   * à médaillon, pas de filtre de Raison, « Favoris & carnets » en bas.
+   * `collection-livre` : la Collection habillée comme l'Éditeur — lignes à
+   * médaillon, mais TOUS ses axes, dans son ordre (carnets en tête, Raison).
    */
-  layout?: "collection" | "livre";
+  layout?: "collection" | "livre" | "collection-livre";
 }
 
 /** Couleur de chaque gemme de rareté — celles du récapitulatif de boosters. */
@@ -287,7 +289,10 @@ export function CollectionSidebar({
   shelfCards = null,
   layout = "collection",
 }: CollectionSidebarProps) {
-  const onBook = layout === "livre";
+  /** Lignes à médaillon de laiton, sans case à cocher : les deux habillages « livre ». */
+  const medallion = layout !== "collection";
+  /** Ordre et axes de la maquette de l'Éditeur : carnets en bas, pas de Raison. */
+  const editorOrder = layout === "livre";
   const canReset = hasActiveFilters(filters);
   const countFor = (ignore: keyof CollectionFilterState, extra: Parameters<typeof countMatching>[3]) =>
     countMatching(filters, owned, ignore, extra, shelfCards);
@@ -308,14 +313,14 @@ export function CollectionSidebar({
         </button>
       </div>
 
-      {!onBook && <ShelfSection filters={filters} onChange={onChange} countFor={countFor} />}
+      {!editorOrder && <ShelfSection filters={filters} onChange={onChange} countFor={countFor} medallion={medallion} />}
 
       <section className={styles.filterSection}>
         <h2 className={styles.sectionTitle}>Variante</h2>
         <FilterList rowCount={VARIANTS.length}>
           {VARIANTS.map((variant) => (
             <FilterRow
-              medallion={onBook}
+              medallion={medallion}
               key={variant.value}
               label={variant.label}
               dotClassName={variant.dotClassName}
@@ -337,7 +342,7 @@ export function CollectionSidebar({
         <h2 className={styles.sectionTitle}>Type</h2>
         <FilterList rowCount={TYPE_FILTERS.length + 1}>
           <FilterRow
-            medallion={onBook}
+            medallion={medallion}
             label="Tous"
             active={filters.type === null}
             count={countFor("type", () => true)}
@@ -345,7 +350,7 @@ export function CollectionSidebar({
           />
           {TYPE_FILTERS.map((type) => (
             <FilterRow
-              medallion={onBook}
+              medallion={medallion}
               key={type}
               label={CARD_TYPE_LABELS[type]}
               icon={`/assets/cards/icons/type-${type}.webp`}
@@ -363,7 +368,7 @@ export function CollectionSidebar({
           <FilterList rowCount={OWNERSHIPS.length}>
             {OWNERSHIPS.map((status) => (
               <FilterRow
-                medallion={onBook}
+                medallion={medallion}
                 key={status.value}
                 label={status.label}
                 active={filters.ownership === status.value}
@@ -381,7 +386,7 @@ export function CollectionSidebar({
         <h2 className={styles.sectionTitle}>Extension</h2>
         <FilterList rowCount={BOOSTER_EXTENSIONS.length + 1}>
           <FilterRow
-            medallion={onBook}
+            medallion={medallion}
             label="Toutes"
             active={filters.boosters.length === 0}
             count={countFor("boosters", () => true)}
@@ -391,7 +396,7 @@ export function CollectionSidebar({
             const active = filters.boosters.includes(extension.boosterId);
             return (
               <FilterRow
-                medallion={onBook}
+                medallion={medallion}
                 key={extension.boosterId}
                 label={extension.name}
                 active={active}
@@ -417,7 +422,7 @@ export function CollectionSidebar({
         <h2 className={styles.sectionTitle}>Rareté</h2>
         <FilterList rowCount={1}>
           <FilterRow
-            medallion={onBook}
+            medallion={medallion}
             label="Toutes"
             active={filters.rarities.length === 0}
             count={countFor("rarities", () => true)}
@@ -448,9 +453,9 @@ export function CollectionSidebar({
         </div>
       </section>
 
-      {onBook && <ShelfSection filters={filters} onChange={onChange} countFor={countFor} medallion />}
+      {editorOrder && <ShelfSection filters={filters} onChange={onChange} countFor={countFor} medallion />}
 
-      {!onBook && (
+      {!editorOrder && (
       <section className={styles.filterSection}>
         <h2 className={styles.sectionTitle}>Raison</h2>
         <div className={styles.costRow}>

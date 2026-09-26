@@ -26,6 +26,7 @@ import styles from "@/features/decks/DeckBuilder.module.css";
 import game from "@/features/shell/GameScreen.module.css";
 import { playButtonClick } from "@/lib/sound";
 import book from "@/features/decks/DeckEditorBook.module.css";
+import { BookSearch } from "@/features/decks/BookSearch";
 import { oneOf } from "@/lib/persistCodecs";
 import { usePersistedState } from "@/lib/persistedState";
 
@@ -408,19 +409,7 @@ function DeckEditorScreenBody({ ownedCardIds, initialDeck }: DeckEditorScreenPro
             onOpenFilters={() => cardBrowser.setDrawerOpen((open) => !open)}
             activeFilterCount={cardBrowser.activeFilterCount}
             search={
-              onBook ? (
-                <label className={book.search}>
-                  {/* La loupe de laiton, posée à part sur la barre (maquette). */}
-                  <span className={book.searchIcon} aria-hidden />
-                  <span className={book.visuallyHidden}>Rechercher une carte</span>
-                  <input
-                    type="search"
-                    value={cardBrowser.filters.search}
-                    onChange={(event) => cardBrowser.patchFilters({ search: event.target.value })}
-                    placeholder="Rechercher une carte…"
-                  />
-                </label>
-              ) : undefined
+              onBook ? <BookSearch value={cardBrowser.filters.search} onChange={(search) => cardBrowser.patchFilters({ search })} /> : undefined
             }
             extra={
               <button type="button" className={`${game.chipActive} ${styles.deckToggle}`} onClick={() => setDeckOpen((open) => !open)} aria-expanded={deckOpen}>
