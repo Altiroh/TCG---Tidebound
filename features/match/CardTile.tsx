@@ -340,6 +340,12 @@ const ILLUSTRATION_ZONE: Zone = { top: 4, left: 7, width: 87, height: 51 };
  * (coins arrondis) — ne déborde jamais sur les cartes voisines.
  */
 const DEBORD_ZONE: Zone = { top: 0, left: -4, width: 108, height: 62 };
+/**
+ * Le même calque sur la TUILE DE PLATEAU, où l'illustration couvre toute la
+ * tuile : le sujet occupe la hauteur jusqu'au nom (73,5 %), les pieds calés
+ * en bas de zone — comme sur la carte, où il descend jusqu'au bandeau.
+ */
+const BOARD_DEBORD_ZONE: Zone = { top: 1, left: 0, width: 100, height: 78 };
 const NAME_BANNER_ZONE: Zone = { top: 55, left: 8, width: 84, height: 10 };
 const RULES_ZONE_WITH_STATS: Zone = { top: 66, left: 9, width: 82, height: 21 };
 const RULES_ZONE_NO_STATS: Zone = { top: 66, left: 9, width: 82, height: 28 };
@@ -598,6 +604,20 @@ export function CardTile({
                   alt=""
                   onError={() => setIllustrationFailed(illustrationUrl)}
                   className="h-full w-full object-cover"
+                />
+              )}
+              {/* Couche 1.5 : le débord Abyssal. Pour une Abyssale, l'illustration n'est que le DÉCOR ;
+                  le sujet (Bat-marin encapuchonné…) vit dans ce calque. Sans lui, la tuile montrait un
+                  paysage vide. Il se tient debout au-dessus du nom, sous le voile qui garde nom et stats lisibles. */}
+              {isAbyssal && !isToken && debordOk && debordUrl && (
+                // eslint-disable-next-line @next/next/no-img-element -- asset local, calque optionnel par carte Abyssale
+                <img
+                  src={debordUrl}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  className="pointer-events-none absolute object-contain object-bottom"
+                  style={zoneStyle(BOARD_DEBORD_ZONE)}
                 />
               )}
               {/* Couche 2 : un voile sombre en pied, pour que nom et stats se lisent sur n'importe quelle illustration. */}
