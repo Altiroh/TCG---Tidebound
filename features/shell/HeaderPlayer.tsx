@@ -10,7 +10,7 @@ import { fetchProgression, type ProgressionSummary } from "@/features/progressio
 import { audienceMood } from "@/game/audience";
 import { onProgressionChanged, readProgression, rememberedProgression } from "@/features/progression/progressionSync";
 import { cardIllustrationThumbUrl } from "@/features/decks/cardArtUrl";
-import { profileHref, type PROFILE_PANELS } from "@/features/progression/profileTabs";
+import { profileHref, requestProfileOpen, type PROFILE_PANELS } from "@/features/progression/profileTabs";
 import type { ProfileTab } from "@/features/progression/ProfileView";
 import { PreconToken, TideCoin } from "@/features/shell/GameIcons";
 import { ScreenToast, type ScreenToastMessage } from "@/features/shell/ScreenToast";
@@ -155,7 +155,14 @@ export function HeaderPlayer() {
   /** Profil ouvert en panneau, et sur quel onglet (`null` : fermé). */
   const router = useRouter();
   /** Le profil n'est plus un panneau : on va sur la page, au bon onglet (et la bonne fenêtre). */
-  const goToProfile = useCallback((tab: ProfileTab, panel?: keyof typeof PROFILE_PANELS) => router.push(profileHref(tab, panel)), [router]);
+  // Et le SIGNAL en plus de l'URL : déjà sur la page, une URL inchangée ne la faisait pas réagir.
+  const goToProfile = useCallback(
+    (tab: ProfileTab, panel?: keyof typeof PROFILE_PANELS) => {
+      router.push(profileHref(tab, panel));
+      requestProfileOpen(tab, panel);
+    },
+    [router]
+  );
   /** Dernier nombre de récompenses à réclamer VU — même principe que les quêtes. */
   const lastRewards = useRef<number | null>(null);
   const [toast, setToast] = useState<ScreenToastMessage | null>(null);

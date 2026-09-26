@@ -53,6 +53,18 @@
   pointer-events: none;
 }
 
+/* Médaillon : l'illustration d'un Navire (maîtrise), ronde et cerclée de laiton. */
+.iconRound {
+  align-self: center;
+  width: 34%;
+  height: auto;
+  aspect-ratio: 1;
+  border: 2px solid #c9a15a;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.6);
+}
+
 .count {
   align-self: center;
   font-family: var(--tb-font-display, Georgia, serif);

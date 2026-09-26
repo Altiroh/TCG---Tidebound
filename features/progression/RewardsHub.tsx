@@ -22,6 +22,7 @@ import {
 } from "@/features/progression/profileActions";
 import type { AudienceMilestoneView, AudienceView, MasteryView, SponsorView } from "@/features/progression/hubService";
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
+import { onProfileOpenRequest } from "@/features/progression/profileTabs";
 import { RewardIcon, type RewardItem } from "@/features/progression/RewardIcon";
 import { shipIllustrationUrl } from "@/features/ships/shipFrame";
 import styles from "@/features/progression/RewardsHub.module.css";
@@ -66,6 +67,18 @@ export function RewardsHub({ profile, claiming, onClaimLevel, onReveal, onRefres
   useEffect(() => {
     if (initialSheet) setSheet(initialSheet);
   }, [initialSheet]);
+  // Un raccourci du bandeau cliqué alors qu’on est déjà ici : la fenêtre s’ouvre à chaque fois,
+  // même quand l’URL (?panneau=) n’a pas changé.
+  useEffect(() => onProfileOpenRequest((request) => request.panel && setSheet(request.panel)), []);
+  /** Refermer une fenêtre la retire aussi de l’URL : l’adresse dit ce qui est ouvert. */
+  const closeSheet = () => {
+    setSheet(null);
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("panneau")) {
+      url.searchParams.delete("panneau");
+      window.history.replaceState(window.history.state, "", url);
+    }
+  };
 
   /** Une réclamation du hub : erreur affichée, révélation, relecture. */
   function run(action: () => Promise<{ ok: boolean; error?: string; items?: RewardItem[] }>, title: string, revealDelayMs = 0) {
@@ -175,11 +188,11 @@ export function RewardsHub({ profile, claiming, onClaimLevel, onReveal, onRefres
             busy={pending}
             onOpenGift={openGift}
             onClaimMilestone={claimMilestone}
-            onClose={() => setSheet(null)}
+            onClose={closeSheet}
           />
         )}
         {sheet === "masteries" && profile.hub && (
-          <MasteriesSheet masteries={profile.hub.masteries} busy={pending} onClaim={claimMastery} onClose={() => setSheet(null)} />
+          <MasteriesSheet masteries={profile.hub.masteries} busy={pending} onClaim={claimMastery} onClose={closeSheet} />
         )}
 
         {gift && <GiftOpening color={gift.color} name={gift.name} onDone={() => setGift(null)} />}

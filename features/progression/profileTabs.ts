@@ -22,3 +22,31 @@ export function parseProfilePanel(value: unknown): ProfilePanel | undefined {
 export function profileHref(tab: ProfileTab, panel?: keyof typeof PROFILE_PANELS): string {
   return `/profil?onglet=${tab}${panel ? `&panneau=${panel}` : ""}`;
 }
+
+/**
+ * SIGNAL « ouvre le profil ici » — envoyé par les raccourcis du bandeau EN
+ * PLUS de la navigation (`profileHref`). Déjà sur la page, l'URL ne suffit
+ * pas : si elle ne change pas (fenêtre refermée puis redemandée, onglet
+ * changé à la main entre-temps), la page ne réagissait pas et le raccourci
+ * « ne renvoyait à rien ». La page et le hub écoutent ce signal : ils
+ * changent d'onglet et ouvrent la fenêtre à chaque clic.
+ */
+export const PROFILE_OPEN_EVENT = "tidebound:profil-ouvrir";
+
+export interface ProfileOpenRequest {
+  tab: ProfileTab;
+  panel?: ProfilePanel;
+}
+
+export function requestProfileOpen(tab: ProfileTab, panel?: keyof typeof PROFILE_PANELS): void {
+  if (typeof window === "undefined") return;
+  const detail: ProfileOpenRequest = { tab, panel: panel ? PROFILE_PANELS[panel] : undefined };
+  window.dispatchEvent(new CustomEvent<ProfileOpenRequest>(PROFILE_OPEN_EVENT, { detail }));
+}
+
+/** S'abonne aux demandes d'ouverture ; rend la fonction de désabonnement (pour un `useEffect`). */
+export function onProfileOpenRequest(listener: (request: ProfileOpenRequest) => void): () => void {
+  const handler = (event: Event) => listener((event as CustomEvent<ProfileOpenRequest>).detail);
+  window.addEventListener(PROFILE_OPEN_EVENT, handler);
+  return () => window.removeEventListener(PROFILE_OPEN_EVENT, handler);
+}

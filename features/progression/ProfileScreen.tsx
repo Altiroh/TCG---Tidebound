@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ProfileSummary } from "@/features/progression/profileActions";
 import { ProfileView, waitingCounts, type ProfileTab } from "@/features/progression/ProfileView";
-import type { ProfilePanel } from "@/features/progression/profileTabs";
+import { onProfileOpenRequest, type ProfilePanel } from "@/features/progression/profileTabs";
 import sceneStyles from "@/features/progression/ProfileScreen.module.css";
 import { GameScreen } from "@/features/shell/GameScreen";
 import game from "@/features/shell/GameScreen.module.css";
@@ -38,6 +38,18 @@ export function ProfileScreen({ profile, initialTab, initialPanel }: ProfileScre
   useEffect(() => {
     if (initialTab) setTab(initialTab);
   }, [initialTab]);
+  // … et son signal, pour le cas où l'URL ne change pas (même raccourci, onglet changé à la main).
+  // La fenêtre demandée est RETENUE : le hub, monté par ce changement d'onglet, arrive après le
+  // signal — il la reçoit par `initialPanel` au lieu de l'entendre.
+  const [requestedPanel, setRequestedPanel] = useState<ProfilePanel | undefined>(undefined);
+  useEffect(
+    () =>
+      onProfileOpenRequest((request) => {
+        setTab(request.tab);
+        if (request.panel) setRequestedPanel(request.panel);
+      }),
+    []
+  );
 
   if (!profile.isSignedIn) {
     return (
@@ -85,7 +97,7 @@ export function ProfileScreen({ profile, initialTab, initialPanel }: ProfileScre
         };
       })}
     >
-      <ProfileView profile={profile} layout="page" tab={tab} onTabChange={setTab} onRefresh={() => router.refresh()} initialPanel={initialPanel} />
+      <ProfileView profile={profile} layout="page" tab={tab} onTabChange={setTab} onRefresh={() => router.refresh()} initialPanel={requestedPanel ?? initialPanel} />
     </GameScreen>
   );
 }

@@ -4,6 +4,8 @@ import { usePathname } from "next/navigation";
 import type { ProgressionSummary } from "@/features/progression/actions";
 import type { PROFILE_PANELS, ProfileTab } from "@/features/progression/profileTabs";
 import { useInterfaceSettings } from "@/lib/settings";
+import { getShipDefinition } from "@/game";
+import { shipIllustrationUrl } from "@/features/ships/shipFrame";
 import styles from "@/features/shell/RewardShortcuts.module.css";
 
 interface Shortcut {
@@ -18,6 +20,19 @@ interface Shortcut {
   panel?: keyof typeof PROFILE_PANELS;
   /** Visuel peint de la récompense. */
   icon: string;
+  /** Visuel en médaillon rond (une illustration de Navire), plutôt qu'un objet détouré. */
+  roundIcon?: boolean;
+}
+
+/** L'illustration du Navire dont une maîtrise attend ; celle d'un Navire retiré retombe sur la barre. */
+function masteryIcon(shipId: string | undefined): { icon: string; roundIcon: boolean } {
+  try {
+    const illustration = shipId ? getShipDefinition(shipId).illustration : undefined;
+    if (illustration) return { icon: shipIllustrationUrl(illustration), roundIcon: true };
+  } catch {
+    // Navire inconnu : la barre.
+  }
+  return { icon: "/assets/quests/icon-cat-partie.webp", roundIcon: false };
 }
 
 /**
@@ -71,6 +86,16 @@ export function RewardShortcuts({
       icon: "/assets/decks/liste/icone-favoris.webp",
     },
     {
+      id: "masteries",
+      label: b.masteries > 1 ? `${b.masteries} paliers de maîtrise à réclamer` : "Un palier de maîtrise à réclamer",
+      caption: "Maîtrise",
+      count: b.masteries,
+      tab: "recompenses",
+      panel: "maitrises",
+      // Le Navire concerné, en médaillon ; plusieurs : le plus joué.
+      ...masteryIcon(summary.masteryShipFrom[0]),
+    },
+    {
       id: "cards",
       label: b.cardChoices > 1 ? `${b.cardChoices} cartes à choisir` : "Une carte à choisir",
       caption: "Carte",
@@ -121,7 +146,7 @@ export function RewardShortcuts({
           title={shortcut.label}
         >
           {/* eslint-disable-next-line @next/next/no-img-element -- visuel peint de la récompense */}
-          <img className={styles.icon} src={shortcut.icon} alt="" draggable={false} />
+          <img className={shortcut.roundIcon ? `${styles.icon} ${styles.iconRound}` : styles.icon} src={shortcut.icon} alt="" draggable={false} />
           <span className={styles.count}>{shortcut.count}</span>
           <span className={styles.caption}>{shortcut.caption}</span>
         </button>

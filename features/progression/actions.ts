@@ -3,6 +3,7 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { SPONSORS, SPONSORS_UNLOCK_LEVEL, WEEKLY_CHEST_GOAL, loginWeekIndex, progressionView, sponsorGiftStagesReached, sponsorRevealed, utcDayKey, type ProgressionView } from "@/game/progression";
 import { claimableLevelsFor, reachedLevel } from "@/features/progression/levelRewardService";
+import { countClaimableMasteryLevels } from "@/features/progression/hubService";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
 
 /**
@@ -45,9 +46,11 @@ export interface ProgressionSummary {
    * Le détail de `claimableRewards`, par endroit où le réclamer : les
    * raccourcis flottants sous le bandeau en font une icône chacun.
    */
-  claimableBreakdown: { levels: number; cardChoices: number; login: number; quests: number; achievements: number; sponsorGifts: number };
+  claimableBreakdown: { levels: number; cardChoices: number; login: number; quests: number; achievements: number; sponsorGifts: number; masteries: number };
   /** Mécènes qui ont un colis à ouvrir (ids), pour montrer LEUR insigne sur le raccourci. */
   sponsorGiftFrom: string[];
+  /** Navires dont un palier de maîtrise attend (ids, le plus joué d'abord), pour illustrer le raccourci. */
+  masteryShipFrom: string[];
   /** Le coffre de la semaine est plein et pas encore ouvert. */
   weeklyChestReady: boolean;
   /** L'escale de connexion du jour n'est pas encore réclamée : première venue de la journée (popup de série). */
@@ -75,8 +78,9 @@ const SIGNED_OUT: ProgressionSummary = {
   avatarCardId: null,
   claimableQuests: 0,
   claimableRewards: 0,
-  claimableBreakdown: { levels: 0, cardChoices: 0, login: 0, quests: 0, achievements: 0, sponsorGifts: 0 },
+  claimableBreakdown: { levels: 0, cardChoices: 0, login: 0, quests: 0, achievements: 0, sponsorGifts: 0, masteries: 0 },
   sponsorGiftFrom: [],
+  masteryShipFrom: [],
   weeklyChestReady: false,
   loginClaimable: false,
   audience: 0,
@@ -115,7 +119,7 @@ export async function fetchProgression(): Promise<ProgressionSummary> {
     const weekday = (new Date(`${today}T00:00:00Z`).getUTCDay() + 6) % 7;
     const weekStart = new Date(Date.parse(`${today}T00:00:00Z`) - weekday * 86_400_000).toISOString();
     const weekIndex = loginWeekIndex(today);
-    const [progression, currency, profile, claimable, levelRewards, cardChoices, login, achievements, audience, sponsors, giftClaims, weekMatches, chestClaim] = await Promise.all([
+    const [progression, currency, profile, claimable, levelRewards, cardChoices, login, achievements, audience, sponsors, giftClaims, weekMatches, chestClaim, masteries] = await Promise.all([
       supabase.from("player_progression").select("*").eq("user_id", user.id).maybeSingle(),
       supabase.from("player_currency").select("balance").eq("user_id", user.id).maybeSingle(),
       readProfileHeader(supabase, user.id),
@@ -144,6 +148,8 @@ export async function fetchProgression(): Promise<ProgressionSummary> {
         .eq("kind", "weekly_chest")
         .eq("claim_key", String(weekIndex))
         .maybeSingle(),
+      // Paliers de maîtrise à réclamer (hub) : ils manquaient aux losanges et à la pastille.
+      countClaimableMasteryLevels(user.id),
     ]);
     // Le niveau ATTEINT, pas celui de la colonne : elle n'est rafraîchie
     // qu'en fin de partie, et la pastille doit s'allumer dès que l'XP d'une
@@ -179,7 +185,13 @@ export async function fetchProgression(): Promise<ProgressionSummary> {
       claimableQuests: claimable.count ?? 0,
       // Tout ce qui se réclame au profil — quêtes comprises, elles y ont leur onglet.
       claimableRewards:
-        levelsToClaim + (cardChoices.count ?? 0) + loginToClaim + (claimable.count ?? 0) + (achievements.error ? 0 : (achievements.count ?? 0)) + sponsorGifts,
+        levelsToClaim +
+        (cardChoices.count ?? 0) +
+        loginToClaim +
+        (claimable.count ?? 0) +
+        (achievements.error ? 0 : (achievements.count ?? 0)) +
+        sponsorGifts +
+        masteries.total,
       claimableBreakdown: {
         levels: levelsToClaim,
         cardChoices: cardChoices.count ?? 0,
@@ -187,8 +199,10 @@ export async function fetchProgression(): Promise<ProgressionSummary> {
         quests: claimable.count ?? 0,
         achievements: achievements.error ? 0 : (achievements.count ?? 0),
         sponsorGifts,
+        masteries: masteries.total,
       },
       sponsorGiftFrom: giftsBySponsor.map((entry) => entry.id),
+      masteryShipFrom: masteries.ships,
       weeklyChestReady: !weekMatches.error && (weekMatches.count ?? 0) >= WEEKLY_CHEST_GOAL && !chestClaim.error && !chestClaim.data,
       loginClaimable: loginToClaim === 1,
       audience: audience.error ? 0 : (audience.data?.audience ?? 0),

@@ -223,6 +223,33 @@ function masteryView(shipId: string, xpTotal: number, matchesPlayed: number, cla
   };
 }
 
+/**
+ * Paliers de MAÎTRISE atteints et pas encore réclamés, tous Navires
+ * confondus — pour les raccourcis du bandeau et la pastille de l'avatar,
+ * qui ne les comptaient pas. Même règle que le hub (`masteryView`), lue sur
+ * les mêmes tables. Toute erreur vaut zéro : un compteur d'attention ne
+ * doit jamais faire tomber le bandeau.
+ *
+ * `ships` : les Navires concernés, du plus joué au moins joué — le premier
+ * illustre le raccourci.
+ */
+export async function countClaimableMasteryLevels(userId: string): Promise<{ total: number; ships: string[] }> {
+  try {
+    const service = createSupabaseServiceRoleClient();
+    const [claims, history] = await Promise.all([readClaims(service, userId), readMatchHistory(service, userId, "9999-12-31")]);
+    const waiting = SHIP_SET.map((ship) => masteryView(ship.id, history.xpByShip.get(ship.id) ?? 0, history.matchesByShip.get(ship.id) ?? 0, claims))
+      .filter((mastery) => mastery.claimableLevels.length > 0)
+      .sort((a, b) => b.matchesPlayed - a.matchesPlayed || b.xpTotal - a.xpTotal);
+    return {
+      total: waiting.reduce((sum, mastery) => sum + mastery.claimableLevels.length, 0),
+      ships: waiting.map((mastery) => mastery.shipId),
+    };
+  } catch (error) {
+    console.error("[countClaimableMasteryLevels] Lecture impossible :", error);
+    return { total: 0, ships: [] };
+  }
+}
+
 export async function readProgressionHub(userId: string, accountLevel: number, now: Date = new Date()): Promise<ProgressionHubView> {
   const today = utcDayKey(now);
   const weekIndex = loginWeekIndex(today);
