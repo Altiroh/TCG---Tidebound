@@ -6,10 +6,10 @@ import { playButtonClick } from "@/lib/sound";
 import styles from "@/features/collection/shelf/Shelf.module.css";
 
 /**
- * Le CŒUR d'une carte de la grille, dans son coin haut droit : plein et
- * toujours visible sur une carte favorite, discret (au survol) sur les
- * autres. Un clic ne touche que le favori — jamais la carte en dessous
- * (ouverture de fiche, ajout au deck).
+ * Le CŒUR d'une carte de la grille, sous elle dans le coin bas droit :
+ * toujours visible, plein et rose sur une favorite, en creux sur les autres.
+ * Un clic ne touche que le favori — jamais la carte (ouverture de fiche,
+ * ajout au deck).
  *
  * Rien hors d'une étagère disponible (visiteur, écran sans étagère).
  */

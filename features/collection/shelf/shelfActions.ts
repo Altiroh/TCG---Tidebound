@@ -74,13 +74,20 @@ export async function fetchCardShelf(): Promise<CardShelf | null> {
       supabase.from("player_card_favorites").select("card_id, created_at").eq("user_id", userId).order("created_at", { ascending: true }),
       supabase.from("player_card_notebooks").select("id, name, cover_card_id, updated_at").eq("user_id", userId),
     ]);
-    if (favorites.error || notebooks.error) return null;
+    if (favorites.error || notebooks.error) {
+      // L'écran masque alors cœurs et carnets : sans cette trace, l'échec serait muet.
+      console.error("[fetchCardShelf] Lecture refusée :", (favorites.error ?? notebooks.error)?.message);
+      return null;
+    }
 
     const ids = (notebooks.data ?? []).map((row) => row.id);
     const cards = ids.length
       ? await supabase.from("player_card_notebook_cards").select("notebook_id, card_id, added_at").in("notebook_id", ids).order("added_at", { ascending: true })
       : { data: [], error: null };
-    if (cards.error) return null;
+    if (cards.error) {
+      console.error("[fetchCardShelf] Cartes des carnets refusées :", cards.error.message);
+      return null;
+    }
 
     const byNotebook = new Map<string, string[]>();
     for (const row of cards.data ?? []) {

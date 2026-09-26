@@ -6,62 +6,51 @@
  * signal qui dit « j'aime », il ne doit se confondre avec aucun autre.
  */
 
+/*
+ * TOUJOURS visible, SOUS la carte, dans le coin bas droit — sur la ligne de
+ * la pastille ×N (Collection) ou de la barre −/+ (Éditeur), jamais par-dessus
+ * l'illustration ni le badge de type. Retour du 26/09/2026 : caché jusqu'au
+ * survol et posé sur le badge, on ne le voyait pas.
+ */
 .heart {
   --heart: #f2828a;
   position: absolute;
-  top: 5%;
-  right: 7%;
+  right: 4%;
+  bottom: -6px;
   z-index: 3;
   display: grid;
   place-items: center;
-  width: clamp(24px, 2.2vw, 30px);
-  height: clamp(24px, 2.2vw, 30px);
+  width: 28px;
+  height: 28px;
   padding: 0;
-  border: 1px solid rgba(241, 227, 196, 0.25);
+  border: 1px solid var(--tb-border-strong, rgba(241, 227, 196, 0.3));
   border-radius: 50%;
-  background: rgba(4, 10, 18, 0.72);
-  color: rgba(241, 227, 196, 0.85);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  background: var(--panel-solid, rgba(4, 10, 18, 0.9));
+  color: rgba(241, 227, 196, 0.7);
+  box-shadow: var(--tb-shadow-sm, 0 2px 6px rgba(0, 0, 0, 0.5));
   cursor: pointer;
-  opacity: 0;
-  transform: scale(0.9);
-  transition: opacity 140ms ease, transform 140ms ease, color 140ms ease, border-color 140ms ease;
+  transition: color 140ms ease, border-color 140ms ease, transform 140ms ease;
 }
 
 .heart svg {
-  width: 58%;
-  height: 58%;
-}
-
-/* Au survol de la carte, au focus clavier, et TOUJOURS sur une favorite. */
-:global(*):hover > .heart,
-.heart:focus-visible,
-.heart[data-on] {
-  opacity: 1;
-  transform: none;
+  width: 15px;
+  height: 15px;
 }
 
 .heart:hover {
   color: var(--heart);
   border-color: var(--heart);
+  transform: scale(1.08);
 }
 
 .heart[data-on] {
   color: var(--heart);
-  border-color: rgba(242, 130, 138, 0.6);
+  border-color: rgba(242, 130, 138, 0.7);
 }
 
 .heart:focus-visible {
   outline: 2px solid var(--tb-accent);
   outline-offset: 2px;
-}
-
-/* Écran tactile : pas de survol, le cœur reste visible pour être atteignable. */
-@media (hover: none) {
-  .heart {
-    opacity: 0.85;
-    transform: none;
-  }
 }
 
 /* ── Dans la fiche d'une carte ─────────────────────────────────────── */
@@ -500,6 +489,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .heart,
+  .heart:hover,
   .mosaic {
     transition: none;
   }
