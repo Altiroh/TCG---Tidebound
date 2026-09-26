@@ -82,6 +82,10 @@ const RULES = [
   // quelques centaines de millisecondes, la différence ne se voit pas — et
   // elle est téléchargée à la première visite de CHAQUE joueur.
   { match: /\/ui\/transitions\//, maxSize: 1254, quality: 75 },
+  // Emblèmes de style de deck (Agressif, Tempo, Midrange…) : affichés de
+  // 18 à ~40 px dans la fiche et l'éditeur. Même traitement que les icônes
+  // d'interface — traits fins et vagues détourés sur alpha.
+  { match: /\/decks\/styles\//, maxSize: 256, quality: 92 },
   { match: /\/(menu|ships|boosters|collection|decks|board)\//, maxSize: 1600, quality: 85 },
   { match: /.*/, maxSize: 1280, quality: 85 },
 ];

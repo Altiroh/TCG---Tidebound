@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { getCardDefinition, isAbyssalVariant, RULES } from "@/game";
+import { deckProfile, getCardDefinition, isAbyssalVariant, RULES, type DeckStyleId } from "@/game";
+import { DeckStyleIcon } from "@/features/decks/DeckStyleIcon";
 import { DECK_DESCRIPTION_MAX } from "@/features/decks/constants";
 import { deckSizeStatus } from "@/features/decks/deckComposition";
 import { nameplateArtUrl, plateArtUrl } from "@/features/decks/nameplateArt";
@@ -26,6 +27,12 @@ interface DeckNamePlateProps {
   /** Carte choisie explicitement, ou `null` pour laisser le deck décider. */
   artCardId: string | null;
   onPickArt: () => void;
+  /**
+   * Style choisi par le joueur (« Ma fiche de deck »), ou `null` : le style
+   * affiché est alors celui que le jeu lit dans les cartes, recalculé à
+   * chaque ajout ou retrait.
+   */
+  chosenStyleId?: DeckStyleId | null;
   /**
    * `livre` : l'en-tête de la maquette « sur le livre » (26/09/2026) — grande
    * bannière d'illustration, sceau, nom, variantes et statut, effectif,
@@ -74,10 +81,13 @@ export function DeckNamePlate({
   cardIds,
   artCardId,
   onPickArt,
+  chosenStyleId = null,
   variant = "classic",
 }: DeckNamePlateProps) {
   const artUrl = artCardId ? plateArtUrl(artCardId, shipId) : nameplateArtUrl(cardIds, shipId);
   const variants = useMemo(() => deckVariants(cardIds), [cardIds]);
+  // Un deck vide n'a pas de style lu : on n'en invente pas (cf. `deckProfile`).
+  const styleId = useMemo(() => chosenStyleId ?? deckProfile(cardIds)?.styleId ?? null, [chosenStyleId, cardIds]);
   const [editing, setEditing] = useState(false);
   const [before, setBefore] = useState(name);
   const onBook = variant === "livre";
@@ -162,7 +172,16 @@ export function DeckNamePlate({
         </button>
 
         <div className={book.headNameRow}>
-          {/* Le sceau de cire du capitaine, frappé d'une ancre. */}
+          {/* À gauche du nom : l'emblème du STYLE du deck ; tant qu'aucun
+              n'est connu (deck vide, sans style choisi), le sceau de cire
+              du capitaine, frappé d'une ancre. */}
+          {styleId ? (
+            <DeckStyleIcon
+              styleId={styleId}
+              labelled
+              className={book.headStyleIcon}
+            />
+          ) : (
           <span className={book.seal} aria-hidden>
             <svg viewBox="0 0 24 24" fill="none">
               <path
@@ -174,6 +193,7 @@ export function DeckNamePlate({
               <circle cx="12" cy="5" r="1.5" stroke="currentColor" strokeWidth={1.5} />
             </svg>
           </span>
+          )}
           {nameField}
         </div>
 

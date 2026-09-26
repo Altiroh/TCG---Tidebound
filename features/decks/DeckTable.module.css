@@ -626,6 +626,39 @@
   pointer-events: none;
 }
 
+/*
+ * Un emblème de style posé sur le sceau : le sceau de cire PEINT dans la
+ * corde s'efface sous lui (un disque transparent à sa place), sinon son
+ * rouge passerait entre les vagues de l'emblème. La corde passe dans un
+ * pseudo-élément, pour que le masque ne touche pas l'emblème lui-même.
+ * Sceau : centre à 9,8 % × 50 % de la corde, rayon ≈ 68 px sur 900 × 122.
+ */
+.ficheRope[data-style] {
+  background: none;
+}
+
+.ficheRope[data-style]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url("/assets/decks/liste/fiche-corde.webp") center / 100% 100% no-repeat;
+  -webkit-mask: radial-gradient(ellipse 7.6% 56% at 9.8% 50%, transparent 97%, #000 100%);
+  mask: radial-gradient(ellipse 7.6% 56% at 9.8% 50%, transparent 97%, #000 100%);
+}
+
+/* L'emblème du style, sur le sceau de cire peint à gauche de la corde
+   (centre du sceau : 9,8 % de la largeur de la corde, à mi-hauteur ; son
+   diamètre : 15 %). Un peu plus grand que lui, pour le couvrir entièrement. */
+.ficheStyleIcon {
+  position: absolute;
+  left: 9.8%;
+  top: 50%;
+  width: 17%;
+  aspect-ratio: 1;
+  object-fit: contain;
+  transform: translate(-50%, -50%);
+}
+
 /* En haut à droite de la partie VISIBLE de l'illustration (le bord droit sort de l'écran). */
 .ficheFavorite {
   position: absolute;

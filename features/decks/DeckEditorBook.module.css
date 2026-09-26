@@ -1452,6 +1452,17 @@
   color: var(--book-ink);
 }
 
+/* L'emblème du style, à la place du sceau : un cran plus grand que lui,
+   les vagues de son pourtour débordent sans pousser la ligne du nom. */
+.headStyleIcon {
+  flex: none;
+  width: clamp(38px, 5vh, 50px);
+  height: clamp(38px, 5vh, 50px);
+  margin-block: -5px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45));
+}
+
 .workspace textarea.headDescription {
   color: var(--book-ink-2);
   font-style: italic;

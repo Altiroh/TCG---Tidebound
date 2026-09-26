@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { RULES, ownershipLabel } from "@/game";
 import { cardIllustrationThumbUrl } from "@/features/decks/nameplateArt";
-import { cardName, sortedCards, type BrowserDeck } from "@/features/decks/deckEntries";
+import { cardName, sortedCards, styleIdOf, type BrowserDeck } from "@/features/decks/deckEntries";
+import { DeckStyleIcon } from "@/features/decks/DeckStyleIcon";
 import { DECK_SORTS, type DeckSortId } from "@/features/decks/deckFilters";
 import { shipNameOf } from "@/features/ships/ShipPortrait";
 import { PreconToken } from "@/features/shell/GameIcons";
@@ -322,7 +323,12 @@ function DeckFiche(props: DeckTableProps & { deck: BrowserDeck | null }) {
   return (
     <aside className={styles.fiche} aria-label={`Fiche de ${deck.name}`} aria-live="polite">
       <span className={styles.ficheArt} style={deck.artUrl ? { backgroundImage: `url("${deck.artUrl}")` } : undefined} />
-      <span className={styles.ficheRope} aria-hidden />
+      <span className={styles.ficheRope} data-style={styleIdOf(deck) ? "" : undefined} aria-hidden>
+        {/* L'emblème du STYLE, posé sur le sceau de cire de la corde, à gauche
+            du nom — lu dans la phrase (« Midrange / Sentinelles… » → midrange).
+            Sans style reconnu, le sceau peint reste. */}
+        {styleIdOf(deck) && <DeckStyleIcon styleId={styleIdOf(deck)!} className={styles.ficheStyleIcon} />}
+      </span>
       <button
         type="button"
         className={styles.ficheFavorite}

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getCardDefinition, getMaxCopies, RULES, type CardDefinition } from "@/game";
+import { getCardDefinition, getMaxCopies, RULES, type CardDefinition, type DeckStyleId } from "@/game";
 import { deleteDeck, duplicateDeck, saveDeck } from "@/app/decks/actions";
 import { CardGrid } from "@/features/collection/CardGrid";
 import { CollectionSidebar } from "@/features/collection/CollectionSidebar";
@@ -56,6 +56,8 @@ export interface DeckEditorInitialData {
   artCardId: string | null;
   /** Résumé libre affiché sur la fiche du deck ; vide = phrase générique. */
   description?: string;
+  /** Style choisi par le joueur, ou `null`/absent : l'en-tête le déduit alors des cartes. */
+  styleId?: DeckStyleId | null;
 }
 
 interface DeckEditorScreenProps {
@@ -450,6 +452,7 @@ function DeckEditorScreenBody({ ownedCardIds, initialDeck }: DeckEditorScreenPro
                 cardIds={cardIds}
                 artCardId={artCardId}
                 onPickArt={() => setArtPickerOpen(true)}
+                chosenStyleId={initialDeck?.styleId ?? null}
                 variant={onBook ? "livre" : "classic"}
               />
             }
