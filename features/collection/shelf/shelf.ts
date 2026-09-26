@@ -55,6 +55,25 @@ export function notebookCover(notebook: Pick<CardNotebook, "coverCardId" | "card
   return notebook.cardIds[0] ?? null;
 }
 
+/**
+ * Le carnet où « Enregistrer » range une carte d'un clic — comme le tableau
+ * affiché à côté du bouton rouge de Pinterest : le DERNIER utilisé s'il
+ * existe encore, sinon le plus récemment touché, sinon aucun (le bouton
+ * ouvre alors le choix, où l'on peut en créer un).
+ */
+export function resolveTargetNotebook(shelf: CardShelf, lastUsedId: string | null): CardNotebook | null {
+  return shelf.notebooks.find((notebook) => notebook.id === lastUsedId) ?? shelf.notebooks[0] ?? null;
+}
+
+/**
+ * Les « Meilleurs choix » du panneau d'enregistrement : les carnets les plus
+ * récemment touchés, seulement quand il y en a assez pour que la liste
+ * complète demande de chercher.
+ */
+export function bestNotebookChoices(shelf: CardShelf, count = 3): CardNotebook[] {
+  return shelf.notebooks.length > count + 1 ? shelf.notebooks.slice(0, count) : [];
+}
+
 /* ── Le filtre « Favoris & carnets » de la grille ─────────────────────── */
 
 /**

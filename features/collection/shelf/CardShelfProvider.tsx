@@ -5,6 +5,7 @@ import {
   EMPTY_SHELF,
   notebookNameTaken,
   normalizeNotebookName,
+  resolveTargetNotebook,
   sortNotebooks,
   withCardInNotebook,
   withFavorite,
@@ -13,6 +14,7 @@ import {
 } from "@/features/collection/shelf/shelf";
 import * as serverShelf from "@/features/collection/shelf/shelfActions";
 import type { NotebookResult, ShelfResult } from "@/features/collection/shelf/shelfActions";
+import { usePersistedState } from "@/lib/persistedState";
 import styles from "@/features/collection/shelf/Shelf.module.css";
 
 /**
@@ -50,6 +52,13 @@ export interface CardShelfContextValue {
   renameNotebook: (notebookId: string, name: string) => Promise<ShelfResult>;
   deleteNotebook: (notebookId: string) => Promise<ShelfResult>;
   setCover: (notebookId: string, cardId: string | null) => void;
+  /**
+   * Le carnet où « Enregistrer » range d'un clic (`resolveTargetNotebook`) :
+   * le dernier utilisé, retenu sur l'appareil et partagé par toutes les
+   * cartes de l'écran.
+   */
+  target: CardNotebook | null;
+  setTarget: (notebookId: string) => void;
 }
 
 const CardShelfContext = createContext<CardShelfContextValue | null>(null);
@@ -79,6 +88,9 @@ export function CardShelfProvider({
   const [available, setAvailable] = useState(initialShelf != null);
   const [ready, setReady] = useState(initialShelf !== undefined);
   const [error, setError] = useState<string | null>(null);
+  const [lastTarget, setLastTarget] = usePersistedState<string | null>("carnets:dernier", null, {
+    decode: (raw) => (raw === null || typeof raw === "string" ? raw : undefined),
+  });
   // Toujours la dernière étagère, pour qu'un refus rétablisse exactement ce qu'il y avait avant le geste.
   const shelfRef = useRef(shelf);
   shelfRef.current = shelf;
@@ -130,17 +142,23 @@ export function CardShelfProvider({
         optimistic((current) => withFavorite(current, cardId, favorite), () => backend.setCardFavorite(cardId, favorite));
       },
       notebooksOf: (cardId) => shelf.notebooks.filter((notebook) => notebook.cardIds.includes(cardId)),
-      setInNotebook: (notebookId, cardId, inside) =>
+      setInNotebook: (notebookId, cardId, inside) => {
+        // Ranger dans un carnet en fait la cible du prochain « Enregistrer ».
+        if (inside) setLastTarget(notebookId);
         optimistic(
           (current) => withCardInNotebook(current, notebookId, cardId, inside, new Date().toISOString()),
           () => backend.setCardInNotebook(notebookId, cardId, inside)
-        ),
+        );
+      },
       createNotebook: async (rawName, firstCardId) => {
         const named = normalizeNotebookName(rawName);
         if (!named.ok) return named;
         if (notebookNameTaken(shelfRef.current.notebooks, named.name)) return { ok: false, error: "Tu as déjà un carnet de ce nom." };
         const result = await backend.createNotebook(named.name, firstCardId).catch(() => ({ ok: false as const, error: "Serveur injoignable — réessaie." }));
-        if (result.ok) setShelf((current) => ({ ...current, notebooks: sortNotebooks([result.notebook, ...current.notebooks]) }));
+        if (result.ok) {
+          setShelf((current) => ({ ...current, notebooks: sortNotebooks([result.notebook, ...current.notebooks]) }));
+          setLastTarget(result.notebook.id);
+        }
         return result;
       },
       renameNotebook: async (notebookId, rawName) => {
@@ -171,8 +189,10 @@ export function CardShelfProvider({
           }),
           () => backend.setNotebookCover(notebookId, cardId)
         ),
+      target: resolveTargetNotebook(shelf, lastTarget),
+      setTarget: setLastTarget,
     };
-  }, [shelf, ready, available, error, backend, optimistic]);
+  }, [shelf, ready, available, error, backend, optimistic, lastTarget, setLastTarget]);
 
   // Un refus s'efface de lui-même : l'étagère est déjà rétablie, le motif suffit à le lire.
   useEffect(() => {
