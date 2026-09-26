@@ -288,7 +288,13 @@ async function settleFinishedMatch(match: MatchRow, finalState: GameState): Prom
       // une seule fois (`reward` est nul quand la partie avait déjà été
       // payée). En parallèle des quêtes : le joueur n'attend rien de plus.
       const audience = reward
-        ? recordMatchAudience(match.id, userId, finalState, { accountLevel: reward.levelAfter, playStreak: reward.playStreak })
+        ? recordMatchAudience(match.id, userId, finalState, {
+            accountLevel: reward.levelAfter,
+            playStreak: reward.playStreak,
+            // Contre le bot, la partie pèse moitié moins sur l'audience — sauf
+            // sous la dérogation de développement, comme pour les quêtes.
+            vsBot: vsBot && !botAsPvp,
+          })
         : Promise.resolve();
       const quests = recordMatchQuestProgress({
         matchId: match.id,

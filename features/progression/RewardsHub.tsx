@@ -13,13 +13,14 @@ import {
   loginRewardLabel,
 } from "@/game/progression";
 import {
+  claimAudienceMilestoneReward,
   claimDailyLogin,
   claimMasteryLevel,
   openSponsorGift,
   openWeeklyChest,
   type ProfileSummary,
 } from "@/features/progression/profileActions";
-import type { AudienceView, MasteryView, SponsorView } from "@/features/progression/hubService";
+import type { AudienceMilestoneView, AudienceView, MasteryView, SponsorView } from "@/features/progression/hubService";
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
 import { RewardIcon, type RewardItem } from "@/features/progression/RewardIcon";
 import { shipIllustrationUrl } from "@/features/ships/shipFrame";
@@ -96,6 +97,10 @@ export function RewardsHub({ profile, claiming, onClaimLevel, onReveal, onRefres
     run(() => claimMasteryLevel(mastery.shipId, level), `Maîtrise — ${mastery.shipName}, niveau ${level}`);
   }
 
+  function claimMilestone(milestone: AudienceMilestoneView) {
+    run(() => claimAudienceMilestoneReward(milestone.threshold), `Audience — ${milestone.label}`);
+  }
+
   function openGift(sponsor: SponsorView) {
     const stage = sponsor.giftStages[0];
     if (!stage || pending || gift) return;
@@ -150,9 +155,11 @@ export function RewardsHub({ profile, claiming, onClaimLevel, onReveal, onRefres
           <SponsorsPanel
             audience={profile.hub.audience}
             sponsors={profile.hub.sponsors}
+            milestones={profile.hub.audienceMilestones}
             unlocked={profile.hub.sponsorsUnlocked}
             busy={pending}
             onOpenGift={openGift}
+            onClaimMilestone={claimMilestone}
             onShowAll={() => setSheet("sponsors")}
           />
         )}
@@ -163,9 +170,11 @@ export function RewardsHub({ profile, claiming, onClaimLevel, onReveal, onRefres
           <SponsorsSheet
             sponsors={profile.hub.sponsors}
             audience={profile.hub.audience}
+            milestones={profile.hub.audienceMilestones}
             unlocked={profile.hub.sponsorsUnlocked}
             busy={pending}
             onOpenGift={openGift}
+            onClaimMilestone={claimMilestone}
             onClose={() => setSheet(null)}
           />
         )}
@@ -610,19 +619,26 @@ function MasteriesPanel({
 function SponsorsPanel({
   audience,
   sponsors,
+  milestones,
   unlocked,
   busy,
   onOpenGift,
+  onClaimMilestone,
   onShowAll,
 }: {
   audience: AudienceView;
   sponsors: SponsorView[];
+  milestones: AudienceMilestoneView[];
   unlocked: boolean;
   busy: boolean;
   onOpenGift: (sponsor: SponsorView) => void;
+  onClaimMilestone: (milestone: AudienceMilestoneView) => void;
   onShowAll: () => void;
 }) {
-  const shown = sponsors.slice(0, 3);
+  // Le public rapporte avant même les mécènes : le premier palier franchi et pas encore ouvert.
+  const milestone = milestones.find((entry) => entry.claimable);
+  // Sa ligne prend la place d'un mécène : les autres restent dans « Voir tous les mécènes ».
+  const shown = sponsors.slice(0, milestone ? 2 : 3);
   return (
     <section className={`${styles.panel} ${styles.sponsors}`} aria-label="Mécènes">
       <header className={styles.panelHead}>
@@ -640,6 +656,12 @@ function SponsorsPanel({
         </span>
       </header>
       <p className={styles.panelSub}>Le public vous regarde. Certains, derrière lui, vous observent.</p>
+      {milestone && (
+        <button type="button" className={styles.milestoneReady} disabled={busy} onClick={() => onClaimMilestone(milestone)}>
+          <span className={styles.alert} aria-hidden />
+          Palier d&apos;audience « {milestone.label} » : ouvrir
+        </button>
+      )}
       {!unlocked ? (
         <div className={styles.locked}>
           <SponsorGlyph id={null} />

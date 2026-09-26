@@ -3,7 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { SPONSOR_STAGES, SPONSORS_UNLOCK_LEVEL, loginRewardLabel, sponsorGift, sponsorGiftStagesReached } from "@/game/progression";
-import type { AudienceView, MasteryView, SponsorView } from "@/features/progression/hubService";
+import type { AudienceMilestoneView, AudienceView, MasteryView, SponsorView } from "@/features/progression/hubService";
 import { RewardIcon } from "@/features/progression/RewardIcon";
 import { shipIllustrationUrl } from "@/features/ships/shipFrame";
 import styles from "@/features/progression/HubSheets.module.css";
@@ -91,8 +91,58 @@ function AudienceStage({ audience }: { audience: AudienceView }) {
         <strong className={styles.audienceCount}>{audience.audience.toLocaleString("fr-FR")}</strong>
         <span className={styles.audienceUnit}>spectateurs</span>
         <span className={styles.audienceMeta}>Record : {audience.best.toLocaleString("fr-FR")}</span>
+        {audience.lastHighlights.length > 0 && (
+          <span className={styles.audienceMeta}>Dernière partie : « {audience.lastHighlights.join(" », « ")} »</span>
+        )}
       </div>
     </section>
+  );
+}
+
+/**
+ * LES PALIERS D'AUDIENCE — ce que le public rapporte. Ils se lisent sur le
+ * RECORD : un palier franchi l'est pour de bon. Celui qui attend d'être
+ * ouvert luit ; les suivants disent ce qu'il reste à conquérir.
+ */
+function AudienceMilestones({
+  milestones,
+  best,
+  busy,
+  onClaim,
+}: {
+  milestones: AudienceMilestoneView[];
+  best: number;
+  busy: boolean;
+  onClaim: (milestone: AudienceMilestoneView) => void;
+}) {
+  if (milestones.length === 0) return null;
+  return (
+    <ol className={styles.milestones} aria-label="Paliers d'audience">
+      {milestones.map((milestone) => {
+        const state = milestone.claimed ? "claimed" : milestone.claimable ? "claimable" : "locked";
+        const rewards = milestone.rewards.map(loginRewardLabel).join(" · ");
+        return (
+          <li key={milestone.threshold} className={styles.milestone} data-state={state}>
+            <span className={styles.milestoneIcons} aria-hidden>
+              {milestone.rewards.map((item, index) => (
+                <RewardIcon key={index} item={item} size={30} />
+              ))}
+            </span>
+            <span className={styles.milestoneLabel}>{milestone.label}</span>
+            <span className={styles.milestoneThreshold}>{milestone.threshold.toLocaleString("fr-FR")} spectateurs</span>
+            {state === "claimable" ? (
+              <button type="button" className={styles.milestoneClaim} disabled={busy} onClick={() => onClaim(milestone)} title={rewards}>
+                Ouvrir
+              </button>
+            ) : (
+              <span className={styles.milestoneStatus} title={rewards}>
+                {state === "claimed" ? "Ouvert" : `Record ${Math.min(best, milestone.threshold).toLocaleString("fr-FR")} / ${milestone.threshold.toLocaleString("fr-FR")}`}
+              </span>
+            )}
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 
@@ -108,16 +158,20 @@ function AudienceStage({ audience }: { audience: AudienceView }) {
 export function SponsorsSheet({
   sponsors,
   audience,
+  milestones,
   unlocked,
   busy,
   onOpenGift,
+  onClaimMilestone,
   onClose,
 }: {
   sponsors: SponsorView[];
   audience: AudienceView;
+  milestones: AudienceMilestoneView[];
   unlocked: boolean;
   busy: boolean;
   onOpenGift: (sponsor: SponsorView) => void;
+  onClaimMilestone: (milestone: AudienceMilestoneView) => void;
   onClose: () => void;
 }) {
   const [selectedId, setSelectedId] = useState(sponsors[0]?.id ?? null);
@@ -131,6 +185,7 @@ export function SponsorsSheet({
       onClose={onClose}
     >
       <AudienceStage audience={audience} />
+      <AudienceMilestones milestones={milestones} best={audience.best} busy={busy} onClaim={onClaimMilestone} />
       <div className={styles.sponsorsLayout}>
         <ul className={styles.sponsorList}>
           {sponsors.map((entry) => (

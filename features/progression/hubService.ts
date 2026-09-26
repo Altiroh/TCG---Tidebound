@@ -1,7 +1,7 @@
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { PLAYABLE_DECKS, getShipDefinition, type GameState } from "@/game";
 import { SHIP_SET } from "@/game/environment/shipData";
-import { analyzeMatch } from "@/game/audience";
+import { AUDIENCE_MILESTONES, analyzeMatch } from "@/game/audience";
 import {
   MASTERY_MAX_LEVEL,
   SPONSORS,
@@ -19,6 +19,7 @@ import {
   sponsorRevealed,
   sponsorStage,
   sponsorStageLabel,
+  sponsorWatches,
   utcDayKey,
   weeklyChestContents,
   type LoginRewardItem,
@@ -97,10 +98,26 @@ export interface AudienceView {
   best: number;
   /** Spectacle de la dernière partie (0 à 100), `null` avant la première. */
   lastSpectacle: number | null;
+  /** Temps forts de la dernière partie jugée (deux au plus). */
+  lastHighlights: string[];
+}
+
+/** Un palier d'audience, tel que le panneau du public l'affiche (`game/audience/milestones.ts`). */
+export interface AudienceMilestoneView {
+  threshold: number;
+  label: string;
+  rewards: readonly LoginRewardItem[];
+  /** Le record l'a franchi. */
+  reached: boolean;
+  claimed: boolean;
+  /** Franchi et pas encore ouvert. */
+  claimable: boolean;
 }
 
 export interface ProgressionHubView {
   audience: AudienceView;
+  /** Paliers de record d'audience, du plus bas au plus haut. */
+  audienceMilestones: AudienceMilestoneView[];
   weeklyChest: WeeklyChestView;
   masteries: MasteryView[];
   /** `false` sous le niveau d'ouverture des Commanditaires. */
@@ -133,10 +150,16 @@ async function shipsOfDecks(service: Service, deckIds: string[]): Promise<Map<st
 
 /** Audience du joueur (`player_audience`) — zéro tant qu'il n'a rien joué, ou que la migration manque. */
 export async function readAudience(service: Service, userId: string): Promise<AudienceView> {
-  const { data, error } = await service.from("player_audience").select("audience, best_audience, last_spectacle").eq("user_id", userId).maybeSingle();
-  if (error || !data) return { audience: 0, best: 0, lastSpectacle: null };
-  return { audience: data.audience, best: data.best_audience, lastSpectacle: data.last_spectacle };
+  const { data, error } = await service
+    .from("player_audience")
+    .select("audience, best_audience, last_spectacle, last_highlights")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error || !data) return { ...NO_AUDIENCE };
+  return { audience: data.audience, best: data.best_audience, lastSpectacle: data.last_spectacle, lastHighlights: data.last_highlights ?? [] };
 }
+
+const NO_AUDIENCE: AudienceView = { audience: 0, best: 0, lastSpectacle: null, lastHighlights: [] };
 
 async function readClaims(service: Service, userId: string): Promise<Set<string>> {
   const { data, error } = await service.from("player_progression_claims").select("kind, claim_key").eq("user_id", userId);
@@ -241,7 +264,7 @@ export function hubViewFrom({
   matchesByShip,
   pointsBySponsor,
   claims,
-  audience = { audience: 0, best: 0, lastSpectacle: null },
+  audience = NO_AUDIENCE,
 }: {
   weekIndex: number;
   accountLevel: number;
@@ -270,14 +293,19 @@ export function hubViewFrom({
     ),
     sponsorsUnlocked: accountLevel >= SPONSORS_UNLOCK_LEVEL,
     audience,
+    audienceMilestones: AUDIENCE_MILESTONES.map((milestone) => {
+      const reached = audience.best >= milestone.threshold;
+      const claimed = claims.has(`audience_milestone|${milestone.threshold}`);
+      return { ...milestone, reached, claimed, claimable: reached && !claimed };
+    }),
     // Ceux qui regardent d'abord, puis du plus accessible au plus exigeant.
-    sponsors: SPONSORS.map((sponsor) => sponsorView(sponsor.id, pointsBySponsor.get(sponsor.id) ?? 0, claims, accountLevel, audience.audience)).sort(
+    sponsors: SPONSORS.map((sponsor) => sponsorView(sponsor.id, pointsBySponsor.get(sponsor.id) ?? 0, claims, accountLevel, audience)).sort(
       (a, b) => b.points - a.points || a.audienceRequired - b.audienceRequired
     ),
   };
 }
 
-function sponsorView(id: SponsorId, points: number, claims: Set<string>, accountLevel: number, audience: number): SponsorView {
+function sponsorView(id: SponsorId, points: number, claims: Set<string>, accountLevel: number, audience: AudienceView): SponsorView {
   const definition = SPONSORS.find((sponsor) => sponsor.id === id)!;
   const revealed = sponsorRevealed(points);
   const stage = sponsorStage(points);
@@ -289,7 +317,8 @@ function sponsorView(id: SponsorId, points: number, claims: Set<string>, account
     lore: revealed ? definition.lore : null,
     color: definition.color,
     audienceRequired: definition.audienceRequired,
-    meetsAudience: audience >= definition.audienceRequired,
+    // Même règle que l'octroi des points : le panneau ne dit jamais « il vous regarde » quand la partie suivante ne lui en donnerait pas.
+    meetsAudience: sponsorWatches(definition.audienceRequired, audience.audience, audience.best),
     watching: points > 0,
     points,
     stage,
@@ -333,7 +362,7 @@ function settleItems(items: readonly LoginRewardItem[]) {
 
 async function grant(
   userId: string,
-  kind: "weekly_chest" | "mastery" | "sponsor_gift",
+  kind: "weekly_chest" | "mastery" | "sponsor_gift" | "audience_milestone",
   key: string,
   items: readonly LoginRewardItem[]
 ): Promise<HubClaimResult> {
@@ -393,6 +422,19 @@ export async function claimSponsorGift(userId: string, accountLevel: number, spo
   }
 }
 
+/** Ouvre un palier d'audience franchi par le record (migration 20261013120000 : type de réclamation `audience_milestone`). */
+export async function claimAudienceMilestone(userId: string, accountLevel: number, threshold: number): Promise<HubClaimResult> {
+  try {
+    const hub = await readProgressionHub(userId, accountLevel);
+    const milestone = hub.audienceMilestones.find((entry) => entry.threshold === threshold);
+    if (!milestone || !milestone.claimable) return { ok: false, error: "Ce palier d'audience n'est pas à réclamer." };
+    return await grant(userId, "audience_milestone", String(threshold), milestone.rewards);
+  } catch (error) {
+    console.error("[claimAudienceMilestone] Échec :", error);
+    return { ok: false, error: "Réclamation impossible pour le moment." };
+  }
+}
+
 /**
  * Fin de partie, pour UN joueur : le public juge la partie (spectacle,
  * audience — ouverte à tous, dès le premier jour), puis les mécènes qui la
@@ -405,17 +447,29 @@ export async function recordMatchAudience(
   matchId: string,
   userId: string,
   finalState: GameState,
-  context: { accountLevel: number; playStreak?: number }
+  context: { accountLevel: number; playStreak?: number; vsBot?: boolean }
 ): Promise<void> {
   try {
     const service = createSupabaseServiceRoleClient();
     const analysis = analyzeMatch(finalState, userId);
-    const { data, error } = await service.rpc("record_match_audience", {
+    let { data, error } = await service.rpc("record_match_audience", {
       p_user_id: userId,
       p_match_id: matchId,
       p_spectacle: analysis.spectacle,
       p_highlights: analysis.highlights,
+      p_vs_bot: Boolean(context.vsBot),
     });
+    // Migration 20261013120000 pas encore passée : la fonction ne connaît pas
+    // `p_vs_bot` (PostgREST ne trouve pas la signature). On juge quand même,
+    // à l'ancienne formule, plutôt que de laisser la partie sans public.
+    if (error?.code === "PGRST202") {
+      ({ data, error } = await service.rpc("record_match_audience", {
+        p_user_id: userId,
+        p_match_id: matchId,
+        p_spectacle: analysis.spectacle,
+        p_highlights: analysis.highlights,
+      }));
+    }
     if (error) {
       console.error("[recordMatchAudience] Refusé :", error.message);
       return;
@@ -423,7 +477,7 @@ export async function recordMatchAudience(
     // Déjà comptée (rejeu) : les mécènes l'ont déjà vue aussi.
     if (!data?.recorded || context.accountLevel < SPONSORS_UNLOCK_LEVEL) return;
 
-    const points = sponsorPointsForMatch({ audience: data.audience ?? 0, analysis, playStreak: context.playStreak });
+    const points = sponsorPointsForMatch({ audience: data.audience ?? 0, best: data.best, analysis, playStreak: context.playStreak });
     if (!Object.values(points).some((value) => value > 0)) return;
     const interest = await service.rpc("record_sponsor_interest", { p_user_id: userId, p_match_id: matchId, p_points: points });
     if (interest.error) console.error("[recordMatchAudience] Intérêt refusé :", interest.error.message);

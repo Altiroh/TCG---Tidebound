@@ -1,32 +1,19 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
-import { getShipDefinition } from "@/game/environment/shipData";
 import type { GameState, PlayerId } from "@/game/state/types";
 import type { MatchFacts } from "@/game/audience/types";
-import { readMoments } from "@/game/audience/moments";
-
-function startingAnchorOf(shipId: string | undefined): number {
-  try {
-    return shipId ? getShipDefinition(shipId).startingAnchor : 20;
-  } catch {
-    return 20;
-  }
-}
+import { readTimeline } from "@/game/audience/moments";
 
 /**
- * Relève les faits d'une partie pour le joueur `playerId` — UNE passe sur
- * le journal, que tous les analyseurs partagent.
+ * Relève les faits d'une partie pour le joueur `playerId`. L'Ancrage, les
+ * changements de meneur et la conduite (tours passés, délais, Déraison)
+ * viennent de la lecture des moments (`readTimeline`) : une seule façon de
+ * les compter, partagée par le direct et le verdict.
  */
 export function readMatchFacts(state: GameState, playerId: PlayerId): MatchFacts {
   const me = state.players.find((player) => player.id === playerId);
   const opponent = state.players.find((player) => player.id !== playerId);
-  const startingAnchor = startingAnchorOf(me?.shipId);
-  const opponentStartingAnchor = startingAnchorOf(opponent?.shipId);
+  const timeline = readTimeline(state, playerId);
 
-  let myAnchor = startingAnchor;
-  let theirAnchor = opponentStartingAnchor;
-  let lowestAnchor = startingAnchor;
-  let leader = 0;
-  let leadChanges = 0;
   let cardsPlayed = 0;
   const distinct = new Set<string>();
   const types = new Set<string>();
@@ -35,18 +22,14 @@ export function readMatchFacts(state: GameState, playerId: PlayerId): MatchFacts
   let reactions = 0;
   let shipAbilities = 0;
   let tideManipulations = 0;
-  let timeouts = 0;
-  let idleTurns = 0;
-  let deraisons = 0;
   let conceded = false;
-  let actedThisTurn = false;
+  let opponentLeft = false;
 
   for (const event of state.eventLog) {
     switch (event.type) {
       case "PLAY_CARD":
         if (event.playerId !== playerId) break;
         cardsPlayed += 1;
-        actedThisTurn = true;
         distinct.add(event.cardId);
         try {
           types.add(getCardDefinition(event.cardId).type);
@@ -57,51 +40,23 @@ export function readMatchFacts(state: GameState, playerId: PlayerId): MatchFacts
       case "ATTACK":
         if (event.playerId !== playerId) break;
         attacks += 1;
-        actedThisTurn = true;
         if (!event.defenderInstanceId) directAttacks += 1;
         break;
-      case "END_TURN":
-        if (event.playerId !== playerId) break;
-        if (!actedThisTurn) idleTurns += 1;
-        actedThisTurn = false;
-        break;
-      case "DAMAGE": {
-        if (event.targetAnchorAfter === undefined || !event.targetPlayerId) break;
-        if (event.targetPlayerId === playerId) {
-          myAnchor = event.targetAnchorAfter;
-          lowestAnchor = Math.min(lowestAnchor, myAnchor);
-        } else {
-          theirAnchor = event.targetAnchorAfter;
-        }
-        // Qui mène, en part de son Ancrage de départ ? Un écart de moins de 10 % n'est pas une avance.
-        const gap = myAnchor / startingAnchor - theirAnchor / opponentStartingAnchor;
-        const now = gap > 0.1 ? 1 : gap < -0.1 ? -1 : 0;
-        if (now !== 0 && leader !== 0 && now !== leader) leadChanges += 1;
-        if (now !== 0) leader = now;
-        break;
-      }
       case "REACTION_ACTIVATED":
         if (event.playerId === playerId) reactions += 1;
         break;
       case "SHIP_ABILITY_FIRED":
-      case "SHIP_ABILITY_ACTIVATED":
-        if (event.playerId === playerId) {
-          shipAbilities += event.type === "SHIP_ABILITY_FIRED" ? 1 : 0;
-          actedThisTurn = true;
-        }
+        if (event.playerId === playerId) shipAbilities += 1;
         break;
       case "TIDE_MODIFIED":
       case "TIDE_ORIENTATION_CHANGED":
         tideManipulations += 1;
         break;
-      case "TURN_TIMED_OUT":
-        if (event.playerId === playerId) timeouts += 1;
-        break;
-      case "DERAISON_SETTLED":
-        if (event.playerId === playerId) deraisons += 1;
-        break;
       case "GAME_ENDED":
-        if (event.reason === "concede" && event.winnerId !== playerId) conceded = true;
+        if (event.reason !== "concede" && event.reason !== "timeout") break;
+        // Abandon (ou délais épuisés) : celui qui part a abandonné, l'autre a vu la table se vider.
+        if (event.winnerId === playerId) opponentLeft = true;
+        else if (event.reason === "concede") conceded = true;
         break;
       default:
         break;
@@ -113,12 +68,12 @@ export function readMatchFacts(state: GameState, playerId: PlayerId): MatchFacts
     finished: state.status !== "active",
     won: state.winnerId === playerId,
     tableTurns: Math.ceil(state.turnNumber / 2),
-    startingAnchor,
-    opponentStartingAnchor,
-    lowestAnchor: Math.min(lowestAnchor, me?.anchor ?? lowestAnchor),
-    finalAnchor: me?.anchor ?? myAnchor,
-    opponentFinalAnchor: opponent?.anchor ?? theirAnchor,
-    leadChanges,
+    startingAnchor: timeline.startingAnchor,
+    opponentStartingAnchor: timeline.opponentStartingAnchor,
+    lowestAnchor: timeline.lowestAnchor,
+    finalAnchor: me?.anchor ?? timeline.startingAnchor,
+    opponentFinalAnchor: opponent?.anchor ?? timeline.opponentStartingAnchor,
+    leadChanges: timeline.leadChanges,
     cardsPlayed,
     distinctCards: distinct.size,
     distinctTypes: types.size,
@@ -127,10 +82,11 @@ export function readMatchFacts(state: GameState, playerId: PlayerId): MatchFacts
     reactions,
     shipAbilities,
     tideManipulations,
-    timeouts,
-    idleTurns,
-    deraisons,
+    timeouts: timeline.timeouts,
+    idleTurns: timeline.idleTurns,
+    deraisons: timeline.deraisons,
     conceded,
-    momentsTotal: readMoments(state, playerId).reduce((sum, moment) => sum + moment.weight, 0),
+    opponentLeft,
+    momentsTotal: timeline.moments.filter((moment) => moment.kind === "jeu").reduce((sum, moment) => sum + moment.weight, 0),
   };
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useNoMenuAmbiance } from "@/components/menu/MenuAmbiance";
-import { analyzeMatch } from "@/game/audience";
+import { matchAudienceVerdict } from "@/features/audience/verdict";
 import { useEndScreenHold } from "@/features/match/useEndScreenHold";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -370,7 +370,7 @@ export function MatchBoard({
         outcome={isDefeat ? "defeat" : "victory"}
         player={state.winnerId ? { name: subjectName, ship: subjectShip, title: humanPlayerId ? myTitle : null } : undefined}
         onExit={onExit}
-        audience={subjectId ? analyzeMatch(state, subjectId) : undefined}
+        audience={subjectId ? matchAudienceVerdict(state, subjectId) : undefined}
       />
     );
   }

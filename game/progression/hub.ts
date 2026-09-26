@@ -230,12 +230,30 @@ export function sponsorGiftStagesReached(points: number): SponsorStage[] {
   return SPONSOR_STAGES.filter((entry) => entry.id !== "indifferent" && points >= entry.minPoints).map((entry) => entry.id);
 }
 
+/**
+ * Part du seuil sous laquelle un mécène qui regardait DÉJÀ détourne les yeux.
+ * Hystérésis : il remarque le joueur au seuil, puis ne le lâche qu'à 85 % —
+ * une partie terne ne fait pas clignoter son regard d'une partie à l'autre.
+ */
+export const SPONSOR_WATCH_HOLD = 0.85;
+
+/**
+ * Le mécène regarde-t-il ? Au seuil d'audience ; et, si le record l'a déjà
+ * franchi, tant que l'audience reste au-dessus de 85 % du seuil.
+ */
+export function sponsorWatches(audienceRequired: number, audience: number, best: number = audience): boolean {
+  if (audience >= audienceRequired) return true;
+  return best >= audienceRequired && audience >= Math.ceil(audienceRequired * SPONSOR_WATCH_HOLD);
+}
+
 /** Plafond de points qu'une seule partie peut apporter à un mécène. */
 const SPONSOR_POINTS_PER_MATCH = 10;
 
 export interface SponsorMatchContext {
   /** Audience du joueur APRÈS cette partie. */
   audience: number;
+  /** Record d'audience APRÈS cette partie (hystérésis du regard, `sponsorWatches`). Absent : l'audience seule. */
+  best?: number;
   /** Verdict du public sur la partie (`analyzeMatch`). */
   analysis: Pick<MatchAnalysis, "spectacle" | "traits">;
   /** Jours d'affilée joués après cette partie (série de jeu). */
@@ -259,7 +277,7 @@ export function sponsorPointsForMatch(context: SponsorMatchContext): Record<Spon
   };
   const points = {} as Record<SponsorId, number>;
   for (const sponsor of SPONSORS) {
-    points[sponsor.id] = context.audience >= sponsor.audienceRequired ? Math.min(SPONSOR_POINTS_PER_MATCH, raw[sponsor.id]) : 0;
+    points[sponsor.id] = sponsorWatches(sponsor.audienceRequired, context.audience, context.best) ? Math.min(SPONSOR_POINTS_PER_MATCH, raw[sponsor.id]) : 0;
   }
   return points;
 }

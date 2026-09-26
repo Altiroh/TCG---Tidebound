@@ -37,7 +37,28 @@ function Ecran() {
       audience={
         params.get("public") === "0"
           ? undefined
-          : { spectacle: defaite ? 34 : 78, highlights: defaite ? ["Trop vite expédiée"] : ["Retournement de situation", "Partie disputée"] }
+          : defaite
+            ? {
+                spectacle: 34,
+                highlights: ["Trop vite expédiée", "Des hésitations qui ont lassé"],
+                signals: [
+                  { id: "tempo.expedited", family: "rythme", label: "Trop vite expédiée", weight: -20, salience: 6 },
+                  { id: "erreur.timeout", family: "erreur", label: "Des hésitations qui ont lassé", weight: -12, salience: 7 },
+                  { id: "maitrise.solid", family: "maitrise", label: "Un jeu solide", weight: 5, salience: 2 },
+                ],
+                liveDelta: -35,
+              }
+            : {
+                spectacle: 78,
+                highlights: ["Un retournement de haut vol", "Un duel indécis jusqu'au bout"],
+                signals: [
+                  { id: "tension.comeback", family: "tension", label: "Un retournement de haut vol", weight: 25, salience: 10 },
+                  { id: "tempo.full", family: "rythme", label: "Une vraie traversée", weight: 12, salience: 2 },
+                  { id: "tension.swings", family: "tension", label: "Un duel indécis jusqu'au bout", weight: 8, salience: 7 },
+                  { id: "moments.brilliant", family: "maitrise", label: "Des coups d'éclat qui ont porté", weight: 7, salience: 6 },
+                ],
+                liveDelta: 70,
+              }
       }
       preview={{
         audience: { spectacle: defaite ? 34 : 78, before: 1240, after: defaite ? 1162 : 1382 },

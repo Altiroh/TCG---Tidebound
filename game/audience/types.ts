@@ -59,7 +59,13 @@ export interface MatchFacts {
   idleTurns: number;
   deraisons: number;
   conceded: boolean;
-  /** Bilan des moments de la partie (`moments.ts`), en points — le fil des coups, bons et mauvais. */
+  /** L'adversaire a quitté la table (abandon, délais épuisés) et le joueur gagne sans avoir fini la partie. */
+  opponentLeft: boolean;
+  /**
+   * Bilan des moments de JEU de la partie (`moments.ts`), en points — le fil
+   * des coups, bons et mauvais. Les moments de conduite n'y entrent pas :
+   * l'analyseur `conduite` les juge déjà.
+   */
   momentsTotal: number;
 }
 

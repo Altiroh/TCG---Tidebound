@@ -493,7 +493,7 @@ export interface Database {
       /** Cycle de connexion — une ÉTAPE, jamais un streak à réinitialiser. */
       /** Récompenses du hub prises (coffre de la semaine, palier de Maîtrise, colis) — migration 20261009120000. */
       player_progression_claims: {
-        Row: { user_id: string; kind: "weekly_chest" | "mastery" | "sponsor_gift"; claim_key: string; claimed_at: string };
+        Row: { user_id: string; kind: "weekly_chest" | "mastery" | "sponsor_gift" | "audience_milestone"; claim_key: string; claimed_at: string };
         Insert: Record<string, never>;
         Update: Record<string, never>;
         Relationships: [];
@@ -520,9 +520,21 @@ export interface Database {
         Update: Record<string, never>;
         Relationships: [];
       };
-      /** Parties déjà jugées par le public (une fois par joueur). */
+      /**
+       * Parties déjà jugées par le public (une fois par joueur). Audience
+       * avant/après et `vs_bot` : migration 20261013120000 (nuls sur les
+       * parties jugées avant elle).
+       */
       player_audience_matches: {
-        Row: { match_id: string; user_id: string; spectacle: number; judged_at: string };
+        Row: {
+          match_id: string;
+          user_id: string;
+          spectacle: number;
+          judged_at: string;
+          audience_before: number | null;
+          audience_after: number | null;
+          vs_bot: boolean;
+        };
         Insert: Record<string, never>;
         Update: Record<string, never>;
         Relationships: [];
@@ -632,7 +644,7 @@ export interface Database {
       claim_progression_reward: {
         Args: {
           p_user_id: string;
-          p_kind: "weekly_chest" | "mastery" | "sponsor_gift";
+          p_kind: "weekly_chest" | "mastery" | "sponsor_gift" | "audience_milestone";
           p_key: string;
           p_tides?: number;
           p_booster_id?: string | null;
@@ -641,8 +653,9 @@ export interface Database {
         Returns: { ok: boolean; error?: string };
       };
       record_match_audience: {
-        Args: { p_user_id: string; p_match_id: string; p_spectacle: number; p_highlights?: string[] };
-        Returns: { ok: boolean; recorded?: boolean; audience?: number };
+        /** `p_vs_bot` : migration 20261013120000 — sans elle, la fonction ne connaît que les quatre premiers. */
+        Args: { p_user_id: string; p_match_id: string; p_spectacle: number; p_highlights?: string[]; p_vs_bot?: boolean };
+        Returns: { ok: boolean; recorded?: boolean; audience?: number; before?: number; best?: number };
       };
       record_sponsor_interest: {
         Args: { p_user_id: string; p_match_id: string; p_points: Record<string, number> };

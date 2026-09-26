@@ -75,6 +75,7 @@ export {
   SPONSORS_UNLOCK_LEVEL,
   SPONSOR_MAX_POINTS,
   SPONSOR_STAGES,
+  SPONSOR_WATCH_HOLD,
   WEEKLY_CHEST_GOAL,
   masteryProgress,
   masteryRewardForLevel,
@@ -86,6 +87,7 @@ export {
   sponsorRevealed,
   sponsorStage,
   sponsorStageLabel,
+  sponsorWatches,
   weeklyChestContents,
 } from "@/game/progression/hub";
 export type { MasteryProgress, SponsorColor, SponsorDefinition, SponsorId, SponsorMatchContext, SponsorStage } from "@/game/progression/hub";

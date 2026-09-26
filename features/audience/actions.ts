@@ -2,7 +2,6 @@
 
 import { getSessionUser } from "@/lib/supabase/sessionUser";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { AUDIENCE_PER_SPECTACLE, AUDIENCE_RETAIN } from "@/game/audience";
 
 /**
  * Audience du joueur connecté — lecture légère pour la table (le compteur
@@ -23,11 +22,18 @@ export async function fetchMyAudience(): Promise<number> {
 
 export interface MatchAudienceSummary {
   spectacle: number;
-  /** Audience AVANT la partie (déduite : la formule est connue). */
+  /** Audience AVANT la partie. */
   before: number;
   /** Audience après la partie, telle qu'en base. */
   after: number;
 }
+
+/**
+ * Ancienne formule (migration 20261010120000) : ne sert qu'à relire une
+ * partie jugée avant que l'audience d'avant ne soit enregistrée.
+ */
+const LEGACY_RETAIN = 0.8;
+const LEGACY_PER_SPECTACLE = 5;
 
 /**
  * Ce que la partie a fait à l'audience, une fois jugée côté serveur
@@ -38,18 +44,40 @@ export async function fetchMatchAudience(matchId: string): Promise<MatchAudience
     const user = await getSessionUser();
     if (!user) return null;
     const supabase = createSupabaseServerClient();
-    const [judged, audience] = await Promise.all([
-      supabase.from("player_audience_matches").select("spectacle").eq("match_id", matchId).eq("user_id", user.id).maybeSingle(),
-      supabase.from("player_audience").select("audience").eq("user_id", user.id).maybeSingle(),
-    ]);
-    if (judged.error || !judged.data || audience.error) return null;
-    const after = audience.data?.audience ?? 0;
-    const spectacle = judged.data.spectacle;
-    // Inverse de `nextAudience` : assez juste pour afficher le gain (au
-    // spectateur près), tant qu'aucune autre partie n'a été jugée depuis.
-    const before = Math.max(0, Math.round((after - spectacle * AUDIENCE_PER_SPECTACLE) / AUDIENCE_RETAIN));
-    return { spectacle, before, after };
+    const judged = await supabase
+      .from("player_audience_matches")
+      .select("spectacle, audience_before, audience_after")
+      .eq("match_id", matchId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (!judged.error && judged.data) {
+      const { spectacle, audience_before: before, audience_after: after } = judged.data;
+      if (before !== null && after !== null) return { spectacle, before, after };
+    }
+    return await legacyMatchAudience(supabase, matchId, user.id);
   } catch {
     return null;
   }
+}
+
+/**
+ * Sans les colonnes avant/après (migration 20261013120000 pas encore passée,
+ * ou partie jugée avant elle) : l'audience d'avant se DÉDUIT de l'ancienne
+ * formule — juste au spectateur près tant qu'aucune autre partie n'a été
+ * jugée depuis.
+ */
+async function legacyMatchAudience(
+  supabase: ReturnType<typeof createSupabaseServerClient>,
+  matchId: string,
+  userId: string
+): Promise<MatchAudienceSummary | null> {
+  const [judged, audience] = await Promise.all([
+    supabase.from("player_audience_matches").select("spectacle").eq("match_id", matchId).eq("user_id", userId).maybeSingle(),
+    supabase.from("player_audience").select("audience").eq("user_id", userId).maybeSingle(),
+  ]);
+  if (judged.error || !judged.data || audience.error) return null;
+  const after = audience.data?.audience ?? 0;
+  const spectacle = judged.data.spectacle;
+  const before = Math.max(0, Math.round((after - spectacle * LEGACY_PER_SPECTACLE) / LEGACY_RETAIN));
+  return { spectacle, before, after };
 }

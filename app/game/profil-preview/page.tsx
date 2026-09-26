@@ -114,8 +114,10 @@ export default function ProfilPreviewRoute({ searchParams }: { searchParams: { s
         "mastery|le-goliath:2",
         "mastery|le-goliath:3",
         ...(searchParams.coffre === "ouvert" ? [`weekly_chest|${week}`] : []),
+        // Premier palier d'audience déjà ouvert : le deuxième et le troisième attendent.
+        "audience_milestone|250",
       ]),
-      audience: { audience: 1240, best: 1480, lastSpectacle: 68 },
+      audience: { audience: 1240, best: 1480, lastSpectacle: 68, lastHighlights: ["Un retournement de haut vol", "Un duel indécis jusqu'au bout"] },
     }),
   };
   return (

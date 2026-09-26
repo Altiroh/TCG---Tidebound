@@ -15,6 +15,7 @@ import { ACHIEVEMENT_CATALOG } from "@/game/achievements";
 import { DEFAULT_CARD_BACK_ID, STANDARD_BOOSTER_ID } from "@/game";
 import { claimLoginReward, readLoginRewards, type LoginRewardView } from "@/features/progression/loginService";
 import {
+  claimAudienceMilestone,
   claimMasteryReward,
   claimSponsorGift,
   claimWeeklyChest,
@@ -330,6 +331,15 @@ export async function openSponsorGift(sponsorId: SponsorId, stage: SponsorStage)
   const user = await getSessionUser();
   if (!user) return { ok: false, error: "Connecte-toi pour ouvrir le colis." };
   const result = await claimSponsorGift(user.id, await accountLevelOf(user.id), sponsorId, stage);
+  if (result.ok) revalidatePath("/profil");
+  return result;
+}
+
+/** Ouvre un palier d'audience franchi par le record (`game/audience/milestones.ts`). */
+export async function claimAudienceMilestoneReward(threshold: number): Promise<HubClaimResult> {
+  const user = await getSessionUser();
+  if (!user) return { ok: false, error: "Connecte-toi pour réclamer." };
+  const result = await claimAudienceMilestone(user.id, await accountLevelOf(user.id), threshold);
   if (result.ok) revalidatePath("/profil");
   return result;
 }

@@ -2,7 +2,7 @@
 
 import { useNoMenuAmbiance } from "@/components/menu/MenuAmbiance";
 import { useEffect } from "react";
-import { analyzeMatch } from "@/game/audience";
+import { matchAudienceVerdict } from "@/features/audience/verdict";
 import { useEndScreenHold } from "@/features/match/useEndScreenHold";
 import {
   canUnitAttack,
@@ -218,7 +218,7 @@ export function OnlineBoard({
         player={state.winnerId ? { name: displayNames[myUserId] ?? "Toi", ship: myShip, title: myTitle } : undefined}
         exitHref={exitHref}
         matchId={matchId}
-        audience={analyzeMatch(state, myUserId)}
+        audience={matchAudienceVerdict(state, myUserId)}
       />
     );
   }

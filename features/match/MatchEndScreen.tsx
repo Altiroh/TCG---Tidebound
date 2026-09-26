@@ -128,7 +128,7 @@ export function MatchEndScreen({ outcome, player, onExit, exitHref, matchId, pre
   return (
     <>
       {/* Le public, en haut à gauche : son compteur défile avec ce que la partie lui a fait. */}
-      {audience && <MatchAudienceTicker matchId={matchId} preview={preview?.audience} />}
+      {audience && <MatchAudienceTicker matchId={matchId} preview={preview?.audience} verdict={audience} />}
       {/* Le plateau peint (`board.webp`) porte ses propres cadres de Navire
           vides et ses dos de carte : à peine voilé, on les lisait derrière
           l'écran de fin (retour du 15/09). Il ne sert plus que de matière —
