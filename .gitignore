@@ -36,3 +36,6 @@ next-env.d.ts
 # supabase
 .supabase/
 supabase/.temp/
+
+# Maquettes de référence déposées pour le travail (PNG lourds) : jamais commitées ni déployées
+public/references/
