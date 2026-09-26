@@ -93,6 +93,15 @@ export function MatchAudienceTicker({ matchId, preview, verdict }: { matchId?: s
             {audienceMood(verdict.spectacle)}
             <span className={styles.score}>Spectacle {verdict.spectacle}</span>
           </p>
+          {/* La prime du public, une fois la partie jugée : ce que la salle a payé. */}
+          {summary?.prize && (
+            <p className={styles.prize}>
+              Prime du public
+              <span>
+                +{summary.prize.xp} XP{summary.prize.tides > 0 && ` · +${summary.prize.tides} Tide${summary.prize.tides > 1 ? "s" : ""}`}
+              </span>
+            </p>
+          )}
           {/* Ce qui a pesé, chiffré ; les temps forts y ressortent. Sans signal chiffré, les temps forts seuls. */}
           {weighed.length > 0 ? (
             <ul className={styles.signals}>

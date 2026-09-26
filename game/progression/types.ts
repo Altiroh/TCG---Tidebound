@@ -1,3 +1,4 @@
+import type { AudiencePrize } from "@/game/audience/prize";
 import type { CardRarity } from "@/game/boosters/types";
 import type { LevelRewardItem } from "@/game/progression/levelRewards";
 
@@ -59,6 +60,8 @@ export interface MatchReward {
   firstWinOfDay: boolean;
   /** `true` si le bonus « 3 parties terminées aujourd'hui » a été inclus. */
   dailyMatchesBonus: boolean;
+  /** Prime du public déjà incluse dans `xp` et `tides` ; `null` sans spectacle connu. */
+  audiencePrize: AudiencePrize | null;
   /** `true` si la partie a été jugée sans activité significative (anti-AFK). */
   abandoned: boolean;
   /** Niveau avant/après, et détail des paliers franchis. */

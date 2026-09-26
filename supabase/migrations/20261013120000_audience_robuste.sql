@@ -24,12 +24,21 @@
 --    (clé = seuil de record atteint), octroyé par `claim_progression_reward`
 --    comme le coffre et les Maîtrises. Seuils : game/audience/milestones.ts.
 --
+-- 4. PRIME DU PUBLIC. Chaque partie paie son spectacle (game/audience/
+--    prize.ts). La prime est OCTROYÉE avec la partie (XP et Tides de
+--    `grant_match_progression`, une seule fois) ; cette fonction ne fait que
+--    la NOTER (`prize_xp`, `prize_tides`) pour l'écran de fin.
+--
 -- Rejouable : `if not exists`, `drop ... if exists`.
 
 alter table public.player_audience_matches
   add column if not exists audience_before integer check (audience_before >= 0),
   add column if not exists audience_after integer check (audience_after >= 0),
-  add column if not exists vs_bot boolean not null default false;
+  add column if not exists vs_bot boolean not null default false,
+  -- Prime du public (game/audience/prize.ts) : déjà OCTROYÉE avec la partie
+  -- par `grant_match_progression` ; notée ici pour que l'écran de fin la montre.
+  add column if not exists prize_xp integer not null default 0 check (prize_xp >= 0),
+  add column if not exists prize_tides integer not null default 0 check (prize_tides >= 0);
 
 -- L'ancienne signature (sans p_vs_bot) disparaît : deux surcharges aux
 -- paramètres par défaut rendraient l'appel ambigu.
@@ -40,7 +49,9 @@ create or replace function public.record_match_audience(
   p_match_id uuid,
   p_spectacle integer,
   p_highlights text[] default '{}',
-  p_vs_bot boolean default false
+  p_vs_bot boolean default false,
+  p_prize_xp integer default 0,
+  p_prize_tides integer default 0
 )
 returns jsonb
 language plpgsql
@@ -56,8 +67,8 @@ declare
 begin
   perform public.assert_server_caller('record_match_audience');
 
-  insert into public.player_audience_matches (match_id, user_id, spectacle, vs_bot)
-  values (p_match_id, p_user_id, v_spectacle, coalesce(p_vs_bot, false))
+  insert into public.player_audience_matches (match_id, user_id, spectacle, vs_bot, prize_xp, prize_tides)
+  values (p_match_id, p_user_id, v_spectacle, coalesce(p_vs_bot, false), greatest(0, coalesce(p_prize_xp, 0)), greatest(0, coalesce(p_prize_tides, 0)))
   on conflict do nothing;
   if not found then
     -- Déjà jugée : rien à recompter, on rend l'audience telle qu'elle est.
@@ -99,8 +110,8 @@ begin
 end;
 $$;
 
-revoke all on function public.record_match_audience(uuid, uuid, integer, text[], boolean) from public, anon, authenticated;
-grant execute on function public.record_match_audience(uuid, uuid, integer, text[], boolean) to service_role;
+revoke all on function public.record_match_audience(uuid, uuid, integer, text[], boolean, integer, integer) from public, anon, authenticated;
+grant execute on function public.record_match_audience(uuid, uuid, integer, text[], boolean, integer, integer) to service_role;
 
 -- Paliers d'audience : un type de réclamation de plus.
 alter table public.player_progression_claims drop constraint if exists player_progression_claims_kind_check;

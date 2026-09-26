@@ -534,6 +534,9 @@ export interface Database {
           audience_before: number | null;
           audience_after: number | null;
           vs_bot: boolean;
+          /** Prime du public octroyée avec la partie, notée pour l'écran de fin. */
+          prize_xp: number;
+          prize_tides: number;
         };
         Insert: Record<string, never>;
         Update: Record<string, never>;
@@ -654,7 +657,7 @@ export interface Database {
       };
       record_match_audience: {
         /** `p_vs_bot` : migration 20261013120000 — sans elle, la fonction ne connaît que les quatre premiers. */
-        Args: { p_user_id: string; p_match_id: string; p_spectacle: number; p_highlights?: string[]; p_vs_bot?: boolean };
+        Args: { p_user_id: string; p_match_id: string; p_spectacle: number; p_highlights?: string[]; p_vs_bot?: boolean; p_prize_xp?: number; p_prize_tides?: number };
         Returns: { ok: boolean; recorded?: boolean; audience?: number; before?: number; best?: number };
       };
       record_sponsor_interest: {

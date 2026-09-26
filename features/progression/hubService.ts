@@ -447,7 +447,13 @@ export async function recordMatchAudience(
   matchId: string,
   userId: string,
   finalState: GameState,
-  context: { accountLevel: number; playStreak?: number; vsBot?: boolean }
+  context: {
+    accountLevel: number;
+    playStreak?: number;
+    vsBot?: boolean;
+    /** Prime du public déjà octroyée avec la partie (`awardMatchReward`) — notée pour l'écran de fin. */
+    prize?: { xp: number; tides: number } | null;
+  }
 ): Promise<void> {
   try {
     const service = createSupabaseServiceRoleClient();
@@ -458,6 +464,8 @@ export async function recordMatchAudience(
       p_spectacle: analysis.spectacle,
       p_highlights: analysis.highlights,
       p_vs_bot: Boolean(context.vsBot),
+      p_prize_xp: context.prize?.xp ?? 0,
+      p_prize_tides: context.prize?.tides ?? 0,
     });
     // Migration 20261013120000 pas encore passée : la fonction ne connaît pas
     // `p_vs_bot` (PostgREST ne trouve pas la signature). On juge quand même,

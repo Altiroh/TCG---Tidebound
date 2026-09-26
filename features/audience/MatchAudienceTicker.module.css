@@ -89,6 +89,27 @@
   letter-spacing: 0.04em;
 }
 
+/* La prime du public : l'or du bandeau de récompense, sans lui voler la vedette. */
+.prize {
+  margin: 6px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0 10px;
+  padding: 4px 8px;
+  white-space: nowrap;
+  border: 1px solid rgba(243, 200, 107, 0.45);
+  border-radius: 6px;
+  background: rgba(107, 74, 23, 0.35);
+  color: #f7dc9c;
+  font-weight: 700;
+  animation: verdict-in 500ms ease 1500ms both;
+}
+
+.prize span {
+  font-variant-numeric: tabular-nums;
+}
+
 .highlights,
 .signals {
   margin: 6px 0 0;

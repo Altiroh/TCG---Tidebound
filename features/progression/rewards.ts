@@ -1,5 +1,6 @@
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import type { GameState, PlayerId } from "@/game";
+import { analyzeMatch } from "@/game/audience";
 import {
   computeMatchReward,
   matchActivity,
@@ -97,6 +98,9 @@ export async function awardMatchReward({
     const matchesFinishedToday = current?.daily_matches_day === today ? (current?.daily_matches_count ?? 0) : 0;
 
     const activity = finalState && enginePlayerId ? matchActivity(finalState, enginePlayerId) : undefined;
+    // Le spectacle de la partie paie la prime du public — même verdict que
+    // celui qui juge l'audience (`recordMatchAudience`), sur le même état final.
+    const spectacle = finalState && enginePlayerId ? analyzeMatch(finalState, enginePlayerId).spectacle : undefined;
 
     const reward = computeMatchReward({
       mode,
@@ -106,6 +110,7 @@ export async function awardMatchReward({
       matchesFinishedToday,
       activity,
       botCountsAsPvp,
+      spectacle,
     });
 
     const { data, error } = await service.rpc("grant_match_progression", {

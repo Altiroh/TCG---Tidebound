@@ -5,6 +5,7 @@ import {
   analyzeMatch,
   audienceMilestonesReached,
   audienceMood,
+  audiencePrize,
   liveAudience,
   liveAudienceDelta,
   nextAudience,
@@ -12,7 +13,7 @@ import {
   readMatchFacts,
   readMoments,
 } from "@/game/audience";
-import { sponsorPointsForMatch, sponsorWatches } from "@/game/progression";
+import { computeMatchReward, sponsorPointsForMatch, sponsorWatches } from "@/game/progression";
 import { getShipDefinition } from "@/game";
 import type { GameState } from "@/game";
 
@@ -249,6 +250,42 @@ describe("l'audience varie en douceur", () => {
     expect(sponsorWatches(1000, 800, 1100)).toBe(false);
     const points = sponsorPointsForMatch({ audience: 900, best: 1100, analysis: { spectacle: 70, traits: { panache: 80, endurance: 50, ferveur: 70 } } });
     expect(points["compagnie-du-mousquet"]).toBeGreaterThan(0);
+  });
+});
+
+describe("prime du public — chaque partie paie son spectacle", () => {
+  const input = (overrides: Partial<Parameters<typeof computeMatchReward>[0]> = {}) => ({
+    mode: "matchmaking" as const,
+    outcome: "loss" as const,
+    progression: { xpTotal: 0, level: 1 },
+    isFirstWinOfDay: false,
+    matchesFinishedToday: 0,
+    ...overrides,
+  });
+
+  it("plus la salle a vibré, plus la prime est belle", () => {
+    expect(audiencePrize(30)).toMatchObject({ xp: 0, tides: 0, label: null });
+    expect(audiencePrize(45)).toMatchObject({ xp: 5, tides: 0 });
+    expect(audiencePrize(65)).toMatchObject({ xp: 10, tides: 1 });
+    expect(audiencePrize(90)).toMatchObject({ xp: 20, tides: 3, label: "Le public est debout" });
+  });
+
+  it("contre le bot : XP de moitié, jamais de Tides (règle de partie contre le bot)", () => {
+    expect(audiencePrize(90, { vsBot: true })).toMatchObject({ xp: 10, tides: 0 });
+  });
+
+  it("s'ajoute à la récompense de partie, victoire comme défaite héroïque", () => {
+    const plain = computeMatchReward(input());
+    const loved = computeMatchReward(input({ spectacle: 85 }));
+    expect(loved.xp - plain.xp).toBe(20);
+    expect(loved.tides - plain.tides).toBe(3);
+    expect(loved.audiencePrize).toMatchObject({ xp: 20, tides: 3 });
+    expect(plain.audiencePrize).toBeNull();
+  });
+
+  it("une partie abandonnée sans jeu réel ne touche rien", () => {
+    const afk = computeMatchReward(input({ spectacle: 85, activity: { cardsPlayed: 0, attacks: 0, turns: 0 } }));
+    expect(afk.audiencePrize).toMatchObject({ xp: 0, tides: 0 });
   });
 });
 

@@ -27,6 +27,7 @@ export {
   type MatchTimeline,
   type MomentKind,
 } from "@/game/audience/moments";
+export { AUDIENCE_PRIZE_TIERS, audiencePrize, type AudiencePrize, type AudiencePrizeTier } from "@/game/audience/prize";
 export {
   AUDIENCE_MILESTONES,
   audienceMilestonesReached,

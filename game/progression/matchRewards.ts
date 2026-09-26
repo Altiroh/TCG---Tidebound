@@ -8,6 +8,7 @@ import {
   MEANINGFUL_ACTIVITY,
 } from "@/game/progression/constants";
 import { levelForTotalXp, rewardsForLevelsGained } from "@/game/progression/levels";
+import { audiencePrize } from "@/game/audience/prize";
 import type {
   MatchActivity,
   MatchMode,
@@ -46,6 +47,11 @@ export interface MatchRewardInput {
    * `features/progression/botRewardPolicy.ts`, jamais ici.
    */
   botCountsAsPvp?: boolean;
+  /**
+   * Spectacle de la partie pour CE joueur (`analyzeMatch`, 0 à 100) : il
+   * paie la prime du public (`audiencePrize`). Absent : pas de prime.
+   */
+  spectacle?: number;
 }
 
 /**
@@ -91,7 +97,9 @@ export function isMeaningfulMatch(activity: MatchActivity | undefined): boolean 
  *  - le bonus de Tides de la première victoire du jour suit la même règle —
  *    réservé au PvP, sauf dérogation ; son XP, elle, est accordée dans les
  *    deux modes ;
- *  - une partie sans activité significative ne donne ni Tides, ni bonus.
+ *  - une partie sans activité significative ne donne ni Tides, ni bonus ;
+ *  - la prime du public (`audiencePrize`) s'ajoute selon le spectacle —
+ *    XP de moitié et sans Tides contre le bot, rien pour une partie abandonnée.
  */
 export function computeMatchReward({
   mode,
@@ -101,6 +109,7 @@ export function computeMatchReward({
   matchesFinishedToday,
   activity,
   botCountsAsPvp = false,
+  spectacle,
 }: MatchRewardInput): MatchReward {
   // Sous la dérogation, la partie contre bot n'est plus « bot » du tout aux
   // yeux des récompenses : un seul booléen, appliqué partout pareil.
@@ -126,6 +135,13 @@ export function computeMatchReward({
   // d'AVANT, donc le bonus ne peut tomber qu'une fois par journée UTC.
   const dailyMatchesBonus = meaningful && matchesFinishedToday + 1 === DAILY_MATCHES_BONUS.matches;
   if (dailyMatchesBonus) xp += DAILY_MATCHES_BONUS.xp;
+
+  // --- Prime du public : le spectacle se paie, victoire ou défaite --------
+  const prize = spectacle === undefined ? null : audiencePrize(spectacle, { vsBot: isBot, abandoned: !meaningful });
+  if (prize) {
+    xp += prize.xp;
+    tides += prize.tides;
+  }
 
   // --- Paliers franchis ---------------------------------------------------
   // `levelBefore` est recalculé depuis l'XP cumulée plutôt que lu tel quel :
@@ -169,6 +185,7 @@ export function computeMatchReward({
     tides,
     firstWinOfDay,
     dailyMatchesBonus,
+    audiencePrize: prize,
     abandoned: !meaningful,
     levelBefore,
     levelAfter,

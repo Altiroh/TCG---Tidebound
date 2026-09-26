@@ -26,6 +26,8 @@ export interface MatchAudienceSummary {
   before: number;
   /** Audience après la partie, telle qu'en base. */
   after: number;
+  /** Prime du public déjà octroyée avec la partie (`game/audience/prize.ts`). Absente : aucune, ou partie jugée avant la prime. */
+  prize?: { xp: number; tides: number };
 }
 
 /**
@@ -46,13 +48,13 @@ export async function fetchMatchAudience(matchId: string): Promise<MatchAudience
     const supabase = createSupabaseServerClient();
     const judged = await supabase
       .from("player_audience_matches")
-      .select("spectacle, audience_before, audience_after")
+      .select("spectacle, audience_before, audience_after, prize_xp, prize_tides")
       .eq("match_id", matchId)
       .eq("user_id", user.id)
       .maybeSingle();
     if (!judged.error && judged.data) {
-      const { spectacle, audience_before: before, audience_after: after } = judged.data;
-      if (before !== null && after !== null) return { spectacle, before, after };
+      const { spectacle, audience_before: before, audience_after: after, prize_xp: xp, prize_tides: tides } = judged.data;
+      if (before !== null && after !== null) return { spectacle, before, after, ...(xp > 0 || tides > 0 ? { prize: { xp, tides } } : {}) };
     }
     return await legacyMatchAudience(supabase, matchId, user.id);
   } catch {

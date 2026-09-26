@@ -294,6 +294,7 @@ async function settleFinishedMatch(match: MatchRow, finalState: GameState): Prom
             // Contre le bot, la partie pèse moitié moins sur l'audience — sauf
             // sous la dérogation de développement, comme pour les quêtes.
             vsBot: vsBot && !botAsPvp,
+            prize: reward.audiencePrize,
           })
         : Promise.resolve();
       const quests = recordMatchQuestProgress({

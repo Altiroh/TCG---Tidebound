@@ -61,7 +61,8 @@ function Ecran() {
               }
       }
       preview={{
-        audience: { spectacle: defaite ? 34 : 78, before: 1240, after: defaite ? 1162 : 1382 },
+        // Spectacle 78 : « captivé », la prime du public paie 10 XP et 1 Tide ; 34 ne paie rien.
+        audience: defaite ? { spectacle: 34, before: 1240, after: 1162 } : { spectacle: 78, before: 1240, after: 1382, prize: { xp: 10, tides: 1 } },
         reward: { xp: defaite ? 60 : 125, tides: defaite ? 0 : 30, levelBefore: 4, levelAfter: 4, firstWinOfDay: !defaite },
         quests: params.get("quetes") === "0" ? [] : QUETES,
         // Escale de Traversée : `?escale=0` la retire, `?escale=fin` la boucle.
