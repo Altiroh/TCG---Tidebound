@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { isAbyssalVariant, RULES } from "@/game";
+import { isAbyssalVariant, RULES, type CardType } from "@/game";
 import { CARD_TYPE_LABELS } from "@/features/match/cardDisplay";
 import {
   CURVE_BUCKETS,
@@ -46,8 +46,8 @@ interface DeckListPanelProps {
   variant?: "classic" | "livre";
 }
 
-/** Libellés au PLURIEL du tableau des types (maquette : « Créatures 18 »). */
-const TYPE_PLURALS: Record<string, string> = {
+/** Libellés au PLURIEL du tableau des types (maquette : « Créatures 18 »), dans l'ordre FIXE du tableau. */
+const TYPE_PLURALS: Record<CardType, string> = {
   marin: "Marins",
   creature: "Créatures",
   equipement: "Équipements",
@@ -140,7 +140,9 @@ export function DeckListPanel({
       </div>
       )}
 
-      {count > 0 && (
+      {/* Sur le livre, le résumé est TOUJOURS là — barres à plat et zéros
+          compris : le panneau garde sa masse quand le deck est vide. */}
+      {(onBook || count > 0) && (
         <div className={styles.summary}>
           <p className={styles.summaryTitle}>Résumé du deck</p>
           <div className={onBook ? book.summaryBody : undefined}>
@@ -165,14 +167,17 @@ export function DeckListPanel({
           {onBook ? (
             // Le tableau sombre de la maquette : icône, type au pluriel, effectif.
             <ul className={book.typeTable}>
-              {types.map(({ type, count: typeCount }) => (
-                <li key={type}>
-                  {/* eslint-disable-next-line @next/next/no-img-element -- icône locale de type */}
-                  <img src={`/assets/cards/icons/type-${type}.webp`} alt="" />
-                  <span>{TYPE_PLURALS[type] ?? CARD_TYPE_LABELS[type]}</span>
-                  <strong>{typeCount}</strong>
-                </li>
-              ))}
+              {(Object.keys(TYPE_PLURALS) as CardType[]).map((type) => {
+                const typeCount = types.find((entry) => entry.type === type)?.count ?? 0;
+                return (
+                  <li key={type} data-empty={typeCount === 0 || undefined}>
+                    {/* eslint-disable-next-line @next/next/no-img-element -- icône locale de type */}
+                    <img src={`/assets/cards/icons/type-${type}.webp`} alt="" />
+                    <span>{TYPE_PLURALS[type] ?? CARD_TYPE_LABELS[type]}</span>
+                    <strong>{typeCount}</strong>
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <div className={styles.types}>

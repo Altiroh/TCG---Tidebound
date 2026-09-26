@@ -156,6 +156,11 @@ export function DeckNamePlate({
           title="Choisir l'illustration du deck"
           aria-label="Choisir l'illustration du deck"
         >
+          {/* Les quatre coins de laiton du cadre — posés par-dessus l'illustration. */}
+          <span className={book.headCorner} data-corner="tl" aria-hidden />
+          <span className={book.headCorner} data-corner="tr" aria-hidden />
+          <span className={book.headCorner} data-corner="bl" aria-hidden />
+          <span className={book.headCorner} data-corner="br" aria-hidden />
           <span className={book.headArtPlus} aria-hidden>
             +
           </span>

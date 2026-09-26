@@ -100,6 +100,40 @@
   --tb-glow-abyssal: 0 0 22px rgba(180, 140, 242, 0.26);
   --tb-blur: blur(12px) saturate(1.05);
 
+  /* ── Le livre de bord (Éditeur de deck « sur le livre », 26/09/2026) ──
+     La table du capitaine a SA matière : encre sur parchemin, ivoire sur
+     bois sombre, laiton sur les arêtes. Trois couples de contraste, jamais
+     de gris. Consommés par `features/decks/DeckEditorBook.module.css`, et
+     par tout écran qui reprendra la table (liste des decks). */
+  /* Encre : un brun-noir pour le texte, jamais le brun des filets. */
+  --book-ink: #1d120a;
+  --book-ink-2: rgba(29, 18, 10, 0.82);
+  --book-ink-3: rgba(29, 18, 10, 0.58);
+  /* Filets et séparateurs à l'encre (l'ancienne couleur du texte). */
+  --book-ink-line: rgba(58, 38, 22, 0.3);
+  /* Ivoire : ce qui s'écrit sur le bois sombre. */
+  --book-ivory: #f0e3c6;
+  --book-ivory-strong: #fff5da;
+  --book-ivory-dim: rgba(240, 227, 198, 0.62);
+  /* Laiton : bords, médaillons, coins, filets — jamais un aplat. */
+  --book-brass: #e8c77b;
+  --book-brass-line: rgba(199, 154, 75, 0.55);
+  --book-brass-deep: #7a5a26;
+  /* La plaque : bois éclairé (actif) ou éteint (au repos) — le même objet. */
+  --book-wood-lit: linear-gradient(90deg, #3a2a1c 0%, #241a11 55%, #171009 100%);
+  --book-wood-dim: linear-gradient(90deg, #2a1e14 0%, #1c140d 55%, #110c07 100%);
+  /* L'accent : bleu encre sur parchemin, cyan lumineux sur le bois. */
+  --book-teal: #1c7d98;
+  --book-teal-bright: #5fd0e6;
+  /* Trois ombres et pas une de plus : contact (plaque, ligne), panneau, objet posé. */
+  --book-shadow-contact: 0 1px 2px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 230, 190, 0.08);
+  --book-shadow-panel: 0 12px 18px rgba(0, 0, 0, 0.55);
+  --book-shadow-object: 0 14px 18px rgba(0, 0, 0, 0.65);
+  /* Densité : une ligne-plaque, l'écart entre deux, l'écart entre deux blocs. */
+  --book-row-h: clamp(28px, 3.4vh, 32px);
+  --book-row-gap: 3px;
+  --book-block-gap: clamp(8px, 1.2vh, 12px);
+
   /* ── Bouton d'action : UN seul bleu, toujours lumineux ──────────
      Décision du 25/09/2026 : jamais de bouton bleu à plat. Le halo est
      là au repos et s'intensifie au survol. Tous les boutons d'action

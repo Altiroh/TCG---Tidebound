@@ -311,6 +311,14 @@
 
 .filterRowActive .filterGlyph { opacity: 1; }
 
+/* Médaillon d'icône des lignes de l'Éditeur « sur le livre »
+   (`CollectionSidebar` → `medallion`) : neutre ici, habillé là-bas. */
+.filterMedallion {
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+}
+
 /* Lien discret dans un titre de section (« Mur des carnets »). */
 .sectionTitle:has(.sectionLink) {
   display: flex;

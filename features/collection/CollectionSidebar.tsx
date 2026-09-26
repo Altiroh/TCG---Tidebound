@@ -85,6 +85,7 @@ function FilterRow({
   dotClassName,
   icon,
   glyph,
+  medallion = false,
 }: {
   label: string;
   count?: number;
@@ -94,7 +95,29 @@ function FilterRow({
   icon?: string;
   /** Petit pictogramme dessiné (cœur des favoris, carnet). */
   glyph?: ReactNode;
+  /**
+   * Éditeur « sur le livre » : l'icône, la pastille ou le pictogramme sont
+   * posés dans un MÉDAILLON de laiton en tête de plaque (une ligne = un
+   * objet, pas une case à cocher). Sans marque propre, le médaillon porte
+   * une rose des vents.
+   */
+  medallion?: boolean;
 }) {
+  const mark = (
+    <>
+      {dotClassName && <span className={`${styles.dot} ${dotClassName}`} aria-hidden />}
+      {icon && (
+        // eslint-disable-next-line @next/next/no-img-element -- icône locale de type, taille fixe
+        <img src={icon} alt="" className={styles.filterIcon} />
+      )}
+      {glyph && (
+        <span className={styles.filterGlyph} aria-hidden>
+          {glyph}
+        </span>
+      )}
+      {medallion && !dotClassName && !icon && !glyph && <CompassGlyph />}
+    </>
+  );
   return (
     <button
       type="button"
@@ -108,15 +131,12 @@ function FilterRow({
       {/* La case : ce qui est coché se lit dans la colonne avant même le
           libellé — une liste de filtres, pas une liste de liens. */}
       <span className={styles.filterCheck} aria-hidden />
-      {dotClassName && <span className={`${styles.dot} ${dotClassName}`} aria-hidden />}
-      {icon && (
-        // eslint-disable-next-line @next/next/no-img-element -- icône locale de type, taille fixe
-        <img src={icon} alt="" className={styles.filterIcon} />
-      )}
-      {glyph && (
-        <span className={styles.filterGlyph} aria-hidden>
-          {glyph}
+      {medallion ? (
+        <span className={styles.filterMedallion} aria-hidden>
+          {mark}
         </span>
+      ) : (
+        mark
       )}
       <span className={styles.filterLabel}>{label}</span>
       {count !== undefined && <span className={styles.filterCount}>{count}</span>}
@@ -144,6 +164,16 @@ function FilterList({ rowCount, children }: { rowCount: number; children: ReactN
     <div className={styles.filterList} data-scroll={scrolls ? "true" : "false"}>
       {children}
     </div>
+  );
+}
+
+/** Une rose des vents à quatre pointes : la marque par défaut d'un médaillon. */
+function CompassGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden>
+      <path d="M12 2l2.2 7.8L22 12l-7.8 2.2L12 22l-2.2-7.8L2 12l7.8-2.2z" fill="currentColor" />
+      <circle cx="12" cy="12" r="1.6" fill="rgba(0,0,0,0.45)" />
+    </svg>
   );
 }
 
@@ -184,10 +214,12 @@ function ShelfSection({
   filters,
   onChange,
   countFor,
+  medallion = false,
 }: {
   filters: CollectionFilterState;
   onChange: (patch: Partial<CollectionFilterState>) => void;
   countFor: (ignore: keyof CollectionFilterState, extra: (def: CardDefinition) => boolean) => number;
+  medallion?: boolean;
 }) {
   const shelf = useCardShelf();
   if (!shelf?.available) return null;
@@ -202,8 +234,9 @@ function ShelfSection({
         </Link>
       </h2>
       <FilterList rowCount={notebooks.length + 2}>
-        <FilterRow label="Tout le catalogue" active={filters.shelf === null} count={countFor("shelf", () => true)} onClick={() => onChange({ shelf: null })} />
+        <FilterRow medallion={medallion} label="Tout le catalogue" active={filters.shelf === null} count={countFor("shelf", () => true)} onClick={() => onChange({ shelf: null })} />
         <FilterRow
+          medallion={medallion}
           label="Favoris"
           glyph={<HeartGlyph />}
           active={filters.shelf === FAVORITES_FILTER}
@@ -215,6 +248,7 @@ function ShelfSection({
           const cards = new Set(notebook.cardIds);
           return (
             <FilterRow
+              medallion={medallion}
               key={notebook.id}
               label={notebook.name}
               glyph={<NotebookGlyph />}
@@ -281,6 +315,7 @@ export function CollectionSidebar({
         <FilterList rowCount={VARIANTS.length}>
           {VARIANTS.map((variant) => (
             <FilterRow
+              medallion={onBook}
               key={variant.value}
               label={variant.label}
               dotClassName={variant.dotClassName}
@@ -302,6 +337,7 @@ export function CollectionSidebar({
         <h2 className={styles.sectionTitle}>Type</h2>
         <FilterList rowCount={TYPE_FILTERS.length + 1}>
           <FilterRow
+            medallion={onBook}
             label="Tous"
             active={filters.type === null}
             count={countFor("type", () => true)}
@@ -309,6 +345,7 @@ export function CollectionSidebar({
           />
           {TYPE_FILTERS.map((type) => (
             <FilterRow
+              medallion={onBook}
               key={type}
               label={CARD_TYPE_LABELS[type]}
               icon={`/assets/cards/icons/type-${type}.webp`}
@@ -326,6 +363,7 @@ export function CollectionSidebar({
           <FilterList rowCount={OWNERSHIPS.length}>
             {OWNERSHIPS.map((status) => (
               <FilterRow
+                medallion={onBook}
                 key={status.value}
                 label={status.label}
                 active={filters.ownership === status.value}
@@ -343,6 +381,7 @@ export function CollectionSidebar({
         <h2 className={styles.sectionTitle}>Extension</h2>
         <FilterList rowCount={BOOSTER_EXTENSIONS.length + 1}>
           <FilterRow
+            medallion={onBook}
             label="Toutes"
             active={filters.boosters.length === 0}
             count={countFor("boosters", () => true)}
@@ -352,6 +391,7 @@ export function CollectionSidebar({
             const active = filters.boosters.includes(extension.boosterId);
             return (
               <FilterRow
+                medallion={onBook}
                 key={extension.boosterId}
                 label={extension.name}
                 active={active}
@@ -377,6 +417,7 @@ export function CollectionSidebar({
         <h2 className={styles.sectionTitle}>Rareté</h2>
         <FilterList rowCount={1}>
           <FilterRow
+            medallion={onBook}
             label="Toutes"
             active={filters.rarities.length === 0}
             count={countFor("rarities", () => true)}
@@ -407,7 +448,7 @@ export function CollectionSidebar({
         </div>
       </section>
 
-      {onBook && <ShelfSection filters={filters} onChange={onChange} countFor={countFor} />}
+      {onBook && <ShelfSection filters={filters} onChange={onChange} countFor={countFor} medallion />}
 
       {!onBook && (
       <section className={styles.filterSection}>

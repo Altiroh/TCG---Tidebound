@@ -118,7 +118,9 @@ export function ScreenHeader({ active, actions, onNavigate, nav = "collection", 
 
   return (
     <header className={styles.header} data-nav={nav}>
-      <div className={styles.headerLeft}>
+      {/* `data-part` : accroche STABLE pour un écran qui habille le bandeau
+          (l'Éditeur « sur le livre ») — jamais par le nom haché des classes. */}
+      <div className={styles.headerLeft} data-part="header-nav">
         {/* Retour au menu : une flèche, sans libellé. Le geste est assez
             courant dans un client de jeu pour se passer du mot, et le mot
             prenait la place d'un onglet. */}
