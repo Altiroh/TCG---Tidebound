@@ -394,6 +394,7 @@ function DeckEditorScreenBody({ ownedCardIds, initialDeck }: DeckEditorScreenPro
             showOwnership={isSignedIn}
             showCreateDeck={false}
             shelfCards={cardBrowser.shelfCards}
+            layout={onBook ? "livre" : "collection"}
           />
         </aside>
 
@@ -447,6 +448,7 @@ function DeckEditorScreenBody({ ownedCardIds, initialDeck }: DeckEditorScreenPro
                 cardIds={cardIds}
                 artCardId={artCardId}
                 onPickArt={() => setArtPickerOpen(true)}
+                variant={onBook ? "livre" : "classic"}
               />
             }
             onRemove={removeCard}
@@ -462,6 +464,7 @@ function DeckEditorScreenBody({ ownedCardIds, initialDeck }: DeckEditorScreenPro
             onNewDeck={() => requestLeave({ kind: "new" })}
             onDuplicate={() => void handleDuplicate()}
             onDelete={() => setDeleteConfirm(true)}
+            variant={onBook ? "livre" : "classic"}
           />
         </aside>
       </div>

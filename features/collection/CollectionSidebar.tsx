@@ -5,12 +5,14 @@ import type { ReactNode } from "react";
 import { isAbyssalVariant, type CardDefinition } from "@/game";
 import { useCardShelf } from "@/features/collection/shelf/CardShelfProvider";
 import { FAVORITES_FILTER, notebookFilter } from "@/features/collection/shelf/shelf";
-import { BOOSTER_EXTENSIONS, boostersContaining } from "@/game/boosters";
-import { CARD_TYPE_LABELS } from "@/features/match/cardDisplay";
+import { BOOSTER_EXTENSIONS, boostersContaining, rarityForCardId } from "@/game/boosters";
+import type { CardRarity } from "@/game/boosters/types";
+import { CARD_RARITY_LABELS, CARD_TYPE_LABELS } from "@/features/match/cardDisplay";
 import { TYPE_FILTERS } from "@/features/collection/cardFilters";
 import {
   COST_BUCKETS,
   COST_OVERFLOW_BUCKET,
+  RARITY_FILTERS,
   countMatching,
   hasActiveFilters,
   type CollectionFilterState,
@@ -44,6 +46,34 @@ interface CollectionSidebarProps {
   showCreateDeck?: boolean;
   /** Cartes du favori ou du carnet choisi (`useCardBrowser`) — les compteurs des autres axes en tiennent compte. */
   shelfCards?: ReadonlySet<string> | null;
+  /**
+   * Disposition de l'Éditeur « sur le livre » (maquette du 26/09/2026) :
+   * pas de filtre de Raison, et « Favoris & carnets » en bas de colonne
+   * plutôt qu'en tête. Défaut : la disposition de la Collection.
+   */
+  layout?: "collection" | "livre";
+}
+
+/** Couleur de chaque gemme de rareté — celles du récapitulatif de boosters. */
+const RARITY_GEM_COLORS: Record<CardRarity, string> = {
+  common: "#aeb8c2",
+  uncommon: "#3fbf6a",
+  rare: "#2f9fe0",
+  epic: "#9b5cf0",
+  legendary: "#f2b634",
+  abyssal: "#c9a2ff",
+};
+
+/** Une gemme taillée, de la couleur de sa rareté. */
+function RarityGem({ rarity }: { rarity: CardRarity }) {
+  const color = RARITY_GEM_COLORS[rarity];
+  return (
+    <svg viewBox="0 0 24 24" width="100%" height="100%" aria-hidden>
+      <path d="M12 2.5l7.5 5.2-2.3 11.3L12 21.5l-5.2-2.5L4.5 7.7z" fill={color} stroke="rgba(30,18,8,0.75)" strokeWidth={1.1} strokeLinejoin="round" />
+      <path d="M12 2.5l-3 6.2 3 12.8 3-12.8zM4.5 7.7l4.5 1 6 0 4.5-1" fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth={0.9} strokeLinejoin="round" />
+      <path d="M9 8.7l3-6.2 3 6.2z" fill="rgba(255,255,255,0.35)" />
+    </svg>
+  );
 }
 
 /** Une ligne de filtre : libellé à gauche, effectif à droite. */
@@ -221,7 +251,9 @@ export function CollectionSidebar({
   showOwnership,
   showCreateDeck = true,
   shelfCards = null,
+  layout = "collection",
 }: CollectionSidebarProps) {
+  const onBook = layout === "livre";
   const canReset = hasActiveFilters(filters);
   const countFor = (ignore: keyof CollectionFilterState, extra: Parameters<typeof countMatching>[3]) =>
     countMatching(filters, owned, ignore, extra, shelfCards);
@@ -242,7 +274,7 @@ export function CollectionSidebar({
         </button>
       </div>
 
-      <ShelfSection filters={filters} onChange={onChange} countFor={countFor} />
+      {!onBook && <ShelfSection filters={filters} onChange={onChange} countFor={countFor} />}
 
       <section className={styles.filterSection}>
         <h2 className={styles.sectionTitle}>Variante</h2>
@@ -342,6 +374,43 @@ export function CollectionSidebar({
       </section>
 
       <section className={styles.filterSection}>
+        <h2 className={styles.sectionTitle}>Rareté</h2>
+        <FilterList rowCount={1}>
+          <FilterRow
+            label="Toutes"
+            active={filters.rarities.length === 0}
+            count={countFor("rarities", () => true)}
+            onClick={() => onChange({ rarities: [] })}
+          />
+        </FilterList>
+        <div className={styles.rarityRow}>
+          {RARITY_FILTERS.map((rarity) => {
+            const active = filters.rarities.includes(rarity);
+            return (
+              <button
+                key={rarity}
+                type="button"
+                aria-pressed={active}
+                aria-label={CARD_RARITY_LABELS[rarity]}
+                title={`${CARD_RARITY_LABELS[rarity]} (${countFor("rarities", (def) => rarityForCardId(def.id) === rarity)})`}
+                className={`${styles.rarityGem} ${active ? styles.rarityGemActive : ""}`}
+                onClick={() => {
+                  playButtonClick();
+                  // Multi-sélection : chaque palier s'ajoute ou se retire.
+                  onChange({ rarities: active ? filters.rarities.filter((r) => r !== rarity) : [...filters.rarities, rarity] });
+                }}
+              >
+                <RarityGem rarity={rarity} />
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      {onBook && <ShelfSection filters={filters} onChange={onChange} countFor={countFor} />}
+
+      {!onBook && (
+      <section className={styles.filterSection}>
         <h2 className={styles.sectionTitle}>Raison</h2>
         <div className={styles.costRow}>
           {COST_BUCKETS.map((cost) => {
@@ -367,6 +436,7 @@ export function CollectionSidebar({
           })}
         </div>
       </section>
+      )}
 
       {showCreateDeck && (
         <Link href="/decks/nouveau" className={`${game.primary} ${styles.createDeck}`} onClick={() => playButtonClick()}>

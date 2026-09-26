@@ -510,3 +510,650 @@
   filter: invert(1) brightness(1.7);
   opacity: 1;
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+ * MAQUETTE DU 26/09/2026 — fidélité à la référence
+ * ══════════════════════════════════════════════════════════════════════
+ * Proportions de la référence (1672 × 941) : filtres ≈ 16 %, grille
+ * ≈ 55 %, deck ≈ 26 %. La colonne du DECK est large : c'est là que se lit la
+ * composition (grande bannière, résumé, liste).
+ */
+.workspace.workspace.workspace {
+  grid-template-columns: clamp(228px, 16.4vw, 292px) minmax(0, 1fr) clamp(320px, 24.8vw, 460px);
+}
+
+/* ── Grille : cinq cartes par rangée, la barre −/+ mord leur pied ── */
+.center [class*="_cardGrid__"] {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  column-gap: clamp(10px, 1.1vw, 20px);
+  row-gap: clamp(20px, 3vh, 34px);
+}
+
+@media (max-width: 1280px) {
+  .center [class*="_cardGrid__"] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+@media (max-width: 1040px) {
+  .center [class*="_cardGrid__"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* La barre de quantité, large, posée SUR le bas de la carte (maquette). */
+.center [class*="_cellExtras__"] {
+  inset-inline: 7%;
+  bottom: 1.2%;
+}
+
+.center [class*="_cellExtras__"] > [class*="_cellBar__"] {
+  width: 100%;
+  justify-content: space-between;
+  height: clamp(28px, 3.4vh, 34px);
+  padding: 0 2px;
+}
+
+.center [class*="_cellQty__"] {
+  flex: 1 1 auto;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: clamp(12px, 1.5vh, 14px);
+  letter-spacing: 0.06em;
+}
+
+.center [class*="_cellBar__"] [aria-label^="Retirer"],
+.center [class*="_cellBar__"] [aria-label^="Ajouter"] {
+  width: clamp(28px, 3.5vh, 34px);
+  height: clamp(28px, 3.5vh, 34px);
+  margin: 0 -4px;
+}
+
+/* « Voir la carte » : absent de la maquette — il n'apparaît qu'au survol, au-dessus du +. */
+.center [class*="_cellBar__"] [aria-label^="Voir"] {
+  position: absolute;
+  right: -2px;
+  bottom: calc(100% + 4px);
+  display: none;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  border-radius: 50%;
+  background: rgba(20, 12, 5, 0.85);
+}
+
+.center [class*="_cardCell__"]:hover [class*="_cellBar__"] [aria-label^="Voir"],
+.center [class*="_cellBar__"] [aria-label^="Voir"]:focus-visible {
+  display: grid;
+}
+
+/* Le cœur des favoris : sous la carte, au survol seulement (ou s'il est plein). */
+.center [class*="Shelf_heart__"] {
+  bottom: -32px;
+  right: 2%;
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+
+.center [class*="_cardCell__"]:hover [class*="Shelf_heart__"],
+.center [class*="Shelf_heart__"][data-on],
+.center [class*="Shelf_heart__"]:focus-visible {
+  opacity: 1;
+}
+
+/* ── Colonne de gauche : aérée comme la référence ──
+   Titre du Navire sur une ligne, pas de lien « Mes decks » (la flèche du
+   bandeau ramène), pas d'en-tête « Filtres », pas d'effectifs, et chaque
+   section montre TOUTES ses lignes : c'est la colonne qui défile, au besoin. */
+.left [class*="_backLink__"],
+.left [class*="_sidebarHead__"],
+.left [class*="_filterCount__"] {
+  display: none;
+}
+
+.left [class*="_identityShipName__"] {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: clamp(14px, 1.9vh, 19px);
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
+}
+
+.left [class*="_sidebarInner__"] {
+  gap: clamp(8px, 1.3vh, 14px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(90, 58, 30, 0.45) transparent;
+}
+
+.left [class*="_filterSection__"] {
+  flex: 0 0 auto;
+}
+
+.left [class*="_filterList__"],
+.left [class*="_filterList__"][data-scroll="true"] {
+  max-height: none;
+  overflow: visible;
+  padding-right: 0;
+}
+
+.left [class*="_sectionTitle__"] {
+  margin-bottom: 2px;
+  white-space: nowrap;
+  font-size: clamp(11px, 1.35vh, 12.5px);
+}
+
+.left [class*="_filterRow__"] {
+  min-height: clamp(22px, 2.6vh, 26px);
+  padding: 2px 8px;
+  gap: 7px;
+  font-size: clamp(11.5px, 1.4vh, 13px);
+}
+
+.left [class*="_filterLabel__"] {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* La case, en petit écusson brun au repos ; la ligne cochée : pastille ronde bleue. */
+.left [class*="_filterCheck__"] {
+  width: 14px;
+  height: 14px;
+  border: 1px solid rgba(90, 58, 30, 0.55);
+  border-radius: 3px;
+  background: rgba(90, 58, 30, 0.22);
+}
+
+.left [class*="_filterRowActive__"] [class*="_filterCheck__"] {
+  width: 16px;
+  height: 16px;
+  border: 1px solid #5fd0e6;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 40%, #2a8fae, #0c2b36 75%);
+  box-shadow: 0 0 5px rgba(95, 208, 230, 0.55);
+}
+
+/* Les gemmes de rareté, au pied de la section. */
+.left [class*="_rarityRow__"] {
+  padding: 6px 4px 0;
+}
+
+.left [class*="_rarityGemActive__"] {
+  border-color: #1c7d98;
+  box-shadow: 0 0 6px rgba(28, 125, 152, 0.45);
+}
+
+/* ── Colonne de droite : l'en-tête du deck (DeckNamePlate « livre ») ── */
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(4px, 0.7vh, 7px);
+  flex: 0 0 auto;
+}
+
+/* La grande bannière d'illustration ; son « + » en change. */
+.headArt {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 6.6;
+  padding: 0;
+  border: 2px solid rgba(60, 38, 18, 0.75);
+  border-radius: 4px;
+  background: #2a1a0e center 28% / cover no-repeat;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.45), inset 0 0 18px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  transition: filter 160ms ease-out;
+}
+
+.headArt:hover {
+  filter: brightness(1.08);
+}
+
+.headArt:focus-visible {
+  outline: 2px solid #1c7d98;
+  outline-offset: 2px;
+}
+
+.headArtPlus {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: clamp(26px, 3.2vh, 32px);
+  height: clamp(26px, 3.2vh, 32px);
+  border: 2px solid #c79a4b;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 35%, #4a2f18, #1e1209 80%);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.6);
+  color: #f1d38a;
+  font-size: clamp(18px, 2.2vh, 22px);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.headNameRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin-top: 2px;
+}
+
+/* Le sceau de cire rouge, frappé d'une ancre. */
+.seal {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: clamp(30px, 3.8vh, 38px);
+  height: clamp(30px, 3.8vh, 38px);
+  border-radius: 46% 54% 50% 50% / 52% 48% 52% 48%;
+  background: radial-gradient(circle at 38% 32%, #d0453a, #8e1c14 62%, #5c0f0a);
+  box-shadow: inset 0 0 0 3px rgba(120, 20, 14, 0.55), 0 2px 5px rgba(0, 0, 0, 0.5);
+  color: #f3c3a4;
+}
+
+.seal svg {
+  width: 62%;
+  height: 62%;
+}
+
+.headName {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #24160b;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: clamp(19px, 2.7vh, 26px);
+  font-variant: small-caps;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+}
+
+.headPencil {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 1px;
+  border: 0;
+  background: none;
+  color: #3a2616;
+  cursor: pointer;
+}
+
+.headPencil:hover {
+  color: #1c7d98;
+}
+
+.headNameInput {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 2px 6px;
+  border: 1px solid rgba(90, 58, 30, 0.5);
+  border-radius: 4px;
+  background: rgba(255, 246, 224, 0.8);
+  color: #24160b;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: clamp(16px, 2.3vh, 22px);
+  font-weight: 700;
+}
+
+.headBadges {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.headBadges [class*="_badgeStandard__"],
+.headBadges [class*="_badgeAbyssal__"] {
+  padding: 2px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.headBadgePlus {
+  color: #3a2616;
+  font-weight: 700;
+}
+
+/* « JOUABLE » : encre verte cerclée, poussée à droite. */
+.headStatus {
+  margin-left: auto;
+  padding: 1px 10px;
+  border: 1px solid #3f8a57;
+  border-radius: 4px;
+  background: rgba(63, 138, 87, 0.12);
+  color: #2b6b40;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.headStatus[data-status="short"] {
+  border-color: rgba(90, 58, 30, 0.5);
+  background: rgba(90, 58, 30, 0.08);
+  color: rgba(58, 38, 22, 0.8);
+}
+
+.headStatus[data-status="over"] {
+  border-color: #a3261b;
+  background: rgba(163, 38, 27, 0.1);
+  color: #8a1f15;
+}
+
+.headCount {
+  margin: 0;
+  color: #24160b;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: clamp(12px, 1.5vh, 14px);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.headCount strong {
+  font-size: 1.1em;
+}
+
+/* La description : une phrase à l'encre, sans cadre tant qu'on ne l'édite pas. */
+.workspace textarea.headDescription {
+  width: 100%;
+  min-height: 2.6em;
+  padding: 2px 4px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: #3a2616;
+  font: inherit;
+  font-size: clamp(11.5px, 1.4vh, 13px);
+  line-height: 1.35;
+  resize: none;
+}
+
+.workspace textarea.headDescription:hover,
+.workspace textarea.headDescription:focus {
+  border-color: rgba(90, 58, 30, 0.38);
+  background: rgba(255, 246, 224, 0.62);
+  outline: none;
+}
+
+/* ── Le résumé : titre, courbe à gauche, tableau sombre des types à droite ── */
+.right [class*="_summary__"] {
+  gap: 4px;
+  padding: 6px 0 0;
+  border: 0;
+  border-top: 1px solid rgba(90, 58, 30, 0.35);
+  border-radius: 0;
+  background: none;
+}
+
+.right [class*="_summaryTitle__"],
+.listTitle {
+  margin: 0;
+  color: #24160b;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: clamp(12px, 1.5vh, 14px);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.summaryBody {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(128px, 44%);
+  align-items: end;
+  gap: 10px;
+}
+
+.summaryCurve [class*="_curve__"] {
+  height: clamp(44px, 7vh, 72px);
+}
+
+.summaryCurve [class*="_curveFill__"] {
+  background: linear-gradient(180deg, #2a8fae, #17607a);
+}
+
+.summaryCurve [class*="_curveLabels__"] {
+  color: #3a2616;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.typeTable {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  padding: 6px 8px;
+  border: 1px solid rgba(199, 154, 75, 0.45);
+  border-radius: 4px;
+  background: linear-gradient(180deg, #2b1c10, #1b1109);
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5), 0 3px 6px rgba(0, 0, 0, 0.35);
+  list-style: none;
+}
+
+.typeTable li {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  color: #e9d7b0;
+  font-size: clamp(11px, 1.35vh, 12.5px);
+}
+
+.typeTable img {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+  filter: invert(0.85) sepia(0.4);
+}
+
+.typeTable strong {
+  color: #f6e8c6;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── La liste : bandes de bois sombre, vignette à droite ── */
+.listTitle {
+  flex: 0 0 auto;
+  padding-top: 6px;
+  border-top: 1px solid rgba(90, 58, 30, 0.35);
+}
+
+.right [class*="_list__"] {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.right [class*="_row__"] {
+  position: relative;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  min-height: clamp(28px, 3.4vh, 32px);
+  padding: 2px 4px 2px 6px;
+  overflow: hidden;
+  border: 1px solid rgba(20, 12, 5, 0.9);
+  border-radius: 3px;
+  background: linear-gradient(90deg, #2c2016 0%, #1d150e 55%, #120d08 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 230, 190, 0.08), 0 1px 2px rgba(0, 0, 0, 0.4);
+  color: #efe2c4;
+}
+
+.right [class*="_row__"]:hover {
+  border-color: rgba(199, 154, 75, 0.6);
+  background: linear-gradient(90deg, #3a2a1c 0%, #231a11 55%, #161009 100%);
+}
+
+.right [class*="_rowCost__"] {
+  z-index: 1;
+  width: 22px;
+  height: 22px;
+  border-color: #6fc4e0;
+  background: radial-gradient(circle at 50% 32%, #2a7fb0, #0f3a5c 78%);
+  color: #fff;
+  font-size: 12px;
+}
+
+.right [class*="_rowName__"] {
+  z-index: 1;
+  color: #efe2c4 !important;
+  font-size: clamp(11.5px, 1.4vh, 13px) !important;
+}
+
+/* La vignette : une bande d'illustration fondue dans le bois, sous la quantité. */
+.right [class*="_rowThumb__"] {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 46%;
+  height: auto;
+  border-radius: 0;
+  box-shadow: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 45%);
+  mask-image: linear-gradient(90deg, transparent, #000 45%);
+  opacity: 0.8;
+}
+
+.right [class*="_rowQty__"] {
+  z-index: 1;
+  padding: 0 2px;
+  color: #fff3d6;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+.right [class*="_rowRemove__"] {
+  z-index: 1;
+  width: 22px;
+  height: 22px;
+  border: 1px solid rgba(239, 226, 196, 0.6);
+  background: rgba(10, 6, 3, 0.55);
+  color: #efe2c4;
+  opacity: 0.9;
+}
+
+.right [class*="_rowAbyssal__"] [class*="_rowCost__"] {
+  border-color: #b99bff;
+  background: radial-gradient(circle at 50% 32%, #7a4fc4, #331a5c 78%);
+}
+
+.right [class*="_listEmpty__"] {
+  color: rgba(58, 38, 22, 0.8);
+}
+
+/* ── Actions : « ✓ À jour » sur la plaque, et « … » ── */
+.right [class*="_actions__"] {
+  align-items: stretch;
+  padding-top: 4px;
+}
+
+.right [class*="_save__"] {
+  min-height: clamp(38px, 4.8vh, 46px);
+  font-size: clamp(14px, 1.9vh, 17px);
+  letter-spacing: 0.02em;
+}
+
+.right [class*="_save__"]:disabled {
+  opacity: 1;
+  color: #d9e4e8;
+}
+
+.saveCheck {
+  width: 1.25em;
+  height: 1.25em;
+  color: #9fe0d0;
+}
+
+.right [class*="_actions__"] [aria-label="Plus d'options"] {
+  width: clamp(38px, 4.8vh, 46px);
+  min-height: clamp(38px, 4.8vh, 46px);
+  border: 1px solid rgba(199, 154, 75, 0.55);
+  border-radius: 4px;
+  background: linear-gradient(180deg, #2b1c10, #170f08);
+  color: #f1e3c4;
+}
+/* Maquette : la grille court presque jusqu'au cadre. Le panneau central
+   passe en découpe en 9 — la corde garde une épaisseur FINE quelle que soit
+   la taille, au lieu d'enfler avec le panneau et de manger la grille. */
+.center.center.center {
+  padding: clamp(8px, 1.2vh, 14px) clamp(4px, 0.4vw, 8px) clamp(10px, 1.4vh, 16px);
+  border: clamp(14px, 1.2vw, 20px) solid transparent;
+  border-image: url("/assets/decks/editeur/panneau-central.webp") 56 fill / clamp(14px, 1.2vw, 20px) / 0 stretch;
+  background: none;
+}
+/* La zone de défilement ne garde qu'un filet : les cartes vont au cadre. */
+.center [class*="_gridScroll__"] {
+  padding-inline: 4px;
+}
+/* Colonne de gauche : un cadre intérieur plus mince — les titres de section
+   (« Statut de collection ») tiennent sur une ligne, comme la maquette. */
+.left.left.left {
+  border-width: clamp(18px, 1.5vw, 26px);
+}
+
+.left [class*="_sectionTitle__"] {
+  letter-spacing: 0.03em;
+}
+/* La description se lit en entier (deux ou trois lignes), sans ascenseur. */
+.workspace textarea.headDescription {
+  overflow: hidden;
+  field-sizing: content;
+  max-height: 4.2em;
+}
+
+/* Icônes du tableau des types : l'encre sombre des icônes passe au laiton clair sur le bois. */
+.typeTable img {
+  filter: invert(1) sepia(0.7) saturate(1.6) brightness(0.95);
+}
+/* Une seule marque par ligne, comme la maquette : l'écusson de la case.
+   Les petites étiquettes écrites des types (« MARIN ») feraient doublon. */
+.left [class*="_filterIcon__"] {
+  display: none;
+}
+
+/* La bascule d'affichage n'est pas dans la maquette : elle se fait discrète
+   tant qu'on ne la cherche pas. */
+.layoutToggle {
+  opacity: 0.5;
+  transform: scale(0.85);
+  transform-origin: left bottom;
+}
+
+.layoutToggle:hover,
+.layoutToggle:focus-visible {
+  opacity: 1;
+}
+/* Maquette : les colonnes vont presque au bord de l'écran, la grille presque
+   au cadre — c'est ce qui laisse aux cartes leur taille (≈ 165 px en 1672). */
+.workspace.workspace.workspace {
+  column-gap: clamp(8px, 0.9vw, 16px);
+  padding-left: calc(clamp(6px, 0.6vw, 12px) + var(--tb-safe-left, 0px));
+  padding-right: calc(clamp(6px, 0.6vw, 12px) + var(--tb-safe-right, 0px));
+}
+
+.center.center.center {
+  padding-inline: 2px;
+  border-width: clamp(12px, 1vw, 16px);
+  border-image-width: clamp(12px, 1vw, 16px);
+}
+
+.center [class*="_gridScroll__"] {
+  padding-inline: 2px 6px;
+}
+/* Le plus long titre (« Statut de collection ») tient entre ses deux ancres. */
+.left [class*="_sectionTitle__"] {
+  gap: 4px;
+  font-size: clamp(10.5px, 1.25vh, 12px);
+  letter-spacing: 0.02em;
+}
+
+.left [class*="_sectionTitle__"]::before,
+.left [class*="_sectionTitle__"]::after {
+  font-size: 11px;
+}

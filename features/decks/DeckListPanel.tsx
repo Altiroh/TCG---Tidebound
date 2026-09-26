@@ -12,6 +12,7 @@ import {
   typeBreakdown,
 } from "@/features/decks/deckComposition";
 import styles from "@/features/decks/DeckBuilder.module.css";
+import book from "@/features/decks/DeckEditorBook.module.css";
 import game from "@/features/shell/GameScreen.module.css";
 import { playButtonClick } from "@/lib/sound";
 import { cardIllustrationThumbUrl } from "@/features/decks/cardArtUrl";
@@ -37,7 +38,23 @@ interface DeckListPanelProps {
   onNewDeck: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
+  /**
+   * `livre` : la maquette « sur le livre » (26/09/2026) — l'effectif et le
+   * statut passent dans l'en-tête (`DeckNamePlate`), le résumé range les
+   * types dans un tableau à icônes, la liste a son titre « Cartes (n / 50) ».
+   */
+  variant?: "classic" | "livre";
 }
+
+/** Libellés au PLURIEL du tableau des types (maquette : « Créatures 18 »). */
+const TYPE_PLURALS: Record<string, string> = {
+  marin: "Marins",
+  creature: "Créatures",
+  equipement: "Équipements",
+  structure: "Structures",
+  objet: "Objets",
+  anomalie: "Anomalies",
+};
 
 /**
  * Colonne de droite du Deck Builder : la composition du deck, lisible en
@@ -66,7 +83,9 @@ export function DeckListPanel({
   onNewDeck,
   onDuplicate,
   onDelete,
+  variant = "classic",
 }: DeckListPanelProps) {
+  const onBook = variant === "livre";
   const [menuOpen, setMenuOpen] = useState(false);
   const [isDropping, setIsDropping] = useState(false);
 
@@ -88,6 +107,7 @@ export function DeckListPanel({
     <div className={styles.deckInner}>
       {namePlate ?? <p className={styles.deckHeading}>Deck</p>}
 
+      {!onBook && (
       <div className={styles.capacity}>
         <div className={styles.capacityRow}>
           <span>
@@ -118,10 +138,13 @@ export function DeckListPanel({
           )}
         </div>
       </div>
+      )}
 
       {count > 0 && (
         <div className={styles.summary}>
           <p className={styles.summaryTitle}>Résumé du deck</p>
+          <div className={onBook ? book.summaryBody : undefined}>
+          <div className={onBook ? book.summaryCurve : undefined}>
           <div className={styles.curve} aria-label="Répartition par Raison">
             {curve.map((value, index) => (
               <div key={index} className={styles.curveBar} title={`Raison ${index === CURVE_OVERFLOW ? `${index}+` : index} : ${value}`}>
@@ -138,14 +161,36 @@ export function DeckListPanel({
               <span key={bucket}>{bucket === CURVE_OVERFLOW ? `${bucket}+` : bucket}</span>
             ))}
           </div>
-          <div className={styles.types}>
-            {types.map(({ type, count: typeCount }) => (
-              <span key={type}>
-                <span className={styles.typeCount}>{typeCount}</span> {CARD_TYPE_LABELS[type]}
-              </span>
-            ))}
+          </div>
+          {onBook ? (
+            // Le tableau sombre de la maquette : icône, type au pluriel, effectif.
+            <ul className={book.typeTable}>
+              {types.map(({ type, count: typeCount }) => (
+                <li key={type}>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- icône locale de type */}
+                  <img src={`/assets/cards/icons/type-${type}.webp`} alt="" />
+                  <span>{TYPE_PLURALS[type] ?? CARD_TYPE_LABELS[type]}</span>
+                  <strong>{typeCount}</strong>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className={styles.types}>
+              {types.map(({ type, count: typeCount }) => (
+                <span key={type}>
+                  <span className={styles.typeCount}>{typeCount}</span> {CARD_TYPE_LABELS[type]}
+                </span>
+              ))}
+            </div>
+          )}
           </div>
         </div>
+      )}
+
+      {onBook && (
+        <p className={book.listTitle}>
+          Cartes ({count} / {RULES.DECK_SIZE_MAX})
+        </p>
       )}
 
       <div
@@ -215,6 +260,13 @@ export function DeckListPanel({
           }}
           disabled={isSaving || (!isDirty && isPersisted)}
         >
+          {onBook && !isSaving && !savedFlash && !isDirty && isPersisted && (
+            // Maquette : « ✓ À jour », la coche cerclée devant.
+            <svg className={book.saveCheck} viewBox="0 0 24 24" fill="none" aria-hidden>
+              <circle cx="12" cy="12" r="9.5" stroke="currentColor" strokeWidth={1.6} />
+              <path d="M7.5 12.3l3 3 6-6.3" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
           {isSaving ? "Sauvegarde…" : savedFlash ? "Enregistré ✓" : isDirty || !isPersisted ? "Sauvegarder" : "À jour"}
         </button>
 

@@ -1,5 +1,6 @@
 import { ARCHETYPE_LABELS, CORE_SET, isAbyssalVariant, type CardDefinition, type CardType } from "@/game";
-import { BOOSTER_EXTENSIONS, boostersContaining } from "@/game/boosters";
+import { BOOSTER_EXTENSIONS, boostersContaining, rarityForCardId } from "@/game/boosters";
+import type { CardRarity } from "@/game/boosters/types";
 import { asRecord, oneOf, subsetOf } from "@/lib/persistCodecs";
 import { normalizeSearch } from "@/features/collection/cardFilters";
 import { decodeShelfFilter, type ShelfFilter } from "@/features/collection/shelf/shelf";
@@ -44,8 +45,16 @@ export interface CollectionFilterState {
    * l'évaluation (`shelfCards`) : ce module ne sait rien de l'étagère.
    */
   shelf: ShelfFilter;
+  /**
+   * Raretés cochées (`rarityForCardId`) — multi-sélection, vide = toutes.
+   * Les cinq paliers des boosters ; l'Abyssal se filtre par la Variante.
+   */
+  rarities: CardRarity[];
   search: string;
 }
+
+/** Les paliers de rareté proposés au filtre, du plus commun au plus rare (les gemmes de la maquette). */
+export const RARITY_FILTERS: readonly CardRarity[] = ["common", "uncommon", "rare", "epic", "legendary"];
 
 export const EMPTY_FILTERS: CollectionFilterState = {
   variant: "all",
@@ -54,6 +63,7 @@ export const EMPTY_FILTERS: CollectionFilterState = {
   costs: [],
   boosters: [],
   shelf: null,
+  rarities: [],
   search: "",
 };
 
@@ -83,6 +93,7 @@ export function decodeCollectionFilters(raw: unknown, base: CollectionFilterStat
     costs: subsetOf<number>(COST_BUCKETS, record.costs) ?? base.costs,
     boosters: subsetOf<string>(BOOSTER_EXTENSIONS.map((extension) => extension.boosterId), record.boosters) ?? base.boosters,
     shelf: decodeShelfFilter(record.shelf) ?? base.shelf,
+    rarities: subsetOf<CardRarity>(RARITY_FILTERS, record.rarities) ?? base.rarities,
   };
 }
 
@@ -191,6 +202,10 @@ export function matchesFilters(
   if (ignore !== "ownership" && !matchesOwnership(def, filters.ownership, owned)) return false;
   if (ignore !== "costs" && filters.costs.length > 0 && !filters.costs.includes(costBucket(def.cost))) return false;
   if (ignore !== "boosters" && !matchesBoosters(def, filters.boosters)) return false;
+  if (ignore !== "rarities" && filters.rarities.length > 0) {
+    const rarity = rarityForCardId(def.id);
+    if (!rarity || !filters.rarities.includes(rarity)) return false;
+  }
   if (ignore !== "search" && !matchesSearch(def, normalizeSearch(filters.search.trim()))) return false;
   return true;
 }
@@ -217,6 +232,7 @@ export function hasActiveFilters(filters: CollectionFilterState): boolean {
     filters.costs.length > 0 ||
     filters.boosters.length > 0 ||
     filters.shelf !== null ||
+    filters.rarities.length > 0 ||
     filters.search.trim() !== ""
   );
 }

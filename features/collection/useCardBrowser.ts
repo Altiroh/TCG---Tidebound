@@ -117,7 +117,8 @@ export function useCardBrowser({ owned, initialFilters, persistKey }: UseCardBro
     (filters.ownership !== "all" ? 1 : 0) +
     (filters.costs.length > 0 ? 1 : 0) +
     (filters.boosters.length > 0 ? 1 : 0) +
-    (filters.shelf !== null ? 1 : 0);
+    (filters.shelf !== null ? 1 : 0) +
+    (filters.rarities.length > 0 ? 1 : 0);
 
   return {
     filters,
