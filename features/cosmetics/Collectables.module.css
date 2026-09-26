@@ -1,498 +1,876 @@
 /*
- * Collectables — la vitrine. La colonne de gauche et la barre reprennent la
- * grammaire des Cartes (`CardBrowser.module.css`) ; il n'y a ici que les
- * objets eux-mêmes.
- */
-
-.showcase {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  min-height: 0;
-  overflow-y: auto;
-  padding: clamp(14px, 1.8vw, 26px);
-  scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
-}
-
-/* L'invitation à se connecter, en tête de vitrine : elle ne pousse rien,
-   et les rangées lui rendent sa hauteur (voir le bloc « téléphone
-   couché »). Le panneau ne lui donne que deux rangées de grille, pas une
-   place à elle : `.main` (`CardBrowser.module.css`) est une grille à deux
-   pistes, un troisième enfant y tomberait dans une piste implicite. */
-.signedOutNote {
-  flex: 0 0 auto;
-  margin: 0;
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(clamp(160px, 13vw, 220px), 1fr));
-  gap: clamp(14px, 1.6vw, 26px);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-/*
- * LA COQUE porte tout le décor de la vignette (cadre, fond, survol) ; la
- * zone cliquable (`.item`) est DEDANS, sans décor propre.
+ * LA TABLE DES COLLECTABLES (maquette du 26/09/2026)
+ * ==================================================
  *
- * Pourquoi ce dédoublement : le bouton « Acheter » doit tomber À
- * L'INTÉRIEUR de la carte, sous la ligne d'état. Impossible tant que la
- * carte entière était elle-même un `<button>` — on n'imbrique pas un
- * bouton dans un bouton. Posé à côté, il débordait sous le cadre et
- * décalait toute la rangée.
+ * Sur la carte marine de la table (le fond de l'accueil), le panneau des
+ * familles à gauche et, pour chaque famille, un BANDEAU de parchemin puis
+ * une RANGÉE de fiches épinglées qui défile de côté. Scène à ratio fixe
+ * (1672 × 880, comme la table des Decks) : positions en % relevées sur la
+ * maquette (1672 × 941, bandeau de l'application de 61 px compris), tailles
+ * en cqw — la maquette tient à toutes les tailles d'écran.
+ *
+ * Assets : `public/assets/collectables/` (panneau, bandeau, tuile, plaque de
+ * nom, bouton, décors de bord), rognés au plus près de leur opaque.
  */
-.itemShell {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  height: 100%;
-  padding: 10px 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: rgba(8, 18, 30, 0.5);
-  transition: border-color 160ms ease-out, transform 160ms ease-out, background-color 160ms ease-out;
+.screen.screen.screen {
+  background: #1a0f08 url("/assets/menu/carte/home-background.webp") 58% 42% / cover no-repeat;
 }
 
-/* Survol et focus sont déclenchés par la zone cliquable, peints par la coque. */
-.itemShell:has(> button.item:hover:not(:disabled)) {
-  transform: translateY(-3px);
-  border-color: var(--line-strong);
-  background: rgba(13, 34, 50, 0.6);
-}
-
-.itemShell:has(> .item:focus-visible) {
-  outline: 2px solid var(--cb-cyan);
-  outline-offset: 2px;
-}
-
-/*
- * L'ÉQUIPÉ. Le même halo léger que les boutons de l'application
- * (`--tb-glow-md`), pas un cadre plus épais : c'est la seule vignette qui
- * doit se voir de loin, et elle le fait par la lumière — la bordure, elle,
- * reste de la même épaisseur que les autres, sinon la grille se déforme
- * autour d'elle.
- */
-.itemShell[data-selected="true"] {
-  border-color: var(--tb-accent-line);
-  background: linear-gradient(180deg, rgba(13, 52, 69, 0.6), rgba(8, 18, 30, 0.5));
-  box-shadow: var(--tb-glow-md), 0 10px 26px rgba(4, 20, 28, 0.5);
-}
-
-/* Le halo court aussi autour de la vignette elle-même : sur une grande
-   image, un liseré sur la carte seule se perd. */
-.itemShell[data-selected="true"] .cardBackFrame,
-.itemShell[data-selected="true"] .shipFrameBox {
-  box-shadow: var(--tb-glow-md);
-}
-
-/* `flex: 1` : toutes les vignettes d'une rangée ont la même hauteur, donc
-   les boutons d'achat s'alignent, qu'il y en ait un par carte ou un seul. */
-.item {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: 6px;
-  width: 100%;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--ink-dim);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-div.item,
-.item:disabled {
-  cursor: default;
-}
-
-/* Le contour de focus est porté par la coque, pas par la zone cliquable. */
-.item:focus-visible {
-  outline: none;
-}
-
-.cardBackFrame,
-.shipFrameBox {
+.page {
   position: relative;
+  z-index: 1;
+  min-height: 0;
   display: grid;
   place-items: center;
-  border-radius: 8px;
+  padding: 0 max(var(--tb-safe-right), 0.6vw) max(var(--tb-safe-bottom), 0.6vh) max(var(--tb-safe-left), 0.6vw);
+  container-type: size;
   overflow: hidden;
 }
 
-.cardBackFrame {
-  aspect-ratio: 5 / 7;
+.stage {
+  position: relative;
+  z-index: 1;
+  width: min(100cqw, 100cqh * 1672 / 880);
+  aspect-ratio: 1672 / 880;
+  container-type: inline-size;
+  color: #3a2616;
+  font-size: 0.8cqw;
 }
 
-.cardBackImage {
+/* ── Décors de bord : ils tiennent à l'ÉCRAN ────────────────────────── */
+.decorLeft,
+.decorRight {
+  position: absolute;
+  pointer-events: none;
+  user-select: none;
+  filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.55));
+}
+
+/* Boussole, cordages et gemmes : par-dessus le pied du panneau des familles. */
+.decorLeft {
+  z-index: 2;
+  left: 0;
+  bottom: 0;
+  height: min(43%, 23cqw);
+  width: auto;
+}
+
+/* Lanterne, pièces et cartes : le long du bord droit, SOUS les fiches. */
+.decorRight {
+  z-index: 0;
+  right: 0;
+  top: 0;
+  height: 100%;
+  width: auto;
+}
+
+/* ── Panneau des familles ───────────────────────────────────────────── */
+.families {
+  position: absolute;
+  left: 1.1%;
+  top: 3.9%;
+  width: 17.5%;
+  aspect-ratio: 886 / 1774;
+  display: flex;
+  flex-direction: column;
+  /* En cqw, pas en % : un % de padding se lit sur la largeur de la SCÈNE. */
+  padding: 3.2cqw 1.9cqw 0 1.45cqw;
+  background: url("/assets/collectables/panneau-familles.webp") center / 100% 100% no-repeat;
+  filter: drop-shadow(0 0.8cqw 1cqw rgba(0, 0, 0, 0.5));
+  transform: rotate(-1.2deg);
+  transform-origin: 50% 20%;
+}
+
+.familiesTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.55cqw;
+  margin: 0 0 0.9cqw;
+  padding-bottom: 0.7cqw;
+  border-bottom: 1px solid rgba(70, 42, 18, 0.35);
+  color: #1d120a;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: max(10px, 1.42cqw);
+  font-weight: 700;
+  font-variant: small-caps;
+  letter-spacing: 0.03em;
+  line-height: 1;
+  transform: rotate(-2deg);
+  transform-origin: left center;
+}
+
+.familiesTitle .inkIcon {
+  width: 1.7cqw;
+  height: 1.7cqw;
+  flex: none;
+}
+
+.familyList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55cqw;
+}
+
+.familyRow {
+  display: flex;
+  align-items: center;
+  gap: 0.65cqw;
+  min-height: 4.1cqw;
+  padding: 0.45cqw 0.8cqw 0.45cqw 0.55cqw;
+  border: 0.1cqw solid transparent;
+  border-radius: 0.35cqw;
+  background: transparent;
+  color: #1d120a;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 160ms ease-out, border-color 160ms ease-out, color 160ms ease-out;
+}
+
+.familyRow:hover:not([data-active="true"]) {
+  background: rgba(90, 60, 28, 0.12);
+}
+
+.familyRow:focus-visible {
+  outline: 2px solid #1c6d86;
+  outline-offset: 2px;
+}
+
+.familyRow[data-active="true"] {
+  border-color: #57cde0;
+  background: linear-gradient(180deg, #14405a, #0b2636);
+  color: #f1e3c4;
+  box-shadow: 0 0 0.9cqw rgba(87, 205, 224, 0.45), inset 0 0 0.6cqw rgba(0, 0, 0, 0.45);
+}
+
+.familyRow .inkIcon {
+  width: 2.5cqw;
+  height: 2.5cqw;
+  flex: none;
+  color: #24160b;
+}
+
+.familyRow[data-active="true"] .inkIcon {
+  color: #e6d3ad;
+}
+
+/* Police de texte, pas de titre : la maquette écrit « Dos de carte » en bas-de-casse. */
+.familyLabel {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--tb-font-body, Georgia, serif);
+  font-size: max(9px, 0.98cqw);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.familyCount {
+  font-size: max(8px, 0.8cqw);
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+}
+
+.familyRow[data-active="true"] .familyCount {
+  color: #f3d58c;
+  opacity: 1;
+}
+
+.signedOutNote {
+  margin: 1cqw 0 0;
+  font-size: max(8px, 0.75cqw);
+  line-height: 1.35;
+  color: #4a3320;
+}
+
+.signedOutNote a {
+  color: #0f5566;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+/* Deux dos en éventail : celui qu'on a équipé, pas un pictogramme. */
+.cardStack {
+  position: relative;
+  flex: none;
+  width: 2.5cqw;
+  height: 2.9cqw;
+}
+
+.cardStack img {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 62%;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  border: 1px solid rgba(20, 12, 4, 0.8);
+  border-radius: 0.15cqw;
+  box-shadow: 0 0.1cqw 0.3cqw rgba(0, 0, 0, 0.5);
+  transform: translate(-50%, -50%) rotate(var(--turn, 0deg)) translateX(calc(var(--turn, 0deg) / 1deg * 0.02cqw));
+}
+
+.cardStack[data-large="true"] {
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  border-radius: 8px;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.55);
 }
 
-.shipFrameBox {
-  aspect-ratio: 4 / 5;
-  background: radial-gradient(closest-side, rgba(24, 56, 78, 0.6), rgba(6, 14, 24, 0.9));
+/* ── Une famille : bandeau + rangée ─────────────────────────────────── */
+.section {
+  position: absolute;
+  outline: none;
 }
 
-.shipFrameImage {
-  width: 92%;
-  height: 92%;
+/* Les dos de carte : en haut, grandes fiches. */
+.section[data-order="0"] {
+  left: 17.5%;
+  top: 3.5%;
+  width: 73%;
+  height: 57.5%;
+}
+
+/* Les cadres de Navire : en bas, fiches compactes, jusqu'au bord de la table. */
+.section[data-order="1"] {
+  left: 17.94%;
+  top: 60.2%;
+  width: 80.1%;
+  height: 39.8%;
+}
+
+.banner {
+  position: absolute;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 1.2cqw;
+  padding: 0 2.4cqw 0 2cqw;
+  background: url("/assets/collectables/bandeau-section.webp") center / 100% 100% no-repeat;
+  filter: drop-shadow(0 0.4cqw 0.6cqw rgba(0, 0, 0, 0.45));
+}
+
+.section[data-order="0"] .banner {
+  left: 1%;
+  top: 0.6%;
+  width: 97.5%;
+  height: 17.8%;
+}
+
+.section[data-order="1"] .banner {
+  left: 1.64%;
+  top: 2%;
+  width: 90%;
+  height: 23.4%;
+}
+
+.bannerIcon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 3.8cqw;
+  height: 3.8cqw;
+  color: #24160b;
+}
+
+.bannerIcon .inkIcon {
+  width: 100%;
+  height: 100%;
+}
+
+.bannerText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2cqw;
+  min-width: 0;
+}
+
+.bannerTitle {
+  margin: 0;
+  color: #1d120a;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: max(11px, 1.46cqw);
+  font-weight: 700;
+  font-variant: small-caps;
+  letter-spacing: 0.03em;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bannerHint,
+.bannerError {
+  font-size: max(8px, 0.9cqw);
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bannerHint {
+  color: #4a3320;
+}
+
+.bannerError {
+  color: #9b2a17;
+  font-weight: 600;
+}
+
+/* ── Étagères ───────────────────────────────────────────────────────── */
+.shelfTabs {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  gap: 0.15cqw;
+  margin-left: auto;
+  padding: 0.18cqw;
+  border-radius: 999px;
+  background: rgba(120, 84, 45, 0.24);
+  box-shadow: inset 0 0.08cqw 0.25cqw rgba(60, 35, 10, 0.4);
+}
+
+.shelfTab {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.45cqw;
+  padding: 0.42cqw 1.15cqw;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #3a2616;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: max(8px, 0.84cqw);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 160ms ease-out, color 160ms ease-out;
+}
+
+.shelfTab:hover:not([data-active="true"]) {
+  background: rgba(90, 60, 28, 0.16);
+}
+
+.shelfTab:focus-visible {
+  outline: 2px solid #1c6d86;
+  outline-offset: 1px;
+}
+
+.shelfTab[data-active="true"] {
+  background: linear-gradient(180deg, #123649, #0a1f2c);
+  color: #f1e3c4;
+  box-shadow: 0 0 0 1px rgba(95, 208, 230, 0.35), 0 0.15cqw 0.4cqw rgba(0, 0, 0, 0.35);
+}
+
+.shelfTabCount {
+  font-size: max(7px, 0.76cqw);
+  font-variant-numeric: tabular-nums;
+  color: #7a5a36;
+}
+
+.shelfTab[data-active="true"] .shelfTabCount {
+  color: #8fe3f0;
+}
+
+.marketLink {
+  flex: none;
+  margin-left: 1.4cqw;
+  color: #1d120a;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: max(8px, 0.92cqw);
+  font-weight: 700;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: color 140ms ease-out;
+}
+
+.marketLink:hover {
+  color: #0f5566;
+}
+
+.marketLink:focus-visible {
+  outline: 2px solid #1c6d86;
+  outline-offset: 2px;
+}
+
+/* ── Flèches de laiton : seulement quand la rangée déborde ──────────── */
+.pageArrow {
+  position: absolute;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 2.1cqw;
+  height: 2.1cqw;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #d9a441;
+  cursor: pointer;
+  filter: drop-shadow(0 0.1cqw 0.2cqw rgba(0, 0, 0, 0.7));
+  transform: translateY(-50%);
+  transition: color 140ms ease-out, opacity 140ms ease-out;
+}
+
+.pageArrow[hidden] {
+  display: none;
+}
+
+.pageArrow svg {
+  width: 100%;
+  height: auto;
+}
+
+.pageArrow[data-side="prev"] svg {
+  transform: scaleX(-1);
+}
+
+.pageArrow:hover:not(:disabled) {
+  color: #f3c86b;
+}
+
+.pageArrow:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.pageArrow:focus-visible {
+  outline: 2px solid #5fd0e6;
+  outline-offset: 2px;
+}
+
+.section[data-order="0"] .pageArrow {
+  top: 9.5%;
+}
+
+.section[data-order="0"] .pageArrow[data-side="prev"] {
+  left: -1.6%;
+}
+
+.section[data-order="0"] .pageArrow[data-side="next"] {
+  left: 98.8%;
+}
+
+.section[data-order="1"] .pageArrow {
+  top: 15.4%;
+}
+
+.section[data-order="1"] .pageArrow[data-side="prev"] {
+  left: -1.9%;
+}
+
+.section[data-order="1"] .pageArrow[data-side="next"] {
+  left: 92.4%;
+}
+
+/* ── La rangée de fiches ────────────────────────────────────────────── */
+.row {
+  position: absolute;
+  display: flex;
+  align-items: flex-start;
+  gap: 1.08cqw;
+  margin: 0;
+  padding: 0.5cqw 0.6cqw;
+  list-style: none;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 0.6cqw;
+  scrollbar-width: none;
+}
+
+.row::-webkit-scrollbar {
+  display: none;
+}
+
+.section[data-order="0"] .row,
+.section[data-order="0"] .empty {
+  left: 3.4%;
+  top: 17.4%;
+  width: 95.8%;
+  height: 82.6%;
+}
+
+.section[data-order="1"] .row,
+.section[data-order="1"] .empty {
+  left: 1.4%;
+  top: 24.3%;
+  width: 98.6%;
+  height: 75.7%;
+}
+
+.empty {
+  position: absolute;
+  display: grid;
+  place-content: center;
+  margin: 0;
+  color: #3a2616;
+  font-size: max(9px, 0.95cqw);
+  text-align: center;
+}
+
+.emptyLink {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #0f5566;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* ── Une fiche épinglée ─────────────────────────────────────────────── */
+.tile {
+  position: relative;
+  flex: none;
+  scroll-snap-align: start;
+  background: url("/assets/collectables/tuile.webp") center / 100% 100% no-repeat;
+  filter: drop-shadow(0 0.35cqw 0.45cqw rgba(0, 0, 0, 0.45));
+}
+
+.section[data-variant="large"] .tile {
+  width: 14.77cqw;
+  aspect-ratio: 247 / 400;
+}
+
+.section[data-variant="compact"] .tile {
+  width: 9.87cqw;
+  aspect-ratio: 165 / 245;
+}
+
+/* L'ÉQUIPÉ : le liseré turquoise et son halo, autour du parchemin (pas de l'épingle). */
+.tile[data-selected="true"]::after {
+  content: "";
+  position: absolute;
+  inset: 5.2% -1.5% -1% -1.5%;
+  border: 0.14cqw solid #62d6ea;
+  border-radius: 0.45cqw;
+  box-shadow: 0 0 0.9cqw rgba(98, 214, 234, 0.75), inset 0 0 0.7cqw rgba(98, 214, 234, 0.35);
+  pointer-events: none;
+}
+
+.art {
+  position: absolute;
+  display: grid;
+  place-items: center;
+}
+
+/* L'image remplit sa boîte : un % de hauteur ne se résout pas dans une case de grille. */
+.art img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
-  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.6));
+  user-select: none;
 }
 
-.shipFramePending {
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
+/* Boîte aux proportions d'un dos (2/3) : 55,5 % de la hauteur de fiche → 60 % de sa largeur. */
+.section[data-variant="large"] .art {
+  left: 20%;
+  width: 60%;
+  top: 7.4%;
+  height: 55.5%;
 }
 
-/* Verrouillé : lisible, mais visiblement hors de portée. Désaturé plutôt
-   qu'éteint (retour de test du 17/09) — à 0,5 de luminosité la vignette
-   passait au noir, et la grille mélangeait des cases sombres et des cases
-   claires selon la RAISON du masquage. */
-.itemShell[data-locked="true"] .cardBackImage,
-.itemShell[data-locked="true"] .shipFrameImage {
+.section[data-variant="large"] .art img {
+  object-fit: cover;
+  border-radius: 0.3cqw;
+  box-shadow: 0 0.3cqw 0.7cqw rgba(0, 0, 0, 0.55);
+}
+
+.section[data-variant="compact"] .art {
+  left: 9%;
+  right: 9%;
+  top: 8.5%;
+  height: 57%;
+}
+
+.section[data-variant="compact"] .art img {
+  filter: drop-shadow(0 0.25cqw 0.35cqw rgba(0, 0, 0, 0.55));
+}
+
+/* La fenêtre d'un cadre de Navire est transparente : l'eau de nuit derrière. */
+.tile[data-kind="shipSkin"] .art::before {
+  content: "";
+  position: absolute;
+  inset: 16% 22% 24% 22%;
+  border-radius: 45% 45% 12% 12% / 32% 32% 10% 10%;
+  background: radial-gradient(120% 90% at 50% 35%, #134a5e, #0a2a38 70%, #071d28);
+}
+
+/* Verrouillé : lisible, mais visiblement hors de portée. */
+.tile[data-locked="true"] .art:not([data-veiled="true"]) img {
   filter: grayscale(0.55) brightness(0.82);
 }
 
 .badge {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  padding: 2px 8px;
-  border: 1px solid rgba(88, 200, 216, 0.6);
-  border-radius: 999px;
-  background: rgba(4, 14, 22, 0.85);
-  color: #dff6fa;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  z-index: 2;
+  top: 5%;
+  right: 5%;
+  padding: 0.18cqw 0.55cqw;
+  border: 1px solid rgba(95, 208, 230, 0.6);
+  border-radius: 0.35cqw;
+  background: #0b1d29;
+  color: #e6f7fb;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: max(7px, 0.72cqw);
+  font-weight: 700;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
+  box-shadow: 0 0.1cqw 0.3cqw rgba(0, 0, 0, 0.45);
 }
 
-.itemName {
-  font-family: var(--cb-font-display);
-  font-size: clamp(13px, 1vw, 15px);
-  font-weight: 600;
-  color: var(--ink);
+.section[data-variant="compact"] .badge {
+  top: 4%;
+  right: 3%;
+  font-size: max(7px, 0.62cqw);
 }
 
-/*
- * La description occupe TROIS lignes, qu'elle en remplisse une ou trois :
- * sans ça, la ligne de condition tombait à une hauteur différente dans
- * chaque vignette et la rangée partait en escalier. Au-delà de trois, elle
- * est coupée — c'est une accroche, pas une notice.
- */
-.itemText {
+.plate {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  padding: 0 6%;
+  background: url("/assets/collectables/plaque-nom.webp") center / 100% 100% no-repeat;
+  filter: drop-shadow(0 0.12cqw 0.2cqw rgba(60, 35, 10, 0.35));
+}
+
+.plateText {
+  max-width: 100%;
+  overflow: hidden;
+  color: #1d120a;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-weight: 700;
+  font-variant: small-caps;
+  letter-spacing: 0.02em;
+  line-height: 1.3;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.section[data-variant="large"] .plate {
+  left: 7.3%;
+  width: 85.4%;
+  top: 62.3%;
+  height: 10.8%;
+}
+
+.section[data-variant="large"] .plateText {
+  font-size: max(9px, 1.1cqw);
+}
+
+.section[data-variant="compact"] .plate {
+  left: 8%;
+  width: 84%;
+  top: 68.5%;
+  height: 10.5%;
+}
+
+.section[data-variant="compact"] .plateText {
+  font-size: max(8px, 0.76cqw);
+}
+
+.description {
+  position: absolute;
+  left: 12%;
+  right: 10%;
+  top: 75.2%;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
-  min-height: calc(3 * 1.35 * 12px);
   overflow: hidden;
-  font-size: 12px;
-  line-height: 1.35;
+  color: #3a2616;
+  font-size: max(7px, 0.78cqw);
+  line-height: 1.25;
 }
 
-/* Deux lignes de condition (« 100 parties jouées · encore 98 ») ne doivent
-   pas décaler le bouton d'achat de la vignette voisine. */
-.itemHint {
-  min-height: calc(2 * 1.3 * 11px);
-}
-
-.itemHint {
-  margin-top: auto;
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-}
-
-.itemShell[data-selected="true"] .itemHint {
-  color: var(--cb-cyan);
-}
-
-/* ── Visuel SOUS LE VOILE ─────────────────────────────────────
- * Le voile n'est pas « verrouillé en plus sombre » : c'est un objet à part,
- * qu'on montre entier et net, et tout son intérêt est d'attirer l'œil.
- *
- * UN SEUL masquage, quelle que soit la raison du voile (emplacement caché
- * ou cadre pas encore débloqué) : la même image affichée deux fois avec
- * deux traitements donnait une grille bariolée, une case noire à côté
- * d'une case claire (retour de test du 17/09).
- * ────────────────────────────────────────────────────────────── */
-.cardBackFrame[data-veiled="true"] .cardBackImage,
-.shipFrameBox[data-veiled="true"] .shipFrameImage {
-  filter: none;
-  opacity: 0.9;
-}
-
-/* ── Achat d'un Collectable en vente ───────────────────────── */
+/* ── Le bouton de fiche : la plaque de bois ferrée ──────────────────── */
+.action,
 .buyRow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
+  position: absolute;
 }
 
-.buyButton {
+.section[data-variant="large"] .action,
+.section[data-variant="large"] .buyRow {
+  left: 11.3%;
+  width: 75.7%;
+  top: 87.2%;
+  height: 8.6%;
+}
+
+.section[data-variant="compact"] .action,
+.section[data-variant="compact"] .buyRow {
+  left: 10.5%;
+  width: 79%;
+  top: 81.2%;
+  height: 10.4%;
+}
+
+.action {
+  display: grid;
+  place-items: center;
+  padding: 0 7%;
+  border: 0;
+  background: none;
+  color: #f1e3c4;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  cursor: pointer;
+  isolation: isolate;
+}
+
+/* La plaque est un calque à part : l'état « éteint » la ternit sans ternir le texte. */
+.action::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: url("/assets/collectables/bouton.webp") center / 100% 100% no-repeat;
+  filter: drop-shadow(0 0.12cqw 0.2cqw rgba(0, 0, 0, 0.45));
+  transition: filter 140ms ease-out;
+}
+
+.section[data-variant="large"] .action {
+  font-size: max(8px, 0.84cqw);
+}
+
+.section[data-variant="compact"] .action {
+  font-size: max(7px, 0.7cqw);
+}
+
+.action:hover:not(:disabled)::before {
+  filter: brightness(1.25) drop-shadow(0 0.12cqw 0.2cqw rgba(0, 0, 0, 0.45));
+}
+
+.action:focus-visible {
+  outline: 2px solid #5fd0e6;
+  outline-offset: 2px;
+  border-radius: 0.3cqw;
+}
+
+.action:disabled {
+  cursor: default;
+}
+
+/* Équipé, verrouillé, visuel à venir : la plaque ternie, le texte adouci. */
+.action[data-muted="true"] {
+  color: rgba(236, 222, 196, 0.72);
+}
+
+.action[data-muted="true"]::before {
+  filter: grayscale(0.35) sepia(0.55) brightness(1.55) opacity(0.62);
+}
+
+/* Achat hors de portée : lisible, il dit le prix — c'est l'objectif d'épargne. */
+.action[data-buy="true"]:disabled {
+  color: rgba(236, 222, 196, 0.7);
+}
+
+.action[data-buy="true"]:disabled::before {
+  filter: grayscale(0.4) brightness(1.2) opacity(0.7);
+}
+
+.actionText {
   display: inline-flex;
   align-items: center;
-  gap: 0.45em;
-  padding: 0.4em 0.85em;
-  border: 1px solid rgba(199, 154, 78, 0.55);
-  border-radius: 8px;
-  background: linear-gradient(180deg, rgba(90, 64, 20, 0.55), rgba(48, 34, 10, 0.55));
-  color: #e9d8ae;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: border-color 140ms ease-out, background-color 140ms ease-out, color 140ms ease-out;
+  justify-content: center;
+  gap: 0.35em;
+  max-width: 100%;
+  /* Hauteur de ligne pleine : à 1, l'ellipse rognait les accents des capitales (« EQUIPE »). */
+  overflow: hidden;
+  padding: 0.1em 0;
+  line-height: 1.3;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
-.buyButton:hover:not(:disabled) {
-  border-color: #e9b45a;
-  color: #fff6e0;
+.action[data-long="true"] {
+  letter-spacing: 0.03em;
 }
 
-.buyButton:focus-visible {
-  outline: 2px solid var(--cb-cyan);
-  outline-offset: 2px;
+/* Une condition de déblocage est une information, pas un décor : elle passe sur
+   deux lignes plutôt que d'être rognée (le texte entier reste en infobulle). */
+.action[data-long="true"] .actionText {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  padding: 0;
+  line-height: 1.12;
+  text-align: center;
+  white-space: normal;
 }
 
-/* Hors de portée : le bouton reste LISIBLE et dit le prix — c'est
-   l'objectif d'épargne. Son `title` porte ce qu'il manque. */
-.buyButton:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.section[data-variant="large"] .action[data-long="true"] {
+  font-size: max(7px, 0.66cqw);
+}
+
+.section[data-variant="compact"] .action[data-long="true"] {
+  font-size: max(6px, 0.54cqw);
+}
+
+/* Achat en deux temps : « Confirmer » garde la plaque, la croix l'annule. */
+.buyRow {
+  display: flex;
+  gap: 0.3cqw;
+}
+
+.section .buyRow .action.action {
+  position: relative;
+  flex: 1;
+  inset: auto;
+  width: auto;
+  height: 100%;
 }
 
 .buyCancel {
-  composes: buyButton;
-  border-color: var(--line);
-  background: rgba(8, 18, 30, 0.6);
-  color: var(--ink-dim);
-}
-
-.buyError {
-  font-size: 11px;
-  color: #e98b7a;
-}
-
-/* ──────────────────────────────────────────────────────────────
- * ÉTAGÈRES — ce qu'on regarde : possédés, à débloquer, ou tout.
- *
- * La vitrine s'ouvre sur ce qu'on POSSÈDE : c'est la collection du joueur,
- * elle doit lui appartenir avant de lui montrer ce qui lui manque. Le
- * compte est sur l'onglet — c'est lui qui dit s'il vaut la peine d'aller
- * voir ailleurs.
- * ────────────────────────────────────────────────────────────── */
-.shelfTabs {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  padding: 2px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: rgba(8, 18, 30, 0.55);
-}
-
-.shelfTab {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 11px;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--ink-dim);
-  font-size: 12px;
-  white-space: nowrap;
+  flex: none;
+  aspect-ratio: 1;
+  height: 100%;
+  padding: 0;
+  border: 1px solid rgba(70, 42, 18, 0.5);
+  border-radius: 0.3cqw;
+  background: rgba(58, 38, 22, 0.2);
+  color: #3a2616;
+  font-size: max(8px, 0.8cqw);
   cursor: pointer;
-  transition: background-color 160ms ease-out, color 160ms ease-out, box-shadow 160ms ease-out;
 }
 
-.shelfTab:hover { color: var(--ink); background: rgba(13, 34, 50, 0.6); }
-.shelfTab:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 1px; }
-
-.shelfTab[data-active="true"] {
-  background: rgba(13, 52, 69, 0.75);
-  color: var(--ink-strong);
-  box-shadow: var(--tb-glow-md);
+.buyCancel:hover {
+  background: rgba(58, 38, 22, 0.35);
 }
 
-.shelfTabCount {
-  font-variant-numeric: tabular-nums;
-  font-size: 11px;
-  color: var(--ink-faint);
+.inkIcon {
+  display: block;
 }
 
-.shelfTab[data-active="true"] .shelfTabCount { color: var(--cb-cyan); }
-
-/* ══════════════════════════════════════════════════════════════
- * TÉLÉPHONE COUCHÉ — la vignette se couche, elle aussi
- * ══════════════════════════════════════════════════════════════
- *
- * Une vignette debout, c'est une image en 5/7 PLUS quatre lignes de texte :
- * à 160 px de large elle demande 320 px de haut, et sur un téléphone
- * couché (258 px de vitrine, mesuré en 915 × 412) le nom et la description
- * passaient SOUS le bord de l'écran — une rangée d'images dont on ne
- * savait plus ce qu'elles étaient.
- *
- * Ce qui manque ici, ce n'est pas la largeur (887 px pour huit objets),
- * c'est la hauteur. La vignette se couche donc : l'illustration à gauche,
- * le nom, l'accroche et la condition à droite. Elle tient alors dans la
- * hauteur de sa propre image, texte compris, et la largeur d'une colonne
- * se déduit de la hauteur VISIBLE de la vitrine (`cqh`) — la même méthode
- * que la planche-contact des Cartes (`CardBrowser.module.css`).
+/*
+ * PETITE SCÈNE (téléphone couché) : les planchers de taille de texte
+ * reprennent la place que la scène n'a plus. Le bandeau garde l'essentiel
+ * — titre, étagères, chemin du Market — et laisse tomber l'accroche.
  */
-@media (max-height: 560px) {
-  .showcase {
-    /* `size` : c'est la hauteur qu'on interroge. La vitrine tient déjà sa
-       hauteur du panneau, le confinement ne lui coûte rien. */
-    container-type: size;
-    gap: 8px;
-    padding: 8px 10px 10px;
+@container (max-width: 900px) {
+  .bannerHint {
+    display: none;
   }
 
-  /*
-   * DEUX RANGÉES ENTIÈRES, JAMAIS UNE RANGÉE ET DEMIE.
-   *
-   * La hauteur d'une vignette se DÉDUIT de la vitrine (`grid-auto-rows`)
-   * au lieu de se déduire de son image : deux rangées tiennent alors
-   * exactement dans la hauteur visible, et on ne défile plus pour voir le
-   * bas d'un cadre coupé par le bord de l'écran (retour du 22/09). C'est
-   * l'inverse du réflexe habituel — ici la hauteur est la ressource rare,
-   * c'est donc elle qui commande, et l'illustration suit.
-   */
-  .grid {
-    grid-template-columns: repeat(auto-fill, minmax(clamp(196px, 52cqh, 300px), 1fr));
-    grid-auto-rows: calc((100cqh - 10px) / 2);
-    gap: 10px;
-  }
-
-  /* Une ligne d'information partage parfois la vitrine (visiteur non
-     connecté) : les rangées lui rendent alors sa hauteur, sinon la seconde
-     passait sous le bord. */
-  .showcase:has(> .signedOutNote) .grid {
-    grid-auto-rows: calc((100cqh - 34px) / 2);
-  }
-
-  .signedOutNote {
-    font-size: 11.5px;
-  }
-
-  .itemShell {
-    /* La coque tient la rangée exactement : ce qui déborderait est rogné,
-       pas poussé sous le bord de la vitrine. */
-    min-height: 0;
-    padding: 8px;
-    overflow: hidden;
-  }
-
-  /*
-   * Couchée : l'illustration à gauche, le nom, l'accroche et la condition
-   * à droite. Une GRILLE et non un `flex-wrap` — les trois lignes de texte
-   * sont des sœurs de l'image, pas les filles d'une colonne : en `wrap`
-   * elles retombaient sous l'image au lieu de se ranger à côté d'elle.
-   */
-  .item {
-    /*
-     * Hauteur utile de l'illustration : la rangée, moins le rembourrage de
-     * la coque. Une valeur en PIXELS, connue avant que la grille ne se
-     * dimensionne — c'est tout l'enjeu (voir la colonne ci-dessous).
-     */
-    --tile-art-h: calc((100cqh - 10px) / 2 - 16px);
-
-    display: grid;
-    /*
-     * La colonne d'illustration a une largeur DÉFINIE : la hauteur de
-     * rangée ramenée par le ratio le plus étroit (5/7, un dos de carte).
-     * Un cadre de Navire (4/5) y tient d'autant mieux.
-     *
-     * Une colonne `auto` autour d'une image en `height: 100%` partait à
-     * une largeur arbitraire — la hauteur de la zone de grille n'est pas
-     * connue quand la colonne se dimensionne : d'où le grand vide entre
-     * l'image et le texte, et le texte poussé hors du cadre (retour du
-     * 22/09).
-     */
-    grid-template-columns: calc(var(--tile-art-h) * 5 / 7) minmax(0, 1fr);
-    grid-template-rows: auto auto minmax(0, 1fr);
-    column-gap: 10px;
-    row-gap: 2px;
-    min-height: 0;
-  }
-
-  /* Un objet en vente porte son bouton d'achat SOUS la carte, dans la même
-     rangée de grille : l'illustration lui rend sa hauteur. */
-  .itemShell:has(> .buyRow) .item {
-    --tile-art-h: calc((100cqh - 10px) / 2 - 50px);
-  }
-
-  /*
-   * L'illustration est bornée par la HAUTEUR de sa rangée, en PIXELS.
-   *
-   * `height: 100%` la renvoyait à la hauteur de sa zone de grille, qui
-   * n'est pas connue au moment où la colonne `auto` se dimensionne : la
-   * colonne partait alors à une largeur arbitraire, d'où le grand vide
-   * entre l'image et le texte et le texte poussé hors du cadre (retour du
-   * 22/09). Reprise de la hauteur de rangée — une valeur définie, elle —
-   * le ratio donne une largeur définie, et la colonne se cale dessus.
-   */
-  /* L'image remplit sa colonne ; son `aspect-ratio` fait la hauteur. */
-  .cardBackFrame,
-  .shipFrameBox {
-    grid-column: 1;
-    grid-row: 1 / span 3;
-    width: 100%;
-    height: auto;
-    align-self: start;
-  }
-
-  .itemName { grid-column: 2; grid-row: 1; }
-  .itemText { grid-column: 2; grid-row: 2; }
-  .itemHint { grid-column: 2; grid-row: 3; }
-
-  .itemName {
-    min-width: 0;
-    overflow-wrap: anywhere;
-    font-size: 13px;
-  }
-
-  /* Deux lignes, pas trois : la troisième repoussait la condition
-     (« Les Abyssales Cra-Poiscail ») sous le bord de la vignette. */
-  .itemText {
-    min-height: 0;
-    -webkit-line-clamp: 2;
-    font-size: 11px;
-    line-height: 1.3;
-  }
-
-  /* Couchée, la condition suit le texte : la pousser en bas laisserait un
-     trou entre l'accroche et elle. */
-  .itemHint {
-    min-height: 0;
-    margin-top: 4px;
-    font-size: 10px;
-  }
-
-  .badge {
-    top: 6px;
-    right: auto;
-    left: 6px;
+  .marketWord {
+    display: none;
   }
 
   .shelfTab {
-    padding: 3px 9px;
-    font-size: 11px;
+    padding-inline: 0.8cqw;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .familyRow,
+  .shelfTab,
+  .action::before,
+  .pageArrow {
+    transition: none;
   }
 }

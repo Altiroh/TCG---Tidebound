@@ -98,6 +98,15 @@ const RULES = [
   // (coordonnées en % de la planche, indépendantes de sa taille). Les plus
   // grandes tombent à ~110 px : 1600 px de planche suffisent.
   { match: /\/match-end\/victoire\/confettis\./, maxSize: 1600, quality: 88 },
+  // Écran des COLLECTABLES (maquette du 26/09/2026) : la tuile épinglée
+  // s'affiche à ~400 px de haut au plus, le panneau des familles à ~600, les
+  // décors de bord à ~900 ; le bandeau de section traverse l'écran ; plaque
+  // de nom et bouton ne dépassent pas ~240 px de large.
+  { match: /\/collectables\/tuile\./, maxSize: 900, quality: 86 },
+  { match: /\/collectables\/panneau-familles\./, maxSize: 1300, quality: 86 },
+  { match: /\/collectables\/decor-/, maxSize: 1200, quality: 86 },
+  { match: /\/collectables\/bandeau-section\./, maxSize: 1800, quality: 84 },
+  { match: /\/collectables\/(bouton|plaque-nom)\./, maxSize: 720, quality: 90 },
   // Le harpon des projectiles d'effet : il vole à ~150 px de long au plus.
   { match: /\/fx\/harpon\./, maxSize: 512, quality: 90 },
   { match: /\/(menu|ships|boosters|collection|decks|board)\//, maxSize: 1600, quality: 85 },
