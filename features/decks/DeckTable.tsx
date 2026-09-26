@@ -142,7 +142,7 @@ export function DeckTable(props: DeckTableProps) {
         {/* ── Décor posé sur la table ── */}
         {/* eslint-disable @next/next/no-img-element -- décor peint, positionné à la main */}
         <img className={styles.quill} src={`${ASSETS}/plume.webp`} alt="" draggable={false} />
-        <img className={styles.candle} src={`${ASSETS}/bougie.webp`} alt="" draggable={false} />
+        <img className={styles.candle} src="/assets/ui/accessoires/bougie.webp" alt="" draggable={false} />
         <img className={styles.bottle} src={`${ASSETS}/bouteille.webp`} alt="" draggable={false} />
         {/* eslint-enable @next/next/no-img-element */}
         <span className={styles.candleGlow} aria-hidden />

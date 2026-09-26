@@ -220,7 +220,7 @@
   height: 100%;
   padding: 0 0.8cqw;
   border: 0;
-  background: url("/assets/decks/liste/onglet.webp") center / 100% 100% no-repeat;
+  background: url("/assets/ui/plaques/onglet.webp") center / 100% 100% no-repeat;
   filter: drop-shadow(0 0.4cqw 0.6cqw rgba(0, 0, 0, 0.55));
   color: #3a2616;
   font-family: var(--tb-font-display, Georgia, serif);
@@ -285,7 +285,7 @@
   align-items: center;
   gap: 0.6cqw;
   padding: 0 1.2% 0 3%;
-  background: url("/assets/decks/liste/onglet.webp") center / 100% 100% no-repeat;
+  background: url("/assets/ui/plaques/onglet.webp") center / 100% 100% no-repeat;
   transform: rotate(-2deg);
   filter: drop-shadow(0 0.4cqw 0.6cqw rgba(0, 0, 0, 0.55));
 }
@@ -325,7 +325,7 @@
   display: flex;
   align-items: center;
   padding: 0 1.2% 0 3.6%;
-  background: url("/assets/decks/liste/recherche.webp") center / 100% 100% no-repeat;
+  background: url("/assets/ui/champs/recherche.webp") center / 100% 100% no-repeat;
   transform: rotate(-1.4deg);
   filter: drop-shadow(0 0.4cqw 0.6cqw rgba(0, 0, 0, 0.55));
 }
@@ -447,7 +447,7 @@
   bottom: -4%;
   z-index: 3;
   padding: 0.3cqw 1.3cqw;
-  background: url("/assets/decks/editeur/plaque.webp") center / 100% 100% no-repeat;
+  background: url("/assets/ui/plaques/plaque-rivets.webp") center / 100% 100% no-repeat;
   filter: drop-shadow(0 0.2cqw 0.35cqw rgba(0, 0, 0, 0.6));
   color: #f1d38a;
   font-family: var(--tb-font-display, Georgia, serif);
@@ -515,7 +515,7 @@
      soit 2,2 % et 12,2 % de sa LARGEUR en padding) — jamais sur les plis. */
   padding: 2.2% 15% 12.2%;
   gap: 0.05cqw;
-  background: url("/assets/decks/liste/bandeau-titre.webp") center / 100% 100% no-repeat;
+  background: url("/assets/ui/bandeaux/banderole.webp") center / 100% 100% no-repeat;
   text-align: center;
 }
 
@@ -598,7 +598,7 @@
   position: absolute;
   padding: 0;
   border: 0;
-  background: url("/assets/decks/liste/fleche.webp") center / contain no-repeat;
+  background: url("/assets/ui/fleches/fleche.webp") center / contain no-repeat;
   cursor: pointer;
   filter: drop-shadow(0 0.4cqw 0.5cqw rgba(0, 0, 0, 0.6));
   transition: transform 140ms ease, filter 140ms ease;
@@ -1001,7 +1001,7 @@
   z-index: 40;
   padding: 9px 26px;
   border: 0;
-  background: url("/assets/decks/editeur/plaque.webp") center / 100% 100% no-repeat;
+  background: url("/assets/ui/plaques/plaque-rivets.webp") center / 100% 100% no-repeat;
   color: #f1d38a;
   font-family: var(--tb-font-display, Georgia, serif);
   font-size: 12.5px;

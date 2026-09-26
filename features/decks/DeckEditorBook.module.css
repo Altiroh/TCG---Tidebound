@@ -121,7 +121,7 @@
   z-index: 40;
   padding: 9px 26px;
   border: 0;
-  background: url("/assets/decks/editeur/plaque.webp") center / 100% 100% no-repeat;
+  background: url("/assets/ui/plaques/plaque-rivets.webp") center / 100% 100% no-repeat;
   color: #f1d38a;
   font-family: var(--tb-font-display, Georgia, serif);
   font-size: 12.5px;
@@ -154,7 +154,7 @@
   padding: 0 4px;
   border: 0;
   border-radius: 0;
-  background: url("/assets/decks/editeur/plaque.webp") center / 100% 100% no-repeat;
+  background: url("/assets/ui/plaques/plaque-rivets.webp") center / 100% 100% no-repeat;
   box-shadow: none;
   filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.55));
 }
@@ -184,13 +184,13 @@
   height: 32px;
   margin: -2px -6px;
   border-radius: 50%;
-  background: url("/assets/decks/editeur/bouton-moins.webp") center / contain no-repeat;
+  background: url("/assets/ui/boutons/rond-moins.webp") center / contain no-repeat;
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6));
   transition: transform 120ms ease-out, filter 160ms ease-out;
 }
 
 .workspace [class*="_cellButton__"][aria-label^="Ajouter"] {
-  background-image: url("/assets/decks/editeur/bouton-plus.webp");
+  background-image: url("/assets/ui/boutons/rond-plus.webp");
 }
 
 /* Les boutons peints portent déjà leur signe. */
@@ -228,7 +228,7 @@
 .workspace [class*="_save__"] {
   border: 0;
   border-radius: 0;
-  background: url("/assets/decks/editeur/plaque.webp") center / 100% 100% no-repeat;
+  background: url("/assets/ui/plaques/plaque-rivets.webp") center / 100% 100% no-repeat;
   box-shadow: none;
   color: #f1d38a;
   font-family: var(--tb-font-display, Georgia, serif);
@@ -361,7 +361,7 @@
   gap: 4px;
   height: clamp(40px, 5.4vh, 54px);
   padding: 0 clamp(16px, 1.6vw, 26px) 0 clamp(8px, 0.8vw, 14px);
-  background: url("/assets/decks/liste/onglet.webp") center / 100% 100% no-repeat;
+  background: url("/assets/ui/plaques/onglet.webp") center / 100% 100% no-repeat;
   filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.45));
   color: var(--tb-text-strong);
   font-family: var(--tb-font-display, Georgia, serif);
@@ -389,7 +389,7 @@
   max-width: 440px;
   height: clamp(36px, 4.8vh, 48px);
   padding: 0 clamp(14px, 1.4vw, 22px) 0 clamp(56px, 4.8vw, 76px);
-  background: url("/assets/decks/liste/recherche.webp") center / 100% 100% no-repeat;
+  background: url("/assets/ui/champs/recherche.webp") center / 100% 100% no-repeat;
   filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.45));
 }
 
@@ -409,7 +409,7 @@
 .center [class*="_sort__"] {
   height: clamp(40px, 5.4vh, 54px);
   padding: 0 clamp(12px, 1.2vw, 20px);
-  background: url("/assets/decks/liste/onglet.webp") center / 100% 100% no-repeat;
+  background: url("/assets/ui/plaques/onglet.webp") center / 100% 100% no-repeat;
   filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.45));
 }
 
@@ -509,7 +509,7 @@
 .left [class*="_filterRowActive__"],
 .left [class*="_filterRowActive__"]:hover {
   border-color: transparent;
-  background: url("/assets/profile/dark-panel.webp") center / 100% 100% no-repeat;
+  background: url("/assets/ui/panneaux/panneau-sombre.webp") center / 100% 100% no-repeat;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
   color: #f1e3c4;
 }
@@ -1186,7 +1186,7 @@
   font-size: 11px;
 }
 /* ── Recherche : la barre de bois cerclée de laiton, et sa loupe à part ──
-   Découpe en 9 horizontale (`barre-recherche.webp`, 2150 × 400) : les bouts
+   Découpe en 9 horizontale (`ui/champs/recherche-rivets.webp`, 2150 × 400) : les bouts
    ouvragés (360 px à gauche) et la rose des vents (460 px à droite) gardent
    leurs proportions, seul le milieu s'étire — la barre prend toute la place
    entre l'effectif et le tri, comme la maquette. */
@@ -1197,7 +1197,7 @@
   padding: 0;
   border-style: solid;
   border-width: 0 calc(var(--search-h) * 1.15) 0 calc(var(--search-h) * 0.9);
-  border-image: url("/assets/decks/editeur/barre-recherche.webp") 0 460 0 360 fill / 0 calc(var(--search-h) * 1.15) 0 calc(var(--search-h) * 0.9) stretch;
+  border-image: url("/assets/ui/champs/recherche-rivets.webp") 0 460 0 360 fill / 0 calc(var(--search-h) * 1.15) 0 calc(var(--search-h) * 0.9) stretch;
   background: none;
   gap: calc(var(--search-h) * 0.18);
 }
@@ -1208,7 +1208,7 @@
   width: calc(var(--search-h) * 0.64);
   height: calc(var(--search-h) * 0.64);
   margin-left: calc(var(--search-h) * -0.4);
-  background: url("/assets/decks/editeur/icone-loupe.webp") center / contain no-repeat;
+  background: url("/assets/ui/champs/loupe.webp") center / contain no-repeat;
   filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.6));
 }
 
@@ -1368,7 +1368,7 @@
   inset: 0 0 auto;
   z-index: -1;
   height: 36%;
-  background: url("/assets/menu/carte/home-background.webp") center 38% / 132% auto no-repeat;
+  background: url("/assets/ui/fonds/carte-marine.webp") center 38% / 132% auto no-repeat;
   opacity: 0.2;
   mix-blend-mode: multiply;
   -webkit-mask-image: linear-gradient(180deg, #000 20%, transparent 100%);
@@ -1689,7 +1689,7 @@
   min-height: clamp(36px, 4.6vh, 44px);
   border: 0;
   border-radius: 0;
-  background: url("/assets/decks/editeur/plaque.webp") center / 100% 100% no-repeat;
+  background: url("/assets/ui/plaques/plaque-rivets.webp") center / 100% 100% no-repeat;
   box-shadow: none;
   color: #f1d38a;
   font-family: var(--tb-font-display, Georgia, serif);
@@ -1725,7 +1725,7 @@
   padding: 0 clamp(16px, 1.4vw, 22px);
   border: 0;
   border-radius: 0;
-  background: url("/assets/decks/editeur/plaque.webp") center / 100% 100% no-repeat;
+  background: url("/assets/ui/plaques/plaque-rivets.webp") center / 100% 100% no-repeat;
   box-shadow: none;
   color: #f1d38a;
   font-family: var(--tb-font-display, Georgia, serif);
@@ -1748,7 +1748,7 @@
   padding: 0 clamp(18px, 1.6vw, 26px);
   border: 0;
   border-radius: 0;
-  background: url("/assets/decks/editeur/plaque.webp") center / 100% 100% no-repeat;
+  background: url("/assets/ui/plaques/plaque-rivets.webp") center / 100% 100% no-repeat;
   box-shadow: none;
   color: #f1d38a;
   font-family: var(--tb-font-display, Georgia, serif);

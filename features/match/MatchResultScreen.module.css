@@ -607,12 +607,12 @@
 
 .buttonBack {
   left: 34.2%;
-  background-image: url("/assets/match-end/defaite/bouton-retour.webp");
+  background-image: url("/assets/ui/boutons/plaque-sombre.webp");
 }
 
 .buttonNew {
   left: 49.9%;
-  background-image: url("/assets/match-end/defaite/bouton-nouvelle-partie.webp");
+  background-image: url("/assets/ui/boutons/plaque-bleue.webp");
 }
 
 .buttonBack > span,

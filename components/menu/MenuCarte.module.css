@@ -1,7 +1,7 @@
 /*
  * MENU « CARTE MARINE » — la table du navigateur, montée en calques.
  *
- * Le fond (`home-background.webp`, 1672 × 941) porte la table, ses bougies
+ * Le fond (`ui/fonds/carte-marine.webp`, 1672 × 941) porte la table, ses bougies
  * et la carte punaisée ; tout le reste est POSÉ dessus : le décor détouré
  * (la tarte et les livres, la peluche, la longue-vue), le logo, et les
  * trois parchemins qui sont la navigation.
@@ -225,7 +225,7 @@
  * et changer d'image au clic se voyait). Un clic sur le liquide fait partir
  * une onde de l'endroit touché, et rien d'autre ne bouge.
  *
- * L'ELLIPSE DU CAFÉ PEINT, mesurée sur `tasse-cafe.webp` (plus longue plage
+ * L'ELLIPSE DU CAFÉ PEINT, mesurée sur `ui/accessoires/tasse-cafe.webp` (plus longue plage
  * sombre, ligne par ligne) : 7,5 % → 73,5 % de la largeur de la tasse,
  * 15,5 % → 51,5 % de sa hauteur. La zone cliquable (`clip-path`, qui
  * limite aussi le pointeur) et l'onde (`border-radius` + `overflow`) la

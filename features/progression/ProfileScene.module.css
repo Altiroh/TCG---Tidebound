@@ -265,7 +265,7 @@
   position: absolute;
   width: 10.5%;
   aspect-ratio: 331 / 327;
-  background: url("/assets/profile/stat-diamond.webp") center / 100% 100% no-repeat;
+  background: url("/assets/ui/icons/losange.webp") center / 100% 100% no-repeat;
   filter: drop-shadow(0 0.8cqw 1.2cqw rgba(0, 0, 0, 0.55));
 }
 .diamond[data-slot="1"] { left: 63.1%; top: 7.1%; }
@@ -328,7 +328,7 @@
   width: 29%;
   height: 33.4%;
   padding: 2.2% 2.4% 1.6%;
-  background: url("/assets/profile/parchment-panel.webp") center / 100% 100% no-repeat;
+  background: url("/assets/ui/panneaux/panneau-parchemin.webp") center / 100% 100% no-repeat;
   color: #2b1c10;
   filter: drop-shadow(0 0.8cqw 1.2cqw rgba(0, 0, 0, 0.5));
   display: flex;
@@ -444,7 +444,7 @@
   width: 49.4%;
   height: 34.7%;
   padding: 1.6% 2% 1.4%;
-  background: url("/assets/profile/dark-panel.webp") center / 100% 100% no-repeat;
+  background: url("/assets/ui/panneaux/panneau-sombre.webp") center / 100% 100% no-repeat;
   filter: drop-shadow(0 0.8cqw 1.2cqw rgba(0, 0, 0, 0.55));
   display: flex;
   flex-direction: column;

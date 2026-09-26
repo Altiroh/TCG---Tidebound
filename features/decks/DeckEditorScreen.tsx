@@ -466,14 +466,14 @@ function DeckEditorScreenBody({ ownedCardIds, initialDeck }: DeckEditorScreenPro
       {onBook && (
         <>
           {/* eslint-disable-next-line @next/next/no-img-element -- décor peint, positionné à la main */}
-          <img className={book.decor} src="/assets/decks/editeur/decor-bas.webp" alt="" draggable={false} />
+          <img className={book.decor} src="/assets/ui/accessoires/longue-vue.webp" alt="" draggable={false} />
           {/* La bougie et le café de la référence : entre l'enseigne et le
               compte, posés sur le haut du parchemin. */}
           <span className={book.decorTopRight} aria-hidden>
             {/* eslint-disable-next-line @next/next/no-img-element -- décor peint */}
-            <img src="/assets/decks/liste/bougie.webp" alt="" draggable={false} />
+            <img src="/assets/ui/accessoires/bougie.webp" alt="" draggable={false} />
             {/* eslint-disable-next-line @next/next/no-img-element -- décor peint */}
-            <img src="/assets/menu/carte/tasse-cafe.webp" alt="" draggable={false} />
+            <img src="/assets/ui/accessoires/tasse-cafe.webp" alt="" draggable={false} />
           </span>
         </>
       )}

@@ -208,12 +208,12 @@ function CollectionScreenBody({ isSignedIn, ownedCardIds, ownedCounts, catalog, 
         <>
           {/* Le décor de la table, le même que celui de l'Éditeur. */}
           {/* eslint-disable-next-line @next/next/no-img-element -- décor peint, positionné à la main */}
-          <img className={book.decor} src="/assets/decks/editeur/decor-bas.webp" alt="" draggable={false} />
+          <img className={book.decor} src="/assets/ui/accessoires/longue-vue.webp" alt="" draggable={false} />
           <span className={book.decorTopRight} aria-hidden>
             {/* eslint-disable-next-line @next/next/no-img-element -- décor peint */}
-            <img src="/assets/decks/liste/bougie.webp" alt="" draggable={false} />
+            <img src="/assets/ui/accessoires/bougie.webp" alt="" draggable={false} />
             {/* eslint-disable-next-line @next/next/no-img-element -- décor peint */}
-            <img src="/assets/menu/carte/tasse-cafe.webp" alt="" draggable={false} />
+            <img src="/assets/ui/accessoires/tasse-cafe.webp" alt="" draggable={false} />
           </span>
         </>
       )}

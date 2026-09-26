@@ -6,8 +6,8 @@ import { playButtonClick } from "@/lib/sound";
 
 /**
  * La barre de recherche « sur le livre » : bois cerclé de laiton, la loupe
- * posée à part dans son creux gauche (`barre-recherche.webp`,
- * `icone-loupe.webp`). Partagée par l'Éditeur de deck et la Collection :
+ * posée à part dans son creux gauche (`ui/champs/recherche-rivets.webp`,
+ * `ui/champs/loupe.webp`). Partagée par l'Éditeur de deck et la Collection :
  * sur le livre, la recherche descend du bandeau dans la barre de la grille.
  *
  * La croix d'effacement est la NÔTRE, pas celle du navigateur : celle de

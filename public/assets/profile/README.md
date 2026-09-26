@@ -11,9 +11,9 @@ pas de PNG commité).
   par le joueur ; sans choix, le portrait peint reste.
 - `level-ring.webp` (443 × 442) : l'anneau du niveau ; l'arc d'XP est tracé
   par l'app à l'intérieur.
-- `stat-diamond.webp` (331 × 327) : un losange de ressource (×4).
-- `parchment-panel.webp` (525 × 254) : les prochaines escales (paliers).
-- `dark-panel.webp` (570 × 211) : les escales de connexion.
+- `ui/icons/losange.webp` (partagé, 331 × 327) : un losange de ressource (×4).
+- `ui/panneaux/panneau-parchemin.webp` (partagé, 525 × 254) : les prochaines escales (paliers).
+- `ui/panneaux/panneau-sombre.webp` (partagé, 570 × 211) : les escales de connexion.
 - `cannon.webp` : le canon du premier plan, en bas à gauche.
 - `icon-parties.webp`, `icon-streak.webp` : les icônes Parties et Série
   (aussi la flamme du popup de série).

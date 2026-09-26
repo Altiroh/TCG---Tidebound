@@ -14,7 +14,7 @@ navigateur (`carte/`) l'a remplacé. L'historique Git les garde.
 - `carte/` : LE menu principal — la table du navigateur
   (`components/menu/TideboundMenuCarte.tsx`). La scène est MONTÉE en
   calques, pas peinte d'un bloc :
-  - `home-background.webp` (1672 × 941) : la table et sa carte punaisée.
+  - `ui/fonds/carte-marine.webp` (partagé, 1672 × 941 ; aperçu flou `carte-marine-flou.webp`) : la table et sa carte punaisée.
     C'est la GÉOMÉTRIE DE RÉFÉRENCE — tous les autres calques sont posés
     en pourcentages de celle-ci (`/?reperes=1` trace leurs boîtes pour
     recaler).
@@ -24,7 +24,7 @@ navigateur (`carte/`) l'a remplacé. L'historique Git les garde.
     UNE image chacun — le survol (lumière, saturation, halo épousant le
     bord déchiré) est peint par le navigateur, pas par une seconde
     illustration.
-  - `tasse-cafe.webp`, `fumee_variante_1/2/3.webp` : la tasse, qui fume
+  - `ui/accessoires/tasse-cafe.webp` (partagée), `fumee_variante_1/2/3.webp` : la tasse, qui fume
     en continu ; les trois volutes montent du café, chacune sur son cycle.
     Le café est celui que la tasse PEINT (les images de surface posées
     dessus ont été retirées le 24/09 : elles tombaient à côté). Un CLIC sur

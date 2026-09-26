@@ -1,6 +1,6 @@
 /*
  * Colonne de raccourcis sous le bloc du compte : le LOSANGE des statistiques
- * du profil (`stat-diamond.webp`, 331 × 327), le visuel de la récompense en
+ * du profil (`ui/icons/losange.webp`, 331 × 327), le visuel de la récompense en
  * haut, le compte au centre, deux mots dessous — comme « 2 JETONS DE
  * PRÉCONSTRUIT » au profil. Au survol, la lueur chaude du menu principal.
  */
@@ -26,7 +26,7 @@
   aspect-ratio: 331 / 327;
   padding: 10% 0 6%;
   border: 0;
-  background: url("/assets/profile/stat-diamond.webp") center / 100% 100% no-repeat;
+  background: url("/assets/ui/icons/losange.webp") center / 100% 100% no-repeat;
   color: #f4ead4;
   cursor: pointer;
   pointer-events: auto;

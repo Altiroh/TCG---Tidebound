@@ -29,18 +29,18 @@ import { playMenuCardClick, playMenuCardHover } from "@/lib/sound";
 
 /** Les calques de ce menu, nommés une fois. */
 export const MENU_CARTE_ASSETS = {
-  fond: "/assets/menu/carte/home-background.webp",
+  fond: "/assets/ui/fonds/carte-marine.webp",
   /**
    * Le même fond en 96 px, pour le débordement flouté (`.spill`) : sous un
    * flou de 30 px la différence ne se voit pas, et c'était la SOURCE
    * entière (364 Ko) qui repartait sur le réseau en plus de la version
    * optimisée du `<Image>`.
    */
-  fondFlou: "/assets/menu/carte/home-background-flou.webp",
+  fondFlou: "/assets/ui/fonds/carte-marine-flou.webp",
   gauche: "/assets/menu/carte/left-asset.webp",
   droite: "/assets/menu/carte/right-asset.webp",
   longueVue: "/assets/menu/carte/longue-vue-bottom.webp",
-  tasse: "/assets/menu/carte/tasse-cafe.webp",
+  tasse: "/assets/ui/accessoires/tasse-cafe.webp",
   logo: "/assets/menu/logo/tidebound-logo.webp",
 } as const;
 

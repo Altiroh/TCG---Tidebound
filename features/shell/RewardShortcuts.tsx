@@ -38,7 +38,7 @@ function masteryIcon(shipId: string | undefined): { icon: string; roundIcon: boo
 /**
  * Raccourcis FLOTTANTS vers ce qui attend d'être réclamé, empilés sous le
  * bloc du compte en haut à droite — dans le LOSANGE des statistiques du
- * profil (`stat-diamond.webp`) : le visuel de la récompense, son compte, et
+ * profil (`ui/icons/losange.webp`) : le visuel de la récompense, son compte, et
  * deux mots. La lueur chaude du menu principal au survol ; un clic ouvre le
  * profil sur le bon onglet.
  *
