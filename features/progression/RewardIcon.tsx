@@ -40,7 +40,7 @@ export function RewardIcon({ item, size = 40 }: { item: RewardItem; size?: numbe
         <span className={styles.icon} style={style} data-kind="xp">
           <svg viewBox="0 0 40 40" width="86%" height="86%" aria-hidden>
             <path d="M20 3l4.6 10.6L36 15l-8.6 7.6L30 34l-10-6-10 6 2.6-11.4L4 15l11.4-1.4z" fill="rgba(88,200,216,0.2)" stroke="#8fe3ee" strokeWidth="1.6" strokeLinejoin="round" />
-            <text x="20" y="24.5" textAnchor="middle" fontSize="9" fontWeight="700" fill="#e6fbff" fontFamily="var(--font-ui), system-ui, sans-serif">
+            <text x="20" y="24.5" textAnchor="middle" fontSize="9" fontWeight="700" fill="#e6fbff" fontFamily="var(--font-ui), Georgia, serif">
               XP
             </text>
           </svg>

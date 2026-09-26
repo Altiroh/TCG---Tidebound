@@ -1605,7 +1605,7 @@
 .journalTitle {
   font-family: var(--font-card-title), Georgia, serif;
   font-size: var(--fs-label);
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-dim);
 }

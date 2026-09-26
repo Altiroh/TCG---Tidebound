@@ -121,7 +121,7 @@
   margin: 0;
   font-size: clamp(10px, 1.15vh, 12px);
   font-weight: 600;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink);
   padding-bottom: clamp(6px, 0.8vh, 10px);
@@ -369,7 +369,7 @@
 .summaryTitle {
   margin: 0;
   font-size: clamp(8.5px, 1vh, 10px);
-  letter-spacing: 0.2em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-dim);
 }

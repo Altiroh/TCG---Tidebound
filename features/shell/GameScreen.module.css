@@ -283,8 +283,8 @@
   margin: 0;
   font-family: var(--cb-font-display);
   font-size: var(--tb-fs-page-title);
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  font-weight: 700;
+  letter-spacing: var(--tb-track-title);
   line-height: var(--tb-lh-tight);
   color: var(--ink-strong);
   text-shadow: 0 1px 6px rgba(2, 6, 11, 0.8);
@@ -293,9 +293,11 @@
 /* Surtitre : le cyan dit « tu es ici ». */
 .eyebrow {
   margin: 0;
-  font-size: var(--tb-fs-label);
-  font-weight: 600;
-  letter-spacing: 0.16em;
+  /* Titre de section (typographie Tidebound) : Cinzel gras, capitales. */
+  font-family: var(--cb-font-display);
+  font-size: var(--tb-fs-section-title);
+  font-weight: 700;
+  letter-spacing: var(--tb-track-label);
   text-transform: uppercase;
   color: var(--cb-cyan);
 }
@@ -347,8 +349,9 @@
 /* Étiquette de champ / de valeur : capitales, très espacées. */
 .label {
   margin: 0;
-  font-size: var(--tb-fs-label);
-  font-weight: 600;
+  font-family: var(--cb-font-display);
+  font-size: var(--tb-fs-section-title);
+  font-weight: 700;
   letter-spacing: var(--tb-track-label);
   text-transform: uppercase;
   color: var(--ink-dim);
@@ -566,9 +569,11 @@
   background: none;
   color: var(--ink-dim);
   font: inherit;
-  font-size: var(--tb-fs-button);
+  /* Onglets : la navigation, en Cinzel demi-gras (typographie Tidebound). */
+  font-family: var(--cb-font-display);
+  font-size: var(--tb-fs-nav);
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--tb-track-caps);
   white-space: nowrap;
   cursor: pointer;
   transition: color var(--tb-duration) ease-out;
@@ -774,9 +779,10 @@
 }
 
 .fieldLabel {
-  font-size: var(--tb-fs-label);
-  font-weight: 600;
-  letter-spacing: 0.1em;
+  font-family: var(--cb-font-display);
+  font-size: var(--tb-fs-section-title);
+  font-weight: 700;
+  letter-spacing: var(--tb-track-label);
   text-transform: uppercase;
   color: var(--ink-dim);
 }
@@ -1130,7 +1136,8 @@
   background: none;
   color: var(--ink);
   font: inherit;
-  font-size: var(--tb-fs-caption);
+  font-size: var(--tb-fs-label);
+  font-weight: 600;
   text-align: left;
   cursor: pointer;
   transition: background-color var(--tb-duration-fast) ease-out, color var(--tb-duration-fast) ease-out;
@@ -1285,10 +1292,10 @@
   border-radius: var(--tb-radius-pill);
   background: var(--cb-cyan);
   color: #04121a;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   line-height: 1;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: lining-nums tabular-nums;
 }
 .badgeGold {
   composes: badge;
@@ -1383,7 +1390,7 @@
 
 .loadingLabel {
   font-size: 12px;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-faint);
 }

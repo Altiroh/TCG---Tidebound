@@ -1,4 +1,4 @@
-import { Barlow, Cinzel, Crimson_Pro } from "next/font/google";
+import { Cinzel, Crimson_Pro, Spectral } from "next/font/google";
 
 /**
  * Typographie verrouillée dans Notion ("Bibliothèque visuelle — cohérence
@@ -35,16 +35,22 @@ export const cardBodyFont = Crimson_Pro({
 export const menuFont = cardTitleFont;
 
 /**
- * Police fonctionnelle de l'interface (recherche, filtres, tri, boutons
- * utilitaires). Cinzel/Crimson Pro restent réservées à ce qui porte
- * l'identité Tidebound — titres, noms de sections, rendu des cartes ;
- * au-delà, une serif décorative sur chaque petit contrôle donnait à l'UI
- * un air de jeu Flash décoré. Barlow est neutre, un peu technique
- * (instrument de bord) et lisible à 12-13px, sans tomber dans le
- * "Inter/dashboard".
+ * Police de l'INTERFACE — Spectral (décision du 26/09/2026 : harmonisation
+ * typographique de tout le jeu sur l'Éditeur de deck « sur le livre »).
+ *
+ * Tidebound est un carnet de bord maritime : toute l'interface est en
+ * SERIF. Cinzel porte l'identité (titres, noms, sections, navigation) ;
+ * Spectral porte tout le reste — filtres, options, listes, boutons,
+ * descriptions, compteurs. Elle remplace Barlow, une sans-serif qui donnait
+ * aux écrans un air d'application moderne, en décalage avec leurs titres.
+ *
+ * Même variable qu'avant (`--font-ui`) : chaque style qui passait par
+ * `--tb-font-ui` / `--cb-font-ui` bascule sans être retouché. Le rendu des
+ * CARTES ne change pas (Cinzel + Crimson Pro, verrouillés dans Notion).
  */
-export const uiFont = Barlow({
+export const uiFont = Spectral({
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  weight: ["400", "500", "600", "700"],
+  style: ["normal", "italic"],
   variable: "--font-ui",
 });

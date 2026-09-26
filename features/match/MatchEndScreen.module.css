@@ -413,7 +413,7 @@
   border: none;
   border-radius: 999px;
   background: transparent;
-  font-family: var(--font-ui, "Segoe UI", system-ui, sans-serif);
+  font-family: var(--font-ui, Georgia, serif);
   font-size: clamp(13px, 1vw, 15px);
   font-weight: 600;
   line-height: 1.2;

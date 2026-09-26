@@ -378,7 +378,7 @@
 .accountLevel {
   font-size: clamp(10px, 0.78vw, 12.5px);
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--cb-ivory-dim);
 }
@@ -804,7 +804,7 @@
   --cb-teal: #4fc4ce;
   --cb-ivory: #e9e2d1;
   --cb-ivory-dim: #97917f;
-  --cb-font-ui: var(--font-ui, "Segoe UI", system-ui, sans-serif);
+  --cb-font-ui: var(--font-ui, Georgia, serif);
   --cb-font-display: var(--font-card-title, Georgia, "Times New Roman", serif);
 
   position: absolute;

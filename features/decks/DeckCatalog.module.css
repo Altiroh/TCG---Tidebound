@@ -103,7 +103,7 @@
 
 /* Les étoiles de difficulté : de l'or — c'est une valeur, pas un état. */
 .difficulty {
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
   color: var(--gold);
 }
 
@@ -155,7 +155,7 @@
 
 .sheetLabel {
   font-size: 10px;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-dim);
 }

@@ -136,27 +136,54 @@
   --tb-space-8: 40px;
 
   /* ── Typographie ────────────────────────────────────────────── */
-  /* Familles : Cinzel pour ce qui porte l'identité (titres, noms),
-     Barlow pour l'interface, Crimson Pro pour la lecture continue.
-     Chargées par `lib/fonts.ts` ; les replis couvrent le rendu hors
-     `next/font`. */
+  /* Référence : l'Éditeur de deck « sur le livre » (26/09/2026). Tout le
+     jeu est en SERIF, comme un carnet de bord :
+       - Cinzel  → identité : titres, noms (Navire, deck, carte), titres de
+                   section, navigation, gros compteurs ;
+       - Spectral → tout le reste : filtres, options, listes, boutons,
+                   descriptions, métadonnées, compteurs ;
+       - Crimson Pro → le texte de règles des CARTES seulement (verrouillé
+                   dans Notion, `lib/fonts.ts`).
+     Aucune sans-serif dans l'interface. Chargées par `lib/fonts.ts` ; les
+     replis restent des serifs. */
   --tb-font-display: var(--font-card-title, Georgia, "Times New Roman", serif);
-  --tb-font-ui: var(--font-ui, "Segoe UI", system-ui, sans-serif);
+  --tb-font-ui: var(--font-ui, Georgia, "Times New Roman", serif);
   --tb-font-body: var(--font-card-body, Georgia, serif);
+  /* Noms courts du guide typographique. `--font-ui` (Spectral) est posé
+     directement par `next/font` (`lib/fonts.ts`). */
+  --font-display: var(--tb-font-display);
 
-  /* Hiérarchie — une taille par rôle, fluide entre laptop et grand écran. */
-  --tb-fs-page-title: clamp(20px, 1.7vw, 28px);
-  --tb-fs-section-title: clamp(11px, 0.78vw, 13px);
-  --tb-fs-card-title: clamp(14px, 1.15vw, 18px);
-  --tb-fs-body: clamp(12.5px, 0.92vw, 14.5px);
-  --tb-fs-caption: clamp(10.5px, 0.8vw, 12px);
-  --tb-fs-label: clamp(10px, 0.74vw, 11.5px);
-  --tb-fs-button: clamp(12px, 0.9vw, 14px);
+  /* Couleurs du texte : encre sur parchemin, ivoire sur panneau sombre. */
+  --text-primary: #211a14;
+  --text-secondary: #4a3728;
+  --text-light: #e8dfc8;
+  --text-light-muted: #b9ac90;
+  --text-accent: #49d8f2;
+  --text-shadow-light: 0 1px 0 rgba(255, 255, 255, 0.12);
+  --text-shadow-dark: 0 1px 2px rgba(0, 0, 0, 0.65);
 
-  --tb-lh-tight: 1.15;
-  --tb-lh-body: 1.5;
-  --tb-track-label: 0.14em;
-  --tb-track-caps: 0.08em;
+  /* Hiérarchie — une taille par RÔLE, fluide entre laptop et grand écran.
+     Deux composants équivalents prennent le même rôle, jamais une taille
+     à eux. (Spectral dessine plus petit que Barlow à corps égal : les
+     tailles d'interface sont remontées d'autant.) */
+  --tb-fs-page-title: clamp(26px, 2.3vw, 40px);
+  --tb-fs-section-title: clamp(12px, 0.85vw, 14px);
+  --tb-fs-panel-title: clamp(17px, 1.3vw, 22px);
+  --tb-fs-nav: clamp(13px, 0.95vw, 16px);
+  --tb-fs-card-title: clamp(15px, 1.2vw, 19px);
+  --tb-fs-body: clamp(13px, 0.95vw, 15px);
+  --tb-fs-caption: clamp(11.5px, 0.82vw, 13px);
+  --tb-fs-label: clamp(12px, 0.85vw, 14px);
+  --tb-fs-button: clamp(13px, 0.95vw, 15px);
+  --tb-fs-counter: clamp(12px, 0.9vw, 15px);
+
+  --tb-lh-tight: 1.1;
+  --tb-lh-ui: 1.25;
+  --tb-lh-body: 1.45;
+  /* Espacement des capitales : 0,04 à 0,08 em, jamais plus. */
+  --tb-track-title: 0.02em;
+  --tb-track-label: 0.08em;
+  --tb-track-caps: 0.06em;
 
   /* ── Mouvement ──────────────────────────────────────────────── */
   --tb-ease: cubic-bezier(0.2, 0.8, 0.2, 1);

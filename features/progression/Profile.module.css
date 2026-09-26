@@ -86,7 +86,7 @@
 
 .sideLevelCaption {
   font-size: 11px;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-dim);
 }
@@ -267,7 +267,7 @@
 
 .levelCaption {
   font-size: 12px;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-dim);
 }
@@ -325,7 +325,7 @@
 
 .statLabel {
   font-size: 12px;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-dim);
 }
@@ -709,7 +709,7 @@
   --cb-ivory: #e9e2d1;
   --cb-ivory-dim: #97917f;
   --cb-violet: #b388f0;
-  --cb-font-ui: var(--font-ui, "Segoe UI", system-ui, sans-serif);
+  --cb-font-ui: var(--font-ui, Georgia, serif);
   --cb-font-display: var(--font-card-title, Georgia, "Times New Roman", serif);
   --panel: rgba(8, 18, 30, 0.74);
   --panel-solid: rgba(6, 14, 24, 0.9);

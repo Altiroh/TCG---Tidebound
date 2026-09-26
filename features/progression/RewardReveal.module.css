@@ -16,7 +16,7 @@
   overflow-y: auto;
   background: radial-gradient(80% 70% at 50% 45%, rgba(14, 40, 58, 0.92), rgba(2, 6, 12, 0.96));
   color: #e8edf0;
-  font-family: var(--font-ui, "Segoe UI", system-ui, sans-serif);
+  font-family: var(--font-ui, Georgia, serif);
   animation: fadeIn 220ms ease-out both;
 }
 
@@ -90,7 +90,7 @@
   margin: 0;
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.3em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #00b7ff;
   text-shadow: 0 0 12px rgba(0, 183, 255, 0.55);

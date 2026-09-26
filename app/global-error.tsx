@@ -28,7 +28,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
           padding: 24,
           background: "#061019",
           color: "#dbe7f2",
-          fontFamily: "system-ui, sans-serif",
+          fontFamily: "Georgia, serif",
           textAlign: "center",
         }}
       >

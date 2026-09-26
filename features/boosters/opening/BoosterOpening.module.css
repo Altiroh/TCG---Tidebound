@@ -127,7 +127,7 @@
   isolation: isolate;
   outline: none;
   color: var(--ivory);
-  font-family: var(--font-ui, "Segoe UI", system-ui, sans-serif);
+  font-family: var(--font-ui, Georgia, serif);
   user-select: none;
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
@@ -1456,7 +1456,7 @@
   padding-top: 0.6em;
   font-size: 0.62em;
   font-weight: 600;
-  letter-spacing: 0.24em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--rarity-ink);
 }
@@ -1599,10 +1599,10 @@
 }
 
 .hintCount {
-  font-family: var(--font-ui, "Segoe UI", system-ui, sans-serif);
+  font-family: var(--font-ui, Georgia, serif);
   font-size: 0.78em;
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
   color: rgba(199, 154, 78, 0.9);
 }
 
@@ -1623,7 +1623,7 @@
   color: #efe7d4;
   font-family: var(--font-card-title, Georgia, "Times New Roman", serif);
   font-size: clamp(13px, calc(var(--u) * 1.7), 18px);
-  letter-spacing: 0.18em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   cursor: pointer;
   pointer-events: auto;
@@ -1812,7 +1812,7 @@
 .showcaseRarity {
   font-size: clamp(11px, calc(var(--u) * 1.4), 15px);
   font-weight: 700;
-  letter-spacing: 0.34em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #d2b0ff;
   text-shadow: 0 0 calc(var(--u) * 1.4) rgba(150, 70, 255, 0.85);
@@ -1864,7 +1864,7 @@
   color: #eed9a8;
   font-size: clamp(8px, calc(var(--u) * 0.95), 11px);
   font-weight: 600;
-  letter-spacing: 0.24em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   white-space: nowrap;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);

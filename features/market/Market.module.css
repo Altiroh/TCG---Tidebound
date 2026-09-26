@@ -200,7 +200,7 @@ a.section {
   margin-top: 1.2cqw;
   font-family: var(--font-ui, inherit);
   font-size: clamp(8px, 5.4cqw, 11px);
-  letter-spacing: 0.16em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: rgba(229, 207, 158, 0.55);
 }

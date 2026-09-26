@@ -89,9 +89,10 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  font-size: clamp(10px, 1.15vh, 12px);
-  font-weight: 600;
-  letter-spacing: 0.18em;
+  font-family: var(--tb-font-display);
+  font-size: clamp(11px, 1.3vh, 13px);
+  font-weight: 700;
+  letter-spacing: var(--tb-track-label);
   text-transform: uppercase;
   color: var(--ink);
 }
@@ -101,7 +102,7 @@
   background: none;
   padding: 2px 4px;
   font: inherit;
-  font-size: clamp(9px, 1.05vh, 11px);
+  font-size: clamp(10.5px, 1.2vh, 12px);
   color: var(--ink-dim);
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -153,9 +154,11 @@
 
 .sectionTitle {
   margin: 0 0 4px;
-  font-size: clamp(8.5px, 1vh, 10px);
-  font-weight: 600;
-  letter-spacing: 0.2em;
+  /* Titre de groupe de filtres (typographie Tidebound) : Cinzel gras, capitales. */
+  font-family: var(--tb-font-display);
+  font-size: clamp(11px, 1.35vh, 13px);
+  font-weight: 700;
+  letter-spacing: var(--tb-track-label);
   text-transform: uppercase;
   color: var(--ink-dim);
 }
@@ -174,7 +177,9 @@
   background: none;
   color: var(--ink-dim);
   font: inherit;
-  font-size: clamp(11px, 1.3vh, 13px);
+  /* Option de filtre : Spectral demi-gras. */
+  font-size: clamp(12px, 1.45vh, 14px);
+  font-weight: 600;
   text-align: left;
   cursor: pointer;
   transition: background-color 130ms ease-out, color 130ms ease-out, border-color 130ms ease-out;
@@ -238,8 +243,9 @@
 }
 
 .filterCount {
-  font-variant-numeric: tabular-nums;
-  font-size: clamp(10px, 1.15vh, 12px);
+  font-variant-numeric: lining-nums tabular-nums;
+  font-size: clamp(11px, 1.25vh, 12.5px);
+  font-weight: 600;
   color: var(--ink-dim);
 }
 
@@ -404,7 +410,7 @@
   margin-right: 5px;
   font-family: var(--cb-font-display);
   font-size: clamp(19px, 2.8vh, 30px);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--ink-strong);
 }
 
@@ -416,8 +422,10 @@
 }
 
 .sortLabel {
-  font-size: clamp(9.5px, 1.1vh, 11.5px);
-  letter-spacing: 0.12em;
+  font-family: var(--tb-font-display);
+  font-size: clamp(11px, 1.25vh, 12.5px);
+  font-weight: 700;
+  letter-spacing: var(--tb-track-label);
   text-transform: uppercase;
   color: var(--ink-dim);
   white-space: nowrap;

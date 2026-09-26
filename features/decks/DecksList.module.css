@@ -124,7 +124,7 @@
   margin: 0;
   font-size: var(--tb-fs-label);
   font-weight: 600;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--cb-cyan);
 }
@@ -505,7 +505,7 @@
 .tileShip {
   font-size: clamp(9px, 0.68vw, 10.5px);
   font-weight: 600;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--cb-cyan);
   overflow: hidden;
@@ -660,7 +660,7 @@
 .rowShip {
   font-size: clamp(9px, 0.68vw, 10.5px);
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--cb-cyan);
   overflow: hidden;
@@ -826,7 +826,7 @@
   margin: 0;
   font-size: clamp(10px, 0.78vw, 12px);
   font-weight: 600;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--cb-cyan);
 }
@@ -1034,7 +1034,7 @@
 .previewStatLabel {
   font-size: 9.5px;
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-faint);
 }

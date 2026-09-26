@@ -48,6 +48,113 @@ body {
      un navy profond, jamais un noir — c'est ce qui se voit pendant
      qu'un écran se monte. */
   background-color: var(--tb-bg-deep);
+  /* Tout le jeu est en serif (`app/tokens.css`, Typographie) : ce qui ne
+     précise rien hérite de Spectral, jamais de la police du système. */
+  font-family: var(--tb-font-ui);
+  font-weight: 500;
+}
+
+/* Les contrôles de formulaire n'héritent pas de la police par défaut. */
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+ * TYPOGRAPHIE TIDEBOUND — classes utilitaires (référence : l'Éditeur de
+ * deck « sur le livre », 26/09/2026). Un RÔLE par classe ; la couleur vient
+ * du fond (encre sur parchemin, ivoire sur panneau sombre).
+ * ══════════════════════════════════════════════════════════════════════ */
+
+/* Titre de page : Cinzel gras, grand, à peine espacé. */
+.tcg-title {
+  font-family: var(--tb-font-display);
+  font-size: var(--tb-fs-page-title);
+  font-weight: 700;
+  letter-spacing: var(--tb-track-title);
+  line-height: var(--tb-lh-tight);
+}
+
+/* Titre de section / de groupe de filtres : Cinzel gras, capitales. */
+.tcg-section-title {
+  font-family: var(--tb-font-display);
+  font-size: var(--tb-fs-section-title);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--tb-track-label);
+  line-height: var(--tb-lh-tight);
+}
+
+/* Titre de panneau, nom de Navire, de deck ou de carte : Cinzel demi-gras. */
+.tcg-panel-title {
+  font-family: var(--tb-font-display);
+  font-size: var(--tb-fs-panel-title);
+  font-weight: 700;
+  letter-spacing: var(--tb-track-title);
+  line-height: var(--tb-lh-tight);
+}
+
+/* Navigation et onglets : Cinzel demi-gras, capitales. */
+.tcg-nav {
+  font-family: var(--tb-font-display);
+  font-size: var(--tb-fs-nav);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--tb-track-caps);
+}
+
+/* Option de filtre, ligne de liste, libellé : Spectral demi-gras. */
+.tcg-label {
+  font-family: var(--tb-font-ui);
+  font-size: var(--tb-fs-label);
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: var(--tb-lh-ui);
+}
+
+/* Texte courant, descriptions. */
+.tcg-body {
+  font-family: var(--tb-font-ui);
+  font-size: var(--tb-fs-body);
+  font-weight: 500;
+  line-height: var(--tb-lh-body);
+}
+
+/* Métadonnées, texte secondaire. */
+.tcg-meta {
+  font-family: var(--tb-font-ui);
+  font-size: var(--tb-fs-caption);
+  font-weight: 500;
+  line-height: var(--tb-lh-ui);
+}
+
+/* Libellé de bouton : Spectral demi-gras (Cinzel pour les boutons de prestige, via .tcg-nav). */
+.tcg-button-label {
+  font-family: var(--tb-font-ui);
+  font-size: var(--tb-fs-button);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+/* Compteurs : chiffres alignés, jamais en chiffres elzéviriens. */
+.tcg-counter {
+  font-family: var(--tb-font-ui);
+  font-size: var(--tb-fs-counter);
+  font-weight: 600;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+/* Ombres de texte selon le fond. */
+.tcg-on-light {
+  color: var(--text-primary);
+  text-shadow: var(--text-shadow-light);
+}
+
+.tcg-on-dark {
+  color: var(--text-light);
+  text-shadow: var(--text-shadow-dark);
 }
 
 /**

@@ -205,7 +205,7 @@
   color: rgba(214, 228, 238, 0.7);
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -221,7 +221,7 @@
   color: #f4ead4;
   font-family: var(--tb-font-display, Georgia, serif);
   font-size: 14px;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -479,7 +479,7 @@
   color: var(--sponsor);
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -512,7 +512,7 @@
 
 .points {
   color: var(--sponsor);
-  font-family: var(--tb-font-body, inherit);
+  font-family: var(--tb-font-ui);
   letter-spacing: 0;
   text-transform: none;
 }

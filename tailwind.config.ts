@@ -8,6 +8,14 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      // Tout le jeu est en serif (`app/tokens.css`, Typographie) : `font-sans`
+      // — la police par défaut de Tailwind — pointe sur Spectral, pas sur celle
+      // du système. `font-display` pour Cinzel.
+      fontFamily: {
+        sans: ["var(--font-ui)", "Georgia", "Times New Roman", "serif"],
+        serif: ["var(--font-ui)", "Georgia", "Times New Roman", "serif"],
+        display: ["var(--font-card-title)", "Georgia", "Times New Roman", "serif"],
+      },
       colors: {
         board: {
           background: "#0b1220",

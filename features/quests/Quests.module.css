@@ -161,7 +161,7 @@
   font-family: var(--cb-font-ui);
   font-size: 0.55em;
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--tb-gold-deep);
 }
@@ -219,7 +219,7 @@
 
 .categoryName {
   font-size: 10px;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-dim);
 }

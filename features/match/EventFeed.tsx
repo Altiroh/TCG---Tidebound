@@ -420,7 +420,7 @@ function JournalTooltip({ text, anchor }: { text: string; anchor: DOMRect }) {
   return createPortal(
     <div
       role="tooltip"
-      className="pointer-events-none fixed z-[90] max-w-[min(320px,60vw)] -translate-x-full -translate-y-1/2 rounded-lg border border-white/20 bg-slate-950/95 px-3 py-2 text-[13px] leading-snug text-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.6)] backdrop-blur-md [font-family:var(--font-card-body)]"
+      className="pointer-events-none fixed z-[90] max-w-[min(320px,60vw)] -translate-x-full -translate-y-1/2 rounded-lg border border-white/20 bg-slate-950/95 px-3 py-2 text-[13px] leading-snug text-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.6)] backdrop-blur-md"
       style={{ left: Math.max(8, anchor.left - 10), top: anchor.top + anchor.height / 2 }}
     >
       {text}

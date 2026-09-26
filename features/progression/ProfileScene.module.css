@@ -226,7 +226,7 @@
 .ringCaption {
   font-family: var(--tb-font-display);
   font-size: 1.15cqw;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--tb-accent);
 }

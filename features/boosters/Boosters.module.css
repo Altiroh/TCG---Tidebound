@@ -583,7 +583,7 @@
   margin: 0;
   font-size: clamp(9px, 0.72vw, 12px);
   font-variant: small-caps;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: lowercase;
   color: var(--cb-cyan);
 }

@@ -23,7 +23,7 @@
     inset 0 0 0 1px rgba(255, 255, 255, 0.08),
     0 18px 44px -12px rgba(0, 0, 0, 0.65);
   color: #fff;
-  font-family: var(--font-ui, "Segoe UI", system-ui, sans-serif);
+  font-family: var(--font-ui, Georgia, serif);
   font-size: clamp(12px, 0.95vw, 14px);
   white-space: nowrap;
   /* Après le cadre et le nom (chorégraphie de `MatchEndScreen.module.css`). */
@@ -62,7 +62,7 @@
 .unit {
   font-size: 0.78em;
   font-weight: 500;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   opacity: 0.75;
 }

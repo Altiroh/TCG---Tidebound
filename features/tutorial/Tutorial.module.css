@@ -83,7 +83,7 @@
   box-shadow: var(--tb-shadow-lg), inset 0 1px 0 var(--tb-border-light);
   backdrop-filter: blur(10px);
   color: var(--tb-text);
-  font-family: var(--tb-font-body), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--tb-font-ui);
 }
 
 /* Le filet cyan en tête, signature des fenêtres du jeu. */
@@ -107,7 +107,7 @@
 
 .coachStep {
   font-size: 11px;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--tb-accent);
 }
@@ -202,7 +202,7 @@
   backdrop-filter: blur(10px);
   text-align: center;
   color: var(--tb-text);
-  font-family: var(--tb-font-body), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--tb-font-ui);
 }
 
 /* Titre de récompense : de l'or — c'est ce qu'on vient de gagner. */
