@@ -272,10 +272,14 @@ export function DeckTable(props: DeckTableProps) {
                       ★
                     </span>
                   )}
+                  {/* Le STYLE du deck, sur le fanion de Raison des tuiles de plateau, en haut à droite. */}
+                  {styleIdOf(deck) && (
+                    <span className={styles.stackPennant}>
+                      <DeckStyleIcon styleId={styleIdOf(deck)!} labelled className={styles.stackPennantIcon} />
+                    </span>
+                  )}
                   {selected && <span className={styles.selectedChip}>Sélectionné</span>}
-                  <span className={styles.banner} data-style={styleIdOf(deck) ? "" : undefined}>
-                    {/* L'emblème du style, à gauche du nom — comme sur la fiche et dans l'éditeur. */}
-                    {styleIdOf(deck) && <DeckStyleIcon styleId={styleIdOf(deck)!} className={styles.bannerStyle} />}
+                  <span className={styles.banner}>
                     {/* Au-delà de 16 lettres, le nom passe sur deux lignes plutôt que de rapetisser. */}
                     <span className={styles.bannerName} data-long={deck.name.length > 16 || undefined}>
                       {deck.name}

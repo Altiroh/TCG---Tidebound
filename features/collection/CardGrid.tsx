@@ -86,10 +86,10 @@ const GridCell = memo(function GridCell({
       />
       {/* « Ranger » au survol (à la Pinterest) — rien hors d'un écran qui fournit l'étagère. */}
       <SaveToNotebook cardId={def.id} variant="overlay" />
+      {/* Le cœur des favoris, posé SUR la carte : il se soulève avec elle. */}
+      <FavoriteToggle cardId={def.id} cardName={def.name} />
       </div>
       {cellExtras && <div className={styles.cellExtras}>{cellExtras(def)}</div>}
-      {/* Le cœur des favoris : sous la carte, sur la ligne de la pastille ou de la barre −/+. */}
-      <FavoriteToggle cardId={def.id} cardName={def.name} />
     </div>
   );
 });

@@ -1417,15 +1417,18 @@
   height: clamp(26px, 3.2vh, 30px);
 }
 
-/* Le cœur des favoris (au survol, ou s'il est plein) : accroché SOUS la
-   barre −/+, à droite, en petit — il tient dans la gouttière entre deux
-   rangées sans mordre sur le badge de type de la carte du dessous. */
+/* Le cœur des favoris : EN BAS AU MILIEU de la carte (retour du 26/09/2026),
+   entre ses deux plaques de statistiques. Il est dans le bloc soulevé de la
+   carte (`CardGrid`) : il la suit au survol. `translate` et non
+   `transform` : le survol du cœur garde son `transform: scale`. */
 .center [class*="Shelf_heart__"] {
-  top: calc(100% - 3px);
-  right: 3%;
-  bottom: auto;
+  top: auto;
+  right: auto;
+  bottom: 3.5%;
+  left: 50%;
   width: 22px;
   height: 22px;
+  translate: -50% 0;
 }
 
 .center [class*="Shelf_heart__"] svg {
@@ -1735,11 +1738,8 @@
   color: rgba(241, 211, 138, 0.7);
 }
 
-/* Le cœur : TOUJOURS visible dans la Collection, sur la ligne de la pastille, à droite. */
+/* Le cœur : TOUJOURS visible dans la Collection (au survol seulement dans l'Éditeur). */
 .collection .center [class*="Shelf_heart__"] {
-  top: auto;
-  bottom: 1px;
-  right: 3%;
   opacity: 1;
 }
 

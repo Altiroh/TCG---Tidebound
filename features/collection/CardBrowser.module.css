@@ -496,8 +496,11 @@
   transition: transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
+/* En bloc : un bouton en ligne laissait sous la carte l'espace de la ligne de
+   texte (7 px), et tout ce qui se cale sur le bas du bloc tombait à côté. */
 .cardLift > button {
-  transition: box-shadow 160ms cubic-bezier(0.2, 0.8, 0.2, 1), filter 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  display: block;
+  transition:box-shadow 160ms cubic-bezier(0.2, 0.8, 0.2, 1), filter 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .cardCell:hover .cardLift {
