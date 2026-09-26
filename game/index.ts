@@ -138,6 +138,7 @@ export {
   playerToAct,
   refreshTurnTimer,
   turnTimerExpired,
+  warningThresholdsRemaining,
   warningTimes,
 } from "@/game/rules/turnTimer";
 export type { TurnTimerState } from "@/game/state/types";

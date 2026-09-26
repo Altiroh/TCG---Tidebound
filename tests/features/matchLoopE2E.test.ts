@@ -353,16 +353,16 @@ describe("délai de tour — l'autorité reste au serveur", () => {
     const apres = db.one("match_states", { match_id: matchId })!;
     expect(apres.version).toBeGreaterThan(versionAvant);
     expect(apres.state.players.find((p: { id: string }) => p.id === absent).missedDeadlines).toBe(1);
-    // Trois minutes sans le moindre geste : la partie s'arrête, au profit
-    // de celui qui est resté.
-    expect(db.one("matches", { id: matchId })!.status).toBe("finished");
-    expect(db.one("matches", { id: matchId })!.winner_id).toBe(present);
+    // Une première échéance fait passer le tour : la main revient à celui
+    // qui est resté, et la partie continue.
+    expect(db.one("matches", { id: matchId })!.status).toBe("active");
+    expect(apres.state.turnTimer.awaitingPlayerId).toBe(present);
   });
 
-  it("contre le bot, l'humain qui laisse filer SA propre échéance voit la partie s'arrêter à la lecture suivante", async () => {
+  it("contre le bot, l'humain qui laisse filer SA propre échéance voit son tour passer à la lecture suivante", async () => {
     // C'était le trou : l'écran ne relançait le serveur que pour l'échéance
-    // de l'AUTRE — contre le bot, personne ne relançait, et « joue, ou la
-    // partie s'arrête » restait affiché à 0 s pour toujours.
+    // de l'AUTRE — contre le bot, personne ne relançait, et le chrono
+    // restait affiché à 0 s pour toujours.
     sessionUserId = USER;
     const started = await startBotMatch(DECK.id, OTHER_DECK.id, "facile");
     const matchId = started.matchId!;
@@ -372,9 +372,12 @@ describe("délai de tour — l'autorité reste au serveur", () => {
     expireDeadline(matchId);
     await fetchMatchView(matchId);
 
-    const match = db.one("matches", { id: matchId })!;
-    expect(match.status).toBe("finished");
-    expect(match.winner_id).not.toBe(USER);
+    // Le tour est passé, le bot a joué le sien, et la main revient à
+    // l'humain — avec une minute de moins.
+    const apres = db.one("match_states", { match_id: matchId })!.state;
+    expect(db.one("matches", { id: matchId })!.status).toBe("active");
+    expect(apres.players.find((p: { id: string }) => p.id === USER).missedDeadlines).toBe(1);
+    expect(apres.turnNumber).toBeGreaterThan(state.turnNumber);
   });
 
   it("le joueur qui joue, fût-ce en retard, n'est jamais expiré par son propre coup", async () => {
@@ -404,18 +407,28 @@ describe("délai de tour — l'autorité reste au serveur", () => {
     const absent: string = first.turnTimer.awaitingPlayerId;
     const present = absent === USER ? OPPONENT : USER;
 
-    // Le joueur présent laisse filer : il rend la main dès qu'il l'a, et
-    // l'absent laisse passer chacune de ses échéances.
-    for (let round = 0; round < RULES.MAX_MISSED_DEADLINES + 1; round += 1) {
-      expireDeadline(matchId);
-      sessionUserId = present;
-      await fetchMatchView(matchId);
+    // Le joueur présent répond à tout (il passe ses fenêtres, rend la main
+    // dès qu'il l'a) ; l'absent laisse passer chacune de ses échéances —
+    // 3 minutes, 2, 1, et la troisième vaut forfait.
+    let manquees = 0;
+    for (let round = 0; round < 6 * RULES.MAX_MISSED_DEADLINES; round += 1) {
       if (db.one("matches", { id: matchId })!.status !== "active") break;
       const state = db.one("match_states", { match_id: matchId })!.state;
+      sessionUserId = present;
       if (state.turnTimer.awaitingPlayerId === present) {
-        await submitMatchAction(matchId, { type: "endTurn", playerId: present });
+        const action = state.pendingReaction
+          ? { type: "passReaction" as const, playerId: present }
+          : state.pendingChoice
+            ? chooseBotAction(state, present, "moyen")
+            : { type: "endTurn" as const, playerId: present };
+        expect((await submitMatchAction(matchId, action)).ok).toBe(true);
+        continue;
       }
+      expireDeadline(matchId);
+      await fetchMatchView(matchId);
+      manquees += 1;
     }
+    expect(manquees).toBe(RULES.MAX_MISSED_DEADLINES);
 
     const match = db.one("matches", { id: matchId })!;
     expect(match.status).toBe("finished");

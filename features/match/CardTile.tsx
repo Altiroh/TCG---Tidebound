@@ -932,13 +932,21 @@ export function CardTile({
         couleursChromatiques.length > 0 ||
         (instance.statuses && instance.statuses.length > 0)) && (
         <div
-          className="pointer-events-none absolute inset-x-0 z-20 flex flex-wrap items-center justify-center px-1"
+          // Une seule ligne, toujours au-dessus de la carte : en passant à la
+          // ligne (« Inactive » + deux médaillons), le dernier badge tombait
+          // SUR l'illustration — la pastille de couleur au milieu de la carte.
+          className="pointer-events-none absolute inset-x-0 z-20 flex flex-nowrap items-center justify-center whitespace-nowrap px-1"
           style={{ top: -(badgeSize / 2 + 12), gap: badgeSize / 16 + 1.5 }}
         >
           {stats.inactive && (
             <span
-              className="pointer-events-auto rounded-full border border-amber-400/60 bg-black/90 font-semibold uppercase text-amber-300 shadow-md"
+              className="pointer-events-auto shrink-0 cursor-help rounded-full border border-amber-400/60 bg-black/90 font-semibold uppercase text-amber-300 shadow-md"
               style={{ padding: `${badgeSize / 38}px ${(badgeSize / 38) * 2.5}px`, fontSize: badgeSize / 3.2 }}
+              title={
+                instance.modifiers.some((modifier) => modifier.silenced)
+                  ? "Inactive — un effet l'entrave : elle ne peut ni attaquer, ni utiliser ses capacités."
+                  : "Inactive — la Marée actuelle la met hors d'état : elle ne peut ni attaquer, ni utiliser ses capacités tant que la Marée ne change pas."
+              }
             >
               Inactive
             </span>

@@ -28,16 +28,15 @@ import type { GameState, PlayerId, TurnTimerState } from "@/game/state/types";
  3. **Ce qui est mesuré, c'est l'inactivité, pas le tour.** Le même délai
  *    vaut pour tout ce que le moteur peut attendre — un tour, une fenêtre
  *    de réaction, un choix forcé : un joueur absent l'est devant l'un comme
- *    devant l'autre. Trois minutes sans le moindre geste, et la partie
- *    s'arrête (décision du 22/09/2026). La marge est volontairement large :
- *    un rafraîchissement de page, un tunnel, un téléphone qui se verrouille
- *    tiennent tous très largement dedans, et le joueur est prévenu à une
- *    minute puis à deux (`INACTIVITY_WARNINGS_MS`) avant que ça n'arrive.
+ *    devant l'autre.
  *
- *    La mécanique du COMPTEUR reste en place (`MAX_MISSED_DEADLINES`,
- *    aujourd'hui à 1) : c'est elle qui permettrait de repasser à « on perd
- *    un tour, pas la partie » en changeant une constante, si le playtest
- *    disait que trois minutes sont trop courtes.
+ * 4. **Un délai DÉGRESSIF, puis le forfait** (décision du 26/09/2026, qui
+ *    remplace « trois minutes et la partie s'arrête » du 22/09) : trois
+ *    minutes, et l'échéance fait passer le tour ; si le même joueur laisse
+ *    encore filer la suivante, il n'a plus que deux minutes, puis une ; la
+ *    TROISIÈME échéance d'affilée vaut forfait (`MAX_MISSED_DEADLINES`).
+ *    Un seul geste remet tout à zéro (`withDeadlineMet`) : un joueur
+ *    distrait perd un tour, un joueur parti perd la partie.
  */
 
 /** Qui le moteur attend, à cet instant — la seule réponse qui vaille pour un chrono. */
@@ -49,25 +48,41 @@ export function playerToAct(state: GameState): PlayerId | undefined {
 }
 
 /**
- * Combien de temps ce joueur a pour agir. Le MÊME délai quelle que soit la
- * question posée (décision du 22/09/2026) : ce qu'on mesure n'est pas « un
- * tour » mais « du mouvement sur le plateau », et un joueur absent l'est
- * autant devant une fenêtre de réaction que devant son tour.
+ * Combien de temps le joueur attendu a pour agir. Le MÊME délai quelle que
+ * soit la question posée (décision du 22/09/2026) : ce qu'on mesure n'est
+ * pas « un tour » mais « du mouvement sur le plateau ». Il se RÉDUIT d'une
+ * minute par échéance déjà manquée d'affilée (3, puis 2, puis 1 minute).
  */
-export function allowanceFor(_state: GameState): number {
-  return RULES.INACTIVITY_LIMIT_MS;
+export function allowanceFor(
+  state: GameState,
+  playerId: PlayerId | undefined = state.turnTimer?.awaitingPlayerId ?? playerToAct(state)
+): number {
+  const missed = playerId ? missedDeadlines(state, playerId) : 0;
+  return Math.max(RULES.INACTIVITY_FLOOR_MS, RULES.INACTIVITY_LIMIT_MS - Math.max(0, missed) * RULES.INACTIVITY_STEP_MS);
+}
+
+/**
+ * Seuils d'alerte en TEMPS RESTANT, tirés des paliers du délai plein
+ * (`INACTIVITY_WARNINGS_MS`, en écoulé sur trois minutes) : attention à
+ * deux minutes de la fin, urgence à une. Un délai réduit démarre donc
+ * directement au bon niveau d'alerte — le joueur a déjà laissé filer.
+ */
+export function warningThresholdsRemaining(): number[] {
+  return RULES.INACTIVITY_WARNINGS_MS.map((ecoule) => RULES.INACTIVITY_LIMIT_MS - ecoule).sort((a, b) => b - a);
 }
 
 /**
  * Paliers d'alerte encore à venir pour le chrono en cours, en horodatages
- * absolus. Lus par l'interface pour prévenir à une minute, puis à deux,
- * avant l'échéance elle-même — ils ne changent rien à l'état.
+ * absolus — seulement ceux qui tombent APRÈS le départ du chrono et avant
+ * l'échéance. Lus par l'interface ; ils ne changent rien à l'état.
  */
 export function warningTimes(state: GameState): number[] {
   const timer = state.turnTimer;
   if (!timer) return [];
-  const depart = timer.deadlineAt - allowanceFor(state);
-  return RULES.INACTIVITY_WARNINGS_MS.map((ecoule) => depart + ecoule);
+  const allowance = allowanceFor(state);
+  return warningThresholdsRemaining()
+    .filter((restant) => restant < allowance)
+    .map((restant) => timer.deadlineAt - restant);
 }
 
 /**
@@ -89,7 +104,7 @@ export function refreshTurnTimer(state: GameState, now: number): GameState {
   const current = state.turnTimer;
   if (current && current.awaitingPlayerId === awaiting && current.kind === kind) return state;
 
-  const timer: TurnTimerState = { awaitingPlayerId: awaiting, kind, deadlineAt: now + allowanceFor(state) };
+  const timer: TurnTimerState = { awaitingPlayerId: awaiting, kind, deadlineAt: now + allowanceFor(state, awaiting) };
   return { ...state, turnTimer: timer };
 }
 

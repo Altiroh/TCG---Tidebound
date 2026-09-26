@@ -322,6 +322,11 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
   // prouvé qu'il est là (son compteur d'échéances retombe à zéro), puis le
   // chrono se recale sur la question suivante.
   if (action.type !== "timeout") finalState = withDeadlineMet(finalState, action.playerId);
+  // Après une échéance manquée, le chrono repart TOUJOURS : si le même
+  // joueur reste attendu devant la même sorte de question (une seconde
+  // fenêtre de réaction), garder l'échéance déjà dépassée enchaînerait les
+  // échéances — et le forfait — en une fraction de seconde.
+  if (action.type === "timeout" && finalState.turnTimer) finalState = { ...finalState, turnTimer: undefined };
   finalState = refreshTurnTimer(finalState, Date.now());
 
   return { ok: true, state: finalState, events: finalEvents };

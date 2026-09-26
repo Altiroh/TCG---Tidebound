@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { GameState, PlayerId } from "@/game";
-import { RULES, allowanceFor } from "@/game";
+import { nextTimeoutEndsGame, warningThresholdsRemaining } from "@/game";
 
 /**
  * Le temps qui reste avant que l'inactivité n'arrête la partie.
@@ -16,9 +16,10 @@ import { RULES, allowanceFor } from "@/game";
  *
  * Trois minutes, c'est long : un compteur qui hurlerait dès la première
  * seconde serait du bruit. Il reste donc DISCRET tant qu'il n'y a rien à
- * craindre, et ne prend la parole qu'aux paliers d'alerte
- * (`RULES.INACTIVITY_WARNINGS_MS`, une minute puis deux) — c'est à ce
- * moment-là qu'un joueur a besoin de le voir.
+ * craindre, et ne prend la parole qu'aux paliers d'alerte (deux minutes puis
+ * une avant la fin, `warningThresholdsRemaining`). Il dit aussi ce que
+ * coûtera l'échéance : le tour les deux premières fois d'affilée (le délai
+ * fond alors à 2, puis 1 minute), le forfait la troisième.
  */
 
 interface TurnTimerBadgeProps {
@@ -31,15 +32,14 @@ interface TurnTimerBadgeProps {
 type Palier = "calme" | "attention" | "urgence";
 
 /**
- * À quel palier on en est, d'après le temps ÉCOULÉ depuis le dernier geste.
- * Les paliers sont ceux du moteur : le joueur voit exactement l'échelle sur
- * laquelle il est jugé.
+ * À quel palier on en est, d'après le temps RESTANT (seuils du moteur :
+ * attention à deux minutes, urgence à une). Un délai déjà réduit par des
+ * échéances manquées démarre donc directement en alerte.
  */
-function palierPour(ecoule: number): Palier {
-  const paliers = [...RULES.INACTIVITY_WARNINGS_MS].sort((a, b) => a - b);
-  const dernier = paliers[paliers.length - 1];
-  if (dernier !== undefined && ecoule >= dernier) return "urgence";
-  if (paliers[0] !== undefined && ecoule >= paliers[0]) return "attention";
+function palierPour(restant: number): Palier {
+  const [attention, urgence] = warningThresholdsRemaining();
+  if (urgence !== undefined && restant <= urgence) return "urgence";
+  if (attention !== undefined && restant <= attention) return "attention";
   return "calme";
 }
 
@@ -65,7 +65,10 @@ export function TurnTimerBadge({ state, viewerId }: TurnTimerBadgeProps) {
 
   const mine = timer.awaitingPlayerId === viewerId;
   const seconds = Math.max(0, Math.ceil(remaining / 1000));
-  const palier = palierPour(allowanceFor(state) - remaining);
+  const palier = palierPour(remaining);
+  // Ce que l'échéance coûtera VRAIMENT : le tour (ou la fenêtre) les deux
+  // premières fois d'affilée, la partie la troisième.
+  const forfait = nextTimeoutEndsGame(state, timer.awaitingPlayerId);
   // Ce qu'on attend, et de qui. Pendant SON tour, le joueur qui voit la
   // partie s'arrêter doit savoir que c'est l'adversaire qui a la main
   // (fenêtre de réaction, choix imposé) : « Tour de l'adversaire » était
@@ -99,12 +102,16 @@ export function TurnTimerBadge({ state, viewerId }: TurnTimerBadgeProps) {
       {palier !== "calme" && (
         <span className="ml-1.5 font-semibold">
           {mine
-            ? palier === "urgence"
-              ? "— joue, ou la partie s'arrête"
-              : "— sans geste, la partie s'arrêtera"
-            : palier === "urgence"
-              ? "— sans réponse, la partie s'arrête"
-              : "— l'adversaire ne joue plus"}
+            ? forfait
+              ? "— joue, ou c'est le forfait"
+              : palier === "urgence"
+                ? "— joue, ou ton tour passe"
+                : "— sans geste, ton tour passera"
+            : forfait
+              ? "— sans réponse, il déclare forfait"
+              : palier === "urgence"
+                ? "— sans réponse, son tour passe"
+                : "— l'adversaire ne joue plus"}
         </span>
       )}
     </div>

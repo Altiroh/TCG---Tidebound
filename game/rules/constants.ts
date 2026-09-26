@@ -187,8 +187,15 @@ export const RULES = {
   // Trois minutes laissent largement la marge d'un rafraîchissement de
   // page, d'un tunnel ou d'un téléphone qui se verrouille ; passé ce délai,
   // le joueur n'est plus là et l'autre a le droit de finir.
-  /** Temps sans aucun geste au bout duquel la partie s'arrête. */
+  /** Temps sans aucun geste accordé au joueur à jour de ses échéances. */
   INACTIVITY_LIMIT_MS: 180_000,
+  /**
+   * DÉLAI DÉGRESSIF (décision du 26/09/2026) : chaque échéance manquée
+   * d'affilée retire une minute au délai suivant du même joueur — 3 min,
+   * puis 2, puis 1. Jamais moins que le plancher.
+   */
+  INACTIVITY_STEP_MS: 60_000,
+  INACTIVITY_FLOOR_MS: 60_000,
   /**
    * Paliers d'ALERTE, en millisecondes écoulés depuis le dernier geste.
    * Purement informatifs : ils ne changent rien à l'état, ils préviennent.
@@ -197,10 +204,12 @@ export const RULES = {
    */
   INACTIVITY_WARNINGS_MS: [60_000, 120_000] as readonly number[],
   /**
-   * Échéances CONSÉCUTIVES manquées valant abandon automatique. À 1 : avec
-   * trois minutes de délai, laisser passer l'échéance n'est plus un
-   * accident de réseau — c'est une absence, et la faire payer deux fois ne
-   * ferait qu'ajouter six minutes d'attente à celui qui est resté.
+   * Échéances CONSÉCUTIVES manquées valant abandon automatique. À 3
+   * (décision du 26/09/2026) : les deux premières font PASSER le tour (ou
+   * refermer la fenêtre, refuser le choix), la troisième vaut forfait. Avec
+   * le délai dégressif, celui qui reste n'attend jamais plus de 3 + 2 + 1 =
+   * 6 minutes un joueur parti — et un joueur distrait perd un tour, pas la
+   * partie.
    */
-  MAX_MISSED_DEADLINES: 1,
+  MAX_MISSED_DEADLINES: 3,
 } as const;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { playButtonClick } from "@/lib/sound";
 
 /**
@@ -24,8 +24,12 @@ import { playButtonClick } from "@/lib/sound";
  * qui se propose est une vraie question, et elle mérite l'écran.
  */
 
-/** Passé ce délai sans réponse, la fenêtre se referme d'elle-même (équivaut à « Passer »). */
-const TIMEOUT_MS = 30_000;
+/**
+ * Passé ce délai sans réponse, la fenêtre se referme d'elle-même (équivaut à
+ * « Passer »). 12 s, et une jauge qui se vide : à 30 s sans rien voir, on
+ * attendait sans savoir quoi (retour du 26/09/2026).
+ */
+const TIMEOUT_MS = 12_000;
 
 interface ShipWindowHintProps {
   /** Nom de la capacité, tel qu'il est imprimé sur la fiche du Navire. */
@@ -39,9 +43,19 @@ export function ShipWindowHint({ name, onPass }: ShipWindowHintProps) {
 
   // Monté une seule fois par fenêtre (le parent ne le rend que pendant
   // qu'elle est ouverte) : le minuteur ne se réarme pas à chaque rendu.
+  const [secondsLeft, setSecondsLeft] = useState(Math.ceil(TIMEOUT_MS / 1000));
+  const [draining, setDraining] = useState(false);
   useEffect(() => {
+    const startedAt = Date.now();
     const id = setTimeout(() => onPassRef.current(), TIMEOUT_MS);
-    return () => clearTimeout(id);
+    const tick = setInterval(() => setSecondsLeft(Math.max(0, Math.ceil((TIMEOUT_MS - (Date.now() - startedAt)) / 1000))), 250);
+    // La jauge part pleine, puis se vide sur toute la durée (transition CSS).
+    const frame = requestAnimationFrame(() => setDraining(true));
+    return () => {
+      clearTimeout(id);
+      clearInterval(tick);
+      cancelAnimationFrame(frame);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -51,9 +65,22 @@ export function ShipWindowHint({ name, onPass }: ShipWindowHintProps) {
   }
 
   return (
-    <div className="pointer-events-none fixed left-1/2 top-12 z-[65] flex -translate-x-1/2 items-center gap-3 rounded-full border border-white/20 bg-slate-950/75 px-4 py-2 text-xs text-slate-200 backdrop-blur-md">
+    <div className="pointer-events-none fixed left-1/2 top-12 z-[65] flex -translate-x-1/2 items-center gap-3 overflow-hidden rounded-full border border-white/20 bg-slate-950/75 px-4 py-2 text-xs text-slate-200 backdrop-blur-md">
       <span>
         Marée annoncée — <span className="font-semibold text-white">{name}</span> peut encore agir.
+      </span>
+      {/* Le temps qui reste avant que la fenêtre ne se referme seule. */}
+      <span className="tabular-nums text-[11px] text-slate-300/80" aria-label={`Se referme dans ${secondsLeft} secondes`}>
+        {secondsLeft} s
+      </span>
+      <span aria-hidden className="absolute inset-x-0 bottom-0 h-[2px] bg-white/10">
+        <span
+          className="block h-full origin-left bg-cyan-300/80"
+          style={{
+            transform: draining ? "scaleX(0)" : "scaleX(1)",
+            transition: draining ? `transform ${TIMEOUT_MS}ms linear` : "none",
+          }}
+        />
       </span>
       <button
         type="button"
