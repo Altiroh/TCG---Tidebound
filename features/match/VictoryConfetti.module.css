@@ -1,0 +1,78 @@
+/*
+ * La pluie de confettis de la victoire (`VictoryConfetti.tsx`) : par-dessus
+ * tout l'écran, sans jamais intercepter un clic. Chaque pièce TOMBE (chute,
+ * balancement latéral, dérive, rotation dans le plan) tandis que son sprite
+ * se RETOURNE en 3D : c'est ce battement qui fait des confettis, pas des
+ * vignettes qui glissent.
+ */
+.layer {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  overflow: hidden;
+  pointer-events: none;
+  perspective: 900px;
+}
+
+.flake {
+  position: absolute;
+  top: 0;
+  display: block;
+  animation-name: confetti-fall;
+  animation-timing-function: cubic-bezier(0.35, 0.05, 0.6, 1);
+  animation-fill-mode: both;
+  will-change: transform, opacity;
+}
+
+.sprite {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35));
+  animation-name: confetti-flip;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  backface-visibility: visible;
+}
+
+@keyframes confetti-fall {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -12vh, 0) rotate(0deg);
+  }
+  6% {
+    opacity: 1;
+  }
+  25% {
+    transform: translate3d(var(--sway), 18vh, 0) rotate(calc(var(--spin) * 0.25));
+  }
+  50% {
+    transform: translate3d(calc(var(--drift) * 0.5 - var(--sway)), 48vh, 0) rotate(calc(var(--spin) * 0.5));
+  }
+  75% {
+    transform: translate3d(calc(var(--drift) * 0.75 + var(--sway)), 78vh, 0) rotate(calc(var(--spin) * 0.75));
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--drift), 108vh, 0) rotate(var(--spin));
+  }
+}
+
+@keyframes confetti-flip {
+  from {
+    transform: rotate3d(1, var(--axis), 0, 0deg);
+  }
+  to {
+    transform: rotate3d(1, var(--axis), 0, 360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .layer {
+    display: none;
+  }
+}

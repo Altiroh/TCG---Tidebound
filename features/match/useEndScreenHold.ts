@@ -4,9 +4,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { GameState } from "@/game";
 import { describeFinalBlow } from "@/features/match/finalBlow";
 
-/** Tenue de la table après un coup fatal (le temps de ses animations), puis après un abandon / délai. */
-const HOLD_STRUCK_MS = 3400;
-const HOLD_OTHER_MS = 1600;
+/**
+ * Tenue de la table après un coup fatal, puis après un abandon / délai.
+ * Le coup fatal se voit en ~1,8 s (attaque 0,92 s + Navire qui encaisse
+ * 0,9 s, `useAttackPresentation`) : 3,4 s laissaient une attente « un poil
+ * longue » avant l'écran de fin (retour du 26/09/2026).
+ */
+const HOLD_STRUCK_MS = 2200;
+const HOLD_OTHER_MS = 1000;
 
 /**
  * La partie vient de finir : la table RESTE à l'écran le temps que les

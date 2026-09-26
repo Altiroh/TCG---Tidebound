@@ -18,6 +18,7 @@ import type { VoyageRecap } from "@/features/quests/voyageActions";
 import { useNoMenuAmbiance } from "@/components/menu/MenuAmbiance";
 import { playMatchEnd, playQuestCompleted, startEndTheme } from "@/lib/sound";
 import styles from "@/features/match/MatchResultScreen.module.css";
+import { VictoryConfetti } from "@/features/match/VictoryConfetti";
 
 /** Quatre quêtes au plus sur la ligne, comme la composition de référence. */
 const QUEST_SLOTS = 4;
@@ -340,6 +341,9 @@ export function MatchResultScreen({ outcome, player, matchId, preview, audience,
           )}
         </nav>
       </div>
+
+      {/* La victoire : une pluie de confettis, quelques secondes, par-dessus tout. */}
+      {isVictory && <VictoryConfetti />}
     </div>
   );
 }
