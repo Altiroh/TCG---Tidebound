@@ -46,9 +46,10 @@
   filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.55));
 }
 
-/* Boussole, cordages et gemmes : par-dessus le pied du panneau des familles. */
+/* Boussole, cordages et gemmes : SOUS les fiches (le panneau des familles, qu'il
+   coiffait sur la maquette, est masqué pour l'instant). */
 .decorLeft {
-  z-index: 2;
+  z-index: 0;
   left: 0;
   bottom: 0;
   height: min(43%, 23cqw);
@@ -217,25 +218,34 @@
 }
 
 /* ── Une famille : bandeau + rangée ─────────────────────────────────── */
+/*
+ * Sans le panneau des familles, la table est RECENTRÉE : bandeaux et rangées
+ * sur la même colonne (7 % → 87 % de la scène, le décor de droite mordant
+ * sur le reste), les flèches de part et d'autre de la rangée.
+ */
 .section {
   position: absolute;
+  left: 7%;
+  width: 80%;
   outline: none;
 }
 
 /* Les dos de carte : en haut, grandes fiches. */
 .section[data-order="0"] {
-  left: 17.5%;
-  top: 3.5%;
-  width: 73%;
-  height: 57.5%;
+  top: 3.4%;
+  height: 56.6%;
 }
 
-/* Les cadres de Navire : en bas, fiches compactes, jusqu'au bord de la table. */
+/* Les cadres de Navire : en bas, fiches compactes. */
 .section[data-order="1"] {
-  left: 17.94%;
-  top: 60.2%;
-  width: 80.1%;
-  height: 39.8%;
+  top: 60.4%;
+  height: 38.2%;
+}
+
+/* Panneau des familles rallumé : la colonne reprend sa place à droite de lui. */
+.stage[data-panel="true"] .section {
+  left: 19%;
+  width: 71%;
 }
 
 .banner {
@@ -249,18 +259,19 @@
   filter: drop-shadow(0 0.4cqw 0.6cqw rgba(0, 0, 0, 0.45));
 }
 
+.banner {
+  left: 0;
+  width: 100%;
+}
+
 .section[data-order="0"] .banner {
-  left: 1%;
-  top: 0.6%;
-  width: 97.5%;
-  height: 17.8%;
+  top: 0;
+  height: 18.2%;
 }
 
 .section[data-order="1"] .banner {
-  left: 1.64%;
-  top: 2%;
-  width: 90%;
-  height: 23.4%;
+  top: 0;
+  height: 25%;
 }
 
 .bannerIcon {
@@ -314,6 +325,12 @@
 .bannerError {
   color: #9b2a17;
   font-weight: 600;
+}
+
+.bannerLink {
+  color: #0f5566;
+  font-weight: 700;
+  text-decoration: underline;
 }
 
 /* ── Étagères ───────────────────────────────────────────────────────── */
@@ -392,39 +409,45 @@
   outline-offset: 2px;
 }
 
-/* ── Flèches de laiton : seulement quand la rangée déborde ──────────── */
+/*
+ * ── Flèches : celles de la table des Decks ──────────────────────────
+ * (`decks/liste/fleche.webp`, pointe à gauche ; retournée pour la suivante),
+ * de part et d'autre de la rangée, à mi-hauteur. Seulement quand la rangée
+ * déborde : une flèche qui ne mène nulle part n'a rien à faire là.
+ */
 .pageArrow {
   position: absolute;
   z-index: 2;
-  display: grid;
-  place-items: center;
-  width: 2.1cqw;
-  height: 2.1cqw;
+  width: 2.5cqw;
+  aspect-ratio: 300 / 471;
   padding: 0;
   border: 0;
-  background: none;
-  color: #d9a441;
+  background: url("/assets/decks/liste/fleche.webp") center / contain no-repeat;
   cursor: pointer;
-  filter: drop-shadow(0 0.1cqw 0.2cqw rgba(0, 0, 0, 0.7));
-  transform: translateY(-50%);
-  transition: color 140ms ease-out, opacity 140ms ease-out;
+  filter: drop-shadow(0 0.4cqw 0.5cqw rgba(0, 0, 0, 0.6));
+  translate: 0 -50%;
+  transition: transform 140ms ease, opacity 140ms ease;
 }
 
 .pageArrow[hidden] {
   display: none;
 }
 
-.pageArrow svg {
-  width: 100%;
-  height: auto;
+.pageArrow[data-side="prev"] {
+  left: -3cqw;
 }
 
-.pageArrow[data-side="prev"] svg {
+.pageArrow[data-side="next"] {
+  right: -3cqw;
   transform: scaleX(-1);
 }
 
-.pageArrow:hover:not(:disabled) {
-  color: #f3c86b;
+.pageArrow[data-side="prev"]:hover:not(:disabled) {
+  transform: translateX(-8%);
+}
+
+.pageArrow[data-side="next"]:hover:not(:disabled) {
+  transform: scaleX(-1) translateX(-8%);
 }
 
 .pageArrow:disabled {
@@ -437,33 +460,14 @@
   outline-offset: 2px;
 }
 
-.section[data-order="0"] .pageArrow {
-  top: 9.5%;
-}
-
-.section[data-order="0"] .pageArrow[data-side="prev"] {
-  left: -1.6%;
-}
-
-.section[data-order="0"] .pageArrow[data-side="next"] {
-  left: 98.8%;
-}
-
-.section[data-order="1"] .pageArrow {
-  top: 15.4%;
-}
-
-.section[data-order="1"] .pageArrow[data-side="prev"] {
-  left: -1.9%;
-}
-
-.section[data-order="1"] .pageArrow[data-side="next"] {
-  left: 92.4%;
+/* À mi-hauteur de la rangée. */
+.pageArrow {
+  top: 52%;
 }
 
 /* ── La rangée de fiches ────────────────────────────────────────────── */
 .row {
-  position: absolute;
+  position: relative;
   display: flex;
   align-items: flex-start;
   gap: 1.08cqw;
@@ -482,24 +486,40 @@
   display: none;
 }
 
-.section[data-order="0"] .row,
-.section[data-order="0"] .empty {
-  left: 3.4%;
-  top: 17.4%;
-  width: 95.8%;
-  height: 82.6%;
+/* La BANDE disponible sous le bandeau ; la rangée s'y centre, à la largeur
+   exacte des fiches entières qui y tiennent (mesurée, cf. FamilySection). */
+.band {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
 }
 
-.section[data-order="1"] .row,
-.section[data-order="1"] .empty {
-  left: 1.4%;
-  top: 24.3%;
-  width: 98.6%;
-  height: 75.7%;
+.section[data-order="0"] .band {
+  top: 18.2%;
+  bottom: 0;
+}
+
+.section[data-order="1"] .band {
+  top: 25%;
+  bottom: 0;
+}
+
+/* La rangée et ses flèches : la largeur exacte des fiches entières. */
+.rowFrame {
+  position: relative;
+  max-width: 100%;
+  height: 100%;
+}
+
+.row {
+  width: 100%;
+  height: 100%;
 }
 
 .empty {
-  position: absolute;
+  align-self: center;
   display: grid;
   place-content: center;
   margin: 0;
@@ -529,12 +549,12 @@
 }
 
 .section[data-variant="large"] .tile {
-  width: 14.77cqw;
+  width: 14cqw;
   aspect-ratio: 247 / 400;
 }
 
 .section[data-variant="compact"] .tile {
-  width: 9.87cqw;
+  width: 9.4cqw;
   aspect-ratio: 165 / 245;
 }
 
@@ -792,17 +812,6 @@
   letter-spacing: 0.03em;
 }
 
-/* Une condition de déblocage est une information, pas un décor : elle passe sur
-   deux lignes plutôt que d'être rognée (le texte entier reste en infobulle). */
-.action[data-long="true"] .actionText {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  padding: 0;
-  line-height: 1.12;
-  text-align: center;
-  white-space: normal;
-}
 
 .section[data-variant="large"] .action[data-long="true"] {
   font-size: max(7px, 0.66cqw);

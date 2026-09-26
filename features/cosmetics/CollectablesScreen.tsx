@@ -31,6 +31,14 @@ const VARIANT: Record<string, "large" | "compact"> = {
 };
 
 /**
+ * Le PANNEAU DES FAMILLES (à gauche sur la maquette) est masqué pour
+ * l'instant : les deux familles sont déjà à l'écran l'une sous l'autre, il
+ * ne menait nulle part (retour du 26/09/2026). La table se recentre sans
+ * lui ; le rallumer, c'est cette constante — et rendre sa place à gauche.
+ */
+const FAMILY_PANEL = false;
+
+/**
  * CE QU'ON REGARDE. La vitrine s'ouvre sur ce qu'on POSSÈDE — c'est la
  * collection du joueur, et elle doit lui appartenir avant de lui montrer
  * ce qui lui manque. Le reste est à un clic.
@@ -145,7 +153,8 @@ export function CollectablesScreen({ view }: { view: CollectablesView }) {
         {/* eslint-disable-next-line @next/next/no-img-element -- décor peint, taille pilotée par la feuille */}
         <img src="/assets/collectables/decor-droite.webp" alt="" aria-hidden draggable={false} className={styles.decorRight} />
 
-        <div className={styles.stage}>
+        <div className={styles.stage} data-panel={FAMILY_PANEL ? "true" : undefined}>
+          {FAMILY_PANEL && (
           <aside className={styles.families} aria-label="Familles de collectables">
             <h1 className={styles.familiesTitle}>
               <AnchorIcon />
@@ -186,6 +195,7 @@ export function CollectablesScreen({ view }: { view: CollectablesView }) {
               </p>
             )}
           </aside>
+          )}
 
           {view.families.map((family, index) => (
             <FamilySection
@@ -203,6 +213,9 @@ export function CollectablesScreen({ view }: { view: CollectablesView }) {
                 setShelves((current) => ({ ...current, [family.kind]: shelf }));
               }}
               onFocusFamily={() => setActiveKind(family.kind)}
+              // Sans le panneau, l'invitation à se connecter prend la place
+              // de l'accroche du premier bandeau.
+              signInHint={!FAMILY_PANEL && !view.isSignedIn && index === 0}
               isSignedIn={view.isSignedIn}
               balance={balance}
               onBought={afterPurchase}
@@ -228,6 +241,8 @@ interface FamilySectionProps {
   shelf: Shelf;
   onPickShelf: (shelf: Shelf) => void;
   onFocusFamily: () => void;
+  /** L'accroche cède la place à l'invitation à se connecter. */
+  signInHint: boolean;
   isSignedIn: boolean;
   balance: number;
   onBought: (balance: number) => void;
@@ -249,6 +264,7 @@ function FamilySection({
   shelf,
   onPickShelf,
   onFocusFamily,
+  signInHint,
   isSignedIn,
   balance,
   onBought,
@@ -262,19 +278,40 @@ function FamilySection({
   useEffect(() => setOptimistic(null), [family.equipped]);
   const current = optimistic ?? family.equipped;
 
+  /*
+   * DES FICHES ENTIÈRES, JAMAIS UNE DEMIE. La bande disponible est mesurée,
+   * et la rangée prend la largeur exacte du nombre de fiches qui y tiennent
+   * — centrée dans la bande. Une fiche coupée au bord (sous le décor de
+   * droite) faisait déborder la table (retour du 26/09/2026).
+   */
+  const bandRef = useRef<HTMLDivElement>(null);
   const rowRef = useRef<HTMLUListElement>(null);
+  const [rowWidth, setRowWidth] = useState<number | null>(null);
   const [scrollable, setScrollable] = useState({ prev: false, next: false });
   const measure = useCallback(() => {
+    const band = bandRef.current;
     const row = rowRef.current;
-    if (!row) return;
+    if (!band || !row) return;
+    const tile = row.firstElementChild as HTMLElement | null;
+    if (tile) {
+      const style = getComputedStyle(row);
+      const gap = parseFloat(style.columnGap) || 0;
+      const padding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+      const width = tile.offsetWidth;
+      const fit = Math.max(1, Math.floor((band.clientWidth - padding + gap) / (width + gap)));
+      const count = Math.min(fit, row.children.length);
+      setRowWidth(Math.ceil(count * width + (count - 1) * gap + padding));
+    }
     const max = row.scrollWidth - row.clientWidth;
     setScrollable({ prev: row.scrollLeft > 2, next: row.scrollLeft < max - 2 });
   }, []);
   useEffect(() => {
+    const band = bandRef.current;
     const row = rowRef.current;
-    if (!row) return undefined;
+    if (!band || !row) return undefined;
     measure();
     const observer = new ResizeObserver(measure);
+    observer.observe(band);
     observer.observe(row);
     row.addEventListener("scroll", measure, { passive: true });
     return () => {
@@ -283,11 +320,13 @@ function FamilySection({
     };
   }, [measure, shelf, family.options.length]);
 
+  /** Une page = toutes les fiches visibles : la suivante arrive entière. */
   function page(direction: 1 | -1) {
     const row = rowRef.current;
     if (!row) return;
     playButtonClick();
-    row.scrollBy({ left: direction * row.clientWidth * 0.8, behavior: "smooth" });
+    const gap = parseFloat(getComputedStyle(row).columnGap) || 0;
+    row.scrollBy({ left: direction * (row.clientWidth + gap), behavior: "smooth" });
   }
 
   function choose(id: string) {
@@ -333,6 +372,13 @@ function FamilySection({
             <span className={styles.bannerError} role="alert">
               {failure}
             </span>
+          ) : signInHint ? (
+            <span className={styles.bannerHint}>
+              <Link href="/connexion" className={styles.bannerLink} onClick={() => playButtonClick()}>
+                Connecte-toi
+              </Link>{" "}
+              pour équiper tes collectables.
+            </span>
           ) : (
             <span className={styles.bannerHint}>{FAMILY_HINTS[family.kind] ?? ""}</span>
           )}
@@ -364,58 +410,59 @@ function FamilySection({
         </Link>
       </header>
 
-      <button
-        type="button"
-        className={styles.pageArrow}
-        data-side="prev"
-        hidden={!scrollable.prev && !scrollable.next}
-        disabled={!scrollable.prev}
-        onClick={() => page(-1)}
-        aria-label={`${family.label} précédents`}
-      >
-        <ArrowIcon />
-      </button>
-      <button
-        type="button"
-        className={styles.pageArrow}
-        data-side="next"
-        hidden={!scrollable.prev && !scrollable.next}
-        disabled={!scrollable.next}
-        onClick={() => page(1)}
-        aria-label={`${family.label} suivants`}
-      >
-        <ArrowIcon />
-      </button>
-
-      {shown.length === 0 ? (
-        <p className={styles.empty}>
-          {shelf === "owned"
-            ? "Rien dans cette famille pour l'instant."
-            : shelf === "sale"
-              ? "Rien en vente dans cette famille."
-              : "Tout est débloqué dans cette famille."}{" "}
-          <button type="button" className={styles.emptyLink} onClick={() => onPickShelf("all")}>
-            Tout voir
-          </button>
-        </p>
-      ) : (
-        <ul ref={rowRef} className={styles.row}>
-          {shown.map((option) => (
-            <Tile
-              key={option.id}
-              kind={family.kind}
-              option={option}
-              variant={variant}
-              selected={option.id === current}
-              busy={busy}
-              isSignedIn={isSignedIn}
-              balance={balance}
-              onChoose={choose}
-              onBought={onBought}
+      {/* La BANDE disponible sous le bandeau : la rangée s'y centre, à la
+          largeur exacte des fiches entières, ses flèches collées à ses bords. */}
+      <div ref={bandRef} className={styles.band}>
+        {shown.length === 0 ? (
+          <p className={styles.empty}>
+            {shelf === "owned"
+              ? "Rien dans cette famille pour l'instant."
+              : shelf === "sale"
+                ? "Rien en vente dans cette famille."
+                : "Tout est débloqué dans cette famille."}{" "}
+            <button type="button" className={styles.emptyLink} onClick={() => onPickShelf("all")}>
+              Tout voir
+            </button>
+          </p>
+        ) : (
+          <div className={styles.rowFrame} style={rowWidth ? { width: rowWidth } : undefined}>
+            <button
+              type="button"
+              className={styles.pageArrow}
+              data-side="prev"
+              hidden={!scrollable.prev && !scrollable.next}
+              disabled={!scrollable.prev}
+              onClick={() => page(-1)}
+              aria-label={`${family.label} précédents`}
             />
-          ))}
-        </ul>
-      )}
+            <button
+              type="button"
+              className={styles.pageArrow}
+              data-side="next"
+              hidden={!scrollable.prev && !scrollable.next}
+              disabled={!scrollable.next}
+              onClick={() => page(1)}
+              aria-label={`${family.label} suivants`}
+            />
+            <ul ref={rowRef} className={styles.row}>
+              {shown.map((option) => (
+                <Tile
+                  key={option.id}
+                  kind={family.kind}
+                  option={option}
+                  variant={variant}
+                  selected={option.id === current}
+                  busy={busy}
+                  isSignedIn={isSignedIn}
+                  balance={balance}
+                  onChoose={choose}
+                  onBought={onBought}
+                />
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
     </section>
   );
 }
@@ -471,6 +518,7 @@ function Tile({
       ) : (
         <TileAction
           option={option}
+          compact={variant === "compact"}
           selected={selected}
           equippable={equippable}
           busy={busy === option.id}
@@ -485,6 +533,7 @@ function Tile({
 /** Ce que dit le bouton d'une fiche : équiper, équipé, ou pourquoi pas encore. */
 function TileAction({
   option,
+  compact,
   selected,
   equippable,
   busy,
@@ -492,6 +541,8 @@ function TileAction({
   onClick,
 }: {
   option: CollectableOption;
+  /** Fiche compacte : une plaque plus courte. */
+  compact: boolean;
   selected: boolean;
   equippable: boolean;
   busy: boolean;
@@ -500,10 +551,15 @@ function TileAction({
 }) {
   let label: string;
   let detail: string | undefined;
-  if (option.masked) label = "À découvrir";
+  // La plaque dit déjà « À découvrir » : le bouton dit pourquoi on ne peut pas l'équiper.
+  if (option.masked) label = "Verrouillé";
   else if (!option.owned) {
-    label = option.progress ? `${option.requirement} · ${option.progress}` : (option.requirement ?? "Verrouillé");
-    detail = label;
+    // La condition ENTIÈRE en infobulle ; dans la plaque, ce qui y tient sur
+    // une ligne — la progression d'abord sacrifiée sur une fiche compacte.
+    const requirement = option.requirement ?? "Verrouillé";
+    const full = option.progress ? `${requirement} · ${option.progress}` : requirement;
+    label = compact || full.length > 22 ? requirement : full;
+    detail = full;
   } else if (option.artPending) label = "Obtenu · visuel à venir";
   else if (selected) label = "Équipé";
   else label = busy ? "…" : "Équiper";
@@ -513,7 +569,7 @@ function TileAction({
       type="button"
       className={styles.action}
       data-muted={!equippable || selected ? "true" : undefined}
-      data-long={label.length > 16 ? "true" : undefined}
+      data-long={label.length > (compact ? 11 : 16) ? "true" : undefined}
       onClick={onClick}
       disabled={disabled || selected}
       aria-pressed={equippable ? selected : undefined}
@@ -662,12 +718,3 @@ function HelmIcon() {
   );
 }
 
-function ArrowIcon() {
-  return (
-    <svg viewBox="0 0 40 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M4 12h30" strokeWidth={2.6} />
-      <path d="M26 4l9 8-9 8" strokeWidth={2.6} />
-      <path d="M4 7v10" strokeWidth={2.2} />
-    </svg>
-  );
-}
