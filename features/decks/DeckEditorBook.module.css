@@ -1738,10 +1738,8 @@
   color: rgba(241, 211, 138, 0.7);
 }
 
-/* Le cœur : TOUJOURS visible dans la Collection (au survol seulement dans l'Éditeur). */
-.collection .center [class*="Shelf_heart__"] {
-  opacity: 1;
-}
+/* Le cœur : comme dans l'Éditeur, visible au SURVOL de la carte seulement — ou
+   toujours, s'il est déjà plein (carte en favori). Règle du 26/09/2026. */
 
 /* ── « Revendre le surplus » : en bout de barre, sur la plaque ── */
 .workspace .surplusButton {
