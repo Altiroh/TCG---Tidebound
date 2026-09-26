@@ -125,7 +125,7 @@ function photoLayers(player: MatchResultScreenProps["player"]): { src: string | 
 export function MatchResultScreen({ outcome, player, matchId, preview, audience, onExit, exitHref }: MatchResultScreenProps) {
   const look = OUTCOMES[outcome];
   const isVictory = outcome === "victory";
-  const { shown } = useMatchAudience({ matchId, preview: preview?.audience, verdict: audience });
+  const { shown } = useMatchAudience({ matchId, preview: preview?.audience });
   const reward = useMatchReward(matchId, preview?.reward);
   const { entries, voyage } = useMatchQuestRecap(matchId, preview?.quests, preview?.voyage);
   const [filled, setFilled] = useState(false);

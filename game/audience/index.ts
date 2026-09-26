@@ -12,6 +12,8 @@ export {
   audienceMood,
   audienceTarget,
   nextAudience,
+  nextAudienceWeighted,
+  projectedAudience,
   type AudienceOpponent,
 } from "@/game/audience/analyzeMatch";
 export { readMatchFacts } from "@/game/audience/facts";
@@ -19,9 +21,7 @@ export type { AudienceSignal, AudienceTraits, MatchAnalysis, MatchFacts, SignalF
 export {
   HABITUATION,
   LEAD_GAP,
-  LIVE_SPECTATORS_PER_POINT,
-  liveAudience,
-  liveAudienceDelta,
+  momentBalance,
   readMoments,
   readTimeline,
   type AudienceMoment,

@@ -15,17 +15,16 @@ export type { MatchAudienceVerdict } from "@/features/audience/verdict";
  * dessous le VERDICT — l'humeur de la salle, ses temps forts, ce qui a pesé
  * en plus et en moins. C'est l'écran de fin qui le place (`MatchEndScreen`).
  *
- * Une fois la partie jugée côté serveur, le compteur DÉFILE vers la nouvelle
- * audience, cran après cran comme un cours de bourse : vert quand il monte,
- * rouge quand il baisse, puis il revient au blanc. Il part de là où le
- * compteur EN PARTIE s'était arrêté (`avant + liveDelta`) : d'un écran à
- * l'autre, il ne revient jamais en arrière pour rien.
+ * Une fois la partie jugée côté serveur, le compteur montre la nouvelle
+ * audience — celle que le compteur EN PARTIE annonçait déjà, calculé avec
+ * la même formule (`projectedAudience`) : d'un écran à l'autre, il ne
+ * bouge plus pour rien.
  *
  * Partie locale (`matchId` absent) : l'audience ne bouge pas, le compteur
  * montre simplement celle du joueur ; le verdict, lui, se lit quand même.
  */
 export function MatchAudienceTicker({ matchId, preview, verdict }: { matchId?: string; preview?: MatchAudienceSummary; verdict?: MatchAudienceVerdict }) {
-  const { shown, trend, summary } = useMatchAudience({ matchId, preview, verdict });
+  const { shown, trend, summary } = useMatchAudience({ matchId, preview });
 
   if (shown === null && !verdict) return null;
   const weighed = verdict ? weightiestSignals(verdict.signals) : [];

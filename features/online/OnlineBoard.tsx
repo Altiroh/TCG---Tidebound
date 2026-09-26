@@ -236,6 +236,7 @@ export function OnlineBoard({
       <TableBoard
         state={state}
         viewerId={myUserId}
+        matchId={matchId}
         turnOwnerLabel={isMyTurn ? "À toi" : opponentLabel}
         attacks={attacks}
         volleys={volleys}

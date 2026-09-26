@@ -84,10 +84,32 @@ export function audienceTarget(spectacle: number): number {
 
 /** Audience après une partie. Elle monte ET descend, en douceur. */
 export function nextAudience(audience: number, spectacle: number, options: { opponent?: AudienceOpponent } = {}): number {
+  return nextAudienceWeighted(audience, spectacle, AUDIENCE_OPPONENT_WEIGHT[options.opponent ?? "joueur"]);
+}
+
+/**
+ * La même formule, le POIDS de la partie donné tel quel (0 à 1) — c'est ce
+ * que reçoit la fonction Postgres `record_match_audience` (`p_weight`). Un
+ * poids nul (partie locale, jamais jugée) laisse l'audience où elle est.
+ */
+export function nextAudienceWeighted(audience: number, spectacle: number, weight: number): number {
   const current = Math.max(0, audience);
-  const rate = AUDIENCE_RATE * AUDIENCE_OPPONENT_WEIGHT[options.opponent ?? "joueur"];
+  const rate = AUDIENCE_RATE * Math.max(0, Math.min(1, weight));
   const delta = Math.max((audienceTarget(spectacle) - current) * rate, -current * AUDIENCE_MAX_LOSS_SHARE);
   return Math.max(0, Math.round(current + delta));
+}
+
+/**
+ * LE COMPTEUR EN PARTIE : l'audience qu'aurait le joueur si la partie
+ * s'arrêtait là — le spectacle COURANT passé dans la formule de fin, avec le
+ * poids de l'adversaire. Il bouge au fil des moments (ils infléchissent le
+ * spectacle), et à la dernière action il vaut exactement ce que le serveur
+ * va écrire : l'écran de fin ne reprend plus rien de ce que la table avait
+ * promis (décision du 26/09/2026 — le direct montait à 1 300, le verdict
+ * disait 1 133).
+ */
+export function projectedAudience(base: number, state: GameState, playerId: PlayerId, weight: number): number {
+  return nextAudienceWeighted(base, analyzeMatch(state, playerId).spectacle, weight);
 }
 
 /** Humeur du public, en une phrase, pour un spectacle donné. */

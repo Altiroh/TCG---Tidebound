@@ -6,9 +6,10 @@ import {
   audienceMilestonesReached,
   audienceMood,
   audiencePrize,
-  liveAudience,
-  liveAudienceDelta,
+  momentBalance,
   nextAudience,
+  nextAudienceWeighted,
+  projectedAudience,
   nextAudienceMilestone,
   readMatchFacts,
   readMoments,
@@ -131,7 +132,8 @@ describe("moteur d'audience — le verdict de fin", () => {
 });
 
 describe("moments — le public réagit coup par coup, avec discernement", () => {
-  const live = (events: unknown[]) => liveAudience(1000, game(events, { status: "active" }), "p1");
+  // Le sens dans lequel la salle bouge : le bilan des moments, autour de 1 000.
+  const live = (events: unknown[]) => 1000 + momentBalance(game(events, { status: "active" }), "p1");
 
   it("abattre une unité adverse fait monter la salle", () => {
     const kill = readMoments(game([summon("a", "p1"), summon("d", "p2"), attack("a", "d"), destroy("d")], { status: "active" }), "p1");
@@ -213,10 +215,21 @@ describe("moments — le public réagit coup par coup, avec discernement", () =>
     expect(brilliant.spectacle - plain.spectacle).toBe(15);
   });
 
-  it("le compteur en direct suit les moments, conduite comprise", () => {
-    const state = game([endTurn("p1")], { status: "active" });
-    expect(liveAudienceDelta(state, "p1")).toBeLessThan(0);
-    expect(liveAudience(0, state, "p1")).toBe(0);
+  it("le bilan des moments compte la conduite", () => {
+    expect(momentBalance(game([endTurn("p1")], { status: "active" }), "p1")).toBeLessThan(0);
+  });
+
+  it("le compteur en partie annonce EXACTEMENT ce que le verdict écrira", () => {
+    const kills = Array.from({ length: 6 }, (_, i) => [turnOf("p1", i + 1), summon(`d${i}`, "p2"), { ...at(i + 1), type: "DESTROY", instanceId: `d${i}`, reason: "effect" }]).flat();
+    const final = game(kills, { winnerId: "p1" });
+    const spectacle = analyzeMatch(final, "p1").spectacle;
+    const weights = { joueur: 1, difficile: 0.7, moyen: 0.5, facile: 0.25 } as const;
+    for (const opponent of ["joueur", "difficile", "moyen", "facile"] as const) {
+      expect(projectedAudience(1100, final, "p1", weights[opponent])).toBe(nextAudience(1100, spectacle, { opponent }));
+    }
+    // Une partie locale (jamais jugée) ne fait pas bouger le compteur.
+    expect(projectedAudience(1100, final, "p1", 0)).toBe(1100);
+    expect(nextAudienceWeighted(0, 0, 1)).toBe(0);
   });
 });
 

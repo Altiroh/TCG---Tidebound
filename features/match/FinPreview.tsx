@@ -52,7 +52,6 @@ function Ecran() {
                   { id: "erreur.timeout", family: "erreur", label: "Des hésitations qui ont lassé", weight: -12, salience: 7 },
                   { id: "maitrise.solid", family: "maitrise", label: "Un jeu solide", weight: 5, salience: 2 },
                 ],
-                liveDelta: -35,
               }
             : {
                 spectacle: 78,
@@ -63,7 +62,6 @@ function Ecran() {
                   { id: "tension.swings", family: "tension", label: "Un duel indécis jusqu'au bout", weight: 8, salience: 7 },
                   { id: "moments.brilliant", family: "maitrise", label: "Des coups d'éclat qui ont porté", weight: 7, salience: 6 },
                 ],
-                liveDelta: 70,
               }
       }
       preview={{

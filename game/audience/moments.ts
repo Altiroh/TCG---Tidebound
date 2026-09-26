@@ -388,21 +388,12 @@ export function readMoments(state: GameState, playerId: PlayerId): AudienceMomen
   return readTimeline(state, playerId).moments;
 }
 
-/** Spectateurs gagnés ou perdus par point de moment, en direct. */
-export const LIVE_SPECTATORS_PER_POINT = 5;
-
-/** Ce que les moments ont fait au compteur en direct depuis le début de la partie. */
-export function liveAudienceDelta(state: GameState, playerId: PlayerId): number {
-  const total = readMoments(state, playerId).reduce((sum, moment) => sum + moment.weight, 0);
-  return Math.round(total * LIVE_SPECTATORS_PER_POINT);
-}
-
 /**
- * Le compteur EN PARTIE : l'audience du joueur, qui défile au fil des
- * moments — elle part de ce qu'elle était et bouge à chaque coup. L'écran de
- * fin repart de CETTE valeur pour glisser vers le verdict du serveur : le
- * compteur ne revient jamais en arrière d'un écran à l'autre.
+ * Le bilan BRUT des moments de `playerId` (somme de leurs poids). Il
+ * n'est plus compté en spectateurs : le compteur en partie passe par la
+ * formule de fin (`projectedAudience`), dont le spectacle intègre ce
+ * bilan, borné.
  */
-export function liveAudience(base: number, state: GameState, playerId: PlayerId): number {
-  return Math.max(0, base + liveAudienceDelta(state, playerId));
+export function momentBalance(state: GameState, playerId: PlayerId): number {
+  return readMoments(state, playerId).reduce((sum, moment) => sum + moment.weight, 0);
 }

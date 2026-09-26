@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { analyzeMatch, audienceMood, liveAudience, readMoments, type AudienceMoment } from "@/game/audience";
+import { analyzeMatch, audienceMood, nextAudienceWeighted, readMoments, type AudienceMoment } from "@/game/audience";
 import type { GameState, PlayerId } from "@/game";
-import { fetchMyAudience } from "@/features/audience/actions";
+import { fetchLiveAudienceContext } from "@/features/audience/actions";
 import { AudienceTip } from "@/features/audience/AudienceTip";
 import { RollingNumber } from "@/features/audience/RollingNumber";
 import { useStockTicker } from "@/features/audience/useStockTicker";
@@ -17,10 +17,13 @@ const CAPTION_MIN_WEIGHT = 2;
 /**
  * Le public, EN DIRECT, dans le coin haut droit de la table : un œil et le
  * nombre de spectateurs, sur une pastille sombre (comme au panneau des
- * Mécènes). Le nombre suit les MOMENTS de la partie (`game/audience/
- * moments.ts`) : un bon coup le fait monter, une mauvaise décision ou une
- * remontée adverse le fait baisser — et il défile comme un cours de bourse,
- * vert en montant, rouge en baissant, puis revient au blanc.
+ * Mécènes). Le nombre est l'audience qu'aurait le joueur si la partie
+ * s'arrêtait là (`projectedAudience` : spectacle courant, formule et poids
+ * d'adversaire du verdict) — à la fin, c'est EXACTEMENT ce que le serveur
+ * écrit. Les moments infléchissent le spectacle : un bon coup le fait
+ * monter, une mauvaise décision le fait baisser, et il défile comme un
+ * cours de bourse, vert en montant, rouge en baissant, puis revient au blanc.
+ * Contre un bot facile, la partie pèse peu : le compteur bouge peu.
  *
  * Un moment qui compte s'écrit aussi, un instant, sous la pastille — « Une
  * bordée au Navire adverse », « Une attaque mal engagée » : le joueur sait
@@ -29,17 +32,17 @@ const CAPTION_MIN_WEIGHT = 2;
  * Recalculé seulement quand le journal s'allonge. L'humeur de la salle
  * (spectacle du moment) se lit au survol.
  */
-export function LiveAudience({ state, viewerId }: { state: GameState; viewerId: PlayerId }) {
-  const [base, setBase] = useState<number | null>(null);
+export function LiveAudience({ state, viewerId, matchId }: { state: GameState; viewerId: PlayerId; matchId?: string }) {
+  const [base, setBase] = useState<{ audience: number; weight: number } | null>(null);
   useEffect(() => {
     let cancelled = false;
-    fetchMyAudience()
-      .then((audience) => !cancelled && setBase(audience))
-      .catch(() => !cancelled && setBase(0));
+    fetchLiveAudienceContext(matchId)
+      .then((context) => !cancelled && setBase(context))
+      .catch(() => !cancelled && setBase({ audience: 0, weight: 0 }));
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [matchId]);
 
   // Le journal ne fait que s'allonger : sa longueur suffit à savoir s'il a changé.
   const logLength = state.eventLog.length;
@@ -48,11 +51,7 @@ export function LiveAudience({ state, viewerId }: { state: GameState; viewerId: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [logLength, state.status, viewerId]
   );
-  const target = useMemo(
-    () => (base === null ? null : liveAudience(base, state, viewerId)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [base, logLength, viewerId]
-  );
+  const target = base === null ? null : nextAudienceWeighted(base.audience, spectacle, base.weight);
   const latest = useMemo(
     () => {
       const moments = readMoments(state, viewerId);
