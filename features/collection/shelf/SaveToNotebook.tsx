@@ -14,14 +14,15 @@ const POPOVER_WIDTH = 300;
 const EDGE = 12;
 
 /**
- * « ENREGISTRER » — le geste de Pinterest, pour ranger une carte dans un
+ * « RANGER » — le geste de Pinterest, pour ranger une carte dans un
  * carnet :
  *
- *   [ Carnet ▾ ] [ Enregistrer ]
+ *   [ Carnet ▾ ] [ Ranger ]
  *
  * Le bouton range la carte d'un clic dans le carnet affiché (le dernier
  * utilisé, `CardShelfContextValue.target`) ; déjà rangée, il devient
- * « Enregistré », et un nouveau clic l'en retire. Le sélecteur ouvre le
+ * « Rangé », et un nouveau clic l'en retire. (« Enregistrer » jusqu'au
+ * 26/09/2026 : le mot du jeu est « ranger », un carnet se range.) Le sélecteur ouvre le
  * panneau de choix : recherche, « Meilleurs choix », tous les carnets avec
  * leur couverture, et « Créer un carnet » en pied.
  *
@@ -70,12 +71,12 @@ export function SaveToNotebook({ cardId, variant }: { cardId: string; variant: "
         aria-pressed={saved}
         onClick={() => {
           playButtonClick();
-          // Aucun carnet encore : « Enregistrer » ouvre le choix, où l'on en crée un.
+          // Aucun carnet encore : « Ranger » ouvre le choix, où l'on en crée un.
           if (!target) return setOpen(true);
           shelf.setInNotebook(target.id, cardId, !saved);
         }}
       >
-        {saved ? "Enregistré" : "Enregistrer"}
+        {saved ? "Rangé" : "Ranger"}
       </button>
       {open && <SavePopover anchor={anchorRef} cardId={cardId} shelf={shelf} onClose={() => setOpen(false)} />}
     </div>
@@ -183,7 +184,7 @@ function SavePopover({
             <span className={styles.popoverThumbEmpty} aria-hidden />
           )}
           <span className={styles.popoverName}>{notebook.name}</span>
-          {inside ? <span className={styles.popoverSaved}>Enregistré</span> : <span className={styles.popoverCount}>{notebook.cardIds.length}</span>}
+          {inside ? <span className={styles.popoverSaved}>Rangé</span> : <span className={styles.popoverCount}>{notebook.cardIds.length}</span>}
         </button>
       </li>
     );
@@ -194,11 +195,11 @@ function SavePopover({
       ref={panelRef}
       className={styles.popover}
       role="dialog"
-      aria-label="Enregistrer dans un carnet"
+      aria-label="Ranger dans un carnet"
       style={{ width: POPOVER_WIDTH, top: position?.top ?? -9999, left: position?.left ?? -9999 }}
       onClick={(event) => event.stopPropagation()}
     >
-      <p className={styles.popoverTitle}>Enregistrer</p>
+      <p className={styles.popoverTitle}>Ranger</p>
       {shelf.shelf.notebooks.length > 0 && (
         <input
           autoFocus

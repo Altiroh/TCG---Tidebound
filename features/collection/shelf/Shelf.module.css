@@ -106,7 +106,7 @@
   font-size: 12px;
 }
 
-/* ── « [Carnet ▾] [Enregistrer] » — le geste de Pinterest ─────────────── */
+/* ── « [Carnet ▾] [Ranger] » — le geste de Pinterest ─────────────────── */
 
 .saveBar {
   display: flex;
@@ -179,24 +179,26 @@
   white-space: nowrap;
 }
 
-/* Le bouton qui range : rouge de lanterne, franc — le seul geste fort de la carte. */
+/* Le bouton qui range : VERT, franc — le seul geste fort de la carte. Le
+   vert de « Jouable » : ranger, c'est garder (décision du 26/09/2026 ; il
+   était rouge de lanterne, qui se lisait comme « supprimer »). */
 .saveButton {
   flex: none;
   padding: 7px 14px;
   border: 0;
   border-radius: var(--tb-radius-pill);
-  background: #c8414b;
-  color: #fff6ee;
+  background: #3a8f5c;
+  color: #f3fff7;
   font: inherit;
   font-size: 12.5px;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 2px 10px rgba(200, 65, 75, 0.45);
+  box-shadow: 0 2px 10px rgba(58, 143, 92, 0.45);
   transition: background 120ms ease;
 }
 
 .saveButton:hover {
-  background: #b0343e;
+  background: #2f7a4d;
 }
 
 /* Déjà rangée : le bouton s'éteint, un clic l'en retire. */

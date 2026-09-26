@@ -56,7 +56,7 @@ export function notebookCover(notebook: Pick<CardNotebook, "coverCardId" | "card
 }
 
 /**
- * Le carnet où « Enregistrer » range une carte d'un clic — comme le tableau
+ * Le carnet où « Ranger » range une carte d'un clic — comme le tableau
  * affiché à côté du bouton rouge de Pinterest : le DERNIER utilisé s'il
  * existe encore, sinon le plus récemment touché, sinon aucun (le bouton
  * ouvre alors le choix, où l'on peut en créer un).

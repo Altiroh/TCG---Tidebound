@@ -58,7 +58,7 @@ const GridCell = memo(function GridCell({
       style={index < STAGGER_COUNT ? { animationDelay: `${index * 15}ms` } : undefined}
     >
       {/*
-       * La carte et sa barre « [Carnet ▾] [Enregistrer] » se soulèvent
+       * La carte et sa barre « [Carnet ▾] [Ranger] » se soulèvent
        * ENSEMBLE, au survol de la cellule (`.cardLift`). Soulevée seule
        * (`CardTile.liftOnHover`), la carte laissait la barre en place ; et
        * dès que la souris passait sur la barre, la carte perdait son survol
@@ -84,7 +84,7 @@ const GridCell = memo(function GridCell({
         draggable={Boolean(onCardDragStart)}
         onDragStart={onCardDragStart ? (event) => onCardDragStart(def, event) : undefined}
       />
-      {/* « Enregistrer » au survol (à la Pinterest) — rien hors d'un écran qui fournit l'étagère. */}
+      {/* « Ranger » au survol (à la Pinterest) — rien hors d'un écran qui fournit l'étagère. */}
       <SaveToNotebook cardId={def.id} variant="overlay" />
       </div>
       {cellExtras && <div className={styles.cellExtras}>{cellExtras(def)}</div>}

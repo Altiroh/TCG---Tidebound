@@ -486,7 +486,7 @@
 }
 
 /*
- * LA CARTE ET SA BARRE « [Carnet ▾] [Enregistrer] », soulevées ENSEMBLE au
+ * LA CARTE ET SA BARRE « [Carnet ▾] [Ranger] », soulevées ENSEMBLE au
  * survol de la CELLULE — et non de la carte seule : la barre suit la carte,
  * et la carte reste levée tant que la souris est sur la barre. Mêmes valeurs
  * que `CardTile.liftOnHover` (translation, échelle, inclinaison, ombre).

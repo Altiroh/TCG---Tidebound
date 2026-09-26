@@ -53,7 +53,7 @@ export interface CardShelfContextValue {
   deleteNotebook: (notebookId: string) => Promise<ShelfResult>;
   setCover: (notebookId: string, cardId: string | null) => void;
   /**
-   * Le carnet où « Enregistrer » range d'un clic (`resolveTargetNotebook`) :
+   * Le carnet où « Ranger » range d'un clic (`resolveTargetNotebook`) :
    * le dernier utilisé, retenu sur l'appareil et partagé par toutes les
    * cartes de l'écran.
    */
@@ -143,7 +143,7 @@ export function CardShelfProvider({
       },
       notebooksOf: (cardId) => shelf.notebooks.filter((notebook) => notebook.cardIds.includes(cardId)),
       setInNotebook: (notebookId, cardId, inside) => {
-        // Ranger dans un carnet en fait la cible du prochain « Enregistrer ».
+        // Ranger dans un carnet en fait la cible du prochain « Ranger ».
         if (inside) setLastTarget(notebookId);
         optimistic(
           (current) => withCardInNotebook(current, notebookId, cardId, inside, new Date().toISOString()),

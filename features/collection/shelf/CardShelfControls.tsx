@@ -8,7 +8,7 @@ import styles from "@/features/collection/shelf/Shelf.module.css";
 
 /**
  * Favori et carnets dans la fiche d'une carte : le cœur, puis le geste de
- * Pinterest — « [Carnet ▾] [Enregistrer] » (`SaveToNotebook`), le même que
+ * Pinterest — « [Carnet ▾] [Ranger] » (`SaveToNotebook`), le même que
  * sur la grille au survol.
  *
  * Rien hors d'une étagère disponible : la fiche ouverte d'un booster, du
