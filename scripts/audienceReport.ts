@@ -112,7 +112,7 @@ for (const [id, entry] of [...moments].sort((a, b) => b[1].games - a[1].games)) 
 
 // Un joueur qui enchaîne ces parties, dans l'ordre, en duel puis contre le bot.
 console.log("\nAUDIENCE D'UN JOUEUR QUI ENCHAÎNE CES PARTIES");
-for (const vsBot of [false, true]) {
+for (const opponent of ["joueur", "difficile", "moyen", "facile"] as const) {
   let audience = 0;
   let best = 0;
   const reachedAt = new Map<number, number>();
@@ -120,13 +120,13 @@ for (const vsBot of [false, true]) {
   const swings: number[] = [];
   spectacles.forEach((entry, index) => {
     const before = audience;
-    audience = nextAudience(audience, entry.value, { vsBot });
+    audience = nextAudience(audience, entry.value, { opponent });
     if (index >= 15) swings.push(audience - before);
     best = Math.max(best, audience);
     for (const milestone of AUDIENCE_MILESTONES) if (best >= milestone.threshold && !reachedAt.has(milestone.threshold)) reachedAt.set(milestone.threshold, index + 1);
     for (const sponsor of SPONSORS) if (best >= sponsor.audienceRequired && !reachedAt.has(-sponsor.audienceRequired)) reachedAt.set(-sponsor.audienceRequired, index + 1);
   });
-  console.log(`  ${vsBot ? "contre le bot" : "en duel     "} : audience finale ${audience}, record ${best}`);
+  console.log(`  ${opponent === "joueur" ? "en duel" : `bot ${opponent}`} : audience finale ${audience}, record ${best}`);
   const worst = Math.min(0, ...swings);
   console.log(`    variation par partie (installée) : moyenne ±${round(mean(swings.map(Math.abs)))} · pire chute ${worst}`);
   const milestones = AUDIENCE_MILESTONES.map((m) => `${m.threshold} → ${reachedAt.get(m.threshold) ?? "jamais"}`).join(" · ");

@@ -1,3 +1,4 @@
+import type { BotDifficulty } from "@/game/bot/types";
 import type { GameState, PlayerId } from "@/game/state/types";
 import { ANALYZERS } from "@/game/audience/analyzers";
 import { readMatchFacts } from "@/game/audience/facts";
@@ -44,21 +45,37 @@ export function analyzeMatch(state: GameState, playerId: PlayerId): MatchAnalysi
  * d'une part seulement de l'écart (`AUDIENCE_RATE`) :
  *
  *   écart   = S × 25 − audience
- *   delta   = écart × 0,15 (× 0,5 contre le bot)
+ *   delta   = écart × 0,15 × poids de l'adversaire
  *   plancher: une partie ne retire jamais plus de 6 % de l'audience
  *
  * Tenir un spectacle S amène l'audience vers 25 S. Une belle partie la fait
  * monter, une partie terne la fait baisser — mais une seule partie ratée ne
- * défait pas des semaines de jeu, et une partie contre le bot pèse moitié
- * moins qu'un vrai duel. La fonction Postgres `record_match_audience` porte
- * EXACTEMENT les mêmes constantes (migration 20261013120000).
+ * défait pas des semaines de jeu, et une partie contre un bot pèse d'autant
+ * moins que le bot est facile à battre (`AUDIENCE_OPPONENT_WEIGHT`). La
+ * fonction Postgres `record_match_audience` porte EXACTEMENT les mêmes
+ * constantes, le poids lui étant transmis (migration 20261015120000).
  */
 export const AUDIENCE_PER_SPECTACLE = 25;
 export const AUDIENCE_RATE = 0.15;
-/** Part du poids d'une partie contre le bot. */
-export const AUDIENCE_BOT_FACTOR = 0.5;
 /** Part maximale de l'audience qu'une seule partie peut retirer. */
 export const AUDIENCE_MAX_LOSS_SHARE = 0.06;
+
+/** Contre qui la partie s'est jouée : un joueur, ou un bot de tel niveau. */
+export type AudienceOpponent = "joueur" | BotDifficulty;
+
+/**
+ * Ce que pèse une partie aux yeux du public, selon l'adversaire (PROVISOIRE).
+ * Un duel entre joueurs compte plein ; contre un bot, d'autant moins qu'il
+ * est facile à battre — sinon enchaîner des bots faciles serait la voie la
+ * plus rapide vers une grande audience. Sert aussi à la prime du public
+ * (`prize.ts`).
+ */
+export const AUDIENCE_OPPONENT_WEIGHT: Readonly<Record<AudienceOpponent, number>> = {
+  joueur: 1,
+  difficile: 0.7,
+  moyen: 0.5,
+  facile: 0.25,
+};
 
 /** Audience vers laquelle un spectacle tenu attire le joueur. */
 export function audienceTarget(spectacle: number): number {
@@ -66,9 +83,9 @@ export function audienceTarget(spectacle: number): number {
 }
 
 /** Audience après une partie. Elle monte ET descend, en douceur. */
-export function nextAudience(audience: number, spectacle: number, options: { vsBot?: boolean } = {}): number {
+export function nextAudience(audience: number, spectacle: number, options: { opponent?: AudienceOpponent } = {}): number {
   const current = Math.max(0, audience);
-  const rate = AUDIENCE_RATE * (options.vsBot ? AUDIENCE_BOT_FACTOR : 1);
+  const rate = AUDIENCE_RATE * AUDIENCE_OPPONENT_WEIGHT[options.opponent ?? "joueur"];
   const delta = Math.max((audienceTarget(spectacle) - current) * rate, -current * AUDIENCE_MAX_LOSS_SHARE);
   return Math.max(0, Math.round(current + delta));
 }

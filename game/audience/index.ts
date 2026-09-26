@@ -3,8 +3,8 @@
  */
 export { ANALYZERS, MOMENTS_CAP, type Analyzer } from "@/game/audience/analyzers";
 export {
-  AUDIENCE_BOT_FACTOR,
   AUDIENCE_MAX_LOSS_SHARE,
+  AUDIENCE_OPPONENT_WEIGHT,
   AUDIENCE_PER_SPECTACLE,
   AUDIENCE_RATE,
   BASELINE_SPECTACLE,
@@ -12,6 +12,7 @@ export {
   audienceMood,
   audienceTarget,
   nextAudience,
+  type AudienceOpponent,
 } from "@/game/audience/analyzeMatch";
 export { readMatchFacts } from "@/game/audience/facts";
 export type { AudienceSignal, AudienceTraits, MatchAnalysis, MatchFacts, SignalFamily } from "@/game/audience/types";

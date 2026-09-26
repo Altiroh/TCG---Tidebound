@@ -3,6 +3,7 @@ import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
 import { awardMatchReward } from "@/features/progression/rewards";
 import { botCountsAsPvp } from "@/features/progression/botRewardPolicy";
+import { audienceOpponent } from "@/game/progression";
 import { recordMatchQuestProgress } from "@/features/quests/questService";
 import { recordMatchAudience } from "@/features/progression/hubService";
 import { isRecentDeck } from "@/features/decks/recentDecks";
@@ -283,6 +284,7 @@ async function settleFinishedMatch(match: MatchRow, finalState: GameState): Prom
         finalState,
         enginePlayerId: userId,
         botCountsAsPvp: botAsPvp,
+        botDifficulty: match.bot_difficulty,
       });
       // Le public juge la partie, puis les mécènes y puisent leur intérêt —
       // une seule fois (`reward` est nul quand la partie avait déjà été
@@ -291,9 +293,10 @@ async function settleFinishedMatch(match: MatchRow, finalState: GameState): Prom
         ? recordMatchAudience(match.id, userId, finalState, {
             accountLevel: reward.levelAfter,
             playStreak: reward.playStreak,
-            // Contre le bot, la partie pèse moitié moins sur l'audience — sauf
-            // sous la dérogation de développement, comme pour les quêtes.
-            vsBot: vsBot && !botAsPvp,
+            // Contre un bot, la partie pèse d'autant moins sur l'audience que le
+            // bot est facile — sauf sous la dérogation de développement, comme
+            // pour les quêtes (`AUDIENCE_OPPONENT_WEIGHT`).
+            opponent: audienceOpponent(match.mode, match.bot_difficulty, botAsPvp),
             prize: reward.audiencePrize,
           })
         : Promise.resolve();

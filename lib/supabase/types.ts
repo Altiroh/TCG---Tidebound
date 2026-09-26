@@ -558,6 +558,8 @@ export interface Database {
           /** Prime du public octroyée avec la partie, notée pour l'écran de fin. */
           prize_xp: number;
           prize_tides: number;
+          /** Poids de l'adversaire (joueur 1, bots 0,7 / 0,5 / 0,25) — migration 20261015120000. */
+          opponent_weight: number | null;
         };
         Insert: Record<string, never>;
         Update: Record<string, never>;
@@ -678,7 +680,7 @@ export interface Database {
       };
       record_match_audience: {
         /** `p_vs_bot` : migration 20261013120000 — sans elle, la fonction ne connaît que les quatre premiers. */
-        Args: { p_user_id: string; p_match_id: string; p_spectacle: number; p_highlights?: string[]; p_vs_bot?: boolean; p_prize_xp?: number; p_prize_tides?: number };
+        Args: { p_user_id: string; p_match_id: string; p_spectacle: number; p_highlights?: string[]; p_vs_bot?: boolean; p_prize_xp?: number; p_prize_tides?: number; p_weight?: number };
         Returns: { ok: boolean; recorded?: boolean; audience?: number; before?: number; best?: number };
       };
       record_sponsor_interest: {

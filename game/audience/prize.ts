@@ -1,3 +1,5 @@
+import { AUDIENCE_OPPONENT_WEIGHT, type AudienceOpponent } from "@/game/audience/analyzeMatch";
+
 /**
  * LA PRIME DU PUBLIC — ce qu'UNE partie rapporte quand elle a plu.
  *
@@ -18,9 +20,10 @@
  *   60 – 79     captivé            10     1
  *   ≥ 80        debout             20     3
  *
- * Contre le bot : XP de moitié, et AUCUN Tide — la règle de partie contre le
- * bot (Tides à 0, Notion « Progression joueur » §7) reste verrouillée. Une
- * partie abandonnée sans jeu réel ne touche rien.
+ * Contre un bot : l'XP suit le poids de l'adversaire (`AUDIENCE_OPPONENT_WEIGHT` :
+ * difficile 70 %, moyen 50 %, facile 25 %), et AUCUN Tide — la règle de partie
+ * contre le bot (Tides à 0, Notion « Progression joueur » §7) reste
+ * verrouillée. Une partie abandonnée sans jeu réel ne touche rien.
  *
  * Valeurs PROVISOIRES, reportées dans Notion.
  */
@@ -48,14 +51,15 @@ export interface AudiencePrize {
 
 export function audiencePrize(
   spectacle: number,
-  options: { vsBot?: boolean; abandoned?: boolean } = {}
+  options: { opponent?: AudienceOpponent; abandoned?: boolean } = {}
 ): AudiencePrize {
   const tier = options.abandoned ? undefined : AUDIENCE_PRIZE_TIERS.find((entry) => spectacle >= entry.minSpectacle);
   if (!tier) return { spectacle, label: null, xp: 0, tides: 0 };
+  const opponent = options.opponent ?? "joueur";
   return {
     spectacle,
     label: tier.label,
-    xp: options.vsBot ? Math.round(tier.xp / 2) : tier.xp,
-    tides: options.vsBot ? 0 : tier.tides,
+    xp: Math.round(tier.xp * AUDIENCE_OPPONENT_WEIGHT[opponent]),
+    tides: opponent === "joueur" ? tier.tides : 0,
   };
 }

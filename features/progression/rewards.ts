@@ -1,6 +1,7 @@
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import type { GameState, PlayerId } from "@/game";
 import { analyzeMatch } from "@/game/audience";
+import type { BotDifficulty } from "@/game/bot/types";
 import {
   computeMatchReward,
   matchActivity,
@@ -42,6 +43,8 @@ export interface AwardMatchRewardInput {
    * là-bas, jamais ici.
    */
   botCountsAsPvp?: boolean;
+  /** Niveau du bot (`matches.bot_difficulty`) — il module la prime du public. */
+  botDifficulty?: BotDifficulty | null;
 }
 
 export interface AwardedMatchReward extends MatchReward {
@@ -76,6 +79,7 @@ export async function awardMatchReward({
   finalState,
   enginePlayerId,
   botCountsAsPvp = false,
+  botDifficulty,
 }: AwardMatchRewardInput): Promise<AwardedMatchReward | null> {
   try {
     const service = createSupabaseServiceRoleClient();
@@ -111,6 +115,7 @@ export async function awardMatchReward({
       activity,
       botCountsAsPvp,
       spectacle,
+      botDifficulty,
     });
 
     const { data, error } = await service.rpc("grant_match_progression", {

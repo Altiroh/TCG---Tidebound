@@ -9,6 +9,17 @@ import {
 } from "@/game/progression/constants";
 import { levelForTotalXp, rewardsForLevelsGained } from "@/game/progression/levels";
 import { audiencePrize } from "@/game/audience/prize";
+import type { AudienceOpponent } from "@/game/audience/analyzeMatch";
+import type { BotDifficulty } from "@/game/bot/types";
+
+/**
+ * Contre qui, aux yeux du public : un joueur, ou un bot de tel niveau (moyen
+ * par défaut). Sous la dérogation de développement, un bot compte comme un
+ * joueur — même règle que les Tides de partie.
+ */
+export function audienceOpponent(mode: MatchMode, botDifficulty: BotDifficulty | null | undefined, botCountsAsPvp = false): AudienceOpponent {
+  return mode === "bot" && !botCountsAsPvp ? (botDifficulty ?? "moyen") : "joueur";
+}
 import type {
   MatchActivity,
   MatchMode,
@@ -52,6 +63,8 @@ export interface MatchRewardInput {
    * paie la prime du public (`audiencePrize`). Absent : pas de prime.
    */
   spectacle?: number;
+  /** Niveau du bot (`matches.bot_difficulty`) : un bot facile paie moins la prime qu'un difficile. Défaut : moyen. */
+  botDifficulty?: BotDifficulty | null;
 }
 
 /**
@@ -110,6 +123,7 @@ export function computeMatchReward({
   activity,
   botCountsAsPvp = false,
   spectacle,
+  botDifficulty,
 }: MatchRewardInput): MatchReward {
   // Sous la dérogation, la partie contre bot n'est plus « bot » du tout aux
   // yeux des récompenses : un seul booléen, appliqué partout pareil.
@@ -137,7 +151,10 @@ export function computeMatchReward({
   if (dailyMatchesBonus) xp += DAILY_MATCHES_BONUS.xp;
 
   // --- Prime du public : le spectacle se paie, victoire ou défaite --------
-  const prize = spectacle === undefined ? null : audiencePrize(spectacle, { vsBot: isBot, abandoned: !meaningful });
+  const prize =
+    spectacle === undefined
+      ? null
+      : audiencePrize(spectacle, { opponent: audienceOpponent(mode, botDifficulty, botCountsAsPvp), abandoned: !meaningful });
   if (prize) {
     xp += prize.xp;
     tides += prize.tides;

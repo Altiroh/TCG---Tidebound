@@ -13,7 +13,7 @@ import {
   readMatchFacts,
   readMoments,
 } from "@/game/audience";
-import { computeMatchReward, sponsorPointsForMatch, sponsorWatches } from "@/game/progression";
+import { audienceOpponent, computeMatchReward, sponsorPointsForMatch, sponsorWatches } from "@/game/progression";
 import { getShipDefinition } from "@/game";
 import type { GameState } from "@/game";
 
@@ -237,9 +237,17 @@ describe("l'audience varie en douceur", () => {
 
   it("une partie contre le bot pèse moitié moins", () => {
     const pvp = nextAudience(500, 60) - 500;
-    const bot = nextAudience(500, 60, { vsBot: true }) - 500;
+    const bot = nextAudience(500, 60, { opponent: "moyen" }) - 500;
     expect(bot).toBeGreaterThan(0);
     expect(bot).toBeCloseTo(pvp / 2, 0);
+  });
+
+  it("un bot facile, plus aisé à battre, pèse moins qu'un bot difficile", () => {
+    const gain = (opponent: "joueur" | "difficile" | "moyen" | "facile") => nextAudience(500, 60, { opponent }) - 500;
+    expect(gain("joueur")).toBeGreaterThan(gain("difficile"));
+    expect(gain("difficile")).toBeGreaterThan(gain("moyen"));
+    expect(gain("moyen")).toBeGreaterThan(gain("facile"));
+    expect(gain("facile")).toBeGreaterThan(0);
   });
 
   it("un mécène qui regarde ne détourne pas les yeux pour une seule partie terne", () => {
@@ -270,8 +278,20 @@ describe("prime du public — chaque partie paie son spectacle", () => {
     expect(audiencePrize(90)).toMatchObject({ xp: 20, tides: 3, label: "Le public est debout" });
   });
 
-  it("contre le bot : XP de moitié, jamais de Tides (règle de partie contre le bot)", () => {
-    expect(audiencePrize(90, { vsBot: true })).toMatchObject({ xp: 10, tides: 0 });
+  it("contre un bot : XP selon son niveau, jamais de Tides (règle de partie contre le bot)", () => {
+    expect(audiencePrize(90, { opponent: "difficile" })).toMatchObject({ xp: 14, tides: 0 });
+    expect(audiencePrize(90, { opponent: "moyen" })).toMatchObject({ xp: 10, tides: 0 });
+    expect(audiencePrize(90, { opponent: "facile" })).toMatchObject({ xp: 5, tides: 0 });
+  });
+
+  it("le niveau du bot passe de la partie à la prime ; la dérogation de développement compte comme un joueur", () => {
+    expect(audienceOpponent("bot", "facile")).toBe("facile");
+    expect(audienceOpponent("bot", null)).toBe("moyen");
+    expect(audienceOpponent("bot", "facile", true)).toBe("joueur");
+    expect(audienceOpponent("matchmaking", null)).toBe("joueur");
+    const easy = computeMatchReward(input({ mode: "bot", spectacle: 85, botDifficulty: "facile" }));
+    const hard = computeMatchReward(input({ mode: "bot", spectacle: 85, botDifficulty: "difficile" }));
+    expect(hard.audiencePrize!.xp).toBeGreaterThan(easy.audiencePrize!.xp);
   });
 
   it("s'ajoute à la récompense de partie, victoire comme défaite héroïque", () => {

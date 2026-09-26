@@ -32,7 +32,7 @@ export {
 export type { CosmeticKind, LevelRewardItem } from "@/game/progression/levelRewards";
 
 export { levelForTotalXp, progressionView, rewardForLevel, rewardsForLevelsGained, totalXpForLevel, xpForLevel } from "@/game/progression/levels";
-export { computeMatchReward, isMeaningfulMatch, matchActivity, utcDayKey } from "@/game/progression/matchRewards";
+export { audienceOpponent, computeMatchReward, isMeaningfulMatch, matchActivity, utcDayKey } from "@/game/progression/matchRewards";
 export type { MatchRewardInput } from "@/game/progression/matchRewards";
 
 export {
