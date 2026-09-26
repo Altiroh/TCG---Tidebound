@@ -57,6 +57,14 @@ const GridCell = memo(function GridCell({
       className={`${styles.cardCell} ${missing ? styles.cardCellMissing : ""}`}
       style={index < STAGGER_COUNT ? { animationDelay: `${index * 15}ms` } : undefined}
     >
+      {/*
+       * La carte et sa barre « [Carnet ▾] [Enregistrer] » se soulèvent
+       * ENSEMBLE, au survol de la cellule (`.cardLift`). Soulevée seule
+       * (`CardTile.liftOnHover`), la carte laissait la barre en place ; et
+       * dès que la souris passait sur la barre, la carte perdait son survol
+       * et retombait sous elle.
+       */}
+      <div className={styles.cardLift}>
       <CardTile
         instance={instance}
         tideState="calme"
@@ -72,14 +80,15 @@ const GridCell = memo(function GridCell({
          * sert aussi l'Éditeur de deck, avait été oubliée.
          */
         showStatusBadges={false}
-        liftOnHover
         onClick={() => onCardClick(def.id)}
         draggable={Boolean(onCardDragStart)}
         onDragStart={onCardDragStart ? (event) => onCardDragStart(def, event) : undefined}
       />
-      {cellExtras && <div className={styles.cellExtras}>{cellExtras(def)}</div>}
-      {/* Le cœur des favoris, et « Enregistrer » au survol (à la Pinterest) — rien hors d'un écran qui fournit l'étagère. */}
+      {/* « Enregistrer » au survol (à la Pinterest) — rien hors d'un écran qui fournit l'étagère. */}
       <SaveToNotebook cardId={def.id} variant="overlay" />
+      </div>
+      {cellExtras && <div className={styles.cellExtras}>{cellExtras(def)}</div>}
+      {/* Le cœur des favoris : sous la carte, sur la ligne de la pastille ou de la barre −/+. */}
       <FavoriteToggle cardId={def.id} cardName={def.name} />
     </div>
   );

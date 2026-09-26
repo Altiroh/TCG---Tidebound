@@ -1389,12 +1389,22 @@
   height: clamp(26px, 3.2vh, 30px);
 }
 
-/* Le cœur des favoris : coin haut droit de la carte. */
+/* Le cœur des favoris (au survol, ou s'il est plein) : accroché SOUS la
+   barre −/+, à droite, en petit — il tient dans la gouttière entre deux
+   rangées sans mordre sur le badge de type de la carte du dessous. */
 .center [class*="Shelf_heart__"] {
-  top: 8px;
-  right: 8px;
+  top: calc(100% - 3px);
+  right: 3%;
   bottom: auto;
+  width: 22px;
+  height: 22px;
 }
+
+.center [class*="Shelf_heart__"] svg {
+  width: 12px;
+  height: 12px;
+}
+
 
 /* ── 5. Colonne droite : la densité de la référence ──
    Bannière ≈ 16/7,3 ; nom, badges et effectif serrés ; résumé toujours là
