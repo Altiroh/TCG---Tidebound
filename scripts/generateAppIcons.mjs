@@ -36,8 +36,8 @@ const PNG_OPTIONS = { palette: true, quality: 92, effort: 10, compressionLevel: 
 const BACKGROUND = { r: 5, g: 14, b: 26, alpha: 1 };
 
 /**
- * L'icône est déjà un carré à coins arrondis, bordé d'or, sur un fond
- * transparent : elle se suffit à elle-même. Les variantes ne diffèrent que
+ * L'icône est déjà un carré à coins arrondis sur un fond transparent (la
+ * vague déborde un peu sur les côtés) : elle se suffit à elle-même. Les variantes ne diffèrent que
  * par la façon dont la plateforme la découpe.
  */
 
@@ -49,8 +49,8 @@ async function plain(size) {
 /**
  * Variante `maskable` : Android peut rogner l'icône en cercle, en carré
  * arrondi ou en goutte. Seuls les 80 % centraux sont garantis visibles, donc
- * l'icône est réduite à 78 % et posée sur le navy — sinon la bordure dorée
- * serait la première chose coupée.
+ * l'icône est réduite à 78 % et posée sur le navy — sinon les bords du carré
+ * et la vague seraient les premiers coupés.
  */
 async function maskable(size) {
   const inner = Math.round(size * 0.78);
