@@ -200,6 +200,9 @@ describe("boucle complète — partie contre bot, arbitrée côté serveur", () 
     // --- collection --------------------------------------------------------
     // De quoi s'offrir un booster, quelle qu'ait été l'issue de la partie.
     db.one("player_currency", { user_id: USER })!.balance += 1000;
+    // Des paliers de niveau peuvent déjà en avoir donné : le nombre de parties
+    // jouées jusqu'à la première quête dépend des quêtes du jour, donc de la date.
+    const stockBefore = db.one("player_boosters", { user_id: USER, booster_definition_id: "standard" })?.quantity ?? 0;
     const purchase = await purchaseBooster("standard", 1);
     expect(purchase.error).toBeUndefined();
     expect(purchase.ok).toBe(true);
@@ -212,7 +215,8 @@ describe("boucle complète — partie contre bot, arbitrée côté serveur", () 
     const collection = db.table("player_cards").filter((row) => row.user_id === USER);
     expect(collection.length).toBeGreaterThan(0);
     expect(collection.reduce((total, row) => total + row.quantity, 0)).toBe(8);
-    expect(db.one("player_boosters", { user_id: USER, booster_definition_id: "standard" })!.quantity).toBe(0);
+    // Acheté puis ouvert : la réserve revient à ce qu'elle était.
+    expect(db.one("player_boosters", { user_id: USER, booster_definition_id: "standard" })!.quantity).toBe(stockBefore);
   });
 
   it("ne paie jamais deux fois la même partie", async () => {
