@@ -224,10 +224,11 @@ export function DeckTable(props: DeckTableProps) {
           type="button"
           className={`${styles.bigArrow} ${styles.bigArrowLeft}`}
           aria-label="Decks précédents"
-          disabled={page === 0}
+          // Les pages BOUCLENT : avant la première, la dernière (retour du 27/09/2026).
+          disabled={pages <= 1}
           onClick={() => {
             playButtonClick();
-            setPage((value) => Math.max(0, value - 1));
+            setPage((value) => (value - 1 + pages) % pages);
           }}
         />
         <ul className={styles.stacks} role="listbox" aria-label="Decks">
@@ -295,10 +296,10 @@ export function DeckTable(props: DeckTableProps) {
           type="button"
           className={`${styles.bigArrow} ${styles.bigArrowRight}`}
           aria-label="Decks suivants"
-          disabled={page >= pages - 1}
+          disabled={pages <= 1}
           onClick={() => {
             playButtonClick();
-            setPage((value) => Math.min(pages - 1, value + 1));
+            setPage((value) => (value + 1) % pages);
           }}
         />
 

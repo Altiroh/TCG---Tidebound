@@ -144,7 +144,7 @@ export function CollectablesScreen({ view }: { view: CollectablesView }) {
     cardBackFamily?.options.find((option) => option.id === cardBackFamily.equipped)?.src ?? cardBackFamily?.options[0]?.src ?? null;
 
   return (
-    <GameScreen active="collectables" className={styles.screen}>
+    <GameScreen active="collectables">
       <div className={styles.page}>
         {/* Les décors de bord tiennent à l'ÉCRAN, pas à la scène : ils
             débordent de la table quelle que soit la forme de la fenêtre. */}
@@ -320,11 +320,24 @@ function FamilySection({
     };
   }, [measure, shelf, family.options.length]);
 
-  /** Une page = toutes les fiches visibles : la suivante arrive entière. */
+  /**
+   * Une page = toutes les fiches visibles : la suivante arrive entière. Et
+   * la rangée BOUCLE : après la dernière page, on repart de la première, et
+   * inversement — on peut toujours avancer ou reculer (retour du 27/09/2026).
+   */
   function page(direction: 1 | -1) {
     const row = rowRef.current;
     if (!row) return;
     playButtonClick();
+    const max = row.scrollWidth - row.clientWidth;
+    if (direction === 1 && row.scrollLeft >= max - 2) {
+      row.scrollTo({ left: 0, behavior: "smooth" });
+      return;
+    }
+    if (direction === -1 && row.scrollLeft <= 2) {
+      row.scrollTo({ left: max, behavior: "smooth" });
+      return;
+    }
     const gap = parseFloat(getComputedStyle(row).columnGap) || 0;
     row.scrollBy({ left: direction * (row.clientWidth + gap), behavior: "smooth" });
   }
@@ -431,7 +444,6 @@ function FamilySection({
               className={styles.pageArrow}
               data-side="prev"
               hidden={!scrollable.prev && !scrollable.next}
-              disabled={!scrollable.prev}
               onClick={() => page(-1)}
               aria-label={`${family.label} précédents`}
             />
@@ -440,7 +452,6 @@ function FamilySection({
               className={styles.pageArrow}
               data-side="next"
               hidden={!scrollable.prev && !scrollable.next}
-              disabled={!scrollable.next}
               onClick={() => page(1)}
               aria-label={`${family.label} suivants`}
             />
