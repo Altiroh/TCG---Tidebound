@@ -257,6 +257,26 @@ export function closedPackVariables(visual: BoosterPackVisual): CSSProperties {
   return vars as CSSProperties;
 }
 
+/**
+ * ROULEAUX DE L'ÉTAGÈRE (écran Mes boosters, maquette du 27/09/2026) : le
+ * sachet couché sur son rayon, nom et « x » peints — le compte se pose
+ * après le « x ». Absent : pas encore peint, l'écran reprend celui du Défaut
+ * sous une étiquette au bon nom.
+ */
+const SHELF_ROLL_BY_ID: Readonly<Record<string, string>> = {
+  standard: "/assets/boosters/defaut/defaut-rayon.webp",
+  "necessaire-du-marin": "/assets/boosters/necessaire-du-marin/necessaire-du-marin-rayon.webp",
+  "etrangete-sous-marine": "/assets/boosters/etrangete-sous-marine/etrangete-sous-marine-rayon.webp",
+  "la-veillee-des-disparus": "/assets/boosters/la-veillee-des-disparus/la-veillee-des-disparus-rayon.webp",
+  "eclats-en-selle": "/assets/boosters/eclats-en-selle/eclats-en-selle-rayon.webp",
+};
+
+export const DEFAULT_SHELF_ROLL = "/assets/boosters/defaut/defaut-rayon.webp";
+
+export function getBoosterShelfRoll(boosterId: string): string | null {
+  return SHELF_ROLL_BY_ID[boosterId] ?? null;
+}
+
 export function getBoosterPackVisual(boosterId: string): BoosterPackVisual {
   return BOOSTER_VISUAL_BY_ID[boosterId] ?? DEFAULT_PACK_VISUAL;
 }

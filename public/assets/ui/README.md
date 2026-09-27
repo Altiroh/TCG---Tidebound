@@ -19,11 +19,12 @@ Tous les fichiers sont rognés au plus près de leur opaque : `100% 100%`
 | Fichier | Taille | Pièce | Employée par |
 | --- | --- | --- | --- |
 | `plaque-bois.webp` | 720 × 170 | Plaque de bois ferrée, laiton aux bouts | Collectables (Équiper, Acheter) |
-| `plaque-sombre.webp` | 640 × 213 | Plaque sombre à liseré de laiton | Écran de fin (Retour) |
-| `plaque-bleue.webp` | 640 × 213 | Même plaque, bleu nuit à liseré cyan : l'action principale | Écran de fin (Nouvelle partie) |
+| `bouton-sombre.webp` | 591 × 121 | Plaque sombre à liseré de laiton | Écran de fin (Retour), Mes boosters (fiche) |
+| `bouton-bleu.webp` | 594 × 130 | Même plaque, bleu nuit à liseré cyan : l'action principale | Écran de fin (Nouvelle partie), Mes boosters (Ouvrir) |
 | `rond-plus.webp`, `rond-moins.webp` | 256 × 254 | Hublots de laiton + / − | Éditeur de deck (quantité) |
 
-Plaques de bouton : le texte se pose DESSUS, la plaque en `::before` pour
+Plaques rognées à leur opaque : `100% 100%` les étire à la boîte du bouton.
+Le texte se pose DESSUS, la plaque en `::before` pour
 pouvoir la ternir (état éteint) sans ternir le texte — cf. `.action` dans
 `features/cosmetics/Collectables.module.css`.
 
@@ -31,7 +32,7 @@ pouvoir la ternir (état éteint) sans ternir le texte — cf. `.action` dans
 
 | Fichier | Taille | Pièce | Employée par |
 | --- | --- | --- | --- |
-| `fleche.webp` | 300 × 471 | Flèche de laiton sur bois, pointe à GAUCHE ; `scaleX(-1)` pour la suivante | Table des Decks, Collectables |
+| `fleche.webp` | 300 × 471 | Flèche de laiton sur bois, pointe à GAUCHE ; `scaleX(-1)` pour la suivante | Table des Decks, Collectables, Mes boosters (tournée d'un quart pour haut / bas) |
 
 ## Plaques et bandeaux — `plaques/`, `bandeaux/`
 
@@ -58,6 +59,7 @@ pouvoir la ternir (état éteint) sans ternir le texte — cf. `.action` dans
 | `panneau-sombre.webp` | 570 × 211 | Panneau bleu nuit à fin liseré | Profil, Éditeur |
 | `panneau-parchemin.webp` | 525 × 254 | Parchemin encadré, rose des vents en filigrane | Profil |
 | `fiche-epinglee.webp` | 589 × 900 | Fiche de parchemin épinglée (l'épingle : 6,6 % du haut) | Collectables |
+| `parchemin-boussole.webp` | 777 × 1400 | Grand parchemin encadré de cordage, rose des vents épinglée en haut | Mes boosters (fiche) |
 
 ## Icônes — `icons/`
 
@@ -65,7 +67,7 @@ pouvoir la ternir (état éteint) sans ternir le texte — cf. `.action` dans
 | --- | --- | --- | --- |
 | `tides.webp` | 256 × 256 | Pièce de Tides | `GameIcons.tsx` (`TideCoin`) |
 | `precon-token.webp` | 256 × 256 | Jeton de Préconstruit | `GameIcons.tsx` (`PreconToken`) |
-| `losange.webp` | 331 × 327 | Losange sombre à filets d'or : une ressource, un raccourci | Profil, raccourcis de récompense |
+| `losange.webp` | 331 × 327 | Losange sombre à filets d'or : une ressource, un raccourci | Profil, raccourcis de récompense, Mes boosters (fiche) |
 
 ## Accessoires de table — `accessoires/`
 

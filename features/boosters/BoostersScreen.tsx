@@ -14,7 +14,7 @@ import { BoosterBatchRecap, type BoosterBatchLine } from "@/features/boosters/op
 import { BoosterOpeningScene, type BoosterOpeningOrigin } from "@/features/boosters/opening/BoosterOpeningScene";
 import { preloadBoosterOpeningAssets } from "@/features/boosters/opening/boosterOpeningAssets";
 import { useCardBackSrc } from "@/features/cosmetics/CardBackProvider";
-import { closedPackVariables, getBoosterPackVisual } from "@/features/boosters/opening/boosterPackVisuals";
+import { DEFAULT_SHELF_ROLL, closedPackVariables, getBoosterPackVisual, getBoosterShelfRoll } from "@/features/boosters/opening/boosterPackVisuals";
 import { drawTestBoosterCards } from "@/features/boosters/opening/testBoosterCards";
 import { toOpeningRarity, type BoosterOpeningCard } from "@/features/boosters/opening/types";
 import { BoosterContentsDialog } from "@/features/market/BoosterContentsDialog";
@@ -39,6 +39,13 @@ const OPENING_TEST_BOOSTERS = [
   { boosterId: "standard", label: "Standard" },
   { boosterId: "welcome_tutorial", label: "Bienvenue" },
 ] as const;
+
+/**
+ * Rayons de l'étagère peinte (`boosters/etagere.webp`). Au-delà, elle
+ * TOURNE : les flèches font descendre chaque rouleau d'un rayon, et celui
+ * du bas repasse en haut (retour du 27/09/2026) — jamais de butée.
+ */
+const SHELF_SLOTS = 6;
 
 /** Une ligne du rayon : l'extension, et ce que le joueur en possède. */
 interface ShelfRow {
@@ -69,6 +76,11 @@ interface BoostersScreenProps {
  * MES BOOSTERS — le rayon des extensions, et le plan où on les ouvre.
  * L'achat vit dans le Market (`/market`), écran séparé : acheter et ouvrir
  * sont deux gestes différents, à deux moments différents.
+ *
+ * LA TABLE (maquette du 27/09/2026) : sur la carte marine, l'étagère des
+ * rouleaux à gauche, le sachet choisi posé au centre, sa fiche sur un
+ * parchemin à droite. Scène à ratio fixe (1672 × 880, comme les Decks et
+ * les Collectables) : positions en %, textes en cqw.
  *
  * TROIS ZONES (refonte du 19/09/2026) :
  *
@@ -126,6 +138,8 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
   const selected = rows.find((row) => row.boosterId === selectedId) ?? rows[0] ?? null;
   const ownsSelected = (selected?.owned ?? 0) > 0;
 
+  /** Rotation de l'étagère : quelle extension occupe le premier rayon. */
+  const [shelfOffset, setShelfOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [isOver, setIsOver] = useState(false);
   const [isOpening, setIsOpening] = useState(false);
@@ -327,78 +341,48 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
   }
 
   const totalOwned = rows.reduce((sum, row) => sum + row.owned, 0);
+  const visibleRows = Array.from({ length: Math.min(SHELF_SLOTS, rows.length) }, (_, slot) => {
+    const index = (((shelfOffset + slot) % rows.length) + rows.length) % rows.length;
+    // Le « tour » change EXACTEMENT quand une extension repasse d'un bout à
+    // l'autre du rayon : sa clé change, elle est remontée — elle entre en
+    // fondu au lieu de traverser toute l'étagère.
+    const lap = Math.floor((shelfOffset + slot) / rows.length);
+    return { row: rows[index]!, slot, key: `${rows[index]!.boosterId}:${lap}` };
+  });
+  const canRotate = rows.length > SHELF_SLOTS;
+  /** Ce que la fiche compte : cartes du lot que le joueur n'a pas encore. */
+  const ownedCards = new Set(inventory.ownedCardIds);
+  const toDiscover = selected?.entry ? new Set(selected.entry.pool.map((card) => card.cardId).filter((id) => !ownedCards.has(id))).size : null;
+
+  function rotate(direction: 1 | -1) {
+    playButtonClick();
+    setShelfOffset((current) => current + direction);
+  }
 
   return (
     <GameScreen active="boosters">
-      <div
-        className={styles.layout}
-        data-plan={isOver ? "over" : ownsSelected ? "loaded" : "locked"}
-        data-dragging={isDragging ? "true" : "false"}
-      >
-        {/*
-         * LE DÉCOR, PLEIN CADRE — il passe DERRIÈRE les trois zones, qui
-         * flottent dessus. C'est lui qui fait la scène : le rayon et la
-         * fiche sont posés sur le ponton, ils ne l'encadrent pas.
-         *
-         * Le sachet et la plaque vivent ICI et pas dans la colonne du
-         * milieu : tous deux se calent en pourcentage de l'ILLUSTRATION
-         * (le socle, la plaque peinte), et une colonne de grille n'a pas
-         * les mêmes bords qu'elle.
-         */}
-        {selected && (
-          <div className={styles.scene}>
-            <span
-              ref={dockPackRef}
-              className={styles.planPack}
-              style={closedPackVariables(getBoosterPackVisual(selected.boosterId))}
-              data-locked={ownsSelected ? undefined : "true"}
-              data-charging={isOpening || undefined}
-              data-launched={opening !== null || undefined}
-              aria-hidden
-            />
-            {/*
-             * La plaque RECOUVRE celle qui est peinte dans l'illustration
-             * (« Glissez un booster ici ») : le décor ne peut pas dire
-             * autre chose que l'état réel du plan. Le texte vit dans un
-             * `span` — la plaque est un conteneur flex, où l'élision ne
-             * s'applique pas, et un nom trop long y était rogné DES DEUX
-             * CÔTÉS au lieu de se terminer par des points de suspension.
-             */}
-            <p className={styles.planPlate}>
-              <span className={styles.planPlateText}>
-                {isOpening
-                  ? "Ouverture…"
-                  : !ownsSelected
-                    ? "Non possédée"
-                    : isDragging || isOver
-                      ? "Lâche pour ouvrir"
-                      : selected.name}
-              </span>
-            </p>
-            {ownsSelected && selected.entry && selected.entry.packsSinceAbyssal >= PITY.rampStartsAfterPacks && (
-              <p className={styles.planPity}>
-                {selected.entry.packsSinceAbyssal} sans Abyssale
-                {selected.entry.packsSinceAbyssal >= PITY.guaranteeAtPack - 1
-                  ? " · garantie au prochain"
-                  : " · chance renforcée"}
-              </p>
-            )}
-          </div>
-        )}
+      <div className={styles.page}>
+        <div
+          className={styles.stage}
+          data-plan={isOver ? "over" : ownsSelected ? "loaded" : "locked"}
+          data-dragging={isDragging ? "true" : "false"}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element -- décor peint, taille pilotée par la feuille */}
+          <img src="/assets/boosters/decor-boussoles.webp" alt="" aria-hidden draggable={false} className={styles.decor} />
 
-        <div className={styles.zones}>
-          {/* ── GAUCHE : le rayon, tout ce qui existe ─────────────── */}
+          {/* ── GAUCHE : l'étagère, une extension par rayon ─────────── */}
           <section className={styles.shelf} aria-label="Extensions">
             <header className={styles.shelfHead}>
               <h1 className={styles.shelfTitle}>Mes boosters</h1>
               <span className={styles.shelfCount}>{totalOwned} au total</span>
             </header>
 
-            <ul className={styles.shelfList} role="listbox" aria-label="Extensions" aria-activedescendant={`ext-${selectedId}`}>
-              {rows.map((row) => (
-                <ShelfEntry
-                  key={row.boosterId}
+            <ul className={styles.rolls} role="listbox" aria-label="Extensions" aria-activedescendant={`ext-${selectedId}`}>
+              {visibleRows.map(({ row, slot, key }) => (
+                <ShelfRoll
+                  key={key}
                   row={row}
+                  slot={slot}
                   selected={row.boosterId === selectedId}
                   busy={busy}
                   onSelect={() => select(row.boosterId)}
@@ -416,9 +400,18 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
                 />
               ))}
             </ul>
+
+            {/* Plus d'extensions que de rayons : les flèches font TOURNER
+                l'étagère — jamais de butée, on repart par l'autre bout. */}
+            {canRotate && (
+              <>
+                <button type="button" className={styles.shelfArrow} data-side="up" onClick={() => rotate(1)} aria-label="Extension suivante" />
+                <button type="button" className={styles.shelfArrow} data-side="down" onClick={() => rotate(-1)} aria-label="Extension précédente" />
+              </>
+            )}
           </section>
 
-          {/* ── CENTRE : le plan d'ouverture ──────────────────────── */}
+          {/* ── CENTRE : le sachet posé sur la carte, où on le lâche pour l'ouvrir ── */}
           <section
             className={styles.plan}
             data-state={isOver ? "over" : ownsSelected ? "loaded" : "locked"}
@@ -445,8 +438,7 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
               if (!dropped) return;
               setSelectedId(dropped.boosterId);
               // Déposer OUVRE : le sachet qu'on lâche sur le plan est déjà
-              // un engagement. Une extension qu'on n'a pas ne s'ouvre pas —
-              // le plan le dit en restant verrouillé.
+              // un engagement. Une extension qu'on n'a pas ne s'ouvre pas.
               if (dropped.owned <= 0) {
                 setError("Tu ne possèdes aucun exemplaire de cette extension.");
                 return;
@@ -454,40 +446,72 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
               void handleOpen(dropped.boosterId);
             }}
           >
-            {/* Zone de DEPOT, volontairement transparente : le socle est
-                peint dans le decor plein cadre, juste derriere. Cette
-                colonne ne fait que recevoir le sachet qu'on lache. */}
+            {selected && (
+              <span
+                key={selected.boosterId}
+                ref={dockPackRef}
+                className={styles.planPack}
+                style={closedPackVariables(getBoosterPackVisual(selected.boosterId))}
+                data-locked={ownsSelected ? undefined : "true"}
+                data-charging={isOpening || undefined}
+                data-launched={opening !== null || undefined}
+                aria-hidden
+              />
+            )}
+            {/* Seulement quand il y a quelque chose à dire : le geste en
+                cours, ou un sachet qu'on ne possède pas. */}
+            {(isOpening || isDragging || isOver || !ownsSelected) && (
+              <p className={styles.planState}>
+                {isOpening ? "Ouverture…" : !ownsSelected ? "Non possédée" : "Lâche pour ouvrir"}
+              </p>
+            )}
+            {ownsSelected && selected?.entry && selected.entry.packsSinceAbyssal >= PITY.rampStartsAfterPacks && (
+              <p className={styles.planPity}>
+                {selected.entry.packsSinceAbyssal} sans Abyssale
+                {selected.entry.packsSinceAbyssal >= PITY.guaranteeAtPack - 1 ? " · garantie au prochain" : " · chance renforcée"}
+              </p>
+            )}
           </section>
 
-          {/* ── DROITE : la fiche de l'extension ──────────────────── */}
+          {/* ── DROITE : la fiche de l'extension, sur son parchemin ──── */}
           {selected && (
             <aside className={styles.panel} aria-label={`Extension ${selected.name}`}>
-              {/* Seul le RÉCIT défile. Les actions restent posées au bas du
-                  panneau : « Ouvrir » ne doit jamais tomber sous la ligne de
-                  flottaison parce que le lore d'une extension est long. */}
-              <div className={styles.panelBody}>
-                <header className={styles.panelHead}>
-                  <h2 className={styles.panelTitle}>{selected.name}</h2>
-                  <p className={styles.panelKind}>{boosterExtensionLabel(selected.boosterId)}</p>
-                </header>
+              <h2 className={styles.panelTitle}>{selected.name}</h2>
+              <p className={styles.panelKind}>{boosterExtensionLabel(selected.boosterId)}</p>
+              <Ornament className={styles.ruleTop} />
 
-                <span
-                  className={styles.panelArt}
-                  style={closedPackVariables(getBoosterPackVisual(selected.boosterId))}
-                  data-locked={ownsSelected ? undefined : "true"}
-                  aria-hidden
-                />
-
-                <p className={styles.panelTagline}>{selected.extension.tagline}</p>
-                <p className={styles.panelLore}>{selected.extension.lore}</p>
+              <div className={styles.stats}>
+                <span className={styles.stat}>
+                  <span className={styles.statDiamond}>
+                    <CardsIcon />
+                    <span className={styles.statValue}>{selected.entry?.cardCount ?? "—"}</span>
+                  </span>
+                  <span className={styles.statLabel}>
+                    Cartes
+                    <small>par booster</small>
+                  </span>
+                </span>
+                <span className={styles.stat}>
+                  <span className={styles.statDiamond}>
+                    {/* eslint-disable-next-line @next/next/no-img-element -- dos de carte équipé, en miniature */}
+                    <img className={styles.statBack} src={cardBack} alt="" aria-hidden draggable={false} />
+                    <span className={styles.statValue}>{toDiscover ?? "—"}</span>
+                  </span>
+                  <span className={styles.statLabel}>
+                    À découvrir
+                    <small>dans ce lot</small>
+                  </span>
+                </span>
               </div>
 
-              <hr className={styles.panelRule} />
+              <Ornament className={styles.ruleMid} />
+              <p className={styles.panelLore}>{selected.extension.lore}</p>
+              <Ornament className={styles.ruleLow} />
 
               <div className={styles.panelActions}>
                 <button
                   type="button"
-                  className={game.secondary}
+                  className={styles.plank}
                   onClick={() => {
                     playButtonClick();
                     if (selected.entry) setContentsOf(selected.entry);
@@ -498,14 +522,13 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
                 </button>
 
                 {/* Le Market reste ouvert quoi qu'il arrive : c'est la
-                    seule sortie utile quand on ne possède rien, et un
-                    réapprovisionnement quand on possède déjà. */}
-                <Link href="/market" className={game.secondary} onClick={() => playButtonClick()}>
+                    seule sortie utile quand on ne possède rien. */}
+                <Link href="/market" className={styles.plank} onClick={() => playButtonClick()}>
                   Aller au Market
                 </Link>
 
                 <div className={styles.openRow}>
-                  <span className={styles.batchGroup} role="group" aria-label="Nombre de boosters à ouvrir">
+                  <span className={`${styles.plank} ${styles.batchGroup}`} role="group" aria-label="Nombre de boosters à ouvrir">
                     <button
                       type="button"
                       className={styles.batchStep}
@@ -535,36 +558,21 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
                     </button>
                   </span>
 
-                  {/* Le libellé long ne tient pas dans la fiche d'un
-                      téléphone couché : le pas de quantité lui laisse
-                      ~150 px et le bouton ne se coupe pas (`nowrap`). Il
-                      garde donc deux écritures — la seconde n'est qu'un
-                      « Ouvrir », le nombre étant déjà lu à sa gauche. Le
-                      `aria-label` dit toujours la phrase entière. */}
                   <button
                     type="button"
-                    className={game.primary}
+                    className={`${styles.plank} ${styles.plankPrimary}`}
                     onClick={() => void handleOpen(selected.boosterId, batchSize)}
                     disabled={!ownsSelected || busy}
                     aria-label={openLabel}
                   >
-                    {isOpening ? (
-                      "Ouverture…"
-                    ) : (
-                      <>
-                        <span className={styles.openLabelFull}>{openLabel}</span>
-                        <span className={styles.openLabelShort} aria-hidden>
-                          Ouvrir
-                        </span>
-                      </>
-                    )}
+                    {isOpening ? "Ouverture…" : openLabel}
                   </button>
                 </div>
 
-                {ownsSelected && maxBatch > 1 && (
+                {ownsSelected && maxBatch > 1 ? (
                   <button
                     type="button"
-                    className={game.link}
+                    className={styles.openAll}
                     onClick={() => {
                       playButtonClick();
                       setBatchSize(maxBatch);
@@ -578,19 +586,13 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
                   >
                     {batchCapped ? `Ouvrir le maximum (${maxBatch} par ouverture)` : `Tout ouvrir (${maxBatch})`}
                   </button>
-                )}
-
-                {!ownsSelected && (
-                  <p className={styles.panelLocked}>
-                    Tu n&apos;as aucun exemplaire de cette extension. Le Market en vend.
-                  </p>
-                )}
+                ) : !ownsSelected ? (
+                  <p className={styles.panelLocked}>Aucun exemplaire — le Market en vend.</p>
+                ) : null}
               </div>
             </aside>
           )}
-        </div>
 
-        <div className={styles.footRow}>
           {/* Réglage de l'animation : un tirage local, sans booster ni
               écriture — le seul moyen de la revoir sans en acheter un. */}
           <span className={styles.testGroup} role="group" aria-label="Tester l’animation d’ouverture">
@@ -599,7 +601,7 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
               <button
                 key={test.boosterId}
                 type="button"
-                className={game.link}
+                className={styles.testLink}
                 onClick={() => handleTestOpen(test.boosterId)}
                 disabled={opening !== null || isOpening}
               >
@@ -640,20 +642,26 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
 }
 
 /**
- * Une extension sur le rayon : sa vignette, son nom, ce qu'on en possède.
+ * Une extension sur l'étagère : son ROULEAU peint (nom et « x » compris), et
+ * le compte posé juste après le « x » — le même endroit sur tous les
+ * rouleaux (54,5 % de la largeur, 64,5 % de la hauteur, mesuré le
+ * 27/09/2026).
  *
  * Une `li` et non un `button` : le glisser-déposer natif d'un `<button>`
  * est capricieux selon les navigateurs (le bouton avale le `dragstart`),
  * et c'est le geste d'ouverture de cet écran. Le rôle, le `tabIndex` et la
- * gestion d'Entrée/Espace lui rendent le comportement d'un bouton pour qui
- * ne glisse pas.
+ * gestion d'Entrée/Espace lui rendent le comportement d'un bouton.
  *
- * Une extension qu'on ne possède pas reste SÉLECTIONNABLE — c'est tout
- * l'intérêt de la montrer : on veut pouvoir la lire avant de l'acheter.
- * Seul le glisser lui est retiré, puisqu'il n'y a rien à ouvrir.
+ * Une extension qu'on ne possède pas reste SÉLECTIONNABLE — on veut
+ * pouvoir la lire avant de l'acheter. Seul le glisser lui est retiré.
+ *
+ * Extension sans rouleau peint (Poissons pas Frais, en attente d'asset) :
+ * le rouleau du Défaut, son étiquette recouverte d'un parchemin qui porte
+ * le vrai nom.
  */
-function ShelfEntry({
+function ShelfRoll({
   row,
+  slot,
   selected,
   busy,
   onSelect,
@@ -661,6 +669,7 @@ function ShelfEntry({
   onDragEnd,
 }: {
   row: ShelfRow;
+  slot: number;
   selected: boolean;
   busy: boolean;
   onSelect: () => void;
@@ -668,11 +677,13 @@ function ShelfEntry({
   onDragEnd: () => void;
 }) {
   const draggable = row.owned > 0 && !busy;
+  const roll = getBoosterShelfRoll(row.boosterId);
 
   return (
     <li
       id={`ext-${row.boosterId}`}
-      className={styles.shelfEntry}
+      className={styles.roll}
+      style={{ "--slot": slot, "--roll-art": `url("${roll ?? DEFAULT_SHELF_ROLL}")` } as React.CSSProperties}
       data-selected={selected ? "true" : "false"}
       data-owned={row.owned > 0 ? "true" : "false"}
       draggable={draggable}
@@ -686,35 +697,39 @@ function ShelfEntry({
       }}
       role="option"
       aria-selected={selected}
+      aria-label={`${row.name} — ${row.owned > 0 ? `${row.owned} en réserve` : "aucun exemplaire"}`}
       tabIndex={0}
-      title={row.owned > 0 ? `${row.name} — ${row.owned} en réserve` : `${row.name} — aucun exemplaire`}
     >
-      <span
-        className={styles.shelfEntryArt}
-        style={closedPackVariables(getBoosterPackVisual(row.boosterId))}
-        data-stacked={row.owned > 1 ? "true" : undefined}
-        aria-hidden
-      />
-      <span className={styles.shelfEntryText}>
-        <span className={styles.shelfEntryName}>{row.name}</span>
-        <span className={styles.shelfEntryCount}>
-          <PackIcon />
-          {`x ${row.owned}`}
+      {!roll && (
+        <span className={styles.rollLabel} aria-hidden>
+          {row.name}
         </span>
-      </span>
-      <span className={styles.shelfEntryChevron} aria-hidden>
-        ›
+      )}
+      <span className={styles.rollCount} aria-hidden>
+        {row.owned}
       </span>
     </li>
   );
 }
 
-/** Le pictogramme de sachet du compteur — deux cartes empilées. */
-function PackIcon() {
+/** Filet d'ornement de la fiche : deux traits et un losange de laiton. */
+function Ornament({ className }: { className: string | undefined }) {
   return (
-    <svg viewBox="0 0 16 16" width="14" height="14" fill="none" aria-hidden>
-      <rect x="2.5" y="2.5" width="8" height="11" rx="1.2" stroke="currentColor" strokeWidth="1.2" />
-      <path d="M12.5 4.2v8.3a1.2 1.2 0 0 1-1.2 1.2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    <span className={`${styles.ornament} ${className ?? ""}`} aria-hidden>
+      <svg viewBox="0 0 24 24" width="100%" height="100%">
+        <path d="M12 3 L15 12 L12 21 L9 12 Z M3 12 L12 9 L21 12 L12 15 Z" fill="currentColor" />
+      </svg>
+    </span>
+  );
+}
+
+/** Trois cartes en éventail — le compte de cartes d'un sachet. */
+function CardsIcon() {
+  return (
+    <svg className={styles.statIcon} viewBox="0 0 40 40" fill="none" aria-hidden>
+      <rect x="6" y="9" width="15" height="22" rx="2" transform="rotate(-14 13 20)" fill="#e9dcbc" stroke="#6b4a22" strokeWidth="1.2" />
+      <rect x="12.5" y="7" width="15" height="22" rx="2" fill="#f2e6c8" stroke="#6b4a22" strokeWidth="1.2" />
+      <rect x="19" y="9" width="15" height="22" rx="2" transform="rotate(14 26 20)" fill="#f7eed7" stroke="#6b4a22" strokeWidth="1.2" />
     </svg>
   );
 }

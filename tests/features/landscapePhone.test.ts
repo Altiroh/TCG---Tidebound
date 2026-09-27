@@ -33,7 +33,6 @@ const SCREENS = [
   "features/progression/Profile.module.css",
   "features/progression/ProfileIdentity.module.css",
   "features/quests/Quests.module.css",
-  "features/boosters/Boosters.module.css",
   "features/match/NewMatch.module.css",
   "features/match/MatchEndScreen.module.css",
 ];

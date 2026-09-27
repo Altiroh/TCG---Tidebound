@@ -1,400 +1,283 @@
 /*
- * MES BOOSTERS — le rayon des extensions, et le plan où on les ouvre.
+ * MES BOOSTERS — LA TABLE (maquette du 27/09/2026)
+ * ================================================
  *
- * TROIS ZONES (refonte du 19/09/2026) :
- *   - à gauche, le RAYON : tout ce qui existe, possédé ou non ;
- *   - au centre, le PLAN : l'extension choisie, posée sur son socle ;
- *   - à droite, sa FICHE : d'où elle vient, ce qu'elle raconte.
+ * Sur la carte marine (décor `carte` de la coquille) : l'étagère des
+ * rouleaux à gauche, le sachet choisi posé au centre, sa fiche sur un
+ * parchemin à droite. Scène à ratio fixe (1672 × 880, comme les Decks et
+ * les Collectables) : positions en % relevées sur la maquette (1672 × 941,
+ * bandeau de 61 px compris), tailles en cqw.
  *
- * L'ACHAT n'est pas ici : il a son propre écran (`features/market/`). Les
- * deux partagent le sachet fermé (`closedPackVariables`), rien de plus.
+ * Assets : `boosters/etagere.webp` (six rayons), `boosters/<id>/<id>-rayon.webp`
+ * (un rouleau par extension), `boosters/decor-boussoles.webp`,
+ * `ui/panneaux/parchemin-boussole.webp`, `ui/icons/losange.webp`,
+ * `ui/boutons/bouton-sombre|bouton-bleu.webp`, `ui/fleches/fleche.webp`.
  */
 
-/* ──────────────────────────────────────────────────────────────
- * MISE EN PAGE — tient dans la hauteur de l'écran : seul le rayon
- * défile, le plan et la fiche restent toujours visibles.
- * ────────────────────────────────────────────────────────────── */
-.layout {
+.page {
   position: relative;
   z-index: 1;
-  display: flex;
-  flex-direction: column;
-  gap: clamp(8px, 1.2vh, 16px);
   min-height: 0;
-  /* La scène déborde par le haut (voir `.scene`) : c'est ici qu'on la
-     recadre, sans faire apparaître de barre de défilement. */
-  overflow: hidden;
-  /* Les côtés et le bas s'écartent de la zone sûre, comme Cartes,
-     Collectables et Decks : sur un iPhone couché, l'encoche mangeait le
-     haut du rayon et la barre de gestes passait sur la fiche. Le haut n'en
-     a pas besoin — le bandeau de `GameScreen` l'absorbe déjà. */
-  padding:
-    clamp(10px, 1.6vh, 22px)
-    calc(clamp(12px, 2vw, 36px) + var(--tb-safe-right))
-    calc(clamp(8px, 1.4vh, 18px) + var(--tb-safe-bottom))
-    calc(clamp(12px, 2vw, 36px) + var(--tb-safe-left));
-}
-
-/*
- * Les trois colonnes. Le plan est la plus large : c'est le seul endroit où
- * il se passe quelque chose, et le sachet doit y tenir en grand. Les deux
- * panneaux l'encadrent à largeur fixe — ils portent du texte, qui n'a rien
- * à gagner à s'étirer.
- */
-.zones {
-  position: relative;
-  /* Au-dessus du décor plein cadre, qui passe derrière les trois panneaux. */
-  z-index: 1;
   display: grid;
-  grid-template-columns: minmax(240px, 0.85fr) minmax(0, 1.6fr) minmax(250px, 0.9fr);
-  gap: clamp(10px, 1.4vw, 26px);
-  align-items: stretch;
-  flex: 1 1 auto;
-  min-height: 0;
-  /* La colonne du milieu ne doit rien intercepter : le décor est derrière,
-     et on veut pouvoir viser le socle. Seule la zone de dépôt réactive
-     les événements. */
+  place-items: center;
+  padding: 0 max(var(--tb-safe-right), 0.6vw) max(var(--tb-safe-bottom), 0.6vh) max(var(--tb-safe-left), 0.6vw);
+  container-type: size;
+  overflow: hidden;
+}
+
+.stage {
+  position: relative;
+  width: min(100cqw, 100cqh * 1672 / 880);
+  aspect-ratio: 1672 / 880;
+  container-type: inline-size;
+  color: #3a2616;
+  font-size: 0.8cqw;
+}
+
+/* Boussoles, gemmes et pièces, au pied de l'étagère : SOUS elle. */
+.decor {
+  position: absolute;
+  z-index: 0;
+  left: 23.9%;
+  bottom: 0;
+  width: 24.3%;
+  height: auto;
   pointer-events: none;
+  user-select: none;
+  filter: drop-shadow(0 1cqw 1.2cqw rgba(0, 0, 0, 0.55));
 }
 
-.shelf,
-.panel,
-.plan { pointer-events: auto; }
-
-/*
- * Les trois colonnes TIENNENT jusqu'en bas : sur mobile, le jeu est
- * verrouillé en paysage (cf. CLAUDE.md), et un téléphone couché fait
- * ~844 × 420. Empiler à cette taille donnait une fiche qui mangeait tout
- * l'écran et poussait le rayon et le plan hors champ — c'est-à-dire tout
- * ce qu'on est venu voir. On resserre donc les colonnes plutôt que de les
- * casser.
- */
-@media (max-width: 1100px) {
-  .zones { grid-template-columns: minmax(136px, 0.8fr) minmax(0, 1.5fr) minmax(158px, 0.85fr); }
-}
-
-/* Écran COURT (téléphone couché) : la fiche n'a plus la hauteur de porter
-   l'illustration du sachet — il est déjà au centre, en grand. Le texte et
-   les boutons passent avant.
-
-   Seuil commun à tous les écrans qui se réagencent en paysage (560 px, cf.
-   `app/tokens.css` et `tests/features/landscapePhone.test.ts`) : à 540 px,
-   il manquait les téléphones dont la zone utile tombe entre les deux. */
-@media (max-height: 560px) {
-  .panelArt { display: none; }
-  .panelBody { gap: 4px; }
-  .shelfEntryArt { width: clamp(26px, 3vw, 40px); }
-
-  /* Les autres actions de la fiche tiennent toute la largeur du panneau :
-     elles peuvent donc passer à la ligne, ce que le bouton partagé
-     interdit par défaut (`white-space: nowrap`). Deux lignes centrées
-     valent mieux qu'un mot coupé au bord du panneau. */
-  .panelActions > :global(button),
-  .panelActions > :global(a) {
-    min-width: 0;
-    padding-inline: 0.7em;
-    white-space: normal;
-    text-align: center;
-  }
-}
-
-/*
- * Plus étroit qu'un téléphone couché : c'est un portrait, que le jeu
- * n'accepte pas — mais l'écran ne doit pas pour autant devenir illisible si
- * on y arrive. Une seule colonne, et le défilement.
- *
- * C'est `.zones` qui défile, PAS `.layout` : la scène est posée en
- * `position: absolute; bottom: 0` dans `.layout`, donc un `.layout`
- * défilant l'ancrerait au bas du CONTENU et non de l'écran — le socle
- * partait tout en bas du défilement, loin de la colonne qui lui réserve sa
- * place.
- */
-@media (max-width: 700px) {
-  .zones {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto;
-    min-height: 0;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-  }
-  .shelf, .plan, .panel { grid-column: 1; }
-  .shelf, .panel { min-height: 0; overflow: visible; }
-  .shelfList, .panelBody { overflow: visible; }
-  .plan { min-height: 46vh; }
-}
-
-/* ──────────────────────────────────────────────────────────────
- * RAYON — tout ce qui existe, pas seulement ce qu'on a.
- *
- * C'était la lacune de l'écran précédent : il ne montrait que la réserve,
- * donc un joueur qui n'avait rien ne voyait rien. Une extension à zéro
- * reste donc listée, en retrait mais lisible et sélectionnable.
- * ────────────────────────────────────────────────────────────── */
+/* ── L'étagère ──────────────────────────────────────────────────────── */
 .shelf {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  padding: clamp(10px, 1.4vh, 18px) clamp(10px, 0.9vw, 16px);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--panel);
-  box-shadow: var(--tb-shadow-md);
-  backdrop-filter: blur(6px);
+  position: absolute;
+  z-index: 1;
+  left: -1.5%;
+  top: 3%;
+  width: 28.5%;
+  aspect-ratio: 815 / 1400;
+  background: url("/assets/boosters/etagere.webp") center / 100% 100% no-repeat;
+  filter: drop-shadow(0 1cqw 1.4cqw rgba(0, 0, 0, 0.6));
 }
 
+/* Le titre dans la plaque peinte (6,4 % → 15,8 % de la hauteur), après la rose des vents. */
 .shelfHead {
+  position: absolute;
+  left: 27%;
+  right: 10%;
+  top: 6.4%;
+  height: 9.4%;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding-bottom: clamp(8px, 1.2vh, 14px);
-  margin-bottom: clamp(6px, 1vh, 12px);
-  border-bottom: 1px solid var(--line);
+  gap: 0.6cqw;
 }
 
 .shelfTitle {
   margin: 0;
-  font-family: var(--cb-font-display);
-  font-size: clamp(16px, 1.5vw, 25px);
-  font-weight: 600;
+  color: #24160b;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: max(10px, 1.5cqw);
+  font-weight: 700;
+  font-variant: small-caps;
   letter-spacing: 0.02em;
-  color: var(--ink-strong);
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .shelfCount {
-  font-size: clamp(10px, 0.8vw, 13px);
-  color: var(--ink-dim);
+  color: #4a3320;
+  font-size: max(8px, 0.82cqw);
   white-space: nowrap;
 }
 
-.shelfList {
-  display: flex;
-  flex-direction: column;
-  gap: clamp(5px, 0.7vh, 9px);
+.rolls {
+  position: absolute;
+  inset: 0;
   margin: 0;
-  padding: 2px;
+  padding: 0;
   list-style: none;
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
 }
-
-.shelfList::-webkit-scrollbar { width: 6px; }
-.shelfList::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--line-strong); }
 
 /*
- * Une extension du rayon. Le `grab` dit qu'elle s'attrape — mais seulement
- * quand on en possède : une extension à zéro se lit, ne se glisse pas.
+ * UN ROULEAU, posé sur son rayon : les planches de l'étagère tombent à
+ * 27,2 % + n × 13,58 % de sa hauteur (six rayons, mesurés au pixel). La
+ * position se lit dans `--slot` : quand l'étagère tourne, chaque rouleau
+ * GLISSE d'un rayon au suivant.
  */
-.shelfEntry {
-  position: relative;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: clamp(8px, 0.8vw, 14px);
-  padding: clamp(7px, 0.9vh, 11px) clamp(8px, 0.7vw, 12px);
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  background: var(--panel-inset);
+.roll {
+  position: absolute;
+  left: 7%;
+  width: 86%;
+  bottom: calc(100% - 28% - var(--slot, 0) * 13.58%);
+  aspect-ratio: 900 / 251;
+  background: var(--roll-art) center / 100% 100% no-repeat;
+  filter: drop-shadow(0 0.3cqw 0.4cqw rgba(0, 0, 0, 0.55));
   cursor: pointer;
-  /* Sans ça, un glisser qui démarre sur la ligne sélectionne la page. */
-  user-select: none;
-  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+  transition: bottom 300ms cubic-bezier(0.3, 0.7, 0.3, 1), transform 160ms ease-out, filter 160ms ease-out;
+  animation: roll-in 300ms cubic-bezier(0.3, 0.7, 0.3, 1) backwards;
 }
 
-.shelfEntry[data-owned="true"] { cursor: grab; }
-.shelfEntry[data-owned="true"]:active { cursor: grabbing; }
-
-.shelfEntry:hover { border-color: var(--line-strong); transform: translateX(2px); }
-.shelfEntry:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: 2px; }
-
-.shelfEntry[data-selected="true"] {
-  border-color: var(--tb-accent-line);
-  background: linear-gradient(90deg, var(--tb-accent-soft) 0%, var(--panel-inset) 70%);
-  box-shadow: var(--tb-glow-md);
+.roll[data-owned="true"] {
+  cursor: grab;
 }
 
-/* Aucun exemplaire : en retrait, jamais caché — c'est ce qu'on vient
-   découvrir avant de l'acheter. */
-.shelfEntry[data-owned="false"] .shelfEntryArt { filter: grayscale(0.55) brightness(0.82); }
-.shelfEntry[data-owned="false"] .shelfEntryName { color: var(--ink-dim); }
-.shelfEntry[data-owned="false"] .shelfEntryCount { color: var(--ink-faint); }
-
-.shelfEntryArt {
-  width: clamp(38px, 3.4vw, 58px);
-  aspect-ratio: var(--pack-ratio, 5 / 7);
-  background-image: var(--pack-art);
-  background-size: contain;
-  background-position: center;
-  background-repeat: no-repeat;
-  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
-  transition: filter 160ms ease;
+.roll[data-owned="true"]:active {
+  cursor: grabbing;
 }
 
-/* Plusieurs exemplaires : une pile, pas un compteur seul — on doit voir
-   qu'il y en a derrière. */
-.shelfEntryArt[data-stacked="true"] {
-  box-shadow:
-    4px 4px 0 -1px var(--panel-raised),
-    5px 5px 0 -1px var(--line-strong),
-    8px 8px 0 -2px var(--panel-raised),
-    9px 9px 0 -2px var(--line);
+.roll:hover {
+  transform: translateX(0.5cqw);
 }
 
-.shelfEntryText {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 0;
+.roll:focus-visible {
+  outline: 2px solid #5fd0e6;
+  outline-offset: 2px;
 }
 
-.shelfEntryName {
-  font-family: var(--cb-font-display);
-  font-size: clamp(12px, 1vw, 16px);
-  font-weight: 600;
-  color: var(--ink-strong);
+/* Le choisi : un liseré turquoise qui suit la silhouette du rouleau. */
+.roll[data-selected="true"] {
+  filter: drop-shadow(0 0 0.2cqw rgba(120, 222, 240, 1)) drop-shadow(0 0 0.9cqw rgba(95, 208, 230, 0.7))
+    drop-shadow(0 0.3cqw 0.4cqw rgba(0, 0, 0, 0.55));
+}
+
+/* Une extension repassée d'un bout à l'autre de l'étagère entre en fondu. */
+@keyframes roll-in {
+  from {
+    opacity: 0;
+    transform: translateX(-1.2cqw);
+  }
+}
+
+/* Le compte, juste après le « x » peint (54,5 % de large, 64,5 % de haut). */
+.rollCount {
+  position: absolute;
+  left: 55.6%;
+  top: 64.5%;
+  translate: 0 -50%;
+  color: #24160b;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: max(8px, 1cqw);
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Rouleau pas encore peint : l'étiquette du Défaut, recouverte au bon nom. */
+.rollLabel {
+  position: absolute;
+  left: 45%;
+  top: 23%;
+  width: 40%;
+  height: 32%;
+  display: grid;
+  place-items: center;
+  padding: 0 4%;
+  border-radius: 0.2cqw;
+  background: radial-gradient(120% 140% at 50% 40%, #f1e0bb, #e2c796);
+  color: #24160b;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: max(8px, 0.95cqw);
+  font-weight: 700;
+  font-variant: small-caps;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.shelfEntryCount {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: clamp(10px, 0.78vw, 13px);
-  font-variant-numeric: tabular-nums;
-  color: var(--ink-dim);
-}
-
-.shelfEntryChevron {
-  font-size: 18px;
-  line-height: 1;
-  color: var(--ink-faint);
-  transition: color 160ms ease, transform 160ms ease;
-}
-
-.shelfEntry[data-selected="true"] .shelfEntryChevron {
-  color: var(--cb-cyan);
-  transform: translateX(2px);
-}
-
-/* ──────────────────────────────────────────────────────────────
- * PLAN D'OUVERTURE — le socle, et le sachet posé dessus.
- *
- * Le décor (`plan-douverture.webp`) est une illustration DÉTOURÉE, calée
- * en bas : c'est le ponton, avec le socle au centre. Le sachet est posé
- * par-dessus, à la verticale du socle.
- * ────────────────────────────────────────────────────────────── */
-/*
- * LA SCÈNE — l'illustration, PLEIN CADRE et DERRIÈRE les trois zones.
- *
- * Elle n'est pas dans la colonne du milieu : le rayon et la fiche sont
- * POSÉS sur le ponton, ils ne l'encadrent pas. Une illustration enfermée
- * dans une colonne montrait ses bords et rapetissait le socle ; ici elle
- * porte tout l'écran.
- *
- * `plan-douverture.webp` fait 1600 × 900, détourée et calée en bas. La
- * scène prend toute la largeur et garde ce rapport : sa hauteur peut donc
- * dépasser l'écran, et c'est voulu — ce qui sort par le haut n'est que du
- * ciel transparent, tandis que le socle, lui, reste sur le bas du cadre.
- *
- * Tout ce qui est posé dessus (le sachet, la plaque) se cale en
- * POURCENTAGE de l'image, jamais de l'écran. Recadrer l'illustration
- * oblige à reprendre ce rapport et les calages qui en dépendent.
- */
-.scene {
+/* Flèches de rotation (plus d'extensions que de rayons) : celles des Decks, tournées. */
+.shelfArrow {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 0;
-  aspect-ratio: 1600 / 900;
-  background-image: url("/assets/boosters/plan-douverture.webp");
-  background-size: 100% 100%;
-  background-repeat: no-repeat;
-  /* La scène sert d'unité de mesure à ce qu'elle porte (`cqw`/`cqh`). */
-  container-type: size;
-  /* Le décor ne prend jamais le clic : la zone de dépôt est au-dessus. */
-  pointer-events: none;
-  transition: filter 200ms ease-out;
+  left: 99.5%;
+  width: 2.6cqw;
+  aspect-ratio: 300 / 471;
+  padding: 0;
+  border: 0;
+  background: url("/assets/ui/fleches/fleche.webp") center / contain no-repeat;
+  cursor: pointer;
+  filter: drop-shadow(0 0.3cqw 0.4cqw rgba(0, 0, 0, 0.6));
+  transition: translate 140ms ease;
 }
 
-/* Survolé par un sachet en cours de dépôt : le socle s'allume. */
-.layout[data-plan="over"] .scene {
-  filter: brightness(1.18) saturate(1.1) drop-shadow(0 0 26px rgba(95, 208, 230, 0.45));
+.shelfArrow[data-side="up"] {
+  top: 18%;
+  rotate: 90deg;
 }
 
-/* Pendant un glisser, le socle s'annonce même sans être survolé : on doit
-   voir OÙ déposer avant d'y arriver. */
-.layout[data-dragging="true"] .scene {
-  filter: brightness(1.08) drop-shadow(0 0 16px rgba(95, 208, 230, 0.28));
+.shelfArrow[data-side="down"] {
+  top: 86%;
+  rotate: -90deg;
 }
 
-/*
- * La colonne du milieu ne porte plus rien : elle ne fait que RECEVOIR le
- * sachet qu'on lâche, au-dessus du décor qui, lui, est plein cadre.
- */
+.shelfArrow[data-side="up"]:hover {
+  translate: 0 -8%;
+}
+
+.shelfArrow[data-side="down"]:hover {
+  translate: 0 8%;
+}
+
+.shelfArrow:focus-visible {
+  outline: 2px solid #5fd0e6;
+  outline-offset: 2px;
+}
+
+/* ── Le sachet sur la carte : c'est là qu'on lâche un rouleau pour l'ouvrir ── */
 .plan {
-  position: relative;
-  min-height: 0;
-  border-radius: var(--radius);
+  position: absolute;
+  z-index: 1;
+  left: 29%;
+  width: 42%;
+  top: 5%;
+  height: 90%;
 }
 
-/*
- * Le sachet, DEBOUT SUR LE SOCLE et en grand — c'est l'objet de l'écran.
- * Son bas s'arrête sur le disque d'eau du socle (mesuré à 71 % de la
- * hauteur de l'illustration), pas au bas de l'écran : il est posé, il ne
- * flotte pas.
- *
- * Deux bornes à sa taille. `cqh` le fait grandir avec l'illustration ;
- * `vh` l'empêche d'aller se loger sous la barre du haut sur un écran bas,
- * puisque la scène, elle, peut être plus haute que l'écran.
- */
 .planPack {
   position: absolute;
-  left: 50.6%;
-  bottom: 29%;
-  transform: translateX(-50%);
-  height: min(44cqh, 51vh);
+  left: 50%;
+  top: 12%;
+  height: 65.5%;
   width: auto;
   aspect-ratio: var(--pack-ratio, 5 / 7);
+  transform: translateX(-50%);
   background-image: var(--pack-art);
   background-size: contain;
   background-position: center bottom;
   background-repeat: no-repeat;
-  filter: drop-shadow(0 18px 26px rgba(0, 0, 0, 0.6));
+  filter: drop-shadow(0 1.4cqw 1.6cqw rgba(0, 0, 0, 0.6));
   animation: dockDrop 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  transition: filter 180ms ease-out;
 }
 
-/* Extension non possédée : présente, lisible, mais éteinte. On la regarde,
-   on ne l'ouvre pas. */
+/* Extension non possédée : présente, lisible, mais éteinte. */
 .planPack[data-locked="true"] {
-  filter: grayscale(0.55) brightness(0.82) drop-shadow(0 14px 22px rgba(0, 0, 0, 0.55));
+  filter: grayscale(0.55) brightness(0.82) drop-shadow(0 1.2cqw 1.4cqw rgba(0, 0, 0, 0.55));
 }
 
-/* Le sachet est centré par `translateX(-50%)` : toutes les animations qui
-   le déplacent doivent repartir de là, sinon il saute d'une demi-largeur
-   au premier frame. */
+/* Un rouleau survole la carte : le sachet s'éclaire, prêt à s'ouvrir. */
+.stage[data-plan="over"] .planPack {
+  filter: drop-shadow(0 1.4cqw 1.6cqw rgba(0, 0, 0, 0.6)) drop-shadow(0 0 1.6cqw rgba(120, 214, 236, 0.55));
+}
+
+/* Centré par `translateX(-50%)` : toutes les animations repartent de là. */
 @keyframes dockDrop {
-  from { opacity: 0; transform: translate(-50%, -14px) scale(0.94) rotate(-2deg); }
-  to { opacity: 1; transform: translateX(-50%); }
+  from {
+    opacity: 0;
+    transform: translate(-50%, -14px) scale(0.94) rotate(-2deg);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%);
+  }
 }
 
-/*
- * Mise en tension avant l'ouverture : le sachet tremble, pivote de quelques
- * degrés et un reflet le balaie — puis il décolle vers le centre de l'écran
- * (la scène prend le relais depuis cette position exacte).
- */
+/* Mise en tension avant l'ouverture : il tremble, pivote, un reflet le balaie. */
 .planPack[data-charging] {
   animation: dockCharge 900ms cubic-bezier(0.4, 0, 0.6, 1) both;
-  filter: drop-shadow(0 18px 26px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 18px rgba(120, 214, 236, 0.35));
+  filter: drop-shadow(0 1.4cqw 1.6cqw rgba(0, 0, 0, 0.6)) drop-shadow(0 0 18px rgba(120, 214, 236, 0.35));
 }
 
-/* Le reflet est découpé à la silhouette du sachet (son visuel sert de masque). */
 .planPack::after {
   content: "";
   position: absolute;
@@ -415,10 +298,15 @@
   pointer-events: none;
 }
 
-.planPack[data-charging]::after { animation: dockShine 900ms ease-in-out both; }
+.planPack[data-charging]::after {
+  animation: dockShine 900ms ease-in-out both;
+}
 
-/* Parti vers le centre : il n'est plus sur le plan. */
-.planPack[data-launched] { opacity: 0; animation: none; }
+/* Parti vers le centre de l'écran : il n'est plus sur la carte. */
+.planPack[data-launched] {
+  opacity: 0;
+  animation: none;
+}
 
 @keyframes dockCharge {
   0% { transform: translateX(-50%); }
@@ -436,328 +324,398 @@
   100% { opacity: 0; background-position: -30% 0; }
 }
 
-/*
- * LA PLAQUE DU SOCLE.
- *
- * Elle RECOUVRE celle qui est peinte dans l'illustration (« Glissez un
- * booster ici ») : le décor ne peut pas dire autre chose que l'état réel
- * du plan. Calage mesuré sur l'image 1600 × 900 — plaque de x 625 à 995 et
- * de y 757 à 818, soit 39,1 % → 62,2 % et 84,1 % → 90,9 %. Débordée d'un
- * demi-point sur chaque bord pour couvrir le liseré doré peint.
- *
- * Une illustration SANS plaque peinte rendrait tout ce bloc inutile : il
- * suffirait alors de reposer le texte où l'on veut.
- */
-.planPlate {
-  position: absolute;
-  /*
-   * DANS le cadre peint, pas par-dessus. Chiffres relevés sur l'image
-   * elle-même (balayage de luminance, 1600 × 900) : les montants dorés
-   * s'arrêtent à 40,31 % et reprennent à 59,69 % ; les deux filets
-   * horizontaux courent à 84,11-84,33 % et 89,78-90,00 %. Le champ sombre
-   * du cadre est donc 40,4 % → 59,6 % sur 84,4 % → 89,8 %, et c'est
-   * exactement cette boîte-là.
-   *
-   * Deux tentatives écartées avant celle-ci, et leurs raisons :
-   *   - une plaque à cadre doré POSÉE dessus faisait deux cadres l'un sur
-   *     l'autre, un objet de plus sur un socle qui en a déjà ;
-   *   - un voile en dégradé, assez large pour déborder le cadre, noircissait
-   *     la façade du socle et l'ancre — et à 96 % d'opacité laissait encore
-   *     lire « Glissez un Booster ici » en filigrane.
-   *
-   * Se loger dans le champ ne retire rien au décor : le cadre doré reste
-   * peint, c'est LUI qui encadre le texte, et il n'y a rien à dessiner.
-   */
-  left: 40.4%;
-  top: 84.4%;
-  width: 19.2%;
-  height: 5.4%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0;
-  padding: 0 1%;
-  /*
-   * Opaque, et de la couleur relevée à l'intérieur du cadre (rgb 3,18,24 au
-   * centre, un rien plus clair en haut) : le remplissage disparaît dans la
-   * peinture, seul le texte change.
-   */
-  background: linear-gradient(180deg, #0a1a24 0%, #03101a 100%);
-  font-family: var(--cb-font-display);
-  /*
-   * Le texte suit la LARGEUR de la scène, elle-même bornée par la hauteur :
-   * il doit donc suivre la plus petite des deux, sinon il déborde d'un
-   * socle que la hauteur a rétréci.
-   */
-  font-size: clamp(8px, min(1.1cqw, 2cqh), 15px);
-  font-variant: small-caps;
-  letter-spacing: 0.08em;
-  text-align: center;
-  overflow: hidden;
-  color: var(--ink-dim);
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9);
-}
-
-/* C'est LUI qui porte l'élision : dans un conteneur flex, `text-overflow`
-   ne s'applique pas au conteneur mais à la boîte qui déborde. */
-.planPlateText {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.layout[data-plan="over"] .planPlate { color: var(--cb-cyan); }
-
-.layout[data-plan="locked"] .planPlate { color: var(--ink-faint); }
-
-/* Le compteur de pity, sous la plaque : une information de réserve, pas
-   de décor — elle ne doit pas concurrencer le nom. */
+/* Ce qui se passe, quand il se passe quelque chose : le geste, ou un sachet qu'on n'a pas. */
+.planState,
 .planPity {
   position: absolute;
-  left: 50.6%;
-  top: 92.6%;
-  transform: translateX(-50%);
+  left: 50%;
+  translate: -50% 0;
   margin: 0;
-  padding: 2px 10px;
+  padding: 0.3cqw 1cqw;
   border-radius: 999px;
-  /* Posée sur les planches du ponton, pas sur un fond d'écran : sans ce
-     voile, le texte se perd dans le bois et les reflets. */
-  background: rgba(6, 14, 24, 0.82);
-  font-size: clamp(9px, 1.15cqh, 12px);
-  color: var(--ink-dim);
+  background: rgba(20, 12, 6, 0.72);
+  color: #f1e3c4;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: max(9px, 0.9cqw);
   white-space: nowrap;
+  pointer-events: none;
 }
 
-/* ──────────────────────────────────────────────────────────────
- * FICHE DE L'EXTENSION — ce qu'on achète vraiment.
- * ────────────────────────────────────────────────────────────── */
+.planState {
+  top: 80%;
+}
+
+.planPity {
+  top: 86%;
+  font-size: max(8px, 0.76cqw);
+  color: #9fe7f3;
+}
+
+/* ── La fiche, sur le parchemin à la boussole ───────────────────────── */
 .panel {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  padding: clamp(12px, 1.8vh, 22px) clamp(12px, 1.1vw, 20px);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--panel);
-  box-shadow: var(--tb-shadow-md);
-  backdrop-filter: blur(6px);
-}
-
-/* La partie qui RACONTE : elle seule défile. */
-.panelBody {
-  display: flex;
-  flex-direction: column;
-  gap: clamp(5px, 0.8vh, 11px);
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
-}
-
-.panelBody::-webkit-scrollbar { width: 6px; }
-.panelBody::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--line-strong); }
-
-.panelHead {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  text-align: center;
+  position: absolute;
+  z-index: 1;
+  left: 72.4%;
+  top: 2.2%;
+  width: 26.6%;
+  aspect-ratio: 777 / 1400;
+  background: url("/assets/ui/panneaux/parchemin-boussole.webp") center / 100% 100% no-repeat;
+  filter: drop-shadow(0 1cqw 1.4cqw rgba(0, 0, 0, 0.55));
+  color: #2a1a0c;
 }
 
 .panelTitle {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 10.2%;
   margin: 0;
-  font-family: var(--cb-font-display);
-  font-size: clamp(15px, 1.4vw, 24px);
-  font-weight: 600;
-  line-height: 1.15;
-  letter-spacing: 0.01em;
-  color: var(--ink-strong);
-}
-
-/* La ligne « Extension » : d'où vient le sachet. Petites capitales, à
-   l'écart du titre — c'est une provenance, pas un sous-titre. */
-.panelKind {
-  margin: 0;
-  font-size: clamp(9px, 0.72vw, 12px);
-  font-variant: small-caps;
-  letter-spacing: 0.08em;
-  text-transform: lowercase;
-  color: var(--cb-cyan);
-}
-
-.panelArt {
-  align-self: center;
-  width: min(58%, 190px);
-  aspect-ratio: var(--pack-ratio, 5 / 7);
-  background-image: var(--pack-art);
-  background-size: contain;
-  background-position: center;
-  background-repeat: no-repeat;
-  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.55));
-  margin-block: clamp(2px, 0.6vh, 8px);
-}
-
-.panelArt[data-locked="true"] { filter: grayscale(0.55) brightness(0.82) drop-shadow(0 8px 14px rgba(0, 0, 0, 0.5)); }
-
-/*
- * L'accroche. UNE LIGNE — c'est ce qui en fait une accroche et pas un
- * second résumé : elle se lit d'un coup d'œil, au-dessus du récit qui,
- * lui, se lit. Les textes sont écrits assez courts pour y tenir
- * (`game/boosters/extensions.ts`) ; le jour où l'un déborde, c'est le
- * texte qu'on raccourcit, pas la règle qu'on lève.
- */
-.panelTagline {
-  margin: 0;
-  font-family: var(--cb-font-display);
-  font-size: clamp(10px, 0.82vw, 14px);
-  font-style: italic;
-  letter-spacing: 0.01em;
+  color: #1d120a;
+  font-family: var(--tb-font-body, Georgia, serif);
+  font-size: max(12px, 2.15cqw);
+  font-weight: 700;
+  line-height: 1.05;
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: var(--gold);
+}
+
+.panelKind {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 17.4%;
+  margin: 0;
+  color: #1f6f8b;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: max(7px, 0.78cqw);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+/* Filet d'ornement : deux traits de laiton, un losange au milieu. */
+.ornament {
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  height: 1.1cqw;
+  display: grid;
+  place-items: center;
+  color: #8a6634;
+  background:
+    linear-gradient(90deg, transparent, rgba(138, 102, 52, 0.75) 12%, rgba(138, 102, 52, 0.75) 44%, transparent 44%) center / 100% 1px no-repeat,
+    linear-gradient(90deg, transparent 56%, rgba(138, 102, 52, 0.75) 56%, rgba(138, 102, 52, 0.75) 88%, transparent) center / 100% 1px no-repeat;
+}
+
+.ornament svg {
+  width: 1.1cqw;
+  height: 1.1cqw;
+}
+
+.ruleTop {
+  top: 20.6%;
+}
+
+.ruleMid {
+  top: 44%;
+}
+
+.ruleLow {
+  top: 68.8%;
+}
+
+/* Deux losanges : ce que contient un sachet, ce qu'il reste à y trouver. */
+.stats {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 23.6%;
+  height: 19%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35cqw;
+}
+
+.statDiamond {
+  position: relative;
+  width: 6.6cqw;
+  aspect-ratio: 1;
+  background: url("/assets/ui/icons/losange.webp") center / contain no-repeat;
+  filter: drop-shadow(0 0.25cqw 0.35cqw rgba(0, 0, 0, 0.45));
+}
+
+.statIcon,
+.statBack {
+  position: absolute;
+  left: 50%;
+  top: 19%;
+  translate: -50% 0;
+  width: 36%;
+  height: auto;
+}
+
+.statBack {
+  width: 24%;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  border: 1px solid rgba(20, 12, 4, 0.8);
+  border-radius: 0.12cqw;
+  box-shadow: 0 0.1cqw 0.25cqw rgba(0, 0, 0, 0.5);
+}
+
+.statValue {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 17%;
+  color: #f1e3c4;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: max(10px, 1.45cqw);
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.statLabel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #24160b;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: max(8px, 0.86cqw);
+  font-weight: 700;
+  font-variant: small-caps;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.statLabel small {
+  font-size: max(7px, 0.7cqw);
 }
 
 .panelLore {
+  position: absolute;
+  left: 9%;
+  right: 9%;
+  top: 47%;
+  height: 20.6%;
   margin: 0;
-  font-size: clamp(10px, 0.82vw, 13.5px);
-  line-height: 1.55;
+  overflow-y: auto;
+  color: #2a1a0c;
+  font-family: var(--tb-font-body, Georgia, serif);
+  font-size: max(9px, 0.9cqw);
+  line-height: 1.45;
   text-align: center;
-  text-wrap: pretty;
-  color: var(--ink-dim);
+  scrollbar-width: none;
 }
 
-.panelRule {
-  width: 100%;
-  height: 1px;
-  margin: clamp(4px, 0.8vh, 10px) 0 0;
-  border: 0;
-  background: linear-gradient(90deg, transparent, var(--line-strong) 20%, var(--line-strong) 80%, transparent);
+.panelLore::-webkit-scrollbar {
+  display: none;
 }
 
 .panelActions {
+  position: absolute;
+  left: 7.9%;
+  right: 6%;
+  top: 71.6%;
   display: flex;
   flex-direction: column;
-  gap: clamp(5px, 0.7vh, 9px);
-  flex: 0 0 auto;
-  padding-top: clamp(6px, 0.9vh, 12px);
+  gap: 0.7cqw;
 }
 
-.panelActions > :global(button),
-.panelActions > :global(a) { width: 100%; justify-content: center; }
+/* Les boutons de la fiche : la plaque sombre de l'interface, texte par-dessus. */
+.plank {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 2.5cqw;
+  padding: 0 1cqw;
+  border: 0;
+  background: none;
+  color: #f1e3c4;
+  font-family: var(--tb-font-body, Georgia, serif);
+  font-size: max(9px, 1cqw);
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  isolation: isolate;
+}
 
-/* Ouvrir : le pas de quantité et le bouton sur la même ligne — un seul
-   geste, un seul endroit où regarder. */
+.plank::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: url("/assets/ui/boutons/bouton-sombre.webp") center / 100% 100% no-repeat;
+  filter: drop-shadow(0 0.15cqw 0.25cqw rgba(0, 0, 0, 0.45));
+  transition: filter 140ms ease-out;
+}
+
+.plankPrimary::before {
+  background-image: url("/assets/ui/boutons/bouton-bleu.webp");
+}
+
+.plank:hover:not(:disabled)::before {
+  filter: brightness(1.2) drop-shadow(0 0.15cqw 0.25cqw rgba(0, 0, 0, 0.45));
+}
+
+.plank:focus-visible {
+  outline: 2px solid #5fd0e6;
+  outline-offset: 2px;
+}
+
+.plank:disabled {
+  cursor: default;
+  color: rgba(241, 227, 196, 0.55);
+}
+
+.plank:disabled::before {
+  filter: grayscale(0.4) brightness(0.85);
+}
+
 .openRow {
-  display: flex;
-  align-items: stretch;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: 30% minmax(0, 1fr);
+  gap: 0.5cqw;
 }
 
-.openRow > :global(button) { flex: 1 1 auto; min-width: 0; justify-content: center; }
-
-/*
- * Les deux ÉCRITURES du bouton d'ouverture (`BoostersScreen`). Le bouton
- * partagé (`game.primary`) est en `white-space: nowrap` — il ne se coupe
- * pas, il DÉBORDE — et la fiche ne lui laisse qu'une portion de ses
- * ~240 px sur un téléphone couché, le pas de quantité prenant le reste.
- * L'écran court garde donc le verbe seul ; le nombre est déjà lu juste à
- * sa gauche, et `aria-label` porte la phrase entière.
- */
-.openLabelShort { display: none; }
-
-/*
- * Le basculement vit ICI, immédiatement après la règle de base, et non
- * dans le bloc « téléphone couché » du haut du fichier : à spécificité
- * égale c'est la DERNIÈRE règle déclarée qui gagne, et `display: none`
- * ci-dessus écrasait le `display: inline` d'un bloc média plus haut. Les
- * deux écritures se masquaient alors l'une l'autre et le bouton sortait
- * vide (retour du 22/09).
- */
-@media (max-height: 560px) {
-  .openLabelFull { display: none; }
-  .openLabelShort { display: inline; }
+.openRow .plank {
+  height: 3cqw;
 }
 
 .batchGroup {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  flex: 0 0 auto;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-sm);
-  background: var(--panel-inset);
-  overflow: hidden;
+  justify-content: space-around;
+  padding: 0 0.4cqw;
+  cursor: default;
 }
 
 .batchStep {
-  display: grid;
-  place-items: center;
-  width: clamp(24px, 2vw, 32px);
-  align-self: stretch;
+  width: 1.8cqw;
+  height: 1.8cqw;
+  padding: 0;
   border: 0;
+  border-radius: 50%;
   background: transparent;
-  color: var(--ink);
-  font-size: 15px;
+  color: #f1e3c4;
+  font: inherit;
+  font-size: max(10px, 1.15cqw);
   line-height: 1;
   cursor: pointer;
-  transition: background 140ms ease, color 140ms ease;
 }
 
-.batchStep:hover:not(:disabled) { background: var(--tb-accent-soft); color: var(--cb-cyan); }
-.batchStep:focus-visible { outline: 2px solid var(--cb-cyan); outline-offset: -2px; }
-.batchStep:disabled { opacity: 0.35; cursor: not-allowed; }
+.batchStep:hover:not(:disabled) {
+  background: rgba(241, 227, 196, 0.12);
+}
+
+.batchStep:focus-visible {
+  outline: 2px solid #5fd0e6;
+}
+
+.batchStep:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
 
 .batchCount {
-  min-width: clamp(20px, 1.8vw, 28px);
+  min-width: 1.4cqw;
   text-align: center;
   font-variant-numeric: tabular-nums;
-  font-size: clamp(11px, 0.9vw, 14px);
-  color: var(--ink-strong);
+}
+
+.openAll {
+  align-self: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #3a2616;
+  font-family: var(--tb-font-body, Georgia, serif);
+  font-size: max(8px, 0.86cqw);
+  cursor: pointer;
+}
+
+.openAll:hover:not(:disabled) {
+  color: #0f5566;
+  text-decoration: underline;
+}
+
+.openAll:disabled {
+  opacity: 0.55;
+  cursor: default;
 }
 
 .panelLocked {
   margin: 0;
-  font-size: clamp(9px, 0.74vw, 12px);
-  line-height: 1.45;
+  color: #4a3320;
+  font-size: max(8px, 0.8cqw);
+  font-style: italic;
   text-align: center;
-  color: var(--ink-faint);
 }
 
-/* ──────────────────────────────────────────────────────────────
- * PIED — le réglage de l'animation, hors du chemin principal.
- * ────────────────────────────────────────────────────────────── */
-.footRow {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-  flex: 0 0 auto;
-}
-
+/* ── Réglage de l'animation, hors du chemin : un murmure au pied de la carte ── */
 .testGroup {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  bottom: 0.8%;
+  translate: -50% 0;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 0.6cqw;
+  padding: 0.2cqw 0.8cqw;
+  border-radius: 999px;
+  background: rgba(20, 12, 6, 0.55);
   opacity: 0.55;
   transition: opacity 160ms ease;
 }
 
-.testGroup:hover { opacity: 1; }
+.testGroup:hover {
+  opacity: 1;
+}
 
 .testLabel {
-  font-size: clamp(9px, 0.7vw, 11px);
-  text-transform: uppercase;
+  color: rgba(241, 227, 196, 0.8);
+  font-size: max(8px, 0.62cqw);
   letter-spacing: 0.08em;
-  color: var(--ink-faint);
+  text-transform: uppercase;
+}
+
+.testLink {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #9fe7f3;
+  font: inherit;
+  font-size: max(8px, 0.7cqw);
+  cursor: pointer;
+}
+
+.testLink:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .planPack,
   .planPack[data-charging],
-  .planPack[data-charging]::after { animation: none; }
-  .shelfEntry { transition: none; }
+  .planPack[data-charging]::after,
+  .roll {
+    animation: none;
+  }
+
+  .roll {
+    transition: none;
+  }
 }

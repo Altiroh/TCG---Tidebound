@@ -605,14 +605,20 @@
   transition: filter 180ms ease-out, transform 180ms ease-out;
 }
 
+/* Plaques rognées à leur opaque (ui/boutons, 27/09/2026) : taille et position
+   de fond les reposent exactement où les plaçait l'image entière. */
 .buttonBack {
   left: 34.2%;
-  background-image: url("/assets/ui/boutons/plaque-sombre.webp");
+  background-image: url("/assets/ui/boutons/bouton-sombre.webp");
+  background-size: 92.3% 56.8%;
+  background-position: 50% 42.4%;
 }
 
 .buttonNew {
   left: 49.9%;
-  background-image: url("/assets/ui/boutons/plaque-bleue.webp");
+  background-image: url("/assets/ui/boutons/bouton-bleu.webp");
+  background-size: 92.8% 61%;
+  background-position: 50% 44.6%;
 }
 
 .buttonBack > span,

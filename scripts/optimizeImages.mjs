@@ -107,6 +107,13 @@ const RULES = [
   { match: /\/collectables\/decor-/, maxSize: 1200, quality: 86 },
   { match: /\/collectables\/bandeau-section\./, maxSize: 1800, quality: 84 },
   { match: /\/collectables\/(bouton|plaque-nom)\./, maxSize: 720, quality: 90 },
+  // Écran MES BOOSTERS (maquette du 27/09/2026) : les rouleaux du rayon
+  // s'affichent à ~400 px de large, l'étagère à ~850 px de haut, le décor
+  // de boussoles à ~500, le parchemin de la fiche à ~800.
+  { match: /\/boosters\/[^/]+\/[^/]+-rayon\./, maxSize: 900, quality: 88 },
+  { match: /\/boosters\/etagere\./, maxSize: 1400, quality: 86 },
+  { match: /\/boosters\/decor-boussoles\./, maxSize: 1000, quality: 86 },
+  { match: /\/ui\/panneaux\/parchemin-boussole\./, maxSize: 1400, quality: 86 },
   // Le harpon des projectiles d'effet : il vole à ~150 px de long au plus.
   { match: /\/fx\/harpon\./, maxSize: 512, quality: 90 },
   { match: /\/(menu|ships|boosters|collection|decks|board)\//, maxSize: 1600, quality: 85 },
