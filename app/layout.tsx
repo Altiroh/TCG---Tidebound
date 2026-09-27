@@ -10,6 +10,13 @@ export const metadata: Metadata = {
   title: "Tidebound",
   description: "Un jeu de cartes à collectionner multijoueur, jouable dans le navigateur.",
   manifest: "/manifest.webmanifest",
+  // Icône de l'application. Le favicon (`app/favicon.ico`) est détecté par
+  // convention ; l'icône iOS est aplatie sur le fond de l'app, car l'écran
+  // d'accueil remplit la transparence en noir.
+  icons: {
+    icon: [{ url: "/assets/menu/logo/tidebound-icon-192.webp", sizes: "192x192", type: "image/webp" }],
+    apple: [{ url: "/assets/menu/logo/tidebound-icon-apple.webp", sizes: "180x180", type: "image/webp" }],
+  },
 };
 
 export default function RootLayout({
