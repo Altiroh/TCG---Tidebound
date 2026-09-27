@@ -103,14 +103,16 @@
  * planches tombent à 27,3 % + n × 13,4 % de la hauteur de l'étagère, une
  * case fait 10,8 % de haut entre deux planches, et les montants sont à
  * 11 % et 92,5 % de sa largeur (profil de luminance de l'image). Un rouleau
- * de 10,2 % de haut fait donc 62,9 % de large (rapport 3,586), centré entre
- * les montants, posé sur sa planche. La position se lit dans `--slot` :
+ * de 10,9 % de haut — la case entière, jusqu'au chant de la planche du
+ * dessus — fait donc 67 % de large (rapport 3,586), centré sur les planches
+ * (52,4 % : montants à 11,3 % et 93,5 %, relevés sur le rendu), posé sur la
+ * sienne. La position se lit dans `--slot` :
  * quand l'étagère tourne, chaque rouleau GLISSE d'une case à la suivante.
  */
 .roll {
   position: absolute;
-  left: 20.3%;
-  width: 62.9%;
+  left: 18.9%;
+  width: 67%;
   bottom: calc(100% - 27.3% - var(--slot, 0) * 13.4%);
   aspect-ratio: 900 / 251;
   background: var(--roll-art) center / 100% 100% no-repeat;
@@ -137,10 +139,23 @@
   outline-offset: 2px;
 }
 
+/*
+ * Aucun exemplaire : le rouleau est ÉTEINT, comme le sachet d'une extension
+ * qu'on ne possède pas (même filtre que `.planPack[data-locked]`).
+ */
+.roll[data-owned="false"] {
+  filter: grayscale(0.55) brightness(0.82) drop-shadow(0 0.3cqw 0.4cqw rgba(0, 0, 0, 0.55));
+}
+
 /* Le choisi : un liseré turquoise qui suit la silhouette du rouleau. */
 .roll[data-selected="true"] {
   filter: drop-shadow(0 0 0.2cqw rgba(120, 222, 240, 1)) drop-shadow(0 0 0.9cqw rgba(95, 208, 230, 0.7))
     drop-shadow(0 0.3cqw 0.4cqw rgba(0, 0, 0, 0.55));
+}
+
+.roll[data-owned="false"][data-selected="true"] {
+  filter: grayscale(0.55) brightness(0.82) drop-shadow(0 0 0.2cqw rgba(120, 222, 240, 1))
+    drop-shadow(0 0 0.9cqw rgba(95, 208, 230, 0.7)) drop-shadow(0 0.3cqw 0.4cqw rgba(0, 0, 0, 0.55));
 }
 
 /* Une extension repassée d'un bout à l'autre de l'étagère entre en fondu. */
