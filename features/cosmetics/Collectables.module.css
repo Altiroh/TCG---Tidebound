@@ -12,10 +12,6 @@
  * Assets : `public/assets/collectables/` (panneau, bandeau, tuile, plaque de
  * nom, bouton, décors de bord), rognés au plus près de leur opaque.
  */
-.screen.screen.screen {
-  background: #1a0f08 url("/assets/ui/fonds/carte-marine.webp") 58% 42% / cover no-repeat;
-}
-
 .page {
   position: relative;
   z-index: 1;

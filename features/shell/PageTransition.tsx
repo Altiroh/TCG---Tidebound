@@ -18,8 +18,10 @@ const COVER_TIMEOUT_MS = 5000;
  * avancer les animations, et `animationend` n'y arrive jamais ; sans ce
  * filet, la navigation attendrait indéfiniment.
  */
-const COVER_MS = 280;
-const REVEAL_MS = 340;
+// Un peu plus longues, et sans accélération finale (27/09/2026) : la
+// découverte finissait en ease-in, l'ombre « tombait » hors de l'écran.
+const COVER_MS = 360;
+const REVEAL_MS = 460;
 const ANIMATION_SLACK_MS = 150;
 
 function randomDirection(): Direction {

@@ -4,10 +4,6 @@
  * Récompenses), les tailles de texte en cqw : la maquette tient à toutes
  * les tailles d'écran.
  */
-.screen.screen.screen {
-  background: #1a0f08 url("/assets/decks/liste/fond.webp") center / cover no-repeat;
-}
-
 .page {
   position: relative;
   z-index: 1;

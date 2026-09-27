@@ -344,7 +344,7 @@ export function MarketScreen({ inventory, catalog, collectables }: MarketScreenP
   const shortage = [shortTokens > 0 ? plural(shortTokens, "Jeton") : "", shortTides > 0 ? `${shortTides} Tides` : ""].filter(Boolean).join(" et ");
 
   return (
-    <GameScreen active="market" nav="minimal" className={`${styles.screen}${section === "decks" ? ` ${styles.screenDecks}` : ""}`}>
+    <GameScreen active="market" nav="minimal" className={section === "decks" ? styles.screenDecks : undefined}>
       <div className={styles.market}>
         {/* ── L'enseigne : les rayons ─────────────────────────── */}
         <aside className={styles.side} aria-label="Rayons du Market">

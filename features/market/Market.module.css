@@ -14,15 +14,7 @@
 /* Sélecteur triplé : l'emporte sur `.screen.screen` de la coquille, quel
    que soit l'ordre d'injection des feuilles. */
 .screenDecks.screenDecks.screenDecks {
-  --screen-backdrop: url("/assets/decks/background.webp");
-}
-
-.screen.screen.screen {
-  --screen-backdrop: url("/assets/market/background.webp");
-  background-image:
-    linear-gradient(180deg, rgba(4, 9, 15, 0.72) 0%, rgba(4, 10, 17, 0.12) 22%, rgba(3, 8, 13, 0.1) 60%, rgba(3, 8, 13, 0.55) 100%),
-    var(--screen-backdrop);
-  background-position: center, center 40%;
+  --market-backdrop: url("/assets/decks/background.webp");
 }
 
 .market {

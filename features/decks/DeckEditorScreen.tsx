@@ -351,7 +351,7 @@ function DeckEditorScreenBody({ ownedCardIds, initialDeck }: DeckEditorScreenPro
   return (
     <GameScreen
       active="decks"
-      className={onBook ? book.screen : undefined}
+      backdrop={onBook ? "livre" : "port"}
       onNavigate={handleNavigate}
       actions={
         // Vue « livre » : la recherche descend dans la barre de la grille (maquette).

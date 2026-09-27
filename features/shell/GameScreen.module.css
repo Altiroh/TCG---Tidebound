@@ -81,6 +81,63 @@
      document, il n'aurait aucun effet mais forcerait un repaint coûteux. */
 }
 
+/*
+ * LES DÉCORS PAR ÉCRAN (`ScreenBackdrop`, GameScreen.tsx). Ici et nulle
+ * part ailleurs : l'écran de chargement d'une route les porte aussi, et une
+ * page qui arrive tombe sur SON décor au lieu de le remplacer.
+ */
+.screen.screen[data-backdrop="livre"] {
+  background:
+    radial-gradient(ellipse 76% 66% at 50% 46%, transparent 48%, rgba(0, 0, 0, 0.42) 100%),
+    #1a0f08 url("/assets/decks/liste/fond.webp") center / cover no-repeat;
+}
+
+.screen.screen[data-backdrop="carte"] {
+  background: #1a0f08 url("/assets/ui/fonds/carte-marine.webp") 58% 42% / cover no-repeat;
+}
+
+/* Le rayon Decks du Market pose `--market-backdrop` (Market.module.css). */
+.screen.screen[data-backdrop="market"] {
+  background-image:
+    linear-gradient(180deg, rgba(4, 9, 15, 0.72) 0%, rgba(4, 10, 17, 0.12) 22%, rgba(3, 8, 13, 0.1) 60%, rgba(3, 8, 13, 0.55) 100%),
+    var(--market-backdrop, url("/assets/market/background.webp"));
+  background-position: center, center 40%;
+}
+
+/* La cabine du Profil : son voile est allégé, la cabine est déjà sombre. */
+.screen.screen[data-backdrop="cabine"] {
+  background-image:
+    linear-gradient(180deg, rgba(5, 12, 22, 0.55) 0%, rgba(5, 12, 22, 0) 12%),
+    url("/assets/profile/lantern-glow.svg"),
+    url("/assets/profile/background.webp");
+  background-size: cover, cover, cover;
+  background-position: center, center bottom, center bottom;
+  background-blend-mode: normal, screen, normal;
+}
+
+/*
+ * L'ARRIVÉE D'UN ÉCRAN : le contenu se lève en fondu sur son décor (déjà
+ * là, cf. ci-dessus) au lieu d'apparaître d'un coup — du chargement à la
+ * page, d'un onglet à l'autre. Le bandeau, lui, ne bouge pas.
+ */
+/* Opacité seule, et `backwards` : rien ne reste imposé une fois le fondu fini —
+   un enfant qui se place par `transform` (toast centré, tiroir) garde le sien. */
+.screen.screen > * + * {
+  animation: tb-screen-in 260ms cubic-bezier(0.2, 0.6, 0.3, 1) backwards;
+}
+
+@keyframes tb-screen-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen.screen > * + * {
+    animation: none;
+  }
+}
+
 /* Vignette — assombrit les quatre coins pour ramener l'œil au centre. */
 .screen.screen::before {
   content: "";

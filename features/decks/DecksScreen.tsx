@@ -505,7 +505,7 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog, recentDeckIds =
 
   if (layout === "table") {
     return (
-      <GameScreen active="decks" className={tableStyles.screen}>
+      <GameScreen active="decks">
         <DeckTable
           tab={tableTab}
           onTab={(next) => {
@@ -563,7 +563,7 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog, recentDeckIds =
   }
 
   return (
-    <GameScreen active="decks">
+    <GameScreen active="decks" backdrop="port">
       {layoutToggle}
       <div className={`${game.content} ${styles.fullBleed}`}>
         <div className={`${game.contentWide} ${styles.screen}`}>

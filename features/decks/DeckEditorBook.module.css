@@ -9,10 +9,6 @@
  * deck) suivent sans être retouchés un à un. Les cartes gardent leurs
  * propres couleurs.
  */
-.screen.screen.screen {
-  background: #1a0f08 url("/assets/decks/liste/fond.webp") center / cover no-repeat;
-}
-
 /* Double classe : l'emporte sur `.workspace.workspace` de DeckBuilder. */
 .workspace.workspace.workspace {
   /* Alias déjà résolus plus haut (écran, éditeur) : redéfinis ICI. */
@@ -1244,12 +1240,7 @@
   color: var(--book-ink);
 }
 
-/* Les coins de la table sont plus sombres que son centre (référence). */
-.screen.screen.screen {
-  background:
-    radial-gradient(ellipse 76% 66% at 50% 46%, transparent 48%, rgba(0, 0, 0, 0.42) 100%),
-    #1a0f08 url("/assets/decks/liste/fond.webp") center / cover no-repeat;
-}
+/* Le décor de la table (coins assombris) : `data-backdrop="livre"`, GameScreen.module.css. */
 
 /* ── 2. La bougie et le café (référence : entre l'enseigne et le compte,
    posés sur le haut du parchemin). Le décor du bas, lui, passe DEVANT

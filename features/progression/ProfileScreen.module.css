@@ -1,21 +1,12 @@
 /*
- * La page `/profil` : la cabine du navire en décor plein écran, sous le
- * bandeau commun. Le voile du décor par défaut est allégé — la cabine est
- * déjà sombre, et c'est elle qu'on vient voir.
+ * La page `/profil` : la cabine du navire est son décor par défaut, posé par
+ * la coquille (`data-backdrop="cabine"`, GameScreen.module.css) — l'écran de
+ * chargement la porte aussi.
  */
-.screen.screen.screen {
-  background-image:
-    linear-gradient(180deg, rgba(5, 12, 22, 0.55) 0%, rgba(5, 12, 22, 0) 12%),
-    url("/assets/profile/lantern-glow.svg"),
-    url("/assets/profile/background.webp");
-  background-size: cover, cover, cover;
-  background-position: center, center bottom, center bottom;
-  /* Les lueurs des lanternes (même cadrage que le décor) éclaircissent sans voiler. */
-  background-blend-mode: normal, screen, normal;
-}
 
 /* Onglet Récompenses : le port (`public/assets/rewards/background.webp`). */
-.screenPort.screenPort.screenPort {
+/* Quadruple : l'emporte sur `[data-backdrop="cabine"]` de la coquille. */
+.screenPort.screenPort.screenPort.screenPort {
   background-image:
     linear-gradient(180deg, rgba(5, 12, 22, 0.55) 0%, rgba(5, 12, 22, 0) 12%),
     url("/assets/rewards/lantern-glow.svg"),

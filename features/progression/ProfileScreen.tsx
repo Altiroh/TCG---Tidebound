@@ -53,7 +53,7 @@ export function ProfileScreen({ profile, initialTab, initialPanel }: ProfileScre
 
   if (!profile.isSignedIn) {
     return (
-      <GameScreen active={null} nav="minimal">
+      <GameScreen active={null} nav="minimal" backdrop="cabine">
         <div className={game.content}>
           <div className={game.contentWide}>
             <div className={`${game.panel} ${game.empty}`}>
@@ -77,7 +77,8 @@ export function ProfileScreen({ profile, initialTab, initialPanel }: ProfileScre
     <GameScreen
       active={null}
       nav="minimal"
-      className={tab === "recompenses" ? sceneStyles.screenPort : sceneStyles.screen}
+      backdrop="cabine"
+      className={tab === "recompenses" ? sceneStyles.screenPort : undefined}
       tabs={PAGE_TABS.map((entry) => {
         const badge = badgeFor(entry.id);
         return {

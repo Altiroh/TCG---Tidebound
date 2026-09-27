@@ -138,7 +138,7 @@ function CollectionScreenBody({ isSignedIn, ownedCardIds, ownedCounts, catalog, 
   return (
     <GameScreen
       active="collection"
-      className={onBook ? book.screen : undefined}
+      backdrop={onBook ? "livre" : "port"}
       actions={
         // Sur le livre, la recherche descend dans la barre de la grille (comme l'Éditeur).
         onBook ? undefined : (
