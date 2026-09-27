@@ -99,16 +99,19 @@
 }
 
 /*
- * UN ROULEAU, posé sur son rayon : les planches de l'étagère tombent à
- * 27,2 % + n × 13,58 % de sa hauteur (six rayons, mesurés au pixel). La
- * position se lit dans `--slot` : quand l'étagère tourne, chaque rouleau
- * GLISSE d'un rayon au suivant.
+ * UN ROULEAU, DANS sa case (retour du 27/09/2026 : ils débordaient) : les
+ * planches tombent à 27,3 % + n × 13,4 % de la hauteur de l'étagère, une
+ * case fait 10,8 % de haut entre deux planches, et les montants sont à
+ * 11 % et 92,5 % de sa largeur (profil de luminance de l'image). Un rouleau
+ * de 10,2 % de haut fait donc 62,9 % de large (rapport 3,586), centré entre
+ * les montants, posé sur sa planche. La position se lit dans `--slot` :
+ * quand l'étagère tourne, chaque rouleau GLISSE d'une case à la suivante.
  */
 .roll {
   position: absolute;
-  left: 7%;
-  width: 86%;
-  bottom: calc(100% - 28% - var(--slot, 0) * 13.58%);
+  left: 20.3%;
+  width: 62.9%;
+  bottom: calc(100% - 27.3% - var(--slot, 0) * 13.4%);
   aspect-ratio: 900 / 251;
   background: var(--roll-art) center / 100% 100% no-repeat;
   filter: drop-shadow(0 0.3cqw 0.4cqw rgba(0, 0, 0, 0.55));
@@ -126,7 +129,7 @@
 }
 
 .roll:hover {
-  transform: translateX(0.5cqw);
+  transform: translateX(0.35cqw);
 }
 
 .roll:focus-visible {
@@ -156,7 +159,7 @@
   translate: 0 -50%;
   color: #24160b;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: max(8px, 1cqw);
+  font-size: max(7px, 0.74cqw);
   font-weight: 700;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -176,7 +179,7 @@
   background: radial-gradient(120% 140% at 50% 40%, #f1e0bb, #e2c796);
   color: #24160b;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: max(8px, 0.95cqw);
+  font-size: max(7px, 0.68cqw);
   font-weight: 700;
   font-variant: small-caps;
   line-height: 1;
@@ -233,21 +236,70 @@
   height: 90%;
 }
 
+/*
+ * Le sachet est posé sur la carte, LÉGÈREMENT PENCHÉ ; au survol il se
+ * soulève, se redresse et grandit un peu — son ombre, restée sur la carte,
+ * s'éloigne et pâlit (retour du 27/09/2026). `rotate`, `translate` et
+ * `scale` sont des propriétés à part : elles se composent avec les
+ * animations d'arrivée et de mise en tension, qui animent `transform`.
+ */
 .planPack {
   position: absolute;
+  z-index: 1;
   left: 50%;
   top: 12%;
   height: 65.5%;
   width: auto;
   aspect-ratio: var(--pack-ratio, 5 / 7);
   transform: translateX(-50%);
+  rotate: -4deg;
   background-image: var(--pack-art);
   background-size: contain;
   background-position: center bottom;
   background-repeat: no-repeat;
-  filter: drop-shadow(0 1.4cqw 1.6cqw rgba(0, 0, 0, 0.6));
+  filter: drop-shadow(0 0.6cqw 0.8cqw rgba(0, 0, 0, 0.45));
   animation: dockDrop 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  transition: filter 180ms ease-out;
+  cursor: pointer;
+  transition:
+    rotate 320ms cubic-bezier(0.3, 0.7, 0.3, 1),
+    translate 320ms cubic-bezier(0.3, 0.7, 0.3, 1),
+    scale 320ms cubic-bezier(0.3, 0.7, 0.3, 1),
+    filter 180ms ease-out;
+}
+
+.planPack:hover,
+.stage[data-plan="over"] .planPack {
+  rotate: -1deg;
+  translate: 0 -1.4cqw;
+  scale: 1.035;
+  filter: drop-shadow(0 1.6cqw 1.6cqw rgba(0, 0, 0, 0.35));
+}
+
+/* L'ombre portée SUR la carte, sous le pied du sachet. */
+.planShadow {
+  position: absolute;
+  z-index: 0;
+  left: 50%;
+  top: 78.6%;
+  width: 60%;
+  height: 6.5%;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(8, 5, 2, 0.72), rgba(8, 5, 2, 0.4) 55%, transparent);
+  filter: blur(0.35cqw);
+  pointer-events: none;
+  transition: scale 320ms cubic-bezier(0.3, 0.7, 0.3, 1), opacity 320ms ease-out;
+}
+
+.plan:has(.planPack:hover) .planShadow,
+.stage[data-plan="over"] .planShadow {
+  scale: 0.84;
+  opacity: 0.6;
+}
+
+/* Parti vers le centre de l'écran : son ombre part avec lui. */
+.plan:has(.planPack[data-launched]) .planShadow {
+  opacity: 0;
 }
 
 /* Extension non possédée : présente, lisible, mais éteinte. */
@@ -257,7 +309,7 @@
 
 /* Un rouleau survole la carte : le sachet s'éclaire, prêt à s'ouvrir. */
 .stage[data-plan="over"] .planPack {
-  filter: drop-shadow(0 1.4cqw 1.6cqw rgba(0, 0, 0, 0.6)) drop-shadow(0 0 1.6cqw rgba(120, 214, 236, 0.55));
+  filter: drop-shadow(0 1.6cqw 1.6cqw rgba(0, 0, 0, 0.35)) drop-shadow(0 0 1.6cqw rgba(120, 214, 236, 0.55));
 }
 
 /* Centré par `translateX(-50%)` : toutes les animations repartent de là. */
@@ -274,6 +326,7 @@
 
 /* Mise en tension avant l'ouverture : il tremble, pivote, un reflet le balaie. */
 .planPack[data-charging] {
+  rotate: 0deg;
   animation: dockCharge 900ms cubic-bezier(0.4, 0, 0.6, 1) both;
   filter: drop-shadow(0 1.4cqw 1.6cqw rgba(0, 0, 0, 0.6)) drop-shadow(0 0 18px rgba(120, 214, 236, 0.35));
 }

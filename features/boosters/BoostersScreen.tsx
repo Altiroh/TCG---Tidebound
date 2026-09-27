@@ -446,6 +446,7 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
               void handleOpen(dropped.boosterId);
             }}
           >
+            {selected && <span className={styles.planShadow} aria-hidden />}
             {selected && (
               <span
                 key={selected.boosterId}
