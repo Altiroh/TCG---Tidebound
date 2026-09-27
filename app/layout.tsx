@@ -14,8 +14,8 @@ export const metadata: Metadata = {
   // convention ; l'icône iOS est aplatie sur le fond de l'app, car l'écran
   // d'accueil remplit la transparence en noir.
   icons: {
-    icon: [{ url: "/assets/menu/logo/tidebound-icon-192.webp", sizes: "192x192", type: "image/webp" }],
-    apple: [{ url: "/assets/menu/logo/tidebound-icon-apple.webp", sizes: "180x180", type: "image/webp" }],
+    icon: [{ url: "/icons/tidebound-icon-192.png", sizes: "192x192", type: "image/png" }],
+    apple: [{ url: "/icons/tidebound-icon-apple.png", sizes: "180x180", type: "image/png" }],
   },
 };
 

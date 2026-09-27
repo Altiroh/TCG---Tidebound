@@ -36,3 +36,5 @@ Le TEXTE de la carte est la source de vérité. Il vient de la page Notion « Ca
 ## Assets
 
 Jamais de PNG commité : déposer, ranger en kebab-case par famille, puis `node scripts/optimizeImages.mjs --delete-sources` (WebP).
+
+Seule exception : les icônes de l'application (`public/icons/*.png`, hors de `public/assets/` donc ignorées par le script), gardées en PNG car iOS et les manifestes PWA l'attendent.
