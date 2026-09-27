@@ -91,6 +91,11 @@ function AudienceStage({ audience }: { audience: AudienceView }) {
         <strong className={styles.audienceCount}>{audience.audience.toLocaleString("fr-FR")}</strong>
         <span className={styles.audienceUnit}>spectateurs</span>
         <span className={styles.audienceMeta}>Record : {audience.best.toLocaleString("fr-FR")}</span>
+        {/* La clé du public, sans formule : chaque humeur a le sien (spectacle × 25 = palier, audit du 27/09/2026). */}
+        <span className={styles.audienceMeta}>
+          Chaque humeur a son public : une salle qui suit la partie vous amène vers 1 000 spectateurs, captivée vers 1 500,
+          debout vers 2 000.
+        </span>
         {audience.lastHighlights.length > 0 && (
           <span className={styles.audienceMeta}>Dernière partie : « {audience.lastHighlights.join(" », « ")} »</span>
         )}

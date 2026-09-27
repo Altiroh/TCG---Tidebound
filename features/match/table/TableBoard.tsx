@@ -104,8 +104,6 @@ export interface TableBoardProps {
 
   phaseButton: { label: string; phaseLabel?: string; icon: string; disabled: boolean; onClick?: () => void };
   onMenu: () => void;
-  /** Partie arbitrée par le serveur : le compteur du public y projette le verdict (absent : partie locale, jamais jugée). */
-  matchId?: string;
 
   /** Clic / toucher sur une carte de la main (parcours au clic : jouer, ou entrer en choix de cible). */
   onHandCardClick: (instanceId: string) => void;
@@ -889,7 +887,7 @@ export function TableBoard(props: TableBoardProps) {
             turnOwner={props.turnOwnerLabel}
             viewerTurn={state.activePlayerId === viewerId}
             onMenu={props.onMenu}
-            audience={<LiveAudience state={state} viewerId={viewerId} matchId={props.matchId} />}
+            audience={<LiveAudience state={state} viewerId={viewerId} />}
             journal={props.journal}
             phaseButton={
               <PhaseButton

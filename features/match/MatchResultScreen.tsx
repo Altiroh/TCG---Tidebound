@@ -238,6 +238,8 @@ export function MatchResultScreen({ outcome, player, matchId, preview, audience,
         {signals.length > 0 && (
           <section className={styles.recap} aria-label="Ce qui a pesé">
             <h2 className={styles.recapTitle}>{signalsTitle}</h2>
+            {/* L'unité, dite une fois : ces chiffres sont du SPECTACLE, pas des spectateurs (audit du 27/09/2026). */}
+            <p className={styles.recapUnit}>En points de spectacle</p>
             <ul className={styles.signals}>
               {signals.map((signal, index) => (
                 <li key={signal.id} data-sign={signal.weight > 0 ? "up" : "down"}>

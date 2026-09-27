@@ -14,24 +14,46 @@ import type { AudienceSignal, MatchFacts } from "@/game/audience/types";
  */
 export type Analyzer = (facts: MatchFacts) => AudienceSignal[];
 
-/** Le rythme : une partie expédiée n'intéresse personne, une partie qui s'étire lasse un peu. */
+/** Le rythme d'une partie de `tableTurns` tours de table, une fois finie. */
+function tempoSignal(tableTurns: number): AudienceSignal {
+  if (tableTurns <= 3) return { id: "tempo.expedited", family: "rythme", label: "Trop vite expédiée", weight: -20, salience: 6 };
+  if (tableTurns <= 5) return { id: "tempo.short", family: "rythme", label: "Une partie éclair", weight: 0, salience: 1 };
+  if (tableTurns <= 14) return { id: "tempo.full", family: "rythme", label: "Une vraie traversée", weight: 12, salience: 2 };
+  return { id: "tempo.long", family: "rythme", label: "Une partie au long cours", weight: 6, salience: 2 };
+}
+
+/**
+ * Le rythme : une partie expédiée n'intéresse personne, une partie qui
+ * s'étire lasse un peu.
+ *
+ * - EN COURS de partie, seul ce qui est ACQUIS compte : une traversée
+ *   entamée (6 tours de table et plus) est déjà là ; une partie encore
+ *   courte n'est pas « expédiée » — elle n'est pas finie. L'humeur en
+ *   direct ne ment donc ni en montant ni en descendant.
+ * - L'ADVERSAIRE A QUITTÉ la table : le gagnant garde le rythme qu'il a
+ *   joué, mais la brièveté n'est pas de son fait — pas de sanction (audit du
+ *   27/09/2026 : il perdait jusqu'à 17 points de spectacle).
+ */
 const tempo: Analyzer = (facts) => {
-  if (!facts.finished) return [];
-  // L'adversaire a quitté la table : la brièveté n'est pas le fait du joueur.
-  if (facts.opponentLeft) return [{ id: "tempo.forfeit", family: "rythme", label: "L'adversaire a quitté la table", weight: 0, salience: 2 }];
-  if (facts.tableTurns <= 3) return [{ id: "tempo.expedited", family: "rythme", label: "Trop vite expédiée", weight: -20, salience: 6 }];
-  if (facts.tableTurns <= 5) return [{ id: "tempo.short", family: "rythme", label: "Une partie éclair", weight: 0, salience: 1 }];
-  if (facts.tableTurns <= 14) return [{ id: "tempo.full", family: "rythme", label: "Une vraie traversée", weight: 12, salience: 2 }];
-  return [{ id: "tempo.long", family: "rythme", label: "Une partie au long cours", weight: 6, salience: 2 }];
+  if (!facts.finished) return facts.tableTurns >= 6 ? [tempoSignal(facts.tableTurns)] : [];
+  const signal = tempoSignal(facts.tableTurns);
+  if (facts.opponentLeft && signal.weight <= 0) {
+    return [{ id: "tempo.forfeit", family: "rythme", label: "L'adversaire a quitté la table", weight: 0, salience: 2 }];
+  }
+  return [signal];
 };
 
 /** La tension : un Navire au bord du naufrage, une avance qui change de camp, une fin serrée. */
 const tension: Analyzer = (facts) => {
   const signals: AudienceSignal[] = [];
+  // L'Ancrage que la salle a vu PERDRE face à l'adversaire : la Déraison
+  // qu'on s'inflige soi-même n'en fait pas partie (`selfInflicted`) — sinon
+  // on fabriquait un retournement en se saignant (audit du 27/09/2026).
+  const feltFinal = facts.finalAnchor + facts.selfInflicted;
   const nearSinking = facts.lowestAnchor <= Math.ceil(facts.startingAnchor / 4);
   if (facts.finished && facts.won && nearSinking) {
     signals.push({ id: "tension.comeback", family: "tension", label: "Un retournement de haut vol", weight: 25, salience: 10 });
-  } else if (facts.finished && facts.won && facts.finalAnchor <= Math.ceil(facts.startingAnchor / 3)) {
+  } else if (facts.finished && facts.won && feltFinal <= Math.ceil(facts.startingAnchor / 3)) {
     signals.push({ id: "tension.narrow", family: "tension", label: "Une victoire arrachée", weight: 15, salience: 8 });
   } else if (nearSinking && (!facts.finished || facts.finalAnchor > 0)) {
     // Au bord du gouffre et toujours à flot : un Navire coulé, lui, n'a tenu le souffle de personne.
@@ -40,10 +62,11 @@ const tension: Analyzer = (facts) => {
   if (facts.leadChanges >= 2) {
     signals.push({ id: "tension.swings", family: "tension", label: "Un duel indécis jusqu'au bout", weight: Math.min(12, facts.leadChanges * 4), salience: 7 });
   }
-  if (facts.finished && facts.won && !facts.opponentLeft) {
+  // Une victoire reste une victoire, même quand l'adversaire a quitté la table.
+  if (facts.finished && facts.won) {
     signals.push({ id: "tension.victory", family: "tension", label: "Une victoire au bout", weight: 5, salience: 1 });
   }
-  if (facts.finished && facts.won && facts.opponentFinalAnchor <= 0 && facts.finalAnchor >= facts.startingAnchor * 0.8 && facts.tableTurns <= 6) {
+  if (facts.finished && facts.won && facts.opponentFinalAnchor <= 0 && feltFinal >= facts.startingAnchor * 0.8 && facts.tableTurns <= 6) {
     signals.push({ id: "tension.onesided", family: "tension", label: "Une démonstration sans suspense", weight: -5, salience: 3 });
   }
   return signals;

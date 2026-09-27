@@ -1742,7 +1742,33 @@
   box-shadow: 0 0 calc(var(--hud-h) * 0.25) rgba(248, 113, 113, 0.45), 0 3px 8px rgba(0, 0, 0, 0.55);
 }
 
-/* La réaction de la salle, un instant, sous la pastille : pourquoi le compteur a bougé. */
+/* L'humeur de la salle en cinq crans, à droite du compteur (s'ennuie → debout). */
+.liveAudienceMood {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: calc(var(--hud-h) * 0.05);
+  height: calc(var(--hud-h) * 0.32);
+  margin-left: calc(var(--hud-h) * 0.04);
+}
+
+.liveAudiencePip {
+  width: calc(var(--hud-h) * 0.07);
+  border-radius: 1px;
+  background: rgba(255, 255, 255, 0.22);
+  transition: background-color 250ms ease;
+}
+
+.liveAudiencePip:nth-child(1) { height: 36%; }
+.liveAudiencePip:nth-child(2) { height: 52%; }
+.liveAudiencePip:nth-child(3) { height: 68%; }
+.liveAudiencePip:nth-child(4) { height: 84%; }
+.liveAudiencePip:nth-child(5) { height: 100%; }
+
+.liveAudiencePip[data-on] {
+  background: #f3d58c;
+}
+
+/* La réaction de la salle, un instant, sous la pastille : pourquoi la salle a bougé. */
 .liveAudienceCaption {
   position: absolute;
   top: calc(100% + var(--hud-h) * 0.12);

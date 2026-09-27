@@ -1,10 +1,7 @@
 "use server";
 
-import { AUDIENCE_OPPONENT_WEIGHT } from "@/game/audience";
-import { audienceOpponent } from "@/game/progression";
-import { botCountsAsPvp } from "@/features/progression/botRewardPolicy";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
-import { createSupabaseServerClient, createSupabaseServiceRoleClient } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 /**
  * Audience du joueur connecté — lecture légère pour la table (le compteur
@@ -20,32 +17,6 @@ export async function fetchMyAudience(): Promise<number> {
     return error ? 0 : (data?.audience ?? 0);
   } catch {
     return 0;
-  }
-}
-
-/**
- * De quoi tenir le compteur EN PARTIE : l'audience du joueur au départ, et
- * le POIDS que le verdict donnera à cette partie — la règle exacte de
- * `recordMatchAudience` (`audienceOpponent`, dérogation de développement
- * comprise). Sans partie arbitrée (partie locale, tutoriel) ou pour qui n'y
- * joue pas, le poids est nul : rien ne sera jugé, le compteur ne bouge pas.
- */
-export async function fetchLiveAudienceContext(matchId?: string): Promise<{ audience: number; weight: number }> {
-  const audience = await fetchMyAudience();
-  if (!matchId) return { audience, weight: 0 };
-  try {
-    const user = await getSessionUser();
-    if (!user) return { audience, weight: 0 };
-    const { data: match, error } = await createSupabaseServiceRoleClient()
-      .from("matches")
-      .select("mode, bot_difficulty, player1_id, player2_id")
-      .eq("id", matchId)
-      .maybeSingle();
-    if (error || !match || (match.player1_id !== user.id && match.player2_id !== user.id)) return { audience, weight: 0 };
-    const botAsPvp = match.mode === "bot" && botCountsAsPvp();
-    return { audience, weight: AUDIENCE_OPPONENT_WEIGHT[audienceOpponent(match.mode, match.bot_difficulty, botAsPvp)] };
-  } catch {
-    return { audience, weight: 0 };
   }
 }
 

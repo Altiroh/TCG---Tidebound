@@ -32,8 +32,8 @@ export function AudienceTip({
         </span>
         {mood && <span className={styles.mood}>{mood}.</span>}
         <span className={styles.body}>
-          Le public qui suit vos parties. Il juge chacune en silence : une partie disputée, variée et bien menée
-          l&apos;attire ; une partie expédiée, des tours passés ou un abandon le lassent.
+          Votre public grossit ou fond selon le spectacle de vos dernières parties. Disputée, variée, retournée : il
+          afflue. Expédiée, hésitante, abandonnée : il s&apos;en va.
         </span>
         <span className={styles.foot}>À partir du niveau 10, c&apos;est lui qui attire le regard des mécènes.</span>
       </span>

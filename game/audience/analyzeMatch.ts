@@ -100,16 +100,15 @@ export function nextAudienceWeighted(audience: number, spectacle: number, weight
 }
 
 /**
- * LE COMPTEUR EN PARTIE : l'audience qu'aurait le joueur si la partie
- * s'arrêtait là — le spectacle COURANT passé dans la formule de fin, avec le
- * poids de l'adversaire. Il bouge au fil des moments (ils infléchissent le
- * spectacle), et à la dernière action il vaut exactement ce que le serveur
- * va écrire : l'écran de fin ne reprend plus rien de ce que la table avait
- * promis (décision du 26/09/2026 — le direct montait à 1 300, le verdict
- * disait 1 133).
+ * Le poids qu'une partie a sur l'audience du joueur jugé. Une partie qu'il
+ * n'a pas VRAIMENT jouée (`isMeaningfulMatch` : ni 2 cartes, ni une
+ * attaque, ni le 2ᵉ tour de table) ne pèse RIEN — relancer une main de
+ * départ ratée, ou voir l'adversaire partir au premier tour, ne coûte plus
+ * 6 % du public (audit du 27/09/2026). Un abandon après avoir joué reste
+ * jugé, et puni (`erreur.concede`).
  */
-export function projectedAudience(base: number, state: GameState, playerId: PlayerId, weight: number): number {
-  return nextAudienceWeighted(base, analyzeMatch(state, playerId).spectacle, weight);
+export function matchAudienceWeight(opponent: AudienceOpponent, played: boolean): number {
+  return played ? AUDIENCE_OPPONENT_WEIGHT[opponent] : 0;
 }
 
 /** Humeur du public, en une phrase, pour un spectacle donné. */

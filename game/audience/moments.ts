@@ -54,8 +54,13 @@ export interface MatchTimeline {
   moments: AudienceMoment[];
   startingAnchor: number;
   opponentStartingAnchor: number;
-  /** Ancrage le plus bas atteint par le joueur. */
+  /**
+   * Ancrage le plus bas atteint par le joueur, HORS Déraison qu'il s'est
+   * infligée : c'est l'adversaire qui fait un naufrage évité, pas soi-même.
+   */
   lowestAnchor: number;
+  /** Ancrage perdu par sa propre Déraison (dégâts qui suivent `DERAISON_SETTLED`). */
+  selfInflicted: number;
   /** Changements de meneur francs (au-delà de `LEAD_GAP`). */
   leadChanges: number;
   idleTurns: number;
@@ -147,6 +152,9 @@ export function readTimeline(state: GameState, playerId: PlayerId): MatchTimelin
   let myAnchor = myStart;
   let theirAnchor = theirStart;
   let lowestAnchor = myStart;
+  /** Ancrage qu'on s'est retiré soi-même à la Déraison ; et le prochain coup qui en relève. */
+  let selfInflicted = 0;
+  let pendingDeraison = 0;
   let leader = 0;
   let leadChanges = 0;
   let idleTurns = 0;
@@ -164,9 +172,13 @@ export function readTimeline(state: GameState, playerId: PlayerId): MatchTimelin
   const seen = new Map<string, number>();
   const moments: AudienceMoment[] = [];
 
-  /** L'enjeu : 1 tant que les deux Navires tiennent, jusqu'à 1,5 quand l'un touche le fond. */
+  /**
+   * L'enjeu : 1 tant que les deux Navires tiennent, jusqu'à 1,5 quand l'un
+   * touche le fond. Son propre Navire compte HORS Déraison : se saigner ne
+   * rend pas ses coups plus spectaculaires.
+   */
   const stakes = () => {
-    const lowestShare = Math.max(0, Math.min(myAnchor / myStart, theirAnchor / theirStart));
+    const lowestShare = Math.max(0, Math.min((myAnchor + selfInflicted) / myStart, theirAnchor / theirStart));
     return lowestShare >= 1 / 3 ? 1 : 1 + (1 / 3 - lowestShare) * 1.5;
   };
 
@@ -294,7 +306,10 @@ export function readTimeline(state: GameState, playerId: PlayerId): MatchTimelin
         if (!event.targetPlayerId) break;
         if (event.targetPlayerId === playerId) {
           if (event.targetAnchorAfter !== undefined) myAnchor = event.targetAnchorAfter;
-          lowestAnchor = Math.min(lowestAnchor, myAnchor);
+          // Les dégâts qui soldent SA Déraison suivent `DERAISON_SETTLED`, au même montant.
+          if (pendingDeraison > 0 && event.amount === pendingDeraison) selfInflicted += event.amount;
+          pendingDeraison = 0;
+          lowestAnchor = Math.min(lowestAnchor, myAnchor + selfInflicted);
           const share = event.amount / myStart;
           const heavy = share >= 0.2;
           push(
@@ -363,7 +378,10 @@ export function readTimeline(state: GameState, playerId: PlayerId): MatchTimelin
         break;
       case "DERAISON_SETTLED":
         // Compté, pas jugé : la Déraison est une mécanique, et ses dégâts d'Ancrage sont déjà des moments.
-        if (event.playerId === playerId) deraisons += 1;
+        if (event.playerId === playerId) {
+          deraisons += 1;
+          pendingDeraison = event.anchorDamage;
+        }
         break;
       default:
         break;
@@ -375,7 +393,8 @@ export function readTimeline(state: GameState, playerId: PlayerId): MatchTimelin
     moments,
     startingAnchor: myStart,
     opponentStartingAnchor: theirStart,
-    lowestAnchor: Math.min(lowestAnchor, me?.anchor ?? lowestAnchor),
+    lowestAnchor: Math.min(lowestAnchor, me ? me.anchor + selfInflicted : lowestAnchor),
+    selfInflicted,
     leadChanges,
     idleTurns,
     timeouts,

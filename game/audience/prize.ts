@@ -16,7 +16,7 @@ import { AUDIENCE_OPPONENT_WEIGHT, type AudienceOpponent } from "@/game/audience
  *
  *   spectacle   humeur            XP    Tides (PvP)
  *   < 40        s'ennuie/impatient  0     0
- *   40 – 59     suit la partie      5     0
+ *   40 – 59     suit la partie      5     0   (un seul libellé par humeur : `audienceMood`)
  *   60 – 79     captivé            10     1
  *   ≥ 80        debout             20     3
  *
@@ -38,7 +38,7 @@ export interface AudiencePrizeTier {
 export const AUDIENCE_PRIZE_TIERS: readonly AudiencePrizeTier[] = [
   { minSpectacle: 80, label: "Le public est debout", xp: 20, tides: 3 },
   { minSpectacle: 60, label: "Le public est captivé", xp: 10, tides: 1 },
-  { minSpectacle: 40, label: "Le public a suivi", xp: 5, tides: 0 },
+  { minSpectacle: 40, label: "Le public suit la partie", xp: 5, tides: 0 },
 ];
 
 export interface AudiencePrize {

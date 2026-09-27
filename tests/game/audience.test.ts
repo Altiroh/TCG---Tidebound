@@ -9,7 +9,7 @@ import {
   momentBalance,
   nextAudience,
   nextAudienceWeighted,
-  projectedAudience,
+  matchAudienceWeight,
   nextAudienceMilestone,
   readMatchFacts,
   readMoments,
@@ -219,17 +219,69 @@ describe("moments — le public réagit coup par coup, avec discernement", () =>
     expect(momentBalance(game([endTurn("p1")], { status: "active" }), "p1")).toBeLessThan(0);
   });
 
-  it("le compteur en partie annonce EXACTEMENT ce que le verdict écrira", () => {
-    const kills = Array.from({ length: 6 }, (_, i) => [turnOf("p1", i + 1), summon(`d${i}`, "p2"), { ...at(i + 1), type: "DESTROY", instanceId: `d${i}`, reason: "effect" }]).flat();
-    const final = game(kills, { winnerId: "p1" });
-    const spectacle = analyzeMatch(final, "p1").spectacle;
-    const weights = { joueur: 1, difficile: 0.7, moyen: 0.5, facile: 0.25 } as const;
-    for (const opponent of ["joueur", "difficile", "moyen", "facile"] as const) {
-      expect(projectedAudience(1100, final, "p1", weights[opponent])).toBe(nextAudience(1100, spectacle, { opponent }));
-    }
-    // Une partie locale (jamais jugée) ne fait pas bouger le compteur.
-    expect(projectedAudience(1100, final, "p1", 0)).toBe(1100);
+});
+
+describe("audit du 27/09/2026 — le public ne punit plus sans faute", () => {
+  it("une partie que le joueur n'a pas vraiment jouée ne pèse rien sur son public", () => {
+    expect(matchAudienceWeight("joueur", false)).toBe(0);
+    expect(matchAudienceWeight("facile", false)).toBe(0);
+    expect(matchAudienceWeight("moyen", true)).toBe(0.5);
+    // Poids nul : ni gain, ni perte — même à spectacle 0, le plafond de perte ne mord pas.
+    expect(nextAudienceWeighted(1068, 0, 0)).toBe(1068);
+    expect(nextAudienceWeighted(1068, 100, 0)).toBe(1068);
     expect(nextAudienceWeighted(0, 0, 1)).toBe(0);
+  });
+
+  it("gagner par abandon adverse, après une vraie partie, garde le rythme et la victoire", () => {
+    const ended = { ...base, type: "GAME_ENDED", winnerId: "p1", reason: "concede" };
+    const forfeit = analyzeMatch(game([play("chope"), ended], { turnNumber: 16, winnerId: "p1" }), "p1");
+    const played = analyzeMatch(game([play("chope")], { turnNumber: 16, winnerId: "p1" }), "p1");
+    const ids = forfeit.signals.map((signal) => signal.id);
+    expect(ids).toContain("tempo.full");
+    expect(ids).toContain("tension.victory");
+    expect(forfeit.spectacle).toBe(played.spectacle);
+    // Délais épuisés chez l'adversaire : même règle.
+    const timeout = analyzeMatch(game([play("chope"), { ...ended, reason: "timeout" }], { turnNumber: 16, winnerId: "p1" }), "p1");
+    expect(timeout.spectacle).toBe(played.spectacle);
+  });
+
+  it("un abandon adverse précoce ne sanctionne pas le gagnant, qui garde sa victoire", () => {
+    const early = analyzeMatch(game([{ ...base, type: "GAME_ENDED", winnerId: "p1", reason: "concede" }], { turnNumber: 4, winnerId: "p1" }), "p1");
+    const ids = early.signals.map((signal) => signal.id);
+    expect(ids).toContain("tempo.forfeit");
+    expect(ids).not.toContain("tempo.expedited");
+    expect(ids).toContain("tension.victory");
+  });
+
+  it("en cours de partie, le rythme acquis compte ; une partie encore courte n'est pas « expédiée »", () => {
+    const early = analyzeMatch(game([play("chope")], { status: "active", turnNumber: 4 }), "p1");
+    expect(early.signals.some((signal) => signal.family === "rythme")).toBe(false);
+    const crossing = analyzeMatch(game([play("chope")], { status: "active", turnNumber: 14 }), "p1");
+    expect(crossing.signals.map((signal) => signal.id)).toContain("tempo.full");
+    // La victoire, elle, n'existe qu'une fois la partie finie.
+    expect(crossing.signals.map((signal) => signal.id)).not.toContain("tension.victory");
+  });
+
+  it("se saigner à la Déraison ne fabrique pas de retournement", () => {
+    const bleed = (amount: number, after: number) => [
+      { ...base, type: "DERAISON_SETTLED", playerId: "p1", debt: amount, anchorDamage: amount },
+      { ...base, type: "DAMAGE", targetPlayerId: "p1", amount, targetAnchorAfter: after },
+    ];
+    const selfMade = analyzeMatch(game([...bleed(START - 2, 2), hit("p2", 0)], { winnerId: "p1", myAnchor: 2 }), "p1");
+    expect(selfMade.facts.selfInflicted).toBe(START - 2);
+    expect(selfMade.facts.lowestAnchor).toBe(START);
+    const ids = selfMade.signals.map((signal) => signal.id);
+    expect(ids).not.toContain("tension.comeback");
+    expect(ids).not.toContain("tension.narrow");
+    // Le même Ancrage perdu sous les coups de l'adversaire, lui, reste un retournement.
+    const real = analyzeMatch(game([hit("p1", 2, START - 2), hit("p2", 0)], { winnerId: "p1", myAnchor: 2 }), "p1");
+    expect(real.signals.map((signal) => signal.id)).toContain("tension.comeback");
+  });
+
+  it("une humeur n'a qu'un libellé, de la table à la prime", () => {
+    expect(audiencePrize(45).label).toBe(audienceMood(45));
+    expect(audiencePrize(65).label).toBe(audienceMood(65));
+    expect(audiencePrize(85).label).toBe(audienceMood(85));
   });
 });
 

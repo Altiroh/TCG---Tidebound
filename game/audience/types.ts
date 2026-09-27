@@ -41,7 +41,10 @@ export interface MatchFacts {
   startingAnchor: number;
   opponentStartingAnchor: number;
   /** Ancrage le plus bas atteint par le joueur. */
+  /** Ancrage le plus bas atteint, HORS Déraison qu'on s'est infligée soi-même. */
   lowestAnchor: number;
+  /** Ancrage perdu par sa propre Déraison au fil de la partie (`moments.ts`). */
+  selfInflicted: number;
   /** Ancrage final du joueur et de l'adversaire. */
   finalAnchor: number;
   opponentFinalAnchor: number;

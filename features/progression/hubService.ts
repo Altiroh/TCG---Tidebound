@@ -1,7 +1,7 @@
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { PLAYABLE_DECKS, getShipDefinition, type GameState } from "@/game";
 import { SHIP_SET } from "@/game/environment/shipData";
-import { AUDIENCE_MILESTONES, AUDIENCE_OPPONENT_WEIGHT, analyzeMatch, type AudienceOpponent } from "@/game/audience";
+import { AUDIENCE_MILESTONES, analyzeMatch, matchAudienceWeight, type AudienceOpponent } from "@/game/audience";
 import {
   MASTERY_MAX_LEVEL,
   SPONSORS,
@@ -481,12 +481,19 @@ export async function recordMatchAudience(
     opponent?: AudienceOpponent;
     /** Prime du public déjà octroyée avec la partie (`awardMatchReward`) — notée pour l'écran de fin. */
     prize?: { xp: number; tides: number } | null;
+    /**
+     * Le joueur a-t-il vraiment joué (`isMeaningfulMatch`) ? Non : la partie
+     * est notée, mais ne pèse rien sur l'audience ni sur les mécènes
+     * (`matchAudienceWeight`). Défaut : oui.
+     */
+    played?: boolean;
   }
 ): Promise<void> {
   try {
     const service = createSupabaseServiceRoleClient();
     const analysis = analyzeMatch(finalState, userId);
     const opponent = context.opponent ?? "joueur";
+    const played = context.played ?? true;
     let { data, error } = await service.rpc("record_match_audience", {
       p_user_id: userId,
       p_match_id: matchId,
@@ -495,11 +502,13 @@ export async function recordMatchAudience(
       p_vs_bot: opponent !== "joueur",
       p_prize_xp: context.prize?.xp ?? 0,
       p_prize_tides: context.prize?.tides ?? 0,
-      p_weight: AUDIENCE_OPPONENT_WEIGHT[opponent],
+      p_weight: matchAudienceWeight(opponent, played),
     });
     // Migration 20261015120000 pas encore passée : la fonction ne connaît pas
     // `p_weight` (PostgREST ne trouve pas la signature). On juge quand même,
     // avec le poids fixe « contre le bot » de 20261013120000.
+    // Sans `p_weight`, une partie non jouée ne peut pas être neutralisée : on ne la juge pas.
+    if (error?.code === "PGRST202" && !played) return;
     if (error?.code === "PGRST202") {
       ({ data, error } = await service.rpc("record_match_audience", {
         p_user_id: userId,
@@ -516,7 +525,7 @@ export async function recordMatchAudience(
       return;
     }
     // Déjà comptée (rejeu) : les mécènes l'ont déjà vue aussi.
-    if (!data?.recorded || context.accountLevel < SPONSORS_UNLOCK_LEVEL) return;
+    if (!data?.recorded || !played || context.accountLevel < SPONSORS_UNLOCK_LEVEL) return;
 
     const points = sponsorPointsForMatch({ audience: data.audience ?? 0, best: data.best, analysis, playStreak: context.playStreak });
     if (!Object.values(points).some((value) => value > 0)) return;

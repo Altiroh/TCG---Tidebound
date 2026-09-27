@@ -3,7 +3,7 @@ import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
 import { awardMatchReward } from "@/features/progression/rewards";
 import { botCountsAsPvp } from "@/features/progression/botRewardPolicy";
-import { audienceOpponent } from "@/game/progression";
+import { audienceOpponent, isMeaningfulMatch, matchActivity } from "@/game/progression";
 import { recordMatchQuestProgress } from "@/features/quests/questService";
 import { recordMatchAudience } from "@/features/progression/hubService";
 import { isRecentDeck } from "@/features/decks/recentDecks";
@@ -298,6 +298,8 @@ async function settleFinishedMatch(match: MatchRow, finalState: GameState): Prom
             // pour les quêtes (`AUDIENCE_OPPONENT_WEIGHT`).
             opponent: audienceOpponent(match.mode, match.bot_difficulty, botAsPvp),
             prize: reward.audiencePrize,
+            // Une partie que ce joueur n'a pas vraiment jouée ne pèse rien sur son public.
+            played: isMeaningfulMatch(matchActivity(finalState, userId)),
           })
         : Promise.resolve();
       const quests = recordMatchQuestProgress({

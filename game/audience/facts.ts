@@ -71,6 +71,7 @@ export function readMatchFacts(state: GameState, playerId: PlayerId): MatchFacts
     startingAnchor: timeline.startingAnchor,
     opponentStartingAnchor: timeline.opponentStartingAnchor,
     lowestAnchor: timeline.lowestAnchor,
+    selfInflicted: timeline.selfInflicted,
     finalAnchor: me?.anchor ?? timeline.startingAnchor,
     opponentFinalAnchor: opponent?.anchor ?? timeline.opponentStartingAnchor,
     leadChanges: timeline.leadChanges,

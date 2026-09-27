@@ -13,7 +13,7 @@ export {
   audienceTarget,
   nextAudience,
   nextAudienceWeighted,
-  projectedAudience,
+  matchAudienceWeight,
   type AudienceOpponent,
 } from "@/game/audience/analyzeMatch";
 export { readMatchFacts } from "@/game/audience/facts";

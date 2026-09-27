@@ -186,11 +186,19 @@
 }
 
 .recapTitle {
-  margin: 0 0 0.7cqw;
+  margin: 0 0 0.2cqw;
   font-family: var(--tb-font-ui, Georgia, serif);
   font-size: 1.62cqw;
   font-weight: 600;
   line-height: 1.1;
+}
+
+.recapUnit {
+  margin: 0 0 0.6cqw;
+  font-size: max(8px, 0.72cqw);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.7;
 }
 
 .signals {
