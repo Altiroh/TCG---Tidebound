@@ -18,6 +18,7 @@ import { useCardBrowser } from "@/features/collection/useCardBrowser";
 import { GameScreen } from "@/features/shell/GameScreen";
 import { SearchLine } from "@/features/shell/SearchLine";
 import styles from "@/features/collection/CardBrowser.module.css";
+import collectionBook from "@/features/collection/CollectionBook.module.css";
 import game from "@/features/shell/GameScreen.module.css";
 import book from "@/features/decks/DeckEditorBook.module.css";
 import { BookSearch } from "@/features/decks/BookSearch";
@@ -135,6 +136,21 @@ function CollectionScreenBody({ isSignedIn, ownedCardIds, ownedCounts, catalog, 
     </button>
   ) : undefined;
 
+  // La bougie seule (plus de tasse de café, retour du 28/09/2026), agrandie,
+  // et la lueur vacillante de sa flamme. Elle a SA place dans la barre de la
+  // grille, entre la recherche et le tri : plus grande, posée par-dessus, elle
+  // masquait le tri.
+  const candle = (
+    <span className={collectionBook.candleSlot} aria-hidden>
+      <span className={collectionBook.candle}>
+        <span className={collectionBook.candleGlow} />
+        {/* eslint-disable-next-line @next/next/no-img-element -- décor peint */}
+        <img src="/assets/ui/accessoires/bougie.webp" alt="" draggable={false} />
+        <span className={collectionBook.candleCore} />
+      </span>
+    </span>
+  );
+
   return (
     <GameScreen
       active="collection"
@@ -156,7 +172,7 @@ function CollectionScreenBody({ isSignedIn, ownedCardIds, ownedCounts, catalog, 
       }
     >
       <div
-        className={`${styles.workspace} ${onBook ? `${book.workspace} ${book.collection}` : ""}`}
+        className={`${styles.workspace} ${onBook ? `${book.workspace} ${book.collection} ${collectionBook.book}` : ""}`}
         data-drawer={browser.drawerOpen ? "open" : "closed"}
       >
         <button
@@ -187,7 +203,14 @@ function CollectionScreenBody({ isSignedIn, ownedCardIds, ownedCounts, catalog, 
             activeFilterCount={browser.activeFilterCount}
             // Sur le livre : l'effectif seul sur son onglet, « Revendre le surplus » en bout de barre.
             countAction={onBook ? undefined : surplusButton}
-            search={onBook ? <BookSearch value={browser.filters.search} onChange={(search) => browser.patchFilters({ search })} /> : undefined}
+            search={
+              onBook ? (
+                <>
+                  <BookSearch value={browser.filters.search} onChange={(search) => browser.patchFilters({ search })} />
+                  {candle}
+                </>
+              ) : undefined
+            }
             extra={onBook ? surplusButton : undefined}
           />
 
@@ -209,12 +232,6 @@ function CollectionScreenBody({ isSignedIn, ownedCardIds, ownedCounts, catalog, 
           {/* Le décor de la table, le même que celui de l'Éditeur. */}
           {/* eslint-disable-next-line @next/next/no-img-element -- décor peint, positionné à la main */}
           <img className={book.decor} src="/assets/ui/accessoires/longue-vue.webp" alt="" draggable={false} />
-          <span className={book.decorTopRight} aria-hidden>
-            {/* eslint-disable-next-line @next/next/no-img-element -- décor peint */}
-            <img src="/assets/ui/accessoires/bougie.webp" alt="" draggable={false} />
-            {/* eslint-disable-next-line @next/next/no-img-element -- décor peint */}
-            <img src="/assets/ui/accessoires/tasse-cafe.webp" alt="" draggable={false} />
-          </span>
         </>
       )}
 
