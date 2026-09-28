@@ -115,9 +115,49 @@ export function ProfileView({
   const [reveal, setReveal] = useState<{ levels: RevealedLevel[]; choices: PendingCardChoice[]; extraItems?: RewardItem[]; title?: string } | null>(null);
   const [claiming, setClaiming] = useState<number | "all" | "everything" | string | null>(null);
   const [claimError, setClaimError] = useState<string | null>(null);
-  /** Choix (illustration ou titre) ouvert à la place de l'onglet. */
+  /**
+   * Choix ouvert : le titre s'ouvre à la place de l'onglet ; l'illustration,
+   * dans un panneau à droite, le profil restant visible à gauche.
+   */
   const [picker, setPicker] = useState<"illustration" | "title" | null>(null);
-  const picking = picker !== null;
+  const picking = picker === "title";
+  /**
+   * Illustration montrée à la place de celle enregistrée : l'essai en cours
+   * dans le panneau, puis, une fois validée, jusqu'à ce que le profil relu
+   * la porte (pas de retour fugace à l'ancienne).
+   */
+  const [avatarOverride, setAvatarOverride] = useState<{ cardId: string | null } | null>(null);
+  const shownProfile = avatarOverride ? { ...profile, avatarCardId: avatarOverride.cardId } : profile;
+  useEffect(() => {
+    if (picker !== "illustration" && avatarOverride && profile.avatarCardId === avatarOverride.cardId) setAvatarOverride(null);
+  }, [picker, avatarOverride, profile.avatarCardId]);
+  // Changer d'onglet (bandeau de l'écran) abandonne l'essai en cours.
+  useEffect(() => {
+    setPicker((current) => (current === "illustration" ? null : current));
+    setAvatarOverride((current) => (current && current.cardId !== profile.avatarCardId ? null : current));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- seulement au changement d'onglet
+  }, [tab]);
+  const openIllustrationPicker = () => {
+    setAvatarOverride({ cardId: profile.avatarCardId });
+    setPicker("illustration");
+  };
+  const illustrationPicker = picker === "illustration" && (
+    <IllustrationPicker
+      avatarCardId={profile.avatarCardId}
+      ownedCardIds={profile.ownedCardIds}
+      selectedId={avatarOverride ? avatarOverride.cardId : profile.avatarCardId}
+      onSelect={(cardId) => setAvatarOverride({ cardId })}
+      onClose={() => {
+        setAvatarOverride(null);
+        setPicker(null);
+      }}
+      onSaved={(cardId) => {
+        setAvatarOverride({ cardId });
+        setPicker(null);
+        onRefresh();
+      }}
+    />
+  );
   const equippedTitleName = profile.titles.options.find((option) => option.id === profile.titles.equipped)?.name ?? null;
 
   // Le profil lit la base : il réaligne au passage le miroir local du dos
@@ -274,14 +314,6 @@ export function ProfileView({
         <div className={sceneStyles.tabPage}>
           {claimError && <p className={`${game.error} ${sceneStyles.claimError}`}>{claimError}</p>}
           <div className={sceneStyles.tabPanel} role="tabpanel">
-            {picker === "illustration" && (
-              <IllustrationPicker
-                avatarCardId={profile.avatarCardId}
-                ownedCardIds={profile.ownedCardIds}
-                onClose={() => setPicker(null)}
-                onChanged={onRefresh}
-              />
-            )}
             {picker === "title" && <TitlePicker titles={profile.titles} onClose={() => setPicker(null)} onChanged={onRefresh} />}
             {!picking && tab === "quetes" && <QuestsTab onRefresh={onRefresh} />}
             {!picking && tab === "recompenses" && (
@@ -308,18 +340,19 @@ export function ProfileView({
     return (
       <>
         <ProfileScene
-          profile={profile}
+          profile={shownProfile}
           titleName={equippedTitleName}
           waitingTotal={waiting.total}
           claimingAll={claiming === "everything"}
           onClaimAll={() => void claimAllRewards()}
-          onPickIllustration={() => setPicker("illustration")}
+          onPickIllustration={openIllustrationPicker}
           onPickTitle={() => setPicker("title")}
           onShowRoute={() => setTab("recompenses")}
           onRefresh={onRefresh}
           onSignOut={handleSignOut}
           signingOut={signingOut}
         />
+        {illustrationPicker}
         {revealLayer}
       </>
     );
@@ -330,9 +363,9 @@ export function ProfileView({
       <aside className={`${game.panel} ${styles.side}`} aria-label="Profil">
         <ProfileIdentity
           displayName={profile.displayName}
-          avatarCardId={profile.avatarCardId}
+          avatarCardId={shownProfile.avatarCardId}
           onChanged={onRefresh}
-          onPickIllustration={() => setPicker("illustration")}
+          onPickIllustration={openIllustrationPicker}
           titleName={equippedTitleName}
           onPickTitle={() => setPicker("title")}
         />
@@ -415,14 +448,7 @@ export function ProfileView({
       </aside>
 
       <main className={styles.main} role="tabpanel">
-        {picker === "illustration" && (
-          <IllustrationPicker
-            avatarCardId={profile.avatarCardId}
-            ownedCardIds={profile.ownedCardIds}
-            onClose={() => setPicker(null)}
-            onChanged={onRefresh}
-          />
-        )}
+        {illustrationPicker}
         {picker === "title" && <TitlePicker titles={profile.titles} onClose={() => setPicker(null)} onChanged={onRefresh} />}
         {!picking && tab === "carnet" && <LogbookTab profile={profile} onRefresh={onRefresh} onShowRewards={() => setTab("recompenses")} />}
         {!picking && tab === "quetes" && <QuestsTab onRefresh={onRefresh} />}

@@ -1,17 +1,38 @@
-/* Choix de l'illustration, dans la partie droite du profil. */
+/*
+ * Choix de l'illustration : un panneau collé à droite de l'écran, sur toute
+ * sa hauteur. Pas de voile — le profil, à gauche, montre l'essai en direct.
+ * La grille prend toute la hauteur restante et défile seule.
+ */
 
 .picker {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 80;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  height: 100%;
-  min-height: 0;
-  padding: clamp(14px, 1.8vw, 24px);
-  border: 1px solid rgba(0, 183, 255, 0.55);
-  border-radius: var(--radius, 14px);
-  background: linear-gradient(180deg, #071a29 0%, #061522 100%);
-  box-shadow: 0 0 6px rgba(0, 183, 255, 0.3);
+  width: min(48vw, 860px);
+  min-width: min(420px, 100vw);
+  padding: calc(clamp(14px, 1.8vw, 24px) + var(--tb-safe-top, 0px)) calc(clamp(14px, 1.8vw, 24px) + var(--tb-safe-right, 0px))
+    calc(clamp(12px, 1.6vw, 20px) + var(--tb-safe-bottom, 0px)) clamp(14px, 1.8vw, 24px);
+  border-left: 1px solid rgba(0, 183, 255, 0.55);
+  background: linear-gradient(180deg, rgba(7, 26, 41, 0.97) 0%, rgba(6, 21, 34, 0.98) 100%);
+  box-shadow: -24px 0 60px rgba(0, 0, 0, 0.55), 0 0 6px rgba(0, 183, 255, 0.3);
   color: #e8edf0;
+  animation: pickerIn 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes pickerIn {
+  from { transform: translateX(30%); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .picker {
+    animation: none;
+  }
 }
 
 .head {
@@ -141,6 +162,8 @@
 }
 
 .grid {
+  flex: 1 1 0;
+  align-content: start;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(clamp(130px, 12vw, 170px), 1fr));
   gap: 10px;
@@ -171,6 +194,11 @@
 .option:hover:not(:disabled) {
   border-color: #00aef0;
   transform: translateY(-2px);
+}
+
+/* L'illustration enregistrée, quand on en essaie une autre. */
+.option[data-saved] {
+  border-style: dashed;
 }
 
 .option[data-active="true"] {
@@ -210,4 +238,95 @@
   border-radius: 50%;
   background: rgba(6, 21, 34, 0.75);
   color: #f2828a;
+}
+
+/* Pied du panneau : l'essai en cours, Annuler, Valider. */
+.foot {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #17405a;
+}
+
+.footNote {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: #9eb3c2;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cancel,
+.save {
+  flex: none;
+  padding: 8px 18px;
+  border: 1px solid #195374;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #0b2638 0%, #071826 100%);
+  color: #c8d7e1;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.save {
+  border-color: #00b7ff;
+  background: linear-gradient(180deg, #0d4a6e 0%, #08314a 100%);
+  box-shadow: 0 0 10px rgba(0, 183, 255, 0.35);
+  color: #eaf7ff;
+  font-weight: 700;
+}
+
+.cancel:disabled,
+.save:disabled {
+  cursor: default;
+  opacity: 0.45;
+  box-shadow: none;
+}
+
+/* Téléphone couché : en-tête sur une ligne, vignettes plus petites. */
+@media (max-height: 520px) {
+  .picker {
+    gap: 8px;
+  }
+  .head {
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+  .title {
+    overflow: hidden;
+    font-size: 15px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .back,
+  .remove {
+    flex: none;
+    padding: 4px 9px;
+    font-size: 12px;
+  }
+  .search,
+  .favoriteFilter {
+    padding-block: 5px;
+  }
+  .grid {
+    grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+    gap: 6px;
+  }
+  .name {
+    padding: 4px 6px 5px;
+    font-size: 11px;
+  }
+  .foot {
+    padding-top: 6px;
+  }
+  .cancel,
+  .save {
+    padding: 5px 14px;
+    font-size: 13px;
+  }
 }
