@@ -20,7 +20,7 @@ Tous les fichiers sont rognés au plus près de leur opaque : `100% 100%`
 | --- | --- | --- | --- |
 | `plaque-bois.webp` | 720 × 170 | Plaque de bois ferrée, laiton aux bouts | Collectables (Équiper, Acheter) |
 | `bouton-sombre.webp` | 591 × 121 | Plaque sombre à liseré de laiton | Écran de fin (Retour), Mes boosters (fiche) |
-| `bouton-bleu.webp` | 594 × 130 | Même plaque, bleu nuit à liseré cyan : l'action principale | Écran de fin (Nouvelle partie), Mes boosters (Ouvrir) |
+| `bouton-bleu.webp` | 594 × 130 | Même plaque, bleu nuit à liseré cyan : l'action principale | Écran de fin (Nouvelle partie), Mes boosters (Ouvrir), Collectables (Acheter au Market) |
 | `rond-plus.webp`, `rond-moins.webp` | 256 × 254 | Hublots de laiton + / − | Éditeur de deck (quantité) |
 
 Plaques rognées à leur opaque : `100% 100%` les étire à la boîte du bouton.
@@ -40,7 +40,7 @@ pouvoir la ternir (état éteint) sans ternir le texte — cf. `.action` dans
 | --- | --- | --- | --- |
 | `plaques/plaque-rivets.webp` | 994 × 243 | Plaque sombre à embouts de laiton | Éditeur, table des Decks |
 | `plaques/plaque-nom.webp` | 720 × 148 | Étiquette de parchemin cerclée : un nom | Collectables |
-| `plaques/onglet.webp` | 900 × 162 | Bande de parchemin déchirée : onglet, tri, compteur | Éditeur, table des Decks |
+| `plaques/onglet.webp` | 900 × 162 | Bande de parchemin déchirée : onglet, tri, compteur | Éditeur, table des Decks, Collectables (étagères) |
 | `bandeaux/bandeau-parchemin.webp` | 1800 × 269 | Long bandeau de parchemin déchiré (s'étire en largeur) | Collectables |
 | `bandeaux/banderole.webp` | 900 × 249 | Banderole à pans roulés : un titre | Table des Decks |
 

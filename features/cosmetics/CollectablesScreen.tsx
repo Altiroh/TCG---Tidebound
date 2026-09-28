@@ -419,7 +419,10 @@ function FamilySection({
         </span>
         {/* L'achat se fait au Market, rayon Cosmétiques : ici on regarde et on équipe. */}
         <Link href="/market" className={styles.marketLink} onClick={() => playButtonClick()}>
-          <span className={styles.marketWord}>Acheter au </span>Market →
+          <span className={styles.marketWord}>Acheter au </span>Market
+          <span className={styles.marketArrow} aria-hidden>
+            →
+          </span>
         </Link>
       </header>
 
