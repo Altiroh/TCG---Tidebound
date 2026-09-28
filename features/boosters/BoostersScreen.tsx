@@ -31,16 +31,6 @@ const DRAG_MIME = "text/tidebound-booster-id";
 const DOCK_CHARGE_MS = 900;
 
 /**
- * Rejouent la scène d'ouverture sur un tirage LOCAL, sans consommer de
- * booster ni toucher à la collection — pour régler l'animation sans devoir
- * s'acheter un paquet à chaque essai.
- */
-const OPENING_TEST_BOOSTERS = [
-  { boosterId: "standard", label: "Standard" },
-  { boosterId: "welcome_tutorial", label: "Bienvenue" },
-] as const;
-
-/**
  * Rayons de l'étagère peinte (`boosters/etagere.webp`). Au-delà, elle
  * TOURNE : les flèches font descendre chaque rouleau d'un rayon, et celui
  * du bas repasse en haut (retour du 27/09/2026) — jamais de butée.
@@ -65,9 +55,8 @@ interface BoostersScreenProps {
    * Sans ce drapeau, `/game/boosters-preview` affichait des compteurs
    * inventés (« ×7 ») sur un bouton câblé à la VRAIE Server Action : un
    * visiteur connecté y consommait ses propres boosters en croyant régler
-   * une mise en page. L'ouverture passe donc par le tirage local, celui du
-   * bouton « Tester l'animation » — aucune écriture, aucun exemplaire
-   * consommé.
+   * une mise en page. L'ouverture passe donc par un tirage local — aucune
+   * écriture, aucun exemplaire consommé.
    */
   sandbox?: boolean;
 }
@@ -161,7 +150,7 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
     origin: BoosterOpeningOrigin | null;
   } | null>(null);
   /** Sachet du plan d'ouverture — mesuré au lancement, pour que la scène le fasse décoller de là. */
-  const dockPackRef = useRef<HTMLSpanElement>(null);
+  const dockPackRef = useRef<HTMLButtonElement>(null);
   /** Sachets à ouvrir d'un seul geste (1 = le geste habituel). */
   const [batchSize, setBatchSize] = useState(1);
   /**
@@ -234,7 +223,9 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
     if (sandbox) {
       const packs = Array.from({ length: quantity }, () => drawTestBoosterCards(boosterId));
       if (packs.length > 1) setBatch({ boosterId, packs: packs.length, lines: batchLines(packs) });
-      setOpening({ boosterId, real: false, cards: packs[0] ?? [], origin: null });
+      const box = dockPackRef.current?.getBoundingClientRect();
+      const from = box && box.height > 0 ? { x: box.left, y: box.top, width: box.width, height: box.height } : null;
+      setOpening({ boosterId, real: false, cards: packs[0] ?? [], origin: from });
       return;
     }
 
@@ -290,13 +281,7 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
     setOpening({ boosterId, real: true, origin, cards: openingCards(first) });
   }
 
-  /** Ouverture À BLANC : un tirage local, aucun appel serveur, aucun booster consommé. */
-  function handleTestOpen(boosterId: string) {
-    if (isOpening || opening) return;
-    playButtonClick();
-    setError(null);
-    setOpening({ boosterId, real: false, cards: drawTestBoosterCards(boosterId), origin: null });
-  }
+
 
   /** Fin d'une ouverture en lot : l'exemplaire est consommé, on relit l'inventaire. */
   function handleBatchClosed() {
@@ -449,8 +434,11 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
             }}
           >
             {selected && <span className={styles.planShadow} aria-hidden />}
+            {/* Le sachet posé : un CLIC l'ouvre (retour du 28/09/2026), et la
+                scène d'ouverture part de lui. Éteint s'il n'est pas possédé. */}
             {selected && (
-              <span
+              <button
+                type="button"
                 key={selected.boosterId}
                 ref={dockPackRef}
                 className={styles.planPack}
@@ -458,15 +446,24 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
                 data-locked={ownsSelected ? undefined : "true"}
                 data-charging={isOpening || undefined}
                 data-launched={opening !== null || undefined}
-                aria-hidden
+                disabled={!ownsSelected || busy || isOpening || opening !== null}
+                onClick={() => void handleOpen(selected.boosterId)}
+                aria-label={`Ouvrir un booster ${selected.name}`}
               />
             )}
             {/* Seulement quand il y a quelque chose à dire : le geste en
-                cours, ou un sachet qu'on ne possède pas. */}
-            {(isOpening || isDragging || isOver || !ownsSelected) && (
+                cours, ou un sachet qu'on ne possède pas. Au survol d'un
+                sachet possédé : ce que fait le clic. */}
+            {isOpening || isDragging || isOver || !ownsSelected ? (
               <p className={styles.planState}>
                 {isOpening ? "Ouverture…" : !ownsSelected ? "Non possédée" : "Lâche pour ouvrir"}
               </p>
+            ) : (
+              opening === null && (
+                <p className={`${styles.planState} ${styles.planHint}`} aria-hidden>
+                  Cliquer pour ouvrir un booster
+                </p>
+              )
             )}
             {ownsSelected && selected?.entry && selected.entry.packsSinceAbyssal >= PITY.rampStartsAfterPacks && (
               <p className={styles.planPity}>
@@ -596,22 +593,6 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
             </aside>
           )}
 
-          {/* Réglage de l'animation : un tirage local, sans booster ni
-              écriture — le seul moyen de la revoir sans en acheter un. */}
-          <span className={styles.testGroup} role="group" aria-label="Tester l’animation d’ouverture">
-            <span className={styles.testLabel}>Tester l&apos;animation</span>
-            {OPENING_TEST_BOOSTERS.map((test) => (
-              <button
-                key={test.boosterId}
-                type="button"
-                className={styles.testLink}
-                onClick={() => handleTestOpen(test.boosterId)}
-                disabled={opening !== null || isOpening}
-              >
-                {test.label}
-              </button>
-            ))}
-          </span>
         </div>
       </div>
 
