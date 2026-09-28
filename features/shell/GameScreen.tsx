@@ -19,7 +19,7 @@ import styles from "@/features/shell/GameScreen.module.css";
  *   - `market` : l'échoppe du Market ;
  *   - `cabine` : la cabine du Profil.
  */
-export type ScreenBackdrop = "port" | "livre" | "carte" | "market" | "cabine";
+export type ScreenBackdrop = "port" | "livre" | "carte" | "market" | "cabine" | "table";
 
 const BACKDROP_OF_SECTION: Partial<Record<ScreenSection, ScreenBackdrop>> = {
   collection: "livre",

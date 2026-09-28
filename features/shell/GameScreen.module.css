@@ -92,6 +92,13 @@
     #1a0f08 url("/assets/decks/liste/fond.webp") center / cover no-repeat;
 }
 
+/* La table de bois de l'écran Jouer (choix du mode, `ModeTable`). */
+.screen.screen[data-backdrop="table"] {
+  background:
+    radial-gradient(ellipse 80% 70% at 50% 48%, transparent 50%, rgba(0, 0, 0, 0.45) 100%),
+    #1f1109 url("/assets/play/mode/fond-table.webp") center / cover no-repeat;
+}
+
 .screen.screen[data-backdrop="carte"] {
   background: #1a0f08 url("/assets/ui/fonds/carte-marine.webp") 58% 42% / cover no-repeat;
 }

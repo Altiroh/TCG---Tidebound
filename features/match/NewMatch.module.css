@@ -36,50 +36,7 @@
 .stepDone { color: var(--ink-dim); }
 .stepSep { width: 22px; height: 1px; background: var(--line-strong); }
 
-/* ── Étape 1 : modes ────────────────────────────────────────── */
-.modes {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: clamp(12px, 1.4vw, 22px);
-}
-
-.mode {
-  gap: 10px;
-  min-height: clamp(180px, 24vh, 250px);
-  padding: clamp(16px, 1.8vw, 26px);
-}
-
-.modeMark {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border: 1px solid var(--line-strong);
-  border-radius: 50%;
-  color: var(--cb-cyan);
-}
-
-.modeTitle {
-  font-family: var(--cb-font-display);
-  font-size: clamp(17px, 1.35vw, 22px);
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: var(--ink-strong);
-}
-
-.modeText {
-  font-size: clamp(12px, 0.9vw, 14px);
-  line-height: 1.45;
-  color: var(--ink-dim);
-}
-
-.modeFoot {
-  margin-top: auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
+/* L'étape 1 (choix du mode) est la table de `ModeTable.module.css`. */
 
 /* ── Étape 2 : difficulté + decks ───────────────────────────── */
 
@@ -337,25 +294,9 @@
  *
  * Ce parcours n'avait aucune bascule : mesuré à 844 × 390, l'étape du mode
  * demandait 517 px pour 336 disponibles. L'étape du deck a depuis changé
- * de forme et porte les siennes plus bas ; il ne reste ici que les trois
- * tuiles de mode.
+ * de forme et porte les siennes plus bas.
  */
 @media (max-height: 560px) {
-  /*
-   * Les trois modes sur UNE rangée. À `minmax(240px, 1fr)` un écran
-   * couché n'en tenait que deux : le troisième — « Contre un bot »,
-   * le seul mode jouable seul — tombait sous la ligne de flottaison.
-   */
-  .modes {
-    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-    gap: 10px;
-  }
-
-  .mode {
-    min-height: clamp(118px, 34vh, 250px);
-    padding: clamp(12px, 1.8vw, 26px);
-  }
-
   /*
    * LA BARRE DE LANCEMENT DEVIENT UN VRAI PIED DE PAGE.
    *

@@ -11,6 +11,7 @@ import {
 } from "@/game";
 import Link from "next/link";
 import { nameplateArtUrl } from "@/features/decks/nameplateArt";
+import { ModeTable } from "@/features/match/ModeTable";
 import { GameScreen } from "@/features/shell/GameScreen";
 import { shipNameOf } from "@/features/ships/ShipPortrait";
 import game from "@/features/shell/GameScreen.module.css";
@@ -337,6 +338,60 @@ export function NewMatchScreen({
           ? onlineLaunchLabel
           : "Lancer la partie";
 
+  // Défi d'un ami, partie laissée ouverte : posés sur la table du choix du mode.
+  const notices =
+    challenges.length > 0 || resumable ? (
+      <>
+        {challenges.map((challenge) => (
+          <div key={challenge.id} className={game.banner} role="status">
+            <div className={game.bannerText}>
+              <p className={game.bannerTitle}>{challenge.fromName} te défie en match amical</p>
+              <p className={game.muted}>Choisis ton deck, et la partie commence.</p>
+            </div>
+            <div className={game.bannerActions}>
+              <button type="button" className={game.primary} onClick={() => acceptChallenge(challenge.inviteCode)}>
+                Relever le défi
+              </button>
+              {onDeclineChallenge && (
+                <button type="button" className={game.ghost} onClick={() => onDeclineChallenge(challenge.id)}>
+                  Décliner
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+        {resumable && (
+          <div className={game.banner} role="status">
+            <div className={game.bannerText}>
+              <p className={game.bannerTitle}>Une partie t&apos;attend</p>
+              <p className={game.muted}>{resumable.label}</p>
+            </div>
+            <div className={game.bannerActions}>
+              <Link href={`/en-ligne/${resumable.matchId}`} className={game.primary} onClick={() => playButtonClick()}>
+                Reprendre
+              </Link>
+            </div>
+          </div>
+        )}
+      </>
+    ) : null;
+
+  // Étape 1 : la table du choix du mode (maquette du 28/09/2026).
+  if (step === 1) {
+    return (
+      <GameScreen active="partie" nav="minimal" backdrop="table">
+        <ModeTable
+          onChoose={(choice) => {
+            // En ligne : la recherche rapide ; Match amical : défier un ami (le reste se choisit ensuite).
+            if (choice !== "bot") setOnlineKind(choice === "amical" ? "friend" : "quick");
+            chooseMode(choice === "bot" ? "bot" : "online");
+          }}
+          notices={notices}
+        />
+      </GameScreen>
+    );
+  }
+
   return (
     <GameScreen active="partie" nav="minimal">
       {/* `contentFlush` : sur un écran court, la zone de contenu rend son
@@ -349,26 +404,23 @@ export function NewMatchScreen({
           défiler pour elle seule — avec une hauteur seulement « au moins
           égale » (le `min-height: 100%` de la coquille), quatorze listes de
           test allongeaient la page et passaient sous la barre de lancement.
-          L'étape du mode garde le comportement ordinaire.
         */}
-        <div className={`${game.contentWide} ${step === 1 ? "" : styles.fill}`}>
+        <div className={`${game.contentWide} ${styles.fill}`}>
           <div className={game.pageHead}>
             <div>
               <p className={game.eyebrow}>Jouer</p>
               <h1 className={game.title}>
-                {step === 1 ? "Choisis un mode" : step === 3 ? "Joueur 2 — choisis ton deck" : mode === "pvp" ? "Joueur 1 — choisis ton deck" : "Choisis ton deck"}
+                {step === 3 ? "Joueur 2 — choisis ton deck" : mode === "pvp" ? "Joueur 1 — choisis ton deck" : "Choisis ton deck"}
               </h1>
               {/* Un filet en vague plutôt qu'un trait : la même signature que
                   les titres de la charte, et elle dit de quelle mer on parle. */}
               <p className={styles.lead}>
                 <span className={styles.leadWave} aria-hidden />
-                {step === 1
-                  ? "Choisis comment tu veux jouer, puis ton deck."
-                  : mode === "pvp"
-                    ? "Chacun son deck, à tour de rôle, sur le même écran."
-                    : mode === "online"
-                      ? "Affronte un autre capitaine à distance, partie arbitrée par le serveur."
-                      : "Affronte l'IA et perfectionne tes stratégies sur les mers de Tidebound."}
+                {mode === "pvp"
+                  ? "Chacun son deck, à tour de rôle, sur le même écran."
+                  : mode === "online"
+                    ? "Affronte un autre capitaine à distance, partie arbitrée par le serveur."
+                    : "Affronte l'IA et perfectionne tes stratégies sur les mers de Tidebound."}
               </p>
             </div>
             <ol className={styles.steps} aria-label="Étapes">
@@ -385,102 +437,7 @@ export function NewMatchScreen({
             </ol>
           </div>
 
-          {step === 1 &&
-            challenges.map((challenge) => (
-              <div key={challenge.id} className={game.banner} role="status">
-                <div className={game.bannerText}>
-                  <p className={game.bannerTitle}>{challenge.fromName} te défie en match amical</p>
-                  <p className={game.muted}>Choisis ton deck, et la partie commence.</p>
-                </div>
-                <div className={game.bannerActions}>
-                  <button type="button" className={game.primary} onClick={() => acceptChallenge(challenge.inviteCode)}>
-                    Relever le défi
-                  </button>
-                  {onDeclineChallenge && (
-                    <button type="button" className={game.ghost} onClick={() => onDeclineChallenge(challenge.id)}>
-                      Décliner
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-
-          {step === 1 && resumable && (
-            <div className={game.banner} role="status">
-              <div className={game.bannerText}>
-                <p className={game.bannerTitle}>Une partie t&apos;attend</p>
-                <p className={game.muted}>{resumable.label}</p>
-              </div>
-              <div className={game.bannerActions}>
-                <Link href={`/en-ligne/${resumable.matchId}`} className={game.primary} onClick={() => playButtonClick()}>
-                  Reprendre
-                </Link>
-              </div>
-            </div>
-          )}
-
-          {step === 1 ? (
-            <div className={styles.modes}>
-              {/* En ligne : il faut un compte, la partie se joue et se paie côté serveur. */}
-              {isSignedIn ? (
-                <button type="button" className={`${game.tile} ${styles.mode}`} onClick={() => chooseMode("online")}>
-                  <span className={styles.modeMark} aria-hidden>
-                    {ONLINE_MARK}
-                  </span>
-                  <span className={styles.modeTitle}>En ligne</span>
-                  <span className={styles.modeText}>Recherche rapide contre un adversaire tiré au hasard, ou match amical avec un ami.</span>
-                  <span className={styles.modeFoot}>
-                    <span className={game.tagBrass}>XP et quêtes</span>
-                    <span className={game.link}>Choisir →</span>
-                  </span>
-                </button>
-              ) : (
-                <Link href="/connexion" className={`${game.tile} ${styles.mode}`} onClick={() => playButtonClick()}>
-                  <span className={styles.modeMark} aria-hidden>
-                    {ONLINE_MARK}
-                  </span>
-                  <span className={styles.modeTitle}>En ligne</span>
-                  <span className={styles.modeText}>Affronte d&apos;autres joueurs à distance. Il te faut un compte.</span>
-                  <span className={styles.modeFoot}>
-                    <span className={game.tag}>Connexion requise</span>
-                    <span className={game.link}>Se connecter →</span>
-                  </span>
-                </Link>
-              )}
-
-              <button type="button" className={`${game.tile} ${styles.mode}`} onClick={() => chooseMode("pvp")}>
-                <span className={styles.modeMark} aria-hidden>
-                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
-                    <circle cx="8" cy="9" r="3" stroke="currentColor" strokeWidth={1.5} />
-                    <circle cx="16" cy="9" r="3" stroke="currentColor" strokeWidth={1.5} />
-                    <path d="M2.5 20c.6-3.2 2.7-5 5.5-5s4.9 1.8 5.5 5M10.5 20c.6-3.2 2.7-5 5.5-5s4.9 1.8 5.5 5" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
-                  </svg>
-                </span>
-                <span className={styles.modeTitle}>Local — joueur contre joueur</span>
-                <span className={styles.modeText}>Deux joueurs sur le même écran, à tour de rôle. Chacun choisit son deck.</span>
-                <span className={styles.modeFoot}>
-                  <span className={game.tagCyan}>Sans XP</span>
-                  <span className={game.link}>Choisir →</span>
-                </span>
-              </button>
-
-              <button type="button" className={`${game.tile} ${styles.mode}`} onClick={() => chooseMode("bot")}>
-                <span className={styles.modeMark} aria-hidden>
-                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
-                    <rect x="4" y="7" width="16" height="12" rx="3" stroke="currentColor" strokeWidth={1.5} />
-                    <path d="M12 3v4M9 13h.01M15 13h.01M9 16h6" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" />
-                  </svg>
-                </span>
-                <span className={styles.modeTitle}>Contre un bot</span>
-                <span className={styles.modeText}>Trois niveaux de difficulté. Le deck adverse est tiré au sort au lancement.</span>
-                <span className={styles.modeFoot}>
-                  <span className={game.tagBrass}>XP et quêtes</span>
-                  <span className={game.link}>Choisir →</span>
-                </span>
-              </button>
-            </div>
-          ) : (
-            <>
+          <>
               <div>
                 <button
                   type="button"
@@ -788,8 +745,7 @@ export function NewMatchScreen({
                 </button>
               </div>
               {error && <p className={game.error}>{error}</p>}
-            </>
-          )}
+          </>
         </div>
       </div>
     </GameScreen>

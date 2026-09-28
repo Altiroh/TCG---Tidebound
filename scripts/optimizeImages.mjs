@@ -114,6 +114,14 @@ const RULES = [
   { match: /\/boosters\/etagere\./, maxSize: 1400, quality: 86 },
   { match: /\/boosters\/decor-boussoles\./, maxSize: 1000, quality: 86 },
   { match: /\/ui\/panneaux\/parchemin-boussole\./, maxSize: 1400, quality: 86 },
+  // Écran JOUER, choix du mode (maquette du 28/09/2026) : la table de bois
+  // en fond plein écran, le bandeau à ~45 % de la scène, les trois cartes
+  // à ~20 %, la lanterne à ~12 %, le décor du coin à ~32 %.
+  { match: /\/play\/mode\/fond-table\./, maxSize: 1920, quality: 80 },
+  { match: /\/play\/mode\/bandeau-/, maxSize: 1500, quality: 86 },
+  { match: /\/play\/mode\/carte-/, maxSize: 900, quality: 86 },
+  { match: /\/play\/mode\/lanterne/, maxSize: 640, quality: 88 },
+  { match: /\/play\/mode\/decor-/, maxSize: 1200, quality: 84 },
   // Scène des MÉCÈNES (maquette du 28/09/2026), dans le panneau latéral
   // (la moitié de l'écran) : le mur en fond, la télé à ~90 % de sa largeur,
   // les cadres photo à ~30 %, la lanterne et l'étoile de mer en décor.

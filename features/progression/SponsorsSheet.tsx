@@ -7,6 +7,7 @@ import type { AudienceMilestoneView, AudienceView, SponsorView } from "@/feature
 import { RewardIcon } from "@/features/progression/RewardIcon";
 import hubStyles from "@/features/progression/HubSheets.module.css";
 import styles from "@/features/progression/SponsorsSheet.module.css";
+import { Lantern } from "@/features/shell/Lantern";
 import { playButtonClick } from "@/lib/sound";
 
 const SCENE = "/assets/mecenes/scene";
@@ -22,17 +23,6 @@ const WALL: readonly { left: number; top: number; tilt: number; delay: number }[
   { left: 26.3, top: 0, tilt: 3, delay: -1.7 },
   { left: 52.7, top: 13, tilt: -3, delay: -3.1 },
   { left: 79, top: 0, tilt: 6, delay: -4.4 },
-];
-
-/** Volutes de fumée de la lanterne soufflée : dérive (%), taille (%), départ (s). */
-const SMOKE = [
-  { dx: -18, size: 30, delay: 0 },
-  { dx: 12, size: 26, delay: 0.08 },
-  { dx: -6, size: 36, delay: 0.18 },
-  { dx: 22, size: 30, delay: 0.3 },
-  { dx: -24, size: 24, delay: 0.42 },
-  { dx: 4, size: 40, delay: 0.55 },
-  { dx: 14, size: 22, delay: 0.75 },
 ];
 
 /**
@@ -106,7 +96,7 @@ export function SponsorsSheet({
           {/* La planche garde ses proportions et se loge dans la place restante ; la fumée déborde par-dessus le titre. */}
           <div className={styles.scene}>
             <div className={styles.board}>
-              <Lantern lit={lit} onToggle={() => setLit((value) => !value)} />
+              <Lantern lit={lit} onToggle={() => setLit((value) => !value)} litSrc={`${SCENE}/lanterne.webp`} outSrc={`${SCENE}/lanterne-eteinte.webp`} className={styles.lantern} />
               <LiveTv audience={audience} />
               {/* eslint-disable-next-line @next/next/no-img-element -- décor local */}
               <img className={styles.starfish} src={`${SCENE}/etoile-de-mer.webp`} alt="" draggable={false} />
@@ -141,50 +131,6 @@ export function SponsorsSheet({
       </div>
     </div>,
     document.body
-  );
-}
-
-/* ── La lanterne ───────────────────────────────────────────────────── */
-
-/**
- * La lanterne pendue au mur : elle se balance, sa flamme vacille et éclaire
- * la scène. Un clic la souffle — une volute de fumée monte, la pièce
- * s'assombrit ; un autre la rallume.
- */
-function Lantern({ lit, onToggle }: { lit: boolean; onToggle: () => void }) {
-  // Chaque extinction remonte la fumée (nouvelle clé), pour qu'elle rejoue.
-  const [puff, setPuff] = useState(0);
-  return (
-    <button
-      type="button"
-      className={styles.lantern}
-      data-lit={lit || undefined}
-      aria-pressed={lit}
-      aria-label={lit ? "Souffler la lanterne" : "Rallumer la lanterne"}
-      onClick={() => {
-        if (lit) setPuff((value) => value + 1);
-        onToggle();
-      }}
-    >
-      <span className={styles.lanternSwing}>
-        <span className={styles.lanternGlow} aria-hidden />
-        {/* eslint-disable-next-line @next/next/no-img-element -- décor local */}
-        <img className={styles.lanternOff} src={`${SCENE}/lanterne-eteinte.webp`} alt="" draggable={false} />
-        {/* eslint-disable-next-line @next/next/no-img-element -- décor local */}
-        <img className={styles.lanternOn} src={`${SCENE}/lanterne.webp`} alt="" draggable={false} />
-        {puff > 0 && !lit && (
-          <span key={puff} className={styles.smoke} aria-hidden>
-            {SMOKE.map((wisp, index) => (
-              <span
-                key={index}
-                className={styles.wisp}
-                style={{ "--dx": `${wisp.dx}%`, "--size": `${wisp.size}%`, animationDelay: `${wisp.delay}s` } as CSSProperties}
-              />
-            ))}
-          </span>
-        )}
-      </span>
-    </button>
   );
 }
 
