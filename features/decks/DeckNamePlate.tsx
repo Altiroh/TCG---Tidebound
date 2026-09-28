@@ -173,8 +173,9 @@ export function DeckNamePlate({
 
         <div className={book.headNameRow}>
           {/* À gauche du nom : l'emblème du STYLE du deck ; tant qu'aucun
-              n'est connu (deck vide, sans style choisi), le sceau de cire
-              du capitaine, frappé d'une ancre. */}
+              n'est connu (deck vide, sans style choisi), un emplacement
+              VIDE de même encombrement, réservé au futur type de deck
+              généré. L'ancien sceau rouge à l'ancre ne disait rien. */}
           {styleId ? (
             <DeckStyleIcon
               styleId={styleId}
@@ -182,17 +183,7 @@ export function DeckNamePlate({
               className={book.headStyleIcon}
             />
           ) : (
-          <span className={book.seal} aria-hidden>
-            <svg viewBox="0 0 24 24" fill="none">
-              <path
-                d="M12 5.5v13M9 8h6M6.5 13.5c0 3 2.6 5 5.5 5s5.5-2 5.5-5M6.5 13.5l-1.3 1.4M17.5 13.5l1.3 1.4"
-                stroke="currentColor"
-                strokeWidth={1.7}
-                strokeLinecap="round"
-              />
-              <circle cx="12" cy="5" r="1.5" stroke="currentColor" strokeWidth={1.5} />
-            </svg>
-          </span>
+            <span className={book.styleSlot} aria-hidden />
           )}
           {nameField}
         </div>

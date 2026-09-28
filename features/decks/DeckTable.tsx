@@ -73,10 +73,13 @@ interface DeckTableProps extends DeckTableActions {
   emptyLabel: string;
 }
 
-function stars(difficulty: number): string {
-  const filled = Math.min(5, Math.max(0, Math.round(difficulty)));
-  return "★".repeat(filled) + "☆".repeat(5 - filled);
+/** Étoiles pleines (sur cinq) d'une difficulté. */
+function filledStars(difficulty: number): number {
+  return Math.min(5, Math.max(0, Math.round(difficulty)));
 }
+
+/** Tracé d'une étoile à cinq branches (viewBox 24 × 24). */
+const STAR_PATH = "M12 2.6l2.85 5.9 6.45.9-4.7 4.5 1.15 6.4L12 17.2l-5.75 3.1 1.15-6.4-4.7-4.5 6.45-.9z";
 
 
 /**
@@ -331,11 +334,16 @@ function DeckFiche(props: DeckTableProps & { deck: BrowserDeck | null }) {
   return (
     <aside className={styles.fiche} aria-label={`Fiche de ${deck.name}`} aria-live="polite">
       <span className={styles.ficheArt} style={deck.artUrl ? { backgroundImage: `url("${deck.artUrl}")` } : undefined} />
-      <span className={styles.ficheRope} data-style={styleIdOf(deck) ? "" : undefined} aria-hidden>
-        {/* L'emblème du STYLE, posé sur le sceau de cire de la corde, à gauche
-            du nom — lu dans la phrase (« Midrange / Sentinelles… » → midrange).
-            Sans style reconnu, le sceau peint reste. */}
-        {styleIdOf(deck) && <DeckStyleIcon styleId={styleIdOf(deck)!} className={styles.ficheStyleIcon} />}
+      <span className={styles.ficheRope} aria-hidden>
+        {/* L'emblème du STYLE, posé sur le sceau de la corde, à gauche du
+            nom — lu dans la phrase (« Midrange / Sentinelles… » → midrange).
+            Sans style reconnu, un emplacement vide, réservé au futur type
+            de deck généré. */}
+        {styleIdOf(deck) ? (
+          <DeckStyleIcon styleId={styleIdOf(deck)!} className={styles.ficheStyleIcon} />
+        ) : (
+          <span className={styles.ficheStyleSlot} />
+        )}
       </span>
       <button
         type="button"
@@ -371,8 +379,17 @@ function DeckFiche(props: DeckTableProps & { deck: BrowserDeck | null }) {
           </span>
           {deck.style && <span className={styles.chip}>{deck.style}</span>}
           {deck.style && (
-            <span className={styles.ficheStars} title={`Difficulté ${Math.round(deck.difficulty)} sur 5`}>
-              {stars(deck.difficulty)}
+            <span
+              className={styles.ficheStars}
+              role="img"
+              aria-label={`Difficulté ${filledStars(deck.difficulty)} sur 5`}
+              title={`Difficulté ${filledStars(deck.difficulty)} sur 5`}
+            >
+              {[0, 1, 2, 3, 4].map((index) => (
+                <svg key={index} className={styles.ficheStar} data-filled={index < filledStars(deck.difficulty) || undefined} viewBox="0 0 24 24" aria-hidden>
+                  <path d={STAR_PATH} />
+                </svg>
+              ))}
             </span>
           )}
         </div>

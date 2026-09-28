@@ -764,21 +764,19 @@
 }
 
 /* Le sceau de cire rouge, frappé d'une ancre. */
-.seal {
+/* Emplacement de l'emblème tant que le deck n'a pas de style : un creux
+   pointillé à l'encre, à l'encombrement de l'emblème (`.headStyleIcon`),
+   réservé au futur type de deck généré. Aucun symbole : il n'en dit rien. */
+.styleSlot {
   flex: none;
-  display: grid;
-  place-items: center;
-  width: clamp(30px, 3.8vh, 38px);
-  height: clamp(30px, 3.8vh, 38px);
-  border-radius: 46% 54% 50% 50% / 52% 48% 52% 48%;
-  background: radial-gradient(circle at 38% 32%, #d0453a, #8e1c14 62%, #5c0f0a);
-  box-shadow: inset 0 0 0 3px rgba(120, 20, 14, 0.55), 0 2px 5px rgba(0, 0, 0, 0.5);
-  color: #f3c3a4;
-}
-
-.seal svg {
-  width: 62%;
-  height: 62%;
+  width: clamp(32px, 4.2vh, 42px);
+  height: clamp(32px, 4.2vh, 42px);
+  margin-block: -3px;
+  box-sizing: border-box;
+  border: 2px dashed rgba(58, 38, 22, 0.38);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(58, 38, 22, 0.1), rgba(58, 38, 22, 0.02) 70%);
+  box-shadow: inset 0 1px 3px rgba(36, 22, 11, 0.2);
 }
 
 .headName {

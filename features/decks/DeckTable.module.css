@@ -342,14 +342,38 @@
 .trashLink {
   position: absolute;
   left: 53.5%;
-  top: 23.5%;
-  padding: 0.2cqw 0.6cqw;
+  top: 23.3%;
+  isolation: isolate;
+  padding: 0.35cqw 1.1cqw;
   border: 0;
-  border-radius: 0.3cqw;
-  background: rgba(36, 23, 13, 0.7);
+  background: none;
   color: #e6d3ad;
-  font-size: 0.72cqw;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: max(9px, 0.68cqw);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
   cursor: pointer;
+}
+
+/* La plaque sombre de l'interface, comme les actions de la fiche. */
+.trashLink::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: url("/assets/ui/boutons/bouton-sombre.webp") center / 100% 100% no-repeat;
+  filter: drop-shadow(0 0.12cqw 0.2cqw rgba(0, 0, 0, 0.5));
+  transition: filter 160ms ease-out;
+}
+
+.trashLink:hover::before {
+  filter: brightness(1.3) drop-shadow(0 0 0.35cqw rgba(234, 198, 98, 0.6));
+}
+
+.trashLink:focus-visible {
+  outline: 2px solid #5fd0e6;
+  outline-offset: 2px;
 }
 
 .trashLink[data-active] {
@@ -667,23 +691,18 @@
   z-index: 2;
   width: 97%;
   aspect-ratio: 900 / 122;
-  background: url("/assets/decks/liste/fiche-corde.webp") center / 100% 100% no-repeat;
   filter: drop-shadow(0 0.3cqw 0.4cqw rgba(0, 0, 0, 0.55));
   pointer-events: none;
 }
 
 /*
- * Un emblème de style posé sur le sceau : le sceau de cire PEINT dans la
- * corde s'efface sous lui (un disque transparent à sa place), sinon son
- * rouge passerait entre les vagues de l'emblème. La corde passe dans un
- * pseudo-élément, pour que le masque ne touche pas l'emblème lui-même.
+ * Le sceau de cire PEINT dans la corde est toujours effacé (un disque
+ * transparent à sa place) : il reçoit l'emblème du style, ou à défaut un
+ * emplacement vide — son ancre rouge ne disait rien. La corde passe dans
+ * un pseudo-élément, pour que le masque ne touche pas ce qui s'y pose.
  * Sceau : centre à 9,8 % × 50 % de la corde, rayon ≈ 68 px sur 900 × 122.
  */
-.ficheRope[data-style] {
-  background: none;
-}
-
-.ficheRope[data-style]::before {
+.ficheRope::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -702,6 +721,22 @@
   width: 15%;
   aspect-ratio: 1;
   object-fit: contain;
+  transform: translate(-50%, -50%);
+}
+
+/* Sans style reconnu : un creux pointillé à la place du sceau, réservé au
+   futur type de deck généré (l'ancien sceau rouge à l'ancre ne disait rien). */
+.ficheStyleSlot {
+  position: absolute;
+  left: 9.8%;
+  top: 50%;
+  width: 13%;
+  aspect-ratio: 1;
+  box-sizing: border-box;
+  border: 0.14cqw dashed rgba(214, 170, 92, 0.85);
+  border-radius: 50%;
+  background: radial-gradient(circle, #2a1a0e, #1d120a 70%);
+  box-shadow: inset 0 0.1cqw 0.3cqw rgba(0, 0, 0, 0.6);
   transform: translate(-50%, -50%);
 }
 
@@ -800,11 +835,32 @@
   background: #7a2019;
 }
 
+/*
+ * LA DIFFICULTÉ, en cinq étoiles : pleines, dorées et cernées d'encre ;
+ * vides, un simple contour d'encre. Sur le parchemin, l'ancien ★☆ brun
+ * disparaissait dans la teinte du papier.
+ */
 .ficheStars {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.08cqw;
   margin-left: auto;
-  color: #3a2616;
-  font-size: 0.8cqw;
-  letter-spacing: 0.05em;
+  line-height: 1;
+}
+
+.ficheStar {
+  width: max(12px, 1.25cqw);
+  height: max(12px, 1.25cqw);
+  fill: rgba(58, 38, 22, 0.1);
+  stroke: rgba(58, 38, 22, 0.6);
+  stroke-width: 1.4;
+  stroke-linejoin: round;
+}
+
+.ficheStar[data-filled] {
+  fill: #f2c24e;
+  stroke: #5a3510;
+  filter: drop-shadow(0 0 0.15cqw rgba(255, 196, 70, 0.7)) drop-shadow(0 0.05cqw 0.08cqw rgba(0, 0, 0, 0.45));
 }
 
 .ficheText {
@@ -824,66 +880,138 @@
   font-size: 0.7cqw;
 }
 
+/*
+ * LES ACTIONS DE LA FICHE, sur les plaques d'interface (`ui/boutons/`) :
+ * deux par rangée, chaque case au ratio de la plaque (≈ 4,9 : 1), pour que
+ * ses bouts biseautés ne se déforment pas. La plaque est un calque à part
+ * (`::before`), comme `.action` des Collectables : l'état éteint la ternit
+ * sans ternir le texte.
+ *   - `btnPrimary` : plaque bleu nuit à liseré cyan, l'action principale ;
+ *   - `btnWood`    : plaque sombre à liseré de laiton, les actions courantes ;
+ *   - `btnDanger`  : la même plaque sombre, virée au rouge braise, lettres
+ *     corail — on la distingue sans qu'elle crie plus fort que « Ouvrir ».
+ */
 .ficheActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35cqw;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45cqw 0.6cqw;
+  align-items: center;
 }
 
 .btnPrimary,
 .btnWood,
 .btnDanger {
+  position: relative;
+  isolation: isolate;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.35cqw;
-  padding: 0.45cqw 0.8cqw;
-  border-radius: 0.3cqw;
-  font-size: max(10px, 0.78cqw);
+  gap: 0.4cqw;
+  min-width: 0;
+  aspect-ratio: 591 / 121;
+  padding: 0 7%;
+  border: 0;
+  background: none;
+  color: #f1e3c4;
+  font-family: var(--tb-font-display, Georgia, serif);
+  /* Plancher à 8 px : sur un téléphone en paysage, la case ne fait que ~65 px. */
+  font-size: max(8px, 0.74cqw);
   font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1;
   text-decoration: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+  text-transform: uppercase;
   white-space: nowrap;
   cursor: pointer;
+  transition: transform 140ms ease-out;
 }
 
-/* L'action principale : bois sombre teinté de mer, cerclé de laiton (maquette). */
+.btnPrimary::before,
+.btnWood::before,
+.btnDanger::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: url("/assets/ui/boutons/bouton-sombre.webp") center / 100% 100% no-repeat;
+  filter: drop-shadow(0 0.15cqw 0.25cqw rgba(0, 0, 0, 0.5));
+  transition: filter 160ms ease-out;
+}
+
 .btnPrimary {
-  border: 0.1cqw solid #c79a4b;
-  background: linear-gradient(180deg, #1f5f70, #0d3440);
-  box-shadow: inset 0 0.08cqw 0 rgba(255, 236, 190, 0.25), 0 0.2cqw 0.4cqw rgba(0, 0, 0, 0.45);
-  color: #f6e7c4;
+  color: #eaf8ff;
 }
 
-.btnWood {
-  border: 0.1cqw solid #a67c3d;
-  background: linear-gradient(180deg, #4a3220, #2a1b10);
-  color: #f1e3c4;
+.btnPrimary::before {
+  background-image: url("/assets/ui/boutons/bouton-bleu.webp");
 }
 
-/* Survol : la lueur chaude du menu principal, pour toutes les actions de la fiche. */
-.btnPrimary,
-.btnWood,
+/* Le ▶ de l'action principale, en cyan comme le liseré. */
+.btnPrimary > span[aria-hidden] {
+  color: #7fe3f7;
+  font-size: 0.85em;
+}
+
 .btnDanger {
-  transition: filter 200ms ease-out;
+  color: #ffb4a3;
+}
+
+/* Laiton → cuivre rougi, fond → brun sang : la plaque sombre, teintée. */
+.btnDanger::before {
+  filter: sepia(0.6) hue-rotate(-28deg) saturate(2.4) brightness(0.92) drop-shadow(0 0.15cqw 0.25cqw rgba(0, 0, 0, 0.5));
+}
+
+/* Survol : la plaque s'éclaire et rayonne (chaude, cyan pour l'action principale, braise pour la destructive). */
+.btnWood:hover:not(:disabled)::before {
+  filter: brightness(1.3) drop-shadow(0 0 0.35cqw rgba(234, 198, 98, 0.65));
+}
+
+.btnPrimary:hover:not(:disabled)::before {
+  filter: brightness(1.22) drop-shadow(0 0 0.45cqw rgba(60, 200, 240, 0.75));
+}
+
+.btnDanger:hover:not(:disabled)::before {
+  filter: sepia(0.6) hue-rotate(-28deg) saturate(2.4) brightness(1.15) drop-shadow(0 0 0.4cqw rgba(240, 90, 60, 0.7));
 }
 
 .btnPrimary:hover:not(:disabled),
 .btnWood:hover:not(:disabled),
 .btnDanger:hover:not(:disabled) {
-  filter: brightness(1.11) saturate(1.14) contrast(1.02) drop-shadow(0 0 5px rgba(255, 214, 140, 0.8)) drop-shadow(0 0 16px rgba(255, 176, 72, 0.4));
+  transform: translateY(-1px);
 }
 
-.btnDanger {
-  border: 0.1cqw solid #c79a4b;
-  background: linear-gradient(180deg, #a3261d, #6e140f);
-  color: #fff1ee;
+.btnPrimary:active:not(:disabled),
+.btnWood:active:not(:disabled),
+.btnDanger:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
+.btnPrimary:focus-visible,
+.btnWood:focus-visible,
+.btnDanger:focus-visible {
+  outline: 2px solid #5fd0e6;
+  outline-offset: 2px;
+  border-radius: 0.3cqw;
+}
+
+/* Éteint : la plaque ternie, le texte adouci — toujours lisible. */
 .btnPrimary:disabled,
 .btnWood:disabled,
 .btnDanger:disabled {
-  opacity: 0.5;
+  color: rgba(236, 222, 196, 0.6);
   cursor: default;
+}
+
+.btnPrimary:disabled::before,
+.btnWood:disabled::before,
+.btnDanger:disabled::before {
+  filter: grayscale(0.7) brightness(0.8) opacity(0.7);
+}
+
+/* Le coût d'un préconstruit verrouillé, dans sa case de la grille. */
+.ficheActions > .chip {
+  justify-self: start;
 }
 
 .ficheSection {
