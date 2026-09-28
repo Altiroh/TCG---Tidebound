@@ -400,6 +400,8 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
                 />
               ))}
             </ul>
+            {/* Les chants des planches, repeints PAR-DESSUS les rouleaux : chacun rentre dans sa case. */}
+            <span className={styles.shelfFront} aria-hidden />
 
             {/* Plus d'extensions que de rayons : les flèches font TOURNER
                 l'étagère — jamais de butée, on repart par l'autre bout. */}
