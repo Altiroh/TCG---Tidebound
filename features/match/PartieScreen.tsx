@@ -113,18 +113,22 @@ export function PartieScreen({
       await startOnline(deck1, opponent.kind, opponent.code, opponent.friendId);
       return;
     }
-    if (opponent.type !== "bot" || !isSignedIn) {
+    if (opponent.type !== "bot") {
       startLocalMatch(deck1, deck2, opponent);
+      return;
+    }
+    if (!isSignedIn) {
+      // Plus de partie sans compte (28/09/2026).
+      router.push("/connexion?redirect=%2Fpartie");
       return;
     }
     setStarting(true);
     setError(null);
     // `startBotMatch` attrape ses propres erreurs, mais un échec de transport
-    // (réseau coupé pendant l'appel) rejette encore la promesse : même issue
-    // que côté serveur — on joue en local plutôt que de rester bloqué.
+    // (réseau coupé pendant l'appel) rejette encore la promesse.
     const result = await startBotMatch(deck1.id, deck2.id, opponent.difficulty).catch(() => ({
       ok: false as const,
-      error: "Serveur injoignable — partie d'entraînement lancée, sans XP ni quêtes.",
+      error: "Serveur injoignable — vérifie ta connexion, puis relance la partie.",
       serverUnavailable: true,
       signedOut: false,
       matchId: undefined,
@@ -135,17 +139,12 @@ export function PartieScreen({
     }
     setStarting(false);
     if (result.signedOut) {
-      // Session expirée entre l'affichage et le clic : on joue quand même, sans récompense.
-      startLocalMatch(deck1, deck2, opponent);
+      // Session expirée entre l'affichage et le clic : on se reconnecte, puis on revient.
+      router.push("/connexion?redirect=%2Fpartie");
       return;
     }
-    if (result.serverUnavailable) {
-      // L'arbitrage serveur est en panne (clé de service absente, migration
-      // manquante, base injoignable). Ce n'est pas au joueur d'en faire les
-      // frais : il joue, sans récompense, et on lui dit pourquoi.
-      startLocalMatch(deck1, deck2, opponent, result.error ?? null);
-      return;
-    }
+    // Serveur injoignable ou arbitrage en panne : plus de partie hors ligne
+    // en repli (28/09/2026) — on le dit, le joueur relance quand ça revient.
     setError(result.error ?? "Impossible de démarrer la partie.");
   }
 
