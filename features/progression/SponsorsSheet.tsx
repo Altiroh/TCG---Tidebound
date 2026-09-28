@@ -12,16 +12,16 @@ import { playButtonClick } from "@/lib/sound";
 const SCENE = "/assets/mecenes/scene";
 
 /**
- * Place de chaque cadre photo sur le mur — une rangée en éventail, dans
+ * Place de chaque cadre photo sur le mur — une rangée en quinconce, dans
  * l'ordre des mécènes : coin haut-gauche (% de la largeur du mur et de sa
  * hauteur), inclinaison propre du cadre, et décalage de la respiration du
  * portrait pour qu'ils ne battent pas à l'unisson.
  */
 const WALL: readonly { left: number; top: number; tilt: number; delay: number }[] = [
-  { left: 0, top: 9, tilt: -5, delay: 0 },
-  { left: 24.5, top: 0, tilt: 4, delay: -1.7 },
-  { left: 49, top: 12, tilt: 9, delay: -3.1 },
-  { left: 73, top: 3, tilt: -2, delay: -4.4 },
+  { left: 0, top: 13, tilt: -6, delay: 0 },
+  { left: 26.3, top: 0, tilt: 3, delay: -1.7 },
+  { left: 52.7, top: 13, tilt: -3, delay: -3.1 },
+  { left: 79, top: 0, tilt: 6, delay: -4.4 },
 ];
 
 /** Volutes de fumée de la lanterne soufflée : dérive (%), taille (%), départ (s). */

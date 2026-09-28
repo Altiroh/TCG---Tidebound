@@ -114,7 +114,7 @@
 }
 
 /*
- * La scène : une planche aux proportions fixes (1 × 1,06), aussi grande que
+ * La scène : une planche aux proportions fixes (1,5 × 1), aussi grande que
  * la place restante le permet dans les deux sens. Tout y est placé en % de
  * la planche, donc tout suit son échelle.
  */
@@ -128,15 +128,15 @@
 
 .board {
   position: relative;
-  width: min(100cqw, calc(100cqh / 1.06));
-  aspect-ratio: 1 / 1.06;
+  width: min(100cqw, calc(100cqh * 1.5));
+  aspect-ratio: 1.5 / 1;
 }
 
-/* La lanterne : bouton sans habillage, pendue à gauche de la télé. */
+/* La lanterne : bouton sans habillage, pendue en haut à gauche, jusque sous le titre. */
 .lantern {
   position: absolute;
-  top: -1%;
-  left: -1%;
+  top: -12%;
+  left: -0.5%;
   z-index: 2;
   width: 17%;
   aspect-ratio: 2 / 3;
@@ -229,11 +229,12 @@
 }
 
 /* La télé : l'écran sous le cadre, fenêtre mesurée à 18,9–78,8 % × 13,9–66,9 %. */
+/* Poussée en haut à droite, la lanterne à sa gauche. */
 .tv {
   position: absolute;
-  top: 0;
-  left: 9%;
-  width: 91%;
+  top: -6%;
+  left: 46%;
+  width: 53%;
   container-type: inline-size;
   aspect-ratio: 3 / 2;
 }
@@ -332,9 +333,10 @@
 
 .record {
   margin-top: 0.8cqw;
+  color: #ff4a52;
   font-family: var(--tb-font-display, Georgia, serif);
   font-size: 2.6cqw;
-  text-shadow: 0 0 1cqw rgba(0, 0, 0, 0.9);
+  text-shadow: 0 0 1cqw rgba(255, 30, 40, 0.55), 0 0 0.6cqw rgba(0, 0, 0, 0.9);
 }
 
 /* EN DIRECT : un battement double, la lueur qui monte vite et retombe lentement. */
@@ -346,9 +348,10 @@
   align-items: center;
   gap: 0.9cqw;
   padding: 0.7cqw 1.5cqw;
-  border: 0.25cqw solid #ff8a8a;
+  border: 0.25cqw solid rgba(255, 70, 80, 0.55);
   border-radius: 0.8cqw;
-  background: linear-gradient(180deg, #e8323c, #a3121c);
+  background: linear-gradient(180deg, rgba(232, 40, 52, 0.42), rgba(150, 12, 22, 0.3));
+  backdrop-filter: blur(2px);
   color: #fff;
   font-family: var(--tb-font-ui, system-ui, sans-serif);
   font-size: 2.3cqw;
@@ -356,7 +359,7 @@
   letter-spacing: 0.06em;
   line-height: 1;
   text-transform: uppercase;
-  text-shadow: 0 0 0.6cqw rgba(255, 255, 255, 0.6);
+  text-shadow: 0 0 0.6cqw rgba(255, 40, 50, 0.9);
   animation: livePulse 2.4s infinite;
 }
 
@@ -364,27 +367,27 @@
   width: 1.4cqw;
   height: 1.4cqw;
   border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 0 1cqw #fff;
+  background: rgba(255, 50, 60, 0.75);
+  box-shadow: 0 0 1cqw rgba(255, 40, 50, 0.9);
   animation: liveDot 2.4s infinite;
 }
 
-/* ── Le mur des mécènes : une rangée en éventail sous l'étagère de la télé ── */
+/* ── Le mur des mécènes : une rangée en quinconce sous l'étagère de la télé ── */
 .wall {
   position: absolute;
-  inset: 53% 0 0;
+  inset: 44% 0 0;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-/* En bas à droite, qui dépasse de derrière la dernière photo (la télé a déjà la sienne, à gauche). */
+/* Épinglée entre la lanterne et la télé (qui a déjà la sienne, en bas). */
 .starfish {
   position: absolute;
-  left: 87%;
-  top: 88%;
-  width: 12%;
-  transform: rotate(22deg);
+  left: 25%;
+  top: 6%;
+  width: 9%;
+  transform: rotate(-14deg);
   filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.6));
   pointer-events: none;
   user-select: none;
@@ -393,7 +396,7 @@
 .photo {
   --sponsor: #5fd0e6;
   position: absolute;
-  width: 27%;
+  width: 21%;
   aspect-ratio: 2 / 3;
   transform: rotate(var(--tilt));
   transition: transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -827,7 +830,7 @@
   }
   .body {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(250px, 1fr);
+    grid-template-columns: minmax(0, 1.3fr) minmax(250px, 1fr);
     grid-template-rows: auto minmax(0, 1fr);
     column-gap: 14px;
     row-gap: 6px;
