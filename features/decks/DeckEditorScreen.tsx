@@ -11,7 +11,7 @@ import { CardDetailModal } from "@/features/collection/card-detail/CardDetailMod
 import { CardShelfProvider } from "@/features/collection/shelf/CardShelfProvider";
 import { useCardBrowser } from "@/features/collection/useCardBrowser";
 import { DEFAULT_SHIP_ID } from "@/features/decks/constants";
-import { countInDeck, deckRuleIssue } from "@/features/decks/deckComposition";
+import { countInDeck, deckRuleIssue, missingCopiesMessage, ownedPartOf } from "@/features/decks/deckComposition";
 import { DeckArtPicker } from "@/features/decks/DeckArtPicker";
 import { DeckIdentity } from "@/features/decks/DeckIdentity";
 import { DeckNamePlate } from "@/features/decks/DeckNamePlate";
@@ -63,6 +63,8 @@ export interface DeckEditorInitialData {
 
 interface DeckEditorScreenProps {
   ownedCardIds: string[];
+  /** Exemplaires possédés par carte : un deck n'en embarque jamais plus (`resolveMatchDeck` le vérifie à l'entrée en partie). */
+  ownedCounts: Record<string, number>;
   /** `null` = création d'un nouveau deck (pas encore persisté). */
   initialDeck: DeckEditorInitialData | null;
 }
@@ -104,7 +106,7 @@ export function DeckEditorScreen(props: DeckEditorScreenProps) {
   );
 }
 
-function DeckEditorScreenBody({ ownedCardIds, initialDeck }: DeckEditorScreenProps) {
+function DeckEditorScreenBody({ ownedCardIds, ownedCounts, initialDeck }: DeckEditorScreenProps) {
   const router = useRouter();
   const [deckId, setDeckId] = useState<string | null>(initialDeck?.id ?? null);
   const [name, setName] = useState(initialDeck?.name ?? "Nouveau deck");
@@ -141,20 +143,33 @@ function DeckEditorScreenBody({ ownedCardIds, initialDeck }: DeckEditorScreenPro
   const cardBrowser = useCardBrowser({ owned, initialFilters, persistKey: "editeur-de-deck" });
 
   const isDirty = serializeState(name, shipId, cardIds, artCardId, description) !== savedSnapshot;
-  const issue = useMemo(() => deckRuleIssue(cardIds, shipId, name), [cardIds, shipId, name]);
+  const issue = useMemo(() => {
+    const rule = deckRuleIssue(cardIds, shipId, name);
+    if (rule || !isSignedIn) return rule;
+    // Même contrôle que le serveur : un exemplaire de plus que la collection
+    // rend le deck injouable (typiquement après une revente).
+    const { missing } = ownedPartOf(cardIds, ownedCounts);
+    return missing.length > 0 ? missingCopiesMessage(missing) : null;
+  }, [cardIds, shipId, name, isSignedIn, ownedCounts]);
   /** Un deck encore hors des règles : sauvegardable, mais comme BROUILLON — c'est ce que le dialogue de sortie propose. */
   const isDraft = issue !== null;
 
-  // Trois garde-fous, tous tirés des règles du projet : la carte est
-  // possédée, sa limite d'exemplaires n'est pas atteinte, et le deck n'a
-  // pas déjà sa taille maximale — au-delà, un exemplaire de plus ne
-  // pourrait que rendre le deck injouable.
+  /** Exemplaires qu'un deck peut embarquer : la limite de la carte, et jamais plus que la collection n'en compte. */
+  const playableCopies = useCallback(
+    (def: CardDefinition) => (owned ? Math.min(getMaxCopies(def), ownedCounts[def.id] ?? 0) : getMaxCopies(def)),
+    [owned, ownedCounts]
+  );
+
+  // Trois garde-fous, tous tirés des règles du projet : l'exemplaire est
+  // possédé, la limite de la carte n'est pas atteinte, et le deck n'a pas
+  // déjà sa taille maximale — au-delà, un exemplaire de plus ne pourrait
+  // que rendre le deck injouable.
   const canAdd = useCallback(
     (def: CardDefinition) =>
       (owned ? owned.has(def.id) : true) &&
-      countInDeck(cardIds, def.id) < getMaxCopies(def) &&
+      countInDeck(cardIds, def.id) < playableCopies(def) &&
       cardIds.length < RULES.DECK_SIZE_MAX,
-    [owned, cardIds]
+    [owned, cardIds, playableCopies]
   );
 
   const addCard = useCallback(
@@ -288,7 +303,7 @@ function DeckEditorScreenBody({ ownedCardIds, initialDeck }: DeckEditorScreenPro
   const renderCellExtras = useCallback(
     (def: CardDefinition) => {
       const inDeck = countInDeck(cardIds, def.id);
-      const max = getMaxCopies(def);
+      const max = playableCopies(def);
       const locked = owned ? !owned.has(def.id) : false;
 
       if (locked) return <span className={styles.cellLocked}>Non possédée</span>;
@@ -345,7 +360,7 @@ function DeckEditorScreenBody({ ownedCardIds, initialDeck }: DeckEditorScreenPro
         </span>
       );
     },
-    [cardIds, owned, addCard, removeCard]
+    [cardIds, owned, addCard, removeCard, playableCopies]
   );
 
   return (

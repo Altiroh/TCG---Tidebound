@@ -3,6 +3,7 @@ import { PLAYABLE_DECKS, getShipDefinition, type GameState } from "@/game";
 import { SHIP_SET } from "@/game/environment/shipData";
 import { AUDIENCE_MILESTONES, analyzeMatch, matchAudienceWeight, type AudienceOpponent } from "@/game/audience";
 import {
+  ABANDONED_MATCH_XP,
   MASTERY_MAX_LEVEL,
   SPONSORS,
   SPONSORS_UNLOCK_LEVEL,
@@ -131,21 +132,16 @@ function weekStartDay(dayKey: string): string {
   return shiftDayKey(dayKey, -weekday);
 }
 
-/** Navire de chaque deck joué : préconstruits (catalogue) puis decks personnels (base). */
-async function shipsOfDecks(service: Service, deckIds: string[]): Promise<Map<string, string>> {
-  const ships = new Map<string, string>();
-  const unknown: string[] = [];
-  for (const deckId of new Set(deckIds)) {
-    const precon = PLAYABLE_DECKS.find((deck) => deck.id === deckId);
-    if (precon) ships.set(deckId, precon.shipId);
-    else unknown.push(deckId);
-  }
-  const uuids = unknown.filter((id) => /^[0-9a-f-]{36}$/i.test(id));
-  if (uuids.length > 0) {
-    const { data } = await service.from("player_decks").select("id, ship_id").in("id", uuids);
-    for (const row of data ?? []) ships.set(row.id, row.ship_id);
-  }
-  return ships;
+/**
+ * Navire de chaque préconstruit joué, lu au catalogue.
+ *
+ * Les decks PERSONNELS n'y sont plus résolus : leur navire se modifie, et
+ * l'XP de maîtrise suivait le navire ACTUEL — changer le navire d'un deck
+ * reversait tout son historique au nouveau, réclamable une seconde fois. Le
+ * navire réellement joué est figé dans la partie (`matches.playerN_ship_id`).
+ */
+function preconShip(deckId: string): string | undefined {
+  return PLAYABLE_DECKS.find((deck) => deck.id === deckId)?.shipId;
 }
 
 /** Audience du joueur (`player_audience`) — zéro tant qu'il n'a rien joué, ou que la migration manque. */
@@ -176,23 +172,32 @@ async function readMatchHistory(service: Service, userId: string, weekStart: str
     .order("granted_at", { ascending: false })
     .limit(2000);
   const rows = rewards ?? [];
-  const playedThisWeek = rows.filter((row) => row.granted_at.slice(0, 10) >= weekStart).length;
+  // Coffre de la semaine : seules les parties JOUÉES comptent. Une partie
+  // abandonnée ou écartée par l'anti-farm paie exactement `ABANDONED_MATCH_XP`
+  // (jamais de bonus ni de prime) ; une partie jouée, au moins `MATCH_XP.completed`.
+  const playedThisWeek = rows.filter((row) => row.granted_at.slice(0, 10) >= weekStart && row.xp_granted > ABANDONED_MATCH_XP).length;
 
   const xpByShip = new Map<string, number>();
   const matchesByShip = new Map<string, number>();
   const matchIds = rows.map((row) => row.match_id);
   for (let start = 0; start < matchIds.length; start += 200) {
     const chunk = matchIds.slice(start, start + 200);
-    const { data: matches } = await service.from("matches").select("id, player1_id, player1_deck_id, player2_deck_id").in("id", chunk);
-    const deckOf = new Map<string, string>();
+    const { data: matches } = await service
+      .from("matches")
+      .select("id, player1_id, player1_deck_id, player2_deck_id, player1_ship_id, player2_ship_id")
+      .in("id", chunk);
+    const shipOf = new Map<string, string>();
     for (const match of matches ?? []) {
-      const deckId = match.player1_id === userId ? match.player1_deck_id : match.player2_deck_id;
-      if (deckId) deckOf.set(match.id, deckId);
+      const isPlayer1 = match.player1_id === userId;
+      const frozen = isPlayer1 ? match.player1_ship_id : match.player2_ship_id;
+      const deckId = isPlayer1 ? match.player1_deck_id : match.player2_deck_id;
+      // Navire figé au démarrage ; à défaut (partie antérieure à la
+      // migration sans état conservé), seul un préconstruit fait foi.
+      const shipId = frozen ?? (deckId ? preconShip(deckId) : undefined);
+      if (shipId) shipOf.set(match.id, shipId);
     }
-    const ships = await shipsOfDecks(service, [...deckOf.values()]);
     for (const row of rows.slice(start, start + 200)) {
-      const deckId = deckOf.get(row.match_id);
-      const shipId = deckId ? ships.get(deckId) : undefined;
+      const shipId = shipOf.get(row.match_id);
       if (shipId) {
         xpByShip.set(shipId, (xpByShip.get(shipId) ?? 0) + row.xp_granted);
         matchesByShip.set(shipId, (matchesByShip.get(shipId) ?? 0) + 1);

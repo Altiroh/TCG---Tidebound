@@ -172,8 +172,11 @@ class QueryBuilder implements PromiseLike<QueryResponse> {
     return this;
   }
 
-  gte(column: string, value: number) {
-    this.filters.push((row) => Number(row[column] ?? 0) >= value);
+  gte(column: string, value: number | string) {
+    // Une date ISO se compare comme une chaîne, comme Postgres le fait d'un timestamptz bien formé.
+    this.filters.push((row) =>
+      typeof value === "string" ? row[column] != null && String(row[column]) >= value : Number(row[column] ?? 0) >= value
+    );
     return this;
   }
 
@@ -284,6 +287,19 @@ class QueryBuilder implements PromiseLike<QueryResponse> {
   }
 }
 
+/**
+ * Trigger `freeze_match_ships` (`20261016120000_audit_securite.sql`) : le
+ * navire de chaque joueur, lu dans l'état initial, est figé dans `matches`.
+ */
+function freezeMatchShips(db: FakeDatabase, matchId: string): void {
+  const match = db.one("matches", { id: matchId });
+  const state = db.one("match_states", { match_id: matchId })?.state;
+  if (!match || !state) return;
+  const shipOf = (playerId: unknown) => state.players?.find((player: Row) => player.id === playerId)?.shipId ?? null;
+  match.player1_ship_id ??= shipOf(match.player1_id);
+  match.player2_ship_id ??= shipOf(match.player2_id);
+}
+
 /** Découpe une expression PostgREST sur les virgules de PREMIER niveau. */
 function splitTopLevel(expression: string): string[] {
   const parts: string[] = [];
@@ -367,6 +383,7 @@ function runRpc(db: FakeDatabase, fn: string, args: Row): any {
         finished_at: null,
       });
       db.table("match_states").push({ match_id: args.p_match_id, state: args.p_state, version: 1 });
+      freezeMatchShips(db, args.p_match_id);
       return { ok: true, version: 1 };
     }
 
@@ -382,6 +399,7 @@ function runRpc(db: FakeDatabase, fn: string, args: Row): any {
         state_version: 1,
       });
       db.table("match_states").push({ match_id: args.p_match_id, state: args.p_state, version: 1 });
+      freezeMatchShips(db, args.p_match_id);
       return { ok: true, version: 1 };
     }
 
@@ -759,6 +777,16 @@ function runRpc(db: FakeDatabase, fn: string, args: Row): any {
 
       const owned = db.one("player_boosters", { user_id: args.p_user_id, booster_definition_id: args.p_booster_id });
       if (!owned || owned.quantity < 1) return { ok: false, error: "Tu ne possèdes pas ce booster." };
+
+      // `20261016120000_audit_securite.sql` : le tirage n'est accepté que
+      // s'il a été calculé sur les compteurs de garantie ACTUELS.
+      const pity = db.one("player_pity", { user_id: args.p_user_id, booster_definition_id: args.p_booster_id });
+      if (
+        (pity?.packs_since_abyssal ?? 0) !== args.p_expected_packs_since_abyssal ||
+        (pity?.packs_since_new_card ?? 0) !== args.p_expected_packs_since_new_card
+      ) {
+        return { ok: false, error: "pity_conflict" };
+      }
       owned.quantity -= 1;
 
       const openingId = fakeUuid();
@@ -781,10 +809,11 @@ function runRpc(db: FakeDatabase, fn: string, args: Row): any {
           user_id: args.p_user_id,
           booster_definition_id: args.p_booster_id,
           packs_since_abyssal: abyssal ? 0 : 1,
-          packs_since_new_card: 0,
+          packs_since_new_card: args.p_next_packs_since_new_card,
         },
         (row) => {
           row.packs_since_abyssal = abyssal ? 0 : row.packs_since_abyssal + 1;
+          row.packs_since_new_card = args.p_next_packs_since_new_card;
         }
       );
 

@@ -364,6 +364,11 @@ async function saveDeckUnguarded(input: SaveDeckInput): Promise<DeckActionResult
     return { ok: false, error: unknownCardsMessage(missing) };
   }
 
+  // Un deck plus riche que la collection s'enregistre (brouillon), mais il
+  // n'est pas jouable : `resolveMatchDeck` le refusera à l'entrée en partie.
+  const notOwned = ownedPartOf(input.cardIds, await readOwnedCounts(userId)).missing;
+  const isValid = validation.ok && notOwned.length === 0;
+
   /*
    * Illustration : seule une carte PRÉSENTE dans le deck est retenue. Sans
    * ce filtre, retirer la carte choisie laisserait le deck illustré par une
@@ -379,7 +384,7 @@ async function saveDeckUnguarded(input: SaveDeckInput): Promise<DeckActionResult
   if (!deckId) {
     const { data, error } = await supabase
       .from("player_decks")
-      .insert({ user_id: userId, ship_id: input.shipId, name, is_valid: validation.ok, art_card_id: artCardId, description })
+      .insert({ user_id: userId, ship_id: input.shipId, name, is_valid: isValid, art_card_id: artCardId, description })
       .select("id")
       .single();
     if (error || !data) return { ok: false, error: error?.message ?? "Échec de la création du deck." };
@@ -390,7 +395,7 @@ async function saveDeckUnguarded(input: SaveDeckInput): Promise<DeckActionResult
       .update({
         name,
         ship_id: input.shipId,
-        is_valid: validation.ok,
+        is_valid: isValid,
         art_card_id: artCardId,
         description,
         // Écrit À LA MAIN : `updated_at` n'a pas de trigger en base, il

@@ -23,6 +23,8 @@ interface DeckRow {
 
 const deckRows: DeckRow[] = [];
 const deckCardRows: { deck_id: string; card_id: string; quantity: number }[] = [];
+/** Collection des joueurs (`player_cards`). */
+const ownedRows: { user_id: string; card_id: string; quantity: number }[] = [];
 /** Erreur simulée sur la prochaine lecture — pour le cas « base injoignable ». */
 let readError: string | null = null;
 
@@ -54,7 +56,12 @@ function fakeService() {
         },
         then(resolve: (value: { data: unknown; error: { message: string } | null }) => unknown) {
           if (readError) return Promise.resolve({ data: null, error: { message: readError } }).then(resolve);
-          const rows = table === "player_deck_cards" ? deckCardRows.filter((card) => card.deck_id === filters.deck_id) : [];
+          const rows =
+            table === "player_deck_cards"
+              ? deckCardRows.filter((card) => card.deck_id === filters.deck_id)
+              : table === "player_cards"
+                ? ownedRows.filter((card) => card.user_id === filters.user_id)
+                : [];
           return Promise.resolve({ data: rows, error: null }).then(resolve);
         },
       };
@@ -84,9 +91,19 @@ function seedPersonalDeck(cardIds: readonly string[]) {
   for (const [cardId, quantity] of counts) deckCardRows.push({ deck_id: DECK_ID, card_id: cardId, quantity });
 }
 
+/** Crédite au propriétaire exactement les exemplaires de la liste. */
+function grantCollection(cardIds: readonly string[]) {
+  for (const cardId of cardIds) {
+    const row = ownedRows.find((owned) => owned.user_id === OWNER && owned.card_id === cardId);
+    if (row) row.quantity += 1;
+    else ownedRows.push({ user_id: OWNER, card_id: cardId, quantity: 1 });
+  }
+}
+
 beforeEach(() => {
   deckRows.length = 0;
   deckCardRows.length = 0;
+  ownedRows.length = 0;
   readError = null;
 });
 
@@ -101,6 +118,7 @@ describe("resolveMatchDeck", () => {
   it("rend le deck personnel de son propriétaire, un exemplaire par carte", async () => {
     const model = PLAYABLE_DECKS[0]!;
     seedPersonalDeck(model.cardIds);
+    grantCollection(model.cardIds);
 
     const result = await resolveMatchDeck(OWNER, DECK_ID);
     expect(result.ok).toBe(true);
@@ -108,6 +126,26 @@ describe("resolveMatchDeck", () => {
     expect(result.deck.id).toBe(DECK_ID);
     expect(result.deck.shipId).toBe(model.shipId);
     expect([...result.deck.cardIds].sort()).toEqual([...model.cardIds].sort());
+  });
+
+  it("refuse un deck dont le propriétaire ne possède pas toutes les cartes, exemplaire par exemplaire", async () => {
+    const model = PLAYABLE_DECKS[0]!;
+    seedPersonalDeck(model.cardIds);
+    // Toute la liste possédée… sauf un exemplaire d'une carte présente en double.
+    const doubled = model.cardIds.find((id, index) => model.cardIds.indexOf(id) !== index)!;
+    grantCollection(model.cardIds);
+    ownedRows.find((owned) => owned.card_id === doubled)!.quantity -= 1;
+
+    const result = await resolveMatchDeck(OWNER, DECK_ID);
+    expect(result.ok).toBe(false);
+    if (result.ok || result.reason !== "invalid") throw new Error("deck accepté");
+    expect(result.detail).toMatch(/Il te manque un exemplaire/);
+  });
+
+  it("refuse un deck de cartes jamais obtenues, même légal", async () => {
+    seedPersonalDeck(PLAYABLE_DECKS[0]!.cardIds);
+    const result = await resolveMatchDeck(OWNER, DECK_ID);
+    expect(result).toMatchObject({ ok: false, reason: "invalid" });
   });
 
   it("ne rend pas le deck d'un autre joueur", async () => {

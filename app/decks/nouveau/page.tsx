@@ -3,7 +3,7 @@ import { getOwnedCardIds } from "@/lib/supabase/ownedCards";
 
 /** Création d'un deck personnel — même éditeur que `/decks/[deckId]`, sans deck initial (première sauvegarde = création). */
 export default async function NouveauDeckPage() {
-  const { ownedCardIds } = await getOwnedCardIds();
+  const { ownedCardIds, ownedCounts } = await getOwnedCardIds();
 
-  return <DeckEditorScreen ownedCardIds={ownedCardIds} initialDeck={null} />;
+  return <DeckEditorScreen ownedCardIds={ownedCardIds} ownedCounts={ownedCounts} initialDeck={null} />;
 }

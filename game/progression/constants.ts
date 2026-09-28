@@ -77,6 +77,27 @@ export const MEANINGFUL_ACTIVITY = {
 } as const;
 
 /**
+ * GARDE-FOUS ANTI-FARM (audit de sécurité du 28/09/2026). Une partie qui les
+ * franchit est traitée comme une partie abandonnée : `ABANDONED_MATCH_XP`,
+ * aucune Tide, aucun bonus, et elle n'avance ni les quêtes, ni le coffre de
+ * la semaine, ni l'audience. Valeurs d'outillage, pas d'équilibrage : elles
+ * n'écartent que ce qu'un joueur réel ne fait pas.
+ *
+ * Durée réelle minimale d'une partie, de sa création côté serveur à sa fin.
+ * Un script qui enchaîne « poser deux cartes, abandonner » contre le bot
+ * franchit le seuil d'activité en quelques secondes ; une partie jouée,
+ * même perdue vite, dépasse la minute.
+ */
+export const MIN_REWARDED_MATCH_MS = 60_000;
+
+/**
+ * Parties PvP récompensées par jour (UTC) contre UN MÊME adversaire. Au-delà,
+ * deux comptes complices qui s'offrent des victoires en partie privée ne
+ * gagnent plus rien ; une revanche ou deux entre amis restent payées.
+ */
+export const SAME_OPPONENT_DAILY_REWARDED_MATCHES = 3;
+
+/**
  * Tides par partie. Le cadrage antérieur (« Boosters & économie de
  * collection ») verrouille « les parties contre bot rapportent 0 Tide
  * directement » ; la nouvelle page ne revient pas dessus, cette règle tient

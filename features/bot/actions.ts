@@ -72,6 +72,22 @@ async function createBotMatch(deckId: string, botDeckId: string, difficulty: Bot
   }
   const playerDeck = resolved.deck;
 
+  // Une seule partie contre le bot à la fois : la précédente, laissée en
+  // plan, est fermée sans rien payer. Sans ce plafond, un script en ouvrait
+  // des dizaines en parallèle pour franchir ensemble la durée minimale
+  // d'une partie récompensée (`MIN_REWARDED_MATCH_MS`).
+  const service = createSupabaseServiceRoleClient();
+  const { error: closeError } = await service
+    .from("matches")
+    .update({ status: "abandoned", updated_at: new Date().toISOString() })
+    .eq("player1_id", user.id)
+    .eq("mode", "bot")
+    .eq("status", "active");
+  if (closeError) {
+    console.error("[startBotMatch] Fermeture de la partie précédente impossible :", closeError.message);
+    return { ok: false, serverUnavailable: true, error: UNAVAILABLE };
+  }
+
   const matchId = crypto.randomUUID();
   const state = createGameState({
     gameId: matchId,
@@ -79,7 +95,7 @@ async function createBotMatch(deckId: string, botDeckId: string, difficulty: Bot
     player2: { id: BOT_PLAYER_ID, deck: botDeck },
   });
 
-  const { data, error } = await createSupabaseServiceRoleClient().rpc("create_active_match", {
+  const { data, error } = await service.rpc("create_active_match", {
     p_match_id: matchId,
     p_invite_code: generateInviteCode(),
     p_mode: "bot",

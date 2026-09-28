@@ -47,8 +47,8 @@ async function loadChosenStyle(supabase: ReturnType<typeof createSupabaseServerC
 }
 
 export default async function DeckDetailPage({ params }: { params: { deckId: string } }) {
-  const [deck, { ownedCardIds }] = await Promise.all([loadDeck(params.deckId), getOwnedCardIds()]);
+  const [deck, { ownedCardIds, ownedCounts }] = await Promise.all([loadDeck(params.deckId), getOwnedCardIds()]);
   if (!deck) notFound();
 
-  return <DeckEditorScreen ownedCardIds={ownedCardIds} initialDeck={deck} />;
+  return <DeckEditorScreen ownedCardIds={ownedCardIds} ownedCounts={ownedCounts} initialDeck={deck} />;
 }

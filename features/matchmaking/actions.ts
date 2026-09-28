@@ -33,18 +33,31 @@ async function requireUser() {
  * uniquement de la valeur de retour de cet appel.
  */
 export async function joinMatchmakingQueue(deckId: string): Promise<ActionResult<{ status: "queued" } | { status: "matched"; matchId: string }>> {
-  const { supabase, user } = await requireUser();
+  const { user } = await requireUser();
   const self = await resolveMatchDeck(user.id, deckId);
   if (!self.ok) return { ok: false, error: "Deck inconnu." };
   const selfDeck = self.deck;
 
-  const { error: upsertError } = await supabase
+  // La file n'est écrite QUE par le serveur (clé service_role) : un deck
+  // déjà validé ci-dessus, et une heure d'arrivée qui est la sienne. Une
+  // entrée forgée depuis le navigateur (deck inexistant, `queued_at` dans
+  // le passé) éjectait chaque joueur qui arrivait.
+  const service = createSupabaseServiceRoleClient();
+  const { error: upsertError } = await service
     .from("matchmaking_queue")
     .upsert({ user_id: user.id, deck_id: deckId, queued_at: new Date().toISOString() });
-  if (upsertError) return { ok: false, error: upsertError.message };
+  if (upsertError) {
+    console.error("[joinMatchmakingQueue] Mise en file refusée :", upsertError.message);
+    return { ok: false, error: "Impossible de rejoindre la file pour l'instant." };
+  }
 
-  const { data: claimed, error: claimError } = await supabase.rpc("claim_matchmaking_opponent");
-  if (claimError) return { ok: false, error: claimError.message };
+  // Réservée au serveur : ouverte au navigateur, elle permettait de vider la
+  // file en boucle et d'y lire qui attendait, avec quel deck.
+  const { data: claimed, error: claimError } = await service.rpc("claim_matchmaking_opponent", { p_user_id: user.id });
+  if (claimError) {
+    console.error("[joinMatchmakingQueue] Appariement refusé :", claimError.message);
+    return { ok: false, error: "Impossible de chercher un adversaire pour l'instant." };
+  }
 
   const opponent = claimed?.[0];
   if (!opponent) {
@@ -57,7 +70,7 @@ export async function joinMatchmakingQueue(deckId: string): Promise<ActionResult
   // Le deck de l'adversaire, résolu sous SON identité.
   const opponentResolved = await resolveMatchDeck(opponent.opponent_user_id, opponent.opponent_deck_id);
   const opponentDeck = opponentResolved.ok ? opponentResolved.deck : undefined;
-  await supabase.from("matchmaking_queue").delete().eq("user_id", user.id);
+  await service.from("matchmaking_queue").delete().eq("user_id", user.id);
   if (!opponentDeck) return { ok: false, error: "Le deck de l'adversaire est introuvable." };
 
   const matchId = crypto.randomUUID();
@@ -69,7 +82,7 @@ export async function joinMatchmakingQueue(deckId: string): Promise<ActionResult
 
   // Partie et état privé créés dans la même transaction, avec la clé
   // service_role : `matches` n'accepte plus aucune écriture navigateur.
-  const { data: created, error: createError } = await createSupabaseServiceRoleClient().rpc("create_active_match", {
+  const { data: created, error: createError } = await service.rpc("create_active_match", {
     p_match_id: matchId,
     // Sans usage pour une partie appariée (pas de lien à partager), mais la
     // colonne reste `not null unique` : dérivée de l'id de partie.
@@ -91,9 +104,12 @@ export async function joinMatchmakingQueue(deckId: string): Promise<ActionResult
 
 /** Quitte la file de matchmaking (bouton "Annuler la recherche" côté client). */
 export async function leaveMatchmakingQueue(): Promise<ActionResult<null>> {
-  const { supabase, user } = await requireUser();
-  const { error } = await supabase.from("matchmaking_queue").delete().eq("user_id", user.id);
-  if (error) return { ok: false, error: error.message };
+  const { user } = await requireUser();
+  const { error } = await createSupabaseServiceRoleClient().from("matchmaking_queue").delete().eq("user_id", user.id);
+  if (error) {
+    console.error("[leaveMatchmakingQueue] Sortie de file refusée :", error.message);
+    return { ok: false, error: "Impossible de quitter la file pour l'instant." };
+  }
   return { ok: true, data: null };
 }
 

@@ -23,7 +23,10 @@ import {
   advanceLoginStep,
   canClaimLoginReward,
   computeMatchReward,
+  countsAsPlayedMatch,
   isMeaningfulMatch,
+  MIN_REWARDED_MATCH_MS,
+  SAME_OPPONENT_DAILY_REWARDED_MATCHES,
   isMilestoneLevel,
   levelForTotalXp,
   levelRewardItems,
@@ -227,6 +230,38 @@ describe("anti-AFK (§7)", () => {
       ],
     } as never;
     expect(matchActivity(state, "p1")).toEqual({ cardsPlayed: 1, attacks: 1, turns: 6 });
+  });
+});
+
+describe("anti-farm (audit de sécurité)", () => {
+  const played: MatchActivity = { cardsPlayed: 3, attacks: 1, turns: 6 };
+
+  it("une partie jouée, assez longue, contre un adversaire pas encore trop affronté, compte", () => {
+    expect(countsAsPlayedMatch({ activity: played, durationMs: MIN_REWARDED_MATCH_MS, finishedAgainstOpponentToday: 0 })).toBe(true);
+    // Garde-fous non fournis (bot : pas de plafond par adversaire) : seule l'activité compte.
+    expect(countsAsPlayedMatch({ activity: played })).toBe(true);
+  });
+
+  it("écarte la partie éclair, même active", () => {
+    expect(countsAsPlayedMatch({ activity: played, durationMs: MIN_REWARDED_MATCH_MS - 1 })).toBe(false);
+  });
+
+  it("écarte la partie de trop contre le même adversaire dans la journée", () => {
+    const cap = SAME_OPPONENT_DAILY_REWARDED_MATCHES;
+    expect(countsAsPlayedMatch({ activity: played, finishedAgainstOpponentToday: cap - 1 })).toBe(true);
+    expect(countsAsPlayedMatch({ activity: played, finishedAgainstOpponentToday: cap })).toBe(false);
+  });
+
+  it("une partie écartée paie comme un abandon, victoire comprise", () => {
+    const reward = computeMatchReward(rewardInput({ outcome: "win", isFirstWinOfDay: true, activity: played, countsAsPlayed: false }));
+    expect(reward.abandoned).toBe(true);
+    expect(reward.xp).toBe(ABANDONED_MATCH_XP);
+    expect(reward.tides).toBe(0);
+    expect(reward.firstWinOfDay).toBe(false);
+  });
+
+  it("une partie jouée paie toujours plus qu'un abandon : le coffre de la semaine s'appuie dessus", () => {
+    expect(MATCH_XP.completed).toBeGreaterThan(ABANDONED_MATCH_XP);
   });
 });
 

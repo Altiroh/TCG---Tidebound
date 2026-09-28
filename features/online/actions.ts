@@ -50,13 +50,26 @@ export async function createOnlineMatch(deckId: string): Promise<ActionResult<{ 
   const own = await resolveMatchDeck(user.id, deckId);
   if (!own.ok) return { ok: false, error: deckRejection(own) };
 
-  const { data, error } = await createSupabaseServiceRoleClient()
+  const service = createSupabaseServiceRoleClient();
+  // Une seule partie en attente par joueur : la précédente est fermée. Sans
+  // ce plafond, un script pouvait remplir la table de parties vides.
+  const { error: closeError } = await service
+    .from("matches")
+    .update({ status: "abandoned", updated_at: new Date().toISOString() })
+    .eq("player1_id", user.id)
+    .eq("status", "waiting");
+  if (closeError) console.error("[createOnlineMatch] Fermeture des parties en attente impossible :", closeError.message);
+
+  const { data, error } = await service
     .from("matches")
     .insert({ player1_id: user.id, player1_deck_id: deckId, invite_code: generateInviteCode(), status: "waiting" })
     .select("id, invite_code")
     .single();
 
-  if (error || !data) return { ok: false, error: error?.message ?? "Échec de la création de la partie." };
+  if (error || !data) {
+    console.error("[createOnlineMatch] Création refusée :", error?.message);
+    return { ok: false, error: "Échec de la création de la partie." };
+  }
   return { ok: true, data: { matchId: data.id, inviteCode: data.invite_code } };
 }
 
@@ -75,8 +88,12 @@ export async function joinOnlineMatch(inviteCode: string, deckId: string): Promi
     .eq("status", "waiting")
     .maybeSingle();
 
-  if (findError) return { ok: false, error: findError.message };
-  if (!match) return { ok: false, error: "Aucune partie en attente avec ce code." };
+  if (findError) {
+    console.error("[joinOnlineMatch] Recherche refusée :", findError.message);
+    return { ok: false, error: "Impossible de chercher cette partie pour l'instant." };
+  }
+  // Hôte absent : son compte a été supprimé depuis la création de la partie.
+  if (!match || !match.player1_id) return { ok: false, error: "Aucune partie en attente avec ce code." };
   if (match.player1_id === user.id) return { ok: false, error: "Tu ne peux pas rejoindre ta propre partie." };
 
   // Le deck de l'HÔTE, résolu sous SON identité : un deck personnel
@@ -85,9 +102,10 @@ export async function joinOnlineMatch(inviteCode: string, deckId: string): Promi
   if (!hostDeck.ok) return { ok: false, error: "Le deck de ton adversaire n'est plus disponible." };
   const deck1 = hostDeck.deck;
 
+  const hostId = match.player1_id;
   const state = createGameState({
     gameId: match.id,
-    player1: { id: match.player1_id, deck: deck1 },
+    player1: { id: hostId, deck: deck1 },
     player2: { id: user.id, deck: deck2 },
   });
 
@@ -99,7 +117,10 @@ export async function joinOnlineMatch(inviteCode: string, deckId: string): Promi
     p_player2_deck_id: deckId,
     p_state: state,
   });
-  if (error) return { ok: false, error: error.message };
+  if (error) {
+    console.error("[joinOnlineMatch] Activation refusée :", error.message);
+    return { ok: false, error: "Impossible de rejoindre cette partie." };
+  }
   if (!activated?.ok) return { ok: false, error: activated?.error ?? "Impossible de rejoindre cette partie." };
 
   return { ok: true, data: { matchId: match.id } };

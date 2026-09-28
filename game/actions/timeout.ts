@@ -101,8 +101,9 @@ export function timeout(
   if (state.turnTimer?.awaitingPlayerId !== action.playerId) {
     return { ok: false, error: "Ce joueur n'est pas celui dont on attend une action." };
   }
-  // `now` vient du serveur, jamais de l'action : une échéance ne s'invoque
-  // pas, elle se constate.
+  // `now` vient du serveur : une échéance ne s'invoque pas, elle se
+  // constate. `submitAction` refuse d'ailleurs tout `timeout` venu du
+  // navigateur ; seul `applyExpiredDeadlines` en émet, avec l'heure serveur.
   if (!turnTimerExpired(state, action.now ?? Date.now())) {
     return { ok: false, error: "Le délai de ce joueur n'est pas écoulé." };
   }

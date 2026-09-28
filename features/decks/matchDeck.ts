@@ -1,5 +1,6 @@
 import { PLAYABLE_DECKS, validateDeckList, type DeckList } from "@/game";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
+import { missingCopiesMessage, ownedPartOf } from "@/features/decks/deckComposition";
 
 /**
  * Résolution SERVEUR du deck qu'un joueur emmène dans une partie arbitrée.
@@ -20,13 +21,18 @@ import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
  * seulement dans une politique RLS qu'un client service_role ignorerait),
  * et un deck illégal est refusé ici même — `is_valid` de la table n'est
  * qu'un cache, on revalide la liste réelle (`validateDeckList`).
+ *
+ * POSSESSION. Un deck personnel ne se joue qu'avec la collection de son
+ * auteur, exemplaire par exemplaire (`player_cards`). Sans ce contrôle, un
+ * deck écrit directement en base — ou monté puis vidé par la revente —
+ * emmenait en partie arbitrée des cartes jamais obtenues.
  */
 
 /** Pourquoi un deck ne peut pas entrer en partie — l'appelant en fait un message. */
 export type MatchDeckRejection =
   /** Aucun deck de ce nom, ni au catalogue ni chez ce joueur. */
   | { reason: "unknown" }
-  /** Le deck existe mais n'est pas jouable en l'état (taille, exemplaires, navire). */
+  /** Le deck existe mais n'est pas jouable en l'état (taille, exemplaires, navire, cartes non possédées). */
   | { reason: "invalid"; detail: string }
   /** La base n'a pas répondu : ce n'est pas la faute du deck. */
   | { reason: "unavailable" };
@@ -96,6 +102,19 @@ export async function resolveMatchDeck(userId: string, deckId: string): Promise<
 
     const validation = validateDeckList(deck);
     if (!validation.ok) return { ok: false, reason: "invalid", detail: validation.error };
+
+    const { data: owned, error: ownedError } = await service
+      .from("player_cards")
+      .select("card_id, quantity")
+      .eq("user_id", userId);
+    if (ownedError) {
+      console.error("[resolveMatchDeck] Lecture de la collection impossible :", ownedError.message);
+      return { ok: false, reason: "unavailable" };
+    }
+    const ownedCounts: Record<string, number> = {};
+    for (const row of owned ?? []) ownedCounts[row.card_id] = row.quantity;
+    const { missing } = ownedPartOf(cardIds, ownedCounts);
+    if (missing.length > 0) return { ok: false, reason: "invalid", detail: missingCopiesMessage(missing) };
 
     return { ok: true, deck };
   } catch (cause) {

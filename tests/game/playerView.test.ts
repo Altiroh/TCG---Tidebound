@@ -80,6 +80,46 @@ describe("toPlayerView — projection par joueur", () => {
     expect(draws("p2").find((event) => event.playerId === "p2")).toEqual(p2Draw);
   });
 
+  it("tait à l'adversaire les cartes remises sous la pioche (Mauvaise Main), pas à leur propriétaire", () => {
+    const base = newMatch();
+    const card = base.players[1].hand[0]!;
+    const moved = {
+      type: "CARD_MOVED" as const,
+      turnNumber: base.turnNumber,
+      timestamp: 0,
+      ownerId: "p2",
+      instanceId: card.instanceId,
+      cardId: card.cardId,
+      fromZone: "hand",
+      toZone: "deck",
+    };
+    const state = { ...base, eventLog: [...base.eventLog, moved] };
+
+    const seenByOpponent = toPlayerView(state, "p1").eventLog.at(-1)!;
+    expect(seenByOpponent).toMatchObject({ type: "CARD_MOVED", instanceId: "hidden", fromZone: "hand", toZone: "deck" });
+    expect("cardId" in seenByOpponent && seenByOpponent.cardId).toBeFalsy();
+
+    expect(toPlayerView(state, "p2").eventLog.at(-1)).toEqual(moved);
+  });
+
+  it("montre un retour en main depuis le plateau, sans le nouvel exemplaire en main", () => {
+    const base = newMatch();
+    const bounced = {
+      type: "CARD_MOVED" as const,
+      turnNumber: base.turnNumber,
+      timestamp: 0,
+      ownerId: "p2",
+      instanceId: "plateau-1",
+      cardId: base.players[1].hand[0]!.cardId,
+      toInstanceId: "main-9",
+      fromZone: "board",
+      toZone: "hand",
+    };
+    const state = { ...base, eventLog: [...base.eventLog, bounced] };
+
+    expect(toPlayerView(state, "p1").eventLog.at(-1)).toEqual({ ...bounced, toInstanceId: "hidden" });
+  });
+
   it("conserve la longueur du journal (l'UI s'appuie dessus pour détecter les nouveaux événements)", () => {
     const state = newMatch();
     expect(toPlayerView(state, "p1").eventLog).toHaveLength(state.eventLog.length);

@@ -49,6 +49,7 @@ const { purchaseBooster, openBooster } = await import("@/features/boosters/actio
 const { chooseBotAction } = await import("@/game/bot/chooseAction");
 const { RULES } = await import("@/game/rules/constants");
 const { PLAYABLE_DECKS } = await import("@/game");
+const { ABANDONED_MATCH_XP, MIN_REWARDED_MATCH_MS, SAME_OPPONENT_DAILY_REWARDED_MATCHES } = await import("@/game/progression");
 const { cardRows, questRows, boosterPoolCardRows } = await import("@/scripts/seedRows");
 
 /**
@@ -100,12 +101,23 @@ const DECK = PLAYABLE_DECKS[0]!;
 const OTHER_DECK = PLAYABLE_DECKS[1]!;
 
 /**
+ * Recule le début de la partie d'un peu plus que la durée minimale d'une
+ * partie récompensée (`MIN_REWARDED_MATCH_MS`) : ici les coups s'enchaînent
+ * en millisecondes, une vraie partie dure plusieurs minutes.
+ */
+function ageMatch(matchId: string): void {
+  const stateRow = db.one("match_states", { match_id: matchId });
+  if (stateRow) stateRow.state = { ...stateRow.state, createdAt: stateRow.state.createdAt - MIN_REWARDED_MATCH_MS - 1_000 };
+}
+
+/**
  * Joue la partie jusqu'au bout depuis le siège de `userId`, en soumettant
  * de vrais coups au serveur. Le « joueur » est piloté par le bot le plus
  * faible — ce qui compte ici est que chaque coup traverse `submitAction`,
  * pas la qualité du jeu.
  */
-async function playToTheEnd(matchId: string, userId: string, limit = 400): Promise<void> {
+async function playToTheEnd(matchId: string, userId: string, limit = 400, { aged = true } = {}): Promise<void> {
+  if (aged) ageMatch(matchId);
   for (let move = 0; move < limit; move += 1) {
     const stateRow = db.one("match_states", { match_id: matchId });
     const match = db.one("matches", { id: matchId });
@@ -136,6 +148,8 @@ describe("boucle complète — partie contre bot, arbitrée côté serveur", () 
     const initial = db.one("match_states", { match_id: matchId })!.state;
     expect(initial.players[0].shipId).toBe(DECK.shipId);
     expect(initial.players[1].shipId).toBe(OTHER_DECK.shipId);
+    // Et il est FIGÉ dans la partie : la maîtrise ne suit pas un deck modifié après coup.
+    expect(created.player1_ship_id).toBe(DECK.shipId);
 
     // --- la partie ------------------------------------------------------
     await playToTheEnd(matchId, USER);
@@ -255,6 +269,13 @@ describe("boucle complète — partie contre bot, arbitrée côté serveur", () 
     expect(db.one("match_states", { match_id: matchId })!.version).toBe(1);
   });
 
+  it("refuse une échéance déclarée par le navigateur, même au nom du joueur lui-même", async () => {
+    const started = await startBotMatch(DECK.id, OTHER_DECK.id, "facile");
+    const result = await submitMatchAction(started.matchId!, { type: "timeout", playerId: USER, now: Date.now() + 10 ** 9 } as never);
+    expect(result.ok).toBe(false);
+    expect(db.one("match_states", { match_id: started.matchId! })!.version).toBe(1);
+  });
+
   it("ne rend jamais la main ni le deck de l'adversaire dans la vue projetée", async () => {
     const started = await startBotMatch(DECK.id, OTHER_DECK.id, "facile");
     const matchId = started.matchId!;
@@ -322,6 +343,82 @@ describe("boucle complète — partie en ligne entre deux joueurs", () => {
     sessionUserId = "33333333-3333-3333-3333-333333333333";
     const third = await joinOnlineMatch(inviteCode, OTHER_DECK.id);
     expect(third.ok).toBe(false);
+  });
+});
+
+/** Joue une partie en ligne jusqu'au bout, chaque coup depuis la session de celui qui a la main. */
+async function playOnlineToTheEnd(matchId: string): Promise<void> {
+  ageMatch(matchId);
+  for (let move = 0; move < 400; move += 1) {
+    const row = db.one("match_states", { match_id: matchId });
+    if (!row || db.one("matches", { id: matchId })!.status !== "active") return;
+    const state = row.state;
+    const toPlay: string = state.pendingReaction?.awaitingPlayerId ?? state.pendingChoice?.playerId ?? state.activePlayerId;
+    sessionUserId = toPlay;
+    expect((await submitMatchAction(matchId, chooseBotAction(state, toPlay, "facile"))).error).toBeUndefined();
+  }
+  throw new Error("La partie ne s'est pas terminée dans la limite de coups.");
+}
+
+describe("anti-farm — une partie ne paie que si elle a été jouée", () => {
+  it("une partie éclair contre le bot paie comme un abandon et n'avance aucune quête", async () => {
+    const started = await startBotMatch(DECK.id, OTHER_DECK.id, "facile");
+    await playToTheEnd(started.matchId!, USER, 400, { aged: false });
+
+    expect(db.one("matches", { id: started.matchId! })!.status).toBe("finished");
+    expect(db.one("match_rewards", { match_id: started.matchId!, user_id: USER })!.xp_granted).toBe(ABANDONED_MATCH_XP);
+    expect(db.one("match_quest_progress", { match_id: started.matchId!, user_id: USER })).toBeUndefined();
+  });
+
+  it("lancer une partie contre le bot ferme la précédente, qui ne paiera jamais", async () => {
+    const first = await startBotMatch(DECK.id, OTHER_DECK.id, "facile");
+    const second = await startBotMatch(DECK.id, OTHER_DECK.id, "facile");
+    expect(second.ok).toBe(true);
+
+    expect(db.one("matches", { id: first.matchId! })!.status).toBe("abandoned");
+    expect(db.one("matches", { id: second.matchId! })!.status).toBe("active");
+    const state = db.one("match_states", { match_id: first.matchId! })!.state;
+    expect((await submitMatchAction(first.matchId!, chooseBotAction(state, USER, "moyen"))).ok).toBe(false);
+  });
+
+  it("PvP : au-delà du plafond du jour contre le même adversaire, la partie ne rapporte plus", async () => {
+    // Parties déjà jouées aujourd'hui entre ces deux comptes.
+    for (let index = 0; index < SAME_OPPONENT_DAILY_REWARDED_MATCHES; index += 1) {
+      db.table("matches").push({
+        id: `00000000-0000-4000-8000-0000000fa${index}00`,
+        invite_code: `FARM${index}`,
+        mode: "private_invite",
+        player1_id: index % 2 ? OPPONENT : USER,
+        player2_id: index % 2 ? USER : OPPONENT,
+        player1_deck_id: DECK.id,
+        player2_deck_id: OTHER_DECK.id,
+        status: "finished",
+        finished_at: new Date().toISOString(),
+      });
+    }
+
+    sessionUserId = USER;
+    const created = await createOnlineMatch(DECK.id);
+    sessionUserId = OPPONENT;
+    expect((await joinOnlineMatch(created.data!.inviteCode, OTHER_DECK.id)).ok).toBe(true);
+    await playOnlineToTheEnd(created.data!.matchId);
+
+    for (const userId of [USER, OPPONENT]) {
+      const reward = db.one("match_rewards", { match_id: created.data!.matchId, user_id: userId })!;
+      expect(reward.xp_granted).toBe(ABANDONED_MATCH_XP);
+      expect(reward.tides_granted).toBe(0);
+    }
+  });
+
+  it("une seule partie privée en attente par joueur", async () => {
+    sessionUserId = USER;
+    const first = await createOnlineMatch(DECK.id);
+    const second = await createOnlineMatch(DECK.id);
+    expect(db.one("matches", { id: first.data!.matchId })!.status).toBe("abandoned");
+    expect(db.one("matches", { id: second.data!.matchId })!.status).toBe("waiting");
+
+    sessionUserId = OPPONENT;
+    expect((await joinOnlineMatch(first.data!.inviteCode, OTHER_DECK.id)).ok).toBe(false);
   });
 });
 

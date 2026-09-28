@@ -57,15 +57,15 @@ export async function changePassword(formData: FormData): Promise<SettingsAction
 /**
  * Supprime définitivement le compte connecté.
  *
- * `matches` est la seule table qui référence `profiles` SANS
- * `on delete cascade` (cf. `supabase/migrations/20260908200000_init.sql`) :
- * ses lignes doivent donc partir d'abord, sinon la suppression de
- * l'utilisateur échoue sur une violation de clé étrangère dès que le joueur
- * a fait une seule partie en ligne. Leurs tables satellites
- * (`match_states`, `match_rewards`, `match_quest_progress`) cascadent depuis
- * `matches`, et tout le reste (decks, collection, monnaie, quêtes,
- * progression…) cascade depuis `profiles`, lui-même supprimé en cascade
- * avec la ligne `auth.users`.
+ * Les parties PARTAGÉES ne sont plus supprimées : elles appartiennent aussi
+ * à l'adversaire, dont elles portent l'historique, les récompenses et la
+ * progression de quêtes (qui cascadent depuis `matches`). Depuis
+ * `20261016120000_audit_securite.sql`, les références de `matches` vers
+ * `profiles` passent à `null` à la suppression du profil : la partie reste,
+ * anonymisée. Seules les parties en cours ou en attente du compte sont
+ * fermées d'abord, pour que l'adversaire ne reste pas assis face au vide.
+ * Tout le reste (decks, collection, monnaie, quêtes, progression…) cascade
+ * depuis `profiles`, lui-même supprimé en cascade avec la ligne `auth.users`.
  */
 export async function deleteAccount(formData: FormData): Promise<SettingsActionResult> {
   const password = String(formData.get("password") ?? "");
@@ -91,10 +91,11 @@ export async function deleteAccount(formData: FormData): Promise<SettingsActionR
 
   const { error: matchesError } = await admin
     .from("matches")
-    .delete()
+    .update({ status: "abandoned", updated_at: new Date().toISOString() })
+    .in("status", ["waiting", "active"])
     .or(`player1_id.eq.${user.id},player2_id.eq.${user.id}`);
   if (matchesError) {
-    console.error("[settings] Échec de la suppression des parties du compte :", matchesError);
+    console.error("[settings] Échec de la fermeture des parties du compte :", matchesError);
     return { ok: false, error: "Impossible de supprimer le compte pour le moment. Réessaie plus tard." };
   }
 

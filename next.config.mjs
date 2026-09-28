@@ -17,6 +17,61 @@ const { version } = createRequire(import.meta.url)("./package.json");
  */
 const commit = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? "";
 
+const isDev = process.env.NODE_ENV !== "production";
+
+/**
+ * Origine Supabase autorisée par la CSP (REST, Auth, Realtime). Celle du
+ * projet si elle est connue à la construction, sinon tout `*.supabase.co`.
+ */
+function supabaseOrigins() {
+  try {
+    const url = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "");
+    return [url.origin, `wss://${url.host}`];
+  } catch {
+    return ["https://*.supabase.co", "wss://*.supabase.co"];
+  }
+}
+
+/**
+ * EN-TÊTES DE SÉCURITÉ, sur toutes les réponses (audit du 28/09/2026).
+ *
+ *   - `frame-ancestors 'none'` / `X-Frame-Options` : le site ne s'affiche
+ *     dans le cadre d'aucun autre. Sans eux, une page tierce pouvait poser
+ *     l'appli sous un faux bouton et faire cliquer « acheter », « revendre »
+ *     ou « tout réclamer » à son insu (clickjacking).
+ *   - CSP : tout vient du site lui-même (polices `next/font` auto-hébergées,
+ *     images et sons de `public/`), plus Supabase pour les données.
+ *     `'unsafe-inline'` reste nécessaire aux scripts d'hydratation de Next 14
+ *     sans nonce, et aux styles en ligne ; `'unsafe-eval'` et `ws:` ne
+ *     servent qu'au rechargement à chaud du développement.
+ */
+function securityHeaders() {
+  const connect = ["'self'", ...supabaseOrigins(), ...(isDev ? ["ws:"] : [])];
+  const csp = [
+    "default-src 'self'",
+    `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "font-src 'self' data:",
+    "media-src 'self' data: blob:",
+    `connect-src ${connect.join(" ")}`,
+    "worker-src 'self'",
+    "manifest-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+  ].join("; ");
+
+  return [
+    { key: "Content-Security-Policy", value: csp },
+    { key: "X-Frame-Options", value: "DENY" },
+    { key: "X-Content-Type-Options", value: "nosniff" },
+    { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+    { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()" },
+  ];
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -47,6 +102,7 @@ const nextConfig = {
    */
   async headers() {
     return [
+      { source: "/:path*", headers: securityHeaders() },
       {
         source: "/assets/:path*",
         headers: [{ key: "Cache-Control", value: "public, max-age=300, stale-while-revalidate=604800" }],
