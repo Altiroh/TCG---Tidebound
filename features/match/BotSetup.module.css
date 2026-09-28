@@ -1,0 +1,759 @@
+/*
+ * JOUER → CONTRE UN BOT (`BotSetup.tsx`), sur la table du choix du mode.
+ * Scène à ratio fixe (16 / 9, `.stage` de `ModeTable.module.css`) : positions
+ * en %, textes en cqw. Pièces d'interface reprises du jeu : emblèmes du bot
+ * (`play/bot-difficulty/`), bandeau (`ui/bandeaux/banderole`), plaques
+ * (`ui/boutons/plaque-bois`, `bouton-sombre`, `bouton-bleu`), fiche épinglée
+ * (`ui/panneaux/fiche-epinglee`), parchemin à la boussole
+ * (`ui/panneaux/parchemin-boussole`), boîte de deck du Market (`DeckBox`),
+ * emblèmes de style (`decks/styles/`).
+ */
+
+.scene {
+  --ink: #2a1a0c;
+  --ink-soft: #5b4128;
+  position: absolute;
+  inset: 0;
+  container-type: size;
+  color: var(--ink);
+}
+
+/* Couleur du niveau : l'illustration, l'aura et le bouton enfoncé la prennent. */
+.scene[data-level="facile"] { --level-color: 95, 208, 230; }
+.scene[data-level="moyen"] { --level-color: 255, 178, 74; }
+.scene[data-level="difficile"] { --level-color: 255, 72, 64; }
+
+/* ── Arrivée et départ des éléments ── */
+.levelArt,
+.left,
+.recap,
+.back {
+  animation: arrive 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.levelArt { --from: 0, -40%; animation-delay: 60ms; }
+.left { --from: -18%, 0; animation-delay: 120ms; }
+.recap { --from: 18%, 0; animation-delay: 180ms; }
+.back { --from: 0, -60%; }
+
+.scene[data-leaving] .levelArt,
+.scene[data-leaving] .left,
+.scene[data-leaving] .recap,
+.scene[data-leaving] .back {
+  animation: leave 380ms cubic-bezier(0.5, 0, 0.8, 0.4) both;
+}
+
+@keyframes arrive {
+  from {
+    opacity: 0;
+    transform: translate(var(--from));
+  }
+}
+
+@keyframes leave {
+  to {
+    opacity: 0;
+    transform: translate(var(--from));
+  }
+}
+
+.back {
+  position: absolute;
+  z-index: 3;
+  left: 13.5%;
+  top: 0;
+  padding: 0.5cqw 1.2cqw;
+  border: 1px solid rgba(241, 222, 180, 0.35);
+  border-radius: 999px;
+  background: rgba(20, 10, 4, 0.55);
+  color: #f1e3c4;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: max(11px, 1cqw);
+  cursor: pointer;
+}
+
+.back:hover {
+  background: rgba(40, 20, 8, 0.8);
+}
+
+/* ── En haut : l'illustration du niveau ── */
+.levelArt {
+  position: absolute;
+  left: 35%;
+  top: 0;
+  width: 30%;
+  height: 56%;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+}
+
+/* Une aura qui grandit et rougit avec le niveau. */
+.aura {
+  position: absolute;
+  left: 50%;
+  top: 34%;
+  width: calc(60% + var(--level) * 14%);
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(var(--level-color), 0.55), rgba(var(--level-color), 0.16) 55%, transparent 100%);
+  filter: blur(6px);
+  animation: aura calc(3.2s - var(--level) * 0.8s) ease-in-out infinite;
+  transition: width 500ms ease, background 500ms ease;
+}
+
+@keyframes aura {
+  0%, 100% { opacity: 0.75; scale: 0.96; }
+  50% { opacity: 1; scale: 1.06; }
+}
+
+/* Le médaillon : laiton et fond sombre, l'emblème du niveau qui s'y fond. */
+.medallion {
+  position: relative;
+  width: 52%;
+  aspect-ratio: 1;
+  margin-top: 3%;
+  border: 0.45cqw solid #b98a3e;
+  border-radius: 50%;
+  background: radial-gradient(circle at 42% 36%, #1c2a3a, #070c14 78%);
+  box-shadow:
+    0 0 0 0.25cqw #4a3514,
+    0 1.4cqh 2.4cqh rgba(0, 0, 0, 0.6),
+    0 0 calc(1.2cqw + var(--level) * 1.2cqw) rgba(var(--level-color), 0.55),
+    inset 0 0 2.4cqw rgba(var(--level-color), 0.35);
+  transition: box-shadow 500ms ease;
+}
+
+.medallion img {
+  position: absolute;
+  inset: 8%;
+  width: 84%;
+  height: 84%;
+  object-fit: contain;
+  opacity: 0;
+  scale: 0.7;
+  rotate: -25deg;
+  transition: opacity 380ms ease, scale 520ms cubic-bezier(0.3, 1.6, 0.4, 1), rotate 520ms cubic-bezier(0.3, 1.4, 0.4, 1);
+}
+
+.medallion img[data-on] {
+  opacity: 1;
+  scale: 1;
+  rotate: 0deg;
+}
+
+/* Le difficile se teinte de rouge. */
+.scene[data-level="difficile"] .medallion img[data-on] {
+  filter: hue-rotate(160deg) saturate(2.4) brightness(1.05);
+}
+
+.scene[data-level="moyen"] .medallion img[data-on] {
+  filter: hue-rotate(185deg) saturate(1.6) brightness(1.1);
+}
+
+.ribbon {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  width: 100%;
+  aspect-ratio: 900 / 249;
+  margin-top: -6%;
+  padding-top: 5.5%;
+  background: url("/assets/ui/bandeaux/banderole.webp") center / 100% 100% no-repeat;
+  filter: drop-shadow(0 0.8cqh 1cqh rgba(0, 0, 0, 0.55));
+}
+
+.ribbonTitle {
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: max(14px, 1.55cqw);
+  font-weight: 700;
+  font-variant: small-caps;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.ribbonLevel {
+  margin-top: 0.3cqw;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: max(9px, 1.05cqw);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, rgb(var(--level-color)) 55%, var(--ink));
+}
+
+/* ── À gauche : la fiche épinglée, niveau puis deck ── */
+.left {
+  position: absolute;
+  left: 13.5%;
+  top: 6%;
+  width: 22.5%;
+  aspect-ratio: 589 / 900;
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  gap: 0.7cqw;
+  padding: 4.6cqw 2cqw 2cqw;
+  background: url("/assets/ui/panneaux/fiche-epinglee.webp") center / 100% 100% no-repeat;
+  filter: drop-shadow(0 1.4cqh 1.8cqh rgba(0, 0, 0, 0.55));
+  rotate: -1.2deg;
+}
+
+.heading {
+  margin: 0;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: max(11px, 1.25cqw);
+  font-weight: 700;
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+}
+
+.levels {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5cqw;
+  width: 100%;
+  margin-bottom: 0.6cqw;
+}
+
+/*
+ * Une plaque de bois et de laiton (`plaque-bois`) : relevée au repos,
+ * ENFONCÉE quand elle est choisie — descendue, ombre rentrée, lueur de la
+ * couleur du niveau.
+ */
+.levelButton {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 0.2cqw;
+  padding: 0.55cqw 0.2cqw 0.5cqw;
+  border: 0;
+  border-radius: 0.6cqw;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.18)),
+    url("/assets/ui/boutons/plaque-bois.webp") center / 100% 100% no-repeat;
+  box-shadow: 0 0.35cqw 0 #2b1706, 0 0.6cqw 0.8cqw rgba(0, 0, 0, 0.55);
+  color: #f1e3c4;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: max(9px, 0.95cqw);
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 120ms ease-out, box-shadow 120ms ease-out, filter 160ms ease;
+}
+
+.levelButton img {
+  width: 2.4cqw;
+  height: 2.4cqw;
+  object-fit: contain;
+  filter: grayscale(0.6) brightness(0.8);
+  transition: filter 160ms ease;
+}
+
+.levelButton:hover {
+  filter: brightness(1.12);
+}
+
+.levelButton[aria-checked="true"] {
+  transform: translateY(0.3cqw);
+  box-shadow: 0 0.05cqw 0 #2b1706, inset 0 0.25cqw 0.6cqw rgba(0, 0, 0, 0.75), 0 0 1cqw rgba(var(--level-color), 0.55);
+  filter: brightness(0.92);
+}
+
+.levelButton[aria-checked="true"] img {
+  filter: drop-shadow(0 0 0.5cqw rgba(var(--level-color), 0.9));
+}
+
+.levelButton:focus-visible,
+.changeDeck:focus-visible,
+.launch:focus-visible {
+  outline: 2px solid #f3c86b;
+  outline-offset: 2px;
+}
+
+/* Le deck, en boîte comme au Market, et sa plaque de nom. */
+.deck {
+  display: grid;
+  justify-items: center;
+  width: 100%;
+}
+
+.deckBox {
+  width: 48%;
+  aspect-ratio: 1024 / 1536;
+  filter: drop-shadow(0 1cqh 1.2cqh rgba(0, 0, 0, 0.55));
+}
+
+.deckPlate {
+  display: grid;
+  justify-items: center;
+  width: 100%;
+  margin-top: -1.2cqw;
+  padding: 0.9cqw 2.2cqw 1cqw;
+  filter: drop-shadow(0 0.5cqh 0.8cqh rgba(0, 0, 0, 0.5));
+  background: url("/assets/ui/plaques/plaque-rivets.webp") center / 100% 100% no-repeat;
+  color: #f1e3c4;
+  text-align: center;
+}
+
+.deckName {
+  max-width: 100%;
+  overflow: hidden;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: max(9px, 1.05cqw);
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.deckStyle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3cqw;
+  font-size: max(9px, 0.75cqw);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(241, 227, 196, 0.8);
+}
+
+.deckStyle img {
+  width: 1.2cqw;
+  height: 1.2cqw;
+}
+
+.noDeck {
+  margin: 2cqw 0;
+  font-size: max(9px, 1cqw);
+  color: var(--ink-soft);
+}
+
+/* Changer de deck : la plaque sombre des boutons d'interface. */
+.changeDeck {
+  width: 86%;
+  aspect-ratio: 591 / 121;
+  border: 0;
+  background: url("/assets/ui/boutons/bouton-sombre.webp") center / 100% 100% no-repeat;
+  color: #f1e3c4;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: max(9px, 0.95cqw);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+  cursor: pointer;
+  transition: filter 160ms ease, transform 120ms ease;
+}
+
+.changeDeck:hover {
+  filter: brightness(1.15) drop-shadow(0 0 0.8cqw rgba(255, 196, 110, 0.45));
+}
+
+.changeDeck:active {
+  transform: translateY(1px);
+}
+
+/* ── À droite : le récapitulatif, sur le parchemin à la boussole ── */
+.recap {
+  position: absolute;
+  right: 2.5%;
+  top: 1%;
+  height: 96%;
+  aspect-ratio: 777 / 1400;
+  display: flex;
+  flex-direction: column;
+  padding: 8.5cqw 3cqw 3.2cqw;
+  background: url("/assets/ui/panneaux/parchemin-boussole.webp") center / 100% 100% no-repeat;
+  filter: drop-shadow(0 1.4cqh 1.8cqh rgba(0, 0, 0, 0.55));
+}
+
+.recapTitle {
+  margin: 0 0 0.8cqw;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: max(18px, 2cqw);
+  font-weight: 700;
+  text-align: center;
+  color: var(--ink);
+}
+
+.facts {
+  display: grid;
+  gap: 0.9cqw;
+  margin: 0;
+}
+
+.fact {
+  display: grid;
+  gap: 0.25cqw;
+  padding-bottom: 0.8cqw;
+  border-bottom: 1px solid rgba(90, 60, 30, 0.25);
+}
+
+.fact dt {
+  font-size: max(9px, 0.72cqw);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #1f6f86;
+}
+
+.fact dd {
+  display: flex;
+  align-items: center;
+  gap: 0.7cqw;
+  margin: 0;
+}
+
+.fact dd > span {
+  display: grid;
+  gap: 0.15cqw;
+}
+
+.fact strong {
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: max(10px, 1.15cqw);
+  color: var(--ink);
+}
+
+.fact small {
+  font-size: max(9px, 0.8cqw);
+  line-height: 1.35;
+  color: var(--ink-soft);
+}
+
+.factEmblem {
+  flex: none;
+  width: 2.8cqw;
+  height: 2.8cqw;
+  padding: 0.25cqw;
+  border: 0.15cqw solid #b98a3e;
+  border-radius: 50%;
+  background: radial-gradient(circle at 42% 36%, #1c2a3a, #070c14 78%);
+  object-fit: contain;
+}
+
+.scene[data-level="difficile"] .factEmblem {
+  filter: hue-rotate(160deg) saturate(2.4);
+}
+
+.scene[data-level="moyen"] .factEmblem {
+  filter: hue-rotate(185deg) saturate(1.6);
+}
+
+.stars {
+  display: inline-flex;
+  gap: 0.15cqw;
+}
+
+.stars svg {
+  width: 1cqw;
+  height: 1cqw;
+  fill: none;
+  stroke: rgba(60, 38, 16, 0.55);
+  stroke-width: 1.6;
+}
+
+.stars svg[data-on] {
+  fill: #f2c24e;
+  stroke: #5a3a12;
+  filter: drop-shadow(0 0 0.2cqw rgba(242, 194, 78, 0.6));
+}
+
+.error {
+  margin: 0.8cqw 0 0;
+  font-size: max(9px, 0.85cqw);
+  color: #9c2a1e;
+}
+
+/* Lancer la partie : la plaque bleue, l'appel à l'action. */
+.launch {
+  margin-top: auto;
+  width: 100%;
+  aspect-ratio: 594 / 130;
+  border: 0;
+  background: url("/assets/ui/boutons/bouton-bleu.webp") center / 100% 100% no-repeat;
+  color: #eaf8fb;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: max(11px, 1.25cqw);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  cursor: pointer;
+  animation: launchPulse 2.6s ease-in-out infinite;
+  transition: filter 160ms ease, transform 120ms ease;
+}
+
+.launch:hover:not(:disabled) {
+  filter: brightness(1.15) drop-shadow(0 0 1.2cqw rgba(95, 208, 230, 0.7));
+}
+
+.launch:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.launch:disabled {
+  cursor: default;
+  filter: grayscale(0.7) brightness(0.75);
+  animation: none;
+}
+
+@keyframes launchPulse {
+  0%, 100% { filter: drop-shadow(0 0 0.3cqw rgba(95, 208, 230, 0.35)); }
+  18% { filter: drop-shadow(0 0 1.1cqw rgba(95, 208, 230, 0.75)); }
+  40% { filter: drop-shadow(0 0 0.6cqw rgba(95, 208, 230, 0.5)); }
+}
+
+/* ── Panneau « Changer de deck » : à gauche, sur son décor ── */
+.pickerBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: stretch start;
+  background: linear-gradient(270deg, rgba(2, 6, 11, 0.25), rgba(2, 6, 11, 0.75));
+  animation: fade 180ms ease-out both;
+}
+
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(52vw, 100%);
+  min-width: min(560px, 100vw);
+  height: 100dvh;
+  padding: calc(18px + var(--tb-safe-top)) 22px calc(18px + var(--tb-safe-bottom)) calc(22px + var(--tb-safe-left));
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(20, 10, 4, 0.72) 0%, rgba(20, 10, 4, 0.35) 18%, rgba(20, 10, 4, 0.45) 75%, rgba(20, 10, 4, 0.85) 100%),
+    #1a0f08 url("/assets/play/mode/fond-table.webp") 20% center / cover no-repeat;
+  box-shadow: 30px 0 60px rgba(0, 0, 0, 0.55);
+  color: #f1e3c4;
+  animation: slideIn 280ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.pickerHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pickerTitle {
+  margin: 0;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: clamp(24px, 2.6vw, 38px);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.6), 0 0 18px rgba(0, 0, 0, 0.7);
+}
+
+.pickerClose {
+  width: 38px;
+  height: 38px;
+  border: 1.5px solid rgba(241, 230, 207, 0.7);
+  border-radius: 50%;
+  background: rgba(8, 12, 18, 0.7);
+  color: #f1e6cf;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* Les sources, sur les plaques d'onglet. */
+.sourceTabs {
+  display: flex;
+  gap: 10px;
+}
+
+.sourceTab {
+  padding: 10px 22px 12px;
+  border: 0;
+  background: url("/assets/ui/plaques/onglet.webp") center / 100% 100% no-repeat;
+  color: #2a1a0c;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: 15px;
+  font-weight: 700;
+  font-variant: small-caps;
+  filter: brightness(0.8) drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5));
+  cursor: pointer;
+  transition: filter 160ms ease, transform 160ms ease;
+}
+
+.sourceTab[aria-selected="true"] {
+  transform: translateY(-3px);
+  filter: brightness(1.05) drop-shadow(0 6px 10px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 8px rgba(255, 210, 140, 0.35));
+}
+
+.count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.6em;
+  margin-left: 4px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgba(20, 12, 6, 0.75);
+  color: #f1e3c4;
+  font-size: 0.8em;
+  font-variant: normal;
+}
+
+/* Filtre par type : les six styles et leurs emblèmes. */
+.styleFilter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.styleChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px 5px 6px;
+  border: 1px solid rgba(201, 165, 90, 0.55);
+  border-radius: 999px;
+  background: rgba(20, 12, 6, 0.7);
+  color: #f1e3c4;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.styleChip img {
+  width: 24px;
+  height: 24px;
+}
+
+.styleChip:hover:not(:disabled) {
+  border-color: #f3c86b;
+}
+
+.styleChip[aria-checked="true"] {
+  border-color: #f3c86b;
+  background: linear-gradient(180deg, #6b4a17, #3f2a0b);
+  box-shadow: 0 0 10px rgba(255, 190, 90, 0.35);
+}
+
+.styleChip:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.pickerGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 14px;
+  min-height: 0;
+  margin: 0;
+  padding: 4px 6px 8px 0;
+  overflow-y: auto;
+  list-style: none;
+  scrollbar-width: thin;
+}
+
+.tile {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 8px 12px;
+  border: 1px solid rgba(201, 165, 90, 0.35);
+  border-radius: 12px;
+  background: rgba(20, 12, 6, 0.6);
+  color: #f1e3c4;
+  font: inherit;
+  cursor: pointer;
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.tile:hover:not(:disabled) {
+  transform: translateY(-3px);
+  border-color: #f3c86b;
+  box-shadow: 0 0 14px rgba(255, 196, 110, 0.35);
+}
+
+.tile[data-selected] {
+  border-color: #5fd0e6;
+  box-shadow: 0 0 14px rgba(95, 208, 230, 0.45);
+}
+
+.tile:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.tileBox {
+  width: 62%;
+  aspect-ratio: 1024 / 1536;
+}
+
+.tileName {
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: 15px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.tileStyle {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(241, 227, 196, 0.7);
+}
+
+.tile .stars svg {
+  width: 13px;
+  height: 13px;
+  stroke: rgba(241, 227, 196, 0.5);
+}
+
+.tileIssue {
+  font-size: 11px;
+  color: #f0a497;
+  text-align: center;
+}
+
+.pickerEmpty {
+  margin: 30px 0;
+  text-align: center;
+  color: rgba(241, 227, 196, 0.75);
+}
+
+@keyframes slideIn {
+  from { transform: translateX(-40%); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+@keyframes fade {
+  from { opacity: 0; }
+}
+
+/* Écran bas (téléphone couché) : le récapitulatif garde l'essentiel, et son bouton. */
+@media (max-height: 520px) {
+  .fact small,
+  .fact:nth-child(2) {
+    display: none;
+  }
+  .facts {
+    gap: 0.4cqw;
+  }
+  .fact {
+    padding-bottom: 0.4cqw;
+  }
+  .recap {
+    padding-top: 7cqw;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .levelArt,
+  .left,
+  .recap,
+  .back,
+  .aura,
+  .launch,
+  .picker,
+  .pickerBackdrop {
+    animation: none;
+  }
+}

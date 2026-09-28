@@ -67,6 +67,43 @@
   user-select: none;
 }
 
+/* Les éléments de l'étape « mode » : ils PARTENT quand on choisit. */
+.modeScene {
+  position: absolute;
+  inset: 0;
+}
+
+/* Départ : le bandeau remonte, les cartes glissent vers le bas ; la choisie reste un instant, lumineuse. */
+.modeScene[data-leaving] .banner {
+  animation: leaveUp 380ms cubic-bezier(0.5, 0, 0.8, 0.4) both;
+}
+
+.modeScene[data-leaving] .card {
+  animation: leaveDown 380ms cubic-bezier(0.5, 0, 0.8, 0.4) calc(var(--index) * 40ms) both;
+}
+
+.modeScene[data-leaving] .card[data-chosen] {
+  z-index: 1;
+  animation: leaveChosen 380ms cubic-bezier(0.4, 0, 0.7, 0.4) both;
+}
+
+.modeScene[data-leaving] .notices {
+  animation: leaveDown 300ms ease-in both;
+}
+
+@keyframes leaveUp {
+  to { opacity: 0; transform: translateY(-60%); }
+}
+
+@keyframes leaveDown {
+  to { opacity: 0; transform: translateY(40%) rotate(var(--tilt, 0deg)); }
+}
+
+@keyframes leaveChosen {
+  40% { opacity: 1; transform: translateY(-4%) scale(1.06) rotate(var(--tilt, 0deg)); filter: brightness(1.2); }
+  to { opacity: 0; transform: translateY(-10%) scale(1.12) rotate(var(--tilt, 0deg)); filter: brightness(1.6); }
+}
+
 /* Le bandeau « Choisis un mode » (texte peint), centré en haut. */
 .banner {
   position: absolute;
@@ -297,6 +334,7 @@
 
 
 @media (prefers-reduced-motion: reduce) {
+  .modeScene[data-leaving] *,
   .card,
   .page[data-lit] .lanternPool,
   .cardButton:hover::after,

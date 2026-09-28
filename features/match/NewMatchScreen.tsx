@@ -11,7 +11,8 @@ import {
 } from "@/game";
 import Link from "next/link";
 import { nameplateArtUrl } from "@/features/decks/nameplateArt";
-import { ModeTable } from "@/features/match/ModeTable";
+import { BotSetup } from "@/features/match/BotSetup";
+import { ModeTable, PlayTable } from "@/features/match/ModeTable";
 import { GameScreen } from "@/features/shell/GameScreen";
 import { shipNameOf } from "@/features/ships/ShipPortrait";
 import game from "@/features/shell/GameScreen.module.css";
@@ -270,9 +271,12 @@ export function NewMatchScreen({
    */
   useEffect(() => {
     if (current && activeTab.decks.some((deck) => deck.id === current.id)) return;
+    // Contre un bot, pas d'onglet : le deck choisi (par défaut, ou dans le
+    // panneau « Changer de deck ») vaut quelle que soit sa source.
+    if (mode === "bot" && current && tabs.some((tab) => tab.decks.some((deck) => deck.id === current.id))) return;
     const first = activeTab.decks.find((deck) => activeTab.issueFor(deck) === null) ?? null;
     if (first) setCurrent(first);
-  }, [activeTab, current, setCurrent]);
+  }, [activeTab, current, setCurrent, mode, tabs]);
 
   /** Relever un défi reçu : mode « En ligne », rejoindre, code déjà saisi — reste le deck. */
   function acceptChallenge(code: string) {
@@ -376,18 +380,37 @@ export function NewMatchScreen({
       </>
     ) : null;
 
-  // Étape 1 : la table du choix du mode (maquette du 28/09/2026).
-  if (step === 1) {
+  // Étape 1 (choix du mode) et étape « contre un bot » : la même table. Ses
+  // éléments partent, ceux de l'étape suivante arrivent (retour du 28/09/2026).
+  if (step === 1 || (step === 2 && mode === "bot")) {
     return (
       <GameScreen active="partie" nav="minimal" backdrop="table">
-        <ModeTable
-          onChoose={(choice) => {
-            // En ligne : la recherche rapide ; Match amical : défier un ami (le reste se choisit ensuite).
-            if (choice !== "bot") setOnlineKind(choice === "amical" ? "friend" : "quick");
-            chooseMode(choice === "bot" ? "bot" : "online");
-          }}
-          notices={notices}
-        />
+        <PlayTable>
+          {step === 1 ? (
+            <ModeTable
+              onChoose={(choice) => {
+                // En ligne : la recherche rapide ; Match amical : défier un ami (le reste se choisit ensuite).
+                if (choice !== "bot") setOnlineKind(choice === "amical" ? "friend" : "quick");
+                chooseMode(choice === "bot" ? "bot" : "online");
+              }}
+              notices={notices}
+            />
+          ) : (
+            <BotSetup
+              levels={BOT_DIFFICULTIES}
+              difficulty={botDifficulty}
+              onDifficulty={setBotDifficulty}
+              deck={deck1}
+              sources={tabs}
+              onDeck={setDeck1}
+              onBack={() => setStep(1)}
+              onLaunch={handleLaunch}
+              starting={starting}
+              error={error}
+              note={botNote}
+            />
+          )}
+        </PlayTable>
       </GameScreen>
     );
   }
