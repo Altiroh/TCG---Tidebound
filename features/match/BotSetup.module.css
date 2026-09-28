@@ -30,7 +30,8 @@
     "deck vs foe"
     "deck launch foe";
   column-gap: calc(var(--u) * 3);
-  padding: calc(var(--u) * 2) calc(var(--u) * 5) calc(var(--u) * 2.5) max(14cqw, calc(var(--u) * 22));
+  /* Même marge des deux côtés : ton deck et l'adversaire à la même distance du VS. */
+  padding: calc(var(--u) * 2) max(11cqw, calc(var(--u) * 18)) calc(var(--u) * 2.5);
   color: var(--ink);
 }
 
@@ -52,8 +53,7 @@
 .deckSide,
 .foe,
 .versus,
-.launchZone,
-.back {
+.launchZone {
   animation: arrive 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
@@ -62,7 +62,6 @@
 .foe { --from: 30%, 0; animation-delay: 180ms; }
 .versus { --from: 0, 0; animation-delay: 260ms; }
 .launchZone { --from: 0, 80%; animation-delay: 220ms; }
-.back { --from: 0, -80%; }
 
 .scene[data-leaving] > * {
   animation: leave 380ms cubic-bezier(0.5, 0, 0.8, 0.4) both;
@@ -82,24 +81,6 @@
   }
 }
 
-.back {
-  position: absolute;
-  z-index: 3;
-  left: max(13cqw, calc(var(--u) * 20));
-  top: calc(var(--u) * 1.5);
-  padding: calc(var(--u) * 0.8) calc(var(--u) * 2.2);
-  border: 1px solid rgba(241, 222, 180, 0.35);
-  border-radius: 999px;
-  background: rgba(20, 10, 4, 0.55);
-  color: #f1e3c4;
-  font-family: var(--tb-font-display, Georgia, serif);
-  font-size: max(11px, calc(var(--u) * 2.2));
-  cursor: pointer;
-}
-
-.back:hover {
-  background: rgba(40, 20, 8, 0.8);
-}
 
 /* ── En haut : le niveau ── */
 .levelsPanel {
@@ -187,7 +168,7 @@
 /* La boîte, penchée, sur une petite pile de boîtes : le paquet qu'on emporte. */
 .deckStack {
   position: relative;
-  height: 52cqh;
+  height: 56cqh;
   aspect-ratio: 1024 / 1536;
   rotate: -5deg;
   animation: breathe 6s ease-in-out infinite alternate;
@@ -316,44 +297,64 @@
   50% { opacity: 1; scale: 1.04; }
 }
 
-/* ── À droite : la fiche de l'adversaire ── */
+/*
+ * ── À droite : l'adversaire, en PHOTO ──
+ * Le polaroid du profil joueur (`profile/photo-frame`, 419 × 454) : la
+ * fenêtre de la photo est penchée de −11,3° (centre 48,66 % × 43,31 %,
+ * 71,2 % × 59,5 %), le bas du papier reçoit le nom et les têtes de mort.
+ * Même hauteur que la pile de ton deck, en miroir de lui autour du VS ;
+ * dessous, une carte de parchemin comme la plaque de ton deck.
+ */
 .foe {
   grid-area: foe;
-  position: relative;
-  justify-self: end;
-  align-self: center;
-  height: min(88cqh, 100%);
-  max-width: 100%;
-  aspect-ratio: 760 / 1305;
-  margin-right: calc(var(--u) * -3);
-  background: url("/assets/decks/liste/fiche.webp") center / 100% 100% no-repeat;
-  filter: drop-shadow(0 calc(var(--u) * 1.6) calc(var(--u) * 2.4) rgba(0, 0, 0, 0.6));
-  rotate: 3deg;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: calc(var(--u) * 1.2);
+  min-height: 0;
 }
 
-.foeArt {
+.polaroid {
+  position: relative;
+  height: 56cqh;
+  aspect-ratio: 419 / 454;
+  rotate: 4deg;
+  filter: drop-shadow(0 calc(var(--u) * 1.6) calc(var(--u) * 2) rgba(0, 0, 0, 0.6));
+  animation: breathe 6.5s ease-in-out infinite alternate-reverse;
+}
+
+.polaroidFrame {
   position: absolute;
-  left: 8.2%;
-  top: 5.6%;
-  width: 84.6%;
-  height: 35%;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* La photo, posée PAR-DESSUS la fenêtre peinte du cadre, à sa pente. */
+.polaroidWindow {
+  position: absolute;
+  z-index: 1;
+  left: calc(48.66% - 71.2% / 2);
+  top: calc(43.31% - 59.5% / 2);
+  width: 71.2%;
+  height: 59.5%;
   overflow: hidden;
+  rotate: -11.3deg;
   background: #1b2630;
-  box-shadow: inset 0 0 calc(var(--u) * 1.6) rgba(0, 0, 0, 0.55);
-  -webkit-mask: linear-gradient(180deg, #000 90%, transparent);
-  mask: linear-gradient(180deg, #000 90%, transparent);
+  box-shadow: inset 0 0 calc(var(--u) * 1.2) rgba(0, 0, 0, 0.6);
 }
 
 .foeArtLayer {
   position: absolute;
   inset: 0;
   background-repeat: no-repeat;
-  background-size: 112% auto;
-  background-position: 50% 42%;
+  background-size: 118% auto;
+  background-position: 50% 40%;
   opacity: 0;
   scale: 1.08;
   transition: opacity 420ms ease, scale 900ms cubic-bezier(0.2, 0.8, 0.2, 1);
-  animation: foeBob calc(4.2s - var(--level) * 0.9s) ease-in-out infinite;
 }
 
 .foeArtLayer[data-on] {
@@ -361,54 +362,43 @@
   scale: 1;
 }
 
-/* Le médaillon du niveau, épinglé au bord de la fiche, sous l'illustration. */
-.foeSeal {
+/* Le bas du papier : le nom écrit à la main, et les têtes de mort du niveau. */
+.polaroidCaption {
   position: absolute;
-  right: 2%;
-  top: 38%;
-  z-index: 2;
-  width: 17%;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background-repeat: no-repeat;
-  background-size: 250% auto;
-  background-position: 4% 50%;
-  filter: drop-shadow(0 0 calc(var(--u) * 1.4) rgba(var(--level-color), 0.8)) drop-shadow(0 calc(var(--u) * 0.6) calc(var(--u) * 0.8) rgba(0, 0, 0, 0.6));
-}
-
-.foeBody {
-  position: absolute;
-  left: 11%;
-  right: 16%;
-  top: 43%;
-  bottom: 8%;
+  z-index: 1;
+  left: calc(56% - 64% / 2);
+  top: calc(86.5% - 16% / 2);
+  width: 64%;
+  height: 16%;
   display: flex;
-  flex-direction: column;
-  gap: calc(var(--u) * 1.1);
-  min-height: 0;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--u) * 1.4);
+  rotate: -11.3deg;
 }
 
 .foeName {
-  margin: 0;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: max(15px, calc(var(--u) * 4.4));
+  font-size: max(13px, calc(var(--u) * 3.6));
+  font-weight: 700;
   line-height: 1;
   color: #24160b;
+  white-space: nowrap;
 }
 
 .skulls {
   display: flex;
-  gap: calc(var(--u) * 0.6);
+  gap: calc(var(--u) * 0.3);
 }
 
 .skulls span {
-  width: calc(var(--u) * 5);
+  width: calc(var(--u) * 3.6);
   aspect-ratio: 1;
   border-radius: 50%;
   background-repeat: no-repeat;
   background-size: 250% auto;
   background-position: 4% 50%;
-  filter: drop-shadow(0 0 calc(var(--u) * 0.6) rgba(var(--level-color), 0.7));
+  filter: drop-shadow(0 0 calc(var(--u) * 0.5) rgba(var(--level-color), 0.8));
   animation: skullIn 360ms cubic-bezier(0.3, 1.6, 0.4, 1) both;
 }
 
@@ -419,18 +409,34 @@
   from { scale: 0.3; opacity: 0; }
 }
 
+/* Sous la photo : ce qu'il faut savoir de lui, sur un parchemin. */
+.foeCard {
+  display: grid;
+  gap: calc(var(--u) * 0.8);
+  width: min(100%, var(--u) * 58);
+  margin-top: calc(var(--u) * -2);
+  padding: calc(var(--u) * 0.8) calc(var(--u) * 2);
+  border-style: solid;
+  border-width: calc(var(--u) * 1.2);
+  border-image: url("/assets/ui/panneaux/panneau-parchemin.webp") 60 fill / calc(var(--u) * 1.2) stretch;
+  filter: drop-shadow(0 calc(var(--u) * 0.8) calc(var(--u) * 1.2) rgba(0, 0, 0, 0.55));
+  rotate: 2deg;
+}
+
 .foeText {
   margin: 0;
-  font-size: max(10px, calc(var(--u) * 2.3));
+  font-size: max(10px, calc(var(--u) * 2.1));
   line-height: 1.35;
   color: #3a2616;
 }
 
 .foeFact {
-  display: grid;
-  gap: calc(var(--u) * 0.3);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: calc(var(--u) * 1);
   margin: 0;
-  padding-top: calc(var(--u) * 1);
+  padding-top: calc(var(--u) * 0.6);
   border-top: 1px solid rgba(90, 60, 30, 0.25);
 }
 
@@ -445,22 +451,22 @@
 .foeFact strong {
   display: inline-flex;
   align-items: center;
-  gap: calc(var(--u) * 0.8);
+  gap: calc(var(--u) * 0.6);
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: max(12px, calc(var(--u) * 3));
+  font-size: max(12px, calc(var(--u) * 2.6));
   color: #24160b;
 }
 
 .foeFact svg {
-  width: calc(var(--u) * 3);
-  height: calc(var(--u) * 3);
+  width: calc(var(--u) * 2.6);
+  height: calc(var(--u) * 2.6);
   fill: #3a2616;
 }
 
 .foeNote {
   margin: 0;
-  font-size: max(9px, calc(var(--u) * 1.7));
-  line-height: 1.35;
+  font-size: max(9px, calc(var(--u) * 1.6));
+  line-height: 1.3;
   color: var(--ink-soft);
 }
 
@@ -798,8 +804,8 @@
  */
 @media (max-height: 520px) {
   .scene {
-    padding-left: max(11cqw, calc(var(--u) * 18));
-    padding-right: calc(var(--u) * 3);
+    padding-left: max(10cqw, calc(var(--u) * 16));
+    padding-right: max(10cqw, calc(var(--u) * 16));
     column-gap: calc(var(--u) * 2);
   }
   .foeNote,
@@ -811,6 +817,7 @@
 @media (prefers-reduced-motion: reduce) {
   .scene > *,
   .foeArtLayer,
+  .polaroid,
   .deckStack,
   .skulls span,
   .launch,

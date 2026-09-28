@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   PRECON_DECKS,
   RULES,
@@ -204,6 +204,8 @@ export function NewMatchScreen({
   );
   const [inviteCode, setInviteCode] = useState(() => normalizeInviteCode(initialInviteCode ?? ""));
   const [botDifficulty, setBotDifficulty] = useState<BotDifficulty>("moyen");
+  /** Retour animé de l'écran « contre un bot » vers le choix du mode (flèche du bandeau). */
+  const botBackRef = useRef<(() => void) | null>(null);
   // Le deck PAR DÉFAUT du joueur (écran Decks) est présélectionné : on
   // arrive prêt à jouer, pas devant une liste à relire à chaque partie.
   const [deck1, setDeck1] = useState<DeckList | null>(() => personalDecks.find((deck) => deck.isDefault) ?? null);
@@ -384,7 +386,17 @@ export function NewMatchScreen({
   // éléments partent, ceux de l'étape suivante arrivent (retour du 28/09/2026).
   if (step === 1 || (step === 2 && mode === "bot")) {
     return (
-      <GameScreen active="partie" nav="minimal" backdrop="table">
+      <GameScreen
+        active="partie"
+        nav="minimal"
+        backdrop="table"
+        // Sur l'écran « contre un bot », la flèche du bandeau revient au choix du mode, pas au menu.
+        onNavigate={(href) => {
+          if (step === 1 || href !== "/" || !botBackRef.current) return false;
+          botBackRef.current();
+          return true;
+        }}
+      >
         <PlayTable fill={step !== 1}>
           {step === 1 ? (
             <ModeTable
@@ -404,6 +416,7 @@ export function NewMatchScreen({
               sources={tabs}
               onDeck={setDeck1}
               onBack={() => setStep(1)}
+              backRef={botBackRef}
               onLaunch={handleLaunch}
               starting={starting}
               error={error}

@@ -66,6 +66,7 @@ export function BotSetup({
   sources,
   onDeck,
   onBack,
+  backRef,
   onLaunch,
   starting,
   error,
@@ -78,6 +79,8 @@ export function BotSetup({
   sources: readonly DeckSource[];
   onDeck: (deck: DeckList) => void;
   onBack: () => void;
+  /** Reçoit le retour animé : la flèche du bandeau ramène au choix du mode (et non au menu). */
+  backRef?: { current: (() => void) | null };
   onLaunch: () => void;
   starting: boolean;
   error: string | null;
@@ -96,14 +99,12 @@ export function BotSetup({
     setLeaving(true);
     window.setTimeout(onBack, prefersReducedMotion() ? 0 : LEAVE_MS);
   }
+  if (backRef) backRef.current = back;
 
   const skulls = levelIndex + 1;
 
   return (
     <div className={styles.scene} data-leaving={leaving || undefined} data-level={level.id} style={{ "--level": levelIndex } as React.CSSProperties}>
-      <button type="button" className={styles.back} onClick={back}>
-        <span aria-hidden>←</span> Changer de mode
-      </button>
 
       {/* ── En haut, au centre : le niveau du bot, trois plaques qui s'enfoncent ── */}
       <section className={styles.levelsPanel} aria-label="Niveau du bot">
@@ -174,26 +175,35 @@ export function BotSetup({
       {/* eslint-disable-next-line @next/next/no-img-element -- VS peint */}
       <img className={styles.versus} src="/assets/play/mode/vs.webp" alt="" aria-hidden draggable={false} />
 
-      {/* ── À droite : l'adversaire, sa fiche ── */}
+      {/*
+        ── À droite : l'adversaire, en PHOTO (le polaroid du profil joueur,
+        `profile/photo-frame`) — même taille et même distance du VS que ton
+        deck, en miroir ; sous la photo, ce qu'il faut savoir de lui.
+      */}
       <aside className={styles.foe} aria-label={`Adversaire : bot ${level.label.toLowerCase()}`} aria-live="polite">
-        <span className={styles.foeArt}>
-          {levels.map((entry) => (
-            <span
-              key={entry.id}
-              className={styles.foeArtLayer}
-              data-on={entry.id === level.id || undefined}
-              style={{ backgroundImage: `url("/assets/play/bot-level/illustration-${entry.id}.webp")` }}
-            />
-          ))}
-        </span>
-        <span className={styles.foeSeal} style={{ backgroundImage: `url("/assets/play/bot-level/plaque-${level.id}.webp")` }} aria-hidden />
-        <div className={styles.foeBody}>
-          <h2 className={styles.foeName}>Bot {level.label.toLowerCase()}</h2>
-          <span className={styles.skulls} role="img" aria-label={`Difficulté ${skulls} sur 3`}>
-            {Array.from({ length: skulls }, (_, index) => (
-              <span key={index} style={{ backgroundImage: `url("/assets/play/bot-level/plaque-${level.id}.webp")` }} />
+        <span className={styles.polaroid}>
+          <span className={styles.polaroidWindow}>
+            {levels.map((entry) => (
+              <span
+                key={entry.id}
+                className={styles.foeArtLayer}
+                data-on={entry.id === level.id || undefined}
+                style={{ backgroundImage: `url("/assets/play/bot-level/illustration-${entry.id}.webp")` }}
+              />
             ))}
           </span>
+          {/* eslint-disable-next-line @next/next/no-img-element -- cadre photo local */}
+          <img className={styles.polaroidFrame} src="/assets/profile/photo-frame.webp" alt="" draggable={false} />
+          <span className={styles.polaroidCaption}>
+            <span className={styles.foeName}>Bot {level.label.toLowerCase()}</span>
+            <span className={styles.skulls} role="img" aria-label={`Difficulté ${skulls} sur 3`}>
+              {Array.from({ length: skulls }, (_, index) => (
+                <span key={index} style={{ backgroundImage: `url("/assets/play/bot-level/plaque-${level.id}.webp")` }} />
+              ))}
+            </span>
+          </span>
+        </span>
+        <div className={styles.foeCard}>
           <p className={styles.foeText}>{level.description}</p>
           <p className={styles.foeFact}>
             <span>Son deck</span>
