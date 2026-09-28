@@ -63,7 +63,7 @@ export function ModeTable({ onChoose, notices }: { onChoose: (mode: TableMode) =
 
         <ul className={styles.cards} aria-label="Modes de jeu">
           {MODES.map((mode, index) => (
-            <li key={mode.id} className={styles.card} style={{ "--index": index } as React.CSSProperties}>
+            <li key={mode.id} className={styles.card} style={{ "--index": index, "--card-art": `url("${ASSETS}/${mode.image}.webp")` } as React.CSSProperties}>
               <button type="button" className={styles.cardButton} onClick={() => onChoose(mode.id)} aria-label={`${mode.label} — ${mode.description}`}>
                 {/* eslint-disable-next-line @next/next/no-img-element -- carte peinte */}
                 <img src={`${ASSETS}/${mode.image}.webp`} alt="" draggable={false} />
@@ -74,14 +74,15 @@ export function ModeTable({ onChoose, notices }: { onChoose: (mode: TableMode) =
 
         {notices && <div className={styles.notices}>{notices}</div>}
 
-        <Lantern
-          lit={lit}
-          onToggle={() => setLit((value) => !value)}
-          litSrc={`${ASSETS}/lanterne.webp`}
-          outSrc={`${ASSETS}/lanterne-eteinte.webp`}
-          className={styles.lantern}
-        />
       </div>
+      {/* Hors de la scène : grande, elle déborde en haut à gauche, par-dessus le bandeau. */}
+      <Lantern
+        lit={lit}
+        onToggle={() => setLit((value) => !value)}
+        litSrc={`${ASSETS}/lanterne.webp`}
+        outSrc={`${ASSETS}/lanterne-eteinte.webp`}
+        className={styles.lantern}
+      />
     </div>
   );
 }

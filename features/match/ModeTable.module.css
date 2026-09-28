@@ -138,7 +138,52 @@
 .cardButton:hover,
 .cardButton:focus-visible {
   transform: translateY(-2.2%) scale(1.035);
-  filter: brightness(1.07) drop-shadow(0 2.4cqh 2.4cqh rgba(0, 0, 0, 0.45)) drop-shadow(0 0 1.8cqh rgba(255, 196, 110, 0.5));
+  filter: brightness(1.07) drop-shadow(0 2.4cqh 2.4cqh rgba(0, 0, 0, 0.45)) drop-shadow(0 0 2.6cqh rgba(255, 196, 110, 0.75))
+    drop-shadow(0 0 0.6cqh rgba(255, 226, 160, 0.9));
+}
+
+/*
+ * Au survol, une LUEUR passe SUR la carte : un halo chaud qui part du haut
+ * et glisse, découpé à la silhouette de la carte (`--card-art`) pour ne pas
+ * déborder sur la table.
+ */
+.cardButton {
+  position: relative;
+}
+
+.cardButton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(70% 45% at 50% 18%, rgba(255, 236, 190, 0.7), rgba(255, 196, 110, 0.22) 55%, transparent 80%),
+    linear-gradient(115deg, transparent 35%, rgba(255, 244, 214, 0.45) 48%, rgba(255, 214, 150, 0.2) 54%, transparent 64%);
+  background-size: 100% 100%, 260% 100%;
+  background-position: center, 130% 0;
+  background-repeat: no-repeat;
+  -webkit-mask: var(--card-art) center / contain no-repeat;
+  mask: var(--card-art) center / contain no-repeat;
+  mix-blend-mode: screen;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 260ms ease-out;
+}
+
+.cardButton:hover::after,
+.cardButton:focus-visible::after {
+  opacity: 1;
+  animation: cardSheen 1.6s cubic-bezier(0.3, 0.6, 0.3, 1) both, cardGlow 2.8s ease-in-out 1.6s infinite;
+}
+
+@keyframes cardSheen {
+  from { background-position: center, 130% 0; }
+  to { background-position: center, -30% 0; }
+}
+
+/* Puis la lueur respire, sans reprendre le balayage. */
+@keyframes cardGlow {
+  0%, 100% { opacity: 1; background-position: center, -30% 0; }
+  50% { opacity: 0.72; background-position: center, -30% 0; }
 }
 
 .cardButton:active {
@@ -161,13 +206,19 @@
   width: min(92%, 760px);
 }
 
-/* La lanterne (`features/shell/Lantern`), pendue en haut à gauche : flamme vers 60 %. */
+/*
+ * La lanterne (`features/shell/Lantern`) : GRANDE, elle déborde en haut à
+ * gauche, par-dessus le bandeau du jeu. Fixe à l'écran — `.page`, conteneur
+ * de requêtes, rognerait tout ce qui dépasse. Flamme vers 60 %.
+ */
 .lantern {
   --lantern-flame-y: 60%;
   --lantern-smoke-y: 20%;
-  top: -6%;
-  left: 0.5%;
-  width: 12.5%;
+  position: fixed;
+  z-index: 60;
+  top: calc(-3dvh + var(--tb-safe-top));
+  left: calc(-0.5vw + var(--tb-safe-left));
+  width: min(17vw, 30dvh);
   aspect-ratio: 1104 / 1424;
 }
 
@@ -196,6 +247,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .card,
+  .cardButton:hover::after,
+  .cardButton:focus-visible::after,
   .page[data-lit] .light {
     animation: none;
   }
