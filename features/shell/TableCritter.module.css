@@ -9,11 +9,16 @@
   left: 0;
   top: 0;
   z-index: 55;
-  width: clamp(150px, 13vw, 250px);
+  width: clamp(80px, 7.5vw, 140px);
   aspect-ratio: 1774 / 887;
   pointer-events: none;
   visibility: hidden;
   filter: drop-shadow(0.6vw 0.8vw 0.5vw rgba(12, 5, 1, 0.55));
+}
+
+/* Sous les éléments de l'écran : elle ne passe que sur la table. */
+.critter[data-behind] {
+  z-index: 0;
 }
 
 .critter[data-visible] {

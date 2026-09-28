@@ -76,7 +76,7 @@
 .back {
   position: absolute;
   z-index: 3;
-  left: 13.5%;
+  left: 20%;
   top: 0;
   padding: 0.5cqw 1.2cqw;
   border: 1px solid rgba(241, 222, 180, 0.35);
@@ -96,7 +96,7 @@
 .left {
   --tilt: -2.2deg;
   position: absolute;
-  left: 12%;
+  left: 20%;
   top: 7%;
   width: 30%;
   aspect-ratio: 589 / 800;
@@ -261,116 +261,144 @@
 }
 
 /*
- * ── À droite : la partie ──
- * Plus large que haute, un peu tournée : l'adversaire en grand (son
- * illustration, qui évolue avec le niveau), le récapitulatif à côté, le
- * lancement dessous. Le parchemin (`panneau-parchemin`) est tendu en
- * neuf morceaux (`border-image`) : ses bords gardent leur dessin à
- * n'importe quel format.
+ * ── À droite : la fiche de la partie ──
+ * Le parchemin encadré des Decks (`decks/liste/fiche`, 760 × 1305), du HAUT
+ * au BAS de l'écran (marges de la scène comprises, `--tb-gutter-*` de
+ * `ModeTable`), incliné, calé sur le bord droit dont il déborde. Mêmes
+ * repères que la fiche des Decks : fenêtre de l'illustration, corde, corps.
  */
 .recap {
-  --tilt: 1.8deg;
+  --tilt: 3deg;
   position: absolute;
-  right: 3%;
-  top: 11%;
-  width: 49%;
-  height: 76%;
-  display: flex;
-  flex-direction: column;
-  gap: 0.8cqw;
-  padding: 1.6cqw 2.4cqw 2cqw;
-  border-style: solid;
-  border-width: 1.6cqw;
-  border-image: url("/assets/ui/panneaux/panneau-parchemin.webp") 60 fill / 1.6cqw stretch;
-  filter: drop-shadow(0 1.6cqh 2cqh rgba(0, 0, 0, 0.55));
+  right: calc(-1 * var(--tb-gutter-x) - 2.5%);
+  top: calc(-1 * var(--tb-gutter-y) - 1.5%);
+  height: calc(100% + 2 * var(--tb-gutter-y) + 3%);
+  aspect-ratio: 760 / 1305;
+  background: url("/assets/decks/liste/fiche.webp") center / 100% 100% no-repeat;
+  filter: drop-shadow(0 1cqw 1.4cqw rgba(0, 0, 0, 0.65));
   rotate: var(--tilt);
+  transform-origin: 30% 50%;
 }
 
-.recapTitle {
-  margin: 0;
-  font-family: var(--tb-font-display, Georgia, serif);
-  font-size: max(18px, 2.1cqw);
-  font-weight: 700;
-  line-height: 1;
-  color: var(--ink);
+/* L'illustration du niveau, en largeur dans la fenêtre du haut ; celle du niveau choisi arrive en fondu. */
+.recapArt {
+  position: absolute;
+  left: 8.2%;
+  top: 5.6%;
+  width: 84.6%;
+  height: 24%;
+  overflow: hidden;
+  background: #1b2630;
+  box-shadow: inset 0 0 1cqw rgba(0, 0, 0, 0.55);
+  -webkit-mask: linear-gradient(180deg, #000 88%, transparent);
+  mask: linear-gradient(180deg, #000 88%, transparent);
 }
 
-.recapTitle span {
-  display: block;
-  margin-bottom: 0.3cqw;
-  font-size: 0.45em;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, rgb(var(--level-color)) 55%, var(--ink));
+/* Recadrée sur la scène du crabe : son propre cadre peint reste hors de la fenêtre. */
+.recapArtLayer {
+  position: absolute;
+  inset: 0;
+  background-repeat: no-repeat;
+  background-size: 108% auto;
+  background-position: 50% 40%;
+  opacity: 0;
+  scale: 1.08;
+  transition: opacity 420ms ease, scale 900ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: foeBob calc(4.2s - var(--level) * 0.9s) ease-in-out infinite;
+}
+
+.recapArtLayer[data-on] {
+  opacity: 1;
+  scale: 1;
+}
+
+/* La corde des Decks, par-dessus le bas de l'illustration ; son sceau peint laisse place au médaillon du niveau. */
+.recapRope {
+  position: absolute;
+  left: 2%;
+  top: 26.5%;
+  z-index: 2;
+  width: 97%;
+  aspect-ratio: 900 / 122;
+  filter: drop-shadow(0 0.3cqw 0.4cqw rgba(0, 0, 0, 0.55));
+  pointer-events: none;
+}
+
+.recapRope::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url("/assets/decks/liste/fiche-corde.webp") center / 100% 100% no-repeat;
+  -webkit-mask: radial-gradient(ellipse 7.6% 56% at 9.8% 50%, transparent 97%, #000 100%);
+  mask: radial-gradient(ellipse 7.6% 56% at 9.8% 50%, transparent 97%, #000 100%);
+}
+
+/* Le médaillon à tête de mort de la plaque du niveau (sa partie gauche, ronde). */
+.recapSeal {
+  position: absolute;
+  left: 9.8%;
+  top: 50%;
+  width: 16%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background-repeat: no-repeat;
+  background-size: 250% auto;
+  background-position: 4% 50%;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 0 0.8cqw rgba(var(--level-color), 0.7));
 }
 
 .recapBody {
-  display: grid;
-  grid-template-columns: 40% minmax(0, 1fr);
-  gap: 1.8cqw;
-  align-items: center;
+  position: absolute;
+  left: 11%;
+  right: 16%;
+  top: 35%;
+  bottom: 7%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6cqw;
   min-height: 0;
-  flex: 1;
 }
 
-/* L'adversaire : son illustration, son halo, qui respire plus vite à mesure qu'il s'énerve. */
-.foe {
-  position: relative;
-  rotate: -3deg;
+.recapName {
+  margin: 0;
+  color: #24160b;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: max(16px, 2.3cqw);
+  line-height: 1.05;
 }
 
-/* Une aura qui grandit et rougit avec le niveau. */
-.aura {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: calc(90% + var(--level) * 18%);
-  aspect-ratio: 1;
-  translate: -50% -50%;
-  border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(var(--level-color), 0.55), rgba(var(--level-color), 0.16) 55%, transparent 100%);
-  filter: blur(6px);
-  animation: aura calc(3.2s - var(--level) * 0.8s) ease-in-out infinite;
-  transition: width 500ms ease, background 500ms ease;
+.recapKind {
+  margin: -0.3cqw 0 0;
+  color: color-mix(in srgb, rgb(var(--level-color)) 60%, #3a2616);
+  font-size: max(9px, 0.85cqw);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
-@keyframes aura {
-  0%, 100% { opacity: 0.75; scale: 0.96; }
-  50% { opacity: 1; scale: 1.06; }
+.recapTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4cqw;
 }
 
-/*
- * L'illustration du niveau (`play/bot-level/illustration-*`, 1 × 1,07) :
- * les trois superposées, la choisie arrive en fondu et en rebond, les
- * autres s'effacent — le crabe qui s'énerve de niveau en niveau.
- */
-.illustration {
-  position: relative;
-  display: block;
-  width: 100%;
-  aspect-ratio: 512 / 546;
-  animation: foeBob calc(4.2s - var(--level) * 0.9s) ease-in-out infinite;
-  filter: drop-shadow(0 1.4cqh 2cqh rgba(0, 0, 0, 0.6)) drop-shadow(0 0 calc(0.8cqw + var(--level) * 1cqw) rgba(var(--level-color), 0.5));
-  transition: filter 500ms ease;
+.chip {
+  padding: 0.15cqw 0.7cqw;
+  border-radius: 999px;
+  background: #2e1f12;
+  color: #f1e3c4;
+  font-size: max(8px, 0.72cqw);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
-.illustration img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  opacity: 0;
-  scale: 0.9;
-  rotate: -3deg;
-  transition: opacity 360ms ease, scale 520ms cubic-bezier(0.3, 1.5, 0.4, 1), rotate 520ms cubic-bezier(0.3, 1.4, 0.4, 1);
-  user-select: none;
-}
-
-.illustration img[data-on] {
-  opacity: 1;
-  scale: 1;
-  rotate: 0deg;
+.recapText {
+  margin: 0;
+  color: #3a2616;
+  font-size: max(10px, 0.95cqw);
+  line-height: 1.4;
 }
 
 .facts {
@@ -445,8 +473,9 @@
 
 /* Lancer la partie : la plaque bleue, l'appel à l'action. */
 .launch {
+  margin-top: auto;
   align-self: center;
-  width: 62%;
+  width: 92%;
   aspect-ratio: 594 / 130;
   border: 0;
   background: url("/assets/ui/boutons/bouton-bleu.webp") center / 100% 100% no-repeat;
@@ -709,7 +738,10 @@
 /* Écran bas (téléphone couché) : le récapitulatif garde l'essentiel, et son bouton. */
 @media (max-height: 520px) {
   .fact small,
-  .fact:nth-child(2) {
+  .fact:nth-child(1),
+  .fact:nth-child(3),
+  .recapTags,
+  .recapText {
     display: none;
   }
   .facts {
@@ -721,7 +753,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .illustration,
+  .recapArtLayer,
   .left,
   .recap,
   .back,

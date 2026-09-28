@@ -51,8 +51,29 @@
   animation: flicker 3.7s infinite;
 }
 
+/*
+ * Marges entre la scène (16 / 9) et le bord de la zone, figées en
+ * longueurs (`@property`) pour que les éléments qui vont d'un bord à
+ * l'autre de l'écran (la fiche de la partie) les lisent telles quelles.
+ */
+@property --tb-gutter-x {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
+@property --tb-gutter-y {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
 .stage {
+  --tb-gutter-x: calc(max(0px, (100cqw - 100cqh * 16 / 9) / 2) + max(var(--tb-safe-left), 0.8vw));
+  --tb-gutter-y: calc(max(0px, (100cqh - 100cqw * 9 / 16) / 2) + max(var(--tb-safe-bottom), 0.8vh));
   position: relative;
+  /* Au-dessus de la petite bête, qui passe dessous. */
+  z-index: 1;
   width: min(100cqw, 100cqh * 16 / 9);
   aspect-ratio: 16 / 9;
 }

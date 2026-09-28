@@ -656,16 +656,20 @@
 
 /* ── La fiche du deck ─────────────────────────────────────────────── */
 /* La fiche : penchée, et qui déborde du bord droit de l'écran (maquette). */
+/*
+ * Du HAUT au BAS de la zone (retour du 28/09/2026 : elle s'arrêtait avant
+ * le bas de l'écran) : sa hauteur est celle de la scène plus les marges
+ * au-dessus et au-dessous (`--tb-gutter-y`), sa largeur suit l'image.
+ * Calée sur le bord de l'ÉCRAN (pas de la scène), dont elle déborde.
+ */
 .fiche {
   position: absolute;
-  left: 72.5%;
-  top: -2%;
-  width: 29.5%;
+  right: calc(-1 * var(--tb-gutter-x) - 3.5%);
+  top: calc(-1 * var(--tb-gutter-y) - 1.2%);
+  height: calc(100cqw * 880 / 1672 + 2 * var(--tb-gutter-y) + 2.4%);
   aspect-ratio: 760 / 1305;
   background: url("/assets/decks/liste/fiche.webp") center / 100% 100% no-repeat;
   filter: drop-shadow(0 1cqw 1.4cqw rgba(0, 0, 0, 0.65));
-  /* Calée sur le bord de l'ÉCRAN (pas de la scène), dont elle déborde. */
-  translate: calc(var(--tb-gutter-x) + 3%) 0;
   transform: rotate(3.4deg);
   transform-origin: 30% 50%;
 }

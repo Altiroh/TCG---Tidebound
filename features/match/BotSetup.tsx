@@ -162,37 +162,36 @@ export function BotSetup({
       </section>
 
       {/* ── À droite : la partie — l'adversaire en grand, le récapitulatif, le lancement ── */}
+      {/*
+        La fiche de la partie, comme celle des Decks : le parchemin encadré
+        de bois (`decks/liste/fiche`) du haut au bas de l'écran, incliné,
+        l'illustration du niveau dans sa fenêtre, la corde, puis le détail.
+      */}
       <aside className={styles.recap} aria-label="Récapitulatif de la partie" style={{ "--level": levelIndex } as React.CSSProperties}>
-        <h2 className={styles.recapTitle}>
-          <span>Contre un bot</span> La partie
-        </h2>
+        <span className={styles.recapArt} aria-live="polite" aria-label={`Bot ${level.label}`}>
+          {levels.map((entry) => (
+            <span
+              key={entry.id}
+              className={styles.recapArtLayer}
+              data-on={entry.id === level.id || undefined}
+              style={{ backgroundImage: `url("/assets/play/bot-level/illustration-${entry.id}.webp")` }}
+            />
+          ))}
+        </span>
+        <span className={styles.recapRope} aria-hidden>
+          <span className={styles.recapSeal} style={{ backgroundImage: `url("/assets/play/bot-level/plaque-${level.id}.webp")` }} />
+        </span>
+
         <div className={styles.recapBody}>
-          <div className={styles.foe} aria-live="polite" aria-label={`Bot ${level.label}`}>
-            <span className={styles.aura} aria-hidden />
-            {/* L'illustration du niveau (`play/bot-level/`) : les trois sont posées, seule la choisie se voit. */}
-            <span className={styles.illustration} aria-hidden>
-              {levels.map((entry) => (
-                // eslint-disable-next-line @next/next/no-img-element -- illustration locale
-                <img
-                  key={entry.id}
-                  src={`/assets/play/bot-level/illustration-${entry.id}.webp`}
-                  alt=""
-                  draggable={false}
-                  data-on={entry.id === level.id || undefined}
-                />
-              ))}
-            </span>
+          <h2 className={styles.recapName}>Bot {level.label.toLowerCase()}</h2>
+          <p className={styles.recapKind}>Contre un bot · la partie</p>
+          <div className={styles.recapTags}>
+            <span className={styles.chip}>XP et quêtes</span>
+            <span className={styles.chip}>Deck adverse au hasard</span>
           </div>
+          <p className={styles.recapText}>{level.description}</p>
+
           <dl className={styles.facts}>
-            <div className={styles.fact}>
-              <dt>Adversaire</dt>
-              <dd>
-                <span>
-                  <strong>Bot {level.label.toLowerCase()}</strong>
-                  <small>{level.description}</small>
-                </span>
-              </dd>
-            </div>
             <div className={styles.fact}>
               <dt>Son deck</dt>
               <dd>
@@ -220,25 +219,27 @@ export function BotSetup({
                 )}
               </dd>
             </div>
-            <div className={styles.fact}>
-              <dt>Gains</dt>
-              <dd>
-                <span>
-                  <strong>XP et quêtes</strong>
-                  {note && <small>{note}</small>}
-                </span>
-              </dd>
-            </div>
+            {note && (
+              <div className={styles.fact}>
+                <dt>Gains</dt>
+                <dd>
+                  <span>
+                    <small>{note}</small>
+                  </span>
+                </dd>
+              </div>
+            )}
           </dl>
+
+          {(error || deckIssue) && (
+            <p className={styles.error} role="alert">
+              {error ?? deckIssue}
+            </p>
+          )}
+          <button type="button" className={styles.launch} onClick={onLaunch} disabled={!deck || Boolean(deckIssue) || starting}>
+            {starting ? "Préparation…" : "Lancer la partie"}
+          </button>
         </div>
-        {(error || deckIssue) && (
-          <p className={styles.error} role="alert">
-            {error ?? deckIssue}
-          </p>
-        )}
-        <button type="button" className={styles.launch} onClick={onLaunch} disabled={!deck || Boolean(deckIssue) || starting}>
-          {starting ? "Préparation…" : "Lancer la partie"}
-        </button>
       </aside>
 
       {picking && (

@@ -104,9 +104,9 @@ export function PlayTable({ children }: { children: ReactNode }) {
       {/* Collé au coin bas gauche de l'ÉCRAN, pas de la scène : son ombre ne laisse pas de bande. */}
       {/* eslint-disable-next-line @next/next/no-img-element -- décor local */}
       <img className={styles.decor} src={`${ASSETS}/decor-bas-gauche.webp`} alt="" draggable={false} />
+      {/* De temps en temps, la petite bête traverse la table — SOUS les cartes et les feuilles. */}
+      <TableCritter behind />
       <div className={styles.stage}>{children}</div>
-      {/* De temps en temps, la petite bête traverse la table. */}
-      <TableCritter />
       {/* Hors de la scène : grande, elle déborde en haut à gauche. POSÉE sur la
           table : son ombre de contact et la flaque de lumière qu'elle jette
           sur le bois l'y ancrent (`lanternPool`). */}

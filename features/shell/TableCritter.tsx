@@ -9,17 +9,19 @@ const ASSETS = "/assets/critters/bete";
  * Pièces de la bête, relevées sur la planche d'origine (1774 × 887) : boîte
  * de chaque pièce (x, y, largeur, hauteur), articulation (jx, jy — le bout
  * de la patte qui entre sous la carapace) et décalage qui la RAMÈNE contre
- * le corps (`dx`, les pattes étaient écartées sur la planche). `phase` :
+ * le corps (`dx`, les pattes étaient écartées sur la planche) : l'articulation
+ * tombe 40 px SOUS le bord de la carapace, mesuré à sa hauteur (le corps est
+ * dessiné en biais, tête en bas à droite), et le corps la recouvre. `phase` :
  * marche en trépied — deux groupes de trois pattes qui alternent.
  */
 const FRAME = { w: 1774, h: 887 };
 const LEGS = [
-  { id: "patte-gauche-1", x: 27, y: 18, w: 509, h: 331, jx: 535, jy: 206, dx: 125, phase: 0 },
-  { id: "patte-gauche-2", x: 67, y: 316, w: 476, h: 336, jx: 542, jy: 457, dx: 108, phase: 1 },
-  { id: "patte-gauche-3", x: 149, y: 583, w: 396, h: 285, jx: 544, jy: 722, dx: 150, phase: 0 },
-  { id: "patte-droite-1", x: 1238, y: 18, w: 511, h: 300, jx: 1238, jy: 208, dx: -232, phase: 1 },
-  { id: "patte-droite-2", x: 1232, y: 327, w: 501, h: 311, jx: 1232, jy: 457, dx: -160, phase: 0 },
-  { id: "patte-droite-3", x: 1282, y: 578, w: 391, h: 281, jx: 1282, jy: 742, dx: -196, phase: 1 },
+  { id: "patte-gauche-1", x: 27, y: 18, w: 509, h: 331, jx: 535, jy: 206, dx: 134, phase: 0 },
+  { id: "patte-gauche-2", x: 67, y: 316, w: 476, h: 336, jx: 542, jy: 457, dx: 142, phase: 1 },
+  { id: "patte-gauche-3", x: 149, y: 583, w: 396, h: 285, jx: 544, jy: 722, dx: 366, phase: 0 },
+  { id: "patte-droite-1", x: 1238, y: 18, w: 511, h: 300, jx: 1238, jy: 208, dx: -291, phase: 1 },
+  { id: "patte-droite-2", x: 1232, y: 327, w: 501, h: 311, jx: 1232, jy: 457, dx: -179, phase: 0 },
+  { id: "patte-droite-3", x: 1282, y: 578, w: 391, h: 281, jx: 1282, jy: 742, dx: -169, phase: 1 },
 ] as const;
 const BODY = { x: 608, y: 88, w: 608, h: 780 };
 
@@ -48,6 +50,10 @@ function edgePoint(side: number, w: number, h: number, margin: number): [number,
 }
 
 /**
+ * `behind` : elle passe SOUS les éléments de l'écran (cartes, feuilles),
+ * sur la table seulement — l'appelant la pose avant eux, dans le même
+ * contexte d'empilement.
+ *
  * LA PETITE BÊTE des tables (menu, choix du mode, contre un bot — retour du
  * 28/09/2026) : de temps en temps, elle traverse l'écran d'un bord à
  * l'autre en trottinant (six pattes, marche en trépied), s'arrête parfois
@@ -57,7 +63,7 @@ function edgePoint(side: number, w: number, h: number, margin: number): [number,
  * elle-même est cliquable, le temps de son passage), et absente si le
  * joueur a demandé moins d'animations.
  */
-export function TableCritter({ className }: { className?: string }) {
+export function TableCritter({ className, behind = false }: { className?: string; behind?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const [walking, setWalking] = useState(false);
   const [visible, setVisible] = useState(false);
@@ -126,6 +132,7 @@ export function TableCritter({ className }: { className?: string }) {
       className={`${styles.critter}${className ? ` ${className}` : ""}`}
       data-walking={walking || undefined}
       data-visible={visible || undefined}
+      data-behind={behind || undefined}
       aria-hidden
       onPointerDown={() => {
         // Touchée : elle détale.
