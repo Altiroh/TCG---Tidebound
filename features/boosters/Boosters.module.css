@@ -236,14 +236,15 @@
 }
 
 /* Le choisi : un liseré turquoise qui suit la silhouette du rouleau. */
+/* Le choisi : une lueur de la couleur de SON paquet (`--roll-glow`). */
 .roll[data-selected="true"] {
-  filter: drop-shadow(0 0 0.2cqw rgba(120, 222, 240, 1)) drop-shadow(0 0 0.9cqw rgba(95, 208, 230, 0.7))
+  filter: drop-shadow(0 0 0.2cqw var(--roll-glow, #78def0)) drop-shadow(0 0 0.9cqw color-mix(in srgb, var(--roll-glow, #78def0) 75%, transparent))
     drop-shadow(0 0.3cqw 0.4cqw rgba(0, 0, 0, 0.55));
 }
 
 .roll[data-owned="false"][data-selected="true"] {
-  filter: grayscale(0.55) brightness(0.82) drop-shadow(0 0 0.2cqw rgba(120, 222, 240, 1))
-    drop-shadow(0 0 0.9cqw rgba(95, 208, 230, 0.7)) drop-shadow(0 0.3cqw 0.4cqw rgba(0, 0, 0, 0.55));
+  filter: grayscale(0.55) brightness(0.82) drop-shadow(0 0 0.2cqw var(--roll-glow, #78def0))
+    drop-shadow(0 0 0.9cqw color-mix(in srgb, var(--roll-glow, #78def0) 75%, transparent)) drop-shadow(0 0.3cqw 0.4cqw rgba(0, 0, 0, 0.55));
 }
 
 /* Une extension repassée d'un bout à l'autre de l'étagère entre en fondu. */
@@ -292,27 +293,39 @@
 }
 
 /* Rouleau pas encore peint : l'étiquette du Défaut, recouverte au bon nom. */
+/*
+ * Le nom, peint comme sur les autres rouleaux (retour du 28/09/2026 : il
+ * se voyait posé dessus, en petit sur une pastille claire). Même cartouche
+ * que « Booster Défaut » sur l'image (x 405 → 757, y 75 → 128 sur
+ * 900 × 251), même encre, mêmes petites capitales à la même hauteur —
+ * calculée sur la taille réelle du rouleau (60 % de la largeur de
+ * l'étagère) — et réduite si le nom est long (`--label-len`). Le fond,
+ * à la couleur du parchemin peint et fondu sur les bords, efface le nom
+ * du Défaut sans laisser de pastille.
+ */
 .rollLabel {
+  --roll-w: calc(var(--tb-shelf-height) * 815 / 1400 * 0.6);
   position: absolute;
-  left: 45%;
-  top: 23%;
-  width: 40%;
-  height: 32%;
+  left: 45.5%;
+  top: 31%;
+  width: 38.8%;
+  height: 22%;
   display: grid;
-  place-items: center;
-  padding: 0 4%;
-  border-radius: 0.2cqw;
-  background: radial-gradient(120% 140% at 50% 40%, #f1e0bb, #e2c796);
+  place-items: center start;
+  padding-left: 1%;
+  background: radial-gradient(closest-side, rgb(242, 190, 118) 78%, rgba(242, 190, 118, 0));
+  background-size: 112% 150%;
+  background-position: center;
   color: #24160b;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: max(7px, 0.68cqw);
+  font-size: min(calc(var(--roll-w) * 0.05), calc(var(--roll-w) * 0.86 / var(--label-len)));
   font-weight: 700;
   font-variant: small-caps;
+  letter-spacing: 0.01em;
   line-height: 1;
-  text-align: center;
+  text-shadow: 0 0.04em 0 rgba(255, 236, 200, 0.45);
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 /* Flèches de rotation (plus d'extensions que de rayons) : celles des Decks, tournées. */

@@ -14,7 +14,7 @@ import { BoosterBatchRecap, type BoosterBatchLine } from "@/features/boosters/op
 import { BoosterOpeningScene, type BoosterOpeningOrigin } from "@/features/boosters/opening/BoosterOpeningScene";
 import { preloadBoosterOpeningAssets } from "@/features/boosters/opening/boosterOpeningAssets";
 import { useCardBackSrc } from "@/features/cosmetics/CardBackProvider";
-import { DEFAULT_SHELF_ROLL, closedPackVariables, getBoosterPackVisual, getBoosterShelfRoll } from "@/features/boosters/opening/boosterPackVisuals";
+import { DEFAULT_SHELF_ROLL, closedPackVariables, getBoosterPackVisual, getBoosterShelfGlow, getBoosterShelfRoll } from "@/features/boosters/opening/boosterPackVisuals";
 import { drawTestBoosterCards } from "@/features/boosters/opening/testBoosterCards";
 import { toOpeningRarity, type BoosterOpeningCard } from "@/features/boosters/opening/types";
 import { BoosterContentsDialog } from "@/features/market/BoosterContentsDialog";
@@ -672,7 +672,15 @@ function ShelfRoll({
     <li
       id={`ext-${row.boosterId}`}
       className={styles.roll}
-      style={{ "--slot": slot, "--roll-art": `url("${roll ?? DEFAULT_SHELF_ROLL}")` } as React.CSSProperties}
+      style={
+        {
+          "--slot": slot,
+          "--roll-art": `url("${roll ?? DEFAULT_SHELF_ROLL}")`,
+          "--roll-glow": getBoosterShelfGlow(row.boosterId),
+          // Longueur du nom : l'étiquette rétrécit pour tenir dans le cartouche, comme les noms peints.
+          "--label-len": Math.max(10, row.name.length),
+        } as React.CSSProperties
+      }
       data-selected={selected ? "true" : "false"}
       data-owned={row.owned > 0 ? "true" : "false"}
       draggable={draggable}

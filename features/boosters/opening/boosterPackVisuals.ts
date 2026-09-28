@@ -273,6 +273,25 @@ const SHELF_ROLL_BY_ID: Readonly<Record<string, string>> = {
 
 export const DEFAULT_SHELF_ROLL = "/assets/boosters/defaut/defaut-rayon.webp";
 
+/**
+ * Couleur de la LUEUR d'un rouleau choisi sur l'étagère : celle de son
+ * paquet (retour du 28/09/2026 — un liseré turquoise identique pour tous
+ * ne disait rien de l'extension). Relevée sur l'emballage de chaque sachet.
+ */
+const SHELF_GLOW_BY_ID: Readonly<Record<string, string>> = {
+  standard: "#5fb2ff",
+  welcome_tutorial: "#5fb2ff",
+  "necessaire-du-marin": "#8fd46a",
+  "poissons-pas-frais": "#48d6c6",
+  "etrangete-sous-marine": "#ff4f5f",
+  "la-veillee-des-disparus": "#b4a4ff",
+  "eclats-en-selle": "#c67cff",
+};
+
+export function getBoosterShelfGlow(boosterId: string): string {
+  return SHELF_GLOW_BY_ID[boosterId] ?? "#78def0";
+}
+
 export function getBoosterShelfRoll(boosterId: string): string | null {
   return SHELF_ROLL_BY_ID[boosterId] ?? null;
 }
