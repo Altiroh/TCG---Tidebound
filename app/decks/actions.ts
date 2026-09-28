@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { catalogDeckById, getCardDefinition, isDeckStyleId, type DeckList, type DeckStyleId } from "@/game";
 import { validateDeckList } from "@/game/rules/deckValidation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { DECK_DESCRIPTION_MAX } from "@/features/decks/constants";
+import { DECK_DESCRIPTION_MAX, DECK_NAME_MAX } from "@/features/decks/constants";
 import { readOwnedCounts } from "@/features/decks/catalogService";
 import { ownedPartOf } from "@/features/decks/deckComposition";
 import { trashPurgeCutoff } from "@/features/decks/deckTrash";
@@ -337,8 +337,23 @@ function cardDisplayName(cardId: string): string {
   }
 }
 
+/**
+ * Échec d'écriture en base : le détail part dans les logs, le joueur lit une
+ * phrase. Le message brut de PostgREST nommait tables, contraintes et
+ * colonnes — rien qu'un joueur ait à lire, tout ce qu'un curieux aime lire.
+ */
+function dbFailure(context: string, error: { message: string }): DeckActionResult {
+  console.error(`[${context}] Écriture refusée :`, error.message);
+  if (/Limite de 100 decks/.test(error.message)) return { ok: false, error: "Tu as atteint la limite de 100 decks : supprimes-en un d'abord." };
+  return { ok: false, error: "Enregistrement impossible pour l'instant — réessaie dans un instant." };
+}
+
 async function saveDeckUnguarded(input: SaveDeckInput): Promise<DeckActionResult> {
-  const name = input.name.trim() || "Deck sans nom";
+  if (typeof input?.name !== "string" || !Array.isArray(input.cardIds) || typeof input.shipId !== "string") {
+    return { ok: false, error: "Deck invalide." };
+  }
+  if (input.cardIds.length > 200 || input.cardIds.some((id) => typeof id !== "string")) return { ok: false, error: "Deck invalide." };
+  const name = input.name.trim().slice(0, DECK_NAME_MAX) || "Deck sans nom";
   const supabase = createSupabaseServerClient();
   const userId = await currentUserId(supabase);
   if (!userId) return { ok: false, error: "Connecte-toi pour sauvegarder ce deck." };
@@ -387,7 +402,7 @@ async function saveDeckUnguarded(input: SaveDeckInput): Promise<DeckActionResult
       .insert({ user_id: userId, ship_id: input.shipId, name, is_valid: isValid, art_card_id: artCardId, description })
       .select("id")
       .single();
-    if (error || !data) return { ok: false, error: error?.message ?? "Échec de la création du deck." };
+    if (error || !data) return error ? dbFailure("saveDeck", error) : { ok: false, error: "Échec de la création du deck." };
     deckId = data.id;
   } else {
     const { error: updateError } = await supabase
@@ -404,10 +419,10 @@ async function saveDeckUnguarded(input: SaveDeckInput): Promise<DeckActionResult
         updated_at: new Date().toISOString(),
       })
       .eq("id", deckId);
-    if (updateError) return { ok: false, error: updateError.message };
+    if (updateError) return dbFailure("decks", updateError);
 
     const { error: deleteError } = await supabase.from("player_deck_cards").delete().eq("deck_id", deckId);
-    if (deleteError) return { ok: false, error: deleteError.message };
+    if (deleteError) return dbFailure("decks", deleteError);
   }
 
   const quantities = new Map<string, number>();
@@ -418,7 +433,7 @@ async function saveDeckUnguarded(input: SaveDeckInput): Promise<DeckActionResult
     const { error: insertError } = await supabase
       .from("player_deck_cards")
       .insert(Array.from(quantities.entries()).map(([card_id, quantity]) => ({ deck_id: finalDeckId, card_id, quantity })));
-    if (insertError) return { ok: false, error: insertError.message };
+    if (insertError) return dbFailure("decks", insertError);
   }
 
   revalidatePath("/decks");
@@ -427,7 +442,8 @@ async function saveDeckUnguarded(input: SaveDeckInput): Promise<DeckActionResult
 }
 
 export async function renameDeck(deckId: string, name: string): Promise<DeckActionResult> {
-  const trimmed = name.trim();
+  if (typeof name !== "string" || typeof deckId !== "string") return { ok: false, error: "Nom invalide." };
+  const trimmed = name.trim().slice(0, DECK_NAME_MAX);
   if (!trimmed) return { ok: false, error: "Le nom ne peut pas être vide." };
 
   return guarded("renameDeck", async () => {
@@ -436,7 +452,7 @@ export async function renameDeck(deckId: string, name: string): Promise<DeckActi
       .from("player_decks")
       .update({ name: trimmed, updated_at: new Date().toISOString() })
       .eq("id", deckId);
-    if (error) return { ok: false, error: error.message };
+    if (error) return dbFailure("decks", error);
     revalidatePath("/decks");
     return { ok: true };
   });
@@ -468,9 +484,10 @@ export async function updateDeckProfile(
   // n'est pas un journal de bord, et une ligne de vingt étiquettes ne se
   // lit plus.
   const mechanics =
-    profile.mechanics === null
+    !Array.isArray(profile?.mechanics)
       ? null
       : profile.mechanics
+          .filter((entry): entry is string => typeof entry === "string")
           .map((entry) => entry.trim().slice(0, 40))
           .filter((entry) => entry.length > 0)
           .slice(0, 4);
@@ -488,7 +505,7 @@ export async function updateDeckProfile(
       .eq("id", deckId);
     if (error) {
       console.error("[updateDeckProfile] Échec (migration player_deck_profile appliquée ?) :", error.message);
-      return { ok: false, error: error.message };
+      return dbFailure("updateDeckProfile", error);
     }
     revalidatePath("/decks");
     revalidatePath(`/decks/${deckId}`);
@@ -523,7 +540,7 @@ export async function setDeckArt(deckId: string, artCardId: string | null): Prom
       .from("player_decks")
       .update({ art_card_id: artCardId, updated_at: new Date().toISOString() })
       .eq("id", deckId);
-    if (error) return { ok: false, error: error.message };
+    if (error) return dbFailure("decks", error);
 
     revalidatePath("/decks");
     revalidatePath(`/decks/${deckId}`);
@@ -575,7 +592,7 @@ async function duplicateDeckUnguarded(deckId: string): Promise<DeckActionResult>
     const { error: cardsError } = await supabase
       .from("player_deck_cards")
       .insert(cards.map((card) => ({ deck_id: created.id, card_id: card.card_id, quantity: card.quantity })));
-    if (cardsError) return { ok: false, error: cardsError.message };
+    if (cardsError) return dbFailure("decks", cardsError);
   }
 
   revalidatePath("/decks");
@@ -647,7 +664,7 @@ async function copyDeckUnguarded(deckId: string): Promise<CopyDeckResult> {
     const { error: cardsError } = await supabase
       .from("player_deck_cards")
       .insert(Array.from(quantities, ([card_id, quantity]) => ({ deck_id: created.id, card_id, quantity })));
-    if (cardsError) return { ok: false, error: cardsError.message };
+    if (cardsError) return dbFailure("decks", cardsError);
   }
 
   revalidatePath("/decks");
@@ -693,7 +710,7 @@ export async function deleteDecks(deckIds: string[]): Promise<DeckActionResult> 
       .update({ deleted_at: new Date().toISOString(), is_default: false })
       .in("id", ids)
       .is("deleted_at", null);
-    if (error) return { ok: false, error: error.message };
+    if (error) return dbFailure("decks", error);
     revalidatePath("/decks");
     return { ok: true };
   });
@@ -712,7 +729,7 @@ export async function setDefaultDeck(deckId: string): Promise<DeckActionResult> 
     if (!userId) return { ok: false, error: "Connecte-toi pour choisir un deck par défaut." };
 
     const { error: clearError } = await supabase.from("player_decks").update({ is_default: false }).eq("user_id", userId).eq("is_default", true);
-    if (clearError) return { ok: false, error: clearError.message };
+    if (clearError) return dbFailure("decks", clearError);
 
     const { data, error } = await supabase
       .from("player_decks")
@@ -721,7 +738,7 @@ export async function setDefaultDeck(deckId: string): Promise<DeckActionResult> 
       .eq("user_id", userId)
       .is("deleted_at", null)
       .select("id");
-    if (error) return { ok: false, error: error.message };
+    if (error) return dbFailure("decks", error);
     if (!data || data.length === 0) return { ok: false, error: "Deck introuvable, ou à la corbeille." };
 
     revalidatePath("/decks");
@@ -743,7 +760,7 @@ export async function restoreDecks(deckIds: string[]): Promise<DeckActionResult>
     if (ids.length === 0) return { ok: true };
     const supabase = createSupabaseServerClient();
     const { error } = await supabase.from("player_decks").update({ deleted_at: null }).in("id", ids);
-    if (error) return { ok: false, error: error.message };
+    if (error) return dbFailure("decks", error);
     revalidatePath("/decks");
     return { ok: true };
   });
@@ -761,7 +778,7 @@ export async function purgeDecks(deckIds: string[]): Promise<DeckActionResult> {
     if (ids.length === 0) return { ok: true };
     const supabase = createSupabaseServerClient();
     const { error } = await supabase.from("player_decks").delete().in("id", ids).not("deleted_at", "is", null);
-    if (error) return { ok: false, error: error.message };
+    if (error) return dbFailure("decks", error);
     revalidatePath("/decks");
     return { ok: true };
   });

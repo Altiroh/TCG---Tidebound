@@ -48,6 +48,9 @@ export async function createOnlineMatch(deckId: string): Promise<ActionResult<{ 
 /** Rejoint une partie en attente via son code d'invitation et démarre la partie. */
 export async function joinOnlineMatch(inviteCode: string, deckId: string): Promise<ActionResult<{ matchId: string }>> {
   const user = await requireUser();
+  if (typeof inviteCode !== "string" || typeof deckId !== "string" || inviteCode.length > 32) {
+    return { ok: false, error: "Aucune partie en attente avec ce code." };
+  }
   const own = await resolveMatchDeck(user.id, deckId);
   if (!own.ok) return { ok: false, error: deckRejection(own) };
   const deck2 = own.deck;

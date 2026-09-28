@@ -1,4 +1,4 @@
-import { PLAYABLE_DECKS, validateDeckList, type DeckList } from "@/game";
+import { PLAYABLE_DECKS, RULES, validateDeckList, type DeckList } from "@/game";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { missingCopiesMessage, ownedPartOf } from "@/features/decks/deckComposition";
 
@@ -85,6 +85,13 @@ export async function resolveMatchDeck(userId: string, deckId: string): Promise<
     if (cardsError) {
       console.error("[resolveMatchDeck] Lecture des cartes impossible :", cardsError.message);
       return { ok: false, reason: "unavailable" };
+    }
+
+    // Compté AVANT de déplier : une quantité démesurée écrite en base ne
+    // doit pas coûter un tableau de dix millions d'éléments pour être refusée.
+    const total = (cards ?? []).reduce((sum, card) => sum + card.quantity, 0);
+    if (total > RULES.DECK_SIZE_MAX) {
+      return { ok: false, reason: "invalid", detail: `Un deck compte au plus ${RULES.DECK_SIZE_MAX} cartes.` };
     }
 
     const cardIds: string[] = [];

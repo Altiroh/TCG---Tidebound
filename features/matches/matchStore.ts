@@ -3,6 +3,7 @@ import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
 import { awardMatchReward } from "@/features/progression/rewards";
 import { botCountsAsPvp } from "@/features/progression/botRewardPolicy";
+import { hasSaneActionShape } from "@/features/matches/actionShape";
 import { audienceOpponent, countsAsPlayedMatch, matchActivity, matchModePaysRewards, utcDayKey } from "@/game/progression";
 import { recordMatchQuestProgress } from "@/features/quests/questService";
 import { recordMatchAudience } from "@/features/progression/hubService";
@@ -105,6 +106,8 @@ export async function submitAction(matchId: string, userId: string, action: Play
   // `timeout` (`applyExpiredDeadlines`), avec SA propre heure. Reçue du
   // navigateur, elle porterait un `now` choisi par le joueur.
   if (action.type === "timeout") return { ok: false, error: "Action refusée." };
+  // Forme avant légalité : nombres finis, chaînes et tableaux bornés.
+  if (!hasSaneActionShape(action)) return { ok: false, error: "Action refusée." };
 
   // Les deux lectures en parallèle : un aller-retour en base de moins par
   // coup. L'état complet ne quitte jamais cette fonction, il n'y a donc rien

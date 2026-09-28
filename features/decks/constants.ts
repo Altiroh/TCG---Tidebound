@@ -8,3 +8,6 @@ export const DEFAULT_SHIP_ID = "le-courlis";
  * même place à tenir.
  */
 export const DECK_DESCRIPTION_MAX = 180;
+
+/** Longueur maximale du nom d'un deck — la même borne qu'en base (`player_decks_name_length`). */
+export const DECK_NAME_MAX = 60;
