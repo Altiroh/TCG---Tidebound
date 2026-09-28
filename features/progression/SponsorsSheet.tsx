@@ -12,16 +12,16 @@ import { playButtonClick } from "@/lib/sound";
 const SCENE = "/assets/mecenes/scene";
 
 /**
- * Place de chaque cadre photo sur le mur, dans l'ordre des mécènes : coin
- * haut-gauche (% de la largeur du mur et de sa hauteur), inclinaison propre
- * du cadre, et décalage de la respiration du portrait pour qu'ils ne
- * battent pas à l'unisson.
+ * Place de chaque cadre photo sur le mur — une rangée en éventail, dans
+ * l'ordre des mécènes : coin haut-gauche (% de la largeur du mur et de sa
+ * hauteur), inclinaison propre du cadre, et décalage de la respiration du
+ * portrait pour qu'ils ne battent pas à l'unisson.
  */
 const WALL: readonly { left: number; top: number; tilt: number; delay: number }[] = [
-  { left: 1, top: 6, tilt: -4, delay: 0 },
-  { left: 35, top: 0, tilt: 8, delay: -1.7 },
-  { left: 67, top: 15, tilt: 14, delay: -3.1 },
-  { left: 13, top: 51, tilt: 2, delay: -4.4 },
+  { left: 0, top: 9, tilt: -5, delay: 0 },
+  { left: 24.5, top: 0, tilt: 4, delay: -1.7 },
+  { left: 49, top: 12, tilt: 9, delay: -3.1 },
+  { left: 73, top: 3, tilt: -2, delay: -4.4 },
 ];
 
 /** Volutes de fumée de la lanterne soufflée : dérive (%), taille (%), départ (s). */
@@ -40,8 +40,11 @@ const SMOKE = [
  * la télé retransmet le public EN DIRECT, une lanterne qu'on souffle et
  * rallume, et les mécènes épinglés en photos, leur insigne en médaille. Un
  * colis qui attend fait luire la photo de la couleur du mécène. Dessous,
- * l'audience qu'attend celui qu'on regarde et ses paliers d'intérêt ; puis
- * sa fiche et les paliers du public.
+ * l'audience qu'attend celui qu'on regarde et ses paliers d'intérêt.
+ *
+ * Rien ne défile : la scène (une planche de proportions fixes) se met à
+ * l'échelle de la place qui reste ; sur un écran bas (téléphone couché),
+ * elle passe à gauche et les encarts à droite.
  */
 export function SponsorsSheet({
   sponsors,
@@ -66,6 +69,8 @@ export function SponsorsSheet({
   const [lit, setLit] = useState(true);
   const [selectedId, setSelectedId] = useState(sponsors[0]?.id ?? null);
   const sponsor = sponsors.find((entry) => entry.id === selectedId) ?? sponsors[0];
+  // Les paliers du public se détaillent dans le hub ; ici, seulement celui qui attend d'être ouvert.
+  const milestone = milestones.find((entry) => entry.claimable);
 
   useEffect(() => setMounted(true), []);
   useEffect(() => {
@@ -90,7 +95,6 @@ export function SponsorsSheet({
           ×
         </button>
 
-        {/* L'en-tête défile avec la scène : la fumée de la lanterne monte par-dessus le titre. */}
         <div className={styles.body}>
           <header className={styles.head}>
             <h2 className={styles.title}>Mécènes</h2>
@@ -99,46 +103,40 @@ export function SponsorsSheet({
             </p>
           </header>
 
-          <div className={styles.studio}>
-            <Lantern lit={lit} onToggle={() => setLit((value) => !value)} />
-            <LiveTv audience={audience} />
+          {/* La planche garde ses proportions et se loge dans la place restante ; la fumée déborde par-dessus le titre. */}
+          <div className={styles.scene}>
+            <div className={styles.board}>
+              <Lantern lit={lit} onToggle={() => setLit((value) => !value)} />
+              <LiveTv audience={audience} />
+              {/* eslint-disable-next-line @next/next/no-img-element -- décor local */}
+              <img className={styles.starfish} src={`${SCENE}/etoile-de-mer.webp`} alt="" draggable={false} />
+              <ul className={styles.wall} aria-label="Mécènes">
+                {sponsors.map((entry, index) => (
+                  <SponsorPhoto
+                    key={entry.id}
+                    sponsor={entry}
+                    place={WALL[index % WALL.length]!}
+                    selected={entry.id === sponsor?.id}
+                    busy={busy}
+                    onSelect={() => {
+                      playButtonClick();
+                      setSelectedId(entry.id);
+                    }}
+                    onOpenGift={() => onOpenGift(entry)}
+                  />
+                ))}
+              </ul>
+            </div>
           </div>
 
-          <div className={styles.wall}>
-            {/* eslint-disable-next-line @next/next/no-img-element -- décor local */}
-            <img className={styles.starfish} src={`${SCENE}/etoile-de-mer.webp`} alt="" draggable={false} />
-            <ul className={styles.wallList} aria-label="Mécènes">
-              {sponsors.map((entry, index) => (
-                <SponsorPhoto
-                  key={entry.id}
-                  sponsor={entry}
-                  place={WALL[index % WALL.length]!}
-                  selected={entry.id === sponsor?.id}
-                  busy={busy}
-                  onSelect={() => {
-                    playButtonClick();
-                    setSelectedId(entry.id);
-                  }}
-                  onOpenGift={() => onOpenGift(entry)}
-                />
-              ))}
-            </ul>
-          </div>
-
-          {sponsor && <SponsorFocus sponsor={sponsor} audience={audience.audience} busy={busy} onOpenGift={onOpenGift} />}
-
-          <section className={styles.box} aria-label="Le public">
-            <h4 className={styles.boxTitle}>Le public</h4>
-            {/* La clé du public, sans formule : chaque humeur a le sien (spectacle × 25 = palier, audit du 27/09/2026). */}
-            <p className={styles.boxLine}>
-              Chaque humeur a son public : une salle qui suit la partie vous amène vers 1 000 spectateurs, captivée vers 1 500, debout vers
-              2 000.
-            </p>
-            {audience.lastHighlights.length > 0 && (
-              <p className={styles.boxLine}>Dernière partie : « {audience.lastHighlights.join(" », « ")} »</p>
+          <div className={styles.info}>
+            {milestone && (
+              <button type="button" className={styles.milestoneReady} disabled={busy} onClick={() => onClaimMilestone(milestone)}>
+                Palier d&apos;audience « {milestone.label} » : ouvrir
+              </button>
             )}
-            <AudienceMilestones milestones={milestones} best={audience.best} busy={busy} onClaim={onClaimMilestone} />
-          </section>
+            {sponsor && <SponsorFocus sponsor={sponsor} audience={audience.audience} busy={busy} onOpenGift={onOpenGift} />}
+          </div>
         </div>
       </div>
     </div>,
@@ -284,121 +282,60 @@ function SponsorPhoto({
 /* ── Le mécène qu'on regarde ───────────────────────────────────────── */
 
 function SponsorFocus({ sponsor, audience, busy, onOpenGift }: { sponsor: SponsorView; audience: number; busy: boolean; onOpenGift: (sponsor: SponsorView) => void }) {
-  const revealed = Boolean(sponsor.name);
   const reached = new Set(sponsorGiftStagesReached(sponsor.points));
   const waiting = new Set(sponsor.giftStages);
   const audienceRatio = Math.min(1, audience / sponsor.audienceRequired);
+  // Qui il est et ce qui l'attire, au survol de son nom (la fenêtre ne défile plus).
+  const about = sponsor.name
+    ? [sponsor.figure, sponsor.style && `Ce qui l'attire : ${sponsor.style}`].filter(Boolean).join(" — ")
+    : "Il se dévoilera quand il sera Intrigué.";
 
   return (
     <div className={styles.focus} data-color={sponsor.color}>
-      <div className={styles.panels}>
-        <section className={styles.box} aria-label="Audience attendue">
-          <h4 className={styles.boxTitle}>Audience</h4>
-          <div className={styles.meter}>
-            <span className={styles.meterFill} style={{ width: `${audienceRatio * 100}%` }} />
-          </div>
-          <p className={styles.boxLine}>
-            {sponsor.meetsAudience
-              ? `Votre public (${audience.toLocaleString("fr-FR")}) lui suffit : il vous regarde.`
-              : `Il attend ${sponsor.audienceRequired.toLocaleString("fr-FR")} spectateurs — vous en avez ${audience.toLocaleString("fr-FR")}.`}
-          </p>
-        </section>
-
-        <section className={styles.box} aria-label="Paliers d'intérêt">
-          <h4 className={styles.boxTitle}>
-            Intérêt <span className={styles.points}>{sponsor.points} pts</span>
-          </h4>
-          <ol className={styles.stages}>
-            {SPONSOR_STAGES.filter((stage) => stage.id !== "indifferent").map((stage) => {
-              const state = waiting.has(stage.id) ? "gift" : reached.has(stage.id) ? "done" : "locked";
-              const gift = sponsorGift(stage.id);
-              return (
-                <li key={stage.id} className={styles.stage} data-state={state}>
-                  <span className={styles.stageIcon} title={gift.map(loginRewardLabel).join(" · ")}>
-                    {gift[0] && <RewardIcon item={gift[0]} size={34} />}
-                  </span>
-                  <span className={styles.stageName}>{stage.label}</span>
-                  <span className={styles.stagePoints}>{stage.minPoints} pts</span>
-                  {state === "gift" && (
-                    <button type="button" className={styles.stageOpen} disabled={busy} onClick={() => onOpenGift(sponsor)}>
-                      Ouvrir
-                    </button>
-                  )}
-                  {state === "done" && <span className={styles.stageDone}>Colis ouvert</span>}
-                </li>
-              );
-            })}
-          </ol>
-        </section>
-      </div>
-
-      <section className={styles.box} aria-label="Fiche du mécène">
+      <section className={styles.box} aria-label="Audience attendue">
         <h4 className={styles.boxTitle}>
-          <span className={styles.focusName}>{sponsor.name ?? "Un mécène inconnu"}</span>
+          Audience
+          <span className={styles.focusName} title={about}>
+            {sponsor.name ?? "Un mécène inconnu"}
+          </span>
         </h4>
-        {revealed ? (
-          <>
-            <p className={styles.boxLine}>{sponsor.figure}</p>
-            <p className={styles.boxLine}>
-              <span className={styles.attraction}>Ce qui l&apos;attire</span> {sponsor.style}
-            </p>
-            <p className={styles.lore}>{sponsor.lore}</p>
-          </>
-        ) : (
-          <p className={styles.boxLine}>
-            Il ne s&apos;est pas encore fait connaître. Attirez son regard — il se dévoilera quand il sera <strong>Intrigué</strong>.
-          </p>
-        )}
+        <div className={styles.meter}>
+          <span className={styles.meterFill} style={{ width: `${audienceRatio * 100}%` }} />
+        </div>
+        <p className={styles.boxLine}>
+          {sponsor.meetsAudience
+            ? `Votre public (${audience.toLocaleString("fr-FR")}) lui suffit : il vous regarde.`
+            : `Il attend ${sponsor.audienceRequired.toLocaleString("fr-FR")} spectateurs — vous en avez ${audience.toLocaleString("fr-FR")}.`}
+        </p>
+      </section>
+
+      <section className={styles.box} aria-label="Paliers d'intérêt">
+        <h4 className={styles.boxTitle}>
+          Intérêt <span className={styles.points}>{sponsor.points} pts</span>
+        </h4>
+        <ol className={styles.stages}>
+          {SPONSOR_STAGES.filter((stage) => stage.id !== "indifferent").map((stage) => {
+            const state = waiting.has(stage.id) ? "gift" : reached.has(stage.id) ? "done" : "locked";
+            const gift = sponsorGift(stage.id);
+            return (
+              <li key={stage.id} className={styles.stage} data-state={state}>
+                <span className={styles.stageIcon} title={gift.map(loginRewardLabel).join(" · ")}>
+                  {gift[0] && <RewardIcon item={gift[0]} size={30} />}
+                </span>
+                <span className={styles.stageName}>{stage.label}</span>
+                {state === "gift" ? (
+                  <button type="button" className={styles.stageOpen} disabled={busy} onClick={() => onOpenGift(sponsor)}>
+                    Ouvrir
+                  </button>
+                ) : (
+                  <span className={styles.stagePoints}>{state === "done" ? "Colis ouvert" : `${stage.minPoints} pts`}</span>
+                )}
+              </li>
+            );
+          })}
+        </ol>
       </section>
     </div>
   );
 }
 
-/* ── Les paliers du public ─────────────────────────────────────────── */
-
-/**
- * LES PALIERS D'AUDIENCE — ce que le public rapporte. Ils se lisent sur le
- * RECORD : un palier franchi l'est pour de bon. Celui qui attend d'être
- * ouvert luit ; les suivants disent ce qu'il reste à conquérir.
- */
-function AudienceMilestones({
-  milestones,
-  best,
-  busy,
-  onClaim,
-}: {
-  milestones: AudienceMilestoneView[];
-  best: number;
-  busy: boolean;
-  onClaim: (milestone: AudienceMilestoneView) => void;
-}) {
-  if (milestones.length === 0) return null;
-  return (
-    <ol className={styles.milestones} aria-label="Paliers d'audience">
-      {milestones.map((milestone) => {
-        const state = milestone.claimed ? "claimed" : milestone.claimable ? "claimable" : "locked";
-        const rewards = milestone.rewards.map(loginRewardLabel).join(" · ");
-        return (
-          <li key={milestone.threshold} className={styles.milestone} data-state={state}>
-            <span className={styles.milestoneIcons} aria-hidden>
-              {milestone.rewards.map((item, index) => (
-                <RewardIcon key={index} item={item} size={30} />
-              ))}
-            </span>
-            <span className={styles.milestoneLabel}>{milestone.label}</span>
-            <span className={styles.milestoneThreshold}>{milestone.threshold.toLocaleString("fr-FR")} spectateurs</span>
-            {state === "claimable" ? (
-              <button type="button" className={styles.milestoneClaim} disabled={busy} onClick={() => onClaim(milestone)} title={rewards}>
-                Ouvrir
-              </button>
-            ) : (
-              <span className={styles.milestoneStatus} title={rewards}>
-                {state === "claimed" ? "Ouvert" : `Record ${Math.min(best, milestone.threshold).toLocaleString("fr-FR")} / ${milestone.threshold.toLocaleString("fr-FR")}`}
-              </span>
-            )}
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
