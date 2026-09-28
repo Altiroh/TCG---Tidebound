@@ -26,6 +26,7 @@ export type Row = Record<string, any>;
 const PRIMARY_KEYS: Record<string, string[]> = {
   matches: ["id"],
   match_states: ["match_id"],
+  matchmaking_queue: ["user_id"],
   match_rewards: ["match_id", "user_id"],
   match_quest_progress: ["match_id", "user_id"],
   player_progression: ["user_id"],
@@ -398,15 +399,24 @@ function runRpc(db: FakeDatabase, fn: string, args: Row): any {
       return { ok: true, version: 1 };
     }
 
-    // `20261016120000_audit_securite.sql` : réservée au serveur, l'appelant doit être en file.
+    // `20261017120000_jeu_en_ligne.sql` : réservée au serveur ; les absents
+    // (muets depuis 30 s) sont purgés, l'appelant doit être en file, et il en
+    // sort avec son adversaire.
     case "claim_matchmaking_opponent": {
       const queue = db.table("matchmaking_queue");
-      if (!queue.some((row) => row.user_id === args.p_user_id)) return [];
+      const freshSince = new Date(Date.now() - 30_000).toISOString();
+      const isFresh = (row: Row) => String(row.last_seen_at ?? nowIso()) >= freshSince;
+      for (const row of [...queue]) {
+        if (row.user_id !== args.p_user_id && !isFresh(row)) queue.splice(queue.indexOf(row), 1);
+      }
+      const self = queue.find((row) => row.user_id === args.p_user_id);
+      if (!self) return [];
       const waiting = queue
-        .filter((row) => row.user_id !== args.p_user_id)
+        .filter((row) => row.user_id !== args.p_user_id && isFresh(row))
         .sort((a, b) => String(a.queued_at).localeCompare(String(b.queued_at)))[0];
       if (!waiting) return [];
       queue.splice(queue.indexOf(waiting), 1);
+      queue.splice(queue.indexOf(self), 1);
       return [{ opponent_user_id: waiting.user_id, opponent_deck_id: waiting.deck_id }];
     }
 

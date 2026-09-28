@@ -152,21 +152,26 @@ export interface Database {
         Update: Record<string, never>;
         Relationships: [];
       };
+      /** Écrite par le serveur seul (clé service_role) ; le joueur ne lit que sa propre entrée. */
       matchmaking_queue: {
         Row: {
           user_id: string;
           deck_id: string;
           queued_at: string;
+          /** Dernier signe de vie de la page de recherche : muette depuis 30 s, l'entrée n'est plus appariable (migration 20261017120000). */
+          last_seen_at: string;
         };
         Insert: {
           user_id: string;
           deck_id: string;
           queued_at?: string;
+          last_seen_at?: string;
         };
         Update: {
           user_id?: string;
           deck_id?: string;
           queued_at?: string;
+          last_seen_at?: string;
         };
         Relationships: [];
       };

@@ -43,7 +43,8 @@ vi.mock("next/navigation", () => ({
 
 const { startBotMatch } = await import("@/features/bot/actions");
 const { submitMatchAction, createOnlineMatch, joinOnlineMatch, fetchMatchView } = await import("@/features/online/actions");
-const { joinMatchmakingQueue } = await import("@/features/matchmaking/actions");
+const { joinMatchmakingQueue, pollMatchmaking, leaveMatchmakingQueue } = await import("@/features/matchmaking/actions");
+const { cancelWaitingMatch, findResumableMatch } = await import("@/features/online/actions");
 const { claimQuestReward, fetchQuestBoard } = await import("@/features/quests/actions");
 const { claimAllLevelRewards } = await import("@/features/progression/profileActions");
 const { purchaseBooster, openBooster } = await import("@/features/boosters/actions");
@@ -438,6 +439,73 @@ describe("anti-farm — une partie ne paie que si elle a été jouée", () => {
 
     sessionUserId = OPPONENT;
     expect((await joinOnlineMatch(first.data!.inviteCode, OTHER_DECK.id)).ok).toBe(false);
+  });
+});
+
+describe("jeu en ligne — file, salle d'attente, reprise", () => {
+  it("celui qui attendait trouve sa partie au sondage suivant", async () => {
+    sessionUserId = OPPONENT;
+    expect((await joinMatchmakingQueue(OTHER_DECK.id)).data).toEqual({ status: "queued" });
+    expect((await pollMatchmaking()).data).toEqual({ status: "queued" });
+
+    sessionUserId = USER;
+    const arrived = await joinMatchmakingQueue(DECK.id);
+    expect(arrived.data?.status).toBe("matched");
+    const matchId = (arrived.data as { matchId: string }).matchId;
+
+    sessionUserId = OPPONENT;
+    expect((await pollMatchmaking()).data).toEqual({ status: "matched", matchId });
+    // Les deux ont quitté la file avec l'appariement.
+    expect(db.table("matchmaking_queue")).toHaveLength(0);
+  });
+
+  it("un joueur muet depuis plus de 30 secondes n'est plus appariable : c'est un fantôme", async () => {
+    sessionUserId = OPPONENT;
+    await joinMatchmakingQueue(OTHER_DECK.id);
+    db.one("matchmaking_queue", { user_id: OPPONENT })!.last_seen_at = new Date(Date.now() - 60_000).toISOString();
+
+    sessionUserId = USER;
+    expect((await joinMatchmakingQueue(DECK.id)).data).toEqual({ status: "queued" });
+    expect(db.one("matchmaking_queue", { user_id: OPPONENT })).toBeUndefined();
+
+    // Le fantôme revient à lui : sa place a été rendue, son écran le lui dit.
+    sessionUserId = OPPONENT;
+    expect((await pollMatchmaking()).data).toEqual({ status: "idle" });
+  });
+
+  it("annuler la recherche rend la place", async () => {
+    sessionUserId = OPPONENT;
+    await joinMatchmakingQueue(OTHER_DECK.id);
+    await leaveMatchmakingQueue();
+    sessionUserId = USER;
+    expect((await joinMatchmakingQueue(DECK.id)).data).toEqual({ status: "queued" });
+  });
+
+  it("annuler un match amical ferme vraiment la partie : son code ne mène plus nulle part", async () => {
+    sessionUserId = USER;
+    const created = await createOnlineMatch(DECK.id);
+    // Seul l'hôte peut annuler sa partie.
+    sessionUserId = OPPONENT;
+    await cancelWaitingMatch(created.data!.matchId);
+    expect(db.one("matches", { id: created.data!.matchId })!.status).toBe("waiting");
+
+    sessionUserId = USER;
+    expect((await cancelWaitingMatch(created.data!.matchId)).ok).toBe(true);
+    expect(db.one("matches", { id: created.data!.matchId })!.status).toBe("abandoned");
+
+    sessionUserId = OPPONENT;
+    expect((await joinOnlineMatch(created.data!.inviteCode, OTHER_DECK.id)).ok).toBe(false);
+  });
+
+  it("propose de reprendre la partie laissée ouverte, et rien une fois finie", async () => {
+    sessionUserId = USER;
+    expect(await findResumableMatch()).toBeNull();
+
+    const started = await startBotMatch(DECK.id, OTHER_DECK.id, "facile");
+    expect(await findResumableMatch()).toEqual({ matchId: started.matchId, mode: "bot", status: "active" });
+
+    await playToTheEnd(started.matchId!, USER);
+    expect(await findResumableMatch()).toBeNull();
   });
 });
 

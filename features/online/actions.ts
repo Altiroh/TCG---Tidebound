@@ -179,3 +179,54 @@ export async function submitMatchAction(matchId: string, action: PlayerAction): 
     return { ok: false, error: "Coup non enregistré, réessaie." };
   }
 }
+
+/**
+ * Ferme la partie en attente que l'appelant a créée (« Annuler » de la salle
+ * d'attente). Sans elle, le code restait valable : un ami arrivé après coup
+ * rejoignait une table que son hôte avait quittée.
+ */
+export async function cancelWaitingMatch(matchId: string): Promise<ActionResult<null>> {
+  const user = await requireUser();
+  const { error } = await createSupabaseServiceRoleClient()
+    .from("matches")
+    .update({ status: "abandoned", updated_at: new Date().toISOString() })
+    .eq("id", matchId)
+    .eq("player1_id", user.id)
+    .eq("status", "waiting");
+  if (error) {
+    console.error("[cancelWaitingMatch] Fermeture refusée :", error.message);
+    return { ok: false, error: "Impossible d'annuler la partie pour l'instant." };
+  }
+  return { ok: true, data: null };
+}
+
+/** Une partie que le joueur peut reprendre : en cours, ou en attente de son invité. */
+export interface ResumableMatch {
+  matchId: string;
+  mode: "private_invite" | "matchmaking" | "bot";
+  status: "waiting" | "active";
+}
+
+/**
+ * La partie la plus récente que ce joueur a laissée ouverte — pour lui
+ * proposer de la reprendre au lieu de la laisser filer vers le forfait
+ * (onglet fermé, rechargement, retour au menu). `null` si rien n'attend.
+ */
+export async function findResumableMatch(): Promise<ResumableMatch | null> {
+  const user = await getSessionUser();
+  if (!user) return null;
+  const { data, error } = await createSupabaseServiceRoleClient()
+    .from("matches")
+    .select("id, mode, status")
+    .in("status", ["waiting", "active"])
+    .or(`player1_id.eq.${user.id},player2_id.eq.${user.id}`)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    console.error("[findResumableMatch] Lecture impossible :", error.message);
+    return null;
+  }
+  if (!data || (data.status !== "waiting" && data.status !== "active")) return null;
+  return { matchId: data.id, mode: data.mode, status: data.status };
+}

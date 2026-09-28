@@ -2,8 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { createGameState } from "@/game";
-import { createSupabaseServerClient, createSupabaseServiceRoleClient } from "@/lib/supabase/server";
-import { resolveMatchDeck } from "@/features/decks/matchDeck";
+import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
+import { resolveMatchDeck, type MatchDeckResult } from "@/features/decks/matchDeck";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
 
 export interface ActionResult<T> {
@@ -12,83 +12,142 @@ export interface ActionResult<T> {
   data?: T;
 }
 
+/**
+ * Où en est la recherche du joueur :
+ *   - `matched` : une partie l'attend, on y va ;
+ *   - `queued`  : toujours en file, la recherche continue ;
+ *   - `idle`    : plus en file (recherche annulée, ou purgée faute de
+ *     signe de vie) — l'écran propose de relancer.
+ */
+export type MatchmakingStatus = { status: "matched"; matchId: string } | { status: "queued" } | { status: "idle" };
+
 async function requireUser() {
-  const supabase = createSupabaseServerClient();
   const user = await getSessionUser();
   if (!user) redirect("/connexion");
-  return { supabase, user };
+  return user;
+}
+
+function service() {
+  return createSupabaseServiceRoleClient();
+}
+
+/** Message montré au joueur quand son deck ne peut pas entrer en partie. */
+function deckRejection(result: MatchDeckResult & { ok: false }): string {
+  if (result.reason === "invalid") return `Ce deck n'est pas jouable en l'état : ${result.detail}`;
+  if (result.reason === "unavailable") return "Le serveur ne peut pas lire ton deck pour l'instant — réessaie dans un instant.";
+  return "Deck inconnu.";
 }
 
 /**
  * Rejoint la file de matchmaking et tente immédiatement un appariement.
  *
- * Esquisse volontairement simple (pas de worker en tâche de fond) :
- * l'appariement n'est tenté qu'au moment où un joueur rejoint la file, via
- * la fonction Postgres `claim_matchmaking_opponent()` (verrouillage
- * `for update skip locked`, sûre sous accès concurrents). Si personne
- * n'attendait, l'appelant reste en file et doit être notifié plus tard par
- * un autre joueur qui le rejoint — le client doit donc s'abonner en
- * Realtime à `matches` (filtré sur `player1_id`/`player2_id` = son propre
- * id) pour détecter qu'il vient d'être apparié, plutôt que de dépendre
- * uniquement de la valeur de retour de cet appel.
+ * Appariement au PREMIER ARRIVÉ (décision du 28/09/2026) : le joueur qui
+ * attend depuis le plus longtemps. La file n'est écrite que par le serveur
+ * (clé service_role), avec un deck validé et une heure d'arrivée qui est la
+ * sienne ; l'appariement lui-même (`claim_matchmaking_opponent`) est réservé
+ * au serveur.
+ *
+ * Personne n'attendait : le joueur reste en file, et son écran sonde
+ * `pollMatchmaking` — qui signale sa présence et retente l'appariement.
  */
-export async function joinMatchmakingQueue(deckId: string): Promise<ActionResult<{ status: "queued" } | { status: "matched"; matchId: string }>> {
-  const { user } = await requireUser();
+export async function joinMatchmakingQueue(deckId: string): Promise<ActionResult<MatchmakingStatus>> {
+  const user = await requireUser();
   const self = await resolveMatchDeck(user.id, deckId);
-  if (!self.ok) return { ok: false, error: "Deck inconnu." };
-  const selfDeck = self.deck;
+  if (!self.ok) return { ok: false, error: deckRejection(self) };
 
-  // La file n'est écrite QUE par le serveur (clé service_role) : un deck
-  // déjà validé ci-dessus, et une heure d'arrivée qui est la sienne. Une
-  // entrée forgée depuis le navigateur (deck inexistant, `queued_at` dans
-  // le passé) éjectait chaque joueur qui arrivait.
-  const service = createSupabaseServiceRoleClient();
-  const { error: upsertError } = await service
+  const now = new Date().toISOString();
+  const { error: upsertError } = await service()
     .from("matchmaking_queue")
-    .upsert({ user_id: user.id, deck_id: deckId, queued_at: new Date().toISOString() });
+    .upsert({ user_id: user.id, deck_id: deckId, queued_at: now, last_seen_at: now });
   if (upsertError) {
     console.error("[joinMatchmakingQueue] Mise en file refusée :", upsertError.message);
     return { ok: false, error: "Impossible de rejoindre la file pour l'instant." };
   }
 
-  // Réservée au serveur : ouverte au navigateur, elle permettait de vider la
-  // file en boucle et d'y lire qui attendait, avec quel deck.
-  const { data: claimed, error: claimError } = await service.rpc("claim_matchmaking_opponent", { p_user_id: user.id });
+  return tryPair(user.id, deckId);
+}
+
+/**
+ * Sondage de l'écran de recherche, toutes les quelques secondes.
+ *
+ * Trois choses, dans l'ordre :
+ *   1. une partie a-t-elle été créée pour ce joueur par quelqu'un qui l'a
+ *      apparié ? Alors on y va ;
+ *   2. sinon, il est toujours là : sa présence est notée (`last_seen_at`),
+ *      faute de quoi la file le purgerait au bout de 30 secondes ;
+ *   3. et l'appariement est retenté — deux joueurs arrivés au même instant
+ *      se sont peut-être manqués (cf. la migration `20261017120000`).
+ */
+export async function pollMatchmaking(): Promise<ActionResult<MatchmakingStatus>> {
+  const user = await requireUser();
+
+  const active = await activeMatchmakingMatch(user.id);
+  if (active) return { ok: true, data: { status: "matched", matchId: active } };
+
+  const { data: entry, error } = await service()
+    .from("matchmaking_queue")
+    .update({ last_seen_at: new Date().toISOString() })
+    .eq("user_id", user.id)
+    .select("deck_id")
+    .maybeSingle();
+  if (error) {
+    console.error("[pollMatchmaking] Présence non notée :", error.message);
+    return { ok: true, data: { status: "queued" } };
+  }
+  if (!entry) return { ok: true, data: { status: "idle" } };
+
+  return tryPair(user.id, entry.deck_id);
+}
+
+/**
+ * Tente d'apparier `userId`, déjà en file avec `deckId`. Un adversaire
+ * trouvé : la partie est créée ici (l'appelant devient joueur 1).
+ */
+async function tryPair(userId: string, deckId: string): Promise<ActionResult<MatchmakingStatus>> {
+  const db = service();
+  const { data: claimed, error: claimError } = await db.rpc("claim_matchmaking_opponent", { p_user_id: userId });
   if (claimError) {
-    console.error("[joinMatchmakingQueue] Appariement refusé :", claimError.message);
+    console.error("[matchmaking] Appariement refusé :", claimError.message);
     return { ok: false, error: "Impossible de chercher un adversaire pour l'instant." };
   }
 
   const opponent = claimed?.[0];
-  if (!opponent) {
+  if (!opponent) return { ok: true, data: { status: "queued" } };
+
+  // Les deux decks, chacun résolu sous l'identité de SON joueur. Les deux
+  // entrées ont quitté la file avec l'appariement.
+  const [selfDeck, opponentDeck] = await Promise.all([
+    resolveMatchDeck(userId, deckId),
+    resolveMatchDeck(opponent.opponent_user_id, opponent.opponent_deck_id),
+  ]);
+  if (!selfDeck.ok || !opponentDeck.ok) {
+    // Celui dont le deck tient toujours retourne en file : ce n'est pas à
+    // lui de payer le deck devenu injouable de l'autre.
+    const requeue = [
+      selfDeck.ok ? { user_id: userId, deck_id: deckId } : null,
+      opponentDeck.ok ? { user_id: opponent.opponent_user_id, deck_id: opponent.opponent_deck_id } : null,
+    ].filter((row): row is { user_id: string; deck_id: string } => row !== null);
+    if (requeue.length > 0) await db.from("matchmaking_queue").upsert(requeue);
+    if (!selfDeck.ok) return { ok: false, error: deckRejection(selfDeck) };
     return { ok: true, data: { status: "queued" } };
   }
-
-  // Un adversaire attendait : on crée la partie nous-mêmes (`self` devient
-  // player1) et on se retire de la file — l'adversaire a déjà été retiré
-  // par `claim_matchmaking_opponent()`.
-  // Le deck de l'adversaire, résolu sous SON identité.
-  const opponentResolved = await resolveMatchDeck(opponent.opponent_user_id, opponent.opponent_deck_id);
-  const opponentDeck = opponentResolved.ok ? opponentResolved.deck : undefined;
-  await service.from("matchmaking_queue").delete().eq("user_id", user.id);
-  if (!opponentDeck) return { ok: false, error: "Le deck de l'adversaire est introuvable." };
 
   const matchId = crypto.randomUUID();
   const state = createGameState({
     gameId: matchId,
-    player1: { id: user.id, deck: selfDeck },
-    player2: { id: opponent.opponent_user_id, deck: opponentDeck },
+    player1: { id: userId, deck: selfDeck.deck },
+    player2: { id: opponent.opponent_user_id, deck: opponentDeck.deck },
   });
 
   // Partie et état privé créés dans la même transaction, avec la clé
-  // service_role : `matches` n'accepte plus aucune écriture navigateur.
-  const { data: created, error: createError } = await service.rpc("create_active_match", {
+  // service_role : `matches` n'accepte aucune écriture navigateur.
+  const { data: created, error: createError } = await db.rpc("create_active_match", {
     p_match_id: matchId,
     // Sans usage pour une partie appariée (pas de lien à partager), mais la
     // colonne reste `not null unique` : dérivée de l'id de partie.
     p_invite_code: matchId.slice(0, 8).toUpperCase(),
     p_mode: "matchmaking",
-    p_player1_id: user.id,
+    p_player1_id: userId,
     p_player1_deck_id: deckId,
     p_player2_id: opponent.opponent_user_id,
     p_player2_deck_id: opponent.opponent_deck_id,
@@ -97,15 +156,21 @@ export async function joinMatchmakingQueue(deckId: string): Promise<ActionResult
   });
 
   if (createError || !created?.ok) {
-    return { ok: false, error: createError?.message ?? created?.error ?? "Échec de la création de la partie." };
+    console.error("[matchmaking] Création de la partie refusée :", createError?.message ?? created?.error);
+    // Les deux joueurs retournent en file : la recherche continue.
+    await db.from("matchmaking_queue").upsert([
+      { user_id: userId, deck_id: deckId },
+      { user_id: opponent.opponent_user_id, deck_id: opponent.opponent_deck_id },
+    ]);
+    return { ok: true, data: { status: "queued" } };
   }
   return { ok: true, data: { status: "matched", matchId } };
 }
 
-/** Quitte la file de matchmaking (bouton "Annuler la recherche" côté client). */
+/** Quitte la file de matchmaking (bouton « Annuler la recherche », page quittée). */
 export async function leaveMatchmakingQueue(): Promise<ActionResult<null>> {
-  const { user } = await requireUser();
-  const { error } = await createSupabaseServiceRoleClient().from("matchmaking_queue").delete().eq("user_id", user.id);
+  const user = await requireUser();
+  const { error } = await service().from("matchmaking_queue").delete().eq("user_id", user.id);
   if (error) {
     console.error("[leaveMatchmakingQueue] Sortie de file refusée :", error.message);
     return { ok: false, error: "Impossible de quitter la file pour l'instant." };
@@ -113,35 +178,20 @@ export async function leaveMatchmakingQueue(): Promise<ActionResult<null>> {
   return { ok: true, data: null };
 }
 
-/**
- * La partie en cours de ce joueur, s'il vient d'être apparié.
- *
- * L'appariement n'est tenté qu'au moment où QUELQU'UN rejoint la file
- * (`claim_matchmaking_opponent`) : celui qui attendait déjà n'apprend donc
- * rien par la valeur de retour de son propre appel — c'est l'arrivant qui a
- * créé la partie, de son côté. Il faut bien que le premier l'apprenne
- * autrement, et c'est ce que cette fonction permet.
- *
- * Interrogée périodiquement plutôt qu'écoutée en Realtime : un abonnement
- * demanderait deux canaux (le joueur peut être `player1` ou `player2`, et
- * un filtre Realtime ne porte que sur une colonne), et tomberait en silence
- * si Realtime n'est pas activé sur le projet. Une file d'attente qui ne
- * démarre jamais la partie est le pire résultat possible ; quelques
- * requêtes par minute sont un prix raisonnable pour ne pas en dépendre.
- */
-export async function findMyActiveMatch(): Promise<ActionResult<{ matchId: string | null }>> {
-  const { supabase, user } = await requireUser();
-
-  const { data, error } = await supabase
+/** La partie de matchmaking en cours de ce joueur, s'il vient d'être apparié. */
+async function activeMatchmakingMatch(userId: string): Promise<string | null> {
+  const { data, error } = await service()
     .from("matches")
-    .select("id, created_at")
+    .select("id")
     .eq("mode", "matchmaking")
     .eq("status", "active")
-    .or(`player1_id.eq.${user.id},player2_id.eq.${user.id}`)
+    .or(`player1_id.eq.${userId},player2_id.eq.${userId}`)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-
-  if (error) return { ok: false, error: error.message };
-  return { ok: true, data: { matchId: data?.id ?? null } };
+  if (error) {
+    console.error("[matchmaking] Lecture de la partie en cours impossible :", error.message);
+    return null;
+  }
+  return data?.id ?? null;
 }

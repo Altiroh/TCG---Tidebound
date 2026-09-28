@@ -3,6 +3,7 @@ import { PRECON_DECKS } from "@/game";
 import { listPlayerDeckLists } from "@/app/decks/actions";
 import { fetchDeckCatalog } from "@/features/decks/catalogActions";
 import { PartieScreen } from "@/features/match/PartieScreen";
+import { findResumableMatch, type ResumableMatch } from "@/features/online/actions";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
 
 export default async function PartiePage() {
@@ -16,7 +17,11 @@ export default async function PartiePage() {
     isSignedIn = false;
   }
 
-  const [personalDecks, catalog] = await Promise.all([isSignedIn ? listPlayerDeckLists() : [], fetchDeckCatalog()]);
+  const [personalDecks, catalog, resumable] = await Promise.all([
+    isSignedIn ? listPlayerDeckLists() : [],
+    fetchDeckCatalog(),
+    isSignedIn ? findResumableMatch() : null,
+  ]);
 
   /*
    * Decks proposés à l'écran.
@@ -43,7 +48,21 @@ export default async function PartiePage() {
   // suspense : sans elle, Next rend toute la page en client au build.
   return (
     <Suspense>
-      <PartieScreen isSignedIn={isSignedIn} personalDecks={personalDecks} unlockedDeckIds={unlockedDeckIds} />
+      <PartieScreen
+        isSignedIn={isSignedIn}
+        personalDecks={personalDecks}
+        unlockedDeckIds={unlockedDeckIds}
+        resumable={resumable ? { matchId: resumable.matchId, label: resumableLabel(resumable) } : null}
+      />
     </Suspense>
   );
+}
+
+/** Ce que la bannière de reprise dit de la partie laissée ouverte. */
+function resumableLabel(match: ResumableMatch): string {
+  if (match.mode === "bot") return "Ta partie contre le bot est toujours en cours.";
+  if (match.mode === "matchmaking") return "Ta partie en ligne est toujours en cours — ton adversaire t'attend.";
+  return match.status === "waiting"
+    ? "Ton match amical attend toujours ton invité."
+    : "Ton match amical est toujours en cours — ton ami t'attend.";
 }
