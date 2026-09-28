@@ -7,6 +7,7 @@ import { PageTransition } from "@/features/shell/PageTransition";
 import { PinchZoomGuard } from "@/features/shell/PinchZoomGuard";
 import { CardBackProvider } from "@/features/cosmetics/CardBackProvider";
 import { ShipFrameProvider } from "@/features/cosmetics/ShipFrameProvider";
+import { SocialPulse } from "@/features/friends/SocialPulse";
 import "./tokens.css";
 import "./globals.css";
 
@@ -103,6 +104,9 @@ export default function RootLayout({
             <OrientationGate />
             {/* Pincement neutralisé là où le viewport ne suffit pas (iOS). */}
             <PinchZoomGuard />
+            {/* Présence en ligne et défis d'amis, sondés côté client : la
+                mise en page reste statique. */}
+            <SocialPulse />
           </ShipFrameProvider>
         </CardBackProvider>
       </body>

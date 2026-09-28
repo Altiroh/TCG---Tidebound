@@ -4,6 +4,8 @@ import { listPlayerDeckLists } from "@/app/decks/actions";
 import { fetchDeckCatalog } from "@/features/decks/catalogActions";
 import { PartieScreen } from "@/features/match/PartieScreen";
 import { findResumableMatch, type ResumableMatch } from "@/features/online/actions";
+import { fetchSocial } from "@/features/friends/actions";
+import { PRESENCE_LABEL } from "@/features/friends/presence";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
 
 export default async function PartiePage() {
@@ -17,10 +19,12 @@ export default async function PartiePage() {
     isSignedIn = false;
   }
 
-  const [personalDecks, catalog, resumable] = await Promise.all([
+  const [personalDecks, catalog, resumable, social] = await Promise.all([
     isSignedIn ? listPlayerDeckLists() : [],
     fetchDeckCatalog(),
     isSignedIn ? findResumableMatch() : null,
+    // Amis et défis reçus. Sans la migration des amis, simplement vides.
+    isSignedIn ? fetchSocial() : null,
   ]);
 
   /*
@@ -53,6 +57,16 @@ export default async function PartiePage() {
         personalDecks={personalDecks}
         unlockedDeckIds={unlockedDeckIds}
         resumable={resumable ? { matchId: resumable.matchId, label: resumableLabel(resumable) } : null}
+        friends={(social?.friends ?? []).map((friend) => ({
+          userId: friend.userId,
+          name: friend.name,
+          presenceLabel: PRESENCE_LABEL[friend.presence],
+        }))}
+        challenges={(social?.challenges ?? []).map((challenge) => ({
+          id: challenge.id,
+          fromName: challenge.fromName,
+          inviteCode: challenge.inviteCode,
+        }))}
       />
     </Suspense>
   );

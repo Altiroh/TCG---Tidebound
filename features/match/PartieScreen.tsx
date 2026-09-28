@@ -7,8 +7,15 @@ import { startBotMatch } from "@/features/bot/actions";
 import { joinMatchmakingQueue } from "@/features/matchmaking/actions";
 import { MatchmakingSearch } from "@/features/matchmaking/MatchmakingSearch";
 import { createOnlineMatch, joinOnlineMatch } from "@/features/online/actions";
+import { challengeFriend, declineChallenge } from "@/features/friends/actions";
 import { createLocalMatch } from "@/features/match/createLocalMatch";
-import { NewMatchScreen, type MatchOpponent } from "@/features/match/NewMatchScreen";
+import {
+  NewMatchScreen,
+  type ChallengeableFriend,
+  type MatchOpponent,
+  type OnlineKind,
+  type ReceivedChallenge,
+} from "@/features/match/NewMatchScreen";
 import { MatchBoard } from "@/features/match/MatchBoard";
 
 interface PartieScreenProps {
@@ -19,6 +26,10 @@ interface PartieScreenProps {
   unlockedDeckIds?: string[];
   /** Partie laissée ouverte par ce joueur, proposée à la reprise. */
   resumable?: { matchId: string; label: string } | null;
+  /** Amis du joueur (« Défier un ami »). */
+  friends?: ChallengeableFriend[];
+  /** Défis reçus d'amis, proposés sur l'écran des modes. */
+  challenges?: ReceivedChallenge[];
 }
 
 /**
@@ -32,7 +43,14 @@ interface PartieScreenProps {
  *   - Contre un bot hors connexion, ou à deux sur le même écran : partie
  *     locale, entièrement dans le navigateur, qui ne rapporte rien.
  */
-export function PartieScreen({ isSignedIn, personalDecks = [], unlockedDeckIds = [], resumable = null }: PartieScreenProps) {
+export function PartieScreen({
+  isSignedIn,
+  personalDecks = [],
+  unlockedDeckIds = [],
+  resumable = null,
+  friends = [],
+  challenges = [],
+}: PartieScreenProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [match, setMatch] = useState<GameState | null>(null);
@@ -49,10 +67,13 @@ export function PartieScreen({ isSignedIn, personalDecks = [], unlockedDeckIds =
   const [entry] = useState(() => ({
     mode: searchParams.get("mode") === "en-ligne" ? ("online" as const) : undefined,
     code: searchParams.get("code") ?? undefined,
+    friendId: searchParams.get("ami") ?? undefined,
   }));
+  /** Défis encore affichés : un défi décliné disparaît aussitôt. */
+  const [openChallenges, setOpenChallenges] = useState(challenges);
 
   /** Partie en ligne : recherche rapide, ou match amical créé / rejoint. */
-  async function startOnline(deck: DeckList, kind: "quick" | "host" | "join", code?: string) {
+  async function startOnline(deck: DeckList, kind: OnlineKind, code?: string, friendId?: string) {
     setStarting(true);
     setError(null);
     const failed = (message?: string) => {
@@ -67,6 +88,11 @@ export function PartieScreen({ isSignedIn, personalDecks = [], unlockedDeckIds =
         setStarting(false);
         setSearching(deck);
         return;
+      }
+      if (kind === "friend") {
+        const result = await challengeFriend(friendId ?? "", deck.id);
+        if (!result.ok || !result.matchId) return failed(result.error);
+        return router.push(`/en-ligne/${result.matchId}`);
       }
       const result = kind === "host" ? await createOnlineMatch(deck.id) : await joinOnlineMatch(code ?? "", deck.id);
       if (!result.ok || !result.data) return failed(result.error);
@@ -84,7 +110,7 @@ export function PartieScreen({ isSignedIn, personalDecks = [], unlockedDeckIds =
 
   async function startMatch(deck1: DeckList, deck2: DeckList, opponent: MatchOpponent) {
     if (opponent.type === "online") {
-      await startOnline(deck1, opponent.kind, opponent.code);
+      await startOnline(deck1, opponent.kind, opponent.code, opponent.friendId);
       return;
     }
     if (opponent.type !== "bot" || !isSignedIn) {
@@ -177,6 +203,13 @@ export function PartieScreen({ isSignedIn, personalDecks = [], unlockedDeckIds =
         }
         isSignedIn={isSignedIn}
         initialMode={backFromSearch ? "online" : entry.mode}
+        initialFriendId={entry.friendId}
+        friends={friends}
+        challenges={openChallenges}
+        onDeclineChallenge={(challengeId) => {
+          setOpenChallenges((current) => current.filter((challenge) => challenge.id !== challengeId));
+          void declineChallenge(challengeId).catch(() => undefined);
+        }}
         initialInviteCode={entry.code}
         resumable={resumable}
       />

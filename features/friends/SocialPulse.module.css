@@ -1,0 +1,45 @@
+/* Alerte « un ami te défie » : en haut à droite, sous le bandeau, au-dessus de tout écran hors plateau. */
+.toast {
+  position: fixed;
+  top: calc(var(--tb-safe-top, 0px) + 64px);
+  right: calc(var(--tb-safe-right, 0px) + 16px);
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 12px 14px;
+  border: 1px solid rgba(230, 190, 110, 0.45);
+  border-radius: 10px;
+  background: rgba(8, 18, 32, 0.94);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  color: #e8eef5;
+  font-size: 0.9rem;
+  backdrop-filter: blur(6px);
+}
+
+.text {
+  flex: 1;
+  min-width: 0;
+}
+
+.accept {
+  flex: none;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #e3b865, #b98a3a);
+  color: #1a1206;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.close {
+  flex: none;
+  border: 0;
+  background: none;
+  color: rgba(232, 238, 245, 0.6);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}

@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { createGameState, type PlayerAction } from "@/game";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
-import { generateInviteCode } from "@/features/online/inviteCode";
+import { createWaitingMatch, deckRejection } from "@/features/online/waitingMatch";
 import {
   loadSnapshot,
   settleExpiredDeadlines,
@@ -12,7 +12,7 @@ import {
   type MatchUpdate,
 } from "@/features/matches/matchStore";
 import { packFrames, type PackedFrames } from "@/features/matches/matchFrames";
-import { resolveMatchDeck, type MatchDeckResult } from "@/features/decks/matchDeck";
+import { resolveMatchDeck } from "@/features/decks/matchDeck";
 import { loadEquippedCosmetics } from "@/features/cosmetics/equippedCosmeticsService";
 import type { PlayerCosmetics } from "@/features/cosmetics/MatchCosmeticsProvider";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
@@ -31,13 +31,6 @@ export interface ActionResult<T> {
   data?: T;
 }
 
-/** Message montré au joueur quand son deck ne peut pas entrer en partie. */
-function deckRejection(result: MatchDeckResult & { ok: false }): string {
-  if (result.reason === "invalid") return `Ce deck n'est pas jouable en l'état : ${result.detail}`;
-  if (result.reason === "unavailable") return "Le serveur ne peut pas lire ton deck pour l'instant — réessaie dans un instant.";
-  return "Deck inconnu.";
-}
-
 async function requireUser() {
   const user = await getSessionUser();
   if (!user) redirect("/connexion");
@@ -47,31 +40,9 @@ async function requireUser() {
 /** Crée une partie en attente d'un second joueur, avec un code d'invitation. */
 export async function createOnlineMatch(deckId: string): Promise<ActionResult<{ matchId: string; inviteCode: string }>> {
   const user = await requireUser();
-  const own = await resolveMatchDeck(user.id, deckId);
-  if (!own.ok) return { ok: false, error: deckRejection(own) };
-
-  const service = createSupabaseServiceRoleClient();
-  // Une seule partie en attente par joueur : la précédente est fermée. Sans
-  // ce plafond, un script pouvait remplir la table de parties vides.
-  const { error: closeError } = await service
-    .from("matches")
-    .update({ status: "abandoned", updated_at: new Date().toISOString() })
-    .eq("player1_id", user.id)
-    .eq("status", "waiting");
-  if (closeError) console.error("[createOnlineMatch] Fermeture des parties en attente impossible :", closeError.message);
-
-  const { data, error } = await service
-    .from("matches")
-    // Mode explicite : c'est lui qui fait d'une partie un match amical, sans récompense.
-    .insert({ player1_id: user.id, player1_deck_id: deckId, invite_code: generateInviteCode(), status: "waiting", mode: "private_invite" })
-    .select("id, invite_code")
-    .single();
-
-  if (error || !data) {
-    console.error("[createOnlineMatch] Création refusée :", error?.message);
-    return { ok: false, error: "Échec de la création de la partie." };
-  }
-  return { ok: true, data: { matchId: data.id, inviteCode: data.invite_code } };
+  const created = await createWaitingMatch(user.id, deckId);
+  if (!created.ok) return { ok: false, error: created.error };
+  return { ok: true, data: { matchId: created.matchId, inviteCode: created.inviteCode } };
 }
 
 /** Rejoint une partie en attente via son code d'invitation et démarre la partie. */

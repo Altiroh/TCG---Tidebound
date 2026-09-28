@@ -27,6 +27,10 @@ const PRIMARY_KEYS: Record<string, string[]> = {
   matches: ["id"],
   match_states: ["match_id"],
   matchmaking_queue: ["user_id"],
+  friendships: ["user_a", "user_b"],
+  player_presence: ["user_id"],
+  friend_challenges: ["id"],
+  profiles: ["id"],
   match_rewards: ["match_id", "user_id"],
   match_quest_progress: ["match_id", "user_id"],
   player_progression: ["user_id"],
@@ -165,6 +169,12 @@ class QueryBuilder implements PromiseLike<QueryResponse> {
 
   eq(column: string, value: unknown) {
     this.filters.push((row) => readColumn(this.db, this.name, row, column) === value);
+    return this;
+  }
+
+  /** `match` PostgREST : égalité sur chaque colonne de l'objet. */
+  match(values: Row) {
+    for (const [column, value] of Object.entries(values)) this.eq(column, value);
     return this;
   }
 

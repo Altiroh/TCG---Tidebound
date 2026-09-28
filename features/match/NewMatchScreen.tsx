@@ -22,12 +22,27 @@ import { usePersistedState } from "@/lib/persistedState";
  * Partie en ligne : recherche rapide (matchmaking au premier arrivé), ou
  * match amical — créé (on reçoit un code à partager) ou rejoint par code.
  */
-export type OnlineKind = "quick" | "host" | "join";
+export type OnlineKind = "quick" | "friend" | "host" | "join";
+
+/** Un ami, tel que l'écran le propose au défi. */
+export interface ChallengeableFriend {
+  userId: string;
+  name: string;
+  /** « En ligne », « En partie », « Hors ligne » — déjà mis en mots. */
+  presenceLabel: string;
+}
+
+/** Un défi reçu d'un ami : le relever, c'est rejoindre son match amical par code. */
+export interface ReceivedChallenge {
+  id: string;
+  fromName: string;
+  inviteCode: string;
+}
 
 export type MatchOpponent =
   | { type: "pvp" }
   | { type: "bot"; difficulty: BotDifficulty }
-  | { type: "online"; kind: OnlineKind; code?: string };
+  | { type: "online"; kind: OnlineKind; code?: string; friendId?: string };
 
 interface NewMatchScreenProps {
   onStart: (deck1: DeckList, deck2: DeckList, opponent: MatchOpponent) => void | Promise<void>;
@@ -53,6 +68,14 @@ interface NewMatchScreenProps {
   initialInviteCode?: string;
   /** Partie laissée ouverte par ce joueur : proposée à la reprise dès l'écran des modes. */
   resumable?: { matchId: string; label: string } | null;
+  /** Amis du joueur, pour « Défier un ami ». */
+  friends?: readonly ChallengeableFriend[];
+  /** Ami présélectionné (bouton « Défier » de la page Amis). */
+  initialFriendId?: string;
+  /** Défis reçus, proposés dès l'écran des modes. */
+  challenges?: readonly ReceivedChallenge[];
+  /** Décliner un défi reçu. */
+  onDeclineChallenge?: (challengeId: string) => void;
 }
 
 /**
@@ -83,6 +106,7 @@ type Mode = "pvp" | "bot" | "online";
 
 const ONLINE_KINDS: { id: OnlineKind; label: string; description: string }[] = [
   { id: "quick", label: "Recherche rapide", description: "Un adversaire tiré au hasard. XP, Tides et quêtes." },
+  { id: "friend", label: "Défier un ami", description: "Ton ami reçoit le défi où qu'il soit dans le jeu. Match amical, sans récompenses." },
   { id: "host", label: "Créer un match amical", description: "Tu reçois un code à envoyer à un ami. Pour le plaisir, sans récompenses." },
   { id: "join", label: "Rejoindre un match amical", description: "Entre le code reçu d'un ami. Pour le plaisir, sans récompenses." },
 ];
@@ -164,11 +188,18 @@ export function NewMatchScreen({
   initialMode,
   initialInviteCode,
   resumable = null,
+  friends = [],
+  initialFriendId,
+  challenges = [],
+  onDeclineChallenge,
 }: NewMatchScreenProps) {
   const openOnline = initialMode === "online" && isSignedIn;
   const [step, setStep] = useState<Step>(openOnline ? 2 : 1);
   const [mode, setMode] = useState<Mode>(openOnline ? "online" : "bot");
-  const [onlineKind, setOnlineKind] = useState<OnlineKind>(initialInviteCode ? "join" : "quick");
+  const [onlineKind, setOnlineKind] = useState<OnlineKind>(initialInviteCode ? "join" : initialFriendId ? "friend" : "quick");
+  const [friendId, setFriendId] = useState<string | null>(
+    () => friends.find((friend) => friend.userId === initialFriendId)?.userId ?? friends[0]?.userId ?? null
+  );
   const [inviteCode, setInviteCode] = useState(() => normalizeInviteCode(initialInviteCode ?? ""));
   const [botDifficulty, setBotDifficulty] = useState<BotDifficulty>("moyen");
   // Le deck PAR DÉFAUT du joueur (écran Decks) est présélectionné : on
@@ -242,6 +273,15 @@ export function NewMatchScreen({
     if (first) setCurrent(first);
   }, [activeTab, current, setCurrent]);
 
+  /** Relever un défi reçu : mode « En ligne », rejoindre, code déjà saisi — reste le deck. */
+  function acceptChallenge(code: string) {
+    playButtonClick();
+    setMode("online");
+    setOnlineKind("join");
+    setInviteCode(normalizeInviteCode(code));
+    setStep(2);
+  }
+
   function chooseMode(next: Mode) {
     playButtonClick();
     setMode(next);
@@ -263,8 +303,14 @@ export function NewMatchScreen({
     }
     if (mode === "online") {
       if (onlineKind === "join" && inviteCode.length < 6) return;
+      if (onlineKind === "friend" && !friendId) return;
       playGameStart();
-      void onStart(deck1, deck1, { type: "online", kind: onlineKind, code: onlineKind === "join" ? inviteCode : undefined });
+      void onStart(deck1, deck1, {
+        type: "online",
+        kind: onlineKind,
+        code: onlineKind === "join" ? inviteCode : undefined,
+        friendId: onlineKind === "friend" ? (friendId ?? undefined) : undefined,
+      });
       return;
     }
     playGameStart();
@@ -273,8 +319,15 @@ export function NewMatchScreen({
   }
 
   const stepLabels: string[] = mode === "pvp" ? ["Mode", "Deck du joueur 1", "Deck du joueur 2"] : ["Mode", "Ton deck"];
-  const canLaunch = step === 3 ? deck2 !== null : deck1 !== null && !(mode === "online" && onlineKind === "join" && inviteCode.length < 6);
-  const onlineLaunchLabel = onlineKind === "quick" ? "Chercher un adversaire" : onlineKind === "host" ? "Créer le match amical" : "Rejoindre le match";
+  const onlineBlocked = mode === "online" && ((onlineKind === "join" && inviteCode.length < 6) || (onlineKind === "friend" && !friendId));
+  const canLaunch = step === 3 ? deck2 !== null : deck1 !== null && !onlineBlocked;
+  const onlineLaunchLabel = {
+    quick: "Chercher un adversaire",
+    friend: "Envoyer le défi",
+    host: "Créer le match amical",
+    join: "Rejoindre le match",
+  }[onlineKind];
+  const challengedFriend = friends.find((friend) => friend.userId === friendId);
   const launchLabel =
     mode === "pvp" && step === 2
       ? "Deck du joueur 2 →"
@@ -331,6 +384,26 @@ export function NewMatchScreen({
               })}
             </ol>
           </div>
+
+          {step === 1 &&
+            challenges.map((challenge) => (
+              <div key={challenge.id} className={game.banner} role="status">
+                <div className={game.bannerText}>
+                  <p className={game.bannerTitle}>{challenge.fromName} te défie en match amical</p>
+                  <p className={game.muted}>Choisis ton deck, et la partie commence.</p>
+                </div>
+                <div className={game.bannerActions}>
+                  <button type="button" className={game.primary} onClick={() => acceptChallenge(challenge.inviteCode)}>
+                    Relever le défi
+                  </button>
+                  {onDeclineChallenge && (
+                    <button type="button" className={game.ghost} onClick={() => onDeclineChallenge(challenge.id)}>
+                      Décliner
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
 
           {step === 1 && resumable && (
             <div className={game.banner} role="status">
@@ -447,6 +520,31 @@ export function NewMatchScreen({
                       </button>
                     ))}
                   </div>
+                  {onlineKind === "friend" &&
+                    (friends.length === 0 ? (
+                      <p className={game.muted}>
+                        Pas encore d&apos;ami à défier.{" "}
+                        <Link href="/amis" className={game.link} onClick={() => playButtonClick()}>
+                          Ajouter des amis →
+                        </Link>
+                      </p>
+                    ) : (
+                      <label className={game.field}>
+                        <span className={game.fieldLabel}>
+                          Ami à défier ·{" "}
+                          <Link href="/amis" className={game.link} onClick={() => playButtonClick()}>
+                            Gérer mes amis
+                          </Link>
+                        </span>
+                        <select className={game.select} value={friendId ?? ""} onChange={(event) => setFriendId(event.target.value)}>
+                          {friends.map((friend) => (
+                            <option key={friend.userId} value={friend.userId}>
+                              {friend.name} — {friend.presenceLabel}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ))}
                   {onlineKind === "join" && (
                     <label className={game.field}>
                       <span className={game.fieldLabel}>Code d&apos;invitation</span>
@@ -653,7 +751,15 @@ export function NewMatchScreen({
                     <Fact
                       icon={LAUNCH_ICONS.versus}
                       label="Adversaire"
-                      value={onlineKind === "quick" ? "le premier en file" : onlineKind === "host" ? "l'ami que tu invites" : inviteCode || "code à saisir"}
+                      value={
+                        onlineKind === "quick"
+                          ? "le premier en file"
+                          : onlineKind === "friend"
+                            ? (challengedFriend?.name ?? "ami à choisir")
+                            : onlineKind === "host"
+                              ? "l'ami que tu invites"
+                              : inviteCode || "code à saisir"
+                      }
                       note={onlineKind === "quick" ? "Appariement au premier arrivé" : "Son deck reste une surprise"}
                     />
                   ) : (

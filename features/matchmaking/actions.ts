@@ -3,7 +3,8 @@
 import { redirect } from "next/navigation";
 import { createGameState } from "@/game";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
-import { resolveMatchDeck, type MatchDeckResult } from "@/features/decks/matchDeck";
+import { resolveMatchDeck } from "@/features/decks/matchDeck";
+import { deckRejection } from "@/features/online/waitingMatch";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
 
 export interface ActionResult<T> {
@@ -29,13 +30,6 @@ async function requireUser() {
 
 function service() {
   return createSupabaseServiceRoleClient();
-}
-
-/** Message montré au joueur quand son deck ne peut pas entrer en partie. */
-function deckRejection(result: MatchDeckResult & { ok: false }): string {
-  if (result.reason === "invalid") return `Ce deck n'est pas jouable en l'état : ${result.detail}`;
-  if (result.reason === "unavailable") return "Le serveur ne peut pas lire ton deck pour l'instant — réessaie dans un instant.";
-  return "Deck inconnu.";
 }
 
 /**

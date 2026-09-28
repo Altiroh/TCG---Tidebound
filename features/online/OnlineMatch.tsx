@@ -243,7 +243,7 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
   if (match.status === "abandoned") {
     return (
       <main className="flex min-h-[100dvh] flex-col items-center justify-center gap-3 p-8 text-center text-slate-300">
-        <p>Cette partie a été fermée : l&apos;hôte l&apos;a annulée, ou une autre l&apos;a remplacée.</p>
+        <p>Cette partie a été fermée : l&apos;invité a décliné le défi, l&apos;hôte l&apos;a annulée, ou une autre partie l&apos;a remplacée.</p>
         <a href="/partie" className="text-sm text-board-accent hover:underline">
           ← Retour à l&apos;écran Partie
         </a>

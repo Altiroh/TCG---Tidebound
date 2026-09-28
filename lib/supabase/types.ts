@@ -30,12 +30,15 @@ export interface Database {
           /** Carte servant d'illustration de profil — toujours une carte possédée (`set_profile_identity`). */
           avatar_card_id: string | null;
           created_at: string;
+          /** Code ami, unique : on s'ajoute par lui, jamais par pseudo (migration 20261018120000). */
+          friend_code: string;
         };
         Insert: {
           id: string;
           display_name: string;
           avatar_card_id?: string | null;
           created_at?: string;
+          friend_code?: string;
         };
         Update: {
           id?: string;
@@ -43,6 +46,58 @@ export interface Database {
           avatar_card_id?: string | null;
           created_at?: string;
         };
+        Relationships: [];
+      };
+      /** Une ligne par paire (`user_a < user_b`), écrite par le serveur seul. */
+      friendships: {
+        Row: {
+          user_a: string;
+          user_b: string;
+          requested_by: string;
+          status: "pending" | "accepted";
+          created_at: string;
+          accepted_at: string | null;
+        };
+        Insert: {
+          user_a: string;
+          user_b: string;
+          requested_by: string;
+          status?: "pending" | "accepted";
+          created_at?: string;
+          accepted_at?: string | null;
+        };
+        Update: {
+          status?: "pending" | "accepted";
+          accepted_at?: string | null;
+        };
+        Relationships: [];
+      };
+      /** Dernier signe de vie de l'appli ouverte — lu par le serveur seul (aucune policy). */
+      player_presence: {
+        Row: { user_id: string; last_seen_at: string };
+        Insert: { user_id: string; last_seen_at?: string };
+        Update: { last_seen_at?: string };
+        Relationships: [];
+      };
+      /** Défi en match amical : `match_id` est une partie `private_invite` en attente, créée par `from_user`. */
+      friend_challenges: {
+        Row: {
+          id: string;
+          from_user: string;
+          to_user: string;
+          match_id: string;
+          status: "pending" | "declined";
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          from_user: string;
+          to_user: string;
+          match_id: string;
+          status?: "pending" | "declined";
+          created_at?: string;
+        };
+        Update: { status?: "pending" | "declined" };
         Relationships: [];
       };
       matches: {
