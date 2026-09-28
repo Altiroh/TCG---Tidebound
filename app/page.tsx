@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { fetchOnboarding } from "@/features/onboarding/actions";
 import { TideboundMenuCarte } from "@/components/menu/TideboundMenuCarte";
 import { HomeBar } from "@/features/shell/HomeBar";
+import { TableCritter } from "@/features/shell/TableCritter";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
 
 /**
@@ -54,6 +55,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       <HomeBar isSignedIn={isSignedIn} nav="menu" />
 
       <TideboundMenuCarte marks={searchParams?.reperes === "1"} />
+      {/* De temps en temps, la petite bête traverse la table du navigateur. */}
+      <TableCritter />
     </main>
   );
 }

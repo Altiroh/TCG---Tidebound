@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { Lantern } from "@/features/shell/Lantern";
+import { TableCritter } from "@/features/shell/TableCritter";
 import styles from "@/features/match/ModeTable.module.css";
 
 const ASSETS = "/assets/play/mode";
@@ -104,6 +105,8 @@ export function PlayTable({ children }: { children: ReactNode }) {
       {/* eslint-disable-next-line @next/next/no-img-element -- décor local */}
       <img className={styles.decor} src={`${ASSETS}/decor-bas-gauche.webp`} alt="" draggable={false} />
       <div className={styles.stage}>{children}</div>
+      {/* De temps en temps, la petite bête traverse la table. */}
+      <TableCritter />
       {/* Hors de la scène : grande, elle déborde en haut à gauche. POSÉE sur la
           table : son ombre de contact et la flaque de lumière qu'elle jette
           sur le bois l'y ancrent (`lanternPool`). */}

@@ -126,6 +126,9 @@ const RULES = [
   // niveau à ~16 % de la largeur, illustration du niveau à ~28 %.
   { match: /\/play\/bot-level\/plaque-/, maxSize: 720, quality: 88 },
   { match: /\/play\/bot-level\/illustration-/, maxSize: 900, quality: 86 },
+  // La petite bête qui traverse les tables (TableCritter) : corps et six
+  // pattes détourés, affichés à ~8 vw — jamais plus de ~300 px la bête.
+  { match: /\/critters\//, maxSize: 400, quality: 88 },
   // Scène des MÉCÈNES (maquette du 28/09/2026), dans le panneau latéral
   // (la moitié de l'écran) : le mur en fond, la télé à ~90 % de sa largeur,
   // les cadres photo à ~30 %, la lanterne et l'étoile de mer en décor.
