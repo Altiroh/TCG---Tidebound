@@ -28,7 +28,6 @@ const SCREENS = [
   "app/tokens.css",
   "features/shell/GameScreen.module.css",
   "features/collection/CardBrowser.module.css",
-  "features/decks/DecksList.module.css",
   "features/decks/DeckBuilder.module.css",
   "features/progression/Profile.module.css",
   "features/progression/ProfileIdentity.module.css",

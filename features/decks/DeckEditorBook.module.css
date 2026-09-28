@@ -109,29 +109,6 @@
   color: var(--tb-btn-text);
 }
 
-/* Bascule entre l'ancien et le nouvel affichage (le temps de valider). */
-.layoutToggle {
-  position: fixed;
-  left: calc(12px + var(--tb-safe-left, 0px));
-  bottom: calc(12px + var(--tb-safe-bottom, 0px));
-  z-index: 40;
-  padding: 9px 26px;
-  border: 0;
-  background: url("/assets/ui/plaques/plaque-rivets.webp") center / 100% 100% no-repeat;
-  color: #f1d38a;
-  font-family: var(--tb-font-display, Georgia, serif);
-  font-size: 12.5px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  cursor: pointer;
-  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.6));
-  transition: filter 200ms ease-out;
-}
-
-.layoutToggle:hover {
-  filter: brightness(1.11) saturate(1.14) drop-shadow(0 0 7px rgba(255, 214, 140, 0.85)) drop-shadow(0 0 20px rgba(255, 176, 72, 0.4));
-}
-
 /* Encarts (résumé, description, barres −/+) : un parchemin plus clair,
    bordé d'un trait d'encre, pour qu'ils se lisent sur le fond. */
 .workspace [class*="_summary__"],
@@ -1139,18 +1116,6 @@
   display: none;
 }
 
-/* La bascule d'affichage n'est pas dans la maquette : elle se fait discrète
-   tant qu'on ne la cherche pas. */
-.layoutToggle {
-  opacity: 0.5;
-  transform: scale(0.85);
-  transform-origin: left bottom;
-}
-
-.layoutToggle:hover,
-.layoutToggle:focus-visible {
-  opacity: 1;
-}
 /* Maquette : les colonnes vont presque au bord de l'écran, la grille presque
    au cadre — c'est ce qui laisse aux cartes leur taille (≈ 165 px en 1672). */
 .workspace.workspace.workspace {

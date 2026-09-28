@@ -92,7 +92,7 @@ secondaires : `tabs` + `tab` / `tabActive`. Puces de filtre ou de catégorie :
 `pageButton` / `pageButtonActive` / `pageEllipsis`.
 
 ### Formulaires (`§5`)
-`input` (+ `inputSm`) · recherche : `SearchLine` (`line` ou `pill`) · `select`
+`input` (+ `inputSm`) · recherche : `BookSearch` (`features/decks/`) · `select`
 (natif habillé) ou `GameSelect` (menu riche) · `choice` + `choiceInput` +
 `choiceBox` / `choiceRadio` (case, radio) · `toggle` (interrupteur ; en React :
 `features/settings/ToggleSwitch`) · `controlRow` (ligne libellé + contrôle) ·

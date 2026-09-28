@@ -14,10 +14,10 @@ import { playButtonClick } from "@/lib/sound";
 
 const ASSETS = "/assets/decks/liste";
 
-/** Les quatre onglets de la table. */
-export type TableTab = "mine" | "precon" | "favorites" | "recent";
+/** Les onglets de la table ; `trash` (« Récemment supprimés ») n'apparaît que s'il a de quoi montrer. */
+export type TableTab = "mine" | "precon" | "favorites" | "recent" | "trash";
 
-const TABS: Array<{ id: TableTab; label: string; icon: string }> = [
+const TABS: Array<{ id: Exclude<TableTab, "trash">; label: string; icon: string }> = [
   { id: "mine", label: "Mes decks", icon: "icone-mes-decks" },
   { id: "precon", label: "Préconstruits", icon: "icone-preconstruits" },
   { id: "favorites", label: "Favoris", icon: "icone-favoris" },
@@ -55,6 +55,8 @@ export interface DeckTableActions {
 interface DeckTableProps extends DeckTableActions {
   tab: TableTab;
   onTab: (tab: TableTab) => void;
+  /** Decks dans la corbeille : l'onglet « Récemment supprimés » et son compte. `null` : pas d'onglet. */
+  trashCount: number | null;
   decks: BrowserDeck[];
   current: BrowserDeck | null;
   onSelect: (id: string) => void;
@@ -68,8 +70,6 @@ interface DeckTableProps extends DeckTableActions {
   canCreate: boolean;
   /** Le deck affiché est dans la corbeille. */
   trashed: boolean;
-  /** Bascule vers la corbeille (« Récemment supprimés ») et retour. */
-  trash: { count: number; active: boolean; onToggle: () => void } | null;
   emptyLabel: string;
 }
 
@@ -83,13 +83,51 @@ const STAR_PATH = "M12 2.6l2.85 5.9 6.45.9-4.7 4.5 1.15 6.4L12 17.2l-5.75 3.1 1.
 
 
 /**
+ * L'icône de la corbeille, dessinée comme les icônes peintes des autres
+ * onglets : un médaillon de laiton riveté, un fond de parchemin, et la
+ * poubelle à l'encre brune.
+ */
+function TrashIcon() {
+  return (
+    <svg className={styles.tabIcon} viewBox="0 0 48 48" aria-hidden>
+      <defs>
+        <radialGradient id="corbeille-laiton" cx="38%" cy="32%" r="75%">
+          <stop offset="0" stopColor="#f3d27e" />
+          <stop offset="0.5" stopColor="#b98a35" />
+          <stop offset="1" stopColor="#5c3e17" />
+        </radialGradient>
+        <radialGradient id="corbeille-papier" cx="45%" cy="40%" r="70%">
+          <stop offset="0" stopColor="#f4e6c6" />
+          <stop offset="1" stopColor="#cdb487" />
+        </radialGradient>
+      </defs>
+      <circle cx="24" cy="24" r="22.5" fill="url(#corbeille-laiton)" stroke="#3b2812" strokeWidth="1.5" />
+      <circle cx="24" cy="24" r="16.5" fill="url(#corbeille-papier)" stroke="#4a3216" strokeWidth="1.4" />
+      {[
+        [24, 4.6],
+        [43.4, 24],
+        [24, 43.4],
+        [4.6, 24],
+      ].map(([cx, cy]) => (
+        <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r="2" fill="#e7c472" stroke="#3b2812" strokeWidth="0.8" />
+      ))}
+      <g fill="none" stroke="#3a2616" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M15.5 17.5h17M21 17.5v-2.2h6v2.2" />
+        <path d="M17.5 17.5l1.3 14.2h10.4l1.3-14.2" fill="#8a6a3e" fillOpacity="0.35" />
+        <path d="M21.6 21v7.4M26.4 21v7.4" strokeWidth="1.7" />
+      </g>
+    </svg>
+  );
+}
+
+/**
  * LA TABLE DES DECKS — nouvelle liste des decks (maquette du 25/09/2026).
  *
  * Tout est posé sur le livre de bord (`fond.webp`) : les onglets sur une
  * bande de parchemin, le tri et la recherche à droite, les decks en PILES
  * inclinées comme posées à la main, et la fiche du deck choisi dans son
- * cadre de bois. Même logique que l'ancien écran (`DecksScreen` fournit les
- * decks triés/filtrés et toutes les actions) : seule la présentation change.
+ * cadre de bois. `DecksScreen` fournit les decks triés et cherchés, et
+ * toutes les actions : la table ne fait que les présenter.
  *
  * Mise en page en pourcentages d'une scène à ratio fixe (`cqw`) : les
  * alignements et les inclinaisons de la maquette tiennent à toutes les
@@ -180,7 +218,7 @@ export function DeckTable(props: DeckTableProps) {
         </button>
 
         {/* ── Onglets ── */}
-        <nav className={styles.tabs} role="tablist" aria-label="Rayons">
+        <nav className={styles.tabs} role="tablist" aria-label="Rayons" data-count={TABS.length + (props.trashCount !== null ? 1 : 0)}>
           {TABS.map((tab) => (
             <button
               key={tab.id}
@@ -199,6 +237,28 @@ export function DeckTable(props: DeckTableProps) {
               <span>{tab.label}</span>
             </button>
           ))}
+          {/* La corbeille : un onglet comme les autres, son compte en pastille. */}
+          {props.trashCount !== null && (
+            <button
+              type="button"
+              role="tab"
+              aria-selected={props.tab === "trash"}
+              aria-label={`Récemment supprimés (${props.trashCount})`}
+              title="Récemment supprimés"
+              className={styles.tab}
+              data-active={props.tab === "trash" || undefined}
+              onClick={() => {
+                playButtonClick();
+                props.onTab("trash");
+              }}
+            >
+              <TrashIcon />
+              <span className={styles.tabLabel}>Corbeille</span>
+              <span className={styles.tabCount} aria-hidden>
+                {props.trashCount}
+              </span>
+            </button>
+          )}
         </nav>
 
         {/* ── Tri et recherche ── */}
@@ -216,11 +276,6 @@ export function DeckTable(props: DeckTableProps) {
           <span className={styles.visuallyHidden}>Rechercher un deck</span>
           <input type="search" value={props.search} onChange={(event) => props.onSearch(event.target.value)} placeholder="Rechercher un deck…" />
         </label>
-        {props.trash && (
-          <button type="button" className={styles.trashLink} data-active={props.trash.active || undefined} onClick={props.trash.onToggle}>
-            {props.trash.active ? "← Retour à mes decks" : `Récemment supprimés (${props.trash.count})`}
-          </button>
-        )}
 
         {/* ── Les piles ── */}
         <button

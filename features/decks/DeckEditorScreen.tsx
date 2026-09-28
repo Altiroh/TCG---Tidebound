@@ -20,15 +20,12 @@ import { DeleteDeckDialog } from "@/features/decks/DeleteDeckDialog";
 import { Dialog } from "@/features/shell/Dialog";
 import { GameScreen } from "@/features/shell/GameScreen";
 import { ShipPicker } from "@/features/ships/ShipPicker";
-import { SearchLine } from "@/features/shell/SearchLine";
 import browser from "@/features/collection/CardBrowser.module.css";
 import styles from "@/features/decks/DeckBuilder.module.css";
 import game from "@/features/shell/GameScreen.module.css";
 import { playButtonClick } from "@/lib/sound";
 import book from "@/features/decks/DeckEditorBook.module.css";
 import { BookSearch } from "@/features/decks/BookSearch";
-import { oneOf } from "@/lib/persistCodecs";
-import { usePersistedState } from "@/lib/persistedState";
 
 const DRAG_MIME = "text/tidebound-card-id";
 
@@ -128,11 +125,6 @@ function DeckEditorScreenBody({ ownedCardIds, ownedCounts, initialDeck }: DeckEd
   const [detailCardId, setDetailCardId] = useState<string | null>(null);
   const [deckOpen, setDeckOpen] = useState(false);
   const savedFlashTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Nouvel affichage « sur le livre » ou l'ancien, le temps de valider (mémorisé).
-  const [layout, setLayout] = usePersistedState<"livre" | "classic">("editeur:affichage", "livre", {
-    decode: (raw) => oneOf<"livre" | "classic">(["livre", "classic"], raw),
-  });
-  const onBook = layout === "livre";
 
   // Possession : un joueur non connecté peut composer (le serveur refusera
   // la sauvegarde avec un message clair), mais n'a pas de possession
@@ -364,28 +356,9 @@ function DeckEditorScreenBody({ ownedCardIds, ownedCounts, initialDeck }: DeckEd
   );
 
   return (
-    <GameScreen
-      active="decks"
-      backdrop={onBook ? "livre" : "port"}
-      onNavigate={handleNavigate}
-      actions={
-        // Vue « livre » : la recherche descend dans la barre de la grille (maquette).
-        onBook ? undefined : (
-          <div className={game.headerSearch}>
-            <SearchLine
-              variant="pill"
-              value={cardBrowser.filters.search}
-              onChange={(search) => cardBrowser.patchFilters({ search })}
-              placeholder="Rechercher une carte…"
-              label="Rechercher une carte"
-              shortcut
-            />
-          </div>
-        )
-      }
-    >
+    <GameScreen active="decks" onNavigate={handleNavigate}>
       <div
-        className={`${browser.workspace} ${styles.workspace} ${onBook ? book.workspace : ""}`}
+        className={`${browser.workspace} ${styles.workspace} ${book.workspace}`}
         data-columns="3"
         data-drawer={cardBrowser.drawerOpen ? "open" : "closed"}
         data-deck={deckOpen ? "open" : "closed"}
@@ -398,7 +371,7 @@ function DeckEditorScreenBody({ ownedCardIds, ownedCounts, initialDeck }: DeckEd
         <button type="button" className={browser.drawerScrim} aria-label="Fermer les filtres" onClick={() => cardBrowser.setDrawerOpen(false)} />
         <button type="button" className={styles.deckScrim} aria-label="Fermer le deck" onClick={() => setDeckOpen(false)} />
 
-        <aside className={`${game.panel} ${browser.sidebar} ${onBook ? `${book.frame} ${book.left}` : ""}`} aria-label="Identité du deck et filtres">
+        <aside className={`${game.panel} ${browser.sidebar} ${book.frame} ${book.left}`} aria-label="Identité du deck et filtres">
           <DeckIdentity
             shipId={shipId}
             onChangeShip={() => setShipPickerOpen(true)}
@@ -412,20 +385,18 @@ function DeckEditorScreenBody({ ownedCardIds, ownedCounts, initialDeck }: DeckEd
             showOwnership={isSignedIn}
             showCreateDeck={false}
             shelfCards={cardBrowser.shelfCards}
-            layout={onBook ? "livre" : "collection"}
+            order="editeur"
           />
         </aside>
 
-        <main className={`${game.panel} ${browser.main} ${onBook ? `${book.frame} ${book.center}` : ""}`}>
+        <main className={`${game.panel} ${browser.main} ${book.frame} ${book.center}`}>
           <CollectionToolbar
             count={cardBrowser.cards.length}
             sort={cardBrowser.sort}
             onSortChange={cardBrowser.setSort}
             onOpenFilters={() => cardBrowser.setDrawerOpen((open) => !open)}
             activeFilterCount={cardBrowser.activeFilterCount}
-            search={
-              onBook ? <BookSearch value={cardBrowser.filters.search} onChange={(search) => cardBrowser.patchFilters({ search })} /> : undefined
-            }
+            search={<BookSearch value={cardBrowser.filters.search} onChange={(search) => cardBrowser.patchFilters({ search })} />}
             extra={
               <button type="button" className={`${game.chipActive} ${styles.deckToggle}`} onClick={() => setDeckOpen((open) => !open)} aria-expanded={deckOpen}>
                 Deck <span className={game.badge}>{cardIds.length}</span>
@@ -443,7 +414,7 @@ function DeckEditorScreenBody({ ownedCardIds, ownedCounts, initialDeck }: DeckEd
           />
         </main>
 
-        <aside className={`${game.panel} ${styles.deckPanel} ${onBook ? `${book.frame} ${book.right}` : ""}`} aria-label="Deck en construction">
+        <aside className={`${game.panel} ${styles.deckPanel} ${book.frame} ${book.right}`} aria-label="Deck en construction">
           <DeckListPanel
             cardIds={cardIds}
             namePlate={
@@ -457,7 +428,6 @@ function DeckEditorScreenBody({ ownedCardIds, ownedCounts, initialDeck }: DeckEd
                 artCardId={artCardId}
                 onPickArt={() => setArtPickerOpen(true)}
                 chosenStyleId={initialDeck?.styleId ?? null}
-                variant={onBook ? "livre" : "classic"}
               />
             }
             onRemove={removeCard}
@@ -473,36 +443,20 @@ function DeckEditorScreenBody({ ownedCardIds, ownedCounts, initialDeck }: DeckEd
             onNewDeck={() => requestLeave({ kind: "new" })}
             onDuplicate={() => void handleDuplicate()}
             onDelete={() => setDeleteConfirm(true)}
-            variant={onBook ? "livre" : "classic"}
           />
         </aside>
       </div>
 
-      {onBook && (
-        <>
-          {/* eslint-disable-next-line @next/next/no-img-element -- décor peint, positionné à la main */}
-          <img className={book.decor} src="/assets/ui/accessoires/longue-vue.webp" alt="" draggable={false} />
-          {/* La bougie et le café de la référence : entre l'enseigne et le
-              compte, posés sur le haut du parchemin. */}
-          <span className={book.decorTopRight} aria-hidden>
-            {/* eslint-disable-next-line @next/next/no-img-element -- décor peint */}
-            <img src="/assets/ui/accessoires/bougie.webp" alt="" draggable={false} />
-            {/* eslint-disable-next-line @next/next/no-img-element -- décor peint */}
-            <img src="/assets/ui/accessoires/tasse-cafe.webp" alt="" draggable={false} />
-          </span>
-        </>
-      )}
-
-      <button
-        type="button"
-        className={book.layoutToggle}
-        onClick={() => {
-          playButtonClick();
-          setLayout(onBook ? "classic" : "livre");
-        }}
-      >
-        {onBook ? "Ancien affichage" : "Nouvel affichage"}
-      </button>
+      {/* eslint-disable-next-line @next/next/no-img-element -- décor peint, positionné à la main */}
+      <img className={book.decor} src="/assets/ui/accessoires/longue-vue.webp" alt="" draggable={false} />
+      {/* La bougie et le café de la référence : entre l'enseigne et le
+          compte, posés sur le haut du parchemin. */}
+      <span className={book.decorTopRight} aria-hidden>
+        {/* eslint-disable-next-line @next/next/no-img-element -- décor peint */}
+        <img src="/assets/ui/accessoires/bougie.webp" alt="" draggable={false} />
+        {/* eslint-disable-next-line @next/next/no-img-element -- décor peint */}
+        <img src="/assets/ui/accessoires/tasse-cafe.webp" alt="" draggable={false} />
+      </span>
 
       {detailCardId && (
         <CardDetailModal

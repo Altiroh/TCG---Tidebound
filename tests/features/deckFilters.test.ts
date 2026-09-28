@@ -1,16 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DECK_STYLES, deckStyleFromText, isDeckStyleId } from "@/game";
-import {
-  DECK_SORTS,
-  EMPTY_FILTERS,
-  filterDecks,
-  hasActiveFilter,
-  relativeDate,
-  sortDecks,
-  styleFilterLabel,
-  styleFilterOf,
-  type DeckEntry,
-} from "@/features/decks/deckFilters";
+import { DECK_SORTS, filterDecks, sortDecks, type DeckEntry } from "@/features/decks/deckFilters";
 
 function deck(entry: Partial<DeckEntry> & { id: string }): DeckEntry {
   return {
@@ -39,8 +29,6 @@ describe("type de jeu : une liste fermée", () => {
 
   it("ne range pas de force un style qu'il ne reconnaît pas", () => {
     expect(deckStyleFromText("Environnemental")).toBeNull();
-    expect(styleFilterOf("Environnemental")).toBe("autre");
-    expect(styleFilterLabel("autre")).toBe("Autre");
   });
 
   it("ignore accents et casse", () => {
@@ -55,35 +43,21 @@ describe("type de jeu : une liste fermée", () => {
   });
 });
 
-describe("filtres de l'écran Decks", () => {
+describe("recherche de l'écran Decks", () => {
   const decks = [
     deck({ id: "a", name: "Cra-Poi Swarm", style: "Agressif / swarm", shipId: "le-brise-lames" }),
     deck({ id: "b", name: "Le Courlis", style: "Tempo / contrôle léger", shipId: "le-courlis" }),
     deck({ id: "c", name: "Marée Control", style: "Contrôle", shipId: "l-errant" }),
   ];
 
-  it("sans critère, ne retire rien", () => {
-    expect(hasActiveFilter(EMPTY_FILTERS)).toBe(false);
-    expect(filterDecks(decks, EMPTY_FILTERS)).toHaveLength(3);
+  it("sans recherche, ne retire rien", () => {
+    expect(filterDecks(decks, "")).toHaveLength(3);
+    expect(filterDecks(decks, "   ")).toHaveLength(3);
   });
 
   it("cherche sans tenir compte des accents ni de la casse", () => {
-    expect(filterDecks(decks, { ...EMPTY_FILTERS, search: "maree" }).map((d) => d.id)).toEqual(["c"]);
-    expect(filterDecks(decks, { ...EMPTY_FILTERS, search: "COURLIS" }).map((d) => d.id)).toEqual(["b"]);
-  });
-
-  it("additionne les cases d'une même section (un OU)", () => {
-    const result = filterDecks(decks, { ...EMPTY_FILTERS, styles: new Set(["agressif", "controle"]) });
-    expect(result.map((d) => d.id)).toEqual(["a", "c"]);
-  });
-
-  it("cumule les sections entre elles (un ET)", () => {
-    const result = filterDecks(decks, {
-      search: "",
-      styles: new Set(["agressif"]),
-      ships: new Set(["l-errant"]),
-    });
-    expect(result).toHaveLength(0);
+    expect(filterDecks(decks, "maree").map((d) => d.id)).toEqual(["c"]);
+    expect(filterDecks(decks, "COURLIS").map((d) => d.id)).toEqual(["b"]);
   });
 });
 
@@ -111,24 +85,5 @@ describe("tri des decks", () => {
     const decks = [deck({ id: "b", name: "Brise", cardCount: 30 }), deck({ id: "a", name: "Abysses", cardCount: 50 })];
     expect(sortDecks(decks, "name").map((d) => d.id)).toEqual(["a", "b"]);
     expect(sortDecks(decks, "size").map((d) => d.id)).toEqual(["a", "b"]);
-  });
-});
-
-describe("dates lisibles", () => {
-  const now = new Date("2026-09-19T12:00:00Z");
-
-  it("compte en minutes, heures puis jours", () => {
-    expect(relativeDate("2026-09-19T11:58:00Z", now)).toBe("il y a 2 min");
-    expect(relativeDate("2026-09-19T09:00:00Z", now)).toBe("il y a 3 h");
-    expect(relativeDate("2026-09-17T12:00:00Z", now)).toBe("il y a 2 j");
-  });
-
-  it("repasse à la date écrite au-delà d'une semaine", () => {
-    expect(relativeDate("2026-08-01T12:00:00Z", now)).toContain("2026");
-  });
-
-  it("ne tombe pas sur une date absente ou illisible", () => {
-    expect(relativeDate(undefined, now)).toBe("—");
-    expect(relativeDate("pas une date", now)).toBe("—");
   });
 });

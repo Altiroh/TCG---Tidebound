@@ -33,12 +33,6 @@ interface DeckNamePlateProps {
    * chaque ajout ou retrait.
    */
   chosenStyleId?: DeckStyleId | null;
-  /**
-   * `livre` : l'en-tête de la maquette « sur le livre » (26/09/2026) — grande
-   * bannière d'illustration, sceau, nom, variantes et statut, effectif,
-   * description. `classic` : l'encart compact bleu nuit.
-   */
-  variant?: "classic" | "livre";
 }
 
 /** Variantes présentes dans le deck — un deck vide se lit « Standard ». */
@@ -59,14 +53,9 @@ function deckVariants(cardIds: readonly string[]): { standard: boolean; abyssal:
 const STATUS_LABELS = { valid: "Jouable", over: "Trop de cartes", short: `Minimum ${RULES.DECK_SIZE_MIN}` } as const;
 
 /**
- * ENCART D'IDENTITÉ du deck, en tête du panneau de droite.
- *
- * `classic` : l'illustration à gauche, le nom et son crayon à droite, les
- * variantes en dessous — compact, bleu nuit et liseré cyan ; le nombre de
- * cartes n'y figure pas, la jauge juste en dessous le porte.
- *
- * `livre` : la maquette — l'illustration en bannière (son « + » en change),
- * puis le sceau, le NOM et son crayon, les variantes et le statut
+ * ENCART D'IDENTITÉ du deck, en tête du panneau de droite — la maquette
+ * « sur le livre » (26/09/2026) : l'illustration en bannière (son « + » en
+ * change), puis le sceau, le NOM et son crayon, les variantes et le statut
  * (« Jouable »), l'effectif « 40 / 50 cartes », et la description.
  *
  * Toucher l'illustration ouvre le choix d'illustration ; le crayon passe le
@@ -82,7 +71,6 @@ export function DeckNamePlate({
   artCardId,
   onPickArt,
   chosenStyleId = null,
-  variant = "classic",
 }: DeckNamePlateProps) {
   const artUrl = artCardId ? plateArtUrl(artCardId, shipId) : nameplateArtUrl(cardIds, shipId);
   const variants = useMemo(() => deckVariants(cardIds), [cardIds]);
@@ -90,7 +78,8 @@ export function DeckNamePlate({
   const styleId = useMemo(() => chosenStyleId ?? deckProfile(cardIds)?.styleId ?? null, [chosenStyleId, cardIds]);
   const [editing, setEditing] = useState(false);
   const [before, setBefore] = useState(name);
-  const onBook = variant === "livre";
+  const count = cardIds.length;
+  const status = deckSizeStatus(count);
 
   const pickArt = () => {
     playButtonClick();
@@ -112,18 +101,18 @@ export function DeckNamePlate({
       }}
       placeholder="Nom du deck"
       aria-label="Nom du deck"
-      className={onBook ? book.headNameInput : styles.idNameInput}
+      className={book.headNameInput}
       maxLength={60}
       autoFocus
     />
   ) : (
     <>
-      <span className={onBook ? book.headName : styles.idName} title={name || "Deck sans nom"}>
+      <span className={book.headName} title={name || "Deck sans nom"}>
         {name || "Deck sans nom"}
       </span>
       <button
         type="button"
-        className={onBook ? book.headPencil : styles.idPencil}
+        className={book.headPencil}
         onClick={() => {
           playButtonClick();
           setBefore(name);
@@ -132,7 +121,7 @@ export function DeckNamePlate({
         title="Renommer le deck"
         aria-label="Renommer le deck"
       >
-        <svg viewBox="0 0 24 24" width={onBook ? "100%" : 13} height={onBook ? "100%" : 13} fill="none" aria-hidden>
+        <svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" aria-hidden>
           <path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17v3z" stroke="currentColor" strokeWidth={1.9} strokeLinejoin="round" />
         </svg>
       </button>
@@ -143,7 +132,7 @@ export function DeckNamePlate({
     // Une phrase, pas un journal : c'est ce que la fiche montre sous le nom
     // du deck, à côté de ce que les cartes disent d'elles-mêmes.
     <textarea
-      className={onBook ? book.headDescription : styles.idDescription}
+      className={book.headDescription}
       value={description}
       onChange={(event) => onDescriptionChange(event.target.value)}
       placeholder="Ce que ce deck cherche à faire (facultatif)"
@@ -153,84 +142,56 @@ export function DeckNamePlate({
     />
   );
 
-  if (onBook) {
-    const count = cardIds.length;
-    const status = deckSizeStatus(count);
-    return (
-      <div className={book.head}>
-        <button
-          type="button"
-          className={book.headArt}
-          style={artUrl ? { backgroundImage: `url("${artUrl}")` } : undefined}
-          onClick={pickArt}
-          title="Choisir l'illustration du deck"
-          aria-label="Choisir l'illustration du deck"
-        >
-          <span className={book.headArtPlus} aria-hidden>
-            +
-          </span>
-        </button>
-
-        <div className={book.headNameRow}>
-          {/* À gauche du nom : l'emblème du STYLE du deck ; tant qu'aucun
-              n'est connu (deck vide, sans style choisi), un emplacement
-              VIDE de même encombrement, réservé au futur type de deck
-              généré. L'ancien sceau rouge à l'ancre ne disait rien. */}
-          {styleId ? (
-            <DeckStyleIcon
-              styleId={styleId}
-              labelled
-              className={book.headStyleIcon}
-            />
-          ) : (
-            <span className={book.styleSlot} aria-hidden />
-          )}
-          {nameField}
-        </div>
-
-        <div className={book.headBadges}>
-          {variants.standard && <span className={styles.badgeStandard}>Standard</span>}
-          {variants.standard && variants.abyssal && (
-            <span className={book.headBadgePlus} aria-hidden>
-              +
-            </span>
-          )}
-          {variants.abyssal && <span className={styles.badgeAbyssal}>Abyssal</span>}
-          <span className={book.headStatus} data-status={status}>
-            {STATUS_LABELS[status]}
-          </span>
-        </div>
-
-        <p className={book.headCount}>
-          <strong>{count}</strong> / {RULES.DECK_SIZE_MAX} cartes
-        </p>
-
-        {descriptionField}
-      </div>
-    );
-  }
-
   return (
-    <div className={styles.idCard}>
+    <div className={book.head}>
       <button
         type="button"
-        className={styles.idArt}
+        className={book.headArt}
         style={artUrl ? { backgroundImage: `url("${artUrl}")` } : undefined}
         onClick={pickArt}
         title="Choisir l'illustration du deck"
         aria-label="Choisir l'illustration du deck"
-      />
+      >
+        <span className={book.headArtPlus} aria-hidden>
+          +
+        </span>
+      </button>
 
-      <div className={styles.idBody}>
-        <div className={styles.idNameRow}>{nameField}</div>
-
-        <div className={styles.idBadges}>
-          {variants.standard && <span className={styles.badgeStandard}>Standard</span>}
-          {variants.abyssal && <span className={styles.badgeAbyssal}>Abyssal</span>}
-        </div>
-
-        {descriptionField}
+      <div className={book.headNameRow}>
+        {/* À gauche du nom : l'emblème du STYLE du deck ; tant qu'aucun
+            n'est connu (deck vide, sans style choisi), un emplacement
+            VIDE de même encombrement, réservé au futur type de deck
+            généré. L'ancien sceau rouge à l'ancre ne disait rien. */}
+        {styleId ? (
+          <DeckStyleIcon
+            styleId={styleId}
+            labelled
+            className={book.headStyleIcon}
+          />
+        ) : (
+          <span className={book.styleSlot} aria-hidden />
+        )}
+        {nameField}
       </div>
+
+      <div className={book.headBadges}>
+        {variants.standard && <span className={styles.badgeStandard}>Standard</span>}
+        {variants.standard && variants.abyssal && (
+          <span className={book.headBadgePlus} aria-hidden>
+            +
+          </span>
+        )}
+        {variants.abyssal && <span className={styles.badgeAbyssal}>Abyssal</span>}
+        <span className={book.headStatus} data-status={status}>
+          {STATUS_LABELS[status]}
+        </span>
+      </div>
+
+      <p className={book.headCount}>
+        <strong>{count}</strong> / {RULES.DECK_SIZE_MAX} cartes
+      </p>
+
+      {descriptionField}
     </div>
   );
 }
