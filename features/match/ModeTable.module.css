@@ -227,9 +227,10 @@
 
 .lantern {
   --lantern-flame-y: 60%;
-  --lantern-smoke-y: 20%;
+  --lantern-smoke-y: 38%;
   position: fixed;
-  /* Au-dessus du filet du bandeau, sous la lumière et le voile de la pièce. */
+  /* Au-dessus du filet du bandeau, sous la lumière et le voile de la pièce.
+     Fumée depuis les évents du milieu (38 %) : le chapeau est hors de l'écran. */
   z-index: 60;
   top: var(--lantern-y);
   left: var(--lantern-x);
