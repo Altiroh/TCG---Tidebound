@@ -25,6 +25,32 @@
   overflow: hidden;
 }
 
+/*
+ * L'étagère prend TOUTE la hauteur sous le bandeau, collée au bord gauche
+ * de l'écran (retour du 28/09/2026), quelle que soit la place laissée
+ * autour de la scène. Ses mesures sont calculées SUR `.stage`, où les
+ * unités cq se lisent encore sur `.page` (le conteneur du dessus), puis
+ * figées en longueurs (`@property`) pour que les enfants les héritent
+ * telles quelles.
+ */
+@property --tb-shelf-left {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
+@property --tb-shelf-top {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
+@property --tb-shelf-height {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
 .stage {
   position: relative;
   width: min(100cqw, 100cqh * 1672 / 880);
@@ -32,6 +58,10 @@
   container-type: inline-size;
   color: #3a2616;
   font-size: 0.8cqw;
+  /* Du bord gauche de la scène au bord de l'écran (marge de `.page` comprise). */
+  --tb-shelf-left: calc((min(100cqw, 100cqh * 1672 / 880) - 100cqw) / 2 - max(var(--tb-safe-left), 0.6vw));
+  --tb-shelf-top: calc((min(100cqw * 880 / 1672, 100cqh) - 100cqh) / 2);
+  --tb-shelf-height: calc(100cqh + max(var(--tb-safe-bottom), 0.6vh));
 }
 
 /* Boussoles, gemmes et pièces, au pied de l'étagère : SOUS elle. */
@@ -51,9 +81,9 @@
 .shelf {
   position: absolute;
   z-index: 1;
-  left: -1.5%;
-  top: 3%;
-  width: 28.5%;
+  left: var(--tb-shelf-left);
+  top: var(--tb-shelf-top);
+  height: var(--tb-shelf-height);
   aspect-ratio: 815 / 1400;
   background: url("/assets/boosters/etagere.webp") center / 100% 100% no-repeat;
   filter: drop-shadow(0 1cqw 1.4cqw rgba(0, 0, 0, 0.6));
@@ -90,12 +120,18 @@
   white-space: nowrap;
 }
 
+/*
+ * L'œil est à mi-hauteur de l'étagère : chaque rayon est vu d'un angle un
+ * peu différent (perspective commune, `--tilt` propre au rayon).
+ */
 .rolls {
   position: absolute;
   inset: 0;
   margin: 0;
   padding: 0;
   list-style: none;
+  perspective: 90cqw;
+  perspective-origin: 52% 55%;
 }
 
 /*
@@ -115,16 +151,32 @@
  * case à la suivante.
  */
 .roll {
+  /* Rayon du haut vu d'en dessous, du bas vu d'au-dessus : -6,4° → +9,6°. */
+  --tilt: calc((var(--slot, 0) - 2) * 3.2deg);
   position: absolute;
-  left: 20.35%;
-  width: 62.8%;
-  bottom: calc(100% - 28.2% - var(--slot, 0) * 13.41%);
+  left: 21.6%;
+  width: 60%;
+  bottom: calc(100% - 28.4% - var(--slot, 0) * 13.41%);
   aspect-ratio: 900 / 251;
   background: var(--roll-art) center / 100% 100% no-repeat;
-  filter: drop-shadow(0 0.3cqw 0.4cqw rgba(0, 0, 0, 0.55));
+  /* Posé sur la tablette, au fond de la case : un peu dans l'ombre. */
+  filter: brightness(0.9) drop-shadow(0 0.3cqw 0.35cqw rgba(0, 0, 0, 0.6));
+  transform-origin: 50% 100%;
+  transform: rotateX(var(--tilt));
   cursor: pointer;
-  transition: bottom 300ms cubic-bezier(0.3, 0.7, 0.3, 1), transform 160ms ease-out, filter 160ms ease-out;
+  transition: bottom 300ms cubic-bezier(0.3, 0.7, 0.3, 1), translate 160ms ease-out, transform 300ms ease-out, filter 160ms ease-out;
   animation: roll-in 300ms cubic-bezier(0.3, 0.7, 0.3, 1) backwards;
+}
+
+/* L'ombre de la planche du dessus sur le haut du rouleau, découpée à sa silhouette. */
+.roll::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(10, 5, 2, 0.62), rgba(10, 5, 2, 0.18) 32%, transparent 55%, transparent 88%, rgba(10, 5, 2, 0.35));
+  -webkit-mask: var(--roll-art) center / 100% 100% no-repeat;
+  mask: var(--roll-art) center / 100% 100% no-repeat;
+  pointer-events: none;
 }
 
 /*
@@ -167,7 +219,7 @@
 }
 
 .roll:hover {
-  transform: translateX(0.35cqw);
+  translate: 0.35cqw 0;
 }
 
 .roll:focus-visible {
@@ -198,7 +250,7 @@
 @keyframes roll-in {
   from {
     opacity: 0;
-    transform: translateX(-1.2cqw);
+    translate: -1.2cqw 0;
   }
 }
 
@@ -301,11 +353,12 @@
 }
 
 /* ── Le sachet sur la carte : c'est là qu'on lâche un rouleau pour l'ouvrir ── */
+/* Juste après l'étagère, jusqu'à la fiche (71 %). */
 .plan {
   position: absolute;
   z-index: 1;
-  left: 29%;
-  width: 42%;
+  left: max(29%, calc(var(--tb-shelf-left) + var(--tb-shelf-height) * 815 / 1400 + 0.5%));
+  right: 29%;
   top: 5%;
   height: 90%;
 }

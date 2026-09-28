@@ -48,20 +48,22 @@ begin
     return;
   end if;
 
-  select q.user_id, q.deck_id into v_opponent
-  from public.matchmaking_queue q
-  where q.user_id <> p_user_id
-    and q.last_seen_at >= now() - interval '30 seconds'
-  order by q.queued_at asc
-  for update skip locked
-  limit 1;
-
-  if v_opponent.user_id is null then
+  -- Boucle d'une ligne plutôt que `select … into` : l'éditeur SQL de
+  -- Supabase prend un `select … into` pour une création de table et coupe
+  -- le corps de la fonction (vécu le 28/09/2026).
+  for v_opponent in
+    select q.user_id, q.deck_id
+    from public.matchmaking_queue q
+    where q.user_id <> p_user_id
+      and q.last_seen_at >= now() - interval '30 seconds'
+    order by q.queued_at asc
+    for update skip locked
+    limit 1
+  loop
+    delete from public.matchmaking_queue where user_id in (v_opponent.user_id, p_user_id);
+    return query select v_opponent.user_id, v_opponent.deck_id;
     return;
-  end if;
-
-  delete from public.matchmaking_queue where user_id in (v_opponent.user_id, p_user_id);
-  return query select v_opponent.user_id, v_opponent.deck_id;
+  end loop;
 end;
 $$;
 

@@ -70,19 +70,21 @@ begin
     return;
   end if;
 
-  select q.user_id, q.deck_id into found
-  from public.matchmaking_queue q
-  where q.user_id <> p_user_id
-  order by q.queued_at asc
-  for update skip locked
-  limit 1;
-
-  if found.user_id is null then
+  -- Boucle d'une ligne plutôt que `select … into` : l'éditeur SQL de
+  -- Supabase prend un `select … into` pour une création de table et coupe
+  -- le corps de la fonction (vécu le 28/09/2026).
+  for found in
+    select q.user_id, q.deck_id
+    from public.matchmaking_queue q
+    where q.user_id <> p_user_id
+    order by q.queued_at asc
+    for update skip locked
+    limit 1
+  loop
+    delete from public.matchmaking_queue where user_id = found.user_id;
+    return query select found.user_id, found.deck_id;
     return;
-  end if;
-
-  delete from public.matchmaking_queue where user_id = found.user_id;
-  return query select found.user_id, found.deck_id;
+  end loop;
 end;
 $$;
 
@@ -138,7 +140,10 @@ begin
     return jsonb_build_object('ok', false, 'error', 'Aucune carte à créditer.');
   end if;
 
-  select bd.card_count into v_expected from public.booster_definitions bd where bd.id = p_booster_id;
+  -- Affectations plutôt que `select … into` : l'éditeur SQL de Supabase
+  -- prend un `select … into` pour une création de table et coupe le corps
+  -- de la fonction (vécu le 28/09/2026).
+  v_expected := (select bd.card_count from public.booster_definitions bd where bd.id = p_booster_id);
   if v_expected is null then
     return jsonb_build_object('ok', false, 'error', 'Booster inconnu.');
   end if;
@@ -150,10 +155,12 @@ begin
     );
   end if;
 
-  select count(*) into v_distinct_input from (select distinct t.card_id from unnest(p_card_ids) as t(card_id)) s;
-  select count(*) into v_distinct_known
-  from public.cards c
-  where c.id in (select distinct t.card_id from unnest(p_card_ids) as t(card_id));
+  v_distinct_input := (select count(*) from (select distinct t.card_id from unnest(p_card_ids) as t(card_id)) s);
+  v_distinct_known := (
+    select count(*)
+    from public.cards c
+    where c.id in (select distinct t.card_id from unnest(p_card_ids) as t(card_id))
+  );
 
   if v_distinct_known <> v_distinct_input then
     return jsonb_build_object('ok', false, 'error', 'Carte inconnue dans le tirage.');
@@ -166,10 +173,14 @@ begin
   -- Consommation du booster, sérialisée : deux ouvertures simultanées ne
   -- peuvent pas consommer le même exemplaire. Ce verrou est pris EN
   -- PREMIER, toujours dans le même ordre (stock puis compteurs).
-  select pb.quantity into v_quantity
+  perform 1
   from public.player_boosters pb
   where pb.user_id = p_user_id and pb.booster_definition_id = p_booster_id
   for update;
+  v_quantity := (
+    select pb.quantity from public.player_boosters pb
+    where pb.user_id = p_user_id and pb.booster_definition_id = p_booster_id
+  );
 
   if v_quantity is null or v_quantity < 1 then
     return jsonb_build_object('ok', false, 'error', 'Tu ne possèdes pas ce booster.');
@@ -181,10 +192,18 @@ begin
   values (p_user_id, p_booster_id, 0, 0)
   on conflict (user_id, booster_definition_id) do nothing;
 
-  select pp.packs_since_abyssal, pp.packs_since_new_card into v_since_abyssal, v_since_new
+  perform 1
   from public.player_pity pp
   where pp.user_id = p_user_id and pp.booster_definition_id = p_booster_id
   for update;
+  v_since_abyssal := (
+    select pp.packs_since_abyssal from public.player_pity pp
+    where pp.user_id = p_user_id and pp.booster_definition_id = p_booster_id
+  );
+  v_since_new := (
+    select pp.packs_since_new_card from public.player_pity pp
+    where pp.user_id = p_user_id and pp.booster_definition_id = p_booster_id
+  );
 
   if v_since_abyssal is distinct from p_expected_packs_since_abyssal
      or v_since_new is distinct from p_expected_packs_since_new_card then
@@ -195,9 +214,9 @@ begin
     set quantity = player_boosters.quantity - 1, updated_at = now()
     where user_id = p_user_id and booster_definition_id = p_booster_id;
 
-  insert into public.booster_openings (user_id, booster_definition_id)
-  values (p_user_id, p_booster_id)
-  returning booster_openings.id into v_opening_id;
+  v_opening_id := gen_random_uuid();
+  insert into public.booster_openings (id, user_id, booster_definition_id)
+  values (v_opening_id, p_user_id, p_booster_id);
 
   insert into public.booster_opening_cards (booster_opening_id, slot_index, card_id)
   select v_opening_id, t.idx::smallint, t.card_id
@@ -212,16 +231,19 @@ begin
     updated_at = now();
 
   -- Pity Abyssal : recalculé depuis `cards`, jamais depuis l'appelant.
-  select exists (
+  v_abyssal := exists (
     select 1 from public.cards c where c.id = any (p_card_ids) and c.rarity = 'abyssal'
-  ) into v_abyssal;
+  );
 
   update public.player_pity
     set packs_since_abyssal = case when v_abyssal then 0 else player_pity.packs_since_abyssal + 1 end,
         packs_since_new_card = p_next_packs_since_new_card,
         updated_at = now()
-    where user_id = p_user_id and booster_definition_id = p_booster_id
-    returning player_pity.packs_since_abyssal into v_packs;
+    where user_id = p_user_id and booster_definition_id = p_booster_id;
+  v_packs := (
+    select pp.packs_since_abyssal from public.player_pity pp
+    where pp.user_id = p_user_id and pp.booster_definition_id = p_booster_id
+  );
 
   return jsonb_build_object(
     'ok', true,
