@@ -78,6 +78,16 @@
   aspect-ratio: 16 / 9;
 }
 
+/*
+ * Scène pleine (contre un bot) : ce qui dépasse en haut — les chaînes de la
+ * poignée — passe SOUS le bandeau jusqu'au bord de l'écran, au lieu d'être
+ * coupé net à sa lisière (on la croirait flottante).
+ */
+.page:has(> .stage[data-fill]) {
+  overflow: clip;
+  overflow-clip-margin: 20vh;
+}
+
 .stage[data-fill] {
   --tb-gutter-x: 0px;
   --tb-gutter-y: 0px;

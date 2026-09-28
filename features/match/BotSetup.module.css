@@ -475,12 +475,17 @@
  * (bande de 68 % à 90 % de la hauteur, 1 % à 99 % de la largeur). Posée en
  * bas au centre ; ses chaînes montent DERRIÈRE le VS et le niveau.
  */
+/*
+ * Pendue DEPUIS LE HAUT (retour du 28/09/2026 : elle flottait) : l'image
+ * remonte bien au-delà du haut de la zone, que `.page` rogne — les chaînes
+ * sortent de sous le bandeau, comme tirées d'au-dessus de l'écran.
+ */
 .lever {
   position: absolute;
   z-index: 4;
   right: calc(max(11cqw, var(--u) * 18) - 3cqw);
-  top: calc(var(--u) * -2);
-  height: 44cqh;
+  top: -11cqh;
+  height: 50cqh;
   aspect-ratio: 1100 / 1005;
   pointer-events: none;
   animation: leverIn 620ms cubic-bezier(0.2, 0.8, 0.2, 1) 220ms both;
@@ -584,8 +589,7 @@
 
 @keyframes leverIn {
   from {
-    opacity: 0;
-    translate: 0 -30%;
+    translate: 0 -45%;
   }
 }
 
