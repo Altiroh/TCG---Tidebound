@@ -114,6 +114,14 @@ const RULES = [
   { match: /\/boosters\/etagere\./, maxSize: 1400, quality: 86 },
   { match: /\/boosters\/decor-boussoles\./, maxSize: 1000, quality: 86 },
   { match: /\/ui\/panneaux\/parchemin-boussole\./, maxSize: 1400, quality: 86 },
+  // Scène des MÉCÈNES (maquette du 28/09/2026), dans le panneau latéral
+  // (la moitié de l'écran) : le mur en fond, la télé à ~90 % de sa largeur,
+  // les cadres photo à ~30 %, la lanterne et l'étoile de mer en décor.
+  { match: /\/mecenes\/scene\/fond\./, maxSize: 1536, quality: 80 },
+  { match: /\/mecenes\/scene\/tele(-ecran)?\./, maxSize: 1200, quality: 86 },
+  { match: /\/mecenes\/scene\/cadre-photo\./, maxSize: 640, quality: 88 },
+  { match: /\/mecenes\/scene\/lanterne(-eteinte)?\./, maxSize: 640, quality: 88 },
+  { match: /\/mecenes\/scene\/etoile-de-mer\./, maxSize: 400, quality: 88 },
   // Le harpon des projectiles d'effet : il vole à ~150 px de long au plus.
   { match: /\/fx\/harpon\./, maxSize: 512, quality: 90 },
   { match: /\/(menu|ships|boosters|collection|decks|board)\//, maxSize: 1600, quality: 85 },

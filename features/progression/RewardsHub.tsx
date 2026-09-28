@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { GIFT_OPEN_MS, GiftOpening } from "@/features/progression/GiftOpening";
-import { MasteriesSheet, SponsorsSheet } from "@/features/progression/HubSheets";
+import { MasteriesSheet } from "@/features/progression/HubSheets";
+import { SponsorsSheet } from "@/features/progression/SponsorsSheet";
 import {
   LOGIN_CYCLE_LENGTH,
   MAX_REWARDED_LEVEL,
