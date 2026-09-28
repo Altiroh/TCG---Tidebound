@@ -68,6 +68,20 @@ create trigger enforce_deck_limit
 
 -- --- 3. Fonctions utilitaires --------------------------------------------------
 
-revoke all on function public.default_display_name(uuid) from public, anon, authenticated;
-revoke all on function public.generate_friend_code() from public, anon, authenticated;
-revoke all on function public.enforce_deck_limit() from public, anon, authenticated;
+-- Seulement si elles existent : `default_display_name` vient de
+-- `20261016120000_audit_securite.sql`, `generate_friend_code` de
+-- `20261018120000_amis.sql`. Rejouer ce fichier après elles ferme la porte.
+do $$
+declare
+  v_fn text;
+begin
+  foreach v_fn in array array[
+    'public.default_display_name(uuid)',
+    'public.generate_friend_code()',
+    'public.enforce_deck_limit()'
+  ] loop
+    if to_regprocedure(v_fn) is not null then
+      execute format('revoke all on function %s from public, anon, authenticated', v_fn);
+    end if;
+  end loop;
+end $$;

@@ -137,3 +137,6 @@ create policy "a user can read their own profile, opponents and friends"
          or (f.user_b = (select auth.uid()) and f.user_a = profiles.id)
     )
   );
+
+-- Valeur par défaut de `profiles.friend_code` : pas d'appel direct par l'API.
+revoke all on function public.generate_friend_code() from public, anon, authenticated;

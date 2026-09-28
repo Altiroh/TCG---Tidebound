@@ -420,3 +420,7 @@ alter table public.matches
   add constraint matches_player1_id_fkey foreign key (player1_id) references public.profiles (id) on delete set null,
   add constraint matches_player2_id_fkey foreign key (player2_id) references public.profiles (id) on delete set null,
   add constraint matches_winner_id_fkey foreign key (winner_id) references public.profiles (id) on delete set null;
+
+-- Fonction utilitaire, appelée par `handle_new_user` (propriétaire) : pas
+-- d'appel direct par l'API.
+revoke all on function public.default_display_name(uuid) from public, anon, authenticated;
