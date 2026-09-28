@@ -385,7 +385,7 @@ export function NewMatchScreen({
   if (step === 1 || (step === 2 && mode === "bot")) {
     return (
       <GameScreen active="partie" nav="minimal" backdrop="table">
-        <PlayTable>
+        <PlayTable fill={step !== 1}>
           {step === 1 ? (
             <ModeTable
               onChoose={(choice) => {

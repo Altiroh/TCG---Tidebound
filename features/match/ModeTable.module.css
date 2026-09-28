@@ -78,6 +78,15 @@
   aspect-ratio: 16 / 9;
 }
 
+.stage[data-fill] {
+  --tb-gutter-x: 0px;
+  --tb-gutter-y: 0px;
+  align-self: stretch;
+  justify-self: stretch;
+  width: auto;
+  aspect-ratio: auto;
+}
+
 /* Cartes, gravures, cordage et longue-vue, au coin bas gauche : SOUS les cartes. */
 .decor {
   position: absolute;

@@ -6,7 +6,6 @@ import { DECK_STYLES, deckProfile, deckStyleFromText, type BotDifficulty, type D
 import { DeckBox } from "@/features/decks/DeckBox";
 import { nameplateArtUrl } from "@/features/decks/nameplateArt";
 import { LEAVE_MS, prefersReducedMotion } from "@/features/match/ModeTable";
-import { shipNameOf } from "@/features/ships/ShipPortrait";
 import styles from "@/features/match/BotSetup.module.css";
 import { playButtonClick, playTabClick } from "@/lib/sound";
 
@@ -98,15 +97,17 @@ export function BotSetup({
     window.setTimeout(onBack, prefersReducedMotion() ? 0 : LEAVE_MS);
   }
 
+  const skulls = levelIndex + 1;
+
   return (
-    <div className={styles.scene} data-leaving={leaving || undefined} data-level={level.id}>
+    <div className={styles.scene} data-leaving={leaving || undefined} data-level={level.id} style={{ "--level": levelIndex } as React.CSSProperties}>
       <button type="button" className={styles.back} onClick={back}>
         <span aria-hidden>←</span> Changer de mode
       </button>
 
-      {/* ── À gauche : le niveau, puis le deck ── */}
-      <section className={styles.left}>
-        <h2 className={styles.heading}>Niveau du bot</h2>
+      {/* ── En haut, au centre : le niveau du bot, trois plaques qui s'enfoncent ── */}
+      <section className={styles.levelsPanel} aria-label="Niveau du bot">
+        <h2 className={styles.levelsTitle}>Niveau du bot</h2>
         <div className={styles.levels} role="radiogroup" aria-label="Niveau du bot">
           {levels.map((entry) => (
             <button
@@ -128,27 +129,31 @@ export function BotSetup({
             </button>
           ))}
         </div>
+      </section>
 
-        <h2 className={styles.heading}>Ton deck</h2>
-        <div className={styles.deck}>
-          {deck ? (
-            <>
+      {/* ── À gauche : ton deck, en boîte, sa plaque, et « Changer de deck » ── */}
+      <section className={styles.deckSide} aria-label="Ton deck">
+        {deck ? (
+          <>
+            <span className={styles.deckStack}>
+              <span className={styles.deckGhost} aria-hidden />
+              <span className={styles.deckGhost} aria-hidden />
               <DeckBox art={nameplateArtUrl(deck.cardIds, deck.shipId)} facing="right" className={styles.deckBox} />
-              <span className={styles.deckPlate}>
-                <span className={styles.deckName}>{deck.name}</span>
-                <span className={styles.deckStyle}>
-                  {facts?.styleId && (
-                    // eslint-disable-next-line @next/next/no-img-element -- emblème de style local
-                    <img src={`/assets/decks/styles/style-${facts.styleId}.webp`} alt="" draggable={false} />
-                  )}
-                  {facts?.style.split("/")[0]?.trim()}
-                </span>
+            </span>
+            <span className={styles.deckPlate}>
+              <span className={styles.deckName}>{deck.name}</span>
+              <span className={styles.deckStyle}>
+                {facts?.styleId && (
+                  // eslint-disable-next-line @next/next/no-img-element -- emblème de style local
+                  <img src={`/assets/decks/styles/style-${facts.styleId}.webp`} alt="" draggable={false} />
+                )}
+                {facts?.style.split("/")[0]?.trim()} · {deck.cardIds.length} cartes
               </span>
-            </>
-          ) : (
-            <p className={styles.noDeck}>Aucun deck choisi.</p>
-          )}
-        </div>
+            </span>
+          </>
+        ) : (
+          <p className={styles.noDeck}>Aucun deck choisi.</p>
+        )}
         <button
           type="button"
           className={styles.changeDeck}
@@ -157,90 +162,66 @@ export function BotSetup({
             setPicking(true);
           }}
         >
+          <svg viewBox="0 0 24 24" aria-hidden>
+            <rect x="4" y="5" width="11" height="15" rx="1.5" />
+            <path d="M9 3.5h9.5A1.5 1.5 0 0 1 20 5v13" fill="none" />
+          </svg>
           Changer de deck
         </button>
       </section>
 
-      {/* ── À droite : la partie — l'adversaire en grand, le récapitulatif, le lancement ── */}
-      {/*
-        La fiche de la partie, comme celle des Decks : le parchemin encadré
-        de bois (`decks/liste/fiche`) du haut au bas de l'écran, incliné,
-        l'illustration du niveau dans sa fenêtre, la corde, puis le détail.
-      */}
-      <aside className={styles.recap} aria-label="Récapitulatif de la partie" style={{ "--level": levelIndex } as React.CSSProperties}>
-        <span className={styles.recapArt} aria-live="polite" aria-label={`Bot ${level.label}`}>
+      {/* ── Au centre : VS ── */}
+      {/* eslint-disable-next-line @next/next/no-img-element -- VS peint */}
+      <img className={styles.versus} src="/assets/play/mode/vs.webp" alt="" aria-hidden draggable={false} />
+
+      {/* ── À droite : l'adversaire, sa fiche ── */}
+      <aside className={styles.foe} aria-label={`Adversaire : bot ${level.label.toLowerCase()}`} aria-live="polite">
+        <span className={styles.foeArt}>
           {levels.map((entry) => (
             <span
               key={entry.id}
-              className={styles.recapArtLayer}
+              className={styles.foeArtLayer}
               data-on={entry.id === level.id || undefined}
               style={{ backgroundImage: `url("/assets/play/bot-level/illustration-${entry.id}.webp")` }}
             />
           ))}
         </span>
-        <span className={styles.recapRope} aria-hidden>
-          <span className={styles.recapSeal} style={{ backgroundImage: `url("/assets/play/bot-level/plaque-${level.id}.webp")` }} />
-        </span>
-
-        <div className={styles.recapBody}>
-          <h2 className={styles.recapName}>Bot {level.label.toLowerCase()}</h2>
-          <p className={styles.recapKind}>Contre un bot · la partie</p>
-          <div className={styles.recapTags}>
-            <span className={styles.chip}>XP et quêtes</span>
-            <span className={styles.chip}>Deck adverse au hasard</span>
-          </div>
-          <p className={styles.recapText}>{level.description}</p>
-
-          <dl className={styles.facts}>
-            <div className={styles.fact}>
-              <dt>Son deck</dt>
-              <dd>
-                <span>
-                  <strong>Tiré au sort</strong>
-                  <small>Découvert au lancement, parmi les préconstruits.</small>
-                </span>
-              </dd>
-            </div>
-            <div className={styles.fact}>
-              <dt>Ton deck</dt>
-              <dd>
-                {deck && facts ? (
-                  <span>
-                    <strong>{deck.name}</strong>
-                    <small>
-                      {shipNameOf(deck.shipId)} · {deck.cardIds.length} cartes
-                    </small>
-                    <Stars value={facts.difficulty} />
-                  </span>
-                ) : (
-                  <span>
-                    <strong>À choisir</strong>
-                  </span>
-                )}
-              </dd>
-            </div>
-            {note && (
-              <div className={styles.fact}>
-                <dt>Gains</dt>
-                <dd>
-                  <span>
-                    <small>{note}</small>
-                  </span>
-                </dd>
-              </div>
-            )}
-          </dl>
-
-          {(error || deckIssue) && (
-            <p className={styles.error} role="alert">
-              {error ?? deckIssue}
-            </p>
-          )}
-          <button type="button" className={styles.launch} onClick={onLaunch} disabled={!deck || Boolean(deckIssue) || starting}>
-            {starting ? "Préparation…" : "Lancer la partie"}
-          </button>
+        <span className={styles.foeSeal} style={{ backgroundImage: `url("/assets/play/bot-level/plaque-${level.id}.webp")` }} aria-hidden />
+        <div className={styles.foeBody}>
+          <h2 className={styles.foeName}>Bot {level.label.toLowerCase()}</h2>
+          <span className={styles.skulls} role="img" aria-label={`Difficulté ${skulls} sur 3`}>
+            {Array.from({ length: skulls }, (_, index) => (
+              <span key={index} style={{ backgroundImage: `url("/assets/play/bot-level/plaque-${level.id}.webp")` }} />
+            ))}
+          </span>
+          <p className={styles.foeText}>{level.description}</p>
+          <p className={styles.foeFact}>
+            <span>Son deck</span>
+            <strong>
+              <svg viewBox="0 0 24 24" aria-hidden>
+                <rect x="5" y="4" width="12" height="16" rx="1.5" />
+              </svg>
+              Tiré au sort
+            </strong>
+          </p>
+          {note && <p className={styles.foeNote}>{note}</p>}
         </div>
       </aside>
+
+      {/* ── En bas, au centre : le lancement ── */}
+      <div className={styles.launchZone}>
+        {(error || deckIssue) && (
+          <p className={styles.error} role="alert">
+            {error ?? deckIssue}
+          </p>
+        )}
+        <button type="button" className={styles.launch} onClick={onLaunch} disabled={!deck || Boolean(deckIssue) || starting}>
+          <span>{starting ? "Préparation…" : "Lancer la partie"}</span>
+          <svg viewBox="0 0 120 14" aria-hidden>
+            <path d="M2 7c10 0 12-5 22-5s12 10 22 10 12-10 22-10 12 10 22 10 12-5 28-5" fill="none" />
+          </svg>
+        </button>
+      </div>
 
       {picking && (
         <DeckPicker

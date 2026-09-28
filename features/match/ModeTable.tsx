@@ -96,7 +96,7 @@ export function prefersReducedMotion(): boolean {
  * RESTE quand on passe d'une étape à l'autre. Les éléments de chaque étape
  * (`children`) partent et arrivent par-dessus, sur la scène à ratio fixe.
  */
-export function PlayTable({ children }: { children: ReactNode }) {
+export function PlayTable({ children, fill = false }: { children: ReactNode; fill?: boolean }) {
   const [lit, setLit] = useState(true);
   return (
     <div className={styles.page} data-lit={lit || undefined}>
@@ -106,7 +106,10 @@ export function PlayTable({ children }: { children: ReactNode }) {
       <img className={styles.decor} src={`${ASSETS}/decor-bas-gauche.webp`} alt="" draggable={false} />
       {/* De temps en temps, la petite bête traverse la table — SOUS les cartes et les feuilles. */}
       <TableCritter behind />
-      <div className={styles.stage}>{children}</div>
+      {/* `fill` : la scène occupe toute la zone (écran « contre un bot », en grille) plutôt qu'un 16 / 9. */}
+      <div className={styles.stage} data-fill={fill || undefined}>
+        {children}
+      </div>
       {/* Hors de la scène : grande, elle déborde en haut à gauche. POSÉE sur la
           table : son ombre de contact et la flaque de lumière qu'elle jette
           sur le bois l'y ancrent (`lanternPool`). */}
