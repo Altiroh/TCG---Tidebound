@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import styles from "@/features/shell/PageTransition.module.css";
 import { registerPageTransition } from "@/features/shell/pageTransitionBus";
+import { waitForPageReady } from "@/features/shell/pageReady";
 import { playTransitionSwoosh, preloadInterfaceSounds } from "@/lib/sound";
 
 type Phase = "idle" | "covering" | "covered" | "revealing";
@@ -11,6 +12,14 @@ type Direction = "ltr" | "rtl";
 
 /** Au-delà, on découvre quand même : une navigation qui n'aboutit pas ne doit jamais laisser l'écran noyé. */
 const COVER_TIMEOUT_MS = 5000;
+/**
+ * Attente maximale d'un écran PRÊT (`waitForPageReady`) une fois la page
+ * changée, puis à l'ouverture du site : au-delà, on découvre quand même.
+ */
+const READY_MAX_MS = 3500;
+const BOOT_READY_MAX_MS = 4500;
+/** Onglets d'un même écran (sans ombre) : le contenu reste masqué jusqu'à ce délai au plus. */
+const TAB_READY_MAX_MS = 2500;
 
 /**
  * Durées des deux courses — les MÊMES que `PageTransition.module.css`.
@@ -100,14 +109,25 @@ function internalNavigationTarget(event: MouseEvent): string | null {
  * n'a que la seconde moitié : l'ombre est posée avant la première peinture
  * de la nouvelle page (`useLayoutEffect`), puis se retire.
  *
+ * ÉCRAN PRÊT (28/09/2026) : l'ombre ne découvre plus dès que l'adresse
+ * change, mais quand le nouvel écran est prêt (`waitForPageReady` : plus
+ * d'écran « Chargement… », images visibles téléchargées et décodées). Même
+ * chose à l'ouverture du site : la page arrive couverte (`covered` dès le
+ * rendu serveur) et se découvre une fois prête. Entre onglets d'un même
+ * écran, sans ombre, le contenu sous le bandeau reste masqué
+ * (`html[data-page-pending]`) le temps d'être prêt.
+ *
  * `prefers-reduced-motion` : rien, la navigation reste immédiate.
  */
 export function PageTransition() {
   const router = useRouter();
   const pathname = usePathname();
-  const [phase, setPhase] = useState<Phase>("idle");
+  // Couvert dès le rendu serveur : le site s'ouvre sur un écran déjà prêt.
+  const [phase, setPhase] = useState<Phase>("covered");
   const [direction, setDirection] = useState<Direction>("ltr");
-  const phaseRef = useRef<Phase>("idle");
+  const phaseRef = useRef<Phase>("covered");
+  /** Jeton de la dernière attente d'écran prêt : une navigation plus récente annule les précédentes. */
+  const readyToken = useRef(0);
   const pendingHref = useRef<string | null>(null);
   const timeout = useRef<number | null>(null);
   const previousPathname = useRef(pathname);
@@ -116,6 +136,24 @@ export function PageTransition() {
     phaseRef.current = next;
     setPhase(next);
   };
+
+  /** Découvre l'écran quand il est prêt — sauf si une autre navigation est passée entre-temps. */
+  const revealWhenReady = (maxMs: number) => {
+    const token = ++readyToken.current;
+    void waitForPageReady(maxMs).then(() => {
+      if (token === readyToken.current && phaseRef.current === "covered") go("revealing");
+    });
+  };
+
+  // Ouverture du site : couvert au rendu serveur, découvert une fois prêt.
+  useEffect(() => {
+    if (prefersReducedMotion()) {
+      go("idle");
+      return;
+    }
+    revealWhenReady(BOOT_READY_MAX_MS);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- une seule fois, au montage
+  }, []);
 
   // Sons d'interface décodés une fois la page AU REPOS (audit du 24/09) :
   // ~350 Ko de MP3 à télécharger et décoder se disputaient sinon le réseau
@@ -167,11 +205,19 @@ export function PageTransition() {
     if (timeout.current !== null) window.clearTimeout(timeout.current);
     timeout.current = null;
     if (phaseRef.current === "covered") {
-      go("revealing");
+      revealWhenReady(READY_MAX_MS);
     } else if (phaseRef.current === "idle" && changedScreen && !prefersReducedMotion()) {
       setDirection(randomDirection());
       playTransitionSwoosh();
-      go("revealing");
+      go("covered");
+      revealWhenReady(READY_MAX_MS);
+    } else if (phaseRef.current === "idle" && !changedScreen) {
+      // Onglet du même écran : pas d'ombre, mais rien ne se construit à vue.
+      const token = ++readyToken.current;
+      document.documentElement.dataset.pagePending = "";
+      void waitForPageReady(TAB_READY_MAX_MS).then(() => {
+        if (token === readyToken.current) delete document.documentElement.dataset.pagePending;
+      });
     }
     // `covering` : la page a changé avant que l'ombre ne couvre (navigation
     // partie d'ailleurs) — la fin de course enchaînera sur la découverte.

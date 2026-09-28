@@ -1,0 +1,398 @@
+/*
+ * LA COLLECTION « SUR LE LIVRE » — ce qui n'appartient qu'à elle
+ * (retour joueur du 28/09/2026).
+ *
+ * L'habillage commun avec l'Éditeur vit dans `DeckEditorBook.module.css`
+ * (`book.workspace`, `book.collection`) ; cette feuille vient PAR-DESSUS,
+ * posée sur la même zone de travail (`.book`), et ne touche qu'à l'écran
+ * Collection :
+ *
+ *  1. une colonne de filtres plus large, des textes lisibles (lignes,
+ *     titres, effectifs, barre de la grille, état vide) ;
+ *  2. la bougie seule en haut — plus de tasse de café —, plus grande, et
+ *     sa flamme qui éclaire la table ;
+ *  3. les liens « Réinitialiser » et « Mur des carnets » à l'encre brune
+ *     sur le parchemin : le bleu d'accent ne s'y lisait pas.
+ *
+ * Les sélecteurs répètent `.book` pour l'emporter sur la feuille du livre
+ * quel que soit l'ordre d'injection des feuilles.
+ */
+
+/* ── 1. La colonne de filtres : plus large ── */
+.book.book.book.book.book {
+  grid-template-columns: clamp(286px, 21.5vw, 410px) minmax(0, 1fr);
+}
+
+/* Le contenu s'écarte AUSSI du bois peint à droite : les effectifs et
+   « Mur des carnets » ne passent plus sous le cadre. */
+.book.book.book [class*="_sidebarInner__"] {
+  gap: clamp(10px, 1.6vh, 18px);
+  padding-right: clamp(14px, 1.3vw, 24px);
+}
+
+.book.book.book [class*="_sidebarTitle__"] {
+  gap: 9px;
+  font-size: clamp(19px, 2.5vh, 24px);
+}
+
+.book.book.book [class*="_sidebarTitle__"] svg {
+  width: clamp(16px, 2vh, 20px);
+  height: clamp(16px, 2vh, 20px);
+}
+
+.book.book.book [class*="_sectionTitle__"] {
+  gap: 6px;
+  margin-bottom: 4px;
+  font-size: clamp(13px, 1.65vh, 15.5px);
+  letter-spacing: 0.04em;
+}
+
+.book.book.book [class*="_sectionTitle__"]::after {
+  font-size: clamp(13px, 1.6vh, 15px);
+}
+
+.book.book.book [class*="_filterRow__"] {
+  min-height: clamp(28px, 3.3vh, 36px);
+  padding: 2px 10px 2px 5px;
+  gap: 9px;
+  font-size: clamp(14.5px, 1.85vh, 17.5px);
+}
+
+.book.book.book [class*="_filterMedallion__"] {
+  width: clamp(20px, 2.4vh, 24px);
+  height: clamp(20px, 2.4vh, 24px);
+}
+
+.book.book.book [class*="_filterMedallion__"] [class*="_filterIcon__"] {
+  height: clamp(11px, 1.3vh, 13px);
+}
+
+.book.book.book [class*="_filterMedallion__"] [class*="_dot__"] {
+  width: clamp(9px, 1.1vh, 11px);
+  height: clamp(9px, 1.1vh, 11px);
+}
+
+.book.book.book [class*="_filterMedallion__"] svg {
+  width: clamp(11px, 1.35vh, 14px);
+  height: clamp(11px, 1.35vh, 14px);
+}
+
+/* Les effectifs, lisibles : l'encre seconde, pas la troisième. */
+.book.book.book [class*="_filterCount__"] {
+  color: var(--book-ink-2);
+  font-size: clamp(13px, 1.6vh, 15.5px);
+  font-weight: 600;
+}
+
+.book.book.book [class*="_filterRowActive__"] [class*="_filterCount__"] {
+  color: #8fe8f7;
+}
+
+/* La réglette de Raison : des médaillons à la taille des lignes. */
+.book.book.book [class*="_costRow__"] {
+  gap: clamp(4px, 0.45vw, 7px);
+}
+
+.book.book.book [class*="_costChip__"] {
+  max-width: clamp(30px, 3.6vh, 40px);
+  font-size: clamp(13px, 1.65vh, 16px);
+}
+
+.book.book.book [class*="_rarityGem__"] {
+  width: clamp(26px, 3.2vh, 34px);
+  height: clamp(26px, 3.2vh, 34px);
+}
+
+.book.book.book [class*="_createDeck__"] {
+  min-height: clamp(42px, 5.4vh, 52px);
+  font-size: clamp(15px, 1.9vh, 18px);
+}
+
+/* ── 1 bis. La barre de la grille et l'état vide ── */
+.book.book.book [class*="_count__"] {
+  font-size: clamp(15px, 2vh, 19px);
+}
+
+.book.book.book [class*="_countValue__"] {
+  font-size: clamp(24px, 3.5vh, 36px);
+}
+
+.book.book.book [class*="_sortLabel__"] {
+  font-size: clamp(14px, 1.75vh, 16.5px);
+}
+
+.book.book.book [class*="GameUi_triggerLabel__"] {
+  font-size: clamp(14px, 1.75vh, 16.5px);
+}
+
+.book.book.book [class*="GameUi_menu__"] {
+  font-size: clamp(14px, 1.7vh, 16px);
+}
+
+.book.book.book [class*="_toolbar"] input {
+  font-size: clamp(15px, 1.9vh, 18px);
+}
+
+.book.book.book [class*="_surplusButton__"] {
+  font-size: clamp(14.5px, 1.85vh, 17px);
+}
+
+.book.book.book [class*="_emptyState__"] {
+  color: var(--book-ink-2);
+  font-size: clamp(16px, 2vh, 19px);
+  line-height: 1.45;
+}
+
+.book.book.book [class*="_ownedCount__"] {
+  font-size: clamp(13.5px, 1.75vh, 16px);
+}
+
+/* ── 3. Les liens du parchemin : l'encre brune et le laiton, pas le bleu ──
+   Un petit bouton à l'encre, cerclé d'un filet brun ; au survol ou au
+   focus, il prend le bois sombre et le laiton des plaques du livre. */
+.book.book.book [class*="_resetLink__"],
+.book.book.book [class*="_sectionLink__"] {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border: 1px solid rgba(90, 58, 30, 0.55);
+  border-radius: 4px;
+  background: rgba(255, 246, 224, 0.55);
+  box-shadow: 0 1px 2px rgba(58, 38, 22, 0.25);
+  color: #4a2a0e;
+  font-family: var(--tb-font-ui);
+  font-size: clamp(13px, 1.6vh, 15px);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  text-decoration: none;
+  text-transform: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 140ms ease-out, color 140ms ease-out, border-color 140ms ease-out, box-shadow 140ms ease-out;
+}
+
+.book.book.book [class*="_resetLink__"]:hover:not(:disabled),
+.book.book.book [class*="_sectionLink__"]:hover {
+  border-color: #c79a4b;
+  background: linear-gradient(180deg, #4a2f18, #2a1a0d);
+  box-shadow: 0 0 0 1px rgba(20, 12, 5, 0.6), 0 0 8px rgba(255, 196, 110, 0.45);
+  color: #f1d38a;
+  text-decoration: none;
+}
+
+.book.book.book [class*="_resetLink__"]:focus-visible,
+.book.book.book [class*="_sectionLink__"]:focus-visible {
+  outline: 2px solid #7a4a12;
+  outline-offset: 2px;
+}
+
+/* Rien à effacer : le bouton reste lisible, simplement éteint. */
+.book.book.book [class*="_resetLink__"]:disabled {
+  border-color: rgba(90, 58, 30, 0.3);
+  background: transparent;
+  box-shadow: none;
+  color: rgba(29, 18, 10, 0.62);
+  opacity: 1;
+  cursor: default;
+}
+
+/* « Mur des carnets » ne tient pas toujours dans la ligne du titre : il
+   passe alors dessous, jamais sous le cadre. L'ancre du titre s'efface —
+   le bouton en tient lieu. */
+.book.book.book [class*="_sectionTitle__"]:has([class*="_sectionLink__"]) {
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: 5px;
+  white-space: normal;
+}
+
+.book.book.book [class*="_sectionTitle__"]:has([class*="_sectionLink__"])::after {
+  content: none;
+}
+
+.book.book.book [class*="_sectionLink__"] {
+  margin-left: auto;
+}
+
+/* Le bouton « Filtres » du tiroir (téléphone) : même encre. */
+.book.book.book [class*="_filtersToggle__"] {
+  border-color: rgba(90, 58, 30, 0.55);
+  background: rgba(255, 246, 224, 0.7);
+  color: #4a2a0e;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.book.book.book [class*="_filtersToggle__"] * {
+  color: inherit;
+}
+
+/* ── Téléphone : le tiroir de filtres, plus large lui aussi ── */
+@media (max-height: 560px), (max-width: 900px) {
+  .book.book.book.book.book {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .book.book.book > aside {
+    width: min(340px, 82vw);
+  }
+
+  .book.book.book [class*="_filterRow__"] {
+    min-height: 30px;
+    font-size: 15px;
+  }
+
+  .book.book.book [class*="_sectionTitle__"] {
+    font-size: 13.5px;
+  }
+
+  /* La barre est courte : la recherche garde sa place. */
+  .book.book.book [class*="_count__"] {
+    font-size: 14px;
+  }
+
+  .book.book.book [class*="_countValue__"] {
+    font-size: 21px;
+  }
+
+  .book.book.book [class*="_surplusButton__"] {
+    font-size: 13.5px;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+ * 2. LA BOUGIE — seule, plus grande, et sa flamme qui éclaire la table
+ * ══════════════════════════════════════════════════════════════════════
+ * Posée dans la barre de la grille, entre la recherche et le tri, dans
+ * une place à elle (`.candleSlot`) : elle en déborde vers le haut, sur le
+ * bord du parchemin et le bandeau, sans jamais couvrir un contrôle. La lueur est un halo chaud centré sur la mèche
+ * (`bougie.webp`, 420 × 514 : flamme à 43 % × 24 %), en `screen` : elle
+ * éclaircit ce qu'elle touche sans le voiler. Deux couches, deux rythmes
+ * premiers entre eux, des paliers irréguliers : le vacillement ne se
+ * répète jamais à l'identique, comme une vraie flamme.
+ */
+.candleSlot {
+  --candle-h: clamp(118px, 17.5vh, 196px);
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  align-self: stretch;
+  width: calc(var(--candle-h) * 0.66);
+  pointer-events: none;
+}
+
+.candle {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--candle-h) * 0.04);
+  width: calc(var(--candle-h) * 420 / 514);
+  height: var(--candle-h);
+  translate: -50% 0;
+}
+
+.candle img {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.6));
+}
+
+/* Le grand halo : la lumière que la flamme jette sur la table. */
+.candleGlow,
+.candleCore {
+  position: absolute;
+  left: 43%;
+  top: 24%;
+  border-radius: 50%;
+  translate: -50% -50%;
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+.candleGlow {
+  z-index: 0;
+  width: calc(var(--candle-h) * 3.6);
+  height: calc(var(--candle-h) * 3.1);
+  background: radial-gradient(
+    closest-side,
+    rgba(255, 214, 130, 0.78) 0%,
+    rgba(255, 182, 84, 0.52) 20%,
+    rgba(246, 146, 52, 0.3) 40%,
+    rgba(240, 132, 44, 0.12) 64%,
+    rgba(236, 124, 40, 0.04) 84%,
+    rgba(236, 124, 40, 0) 100%
+  );
+  /* Sur le parchemin clair, un `screen` ne se verrait pas : la lueur
+     teinte la table de sa chaleur, le cœur (plus bas) l'éclaire. */
+  mix-blend-mode: normal;
+  animation: candleHalo 3.7s ease-in-out infinite;
+}
+
+/* Le cœur : la lueur serrée autour de la mèche, qui vacille plus vite. */
+.candleCore {
+  z-index: 2;
+  width: calc(var(--candle-h) * 0.62);
+  height: calc(var(--candle-h) * 0.78);
+  background: radial-gradient(
+    closest-side,
+    rgba(255, 244, 210, 0.85) 0%,
+    rgba(255, 200, 110, 0.5) 38%,
+    rgba(255, 150, 60, 0) 100%
+  );
+  animation: candleCore 2.3s ease-in-out infinite, candleSway 5.3s ease-in-out infinite;
+}
+
+@keyframes candleHalo {
+  0% { opacity: 0.82; scale: 1; }
+  11% { opacity: 1; scale: 1.04; }
+  19% { opacity: 0.74; scale: 0.97; }
+  34% { opacity: 0.93; scale: 1.02; }
+  41% { opacity: 0.8; scale: 0.99; }
+  58% { opacity: 1; scale: 1.05; }
+  67% { opacity: 0.7; scale: 0.96; }
+  83% { opacity: 0.9; scale: 1.01; }
+  100% { opacity: 0.82; scale: 1; }
+}
+
+@keyframes candleCore {
+  0% { opacity: 0.85; }
+  7% { opacity: 1; }
+  13% { opacity: 0.7; }
+  22% { opacity: 0.95; }
+  29% { opacity: 0.78; }
+  44% { opacity: 1; }
+  51% { opacity: 0.66; }
+  57% { opacity: 0.9; }
+  72% { opacity: 0.8; }
+  79% { opacity: 1; }
+  91% { opacity: 0.74; }
+  100% { opacity: 0.85; }
+}
+
+/* La flamme penche un peu, au gré d'un souffle. */
+@keyframes candleSway {
+  0%, 100% { transform: translateX(0) scaleY(1); }
+  23% { transform: translateX(-2%) scaleY(1.05); }
+  47% { transform: translateX(1.5%) scaleY(0.97); }
+  71% { transform: translateX(-1%) scaleY(1.03); }
+}
+
+/* Téléphone en paysage : le bandeau est bas, la bougie reste à sa mesure. */
+@media (max-height: 560px) {
+  .candleSlot {
+    --candle-h: clamp(66px, 19vh, 88px);
+    width: calc(var(--candle-h) * 0.5);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .candleGlow,
+  .candleCore {
+    animation: none;
+    opacity: 0.9;
+  }
+}

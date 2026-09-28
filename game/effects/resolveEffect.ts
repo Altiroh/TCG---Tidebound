@@ -703,8 +703,13 @@ export function resolveEffect(
     if (getPlayer(state, context.controllerId).hand.length > effect.conditionControllerHandAtMost) return { state, events };
   }
   if (effect.conditionOpponentUnitsMoreThanController || effect.conditionOpponentUnitsAtLeast !== undefined) {
+    // La carte qui porte l'effet n'entre PAS dans votre compte : « à son
+    // arrivée, si l'adversaire contrôle plus d'unités que vous » se lit sur le
+    // plateau où elle ARRIVE (L'Amiral sans Pavillon — compté avec lui, un
+    // retard d'une unité ne l'armait jamais). Même règle que la condition de
+    // capacité `opponentUnitsMoreThanController`.
     const corps = (board: readonly CardInstance[]) =>
-      board.filter((u) => UNIT_CARD_TYPES.includes(getCardDefinition(u.cardId).type)).length;
+      board.filter((u) => u.instanceId !== context.sourceInstanceId && UNIT_CARD_TYPES.includes(getCardDefinition(u.cardId).type)).length;
     const miens = corps(getPlayer(state, context.controllerId).board);
     const siens = corps(getOpponent(state, context.controllerId).board);
     if (effect.conditionOpponentUnitsMoreThanController && siens <= miens) return { state, events };

@@ -14,7 +14,7 @@ import { BoosterBatchRecap, type BoosterBatchLine } from "@/features/boosters/op
 import { BoosterOpeningScene, type BoosterOpeningOrigin } from "@/features/boosters/opening/BoosterOpeningScene";
 import { preloadBoosterOpeningAssets } from "@/features/boosters/opening/boosterOpeningAssets";
 import { useCardBackSrc } from "@/features/cosmetics/CardBackProvider";
-import { DEFAULT_SHELF_ROLL, closedPackVariables, getBoosterPackVisual, getBoosterShelfRoll } from "@/features/boosters/opening/boosterPackVisuals";
+import { DEFAULT_SHELF_ROLL, closedPackVariables, getBoosterPackVisual, getBoosterShelfGlow, getBoosterShelfRoll } from "@/features/boosters/opening/boosterPackVisuals";
 import { drawTestBoosterCards } from "@/features/boosters/opening/testBoosterCards";
 import { toOpeningRarity, type BoosterOpeningCard } from "@/features/boosters/opening/types";
 import { BoosterContentsDialog } from "@/features/market/BoosterContentsDialog";
@@ -29,16 +29,6 @@ const DRAG_MIME = "text/tidebound-booster-id";
  * se fait pendant ce temps ; s'il est plus long, la tension dure d'autant.
  */
 const DOCK_CHARGE_MS = 900;
-
-/**
- * Rejouent la scène d'ouverture sur un tirage LOCAL, sans consommer de
- * booster ni toucher à la collection — pour régler l'animation sans devoir
- * s'acheter un paquet à chaque essai.
- */
-const OPENING_TEST_BOOSTERS = [
-  { boosterId: "standard", label: "Standard" },
-  { boosterId: "welcome_tutorial", label: "Bienvenue" },
-] as const;
 
 /**
  * Rayons de l'étagère peinte (`boosters/etagere.webp`). Au-delà, elle
@@ -65,9 +55,8 @@ interface BoostersScreenProps {
    * Sans ce drapeau, `/game/boosters-preview` affichait des compteurs
    * inventés (« ×7 ») sur un bouton câblé à la VRAIE Server Action : un
    * visiteur connecté y consommait ses propres boosters en croyant régler
-   * une mise en page. L'ouverture passe donc par le tirage local, celui du
-   * bouton « Tester l'animation » — aucune écriture, aucun exemplaire
-   * consommé.
+   * une mise en page. L'ouverture passe donc par un tirage local — aucune
+   * écriture, aucun exemplaire consommé.
    */
   sandbox?: boolean;
 }
@@ -161,7 +150,7 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
     origin: BoosterOpeningOrigin | null;
   } | null>(null);
   /** Sachet du plan d'ouverture — mesuré au lancement, pour que la scène le fasse décoller de là. */
-  const dockPackRef = useRef<HTMLSpanElement>(null);
+  const dockPackRef = useRef<HTMLButtonElement>(null);
   /** Sachets à ouvrir d'un seul geste (1 = le geste habituel). */
   const [batchSize, setBatchSize] = useState(1);
   /**
@@ -234,7 +223,9 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
     if (sandbox) {
       const packs = Array.from({ length: quantity }, () => drawTestBoosterCards(boosterId));
       if (packs.length > 1) setBatch({ boosterId, packs: packs.length, lines: batchLines(packs) });
-      setOpening({ boosterId, real: false, cards: packs[0] ?? [], origin: null });
+      const box = dockPackRef.current?.getBoundingClientRect();
+      const from = box && box.height > 0 ? { x: box.left, y: box.top, width: box.width, height: box.height } : null;
+      setOpening({ boosterId, real: false, cards: packs[0] ?? [], origin: from });
       return;
     }
 
@@ -290,13 +281,7 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
     setOpening({ boosterId, real: true, origin, cards: openingCards(first) });
   }
 
-  /** Ouverture À BLANC : un tirage local, aucun appel serveur, aucun booster consommé. */
-  function handleTestOpen(boosterId: string) {
-    if (isOpening || opening) return;
-    playButtonClick();
-    setError(null);
-    setOpening({ boosterId, real: false, cards: drawTestBoosterCards(boosterId), origin: null });
-  }
+
 
   /** Fin d'une ouverture en lot : l'exemplaire est consommé, on relit l'inventaire. */
   function handleBatchClosed() {
@@ -400,6 +385,8 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
                 />
               ))}
             </ul>
+            {/* Les chants des planches, repeints PAR-DESSUS les rouleaux : chacun rentre dans sa case. */}
+            <span className={styles.shelfFront} aria-hidden />
 
             {/* Plus d'extensions que de rayons : les flèches font TOURNER
                 l'étagère — jamais de butée, on repart par l'autre bout. */}
@@ -447,8 +434,11 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
             }}
           >
             {selected && <span className={styles.planShadow} aria-hidden />}
+            {/* Le sachet posé : un CLIC l'ouvre (retour du 28/09/2026), et la
+                scène d'ouverture part de lui. Éteint s'il n'est pas possédé. */}
             {selected && (
-              <span
+              <button
+                type="button"
                 key={selected.boosterId}
                 ref={dockPackRef}
                 className={styles.planPack}
@@ -456,15 +446,24 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
                 data-locked={ownsSelected ? undefined : "true"}
                 data-charging={isOpening || undefined}
                 data-launched={opening !== null || undefined}
-                aria-hidden
+                disabled={!ownsSelected || busy || isOpening || opening !== null}
+                onClick={() => void handleOpen(selected.boosterId)}
+                aria-label={`Ouvrir un booster ${selected.name}`}
               />
             )}
             {/* Seulement quand il y a quelque chose à dire : le geste en
-                cours, ou un sachet qu'on ne possède pas. */}
-            {(isOpening || isDragging || isOver || !ownsSelected) && (
+                cours, ou un sachet qu'on ne possède pas. Au survol d'un
+                sachet possédé : ce que fait le clic. */}
+            {isOpening || isDragging || isOver || !ownsSelected ? (
               <p className={styles.planState}>
                 {isOpening ? "Ouverture…" : !ownsSelected ? "Non possédée" : "Lâche pour ouvrir"}
               </p>
+            ) : (
+              opening === null && (
+                <p className={`${styles.planState} ${styles.planHint}`} aria-hidden>
+                  Cliquer pour ouvrir un booster
+                </p>
+              )
             )}
             {ownsSelected && selected?.entry && selected.entry.packsSinceAbyssal >= PITY.rampStartsAfterPacks && (
               <p className={styles.planPity}>
@@ -594,22 +593,6 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
             </aside>
           )}
 
-          {/* Réglage de l'animation : un tirage local, sans booster ni
-              écriture — le seul moyen de la revoir sans en acheter un. */}
-          <span className={styles.testGroup} role="group" aria-label="Tester l’animation d’ouverture">
-            <span className={styles.testLabel}>Tester l&apos;animation</span>
-            {OPENING_TEST_BOOSTERS.map((test) => (
-              <button
-                key={test.boosterId}
-                type="button"
-                className={styles.testLink}
-                onClick={() => handleTestOpen(test.boosterId)}
-                disabled={opening !== null || isOpening}
-              >
-                {test.label}
-              </button>
-            ))}
-          </span>
         </div>
       </div>
 
@@ -679,12 +662,25 @@ function ShelfRoll({
 }) {
   const draggable = row.owned > 0 && !busy;
   const roll = getBoosterShelfRoll(row.boosterId);
+  // Rouleau pas encore peint : celui du Défaut, dont la fenêtre reçoit
+  // l'illustration du SACHET de l'extension — sans elle, il ne se
+  // distinguait pas du Défaut sur l'étagère (retour du 28/09/2026).
+  const pack = getBoosterPackVisual(row.boosterId);
+  const packArt = !roll && pack.id === row.boosterId ? pack.assets.closed : null;
 
   return (
     <li
       id={`ext-${row.boosterId}`}
       className={styles.roll}
-      style={{ "--slot": slot, "--roll-art": `url("${roll ?? DEFAULT_SHELF_ROLL}")` } as React.CSSProperties}
+      style={
+        {
+          "--slot": slot,
+          "--roll-art": `url("${roll ?? DEFAULT_SHELF_ROLL}")`,
+          "--roll-glow": getBoosterShelfGlow(row.boosterId),
+          // Longueur du nom : l'étiquette rétrécit pour tenir dans le cartouche, comme les noms peints.
+          "--label-len": Math.max(10, row.name.length),
+        } as React.CSSProperties
+      }
       data-selected={selected ? "true" : "false"}
       data-owned={row.owned > 0 ? "true" : "false"}
       draggable={draggable}
@@ -701,6 +697,7 @@ function ShelfRoll({
       aria-label={`${row.name} — ${row.owned > 0 ? `${row.owned} en réserve` : "aucun exemplaire"}`}
       tabIndex={0}
     >
+      {packArt && <span className={styles.rollArt} style={{ backgroundImage: `url("${packArt}")` }} aria-hidden />}
       {!roll && (
         <span className={styles.rollLabel} aria-hidden>
           {row.name}

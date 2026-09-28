@@ -47,13 +47,11 @@ interface CollectionSidebarProps {
   /** Cartes du favori ou du carnet choisi (`useCardBrowser`) — les compteurs des autres axes en tiennent compte. */
   shelfCards?: ReadonlySet<string> | null;
   /**
-   * `collection` (défaut) : la colonne sombre de la Collection.
-   * `livre` : l'Éditeur « sur le livre » (maquette du 26/09/2026) — lignes
-   * à médaillon, pas de filtre de Raison, « Favoris & carnets » en bas.
-   * `collection-livre` : la Collection habillée comme l'Éditeur — lignes à
-   * médaillon, mais TOUS ses axes, dans son ordre (carnets en tête, Raison).
+   * `collection` (défaut) : TOUS les axes, carnets en tête, Raison en bas.
+   * `editeur` : la maquette de l'Éditeur (26/09/2026) — pas de filtre de
+   * Raison, « Favoris & carnets » en bas.
    */
-  layout?: "collection" | "livre" | "collection-livre";
+  order?: "collection" | "editeur";
 }
 
 /** Couleur de chaque gemme de rareté — celles du récapitulatif de boosters. */
@@ -87,7 +85,6 @@ function FilterRow({
   dotClassName,
   icon,
   glyph,
-  medallion = false,
 }: {
   label: string;
   count?: number;
@@ -97,13 +94,6 @@ function FilterRow({
   icon?: string;
   /** Petit pictogramme dessiné (cœur des favoris, carnet). */
   glyph?: ReactNode;
-  /**
-   * Éditeur « sur le livre » : l'icône, la pastille ou le pictogramme sont
-   * posés dans un MÉDAILLON de laiton en tête de plaque (une ligne = un
-   * objet, pas une case à cocher). Sans marque propre, le médaillon porte
-   * une rose des vents.
-   */
-  medallion?: boolean;
 }) {
   const mark = (
     <>
@@ -117,7 +107,7 @@ function FilterRow({
           {glyph}
         </span>
       )}
-      {medallion && !dotClassName && !icon && !glyph && <CompassGlyph />}
+      {!dotClassName && !icon && !glyph && <CompassGlyph />}
     </>
   );
   return (
@@ -133,13 +123,12 @@ function FilterRow({
       {/* La case : ce qui est coché se lit dans la colonne avant même le
           libellé — une liste de filtres, pas une liste de liens. */}
       <span className={styles.filterCheck} aria-hidden />
-      {medallion ? (
-        <span className={styles.filterMedallion} aria-hidden>
-          {mark}
-        </span>
-      ) : (
-        mark
-      )}
+      {/* L'icône, la pastille ou le pictogramme, posés dans un MÉDAILLON de
+          laiton en tête de plaque (une ligne = un objet, pas une case à
+          cocher) ; sans marque propre, une rose des vents. */}
+      <span className={styles.filterMedallion} aria-hidden>
+        {mark}
+      </span>
       <span className={styles.filterLabel}>{label}</span>
       {count !== undefined && <span className={styles.filterCount}>{count}</span>}
     </button>
@@ -216,12 +205,10 @@ function ShelfSection({
   filters,
   onChange,
   countFor,
-  medallion = false,
 }: {
   filters: CollectionFilterState;
   onChange: (patch: Partial<CollectionFilterState>) => void;
   countFor: (ignore: keyof CollectionFilterState, extra: (def: CardDefinition) => boolean) => number;
-  medallion?: boolean;
 }) {
   const shelf = useCardShelf();
   if (!shelf?.available) return null;
@@ -236,9 +223,8 @@ function ShelfSection({
         </Link>
       </h2>
       <FilterList rowCount={notebooks.length + 2}>
-        <FilterRow medallion={medallion} label="Tout le catalogue" active={filters.shelf === null} count={countFor("shelf", () => true)} onClick={() => onChange({ shelf: null })} />
+        <FilterRow label="Tout le catalogue" active={filters.shelf === null} count={countFor("shelf", () => true)} onClick={() => onChange({ shelf: null })} />
         <FilterRow
-          medallion={medallion}
           label="Favoris"
           glyph={<HeartGlyph />}
           active={filters.shelf === FAVORITES_FILTER}
@@ -250,7 +236,6 @@ function ShelfSection({
           const cards = new Set(notebook.cardIds);
           return (
             <FilterRow
-              medallion={medallion}
               key={notebook.id}
               label={notebook.name}
               glyph={<NotebookGlyph />}
@@ -287,12 +272,10 @@ export function CollectionSidebar({
   showOwnership,
   showCreateDeck = true,
   shelfCards = null,
-  layout = "collection",
+  order = "collection",
 }: CollectionSidebarProps) {
-  /** Lignes à médaillon de laiton, sans case à cocher : les deux habillages « livre ». */
-  const medallion = layout !== "collection";
   /** Ordre et axes de la maquette de l'Éditeur : carnets en bas, pas de Raison. */
-  const editorOrder = layout === "livre";
+  const editorOrder = order === "editeur";
   const canReset = hasActiveFilters(filters);
   const countFor = (ignore: keyof CollectionFilterState, extra: Parameters<typeof countMatching>[3]) =>
     countMatching(filters, owned, ignore, extra, shelfCards);
@@ -313,14 +296,13 @@ export function CollectionSidebar({
         </button>
       </div>
 
-      {!editorOrder && <ShelfSection filters={filters} onChange={onChange} countFor={countFor} medallion={medallion} />}
+      {!editorOrder && <ShelfSection filters={filters} onChange={onChange} countFor={countFor} />}
 
       <section className={styles.filterSection}>
         <h2 className={styles.sectionTitle}>Variante</h2>
         <FilterList rowCount={VARIANTS.length}>
           {VARIANTS.map((variant) => (
             <FilterRow
-              medallion={medallion}
               key={variant.value}
               label={variant.label}
               dotClassName={variant.dotClassName}
@@ -342,7 +324,6 @@ export function CollectionSidebar({
         <h2 className={styles.sectionTitle}>Type</h2>
         <FilterList rowCount={TYPE_FILTERS.length + 1}>
           <FilterRow
-            medallion={medallion}
             label="Tous"
             active={filters.type === null}
             count={countFor("type", () => true)}
@@ -350,7 +331,6 @@ export function CollectionSidebar({
           />
           {TYPE_FILTERS.map((type) => (
             <FilterRow
-              medallion={medallion}
               key={type}
               label={CARD_TYPE_LABELS[type]}
               icon={`/assets/cards/icons/type-${type}.webp`}
@@ -368,7 +348,6 @@ export function CollectionSidebar({
           <FilterList rowCount={OWNERSHIPS.length}>
             {OWNERSHIPS.map((status) => (
               <FilterRow
-                medallion={medallion}
                 key={status.value}
                 label={status.label}
                 active={filters.ownership === status.value}
@@ -386,7 +365,6 @@ export function CollectionSidebar({
         <h2 className={styles.sectionTitle}>Extension</h2>
         <FilterList rowCount={BOOSTER_EXTENSIONS.length + 1}>
           <FilterRow
-            medallion={medallion}
             label="Toutes"
             active={filters.boosters.length === 0}
             count={countFor("boosters", () => true)}
@@ -396,7 +374,6 @@ export function CollectionSidebar({
             const active = filters.boosters.includes(extension.boosterId);
             return (
               <FilterRow
-                medallion={medallion}
                 key={extension.boosterId}
                 label={extension.name}
                 active={active}
@@ -422,7 +399,6 @@ export function CollectionSidebar({
         <h2 className={styles.sectionTitle}>Rareté</h2>
         <FilterList rowCount={1}>
           <FilterRow
-            medallion={medallion}
             label="Toutes"
             active={filters.rarities.length === 0}
             count={countFor("rarities", () => true)}
@@ -453,7 +429,7 @@ export function CollectionSidebar({
         </div>
       </section>
 
-      {editorOrder && <ShelfSection filters={filters} onChange={onChange} countFor={countFor} medallion />}
+      {editorOrder && <ShelfSection filters={filters} onChange={onChange} countFor={countFor} />}
 
       {!editorOrder && (
       <section className={styles.filterSection}>

@@ -1,4 +1,4 @@
-import { RULES, deckProfile, deckStyleFromText, deckStyleLabel, getCardDefinition, type DeckStyleId } from "@/game";
+import { deckProfile, deckStyleFromText, deckStyleLabel, getCardDefinition, type DeckStyleId } from "@/game";
 import type { PlayerDeckSummary } from "@/app/decks/actions";
 import type { CatalogDeckView, DeckCatalogView } from "@/features/decks/catalogService";
 import { plateArtUrl, nameplateArtUrl } from "@/features/decks/nameplateArt";
@@ -7,28 +7,6 @@ import type { DeckEntry } from "@/features/decks/deckFilters";
 /** D'où vient le deck : le joueur l'a monté, ou le jeu le fournit. */
 export type DeckKind = "mine" | "precon";
 
-/**
- * Le rayon qu'on regarde. `all` n'est pas une provenance : c'est
- * l'étagère qui les montre TOUTES d'un coup, chaque deck portant alors sa
- * pastille — le seul endroit d'où l'on voit tout ce qu'on peut jouer.
- */
-export type DeckCategory = DeckKind | "all";
-
-/**
- * La PROVENANCE, en un mot, telle qu'elle s'affiche sur une pastille.
- *
- * DEUX VALEURS DEPUIS LE 22/09/2026, et non trois. « Emprunt » et
- * « Préconstruit » désignaient le même objet — une liste fournie par le
- * jeu, dont les cartes restent prêtées — et ne se distinguaient que par la
- * porte d'entrée : le premier est gratuit, les suivants coûtent un Jeton.
- * Une porte n'est pas une provenance, et l'écran n'a donc plus qu'un rayon
- * à ranger.
- */
-export const ORIGIN_LABELS: Record<DeckKind, string> = {
-  mine: "Construit",
-  precon: "Préconstruit",
-};
-
 export interface DeckCardCount {
   cardId: string;
   quantity: number;
@@ -36,7 +14,7 @@ export interface DeckCardCount {
 
 /**
  * UN DECK POUR LA GRILLE — la forme unique que l'écran manipule, d'où qu'il
- * vienne. Les trois rayons se rangent, se trient et se filtrent ensemble ;
+ * vienne. Les rayons se rangent, se trient et se cherchent ensemble ;
  * seules les ACTIONS proposées par la fiche diffèrent, et c'est `kind` qui
  * les décide.
  *
@@ -48,16 +26,8 @@ export interface BrowserDeck extends DeckEntry {
   kind: DeckKind;
   artUrl: string | null;
   difficulty: number;
-  mechanics: readonly string[];
   description: string;
   cards: DeckCardCount[];
-  /**
-   * Le profil vient-il du JOUEUR ou de la déduction ? La fiche le dit —
-   * « déduit de tes cartes » n'engage pas son auteur de la même façon
-   * qu'une ligne qu'il a écrite, et c'est ce qui rend le bouton
-   * « Rendre la main au jeu » compréhensible.
-   */
-  profileIsCustom: boolean;
   mine?: PlayerDeckSummary;
   catalog?: CatalogDeckView;
 }
@@ -104,14 +74,12 @@ export function mineEntries(decks: readonly PlayerDeckSummary[]): BrowserDeck[] 
       shipId: deck.shipId,
       style: styleId ? deckStyleLabel(styleId) : "",
       difficulty: chosen.difficulty ?? deduced?.difficulty ?? 0,
-      mechanics: chosen.mechanics ?? deduced?.mechanics ?? [],
       description: deck.description,
       cardCount: deck.cardCount,
       cards: deck.cards,
       artUrl: plateArtUrl(deck.artCardId, deck.shipId),
       createdAt: deck.createdAt,
       updatedAt: deck.updatedAt,
-      profileIsCustom: chosen.styleId !== null || chosen.difficulty !== null || chosen.mechanics !== null,
       mine: deck,
     };
   });
@@ -131,14 +99,10 @@ export function catalogEntries(catalog: DeckCatalogView): BrowserDeck[] {
     shipId: view.deck.shipId,
     style: view.deck.style,
     difficulty: view.deck.difficulty,
-    mechanics: view.deck.mechanics,
     description: view.deck.description,
     cardCount: view.deck.cardIds.length,
     cards: countCards(view.deck.cardIds),
     artUrl: nameplateArtUrl(view.deck.cardIds, view.deck.shipId),
-    // Écrit à la main, oui — mais par le jeu, pas par le joueur : il n'a
-    // rien à reprendre sur une liste qu'il n'a pas montée.
-    profileIsCustom: false,
     catalog: view,
   }));
 }
@@ -178,9 +142,4 @@ function safeCost(cardId: string): number {
   } catch {
     return -1;
   }
-}
-
-/** « 40 / 50 cartes », et ce que vaut ce compte : deck complet, ou minimum non atteint. */
-export function sizeLabel(cardCount: number): string {
-  return `${cardCount} / ${RULES.DECK_SIZE_MAX} cartes`;
 }

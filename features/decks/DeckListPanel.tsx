@@ -7,7 +7,6 @@ import {
   CURVE_BUCKETS,
   CURVE_OVERFLOW,
   costCurve,
-  deckSizeStatus,
   groupDeck,
   typeBreakdown,
 } from "@/features/decks/deckComposition";
@@ -21,8 +20,8 @@ const DRAG_MIME = "text/tidebound-card-id";
 
 interface DeckListPanelProps {
   cardIds: string[];
-  /** Plaque du nom du deck, posée en tête de ce panneau — juste au-dessus de la liste qu'elle nomme. */
-  namePlate?: ReactNode;
+  /** Plaque du nom du deck (`DeckNamePlate`), posée en tête de ce panneau : elle porte aussi l'effectif et le statut. */
+  namePlate: ReactNode;
   onRemove: (cardId: string) => void;
   onAdd: (cardId: string) => void;
   onShowCard: (cardId: string) => void;
@@ -38,12 +37,6 @@ interface DeckListPanelProps {
   onNewDeck: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
-  /**
-   * `livre` : la maquette « sur le livre » (26/09/2026) — l'effectif et le
-   * statut passent dans l'en-tête (`DeckNamePlate`), le résumé range les
-   * types dans un tableau à icônes, la liste a son titre « Cartes (n / 50) ».
-   */
-  variant?: "classic" | "livre";
 }
 
 /** Libellés au PLURIEL du tableau des types (maquette : « Créatures 18 »), dans l'ordre FIXE du tableau. */
@@ -58,11 +51,11 @@ const TYPE_PLURALS: Record<CardType, string> = {
 
 /**
  * Colonne de droite du Deck Builder : la composition du deck, lisible en
- * quelques secondes.
+ * quelques secondes — la maquette « sur le livre » (26/09/2026).
  *
- * De haut en bas : effectif et jauge de taille légale, résumé (courbe de
- * Raison et types),
- * la liste REGROUPÉE — une ligne par carte distincte avec sa quantité,
+ * De haut en bas : l'en-tête (`DeckNamePlate` : nom, effectif, statut), le
+ * résumé (courbe de Raison et tableau des types à icônes), la liste
+ * « Cartes (n / 50) » REGROUPÉE — une ligne par carte distincte avec sa quantité,
  * jamais un exemplaire par ligne — puis les règles enfreintes et les
  * actions. Aucune donnée de règle n'est décidée ici : `RULES` et
  * `deckComposition` font foi.
@@ -83,15 +76,12 @@ export function DeckListPanel({
   onNewDeck,
   onDuplicate,
   onDelete,
-  variant = "classic",
 }: DeckListPanelProps) {
-  const onBook = variant === "livre";
   const [menuOpen, setMenuOpen] = useState(false);
   const [isDropping, setIsDropping] = useState(false);
 
   const entries = groupDeck(cardIds);
   const count = cardIds.length;
-  const status = deckSizeStatus(count);
   const curve = costCurve(cardIds);
   const curveMax = Math.max(1, ...curve);
   const types = typeBreakdown(cardIds);
@@ -105,98 +95,51 @@ export function DeckListPanel({
 
   return (
     <div className={styles.deckInner}>
-      {namePlate ?? <p className={styles.deckHeading}>Deck</p>}
+      {namePlate}
 
-      {!onBook && (
-      <div className={styles.capacity}>
-        <div className={styles.capacityRow}>
-          <span>
-            <span className={styles.capacityCount}>{count}</span> / {RULES.DECK_SIZE_MAX} cartes
-          </span>
-          <span
-            className={`${styles.capacityStatus} ${
-              status === "valid" ? styles.statusValid : status === "over" ? styles.statusOver : styles.statusShort
-            }`}
-          >
-            {status === "valid" ? "Jouable" : status === "over" ? "Trop de cartes" : `Minimum ${RULES.DECK_SIZE_MIN}`}
-          </span>
-        </div>
-        <div
-          className={styles.gaugeTrack}
-          role="progressbar"
-          aria-valuenow={count}
-          aria-valuemin={0}
-          aria-valuemax={RULES.DECK_SIZE_MAX}
-          aria-label="Taille du deck"
-        >
-          <span
-            className={`${styles.gaugeFill} ${status === "valid" ? styles.gaugeFillValid : status === "over" ? styles.gaugeFillOver : ""}`}
-            style={{ width: `${Math.min(1, count / RULES.DECK_SIZE_MAX) * 100}%` }}
-          />
-          {status === "short" && (
-            <span className={styles.gaugeMark} style={{ left: `${(RULES.DECK_SIZE_MIN / RULES.DECK_SIZE_MAX) * 100}%` }} />
-          )}
-        </div>
-      </div>
-      )}
-
-      {/* Sur le livre, le résumé est TOUJOURS là — barres à plat et zéros
-          compris : le panneau garde sa masse quand le deck est vide. */}
-      {(onBook || count > 0) && (
-        <div className={styles.summary}>
-          <p className={styles.summaryTitle}>Résumé du deck</p>
-          <div className={onBook ? book.summaryBody : undefined}>
-          <div className={onBook ? book.summaryCurve : undefined}>
-          <div className={styles.curve} aria-label="Répartition par Raison">
-            {curve.map((value, index) => (
-              <div key={index} className={styles.curveBar} title={`Raison ${index === CURVE_OVERFLOW ? `${index}+` : index} : ${value}`}>
-                <span className={styles.curveValue}>{value > 0 ? value : ""}</span>
-                <span
-                  className={`${styles.curveFill} ${value === 0 ? styles.curveFillEmpty : ""}`}
-                  style={{ height: `${Math.max(4, (value / curveMax) * 100)}%` }}
-                />
-              </div>
-            ))}
-          </div>
-          <div className={styles.curveLabels} aria-hidden>
-            {CURVE_BUCKETS.map((bucket) => (
-              <span key={bucket}>{bucket === CURVE_OVERFLOW ? `${bucket}+` : bucket}</span>
-            ))}
-          </div>
-          </div>
-          {onBook ? (
-            // Le tableau sombre de la maquette : icône, type au pluriel, effectif.
-            <ul className={book.typeTable}>
-              {(Object.keys(TYPE_PLURALS) as CardType[]).map((type) => {
-                const typeCount = types.find((entry) => entry.type === type)?.count ?? 0;
-                return (
-                  <li key={type} data-empty={typeCount === 0 || undefined}>
-                    {/* eslint-disable-next-line @next/next/no-img-element -- icône locale de type */}
-                    <img src={`/assets/cards/icons/type-${type}.webp`} alt="" />
-                    <span>{TYPE_PLURALS[type] ?? CARD_TYPE_LABELS[type]}</span>
-                    <strong>{typeCount}</strong>
-                  </li>
-                );
-              })}
-            </ul>
-          ) : (
-            <div className={styles.types}>
-              {types.map(({ type, count: typeCount }) => (
-                <span key={type}>
-                  <span className={styles.typeCount}>{typeCount}</span> {CARD_TYPE_LABELS[type]}
-                </span>
+      {/* Le résumé est TOUJOURS là — barres à plat et zéros compris : le
+          panneau garde sa masse quand le deck est vide. */}
+      <div className={styles.summary}>
+        <p className={styles.summaryTitle}>Résumé du deck</p>
+        <div className={book.summaryBody}>
+          <div className={book.summaryCurve}>
+            <div className={styles.curve} aria-label="Répartition par Raison">
+              {curve.map((value, index) => (
+                <div key={index} className={styles.curveBar} title={`Raison ${index === CURVE_OVERFLOW ? `${index}+` : index} : ${value}`}>
+                  <span className={styles.curveValue}>{value > 0 ? value : ""}</span>
+                  <span
+                    className={`${styles.curveFill} ${value === 0 ? styles.curveFillEmpty : ""}`}
+                    style={{ height: `${Math.max(4, (value / curveMax) * 100)}%` }}
+                  />
+                </div>
               ))}
             </div>
-          )}
+            <div className={styles.curveLabels} aria-hidden>
+              {CURVE_BUCKETS.map((bucket) => (
+                <span key={bucket}>{bucket === CURVE_OVERFLOW ? `${bucket}+` : bucket}</span>
+              ))}
+            </div>
           </div>
+          {/* Le tableau sombre de la maquette : icône, type au pluriel, effectif. */}
+          <ul className={book.typeTable}>
+            {(Object.keys(TYPE_PLURALS) as CardType[]).map((type) => {
+              const typeCount = types.find((entry) => entry.type === type)?.count ?? 0;
+              return (
+                <li key={type} data-empty={typeCount === 0 || undefined}>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- icône locale de type */}
+                  <img src={`/assets/cards/icons/type-${type}.webp`} alt="" />
+                  <span>{TYPE_PLURALS[type] ?? CARD_TYPE_LABELS[type]}</span>
+                  <strong>{typeCount}</strong>
+                </li>
+              );
+            })}
+          </ul>
         </div>
-      )}
+      </div>
 
-      {onBook && (
-        <p className={book.listTitle}>
-          Cartes ({count} / {RULES.DECK_SIZE_MAX})
-        </p>
-      )}
+      <p className={book.listTitle}>
+        Cartes ({count} / {RULES.DECK_SIZE_MAX})
+      </p>
 
       <div
         className={`${styles.list} ${isDropping ? styles.listDropping : ""}`}
@@ -265,7 +208,7 @@ export function DeckListPanel({
           }}
           disabled={isSaving || (!isDirty && isPersisted)}
         >
-          {onBook && !isSaving && !savedFlash && !isDirty && isPersisted && (
+          {!isSaving && !savedFlash && !isDirty && isPersisted && (
             // Maquette : « ✓ À jour », la coche cerclée devant.
             <svg className={book.saveCheck} viewBox="0 0 24 24" fill="none" aria-hidden>
               <circle cx="12" cy="12" r="9.5" stroke="currentColor" strokeWidth={1.6} />

@@ -16,13 +16,11 @@ import { playButtonClick } from "@/lib/sound";
 import type { DeckCatalogView } from "@/features/decks/catalogService";
 import { useCardBrowser } from "@/features/collection/useCardBrowser";
 import { GameScreen } from "@/features/shell/GameScreen";
-import { SearchLine } from "@/features/shell/SearchLine";
 import styles from "@/features/collection/CardBrowser.module.css";
+import collectionBook from "@/features/collection/CollectionBook.module.css";
 import game from "@/features/shell/GameScreen.module.css";
 import book from "@/features/decks/DeckEditorBook.module.css";
 import { BookSearch } from "@/features/decks/BookSearch";
-import { oneOf } from "@/lib/persistCodecs";
-import { usePersistedState } from "@/lib/persistedState";
 
 interface CollectionScreenProps {
   isSignedIn: boolean;
@@ -59,11 +57,10 @@ export function CollectionScreen(props: CollectionScreenProps) {
 /**
  * Écran Collection.
  *
- * Trois plans : le décor maritime en plein écran
- * (`--screen-backdrop`, posé par `GameScreen.module.css`), la colonne de
- * filtres à gauche, la grille de cartes à droite. Le bandeau
- * de navigation reste celui de la coquille partagée, privé de son panorama
- * pour se fondre dans ce décor-ci.
+ * Trois plans : le décor du livre en plein écran (`--screen-backdrop`,
+ * posé par `GameScreen.module.css`), la colonne de filtres à gauche, la
+ * grille de cartes à droite. Le bandeau de navigation reste celui de la
+ * coquille partagée.
  *
  * Toute la mécanique de navigation dans le catalogue (filtres, recherche,
  * tri, tiroir) vit dans `useCardBrowser`, partagé avec le Deck Builder :
@@ -91,11 +88,6 @@ function CollectionScreenBody({ isSignedIn, ownedCardIds, ownedCounts, catalog, 
   }, [openShelf, patchFilters]);
   const [detailCardId, setDetailCardId] = useState<string | null>(null);
   const [surplusOpen, setSurplusOpen] = useState(false);
-  // Nouvel affichage « sur le livre » ou l'ancien, le temps de valider (mémorisé) — comme l'Éditeur.
-  const [layout, setLayout] = usePersistedState<"livre" | "classic">("collection:affichage", "livre", {
-    decode: (raw) => oneOf<"livre" | "classic">(["livre", "classic"], raw),
-  });
-  const onBook = layout === "livre";
   // Figé à l'ouverture : le récapitulatif confirmé ne bouge pas sous les yeux
   // quand la collection est relue après la vente.
   const [surplusLines, setSurplusLines] = useState<ReturnType<typeof surplusPlan>>([]);
@@ -121,7 +113,7 @@ function CollectionScreenBody({ isSignedIn, ownedCardIds, ownedCounts, catalog, 
   const surplusButton = isSignedIn ? (
     <button
       type="button"
-      className={`${surplusStyles.button} ${onBook ? book.surplusButton : ""}`}
+      className={`${surplusStyles.button} ${book.surplusButton}`}
       disabled={surplusCount === 0}
       title={surplusCount === 0 ? "Aucune carte au-delà du maximum d'un deck" : "Revendre les exemplaires au-delà du maximum d'un deck"}
       onClick={() => {
@@ -135,28 +127,25 @@ function CollectionScreenBody({ isSignedIn, ownedCardIds, ownedCounts, catalog, 
     </button>
   ) : undefined;
 
+  // La bougie seule (plus de tasse de café, retour du 28/09/2026), agrandie,
+  // et la lueur vacillante de sa flamme. Elle a SA place dans la barre de la
+  // grille, entre la recherche et le tri : plus grande, posée par-dessus, elle
+  // masquait le tri.
+  const candle = (
+    <span className={collectionBook.candleSlot} aria-hidden>
+      <span className={collectionBook.candle}>
+        <span className={collectionBook.candleGlow} />
+        {/* eslint-disable-next-line @next/next/no-img-element -- décor peint */}
+        <img src="/assets/ui/accessoires/bougie.webp" alt="" draggable={false} />
+        <span className={collectionBook.candleCore} />
+      </span>
+    </span>
+  );
+
   return (
-    <GameScreen
-      active="collection"
-      backdrop={onBook ? "livre" : "port"}
-      actions={
-        // Sur le livre, la recherche descend dans la barre de la grille (comme l'Éditeur).
-        onBook ? undefined : (
-        <div className={game.headerSearch}>
-          <SearchLine
-            variant="pill"
-            value={browser.filters.search}
-            onChange={(search) => browser.patchFilters({ search })}
-            placeholder="Rechercher une carte…"
-            label="Rechercher une carte"
-            shortcut
-          />
-        </div>
-        )
-      }
-    >
+    <GameScreen active="collection">
       <div
-        className={`${styles.workspace} ${onBook ? `${book.workspace} ${book.collection}` : ""}`}
+        className={`${styles.workspace} ${book.workspace} ${book.collection} ${collectionBook.book}`}
         data-drawer={browser.drawerOpen ? "open" : "closed"}
       >
         <button
@@ -166,7 +155,7 @@ function CollectionScreenBody({ isSignedIn, ownedCardIds, ownedCounts, catalog, 
           onClick={() => browser.setDrawerOpen(false)}
         />
 
-        <aside className={`${game.panel} ${styles.sidebar} ${onBook ? `${book.frame} ${book.left}` : ""}`} aria-label="Filtres de la collection">
+        <aside className={`${game.panel} ${styles.sidebar} ${book.frame} ${book.left}`} aria-label="Filtres de la collection">
           <CollectionSidebar
             filters={browser.filters}
             onChange={browser.patchFilters}
@@ -174,21 +163,24 @@ function CollectionScreenBody({ isSignedIn, ownedCardIds, ownedCounts, catalog, 
             owned={browser.ownedForFilters}
             showOwnership={isSignedIn}
             shelfCards={browser.shelfCards}
-            layout={onBook ? "collection-livre" : "collection"}
           />
         </aside>
 
-        <main className={`${game.panel} ${styles.main} ${onBook ? `${book.frame} ${book.center}` : ""}`}>
+        <main className={`${game.panel} ${styles.main} ${book.frame} ${book.center}`}>
           <CollectionToolbar
             count={browser.cards.length}
             sort={browser.sort}
             onSortChange={browser.setSort}
             onOpenFilters={() => browser.setDrawerOpen((open) => !open)}
             activeFilterCount={browser.activeFilterCount}
-            // Sur le livre : l'effectif seul sur son onglet, « Revendre le surplus » en bout de barre.
-            countAction={onBook ? undefined : surplusButton}
-            search={onBook ? <BookSearch value={browser.filters.search} onChange={(search) => browser.patchFilters({ search })} /> : undefined}
-            extra={onBook ? surplusButton : undefined}
+            search={
+              <>
+                <BookSearch value={browser.filters.search} onChange={(search) => browser.patchFilters({ search })} />
+                {candle}
+              </>
+            }
+            // L'effectif seul sur son onglet, « Revendre le surplus » en bout de barre.
+            extra={surplusButton}
           />
 
           <CardGrid
@@ -204,30 +196,9 @@ function CollectionScreenBody({ isSignedIn, ownedCardIds, ownedCounts, catalog, 
         </main>
       </div>
 
-      {onBook && (
-        <>
-          {/* Le décor de la table, le même que celui de l'Éditeur. */}
-          {/* eslint-disable-next-line @next/next/no-img-element -- décor peint, positionné à la main */}
-          <img className={book.decor} src="/assets/ui/accessoires/longue-vue.webp" alt="" draggable={false} />
-          <span className={book.decorTopRight} aria-hidden>
-            {/* eslint-disable-next-line @next/next/no-img-element -- décor peint */}
-            <img src="/assets/ui/accessoires/bougie.webp" alt="" draggable={false} />
-            {/* eslint-disable-next-line @next/next/no-img-element -- décor peint */}
-            <img src="/assets/ui/accessoires/tasse-cafe.webp" alt="" draggable={false} />
-          </span>
-        </>
-      )}
-
-      <button
-        type="button"
-        className={book.layoutToggle}
-        onClick={() => {
-          playButtonClick();
-          setLayout(onBook ? "classic" : "livre");
-        }}
-      >
-        {onBook ? "Ancien affichage" : "Nouvel affichage"}
-      </button>
+      {/* Le décor de la table, le même que celui de l'Éditeur. */}
+      {/* eslint-disable-next-line @next/next/no-img-element -- décor peint, positionné à la main */}
+      <img className={book.decor} src="/assets/ui/accessoires/longue-vue.webp" alt="" draggable={false} />
 
       {needsFirstDeck && catalog && <FirstDeckPrompt catalog={catalog} />}
 

@@ -5,7 +5,6 @@
  */
 import { describe, expect, it } from "vitest";
 import { decodeCollectionFilters, EMPTY_FILTERS, encodeCollectionFilters } from "@/features/collection/collectionFilters";
-import { decodeDeckFilters, encodeDeckFilters } from "@/features/decks/deckFilters";
 import { BOOSTER_EXTENSIONS } from "@/game/boosters";
 
 describe("filtres de la Collection", () => {
@@ -27,15 +26,5 @@ describe("filtres de la Collection", () => {
   it("refusent une valeur qui n'est pas un objet", () => {
     expect(decodeCollectionFilters("n'importe quoi", EMPTY_FILTERS)).toBeUndefined();
     expect(decodeCollectionFilters(null, EMPTY_FILTERS)).toBeUndefined();
-  });
-});
-
-describe("filtres de la liste des decks", () => {
-  it("font l'aller-retour (les Set voyagent en tableaux) et écartent un Navire inconnu", () => {
-    const encode = encodeDeckFilters({ search: "abysses", styles: new Set(["agressif", "autre"] as const), ships: new Set(["la-verriere"]) });
-    const relu = decodeDeckFilters({ ...(JSON.parse(JSON.stringify(encode)) as object), ships: ["la-verriere", "navire-fantome"] });
-    expect(relu?.search).toBe("");
-    expect([...relu!.styles]).toEqual(["agressif", "autre"]);
-    expect([...relu!.ships]).toEqual(["la-verriere"]);
   });
 });

@@ -117,17 +117,6 @@
   color: var(--cb-cyan);
 }
 
-.deckHeading {
-  margin: 0;
-  font-size: clamp(10px, 1.15vh, 12px);
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ink);
-  padding-bottom: clamp(6px, 0.8vh, 10px);
-  border-bottom: 1px solid var(--line);
-}
-
 /* ──────────────────────────────────────────────────────────────
  * PANNEAU DU DECK
  * ────────────────────────────────────────────────────────────── */
@@ -146,134 +135,7 @@
   padding: clamp(10px, 1.4vh, 16px) clamp(10px, 0.9vw, 16px);
 }
 
-
-/* ── Encart d'identité, en tête du panneau de DROITE ───────────
- *
- * Image à gauche, nom + crayon, variantes en dessous — compact, bleu nuit,
- * liseré cyan lumineux. Pas de compteur de cartes : la jauge le porte.
- */
-.idCard {
-  display: grid;
-  grid-template-columns: 35% minmax(0, 1fr);
-  gap: 10px;
-  min-height: 84px;
-  padding: 6px;
-  border: 1px solid rgba(0, 183, 255, 0.8);
-  border-radius: 10px;
-  background: linear-gradient(180deg, var(--deck-bg-2) 0%, var(--deck-bg) 100%);
-  box-shadow:
-    0 0 5px rgba(0, 183, 255, 0.45),
-    inset 0 0 12px rgba(0, 80, 120, 0.18);
-}
-
-.idArt {
-  display: block;
-  min-height: 72px;
-  padding: 0;
-  border: 1px solid var(--deck-line);
-  border-radius: 6px;
-  background: var(--deck-inner) center 30% / cover no-repeat;
-  cursor: pointer;
-  transition: border-color 150ms ease-out, filter 150ms ease-out;
-}
-
-.idArt:hover {
-  border-color: var(--deck-border);
-  filter: brightness(1.08);
-}
-
-.idArt:focus-visible {
-  outline: 2px solid var(--deck-glow);
-  outline-offset: 2px;
-}
-
-.idBody {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 8px;
-  min-width: 0;
-  padding: 2px 4px 2px 0;
-}
-
-.idNameRow {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-
-.idName {
-  flex: 0 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: var(--cb-font-display);
-  font-size: clamp(15px, 1.1vw, 18px);
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--deck-ink);
-  text-shadow: 0 0 10px rgba(0, 183, 255, 0.18);
-}
-
-.idPencil {
-  flex: 0 0 auto;
-  display: grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  border: none;
-  border-radius: 5px;
-  background: none;
-  color: var(--deck-ink);
-  cursor: pointer;
-  transition: color 140ms ease-out, background-color 140ms ease-out;
-}
-
-.idPencil:hover {
-  color: #fff;
-  background: rgba(0, 183, 255, 0.12);
-}
-
-.idPencil:focus-visible {
-  outline: 2px solid var(--deck-glow);
-  outline-offset: 1px;
-}
-
-.idNameInput {
-  flex: 1 1 auto;
-  width: 100%;
-  min-width: 0;
-  padding: 3px 6px;
-  border: 1px solid var(--deck-border);
-  border-radius: 5px;
-  background: var(--deck-inner);
-  font-family: var(--cb-font-display);
-  font-size: clamp(14px, 1vw, 16px);
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  color: var(--deck-ink);
-  box-shadow: 0 0 5px rgba(0, 183, 255, 0.35);
-}
-
-.idNameInput:focus {
-  outline: none;
-}
-
-.idNameInput::placeholder {
-  color: var(--deck-ink-dim);
-  font-weight: 400;
-}
-
-.idBadges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
+/* Variantes du deck, sur son en-tête (`DeckNamePlate`). */
 .badgeStandard,
 .badgeAbyssal {
   padding: 2px 9px;
@@ -294,65 +156,6 @@
   border-color: #7a4fc2;
   background: #1f1236;
   color: #cbb2ff;
-}
-
-/* ── Effectif et jauge ──────────────────────────────────────── */
-.capacity {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.capacityRow {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: clamp(10px, 1.15vh, 12px);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-dim);
-}
-
-.capacityCount {
-  font-family: var(--cb-font-display);
-  font-size: clamp(16px, 2.2vh, 22px);
-  font-weight: 600;
-  letter-spacing: 0;
-  text-transform: none;
-  color: var(--ink-strong);
-}
-
-.capacityStatus { font-weight: 600; }
-.statusShort { color: var(--ink-dim); }
-.statusValid { color: var(--cb-cyan); }
-.statusOver { color: var(--danger); }
-
-.gaugeTrack {
-  position: relative;
-  height: 4px;
-  border-radius: 999px;
-  background: rgba(140, 190, 225, 0.14);
-  overflow: hidden;
-}
-
-.gaugeFill {
-  height: 100%;
-  border-radius: 999px;
-  background: var(--tb-text-soft);
-  transition: width 200ms ease-out, background-color 200ms ease-out;
-}
-
-.gaugeFillValid { background: var(--cb-cyan); box-shadow: 0 0 8px rgba(95, 208, 230, 0.5); }
-.gaugeFillOver { background: var(--danger); }
-
-/* Repère du minimum légal, tant qu'il n'est pas atteint. */
-.gaugeMark {
-  position: absolute;
-  top: -2px;
-  bottom: -2px;
-  width: 1px;
-  background: var(--tb-text-muted);
 }
 
 /* ── Résumé : courbe de Raison + types ──────────────────────── */
@@ -417,16 +220,6 @@
   text-align: center;
   color: var(--ink-dim);
 }
-
-.types {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 10px;
-  font-size: clamp(10px, 1.15vh, 12px);
-  color: var(--ink-dim);
-}
-
-.typeCount { color: var(--ink); font-variant-numeric: tabular-nums; }
 
 /* ── Liste du deck ──────────────────────────────────────────── */
 .list {
@@ -823,36 +616,4 @@
   line-height: 1.25;
   color: var(--ink);
   text-align: left;
-}
-
-/*
- * Le résumé libre du deck, sous les badges de la plaque : la seule chose
- * qu'on demande d'écrire. Tout le reste de la fiche — rôle, difficulté,
- * mécaniques — se déduit des cartes (`game/cards/decks/deckProfile.ts`),
- * et une liste vide de description retombe sur sa phrase générique.
- *
- * Deux lignes, pas de redimensionnement : c'est la place qu'a la fiche à
- * l'écran Jouer, autant l'écrire dans la même contrainte.
- */
-.idDescription {
-  width: 100%;
-  margin-top: 6px;
-  padding: 6px 8px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  background: var(--panel-inset);
-  color: var(--ink);
-  font: inherit;
-  font-size: 11.5px;
-  line-height: 1.4;
-  resize: none;
-}
-
-.idDescription::placeholder {
-  color: var(--ink-faint);
-}
-
-.idDescription:focus-visible {
-  outline: 2px solid var(--cb-cyan);
-  outline-offset: 1px;
 }
