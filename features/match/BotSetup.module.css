@@ -26,9 +26,9 @@
   grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr) minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr) auto;
   grid-template-areas:
-    "deck levels foe"
+    "levels vs foe"
     "deck vs foe"
-    "deck launch foe";
+    "deck vs foe";
   column-gap: calc(var(--u) * 3);
   /* Même marge des deux côtés : ton deck et l'adversaire à la même distance du VS. */
   padding: calc(var(--u) * 2) max(11cqw, calc(var(--u) * 18)) calc(var(--u) * 2.5);
@@ -56,7 +56,7 @@
   animation: arrive 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
-.levelsPanel { --from: 0, -60%; animation-delay: 60ms; }
+.levelsPanel { --from: -20%, -40%; animation-delay: 60ms; }
 .deckSide { --from: -30%, 0; animation-delay: 120ms; }
 .foe { --from: 30%, 0; animation-delay: 180ms; }
 .versus { --from: 0, 0; animation-delay: 260ms; }
@@ -81,25 +81,33 @@
 
 
 /* ── En haut : le niveau ── */
+/*
+ * Le niveau : à droite de la lanterne, au-dessus du deck. Plus de panneau
+ * de parchemin : le titre sur la banderole (`ui/bandeaux/banderole`), les
+ * trois plaques posées sur la table, dessous.
+ */
 .levelsPanel {
   grid-area: levels;
   justify-self: center;
+  translate: calc(var(--u) * 6) 0;
   align-self: start;
   display: grid;
   justify-items: center;
-  gap: calc(var(--u) * 0.8);
-  width: min(100% + var(--u) * 16, var(--u) * 78);
-  margin-top: calc(var(--u) * 7);
-  padding: calc(var(--u) * 1.2) calc(var(--u) * 2.4) calc(var(--u) * 1.8);
-  border-style: solid;
-  border-width: calc(var(--u) * 1.6);
-  border-image: url("/assets/ui/panneaux/panneau-parchemin.webp") 60 fill / calc(var(--u) * 1.6) stretch;
+  gap: calc(var(--u) * 0.4);
+  width: min(100%, var(--u) * 70);
+  margin-top: calc(var(--u) * 1);
   filter: drop-shadow(0 calc(var(--u) * 1) calc(var(--u) * 1.4) rgba(0, 0, 0, 0.55));
-  rotate: -1deg;
 }
 
 .levelsTitle {
+  display: grid;
+  place-items: center;
+  width: 72%;
+  aspect-ratio: 900 / 249;
   margin: 0;
+  padding-bottom: 3%;
+  background: url("/assets/ui/bandeaux/banderole.webp") center / 100% 100% no-repeat;
+  color: var(--ink);
   font-family: var(--tb-font-display, Georgia, serif);
   font-size: max(12px, calc(var(--u) * 3));
   font-weight: 700;
@@ -165,7 +173,7 @@
 /* La boîte, penchée, sur une petite pile de boîtes : le paquet qu'on emporte. */
 .deckStack {
   position: relative;
-  height: 56cqh;
+  height: 44cqh;
   aspect-ratio: 1024 / 1536;
   rotate: -5deg;
   animation: breathe 6s ease-in-out infinite alternate;
