@@ -662,6 +662,11 @@ function ShelfRoll({
 }) {
   const draggable = row.owned > 0 && !busy;
   const roll = getBoosterShelfRoll(row.boosterId);
+  // Rouleau pas encore peint : celui du Défaut, dont la fenêtre reçoit
+  // l'illustration du SACHET de l'extension — sans elle, il ne se
+  // distinguait pas du Défaut sur l'étagère (retour du 28/09/2026).
+  const pack = getBoosterPackVisual(row.boosterId);
+  const packArt = !roll && pack.id === row.boosterId ? pack.assets.closed : null;
 
   return (
     <li
@@ -684,6 +689,7 @@ function ShelfRoll({
       aria-label={`${row.name} — ${row.owned > 0 ? `${row.owned} en réserve` : "aucun exemplaire"}`}
       tabIndex={0}
     >
+      {packArt && <span className={styles.rollArt} style={{ backgroundImage: `url("${packArt}")` }} aria-hidden />}
       {!roll && (
         <span className={styles.rollLabel} aria-hidden>
           {row.name}
