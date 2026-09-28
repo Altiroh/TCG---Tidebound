@@ -15,6 +15,9 @@ export interface BotLevel {
   description: string;
 }
 
+/** Durée du geste de la poignée (`BotSetup.module.css`, `pull`). */
+const PULL_MS = 720;
+
 /** Une source de decks du panneau « Changer de deck » (Mes decks, Préconstruits). */
 export interface DeckSource {
   id: string;
@@ -100,6 +103,17 @@ export function BotSetup({
     window.setTimeout(onBack, prefersReducedMotion() ? 0 : LEAVE_MS);
   }
   if (backRef) backRef.current = back;
+
+  // La poignée : tirée, elle descend et remonte ; la partie part pendant le retour.
+  const [pulled, setPulled] = useState(false);
+  const canLaunch = Boolean(deck) && !deckIssue && !starting && !pulled;
+  function pull() {
+    if (!canLaunch) return;
+    playButtonClick();
+    setPulled(true);
+    window.setTimeout(onLaunch, prefersReducedMotion() ? 0 : PULL_MS * 0.55);
+    window.setTimeout(() => setPulled(false), prefersReducedMotion() ? 0 : PULL_MS);
+  }
 
   const skulls = levelIndex + 1;
 
@@ -219,19 +233,23 @@ export function BotSetup({
       </aside>
 
       {/* ── En bas, au centre : le lancement ── */}
-      <div className={styles.launchZone}>
-        {(error || deckIssue) && (
-          <p className={styles.error} role="alert">
-            {error ?? deckIssue}
-          </p>
-        )}
-        <button type="button" className={styles.launch} onClick={onLaunch} disabled={!deck || Boolean(deckIssue) || starting}>
-          <span>{starting ? "Préparation…" : "Lancer la partie"}</span>
-          <svg viewBox="0 0 120 14" aria-hidden>
-            <path d="M2 7c10 0 12-5 22-5s12 10 22 10 12-10 22-10 12 10 22 10 12-5 28-5" fill="none" />
-          </svg>
-        </button>
+      {/*
+        ── En bas : la POIGNÉE « Lancer la partie », pendue à ses chaînes
+        (`play/mode/poignee-lancer`). On la TIRE : elle descend, les chaînes
+        se tendent, elle remonte — et la partie part. Seule la poignée est
+        cliquable ; les chaînes passent derrière le VS et le niveau.
+      */}
+      <div className={styles.lever} data-pulled={pulled || undefined} data-disabled={!canLaunch || undefined}>
+        <span className={styles.leverBlur} aria-hidden />
+        {/* eslint-disable-next-line @next/next/no-img-element -- poignée peinte */}
+        <img className={styles.leverArt} src="/assets/play/mode/poignee-lancer.webp" alt="" draggable={false} />
+        <button type="button" className={styles.leverHandle} onClick={pull} disabled={!canLaunch} aria-label={starting ? "Préparation de la partie" : "Lancer la partie"} />
       </div>
+      {(error || deckIssue) && (
+        <p className={styles.error} role="alert">
+          {error ?? deckIssue}
+        </p>
+      )}
 
       {picking && (
         <DeckPicker

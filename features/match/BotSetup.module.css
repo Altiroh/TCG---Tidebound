@@ -52,8 +52,7 @@
 .levelsPanel,
 .deckSide,
 .foe,
-.versus,
-.launchZone {
+.versus {
   animation: arrive 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
@@ -61,7 +60,6 @@
 .deckSide { --from: -30%, 0; animation-delay: 120ms; }
 .foe { --from: 30%, 0; animation-delay: 180ms; }
 .versus { --from: 0, 0; animation-delay: 260ms; }
-.launchZone { --from: 0, 80%; animation-delay: 220ms; }
 
 .scene[data-leaving] > * {
   animation: leave 380ms cubic-bezier(0.5, 0, 0.8, 0.4) both;
@@ -149,8 +147,7 @@
 .levelButton[data-level="difficile"] { --level-color: 255, 60, 50; }
 
 .levelButton:focus-visible,
-.changeDeck:focus-visible,
-.launch:focus-visible {
+.changeDeck:focus-visible {
   outline: 2px solid #f3c86b;
   outline-offset: 2px;
 }
@@ -470,70 +467,139 @@
   color: var(--ink-soft);
 }
 
-/* ── En bas : le lancement ── */
-.launchZone {
-  grid-area: launch;
-  justify-self: center;
-  display: grid;
-  justify-items: center;
-  gap: calc(var(--u) * 0.8);
-  width: min(100% + var(--u) * 24, var(--u) * 86);
+/*
+ * ── En bas : la poignée « Lancer la partie » ──
+ * Image 1100 × 1005 : deux chaînes qui tombent du haut, la poignée en bas
+ * (bande de 68 % à 90 % de la hauteur, 1 % à 99 % de la largeur). Posée en
+ * bas au centre ; ses chaînes montent DERRIÈRE le VS et le niveau.
+ */
+.lever {
+  position: absolute;
+  z-index: 0;
+  left: 50%;
+  bottom: calc(var(--u) * 0.5);
+  height: 74cqh;
+  aspect-ratio: 1100 / 1005;
+  translate: -50% 0;
+  pointer-events: none;
+  animation: leverIn 620ms cubic-bezier(0.2, 0.8, 0.2, 1) 220ms both;
 }
 
-.launch {
-  display: grid;
-  justify-items: center;
-  align-content: center;
+/* Tout le reste passe devant les chaînes. */
+.levelsPanel,
+.versus,
+.deckSide,
+.foe {
+  position: relative;
+  z-index: 1;
+}
+
+.leverArt {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  aspect-ratio: 594 / 130;
+  height: 100%;
+  filter: drop-shadow(0 calc(var(--u) * 1.4) calc(var(--u) * 1.6) rgba(0, 0, 0, 0.6));
+  user-select: none;
+  transition: filter 450ms ease;
+}
+
+/*
+ * Au survol de la poignée : un flou DERRIÈRE elle (la table se brouille
+ * sous la poignée, qui ressort), qui arrive et repart en douceur — aucun
+ * saut, ni à l'entrée ni à la sortie.
+ */
+.leverBlur {
+  position: absolute;
+  left: -4%;
+  right: -4%;
+  top: 60%;
+  height: 38%;
+  border-radius: 40% / 50%;
+  -webkit-backdrop-filter: blur(0px);
+  backdrop-filter: blur(0px);
+  background: radial-gradient(closest-side, rgba(8, 16, 26, 0.5), rgba(8, 16, 26, 0.2) 70%, transparent);
+  opacity: 0;
+  -webkit-mask: radial-gradient(closest-side, #000 60%, transparent);
+  mask: radial-gradient(closest-side, #000 60%, transparent);
+  transition:
+    opacity 480ms cubic-bezier(0.4, 0, 0.2, 1),
+    backdrop-filter 480ms cubic-bezier(0.4, 0, 0.2, 1),
+    -webkit-backdrop-filter 480ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.lever:has(.leverHandle:hover:not(:disabled)) .leverBlur,
+.lever:has(.leverHandle:focus-visible) .leverBlur {
+  opacity: 1;
+  -webkit-backdrop-filter: blur(calc(var(--u) * 1.8));
+  backdrop-filter: blur(calc(var(--u) * 1.8));
+}
+
+.lever:has(.leverHandle:hover:not(:disabled)) .leverArt {
+  filter: brightness(1.12) drop-shadow(0 calc(var(--u) * 1.4) calc(var(--u) * 1.6) rgba(0, 0, 0, 0.6)) drop-shadow(0 0 calc(var(--u) * 1.6) rgba(255, 214, 150, 0.45));
+}
+
+/* La zone qu'on attrape : la poignée seule. */
+.leverHandle {
+  position: absolute;
+  left: 3%;
+  right: 3%;
+  top: 68%;
+  height: 22%;
   padding: 0;
   border: 0;
-  background: url("/assets/ui/boutons/bouton-bleu.webp") center / 100% 100% no-repeat;
-  color: #f4fbfd;
-  font-family: var(--tb-font-display, Georgia, serif);
-  font-size: max(16px, calc(var(--u) * 5.4));
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  line-height: 1;
-  text-transform: uppercase;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9);
-  cursor: pointer;
-  animation: launchPulse 2.6s ease-in-out infinite;
-  transition: filter 160ms ease, transform 120ms ease;
+  border-radius: calc(var(--u) * 2);
+  background: none;
+  cursor: grab;
+  pointer-events: auto;
 }
 
-.launch svg {
-  width: 26%;
-  height: auto;
-  margin-top: calc(var(--u) * 0.6);
-  stroke: #7fe0f5;
-  stroke-width: 2.4;
-  stroke-linecap: round;
-  filter: drop-shadow(0 0 3px rgba(127, 224, 245, 0.8));
+.leverHandle:active:not(:disabled) {
+  cursor: grabbing;
 }
 
-.launch:hover:not(:disabled) {
-  filter: brightness(1.15) drop-shadow(0 0 calc(var(--u) * 2) rgba(95, 208, 230, 0.75));
+.leverHandle:focus-visible {
+  outline: 2px solid #f3c86b;
+  outline-offset: 2px;
 }
 
-.launch:active:not(:disabled) {
-  transform: translateY(1px);
-}
-
-.launch:disabled {
+.leverHandle:disabled {
   cursor: default;
-  filter: grayscale(0.7) brightness(0.75);
-  animation: none;
 }
 
-@keyframes launchPulse {
-  0%, 100% { filter: drop-shadow(0 0 calc(var(--u) * 0.6) rgba(95, 208, 230, 0.35)); }
-  18% { filter: drop-shadow(0 0 calc(var(--u) * 2.2) rgba(95, 208, 230, 0.8)); }
-  40% { filter: drop-shadow(0 0 calc(var(--u) * 1.2) rgba(95, 208, 230, 0.5)); }
+.lever[data-disabled]:not([data-pulled]) .leverArt {
+  filter: grayscale(0.5) brightness(0.75) drop-shadow(0 calc(var(--u) * 1.4) calc(var(--u) * 1.6) rgba(0, 0, 0, 0.6));
+}
+
+/* Tirée : elle descend d'un coup sec, s'arrête, remonte en rebondissant. */
+.lever[data-pulled] .leverArt,
+.lever[data-pulled] .leverBlur {
+  animation: pull 720ms cubic-bezier(0.3, 0.7, 0.3, 1) both;
+}
+
+@keyframes pull {
+  0% { translate: 0 0; }
+  28% { translate: 0 9%; scale: 1 1.03; }
+  40% { translate: 0 8.2%; }
+  72% { translate: 0 -1.2%; }
+  86% { translate: 0 0.6%; }
+  100% { translate: 0 0; }
+}
+
+@keyframes leverIn {
+  from {
+    opacity: 0;
+    translate: -50% -30%;
+  }
 }
 
 .error {
-  margin: 0;
+  grid-area: launch;
+  justify-self: center;
+  align-self: end;
+  position: relative;
+  z-index: 2;
+  margin: 0 0 calc(var(--u) * 12);
   padding: calc(var(--u) * 0.5) calc(var(--u) * 1.5);
   border-radius: 999px;
   background: rgba(30, 8, 4, 0.8);
@@ -820,7 +886,8 @@
   .polaroid,
   .deckStack,
   .skulls span,
-  .launch,
+  .lever,
+  .lever[data-pulled] .leverArt,
   .picker,
   .pickerBackdrop {
     animation: none;

@@ -123,6 +123,8 @@ const RULES = [
   { match: /\/play\/mode\/lanterne/, maxSize: 640, quality: 88 },
   { match: /\/play\/mode\/decor-/, maxSize: 1200, quality: 84 },
   { match: /\/play\/mode\/vs\./, maxSize: 800, quality: 88 },
+  // La poignée « Lancer la partie », pendue à ses chaînes : ~75 % de la hauteur.
+  { match: /\/play\/mode\/poignee-/, maxSize: 1100, quality: 88 },
   // Niveaux du bot (écran Jouer → Contre un bot, 28/09/2026) : plaques de
   // niveau à ~16 % de la largeur, illustration du niveau à ~28 %.
   { match: /\/play\/bot-level\/plaque-/, maxSize: 720, quality: 88 },
