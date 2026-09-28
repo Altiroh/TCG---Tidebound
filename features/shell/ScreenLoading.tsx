@@ -26,7 +26,8 @@ interface ScreenLoadingProps {
 export function ScreenLoading({ active, nav, backdrop }: ScreenLoadingProps) {
   return (
     <GameScreen active={active} nav={nav} backdrop={backdrop}>
-      <div className={styles.loading} role="status" aria-live="polite">
+      {/* `data-screen-loading` : l'ombre de changement de page attend qu'il ait disparu (`pageReady`). */}
+      <div className={styles.loading} role="status" aria-live="polite" data-screen-loading>
         <span className={styles.loadingMark} aria-hidden />
         <span className={styles.loadingLabel}>Chargement…</span>
       </div>

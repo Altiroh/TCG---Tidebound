@@ -1464,3 +1464,14 @@
 @media (prefers-reduced-motion: reduce) {
   .loadingMark { animation-duration: 2400ms; }
 }
+
+/*
+ * Onglet d'un même écran en cours d'arrivée (`PageTransition`,
+ * `html[data-page-pending]`) : le bandeau reste, le contenu dessous attend
+ * d'être prêt (images décodées) pour paraître d'un bloc, sans se construire
+ * à vue. `visibility` et non `opacity` : aucune transition ni animation
+ * propre aux écrans n'est écrasée.
+ */
+:global(html[data-page-pending]) .screen > :not(:first-child) {
+  visibility: hidden;
+}
