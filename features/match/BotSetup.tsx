@@ -104,27 +104,6 @@ export function BotSetup({
         <span aria-hidden>←</span> Changer de mode
       </button>
 
-      {/* ── En haut : l'illustration du niveau, qui évolue avec lui ── */}
-      <section className={styles.levelArt} aria-live="polite" aria-label={`Bot ${level.label}`} style={{ "--level": levelIndex } as React.CSSProperties}>
-        <span className={styles.aura} aria-hidden />
-        {/* L'illustration du niveau (`play/bot-level/`) : les trois sont posées, seule la choisie se voit. */}
-        <span className={styles.illustration} aria-hidden>
-          {levels.map((entry) => (
-            // eslint-disable-next-line @next/next/no-img-element -- illustration locale
-            <img
-              key={entry.id}
-              src={`/assets/play/bot-level/illustration-${entry.id}.webp`}
-              alt=""
-              draggable={false}
-              data-on={entry.id === level.id || undefined}
-            />
-          ))}
-        </span>
-        <span className={styles.ribbon}>
-          <span className={styles.ribbonTitle}>Contre un bot</span>
-        </span>
-      </section>
-
       {/* ── À gauche : le niveau, puis le deck ── */}
       <section className={styles.left}>
         <h2 className={styles.heading}>Niveau du bot</h2>
@@ -182,58 +161,76 @@ export function BotSetup({
         </button>
       </section>
 
-      {/* ── À droite : le récapitulatif, et le lancement ── */}
-      <aside className={styles.recap} aria-label="Récapitulatif de la partie">
-        <h2 className={styles.recapTitle}>La partie</h2>
-        <dl className={styles.facts}>
-          <div className={styles.fact}>
-            <dt>Adversaire</dt>
-            <dd>
-              {/* eslint-disable-next-line @next/next/no-img-element -- emblème local */}
-              <img className={styles.factEmblem} src={`/assets/play/bot-level/illustration-${level.id}.webp`} alt="" draggable={false} />
-              <span>
-                <strong>Bot {level.label.toLowerCase()}</strong>
-                <small>{level.description}</small>
-              </span>
-            </dd>
+      {/* ── À droite : la partie — l'adversaire en grand, le récapitulatif, le lancement ── */}
+      <aside className={styles.recap} aria-label="Récapitulatif de la partie" style={{ "--level": levelIndex } as React.CSSProperties}>
+        <h2 className={styles.recapTitle}>
+          <span>Contre un bot</span> La partie
+        </h2>
+        <div className={styles.recapBody}>
+          <div className={styles.foe} aria-live="polite" aria-label={`Bot ${level.label}`}>
+            <span className={styles.aura} aria-hidden />
+            {/* L'illustration du niveau (`play/bot-level/`) : les trois sont posées, seule la choisie se voit. */}
+            <span className={styles.illustration} aria-hidden>
+              {levels.map((entry) => (
+                // eslint-disable-next-line @next/next/no-img-element -- illustration locale
+                <img
+                  key={entry.id}
+                  src={`/assets/play/bot-level/illustration-${entry.id}.webp`}
+                  alt=""
+                  draggable={false}
+                  data-on={entry.id === level.id || undefined}
+                />
+              ))}
+            </span>
           </div>
-          <div className={styles.fact}>
-            <dt>Son deck</dt>
-            <dd>
-              <span>
-                <strong>Tiré au sort</strong>
-                <small>Découvert au lancement, parmi les préconstruits.</small>
-              </span>
-            </dd>
-          </div>
-          <div className={styles.fact}>
-            <dt>Ton deck</dt>
-            <dd>
-              {deck && facts ? (
+          <dl className={styles.facts}>
+            <div className={styles.fact}>
+              <dt>Adversaire</dt>
+              <dd>
                 <span>
-                  <strong>{deck.name}</strong>
-                  <small>
-                    {shipNameOf(deck.shipId)} · {deck.cardIds.length} cartes
-                  </small>
-                  <Stars value={facts.difficulty} />
+                  <strong>Bot {level.label.toLowerCase()}</strong>
+                  <small>{level.description}</small>
                 </span>
-              ) : (
+              </dd>
+            </div>
+            <div className={styles.fact}>
+              <dt>Son deck</dt>
+              <dd>
                 <span>
-                  <strong>À choisir</strong>
+                  <strong>Tiré au sort</strong>
+                  <small>Découvert au lancement, parmi les préconstruits.</small>
                 </span>
-              )}
-            </dd>
-          </div>
-          <div className={styles.fact}>
-            <dt>Gains</dt>
-            <dd>
-              <span>
-                <strong>XP et quêtes</strong>
-                {note && <small>{note}</small>}
-              </span>
-            </dd>
-          </div>
-        </dl>
+              </dd>
+            </div>
+            <div className={styles.fact}>
+              <dt>Ton deck</dt>
+              <dd>
+                {deck && facts ? (
+                  <span>
+                    <strong>{deck.name}</strong>
+                    <small>
+                      {shipNameOf(deck.shipId)} · {deck.cardIds.length} cartes
+                    </small>
+                    <Stars value={facts.difficulty} />
+                  </span>
+                ) : (
+                  <span>
+                    <strong>À choisir</strong>
+                  </span>
+                )}
+              </dd>
+            </div>
+            <div className={styles.fact}>
+              <dt>Gains</dt>
+              <dd>
+                <span>
+                  <strong>XP et quêtes</strong>
+                  {note && <small>{note}</small>}
+                </span>
+              </dd>
+            </div>
+          </dl>
+        </div>
         {(error || deckIssue) && (
           <p className={styles.error} role="alert">
             {error ?? deckIssue}
@@ -277,7 +274,8 @@ function DeckPicker({
   onClose: () => void;
 }) {
   const [mounted, setMounted] = useState(false);
-  const initialSource = sources.find((source) => source.decks.some((deck) => deck.id === selectedId)) ?? sources.find((source) => source.decks.length > 0) ?? sources[0]!;
+  const initialSource =
+    sources.find((source) => source.decks.some((deck) => deck.id === selectedId)) ?? sources.find((source) => source.decks.length > 0) ?? sources[0]!;
   const [sourceId, setSourceId] = useState(initialSource.id);
   const [style, setStyle] = useState<DeckStyleId | "tous">("tous");
   const source = sources.find((entry) => entry.id === sourceId) ?? sources[0]!;
@@ -381,6 +379,6 @@ function DeckPicker({
         )}
       </div>
     </div>,
-    document.body
+    document.body,
   );
 }

@@ -24,23 +24,39 @@
 .scene[data-level="difficile"] { --level-color: 255, 60, 50; }
 
 /* ── Arrivée et départ des éléments ── */
-.levelArt,
 .left,
 .recap,
 .back {
   animation: arrive 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
-.levelArt { --from: 0, -40%; animation-delay: 60ms; }
 .left { --from: -18%, 0; animation-delay: 120ms; }
 .recap { --from: 18%, 0; animation-delay: 180ms; }
 .back { --from: 0, -60%; }
 
-.scene[data-leaving] .levelArt,
 .scene[data-leaving] .left,
 .scene[data-leaving] .recap,
 .scene[data-leaving] .back {
   animation: leave 380ms cubic-bezier(0.5, 0, 0.8, 0.4) both;
+}
+
+/* Vivant : les deux feuilles flottent à peine sur la table, chacune à son rythme. */
+.left {
+  animation: arrive 520ms cubic-bezier(0.2, 0.8, 0.2, 1) 120ms both, drift 7.5s ease-in-out 700ms infinite alternate;
+}
+
+.recap {
+  animation: arrive 520ms cubic-bezier(0.2, 0.8, 0.2, 1) 180ms both, drift 9s ease-in-out 800ms infinite alternate-reverse;
+}
+
+@keyframes drift {
+  from { translate: 0 0; rotate: var(--tilt); }
+  to { translate: 0 -0.5%; rotate: calc(var(--tilt) + 0.5deg); }
+}
+
+@keyframes foeBob {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -2.5%; }
 }
 
 @keyframes arrive {
@@ -76,101 +92,14 @@
   background: rgba(40, 20, 8, 0.8);
 }
 
-/* ── En haut : l'illustration du niveau ── */
-.levelArt {
-  position: absolute;
-  left: 42.5%;
-  top: 5%;
-  width: 24%;
-  height: 72%;
-  display: grid;
-  justify-items: center;
-  align-content: start;
-}
-
-/* Une aura qui grandit et rougit avec le niveau. */
-.aura {
-  position: absolute;
-  left: 50%;
-  top: 40%;
-  width: calc(80% + var(--level) * 16%);
-  aspect-ratio: 1;
-  translate: -50% -50%;
-  border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(var(--level-color), 0.55), rgba(var(--level-color), 0.16) 55%, transparent 100%);
-  filter: blur(6px);
-  animation: aura calc(3.2s - var(--level) * 0.8s) ease-in-out infinite;
-  transition: width 500ms ease, background 500ms ease;
-}
-
-@keyframes aura {
-  0%, 100% { opacity: 0.75; scale: 0.96; }
-  50% { opacity: 1; scale: 1.06; }
-}
-
-/*
- * L'illustration du niveau (`play/bot-level/illustration-*`, 1 × 1,07) :
- * les trois superposées, la choisie arrive en fondu et en rebond, les
- * autres s'effacent — le crabe qui s'énerve de niveau en niveau.
- */
-.illustration {
-  position: relative;
-  width: 74%;
-  aspect-ratio: 512 / 546;
-  margin-top: 1%;
-  filter: drop-shadow(0 1.4cqh 2cqh rgba(0, 0, 0, 0.6)) drop-shadow(0 0 calc(0.8cqw + var(--level) * 1cqw) rgba(var(--level-color), 0.5));
-  transition: filter 500ms ease;
-}
-
-.illustration img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  opacity: 0;
-  scale: 0.9;
-  rotate: -3deg;
-  transition: opacity 360ms ease, scale 520ms cubic-bezier(0.3, 1.5, 0.4, 1), rotate 520ms cubic-bezier(0.3, 1.4, 0.4, 1);
-  user-select: none;
-}
-
-.illustration img[data-on] {
-  opacity: 1;
-  scale: 1;
-  rotate: 0deg;
-}
-
-.ribbon {
-  position: relative;
-  display: grid;
-  justify-items: center;
-  width: 92%;
-  aspect-ratio: 900 / 249;
-  margin-top: -5%;
-  align-content: center;
-  padding-bottom: 2%;
-  background: url("/assets/ui/bandeaux/banderole.webp") center / 100% 100% no-repeat;
-  filter: drop-shadow(0 0.8cqh 1cqh rgba(0, 0, 0, 0.55));
-}
-
-.ribbonTitle {
-  font-family: var(--tb-font-display, Georgia, serif);
-  font-size: max(14px, 1.55cqw);
-  font-weight: 700;
-  font-variant: small-caps;
-  line-height: 1;
-  color: var(--ink);
-}
-
-
 /* ── À gauche : la fiche épinglée, niveau puis deck ── */
 .left {
+  --tilt: -2.2deg;
   position: absolute;
-  left: 14%;
-  top: 5%;
-  width: 27%;
-  aspect-ratio: 589 / 900;
+  left: 12%;
+  top: 7%;
+  width: 30%;
+  aspect-ratio: 589 / 800;
   display: grid;
   align-content: start;
   justify-items: center;
@@ -178,7 +107,7 @@
   padding: 4.6cqw 2cqw 2cqw;
   background: url("/assets/ui/panneaux/fiche-epinglee.webp") center / 100% 100% no-repeat;
   filter: drop-shadow(0 1.4cqh 1.8cqh rgba(0, 0, 0, 0.55));
-  rotate: -1.2deg;
+  rotate: var(--tilt);
 }
 
 .heading {
@@ -331,39 +260,129 @@
   transform: translateY(1px);
 }
 
-/* ── À droite : le récapitulatif, sur le parchemin à la boussole ── */
+/*
+ * ── À droite : la partie ──
+ * Plus large que haute, un peu tournée : l'adversaire en grand (son
+ * illustration, qui évolue avec le niveau), le récapitulatif à côté, le
+ * lancement dessous. Le parchemin (`panneau-parchemin`) est tendu en
+ * neuf morceaux (`border-image`) : ses bords gardent leur dessin à
+ * n'importe quel format.
+ */
 .recap {
+  --tilt: 1.8deg;
   position: absolute;
-  right: 2.5%;
-  top: 1%;
-  height: 96%;
-  aspect-ratio: 777 / 1400;
+  right: 3%;
+  top: 11%;
+  width: 49%;
+  height: 76%;
   display: flex;
   flex-direction: column;
-  padding: 8.5cqw 3cqw 3.2cqw;
-  background: url("/assets/ui/panneaux/parchemin-boussole.webp") center / 100% 100% no-repeat;
-  filter: drop-shadow(0 1.4cqh 1.8cqh rgba(0, 0, 0, 0.55));
+  gap: 0.8cqw;
+  padding: 1.6cqw 2.4cqw 2cqw;
+  border-style: solid;
+  border-width: 1.6cqw;
+  border-image: url("/assets/ui/panneaux/panneau-parchemin.webp") 60 fill / 1.6cqw stretch;
+  filter: drop-shadow(0 1.6cqh 2cqh rgba(0, 0, 0, 0.55));
+  rotate: var(--tilt);
 }
 
 .recapTitle {
-  margin: 0 0 0.8cqw;
+  margin: 0;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: max(18px, 2cqw);
+  font-size: max(18px, 2.1cqw);
   font-weight: 700;
-  text-align: center;
+  line-height: 1;
   color: var(--ink);
+}
+
+.recapTitle span {
+  display: block;
+  margin-bottom: 0.3cqw;
+  font-size: 0.45em;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, rgb(var(--level-color)) 55%, var(--ink));
+}
+
+.recapBody {
+  display: grid;
+  grid-template-columns: 40% minmax(0, 1fr);
+  gap: 1.8cqw;
+  align-items: center;
+  min-height: 0;
+  flex: 1;
+}
+
+/* L'adversaire : son illustration, son halo, qui respire plus vite à mesure qu'il s'énerve. */
+.foe {
+  position: relative;
+  rotate: -3deg;
+}
+
+/* Une aura qui grandit et rougit avec le niveau. */
+.aura {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(90% + var(--level) * 18%);
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(var(--level-color), 0.55), rgba(var(--level-color), 0.16) 55%, transparent 100%);
+  filter: blur(6px);
+  animation: aura calc(3.2s - var(--level) * 0.8s) ease-in-out infinite;
+  transition: width 500ms ease, background 500ms ease;
+}
+
+@keyframes aura {
+  0%, 100% { opacity: 0.75; scale: 0.96; }
+  50% { opacity: 1; scale: 1.06; }
+}
+
+/*
+ * L'illustration du niveau (`play/bot-level/illustration-*`, 1 × 1,07) :
+ * les trois superposées, la choisie arrive en fondu et en rebond, les
+ * autres s'effacent — le crabe qui s'énerve de niveau en niveau.
+ */
+.illustration {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 512 / 546;
+  animation: foeBob calc(4.2s - var(--level) * 0.9s) ease-in-out infinite;
+  filter: drop-shadow(0 1.4cqh 2cqh rgba(0, 0, 0, 0.6)) drop-shadow(0 0 calc(0.8cqw + var(--level) * 1cqw) rgba(var(--level-color), 0.5));
+  transition: filter 500ms ease;
+}
+
+.illustration img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0;
+  scale: 0.9;
+  rotate: -3deg;
+  transition: opacity 360ms ease, scale 520ms cubic-bezier(0.3, 1.5, 0.4, 1), rotate 520ms cubic-bezier(0.3, 1.4, 0.4, 1);
+  user-select: none;
+}
+
+.illustration img[data-on] {
+  opacity: 1;
+  scale: 1;
+  rotate: 0deg;
 }
 
 .facts {
   display: grid;
-  gap: 0.9cqw;
+  gap: 0.6cqw;
   margin: 0;
 }
 
 .fact {
   display: grid;
-  gap: 0.25cqw;
-  padding-bottom: 0.8cqw;
+  gap: 0.2cqw;
+  padding-bottom: 0.55cqw;
   border-bottom: 1px solid rgba(90, 60, 30, 0.25);
 }
 
@@ -399,16 +418,6 @@
   color: var(--ink-soft);
 }
 
-/* La vignette de l'illustration du niveau. */
-.factEmblem {
-  flex: none;
-  width: 3.4cqw;
-  height: auto;
-  aspect-ratio: 512 / 546;
-  object-fit: contain;
-  filter: drop-shadow(0 0.2cqw 0.3cqw rgba(0, 0, 0, 0.45));
-}
-
 .stars {
   display: inline-flex;
   gap: 0.15cqw;
@@ -436,8 +445,8 @@
 
 /* Lancer la partie : la plaque bleue, l'appel à l'action. */
 .launch {
-  margin-top: auto;
-  width: 100%;
+  align-self: center;
+  width: 62%;
   aspect-ratio: 594 / 130;
   border: 0;
   background: url("/assets/ui/boutons/bouton-bleu.webp") center / 100% 100% no-repeat;
@@ -709,13 +718,10 @@
   .fact {
     padding-bottom: 0.4cqw;
   }
-  .recap {
-    padding-top: 7cqw;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .levelArt,
+  .illustration,
   .left,
   .recap,
   .back,
