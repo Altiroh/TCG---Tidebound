@@ -1456,3 +1456,12 @@
 :global(html[data-page-pending]) .screen > :not(:first-child) {
   visibility: hidden;
 }
+
+/*
+ * La table de l'écran Jouer (`ModeTable`) : pas de filet sous le bandeau.
+ * La grande lanterne posée sur la table passe dessous, et un trait qui la
+ * coupe en deux la faisait paraître collée par-dessus l'image.
+ */
+.screen[data-backdrop="table"] :global(header)::after {
+  display: none;
+}

@@ -32,6 +32,11 @@
   animation: swing 6.5s ease-in-out infinite alternate;
 }
 
+/* Posée sur une table : elle ne se balance pas. */
+.lantern[data-standing] .swing {
+  animation: none;
+}
+
 .swing img {
   position: absolute;
   inset: 0;

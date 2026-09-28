@@ -75,8 +75,12 @@ export function ModeTable({ onChoose, notices }: { onChoose: (mode: TableMode) =
         {notices && <div className={styles.notices}>{notices}</div>}
 
       </div>
-      {/* Hors de la scène : grande, elle déborde en haut à gauche, par-dessus le bandeau. */}
+      {/* Hors de la scène : grande, elle déborde en haut à gauche. POSÉE sur la
+          table : son ombre de contact et la flaque de lumière qu'elle jette
+          sur le bois l'y ancrent (`lanternPool`). */}
+      <span className={styles.lanternPool} aria-hidden />
       <Lantern
+        standing
         lit={lit}
         onToggle={() => setLit((value) => !value)}
         litSrc={`${ASSETS}/lanterne.webp`}

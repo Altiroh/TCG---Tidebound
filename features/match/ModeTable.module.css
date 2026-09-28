@@ -21,7 +21,8 @@
   content: "";
   position: fixed;
   inset: 0;
-  z-index: 5;
+  /* Au-dessus de la lanterne : soufflée, elle s'assombrit avec la pièce. */
+  z-index: 62;
   background: radial-gradient(120% 95% at 10% 10%, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.62));
   opacity: 1;
   pointer-events: none;
@@ -37,7 +38,7 @@
 .light {
   position: fixed;
   inset: 0;
-  z-index: 4;
+  z-index: 61;
   background: radial-gradient(60% 55% at 7% 14%, rgba(255, 176, 76, 0.34), rgba(255, 140, 40, 0.1) 55%, transparent 82%);
   mix-blend-mode: screen;
   opacity: 0;
@@ -208,18 +209,67 @@
 
 /*
  * La lanterne (`features/shell/Lantern`) : GRANDE, elle déborde en haut à
- * gauche, par-dessus le bandeau du jeu. Fixe à l'écran — `.page`, conteneur
- * de requêtes, rognerait tout ce qui dépasse. Flamme vers 60 %.
+ * gauche. Fixe à l'écran — `.page`, conteneur de requêtes, rognerait tout
+ * ce qui dépasse. Flamme vers 60 % de sa hauteur, pied vers 93 %.
+ *
+ * Pour qu'elle fasse PARTIE de la table plutôt que d'être collée dessus
+ * (retour du 28/09/2026) : posée, sans balancement ; sous le voile de la
+ * pièce, qu'elle subit comme le reste quand on la souffle ; une ombre de
+ * contact sous son pied et la flaque de lumière chaude qu'elle jette sur
+ * le bois (`.lanternPool`) ; ses contours fondus dans la lumière ambiante.
  */
+.page {
+  --lantern-w: min(17vw, 30dvh);
+  --lantern-h: calc(var(--lantern-w) * 1424 / 1104);
+  --lantern-x: calc(-0.5vw + var(--tb-safe-left));
+  --lantern-y: calc(-3dvh + var(--tb-safe-top));
+}
+
 .lantern {
   --lantern-flame-y: 60%;
   --lantern-smoke-y: 20%;
   position: fixed;
+  /* Au-dessus du filet du bandeau, sous la lumière et le voile de la pièce. */
   z-index: 60;
-  top: calc(-3dvh + var(--tb-safe-top));
-  left: calc(-0.5vw + var(--tb-safe-left));
-  width: min(17vw, 30dvh);
+  top: var(--lantern-y);
+  left: var(--lantern-x);
+  width: var(--lantern-w);
   aspect-ratio: 1104 / 1424;
+  /* Un peu de la teinte de la table sur le métal, une ombre portée vers le bas à droite. */
+  filter: sepia(0.12) saturate(0.95) drop-shadow(1.2vw 1.6vw 1.4vw rgba(12, 5, 1, 0.55));
+}
+
+.lanternPool {
+  position: fixed;
+  z-index: 2;
+  inset: 0;
+  pointer-events: none;
+  background:
+    /* ombre de contact, serrée sous le pied */
+    radial-gradient(
+      calc(var(--lantern-w) * 0.42) calc(var(--lantern-w) * 0.09) at calc(var(--lantern-x) + var(--lantern-w) * 0.55) calc(var(--lantern-y) + var(--lantern-h) * 0.94),
+      rgba(10, 4, 0, 0.75),
+      rgba(10, 4, 0, 0.35) 55%,
+      transparent 100%
+    ),
+    /* flaque de lumière sur le bois, autour de la lanterne */
+    radial-gradient(
+      calc(var(--lantern-w) * 1.5) calc(var(--lantern-w) * 1.05) at calc(var(--lantern-x) + var(--lantern-w) * 0.5) calc(var(--lantern-y) + var(--lantern-h) * 0.72),
+      rgba(255, 170, 70, 0.42),
+      rgba(255, 130, 40, 0.16) 45%,
+      transparent 75%
+    );
+  background-repeat: no-repeat;
+  transition: opacity 700ms ease;
+}
+
+.page:not([data-lit]) .lanternPool {
+  /* Soufflée : il ne reste que l'ombre (la flaque s'éteint avec le voile). */
+  opacity: 0.55;
+}
+
+.page[data-lit] .lanternPool {
+  animation: flicker 2.9s infinite;
 }
 
 @keyframes cardIn {
@@ -247,6 +297,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .card,
+  .page[data-lit] .lanternPool,
   .cardButton:hover::after,
   .cardButton:focus-visible::after,
   .page[data-lit] .light {

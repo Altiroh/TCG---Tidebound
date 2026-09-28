@@ -22,6 +22,8 @@ interface LanternProps {
   outSrc: string;
   /** Place et taille dans la scène (le composant ne se positionne pas lui-même). */
   className?: string;
+  /** Lanterne POSÉE (sur une table) plutôt que pendue : elle ne se balance pas. */
+  standing?: boolean;
 }
 
 /**
@@ -32,7 +34,7 @@ interface LanternProps {
  * jette sur la scène, et l'obscurité quand elle s'éteint, restent à la
  * scène (elle connaît son décor) : elle lit `lit`, qu'elle possède.
  */
-export function Lantern({ lit, onToggle, litSrc, outSrc, className }: LanternProps) {
+export function Lantern({ lit, onToggle, litSrc, outSrc, className, standing = false }: LanternProps) {
   // Chaque extinction remonte la fumée (nouvelle clé), pour qu'elle rejoue.
   const [puff, setPuff] = useState(0);
   return (
@@ -40,6 +42,7 @@ export function Lantern({ lit, onToggle, litSrc, outSrc, className }: LanternPro
       type="button"
       className={`${styles.lantern}${className ? ` ${className}` : ""}`}
       data-lit={lit || undefined}
+      data-standing={standing || undefined}
       aria-pressed={lit}
       aria-label={lit ? "Souffler la lanterne" : "Rallumer la lanterne"}
       onClick={() => {
