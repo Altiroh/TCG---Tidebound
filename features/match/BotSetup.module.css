@@ -306,14 +306,16 @@
   grid-area: foe;
   display: grid;
   justify-items: center;
-  align-content: center;
+  /* Sous la poignée pendue en haut à droite. */
+  align-content: end;
+  padding-top: 38cqh;
   gap: calc(var(--u) * 1.2);
   min-height: 0;
 }
 
 .polaroid {
   position: relative;
-  height: 56cqh;
+  height: 42cqh;
   aspect-ratio: 419 / 454;
   rotate: 4deg;
   filter: drop-shadow(0 calc(var(--u) * 1.6) calc(var(--u) * 2) rgba(0, 0, 0, 0.6));
@@ -475,23 +477,47 @@
  */
 .lever {
   position: absolute;
-  z-index: 0;
-  left: 50%;
-  bottom: calc(var(--u) * 0.5);
-  height: 74cqh;
+  z-index: 4;
+  right: calc(max(11cqw, var(--u) * 18) - 3cqw);
+  top: calc(var(--u) * -2);
+  height: 44cqh;
   aspect-ratio: 1100 / 1005;
-  translate: -50% 0;
   pointer-events: none;
   animation: leverIn 620ms cubic-bezier(0.2, 0.8, 0.2, 1) 220ms both;
 }
 
-/* Tout le reste passe devant les chaînes. */
+/* Tout le reste passe sous le voile, et donc sous la poignée. */
 .levelsPanel,
 .versus,
 .deckSide,
 .foe {
   position: relative;
   z-index: 1;
+}
+
+/*
+ * Le voile : un flou sur toute la scène, entre elle et la poignée. Il
+ * arrive et repart en douceur (480 ms dans les deux sens), sans saut.
+ */
+.leverVeil {
+  position: absolute;
+  inset: calc(var(--u) * -6);
+  z-index: 3;
+  background: rgba(6, 10, 16, 0);
+  -webkit-backdrop-filter: blur(0px);
+  backdrop-filter: blur(0px);
+  pointer-events: none;
+  transition:
+    background 480ms cubic-bezier(0.4, 0, 0.2, 1),
+    backdrop-filter 480ms cubic-bezier(0.4, 0, 0.2, 1),
+    -webkit-backdrop-filter 480ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.scene:has(.leverHandle:hover:not(:disabled)) .leverVeil,
+.scene:has(.leverHandle:focus-visible) .leverVeil {
+  background: rgba(6, 10, 16, 0.28);
+  -webkit-backdrop-filter: blur(calc(var(--u) * 0.9));
+  backdrop-filter: blur(calc(var(--u) * 0.9));
 }
 
 .leverArt {
@@ -504,39 +530,10 @@
   transition: filter 450ms ease;
 }
 
-/*
- * Au survol de la poignée : un flou DERRIÈRE elle (la table se brouille
- * sous la poignée, qui ressort), qui arrive et repart en douceur — aucun
- * saut, ni à l'entrée ni à la sortie.
- */
-.leverBlur {
-  position: absolute;
-  left: -4%;
-  right: -4%;
-  top: 60%;
-  height: 38%;
-  border-radius: 40% / 50%;
-  -webkit-backdrop-filter: blur(0px);
-  backdrop-filter: blur(0px);
-  background: radial-gradient(closest-side, rgba(8, 16, 26, 0.5), rgba(8, 16, 26, 0.2) 70%, transparent);
-  opacity: 0;
-  -webkit-mask: radial-gradient(closest-side, #000 60%, transparent);
-  mask: radial-gradient(closest-side, #000 60%, transparent);
-  transition:
-    opacity 480ms cubic-bezier(0.4, 0, 0.2, 1),
-    backdrop-filter 480ms cubic-bezier(0.4, 0, 0.2, 1),
-    -webkit-backdrop-filter 480ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.lever:has(.leverHandle:hover:not(:disabled)) .leverBlur,
-.lever:has(.leverHandle:focus-visible) .leverBlur {
-  opacity: 1;
-  -webkit-backdrop-filter: blur(calc(var(--u) * 1.8));
-  backdrop-filter: blur(calc(var(--u) * 1.8));
-}
-
-.lever:has(.leverHandle:hover:not(:disabled)) .leverArt {
-  filter: brightness(1.12) drop-shadow(0 calc(var(--u) * 1.4) calc(var(--u) * 1.6) rgba(0, 0, 0, 0.6)) drop-shadow(0 0 calc(var(--u) * 1.6) rgba(255, 214, 150, 0.45));
+/* Survol : la poignée s'éclaire d'une légère lueur. */
+.lever:has(.leverHandle:hover:not(:disabled)) .leverArt,
+.lever:has(.leverHandle:focus-visible) .leverArt {
+  filter: brightness(1.08) drop-shadow(0 calc(var(--u) * 1.4) calc(var(--u) * 1.6) rgba(0, 0, 0, 0.6)) drop-shadow(0 0 calc(var(--u) * 1.2) rgba(255, 214, 150, 0.4));
 }
 
 /* La zone qu'on attrape : la poignée seule. */
@@ -572,8 +569,7 @@
 }
 
 /* Tirée : elle descend d'un coup sec, s'arrête, remonte en rebondissant. */
-.lever[data-pulled] .leverArt,
-.lever[data-pulled] .leverBlur {
+.lever[data-pulled] .leverArt {
   animation: pull 720ms cubic-bezier(0.3, 0.7, 0.3, 1) both;
 }
 
@@ -589,7 +585,7 @@
 @keyframes leverIn {
   from {
     opacity: 0;
-    translate: -50% -30%;
+    translate: 0 -30%;
   }
 }
 
@@ -893,3 +889,4 @@
     animation: none;
   }
 }
+

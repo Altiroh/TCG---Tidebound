@@ -234,13 +234,17 @@ export function BotSetup({
 
       {/* ── En bas, au centre : le lancement ── */}
       {/*
-        ── En bas : la POIGNÉE « Lancer la partie », pendue à ses chaînes
-        (`play/mode/poignee-lancer`). On la TIRE : elle descend, les chaînes
-        se tendent, elle remonte — et la partie part. Seule la poignée est
-        cliquable ; les chaînes passent derrière le VS et le niveau.
+        Au survol de la poignée, tout l'écran se brouille DERRIÈRE elle
+        (voile flou) : le regard va à la poignée. Transition douce dans les
+        deux sens.
+      */}
+      <span className={styles.leverVeil} aria-hidden />
+      {/*
+        ── En haut à droite : la POIGNÉE « Lancer la partie », pendue à ses
+        chaînes (`play/mode/poignee-lancer`). On la TIRE : elle descend,
+        remonte — et la partie part. Seule la poignée est cliquable.
       */}
       <div className={styles.lever} data-pulled={pulled || undefined} data-disabled={!canLaunch || undefined}>
-        <span className={styles.leverBlur} aria-hidden />
         {/* eslint-disable-next-line @next/next/no-img-element -- poignée peinte */}
         <img className={styles.leverArt} src="/assets/play/mode/poignee-lancer.webp" alt="" draggable={false} />
         <button type="button" className={styles.leverHandle} onClick={pull} disabled={!canLaunch} aria-label={starting ? "Préparation de la partie" : "Lancer la partie"} />
