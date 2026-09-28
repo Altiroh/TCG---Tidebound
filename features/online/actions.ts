@@ -13,6 +13,7 @@ import {
 } from "@/features/matches/matchStore";
 import { packFrames, type PackedFrames } from "@/features/matches/matchFrames";
 import { resolveMatchDeck } from "@/features/decks/matchDeck";
+import { resumeVerdict } from "@/features/online/resumable";
 import { loadEquippedCosmetics } from "@/features/cosmetics/equippedCosmeticsService";
 import type { PlayerCosmetics } from "@/features/cosmetics/MatchCosmeticsProvider";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
@@ -182,22 +183,53 @@ export interface ResumableMatch {
  * La partie la plus récente que ce joueur a laissée ouverte — pour lui
  * proposer de la reprendre au lieu de la laisser filer vers le forfait
  * (onglet fermé, rechargement, retour au menu). `null` si rien n'attend.
+ *
+ * Chaque candidate est VÉRIFIÉE avant d'être proposée (`resumeVerdict`) :
+ * échéances rattrapées, état de jeu relu. Celles qui ne se reprendront
+ * jamais (état manquant ou illisible, table contre le bot délaissée,
+ * invitation expirée) sont fermées au passage : le bandeau ne ment plus.
  */
 export async function findResumableMatch(): Promise<ResumableMatch | null> {
   const user = await getSessionUser();
   if (!user) return null;
-  const { data, error } = await createSupabaseServiceRoleClient()
+  const service = createSupabaseServiceRoleClient();
+  const { data, error } = await service
     .from("matches")
-    .select("id, mode, status")
+    .select("id, mode, status, updated_at")
     .in("status", ["waiting", "active"])
     .or(`player1_id.eq.${user.id},player2_id.eq.${user.id}`)
     .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(5);
   if (error) {
     console.error("[findResumableMatch] Lecture impossible :", error.message);
     return null;
   }
-  if (!data || (data.status !== "waiting" && data.status !== "active")) return null;
-  return { matchId: data.id, mode: data.mode, status: data.status };
+
+  const now = Date.now();
+  for (const row of data ?? []) {
+    if (row.status !== "waiting" && row.status !== "active") continue;
+    let game = "missing";
+    if (row.status === "active") {
+      try {
+        // Un délai échu peut avoir terminé la partie : on le constate avant de la proposer.
+        const settled = await settleExpiredDeadlines(row.id, user.id);
+        const snapshot = settled ?? (await loadSnapshot(row.id, user.id));
+        game = snapshot?.view ? snapshot.view.status : "missing";
+      } catch (readError) {
+        console.error(`[findResumableMatch] État illisible pour ${row.id} :`, readError);
+        game = "broken";
+      }
+    }
+    const verdict = resumeVerdict({ mode: row.mode, status: row.status, updatedAt: row.updated_at }, game, now);
+    if (verdict === "resume") return { matchId: row.id, mode: row.mode, status: row.status };
+    if (verdict === "close") {
+      const { error: closeError } = await service
+        .from("matches")
+        .update({ status: "abandoned", updated_at: new Date().toISOString() })
+        .eq("id", row.id)
+        .in("status", ["waiting", "active"]);
+      if (closeError) console.error(`[findResumableMatch] Fermeture de ${row.id} impossible :`, closeError.message);
+    }
+  }
+  return null;
 }
