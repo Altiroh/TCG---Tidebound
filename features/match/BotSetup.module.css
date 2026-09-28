@@ -492,7 +492,12 @@
   position: absolute;
   z-index: 4;
   right: calc(max(11cqw, var(--u) * 18) - 3cqw);
-  top: -11cqh;
+  /*
+   * Assez haut pour que, même tirée (elle descend de 9 % de sa hauteur), le
+   * bout des chaînes reste AU-DESSUS du bord de l'écran : 80 px couvrent le
+   * bandeau au-dessus de la scène, 5,5cqh la course du tirage.
+   */
+  top: calc(-80px - 5.5cqh);
   height: 50cqh;
   aspect-ratio: 1100 / 1005;
   pointer-events: none;
