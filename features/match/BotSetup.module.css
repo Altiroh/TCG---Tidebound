@@ -19,9 +19,9 @@
 }
 
 /* Couleur du niveau : l'illustration, l'aura et le bouton enfoncé la prennent. */
-.scene[data-level="facile"] { --level-color: 95, 208, 230; }
+.scene[data-level="facile"] { --level-color: 60, 200, 170; }
 .scene[data-level="moyen"] { --level-color: 255, 178, 74; }
-.scene[data-level="difficile"] { --level-color: 255, 72, 64; }
+.scene[data-level="difficile"] { --level-color: 255, 60, 50; }
 
 /* ── Arrivée et départ des éléments ── */
 .levelArt,
@@ -79,10 +79,10 @@
 /* ── En haut : l'illustration du niveau ── */
 .levelArt {
   position: absolute;
-  left: 35%;
-  top: 0;
-  width: 30%;
-  height: 56%;
+  left: 42.5%;
+  top: 5%;
+  width: 24%;
+  height: 72%;
   display: grid;
   justify-items: center;
   align-content: start;
@@ -92,8 +92,8 @@
 .aura {
   position: absolute;
   left: 50%;
-  top: 34%;
-  width: calc(60% + var(--level) * 14%);
+  top: 40%;
+  width: calc(80% + var(--level) * 16%);
   aspect-ratio: 1;
   translate: -50% -50%;
   border-radius: 50%;
@@ -108,58 +108,48 @@
   50% { opacity: 1; scale: 1.06; }
 }
 
-/* Le médaillon : laiton et fond sombre, l'emblème du niveau qui s'y fond. */
-.medallion {
+/*
+ * L'illustration du niveau (`play/bot-level/illustration-*`, 1 × 1,07) :
+ * les trois superposées, la choisie arrive en fondu et en rebond, les
+ * autres s'effacent — le crabe qui s'énerve de niveau en niveau.
+ */
+.illustration {
   position: relative;
-  width: 52%;
-  aspect-ratio: 1;
-  margin-top: 3%;
-  border: 0.45cqw solid #b98a3e;
-  border-radius: 50%;
-  background: radial-gradient(circle at 42% 36%, #1c2a3a, #070c14 78%);
-  box-shadow:
-    0 0 0 0.25cqw #4a3514,
-    0 1.4cqh 2.4cqh rgba(0, 0, 0, 0.6),
-    0 0 calc(1.2cqw + var(--level) * 1.2cqw) rgba(var(--level-color), 0.55),
-    inset 0 0 2.4cqw rgba(var(--level-color), 0.35);
-  transition: box-shadow 500ms ease;
+  width: 74%;
+  aspect-ratio: 512 / 546;
+  margin-top: 1%;
+  filter: drop-shadow(0 1.4cqh 2cqh rgba(0, 0, 0, 0.6)) drop-shadow(0 0 calc(0.8cqw + var(--level) * 1cqw) rgba(var(--level-color), 0.5));
+  transition: filter 500ms ease;
 }
 
-.medallion img {
+.illustration img {
   position: absolute;
-  inset: 8%;
-  width: 84%;
-  height: 84%;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
   opacity: 0;
-  scale: 0.7;
-  rotate: -25deg;
-  transition: opacity 380ms ease, scale 520ms cubic-bezier(0.3, 1.6, 0.4, 1), rotate 520ms cubic-bezier(0.3, 1.4, 0.4, 1);
+  scale: 0.9;
+  rotate: -3deg;
+  transition: opacity 360ms ease, scale 520ms cubic-bezier(0.3, 1.5, 0.4, 1), rotate 520ms cubic-bezier(0.3, 1.4, 0.4, 1);
+  user-select: none;
 }
 
-.medallion img[data-on] {
+.illustration img[data-on] {
   opacity: 1;
   scale: 1;
   rotate: 0deg;
-}
-
-/* Le difficile se teinte de rouge. */
-.scene[data-level="difficile"] .medallion img[data-on] {
-  filter: hue-rotate(160deg) saturate(2.4) brightness(1.05);
-}
-
-.scene[data-level="moyen"] .medallion img[data-on] {
-  filter: hue-rotate(185deg) saturate(1.6) brightness(1.1);
 }
 
 .ribbon {
   position: relative;
   display: grid;
   justify-items: center;
-  width: 100%;
+  width: 92%;
   aspect-ratio: 900 / 249;
-  margin-top: -6%;
-  padding-top: 5.5%;
+  margin-top: -5%;
+  align-content: center;
+  padding-bottom: 2%;
   background: url("/assets/ui/bandeaux/banderole.webp") center / 100% 100% no-repeat;
   filter: drop-shadow(0 0.8cqh 1cqh rgba(0, 0, 0, 0.55));
 }
@@ -173,22 +163,13 @@
   color: var(--ink);
 }
 
-.ribbonLevel {
-  margin-top: 0.3cqw;
-  font-family: var(--tb-font-display, Georgia, serif);
-  font-size: max(9px, 1.05cqw);
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, rgb(var(--level-color)) 55%, var(--ink));
-}
 
 /* ── À gauche : la fiche épinglée, niveau puis deck ── */
 .left {
   position: absolute;
-  left: 13.5%;
-  top: 6%;
-  width: 22.5%;
+  left: 14%;
+  top: 5%;
+  width: 27%;
   aspect-ratio: 589 / 900;
   display: grid;
   align-content: start;
@@ -213,56 +194,53 @@
 .levels {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.5cqw;
-  width: 100%;
+  gap: 0.35cqw;
+  width: 104%;
   margin-bottom: 0.6cqw;
 }
 
 /*
- * Une plaque de bois et de laiton (`plaque-bois`) : relevée au repos,
- * ENFONCÉE quand elle est choisie — descendue, ombre rentrée, lueur de la
- * couleur du niveau.
+ * Les plaques de niveau (`play/bot-level/plaque-*`, nom peint) : relevées
+ * au repos, ENFONCÉES quand elles sont choisies — descendues, plus
+ * sombres, ombre rentrée —, avec la lueur de la couleur du niveau.
  */
 .levelButton {
   position: relative;
-  display: grid;
-  justify-items: center;
-  gap: 0.2cqw;
-  padding: 0.55cqw 0.2cqw 0.5cqw;
+  padding: 0;
   border: 0;
-  border-radius: 0.6cqw;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.18)),
-    url("/assets/ui/boutons/plaque-bois.webp") center / 100% 100% no-repeat;
-  box-shadow: 0 0.35cqw 0 #2b1706, 0 0.6cqw 0.8cqw rgba(0, 0, 0, 0.55);
-  color: #f1e3c4;
-  font-family: var(--tb-font-display, Georgia, serif);
-  font-size: max(9px, 0.95cqw);
-  font-weight: 700;
+  background: none;
   cursor: pointer;
-  transition: transform 120ms ease-out, box-shadow 120ms ease-out, filter 160ms ease;
+  filter: brightness(0.82) saturate(0.8) drop-shadow(0 0.45cqw 0 #1c0e04) drop-shadow(0 0.7cqw 0.7cqw rgba(0, 0, 0, 0.55));
+  transition: transform 120ms ease-out, filter 160ms ease;
 }
 
 .levelButton img {
-  width: 2.4cqw;
-  height: 2.4cqw;
-  object-fit: contain;
-  filter: grayscale(0.6) brightness(0.8);
-  transition: filter 160ms ease;
+  display: block;
+  width: 100%;
+  height: auto;
+  user-select: none;
 }
 
 .levelButton:hover {
-  filter: brightness(1.12);
+  filter: brightness(1) saturate(1) drop-shadow(0 0.45cqw 0 #1c0e04) drop-shadow(0 0.7cqw 0.7cqw rgba(0, 0, 0, 0.55));
 }
 
 .levelButton[aria-checked="true"] {
-  transform: translateY(0.3cqw);
-  box-shadow: 0 0.05cqw 0 #2b1706, inset 0 0.25cqw 0.6cqw rgba(0, 0, 0, 0.75), 0 0 1cqw rgba(var(--level-color), 0.55);
-  filter: brightness(0.92);
+  transform: translateY(0.4cqw) scale(0.97);
+  filter: brightness(0.95) saturate(1.05) drop-shadow(0 0.05cqw 0 #1c0e04) drop-shadow(0 0 0.9cqw rgba(var(--level-color), 0.8));
 }
 
-.levelButton[aria-checked="true"] img {
-  filter: drop-shadow(0 0 0.5cqw rgba(var(--level-color), 0.9));
+.levelButton[data-level="facile"] { --level-color: 60, 200, 170; }
+.levelButton[data-level="moyen"] { --level-color: 255, 178, 74; }
+.levelButton[data-level="difficile"] { --level-color: 255, 60, 50; }
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 .levelButton:focus-visible,
@@ -421,23 +399,14 @@
   color: var(--ink-soft);
 }
 
+/* La vignette de l'illustration du niveau. */
 .factEmblem {
   flex: none;
-  width: 2.8cqw;
-  height: 2.8cqw;
-  padding: 0.25cqw;
-  border: 0.15cqw solid #b98a3e;
-  border-radius: 50%;
-  background: radial-gradient(circle at 42% 36%, #1c2a3a, #070c14 78%);
+  width: 3.4cqw;
+  height: auto;
+  aspect-ratio: 512 / 546;
   object-fit: contain;
-}
-
-.scene[data-level="difficile"] .factEmblem {
-  filter: hue-rotate(160deg) saturate(2.4);
-}
-
-.scene[data-level="moyen"] .factEmblem {
-  filter: hue-rotate(185deg) saturate(1.6);
+  filter: drop-shadow(0 0.2cqw 0.3cqw rgba(0, 0, 0, 0.45));
 }
 
 .stars {

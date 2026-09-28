@@ -107,12 +107,13 @@ export function BotSetup({
       {/* ── En haut : l'illustration du niveau, qui évolue avec lui ── */}
       <section className={styles.levelArt} aria-live="polite" aria-label={`Bot ${level.label}`} style={{ "--level": levelIndex } as React.CSSProperties}>
         <span className={styles.aura} aria-hidden />
-        <span className={styles.medallion} aria-hidden>
+        {/* L'illustration du niveau (`play/bot-level/`) : les trois sont posées, seule la choisie se voit. */}
+        <span className={styles.illustration} aria-hidden>
           {levels.map((entry) => (
-            // eslint-disable-next-line @next/next/no-img-element -- emblème local
+            // eslint-disable-next-line @next/next/no-img-element -- illustration locale
             <img
               key={entry.id}
-              src={`/assets/play/bot-difficulty/${entry.id}.webp`}
+              src={`/assets/play/bot-level/illustration-${entry.id}.webp`}
               alt=""
               draggable={false}
               data-on={entry.id === level.id || undefined}
@@ -121,7 +122,6 @@ export function BotSetup({
         </span>
         <span className={styles.ribbon}>
           <span className={styles.ribbonTitle}>Contre un bot</span>
-          <span className={styles.ribbonLevel}>{level.label}</span>
         </span>
       </section>
 
@@ -143,9 +143,9 @@ export function BotSetup({
               }}
               title={entry.description}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element -- emblème local */}
-              <img src={`/assets/play/bot-difficulty/${entry.id}.webp`} alt="" draggable={false} />
-              <span>{entry.label}</span>
+              {/* eslint-disable-next-line @next/next/no-img-element -- plaque peinte (nom du niveau compris) */}
+              <img src={`/assets/play/bot-level/plaque-${entry.id}.webp`} alt="" draggable={false} />
+              <span className={styles.srOnly}>{entry.label}</span>
             </button>
           ))}
         </div>
@@ -190,7 +190,7 @@ export function BotSetup({
             <dt>Adversaire</dt>
             <dd>
               {/* eslint-disable-next-line @next/next/no-img-element -- emblème local */}
-              <img className={styles.factEmblem} src={`/assets/play/bot-difficulty/${level.id}.webp`} alt="" draggable={false} />
+              <img className={styles.factEmblem} src={`/assets/play/bot-level/illustration-${level.id}.webp`} alt="" draggable={false} />
               <span>
                 <strong>Bot {level.label.toLowerCase()}</strong>
                 <small>{level.description}</small>

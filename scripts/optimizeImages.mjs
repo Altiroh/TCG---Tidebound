@@ -122,6 +122,10 @@ const RULES = [
   { match: /\/play\/mode\/carte-/, maxSize: 900, quality: 86 },
   { match: /\/play\/mode\/lanterne/, maxSize: 640, quality: 88 },
   { match: /\/play\/mode\/decor-/, maxSize: 1200, quality: 84 },
+  // Niveaux du bot (écran Jouer → Contre un bot, 28/09/2026) : plaques de
+  // niveau à ~16 % de la largeur, illustration du niveau à ~28 %.
+  { match: /\/play\/bot-level\/plaque-/, maxSize: 720, quality: 88 },
+  { match: /\/play\/bot-level\/illustration-/, maxSize: 900, quality: 86 },
   // Scène des MÉCÈNES (maquette du 28/09/2026), dans le panneau latéral
   // (la moitié de l'écran) : le mur en fond, la télé à ~90 % de sa largeur,
   // les cadres photo à ~30 %, la lanterne et l'étoile de mer en décor.
