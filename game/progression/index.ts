@@ -13,6 +13,8 @@ export {
   MATCH_TIDES,
   MATCH_XP,
   MEANINGFUL_ACTIVITY,
+  MIN_REWARDED_MATCH_MS,
+  SAME_OPPONENT_DAILY_REWARDED_MATCHES,
   STARTING_LEVEL,
   XP_FIRST_LEVEL,
   XP_LEVEL_STEP,
@@ -32,8 +34,16 @@ export {
 export type { CosmeticKind, LevelRewardItem } from "@/game/progression/levelRewards";
 
 export { levelForTotalXp, progressionView, rewardForLevel, rewardsForLevelsGained, totalXpForLevel, xpForLevel } from "@/game/progression/levels";
-export { audienceOpponent, computeMatchReward, isMeaningfulMatch, matchActivity, utcDayKey } from "@/game/progression/matchRewards";
-export type { MatchRewardInput } from "@/game/progression/matchRewards";
+export {
+  audienceOpponent,
+  computeMatchReward,
+  countsAsPlayedMatch,
+  isMeaningfulMatch,
+  matchActivity,
+  matchModePaysRewards,
+  utcDayKey,
+} from "@/game/progression/matchRewards";
+export type { MatchRewardInput, PlayedMatchInput } from "@/game/progression/matchRewards";
 
 export {
   LOGIN_CYCLE_LENGTH,

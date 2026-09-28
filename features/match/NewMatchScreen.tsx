@@ -18,7 +18,31 @@ import styles from "@/features/match/NewMatch.module.css";
 import { playButtonClick, playGameStart, playTabClick } from "@/lib/sound";
 import { usePersistedState } from "@/lib/persistedState";
 
-export type MatchOpponent = { type: "pvp" } | { type: "bot"; difficulty: BotDifficulty };
+/**
+ * Partie en ligne : recherche rapide (matchmaking au premier arrivé), ou
+ * match amical — créé (on reçoit un code à partager) ou rejoint par code.
+ */
+export type OnlineKind = "quick" | "friend" | "host" | "join";
+
+/** Un ami, tel que l'écran le propose au défi. */
+export interface ChallengeableFriend {
+  userId: string;
+  name: string;
+  /** « En ligne », « En partie », « Hors ligne » — déjà mis en mots. */
+  presenceLabel: string;
+}
+
+/** Un défi reçu d'un ami : le relever, c'est rejoindre son match amical par code. */
+export interface ReceivedChallenge {
+  id: string;
+  fromName: string;
+  inviteCode: string;
+}
+
+export type MatchOpponent =
+  | { type: "pvp" }
+  | { type: "bot"; difficulty: BotDifficulty }
+  | { type: "online"; kind: OnlineKind; code?: string; friendId?: string };
 
 interface NewMatchScreenProps {
   onStart: (deck1: DeckList, deck2: DeckList, opponent: MatchOpponent) => void | Promise<void>;
@@ -38,6 +62,20 @@ interface NewMatchScreenProps {
   unlockedDeckIds?: readonly string[];
   /** Compte connecté — dit quoi afficher quand l'onglet « Mes decks » est vide. */
   isSignedIn?: boolean;
+  /** Ouvre directement le mode « En ligne » (lien `/partie?mode=en-ligne`, lien d'invitation). */
+  initialMode?: Mode;
+  /** Code d'un lien d'invitation : le match amical à rejoindre est déjà saisi. */
+  initialInviteCode?: string;
+  /** Partie laissée ouverte par ce joueur : proposée à la reprise dès l'écran des modes. */
+  resumable?: { matchId: string; label: string } | null;
+  /** Amis du joueur, pour « Défier un ami ». */
+  friends?: readonly ChallengeableFriend[];
+  /** Ami présélectionné (bouton « Défier » de la page Amis). */
+  initialFriendId?: string;
+  /** Défis reçus, proposés dès l'écran des modes. */
+  challenges?: readonly ReceivedChallenge[];
+  /** Décliner un défi reçu. */
+  onDeclineChallenge?: (challengeId: string) => void;
 }
 
 /**
@@ -64,7 +102,19 @@ const BOT_DIFFICULTIES: { id: BotDifficulty; label: string; description: string 
   { id: "difficile", label: "Difficile", description: "Cherche systématiquement le meilleur coup possible." },
 ];
 
-type Mode = "pvp" | "bot";
+type Mode = "pvp" | "bot" | "online";
+
+const ONLINE_KINDS: { id: OnlineKind; label: string; description: string }[] = [
+  { id: "quick", label: "Recherche rapide", description: "Un adversaire tiré au hasard. XP, Tides et quêtes." },
+  { id: "friend", label: "Défier un ami", description: "Ton ami reçoit le défi où qu'il soit dans le jeu. Match amical, sans récompenses." },
+  { id: "host", label: "Créer un match amical", description: "Tu reçois un code à envoyer à un ami. Pour le plaisir, sans récompenses." },
+  { id: "join", label: "Rejoindre un match amical", description: "Entre le code reçu d'un ami. Pour le plaisir, sans récompenses." },
+];
+
+/** Alphabet des codes d'invitation (`features/online/inviteCode.ts`) : ce que la saisie garde. */
+function normalizeInviteCode(raw: string): string {
+  return raw.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
+}
 /** 1 : mode · 2 : deck du joueur 1 (ou le sien contre le bot) · 3 : deck du joueur 2 (local à deux seulement). */
 type Step = 1 | 2 | 3;
 
@@ -119,7 +169,7 @@ function stars(difficulty: number): string {
 
 /**
  * Jouer — un parcours en étapes, pas un formulaire : d'abord le mode (en
- * ligne, bientôt ; local à deux ; contre un bot), puis le deck, choisi par
+ * ligne ; local à deux ; contre un bot), puis le deck, choisi par
  * son Navire. En local à deux, chaque joueur choisit le sien à tour de rôle.
  *
  * Les decks personnels sont proposés s'ils sont jouables
@@ -135,9 +185,22 @@ export function NewMatchScreen({
   personalDecks = [],
   unlockedDeckIds = [],
   isSignedIn = false,
+  initialMode,
+  initialInviteCode,
+  resumable = null,
+  friends = [],
+  initialFriendId,
+  challenges = [],
+  onDeclineChallenge,
 }: NewMatchScreenProps) {
-  const [step, setStep] = useState<Step>(1);
-  const [mode, setMode] = useState<Mode>("bot");
+  const openOnline = initialMode === "online" && isSignedIn;
+  const [step, setStep] = useState<Step>(openOnline ? 2 : 1);
+  const [mode, setMode] = useState<Mode>(openOnline ? "online" : "bot");
+  const [onlineKind, setOnlineKind] = useState<OnlineKind>(initialInviteCode ? "join" : initialFriendId ? "friend" : "quick");
+  const [friendId, setFriendId] = useState<string | null>(
+    () => friends.find((friend) => friend.userId === initialFriendId)?.userId ?? friends[0]?.userId ?? null
+  );
+  const [inviteCode, setInviteCode] = useState(() => normalizeInviteCode(initialInviteCode ?? ""));
   const [botDifficulty, setBotDifficulty] = useState<BotDifficulty>("moyen");
   // Le deck PAR DÉFAUT du joueur (écran Decks) est présélectionné : on
   // arrive prêt à jouer, pas devant une liste à relire à chaque partie.
@@ -210,6 +273,15 @@ export function NewMatchScreen({
     if (first) setCurrent(first);
   }, [activeTab, current, setCurrent]);
 
+  /** Relever un défi reçu : mode « En ligne », rejoindre, code déjà saisi — reste le deck. */
+  function acceptChallenge(code: string) {
+    playButtonClick();
+    setMode("online");
+    setOnlineKind("join");
+    setInviteCode(normalizeInviteCode(code));
+    setStep(2);
+  }
+
   function chooseMode(next: Mode) {
     playButtonClick();
     setMode(next);
@@ -229,14 +301,41 @@ export function NewMatchScreen({
       void onStart(deck1, deck2, { type: "pvp" });
       return;
     }
+    if (mode === "online") {
+      if (onlineKind === "join" && inviteCode.length < 6) return;
+      if (onlineKind === "friend" && !friendId) return;
+      playGameStart();
+      void onStart(deck1, deck1, {
+        type: "online",
+        kind: onlineKind,
+        code: onlineKind === "join" ? inviteCode : undefined,
+        friendId: onlineKind === "friend" ? (friendId ?? undefined) : undefined,
+      });
+      return;
+    }
     playGameStart();
     // Contre un bot, le tirage a lieu ICI — au lancement, pas à l'affichage : relancer une partie change d'adversaire.
     void onStart(deck1, pickRandomDeck(), { type: "bot", difficulty: botDifficulty });
   }
 
   const stepLabels: string[] = mode === "pvp" ? ["Mode", "Deck du joueur 1", "Deck du joueur 2"] : ["Mode", "Ton deck"];
-  const canLaunch = step === 3 ? deck2 !== null : deck1 !== null;
-  const launchLabel = mode === "pvp" && step === 2 ? "Deck du joueur 2 →" : starting ? "Préparation de la partie…" : "Lancer la partie";
+  const onlineBlocked = mode === "online" && ((onlineKind === "join" && inviteCode.length < 6) || (onlineKind === "friend" && !friendId));
+  const canLaunch = step === 3 ? deck2 !== null : deck1 !== null && !onlineBlocked;
+  const onlineLaunchLabel = {
+    quick: "Chercher un adversaire",
+    friend: "Envoyer le défi",
+    host: "Créer le match amical",
+    join: "Rejoindre le match",
+  }[onlineKind];
+  const challengedFriend = friends.find((friend) => friend.userId === friendId);
+  const launchLabel =
+    mode === "pvp" && step === 2
+      ? "Deck du joueur 2 →"
+      : starting
+        ? "Préparation de la partie…"
+        : mode === "online"
+          ? onlineLaunchLabel
+          : "Lancer la partie";
 
   return (
     <GameScreen active="partie" nav="minimal">
@@ -267,7 +366,9 @@ export function NewMatchScreen({
                   ? "Choisis comment tu veux jouer, puis ton deck."
                   : mode === "pvp"
                     ? "Chacun son deck, à tour de rôle, sur le même écran."
-                    : "Affronte l'IA et perfectionne tes stratégies sur les mers de Tidebound."}
+                    : mode === "online"
+                      ? "Affronte un autre capitaine à distance, partie arbitrée par le serveur."
+                      : "Affronte l'IA et perfectionne tes stratégies sur les mers de Tidebound."}
               </p>
             </div>
             <ol className={styles.steps} aria-label="Étapes">
@@ -284,21 +385,68 @@ export function NewMatchScreen({
             </ol>
           </div>
 
+          {step === 1 &&
+            challenges.map((challenge) => (
+              <div key={challenge.id} className={game.banner} role="status">
+                <div className={game.bannerText}>
+                  <p className={game.bannerTitle}>{challenge.fromName} te défie en match amical</p>
+                  <p className={game.muted}>Choisis ton deck, et la partie commence.</p>
+                </div>
+                <div className={game.bannerActions}>
+                  <button type="button" className={game.primary} onClick={() => acceptChallenge(challenge.inviteCode)}>
+                    Relever le défi
+                  </button>
+                  {onDeclineChallenge && (
+                    <button type="button" className={game.ghost} onClick={() => onDeclineChallenge(challenge.id)}>
+                      Décliner
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+
+          {step === 1 && resumable && (
+            <div className={game.banner} role="status">
+              <div className={game.bannerText}>
+                <p className={game.bannerTitle}>Une partie t&apos;attend</p>
+                <p className={game.muted}>{resumable.label}</p>
+              </div>
+              <div className={game.bannerActions}>
+                <Link href={`/en-ligne/${resumable.matchId}`} className={game.primary} onClick={() => playButtonClick()}>
+                  Reprendre
+                </Link>
+              </div>
+            </div>
+          )}
+
           {step === 1 ? (
             <div className={styles.modes}>
-              <div className={`${game.tileDisabled} ${styles.mode}`} aria-disabled title="Bientôt disponible">
-                <span className={styles.modeMark} aria-hidden>
-                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
-                    <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth={1.5} />
-                    <path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18" stroke="currentColor" strokeWidth={1.3} />
-                  </svg>
-                </span>
-                <span className={styles.modeTitle}>En ligne</span>
-                <span className={styles.modeText}>Affronte un autre joueur à distance, partie arbitrée par le serveur.</span>
-                <span className={styles.modeFoot}>
-                  <span className={game.tag}>Bientôt disponible</span>
-                </span>
-              </div>
+              {/* En ligne : il faut un compte, la partie se joue et se paie côté serveur. */}
+              {isSignedIn ? (
+                <button type="button" className={`${game.tile} ${styles.mode}`} onClick={() => chooseMode("online")}>
+                  <span className={styles.modeMark} aria-hidden>
+                    {ONLINE_MARK}
+                  </span>
+                  <span className={styles.modeTitle}>En ligne</span>
+                  <span className={styles.modeText}>Recherche rapide contre un adversaire tiré au hasard, ou match amical avec un ami.</span>
+                  <span className={styles.modeFoot}>
+                    <span className={game.tagBrass}>XP et quêtes</span>
+                    <span className={game.link}>Choisir →</span>
+                  </span>
+                </button>
+              ) : (
+                <Link href="/connexion" className={`${game.tile} ${styles.mode}`} onClick={() => playButtonClick()}>
+                  <span className={styles.modeMark} aria-hidden>
+                    {ONLINE_MARK}
+                  </span>
+                  <span className={styles.modeTitle}>En ligne</span>
+                  <span className={styles.modeText}>Affronte d&apos;autres joueurs à distance. Il te faut un compte.</span>
+                  <span className={styles.modeFoot}>
+                    <span className={game.tag}>Connexion requise</span>
+                    <span className={game.link}>Se connecter →</span>
+                  </span>
+                </Link>
+              )}
 
               <button type="button" className={`${game.tile} ${styles.mode}`} onClick={() => chooseMode("pvp")}>
                 <span className={styles.modeMark} aria-hidden>
@@ -345,6 +493,77 @@ export function NewMatchScreen({
                   <span aria-hidden>←</span> {step === 3 ? "Deck du joueur 1" : "Changer de mode"}
                 </button>
               </div>
+
+              {mode === "online" && step === 2 && (
+                <section className={`${game.panel} ${styles.group} ${styles.botPanel}`}>
+                  <h2 className={game.sectionTitle}>Type de partie</h2>
+                  <div className={styles.difficulty} role="radiogroup" aria-label="Type de partie en ligne">
+                    {ONLINE_KINDS.map((kind) => (
+                      <button
+                        key={kind.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={onlineKind === kind.id}
+                        className={onlineKind === kind.id ? styles.difficultyChipActive : styles.difficultyChip}
+                        onClick={() => {
+                          playButtonClick();
+                          setOnlineKind(kind.id);
+                        }}
+                      >
+                        <span
+                          className={`${game.choiceRadio} ${styles.difficultyRadio}`}
+                          data-checked={onlineKind === kind.id ? "true" : "false"}
+                          aria-hidden
+                        />
+                        <span className={styles.difficultyLabel}>{kind.label}</span>
+                        <span className={styles.difficultyText}>{kind.description}</span>
+                      </button>
+                    ))}
+                  </div>
+                  {onlineKind === "friend" &&
+                    (friends.length === 0 ? (
+                      <p className={game.muted}>
+                        Pas encore d&apos;ami à défier.{" "}
+                        <Link href="/amis" className={game.link} onClick={() => playButtonClick()}>
+                          Ajouter des amis →
+                        </Link>
+                      </p>
+                    ) : (
+                      <label className={game.field}>
+                        <span className={game.fieldLabel}>
+                          Ami à défier ·{" "}
+                          <Link href="/amis" className={game.link} onClick={() => playButtonClick()}>
+                            Gérer mes amis
+                          </Link>
+                        </span>
+                        <select className={game.select} value={friendId ?? ""} onChange={(event) => setFriendId(event.target.value)}>
+                          {friends.map((friend) => (
+                            <option key={friend.userId} value={friend.userId}>
+                              {friend.name} — {friend.presenceLabel}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ))}
+                  {onlineKind === "join" && (
+                    <label className={game.field}>
+                      <span className={game.fieldLabel}>Code d&apos;invitation</span>
+                      <input
+                        className={game.input}
+                        value={inviteCode}
+                        onChange={(event) => setInviteCode(normalizeInviteCode(event.target.value))}
+                        placeholder="ABC123"
+                        autoCapitalize="characters"
+                        autoComplete="off"
+                        spellCheck={false}
+                        inputMode="text"
+                        maxLength={6}
+                        style={{ letterSpacing: "0.3em", textTransform: "uppercase" }}
+                      />
+                    </label>
+                  )}
+                </section>
+              )}
 
               {mode === "bot" && step === 2 && (
                 <section className={`${game.panel} ${styles.group} ${styles.botPanel}`}>
@@ -498,12 +717,21 @@ export function NewMatchScreen({
                   précision — on relit sans avoir à remonter l'écran. */}
               <div className={`${game.panel} ${styles.launch}`}>
                 <div className={styles.launchFacts}>
-                  <Fact
-                    icon={mode === "pvp" ? LAUNCH_ICONS.duo : LAUNCH_ICONS.bot}
-                    label="Mode"
-                    value={mode === "pvp" ? "Local à deux" : `Bot ${BOT_DIFFICULTIES.find((d) => d.id === botDifficulty)?.label.toLowerCase()}`}
-                    note={mode === "pvp" ? "Deux joueurs sur le même écran" : "Adversaire contrôlé par l'IA"}
-                  />
+                  {mode === "online" ? (
+                    <Fact
+                      icon={LAUNCH_ICONS.duo}
+                      label="Mode"
+                      value={ONLINE_KINDS.find((kind) => kind.id === onlineKind)!.label}
+                      note={onlineKind === "quick" ? "Partie classée, récompensée" : "Match amical, sans récompenses"}
+                    />
+                  ) : (
+                    <Fact
+                      icon={mode === "pvp" ? LAUNCH_ICONS.duo : LAUNCH_ICONS.bot}
+                      label="Mode"
+                      value={mode === "pvp" ? "Local à deux" : `Bot ${BOT_DIFFICULTIES.find((d) => d.id === botDifficulty)?.label.toLowerCase()}`}
+                      note={mode === "pvp" ? "Deux joueurs sur le même écran" : "Adversaire contrôlé par l'IA"}
+                    />
+                  )}
 
                   <Fact
                     icon={LAUNCH_ICONS.deck}
@@ -518,6 +746,21 @@ export function NewMatchScreen({
                       label="Joueur 2"
                       value={deck2?.name ?? "—"}
                       note={deck2 ? `${deck2.cardIds.length} cartes` : "À choisir à l'étape suivante"}
+                    />
+                  ) : mode === "online" ? (
+                    <Fact
+                      icon={LAUNCH_ICONS.versus}
+                      label="Adversaire"
+                      value={
+                        onlineKind === "quick"
+                          ? "le premier en file"
+                          : onlineKind === "friend"
+                            ? (challengedFriend?.name ?? "ami à choisir")
+                            : onlineKind === "host"
+                              ? "l'ami que tu invites"
+                              : inviteCode || "code à saisir"
+                      }
+                      note={onlineKind === "quick" ? "Appariement au premier arrivé" : "Son deck reste une surprise"}
                     />
                   ) : (
                     <Fact
@@ -552,6 +795,14 @@ export function NewMatchScreen({
     </GameScreen>
   );
 }
+
+/** Le globe de la tuile « En ligne ». */
+const ONLINE_MARK = (
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
+    <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth={1.5} />
+    <path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18" stroke="currentColor" strokeWidth={1.3} />
+  </svg>
+);
 
 /**
  * Les pictogrammes de la barre de lancement — mode, deck, adversaire — et

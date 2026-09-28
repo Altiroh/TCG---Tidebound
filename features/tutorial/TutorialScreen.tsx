@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { PRECON_DECKS, TUTORIAL_OPENING_TYPES, TUTORIAL_STEPS, tutorialProgress, type GameState } from "@/game";
-import { completeTutorial } from "@/features/onboarding/actions";
+import { beginTutorial, completeTutorial } from "@/features/onboarding/actions";
 import { createTutorialMatch } from "@/features/match/createLocalMatch";
 import { MatchBoard } from "@/features/match/MatchBoard";
 import { GameScreen } from "@/features/shell/GameScreen";
@@ -24,8 +24,10 @@ import { playButtonClick, playGameStart } from "@/lib/sound";
  *      choisit son premier préconstruit.
  *
  * Le booster n'est jamais accordé côté client : `completeTutorial` est une
- * Server Action, et c'est la base qui décide (`finish_tutorial`) — un
- * navigateur ne peut pas déclarer une complétion qu'il n'a pas jouée.
+ * Server Action, et c'est la base qui décide (`finish_tutorial`). La partie
+ * guidée étant locale, le serveur ne peut pas prouver qu'elle a été jouée :
+ * il exige le ticket signé délivré à son lancement (`beginTutorial`) et une
+ * durée minimale (`features/onboarding/tutorialTicket.ts`).
  *
  * La partie du tutoriel est une VRAIE partie locale contre le bot facile,
  * avec deux préconstruits : le joueur apprend sur le matériel qu'il
@@ -45,6 +47,8 @@ export function TutorialScreen() {
   const [outcome, setOutcome] = useState<"completed" | "skipped" | null>(null);
   const [boosterGranted, setBoosterGranted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Ticket signé délivré au lancement de la partie guidée : sa complétion récompensée l'exige. */
+  const [ticket, setTicket] = useState<string | undefined>(undefined);
   const [, startTransition] = useTransition();
 
   // Tiré une fois : un nouveau rendu ne doit pas redistribuer la partie.
@@ -59,7 +63,7 @@ export function TutorialScreen() {
     (completed: boolean) => {
       setError(null);
       startTransition(async () => {
-        const result = await completeTutorial(completed);
+        const result = await completeTutorial(completed, completed ? ticket : undefined);
         if (!result.ok) {
           setError(result.error ?? "Impossible d'enregistrer la fin du tutoriel.");
           return;
@@ -68,7 +72,7 @@ export function TutorialScreen() {
         setOutcome(completed ? "completed" : "skipped");
       });
     },
-    [startTransition]
+    [startTransition, ticket]
   );
 
   const handleComplete = useCallback(() => finish(true), [finish]);
@@ -76,6 +80,9 @@ export function TutorialScreen() {
 
   function startTutorial() {
     playGameStart();
+    // Demandé en parallèle : la partie démarre tout de suite, le ticket
+    // arrive bien avant la dernière étape.
+    void beginTutorial().then((result) => setTicket(result.ticket));
     // Main d'ouverture GARANTIE : chaque étape demande un geste précis, et
     // une main malchanceuse rendait la suivante infranchissable.
     const created = createTutorialMatch(decks.player, decks.opponent, TUTORIAL_OPENING_TYPES);

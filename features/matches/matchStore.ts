@@ -3,7 +3,7 @@ import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
 import { awardMatchReward } from "@/features/progression/rewards";
 import { botCountsAsPvp } from "@/features/progression/botRewardPolicy";
-import { audienceOpponent, isMeaningfulMatch, matchActivity } from "@/game/progression";
+import { audienceOpponent, countsAsPlayedMatch, matchActivity, matchModePaysRewards, utcDayKey } from "@/game/progression";
 import { recordMatchQuestProgress } from "@/features/quests/questService";
 import { recordMatchAudience } from "@/features/progression/hubService";
 import { isRecentDeck } from "@/features/decks/recentDecks";
@@ -101,6 +101,10 @@ export async function submitAction(matchId: string, userId: string, action: Play
   if (!action || typeof action !== "object" || action.playerId !== userId) {
     return { ok: false, error: "Action refusée." };
   }
+  // Une échéance ne s'invoque pas, elle se constate : seul le serveur émet
+  // `timeout` (`applyExpiredDeadlines`), avec SA propre heure. Reçue du
+  // navigateur, elle porterait un `now` choisi par le joueur.
+  if (action.type === "timeout") return { ok: false, error: "Action refusée." };
 
   // Les deux lectures en parallèle : un aller-retour en base de moins par
   // coup. L'état complet ne quitte jamais cette fonction, il n'y a donc rien
@@ -256,8 +260,40 @@ export async function settleExpiredDeadlines(matchId: string, userId: string): P
   return { match: committed.data.match, view: toPlayerView(rattrape.state, userId) };
 }
 
+/**
+ * Parties de MATCHMAKING déjà terminées aujourd'hui (UTC) entre les deux joueurs de
+ * `match`, celle-ci exclue — pour le plafond par adversaire
+ * (`SAME_OPPONENT_DAILY_REWARDED_MATCHES`). `undefined` si la question ne se
+ * pose pas (un seul joueur humain) ou si la base ne répond pas : dans le
+ * doute, on ne punit pas une partie légitime.
+ */
+async function finishedTodayBetween(match: MatchRow): Promise<number | undefined> {
+  const a = match.player1_id;
+  const b = match.player2_id;
+  if (!a || !b || a === b) return undefined;
+  const { count, error } = await service()
+    .from("matches")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "finished")
+    // Les matchs amicaux ne comptent pas : ils ne paient rien, et deux amis
+    // qui jouent ensemble ne doivent pas y perdre leurs parties classées.
+    .eq("mode", "matchmaking")
+    .neq("id", match.id)
+    .gte("finished_at", `${utcDayKey(new Date())}T00:00:00.000Z`)
+    .or(`and(player1_id.eq.${a},player2_id.eq.${b}),and(player1_id.eq.${b},player2_id.eq.${a})`);
+  if (error) {
+    console.error("[settleFinishedMatch] Comptage des parties du jour impossible :", error.message);
+    return undefined;
+  }
+  return count ?? 0;
+}
+
 /** Récompenses et quêtes de chaque participant HUMAIN d'une partie terminée. */
 async function settleFinishedMatch(match: MatchRow, finalState: GameState): Promise<void> {
+  // Match amical : pour le plaisir, rien à régler. La partie reste dans
+  // l'historique ; l'écran de fin n'annonce simplement aucun gain.
+  if (!matchModePaysRewards(match.mode)) return;
+
   const vsBot = match.mode === "bot";
   // Dérogation de développement : hors production, une partie contre bot est
   // récompensée et comptée comme une partie PvP, pour que toute la boucle
@@ -269,9 +305,21 @@ async function settleFinishedMatch(match: MatchRow, finalState: GameState): Prom
   // émettre le second octroi.
   const participants = Array.from(new Set([match.player1_id, match.player2_id].filter((id): id is string => Boolean(id))));
 
+  // Anti-farm : durée réelle (depuis la création SERVEUR de l'état) et, en
+  // PvP, parties déjà jouées aujourd'hui contre le même adversaire.
+  const durationMs = Date.now() - finalState.createdAt;
+  const finishedAgainstOpponentToday = vsBot ? undefined : await finishedTodayBetween(match);
+
   await Promise.all(
     participants.map(async (userId) => {
       const won = winner === userId;
+      // Une partie qui n'est pas comptée comme jouée paie comme un abandon
+      // et n'avance ni quêtes, ni Traversée, ni audience.
+      const played = countsAsPlayedMatch({
+        activity: matchActivity(finalState, userId),
+        durationMs,
+        finishedAgainstOpponentToday,
+      });
       const deckId = userId === match.player1_id ? match.player1_deck_id : (match.player2_deck_id ?? undefined);
       const reward = await awardMatchReward({
         matchId: match.id,
@@ -285,6 +333,7 @@ async function settleFinishedMatch(match: MatchRow, finalState: GameState): Prom
         enginePlayerId: userId,
         botCountsAsPvp: botAsPvp,
         botDifficulty: match.bot_difficulty,
+        countsAsPlayed: played,
       });
       // Le public juge la partie, puis les mécènes y puisent leur intérêt —
       // une seule fois (`reward` est nul quand la partie avait déjà été
@@ -299,28 +348,32 @@ async function settleFinishedMatch(match: MatchRow, finalState: GameState): Prom
             opponent: audienceOpponent(match.mode, match.bot_difficulty, botAsPvp),
             prize: reward.audiencePrize,
             // Une partie que ce joueur n'a pas vraiment jouée ne pèse rien sur son public.
-            played: isMeaningfulMatch(matchActivity(finalState, userId)),
+            played,
           })
         : Promise.resolve();
-      const quests = recordMatchQuestProgress({
-        matchId: match.id,
-        userId,
-        playerId: userId,
-        finalState,
-        // Idem côté quêtes : sous la dérogation, la partie n'est pas « bot »,
-        // donc les objectifs réservés au PvP avancent aussi.
-        vsBot: vsBot && !botAsPvp,
-        won,
-        // Deck joué par CE participant : les objectifs de la catégorie
-        // Decks (« jouer avec 2 decks différents ») comptent des decks
-        // distincts, pas des parties.
-        deckId,
-        // Série : la valeur d'APRÈS cette partie, telle que l'octroi vient
-        // de l'écrire. `null` quand la partie avait déjà payé (rejeu) : la
-        // quête de série ne bouge alors pas, ce qui est correct.
-        playStreak: reward?.playStreak,
-        deckIsNew: await isRecentDeck(userId, deckId),
-      });
+      // Une partie non jouée n'avance aucune quête : « jouer N parties »
+      // se remplissait à coups d'abandons immédiats contre le bot.
+      const quests = !played
+        ? Promise.resolve()
+        : recordMatchQuestProgress({
+            matchId: match.id,
+            userId,
+            playerId: userId,
+            finalState,
+            // Idem côté quêtes : sous la dérogation, la partie n'est pas « bot »,
+            // donc les objectifs réservés au PvP avancent aussi.
+            vsBot: vsBot && !botAsPvp,
+            won,
+            // Deck joué par CE participant : les objectifs de la catégorie
+            // Decks (« jouer avec 2 decks différents ») comptent des decks
+            // distincts, pas des parties.
+            deckId,
+            // Série : la valeur d'APRÈS cette partie, telle que l'octroi vient
+            // de l'écrire. `null` quand la partie avait déjà payé (rejeu) : la
+            // quête de série ne bouge alors pas, ce qui est correct.
+            playStreak: reward?.playStreak,
+            deckIsNew: await isRecentDeck(userId, deckId),
+          });
       await Promise.all([audience, quests]);
     })
   );

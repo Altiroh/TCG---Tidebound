@@ -20,6 +20,7 @@ export default function DeckPreviewRoute({ searchParams = {} }: { searchParams?:
   return (
     <DeckEditorScreen
       ownedCardIds={CORE_SET.map((def) => def.id)}
+      ownedCounts={Object.fromEntries(CORE_SET.map((def) => [def.id, 99]))}
       initialDeck={
         searchParams.vide
           ? null

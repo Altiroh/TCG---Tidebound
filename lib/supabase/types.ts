@@ -30,12 +30,15 @@ export interface Database {
           /** Carte servant d'illustration de profil — toujours une carte possédée (`set_profile_identity`). */
           avatar_card_id: string | null;
           created_at: string;
+          /** Code ami, unique : on s'ajoute par lui, jamais par pseudo (migration 20261018120000). */
+          friend_code: string;
         };
         Insert: {
           id: string;
           display_name: string;
           avatar_card_id?: string | null;
           created_at?: string;
+          friend_code?: string;
         };
         Update: {
           id?: string;
@@ -45,14 +48,70 @@ export interface Database {
         };
         Relationships: [];
       };
+      /** Une ligne par paire (`user_a < user_b`), écrite par le serveur seul. */
+      friendships: {
+        Row: {
+          user_a: string;
+          user_b: string;
+          requested_by: string;
+          status: "pending" | "accepted";
+          created_at: string;
+          accepted_at: string | null;
+        };
+        Insert: {
+          user_a: string;
+          user_b: string;
+          requested_by: string;
+          status?: "pending" | "accepted";
+          created_at?: string;
+          accepted_at?: string | null;
+        };
+        Update: {
+          status?: "pending" | "accepted";
+          accepted_at?: string | null;
+        };
+        Relationships: [];
+      };
+      /** Dernier signe de vie de l'appli ouverte — lu par le serveur seul (aucune policy). */
+      player_presence: {
+        Row: { user_id: string; last_seen_at: string };
+        Insert: { user_id: string; last_seen_at?: string };
+        Update: { last_seen_at?: string };
+        Relationships: [];
+      };
+      /** Défi en match amical : `match_id` est une partie `private_invite` en attente, créée par `from_user`. */
+      friend_challenges: {
+        Row: {
+          id: string;
+          from_user: string;
+          to_user: string;
+          match_id: string;
+          status: "pending" | "declined";
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          from_user: string;
+          to_user: string;
+          match_id: string;
+          status?: "pending" | "declined";
+          created_at?: string;
+        };
+        Update: { status?: "pending" | "declined" };
+        Relationships: [];
+      };
       matches: {
         Row: {
           id: string;
           invite_code: string;
-          player1_id: string;
+          /** `null` quand le compte a été supprimé : la partie reste, anonymisée, dans l'historique de l'adversaire. */
+          player1_id: string | null;
           player2_id: string | null;
           player1_deck_id: string;
           player2_deck_id: string | null;
+          /** Navire réellement joué, figé au démarrage depuis l'état initial (migration 20261016120000). */
+          player1_ship_id: string | null;
+          player2_ship_id: string | null;
           /**
            * Version de l'état privé (`match_states.version`), 0 tant que la partie attend un second joueur.
            * Seule trace de l'état diffusée en Realtime : quand elle change, le client redemande sa vue.
@@ -79,7 +138,12 @@ export interface Database {
           status?: "waiting";
           mode?: "private_invite";
         };
-        Update: Record<string, never>;
+        /**
+         * Service_role uniquement : FERMER une partie qu'on ne jouera plus (partie en attente remplacée,
+         * partie contre bot laissée en plan, compte supprimé). Une partie ne se termine jamais par cette voie
+         * — `commit_match_state` s'en charge —, et une partie abandonnée ne paie rien.
+         */
+        Update: { status?: "abandoned"; updated_at?: string };
         Relationships: [];
       };
       /** État COMPLET des parties — lisible par le serveur seul (aucune policy RLS), jamais envoyé tel quel à un client. */
@@ -143,21 +207,26 @@ export interface Database {
         Update: Record<string, never>;
         Relationships: [];
       };
+      /** Écrite par le serveur seul (clé service_role) ; le joueur ne lit que sa propre entrée. */
       matchmaking_queue: {
         Row: {
           user_id: string;
           deck_id: string;
           queued_at: string;
+          /** Dernier signe de vie de la page de recherche : muette depuis 30 s, l'entrée n'est plus appariable (migration 20261017120000). */
+          last_seen_at: string;
         };
         Insert: {
           user_id: string;
           deck_id: string;
           queued_at?: string;
+          last_seen_at?: string;
         };
         Update: {
           user_id?: string;
           deck_id?: string;
           queued_at?: string;
+          last_seen_at?: string;
         };
         Relationships: [];
       };
@@ -687,8 +756,9 @@ export interface Database {
         Args: { p_user_id: string; p_match_id: string; p_points: Record<string, number> };
         Returns: { ok: boolean; recorded?: boolean };
       };
+      /** Réservée au serveur (clé service_role) : `p_user_id` vient de la session, et doit être en file. */
       claim_matchmaking_opponent: {
-        Args: Record<string, never>;
+        Args: { p_user_id: string };
         Returns: { opponent_user_id: string; opponent_deck_id: string }[];
       };
       /**
@@ -719,8 +789,19 @@ export interface Database {
         Returns: { ok: boolean; error?: string; balance?: number; spent?: number };
       };
       /** Consomme le booster et crédite la collection ; le tirage vient de `game/boosters`. */
+      /**
+       * `p_expected_*` : compteurs de garantie sur lesquels le tirage a été calculé. S'ils ont bougé en base
+       * (ouverture concurrente), la fonction refuse avec `error: "pity_conflict"` sans rien consommer.
+       */
       open_booster: {
-        Args: { p_user_id: string; p_booster_id: string; p_card_ids: string[] };
+        Args: {
+          p_user_id: string;
+          p_booster_id: string;
+          p_card_ids: string[];
+          p_expected_packs_since_abyssal: number;
+          p_expected_packs_since_new_card: number;
+          p_next_packs_since_new_card: number;
+        };
         Returns: {
           ok: boolean;
           error?: string;

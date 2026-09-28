@@ -26,6 +26,11 @@ export type Row = Record<string, any>;
 const PRIMARY_KEYS: Record<string, string[]> = {
   matches: ["id"],
   match_states: ["match_id"],
+  matchmaking_queue: ["user_id"],
+  friendships: ["user_a", "user_b"],
+  player_presence: ["user_id"],
+  friend_challenges: ["id"],
+  profiles: ["id"],
   match_rewards: ["match_id", "user_id"],
   match_quest_progress: ["match_id", "user_id"],
   player_progression: ["user_id"],
@@ -126,7 +131,7 @@ class QueryBuilder implements PromiseLike<QueryResponse> {
   private projection: string | undefined;
   private orderBy: { column: string; ascending: boolean } | undefined;
   private limitTo: number | undefined;
-  private mode: "select" | "insert" | "update" | "upsert" = "select";
+  private mode: "select" | "insert" | "update" | "upsert" | "delete" = "select";
   private conflictColumns: string[] | undefined;
   private payload: Row[] = [];
   private singleMode: "none" | "maybe" | "one" = "none";
@@ -141,6 +146,11 @@ class QueryBuilder implements PromiseLike<QueryResponse> {
   insert(rows: Row | Row[]) {
     this.mode = "insert";
     this.payload = Array.isArray(rows) ? rows : [rows];
+    return this;
+  }
+
+  delete() {
+    this.mode = "delete";
     return this;
   }
 
@@ -162,6 +172,12 @@ class QueryBuilder implements PromiseLike<QueryResponse> {
     return this;
   }
 
+  /** `match` PostgREST : égalité sur chaque colonne de l'objet. */
+  match(values: Row) {
+    for (const [column, value] of Object.entries(values)) this.eq(column, value);
+    return this;
+  }
+
   neq(column: string, value: unknown) {
     this.filters.push((row) => readColumn(this.db, this.name, row, column) !== value);
     return this;
@@ -172,8 +188,11 @@ class QueryBuilder implements PromiseLike<QueryResponse> {
     return this;
   }
 
-  gte(column: string, value: number) {
-    this.filters.push((row) => Number(row[column] ?? 0) >= value);
+  gte(column: string, value: number | string) {
+    // Une date ISO se compare comme une chaîne, comme Postgres le fait d'un timestamptz bien formé.
+    this.filters.push((row) =>
+      typeof value === "string" ? row[column] != null && String(row[column]) >= value : Number(row[column] ?? 0) >= value
+    );
     return this;
   }
 
@@ -259,6 +278,12 @@ class QueryBuilder implements PromiseLike<QueryResponse> {
 
     const rows = this.db.table(this.name).filter((row) => this.filters.every((filter) => filter(row)));
 
+    if (this.mode === "delete") {
+      const table = this.db.table(this.name);
+      for (const row of rows) table.splice(table.indexOf(row), 1);
+      return { data: null, error: null };
+    }
+
     if (this.mode === "update") {
       for (const row of rows) Object.assign(row, this.payload[0], { updated_at: nowIso() });
       return { data: this.singleMode === "none" ? rows : (rows[0] ?? null), error: null };
@@ -282,6 +307,19 @@ class QueryBuilder implements PromiseLike<QueryResponse> {
     if (this.singleMode !== "none") return { data: result[0] ?? null, error: null };
     return { data: result, error: null, count: result.length };
   }
+}
+
+/**
+ * Trigger `freeze_match_ships` (`20261016120000_audit_securite.sql`) : le
+ * navire de chaque joueur, lu dans l'état initial, est figé dans `matches`.
+ */
+function freezeMatchShips(db: FakeDatabase, matchId: string): void {
+  const match = db.one("matches", { id: matchId });
+  const state = db.one("match_states", { match_id: matchId })?.state;
+  if (!match || !state) return;
+  const shipOf = (playerId: unknown) => state.players?.find((player: Row) => player.id === playerId)?.shipId ?? null;
+  match.player1_ship_id ??= shipOf(match.player1_id);
+  match.player2_ship_id ??= shipOf(match.player2_id);
 }
 
 /** Découpe une expression PostgREST sur les virgules de PREMIER niveau. */
@@ -367,7 +405,29 @@ function runRpc(db: FakeDatabase, fn: string, args: Row): any {
         finished_at: null,
       });
       db.table("match_states").push({ match_id: args.p_match_id, state: args.p_state, version: 1 });
+      freezeMatchShips(db, args.p_match_id);
       return { ok: true, version: 1 };
+    }
+
+    // `20261017120000_jeu_en_ligne.sql` : réservée au serveur ; les absents
+    // (muets depuis 30 s) sont purgés, l'appelant doit être en file, et il en
+    // sort avec son adversaire.
+    case "claim_matchmaking_opponent": {
+      const queue = db.table("matchmaking_queue");
+      const freshSince = new Date(Date.now() - 30_000).toISOString();
+      const isFresh = (row: Row) => String(row.last_seen_at ?? nowIso()) >= freshSince;
+      for (const row of [...queue]) {
+        if (row.user_id !== args.p_user_id && !isFresh(row)) queue.splice(queue.indexOf(row), 1);
+      }
+      const self = queue.find((row) => row.user_id === args.p_user_id);
+      if (!self) return [];
+      const waiting = queue
+        .filter((row) => row.user_id !== args.p_user_id && isFresh(row))
+        .sort((a, b) => String(a.queued_at).localeCompare(String(b.queued_at)))[0];
+      if (!waiting) return [];
+      queue.splice(queue.indexOf(waiting), 1);
+      queue.splice(queue.indexOf(self), 1);
+      return [{ opponent_user_id: waiting.user_id, opponent_deck_id: waiting.deck_id }];
     }
 
     case "activate_waiting_match": {
@@ -382,6 +442,7 @@ function runRpc(db: FakeDatabase, fn: string, args: Row): any {
         state_version: 1,
       });
       db.table("match_states").push({ match_id: args.p_match_id, state: args.p_state, version: 1 });
+      freezeMatchShips(db, args.p_match_id);
       return { ok: true, version: 1 };
     }
 
@@ -759,6 +820,16 @@ function runRpc(db: FakeDatabase, fn: string, args: Row): any {
 
       const owned = db.one("player_boosters", { user_id: args.p_user_id, booster_definition_id: args.p_booster_id });
       if (!owned || owned.quantity < 1) return { ok: false, error: "Tu ne possèdes pas ce booster." };
+
+      // `20261016120000_audit_securite.sql` : le tirage n'est accepté que
+      // s'il a été calculé sur les compteurs de garantie ACTUELS.
+      const pity = db.one("player_pity", { user_id: args.p_user_id, booster_definition_id: args.p_booster_id });
+      if (
+        (pity?.packs_since_abyssal ?? 0) !== args.p_expected_packs_since_abyssal ||
+        (pity?.packs_since_new_card ?? 0) !== args.p_expected_packs_since_new_card
+      ) {
+        return { ok: false, error: "pity_conflict" };
+      }
       owned.quantity -= 1;
 
       const openingId = fakeUuid();
@@ -781,10 +852,11 @@ function runRpc(db: FakeDatabase, fn: string, args: Row): any {
           user_id: args.p_user_id,
           booster_definition_id: args.p_booster_id,
           packs_since_abyssal: abyssal ? 0 : 1,
-          packs_since_new_card: 0,
+          packs_since_new_card: args.p_next_packs_since_new_card,
         },
         (row) => {
           row.packs_since_abyssal = abyssal ? 0 : row.packs_since_abyssal + 1;
+          row.packs_since_new_card = args.p_next_packs_since_new_card;
         }
       );
 

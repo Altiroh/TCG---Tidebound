@@ -115,3 +115,22 @@ export function ownedPartOf(
   }
   return { kept, missing: Array.from(missing, ([cardId, count]) => ({ cardId, count })) };
 }
+
+/**
+ * Message lisible pour les exemplaires manquants d'une liste (`ownedPartOf`).
+ * Commun à l'éditeur, à la sauvegarde et à l'entrée en partie : le joueur lit
+ * partout la même phrase.
+ */
+export function missingCopiesMessage(missing: ReadonlyArray<{ cardId: string; count: number }>): string {
+  const names = missing.map(({ cardId, count }) => {
+    let name = cardId;
+    try {
+      name = getCardDefinition(cardId).name;
+    } catch {
+      // Carte inconnue du catalogue : son identifiant fera l'affaire.
+    }
+    return count > 1 ? `${name} ×${count}` : name;
+  });
+  const total = missing.reduce((sum, { count }) => sum + count, 0);
+  return `${total > 1 ? "Il te manque des exemplaires" : "Il te manque un exemplaire"} : ${names.join(", ")}.`;
+}

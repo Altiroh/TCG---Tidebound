@@ -9,7 +9,7 @@ export default async function OnlineMatchPage({ params }: { params: { matchId: s
   if (!user) redirect("/connexion");
 
   const snapshot = await loadSnapshot(params.matchId, user.id);
-  if (!snapshot) redirect("/en-ligne");
+  if (!snapshot) redirect("/partie");
 
   return (
     <OnlineMatch

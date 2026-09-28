@@ -6,6 +6,8 @@ import {
   MATCH_TIDES,
   MATCH_XP,
   MEANINGFUL_ACTIVITY,
+  MIN_REWARDED_MATCH_MS,
+  SAME_OPPONENT_DAILY_REWARDED_MATCHES,
 } from "@/game/progression/constants";
 import { levelForTotalXp, rewardsForLevelsGained } from "@/game/progression/levels";
 import { audiencePrize } from "@/game/audience/prize";
@@ -65,6 +67,53 @@ export interface MatchRewardInput {
   spectacle?: number;
   /** Niveau du bot (`matches.bot_difficulty`) : un bot facile paie moins la prime qu'un difficile. Défaut : moyen. */
   botDifficulty?: BotDifficulty | null;
+  /**
+   * `false` : la partie n'est PAS comptée comme jouée (`countsAsPlayedMatch`
+   * l'a écartée — trop courte, ou adversaire déjà trop souvent affronté
+   * aujourd'hui). Elle paie alors comme une partie abandonnée. Absent : seule
+   * l'activité en décide.
+   */
+  countsAsPlayed?: boolean;
+}
+
+/**
+ * Le mode de partie RAPPORTE-T-IL quelque chose ? Tous, sauf le MATCH
+ * AMICAL (`private_invite`, un adversaire choisi par code d'invitation) :
+ * il se joue pour le plaisir, sans XP, Tides, quêtes, exploits, coffre ni
+ * audience (décision du 28/09/2026). Choisir son adversaire, c'est pouvoir
+ * s'entendre avec lui ; seul le matchmaking, où l'adversaire est tiré au
+ * hasard, paie une partie contre un humain.
+ */
+export function matchModePaysRewards(mode: MatchMode): boolean {
+  return mode !== "private_invite";
+}
+
+export interface PlayedMatchInput {
+  /** Activité du joueur (`matchActivity`). */
+  activity: MatchActivity | undefined;
+  /** Durée réelle de la partie, de sa création serveur à sa fin. Absente : non vérifiée. */
+  durationMs?: number;
+  /**
+   * PvP seulement : parties déjà terminées AUJOURD'HUI (UTC) contre ce même
+   * adversaire, celle-ci exclue. Absent (bot) : non vérifié.
+   */
+  finishedAgainstOpponentToday?: number;
+}
+
+/**
+ * La partie compte-t-elle comme JOUÉE pour les récompenses, quêtes, coffre
+ * et audience ? Activité réelle (`isMeaningfulMatch`), durée réelle
+ * (`MIN_REWARDED_MATCH_MS`) et plafond par adversaire
+ * (`SAME_OPPONENT_DAILY_REWARDED_MATCHES`) : trois garde-fous anti-farm, un
+ * seul verdict, appliqué partout pareil.
+ */
+export function countsAsPlayedMatch({ activity, durationMs, finishedAgainstOpponentToday }: PlayedMatchInput): boolean {
+  if (!isMeaningfulMatch(activity)) return false;
+  if (durationMs !== undefined && durationMs < MIN_REWARDED_MATCH_MS) return false;
+  if (finishedAgainstOpponentToday !== undefined && finishedAgainstOpponentToday >= SAME_OPPONENT_DAILY_REWARDED_MATCHES) {
+    return false;
+  }
+  return true;
 }
 
 /**
@@ -124,12 +173,13 @@ export function computeMatchReward({
   botCountsAsPvp = false,
   spectacle,
   botDifficulty,
+  countsAsPlayed = true,
 }: MatchRewardInput): MatchReward {
   // Sous la dérogation, la partie contre bot n'est plus « bot » du tout aux
   // yeux des récompenses : un seul booléen, appliqué partout pareil.
   const isBot = mode === "bot" && !botCountsAsPvp;
   const won = outcome === "win";
-  const meaningful = isMeaningfulMatch(activity);
+  const meaningful = countsAsPlayed && isMeaningfulMatch(activity);
 
   // --- XP et Tides de la partie ------------------------------------------
   let xp = meaningful ? MATCH_XP.completed + (won ? MATCH_XP.win : 0) : ABANDONED_MATCH_XP;

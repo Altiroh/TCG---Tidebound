@@ -45,6 +45,8 @@ export interface AwardMatchRewardInput {
   botCountsAsPvp?: boolean;
   /** Niveau du bot (`matches.bot_difficulty`) — il module la prime du public. */
   botDifficulty?: BotDifficulty | null;
+  /** Verdict anti-farm de l'appelant (`countsAsPlayedMatch`) : `false` paie comme un abandon. */
+  countsAsPlayed?: boolean;
 }
 
 export interface AwardedMatchReward extends MatchReward {
@@ -80,6 +82,7 @@ export async function awardMatchReward({
   enginePlayerId,
   botCountsAsPvp = false,
   botDifficulty,
+  countsAsPlayed = true,
 }: AwardMatchRewardInput): Promise<AwardedMatchReward | null> {
   try {
     const service = createSupabaseServiceRoleClient();
@@ -91,7 +94,10 @@ export async function awardMatchReward({
       .eq("user_id", userId)
       .maybeSingle();
 
-    const isWin = outcome === "win";
+    // Une victoire écartée par l'anti-farm (partie éclair, adversaire complice
+    // déjà trop souvent affronté) n'alimente pas non plus les compteurs de
+    // victoires : les exploits se farmeraient sinon à sa place.
+    const isWin = outcome === "win" && countsAsPlayed;
     // Sous la dérogation, une victoire contre bot alimente aussi les
     // compteurs PvP : les exploits et les quêtes PvP deviennent testables en
     // solo, ce qui est tout l'intérêt.
@@ -116,6 +122,7 @@ export async function awardMatchReward({
       botCountsAsPvp,
       spectacle,
       botDifficulty,
+      countsAsPlayed,
     });
 
     const { data, error } = await service.rpc("grant_match_progression", {

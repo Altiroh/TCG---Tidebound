@@ -247,8 +247,6 @@ interface DrawContext {
   ownedCardIds: Set<string>;
   packsSinceAbyssal: number;
   packsSinceNewCard: number;
-  /** Faux tant que la migration du compteur de nouveauté n'est pas appliquée. */
-  newCardPityAvailable: boolean;
 }
 
 type Service = ReturnType<typeof createSupabaseServiceRoleClient>;
@@ -258,7 +256,7 @@ async function loadDrawContext(service: Service, userId: string, boosterId: stri
   // base qui décide de ce qui est tirable, pas le catalogue TypeScript
   // (une carte peut être désactivée ou rendue non collectionnable sans
   // toucher au moteur).
-  const [slots, pool, pity, newCardPity, ownedCards] = await Promise.all([
+  const [slots, pool, pity, ownedCards] = await Promise.all([
     service
       .from("booster_slots")
       .select("slot_index, guaranteed_rarity, weighted_rarities")
@@ -276,18 +274,11 @@ async function loadDrawContext(service: Service, userId: string, boosterId: stri
       .eq("is_enabled", true)
       .eq("cards.is_collectible", true)
       .eq("cards.is_enabled", true),
+    // Lus SANS verrou : le tirage en part, et `open_booster` vérifie sous
+    // verrou qu'ils n'ont pas bougé entre-temps.
     service
       .from("player_pity")
-      .select("packs_since_abyssal")
-      .eq("user_id", userId)
-      .eq("booster_definition_id", boosterId)
-      .maybeSingle(),
-    // Compteur « sans nouveauté » à part : tant que la migration
-    // `20260925120000_new_card_pity.sql` n'est pas appliquée, cette
-    // requête échoue seule et la garantie reste simplement inactive.
-    service
-      .from("player_pity")
-      .select("packs_since_new_card")
+      .select("packs_since_abyssal, packs_since_new_card")
       .eq("user_id", userId)
       .eq("booster_definition_id", boosterId)
       .maybeSingle(),
@@ -295,6 +286,7 @@ async function loadDrawContext(service: Service, userId: string, boosterId: stri
   ]);
 
   if (slots.error) return { ok: false, error: slots.error.message };
+  if (pity.error) return { ok: false, error: pity.error.message };
   if (pool.error) return { ok: false, error: pool.error.message };
   if (!slots.data || slots.data.length === 0) {
     return { ok: false, error: "Ce booster n'a pas de format défini." };
@@ -325,13 +317,6 @@ async function loadDrawContext(service: Service, userId: string, boosterId: stri
     return { ok: false, error: "Le pool de ce booster ne contient aucune carte éligible." };
   }
 
-  if (newCardPity.error) {
-    console.warn(
-      "[openBooster] Garantie de nouveauté inactive : applique la migration 20260925120000_new_card_pity.sql.",
-      newCardPity.error.message
-    );
-  }
-
   return {
     ok: true,
     data: {
@@ -343,8 +328,7 @@ async function loadDrawContext(service: Service, userId: string, boosterId: stri
       poolCards,
       ownedCardIds: new Set((ownedCards.data ?? []).map((row) => row.card_id)),
       packsSinceAbyssal: pity.data?.packs_since_abyssal ?? 0,
-      packsSinceNewCard: newCardPity.data?.packs_since_new_card ?? 0,
-      newCardPityAvailable: !newCardPity.error,
+      packsSinceNewCard: pity.data?.packs_since_new_card ?? 0,
     },
   };
 }
@@ -385,10 +369,19 @@ async function openPacks(boosterId: string, count: number): Promise<ActionResult
         p_user_id: userId,
         p_booster_id: boosterId,
         p_card_ids: draw.cards.map((card) => card.cardId),
+        // Les compteurs sur lesquels CE tirage a été calculé : si une autre
+        // ouverture les a fait bouger entre-temps, la base refuse le tirage
+        // plutôt que d'accorder deux fois la même garantie.
+        p_expected_packs_since_abyssal: context.packsSinceAbyssal,
+        p_expected_packs_since_new_card: context.packsSinceNewCard,
+        p_next_packs_since_new_card: draw.nextPacksSinceNewCard,
       });
 
       if (error || !data?.ok) {
-        failure = error?.message ?? data?.error ?? "Ouverture refusée.";
+        failure =
+          data?.error === "pity_conflict"
+            ? "Une autre ouverture de ce booster est en cours — réessaie dans un instant."
+            : (error?.message ?? data?.error ?? "Ouverture refusée.");
         break;
       }
 
@@ -405,22 +398,6 @@ async function openPacks(boosterId: string, count: number): Promise<ActionResult
     }
 
     if (packs.length > 0) {
-      // Compteur « sans nouveauté », à part de la fonction atomique et écrit
-      // UNE fois pour le lot, à sa valeur finale : un compteur qui dérive
-      // d'une unité après un incident est sans gravité, là où réécrire
-      // `open_booster` demanderait de rejouer sa définition.
-      if (context.newCardPityAvailable) {
-        const { error: pityError } = await service.from("player_pity").upsert(
-          {
-            user_id: userId,
-            booster_definition_id: boosterId,
-            packs_since_new_card: context.packsSinceNewCard,
-          },
-          { onConflict: "user_id,booster_definition_id" }
-        );
-        if (pityError) console.error("[openBooster] Compteur de nouveauté non écrit :", pityError.message);
-      }
-
       revalidatePath("/boosters");
       revalidatePath("/market");
       revalidatePath("/collection");

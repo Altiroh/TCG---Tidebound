@@ -10,8 +10,52 @@ export interface AuthActionResult {
   needsEmailConfirmation?: boolean;
 }
 
+/**
+ * Origine du site, pour les liens envoyés par e-mail.
+ *
+ * FIXÉE par la configuration (`NEXT_PUBLIC_SITE_URL`) : l'en-tête `Origin`
+ * d'une requête se forge hors navigateur, et un lien de réinitialisation
+ * qui pointerait chez un tiers lui livrerait le code de récupération du
+ * compte. L'en-tête ne sert plus qu'en développement, où la variable
+ * manque souvent ; en production, son absence est une erreur de
+ * configuration signalée dans les logs.
+ */
 function siteOrigin(): string {
-  return headers().get("origin") ?? process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/, "");
+  if (configured) return configured;
+  if (process.env.NODE_ENV === "production") {
+    console.error("[auth] NEXT_PUBLIC_SITE_URL manquante : l'origine des liens d'e-mail retombe sur l'hôte de la requête.");
+  }
+  const host = headers().get("host");
+  const proto = headers().get("x-forwarded-proto") ?? "https";
+  return host ? `${proto}://${host}` : "http://localhost:3000";
+}
+
+/**
+ * Session ouverte par un lien reçu PAR E-MAIL, et récemment : c'est la seule
+ * qui autorise un nouveau mot de passe sans l'actuel. Une session ordinaire
+ * (poste resté ouvert, cookie volé), ouverte par mot de passe, passe par
+ * `changePassword`, qui exige le mot de passe actuel.
+ *
+ * Méthodes retenues dans la revendication `amr` du jeton : `recovery` (lien
+ * de réinitialisation), et par prudence `otp` / `magiclink`, qu'un projet
+ * Supabase peut inscrire pour le même lien selon sa configuration. Toutes
+ * prouvent l'accès à la boîte mail du compte ; aucune n'est un mot de passe.
+ */
+const RECOVERY_WINDOW_SECONDS = 60 * 60;
+const EMAIL_PROOF_METHODS = new Set(["recovery", "otp", "magiclink"]);
+
+function isRecentRecovery(amr: unknown): boolean {
+  if (!Array.isArray(amr)) return false;
+  const now = Math.floor(Date.now() / 1000);
+  return amr.some(
+    (entry) =>
+      entry &&
+      typeof entry === "object" &&
+      EMAIL_PROOF_METHODS.has(String((entry as { method?: unknown }).method)) &&
+      typeof (entry as { timestamp?: unknown }).timestamp === "number" &&
+      now - (entry as { timestamp: number }).timestamp <= RECOVERY_WINDOW_SECONDS
+  );
 }
 
 export async function signInWithPassword(formData: FormData): Promise<AuthActionResult> {
@@ -44,14 +88,21 @@ export async function signUpWithPassword(formData: FormData): Promise<AuthAction
     },
   });
 
-  if (error) return { ok: false, error: error.message };
+  if (error) {
+    // Seule la politique de mot de passe mérite d'être relayée ; tout le
+    // reste (« compte existant » compris) reçoit la même réponse neutre.
+    if (error.code === "weak_password") return { ok: false, error: "Ce mot de passe est trop faible, choisis-en un autre." };
+    if (error.code === "user_already_exists" || error.code === "email_exists") return { ok: true, needsEmailConfirmation: true };
+    console.error("[signUpWithPassword] Inscription refusée :", error.code, error.message);
+    return { ok: false, error: "Inscription impossible pour le moment. Réessaie plus tard." };
+  }
 
-  // Avec la protection anti-énumération d'emails activée, Supabase renvoie un
-  // succès "creux" (utilisateur sans identités) pour un email déjà inscrit et
-  // confirmé, plutôt qu'une erreur explicite — sans ce garde-fou l'appelant
-  // croirait avoir créé un second compte alors que rien n'a changé.
+  // Email déjà inscrit : Supabase renvoie un succès « creux » (utilisateur
+  // sans identités). La réponse reste la même que pour un nouveau compte —
+  // « vérifie ta boîte mail » — pour ne pas révéler quels e-mails sont
+  // inscrits. Le titulaire de l'adresse, lui, sait déjà qu'il a un compte.
   if (data.user && data.user.identities && data.user.identities.length === 0) {
-    return { ok: false, error: "Un compte existe déjà avec cet email. Connecte-toi plutôt." };
+    return { ok: true, needsEmailConfirmation: true };
   }
 
   return { ok: true, needsEmailConfirmation: !data.session };
@@ -75,8 +126,22 @@ export async function updatePassword(formData: FormData): Promise<AuthActionResu
   if (password.length < 8) return { ok: false, error: "Le mot de passe doit contenir au moins 8 caractères." };
 
   const supabase = createSupabaseServerClient();
+  const { data: claimsData } = await supabase.auth.getClaims();
+  if (!claimsData?.claims?.sub) return { ok: false, error: "Ce lien a expiré. Redemande un e-mail de réinitialisation." };
+  if (!isRecentRecovery(claimsData.claims.amr)) {
+    return {
+      ok: false,
+      error: "Ce formulaire ne s'ouvre que depuis le lien de réinitialisation reçu par e-mail. Pour changer ton mot de passe en étant connecté, passe par les réglages.",
+    };
+  }
+
   const { error } = await supabase.auth.updateUser({ password });
-  if (error) return { ok: false, error: error.message };
+  if (error) {
+    if (error.code === "weak_password") return { ok: false, error: "Ce mot de passe est trop faible, choisis-en un autre." };
+    if (error.code === "same_password") return { ok: false, error: "Choisis un mot de passe différent de l'ancien." };
+    console.error("[updatePassword] Refusé :", error.code, error.message);
+    return { ok: false, error: "Impossible de changer le mot de passe pour le moment." };
+  }
   return { ok: true };
 }
 

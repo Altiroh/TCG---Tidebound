@@ -215,6 +215,27 @@ describe("Nécessaire du Marin — ouverture", () => {
     expect(result.data!.cards.some((c) => c.rarity === "abyssal")).toBe(true);
   });
 
+  it("ne sert pas deux fois la même garantie à deux ouvertures lancées en même temps", async () => {
+    crediterTides(100_000);
+    await purchaseBooster(NECESSAIRE, 2);
+    db.upsert(
+      "player_pity",
+      { user_id: USER, booster_definition_id: NECESSAIRE, packs_since_abyssal: 19, packs_since_new_card: 0 },
+      (row) => {
+        row.packs_since_abyssal = 19;
+      }
+    );
+
+    // Les deux tirages partent du même compteur (19) : la base n'accepte que
+    // le premier, l'autre est refusé sans consommer de booster.
+    const [a, b] = await Promise.all([openBooster(NECESSAIRE), openBooster(NECESSAIRE)]);
+    const reussies = [a, b].filter((result) => result.ok);
+    expect(reussies).toHaveLength(1);
+    expect(reussies[0]!.data!.abyssalPulled).toBe(true);
+    expect([a, b].find((result) => !result.ok)!.error).toMatch(/autre ouverture/);
+    expect(db.one("player_boosters", { user_id: USER, booster_definition_id: NECESSAIRE })!.quantity).toBe(1);
+  });
+
   it("garde un pity SÉPARÉ par booster : ouvrir le Nécessaire ne touche pas celui du Défaut", async () => {
     crediterTides(10_000);
     await purchaseBooster(NECESSAIRE, 1);

@@ -145,7 +145,38 @@ function projectEvent(event: GameEvent, viewerId: PlayerId, hiddenBoardIds: Set<
     case "PLAY_CARD":
     case "SUMMON":
       return hiddenBoardIds.has(event.instanceId) ? { ...event, cardId: HIDDEN_CARD_ID } : event;
+    case "CARD_MOVED":
+      return projectCardMoved(event, viewerId);
     default:
       return event;
   }
+}
+
+/** Zones dont le contenu n'est connu que de leur propriétaire. */
+const SECRET_ZONES = new Set(["hand", "deck"]);
+
+/**
+ * Un déplacement de carte vu par un joueur qui n'en est pas le propriétaire.
+ *
+ * Entre deux zones secrètes (main → dessous de la pioche : Mauvaise Main ;
+ * pioche → pioche), ni la carte ni ses exemplaires ne se montrent : sans
+ * quoi l'adversaire lisait les cartes remises sous la pioche. Vers une zone
+ * secrète depuis une zone publique (retour en main depuis le plateau), la
+ * carte était déjà visible, mais son NOUVEL exemplaire en main se tait :
+ * il permettrait de la suivre jusqu'à sa pose. Un propriétaire absent vaut
+ * « pas le spectateur » : dans le doute, on masque.
+ */
+function projectCardMoved(event: Extract<GameEvent, { type: "CARD_MOVED" }>, viewerId: PlayerId): GameEvent {
+  if (event.ownerId === viewerId) return event;
+  const fromSecret = SECRET_ZONES.has(event.fromZone);
+  const toSecret = SECRET_ZONES.has(event.toZone);
+  if (!toSecret) return event;
+
+  const projected = { ...event };
+  if (projected.toInstanceId) projected.toInstanceId = "hidden";
+  if (fromSecret) {
+    projected.instanceId = "hidden";
+    delete projected.cardId;
+  }
+  return projected;
 }

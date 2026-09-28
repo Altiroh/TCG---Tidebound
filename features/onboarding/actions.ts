@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { finishTutorial, readOnboarding, type OnboardingState } from "@/features/onboarding/onboardingService";
+import { issueTutorialTicket, verifyTutorialTicket } from "@/features/onboarding/tutorialTicket";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
 
 /**
@@ -49,14 +50,41 @@ export interface FinishTutorialActionResult {
 }
 
 /**
+ * Lance la partie guidée : rend le ticket signé qu'exigera sa complétion
+ * récompensée (`features/onboarding/tutorialTicket.ts`).
+ */
+export async function beginTutorial(): Promise<{ ok: boolean; ticket?: string }> {
+  const user = await getSessionUser();
+  if (!user) return { ok: false };
+  const ticket = issueTutorialTicket(user.id);
+  return ticket ? { ok: true, ticket } : { ok: false };
+}
+
+/**
  * Clôt le tutoriel. `completed: true` crédite le booster de récompense (une
  * seule fois) ; `completed: false` (« Passer ») n'accorde rien — c'est la
- * règle verrouillée de la spec, et elle vit côté serveur pour que le
- * navigateur ne puisse pas déclarer une complétion qu'il n'a pas jouée.
+ * règle verrouillée de la spec, et elle vit côté serveur.
+ *
+ * Une complétion n'est acceptée qu'avec le ticket délivré au lancement de
+ * la partie guidée (`beginTutorial`), et après sa durée minimale : sans
+ * lui, un appel depuis la console suffisait à toucher le booster.
  */
-export async function completeTutorial(completed: boolean): Promise<FinishTutorialActionResult> {
+export async function completeTutorial(completed: boolean, ticket?: string): Promise<FinishTutorialActionResult> {
   const user = await getSessionUser();
   if (!user) return { ok: false, error: "Connecte-toi pour commencer." };
+
+  if (completed) {
+    const verdict = verifyTutorialTicket(user.id, ticket);
+    if (verdict !== "ok") {
+      return {
+        ok: false,
+        error:
+          verdict === "expired"
+            ? "Cette partie guidée a expiré : relance le tutoriel pour recevoir ton booster."
+            : "Le tutoriel doit être joué jusqu'au bout pour recevoir le booster.",
+      };
+    }
+  }
 
   const result = await finishTutorial(user.id, completed);
   if (result.ok) {

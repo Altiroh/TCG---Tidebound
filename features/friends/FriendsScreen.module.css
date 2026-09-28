@@ -1,0 +1,23 @@
+/* Colonne des sections, et respiration intérieure des panneaux de la charte (`.panel` n'en porte pas). */
+.column {
+  display: grid;
+  gap: var(--tb-space-4);
+}
+
+.section {
+  display: grid;
+  gap: var(--tb-space-3);
+  padding: var(--tb-space-4);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tb-space-2);
+}
+
+.code {
+  letter-spacing: 0.2em;
+}

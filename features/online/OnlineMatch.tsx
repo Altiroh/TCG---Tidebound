@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { GameState, PlayerAction } from "@/game";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { fetchMatchCosmetics, fetchMatchView, submitMatchAction } from "@/features/online/actions";
@@ -10,6 +9,7 @@ import { MatchCosmeticsProvider, type PlayerCosmetics } from "@/features/cosmeti
 import type { MatchRow } from "@/features/matches/matchStore";
 import { unpackFrames } from "@/features/matches/matchFrames";
 import { predictView } from "@/features/online/predictView";
+import { WaitingRoom } from "@/features/online/WaitingRoom";
 
 /**
  * Pause entre deux états successifs renvoyés par le serveur pour le tour du
@@ -80,6 +80,12 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
     viewRef.current = next;
     setView(next);
   }
+
+  // Stable : la salle d'attente s'en sert comme rythme de sondage.
+  const pollWaiting = useCallback(() => {
+    if (!busy.current) void refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `refresh` est stable pour une partie donnée.
+  }, []);
 
   async function refresh() {
     const result = await fetchMatchView(matchId);
@@ -234,17 +240,19 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
     if (latestRemoteVersion.current > shownVersion.current) await refresh();
   }
 
-  if (match.status === "waiting") {
+  if (match.status === "abandoned") {
     return (
-      <main className="mx-auto flex min-h-[100dvh] max-w-sm flex-col items-center justify-center gap-4 p-8 text-center">
-        <h1 className="text-2xl font-bold">En attente d&apos;un adversaire</h1>
-        <p className="text-4xl font-bold tracking-widest text-board-accent">{match.invite_code}</p>
-        <p className="text-sm text-slate-400">Partage ce code. La partie démarre dès qu&apos;il/elle rejoint.</p>
-        <Link href="/en-ligne" className="text-sm text-board-accent hover:underline">
-          ← Annuler
-        </Link>
+      <main className="flex min-h-[100dvh] flex-col items-center justify-center gap-3 p-8 text-center text-slate-300">
+        <p>Cette partie a été fermée : l&apos;invité a décliné le défi, l&apos;hôte l&apos;a annulée, ou une autre partie l&apos;a remplacée.</p>
+        <a href="/partie" className="text-sm text-board-accent hover:underline">
+          ← Retour à l&apos;écran Partie
+        </a>
       </main>
     );
+  }
+
+  if (match.status === "waiting") {
+    return <WaitingRoom matchId={matchId} inviteCode={match.invite_code} onPoll={pollWaiting} />;
   }
 
   if (!view) {
@@ -265,7 +273,7 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
         error={error}
         onDismissError={() => setError(null)}
         opponentName={isBotMatch ? "Le bot" : "L'adversaire"}
-        exitHref={isBotMatch ? "/partie" : "/en-ligne"}
+        exitHref="/partie"
         matchId={matchId}
       />
     </MatchCosmeticsProvider>

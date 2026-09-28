@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { createGameState, type PlayerAction } from "@/game";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
-import { generateInviteCode } from "@/features/online/inviteCode";
+import { createWaitingMatch, deckRejection } from "@/features/online/waitingMatch";
 import {
   loadSnapshot,
   settleExpiredDeadlines,
@@ -12,7 +12,7 @@ import {
   type MatchUpdate,
 } from "@/features/matches/matchStore";
 import { packFrames, type PackedFrames } from "@/features/matches/matchFrames";
-import { resolveMatchDeck, type MatchDeckResult } from "@/features/decks/matchDeck";
+import { resolveMatchDeck } from "@/features/decks/matchDeck";
 import { loadEquippedCosmetics } from "@/features/cosmetics/equippedCosmeticsService";
 import type { PlayerCosmetics } from "@/features/cosmetics/MatchCosmeticsProvider";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
@@ -31,13 +31,6 @@ export interface ActionResult<T> {
   data?: T;
 }
 
-/** Message montré au joueur quand son deck ne peut pas entrer en partie. */
-function deckRejection(result: MatchDeckResult & { ok: false }): string {
-  if (result.reason === "invalid") return `Ce deck n'est pas jouable en l'état : ${result.detail}`;
-  if (result.reason === "unavailable") return "Le serveur ne peut pas lire ton deck pour l'instant — réessaie dans un instant.";
-  return "Deck inconnu.";
-}
-
 async function requireUser() {
   const user = await getSessionUser();
   if (!user) redirect("/connexion");
@@ -47,17 +40,9 @@ async function requireUser() {
 /** Crée une partie en attente d'un second joueur, avec un code d'invitation. */
 export async function createOnlineMatch(deckId: string): Promise<ActionResult<{ matchId: string; inviteCode: string }>> {
   const user = await requireUser();
-  const own = await resolveMatchDeck(user.id, deckId);
-  if (!own.ok) return { ok: false, error: deckRejection(own) };
-
-  const { data, error } = await createSupabaseServiceRoleClient()
-    .from("matches")
-    .insert({ player1_id: user.id, player1_deck_id: deckId, invite_code: generateInviteCode(), status: "waiting" })
-    .select("id, invite_code")
-    .single();
-
-  if (error || !data) return { ok: false, error: error?.message ?? "Échec de la création de la partie." };
-  return { ok: true, data: { matchId: data.id, inviteCode: data.invite_code } };
+  const created = await createWaitingMatch(user.id, deckId);
+  if (!created.ok) return { ok: false, error: created.error };
+  return { ok: true, data: { matchId: created.matchId, inviteCode: created.inviteCode } };
 }
 
 /** Rejoint une partie en attente via son code d'invitation et démarre la partie. */
@@ -75,8 +60,12 @@ export async function joinOnlineMatch(inviteCode: string, deckId: string): Promi
     .eq("status", "waiting")
     .maybeSingle();
 
-  if (findError) return { ok: false, error: findError.message };
-  if (!match) return { ok: false, error: "Aucune partie en attente avec ce code." };
+  if (findError) {
+    console.error("[joinOnlineMatch] Recherche refusée :", findError.message);
+    return { ok: false, error: "Impossible de chercher cette partie pour l'instant." };
+  }
+  // Hôte absent : son compte a été supprimé depuis la création de la partie.
+  if (!match || !match.player1_id) return { ok: false, error: "Aucune partie en attente avec ce code." };
   if (match.player1_id === user.id) return { ok: false, error: "Tu ne peux pas rejoindre ta propre partie." };
 
   // Le deck de l'HÔTE, résolu sous SON identité : un deck personnel
@@ -85,9 +74,10 @@ export async function joinOnlineMatch(inviteCode: string, deckId: string): Promi
   if (!hostDeck.ok) return { ok: false, error: "Le deck de ton adversaire n'est plus disponible." };
   const deck1 = hostDeck.deck;
 
+  const hostId = match.player1_id;
   const state = createGameState({
     gameId: match.id,
-    player1: { id: match.player1_id, deck: deck1 },
+    player1: { id: hostId, deck: deck1 },
     player2: { id: user.id, deck: deck2 },
   });
 
@@ -99,7 +89,10 @@ export async function joinOnlineMatch(inviteCode: string, deckId: string): Promi
     p_player2_deck_id: deckId,
     p_state: state,
   });
-  if (error) return { ok: false, error: error.message };
+  if (error) {
+    console.error("[joinOnlineMatch] Activation refusée :", error.message);
+    return { ok: false, error: "Impossible de rejoindre cette partie." };
+  }
   if (!activated?.ok) return { ok: false, error: activated?.error ?? "Impossible de rejoindre cette partie." };
 
   return { ok: true, data: { matchId: match.id } };
@@ -156,4 +149,55 @@ export async function submitMatchAction(matchId: string, action: PlayerAction): 
     console.error("[submitMatchAction] Échec :", error);
     return { ok: false, error: "Coup non enregistré, réessaie." };
   }
+}
+
+/**
+ * Ferme la partie en attente que l'appelant a créée (« Annuler » de la salle
+ * d'attente). Sans elle, le code restait valable : un ami arrivé après coup
+ * rejoignait une table que son hôte avait quittée.
+ */
+export async function cancelWaitingMatch(matchId: string): Promise<ActionResult<null>> {
+  const user = await requireUser();
+  const { error } = await createSupabaseServiceRoleClient()
+    .from("matches")
+    .update({ status: "abandoned", updated_at: new Date().toISOString() })
+    .eq("id", matchId)
+    .eq("player1_id", user.id)
+    .eq("status", "waiting");
+  if (error) {
+    console.error("[cancelWaitingMatch] Fermeture refusée :", error.message);
+    return { ok: false, error: "Impossible d'annuler la partie pour l'instant." };
+  }
+  return { ok: true, data: null };
+}
+
+/** Une partie que le joueur peut reprendre : en cours, ou en attente de son invité. */
+export interface ResumableMatch {
+  matchId: string;
+  mode: "private_invite" | "matchmaking" | "bot";
+  status: "waiting" | "active";
+}
+
+/**
+ * La partie la plus récente que ce joueur a laissée ouverte — pour lui
+ * proposer de la reprendre au lieu de la laisser filer vers le forfait
+ * (onglet fermé, rechargement, retour au menu). `null` si rien n'attend.
+ */
+export async function findResumableMatch(): Promise<ResumableMatch | null> {
+  const user = await getSessionUser();
+  if (!user) return null;
+  const { data, error } = await createSupabaseServiceRoleClient()
+    .from("matches")
+    .select("id, mode, status")
+    .in("status", ["waiting", "active"])
+    .or(`player1_id.eq.${user.id},player2_id.eq.${user.id}`)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    console.error("[findResumableMatch] Lecture impossible :", error.message);
+    return null;
+  }
+  if (!data || (data.status !== "waiting" && data.status !== "active")) return null;
+  return { matchId: data.id, mode: data.mode, status: data.status };
 }

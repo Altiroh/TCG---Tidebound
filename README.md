@@ -803,8 +803,9 @@ cartes (miroir de `game/cards/sets/core.ts`, synchronisé par
 boosters (format 8 cartes verrouillé, pity Abyssal, protection Abyssale),
 monnaie interne + historique de transactions, quêtes, onboarding, et une
 file de matchmaking (`matchmaking_queue` + fonction Postgres
-`claim_matchmaking_opponent()`, esquissées côté serveur dans
-`features/matchmaking/actions.ts`) — puis par
+`claim_matchmaking_opponent`, esquissées côté serveur dans
+`features/matchmaking/actions.ts` ; réservées au serveur depuis
+`20261016120000_audit_securite.sql`) — puis par
 `supabase/migrations/20260912200000_progression_and_boosters.sql` :
 `player_progression`, `match_rewards`, et les quatre opérations atomiques
 `grant_match_progression()`, `purchase_booster()`, `open_booster()`,
