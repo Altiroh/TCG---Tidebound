@@ -351,3 +351,45 @@ describe("Bris depuis la main : la formule ne bouge pas", () => {
     }
   });
 });
+
+describe("L'Amiral sans Pavillon : « si l'adversaire contrôle plus d'unités que vous »", () => {
+  /** L'Amiral en main de p1 ; `miens` unités à p1, `siens` à p2 (dont une de coût 3, la cible). */
+  function amiral(miens: number, siens: number) {
+    const lui = instance("lamiral-sans-pavillon", "p1");
+    const cible = instance("matelot-du-sans-nom", "p2");
+    const state = table({
+      players: [
+        testPlayer("p1", {
+          shipId: "le-brise-lames",
+          reason: 10,
+          reasonMax: 10,
+          hand: [lui],
+          board: Array.from({ length: miens }, () => instance("guetteur-mefiant", "p1")),
+        }),
+        testPlayer("p2", {
+          shipId: "le-goliath",
+          reason: 10,
+          reasonMax: 10,
+          board: [cible, ...Array.from({ length: siens - 1 }, () => instance("guetteur-mefiant", "p2"))],
+        }),
+      ],
+    });
+    return { lui, cible, state };
+  }
+
+  it("détruit la cible quand l'adversaire mène d'une unité AVANT son arrivée — lui-même ne compte pas", () => {
+    // 1 contre 2 : compté avec l'Amiral, ce serait 2 contre 2 et l'effet ne partirait jamais.
+    const { lui, cible, state } = amiral(1, 2);
+    const pose = dispatch(state, { type: "playCard", playerId: "p1", instanceId: lui.instanceId, targetInstanceId: cible.instanceId });
+    ok(pose);
+    expect(enJeu(pose.state, "p2", cible.instanceId)).toBe(false);
+    expect(enJeu(pose.state, "p1", lui.instanceId)).toBe(true);
+  });
+
+  it("ne détruit rien à égalité d'unités", () => {
+    const { lui, cible, state } = amiral(2, 2);
+    const pose = dispatch(state, { type: "playCard", playerId: "p1", instanceId: lui.instanceId, targetInstanceId: cible.instanceId });
+    ok(pose);
+    expect(enJeu(pose.state, "p2", cible.instanceId)).toBe(true);
+  });
+});
