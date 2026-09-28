@@ -40,6 +40,7 @@ export {
   countsAsPlayedMatch,
   isMeaningfulMatch,
   matchActivity,
+  matchModePaysRewards,
   utcDayKey,
 } from "@/game/progression/matchRewards";
 export type { MatchRewardInput, PlayedMatchInput } from "@/game/progression/matchRewards";

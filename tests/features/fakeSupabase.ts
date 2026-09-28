@@ -126,7 +126,7 @@ class QueryBuilder implements PromiseLike<QueryResponse> {
   private projection: string | undefined;
   private orderBy: { column: string; ascending: boolean } | undefined;
   private limitTo: number | undefined;
-  private mode: "select" | "insert" | "update" | "upsert" = "select";
+  private mode: "select" | "insert" | "update" | "upsert" | "delete" = "select";
   private conflictColumns: string[] | undefined;
   private payload: Row[] = [];
   private singleMode: "none" | "maybe" | "one" = "none";
@@ -141,6 +141,11 @@ class QueryBuilder implements PromiseLike<QueryResponse> {
   insert(rows: Row | Row[]) {
     this.mode = "insert";
     this.payload = Array.isArray(rows) ? rows : [rows];
+    return this;
+  }
+
+  delete() {
+    this.mode = "delete";
     return this;
   }
 
@@ -261,6 +266,12 @@ class QueryBuilder implements PromiseLike<QueryResponse> {
     }
 
     const rows = this.db.table(this.name).filter((row) => this.filters.every((filter) => filter(row)));
+
+    if (this.mode === "delete") {
+      const table = this.db.table(this.name);
+      for (const row of rows) table.splice(table.indexOf(row), 1);
+      return { data: null, error: null };
+    }
 
     if (this.mode === "update") {
       for (const row of rows) Object.assign(row, this.payload[0], { updated_at: nowIso() });
@@ -385,6 +396,18 @@ function runRpc(db: FakeDatabase, fn: string, args: Row): any {
       db.table("match_states").push({ match_id: args.p_match_id, state: args.p_state, version: 1 });
       freezeMatchShips(db, args.p_match_id);
       return { ok: true, version: 1 };
+    }
+
+    // `20261016120000_audit_securite.sql` : réservée au serveur, l'appelant doit être en file.
+    case "claim_matchmaking_opponent": {
+      const queue = db.table("matchmaking_queue");
+      if (!queue.some((row) => row.user_id === args.p_user_id)) return [];
+      const waiting = queue
+        .filter((row) => row.user_id !== args.p_user_id)
+        .sort((a, b) => String(a.queued_at).localeCompare(String(b.queued_at)))[0];
+      if (!waiting) return [];
+      queue.splice(queue.indexOf(waiting), 1);
+      return [{ opponent_user_id: waiting.user_id, opponent_deck_id: waiting.deck_id }];
     }
 
     case "activate_waiting_match": {

@@ -21,7 +21,7 @@ export default async function EnLignePage() {
     <main className="mx-auto flex min-h-[100dvh] max-w-xl flex-col items-center justify-center gap-8 p-8 text-center">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Jouer en ligne</h1>
-        <p className="mt-2 text-sm text-slate-400">Recherche rapide, ou partie privée par code d&apos;invitation.</p>
+        <p className="mt-2 text-sm text-slate-400">Recherche rapide contre un adversaire tiré au hasard, ou match amical avec un joueur de ton choix, par code d&apos;invitation.</p>
       </div>
 
       <QuickMatchPanel decks={decks} />

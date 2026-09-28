@@ -6,9 +6,10 @@ import type { LevelRewardItem } from "@/game/progression/levelRewards";
 export type MatchOutcome = "win" | "loss";
 
 /**
- * Mode de la partie — même vocabulaire que `matches.mode` en base. Seul
- * `bot` change les récompenses (0 Tide, cf. cadrage) ; `private_invite` et
- * `matchmaking` sont tous deux du PvP.
+ * Mode de la partie — même vocabulaire que `matches.mode` en base.
+ * `matchmaking` est le PvP récompensé ; `bot` paie sans Tides (cadrage) ;
+ * `private_invite` est le MATCH AMICAL, qui ne rapporte rien
+ * (`matchModePaysRewards`).
  */
 export type MatchMode = "private_invite" | "matchmaking" | "bot";
 

@@ -3,7 +3,7 @@ import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
 import { awardMatchReward } from "@/features/progression/rewards";
 import { botCountsAsPvp } from "@/features/progression/botRewardPolicy";
-import { audienceOpponent, countsAsPlayedMatch, matchActivity, utcDayKey } from "@/game/progression";
+import { audienceOpponent, countsAsPlayedMatch, matchActivity, matchModePaysRewards, utcDayKey } from "@/game/progression";
 import { recordMatchQuestProgress } from "@/features/quests/questService";
 import { recordMatchAudience } from "@/features/progression/hubService";
 import { isRecentDeck } from "@/features/decks/recentDecks";
@@ -261,7 +261,7 @@ export async function settleExpiredDeadlines(matchId: string, userId: string): P
 }
 
 /**
- * Parties PvP déjà terminées aujourd'hui (UTC) entre les deux joueurs de
+ * Parties de MATCHMAKING déjà terminées aujourd'hui (UTC) entre les deux joueurs de
  * `match`, celle-ci exclue — pour le plafond par adversaire
  * (`SAME_OPPONENT_DAILY_REWARDED_MATCHES`). `undefined` si la question ne se
  * pose pas (un seul joueur humain) ou si la base ne répond pas : dans le
@@ -275,7 +275,9 @@ async function finishedTodayBetween(match: MatchRow): Promise<number | undefined
     .from("matches")
     .select("id", { count: "exact", head: true })
     .eq("status", "finished")
-    .neq("mode", "bot")
+    // Les matchs amicaux ne comptent pas : ils ne paient rien, et deux amis
+    // qui jouent ensemble ne doivent pas y perdre leurs parties classées.
+    .eq("mode", "matchmaking")
     .neq("id", match.id)
     .gte("finished_at", `${utcDayKey(new Date())}T00:00:00.000Z`)
     .or(`and(player1_id.eq.${a},player2_id.eq.${b}),and(player1_id.eq.${b},player2_id.eq.${a})`);
@@ -288,6 +290,10 @@ async function finishedTodayBetween(match: MatchRow): Promise<number | undefined
 
 /** Récompenses et quêtes de chaque participant HUMAIN d'une partie terminée. */
 async function settleFinishedMatch(match: MatchRow, finalState: GameState): Promise<void> {
+  // Match amical : pour le plaisir, rien à régler. La partie reste dans
+  // l'historique ; l'écran de fin n'annonce simplement aucun gain.
+  if (!matchModePaysRewards(match.mode)) return;
+
   const vsBot = match.mode === "bot";
   // Dérogation de développement : hors production, une partie contre bot est
   // récompensée et comptée comme une partie PvP, pour que toute la boucle

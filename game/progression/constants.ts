@@ -91,9 +91,10 @@ export const MEANINGFUL_ACTIVITY = {
 export const MIN_REWARDED_MATCH_MS = 60_000;
 
 /**
- * Parties PvP récompensées par jour (UTC) contre UN MÊME adversaire. Au-delà,
- * deux comptes complices qui s'offrent des victoires en partie privée ne
- * gagnent plus rien ; une revanche ou deux entre amis restent payées.
+ * Parties de MATCHMAKING récompensées par jour (UTC) contre UN MÊME
+ * adversaire. Le match amical ne rapporte déjà rien (`matchModePaysRewards`) ;
+ * ce plafond couvre le dernier recours de deux complices : se retrouver en
+ * boucle dans une file presque vide.
  */
 export const SAME_OPPONENT_DAILY_REWARDED_MATCHES = 3;
 

@@ -30,7 +30,8 @@ export function JoinMatchForm() {
 
   return (
     <div className="flex flex-1 flex-col gap-3 rounded-md border border-slate-800 bg-board-surface p-4 text-left">
-      <h2 className="text-sm font-medium text-slate-300">Rejoindre une partie</h2>
+      <h2 className="text-sm font-medium text-slate-300">Rejoindre un match amical</h2>
+      <p className="text-xs text-slate-400">Pour le plaisir : un match amical ne rapporte ni XP, ni Tides, ni quêtes.</p>
       <input
         value={code}
         onChange={(e) => setCode(e.target.value.toUpperCase())}

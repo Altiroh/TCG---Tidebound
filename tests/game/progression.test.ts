@@ -24,6 +24,7 @@ import {
   canClaimLoginReward,
   computeMatchReward,
   countsAsPlayedMatch,
+  matchModePaysRewards,
   isMeaningfulMatch,
   MIN_REWARDED_MATCH_MS,
   SAME_OPPONENT_DAILY_REWARDED_MATCHES,
@@ -258,6 +259,12 @@ describe("anti-farm (audit de sécurité)", () => {
     expect(reward.xp).toBe(ABANDONED_MATCH_XP);
     expect(reward.tides).toBe(0);
     expect(reward.firstWinOfDay).toBe(false);
+  });
+
+  it("le match amical (adversaire choisi) ne rapporte rien ; matchmaking et bot, si", () => {
+    expect(matchModePaysRewards("private_invite")).toBe(false);
+    expect(matchModePaysRewards("matchmaking")).toBe(true);
+    expect(matchModePaysRewards("bot")).toBe(true);
   });
 
   it("une partie jouée paie toujours plus qu'un abandon : le coffre de la semaine s'appuie dessus", () => {

@@ -43,6 +43,7 @@ vi.mock("next/navigation", () => ({
 
 const { startBotMatch } = await import("@/features/bot/actions");
 const { submitMatchAction, createOnlineMatch, joinOnlineMatch, fetchMatchView } = await import("@/features/online/actions");
+const { joinMatchmakingQueue } = await import("@/features/matchmaking/actions");
 const { claimQuestReward, fetchQuestBoard } = await import("@/features/quests/actions");
 const { claimAllLevelRewards } = await import("@/features/progression/profileActions");
 const { purchaseBooster, openBooster } = await import("@/features/boosters/actions");
@@ -293,7 +294,7 @@ describe("boucle complète — partie contre bot, arbitrée côté serveur", () 
 });
 
 describe("boucle complète — partie en ligne entre deux joueurs", () => {
-  it("création par code d'invitation, partie jouée, récompenses des DEUX joueurs", async () => {
+  it("match amical par code d'invitation : joué jusqu'au bout, il ne rapporte rien", async () => {
     sessionUserId = USER;
     const created = await createOnlineMatch(DECK.id);
     expect(created.error).toBeUndefined();
@@ -325,11 +326,12 @@ describe("boucle complète — partie en ligne entre deux joueurs", () => {
     }
 
     expect(db.one("matches", { id: matchId })!.status).toBe("finished");
-    // Les deux joueurs sont payés, une fois chacun.
-    expect(db.one("match_rewards", { match_id: matchId, user_id: USER })).toBeTruthy();
-    expect(db.one("match_rewards", { match_id: matchId, user_id: OPPONENT })).toBeTruthy();
-    expect(db.one("player_progression", { user_id: USER })!.matches_played).toBe(1);
-    expect(db.one("player_progression", { user_id: OPPONENT })!.matches_played).toBe(1);
+    // Adversaire choisi = pas de récompense : ni XP, ni quêtes, pour aucun des deux.
+    for (const userId of [USER, OPPONENT]) {
+      expect(db.one("match_rewards", { match_id: matchId, user_id: userId })).toBeUndefined();
+      expect(db.one("match_quest_progress", { match_id: matchId, user_id: userId })).toBeUndefined();
+      expect(db.one("player_progression", { user_id: userId })?.matches_played ?? 0).toBe(0);
+    }
   });
 
   it("refuse un second joueur sur une partie déjà rejointe", async () => {
@@ -381,13 +383,29 @@ describe("anti-farm — une partie ne paie que si elle a été jouée", () => {
     expect((await submitMatchAction(first.matchId!, chooseBotAction(state, USER, "moyen"))).ok).toBe(false);
   });
 
-  it("PvP : au-delà du plafond du jour contre le même adversaire, la partie ne rapporte plus", async () => {
-    // Parties déjà jouées aujourd'hui entre ces deux comptes.
+  it("matchmaking : une partie jouée paie les DEUX joueurs, une fois chacun", async () => {
+    sessionUserId = OPPONENT;
+    expect((await joinMatchmakingQueue(OTHER_DECK.id)).data).toEqual({ status: "queued" });
+    sessionUserId = USER;
+    const matched = await joinMatchmakingQueue(DECK.id);
+    expect(matched.data?.status).toBe("matched");
+    const matchId = (matched.data as { matchId: string }).matchId;
+
+    await playOnlineToTheEnd(matchId);
+
+    expect(db.one("match_rewards", { match_id: matchId, user_id: USER })!.xp_granted).toBeGreaterThan(ABANDONED_MATCH_XP);
+    expect(db.one("match_rewards", { match_id: matchId, user_id: OPPONENT })!.xp_granted).toBeGreaterThan(ABANDONED_MATCH_XP);
+    expect(db.one("player_progression", { user_id: USER })!.matches_played).toBe(1);
+    expect(db.one("player_progression", { user_id: OPPONENT })!.matches_played).toBe(1);
+  });
+
+  it("matchmaking : au-delà du plafond du jour contre le même adversaire, la partie ne rapporte plus", async () => {
+    // Parties de matchmaking déjà jouées aujourd'hui entre ces deux comptes.
     for (let index = 0; index < SAME_OPPONENT_DAILY_REWARDED_MATCHES; index += 1) {
       db.table("matches").push({
         id: `00000000-0000-4000-8000-0000000fa${index}00`,
         invite_code: `FARM${index}`,
-        mode: "private_invite",
+        mode: "matchmaking",
         player1_id: index % 2 ? OPPONENT : USER,
         player2_id: index % 2 ? USER : OPPONENT,
         player1_deck_id: DECK.id,
@@ -397,14 +415,15 @@ describe("anti-farm — une partie ne paie que si elle a été jouée", () => {
       });
     }
 
-    sessionUserId = USER;
-    const created = await createOnlineMatch(DECK.id);
     sessionUserId = OPPONENT;
-    expect((await joinOnlineMatch(created.data!.inviteCode, OTHER_DECK.id)).ok).toBe(true);
-    await playOnlineToTheEnd(created.data!.matchId);
+    await joinMatchmakingQueue(OTHER_DECK.id);
+    sessionUserId = USER;
+    const matched = await joinMatchmakingQueue(DECK.id);
+    const matchId = (matched.data as { matchId: string }).matchId;
+    await playOnlineToTheEnd(matchId);
 
     for (const userId of [USER, OPPONENT]) {
-      const reward = db.one("match_rewards", { match_id: created.data!.matchId, user_id: userId })!;
+      const reward = db.one("match_rewards", { match_id: matchId, user_id: userId })!;
       expect(reward.xp_granted).toBe(ABANDONED_MATCH_XP);
       expect(reward.tides_granted).toBe(0);
     }
@@ -498,11 +517,12 @@ describe("délai de tour — l'autorité reste au serveur", () => {
   });
 
   it("une partie arrêtée par inactivité paie ses récompenses comme n'importe quelle autre", async () => {
-    sessionUserId = USER;
-    const created = await createOnlineMatch(DECK.id);
-    const { matchId, inviteCode } = created.data!;
+    // Matchmaking : le mode PvP qui rapporte (un match amical ne paie rien).
     sessionUserId = OPPONENT;
-    await joinOnlineMatch(inviteCode, OTHER_DECK.id);
+    await joinMatchmakingQueue(OTHER_DECK.id);
+    sessionUserId = USER;
+    const matched = await joinMatchmakingQueue(DECK.id);
+    const matchId = (matched.data as { matchId: string }).matchId;
 
     const first = db.one("match_states", { match_id: matchId })!.state;
     const absent: string = first.turnTimer.awaitingPlayerId;

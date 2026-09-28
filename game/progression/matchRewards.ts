@@ -76,6 +76,18 @@ export interface MatchRewardInput {
   countsAsPlayed?: boolean;
 }
 
+/**
+ * Le mode de partie RAPPORTE-T-IL quelque chose ? Tous, sauf le MATCH
+ * AMICAL (`private_invite`, un adversaire choisi par code d'invitation) :
+ * il se joue pour le plaisir, sans XP, Tides, quêtes, exploits, coffre ni
+ * audience (décision du 28/09/2026). Choisir son adversaire, c'est pouvoir
+ * s'entendre avec lui ; seul le matchmaking, où l'adversaire est tiré au
+ * hasard, paie une partie contre un humain.
+ */
+export function matchModePaysRewards(mode: MatchMode): boolean {
+  return mode !== "private_invite";
+}
+
 export interface PlayedMatchInput {
   /** Activité du joueur (`matchActivity`). */
   activity: MatchActivity | undefined;

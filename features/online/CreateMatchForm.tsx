@@ -28,7 +28,8 @@ export function CreateMatchForm() {
 
   return (
     <div className="flex flex-1 flex-col gap-3 rounded-md border border-slate-800 bg-board-surface p-4 text-left">
-      <h2 className="text-sm font-medium text-slate-300">Créer une partie</h2>
+      <h2 className="text-sm font-medium text-slate-300">Créer un match amical</h2>
+      <p className="text-xs text-slate-400">Pour le plaisir : un match amical ne rapporte ni XP, ni Tides, ni quêtes.</p>
       <select
         value={deckId}
         onChange={(e) => setDeckId(e.target.value)}
@@ -41,7 +42,7 @@ export function CreateMatchForm() {
         ))}
       </select>
       <Button onClick={handleCreate} disabled={pending}>
-        {pending ? "Création..." : "Créer la partie"}
+        {pending ? "Création..." : "Créer le match amical"}
       </Button>
       {error && <p className="text-xs text-rose-400">{error}</p>}
     </div>

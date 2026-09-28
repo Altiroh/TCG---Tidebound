@@ -62,7 +62,8 @@ export async function createOnlineMatch(deckId: string): Promise<ActionResult<{ 
 
   const { data, error } = await service
     .from("matches")
-    .insert({ player1_id: user.id, player1_deck_id: deckId, invite_code: generateInviteCode(), status: "waiting" })
+    // Mode explicite : c'est lui qui fait d'une partie un match amical, sans récompense.
+    .insert({ player1_id: user.id, player1_deck_id: deckId, invite_code: generateInviteCode(), status: "waiting", mode: "private_invite" })
     .select("id, invite_code")
     .single();
 
