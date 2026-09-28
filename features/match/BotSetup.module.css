@@ -38,6 +38,7 @@
 .scene[data-level="facile"] { --level-color: 60, 200, 170; }
 .scene[data-level="moyen"] { --level-color: 255, 178, 74; }
 .scene[data-level="difficile"] { --level-color: 255, 60, 50; }
+.scene[data-level="online"] { --level-color: 120, 190, 255; }
 
 .srOnly {
   position: absolute;
@@ -114,6 +115,17 @@
   font-variant: small-caps;
   letter-spacing: 0.04em;
   line-height: 1;
+}
+
+/* En ligne : sous la banderole, ce que rapporte la partie, écrit à la craie sur la table. */
+.levelsNote {
+  margin: 0;
+  color: #f3e3c3;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: max(11px, calc(var(--u) * 2.2));
+  font-variant: small-caps;
+  letter-spacing: 0.05em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9), 0 0 calc(var(--u) * 1.2) rgba(0, 0, 0, 0.7);
 }
 
 .levels {
@@ -367,6 +379,35 @@
 .foeArtLayer[data-on] {
   opacity: 1;
   scale: 1;
+}
+
+/* En ligne : la scène des navires de « En ligne », voilée — on ne sait pas qui arrive. */
+.foeArtLayer[data-unknown] {
+  background-size: 190% auto;
+  background-position: 50% 56%;
+  filter: blur(calc(var(--u) * 0.35)) brightness(0.45) saturate(0.7);
+}
+
+.foeMystery {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #f6dfa4;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: calc(var(--u) * 17);
+  font-weight: 700;
+  line-height: 1;
+  text-shadow:
+    0 calc(var(--u) * 0.4) 0 #6b3f12,
+    0 0 calc(var(--u) * 2.4) rgba(255, 200, 110, 0.55),
+    0 calc(var(--u) * 1) calc(var(--u) * 2) rgba(0, 0, 0, 0.8);
+  animation: mystery 3.2s ease-in-out infinite alternate;
+}
+
+@keyframes mystery {
+  from { scale: 0.94; rotate: -4deg; }
+  to { scale: 1.04; rotate: 3deg; }
 }
 
 /* Le bas du papier : le nom écrit à la main, et les têtes de mort du niveau. */
@@ -899,6 +940,7 @@
   .polaroid,
   .deckStack,
   .skulls span,
+  .foeMystery,
   .lever,
   .lever[data-pulled] .leverArt,
   .picker,

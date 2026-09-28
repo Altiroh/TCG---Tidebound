@@ -161,6 +161,37 @@ async function tryPair(userId: string, deckId: string): Promise<ActionResult<Mat
   return { ok: true, data: { status: "matched", matchId } };
 }
 
+/**
+ * Temps d'attente ESTIMÉ, en secondes — `null` quand rien ne permet de
+ * l'estimer (aucune partie appariée depuis une heure, personne en file).
+ *
+ * Une estimation, pas une promesse :
+ *   - quelqu'un d'autre attend déjà : l'appariement est imminent (le
+ *     prochain sondage le fera) ;
+ *   - sinon, on attend le PROCHAIN arrivant. Chaque partie de l'heure
+ *     écoulée a amené deux joueurs : on en tire un rythme d'arrivée, et
+ *     l'attente moyenne est l'intervalle entre deux arrivées.
+ */
+export async function estimateMatchmakingWait(): Promise<ActionResult<{ seconds: number | null }>> {
+  const user = await requireUser();
+  const db = service();
+  const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const [waiting, recent] = await Promise.all([
+    db.from("matchmaking_queue").select("user_id", { count: "exact", head: true }).neq("user_id", user.id)
+      // Muette depuis 30 s, une entrée n'est plus appariable : elle ne compte pas.
+      .gte("last_seen_at", new Date(Date.now() - 30 * 1000).toISOString()),
+    db.from("matches").select("id", { count: "exact", head: true }).eq("mode", "matchmaking").gte("created_at", since),
+  ]);
+  if (waiting.error || recent.error) {
+    console.error("[estimateMatchmakingWait] Estimation impossible :", waiting.error?.message ?? recent.error?.message);
+    return { ok: true, data: { seconds: null } };
+  }
+  if ((waiting.count ?? 0) > 0) return { ok: true, data: { seconds: 5 } };
+  const arrivalsPerHour = (recent.count ?? 0) * 2;
+  if (arrivalsPerHour === 0) return { ok: true, data: { seconds: null } };
+  return { ok: true, data: { seconds: Math.min(600, Math.max(10, Math.round(3600 / arrivalsPerHour))) } };
+}
+
 /** Quitte la file de matchmaking (bouton « Annuler la recherche », page quittée). */
 export async function leaveMatchmakingQueue(): Promise<ActionResult<null>> {
   const user = await requireUser();

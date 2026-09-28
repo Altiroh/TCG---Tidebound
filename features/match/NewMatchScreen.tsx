@@ -273,12 +273,12 @@ export function NewMatchScreen({
    */
   useEffect(() => {
     if (current && activeTab.decks.some((deck) => deck.id === current.id)) return;
-    // Contre un bot, pas d'onglet : le deck choisi (par défaut, ou dans le
-    // panneau « Changer de deck ») vaut quelle que soit sa source.
-    if (mode === "bot" && current && tabs.some((tab) => tab.decks.some((deck) => deck.id === current.id))) return;
+    // Contre un bot ou en recherche rapide, pas d'onglet : le deck choisi (par
+    // défaut, ou dans le panneau « Changer de deck ») vaut quelle que soit sa source.
+    if ((mode === "bot" || (mode === "online" && onlineKind === "quick")) && current && tabs.some((tab) => tab.decks.some((deck) => deck.id === current.id))) return;
     const first = activeTab.decks.find((deck) => activeTab.issueFor(deck) === null) ?? null;
     if (first) setCurrent(first);
-  }, [activeTab, current, setCurrent, mode, tabs]);
+  }, [activeTab, current, setCurrent, mode, onlineKind, tabs]);
 
   /** Relever un défi reçu : mode « En ligne », rejoindre, code déjà saisi — reste le deck. */
   function acceptChallenge(code: string) {
@@ -382,15 +382,17 @@ export function NewMatchScreen({
       </>
     ) : null;
 
-  // Étape 1 (choix du mode) et étape « contre un bot » : la même table. Ses
-  // éléments partent, ceux de l'étape suivante arrivent (retour du 28/09/2026).
-  if (step === 1 || (step === 2 && mode === "bot")) {
+  // Étape 1 (choix du mode), « contre un bot » et « recherche rapide » : la
+  // même table. Ses éléments partent, ceux de l'étape suivante arrivent
+  // (retours du 28/09/2026). Les matchs amicaux gardent l'écran à étapes.
+  const onTable = step === 1 || (step === 2 && (mode === "bot" || (mode === "online" && onlineKind === "quick")));
+  if (onTable) {
     return (
       <GameScreen
         active="partie"
         nav="minimal"
         backdrop="table"
-        // Sur l'écran « contre un bot », la flèche du bandeau revient au choix du mode, pas au menu.
+        // Sur l'écran de réglage (bot, en ligne), la flèche du bandeau revient au choix du mode, pas au menu.
         onNavigate={(href) => {
           if (step === 1 || href !== "/" || !botBackRef.current) return false;
           botBackRef.current();
@@ -409,9 +411,11 @@ export function NewMatchScreen({
             />
           ) : (
             <BotSetup
-              levels={BOT_DIFFICULTIES}
-              difficulty={botDifficulty}
-              onDifficulty={setBotDifficulty}
+              foe={
+                mode === "bot"
+                  ? { kind: "bot", levels: BOT_DIFFICULTIES, difficulty: botDifficulty, onDifficulty: setBotDifficulty, note: botNote }
+                  : { kind: "online" }
+              }
               deck={deck1}
               sources={tabs}
               onDeck={setDeck1}
@@ -420,7 +424,6 @@ export function NewMatchScreen({
               onLaunch={handleLaunch}
               starting={starting}
               error={error}
-              note={botNote}
             />
           )}
         </PlayTable>

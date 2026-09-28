@@ -1,0 +1,236 @@
+/*
+ * Recherche d'un adversaire (`MatchmakingSearch.tsx`), sur la table de
+ * « Jouer » : des rangées d'illustrations de cartes défilent derrière, sous
+ * un léger flou ; devant, l'attente sur la banderole, et les temps sur un
+ * parchemin. Même unité que l'écran de réglage (`BotSetup.module.css`).
+ */
+.scene {
+  --ink: #2a1a0c;
+  --u: min(0.5625cqw, 1cqh);
+  position: absolute;
+  inset: 0;
+  container-type: size;
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+}
+
+/* Le cadre des rangées : fondu sur les quatre bords, pas de coupure nette sur la table. */
+.reelsFrame {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent), linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent), linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent);
+  mask-composite: intersect;
+  pointer-events: none;
+}
+
+/* ── Derrière : les cartes qui tournent ── */
+.reels {
+  position: absolute;
+  inset: -20% -30%;
+  display: grid;
+  align-content: center;
+  gap: calc(var(--u) * 3);
+  rotate: -8deg;
+  filter: blur(calc(var(--u) * 0.45)) brightness(0.9) saturate(0.9);
+  animation: reelsIn 900ms ease both;
+}
+
+@keyframes reelsIn {
+  from { opacity: 0; }
+}
+
+.reel {
+  display: flex;
+  gap: calc(var(--u) * 3);
+  width: max-content;
+  animation: slide 60s linear infinite;
+}
+
+.reel[data-reverse] {
+  animation-direction: reverse;
+  animation-duration: 75s;
+}
+
+@keyframes slide {
+  to { translate: -50% 0; }
+}
+
+.card {
+  height: 30cqh;
+  aspect-ratio: 5 / 7;
+  object-fit: cover;
+  border: calc(var(--u) * 0.6) solid #d8b77a;
+  border-radius: calc(var(--u) * 1.4);
+  box-shadow: 0 calc(var(--u) * 1) calc(var(--u) * 2) rgba(0, 0, 0, 0.6);
+  user-select: none;
+}
+
+/* Le voile : assombrit le bord, laisse la lumière au centre, sous le texte. */
+.veil {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 45% 40% at 50% 50%, rgba(10, 6, 3, 0.35), rgba(10, 6, 3, 0) 100%);
+  pointer-events: none;
+}
+
+/* ── Devant : l'attente ── */
+.panel {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: calc(var(--u) * 1.6);
+  width: min(92%, var(--u) * 96);
+  filter: drop-shadow(0 calc(var(--u) * 1.2) calc(var(--u) * 1.8) rgba(0, 0, 0, 0.6));
+  animation: arrive 560ms cubic-bezier(0.2, 0.8, 0.2, 1) 120ms both;
+}
+
+@keyframes arrive {
+  from {
+    opacity: 0;
+    transform: translateY(6%) scale(0.96);
+  }
+}
+
+.title {
+  display: grid;
+  grid-auto-flow: column;
+  place-content: center;
+  align-items: baseline;
+  width: 100%;
+  aspect-ratio: 900 / 249;
+  margin: 0;
+  padding-bottom: 3%;
+  background: url("/assets/ui/bandeaux/banderole.webp") center / 100% 100% no-repeat;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: max(15px, calc(var(--u) * 4.4));
+  font-weight: 700;
+  font-variant: small-caps;
+  letter-spacing: 0.03em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* Les points de suspension, qui s'allument l'un après l'autre. */
+.dots span {
+  animation: dot 1.4s ease-in-out infinite;
+}
+
+.dots span:nth-child(2) { animation-delay: 0.2s; }
+.dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes dot {
+  0%, 60%, 100% { opacity: 0.2; }
+  30% { opacity: 1; }
+}
+
+.sheet {
+  display: grid;
+  justify-items: center;
+  gap: calc(var(--u) * 1);
+  width: 76%;
+  padding: calc(var(--u) * 1.4) calc(var(--u) * 3);
+  border-style: solid;
+  border-width: calc(var(--u) * 1.4);
+  border-image: url("/assets/ui/panneaux/panneau-parchemin.webp") 60 fill / calc(var(--u) * 1.4) stretch;
+  rotate: -1deg;
+}
+
+.times {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 100%;
+  margin: 0;
+}
+
+.times > div {
+  display: grid;
+  justify-items: center;
+  gap: calc(var(--u) * 0.4);
+}
+
+.times > div + div {
+  border-left: 1px solid rgba(58, 38, 22, 0.35);
+}
+
+.times dt {
+  color: #0f6c86;
+  font-size: max(10px, calc(var(--u) * 1.9));
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.times dd {
+  margin: 0;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: max(20px, calc(var(--u) * 6));
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.deck,
+.hint {
+  margin: 0;
+  text-align: center;
+}
+
+.deck {
+  font-size: max(11px, calc(var(--u) * 2.2));
+}
+
+.hint {
+  color: #5b4128;
+  font-size: max(10px, calc(var(--u) * 1.8));
+  font-style: italic;
+}
+
+.cancel {
+  padding: calc(var(--u) * 0.6) calc(var(--u) * 2.6);
+  border-style: solid;
+  border-width: calc(var(--u) * 1.1);
+  border-image: url("/assets/ui/panneaux/panneau-parchemin.webp") 60 fill / calc(var(--u) * 1.1) stretch;
+  background: none;
+  color: var(--ink);
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: max(11px, calc(var(--u) * 2.5));
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  rotate: 1deg;
+  transition: filter 160ms ease, transform 120ms ease;
+}
+
+.cancel:hover {
+  filter: brightness(1.08) drop-shadow(0 0 calc(var(--u) * 1.4) rgba(255, 196, 110, 0.55));
+}
+
+.cancel:active {
+  transform: translateY(1px);
+}
+
+.cancel:focus-visible {
+  outline: 2px solid #f3c86b;
+  outline-offset: 2px;
+}
+
+/* Écran bas (téléphone en paysage) : on garde l'essentiel. */
+@container (max-height: 360px) {
+  .hint {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reels,
+  .reel,
+  .panel,
+  .dots span {
+    animation: none;
+  }
+}

@@ -15,6 +15,20 @@ export interface BotLevel {
   description: string;
 }
 
+/**
+ * Qui est en face : le BOT (son niveau se règle ici), ou un adversaire EN
+ * LIGNE — inconnu jusqu'à l'appariement, d'où le point d'interrogation.
+ */
+export type SetupFoe =
+  | {
+      kind: "bot";
+      levels: readonly BotLevel[];
+      difficulty: BotDifficulty;
+      onDifficulty: (difficulty: BotDifficulty) => void;
+      note?: string;
+    }
+  | { kind: "online"; note?: string };
+
 /** Durée du geste de la poignée (`BotSetup.module.css`, `pull`). */
 const PULL_MS = 720;
 
@@ -51,7 +65,7 @@ function Stars({ value }: { value: number }) {
 }
 
 /**
- * JOUER → CONTRE UN BOT, sur la même table que le choix du mode (retour du
+ * JOUER → CONTRE UN BOT, ou EN LIGNE (recherche rapide, `foe.kind`), sur la même table que le choix du mode (retour du
  * 28/09/2026) : les cartes des modes sont parties, les éléments de cette
  * étape arrivent.
  *
@@ -59,12 +73,12 @@ function Stars({ value }: { value: number }) {
  *  - à gauche, le niveau (trois plaques qui s'enfoncent), puis le deck,
  *    présenté en boîte comme au Market — le deck par défaut du joueur,
  *    présélectionné — et « Changer de deck », qui ouvre un panneau latéral ;
- *  - à droite, le récapitulatif de la partie et le bouton de lancement.
+ *  - à droite, l'adversaire en photo : le bot du niveau choisi, ou — en
+ *    ligne — un point d'interrogation, puisqu'on ne sait pas encore qui ;
+ *  - en haut à droite, la poignée qui lance la partie (ou la recherche).
  */
 export function BotSetup({
-  levels,
-  difficulty,
-  onDifficulty,
+  foe,
   deck,
   sources,
   onDeck,
@@ -73,11 +87,8 @@ export function BotSetup({
   onLaunch,
   starting,
   error,
-  note,
 }: {
-  levels: readonly BotLevel[];
-  difficulty: BotDifficulty;
-  onDifficulty: (difficulty: BotDifficulty) => void;
+  foe: SetupFoe;
   deck: DeckList | null;
   sources: readonly DeckSource[];
   onDeck: (deck: DeckList) => void;
@@ -87,12 +98,12 @@ export function BotSetup({
   onLaunch: () => void;
   starting: boolean;
   error: string | null;
-  note?: string;
 }) {
   const [picking, setPicking] = useState(false);
   const [leaving, setLeaving] = useState(false);
-  const level = levels.find((entry) => entry.id === difficulty) ?? levels[0]!;
-  const levelIndex = Math.max(0, levels.indexOf(level));
+  const levels = foe.kind === "bot" ? foe.levels : [];
+  const level = foe.kind === "bot" ? (levels.find((entry) => entry.id === foe.difficulty) ?? levels[0]!) : null;
+  const levelIndex = level ? Math.max(0, levels.indexOf(level)) : 0;
   const facts = deck ? deckFacts(deck) : null;
   const deckIssue = deck ? (sources.map((source) => (source.decks.includes(deck) ? source.issueFor(deck) : null)).find(Boolean) ?? null) : null;
 
@@ -118,33 +129,46 @@ export function BotSetup({
   const skulls = levelIndex + 1;
 
   return (
-    <div className={styles.scene} data-leaving={leaving || undefined} data-level={level.id} style={{ "--level": levelIndex } as React.CSSProperties}>
+    <div
+      className={styles.scene}
+      data-leaving={leaving || undefined}
+      data-level={level?.id ?? "online"}
+      style={{ "--level": levelIndex } as React.CSSProperties}
+    >
 
-      {/* ── En haut, au centre : le niveau du bot, trois plaques qui s'enfoncent ── */}
-      <section className={styles.levelsPanel} aria-label="Niveau du bot">
-        <h2 className={styles.levelsTitle}>Niveau du bot</h2>
-        <div className={styles.levels} role="radiogroup" aria-label="Niveau du bot">
-          {levels.map((entry) => (
-            <button
-              key={entry.id}
-              type="button"
-              role="radio"
-              aria-checked={entry.id === level.id}
-              className={styles.levelButton}
-              data-level={entry.id}
-              onClick={() => {
-                playTabClick();
-                onDifficulty(entry.id);
-              }}
-              title={entry.description}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element -- plaque peinte (nom du niveau compris) */}
-              <img src={`/assets/play/bot-level/plaque-${entry.id}.webp`} alt="" draggable={false} />
-              <span className={styles.srOnly}>{entry.label}</span>
-            </button>
-          ))}
-        </div>
-      </section>
+      {/* ── En haut, à droite de la lanterne : le niveau du bot, trois plaques qui s'enfoncent ── */}
+      {foe.kind === "bot" && level ? (
+        <section className={styles.levelsPanel} aria-label="Niveau du bot">
+          <h2 className={styles.levelsTitle}>Niveau du bot</h2>
+          <div className={styles.levels} role="radiogroup" aria-label="Niveau du bot">
+            {levels.map((entry) => (
+              <button
+                key={entry.id}
+                type="button"
+                role="radio"
+                aria-checked={entry.id === level.id}
+                className={styles.levelButton}
+                data-level={entry.id}
+                onClick={() => {
+                  playTabClick();
+                  foe.onDifficulty(entry.id);
+                }}
+                title={entry.description}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element -- plaque peinte (nom du niveau compris) */}
+                <img src={`/assets/play/bot-level/plaque-${entry.id}.webp`} alt="" draggable={false} />
+                <span className={styles.srOnly}>{entry.label}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : (
+        // En ligne : rien à régler en face — le titre seul, sur la même banderole.
+        <section className={styles.levelsPanel} aria-label="Partie en ligne">
+          <h2 className={styles.levelsTitle}>Recherche rapide</h2>
+          <p className={styles.levelsNote}>Partie classée · XP, Tides et quêtes</p>
+        </section>
+      )}
 
       {/* ── À gauche : ton deck, en boîte, sa plaque, et « Changer de deck » ── */}
       <section className={styles.deckSide} aria-label="Ton deck">
@@ -194,43 +218,75 @@ export function BotSetup({
         `profile/photo-frame`) — même taille et même distance du VS que ton
         deck, en miroir ; sous la photo, ce qu'il faut savoir de lui.
       */}
-      <aside className={styles.foe} aria-label={`Adversaire : bot ${level.label.toLowerCase()}`} aria-live="polite">
-        <span className={styles.polaroid}>
-          <span className={styles.polaroidWindow}>
-            {levels.map((entry) => (
-              <span
-                key={entry.id}
-                className={styles.foeArtLayer}
-                data-on={entry.id === level.id || undefined}
-                style={{ backgroundImage: `url("/assets/play/bot-level/illustration-${entry.id}.webp")` }}
-              />
-            ))}
-          </span>
-          {/* eslint-disable-next-line @next/next/no-img-element -- cadre photo local */}
-          <img className={styles.polaroidFrame} src="/assets/profile/photo-frame.webp" alt="" draggable={false} />
-          <span className={styles.polaroidCaption}>
-            <span className={styles.foeName}>Bot {level.label.toLowerCase()}</span>
-            <span className={styles.skulls} role="img" aria-label={`Difficulté ${skulls} sur 3`}>
-              {Array.from({ length: skulls }, (_, index) => (
-                <span key={index} style={{ backgroundImage: `url("/assets/play/bot-level/plaque-${level.id}.webp")` }} />
+      {foe.kind === "bot" && level ? (
+        <aside className={styles.foe} aria-label={`Adversaire : bot ${level.label.toLowerCase()}`} aria-live="polite">
+          <span className={styles.polaroid}>
+            <span className={styles.polaroidWindow}>
+              {levels.map((entry) => (
+                <span
+                  key={entry.id}
+                  className={styles.foeArtLayer}
+                  data-on={entry.id === level.id || undefined}
+                  style={{ backgroundImage: `url("/assets/play/bot-level/illustration-${entry.id}.webp")` }}
+                />
               ))}
             </span>
+            {/* eslint-disable-next-line @next/next/no-img-element -- cadre photo local */}
+            <img className={styles.polaroidFrame} src="/assets/profile/photo-frame.webp" alt="" draggable={false} />
+            <span className={styles.polaroidCaption}>
+              <span className={styles.foeName}>Bot {level.label.toLowerCase()}</span>
+              <span className={styles.skulls} role="img" aria-label={`Difficulté ${skulls} sur 3`}>
+                {Array.from({ length: skulls }, (_, index) => (
+                  <span key={index} style={{ backgroundImage: `url("/assets/play/bot-level/plaque-${level.id}.webp")` }} />
+                ))}
+              </span>
+            </span>
           </span>
-        </span>
-        <div className={styles.foeCard}>
-          <p className={styles.foeText}>{level.description}</p>
-          <p className={styles.foeFact}>
-            <span>Son deck</span>
-            <strong>
-              <svg viewBox="0 0 24 24" aria-hidden>
-                <rect x="5" y="4" width="12" height="16" rx="1.5" />
-              </svg>
-              Tiré au sort
-            </strong>
-          </p>
-          {note && <p className={styles.foeNote}>{note}</p>}
-        </div>
-      </aside>
+          <div className={styles.foeCard}>
+            <p className={styles.foeText}>{level.description}</p>
+            <p className={styles.foeFact}>
+              <span>Son deck</span>
+              <strong>
+                <svg viewBox="0 0 24 24" aria-hidden>
+                  <rect x="5" y="4" width="12" height="16" rx="1.5" />
+                </svg>
+                Tiré au sort
+              </strong>
+            </p>
+            {foe.note && <p className={styles.foeNote}>{foe.note}</p>}
+          </div>
+        </aside>
+      ) : (
+        // En ligne : l'adversaire n'existe pas encore — une photo voilée, un point d'interrogation.
+        <aside className={styles.foe} aria-label="Adversaire : inconnu">
+          <span className={styles.polaroid}>
+            <span className={styles.polaroidWindow}>
+              <span className={styles.foeArtLayer} data-on data-unknown style={{ backgroundImage: 'url("/assets/play/mode/carte-en-ligne.webp")' }} />
+              <span className={styles.foeMystery} aria-hidden>
+                ?
+              </span>
+            </span>
+            {/* eslint-disable-next-line @next/next/no-img-element -- cadre photo local */}
+            <img className={styles.polaroidFrame} src="/assets/profile/photo-frame.webp" alt="" draggable={false} />
+            <span className={styles.polaroidCaption}>
+              <span className={styles.foeName}>Adversaire ?</span>
+            </span>
+          </span>
+          <div className={styles.foeCard}>
+            <p className={styles.foeText}>Le premier capitaine en file sera ton adversaire.</p>
+            <p className={styles.foeFact}>
+              <span>Son deck</span>
+              <strong>
+                <svg viewBox="0 0 24 24" aria-hidden>
+                  <rect x="5" y="4" width="12" height="16" rx="1.5" />
+                </svg>
+                Surprise
+              </strong>
+            </p>
+            {foe.note && <p className={styles.foeNote}>{foe.note}</p>}
+          </div>
+        </aside>
+      )}
 
       {/* ── En bas, au centre : le lancement ── */}
       {/*
@@ -247,7 +303,7 @@ export function BotSetup({
       <div className={styles.lever} data-pulled={pulled || undefined} data-disabled={!canLaunch || undefined}>
         {/* eslint-disable-next-line @next/next/no-img-element -- poignée peinte */}
         <img className={styles.leverArt} src="/assets/play/mode/poignee-lancer.webp" alt="" draggable={false} />
-        <button type="button" className={styles.leverHandle} onClick={pull} disabled={!canLaunch} aria-label={starting ? "Préparation de la partie" : "Lancer la partie"} />
+        <button type="button" className={styles.leverHandle} onClick={pull} disabled={!canLaunch} aria-label={starting ? "Préparation de la partie" : foe.kind === "online" ? "Chercher un adversaire" : "Lancer la partie"} />
       </div>
       {(error || deckIssue) && (
         <p className={styles.error} role="alert">
