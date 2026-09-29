@@ -44,6 +44,19 @@
   inset: -4%;
   background: #061522 center 30% / cover no-repeat;
   filter: saturate(1.1) contrast(1.04);
+  transition: opacity 280ms var(--tb-ease, cubic-bezier(0.2, 0.8, 0.2, 1));
+}
+
+/* Illustration pas encore décodée : la face reste sombre, l'image arrive d'un bloc. */
+.art[data-pending] {
+  opacity: 0;
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .art {
+    transition: none;
+  }
 }
 
 /* Le logo en bas de la face, comme sur la référence. */

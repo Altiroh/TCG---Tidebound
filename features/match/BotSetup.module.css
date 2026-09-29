@@ -188,7 +188,29 @@
   height: 44cqh;
   aspect-ratio: 1024 / 1536;
   rotate: -5deg;
-  animation: breathe 6s ease-in-out infinite alternate;
+  /* Elle se POSE (autre deck choisi, ou arrivée de l'écran), puis respire. */
+  animation:
+    deckPose 420ms var(--tb-ease, cubic-bezier(0.2, 0.8, 0.2, 1)) both,
+    breathe 6s ease-in-out 420ms infinite alternate;
+}
+
+/* Tant que l'illustration du deck n'est pas décodée, la boîte et sa plaque attendent, invisibles, à leur place. */
+.deckSide[data-pending] .deckStack,
+.deckSide[data-pending] .deckPlate {
+  animation-play-state: paused;
+}
+
+/*
+ * La pose : fondu, légère descente, la boîte qui s'affaisse à sa taille —
+ * le geste des piles de l'écran Decks (`DeckTable.module.css`) et de la
+ * pioche du plateau. `scale` seul : `translate` appartient à la respiration.
+ */
+@keyframes deckPose {
+  from {
+    opacity: 0;
+    transform: translateY(-7%);
+    scale: 1.05;
+  }
 }
 
 .deckBox {
@@ -225,6 +247,14 @@
   text-align: center;
   filter: drop-shadow(0 calc(var(--u) * 0.8) calc(var(--u) * 1.2) rgba(0, 0, 0, 0.55));
   rotate: -2deg;
+  animation: plateIn 320ms var(--tb-ease, cubic-bezier(0.2, 0.8, 0.2, 1)) 100ms both;
+}
+
+@keyframes plateIn {
+  from {
+    opacity: 0;
+    transform: translateY(12%);
+  }
 }
 
 .deckName {
@@ -869,6 +899,12 @@
   opacity: 0.55;
 }
 
+/* Les boîtes du panneau se posent une à une à son ouverture (ou d'un onglet à l'autre). */
+.tileSlot {
+  animation: deckPose 380ms var(--tb-ease, cubic-bezier(0.2, 0.8, 0.2, 1)) both;
+  animation-delay: calc(120ms + var(--i, 0) * 35ms);
+}
+
 .tileBox {
   width: 62%;
   aspect-ratio: 1024 / 1536;
@@ -939,6 +975,8 @@
   .foeArtLayer,
   .polaroid,
   .deckStack,
+  .deckPlate,
+  .tileSlot,
   .skulls span,
   .foeMystery,
   .lever,

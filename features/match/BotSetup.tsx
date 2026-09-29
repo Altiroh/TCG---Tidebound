@@ -7,6 +7,7 @@ import { DeckBox } from "@/features/decks/DeckBox";
 import { nameplateArtUrl } from "@/features/decks/nameplateArt";
 import { LEAVE_MS, prefersReducedMotion } from "@/features/match/ModeTable";
 import styles from "@/features/match/BotSetup.module.css";
+import { useImagesReady } from "@/features/shell/useImagesReady";
 import { playButtonClick, playTabClick } from "@/lib/sound";
 
 export interface BotLevel {
@@ -105,6 +106,9 @@ export function BotSetup({
   const level = foe.kind === "bot" ? (levels.find((entry) => entry.id === foe.difficulty) ?? levels[0]!) : null;
   const levelIndex = level ? Math.max(0, levels.indexOf(level)) : 0;
   const facts = deck ? deckFacts(deck) : null;
+  const deckArt = deck ? nameplateArtUrl(deck.cardIds, deck.shipId) : null;
+  // La boîte du deck attend son illustration décodée avant de se poser (`deckPose`).
+  const deckArtReady = useImagesReady([deckArt]);
   const deckIssue = deck ? (sources.map((source) => (source.decks.includes(deck) ? source.issueFor(deck) : null)).find(Boolean) ?? null) : null;
 
   function back() {
@@ -171,15 +175,17 @@ export function BotSetup({
       )}
 
       {/* ── À gauche : ton deck, en boîte, sa plaque, et « Changer de deck » ── */}
-      <section className={styles.deckSide} aria-label="Ton deck">
+      <section className={styles.deckSide} aria-label="Ton deck" data-pending={!deckArtReady || undefined}>
         {deck ? (
           <>
-            <span className={styles.deckStack}>
+            {/* Remontées à chaque deck : l'ancienne boîte s'efface, la nouvelle se POSE
+                sur la pile (même geste que les piles de l'écran Decks et la pioche du plateau). */}
+            <span key={`boite-${deck.id}`} className={styles.deckStack}>
               <span className={styles.deckGhost} aria-hidden />
               <span className={styles.deckGhost} aria-hidden />
-              <DeckBox art={nameplateArtUrl(deck.cardIds, deck.shipId)} facing="right" className={styles.deckBox} />
+              <DeckBox art={deckArt} facing="right" className={styles.deckBox} />
             </span>
-            <span className={styles.deckPlate}>
+            <span key={`plaque-${deck.id}`} className={styles.deckPlate}>
               <span className={styles.deckName}>{deck.name}</span>
               <span className={styles.deckStyle}>
                 {facts?.styleId && (
@@ -424,8 +430,8 @@ function DeckPicker({
           <p className={styles.pickerEmpty}>{source.decks.length === 0 ? "Aucun deck ici pour l'instant." : "Aucun deck de ce type."}</p>
         ) : (
           <ul className={styles.pickerGrid}>
-            {shown.map(({ deck, facts, issue }) => (
-              <li key={deck.id}>
+            {shown.map(({ deck, facts, issue }, index) => (
+              <li key={deck.id} className={styles.tileSlot} style={{ "--i": Math.min(index, 12) } as React.CSSProperties}>
                 <button
                   type="button"
                   className={styles.tile}

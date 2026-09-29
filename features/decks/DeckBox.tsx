@@ -1,6 +1,7 @@
 "use client";
 
 import styles from "@/features/decks/DeckBox.module.css";
+import { useImagesReady } from "@/features/shell/useImagesReady";
 
 const ASSETS = {
   box: "/assets/decks/deck-visual.webp",
@@ -30,10 +31,13 @@ interface DeckBoxProps {
  * transparente sous la boîte.
  */
 export function DeckBox({ art, facing, badge, className }: DeckBoxProps) {
+  // L'illustration se lève en fondu une fois décodée, jamais construite à vue
+  // dans le cadre (panneau « Changer de deck », Market).
+  const artReady = useImagesReady([art]);
   return (
     <span className={`${styles.box}${className ? ` ${className}` : ""}`} data-facing={facing}>
       <span className={styles.face}>
-        <span className={styles.art} style={art ? { backgroundImage: `url("${art}")` } : undefined} />
+        <span className={styles.art} data-pending={!artReady || undefined} style={art ? { backgroundImage: `url("${art}")` } : undefined} />
         {/* eslint-disable-next-line @next/next/no-img-element -- logo local, taille pilotée par la boîte */}
         <img src={ASSETS.logo} alt="" draggable={false} className={styles.logo} />
       </span>

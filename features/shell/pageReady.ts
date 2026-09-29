@@ -76,6 +76,17 @@ function visibleImageUrls(): string[] {
   return [...urls];
 }
 
+/**
+ * Résout quand ces images sont téléchargées et décodées, ou au plus tard
+ * après `maxMs`. Pour ce qui ARRIVE dans un écran déjà affiché (les piles
+ * d'un autre onglet, la boîte d'un autre deck) : on retient son entrée le
+ * temps que son illustration soit prête, pour qu'elle se pose d'un bloc.
+ */
+export async function waitForImages(urls: readonly string[], maxMs: number): Promise<void> {
+  const pending = urls.filter((url) => url && !url.startsWith("data:")).map((url) => decodeImage(new URL(url, window.location.href).href));
+  if (pending.length > 0) await Promise.race([Promise.all(pending), sleep(maxMs)]);
+}
+
 /** Avancement du chargement : images décodées sur images attendues. */
 export type ReadyProgress = (done: number, total: number) => void;
 
