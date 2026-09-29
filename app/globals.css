@@ -26,6 +26,49 @@ body {
 }
 
 /*
+ * CURSEURS DU JEU (29/09/2026). Une flèche de laiton au repos, la même
+ * emplie de cyan sur ce qui se clique — la couleur de l'interaction
+ * (`features/shell/DESIGN.md`). Deux variables, et deux seulement : les
+ * écrans écrivent `cursor: var(--tb-cursor-pointer)` là où ils disaient
+ * `pointer`, et le curseur système reste le repli si l'image ne charge pas.
+ * Saisie de texte, aide, attente et interdit gardent le curseur système :
+ * ils disent autre chose qu'« ici, ça se clique ».
+ *
+ * Seulement avec une vraie souris (`pointer: fine`) : au doigt, il n'y a
+ * pas de curseur à dessiner.
+ */
+:root {
+  --tb-cursor: default;
+  --tb-cursor-pointer: pointer;
+}
+
+@media (pointer: fine) {
+  :root {
+    --tb-cursor: url("/assets/ui/curseurs/curseur.svg") 3 2, default;
+    --tb-cursor-pointer: url("/assets/ui/curseurs/curseur-action.svg") 3 2, pointer;
+  }
+}
+
+html {
+  cursor: var(--tb-cursor);
+}
+
+a[href],
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+[role="tab"],
+[role="menuitem"],
+[role="option"],
+summary,
+select,
+label[for],
+input[type="checkbox"],
+input[type="radio"],
+input[type="range"] {
+  cursor: var(--tb-cursor-pointer);
+}
+
+/*
  * ÉCHELLE VERROUILLÉE — cf. `features/shell/PinchZoomGuard.tsx`.
  * `manipulation` = tout le comportement tactile habituel MOINS le zoom par
  * double-tape, qui décalait l'interface sur un simple appui répété. Le

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <defs>
+    <linearGradient id="corps" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2a3a4c"/>
+      <stop offset="1" stop-color="#0c141f"/>
+    </linearGradient>
+    <linearGradient id="laiton" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f3d99b"/>
+      <stop offset="1" stop-color="#a8813e"/>
+    </linearGradient>
+  </defs>
+  <path d="M3 2 L3 24.5 L9.2 18.8 L13.2 27.6 L17.4 25.8 L13.4 17.1 L21.8 17.1 Z" fill="none" stroke="#05080d" stroke-width="3.4" stroke-linejoin="round"/>
+  <path d="M3 2 L3 24.5 L9.2 18.8 L13.2 27.6 L17.4 25.8 L13.4 17.1 L21.8 17.1 Z" fill="url(#corps)" stroke="url(#laiton)" stroke-width="1.5" stroke-linejoin="round"/>
+  <path d="M5 6.6 L5 19.6 L8.6 16.3" fill="none" stroke="#f3d99b" stroke-opacity="0.45" stroke-width="1" stroke-linecap="round"/>
+</svg>

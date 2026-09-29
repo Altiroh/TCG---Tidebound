@@ -27,6 +27,11 @@ const config: Config = {
         xl: ["calc(1.25rem * var(--tb-text-scale, 1))", { lineHeight: "calc(1.75rem * var(--tb-text-scale, 1))" }],
         "2xl": ["calc(1.5rem * var(--tb-text-scale, 1))", { lineHeight: "calc(2rem * var(--tb-text-scale, 1))" }],
       },
+      // Les curseurs du jeu (`app/globals.css`) : `cursor-pointer` et `cursor-default` prennent la flèche de laiton.
+      cursor: {
+        pointer: "var(--tb-cursor-pointer, pointer)",
+        default: "var(--tb-cursor, default)",
+      },
       colors: {
         board: {
           background: "#0b1220",

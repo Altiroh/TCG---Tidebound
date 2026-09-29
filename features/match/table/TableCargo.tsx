@@ -79,7 +79,7 @@ export function TableCargo({ side, ownerId, deck, graveyard, graveyardTop, grave
         data-graveyard={side}
         onClick={onGraveyardClick}
         role={onGraveyardClick ? "button" : undefined}
-        style={onGraveyardClick ? { cursor: "pointer" } : undefined}
+        style={onGraveyardClick ? { cursor: "var(--tb-cursor-pointer)" } : undefined}
         data-drop={graveyardDropState ? "graveyard" : undefined}
       >
         {graveyard > 0 && graveyardTop && (

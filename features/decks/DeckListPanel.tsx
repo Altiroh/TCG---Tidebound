@@ -166,7 +166,7 @@ export function DeckListPanel({
               <button
                 type="button"
                 className={styles.rowName}
-                style={{ background: "none", border: "none", padding: 0, color: "inherit", font: "inherit", textAlign: "left", cursor: "pointer" }}
+                style={{ background: "none", border: "none", padding: 0, color: "inherit", font: "inherit", textAlign: "left", cursor: "var(--tb-cursor-pointer)" }}
                 onClick={() => onShowCard(entry.cardId)}
                 title="Voir la carte"
               >
