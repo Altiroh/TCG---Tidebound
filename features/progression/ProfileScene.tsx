@@ -10,6 +10,7 @@ import {
   loginBoosterName,
   loginRewardForStep,
   loginRewardLabel,
+  type LoginRewardItem,
 } from "@/game/progression";
 import { cardIllustrationThumbUrl } from "@/features/decks/cardArtUrl";
 import { claimDailyLogin, updateProfileIdentity, type ProfileSummary } from "@/features/progression/profileActions";
@@ -43,6 +44,34 @@ function cardName(cardId: string): string {
     return getCardDefinition(cardId).name;
   } catch {
     return cardId;
+  }
+}
+
+/** Rareté en toutes lettres, pour les libellés courts des escales. */
+const RARITY_SHORT: Record<string, string> = {
+  common: "commune",
+  uncommon: "peu commune",
+  rare: "rare",
+  epic: "épique",
+  legendary: "légendaire",
+  abyssal: "Abyssale",
+};
+
+/**
+ * Libellé COURT d'une récompense d'escale : il tient sur la tuile sans
+ * troncature (« Carte commune », « Booster », « 20 Tides ») ; le libellé
+ * complet (pool, nom du booster) reste dans l'infobulle de la tuile.
+ */
+function loginRewardShort(item: LoginRewardItem): string {
+  switch (item.kind) {
+    case "tides":
+      return `${item.amount} Tides`;
+    case "xp":
+      return `${item.amount} XP`;
+    case "booster":
+      return item.count > 1 ? `${item.count} boosters` : "Booster";
+    case "card":
+      return `Carte ${RARITY_SHORT[item.rarity] ?? item.rarity}`;
   }
 }
 
@@ -135,26 +164,16 @@ export function ProfileScene({
         />
 
         <section className={styles.route} aria-label="Prochaines escales">
-          <header className={styles.routeHead}>
-            <h2 className={styles.routeTitle}>Prochaines escales</h2>
-            <button
-              type="button"
-              className={styles.routeLink}
-              onClick={() => {
-                playButtonClick();
-                onShowRoute();
-              }}
-            >
-              Toute la route <span aria-hidden>→</span>
-            </button>
-          </header>
+          <h2 className={styles.routeTitle}>Prochaines escales</h2>
           {profile.upcomingMilestones.length === 0 ? (
             <p className={styles.routeEmpty}>Tous les paliers de cette version sont franchis.</p>
           ) : (
             <ol className={styles.routeList}>
               {profile.upcomingMilestones.map((milestone) => (
                 <li key={milestone.level} className={styles.routeRow}>
-                  <span className={styles.routeLevel}>{milestone.level}</span>
+                  <span className={styles.routeLevel} aria-label={`Niveau ${milestone.level}`}>
+                    {milestone.level}
+                  </span>
                   <span className={styles.routeIcons}>
                     {levelRewardItems(milestone.level)
                       .slice(0, 2)
@@ -167,12 +186,29 @@ export function ProfileScene({
               ))}
             </ol>
           )}
+          {/* Le lien au pied du parchemin : en tête, il poussait le titre sur deux lignes. */}
+          <button
+            type="button"
+            className={styles.routeLink}
+            onClick={() => {
+              playButtonClick();
+              onShowRoute();
+            }}
+          >
+            Toute la route <span aria-hidden>→</span>
+          </button>
         </section>
 
         <LoginPanel profile={profile} waitingTotal={waitingTotal} claimingAll={claimingAll} onClaimAll={onClaimAll} onRefresh={onRefresh} />
 
-        <button type="button" className={styles.signOut} onClick={onSignOut} disabled={signingOut}>
-          {signingOut ? "Déconnexion…" : "Se déconnecter"}
+        {/* La sortie : une plaque sombre à liseré de laiton, posée sur le pont près du canon. */}
+        <button type="button" className={styles.signOut} onClick={onSignOut} disabled={signingOut} aria-busy={signingOut || undefined}>
+          <svg className={styles.signOutIcon} viewBox="0 0 24 24" fill="none" aria-hidden>
+            <path d="M14 4H6.5A1.5 1.5 0 0 0 5 5.5v13A1.5 1.5 0 0 0 6.5 20H14" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" />
+            <path d="M10 12h10M16.5 8.5 20 12l-3.5 3.5" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+            <circle cx="11" cy="12" r="0.9" fill="currentColor" />
+          </svg>
+          <span>{signingOut ? "Déconnexion…" : "Se déconnecter"}</span>
         </button>
       </div>
     </div>
@@ -362,6 +398,9 @@ function LoginPanel({
         {Array.from({ length: LOGIN_CYCLE_LENGTH }, (_, index) => index + 1).map((step) => {
           const items = login.cycle[step - 1] ?? loginRewardForStep(step);
           const label = items.map(loginRewardLabel).join(" · ");
+          // Sur la tuile, le libellé court de la première récompense (+ n s'il y en a d'autres) ; le détail est dans l'infobulle.
+          const first = items[0];
+          const short = first ? `${loginRewardShort(first)}${items.length > 1 ? ` +${items.length - 1}` : ""}` : "";
           const current = step === login.step;
           const passed = step < login.step;
           const claimable = current && login.claimable;
@@ -372,30 +411,32 @@ function LoginPanel({
                 className={styles.loginCellButton}
                 onClick={claim}
                 disabled={!claimable || pending}
-                title={claimable ? `Réclamer : ${label}` : label}
+                title={claimable ? `Réclamer : ${label}` : passed ? `Franchie : ${label}` : label}
+                aria-label={`Escale ${step} — ${claimable ? `réclamer : ${label}` : passed ? `franchie : ${label}` : label}`}
               >
-                <span className={styles.loginIndex}>
-                  {step}
-                  {passed && (
-                    <svg className={styles.loginCheck} viewBox="0 0 24 24" fill="none" aria-label="franchie">
-                      <path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )}
-                </span>
+                <span className={styles.loginIndex}>{step}</span>
                 <span className={styles.loginIcon}>
                   {items.slice(0, 1).map((item, itemIndex) => (
                     <RewardIcon key={itemIndex} item={item} size={40} />
                   ))}
                 </span>
-                <span className={styles.loginLabel}>{claimable ? (pending ? "…" : "Réclamer") : label}</span>
+                <span className={styles.loginLabel}>{claimable ? (pending ? "…" : "Réclamer") : short}</span>
+                {passed && (
+                  <span className={styles.loginCheck} aria-hidden>
+                    <svg viewBox="0 0 24 24" fill="none">
+                      <path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </span>
+                )}
               </button>
             </li>
           );
         })}
       </ol>
 
-      {/* Le fil des escales : une perle par jour, celle du jour cerclée. */}
+      {/* Le fil des escales, comme celui de la route des paliers : il s'allume jusqu'à l'escale du jour, une perle losange sous chaque tuile. */}
       <div className={styles.loginTrack} aria-hidden>
+        <span className={styles.loginTrackFill} style={{ width: `${(Math.max(0, Math.min(LOGIN_CYCLE_LENGTH, login.step) - 0.5) / LOGIN_CYCLE_LENGTH) * 100}%` }} />
         {Array.from({ length: LOGIN_CYCLE_LENGTH }, (_, index) => index + 1).map((step) => (
           <span key={step} className={styles.loginDot} data-state={step === login.step ? "current" : step < login.step ? "passed" : "next"} />
         ))}

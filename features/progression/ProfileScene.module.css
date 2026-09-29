@@ -321,55 +321,44 @@
 
 /* ── Prochaines escales (parchemin) ────────────────────────────────── */
 
+/*
+ * Même matière que les paliers de l'onglet Récompenses : encre brune sur
+ * parchemin, numéros dans un médaillon de laiton à cœur d'encre, fil de
+ * route à l'encre pointillée. Le lien « Toute la route » descend au pied.
+ */
 .route {
   position: absolute;
   left: 17.3%;
   top: 59.5%;
   width: 29%;
   height: 33.4%;
-  padding: 2.2% 2.4% 1.6%;
+  padding: 2.2% 2.6% 1.5%;
   background: url("/assets/ui/panneaux/panneau-parchemin.webp") center / 100% 100% no-repeat;
   color: #2b1c10;
   filter: drop-shadow(0 0.8cqw 1.2cqw rgba(0, 0, 0, 0.5));
   display: flex;
   flex-direction: column;
-}
-
-.routeHead {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1cqw;
-  padding-bottom: 0.5cqw;
-  border-bottom: 1px solid rgba(43, 28, 16, 0.2);
+  gap: 0.35cqw;
 }
 
 .routeTitle {
   margin: 0;
+  padding-bottom: 0.45cqw;
   font-family: var(--tb-font-display);
   font-size: calc(1.15cqw * var(--tb-text-scale));
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-}
-
-.routeLink {
-  padding: 0;
-  border: 0;
-  background: none;
+  white-space: nowrap;
   color: #2b1c10;
-  font-size: calc(0.8cqw * var(--tb-text-scale));
-  cursor: pointer;
-}
-.routeLink:hover,
-.routeLink:focus-visible {
-  text-decoration: underline;
-  outline: none;
+  /* Filet d'encre qui s'efface aux bouts, comme `cabinRule` sur le sombre. */
+  background: linear-gradient(90deg, transparent, rgba(43, 28, 16, 0.4) 12%, rgba(43, 28, 16, 0.4) 88%, transparent) bottom / 100% 1px no-repeat;
 }
 
 .routeList {
   position: relative;
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   justify-content: space-around;
@@ -377,37 +366,43 @@
   padding: 0;
   list-style: none;
 }
-/* Le fil qui relie les paliers. */
+/* Le fil qui relie les paliers : un trait d'encre pointillé, derrière les médaillons. */
 .routeList::before {
   content: "";
   position: absolute;
-  left: 1.1cqw;
-  top: 12%;
-  bottom: 12%;
-  width: 2px;
-  background: rgba(33, 88, 128, 0.55);
+  left: calc(2.1cqw / 2 - 1px);
+  top: 16%;
+  bottom: 16%;
+  width: 0;
+  border-left: 2px dotted rgba(90, 59, 31, 0.6);
 }
 
 .routeRow {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 1cqw;
+  gap: 0.7cqw;
 }
 
+/* Le médaillon du niveau : anneau de laiton, cœur d'encre, chiffre ivoire. */
 .routeLevel {
+  position: relative;
   display: grid;
   place-items: center;
-  width: 2.2cqw;
-  height: 2.2cqw;
+  width: 2.1cqw;
+  height: 2.1cqw;
   flex: none;
-  border: 1px solid var(--tb-btn-border);
-  border-radius: 0.3cqw;
-  background: var(--tb-btn-bg);
-  color: var(--tb-btn-text);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 38%, #1d3444 0 55%, #0b1620 70%) content-box,
+    linear-gradient(160deg, #f0d08a, #a8741f 55%, #6f4a14);
+  padding: 0.16cqw;
+  color: #f4ead4;
+  font-family: var(--tb-font-display);
   font-weight: 700;
-  font-size: calc(0.95cqw * var(--tb-text-scale));
-  box-shadow: var(--tb-btn-glow);
+  font-size: calc(0.85cqw * var(--tb-text-scale));
+  line-height: 1;
+  box-shadow: 0 0.12cqw 0.3cqw rgba(43, 28, 16, 0.55);
 }
 
 /* Largeur de deux icônes, même quand il n'y en a qu'une : les libellés partent tous du même bord. */
@@ -416,23 +411,61 @@
   align-items: center;
   gap: 0.2cqw;
   flex: none;
-  width: calc(2 * 2.2cqw + 0.2cqw);
+  width: calc(2 * 2cqw + 0.2cqw);
 }
 .routeIcons > * {
-  width: 2.2cqw !important;
-  height: 2.2cqw !important;
+  width: 2cqw !important;
+  height: 2cqw !important;
 }
 
 .routeLabel {
   min-width: 0;
-  font-size: calc(0.8cqw * var(--tb-text-scale));
-  line-height: 1.2;
+  font-size: calc(0.78cqw * var(--tb-text-scale));
+  font-weight: 600;
+  line-height: 1.15;
+  color: #3a2a18;
 }
 
 .routeEmpty {
   margin: auto 0;
   font-size: calc(0.9cqw * var(--tb-text-scale));
   font-style: italic;
+}
+
+/* « Toute la route → » : un renvoi à l'encre, en capitales, au pied du parchemin. */
+.routeLink {
+  align-self: flex-end;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35cqw;
+  padding: 0.1cqw 0.2cqw;
+  border: 0;
+  border-bottom: 1px solid rgba(90, 59, 31, 0.45);
+  background: none;
+  color: #5a3b1f;
+  font-family: var(--tb-font-display);
+  font-size: calc(0.72cqw * var(--tb-text-scale));
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 140ms ease-out, border-color 140ms ease-out;
+}
+.routeLink span {
+  transition: transform 140ms ease-out;
+}
+.routeLink:hover,
+.routeLink:focus-visible {
+  color: #2b1c10;
+  border-bottom-color: #2b1c10;
+}
+.routeLink:hover span {
+  transform: translateX(0.2cqw);
+}
+.routeLink:focus-visible {
+  outline: 2px solid var(--tb-accent);
+  outline-offset: 2px;
 }
 
 /* ── Escales de connexion (panneau sombre) ─────────────────────────── */
@@ -443,17 +476,17 @@
   top: 59.1%;
   width: 49.4%;
   height: 34.7%;
-  padding: 1.6% 2% 1.4%;
+  padding: 1.4% 2% 1.2%;
   background: url("/assets/ui/panneaux/panneau-sombre.webp") center / 100% 100% no-repeat;
   filter: drop-shadow(0 0.8cqw 1.2cqw rgba(0, 0, 0, 0.55));
   display: flex;
   flex-direction: column;
-  gap: 0.6cqw;
+  gap: 0.35cqw;
 }
 
 .loginHead {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 1cqw;
 }
@@ -465,85 +498,133 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #f1f4f6;
+  color: #efe6d2;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
 }
 
 .loginSub {
-  margin: 0.2cqw 0 0;
-  font-size: calc(0.78cqw * var(--tb-text-scale));
+  margin: 0.15cqw 0 0;
+  font-size: calc(0.72cqw * var(--tb-text-scale));
   color: #b9c6cf;
 }
 
+/* « Tout réclamer » : de l'or, comme toute récompense qui attend. */
 .claimAll {
   flex: none;
-  padding: 0.35cqw 0.8cqw;
-  border-radius: 999px;
-  border: 1px solid var(--tb-btn-border);
-  background: var(--tb-btn-bg);
-  color: var(--tb-btn-text);
-  font-size: calc(0.78cqw * var(--tb-text-scale));
-  font-weight: 600;
+  padding: 0.35cqw 0.9cqw;
+  border-radius: 0.3cqw;
+  border: 1px solid rgba(243, 200, 107, 0.75);
+  background: linear-gradient(180deg, rgba(92, 64, 20, 0.92), rgba(40, 26, 8, 0.92));
+  color: #f6dfa6;
+  font-family: var(--tb-font-display);
+  font-size: calc(0.72cqw * var(--tb-text-scale));
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
   cursor: pointer;
-  box-shadow: var(--tb-btn-glow);
+  box-shadow: 0 0 0.8cqw rgba(243, 200, 107, 0.3);
+  transition: box-shadow 150ms ease-out, filter 150ms ease-out;
 }
 .claimAll:hover:not(:disabled) {
-  background: var(--tb-btn-bg-hover);
-  box-shadow: var(--tb-btn-glow-hover);
+  filter: brightness(1.15);
+  box-shadow: 0 0 1.3cqw rgba(243, 200, 107, 0.55);
+}
+.claimAll:focus-visible {
+  outline: 2px solid var(--tb-accent);
+  outline-offset: 2px;
 }
 .claimAll:disabled {
-  opacity: 0.6;
-  cursor: default;
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .loginCells {
   flex: 1;
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 0.55cqw;
+  /* Une seule rangée, à la hauteur du panneau : la tuile ne déborde jamais par le bas. */
+  grid-template-rows: minmax(0, 1fr);
+  gap: 0.7cqw;
   margin: 0;
-  padding: 0;
+  padding: 0 0.3cqw;
   list-style: none;
   min-height: 0;
-  /* Une seule rangée, à la hauteur du panneau : la case ne déborde jamais par le bas. */
-  grid-template-rows: minmax(0, 1fr);
 }
 
 .loginCell {
+  position: relative;
   min-height: 0;
+  transition: transform 160ms ease-out;
 }
 
+/*
+ * Une escale : un PALIER en miniature (`rewards/palier.webp`, 520 × 795),
+ * même tuile que la route de l'onglet Récompenses. Découpe en 9 à l'échelle
+ * de la tuile (--k : 1 px de l'asset) — l'hexagone du haut et la pointe du
+ * bas gardent leur dessin, seul le parchemin s'étire en hauteur.
+ */
 .loginCellButton {
+  --k: 0.0115cqw;
+  position: relative;
   width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 0.15cqw;
-  padding: 0.4cqw 0.3cqw 0.45cqw;
-  overflow: hidden;
-  border: 1px solid rgba(140, 170, 190, 0.28);
-  border-radius: 0.4cqw;
-  background: rgba(6, 16, 26, 0.72);
-  color: #e3e9ee;
+  padding: calc(150 * var(--k)) calc(40 * var(--k)) calc(150 * var(--k));
+  border: 0 solid transparent;
+  border-image: url("/assets/rewards/palier.webp") 190 55 175 55 fill / calc(190 * var(--k)) calc(55 * var(--k)) calc(175 * var(--k)) / 0 stretch;
+  background: none;
+  color: #3a2a18;
   font: inherit;
   text-align: center;
   cursor: default;
+  filter: drop-shadow(0 0.4cqw 0.6cqw rgba(0, 0, 0, 0.6));
+  transition: filter 160ms ease-out;
 }
 
+/* À venir : dans l'ombre, comme les paliers pas encore atteints. */
+.loginCell[data-state="next"] .loginCellButton {
+  filter: drop-shadow(0 0.4cqw 0.6cqw rgba(0, 0, 0, 0.6)) brightness(0.72) saturate(0.7);
+}
+
+/* Franchie : le parchemin reste clair, un peu passé, et coché. */
+.loginCell[data-state="passed"] .loginCellButton {
+  filter: drop-shadow(0 0.4cqw 0.6cqw rgba(0, 0, 0, 0.6)) saturate(0.75);
+}
+
+/* L'escale du jour, déjà réclamée : le cyan de « là où vous en êtes ». */
+.loginCell[data-state="current"] {
+  transform: translateY(-4%);
+  z-index: 1;
+}
 .loginCell[data-state="current"] .loginCellButton {
-  border-color: rgba(95, 208, 230, 0.85);
-  background: rgba(13, 52, 69, 0.8);
-  box-shadow: 0 0 0 1px rgba(95, 208, 230, 0.35), 0 0 1.2cqw rgba(95, 208, 230, 0.3);
+  filter: drop-shadow(0 0 0.7cqw rgba(95, 208, 230, 0.7)) drop-shadow(0 0.4cqw 0.6cqw rgba(0, 0, 0, 0.6));
 }
 
+/* L'escale du jour, À RÉCLAMER : l'or de la récompense, qui respire. */
+.loginCell[data-claimable] {
+  transform: translateY(-4%) scale(1.05);
+}
 .loginCell[data-claimable] .loginCellButton {
   cursor: pointer;
+  filter: drop-shadow(0 0 0.9cqw rgba(243, 200, 107, 0.75)) drop-shadow(0 0.4cqw 0.6cqw rgba(0, 0, 0, 0.6));
   animation: escaleCall 1.8s ease-in-out infinite;
 }
+.loginCell[data-claimable] .loginCellButton:hover:not(:disabled) {
+  animation: none;
+  filter: brightness(1.08) drop-shadow(0 0 1.3cqw rgba(243, 200, 107, 0.95)) drop-shadow(0 0.4cqw 0.6cqw rgba(0, 0, 0, 0.6));
+}
+.loginCellButton:focus-visible {
+  outline: 2px solid var(--tb-accent);
+  outline-offset: 2px;
+}
 @keyframes escaleCall {
-  0%, 100% { box-shadow: 0 0 0 1px rgba(95, 208, 230, 0.35), 0 0 0.8cqw rgba(95, 208, 230, 0.25); }
-  50% { box-shadow: 0 0 0 1px rgba(95, 208, 230, 0.7), 0 0 1.8cqw rgba(95, 208, 230, 0.55); }
+  0%, 100% { filter: drop-shadow(0 0 0.6cqw rgba(243, 200, 107, 0.55)) drop-shadow(0 0.4cqw 0.6cqw rgba(0, 0, 0, 0.6)); }
+  50% { filter: drop-shadow(0 0 1.3cqw rgba(243, 200, 107, 0.95)) drop-shadow(0 0.4cqw 0.6cqw rgba(0, 0, 0, 0.6)); }
 }
 @media (prefers-reduced-motion: reduce) {
   .loginCell[data-claimable] .loginCellButton {
@@ -551,106 +632,179 @@
   }
 }
 
+/* Le numéro, dans l'hexagone du haut (centre à 85 px de l'asset). */
 .loginIndex {
-  position: relative;
-  width: 100%;
-  font-family: var(--tb-font-display);
-  font-size: calc(0.95cqw * var(--tb-text-scale));
-  font-weight: 700;
-}
-
-.loginCheck {
   position: absolute;
-  right: 12%;
-  top: 50%;
-  width: 1.1cqw;
-  height: 1.1cqw;
-  transform: translateY(-50%);
+  left: 50%;
+  top: calc(88 * var(--k));
+  transform: translate(-50%, -50%);
+  font-family: var(--tb-font-display);
+  font-size: calc(0.9cqw * var(--tb-text-scale));
+  font-weight: 700;
+  line-height: 1;
+  color: #f4ead4;
+}
+.loginCell[data-state="current"] .loginIndex {
   color: var(--tb-accent);
 }
+.loginCell[data-claimable] .loginIndex {
+  color: #f3c86b;
+}
 
+.loginIcon {
+  display: grid;
+  place-items: center;
+  flex: none;
+}
 .loginIcon > * {
-  width: 2.2cqw !important;
-  height: 2.2cqw !important;
+  width: 2.1cqw !important;
+  height: 2.1cqw !important;
 }
 
 .loginLabel {
-  font-size: calc(0.66cqw * var(--tb-text-scale));
-  line-height: 1.15;
-  min-height: 2.3em;
-  display: flex;
-  align-items: center;
+  font-family: var(--tb-font-display);
+  font-size: calc(0.6cqw * var(--tb-text-scale));
+  font-weight: 700;
+  line-height: 1.1;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .loginCell[data-claimable] .loginLabel {
-  color: var(--tb-accent);
-  font-weight: 700;
+  color: #7a4f0e;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
-/* Le fil des escales sous les cases : une perle au centre de chaque colonne. */
+/* La coche d'une escale franchie : le médaillon cyan des paliers obtenus, posé sur la pointe. */
+.loginCheck {
+  position: absolute;
+  left: 50%;
+  bottom: calc(40 * var(--k));
+  transform: translateX(-50%);
+  display: grid;
+  place-items: center;
+  width: 1.25cqw;
+  height: 1.25cqw;
+  border: 0.1cqw solid rgba(95, 208, 230, 0.8);
+  border-radius: 50%;
+  background: rgba(5, 25, 35, 0.9);
+  color: var(--tb-accent);
+}
+.loginCheck svg {
+  width: 70%;
+  height: 70%;
+}
+
+/* Le fil des escales sous les tuiles : même fil que la route des paliers. */
 .loginTrack {
   position: relative;
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 0.55cqw;
-  height: 1.2cqw;
+  column-gap: 0.7cqw;
+  margin: 0 0.3cqw;
+  height: 0.28cqw;
+  min-height: 2px;
+  flex: none;
   align-items: center;
   justify-items: center;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
 }
-.loginTrack::before {
-  content: "";
+.loginTrackFill {
   position: absolute;
-  left: calc(100% / 14);
-  right: calc(100% / 14);
-  top: 50%;
-  height: 2px;
-  transform: translateY(-50%);
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.85), rgba(95, 208, 230, 0.7));
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2c8fb0, var(--tb-accent));
+  box-shadow: 0 0 0.5cqw rgba(95, 208, 230, 0.6);
 }
 
+/* Une perle losange de laiton par escale, dorée une fois franchie. */
 .loginDot {
   position: relative;
   width: 0.7cqw;
   height: 0.7cqw;
-  border-radius: 50%;
-  background: var(--tb-accent);
+  transform: rotate(45deg);
+  border: 0.11cqw solid #c79a4b;
+  background: #0b1824;
 }
 .loginDot[data-state="passed"] {
-  background: #fff;
+  background: #f3c86b;
 }
 .loginDot[data-state="current"] {
-  width: 1.1cqw;
-  height: 1.1cqw;
+  width: 0.9cqw;
+  height: 0.9cqw;
+  border-color: var(--tb-accent);
   background: #0d3445;
-  border: 0.25cqw solid var(--tb-accent);
-  box-shadow: 0 0 0.8cqw rgba(95, 208, 230, 0.8);
+  box-shadow: 0 0 0.6cqw rgba(95, 208, 230, 0.85);
 }
 
 /* ── Déconnexion ───────────────────────────────────────────────────── */
 
+/*
+ * La plaque sombre à liseré de laiton (`ui/boutons/bouton-sombre.webp`),
+ * posée en `::before` pour la ternir sans ternir le texte. Dans la scène,
+ * donc déjà à l'abri des bords : `.page` s'écarte des zones sûres.
+ */
 .signOut {
   position: absolute;
-  left: 1.2%;
-  bottom: 1.2%;
-  padding: 0.35cqw 0.8cqw;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 999px;
-  background: rgba(5, 12, 20, 0.62);
-  color: #cfd8df;
-  font-size: calc(0.75cqw * var(--tb-text-scale));
+  left: 1%;
+  bottom: 1.4%;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5cqw;
+  min-width: 10.5cqw;
+  padding: 0.55cqw 1.3cqw;
+  border: 0;
+  background: none;
+  color: #efe6d2;
+  font-family: var(--tb-font-display);
+  font-size: calc(0.72cqw * var(--tb-text-scale));
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
   cursor: pointer;
-  backdrop-filter: blur(4px);
+  isolation: isolate;
+  filter: drop-shadow(0 0.3cqw 0.5cqw rgba(0, 0, 0, 0.6));
+  transition: color 150ms ease-out, filter 150ms ease-out;
 }
-.signOut:hover,
+.signOut::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: url("/assets/ui/boutons/bouton-sombre.webp") center / 100% 100% no-repeat;
+  transition: filter 150ms ease-out;
+}
+.signOutIcon {
+  flex: none;
+  width: 1.1cqw;
+  height: 1.1cqw;
+  color: #d9b56a;
+}
+.signOut:hover:not(:disabled) {
+  color: #fff8e6;
+  filter: drop-shadow(0 0 0.6cqw rgba(217, 181, 106, 0.45)) drop-shadow(0 0.3cqw 0.5cqw rgba(0, 0, 0, 0.6));
+}
+.signOut:hover:not(:disabled)::before {
+  filter: brightness(1.25);
+}
+.signOut:active:not(:disabled) {
+  transform: translateY(1px);
+}
 .signOut:focus-visible {
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.4);
-  outline: none;
+  outline: 2px solid var(--tb-accent);
+  outline-offset: 2px;
 }
 .signOut:disabled {
-  opacity: 0.6;
+  cursor: progress;
+  color: #b9b2a2;
+}
+.signOut:disabled::before {
+  filter: grayscale(0.6) brightness(0.7);
 }
 
 /* ── Les autres onglets, posés sur la même cabine ──────────────────── */

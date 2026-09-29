@@ -76,12 +76,12 @@
   box-shadow: none;
 }
 
+/* Bouton éteint (rien à réclamer) : la plaque sombre, sans lueur. */
 .ghostButton {
   padding: 0.35cqw 0.9cqw;
-  border: 1px solid rgba(140, 190, 215, 0.35);
-  border-radius: 0.35cqw;
-  background: rgba(6, 18, 30, 0.7);
-  color: #b9c9d3;
+  border: 0;
+  background: url("/assets/ui/boutons/bouton-sombre.webp") center / 100% 100% no-repeat;
+  color: #b8ad95;
   font-size: calc(0.7cqw * var(--tb-text-scale));
   font-weight: 600;
   letter-spacing: 0.05em;
@@ -111,9 +111,9 @@
   width: 1.2cqw;
   height: 1.2cqw;
   margin-left: 0.5cqw;
-  border: 1px solid rgba(255, 255, 255, 0.35);
+  border: 1px solid rgba(217, 181, 106, 0.6);
   border-radius: 50%;
-  color: #cfd8df;
+  color: #d9b56a;
   font-family: var(--font-ui, Georgia, serif);
   font-size: calc(0.7cqw * var(--tb-text-scale));
   font-weight: 600;
@@ -260,7 +260,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  padding: 18% 9% 12%;
+  padding: 18% 7% 12%;
   background: url("/assets/rewards/palier.webp") center / 100% 100% no-repeat;
   color: #3a2a18;
   text-align: center;
@@ -320,10 +320,12 @@
   font-family: var(--tb-font-display);
   font-size: calc(0.78cqw * var(--tb-text-scale));
   font-weight: 600;
-  line-height: 1.2;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
   overflow: hidden;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  /* Quatre lignes : le libellé entier sur la tuile ; au-delà, l'infobulle le donne. */
+  -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
 }
 
@@ -764,11 +766,16 @@
   padding: 2.2cqw 1.5cqw 1.5cqw;
 }
 
+/* En-tête commun aux quatre panneaux : titre ivoire, filet d'or dessous (`cabinRule`). */
 .panelHead {
+  flex: none;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 1cqw;
+  min-height: 1.9cqw;
+  padding-bottom: 0.35cqw;
+  background: linear-gradient(90deg, transparent, rgba(217, 181, 106, 0.55) 18%, rgba(217, 181, 106, 0.55) 82%, transparent) bottom / 100% 1px no-repeat;
 }
 
 .panelTitle {
@@ -780,6 +787,7 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: #efe6d2;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
 }
 
 .panelMeta {
@@ -791,16 +799,18 @@
 /* Le public du panneau Mécènes : grand, blanc, lisible sur la carte peinte. */
 .audienceMeta {
   padding: 0.1cqw 0.55cqw;
+  border: 1px solid rgba(217, 181, 106, 0.6);
   border-radius: 999px;
-  background: rgba(4, 10, 18, 0.7);
-  color: #ffffff;
+  background: rgba(4, 10, 18, 0.8);
+  color: #f6ecd6;
   font-size: calc(0.95cqw * var(--tb-text-scale));
   font-weight: 700;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
 }
 
 .panelSub {
-  margin: -0.2cqw 0 0;
+  flex: none;
+  margin: 0;
   font-size: calc(0.68cqw * var(--tb-text-scale));
   color: #aebdc7;
 }
@@ -810,28 +820,35 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.45cqw;
+  gap: 0.4cqw;
   margin: 0;
   padding: 0;
   list-style: none;
+  /* Jamais sous le bouton du pied : ce qui ne tient pas reste dans « Voir tout ». */
+  overflow: hidden;
 }
 .rowsScroll {
   overflow-y: auto;
   scrollbar-width: thin;
 }
 
+/*
+ * Une ligne : le panneau sombre à filet d'or (`panneau-sombre.webp`, même
+ * matière que `game.cabinPanel`), découpé en 9 pour garder ses coins.
+ */
 .row,
 .sponsor {
+  flex: none;
   display: flex;
   align-items: center;
   gap: 0.7cqw;
-  padding: 0.55cqw 0.7cqw;
-  border: 1px solid rgba(140, 170, 190, 0.2);
-  border-radius: 0.4cqw;
-  background: rgba(4, 12, 20, 0.72);
+  padding: 0.5cqw 0.7cqw;
+  border: 0 solid transparent;
+  border-image: url("/assets/ui/panneaux/panneau-sombre.webp") 26 fill / 0.75cqw / 0 stretch;
 }
+/* Accomplie : le vert de l'acquis, en lueur discrète. */
 .row[data-done] {
-  border-color: rgba(95, 208, 230, 0.5);
+  filter: drop-shadow(0 0 0.35cqw rgba(110, 200, 150, 0.45));
 }
 
 .rowIcon {
@@ -871,6 +888,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.2cqw;
+  font-family: var(--tb-font-display);
   font-size: calc(0.75cqw * var(--tb-text-scale));
   font-weight: 700;
   color: #f1dca8;
@@ -887,30 +905,56 @@
   color: #aebdc7;
 }
 
+/*
+ * « Voir tout… » : la plaque sombre à liseré de laiton
+ * (`ui/boutons/bouton-sombre.webp`), en `::before` pour la ternir sans
+ * ternir le texte. Un renvoi, pas une action primaire : pas de cyan plein.
+ */
 .footButton {
+  position: relative;
   flex: none;
   width: 100%;
-  padding: 0.55cqw;
-  border-radius: 0.4cqw;
-  border: 1px solid var(--tb-btn-border);
-  background: var(--tb-btn-bg);
-  box-shadow: var(--tb-btn-glow);
-  color: var(--tb-btn-text);
-  font-size: calc(0.7cqw * var(--tb-text-scale));
-  font-weight: 600;
+  padding: 0.6cqw 1.2cqw;
+  border: 0;
+  background: none;
+  isolation: isolate;
+  color: #efe6d2;
+  font-family: var(--tb-font-display);
+  font-size: calc(0.68cqw * var(--tb-text-scale));
+  font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
   cursor: pointer;
+  filter: drop-shadow(0 0.2cqw 0.35cqw rgba(0, 0, 0, 0.55));
+  transition: color 150ms ease-out, filter 150ms ease-out;
 }
-.footButton:hover:not(:disabled),
+.footButton::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: url("/assets/ui/boutons/bouton-sombre.webp") center / 100% 100% no-repeat;
+  transition: filter 150ms ease-out;
+}
+.footButton:hover:not(:disabled) {
+  color: #fff8e6;
+  filter: drop-shadow(0 0 0.5cqw rgba(217, 181, 106, 0.45)) drop-shadow(0 0.2cqw 0.35cqw rgba(0, 0, 0, 0.55));
+}
+.footButton:hover:not(:disabled)::before {
+  filter: brightness(1.3);
+}
+.footButton:active:not(:disabled) {
+  transform: translateY(1px);
+}
 .footButton:focus-visible {
-  background: var(--tb-btn-bg-hover);
-  box-shadow: var(--tb-btn-glow-hover);
-  outline: none;
+  outline: 2px solid var(--tb-accent);
+  outline-offset: 2px;
 }
 .footButton:disabled {
   opacity: 0.5;
-  cursor: default;
+  cursor: not-allowed;
 }
 
 /* Mécènes : un palier d'audience attend d'être ouvert — la seule ligne qui luit dans le panneau. */
@@ -918,17 +962,21 @@
   position: relative;
   flex: none;
   width: 100%;
-  margin-bottom: 0.5cqw;
   padding: 0.45cqw 0.6cqw 0.45cqw 1.9cqw;
-  border-radius: 0.4cqw;
-  border: 1px solid var(--tb-btn-border);
-  background: var(--tb-btn-bg);
-  box-shadow: var(--tb-btn-glow);
-  color: var(--tb-btn-text);
-  font-size: calc(0.7cqw * var(--tb-text-scale));
+  border-radius: 0.3cqw;
+  border: 1px solid rgba(243, 200, 107, 0.75);
+  background: linear-gradient(180deg, rgba(92, 64, 20, 0.92), rgba(40, 26, 8, 0.92));
+  box-shadow: 0 0 0.8cqw rgba(243, 200, 107, 0.3);
+  color: #f6dfa6;
+  font-size: calc(0.68cqw * var(--tb-text-scale));
   font-weight: 600;
+  line-height: 1.2;
   text-align: left;
   cursor: pointer;
+  /* Une seule ligne : le libellé entier est dans l'infobulle. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 /* Centrée sans `transform` : la pulsation (`tbNotifPulse`) l'anime déjà. */
 .milestoneReady .alert {
@@ -937,11 +985,13 @@
   bottom: 0;
   margin: auto 0;
 }
-.milestoneReady:hover:not(:disabled),
+.milestoneReady:hover:not(:disabled) {
+  filter: brightness(1.15);
+  box-shadow: 0 0 1.2cqw rgba(243, 200, 107, 0.55);
+}
 .milestoneReady:focus-visible {
-  background: var(--tb-btn-bg-hover);
-  box-shadow: var(--tb-btn-glow-hover);
-  outline: none;
+  outline: 2px solid var(--tb-accent);
+  outline-offset: 2px;
 }
 .milestoneReady:disabled {
   opacity: 0.5;
@@ -963,15 +1013,13 @@
   align-items: stretch;
   gap: 0.35cqw;
   min-height: 0;
-  padding: 0 0 0.5cqw;
-  border: 1px solid rgba(140, 170, 190, 0.22);
-  border-radius: 0.4cqw;
-  background: rgba(4, 12, 20, 0.72);
+  padding: 0.25cqw 0.25cqw 0.5cqw;
+  border: 0 solid transparent;
+  border-image: url("/assets/ui/panneaux/panneau-sombre.webp") 26 fill / 0.75cqw / 0 stretch;
   overflow: hidden;
 }
 .ship[data-claimable] {
-  border-color: rgba(243, 200, 107, 0.7);
-  box-shadow: 0 0 0.8cqw rgba(243, 200, 107, 0.35);
+  filter: drop-shadow(0 0 0.5cqw rgba(243, 200, 107, 0.6));
 }
 
 .shipArt {
@@ -1043,11 +1091,15 @@
   height: 1.8cqw !important;
 }
 
+/* « Réclamer niv. 12 » tient dans la carte : moins d'interlettrage, et un retour à la ligne plutôt qu'une coupe. */
 .ship .claimButton,
 .ship .ghostButton {
-  margin: 0 0.5cqw;
-  padding: 0.3cqw 0.3cqw;
+  margin: 0 0.35cqw;
+  padding: 0.3cqw 0.2cqw;
   font-size: calc(0.58cqw * var(--tb-text-scale));
+  letter-spacing: 0.01em;
+  white-space: normal;
+  line-height: 1.1;
 }
 
 .sideArrow {
@@ -1070,8 +1122,8 @@
   flex: none;
   display: grid;
   place-items: center;
-  width: 2.5cqw;
-  height: 2.5cqw;
+  width: 2.3cqw;
+  height: 2.3cqw;
   border: 0.12cqw solid rgba(199, 154, 75, 0.7);
   border-radius: 50%;
   background: radial-gradient(circle at 50% 35%, #1a2f40, #07111a);
@@ -1104,6 +1156,15 @@
   border-color: rgba(127, 180, 201, 0.5);
 }
 
+/* Une ligne par nom : trois lignes tiennent au-dessus du bouton du pied. */
+.sponsor .rowTitle {
+  display: block;
+  white-space: nowrap;
+}
+.sponsor .rowBody {
+  gap: 0.2cqw;
+}
+
 .sponsor:not([data-revealed]) .rowTitle {
   font-style: italic;
   color: #a9c3cf;
@@ -1121,8 +1182,8 @@
   flex: none;
   display: grid;
   place-items: center;
-  width: 3cqw;
-  height: 3cqw;
+  width: 2.6cqw;
+  height: 2.6cqw;
   padding: 0;
   border: 0;
   background: none;
@@ -1188,8 +1249,9 @@
   place-items: center;
   width: 2.3cqw;
   height: 2.3cqw;
-  border: 0.12cqw solid rgba(199, 154, 75, 0.6);
+  border: 0.12cqw solid rgba(199, 154, 75, 0.75);
   border-radius: 50%;
+  background: radial-gradient(circle at 50% 35%, #1a2f40, #07111a);
   color: #e6c889;
   font-size: calc(1cqw * var(--tb-text-scale));
 }

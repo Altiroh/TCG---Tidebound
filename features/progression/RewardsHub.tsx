@@ -263,7 +263,13 @@ function RouteOfLevels({ profile, claiming, onClaimLevel }: Pick<RewardsHubProps
             const items = levelRewardItems(level);
             const state = claimable.has(level) ? "claimable" : claimed.has(level) ? "claimed" : level <= view.level ? "reached" : "locked";
             return (
-              <li key={level} className={styles.palier} data-state={state} data-current={level === view.level ? "" : undefined}>
+              <li
+                key={level}
+                className={styles.palier}
+                data-state={state}
+                data-current={level === view.level ? "" : undefined}
+                title={`Niveau ${level} : ${items.map(levelRewardLabel).join(" · ")}`}
+              >
                 <span className={styles.palierLevel}>{level}</span>
                 {state === "claimable" && <span className={styles.alert} aria-hidden />}
                 <span className={styles.palierIcon}>{items[0] && <RewardIcon item={items[0]} size={64} />}</span>
@@ -671,7 +677,13 @@ function SponsorsPanel({
       </header>
       <p className={styles.panelSub}>Le public vous regarde. Certains, derrière lui, vous observent.</p>
       {milestone && (
-        <button type="button" className={styles.milestoneReady} disabled={busy} onClick={() => onClaimMilestone(milestone)}>
+        <button
+          type="button"
+          className={styles.milestoneReady}
+          disabled={busy}
+          onClick={() => onClaimMilestone(milestone)}
+          title={`Palier d'audience « ${milestone.label} » : ouvrir`}
+        >
           <span className={styles.alert} aria-hidden />
           Palier d&apos;audience « {milestone.label} » : ouvrir
         </button>
@@ -699,7 +711,9 @@ function SponsorsPanel({
               >
                 <SponsorGlyph id={sponsor.name ? sponsor.id : null} />
                 <span className={styles.rowBody}>
-                  <span className={styles.rowTitle}>{sponsor.name ?? (sponsor.watching ? "Quelqu'un vous observe…" : "Un regard dans la foule")}</span>
+                  <span className={styles.rowTitle} title={sponsor.name ?? undefined}>
+                    {sponsor.name ?? (sponsor.watching ? "Quelqu'un vous observe…" : "Un regard dans la foule")}
+                  </span>
                   <span className={styles.sponsorStage}>
                     {sponsor.meetsAudience ? sponsor.stageLabel : `Attend ${sponsor.audienceRequired.toLocaleString("fr-FR")} spectateurs`}
                   </span>
