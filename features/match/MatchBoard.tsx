@@ -505,7 +505,8 @@ export function MatchBoard({
           />
         )}
       {pending?.kind === "reaction" && pending.needsTarget && (() => {
-        const sourceCardId = [...viewerPlayer.board, ...otherPlayer.board].find((u) => u.instanceId === pending.sourceInstanceId)?.cardId;
+        // Un Objet réactif peut répondre depuis la MAIN (règle du 29/09/2026).
+        const sourceCardId = [...viewerPlayer.board, ...viewerPlayer.hand, ...otherPlayer.board].find((u) => u.instanceId === pending.sourceInstanceId)?.cardId;
         const decline = () => {
           board.clearSelection();
           runReactionAction({ type: "passReaction", playerId: viewerPlayerId });

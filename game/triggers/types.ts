@@ -90,6 +90,12 @@ export interface PendingReactionCandidate {
   /** Coût en Raison à payer pour activer cette capacité (0 si aucun). */
   reasonCost: number;
   /**
+   * `true` : l'Objet réactif est encore EN MAIN (règle du 29/09/2026,
+   * `isBreakReaction`). L'activer le Brise depuis la main — `reasonCost`
+   * inclut alors `handBreakCost` — sans qu'il ait jamais pris de Slot.
+   */
+  fromHand?: boolean;
+  /**
    * Coût en ANCRAGE (0 si aucun). Contrairement au coût en Raison, il
    * écarte la capacité quand le joueur ne peut pas le payer en restant en
    * vie : la coque n'a pas de découvert (cf. `TriggeredAbility.cost`).

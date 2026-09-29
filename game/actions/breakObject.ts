@@ -1,3 +1,4 @@
+import { handBreakCost } from "@/game/rules/objectBreak";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import type { EffectContext } from "@/game/effects/resolveEffect";
 import { resolveEffect } from "@/game/effects/resolveEffect";
@@ -31,16 +32,7 @@ import { getPlayer, type GameState, type PlayerId, type PlayerState } from "@/ga
 import { recordGraveyardArrival } from "@/game/state/discard";
 import type { ActionResult, BreakObjectAction } from "@/game/actions/types";
 
-/**
- * Coût IMPRIMÉ du Bris depuis la main (Notion "Catalogue de cartes", règle
- * prototype "Briser un Objet depuis la main") : moitié du coût imprimé,
- * arrondie au supérieur, minimum 1 Raison. Une réduction temporaire de coût
- * ne le réduit pas ; le bouclier de perte de Raison s'applique au paiement,
- * comme pour tout coût.
- */
-export function handBreakCost(def: CardDefinition): number {
-  return Math.max(1, Math.ceil(def.cost / 2));
-}
+export { handBreakCost } from "@/game/rules/objectBreak";
 
 /**
  * Cibles qui n'existent que DANS une fenêtre de réaction : l'attaquant ou la
@@ -162,7 +154,93 @@ function resoudreEffetsDeBris(
   nextState = brokenTrigger.state;
   events.push(...brokenTrigger.events);
 
+  // Depuis la main, l'Objet a rejoint le Cimetière DEPUIS LA MAIN : ce qui
+  // guette ce geste le voit (règle du 29/09/2026 — Cache-Cache, La Marelle).
+  if (context.brokenFromHand === true && context.sourceInstanceId) {
+    const joined = handBreakJoinsGraveyard(nextState, context.controllerId, context.sourceInstanceId, def.id, turnNumber);
+    nextState = joined.state;
+    events.push(...joined.events);
+  }
+
   return { state: nextState, events };
+}
+
+/**
+ * Un Objet Brisé depuis la main rejoint le Cimetière DEPUIS LA MAIN, et
+ * compte pour tout ce qui guette ce geste : « une carte rejoint votre
+ * Cimetière depuis votre main » (Cache-Cache, La Marelle). Règle du
+ * 29/09/2026 : le Bris depuis la main n'était vu que comme un Bris.
+ * Ce n'est pas une défausse décidée par un effet (`discardByEffect`
+ * absent) : un texte qui dit « défaussée par un effet » ne le voit pas.
+ */
+function handBreakJoinsGraveyard(
+  state: GameState,
+  playerId: PlayerId,
+  instanceId: string,
+  cardId: string,
+  turnNumber: number
+): { state: GameState; events: GameEvent[] } {
+  const moved: GameEvent = {
+    type: "CARD_MOVED",
+    turnNumber,
+    timestamp: Date.now(),
+    instanceId,
+    fromZone: "hand",
+    toZone: "graveyard",
+    cardId,
+    ownerId: playerId,
+  };
+  return processDiscardedFromHandTriggers(state, [moved], turnNumber);
+}
+
+/**
+ * Objet RÉACTIF activé depuis la main (`PendingReactionCandidate.fromHand`) :
+ * il quitte la main pour le Cimetière avant que son effet ne se résolve.
+ * Le coût est payé par la réaction elle-même (`reasonCost` y inclut
+ * `handBreakCost`).
+ */
+export function breakReactiveObjectFromHand(
+  state: GameState,
+  playerId: PlayerId,
+  instanceId: string,
+  turnNumber: number
+): { state: GameState; events: GameEvent[] } {
+  const player = getPlayer(state, playerId);
+  const card = player.hand.find((c) => c.instanceId === instanceId);
+  if (!card) return { state, events: [] };
+  const playerAfter = recordGraveyardArrival(
+    {
+      ...player,
+      hand: player.hand.filter((c) => c.instanceId !== instanceId),
+      graveyard: [...player.graveyard, { ...card, damageMarked: 0, modifiers: [] }],
+    },
+    { cardId: card.cardId, turnNumber, fromZone: "hand" }
+  );
+  const base = { turnNumber, timestamp: Date.now() };
+  return {
+    state: { ...state, players: state.players.map((p) => (p.id === playerId ? playerAfter : p)) as [PlayerState, PlayerState] },
+    events: [
+      { ...base, type: "CARD_MOVED", instanceId, fromZone: "hand", toZone: "graveyard", cardId: card.cardId, ownerId: playerId },
+      { ...base, type: "OBJECT_BROKEN", playerId, instanceId, cardId: card.cardId, fromHand: true },
+    ],
+  };
+}
+
+/**
+ * Ce qui suit le Bris depuis la main d'un Objet réactif, une fois son effet
+ * résolu : le fait « vous avez Brisé un Objet depuis votre main »
+ * (Pantalone) et l'arrivée au Cimetière depuis la main.
+ */
+export function afterReactiveObjectBrokenFromHand(
+  state: GameState,
+  playerId: PlayerId,
+  instanceId: string,
+  cardId: string,
+  turnNumber: number
+): { state: GameState; events: GameEvent[] } {
+  const broken = processTrigger(state, { trigger: "onObjectBroken", playerId, cardId, sourceInstanceId: instanceId, fromHand: true }, turnNumber);
+  const joined = handBreakJoinsGraveyard(broken.state, playerId, instanceId, cardId, turnNumber);
+  return { state: joined.state, events: [...broken.events, ...joined.events] };
 }
 
 /**
@@ -400,7 +478,7 @@ export function breakObject(state: GameState, action: BreakObjectAction): Action
     events.push({ ...base, type: "REASON_CHANGED", playerId: player.id, delta: -payment.paid });
   }
 
-  events.push({ ...base, type: "CARD_MOVED", instanceId: unit.instanceId, fromZone, toZone: "graveyard" });
+  events.push({ ...base, type: "CARD_MOVED", instanceId: unit.instanceId, fromZone, toZone: "graveyard", cardId: unit.cardId, ownerId: player.id });
   // Le Bris est un fait distinct du simple départ vers le cimetière : il
   // porte la fenêtre de réaction "la première fois à chaque tour que vous
   // Brisez un Objet" (Le Tas de Trucs), qui ne peut s'ouvrir qu'à partir

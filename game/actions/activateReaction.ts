@@ -1,3 +1,4 @@
+import { afterReactiveObjectBrokenFromHand, breakReactiveObjectFromHand } from "@/game/actions/breakObject";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { isEligibleChosenUnit } from "@/game/effects/chosenTargets";
 import { validateGraveyardChoice } from "@/game/effects/graveyardChoices";
@@ -126,6 +127,15 @@ export function activateReaction(state: GameState, action: ActivateReactionActio
     }
   }
 
+  // Objet réactif EN MAIN (règle du 29/09/2026) : il se Brise depuis la
+  // main — Cimetière d'abord, effet ensuite, comme un Bris ordinaire.
+  const fromHand = validation.candidate.fromHand === true;
+  if (fromHand) {
+    const broken = breakReactiveObjectFromHand(revealedState, action.playerId, action.sourceInstanceId, pending.turnNumber);
+    revealedState = broken.state;
+    revealEvents.push(...broken.events);
+  }
+
   const resolution = resolveReaction(
     revealedState,
     validation.candidate,
@@ -153,6 +163,12 @@ export function activateReaction(state: GameState, action: ActivateReactionActio
   const discarded = processDiscardedFromHandTriggers(nextState, resolution.events, pending.turnNumber);
   nextState = discarded.state;
   events.push(...discarded.events);
+
+  if (fromHand) {
+    const after = afterReactiveObjectBrokenFromHand(nextState, action.playerId, action.sourceInstanceId, validation.candidate.cardId, pending.turnNumber);
+    nextState = after.state;
+    events.push(...after.events);
+  }
 
   // --- REFERMETURE (grammaire des Structures-pièges, 22/09/2026) --------
   //

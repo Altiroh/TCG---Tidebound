@@ -12,6 +12,7 @@ import { graveyardChoicesFor } from "@/game/effects/graveyardChoices";
 import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
 import { chromaticColorsOf } from "@/game/rules/chromatic";
 import { consumeOpponentReactionRevealShield, payReasonCost } from "@/game/state/shields";
+import { handBreakCost, isBreakReaction } from "@/game/rules/objectBreak";
 import type { GameState, PlayerId, PlayerState } from "@/game/state/types";
 import type { PendingReactionCandidate, TriggerEvent } from "@/game/triggers/types";
 
@@ -972,6 +973,19 @@ export function collectReactionCandidates(
   forPlayerId: PlayerId,
   turnNumber: number
 ): PendingReactionCandidate[] {
+  return [
+    ...collectReactionCandidatesOnBoard(state, triggerEvents, forPlayerId, turnNumber),
+    ...handBreakReactionCandidates(state, triggerEvents, forPlayerId, turnNumber),
+  ];
+}
+
+/** Capacités facultatives éligibles des cartes EN JEU (et du Cimetière pour les déclencheurs de mort). */
+function collectReactionCandidatesOnBoard(
+  state: GameState,
+  triggerEvents: TriggerEvent[],
+  forPlayerId: PlayerId,
+  turnNumber: number
+): PendingReactionCandidate[] {
   if (!state.players.some((p) => p.id === forPlayerId)) return [];
 
   const candidates: PendingReactionCandidate[] = [];
@@ -1044,6 +1058,47 @@ export function collectReactionCandidates(
 }
 
 /**
+ * Objets RÉACTIFS encore en main (règle du 29/09/2026) : « Lorsque …, vous
+ * pouvez Briser cet Objet » se propose aussi depuis la main, au coût d'un
+ * Bris depuis la main, sans Slot.
+ *
+ * Plutôt que de dupliquer, déclencheur par déclencheur, la façon dont
+ * `collectTriggeredWork` trouve une capacité sur le plateau, on lui pose la
+ * question sur un plateau HYPOTHÉTIQUE où l'Objet serait posé : s'il y
+ * serait éligible, il l'est depuis la main. Rien de cet état n'est gardé.
+ */
+function handBreakReactionCandidates(
+  state: GameState,
+  triggerEvents: TriggerEvent[],
+  forPlayerId: PlayerId,
+  turnNumber: number
+): PendingReactionCandidate[] {
+  const player = state.players.find((p) => p.id === forPlayerId);
+  if (!player) return [];
+
+  const found: PendingReactionCandidate[] = [];
+  for (const card of player.hand) {
+    const def = getCardDefinition(card.cardId);
+    if (!(def.abilities ?? []).some((ability) => isBreakReaction(def, ability))) continue;
+
+    const hypothetical: GameState = {
+      ...state,
+      players: state.players.map((p) =>
+        p.id === forPlayerId ? { ...p, hand: p.hand.filter((c) => c.instanceId !== card.instanceId), board: [...p.board, card] } : p
+      ) as [PlayerState, PlayerState],
+    };
+    const onBoard = collectReactionCandidatesOnBoard(hypothetical, triggerEvents, forPlayerId, turnNumber);
+    for (const candidate of onBoard) {
+      if (candidate.sourceInstanceId !== card.instanceId) continue;
+      const ability = def.abilities?.[candidate.abilityIndex];
+      if (!ability || !isBreakReaction(def, ability)) continue;
+      found.push({ ...candidate, fromHand: true, reasonCost: candidate.reasonCost + handBreakCost(def) });
+    }
+  }
+  return found;
+}
+
+/**
  * Résout UNE capacité `optional` précise (identifiée par
  * `sourceInstanceId` + `abilityIndex`), en payant son coût d'abord. Ne
  * vérifie PAS l'éligibilité (déjà fait par l'appelant via
@@ -1107,7 +1162,13 @@ export function resolveReaction(
     turnNumber,
   };
 
-  const reacted = resolveEffectSequence(nextState, ability.effects, context);
+  // Depuis la main, l'Objet est déjà au Cimetière (`activateReaction`) :
+  // le « Briser cet Objet » que porte la capacité est fait, il ne reste que
+  // son effet.
+  const effects = candidate.fromHand
+    ? ability.effects.filter((effect) => !(effect.type === "saborde" && effect.target.kind === "self"))
+    : ability.effects;
+  const reacted = resolveEffectSequence(nextState, effects, context);
   nextState = reacted.state;
   events.push(...reacted.events);
 
