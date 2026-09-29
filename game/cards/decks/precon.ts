@@ -688,6 +688,23 @@ export const DECK_CHASSE_AU_GROS: DeckList = {
  * a qu'une sorte ici, et elle est là pour tenir, pas pour attaquer. Tout le
  * reste est du nettoyage et sept menaces lourdes, en un exemplaire chacune
  * pour qu'un wipe ne se joue jamais deux fois de suite.
+ *
+ * LISTE REVUE LE 29/09/2026. Sept cartes attendaient que l'adversaire
+ * contrôle au moins quatre unités — ~9 % des tours : Panique sur le Pont
+ * jouée 6 % des fois où elle était en main, Chacun sa Place 1 %,
+ * Abandonnez le Navire jamais — et le deck n'avait que neuf unités, alors
+ * que ses meilleurs Δ étaient des corps. Sortent Panique, Chacun sa Place,
+ * Abandonnez, les deux Nasses, le Journal de Bord et deux Dernières
+ * Réserves ; entrent des corps qui survivent aux balais du deck : Baleine
+ * aux Cicatrices Blanches, Carapé-Hus (Garde pendant le Calme, quand le
+ * Crabe la perd), Capitaine du Dernier Retour, Chose des Hauts-Fonds,
+ * Matelot du Sans-Nom. Mesuré au labo (bot moyen, 60 parties par paire
+ * contre le rayon) : 20 % → 47 %, toujours sur Le Courlis. Aucun texte
+ * changé.
+ *
+ * LE COURLIS, MESURÉ : ce sont ses 26 points d'Ancrage qui coûtent, pas
+ * ses 4 Slots — la même liste gagne 0 point avec 5 Slots, 13 avec 30
+ * Ancrage. Décision de rééquilibrage laissée au design.
  */
 export const DECK_APRES_LA_TEMPETE: DeckList = {
   id: "apres-la-tempete",
@@ -698,27 +715,27 @@ export const DECK_APRES_LA_TEMPETE: DeckList = {
   cardIds: [
     // Le nettoyage, du plus léger au plus définitif.
     ...repeat("le-pont-est-plein", 2),
-    ...repeat("panique-sur-le-pont", 2),
     ...repeat("vague-scelerate", 2),
-    ...repeat("chacun-sa-place", 1),
     ...repeat("le-large-se-fache", 1),
-    ...repeat("abandonnez-le-navire", 1),
     ...repeat("la-mer-reprend-tout", 1),
     // Les pièges qui achètent les tours qui manquent.
-    ...repeat("la-nasse-trop-pleine", 2),
     ...repeat("jugement-du-phare", 1),
     ...repeat("derniere-barricade", 2),
     ...repeat("cage-de-flottaison", 2),
-    // Tenir jusque-là.
+    // Tenir jusque-là — des corps qui survivent aux balais du deck.
     ...repeat("crabe-de-fer", 3),
+    ...repeat("carape-hus", 3),
+    ...repeat("matelot-du-sans-nom", 1),
+    ...repeat("capitaine-du-dernier-retour", 2),
+    ...repeat("chose-des-hauts-fonds", 2),
     ...repeat("chirurgien-du-bord", 2),
     ...repeat("trousse-du-bord", 2),
     // Voir venir : un deck de contrôle qui pioche mal ne contrôle rien.
     ...repeat("un-peu-de-repit", 3),
-    ...repeat("dernieres-reserves", 3),
+    ...repeat("dernieres-reserves", 1),
     ...repeat("faire-linventaire", 3),
-    ...repeat("journal-de-bord", 2),
     // Et de quoi conclure, une fois le plateau vide.
+    ...repeat("baleine-aux-cicatrices-blanches", 2),
     ...repeat("le-brise-ligne", 2),
     ...repeat("lamiral-sans-pavillon", 1),
     ...repeat("leviathan-balafre", 1),
