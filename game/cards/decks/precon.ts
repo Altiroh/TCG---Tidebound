@@ -838,34 +838,42 @@ export const DECK_CAVALERIE: DeckList = {
  * moteur tient sur son propre plateau. Il retrouve ainsi le troisième
  * préconstruit qu'Arsenal de Pont lui a pris. Mesuré : 74 % (80 % sous le
  * Brise-Lames).
+ *
+ * LISTE ET NAVIRE REVUS LE 29/09/2026. Après la révision des six decks du
+ * bas, les Sentinelles restaient seules au-dessus du rayon (77 %, le
+ * nouveau Cap sûr de L'Errant leur ayant donné huit points), en traînant
+ * pourtant une dizaine de cartes qui font perdre : le sous-moteur des
+ * Éclats sans source (Bracelet Δ −18, Pierre Retrouvée −13, Coffret −12)
+ * et des sorts qui ne partent presque jamais (Les Couleurs Répondent −22,
+ * Synchronisation −13). Ils sortent pour des Sentinelles — chaque carte
+ * fait désormais quelque chose —, et le deck passe sur Le Courlis, dont
+ * les 26 Ancrage tiennent un plateau aussi fort à distance. Mesuré au labo
+ * (bot moyen, 60 parties par paire contre le rayon) : liste nettoyée 87 %
+ * sous L'Errant, 75 % sous Le Goliath, 50 % sous Le Courlis. Aucun texte
+ * changé. Si Le Courlis passe un jour à 30 Ancrage, remesurer.
  */
 export const DECK_SENTINELLES_CHROMATIQUES: DeckList = {
   id: "sentinelles-chromatiques",
   name: "Sentinelles Chromatiques",
-  shipId: "lerrant",
+  shipId: "le-courlis",
   description: "Des pierres qui se répondent : chaque Sentinelle renforce les autres, jusqu'au Géant.",
   cardIds: [
     ...repeat("heros-de-la-flamme", 3),
     ...repeat("gardienne-de-leclat", 3),
     ...repeat("tacticien-de-lecume", 3),
     ...repeat("porteur-de-jade", 2),
-    ...repeat("bracelet-chromatique", 2),
     ...repeat("appel-des-sentinelles", 3),
     ...repeat("poste-chromatique", 1),
-    ...repeat("pierre-retrouvee", 1),
-    ...repeat("veilleuse-de-lombre", 2),
+    ...repeat("veilleuse-de-lombre", 3),
     ...repeat("survivant-de-la-mousse", 2),
     ...repeat("emissaire-de-quartz", 2),
     ...repeat("la-premiere-pierre", 1),
-    ...repeat("coffret-aux-cinq-pierres", 1),
-    ...repeat("briseur-du-brasier", 2),
-    ...repeat("rempart-du-soleil", 2),
-    ...repeat("stratege-de-lazur", 2),
-    ...repeat("oracle-damethyste", 1),
-    ...repeat("les-couleurs-repondent", 2),
-    ...repeat("synchronisation", 1),
+    ...repeat("briseur-du-brasier", 3),
+    ...repeat("rempart-du-soleil", 3),
+    ...repeat("stratege-de-lazur", 3),
+    ...repeat("oracle-damethyste", 3),
     ...repeat("coup-de-harpon", 1),
-    ...repeat("heraut-de-nacre", 1),
+    ...repeat("heraut-de-nacre", 2),
     ...repeat("formation-prismatique", 1),
     ...repeat("le-geant-chromatique", 1),
   ],
