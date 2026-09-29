@@ -16,10 +16,9 @@ import type { ShipDefinition } from "@/game/environment/types";
  * pour l'Ancre de Dérive (`activationWindow`). `capacityText` — le champ
  * "texte seul, rien n'est appliqué" — n'a plus d'occupant.
  *
- * Restent en texte seul certains PASSIFS qui demanderaient de distinguer
- * "gain de Raison venant d'une carte" (Cap sûr, cadrage section 16,
- * volontairement complexe) ; seuls les effets exprimables avec les champs
- * numériques ci-dessous sont réellement appliqués.
+ * Les PASSIFS aussi : le dernier en texte seul, Cap sûr (L'Errant), a été
+ * réécrit le 29/09/2026 en une forme que le moteur sait constater
+ * (`refundTurnReasonOnFirstDepletion`).
  *
  * ANCRAGE DE DÉPART, +50 % LE 21/09/2026 (17/20/24 → 26/30/36).
  *
@@ -102,10 +101,14 @@ export const SHIP_SET: ShipDefinition[] = [
     slotCount: 5,
     illustration: "errant.webp",
     text: "Profil standard : polyvalent, équilibré, sans faiblesse critique.",
+    // Cap sûr réécrit le 29/09/2026 (décision de design) : l'ancien texte —
+    // « +1 Raison la première fois par tour que vous en récupérez grâce à
+    // une carte » — n'a jamais été appliqué, faute de distinguer l'origine
+    // d'un gain de Raison.
     passiveText:
-      "Cap sûr — la première fois par tour que vous récupérez de la Raison grâce à une carte, récupérez 1 " +
-      "Raison supplémentaire (non appliqué : nécessite de distinguer les gains de Raison venant des cartes, " +
-      "pas encore modélisé).",
+      "Cap sûr — la première fois de la partie que votre Raison tombe à 0 ou moins, récupérez la Raison " +
+      "perdue pendant ce tour.",
+    refundTurnReasonOnFirstDepletion: true,
     // Première capacité « une fois par partie » réellement câblée
     // (`activationsPerGame`), et première à s'activer DANS une fenêtre :
     // celle que le moteur ouvre déjà entre l'annonce d'une Marée et

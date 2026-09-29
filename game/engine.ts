@@ -18,6 +18,7 @@ import { resolveOceanJudgment } from "@/game/rules/oceanJudgment";
 import { refreshTurnTimer } from "@/game/rules/turnTimer";
 import { assertValidDefender, hasEffectiveKeyword } from "@/game/rules/validation";
 import { processDeaths } from "@/game/state/processDeaths";
+import { applyReasonDepletion } from "@/game/state/reasonDepletion";
 import { processChromaticSignals } from "@/game/rules/chromaticSignals";
 import {
   processLoneCreatureChanges,
@@ -234,11 +235,13 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
 
   const powerGains = processPowerGains(deaths.state, powerBefore, state.turnNumber);
   const loneCreatures = processLoneCreatureChanges(powerGains.state, loneBefore, state.turnNumber);
-  const allEvents: GameEvent[] = [...result.events, ...deaths.events, ...powerGains.events, ...loneCreatures.events];
+  // Raison perdue ce tour, et « Cap sûr » (L'Errant) si elle vient de tomber à 0.
+  const depletion = applyReasonDepletion(state, loneCreatures.state);
+  const allEvents: GameEvent[] = [...result.events, ...deaths.events, ...powerGains.events, ...loneCreatures.events, ...depletion.events];
 
   const stateWithEvents: GameState = {
-    ...loneCreatures.state,
-    eventLog: [...loneCreatures.state.eventLog, ...allEvents],
+    ...depletion.state,
+    eventLog: [...depletion.state.eventLog, ...allEvents],
   };
 
   let finalState = checkWinCondition(stateWithEvents);

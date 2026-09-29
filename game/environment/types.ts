@@ -268,4 +268,12 @@ export interface ShipDefinition {
   directAttackWeakness?: number;
   /** Réduction des dégâts d'Ancrage de Déraison (réglés une seule fois par tour, donc équivaut à "la première fois par tour"). Ex: Pénitence de La Religieuse. */
   deraisonDamageReduction?: number;
+  /**
+   * « La première fois de la partie que votre Raison tombe à 0 ou moins,
+   * récupérez la Raison perdue pendant ce tour » (L'Errant — Cap sûr,
+   * 29/09/2026). Une seule fois par partie, sans action du joueur : le
+   * moteur le constate après chaque action (`game/state/reasonDepletion.ts`).
+   * La Raison rendue ne dépasse jamais la Raison maximale.
+   */
+  refundTurnReasonOnFirstDepletion?: boolean;
 }

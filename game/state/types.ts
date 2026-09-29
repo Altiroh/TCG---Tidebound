@@ -92,6 +92,13 @@ export interface PlayerState {
    */
   oncePerGameUses?: Record<string, number>;
   /**
+   * Raison PERDUE depuis le début du tour de table en cours (dépensée ou
+   * retirée par un effet), tenue par `game/state/reasonDepletion.ts` :
+   * c'est ce que rend « Cap sûr » (L'Errant). Remise à zéro dès que le
+   * numéro de tour change.
+   */
+  reasonLostThisTurn?: { turnNumber: number; amount: number };
+  /**
    * Protections de destruction en cours (« vos Structures ne peuvent pas
    * être détruites par des effets environnementaux jusqu'à la fin de ce
    * tour », Brise-Lames — Tenir la ligne).
