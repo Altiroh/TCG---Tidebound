@@ -282,6 +282,10 @@ export const DECK_LE_THEATRE_ENGLOUTI: DeckList = {
  * à la place des Guetteurs de Brume. Mesuré au labo (bot moyen, 60
  * parties par paire contre le rayon) : 13 % → 52 %, 22 Structures
  * toujours en jeu. Aucun texte changé.
+ *
+ * DEUXIÈME PASSE (29/09/2026, contre le rayon révisé) : retombé à 38 %.
+ * Chaîne de Travers (Δ −13) cède la place à deux Baleines aux Cicatrices
+ * Blanches. 38 % → 50 % au labo.
  */
 export const DECK_MINEURS_DE_FOND: DeckList = {
   id: "mineurs-de-fond",
@@ -294,7 +298,6 @@ export const DECK_MINEURS_DE_FOND: DeckList = {
     ...repeat("la-nasse-trop-pleine", 2),
     ...repeat("jugement-du-phare", 1),
     ...repeat("barils-de-poudre", 2),
-    ...repeat("chaine-de-travers", 2),
     ...repeat("fausse-cargaison", 2),
     ...repeat("cloison-etanche", 2),
     ...repeat("cale-inondable", 2),
@@ -312,6 +315,7 @@ export const DECK_MINEURS_DE_FOND: DeckList = {
     ...repeat("crabe-de-fer", 3),
     ...repeat("matelot-du-sans-nom", 3),
     ...repeat("chose-des-hauts-fonds", 3),
+    ...repeat("baleine-aux-cicatrices-blanches", 2),
   ],
 };
 
@@ -391,6 +395,11 @@ export const DECK_LA_FORTERESSE: DeckList = {
  * écartée, au-dessus de la cible. Rendre Anguille et Raie actives
  * « pendant Tempête ou Abysses » n'apportait qu'un à deux points : aucun
  * texte changé.
+ *
+ * DEUXIÈME PASSE (29/09/2026, contre le rayon révisé) : retombé à 37 %.
+ * Pont Miné et Balise des Profondeurs cèdent la place à l'Albatros de
+ * Mauvais Temps et au Second au Visage Pâle — deux corps de Tempête.
+ * 37 % → 50 % au labo.
  */
 export const DECK_DESCENTE_AUX_ABYSSES: DeckList = {
   id: "descente-aux-abysses",
@@ -408,7 +417,6 @@ export const DECK_DESCENTE_AUX_ABYSSES: DeckList = {
     ...repeat("veilleur-des-profondeurs", 3),
     // Les instruments : durée, intensité, orientation.
     ...repeat("regulateur-de-courant", 3),
-    ...repeat("balise-des-profondeurs", 2),
     ...repeat("ancre-de-tempete", 2),
     ...repeat("epave-engloutie", 1),
     // Le forçage, et ce qui vit en bas.
@@ -417,6 +425,8 @@ export const DECK_DESCENTE_AUX_ABYSSES: DeckList = {
     ...repeat("masse-sombre", 3),
     ...repeat("si-raie-ponce", 2),
     ...repeat("bat-marin", 1),
+    ...repeat("albatros-de-mauvais-temps", 2),
+    ...repeat("second-au-visage-pale", 2),
     // La récompense de la descente, reprise de Sous la Ligne : ce que
     // personne d'autre ne peut se permettre de payer aussi tôt.
     ...repeat("ce-qui-suit-le-navire", 3),
@@ -424,7 +434,6 @@ export const DECK_DESCENTE_AUX_ABYSSES: DeckList = {
     ...repeat("bat-marin-abyssal", 1),
     ...repeat("revenante-de-la-fosse-abyssal", 1),
     // Lot 14 : de quoi survivre à un adversaire pressé.
-    ...repeat("pont-mine", 2),
   ],
 };
 
@@ -468,6 +477,11 @@ export const DECK_DESCENTE_AUX_ABYSSES: DeckList = {
  * Structures et 2,1 Sabordages par partie. Une liste plus lourde montait à
  * 57 % mais ne sabordait plus que 1,5 fois : écartée, le deck y perdait son
  * sujet. Aucun texte changé.
+ *
+ * DEUXIÈME PASSE (29/09/2026, contre le rayon révisé) : retombé à 39 %
+ * une fois les autres decks renforcés. L'Étau du Calfat et le dernier
+ * Radeau cèdent la place à trois Crabes de Fer. 39 % → 48 % au labo,
+ * 15 Structures toujours en jeu.
  */
 export const DECK_EPAVISTES: DeckList = {
   id: "epavistes",
@@ -486,6 +500,7 @@ export const DECK_EPAVISTES: DeckList = {
     ...repeat("matelot-du-sans-nom", 3),
     ...repeat("chose-des-hauts-fonds", 3),
     ...repeat("baleine-aux-cicatrices-blanches", 2),
+    ...repeat("crabe-de-fer", 3),
     // Les Structures à faire disparaître.
     ...repeat("caisses-arrimees", 3),
     ...repeat("epaves-accrochees", 2),
@@ -493,11 +508,9 @@ export const DECK_EPAVISTES: DeckList = {
     ...repeat("caisse-des-dernieres-planches-abyssal", 1),
     ...repeat("atelier-de-calfatage", 2),
     ...repeat("cage-de-flottaison", 2),
-    ...repeat("radeau-de-fortune", 1),
     // Les outils du démontage.
     ...repeat("levier-de-lest", 2),
     ...repeat("grappin-de-recuperation", 1),
-    ...repeat("etau-du-calfat", 2),
     // Lot 14 : garder ce qu'on veut garder.
     ...repeat("cloison-etanche", 2),
   ],
@@ -723,6 +736,10 @@ export const DECK_CHASSE_AU_GROS: DeckList = {
  * LE COURLIS, MESURÉ : ce sont ses 26 points d'Ancrage qui coûtent, pas
  * ses 4 Slots — la même liste gagne 0 point avec 5 Slots, 13 avec 30
  * Ancrage. Décision de rééquilibrage laissée au design.
+ *
+ * DEUXIÈME PASSE (29/09/2026, contre le rayon révisé) : retombé à 42 %.
+ * Le Capitaine du Dernier Retour (Δ −12) cède la place à deux Matelots du
+ * Sans-Nom. 42 % → 48 % au labo.
  */
 export const DECK_APRES_LA_TEMPETE: DeckList = {
   id: "apres-la-tempete",
@@ -743,8 +760,7 @@ export const DECK_APRES_LA_TEMPETE: DeckList = {
     // Tenir jusque-là — des corps qui survivent aux balais du deck.
     ...repeat("crabe-de-fer", 3),
     ...repeat("carape-hus", 3),
-    ...repeat("matelot-du-sans-nom", 1),
-    ...repeat("capitaine-du-dernier-retour", 2),
+    ...repeat("matelot-du-sans-nom", 3),
     ...repeat("chose-des-hauts-fonds", 2),
     ...repeat("chirurgien-du-bord", 2),
     ...repeat("trousse-du-bord", 2),
