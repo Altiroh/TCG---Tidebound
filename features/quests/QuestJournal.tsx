@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { QUEST_CATEGORIES, QUEST_CATEGORY_META, type QuestCategory } from "@/game/quests";
-import game from "@/features/shell/GameScreen.module.css";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { QUEST_CATEGORY_META, type QuestCategory } from "@/game/quests";
 import styles from "@/features/quests/Quests.module.css";
 import { claimQuestReward, rerollQuest, type QuestBoard, type QuestEntry } from "@/features/quests/actions";
+import { QUEST_SCREEN_ASSETS, SceneToast, type SceneNotice } from "@/features/quests/QuestScene";
 import { VoyagePanel, VoyageSkeleton } from "@/features/quests/VoyagePanel";
 import type { VoyageBoard } from "@/features/quests/voyageActions";
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
@@ -14,13 +14,28 @@ import { usePersistedState } from "@/lib/persistedState";
 
 interface QuestJournalProps {
   board: QuestBoard;
-  /** Traversées ; `available: false` tant que leur migration n'est pas appliquée — le panneau s'efface. */
+  /** Traversées ; `available: false` tant que leur migration n'est pas appliquée — la carte s'efface. */
   voyages?: VoyageBoard;
-  /** Traversées encore en lecture : leur squelette tient la place du panneau. */
+  /** Traversées encore en lecture : leur squelette tient la place de la carte. */
   voyagesPending?: boolean;
   /** Relit quêtes et profil après une réclamation ou un remplacement. */
   onChanged: () => void;
 }
+
+/**
+ * Les onglets PEINTS de la maquette (`onglet-<id>.webp`, et `-actif` quand
+ * il est choisi), dans leur ordre. La maquette n'a pas d'onglet « Cartes » :
+ * ces quêtes-là restent sous « Toutes ».
+ */
+const TABS: readonly { id: QuestCategory | null; asset: string; label: string }[] = [
+  { id: null, asset: "toutes", label: "Toutes" },
+  { id: "parties", asset: "parties", label: QUEST_CATEGORY_META.parties.label },
+  { id: "stats", asset: "stats", label: QUEST_CATEGORY_META.stats.label },
+  { id: "maree", asset: "maree", label: QUEST_CATEGORY_META.maree.label },
+  { id: "decks", asset: "decks", label: QUEST_CATEGORY_META.decks.label },
+];
+
+const TAB_FILTERS = TABS.map((tab) => tab.id);
 
 function formatRemaining(endsAtIso: string): string {
   const ms = new Date(endsAtIso).getTime() - Date.now();
@@ -33,14 +48,15 @@ function formatRemaining(endsAtIso: string): string {
 }
 
 /**
- * JOURNAL DE BORD — la Traversée en cours, puis les quêtes du jour et de la
- * semaine. Il vit dans l'onglet « Quêtes » du profil : plus d'écran à part,
- * tout ce qui se réclame se réclame au même endroit.
+ * JOURNAL DE BORD — la Traversée en cours sur sa carte, les onglets de
+ * catégorie, puis les quêtes du jour et de la semaine sur leurs feuilles
+ * clouées à la planche. Il vit dans l'onglet « Quêtes » du profil, posé
+ * dans la scène du pont (`QuestScene`).
  *
  * Organisation par CATÉGORIE (Notion « Catalogue de quêtes — Tidebound ») :
- * Cartes, Parties, Decks, Stats, Marée. Chaque ligne porte l'icône de sa
- * famille — c'est ce qui rend la liste lisible avant même d'en lire le
- * texte — et un filtre permet de ne garder qu'une catégorie.
+ * chaque ligne porte l'icône de sa famille dans son cadre de laiton — c'est
+ * ce qui rend la liste lisible avant même d'en lire le texte — et un onglet
+ * permet de ne garder qu'une catégorie.
  *
  * Aucune progression n'est calculée ici : elle est écrite par le serveur à
  * la fin de chaque partie arbitrée (`features/matches/matchStore.ts`), et
@@ -48,31 +64,30 @@ function formatRemaining(endsAtIso: string): string {
  */
 export function QuestJournal({ board, voyages, voyagesPending = false, onChanged }: QuestJournalProps) {
   const [busyKey, setBusyKey] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [lastGain, setLastGain] = useState<{ tides: number; xp: number } | null>(null);
+  const [notice, setNotice] = useState<SceneNotice | null>(null);
   const [filter, setFilter] = usePersistedState<QuestCategory | null>("quetes", null, {
-    decode: (raw) => oneOf<QuestCategory | null>([null, ...QUEST_CATEGORIES], raw),
+    decode: (raw) => oneOf<QuestCategory | null>(TAB_FILTERS, raw),
   });
+  const clearNotice = useCallback(() => setNotice(null), []);
 
-  const all = useMemo(() => [...board.daily, ...board.weekly], [board.daily, board.weekly]);
-  const presentCategories = useMemo(() => QUEST_CATEGORIES.filter((category) => all.some((entry) => entry.category === category)), [all]);
-  const visible = (entries: QuestEntry[]) => (filter ? entries.filter((entry) => entry.category === filter) : entries);
+  const visible = useCallback((entries: QuestEntry[]) => (filter ? entries.filter((entry) => entry.category === filter) : entries), [filter]);
+  const empty = useMemo(() => board.daily.length + board.weekly.length === 0, [board.daily, board.weekly]);
 
   function handleClaim(entry: QuestEntry) {
     playButtonClick();
-    setError(null);
-    setLastGain(null);
+    setNotice(null);
     const key = `${entry.questId}|${entry.periodKey}`;
     setBusyKey(key);
 
     void claimQuestReward(entry.questId, entry.periodKey)
       .then((result) => {
         if (!result.ok) {
-          setError(result.error ?? "Réclamation impossible.");
+          setNotice({ tone: "error", text: result.error ?? "Réclamation impossible." });
           return;
         }
         playRewardClaimed();
-        setLastGain({ tides: result.tidesGained ?? 0, xp: result.xpGained ?? 0 });
+        const gains = [result.tidesGained ? `+${result.tidesGained} Tides` : "", result.xpGained ? `+${result.xpGained} XP` : ""].filter(Boolean);
+        if (gains.length > 0) setNotice({ tone: "success", text: gains.join(" · ") });
         notifyProgressionChanged();
         onChanged();
       })
@@ -81,15 +96,14 @@ export function QuestJournal({ board, voyages, voyagesPending = false, onChanged
 
   function handleReroll(entry: QuestEntry) {
     playButtonClick();
-    setError(null);
-    setLastGain(null);
+    setNotice(null);
     const key = `${entry.questId}|${entry.periodKey}`;
     setBusyKey(key);
 
     void rerollQuest(entry.questId, entry.periodKey)
       .then((result) => {
         if (!result.ok) {
-          setError(result.error ?? "Remplacement impossible.");
+          setNotice({ tone: "error", text: result.error ?? "Remplacement impossible." });
           return;
         }
         onChanged();
@@ -97,109 +111,106 @@ export function QuestJournal({ board, voyages, voyagesPending = false, onChanged
       .finally(() => setBusyKey(null));
   }
 
+  // La Traversée en tête : c'est la progression longue, celle qu'on suit
+  // d'une semaine à l'autre. En attendant sa lecture, son squelette tient
+  // sa place — rien ne saute quand elle arrive.
+  const voyage = voyagesPending ? <VoyageSkeleton /> : voyages && <VoyagePanel board={voyages} onNotice={setNotice} onChanged={onChanged} />;
+
   if (board.unavailable) {
     return (
-      <div className={styles.journal}>
-        {voyagesPending ? <VoyageSkeleton /> : voyages && <VoyagePanel board={voyages} onChanged={onChanged} />}
+      <>
+        {voyage}
         <JournalNote title="Journal indisponible pour le moment">Le serveur n&apos;a pas pu charger tes quêtes. Réessaie dans un instant.</JournalNote>
-      </div>
+        <SceneToast notice={notice} onDone={clearNotice} />
+      </>
+    );
+  }
+
+  if (empty) {
+    return (
+      <>
+        {voyage}
+        <JournalNote title="Aucune quête au registre">
+          Le catalogue de quêtes est vide en base. Applique les migrations Supabase, puis lance <code>npm run seed:cards</code>.
+        </JournalNote>
+        <SceneToast notice={notice} onDone={clearNotice} />
+      </>
     );
   }
 
   return (
-    <div className={styles.journal}>
-      {/* La Traversée en tête : c'est la progression longue, celle qu'on
-          suit d'une semaine à l'autre. En attendant sa lecture, son
-          squelette tient sa place — rien ne saute quand elle arrive. */}
-      {voyagesPending ? <VoyageSkeleton /> : voyages && <VoyagePanel board={voyages} onChanged={onChanged} />}
+    <>
+      {voyage}
 
-      {all.length === 0 ? (
-        <JournalNote title="Aucune quête au registre">
-          Le catalogue de quêtes est vide en base. Applique les migrations Supabase, puis lance <code>npm run seed:cards</code>.
-        </JournalNote>
-      ) : (
-        <>
-          <div className={styles.toolbar}>
-            {/* Filtres de catégorie. Seules les familles présentes dans les
-                quêtes du moment sont proposées : un filtre qui ne montre rien
-                n'apprend rien. */}
-            {presentCategories.length > 1 && (
-              <div className={styles.filters} role="group" aria-label="Catégories de quêtes">
-                <button
-                  type="button"
-                  className={styles.filter}
-                  data-active={filter === null || undefined}
-                  aria-pressed={filter === null}
-                  onClick={() => {
-                    playButtonClick();
-                    setFilter(null);
-                  }}
-                >
-                  Toutes
-                </button>
-                {presentCategories.map((category) => (
-                  <button
-                    key={category}
-                    type="button"
-                    className={styles.filter}
-                    data-active={filter === category || undefined}
-                    aria-pressed={filter === category}
-                    title={QUEST_CATEGORY_META[category].description}
-                    onClick={() => {
-                      playButtonClick();
-                      setFilter(filter === category ? null : category);
-                    }}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element -- icône locale, taille fixe */}
-                    <img src={QUEST_CATEGORY_META[category].icon} alt="" aria-hidden className={styles.filterIcon} />
-                    {QUEST_CATEGORY_META[category].label}
-                  </button>
-                ))}
-              </div>
-            )}
+      <div className={styles.tabs} role="group" aria-label="Catégories de quêtes">
+        {TABS.map((tab) => {
+          const active = filter === tab.id;
+          return (
+            <button
+              key={tab.asset}
+              type="button"
+              className={styles.tab}
+              data-active={active || undefined}
+              aria-pressed={active}
+              title={tab.id ? QUEST_CATEGORY_META[tab.id].description : "Toutes les quêtes du moment"}
+              onClick={() => {
+                if (active) return;
+                playButtonClick();
+                setFilter(tab.id);
+              }}
+            >
+              {/* Les deux faces sont posées : passer de l'une à l'autre ne recharge rien. */}
+              {/* eslint-disable-next-line @next/next/no-img-element -- onglet peint */}
+              <img className={styles.tabFace} src={`${QUEST_SCREEN_ASSETS}/onglet-${tab.asset}.webp`} alt="" draggable={false} />
+              {/* eslint-disable-next-line @next/next/no-img-element -- onglet peint */}
+              <img className={styles.tabFaceActive} src={`${QUEST_SCREEN_ASSETS}/onglet-${tab.asset}-actif.webp`} alt="" draggable={false} />
+              <span className={styles.srOnly}>{tab.label}</span>
+            </button>
+          );
+        })}
+      </div>
 
-            {error && <p className={`${game.error} ${styles.toolbarNote}`}>{error}</p>}
-            {lastGain !== null && (lastGain.tides > 0 || lastGain.xp > 0) && (
-              <p className={`${styles.gain} ${styles.toolbarNote}`} role="status">
-                {[lastGain.tides > 0 ? `+${lastGain.tides} Tides` : "", lastGain.xp > 0 ? `+${lastGain.xp} XP` : ""].filter(Boolean).join(" · ")}
-              </p>
-            )}
-          </div>
+      {/* Deux registres côte à côte, cloués sur la planche : le jour et la
+          semaine se lisent ensemble, sans défiler. */}
+      <div className={styles.board}>
+        <QuestSheet
+          sheet="quotidiennes"
+          title="Quotidiennes"
+          subtitle={formatRemaining(board.dailyEndsAt)}
+          note={board.dailyRerollsLeft > 0 ? `${board.dailyRerollsLeft} remplacement gratuit` : undefined}
+          entries={visible(board.daily)}
+          emptyText={filter ? "Aucune quête du jour dans cette catégorie." : "Aucune quête du jour."}
+          busyKey={busyKey}
+          onClaim={handleClaim}
+          onReroll={board.dailyRerollsLeft > 0 ? handleReroll : undefined}
+        />
+        <QuestSheet
+          sheet="hebdomadaires"
+          title="Hebdomadaires"
+          subtitle={formatRemaining(board.weeklyEndsAt)}
+          entries={visible(board.weekly)}
+          emptyText={filter ? "Aucune quête de la semaine dans cette catégorie." : "Aucune quête cette semaine."}
+          busyKey={busyKey}
+          onClaim={handleClaim}
+        />
+      </div>
 
-          {/* Deux registres côte à côte sur un écran large : le jour et la
-              semaine se lisent ensemble, sans défiler. */}
-          <div className={styles.columns}>
-            <QuestSection
-              title="Quotidiennes"
-              subtitle={`${formatRemaining(board.dailyEndsAt)}${board.dailyRerollsLeft > 0 ? ` · ${board.dailyRerollsLeft} remplacement gratuit` : ""}`}
-              entries={visible(board.daily)}
-              emptyText={filter ? "Aucune quête du jour dans cette catégorie." : "Aucune quête du jour."}
-              busyKey={busyKey}
-              onClaim={handleClaim}
-              onReroll={board.dailyRerollsLeft > 0 ? handleReroll : undefined}
-            />
-            <QuestSection
-              title="Hebdomadaires"
-              subtitle={formatRemaining(board.weeklyEndsAt)}
-              entries={visible(board.weekly)}
-              emptyText={filter ? "Aucune quête de la semaine dans cette catégorie." : "Aucune quête cette semaine."}
-              busyKey={busyKey}
-              onClaim={handleClaim}
-            />
-          </div>
-        </>
-      )}
-    </div>
+      <SceneToast notice={notice} onDone={clearNotice} />
+    </>
   );
 }
 
-/** Une note du journal — état vide, indisponible ou erreur — sur parchemin, pas dans un panneau de verre. */
-function JournalNote({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
+/** Une note du journal — état vide, indisponible ou erreur — sur une feuille clouée à la planche. */
+function JournalNote({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
   return (
-    <div className={`${game.cabinParchment} ${styles.note}`}>
-      <p className={`${game.cabinTitle} ${styles.noteTitle}`}>{title}</p>
-      <p className={styles.noteText}>{children}</p>
-      {action}
+    <div className={styles.board} data-single>
+      <section className={styles.sheet} data-sheet="quotidiennes">
+        <div className={styles.note}>
+          <h2 className={styles.sheetTitle}>{title}</h2>
+          <p className={styles.noteText}>{children}</p>
+          {action}
+        </div>
+      </section>
     </div>
   );
 }
@@ -207,94 +218,85 @@ function JournalNote({ title, children, action }: { title: string; children: Rea
 /** Le journal n'a pas pu être lu et rien n'est connu pour le remplacer : on le dit, et on propose de relire. */
 export function QuestJournalError({ onRetry }: { onRetry: () => void }) {
   return (
-    <div className={styles.journal}>
-      <JournalNote
-        title="Le journal de bord n'a pas pu être lu"
-        action={
-          <button
-            type="button"
-            className={`${game.primary} ${styles.noteAction}`}
-            onClick={() => {
-              playButtonClick();
-              onRetry();
-            }}
-          >
-            Réessayer
-          </button>
-        }
-      >
-        La liaison avec le port a été coupée. Vérifie ta connexion, puis réessaie.
-      </JournalNote>
-    </div>
+    <JournalNote
+      title="Le journal de bord n'a pas pu être lu"
+      action={
+        <button
+          type="button"
+          className={styles.noteAction}
+          onClick={() => {
+            playButtonClick();
+            onRetry();
+          }}
+        >
+          Réessayer
+        </button>
+      }
+    >
+      La liaison avec le port a été coupée. Vérifie ta connexion, puis réessaie.
+    </JournalNote>
   );
 }
 
 /**
- * Le journal en attente de sa première lecture : la Traversée, la barre de
- * filtres et deux registres de lignes, DANS LEUR FORME FINALE (mêmes cadres,
- * mêmes hauteurs). Le vrai journal se pose dessus en fondu, sans saut.
+ * Le journal en attente de sa première lecture : la carte, les onglets et
+ * les deux feuilles, DANS LEUR FORME FINALE (mêmes images, mêmes hauteurs de
+ * ligne). Le vrai journal se pose dessus sans que rien ne bouge.
  */
 export function QuestJournalSkeleton() {
   const ghost = styles.ghost;
   return (
-    <div className={styles.journal} aria-busy="true">
+    <>
       <p className={styles.srOnly} role="status">
         Chargement du journal de bord…
       </p>
       <VoyageSkeleton />
-      <div className={styles.toolbar} aria-hidden>
-        <div className={styles.filters}>
-          {["Toutes", "Parties", "Cartes", "Marée"].map((label) => (
-            <span key={label} className={`${styles.filter} ${styles.skeletonChip}`}>
-              <span className={ghost}>{label}</span>
-            </span>
-          ))}
-        </div>
+      <div className={styles.tabs} aria-hidden>
+        {TABS.map((tab) => (
+          <span key={tab.asset} className={styles.tab} data-active={tab.id === null || undefined}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- onglet peint */}
+            <img className={styles.tabFace} src={`${QUEST_SCREEN_ASSETS}/onglet-${tab.asset}.webp`} alt="" draggable={false} />
+            {/* eslint-disable-next-line @next/next/no-img-element -- onglet peint */}
+            <img className={styles.tabFaceActive} src={`${QUEST_SCREEN_ASSETS}/onglet-${tab.asset}-actif.webp`} alt="" draggable={false} />
+          </span>
+        ))}
       </div>
-      <div className={styles.columns} aria-hidden>
-        {[3, 3].map((rows, column) => (
-          <section key={column} className={`${game.cabinFrame} ${styles.section}`}>
-            <header className={styles.sectionHead}>
-              <h2 className={`${game.cabinEyebrow} ${styles.sectionTitle}`}>
-                <span className={ghost}>Quotidiennes</span>
+      <div className={styles.board} aria-hidden>
+        {(["quotidiennes", "hebdomadaires"] as const).map((sheet) => (
+          <section key={sheet} className={styles.sheet} data-sheet={sheet}>
+            <header className={styles.sheetHead}>
+              <h2 className={styles.sheetTitle}>
+                <span className={ghost}>{sheet === "quotidiennes" ? "Quotidiennes" : "Hebdomadaires"}</span>
               </h2>
-              <span className={styles.sectionMeta}>
+              <span className={styles.sheetMeta}>
                 <span className={ghost}>encore 9 h</span>
               </span>
             </header>
-            <hr className={game.cabinRule} />
             <ul className={styles.list}>
-              {Array.from({ length: rows }, (_, index) => (
-                <li key={index} className={styles.item}>
-                  <div className={`${game.cabinPanel} ${styles.row}`}>
-                    <span className={`${styles.categoryMark} ${styles.skeletonMark}`} />
-                    <div className={styles.rowMain}>
-                      <div className={styles.labelLine}>
-                        <span className={styles.label}>
-                          <span className={ghost}>Nom de la quête</span>
-                        </span>
-                      </div>
-                      <span className={styles.objective}>
-                        <span className={ghost}>Objectif de la quête, en toutes lettres</span>
-                      </span>
-                      <div className={styles.progressLine}>
-                        <div className={styles.track} />
-                        <span className={styles.count}>
-                          <span className={ghost}>0 / 3</span>
-                        </span>
-                      </div>
-                    </div>
-                    <div className={styles.side}>
-                      <span className={styles.reward}>
-                        <span className={ghost}>35 Tides</span>
-                      </span>
-                      <span className={styles.rewardXp}>
-                        <span className={ghost}>+150 XP</span>
-                      </span>
-                      <span className={styles.stateOpen}>
-                        <span className={ghost}>En cours</span>
+              {[0, 1, 2].map((index) => (
+                <li key={index} className={styles.row}>
+                  <span className={`${styles.iconFrame} ${styles.skeletonIcon}`} />
+                  <div className={styles.main}>
+                    <p className={styles.nameLine}>
+                      <span className={ghost}>Nom de la quête</span>
+                    </p>
+                    <p className={styles.objective}>
+                      <span className={ghost}>Objectif de la quête, en toutes lettres</span>
+                    </p>
+                    <div className={styles.progressLine}>
+                      <span className={styles.track} />
+                      <span className={styles.count}>
+                        <span className={ghost}>0 / 3</span>
                       </span>
                     </div>
+                  </div>
+                  <div className={styles.reward}>
+                    <span className={styles.rewardMain}>
+                      <span className={ghost}>35 Tides</span>
+                    </span>
+                    <span className={styles.rewardXp}>
+                      <span className={ghost}>+150 XP</span>
+                    </span>
                   </div>
                 </li>
               ))}
@@ -302,15 +304,18 @@ export function QuestJournalSkeleton() {
           </section>
         ))}
       </div>
-    </div>
+    </>
   );
 }
 
-interface QuestSectionProps {
+interface QuestSheetProps {
+  sheet: "quotidiennes" | "hebdomadaires";
   title: string;
   subtitle: string;
+  /** Mention sous l'échéance (remplacement gratuit restant). */
+  note?: string;
   entries: QuestEntry[];
-  /** Ligne montrée quand la période (ou le filtre) ne laisse rien : le registre garde sa place. */
+  /** Ligne montrée quand la période (ou le filtre) ne laisse rien : la feuille garde sa place. */
   emptyText: string;
   /** Clé `questId|periodKey` en cours de réclamation, `"*"` pendant un rafraîchissement. */
   busyKey: string | null;
@@ -320,115 +325,129 @@ interface QuestSectionProps {
 }
 
 /**
- * Un registre (jour ou semaine) : un cadre riveté, une ligne par quête en
- * panneau sombre à filet d'or. Trois états lisibles d'un coup d'œil : en
- * cours (trait cyan), à réclamer (or qui pulse, toute la ligne encaisse),
- * réclamée (éteinte, coche verte).
+ * Un registre (jour ou semaine) : une feuille de parchemin, une ligne par
+ * quête. Trois états lisibles d'un coup d'œil : en cours (jauge cyan), à
+ * encaisser (tampon doré qui pulse, toute la ligne encaisse), réclamée
+ * (tampon rouge « Réclamée »).
  */
-function QuestSection({ title, subtitle, entries, emptyText, busyKey, onClaim, onReroll }: QuestSectionProps) {
+function QuestSheet({ sheet, title, subtitle, note, entries, emptyText, busyKey, onClaim, onReroll }: QuestSheetProps) {
   return (
-    <section className={`${game.cabinFrame} ${styles.section}`} aria-label={title}>
-      <header className={styles.sectionHead}>
-        <h2 className={`${game.cabinEyebrow} ${styles.sectionTitle}`}>{title}</h2>
-        <span className={styles.sectionMeta}>{subtitle}</span>
+    <section className={styles.sheet} data-sheet={sheet} aria-label={title}>
+      <header className={styles.sheetHead}>
+        <h2 className={styles.sheetTitle}>{title}</h2>
+        <span className={styles.sheetMeta}>
+          {subtitle}
+          {note && <span className={styles.sheetNote}>{note}</span>}
+        </span>
       </header>
-      <hr className={game.cabinRule} />
 
       {entries.length === 0 ? (
-        <p className={styles.sectionEmpty}>{emptyText}</p>
+        <p className={styles.sheetEmpty}>{emptyText}</p>
       ) : (
         <ul className={styles.list}>
-          {entries.map((entry) => {
-            const key = `${entry.questId}|${entry.periodKey}`;
-            const busy = busyKey === key || busyKey === "*";
-            const ratio = Math.min(1, entry.progress / entry.target);
-            const claimable = entry.completed && !entry.claimed;
-            const meta = QUEST_CATEGORY_META[entry.category];
-
-            // Terminée : toute la ligne encaisse, comme dans le tiroir. Viser
-            // un bouton pour récupérer ce qu'on a déjà gagné est un obstacle
-            // de plus, pas une sécurité.
-            const Row = claimable ? "button" : "div";
-
-            return (
-              <li key={key} className={styles.item}>
-                <Row
-                  {...(claimable
-                    ? {
-                        type: "button" as const,
-                        onClick: () => onClaim(entry),
-                        disabled: busy,
-                        "aria-label": `${entry.name || entry.label} — terminée, encaisser ${
-                          entry.rewardBoosterId ? "un booster" : `${entry.rewardTides} Tides`
-                        }`,
-                      }
-                    : {})}
-                  className={`${game.cabinPanel} ${styles.row} ${claimable ? styles.rowClaimable : ""} ${entry.claimed ? styles.rowClaimed : ""}`}
-                >
-                  <span className={styles.categoryMark} title={meta.label}>
-                    {/* eslint-disable-next-line @next/next/no-img-element -- icône locale, taille fixe */}
-                    <img src={meta.icon} alt="" aria-hidden draggable={false} className={styles.categoryIcon} />
-                  </span>
-
-                  <div className={styles.rowMain}>
-                    <div className={styles.labelLine}>
-                      <span className={styles.label}>{entry.name || entry.label}</span>
-                      <span className={styles.categoryName}>{meta.label}</span>
-                      {!entry.botProgressAllowed && <span className={styles.flag}>PvP uniquement</span>}
-                      {entry.fromPreviousPeriod && <span className={styles.flag}>Période passée</span>}
-                    </div>
-                    {/* Le nom occupe la ligne du haut : l'objectif chiffré passe
-                        juste en dessous, là où le joueur lit sa progression. */}
-                    <span className={styles.objective}>{entry.label}</span>
-                    <div className={styles.progressLine}>
-                      <div className={styles.track} role="progressbar" aria-valuemin={0} aria-valuemax={entry.target} aria-valuenow={entry.progress} aria-label={entry.label}>
-                        <div className={`${styles.fill} ${entry.completed ? styles.fillDone : ""}`} style={{ width: `${ratio * 100}%` }} />
-                      </div>
-                      <span className={styles.count}>
-                        {Math.min(entry.progress, entry.target)} / {entry.target}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Récompense au-dessus, état en dessous : une colonne
-                      étroite, pour que deux registres tiennent côte à côte. */}
-                  <div className={styles.side}>
-                    <span className={styles.reward}>
-                      {entry.rewardBoosterId ? "1" : entry.rewardTides}
-                      <span className={styles.rewardUnit}>{entry.rewardBoosterId ? "booster" : "Tides"}</span>
-                    </span>
-                    {entry.rewardXp > 0 && <span className={styles.rewardXp}>+{entry.rewardXp} XP</span>}
-                    {entry.claimed ? (
-                      <span className={styles.stateClaimed}>
-                        <svg viewBox="0 0 16 16" width="11" height="11" fill="none" aria-hidden>
-                          <path d="M3.5 8.5l3 3 6-7" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                        Réclamée
-                      </span>
-                    ) : claimable ? (
-                      <span className={styles.claimHint}>{busyKey === key ? "…" : "Encaisser"}</span>
-                    ) : (
-                      <span className={styles.stateOpen}>En cours</span>
-                    )}
-                  </div>
-                </Row>
-
-                {/* Le remplacement reste un BOUTON À PART, hors de la ligne
-                    cliquable : il vit sous elle plutôt que dedans, sinon on ne
-                    pourrait plus l'imbriquer dans un bouton — et surtout un
-                    clic mal placé remplacerait la quête au lieu de l'encaisser.
-                    Réservé aux quêtes du jour non terminées : remplacer une
-                    quête finie reviendrait à rejouer sa récompense. */}
-                {!claimable && !entry.claimed && onReroll && !entry.fromPreviousPeriod && (
-                  <button type="button" className={styles.reroll} onClick={() => onReroll(entry)} disabled={busy} title="Remplacer cette quête par une autre">
-                    Remplacer
-                  </button>
-                )}
-              </li>
-            );
-          })}
+          {entries.map((entry) => (
+            <QuestRow key={`${entry.questId}|${entry.periodKey}`} entry={entry} busyKey={busyKey} onClaim={onClaim} onReroll={onReroll} />
+          ))}
         </ul>
       )}
     </section>
+  );
+}
+
+function QuestRow({ entry, busyKey, onClaim, onReroll }: { entry: QuestEntry; busyKey: string | null; onClaim: (entry: QuestEntry) => void; onReroll?: (entry: QuestEntry) => void }) {
+  const key = `${entry.questId}|${entry.periodKey}`;
+  const busy = busyKey === key || busyKey === "*";
+  const ratio = Math.min(1, entry.progress / entry.target);
+  const claimable = entry.completed && !entry.claimed;
+  const meta = QUEST_CATEGORY_META[entry.category];
+  const name = entry.name || entry.label;
+  // Réservé aux quêtes du jour non terminées : remplacer une quête finie
+  // reviendrait à rejouer sa récompense.
+  const rerollable = !claimable && !entry.claimed && onReroll && !entry.fromPreviousPeriod;
+
+  const body = (
+    <>
+      <span className={styles.iconFrame} title={meta.label}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- icône locale, taille fixe */}
+        <img src={meta.icon} alt="" aria-hidden draggable={false} className={styles.icon} />
+      </span>
+
+      <div className={styles.main}>
+        <p className={styles.nameLine}>
+          <span className={styles.name}>{name}</span>
+          <span className={styles.category}>{meta.label}</span>
+          {!entry.botProgressAllowed && <span className={styles.flag}>PvP uniquement</span>}
+          {entry.fromPreviousPeriod && <span className={styles.flag}>Période passée</span>}
+        </p>
+        {/* Le nom occupe la ligne du haut : l'objectif chiffré passe juste
+            en dessous, là où le joueur lit sa progression. */}
+        <p className={styles.objective}>{entry.label}</p>
+        <div className={styles.progressLine}>
+          <span className={styles.track} role="progressbar" aria-valuemin={0} aria-valuemax={entry.target} aria-valuenow={entry.progress} aria-label={entry.label}>
+            <span className={styles.fill} style={{ width: `${ratio * 100}%` }} />
+          </span>
+          <span className={styles.count}>
+            {Math.min(entry.progress, entry.target)} / {entry.target}
+          </span>
+        </div>
+      </div>
+
+      <div className={styles.reward}>
+        <span className={styles.rewardMain}>
+          <span className={styles.rewardValue}>{entry.rewardBoosterId ? "1" : entry.rewardTides}</span>
+          <span className={styles.rewardUnit}>{entry.rewardBoosterId ? "booster" : "Tides"}</span>
+        </span>
+        {entry.rewardXp > 0 && <span className={styles.rewardXp}>+{entry.rewardXp} XP</span>}
+      </div>
+
+      {entry.claimed && (
+        <span className={styles.stamp} data-stamp="claimed" aria-label="Réclamée">
+          Réclamée
+        </span>
+      )}
+      {claimable && (
+        <span className={styles.stamp} data-stamp="claim">
+          {busyKey === key ? "…" : "Encaisser"}
+        </span>
+      )}
+    </>
+  );
+
+  // Terminée : toute la ligne encaisse. Viser un bouton pour récupérer ce
+  // qu'on a déjà gagné est un obstacle de plus, pas une sécurité.
+  if (claimable) {
+    return (
+      <li className={styles.item}>
+        <button
+          type="button"
+          className={styles.row}
+          data-state="claimable"
+          onClick={() => onClaim(entry)}
+          disabled={busy}
+          aria-label={`${name} — terminée, encaisser ${entry.rewardBoosterId ? "un booster" : `${entry.rewardTides} Tides`}`}
+        >
+          {body}
+        </button>
+      </li>
+    );
+  }
+
+  return (
+    <li className={styles.item}>
+      <div className={styles.row} data-state={entry.claimed ? "claimed" : "open"}>
+        {body}
+      </div>
+      {/* Le remplacement reste un bouton À PART, posé sur la ligne mais hors
+          d'elle : un clic mal placé ne doit jamais remplacer une quête. */}
+      {rerollable && (
+        <button type="button" className={styles.reroll} onClick={() => onReroll(entry)} disabled={busy} title="Remplacer cette quête par une autre (gratuit, une fois par jour)">
+          <svg viewBox="0 0 16 16" width="1em" height="1em" fill="none" aria-hidden>
+            <path d="M13 5.5A5.2 5.2 0 0 0 3.4 4.3M3 10.5a5.2 5.2 0 0 0 9.6 1.2" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" />
+            <path d="M13.4 2.2v3.6H9.8M2.6 13.8v-3.6h3.6" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Remplacer
+        </button>
+      )}
+    </li>
   );
 }

@@ -829,19 +829,21 @@
 }
 
 .tabBadge {
-  min-width: 20px;
-  height: 20px;
-  padding: 0 6px;
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin: -6px 0;
+  padding: 1px 1px 0 0;
   font-family: var(--cb-font-ui);
   font-size: calc(11px * var(--tb-text-scale));
   font-weight: 800;
-  line-height: 18px;
+  line-height: 1;
   text-align: center;
-  border: 1px solid var(--tb-notif-border);
-  border-radius: 999px;
+  border: 0;
   background: var(--tb-notif-bg);
   color: var(--tb-notif-text);
-  box-shadow: var(--tb-notif-glow);
+  filter: var(--tb-notif-filter);
   animation: tbNotifPulse 1.9s ease-in-out infinite;
 }
 

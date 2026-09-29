@@ -40,6 +40,18 @@ const RULES = [
   { match: /\/token\//, maxSize: 768, quality: 85 },
   { match: /\/cards\/(frames|card-back)\//, maxSize: 1200, quality: 90 },
   { match: /\/cards\/icons\//, maxSize: 512, quality: 90 },
+  // Écran QUÊTES (maquette du 29/09/2026) : le pont en fond plein écran, la
+  // carte de la Traversée à ~62 % de la scène, la planche des registres à
+  // ~75 %, chaque feuille à ~36 %, les décors de bord à ~45 % de haut, la
+  // lanterne à ~12 % ; onglets (~9 %) et cadre d'icône (~3 %) sont petits
+  // mais détourés sur alpha, d'où leur qualité haute.
+  { match: /\/quests\/ecran\/fond\./, maxSize: 1920, quality: 80 },
+  { match: /\/quests\/ecran\/(carte-traversee|planche)\./, maxSize: 1800, quality: 86 },
+  { match: /\/quests\/ecran\/feuille-/, maxSize: 1100, quality: 86 },
+  { match: /\/quests\/ecran\/decor-/, maxSize: 1300, quality: 84 },
+  { match: /\/quests\/ecran\/lanterne/, maxSize: 640, quality: 88 },
+  { match: /\/quests\/ecran\/onglet-/, maxSize: 424, quality: 90 },
+  { match: /\/quests\/ecran\/cadre-icone\./, maxSize: 256, quality: 92 },
   // Icônes de catégorie de quête : affichées à ~40 px, jamais plus de 96 px
   // sur un écran à forte densité. Qualité haute, elles ont des bords nets.
   { match: /\/quests\//, maxSize: 256, quality: 92 },

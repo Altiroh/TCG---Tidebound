@@ -111,6 +111,13 @@
   background-position: center, center 40%;
 }
 
+/* Le pont sous les hublots : l'écran Quêtes (`QuestScene`) y pose sa table. */
+.screen.screen[data-backdrop="pont"] {
+  background:
+    radial-gradient(ellipse 80% 72% at 50% 52%, transparent 52%, rgba(0, 0, 0, 0.5) 100%),
+    #1f1109 url("/assets/quests/ecran/fond.webp") center top / cover no-repeat;
+}
+
 /* La cabine du Profil : son voile est allégé, la cabine est déjà sombre. */
 .screen.screen[data-backdrop="cabine"] {
   background-image:

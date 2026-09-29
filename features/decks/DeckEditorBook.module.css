@@ -1727,10 +1727,16 @@
 
 /* Le compte à revendre : la pastille « à réclamer » du jeu. */
 .workspace .surplusButton > span {
-  border: 1px solid var(--tb-notif-border);
+  width: 26px;
+  min-width: 26px;
+  height: 26px;
+  margin: -4px 0;
+  padding: 1px 1px 0 0;
+  border: 0;
+  border-radius: 0;
   background: var(--tb-notif-bg);
-  box-shadow: var(--tb-notif-glow);
   color: var(--tb-notif-text);
+  filter: var(--tb-notif-filter);
 }
 
 /* ══════════════════════════════════════════════════════════════════════

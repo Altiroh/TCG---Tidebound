@@ -1,30 +1,19 @@
 /*
- * QUÊTES — le journal de bord, dans la matière cabine (29/09/2026).
+ * ÉCRAN QUÊTES — la table du pont (maquette du 29/09/2026).
+ * Assets : `public/assets/quests/ecran/` — fond (décor `pont` de la
+ * coquille), carte de la Traversée (`VoyagePanel.module.css`), onglets
+ * peints (normal / actif), planche, deux feuilles de parchemin, cadre
+ * d'icône, lanterne allumée / éteinte, décors des deux bords.
  *
- * Plus de verre bleuté : la Traversée dans le grand cadre riveté, puis deux
- * registres (jour, semaine), chacun dans son cadre, une ligne par quête en
- * panneau sombre à filet d'or (`game.cabinFrame`, `game.cabinPanel`). Les
- * notes (journal vide, indisponible) sont sur parchemin.
- *
- * Trois états de ligne, lisibles au premier coup d'œil : en cours (trait
- * cyan), à réclamer (or qui pulse doucement), réclamée (éteinte, coche
- * verte — l'acquis, charte `features/shell/DESIGN.md`).
+ * Mise en page : les décors et la lanterne sont posés sur la scène (le bas
+ * de l'écran, bandeau exclu), le contenu dans une COLONNE centrée dont la
+ * largeur suit la hauteur disponible — sur un écran 16 / 9, tout tient
+ * sans défiler, aux proportions de la maquette. Toutes les cotes de la
+ * colonne sont en `--u` : un pixel de maquette pour une colonne de
+ * 1250 px (la largeur de la planche). Les textes ont un plancher en px :
+ * sur un petit écran, les feuilles grandissent (découpes en 9) et la
+ * colonne défile, plutôt que de rendre un texte illisible.
  */
-
-/* Le journal entier, tel que l'onglet « Quêtes » du profil le pose. Il
-   entre en fondu : qu'il remplace un squelette ou non, rien ne claque. */
-.journal {
-  display: flex;
-  flex-direction: column;
-  gap: clamp(10px, 1.8dvh, 18px);
-  min-width: 0;
-  animation: journalIn 260ms var(--tb-ease) both;
-}
-
-@keyframes journalIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
 
 .srOnly {
   position: absolute;
@@ -38,501 +27,694 @@
   border: 0;
 }
 
-/* ── Barre de filtres ─────────────────────────────────────────── */
+/* ── La scène ─────────────────────────────────────────────────── */
 
-.toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 8px 16px;
-  min-height: 36px;
+.scene {
+  /* Hauteur de la scène : l'écran moins le bandeau (`GameScreen.module.css`). */
+  --scene-h: calc(100dvh - clamp(54px, 6.8dvh, 72px) - var(--tb-safe-top));
+  --lantern-h: calc(var(--scene-h) * 0.44);
+  --lantern-w: calc(var(--lantern-h) * 640 / 920);
+  --lantern-x: calc(var(--lantern-w) * -0.2 + var(--tb-safe-left));
+  --lantern-y: calc(var(--scene-h) * 0.035);
+  position: relative;
+  z-index: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
-.toolbarNote {
-  margin: 0;
+/* Lanterne soufflée : la pièce s'assombrit, sauf là où il reste un peu de nuit bleue aux hublots. */
+.scene::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  background: radial-gradient(120% 95% at 10% 12%, rgba(0, 0, 0, 0.36), rgba(0, 0, 0, 0.62));
+  opacity: 1;
+  pointer-events: none;
+  transition: opacity 1100ms ease;
 }
 
-.filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+.scene[data-lit]::after {
+  opacity: 0;
+  transition-duration: 500ms;
+}
+
+/* La lumière de la lanterne sur la table : chaude, en haut à gauche, qui vacille. */
+.light {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  background: radial-gradient(
+    calc(var(--lantern-w) * 3.4) calc(var(--lantern-h) * 1.9) at calc(var(--lantern-x) + var(--lantern-w) * 0.5) calc(var(--lantern-y) + var(--lantern-h) * 0.55),
+    rgba(255, 176, 76, 0.3),
+    rgba(255, 140, 40, 0.1) 50%,
+    transparent 80%
+  );
+  mix-blend-mode: screen;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 700ms ease;
+}
+
+.scene[data-lit] .light {
+  opacity: 1;
+  animation: flicker 3.7s infinite;
+}
+
+/* Le kraken, ses pièces et la longue-vue, au bord gauche. */
+.decorLeft {
+  position: absolute;
+  z-index: 1;
+  left: calc(var(--scene-h) * -0.2);
+  top: calc(var(--scene-h) * -0.07);
+  height: calc(var(--scene-h) * 1.1);
+  width: auto;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* La tasse, le tonneau, le couteau et le poisson, au bord droit. */
+.decorRight {
+  position: absolute;
+  z-index: 1;
+  right: calc(var(--scene-h) * -0.015);
+  top: calc(var(--scene-h) * 0.01);
+  height: calc(var(--scene-h) * 0.99);
+  width: auto;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* La lanterne, posée sur le kraken en haut à gauche. */
+.lantern {
+  --lantern-flame-y: 58%;
+  --lantern-smoke-y: 16%;
+  z-index: 3;
+  top: var(--lantern-y);
+  left: var(--lantern-x);
+  width: var(--lantern-w);
+  aspect-ratio: 640 / 920;
+  filter: drop-shadow(calc(var(--lantern-w) * 0.06) calc(var(--lantern-w) * 0.08) calc(var(--lantern-w) * 0.07) rgba(12, 5, 1, 0.6));
+}
+
+/* L'ombre de contact sous son pied, et la flaque de lumière qu'elle jette autour d'elle. */
+.lanternPool {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      calc(var(--lantern-w) * 0.5) calc(var(--lantern-w) * 0.1) at calc(var(--lantern-x) + var(--lantern-w) * 0.55) calc(var(--lantern-y) + var(--lantern-h) * 0.95),
+      rgba(10, 4, 0, 0.7),
+      rgba(10, 4, 0, 0.3) 55%,
+      transparent 100%
+    ),
+    radial-gradient(
+      calc(var(--lantern-w) * 1.6) calc(var(--lantern-w) * 1.2) at calc(var(--lantern-x) + var(--lantern-w) * 0.5) calc(var(--lantern-y) + var(--lantern-h) * 0.62),
+      rgba(255, 170, 70, 0.45),
+      rgba(255, 130, 40, 0.16) 45%,
+      transparent 75%
+    );
+  background-repeat: no-repeat;
+  transition: opacity 700ms ease;
+}
+
+.scene:not([data-lit]) .lanternPool {
+  opacity: 0.5;
+}
+
+.scene[data-lit] .lanternPool {
+  animation: flicker 2.9s infinite;
 }
 
 /*
- * Puce de filtre, matière cabine : une plaquette nuit cerclée de laiton.
- * Sélectionnée, elle s'allume en cyan — c'est une interaction (charte) —
- * sans perdre son cerclage. La même que celle des Exploits.
+ * La zone qui défile, et la colonne qu'elle centre. La zone laisse passer
+ * les clics (la lanterne est dessous, dans la marge) ; la colonne les prend.
  */
-.filter {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  height: 34px;
-  box-sizing: border-box;
-  padding: 0 14px;
-  border: 1px solid var(--book-brass-line);
-  border-radius: var(--tb-radius-pill);
-  background: rgba(5, 12, 20, 0.82);
-  box-shadow: var(--book-shadow-contact);
-  color: var(--book-ivory-dim);
-  font: inherit;
-  font-family: var(--tb-font-display);
-  font-size: calc(12.5px * var(--tb-text-scale));
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  cursor: var(--tb-cursor-pointer);
-  transition: border-color 140ms ease-out, color 140ms ease-out, background-color 140ms ease-out, box-shadow 140ms ease-out;
-}
-
-.filter:hover {
-  border-color: var(--book-brass);
-  color: var(--book-ivory);
-}
-
-.filter:active {
-  transform: translateY(1px);
-}
-
-.filter[data-active] {
-  border-color: var(--tb-accent-line);
-  background: linear-gradient(180deg, rgba(95, 208, 230, 0.2), rgba(5, 12, 20, 0.88));
-  box-shadow: var(--book-shadow-contact), var(--tb-glow-sm);
-  color: var(--book-ivory-strong);
-}
-
-.filter:focus-visible {
-  outline: 2px solid var(--tb-accent);
-  outline-offset: 2px;
-}
-
-/* La puce avec icône resserre son rembourrage gauche pour que l'icône affleure. */
-.filter:has(.filterIcon) {
-  padding-left: 5px;
-}
-
-.filterIcon {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  object-fit: cover;
-  box-shadow: 0 0 0 1px var(--book-brass-line);
-}
-
-.gain {
-  font-family: var(--tb-font-display);
-  font-size: calc(clamp(15px, 1.15vw, 19px) * var(--tb-text-scale));
-  font-weight: 700;
-  color: var(--tb-gold-bright);
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
-}
-
-/* ── Registres ────────────────────────────────────────────────── */
-
-/* Un écran large lit le jour et la semaine côte à côte. */
-.columns {
+.viewport {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 500px), 1fr));
-  align-items: start;
-  gap: clamp(10px, 1.4vw, 18px);
+  justify-items: center;
+  align-content: safe center;
+  padding: clamp(4px, 1dvh, 12px) max(var(--tb-safe-right), 12px) max(var(--tb-safe-bottom), clamp(4px, 1dvh, 12px)) max(var(--tb-safe-left), 12px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(217, 181, 106, 0.45) transparent;
+  container-type: size;
+  pointer-events: none;
 }
 
-/* `section.` : passe devant le rembourrage du cadre commun, quel que soit l'ordre des feuilles. */
-section.section {
+.column {
+  /* Un pixel de maquette ; résolu dans les enfants (la colonne est leur conteneur). */
+  --u: calc(100cqw / 1250);
+  position: relative;
+  width: min(100cqw, 100cqh * 1250 / 862);
+  container-type: inline-size;
+  pointer-events: auto;
+  color: #2b1c10;
+}
+
+/* ── Onglets de catégorie ─────────────────────────────────────── */
+
+/* Pendus sous la carte : ils la chevauchent, comme sur la maquette. */
+.tabs {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  gap: calc(14 * var(--u));
+  margin-top: calc(-76 * var(--u));
+  padding-left: calc(10 * var(--u));
+  animation: dropIn 460ms cubic-bezier(0.2, 0.8, 0.2, 1) 90ms both;
+}
+
+/* Sans carte au-dessus (Traversées indisponibles), rien à chevaucher. */
+.tabs:first-child {
+  margin-top: 0;
+}
+
+.tab {
+  position: relative;
+  display: block;
+  flex: 0 0 auto;
+  width: calc(140 * var(--u));
+  aspect-ratio: 424 / 298;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: var(--tb-cursor-pointer);
+  transform-origin: 50% 8%;
+  transition: transform 180ms ease, filter 180ms ease;
+  filter: drop-shadow(0 calc(5 * var(--u)) calc(6 * var(--u)) rgba(0, 0, 0, 0.55));
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tab img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  transition: opacity 160ms ease;
+}
+
+.tabFaceActive,
+.tab[data-active] .tabFace {
+  opacity: 0;
+}
+
+.tab[data-active] .tabFaceActive {
+  opacity: 1;
+}
+
+/* Survol : la plaque se balance un peu sur son clou. */
+button.tab:not([data-active]):hover {
+  transform: rotate(-2deg) translateY(calc(2 * var(--u)));
+  filter: brightness(1.08) drop-shadow(0 calc(7 * var(--u)) calc(8 * var(--u)) rgba(0, 0, 0, 0.6));
+}
+
+.tab[data-active] {
+  transform: translateY(calc(3 * var(--u)));
+  filter: drop-shadow(0 calc(6 * var(--u)) calc(10 * var(--u)) rgba(120, 20, 10, 0.55));
+}
+
+.tab:focus-visible {
+  outline: 2px solid rgba(255, 200, 120, 0.85);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* ── La planche et ses deux feuilles ──────────────────────────── */
+
+.board {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: calc(22 * var(--u));
+  margin-top: calc(16 * var(--u));
+  padding: calc(20 * var(--u)) calc(10 * var(--u)) calc(30 * var(--u)) calc(10 * var(--u));
+  border: 0 solid transparent;
+  border-image: url("/assets/quests/ecran/planche.webp") 120 150 fill / calc(70 * var(--u)) calc(88 * var(--u)) / 0 stretch;
+  filter: drop-shadow(0 calc(10 * var(--u)) calc(16 * var(--u)) rgba(0, 0, 0, 0.6));
+  animation: riseIn 520ms cubic-bezier(0.2, 0.8, 0.2, 1) 140ms both;
+}
+
+/* Une seule feuille (état vide, erreur) : au milieu de la planche. */
+.board[data-single] {
+  grid-template-columns: minmax(0, 620fr);
+  justify-content: center;
+  margin-top: calc(24 * var(--u));
+}
+
+.sheet {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 10px;
   min-width: 0;
-  /* Un peu plus que le cadre commun : l'échéance, calée à droite, frôlait le coin riveté. */
-  padding-inline: clamp(22px, 2.2vw, 36px);
+  min-height: calc(372 * var(--u));
+  padding: calc(44 * var(--u)) calc(56 * var(--u)) calc(34 * var(--u)) calc(44 * var(--u));
+  border: 0 solid transparent;
+  border-image: url("/assets/quests/ecran/feuille-quotidiennes.webp") 90 90 110 fill / calc(51 * var(--u)) calc(51 * var(--u)) calc(62 * var(--u)) / 0 stretch;
+  filter: drop-shadow(0 calc(4 * var(--u)) calc(6 * var(--u)) rgba(0, 0, 0, 0.45));
 }
 
-.sectionHead {
+.sheet[data-sheet="hebdomadaires"] {
+  border-image-source: url("/assets/quests/ecran/feuille-hebdomadaires.webp");
+}
+
+.sheetHead {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 4px 12px;
-  flex-wrap: wrap;
+  gap: calc(12 * var(--u));
+  padding: 0 calc(2 * var(--u)) calc(6 * var(--u)) calc(12 * var(--u));
+  border-bottom: max(1px, calc(1.5 * var(--u))) solid rgba(74, 48, 22, 0.55);
+  box-shadow: 0 1px 0 rgba(255, 244, 214, 0.35);
 }
 
-.sectionTitle {
+.sheetTitle {
   margin: 0;
-  font-size: calc(clamp(13px, 1vw, 15px) * var(--tb-text-scale));
+  font-family: var(--tb-font-display);
+  font-size: max(14px, calc(21 * var(--u) * var(--tb-text-scale, 1)));
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+  text-transform: uppercase;
+  color: #24160b;
 }
 
-.sectionMeta {
-  color: var(--book-ivory-dim);
-  font-size: var(--tb-fs-caption);
-}
-
-.sectionEmpty {
-  margin: 4px 0;
-  color: var(--book-ivory-dim);
+.sheetMeta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex: 0 0 auto;
   font-family: var(--tb-font-body);
+  font-size: max(10.5px, calc(14 * var(--u) * var(--tb-text-scale, 1)));
+  line-height: 1.15;
+  color: #3a2715;
+}
+
+.sheetNote {
+  font-size: 0.82em;
   font-style: italic;
-  font-size: var(--tb-fs-body);
+  color: #6a5238;
+}
+
+.sheetEmpty {
+  margin: auto 0;
+  padding: calc(20 * var(--u)) calc(16 * var(--u));
+  font-family: var(--tb-font-body);
+  font-size: max(11px, calc(14 * var(--u) * var(--tb-text-scale, 1)));
+  font-style: italic;
+  text-align: center;
+  color: #5a4330;
 }
 
 .list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .item {
-  display: flex;
-  flex-direction: column;
+  position: relative;
 }
 
-/* ── La ligne de quête ────────────────────────────────────────── */
+.item + .item {
+  border-top: max(1px, calc(1.2 * var(--u))) solid rgba(74, 48, 22, 0.32);
+  box-shadow: inset 0 1px 0 rgba(255, 244, 214, 0.3);
+}
+
+/* ── Une quête ────────────────────────────────────────────────── */
 
 .row {
+  position: relative;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: calc(58 * var(--u)) minmax(0, 1fr) calc(104 * var(--u));
   align-items: center;
-  gap: clamp(10px, 1vw, 16px);
+  column-gap: calc(13 * var(--u));
   width: 100%;
-  box-sizing: border-box;
-  min-height: 76px;
+  min-height: calc(88 * var(--u));
+  padding: calc(10 * var(--u)) 0 calc(10 * var(--u)) calc(2 * var(--u));
+  border: 0;
+  background: none;
   font: inherit;
   text-align: left;
+  color: inherit;
 }
 
-/*
- * Quête TERMINÉE, récompense en attente. Elle doit se repérer d'un coup
- * d'œil dans une liste — d'où l'or plutôt que le cyan des lignes en
- * cours — et une pulsation lente qui attire sans clignoter.
- *
- * Toute la ligne est le bouton : ce qu'on a gagné ne se réclame pas en
- * visant une cible de 80 pixels au bout d'une rangée.
- *
- * Le panneau est une image (découpe en 9) : la lueur et la teinte passent
- * par deux calques, `::before` (reflet d'or sous le texte) et `::after`
- * (liseré qui respire).
- */
-.rowClaimable {
+button.row {
   cursor: var(--tb-cursor-pointer);
-  transition: transform 140ms ease-out;
+  border-radius: calc(6 * var(--u));
+  transition: background-color 160ms ease;
 }
 
-.rowClaimable::before,
-.rowClaimable::after {
-  content: "";
-  position: absolute;
-  pointer-events: none;
-  border-radius: 6px;
-}
-
-.rowClaimable::before {
-  inset: 0;
-  z-index: -1;
-  background: linear-gradient(90deg, rgba(226, 194, 122, 0.2), transparent 65%);
-}
-
-.rowClaimable::after {
-  inset: -3px;
-  box-shadow: 0 0 0 1px var(--tb-gold-line), 0 0 18px rgba(226, 194, 122, 0.45);
-  animation: questReady 2.4s ease-in-out infinite;
-}
-
-.rowClaimable:hover:not(:disabled),
-.rowClaimable:focus-visible {
-  transform: translateY(-2px);
+button.row:hover:not(:disabled),
+button.row:focus-visible {
+  background-color: rgba(255, 214, 120, 0.22);
   outline: none;
 }
 
-.rowClaimable:hover:not(:disabled)::after,
-.rowClaimable:focus-visible::after {
-  animation: none;
-  opacity: 1;
-  box-shadow: 0 0 0 2px var(--tb-gold), 0 0 26px rgba(226, 194, 122, 0.6);
+button.row:disabled {
+  cursor: progress;
 }
 
-.rowClaimable:disabled {
-  cursor: var(--tb-cursor);
-  opacity: 0.7;
-}
-
-.rowClaimable:disabled::after {
-  animation: none;
-}
-
-@keyframes questReady {
-  0%,
-  100% { opacity: 0.35; }
-  50% { opacity: 1; }
-}
-
-.rowClaimed {
-  opacity: 0.6;
-}
-
-.rowClaimed .categoryIcon {
-  filter: grayscale(0.6);
-}
-
-.rowMain {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  min-width: 0;
-}
-
-.labelLine {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 2px 10px;
-  min-width: 0;
-}
-
-.label {
-  font-family: var(--tb-font-display);
-  font-size: calc(clamp(13px, 1vw, 15.5px) * var(--tb-text-scale));
-  font-weight: 700;
-  line-height: 1.25;
-  color: var(--book-ivory-strong);
-}
-
-.categoryName {
-  font-size: calc(10px * var(--tb-text-scale));
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--book-brass);
-  opacity: 0.8;
-}
-
-/* PvP uniquement, période passée : une étiquette discrète, pas une alarme. */
-.flag {
-  padding: 0 7px;
-  border: 1px solid var(--book-brass-line);
-  border-radius: var(--tb-radius-pill);
-  font-size: calc(10px * var(--tb-text-scale));
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--book-ivory-dim);
-}
-
-.objective {
-  color: var(--book-ivory-dim);
-  font-size: var(--tb-fs-caption);
-  line-height: 1.3;
-}
-
-.progressLine {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-}
-
-/* Progression : une rainure sombre cerclée de laiton, remplie en cyan (or quand c'est réclamable). */
-.track {
-  height: 6px;
-  border-radius: 3px;
-  background: rgba(0, 0, 0, 0.55);
-  box-shadow: inset 0 0 0 1px rgba(199, 154, 75, 0.28);
-  overflow: hidden;
-}
-
-.fill {
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, var(--tb-accent-deep), var(--tb-accent));
-  transition: width 400ms var(--tb-ease);
-}
-
-.fillDone {
-  background: linear-gradient(90deg, var(--tb-gold-deep), var(--tb-gold-bright));
-}
-
-.count {
-  font-size: calc(clamp(11px, 0.85vw, 13px) * var(--tb-text-scale));
-  color: var(--book-ivory-dim);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-/* Colonne de droite : récompense, XP, état. */
-.side {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 3px;
-  min-width: 6.5em;
-}
-
-.reward {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.3em;
-  font-family: var(--tb-font-display);
-  font-size: calc(clamp(16px, 1.25vw, 20px) * var(--tb-text-scale));
-  font-weight: 700;
-  line-height: 1;
-  color: var(--tb-gold);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
-}
-
-.rewardUnit {
-  font-family: var(--tb-font-ui);
-  font-size: 0.55em;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--tb-gold-deep);
-}
-
-.rewardXp {
-  font-size: calc(10px * var(--tb-text-scale));
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--tb-accent-bright);
-}
-
-.stateOpen,
-.stateClaimed,
-.claimHint {
-  margin-top: 3px;
-  font-size: calc(10.5px * var(--tb-text-scale));
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.stateOpen {
-  color: var(--tb-accent);
-}
-
-.stateClaimed {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--tb-success);
-}
-
-/* Invite de la ligne terminée — une plaquette d'or, pas un bouton : la ligne en est un. */
-.claimHint {
-  padding: 3px 10px;
-  border-radius: var(--tb-radius-pill);
-  background: linear-gradient(180deg, var(--tb-gold-bright), var(--tb-gold) 55%, var(--tb-gold-deep));
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
-  color: var(--tb-on-gold);
-}
-
-/* « Remplacer » : un lien discret sous la ligne, aligné à droite. */
-.reroll {
-  align-self: flex-end;
-  margin: 3px 8px 0 0;
-  padding: 2px 4px;
-  border: 0;
-  background: none;
-  color: var(--book-ivory-dim);
-  font: inherit;
-  font-size: var(--tb-fs-caption);
-  text-decoration: underline;
-  text-decoration-color: var(--book-brass-line);
-  text-underline-offset: 3px;
-  cursor: var(--tb-cursor-pointer);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
-}
-
-.reroll:hover:not(:disabled) {
-  color: var(--book-ivory);
-  text-decoration-color: var(--book-brass);
-}
-
-.reroll:focus-visible {
-  outline: 2px solid var(--tb-accent);
-  outline-offset: 2px;
-}
-
-.reroll:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-/* ── Catégories ───────────────────────────────────────────────────
- * Les cinq familles de quêtes (Cartes, Parties, Decks, Stats, Marée),
- * chacune avec son icône fournie (`public/assets/quests/icon-cat-*.webp`),
- * posée dans une vignette cerclée de laiton : c'est elle qui rend la liste
- * lisible d'un coup d'œil, avant même le texte.
- */
-.categoryMark {
+/* L'icône de catégorie, dans son cadre de laiton sur fond d'encre. */
+.iconFrame {
   position: relative;
-  flex: 0 0 auto;
-  width: clamp(38px, 3.4vw, 48px);
-  height: clamp(38px, 3.4vw, 48px);
-  border: 1px solid var(--book-brass-line);
-  border-radius: 8px;
-  overflow: hidden;
-  background: var(--tb-bg-deep);
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.5), var(--book-shadow-contact);
+  display: grid;
+  place-items: center;
+  width: calc(58 * var(--u));
+  aspect-ratio: 1170 / 1116;
+  border-radius: calc(4 * var(--u));
+  background: radial-gradient(circle at 50% 40%, #2c3a40, #10181c 75%);
+  box-shadow: 0 calc(2 * var(--u)) calc(4 * var(--u)) rgba(0, 0, 0, 0.45);
 }
 
-.categoryIcon {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.iconFrame::after {
+  content: "";
+  position: absolute;
+  inset: calc(-3 * var(--u));
+  background: url("/assets/quests/ecran/cadre-icone.webp") center / 100% 100% no-repeat;
+  pointer-events: none;
+}
+
+.icon {
+  width: 74%;
+  height: 74%;
+  object-fit: contain;
   user-select: none;
 }
 
-/* ── Notes sur parchemin (vide, indisponible) ─────────────────── */
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: calc(3 * var(--u));
+  min-width: 0;
+}
 
-.note {
+.nameLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: calc(9 * var(--u));
+  row-gap: 2px;
+  margin: 0;
+}
+
+.name {
+  font-family: var(--tb-font-display);
+  font-size: max(11px, calc(14 * var(--u) * var(--tb-text-scale, 1)));
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.15;
+  text-transform: uppercase;
+  color: #1f130a;
+}
+
+.category {
+  font-family: var(--tb-font-display);
+  font-size: max(9px, calc(11 * var(--u) * var(--tb-text-scale, 1)));
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6d5741;
+}
+
+.flag {
+  padding: 0 calc(6 * var(--u));
+  border: 1px solid rgba(140, 40, 25, 0.55);
+  border-radius: 999px;
+  font-family: var(--tb-font-display);
+  font-size: max(8.5px, calc(10 * var(--u) * var(--tb-text-scale, 1)));
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #8c2819;
+}
+
+.objective {
+  margin: 0;
+  font-family: var(--tb-font-body);
+  font-size: max(10.5px, calc(13.5 * var(--u) * var(--tb-text-scale, 1)));
+  line-height: 1.25;
+  color: #2f2012;
+}
+
+.progressLine {
+  display: flex;
+  align-items: center;
+  gap: calc(14 * var(--u));
+  margin-top: calc(4 * var(--u));
+}
+
+/* Jauge : un rail d'encre usé, un remplissage cyan comme la maquette. */
+.track {
+  position: relative;
+  flex: 1 1 auto;
+  height: max(5px, calc(10 * var(--u)));
+  overflow: hidden;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #3a3230, #5a514b);
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.6),
+    0 1px 0 rgba(255, 244, 214, 0.4);
+}
+
+.fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, #7fe0ea 0%, #3cb3c3 45%, #238593 100%);
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.25);
+  transition: width 600ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.count {
+  flex: 0 0 auto;
+  min-width: calc(44 * var(--u));
+  font-family: var(--tb-font-body);
+  font-size: max(10.5px, calc(14 * var(--u) * var(--tb-text-scale, 1)));
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: #2f2012;
+}
+
+.reward {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  max-width: 640px;
-  margin: clamp(8px, 3dvh, 32px) auto 0;
-  padding: clamp(20px, 3dvh, 32px) clamp(22px, 3vw, 44px);
+  gap: calc(4 * var(--u));
   text-align: center;
 }
 
-.noteTitle {
-  font-size: calc(clamp(15px, 1.2vw, 19px) * var(--tb-text-scale));
+.rewardMain {
+  display: flex;
+  align-items: baseline;
+  gap: calc(6 * var(--u));
+  white-space: nowrap;
+}
+
+.rewardValue {
+  font-family: var(--tb-font-display);
+  font-size: max(14px, calc(20 * var(--u) * var(--tb-text-scale, 1)));
+  font-weight: 700;
+  line-height: 1;
+  color: #1f130a;
+}
+
+.rewardUnit {
+  font-family: var(--tb-font-display);
+  font-size: max(9.5px, calc(12 * var(--u) * var(--tb-text-scale, 1)));
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #1f130a;
+}
+
+.rewardXp {
+  font-family: var(--tb-font-display);
+  font-size: max(10px, calc(14 * var(--u) * var(--tb-text-scale, 1)));
+  font-weight: 700;
+  color: #2f2012;
+  white-space: nowrap;
+}
+
+/*
+ * Les TAMPONS, posés en travers de la fin de la jauge : rouge « Réclamée »
+ * (encre qui a bu le papier), or « Encaisser » qui pulse tant qu'on n'a
+ * pas touché la ligne.
+ */
+.stamp {
+  position: absolute;
+  right: calc(114 * var(--u));
+  top: 50%;
+  padding: calc(3 * var(--u)) calc(10 * var(--u));
+  border: calc(3 * var(--u)) solid currentColor;
+  border-radius: calc(5 * var(--u));
+  outline: max(1px, calc(1.2 * var(--u))) solid currentColor;
+  outline-offset: calc(-6.5 * var(--u));
+  font-family: var(--tb-font-display);
+  font-size: max(11px, calc(19 * var(--u) * var(--tb-text-scale, 1)));
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  line-height: 1.1;
+  text-transform: uppercase;
+  pointer-events: none;
+  transform: translateY(-58%) rotate(-9deg);
+}
+
+.stamp[data-stamp="claimed"] {
+  color: rgba(178, 32, 24, 0.86);
+  mix-blend-mode: multiply;
+  /* Un encrage irrégulier : le tampon n'a pas tout mordu. */
+  -webkit-mask-image: radial-gradient(140% 120% at 30% 40%, #000 55%, rgba(0, 0, 0, 0.72) 80%, rgba(0, 0, 0, 0.9) 100%);
+  mask-image: radial-gradient(140% 120% at 30% 40%, #000 55%, rgba(0, 0, 0, 0.72) 80%, rgba(0, 0, 0, 0.9) 100%);
+  animation: stampIn 380ms cubic-bezier(0.3, 1.4, 0.5, 1) both;
+}
+
+.stamp[data-stamp="claim"] {
+  color: #9a6512;
+  background: radial-gradient(closest-side, rgba(255, 226, 150, 0.75), rgba(255, 210, 110, 0.35));
+  text-shadow: 0 1px 0 rgba(255, 245, 210, 0.7);
+  animation: claimPulse 1.8s ease-in-out infinite;
+}
+
+button.row:hover .stamp[data-stamp="claim"],
+button.row:focus-visible .stamp[data-stamp="claim"] {
+  color: #7a4c08;
+  background: radial-gradient(closest-side, rgba(255, 232, 160, 0.95), rgba(255, 210, 110, 0.55));
+}
+
+/* Remplacer : un petit mot au crayon, en haut à droite de la ligne. */
+.reroll {
+  position: absolute;
+  right: calc(114 * var(--u));
+  top: calc(8 * var(--u));
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  padding: calc(1 * var(--u)) calc(6 * var(--u));
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  font-family: var(--tb-font-body);
+  font-size: max(9.5px, calc(11.5 * var(--u) * var(--tb-text-scale, 1)));
+  font-style: italic;
+  color: #6a5238;
+  cursor: var(--tb-cursor-pointer);
+  opacity: 0.75;
+  transition: opacity 150ms ease, background-color 150ms ease, color 150ms ease;
+}
+
+.reroll:hover:not(:disabled),
+.reroll:focus-visible {
+  opacity: 1;
+  color: #2f2012;
+  background: rgba(120, 80, 30, 0.14);
+  outline: none;
+}
+
+.reroll:disabled {
+  opacity: 0.35;
+}
+
+/* ── Notes (vide, indisponible, erreur) ───────────────────────── */
+
+.note {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(12 * var(--u));
+  padding: calc(16 * var(--u));
+  text-align: center;
 }
 
 .noteText {
+  max-width: 44ch;
   margin: 0;
-  color: var(--book-ink-2);
   font-family: var(--tb-font-body);
-  font-size: var(--tb-fs-body);
-  line-height: 1.45;
-}
-
-.noteAction {
-  margin-top: 8px;
+  font-size: max(11px, calc(15 * var(--u) * var(--tb-text-scale, 1)));
+  line-height: 1.4;
+  color: #3a2715;
 }
 
 .noteText code {
-  padding: 0 4px;
-  border-radius: 3px;
-  background: rgba(58, 38, 22, 0.1);
   font-size: 0.92em;
 }
 
-/* ── Squelettes ───────────────────────────────────────────────── */
+.noteAction {
+  padding: calc(8 * var(--u)) calc(22 * var(--u));
+  border: calc(2 * var(--u)) solid #6b4a1e;
+  border-radius: calc(6 * var(--u));
+  background: linear-gradient(180deg, #a02a1d, #6f1811);
+  box-shadow: inset 0 1px 0 rgba(255, 200, 160, 0.35), 0 calc(3 * var(--u)) calc(6 * var(--u)) rgba(0, 0, 0, 0.4);
+  font-family: var(--tb-font-display);
+  font-size: max(11px, calc(15 * var(--u) * var(--tb-text-scale, 1)));
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #f6e7c8;
+  cursor: var(--tb-cursor-pointer);
+}
 
-/* Texte de gabarit : il donne au squelette la hauteur exacte du vrai journal, mais ne se lit pas. */
+.noteAction:hover,
+.noteAction:focus-visible {
+  filter: brightness(1.12);
+  outline: none;
+}
+
+/* ── Le billet laissé sur la table ────────────────────────────── */
+
+.toast {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  bottom: calc(40 * var(--u));
+  margin: 0;
+  padding: calc(9 * var(--u)) calc(22 * var(--u));
+  border: 0 solid transparent;
+  border-image: url("/assets/ui/panneaux/panneau-parchemin.webp") 40 fill / 14px / 0 stretch;
+  font-family: var(--tb-font-display);
+  font-size: max(12px, calc(16 * var(--u) * var(--tb-text-scale, 1)));
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  color: #24160b;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.55));
+  transform: translateX(-50%);
+  animation: toastIn 320ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+.toast[data-tone="error"] {
+  color: #8c2819;
+  white-space: normal;
+  max-width: 90%;
+  text-align: center;
+}
+
+/* ── Attente ──────────────────────────────────────────────────── */
+
 .ghost {
   position: relative;
   display: inline-block;
   max-width: 100%;
   overflow: hidden;
   border-radius: 4px;
-  background: rgba(240, 227, 198, 0.08);
+  background: rgba(74, 48, 22, 0.14);
   color: transparent;
   text-shadow: none;
   white-space: nowrap;
@@ -540,97 +722,116 @@ section.section {
 }
 
 .ghost::after,
-.skeletonMark::after {
+.skeletonIcon::before {
   content: "";
   position: absolute;
   inset: 0;
   transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent, rgba(240, 227, 198, 0.12), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 244, 214, 0.45), transparent);
   animation: questShimmer 1.6s ease-in-out infinite;
 }
+
+.skeletonIcon {
+  overflow: hidden;
+}
+
+/* ── Mouvements ───────────────────────────────────────────────── */
 
 @keyframes questShimmer {
   to { transform: translateX(100%); }
 }
 
-.skeletonMark,
-.skeletonChip {
-  position: relative;
-  overflow: hidden;
+@keyframes dropIn {
+  from { opacity: 0; transform: translateY(-14%); }
 }
 
-.skeletonChip {
-  pointer-events: none;
+@keyframes riseIn {
+  from { opacity: 0; transform: translateY(5%); }
+}
+
+@keyframes stampIn {
+  from { opacity: 0; transform: translateY(-58%) rotate(-9deg) scale(1.6); }
+}
+
+@keyframes claimPulse {
+  0%, 100% { box-shadow: 0 0 0 rgba(255, 196, 80, 0); transform: translateY(-58%) rotate(-9deg) scale(1); }
+  50% { box-shadow: 0 0 calc(18 * var(--u)) rgba(255, 196, 80, 0.75); transform: translateY(-58%) rotate(-9deg) scale(1.05); }
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translate(-50%, 30%); }
+}
+
+/* Vacillement irrégulier : des paliers inégaux, jamais un sinus. */
+@keyframes flicker {
+  0% { opacity: 0.86; }
+  7% { opacity: 1; }
+  11% { opacity: 0.78; }
+  19% { opacity: 0.95; }
+  33% { opacity: 0.84; }
+  41% { opacity: 1; }
+  47% { opacity: 0.72; }
+  52% { opacity: 0.93; }
+  68% { opacity: 0.88; }
+  74% { opacity: 1; }
+  88% { opacity: 0.8; }
+  100% { opacity: 0.86; }
+}
+
+/* ── Écrans étroits et courts ─────────────────────────────────── */
+
+/*
+ * Fenêtre étroite (tablette debout, fenêtre réduite) : la colonne prend la
+ * largeur, les décors s'effacent derrière elle et les feuilles passent
+ * l'une sous l'autre ; la colonne défile.
+ */
+@container (max-aspect-ratio: 1.15) {
+  .column {
+    width: 100cqw;
+  }
+
+  .board {
+    grid-template-columns: minmax(0, 1fr);
+    gap: calc(20 * var(--u));
+  }
 }
 
 /*
- * TÉLÉPHONE COUCHÉ — quatre quêtes plutôt que deux.
- *
- * La ligne de quête est dessinée pour une page haute : vignette de 48 px,
- * deux lignes de texte, un trait de progression et son compte. Sur un
- * téléphone couché (390 à 412 px, bandeau déduit), deux lignes remplissaient
- * l'écran — et le journal, c'est justement la LISTE qu'on vient lire.
- *
- * Même seuil que les autres écrans (`app/tokens.css`).
+ * TÉLÉPHONE COUCHÉ (le seuil commun, `landscapePhone.test.ts`) : la hauteur
+ * manque, la colonne prend la largeur utile et défile. Les décors des bords
+ * mangeraient la table : ils s'effacent, la lanterne reste dans son coin,
+ * plus petite.
  */
 @media (max-height: 560px) {
-  .journal {
-    gap: 8px;
+  .scene {
+    --lantern-h: calc(var(--scene-h) * 0.4);
+    --lantern-x: calc(var(--lantern-w) * -0.34 + var(--tb-safe-left));
   }
 
-  .list {
-    gap: 6px;
+  .decorLeft,
+  .decorRight {
+    display: none;
   }
 
-  .row {
-    gap: 10px;
-    min-height: 0;
-  }
-
-  /* Le panneau commun rembourre large : sur six lignes à l'écran, chaque pixel compte. */
-  .list .row {
-    padding: 8px 12px;
-  }
-
-  .rowMain {
-    gap: 3px;
-  }
-
-  .categoryMark {
-    width: 32px;
-    height: 32px;
-  }
-
-  .label {
-    font-size: calc(12.5px * var(--tb-text-scale));
-  }
-
-  .categoryName {
-    font-size: calc(9px * var(--tb-text-scale));
-  }
-
-  section.section {
-    gap: 6px;
-  }
-
-  .filter {
-    height: 30px;
-  }
-
-  .toolbar {
-    min-height: 30px;
+  .column {
+    width: min(100cqw - 2 * var(--lantern-w) * 0.5, 980px);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .journal,
-  .rowClaimable::after,
+  .scene[data-lit] .light,
+  .scene[data-lit] .lanternPool,
+  .tabs,
+  .board,
+  .stamp,
+  .toast,
   .ghost::after,
-  .skeletonMark::after {
+  .skeletonIcon::before {
     animation: none;
   }
 
-  .rowClaimable::after {
-    opacity: 1;
+  .stamp[data-stamp="claim"] {
+    animation: none;
+    transform: translateY(-58%) rotate(-9deg);
   }
 }

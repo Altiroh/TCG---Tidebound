@@ -84,14 +84,13 @@
 
 .notif {
   position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 12px;
-  height: 12px;
-  border: 1px solid var(--tb-notif-border);
-  border-radius: 50%;
+  top: 2px;
+  right: 2px;
+  width: 22px;
+  height: 22px;
+  border: 0;
   background: var(--tb-notif-bg);
-  box-shadow: var(--tb-notif-glow);
+  filter: var(--tb-notif-filter);
   animation: tbNotifPulse 1.9s ease-in-out infinite;
 }
 

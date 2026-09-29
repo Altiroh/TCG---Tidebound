@@ -17,9 +17,11 @@ import styles from "@/features/shell/GameScreen.module.css";
  *   - `livre`  : la table au livre de bord (Collection, Decks, Éditeur) ;
  *   - `carte`  : la table à la carte marine (Collectables, Boosters) ;
  *   - `market` : l'échoppe du Market ;
- *   - `cabine` : la cabine du Profil.
+ *   - `cabine` : la cabine du Profil ;
+ *   - `table`  : la table de bois de l'écran Jouer ;
+ *   - `pont`   : le pont sous les hublots (onglet Quêtes du Profil).
  */
-export type ScreenBackdrop = "port" | "livre" | "carte" | "market" | "cabine" | "table";
+export type ScreenBackdrop = "port" | "livre" | "carte" | "market" | "cabine" | "table" | "pont";
 
 const BACKDROP_OF_SECTION: Partial<Record<ScreenSection, ScreenBackdrop>> = {
   collection: "livre",

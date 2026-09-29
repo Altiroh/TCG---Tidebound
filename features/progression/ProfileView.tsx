@@ -29,6 +29,7 @@ import {
 import type { QuestBoard, QuestEntry } from "@/features/quests/actions";
 import type { VoyageBoard } from "@/features/quests/voyageActions";
 import { QuestJournal, QuestJournalError, QuestJournalSkeleton } from "@/features/quests/QuestJournal";
+import { QuestScene } from "@/features/quests/QuestScene";
 import { forgetQuestBoards, preloadVoyageBoard, questBoardCache, voyageBoardCache } from "@/features/quests/questBoardCache";
 import { questPeriodEndsAt } from "@/game/quests";
 import { IllustrationPicker } from "@/features/progression/IllustrationPicker";
@@ -323,6 +324,17 @@ export function ProfileView({
         </>
       );
     }
+    // Quêtes : la table du pont, qui tient sa propre scène (décors, lanterne, défilement).
+    if (!picking && tab === "quetes") {
+      return (
+        <>
+          <QuestScene>
+            <QuestsTab profile={profile} onRefresh={onRefresh} />
+          </QuestScene>
+          {revealLayer}
+        </>
+      );
+    }
     // Un choix (illustration, titre) s'ouvre à la place de la scène ; le fermer y ramène.
     if (picking || tab !== "carnet") {
       // Exploits : la vitrine prend toute la place et ne fait défiler que sa liste.
@@ -331,7 +343,6 @@ export function ProfileView({
           {claimError && <p className={`${game.error} ${sceneStyles.claimError}`}>{claimError}</p>}
           <div className={sceneStyles.tabPanel} role="tabpanel">
             {picker === "title" && <TitlePicker titles={profile.titles} onClose={() => setPicker(null)} onChanged={onRefresh} />}
-            {!picking && tab === "quetes" && <QuestsTab profile={profile} onRefresh={onRefresh} />}
             {!picking && tab === "recompenses" && (
               <LevelRewardsTab
                 profile={profile}

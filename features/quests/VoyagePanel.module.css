@@ -1,328 +1,323 @@
 /*
- * TRAVERSÉE — la route des cinq escales, en tête de l'onglet Quêtes.
- *
- * Matière cabine (29/09/2026) : le grand cadre riveté (`game.cabinFrame`)
- * porte la route, les escales sont des MÉDAILLONS DE LAITON — les mêmes que
- * le badge de niveau de la route des paliers (onglet Récompenses).
- *
- * Trois états d'escale, lisibles sans lire : faite (médaillon de laiton
- * plein), en cours (disque nuit cerclé d'un anneau cyan qui se remplit), à
- * venir (disque éteint, cerclage terne). Le fil qui les relie passe du
- * pointillé au laiton plein jusqu'à l'escale en cours.
+ * TRAVERSÉES — la carte marine en tête de l'écran Quêtes (maquette du
+ * 29/09/2026, `quests/ecran/carte-traversee.webp`). Route, bouées et plaque
+ * sont PEINTES : tout ce qui s'y pose est en % de l'image, les textes en
+ * `--u` de la colonne (`Quests.module.css`).
  */
 
-/* `section.` : passe devant le rembourrage du cadre commun, quel que soit l'ordre des feuilles. */
-section.panel {
-  display: flex;
-  flex-direction: column;
-  gap: clamp(10px, 1.8dvh, 18px);
-  /* Le texte calé à gauche (consigne du pied) frôlait le cadre riveté. */
-  padding-inline: clamp(22px, 2.2vw, 36px);
-  animation: voyageIn 260ms var(--tb-ease) both;
+.map {
+  position: relative;
+  z-index: 1;
+  width: calc(1040 * var(--u));
+  margin-left: calc(150 * var(--u));
+  aspect-ratio: 1938 / 736;
+  background: url("/assets/quests/ecran/carte-traversee.webp") center / 100% 100% no-repeat;
+  filter: drop-shadow(0 calc(10 * var(--u)) calc(14 * var(--u)) rgba(0, 0, 0, 0.6));
+  color: #24160b;
+  animation: mapIn 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
-@keyframes voyageIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+/* Traversée verrouillée : la carte pâlit, comme prise dans la brume. */
+.map[data-status="locked"] {
+  filter: grayscale(0.55) brightness(0.82) drop-shadow(0 calc(10 * var(--u)) calc(14 * var(--u)) rgba(0, 0, 0, 0.6));
 }
 
-.head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px 20px;
-  flex-wrap: wrap;
+.map[data-status="locked"] .route {
+  opacity: 0.55;
 }
 
 .titleBlock {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 0;
+  position: absolute;
+  left: 12.2%;
+  top: 11.5%;
+  width: 50%;
 }
 
 .eyebrow {
-  margin: 0;
-}
-
-.title {
-  font-size: calc(clamp(19px, 1.7vw, 26px) * var(--tb-text-scale));
-}
-
-.tagline {
-  margin: 0;
-  color: var(--book-ivory-dim);
-  font-family: var(--tb-font-body);
-  font-size: calc(13px * var(--tb-text-scale));
-  font-style: italic;
-}
-
-/* ---------- Choix de la Traversée : trois médaillons numérotés ---------- */
-
-.voyageTabs {
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(6 * var(--u)) calc(14 * var(--u));
+  margin: 0;
+  font-family: var(--tb-font-display);
+  font-size: max(10px, calc(17 * var(--u) * var(--tb-text-scale, 1)));
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.1;
+  text-transform: uppercase;
+  color: #2b1c10;
+}
+
+/* Le choix de la Traversée : trois sceaux d'encre, à côté du palier. */
+.voyageTabs {
+  display: inline-flex;
+  gap: calc(5 * var(--u));
 }
 
 .voyageTab {
   position: relative;
-  display: grid;
+  display: inline-grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
-  border: 2px solid var(--book-brass-line);
-  border-radius: 50%;
-  background: radial-gradient(circle at 50% 35%, var(--tb-surface-solid-raised), var(--tb-bg-deep));
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.55), var(--book-shadow-contact);
-  color: var(--book-ivory-dim);
+  min-width: max(20px, calc(28 * var(--u)));
+  height: max(20px, calc(24 * var(--u)));
+  padding: 0 calc(6 * var(--u));
+  border: max(1px, calc(1.5 * var(--u))) solid rgba(43, 28, 16, 0.55);
+  border-radius: 999px;
+  background: rgba(255, 244, 214, 0.35);
   font-family: var(--tb-font-display);
-  font-size: calc(14px * var(--tb-text-scale));
+  font-size: max(9px, calc(12 * var(--u) * var(--tb-text-scale, 1)));
   font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #3a2715;
   cursor: var(--tb-cursor-pointer);
-  transition: border-color 140ms ease-out, color 140ms ease-out, box-shadow 140ms ease-out, transform 140ms ease-out;
+  transition: background-color 150ms ease, color 150ms ease;
 }
 
-.voyageTab:hover {
-  border-color: var(--book-brass);
-  color: var(--book-ivory);
+.voyageTab:hover,
+.voyageTab:focus-visible {
+  background: rgba(255, 244, 214, 0.7);
+  outline: none;
 }
 
-.voyageTab[data-status="done"] {
-  border-color: var(--book-brass);
-  color: var(--book-brass);
-}
-
-.voyageTab[data-status="current"] {
-  color: var(--book-ivory-strong);
+.voyageTab[aria-selected="true"] {
+  border-color: #7a1d14;
+  background: #8e2418;
+  color: #f6e7c8;
 }
 
 .voyageTab[data-status="locked"] {
   opacity: 0.55;
 }
 
-/* Celle qu'on regarde : l'interaction est cyan (charte), le cerclage reste de laiton. */
-.voyageTab[data-selected] {
-  border-color: var(--book-brass);
-  color: var(--book-ivory-strong);
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.55), 0 0 0 4px var(--tb-accent-line), var(--tb-glow-sm);
-}
-
-/* Un palier attend dans cette Traversée : une pastille le dit, même quand on en regarde une autre. */
+/* Un palier attend dans cette Traversée : la pastille « à réclamer » du jeu. */
 .voyageTab[data-claimable]::after {
   content: "";
   position: absolute;
-  top: -3px;
-  right: -3px;
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
+  top: calc(-9 * var(--u));
+  right: calc(-9 * var(--u));
+  width: max(12px, calc(16 * var(--u)));
+  height: max(12px, calc(16 * var(--u)));
   background: var(--tb-notif-bg);
-  box-shadow: var(--tb-notif-glow);
+  filter: var(--tb-notif-filter);
   animation: tbNotifPulse 1.9s ease-in-out infinite;
 }
 
-.voyageTab:focus-visible {
-  outline: 2px solid var(--tb-accent);
-  outline-offset: 3px;
+.title {
+  margin: calc(4 * var(--u)) 0 0;
+  font-family: var(--tb-font-display);
+  font-size: max(18px, calc(37 * var(--u) * var(--tb-text-scale, 1)));
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.05;
+  text-transform: uppercase;
+  color: #1f130a;
 }
 
-/* ---------- La route ---------- */
+.tagline {
+  margin: calc(4 * var(--u)) 0 0;
+  font-family: var(--tb-font-body);
+  font-size: max(10px, calc(13.5 * var(--u) * var(--tb-text-scale, 1)));
+  font-style: italic;
+  line-height: 1.2;
+  color: #2f2012;
+}
+
+/* L'escale racontée (survolée, touchée, sinon celle du moment). */
+.stepLine {
+  display: inline-block;
+  margin: calc(5 * var(--u)) 0 0 calc(-6 * var(--u));
+  padding: calc(2 * var(--u)) calc(8 * var(--u));
+  max-width: 88%;
+  border-radius: calc(4 * var(--u));
+  background: rgba(238, 218, 176, 0.88);
+  box-shadow: 0 0 calc(6 * var(--u)) rgba(238, 218, 176, 0.9);
+  font-family: var(--tb-font-body);
+  font-size: max(9.5px, calc(12 * var(--u) * var(--tb-text-scale, 1)));
+  line-height: 1.25;
+  color: #4a3420;
+}
+
+.stepName {
+  font-weight: 700;
+  color: #2b1c10;
+}
+
+/* ── La route et ses escales ──────────────────────────────────── */
 
 .route {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 8px;
+  position: absolute;
+  inset: 0;
   margin: 0;
   padding: 0;
   list-style: none;
+  pointer-events: none;
 }
 
 .stop {
-  --buoy: 50px;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
-  text-align: center;
-}
-
-/* Le fil jusqu'à l'escale suivante, tiré du bord du médaillon. */
-.stop:not(:last-child)::after {
-  content: "";
   position: absolute;
-  top: calc(var(--buoy) / 2 - 1px);
-  left: calc(50% + var(--buoy) / 2 + 6px);
-  right: calc(-50% + var(--buoy) / 2 + 6px - 8px);
-  border-top: 2px dashed var(--book-brass-line);
-  opacity: 0.6;
+  left: var(--x);
+  top: var(--y);
+  transform: translate(-50%, -50%);
 }
 
-.stop[data-state="done"]:not(:last-child)::after {
-  border-top-style: solid;
-  border-top-color: var(--book-brass);
-  opacity: 0.85;
-}
-
-/*
- * Le médaillon : un anneau (dégradé conique, rempli à `--ratio`) autour
- * d'un disque nuit cerclé de laiton. L'anneau n'a de couleur que pour
- * l'escale en cours.
- */
+/* Une escale à venir : un chiffre ivoire dans la bouée peinte. */
 .buoy {
   display: grid;
   place-items: center;
-  width: var(--buoy);
-  height: var(--buoy);
-  padding: 3px;
-  box-sizing: border-box;
+  width: calc(50 * var(--u));
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
   border-radius: 50%;
-  background: conic-gradient(var(--ring, transparent) calc(var(--ratio, 0) * 360deg), rgba(0, 0, 0, 0.45) 0);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
-}
-
-.buoyNumber {
-  display: grid;
-  place-items: center;
-  width: 100%;
-  height: 100%;
-  box-sizing: border-box;
-  border: 2px solid var(--book-brass-line);
-  border-radius: 50%;
-  background: radial-gradient(circle at 50% 35%, var(--tb-surface-solid-raised), var(--tb-bg-deep));
-  color: var(--book-ivory-dim);
+  background: transparent;
   font-family: var(--tb-font-display);
-  font-size: calc(16px * var(--tb-text-scale));
+  font-size: max(11px, calc(22 * var(--u) * var(--tb-text-scale, 1)));
   font-weight: 700;
   line-height: 1;
+  color: #efe6d2;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  pointer-events: auto;
+  cursor: var(--tb-cursor-pointer);
+  transition: transform 160ms ease, box-shadow 160ms ease;
 }
 
-.stop[data-state="current"] .buoy {
-  --ring: var(--tb-accent);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6), var(--tb-glow-md);
-  animation: buoyBob 2.8s ease-in-out infinite;
+.buoy:hover,
+.buoy:focus-visible,
+.buoy[data-shown]:not([data-state="current"]):not([data-state="claimable"]) {
+  box-shadow: 0 0 0 max(1px, calc(2 * var(--u))) rgba(255, 214, 140, 0.8), 0 0 calc(12 * var(--u)) rgba(255, 200, 110, 0.6);
+  outline: none;
 }
 
-.stop[data-state="current"] .buoyNumber {
-  border-color: var(--book-brass);
-  color: var(--book-ivory-strong);
+/* Faite : le chiffre passe à l'or. Réclamée : l'or s'assourdit. */
+.buoy[data-state="done"] {
+  color: #f3cf74;
 }
 
-/* Escale faite : le médaillon est de laiton plein, le chiffre à l'encre. */
-.stop[data-state="done"] .buoyNumber {
-  border-color: var(--book-brass);
-  background: radial-gradient(circle at 50% 30%, var(--tb-gold-bright), var(--tb-gold) 45%, var(--tb-gold-deep));
-  color: var(--tb-on-gold);
-  text-shadow: 0 1px 0 rgba(255, 240, 200, 0.4);
+.buoy[data-state="claimed"] {
+  color: #c9a45a;
 }
 
-/* Palier atteint, pas encore encaissé : le médaillon respire en or. */
-.stop[data-claimable] .buoy {
-  animation: buoyReady 2.2s ease-in-out infinite;
+/* En cours ou à réclamer : le médaillon d'or de la maquette. */
+.buoy[data-state="current"],
+.buoy[data-state="claimable"] {
+  width: calc(66 * var(--u));
+  border: calc(4 * var(--u)) solid #6a4513;
+  background: radial-gradient(circle at 38% 32%, #fff5d2 0%, #f4dc9b 32%, #d9ab4f 68%, #9c6a22 100%);
+  box-shadow:
+    inset 0 0 0 calc(2.5 * var(--u)) #f6dc92,
+    inset 0 calc(-4 * var(--u)) calc(6 * var(--u)) rgba(110, 60, 10, 0.45),
+    0 0 calc(16 * var(--u)) rgba(255, 196, 90, 0.55),
+    0 calc(3 * var(--u)) calc(5 * var(--u)) rgba(0, 0, 0, 0.55);
+  font-size: max(14px, calc(34 * var(--u) * var(--tb-text-scale, 1)));
+  color: #24160b;
+  text-shadow: 0 1px 0 rgba(255, 245, 210, 0.7);
 }
 
-.stop[data-claimable] .stopReward {
-  color: var(--tb-gold-bright);
+.buoy[data-state="claimable"] {
+  animation: buoyPulse 1.8s ease-in-out infinite;
 }
 
-/* Palier déjà encaissé : le laiton reste, un peu éteint. */
-.stop[data-claimed] .buoyNumber {
-  filter: saturate(0.7) brightness(0.82);
+/* ── La plaque clouée à droite ────────────────────────────────── */
+
+.plaque {
+  position: absolute;
+  left: 73.4%;
+  top: 17.5%;
+  width: 15.2%;
+  height: 25.5%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: calc(6 * var(--u));
+  padding: 0;
+  border: 0;
+  border-radius: calc(4 * var(--u));
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  transform: rotate(6.5deg);
+  transform-origin: 0 0;
 }
 
-@keyframes buoyReady {
-  0%,
-  100% {
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6), 0 0 0 2px var(--tb-gold-soft), 0 0 10px var(--tb-gold-line);
-  }
-  50% {
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6), 0 0 0 4px var(--tb-gold-soft), 0 0 24px var(--tb-gold);
-  }
+button.plaque {
+  cursor: var(--tb-cursor-pointer);
+  animation: plaqueGlow 1.9s ease-in-out infinite;
 }
 
-@keyframes buoyBob {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-3px);
-  }
+button.plaque:hover:not(:disabled),
+button.plaque:focus-visible {
+  background: rgba(255, 220, 140, 0.35);
+  outline: none;
 }
 
-.stopName {
-  margin-top: 2px;
-  color: var(--book-ivory);
-  font-family: var(--tb-font-display);
-  font-size: calc(13px * var(--tb-text-scale));
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-.stop[data-state="upcoming"] .stopName {
-  color: var(--book-ivory-dim);
-}
-
-.stopLabel {
-  color: var(--book-ivory-dim);
-  font-size: calc(11.5px * var(--tb-text-scale));
-  line-height: 1.3;
-}
-
-.stopCount {
-  color: var(--tb-accent-bright);
-  font-size: calc(12px * var(--tb-text-scale));
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-}
-
-.stopReward {
-  color: var(--tb-gold);
-  font-size: calc(11px * var(--tb-text-scale));
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
-.stop[data-claimed] .stopReward {
-  color: var(--tb-success);
-  font-weight: 500;
-}
-
-.foot {
+.plaqueLine {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px 16px;
-  flex-wrap: wrap;
-  min-height: 38px;
+  gap: calc(10 * var(--u));
+  font-family: var(--tb-font-display);
+  font-size: max(11px, calc(21 * var(--u) * var(--tb-text-scale, 1)));
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: #1f130a;
 }
 
-.foot p {
-  margin: 0;
+.plaqueIcon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: calc(34 * var(--u));
+  aspect-ratio: 1;
 }
 
-.hint {
-  color: var(--book-ivory-dim);
-  font-size: var(--tb-fs-caption);
+.plaqueIcon img,
+.plaqueIcon svg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.5));
 }
 
-/* ---------- Squelette : le même cadre, des traits à la place des mots ---------- */
-
-section.skeleton {
-  animation: none;
+.plaqueState {
+  font-family: var(--tb-font-body);
+  font-size: max(9.5px, calc(12 * var(--u) * var(--tb-text-scale, 1)));
+  font-style: italic;
+  color: #5a4330;
 }
 
-/* Texte de gabarit : il donne sa hauteur au squelette, mais ne se lit pas. */
+/* « Réclamer » : un tampon rouge sur la plaque. */
+.plaqueClaim {
+  align-self: flex-start;
+  margin-left: calc(44 * var(--u));
+  padding: calc(2 * var(--u)) calc(9 * var(--u));
+  border: calc(2.5 * var(--u)) solid currentColor;
+  border-radius: calc(4 * var(--u));
+  font-family: var(--tb-font-display);
+  font-size: max(10px, calc(14 * var(--u) * var(--tb-text-scale, 1)));
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(170, 32, 22, 0.92);
+  transform: rotate(-6deg);
+}
+
+/* ── Attente ──────────────────────────────────────────────────── */
+
+.skeleton .titleBlock {
+  opacity: 0.9;
+}
+
 .ghost {
   position: relative;
   display: inline-block;
   max-width: 100%;
   overflow: hidden;
   border-radius: 4px;
-  background: rgba(240, 227, 198, 0.08);
+  background: rgba(74, 48, 22, 0.14);
   color: transparent;
-  text-shadow: none;
   white-space: nowrap;
   vertical-align: top;
 }
@@ -332,68 +327,33 @@ section.skeleton {
   position: absolute;
   inset: 0;
   transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent, rgba(240, 227, 198, 0.12), transparent);
-  animation: voyageShimmer 1.6s ease-in-out infinite;
+  background: linear-gradient(90deg, transparent, rgba(255, 244, 214, 0.45), transparent);
+  animation: shimmer 1.6s ease-in-out infinite;
 }
 
-@keyframes voyageShimmer {
+@keyframes shimmer {
   to { transform: translateX(100%); }
 }
 
-.skeleton .buoyNumber {
-  color: transparent;
+@keyframes mapIn {
+  from { opacity: 0; transform: translateY(-4%); }
 }
 
-/*
- * TÉLÉPHONE EN PAYSAGE : la route reste sur une ligne (le paysage est
- * imposé, la largeur ne manque pas), mais le libellé d'objectif s'efface
- * au profit du nom et de la jauge — sauf pour l'escale en cours, qui garde
- * le sien.
- */
-@media (max-height: 560px) {
-  section.panel {
-    gap: 8px;
-  }
+@keyframes buoyPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); box-shadow: inset 0 0 0 calc(2.5 * var(--u)) #f6dc92, 0 0 calc(28 * var(--u)) rgba(255, 196, 90, 0.95), 0 calc(3 * var(--u)) calc(5 * var(--u)) rgba(0, 0, 0, 0.55); }
+}
 
-  .tagline {
-    display: none;
-  }
-
-  .stop {
-    --buoy: 38px;
-  }
-
-  .buoyNumber {
-    font-size: calc(13px * var(--tb-text-scale));
-  }
-
-  .stopName {
-    font-size: calc(11.5px * var(--tb-text-scale));
-  }
-
-  .stopLabel {
-    display: none;
-  }
-
-  /* Sauf pour l'escale en cours : c'est elle qu'on est venu lire. */
-  .stop[data-state="current"] .stopLabel {
-    display: block;
-  }
-
-  .voyageTab {
-    width: 32px;
-    height: 32px;
-  }
-
-  .foot {
-    min-height: 0;
-  }
+@keyframes plaqueGlow {
+  0%, 100% { box-shadow: 0 0 0 rgba(255, 196, 80, 0); }
+  50% { box-shadow: 0 0 calc(22 * var(--u)) rgba(255, 196, 80, 0.8); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  section.panel,
-  .stop[data-state="current"] .buoy,
-  .stop[data-claimable] .buoy,
+  .map,
+  .buoy[data-state="claimable"],
+  button.plaque,
+  .voyageTab[data-claimable]::after,
   .ghost::after {
     animation: none;
   }
