@@ -8,7 +8,10 @@ function newTestGame(seed = 42) {
   return createGameState({
     gameId: "test-game",
     player1: { id: "p1", deck: DECK_LE_GRAND_BANC },
-    player2: { id: "p2", deck: DECK_LE_THEATRE_ENGLOUTI },
+    // Coque désignée ici, pas héritée du préconstruit : ce test vérifie que
+    // le Navire du DECK est lu, et un préconstruit peut changer de coque
+    // (Le Théâtre Englouti est passé du Courlis à La Religieuse le 29/09/2026).
+    player2: { id: "p2", deck: { ...DECK_LE_THEATRE_ENGLOUTI, shipId: "le-courlis" } },
     seed,
   });
 }

@@ -194,11 +194,24 @@ export const DECK_LA_VEILLEE: DeckList = {
  * Corde de Rappel (Lot 14) est la carte que la page appelle de ses vœux :
  * une Marionnette ciblée par une attaque rentre en main, et son arrivée
  * repart. Chaîne de Travers tient le tempo pendant que le moteur se monte.
+ *
+ * LISTE ET NAVIRE REVUS LE 29/09/2026. Quatorze cartes rappelaient, deux
+ * arrivées seulement valaient d'être rejouées, et les pièces de soutien du
+ * rappel faisaient perdre au labo (Coulisses Δ −9, Théâtre Englouti −6).
+ * Sortent les rappels morts (Corde de Rappel, Le Rideau se Lève, Rappel du
+ * Public), deux Coulisses, Le Théâtre Englouti et un Changement de rôle ;
+ * entrent les Marionnettes abyssales (Arlecchino, Prima Noyée, Régisseur
+ * des Profondeurs), la Trappe du Souffleur et trois Matelots du Sans-Nom
+ * pour tenir la ligne. Le Courlis cède la place à La Religieuse : ses 4
+ * Slots étouffaient un deck de permanents. Mesuré au labo (bot moyen, 60
+ * parties par paire contre le rayon) : 31 % → 49 %, 35 cartes Marionnette
+ * sur 40, arrivées rejouées 0,07 → 0,43 par partie. Une liste plus chargée
+ * en corps montait à 61–69 % : écartée. Aucun texte changé.
  */
 export const DECK_LE_THEATRE_ENGLOUTI: DeckList = {
   id: "le-theatre-englouti-deck",
   name: "Le Théâtre Englouti",
-  shipId: "le-courlis",
+  shipId: "la-religieuse",
   description:
     "Tempo : les cartes reviennent sans cesse en main pour être rejouées, et chaque retour vaut une arrivée de plus.",
   cardIds: [
@@ -212,16 +225,18 @@ export const DECK_LE_THEATRE_ENGLOUTI: DeckList = {
     ...repeat("il-dottore-des-noyes", 2),
     ...repeat("il-capitano-naufrage", 2),
     ...repeat("le-regisseur-sans-visage", 1),
+    // Les têtes d'affiche abyssales.
+    ...repeat("arlecchino-celui-derriere-le-masque-abyssal", 1),
+    ...repeat("la-prima-noyee-abyssal", 1),
+    ...repeat("le-regisseur-des-profondeurs-abyssal", 1),
     // Les rappels eux-mêmes.
     ...repeat("le-masque-fendu", 3),
     ...repeat("la-clochette-du-rappel", 3),
-    ...repeat("changement-de-role", 2),
-    ...repeat("rappel-du-public", 2),
-    ...repeat("les-coulisses-inondees", 2),
-    ...repeat("le-theatre-englouti", 1),
-    ...repeat("le-rideau-se-leve", 1),
-    // Lot 14 : un rappel de plus, et du temps pour le monter.
-    ...repeat("corde-de-rappel", 2),
+    ...repeat("trappe-du-souffleur", 2),
+    ...repeat("les-coulisses-inondees", 1),
+    ...repeat("changement-de-role", 1),
+    // Tenir la ligne pendant que le moteur se monte.
+    ...repeat("matelot-du-sans-nom", 3),
     ...repeat("chaine-de-travers", 2),
   ],
 };
