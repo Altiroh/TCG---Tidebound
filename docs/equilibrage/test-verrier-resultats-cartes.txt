@@ -1,0 +1,418 @@
+
+# Labo — 1680 parties, bot moyen, 16 par paire, 152 s
+
+## Classement
+
+| Deck | WR | 1er | durée | dégâts/partie (combat·effet·navire·tour) | soin | unités+invoc | Raison laissée | dette | inactif≥2 T1-4 | main sans ≤2 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| À bout de Raison [drain concentré] +cartes | **74.1%** | 84.8% | 4.5 | 15.5·0.9·0.1·1.8 | 0.0 | 7.1+0.0 | 0.4 | 2.3 | 0.9% | 5.8% |
+| La Forteresse [F1 murs sans soins] | **73.7%** | 77.7% | 6.4 | 15.4·0.0·0.0·3.1 | 0.2 | 5.9+0.0 | 0.4 | 2.2 | 0.4% | 27.2% |
+| Cavalerie [peu mais lourdes] | **65.6%** | 74.1% | 4.7 | 16.3·0.0·0.6·1.5 | 1.0 | 5.3+0.0 | 0.1 | 3.3 | 0.4% | 13.4% |
+| Arsenal de Pont [Bris payant] | **57.6%** | 52.7% | 6.4 | 11.3·0.0·2.7·2.9 | 1.6 | 5.0+0.0 | 0.9 | 1.3 | 0.0% | 0.0% |
+| Chasse au Gros [blessures bon marché] +cartes | **55.4%** | 63.4% | 5.0 | 13.4·0.0·0.5·1.9 | 0.0 | 5.4+0.0 | 0.0 | 2.7 | 0.0% | 5.4% |
+| Le Théâtre Englouti [TH2 Errant rappels payants] +cartes | **53.6%** | 67.9% | 4.9 | 12.8·0.0·0.1·2.5 | 0.6 | 7.5+0.0 | 0.2 | 2.0 | 0.0% | 5.4% |
+| Descente aux Abysses [descendre et rester] +cartes | **49.1%** | 53.6% | 5.1 | 13.1·0.0·0.1·2.3 | 0.0 | 7.2+0.0 | 0.3 | 1.6 | 0.0% | 27.7% |
+| Chevaliers du Grand Étang [CH1 Seau au lieu de Tournoi/Fourchette] | **46.4%** | 54.5% | 4.7 | 12.7·0.0·0.0·2.1 | 0.3 | 6.2+2.2 | 0.7 | 1.3 | 2.7% | 0.0% |
+| Le Grand Banc [GB1 Pied marin sans Bavard] | **43.3%** | 44.6% | 5.2 | 12.6·0.0·0.0·2.1 | 0.0 | 6.4+3.9 | 0.7 | 1.6 | 1.3% | 0.0% |
+| Après la Tempête [balai qui rapporte] | **42.9%** | 45.5% | 5.4 | 14.0·0.0·0.1·0.2 | 0.5 | 5.2+0.0 | 0.4 | 2.9 | 0.0% | 37.5% |
+| Sentinelles Chromatiques [SC1 Courlis 4 Slots] | **42.4%** | 52.7% | 5.5 | 13.8·0.0·0.1·0.3 | 0.0 | 4.7+2.6 | 2.6 | 1.5 | 17.9% | 6.3% |
+| Équipage de Verre [Verre tendu] | **39.7%** | 49.1% | 4.7 | 11.9·0.0·1.2·1.5 | 0.0 | 5.9+0.0 | 0.1 | 2.4 | 0.9% | 0.0% |
+| Épavistes [recyclage] +cartes | **33.9%** | 41.1% | 5.5 | 9.0·0.3·0.8·2.2 | 3.1 | 5.7+0.0 | 0.2 | 1.5 | 0.0% | 0.0% |
+| La Veillée [circuit fermé] +cartes | **33.0%** | 37.5% | 5.1 | 9.0·1.0·0.0·1.8 | 4.8 | 6.8+0.0 | 0.1 | 2.5 | 0.4% | 0.0% |
+| Mineurs de Fond [pièges qui tirent] +cartes | **33.0%** | 42.9% | 6.6 | 8.1·0.7·0.0·3.3 | 1.0 | 5.7+0.0 | 0.5 | 1.3 | 0.0% | 5.4% |
+
+## Matrice (ligne contre colonne)
+
+| | À bout de  | La Fortere | Cavalerie  | Arsenal de | Chasse au  | Le Théâtre | Descente a | Chevaliers | Le Grand B | Après la T | Sentinelle | Équipage d | Épavistes  | La Veillée | Mineurs de |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| À bout de Raison [ | · | 38 | 69 | 63 | 75 | 63 | 81 | 56 | 69 | 75 | 81 | 88 | 81 | 100 | 100 |
+| La Forteresse [F1  | 63 | · | 56 | 81 | 75 | 63 | 63 | 75 | 75 | 81 | 88 | 81 | 69 | 94 | 69 |
+| Cavalerie [peu mai | 31 | 44 | · | 38 | 63 | 69 | 63 | 69 | 75 | 88 | 88 | 75 | 75 | 69 | 75 |
+| Arsenal de Pont [B | 31 | 19 | 63 | · | 50 | 56 | 63 | 63 | 81 | 69 | 44 | 75 | 75 | 75 | 44 |
+| Chasse au Gros [bl | 19 | 25 | 38 | 50 | · | 69 | 44 | 75 | 63 | 50 | 69 | 63 | 69 | 88 | 56 |
+| Le Théâtre Englout | 31 | 38 | 31 | 44 | 31 | · | 56 | 69 | 44 | 69 | 75 | 63 | 63 | 63 | 75 |
+| Descente aux Abyss | 19 | 38 | 38 | 38 | 56 | 44 | · | 56 | 50 | 38 | 63 | 69 | 63 | 50 | 69 |
+| Chevaliers du Gran | 44 | 25 | 31 | 38 | 25 | 31 | 44 | · | 63 | 50 | 56 | 50 | 69 | 69 | 56 |
+| Le Grand Banc [GB1 | 25 | 25 | 25 | 19 | 31 | 56 | 50 | 38 | · | 44 | 25 | 50 | 69 | 81 | 69 |
+| Après la Tempête [ | 25 | 19 | 13 | 19 | 50 | 31 | 63 | 50 | 56 | · | 38 | 44 | 75 | 56 | 63 |
+| Sentinelles Chroma | 19 | 13 | 13 | 56 | 31 | 25 | 38 | 44 | 75 | 63 | · | 38 | 63 | 50 | 69 |
+| Équipage de Verre  | 6 | 19 | 25 | 25 | 38 | 31 | 31 | 50 | 50 | 56 | 63 | · | 50 | 50 | 63 |
+| Épavistes [recycla | 13 | 31 | 25 | 25 | 25 | 38 | 38 | 31 | 31 | 25 | 38 | 50 | · | 50 | 56 |
+| La Veillée [circui | 0 | 6 | 31 | 19 | 6 | 38 | 50 | 31 | 19 | 44 | 50 | 50 | 50 | · | 69 |
+| Mineurs de Fond [p | 0 | 31 | 25 | 56 | 44 | 25 | 31 | 44 | 31 | 38 | 31 | 38 | 38 | 31 | · |
+
+### À bout de Raison [drain concentré] +cartes — 74.1% (lerrant) · 1-2:13 3-4:25 5:2 6+:0 · unités 34, structure 4, anomalie 2
+Meilleurs : La Veillée [circuit fermé] +cartes 100.0%, Mineurs de Fond [pièges qui tirent] +cartes 100.0%, Équipage de Verre [Verre tendu] 87.5% · Pires : Le Théâtre Englouti [TH2 Errant rappels payants] +cartes 62.5%, Chevaliers du Grand Étang [CH1 Seau au lieu de Tournoi/Fourchette] 56.3%, La Forteresse [F1 murs sans soins] 37.5%
+Coup final (victoires) : combat 74.1%, tour 15.7%, effet 0.6% · soi-même 0.0 · Déraison subie 10.4 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Crabe de Fer (3) | 3 | 0.6 | 0.5 | 86.5% | 97.1% | 0.6 | 7 | 79 | 70 | 8 |
+| Chose des Hauts-Fonds (4) | 3 | 0.8 | 0.8 | 94.5% | 93.3% | 2.5 | 7 | 77 | 70 | 7 |
+| Marin aux Yeux Rouges (2) | 3 | 1.1 | 0.9 | 79.9% | 73.1% | 2.3 | 24 | 75 | 71 | 5 |
+| Murène Aveugle (2) | 3 | 0.9 | 0.7 | 76.0% | 86.9% | 1.0 | 6 | 75 | 73 | 2 |
+| Baleine aux Cicatrices Blanches (5) | 2 | 0.6 | 0.5 | 82.0% | 100.0% | 1.8 | 18 | 73 | 76 | -3 |
+| Matelot Insomniaque (2) | 3 | 0.9 | 0.8 | 94.4% | 82.8% | 2.5 | 11 | 72 | 77 | -5 |
+| Vieux Loup de Mer (3) | 2 | 0.6 | 0.3 | 55.6% | 91.4% | 0.5 | 5 | 71 | 76 | -5 |
+| Matelot du Sans-Nom (3) | 3 | 0.4 | 0.4 | 82.0% | 79.2% | 0.8 | 9 | 71 | 77 | -6 |
+| Capitaine Sans Sommeil (4) | 2 | 0.6 | 0.5 | 80.5% | 97.5% | 0.8 | 9 | 71 | 78 | -7 |
+| Marin aux Yeux Rouges (3) | 3 | 0.8 | 0.8 | 92.5% | 86.4% | 2.0 | 16 | 70 | 79 | -8 |
+| Requin Balafré (3) | 2 | 0.4 | 0.3 | 78.4% | 97.8% | 0.4 | 3 | 69 | 78 | -9 |
+| Si, Raie Ponce (4) | 3 | 0.5 | 0.4 | 80.2% | 97.8% | 0.7 | 5 | 69 | 79 | -10 |
+| Par-dessus Bord ! (3) | 2 | 0.6 | 0.5 | 87.9% | 100.0% | 0.0 | 0 | 68 | 80 | -11 |
+| Chaîne de Travers (2) | 2 | 0.2 | 0.0 | 15.7% | 86.2% | 0.0 | 0 | 65 | 77 | -12 |
+| Le Rôle d'Équipage (2) | 2 | 0.5 | 0.2 | 34.5% | 95.3% | 0.0 | 0 | 65 | 80 | -15 |
+| Capitaine du Dernier Retour (4) | 2 | 0.7 | 0.4 | 53.0% | 95.5% | 0.4 | 4 | 68 | 83 | -15 |
+
+### La Forteresse [F1 murs sans soins] — 73.7% (le-brise-lames) · 1-2:8 3-4:26 5:3 6+:3 · unités 21, structure 15, objet 4
+Meilleurs : La Veillée [circuit fermé] +cartes 93.8%, Sentinelles Chromatiques [SC1 Courlis 4 Slots] 87.5%, Équipage de Verre [Verre tendu] 81.3% · Pires : Descente aux Abysses [descendre et rester] +cartes 62.5%, À bout de Raison [drain concentré] +cartes 62.5%, Cavalerie [peu mais lourdes] 56.3%
+Coup final (victoires) : combat 72.1%, tour 16.4% · soi-même 0.8 · Déraison subie 14.9 · main pauvre (≤1 carte ≤3) 8.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Baleine aux Cicatrices Blanches (5) | 3 | 1.1 | 1.0 | 96.2% | 100.0% | 5.3 | 45 | 80 | 59 | 21 |
+| Le Dernier Rempart (6) | 2 | 0.5 | 0.5 | 95.9% | 100.0% | 1.8 | 15 | 84 | 63 | 21 |
+| Chose des Hauts-Fonds (4) | 3 | 0.9 | 0.8 | 97.4% | 95.8% | 3.0 | 19 | 80 | 66 | 14 |
+| L'Amiral sans Pavillon (7) | 1 | 0.0 | 0.0 | 100.0% | 100.0% | 0.1 | 1 | 82 | 73 | 9 |
+| Cormoran de Fer (3) | 3 | 0.9 | 0.8 | 95.5% | 100.0% | 1.7 | 5 | 76 | 69 | 7 |
+| Carape Hus (3) | 3 | 1.1 | 1.0 | 92.8% | 97.8% | 2.0 | 21 | 75 | 70 | 5 |
+| Harpon à Ressort (4) | 2 | 0.5 | 0.3 | 64.2% | 96.5% | 0.0 | 0 | 76 | 72 | 5 |
+| Cale Inondable (3) | 2 | 0.5 | 0.3 | 57.3% | 98.1% | 0.0 | 0 | 73 | 74 | -1 |
+| Cylindre flottant (2) | 2 | 0.7 | 0.4 | 63.9% | 96.8% | 0.0 | 0 | 72 | 75 | -3 |
+| Crabe de Fer (3) | 3 | 1.1 | 1.1 | 96.8% | 97.5% | 1.4 | 12 | 72 | 77 | -5 |
+| Barge de Réparation (3) | 2 | 0.5 | 0.3 | 55.5% | 97.9% | 0.0 | 0 | 70 | 77 | -7 |
+| Signal de Détresse (4) | 2 | 0.5 | 0.3 | 62.3% | 99.5% | 0.0 | 0 | 70 | 77 | -7 |
+| Cage de Flottaison (3) | 2 | 0.6 | 0.5 | 76.6% | 98.4% | 0.0 | 0 | 69 | 80 | -11 |
+| Dernière Barricade (3) | 2 | 0.5 | 0.2 | 47.1% | 99.3% | 0.0 | 0 | 67 | 78 | -11 |
+| Mouette du Brise-Lames (2) | 3 | 0.6 | 0.6 | 96.2% | 68.8% | 0.3 | 1 | 67 | 81 | -14 |
+| Carcasse Renversée (3) | 2 | 0.6 | 0.4 | 74.2% | 99.0% | 0.0 | 0 | 63 | 84 | -21 |
+| Brise-Vague de Fortune (2) | 3 | 1.1 | 0.9 | 84.0% | 96.7% | 0.0 | 0 | 66 | 89 | -23 |
+
+### Cavalerie [peu mais lourdes] — 65.6% (le-goliath) · 1-2:11 3-4:22 5:3 6+:4 · unités 26, equipement 3, objet 11
+Meilleurs : Sentinelles Chromatiques [SC1 Courlis 4 Slots] 87.5%, Après la Tempête [balai qui rapporte] 87.5%, Équipage de Verre [Verre tendu] 75.0% · Pires : La Forteresse [F1 murs sans soins] 43.8%, Arsenal de Pont [Bris payant] 37.5%, À bout de Raison [drain concentré] +cartes 31.3%
+Coup final (victoires) : combat 78.9%, tour 12.9%, navire 2.7% · soi-même 1.3 · Déraison subie 15.9 · main pauvre (≤1 carte ≤3) 17.9%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Harpon à Ressort (4) | 2 | 0.6 | 0.3 | 41.1% | 99.5% | 0.0 | 0 | 78 | 52 | 27 |
+| Bête de Percée (4) | 2 | 0.5 | 0.4 | 70.1% | 100.0% | 1.0 | 13 | 75 | 56 | 19 |
+| Le Dernier Rempart (6) | 1 | 0.4 | 0.3 | 84.3% | 100.0% | 1.0 | 10 | 77 | 59 | 18 |
+| La Bête qu'on n'attend plus (6) | 2 | 0.5 | 0.4 | 78.1% | 100.0% | 1.8 | 12 | 76 | 59 | 18 |
+| Destrier du Ressac (3) | 2 | 0.5 | 0.4 | 87.6% | 98.9% | 1.3 | 10 | 74 | 59 | 15 |
+| Réparations d'Urgence (4) | 1 | 0.3 | 0.2 | 65.3% | 100.0% | 0.0 | 0 | 75 | 61 | 14 |
+| L'Amiral sans Pavillon (7) | 1 | 0.3 | 0.2 | 78.9% | 100.0% | 1.1 | 6 | 72 | 63 | 8 |
+| Débusquer (2) | 2 | 0.3 | 0.2 | 67.1% | 98.9% | 0.0 | 0 | 71 | 63 | 8 |
+| Vieux Harponneur (5) | 1 | 0.2 | 0.2 | 88.4% | 100.0% | 0.6 | 6 | 67 | 65 | 2 |
+| Éclaireur à Cornes (3) | 3 | 0.5 | 0.5 | 90.6% | 100.0% | 1.3 | 9 | 65 | 66 | -1 |
+| Monture de Brèche (2) | 3 | 0.9 | 0.8 | 83.4% | 98.9% | 1.3 | 12 | 65 | 67 | -2 |
+| Bête de Halage (2) | 3 | 0.6 | 0.5 | 91.3% | 96.6% | 1.4 | 14 | 65 | 66 | -2 |
+| Chargeur des Écueils (4) | 3 | 0.6 | 0.5 | 90.0% | 100.0% | 2.7 | 11 | 64 | 67 | -3 |
+| Un Peu de Répit (3) | 2 | 0.4 | 0.1 | 22.3% | 99.6% | 0.0 | 0 | 64 | 67 | -3 |
+| Mange-Fer (5) | 1 | 0.4 | 0.3 | 76.8% | 100.0% | 0.8 | 2 | 63 | 67 | -3 |
+| Vieille-Selle (5) | 1 | 0.4 | 0.2 | 46.2% | 100.0% | 0.5 | 3 | 62 | 68 | -6 |
+| Selle de Guerre (2) | 3 | 0.9 | 0.7 | 70.8% | 99.6% | 0.0 | 0 | 62 | 75 | -12 |
+| Mufle au Fanion (4) | 3 | 0.8 | 0.7 | 82.5% | 100.0% | 1.5 | 8 | 61 | 74 | -14 |
+| Coup de Harpon (4) | 2 | 0.4 | 0.3 | 91.6% | 100.0% | 0.0 | 0 | 53 | 72 | -19 |
+| Pas un Pas de Plus (3) | 2 | 0.3 | 0.3 | 96.0% | 100.0% | 0.0 | 0 | 51 | 72 | -21 |
+
+### Arsenal de Pont [Bris payant] — 57.6% (la-verriere) · 1-2:18 3-4:22 5:0 6+:0 · unités 16, objet 24
+Meilleurs : Le Grand Banc [GB1 Pied marin sans Bavard] 81.3%, Équipage de Verre [Verre tendu] 75.0%, La Veillée [circuit fermé] +cartes 75.0% · Pires : Mineurs de Fond [pièges qui tirent] +cartes 43.8%, À bout de Raison [drain concentré] +cartes 31.3%, La Forteresse [F1 murs sans soins] 18.8%
+Coup final (victoires) : navire 17.8%, combat 58.9%, tour 11.6% · soi-même 2.9 · Déraison subie 8.4 · main pauvre (≤1 carte ≤3) 0.9%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Cra-Poiscail Médecin (3) | 1 | 0.3 | 0.3 | 89.4% | 95.2% | 0.5 | 5 | 68 | 53 | 14 |
+| Chose des Hauts-Fonds (4) | 3 | 1.1 | 1.1 | 96.3% | 96.5% | 3.1 | 18 | 61 | 48 | 12 |
+| Il Capitano Naufragé (4) | 2 | 0.6 | 0.6 | 96.4% | 96.8% | 2.7 | 17 | 62 | 52 | 10 |
+| Cormoran de Fer (3) | 3 | 0.9 | 0.9 | 95.6% | 90.7% | 2.0 | 10 | 61 | 51 | 10 |
+| Journal de Bord Détrempé (2) | 2 | 0.8 | 0.8 | 97.4% | 100.0% | 0.0 | 0 | 59 | 53 | 6 |
+| Contre-Harpon (4) | 2 | 0.5 | 0.3 | 54.5% | 92.8% | 0.0 | 0 | 60 | 56 | 5 |
+| Cra-Poiscail Médecin (2) | 2 | 0.7 | 0.5 | 77.4% | 96.2% | 0.5 | 4 | 60 | 55 | 4 |
+| Coup de Harpon (4) | 3 | 1.0 | 0.9 | 90.4% | 100.0% | 0.0 | 0 | 58 | 56 | 3 |
+| Choppe ! (1) | 2 | 0.8 | 0.6 | 79.2% | 80.0% | 0.0 | 0 | 58 | 57 | 1 |
+| Lettre Jamais Ouverte (1) | 3 | 1.2 | 0.9 | 73.1% | 99.2% | 0.0 | 0 | 58 | 57 | 1 |
+| Corde de Rappel (4) | 1 | 0.4 | 0.2 | 46.6% | 94.5% | 0.0 | 0 | 58 | 57 | 1 |
+| Pantalone Sans-Sou (3) | 3 | 1.3 | 1.1 | 88.6% | 97.2% | 1.9 | 17 | 57 | 60 | -4 |
+| Thermos du Dernier Quart (2) | 2 | 0.9 | 0.9 | 97.1% | 72.7% | 0.0 | 0 | 56 | 61 | -4 |
+| Rations du Matin Gris (2) | 2 | 0.6 | 0.4 | 70.5% | 96.6% | 0.0 | 0 | 54 | 61 | -7 |
+| Bouclier d'Écume (4) | 1 | 0.4 | 0.3 | 68.5% | 95.8% | 0.0 | 0 | 53 | 61 | -7 |
+| Harpon à Ressort (4) | 2 | 0.7 | 0.4 | 66.4% | 88.1% | 0.0 | 0 | 54 | 62 | -8 |
+| Marin des Jetées (1) | 2 | 0.7 | 0.6 | 87.2% | 35.7% | 0.5 | 5 | 53 | 63 | -10 |
+| Signal de Détresse (4) | 1 | 0.4 | 0.3 | 78.0% | 87.0% | 0.0 | 0 | 48 | 65 | -17 |
+| Éclat de Bouteille (1) | 3 | 1.5 | 1.1 | 76.8% | 98.2% | 0.0 | 0 | 56 | 75 | -19 |
+
+### Chasse au Gros [blessures bon marché] +cartes — 55.4% (le-goliath) · 1-2:12 3-4:22 5:5 6+:1 · unités 25, objet 12, anomalie 3
+Meilleurs : La Veillée [circuit fermé] +cartes 87.5%, Chevaliers du Grand Étang [CH1 Seau au lieu de Tournoi/Fourchette] 75.0%, Sentinelles Chromatiques [SC1 Courlis 4 Slots] 68.8% · Pires : Cavalerie [peu mais lourdes] 37.5%, La Forteresse [F1 murs sans soins] 25.0%, À bout de Raison [drain concentré] +cartes 18.8%
+Coup final (victoires) : tour 12.1%, combat 76.6%, navire 1.6% · soi-même 1.1 · Déraison subie 14.4 · main pauvre (≤1 carte ≤3) 2.7%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| L'Amiral sans Pavillon (7) | 1 | 0.2 | 0.2 | 100.0% | 100.0% | 1.5 | 7 | 79 | 50 | 29 |
+| Canonnier Fêlé (3) | 3 | 0.6 | 0.5 | 96.1% | 98.9% | 1.8 | 9 | 70 | 43 | 27 |
+| Qu'on en Finisse (5) | 1 | 0.2 | 0.0 | 20.9% | 100.0% | 0.0 | 0 | 72 | 51 | 21 |
+| Harpon à Ressort (4) | 2 | 0.4 | 0.1 | 36.3% | 99.6% | 0.0 | 0 | 67 | 49 | 18 |
+| Ce Qui Suit le Navire (4) | 3 | 1.0 | 0.6 | 59.6% | 99.8% | 1.6 | 21 | 59 | 45 | 14 |
+| Guetteur Méfiant (2) | 3 | 0.9 | 0.7 | 80.5% | 99.3% | 1.1 | 9 | 60 | 47 | 13 |
+| Trinquer Trop Fort (2) | 2 | 0.5 | 0.3 | 54.5% | 99.1% | 0.0 | 0 | 59 | 52 | 7 |
+| Coup de Harpon (4) | 3 | 0.6 | 0.5 | 78.9% | 100.0% | 0.0 | 0 | 57 | 54 | 3 |
+| Crabe de Fer (3) | 3 | 0.9 | 0.8 | 94.8% | 100.0% | 0.9 | 7 | 56 | 54 | 1 |
+| Éclat de Bouteille (1) | 3 | 0.9 | 0.8 | 90.0% | 99.5% | 0.0 | 0 | 55 | 56 | -1 |
+| Chose des Hauts-Fonds (4) | 2 | 0.6 | 0.6 | 99.2% | 100.0% | 1.8 | 10 | 54 | 57 | -3 |
+| Par-dessus Bord ! (3) | 2 | 0.5 | 0.4 | 86.1% | 100.0% | 0.0 | 0 | 53 | 57 | -4 |
+| Poisson aux Dents de Verre (2) | 2 | 0.4 | 0.4 | 87.9% | 81.8% | 0.6 | 4 | 52 | 57 | -5 |
+| Encore Debout ? (2) | 2 | 0.6 | 0.5 | 72.0% | 100.0% | 0.0 | 0 | 53 | 59 | -6 |
+| Vieux Harponneur (5) | 2 | 0.7 | 0.6 | 86.2% | 100.0% | 1.3 | 7 | 51 | 61 | -10 |
+| Baleine aux Cicatrices Blanches (5) | 2 | 0.6 | 0.5 | 77.9% | 100.0% | 1.6 | 11 | 48 | 63 | -15 |
+| Dépeceur des Quais (3) | 2 | 0.3 | 0.3 | 89.1% | 100.0% | 0.5 | 6 | 41 | 61 | -20 |
+| Matelot du Sans-Nom (3) | 2 | 0.4 | 0.3 | 82.7% | 100.0% | 0.6 | 4 | 42 | 63 | -21 |
+
+### Le Théâtre Englouti [TH2 Errant rappels payants] +cartes — 53.6% (lerrant) · 1-2:17 3-4:20 5:2 6+:1 · unités 28, objet 8, structure 4
+Meilleurs : Sentinelles Chromatiques [SC1 Courlis 4 Slots] 75.0%, Mineurs de Fond [pièges qui tirent] +cartes 75.0%, Chevaliers du Grand Étang [CH1 Seau au lieu de Tournoi/Fourchette] 68.8% · Pires : Chasse au Gros [blessures bon marché] +cartes 31.3%, Cavalerie [peu mais lourdes] 31.3%, À bout de Raison [drain concentré] +cartes 31.3%
+Coup final (victoires) : combat 79.2%, tour 14.2% · soi-même 0.0 · Déraison subie 9.3 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Le Régisseur des Profondeurs (7) | 1 | 0.2 | 0.2 | 84.8% | 100.0% | 1.0 | 9 | 77 | 48 | 29 |
+| Matelot du Sans-Nom (3) | 3 | 1.0 | 0.9 | 93.7% | 98.3% | 2.0 | 7 | 61 | 40 | 21 |
+| Il Dottore des Noyés (4) | 2 | 0.7 | 0.6 | 86.7% | 100.0% | 1.0 | 12 | 61 | 44 | 17 |
+| Pulcinella Gonflé (2) | 3 | 1.4 | 1.2 | 86.3% | 91.4% | 1.4 | 10 | 58 | 43 | 15 |
+| La Clochette du Rappel (3) | 3 | 0.7 | 0.3 | 46.8% | 99.2% | 0.0 | 0 | 59 | 48 | 10 |
+| Il Capitano Naufragé (4) | 2 | 0.8 | 0.8 | 98.3% | 100.0% | 1.8 | 7 | 56 | 50 | 6 |
+| Les Coulisses Inondées (2) | 3 | 0.9 | 0.5 | 53.3% | 97.1% | 0.0 | 0 | 56 | 51 | 5 |
+| Arlequin Raccommodeur (2) | 3 | 0.7 | 0.6 | 88.2% | 90.9% | 0.8 | 10 | 55 | 52 | 3 |
+| Le Régisseur Sans Visage (5) | 1 | 0.3 | 0.2 | 76.9% | 98.2% | 0.8 | 3 | 53 | 54 | -1 |
+| La Prima Noyée (3) | 3 | 0.6 | 0.5 | 80.9% | 98.5% | 0.7 | 10 | 53 | 54 | -1 |
+| Colombina aux Cent Visages (3) | 2 | 0.7 | 0.7 | 92.6% | 99.1% | 1.1 | 7 | 53 | 54 | -1 |
+| Le Théâtre Englouti (4) | 1 | 0.2 | 0.0 | 20.5% | 97.3% | 0.0 | 0 | 49 | 55 | -6 |
+| Arlecchino, Celui derrière le Masque (4) | 1 | 0.3 | 0.3 | 85.5% | 100.0% | 0.6 | 8 | 49 | 55 | -6 |
+| La Prima Noyée (5) | 1 | 0.4 | 0.3 | 68.2% | 99.2% | 0.5 | 4 | 49 | 56 | -7 |
+| Changement de rôle ! (2) | 2 | 0.5 | 0.4 | 73.0% | 100.0% | 0.0 | 0 | 49 | 57 | -8 |
+| Arlecchino des Profondeurs (2) | 3 | 0.9 | 0.6 | 68.9% | 95.5% | 0.4 | 2 | 50 | 59 | -9 |
+| Le Masque Fendu (2) | 3 | 1.0 | 0.6 | 65.3% | 99.2% | 0.0 | 0 | 50 | 63 | -14 |
+| Pantalone Sans-Sou (3) | 3 | 0.9 | 0.6 | 65.5% | 98.2% | 0.6 | 6 | 46 | 66 | -20 |
+
+### Descente aux Abysses [descendre et rester] +cartes — 49.1% (lerrant) · 1-2:8 3-4:30 5:2 6+:0 · equipement 3, unités 37
+Meilleurs : Équipage de Verre [Verre tendu] 68.8%, Mineurs de Fond [pièges qui tirent] +cartes 68.8%, Sentinelles Chromatiques [SC1 Courlis 4 Slots] 62.5% · Pires : La Forteresse [F1 murs sans soins] 37.5%, Après la Tempête [balai qui rapporte] 37.5%, À bout de Raison [drain concentré] +cartes 18.8%
+Coup final (victoires) : combat 77.3%, tour 10.9% · soi-même 0.0 · Déraison subie 8.0 · main pauvre (≤1 carte ≤3) 4.5%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Marin aux Yeux Rouges (3) | 2 | 0.7 | 0.6 | 96.6% | 96.6% | 1.5 | 11 | 63 | 36 | 27 |
+| Albatros de Mauvais Temps (4) | 2 | 0.4 | 0.3 | 83.5% | 98.4% | 1.2 | 3 | 66 | 40 | 26 |
+| Bat-Marin (4) | 2 | 0.3 | 0.2 | 64.9% | 94.3% | 0.5 | 1 | 61 | 43 | 18 |
+| Chose des Hauts-Fonds (4) | 3 | 0.8 | 0.8 | 96.1% | 80.0% | 1.8 | 4 | 56 | 38 | 18 |
+| Masse-Sombre (4) | 2 | 0.5 | 0.5 | 85.2% | 98.2% | 1.0 | 10 | 53 | 46 | 8 |
+| Seconde au Visage Pâle (3) | 2 | 0.3 | 0.2 | 72.0% | 95.5% | 0.4 | 8 | 53 | 47 | 6 |
+| Raie des Fosses (3) | 2 | 0.6 | 0.5 | 78.5% | 94.2% | 1.2 | 7 | 52 | 46 | 6 |
+| Poisson-Lanterne (1) | 2 | 0.6 | 0.5 | 79.8% | 91.3% | 0.3 | 5 | 52 | 46 | 5 |
+| Anguille des Profondeurs (3) | 2 | 0.6 | 0.4 | 76.7% | 89.8% | 0.5 | 2 | 49 | 49 | -1 |
+| L'Œil Sous la Mer (5) | 1 | 0.3 | 0.1 | 42.4% | 98.6% | 0.2 | 1 | 48 | 49 | -1 |
+| Veilleuse des Profondeurs (4) | 3 | 0.5 | 0.3 | 65.4% | 95.5% | 0.5 | 3 | 48 | 50 | -2 |
+| Masse-Sombre (3) | 3 | 0.9 | 0.9 | 95.0% | 97.5% | 1.1 | 12 | 48 | 51 | -2 |
+| Revenante de la Fosse (5) | 1 | 0.3 | 0.1 | 37.7% | 98.0% | 0.4 | 0 | 45 | 51 | -6 |
+| Bat-Marin (3) | 2 | 0.5 | 0.4 | 76.9% | 93.4% | 0.7 | 3 | 45 | 53 | -7 |
+| Lanterne aux Verres Noirs (2) | 3 | 1.0 | 0.4 | 37.7% | 88.6% | 0.0 | 0 | 44 | 60 | -16 |
+| Si, Raie Ponce (4) | 3 | 0.5 | 0.5 | 90.0% | 100.0% | 0.9 | 7 | 41 | 58 | -17 |
+| Cartographe du Large (2) | 3 | 0.8 | 0.5 | 69.9% | 94.6% | 0.5 | 7 | 38 | 63 | -25 |
+| Sondeur des Mauvaises Eaux (3) | 2 | 0.5 | 0.3 | 67.0% | 98.4% | 0.4 | 1 | 34 | 60 | -26 |
+
+### Chevaliers du Grand Étang [CH1 Seau au lieu de Tournoi/Fourchette] — 46.4% (lerrant) · 1-2:23 3-4:15 5:2 6+:0 · unités 28, equipement 2, structure 4, anomalie 1, objet 5
+Meilleurs : La Veillée [circuit fermé] +cartes 68.8%, Épavistes [recyclage] +cartes 68.8%, Le Grand Banc [GB1 Pied marin sans Bavard] 62.5% · Pires : Le Théâtre Englouti [TH2 Errant rappels payants] +cartes 31.3%, Chasse au Gros [blessures bon marché] +cartes 25.0%, La Forteresse [F1 murs sans soins] 25.0%
+Coup final (victoires) : combat 79.8%, tour 14.4% · soi-même 0.0 · Déraison subie 6.1 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Roi Cra-Poiscail (5) | 1 | 0.3 | 0.3 | 93.5% | 76.9% | 1.0 | 8 | 65 | 37 | 28 |
+| Cra-Poiscail Porte-Étendard (3) | 2 | 0.6 | 0.6 | 97.1% | 87.1% | 0.6 | 12 | 58 | 33 | 26 |
+| Chevalier Cra-Poiscail (4) | 1 | 0.2 | 0.1 | 91.4% | 100.0% | 0.4 | 1 | 63 | 43 | 19 |
+| Banc de Cra-Poiscail (3) | 3 | 0.5 | 0.5 | 86.4% | 93.7% | 0.9 | 8 | 54 | 40 | 15 |
+| Chevalier Cra-Poiscail (3) | 2 | 0.4 | 0.4 | 92.3% | 64.7% | 0.8 | 2 | 49 | 45 | 4 |
+| Cra-Poiscail Médecin (2) | 3 | 0.9 | 0.7 | 79.0% | 81.9% | 0.9 | 9 | 47 | 44 | 3 |
+| Filet de Sauvetage (2) | 2 | 0.4 | 0.2 | 54.0% | 79.0% | 0.0 | 0 | 48 | 46 | 2 |
+| Faire l'Inventaire (2) | 2 | 0.4 | 0.3 | 72.6% | 88.1% | 0.0 | 0 | 48 | 46 | 2 |
+| Destrier du Grand Étang (2) | 3 | 0.7 | 0.6 | 94.7% | 76.2% | 1.3 | 10 | 46 | 47 | -0 |
+| P'tite Fesse, Grand Rêve (3) | 1 | 0.4 | 0.3 | 75.6% | 88.9% | 0.9 | 3 | 44 | 48 | -3 |
+| P'tite Fesse, Grand Rêve (2) | 2 | 0.5 | 0.3 | 59.6% | 83.4% | 0.4 | 5 | 44 | 48 | -4 |
+| Cra-Poiscail Médecin (3) | 1 | 0.2 | 0.2 | 88.9% | 86.0% | 0.3 | 2 | 43 | 48 | -5 |
+| Bourreau Cra-Poiscail (3) | 3 | 0.9 | 0.7 | 85.9% | 85.0% | 0.9 | 5 | 45 | 50 | -5 |
+| Cra-Poiscail Messager (1) | 3 | 0.7 | 0.6 | 78.0% | 70.8% | 0.9 | 4 | 44 | 51 | -7 |
+| La Quête du Grand Nénuphar (3) | 2 | 0.4 | 0.2 | 42.5% | 92.6% | 0.0 | 0 | 42 | 49 | -7 |
+| Le Seau (2) | 3 | 1.0 | 0.9 | 95.4% | 84.8% | 0.0 | 0 | 44 | 52 | -8 |
+| Slip de Guerre Cra-Poiscail (2) | 2 | 0.5 | 0.2 | 39.2% | 77.9% | 0.0 | 0 | 36 | 54 | -18 |
+| Le Grand Saut (5) | 1 | 0.2 | 0.2 | 95.3% | 100.0% | 0.0 | 0 | 30 | 50 | -20 |
+| Écuyer Cra-Poiscail (2) | 3 | 1.0 | 0.8 | 81.8% | 87.1% | 0.5 | 2 | 39 | 61 | -21 |
+
+### Le Grand Banc [GB1 Pied marin sans Bavard] — 43.3% (le-brise-lames) · 1-2:25 3-4:13 5:2 6+:0 · unités 29, structure 2, objet 5, anomalie 4
+Meilleurs : La Veillée [circuit fermé] +cartes 81.3%, Épavistes [recyclage] +cartes 68.8%, Mineurs de Fond [pièges qui tirent] +cartes 68.8% · Pires : La Forteresse [F1 murs sans soins] 25.0%, À bout de Raison [drain concentré] +cartes 25.0%, Arsenal de Pont [Bris payant] 18.8%
+Coup final (victoires) : combat 70.1%, tour 21.6% · soi-même 0.0 · Déraison subie 8.2 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Roi Cra-Poiscail (5) | 1 | 0.2 | 0.2 | 100.0% | 100.0% | 0.3 | 0 | 76 | 37 | 39 |
+| Cra-Poiscail Messager (1) | 3 | 0.7 | 0.6 | 81.4% | 73.9% | 1.1 | 3 | 52 | 33 | 19 |
+| Cra-Poiscail Chef de Banc (3) | 3 | 0.9 | 0.7 | 77.1% | 96.1% | 0.8 | 7 | 49 | 33 | 17 |
+| Le Trône de Bouchon (3) | 2 | 0.6 | 0.6 | 90.3% | 97.4% | 0.0 | 0 | 47 | 38 | 9 |
+| Fesses en Avant ! (3) | 3 | 0.6 | 0.5 | 80.3% | 91.3% | 0.0 | 0 | 45 | 42 | 4 |
+| Cra-Poiscail Porte-Étendard (3) | 2 | 0.6 | 0.6 | 93.8% | 85.2% | 0.2 | 3 | 45 | 41 | 4 |
+| Le Grand Saut (5) | 1 | 0.3 | 0.3 | 92.9% | 100.0% | 0.0 | 0 | 44 | 43 | 1 |
+| P'tite Fesse, Grand Rêve (2) | 2 | 0.6 | 0.5 | 73.6% | 93.0% | 0.5 | 4 | 43 | 43 | 0 |
+| Cra-Poiscail Sauteur (2) | 3 | 0.5 | 0.4 | 86.1% | 85.9% | 0.4 | 3 | 42 | 44 | -2 |
+| Faire l'Inventaire (2) | 2 | 0.4 | 0.3 | 72.4% | 93.3% | 0.0 | 0 | 42 | 44 | -3 |
+| Le Seau (2) | 3 | 0.9 | 0.9 | 96.1% | 85.7% | 0.0 | 0 | 42 | 46 | -4 |
+| Banc de Cra-Poiscail (3) | 3 | 0.6 | 0.5 | 87.2% | 100.0% | 0.9 | 4 | 41 | 46 | -5 |
+| Cra-Poiscail des Hautes-Eaux (2) | 3 | 0.8 | 0.7 | 84.8% | 84.6% | 0.9 | 10 | 41 | 48 | -7 |
+| Cra-Poiscail Grand-Gueule (2) | 1 | 0.2 | 0.2 | 97.4% | 83.3% | 0.0 | 0 | 34 | 45 | -11 |
+| P'tite Fesse (1) | 3 | 0.9 | 0.8 | 92.0% | 75.4% | 1.1 | 4 | 39 | 51 | -12 |
+| Cra-Poiscail Ramasseur (2) | 3 | 0.8 | 0.7 | 90.8% | 95.7% | 0.5 | 0 | 39 | 51 | -12 |
+| Têtard-Fesse (1) | 2 | 0.6 | 0.5 | 85.7% | 72.2% | 0.5 | 1 | 35 | 52 | -17 |
+
+### Après la Tempête [balai qui rapporte] — 42.9% (le-courlis) · 1-2:6 3-4:20 5:9 6+:5 · anomalie 6, objet 9, unités 25
+Meilleurs : Épavistes [recyclage] +cartes 75.0%, Descente aux Abysses [descendre et rester] +cartes 62.5%, Mineurs de Fond [pièges qui tirent] +cartes 62.5% · Pires : Arsenal de Pont [Bris payant] 18.8%, La Forteresse [F1 murs sans soins] 18.8%, Cavalerie [peu mais lourdes] 12.5%
+Coup final (victoires) : combat 89.6% · soi-même 0.0 · Déraison subie 17.6 · main pauvre (≤1 carte ≤3) 12.5%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Trousse du Bord (4) | 1 | 0.1 | 0.0 | 22.2% | 75.0% | 0.0 | 0 | 78 | 38 | 40 |
+| L'Amiral sans Pavillon (7) | 1 | 0.4 | 0.3 | 73.1% | 92.7% | 1.9 | 13 | 57 | 33 | 24 |
+| Le Pont est Plein ! (3) | 2 | 0.7 | 0.3 | 41.9% | 92.3% | 0.0 | 0 | 50 | 31 | 20 |
+| Chose des Hauts-Fonds (4) | 3 | 0.7 | 0.6 | 88.3% | 75.4% | 1.5 | 2 | 50 | 31 | 18 |
+| Le Large se Fâche (6) | 1 | 0.3 | 0.1 | 45.7% | 96.1% | 0.0 | 0 | 51 | 39 | 12 |
+| Léviathan Balafré (8) | 1 | 0.4 | 0.2 | 62.0% | 97.7% | 1.6 | 8 | 51 | 39 | 12 |
+| Vague Scélérate (5) | 2 | 0.9 | 0.4 | 42.0% | 97.7% | 0.0 | 0 | 48 | 37 | 11 |
+| Baleine aux Cicatrices Blanches (5) | 3 | 0.5 | 0.3 | 63.9% | 95.0% | 1.7 | 13 | 47 | 38 | 9 |
+| Vieux Harponneur (5) | 2 | 0.7 | 0.6 | 85.7% | 98.5% | 2.5 | 14 | 47 | 38 | 9 |
+| Coup de Harpon (4) | 2 | 0.4 | 0.3 | 85.5% | 95.6% | 0.0 | 0 | 49 | 40 | 9 |
+| Chirurgien du Bord (5) | 2 | 0.4 | 0.1 | 25.0% | 96.0% | 0.1 | 1 | 48 | 40 | 7 |
+| Vigie aux Fissures (2) | 3 | 1.0 | 0.6 | 55.7% | 95.9% | 0.6 | 8 | 45 | 39 | 6 |
+| Crabe de Fer (3) | 3 | 1.0 | 0.8 | 79.4% | 93.9% | 1.1 | 9 | 43 | 42 | 2 |
+| Le Brise-Ligne (6) | 1 | 0.3 | 0.1 | 39.7% | 97.2% | 0.2 | 0 | 41 | 43 | -2 |
+| Matelot du Sans-Nom (3) | 1 | 0.2 | 0.2 | 74.5% | 68.2% | 0.4 | 4 | 41 | 44 | -3 |
+| Dernier Jour en Mer (7) | 1 | 0.3 | 0.3 | 88.7% | 100.0% | 0.0 | 0 | 41 | 44 | -3 |
+| Maître Verrier (4) | 2 | 0.8 | 0.4 | 58.8% | 93.4% | 1.0 | 9 | 42 | 46 | -4 |
+| Un Peu de Répit (3) | 3 | 0.8 | 0.4 | 48.3% | 96.2% | 0.0 | 0 | 41 | 45 | -4 |
+| Faire l'Inventaire (2) | 3 | 0.8 | 0.4 | 52.8% | 95.1% | 0.0 | 0 | 41 | 45 | -5 |
+| Carape Hus (3) | 3 | 1.0 | 0.9 | 83.7% | 88.5% | 1.3 | 5 | 40 | 49 | -9 |
+
+### Sentinelles Chromatiques [SC1 Courlis 4 Slots] — 42.4% (le-courlis) · 1-2:20 3-4:17 5:0 6+:3 · unités 28, objet 11, anomalie 1
+Meilleurs : Le Grand Banc [GB1 Pied marin sans Bavard] 75.0%, Mineurs de Fond [pièges qui tirent] +cartes 68.8%, Épavistes [recyclage] +cartes 62.5% · Pires : À bout de Raison [drain concentré] +cartes 18.8%, Cavalerie [peu mais lourdes] 12.5%, La Forteresse [F1 murs sans soins] 12.5%
+Coup final (victoires) : combat 86.3%, tour 1.1% · soi-même 0.0 · Déraison subie 8.5 · main pauvre (≤1 carte ≤3) 6.3%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Rempart du Soleil (4) | 3 | 1.1 | 0.8 | 69.9% | 60.0% | 2.3 | 8 | 48 | 26 | 22 |
+| Coup de Harpon (4) | 1 | 0.4 | 0.3 | 85.7% | 97.4% | 0.0 | 0 | 52 | 36 | 16 |
+| Briseur du Brasier (4) | 3 | 0.8 | 0.5 | 59.8% | 61.5% | 1.8 | 10 | 47 | 35 | 12 |
+| Rations du Matin Gris (2) | 3 | 0.8 | 0.4 | 46.5% | 55.3% | 0.0 | 0 | 46 | 37 | 9 |
+| Appel des Sentinelles (2) | 3 | 0.8 | 0.3 | 35.4% | 48.2% | 0.0 | 0 | 43 | 41 | 2 |
+| Gardienne de l'Éclat (2) | 3 | 0.8 | 0.5 | 62.8% | 34.1% | 1.3 | 14 | 43 | 42 | 1 |
+| Oracle d'Améthyste (4) | 3 | 1.0 | 0.3 | 30.5% | 59.7% | 0.8 | 8 | 42 | 43 | -0 |
+| Survivant de la Mousse (3) | 2 | 0.7 | 0.5 | 67.1% | 45.5% | 1.7 | 6 | 42 | 43 | -2 |
+| Le Géant Chromatique (9) | 1 | 0.5 | 0.1 | 25.2% | 86.9% | 0.5 | 5 | 41 | 44 | -2 |
+| Héros de la Flamme (2) | 3 | 1.1 | 0.8 | 71.1% | 17.4% | 2.1 | 15 | 42 | 45 | -3 |
+| Porteur de Jade (2) | 2 | 0.4 | 0.3 | 59.6% | 36.3% | 0.6 | 4 | 40 | 44 | -4 |
+| Formation Prismatique (6) | 1 | 0.4 | 0.1 | 19.0% | 77.0% | 0.0 | 0 | 39 | 44 | -5 |
+| Veilleuse de l'Ombre (3) | 1 | 0.4 | 0.1 | 32.9% | 46.2% | 0.3 | 2 | 37 | 45 | -8 |
+| Journal de Bord Détrempé (2) | 2 | 0.4 | 0.4 | 92.6% | 100.0% | 0.0 | 0 | 37 | 46 | -8 |
+| Tacticien de l'Écume (2) | 2 | 0.4 | 0.2 | 66.7% | 4.9% | 0.8 | 7 | 37 | 46 | -9 |
+| Émissaire de Quartz (3) | 2 | 0.6 | 0.3 | 59.1% | 56.7% | 1.0 | 1 | 37 | 46 | -9 |
+| Éclat de Bouteille (1) | 2 | 0.6 | 0.4 | 72.6% | 78.5% | 0.0 | 0 | 37 | 48 | -12 |
+| Le Géant Chromatique (8) | 1 | 0.2 | 0.0 | 19.6% | 76.1% | 0.0 | 1 | 31 | 46 | -14 |
+| Stratège de l'Azur (4) | 2 | 0.6 | 0.2 | 38.7% | 67.6% | 0.7 | 1 | 35 | 52 | -17 |
+
+### Équipage de Verre [Verre tendu] — 39.7% (la-verriere) · 1-2:22 3-4:13 5:3 6+:2 · unités 31, objet 8, equipement 1
+Meilleurs : Sentinelles Chromatiques [SC1 Courlis 4 Slots] 62.5%, Mineurs de Fond [pièges qui tirent] +cartes 62.5%, Après la Tempête [balai qui rapporte] 56.3% · Pires : Cavalerie [peu mais lourdes] 25.0%, La Forteresse [F1 murs sans soins] 18.8%, À bout de Raison [drain concentré] +cartes 6.3%
+Coup final (victoires) : combat 71.9%, tour 12.4%, navire 7.9% · soi-même 0.0 · Déraison subie 11.4 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| L'Amiral sans Pavillon (7) | 1 | 0.4 | 0.3 | 80.7% | 100.0% | 1.6 | 6 | 53 | 32 | 21 |
+| Bretteuse au Bord (4) | 3 | 0.8 | 0.6 | 71.5% | 99.4% | 1.4 | 11 | 45 | 29 | 16 |
+| Matelot Fêlé (1) | 3 | 0.7 | 0.5 | 70.9% | 100.0% | 0.7 | 2 | 47 | 33 | 14 |
+| Canonnier Fêlé (3) | 3 | 0.8 | 0.7 | 88.4% | 92.9% | 1.4 | 10 | 44 | 34 | 10 |
+| Maître Verrier (4) | 2 | 0.5 | 0.3 | 68.4% | 100.0% | 0.5 | 7 | 44 | 35 | 9 |
+| Encore Debout ? (2) | 2 | 0.8 | 0.4 | 46.9% | 99.6% | 0.0 | 0 | 42 | 33 | 9 |
+| Porte-Éclats (3) | 2 | 0.4 | 0.2 | 58.7% | 99.3% | 0.3 | 1 | 45 | 37 | 9 |
+| Chirurgien du Bord (5) | 1 | 0.4 | 0.1 | 19.3% | 100.0% | 0.1 | 0 | 42 | 38 | 4 |
+| La Grande Fissure (5) | 2 | 0.4 | 0.2 | 69.6% | 100.0% | 0.9 | 5 | 42 | 39 | 3 |
+| Éclat de Bouteille (1) | 3 | 0.6 | 0.4 | 66.7% | 97.3% | 0.0 | 0 | 38 | 41 | -2 |
+| Éclaireur Ébréché (1) | 3 | 1.0 | 0.7 | 72.2% | 97.3% | 0.9 | 3 | 39 | 42 | -3 |
+| Bouclier Fendu (2) | 1 | 0.4 | 0.3 | 60.4% | 98.7% | 0.0 | 0 | 38 | 41 | -4 |
+| Trinquer Trop Fort (2) | 1 | 0.6 | 0.2 | 36.4% | 99.0% | 0.0 | 0 | 38 | 42 | -4 |
+| Verrier de Pont (2) | 3 | 0.5 | 0.5 | 91.9% | 100.0% | 1.4 | 7 | 37 | 41 | -4 |
+| Vigie aux Fissures (2) | 3 | 1.0 | 0.7 | 69.9% | 99.5% | 0.7 | 5 | 37 | 44 | -7 |
+| Le Brise-Ligne (6) | 1 | 0.4 | 0.2 | 54.2% | 100.0% | 0.4 | 4 | 35 | 43 | -8 |
+| Duelliste de Verre (2) | 3 | 0.9 | 0.7 | 80.3% | 91.4% | 1.3 | 3 | 38 | 46 | -9 |
+| Polisseuse des Fêlures (3) | 1 | 0.2 | 0.1 | 68.1% | 98.5% | 0.2 | 0 | 28 | 43 | -15 |
+| Coup de Harpon (4) | 2 | 0.4 | 0.3 | 69.0% | 100.0% | 0.0 | 0 | 29 | 47 | -18 |
+
+### Épavistes [recyclage] +cartes — 33.9% (le-goliath) · 1-2:19 3-4:18 5:3 6+:0 · structure 10, objet 6, equipement 2, unités 22
+Meilleurs : Mineurs de Fond [pièges qui tirent] +cartes 56.3%, Équipage de Verre [Verre tendu] 50.0%, La Veillée [circuit fermé] +cartes 50.0% · Pires : Cavalerie [peu mais lourdes] 25.0%, Après la Tempête [balai qui rapporte] 25.0%, À bout de Raison [drain concentré] +cartes 12.5%
+Coup final (victoires) : combat 65.8%, tour 11.8%, navire 14.5% · soi-même 0.0 · Déraison subie 7.8 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Chose des Hauts-Fonds (4) | 3 | 0.7 | 0.6 | 93.4% | 63.6% | 1.0 | 4 | 52 | 18 | 34 |
+| Crabe de Fer (3) | 3 | 0.6 | 0.6 | 93.4% | 100.0% | 0.4 | 5 | 47 | 21 | 26 |
+| Treuil Rouillé (1) | 2 | 0.7 | 0.1 | 17.3% | 85.9% | 0.0 | 0 | 46 | 22 | 24 |
+| Baleine aux Cicatrices Blanches (5) | 3 | 0.8 | 0.7 | 90.4% | 98.8% | 3.4 | 20 | 43 | 21 | 21 |
+| Charpentière de Veille (2) | 2 | 0.6 | 0.5 | 78.5% | 95.7% | 0.4 | 3 | 40 | 26 | 14 |
+| Plongeur des Épaves (2) | 2 | 0.6 | 0.5 | 81.9% | 97.4% | 0.4 | 1 | 39 | 28 | 11 |
+| Grappin de Récupération (2) | 2 | 0.3 | 0.1 | 50.0% | 96.7% | 0.0 | 0 | 35 | 34 | 1 |
+| Levier de Lest (1) | 3 | 1.0 | 0.7 | 76.1% | 97.6% | 0.1 | 0 | 34 | 35 | -1 |
+| Charpentier des Épaves (3) | 3 | 1.0 | 0.9 | 86.5% | 100.0% | 1.0 | 8 | 34 | 35 | -1 |
+| Caisse des Dernières Planches (4) | 1 | 0.2 | 0.1 | 46.8% | 99.2% | 0.0 | 0 | 32 | 34 | -3 |
+| Clous de Récupération (3) | 1 | 0.3 | 0.0 | 14.5% | 98.8% | 0.0 | 0 | 31 | 35 | -5 |
+| Bernard-l'Ermite d'Acier (1) | 3 | 1.0 | 0.9 | 92.8% | 92.9% | 0.7 | 7 | 32 | 42 | -10 |
+| Radeau de Fortune (1) | 2 | 0.6 | 0.5 | 82.2% | 91.8% | 0.1 | 0 | 29 | 39 | -10 |
+| Caisse des Dernières Planches (3) | 2 | 0.4 | 0.2 | 44.7% | 98.6% | 0.0 | 0 | 24 | 39 | -15 |
+| Cage de Flottaison (3) | 2 | 0.4 | 0.3 | 70.7% | 99.4% | 0.0 | 0 | 25 | 40 | -15 |
+| Matelot du Sans-Nom (3) | 3 | 1.0 | 1.0 | 97.3% | 98.8% | 1.6 | 2 | 28 | 45 | -18 |
+| Caisses Arrimées (1) | 3 | 1.2 | 1.0 | 82.6% | 97.3% | 0.1 | 0 | 28 | 50 | -22 |
+
+### La Veillée [circuit fermé] +cartes — 33.0% (la-religieuse) · 1-2:20 3-4:17 5:3 6+:0 · unités 28, equipement 3, structure 4, objet 5
+Meilleurs : Mineurs de Fond [pièges qui tirent] +cartes 68.8%, Équipage de Verre [Verre tendu] 50.0%, Sentinelles Chromatiques [SC1 Courlis 4 Slots] 50.0% · Pires : Chasse au Gros [blessures bon marché] +cartes 6.3%, La Forteresse [F1 murs sans soins] 6.3%, À bout de Raison [drain concentré] +cartes 0.0%
+Coup final (victoires) : tour 12.2%, effet 14.9%, combat 59.5% · soi-même 0.0 · Déraison subie 8.0 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Cache-Cache (1) | 3 | 0.7 | 0.7 | 109.4% | 91.1% | 0.6 | 0 | 46 | 21 | 25 |
+| Ils sont tous là (5) | 2 | 0.6 | 0.4 | 74.6% | 100.0% | 1.3 | 11 | 43 | 21 | 22 |
+| Maman revient (4) | 1 | 0.4 | 0.3 | 72.6% | 100.0% | 0.5 | 5 | 43 | 27 | 16 |
+| La Marelle (3) | 2 | 0.4 | 0.0 | 11.5% | 99.0% | 0.0 | 0 | 41 | 28 | 13 |
+| On rentre bientôt (3) | 3 | 0.7 | 0.6 | 83.5% | 99.1% | 0.9 | 2 | 37 | 28 | 9 |
+| Maman revient (3) | 2 | 0.5 | 0.3 | 51.7% | 98.9% | 0.3 | 3 | 38 | 30 | 9 |
+| On avait dit tous ensemble (5) | 1 | 0.4 | 0.3 | 93.8% | 100.0% | 0.7 | 1 | 38 | 31 | 7 |
+| Le Copain du dessous (3) | 3 | 1.3 | 0.9 | 73.5% | 99.0% | 1.2 | 8 | 33 | 27 | 7 |
+| Le Puits aux Souvenirs (3) | 2 | 0.8 | 0.2 | 20.5% | 99.2% | 0.0 | 0 | 35 | 29 | 6 |
+| Tu viens jouer ? (4) | 2 | 0.6 | 0.5 | 93.9% | 98.6% | 0.9 | 2 | 35 | 31 | 4 |
+| Tu m'avais promis (3) | 2 | 0.5 | 0.5 | 94.2% | 97.1% | 0.9 | 5 | 35 | 32 | 3 |
+| La Petite Chanson (2) | 2 | 0.8 | 0.4 | 50.8% | 98.7% | 0.2 | 2 | 32 | 34 | -2 |
+| P'tit Bout (1) | 3 | 1.0 | 0.8 | 84.8% | 93.9% | 0.5 | 1 | 32 | 35 | -3 |
+| Encore cinq minutes (2) | 3 | 1.0 | 0.9 | 91.5% | 96.2% | 1.4 | 11 | 31 | 38 | -7 |
+| Papa est en mer (2) | 3 | 0.5 | 0.4 | 76.4% | 98.4% | 0.3 | 4 | 28 | 36 | -8 |
+| Doudou (1) | 3 | 0.7 | 0.4 | 59.2% | 93.1% | 0.0 | 0 | 28 | 38 | -10 |
+| Le Goûter (2) | 3 | 1.2 | 0.7 | 55.7% | 99.4% | 0.1 | 0 | 28 | 53 | -25 |
+
+### Mineurs de Fond [pièges qui tirent] +cartes — 33.0% (le-brise-lames) · 1-2:17 3-4:21 5:2 6+:0 · structure 18, equipement 2, objet 1, unités 19
+Meilleurs : Arsenal de Pont [Bris payant] 56.3%, Chasse au Gros [blessures bon marché] +cartes 43.8%, Chevaliers du Grand Étang [CH1 Seau au lieu de Tournoi/Fourchette] 43.8% · Pires : Cavalerie [peu mais lourdes] 25.0%, Le Théâtre Englouti [TH2 Errant rappels payants] +cartes 25.0%, À bout de Raison [drain concentré] +cartes 0.0%
+Coup final (victoires) : combat 68.9%, tour 14.9%, effet 2.7% · soi-même 0.2 · Déraison subie 8.8 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Chose des Hauts-Fonds (4) | 3 | 0.8 | 0.8 | 96.6% | 100.0% | 1.1 | 1 | 47 | 15 | 32 |
+| Baleine aux Cicatrices Blanches (5) | 2 | 0.7 | 0.6 | 96.0% | 100.0% | 3.1 | 21 | 44 | 20 | 25 |
+| Cage de Flottaison (3) | 2 | 0.8 | 0.6 | 81.7% | 99.7% | 0.1 | 1 | 41 | 23 | 19 |
+| Crabe de Fer (3) | 3 | 0.6 | 0.6 | 96.6% | 98.2% | 0.4 | 1 | 36 | 29 | 7 |
+| Charpentière de Veille (2) | 2 | 0.8 | 0.7 | 91.6% | 97.3% | 0.4 | 5 | 34 | 30 | 5 |
+| Charpentier des Épaves (3) | 3 | 1.1 | 1.0 | 93.6% | 99.0% | 1.1 | 8 | 34 | 31 | 2 |
+| Chaîne de Travers (2) | 2 | 0.7 | 0.5 | 70.5% | 99.6% | 0.1 | 1 | 31 | 35 | -4 |
+| Le Filet qui Respire (3) | 2 | 0.6 | 0.3 | 47.1% | 99.0% | 0.0 | 0 | 31 | 36 | -5 |
+| Filet à la Dérive (2) | 3 | 1.3 | 0.9 | 73.5% | 97.2% | 0.2 | 0 | 32 | 38 | -6 |
+| Clous de Récupération (3) | 1 | 0.4 | 0.2 | 46.1% | 96.4% | 0.0 | 0 | 29 | 36 | -6 |
+| Pont Miné (3) | 2 | 0.6 | 0.2 | 32.6% | 98.2% | 0.0 | 0 | 30 | 36 | -7 |
+| Matelot du Sans-Nom (3) | 3 | 1.1 | 1.1 | 98.4% | 100.0% | 1.4 | 9 | 30 | 39 | -9 |
+| Treuil Rouillé (1) | 2 | 0.7 | 0.4 | 66.7% | 93.1% | 0.0 | 0 | 29 | 39 | -10 |
+| Caisses Arrimées (1) | 3 | 0.6 | 0.5 | 90.8% | 95.3% | 0.1 | 0 | 27 | 39 | -12 |
+| Bernard-l'Ermite d'Acier (1) | 3 | 0.9 | 0.8 | 92.2% | 66.7% | 0.7 | 6 | 27 | 45 | -18 |
+| Cylindre flottant (2) | 2 | 0.4 | 0.2 | 48.5% | 97.4% | 0.0 | 0 | 22 | 40 | -18 |
+| Dernière Barricade (3) | 2 | 0.5 | 0.4 | 74.8% | 100.0% | 0.1 | 0 | 20 | 46 | -26 |
