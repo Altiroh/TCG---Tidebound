@@ -138,7 +138,7 @@
   letter-spacing: 0.03em;
   text-align: left;
   text-decoration: none;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   transition: background-color 150ms ease-out, color 150ms ease-out, border-color 150ms ease-out;
 }
 
@@ -189,7 +189,7 @@
   font-size: calc(14px * var(--tb-text-scale));
   font-weight: 600;
   letter-spacing: 0.04em;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out;
 }
 
@@ -765,7 +765,7 @@
   border-radius: 50%;
   background: linear-gradient(180deg, #0b2638 0%, #071826 100%);
   color: #c8d7e1;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
 }
 
 .drawerClose:hover {
@@ -878,7 +878,7 @@
   font-weight: 700;
   letter-spacing: 0.03em;
   text-shadow: 0 1px 2px rgba(0, 20, 30, 0.6);
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   animation: claimGlow 1.8s ease-in-out infinite;
   transition: filter 140ms ease-out, transform 140ms ease-out;
 }
@@ -901,7 +901,7 @@
 .claimButton:disabled,
 .claimButtonSmall:disabled {
   opacity: 0.6;
-  cursor: default;
+  cursor: var(--tb-cursor);
   animation: none;
 }
 

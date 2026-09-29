@@ -493,7 +493,7 @@
   line-height: 1.2;
   white-space: nowrap;
   text-decoration: none;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   outline: none;
   transition:
     background var(--tb-duration) ease-out,

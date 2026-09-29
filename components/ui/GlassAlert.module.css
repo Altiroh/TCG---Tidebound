@@ -78,7 +78,7 @@
   border-radius: 50%;
   background: none;
   color: var(--tb-text-soft);
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   transition: background-color var(--tb-duration-fast) ease-out, color var(--tb-duration-fast) ease-out;
 }
 .close:hover { background: var(--tb-accent-soft); color: var(--tb-text); }

@@ -169,7 +169,7 @@
   text-decoration: none;
   text-transform: none;
   white-space: nowrap;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   transition: background-color 140ms ease-out, color 140ms ease-out, border-color 140ms ease-out, box-shadow 140ms ease-out;
 }
 
@@ -195,7 +195,7 @@
   box-shadow: none;
   color: rgba(29, 18, 10, 0.62);
   opacity: 1;
-  cursor: default;
+  cursor: var(--tb-cursor);
 }
 
 /* « Mur des carnets » ne tient pas toujours dans la ligne du titre : il

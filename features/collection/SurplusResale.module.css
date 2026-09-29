@@ -13,7 +13,7 @@
   font: inherit;
   font-size: calc(clamp(11px, 1.25vh, 13px) * var(--tb-text-scale));
   white-space: nowrap;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   transition: border-color 140ms ease-out, box-shadow 140ms ease-out, color 140ms ease-out;
 }
 

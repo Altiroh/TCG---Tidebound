@@ -282,7 +282,7 @@
   color: inherit;
   font: inherit;
   text-align: left;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   transition: border-color 140ms ease-out, background-color 140ms ease-out;
 }
 

@@ -78,7 +78,7 @@ section.panel {
   font-family: var(--tb-font-display);
   font-size: calc(14px * var(--tb-text-scale));
   font-weight: 700;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   transition: border-color 140ms ease-out, color 140ms ease-out, box-shadow 140ms ease-out, transform 140ms ease-out;
 }
 

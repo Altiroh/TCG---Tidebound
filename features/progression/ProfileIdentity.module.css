@@ -21,7 +21,7 @@
   border-radius: 12px;
   background: linear-gradient(160deg, #0b2638, #071826) center 28% / cover no-repeat;
   box-shadow: 0 0 10px rgba(0, 183, 255, 0.25), 0 6px 14px rgba(0, 0, 0, 0.5);
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   transition: transform 160ms ease-out, box-shadow 160ms ease-out;
 }
 
@@ -104,7 +104,7 @@
   border-radius: 50%;
   background: linear-gradient(180deg, #0b2638 0%, #071826 100%);
   color: #c8d7e1;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   transition: border-color 140ms ease-out, box-shadow 140ms ease-out;
 }
 
@@ -162,7 +162,7 @@
   font-size: calc(13px * var(--tb-text-scale));
   font-style: italic;
   color: var(--tb-accent-bright);
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   transition: color var(--tb-duration-fast) var(--tb-ease);
 }
 

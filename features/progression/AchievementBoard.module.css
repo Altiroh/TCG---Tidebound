@@ -162,7 +162,7 @@ section.board {
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   transition: border-color var(--tb-duration-fast) var(--tb-ease), color var(--tb-duration-fast) var(--tb-ease), background-color var(--tb-duration-fast) var(--tb-ease), box-shadow var(--tb-duration-fast) var(--tb-ease);
 }
 

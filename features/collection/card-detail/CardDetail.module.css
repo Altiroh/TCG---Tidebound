@@ -472,7 +472,7 @@
   padding: 0;
   font: inherit;
   font-size: calc(clamp(10.5px, 1.3vmin, 13.5px) * var(--tb-text-scale));
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
 }
 
 .metaLink:hover {
@@ -499,7 +499,7 @@
   border-radius: 50%;
   background: var(--tb-surface-solid);
   color: var(--ink);
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   transition: background-color 140ms ease-out, color 140ms ease-out, border-color 140ms ease-out;
 }
 
@@ -712,7 +712,7 @@
   font-size: calc(clamp(12px, 1.4vh, 14px) * var(--tb-text-scale));
   line-height: 1;
   color: var(--ink);
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   transition: background-color 140ms ease-out, color 140ms ease-out;
 }
 
@@ -728,7 +728,7 @@
 
 .resaleQtyStep:disabled {
   opacity: 0.35;
-  cursor: default;
+  cursor: var(--tb-cursor);
 }
 
 .resaleQtyValue {
@@ -750,7 +750,7 @@
   font: inherit;
   font-size: calc(clamp(11px, 1.3vh, 13px) * var(--tb-text-scale));
   color: var(--ink);
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   transition: border-color 140ms ease-out, background-color 140ms ease-out, color 140ms ease-out;
 }
 .resaleButton:hover:not(:disabled) { border-color: var(--accent); color: var(--tb-text-strong); background: var(--accent-soft); }

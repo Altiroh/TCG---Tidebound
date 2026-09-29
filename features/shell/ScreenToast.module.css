@@ -89,7 +89,7 @@
   border-radius: 50%;
   background: none;
   color: var(--tb-text-soft);
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
 }
 
 .close:hover { background: var(--tb-accent-soft); color: var(--tb-text); }

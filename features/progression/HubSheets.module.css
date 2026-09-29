@@ -65,7 +65,7 @@
   color: #e2e8f0;
   font-size: calc(20px * var(--tb-text-scale));
   line-height: 1;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
 }
 
 .body {
@@ -127,7 +127,7 @@
   font-size: calc(12px * var(--tb-text-scale));
   font-weight: 600;
   white-space: nowrap;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
 }
 
 .giftButton:hover:not(:disabled) {
@@ -137,7 +137,7 @@
 
 .giftButton:disabled {
   opacity: 0.5;
-  cursor: default;
+  cursor: var(--tb-cursor);
 }
 
 /* ── Maîtrises ── */

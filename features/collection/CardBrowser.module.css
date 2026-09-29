@@ -106,7 +106,7 @@
   color: var(--ink-dim);
   text-decoration: underline;
   text-underline-offset: 3px;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
 }
 
 .resetLink:hover { color: var(--cb-cyan); }
@@ -181,7 +181,7 @@
   font-size: calc(clamp(12px, 1.45vh, 14px) * var(--tb-text-scale));
   font-weight: 600;
   text-align: left;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   transition: background-color 130ms ease-out, color 130ms ease-out, border-color 130ms ease-out;
 }
 
@@ -281,7 +281,7 @@
   border-radius: 50%;
   background: none;
   opacity: 0.72;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   transition: opacity 140ms ease, transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
 }
 
@@ -369,7 +369,7 @@
   font: inherit;
   font-size: calc(clamp(10px, 1.2vh, 12px) * var(--tb-text-scale));
   font-variant-numeric: tabular-nums;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   transition: background-color 130ms ease-out, color 130ms ease-out, border-color 130ms ease-out, box-shadow 130ms ease-out;
 }
 
@@ -911,7 +911,7 @@
 /* Le lien « Réinitialiser » reste en place, simplement éteint. */
 .resetLink:disabled {
   opacity: 0.35;
-  cursor: default;
+  cursor: var(--tb-cursor);
   text-decoration: none;
 }
 

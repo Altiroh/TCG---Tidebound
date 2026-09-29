@@ -28,7 +28,7 @@
 /* Seule la bête, pendant son passage, attrape le doigt — pour détaler. */
 .critter[data-visible] .body {
   pointer-events: auto;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
 }
 
 .leg,

@@ -86,7 +86,7 @@
   border-radius: 50%;
   background: radial-gradient(circle at 50% 30%, #1d2a33, #081018 75%);
   color: #efe6d2;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
 }
 
 .close:hover {
@@ -132,7 +132,7 @@
   color: #efe6d2;
   font: inherit;
   font-size: calc(12px * var(--tb-text-scale));
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
 }
 
 .chip span {
@@ -210,7 +210,7 @@
   color: inherit;
   font: inherit;
   text-align: left;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   transition: border-color 140ms ease-out, transform 140ms ease-out;
 }
 

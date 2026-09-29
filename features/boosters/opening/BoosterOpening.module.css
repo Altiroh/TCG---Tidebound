@@ -501,7 +501,7 @@
 .packAnchor[data-ready] {
   /* La scène ne capte rien (`.stage`) : le sachet en attente, lui, se touche. */
   pointer-events: auto;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   outline: none;
 }
 
@@ -914,7 +914,7 @@
   color: inherit;
   font: inherit;
   pointer-events: auto;
-  cursor: default;
+  cursor: var(--tb-cursor);
   will-change: transform;
   /* Nommée une fois, réutilisée telle quelle quand la carte s'agrandit et
      doit en plus passer devant ses voisines (cf. `cardRaise`). */
@@ -925,7 +925,7 @@
   outline: none;
 }
 .card[data-interactive] {
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
 }
 
 /*
@@ -1625,7 +1625,7 @@
   font-size: calc(clamp(13px, calc(var(--u) * 1.7), 18px) * var(--tb-text-scale));
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   pointer-events: auto;
   transform: translateX(-50%);
   animation: uiIn var(--t-ui) cubic-bezier(0.2, 0.7, 0.3, 1) both;
@@ -1708,7 +1708,7 @@
 }
 
 .card[data-showcase="in"] {
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   animation: var(--spawn-animation), cardShowcaseIn var(--t-showcase-in) cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 .card[data-showcase="out"] {
@@ -1762,7 +1762,7 @@
   position: absolute;
   inset: 0;
   z-index: 60;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   background: radial-gradient(60% 60% at 50% 48%, rgba(8, 30, 48, 0.55) 0%, rgba(1, 6, 12, 0.88) 70%);
   animation: sceneIn var(--t-showcase-in) ease-out both;
 }

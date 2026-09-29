@@ -141,7 +141,7 @@
   padding: 0;
   border: 0;
   background: none;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   filter: brightness(0.8) saturate(0.8) drop-shadow(0 calc(var(--u) * 0.7) 0 #1c0e04) drop-shadow(0 calc(var(--u) * 1) calc(var(--u) * 1) rgba(0, 0, 0, 0.55));
   transition: transform 120ms ease-out, filter 160ms ease;
 }
@@ -305,7 +305,7 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   filter: drop-shadow(0 calc(var(--u) * 0.7) calc(var(--u) * 1) rgba(0, 0, 0, 0.55));
   rotate: -1.5deg;
   transition: filter 160ms ease, transform 120ms ease;
@@ -650,7 +650,7 @@
 }
 
 .leverHandle:disabled {
-  cursor: default;
+  cursor: var(--tb-cursor);
 }
 
 .lever[data-disabled]:not([data-pulled]) .leverArt {
@@ -773,7 +773,7 @@
   color: #f1e6cf;
   font-size: 22px;
   line-height: 1;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
 }
 
 /* Les sources, sur les plaques d'onglet. */
@@ -792,7 +792,7 @@
   font-weight: 700;
   font-variant: small-caps;
   filter: brightness(0.8) drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5));
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   transition: filter 160ms ease, transform 160ms ease;
 }
 
@@ -832,7 +832,7 @@
   color: #f1e3c4;
   font-family: var(--tb-font-display, Georgia, serif);
   font-size: 14px;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   transition: background 160ms ease, border-color 160ms ease;
 }
 
@@ -853,7 +853,7 @@
 
 .styleChip:disabled {
   opacity: 0.4;
-  cursor: default;
+  cursor: var(--tb-cursor);
 }
 
 .pickerGrid {
@@ -879,7 +879,7 @@
   background: rgba(20, 12, 6, 0.6);
   color: #f1e3c4;
   font: inherit;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
 }
 

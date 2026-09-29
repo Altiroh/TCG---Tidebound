@@ -50,7 +50,7 @@
   color: var(--tb-text-muted);
   font: inherit;
   font-size: calc(13px * var(--tb-text-scale));
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   transition: border-color var(--tb-duration-fast) var(--tb-ease), box-shadow var(--tb-duration-fast) var(--tb-ease);
 }
 
@@ -105,7 +105,7 @@
   color: inherit;
   font: inherit;
   text-align: left;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   transition: border-color var(--tb-duration-fast) var(--tb-ease), transform var(--tb-duration-fast) var(--tb-ease), box-shadow var(--tb-duration-fast) var(--tb-ease);
 }
 
@@ -120,7 +120,7 @@
 }
 
 .option:disabled {
-  cursor: default;
+  cursor: var(--tb-cursor);
 }
 
 /* Pas encore gagné : lisible, mais éteint — la condition reste en clair. */

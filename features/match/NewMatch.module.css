@@ -68,7 +68,7 @@
   color: var(--ink);
   font: inherit;
   text-align: left;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   transition: border-color 150ms ease-out, background-color 150ms ease-out, box-shadow 150ms ease-out;
 }
 .difficultyChip:hover { border-color: var(--tb-accent-line); }
@@ -229,7 +229,7 @@
   font-size: clamp(12px, 1vw, 15px);
   font-weight: 600;
   letter-spacing: 0.03em;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   transition: background-color 160ms ease-out, color 160ms ease-out, border-color 160ms ease-out;
 }
 
@@ -434,7 +434,7 @@
   color: var(--ink);
   font: inherit;
   text-align: left;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   transition: border-color 150ms ease-out, background-color 150ms ease-out, box-shadow 150ms ease-out;
 }
 

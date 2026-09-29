@@ -501,13 +501,13 @@
   border: 0;
   border-radius: 50%;
   background: none;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   appearance: none;
   filter: drop-shadow(0 0.05em 0.15em rgba(0, 0, 0, 0.6));
 }
 
 .shipAbilityReadOnly {
-  cursor: default;
+  cursor: var(--tb-cursor);
 }
 
 /* Le hublot posé PAR-DESSUS : ses bossages débordent du rond intérieur,
@@ -1147,7 +1147,7 @@
   background: rgba(255, 255, 255, 0.08);
   color: #f1f5f9;
   font: inherit;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
 }
 
 .centerHintButton:hover {
@@ -1678,7 +1678,7 @@
   border: 0;
   background: none;
   filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.6));
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
 }
 
 .phaseIcon {
@@ -1697,7 +1697,7 @@
 }
 
 .phaseButton:disabled {
-  cursor: default;
+  cursor: var(--tb-cursor);
 }
 
 .phaseButton:disabled .phaseIcon {
@@ -1862,7 +1862,7 @@
   width: calc(var(--hud-h) * 1.35);
   height: calc(var(--hud-h) * 1.35);
   filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.6));
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
 }
 
 .menuGlyph {
@@ -2072,7 +2072,7 @@
 
 /* Hors ciblage, un Navire se consulte : clic (ou clic droit) = sa fiche. */
 .shipInspectable {
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
 }
 
 .shipInspectable:hover {
@@ -2299,7 +2299,7 @@
   font: inherit;
   font-size: clamp(11px, 1.6dvh, 14px);
   letter-spacing: 0.06em;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
 }
 
 .cardZoomDetail:hover {
@@ -2445,7 +2445,7 @@
   padding: 0;
   border: 0;
   background: none;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   transition: filter 140ms ease-out, transform 140ms ease-out;
 }
 
@@ -2455,7 +2455,7 @@
 }
 
 .cargoDeckButton:disabled {
-  cursor: default;
+  cursor: var(--tb-cursor);
 }
 
 /* Couche de glisser (`DragLayer`) : au-dessus de tout, jamais cliquable. */
@@ -2630,7 +2630,7 @@
   font-size: 9px;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   white-space: nowrap;
 }
 
@@ -2741,14 +2741,14 @@
  * lisible et consultable au clic droit — on montre au joueur ce qu'il a en
  * main, on l'empêche seulement de le jouer MAINTENANT.
  *
- * `cursor: default` et l'absence de levée au survol suffisent à dire
+ * `cursor: var(--tb-cursor)` et l'absence de levée au survol suffisent à dire
  * qu'elle ne répond pas ; les gestes sont déjà refusés côté logique
  * (`isPlayable`), le style ne fait que l'annoncer.
  */
 .handCardMuted {
   filter: grayscale(0.7) brightness(0.55);
   opacity: 0.7;
-  cursor: default;
+  cursor: var(--tb-cursor);
   transition: filter 200ms ease-out, opacity 200ms ease-out;
 }
 

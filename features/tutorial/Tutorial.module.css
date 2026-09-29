@@ -167,7 +167,7 @@
   color: var(--tb-text-muted);
   font: inherit;
   font-size: 12px;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
 }
 
 .coachGhost:hover {

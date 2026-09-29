@@ -98,7 +98,7 @@
   color: #f1e6cf;
   font-size: calc(22px * var(--tb-text-scale));
   line-height: 1;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
 }
 
 /* Rien ne défile : en-tête, scène (qui prend le reste), encarts. */
@@ -331,7 +331,7 @@
   border: 0;
   background: none;
   color: inherit;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -495,7 +495,7 @@
   padding: 0;
   border: 0;
   background: none;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   filter: drop-shadow(0 0 8px var(--sponsor)) drop-shadow(0 4px 6px rgba(0, 0, 0, 0.7));
   animation: giftHop 1.9s cubic-bezier(0.3, 0, 0.3, 1) infinite;
 }
@@ -507,7 +507,7 @@
 }
 
 .giftBadge:disabled {
-  cursor: default;
+  cursor: var(--tb-cursor);
   opacity: 0.7;
 }
 
@@ -665,11 +665,11 @@
   font: inherit;
   font-size: calc(12px * var(--tb-text-scale));
   font-weight: 700;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
 }
 
 .stageOpen:disabled {
-  cursor: default;
+  cursor: var(--tb-cursor);
   opacity: 0.6;
 }
 
@@ -685,11 +685,11 @@
   font: inherit;
   font-size: calc(12.5px * var(--tb-text-scale));
   font-weight: 700;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
 }
 
 .milestoneReady:disabled {
-  cursor: default;
+  cursor: var(--tb-cursor);
   opacity: 0.6;
 }
 

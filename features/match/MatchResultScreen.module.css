@@ -608,7 +608,7 @@
   font-weight: 500;
   letter-spacing: 0.01em;
   text-decoration: none;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   pointer-events: auto;
   transition: filter 180ms ease-out, transform 180ms ease-out;
 }

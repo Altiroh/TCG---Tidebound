@@ -113,7 +113,7 @@
   border-radius: 50%;
   background: none;
   color: var(--tb-text-muted);
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   transition: color var(--tb-duration-fast) ease-out, background-color var(--tb-duration-fast) ease-out, border-color var(--tb-duration-fast) ease-out;
 }
 

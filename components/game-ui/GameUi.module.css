@@ -27,7 +27,7 @@
   font: inherit;
   font-size: var(--tb-fs-caption);
   text-align: left;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   transition: border-color var(--tb-duration) ease-out, background-color var(--tb-duration) ease-out, box-shadow var(--tb-duration) ease-out;
 }
 .trigger:hover { border-color: var(--tb-border-strong); }
@@ -101,7 +101,7 @@
   font-size: var(--tb-fs-caption);
   text-align: left;
   white-space: nowrap;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   transition: background-color var(--tb-duration-fast) ease-out, color var(--tb-duration-fast) ease-out;
 }
 .option:hover { background: var(--tb-accent-soft); color: var(--tb-on-accent); }

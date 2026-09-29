@@ -162,7 +162,7 @@
   font-weight: 600;
   letter-spacing: 0.07em;
   white-space: nowrap;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   text-decoration: none;
   /* C'est cette ombre — et non un aplat sous le texte — qui rend le libellé
      lisible par-dessus la scène maritime. */
@@ -263,7 +263,7 @@
   border-radius: 50%;
   background: none;
   color: var(--cb-ivory-dim);
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   filter: drop-shadow(0 1px 4px rgba(3, 10, 16, 0.95));
   transition: color 160ms ease-out, background-color 160ms ease-out, border-color 160ms ease-out, transform 220ms ease-out;
 }
@@ -497,7 +497,7 @@
   border-radius: 50%;
   background: none;
   color: var(--cb-ivory-dim);
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   filter: drop-shadow(0 1px 4px rgba(3, 10, 16, 0.95));
   transition: color 160ms ease-out, background-color 160ms ease-out, border-color 160ms ease-out, transform 160ms ease-out;
 }
@@ -572,7 +572,7 @@
   font: inherit;
   font-weight: 600;
   white-space: nowrap;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   text-decoration: underline;
   text-underline-offset: 2px;
 }

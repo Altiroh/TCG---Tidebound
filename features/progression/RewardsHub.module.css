@@ -59,7 +59,7 @@
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   white-space: nowrap;
   text-shadow: 0 1px 2px rgba(0, 20, 30, 0.6);
   transition: background 150ms ease-out, box-shadow 150ms ease-out;
@@ -71,7 +71,7 @@
   outline: none;
 }
 .claimButton:disabled {
-  cursor: default;
+  cursor: var(--tb-cursor);
   filter: grayscale(0.7) brightness(0.7);
   box-shadow: none;
 }
@@ -236,11 +236,11 @@
   color: #e6c889;
   font-size: calc(1.6cqw * var(--tb-text-scale));
   line-height: 1;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
 }
 .routeArrow:disabled {
   opacity: 0.3;
-  cursor: default;
+  cursor: var(--tb-cursor);
 }
 
 .routeTiles {
@@ -464,7 +464,7 @@
   color: #dfe7ec;
   font: inherit;
   clip-path: polygon(50% 0, 100% 22%, 100% 78%, 50% 100%, 0 78%, 0 22%);
-  cursor: default;
+  cursor: var(--tb-cursor);
 }
 .day[data-slot="1"] { --i: 1; }
 .day[data-slot="2"] { --i: 2; }
@@ -497,7 +497,7 @@
   background: linear-gradient(180deg, #f1c66a, #a8741f);
 }
 .day[data-claimable] {
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   animation: dayCall 1.6s ease-in-out infinite;
 }
 @keyframes dayCall {
@@ -565,10 +565,10 @@
   padding: 0;
   border: 0;
   background: none;
-  cursor: default;
+  cursor: var(--tb-cursor);
 }
 .chestArt:not(:disabled) {
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
 }
 .chestArt img {
   position: absolute;
@@ -926,7 +926,7 @@
   text-transform: uppercase;
   white-space: nowrap;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   filter: drop-shadow(0 0.2cqw 0.35cqw rgba(0, 0, 0, 0.55));
   transition: color 150ms ease-out, filter 150ms ease-out;
 }
@@ -972,7 +972,7 @@
   font-weight: 600;
   line-height: 1.2;
   text-align: left;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   /* Une seule ligne : le libellé entier est dans l'infobulle. */
   white-space: nowrap;
   overflow: hidden;
@@ -995,7 +995,7 @@
 }
 .milestoneReady:disabled {
   opacity: 0.5;
-  cursor: default;
+  cursor: var(--tb-cursor);
 }
 
 /* Maîtrises : trois Navires côte à côte. */
@@ -1114,7 +1114,7 @@
   color: #e6c889;
   font-size: calc(1.1cqw * var(--tb-text-scale));
   line-height: 1;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
 }
 
 /* Commanditaires. */
@@ -1187,7 +1187,7 @@
   padding: 0;
   border: 0;
   background: none;
-  cursor: default;
+  cursor: var(--tb-cursor);
 }
 .giftButton img {
   width: 100%;
@@ -1197,7 +1197,7 @@
   transition: filter 200ms ease-out, transform 180ms ease-out;
 }
 .giftButton[data-ready] {
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
 }
 .giftButton[data-ready] img {
   filter: drop-shadow(0 0 0.5cqw rgba(243, 200, 107, 0.75)) drop-shadow(0 0.15cqw 0.25cqw rgba(0, 0, 0, 0.6));

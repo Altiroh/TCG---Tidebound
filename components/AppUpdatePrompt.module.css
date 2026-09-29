@@ -65,7 +65,7 @@
   color: var(--tb-text-strong);
   font: inherit;
   font-weight: 600;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
   transition: background-color 160ms var(--tb-ease), box-shadow 160ms var(--tb-ease);
 }
 
@@ -86,7 +86,7 @@
   font: inherit;
   font-size: calc(15px * var(--tb-text-scale));
   line-height: 1;
-  cursor: pointer;
+  cursor: var(--tb-cursor-pointer);
 }
 
 .dismiss:hover,
