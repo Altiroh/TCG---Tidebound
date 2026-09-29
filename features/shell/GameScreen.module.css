@@ -1465,3 +1465,85 @@
 .screen[data-backdrop="table"] :global(header)::after {
   display: none;
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+ * §9 — MATIÈRE CABINE (29/09/2026, « uniformiser »).
+ *
+ * La matière des écrans peints — Profil, Récompenses — devient celle de
+ * TOUS les écrans hors plateau : un panneau sombre cerclé de laiton, un
+ * parchemin pour ce qui se lit comme une note, des titres Cinzel ivoire.
+ * Plus de verre bleuté générique à côté de cadres peints.
+ *
+ *   - `cabinFrame`     : le grand cadre riveté (`rewards/panel.webp`),
+ *                        pour un panneau principal ;
+ *   - `cabinPanel`     : le panneau sombre à filet d'or
+ *                        (`ui/panneaux/panneau-sombre.webp`), pour une
+ *                        ligne, une tuile, un sous-bloc ;
+ *   - `cabinParchment` : le parchemin (`ui/panneaux/panneau-parchemin.webp`),
+ *                        encre brune ;
+ *   - `cabinTitle` / `cabinEyebrow` / `cabinRule` : la typographie qui va
+ *                        dessus.
+ *
+ * Découpes en 9 : les coins ne s'écrasent jamais, quelle que soit la
+ * taille du bloc.
+ * ══════════════════════════════════════════════════════════════════════ */
+
+.cabinFrame {
+  position: relative;
+  border: 0 solid transparent;
+  border-image: url("/assets/rewards/panel.webp") 115 fill / clamp(22px, 2.4vw, 40px) / 0 stretch;
+  padding: clamp(20px, 2vw, 34px) clamp(18px, 1.8vw, 30px);
+  color: #efe6d2;
+  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.55));
+}
+
+.cabinPanel {
+  position: relative;
+  border: 0 solid transparent;
+  border-image: url("/assets/ui/panneaux/panneau-sombre.webp") 26 fill / 14px / 0 stretch;
+  padding: 12px 14px;
+  color: #e6edf1;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.45));
+}
+
+.cabinParchment {
+  position: relative;
+  border: 0 solid transparent;
+  border-image: url("/assets/ui/panneaux/panneau-parchemin.webp") 40 fill / 22px / 0 stretch;
+  padding: 16px 18px;
+  color: #2b1c10;
+  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.5));
+}
+
+.cabinTitle {
+  margin: 0;
+  font-family: var(--tb-font-display);
+  font-size: var(--tb-fs-panel-title);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: var(--tb-lh-tight);
+  color: #efe6d2;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.cabinParchment .cabinTitle {
+  color: #2b1c10;
+  text-shadow: none;
+}
+
+.cabinEyebrow {
+  font-family: var(--tb-font-display);
+  font-size: var(--tb-fs-label);
+  font-weight: 700;
+  letter-spacing: var(--tb-track-label);
+  text-transform: uppercase;
+  color: #d9b56a;
+}
+
+.cabinRule {
+  height: 1px;
+  border: 0;
+  margin: 0;
+  background: linear-gradient(90deg, transparent, rgba(217, 181, 106, 0.55) 18%, rgba(217, 181, 106, 0.55) 82%, transparent);
+}
