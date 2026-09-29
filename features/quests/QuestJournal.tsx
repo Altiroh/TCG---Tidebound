@@ -325,8 +325,8 @@ interface QuestSheetProps {
 /**
  * Un registre (jour ou semaine) : une feuille de parchemin, une ligne par
  * quête. Trois états lisibles d'un coup d'œil : en cours (jauge cyan), à
- * encaisser (tampon doré qui pulse, toute la ligne encaisse), réclamée
- * (tampon rouge « Réclamée »).
+ * encaisser (tampon doré qui pulse au bout de la jauge, toute la ligne
+ * encaisse), réclamée (tampon rouge « Réclamée »).
  */
 function QuestSheet({ sheet, title, subtitle, entries, emptyText, busyKey, onClaim, onReroll }: QuestSheetProps) {
   return (
@@ -384,6 +384,17 @@ function QuestRow({ entry, busyKey, onClaim, onReroll }: { entry: QuestEntry; bu
           <span className={styles.count}>
             {Math.min(entry.progress, entry.target)} / {entry.target}
           </span>
+          {/* Le tampon se pose au bout de la jauge : jamais sur un texte. */}
+          {entry.claimed && (
+            <span className={styles.stamp} data-stamp="claimed">
+              Réclamée
+            </span>
+          )}
+          {claimable && (
+            <span className={styles.stamp} data-stamp="claim">
+              {busyKey === key ? "…" : "Encaisser"}
+            </span>
+          )}
         </div>
       </div>
 
@@ -395,16 +406,6 @@ function QuestRow({ entry, busyKey, onClaim, onReroll }: { entry: QuestEntry; bu
         {entry.rewardXp > 0 && <span className={styles.rewardXp}>+{entry.rewardXp} XP</span>}
       </div>
 
-      {entry.claimed && (
-        <span className={styles.stamp} data-stamp="claimed" aria-label="Réclamée">
-          Réclamée
-        </span>
-      )}
-      {claimable && (
-        <span className={styles.stamp} data-stamp="claim">
-          {busyKey === key ? "…" : "Encaisser"}
-        </span>
-      )}
     </>
   );
 

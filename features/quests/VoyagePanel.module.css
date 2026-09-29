@@ -28,15 +28,15 @@
 
 /*
  * Le titre tient dans le PAPIER VIERGE de la carte, entre la rose des vents
- * et les nuages (13,4 % → 45 % en largeur, 12,8 % → 34 % en hauteur de
+ * et les nuages (14 % → 43,5 % en largeur, 17 % → 33 % en hauteur de
  * l'image) : il ne mord jamais sur l'illustration. Incliné comme le bord
  * de la feuille.
  */
 .titleBlock {
   position: absolute;
-  left: 13.6%;
-  top: 12.8%;
-  width: 31.4%;
+  left: 14%;
+  top: 17%;
+  width: 29.5%;
   transform: rotate(-1.6deg);
   transform-origin: 0 0;
 }
@@ -50,7 +50,7 @@
   font-family: var(--tb-font-display);
   flex-wrap: nowrap;
   white-space: nowrap;
-  font-size: max(8px, calc(13 * var(--u) * var(--tb-text-scale, 1)));
+  font-size: max(7.5px, calc(11.5 * var(--u) * var(--tb-text-scale, 1)));
   font-weight: 700;
   letter-spacing: 0.04em;
   line-height: 1.1;
@@ -68,14 +68,14 @@
   position: relative;
   display: inline-grid;
   place-items: center;
-  min-width: max(14px, calc(21 * var(--u)));
-  height: max(14px, calc(19 * var(--u)));
+  min-width: max(13px, calc(18 * var(--u)));
+  height: max(13px, calc(16 * var(--u)));
   padding: 0 calc(4 * var(--u));
   border: max(1px, calc(1.5 * var(--u))) solid rgba(43, 28, 16, 0.55);
   border-radius: 999px;
   background: rgba(255, 244, 214, 0.35);
   font-family: var(--tb-font-display);
-  font-size: max(8px, calc(11 * var(--u) * var(--tb-text-scale, 1)));
+  font-size: max(7.5px, calc(9.5 * var(--u) * var(--tb-text-scale, 1)));
   font-weight: 700;
   letter-spacing: 0.02em;
   color: #3a2715;
@@ -115,7 +115,7 @@
 .title {
   margin: calc(3 * var(--u)) 0 0;
   font-family: var(--tb-font-display);
-  font-size: max(13px, calc(24 * var(--u) * var(--tb-text-scale, 1)));
+  font-size: max(12px, calc(20 * var(--u) * var(--tb-text-scale, 1)));
   white-space: nowrap;
   font-weight: 700;
   letter-spacing: 0.01em;
@@ -127,7 +127,7 @@
 .tagline {
   margin: calc(3 * var(--u)) 0 0;
   font-family: var(--tb-font-body);
-  font-size: max(8px, calc(12.5 * var(--u) * var(--tb-text-scale, 1)));
+  font-size: max(7.5px, calc(10.5 * var(--u) * var(--tb-text-scale, 1)));
   font-style: italic;
   line-height: 1.2;
   color: #2f2012;

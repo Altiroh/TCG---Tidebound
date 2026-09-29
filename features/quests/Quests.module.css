@@ -31,7 +31,8 @@
 
 .scene {
   /* Hauteur de la scène : l'écran moins le bandeau (`GameScreen.module.css`). */
-  --scene-h: calc(100dvh - clamp(54px, 6.8dvh, 72px) - var(--tb-safe-top));
+  --header-h: calc(clamp(54px, 6.8dvh, 72px) + var(--tb-safe-top));
+  --scene-h: calc(100dvh - var(--header-h));
   --lantern-h: calc(var(--scene-h) * 0.44);
   --lantern-w: calc(var(--lantern-h) * 640 / 920);
   --lantern-x: calc(var(--lantern-w) * -0.2 + var(--tb-safe-left));
@@ -39,7 +40,9 @@
   position: relative;
   z-index: 1;
   min-height: 0;
-  overflow: hidden;
+  /* Coupé sur les côtés et en bas, pas en haut : le kraken monte sous le
+     bandeau jusqu'au bord de l'écran, comme sur la maquette. */
+  clip-path: inset(calc(-1 * var(--header-h)) 0 0 0);
 }
 
 /* Lanterne soufflée : la pièce s'assombrit, sauf là où il reste un peu de nuit bleue aux hublots. */
@@ -86,8 +89,8 @@
   position: absolute;
   z-index: 1;
   left: calc(var(--scene-h) * -0.2);
-  top: calc(var(--scene-h) * -0.07);
-  height: calc(var(--scene-h) * 1.1);
+  top: calc(-1 * var(--header-h));
+  height: calc(var(--header-h) + var(--scene-h) * 1.04);
   width: auto;
   pointer-events: none;
   user-select: none;
@@ -309,19 +312,20 @@ button.tab:not([data-active]):hover {
   height: 9.6%;
   left: var(--sheet-left);
   right: var(--sheet-right);
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
-  gap: calc(12 * var(--u));
+  gap: calc(10 * var(--u));
   padding: 0 calc(4 * var(--u));
   overflow: hidden;
 }
 
 .sheetTitle {
+  grid-column: 2;
   margin: 0;
   overflow: hidden;
   font-family: var(--tb-font-display);
-  font-size: max(12px, calc(21 * var(--u) * var(--tb-text-scale, 1)));
+  font-size: max(11px, calc(17 * var(--u) * var(--tb-text-scale, 1)));
   font-weight: 700;
   letter-spacing: 0.02em;
   line-height: 1.1;
@@ -332,9 +336,12 @@ button.tab:not([data-active]):hover {
 }
 
 .sheetMeta {
-  flex: 0 0 auto;
+  grid-column: 3;
+  justify-self: end;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-family: var(--tb-font-body);
-  font-size: max(10px, calc(14 * var(--u) * var(--tb-text-scale, 1)));
+  font-size: max(9.5px, calc(12.5 * var(--u) * var(--tb-text-scale, 1)));
   line-height: 1.15;
   white-space: nowrap;
   color: #3a2715;
@@ -590,22 +597,21 @@ button.row:disabled {
  * pas touché la ligne.
  */
 .stamp {
-  position: absolute;
-  right: calc(96 * var(--u));
-  top: 50%;
-  padding: calc(3 * var(--u)) calc(10 * var(--u));
-  border: calc(3 * var(--u)) solid currentColor;
-  border-radius: calc(5 * var(--u));
-  outline: max(1px, calc(1.2 * var(--u))) solid currentColor;
-  outline-offset: calc(-6.5 * var(--u));
+  flex: 0 0 auto;
+  margin: calc(-3 * var(--u)) 0 calc(-3 * var(--u)) calc(-2 * var(--u));
+  padding: calc(1 * var(--u)) calc(7 * var(--u));
+  border: calc(2.2 * var(--u)) solid currentColor;
+  border-radius: calc(4 * var(--u));
+  outline: max(1px, calc(1 * var(--u))) solid currentColor;
+  outline-offset: calc(-4.5 * var(--u));
   font-family: var(--tb-font-display);
-  font-size: max(11px, calc(19 * var(--u) * var(--tb-text-scale, 1)));
+  font-size: max(9px, calc(12 * var(--u) * var(--tb-text-scale, 1)));
   font-weight: 800;
   letter-spacing: 0.05em;
   line-height: 1.1;
   text-transform: uppercase;
   pointer-events: none;
-  transform: translateY(-58%) rotate(-9deg);
+  transform: rotate(-6deg);
 }
 
 .stamp[data-stamp="claimed"] {
@@ -789,12 +795,12 @@ button.row:focus-visible .stamp[data-stamp="claim"] {
 }
 
 @keyframes stampIn {
-  from { opacity: 0; transform: translateY(-58%) rotate(-9deg) scale(1.6); }
+  from { opacity: 0; transform: rotate(-6deg) scale(1.6); }
 }
 
 @keyframes claimPulse {
-  0%, 100% { box-shadow: 0 0 0 rgba(255, 196, 80, 0); transform: translateY(-58%) rotate(-9deg) scale(1); }
-  50% { box-shadow: 0 0 calc(18 * var(--u)) rgba(255, 196, 80, 0.75); transform: translateY(-58%) rotate(-9deg) scale(1.05); }
+  0%, 100% { box-shadow: 0 0 0 rgba(255, 196, 80, 0); transform: rotate(-6deg) scale(1); }
+  50% { box-shadow: 0 0 calc(14 * var(--u)) rgba(255, 196, 80, 0.75); transform: rotate(-6deg) scale(1.05); }
 }
 
 @keyframes toastIn {
@@ -871,6 +877,6 @@ button.row:focus-visible .stamp[data-stamp="claim"] {
 
   .stamp[data-stamp="claim"] {
     animation: none;
-    transform: translateY(-58%) rotate(-9deg);
+    transform: rotate(-6deg);
   }
 }
