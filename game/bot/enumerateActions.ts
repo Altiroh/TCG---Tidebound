@@ -356,7 +356,13 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
       actions.push({ type: "endTurn", playerId });
     }
   } else if (state.phase === "combatPhase") {
-    actions.push({ type: "endTurn", playerId });
+    // Le combat fini, le bot passe en Phase principale 2 plutôt que de
+    // terminer son tour : c'est là qu'on rappelle une unité qui a déjà
+    // attaqué, qu'on rejoue une arrivée, qu'on pose ce qu'on a gardé. La
+    // fin de tour y reste toujours proposée, donc rien n'est perdu à y
+    // entrer. Sans ça, aucun deck ne jouait jamais après le combat (relevé
+    // du 29/09/2026 : 0 action en Phase 2, sur les quinze préconstruits).
+    actions.push({ type: "advancePhase", playerId });
     for (const unit of player.board) {
       if (!canUnitAttack(state, playerId, unit.instanceId)) continue;
       actions.push({ type: "attack", playerId, attackerInstanceId: unit.instanceId });

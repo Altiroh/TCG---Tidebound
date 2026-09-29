@@ -98,7 +98,12 @@ function permanentValue(state: GameState, unit: CardInstance, controller: Player
 
   let value = stats.attack * 1.5 + remaining * 1.2;
   if (hasEffectiveKeyword(state, controller, unit, KEYWORD_GARDE)) value += GARDE_BONUS;
-  if (isUnit && unit.summoningSick) value *= SUMMONING_SICK_FACTOR;
+  // Le mal d'arrivée ne coûte que tant qu'une attaque reste possible ce
+  // tour-ci : en Phase principale 2 le combat est passé, une unité fraîche
+  // vaut autant qu'une autre. Sans cette nuance, rejouer une unité après le
+  // combat (le rappel du Théâtre Englouti) paraissait lui faire perdre 15 %.
+  const attackStillAhead = state.activePlayerId === controller.id && state.phase !== "mainPhase2";
+  if (isUnit && unit.summoningSick && attackStillAhead) value *= SUMMONING_SICK_FACTOR;
 
   // Inactive à cause de la Marée : elle ne fait rien MAINTENANT, mais elle
   // tient son Slot et redeviendra active. Diminuée, jamais annulée.
@@ -164,8 +169,30 @@ function unblockedThreat(state: GameState, attacker: PlayerState, defender: Play
   return hits.slice(gardes).reduce((sum, attack) => sum + attack, 0);
 }
 
-/** Une carte en main vaut d'autant plus qu'on a la Raison pour la jouer. */
+/** Ce que vaut une carte en main, quelle qu'elle soit. */
 const CARD_IN_HAND = 0.9;
+/**
+ * DÉPARTAGE DES CARTES EN MAIN. Toutes valaient exactement 0,9 : face à une
+ * défausse, le bot jetait donc la première venue — y compris l'unité qu'il
+ * venait de rappeler pour la rejouer (Le Masque Fendu : « renvoyez… puis
+ * piochez 1 carte et défaussez 1 carte », relevé du 29/09/2026). Un léger
+ * supplément selon le coût fait garder la carte qui pèse le plus, sans
+ * rien changer à l'arbitrage « jouer ou garder » : 0,05 par point de coût,
+ * c'est dix fois moins que la Raison dépensée pour la jouer.
+ */
+const CARD_IN_HAND_PER_COST = 0.05;
+
+function handValue(player: PlayerState): number {
+  return player.hand.reduce((sum, card) => {
+    let cost = 0;
+    try {
+      cost = getCardDefinition(card.cardId).cost;
+    } catch {
+      // Carte masquée d'une vue projetée : on n'en sait que le nombre.
+    }
+    return sum + CARD_IN_HAND + Math.min(cost, 8) * CARD_IN_HAND_PER_COST;
+  }, 0);
+}
 
 /**
  * CANON ARMÉ. Ce que vaut une capacité de Navire déjà payée mais pas encore
@@ -223,7 +250,7 @@ function playerValue(state: GameState, player: PlayerState): number {
     Math.max(0, player.reason) * 0.5 +
     boardValue +
     armedShotValue(state, player) +
-    player.hand.length * CARD_IN_HAND
+    handValue(player)
   );
 }
 

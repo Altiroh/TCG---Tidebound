@@ -1,7 +1,8 @@
 import { enumerateCandidateActions } from "@/game/bot/enumerateActions";
 import { evaluateState } from "@/game/bot/evaluateState";
 import { dispatch } from "@/game/engine";
-import type { PlayerAction } from "@/game/actions/types";
+import type { ActionResult, PlayerAction } from "@/game/actions/types";
+import { canUnitAttack } from "@/game/rules/validation";
 import type { GameState, PlayerId } from "@/game/state/types";
 
 /**
@@ -68,7 +69,8 @@ function stillActing(state: GameState, playerId: PlayerId): boolean {
 
 /**
  * Meilleure action immédiate selon la seule évaluation statique — le modèle
- * d'adversaire, et le repli quand la recherche n'a rien à départager.
+ * d'adversaire, et le repli quand la recherche n'a rien à départager. La
+ * fin de tour y vaut la position laissée, comme dans `scoreAction`.
  *
  * Volontairement glouton : il sert à estimer la riposte, pas à la jouer. Un
  * adversaire modélisé par une recherche complète ferait exploser le coût
@@ -80,11 +82,82 @@ export function greedyAction(state: GameState, playerId: PlayerId): PlayerAction
   for (const action of enumerateCandidateActions(state, playerId)) {
     const result = dispatch(state, action);
     if (!result.ok) continue;
-    const score = evaluateState(result.state, playerId);
+    const score = action.type === "endTurn" && state.activePlayerId === playerId ? evaluateState(state, playerId) : evaluateState(result.state, playerId);
     if (!best || score > best.score) best = { action, score };
   }
 
   return best?.action ?? null;
+}
+
+/**
+ * COUPS DE PRÉPARATION — le rappel, puis le rejeu.
+ *
+ * Renvoyer en main une carte qu'on contrôle est, pour une évaluation à un
+ * coup, une perte sèche : un permanent qui valait sa Puissance et sa
+ * Résistance devient une carte en main à 0,9, et l'Objet qui l'a rappelée
+ * est parti avec. Le bot ne rappelait donc jamais — 0,6 retour en main par
+ * partie pour Le Théâtre Englouti, dont c'est tout le plan (relevé du
+ * 29/09/2026, `scripts/preconLab/engines.ts`) — alors que le coup ne se
+ * juge qu'avec sa suite : on rejoue la carte, et son arrivée repart.
+ *
+ * Un coup qui rappelle une carte du joueur est donc noté sur la MEILLEURE
+ * position atteinte en prolongeant son tour gloutonnement de quelques
+ * actions. Rien n'est inventé : si la suite n'existe pas (plus de Raison,
+ * rien à rejouer), la note reste celle du rappel seul, et le coup reste
+ * mauvais.
+ *
+ * Une exception, parce qu'elle coûte ce que la note ne voit pas : rappeler
+ * AVANT le combat une unité qui pouvait encore attaquer lui fait perdre son
+ * attaque — elle revient avec le mal d'arrivée. Ce rappel-là attend la
+ * Phase principale 2.
+ */
+const FOLLOW_UP_DEPTH = 4;
+
+function returnsOwnCardToHand(before: GameState, result: ActionResult, playerId: PlayerId): boolean {
+  if (!result.ok) return false;
+  return result.events.some((event) => {
+    if (!event || event.type !== "CARD_MOVED" || event.fromZone !== "board" || event.toZone !== "hand") return false;
+    if (event.ownerId !== playerId) return false;
+    const couldStillAttack = before.phase === "mainPhase" && canUnitAttack(before, playerId, event.instanceId);
+    return !couldStillAttack;
+  });
+}
+
+/** Meilleure note atteinte en prolongeant le tour gloutonnement, sans jamais le finir. */
+function bestFollowUpScore(state: GameState, playerId: PlayerId): number {
+  let best = evaluateState(state, playerId);
+  let current = state;
+  for (let i = 0; i < FOLLOW_UP_DEPTH; i += 1) {
+    if (!stillActing(current, playerId)) break;
+    const action = greedyAction(current, playerId);
+    if (!action || action.type === "endTurn" || action.type === "advancePhase") break;
+    const result = dispatch(current, action);
+    if (!result.ok || result.state === current) break;
+    current = result.state;
+    best = Math.max(best, evaluateState(current, playerId));
+  }
+  return best;
+}
+
+/**
+ * Note d'un coup déjà simulé : la position qu'il laisse, ou — pour un coup
+ * de préparation — la meilleure position que sa suite immédiate atteint.
+ * Partagée par la décision à un coup (`chooseAction.ts`) et par l'élagage
+ * du faisceau ci-dessous.
+ */
+export function scoreAction(before: GameState, action: PlayerAction, result: ActionResult, playerId: PlayerId): number {
+  if (!result.ok) return -Infinity;
+  // FIN DE TOUR : notée sur la position qu'on LAISSE, pas sur celle d'après.
+  // Après `endTurn`, c'est déjà le tour adverse — sa pioche, sa Raison
+  // rendue, ses unités réveillées — alors que tout autre coup est noté
+  // pendant notre tour. La fin de tour paraissait donc coûter 5 à 7 points
+  // à elle seule, et le bot préférait n'importe quel coup à peine moins
+  // mauvais : en Phase principale 2, saborder ses propres permanents plutôt
+  // que passer la main (relevé du 29/09/2026).
+  if (action.type === "endTurn" && before.activePlayerId === playerId) return evaluateState(before, playerId);
+  const immediate = evaluateState(result.state, playerId);
+  if (!returnsOwnCardToHand(before, result, playerId)) return immediate;
+  return Math.max(immediate, bestFollowUpScore(result.state, playerId));
 }
 
 /**
@@ -167,7 +240,7 @@ export function searchBestAction(
     const line: Line = {
       state: result.state,
       first: action,
-      score: evaluateState(result.state, playerId),
+      score: scoreAction(state, action, result, playerId),
       closed: !stillActing(result.state, playerId),
     };
     (line.closed ? closed : frontier).push(line);
@@ -193,7 +266,7 @@ export function searchBestAction(
         const child: Line = {
           state: result.state,
           first: line.first,
-          score: evaluateState(result.state, playerId),
+          score: scoreAction(line.state, action, result, playerId),
           closed: !stillActing(result.state, playerId),
         };
         (child.closed ? closed : next).push(child);
