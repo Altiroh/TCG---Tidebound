@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { collectablePrice, COLLECTABLE_FAMILIES, isFree } from "@/game";
+import { collectablePrice, collectablesForSecret, COLLECTABLE_FAMILIES, isCosmeticSecret, isFree } from "@/game";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
 
@@ -112,5 +112,57 @@ export async function equipCollectable(kind: string, id: string): Promise<EquipC
   } catch (cause) {
     console.error("[equipCollectable] Échec inattendu :", cause);
     return { ok: false, error: "Équipement impossible pour le moment." };
+  }
+}
+
+export interface DiscoverSecretResult {
+  ok: boolean;
+  /** `true` : pas de session — rien n'est retenu, le geste pourra resservir une fois connecté. */
+  signedOut?: boolean;
+  /** Libellés des Collectables accordés À L'INSTANT (vide s'ils l'étaient déjà). */
+  granted: string[];
+}
+
+/**
+ * Un SECRET de l'interface vient d'être trouvé (souffler la bougie…) :
+ * crédite les Collectables qu'il débloque.
+ *
+ * Le client ne nomme qu'un secret, jamais un Collectable : le nom est
+ * vérifié contre le catalogue FERMÉ `COSMETIC_SECRETS`, et c'est le
+ * catalogue qui dit ce qu'il rapporte. Un appelant ne peut donc rien
+ * s'accorder d'autre que ce qu'un geste ouvert à tous accorde déjà.
+ *
+ * Idempotent (`grant_cosmetics` ignore ce qui est déjà là, et ne rend que
+ * ce qu'il vient d'ajouter) : rappelé, il répond `granted: []` sans rien
+ * écrire deux fois.
+ */
+export async function discoverSecret(secret: string): Promise<DiscoverSecretResult> {
+  if (!isCosmeticSecret(secret)) return { ok: false, granted: [] };
+
+  const user = await getSessionUser();
+  if (!user) return { ok: false, signedOut: true, granted: [] };
+
+  const grants = collectablesForSecret(secret);
+  if (grants.length === 0) return { ok: true, granted: [] };
+
+  try {
+    // Même fonction d'écriture que la synchronisation par compteurs :
+    // `player_cosmetics` reste en lecture seule pour l'application.
+    const { data, error } = await createSupabaseServiceRoleClient().rpc("grant_cosmetics", {
+      p_user_id: user.id,
+      p_cosmetics: grants.map((grant) => ({ kind: grant.kind, id: grant.id, label: grant.label })),
+    });
+    if (error) {
+      console.error("[discoverSecret] Octroi refusé :", error.message);
+      return { ok: false, granted: [] };
+    }
+
+    const grantedIds = new Set((data?.granted as string[] | undefined) ?? []);
+    const granted = grants.filter((grant) => grantedIds.has(grant.id)).map((grant) => grant.label);
+    if (granted.length > 0) revalidatePath("/collectables");
+    return { ok: true, granted };
+  } catch (cause) {
+    console.error("[discoverSecret] Échec inattendu :", cause);
+    return { ok: false, granted: [] };
   }
 }

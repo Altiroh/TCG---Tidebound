@@ -53,8 +53,9 @@
 }
 
 /* ── Décor ─────────────────────────────────────────────────────────── */
+/* La bougie n'en est pas : c'est un jouet (`CandleToy`), qui porte sa
+   propre ombre et reprend le pointeur. */
 .quill,
-.candle,
 .bottle {
   position: absolute;
   pointer-events: none;
@@ -129,9 +130,24 @@
 }
 
 .candle {
+  position: absolute;
   left: 8.8%;
   top: -1.5%;
   width: 6%;
+  aspect-ratio: 420 / 514;
+}
+
+/* Soufflée, la bougie n'éclaire plus la table : ses deux lueurs, voisines
+   dans la scène, s'éteignent avec elle (`filter`, que leurs vacillements
+   n'animent pas, contrairement à l'opacité). */
+.candleGlow,
+.candleCast {
+  transition: filter 520ms ease-out;
+}
+
+.stage:has(> [data-soufflee="true"]) .candleGlow,
+.stage:has(> [data-soufflee="true"]) .candleCast {
+  filter: opacity(0);
 }
 
 /* La flamme : un halo serré qui vacille vite… */
@@ -1175,4 +1191,74 @@
 .copyMissingCount {
   color: var(--danger);
   font-variant-numeric: tabular-nums;
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * ARRIVÉE DES DECKS — les piles se POSENT sur le livre, une à une, comme
+ * une main qu'on distribue : fondu, légère descente, le cadre qui s'affaisse
+ * à sa taille. Même geste que la boîte de l'écran Jouer (`BotSetup`) et que
+ * la pioche du plateau (`Table.module.css`, `cargoDeck`).
+ *
+ * Seules les propriétés INDIVIDUELLES (`translate`, `scale`) bougent :
+ * l'inclinaison de chaque pile (`transform` de `.slot`) et le survol
+ * (`transform` de `.stack`) restent intacts. La place est réservée dès le
+ * départ (opacité seule) : rien ne saute dans la grille.
+ *
+ * Tant que les illustrations de la main ne sont pas décodées
+ * (`useImagesReady`, `data-pending`), la donne attend sur sa première
+ * image : les piles arrivent illustrées, jamais vides.
+ * ────────────────────────────────────────────────────────────── */
+.slot {
+  animation: deckPose 420ms var(--tb-ease, cubic-bezier(0.2, 0.8, 0.2, 1)) both;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+
+.stacks[data-pending] .slot {
+  animation-play-state: paused;
+}
+
+@keyframes deckPose {
+  from {
+    opacity: 0;
+    translate: 0 -7%;
+    scale: 1.05;
+  }
+}
+
+/* La fiche glisse depuis le bord de l'écran, un temps après les piles. */
+.fiche {
+  animation: ficheIn 450ms var(--tb-ease, cubic-bezier(0.2, 0.8, 0.2, 1)) 120ms both;
+}
+
+@keyframes ficheIn {
+  from {
+    opacity: 0;
+    translate: 4% 0;
+  }
+}
+
+/* Autre deck choisi : l'illustration et le contenu de la fiche se lèvent en fondu. */
+.ficheArt,
+.ficheBody[data-swap] {
+  animation: ficheSwap 280ms var(--tb-ease, cubic-bezier(0.2, 0.8, 0.2, 1)) both;
+}
+
+.ficheArt[data-pending] {
+  animation-play-state: paused;
+}
+
+@keyframes ficheSwap {
+  from {
+    opacity: 0;
+    translate: 0 0.5cqw;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slot,
+  .fiche,
+  .ficheArt,
+  .ficheBody[data-swap] {
+    animation: none;
+  }
 }

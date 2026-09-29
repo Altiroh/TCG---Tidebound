@@ -1224,16 +1224,16 @@
   filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.6));
 }
 
-.decorTopRight img {
+/* La bougie est un jouet (`CandleToy`) : elle se touche, le reste non. */
+.decorCandle {
+  position: relative;
+  height: 100%;
+  aspect-ratio: 420 / 514;
+}
+
+.decorCup {
   display: block;
   width: auto;
-}
-
-.decorTopRight img:first-child {
-  height: 100%;
-}
-
-.decorTopRight img:last-child {
   height: 82%;
   margin-left: -0.6vw;
 }

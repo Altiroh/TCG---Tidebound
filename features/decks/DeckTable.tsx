@@ -8,7 +8,9 @@ import { cardName, sortedCards, styleIdOf, type BrowserDeck } from "@/features/d
 import { DeckStyleIcon } from "@/features/decks/DeckStyleIcon";
 import { DECK_SORTS, type DeckSortId } from "@/features/decks/deckFilters";
 import { shipNameOf } from "@/features/ships/ShipPortrait";
+import { CandleToy } from "@/features/shell/CandleToy";
 import { PreconToken } from "@/features/shell/GameIcons";
+import { useImagesReady } from "@/features/shell/useImagesReady";
 import styles from "@/features/decks/DeckTable.module.css";
 import { playButtonClick } from "@/lib/sound";
 
@@ -149,6 +151,13 @@ export function DeckTable(props: DeckTableProps) {
   }, [page, pages]);
 
   const visible = slots.slice(page * PER_PAGE, page * PER_PAGE + PER_PAGE);
+  // Les piles se POSENT une à une (`deckPose`, DeckTable.module.css), mais
+  // pas avant que leurs illustrations soient décodées : sinon le cadre
+  // arrive vide et l'image se construit dessus. Une autre main (onglet,
+  // page, tri) remonte la liste, et la donne se rejoue ; un simple re-rendu
+  // (sélection, favori) ne la rejoue pas.
+  const stacksReady = useImagesReady(visible.map((deck) => deck?.artUrl));
+  const dealKey = `${props.tab}:${page}:${props.sort}`;
 
   // Encrier : trois taches, pas une de plus.
   const [blots, setBlots] = useState<Array<{ id: number; x: number; y: number; size: number; variant: number; turn: number }>>([]);
@@ -183,9 +192,11 @@ export function DeckTable(props: DeckTableProps) {
         {/* ── Décor posé sur la table ── */}
         {/* eslint-disable @next/next/no-img-element -- décor peint, positionné à la main */}
         <img className={styles.quill} src={`${ASSETS}/plume.webp`} alt="" draggable={false} />
-        <img className={styles.candle} src="/assets/ui/accessoires/bougie.webp" alt="" draggable={false} />
         <img className={styles.bottle} src={`${ASSETS}/bouteille.webp`} alt="" draggable={false} />
         {/* eslint-enable @next/next/no-img-element */}
+        {/* La bougie se souffle et se rallume (`CandleToy`) ; ses deux
+            lueurs, posées sur la table, s'éteignent avec elle. */}
+        <CandleToy className={styles.candle} />
         <span className={styles.candleGlow} aria-hidden />
         <span className={styles.candleCast} aria-hidden />
 
@@ -289,14 +300,14 @@ export function DeckTable(props: DeckTableProps) {
             setPage((value) => (value - 1 + pages) % pages);
           }}
         />
-        <ul className={styles.stacks} role="listbox" aria-label="Decks">
+        <ul key={dealKey} className={styles.stacks} role="listbox" aria-label="Decks" data-pending={!stacksReady || undefined}>
           {visible.length === 0 && <li className={styles.empty}>{props.emptyLabel}</li>}
           {visible.map((deck, index) => {
             const tilt = TILTS[index % TILTS.length]!;
             const lift = LIFTS[index % LIFTS.length]!;
             if (!deck) {
               return (
-                <li key="nouveau" className={styles.slot} style={{ ["--tilt" as string]: `${tilt}deg`, ["--lift" as string]: `${lift}%` }}>
+                <li key="nouveau" className={styles.slot} style={{ ["--tilt" as string]: `${tilt}deg`, ["--lift" as string]: `${lift}%`, ["--i" as string]: index }}>
                   <Link href="/decks/nouveau" className={`${styles.stack} ${styles.stackNew}`} onClick={() => playButtonClick()}>
                     <span className={styles.stackWindow}>
                       <span className={styles.newPlus} aria-hidden>
@@ -313,7 +324,7 @@ export function DeckTable(props: DeckTableProps) {
             }
             const selected = deck.id === current?.id;
             return (
-              <li key={deck.id} className={styles.slot} style={{ ["--tilt" as string]: `${tilt}deg`, ["--lift" as string]: `${lift}%` }}>
+              <li key={deck.id} className={styles.slot} style={{ ["--tilt" as string]: `${tilt}deg`, ["--lift" as string]: `${lift}%`, ["--i" as string]: index }}>
                 <button
                   type="button"
                   role="option"
@@ -371,6 +382,8 @@ export function DeckTable(props: DeckTableProps) {
 function DeckFiche(props: DeckTableProps & { deck: BrowserDeck | null }) {
   const { deck } = props;
   const cards = useMemo(() => (deck ? sortedCards(deck.cards) : []), [deck]);
+  // L'illustration de la fiche attend d'être décodée, puis se lève en fondu.
+  const artReady = useImagesReady([deck?.artUrl]);
 
   if (!deck) {
     return (
@@ -388,7 +401,13 @@ function DeckFiche(props: DeckTableProps & { deck: BrowserDeck | null }) {
 
   return (
     <aside className={styles.fiche} aria-label={`Fiche de ${deck.name}`} aria-live="polite">
-      <span className={styles.ficheArt} style={deck.artUrl ? { backgroundImage: `url("${deck.artUrl}")` } : undefined} />
+      {/* Illustration et contenu sont remontés à chaque deck : l'ancien s'efface, le nouveau se lève (`ficheSwap`). */}
+      <span
+        key={`art-${deck.id}`}
+        className={styles.ficheArt}
+        data-pending={!artReady || undefined}
+        style={deck.artUrl ? { backgroundImage: `url("${deck.artUrl}")` } : undefined}
+      />
       <span className={styles.ficheRope} aria-hidden>
         {/* L'emblème du STYLE, posé sur le sceau de la corde, à gauche du
             nom — lu dans la phrase (« Midrange / Sentinelles… » → midrange).
@@ -415,7 +434,7 @@ function DeckFiche(props: DeckTableProps & { deck: BrowserDeck | null }) {
         ★
       </button>
 
-      <div className={styles.ficheBody}>
+      <div key={`body-${deck.id}`} className={styles.ficheBody} data-swap>
         <h2 className={styles.ficheName}>{deck.name}</h2>
         <p className={styles.ficheShip}>{shipNameOf(deck.shipId)}</p>
 

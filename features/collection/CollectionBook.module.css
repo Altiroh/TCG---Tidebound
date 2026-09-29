@@ -280,6 +280,7 @@
   flex: 0 0 auto;
   align-self: stretch;
   width: calc(var(--candle-h) * 0.66);
+  /* La place ne capte rien : seule la bougie (le jouet) se touche. */
   pointer-events: none;
 }
 
@@ -292,14 +293,8 @@
   translate: -50% 0;
 }
 
-.candle img {
-  position: relative;
-  z-index: 1;
-  display: block;
-  width: 100%;
-  height: 100%;
-  filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.6));
-}
+/* L'image elle-même (cire et flamme) est rendue par `CandleToy`, qui
+   la découpe pour pouvoir la souffler (`features/shell/CandleToy.module.css`). */
 
 /* Le grand halo : la lumière que la flamme jette sur la table. */
 .candleGlow,

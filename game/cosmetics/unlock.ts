@@ -17,10 +17,31 @@ import type { AchievementStats } from "@/game/achievements/catalog";
  *     déblocage, elle ne le fait pas disparaître ;
  *   - testable sans base — `isCosmeticUnlocked` est une fonction pure.
  *
- * L'ACHAT est la seule condition qui ne se déduit pas d'un compteur : elle
- * se lit dans `player_cosmetics` (la ligne existe = c'est payé). D'où le
- * second argument de `isCosmeticUnlocked`.
+ * DEUX conditions ne se déduisent d'aucun compteur : l'ACHAT et le SECRET.
+ * Elles se lisent dans `player_cosmetics` (la ligne existe = c'est payé,
+ * ou c'est trouvé). D'où le troisième argument de `isCosmeticUnlocked`.
  */
+
+/**
+ * LES SECRETS DE L'INTERFACE — catalogue FERMÉ.
+ *
+ * Un secret est un geste qu'on découvre en jouant avec le décor hors
+ * plateau (souffler la bougie…), pas une statistique. Le navigateur ne
+ * peut réclamer QUE ces noms-là (`discoverSecret`, côté serveur, refuse
+ * tout le reste) : ajouter un secret, c'est ajouter une entrée ici ET le
+ * geste qui l'appelle.
+ */
+export const COSMETIC_SECRETS = [
+  /** Souffler une bougie du décor (menu, Collection, Decks). */
+  "bougie",
+] as const;
+
+export type CosmeticSecret = (typeof COSMETIC_SECRETS)[number];
+
+/** Garde de type : la valeur reçue du réseau est-elle un secret connu ? */
+export function isCosmeticSecret(value: unknown): value is CosmeticSecret {
+  return typeof value === "string" && (COSMETIC_SECRETS as readonly string[]).includes(value);
+}
 
 export type CosmeticUnlock =
   /** Possédé d'office par tout le monde. Jamais écrit en base. */
@@ -42,7 +63,16 @@ export type CosmeticUnlock =
   /** Boosters effectivement ouverts. */
   | { kind: "boosters"; count: number }
   /** Decks dont le joueur possède réellement toutes les cartes. */
-  | { kind: "decksFullyOwned"; count: number };
+  | { kind: "decksFullyOwned"; count: number }
+  /**
+   * Un SECRET trouvé dans l'interface (`COSMETIC_SECRETS`). Comme l'achat,
+   * il ne se déduit d'aucun compteur : c'est la ligne de `player_cosmetics`
+   * qui dit « trouvé », écrite par `discoverSecret` au moment du geste. La
+   * synchronisation par compteurs ne l'accorde donc jamais — elle le
+   * constate. À déclarer `hidden` : une condition affichée ne serait plus
+   * un secret.
+   */
+  | { kind: "secret"; secret: CosmeticSecret };
 
 /** Ce que tout Collectable déclare, quelle que soit sa famille. */
 export interface CosmeticSkin {
@@ -78,9 +108,9 @@ export function isFree(skin: { unlock: CosmeticUnlock }): boolean {
 /**
  * La condition est-elle remplie ?
  *
- * `purchasedIds` : les identifiants déjà payés, lus dans
- * `player_cosmetics`. Un achat ne se déduit d'aucun compteur — c'est la
- * ligne en base qui fait foi, et elle seule.
+ * `purchasedIds` : les identifiants déjà acquis, lus dans
+ * `player_cosmetics`. Un achat, comme un secret trouvé, ne se déduit
+ * d'aucun compteur — c'est la ligne en base qui fait foi, et elle seule.
  */
 export function isCosmeticUnlocked(
   unlock: CosmeticUnlock,
@@ -92,6 +122,7 @@ export function isCosmeticUnlocked(
     case "free":
       return true;
     case "purchase":
+    case "secret":
       return purchasedIds.has(id);
     case "level":
       return stats.level >= unlock.level;
@@ -176,12 +207,17 @@ export function unlockLabel(unlock: CosmeticUnlock): string {
       return `${unlock.count} boosters ouverts`;
     case "decksFullyOwned":
       return unlock.count > 1 ? `${unlock.count} équipages complétés` : "Un équipage complété";
+    case "secret":
+      // Ne devrait jamais s'afficher (un secret est caché) ; s'il l'était,
+      // on n'en dit pas plus que ça.
+      return "Un secret à découvrir";
   }
 }
 
 /**
  * Ce qu'il reste à faire, quand c'est chiffrable (« encore 12 »). `null`
- * quand la condition ne se compte pas — un achat, une liste de cartes.
+ * quand la condition ne se compte pas — un achat, une liste de cartes, un
+ * secret.
  */
 export function unlockProgress(unlock: CosmeticUnlock, stats: AchievementStats): string | null {
   const remaining = (target: number, current: number) => (current >= target ? null : `encore ${target - current}`);
@@ -203,6 +239,7 @@ export function unlockProgress(unlock: CosmeticUnlock, stats: AchievementStats):
     case "free":
     case "purchase":
     case "ownsCards":
+    case "secret":
       return null;
   }
 }

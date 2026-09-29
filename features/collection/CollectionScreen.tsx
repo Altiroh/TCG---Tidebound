@@ -15,6 +15,7 @@ import surplusStyles from "@/features/collection/SurplusResale.module.css";
 import { playButtonClick } from "@/lib/sound";
 import type { DeckCatalogView } from "@/features/decks/catalogService";
 import { useCardBrowser } from "@/features/collection/useCardBrowser";
+import { CandleToy } from "@/features/shell/CandleToy";
 import { GameScreen } from "@/features/shell/GameScreen";
 import styles from "@/features/collection/CardBrowser.module.css";
 import collectionBook from "@/features/collection/CollectionBook.module.css";
@@ -131,14 +132,14 @@ function CollectionScreenBody({ isSignedIn, ownedCardIds, ownedCounts, catalog, 
   // et la lueur vacillante de sa flamme. Elle a SA place dans la barre de la
   // grille, entre la recherche et le tri : plus grande, posée par-dessus, elle
   // masquait le tri.
+  // On la souffle et on la rallume (`CandleToy`) : ses deux lueurs
+  // s'éteignent avec elle.
   const candle = (
-    <span className={collectionBook.candleSlot} aria-hidden>
-      <span className={collectionBook.candle}>
-        <span className={collectionBook.candleGlow} />
-        {/* eslint-disable-next-line @next/next/no-img-element -- décor peint */}
-        <img src="/assets/ui/accessoires/bougie.webp" alt="" draggable={false} />
-        <span className={collectionBook.candleCore} />
-      </span>
+    <span className={collectionBook.candleSlot}>
+      <CandleToy className={collectionBook.candle}>
+        <span className={collectionBook.candleGlow} aria-hidden />
+        <span className={collectionBook.candleCore} aria-hidden />
+      </CandleToy>
     </span>
   );
 

@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Route } from "next";
 import { useRef, useState, type CSSProperties } from "react";
+import { MenuBougie } from "@/components/menu/MenuBougie";
 import { MenuGroseilles } from "@/components/menu/MenuGroseilles";
 import { MenuPieces } from "@/components/menu/MenuPieces";
 import styles from "@/components/menu/MenuCarte.module.css";
@@ -232,6 +233,10 @@ export function TideboundMenuCarte({ marks = false }: { marks?: boolean }) {
             pièces sautent. */}
         <MenuGroseilles />
         <MenuPieces />
+
+        {/* La bougie peinte devant la lanterne : elle se souffle, se
+            rallume — et garde un secret. */}
+        <MenuBougie />
 
         {/* La flamme des bougies passe sur toute la table, parchemins
             compris (cf. `MenuCarte.module.css`). */}

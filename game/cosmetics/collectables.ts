@@ -1,7 +1,7 @@
 import type { AchievementStats } from "@/game/achievements/catalog";
 import { CARD_BACKS, CARD_BACK_COSMETIC_KIND } from "@/game/cosmetics/cardBacks";
 import { SHIP_FRAMES, SHIP_FRAME_COSMETIC_KIND } from "@/game/cosmetics/shipFrames";
-import { isCosmeticUnlocked, isFree, type CosmeticSkin } from "@/game/cosmetics/unlock";
+import { isCosmeticUnlocked, isFree, type CosmeticSecret, type CosmeticSkin } from "@/game/cosmetics/unlock";
 
 /**
  * Les deux familles de Collectables vues ENSEMBLE — c'est ce que le
@@ -42,18 +42,37 @@ export interface CollectableGrant {
  * ligne par joueur et par cosmétique gratuit ne dirait rien que le
  * catalogue ne dise déjà), et `owned` les traite à part.
  *
- * Les ACHATS sont rendus dès lors qu'ils sont dans `purchasedIds` — la
- * synchronisation ne les crée donc jamais, elle les constate. C'est l'achat
- * lui-même qui écrit la ligne.
+ * Les ACHATS et les SECRETS ne sont jamais rendus : aucun compteur ne les
+ * justifie, la synchronisation ne peut donc ni les créer ni les constater
+ * — c'est l'achat, ou le geste découvert (`collectablesForSecret`), qui
+ * écrit la ligne.
  */
 export function unlockedCollectables(stats: AchievementStats, purchasedIds: ReadonlySet<string>): CollectableGrant[] {
   const grants: CollectableGrant[] = [];
   for (const family of COLLECTABLE_FAMILIES) {
     for (const item of family.items) {
       if (isFree(item)) continue;
-      if (item.unlock.kind === "purchase") continue;
+      if (item.unlock.kind === "purchase" || item.unlock.kind === "secret") continue;
       if (!isCosmeticUnlocked(item.unlock, stats, purchasedIds, item.id)) continue;
       grants.push({ kind: family.kind, id: item.id, label: item.label });
+    }
+  }
+  return grants;
+}
+
+/**
+ * Les Collectables qu'un SECRET débloque, toutes familles confondues —
+ * ce que `discoverSecret` crédite quand le joueur a trouvé le geste. Aucun
+ * identifiant de Collectable ne vient du client : il nomme un secret, le
+ * catalogue dit ce qu'il rapporte.
+ */
+export function collectablesForSecret(secret: CosmeticSecret): CollectableGrant[] {
+  const grants: CollectableGrant[] = [];
+  for (const family of COLLECTABLE_FAMILIES) {
+    for (const item of family.items) {
+      if (item.unlock.kind === "secret" && item.unlock.secret === secret) {
+        grants.push({ kind: family.kind, id: item.id, label: item.label });
+      }
     }
   }
   return grants;

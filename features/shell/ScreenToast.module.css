@@ -36,6 +36,8 @@
 }
 
 .toast[data-tone="error"] { --tone: var(--tb-danger); }
+/* Une trouvaille : l'or des récompenses, pas le vert d'une opération réussie. */
+.toast[data-tone="reward"] { --tone: #d9b56a; }
 
 @keyframes toastIn {
   from { opacity: 0; transform: translateY(-8px) scale(0.98); }

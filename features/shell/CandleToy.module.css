@@ -1,0 +1,219 @@
+/*
+ * LA BOUGIE QU'ON SOUFFLE (`CandleToy`) — l'accessoire `ui/accessoires/bougie.webp`.
+ *
+ * L'écran hôte place et dimensionne la boîte (`className`), et doit la
+ * POSITIONNER (absolute, relative…) : tout ce qui suit s'y cale en
+ * pourcentages de l'image. Rien ici ne fixe `position` sur la boîte, pour
+ * ne jamais disputer son placement à l'hôte.
+ *
+ * GÉOMÉTRIE DE LA FLAMME, mesurée sur `bougie.webp` (420 × 514) : la
+ * flamme tient dans une ellipse centrée à 41,5 % × 12,5 %, de demi-axes
+ * 11 % × 15,5 % ; la mèche est à 41,7 % × 30 %. L'image est dessinée DEUX
+ * fois, découpée par cette même ellipse : la cire sans flamme dessous, la
+ * flamme seule dessus. Souffler, c'est coucher la seconde.
+ */
+.toy {
+  --flamme-ellipse: 11% 15.5% at 41.5% 12.5%;
+  display: block;
+  /* Ses calques (cire, flamme, halo, fumée) s'empilent entre eux, jamais
+     avec le reste de l'écran hôte. */
+  isolation: isolate;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Doublé : l'hôte retire souvent le pointeur à son décor, la bougie le reprend. */
+.toy.toy {
+  pointer-events: auto;
+}
+
+.toy:focus-visible {
+  outline: 2px solid rgba(254, 226, 170, 0.7);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+.body,
+.flame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* La cire et le bougeoir : tout sauf la flamme. */
+.body {
+  position: relative;
+  z-index: 1;
+  -webkit-mask-image: radial-gradient(var(--flamme-ellipse), transparent 98%, #000 100%);
+  mask-image: radial-gradient(var(--flamme-ellipse), transparent 98%, #000 100%);
+  filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.55));
+  transition: filter 700ms ease-out;
+}
+
+/* La flamme seule, qui danse sur sa mèche. */
+.flame {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  -webkit-mask-image: radial-gradient(var(--flamme-ellipse), #000 98%, transparent 100%);
+  mask-image: radial-gradient(var(--flamme-ellipse), #000 98%, transparent 100%);
+  transform-origin: 41.7% 30%;
+  /* Rallumage : elle jaillit un peu trop haut, puis se pose. */
+  transition:
+    scale 460ms cubic-bezier(0.2, 1.6, 0.4, 1),
+    translate 460ms ease-out,
+    opacity 180ms ease-out;
+  animation: flammeDanse 3.3s ease-in-out infinite;
+}
+
+@keyframes flammeDanse {
+  0%, 100% { rotate: 0deg; }
+  21% { rotate: -2.5deg; }
+  46% { rotate: 1.8deg; }
+  73% { rotate: -1.2deg; }
+}
+
+/* Soufflée : la flamme se couche sous le souffle et s'éteint. */
+.toy[data-soufflee="true"] .flame {
+  scale: 0.3 0.04;
+  translate: -5% 0;
+  opacity: 0;
+  transition:
+    scale 300ms cubic-bezier(0.5, 0, 0.9, 0.5),
+    translate 300ms ease-in,
+    opacity 280ms ease-in 40ms;
+}
+
+/* Sans flamme, la cire perd sa chaleur. */
+.toy[data-soufflee="true"] .body {
+  filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.55)) brightness(0.8) saturate(0.8);
+}
+
+/* Les lueurs de l'hôte (halo sur la table…) partent avec la flamme. */
+.lights {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transition: opacity 260ms ease-out;
+}
+
+.toy[data-soufflee="true"] .lights {
+  opacity: 0;
+  transition-duration: 520ms;
+}
+
+/*
+ * LE SURVOL : un halo chaud autour de la flamme, qui respire — on devine
+ * qu'elle se touche. Soufflée, il n'en reste qu'une lueur sourde : de quoi
+ * dire qu'on peut la rallumer.
+ */
+.halo {
+  position: absolute;
+  left: 41.5%;
+  top: 16%;
+  z-index: 3;
+  width: 125%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  translate: -50% -50%;
+  background: radial-gradient(
+    closest-side,
+    rgba(255, 226, 160, 0.6) 0%,
+    rgba(255, 184, 88, 0.3) 38%,
+    rgba(255, 150, 56, 0.1) 66%,
+    rgba(255, 150, 56, 0) 100%
+  );
+  mix-blend-mode: screen;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 260ms ease-out;
+}
+
+@media (hover: hover) {
+  .toy:hover .halo {
+    opacity: 1;
+    animation: haloRespire 2.4s ease-in-out infinite;
+  }
+
+  .toy[data-soufflee="true"]:hover .halo {
+    opacity: 0.35;
+  }
+}
+
+.toy:focus-visible .halo {
+  opacity: 1;
+  animation: haloRespire 2.4s ease-in-out infinite;
+}
+
+@keyframes haloRespire {
+  0%, 100% { scale: 0.9; }
+  50% { scale: 1.08; }
+}
+
+/* La braise de la mèche : elle rougeoie un instant, puis s'éteint. */
+.ember {
+  position: absolute;
+  left: 41.7%;
+  top: 30%;
+  z-index: 3;
+  width: 5%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  translate: -50% -50%;
+  background: radial-gradient(circle, #ffc070 0%, #e0561e 42%, rgba(200, 60, 20, 0) 72%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.toy[data-soufflee="true"] .ember {
+  animation: braise 2.6s ease-out forwards;
+}
+
+@keyframes braise {
+  0% { opacity: 0; }
+  8% { opacity: 1; }
+  40% { opacity: 0.75; }
+  100% { opacity: 0; }
+}
+
+/* Le filet de fumée, qui monte de la mèche et se défait. */
+.smoke {
+  position: absolute;
+  left: 41.7%;
+  bottom: 70%;
+  z-index: 4;
+  width: 90%;
+  height: auto;
+  max-width: none;
+  translate: -50% 0;
+  transform-origin: bottom center;
+  opacity: 0;
+  pointer-events: none;
+  user-select: none;
+  animation: fumeeBougie 2.8s ease-out 120ms forwards;
+}
+
+@keyframes fumeeBougie {
+  0% { opacity: 0; transform: translateY(12%) scale(0.45) rotate(-4deg); }
+  18% { opacity: 0.75; }
+  60% { opacity: 0.45; }
+  100% { opacity: 0; transform: translateY(-55%) scale(1.25) rotate(7deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flame,
+  .toy:hover .halo,
+  .toy:focus-visible .halo {
+    animation: none;
+  }
+
+  .smoke {
+    display: none;
+  }
+}

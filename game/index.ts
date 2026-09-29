@@ -179,12 +179,15 @@ export type { BotDifficulty } from "@/game/bot/types";
 
 // --- Cosmétiques -------------------------------------------------------
 export {
+  COSMETIC_SECRETS,
   isArtVeiled,
+  isCosmeticSecret,
   isCosmeticUnlocked,
   isFree,
   isSlotMasked,
   unlockLabel,
   unlockProgress,
+  type CosmeticSecret,
   type CosmeticSkin,
   type CosmeticUnlock,
 } from "@/game/cosmetics/unlock";
@@ -209,6 +212,7 @@ export {
 export {
   COLLECTABLE_FAMILIES,
   collectablePrice,
+  collectablesForSecret,
   purchasableCollectables,
   unlockedCollectables,
   type CollectableFamily,

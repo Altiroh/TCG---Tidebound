@@ -575,6 +575,208 @@
   }
 }
 
+/* ──────────────────────────────────────────────────────────────
+ * LA BOUGIE (`MenuBougie`) — celle que le fond PEINT devant la lanterne,
+ * en haut à droite. Elle luit au survol, se souffle au clic, se rallume au
+ * suivant.
+ *
+ * Mesures prises sur `carte-marine.webp` (en % du fond) : la cire de
+ * 87,8 à 93 % en largeur, de 5,6 à 20 % en hauteur ; la flamme, un trait
+ * penché d'environ 23° vers la lanterne, de la mèche (91,6 % × 5,8 %) à
+ * sa pointe (93,3 % × 0 %) — centre à 92,6 % × 2,8 %.
+ * ────────────────────────────────────────────────────────────── */
+.bougieClic {
+  position: absolute;
+  left: 87.6%;
+  top: 0;
+  z-index: 7;
+  width: 6%;
+  height: 20.5%;
+  padding: 0;
+  border: 0;
+  border-radius: 40% 40% 30% 30%;
+  background: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bougieClic:focus-visible {
+  outline: 2px solid rgba(254, 226, 170, 0.7);
+  outline-offset: 2px;
+}
+
+/* Le halo du survol : il respire autour de la flamme, et éclaire la table
+   (`screen`) plutôt que de la peindre. Soufflée, une lueur sourde. */
+.bougieHalo {
+  position: absolute;
+  left: 92.2%;
+  top: 4%;
+  z-index: 6;
+  width: 13%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  translate: -50% -50%;
+  background: radial-gradient(
+    closest-side,
+    rgba(255, 228, 160, 0.62) 0%,
+    rgba(255, 186, 92, 0.3) 36%,
+    rgba(255, 150, 56, 0.1) 64%,
+    rgba(255, 150, 56, 0) 100%
+  );
+  mix-blend-mode: screen;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 260ms ease-out;
+}
+
+@media (hover: hover) {
+  .stage:has(.bougieClic:hover) .bougieHalo {
+    opacity: 1;
+    animation: bougieRespire 2.4s ease-in-out infinite;
+  }
+
+  .stage:has(.bougieClic:hover) .bougieHalo[data-bougie="soufflee"] {
+    opacity: 0.3;
+  }
+}
+
+.stage:has(.bougieClic:focus-visible) .bougieHalo {
+  opacity: 1;
+}
+
+@keyframes bougieRespire {
+  0%, 100% { scale: 0.9; }
+  50% { scale: 1.08; }
+}
+
+/*
+ * SOUFFLÉE. La flamme est peinte : on ne peut pas l'enlever, on la DISSOUT
+ * dans le verre orangé de la lanterne derrière elle — un flou local et un
+ * cran de lumière en moins, découpés en fuseau le long du trait. Un voile
+ * sombre, plus large, reprend la chaleur de la cire et du bougeoir.
+ */
+.bougieEteinte,
+.bougieOmbre {
+  position: absolute;
+  z-index: 4;
+  translate: -50% -50%;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 240ms ease-out;
+}
+
+.bougieEteinte {
+  left: 92.5%;
+  top: 2.9%;
+  width: 2.4%;
+  height: 8%;
+  rotate: 23deg;
+  /* Un orangé brûlé plutôt qu'un simple assombrissement : un jaune qu'on
+     éteint en baissant la lumière tire vers l'olive. */
+  background: rgba(120, 48, 10, 0.3);
+  -webkit-backdrop-filter: blur(4px) brightness(0.78) saturate(1.15);
+  backdrop-filter: blur(4px) brightness(0.78) saturate(1.15);
+  -webkit-mask-image: radial-gradient(closest-side, #000 55%, transparent 100%);
+  mask-image: radial-gradient(closest-side, #000 55%, transparent 100%);
+}
+
+.bougieOmbre {
+  left: 90.8%;
+  top: 9%;
+  width: 11%;
+  height: 26%;
+  background: radial-gradient(closest-side, rgba(12, 6, 2, 0.42) 0%, rgba(12, 6, 2, 0.22) 55%, rgba(12, 6, 2, 0) 100%);
+}
+
+.bougieEteinte[data-bougie="soufflee"],
+.bougieOmbre[data-bougie="soufflee"] {
+  opacity: 1;
+  transition-duration: 380ms;
+}
+
+/* La lumière du coin droit retombe : il ne reste que la lanterne. */
+.stage:has(.bougieClic[data-bougie="soufflee"]) .lumiere::before {
+  animation: lumiereSoufflee 900ms ease-out forwards;
+}
+
+/* Rallumée : elle jaillit, puis reprend son vacillement. */
+.stage:has(.bougieClic[data-bougie="rallumee"]) .lumiere::before {
+  animation:
+    lumiereRallumee 600ms ease-out,
+    flammeVacille 4.7s ease-in-out 600ms infinite;
+}
+
+@keyframes lumiereSoufflee {
+  from { opacity: 0.8; }
+  to { opacity: 0.32; }
+}
+
+@keyframes lumiereRallumee {
+  0% { opacity: 0.32; }
+  45% { opacity: 1; }
+  100% { opacity: 0.74; }
+}
+
+/* La braise de la mèche, qui rougeoie un instant. */
+.bougieBraise {
+  position: absolute;
+  left: 91.6%;
+  top: 5.8%;
+  z-index: 5;
+  width: 0.55%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  translate: -50% -50%;
+  background: radial-gradient(circle, #ffc070 0%, #e0561e 45%, rgba(200, 60, 20, 0) 75%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.bougieBraise[data-bougie="soufflee"] {
+  animation: bougieBraise 2.6s ease-out forwards;
+}
+
+@keyframes bougieBraise {
+  0% { opacity: 0; }
+  8% { opacity: 1; }
+  40% { opacity: 0.75; }
+  100% { opacity: 0; }
+}
+
+/* Le filet de fumée : une des volutes du café, qui part de la mèche. */
+.bougieFumee {
+  position: absolute;
+  left: 91.8%;
+  bottom: 94.2%;
+  z-index: 6;
+  width: 5.5%;
+  height: auto;
+  translate: -50% 0;
+  transform-origin: bottom center;
+  opacity: 0;
+  pointer-events: none;
+  user-select: none;
+  animation: bougieFumee 2.8s ease-out 120ms forwards;
+}
+
+@keyframes bougieFumee {
+  0% { opacity: 0; transform: translateY(40%) scale(0.45) rotate(-4deg); }
+  18% { opacity: 0.8; }
+  60% { opacity: 0.45; }
+  100% { opacity: 0; transform: translateY(-30%) scale(1.2) rotate(7deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage:has(.bougieClic:hover) .bougieHalo,
+  .bougieBraise[data-bougie="soufflee"] {
+    animation: none;
+  }
+
+  .bougieFumee {
+    display: none;
+  }
+}
+
 /*
  * LE LOGO est accroché à l'ÉCRAN, pas à la scène.
  *
@@ -673,6 +875,7 @@
  * ainsi qu'on les replacera si une illustration change.
  */
 .marks .card,
+.marks .bougieClic,
 .marks .propGauche,
 .marks .propDroite,
 .marks .propLongueVue,

@@ -2,14 +2,19 @@ import { describe, expect, it } from "vitest";
 import {
   CARD_BACKS,
   COLLECTABLE_FAMILIES,
+  COSMETIC_SECRETS,
   SHIP_FRAMES,
   collectablePrice,
+  collectablesForSecret,
+  isCosmeticSecret,
   isCosmeticUnlocked,
   isFree,
   purchasableCollectables,
   unlockLabel,
   unlockProgress,
   unlockedCollectables,
+  isArtVeiled,
+  isSlotMasked,
 } from "@/game";
 import type { AchievementStats } from "@/game/achievements";
 import { CARD_DATABASE } from "@/game/cards/sets/core";
@@ -159,5 +164,72 @@ describe("cadres de Navire", () => {
   it("couvre les paliers annoncés, jusqu'au-delà du dernier niveau récompensé", () => {
     const levels = SHIP_FRAMES.flatMap((frame) => (frame.unlock.kind === "level" ? [frame.unlock.level] : []));
     expect(levels).toEqual([10, 25, 40, 50, 100]);
+  });
+});
+
+describe("secrets de l'interface", () => {
+  const RICH: AchievementStats = {
+    ...NOTHING,
+    level: 100,
+    wins: 9999,
+    losses: 9999,
+    matchesPlayed: 9999,
+    boostersOpened: 9999,
+    distinctCardsOwned: 9999,
+    decksFullyOwned: 99,
+  };
+  const secretItems = COLLECTABLE_FAMILIES.flatMap((family) => family.items).filter((item) => item.unlock.kind === "secret");
+
+  it("tient un catalogue fermé : seul un nom connu passe la garde", () => {
+    expect(COSMETIC_SECRETS).toContain("bougie");
+    expect(isCosmeticSecret("bougie")).toBe(true);
+    for (const intrus of ["", "Bougie", "back-derniere-chandelle", "__proto__", 42, null, undefined, ["bougie"]]) {
+      expect(isCosmeticSecret(intrus), String(intrus)).toBe(false);
+    }
+  });
+
+  it("donne à chaque secret au moins un Collectable, et rien d'autre ne s'y rattache", () => {
+    for (const secret of COSMETIC_SECRETS) {
+      expect(collectablesForSecret(secret).length, secret).toBeGreaterThan(0);
+    }
+    const viaSecrets = COSMETIC_SECRETS.flatMap((secret) => collectablesForSecret(secret).map((grant) => grant.id));
+    expect(new Set(viaSecrets)).toEqual(new Set(secretItems.map((item) => item.id)));
+  });
+
+  it("la bougie rapporte « Dernière chandelle », un dos caché dont le visuel est à venir", () => {
+    expect(collectablesForSecret("bougie")).toEqual([
+      { kind: "cardBack", id: "back-derniere-chandelle", label: "Dernière chandelle" },
+    ]);
+    const item = CARD_BACKS.find((back) => back.id === "back-derniere-chandelle")!;
+    expect(item.hidden).toBe(true);
+    expect(item.artPending).toBe(true);
+  });
+
+  it("garde tout Collectable à secret caché — une condition affichée n'est plus un secret", () => {
+    expect(secretItems.length).toBeGreaterThan(0);
+    for (const item of secretItems) {
+      expect(item.hidden, item.id).toBe(true);
+      expect(isSlotMasked(item, false), item.id).toBe(true);
+      expect(isArtVeiled(item, false), item.id).toBe(true);
+      expect(isSlotMasked(item, true), item.id).toBe(false);
+    }
+  });
+
+  it("ne se déduit d'AUCUN compteur : la synchronisation ne l'accorde jamais", () => {
+    const granted = unlockedCollectables(RICH, NONE).map((grant) => grant.id);
+    for (const item of secretItems) expect(granted, item.id).not.toContain(item.id);
+    for (const item of secretItems) expect(isCosmeticUnlocked(item.unlock, RICH, NONE, item.id), item.id).toBe(false);
+  });
+
+  it("ne le retire pas non plus : trouvé une fois, la ligne en base fait foi", () => {
+    const found = new Set(secretItems.map((item) => item.id));
+    for (const item of secretItems) expect(isCosmeticUnlocked(item.unlock, NOTHING, found, item.id), item.id).toBe(true);
+    // Et la synchronisation ne cherche pas à le réécrire : elle ne le rend pas.
+    expect(unlockedCollectables(NOTHING, found)).toEqual([]);
+  });
+
+  it("n'annonce ni progression ni condition chiffrée", () => {
+    expect(unlockProgress({ kind: "secret", secret: "bougie" }, RICH)).toBeNull();
+    expect(unlockLabel({ kind: "secret", secret: "bougie" })).toBe("Un secret à découvrir");
   });
 });

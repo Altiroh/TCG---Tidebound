@@ -98,6 +98,21 @@ export const CARD_BACKS: readonly CardBackSkin[] = [
     src: "/assets/cards/card-back/palier-50.webp",
     unlock: { kind: "level", level: 50 },
   },
+  /*
+   * Le Collectable du SECRET de la bougie : on le trouve en soufflant la
+   * bougie du décor (menu, Collection, Decks). Caché, et sans visuel
+   * définitif à ce jour — il se montre sous le voile, il ne s'équipe pas.
+   * À reporter au Notion « Dos de carte — Collectables ».
+   */
+  {
+    id: "back-derniere-chandelle",
+    label: "Dernière chandelle",
+    description: "Cire coulée et mèche encore fumante. Pour qui a soufflé la bougie du navigateur — et l'a rallumée.",
+    src: "/assets/cards/card-back/dispo-bientot.webp",
+    unlock: { kind: "secret", secret: "bougie" },
+    hidden: true,
+    artPending: true,
+  },
 ];
 
 export function cardBackById(id: string | null | undefined): CardBackSkin | undefined {

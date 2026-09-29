@@ -3,7 +3,8 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import styles from "@/features/shell/ScreenToast.module.css";
 
-export type ScreenToastTone = "success" | "error";
+/** `reward` : une trouvaille (Collectable caché…) — liseré d'or, lu un peu plus longtemps. */
+export type ScreenToastTone = "success" | "error" | "reward";
 
 export interface ScreenToastMessage {
   /** Change à chaque nouveau message : relance l'animation et le minuteur, même pour un texte identique. */
@@ -15,7 +16,7 @@ export interface ScreenToastMessage {
 }
 
 /** Temps d'affichage : assez pour lire une ligne, pas assez pour gêner. Une erreur reste un peu plus. */
-const DURATION_MS: Record<ScreenToastTone, number> = { success: 3200, error: 5200 };
+const DURATION_MS: Record<ScreenToastTone, number> = { success: 3200, error: 5200, reward: 5200 };
 
 /**
  * Petite alerte éphémère des écrans hors plateau, sous le bandeau à
@@ -78,7 +79,11 @@ export function ScreenToast({ message, onDismiss }: { message: ScreenToastMessag
         onMouseLeave={resume}
       >
         <span className={styles.icon} aria-hidden>
-          {message.tone === "success" ? (
+          {message.tone === "reward" ? (
+            <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
+              <path d="M12 3.5l2.4 5.3 5.6.6-4.2 3.8 1.2 5.6L12 16l-5 2.8 1.2-5.6L4 9.4l5.6-.6L12 3.5z" fill="currentColor" />
+            </svg>
+          ) : message.tone === "success" ? (
             <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
               <path d="M5 12.5l4.2 4.2L19 7" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
             </svg>

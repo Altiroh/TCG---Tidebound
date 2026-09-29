@@ -17,6 +17,7 @@ import { DeckIdentity } from "@/features/decks/DeckIdentity";
 import { DeckNamePlate } from "@/features/decks/DeckNamePlate";
 import { DeckListPanel } from "@/features/decks/DeckListPanel";
 import { DeleteDeckDialog } from "@/features/decks/DeleteDeckDialog";
+import { CandleToy } from "@/features/shell/CandleToy";
 import { Dialog } from "@/features/shell/Dialog";
 import { GameScreen } from "@/features/shell/GameScreen";
 import { ShipPicker } from "@/features/ships/ShipPicker";
@@ -451,11 +452,11 @@ function DeckEditorScreenBody({ ownedCardIds, ownedCounts, initialDeck }: DeckEd
       <img className={book.decor} src="/assets/ui/accessoires/longue-vue.webp" alt="" draggable={false} />
       {/* La bougie et le café de la référence : entre l'enseigne et le
           compte, posés sur le haut du parchemin. */}
-      <span className={book.decorTopRight} aria-hidden>
+      <span className={book.decorTopRight}>
+        {/* La bougie se souffle et se rallume (`CandleToy`). */}
+        <CandleToy className={book.decorCandle} />
         {/* eslint-disable-next-line @next/next/no-img-element -- décor peint */}
-        <img src="/assets/ui/accessoires/bougie.webp" alt="" draggable={false} />
-        {/* eslint-disable-next-line @next/next/no-img-element -- décor peint */}
-        <img src="/assets/ui/accessoires/tasse-cafe.webp" alt="" draggable={false} />
+        <img className={book.decorCup} src="/assets/ui/accessoires/tasse-cafe.webp" alt="" draggable={false} />
       </span>
 
       {detailCardId && (
