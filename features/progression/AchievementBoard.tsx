@@ -39,7 +39,11 @@ export function achievementIconUrl(code: string): string | null {
   return icon ? `/assets/exploits/${icon}.webp` : null;
 }
 
-/** Famille de chaque exploit — un repère sur la carte, plus un classement. */
+/**
+ * Famille de chaque exploit : l'en-tête (collant) sous lequel la liste le
+ * range. Un exploit qu'aucune famille ne cite tombe dans « Autres », en
+ * fin de liste — il reste visible, simplement pas encore classé.
+ */
 const FAMILIES: Array<{ id: string; label: string; codes: string[] }> = [
   { id: "voyage", label: "Premières escales", codes: ["tutorial_completed", "first_win", "ten_matches"] },
   { id: "cale", label: "La cale", codes: ["first_booster", "collection_25", "collection_60", "collection_100", "first_abyssal"] },
@@ -48,8 +52,10 @@ const FAMILIES: Array<{ id: string; label: string; codes: string[] }> = [
   { id: "traversees", label: "Traversées", codes: ["voyage_premier_quart", "voyage_eaux_troubles", "voyage_grand_fond"] },
 ];
 
+const OTHER_FAMILY = { id: "autres", label: "Autres" };
+
 function familyOf(code: string): { id: string; label: string } {
-  return FAMILIES.find((family) => family.codes.includes(code)) ?? { id: "autres", label: "Autres" };
+  return FAMILIES.find((family) => family.codes.includes(code)) ?? OTHER_FAMILY;
 }
 
 /** Part accomplie, de 0 à 1. Un exploit obtenu vaut 1 ; sans compteur connu, 0. */
@@ -67,6 +73,22 @@ const FILTERS: Array<{ id: Filter; label: string }> = [
   { id: "obtenus", label: "Obtenus" },
 ];
 
+function passes(filter: Filter, achievement: ProfileAchievement): boolean {
+  if (filter === "en-cours") return !achievement.unlocked;
+  if (filter === "obtenus") return achievement.unlocked;
+  return true;
+}
+
+interface FamilyGroup {
+  id: string;
+  label: string;
+  /** Exploits de la famille qui passent le filtre, dans l'ordre du catalogue. */
+  shown: ProfileAchievement[];
+  /** Compte de la famille entière, quel que soit le filtre. */
+  unlocked: number;
+  total: number;
+}
+
 interface AchievementBoardProps {
   achievements: readonly ProfileAchievement[];
   /** Réclame les Tides d'un exploit débloqué. */
@@ -78,44 +100,47 @@ interface AchievementBoardProps {
 /**
  * EXPLOITS — ce qu'on a accompli, et ce qui vient ensuite.
  *
- * Trois paliers de lecture, du plus pressant au plus acquis :
- *   1. À réclamer — l'exploit est obtenu, ses Tides attendent (or qui
- *      pulse, seul endroit où l'écran brille) ;
- *   2. En cours — triés du plus proche au plus lointain, chacun avec sa
- *      jauge, sa récompense et le titre qu'il débloque ;
- *   3. Obtenus — le trophée en couleurs, une coche verte discrète.
+ * Une vitrine pleine largeur en deux étages (29/09/2026, « le scroll doit
+ * se faire dans la liste ») :
+ *   - l'EN-TÊTE reste en place : titre, médaillon « x / y obtenus », les
+ *     filtres et la réglette « À réclamer » (l'or qui pulse, seul endroit
+ *     où l'écran brille) — ce qui attend le joueur ne sort jamais de vue ;
+ *   - la LISTE, seule, défile : les exploits rangés par famille sous des
+ *     en-têtes collants (« La cale · 2 / 5 »), dans l'ordre du catalogue —
+ *     une échelle se lit du plus simple au plus rare. Pensée pour la
+ *     centaine d'exploits à venir : en pleine largeur, 7 à 10 tuiles par
+ *     rangée.
  *
- * Matière cabine (29/09/2026, « pas le bon visuel ») : un grand cadre
- * riveté, des tuiles en panneau sombre à filet d'or dont l'illustration
- * peinte occupe toute la largeur — un musée de trophées, pas une liste de
- * vignettes. Un exploit à décrocher reste lisible, simplement éteint.
+ * Matière cabine : un grand cadre riveté, des tuiles en panneau sombre à
+ * filet d'or dont l'illustration peinte occupe toute la largeur — un musée
+ * de trophées. Un exploit à décrocher reste lisible, simplement éteint.
  */
 export function AchievementBoard({ achievements, onClaim, claimingCode = null }: AchievementBoardProps) {
   const [filter, setFilter] = usePersistedState<Filter>("exploits", "tous", {
     decode: (raw) => oneOf(FILTERS.map((option) => option.id), raw),
   });
 
-  const { toClaim, inProgress, done } = useMemo(() => {
-    const catalogOrder = new Map(achievements.map((achievement, index) => [achievement.code, index]));
-    const byOrder = (a: ProfileAchievement, b: ProfileAchievement) => (catalogOrder.get(a.code) ?? 0) - (catalogOrder.get(b.code) ?? 0);
-    return {
-      toClaim: achievements.filter((achievement) => achievement.claimable).sort(byOrder),
-      // Le plus proche du but d'abord ; à égalité, l'ordre du catalogue (le plus simple avant).
-      inProgress: achievements.filter((achievement) => !achievement.unlocked).sort((a, b) => ratioOf(b) - ratioOf(a) || byOrder(a, b)),
-      done: achievements.filter((achievement) => achievement.unlocked && !achievement.claimable).sort(byOrder),
-    };
-  }, [achievements]);
+  const toClaim = useMemo(() => achievements.filter((achievement) => achievement.claimable), [achievements]);
 
-  const unlockedCount = toClaim.length + done.length;
+  const groups = useMemo<FamilyGroup[]>(() => {
+    const byFamily = new Map<string, FamilyGroup>();
+    for (const family of [...FAMILIES, OTHER_FAMILY]) byFamily.set(family.id, { id: family.id, label: family.label, shown: [], unlocked: 0, total: 0 });
+    for (const achievement of achievements) {
+      const group = byFamily.get(familyOf(achievement.code).id)!;
+      group.total += 1;
+      if (achievement.unlocked) group.unlocked += 1;
+      if (passes(filter, achievement)) group.shown.push(achievement);
+    }
+    return [...byFamily.values()].filter((group) => group.shown.length > 0);
+  }, [achievements, filter]);
+
+  const unlockedCount = achievements.filter((achievement) => achievement.unlocked).length;
   const total = achievements.length;
   const ratio = total > 0 ? unlockedCount / total : 0;
-  const earnedTides = done.reduce((sum, achievement) => sum + achievement.rewardTides, 0);
+  const earnedTides = achievements.filter((achievement) => achievement.unlocked && !achievement.claimable).reduce((sum, achievement) => sum + achievement.rewardTides, 0);
   const waitingTides = toClaim.reduce((sum, achievement) => sum + achievement.rewardTides, 0);
-  const titlesEarned = [...toClaim, ...done].filter((achievement) => achievement.titleName).length;
+  const titlesEarned = achievements.filter((achievement) => achievement.unlocked && achievement.titleName).length;
   const titlesTotal = achievements.filter((achievement) => achievement.titleName).length;
-
-  const showInProgress = filter !== "obtenus";
-  const showDone = filter !== "en-cours";
 
   return (
     <section className={`${game.cabinFrame} ${styles.board}`} aria-label="Exploits">
@@ -156,83 +181,114 @@ export function AchievementBoard({ achievements, onClaim, claimingCode = null }:
             </ul>
           </div>
         </div>
+
+        <div className={styles.toolbar}>
+          <div className={styles.filters} role="tablist" aria-label="Filtrer les exploits">
+            {FILTERS.map((entry) => {
+              const count = entry.id === "tous" ? total : entry.id === "en-cours" ? total - unlockedCount : unlockedCount;
+              return (
+                <button
+                  key={entry.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={filter === entry.id}
+                  className={styles.filter}
+                  data-active={filter === entry.id ? "true" : undefined}
+                  onClick={() => setFilter(entry.id)}
+                >
+                  {entry.label}
+                  <span className={styles.filterCount}>{count}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* À réclamer : une réglette compacte qui reste en tête — la tuile
+              complète, elle, brille aussi à sa place dans la liste. */}
+          {toClaim.length > 0 && (
+            <section className={styles.claimStrip} aria-label="À réclamer">
+              <h3 className={styles.claimHead}>
+                <span className={`${game.cabinEyebrow} ${styles.claimName}`}>À réclamer</span>
+                <span className={styles.claimMeta}>
+                  <TideCoin size={12} /> {waitingTides}
+                </span>
+              </h3>
+              <ul className={styles.claimList}>
+                {toClaim.map((achievement) => (
+                  <li key={achievement.code}>
+                    <ClaimChip achievement={achievement} onClaim={onClaim} claiming={claimingCode === achievement.code} />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </div>
       </header>
 
-      <hr className={game.cabinRule} />
+      <hr className={`${game.cabinRule} ${styles.rule}`} />
 
-      {toClaim.length > 0 && (
-        <section className={styles.section} aria-label="À réclamer">
-          <h3 className={styles.sectionTitle}>
-            <span className={`${game.cabinEyebrow} ${styles.sectionName}`}>À réclamer</span>
-            <span className={styles.sectionMeta}>
-              {toClaim.length} · <TideCoin size={12} /> {waitingTides} Tides
-            </span>
-          </h3>
-          <ul className={styles.grid}>
-            {toClaim.map((achievement) => (
-              <li key={achievement.code}>
-                <AchievementCard achievement={achievement} onClaim={onClaim} claiming={claimingCode === achievement.code} />
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      {/* La liste : seul étage qui défile. */}
+      <div className={styles.scroller}>
+        {groups.map((group) => (
+          <section key={group.id} className={styles.family} aria-label={group.label}>
+            <h3 className={styles.familyHead}>
+              <span className={`${game.cabinEyebrow} ${styles.familyName}`}>{group.label}</span>
+              <span className={styles.familyCount}>
+                {group.unlocked} / {group.total}
+              </span>
+            </h3>
+            <ul className={styles.grid}>
+              {group.shown.map((achievement) => (
+                <li key={achievement.code}>
+                  <AchievementCard achievement={achievement} onClaim={onClaim} claiming={claimingCode === achievement.code} />
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
 
-      <div className={styles.filters} role="tablist" aria-label="Filtrer les exploits">
-        {FILTERS.map((entry) => {
-          const count = entry.id === "tous" ? total : entry.id === "en-cours" ? inProgress.length : done.length + toClaim.length;
-          return (
-            <button
-              key={entry.id}
-              type="button"
-              role="tab"
-              aria-selected={filter === entry.id}
-              className={styles.filter}
-              data-active={filter === entry.id ? "true" : undefined}
-              onClick={() => setFilter(entry.id)}
-            >
-              {entry.label}
-              <span className={styles.filterCount}>{count}</span>
-            </button>
-          );
-        })}
+        {filter === "en-cours" && groups.length === 0 && <p className={styles.empty}>Tous les exploits sont obtenus. Bravo, capitaine.</p>}
+        {filter === "obtenus" && groups.length === 0 && <p className={styles.empty}>Aucun exploit obtenu pour l&apos;instant : le premier est souvent le tutoriel.</p>}
       </div>
-
-      {showInProgress && inProgress.length > 0 && (
-        <section className={styles.section} aria-label="En cours">
-          <h3 className={styles.sectionTitle}>
-            <span className={`${game.cabinEyebrow} ${styles.sectionName}`}>En cours</span>
-            <span className={styles.sectionMeta}>du plus proche au plus lointain</span>
-          </h3>
-          <ul className={styles.grid}>
-            {inProgress.map((achievement) => (
-              <li key={achievement.code}>
-                <AchievementCard achievement={achievement} />
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {showDone && done.length > 0 && (
-        <section className={styles.section} aria-label="Obtenus">
-          <h3 className={styles.sectionTitle}>
-            <span className={`${game.cabinEyebrow} ${styles.sectionName}`}>Obtenus</span>
-            <span className={styles.sectionMeta}>{done.length}</span>
-          </h3>
-          <ul className={styles.grid}>
-            {done.map((achievement) => (
-              <li key={achievement.code}>
-                <AchievementCard achievement={achievement} />
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {showInProgress && !showDone && inProgress.length === 0 && <p className={styles.empty}>Tous les exploits sont obtenus. Bravo, capitaine.</p>}
-      {showDone && !showInProgress && unlockedCount === 0 && <p className={styles.empty}>Aucun exploit obtenu pour l&apos;instant : le premier est souvent le tutoriel.</p>}
     </section>
+  );
+}
+
+interface ClaimChipProps {
+  achievement: ProfileAchievement;
+  onClaim?: (code: string) => void;
+  claiming?: boolean;
+}
+
+/** Un exploit à réclamer, en une ligne : vignette, nom, Tides, bouton. */
+function ClaimChip({ achievement, onClaim, claiming = false }: ClaimChipProps) {
+  const icon = achievementIconUrl(achievement.code);
+  return (
+    <div className={`${game.cabinPanel} ${styles.claimChip}`}>
+      <span className={styles.claimThumb} aria-hidden>
+        {icon ? (
+          // eslint-disable-next-line @next/next/no-img-element -- illustration peinte locale
+          <img src={icon} alt="" draggable={false} />
+        ) : (
+          <CompassEmblem />
+        )}
+      </span>
+      <span className={styles.claimText}>
+        <span className={styles.claimTitle}>{achievement.name}</span>
+        <span className={styles.claimReward}>
+          <TideCoin size={11} /> +{achievement.rewardTides}
+        </span>
+      </span>
+      <button
+        type="button"
+        className={`${game.primary} ${styles.claimButton}`}
+        onClick={() => onClaim?.(achievement.code)}
+        disabled={claiming || !onClaim}
+        aria-label={`${achievement.name} — réclamer ${achievement.rewardTides} Tides`}
+      >
+        {claiming ? "…" : "Réclamer"}
+      </button>
+    </div>
   );
 }
 
@@ -257,7 +313,6 @@ function CompassEmblem() {
 
 function AchievementCard({ achievement, onClaim, claiming = false }: AchievementCardProps) {
   const icon = achievementIconUrl(achievement.code);
-  const family = familyOf(achievement.code);
   const state = achievement.claimable ? "claimable" : achievement.unlocked ? "done" : "progress";
   const progress = achievement.progress;
   const ratio = ratioOf(achievement);
@@ -271,7 +326,6 @@ function AchievementCard({ achievement, onClaim, claiming = false }: Achievement
         ) : (
           <CompassEmblem />
         )}
-        <span className={styles.family}>{family.label}</span>
         {state === "done" && (
           <span className={styles.check} title="Obtenu">
             <svg viewBox="0 0 16 16" width="12" height="12" fill="none">

@@ -35,6 +35,12 @@ function safeName(cardId: string): string {
  * il fallait comparer deux icônes de 11 px pour savoir laquelle manquait.
  * Le compte « possédées / tirables » dit d'un coup d'œil si le booster fera
  * encore avancer la collection. Toucher une carte ouvre sa fiche.
+ *
+ * Un PANNEAU à droite, pas une fenêtre au centre (29/09/2026) : ce qu'on
+ * regardait — le présentoir du Market, l'étagère des boosters — reste
+ * visible à gauche. Échap, « × » ou un clic sur cette partie gauche le
+ * ferment. Même panneau au Market (« Contenu ») et aux Boosters
+ * (« Cartes de l'extension »).
  */
 export function BoosterContentsDialog({ booster, owned, onClose }: BoosterContentsDialogProps) {
   // Mémorisés sur l'appareil : d'un booster à l'autre, on cherche la même chose.

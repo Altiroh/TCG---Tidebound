@@ -830,3 +830,28 @@
   width: min(1200px, 100%);
   margin: 0 auto 10px;
 }
+
+/*
+ * Onglet qui REMPLIT la scène (Exploits) : plus de colonne de 1200 px ni de
+ * défilement de page — le panneau occupe toute la largeur, à une marge de
+ * la zone sûre près, et c'est lui qui fait défiler sa liste. La hauteur
+ * vient de la rangée de l'écran (`100dvh` moins le bandeau).
+ */
+.tabPage[data-fill="true"] {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: clamp(6px, 1.4dvh, 16px) max(var(--tb-safe-right), clamp(8px, 1.2vw, 20px)) max(var(--tb-safe-bottom), clamp(8px, 1.6dvh, 18px)) max(var(--tb-safe-left), clamp(8px, 1.2vw, 20px));
+}
+
+.tabPage[data-fill="true"] > .tabPanel,
+.tabPage[data-fill="true"] > .claimError {
+  width: 100%;
+}
+
+.tabPage[data-fill="true"] > .tabPanel {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}

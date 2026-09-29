@@ -13,11 +13,21 @@
 section.board {
   display: flex;
   flex-direction: column;
-  gap: clamp(12px, 1.8dvh, 20px);
+  gap: clamp(10px, 1.6dvh, 18px);
   box-sizing: border-box;
-  min-height: 100%;
-  padding-inline: clamp(22px, 2.4vw, 40px);
+  /* Le cadre épouse la hauteur de l'onglet (`tabPage[data-fill]`) : seule
+     la liste défile, jamais la page. */
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  /* Au-delà du rebord peint du cadre (sa découpe fait 2.4vw) : le texte ne mord jamais le laiton. */
+  padding-inline: clamp(30px, 3.2vw, 56px);
   animation: boardIn 260ms var(--tb-ease) both;
+}
+
+/* L'en-tête, la règle et la barre d'outils ne rétrécissent pas : c'est la liste qui cède. */
+section.board > :not(.scroller) {
+  flex: none;
 }
 
 @keyframes boardIn {
@@ -27,17 +37,20 @@ section.board {
 
 /* ── En-tête : titre et compteur en médaillon ──────────────────── */
 
+/* Titre à gauche, médaillon à droite, barre d'outils dessous sur toute la largeur. */
 .head {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "text summary"
+    "tools tools";
   align-items: center;
-  justify-content: space-between;
-  gap: 12px 28px;
-  flex-wrap: wrap;
+  gap: clamp(8px, 1.4dvh, 14px) 28px;
 }
 
 .headText {
+  grid-area: text;
   display: flex;
-  flex: 1 1 280px;
   flex-direction: column;
   gap: 4px;
   min-width: 0;
@@ -58,6 +71,7 @@ section.board {
 }
 
 .summary {
+  grid-area: summary;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -108,6 +122,7 @@ section.board {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  white-space: nowrap;
 }
 
 .summaryLabel {
@@ -196,42 +211,218 @@ section.board {
   color: var(--book-ivory-dim);
 }
 
-/* ── Sections ────────────────────────────────────────────────── */
+/* ── Barre d'outils : filtres et réglette « À réclamer » ─────────── */
 
-.section {
+.toolbar {
+  grid-area: tools;
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 20px;
+  min-width: 0;
 }
 
-.sectionTitle {
+.claimStrip {
   display: flex;
-  align-items: baseline;
+  flex: 1 1 360px;
+  align-items: center;
   gap: 12px;
+  min-width: 0;
+}
+
+.claimHead {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 2px;
   margin: 0;
   font-size: inherit;
   font-weight: inherit;
 }
 
-.sectionName {
-  font-size: calc(clamp(13px, 1vw, 15px) * var(--tb-text-scale));
+.claimName {
+  font-size: calc(clamp(12px, 0.9vw, 14px) * var(--tb-text-scale));
+  white-space: nowrap;
 }
 
-.sectionMeta {
+.claimMeta {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   font-size: var(--tb-fs-caption);
+  font-weight: 600;
+  color: var(--tb-gold-bright);
+}
+
+/* Les exploits à réclamer défilent EN LARGEUR : la réglette garde sa hauteur. */
+.claimList {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  /* De quoi laisser respirer la lueur d'or sans qu'elle soit rognée. */
+  padding: 4px;
+  overflow-x: auto;
+  list-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--book-brass-line) transparent;
+}
+
+.claimList > li {
+  flex: none;
+}
+
+div.claimChip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px 6px 6px;
+}
+
+div.claimChip::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 6px;
+  pointer-events: none;
+  box-shadow: 0 0 0 1px var(--tb-gold-line), 0 0 14px rgba(226, 194, 122, 0.4);
+  animation: achievementReady 2.4s ease-in-out infinite;
+}
+
+.claimThumb {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  overflow: hidden;
+  border: 1px solid var(--tb-gold);
+  border-radius: 4px;
+  background: radial-gradient(circle at 50% 40%, var(--tb-surface-solid-raised), var(--tb-bg-deep));
+}
+
+.claimThumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.claimThumb .emblem {
+  width: 70%;
+}
+
+.claimText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.claimTitle {
+  max-width: 18ch;
+  overflow: hidden;
+  font-family: var(--tb-font-display);
+  font-size: calc(12.5px * var(--tb-text-scale));
+  font-weight: 700;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--book-ivory-strong);
+}
+
+.claimReward {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--tb-fs-caption);
+  font-weight: 600;
+  color: var(--tb-gold-bright);
+}
+
+.claimButton.claimButton {
+  min-height: 32px;
+  padding-inline: 14px;
+}
+
+/* ── La liste : seul étage qui défile ─────────────────────────── */
+
+.scroller {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* La barre se range contre le cadre, les tuiles ne la touchent pas. */
+  margin-right: calc(-1 * clamp(8px, 1vw, 16px));
+  padding-right: clamp(8px, 1vw, 16px);
+  padding-bottom: 6px;
+  scrollbar-gutter: stable;
+  /* Barre discrète, en laiton : on la voit quand on la cherche. */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(199, 154, 75, 0.55) rgba(0, 0, 0, 0.25);
+}
+
+.scroller::-webkit-scrollbar,
+.claimList::-webkit-scrollbar {
+  width: 8px;
+  height: 6px;
+}
+
+.scroller::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.scroller::-webkit-scrollbar-thumb,
+.claimList::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(199, 154, 75, 0.55);
+}
+
+.scroller::-webkit-scrollbar-thumb:hover {
+  background: var(--book-brass);
+}
+
+.family + .family {
+  margin-top: clamp(10px, 1.6dvh, 18px);
+}
+
+/* L'en-tête de famille reste collé en haut de la liste tant qu'on parcourt
+   ses tuiles : une bande nuit filetée de laiton, opaque pour que les
+   tuiles glissent dessous sans se mêler au texte. */
+.familyHead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin: 0 0 10px;
+  padding: 7px 4px 6px;
+  border-bottom: 1px solid var(--book-brass-line);
+  background: linear-gradient(180deg, #050c14, #0a1621);
+  box-shadow: 0 6px 10px -6px rgba(0, 0, 0, 0.8);
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.familyName {
+  font-size: calc(clamp(13px, 1vw, 15px) * var(--tb-text-scale));
+}
+
+.familyCount {
+  font-size: var(--tb-fs-caption);
+  font-variant-numeric: tabular-nums;
   color: var(--book-ivory-dim);
 }
 
 /* Des tuiles de trophée : l'illustration fait toute la largeur. */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 196px), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 176px), 1fr));
   gap: 12px;
   margin: 0;
-  padding: 0;
+  /* De quoi loger la lueur d'or d'une tuile à réclamer sans que la liste la rogne. */
+  padding: 3px;
   list-style: none;
 }
 
@@ -296,25 +487,6 @@ article.card {
 
 .card[data-state="progress"]:hover .artImage {
   filter: grayscale(0.35) brightness(0.92);
-}
-
-/* Famille : une étiquette posée sur le bas de l'illustration. */
-.family {
-  position: absolute;
-  left: 6px;
-  bottom: 6px;
-  max-width: calc(100% - 12px);
-  padding: 2px 8px;
-  border-radius: var(--tb-radius-pill);
-  background: rgba(5, 12, 20, 0.82);
-  font-size: calc(10px * var(--tb-text-scale));
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: var(--book-brass);
 }
 
 /* Obtenu : une coche verte discrète au coin de l'illustration. */
@@ -482,11 +654,13 @@ article.card {
 
 @media (prefers-reduced-motion: reduce) {
   section.board,
-  .card[data-state="claimable"]::after {
+  .card[data-state="claimable"]::after,
+  div.claimChip::after {
     animation: none;
   }
 
-  .card[data-state="claimable"]::after {
+  .card[data-state="claimable"]::after,
+  div.claimChip::after {
     opacity: 1;
   }
 
@@ -503,18 +677,26 @@ article.card {
     gap: 10px;
   }
 
-  .subtitle {
+  /* Le bandeau dit déjà « Exploits » : la place va à la liste. Filtres,
+     réglette et médaillon tiennent sur une seule rangée. */
+  .head {
+    grid-template-areas: "tools summary";
+    gap: 12px;
+  }
+
+  .headText,
+  .summaryText {
     display: none;
   }
 
   .medallion {
-    width: 58px;
-    height: 58px;
+    width: 50px;
+    height: 50px;
     padding: 3px;
   }
 
   .medallionFace {
-    padding-top: 13px;
+    padding-top: 11px;
   }
 
   .medallionValue {
@@ -525,18 +707,64 @@ article.card {
     font-size: calc(11px * var(--tb-text-scale));
   }
 
+  /* Tuiles couchées : vignette à gauche, texte à droite — deux rangées visibles au lieu d'une demie. */
   .grid {
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr));
     gap: 8px;
   }
 
   article.card {
-    gap: 6px;
-    padding: 8px;
+    flex-direction: row;
+    align-items: stretch;
   }
 
   .art {
-    aspect-ratio: 16 / 9;
+    flex: none;
+    align-self: flex-start;
+    width: 64px;
+    aspect-ratio: 1;
+  }
+
+  .claim {
+    margin-top: 4px;
+    min-height: 28px;
+  }
+
+  hr.rule {
+    display: none;
+  }
+
+  .toolbar {
+    flex-wrap: nowrap;
+    gap: 12px;
+  }
+
+  .claimStrip {
+    flex-basis: 0;
+  }
+
+  .claimHead {
+    display: none;
+  }
+
+  .claimThumb {
+    width: 34px;
+    height: 34px;
+  }
+
+  .claimButton.claimButton {
+    min-height: 28px;
+    padding-inline: 10px;
+  }
+
+  .familyHead {
+    margin-bottom: 6px;
+    padding-block: 4px;
+  }
+
+  article.card {
+    gap: 8px;
+    padding: 8px;
   }
 
   .filter {

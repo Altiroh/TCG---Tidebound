@@ -4,28 +4,32 @@
    pièce de verre générique du Market. */
 
 /*
- * FLEX et non grid (19/09/2026). En grille, l'unique rangée implicite était
- * dimensionnée par son CONTENU — un pool de 61 cartes — et le
- * `max-height: min(90vh, 100%)` du dialogue s'y référait : un pourcentage
- * qui dépend de ce qu'il est censé borner ne borne rien. Le dialogue
- * prenait donc la hauteur de sa liste entière, et sa fenêtre, centrée dans
- * une rangée bien plus haute que l'écran, commençait sous la ligne de
- * flottaison — on n'en voyait que le titre.
+ * PANNEAU LATÉRAL (29/09/2026, « la dialog carte de l'extension doit
+ * s'ouvrir en panel à droite et avec visibilité à gauche »). Plus de
+ * fenêtre centrée sous un voile opaque : un tiroir pleine hauteur glisse
+ * depuis la droite, et la moitié gauche de l'écran — les présentoirs du
+ * Market, le booster qu'on regarde — reste VISIBLE, à peine assombrie.
+ * Un clic sur cette partie gauche ferme le panneau, comme Échap et « × ».
  *
- * Dans un conteneur flex à hauteur DÉFINIE (`fixed` + `inset: 0`), `100 %`
- * se résout sur l'écran, et la liste reprend son rôle : c'est elle qui
- * défile, pas la fenêtre qui grandit.
+ * FLEX et non grid (19/09/2026). En grille, l'unique rangée implicite était
+ * dimensionnée par son CONTENU — un pool de 61 cartes — et la hauteur du
+ * dialogue s'y référait : un pourcentage qui dépend de ce qu'il est censé
+ * borner ne borne rien. Dans un conteneur flex à hauteur DÉFINIE
+ * (`fixed` + `inset: 0`), `100 %` se résout sur l'écran, et la liste
+ * reprend son rôle : c'est elle qui défile, pas le panneau qui grandit.
  */
 .backdrop {
   position: fixed;
   inset: 0;
   z-index: 85;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: clamp(10px, 3vmin, 40px);
-  background: rgba(2, 6, 12, 0.72);
-  backdrop-filter: blur(6px);
+  align-items: stretch;
+  justify-content: flex-end;
+  /* La zone sûre (encoche, barre d'accueil) écarte le panneau du bord ; le
+     cadre peint garde une respiration de quelques pixels. */
+  padding: max(var(--tb-safe-top), 6px) max(var(--tb-safe-right), 6px) max(var(--tb-safe-bottom), 6px) 0;
+  /* Un voile LÉGER, plus dense vers le panneau : la gauche reste lisible. */
+  background: linear-gradient(90deg, rgba(2, 6, 12, 0.12), rgba(2, 6, 12, 0.22) 45%, rgba(2, 6, 12, 0.45));
   animation: fade 180ms ease-out both;
 }
 
@@ -34,20 +38,31 @@
   to { opacity: 1; }
 }
 
+@keyframes slideIn {
+  from { transform: translateX(104%); }
+  to { transform: none; }
+}
+
 .dialog.dialog {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  width: min(1080px, 100%);
-  /* Le fond réserve déjà sa marge en `padding` : 100 % de sa boîte de
-     contenu, c'est l'écran moins cette marge. */
-  max-height: 100%;
+  box-sizing: border-box;
+  width: clamp(420px, 44vw, 820px);
+  max-width: 100%;
+  height: 100%;
   min-height: 0;
   /* Le cadre peint mord de 22 à 40 px sur les bords : on s'en écarte. */
-  padding: clamp(20px, 2.4vw, 34px) clamp(26px, 3vw, 46px);
+  padding: clamp(20px, 2.4vw, 34px) clamp(24px, 2.6vw, 42px);
   color: #e6edf1;
   font-family: var(--tb-font-ui);
-  filter: drop-shadow(0 30px 60px rgba(0, 0, 0, 0.6));
+  filter: drop-shadow(-18px 0 40px rgba(0, 0, 0, 0.6));
+  animation: slideIn 260ms var(--tb-ease, ease-out) both;
+}
+
+/* Les éléments fixes (en-tête, jauge, filtres) gardent leur hauteur : seule la liste cède. */
+.dialog > :not(.grid) {
+  flex: none;
 }
 
 .head {
@@ -303,4 +318,49 @@
   background: linear-gradient(180deg, #3fae6c, #22784a);
   color: #fff;
   box-shadow: 0 0 6px rgba(80, 200, 130, 0.6);
+}
+
+/* Téléphone couché : un panneau plus large (~60 %), la gauche reste visible. */
+@media (max-height: 560px) {
+  .dialog.dialog {
+    width: min(60vw, 100%);
+    gap: 8px;
+    padding: 18px 22px;
+  }
+
+  .title.title {
+    font-size: calc(18px * var(--tb-text-scale));
+  }
+
+  /* Le titre dit déjà de quoi il s'agit : la place va à la liste. */
+  .eyebrow {
+    display: none;
+  }
+
+  .chip {
+    padding: 3px 9px;
+  }
+
+  .grid {
+    grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+    gap: 8px;
+  }
+
+  .art {
+    aspect-ratio: 16 / 9;
+  }
+}
+
+/* Écran étroit (téléphone debout) : le panneau prend toute la largeur. */
+@media (max-width: 640px) {
+  .dialog.dialog {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backdrop,
+  .dialog.dialog {
+    animation: none;
+  }
 }
