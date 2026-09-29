@@ -154,6 +154,10 @@
   /* Nom du mode courant, relu par `useTableMetrics`. */
   --bp: "laptop";
 
+  /* Le plateau garde SON échelle de texte (`--fs-*` ci-dessous) :
+     l'agrandissement hors plateau (`--tb-text-scale`) ne l'atteint pas. */
+  --tb-text-scale: 1;
+
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);

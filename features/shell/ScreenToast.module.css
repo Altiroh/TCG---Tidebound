@@ -28,7 +28,7 @@
   background: var(--tb-surface-solid);
   box-shadow: var(--tb-shadow-lg);
   color: var(--tb-text);
-  font-size: clamp(12px, 0.88vw, 13.5px);
+  font-size: calc(clamp(12px, 0.88vw, 13.5px) * var(--tb-text-scale));
   line-height: 1.35;
   pointer-events: auto;
   animation: toastIn 260ms var(--tb-ease) both;

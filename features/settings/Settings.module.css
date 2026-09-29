@@ -32,7 +32,7 @@
 
 .sectionTitle {
   margin: 0;
-  font-size: clamp(9px, 1vh, 11px);
+  font-size: calc(clamp(9px, 1vh, 11px) * var(--tb-text-scale));
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -51,7 +51,7 @@
 .signedOut {
   margin: 0;
   padding: 4px 0;
-  font-size: clamp(11.5px, 0.85vw, 13px);
+  font-size: calc(clamp(11.5px, 0.85vw, 13px) * var(--tb-text-scale));
   line-height: 1.5;
   color: var(--ink-dim, rgba(190, 210, 228, 0.7));
 }
@@ -65,7 +65,7 @@
   margin: 4px 0 0;
   padding-top: 10px;
   border-top: 1px solid var(--line);
-  font-size: 11px;
+  font-size: calc(11px * var(--tb-text-scale));
   letter-spacing: 0.06em;
   text-align: center;
   color: var(--ink-faint);

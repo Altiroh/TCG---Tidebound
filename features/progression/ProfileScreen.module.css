@@ -25,7 +25,7 @@
   height: 17px;
   margin-left: 6px;
   padding: 0 4px;
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--tb-text-scale));
   font-weight: 800;
   line-height: 1;
   vertical-align: 2px;

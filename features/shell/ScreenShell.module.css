@@ -158,7 +158,7 @@
   background: none;
   color: var(--cb-ivory-dim);
   font-family: var(--cb-font-display);
-  font-size: clamp(12px, 0.95vw, 15px);
+  font-size: calc(clamp(12px, 0.95vw, 15px) * var(--tb-text-scale));
   font-weight: 600;
   letter-spacing: 0.07em;
   white-space: nowrap;
@@ -319,7 +319,7 @@
   background: radial-gradient(circle at 50% 30%, rgba(42, 143, 168, 0.55), rgba(10, 30, 50, 0.9) 75%);
   box-shadow: inset 0 1px 0 var(--tb-border-light);
   font-family: var(--cb-font-display);
-  font-size: clamp(14px, 2vh, 19px);
+  font-size: calc(clamp(14px, 2vh, 19px) * var(--tb-text-scale));
   font-weight: 600;
   color: var(--tb-text-strong);
   text-shadow: none;
@@ -362,7 +362,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--cb-font-display);
-  font-size: clamp(13px, 1.05vw, 16.5px);
+  font-size: calc(clamp(13px, 1.05vw, 16.5px) * var(--tb-text-scale));
   font-weight: 600;
   letter-spacing: 0.03em;
   line-height: 1.15;
@@ -376,7 +376,7 @@
 }
 
 .accountLevel {
-  font-size: clamp(10px, 0.78vw, 12.5px);
+  font-size: calc(clamp(10px, 0.78vw, 12.5px) * var(--tb-text-scale));
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -431,7 +431,7 @@
   align-items: center;
   gap: 6px;
   font-family: var(--cb-font-display);
-  font-size: clamp(13px, 1.05vw, 16px);
+  font-size: calc(clamp(13px, 1.05vw, 16px) * var(--tb-text-scale));
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -556,7 +556,7 @@
   border-radius: 999px;
   background: linear-gradient(180deg, var(--tb-gold-bright), var(--tb-gold));
   color: var(--tb-on-gold);
-  font-size: 10px;
+  font-size: calc(10px * var(--tb-text-scale));
   font-weight: 700;
   line-height: 16px;
   text-align: center;
@@ -607,7 +607,7 @@
   border-radius: 999px;
   background: rgba(4, 10, 17, 0.42);
   color: #eaf8fb;
-  font-size: clamp(12px, 0.9vw, 14px);
+  font-size: calc(clamp(12px, 0.9vw, 14px) * var(--tb-text-scale));
   font-weight: 600;
   letter-spacing: 0.04em;
   text-decoration: none;
@@ -729,7 +729,7 @@
 
   .navTab,
   .navTabActive {
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--tb-text-scale));
     letter-spacing: 0.02em;
   }
 
@@ -848,7 +848,7 @@
   height: 17px;
   padding: 0 4px;
   font-family: var(--cb-font-ui);
-  font-size: 10px;
+  font-size: calc(10px * var(--tb-text-scale));
   font-weight: 800;
   line-height: 15px;
   text-align: center;

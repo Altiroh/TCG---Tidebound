@@ -200,16 +200,23 @@
      Deux composants équivalents prennent le même rôle, jamais une taille
      à eux. (Spectral dessine plus petit que Barlow à corps égal : les
      tailles d'interface sont remontées d'autant.) */
-  --tb-fs-page-title: clamp(26px, 2.3vw, 40px);
-  --tb-fs-section-title: clamp(12px, 0.85vw, 14px);
-  --tb-fs-panel-title: clamp(17px, 1.3vw, 22px);
-  --tb-fs-nav: clamp(13px, 0.95vw, 16px);
-  --tb-fs-card-title: clamp(15px, 1.2vw, 19px);
-  --tb-fs-body: clamp(13px, 0.95vw, 15px);
-  --tb-fs-caption: clamp(11.5px, 0.82vw, 13px);
-  --tb-fs-label: clamp(12px, 0.85vw, 14px);
-  --tb-fs-button: clamp(13px, 0.95vw, 15px);
-  --tb-fs-counter: clamp(12px, 0.9vw, 15px);
+  /* ÉCHELLE DU TEXTE (29/09/2026 : +20 %, « agrandissement des polices
+     générales »). Le SEUL bouton de la taille du texte hors plateau :
+     chaque rôle ci-dessous et chaque `font-size` des écrans
+     (`calc(… * var(--tb-text-scale))`) la multiplient. Le plateau de
+     partie garde sa propre échelle (`--fs-*`, `Table.module.css`). */
+  --tb-text-scale: 1.2;
+
+  --tb-fs-page-title: calc(clamp(26px, 2.3vw, 40px) * var(--tb-text-scale));
+  --tb-fs-section-title: calc(clamp(12px, 0.85vw, 14px) * var(--tb-text-scale));
+  --tb-fs-panel-title: calc(clamp(17px, 1.3vw, 22px) * var(--tb-text-scale));
+  --tb-fs-nav: calc(clamp(13px, 0.95vw, 16px) * var(--tb-text-scale));
+  --tb-fs-card-title: calc(clamp(15px, 1.2vw, 19px) * var(--tb-text-scale));
+  --tb-fs-body: calc(clamp(13px, 0.95vw, 15px) * var(--tb-text-scale));
+  --tb-fs-caption: calc(clamp(11.5px, 0.82vw, 13px) * var(--tb-text-scale));
+  --tb-fs-label: calc(clamp(12px, 0.85vw, 14px) * var(--tb-text-scale));
+  --tb-fs-button: calc(clamp(13px, 0.95vw, 15px) * var(--tb-text-scale));
+  --tb-fs-counter: calc(clamp(12px, 0.9vw, 15px) * var(--tb-text-scale));
 
   --tb-lh-tight: 1.1;
   --tb-lh-ui: 1.25;
@@ -247,6 +254,8 @@
  */
 @media (max-height: 560px) {
   :root {
-    --tb-fs-page-title: clamp(17px, 4.6vh, 22px);
+    --tb-fs-page-title: calc(clamp(17px, 4.6vh, 22px) * var(--tb-text-scale));
+    /* Couché, la hauteur manque : l'agrandissement n'y garde qu'un cran. */
+    --tb-text-scale: 1.08;
   }
 }

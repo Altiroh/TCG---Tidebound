@@ -76,7 +76,7 @@
   border-radius: 999px;
   background: linear-gradient(180deg, #3fae6c, #22784a);
   color: #fff;
-  font-size: clamp(9px, 1.1cqw, 13px);
+  font-size: calc(clamp(9px, 1.1cqw, 13px) * var(--tb-text-scale));
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;

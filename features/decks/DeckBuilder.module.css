@@ -68,7 +68,7 @@
   border: none;
   background: none;
   font: inherit;
-  font-size: clamp(11px, 1.3vh, 13px);
+  font-size: calc(clamp(11px, 1.3vh, 13px) * var(--tb-text-scale));
   cursor: pointer;
   transition: color 140ms ease-out, text-shadow 140ms ease-out;
 }
@@ -110,7 +110,7 @@
 }
 
 .identityShipName {
-  font-size: clamp(11px, 1.3vh, 13px);
+  font-size: calc(clamp(11px, 1.3vh, 13px) * var(--tb-text-scale));
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -141,7 +141,7 @@
   padding: 2px 9px;
   border: 1px solid;
   border-radius: 6px;
-  font-size: 11px;
+  font-size: calc(11px * var(--tb-text-scale));
   font-weight: 600;
   line-height: 1.4;
 }
@@ -171,7 +171,7 @@
 
 .summaryTitle {
   margin: 0;
-  font-size: clamp(8.5px, 1vh, 10px);
+  font-size: calc(clamp(8.5px, 1vh, 10px) * var(--tb-text-scale));
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-dim);
@@ -196,7 +196,7 @@
 }
 
 .curveValue {
-  font-size: 9px;
+  font-size: calc(9px * var(--tb-text-scale));
   line-height: 1;
   font-variant-numeric: tabular-nums;
   color: var(--ink-dim);
@@ -216,7 +216,7 @@
   display: grid;
   grid-template-columns: repeat(8, minmax(0, 1fr));
   gap: 3px;
-  font-size: 9px;
+  font-size: calc(9px * var(--tb-text-scale));
   text-align: center;
   color: var(--ink-dim);
 }
@@ -239,7 +239,7 @@
 .listEmpty {
   padding: 22px 10px;
   text-align: center;
-  font-size: clamp(11px, 1.3vh, 13px);
+  font-size: calc(clamp(11px, 1.3vh, 13px) * var(--tb-text-scale));
   line-height: 1.5;
   color: var(--ink-dim);
 }
@@ -299,7 +299,7 @@
   background: radial-gradient(circle at 50% 32%, var(--tb-accent-deep), #14446e 78%);
   box-shadow: inset 0 1px 0 rgba(190, 230, 250, 0.4), 0 1px 3px rgba(0, 0, 0, 0.5);
   font-family: var(--cb-font-display);
-  font-size: 13px;
+  font-size: calc(13px * var(--tb-text-scale));
   font-weight: 700;
   line-height: 1;
   text-align: center;
@@ -312,7 +312,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: clamp(11px, 1.35vh, 13px);
+  font-size: calc(clamp(11px, 1.35vh, 13px) * var(--tb-text-scale));
 }
 
 .rowThumb {
@@ -333,7 +333,7 @@
 }
 
 .rowQty {
-  font-size: clamp(11px, 1.35vh, 13px);
+  font-size: calc(clamp(11px, 1.35vh, 13px) * var(--tb-text-scale));
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--ink);
@@ -383,7 +383,7 @@
     inset 0 0 10px rgba(0, 183, 255, 0.12);
   color: #ffffff;
   font: inherit;
-  font-size: clamp(11px, 1.3vh, 13px);
+  font-size: calc(clamp(11px, 1.3vh, 13px) * var(--tb-text-scale));
   font-weight: 600;
   letter-spacing: 0.03em;
   cursor: pointer;
@@ -446,7 +446,7 @@
   align-items: center;
   gap: 3px;
   padding: 0 8px;
-  font-size: 11px;
+  font-size: calc(11px * var(--tb-text-scale));
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--ink-strong);
@@ -475,7 +475,7 @@
 /* Carte qu'on ne peut pas ajouter (non possédée) : la superposition le dit sans crier. */
 .cellLocked {
   padding: 2px 9px;
-  font-size: 10px;
+  font-size: calc(10px * var(--tb-text-scale));
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-dim);
@@ -495,7 +495,7 @@
   background: linear-gradient(180deg, #0b2638 0%, #071826 100%);
   color: #c8d7e1;
   font: inherit;
-  font-size: 12px;
+  font-size: calc(12px * var(--tb-text-scale));
   font-weight: 600;
   cursor: pointer;
   transition: border-color 140ms ease-out, box-shadow 140ms ease-out;
@@ -612,7 +612,7 @@
 
 .artOptionName {
   padding: 0 7px 7px;
-  font-size: clamp(10px, 0.78vw, 12px);
+  font-size: calc(clamp(10px, 0.78vw, 12px) * var(--tb-text-scale));
   line-height: 1.25;
   color: var(--ink);
   text-align: left;

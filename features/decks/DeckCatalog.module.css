@@ -35,7 +35,7 @@
 }
 
 .tileShip {
-  font-size: clamp(9px, 0.7vw, 11px);
+  font-size: calc(clamp(9px, 0.7vw, 11px) * var(--tb-text-scale));
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -52,14 +52,14 @@
 
 .tileName {
   font-family: var(--cb-font-display);
-  font-size: clamp(14px, 1.2vw, 18px);
+  font-size: calc(clamp(14px, 1.2vw, 18px) * var(--tb-text-scale));
   font-weight: 700;
   line-height: 1.2;
   color: var(--ink-strong);
 }
 
 .tileStyle {
-  font-size: clamp(11px, 0.9vw, 13px);
+  font-size: calc(clamp(11px, 0.9vw, 13px) * var(--tb-text-scale));
   color: var(--ink-dim);
 }
 
@@ -88,7 +88,7 @@
 }
 
 .ownLabel {
-  font-size: clamp(10px, 0.85vw, 12px);
+  font-size: calc(clamp(10px, 0.85vw, 12px) * var(--tb-text-scale));
   color: var(--ink-dim);
 }
 
@@ -154,14 +154,14 @@
 }
 
 .sheetLabel {
-  font-size: 10px;
+  font-size: calc(10px * var(--tb-text-scale));
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-dim);
 }
 
 .sheetValue {
-  font-size: clamp(12px, 1vw, 14px);
+  font-size: calc(clamp(12px, 1vw, 14px) * var(--tb-text-scale));
   color: var(--ink);
 }
 
@@ -178,7 +178,7 @@
   padding: 0.25em 0.7em;
   border: 1px solid var(--line);
   border-radius: 999px;
-  font-size: clamp(10px, 0.85vw, 12px);
+  font-size: calc(clamp(10px, 0.85vw, 12px) * var(--tb-text-scale));
   color: var(--ink-dim);
 }
 
@@ -208,7 +208,7 @@
 }
 
 .curveLabel {
-  font-size: 10px;
+  font-size: calc(10px * var(--tb-text-scale));
   color: var(--ink-dim);
 }
 
@@ -224,7 +224,7 @@
   min-width: 20px;
   padding: 0 7px;
   border-radius: 999px;
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--tb-text-scale));
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1;

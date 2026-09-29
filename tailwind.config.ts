@@ -16,6 +16,17 @@ const config: Config = {
         serif: ["var(--font-ui)", "Georgia", "Times New Roman", "serif"],
         display: ["var(--font-card-title)", "Georgia", "Times New Roman", "serif"],
       },
+      // Les tailles de texte suivent l'échelle du jeu (`--tb-text-scale`,
+      // `app/tokens.css`) : formulaires de compte et réglages grandissent
+      // avec le reste de l'interface.
+      fontSize: {
+        xs: ["calc(0.75rem * var(--tb-text-scale, 1))", { lineHeight: "calc(1rem * var(--tb-text-scale, 1))" }],
+        sm: ["calc(0.875rem * var(--tb-text-scale, 1))", { lineHeight: "calc(1.25rem * var(--tb-text-scale, 1))" }],
+        base: ["calc(1rem * var(--tb-text-scale, 1))", { lineHeight: "calc(1.5rem * var(--tb-text-scale, 1))" }],
+        lg: ["calc(1.125rem * var(--tb-text-scale, 1))", { lineHeight: "calc(1.75rem * var(--tb-text-scale, 1))" }],
+        xl: ["calc(1.25rem * var(--tb-text-scale, 1))", { lineHeight: "calc(1.75rem * var(--tb-text-scale, 1))" }],
+        "2xl": ["calc(1.5rem * var(--tb-text-scale, 1))", { lineHeight: "calc(2rem * var(--tb-text-scale, 1))" }],
+      },
       colors: {
         board: {
           background: "#0b1220",

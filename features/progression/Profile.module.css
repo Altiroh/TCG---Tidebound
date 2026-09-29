@@ -71,7 +71,7 @@
   border-radius: 50%;
   background: radial-gradient(closest-side, rgba(199, 154, 78, 0.28), rgba(40, 30, 12, 0.5));
   font-family: var(--font-card-title), Georgia, serif;
-  font-size: 20px;
+  font-size: calc(20px * var(--tb-text-scale));
   font-weight: 700;
   color: #f3e7c8;
 }
@@ -85,7 +85,7 @@
 }
 
 .sideLevelCaption {
-  font-size: 11px;
+  font-size: calc(11px * var(--tb-text-scale));
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-dim);
@@ -107,7 +107,7 @@
 }
 
 .sideXpLine {
-  font-size: 13px;
+  font-size: calc(13px * var(--tb-text-scale));
   font-variant-numeric: tabular-nums;
   color: var(--ink-dim);
 }
@@ -133,7 +133,7 @@
   font: inherit;
   font-family: var(--cb-font-display);
   /* Le panneau se lit à distance de bras : rien sous 15 px ici. */
-  font-size: clamp(15px, 1.1vw, 17px);
+  font-size: calc(clamp(15px, 1.1vw, 17px) * var(--tb-text-scale));
   font-weight: 600;
   letter-spacing: 0.03em;
   text-align: left;
@@ -162,7 +162,7 @@
 
 .tabCount {
   font-family: var(--cb-font-ui);
-  font-size: 13px;
+  font-size: calc(13px * var(--tb-text-scale));
   font-weight: 500;
   color: var(--ink-faint);
 }
@@ -186,7 +186,7 @@
   background: rgba(224, 122, 106, 0.06);
   color: #efb9ae;
   font: inherit;
-  font-size: 14px;
+  font-size: calc(14px * var(--tb-text-scale));
   font-weight: 600;
   letter-spacing: 0.04em;
   cursor: pointer;
@@ -258,7 +258,7 @@
 /* Le niveau : de l'or — c'est la récompense de la route. */
 .levelNumber {
   font-family: var(--cb-font-display);
-  font-size: clamp(34px, 4.4vw, 60px);
+  font-size: calc(clamp(34px, 4.4vw, 60px) * var(--tb-text-scale));
   font-weight: 700;
   line-height: 1;
   color: var(--gold);
@@ -266,7 +266,7 @@
 }
 
 .levelCaption {
-  font-size: 12px;
+  font-size: calc(12px * var(--tb-text-scale));
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-dim);
@@ -294,7 +294,7 @@
   flex-wrap: wrap;
   justify-content: space-between;
   gap: 8px;
-  font-size: clamp(13px, 1vw, 15px);
+  font-size: calc(clamp(13px, 1vw, 15px) * var(--tb-text-scale));
   color: var(--ink-dim);
 }
 
@@ -318,13 +318,13 @@
   align-items: center;
   gap: 6px;
   font-family: var(--font-card-title), Georgia, serif;
-  font-size: clamp(20px, 1.9vw, 28px);
+  font-size: calc(clamp(20px, 1.9vw, 28px) * var(--tb-text-scale));
   font-weight: 700;
   color: var(--ink-strong);
 }
 
 .statLabel {
-  font-size: 12px;
+  font-size: calc(12px * var(--tb-text-scale));
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-dim);
@@ -346,7 +346,7 @@
   gap: 12px;
   padding: 9px 0;
   border-bottom: 1px solid var(--line);
-  font-size: clamp(13px, 1vw, 15px);
+  font-size: calc(clamp(13px, 1vw, 15px) * var(--tb-text-scale));
 }
 
 .stop:last-child {
@@ -394,7 +394,7 @@
   border-radius: var(--radius-sm);
   background: var(--panel-inset);
   text-align: center;
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--tb-text-scale));
   line-height: 1.3;
   color: var(--ink-dim);
 }
@@ -415,7 +415,7 @@
 
 .escaleIndex {
   font-family: var(--cb-font-display);
-  font-size: 15px;
+  font-size: calc(15px * var(--tb-text-scale));
   font-weight: 700;
   color: inherit;
 }
@@ -438,7 +438,7 @@
 
 .streakText {
   margin: 0;
-  font-size: 13px;
+  font-size: calc(13px * var(--tb-text-scale));
   line-height: 1.4;
   color: var(--ink-dim);
 }
@@ -476,13 +476,13 @@
 }
 
 .rewardsLevel {
-  font-size: 13px;
+  font-size: calc(13px * var(--tb-text-scale));
   color: var(--ink-dim);
 }
 
 .rewardsLevel b {
   font-family: var(--font-card-title), Georgia, serif;
-  font-size: 20px;
+  font-size: calc(20px * var(--tb-text-scale));
   color: #f3e7c8;
 }
 
@@ -561,7 +561,7 @@
   border: 1px solid var(--line-strong);
   border-radius: 50%;
   background: #0a1724;
-  font-size: 11px;
+  font-size: calc(11px * var(--tb-text-scale));
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--ink-dim);
@@ -618,7 +618,7 @@
 
 .stageLevel {
   font-family: var(--font-card-title), Georgia, serif;
-  font-size: 14px;
+  font-size: calc(14px * var(--tb-text-scale));
   font-weight: 700;
   color: var(--ink-dim);
 }
@@ -636,7 +636,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: clamp(12px, 0.95vw, 14px);
+  font-size: calc(clamp(12px, 0.95vw, 14px) * var(--tb-text-scale));
   color: var(--ink);
 }
 
@@ -646,7 +646,7 @@
 }
 
 .stageStatus {
-  font-size: 11px;
+  font-size: calc(11px * var(--tb-text-scale));
   letter-spacing: 0.08em;
   text-transform: uppercase;
   white-space: nowrap;
@@ -778,7 +778,7 @@
   place-items: center;
   width: 100%;
   color: var(--ink-dim);
-  font-size: 14px;
+  font-size: calc(14px * var(--tb-text-scale));
 }
 
 @keyframes drawerScrimIn {
@@ -803,7 +803,7 @@
   background: linear-gradient(90deg, rgba(90, 64, 18, 0.55), rgba(40, 28, 8, 0.4));
   color: #ffe9b0;
   font: inherit;
-  font-size: 13px;
+  font-size: calc(13px * var(--tb-text-scale));
   text-align: left;
   animation: waitingPulse 2.2s ease-in-out infinite;
 }
@@ -812,7 +812,7 @@
 
 .waitingGift {
   display: inline-block;
-  font-size: 18px;
+  font-size: calc(18px * var(--tb-text-scale));
   animation: giftWiggle 2.2s ease-in-out infinite;
 }
 
@@ -833,7 +833,7 @@
   height: 20px;
   padding: 0 6px;
   font-family: var(--cb-font-ui);
-  font-size: 11px;
+  font-size: calc(11px * var(--tb-text-scale));
   font-weight: 800;
   line-height: 18px;
   text-align: center;
@@ -861,7 +861,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: calc(14px * var(--tb-text-scale));
   color: #ffe9b0;
 }
 
@@ -874,7 +874,7 @@
   box-shadow: var(--tb-btn-glow);
   color: var(--tb-btn-text);
   font-family: var(--cb-font-display);
-  font-size: 14px;
+  font-size: calc(14px * var(--tb-text-scale));
   font-weight: 700;
   letter-spacing: 0.03em;
   text-shadow: 0 1px 2px rgba(0, 20, 30, 0.6);
@@ -885,7 +885,7 @@
 
 .claimButtonSmall {
   padding: 5px 12px;
-  font-size: 12px;
+  font-size: calc(12px * var(--tb-text-scale));
   letter-spacing: 0.04em;
   text-transform: none;
   white-space: nowrap;
@@ -995,15 +995,15 @@
   .sideLevelNumber {
     width: 34px;
     height: 34px;
-    font-size: 15px;
+    font-size: calc(15px * var(--tb-text-scale));
   }
 
   .sideLevelCaption {
-    font-size: 9.5px;
+    font-size: calc(9.5px * var(--tb-text-scale));
   }
 
   .sideXpLine {
-    font-size: 11px;
+    font-size: calc(11px * var(--tb-text-scale));
   }
 
   .tabs {
@@ -1013,11 +1013,11 @@
 
   .tab {
     padding: 5px 10px;
-    font-size: 13px;
+    font-size: calc(13px * var(--tb-text-scale));
   }
 
   .tabCount {
-    font-size: 11px;
+    font-size: calc(11px * var(--tb-text-scale));
   }
 
   .sideFooter {
@@ -1030,22 +1030,22 @@
   .waitingCall {
     gap: 8px;
     padding: 7px 9px;
-    font-size: 12px;
+    font-size: calc(12px * var(--tb-text-scale));
   }
 
   .waitingGift {
-    font-size: 15px;
+    font-size: calc(15px * var(--tb-text-scale));
   }
 
   .claimButton,
   .claimButtonSmall {
     padding: 6px 14px;
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--tb-text-scale));
   }
 
   .signOut {
     padding: 6px 10px;
-    font-size: 12px;
+    font-size: calc(12px * var(--tb-text-scale));
   }
 
   /* ── Le contenu de l'onglet ── */
@@ -1065,20 +1065,20 @@
   }
 
   .blockHead > * {
-    font-size: 10.5px;
+    font-size: calc(10.5px * var(--tb-text-scale));
   }
 
   .levelNumber {
-    font-size: clamp(26px, 8vh, 36px);
+    font-size: calc(clamp(26px, 8vh, 36px) * var(--tb-text-scale));
   }
 
   .levelCaption,
   .statLabel {
-    font-size: 10px;
+    font-size: calc(10px * var(--tb-text-scale));
   }
 
   .xpLine {
-    font-size: 12px;
+    font-size: calc(12px * var(--tb-text-scale));
   }
 
   .stats {
@@ -1087,12 +1087,12 @@
   }
 
   .statValue {
-    font-size: clamp(16px, 5vh, 22px);
+    font-size: calc(clamp(16px, 5vh, 22px) * var(--tb-text-scale));
   }
 
   .stop {
     padding: 6px 0;
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--tb-text-scale));
   }
 
   /* Sept escales sur une rangée de 390 px : la vignette perd ses marges,
@@ -1100,11 +1100,11 @@
   .escale {
     gap: 5px;
     padding: 8px 5px;
-    font-size: 11px;
+    font-size: calc(11px * var(--tb-text-scale));
   }
 
   .escaleIndex {
-    font-size: 13px;
+    font-size: calc(13px * var(--tb-text-scale));
   }
 
   /*
@@ -1134,7 +1134,7 @@
   .stageLabel,
   .stageStatus,
   .stageLevel {
-    font-size: 10px;
+    font-size: calc(10px * var(--tb-text-scale));
   }
 
   .rewardsHead {
@@ -1143,7 +1143,7 @@
 
   .rewardsLevel,
   .rewardsLevel b {
-    font-size: 12px;
+    font-size: calc(12px * var(--tb-text-scale));
   }
 
   /* ── Le panneau ouvert depuis le bandeau ── */

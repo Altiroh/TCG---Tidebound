@@ -37,7 +37,7 @@
 
 .avatarInitial {
   font-family: var(--font-card-title), Georgia, serif;
-  font-size: 26px;
+  font-size: calc(26px * var(--tb-text-scale));
   font-weight: 700;
   color: #e8edf0;
 }
@@ -66,7 +66,7 @@
 
 .eyebrow {
   margin: 0;
-  font-size: 10px;
+  font-size: calc(10px * var(--tb-text-scale));
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -86,7 +86,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--font-card-title), Georgia, serif;
-  font-size: clamp(20px, 2.6vh, 26px);
+  font-size: calc(clamp(20px, 2.6vh, 26px) * var(--tb-text-scale));
   font-weight: 700;
   line-height: 1.15;
   color: #e8edf0;
@@ -134,7 +134,7 @@
   border-radius: 6px;
   background: #061522;
   font-family: var(--font-card-title), Georgia, serif;
-  font-size: 18px;
+  font-size: calc(18px * var(--tb-text-scale));
   font-weight: 700;
   color: #e8edf0;
 }
@@ -159,7 +159,7 @@
   border: none;
   background: none;
   font: inherit;
-  font-size: 13px;
+  font-size: calc(13px * var(--tb-text-scale));
   font-style: italic;
   color: var(--tb-accent-bright);
   cursor: pointer;
@@ -213,7 +213,7 @@
   }
 
   .avatarInitial {
-    font-size: 18px;
+    font-size: calc(18px * var(--tb-text-scale));
   }
 
   .avatarEdit {
@@ -224,11 +224,11 @@
   }
 
   .eyebrow {
-    font-size: 9px;
+    font-size: calc(9px * var(--tb-text-scale));
   }
 
   .name {
-    font-size: clamp(16px, 4.6vh, 20px);
+    font-size: calc(clamp(16px, 4.6vh, 20px) * var(--tb-text-scale));
   }
 
   .pencil,
@@ -239,6 +239,6 @@
 
   .titleLine,
   .titleLineEmpty {
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--tb-text-scale));
   }
 }

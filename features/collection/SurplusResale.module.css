@@ -11,7 +11,7 @@
   background: linear-gradient(180deg, #0b2638, #071826);
   color: #c8d7e1;
   font: inherit;
-  font-size: clamp(11px, 1.25vh, 13px);
+  font-size: calc(clamp(11px, 1.25vh, 13px) * var(--tb-text-scale));
   white-space: nowrap;
   cursor: pointer;
   transition: border-color 140ms ease-out, box-shadow 140ms ease-out, color 140ms ease-out;
@@ -42,7 +42,7 @@
   border-radius: 9px;
   background: rgba(255, 200, 90, 0.9);
   color: #2a1a00;
-  font-size: 11px;
+  font-size: calc(11px * var(--tb-text-scale));
   font-weight: 700;
 }
 
@@ -60,7 +60,7 @@
 
 .recapBig {
   font-family: var(--cb-font-display);
-  font-size: 26px;
+  font-size: calc(26px * var(--tb-text-scale));
   font-weight: 700;
   line-height: 1;
   color: #ffe2a0;
@@ -72,14 +72,14 @@
   gap: 5px;
   margin-left: auto;
   font-family: var(--cb-font-display);
-  font-size: 16px;
+  font-size: calc(16px * var(--tb-text-scale));
   font-weight: 700;
   color: #ffd66e;
 }
 
 .hint {
   margin: 0;
-  font-size: 12px;
+  font-size: calc(12px * var(--tb-text-scale));
 }
 
 .list {
@@ -118,14 +118,14 @@
   flex-direction: column;
   min-width: 0;
   color: #e8edf0;
-  font-size: 13px;
+  font-size: calc(13px * var(--tb-text-scale));
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .keep {
-  font-size: 11px;
+  font-size: calc(11px * var(--tb-text-scale));
   color: #9eb3c2;
 }
 
@@ -147,5 +147,5 @@
   gap: 8px;
   margin: 0;
   color: var(--ink, #e8edf0);
-  font-size: 15px;
+  font-size: calc(15px * var(--tb-text-scale));
 }

@@ -32,13 +32,13 @@
 .title {
   margin: 0;
   font-family: var(--tb-font-display);
-  font-size: clamp(18px, 1.6vw, 24px);
+  font-size: calc(clamp(18px, 1.6vw, 24px) * var(--tb-text-scale));
   font-weight: 700;
 }
 
 .subtitle {
   margin: 0;
-  font-size: 13px;
+  font-size: calc(13px * var(--tb-text-scale));
   color: var(--tb-text-muted);
 }
 
@@ -49,7 +49,7 @@
   background: var(--tb-surface-raised);
   color: var(--tb-text-muted);
   font: inherit;
-  font-size: 13px;
+  font-size: calc(13px * var(--tb-text-scale));
   cursor: pointer;
   transition: border-color var(--tb-duration-fast) var(--tb-ease), box-shadow var(--tb-duration-fast) var(--tb-ease);
 }
@@ -68,7 +68,7 @@
 .notice,
 .error {
   margin: 0;
-  font-size: 13px;
+  font-size: calc(13px * var(--tb-text-scale));
 }
 
 .notice {
@@ -140,7 +140,7 @@
   gap: 6px;
   padding-right: 48px;
   font-family: var(--tb-font-display);
-  font-size: 15px;
+  font-size: calc(15px * var(--tb-text-scale));
   font-weight: 700;
   color: var(--tb-text-strong);
 }
@@ -150,7 +150,7 @@
 }
 
 .optionHint {
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--tb-text-scale));
   line-height: 1.35;
   color: var(--tb-text-muted);
 }
@@ -163,7 +163,7 @@
   border: 1px solid var(--tb-accent-line);
   border-radius: var(--tb-radius-pill);
   background: var(--tb-accent-soft);
-  font-size: 11px;
+  font-size: calc(11px * var(--tb-text-scale));
   font-weight: 600;
   color: var(--tb-accent-bright);
 }

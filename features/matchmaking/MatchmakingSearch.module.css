@@ -106,7 +106,7 @@
   padding-bottom: 3%;
   background: url("/assets/ui/bandeaux/banderole.webp") center / 100% 100% no-repeat;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: max(15px, calc(var(--u) * 4.4));
+  font-size: calc(max(15px, calc(var(--u) * 4.4)) * var(--tb-text-scale));
   font-weight: 700;
   font-variant: small-caps;
   letter-spacing: 0.03em;
@@ -158,7 +158,7 @@
 
 .times dt {
   color: #0f6c86;
-  font-size: max(10px, calc(var(--u) * 1.9));
+  font-size: calc(max(10px, calc(var(--u) * 1.9)) * var(--tb-text-scale));
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -167,7 +167,7 @@
 .times dd {
   margin: 0;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: max(20px, calc(var(--u) * 6));
+  font-size: calc(max(20px, calc(var(--u) * 6)) * var(--tb-text-scale));
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1;
@@ -180,12 +180,12 @@
 }
 
 .deck {
-  font-size: max(11px, calc(var(--u) * 2.2));
+  font-size: calc(max(11px, calc(var(--u) * 2.2)) * var(--tb-text-scale));
 }
 
 .hint {
   color: #5b4128;
-  font-size: max(10px, calc(var(--u) * 1.8));
+  font-size: calc(max(10px, calc(var(--u) * 1.8)) * var(--tb-text-scale));
   font-style: italic;
 }
 
@@ -197,7 +197,7 @@
   background: none;
   color: var(--ink);
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: max(11px, calc(var(--u) * 2.5));
+  font-size: calc(max(11px, calc(var(--u) * 2.5)) * var(--tb-text-scale));
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;

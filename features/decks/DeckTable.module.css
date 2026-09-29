@@ -40,7 +40,7 @@
   aspect-ratio: 1672 / 880;
   container-type: inline-size;
   color: #3a2616;
-  font-size: 0.8cqw;
+  font-size: calc(0.8cqw * var(--tb-text-scale));
 }
 
 .visuallyHidden {
@@ -247,7 +247,7 @@
   filter: drop-shadow(0 0.4cqw 0.6cqw rgba(0, 0, 0, 0.55));
   color: #3a2616;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: max(9px, 0.86cqw);
+  font-size: calc(max(9px, 0.86cqw) * var(--tb-text-scale));
   font-weight: 700;
   white-space: nowrap;
   cursor: pointer;
@@ -280,7 +280,7 @@
   border-radius: 999px;
   background: #5a2a1a;
   color: #f4e6c6;
-  font-size: max(8px, 0.7cqw);
+  font-size: calc(max(8px, 0.7cqw) * var(--tb-text-scale));
   line-height: 1.2;
   text-align: center;
   font-variant-numeric: tabular-nums;
@@ -331,7 +331,7 @@
 .sortLabel {
   flex: none;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: 0.95cqw;
+  font-size: calc(0.95cqw * var(--tb-text-scale));
   font-weight: 700;
 }
 
@@ -344,7 +344,7 @@
   border-radius: 0.3cqw;
   background: linear-gradient(180deg, #3b2616, #24170d);
   color: #f1e3c4;
-  font-size: max(10px, 0.85cqw);
+  font-size: calc(max(10px, 0.85cqw) * var(--tb-text-scale));
   cursor: pointer;
 }
 
@@ -373,7 +373,7 @@
   border: 0;
   background: none;
   color: #f1e3c4;
-  font-size: max(10px, 0.85cqw);
+  font-size: calc(max(10px, 0.85cqw) * var(--tb-text-scale));
   outline: none;
 }
 
@@ -419,7 +419,7 @@
   border-radius: 0.5cqw;
   background: rgba(241, 227, 196, 0.85);
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: 1.1cqw;
+  font-size: calc(1.1cqw * var(--tb-text-scale));
 }
 
 .stack {
@@ -472,7 +472,7 @@
   filter: drop-shadow(0 0.2cqw 0.35cqw rgba(0, 0, 0, 0.6));
   color: #f1d38a;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: max(8px, 0.62cqw);
+  font-size: calc(max(8px, 0.62cqw) * var(--tb-text-scale));
   font-weight: 700;
   letter-spacing: 0.06em;
   white-space: nowrap;
@@ -498,7 +498,7 @@
 .newPlus {
   color: #f1e3c4;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: 5cqw;
+  font-size: calc(5cqw * var(--tb-text-scale));
   text-shadow: 0 0 1cqw rgba(0, 0, 0, 0.7);
 }
 
@@ -516,7 +516,7 @@
   border-radius: 0.4cqw 0 0.4cqw 0;
   background: rgba(24, 16, 10, 0.78);
   color: #f3c86b;
-  font-size: 1cqw;
+  font-size: calc(1cqw * var(--tb-text-scale));
   line-height: 1;
   text-shadow: 0 0 0.4cqw rgba(243, 200, 107, 0.7);
 }
@@ -580,7 +580,7 @@
   overflow: hidden;
   color: #1d120a;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: 0.7cqw;
+  font-size: calc(0.7cqw * var(--tb-text-scale));
   font-weight: 700;
   letter-spacing: 0.01em;
   line-height: 1;
@@ -592,7 +592,7 @@
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-  font-size: 0.56cqw;
+  font-size: calc(0.56cqw * var(--tb-text-scale));
   line-height: 0.98;
   white-space: normal;
   text-wrap: balance;
@@ -606,7 +606,7 @@
   margin-top: 0.08cqw;
   color: #6b4a22;
   font-family: var(--tb-font-ui, Georgia, serif);
-  font-size: 0.5cqw;
+  font-size: calc(0.5cqw * var(--tb-text-scale));
   font-style: italic;
   font-weight: 600;
   line-height: 1.05;
@@ -757,7 +757,7 @@
   border-radius: 50%;
   background: rgba(36, 23, 13, 0.85);
   color: rgba(241, 227, 196, 0.55);
-  font-size: 1.2cqw;
+  font-size: calc(1.2cqw * var(--tb-text-scale));
   line-height: 1;
   cursor: pointer;
 }
@@ -794,7 +794,7 @@
   overflow: hidden;
   color: #24160b;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: max(14px, 1.75cqw);
+  font-size: calc(max(14px, 1.75cqw) * var(--tb-text-scale));
   line-height: 1.05;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -803,7 +803,7 @@
 .ficheShip {
   margin: -0.35cqw 0 0;
   color: #1c6d86;
-  font-size: 0.7cqw;
+  font-size: calc(0.7cqw * var(--tb-text-scale));
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -826,7 +826,7 @@
   border-radius: 999px;
   background: #2e1f12;
   color: #f1e3c4;
-  font-size: 0.62cqw;
+  font-size: calc(0.62cqw * var(--tb-text-scale));
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -873,7 +873,7 @@
   margin: 0;
   overflow: hidden;
   color: #3a2616;
-  font-size: max(10px, 0.78cqw);
+  font-size: calc(max(10px, 0.78cqw) * var(--tb-text-scale));
   line-height: 1.4;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
@@ -882,7 +882,7 @@
 .ficheOwn {
   margin: 0;
   color: #5a3d22;
-  font-size: 0.7cqw;
+  font-size: calc(0.7cqw * var(--tb-text-scale));
 }
 
 /*
@@ -920,7 +920,7 @@
   color: #f1e3c4;
   font-family: var(--tb-font-display, Georgia, serif);
   /* Plancher à 8 px : sur un téléphone en paysage, la case ne fait que ~65 px. */
-  font-size: max(8px, 0.74cqw);
+  font-size: calc(max(8px, 0.74cqw) * var(--tb-text-scale));
   font-weight: 700;
   letter-spacing: 0.06em;
   line-height: 1;
@@ -1026,7 +1026,7 @@
   margin-top: 0.3cqw;
   color: #24160b;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: 0.85cqw;
+  font-size: calc(0.85cqw * var(--tb-text-scale));
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -1038,7 +1038,7 @@
   background: none;
   color: #1c6d86;
   font-family: var(--tb-font-ui);
-  font-size: 0.68cqw;
+  font-size: calc(0.68cqw * var(--tb-text-scale));
   letter-spacing: 0;
   text-decoration: none;
   text-transform: none;
@@ -1048,7 +1048,7 @@
 .ficheEmpty {
   margin: 0;
   color: #5a3d22;
-  font-size: 0.78cqw;
+  font-size: calc(0.78cqw * var(--tb-text-scale));
   font-style: italic;
 }
 
@@ -1093,14 +1093,14 @@
   border: 0.1cqw solid #5fd0e6;
   border-radius: 50%;
   background: #0c2b36;
-  font-size: 0.66cqw;
+  font-size: calc(0.66cqw * var(--tb-text-scale));
   font-weight: 700;
 }
 
 .cardName {
   z-index: 1;
   overflow: hidden;
-  font-size: max(9.5px, 0.74cqw);
+  font-size: calc(max(9.5px, 0.74cqw) * var(--tb-text-scale));
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1117,7 +1117,7 @@
 
 .cardCount {
   z-index: 1;
-  font-size: 0.72cqw;
+  font-size: calc(0.72cqw * var(--tb-text-scale));
   font-weight: 700;
   text-shadow: 0 0 0.3cqw #000;
 }
@@ -1169,7 +1169,7 @@
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  font-size: 13px;
+  font-size: calc(13px * var(--tb-text-scale));
 }
 
 .copyMissingCount {

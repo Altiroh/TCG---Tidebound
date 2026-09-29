@@ -68,7 +68,7 @@
 .count {
   align-self: center;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: 25px;
+  font-size: calc(25px * var(--tb-text-scale));
   font-weight: 700;
   line-height: 1;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
@@ -79,7 +79,7 @@
   max-width: 62%;
   overflow: hidden;
   color: rgba(244, 234, 212, 0.85);
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--tb-text-scale));
   font-weight: 700;
   letter-spacing: 0.08em;
   text-overflow: ellipsis;
@@ -98,10 +98,10 @@
     width: 76px;
   }
   .count {
-    font-size: 16px;
+    font-size: calc(16px * var(--tb-text-scale));
   }
   .caption {
-    font-size: 7px;
+    font-size: calc(7px * var(--tb-text-scale));
   }
 }
 

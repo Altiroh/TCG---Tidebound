@@ -230,7 +230,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: clamp(6px, 0.8vw, 12px);
-  font-size: clamp(9px, 1.05vmin, 11px);
+  font-size: calc(clamp(9px, 1.05vmin, 11px) * var(--tb-text-scale));
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-dim);
@@ -265,7 +265,7 @@
   border: 1px solid var(--line-strong);
   border-radius: 999px;
   background: rgba(140, 190, 225, 0.06);
-  font-size: clamp(9px, 1.1vmin, 11.5px);
+  font-size: calc(clamp(9px, 1.1vmin, 11.5px) * var(--tb-text-scale));
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -291,7 +291,7 @@
    */
   margin: clamp(14px, 2.2vmin, 22px) 0 0;
   font-family: var(--font-card-title), Georgia, serif;
-  font-size: clamp(20px, 3.1vmin, 38px);
+  font-size: calc(clamp(20px, 3.1vmin, 38px) * var(--tb-text-scale));
   font-weight: 600;
   line-height: 1.12;
   letter-spacing: 0.01em;
@@ -301,7 +301,7 @@
 
 .subtitle {
   margin: 0;
-  font-size: clamp(11px, 1.35vmin, 14px);
+  font-size: calc(clamp(11px, 1.35vmin, 14px) * var(--tb-text-scale));
   font-style: italic;
   line-height: 1.5;
   color: var(--ink-dim);
@@ -334,14 +334,14 @@
   background: radial-gradient(circle at 50% 35%, rgba(190, 230, 250, 0.08), transparent 65%);
   box-shadow: 0 0 14px -6px var(--stat-color, var(--accent));
   font-family: var(--font-card-title), Georgia, serif;
-  font-size: clamp(17px, 2.5vmin, 30px);
+  font-size: calc(clamp(17px, 2.5vmin, 30px) * var(--tb-text-scale));
   font-weight: 600;
   line-height: 1;
   color: var(--stat-color, var(--accent));
 }
 
 .statLabel {
-  font-size: clamp(8px, 1vmin, 10.5px);
+  font-size: calc(clamp(8px, 1vmin, 10.5px) * var(--tb-text-scale));
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-dim);
@@ -363,7 +363,7 @@
 .sectionLabel {
   display: block;
   margin-bottom: clamp(4px, 0.7vmin, 8px);
-  font-size: clamp(8px, 1vmin, 10.5px);
+  font-size: calc(clamp(8px, 1vmin, 10.5px) * var(--tb-text-scale));
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-dim);
@@ -380,7 +380,7 @@
 
 .effectText {
   margin: 0;
-  font-size: clamp(12px, 1.6vmin, 17px);
+  font-size: calc(clamp(12px, 1.6vmin, 17px) * var(--tb-text-scale));
   line-height: 1.6;
   color: var(--ink);
 }
@@ -413,7 +413,7 @@
   border-radius: 999px;
   background: var(--accent-soft);
   color: var(--accent);
-  font-size: clamp(10px, 1.3vmin, 13px);
+  font-size: calc(clamp(10px, 1.3vmin, 13px) * var(--tb-text-scale));
   font-weight: 600;
   letter-spacing: 0.04em;
   /* Cible tactile confortable même quand la puce est petite. */
@@ -444,14 +444,14 @@
 }
 
 .metaLabel {
-  font-size: clamp(8px, 0.95vmin, 10px);
+  font-size: calc(clamp(8px, 0.95vmin, 10px) * var(--tb-text-scale));
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-dim);
 }
 
 .metaValue {
-  font-size: clamp(10.5px, 1.3vmin, 13.5px);
+  font-size: calc(clamp(10.5px, 1.3vmin, 13.5px) * var(--tb-text-scale));
   color: var(--ink);
 }
 
@@ -471,7 +471,7 @@
   border: none;
   padding: 0;
   font: inherit;
-  font-size: clamp(10.5px, 1.3vmin, 13.5px);
+  font-size: calc(clamp(10.5px, 1.3vmin, 13.5px) * var(--tb-text-scale));
   cursor: pointer;
 }
 
@@ -669,7 +669,7 @@
 }
 
 .resaleLabel {
-  font-size: clamp(10px, 1.15vh, 12px);
+  font-size: calc(clamp(10px, 1.15vh, 12px) * var(--tb-text-scale));
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -679,7 +679,7 @@
 /* Le prix est l'information : il porte la couleur des Tides. */
 .resaleValue {
   font-family: var(--tb-font-display);
-  font-size: clamp(13px, 1.6vh, 16px);
+  font-size: calc(clamp(13px, 1.6vh, 16px) * var(--tb-text-scale));
   font-weight: 600;
   /* Un prix : l'or de l'économie, quelle que soit la variante. */
   color: var(--tb-gold);
@@ -709,7 +709,7 @@
   border: 0;
   background: rgba(10, 30, 44, 0.6);
   font: inherit;
-  font-size: clamp(12px, 1.4vh, 14px);
+  font-size: calc(clamp(12px, 1.4vh, 14px) * var(--tb-text-scale));
   line-height: 1;
   color: var(--ink);
   cursor: pointer;
@@ -736,7 +736,7 @@
   align-items: center;
   padding: 0 0.7em;
   border-inline: 1px solid var(--line);
-  font-size: clamp(11px, 1.3vh, 13px);
+  font-size: calc(clamp(11px, 1.3vh, 13px) * var(--tb-text-scale));
   font-variant-numeric: tabular-nums;
   color: var(--ink);
   white-space: nowrap;
@@ -748,7 +748,7 @@
   border-radius: var(--tb-radius-sm);
   background: var(--surface-inset);
   font: inherit;
-  font-size: clamp(11px, 1.3vh, 13px);
+  font-size: calc(clamp(11px, 1.3vh, 13px) * var(--tb-text-scale));
   color: var(--ink);
   cursor: pointer;
   transition: border-color 140ms ease-out, background-color 140ms ease-out, color 140ms ease-out;
@@ -761,7 +761,7 @@
 .resaleOk,
 .resaleError {
   margin: 0;
-  font-size: clamp(10px, 1.2vh, 12px);
+  font-size: calc(clamp(10px, 1.2vh, 12px) * var(--tb-text-scale));
   line-height: 1.35;
 }
 
@@ -782,7 +782,7 @@
 
 .resaleConfirmText {
   margin: 0;
-  font-size: clamp(11px, 1.3vh, 13px);
+  font-size: calc(clamp(11px, 1.3vh, 13px) * var(--tb-text-scale));
   line-height: 1.4;
   color: var(--ink);
 }

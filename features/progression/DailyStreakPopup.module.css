@@ -46,7 +46,7 @@
   border-radius: 50%;
   background: transparent;
   color: rgba(233, 237, 241, 0.7);
-  font-size: 22px;
+  font-size: calc(22px * var(--tb-text-scale));
   line-height: 1;
   cursor: pointer;
 }
@@ -84,7 +84,7 @@
   bottom: 14%;
   transform: translateX(-50%);
   font-family: var(--tb-font-display);
-  font-size: clamp(22px, 4vh, 30px);
+  font-size: calc(clamp(22px, 4vh, 30px) * var(--tb-text-scale));
   font-weight: 700;
   color: #fff;
   text-shadow: 0 0 8px rgba(0, 40, 70, 0.9), 0 2px 4px rgba(0, 0, 0, 0.8);
@@ -93,14 +93,14 @@
 .title {
   margin: 0;
   font-family: var(--tb-font-display);
-  font-size: clamp(20px, 3.4vh, 26px);
+  font-size: calc(clamp(20px, 3.4vh, 26px) * var(--tb-text-scale));
   letter-spacing: 0.03em;
   color: #f4ead4;
 }
 
 .lead {
   margin: 6px 0 12px;
-  font-size: 14px;
+  font-size: calc(14px * var(--tb-text-scale));
   color: #c3ced6;
 }
 
@@ -132,7 +132,7 @@
 
 .bonus {
   margin: 0 0 14px;
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--tb-text-scale));
   color: #b3a3e0;
 }
 
@@ -148,7 +148,7 @@
   background: rgba(6, 16, 26, 0.7);
 }
 .rewardCaption {
-  font-size: 11px;
+  font-size: calc(11px * var(--tb-text-scale));
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--tb-accent);
@@ -164,13 +164,13 @@
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  font-size: 13.5px;
+  font-size: calc(13.5px * var(--tb-text-scale));
   font-weight: 600;
 }
 
 .gains {
   margin: 0 0 12px;
-  font-size: 14px;
+  font-size: calc(14px * var(--tb-text-scale));
   font-weight: 600;
   color: #9fe7f3;
 }
@@ -182,7 +182,7 @@
   border: 1px solid var(--tb-btn-border);
   background: var(--tb-btn-bg);
   color: var(--tb-btn-text);
-  font-size: 15px;
+  font-size: calc(15px * var(--tb-text-scale));
   font-weight: 700;
   letter-spacing: 0.02em;
   cursor: pointer;
@@ -201,7 +201,7 @@
 
 .error {
   margin: 10px 0 0;
-  font-size: 13px;
+  font-size: calc(13px * var(--tb-text-scale));
   color: #ff9a8a;
 }
 
@@ -258,7 +258,7 @@
   }
   .lead {
     margin: 2px 0 6px;
-    font-size: 13px;
+    font-size: calc(13px * var(--tb-text-scale));
   }
   .days {
     justify-content: flex-start;

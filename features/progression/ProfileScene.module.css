@@ -114,7 +114,7 @@
 
 .name {
   font-family: var(--tb-font-display);
-  font-size: 2.2cqw;
+  font-size: calc(2.2cqw * var(--tb-text-scale));
   font-weight: 700;
   line-height: 1;
   text-transform: uppercase;
@@ -136,7 +136,7 @@
   border-radius: 50%;
   background: rgba(43, 28, 16, 0.85);
   color: #f1e6cf;
-  font-size: 0.9cqw;
+  font-size: calc(0.9cqw * var(--tb-text-scale));
   cursor: pointer;
 }
 .pencil svg {
@@ -152,7 +152,7 @@
   background: rgba(255, 248, 232, 0.9);
   color: #2b1c10;
   font-family: var(--tb-font-display);
-  font-size: 1.3cqw;
+  font-size: calc(1.3cqw * var(--tb-text-scale));
 }
 
 .title {
@@ -161,7 +161,7 @@
   background: none;
   color: #5a3b1f;
   font-family: var(--tb-font-display);
-  font-size: 1.2cqw;
+  font-size: calc(1.2cqw * var(--tb-text-scale));
   font-style: italic;
   cursor: pointer;
 }
@@ -173,7 +173,7 @@
 }
 
 .nameError {
-  font-size: 0.8cqw;
+  font-size: calc(0.8cqw * var(--tb-text-scale));
   color: #8c1d12;
 }
 
@@ -225,7 +225,7 @@
 
 .ringCaption {
   font-family: var(--tb-font-display);
-  font-size: 1.15cqw;
+  font-size: calc(1.15cqw * var(--tb-text-scale));
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--tb-accent);
@@ -233,7 +233,7 @@
 
 .ringLevel {
   font-family: var(--tb-font-display);
-  font-size: 4.8cqw;
+  font-size: calc(4.8cqw * var(--tb-text-scale));
   font-weight: 700;
   line-height: 1;
   color: #f4ead4;
@@ -242,7 +242,7 @@
 
 .ringXp {
   margin-top: 0.4cqw;
-  font-size: 1.05cqw;
+  font-size: calc(1.05cqw * var(--tb-text-scale));
   color: #e9edf1;
 }
 
@@ -254,7 +254,7 @@
 }
 
 .ringNext {
-  font-size: 0.8cqw;
+  font-size: calc(0.8cqw * var(--tb-text-scale));
   line-height: 1.35;
   color: #cfd8df;
 }
@@ -304,7 +304,7 @@
 
 .diamondValue {
   font-family: var(--tb-font-display);
-  font-size: 1.75cqw;
+  font-size: calc(1.75cqw * var(--tb-text-scale));
   font-weight: 700;
   line-height: 1.05;
   color: #f4ead4;
@@ -312,7 +312,7 @@
 
 .diamondLabel {
   max-width: 5.4cqw;
-  font-size: 0.6cqw;
+  font-size: calc(0.6cqw * var(--tb-text-scale));
   line-height: 1.15;
   letter-spacing: 0.03em;
   text-transform: uppercase;
@@ -347,7 +347,7 @@
 .routeTitle {
   margin: 0;
   font-family: var(--tb-font-display);
-  font-size: 1.15cqw;
+  font-size: calc(1.15cqw * var(--tb-text-scale));
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -358,7 +358,7 @@
   border: 0;
   background: none;
   color: #2b1c10;
-  font-size: 0.8cqw;
+  font-size: calc(0.8cqw * var(--tb-text-scale));
   cursor: pointer;
 }
 .routeLink:hover,
@@ -406,7 +406,7 @@
   background: var(--tb-btn-bg);
   color: var(--tb-btn-text);
   font-weight: 700;
-  font-size: 0.95cqw;
+  font-size: calc(0.95cqw * var(--tb-text-scale));
   box-shadow: var(--tb-btn-glow);
 }
 
@@ -425,13 +425,13 @@
 
 .routeLabel {
   min-width: 0;
-  font-size: 0.8cqw;
+  font-size: calc(0.8cqw * var(--tb-text-scale));
   line-height: 1.2;
 }
 
 .routeEmpty {
   margin: auto 0;
-  font-size: 0.9cqw;
+  font-size: calc(0.9cqw * var(--tb-text-scale));
   font-style: italic;
 }
 
@@ -461,7 +461,7 @@
 .loginTitle {
   margin: 0;
   font-family: var(--tb-font-display);
-  font-size: 1.15cqw;
+  font-size: calc(1.15cqw * var(--tb-text-scale));
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -470,7 +470,7 @@
 
 .loginSub {
   margin: 0.2cqw 0 0;
-  font-size: 0.78cqw;
+  font-size: calc(0.78cqw * var(--tb-text-scale));
   color: #b9c6cf;
 }
 
@@ -481,7 +481,7 @@
   border: 1px solid var(--tb-btn-border);
   background: var(--tb-btn-bg);
   color: var(--tb-btn-text);
-  font-size: 0.78cqw;
+  font-size: calc(0.78cqw * var(--tb-text-scale));
   font-weight: 600;
   cursor: pointer;
   box-shadow: var(--tb-btn-glow);
@@ -555,7 +555,7 @@
   position: relative;
   width: 100%;
   font-family: var(--tb-font-display);
-  font-size: 0.95cqw;
+  font-size: calc(0.95cqw * var(--tb-text-scale));
   font-weight: 700;
 }
 
@@ -575,7 +575,7 @@
 }
 
 .loginLabel {
-  font-size: 0.66cqw;
+  font-size: calc(0.66cqw * var(--tb-text-scale));
   line-height: 1.15;
   min-height: 2.3em;
   display: flex;
@@ -639,7 +639,7 @@
   border-radius: 999px;
   background: rgba(5, 12, 20, 0.62);
   color: #cfd8df;
-  font-size: 0.75cqw;
+  font-size: calc(0.75cqw * var(--tb-text-scale));
   cursor: pointer;
   backdrop-filter: blur(4px);
 }

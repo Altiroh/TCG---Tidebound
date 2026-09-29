@@ -136,7 +136,7 @@
   min-width: 46px;
   justify-content: center;
   color: #f1d38a;
-  font-size: 12px;
+  font-size: calc(12px * var(--tb-text-scale));
 }
 
 .workspace [class*="_cellQtyMax__"] {
@@ -241,7 +241,7 @@
   align-self: center;
   color: var(--tb-text-strong);
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: clamp(16px, 2.2vh, 22px);
+  font-size: calc(clamp(16px, 2.2vh, 22px) * var(--tb-text-scale));
   font-weight: 700;
   letter-spacing: 0.02em;
   text-transform: none;
@@ -338,7 +338,7 @@
   filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.45));
   color: var(--tb-text-strong);
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: clamp(13px, 1.7vh, 16px);
+  font-size: calc(clamp(13px, 1.7vh, 16px) * var(--tb-text-scale));
 }
 
 .center [class*="_count__"]::before {
@@ -350,7 +350,7 @@
 }
 
 .center [class*="_countValue__"] {
-  font-size: clamp(20px, 3vh, 30px);
+  font-size: calc(clamp(20px, 3vh, 30px) * var(--tb-text-scale));
 }
 
 .search {
@@ -371,7 +371,7 @@
   border: 0;
   background: none;
   color: #f1e3c4;
-  font-size: 13px;
+  font-size: calc(13px * var(--tb-text-scale));
   outline: none;
 }
 
@@ -389,7 +389,7 @@
 .center [class*="_sortLabel__"] {
   color: var(--tb-text-strong);
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: 13px;
+  font-size: calc(13px * var(--tb-text-scale));
   font-weight: 700;
   letter-spacing: 0;
   text-transform: none;
@@ -452,7 +452,7 @@
   gap: 6px;
   color: var(--tb-text-strong);
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: 12px;
+  font-size: calc(12px * var(--tb-text-scale));
   font-weight: 700;
   letter-spacing: 0.08em;
 }
@@ -461,7 +461,7 @@
 .left [class*="_sectionTitle__"]::after {
   content: "⚓";
   color: #6b4a22;
-  font-size: 13px;
+  font-size: calc(13px * var(--tb-text-scale));
   letter-spacing: 0;
 }
 
@@ -554,7 +554,7 @@
 .center [class*="_cellQty__"] {
   flex: 1 1 auto;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: clamp(12px, 1.5vh, 14px);
+  font-size: calc(clamp(12px, 1.5vh, 14px) * var(--tb-text-scale));
   letter-spacing: 0.06em;
 }
 
@@ -612,7 +612,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: clamp(14px, 1.9vh, 19px);
+  font-size: calc(clamp(14px, 1.9vh, 19px) * var(--tb-text-scale));
   font-variant: small-caps;
   letter-spacing: 0.04em;
 }
@@ -638,14 +638,14 @@
 .left [class*="_sectionTitle__"] {
   margin-bottom: 2px;
   white-space: nowrap;
-  font-size: clamp(11px, 1.35vh, 12.5px);
+  font-size: calc(clamp(11px, 1.35vh, 12.5px) * var(--tb-text-scale));
 }
 
 .left [class*="_filterRow__"] {
   min-height: clamp(22px, 2.6vh, 26px);
   padding: 2px 8px;
   gap: 7px;
-  font-size: clamp(11.5px, 1.4vh, 13px);
+  font-size: calc(clamp(11.5px, 1.4vh, 13px) * var(--tb-text-scale));
 }
 
 .left [class*="_filterLabel__"] {
@@ -727,7 +727,7 @@
   background: radial-gradient(circle at 50% 35%, #4a2f18, #1e1209 80%);
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.6);
   color: #f1d38a;
-  font-size: clamp(18px, 2.2vh, 22px);
+  font-size: calc(clamp(18px, 2.2vh, 22px) * var(--tb-text-scale));
   font-weight: 700;
   line-height: 1;
 }
@@ -764,7 +764,7 @@
   white-space: nowrap;
   color: #24160b;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: clamp(19px, 2.7vh, 26px);
+  font-size: calc(clamp(19px, 2.7vh, 26px) * var(--tb-text-scale));
   font-variant: small-caps;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -797,7 +797,7 @@
   background: rgba(255, 246, 224, 0.8);
   color: #24160b;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: clamp(16px, 2.3vh, 22px);
+  font-size: calc(clamp(16px, 2.3vh, 22px) * var(--tb-text-scale));
   font-weight: 700;
 }
 
@@ -812,7 +812,7 @@
 .headBadges [class*="_badgeAbyssal__"] {
   padding: 2px 12px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: calc(12px * var(--tb-text-scale));
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
 }
 
@@ -829,7 +829,7 @@
   border-radius: 4px;
   background: rgba(63, 138, 87, 0.12);
   color: #2b6b40;
-  font-size: 11px;
+  font-size: calc(11px * var(--tb-text-scale));
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -851,7 +851,7 @@
   margin: 0;
   color: #24160b;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: clamp(12px, 1.5vh, 14px);
+  font-size: calc(clamp(12px, 1.5vh, 14px) * var(--tb-text-scale));
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -871,7 +871,7 @@
   background: transparent;
   color: #3a2616;
   font: inherit;
-  font-size: clamp(11.5px, 1.4vh, 13px);
+  font-size: calc(clamp(11.5px, 1.4vh, 13px) * var(--tb-text-scale));
   line-height: 1.35;
   resize: none;
 }
@@ -898,7 +898,7 @@
   margin: 0;
   color: #24160b;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: clamp(12px, 1.5vh, 14px);
+  font-size: calc(clamp(12px, 1.5vh, 14px) * var(--tb-text-scale));
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -921,7 +921,7 @@
 
 .summaryCurve [class*="_curveLabels__"] {
   color: #3a2616;
-  font-size: 10px;
+  font-size: calc(10px * var(--tb-text-scale));
   font-weight: 700;
 }
 
@@ -943,7 +943,7 @@
   align-items: center;
   gap: 6px;
   color: #e9d7b0;
-  font-size: clamp(11px, 1.35vh, 12.5px);
+  font-size: calc(clamp(11px, 1.35vh, 12.5px) * var(--tb-text-scale));
 }
 
 .typeTable img {
@@ -996,13 +996,13 @@
   border-color: #6fc4e0;
   background: radial-gradient(circle at 50% 32%, #2a7fb0, #0f3a5c 78%);
   color: #fff;
-  font-size: 12px;
+  font-size: calc(12px * var(--tb-text-scale));
 }
 
 .right [class*="_rowName__"] {
   z-index: 1;
   color: #efe2c4 !important;
-  font-size: clamp(11.5px, 1.4vh, 13px) !important;
+  font-size: calc(clamp(11.5px, 1.4vh, 13px) * var(--tb-text-scale)) !important;
 }
 
 /* La vignette : une bande d'illustration fondue dans le bois, sous la quantité. */
@@ -1054,7 +1054,7 @@
 
 .right [class*="_save__"] {
   min-height: clamp(38px, 4.8vh, 46px);
-  font-size: clamp(14px, 1.9vh, 17px);
+  font-size: calc(clamp(14px, 1.9vh, 17px) * var(--tb-text-scale));
   letter-spacing: 0.02em;
 }
 
@@ -1136,13 +1136,13 @@
 /* Le plus long titre (« Statut de collection ») tient entre ses deux ancres. */
 .left [class*="_sectionTitle__"] {
   gap: 4px;
-  font-size: clamp(10.5px, 1.25vh, 12px);
+  font-size: calc(clamp(10.5px, 1.25vh, 12px) * var(--tb-text-scale));
   letter-spacing: 0.02em;
 }
 
 .left [class*="_sectionTitle__"]::before,
 .left [class*="_sectionTitle__"]::after {
-  font-size: 11px;
+  font-size: calc(11px * var(--tb-text-scale));
 }
 /* ── Recherche : la barre de bois cerclée de laiton, et sa loupe à part ──
    Découpe en 9 horizontale (`ui/champs/recherche-rivets.webp`, 2150 × 400) : les bouts
@@ -1172,7 +1172,7 @@
 }
 
 .search input {
-  font-size: clamp(12.5px, 1.5vh, 14px);
+  font-size: calc(clamp(12.5px, 1.5vh, 14px) * var(--tb-text-scale));
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -1250,7 +1250,7 @@
   gap: 6px;
   margin-bottom: 3px;
   color: var(--book-ink);
-  font-size: clamp(11px, 1.4vh, 13px);
+  font-size: calc(clamp(11px, 1.4vh, 13px) * var(--tb-text-scale));
 }
 
 /* Une seule ancre, à droite (référence). */
@@ -1269,7 +1269,7 @@
   min-height: clamp(22px, 2.5vh, 26px);
   padding: 1px 8px 1px 4px;
   gap: 7px;
-  font-size: clamp(12px, 1.45vh, 13.5px);
+  font-size: calc(clamp(12px, 1.45vh, 13.5px) * var(--tb-text-scale));
 }
 
 .left [class*="_filterCheck__"] {
@@ -1334,7 +1334,7 @@
 .center [class*="_count__"] {
   gap: 6px;
   font-family: var(--tb-font-ui);
-  font-size: clamp(13px, 1.7vh, 16px);
+  font-size: calc(clamp(13px, 1.7vh, 16px) * var(--tb-text-scale));
   font-weight: 600;
   letter-spacing: 0;
   text-transform: none;
@@ -1343,7 +1343,7 @@
 .center [class*="_countValue__"] {
   margin-right: 2px;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: clamp(22px, 3.2vh, 32px);
+  font-size: calc(clamp(22px, 3.2vh, 32px) * var(--tb-text-scale));
   font-weight: 700;
 }
 
@@ -1424,7 +1424,7 @@
 .headBadges [class*="_badgeAbyssal__"] {
   padding: 2px 12px;
   font-family: var(--tb-font-ui);
-  font-size: 12px;
+  font-size: calc(12px * var(--tb-text-scale));
   font-weight: 700;
   letter-spacing: 0.02em;
 }
@@ -1584,7 +1584,7 @@
 
 .collection .left [class*="_sidebarTitle__"] {
   color: var(--book-ink);
-  font-size: clamp(15px, 2vh, 19px);
+  font-size: calc(clamp(15px, 2vh, 19px) * var(--tb-text-scale));
   font-variant: small-caps;
   letter-spacing: 0.04em;
   text-transform: none;
@@ -1613,7 +1613,7 @@
 .collection .left [class*="_filterCount__"] {
   display: inline;
   color: var(--book-ink-3);
-  font-size: clamp(11px, 1.3vh, 12.5px);
+  font-size: calc(clamp(11px, 1.3vh, 12.5px) * var(--tb-text-scale));
   font-variant-numeric: tabular-nums;
 }
 
@@ -1683,7 +1683,7 @@
   box-shadow: none;
   color: #f1d38a;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: clamp(12px, 1.5vh, 14px);
+  font-size: calc(clamp(12px, 1.5vh, 14px) * var(--tb-text-scale));
   letter-spacing: 0.06em;
   filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.55));
 }
@@ -1706,7 +1706,7 @@
   box-shadow: none;
   color: #f1d38a;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: clamp(12.5px, 1.6vh, 14px);
+  font-size: calc(clamp(12.5px, 1.6vh, 14px) * var(--tb-text-scale));
   font-weight: 700;
   letter-spacing: 0.04em;
   filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.5));

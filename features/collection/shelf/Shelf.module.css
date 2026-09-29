@@ -77,7 +77,7 @@
   background: transparent;
   color: var(--tb-text);
   font: inherit;
-  font-size: 13px;
+  font-size: calc(13px * var(--tb-text-scale));
   font-weight: 600;
   cursor: pointer;
 }
@@ -103,7 +103,7 @@
 .savedIn {
   margin: 0;
   color: var(--tb-text-muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--tb-text-scale));
 }
 
 /* ── « [Carnet ▾] [Ranger] » — le geste de Pinterest ─────────────────── */
@@ -156,7 +156,7 @@
   background: rgba(4, 10, 18, 0.82);
   color: #f4ead4;
   font: inherit;
-  font-size: 12px;
+  font-size: calc(12px * var(--tb-text-scale));
   font-weight: 700;
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
@@ -190,7 +190,7 @@
   background: #3a8f5c;
   color: #f3fff7;
   font: inherit;
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--tb-text-scale));
   font-weight: 700;
   cursor: pointer;
   box-shadow: 0 2px 10px rgba(58, 143, 92, 0.45);
@@ -236,7 +236,7 @@
   margin: 14px 0 8px;
   text-align: center;
   color: var(--tb-text-strong, #fff);
-  font-size: 14px;
+  font-size: calc(14px * var(--tb-text-scale));
   font-weight: 700;
 }
 
@@ -248,7 +248,7 @@
   background: rgba(4, 10, 18, 0.6);
   color: var(--tb-text-strong, #fff);
   font: inherit;
-  font-size: 13px;
+  font-size: calc(13px * var(--tb-text-scale));
 }
 
 .popoverSearch:focus {
@@ -266,7 +266,7 @@
 .popoverSection {
   margin: 8px 8px 4px;
   color: var(--tb-text-muted, #9fb0bf);
-  font-size: 11px;
+  font-size: calc(11px * var(--tb-text-scale));
   font-weight: 600;
 }
 
@@ -313,7 +313,7 @@
   min-width: 0;
   overflow: hidden;
   color: var(--tb-text-strong, #fff);
-  font-size: 13.5px;
+  font-size: calc(13.5px * var(--tb-text-scale));
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -321,7 +321,7 @@
 
 .popoverCount {
   color: var(--tb-text-soft, #7f8f9c);
-  font-size: 11.5px;
+  font-size: calc(11.5px * var(--tb-text-scale));
   font-variant-numeric: tabular-nums;
 }
 
@@ -330,7 +330,7 @@
   border-radius: var(--tb-radius-pill);
   background: rgba(4, 10, 18, 0.9);
   color: #f4ead4;
-  font-size: 11px;
+  font-size: calc(11px * var(--tb-text-scale));
   font-weight: 700;
 }
 
@@ -342,7 +342,7 @@
 .popoverEmpty {
   margin: 10px 12px;
   color: var(--tb-text-muted, #9fb0bf);
-  font-size: 13px;
+  font-size: calc(13px * var(--tb-text-scale));
 }
 
 .popoverFoot {
@@ -360,7 +360,7 @@
   background: none;
   color: var(--tb-text-strong, #fff);
   font: inherit;
-  font-size: 13.5px;
+  font-size: calc(13.5px * var(--tb-text-scale));
   font-weight: 700;
   cursor: pointer;
 }
@@ -372,7 +372,7 @@
   height: 40px;
   border-radius: 10px;
   background: rgba(140, 190, 225, 0.1);
-  font-size: 20px;
+  font-size: calc(20px * var(--tb-text-scale));
 }
 
 .popoverCreate:disabled {
@@ -394,7 +394,7 @@
   background: rgba(4, 10, 18, 0.6);
   color: var(--tb-text-strong);
   font: inherit;
-  font-size: 13px;
+  font-size: calc(13px * var(--tb-text-scale));
 }
 
 .createForm input:focus {
@@ -409,7 +409,7 @@
   background: var(--tb-accent-soft);
   color: var(--tb-text-strong);
   font: inherit;
-  font-size: 13px;
+  font-size: calc(13px * var(--tb-text-scale));
   font-weight: 600;
   cursor: pointer;
 }
@@ -422,7 +422,7 @@
 .inlineError {
   margin: 6px 0 0;
   color: #ff9b93;
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--tb-text-scale));
 }
 
 /* ── Le mur des carnets ────────────────────────────────────────────── */
@@ -447,7 +447,7 @@
 
 .back {
   color: var(--tb-text-muted);
-  font-size: 13px;
+  font-size: calc(13px * var(--tb-text-scale));
   text-decoration: none;
 }
 
@@ -459,7 +459,7 @@
   margin: 4px 0 0;
   color: var(--tb-text-strong);
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: clamp(22px, 2.4vw, 30px);
+  font-size: calc(clamp(22px, 2.4vw, 30px) * var(--tb-text-scale));
   font-weight: 700;
 }
 
@@ -542,7 +542,7 @@
   min-width: 0;
   overflow: hidden;
   color: var(--tb-text-strong);
-  font-size: 15px;
+  font-size: calc(15px * var(--tb-text-scale));
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -556,7 +556,7 @@
 .tileCount {
   flex: none;
   color: var(--tb-text-soft);
-  font-size: 12px;
+  font-size: calc(12px * var(--tb-text-scale));
   font-variant-numeric: tabular-nums;
 }
 
@@ -573,7 +573,7 @@
   background: none;
   color: var(--tb-text-muted);
   font: inherit;
-  font-size: 12px;
+  font-size: calc(12px * var(--tb-text-scale));
   cursor: pointer;
 }
 
@@ -603,13 +603,13 @@
   background: rgba(140, 190, 225, 0.03);
   color: var(--tb-text-muted);
   font: inherit;
-  font-size: 14px;
+  font-size: calc(14px * var(--tb-text-scale));
   font-weight: 600;
   cursor: pointer;
 }
 
 .newTile span {
-  font-size: 28px;
+  font-size: calc(28px * var(--tb-text-scale));
   line-height: 1;
 }
 
@@ -627,7 +627,7 @@
 .wallHint {
   margin: 0;
   color: var(--tb-text-muted);
-  font-size: 14px;
+  font-size: calc(14px * var(--tb-text-scale));
 }
 
 .coverPicker {
@@ -682,7 +682,7 @@
   border-radius: 10px;
   background: rgba(20, 8, 10, 0.92);
   color: #ffd4d0;
-  font-size: 13px;
+  font-size: calc(13px * var(--tb-text-scale));
   transform: translateX(-50%);
 }
 
@@ -690,7 +690,7 @@
   border: 0;
   background: none;
   color: inherit;
-  font-size: 16px;
+  font-size: calc(16px * var(--tb-text-scale));
   cursor: pointer;
 }
 

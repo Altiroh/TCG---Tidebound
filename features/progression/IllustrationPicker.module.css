@@ -46,7 +46,7 @@
   flex: 1 1 auto;
   margin: 0;
   font-family: var(--font-card-title, Georgia, serif);
-  font-size: clamp(18px, 1.6vw, 24px);
+  font-size: calc(clamp(18px, 1.6vw, 24px) * var(--tb-text-scale));
   font-weight: 700;
 }
 
@@ -58,7 +58,7 @@
   background: linear-gradient(180deg, #0b2638 0%, #071826 100%);
   color: #c8d7e1;
   font: inherit;
-  font-size: 13px;
+  font-size: calc(13px * var(--tb-text-scale));
   cursor: pointer;
   transition: border-color 140ms ease-out, box-shadow 140ms ease-out;
 }
@@ -107,11 +107,11 @@
   background: none;
   color: #e8edf0;
   font: inherit;
-  font-size: 14px;
+  font-size: calc(14px * var(--tb-text-scale));
 }
 
 .count {
-  font-size: 12px;
+  font-size: calc(12px * var(--tb-text-scale));
   white-space: nowrap;
 }
 
@@ -128,7 +128,7 @@
   background: #061522;
   color: #c8d7e1;
   font: inherit;
-  font-size: 13.5px;
+  font-size: calc(13.5px * var(--tb-text-scale));
   cursor: pointer;
   transition: border-color 140ms ease-out, box-shadow 140ms ease-out, color 140ms ease-out;
 }
@@ -146,13 +146,13 @@
 
 .favoriteCount {
   color: #9eb3c2;
-  font-size: 12px;
+  font-size: calc(12px * var(--tb-text-scale));
 }
 
 .error {
   margin: 0;
   color: #f0a497;
-  font-size: 13px;
+  font-size: calc(13px * var(--tb-text-scale));
 }
 
 .empty {
@@ -223,7 +223,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--tb-text-scale));
 }
 
 /* Petit cœur sur l'illustration d'une carte favorite. */
@@ -255,7 +255,7 @@
   min-width: 0;
   overflow: hidden;
   color: #9eb3c2;
-  font-size: 13px;
+  font-size: calc(13px * var(--tb-text-scale));
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -269,7 +269,7 @@
   background: linear-gradient(180deg, #0b2638 0%, #071826 100%);
   color: #c8d7e1;
   font: inherit;
-  font-size: 14px;
+  font-size: calc(14px * var(--tb-text-scale));
   cursor: pointer;
 }
 
@@ -299,7 +299,7 @@
   }
   .title {
     overflow: hidden;
-    font-size: 15px;
+    font-size: calc(15px * var(--tb-text-scale));
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -307,7 +307,7 @@
   .remove {
     flex: none;
     padding: 4px 9px;
-    font-size: 12px;
+    font-size: calc(12px * var(--tb-text-scale));
   }
   .search,
   .favoriteFilter {
@@ -319,7 +319,7 @@
   }
   .name {
     padding: 4px 6px 5px;
-    font-size: 11px;
+    font-size: calc(11px * var(--tb-text-scale));
   }
   .foot {
     padding-top: 6px;
@@ -327,6 +327,6 @@
   .cancel,
   .save {
     padding: 5px 14px;
-    font-size: 13px;
+    font-size: calc(13px * var(--tb-text-scale));
   }
 }

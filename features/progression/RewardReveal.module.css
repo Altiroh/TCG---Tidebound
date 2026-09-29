@@ -88,7 +88,7 @@
 
 .eyebrow {
   margin: 0;
-  font-size: 12px;
+  font-size: calc(12px * var(--tb-text-scale));
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -99,7 +99,7 @@
 .title {
   margin: 0;
   font-family: var(--font-card-title, Georgia, serif);
-  font-size: clamp(26px, 4vw, 44px);
+  font-size: calc(clamp(26px, 4vw, 44px) * var(--tb-text-scale));
   font-weight: 700;
   letter-spacing: 0.03em;
   color: #fff4d6;
@@ -147,7 +147,7 @@
 
 .itemLabel {
   font-family: var(--font-card-title, Georgia, serif);
-  font-size: 15px;
+  font-size: calc(15px * var(--tb-text-scale));
   font-weight: 600;
   color: #e8edf0;
 }
@@ -209,7 +209,7 @@
   box-shadow: var(--tb-btn-glow);
   color: var(--tb-btn-text);
   font-family: var(--font-card-title, Georgia, serif);
-  font-size: 17px;
+  font-size: calc(17px * var(--tb-text-scale));
   font-weight: 600;
   letter-spacing: 0.03em;
   cursor: pointer;
@@ -231,12 +231,12 @@
 .error {
   margin: 0;
   color: #f0a497;
-  font-size: 13px;
+  font-size: calc(13px * var(--tb-text-scale));
 }
 
 .kept {
   margin: 0;
-  font-size: 12px;
+  font-size: calc(12px * var(--tb-text-scale));
   color: #9eb3c2;
 }
 

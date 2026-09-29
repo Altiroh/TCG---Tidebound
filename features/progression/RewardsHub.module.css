@@ -24,7 +24,7 @@
   aspect-ratio: 1672 / 880;
   container-type: inline-size;
   color: #e7ecef;
-  font-size: 0.8cqw;
+  font-size: calc(0.8cqw * var(--tb-text-scale));
 }
 
 /* ── Primitives ────────────────────────────────────────────────────── */
@@ -55,7 +55,7 @@
   box-shadow: var(--tb-btn-glow);
   color: var(--tb-btn-text);
   font-family: var(--tb-font-display);
-  font-size: 0.78cqw;
+  font-size: calc(0.78cqw * var(--tb-text-scale));
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -82,7 +82,7 @@
   border-radius: 0.35cqw;
   background: rgba(6, 18, 30, 0.7);
   color: #b9c9d3;
-  font-size: 0.7cqw;
+  font-size: calc(0.7cqw * var(--tb-text-scale));
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -95,7 +95,7 @@
   place-items: center;
   width: 1.3cqw;
   height: 1.3cqw;
-  font-size: 0.8cqw;
+  font-size: calc(0.8cqw * var(--tb-text-scale));
   font-weight: 800;
   border: 1px solid var(--tb-notif-border);
   border-radius: 999px;
@@ -115,7 +115,7 @@
   border-radius: 50%;
   color: #cfd8df;
   font-family: var(--font-ui, Georgia, serif);
-  font-size: 0.7cqw;
+  font-size: calc(0.7cqw * var(--tb-text-scale));
   font-weight: 600;
   vertical-align: 0.15em;
   cursor: help;
@@ -131,7 +131,7 @@
   border-radius: 999px;
   background: rgba(60, 10, 10, 0.85);
   color: #ffb4a8;
-  font-size: 0.8cqw;
+  font-size: calc(0.8cqw * var(--tb-text-scale));
 }
 
 /* ── Route des paliers ─────────────────────────────────────────────── */
@@ -160,7 +160,7 @@
 .routeTitle {
   margin: 0;
   font-family: var(--tb-font-display);
-  font-size: 2.1cqw;
+  font-size: calc(2.1cqw * var(--tb-text-scale));
   font-weight: 700;
   letter-spacing: 0.03em;
   text-transform: uppercase;
@@ -170,7 +170,7 @@
 
 .routeSub {
   margin: 0.2cqw 0 0;
-  font-size: 0.85cqw;
+  font-size: calc(0.85cqw * var(--tb-text-scale));
   color: #d3dbe0;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
 }
@@ -193,7 +193,7 @@
   border-radius: 50%;
   background: radial-gradient(circle at 50% 35%, #173449, #07131e);
   font-family: var(--tb-font-display);
-  font-size: 1.4cqw;
+  font-size: calc(1.4cqw * var(--tb-text-scale));
   font-weight: 700;
   color: #f4ead4;
   box-shadow: 0 0 0 0.2cqw rgba(0, 0, 0, 0.6);
@@ -209,7 +209,7 @@
 .routeXpLine {
   display: flex;
   justify-content: space-between;
-  font-size: 0.8cqw;
+  font-size: calc(0.8cqw * var(--tb-text-scale));
   color: #e7ecef;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
 }
@@ -234,7 +234,7 @@
   border-radius: 0.4cqw;
   background: rgba(8, 16, 26, 0.7);
   color: #e6c889;
-  font-size: 1.6cqw;
+  font-size: calc(1.6cqw * var(--tb-text-scale));
   line-height: 1;
   cursor: pointer;
 }
@@ -284,7 +284,7 @@
   top: 2.2%;
   transform: translateX(-50%);
   font-family: var(--tb-font-display);
-  font-size: 1.35cqw;
+  font-size: calc(1.35cqw * var(--tb-text-scale));
   font-weight: 700;
   color: #f4ead4;
 }
@@ -318,7 +318,7 @@
 .palierLabel {
   margin-top: 0.5cqw;
   font-family: var(--tb-font-display);
-  font-size: 0.78cqw;
+  font-size: calc(0.78cqw * var(--tb-text-scale));
   font-weight: 600;
   line-height: 1.2;
   overflow: hidden;
@@ -400,7 +400,7 @@
   top: 6%;
   margin: 0;
   font-family: var(--tb-font-display);
-  font-size: 0.85cqw;
+  font-size: calc(0.85cqw * var(--tb-text-scale));
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -428,12 +428,12 @@
 }
 .streakCount strong {
   font-family: var(--tb-font-display);
-  font-size: 1.6cqw;
+  font-size: calc(1.6cqw * var(--tb-text-scale));
   color: #f4ead4;
 }
 .streakCount span {
   margin-top: 0.15cqw;
-  font-size: 0.48cqw;
+  font-size: calc(0.48cqw * var(--tb-text-scale));
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: #cfd8df;
@@ -509,7 +509,7 @@
 }
 .dayLabel {
   font-family: var(--tb-font-display);
-  font-size: 0.6cqw;
+  font-size: calc(0.6cqw * var(--tb-text-scale));
   font-weight: 700;
 }
 .dayCheck {
@@ -711,11 +711,11 @@
 }
 .chestCount strong {
   font-family: var(--tb-font-display);
-  font-size: 1.6cqw;
+  font-size: calc(1.6cqw * var(--tb-text-scale));
   color: #f4ead4;
 }
 .chestCount span {
-  font-size: 0.72cqw;
+  font-size: calc(0.72cqw * var(--tb-text-scale));
   color: #cfd8df;
 }
 
@@ -734,7 +734,7 @@
   height: 1.9cqw !important;
 }
 .chestDone {
-  font-size: 0.66cqw;
+  font-size: calc(0.66cqw * var(--tb-text-scale));
   font-style: italic;
   color: #b9c9d3;
 }
@@ -775,7 +775,7 @@
   margin: 0;
   white-space: nowrap;
   font-family: var(--tb-font-display);
-  font-size: 1.05cqw;
+  font-size: calc(1.05cqw * var(--tb-text-scale));
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -783,7 +783,7 @@
 }
 
 .panelMeta {
-  font-size: 0.72cqw;
+  font-size: calc(0.72cqw * var(--tb-text-scale));
   color: #cfd8df;
   white-space: nowrap;
 }
@@ -794,14 +794,14 @@
   border-radius: 999px;
   background: rgba(4, 10, 18, 0.7);
   color: #ffffff;
-  font-size: 0.95cqw;
+  font-size: calc(0.95cqw * var(--tb-text-scale));
   font-weight: 700;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
 }
 
 .panelSub {
   margin: -0.2cqw 0 0;
-  font-size: 0.68cqw;
+  font-size: calc(0.68cqw * var(--tb-text-scale));
   color: #aebdc7;
 }
 
@@ -849,7 +849,7 @@
   gap: 0.3cqw;
 }
 .rowTitle {
-  font-size: 0.74cqw;
+  font-size: calc(0.74cqw * var(--tb-text-scale));
   line-height: 1.2;
   color: #eef2f4;
   overflow: hidden;
@@ -861,7 +861,7 @@
 
 .rowCount {
   flex: none;
-  font-size: 0.72cqw;
+  font-size: calc(0.72cqw * var(--tb-text-scale));
   color: #cfd8df;
   font-variant-numeric: tabular-nums;
 }
@@ -871,7 +871,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.2cqw;
-  font-size: 0.75cqw;
+  font-size: calc(0.75cqw * var(--tb-text-scale));
   font-weight: 700;
   color: #f1dca8;
 }
@@ -882,7 +882,7 @@
 
 .empty {
   padding: 1cqw;
-  font-size: 0.72cqw;
+  font-size: calc(0.72cqw * var(--tb-text-scale));
   font-style: italic;
   color: #aebdc7;
 }
@@ -896,7 +896,7 @@
   background: var(--tb-btn-bg);
   box-shadow: var(--tb-btn-glow);
   color: var(--tb-btn-text);
-  font-size: 0.7cqw;
+  font-size: calc(0.7cqw * var(--tb-text-scale));
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -925,7 +925,7 @@
   background: var(--tb-btn-bg);
   box-shadow: var(--tb-btn-glow);
   color: var(--tb-btn-text);
-  font-size: 0.7cqw;
+  font-size: calc(0.7cqw * var(--tb-text-scale));
   font-weight: 600;
   text-align: left;
   cursor: pointer;
@@ -989,7 +989,7 @@
   position: relative;
   text-align: center;
   font-family: var(--tb-font-display);
-  font-size: 0.82cqw;
+  font-size: calc(0.82cqw * var(--tb-text-scale));
   font-weight: 700;
   text-transform: uppercase;
   color: #f4ead4;
@@ -999,7 +999,7 @@
 .shipPlayed {
   margin-top: -0.3cqw;
   text-align: center;
-  font-size: 0.56cqw;
+  font-size: calc(0.56cqw * var(--tb-text-scale));
   color: #aebdc7;
 }
 
@@ -1019,7 +1019,7 @@
   border-radius: 50%;
   background: #0b1824;
   font-family: var(--tb-font-display);
-  font-size: 0.8cqw;
+  font-size: calc(0.8cqw * var(--tb-text-scale));
   font-weight: 700;
   color: #f4ead4;
 }
@@ -1029,7 +1029,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.2cqw;
-  font-size: 0.56cqw;
+  font-size: calc(0.56cqw * var(--tb-text-scale));
   color: #cfd8df;
 }
 
@@ -1047,7 +1047,7 @@
 .ship .ghostButton {
   margin: 0 0.5cqw;
   padding: 0.3cqw 0.3cqw;
-  font-size: 0.58cqw;
+  font-size: calc(0.58cqw * var(--tb-text-scale));
 }
 
 .sideArrow {
@@ -1060,7 +1060,7 @@
   border-radius: 50%;
   background: #0b1824;
   color: #e6c889;
-  font-size: 1.1cqw;
+  font-size: calc(1.1cqw * var(--tb-text-scale));
   line-height: 1;
   cursor: pointer;
 }
@@ -1110,7 +1110,7 @@
 }
 
 .sponsorStage {
-  font-size: 0.6cqw;
+  font-size: calc(0.6cqw * var(--tb-text-scale));
   color: #aebdc7;
 }
 
@@ -1170,7 +1170,7 @@
   justify-content: center;
   gap: 0.7cqw;
   text-align: center;
-  font-size: 0.74cqw;
+  font-size: calc(0.74cqw * var(--tb-text-scale));
   line-height: 1.4;
   color: #b9c9d3;
 }
@@ -1191,7 +1191,7 @@
   border: 0.12cqw solid rgba(199, 154, 75, 0.6);
   border-radius: 50%;
   color: #e6c889;
-  font-size: 1cqw;
+  font-size: calc(1cqw * var(--tb-text-scale));
 }
 
 @media (prefers-reduced-motion: reduce) {

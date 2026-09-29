@@ -83,7 +83,7 @@
 
 /* Invite de la ligne terminée — pas un bouton : la ligne en est un. */
 .claimHint {
-  font-size: clamp(11px, 0.95vw, 13px);
+  font-size: calc(clamp(11px, 0.95vw, 13px) * var(--tb-text-scale));
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -108,7 +108,7 @@
 }
 
 .label {
-  font-size: clamp(13px, 1vw, 15px);
+  font-size: calc(clamp(13px, 1vw, 15px) * var(--tb-text-scale));
   font-weight: 500;
   line-height: 1.35;
   color: var(--ink-strong);
@@ -139,7 +139,7 @@
 .fillDone { background: linear-gradient(90deg, var(--tb-gold-deep), var(--tb-gold-bright)); }
 
 .count {
-  font-size: clamp(11px, 0.85vw, 13px);
+  font-size: calc(clamp(11px, 0.85vw, 13px) * var(--tb-text-scale));
   color: var(--ink-dim);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -150,7 +150,7 @@
   align-items: baseline;
   gap: 0.3em;
   font-family: var(--cb-font-display);
-  font-size: clamp(16px, 1.3vw, 21px);
+  font-size: calc(clamp(16px, 1.3vw, 21px) * var(--tb-text-scale));
   font-weight: 600;
   color: var(--gold);
   font-variant-numeric: tabular-nums;
@@ -175,7 +175,7 @@
 .gain {
   margin: 0;
   font-family: var(--cb-font-display);
-  font-size: clamp(15px, 1.15vw, 19px);
+  font-size: calc(clamp(15px, 1.15vw, 19px) * var(--tb-text-scale));
   font-weight: 600;
   color: var(--gold);
 }
@@ -218,7 +218,7 @@
 }
 
 .categoryName {
-  font-size: 10px;
+  font-size: calc(10px * var(--tb-text-scale));
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-dim);
@@ -249,7 +249,7 @@
 
 .rewardXp {
   display: block;
-  font-size: 10px;
+  font-size: calc(10px * var(--tb-text-scale));
   font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -291,12 +291,12 @@
   }
 
   .label {
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--tb-text-scale));
     line-height: 1.25;
   }
 
   .categoryName {
-    font-size: 9px;
+    font-size: calc(9px * var(--tb-text-scale));
   }
 
   .section {

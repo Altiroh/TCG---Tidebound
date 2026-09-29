@@ -40,7 +40,7 @@
 .title {
   margin: 0;
   font-family: var(--tb-font-display);
-  font-size: clamp(20px, 1.8vw, 28px);
+  font-size: calc(clamp(20px, 1.8vw, 28px) * var(--tb-text-scale));
   font-weight: 700;
   color: var(--tb-text-strong);
 }
@@ -48,7 +48,7 @@
 .subtitle {
   margin: 0;
   max-width: 52ch;
-  font-size: 13.5px;
+  font-size: calc(13.5px * var(--tb-text-scale));
   line-height: var(--tb-lh-body);
   color: var(--tb-text-muted);
 }
@@ -73,19 +73,19 @@
 
 .summaryValue {
   font-family: var(--tb-font-display);
-  font-size: 28px;
+  font-size: calc(28px * var(--tb-text-scale));
   font-weight: 700;
   line-height: 1;
   color: var(--tb-text-strong);
 }
 
 .summaryTotal {
-  font-size: 16px;
+  font-size: calc(16px * var(--tb-text-scale));
   color: var(--tb-text-muted);
 }
 
 .summaryLabel {
-  font-size: 12px;
+  font-size: calc(12px * var(--tb-text-scale));
   color: var(--tb-text-muted);
 }
 
@@ -118,7 +118,7 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--tb-text-scale));
   color: var(--tb-text-muted);
 }
 
@@ -146,7 +146,7 @@
   background: transparent;
   color: var(--tb-text-muted);
   font: inherit;
-  font-size: 13px;
+  font-size: calc(13px * var(--tb-text-scale));
   cursor: pointer;
   transition: border-color var(--tb-duration-fast) var(--tb-ease), color var(--tb-duration-fast) var(--tb-ease), background var(--tb-duration-fast) var(--tb-ease);
 }
@@ -169,7 +169,7 @@
 }
 
 .filterCount {
-  font-size: 11.5px;
+  font-size: calc(11.5px * var(--tb-text-scale));
   color: var(--tb-text-soft);
 }
 
@@ -186,7 +186,7 @@
   align-items: baseline;
   gap: 10px;
   margin: 0;
-  font-size: 15px;
+  font-size: calc(15px * var(--tb-text-scale));
   font-weight: 600;
   color: var(--tb-text-strong);
 }
@@ -195,7 +195,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--tb-text-scale));
   font-weight: 400;
   color: var(--tb-text-soft);
 }
@@ -219,7 +219,7 @@
 
 .empty {
   margin: 12px 0;
-  font-size: 13.5px;
+  font-size: calc(13.5px * var(--tb-text-scale));
   color: var(--tb-text-muted);
 }
 
@@ -284,7 +284,7 @@
 .iconFallback {
   display: grid;
   place-items: center;
-  font-size: 22px;
+  font-size: calc(22px * var(--tb-text-scale));
   color: var(--tb-text-muted);
 }
 
@@ -315,14 +315,14 @@
 }
 
 .family {
-  font-size: 11.5px;
+  font-size: calc(11.5px * var(--tb-text-scale));
   color: var(--tb-text-soft);
 }
 
 .name {
   margin: 0;
   font-family: var(--tb-font-display);
-  font-size: 15px;
+  font-size: calc(15px * var(--tb-text-scale));
   font-weight: 700;
   line-height: var(--tb-lh-tight);
   color: var(--tb-text-strong);
@@ -330,7 +330,7 @@
 
 .description {
   margin: 0;
-  font-size: 13px;
+  font-size: calc(13px * var(--tb-text-scale));
   line-height: 1.35;
   color: var(--tb-text-muted);
 }
@@ -354,7 +354,7 @@
 
 .count {
   flex: 0 0 auto;
-  font-size: 12px;
+  font-size: calc(12px * var(--tb-text-scale));
   font-variant-numeric: tabular-nums;
   color: var(--tb-text-muted);
 }
@@ -375,7 +375,7 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--tb-text-scale));
   color: var(--tb-text-muted);
 }
 
@@ -393,7 +393,7 @@
   padding: 1px 8px;
   border: 1px dashed var(--tb-border-strong);
   border-radius: var(--tb-radius-pill);
-  font-size: 12px;
+  font-size: calc(12px * var(--tb-text-scale));
   font-style: italic;
   white-space: nowrap;
   color: var(--tb-text-muted);
@@ -416,7 +416,7 @@
   box-shadow: var(--tb-btn-glow);
   color: var(--tb-btn-text);
   font: inherit;
-  font-size: 13px;
+  font-size: calc(13px * var(--tb-text-scale));
   font-weight: 600;
   cursor: pointer;
   transition: box-shadow var(--tb-duration-fast) var(--tb-ease), transform var(--tb-duration-fast) var(--tb-ease);
@@ -458,7 +458,7 @@
   }
 
   .summaryValue {
-    font-size: 22px;
+    font-size: calc(22px * var(--tb-text-scale));
   }
 
   .iconFrame {

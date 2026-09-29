@@ -89,7 +89,7 @@
   margin: 0;
   color: #f4ead4;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: clamp(18px, 2.2vw, 26px);
+  font-size: calc(clamp(18px, 2.2vw, 26px) * var(--tb-text-scale));
   letter-spacing: 0.08em;
   text-shadow: 0 0 16px color-mix(in srgb, var(--gift) 60%, transparent), 0 2px 4px rgba(0, 0, 0, 0.8);
 }

@@ -24,7 +24,7 @@
     0 18px 44px -12px rgba(0, 0, 0, 0.65);
   color: #fff;
   font-family: var(--font-ui, Georgia, serif);
-  font-size: clamp(12px, 0.95vw, 14px);
+  font-size: calc(clamp(12px, 0.95vw, 14px) * var(--tb-text-scale));
   white-space: nowrap;
   /* Après le cadre et le nom (chorégraphie de `MatchEndScreen.module.css`). */
   animation: bannerIn 340ms cubic-bezier(0.2, 0.8, 0.2, 1) 1700ms both;

@@ -15,7 +15,7 @@
 
 .name {
   font-family: var(--cb-font-display);
-  font-size: clamp(14px, 1.05vw, 17px);
+  font-size: calc(clamp(14px, 1.05vw, 17px) * var(--tb-text-scale));
   font-weight: 600;
   color: var(--ink-strong);
 }
@@ -23,13 +23,13 @@
 .stats {
   display: flex;
   gap: 10px;
-  font-size: 12px;
+  font-size: calc(12px * var(--tb-text-scale));
   font-variant-numeric: tabular-nums;
   color: var(--ink);
 }
 
 .profile {
-  font-size: 11px;
+  font-size: calc(11px * var(--tb-text-scale));
   line-height: 1.4;
   color: var(--ink-dim);
 }
@@ -55,7 +55,7 @@
 }
 
 .traitLabel {
-  font-size: 9px;
+  font-size: calc(9px * var(--tb-text-scale));
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -67,7 +67,7 @@
 .traitWeak .traitLabel { color: var(--danger); }
 
 .traitText {
-  font-size: 11px;
+  font-size: calc(11px * var(--tb-text-scale));
   line-height: 1.4;
   color: var(--ink-dim);
 }

@@ -130,7 +130,7 @@
 .title {
   margin: 0;
   font-family: var(--tb-font-display);
-  font-size: clamp(17px, 1.4vw, 22px);
+  font-size: calc(clamp(17px, 1.4vw, 22px) * var(--tb-text-scale));
   font-weight: 600;
   line-height: 1.2;
   color: var(--tb-text-strong);
