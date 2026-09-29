@@ -70,6 +70,15 @@ import { repeat, type DeckList } from "@/game/cards/decks/types";
  * de remplir ce deck de pièges. Son identité doit rester remplir →
  * renforcer → frapper. » Les deux seules cartes du Lot 14 sont de la
  * stabilité, pas du contrôle.
+ *
+ * LISTE REVUE LE 29/09/2026. Une fois les autres decks renforcés, le banc
+ * est tombé à 41 %, et ses Structures en étaient la cause : elles prenaient
+ * la place de corps dans un deck qui vit du nombre (La Flaque Sacrée Δ −14,
+ * Le Tas de Trucs −12). Elles cèdent la place à trois Cra-Poiscail des
+ * Hautes-Eaux et deux Casques-Coquilles. Mesuré au labo (bot moyen, 60
+ * parties par paire contre le rayon) : 42 % → 48 %. Les Messagers
+ * montaient à 63 %, les Rois à 70 % : écartés, au-dessus de la cible.
+ * Aucun texte changé.
  */
 export const DECK_LE_GRAND_BANC: DeckList = {
   id: "le-grand-banc",
@@ -90,8 +99,8 @@ export const DECK_LE_GRAND_BANC: DeckList = {
     ...repeat("cra-poiscail-chef-de-banc", 3),
     ...repeat("cra-poiscail-porte-etendard", 2),
     ...repeat("le-trone-de-bouchon", 2),
-    ...repeat("la-flaque-sacree", 3),
-    ...repeat("le-tas-de-trucs", 2),
+    ...repeat("cra-poiscail-des-hautes-eaux", 3),
+    ...repeat("casque-coquille", 2),
     // Des corps de plus sans passer par la Raison, et le coup de grâce.
     ...repeat("le-seau", 3),
     ...repeat("fesses-en-avant", 2),
@@ -108,6 +117,15 @@ export const DECK_LE_GRAND_BANC: DeckList = {
  * signature de la page : Filet de Sauvetage donne +2 Résistance à toute la
  * formation tant qu'il est visible, et sauve la pièce maîtresse une fois
  * quand il ne l'est pas.
+ *
+ * LISTE REVUE LE 29/09/2026. Dix cartes suspendues à deux Chevaliers :
+ * sans pièce pivot, la formation ne se montait qu'une partie sur deux. Le
+ * Chevalier abyssal — déjà désigné par l'Écuyer, le Destrier, la Quête et
+ * le Tournoi — en ajoute une, et trois Bancs de Cra-Poiscail remplacent la
+ * Bannière (jouée 38 % des fois où elle est en main) et Dernières Réserves
+ * (« 1 carte ou moins en main », Δ −13). Mesuré au labo (bot moyen, 60
+ * parties par paire contre le rayon) : 44 % → 53 %. Une formation plus
+ * serrée, sans équipements, montait à 69 % : écartée. Aucun texte changé.
  */
 export const DECK_CHEVALIERS_DU_GRAND_ETANG: DeckList = {
   id: "chevaliers-du-grand-etang",
@@ -120,7 +138,9 @@ export const DECK_CHEVALIERS_DU_GRAND_ETANG: DeckList = {
     ...repeat("ecuyer-cra-poiscail", 3),
     ...repeat("destrier-du-grand-etang", 3),
     ...repeat("chevalier-cra-poiscail", 2),
+    ...repeat("chevalier-cra-poiscail-abyssal", 1),
     ...repeat("bourreau-cra-poiscail", 3),
+    ...repeat("banc-de-cra-poiscail", 3),
     ...repeat("cra-poiscail-porte-etendard", 2),
     ...repeat("roi-cra-poiscail", 1),
     // Le soutien : soigner et relancer, pas ajouter des corps.
@@ -129,7 +149,6 @@ export const DECK_CHEVALIERS_DU_GRAND_ETANG: DeckList = {
     ...repeat("ptite-fesse-grand-reve", 2),
     // Ce qui transforme une formation en menace.
     ...repeat("fourchette-du-grand-etang", 3),
-    ...repeat("banniere-en-vieille-chaussette", 2),
     ...repeat("slip-de-guerre-cra-poiscail", 2),
     ...repeat("la-quete-du-grand-nenuphar", 2),
     ...repeat("le-tournoi-du-grand-etang", 2),
@@ -137,7 +156,6 @@ export const DECK_CHEVALIERS_DU_GRAND_ETANG: DeckList = {
     // Lot 14 : le piège signature, et de quoi ne pas rester sans pièce.
     ...repeat("filet-de-sauvetage", 2),
     ...repeat("faire-linventaire", 2),
-    ...repeat("dernieres-reserves", 2),
   ],
 };
 
