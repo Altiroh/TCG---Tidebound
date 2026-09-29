@@ -344,6 +344,20 @@ export const DECK_LA_FORTERESSE: DeckList = {
  * la place — dont Sonde des Courants Perdus, qui filtrait sans jamais rien
  * conclure, et un exemplaire de Cloche du Grand Fond, qui demandait 2
  * Raison à un deck qui en manque déjà.
+ *
+ * LISTE REVUE LE 29/09/2026 — des cartes qui attendaient un état qui ne
+ * vient pas. Les Abysses durent UN tour de table, environ une fois par
+ * partie : L'Œil Sous la Mer n'était joué que 26 % des fois où il était
+ * en main, Ce que la Marée Rend 14 %, Sept Brasses 29 %, et les outils
+ * qui n'agissent que par Sabordage (Compas, Horloge) avaient le pire Δ du
+ * deck. Ils cèdent la place à des corps de Marée, utiles tout de suite et
+ * meilleurs quand la mer descend : Veilleur des Profondeurs (qui pousse
+ * lui-même la Marée), Masse Sombre, Si-Raie-Ponce, un troisième Ce Qui
+ * Suit, Bat-Marin. Mesuré au labo (bot moyen, 60 parties par paire contre
+ * le rayon) : 22 % → 49 %. Une version plus agressive montait à 62 % :
+ * écartée, au-dessus de la cible. Rendre Anguille et Raie actives
+ * « pendant Tempête ou Abysses » n'apportait qu'un à deux points : aucun
+ * texte changé.
  */
 export const DECK_DESCENTE_AUX_ABYSSES: DeckList = {
   id: "descente-aux-abysses",
@@ -358,23 +372,21 @@ export const DECK_DESCENTE_AUX_ABYSSES: DeckList = {
     ...repeat("raie-des-fosses", 2),
     ...repeat("sondeur-des-mauvaises-eaux", 2),
     ...repeat("gardien-du-sondeur", 2),
+    ...repeat("veilleur-des-profondeurs", 3),
     // Les instruments : durée, intensité, orientation.
     ...repeat("regulateur-de-courant", 3),
     ...repeat("balise-des-profondeurs", 2),
-    ...repeat("compas-aux-aiguilles-noires", 2),
     ...repeat("ancre-de-tempete", 2),
-    ...repeat("horloge-de-maree", 1),
-    ...repeat("cloche-du-grand-fond", 1),
     ...repeat("epave-engloutie", 1),
     // Le forçage, et ce qui vit en bas.
     ...repeat("la-gueule-sous-la-mer", 1),
-    ...repeat("sept-brasses-plus-bas", 1),
-    ...repeat("ce-que-la-maree-rend", 2),
-    ...repeat("loeil-sous-la-mer", 3),
     ...repeat("la-chose-qui-remonte", 2),
+    ...repeat("masse-sombre", 3),
+    ...repeat("si-raie-ponce", 2),
+    ...repeat("bat-marin", 1),
     // La récompense de la descente, reprise de Sous la Ligne : ce que
     // personne d'autre ne peut se permettre de payer aussi tôt.
-    ...repeat("ce-qui-suit-le-navire", 2),
+    ...repeat("ce-qui-suit-le-navire", 3),
     ...repeat("marin-aux-yeux-rouges-abyssal", 1),
     ...repeat("bat-marin-abyssal", 1),
     ...repeat("revenante-de-la-fosse-abyssal", 1),
