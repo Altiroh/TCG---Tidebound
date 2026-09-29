@@ -59,6 +59,26 @@ export function chooseBotAction(
   difficulty: BotDifficulty,
   random: () => number = Math.random
 ): PlayerAction {
+  if (difficulty === "difficile") {
+    // « Difficile » ne se décide PAS coup par coup : il explore son tour
+    // jusqu'au bout et note la position après la riposte de l'adversaire
+    // (`searchTurn.ts`). C'est ce qui le rend dur — et ce qui fait tomber
+    // d'elles-mêmes les bêtises que la note statique laissait passer, à
+    // commencer par saborder une Structure pour deux points d'Ancrage dont
+    // il n'a pas l'usage.
+    //
+    // Aucun hasard ici, contrairement aux deux autres difficultés : un
+    // adversaire implacable ne se trompe jamais par accident.
+    //
+    // La note coup par coup (`scoreCandidates`) n'est calculée qu'en repli :
+    // la faire AVANT la recherche, c'était un `dispatch` par coup légal jeté
+    // aussitôt — du temps de réflexion perdu à chaque action du bot.
+    const searched = searchBestAction(state, playerId);
+    if (searched) return searched;
+    const fallback = scoreCandidates(state, playerId).sort((a, b) => b.score - a.score)[0];
+    return fallback?.action ?? { type: "endTurn", playerId };
+  }
+
   let scored = scoreCandidates(state, playerId);
   if (scored.length === 0) return { type: "endTurn", playerId };
 
@@ -72,21 +92,6 @@ export function chooseBotAction(
     const endTurnScore = scored.find((s) => s.action.type === "advancePhase" || s.action.type === "endTurn")?.score ?? -Infinity;
     const worthwhileAttacks = scored.filter((s) => s.action.type === "attack" && s.score >= endTurnScore);
     if (worthwhileAttacks.length > 0) scored = worthwhileAttacks;
-  }
-
-  if (difficulty === "difficile") {
-    // « Difficile » ne se décide PAS coup par coup : il explore son tour
-    // jusqu'au bout et note la position après la riposte de l'adversaire
-    // (`searchTurn.ts`). C'est ce qui le rend dur — et ce qui fait tomber
-    // d'elles-mêmes les bêtises que la note statique laissait passer, à
-    // commencer par saborder une Structure pour deux points d'Ancrage dont
-    // il n'a pas l'usage.
-    //
-    // Aucun hasard ici, contrairement aux deux autres difficultés : un
-    // adversaire implacable ne se trompe jamais par accident.
-    const searched = searchBestAction(state, playerId);
-    if (searched) return searched;
-    return scored[0]!.action;
   }
 
   /*

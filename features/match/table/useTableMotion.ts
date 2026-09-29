@@ -95,7 +95,7 @@ function measureCards(): Map<string, Box> {
  * son emplacement, plus lentement — le même vocabulaire que la pose du
  * joueur, dont le fantôme lâché est lui aussi plus grand que la case.
  */
-const OPPONENT_PLAY_MS = 620;
+const OPPONENT_PLAY_MS = 480;
 const OPPONENT_PLAY_SCALE = 1.3;
 
 function slide(el: HTMLElement, from: Box, to: Box, durationMs = 420) {

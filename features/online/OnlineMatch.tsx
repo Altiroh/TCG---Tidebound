@@ -14,9 +14,10 @@ import { WaitingRoom } from "@/features/online/WaitingRoom";
 /**
  * Pause entre deux états successifs renvoyés par le serveur pour le tour du
  * bot — même rythme que la partie locale (`MatchBoard`), assez long pour voir
- * chaque pioche/pose/attaque se jouer avant l'action suivante.
+ * chaque pioche/pose/attaque se jouer avant l'action suivante. Longtemps
+ * 1,1 s : un tour du bot se regardait plus qu'il ne se jouait.
  */
-const BOT_FRAME_DELAY_MS = 1100;
+const BOT_FRAME_DELAY_MS = 550;
 
 /** Intervalle des relances tant qu'une échéance passée n'a pas encore été constatée par le serveur. */
 const DEADLINE_RETRY_MS = 5_000;

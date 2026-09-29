@@ -248,18 +248,26 @@ async function commitAndSettle(
  *
  * C'est ce qui permet au joueur présent de sortir d'une table abandonnée :
  * son écran interroge le serveur, le serveur constate l'heure, et la partie
- * avance (ou se termine) sans que le navigateur n'ait rien décidé. Rend
- * `null` quand il n'y avait rien à rattraper.
+ * avance (ou se termine) sans que le navigateur n'ait rien décidé.
+ *
+ * Rend la partie telle qu'elle est APRÈS ce rattrapage — rattrapée ou non —
+ * pour que la lecture n'ait pas à relire la base : c'était deux lectures de
+ * la partie et de son état à chaque rafraîchissement de la table. `null` si
+ * la partie n'existe pas ou si l'appelant n'y joue pas.
  */
 export async function settleExpiredDeadlines(matchId: string, userId: string): Promise<MatchSnapshot | null> {
   const [match, full] = await Promise.all([loadMatchRow(matchId), loadFullState(matchId)]);
-  if (!match || !isParticipant(match, userId) || !full || match.status !== "active") return null;
+  if (!match || !isParticipant(match, userId)) return null;
+  const asIs: MatchSnapshot = { match, view: full ? toPlayerView(full.state, userId) : null };
+  if (!full || match.status !== "active") return asIs;
 
   const rattrape = applyExpiredDeadlines(full.state, match, Date.now());
-  if (rattrape.frames.length === 0) return null;
+  if (rattrape.frames.length === 0) return asIs;
 
   const committed = await commitAndSettle(matchId, userId, match, full.version, rattrape.frames, rattrape.state);
-  if (!committed.ok) return null;
+  // Rattrapage refusé (une autre écriture est passée entre-temps) : on rend
+  // ce qu'on a lu ; le prochain rafraîchissement verra la version gagnante.
+  if (!committed.ok) return asIs;
   return { match: committed.data.match, view: toPlayerView(rattrape.state, userId) };
 }
 

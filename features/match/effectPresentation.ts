@@ -23,13 +23,13 @@ import { getCardDefinition, type CardInstance, type GameEvent, type GameState, t
  */
 
 /** Temps de vol d'un projectile, du lanceur à la cible. */
-export const SHOT_FLIGHT_MS = 480;
+export const SHOT_FLIGHT_MS = 400;
 /** Instant où le voile de soin recouvre la cible : la Résistance remonte dessous. */
 export const HEAL_APPLY_MS = 420;
 /** Durée totale du voile. */
 export const HEAL_TOTAL_MS = 1150;
 /** Pastille de gain : surgit, se montre, puis rejoint sa place — la valeur change à l'arrivée. */
-export const BUFF_LAND_MS = 900;
+export const BUFF_LAND_MS = 720;
 /** Carte qui vient d'être posée : on la laisse atterrir avant qu'elle ne tire (`useTableMotion`, glissé de pose). */
 export const ARRIVAL_DELAY_MS = 460;
 /** Décompte du coût imprimé jusqu'au prix payé (Assemblage : 8 → 2). */

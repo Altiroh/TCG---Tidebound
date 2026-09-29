@@ -114,8 +114,8 @@ export async function fetchMatchView(
   // l'adversaire a laissé filer son délai, la partie avance ICI, sans que
   // le navigateur n'ait rien déclaré. C'est ce qui permet au joueur présent
   // de sortir d'une table que l'autre a quittée.
-  const settled = await settleExpiredDeadlines(matchId, user.id);
-  const snapshot = settled ?? (await loadSnapshot(matchId, user.id));
+  // Une seule lecture en base : le rattrapage rend la partie telle qu'elle est.
+  const snapshot = await settleExpiredDeadlines(matchId, user.id);
   if (!snapshot) return { ok: false, error: "Partie introuvable." };
   // Emballée comme les vues d'un coup : les decks masqués ne font pas le voyage (`matchFrames`).
   return { ok: true, data: { match: snapshot.match, frames: snapshot.view ? packFrames([snapshot.view]) : null } };
@@ -215,8 +215,7 @@ export async function findResumableMatch(): Promise<ResumableMatch | null> {
     if (row.status === "active") {
       try {
         // Un délai échu peut avoir terminé la partie : on le constate avant de la proposer.
-        const settled = await settleExpiredDeadlines(row.id, user.id);
-        const snapshot = settled ?? (await loadSnapshot(row.id, user.id));
+        const snapshot = await settleExpiredDeadlines(row.id, user.id);
         game = snapshot?.view ? snapshot.view.status : "missing";
       } catch (readError) {
         console.error(`[findResumableMatch] État illisible pour ${row.id} :`, readError);

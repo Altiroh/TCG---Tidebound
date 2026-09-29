@@ -13,7 +13,8 @@ import {
   graveyardChoicesForBreak,
   isMainPhase,
   previewBreakReason,
-  stepBotTurn,
+  applyBotAction,
+  botHasSomethingToDo,
   type BotDifficulty,
   type CardInstance,
   type GameState,
@@ -56,9 +57,20 @@ import { usePhaseBannerEvent } from "@/features/match/usePhaseBannerEvent";
 import { tableTargetingFor, useBoardInteraction } from "@/features/match/useBoardInteraction";
 import { useShipAbility } from "@/features/match/useShipAbility";
 import { playButtonClick } from "@/lib/sound";
+import { thinkBotAction } from "@/features/match/bot/botThinker";
 
-/** Pause entre deux actions du bot (`stepBotTurn`) — assez long pour voir chaque pioche/pose/Sabordage se jouer avant l'action suivante, sans donner l'impression d'attendre. */
-const BOT_ACTION_DELAY_MS = 1100;
+/**
+ * Rythme du bot : le temps MINIMUM entre deux de ses actions visibles
+ * (pose, attaque, Sabordage…), réflexion comprise — assez pour voir chaque
+ * coup se jouer, pas assez pour avoir l'impression d'attendre. Longtemps
+ * fixé à 1,1 s, en plus du temps de réflexion : un tour du bot durait plus
+ * de dix secondes, et chaque réaction qu'il passait bloquait la table une
+ * seconde entière.
+ */
+const BOT_ACTION_DELAY_MS = 550;
+/** Passer une réaction, changer de phase : rien à regarder, le bot enchaîne presque aussitôt. */
+const BOT_QUICK_DELAY_MS = 120;
+const BOT_QUICK_ACTIONS: ReadonlySet<PlayerAction["type"]> = new Set(["passReaction", "advancePhase"]);
 
 interface MatchBoardProps {
   initialState: GameState;
@@ -213,7 +225,7 @@ export function MatchBoard({
   const turnOwnerLabel = botPlayerId ? (isViewerTurn ? "À vous" : "Au bot") : `Joueur ${activePlayerId === "p1" ? "1" : "2"}`;
 
   // Joue automatiquement le tour du bot dès qu'il devient actif, ET chaque fois qu'une fenêtre de
-  // réaction l'attend. UNE action à la fois (`stepBotTurn`), avec un délai entre chaque : chaque
+  // réaction l'attend. UNE action à la fois (`applyBotAction`), avec un délai entre chaque : chaque
   // pioche/pose/Sabordage a le temps d'être animé.
   //
   // TOUT ce qui suit se lit sur `liveState`, jamais sur `state` (l'état
@@ -229,38 +241,52 @@ export function MatchBoard({
   const liveRef = useRef(liveState);
   liveRef.current = liveState;
 
-  const botAwaitingReaction = liveState.pendingReaction?.awaitingPlayerId === botPlayerId;
-  const liveActivePlayerId = liveState.activePlayerId;
+  // « Le bot a-t-il quelque chose à décider ? » — son tour, une fenêtre de
+  // réaction ou un choix qui l'attend. C'est CETTE bascule qui relance la
+  // boucle, pas le joueur actif : quand le bot ouvre une fenêtre au joueur
+  // pendant son propre tour, il doit reprendre la main une fois qu'on y a
+  // répondu, alors que le joueur actif, lui, n'a pas changé.
+  const botToAct = Boolean(botPlayerId) && liveState.status === "active" && botHasSomethingToDo(liveState, botPlayerId!);
   useEffect(() => {
-    if (liveRef.current.status !== "active" || !botDifficulty) return;
-    if (liveActivePlayerId !== botPlayerId && !botAwaitingReaction) return;
+    if (!botToAct || !botDifficulty || !botPlayerId) return;
 
     let cancelled = false;
-    let timer: ReturnType<typeof setTimeout>;
+    let timer: ReturnType<typeof setTimeout> | undefined;
 
-    function tick(current: GameState) {
+    // Réfléchir (hors du fil principal, `thinkBotAction`) PENDANT que le
+    // délai court : la réflexion ne s'ajoute plus au rythme, elle s'y fond.
+    async function step() {
+      const current = liveRef.current;
+      if (cancelled || current.status !== "active" || !botHasSomethingToDo(current, botPlayerId!)) return;
+
+      const startedAt = performance.now();
+      const action = await thinkBotAction(current, botPlayerId!, botDifficulty!);
       if (cancelled) return;
-      if (current.status !== "active" || !botPlayerId) return;
-      const ownTurn = current.activePlayerId === botPlayerId;
-      const ownReaction = current.pendingReaction?.awaitingPlayerId === botPlayerId;
-      if (!ownTurn && !ownReaction) return;
-
-      const step = stepBotTurn(current, botPlayerId, botDifficulty!);
-      setState(step.state);
-      board.clearSelection();
-      setError(null);
-      if (!step.done) {
-        timer = setTimeout(() => tick(step.state), BOT_ACTION_DELAY_MS);
-      }
+      const pace = BOT_QUICK_ACTIONS.has(action.type) ? BOT_QUICK_DELAY_MS : BOT_ACTION_DELAY_MS;
+      timer = setTimeout(() => {
+        if (cancelled) return;
+        // L'état a bougé pendant la réflexion (abandon, fin de délai…) :
+        // l'action choisie ne vaut plus rien, on repart de l'état courant.
+        if (liveRef.current !== current) {
+          void step();
+          return;
+        }
+        const result = applyBotAction(current, botPlayerId!, action);
+        liveRef.current = result.state;
+        setState(result.state);
+        board.clearSelection();
+        setError(null);
+        if (!result.done) void step();
+      }, Math.max(0, pace - (performance.now() - startedAt)));
     }
 
-    timer = setTimeout(() => tick(liveRef.current), BOT_ACTION_DELAY_MS);
+    void step();
     return () => {
       cancelled = true;
       clearTimeout(timer);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- ne doit réagir qu'aux transitions "c'est au bot d'agir" (cf. l'ancien MatchBoard).
-  }, [liveActivePlayerId, botAwaitingReaction, liveState.status, botPlayerId, botDifficulty]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- ne doit réagir qu'aux transitions "c'est au bot d'agir".
+  }, [botToAct, botPlayerId, botDifficulty]);
 
   /** Abandon depuis le menu de pause : la partie se termine proprement, sur l'écran de victoire de l'adversaire. */
   function concedeMatch() {

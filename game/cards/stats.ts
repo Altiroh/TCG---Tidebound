@@ -246,6 +246,50 @@ export function collectAuraContributions(
   return contributions.filter((c) => c.attack !== 0 || c.health !== 0);
 }
 
+const NO_AURA = { attack: 0, health: 0 } as const;
+
+/**
+ * Somme des bonus de plateau d'une unité, MÉMORISÉE.
+ *
+ * `computeEffectiveStats` est la fonction la plus appelée du moteur : chaque
+ * `dispatch` relit la Puissance de toutes les unités plusieurs fois (morts,
+ * pouvoirs, déclencheurs), et la recherche du bot « difficile » enchaîne des
+ * milliers de `dispatch` par décision. Chaque appel rebalayait tout le
+ * plateau pour y chercher des auras — la moitié du temps de réflexion du
+ * bot, mesuré au profileur.
+ *
+ * L'état de partie ne se modifie jamais en place (chaque changement produit
+ * de nouveaux objets) : un plateau et une unité IDENTIQUES en mémoire, avec
+ * la même Marée et le même contexte, donnent forcément le même total. La clé
+ * est donc l'identité des objets ; `WeakMap` laisse partir les états que
+ * plus personne ne tient.
+ */
+const auraTotalsCache = new WeakMap<readonly CardInstance[], WeakMap<CardInstance, Map<string, { attack: number; health: number }>>>();
+
+function auraTotals(unit: CardInstance, tideState: TideStateName, aura: AuraContext): { attack: number; health: number } {
+  let byUnit = auraTotalsCache.get(aura.controllerBoard);
+  if (!byUnit) {
+    byUnit = new WeakMap();
+    auraTotalsCache.set(aura.controllerBoard, byUnit);
+  }
+  let byContext = byUnit.get(unit);
+  if (!byContext) {
+    byContext = new Map();
+    byUnit.set(unit, byContext);
+  }
+  const key = `${tideState}|${aura.controllerReason}|${aura.tideOrientation ?? ""}|${aura.controllerIsActive ?? ""}`;
+  const cached = byContext.get(key);
+  if (cached) return cached;
+
+  const contributions = collectAuraContributions(unit, tideState, aura);
+  const totals = {
+    attack: contributions.reduce((sum, c) => sum + c.attack, 0),
+    health: contributions.reduce((sum, c) => sum + c.health, 0),
+  };
+  byContext.set(key, totals);
+  return totals;
+}
+
 /**
  * Calcule les statistiques effectives d'une unité en combinant :
  * la définition de base, les modificateurs temporaires/permanents
@@ -265,9 +309,7 @@ export function computeEffectiveStats(unit: CardInstance, tideState: TideStateNa
   const modifierAttack = unit.modifiers.reduce((sum, m) => sum + m.attack, 0);
   const modifierHealth = unit.modifiers.reduce((sum, m) => sum + m.health, 0);
 
-  const contributions = aura ? collectAuraContributions(unit, tideState, aura) : [];
-  const auraAttack = contributions.reduce((sum, c) => sum + c.attack, 0);
-  const auraHealth = contributions.reduce((sum, c) => sum + c.health, 0);
+  const { attack: auraAttack, health: auraHealth } = aura ? auraTotals(unit, tideState, aura) : NO_AURA;
 
   return {
     attack: baseAttack + modifierAttack + auraAttack,
