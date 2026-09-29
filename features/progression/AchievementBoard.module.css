@@ -1,31 +1,37 @@
 /*
- * EXPLOITS — grammaire de la coquille hors-partie (`features/shell/DESIGN.md`) :
- * panneau bleu nuit, cyan pour la progression, or pour ce qui attend d'être
- * réclamé, vert pour l'acquis. Aucune couleur décidée ici : tokens seulement.
+ * EXPLOITS — matière cabine (29/09/2026), la même famille que les onglets
+ * Profil et Récompenses : un grand cadre riveté (`game.cabinFrame`), des
+ * tuiles en panneau sombre à filet d'or (`game.cabinPanel`), titres Cinzel
+ * ivoire, laiton sur les arêtes (`--book-*`).
+ *
+ * Couleurs par rôle (`features/shell/DESIGN.md`) : cyan pour la
+ * progression et le filtre choisi, or pour ce qui attend d'être réclamé,
+ * vert — discret — pour l'acquis.
  */
 
-.board {
+/* `section.` : passe devant le rembourrage du cadre commun, quel que soit l'ordre des feuilles. */
+section.board {
   display: flex;
   flex-direction: column;
-  gap: clamp(14px, 2vh, 22px);
+  gap: clamp(12px, 1.8dvh, 20px);
   box-sizing: border-box;
   min-height: 100%;
-  padding: clamp(14px, 1.8vw, 26px);
-  border: 1px solid var(--tb-border);
-  border-radius: var(--radius, var(--tb-radius-lg));
-  background: var(--tb-surface);
-  backdrop-filter: blur(var(--tb-blur));
-  box-shadow: var(--tb-shadow-md);
-  color: var(--tb-text);
+  padding-inline: clamp(22px, 2.4vw, 40px);
+  animation: boardIn 260ms var(--tb-ease) both;
 }
 
-/* ── En-tête : titre et progression globale ─────────────────── */
+@keyframes boardIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ── En-tête : titre et compteur en médaillon ──────────────────── */
 
 .head {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
-  gap: 16px 28px;
+  gap: 12px 28px;
   flex-wrap: wrap;
 }
 
@@ -38,88 +44,90 @@
 }
 
 .title {
-  margin: 0;
-  font-family: var(--tb-font-display);
   font-size: calc(clamp(20px, 1.8vw, 28px) * var(--tb-text-scale));
-  font-weight: 700;
-  color: var(--tb-text-strong);
 }
 
 .subtitle {
   margin: 0;
-  max-width: 52ch;
-  font-size: calc(13.5px * var(--tb-text-scale));
+  max-width: 56ch;
+  color: var(--book-ivory-dim);
+  font-family: var(--tb-font-body);
+  font-size: var(--tb-fs-body);
+  font-style: italic;
   line-height: var(--tb-lh-body);
-  color: var(--tb-text-muted);
 }
 
 .summary {
-  display: grid;
-  grid-template-columns: auto minmax(160px, 1fr);
-  align-items: center;
-  gap: 6px 14px;
-  flex: 0 1 380px;
-  padding: 10px 14px;
-  border: 1px solid var(--tb-border);
-  border-radius: var(--tb-radius-md);
-  background: var(--tb-surface-inset);
-}
-
-.summaryMain {
   display: flex;
-  flex-direction: column;
-  grid-row: span 2;
+  align-items: center;
+  gap: 14px;
 }
 
-.summaryValue {
+/* Le médaillon : anneau cyan (part obtenue) autour d'un disque nuit cerclé de laiton. */
+.medallion {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 78px;
+  height: 78px;
+  padding: 4px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: conic-gradient(var(--tb-accent) calc(var(--ratio, 0) * 360deg), rgba(0, 0, 0, 0.5) 0);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.6), var(--tb-glow-sm);
+}
+
+.medallionFace {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 2px;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding-top: 18px;
+  border: 2px solid var(--book-brass);
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 35%, var(--tb-surface-solid-raised), var(--tb-bg-deep));
   font-family: var(--tb-font-display);
-  font-size: calc(28px * var(--tb-text-scale));
   font-weight: 700;
   line-height: 1;
-  color: var(--tb-text-strong);
 }
 
-.summaryTotal {
-  font-size: calc(16px * var(--tb-text-scale));
-  color: var(--tb-text-muted);
+.medallionValue {
+  font-size: calc(24px * var(--tb-text-scale));
+  color: var(--book-ivory-strong);
+}
+
+.medallionTotal {
+  font-size: calc(13px * var(--tb-text-scale));
+  color: var(--book-ivory-dim);
+}
+
+.summaryText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .summaryLabel {
-  font-size: calc(12px * var(--tb-text-scale));
-  color: var(--tb-text-muted);
-}
-
-.globalTrack,
-.track {
-  position: relative;
-  display: block;
-  overflow: hidden;
-  border-radius: var(--tb-radius-pill);
-  background: var(--tb-accent-soft);
-}
-
-.globalTrack {
-  height: 8px;
-}
-
-.globalFill,
-.fill {
-  position: absolute;
-  inset: 0 auto 0 0;
-  border-radius: inherit;
-  background: linear-gradient(90deg, var(--tb-accent-deep), var(--tb-accent));
-  transition: width var(--tb-duration-slow) var(--tb-ease);
+  font-family: var(--tb-font-display);
+  font-size: calc(13px * var(--tb-text-scale));
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--book-ivory);
 }
 
 .facts {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px 14px;
+  flex-direction: column;
+  gap: 2px;
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: calc(12.5px * var(--tb-text-scale));
-  color: var(--tb-text-muted);
+  font-size: var(--tb-fs-caption);
+  color: var(--book-ivory-dim);
 }
 
 .facts li {
@@ -128,7 +136,7 @@
   gap: 5px;
 }
 
-/* ── Filtres ─────────────────────────────────────────────────── */
+/* ── Filtres : les puces cabine, les mêmes que celles des Quêtes ── */
 
 .filters {
   display: flex;
@@ -139,27 +147,35 @@
 .filter {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 5px 12px;
-  border: 1px solid var(--tb-border);
+  gap: 8px;
+  height: 34px;
+  box-sizing: border-box;
+  padding: 0 14px;
+  border: 1px solid var(--book-brass-line);
   border-radius: var(--tb-radius-pill);
-  background: transparent;
-  color: var(--tb-text-muted);
+  background: rgba(5, 12, 20, 0.82);
+  box-shadow: var(--book-shadow-contact);
+  color: var(--book-ivory-dim);
   font: inherit;
-  font-size: calc(13px * var(--tb-text-scale));
+  font-family: var(--tb-font-display);
+  font-size: calc(12.5px * var(--tb-text-scale));
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
   cursor: pointer;
-  transition: border-color var(--tb-duration-fast) var(--tb-ease), color var(--tb-duration-fast) var(--tb-ease), background var(--tb-duration-fast) var(--tb-ease);
+  transition: border-color var(--tb-duration-fast) var(--tb-ease), color var(--tb-duration-fast) var(--tb-ease), background-color var(--tb-duration-fast) var(--tb-ease), box-shadow var(--tb-duration-fast) var(--tb-ease);
 }
 
 .filter:hover {
-  border-color: var(--tb-accent-line);
-  color: var(--tb-text);
+  border-color: var(--book-brass);
+  color: var(--book-ivory);
 }
 
 .filter[data-active="true"] {
-  border-color: var(--tb-accent);
-  background: var(--tb-accent-soft);
-  color: var(--tb-text-strong);
+  border-color: var(--tb-accent-line);
+  background: linear-gradient(180deg, rgba(95, 208, 230, 0.2), rgba(5, 12, 20, 0.88));
+  box-shadow: var(--book-shadow-contact), var(--tb-glow-sm);
+  color: var(--book-ivory-strong);
 }
 
 .filter:focus-visible,
@@ -169,8 +185,15 @@
 }
 
 .filterCount {
-  font-size: calc(11.5px * var(--tb-text-scale));
-  color: var(--tb-text-soft);
+  min-width: 1.6em;
+  padding: 1px 5px;
+  border-radius: var(--tb-radius-pill);
+  background: rgba(0, 0, 0, 0.45);
+  font-family: var(--tb-font-ui);
+  font-size: calc(11px * var(--tb-text-scale));
+  letter-spacing: 0;
+  text-align: center;
+  color: var(--book-ivory-dim);
 }
 
 /* ── Sections ────────────────────────────────────────────────── */
@@ -184,179 +207,220 @@
 .sectionTitle {
   display: flex;
   align-items: baseline;
-  gap: 10px;
+  gap: 12px;
   margin: 0;
-  font-size: calc(15px * var(--tb-text-scale));
-  font-weight: 600;
-  color: var(--tb-text-strong);
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.sectionName {
+  font-size: calc(clamp(13px, 1vw, 15px) * var(--tb-text-scale));
 }
 
 .sectionMeta {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: calc(12.5px * var(--tb-text-scale));
-  font-weight: 400;
-  color: var(--tb-text-soft);
+  font-size: var(--tb-fs-caption);
+  color: var(--book-ivory-dim);
 }
 
-.grid,
-.gridCompact {
+/* Des tuiles de trophée : l'illustration fait toute la largeur. */
+.grid {
   display: grid;
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 196px), 1fr));
+  gap: 12px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.grid {
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
-}
-
-.gridCompact {
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
-}
-
 .empty {
-  margin: 12px 0;
-  font-size: calc(13.5px * var(--tb-text-scale));
-  color: var(--tb-text-muted);
+  margin: 8px 0;
+  color: var(--book-ivory-dim);
+  font-family: var(--tb-font-body);
+  font-size: var(--tb-fs-body);
+  font-style: italic;
 }
 
-/* ── Carte d'exploit ─────────────────────────────────────────── */
+/* ── Tuile d'exploit ─────────────────────────────────────────── */
 
-.card {
-  position: relative;
+article.card {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
+  flex-direction: column;
+  gap: 10px;
   height: 100%;
   box-sizing: border-box;
-  padding: 12px;
-  border: 1px solid var(--tb-border);
-  border-radius: var(--tb-radius-md);
-  background: var(--tb-surface-raised);
-}
-
-.card[data-state="claimable"] {
-  border-color: var(--tb-gold-line);
-  background: linear-gradient(180deg, var(--tb-gold-soft), transparent 70%), var(--tb-surface-raised);
-  box-shadow: var(--tb-glow-gold);
-}
-
-.card[data-compact="true"] {
-  align-items: center;
   padding: 10px;
 }
 
-.iconFrame {
+/* L'illustration peinte, cadrée large, dans un filet de laiton. */
+.art {
   position: relative;
-  flex: 0 0 auto;
-  width: 56px;
-  height: 56px;
-  border: 1px solid var(--tb-border-strong);
-  border-radius: var(--tb-radius-sm);
-  background: var(--tb-surface-inset);
+  display: grid;
+  place-items: center;
+  aspect-ratio: 16 / 11;
+  overflow: hidden;
+  border: 1px solid var(--book-brass-line);
+  border-radius: 4px;
+  background: radial-gradient(circle at 50% 40%, var(--tb-surface-solid-raised), var(--tb-bg-deep));
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.5);
 }
 
-.card[data-compact="true"] .iconFrame {
-  width: 44px;
-  height: 44px;
-}
-
-.card[data-state="done"] .iconFrame {
-  border-color: var(--tb-success-line);
-}
-
-.card[data-state="claimable"] .iconFrame {
-  border-color: var(--tb-gold-line);
-}
-
-.icon,
-.iconFallback {
+.artImage {
   display: block;
   width: 100%;
   height: 100%;
-  border-radius: inherit;
   object-fit: cover;
+  /* Les scènes sont centrées un peu haut (phare, cloche, pavillon) : on garde le sujet. */
+  object-position: 50% 42%;
+  user-select: none;
+  transition: filter var(--tb-duration-slow) var(--tb-ease);
 }
 
-.iconFallback {
-  display: grid;
-  place-items: center;
-  font-size: calc(22px * var(--tb-text-scale));
-  color: var(--tb-text-muted);
+.emblem {
+  width: 46%;
+  height: auto;
+  color: var(--book-brass);
+  opacity: 0.85;
 }
 
-/* À décrocher : l'icône reste reconnaissable, mais éteinte. */
-.card[data-state="progress"] .icon {
-  filter: grayscale(0.85) brightness(0.6);
+/* À décrocher : l'illustration reste LISIBLE — éteinte, pas noyée. */
+.card[data-state="progress"] .artImage {
+  filter: grayscale(0.6) brightness(0.82) contrast(0.95);
 }
 
+.card[data-state="progress"] .emblem {
+  opacity: 0.45;
+}
+
+.card[data-state="progress"]:hover .artImage {
+  filter: grayscale(0.35) brightness(0.92);
+}
+
+/* Famille : une étiquette posée sur le bas de l'illustration. */
+.family {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  max-width: calc(100% - 12px);
+  padding: 2px 8px;
+  border-radius: var(--tb-radius-pill);
+  background: rgba(5, 12, 20, 0.82);
+  font-size: calc(10px * var(--tb-text-scale));
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--book-brass);
+}
+
+/* Obtenu : une coche verte discrète au coin de l'illustration. */
 .check {
   position: absolute;
-  right: -5px;
-  bottom: -5px;
+  top: 6px;
+  right: 6px;
   display: grid;
   place-items: center;
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--tb-success-line);
   border-radius: 50%;
-  background: var(--tb-success);
-  color: var(--tb-bg-deep);
+  background: rgba(5, 12, 20, 0.85);
+  color: var(--tb-success);
+}
+
+.card[data-state="done"] .art {
+  border-color: var(--tb-success-line);
+}
+
+/* À réclamer : l'or respire autour de la tuile (le panneau est une image : un calque porte la lueur). */
+.card[data-state="claimable"]::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 6px;
+  pointer-events: none;
+  box-shadow: 0 0 0 1px var(--tb-gold-line), 0 0 20px rgba(226, 194, 122, 0.45);
+  animation: achievementReady 2.4s ease-in-out infinite;
+}
+
+.card[data-state="claimable"] .art {
+  border-color: var(--tb-gold);
+}
+
+@keyframes achievementReady {
+  0%,
+  100% { opacity: 0.35; }
+  50% { opacity: 1; }
 }
 
 .body {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
   min-width: 0;
-}
-
-.family {
-  font-size: calc(11.5px * var(--tb-text-scale));
-  color: var(--tb-text-soft);
 }
 
 .name {
   margin: 0;
   font-family: var(--tb-font-display);
-  font-size: calc(15px * var(--tb-text-scale));
+  font-size: calc(clamp(13.5px, 1vw, 15px) * var(--tb-text-scale));
   font-weight: 700;
   line-height: var(--tb-lh-tight);
-  color: var(--tb-text-strong);
+  color: var(--book-ivory-strong);
+}
+
+.card[data-state="progress"] .name {
+  color: var(--book-ivory);
 }
 
 .description {
+  display: -webkit-box;
   margin: 0;
-  font-size: calc(13px * var(--tb-text-scale));
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  font-size: var(--tb-fs-caption);
   line-height: 1.35;
-  color: var(--tb-text-muted);
-}
-
-.card[data-compact="true"] .family,
-.card[data-compact="true"] .description {
-  display: none;
+  color: var(--book-ivory-dim);
 }
 
 .progressRow {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-top: 6px;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 4px;
 }
 
 .track {
+  position: relative;
+  display: block;
   flex: 1 1 auto;
-  height: 5px;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(199, 154, 75, 0.28);
+}
+
+.fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--tb-accent-deep), var(--tb-accent));
+  transition: width var(--tb-duration-slow) var(--tb-ease);
 }
 
 .count {
   flex: 0 0 auto;
-  font-size: calc(12px * var(--tb-text-scale));
+  font-size: calc(11.5px * var(--tb-text-scale));
   font-variant-numeric: tabular-nums;
-  color: var(--tb-text-muted);
+  color: var(--book-ivory-dim);
 }
 
 .rewards {
@@ -364,39 +428,44 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 10px;
-  margin-top: 6px;
+  margin-top: 2px;
 }
 
-.card[data-compact="true"] .rewards {
-  margin-top: 2px;
+/* Sans jauge (obtenu, à réclamer), la récompense descend au pied de la tuile. */
+.card:not([data-state="progress"]) .rewards {
+  margin-top: auto;
 }
 
 .reward {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: calc(12.5px * var(--tb-text-scale));
-  color: var(--tb-text-muted);
+  font-size: var(--tb-fs-caption);
+  font-weight: 600;
+  color: var(--tb-gold);
 }
 
 .reward[data-state="claimable"] {
-  font-weight: 600;
   color: var(--tb-gold-bright);
 }
 
 .reward[data-state="done"] {
-  color: var(--tb-text-soft);
+  font-weight: 500;
+  color: var(--tb-success);
 }
 
 /* Le titre qu'apporte l'exploit : une étiquette, cyan une fois gagné. */
 .titleReward {
   padding: 1px 8px;
-  border: 1px dashed var(--tb-border-strong);
+  border: 1px dashed var(--book-brass-line);
   border-radius: var(--tb-radius-pill);
-  font-size: calc(12px * var(--tb-text-scale));
+  font-size: calc(11px * var(--tb-text-scale));
   font-style: italic;
   white-space: nowrap;
-  color: var(--tb-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  color: var(--book-ivory-dim);
 }
 
 .titleReward[data-earned="true"] {
@@ -407,62 +476,70 @@
 }
 
 .claim {
-  flex: 0 0 auto;
-  align-self: center;
-  padding: 7px 14px;
-  border-radius: var(--tb-radius-sm);
-  border: 1px solid var(--tb-btn-border);
-  background: var(--tb-btn-bg);
-  box-shadow: var(--tb-btn-glow);
-  color: var(--tb-btn-text);
-  font: inherit;
-  font-size: calc(13px * var(--tb-text-scale));
-  font-weight: 600;
-  cursor: pointer;
-  transition: box-shadow var(--tb-duration-fast) var(--tb-ease), transform var(--tb-duration-fast) var(--tb-ease);
-}
-
-.claim:hover:not(:disabled) {
-  background: var(--tb-btn-bg-hover);
-  box-shadow: var(--tb-btn-glow-hover);
-  transform: translateY(-1px);
-}
-
-.claim:disabled {
-  opacity: 0.5;
-  cursor: progress;
+  width: 100%;
+  margin-top: 6px;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .globalFill,
+  section.board,
+  .card[data-state="claimable"]::after {
+    animation: none;
+  }
+
+  .card[data-state="claimable"]::after {
+    opacity: 1;
+  }
+
   .fill,
   .filter,
-  .claim {
+  .artImage {
     transition: none;
   }
 }
 
-/* Téléphone couché : on resserre. */
+/* Téléphone couché : on resserre, les tuiles gardent leur illustration. */
 @media (max-height: 560px) {
-  .board {
-    gap: 12px;
-    padding: 12px;
+  section.board {
+    gap: 10px;
   }
 
   .subtitle {
     display: none;
   }
 
-  .summary {
-    padding: 8px 10px;
+  .medallion {
+    width: 58px;
+    height: 58px;
+    padding: 3px;
   }
 
-  .summaryValue {
-    font-size: calc(22px * var(--tb-text-scale));
+  .medallionFace {
+    padding-top: 13px;
   }
 
-  .iconFrame {
-    width: 44px;
-    height: 44px;
+  .medallionValue {
+    font-size: calc(18px * var(--tb-text-scale));
+  }
+
+  .medallionTotal {
+    font-size: calc(11px * var(--tb-text-scale));
+  }
+
+  .grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr));
+    gap: 8px;
+  }
+
+  article.card {
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .art {
+    aspect-ratio: 16 / 9;
+  }
+
+  .filter {
+    height: 30px;
   }
 }

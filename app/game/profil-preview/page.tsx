@@ -75,15 +75,18 @@ export default function ProfilPreviewRoute({ searchParams }: { searchParams: { s
       bestStreak: 14,
       daysToStreakBonus: LOGIN_STREAK_MILESTONE - 11,
     },
-    achievements: ACHIEVEMENT_CATALOG.slice(0, 6).map((achievement, index) => ({
+    // Tout le catalogue, pour voir chaque illustration : le premier obtenu,
+    // le deuxième à réclamer (or qui pulse), les Traversées (sans
+    // illustration : emblème de repli) avec leur titre, le reste en cours.
+    achievements: ACHIEVEMENT_CATALOG.map((achievement, index) => ({
       code: achievement.code,
       name: achievement.name,
       description: achievement.description,
       rewardTides: achievement.rewardTides,
-      unlocked: index === 0,
-      claimable: false,
-      progress: { current: 3 + index * 7, target: 50 },
-      titleName: null,
+      unlocked: index <= 1,
+      claimable: index === 1,
+      progress: { current: Math.min(49, 3 + index * 7), target: 50 },
+      titleName: achievement.code.startsWith("voyage_") ? achievement.name : null,
     })),
     cardBacks: { options: [], equipped: DEFAULT_CARD_BACK_ID },
     titles: { options: [], equipped: null, available: false },

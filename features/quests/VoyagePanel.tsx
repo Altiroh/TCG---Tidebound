@@ -75,13 +75,13 @@ export function VoyagePanel({ board, onChanged }: { board: VoyageBoard; /** Reli
   const locked = voyage.status === "locked";
 
   return (
-    <section className={`${game.panel} ${styles.panel}`} data-status={voyage.status} aria-label="Traversées">
+    <section className={`${game.cabinFrame} ${styles.panel}`} data-status={voyage.status} aria-label="Traversées">
       <header className={styles.head}>
         <div className={styles.titleBlock}>
-          <p className={game.eyebrow}>
+          <p className={`${game.cabinEyebrow} ${styles.eyebrow}`}>
             Traversée {voyage.numeral} · palier {voyage.tier} / {voyage.steps.length}
           </p>
-          <h2 className={styles.title}>{voyage.name}</h2>
+          <h2 className={`${game.cabinTitle} ${styles.title}`}>{voyage.name}</h2>
           <p className={styles.tagline}>{voyage.tagline}</p>
         </div>
 
@@ -139,13 +139,15 @@ export function VoyagePanel({ board, onChanged }: { board: VoyageBoard; /** Reli
         })}
       </ol>
 
+      <hr className={game.cabinRule} />
+
       <footer className={styles.foot}>
         {message ? (
           <p className={message.tone === "success" ? game.success : game.error} role="status">
             {message.text}
           </p>
         ) : (
-          <p className={game.muted}>
+          <p className={styles.hint}>
             {locked
               ? "Boucle la Traversée précédente pour lever l'ancre."
               : done
@@ -158,6 +160,61 @@ export function VoyagePanel({ board, onChanged }: { board: VoyageBoard; /** Reli
             {busy ? "…" : `Réclamer le palier ${voyage.claimableTier}`}
           </button>
         )}
+      </footer>
+    </section>
+  );
+}
+
+/**
+ * La Traversée en attente de sa lecture : le MÊME cadre, les mêmes classes
+ * et un texte de gabarit rendu invisible (`.ghost`) — les hauteurs sont
+ * donc celles du vrai panneau, qui prend sa place sans que rien ne bouge.
+ */
+export function VoyageSkeleton() {
+  const ghost = styles.ghost;
+  return (
+    <section className={`${game.cabinFrame} ${styles.panel} ${styles.skeleton}`} aria-hidden>
+      <header className={styles.head}>
+        <div className={styles.titleBlock}>
+          <p className={`${game.cabinEyebrow} ${styles.eyebrow}`}>
+            <span className={ghost}>Traversée I · palier 1 / 5</span>
+          </p>
+          <h2 className={`${game.cabinTitle} ${styles.title}`}>
+            <span className={ghost}>La Traversée</span>
+          </h2>
+          <p className={styles.tagline}>
+            <span className={ghost}>Une route de cinq escales, à boucler d&apos;une semaine à l&apos;autre.</span>
+          </p>
+        </div>
+        <div className={styles.voyageTabs}>
+          {["I", "II", "III"].map((numeral) => (
+            <span key={numeral} className={styles.voyageTab} data-status="locked" />
+          ))}
+        </div>
+      </header>
+      <ol className={styles.route}>
+        {[1, 2, 3, 4, 5].map((index) => (
+          <li key={index} className={styles.stop} data-state="upcoming">
+            <span className={styles.buoy} aria-hidden>
+              <span className={styles.buoyNumber}>{index}</span>
+            </span>
+            <span className={styles.stopName}>
+              <span className={ghost}>Escale</span>
+            </span>
+            <span className={styles.stopLabel}>
+              <span className={ghost}>Objectif de l&apos;escale</span>
+            </span>
+            <span className={styles.stopReward}>
+              <span className={ghost}>100 XP</span>
+            </span>
+          </li>
+        ))}
+      </ol>
+      <hr className={game.cabinRule} />
+      <footer className={styles.foot}>
+        <p className={styles.hint}>
+          <span className={ghost}>Chaque escale bouclée monte la Traversée d&apos;un palier.</span>
+        </p>
       </footer>
     </section>
   );

@@ -5,9 +5,17 @@ import { oneOf } from "@/lib/persistCodecs";
 import { usePersistedState } from "@/lib/persistedState";
 import type { ProfileAchievement } from "@/features/progression/profileActions";
 import { TideCoin } from "@/features/shell/GameIcons";
+import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/progression/AchievementBoard.module.css";
 
-/** Icône peinte de chaque exploit (`public/assets/exploits/`). */
+/**
+ * Illustration peinte de chaque exploit (`public/assets/exploits/`, 256 px
+ * de côté). Vérifiée image par image le 29/09/2026 : chaque code montre la
+ * scène qui lui correspond (le doublon `equipage-recruté.webp`, source
+ * 1254 px de la même scène au nom accentué, a été retiré). Les trois exploits de Traversée
+ * (`voyage_*`) n'ont pas encore d'illustration : ils portent l'emblème de
+ * repli (rose des vents de laiton), pas une image empruntée à un autre.
+ */
 const ICONS: Record<string, string> = {
   tutorial_completed: "premier-quart",
   first_win: "premier-pavillon",
@@ -37,6 +45,7 @@ const FAMILIES: Array<{ id: string; label: string; codes: string[] }> = [
   { id: "cale", label: "La cale", codes: ["first_booster", "collection_25", "collection_60", "collection_100", "first_abyssal"] },
   { id: "equipage", label: "L'équipage", codes: ["first_precon", "deck_fully_owned"] },
   { id: "phare", label: "Les phares", codes: ["level_10", "level_20", "level_30", "level_40", "level_50"] },
+  { id: "traversees", label: "Traversées", codes: ["voyage_premier_quart", "voyage_eaux_troubles", "voyage_grand_fond"] },
 ];
 
 function familyOf(code: string): { id: string; label: string } {
@@ -70,14 +79,16 @@ interface AchievementBoardProps {
  * EXPLOITS — ce qu'on a accompli, et ce qui vient ensuite.
  *
  * Trois paliers de lecture, du plus pressant au plus acquis :
- *   1. À réclamer — l'exploit est obtenu, ses Tides attendent (or, seul
- *      endroit où l'écran brille) ;
+ *   1. À réclamer — l'exploit est obtenu, ses Tides attendent (or qui
+ *      pulse, seul endroit où l'écran brille) ;
  *   2. En cours — triés du plus proche au plus lointain, chacun avec sa
  *      jauge, sa récompense et le titre qu'il débloque ;
- *   3. Obtenus — en grille compacte, le trophée et ce qu'il a rapporté.
+ *   3. Obtenus — le trophée en couleurs, une coche verte discrète.
  *
- * Grammaire de la coquille (`features/shell/DESIGN.md`) : panneaux bleu
- * nuit, cyan pour la progression, or pour la récompense, vert pour l'acquis.
+ * Matière cabine (29/09/2026, « pas le bon visuel ») : un grand cadre
+ * riveté, des tuiles en panneau sombre à filet d'or dont l'illustration
+ * peinte occupe toute la largeur — un musée de trophées, pas une liste de
+ * vignettes. Un exploit à décrocher reste lisible, simplement éteint.
  */
 export function AchievementBoard({ achievements, onClaim, claimingCode = null }: AchievementBoardProps) {
   const [filter, setFilter] = usePersistedState<Filter>("exploits", "tous", {
@@ -107,48 +118,52 @@ export function AchievementBoard({ achievements, onClaim, claimingCode = null }:
   const showDone = filter !== "en-cours";
 
   return (
-    <section className={styles.board} aria-label="Exploits">
+    <section className={`${game.cabinFrame} ${styles.board}`} aria-label="Exploits">
       <header className={styles.head}>
         <div className={styles.headText}>
-          <h2 className={styles.title}>Exploits</h2>
+          <h2 className={`${game.cabinTitle} ${styles.title}`}>Exploits</h2>
           <p className={styles.subtitle}>Des jalons permanents : chacun rapporte des Tides une seule fois, certains débloquent un titre.</p>
         </div>
 
+        {/* Le compteur en médaillon de laiton — le même que le niveau sur la
+            route des paliers — cerclé d'un anneau qui se remplit. */}
         <div className={styles.summary}>
-          <div className={styles.summaryMain}>
-            <span className={styles.summaryValue}>
-              {unlockedCount}
-              <span className={styles.summaryTotal}> / {total}</span>
-            </span>
-            <span className={styles.summaryLabel}>obtenus</span>
-          </div>
           <div
-            className={styles.globalTrack}
+            className={styles.medallion}
+            style={{ "--ratio": ratio } as React.CSSProperties}
             role="progressbar"
             aria-label="Exploits obtenus"
             aria-valuenow={unlockedCount}
             aria-valuemin={0}
             aria-valuemax={total}
           >
-            <span className={styles.globalFill} style={{ width: `${ratio * 100}%` }} />
+            <span className={styles.medallionFace}>
+              <span className={styles.medallionValue}>{unlockedCount}</span>
+              <span className={styles.medallionTotal}>/ {total}</span>
+            </span>
           </div>
-          <ul className={styles.facts}>
-            <li>
-              <TideCoin size={13} /> {earnedTides} Tides gagnés
-            </li>
-            {titlesTotal > 0 && (
+          <div className={styles.summaryText}>
+            <span className={styles.summaryLabel}>{unlockedCount > 1 ? "obtenus" : "obtenu"}</span>
+            <ul className={styles.facts}>
               <li>
-                {titlesEarned} / {titlesTotal} titres
+                <TideCoin size={13} /> {earnedTides} Tides gagnés
               </li>
-            )}
-          </ul>
+              {titlesTotal > 0 && (
+                <li>
+                  {titlesEarned} / {titlesTotal} titres
+                </li>
+              )}
+            </ul>
+          </div>
         </div>
       </header>
+
+      <hr className={game.cabinRule} />
 
       {toClaim.length > 0 && (
         <section className={styles.section} aria-label="À réclamer">
           <h3 className={styles.sectionTitle}>
-            À réclamer
+            <span className={`${game.cabinEyebrow} ${styles.sectionName}`}>À réclamer</span>
             <span className={styles.sectionMeta}>
               {toClaim.length} · <TideCoin size={12} /> {waitingTides} Tides
             </span>
@@ -186,7 +201,7 @@ export function AchievementBoard({ achievements, onClaim, claimingCode = null }:
       {showInProgress && inProgress.length > 0 && (
         <section className={styles.section} aria-label="En cours">
           <h3 className={styles.sectionTitle}>
-            En cours
+            <span className={`${game.cabinEyebrow} ${styles.sectionName}`}>En cours</span>
             <span className={styles.sectionMeta}>du plus proche au plus lointain</span>
           </h3>
           <ul className={styles.grid}>
@@ -202,13 +217,13 @@ export function AchievementBoard({ achievements, onClaim, claimingCode = null }:
       {showDone && done.length > 0 && (
         <section className={styles.section} aria-label="Obtenus">
           <h3 className={styles.sectionTitle}>
-            Obtenus
+            <span className={`${game.cabinEyebrow} ${styles.sectionName}`}>Obtenus</span>
             <span className={styles.sectionMeta}>{done.length}</span>
           </h3>
-          <ul className={styles.gridCompact}>
+          <ul className={styles.grid}>
             {done.map((achievement) => (
               <li key={achievement.code}>
-                <AchievementCard achievement={achievement} compact />
+                <AchievementCard achievement={achievement} />
               </li>
             ))}
           </ul>
@@ -225,11 +240,22 @@ interface AchievementCardProps {
   achievement: ProfileAchievement;
   onClaim?: (code: string) => void;
   claiming?: boolean;
-  /** Obtenu et réclamé : version resserrée, sans jauge. */
-  compact?: boolean;
 }
 
-function AchievementCard({ achievement, onClaim, claiming = false, compact = false }: AchievementCardProps) {
+/** Emblème de repli d'un exploit sans illustration : une rose des vents de laiton. */
+function CompassEmblem() {
+  return (
+    <svg viewBox="0 0 64 64" className={styles.emblem} aria-hidden>
+      <circle cx="32" cy="32" r="25" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.6" />
+      <circle cx="32" cy="32" r="19" fill="none" stroke="currentColor" strokeWidth="0.8" opacity="0.4" />
+      <path d="M32 6 L36 28 L32 32 L28 28 Z M32 58 L28 36 L32 32 L36 36 Z" fill="currentColor" />
+      <path d="M6 32 L28 28 L32 32 L28 36 Z M58 32 L36 36 L32 32 L36 28 Z" fill="currentColor" opacity="0.7" />
+      <circle cx="32" cy="32" r="2.5" fill="currentColor" />
+    </svg>
+  );
+}
+
+function AchievementCard({ achievement, onClaim, claiming = false }: AchievementCardProps) {
   const icon = achievementIconUrl(achievement.code);
   const family = familyOf(achievement.code);
   const state = achievement.claimable ? "claimable" : achievement.unlocked ? "done" : "progress";
@@ -237,17 +263,18 @@ function AchievementCard({ achievement, onClaim, claiming = false, compact = fal
   const ratio = ratioOf(achievement);
 
   return (
-    <article className={styles.card} data-state={state} data-compact={compact ? "true" : undefined}>
-      <span className={styles.iconFrame} aria-hidden>
+    <article className={`${game.cabinPanel} ${styles.card}`} data-state={state}>
+      <span className={styles.art} aria-hidden>
         {icon ? (
-          // eslint-disable-next-line @next/next/no-img-element -- icône peinte locale
-          <img src={icon} alt="" draggable={false} className={styles.icon} />
+          // eslint-disable-next-line @next/next/no-img-element -- illustration peinte locale
+          <img src={icon} alt="" draggable={false} className={styles.artImage} />
         ) : (
-          <span className={styles.iconFallback}>★</span>
+          <CompassEmblem />
         )}
+        <span className={styles.family}>{family.label}</span>
         {state === "done" && (
-          <span className={styles.check}>
-            <svg viewBox="0 0 16 16" width="10" height="10" fill="none">
+          <span className={styles.check} title="Obtenu">
+            <svg viewBox="0 0 16 16" width="12" height="12" fill="none">
               <path d="M3.5 8.5l3 3 6-7" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </span>
@@ -255,7 +282,6 @@ function AchievementCard({ achievement, onClaim, claiming = false, compact = fal
       </span>
 
       <div className={styles.body}>
-        <span className={styles.family}>{family.label}</span>
         <h4 className={styles.name}>{achievement.name}</h4>
         <p className={styles.description}>{achievement.description}</p>
 
@@ -271,9 +297,7 @@ function AchievementCard({ achievement, onClaim, claiming = false, compact = fal
             >
               <span className={styles.fill} style={{ width: `${ratio * 100}%` }} />
             </span>
-            <span className={styles.count}>
-              {progress.target === 1 ? "À faire" : `${progress.current} / ${progress.target}`}
-            </span>
+            <span className={styles.count}>{progress.target === 1 ? "À faire" : `${progress.current} / ${progress.target}`}</span>
           </div>
         )}
 
@@ -287,19 +311,19 @@ function AchievementCard({ achievement, onClaim, claiming = false, compact = fal
             </span>
           )}
         </div>
-      </div>
 
-      {state === "claimable" && (
-        <button
-          type="button"
-          className={styles.claim}
-          onClick={() => onClaim?.(achievement.code)}
-          disabled={claiming || !onClaim}
-          aria-label={`${achievement.name} — réclamer ${achievement.rewardTides} Tides`}
-        >
-          {claiming ? "…" : "Réclamer"}
-        </button>
-      )}
+        {state === "claimable" && (
+          <button
+            type="button"
+            className={`${game.primary} ${styles.claim}`}
+            onClick={() => onClaim?.(achievement.code)}
+            disabled={claiming || !onClaim}
+            aria-label={`${achievement.name} — réclamer ${achievement.rewardTides} Tides`}
+          >
+            {claiming ? "…" : "Réclamer"}
+          </button>
+        )}
+      </div>
     </article>
   );
 }

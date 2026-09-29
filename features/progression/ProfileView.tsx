@@ -26,9 +26,11 @@ import {
   type PendingCardChoice,
   type ProfileSummary,
 } from "@/features/progression/profileActions";
-import { fetchQuestBoard, type QuestBoard } from "@/features/quests/actions";
-import { fetchVoyageBoard, type VoyageBoard } from "@/features/quests/voyageActions";
-import { QuestJournal } from "@/features/quests/QuestJournal";
+import type { QuestBoard, QuestEntry } from "@/features/quests/actions";
+import type { VoyageBoard } from "@/features/quests/voyageActions";
+import { QuestJournal, QuestJournalError, QuestJournalSkeleton } from "@/features/quests/QuestJournal";
+import { forgetQuestBoards, preloadVoyageBoard, questBoardCache, voyageBoardCache } from "@/features/quests/questBoardCache";
+import { questPeriodEndsAt } from "@/game/quests";
 import { IllustrationPicker } from "@/features/progression/IllustrationPicker";
 import { TitlePicker } from "@/features/progression/TitlePicker";
 import type { RewardItem } from "@/features/progression/RewardIcon";
@@ -165,6 +167,19 @@ export function ProfileView({
   useEffect(() => {
     applyCardBack(profile.cardBacks.equipped);
   }, [profile.cardBacks.equipped, applyCardBack]);
+
+  // Onglet Quêtes sans attente : ses quêtes arrivent déjà avec le profil ;
+  // seules les Traversées restent à lire — UNE requête, lancée au repos
+  // juste après l'ouverture. Oubliées en quittant le profil
+  // (`features/quests/questBoardCache.ts`).
+  useEffect(() => {
+    if (!profile.isSignedIn) return;
+    const timer = window.setTimeout(preloadVoyageBoard, 400);
+    return () => {
+      window.clearTimeout(timer);
+      forgetQuestBoards();
+    };
+  }, [profile.isSignedIn]);
 
   const waiting = waitingCounts(profile);
 
@@ -315,7 +330,7 @@ export function ProfileView({
           {claimError && <p className={`${game.error} ${sceneStyles.claimError}`}>{claimError}</p>}
           <div className={sceneStyles.tabPanel} role="tabpanel">
             {picker === "title" && <TitlePicker titles={profile.titles} onClose={() => setPicker(null)} onChanged={onRefresh} />}
-            {!picking && tab === "quetes" && <QuestsTab onRefresh={onRefresh} />}
+            {!picking && tab === "quetes" && <QuestsTab profile={profile} onRefresh={onRefresh} />}
             {!picking && tab === "recompenses" && (
               <LevelRewardsTab
                 profile={profile}
@@ -451,7 +466,7 @@ export function ProfileView({
         {illustrationPicker}
         {picker === "title" && <TitlePicker titles={profile.titles} onClose={() => setPicker(null)} onChanged={onRefresh} />}
         {!picking && tab === "carnet" && <LogbookTab profile={profile} onRefresh={onRefresh} onShowRewards={() => setTab("recompenses")} />}
-        {!picking && tab === "quetes" && <QuestsTab onRefresh={onRefresh} />}
+        {!picking && tab === "quetes" && <QuestsTab profile={profile} onRefresh={onRefresh} />}
         {!picking && tab === "recompenses" && (
           <LevelRewardsTab
             profile={profile}
@@ -795,44 +810,83 @@ function LevelRewardsTab({ profile, claiming, error, onClaim, onChooseCards }: L
 /* ── Quêtes ─────────────────────────────────────────────────────── */
 
 /**
+ * Le registre tel que le profil le porte déjà (`ProfileSummary.quests`,
+ * lu côté serveur avec lui) : de quoi montrer les lignes À L'INSTANT, sans
+ * squelette. Seul le quota de remplacements manque — il arrive avec la
+ * relecture, et « Remplacer » avec lui.
+ */
+function boardFromProfile(entries: readonly QuestEntry[]): QuestBoard {
+  const now = new Date();
+  return {
+    isSignedIn: true,
+    daily: entries.filter((entry) => entry.questType === "daily"),
+    weekly: entries.filter((entry) => entry.questType === "weekly"),
+    dailyEndsAt: questPeriodEndsAt("daily", now).toISOString(),
+    weeklyEndsAt: questPeriodEndsAt("weekly", now).toISOString(),
+    dailyRerollsLeft: 0,
+  };
+}
+
+/**
  * L'onglet « Quêtes » : la Traversée puis le journal complet (filtres,
  * échéances, remplacements). Il n'y a plus d'écran `/quetes` — tout vit ici.
  *
- * Le journal se lit à l'ouverture de l'onglet, pas avec le profil : le
- * profil s'ouvre sur le carnet de bord, et deux lectures de plus à chaque
- * ouverture pour un onglet qu'on ne regarde pas toujours coûteraient pour
- * rien. Après une réclamation, journal ET profil sont relus (pastilles,
- * niveau).
+ * CHARGEMENT (29/09/2026, « chargement dégueu ») — trois étages, pour que
+ * l'attente ne se voie presque jamais :
+ *   1. les quêtes sont déjà dans le profil : elles s'affichent d'emblée ;
+ *   2. les Traversées (une requête) sont lues d'avance par `ProfileView`
+ *      dès l'ouverture du profil, et gardées le temps de l'écran ;
+ *   3. le journal complet (quota de remplacements, progression à jour) est
+ *      relu à l'ouverture de l'onglet, sans rien masquer — ses lignes
+ *      remplacent celles du profil en place.
+ * Le squelette (même forme que le journal) ne se montre que si rien n'est
+ * encore connu ; une erreur sans rien à montrer propose « Réessayer ».
+ *
+ * On ne précharge PAS le journal complet : sa lecture garnit aussi les
+ * quêtes de la période (`ensureCurrentQuests`, des écritures) — le faire à
+ * chaque ouverture du profil pour un onglet qu'on ne regarde pas toujours
+ * coûterait pour rien, d'autant que le profil l'a déjà fait côté serveur.
+ * Après une réclamation, journal ET profil sont relus (pastilles, niveau).
  */
-function QuestsTab({ onRefresh }: { onRefresh: () => void }) {
-  const [boards, setBoards] = useState<{ quests: QuestBoard; voyages: VoyageBoard } | null>(null);
+function QuestsTab({ profile, onRefresh }: { profile: ProfileSummary; onRefresh: () => void }) {
+  const seed = useMemo(() => (profile.isSignedIn && profile.quests.length > 0 ? boardFromProfile(profile.quests) : null), [profile.isSignedIn, profile.quests]);
+  const [fresh, setFresh] = useState<QuestBoard | null>(() => questBoardCache.peek());
+  const [voyages, setVoyages] = useState<VoyageBoard | null>(() => voyageBoardCache.peek());
   const [failed, setFailed] = useState(false);
 
-  const load = useCallback(() => {
-    Promise.all([fetchQuestBoard(), fetchVoyageBoard()])
-      .then(([quests, voyages]) => setBoards({ quests, voyages }))
+  const load = useCallback((force: boolean) => {
+    setFailed(false);
+    questBoardCache
+      .load(force)
+      .then(setFresh)
       .catch((cause) => {
         console.error("[ProfileView] Lecture des quêtes impossible :", cause);
         setFailed(true);
       });
+    voyageBoardCache
+      .load(force)
+      .then(setVoyages)
+      .catch((cause) => {
+        // Sans Traversées, le journal se montre quand même : le panneau s'efface.
+        console.error("[ProfileView] Lecture des Traversées impossible :", cause);
+        setVoyages({ available: false, voyages: [] });
+      });
   }, []);
 
-  useEffect(load, [load]);
+  useEffect(() => load(false), [load]);
 
-  if (!boards) {
-    return (
-      <section className={`${game.panel} ${styles.block}`} aria-label="Quêtes">
-        <p className={game.muted}>{failed ? "Tes quêtes n'ont pas pu être chargées." : "Chargement du journal de bord…"}</p>
-      </section>
-    );
-  }
+  // La relecture fait foi ; à défaut (hors ligne, visiteur), ce que porte le profil.
+  const board = fresh && fresh.isSignedIn && !fresh.unavailable ? fresh : (seed ?? fresh);
+
+  if (!board) return failed ? <QuestJournalError onRetry={() => load(true)} /> : <QuestJournalSkeleton />;
 
   return (
     <QuestJournal
-      board={boards.quests}
-      voyages={boards.voyages}
+      board={board}
+      voyages={voyages ?? undefined}
+      voyagesPending={voyages === null}
       onChanged={() => {
-        load();
+        load(true);
         onRefresh();
       }}
     />

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { QuestJournalPreview } from "@/features/quests/QuestJournalPreview";
+import { QuestJournalPreview, type QuestJournalPreviewState } from "@/features/quests/QuestJournalPreview";
 
 export const metadata: Metadata = {
   title: "Quêtes Preview · Tidebound",
@@ -16,7 +16,14 @@ export const metadata: Metadata = {
  * migration. Les boutons restent câblés aux vraies Server Actions, qui
  * relisent l'état RÉEL du joueur connecté : ils ne peuvent rien réclamer
  * qu'il n'ait pas déjà gagné.
+ *
+ * `?etat=chargement|erreur|vide|traversee` montre l'attente (squelette),
+ * l'échec (« Réessayer »), le registre vide, ou la Traversée seule en
+ * attente de sa lecture.
  */
-export default function QuetesPreviewRoute() {
-  return <QuestJournalPreview />;
+const STATES: readonly QuestJournalPreviewState[] = ["journal", "chargement", "erreur", "vide", "traversee"];
+
+export default function QuetesPreviewRoute({ searchParams }: { searchParams: { etat?: string } }) {
+  const state = STATES.find((entry) => entry === searchParams.etat) ?? "journal";
+  return <QuestJournalPreview state={state} />;
 }
