@@ -15,6 +15,7 @@ import { auraContextOf, computeEffectiveStats } from "@/game/cards/stats";
 import { getShipDefinition } from "@/game/environment/shipData";
 import { forceTideJumpToAbysses, forceTideTransition, tickTide } from "@/game/environment/tide";
 import { applyForcedTideTransition } from "@/game/environment/tideTransition";
+import { recordGraveyardArrival } from "@/game/state/discard";
 import type { TideStateName } from "@/game/environment/types";
 import { isEligibleChosenUnit } from "@/game/effects/chosenTargets";
 import type { EffectAmount, EffectDefinition } from "@/game/effects/types";
@@ -241,6 +242,12 @@ function amountValue(
     const plateau = amount.of === "opponent" ? getOpponent(state, controllerId) : getPlayer(state, controllerId);
     const unites = plateau.board.filter((u) => UNIT_CARD_TYPES.includes(getCardDefinition(u.cardId).type)).length;
     return Math.max(0, unites - (amount.above ?? 0)) * (amount.per ?? 1);
+  }
+  if (amount.kind === "graveyardCount") {
+    const joueur = amount.of === "opponent" ? getOpponent(state, controllerId) : getPlayer(state, controllerId);
+    const cartes = joueur.graveyard.filter((c) => !amount.subtype || getCardDefinition(c.cardId).subtype === amount.subtype).length;
+    const brut = Math.floor(cartes / Math.max(1, amount.perCards ?? 1));
+    return amount.max === undefined ? brut : Math.min(amount.max, brut);
   }
   if (amount.kind === "freeSlots") {
     const joueur = getPlayer(state, controllerId);
@@ -899,6 +906,23 @@ export function resolveEffect(
         state: { ...replacePlayer(state, { ...player, deck, hand }), pendingOceanJudgment },
         events,
       };
+    }
+
+    case "mill": {
+      const amount = amountValue(effect.amount, state, context.controllerId);
+      const player = resolveSinglePlayerTarget(state, effect, context) ?? getPlayer(state, context.controllerId);
+      const partent = player.deck.slice(0, Math.max(0, amount));
+      if (partent.length === 0) return { state, events };
+      let milled: PlayerState = {
+        ...player,
+        deck: player.deck.slice(partent.length),
+        graveyard: [...player.graveyard, ...partent],
+      };
+      for (const card of partent) {
+        milled = recordGraveyardArrival(milled, { cardId: card.cardId, turnNumber: context.turnNumber, fromZone: "deck" });
+        events.push({ ...base, type: "CARD_MOVED", instanceId: card.instanceId, fromZone: "deck", toZone: "graveyard", cardId: card.cardId, ownerId: player.id });
+      }
+      return { state: replacePlayer(state, milled), events };
     }
 
     case "discard": {

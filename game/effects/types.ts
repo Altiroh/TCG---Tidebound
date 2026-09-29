@@ -14,6 +14,16 @@ export type EffectType =
   | "damage"
   | "heal"
   | "draw"
+  /**
+   * Envoie les `amount` premières cartes de la pioche de la cible au
+   * Cimetière, sans les piocher (« placez les N premières cartes de votre
+   * pioche dans votre Cimetière »). Pioche vide : l'effet s'arrête, sans
+   * Jugement de l'Océan — seule une PIOCHE dans un deck vide le déclenche.
+   * Chaque carte est inscrite au journal des arrivées (`fromZone: "deck"`).
+   * Primitive du 29/09/2026 (Test Verrier, Veillée : épuiser son propre
+   * deck doit pouvoir devenir une menace).
+   */
+  | "mill"
   | "discard"
   | "destroy"
   /** Saborde la cible (Sabordage FORCÉ, ex: Levier de Lest, "Sabordez une Structure que vous contrôlez") : elle part au cimetière comme sabordée, `onSaborde` puis `onDeath` se déclenchent (via `processSabordedTriggers`). */
@@ -368,6 +378,26 @@ export type EffectAmount =
       /** Multiplicateur par emplacement libre. Défaut 1. */
       per?: number;
       /** Plafond du montant obtenu (« maximum 3 »). Absent = pas de plafond. */
+      max?: number;
+    }
+  /**
+   * « 1 par tranche de N cartes dans votre Cimetière » : montant COMPTÉ sur
+   * un Cimetière au moment de la résolution (29/09/2026, Test Verrier : un
+   * Cimetière qui se remplit doit pouvoir devenir dangereux).
+   *
+   * `perCards` est la TAILLE d'une tranche (4 = un point toutes les quatre
+   * cartes), à ne pas confondre avec le multiplicateur `per` des autres
+   * montants. `subtype` ne compte que ce sous-type (« cartes Un Dead »).
+   */
+  | {
+      kind: "graveyardCount";
+      /** Cimetière compté : celui du contrôleur (défaut) ou de l'adversaire. */
+      of?: "self" | "opponent";
+      /** Sous-type compté ; absent = toutes les cartes. */
+      subtype?: string;
+      /** Cartes par point. Défaut 1. */
+      perCards?: number;
+      /** Plafond du montant obtenu. Absent = pas de plafond. */
       max?: number;
     };
 
