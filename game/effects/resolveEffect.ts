@@ -670,6 +670,10 @@ export function resolveEffect(
     const controller = getPlayer(state, context.controllerId);
     if (controller.reason > effect.conditionControllerReasonAtMost) return { state, events };
   }
+  if (effect.conditionOpponentReasonAtMost !== undefined) {
+    const opponent = getOpponent(state, context.controllerId);
+    if (opponent.reason > effect.conditionOpponentReasonAtMost) return { state, events };
+  }
   if (effect.conditionBrokenFromHand !== undefined && effect.conditionBrokenFromHand !== Boolean(context.brokenFromHand)) {
     return { state, events };
   }

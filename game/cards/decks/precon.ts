@@ -497,36 +497,51 @@ export const DECK_EPAVISTES: DeckList = {
  * que l'adversaire — c'est-à-dire tout le temps dans ce deck —, la Marin
  * aux Yeux Rouges Abyssale que la page Notion nomme, et deux corps bon
  * marché pour convertir la pression en dégâts.
+ *
+ * LISTE ET NAVIRE REVUS LE 29/09/2026. La « main injouable » n'existe pas
+ * en règles : sans plancher, l'adversaire s'endette et joue quand même, et
+ * aucune carte ne lit la Raison ADVERSE. Mousse du Premier Quart allait
+ * même contre le plan (elle ne rend que si VOUS êtes plus bas — plus on
+ * draine, moins elle sert). Sortent Mousse, Guetteur de Brume, La Bouée,
+ * Fausse Cargaison, Le Chant (symétrique) et Le Fond Vous Regarde (joué
+ * 17 % des fois où il est en main). Entrent des corps qui drainent ou qui
+ * vivent bas en Raison — Si-Raie-Ponce, Matelot du Sans-Nom, Vieux Loup de
+ * Mer, Capitaine sans Sommeil — et Le Rôle d'Équipage, qui fait payer les
+ * grands plateaux.
+ *
+ * Le Courlis cède la place à L'Errant : ses 12 Raison ne paient rien (la
+ * Raison remonte par la même courbe pour tous), ses 4 Slots et 26 Ancrage
+ * coûtaient cher, et le nouveau Cap sûr de L'Errant rend la Raison du tour
+ * la première fois qu'elle tombe à 0 — exactement ce que vit ce deck.
+ * Mesuré au labo (bot moyen, 60 parties par paire contre le rayon) :
+ * 19 % → 35 % avec la liste seule, 54 % sous L'Errant. Aucun texte changé.
  */
 export const DECK_A_BOUT_DE_RAISON: DeckList = {
   id: "a-bout-de-raison",
   name: "À bout de Raison",
-  shipId: "le-courlis",
+  shipId: "lerrant",
   description:
     "Attrition mentale : vider la réserve de Raison adverse, puis regarder sa main devenir injouable.",
   cardIds: [
     // Ceux qui font payer.
     ...repeat("marin-aux-yeux-rouges", 3),
     ...repeat("marin-aux-yeux-rouges-abyssal", 1),
+    ...repeat("si-raie-ponce", 3),
     ...repeat("ponton-aux-cloches", 3),
     ...repeat("anguille-des-profondeurs", 3),
     ...repeat("cloche-immergee", 2),
-    ...repeat("le-chant-sous-la-ligne", 1),
-    // Les Anomalies, qui imposent un choix dont aucune branche n'est bonne.
-    // Une seule de chaque : à 5 Raison, ce deck n'en joue pas deux.
-    ...repeat("le-fond-vous-regarde", 1),
+    ...repeat("le-role-dequipage", 2),
+    // Une Anomalie, qui presse la Marée.
     ...repeat("la-mer-reclame-davantage", 1),
-    // Ce qui rend la Raison que le plan dépense, et ce qui la convertit.
-    ...repeat("mousse-du-premier-quart", 3),
+    // Ceux qui vivent bas en Raison, et ce qui convertit la pression.
+    ...repeat("matelot-insomniaque", 3),
+    ...repeat("capitaine-sans-sommeil", 1),
+    ...repeat("vieux-loup-de-mer", 2),
     ...repeat("murene-aveugle", 3),
     ...repeat("requin-balafre", 3),
-    // Ce qui regarde la main d'en face pour savoir où appuyer.
-    ...repeat("guetteur-de-brume", 3),
-    ...repeat("la-bouee-qui-regardait", 1),
-    ...repeat("matelot-insomniaque", 3),
+    ...repeat("matelot-du-sans-nom", 3),
     ...repeat("cartographe-du-large", 2),
-    // Lot 14 : taxer, retarder, renvoyer.
-    ...repeat("fausse-cargaison", 2),
+    // Lot 14 : retarder, renvoyer.
     ...repeat("chaine-de-travers", 2),
     ...repeat("par-dessus-bord", 3),
   ],

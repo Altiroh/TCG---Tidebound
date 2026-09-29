@@ -89,8 +89,12 @@ function winsOfStronger(strong: BotDifficulty, weak: BotDifficulty, seeds: numbe
 
 describe("échelle de difficulté du bot", () => {
   it("« moyen » bat « facile » — l'échelle était inversée", () => {
-    const { wins, played } = withSeededRandom(20260918, () => winsOfStronger("moyen", "facile", 8));
-    expect(played).toBeGreaterThan(10);
+    // 40 PARTIES ET NON 16 (29/09/2026) : une révision de préconstruit a
+    // changé les appariements tirés, et le score est tombé à 8/16 — alors
+    // que la même mesure sur 79 parties donnait 56/79 (0,71). À seize
+    // parties, deux matchs décidaient du test.
+    const { wins, played } = withSeededRandom(20260918, () => winsOfStronger("moyen", "facile", 20));
+    expect(played).toBeGreaterThan(30);
     expect(wins / played).toBeGreaterThan(0.6);
   });
 

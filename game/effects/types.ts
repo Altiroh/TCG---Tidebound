@@ -913,4 +913,11 @@ export interface EffectDefinition {
    * telle qu'elle était avant que le reste de la liste ne la modifie.
    */
   conditionControllerReasonAtMost?: number;
+  /**
+   * Même plafond, lu sur la Raison de l'ADVERSAIRE du contrôleur (« s'il a
+   * alors 0 Raison ou moins, … »). Vérifié au moment où l'effet se résout :
+   * placé APRÈS l'effet qui fait perdre la Raison, il lit la Raison que
+   * cet effet vient de laisser.
+   */
+  conditionOpponentReasonAtMost?: number;
 }
