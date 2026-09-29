@@ -38,6 +38,8 @@
 .toast[data-tone="error"] { --tone: var(--tb-danger); }
 /* Une trouvaille : l'or des récompenses, pas le vert d'une opération réussie. */
 .toast[data-tone="reward"] { --tone: #d9b56a; }
+/* Une nouvelle sans gravité : ni cyan de succès, ni rouge d'erreur. */
+.toast[data-tone="notice"] { --tone: var(--tb-text-muted); }
 
 @keyframes toastIn {
   from { opacity: 0; transform: translateY(-8px) scale(0.98); }

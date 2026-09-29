@@ -248,6 +248,10 @@ export function HeaderPlayer() {
      * Un mécène a commencé à observer le joueur, ou s'est fait connaître :
      * une ligne discrète, hors partie, une seule fois — le joueur joue sans
      * s'en soucier, le monde le remarque quand même.
+     *
+     * Et l'inverse (29/09/2026) : l'audience est retombée sous le seuil d'un
+     * mécène, qui perd son intérêt (`sponsorsLostAt`) — il détourne les
+     * yeux, et le joueur l'apprend de la même façon, sur un ton éteint.
      */
     function announceSponsors(result: ProgressionSummary) {
       if (!result.isSignedIn) return;
@@ -255,6 +259,32 @@ export function HeaderPlayer() {
       const seen = readSponsorsSeen();
       writeSponsorsSeen(now);
       if (!seen) return;
+      const lost = seen.watching - now.watching;
+      if (lost > 0 && now.revealed <= seen.revealed) {
+        setToast((current) =>
+          current
+            ? current
+            : {
+                id: ++toastId.current,
+                tone: "notice",
+                text: lost > 1 ? "Des mécènes détournent les yeux — votre audience a baissé." : "Un mécène détourne les yeux — votre audience a baissé.",
+                action: (
+                  <button
+                    type="button"
+                    className={styles.toastAction}
+                    onClick={() => {
+                      playButtonClick();
+                      setToast(null);
+                      goToProfile("recompenses", "mecenes");
+                    }}
+                  >
+                    Voir →
+                  </button>
+                ),
+              }
+        );
+        return;
+      }
       const text =
         now.revealed > seen.revealed
           ? "Un mécène s'est fait connaître — il vous a à l'œil."
