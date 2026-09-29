@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import styles from "@/features/shell/PageTransition.module.css";
 import { registerPageTransition } from "@/features/shell/pageTransitionBus";
@@ -20,6 +21,14 @@ const READY_MAX_MS = 3500;
 const BOOT_READY_MAX_MS = 4500;
 /** Onglets d'un même écran (sans ombre) : le contenu reste masqué jusqu'à ce délai au plus. */
 const TAB_READY_MAX_MS = 2500;
+/**
+ * L'écran d'ouverture reste AU MOINS ce temps (29/09/2026) : le temps de
+ * poser les images et les polices de la première page, et assez pour qu'il
+ * se lise comme un écran de chargement plutôt que comme un clignotement.
+ */
+const BOOT_MIN_MS = 1000;
+/** Les polices comptent dans l'attente d'ouverture, mais jamais plus que ça. */
+const BOOT_FONTS_MAX_MS = 2500;
 
 /**
  * Durées des deux courses — les MÊMES que `PageTransition.module.css`.
@@ -32,6 +41,10 @@ const TAB_READY_MAX_MS = 2500;
 const COVER_MS = 360;
 const REVEAL_MS = 460;
 const ANIMATION_SLACK_MS = 150;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
 
 function randomDirection(): Direction {
   return Math.random() < 0.5 ? "ltr" : "rtl";
@@ -125,6 +138,10 @@ export function PageTransition() {
   // Couvert dès le rendu serveur : le site s'ouvre sur un écran déjà prêt.
   const [phase, setPhase] = useState<Phase>("covered");
   const [direction, setDirection] = useState<Direction>("ltr");
+  /** Ouverture du site : l'écran de chargement (logo et jauge) est posé sur l'ombre. */
+  const [booting, setBooting] = useState(true);
+  /** Jauge de l'écran d'ouverture, de 0 à 1 : la part du temps minimal écoulée et celle des images décodées. */
+  const [bootProgress, setBootProgress] = useState(0);
   const phaseRef = useRef<Phase>("covered");
   /** Jeton de la dernière attente d'écran prêt : une navigation plus récente annule les précédentes. */
   const readyToken = useRef(0);
@@ -145,13 +162,35 @@ export function PageTransition() {
     });
   };
 
-  // Ouverture du site : couvert au rendu serveur, découvert une fois prêt.
+  // Ouverture du site : couvert au rendu serveur, découvert une fois prêt —
+  // images visibles décodées, polices chargées, et au moins `BOOT_MIN_MS`.
   useEffect(() => {
     if (prefersReducedMotion()) {
       go("idle");
+      setBooting(false);
       return;
     }
-    revealWhenReady(BOOT_READY_MAX_MS);
+    const token = ++readyToken.current;
+    const started = performance.now();
+    let images = 0;
+    const tick = window.setInterval(() => {
+      const time = Math.min(1, (performance.now() - started) / BOOT_MIN_MS);
+      // La jauge avance avec le temps ET les images : elle ne se fige jamais, et n'arrive au bout qu'une fois tout posé.
+      setBootProgress(Math.min(0.96, 0.5 * time + 0.5 * images));
+    }, 90);
+    const fonts = document.fonts?.ready ?? Promise.resolve();
+    void Promise.all([
+      waitForPageReady(BOOT_READY_MAX_MS, (done, total) => {
+        images = total === 0 ? 1 : done / total;
+      }),
+      sleep(BOOT_MIN_MS),
+      Promise.race([fonts, sleep(BOOT_FONTS_MAX_MS)]),
+    ]).then(() => {
+      window.clearInterval(tick);
+      setBootProgress(1);
+      if (token === readyToken.current && phaseRef.current === "covered") go("revealing");
+    });
+    return () => window.clearInterval(tick);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- une seule fois, au montage
   }, []);
 
@@ -254,6 +293,7 @@ export function PageTransition() {
       }, COVER_TIMEOUT_MS);
     } else if (phaseRef.current === "revealing") {
       go("idle");
+      setBooting(false);
     }
   }
 
@@ -262,9 +302,20 @@ export function PageTransition() {
 
   return (
     <div className={styles.layer} data-phase={phase} data-direction={direction} aria-hidden="true">
-      <div className={styles.strip} onAnimationEnd={() => advanceRef.current()}>
+      <div className={styles.strip} onAnimationEnd={(event) => event.target === event.currentTarget && advanceRef.current()}>
         <div className={`${styles.edge} ${styles.trailing}`} />
-        <div className={styles.body} />
+        <div className={styles.body}>
+          {/* L'écran d'ouverture voyage AVEC l'ombre : il s'en va quand elle découvre la page. */}
+          {booting && (
+            <div className={styles.splash} style={{ "--boot-progress": bootProgress } as CSSProperties}>
+              <Image src="/assets/menu/logo/tidebound-logo.webp" alt="" width={1600} height={631} sizes="(max-height: 560px) 40vw, 26vw" priority draggable={false} className={styles.splashLogo} />
+              <span className={styles.splashTrack}>
+                <span className={styles.splashFill} />
+              </span>
+              <span className={styles.splashLabel}>Chargement…</span>
+            </div>
+          )}
+        </div>
         <div className={styles.edge} />
       </div>
     </div>

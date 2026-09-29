@@ -76,8 +76,15 @@ function visibleImageUrls(): string[] {
   return [...urls];
 }
 
-/** Résout quand l'écran affiché est prêt à être montré, ou au plus tard après `maxMs`. */
-export async function waitForPageReady(maxMs: number): Promise<void> {
+/** Avancement du chargement : images décodées sur images attendues. */
+export type ReadyProgress = (done: number, total: number) => void;
+
+/**
+ * Résout quand l'écran affiché est prêt à être montré, ou au plus tard après
+ * `maxMs`. `onProgress` suit le décodage des images (l'écran d'ouverture en
+ * tire sa jauge).
+ */
+export async function waitForPageReady(maxMs: number, onProgress?: ReadyProgress): Promise<void> {
   const deadline = performance.now() + maxMs;
   const left = () => Math.max(0, deadline - performance.now());
 
@@ -87,6 +94,14 @@ export async function waitForPageReady(maxMs: number): Promise<void> {
   while (document.querySelector("[data-screen-loading]") && left() > 0) await sleep(40);
   await nextFrame();
 
-  const pending = visibleImageUrls().map(decodeImage);
+  const urls = visibleImageUrls();
+  let done = 0;
+  onProgress?.(0, urls.length);
+  const pending = urls.map((url) =>
+    decodeImage(url).then(() => {
+      done += 1;
+      onProgress?.(done, urls.length);
+    })
+  );
   if (pending.length > 0) await Promise.race([Promise.all(pending), sleep(left())]);
 }

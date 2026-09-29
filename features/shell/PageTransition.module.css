@@ -59,8 +59,87 @@
 }
 
 .body {
+  position: relative;
   flex: 0 0 100vw;
   background: var(--tb-shade-color);
+}
+
+/*
+ * L'ÉCRAN D'OUVERTURE (29/09/2026). Posé au centre du corps de l'ombre,
+ * qui couvre l'écran à l'ouverture du site : le logo, une jauge de laiton
+ * et un mot. Il part avec l'ombre quand elle découvre la page — pas de
+ * seconde animation de sortie à synchroniser.
+ *
+ * La jauge (`--boot-progress`, 0 → 1) suit le temps minimal ET les images
+ * décodées (`PageTransition.tsx`).
+ */
+.splash {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(12px, 2.2dvh, 22px);
+  width: min(78vw, 460px);
+  transform: translate(-50%, -50%);
+  animation: tb-splash-in 420ms var(--tb-ease) both;
+}
+
+/* Même flamme que la table du menu : une lueur qui hésite, jamais une pulsation. */
+.splashLogo {
+  width: min(62vw, 400px);
+  max-height: 34dvh;
+  height: auto;
+  object-fit: contain;
+  user-select: none;
+  filter: drop-shadow(0 0 18px rgba(255, 176, 84, 0.18));
+  animation: tb-splash-glow 2.8s ease-in-out infinite;
+}
+
+.splashTrack {
+  position: relative;
+  width: min(60vw, 300px);
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(217, 181, 106, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(217, 181, 106, 0.28);
+}
+
+.splashFill {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  transform: scaleX(var(--boot-progress, 0));
+  transition: transform 220ms linear;
+  background: linear-gradient(90deg, #a8813e, #e7c47a 70%, #fff1c8);
+  box-shadow: 0 0 10px rgba(231, 196, 122, 0.55);
+}
+
+.splashLabel {
+  font-family: var(--tb-font-display);
+  font-size: var(--tb-fs-label);
+  letter-spacing: var(--tb-track-label);
+  text-transform: uppercase;
+  color: rgba(239, 230, 210, 0.72);
+}
+
+@keyframes tb-splash-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 8px));
+  }
+}
+
+@keyframes tb-splash-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 14px rgba(255, 176, 84, 0.14));
+  }
+  50% {
+    filter: drop-shadow(0 0 26px rgba(255, 176, 84, 0.32));
+  }
 }
 
 .edge {
