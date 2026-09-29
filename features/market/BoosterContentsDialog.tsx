@@ -68,11 +68,11 @@ export function BoosterContentsDialog({ booster, owned, onClose }: BoosterConten
 
   return (
     <div className={styles.backdrop} onClick={onClose} role="presentation">
-      <div className={styles.dialog} role="dialog" aria-modal="true" aria-label={`Contenu — ${booster.name}`} onClick={(event) => event.stopPropagation()}>
+      <div className={`${game.cabinFrame} ${styles.dialog}`} role="dialog" aria-modal="true" aria-label={`Contenu — ${booster.name}`} onClick={(event) => event.stopPropagation()}>
         <header className={styles.head}>
           <div>
-            <p className={styles.eyebrow}>Contenu du booster</p>
-            <h2 className={styles.title}>{booster.name}</h2>
+            <p className={`${game.cabinEyebrow} ${styles.eyebrow}`}>Contenu du booster</p>
+            <h2 className={`${game.cabinTitle} ${styles.title}`}>{booster.name}</h2>
             <p className={styles.sub}>
               {booster.cardCount} cartes par booster · <b>{ownedCount}</b> / {unique.length} déjà possédées
             </p>

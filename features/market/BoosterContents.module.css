@@ -1,4 +1,7 @@
-/* Contenu d'un booster — fenêtre bleu nuit, liseré cyan. */
+/* Contenu d'un booster — le grand cadre riveté de la cabine
+   (`game.cabinFrame`), comme les panneaux du Profil et des Récompenses :
+   la fenêtre bleu nuit à liseré cyan qui l'habillait était la dernière
+   pièce de verre générique du Market. */
 
 /*
  * FLEX et non grid (19/09/2026). En grille, l'unique rangée implicite était
@@ -31,7 +34,7 @@
   to { opacity: 1; }
 }
 
-.dialog {
+.dialog.dialog {
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -40,13 +43,11 @@
      contenu, c'est l'écran moins cette marge. */
   max-height: 100%;
   min-height: 0;
-  padding: clamp(14px, 2vw, 24px);
-  border: 1px solid rgba(0, 183, 255, 0.7);
-  border-radius: 14px;
-  background: linear-gradient(180deg, #071a29 0%, #061522 100%);
-  box-shadow: 0 0 8px rgba(0, 183, 255, 0.35), 0 30px 80px rgba(0, 0, 0, 0.6);
-  color: #e8edf0;
-  font-family: var(--font-ui, Georgia, serif);
+  /* Le cadre peint mord de 22 à 40 px sur les bords : on s'en écarte. */
+  padding: clamp(20px, 2.4vw, 34px) clamp(26px, 3vw, 46px);
+  color: #e6edf1;
+  font-family: var(--tb-font-ui);
+  filter: drop-shadow(0 30px 60px rgba(0, 0, 0, 0.6));
 }
 
 .head {
@@ -58,25 +59,17 @@
 
 .eyebrow {
   margin: 0;
-  font-size: calc(11px * var(--tb-text-scale));
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #5cc8f0;
 }
 
-.title {
+.title.title {
   margin: 2px 0 4px;
-  font-family: var(--font-card-title, Georgia, serif);
   font-size: calc(clamp(20px, 2vw, 28px) * var(--tb-text-scale));
-  font-weight: 700;
-  letter-spacing: 0.03em;
 }
 
 .sub {
   margin: 0;
   font-size: calc(13px * var(--tb-text-scale));
-  color: #9eb3c2;
+  color: rgba(239, 230, 210, 0.7);
 }
 
 .sub b {
@@ -89,22 +82,28 @@
   flex: 0 0 auto;
   width: 34px;
   height: 34px;
-  border: 1px solid #195374;
+  border: 1px solid rgba(217, 181, 106, 0.7);
   border-radius: 50%;
-  background: linear-gradient(180deg, #0b2638 0%, #071826 100%);
-  color: #c8d7e1;
+  background: radial-gradient(circle at 50% 30%, #1d2a33, #081018 75%);
+  color: #efe6d2;
   cursor: pointer;
 }
 
 .close:hover {
-  border-color: #00aef0;
-  box-shadow: 0 0 8px rgba(0, 174, 240, 0.25);
+  border-color: var(--cb-cyan);
+  box-shadow: var(--tb-glow-sm);
+}
+
+.close:focus-visible {
+  outline: 2px solid var(--cb-cyan);
+  outline-offset: 2px;
 }
 
 .progress {
   height: 6px;
   border-radius: 999px;
-  background: #0a2032;
+  background: rgba(3, 10, 16, 0.7);
+  box-shadow: inset 0 0 0 1px rgba(217, 181, 106, 0.25);
   overflow: hidden;
 }
 
@@ -127,10 +126,10 @@
   align-items: center;
   gap: 6px;
   padding: 4px 11px;
-  border: 1px solid #195374;
+  border: 1px solid rgba(217, 181, 106, 0.45);
   border-radius: 999px;
-  background: linear-gradient(180deg, #0b2638 0%, #071826 100%);
-  color: #c8d7e1;
+  background: rgba(6, 14, 20, 0.7);
+  color: #efe6d2;
   font: inherit;
   font-size: calc(12px * var(--tb-text-scale));
   cursor: pointer;
@@ -141,14 +140,19 @@
 }
 
 .chip:hover {
-  border-color: #00aef0;
+  border-color: var(--cb-cyan);
+}
+
+.chip:focus-visible {
+  outline: 2px solid var(--cb-cyan);
+  outline-offset: 2px;
 }
 
 .chip[aria-pressed="true"] {
-  border-color: #00b7ff;
-  background: linear-gradient(180deg, #0b4265 0%, #08273d 100%);
+  border-color: var(--cb-cyan);
+  background: rgba(88, 200, 216, 0.16);
   color: #fff;
-  box-shadow: 0 0 8px rgba(0, 183, 255, 0.35);
+  box-shadow: var(--tb-glow-sm);
 }
 
 .toggle {
@@ -159,7 +163,7 @@
 .empty {
   margin: 20px 0;
   text-align: center;
-  color: #9eb3c2;
+  color: rgba(239, 230, 210, 0.7);
 }
 
 .grid {
@@ -177,7 +181,7 @@
   list-style: none;
   /* Ascenseur fin, aux couleurs de la fenêtre — pas la barre blanche du navigateur. */
   scrollbar-width: thin;
-  scrollbar-color: rgba(0, 183, 255, 0.35) transparent;
+  scrollbar-color: rgba(217, 181, 106, 0.4) transparent;
 }
 
 .grid::-webkit-scrollbar { width: 8px; }
@@ -185,9 +189,9 @@
 .grid::-webkit-scrollbar-thumb {
   border-radius: 999px;
   border: 2px solid transparent;
-  background: rgba(0, 183, 255, 0.35) padding-box;
+  background: rgba(217, 181, 106, 0.4) padding-box;
 }
-.grid::-webkit-scrollbar-thumb:hover { background: rgba(0, 183, 255, 0.6) padding-box; }
+.grid::-webkit-scrollbar-thumb:hover { background: rgba(217, 181, 106, 0.65) padding-box; }
 
 .card {
   --rarity-color: #b9c6d2;
@@ -199,9 +203,10 @@
   width: 100%;
   padding: 0 0 8px;
   overflow: hidden;
-  border: 1px solid #17405a;
-  border-radius: 9px;
-  background: #0a2032;
+  border: 1px solid rgba(217, 181, 106, 0.28);
+  border-radius: 4px;
+  background: rgba(6, 14, 20, 0.82);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
   color: inherit;
   font: inherit;
   text-align: left;
@@ -241,8 +246,9 @@
   min-height: 2.5em;
   padding: 2px 8px 0;
   overflow: hidden;
-  font-family: var(--font-card-title, Georgia, serif);
+  font-family: var(--tb-font-display);
   font-size: calc(12.5px * var(--tb-text-scale));
+  color: #efe6d2;
   font-weight: 600;
   line-height: 1.25;
 }
