@@ -603,41 +603,6 @@ button.row:disabled {
   white-space: nowrap;
 }
 
-/*
- * Le TAMPON « Encaisser », au bout de la jauge : or, il pulse tant qu'on
- * n'a pas touché la ligne. (Une quête réclamée quitte la feuille.)
- */
-.stamp {
-  flex: 0 0 auto;
-  margin: calc(-3 * var(--u)) 0 calc(-3 * var(--u)) calc(-2 * var(--u));
-  padding: calc(1 * var(--u)) calc(7 * var(--u));
-  border: calc(2.2 * var(--u)) solid currentColor;
-  border-radius: calc(4 * var(--u));
-  outline: max(1px, calc(1 * var(--u))) solid currentColor;
-  outline-offset: calc(-4.5 * var(--u));
-  font-family: var(--tb-font-display);
-  font-size: max(9px, calc(12 * var(--u) * var(--tb-text-scale, 1)));
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  line-height: 1.1;
-  text-transform: uppercase;
-  pointer-events: none;
-  transform: rotate(-6deg);
-}
-
-.stamp[data-stamp="claim"] {
-  color: #9a6512;
-  background: radial-gradient(closest-side, rgba(255, 226, 150, 0.75), rgba(255, 210, 110, 0.35));
-  text-shadow: 0 1px 0 rgba(255, 245, 210, 0.7);
-  animation: claimPulse 1.8s ease-in-out infinite;
-}
-
-button.row:hover .stamp[data-stamp="claim"],
-button.row:focus-visible .stamp[data-stamp="claim"] {
-  color: #7a4c08;
-  background: radial-gradient(closest-side, rgba(255, 232, 160, 0.95), rgba(255, 210, 110, 0.55));
-}
-
 /* Remplacer : un petit mot au crayon, en haut à droite de la ligne. */
 .reroll {
   position: absolute;
@@ -796,11 +761,6 @@ button.row:focus-visible .stamp[data-stamp="claim"] {
   from { opacity: 0; transform: translateY(5%); }
 }
 
-@keyframes claimPulse {
-  0%, 100% { box-shadow: 0 0 0 rgba(255, 196, 80, 0); transform: rotate(-6deg) scale(1); }
-  50% { box-shadow: 0 0 calc(14 * var(--u)) rgba(255, 196, 80, 0.75); transform: rotate(-6deg) scale(1.05); }
-}
-
 @keyframes frameGlow {
   0%, 100% {
     box-shadow:
@@ -881,7 +841,6 @@ button.row:focus-visible .stamp[data-stamp="claim"] {
   .scene[data-lit] .lanternPool,
   .tabs,
   .board,
-  .stamp,
   .row[data-state="claimable"] .iconFrame,
   .toast,
   .ghost::after,
@@ -889,8 +848,10 @@ button.row:focus-visible .stamp[data-stamp="claim"] {
     animation: none;
   }
 
-  .stamp[data-stamp="claim"] {
-    animation: none;
-    transform: rotate(-6deg);
+  /* Sans mouvement, le halo reste allumé. */
+  .row[data-state="claimable"] .iconFrame {
+    box-shadow:
+      0 0 0 calc(2 * var(--u)) rgba(255, 222, 120, 0.9),
+      0 0 calc(12 * var(--u)) calc(5 * var(--u)) rgba(255, 150, 20, 0.85);
   }
 }

@@ -325,8 +325,8 @@ interface QuestSheetProps {
 /**
  * Un registre (jour ou semaine) : une feuille de parchemin, une ligne par
  * quête ENCORE OUVERTE. Deux états lisibles d'un coup d'œil : en cours
- * (jauge cyan), à encaisser (le cadre de l'icône brille, un tampon doré
- * pulse au bout de la jauge, toute la ligne encaisse). Une quête réclamée
+ * (jauge cyan), à encaisser (le cadre de l'icône brille, toute la ligne
+ * encaisse d'un clic). Une quête réclamée
  * quitte la feuille : il ne reste que ce qui reste à faire.
  */
 function QuestSheet({ sheet, title, subtitle, entries, emptyText, busyKey, onClaim, onReroll }: QuestSheetProps) {
@@ -386,12 +386,6 @@ function QuestRow({ entry, busyKey, onClaim, onReroll }: { entry: QuestEntry; bu
           <span className={styles.count}>
             {Math.min(entry.progress, entry.target)} / {entry.target}
           </span>
-          {/* Le tampon se pose au bout de la jauge : jamais sur un texte. */}
-          {claimable && (
-            <span className={styles.stamp} data-stamp="claim">
-              {busyKey === key ? "…" : "Encaisser"}
-            </span>
-          )}
         </div>
       </div>
 
