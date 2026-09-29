@@ -44,7 +44,13 @@ export const SHIP_SET: ShipDefinition[] = [
   {
     id: "le-courlis",
     name: "Le Courlis",
-    startingAnchor: 26,
+    // 26 → 30 ANCRAGE (décision du 29/09/2026). Mesuré au labo sur Après la
+    // Tempête : ce sont ses 26 points d'Ancrage qui coûtaient, pas ses 4
+    // Slots (+0 point à 5 Slots, +13 à 30 Ancrage). Chacun des trois decks
+    // qui l'avaient quitté progressait d'abord par là. Il rejoint les
+    // coques moyennes (L'Errant, Le Goliath, La Religieuse, La Verrière) et
+    // garde ce qui le distingue : 4 Slots, 12 Raison, Tirant léger.
+    startingAnchor: 30,
     reasonMax: 12,
     slotCount: 4,
     illustration: "le-courlis.webp",
@@ -60,7 +66,8 @@ export const SHIP_SET: ShipDefinition[] = [
     // directe » coûtait à elle seule 9 des 11 points que le Courlis cédait à
     // L'Errant au labo (15 listes × chaque coque, bot moyen ; −7 → +1 au bot
     // difficile). Sans elle, le Courlis revient au niveau de L'Errant et
-    // garde ce qui le distingue : 26 Ancrage, 4 Slots, 12 Raison.
+    // garde ce qui le distingue : 26 Ancrage (30 depuis le 29/09/2026),
+    // 4 Slots, 12 Raison.
     // VIRAGE COURT — texte repris de la fiche Notion (22/09/2026).
     //
     // Le code portait encore l'ancien texte, celui des Eaux (« lorsqu'une
