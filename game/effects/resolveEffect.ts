@@ -14,6 +14,8 @@ import { countArchetypeUnits } from "@/game/cards/archetypes";
 import { auraContextOf, computeEffectiveStats } from "@/game/cards/stats";
 import { getShipDefinition } from "@/game/environment/shipData";
 import { forceTideJumpToAbysses, forceTideTransition, tickTide } from "@/game/environment/tide";
+import { applyForcedTideTransition } from "@/game/environment/tideTransition";
+import type { TideStateName } from "@/game/environment/types";
 import { isEligibleChosenUnit } from "@/game/effects/chosenTargets";
 import type { EffectAmount, EffectDefinition } from "@/game/effects/types";
 import type { EffectOrigin, GameEvent } from "@/game/events/types";
@@ -97,6 +99,23 @@ function returnPermanentToHand(
   ];
 
   return { state: nextState, events, returned: fresh };
+}
+
+/**
+ * Pose l'état de Marée FORCÉ par un effet, puis applique sur-le-champ le
+ * choc de transition (Abysses : Ancrage et Raison max ; sortie de Houle :
+ * MALADE retiré — `game/environment/tideTransition.ts`). Sans lui, une
+ * descente forcée en Abysses n'ôtait pas la Raison max que la sortie
+ * naturelle rendait ensuite.
+ */
+function withForcedTransition(
+  next: GameState,
+  previousTideState: TideStateName,
+  events: GameEvent[],
+  turnNumber: number
+): { state: GameState; events: GameEvent[] } {
+  const transition = applyForcedTideTransition(next, previousTideState, next.environment.tideState, turnNumber);
+  return { state: transition.state, events: [...events, ...transition.events] };
 }
 
 /** Une réduction de coût s'applique-t-elle à cette carte ? */
@@ -1272,8 +1291,8 @@ export function resolveEffect(
           tideOrientation: tick.tideOrientation,
           stateChanged: tick.stateChanged,
         });
-        return {
-          state: {
+        return withForcedTransition(
+          {
             ...nextState,
             environment: {
               ...nextState.environment,
@@ -1284,8 +1303,10 @@ export function resolveEffect(
               pendingTideModifiers: tick.pendingTideModifiers,
             },
           },
+          nextState.environment.tideState,
           events,
-        };
+          context.turnNumber
+        );
       }
       // Sinon, un état ne progresse jamais "immédiatement" via cet effet : la
       // durée reste au minimum à 1, l'avancée réelle se fait via le tick de
@@ -1341,9 +1362,9 @@ export function resolveEffect(
     case "tideForceRetreat": {
       // Simplification assumée : contrairement au tick de début de tour
       // (`resolveTideTurnStep`), cette transition forcée ne déclenche pas
-      // `onTideStateEntered` ni les vérifications "devient visible" — seuls
-      // l'état/la durée/l'orientation changent. À étendre si une carte
-      // future combine forçage ET réaction à l'entrée dans le nouvel état.
+      // `onTideStateEntered` ni les vérifications "devient visible". Le choc
+      // d'entrée/sortie (Abysses, Houle), lui, s'applique bien — cf.
+      // `withForcedTransition`.
       const tick = forceTideTransition(state.environment, effect.type === "tideForceAdvance" ? "avancer" : "reculer");
       events.push({
         ...base,
@@ -1353,8 +1374,8 @@ export function resolveEffect(
         tideOrientation: tick.tideOrientation,
         stateChanged: tick.stateChanged,
       });
-      return {
-        state: {
+      return withForcedTransition(
+        {
           ...state,
           environment: {
             ...state.environment,
@@ -1365,8 +1386,10 @@ export function resolveEffect(
             pendingTideModifiers: tick.pendingTideModifiers,
           },
         },
+        state.environment.tideState,
         events,
-      };
+        context.turnNumber
+      );
     }
 
     case "tideInvertOrientation": {
@@ -1456,8 +1479,8 @@ export function resolveEffect(
         tideOrientation: tick.tideOrientation,
         stateChanged: tick.stateChanged,
       });
-      return {
-        state: {
+      return withForcedTransition(
+        {
           ...state,
           environment: {
             ...state.environment,
@@ -1468,8 +1491,10 @@ export function resolveEffect(
             pendingTideModifiers: tick.pendingTideModifiers,
           },
         },
+        state.environment.tideState,
         events,
-      };
+        context.turnNumber
+      );
     }
 
     case "lockReasonGainUntilNextTurn": {
