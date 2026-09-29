@@ -246,6 +246,7 @@ function analyserPartie({
     lethal_by_tide: 0,
     lethal_by_deraison: 0,
     lose_matches: 0,
+    lose_to_own_deraison: 0,
     win_bot_matches: 0,
     win_by_concede: 0,
     win_by_timeout: 0,
@@ -353,6 +354,12 @@ function analyserPartie({
   /** Un joueur vient de régler sa Déraison : le `DAMAGE` qui suit est le sien. */
   let deraisonJustSettled: PlayerId | null = null;
   let lethalKey: LifetimeOnlySumKey | null = null;
+  /**
+   * Le coup qui a coulé VOTRE Navire (le premier à le mettre à 0 ou moins)
+   * suivait-il le règlement de votre propre Déraison ? Même lecture que le
+   * coup fatal adverse, dans l'autre sens — créditée seulement en défaite.
+   */
+  let ownSinking: "deraison" | "autre" | null = null;
   const scuttledIds = new Set<string>();
   // Compteurs par TOUR (et non par phase, contrairement à `damageThisTurn`).
   let turnDamage = 0;
@@ -608,6 +615,9 @@ function analyserPartie({
         // Dégâts SUBIS : comptés quelle que soit l'origine (Marée comprise).
         if (targetsOwnUnit || targetsOwnShip) progress.take_damage += event.amount;
         if (targetsOwnShip) extra.take_ship_damage += event.amount;
+        if (ownSinking === null && targetsOwnShip && event.targetAnchorAfter !== undefined && event.targetAnchorAfter <= 0) {
+          ownSinking = settledJustBefore === playerId ? "deraison" : "autre";
+        }
 
         // COUP FATAL : le premier coup qui met le Navire adverse à 0 ou
         // moins. Qualifié ici, crédité en fin de partie si elle est gagnée.
@@ -773,6 +783,7 @@ function analyserPartie({
     records.max_win_anchor = Math.max(0, anchor);
   } else {
     extra.lose_matches = 1;
+    if (ownSinking === "deraison") extra.lose_to_own_deraison = 1;
   }
 
   return { progress, sets, extra, records };

@@ -91,15 +91,17 @@ section.board > :not(.scroller) {
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.6), var(--tb-glow-sm);
 }
 
+/* Le compte au-dessus, le total dessous : « 118 / 118 » ne tient pas sur
+   une ligne dans le médaillon, surtout couché sur téléphone. */
 .medallionFace {
   display: flex;
-  align-items: baseline;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 1px;
   width: 100%;
   height: 100%;
   box-sizing: border-box;
-  padding-top: 18px;
   border: 2px solid var(--book-brass);
   border-radius: 50%;
   background: radial-gradient(circle at 50% 35%, var(--tb-surface-solid-raised), var(--tb-bg-deep));
@@ -489,6 +491,27 @@ article.card {
   filter: grayscale(0.35) brightness(0.92);
 }
 
+/* Caché : une tuile voilée — l'emblème dans la brume, le texte en retrait.
+   Le panneau reste le même que les autres : c'est un trophée, pas un trou. */
+.card[data-state="masked"] .art {
+  border-style: dashed;
+  background: radial-gradient(circle at 50% 45%, rgba(120, 150, 170, 0.18), var(--tb-bg-deep) 70%);
+}
+
+.card[data-state="masked"] .emblem {
+  opacity: 0.55;
+  filter: blur(0.3px);
+}
+
+.card[data-state="masked"] .name {
+  font-style: italic;
+  color: var(--book-ivory-dim);
+}
+
+.card[data-state="masked"] .description {
+  font-style: italic;
+}
+
 /* Obtenu : une coche verte discrète au coin de l'illustration. */
 .check {
   position: absolute;
@@ -554,7 +577,7 @@ article.card {
   display: -webkit-box;
   margin: 0;
   overflow: hidden;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   font-size: var(--tb-fs-caption);
   line-height: 1.35;
@@ -693,10 +716,6 @@ article.card {
     width: 50px;
     height: 50px;
     padding: 3px;
-  }
-
-  .medallionFace {
-    padding-top: 11px;
   }
 
   .medallionValue {

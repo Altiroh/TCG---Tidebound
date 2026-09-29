@@ -7,6 +7,7 @@ import { hubViewFrom } from "@/features/progression/hubService";
 import { StreakPopupPreview } from "@/features/progression/StreakPopupPreview";
 import { parseProfileTab } from "@/features/progression/profileTabs";
 import { ACHIEVEMENT_CATALOG } from "@/game/achievements";
+import { maskAchievement } from "@/features/progression/achievementMask";
 
 export const metadata: Metadata = {
   title: "Profil Preview · Tidebound",
@@ -76,19 +77,29 @@ export default function ProfilPreviewRoute({ searchParams }: { searchParams: { s
       bestStreak: 14,
       daysToStreakBonus: LOGIN_STREAK_MILESTONE - 11,
     },
-    // Tout le catalogue, pour voir chaque illustration : le premier obtenu,
-    // le deuxième à réclamer (or qui pulse), les Traversées (sans
-    // illustration : emblème de repli) avec leur titre, le reste en cours.
-    achievements: ACHIEVEMENT_CATALOG.map((achievement, index) => ({
-      code: achievement.code,
-      name: achievement.name,
-      description: achievement.description,
-      rewardTides: achievement.rewardTides,
-      unlocked: index <= 1,
-      claimable: index === 1,
-      progress: { current: Math.min(49, 3 + index * 7), target: 50 },
-      titleName: achievement.code.startsWith("voyage_") ? achievement.name : null,
-    })),
+    // Tout le catalogue, pour voir chaque illustration et chaque état : un
+    // exploit sur trois obtenu, un sur sept à réclamer (or qui pulse), les
+    // cachés voilés sauf s'ils tombent obtenus (révélés), les Traversées
+    // avec leur titre, le reste en cours.
+    achievements: ACHIEVEMENT_CATALOG.map((achievement, index) => {
+      const unlocked = index % 3 === 0 || index === 1;
+      return maskAchievement(
+        {
+          code: achievement.code,
+          family: achievement.family,
+          name: achievement.name,
+          description: achievement.description,
+          rewardTides: achievement.rewardTides,
+          masked: false,
+          unlocked,
+          claimable: unlocked && index % 7 === 1,
+          progress: { current: Math.min(49, 3 + index * 7) % 50, target: 50 },
+          titleName: achievement.code.startsWith("voyage_") ? achievement.name : null,
+        },
+        achievement.hidden === true,
+        index
+      );
+    }),
     cardBacks: { options: [], equipped: DEFAULT_CARD_BACK_ID },
     titles: { options: [], equipped: null, available: false },
     maxRewardedLevelReached: false,

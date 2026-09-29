@@ -12,4 +12,7 @@ export {
   achievementByCode,
   unlockedAchievements,
 } from "@/game/achievements/catalog";
-export type { AchievementDefinition, AchievementProgress, AchievementStats } from "@/game/achievements/catalog";
+export { FEAT_ACHIEVEMENTS, requirementValue } from "@/game/achievements/feats";
+export { ACHIEVEMENT_FAMILIES, isAchievementFamilyId } from "@/game/achievements/families";
+export type { AchievementFamilyId } from "@/game/achievements/families";
+export type { AchievementDefinition, AchievementProgress, AchievementRequirement, AchievementStats } from "@/game/achievements/catalog";

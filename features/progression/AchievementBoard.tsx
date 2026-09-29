@@ -5,6 +5,7 @@ import { oneOf } from "@/lib/persistCodecs";
 import { usePersistedState } from "@/lib/persistedState";
 import type { ProfileAchievement } from "@/features/progression/profileActions";
 import { TideCoin } from "@/features/shell/GameIcons";
+import { ACHIEVEMENT_FAMILIES, isAchievementFamilyId } from "@/game/achievements/families";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/progression/AchievementBoard.module.css";
 
@@ -12,9 +13,10 @@ import styles from "@/features/progression/AchievementBoard.module.css";
  * Illustration peinte de chaque exploit (`public/assets/exploits/`, 256 px
  * de côté). Vérifiée image par image le 29/09/2026 : chaque code montre la
  * scène qui lui correspond (le doublon `equipage-recruté.webp`, source
- * 1254 px de la même scène au nom accentué, a été retiré). Les trois exploits de Traversée
- * (`voyage_*`) n'ont pas encore d'illustration : ils portent l'emblème de
- * repli (rose des vents de laiton), pas une image empruntée à un autre.
+ * 1254 px de la même scène au nom accentué, a été retiré). Les autres —
+ * Traversées et les cent exploits de partie — n'ont pas d'illustration
+ * dédiée : ils portent l'EMBLÈME DE LEUR FAMILLE, gravé en laiton
+ * (`FamilyEmblem`), jamais une image empruntée à un autre exploit.
  */
 const ICONS: Record<string, string> = {
   tutorial_completed: "premier-quart",
@@ -40,22 +42,16 @@ export function achievementIconUrl(code: string): string | null {
 }
 
 /**
- * Famille de chaque exploit : l'en-tête (collant) sous lequel la liste le
- * range. Un exploit qu'aucune famille ne cite tombe dans « Autres », en
- * fin de liste — il reste visible, simplement pas encore classé.
+ * Familles : l'en-tête (collant) sous lequel la liste range chaque
+ * exploit. La famille est portée par l'exploit lui-même
+ * (`AchievementDefinition.family`, `game/achievements/families.ts`) ; une
+ * famille inconnue du client (catalogue plus récent que la page) tombe
+ * dans « Autres », en fin de liste — l'exploit reste visible.
  */
-const FAMILIES: Array<{ id: string; label: string; codes: string[] }> = [
-  { id: "voyage", label: "Premières escales", codes: ["tutorial_completed", "first_win", "ten_matches"] },
-  { id: "cale", label: "La cale", codes: ["first_booster", "collection_25", "collection_60", "collection_100", "first_abyssal"] },
-  { id: "equipage", label: "L'équipage", codes: ["first_precon", "deck_fully_owned"] },
-  { id: "phare", label: "Les phares", codes: ["level_10", "level_20", "level_30", "level_40", "level_50"] },
-  { id: "traversees", label: "Traversées", codes: ["voyage_premier_quart", "voyage_eaux_troubles", "voyage_grand_fond"] },
-];
-
 const OTHER_FAMILY = { id: "autres", label: "Autres" };
 
-function familyOf(code: string): { id: string; label: string } {
-  return FAMILIES.find((family) => family.codes.includes(code)) ?? OTHER_FAMILY;
+function familyOf(achievement: ProfileAchievement): string {
+  return isAchievementFamilyId(achievement.family) ? achievement.family : OTHER_FAMILY.id;
 }
 
 /** Part accomplie, de 0 à 1. Un exploit obtenu vaut 1 ; sans compteur connu, 0. */
@@ -124,9 +120,9 @@ export function AchievementBoard({ achievements, onClaim, claimingCode = null }:
 
   const groups = useMemo<FamilyGroup[]>(() => {
     const byFamily = new Map<string, FamilyGroup>();
-    for (const family of [...FAMILIES, OTHER_FAMILY]) byFamily.set(family.id, { id: family.id, label: family.label, shown: [], unlocked: 0, total: 0 });
+    for (const family of [...ACHIEVEMENT_FAMILIES, OTHER_FAMILY]) byFamily.set(family.id, { id: family.id, label: family.label, shown: [], unlocked: 0, total: 0 });
     for (const achievement of achievements) {
-      const group = byFamily.get(familyOf(achievement.code).id)!;
+      const group = byFamily.get(familyOf(achievement))!;
       group.total += 1;
       if (achievement.unlocked) group.unlocked += 1;
       if (passes(filter, achievement)) group.shown.push(achievement);
@@ -270,7 +266,7 @@ function ClaimChip({ achievement, onClaim, claiming = false }: ClaimChipProps) {
           // eslint-disable-next-line @next/next/no-img-element -- illustration peinte locale
           <img src={icon} alt="" draggable={false} />
         ) : (
-          <CompassEmblem />
+          <FamilyEmblem family={achievement.family} />
         )}
       </span>
       <span className={styles.claimText}>
@@ -298,20 +294,117 @@ interface AchievementCardProps {
   claiming?: boolean;
 }
 
-/** Emblème de repli d'un exploit sans illustration : une rose des vents de laiton. */
-function CompassEmblem() {
+/**
+ * Emblème d'un exploit sans illustration : un motif de laiton par famille,
+ * dans l'esprit de la rose des vents des Traversées (qui reste l'emblème
+ * par défaut). Des tracés simples en `currentColor` : la tuile éteinte les
+ * atténue d'elle-même, comme elle éteint une illustration.
+ */
+function FamilyEmblem({ family }: { family: string }) {
   return (
-    <svg viewBox="0 0 64 64" className={styles.emblem} aria-hidden>
-      <circle cx="32" cy="32" r="25" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.6" />
-      <circle cx="32" cy="32" r="19" fill="none" stroke="currentColor" strokeWidth="0.8" opacity="0.4" />
-      <path d="M32 6 L36 28 L32 32 L28 28 Z M32 58 L28 36 L32 32 L36 36 Z" fill="currentColor" />
-      <path d="M6 32 L28 28 L32 32 L28 36 Z M58 32 L36 36 L32 32 L36 28 Z" fill="currentColor" opacity="0.7" />
-      <circle cx="32" cy="32" r="2.5" fill="currentColor" />
+    <svg viewBox="0 0 64 64" className={styles.emblem} aria-hidden fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="32" cy="32" r="28" strokeWidth="1.2" opacity="0.5" />
+      {EMBLEMS[family] ?? EMBLEMS.voyage}
+    </svg>
+  );
+}
+
+const COMPASS = (
+  <>
+    <circle cx="32" cy="32" r="19" strokeWidth="0.8" opacity="0.4" />
+    <path d="M32 8 L36 28 L32 32 L28 28 Z M32 56 L28 36 L32 32 L36 36 Z" fill="currentColor" stroke="none" />
+    <path d="M8 32 L28 28 L32 32 L28 36 Z M56 32 L36 36 L32 32 L36 28 Z" fill="currentColor" stroke="none" opacity="0.7" />
+    <circle cx="32" cy="32" r="2.5" fill="currentColor" stroke="none" />
+  </>
+);
+
+const EMBLEMS: Record<string, React.ReactNode> = {
+  voyage: COMPASS,
+  traversees: COMPASS,
+  // Coffre de cale.
+  cale: (
+    <>
+      <path d="M16 28 h32 v18 h-32 Z" />
+      <path d="M16 28 c0 -10 32 -10 32 0" />
+      <path d="M16 34 h32 M30 32 h4 v6 h-4 Z" />
+    </>
+  ),
+  // Barre à roue.
+  equipage: (
+    <>
+      <circle cx="32" cy="32" r="11" />
+      <circle cx="32" cy="32" r="3" fill="currentColor" stroke="none" />
+      <path d="M32 12 v40 M12 32 h40 M18 18 l28 28 M46 18 l-28 28" />
+    </>
+  ),
+  // Phare et son faisceau.
+  phare: (
+    <>
+      <path d="M27 50 l2 -24 h6 l2 24 Z M26 26 h12 M29 26 v-5 h6 v5 M32 21 v-3" />
+      <path d="M38 22 l14 -5 M38 24 l14 5 M26 22 l-14 -5 M26 24 l-14 5" opacity="0.6" />
+      <path d="M20 50 h24" />
+    </>
+  ),
+  // Sabres croisés.
+  combat: (
+    <>
+      <path d="M18 46 l26 -28 M46 46 l-26 -28" strokeWidth="2.4" />
+      <path d="M14 42 l8 8 M50 42 l-8 8" />
+      <path d="M44 18 l4 -4 M20 18 l-4 -4" />
+    </>
+  ),
+  // Étoile de record.
+  records: <path d="M32 13 l5.6 12.2 13.4 1.4 -10 9 2.8 13.2 -11.8 -6.8 -11.8 6.8 2.8 -13.2 -10 -9 13.4 -1.4 Z" />,
+  // Trois lames.
+  maree: (
+    <>
+      <path d="M12 26 c5 -5 10 -5 14 0 s9 5 14 0 s10 -5 14 0" />
+      <path d="M12 34 c5 -5 10 -5 14 0 s9 5 14 0 s10 -5 14 0" opacity="0.8" />
+      <path d="M12 42 c5 -5 10 -5 14 0 s9 5 14 0 s10 -5 14 0" opacity="0.6" />
+    </>
+  ),
+  // Spirale du vertige.
+  deraison: <path d="M32 32 c0 -3 4 -3 4 0 c0 5 -8 5 -8 0 c0 -8 12 -8 12 0 c0 11 -16 11 -16 0 c0 -14 20 -14 20 0 c0 17 -24 17 -24 0" />,
+  // Fiole brisée : l'Objet qu'on casse.
+  bris: (
+    <>
+      <path d="M28 14 h8 M29 14 v8 l-9 12 v14 h24 v-14 l-9 -12 v-8" />
+      <path d="M20 38 l7 3 4 -5 5 6 8 -4" />
+      <path d="M48 16 l4 -4 M50 24 h6 M42 12 v-5" opacity="0.7" />
+    </>
+  ),
+  // Ancre.
+  navire: (
+    <>
+      <circle cx="32" cy="16" r="4" />
+      <path d="M32 20 v30 M24 27 h16" />
+      <path d="M16 38 c2 10 10 13 16 12 c6 1 14 -2 16 -12" />
+      <path d="M13 41 l3 -4 4 3 M51 41 l-3 -4 -4 3" />
+    </>
+  ),
+  // Trident.
+  fatal: (
+    <>
+      <path d="M32 14 v38" />
+      <path d="M20 16 v10 c0 6 24 6 24 0 v-10" />
+      <path d="M17 19 l3 -5 3 5 M29 17 l3 -5 3 5 M41 19 l3 -5 3 5" />
+    </>
+  ),
+};
+
+/** Voile d'un exploit caché : un point d'interrogation dans la brume. */
+function MaskedEmblem() {
+  return (
+    <svg viewBox="0 0 64 64" className={styles.emblem} aria-hidden fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+      <circle cx="32" cy="32" r="28" strokeWidth="1.2" strokeDasharray="3 4" opacity="0.6" />
+      <path d="M24 25 c0 -6 4 -9 8 -9 s8 3 8 8 c0 6 -8 7 -8 13 v2" />
+      <circle cx="32" cy="47" r="2" fill="currentColor" stroke="none" />
     </svg>
   );
 }
 
 function AchievementCard({ achievement, onClaim, claiming = false }: AchievementCardProps) {
+  if (achievement.masked) return <MaskedCard />;
   const icon = achievementIconUrl(achievement.code);
   const state = achievement.claimable ? "claimable" : achievement.unlocked ? "done" : "progress";
   const progress = achievement.progress;
@@ -324,7 +417,7 @@ function AchievementCard({ achievement, onClaim, claiming = false }: Achievement
           // eslint-disable-next-line @next/next/no-img-element -- illustration peinte locale
           <img src={icon} alt="" draggable={false} className={styles.artImage} />
         ) : (
-          <CompassEmblem />
+          <FamilyEmblem family={achievement.family} />
         )}
         {state === "done" && (
           <span className={styles.check} title="Obtenu">
@@ -337,7 +430,7 @@ function AchievementCard({ achievement, onClaim, claiming = false }: Achievement
 
       <div className={styles.body}>
         <h4 className={styles.name}>{achievement.name}</h4>
-        <p className={styles.description}>{achievement.description}</p>
+        <p className={styles.description} title={achievement.description}>{achievement.description}</p>
 
         {state === "progress" && progress && (
           <div className={styles.progressRow}>
@@ -377,6 +470,25 @@ function AchievementCard({ achievement, onClaim, claiming = false }: Achievement
             {claiming ? "…" : "Réclamer"}
           </button>
         )}
+      </div>
+    </article>
+  );
+}
+
+/**
+ * Exploit caché, pas encore obtenu : une tuile voilée, sans nom ni
+ * condition — le serveur ne les a de toute façon pas envoyés. Seule
+ * l'invite dit qu'il y a quelque chose à trouver.
+ */
+function MaskedCard() {
+  return (
+    <article className={`${game.cabinPanel} ${styles.card}`} data-state="masked" aria-label="Exploit caché">
+      <span className={styles.art} aria-hidden>
+        <MaskedEmblem />
+      </span>
+      <div className={styles.body}>
+        <h4 className={styles.name}>Exploit caché</h4>
+        <p className={styles.description}>Quelque chose dort sous la surface…</p>
       </div>
     </article>
   );

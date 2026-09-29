@@ -83,6 +83,7 @@ export type LifetimeOnlySumKey =
   | "lethal_by_deraison"
   // --- Issues de partie ------------------------------------------------------
   | "lose_matches"
+  | "lose_to_own_deraison"
   | "win_bot_matches"
   | "win_by_concede"
   | "win_by_timeout"
@@ -212,6 +213,7 @@ export const MATCH_STATS: Readonly<Record<MatchStatKey, MatchStatDefinition>> = 
 
   // --- Issues de partie (0 ou 1 par partie) ----------------------------------
   lose_matches: { nature: "sum", description: "Parties perdues (nulles comprises)." },
+  lose_to_own_deraison: { nature: "sum", description: "Défaites où votre Navire coule sous votre propre dette de Déraison." },
   win_bot_matches: { nature: "sum", description: "Parties gagnées contre le bot." },
   win_by_concede: { nature: "sum", description: "Victoires par abandon adverse." },
   win_by_timeout: { nature: "sum", description: "Victoires par délais adverses dépassés." },

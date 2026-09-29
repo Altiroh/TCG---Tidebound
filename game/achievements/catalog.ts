@@ -1,4 +1,7 @@
 import { TIDE_REWARD } from "@/game/economy/constants";
+import type { AchievementFamilyId } from "@/game/achievements/families";
+import { FEAT_ACHIEVEMENTS } from "@/game/achievements/feats";
+import type { MatchStatKey } from "@/game/quests/matchStats";
 
 /**
  * Exploits — récompenses PERMANENTES et non renouvelables.
@@ -70,11 +73,43 @@ export interface AchievementStats {
   records: Readonly<Record<string, number>>;
 }
 
+/**
+ * Une condition d'exploit exprimée en DONNÉES : une statistique à vie
+ * (`MATCH_STATS`) et un seuil. Les exploits de partie (`feats.ts`) sont
+ * tous faits de conditions de ce type — c'est ce qui permet au test de les
+ * vérifier un par un, sans les connaître : à zéro, aucun n'est obtenu ; au
+ * seuil, chacun l'est.
+ *
+ *   - `lifetime` : cumul de toutes les parties (clé de nature `sum`) ;
+ *   - `record` : meilleure valeur sur UNE partie (toutes les clés).
+ */
+export interface AchievementRequirement {
+  scope: "lifetime" | "record";
+  key: MatchStatKey;
+  target: number;
+}
+
 export interface AchievementDefinition {
-  /** Identifiant stable, clé d'idempotence en base (`player_achievements.code`). */
+  /** Identifiant stable, clé d'idempotence en base (`player_achievements.code`). Jamais renommé. */
   code: string;
+  /** Famille sous laquelle le tableau le range (`families.ts`). */
+  family: AchievementFamilyId;
   name: string;
   description: string;
+  /**
+   * Exploit CACHÉ : tant qu'il n'est pas obtenu, le tableau ne montre
+   * qu'un emplacement voilé — ni nom, ni condition, ni jauge. Même
+   * doctrine que les Collectables cachés (`isSlotMasked`,
+   * `game/cosmetics/unlock.ts`) ; le masque est posé CÔTÉ SERVEUR, la
+   * condition ne voyage jamais jusqu'au navigateur.
+   */
+  hidden?: boolean;
+  /**
+   * Conditions en données, quand l'exploit en est fait (exploits de
+   * partie). `isUnlocked` et `progress` en sont alors dérivés ; absent
+   * pour les exploits historiques, écrits à la main.
+   */
+  requirements?: readonly AchievementRequirement[];
   /** Récompense à la première obtention — volontairement modeste, l'exploit est surtout un jalon. */
   rewardTides: number;
   /** Rempli ? Fonction PURE des compteurs persistés. */
@@ -110,6 +145,7 @@ export const ACHIEVEMENT_COLLECTION_MILESTONES = [25, 60, 100] as const;
 
 const levelAchievements: AchievementDefinition[] = ACHIEVEMENT_LEVEL_MILESTONES.map((level) => ({
   code: `level_${level}`,
+  family: "phare",
   name: `Niveau ${level}`,
   description: `Atteindre le niveau ${level}.`,
   rewardTides: level >= 40 ? TIDE_REWARD.big : TIDE_REWARD.standard,
@@ -119,6 +155,7 @@ const levelAchievements: AchievementDefinition[] = ACHIEVEMENT_LEVEL_MILESTONES.
 
 const collectionAchievements: AchievementDefinition[] = ACHIEVEMENT_COLLECTION_MILESTONES.map((count) => ({
   code: `collection_${count}`,
+  family: "cale",
   name: `${count} cartes`,
   description: `Posséder ${count} cartes différentes.`,
   rewardTides: TIDE_REWARD.standard,
@@ -129,6 +166,7 @@ const collectionAchievements: AchievementDefinition[] = ACHIEVEMENT_COLLECTION_M
 export const ACHIEVEMENT_CATALOG: readonly AchievementDefinition[] = [
   {
     code: "tutorial_completed",
+    family: "voyage",
     name: "Premier quart",
     description: "Terminer le tutoriel.",
     rewardTides: TIDE_REWARD.small,
@@ -137,6 +175,7 @@ export const ACHIEVEMENT_CATALOG: readonly AchievementDefinition[] = [
   },
   {
     code: "first_win",
+    family: "voyage",
     name: "Premier pavillon",
     description: "Remporter votre première partie.",
     rewardTides: TIDE_REWARD.small,
@@ -145,6 +184,7 @@ export const ACHIEVEMENT_CATALOG: readonly AchievementDefinition[] = [
   },
   {
     code: "first_booster",
+    family: "cale",
     name: "Première cale ouverte",
     description: "Ouvrir votre premier booster.",
     rewardTides: TIDE_REWARD.small,
@@ -153,6 +193,7 @@ export const ACHIEVEMENT_CATALOG: readonly AchievementDefinition[] = [
   },
   {
     code: "first_abyssal",
+    family: "cale",
     name: "Quelque chose remonte",
     description: "Obtenir votre première carte Abyssale.",
     rewardTides: TIDE_REWARD.big,
@@ -161,6 +202,7 @@ export const ACHIEVEMENT_CATALOG: readonly AchievementDefinition[] = [
   },
   {
     code: "first_precon",
+    family: "equipage",
     name: "Équipage recruté",
     description: "Débloquer votre premier préconstruit avec un Jeton.",
     rewardTides: TIDE_REWARD.standard,
@@ -169,6 +211,7 @@ export const ACHIEVEMENT_CATALOG: readonly AchievementDefinition[] = [
   },
   {
     code: "deck_fully_owned",
+    family: "equipage",
     name: "Équipage complété",
     description: "Posséder réellement toutes les cartes d'un deck.",
     rewardTides: TIDE_REWARD.big,
@@ -177,6 +220,7 @@ export const ACHIEVEMENT_CATALOG: readonly AchievementDefinition[] = [
   },
   {
     code: "ten_matches",
+    family: "voyage",
     name: "Pris le large",
     description: "Terminer 10 parties.",
     rewardTides: TIDE_REWARD.small,
@@ -195,6 +239,7 @@ export const ACHIEVEMENT_CATALOG: readonly AchievementDefinition[] = [
   ].map(
     ({ voyageId, code, name, description }): AchievementDefinition => ({
       code,
+      family: "traversees",
       name,
       description,
       rewardTides: TIDE_REWARD.small,
@@ -202,6 +247,10 @@ export const ACHIEVEMENT_CATALOG: readonly AchievementDefinition[] = [
       progress: (stats) => flag(stats.voyagesCompleted.includes(voyageId)),
     })
   ),
+  // Exploits de partie (29/09/2026) : cent jalons lus sur les statistiques
+  // à vie — progression, Marée, Déraison, Bris, pièges, coups fatals,
+  // records, dont une vingtaine cachés.
+  ...FEAT_ACHIEVEMENTS,
 ];
 
 /** Exploits actuellement remplis d'après ces compteurs. L'appelant en retire ceux déjà octroyés. */

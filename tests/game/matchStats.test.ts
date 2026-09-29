@@ -237,6 +237,26 @@ describe("coup fatal", () => {
     const maree = finished([{ ...base, type: "TURN_STARTED", playerId: "p2" }, fatal(2)] as GameEvent[]);
     expect(stats(maree, true).lethal_by_tide).toBe(1);
   });
+
+  it("VOTRE Navire coulé par votre propre Déraison : une défaite à part", () => {
+    const sunk = (debtor: string) =>
+      finished([
+        { ...base, type: "END_TURN", playerId: debtor },
+        { ...base, type: "DERAISON_SETTLED", playerId: debtor, debt: 6, anchorDamage: 7 },
+        { ...base, type: "DAMAGE", targetPlayerId: "p1", amount: 7, targetAnchorAfter: -1 },
+      ] as GameEvent[]);
+    expect(stats(sunk("p1"), false).lose_to_own_deraison).toBe(1);
+    // La dette de l'ADVERSAIRE qui précède ne compte pas : ce n'est pas la vôtre.
+    expect(stats(sunk("p2"), false).lose_to_own_deraison).toBeUndefined();
+    // Coulé par la Marée, puis une dette réglée plus tard : seul le premier coup fatal compte.
+    const maree = finished([
+      { ...base, type: "TURN_STARTED", playerId: "p1" },
+      { ...base, type: "DAMAGE", targetPlayerId: "p1", amount: 2, targetAnchorAfter: 0 },
+      { ...base, type: "DERAISON_SETTLED", playerId: "p1", debt: 1, anchorDamage: 1 },
+      { ...base, type: "DAMAGE", targetPlayerId: "p1", amount: 1, targetAnchorAfter: -1 },
+    ] as GameEvent[]);
+    expect(stats(maree, false).lose_to_own_deraison).toBeUndefined();
+  });
 });
 
 describe("attaques, réactions, issues de partie", () => {

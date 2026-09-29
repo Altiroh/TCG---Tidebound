@@ -12,6 +12,7 @@ import {
   type ProgressionView,
 } from "@/game/progression";
 import { ACHIEVEMENT_CATALOG } from "@/game/achievements";
+import { maskAchievement } from "@/features/progression/achievementMask";
 import { DEFAULT_CARD_BACK_ID, STANDARD_BOOSTER_ID } from "@/game";
 import { claimLoginReward, readLoginRewards, type LoginRewardView } from "@/features/progression/loginService";
 import {
@@ -63,10 +64,19 @@ export interface ProfileLevelRow {
 }
 
 export interface ProfileAchievement {
+  /** Code de l'exploit — opaque (`cache-N`) pour un exploit masqué, qui ne doit rien trahir. */
   code: string;
+  /** Famille sous laquelle le tableau le range (`ACHIEVEMENT_FAMILIES`). */
+  family: string;
   name: string;
   description: string;
   rewardTides: number;
+  /**
+   * Exploit CACHÉ et pas encore obtenu : nom, condition, jauge, récompense
+   * et titre sont retirés ICI, côté serveur — le navigateur n'en reçoit
+   * rien (`maskAchievement`). Obtenu, il se révèle entièrement.
+   */
+  masked: boolean;
   unlocked: boolean;
   /** Débloqué et Tides pas encore réclamées. */
   claimable: boolean;
@@ -255,16 +265,24 @@ export async function fetchProfile(): Promise<ProfileSummary> {
       })),
       claimedLevels: (claimed.data ?? []).slice(0, 8).map((row) => ({ level: row.level, label: levelRewardsLabel(row.level), claimed: true })),
       login,
-      achievements: ACHIEVEMENT_CATALOG.map((achievement) => ({
-        code: achievement.code,
-        name: achievement.name,
-        description: achievement.description,
-        rewardTides: achievement.rewardTides,
-        unlocked: unlockedCodes.has(achievement.code),
-        claimable: claimableCodes.has(achievement.code),
-        progress: stats ? achievement.progress(stats) : null,
-        titleName: titleForAchievement(achievement.code)?.name ?? null,
-      })),
+      achievements: ACHIEVEMENT_CATALOG.map((achievement, index) =>
+        maskAchievement(
+          {
+            code: achievement.code,
+            family: achievement.family,
+            name: achievement.name,
+            description: achievement.description,
+            rewardTides: achievement.rewardTides,
+            masked: false,
+            unlocked: unlockedCodes.has(achievement.code),
+            claimable: claimableCodes.has(achievement.code),
+            progress: stats ? achievement.progress(stats) : null,
+            titleName: titleForAchievement(achievement.code)?.name ?? null,
+          },
+          achievement.hidden === true,
+          index
+        )
+      ),
       quests: questBoard?.isSignedIn ? [...questBoard.daily, ...questBoard.weekly] : [],
       cardBacks,
       titles,
