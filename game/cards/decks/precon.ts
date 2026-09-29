@@ -408,6 +408,21 @@ export const DECK_DESCENTE_AUX_ABYSSES: DeckList = {
  *
  * Ce qui a sauté : Clous de Récupération (12 poses pour 77 morts en main),
  * Dernière Planche (2 poses) et un Journal de Bord.
+ *
+ * LISTE REVUE LE 29/09/2026 — le moteur tournait encore sans rien gagner :
+ * 3,3 Sabordages par partie, 5,6 dégâts, 17 % contre le rayon, et aucune
+ * carte du catalogue ne transforme un Sabordage en dégâts. Sortent ce qui
+ * va contre le thème (Planche de Fortune ; Radeau de Fortune, qui ne rend
+ * rien s'il est détruit), le hors-sujet (Tas de Bouts de Bois, qui lit la
+ * mort d'un Cra-Poiscail) et le moins joué (Journal, deux Grappins, une
+ * Épave Accrochée). Entrent des corps qui tiennent pendant le recyclage —
+ * Matelot, Chose des Hauts-Fonds, Baleine aux Cicatrices Blanches — et des
+ * Structures qui gardent le Sabordage au centre : Cage de Flottaison, Étau
+ * du Calfat, la Caisse des Dernières Planches abyssale. Mesuré au labo
+ * (bot moyen, 60 parties par paire contre le rayon) : 14 % → 49 %, 16
+ * Structures et 2,1 Sabordages par partie. Une liste plus lourde montait à
+ * 57 % mais ne sabordait plus que 1,5 fois : écartée, le deck y perdait son
+ * sujet. Aucun texte changé.
  */
 export const DECK_EPAVISTES: DeckList = {
   id: "epavistes",
@@ -422,22 +437,24 @@ export const DECK_EPAVISTES: DeckList = {
     ...repeat("mecanicien-aux-mains-noires", 2),
     ...repeat("charpentiere-de-veille", 2),
     ...repeat("wood-vy", 2),
-    // Le corps neutre : de quoi tenir la ligne pendant que ça recycle.
-    ...repeat("matelot-du-sans-nom", 2),
+    // Les corps qui tiennent pendant que ça recycle.
+    ...repeat("matelot-du-sans-nom", 3),
+    ...repeat("chose-des-hauts-fonds", 3),
+    ...repeat("baleine-aux-cicatrices-blanches", 2),
     // Les Structures à faire disparaître.
     ...repeat("caisses-arrimees", 3),
-    ...repeat("epaves-accrochees", 3),
-    ...repeat("tas-de-bouts-de-bois", 3),
-    ...repeat("radeau-de-fortune", 3),
+    ...repeat("epaves-accrochees", 2),
     ...repeat("caisse-des-dernieres-planches", 3),
+    ...repeat("caisse-des-dernieres-planches-abyssal", 1),
     ...repeat("atelier-de-calfatage", 2),
+    ...repeat("cage-de-flottaison", 2),
+    ...repeat("radeau-de-fortune", 1),
     // Les outils du démontage.
     ...repeat("levier-de-lest", 2),
-    ...repeat("grappin-de-recuperation", 3),
-    // Lot 14 : garder ce qu'on veut garder, jeter le reste.
+    ...repeat("grappin-de-recuperation", 1),
+    ...repeat("etau-du-calfat", 2),
+    // Lot 14 : garder ce qu'on veut garder.
     ...repeat("cloison-etanche", 2),
-    ...repeat("planche-de-fortune", 2),
-    ...repeat("journal-de-bord", 1),
   ],
 };
 
