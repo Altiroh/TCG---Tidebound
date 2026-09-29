@@ -16,6 +16,7 @@ import { cardIllustrationThumbUrl } from "@/features/decks/cardArtUrl";
 import { claimDailyLogin, updateProfileIdentity, type ProfileSummary } from "@/features/progression/profileActions";
 import { loginGainsText } from "@/features/progression/dailyLogin";
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
+import { claimKey } from "@/features/progression/localClaims";
 import { RewardIcon } from "@/features/progression/RewardIcon";
 import { PreconToken, TideCoin } from "@/features/shell/GameIcons";
 import styles from "@/features/progression/ProfileScene.module.css";
@@ -34,6 +35,8 @@ interface ProfileSceneProps {
   /** « Toute la route » : l'onglet des récompenses de niveau. */
   onShowRoute: () => void;
   onRefresh: () => void;
+  /** Réclamation réussie : l'écran la montre faite sur-le-champ (`localClaims`). */
+  onClaimed: (keys: readonly string[]) => void;
   onSignOut: () => void;
   signingOut: boolean;
 }
@@ -100,6 +103,7 @@ export function ProfileScene({
   onPickTitle,
   onShowRoute,
   onRefresh,
+  onClaimed,
   onSignOut,
   signingOut,
 }: ProfileSceneProps) {
@@ -199,7 +203,7 @@ export function ProfileScene({
           </button>
         </section>
 
-        <LoginPanel profile={profile} waitingTotal={waitingTotal} claimingAll={claimingAll} onClaimAll={onClaimAll} onRefresh={onRefresh} />
+        <LoginPanel profile={profile} waitingTotal={waitingTotal} claimingAll={claimingAll} onClaimAll={onClaimAll} onRefresh={onRefresh} onClaimed={onClaimed} />
 
         {/* La sortie : une plaque sombre à liseré de laiton, posée sur le pont près du canon. */}
         <button type="button" className={styles.signOut} onClick={onSignOut} disabled={signingOut} aria-busy={signingOut || undefined}>
@@ -349,7 +353,8 @@ function LoginPanel({
   claimingAll,
   onClaimAll,
   onRefresh,
-}: Pick<ProfileSceneProps, "profile" | "waitingTotal" | "claimingAll" | "onClaimAll" | "onRefresh">) {
+  onClaimed,
+}: Pick<ProfileSceneProps, "profile" | "waitingTotal" | "claimingAll" | "onClaimAll" | "onRefresh" | "onClaimed">) {
   const { login } = profile;
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -369,7 +374,8 @@ function LoginPanel({
       const gains = loginGainsText(result);
       playRewardClaimed();
       setMessage(gains ? `Escale franchie — ${gains}.` : "Escale franchie.");
-      notifyProgressionChanged();
+      onClaimed([claimKey.login()]);
+      notifyProgressionChanged({ login: 1 });
       onRefresh();
     });
   }

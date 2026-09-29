@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ProfileSummary } from "@/features/progression/profileActions";
 import { ProfileView, waitingCounts, type ProfileTab } from "@/features/progression/ProfileView";
 import { onProfileOpenRequest, type ProfilePanel } from "@/features/progression/profileTabs";
+import { withLocalClaims } from "@/features/progression/localClaims";
 import sceneStyles from "@/features/progression/ProfileScreen.module.css";
 import { GameScreen } from "@/features/shell/GameScreen";
 import game from "@/features/shell/GameScreen.module.css";
@@ -31,8 +32,20 @@ const PAGE_TABS: Array<{ id: ProfileTab; label: string }> = [
   { id: "exploits", label: "Exploits" },
 ];
 
-export function ProfileScreen({ profile, initialTab, initialPanel }: ProfileScreenProps) {
+const EMPTY_KEYS: ReadonlySet<string> = new Set();
+
+export function ProfileScreen({ profile: serverProfile, initialTab, initialPanel }: ProfileScreenProps) {
   const router = useRouter();
+  // Réclamations faites depuis la dernière lecture : montrées réclamées tout de suite (onglets,
+  // boutons, fenêtres du hub). Elles valent pour CE profil-là ; le profil relu les remplace.
+  const [claims, setClaims] = useState<{ base: ProfileSummary; keys: ReadonlySet<string> }>({ base: serverProfile, keys: new Set() });
+  const keys = claims.base === serverProfile ? claims.keys : EMPTY_KEYS;
+  const profile = useMemo(() => withLocalClaims(serverProfile, keys), [serverProfile, keys]);
+  const markClaimed = (claimed: readonly string[]) =>
+    setClaims((current) => ({
+      base: serverProfile,
+      keys: new Set([...(current.base === serverProfile ? current.keys : []), ...claimed]),
+    }));
   const [tab, setTab] = useState<ProfileTab>(initialTab ?? "carnet");
   // Déjà sur la page, un raccourci du bandeau change l'URL : l'onglet suit.
   useEffect(() => {
@@ -98,7 +111,9 @@ export function ProfileScreen({ profile, initialTab, initialPanel }: ProfileScre
         };
       })}
     >
-      <ProfileView profile={profile} layout="page" tab={tab} onTabChange={setTab} onRefresh={() => router.refresh()} initialPanel={requestedPanel ?? initialPanel} />
+      <ProfileView profile={profile} layout="page" tab={tab} onTabChange={setTab} onRefresh={() => router.refresh()}
+        onClaimed={markClaimed}
+        initialPanel={requestedPanel ?? initialPanel} />
     </GameScreen>
   );
 }

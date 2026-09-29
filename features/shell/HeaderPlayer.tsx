@@ -8,7 +8,13 @@ import { RewardShortcuts } from "@/features/shell/RewardShortcuts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchProgression, type ProgressionSummary } from "@/features/progression/actions";
 import { audienceMood } from "@/game/audience";
-import { onProgressionChanged, readProgression, rememberedProgression } from "@/features/progression/progressionSync";
+import {
+  onProgressionChanged,
+  readProgression,
+  rememberedProgression,
+  rememberProgression,
+  withoutClaimed,
+} from "@/features/progression/progressionSync";
 import { cardIllustrationThumbUrl } from "@/features/decks/cardArtUrl";
 import { profileHref, requestProfileOpen, type PROFILE_PANELS } from "@/features/progression/profileTabs";
 import type { ProfileTab } from "@/features/progression/ProfileView";
@@ -348,7 +354,18 @@ export function HeaderPlayer() {
 
     load(false);
     // Relecture après un achat, une quête réclamée… — cf. `progressionSync`.
-    const unsubscribe = onProgressionChanged(() => load(true));
+    // Une réclamation retire son raccourci SUR-LE-CHAMP ; la relecture confirme.
+    const unsubscribe = onProgressionChanged((claimed) => {
+      if (claimed) {
+        setSummary((current) => {
+          if (!current) return current;
+          const next = withoutClaimed(current, claimed);
+          rememberProgression(next);
+          return next;
+        });
+      }
+      load(true);
+    });
     return () => {
       cancelled = true;
       unsubscribe();

@@ -18,8 +18,11 @@ interface QuestJournalProps {
   voyages?: VoyageBoard;
   /** Traversées encore en lecture : leur squelette tient la place du panneau. */
   voyagesPending?: boolean;
-  /** Relit quêtes et profil après une réclamation ou un remplacement. */
-  onChanged: () => void;
+  /**
+   * Relit quêtes et profil après une réclamation ou un remplacement ;
+   * `claimed` : la quête qui vient d'être réclamée, à montrer faite tout de suite.
+   */
+  onChanged: (claimed?: { questId: string; periodKey: string }) => void;
 }
 
 function formatRemaining(endsAtIso: string): string {
@@ -46,7 +49,16 @@ function formatRemaining(endsAtIso: string): string {
  * la fin de chaque partie arbitrée (`features/matches/matchStore.ts`), et
  * la réclamation comme le remplacement sont des Server Actions autoritaires.
  */
-export function QuestJournal({ board, voyages, voyagesPending = false, onChanged }: QuestJournalProps) {
+export function QuestJournal({ board: readBoard, voyages, voyagesPending = false, onChanged }: QuestJournalProps) {
+  // Quêtes réclamées depuis la dernière lecture du journal : montrées faites sur-le-champ.
+  // Elles valent pour CE journal-là ; le journal relu les remplace.
+  const [claimedKeys, setClaimedKeys] = useState<{ board: QuestBoard; keys: ReadonlySet<string> }>({ board: readBoard, keys: new Set() });
+  const board = useMemo(() => {
+    if (claimedKeys.board !== readBoard || claimedKeys.keys.size === 0) return readBoard;
+    const mark = (entries: QuestEntry[]) =>
+      entries.map((entry) => (claimedKeys.keys.has(`${entry.questId}|${entry.periodKey}`) ? { ...entry, claimed: true } : entry));
+    return { ...readBoard, daily: mark(readBoard.daily), weekly: mark(readBoard.weekly) };
+  }, [readBoard, claimedKeys]);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastGain, setLastGain] = useState<{ tides: number; xp: number } | null>(null);
@@ -73,8 +85,10 @@ export function QuestJournal({ board, voyages, voyagesPending = false, onChanged
         }
         playRewardClaimed();
         setLastGain({ tides: result.tidesGained ?? 0, xp: result.xpGained ?? 0 });
-        notifyProgressionChanged();
-        onChanged();
+        // Réclamée : la ligne le montre sans attendre la relecture du journal.
+        setClaimedKeys((current) => ({ board: readBoard, keys: new Set([...(current.board === readBoard ? current.keys : []), key]) }));
+        notifyProgressionChanged({ quests: 1 });
+        onChanged({ questId: entry.questId, periodKey: entry.periodKey });
       })
       .finally(() => setBusyKey(null));
   }

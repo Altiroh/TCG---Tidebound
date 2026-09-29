@@ -82,7 +82,7 @@ export function DailyStreakPopup({ onClose, initialLogin }: DailyStreakPopupProp
       playRewardClaimed();
       setGains(loginGainsText(result) || "Escale franchie.");
       if (result.streak) setClaimedStreak(result.streak);
-      notifyProgressionChanged();
+      notifyProgressionChanged({ login: 1 });
     });
   }
 

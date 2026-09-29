@@ -22,7 +22,8 @@ import {
   type ProfileSummary,
 } from "@/features/progression/profileActions";
 import type { AudienceMilestoneView, AudienceView, MasteryView, SponsorView } from "@/features/progression/hubService";
-import { notifyProgressionChanged } from "@/features/progression/progressionSync";
+import { notifyProgressionChanged, type ClaimedRewards } from "@/features/progression/progressionSync";
+import { claimKey, masteriesSheetHasClaims, sponsorsSheetHasClaims, withLocalClaims } from "@/features/progression/localClaims";
 import { onProfileOpenRequest } from "@/features/progression/profileTabs";
 import { RewardIcon, type RewardItem } from "@/features/progression/RewardIcon";
 import { shipIllustrationUrl } from "@/features/ships/shipFrame";
@@ -37,6 +38,8 @@ interface RewardsHubProps {
   /** Ouvre la révélation (`RewardReveal`) sur ce qui vient d'être reçu. */
   onReveal: (items: RewardItem[], title: string) => void;
   onRefresh: () => void;
+  /** Réclamation réussie (`claimKey`) : montrée faite sur-le-champ par l'écran (`localClaims`). */
+  onClaimed: (keys: readonly string[]) => void;
   onShowQuests: () => void;
   onShowAchievements: () => void;
   /** Fenêtre ouverte d'emblée (lien direct vers les mécènes, par exemple). */
@@ -58,7 +61,7 @@ const ROUTE_WINDOW = 6;
  *
  * Un seul signal fort à la fois : ce qui se réclame luit, le reste attend.
  */
-export function RewardsHub({ profile, claiming, onClaimLevel, onReveal, onRefresh, onShowQuests, onShowAchievements, initialSheet }: RewardsHubProps) {
+export function RewardsHub({ profile, claiming, onClaimLevel, onReveal, onRefresh, onClaimed, onShowQuests, onShowAchievements, initialSheet }: RewardsHubProps) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   /** Coffret de mécène en train de s'ouvrir (scène plein écran, `GiftOpening`). */
@@ -81,8 +84,16 @@ export function RewardsHub({ profile, claiming, onClaimLevel, onReveal, onRefres
     }
   };
 
-  /** Une réclamation du hub : erreur affichée, révélation, relecture. */
-  function run(action: () => Promise<{ ok: boolean; error?: string; items?: RewardItem[] }>, title: string, revealDelayMs = 0) {
+  /**
+   * Une réclamation du hub : erreur affichée, révélation, relecture.
+   * `key` / `claimed` : ce qu'elle retire de l'écran et du bandeau, tout de
+   * suite. La fenêtre Mécènes ou Maîtrises qu'elle vide se referme d'elle-même.
+   */
+  function run(
+    action: () => Promise<{ ok: boolean; error?: string; items?: RewardItem[] }>,
+    title: string,
+    { key, claimed, revealDelayMs = 0 }: { key: string; claimed?: ClaimedRewards; revealDelayMs?: number }
+  ) {
     if (pending) return;
     playButtonClick();
     setError(null);
@@ -94,6 +105,10 @@ export function RewardsHub({ profile, claiming, onClaimLevel, onReveal, onRefres
         setGift(null);
         return;
       }
+      onClaimed([key]);
+      notifyProgressionChanged(claimed);
+      const after = withLocalClaims(profile, new Set([key]));
+      if ((sheet === "sponsors" && !sponsorsSheetHasClaims(after)) || (sheet === "masteries" && !masteriesSheetHasClaims(after))) closeSheet();
       if ("items" in result && result.items && result.items.length > 0) {
         const items = result.items;
         // Le coffre finit de s'ouvrir sous les yeux du joueur avant la révélation.
@@ -102,17 +117,19 @@ export function RewardsHub({ profile, claiming, onClaimLevel, onReveal, onRefres
         if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
         onReveal(items, title);
       }
-      notifyProgressionChanged();
       onRefresh();
     });
   }
 
   function claimMastery(mastery: MasteryView, level: number) {
-    run(() => claimMasteryLevel(mastery.shipId, level), `Maîtrise — ${mastery.shipName}, niveau ${level}`);
+    run(() => claimMasteryLevel(mastery.shipId, level), `Maîtrise — ${mastery.shipName}, niveau ${level}`, {
+      key: claimKey.mastery(mastery.shipId, level),
+      claimed: { masteries: 1 },
+    });
   }
 
   function claimMilestone(milestone: AudienceMilestoneView) {
-    run(() => claimAudienceMilestoneReward(milestone.threshold), `Audience — ${milestone.label}`);
+    run(() => claimAudienceMilestoneReward(milestone.threshold), `Audience — ${milestone.label}`, { key: claimKey.milestone(milestone.threshold) });
   }
 
   function openGift(sponsor: SponsorView) {
@@ -120,7 +137,11 @@ export function RewardsHub({ profile, claiming, onClaimLevel, onReveal, onRefres
     if (!stage || pending || gift) return;
     // Le coffret s'ouvre à l'écran pendant que le serveur répond ; la révélation attend la fin.
     setGift({ color: sponsor.color, name: sponsor.name });
-    run(() => openSponsorGift(sponsor.id, stage), `Un colis de ${sponsor.name ?? "votre admirateur"}`, GIFT_OPEN_MS);
+    run(() => openSponsorGift(sponsor.id, stage), `Un colis de ${sponsor.name ?? "votre admirateur"}`, {
+      key: claimKey.gift(sponsor.id, stage),
+      claimed: { sponsorGifts: 1 },
+      revealDelayMs: GIFT_OPEN_MS,
+    });
   }
 
   return (
@@ -141,7 +162,7 @@ export function RewardsHub({ profile, claiming, onClaimLevel, onReveal, onRefres
               if (result.cardId) items.push({ kind: "card", rarity: "common", cardId: result.cardId });
               if (result.streakCardId) items.push({ kind: "card", rarity: "abyssal", cardId: result.streakCardId });
               return { ok: result.ok, error: result.error, items };
-            }, "Escale franchie !")
+            }, "Escale franchie !", { key: claimKey.login(), claimed: { login: 1 } })
           }
         />
 
@@ -149,7 +170,7 @@ export function RewardsHub({ profile, claiming, onClaimLevel, onReveal, onRefres
           <ChestPanel
             chest={profile.hub.weeklyChest}
             busy={pending}
-            onOpen={() => run(() => openWeeklyChest(), "Coffre hebdomadaire ouvert !", CHEST_OPEN_MS)}
+            onOpen={() => run(() => openWeeklyChest(), "Coffre hebdomadaire ouvert !", { key: claimKey.chest(), claimed: { chest: 1 }, revealDelayMs: CHEST_OPEN_MS })}
           />
         )}
 

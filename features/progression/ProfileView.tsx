@@ -36,6 +36,7 @@ import { TitlePicker } from "@/features/progression/TitlePicker";
 import type { RewardItem } from "@/features/progression/RewardIcon";
 import { useCardBack } from "@/features/cosmetics/CardBackProvider";
 import { forgetProgression, notifyProgressionChanged } from "@/features/progression/progressionSync";
+import { claimKey } from "@/features/progression/localClaims";
 import { ProfileIdentity } from "@/features/progression/ProfileIdentity";
 import { RewardIcon } from "@/features/progression/RewardIcon";
 import { RewardReveal, type RevealedLevel } from "@/features/progression/RewardReveal";
@@ -71,6 +72,11 @@ interface ProfileViewProps {
   profile: ProfileSummary;
   /** Relit le profil après une écriture (réclamation, pseudo…). */
   onRefresh: () => void;
+  /**
+   * Réclamations qui viennent de réussir (`claimKey`) : l'écran les montre
+   * réclamées sur-le-champ, sans attendre la relecture (`localClaims`).
+   */
+  onClaimed?: (keys: readonly string[]) => void;
   initialTab?: ProfileTab;
   /** Panneau : ferme le panneau avant de quitter (quêtes, déconnexion). */
   onLeave?: () => void;
@@ -101,6 +107,7 @@ interface ProfileViewProps {
 export function ProfileView({
   profile,
   onRefresh,
+  onClaimed = () => {},
   initialTab = "carnet",
   onLeave,
   layout = "drawer",
@@ -197,6 +204,8 @@ export function ProfileView({
       if (profile.login.claimable) {
         const login = await claimDailyLogin();
         if (login.ok) {
+          onClaimed([claimKey.login()]);
+          notifyProgressionChanged({ login: 1 });
           if (login.tides) extra.push({ kind: "tides", amount: login.tides });
           if (login.xp) extra.push({ kind: "xp", amount: login.xp });
           if (login.boosterId) extra.push({ kind: "booster", boosterId: login.boosterId, count: 1 });
@@ -215,11 +224,21 @@ export function ProfileView({
       for (const boosterId of result.quests.boosterIds) extra.push({ kind: "booster", boosterId, count: 1 });
       if (result.achievements.tides > 0) extra.push({ kind: "tides", amount: result.achievements.tides });
       if (!result.ok) setClaimError(result.error ?? "Une partie des récompenses n'a pas pu être réclamée.");
+      // Tout est parti : quêtes et exploits en attente aussi. Un refus en route, la relecture départage.
+      onClaimed([
+        ...levels.map((entry) => claimKey.level(entry.level)),
+        ...(result.ok
+          ? [
+              ...profile.quests.filter((quest) => quest.completed && !quest.claimed).map((quest) => claimKey.quest(quest.questId, quest.periodKey)),
+              ...profile.achievements.filter((achievement) => achievement.claimable).map((achievement) => claimKey.achievement(achievement.code)),
+            ]
+          : []),
+      ]);
       if (levels.length > 0 || choices.length > 0 || extra.length > 0) {
         const parts = result.levels.length + result.quests.count + result.achievements.count + (extra.length > 0 && profile.login.claimable ? 1 : 0);
         setReveal({ levels, choices, extraItems: extra, title: parts > 1 ? "Tout est réclamé !" : undefined });
       }
-      notifyProgressionChanged();
+      notifyProgressionChanged({ levels: levels.length, quests: result.quests.count, achievements: result.achievements.count });
       onRefresh();
     } finally {
       setClaiming(null);
@@ -234,8 +253,11 @@ export function ProfileView({
     try {
       const result = await claimAchievement(code);
       if (!result.ok) setClaimError(result.error ?? "Réclamation impossible.");
-      else setReveal({ levels: [], choices: [], extraItems: [{ kind: "tides", amount: result.tides ?? 0 }], title: "Exploit réclamé !" });
-      notifyProgressionChanged();
+      else {
+        onClaimed([claimKey.achievement(code)]);
+        setReveal({ levels: [], choices: [], extraItems: [{ kind: "tides", amount: result.tides ?? 0 }], title: "Exploit réclamé !" });
+      }
+      notifyProgressionChanged(result.ok ? { achievements: 1 } : undefined);
       onRefresh();
     } finally {
       setClaiming(null);
@@ -268,16 +290,21 @@ export function ProfileView({
           ...result.claimed.map((entry) => entry.cardChoice).filter((entry): entry is PendingCardChoice => Boolean(entry)),
         ];
         if (!result.ok) setClaimError(result.error ?? "Réclamation impossible.");
+        onClaimed(levels.map((entry) => claimKey.level(entry.level)));
+        notifyProgressionChanged({ levels: levels.length });
         if (levels.length > 0 || choices.length > 0) setReveal({ levels, choices });
       } else {
         const result = await claimLevelReward(level);
         if (!result.ok) {
           setClaimError(result.error ?? "Réclamation impossible.");
+          notifyProgressionChanged();
         } else {
+          onClaimed([claimKey.level(level)]);
+          notifyProgressionChanged({ levels: 1 });
           setReveal({ levels: [{ level, items: result.items ?? [] }], choices: result.cardChoice ? [result.cardChoice] : [] });
         }
       }
-      notifyProgressionChanged();
+      onRefresh();
     } finally {
       setClaiming(null);
     }
@@ -315,6 +342,7 @@ export function ProfileView({
             onClaimLevel={(level) => void claim(level)}
             onReveal={(items, title) => setReveal({ levels: [], choices: [], extraItems: items, title })}
             onRefresh={onRefresh}
+            onClaimed={onClaimed}
             onShowQuests={() => setTab("quetes")}
             onShowAchievements={() => setTab("exploits")}
             initialSheet={initialPanel}
@@ -331,7 +359,7 @@ export function ProfileView({
           {claimError && <p className={`${game.error} ${sceneStyles.claimError}`}>{claimError}</p>}
           <div className={sceneStyles.tabPanel} role="tabpanel">
             {picker === "title" && <TitlePicker titles={profile.titles} onClose={() => setPicker(null)} onChanged={onRefresh} />}
-            {!picking && tab === "quetes" && <QuestsTab profile={profile} onRefresh={onRefresh} />}
+            {!picking && tab === "quetes" && <QuestsTab profile={profile} onRefresh={onRefresh} onClaimed={onClaimed} />}
             {!picking && tab === "recompenses" && (
               <LevelRewardsTab
                 profile={profile}
@@ -365,6 +393,7 @@ export function ProfileView({
           onPickTitle={() => setPicker("title")}
           onShowRoute={() => setTab("recompenses")}
           onRefresh={onRefresh}
+          onClaimed={onClaimed}
           onSignOut={handleSignOut}
           signingOut={signingOut}
         />
@@ -467,7 +496,7 @@ export function ProfileView({
         {illustrationPicker}
         {picker === "title" && <TitlePicker titles={profile.titles} onClose={() => setPicker(null)} onChanged={onRefresh} />}
         {!picking && tab === "carnet" && <LogbookTab profile={profile} onRefresh={onRefresh} onShowRewards={() => setTab("recompenses")} />}
-        {!picking && tab === "quetes" && <QuestsTab profile={profile} onRefresh={onRefresh} />}
+        {!picking && tab === "quetes" && <QuestsTab profile={profile} onRefresh={onRefresh} onClaimed={onClaimed} />}
         {!picking && tab === "recompenses" && (
           <LevelRewardsTab
             profile={profile}
@@ -509,7 +538,7 @@ function LogbookTab({ profile, onRefresh, onShowRewards }: { profile: ProfileSum
       const gains = loginGainsText(result);
       playRewardClaimed();
       setMessage(gains ? `Escale franchie — ${gains}.` : "Escale franchie.");
-      notifyProgressionChanged();
+      notifyProgressionChanged({ login: 1 });
       onRefresh();
     });
   }
@@ -849,7 +878,7 @@ function boardFromProfile(entries: readonly QuestEntry[]): QuestBoard {
  * coûterait pour rien, d'autant que le profil l'a déjà fait côté serveur.
  * Après une réclamation, journal ET profil sont relus (pastilles, niveau).
  */
-function QuestsTab({ profile, onRefresh }: { profile: ProfileSummary; onRefresh: () => void }) {
+function QuestsTab({ profile, onRefresh, onClaimed }: { profile: ProfileSummary; onRefresh: () => void; onClaimed: (keys: readonly string[]) => void }) {
   const seed = useMemo(() => (profile.isSignedIn && profile.quests.length > 0 ? boardFromProfile(profile.quests) : null), [profile.isSignedIn, profile.quests]);
   const [fresh, setFresh] = useState<QuestBoard | null>(() => questBoardCache.peek());
   const [voyages, setVoyages] = useState<VoyageBoard | null>(() => voyageBoardCache.peek());
@@ -886,7 +915,8 @@ function QuestsTab({ profile, onRefresh }: { profile: ProfileSummary; onRefresh:
       board={board}
       voyages={voyages ?? undefined}
       voyagesPending={voyages === null}
-      onChanged={() => {
+      onChanged={(claimed) => {
+        if (claimed) onClaimed([claimKey.quest(claimed.questId, claimed.periodKey)]);
         load(true);
         onRefresh();
       }}
