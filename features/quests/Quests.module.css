@@ -373,8 +373,11 @@ button.tab:not([data-active]):hover {
 .list {
   display: flex;
   flex-direction: column;
+  /* Un peu de marge à gauche, que le halo d'une icône à encaisser ne soit
+     pas coupé par la zone défilante ; la ligne, elle, reste à sa place. */
+  left: calc(var(--sheet-left) - 12 * var(--u));
   margin: 0;
-  padding: 0;
+  padding: 0 0 0 calc(12 * var(--u));
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -448,6 +451,15 @@ button.row:disabled {
   inset: calc(-3 * var(--u));
   background: url("/assets/quests/ecran/cadre-icone.webp") center / 100% 100% no-repeat;
   pointer-events: none;
+}
+
+/* À encaisser : le cadre de laiton s'allume et respire. */
+.row[data-state="claimable"] .iconFrame {
+  animation: frameGlow 1.8s ease-in-out infinite;
+}
+
+.row[data-state="claimable"] .iconFrame::after {
+  filter: brightness(1.25) saturate(1.2);
 }
 
 .icon {
@@ -592,9 +604,8 @@ button.row:disabled {
 }
 
 /*
- * Les TAMPONS, posés en travers de la fin de la jauge : rouge « Réclamée »
- * (encre qui a bu le papier), or « Encaisser » qui pulse tant qu'on n'a
- * pas touché la ligne.
+ * Le TAMPON « Encaisser », au bout de la jauge : or, il pulse tant qu'on
+ * n'a pas touché la ligne. (Une quête réclamée quitte la feuille.)
  */
 .stamp {
   flex: 0 0 auto;
@@ -612,15 +623,6 @@ button.row:disabled {
   text-transform: uppercase;
   pointer-events: none;
   transform: rotate(-6deg);
-}
-
-.stamp[data-stamp="claimed"] {
-  color: rgba(178, 32, 24, 0.86);
-  mix-blend-mode: multiply;
-  /* Un encrage irrégulier : le tampon n'a pas tout mordu. */
-  -webkit-mask-image: radial-gradient(140% 120% at 30% 40%, #000 55%, rgba(0, 0, 0, 0.72) 80%, rgba(0, 0, 0, 0.9) 100%);
-  mask-image: radial-gradient(140% 120% at 30% 40%, #000 55%, rgba(0, 0, 0, 0.72) 80%, rgba(0, 0, 0, 0.9) 100%);
-  animation: stampIn 380ms cubic-bezier(0.3, 1.4, 0.5, 1) both;
 }
 
 .stamp[data-stamp="claim"] {
@@ -794,13 +796,24 @@ button.row:focus-visible .stamp[data-stamp="claim"] {
   from { opacity: 0; transform: translateY(5%); }
 }
 
-@keyframes stampIn {
-  from { opacity: 0; transform: rotate(-6deg) scale(1.6); }
-}
-
 @keyframes claimPulse {
   0%, 100% { box-shadow: 0 0 0 rgba(255, 196, 80, 0); transform: rotate(-6deg) scale(1); }
   50% { box-shadow: 0 0 calc(14 * var(--u)) rgba(255, 196, 80, 0.75); transform: rotate(-6deg) scale(1.05); }
+}
+
+@keyframes frameGlow {
+  0%, 100% {
+    box-shadow:
+      0 0 0 calc(2 * var(--u)) rgba(255, 222, 120, 0.9),
+      0 0 calc(10 * var(--u)) calc(4 * var(--u)) rgba(255, 150, 20, 0.8),
+      0 0 calc(24 * var(--u)) calc(8 * var(--u)) rgba(255, 120, 0, 0.45);
+  }
+  50% {
+    box-shadow:
+      0 0 0 calc(3 * var(--u)) rgba(255, 236, 160, 1),
+      0 0 calc(16 * var(--u)) calc(7 * var(--u)) rgba(255, 160, 30, 0.95),
+      0 0 calc(36 * var(--u)) calc(14 * var(--u)) rgba(255, 120, 0, 0.6);
+  }
 }
 
 @keyframes toastIn {
@@ -869,6 +882,7 @@ button.row:focus-visible .stamp[data-stamp="claim"] {
   .tabs,
   .board,
   .stamp,
+  .row[data-state="claimable"] .iconFrame,
   .toast,
   .ghost::after,
   .skeletonIcon::before {

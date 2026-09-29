@@ -324,11 +324,13 @@ interface QuestSheetProps {
 
 /**
  * Un registre (jour ou semaine) : une feuille de parchemin, une ligne par
- * quête. Trois états lisibles d'un coup d'œil : en cours (jauge cyan), à
- * encaisser (tampon doré qui pulse au bout de la jauge, toute la ligne
- * encaisse), réclamée (tampon rouge « Réclamée »).
+ * quête ENCORE OUVERTE. Deux états lisibles d'un coup d'œil : en cours
+ * (jauge cyan), à encaisser (le cadre de l'icône brille, un tampon doré
+ * pulse au bout de la jauge, toute la ligne encaisse). Une quête réclamée
+ * quitte la feuille : il ne reste que ce qui reste à faire.
  */
 function QuestSheet({ sheet, title, subtitle, entries, emptyText, busyKey, onClaim, onReroll }: QuestSheetProps) {
+  const open = entries.filter((entry) => !entry.claimed);
   return (
     <section className={styles.sheet} data-sheet={sheet} aria-label={title}>
       <header className={styles.sheetHead}>
@@ -336,11 +338,11 @@ function QuestSheet({ sheet, title, subtitle, entries, emptyText, busyKey, onCla
         <span className={styles.sheetMeta}>{subtitle}</span>
       </header>
 
-      {entries.length === 0 ? (
-        <p className={styles.sheetEmpty}>{emptyText}</p>
+      {open.length === 0 ? (
+        <p className={styles.sheetEmpty}>{entries.length > 0 ? `Tout est encaissé. De nouvelles quêtes arrivent — ${subtitle}.` : emptyText}</p>
       ) : (
         <ul className={styles.list}>
-          {entries.map((entry) => (
+          {open.map((entry) => (
             <QuestRow key={`${entry.questId}|${entry.periodKey}`} entry={entry} busyKey={busyKey} onClaim={onClaim} onReroll={onReroll} />
           ))}
         </ul>
@@ -385,11 +387,6 @@ function QuestRow({ entry, busyKey, onClaim, onReroll }: { entry: QuestEntry; bu
             {Math.min(entry.progress, entry.target)} / {entry.target}
           </span>
           {/* Le tampon se pose au bout de la jauge : jamais sur un texte. */}
-          {entry.claimed && (
-            <span className={styles.stamp} data-stamp="claimed">
-              Réclamée
-            </span>
-          )}
           {claimable && (
             <span className={styles.stamp} data-stamp="claim">
               {busyKey === key ? "…" : "Encaisser"}
@@ -430,7 +427,7 @@ function QuestRow({ entry, busyKey, onClaim, onReroll }: { entry: QuestEntry; bu
 
   return (
     <li className={styles.item}>
-      <div className={styles.row} data-state={entry.claimed ? "claimed" : "open"}>
+      <div className={styles.row} data-state="open">
         {body}
       </div>
       {/* Le remplacement reste un bouton À PART, posé sur la ligne mais hors
