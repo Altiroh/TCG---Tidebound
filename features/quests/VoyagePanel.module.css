@@ -26,21 +26,31 @@
   opacity: 0.55;
 }
 
+/*
+ * Le titre tient dans le PAPIER VIERGE de la carte, entre la rose des vents
+ * et les nuages (13,4 % → 45 % en largeur, 12,8 % → 34 % en hauteur de
+ * l'image) : il ne mord jamais sur l'illustration. Incliné comme le bord
+ * de la feuille.
+ */
 .titleBlock {
   position: absolute;
-  left: 12.2%;
-  top: 11.5%;
-  width: 50%;
+  left: 13.6%;
+  top: 12.8%;
+  width: 31.4%;
+  transform: rotate(-1.6deg);
+  transform-origin: 0 0;
 }
 
 .eyebrow {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: calc(6 * var(--u)) calc(14 * var(--u));
+  gap: calc(4 * var(--u)) calc(10 * var(--u));
   margin: 0;
   font-family: var(--tb-font-display);
-  font-size: max(10px, calc(17 * var(--u) * var(--tb-text-scale, 1)));
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  font-size: max(8px, calc(13 * var(--u) * var(--tb-text-scale, 1)));
   font-weight: 700;
   letter-spacing: 0.04em;
   line-height: 1.1;
@@ -58,14 +68,14 @@
   position: relative;
   display: inline-grid;
   place-items: center;
-  min-width: max(20px, calc(28 * var(--u)));
-  height: max(20px, calc(24 * var(--u)));
-  padding: 0 calc(6 * var(--u));
+  min-width: max(14px, calc(21 * var(--u)));
+  height: max(14px, calc(19 * var(--u)));
+  padding: 0 calc(4 * var(--u));
   border: max(1px, calc(1.5 * var(--u))) solid rgba(43, 28, 16, 0.55);
   border-radius: 999px;
   background: rgba(255, 244, 214, 0.35);
   font-family: var(--tb-font-display);
-  font-size: max(9px, calc(12 * var(--u) * var(--tb-text-scale, 1)));
+  font-size: max(8px, calc(11 * var(--u) * var(--tb-text-scale, 1)));
   font-weight: 700;
   letter-spacing: 0.02em;
   color: #3a2715;
@@ -103,9 +113,10 @@
 }
 
 .title {
-  margin: calc(4 * var(--u)) 0 0;
+  margin: calc(3 * var(--u)) 0 0;
   font-family: var(--tb-font-display);
-  font-size: max(18px, calc(37 * var(--u) * var(--tb-text-scale, 1)));
+  font-size: max(13px, calc(24 * var(--u) * var(--tb-text-scale, 1)));
+  white-space: nowrap;
   font-weight: 700;
   letter-spacing: 0.01em;
   line-height: 1.05;
@@ -114,27 +125,36 @@
 }
 
 .tagline {
-  margin: calc(4 * var(--u)) 0 0;
+  margin: calc(3 * var(--u)) 0 0;
   font-family: var(--tb-font-body);
-  font-size: max(10px, calc(13.5 * var(--u) * var(--tb-text-scale, 1)));
+  font-size: max(8px, calc(12.5 * var(--u) * var(--tb-text-scale, 1)));
   font-style: italic;
   line-height: 1.2;
   color: #2f2012;
 }
 
-/* L'escale racontée (survolée, touchée, sinon celle du moment). */
-.stepLine {
-  display: inline-block;
-  margin: calc(5 * var(--u)) 0 0 calc(-6 * var(--u));
-  padding: calc(2 * var(--u)) calc(8 * var(--u));
-  max-width: 88%;
-  border-radius: calc(4 * var(--u));
-  background: rgba(238, 218, 176, 0.88);
-  box-shadow: 0 0 calc(6 * var(--u)) rgba(238, 218, 176, 0.9);
+/* L'escale survolée : une bulle de parchemin au-dessus de sa bouée. */
+.stepTip {
+  position: absolute;
+  z-index: 2;
+  left: clamp(12%, var(--x), 70%);
+  top: var(--y);
+  display: flex;
+  flex-direction: column;
+  gap: calc(2 * var(--u));
+  width: max-content;
+  max-width: calc(300 * var(--u));
+  margin: 0;
+  padding: calc(6 * var(--u)) calc(10 * var(--u));
+  border: 0 solid transparent;
+  border-image: url("/assets/ui/panneaux/panneau-parchemin.webp") 40 fill / 10px / 0 stretch;
   font-family: var(--tb-font-body);
-  font-size: max(9.5px, calc(12 * var(--u) * var(--tb-text-scale, 1)));
+  font-size: max(10px, calc(12.5 * var(--u) * var(--tb-text-scale, 1)));
   line-height: 1.25;
-  color: #4a3420;
+  color: #3a2715;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.55));
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - 38 * var(--u)));
 }
 
 .stepName {

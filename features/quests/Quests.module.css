@@ -173,7 +173,7 @@
   /* Un pixel de maquette ; résolu dans les enfants (la colonne est leur conteneur). */
   --u: calc(100cqw / 1250);
   position: relative;
-  width: min(100cqw, 100cqh * 1250 / 862);
+  width: min(100cqw, 100cqh * 1250 / 878);
   container-type: inline-size;
   pointer-events: auto;
   color: #2b1c10;
@@ -275,63 +275,87 @@ button.tab:not([data-active]):hover {
   margin-top: calc(24 * var(--u));
 }
 
+/*
+ * UNE FEUILLE garde les proportions de son image (`aspect-ratio`) : les
+ * filets imprimés restent à leur place quelle que soit la taille, et le
+ * contenu s'y pose en % de la feuille, relevés sur l'image —
+ *   - l'en-tête entre le haut du papier et le double filet (8,6 → 18,2 %) ;
+ *   - les lignes entre ce filet et celui du bas (21,8 → 83,6 %) ;
+ *   - en largeur, entre les deux filets verticaux (la corde n'est pas du
+ *     même côté sur les deux feuilles, d'où `--sheet-left/right`).
+ * Plus de lignes qu'il n'en tient : la zone des lignes défile, rien ne sort
+ * du papier.
+ */
 .sheet {
+  --sheet-left: 10.8%;
+  --sheet-right: 8.2%;
   position: relative;
-  display: flex;
-  flex-direction: column;
   min-width: 0;
-  min-height: calc(372 * var(--u));
-  padding: calc(44 * var(--u)) calc(56 * var(--u)) calc(34 * var(--u)) calc(44 * var(--u));
-  border: 0 solid transparent;
-  border-image: url("/assets/quests/ecran/feuille-quotidiennes.webp") 90 90 110 fill / calc(51 * var(--u)) calc(51 * var(--u)) calc(62 * var(--u)) / 0 stretch;
+  aspect-ratio: 1057 / 683;
+  background: url("/assets/quests/ecran/feuille-quotidiennes.webp") center / 100% 100% no-repeat;
   filter: drop-shadow(0 calc(4 * var(--u)) calc(6 * var(--u)) rgba(0, 0, 0, 0.45));
 }
 
 .sheet[data-sheet="hebdomadaires"] {
-  border-image-source: url("/assets/quests/ecran/feuille-hebdomadaires.webp");
+  --sheet-left: 8.4%;
+  --sheet-right: 10.8%;
+  aspect-ratio: 1052 / 683;
+  background-image: url("/assets/quests/ecran/feuille-hebdomadaires.webp");
 }
 
 .sheetHead {
+  position: absolute;
+  top: 8.6%;
+  height: 9.6%;
+  left: var(--sheet-left);
+  right: var(--sheet-right);
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: calc(12 * var(--u));
-  padding: 0 calc(2 * var(--u)) calc(6 * var(--u)) calc(12 * var(--u));
-  border-bottom: max(1px, calc(1.5 * var(--u))) solid rgba(74, 48, 22, 0.55);
-  box-shadow: 0 1px 0 rgba(255, 244, 214, 0.35);
+  padding: 0 calc(4 * var(--u));
+  overflow: hidden;
 }
 
 .sheetTitle {
   margin: 0;
+  overflow: hidden;
   font-family: var(--tb-font-display);
-  font-size: max(14px, calc(21 * var(--u) * var(--tb-text-scale, 1)));
+  font-size: max(12px, calc(21 * var(--u) * var(--tb-text-scale, 1)));
   font-weight: 700;
   letter-spacing: 0.02em;
   line-height: 1.1;
+  text-overflow: ellipsis;
   text-transform: uppercase;
+  white-space: nowrap;
   color: #24160b;
 }
 
 .sheetMeta {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
   flex: 0 0 auto;
   font-family: var(--tb-font-body);
-  font-size: max(10.5px, calc(14 * var(--u) * var(--tb-text-scale, 1)));
+  font-size: max(10px, calc(14 * var(--u) * var(--tb-text-scale, 1)));
   line-height: 1.15;
+  white-space: nowrap;
   color: #3a2715;
 }
 
-.sheetNote {
-  font-size: 0.82em;
-  font-style: italic;
-  color: #6a5238;
+/* La zone des lignes (et des notes) : entre les deux filets imprimés. */
+.list,
+.sheetEmpty,
+.note {
+  position: absolute;
+  top: 21.8%;
+  bottom: 16.4%;
+  left: var(--sheet-left);
+  right: var(--sheet-right);
 }
 
 .sheetEmpty {
-  margin: auto 0;
-  padding: calc(20 * var(--u)) calc(16 * var(--u));
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 0 calc(16 * var(--u));
   font-family: var(--tb-font-body);
   font-size: max(11px, calc(14 * var(--u) * var(--tb-text-scale, 1)));
   font-style: italic;
@@ -344,11 +368,20 @@ button.tab:not([data-active]):hover {
   flex-direction: column;
   margin: 0;
   padding: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(74, 48, 22, 0.45) transparent;
   list-style: none;
 }
 
+/* Un tiers de la zone par quête : trois lignes l'occupent exactement. */
 .item {
   position: relative;
+  display: flex;
+  flex: 0 0 auto;
+  min-height: 33.333%;
 }
 
 .item + .item {
@@ -361,12 +394,12 @@ button.tab:not([data-active]):hover {
 .row {
   position: relative;
   display: grid;
-  grid-template-columns: calc(58 * var(--u)) minmax(0, 1fr) calc(104 * var(--u));
+  grid-template-columns: calc(50 * var(--u)) minmax(0, 1fr) calc(88 * var(--u));
   align-items: center;
-  column-gap: calc(13 * var(--u));
-  width: 100%;
-  min-height: calc(88 * var(--u));
-  padding: calc(10 * var(--u)) 0 calc(10 * var(--u)) calc(2 * var(--u));
+  column-gap: calc(11 * var(--u));
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: calc(1 * var(--u)) calc(2 * var(--u));
   border: 0;
   background: none;
   font: inherit;
@@ -395,7 +428,7 @@ button.row:disabled {
   position: relative;
   display: grid;
   place-items: center;
-  width: calc(58 * var(--u));
+  width: calc(50 * var(--u));
   aspect-ratio: 1170 / 1116;
   border-radius: calc(4 * var(--u));
   background: radial-gradient(circle at 50% 40%, #2c3a40, #10181c 75%);
@@ -420,7 +453,7 @@ button.row:disabled {
 .main {
   display: flex;
   flex-direction: column;
-  gap: calc(3 * var(--u));
+  gap: calc(1.5 * var(--u));
   min-width: 0;
 }
 
@@ -435,7 +468,7 @@ button.row:disabled {
 
 .name {
   font-family: var(--tb-font-display);
-  font-size: max(11px, calc(14 * var(--u) * var(--tb-text-scale, 1)));
+  font-size: max(10.5px, calc(13 * var(--u) * var(--tb-text-scale, 1)));
   font-weight: 700;
   letter-spacing: 0.01em;
   line-height: 1.15;
@@ -467,23 +500,23 @@ button.row:disabled {
 .objective {
   margin: 0;
   font-family: var(--tb-font-body);
-  font-size: max(10.5px, calc(13.5 * var(--u) * var(--tb-text-scale, 1)));
-  line-height: 1.25;
+  font-size: max(10px, calc(12.5 * var(--u) * var(--tb-text-scale, 1)));
+  line-height: 1.12;
   color: #2f2012;
 }
 
 .progressLine {
   display: flex;
   align-items: center;
-  gap: calc(14 * var(--u));
-  margin-top: calc(4 * var(--u));
+  gap: calc(10 * var(--u));
+  margin-top: calc(2 * var(--u));
 }
 
 /* Jauge : un rail d'encre usé, un remplissage cyan comme la maquette. */
 .track {
   position: relative;
   flex: 1 1 auto;
-  height: max(5px, calc(10 * var(--u)));
+  height: max(5px, calc(9 * var(--u)));
   overflow: hidden;
   border-radius: 999px;
   background: linear-gradient(180deg, #3a3230, #5a514b);
@@ -503,7 +536,7 @@ button.row:disabled {
 
 .count {
   flex: 0 0 auto;
-  min-width: calc(44 * var(--u));
+  min-width: calc(40 * var(--u));
   font-family: var(--tb-font-body);
   font-size: max(10.5px, calc(14 * var(--u) * var(--tb-text-scale, 1)));
   font-variant-numeric: tabular-nums;
@@ -558,7 +591,7 @@ button.row:disabled {
  */
 .stamp {
   position: absolute;
-  right: calc(114 * var(--u));
+  right: calc(96 * var(--u));
   top: 50%;
   padding: calc(3 * var(--u)) calc(10 * var(--u));
   border: calc(3 * var(--u)) solid currentColor;
@@ -600,7 +633,7 @@ button.row:focus-visible .stamp[data-stamp="claim"] {
 /* Remplacer : un petit mot au crayon, en haut à droite de la ligne. */
 .reroll {
   position: absolute;
-  right: calc(114 * var(--u));
+  right: calc(96 * var(--u));
   top: calc(8 * var(--u));
   display: inline-flex;
   align-items: center;
@@ -632,14 +665,20 @@ button.row:focus-visible .stamp[data-stamp="claim"] {
 
 /* ── Notes (vide, indisponible, erreur) ───────────────────────── */
 
+/* Une note (vide, erreur) prend toute la feuille, en-tête compris. */
 .note {
+  top: 8.6%;
   display: flex;
-  flex: 1 1 auto;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: calc(12 * var(--u));
   padding: calc(16 * var(--u));
+  text-align: center;
+}
+
+.note .sheetTitle {
+  white-space: normal;
   text-align: center;
 }
 

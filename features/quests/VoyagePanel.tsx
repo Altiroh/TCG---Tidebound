@@ -149,19 +149,6 @@ export function VoyagePanel({
         </p>
         <h2 className={styles.title}>{voyage.name}</h2>
         <p className={styles.tagline}>{voyage.tagline}</p>
-        <p className={styles.stepLine} aria-live="polite">
-          {locked ? (
-            "Boucle la Traversée précédente pour lever l'ancre."
-          ) : step ? (
-            <>
-              <span className={styles.stepName}>
-                Escale {shown + 1} · {step.name}
-              </span>{" "}
-              — {step.label}
-              {step.state === "current" && ` (${step.progress}/${step.target})`}
-            </>
-          ) : null}
-        </p>
       </div>
 
       <ol className={styles.route} aria-label={`Escales de la Traversée ${voyage.numeral}`}>
@@ -178,9 +165,19 @@ export function VoyagePanel({
         ))}
       </ol>
 
-      {step && (
-        <RewardPlaque step={step} claimable={claimableHere} busy={busy} onClaim={handleClaim} />
+      {/* L'escale survolée (ou touchée) se raconte dans une bulle au-dessus
+          de sa bouée : le papier du titre reste au titre. */}
+      {hovered !== null && step && (
+        <p className={styles.stepTip} style={{ "--x": `${buoyAt(shown, voyage.steps.length).x}%`, "--y": `${buoyAt(shown, voyage.steps.length).y}%` } as CSSProperties} role="status">
+          <span className={styles.stepName}>
+            Escale {shown + 1} · {step.name}
+          </span>
+          {step.label}
+          {step.state === "current" && ` (${step.progress}/${step.target})`}
+        </p>
       )}
+
+      {step && <RewardPlaque step={step} claimable={claimableHere} busy={busy} locked={locked} onClaim={handleClaim} />}
     </section>
   );
 }
@@ -227,7 +224,7 @@ function Stop({
 }
 
 /** La plaque clouée à droite de la carte : ce que rapporte l'escale racontée — et le palier à réclamer. */
-function RewardPlaque({ step, claimable, busy, onClaim }: { step: VoyageStepView; claimable: boolean; busy: boolean; onClaim: () => void }) {
+function RewardPlaque({ step, claimable, busy, locked, onClaim }: { step: VoyageStepView; claimable: boolean; busy: boolean; locked: boolean; onClaim: () => void }) {
   const { reward } = step;
   const lines = (
     <>
@@ -262,6 +259,7 @@ function RewardPlaque({ step, claimable, busy, onClaim }: { step: VoyageStepView
         </span>
       )}
       {step.claimed && <span className={styles.plaqueState}>Palier réclamé</span>}
+      {locked && <span className={styles.plaqueState}>Boucle la Traversée précédente pour lever l&apos;ancre.</span>}
       {claimable && <span className={styles.plaqueClaim}>{busy ? "…" : "Réclamer"}</span>}
     </>
   );

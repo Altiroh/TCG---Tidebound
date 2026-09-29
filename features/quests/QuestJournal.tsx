@@ -24,12 +24,13 @@ interface QuestJournalProps {
 
 /**
  * Les onglets PEINTS de la maquette (`onglet-<id>.webp`, et `-actif` quand
- * il est choisi), dans leur ordre. La maquette n'a pas d'onglet « Cartes » :
- * ces quêtes-là restent sous « Toutes ».
+ * il est choisi), dans leur ordre ; « Cartes », peint à part, suit « Parties »
+ * comme dans `QUEST_CATEGORIES`.
  */
 const TABS: readonly { id: QuestCategory | null; asset: string; label: string }[] = [
   { id: null, asset: "toutes", label: "Toutes" },
   { id: "parties", asset: "parties", label: QUEST_CATEGORY_META.parties.label },
+  { id: "cartes", asset: "cartes", label: QUEST_CATEGORY_META.cartes.label },
   { id: "stats", asset: "stats", label: QUEST_CATEGORY_META.stats.label },
   { id: "maree", asset: "maree", label: QUEST_CATEGORY_META.maree.label },
   { id: "decks", asset: "decks", label: QUEST_CATEGORY_META.decks.label },
@@ -177,7 +178,6 @@ export function QuestJournal({ board, voyages, voyagesPending = false, onChanged
           sheet="quotidiennes"
           title="Quotidiennes"
           subtitle={formatRemaining(board.dailyEndsAt)}
-          note={board.dailyRerollsLeft > 0 ? `${board.dailyRerollsLeft} remplacement gratuit` : undefined}
           entries={visible(board.daily)}
           emptyText={filter ? "Aucune quête du jour dans cette catégorie." : "Aucune quête du jour."}
           busyKey={busyKey}
@@ -312,8 +312,6 @@ interface QuestSheetProps {
   sheet: "quotidiennes" | "hebdomadaires";
   title: string;
   subtitle: string;
-  /** Mention sous l'échéance (remplacement gratuit restant). */
-  note?: string;
   entries: QuestEntry[];
   /** Ligne montrée quand la période (ou le filtre) ne laisse rien : la feuille garde sa place. */
   emptyText: string;
@@ -330,15 +328,12 @@ interface QuestSheetProps {
  * encaisser (tampon doré qui pulse, toute la ligne encaisse), réclamée
  * (tampon rouge « Réclamée »).
  */
-function QuestSheet({ sheet, title, subtitle, note, entries, emptyText, busyKey, onClaim, onReroll }: QuestSheetProps) {
+function QuestSheet({ sheet, title, subtitle, entries, emptyText, busyKey, onClaim, onReroll }: QuestSheetProps) {
   return (
     <section className={styles.sheet} data-sheet={sheet} aria-label={title}>
       <header className={styles.sheetHead}>
         <h2 className={styles.sheetTitle}>{title}</h2>
-        <span className={styles.sheetMeta}>
-          {subtitle}
-          {note && <span className={styles.sheetNote}>{note}</span>}
-        </span>
+        <span className={styles.sheetMeta}>{subtitle}</span>
       </header>
 
       {entries.length === 0 ? (
