@@ -325,8 +325,9 @@ export function ProfileView({
     }
     // Un choix (illustration, titre) s'ouvre à la place de la scène ; le fermer y ramène.
     if (picking || tab !== "carnet") {
+      // Exploits : la vitrine prend toute la place et ne fait défiler que sa liste.
       return (
-        <div className={sceneStyles.tabPage}>
+        <div className={sceneStyles.tabPage} data-fill={!picking && tab === "exploits" ? "true" : undefined}>
           {claimError && <p className={`${game.error} ${sceneStyles.claimError}`}>{claimError}</p>}
           <div className={sceneStyles.tabPanel} role="tabpanel">
             {picker === "title" && <TitlePicker titles={profile.titles} onClose={() => setPicker(null)} onChanged={onRefresh} />}

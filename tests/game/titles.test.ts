@@ -97,6 +97,8 @@ describe("jauge des exploits", () => {
     decksFullyOwned: 0,
     tutorialCompleted: true,
     voyagesCompleted: [],
+    lifetime: {},
+    records: {},
   };
 
   it("chaque exploit donne une jauge cohérente avec son déblocage", () => {

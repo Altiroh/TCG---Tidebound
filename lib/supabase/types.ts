@@ -474,6 +474,23 @@ export interface Database {
         Update: Record<string, never>;
         Relationships: [];
       };
+      /**
+       * Statistiques à vie (`20261020120000_statistiques_a_vie.sql`) : une
+       * ligne par joueur et par clé du catalogue `MATCH_STATS`.
+       */
+      player_lifetime_stats: {
+        Row: { user_id: string; stat_key: string; total: number; record: number; updated_at: string };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      /** Statistiques à vie : idempotence par partie, et relevé envoyé. */
+      match_lifetime_stats: {
+        Row: { match_id: string; user_id: string; stats: Record<string, number>; recorded_at: string };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
       /** Traversées : progression par joueur (`20261007120000_voyages.sql`). */
       player_voyages: {
         Row: {
@@ -756,6 +773,11 @@ export interface Database {
         Args: { p_user_id: string; p_match_id: string; p_points: Record<string, number> };
         Returns: { ok: boolean; recorded?: boolean };
       };
+      /** Réservée au serveur (clé service_role) : efface l'intérêt des mécènes dont l'audience courante n'atteint plus le seuil. */
+      forget_sponsor_interest: {
+        Args: { p_user_id: string; p_sponsor_ids: string[] };
+        Returns: { ok: boolean; forgotten?: number };
+      };
       /** Réservée au serveur (clé service_role) : `p_user_id` vient de la session, et doit être en file. */
       claim_matchmaking_opponent: {
         Args: { p_user_id: string };
@@ -995,6 +1017,16 @@ export interface Database {
       purchase_cosmetic: {
         Args: { p_user_id: string; p_cosmetic_kind: string; p_cosmetic_id: string; p_label: string; p_price: number };
         Returns: { ok: boolean; error?: string; balance?: number; cosmetic_id?: string };
+      };
+      /** Achat d'un Collectable en Jetons de Préconstruit (`20261020120000_statistiques_a_vie.sql`). */
+      purchase_cosmetic_tokens: {
+        Args: { p_user_id: string; p_cosmetic_kind: string; p_cosmetic_id: string; p_label: string; p_price_tokens: number };
+        Returns: { ok: boolean; error?: string; tokens?: number; cosmetic_id?: string };
+      };
+      /** Statistiques à vie d'une partie, idempotent par partie. */
+      record_match_lifetime_stats: {
+        Args: { p_user_id: string; p_match_id: string; p_stats: Record<string, number> };
+        Returns: { ok: boolean; error?: string; recorded?: boolean; applied?: number };
       };
     };
     Enums: {

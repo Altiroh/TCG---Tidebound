@@ -666,7 +666,7 @@ function SponsorsPanel({
           Mécènes
           <span
             className={styles.help}
-            title={`Le public juge chacune de tes parties : c'est ton Audience. Passé le niveau ${SPONSORS_UNLOCK_LEVEL}, quand elle est assez grande, des mécènes commencent à t'observer — chacun a ses exigences — et envoient un colis à chaque palier d'intérêt.`}
+            title={`Le public juge chacune de tes parties : c'est ton Audience. Passé le niveau ${SPONSORS_UNLOCK_LEVEL}, quand elle atteint le seuil d'un mécène, il commence à t'observer — chacun a ses exigences — et envoie un colis à chaque palier d'intérêt. Si ton audience retombe sous son seuil, il perd son intérêt : il faudra le regagner depuis le début (les colis déjà ouverts restent à toi).`}
           >
             ?
           </span>

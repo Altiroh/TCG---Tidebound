@@ -1,5 +1,6 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
-import type { CardDefinition } from "@/game/cards/types";
+import { UNIT_CARD_TYPES, type CardDefinition } from "@/game/cards/types";
+import type { GameEvent } from "@/game/events/types";
 import type { GameState, PlayerId } from "@/game/state/types";
 import { RULES } from "@/game/rules/constants";
 import type { TideStateName } from "@/game/environment/types";
@@ -12,6 +13,7 @@ import {
   LOW_COST_CREATURE_MAX,
 } from "@/game/quests/catalog";
 import type { MatchQuestProgress, MatchQuestSets, QuestObjectiveKey } from "@/game/quests/types";
+import type { LifetimeOnlySumKey, MatchRecordKey, MatchStats } from "@/game/quests/matchStats";
 
 /** Créatures distinctes devant infliger des dégâts pour « Ça pique ». */
 const DAMAGING_CREATURES_THRESHOLD = 5;
@@ -85,7 +87,67 @@ export function computeMatchQuestProgress(input: MatchQuestProgressInput): Match
   return computeMatchQuestContribution(input).progress;
 }
 
-export function computeMatchQuestContribution({
+export function computeMatchQuestContribution(input: MatchQuestProgressInput): MatchQuestContribution {
+  const { progress, sets } = analyserPartie(input);
+  return {
+    // Seules les contributions non nulles sont transmises à la base.
+    progress: Object.fromEntries(Object.entries(progress).filter(([, value]) => value > 0)) as MatchQuestProgress,
+    sets,
+  };
+}
+
+/**
+ * Contribution d'une partie terminée aux STATISTIQUES À VIE d'un joueur
+ * (`game/quests/matchStats.ts`) : les cumuls des quêtes, ceux que seules
+ * les statistiques lisent, et les records. Même passe sur le journal que
+ * les quêtes — les deux ne peuvent pas diverger. Zéros omis.
+ */
+export function computeMatchStats(input: MatchQuestProgressInput): MatchStats {
+  const { progress, extra, records } = analyserPartie(input);
+  const stats: Record<string, number> = { ...extra, ...records };
+  for (const [key, value] of Object.entries(progress) as Array<[QuestObjectiveKey, number]>) {
+    if (QUEST_KEYS_NOT_LIFETIME.has(key)) continue;
+    stats[key] = value;
+  }
+  return Object.fromEntries(Object.entries(stats).filter(([, value]) => value > 0)) as MatchStats;
+}
+
+/** Objectifs de quête qui ne sont pas des cumuls de partie (cf. `QuestLifetimeKey`). */
+const QUEST_KEYS_NOT_LIFETIME: ReadonlySet<QuestObjectiveKey> = new Set<QuestObjectiveKey>([
+  "play_days",
+  "play_streak",
+  "complete_daily_quests",
+  "distinct_decks_played",
+  "distinct_decks_won",
+]);
+
+/** Événements qui OUVRENT une action de joueur, dans un journal non signé (`actionIndex` absent). */
+const ACTION_MARKERS: ReadonlySet<GameEvent["type"]> = new Set<GameEvent["type"]>([
+  "PLAY_CARD",
+  "ATTACK",
+  "OBJECT_BROKEN",
+  "SHIP_ABILITY_ACTIVATED",
+  "SHIP_ABILITY_FIRED",
+  "TURN_STARTED",
+  "END_TURN",
+  "PHASE_CHANGED",
+]);
+
+/** Seuils (en tours du joueur) des victoires rapides. */
+const FAST_WIN_TURNS: ReadonlyArray<[number, LifetimeOnlySumKey]> = [
+  [5, "win_within_5_turns"],
+  [7, "win_within_7_turns"],
+  [10, "win_within_10_turns"],
+];
+
+interface AnalysePartie {
+  progress: Record<QuestObjectiveKey, number>;
+  sets: MatchQuestSets;
+  extra: Record<LifetimeOnlySumKey, number>;
+  records: Record<MatchRecordKey, number>;
+}
+
+function analyserPartie({
   state,
   playerId,
   vsBot,
@@ -95,7 +157,7 @@ export function computeMatchQuestContribution({
   dayKey,
   playStreak,
   deckIsNew = false,
-}: MatchQuestProgressInput): MatchQuestContribution {
+}: MatchQuestProgressInput): AnalysePartie {
   const progress: Record<QuestObjectiveKey, number> = {
     play_cards: 0,
     play_creatures: 0,
@@ -153,6 +215,59 @@ export function computeMatchQuestContribution({
     win_without_deraison: 0,
   };
 
+  // --- Statistiques à vie (`game/quests/matchStats.ts`) ------------------
+  const extra: Record<LifetimeOnlySumKey, number> = {
+    play_equipments: 0,
+    break_objects_from_hand: 0,
+    draw_cards: 0,
+    discard_cards: 0,
+    gain_reason_from_cards: 0,
+    attacks: 0,
+    direct_attacks: 0,
+    destroy_enemy_units: 0,
+    destroy_enemy_structures: 0,
+    lose_units: 0,
+    deal_ship_damage: 0,
+    take_ship_damage: 0,
+    ship_ability_damage: 0,
+    intercept_attacks: 0,
+    spring_traps: 0,
+    break_in_reaction: 0,
+    react_to_attack: 0,
+    react_to_play: 0,
+    react_to_break: 0,
+    reveal_enemy_hand_cards: 0,
+    reach_tempete: 0,
+    tide_state_changes: 0,
+    deraison_debt: 0,
+    lethal_by_ship_ability: 0,
+    lethal_by_attack: 0,
+    lethal_by_effect: 0,
+    lethal_by_tide: 0,
+    lethal_by_deraison: 0,
+    lose_matches: 0,
+    win_bot_matches: 0,
+    win_by_concede: 0,
+    win_by_timeout: 0,
+    win_by_ocean_judgment: 0,
+    win_at_one_anchor: 0,
+    win_without_losing_unit: 0,
+    win_without_ship_damage: 0,
+    win_while_deraison: 0,
+    win_within_5_turns: 0,
+    win_within_7_turns: 0,
+    win_within_10_turns: 0,
+  };
+  const records: Record<MatchRecordKey, number> = {
+    max_destroyed_at_once: 0,
+    max_enemy_units_destroyed_in_turn: 0,
+    max_damage_in_turn: 0,
+    max_single_hit: 0,
+    max_cards_played_in_turn: 0,
+    max_deraison_debt: 0,
+    max_win_anchor: 0,
+  };
+
   const defByInstance = new Map<string, CardDefinition>();
   const ownerByInstance = new Map<string, PlayerId>();
   const safeDef = (cardId: string): CardDefinition | undefined => {
@@ -200,6 +315,58 @@ export function computeMatchQuestContribution({
   /** Le joueur est tombé à `LOW_ANCHOR_THRESHOLD` Ancrage ou moins, sans couler. */
   let wasLow = false;
 
+  /*
+   * « EN MÊME TEMPS » ET ATTRIBUTION FINE (statistiques à vie).
+   *
+   * Un GROUPE est une action de joueur et tout ce qu'elle entraîne
+   * immédiatement : effets, morts, déclencheurs, reprises d'une attaque ou
+   * d'une destruction suspendues. C'est exactement un appel à `dispatch`,
+   * que le moteur signe (`BaseGameEvent.actionIndex`). Cinq unités
+   * détruites « en même temps », ce sont cinq destructions du même groupe
+   * — pas du même tour : deux sorts successifs font deux groupes.
+   *
+   * Le joueur qui a soumis l'action (`actionBy`) devient l'acteur dès le
+   * premier événement du groupe. C'est ce qui attribue enfin ce que les
+   * marqueurs ne disent pas : une capacité activée (aucun événement ne
+   * l'annonce) et une réaction (ses effets PRÉCÈDENT son
+   * `REACTION_ACTIVATED`). Exception : un groupe qui s'ouvre sur
+   * `REACTION_PASSED` ne change pas d'acteur — passer ne fait rien, et ce
+   * qui suit (l'attaque ou la destruction qui reprend) appartient à celui
+   * qui l'avait lancée.
+   *
+   * Journal ancien, non signé : un groupe s'ouvre à chaque marqueur
+   * d'action (`ACTION_MARKERS`), et l'acteur reste celui des marqueurs.
+   */
+  let groupKey: number | string | undefined;
+  let legacyGroup = 0;
+  /** Unités adverses détruites par le joueur dans le groupe en cours. */
+  let destroyedInGroup = 0;
+  /** Le joueur résout en ce moment une capacité de Navire. */
+  let shipResolution = false;
+  /** Une attaque du joueur est en cours de résolution (coup fatal « à l'attaque »). */
+  let attackResolution = false;
+  /** Dernier geste ouvrant une action (hors réactions), pour « répondre à… ». */
+  let lastRoot: { type: GameEvent["type"]; playerId: PlayerId } | null = null;
+  /** Attaque suspendue par une fenêtre : sa reprise réémet `ATTACK`, qui ne compte pas deux fois. */
+  let lastAttackKey: string | null = null;
+  let windowSinceAttack = false;
+  /** Un joueur vient de régler sa Déraison : le `DAMAGE` qui suit est le sien. */
+  let deraisonJustSettled: PlayerId | null = null;
+  let lethalKey: LifetimeOnlySumKey | null = null;
+  const scuttledIds = new Set<string>();
+  // Compteurs par TOUR (et non par phase, contrairement à `damageThisTurn`).
+  let turnDamage = 0;
+  let turnCardsPlayed = 0;
+  let turnEnemyUnitsDestroyed = 0;
+  const closeRecordTurn = () => {
+    records.max_damage_in_turn = Math.max(records.max_damage_in_turn, turnDamage);
+    records.max_cards_played_in_turn = Math.max(records.max_cards_played_in_turn, turnCardsPlayed);
+    records.max_enemy_units_destroyed_in_turn = Math.max(records.max_enemy_units_destroyed_in_turn, turnEnemyUnitsDestroyed);
+    turnDamage = 0;
+    turnCardsPlayed = 0;
+    turnEnemyUnitsDestroyed = 0;
+  };
+
   const closeTurn = () => {
     bestTurnDamage = Math.max(bestTurnDamage, damageThisTurn);
     damageThisTurn = 0;
@@ -209,8 +376,34 @@ export function computeMatchQuestContribution({
   };
 
   for (const event of state.eventLog) {
+    // --- Groupe d'action --------------------------------------------------
+    if (event.actionIndex === undefined && ACTION_MARKERS.has(event.type)) legacyGroup += 1;
+    const key = event.actionIndex ?? `ancien:${legacyGroup}`;
+    if (key !== groupKey) {
+      groupKey = key;
+      destroyedInGroup = 0;
+      if (event.actionIndex !== undefined && event.type !== "REACTION_PASSED") {
+        actor = event.actionBy ?? actor;
+        hastenedThisAction = false;
+        awaitingDirectDamage = false;
+        currentAttacker = null;
+        shipResolution = false;
+        attackResolution = false;
+      }
+    }
+    if (ACTION_MARKERS.has(event.type)) {
+      // Un nouveau geste clôt la capacité de Navire ou l'attaque en cours ;
+      // le cas de chacun le rouvre plus bas s'il y a lieu.
+      shipResolution = false;
+      attackResolution = false;
+      lastRoot = event.playerId ? { type: event.type, playerId: event.playerId } : null;
+    }
+    const settledJustBefore = deraisonJustSettled;
+    deraisonJustSettled = null;
+
     switch (event.type) {
       case "TURN_STARTED":
+        closeRecordTurn();
         if (event.playerId === playerId) {
           ownTurns += 1;
           // L'annonce de Marée précède `TURN_STARTED` : l'état lu ici est
@@ -228,6 +421,42 @@ export function computeMatchQuestContribution({
         if (event.playerId === playerId) draws += 1;
         break;
 
+      case "CARD_MOVED":
+        // Défausse : seul un déplacement main → Cimetière qui porte
+        // `discardByEffect` en est une (un Bris depuis la main n'en porte pas).
+        if (
+          event.discardByEffect !== undefined &&
+          event.fromZone === "hand" &&
+          (event.ownerId ?? ownerByInstance.get(event.instanceId)) === playerId
+        ) {
+          extra.discard_cards += 1;
+        }
+        break;
+
+      case "REASON_CHANGED":
+        if (event.playerId === playerId && event.source === "card" && event.delta > 0) extra.gain_reason_from_cards += event.delta;
+        break;
+
+      case "HAND_CARD_REVEALED":
+        if (opponentId !== undefined && event.ownerId === opponentId) extra.reveal_enemy_hand_cards += 1;
+        break;
+
+      case "ATTACK_INTERCEPTED":
+        if (ownerByInstance.get(event.attackerInstanceId) === opponentId) extra.intercept_attacks += 1;
+        break;
+
+      case "REACTION_WINDOW_OPENED":
+        windowSinceAttack = true;
+        break;
+
+      case "GAME_ENDED":
+        if (won && event.winnerId === playerId) {
+          if (event.reason === "concede") extra.win_by_concede = 1;
+          else if (event.reason === "timeout") extra.win_by_timeout = 1;
+          else if (event.reason === "oceanJudgment") extra.win_by_ocean_judgment = 1;
+        }
+        break;
+
       case "PLAY_CARD": {
         actor = event.playerId;
         hastenedThisAction = false;
@@ -235,6 +464,7 @@ export function computeMatchQuestContribution({
         currentAttacker = null;
         if (event.playerId !== playerId) break;
         progress.play_cards += 1;
+        turnCardsPlayed += 1;
         if (tideState === "abysses") progress.play_in_abysses += 1;
         const def = safeDef(event.cardId);
         if (!def) break;
@@ -246,6 +476,7 @@ export function computeMatchQuestContribution({
         } else if (def.type === "marin") progress.play_marins += 1;
         else if (def.type === "structure") progress.play_structures += 1;
         else if (def.type === "objet") progress.play_objects += 1;
+        else if (def.type === "equipement") extra.play_equipments += 1;
         break;
       }
 
@@ -256,7 +487,10 @@ export function computeMatchQuestContribution({
         currentAttacker = null;
         // `OBJECT_BROKEN` porte le fait de jeu « Briser », main comprise —
         // bien plus fiable que de deviner un Bris depuis un CARD_MOVED.
-        if (event.playerId === playerId) progress.break_objects += 1;
+        if (event.playerId === playerId) {
+          progress.break_objects += 1;
+          if (event.fromHand) extra.break_objects_from_hand += 1;
+        }
         break;
 
       case "SABORDED":
@@ -264,6 +498,7 @@ export function computeMatchQuestContribution({
         hastenedThisAction = false;
         awaitingDirectDamage = false;
         currentAttacker = null;
+        scuttledIds.add(event.instanceId);
         if (event.playerId === playerId) {
           progress.scuttle_permanents += 1;
           if (defByInstance.get(event.instanceId)?.type === "structure") progress.scuttle_structures += 1;
@@ -284,11 +519,25 @@ export function computeMatchQuestContribution({
         // Le tir d'une capacité ARMÉE est la suite du même geste : seule
         // l'activation compte comme un usage.
         if (event.type === "SHIP_ABILITY_ACTIVATED" && event.playerId === playerId) progress.ship_ability_uses += 1;
+        shipResolution = event.playerId === playerId;
         break;
 
-      case "REACTION_ACTIVATED":
-        if (event.playerId === playerId) progress.activate_reactions += 1;
+      case "REACTION_ACTIVATED": {
+        if (event.playerId !== playerId) break;
+        progress.activate_reactions += 1;
+        const source = defByInstance.get(event.sourceInstanceId);
+        // Un PIÈGE, c'est la réaction cachée d'une Structure ; un Objet qui
+        // réagit se Brise pour le faire (Harpon à Ressort, Bouclier d'Écume).
+        if (source?.type === "structure" && (source.abilities ?? []).some((ability) => ability.hiddenReaction)) extra.spring_traps += 1;
+        if (source?.type === "objet") extra.break_in_reaction += 1;
+        // « En réponse à » : le dernier geste ouvrant une action, s'il est adverse.
+        if (lastRoot && lastRoot.playerId !== playerId) {
+          if (lastRoot.type === "ATTACK") extra.react_to_attack += 1;
+          else if (lastRoot.type === "PLAY_CARD") extra.react_to_play += 1;
+          else if (lastRoot.type === "OBJECT_BROKEN") extra.react_to_break += 1;
+        }
         break;
+      }
 
       case "STRUCTURE_REVEALED":
         if (ownerByInstance.get(event.instanceId) === playerId) progress.reveal_traps += 1;
@@ -303,21 +552,50 @@ export function computeMatchQuestContribution({
         break;
 
       case "DERAISON_SETTLED":
-        if (event.playerId === playerId && event.debt > 0) progress.deraison_turns += 1;
+        deraisonJustSettled = event.playerId;
+        if (event.playerId === playerId && event.debt > 0) {
+          progress.deraison_turns += 1;
+          extra.deraison_debt += event.debt;
+          records.max_deraison_debt = Math.max(records.max_deraison_debt, event.debt);
+        }
         break;
 
-      case "DESTROY":
+      case "DESTROY": {
+        const owner = ownerByInstance.get(event.instanceId);
+        const type = defByInstance.get(event.instanceId)?.type;
+        const isUnit = type !== undefined && UNIT_CARD_TYPES.includes(type);
+        // Un Sabordage émet `SABORDED` puis `DESTROY` : c'est un coût
+        // consenti, pas une unité perdue.
+        if (owner === playerId && isUnit && !scuttledIds.has(event.instanceId)) extra.lose_units += 1;
         // Un permanent adverse qui tombe pendant VOTRE action : votre
         // attaque, votre effet, votre capacité. La Marée ne compte pour
         // personne, comme pour les dégâts.
-        if (actor === playerId && ownerByInstance.get(event.instanceId) === opponentId) progress.destroy_enemy_permanents += 1;
+        if (actor !== playerId || owner !== opponentId) break;
+        progress.destroy_enemy_permanents += 1;
+        if (type === "structure") extra.destroy_enemy_structures += 1;
+        if (isUnit) {
+          extra.destroy_enemy_units += 1;
+          turnEnemyUnitsDestroyed += 1;
+          destroyedInGroup += 1;
+          records.max_destroyed_at_once = Math.max(records.max_destroyed_at_once, destroyedInGroup);
+        }
         break;
+      }
 
       case "ATTACK": {
         actor = event.playerId;
         awaitingDirectDamage = event.playerId === playerId && !event.defenderInstanceId;
         currentAttacker = event.playerId === playerId ? event.attackerInstanceId : null;
-        if (event.playerId !== playerId) break;
+        attackResolution = event.playerId === playerId;
+        // Reprise d'une attaque suspendue par un piège : même attaquant, même
+        // tour, une fenêtre entre les deux. Ce n'est pas une seconde attaque.
+        const attackKey = `${event.turnNumber}:${event.attackerInstanceId}`;
+        const resumed = attackKey === lastAttackKey && windowSinceAttack;
+        lastAttackKey = attackKey;
+        windowSinceAttack = false;
+        if (event.playerId !== playerId || resumed) break;
+        extra.attacks += 1;
+        if (!event.defenderInstanceId) extra.direct_attacks += 1;
         break;
       }
 
@@ -329,6 +607,23 @@ export function computeMatchQuestContribution({
         }
         // Dégâts SUBIS : comptés quelle que soit l'origine (Marée comprise).
         if (targetsOwnUnit || targetsOwnShip) progress.take_damage += event.amount;
+        if (targetsOwnShip) extra.take_ship_damage += event.amount;
+
+        // COUP FATAL : le premier coup qui met le Navire adverse à 0 ou
+        // moins. Qualifié ici, crédité en fin de partie si elle est gagnée.
+        const fatal =
+          lethalKey === null &&
+          opponentId !== undefined &&
+          event.targetPlayerId === opponentId &&
+          event.targetAnchorAfter !== undefined &&
+          event.targetAnchorAfter <= 0;
+        if (fatal) {
+          if (settledJustBefore === opponentId) lethalKey = "lethal_by_deraison";
+          else if (actor === null) lethalKey = "lethal_by_tide";
+          else if (actor === playerId) {
+            lethalKey = shipResolution ? "lethal_by_ship_ability" : attackResolution || event.combat ? "lethal_by_attack" : "lethal_by_effect";
+          }
+        }
 
         if (actor !== playerId) break;
         const targetsOpponentUnit = event.targetInstanceId !== undefined && ownerByInstance.get(event.targetInstanceId) === opponentId;
@@ -336,6 +631,10 @@ export function computeMatchQuestContribution({
         if (targetsOpponentUnit || targetsOpponentShip) {
           progress.deal_damage += event.amount;
           damageThisTurn += event.amount;
+          turnDamage += event.amount;
+          records.max_single_hit = Math.max(records.max_single_hit, event.amount);
+          if (targetsOpponentShip) extra.deal_ship_damage += event.amount;
+          if (shipResolution) extra.ship_ability_damage += event.amount;
           // « Ça pique » : la Créature à l'origine de l'attaque en cours.
           if (currentAttacker && defByInstance.get(currentAttacker)?.type === "creature") damagingCreatures.add(currentAttacker);
         }
@@ -368,6 +667,8 @@ export function computeMatchQuestContribution({
         }
         hastenedThisAction = false;
         if (event.stateChanged && event.tideState === "abysses") progress.reach_abysses += 1;
+        if (event.stateChanged && event.tideState === "tempete") extra.reach_tempete += 1;
+        if (event.stateChanged) extra.tide_state_changes += 1;
         tideState = event.tideState;
         tideOrientation = event.tideOrientation;
         tideRemaining = event.remainingTurns;
@@ -458,9 +759,21 @@ export function computeMatchQuestContribution({
     if (won) sets.distinct_decks_won = [deckId];
   }
 
-  return {
-    // Seules les contributions non nulles sont transmises à la base.
-    progress: Object.fromEntries(Object.entries(progress).filter(([, value]) => value > 0)) as MatchQuestProgress,
-    sets,
-  };
+  // --- Statistiques à vie : issue de la partie ---------------------------
+  closeRecordTurn();
+  const self = state.players.find((p) => p.id === playerId);
+  if (won) {
+    if (lethalKey) extra[lethalKey] = 1;
+    if (vsBot) extra.win_bot_matches = 1;
+    if (anchor === 1) extra.win_at_one_anchor = 1;
+    if (extra.lose_units === 0) extra.win_without_losing_unit = 1;
+    if (extra.take_ship_damage === 0) extra.win_without_ship_damage = 1;
+    if ((self?.reason ?? 0) < 0) extra.win_while_deraison = 1;
+    for (const [turns, key] of FAST_WIN_TURNS) if (ownTurns > 0 && ownTurns <= turns) extra[key] = 1;
+    records.max_win_anchor = Math.max(0, anchor);
+  } else {
+    extra.lose_matches = 1;
+  }
+
+  return { progress, sets, extra, records };
 }

@@ -20,9 +20,10 @@ export const metadata: Metadata = {
  * profil FACTICE — de quoi régler la scène de la cabine sans compte.
  * Aucune lecture de base ; les réclamations y échouent proprement
  * (« connecte-toi »), rien n'est écrit. `?serie=1` ouvre en plus le popup
- * de série de la première venue du jour.
+ * de série de la première venue du jour ; `?audience=280` fait retomber le
+ * public sous le seuil des mécènes (ils perdent leur intérêt).
  */
-export default function ProfilPreviewRoute({ searchParams }: { searchParams: { serie?: string; onglet?: string; coffre?: string } }) {
+export default function ProfilPreviewRoute({ searchParams }: { searchParams: { serie?: string; onglet?: string; coffre?: string; audience?: string } }) {
   const view = progressionView(totalXpForLevel(17) + 535);
   const week = loginWeekIndex(utcDayKey());
   const profile: ProfileSummary = {
@@ -120,7 +121,8 @@ export default function ProfilPreviewRoute({ searchParams }: { searchParams: { s
         // Premier palier d'audience déjà ouvert : le deuxième et le troisième attendent.
         "audience_milestone|250",
       ]),
-      audience: { audience: 1240, best: 1480, lastSpectacle: 68, lastHighlights: ["Un retournement de haut vol", "Un duel indécis jusqu'au bout"] },
+      // `?audience=280` : public retombé sous le seuil des mécènes — ils perdent leur intérêt.
+      audience: { audience: previewAudience(searchParams.audience), best: 1480, lastSpectacle: 68, lastHighlights: ["Un retournement de haut vol", "Un duel indécis jusqu'au bout"] },
     }),
   };
   return (
@@ -130,4 +132,10 @@ export default function ProfilPreviewRoute({ searchParams }: { searchParams: { s
       {searchParams.serie && <StreakPopupPreview login={profile.login} />}
     </>
   );
+}
+
+/** Audience courante du profil factice : 1240 par défaut, ou `?audience=` (entier positif). */
+function previewAudience(raw: string | undefined): number {
+  const value = Number(raw);
+  return raw !== undefined && Number.isInteger(value) && value >= 0 ? value : 1240;
 }

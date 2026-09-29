@@ -5,6 +5,7 @@ import {
   COSMETIC_SECRETS,
   SHIP_FRAMES,
   collectablePrice,
+  collectableTokenPrice,
   collectablesForSecret,
   isCosmeticSecret,
   isCosmeticUnlocked,
@@ -14,8 +15,10 @@ import {
   unlockProgress,
   unlockedCollectables,
   isArtVeiled,
+  isPurchasable,
   isSlotMasked,
 } from "@/game";
+import { MATCH_STATS } from "@/game/quests";
 import type { AchievementStats } from "@/game/achievements";
 import { CARD_DATABASE } from "@/game/cards/sets/core";
 
@@ -32,6 +35,8 @@ const NOTHING: AchievementStats = {
   decksFullyOwned: 0,
   tutorialCompleted: false,
   voyagesCompleted: [],
+  lifetime: {},
+  records: {},
 };
 
 const NONE = new Set<string>();
@@ -231,5 +236,92 @@ describe("secrets de l'interface", () => {
   it("n'annonce ni progression ni condition chiffrée", () => {
     expect(unlockProgress({ kind: "secret", secret: "bougie" }, RICH)).toBeNull();
     expect(unlockLabel({ kind: "secret", secret: "bougie" })).toBe("Un secret à découvrir");
+  });
+});
+
+describe("conditions sur les statistiques à vie", () => {
+  const lifetime = { kind: "lifetimeStat", stat: "win_without_deraison", count: 25, label: "25 victoires sans Déraison" } as const;
+  const record = { kind: "matchRecord", stat: "max_destroyed_at_once", count: 5, label: "5 unités d'un coup" } as const;
+
+  it("« lifetimeStat » lit le CUMUL à vie, une clé jamais vue valant 0", () => {
+    expect(isCosmeticUnlocked(lifetime, NOTHING, NONE, "x")).toBe(false);
+    expect(isCosmeticUnlocked(lifetime, { ...NOTHING, lifetime: { win_without_deraison: 24 } }, NONE, "x")).toBe(false);
+    expect(isCosmeticUnlocked(lifetime, { ...NOTHING, lifetime: { win_without_deraison: 25 } }, NONE, "x")).toBe(true);
+    // Le record d'une partie ne remplace pas le cumul.
+    expect(isCosmeticUnlocked(lifetime, { ...NOTHING, records: { win_without_deraison: 99 } }, NONE, "x")).toBe(false);
+    expect(unlockLabel(lifetime)).toBe("25 victoires sans Déraison");
+    expect(unlockProgress(lifetime, { ...NOTHING, lifetime: { win_without_deraison: 20 } })).toBe("encore 5");
+    expect(unlockProgress(lifetime, { ...NOTHING, lifetime: { win_without_deraison: 30 } })).toBeNull();
+  });
+
+  it("« matchRecord » lit la MEILLEURE partie, jamais la somme", () => {
+    expect(isCosmeticUnlocked(record, { ...NOTHING, lifetime: { max_destroyed_at_once: 12 } }, NONE, "x")).toBe(false);
+    expect(isCosmeticUnlocked(record, { ...NOTHING, records: { max_destroyed_at_once: 4 } }, NONE, "x")).toBe(false);
+    expect(isCosmeticUnlocked(record, { ...NOTHING, records: { max_destroyed_at_once: 5 } }, NONE, "x")).toBe(true);
+    expect(unlockLabel(record)).toBe("5 unités d'un coup");
+    expect(unlockProgress(record, { ...NOTHING, records: { max_destroyed_at_once: 3 } })).toBe("record : 3 sur 5");
+    expect(unlockProgress(record, NOTHING)).toBe("record : 0 sur 5");
+  });
+
+  it("n'appuie aucune condition sur une clé absente du catalogue des statistiques", () => {
+    for (const item of COLLECTABLE_FAMILIES.flatMap((family) => family.items)) {
+      if (item.unlock.kind !== "lifetimeStat" && item.unlock.kind !== "matchRecord") continue;
+      const definition = MATCH_STATS[item.unlock.stat];
+      expect(definition, item.id).toBeDefined();
+      // Un cumul à vie sur une clé de record additionnerait des maxima.
+      if (item.unlock.kind === "lifetimeStat") expect(definition.nature, item.id).toBe("sum");
+      expect(item.unlock.count, item.id).toBeGreaterThan(0);
+      expect(item.unlock.label.length, item.id).toBeGreaterThan(0);
+    }
+  });
+
+  it("la synchronisation accorde les dos gagnés sur les statistiques", () => {
+    const veteran = {
+      ...NOTHING,
+      lifetime: { win_without_deraison: 25, lethal_by_ship_ability: 1 },
+      records: { max_destroyed_at_once: 5 },
+    };
+    const granted = unlockedCollectables(veteran, NONE).map((grant) => grant.id);
+    expect(granted).toEqual(expect.arrayContaining(["back-rose-de-jade", "back-le-rassemblement", "back-puits-sans-fond"]));
+    expect(unlockedCollectables(NOTHING, NONE).map((grant) => grant.id)).not.toContain("back-puits-sans-fond");
+  });
+});
+
+describe("achat en Jetons de Préconstruit", () => {
+  const consigne = CARD_BACKS.find((back) => back.id === "back-la-consigne")!;
+
+  it("« La Consigne » coûte 3 Jetons, et pas un Tide", () => {
+    expect(consigne.unlock).toEqual({ kind: "purchaseTokens", priceTokens: 3 });
+    expect(collectableTokenPrice("cardBack", "back-la-consigne")).toBe(3);
+    expect(collectablePrice("cardBack", "back-la-consigne")).toBeNull();
+    expect(collectableTokenPrice("cardBack", "back-abyssal")).toBeNull();
+    expect(collectableTokenPrice("cardBack", "carte-qui-nexiste-pas")).toBeNull();
+    expect(unlockLabel(consigne.unlock)).toBe("3 Jetons de Préconstruit");
+  });
+
+  it("se traite comme un achat : jamais accordé par un compteur, montré en vitrine, sans jauge", () => {
+    expect(isPurchasable(consigne.unlock)).toBe(true);
+    const rich = { ...NOTHING, level: 100, wins: 9999, matchesPlayed: 9999, distinctCardsOwned: 9999 };
+    expect(unlockedCollectables(rich, NONE).map((grant) => grant.id)).not.toContain("back-la-consigne");
+    expect(isCosmeticUnlocked(consigne.unlock, NOTHING, new Set(["back-la-consigne"]), consigne.id)).toBe(true);
+    expect(isArtVeiled(consigne, false)).toBe(false);
+    expect(unlockProgress(consigne.unlock, NOTHING)).toBeNull();
+  });
+});
+
+describe("dos de carte du 29/09/2026", () => {
+  const byId = (id: string) => CARD_BACKS.find((back) => back.id === id);
+
+  it("sont au catalogue avec leur visuel, leur condition et leur visibilité", () => {
+    expect(byId("back-oeil-du-maelstrom")).toMatchObject({ label: "Œil du Maelström", unlock: { kind: "purchase", priceTides: 8000 } });
+    expect(byId("back-cuirasse-du-leviathan")).toMatchObject({ label: "Cuirasse du Léviathan", unlock: { kind: "purchase", priceTides: 10000 } });
+    expect(byId("back-la-consigne")?.label).toBe("La Consigne");
+    expect(byId("back-puits-sans-fond")).toMatchObject({ hidden: true, unlock: { kind: "matchRecord", stat: "max_destroyed_at_once", count: 5 } });
+    expect(byId("back-le-rassemblement")).toMatchObject({ hidden: true, unlock: { kind: "lifetimeStat", stat: "lethal_by_ship_ability", count: 1 } });
+    expect(byId("back-rose-de-jade")).toMatchObject({ unlock: { kind: "lifetimeStat", stat: "win_without_deraison", count: 25 } });
+    expect(byId("back-rose-de-jade")?.hidden).toBeUndefined();
+    for (const id of ["back-oeil-du-maelstrom", "back-cuirasse-du-leviathan", "back-la-consigne"]) {
+      expect(byId(id)?.hidden, id).toBeUndefined();
+    }
   });
 });

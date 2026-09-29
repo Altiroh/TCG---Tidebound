@@ -7,6 +7,7 @@ import {
   MASTERY_MAX_LEVEL,
   SPONSORS,
   SPONSORS_UNLOCK_LEVEL,
+  SPONSOR_STAGES,
   WEEKLY_CHEST_GOAL,
   loginCardPool,
   loginWeekIndex,
@@ -15,12 +16,14 @@ import {
   shiftDayKey,
   sponsorGift,
   sponsorGiftStagesReached,
+  sponsorHeldPoints,
   sponsorInterestPercent,
   sponsorPointsForMatch,
   sponsorRevealed,
   sponsorStage,
   sponsorStageLabel,
   sponsorWatches,
+  sponsorsLostAt,
   utcDayKey,
   weeklyChestContents,
   type LoginRewardItem,
@@ -81,9 +84,9 @@ export interface SponsorView {
   color: SponsorColor;
   /** Audience qu'il exige avant de s'intéresser au joueur. */
   audienceRequired: number;
-  /** L'audience du joueur atteint son seuil. */
+  /** L'audience COURANTE du joueur atteint son seuil — sinon, il perd son intérêt. */
   meetsAudience: boolean;
-  /** Il a commencé à regarder (au moins un point d'intérêt). */
+  /** Il regarde et a commencé à s'intéresser (au moins un point d'intérêt tenu, `sponsorHeldPoints`). */
   watching: boolean;
   points: number;
   stage: SponsorStage;
@@ -91,6 +94,11 @@ export interface SponsorView {
   percent: number;
   /** Colis arrivés et pas encore ouverts, du plus ancien au plus récent. */
   giftStages: SponsorStage[];
+  /**
+   * Paliers dont le colis a DÉJÀ été ouvert — acquis pour de bon, même si
+   * le mécène a depuis perdu son intérêt (il ne le renverra pas).
+   */
+  openedStages: SponsorStage[];
 }
 
 export interface AudienceView {
@@ -337,8 +345,10 @@ export function hubViewFrom({
   };
 }
 
-function sponsorView(id: SponsorId, points: number, claims: Set<string>, accountLevel: number, audience: AudienceView): SponsorView {
+function sponsorView(id: SponsorId, storedPoints: number, claims: Set<string>, accountLevel: number, audience: AudienceView): SponsorView {
   const definition = SPONSORS.find((sponsor) => sponsor.id === id)!;
+  // Sous son seuil, il a détourné les yeux : plus d'intérêt, plus de palier, plus de colis à venir.
+  const points = sponsorHeldPoints(definition.audienceRequired, audience.audience, storedPoints);
   const revealed = sponsorRevealed(points);
   const stage = sponsorStage(points);
   return {
@@ -350,7 +360,7 @@ function sponsorView(id: SponsorId, points: number, claims: Set<string>, account
     color: definition.color,
     audienceRequired: definition.audienceRequired,
     // Même règle que l'octroi des points : le panneau ne dit jamais « il vous regarde » quand la partie suivante ne lui en donnerait pas.
-    meetsAudience: sponsorWatches(definition.audienceRequired, audience.audience, audience.best),
+    meetsAudience: sponsorWatches(definition.audienceRequired, audience.audience),
     watching: points > 0,
     points,
     stage,
@@ -358,6 +368,7 @@ function sponsorView(id: SponsorId, points: number, claims: Set<string>, account
     percent: sponsorInterestPercent(points),
     giftStages:
       accountLevel >= SPONSORS_UNLOCK_LEVEL ? sponsorGiftStagesReached(points).filter((reached) => !claims.has(`sponsor_gift|${id}:${reached}`)) : [],
+    openedStages: SPONSOR_STAGES.filter((stage) => claims.has(`sponsor_gift|${id}:${stage.id}`)).map((stage) => stage.id),
   };
 }
 
@@ -530,9 +541,21 @@ export async function recordMatchAudience(
       return;
     }
     // Déjà comptée (rejeu) : les mécènes l'ont déjà vue aussi.
-    if (!data?.recorded || !played || context.accountLevel < SPONSORS_UNLOCK_LEVEL) return;
+    if (!data?.recorded) return;
 
-    const points = sponsorPointsForMatch({ audience: data.audience ?? 0, best: data.best, analysis, playStreak: context.playStreak });
+    // L'intérêt suit l'audience COURANTE : retombée sous le seuil d'un
+    // mécène, elle lui fait perdre son intérêt (`sponsorsLostAt`). Migration
+    // 20261021120000 pas encore passée : la lecture applique déjà la règle
+    // (`sponsorHeldPoints`), l'effacement attendra.
+    const lost = sponsorsLostAt(data.audience ?? 0);
+    if (lost.length > 0) {
+      const forgotten = await service.rpc("forget_sponsor_interest", { p_user_id: userId, p_sponsor_ids: lost });
+      if (forgotten.error && forgotten.error.code !== "PGRST202") console.error("[recordMatchAudience] Oubli des mécènes refusé :", forgotten.error.message);
+    }
+
+    if (!played || context.accountLevel < SPONSORS_UNLOCK_LEVEL) return;
+
+    const points = sponsorPointsForMatch({ audience: data.audience ?? 0, analysis, playStreak: context.playStreak });
     if (!Object.values(points).some((value) => value > 0)) return;
     const interest = await service.rpc("record_sponsor_interest", { p_user_id: userId, p_match_id: matchId, p_points: points });
     if (interest.error) console.error("[recordMatchAudience] Intérêt refusé :", interest.error.message);

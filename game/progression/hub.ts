@@ -106,8 +106,10 @@ export interface SponsorDefinition {
    */
   lore: string;
   /**
-   * Audience minimale pour qu'il s'intéresse vraiment au joueur : le public
-   * est le prérequis, chaque mécène a le sien.
+   * Audience minimale pour qu'il s'intéresse au joueur : le public est le
+   * prérequis, chaque mécène a le sien. C'est l'audience COURANTE qui
+   * compte : retombé sous ce seuil, le joueur perd son intérêt
+   * (`sponsorWatches`, `sponsorHeldPoints`).
    */
   audienceRequired: number;
 }
@@ -231,19 +233,33 @@ export function sponsorGiftStagesReached(points: number): SponsorStage[] {
 }
 
 /**
- * Part du seuil sous laquelle un mécène qui regardait DÉJÀ détourne les yeux.
- * Hystérésis : il remarque le joueur au seuil, puis ne le lâche qu'à 85 % —
- * une partie terne ne fait pas clignoter son regard d'une partie à l'autre.
+ * Le mécène regarde-t-il ? Tant que l'audience COURANTE atteint son seuil,
+ * et seulement alors (décision du 29/09/2026, « si je tombe en dessous du
+ * palier d'un mécène je dois perdre son intérêt »). Plus d'hystérésis sur
+ * le record : un regard qui tiendrait sous le seuil contredirait la règle.
  */
-export const SPONSOR_WATCH_HOLD = 0.85;
+export function sponsorWatches(audienceRequired: number, audience: number): boolean {
+  return audience >= audienceRequired;
+}
 
 /**
- * Le mécène regarde-t-il ? Au seuil d'audience ; et, si le record l'a déjà
- * franchi, tant que l'audience reste au-dessus de 85 % du seuil.
+ * L'intérêt qu'un mécène porte ENCORE au joueur : ses points cumulés tant
+ * que l'audience courante atteint son seuil, rien sinon — il a détourné
+ * les yeux, son palier (Intrigué, Intéressé…) et les colis à venir avec.
+ * Les colis déjà ouverts restent acquis : ils ne sont ni repris ni
+ * renvoyés (une réclamation est unique par mécène et par palier).
+ *
+ * Lecture défensive : le serveur efface déjà ces points quand l'audience
+ * retombe (`sponsorsLostAt`), mais une ligne ancienne ou une remise à zéro
+ * manquée ne doit jamais afficher un intérêt que la règle refuse.
  */
-export function sponsorWatches(audienceRequired: number, audience: number, best: number = audience): boolean {
-  if (audience >= audienceRequired) return true;
-  return best >= audienceRequired && audience >= Math.ceil(audienceRequired * SPONSOR_WATCH_HOLD);
+export function sponsorHeldPoints(audienceRequired: number, audience: number, points: number): number {
+  return sponsorWatches(audienceRequired, audience) ? Math.max(0, points) : 0;
+}
+
+/** Mécènes dont l'audience courante est SOUS le seuil : ceux qui perdent leur intérêt. */
+export function sponsorsLostAt(audience: number): SponsorId[] {
+  return SPONSORS.filter((sponsor) => !sponsorWatches(sponsor.audienceRequired, audience)).map((sponsor) => sponsor.id);
 }
 
 /** Plafond de points qu'une seule partie peut apporter à un mécène. */
@@ -252,8 +268,6 @@ const SPONSOR_POINTS_PER_MATCH = 10;
 export interface SponsorMatchContext {
   /** Audience du joueur APRÈS cette partie. */
   audience: number;
-  /** Record d'audience APRÈS cette partie (hystérésis du regard, `sponsorWatches`). Absent : l'audience seule. */
-  best?: number;
   /** Verdict du public sur la partie (`analyzeMatch`). */
   analysis: Pick<MatchAnalysis, "spectacle" | "traits">;
   /** Jours d'affilée joués après cette partie (série de jeu). */
@@ -277,7 +291,7 @@ export function sponsorPointsForMatch(context: SponsorMatchContext): Record<Spon
   };
   const points = {} as Record<SponsorId, number>;
   for (const sponsor of SPONSORS) {
-    points[sponsor.id] = sponsorWatches(sponsor.audienceRequired, context.audience, context.best) ? Math.min(SPONSOR_POINTS_PER_MATCH, raw[sponsor.id]) : 0;
+    points[sponsor.id] = sponsorWatches(sponsor.audienceRequired, context.audience) ? Math.min(SPONSOR_POINTS_PER_MATCH, raw[sponsor.id]) : 0;
   }
   return points;
 }

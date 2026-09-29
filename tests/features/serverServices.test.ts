@@ -70,7 +70,7 @@ const { recordMatchQuestProgress, ensureCurrentQuests } = await import("@/featur
 const { recycleCardFor, recycleSurplusFor } = await import("@/features/collection/recycleService");
 const { readLoginRewards, claimLoginReward } = await import("@/features/progression/loginService");
 const { loginCardPool, loginWeekIndex, loginWeekProgramme } = await import("@/game/progression");
-const { readProgressionHub, claimWeeklyChest, claimSponsorGift } = await import("@/features/progression/hubService");
+const { readProgressionHub, claimWeeklyChest, claimSponsorGift, recordMatchAudience } = await import("@/features/progression/hubService");
 const { createGameState } = await import("@/game/state/createGameState");
 const { PLAYABLE_DECKS } = await import("@/game/cards/decks/catalog");
 const { DEFAULT_CARD_BACK_ID } = await import("@/game");
@@ -310,10 +310,41 @@ describe("hub de progression", () => {
     expect(hub.masteries[1]!.shipId).toBe("le-goliath");
   });
 
+  /** Audience courante du joueur (Béladone regarde à partir de 300). */
+  const audienceOf = (audience: number, best = audience) => [{ audience, best_audience: best, last_spectacle: 60, last_highlights: [] }];
+
   it("aucun colis de mécène sous le niveau 10", async () => {
+    rows.player_audience = audienceOf(400);
     rows.player_sponsor_interest = [{ sponsor_id: "beladone", points: 80 }];
     expect((await readProgressionHub(USER, 9)).sponsors.every((sponsor) => sponsor.giftStages.length === 0)).toBe(true);
     expect((await claimSponsorGift(USER, 9, "beladone", "intrigue")).ok).toBe(false);
     expect((await readProgressionHub(USER, 10)).sponsors.find((sponsor) => sponsor.id === "beladone")!.giftStages).toEqual(["intrigue", "interesse"]);
+  });
+
+  it("sous le seuil d'un mécène, l'audience courante lui fait perdre son intérêt — pas les colis déjà ouverts", async () => {
+    rows.player_sponsor_interest = [{ sponsor_id: "beladone", points: 80 }];
+    rows.player_progression_claims = [{ kind: "sponsor_gift", claim_key: "beladone:intrigue" }];
+
+    // Au-dessus du seuil : Intéressée, le colis « Intéressé » attend.
+    rows.player_audience = audienceOf(320);
+    let beladone = (await readProgressionHub(USER, 12)).sponsors.find((sponsor) => sponsor.id === "beladone")!;
+    expect(beladone).toMatchObject({ meetsAudience: true, stage: "interesse", points: 80, giftStages: ["interesse"], openedStages: ["intrigue"] });
+
+    // Retombée sous 300 — même avec un record au-dessus : plus d'intérêt, plus de colis à venir.
+    rows.player_audience = audienceOf(290, 1200);
+    beladone = (await readProgressionHub(USER, 12)).sponsors.find((sponsor) => sponsor.id === "beladone")!;
+    expect(beladone).toMatchObject({ meetsAudience: false, stage: "indifferent", stageLabel: "Indifférent", points: 0, percent: 0, watching: false, giftStages: [] });
+    expect(beladone.name).toBeNull();
+    expect(beladone.openedStages).toEqual(["intrigue"]);
+    expect((await claimSponsorGift(USER, 12, "beladone", "interesse")).ok).toBe(false);
+  });
+
+  it("une partie qui fait retomber l'audience efface l'intérêt des mécènes passés au-dessus", async () => {
+    rpcResults.record_match_audience = { recorded: true, audience: 750, best: 1200 };
+    const state = createGameState({ gameId: "m", player1: { id: USER, deck: PLAYABLE_DECKS[0]! }, player2: { id: "bot", deck: PLAYABLE_DECKS[1]! }, seed: 3 });
+    await recordMatchAudience("22222222-2222-2222-2222-222222222222", USER, state, { accountLevel: 12 });
+    const forget = rpcCalls.find((call) => call.fn === "forget_sponsor_interest");
+    // 750 : Béladone (300) et l'Ambassade (700) regardent encore ; la Compagnie (1000) et le Représentant (1500) décrochent.
+    expect(forget?.args).toEqual({ p_user_id: USER, p_sponsor_ids: ["compagnie-du-mousquet", "representant-du-peuple"] });
   });
 });

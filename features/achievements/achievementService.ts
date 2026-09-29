@@ -1,5 +1,6 @@
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { unlockedAchievements, type AchievementStats } from "@/game/achievements";
+import { MATCH_STATS, isMatchStatKey } from "@/game/quests";
 import { deckOwnership } from "@/game";
 import { catalogDeckById } from "@/game";
 
@@ -39,7 +40,7 @@ export async function readAchievementStats(userId: string): Promise<AchievementS
 async function readStats(userId: string): Promise<AchievementStats | null> {
   const service = createSupabaseServiceRoleClient();
 
-  const [progression, onboarding, unlocks, cards, boosters, losses, voyages] = await Promise.all([
+  const [progression, onboarding, unlocks, cards, boosters, losses, voyages, lifetimeRows] = await Promise.all([
     service.from("player_progression").select("level, xp_total, matches_played, pvp_wins").eq("user_id", userId).maybeSingle(),
     service.from("player_onboarding").select("tutorial_status").eq("user_id", userId).maybeSingle(),
     service.from("player_deck_unlocks").select("deck_id, source").eq("user_id", userId),
@@ -56,6 +57,10 @@ async function readStats(userId: string): Promise<AchievementStats | null> {
     // des Traversées (`20261007120000_voyages`). Absente, aucune Traversée
     // n'est bouclée, et le reste des exploits vit sa vie.
     service.from("player_voyages").select("voyage_id").eq("user_id", userId).not("completed_at", "is", null),
+    // Isolée elle aussi : `player_lifetime_stats` arrive par
+    // `20261020120000_statistiques_a_vie`. Absente, les conditions qui la
+    // lisent restent à zéro — et rien d'autre ne s'éteint avec elles.
+    service.from("player_lifetime_stats").select("stat_key, total, record").eq("user_id", userId),
   ]);
 
   if (!progression.data) return null;
@@ -85,6 +90,18 @@ async function readStats(userId: string): Promise<AchievementStats | null> {
   }
 
   if (losses.error) console.warn("[readAchievementStats] Compteur de défaites indisponible :", losses.error.message);
+  if (lifetimeRows.error) console.warn("[readAchievementStats] Statistiques à vie indisponibles :", lifetimeRows.error.message);
+
+  // Cumuls pour les clés de nature `sum` seulement : le total d'un record
+  // (somme de maxima) ne veut rien dire, mieux vaut qu'il n'existe pas.
+  // Une clé inconnue du catalogue (retirée depuis) est ignorée.
+  const lifetime: Record<string, number> = {};
+  const records: Record<string, number> = {};
+  for (const row of lifetimeRows.error ? [] : (lifetimeRows.data ?? [])) {
+    if (!isMatchStatKey(row.stat_key)) continue;
+    if (MATCH_STATS[row.stat_key].nature === "sum") lifetime[row.stat_key] = Number(row.total) || 0;
+    records[row.stat_key] = Number(row.record) || 0;
+  }
 
   return {
     level: progression.data.level ?? 1,
@@ -100,6 +117,8 @@ async function readStats(userId: string): Promise<AchievementStats | null> {
     decksFullyOwned,
     tutorialCompleted: onboarding.data?.tutorial_status === "completed",
     voyagesCompleted: voyages.error ? [] : (voyages.data ?? []).map((row) => row.voyage_id),
+    lifetime,
+    records,
   };
 }
 

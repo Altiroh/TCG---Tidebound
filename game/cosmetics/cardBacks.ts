@@ -110,6 +110,71 @@ export const CARD_BACKS: readonly CardBackSkin[] = [
     unlock: { kind: "secret", secret: "bougie" },
     hidden: true,
   },
+  /*
+   * Les six dos du 29/09/2026 — noms validés par la propriétaire. Trois
+   * s'achètent (deux en Tides, un en Jetons de Préconstruit), trois se
+   * gagnent sur les statistiques à vie (`game/quests/matchStats.ts`), dont
+   * deux cachés : on les découvre en réussissant le coup, pas en le lisant.
+   */
+  {
+    id: "back-oeil-du-maelstrom",
+    label: "Œil du Maelström",
+    description: "L'or tourne autour d'une perle, et la mer entière avec. En vente au Market.",
+    src: "/assets/cards/card-back/gold-center.webp",
+    unlock: { kind: "purchase", priceTides: 8000 },
+  },
+  {
+    id: "back-cuirasse-du-leviathan",
+    label: "Cuirasse du Léviathan",
+    description: "Écailles vert-de-gris sous un bouclier de laiton martelé. En vente au Market.",
+    src: "/assets/cards/card-back/ruined.webp",
+    unlock: { kind: "purchase", priceTides: 10000 },
+  },
+  {
+    id: "back-la-consigne",
+    label: "La Consigne",
+    description: "Des capsules rouillées à perte de vue. Rendez vos Jetons, on vous rend la monnaie.",
+    src: "/assets/cards/card-back/jeton.webp",
+    unlock: { kind: "purchaseTokens", priceTokens: 3 },
+  },
+  {
+    id: "back-puits-sans-fond",
+    label: "Le Puits sans fond",
+    description: "Cinq unités adverses englouties d'un seul coup. Le tourbillon, lui, a encore faim.",
+    src: "/assets/cards/card-back/not-yu-gi.webp",
+    unlock: {
+      kind: "matchRecord",
+      stat: "max_destroyed_at_once",
+      count: 5,
+      label: "Détruire 5 unités adverses en même temps",
+    },
+    hidden: true,
+  },
+  {
+    id: "back-le-rassemblement",
+    label: "Le Rassemblement",
+    description: "Cinq pierres autour de la rose des vents : le Navire a tiré, l'autre a coulé.",
+    src: "/assets/cards/card-back/so-magique.webp",
+    unlock: {
+      kind: "lifetimeStat",
+      stat: "lethal_by_ship_ability",
+      count: 1,
+      label: "Couler l'adversaire d'une capacité de Navire",
+    },
+    hidden: true,
+  },
+  {
+    id: "back-rose-de-jade",
+    label: "Rose de jade",
+    description: "La rose des vents taillée dans le jade. Froide, lisse, et jamais prise de Déraison.",
+    src: "/assets/cards/card-back/jade.webp",
+    unlock: {
+      kind: "lifetimeStat",
+      stat: "win_without_deraison",
+      count: 25,
+      label: "25 victoires sans jamais passer en Déraison",
+    },
+  },
 ];
 
 export function cardBackById(id: string | null | undefined): CardBackSkin | undefined {

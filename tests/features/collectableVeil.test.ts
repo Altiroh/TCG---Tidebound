@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { COLLECTABLE_FAMILIES, isArtVeiled, isFree, isSlotMasked } from "@/game";
+import { COLLECTABLE_FAMILIES, isArtVeiled, isFree, isPurchasable, isSlotMasked } from "@/game";
 
 /**
  * CE QU'ON N'A PAS GAGNÉ, ON NE LE VOIT PAS.
@@ -24,7 +24,7 @@ describe("voile des Collectables", () => {
   it("voile TOUT ce qui reste à mériter, quelle que soit la famille", () => {
     for (const family of COLLECTABLE_FAMILIES) {
       for (const item of family.items) {
-        if (isFree(item) || item.unlock.kind === "purchase") continue;
+        if (isFree(item) || isPurchasable(item.unlock)) continue;
         expect(
           isArtVeiled(item, false),
           `« ${item.label} » (${family.label}) se laisse regarder sans être obtenu`
@@ -42,7 +42,8 @@ describe("voile des Collectables", () => {
   });
 
   it("montre ce qui est EN VENTE, même sans l'avoir — on ne vend pas ce qu'on cache", () => {
-    const onSale = COLLECTABLE_FAMILIES.flatMap((family) => family.items).filter((item) => item.unlock.kind === "purchase");
+    // En Tides comme en Jetons (« La Consigne ») : une vente est une vente.
+    const onSale = COLLECTABLE_FAMILIES.flatMap((family) => family.items).filter((item) => isPurchasable(item.unlock));
     // Le rayon existe : sans lui, ce test ne prouverait rien.
     expect(onSale.length).toBeGreaterThan(0);
     for (const item of onSale) {
@@ -76,7 +77,7 @@ describe("voile des Collectables", () => {
     for (const family of COLLECTABLE_FAMILIES) {
       for (const item of family.items) {
         if (item.hidden !== true) continue;
-        expect(item.unlock.kind, `« ${item.label} » est caché ET en vente`).not.toBe("purchase");
+        expect(isPurchasable(item.unlock), `« ${item.label} » est caché ET en vente`).toBe(false);
       }
     }
   });

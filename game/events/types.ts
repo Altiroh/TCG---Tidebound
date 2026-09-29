@@ -51,6 +51,25 @@ export interface BaseGameEvent {
   turnNumber: number;
   timestamp: number;
   playerId?: PlayerId;
+  /**
+   * Rang de l'ACTION de joueur (un appel à `dispatch`) qui a produit cet
+   * événement, et joueur qui l'a soumise. Posés par `dispatch` sur tout ce
+   * qu'il verse au journal, et nulle part ailleurs.
+   *
+   * Pourquoi : le journal raconte des faits, pas QUI les a provoqués ni
+   * lesquels arrivent ENSEMBLE. Une capacité activée (`activateAbility`)
+   * n'émet aucun marqueur, et une réaction verse ses effets AVANT son
+   * `REACTION_ACTIVATED` — un observateur ne pouvait donc ni attribuer ces
+   * conséquences, ni dire que cinq destructions sont tombées « en même
+   * temps » (`game/quests/progress.ts`). Même rang = même action et toutes
+   * ses conséquences immédiates (morts, déclencheurs, reprises).
+   *
+   * Absents des événements antérieurs à leur introduction (29/09/2026) et
+   * de ceux que `createGameState` pose avant la première action : tout
+   * lecteur doit savoir s'en passer.
+   */
+  actionIndex?: number;
+  actionBy?: PlayerId;
 }
 
 export interface DrawCardEvent extends BaseGameEvent {

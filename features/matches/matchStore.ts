@@ -6,6 +6,7 @@ import { botCountsAsPvp } from "@/features/progression/botRewardPolicy";
 import { hasSaneActionShape } from "@/features/matches/actionShape";
 import { audienceOpponent, countsAsPlayedMatch, matchActivity, matchModePaysRewards, utcDayKey } from "@/game/progression";
 import { recordMatchQuestProgress } from "@/features/quests/questService";
+import { recordMatchLifetimeStats } from "@/features/achievements/lifetimeStatsService";
 import { recordMatchAudience } from "@/features/progression/hubService";
 import { isRecentDeck } from "@/features/decks/recentDecks";
 import { packFrames, type PackedFrames } from "@/features/matches/matchFrames";
@@ -377,7 +378,13 @@ async function settleFinishedMatch(match: MatchRow, finalState: GameState): Prom
             playStreak: reward?.playStreak,
             deckIsNew: await isRecentDeck(userId, deckId),
           });
-      await Promise.all([audience, quests]);
+      // Compteurs À VIE (exploits, Collectables) : même garde que les
+      // quêtes — un abandon immédiat ne nourrit aucune statistique —, même
+      // lecture du bot, et même indifférence à l'échec.
+      const lifetime = !played
+        ? Promise.resolve()
+        : recordMatchLifetimeStats({ matchId: match.id, userId, playerId: userId, finalState, vsBot: vsBot && !botAsPvp, won });
+      await Promise.all([audience, quests, lifetime]);
     })
   );
 }

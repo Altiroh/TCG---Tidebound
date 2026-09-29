@@ -1,4 +1,5 @@
 import type { AchievementStats } from "@/game/achievements/catalog";
+import type { MatchStatKey } from "@/game/quests/matchStats";
 
 /**
  * Conditions d'obtention des Collectables — dos de carte et cadres de
@@ -17,9 +18,10 @@ import type { AchievementStats } from "@/game/achievements/catalog";
  *     déblocage, elle ne le fait pas disparaître ;
  *   - testable sans base — `isCosmeticUnlocked` est une fonction pure.
  *
- * DEUX conditions ne se déduisent d'aucun compteur : l'ACHAT et le SECRET.
- * Elles se lisent dans `player_cosmetics` (la ligne existe = c'est payé,
- * ou c'est trouvé). D'où le troisième argument de `isCosmeticUnlocked`.
+ * DEUX conditions ne se déduisent d'aucun compteur : l'ACHAT (en Tides
+ * comme en Jetons) et le SECRET. Elles se lisent dans `player_cosmetics`
+ * (la ligne existe = c'est payé, ou c'est trouvé). D'où le troisième
+ * argument de `isCosmeticUnlocked`.
  */
 
 /**
@@ -50,6 +52,13 @@ export type CosmeticUnlock =
   | { kind: "level"; level: number }
   /** Achat en Tides, rayon Cosmétiques du Market. */
   | { kind: "purchase"; priceTides: number }
+  /**
+   * Achat en Jetons de Préconstruit, même rayon (« La Consigne »). Une
+   * variante et non une devise optionnelle sur `purchase` : chaque achat a
+   * sa fonction en base (`purchase_cosmetic_tokens`), et un prix qui ne dit
+   * pas clairement sa monnaie finirait débité dans la mauvaise.
+   */
+  | { kind: "purchaseTokens"; priceTokens: number }
   /** Cartes DISTINCTES possédées — les doublons ne comptent jamais. */
   | { kind: "distinctCards"; count: number }
   /** Maîtrise d'un archétype : posséder ces cartes-là, toutes. */
@@ -64,6 +73,18 @@ export type CosmeticUnlock =
   | { kind: "boosters"; count: number }
   /** Decks dont le joueur possède réellement toutes les cartes. */
   | { kind: "decksFullyOwned"; count: number }
+  /**
+   * CUMUL À VIE d'une statistique de partie (`game/quests/matchStats.ts`,
+   * nature `sum`) : « 25 victoires sans jamais passer en Déraison ».
+   * `label` est la condition telle qu'on la dit au joueur.
+   */
+  | { kind: "lifetimeStat"; stat: MatchStatKey; count: number; label: string }
+  /**
+   * RECORD sur une seule partie (`AchievementStats.records`) : « 5 unités
+   * adverses détruites en même temps ». Vaut pour les clés de nature
+   * `record` comme pour le meilleur match d'un cumul.
+   */
+  | { kind: "matchRecord"; stat: MatchStatKey; count: number; label: string }
   /**
    * Un SECRET trouvé dans l'interface (`COSMETIC_SECRETS`). Comme l'achat,
    * il ne se déduit d'aucun compteur : c'est la ligne de `player_cosmetics`
@@ -100,6 +121,25 @@ export interface CosmeticSkin {
   artPending?: boolean;
 }
 
+/**
+ * S'ACHÈTE-T-IL, en Tides ou en Jetons ? Les deux monnaies partagent tout
+ * le reste : c'est la ligne de `player_cosmetics` qui fait foi, la
+ * synchronisation ne l'accorde jamais, et ce qui est en vente se montre.
+ */
+export function isPurchasable(unlock: CosmeticUnlock): boolean {
+  return unlock.kind === "purchase" || unlock.kind === "purchaseTokens";
+}
+
+/** Valeur d'une statistique à vie — une clé jamais vue vaut 0. */
+function lifetimeValue(stats: AchievementStats, stat: MatchStatKey): number {
+  return stats.lifetime[stat] ?? 0;
+}
+
+/** Record d'une statistique — une clé jamais vue vaut 0. */
+function recordValue(stats: AchievementStats, stat: MatchStatKey): number {
+  return stats.records[stat] ?? 0;
+}
+
 /** Possédé d'office ? Un cosmétique gratuit n'est jamais écrit en base. */
 export function isFree(skin: { unlock: CosmeticUnlock }): boolean {
   return skin.unlock.kind === "free";
@@ -122,6 +162,7 @@ export function isCosmeticUnlocked(
     case "free":
       return true;
     case "purchase":
+    case "purchaseTokens":
     case "secret":
       return purchasedIds.has(id);
     case "level":
@@ -142,6 +183,10 @@ export function isCosmeticUnlocked(
       return stats.boostersOpened >= unlock.count;
     case "decksFullyOwned":
       return stats.decksFullyOwned >= unlock.count;
+    case "lifetimeStat":
+      return lifetimeValue(stats, unlock.stat) >= unlock.count;
+    case "matchRecord":
+      return recordValue(stats, unlock.stat) >= unlock.count;
   }
 }
 
@@ -166,7 +211,7 @@ export function isCosmeticUnlocked(
 export function isArtVeiled(skin: { unlock: CosmeticUnlock; hidden?: boolean }, owned: boolean): boolean {
   if (owned) return false;
   if (skin.hidden === true) return true;
-  return skin.unlock.kind !== "purchase";
+  return !isPurchasable(skin.unlock);
 }
 
 /**
@@ -191,6 +236,8 @@ export function unlockLabel(unlock: CosmeticUnlock): string {
       return "Possédé d'office";
     case "purchase":
       return `${unlock.priceTides.toLocaleString("fr-FR")} Tides`;
+    case "purchaseTokens":
+      return `${unlock.priceTokens} Jeton${unlock.priceTokens > 1 ? "s" : ""} de Préconstruit`;
     case "level":
       return `Niveau ${unlock.level}`;
     case "distinctCards":
@@ -207,6 +254,9 @@ export function unlockLabel(unlock: CosmeticUnlock): string {
       return `${unlock.count} boosters ouverts`;
     case "decksFullyOwned":
       return unlock.count > 1 ? `${unlock.count} équipages complétés` : "Un équipage complété";
+    case "lifetimeStat":
+    case "matchRecord":
+      return unlock.label;
     case "secret":
       // Ne devrait jamais s'afficher (un secret est caché) ; s'il l'était,
       // on n'en dit pas plus que ça.
@@ -236,8 +286,16 @@ export function unlockProgress(unlock: CosmeticUnlock, stats: AchievementStats):
       return remaining(unlock.count, stats.boostersOpened);
     case "decksFullyOwned":
       return remaining(unlock.count, stats.decksFullyOwned);
+    case "lifetimeStat":
+      return remaining(unlock.count, lifetimeValue(stats, unlock.stat));
+    case "matchRecord":
+      // Un record ne se complète pas petit à petit : « meilleur : 3 sur 5 »
+      // dit mieux où l'on en est qu'un « encore 2 » qui laisserait croire
+      // que deux unités de plus, n'importe quand, suffiront.
+      return recordValue(stats, unlock.stat) >= unlock.count ? null : `record : ${recordValue(stats, unlock.stat)} sur ${unlock.count}`;
     case "free":
     case "purchase":
+    case "purchaseTokens":
     case "ownsCards":
     case "secret":
       return null;

@@ -329,7 +329,38 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
   if (action.type === "timeout" && finalState.turnTimer) finalState = { ...finalState, turnTimer: undefined };
   finalState = refreshTurnTimer(finalState, Date.now());
 
+  // Signature de l'action sur tout ce qu'elle vient de verser au journal
+  // (`BaseGameEvent.actionIndex`) — en dernier, pour couvrir aussi la fin
+  // de partie et le Jugement de l'Océan ajoutés plus haut.
+  finalState = signerLAction(finalState, state.eventLog.length, action.playerId);
+
   return { ok: true, state: finalState, events: finalEvents };
+}
+
+/**
+ * Pose `actionIndex` / `actionBy` sur les événements versés au journal à
+ * partir de `depuis`. Le rang continue celui du dernier événement signé :
+ * pas de compteur dans l'état, le journal suffit — et un journal ancien,
+ * jamais signé, repart simplement de 1.
+ */
+function signerLAction(state: GameState, depuis: number, par: GameState["players"][number]["id"]): GameState {
+  if (state.eventLog.length <= depuis) return state;
+  let precedent = 0;
+  for (let index = depuis - 1; index >= 0; index--) {
+    const rang = state.eventLog[index]!.actionIndex;
+    if (rang !== undefined) {
+      precedent = rang;
+      break;
+    }
+  }
+  const rang = precedent + 1;
+  return {
+    ...state,
+    eventLog: [
+      ...state.eventLog.slice(0, depuis),
+      ...state.eventLog.slice(depuis).map((event) => ({ ...event, actionIndex: rang, actionBy: par })),
+    ],
+  };
 }
 
 function applyAction(state: GameState, action: PlayerAction): ActionResult {

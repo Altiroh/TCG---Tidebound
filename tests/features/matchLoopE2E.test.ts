@@ -180,6 +180,12 @@ describe("boucle complète — partie contre bot, arbitrée côté serveur", () 
     const advanced = db.table("player_quest_progress").filter((row) => row.user_id === USER && row.progress_value > 0);
     expect(advanced.length, "aucune quête n'a avancé après une partie complète").toBeGreaterThan(0);
 
+    // --- statistiques à vie : la partie est comptée, une fois ------------
+    expect(db.one("match_lifetime_stats", { match_id: matchId, user_id: USER })).toBeTruthy();
+    expect(db.one("player_lifetime_stats", { user_id: USER, stat_key: "play_matches" })).toMatchObject({ total: 1, record: 1 });
+    const outcomeKey = finalState.winnerId === USER ? "win_matches" : "lose_matches";
+    expect(db.one("player_lifetime_stats", { user_id: USER, stat_key: outcomeKey })?.total).toBe(1);
+
     // --- Traversée : la même partie fait avancer la première escale -------
     expect(db.one("player_voyages", { user_id: USER, voyage_id: "premier-quart" })).toMatchObject({ step_index: 0, step_progress: 1 });
     expect(db.one("match_voyage_progress", { match_id: matchId, user_id: USER })).toBeTruthy();
@@ -257,6 +263,12 @@ describe("boucle complète — partie contre bot, arbitrée côté serveur", () 
     expect(again).toBeNull();
     expect(db.one("player_progression", { user_id: USER })!.xp_total).toBe(xpAfterMatch);
     expect(db.table("match_rewards").filter((row) => row.match_id === matchId && row.user_id === USER)).toHaveLength(1);
+
+    // Même garantie pour les statistiques à vie : rejouée, la partie ne compte pas deux fois.
+    const { recordMatchLifetimeStats } = await import("@/features/achievements/lifetimeStatsService");
+    const played = db.one("player_lifetime_stats", { user_id: USER, stat_key: "play_matches" })!.total;
+    await recordMatchLifetimeStats({ matchId, userId: USER, playerId: USER, finalState, vsBot: true, won: finalState.winnerId === USER });
+    expect(db.one("player_lifetime_stats", { user_id: USER, stat_key: "play_matches" })!.total).toBe(played);
   });
 
   it("refuse un coup joué au nom d'un autre joueur", async () => {
@@ -626,5 +638,28 @@ describe("délai de tour — l'autorité reste au serveur", () => {
     // les deux joueurs sont payés, une fois chacun.
     expect(db.one("match_rewards", { match_id: matchId, user_id: USER })).toBeTruthy();
     expect(db.one("match_rewards", { match_id: matchId, user_id: OPPONENT })).toBeTruthy();
+  });
+});
+
+describe("Collectable payé en Jetons de Préconstruit", () => {
+  it("« La Consigne » : 3 Jetons débités, une seule fois, jamais à découvert", async () => {
+    const { purchaseCollectable } = await import("@/features/cosmetics/collectablesActions");
+    db.table("player_progression").push({ user_id: USER, xp_total: 0, level: 1, precon_tokens: 2 });
+
+    // Deux Jetons : refusé, rien de débité.
+    const short = await purchaseCollectable("cardBack", "back-la-consigne");
+    expect(short).toMatchObject({ ok: false, error: "Jetons de Préconstruit insuffisants." });
+    expect(db.one("player_progression", { user_id: USER })!.precon_tokens).toBe(2);
+
+    db.one("player_progression", { user_id: USER })!.precon_tokens = 4;
+    const bought = await purchaseCollectable("cardBack", "back-la-consigne");
+    expect(bought).toMatchObject({ ok: true, tokens: 1 });
+    expect(db.one("player_cosmetics", { user_id: USER, cosmetic_kind: "cardBack", cosmetic_id: "back-la-consigne" })).toBeTruthy();
+    // Le prix vient du catalogue, pas de l'appelant.
+    expect(db.rpcCalls.find((call) => call.fn === "purchase_cosmetic_tokens")?.args.p_price_tokens).toBe(3);
+
+    const again = await purchaseCollectable("cardBack", "back-la-consigne");
+    expect(again).toMatchObject({ ok: false, error: "Tu le possèdes déjà." });
+    expect(db.one("player_progression", { user_id: USER })!.precon_tokens).toBe(1);
   });
 });

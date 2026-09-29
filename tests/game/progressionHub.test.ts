@@ -9,10 +9,12 @@ import {
   masteryRewardForLevel,
   sponsorGift,
   sponsorGiftStagesReached,
+  sponsorHeldPoints,
   sponsorInterestPercent,
   sponsorPointsForMatch,
   sponsorRevealed,
   sponsorStage,
+  sponsorsLostAt,
   weeklyChestContents,
 } from "@/game/progression";
 
@@ -96,6 +98,20 @@ describe("mécènes", () => {
     expect(some["ambassade-cra-poiscail"]).toBeGreaterThan(0);
     expect(some["compagnie-du-mousquet"]).toBe(0); // exige 1000
     expect(some["representant-du-peuple"]).toBe(0); // exige 1500
+  });
+
+  it("retombé sous le seuil d'un mécène, le joueur perd son intérêt — palier et colis à venir compris", () => {
+    // Béladone (seuil 300), 80 points : Intéressée tant que le public tient.
+    expect(sponsorStage(sponsorHeldPoints(300, 300, 80))).toBe("interesse");
+    expect(sponsorHeldPoints(300, 299, 80)).toBe(0);
+    expect(sponsorStage(sponsorHeldPoints(300, 299, 80))).toBe("indifferent");
+    expect(sponsorGiftStagesReached(sponsorHeldPoints(300, 299, 80))).toEqual([]);
+    expect(sponsorRevealed(sponsorHeldPoints(300, 299, 80))).toBe(false);
+
+    // Ceux qui décrochent : tous ceux dont le seuil dépasse l'audience courante.
+    expect(sponsorsLostAt(0)).toHaveLength(SPONSORS.length);
+    expect(sponsorsLostAt(750)).toEqual(["compagnie-du-mousquet", "representant-du-peuple"]);
+    expect(sponsorsLostAt(5000)).toEqual([]);
   });
 
   it("des attirances larges : panache, durée, ferveur, régularité — plafonnées par partie", () => {

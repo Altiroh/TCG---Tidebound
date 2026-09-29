@@ -184,6 +184,7 @@ export {
   isCosmeticSecret,
   isCosmeticUnlocked,
   isFree,
+  isPurchasable,
   isSlotMasked,
   unlockLabel,
   unlockProgress,
@@ -212,6 +213,7 @@ export {
 export {
   COLLECTABLE_FAMILIES,
   collectablePrice,
+  collectableTokenPrice,
   collectablesForSecret,
   purchasableCollectables,
   unlockedCollectables,

@@ -26,7 +26,17 @@ export {
   questLabel,
   questProgressKind,
 } from "@/game/quests/catalog";
-export { computeMatchQuestContribution, computeMatchQuestProgress } from "@/game/quests/progress";
+export { computeMatchQuestContribution, computeMatchQuestProgress, computeMatchStats } from "@/game/quests/progress";
+export { isMatchStatKey, LIFETIME_SUM_KEYS, MATCH_STAT_KEYS, MATCH_STATS } from "@/game/quests/matchStats";
+export type {
+  LifetimeOnlySumKey,
+  MatchRecordKey,
+  MatchStatDefinition,
+  MatchStatKey,
+  MatchStatNature,
+  MatchStats,
+  QuestLifetimeKey,
+} from "@/game/quests/matchStats";
 export type { MatchQuestContribution, MatchQuestProgressInput } from "@/game/quests/progress";
 export { pickReplacementQuest, questPeriodEndsAt, questPeriodKey, selectQuestsForPeriod } from "@/game/quests/rotation";
 export type {

@@ -1,7 +1,18 @@
 "use server";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { SPONSORS, SPONSORS_UNLOCK_LEVEL, WEEKLY_CHEST_GOAL, loginWeekIndex, progressionView, sponsorGiftStagesReached, sponsorRevealed, utcDayKey, type ProgressionView } from "@/game/progression";
+import {
+  SPONSORS,
+  SPONSORS_UNLOCK_LEVEL,
+  WEEKLY_CHEST_GOAL,
+  loginWeekIndex,
+  progressionView,
+  sponsorGiftStagesReached,
+  sponsorHeldPoints,
+  sponsorRevealed,
+  utcDayKey,
+  type ProgressionView,
+} from "@/game/progression";
 import { claimableLevelsFor, reachedLevel } from "@/features/progression/levelRewardService";
 import { countClaimableMasteryLevels } from "@/features/progression/hubService";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
@@ -64,8 +75,8 @@ export interface ProgressionSummary {
   sponsorsRevealed: number;
 }
 
-/** Mécènes du catalogue actuel — une ligne d'un mécène retiré ne compte plus. */
-const KNOWN_SPONSORS: ReadonlySet<string> = new Set(SPONSORS.map((sponsor) => sponsor.id));
+/** Seuil d'audience de chaque mécène du catalogue actuel — une ligne d'un mécène retiré ne compte plus. */
+const SPONSOR_THRESHOLDS: ReadonlyMap<string, number> = new Map(SPONSORS.map((sponsor) => [sponsor.id, sponsor.audienceRequired]));
 
 const SIGNED_OUT: ProgressionSummary = {
   isSignedIn: false,
@@ -159,13 +170,20 @@ export async function fetchProgression(): Promise<ProgressionSummary> {
     const loginToClaim = login.error ? 0 : login.data?.last_claimed_day === utcDayKey() ? 0 : 1;
     // Colis de mécènes arrivés et pas encore ouverts (même règle que le hub, `sponsorView`).
     const openedGifts = new Set(giftClaims.error ? [] : (giftClaims.data ?? []).map((row) => row.claim_key));
+    // L'intérêt TENU : sous le seuil d'un mécène, l'audience courante lui fait perdre le sien (`sponsorHeldPoints`).
+    const currentAudience = audience.error ? 0 : (audience.data?.audience ?? 0);
+    const heldInterest = sponsors.error
+      ? []
+      : (sponsors.data ?? []).flatMap((row) => {
+          const threshold = SPONSOR_THRESHOLDS.get(row.sponsor_id);
+          return threshold === undefined ? [] : [{ id: row.sponsor_id, points: sponsorHeldPoints(threshold, currentAudience, row.points) }];
+        });
     const giftsBySponsor =
-      reached >= SPONSORS_UNLOCK_LEVEL && !sponsors.error
-        ? (sponsors.data ?? [])
-            .filter((row) => KNOWN_SPONSORS.has(row.sponsor_id))
+      reached >= SPONSORS_UNLOCK_LEVEL
+        ? heldInterest
             .map((row) => ({
-              id: row.sponsor_id,
-              count: sponsorGiftStagesReached(row.points).filter((stage) => !openedGifts.has(`${row.sponsor_id}:${stage}`)).length,
+              id: row.id,
+              count: sponsorGiftStagesReached(row.points).filter((stage) => !openedGifts.has(`${row.id}:${stage}`)).length,
             }))
             .filter((entry) => entry.count > 0)
         : [];
@@ -205,10 +223,10 @@ export async function fetchProgression(): Promise<ProgressionSummary> {
       masteryShipFrom: masteries.ships,
       weeklyChestReady: !weekMatches.error && (weekMatches.count ?? 0) >= WEEKLY_CHEST_GOAL && !chestClaim.error && !chestClaim.data,
       loginClaimable: loginToClaim === 1,
-      audience: audience.error ? 0 : (audience.data?.audience ?? 0),
+      audience: currentAudience,
       lastSpectacle: audience.error ? null : (audience.data?.last_spectacle ?? null),
-      sponsorsWatching: sponsors.error ? 0 : (sponsors.data ?? []).filter((row) => KNOWN_SPONSORS.has(row.sponsor_id) && row.points > 0).length,
-      sponsorsRevealed: sponsors.error ? 0 : (sponsors.data ?? []).filter((row) => KNOWN_SPONSORS.has(row.sponsor_id) && sponsorRevealed(row.points)).length,
+      sponsorsWatching: heldInterest.filter((row) => row.points > 0).length,
+      sponsorsRevealed: heldInterest.filter((row) => sponsorRevealed(row.points)).length,
     };
   } catch (error) {
     console.error("[fetchProgression] Lecture impossible :", error);

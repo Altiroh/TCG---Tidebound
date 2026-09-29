@@ -51,6 +51,8 @@ const PRIMARY_KEYS: Record<string, string[]> = {
   player_decks: ["id"],
   player_voyages: ["user_id", "voyage_id"],
   match_voyage_progress: ["match_id", "user_id"],
+  player_lifetime_stats: ["user_id", "stat_key"],
+  match_lifetime_stats: ["match_id", "user_id"],
 };
 
 let uuidCounter = 0;
@@ -767,6 +769,43 @@ function runRpc(db: FakeDatabase, fn: string, args: Row): any {
         if (inserted) granted.push(entry.code);
       }
       return { ok: true, granted, tides: 0 };
+    }
+
+    // `20261020120000_statistiques_a_vie.sql`
+    case "record_match_lifetime_stats": {
+      if (!args.p_user_id || !args.p_match_id) return { ok: false, error: "Partie ou joueur manquant." };
+      const recorded = db.insertIfAbsent("match_lifetime_stats", { match_id: args.p_match_id, user_id: args.p_user_id, stats: args.p_stats ?? {} });
+      if (!recorded) return { ok: true, recorded: false, applied: 0 };
+      let applied = 0;
+      for (const [key, raw] of Object.entries((args.p_stats ?? {}) as Record<string, unknown>)) {
+        if (!/^[a-z][a-z0-9_]{0,63}$/.test(key) || !Number.isInteger(raw)) continue;
+        const value = raw as number;
+        if (value <= 0 || value > 1_000_000) continue;
+        db.upsert("player_lifetime_stats", { user_id: args.p_user_id, stat_key: key, total: value, record: value }, (row) => {
+          row.total += value;
+          row.record = Math.max(row.record, value);
+        });
+        applied += 1;
+      }
+      return { ok: true, recorded: true, applied };
+    }
+
+    case "purchase_cosmetic_tokens": {
+      if (!args.p_price_tokens || args.p_price_tokens < 1) return { ok: false, error: "Prix invalide." };
+      const progression = db.one("player_progression", { user_id: args.p_user_id });
+      const owned = db.one("player_cosmetics", { user_id: args.p_user_id, cosmetic_kind: args.p_cosmetic_kind, cosmetic_id: args.p_cosmetic_id });
+      if (owned) return { ok: false, error: "already_owned" };
+      const tokens = progression?.precon_tokens ?? 0;
+      if (tokens < args.p_price_tokens) return { ok: false, error: "insufficient_tokens", tokens };
+      progression!.precon_tokens = tokens - args.p_price_tokens;
+      db.insertIfAbsent("player_cosmetics", {
+        user_id: args.p_user_id,
+        cosmetic_kind: args.p_cosmetic_kind,
+        cosmetic_id: args.p_cosmetic_id,
+        label: args.p_label ?? "",
+        equipped: false,
+      });
+      return { ok: true, tokens: progression!.precon_tokens, cosmetic_id: args.p_cosmetic_id };
     }
 
     case "grant_cosmetics": {

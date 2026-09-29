@@ -54,8 +54,10 @@ export interface CollectableOption {
   requirement: string | null;
   /** Ce qu'il reste à faire, quand c'est chiffrable (« encore 12 »). */
   progress: string | null;
-  /** Prix, si le Collectable s'achète au Market. */
+  /** Prix en Tides, si le Collectable s'achète au Market en Tides. */
   priceTides: number | null;
+  /** Prix en Jetons de Préconstruit, si c'est la monnaie de son achat (« La Consigne »). */
+  priceTokens: number | null;
 }
 
 export interface CollectableFamilyView {
@@ -93,6 +95,8 @@ const NO_STATS: AchievementStats = {
   decksFullyOwned: 0,
   tutorialCompleted: false,
   voyagesCompleted: [],
+  lifetime: {},
+  records: {},
 };
 
 function toOption(
@@ -123,6 +127,7 @@ function toOption(
     requirement: owned || masked ? null : unlockLabel(item.unlock),
     progress: owned || masked ? null : unlockProgress(item.unlock, stats),
     priceTides: item.unlock.kind === "purchase" ? item.unlock.priceTides : null,
+    priceTokens: item.unlock.kind === "purchaseTokens" ? item.unlock.priceTokens : null,
   };
 }
 

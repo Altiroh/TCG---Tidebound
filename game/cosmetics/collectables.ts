@@ -1,7 +1,7 @@
 import type { AchievementStats } from "@/game/achievements/catalog";
 import { CARD_BACKS, CARD_BACK_COSMETIC_KIND } from "@/game/cosmetics/cardBacks";
 import { SHIP_FRAMES, SHIP_FRAME_COSMETIC_KIND } from "@/game/cosmetics/shipFrames";
-import { isCosmeticUnlocked, isFree, type CosmeticSecret, type CosmeticSkin } from "@/game/cosmetics/unlock";
+import { isCosmeticUnlocked, isFree, isPurchasable, type CosmeticSecret, type CosmeticSkin } from "@/game/cosmetics/unlock";
 
 /**
  * Les deux familles de Collectables vues ENSEMBLE — c'est ce que le
@@ -52,7 +52,7 @@ export function unlockedCollectables(stats: AchievementStats, purchasedIds: Read
   for (const family of COLLECTABLE_FAMILIES) {
     for (const item of family.items) {
       if (isFree(item)) continue;
-      if (item.unlock.kind === "purchase" || item.unlock.kind === "secret") continue;
+      if (isPurchasable(item.unlock) || item.unlock.kind === "secret") continue;
       if (!isCosmeticUnlocked(item.unlock, stats, purchasedIds, item.id)) continue;
       grants.push({ kind: family.kind, id: item.id, label: item.label });
     }
@@ -79,7 +79,8 @@ export function collectablesForSecret(secret: CosmeticSecret): CollectableGrant[
 }
 
 /**
- * Prix d'un Collectable achetable, ou `null` s'il ne s'achète pas.
+ * Prix EN TIDES d'un Collectable achetable, ou `null` s'il ne s'achète pas
+ * en Tides (un achat en Jetons passe par `collectableTokenPrice`).
  *
  * Le Market s'en sert pour dresser son rayon, et l'achat pour débiter le
  * bon montant : le prix vit au catalogue, jamais dans l'écran ni en base.
@@ -89,7 +90,17 @@ export function collectablePrice(kind: string, id: string): number | null {
   return item?.unlock.kind === "purchase" ? item.unlock.priceTides : null;
 }
 
-/** Tous les Collectables en vente, dans l'ordre des catalogues. */
+/**
+ * Prix EN JETONS DE PRÉCONSTRUIT d'un Collectable, ou `null` s'il ne
+ * s'achète pas en Jetons. Même rôle que `collectablePrice` : l'achat relit
+ * le prix ici, jamais dans ce que le navigateur envoie.
+ */
+export function collectableTokenPrice(kind: string, id: string): number | null {
+  const item = COLLECTABLE_FAMILIES.find((family) => family.kind === kind)?.items.find((entry) => entry.id === id);
+  return item?.unlock.kind === "purchaseTokens" ? item.unlock.priceTokens : null;
+}
+
+/** Tous les Collectables en vente EN TIDES, dans l'ordre des catalogues. */
 export function purchasableCollectables(): Array<{ kind: string; item: CosmeticSkin; priceTides: number }> {
   const rows: Array<{ kind: string; item: CosmeticSkin; priceTides: number }> = [];
   for (const family of COLLECTABLE_FAMILIES) {

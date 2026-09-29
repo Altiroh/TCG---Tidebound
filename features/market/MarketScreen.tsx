@@ -41,7 +41,7 @@ interface MarketScreenProps {
 /**
  * Le panier, commun aux trois rayons : il survit au changement de rayon,
  * pour tout acheter d'un coup. Les boosters s'y mettent par quantité, les
- * decks (un Jeton chacun) et les cosmétiques (des Tides) à l'unité.
+ * decks (un Jeton chacun) et les cosmétiques (en Tides, ou en Jetons) à l'unité.
  */
 interface Cart {
   boosters: Record<string, number>;
@@ -191,7 +191,7 @@ export function MarketScreen({ inventory, catalog, collectables, sandbox = false
     () =>
       collectables.families.flatMap((family) =>
         family.options
-          .filter((option) => option.priceTides !== null && !option.masked)
+          .filter((option) => (option.priceTides !== null || option.priceTokens !== null) && !option.masked)
           .map((option) => ({ key: cosmeticKey(family.kind, option.id), family: family.kind, familyLabel: family.label, option }))
       ),
     [collectables.families]
@@ -207,7 +207,9 @@ export function MarketScreen({ inventory, catalog, collectables, sandbox = false
   const tidesTotal =
     boosterLines.reduce((sum, booster) => sum + (booster.price ?? 0) * (cart.boosters[booster.boosterId] ?? 0), 0) +
     cosmeticLines.reduce((sum, row) => sum + (row.option.priceTides ?? 0), 0);
-  const tokensTotal = deckLines.length;
+  // Un cosmétique peut aussi se payer en Jetons (« La Consigne ») : il
+  // rejoint alors le sous-total des decks, pas celui des Tides.
+  const tokensTotal = deckLines.length + cosmeticLines.reduce((sum, row) => sum + (row.option.priceTokens ?? 0), 0);
   const shortTides = Math.max(0, tidesTotal - inventory.balance);
   const shortTokens = Math.max(0, tokensTotal - catalog.preconTokens);
   /** Exemplaires en réserve, tous types confondus — offerts compris (Bienvenue). */
@@ -307,6 +309,7 @@ export function MarketScreen({ inventory, catalog, collectables, sandbox = false
         }
         bought.cosmetics += 1;
         bought.tides += row.option.priceTides ?? 0;
+        bought.tokens += row.option.priceTokens ?? 0;
         remaining.cosmetics = remaining.cosmetics.filter((key) => key !== row.key);
       }
     }
@@ -493,11 +496,7 @@ export function MarketScreen({ inventory, catalog, collectables, sandbox = false
                   subtitle={familyLabel}
                   art={option.src}
                   fit={family === "cardBack" ? "cover" : "contain"}
-                  price={
-                    <>
-                      <TideCoin size={16} /> {option.priceTides}
-                    </>
-                  }
+                  price={<CosmeticPrice option={option} size={16} />}
                   owned={option.owned}
                   ownedLabel="Possédé"
                   inCart={cart.cosmetics.includes(key)}
@@ -610,8 +609,7 @@ export function MarketScreen({ inventory, catalog, collectables, sandbox = false
                     <span className={styles.cartInfo}>
                       <span className={styles.cartName}>{row.option.label}</span>
                       <span className={styles.cartPrice}>
-                        <TideCoin size={14} />
-                        {row.option.priceTides}
+                        <CosmeticPrice option={row.option} size={14} />
                       </span>
                     </span>
                     <RemoveButton label={`Retirer ${row.option.label} du panier`} disabled={isBuying} onClick={() => toggleCosmetic(row.key)} />
@@ -662,13 +660,33 @@ function sampleCart(inventory: BoosterInventory, catalog: DeckCatalogSummary, co
   const boosters = inventory.boosters.filter((booster) => booster.isPurchasable && booster.price !== null).slice(0, 2);
   const deck = catalog.decks.find((entry) => !entry.unlocked);
   const cosmetic = collectables.families
-    .flatMap((family) => family.options.filter((option) => option.priceTides !== null && !option.owned && !option.masked).map((option) => cosmeticKey(family.kind, option.id)))
+    .flatMap((family) =>
+      family.options
+        .filter((option) => (option.priceTides !== null || option.priceTokens !== null) && !option.owned && !option.masked)
+        .map((option) => cosmeticKey(family.kind, option.id))
+    )
     .at(0);
   return {
     boosters: Object.fromEntries(boosters.map((booster, index) => [booster.boosterId, index === 0 ? 3 : 1])),
     decks: deck ? [deck.deck.id] : [],
     cosmetics: cosmetic ? [cosmetic] : [],
   };
+}
+
+/** Prix d'un cosmétique, dans SA monnaie : Jetons de Préconstruit s'il en a un, Tides sinon. */
+function CosmeticPrice({ option, size }: { option: CollectablesView["families"][number]["options"][number]; size: number }) {
+  if (option.priceTokens !== null) {
+    return (
+      <>
+        <PreconToken size={size} /> {option.priceTokens} Jeton{option.priceTokens > 1 ? "s" : ""}
+      </>
+    );
+  }
+  return (
+    <>
+      <TideCoin size={size} /> {option.priceTides}
+    </>
+  );
 }
 
 function RemoveButton({ label, disabled, onClick }: { label: string; disabled: boolean; onClick: () => void }) {

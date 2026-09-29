@@ -53,6 +53,21 @@ export interface AchievementStats {
    * casse.
    */
   voyagesCompleted: readonly string[];
+  /**
+   * STATISTIQUES À VIE, cumuls (`player_lifetime_stats.total`) — une
+   * entrée par clé de nature `sum` du catalogue `MATCH_STATS`
+   * (`game/quests/matchStats.ts`) déjà vue au moins une fois. Une clé
+   * absente vaut 0. Vide tant que la migration
+   * `20261020120000_statistiques_a_vie` n'est pas appliquée.
+   */
+  lifetime: Readonly<Record<string, number>>;
+  /**
+   * RECORDS : meilleure valeur sur UNE partie (`player_lifetime_stats.record`),
+   * pour TOUTES les clés — celles de nature `record` (« 5 unités détruites
+   * en même temps ») comme les cumuls (« 12 unités détruites dans une même
+   * partie »). Une clé absente vaut 0.
+   */
+  records: Readonly<Record<string, number>>;
 }
 
 export interface AchievementDefinition {

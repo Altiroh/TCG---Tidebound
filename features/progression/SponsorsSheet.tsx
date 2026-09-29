@@ -89,7 +89,7 @@ export function SponsorsSheet({
           <header className={styles.head}>
             <h2 className={styles.title}>Mécènes</h2>
             <p className={styles.subtitle}>
-              {unlocked ? "Derrière le public, certains vous observent." : `Ils remarquent les marins à partir du niveau ${SPONSORS_UNLOCK_LEVEL}.`}
+              {unlocked ? "Derrière le public, certains vous observent — tant qu'il reste là." : `Ils remarquent les marins à partir du niveau ${SPONSORS_UNLOCK_LEVEL}.`}
             </p>
           </header>
 
@@ -230,6 +230,8 @@ function SponsorPhoto({
 function SponsorFocus({ sponsor, audience, busy, onOpenGift }: { sponsor: SponsorView; audience: number; busy: boolean; onOpenGift: (sponsor: SponsorView) => void }) {
   const reached = new Set(sponsorGiftStagesReached(sponsor.points));
   const waiting = new Set(sponsor.giftStages);
+  // Un colis ouvert reste acquis, même quand le mécène a depuis perdu son intérêt.
+  const opened = new Set(sponsor.openedStages);
   const audienceRatio = Math.min(1, audience / sponsor.audienceRequired);
   // Qui il est et ce qui l'attire, au survol de son nom (la fenêtre ne défile plus).
   const about = sponsor.name
@@ -249,9 +251,10 @@ function SponsorFocus({ sponsor, audience, busy, onOpenGift }: { sponsor: Sponso
           <span className={styles.meterFill} style={{ width: `${audienceRatio * 100}%` }} />
         </div>
         <p className={styles.boxLine}>
+          {/* L'intérêt suit l'audience COURANTE : sous le seuil, il est perdu (`sponsorHeldPoints`). */}
           {sponsor.meetsAudience
-            ? `Votre public (${audience.toLocaleString("fr-FR")}) lui suffit : il vous regarde.`
-            : `Il attend ${sponsor.audienceRequired.toLocaleString("fr-FR")} spectateurs — vous en avez ${audience.toLocaleString("fr-FR")}.`}
+            ? `Votre public (${audience.toLocaleString("fr-FR")}) lui suffit : il vous regarde. Sous ${sponsor.audienceRequired.toLocaleString("fr-FR")}, il perd son intérêt.`
+            : `Il attend ${sponsor.audienceRequired.toLocaleString("fr-FR")} spectateurs — vous en avez ${audience.toLocaleString("fr-FR")}. D'ici là, il ne s'intéresse pas à vous.`}
         </p>
       </section>
 
@@ -261,7 +264,7 @@ function SponsorFocus({ sponsor, audience, busy, onOpenGift }: { sponsor: Sponso
         </h4>
         <ol className={styles.stages}>
           {SPONSOR_STAGES.filter((stage) => stage.id !== "indifferent").map((stage) => {
-            const state = waiting.has(stage.id) ? "gift" : reached.has(stage.id) ? "done" : "locked";
+            const state = waiting.has(stage.id) ? "gift" : opened.has(stage.id) || reached.has(stage.id) ? "done" : "locked";
             const gift = sponsorGift(stage.id);
             return (
               <li key={stage.id} className={styles.stage} data-state={state}>
@@ -274,7 +277,7 @@ function SponsorFocus({ sponsor, audience, busy, onOpenGift }: { sponsor: Sponso
                     Ouvrir
                   </button>
                 ) : (
-                  <span className={styles.stagePoints}>{state === "done" ? "Colis ouvert" : `${stage.minPoints} pts`}</span>
+                  <span className={styles.stagePoints}>{opened.has(stage.id) ? "Colis ouvert" : state === "done" ? "Atteint" : `${stage.minPoints} pts`}</span>
                 )}
               </li>
             );

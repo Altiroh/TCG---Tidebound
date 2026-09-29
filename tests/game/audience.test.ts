@@ -315,14 +315,13 @@ describe("l'audience varie en douceur", () => {
     expect(gain("facile")).toBeGreaterThan(0);
   });
 
-  it("un mécène qui regarde ne détourne pas les yeux pour une seule partie terne", () => {
+  it("un mécène ne regarde que tant que l'audience COURANTE atteint son seuil", () => {
     expect(sponsorWatches(1000, 1000)).toBe(true);
-    expect(sponsorWatches(1000, 900)).toBe(false);
-    // Déjà franchi par le record : il tient jusqu'à 85 % du seuil.
-    expect(sponsorWatches(1000, 900, 1100)).toBe(true);
-    expect(sponsorWatches(1000, 800, 1100)).toBe(false);
-    const points = sponsorPointsForMatch({ audience: 900, best: 1100, analysis: { spectacle: 70, traits: { panache: 80, endurance: 50, ferveur: 70 } } });
-    expect(points["compagnie-du-mousquet"]).toBeGreaterThan(0);
+    expect(sponsorWatches(1000, 999)).toBe(false);
+    // Retombé sous le seuil, le joueur n'éveille plus son intérêt, quel qu'ait été son record.
+    const analysis = { spectacle: 70, traits: { panache: 80, endurance: 50, ferveur: 70 } };
+    expect(sponsorPointsForMatch({ audience: 900, analysis })["compagnie-du-mousquet"]).toBe(0);
+    expect(sponsorPointsForMatch({ audience: 1000, analysis })["compagnie-du-mousquet"]).toBeGreaterThan(0);
   });
 });
 
