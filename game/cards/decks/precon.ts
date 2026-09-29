@@ -238,6 +238,17 @@ export const DECK_LE_THEATRE_ENGLOUTI: DeckList = {
  * L'adversaire doit se demander en permanence ce qui l'attend sous la
  * Marée. C'est pour ça qu'on trouve ici les pièges de plusieurs familles —
  * anti-swarm, anti-grosse-unité, anti-Objet — plutôt qu'une seule.
+ *
+ * LISTE REVUE LE 29/09/2026 — des pièges qui rapportent. Chaque piège se
+ * détruit après avoir tiré, et rien ne profitait de ce départ ; le deck
+ * cherchait, sauvait et cassait des Structures (Journal de Bord, Planche de
+ * Fortune, Charge de Démolition, Pont Miné) au lieu de gagner, avec 2,8
+ * unités posées par partie. Les outils cèdent la place à ce qui vit du
+ * départ d'une Structure (Charpentier et Plongeur des Épaves, Treuil
+ * Rouillé), à Bernard-l'Ermite d'Acier et à trois Choses des Hauts-Fonds
+ * à la place des Guetteurs de Brume. Mesuré au labo (bot moyen, 60
+ * parties par paire contre le rayon) : 13 % → 52 %, 22 Structures
+ * toujours en jeu. Aucun texte changé.
  */
 export const DECK_MINEURS_DE_FOND: DeckList = {
   id: "mineurs-de-fond",
@@ -250,7 +261,6 @@ export const DECK_MINEURS_DE_FOND: DeckList = {
     ...repeat("la-nasse-trop-pleine", 2),
     ...repeat("jugement-du-phare", 1),
     ...repeat("barils-de-poudre", 2),
-    ...repeat("pont-mine", 2),
     ...repeat("chaine-de-travers", 2),
     ...repeat("fausse-cargaison", 2),
     ...repeat("cloison-etanche", 2),
@@ -260,14 +270,15 @@ export const DECK_MINEURS_DE_FOND: DeckList = {
     ...repeat("filet-a-la-derive", 3),
     ...repeat("cloche-dalerte", 2),
     ...repeat("ancre-de-derive", 2),
-    // Lot 14 : chercher le piège qui manque, et sauver celui qui tombe.
-    ...repeat("journal-de-bord", 3),
-    ...repeat("planche-de-fortune", 2),
-    ...repeat("charge-de-demolition", 2),
+    // Ce qui vit du départ d'un piège (29/09/2026).
+    ...repeat("charpentier-des-epaves", 3),
+    ...repeat("plongeur-des-epaves", 2),
+    ...repeat("treuil-rouille", 1),
+    ...repeat("bernard-lermite-dacier", 3),
     // Assez de corps pour ne pas perdre en attendant.
-    ...repeat("guetteur-de-brume", 3),
     ...repeat("crabe-de-fer", 3),
     ...repeat("matelot-du-sans-nom", 3),
+    ...repeat("chose-des-hauts-fonds", 3),
   ],
 };
 
