@@ -196,13 +196,13 @@ describe("secrets de l'interface", () => {
     expect(new Set(viaSecrets)).toEqual(new Set(secretItems.map((item) => item.id)));
   });
 
-  it("la bougie rapporte « Dernière chandelle », un dos caché dont le visuel est à venir", () => {
+  it("la bougie rapporte « Dernière chandelle », un dos caché et équipable", () => {
     expect(collectablesForSecret("bougie")).toEqual([
       { kind: "cardBack", id: "back-derniere-chandelle", label: "Dernière chandelle" },
     ]);
     const item = CARD_BACKS.find((back) => back.id === "back-derniere-chandelle")!;
     expect(item.hidden).toBe(true);
-    expect(item.artPending).toBe(true);
+    expect(item.artPending).toBeUndefined();
   });
 
   it("garde tout Collectable à secret caché — une condition affichée n'est plus un secret", () => {

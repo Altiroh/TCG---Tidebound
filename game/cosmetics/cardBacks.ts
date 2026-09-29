@@ -86,10 +86,9 @@ export const CARD_BACKS: readonly CardBackSkin[] = [
   {
     id: "back-attrapez-les-tous",
     label: "Attrapez-les tous",
-    description: "La collection complète, ou presque. Visuel en cours de production.",
-    src: "/assets/cards/card-back/dispo-bientot.webp",
+    description: "La collection complète, ou presque : la houle blanche autour de la rose des vents.",
+    src: "/assets/cards/card-back/attrapez-les-tous.webp",
     unlock: { kind: "distinctCards", count: 250 },
-    artPending: true,
   },
   {
     id: "back-prestige-50",
@@ -100,18 +99,16 @@ export const CARD_BACKS: readonly CardBackSkin[] = [
   },
   /*
    * Le Collectable du SECRET de la bougie : on le trouve en soufflant la
-   * bougie du décor (menu, Collection, Decks). Caché, et sans visuel
-   * définitif à ce jour — il se montre sous le voile, il ne s'équipe pas.
-   * À reporter au Notion « Dos de carte — Collectables ».
+   * bougie du décor (menu, Collection, Decks). Caché tant qu'il n'est pas
+   * trouvé (Notion « Dos de carte — Collectables »).
    */
   {
     id: "back-derniere-chandelle",
     label: "Dernière chandelle",
     description: "Cire coulée et mèche encore fumante. Pour qui a soufflé la bougie du navigateur — et l'a rallumée.",
-    src: "/assets/cards/card-back/dispo-bientot.webp",
+    src: "/assets/cards/card-back/derniere-chandelle.webp",
     unlock: { kind: "secret", secret: "bougie" },
     hidden: true,
-    artPending: true,
   },
 ];
 
