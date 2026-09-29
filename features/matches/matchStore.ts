@@ -1,4 +1,4 @@
-import { dispatch, runBotUntilIdle, toPlayerView, turnTimerExpired, type GameState, type PlayerAction } from "@/game";
+import { botHasSomethingToDo, dispatch, runBotUntilIdle, stepBotTurn, toPlayerView, turnTimerExpired, type GameState, type PlayerAction } from "@/game";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
 import { awardMatchReward } from "@/features/progression/rewards";
@@ -48,6 +48,12 @@ export interface MatchUpdate {
    * ne transporter le journal qu'une fois (`unpackFrames` côté client).
    */
   frames: PackedFrames;
+  /**
+   * Partie contre bot : le bot a encore quelque chose à décider (son tour,
+   * une réaction). Le client demande alors la suite (`advanceBot`) PENDANT
+   * qu'il rejoue ce qu'il a déjà reçu.
+   */
+  botToMove: boolean;
 }
 
 export type StoreResult<T> = { ok: true; data: T } | { ok: false; error: string };
@@ -82,6 +88,11 @@ export async function loadSnapshot(matchId: string, userId: string): Promise<Mat
   return { match, view: full ? toPlayerView(full.state, userId) : null };
 }
 
+/** Partie contre bot, encore en cours, où le bot a quelque chose à décider. */
+function botStillToMove(match: MatchRow, state: GameState): boolean {
+  return match.mode === "bot" && state.status === "active" && botHasSomethingToDo(state, BOT_PLAYER_ID);
+}
+
 /** Uuid de profil du vainqueur, ou `null` (bot vainqueur, match nul, partie en cours). */
 export function winnerUserId(match: MatchRow, state: GameState): string | null {
   const winner = state.winnerId;
@@ -92,8 +103,9 @@ export function winnerUserId(match: MatchRow, state: GameState): string | null {
 }
 
 /**
- * Applique un coup du joueur connecté, fait répondre le bot si besoin, et
- * enregistre le résultat.
+ * Applique un coup du joueur connecté et l'enregistre. Contre le bot, sa
+ * réponse ne vient pas ici : `botToMove` dit au client de la demander
+ * (`advanceBot`).
  */
 export async function submitAction(matchId: string, userId: string, action: PlayerAction): Promise<StoreResult<MatchUpdate>> {
   // Le moteur valide la légalité d'un coup, pas l'identité de celui qui
@@ -134,11 +146,53 @@ export async function submitAction(matchId: string, userId: string, action: Play
   const result = dispatch(beforeAction, action);
   if (!result.ok) return { ok: false, error: result.error };
 
+  // Contre le bot, le coup du joueur est enregistré et RENVOYÉ SEUL : le bot
+  // joue ensuite, par tranches (`advanceBot`). Autrefois le serveur calculait
+  // tout le tour du bot avant de répondre — une fin de tour restait figée le
+  // temps de toute sa réflexion, puis le tour entier arrivait d'un bloc.
   frames.push(result.state);
-  if (match.mode === "bot") {
-    frames.push(...runBotUntilIdle(result.state, BOT_PLAYER_ID, match.bot_difficulty ?? "moyen"));
+  return await commitAndSettle(matchId, userId, match, full.version, frames, result.state);
+}
+
+/**
+ * Temps de réflexion accordé au bot par tranche. Au-delà, on enregistre ce
+ * qui est joué et on le renvoie : l'écran le montre pendant que la tranche
+ * suivante se calcule. Au moins une action par tranche, quoi qu'il arrive.
+ */
+const BOT_SLICE_BUDGET_MS = 350;
+/** Garde-fou : actions par tranche (un tour entier tient largement dedans). */
+const MAX_BOT_ACTIONS_PER_SLICE = 40;
+
+/**
+ * Fait jouer au bot la TRANCHE suivante de ce qu'il a à décider, l'enregistre
+ * et renvoie les vues correspondantes (`botToMove` : il en reste).
+ *
+ * Seul un participant d'une partie contre bot peut le demander, et la
+ * demande ne porte aucun coup : c'est le serveur qui fait jouer le bot, sur
+ * l'état autoritaire, sous le même verrou optimiste qu'un coup du joueur.
+ */
+export async function advanceBot(matchId: string, userId: string): Promise<StoreResult<MatchUpdate>> {
+  const [match, full] = await Promise.all([loadMatchRow(matchId), loadFullState(matchId)]);
+  if (!match || !isParticipant(match, userId)) return { ok: false, error: "Partie introuvable." };
+  if (match.mode !== "bot" || match.status !== "active" || !full) return { ok: false, error: "Cette partie n'est pas en cours." };
+
+  const frames: GameState[] = [];
+  let state = full.state;
+  const startedAt = Date.now();
+  while (frames.length < MAX_BOT_ACTIONS_PER_SLICE && state.status === "active" && botHasSomethingToDo(state, BOT_PLAYER_ID)) {
+    const step = stepBotTurn(state, BOT_PLAYER_ID, match.bot_difficulty ?? "moyen");
+    // Aucune progression possible : on s'arrête plutôt que de boucler.
+    if (step.state === state) break;
+    state = step.state;
+    frames.push(state);
+    if (step.done || Date.now() - startedAt >= BOT_SLICE_BUDGET_MS) break;
   }
-  return await commitAndSettle(matchId, userId, match, full.version, frames, frames[frames.length - 1]!);
+
+  // Rien à jouer : la vue telle quelle, sans écriture.
+  if (frames.length === 0) {
+    return { ok: true, data: { match, frames: packFrames([toPlayerView(state, userId)]), botToMove: false } };
+  }
+  return await commitAndSettle(matchId, userId, match, full.version, frames, state);
 }
 
 /**
@@ -239,7 +293,14 @@ async function commitAndSettle(
   // si deux chemins observent la même fin.
   if (finished) await settleFinishedMatch(updatedMatch, finalState);
 
-  return { ok: true, data: { match: updatedMatch, frames: packFrames(frames.map((frame) => toPlayerView(frame, userId))) } };
+  return {
+    ok: true,
+    data: {
+      match: updatedMatch,
+      frames: packFrames(frames.map((frame) => toPlayerView(frame, userId))),
+      botToMove: botStillToMove(match, finalState),
+    },
+  };
 }
 
 /**
@@ -262,6 +323,16 @@ export async function settleExpiredDeadlines(matchId: string, userId: string): P
   if (!full || match.status !== "active") return asIs;
 
   const rattrape = applyExpiredDeadlines(full.state, match, Date.now());
+  // Un tour du bot resté en suspens — l'écran a été fermé pendant qu'il le
+  // jouait par tranches (`advanceBot`) : la lecture le termine, pour qu'une
+  // table rouverte ne reste jamais figée sur « au bot de jouer ».
+  if (botStillToMove(match, rattrape.state)) {
+    const botFrames = runBotUntilIdle(rattrape.state, BOT_PLAYER_ID, match.bot_difficulty ?? "moyen");
+    if (botFrames.length > 0) {
+      rattrape.frames.push(...botFrames);
+      rattrape.state = botFrames[botFrames.length - 1]!;
+    }
+  }
   if (rattrape.frames.length === 0) return asIs;
 
   const committed = await commitAndSettle(matchId, userId, match, full.version, rattrape.frames, rattrape.state);

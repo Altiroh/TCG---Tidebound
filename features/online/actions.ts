@@ -5,6 +5,7 @@ import { createGameState, type PlayerAction } from "@/game";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { createWaitingMatch, deckRejection } from "@/features/online/waitingMatch";
 import {
+  advanceBot,
   loadSnapshot,
   settleExpiredDeadlines,
   submitAction,
@@ -152,6 +153,22 @@ export async function submitMatchAction(matchId: string, action: PlayerAction): 
   } catch (error) {
     console.error("[submitMatchAction] Échec :", error);
     return { ok: false, error: "Coup non enregistré, réessaie." };
+  }
+}
+
+/**
+ * Partie contre bot : fait jouer au bot la tranche suivante de son tour
+ * (`advanceBot`). Appelée par l'écran tant que `botToMove` le demande,
+ * pendant qu'il rejoue ce qu'il a déjà reçu.
+ */
+export async function advanceBotMatch(matchId: string): Promise<ActionResult<MatchUpdate>> {
+  const user = await requireUser();
+  try {
+    const result = await advanceBot(matchId, user.id);
+    return result.ok ? { ok: true, data: result.data } : { ok: false, error: result.error };
+  } catch (error) {
+    console.error("[advanceBotMatch] Échec :", error);
+    return { ok: false, error: "Le bot n'a pas pu jouer, réessaie." };
   }
 }
 

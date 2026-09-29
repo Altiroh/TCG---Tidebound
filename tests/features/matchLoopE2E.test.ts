@@ -42,7 +42,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 const { startBotMatch } = await import("@/features/bot/actions");
-const { submitMatchAction, createOnlineMatch, joinOnlineMatch, fetchMatchView } = await import("@/features/online/actions");
+const { submitMatchAction, advanceBotMatch, createOnlineMatch, joinOnlineMatch, fetchMatchView } = await import("@/features/online/actions");
 const { joinMatchmakingQueue, pollMatchmaking, leaveMatchmakingQueue } = await import("@/features/matchmaking/actions");
 const { cancelWaitingMatch, findResumableMatch } = await import("@/features/online/actions");
 const { claimQuestReward, fetchQuestBoard } = await import("@/features/quests/actions");
@@ -129,6 +129,15 @@ async function playToTheEnd(matchId: string, userId: string, limit = 400, { aged
     const result = await submitMatchAction(matchId, action);
     expect(result.error).toBeUndefined();
     expect(result.ok).toBe(true);
+    // Contre le bot, sa réponse se demande à part, tranche par tranche —
+    // exactement comme le fait l'écran (`OnlineMatch`).
+    let botToMove = result.data?.botToMove ?? false;
+    for (let slice = 0; botToMove && slice < 200; slice += 1) {
+      const next = await advanceBotMatch(matchId);
+      expect(next.error).toBeUndefined();
+      botToMove = next.data?.botToMove ?? false;
+    }
+    expect(botToMove).toBe(false);
   }
   throw new Error("La partie ne s'est pas terminée dans la limite de coups.");
 }
@@ -626,5 +635,61 @@ describe("délai de tour — l'autorité reste au serveur", () => {
     // les deux joueurs sont payés, une fois chacun.
     expect(db.one("match_rewards", { match_id: matchId, user_id: USER })).toBeTruthy();
     expect(db.one("match_rewards", { match_id: matchId, user_id: OPPONENT })).toBeTruthy();
+  });
+});
+
+const { botHasSomethingToDo } = await import("@/game/bot/runBotTurn");
+const { BOT_PLAYER_ID } = await import("@/features/matches/matchStore");
+
+describe("tour du bot par tranches — la fin de tour répond sans attendre le bot", () => {
+  it("renvoie la fin de tour seule, puis le bot joue tranche par tranche jusqu'à rendre la main", async () => {
+    const started = await startBotMatch(DECK.id, OTHER_DECK.id, "difficile");
+    const matchId = started.matchId!;
+
+    const ended = await submitMatchAction(matchId, { type: "endTurn", playerId: USER });
+    expect(ended.error).toBeUndefined();
+    // Une seule vue : celle d'après le coup du joueur. Le bot n'a encore rien joué.
+    expect(ended.data!.frames.views.length).toBe(1);
+    expect(ended.data!.botToMove).toBe(true);
+    expect(botHasSomethingToDo(db.one("match_states", { match_id: matchId })!.state, BOT_PLAYER_ID)).toBe(true);
+
+    let botToMove = true;
+    let slices = 0;
+    while (botToMove && slices < 50) {
+      const slice = await advanceBotMatch(matchId);
+      expect(slice.error).toBeUndefined();
+      // Chaque tranche joue au moins une action, et chacune est enregistrée.
+      expect(slice.data!.frames.views.length).toBeGreaterThan(0);
+      botToMove = slice.data!.botToMove;
+      slices += 1;
+    }
+    expect(botToMove).toBe(false);
+    const after = db.one("match_states", { match_id: matchId })!.state;
+    expect(after.status !== "active" || !botHasSomethingToDo(after, BOT_PLAYER_ID)).toBe(true);
+  });
+
+  it("une table rouverte au milieu du tour du bot le voit terminé", async () => {
+    const started = await startBotMatch(DECK.id, OTHER_DECK.id, "moyen");
+    const matchId = started.matchId!;
+    const ended = await submitMatchAction(matchId, { type: "endTurn", playerId: USER });
+    expect(ended.data!.botToMove).toBe(true);
+
+    // L'écran a été fermé : personne ne demande la suite. La lecture la termine.
+    const view = await fetchMatchView(matchId);
+    expect(view.ok).toBe(true);
+    const state = db.one("match_states", { match_id: matchId })!.state;
+    expect(state.status !== "active" || !botHasSomethingToDo(state, BOT_PLAYER_ID)).toBe(true);
+  });
+
+  it("ne fait pas jouer le bot pour quelqu'un qui n'est pas à la table", async () => {
+    const started = await startBotMatch(DECK.id, OTHER_DECK.id, "facile");
+    const matchId = started.matchId!;
+    await submitMatchAction(matchId, { type: "endTurn", playerId: USER });
+    const version = db.one("match_states", { match_id: matchId })!.version;
+
+    sessionUserId = OPPONENT;
+    const intrusion = await advanceBotMatch(matchId);
+    expect(intrusion.ok).toBe(false);
+    expect(db.one("match_states", { match_id: matchId })!.version).toBe(version);
   });
 });
