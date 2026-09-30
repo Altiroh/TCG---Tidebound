@@ -66,6 +66,8 @@ interface PhaseButtonProps {
   icon: string;
   disabled?: boolean;
   onClick?: () => void;
+  /** Second geste, plus discret, sous le bouton (« Fin de tour » dès le combat). */
+  secondary?: { label: string; onClick: () => void };
 }
 
 /**
@@ -79,9 +81,9 @@ interface PhaseButtonProps {
  * déjà ». D'où l'absence de `title` : il aurait doublé l'infobulle d'une
  * seconde, native et hors charte.
  */
-export function PhaseButton({ label, phaseLabel, icon, disabled = false, onClick }: PhaseButtonProps) {
+export function PhaseButton({ label, phaseLabel, icon, disabled = false, onClick, secondary }: PhaseButtonProps) {
   return (
-    <span className={styles.phaseWrap}>
+    <span className={styles.phaseWrap} data-secondary={secondary ? "" : undefined}>
       <button
         type="button"
         className={styles.phaseButton}
@@ -102,6 +104,12 @@ export function PhaseButton({ label, phaseLabel, icon, disabled = false, onClick
       <span className={styles.phaseCaption} aria-hidden>
         {label}
       </span>
+
+      {secondary && (
+        <button type="button" className={styles.phaseSecondary} onClick={secondary.onClick} disabled={disabled}>
+          {secondary.label}
+        </button>
+      )}
 
       <span className={styles.phaseTip} aria-hidden>
         {phaseLabel && <span className={styles.phaseTipPhase}>{phaseLabel}</span>}

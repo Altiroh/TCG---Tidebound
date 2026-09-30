@@ -112,8 +112,9 @@ export function MatchBoard({
 }: MatchBoardProps) {
   // En partie, la musique du menu se tait.
   useNoMenuAmbiance();
-  useScreenWakeLock();
   const [liveState, setState] = useState<GameState>(initialState);
+  // L'écran reste allumé pendant la partie, pas sur l'écran de fin.
+  useScreenWakeLock(liveState.status !== "finished");
   // `state` = état AFFICHÉ (retenu avant le choc pendant une attaque, cf. `useAttackPresentation`) ; toute
   // action se valide et s'applique sur `liveState`, l'état de jeu réel.
   const { displayState: state, attacks, volleys } = useAttackPresentation(liveState);
@@ -443,13 +444,20 @@ export function MatchBoard({
             if (phase.action === "advance") runAction({ type: "advancePhase", playerId: activePlayerId });
             else if (phase.action === "endTurn") runAction({ type: "endTurn", playerId: activePlayerId });
           },
+          secondary: phase.secondary && {
+            label: phase.secondary.label,
+            onClick: () => {
+              playButtonClick();
+              runAction({ type: "endTurn", playerId: activePlayerId });
+            },
+          },
         }}
         onMenu={() => board.setShowPauseMenu(true)}
-        onHandCardClick={(id) => board.handleHandCardClick(id)}
+        onHandCardClick={(id, options) => board.handleHandCardClick(id, { fromZoom: options?.fromZoom })}
         onPlayCard={(instanceId, targetInstanceId, boardIndex) => {
           // Le lâcher a déjà montré l'avertissement de Déraison : il vaut confirmation.
           if (targetInstanceId) runAction({ type: "playCard", playerId: activePlayerId, instanceId, targetInstanceId, boardIndex });
-          else board.handleHandCardClick(instanceId, true, boardIndex);
+          else board.handleHandCardClick(instanceId, { dropped: true, boardIndex });
         }}
         onAttack={(attackerInstanceId, defenderInstanceId) =>
           runAction({ type: "attack", playerId: activePlayerId, attackerInstanceId, defenderInstanceId })
@@ -592,7 +600,7 @@ export function MatchBoard({
       {error ? (
         <GlassAlert message={error} severity="error" onDismiss={() => setError(null)} />
       ) : (
-        <GlassAlert message={deraison.warning} severity="warning" onDismiss={deraison.dismiss} />
+        <GlassAlert message={deraison.warning} severity="warning" onDismiss={deraison.dismiss} onExpire={deraison.hide} />
       )}
       <PhaseBanner text={bannerText} bannerKey={bannerEvent?.id ?? null} />
       {shipAbility.prompt && (

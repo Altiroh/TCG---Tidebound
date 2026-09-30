@@ -21,12 +21,23 @@ const ICONS = {
  * combat, la main pour la Phase principale 2, le sablier pour la fin de
  * tour. Un bouton qui garderait la lame en disant « Phase principale 2 »
  * se lirait comme une attaque de plus.
+ *
+ * En Phase de combat, un SECOND bouton, « Fin de tour », évite de passer
+ * par une Phase principale 2 où l'on n'a rien à jouer : deux touchers de
+ * moins à chaque tour, sur un téléphone où chaque toucher compte.
  */
-export function phaseButtonFor({ isMyTurn, phase }: { isMyTurn: boolean; phase: GamePhase }) {
+export function phaseButtonFor({ isMyTurn, phase }: { isMyTurn: boolean; phase: GamePhase }): {
+  label: string;
+  icon: string;
+  action: "advance" | "endTurn" | null;
+  secondary?: { label: string; action: "endTurn" };
+} {
   if (!isMyTurn) return { label: "En attente…", icon: ICONS.wait, action: null };
-  if (phase === "mainPhase2") return { label: "Fin de tour", icon: ICONS.endTurn, action: "endTurn" as const };
-  if (phase === "combatPhase") return { label: "Phase principale 2", icon: ICONS.mainPhase, action: "advance" as const };
-  return { label: "Combat", icon: ICONS.combat, action: "advance" as const };
+  if (phase === "mainPhase2") return { label: "Fin de tour", icon: ICONS.endTurn, action: "endTurn" };
+  if (phase === "combatPhase") {
+    return { label: "Phase principale 2", icon: ICONS.mainPhase, action: "advance", secondary: { label: "Fin de tour", action: "endTurn" } };
+  }
+  return { label: "Combat", icon: ICONS.combat, action: "advance" };
 }
 
 /** Consigne affichée sous la piste de Marée pendant un choix de cible au clic. */

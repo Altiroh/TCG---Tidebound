@@ -4,12 +4,11 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   canActivateAbility,
   findAssemblage,
+  playCardRefusal,
   previewBreakReason,
   previewPlayCardReason,
-  canBeEquipTarget,
   canUnitAttack,
   deraisonAnchorDamage,
-  eligibleChosenUnits,
   getCardDefinition,
   getShipDefinition,
   hasResistance,
@@ -25,9 +24,10 @@ import {
 } from "@/game";
 import { AttackImpactLayer } from "@/features/match/AttackImpactLayer";
 import { useCardBackSrcFor } from "@/features/cosmetics/MatchCosmeticsProvider";
-import { CardTile } from "@/features/match/CardTile";
+import { CardTile, cardStatusLegend } from "@/features/match/CardTile";
 import { TIDE_STATE_LABELS } from "@/features/match/cardDisplay";
-import { needsPlayTarget } from "@/features/match/needsPlayTarget";
+import { legalTargetsFor, type TableTargeting } from "@/features/match/table/legalTargets";
+import { targetingHint } from "@/features/match/table/tableLabels";
 import type { AttackAnimation } from "@/features/match/useAttackPresentation";
 import type { EffectVolley } from "@/features/match/effectPresentation";
 import type { HandLimitDiscardMode } from "@/features/match/useHandLimitDiscard";
@@ -48,7 +48,7 @@ import { OpponentZone } from "@/features/match/table/OpponentZone";
 import { PlayerZone } from "@/features/match/table/PlayerZone";
 import { RainLayer } from "@/features/match/table/RainLayer";
 import { ShipInfoSheet } from "@/features/match/table/ShipInfoSheet";
-import { TableCardZoom } from "@/features/match/table/TableCardZoom";
+import { TableCardZoom, type ZoomAction } from "@/features/match/table/TableCardZoom";
 import { TableHand } from "@/features/match/table/TableHand";
 import { LiveAudience } from "@/features/match/table/LiveAudience";
 import { PhaseButton, TableHud } from "@/features/match/table/TableHud";
@@ -59,16 +59,7 @@ import { useTableGestures } from "@/features/match/table/useTableGestures";
 import type { ShipAbilityPanelView } from "@/features/match/table/TableShip";
 import { useTableMotion } from "@/features/match/table/useTableMotion";
 
-/**
- * Ciblage en cours côté conteneur (clic sur une carte de main à effet, bris
- * ciblé, réaction ciblée, attaque, tir du canon de Navire). Le tir n'a pas
- * de `sourceInstanceId` : sa source est le Navire, qui n'est pas une carte
- * du plateau.
- */
-export type TableTargeting =
-  | { kind: "playCard" | "break" | "reaction" | "attack" | "ability"; sourceInstanceId: string }
-  | { kind: "shipShot" | "shipTarget"; sourceInstanceId?: undefined }
-  | null;
+export type { TableTargeting } from "@/features/match/table/legalTargets";
 
 export interface TableBoardProps {
   /** État AFFICHÉ (retenu pendant une attaque, cf. `useAttackPresentation`). */
@@ -102,11 +93,24 @@ export interface TableBoardProps {
   hint?: string | null;
   onCancelHint?: () => void;
 
-  phaseButton: { label: string; phaseLabel?: string; icon: string; disabled: boolean; onClick?: () => void };
+  phaseButton: {
+    label: string;
+    phaseLabel?: string;
+    icon: string;
+    disabled: boolean;
+    onClick?: () => void;
+    /** « Fin de tour » dès la Phase de combat, sous le bouton principal. */
+    secondary?: { label: string; onClick: () => void };
+  };
   onMenu: () => void;
 
-  /** Clic / toucher sur une carte de la main (parcours au clic : jouer, ou entrer en choix de cible). */
-  onHandCardClick: (instanceId: string) => void;
+  /**
+   * Clic sur une carte de la main (parcours au clic : jouer, ou entrer en
+   * choix de cible). `fromZoom` : bouton « Jouer » de la carte agrandie, qui
+   * affichait déjà la Déraison — il vaut confirmation, et ne doit pas
+   * annuler un ciblage en cours sur cette même carte.
+   */
+  onHandCardClick: (instanceId: string, options?: { fromZoom?: boolean }) => void;
   /** Carte de main lâchée sur le plateau (sans cible) ou sur sa cible. Le lâcher vaut confirmation. */
   /** `boardIndex` : emplacement visé dans le rang (cf. `PlayCardAction`). */
   onPlayCard: (instanceId: string, targetInstanceId?: string, boardIndex?: number) => void;
@@ -195,7 +199,7 @@ function ReasonCostPreview({ playerId, cost, debtDamage }: { playerId: PlayerId;
         −{cost}
       </span>
       {debt && (
-        <span className="mt-0.5 whitespace-nowrap rounded-full bg-rose-950/85 px-1.5 py-px text-[10px] font-semibold text-rose-100">
+        <span className="mt-0.5 whitespace-nowrap rounded-full bg-rose-950/85 px-1.5 py-px text-[11px] font-semibold text-rose-100">
           Déraison · ⚓ −{debtDamage} en fin de tour
         </span>
       )}
@@ -301,22 +305,15 @@ export function TableBoard(props: TableBoardProps) {
    */
   const [preview, setPreview] = useState<{ id: string; rect: DOMRect } | null>(null);
   /**
-   * Carte lue en grand par-dessus le plateau (`TableCardZoom`), au doigt.
-   * `play` : carte de main jouable touchée — le zoom porte le bouton « Jouer ».
+   * Carte lue en grand par-dessus le plateau (`TableCardZoom`) — au doigt,
+   * c'est aussi là qu'on agit sur elle (Jouer, Défausser, Saborder…), les
+   * actions étant recalculées à chaque rendu. `confirmSaborder` : le
+   * Sabordage a été demandé une première fois, le bouton attend sa
+   * confirmation.
    */
-  const [zoom, setZoom] = useState<{ id: string; play: boolean } | null>(null);
+  const [zoom, setZoom] = useState<{ id: string; confirmSaborder?: boolean } | null>(null);
   const zoomId = zoom?.id ?? null;
-  const setZoomId = (id: string | null) => setZoom(id ? { id, play: false } : null);
-  /**
-   * MAIN DÉPLOYÉE — téléphone couché seulement. Repliée, la main ne montre
-   * que le haut de cartes d'une centaine de pixels : on la déploie d'un
-   * toucher, en rang de cartes lisibles au-dessus d'un voile ; un toucher sur
-   * le voile la replie. Glisser une carte reste possible dans les deux états
-   * (la main se replie dès que le glisser part : c'est le plateau qu'on
-   * regarde alors).
-   */
-  const compactHand = metrics.breakpoint === "mobile-landscape";
-  const [handRaised, setHandRaised] = useState(false);
+  const setZoomId = (id: string | null) => setZoom(id ? { id } : null);
   const previewTimer = useRef<number | null>(null);
   const cancelPreview = () => {
     if (previewTimer.current !== null) window.clearTimeout(previewTimer.current);
@@ -367,24 +364,27 @@ export function TableBoard(props: TableBoardProps) {
 
   /** Cibles légales d'une carte de main à effet ciblé (`null` = se pose sans cible). */
   function playTargets(instance: CardInstance): Set<string> | null {
-    const def = getCardDefinition(instance.cardId);
-    if (!needsPlayTarget(def, viewer.board)) return null;
-    const effect = (def.onPlayEffects ?? []).find((e) => e.target.kind === "chosenUnit");
-    if (!effect) return null;
-    if (effect.type === "attachEquipment") {
-      return new Set(viewer.board.filter((unit) => canBeEquipTarget(def, viewer.board, unit)).map((unit) => unit.instanceId));
-    }
-    return new Set(eligibleChosenUnits(state, effect.target, viewerId, instance.instanceId).map((c) => c.unit.instanceId));
+    return legalTargetsFor(state, viewerId, { kind: "playCard", sourceInstanceId: instance.instanceId });
   }
 
   /** Objet posé dont l'effet de bris demande une cible : il se glisse sur elle. */
   function breakTargets(instance: CardInstance): Set<string> | null {
-    const def = getCardDefinition(instance.cardId);
-    if (def.type !== "objet" || !canPlayCards) return null;
-    const effect = (def.onBreakEffects ?? []).find((e) => e.target.kind === "chosenUnit");
-    if (!effect) return null;
-    return new Set(eligibleChosenUnits(state, effect.target, viewerId, instance.instanceId).map((c) => c.unit.instanceId));
+    if (getCardDefinition(instance.cardId).type !== "objet" || !canPlayCards) return null;
+    return legalTargetsFor(state, viewerId, { kind: "break", sourceInstanceId: instance.instanceId });
   }
+
+  /**
+   * Cibles légales du ciblage EN COURS côté conteneur (carte de main, bris,
+   * réaction, capacité, attaque…) : elles s'éclairent, et un toucher ne
+   * désigne qu'elles. `null` : le conteneur tranche seul.
+   */
+  const selectionTargets = legalTargetsFor(state, viewerId, targeting);
+  /** Une carte en jeu qu'on peut agrandir : une Structure adverse invisible ne montre que son dos. */
+  const canZoom = (id: string) => {
+    const entry = byId.get(id);
+    if (!entry) return false;
+    return entry.owner.id === viewerId || isVisibleDuringTide(getCardDefinition(entry.instance.cardId), tideState);
+  };
 
   const slotsFree = viewer.board.length < viewerShip.slotCount;
   /** La carte est-elle jouable, restriction du tutoriel comprise ? */
@@ -429,9 +429,7 @@ export function TableBoard(props: TableBoardProps) {
    * son effet « unité désignée ») ; `null` : sa capacité ne vise personne.
    */
   function abilityTargetsOf(sourceId: string): Set<string> | null {
-    const source = viewer.board.find((u) => u.instanceId === sourceId);
-    const effect = source && getCardDefinition(source.cardId).activatableOncePerTurn?.effects.find((e) => e.target.kind === "chosenUnit");
-    return effect ? new Set(eligibleChosenUnits(state, effect.target, viewerId, source.instanceId).map((c) => c.unit.instanceId)) : null;
+    return legalTargetsFor(state, viewerId, { kind: "ability", sourceInstanceId: sourceId });
   }
 
   // Lâcher refusé : un mot bref au centre de la table, qui s'efface seul.
@@ -442,7 +440,7 @@ export function TableBoard(props: TableBoardProps) {
     return () => window.clearTimeout(timer);
   }, [dropError]);
 
-  const { gesture, hover, startGesture } = useTableGestures({
+  const { gesture, hover, startGesture, cancel: cancelGesture } = useTableGestures({
     isValidDrop: (kind, sourceId, drop) => {
       const entry = byId.get(sourceId);
       if (!entry) return false;
@@ -471,7 +469,9 @@ export function TableBoard(props: TableBoardProps) {
         return Boolean((drop.startsWith("own:") || drop.startsWith("unit:")) && abilityTargetsOf(sourceId)?.has(dropId(drop)));
       }
       if (kind === "aim") {
-        if (drop === "graveyard") return canPlayCards;
+        // Une unité ARMÉE pour l'attaque ne vise que l'adversaire : un
+        // toucher sur le Cimetière ne la Saborde pas.
+        if (drop === "graveyard") return canPlayCards && !gesture?.armed;
         if (drop === "ship") return attackReady(instance);
         if (drop.startsWith("unit:") && attackReady(instance)) return true;
         const targets = breakTargets(instance);
@@ -494,11 +494,12 @@ export function TableBoard(props: TableBoardProps) {
           props.onAssemblageDrop?.(sourceId, dropId(drop));
           return;
         }
-        const el = document.querySelector<HTMLElement>(`[data-card-id="${sourceId}"]`);
         // La carte part d'où le fantôme était lâché : centré sous la souris,
-        // au-dessus du doigt (cf. `.dragGhostTouch`, mêmes 1.3 et 16 px).
+        // au-dessus du doigt (cf. `.dragGhostTouch`, mêmes 1.3 et 16 px). Sa
+        // largeur est celle du fantôme — mesurée au DÉPART du geste : la
+        // carte restée dans la main a pu changer de taille depuis.
         const touchGhost = gesture?.touch ?? false;
-        const width = (el?.offsetWidth ?? 0) * (touchGhost ? 1.3 : 1.08);
+        const width = (gesture?.origin.width ?? 0) * (touchGhost ? 1.3 : 1.08);
         const height = width * 1.4;
         if (width) motion.rememberDrop(sourceId, { x: point.x - width / 2, y: touchGhost ? point.y - 16 - height : point.y - height / 2, width, height });
         props.onPlayCard(sourceId, undefined, slotOf(drop));
@@ -513,8 +514,14 @@ export function TableBoard(props: TableBoardProps) {
         return;
       }
       const entry = byId.get(sourceId);
-      if (drop === "graveyard") props.onDropOnGraveyard(sourceId, "board");
-      else if (drop === "ship") props.onAttack(sourceId);
+      if (drop === "graveyard") {
+        // AU DOIGT, une unité lâchée sur le Cimetière n'est pas Sabordée
+        // d'office : un glisser du pouce dérape vite, et la carte est
+        // perdue. Elle s'affiche en grand, le Sabordage à confirmer d'un
+        // bouton. (Un Objet pose déjà sa question : Briser ou Saborder.)
+        if (gesture?.touch && entry && getCardDefinition(entry.instance.cardId).type !== "objet") setZoom({ id: sourceId, confirmSaborder: true });
+        else props.onDropOnGraveyard(sourceId, "board");
+      } else if (drop === "ship") props.onAttack(sourceId);
       else if (entry && drop.startsWith("unit:") && attackReady(entry.instance)) props.onAttack(sourceId, dropId(drop));
       else props.onBreakOnTarget(sourceId, dropId(drop));
     },
@@ -529,7 +536,7 @@ export function TableBoard(props: TableBoardProps) {
      * plateau. La fiche reste à un bouton de là, et au clic droit.
      */
     onInspect: (sourceId) => {
-      if (byId.has(sourceId)) setZoomId(sourceId);
+      if (canZoom(sourceId)) setZoomId(sourceId);
     },
     onTap: (kind, sourceId, touch) => {
       const entry = byId.get(sourceId);
@@ -542,12 +549,11 @@ export function TableBoard(props: TableBoardProps) {
       if (kind === "place" || kind === "cast") {
         // AU DOIGT, TOUCHER UNE CARTE LA MONTRE, JAMAIS NE LA JOUE : le geste
         // naturel « toucher pour lire » posait la carte et dépensait la Raison
-        // (audit mobile du 29/09). Main repliée : le toucher la déploie ;
-        // déployée (ou hors téléphone) : la carte s'agrandit, avec « Jouer »
-        // si elle est jouable. À la souris, le clic joue toujours en un geste.
+        // (audit mobile du 29/09). La carte s'agrandit, avec ce qu'on peut en
+        // faire (« Jouer », « Défausser »…) ; un balayage passe à la voisine.
+        // Deux touchers pour jouer. À la souris, le clic joue en un geste.
         if (touch) {
-          if (compactHand && !handRaised) setHandRaised(true);
-          else setZoom({ id: sourceId, play: isPlayable(sourceId) && !discardMode });
+          setZoomId(sourceId);
           return true;
         }
         // Même règle qu'au glisser : une carte écartée par le tutoriel ne
@@ -556,8 +562,16 @@ export function TableBoard(props: TableBoardProps) {
         props.onHandCardClick(sourceId);
         return true;
       }
-      // Un ciblage est en cours côté conteneur : toute carte en jeu touchée lui revient.
+      // Un ciblage est en cours côté conteneur : une cible LÉGALE touchée lui
+      // revient. Au doigt, toute autre carte s'affiche en grand : on la
+      // touchait pour la lire, pas pour lancer un geste que le moteur
+      // refuserait (ou pire, qu'il accepterait sur la mauvaise cible).
       if (targeting) {
+        const legal = selectionTargets === null || selectionTargets.has(sourceId);
+        if (!legal && touch) {
+          if (canZoom(sourceId)) setZoomId(sourceId);
+          return true;
+        }
         props.onBoardCardClick(sourceId, entry.owner.id);
         return true;
       }
@@ -590,15 +604,11 @@ export function TableBoard(props: TableBoardProps) {
   useEffect(() => {
     onHandDragChange?.(draggedHand);
   }, [draggedHand, onHandDragChange]);
-  // Un glisser part (d'une carte de main ou du plateau) : la main se replie.
+  // La carte agrandie disparaît du jeu (posée, défaussée, détruite) : le calque se ferme avec elle.
+  const zoomGone = zoomId !== null && !byId.has(zoomId);
   useEffect(() => {
-    if (gesture && !gesture.armed) setHandRaised(false);
-  }, [gesture]);
-  // Plus de main déployée hors du mode téléphone, ni quand elle est vide.
-  const handCount = viewer.hand.length;
-  useEffect(() => {
-    if (!compactHand || handCount === 0) setHandRaised(false);
-  }, [compactHand, handCount]);
+    if (zoomGone) setZoom(null);
+  }, [zoomGone]);
 
   const tone: AimTone = casting || abilityDrag || (aimSource && !aimAttacks) ? "effect" : hover === "graveyard" ? "sabotage" : "attack";
   // Le tir du canon désigne exactement les mêmes cibles qu'une attaque —
@@ -622,7 +632,12 @@ export function TableBoard(props: TableBoardProps) {
     const visible = isVisibleDuringTide(def, tideState);
     const drop = `${mine ? "own" : "unit"}:${card.id}`;
     const ready = mine && attackReady(instance);
+    // Ciblage du conteneur (carte de main touchée, bris, réaction,
+    // capacité) : ses cibles légales s'éclairent comme au glisser.
+    const selectionTarget =
+      targeting !== null && targeting.kind !== "attack" && targeting.kind !== "shipShot" && (selectionTargets?.has(card.id) ?? false);
     const effectTarget =
+      selectionTarget ||
       (castTargets?.has(card.id) ?? false) ||
       (aimBreakTargets?.has(card.id) ?? false) ||
       (abilityTargets?.has(card.id) ?? false) ||
@@ -651,6 +666,15 @@ export function TableBoard(props: TableBoardProps) {
     const allocated = allocation?.amounts.get(card.id) ?? 0;
     const allocatable = allocation?.eligible.has(card.id) ?? false;
     const targetable = effectTarget || attackTarget || allocatable;
+    // Pendant un ciblage, ce qui n'est pas une cible s'estompe : l'œil va
+    // droit aux cartes éclairées, et le doigt aussi.
+    const targetingActive =
+      (targeting !== null && selectionTargets !== null) ||
+      casting !== null ||
+      abilityDrag !== null ||
+      (aiming !== null && (aimAttacks || aimBreakTargets !== null));
+    const dimmed =
+      targetingActive && !targetable && targeting?.sourceInstanceId !== card.id && aiming?.sourceId !== card.id && abilityDrag?.sourceId !== card.id;
 
     return (
       <div
@@ -684,6 +708,7 @@ export function TableBoard(props: TableBoardProps) {
           targetable ? `${styles.targetable} ${effectTarget || allocatable ? styles.effectTone : ""}` : "",
           targetable && hover === drop ? styles.targetHover : "",
           targeting?.sourceInstanceId === card.id ? styles.aimSource : "",
+          dimmed ? styles.targetDim : "",
           props.reactionSourceIds?.includes(card.id) || activatable || breakable ? "animate-reaction-pulse" : "",
         ].join(" ")}
       >
@@ -742,6 +767,99 @@ export function TableBoard(props: TableBoardProps) {
         )}
       </div>
     );
+  }
+
+  // ── Actions de la carte agrandie ────────────────────────────────────
+  /**
+   * Ce que le joueur peut faire de la carte agrandie, MAINTENANT — recalculé
+   * à chaque rendu : le plateau se remplit, la Marée tourne, le tour passe,
+   * et le bouton le dit au lieu de promettre un geste que le moteur
+   * refuserait. Une action impossible reste affichée, grisée, avec son motif.
+   */
+  function zoomActions(instance: CardInstance, ownerId: PlayerId, inHand: boolean, confirmSaborder: boolean): ZoomAction[] {
+    const id = instance.instanceId;
+    const def = getCardDefinition(instance.cardId);
+    const close = () => setZoom(null);
+    if (ownerId !== viewerId) return [];
+
+    if (inHand) {
+      // Main trop pleine en fin de tour : la seule chose à faire d'une carte, c'est la jeter.
+      if (discardMode) {
+        return discardMode.staged.has(id)
+          ? []
+          : [{ label: "Défausser", tone: "neutral", onAction: () => { close(); discardMode.onDiscard(id); } }];
+      }
+      if (!canPlayCards) return [];
+      if (!isPlayable(id)) return [{ label: "Jouer", disabled: true, note: "Pas cette carte-ci : l'étape attend l'autre." }];
+
+      const actions: ZoomAction[] = [];
+      const refusal = playCardRefusal(state, viewerId, id);
+      const price = previewPlayCardReason(state, viewerId, id);
+      const debt = price && price.cost > 0 && price.reasonAfter < 0 ? deraisonAnchorDamage(viewer, price.reasonAfter) : 0;
+      // Déjà choisie, sa cible attendue : « Jouer » ne l'annule pas, il rend le plateau.
+      const selected = targeting?.kind === "playCard" && targeting.sourceInstanceId === id;
+      if (refusal) {
+        actions.push({ label: "Jouer", disabled: true, note: refusal });
+      } else {
+        const cost = price && price.cost > 0 ? ` · ${price.cost} Raison` : "";
+        actions.push({
+          label: debt > 0 ? `Jouer quand même${cost}` : `Jouer${cost}`,
+          note:
+            debt > 0
+              ? `Déraison : ${price!.reasonAfter} Raison — ⚓ −${debt} en fin de tour si vous n'êtes pas remonté à 0.`
+              : selected
+                ? "Désignez sa cible sur le plateau."
+                : undefined,
+          warn: debt > 0,
+          onAction: () => {
+            close();
+            if (!selected) props.onHandCardClick(id, { fromZoom: true });
+          },
+        });
+      }
+      // Un Objet se Brise aussi depuis la main — l'invite dit le prix et l'effet.
+      if (def.type === "objet") {
+        const breakPreview = previewBreakReason(state, viewerId, id, true);
+        if (breakPreview && !breakPreview.reactionOnly) {
+          actions.push({
+            label: "Briser depuis la main…",
+            tone: "neutral",
+            disabled: !breakPreview.allowed,
+            note: breakPreview.allowed ? undefined : "Le Bris est bloqué pour l'instant.",
+            onAction: () => {
+              close();
+              props.onDropOnGraveyard(id, "hand");
+            },
+          });
+        }
+      }
+      return actions;
+    }
+
+    // Carte du plateau du joueur.
+    if (!canPlayCards || targeting) return [];
+    const actions: ZoomAction[] = [];
+    if (props.onActivateAbility && canActivateAbility(state, viewerId, id)) {
+      const activate = props.onActivateAbility;
+      actions.push({ label: "Activer", onAction: () => { close(); activate(id); } });
+    }
+    if (def.type === "objet") {
+      actions.push({ label: "Briser ou Saborder…", tone: "neutral", onAction: () => { close(); props.onDropOnGraveyard(id, "board"); } });
+    } else if (confirmSaborder) {
+      actions.push({
+        label: "Confirmer le Sabordage",
+        tone: "danger",
+        note: "La carte part au Cimetière.",
+        onAction: () => {
+          close();
+          props.onDropOnGraveyard(id, "board");
+        },
+      });
+    } else {
+      // Deux temps : perdre une carte ne tient jamais à un seul toucher.
+      actions.push({ label: "Saborder…", tone: "danger", onAction: () => setZoom({ id, confirmSaborder: true }) });
+    }
+    return actions;
   }
 
   // ── Marée ───────────────────────────────────────────────────────────
@@ -809,8 +927,9 @@ export function TableBoard(props: TableBoardProps) {
                 data-ship-target={opponent.id}
                 onClick={() => {
                   // Pendant un ciblage d'attaque, le Navire est une CIBLE ; sinon on consulte sa fiche.
+                  // Tout autre ciblage ne vise pas de Navire : le toucher le lit.
                   if (targeting?.kind === "attack" || targeting?.kind === "shipShot" || anyTargeting) props.onShipClick(opponent.id);
-                  else if (!targeting) setShipInfoFor(opponent.id);
+                  else setShipInfoFor(opponent.id);
                 }}
                 onContextMenu={(event) => {
                   event.preventDefault();
@@ -839,6 +958,14 @@ export function TableBoard(props: TableBoardProps) {
                     </button>
                   )}
                 </div>
+              ) : gesture?.armed ? (
+                // Unité armée d'un toucher : rien ne disait qu'elle attendait sa cible.
+                <div className={styles.centerHint} role="status">
+                  <span>{targetingHint("attack")}</span>
+                  <button type="button" className={styles.centerHintButton} onClick={cancelGesture}>
+                    Annuler
+                  </button>
+                </div>
               ) : null
             }
           />
@@ -858,7 +985,7 @@ export function TableBoard(props: TableBoardProps) {
                 onClick={() => {
                   // Seule une capacité ciblée vise son propre Navire.
                   if (anyTargeting) props.onShipClick(viewer.id);
-                  else if (!targeting) setShipInfoFor(viewer.id);
+                  else setShipInfoFor(viewer.id);
                 }}
                 onContextMenu={(event) => {
                   event.preventDefault();
@@ -884,8 +1011,6 @@ export function TableBoard(props: TableBoardProps) {
             renderCard={(card) => renderBoardCard(card, viewer)}
           />
           <TableHand
-            raised={handRaised}
-            onLower={() => setHandRaised(false)}
             cards={(discardMode ? viewer.hand.filter((card) => !discardMode.staged.has(card.instanceId)) : viewer.hand).map(toModel)}
             dragging={placing !== null || casting !== null}
             renderCard={(card) => {
@@ -896,6 +1021,10 @@ export function TableBoard(props: TableBoardProps) {
               // consultable (clic droit), mais visiblement hors-jeu —
               // sinon le joueur la tire en vain et croit à une panne.
               const muted = props.playableHandCards ? !props.playableHandCards.has(card.id) : false;
+              // Carte qui ferait entrer (ou s'enfoncer) en Déraison : on le voit
+              // dès la main, avant de la toucher — l'Ancrage qu'elle coûterait.
+              const price = canPlayCards && !discardMode && !muted ? previewPlayCardReason(state, viewerId, card.id) : undefined;
+              const debt = price && price.cost > 0 && price.reasonAfter < 0 ? deraisonAnchorDamage(viewer, price.reasonAfter) : 0;
               return (
                 <div
                   data-card-id={card.id}
@@ -917,6 +1046,11 @@ export function TableBoard(props: TableBoardProps) {
                   ].join(" ")}
                 >
                   <CardTile instance={instance} tideState={tideState} widthClassName="w-full" scaleOnHover={false} showStatusBadges={false} />
+                  {debt > 0 && (
+                    <span className={styles.handDebt} title={`Déraison : ⚓ −${debt} en fin de tour`}>
+                      ⚓ −{debt}
+                    </span>
+                  )}
                 </div>
               );
             }}
@@ -936,6 +1070,7 @@ export function TableBoard(props: TableBoardProps) {
                 icon={props.phaseButton.icon}
                 disabled={props.phaseButton.disabled}
                 onClick={props.phaseButton.onClick}
+                secondary={props.phaseButton.secondary}
               />
             }
           />
@@ -981,22 +1116,23 @@ export function TableBoard(props: TableBoardProps) {
       {(() => {
         const found = zoomId ? byId.get(zoomId) : undefined;
         if (!found) return null;
-        const price = zoom?.play ? previewPlayCardReason(state, viewerId, found.instance.instanceId) : undefined;
+        const inHand = found.owner.id === viewerId && viewer.hand.some((c) => c.instanceId === found.instance.instanceId);
+        // Parcours de la main : les cartes dans l'ordre de l'éventail (hors celles déjà mises de côté pour la défausse).
+        const handList = discardMode ? viewer.hand.filter((c) => !discardMode.staged.has(c.instanceId)) : viewer.hand;
+        const handIndex = inHand ? handList.findIndex((c) => c.instanceId === found.instance.instanceId) : -1;
+        const neighbour = (delta: number) => {
+          const next = handIndex >= 0 ? handList[handIndex + delta] : undefined;
+          return next ? () => setZoomId(next.instanceId) : undefined;
+        };
         return (
           <TableCardZoom
+            key={found.instance.instanceId}
             onClose={() => setZoomId(null)}
-            action={
-              zoom?.play
-                ? {
-                    label: price?.allowed ? `Jouer · ${price.cost} Raison` : "Jouer",
-                    onAction: () => {
-                      setZoom(null);
-                      setHandRaised(false);
-                      props.onHandCardClick(found.instance.instanceId);
-                    },
-                  }
-                : undefined
-            }
+            actions={zoomActions(found.instance, found.owner.id, inHand, zoom?.confirmSaborder ?? false)}
+            legend={inHand ? [] : cardStatusLegend(found.instance, tideState, auraContextFor(found.owner))}
+            onPrev={neighbour(-1)}
+            onNext={neighbour(1)}
+            position={handIndex >= 0 ? { index: handIndex, count: handList.length } : undefined}
             onDetail={() => {
               setZoomId(null);
               props.onInspect(found.instance);

@@ -13,9 +13,14 @@ import { deraisonAnchorDamage, previewPlayCardReason, type GameState, type Playe
  *   tout le glisser (`ReasonCostPreview`), le dépôt vaut validation.
  * - Clic : le premier clic sur une carte qui ferait passer (ou rester) sous
  *   0 n'arme qu'une confirmation ; un second clic sur la même carte la joue.
+ *   L'alerte s'efface seule (`hide`) sans désarmer la confirmation : elle
+ *   ne se perd que si le joueur l'écarte (`dismiss`) ou joue autre chose.
+ * - Doigt : le bouton « Jouer » de la carte agrandie écrit la dette dans
+ *   son libellé ; il vaut confirmation et ne passe pas par ici.
  */
 export function useDeraisonWarning(state: GameState, player: PlayerState | undefined, draggingId: string | null) {
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [hidden, setHidden] = useState(false);
 
   function warningFor(instanceId: string): string | null {
     if (!player) return null;
@@ -32,6 +37,7 @@ export function useDeraisonWarning(state: GameState, player: PlayerState | undef
   function interceptClick(instanceId: string): boolean {
     if (warningFor(instanceId) && confirmId !== instanceId) {
       setConfirmId(instanceId);
+      setHidden(false);
       return true;
     }
     setConfirmId(null);
@@ -43,7 +49,7 @@ export function useDeraisonWarning(state: GameState, player: PlayerState | undef
   // jauge de Raison, en rouge avec l'Ancrage en jeu s'il fait entrer en
   // Déraison (`ReasonCostPreview`, `TableBoard`). Le bandeau reste pour le
   // clic, qui n'a pas d'autre moment pour le dire.
-  const warning = draggingId ? null : confirmWarning ? `${confirmWarning} Cliquez à nouveau sur la carte pour la jouer.` : null;
+  const warning = draggingId || hidden ? null : confirmWarning ? `${confirmWarning} Jouez-la une seconde fois pour confirmer.` : null;
 
-  return { warning, interceptClick, dismiss: () => setConfirmId(null) };
+  return { warning, interceptClick, dismiss: () => setConfirmId(null), hide: () => setHidden(true) };
 }

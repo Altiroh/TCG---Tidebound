@@ -117,6 +117,46 @@ const GARDE_ICON_INFO = {
   description: "Les attaques adverses visant votre Navire doivent cibler en priorité les permanents portant Garde.",
 };
 
+/**
+ * LÉGENDE des statuts d'une carte en jeu, en toutes lettres : ce que disent
+ * ses badges flottants, dont la bulle ne s'ouvre qu'au survol. La carte
+ * agrandie au doigt (`TableCardZoom`) la montre sous la carte — sur un
+ * téléphone, ces médaillons de vingt pixels ne s'expliquent pas autrement.
+ * Mêmes conditions que les badges eux-mêmes.
+ */
+export function cardStatusLegend(
+  instance: CardInstance,
+  tideState: TideStateName,
+  auraContext?: AuraContext
+): Array<{ label: string; description: string }> {
+  const def = getCardDefinition(instance.cardId);
+  const context = auraContext
+    ? { tideState, controllerBoard: auraContext.controllerBoard, controllerReason: auraContext.controllerReason }
+    : null;
+  const has = (keyword: "garde" | "pied-marin") => (context ? hasKeywordInContext(instance, keyword, context) : hasKeyword(def, keyword));
+  const isUnit = (UNIT_CARD_TYPES as readonly string[]).includes(def.type);
+  const legend: Array<{ label: string; description: string }> = [];
+  if (computeEffectiveStats(instance, tideState, auraContext).inactive) {
+    legend.push({
+      label: "Inactive",
+      description: instance.modifiers.some((modifier) => modifier.silenced)
+        ? "Un effet l'entrave : elle ne peut ni attaquer, ni utiliser ses capacités."
+        : "La Marée actuelle la met hors d'état : ni attaque, ni capacité tant que la Marée ne change pas.",
+    });
+  }
+  if (instance.summoningSick && isUnit && !has("pied-marin")) legend.push(ENGOURDI_ICON_INFO);
+  if (has("garde")) legend.push(GARDE_ICON_INFO);
+  for (const status of instance.statuses ?? []) {
+    const info = STATUS_ICON_INFO[status];
+    if (info) legend.push(info);
+  }
+  if (instance.turnsRemaining !== undefined) {
+    const n = instance.turnsRemaining;
+    legend.push({ label: "Durée", description: `${n} tour${n > 1 ? "s" : ""} restant${n > 1 ? "s" : ""} avant expiration.` });
+  }
+  return legend.map(({ label, description }) => ({ label, description }));
+}
+
 /** Pastille de chaque couleur chromatique (Lot 15), lisible sur fond sombre. */
 const CHROMATIC_SWATCHES: Record<ChromaticColor, string> = {
   rouge: "#e0483e",
@@ -940,6 +980,8 @@ export function CardTile({
           // Une seule ligne, toujours au-dessus de la carte : en passant à la
           // ligne (« Inactive » + deux médaillons), le dernier badge tombait
           // SUR l'illustration — la pastille de couleur au milieu de la carte.
+          // `data-status-row` : le plateau téléphone la rentre dans la carte.
+          data-status-row
           className="pointer-events-none absolute inset-x-0 z-20 flex flex-nowrap items-center justify-center whitespace-nowrap px-1"
           style={{ top: -(badgeSize / 2 + 12), gap: badgeSize / 16 + 1.5 }}
         >

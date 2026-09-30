@@ -132,7 +132,9 @@
   to { opacity: 1; transform: translateX(-50%); }
 }
 
-@media (max-width: 720px) {
+/* Étroit, ou téléphone couché : le bandeau tient sur une ligne — sa
+   consigne détaillée recouvrait la rangée adverse, là même où l'on vise. */
+@media (max-width: 720px), (max-height: 520px) {
   .banner {
     gap: 8px;
     border-radius: 16px;

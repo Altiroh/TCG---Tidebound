@@ -465,7 +465,14 @@ export function EventFeed({ state, playerLabel, variant = "panel" }: EventFeedPr
 
   let body: ReactNode;
   if (highlights.length === 0) {
-    body = <p className={`leading-snug text-slate-400 ${rail ? "text-[11px]" : "text-[10px]"}`}>Aucune attaque ni effet pour l&apos;instant.</p>;
+    // Dans la colonne, la phrase entière était rognée par le haut : deux
+    // mots, centrés — et rien du tout sur un téléphone couché, où la
+    // colonne n'a pas la hauteur de les montrer entiers.
+    body = rail ? (
+      <p className="text-center text-[11px] leading-snug text-slate-400 [@media(max-height:520px)]:hidden">Journal vide</p>
+    ) : (
+      <p className="text-[10px] leading-snug text-slate-400">Aucune attaque ni effet pour l&apos;instant.</p>
+    );
   } else {
     body = highlights.map((highlight) => (
       <div

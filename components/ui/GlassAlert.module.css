@@ -81,8 +81,34 @@
   cursor: var(--tb-cursor-pointer);
   transition: background-color var(--tb-duration-fast) ease-out, color var(--tb-duration-fast) ease-out;
 }
-.close:hover { background: var(--tb-accent-soft); color: var(--tb-text); }
 .close:focus-visible { outline: 2px solid var(--tb-accent); }
+@media (hover: hover) {
+  .close:hover { background: var(--tb-accent-soft); color: var(--tb-text); }
+}
+/* Zone de toucher de 44 px autour de la croix de 22. */
+.close::before {
+  content: "";
+  position: absolute;
+  inset: -11px;
+}
+
+/*
+ * Téléphone couché : en bas au centre. En haut à droite, l'alerte (400 px)
+ * couvrait le Menu, la colonne de droite et la rangée adverse — là même où
+ * l'on vise.
+ */
+@media (max-height: 560px) {
+  .anchor {
+    top: auto;
+    right: auto;
+    bottom: calc(10px + var(--tb-safe-bottom));
+    left: 50%;
+    justify-content: center;
+    width: max-content;
+    max-width: min(460px, calc(100vw - 32px - var(--tb-safe-left) - var(--tb-safe-right)));
+    transform: translateX(-50%);
+  }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .alert { animation: none; }

@@ -90,7 +90,8 @@ export function OnlineBoard({
 }: OnlineBoardProps) {
   // En partie, la musique du menu se tait.
   useNoMenuAmbiance();
-  useScreenWakeLock();
+  // L'écran reste allumé pendant la partie, pas sur l'écran de fin.
+  useScreenWakeLock(liveState.status !== "finished");
   // `state` = état AFFICHÉ, retenu avant le choc pendant une attaque (cf. `useAttackPresentation`).
   const { displayState: state, attacks, volleys } = useAttackPresentation(liveState);
   const me = state.players.find((p) => p.id === myUserId)!;
@@ -204,8 +205,12 @@ export function OnlineBoard({
   async function handleAnyBoardCardClick(instanceId: string, ownerId: PlayerId) {
     const reaction = board.resolveBoardCardClick(instanceId, ownerId);
     if (!reaction) return;
+    // La sélection tombe AVANT l'aller-retour serveur : un second toucher
+    // pendant l'attente renverrait la même réaction une deuxième fois.
+    const queue = board.reactionQueue;
+    board.clearSelection();
     await onAction(reaction);
-    board.beginReactionTargeting(board.reactionQueue);
+    board.beginReactionTargeting(queue);
   }
 
   // La partie finie, la table reste le temps de VOIR le coup qui l'a finie.
@@ -268,12 +273,19 @@ export function OnlineBoard({
             if (phase.action === "advance") act({ type: "advancePhase", playerId: myUserId });
             else if (phase.action === "endTurn") act({ type: "endTurn", playerId: myUserId });
           },
+          secondary: phase.secondary && {
+            label: phase.secondary.label,
+            onClick: () => {
+              playButtonClick();
+              act({ type: "endTurn", playerId: myUserId });
+            },
+          },
         }}
         onMenu={() => board.setShowPauseMenu(true)}
-        onHandCardClick={(id) => board.handleHandCardClick(id)}
+        onHandCardClick={(id, options) => board.handleHandCardClick(id, { fromZoom: options?.fromZoom })}
         onPlayCard={(instanceId, targetInstanceId, boardIndex) => {
           if (targetInstanceId) act({ type: "playCard", playerId: myUserId, instanceId, targetInstanceId, boardIndex });
-          else board.handleHandCardClick(instanceId, true, boardIndex);
+          else board.handleHandCardClick(instanceId, { dropped: true, boardIndex });
         }}
         onAttack={(attackerInstanceId, defenderInstanceId) => act({ type: "attack", playerId: myUserId, attackerInstanceId, defenderInstanceId })}
         onBreakOnTarget={(instanceId, targetInstanceId) => act({ type: "breakObject", playerId: myUserId, instanceId, targetInstanceId })}
@@ -407,7 +419,7 @@ export function OnlineBoard({
       {error ? (
         <GlassAlert message={error} severity="error" onDismiss={onDismissError} />
       ) : (
-        <GlassAlert message={deraison.warning} severity="warning" onDismiss={deraison.dismiss} />
+        <GlassAlert message={deraison.warning} severity="warning" onDismiss={deraison.dismiss} onExpire={deraison.hide} />
       )}
       <PhaseBanner text={bannerText} bannerKey={bannerEvent?.id ?? null} />
       {shipAbility.prompt && (

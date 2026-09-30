@@ -16,22 +16,30 @@ const SEVERITY_LABEL: Record<AlertSeverity, string> = {
 interface GlassAlertProps {
   message: string | null;
   severity?: AlertSeverity;
+  /** Croix : le joueur écarte l'alerte. */
   onDismiss: () => void;
+  /**
+   * Fin du délai d'affichage, si elle ne vaut PAS « écarter » : l'alerte de
+   * Déraison s'efface, mais la confirmation qu'elle annonce reste armée.
+   * Absent : le délai appelle `onDismiss`.
+   */
+  onExpire?: () => void;
 }
 
 /**
- * Alerte éphémère en haut à droite, dans la matière des alertes du design
- * system (`ScreenToast`) : bleu nuit opaque, liseré rouge (erreur) ou or
- * (avertissement). Se referme seule après `AUTO_DISMISS_MS` ou au clic sur
- * la croix ; le timer repart à chaque nouveau message.
+ * Alerte éphémère en haut à droite (en bas au centre sur un téléphone
+ * couché, loin du Menu et de la rangée adverse), dans la matière des
+ * alertes du design system (`ScreenToast`) : bleu nuit opaque, liseré rouge
+ * (erreur) ou or (avertissement). Se referme seule après `AUTO_DISMISS_MS`
+ * ou au clic sur la croix ; le timer repart à chaque nouveau message.
  */
-export function GlassAlert({ message, severity = "error", onDismiss }: GlassAlertProps) {
-  const onDismissRef = useRef(onDismiss);
-  onDismissRef.current = onDismiss;
+export function GlassAlert({ message, severity = "error", onDismiss, onExpire }: GlassAlertProps) {
+  const onTimeoutRef = useRef(onExpire ?? onDismiss);
+  onTimeoutRef.current = onExpire ?? onDismiss;
 
   useEffect(() => {
     if (!message) return;
-    const id = setTimeout(() => onDismissRef.current(), AUTO_DISMISS_MS);
+    const id = setTimeout(() => onTimeoutRef.current(), AUTO_DISMISS_MS);
     return () => clearTimeout(id);
   }, [message]);
 

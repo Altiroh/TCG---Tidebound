@@ -15,7 +15,7 @@ import {
   type PlayerState,
 } from "@/game";
 import { needsPlayTarget } from "@/features/match/needsPlayTarget";
-import type { TableTargeting } from "@/features/match/table/TableBoard";
+import type { TableTargeting } from "@/features/match/table/legalTargets";
 
 /**
  * Interactions du plateau, partagées par la partie LOCALE (`MatchBoard`) et
@@ -45,12 +45,29 @@ export interface AssemblagePick {
   proposal?: Array<{ instanceId: string; color: ChromaticColor }>;
 }
 
+/**
+ * Comment la carte de main a été jouée.
+ *
+ * - `dropped` : LÂCHÉE sur le plateau. Le glisser a montré le prix de
+ *   Déraison, et le lâcher sur un emplacement libre a déjà répondu à la
+ *   question d'Assemblage (coût normal) ; `boardIndex` dit où.
+ * - `fromZoom` : bouton « Jouer » de la carte agrandie, au doigt. Son
+ *   libellé disait la Déraison : il vaut confirmation. Mais la question
+ *   d'Assemblage reste posée, et un ciblage déjà engagé sur cette carte
+ *   n'est pas annulé.
+ */
+export interface HandCardClickOptions {
+  dropped?: boolean;
+  boardIndex?: number;
+  fromZoom?: boolean;
+}
+
 /** Ce que le joueur a commencé et doit terminer en désignant une cible. */
 export type BoardSelection =
   | { kind: "playCard"; instanceId: string; needsTarget: boolean }
   | { kind: "attack"; attackerId: string }
   | { kind: "break"; instanceId: string; needsTarget: boolean; fromHand?: boolean }
-  | { kind: "reaction"; sourceInstanceId: string; abilityIndex: number; needsTarget: boolean }
+  | { kind: "reaction"; sourceInstanceId: string; abilityIndex: number; needsTarget: boolean; triggerSourceInstanceId?: string }
   /** Canon de Navire armé : le joueur désigne ce qu'il vise (un permanent adverse, ou le Navire adverse). */
   | { kind: "shipShot" }
   /**
@@ -79,7 +96,14 @@ export function tableTargetingFor(selection: BoardSelection | null): TableTarget
   if (selection.kind === "shipShot") return { kind: "shipShot" };
   if (selection.kind === "shipTarget") return { kind: "shipTarget" };
   if (selection.kind === "attack") return { kind: "attack", sourceInstanceId: selection.attackerId };
-  if (selection.kind === "reaction") return { kind: "reaction", sourceInstanceId: selection.sourceInstanceId };
+  if (selection.kind === "reaction") {
+    return {
+      kind: "reaction",
+      sourceInstanceId: selection.sourceInstanceId,
+      abilityIndex: selection.abilityIndex,
+      triggerSourceInstanceId: selection.triggerSourceInstanceId,
+    };
+  }
   if (selection.kind === "ability") return { kind: "ability", sourceInstanceId: selection.instanceId };
   return { kind: selection.kind, sourceInstanceId: selection.instanceId };
 }
@@ -169,8 +193,7 @@ export interface BoardInteraction {
    */
   beginReactionTargeting: (queued: PendingReactionCandidate[]) => boolean;
 
-  /** `boardIndex` : emplacement visé dans le rang quand la carte a été LÂCHÉE dessus ; un simple clic n'en désigne aucun. */
-  handleHandCardClick: (instanceId: string, confirmed?: boolean, boardIndex?: number) => void;
+  handleHandCardClick: (instanceId: string, options?: HandCardClickOptions) => void;
   /** Cible désignée sur le plateau. Rend l'action de réaction à soumettre, ou `null` si le geste est déjà traité. */
   resolveBoardCardClick: (instanceId: string, ownerId: PlayerId) => PlayerAction | null;
   requestBreak: (card: CardInstance, fromHand: boolean) => void;
@@ -225,21 +248,28 @@ export function useBoardInteraction({
       clearSelection();
       return false;
     }
-    setSelection({ kind: "reaction", sourceInstanceId: first.sourceInstanceId, abilityIndex: first.abilityIndex, needsTarget: true });
+    setSelection({
+      kind: "reaction",
+      sourceInstanceId: first.sourceInstanceId,
+      abilityIndex: first.abilityIndex,
+      needsTarget: true,
+      triggerSourceInstanceId: first.triggerSourceInstanceId,
+    });
     setReactionQueue(rest);
     return true;
   }
 
-  /** Clic sur une carte de main : la joue, ou entre en désignation de cible. Le glisser-déposer passe `confirmed`. */
-  function handleHandCardClick(instanceId: string, confirmed = false, boardIndex?: number) {
+  /** Clic sur une carte de main : la joue, ou entre en désignation de cible (cf. `HandCardClickOptions`). */
+  function handleHandCardClick(instanceId: string, { dropped = false, boardIndex, fromZoom = false }: HandCardClickOptions = {}) {
     if (!canPlayCards) return;
     const card = viewer.hand.find((c) => c.instanceId === instanceId);
     if (!card) return;
-    if (!confirmed && interceptDeraison(instanceId)) return;
+    if (!dropped && !fromZoom && interceptDeraison(instanceId)) return;
     onGestureStart?.();
     // Recliquer la carte déjà choisie annule — le geste est son propre retour.
+    // Pas depuis le zoom : « Jouer » n'y veut jamais dire « annuler ».
     if (selection?.kind === "playCard" && selection.instanceId === instanceId) {
-      clearSelection();
+      if (!fromZoom) clearSelection();
       return;
     }
     const def = getCardDefinition(card.cardId);
@@ -248,7 +278,7 @@ export function useBoardInteraction({
     // joueur. Carte LÂCHÉE sur un emplacement libre (`confirmed`), le geste
     // a déjà répondu : il la pose, au coût normal. L'Assemblage, lui, se
     // demande en la lâchant sur une Sentinelle (`handleAssemblageDrop`).
-    if (!confirmed && def.chromaticAssemblage && findAssemblage(viewer.board, def.chromaticAssemblage.sentinels)) {
+    if (!dropped && def.chromaticAssemblage && findAssemblage(viewer.board, def.chromaticAssemblage.sentinels)) {
       setAssemblagePick({ card, boardIndex });
       return;
     }

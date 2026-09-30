@@ -137,7 +137,7 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
     id: "attack",
     title: "À l'abordage",
     instruction: "Passe en Phase de combat, puis attaque avec une de tes unités.",
-    detail: "Une unité qui vient d'arriver doit attendre un tour avant de pouvoir frapper.",
+    detail: "Une unité qui vient d'arriver doit attendre un tour avant de frapper. Au doigt : touche ton unité, puis sa cible.",
     anchor: '[data-zone="SideRail"]',
     isDone: (state, playerId) => state.eventLog.some((event) => event.type === "ATTACK" && event.playerId === playerId),
   },
@@ -153,7 +153,7 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   {
     id: "break-object",
     title: "Ça peut encore servir",
-    instruction: "Brise un Objet depuis ta main en le glissant sur le crâne.",
+    instruction: "Brise un Objet depuis ta main en le glissant sur le crâne — au doigt, touche-le, puis « Briser depuis la main ».",
     detail: "Briser depuis la main coûte moins cher que de le poser : c'est l'effet qui t'intéresse, pas la place.",
     anchor: '[data-graveyard="player"]',
     eligibleHandCards: (state, playerId) => handCardsOfType(state, playerId, ["objet"]),

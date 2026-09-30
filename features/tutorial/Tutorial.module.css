@@ -170,9 +170,22 @@
   cursor: var(--tb-cursor-pointer);
 }
 
-.coachGhost:hover {
-  background: var(--tb-accent-soft);
-  color: var(--tb-text-strong);
+@media (hover: hover) {
+  .coachGhost:hover {
+    background: var(--tb-accent-soft);
+    color: var(--tb-text-strong);
+  }
+}
+
+/*
+ * Carte agrandie ouverte (`TableCardZoom`, `data-card-zoom`) : le guide
+ * s'efface. Posé au-dessus d'elle, il en masquait le haut — le coût et le
+ * nom de la carte qu'il demandait justement de lire, et parfois « Jouer ».
+ */
+:global(body:has([data-card-zoom])) .coach,
+:global(body:has([data-card-zoom])) .spotlight {
+  opacity: 0;
+  pointer-events: none;
 }
 .coachGhost:focus-visible { outline: 2px solid var(--tb-accent); outline-offset: 2px; }
 
@@ -287,8 +300,16 @@
   }
 
   .coachGhost {
+    position: relative;
     min-height: 32px;
     font-size: 11px;
+  }
+
+  /* Zone de toucher de 44 px, sans grossir la fiche. */
+  .coachGhost::before {
+    content: "";
+    position: absolute;
+    inset: -6px -4px;
   }
 }
 

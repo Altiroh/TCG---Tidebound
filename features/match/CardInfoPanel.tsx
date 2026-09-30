@@ -17,7 +17,7 @@ function Stat({ value, label, accentClassName }: { value: number; label: string;
   return (
     <div className="flex flex-col items-center gap-0.5">
       <span className={`text-2xl font-bold leading-none [font-family:var(--font-card-title)] ${accentClassName}`}>{value}</span>
-      <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">{label}</span>
+      <span className="text-[11px] font-medium uppercase tracking-wider text-slate-400">{label}</span>
     </div>
   );
 }

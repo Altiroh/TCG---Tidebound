@@ -214,7 +214,7 @@ export function AppliedEffectsList({
   return (
     <ul
       aria-label="Effets appliqués"
-      className="flex max-h-[30vh] flex-col gap-2 overflow-y-auto overscroll-contain rounded-xl border border-white/15 bg-black/60 p-2.5 shadow-[0_8px_30px_rgba(0,0,0,0.5)] backdrop-blur-xl [scrollbar-width:thin] [font-family:var(--font-card-body)]"
+      className="flex max-h-[30dvh] flex-col gap-2 overflow-y-auto overscroll-contain rounded-xl border border-white/15 bg-black/60 p-2.5 shadow-[0_8px_30px_rgba(0,0,0,0.5)] backdrop-blur-xl [scrollbar-width:thin] [font-family:var(--font-card-body)]"
     >
       {effects.map((effect) => (
         <li key={effect.key} className="flex items-center gap-3">

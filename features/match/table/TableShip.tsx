@@ -1,6 +1,7 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import { useRef, useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import type { PlayerId } from "@/game";
 import styles from "@/features/match/table/Table.module.css";
 import { useShipFrameGeometryFor } from "@/features/cosmetics/MatchCosmeticsProvider";
@@ -9,6 +10,7 @@ import {
   SHIP_ABILITY_RING_URL,
   shipIllustrationUrl,
 } from "@/features/ships/shipFrame";
+import { TableCardZoom } from "@/features/match/table/TableCardZoom";
 
 export interface ShipView {
   /** Nom lisible, pour les lecteurs d'écran uniquement. */
@@ -69,6 +71,44 @@ export interface ShipAbilityPanelView {
 }
 
 /**
+ * La capacité du Navire EN GRAND, au doigt : la carte de survol ne sort
+ * jamais au toucher, et un hublot de trente pixels touché à l'aveugle
+ * dépensait la Raison sans qu'on ait lu ce qu'il faisait. Même calque que
+ * la carte agrandie ; le bouton d'action n'y figure que pour son propre
+ * Navire.
+ */
+function ShipAbilitySheet({ view, onClose }: { view: ShipAbilityPanelView; onClose: () => void }) {
+  const { name, text, planks, armed, actionable, artUrl, reasonCost = 0, blockedBy, onClick } = view;
+  const verb = planks ? (armed ? "Tirer" : "Armer") : "Activer";
+  const cost = reasonCost > 0 ? ` · ${reasonCost} Raison` : "";
+  // Rendue par portail, la fiche reste DANS l'arbre React du cadre de
+  // Navire : ses clics y remonteraient et ouvriraient sa fiche.
+  return createPortal(
+    <div onClick={(event) => event.stopPropagation()}>
+      <TableCardZoom
+        onClose={onClose}
+        actions={
+          onClick
+            ? [
+                actionable
+                  ? { label: `${verb}${cost}`, onAction: () => { onClose(); onClick(); } }
+                  : { label: verb, disabled: true, note: blockedBy },
+              ]
+            : []
+        }
+      >
+        <span className={styles.shipAbilitySheet}>
+          <span className={styles.shipAbilityCardArt} style={artUrl ? { backgroundImage: `url(${artUrl})` } : undefined} />
+          <span className={styles.shipAbilityCardName}>{armed ? `${name} — armé` : name}</span>
+          <span className={styles.shipAbilityCardText}>{text}</span>
+        </span>
+      </TableCardZoom>
+    </div>,
+    document.body
+  );
+}
+
+/**
  * Panneau de capacité — le hublot de laiton, ce qu'il cache, les planches,
  * le halo et le clic.
  *
@@ -81,7 +121,11 @@ export interface ShipAbilityPanelView {
  * bois se raccorde donc exactement au milieu quand le panneau est fermé, et
  * les deux moitiés s'écartent vers le haut et vers le bas à l'armement.
  */
-function ShipAbilityPanel({ name, text, planks, armed, actionable, artUrl, reasonCost = 0, blockedBy, onClick }: ShipAbilityPanelView) {
+function ShipAbilityPanel(view: ShipAbilityPanelView) {
+  const { name, text, planks, armed, actionable, artUrl, reasonCost = 0, blockedBy, onClick } = view;
+  // Au doigt, le premier toucher MONTRE la capacité ; c'est le bouton de la fiche qui agit.
+  const [sheet, setSheet] = useState(false);
+  const pointerType = useRef("mouse");
   const label = armed ? `${name} — armé` : name;
   const status = actionable ? null : blockedBy;
   const ariaLabel = [label, text, status].filter(Boolean).join(" — ");
@@ -141,30 +185,54 @@ function ShipAbilityPanel({ name, text, planks, armed, actionable, artUrl, reaso
     </>
   );
 
+  const sheetNode = sheet ? <ShipAbilitySheet view={view} onClose={() => setSheet(false)} /> : null;
+
   if (!onClick) {
     return (
-      <span className={className} title="" role="img" aria-label={ariaLabel}>
+      <span
+        className={className}
+        title=""
+        role="img"
+        aria-label={ariaLabel}
+        onPointerDown={(event) => {
+          pointerType.current = event.pointerType;
+        }}
+        onClick={(event) => {
+          // Au doigt, lire le canon adverse — pas ouvrir la fiche du Navire derrière.
+          if (pointerType.current === "mouse") return;
+          event.stopPropagation();
+          setSheet(true);
+        }}
+      >
         {content}
+        {sheetNode}
       </span>
     );
   }
 
   return (
-    <button
-      type="button"
-      className={className}
-      title=""
-      aria-label={ariaLabel}
-      // Le cadre du Navire entier est cliquable (fiche, ciblage) : sans ça,
-      // le clic sur le panneau ouvrirait aussi la fiche derrière lui.
-      onClick={(event) => {
-        event.stopPropagation();
-        onClick();
-      }}
-      onContextMenu={(event) => event.stopPropagation()}
-    >
-      {content}
-    </button>
+    <>
+      <button
+        type="button"
+        className={className}
+        title=""
+        aria-label={ariaLabel}
+        onPointerDown={(event) => {
+          pointerType.current = event.pointerType;
+        }}
+        // Le cadre du Navire entier est cliquable (fiche, ciblage) : sans ça,
+        // le clic sur le panneau ouvrirait aussi la fiche derrière lui.
+        onClick={(event) => {
+          event.stopPropagation();
+          if (pointerType.current === "mouse") onClick();
+          else setSheet(true);
+        }}
+        onContextMenu={(event) => event.stopPropagation()}
+      >
+        {content}
+      </button>
+      {sheetNode}
+    </>
   );
 }
 

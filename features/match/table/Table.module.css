@@ -753,6 +753,25 @@
   color: #fff;
 }
 
+/* La capacité du Navire en grand, au doigt (`ShipAbilitySheet`) : mêmes
+   pièces que la carte de survol, dans le calque de la carte agrandie. */
+.shipAbilitySheet {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid rgba(199, 154, 78, 0.55);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(10, 22, 34, 0.97), rgba(6, 14, 24, 0.97));
+  font-size: max(13px, 2.2dvh);
+  text-align: center;
+}
+
+.shipAbilitySheet .shipAbilityCardArt {
+  width: min(34dvh, 70%);
+}
+
 /* Ce qui empêche d'agir — la raison du hublot éteint, dite en toutes
    lettres, sur le ton de la question des invites. */
 .shipAbilityCardStatus {
@@ -1525,7 +1544,8 @@
    (Le `!important` bat le `z-index` inline d'ordre.)
    SOURIS SEULEMENT (`hover: hover`) : au doigt, le navigateur garde l'état
    de survol après un toucher, et la carte restait levée et agrandie de
-   35 % par-dessus ses voisines. Au doigt, la main se DÉPLOIE (`.handRaised`). */
+   35 % par-dessus ses voisines. Au doigt, toucher une carte l'agrandit
+   (`TableCardZoom`), et l'on passe d'une carte à l'autre d'un balayage. */
 @media (hover: hover) {
   .handCardSlot:hover {
     z-index: 50 !important;
@@ -1537,44 +1557,6 @@
        `transform-origin: 50% 100%` garde son bas en place. */
     transform: translateY(calc(-1 * var(--hand-hover-lift))) scale(var(--card-hover-scale));
   }
-}
-
-/*
- * MAIN DÉPLOYÉE (téléphone couché, `TableBoard` → `handRaised`).
- *
- * Repliée, la main ne montre que le haut de cartes d'une centaine de
- * pixels. Un toucher la déploie : les cartes grandissent, se remettent à
- * plat et se relèvent EN ENTIER au-dessus du bord, par-dessus un voile qui
- * assombrit le plateau. Toucher une carte l'agrandit (avec « Jouer ») ;
- * toucher le voile replie la main ; glisser une carte la replie aussi.
- *
- * Les deux tailles sont redéfinies ICI, et pas seulement `--hand-card-h` :
- * `--hand-card-w` a déjà été calculée sur `.stage`, elle ne suivrait pas.
- */
-.handRaised {
-  z-index: 48;
-  --hand-card-h: min(calc(var(--card-h) * 2.1), calc(100cqh - var(--safe-top) - 4 * var(--row-gap)));
-  --hand-card-w: calc(var(--hand-card-h) * 5 / 7);
-  --hand-overlap: calc(var(--hand-card-w) * 0.12);
-}
-
-.handRaised .handRow {
-  max-width: calc(100% - 2 * var(--gutter-x));
-}
-
-.handRaised .handCard {
-  /* Le bas de la carte vient se poser juste au-dessus du bord de l'écran. */
-  transform: translateY(calc(-1 * (var(--hand-card-h) - var(--hand-peek)) - var(--row-gap)));
-  transition: transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-.handVeil {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  background: linear-gradient(180deg, rgba(2, 6, 14, 0.35) 0%, rgba(2, 6, 14, 0.78) 70%);
-  pointer-events: auto;
-  animation: cardZoomFade 160ms ease-out;
 }
 
 /* ──────────────────────────────────────────────────────────────
@@ -1658,6 +1640,14 @@
   border-image-width: calc(var(--rail-unit) * 604) 0 calc(var(--rail-unit) * 748) 0;
   border-image-repeat: stretch;
   filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.55));
+}
+
+/* Tour et « À vous » ne rétrécissent jamais : quand la colonne manque de
+   hauteur (bouton de phase et « Fin de tour » sur un téléphone), c'est le
+   journal qui cède, pas le nom de celui qui joue. */
+.railTurn,
+.railTurnOwner {
+  flex-shrink: 0;
 }
 
 .railTurn {
@@ -1887,7 +1877,8 @@
   border-radius: 999px;
   background: rgba(4, 10, 18, 0.82);
   color: #f4ead4;
-  font-size: calc(var(--hud-h) * 0.26);
+  /* Plancher de 11 px : sur téléphone, un quart de la barre fait moins de 10. */
+  font-size: max(var(--tb-fs-floor, 0px), calc(var(--hud-h) * 0.26));
   font-style: italic;
   white-space: nowrap;
   pointer-events: none;
@@ -2132,6 +2123,33 @@
   }
 }
 
+/* Pendant un ciblage, ce qui n'est pas une cible s'estompe (`TableBoard`, `dimmed`). */
+.targetDim {
+  opacity: 0.45;
+  filter: saturate(0.55);
+}
+
+/*
+ * Carte de main qui ferait entrer en Déraison : l'Ancrage qu'elle coûterait,
+ * en haut à droite — dans la partie visible de l'éventail.
+ */
+.handDebt {
+  position: absolute;
+  top: 3%;
+  right: 4%;
+  z-index: 2;
+  padding: 1px 5px;
+  border: 1px solid rgba(254, 205, 211, 0.8);
+  border-radius: 999px;
+  background: rgba(76, 5, 25, 0.92);
+  color: #ffe4e6;
+  font-size: max(11px, calc(var(--hand-card-w, 60px) * 0.12));
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
 /* Enveloppe du Navire adverse : garde la hauteur de la cellule. */
 .shipTarget {
   position: relative;
@@ -2362,18 +2380,49 @@
   pointer-events: none;
 }
 
-/* Les contrôles du calque, sous la carte (`TableCardZoom`) : tout le reste referme. */
-.cardZoomActions {
+/*
+ * Les contrôles du calque (`TableCardZoom`) : actions, légende des statuts,
+ * parcours de la main, fiche. Sous la carte en portrait ; À CÔTÉ d'elle en
+ * paysage — un téléphone couché n'a pas de hauteur à donner à une rangée
+ * de boutons sous une carte qu'on veut lire à pleine hauteur.
+ */
+.cardZoomSide {
   display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 12px;
+  flex: 0 1 auto;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  max-width: min(92vw, 360px);
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
-/* « Jouer » : l'action principale, en laiton plein — elle engage la partie. */
+@media (orientation: landscape) {
+  .cardZoom {
+    flex-direction: row;
+    gap: clamp(12px, 3vw, 32px);
+  }
+
+  .cardZoomCard {
+    width: min(calc((100dvh - 2rem - var(--tb-safe-top) - var(--tb-safe-bottom)) * 5 / 7), 54vw);
+  }
+
+  .cardZoomSide {
+    width: min(38vw, 300px);
+  }
+}
+
+.cardZoomActionItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* L'action, en laiton plein quand elle engage la partie (Jouer). */
 .cardZoomPlay {
   min-height: 44px;
-  padding: 0 22px;
+  padding: 6px 18px;
   border: 1px solid #f0d79a;
   border-radius: 999px;
   background: linear-gradient(180deg, #c79a4b, #8a6326);
@@ -2382,11 +2431,112 @@
   font: inherit;
   font-size: clamp(13px, 2dvh, 16px);
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
+  line-height: 1.2;
   cursor: var(--tb-cursor-pointer);
 }
 
+/* Perdre la carte (Saborder) : rouge sombre, jamais la couleur de « Jouer ». */
+.cardZoomPlay[data-tone="danger"] {
+  border-color: #f2a3a3;
+  background: linear-gradient(180deg, #9b2c2c, #5f1717);
+  color: #fde8e8;
+}
+
+.cardZoomPlay[data-tone="neutral"] {
+  border-color: rgba(199, 154, 78, 0.7);
+  background: rgba(20, 34, 48, 0.95);
+  color: #f1dfb6;
+}
+
+.cardZoomPlay:disabled {
+  border-color: rgba(148, 163, 184, 0.45);
+  background: rgba(30, 41, 59, 0.9);
+  box-shadow: none;
+  color: #94a3b8;
+  cursor: default;
+}
+
 .cardZoomPlay:focus-visible {
+  outline: 2px solid var(--cb-cyan, #58c8d8);
+  outline-offset: 2px;
+}
+
+/* Motif d'un refus, prix d'un geste. */
+.cardZoomNote {
+  padding: 0 10px;
+  color: #cbd5e1;
+  font-size: max(11px, 1.6dvh);
+  line-height: 1.3;
+  text-align: center;
+}
+
+.cardZoomNote[data-warn] {
+  color: #fda4af;
+  font-weight: 600;
+}
+
+/* Ce que disent les badges de statut, en toutes lettres. */
+.cardZoomLegend {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(199, 154, 78, 0.35);
+  border-radius: 10px;
+  background: rgba(6, 16, 26, 0.85);
+  font-size: max(11px, 1.5dvh);
+  line-height: 1.3;
+}
+
+.cardZoomLegend dt {
+  color: #f1dfb6;
+  font-weight: 700;
+}
+
+.cardZoomLegend dd {
+  margin: 0;
+  color: #cbd5e1;
+}
+
+.cardZoomFooter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* Parcours de la main : ‹ 2 / 5 › (le balayage fait de même). */
+.cardZoomNav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #e5cf9e;
+  font-size: max(12px, 1.6dvh);
+  font-variant-numeric: tabular-nums;
+}
+
+.cardZoomArrow {
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(199, 154, 78, 0.55);
+  border-radius: 999px;
+  background: rgba(6, 16, 26, 0.9);
+  color: #f1dfb6;
+  font: inherit;
+  font-size: 22px;
+  line-height: 1;
+  cursor: var(--tb-cursor-pointer);
+}
+
+.cardZoomArrow:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.cardZoomArrow:focus-visible {
   outline: 2px solid var(--cb-cyan, #58c8d8);
   outline-offset: 2px;
 }
@@ -2406,9 +2556,11 @@
   cursor: var(--tb-cursor-pointer);
 }
 
-.cardZoomDetail:hover {
-  border-color: #e5cf9e;
-  color: #f7ecd4;
+@media (hover: hover) {
+  .cardZoomDetail:hover {
+    border-color: #e5cf9e;
+    color: #f7ecd4;
+  }
 }
 
 .cardZoomDetail:focus-visible {
@@ -2765,7 +2917,7 @@
  *     courant est nommé, avec son décompte ; au doigt toute la piste ouvre
  *     l'infobulle ;
  *   - la hauteur ainsi rendue va aux deux rangées (cartes ~100 px au lieu
- *     de ~72) ; la main se DÉPLOIE d'un toucher (`.handRaised`) ;
+ *     de ~72) ; une carte de main touchée s'agrandit, avec « Jouer » ;
  *   - cartes de plateau en face compacte : coût, Attaque et Résistance en
  *     gros, sans le nom — le texte se lit en grand, d'un toucher ;
  *   - aucun texte d'interface sous 11 px, et une légende sous le bouton de
@@ -2892,6 +3044,13 @@
 
   .zoneSlotBoard .tableCard [data-tile="cost"] {
     font-size: clamp(11px, 17cqw, 16px) !important;
+  }
+
+  /* Badges de statut : DANS la carte, sur l'illustration. Posés au-dessus
+     d'elle, ceux de la rangée du joueur tombaient sur la bande de Marée,
+     devenue basse. Le texte de chaque statut se lit dans la carte agrandie. */
+  .zoneSlotBoard .tableCard [data-status-row] {
+    top: 30% !important;
   }
 
   /* ── Bande de Marée compacte ── */
@@ -3088,6 +3247,33 @@
     animation: none;
     filter: drop-shadow(0 0.05em 0.15em rgba(0, 0, 0, 0.6)) drop-shadow(0 0 0.4em rgba(255, 196, 92, 0.9));
   }
+
+  /* Réaction proposée, capacité activable, Objet à Briser : la pulsation
+     d'or (`animate-reaction-pulse`, deux `drop-shadow` animés) passe sur le
+     même halo composité que les cibles. */
+  .tableCard:global(.animate-reaction-pulse) {
+    animation: none;
+    filter: drop-shadow(0 0 2px rgba(251, 191, 36, 0.9));
+  }
+
+  .tableCard:global(.animate-reaction-pulse)::after {
+    content: "";
+    position: absolute;
+    inset: -3px;
+    z-index: 1;
+    border-radius: var(--card-radius);
+    box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.95), 0 0 14px 2px rgba(251, 191, 36, 0.6);
+    pointer-events: none;
+    animation: targetGlow 1.4s ease-in-out infinite;
+  }
+
+  /* Chaque carte isole son empilement. Le filtre animé en créait un par
+     accident ; sans lui, la zone de toucher de la pastille de capacité, qui
+     déborde de sa carte, passerait par-dessus la voisine — un toucher sur
+     celle-ci activait la capacité d'à côté. */
+  .tableCard {
+    isolation: isolate;
+  }
 }
 
 @keyframes targetGlow {
@@ -3097,7 +3283,8 @@
 }
 
 @media (pointer: coarse) and (prefers-reduced-motion: reduce) {
-  .targetable::after {
+  .targetable::after,
+  .tableCard:global(.animate-reaction-pulse)::after {
     animation: none;
   }
 }
@@ -3168,6 +3355,53 @@
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
+}
+
+/* Un second geste sous le bouton (« Fin de tour » dès le combat). */
+.phaseWrap[data-secondary] {
+  flex-direction: column;
+  gap: 4px;
+}
+
+.phaseSecondary {
+  position: relative;
+  max-width: 100%;
+  min-height: 28px;
+  padding: 2px 8px;
+  border: 1px solid rgba(199, 154, 78, 0.7);
+  border-radius: 999px;
+  background: rgba(6, 16, 26, 0.92);
+  color: #f0d79a;
+  font: inherit;
+  font-family: var(--font-card-title), Georgia, serif;
+  font-size: max(11px, var(--fs-label, 12px));
+  font-weight: 600;
+  line-height: 1.05;
+  cursor: var(--tb-cursor-pointer);
+}
+
+/* Zone de toucher de 44 px, sans grossir le bouton dans la colonne. */
+.phaseSecondary::before {
+  content: "";
+  position: absolute;
+  inset: -8px -4px;
+}
+
+.phaseSecondary:disabled {
+  opacity: 0.5;
+  cursor: var(--tb-cursor);
+}
+
+.phaseSecondary:focus-visible {
+  outline: 2px solid var(--cb-cyan, #58c8d8);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .phaseSecondary:hover:not(:disabled) {
+    border-color: #f0d79a;
+    color: #fff7e0;
+  }
 }
 
 .phaseTip {
