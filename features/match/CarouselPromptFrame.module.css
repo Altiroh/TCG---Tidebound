@@ -1,0 +1,137 @@
+/*
+ * CADRE DES INVITES À CARROUSEL — regard de pioche, défausse au choix,
+ * désignation d'unités, unités à garder, récupération au Cimetière,
+ * Assemblage.
+ *
+ * Les six posaient le même cadre à la main, et les six rognaient leur pied
+ * de validation sur un téléphone couché : 92vh de haut, 7 rem d'en-tête,
+ * des cartes de 291 px — le bouton « Prendre » tombait sous le bord à
+ * 390 px de haut. D'où ce cadre unique, qui tient trois règles :
+ *
+ * 1. le pied (compteur + boutons) ne rétrécit JAMAIS : c'est la zone du
+ *    carrousel qui cède, et elle défile au pire ;
+ * 2. les cartes sont bornées par la HAUTEUR visible (`--tb-carousel-card-max`,
+ *    lu par `CardCarousel`), en 5:7 ;
+ * 3. la zone sûre (encoche, barre de gestes) passe par `--tb-safe-*`.
+ *
+ * Seuil du téléphone couché : 520 px, celui du plateau
+ * (`table/Table.module.css`) — ces invites se posent SUR la partie.
+ */
+
+.overlay {
+  padding:
+    calc(1.5rem + var(--tb-safe-top)) calc(1.5rem + var(--tb-safe-right))
+    calc(1.5rem + var(--tb-safe-bottom)) calc(1.5rem + var(--tb-safe-left));
+}
+
+.panel {
+  max-height: min(92dvh, 100%);
+}
+
+.head {
+  position: relative;
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 1.75rem 1.5rem 0.75rem;
+  text-align: center;
+}
+
+.title {
+  font-size: calc(1.5rem * var(--tb-text-scale, 1));
+  line-height: calc(2rem * var(--tb-text-scale, 1));
+}
+
+.description {
+  max-width: 42rem;
+  font-size: calc(0.875rem * var(--tb-text-scale, 1));
+  line-height: calc(1.25rem * var(--tb-text-scale, 1));
+}
+
+/*
+ * La seule zone qui cède. 19 rem : en-tête, pied, marges et légende d'une
+ * invite de bureau — au-delà de ~600 px de haut, la carte garde ses 13 rem.
+ */
+.carousel {
+  --tb-carousel-card-max: max(7rem, calc((100dvh - 19rem - var(--tb-safe-top) - var(--tb-safe-bottom)) * 5 / 7));
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-bottom: 0.5rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.foot {
+  position: relative;
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.status {
+  flex: 1 1 10rem;
+  min-width: 0;
+  margin-right: auto;
+}
+
+/* Au doigt : des boutons de 44 px, où que soit l'écran. */
+@media (pointer: coarse) {
+  .foot button {
+    min-height: 44px;
+  }
+}
+
+/* Téléphone couché : en-tête resserré, pied fin, cartes à la hauteur restante. */
+@media (max-height: 520px) {
+  .overlay {
+    padding:
+      calc(0.5rem + var(--tb-safe-top)) calc(0.75rem + var(--tb-safe-right))
+      calc(0.5rem + var(--tb-safe-bottom)) calc(0.75rem + var(--tb-safe-left));
+  }
+
+  .panel {
+    max-height: 100%;
+  }
+
+  .head {
+    gap: 0.125rem;
+    padding: 0.625rem 1rem 0.25rem;
+  }
+
+  .title {
+    font-size: calc(1.125rem * var(--tb-text-scale, 1));
+    line-height: calc(1.5rem * var(--tb-text-scale, 1));
+  }
+
+  /* Deux lignes au plus : le texte entier de la carte reste sur sa fiche. */
+  .description {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    font-size: calc(0.75rem * var(--tb-text-scale, 1));
+    line-height: calc(1rem * var(--tb-text-scale, 1));
+  }
+
+  /* 12,5 rem : en-tête (≈ 3,5), pied (≈ 3,6), marges, légende d'Assemblage. */
+  .carousel {
+    --tb-carousel-card-max: max(6rem, calc((100dvh - 12.5rem - var(--tb-safe-top) - var(--tb-safe-bottom)) * 5 / 7));
+    padding-bottom: 0;
+  }
+
+  .foot {
+    padding: 0.375rem 1rem;
+  }
+
+  .foot button {
+    min-height: 44px;
+  }
+}

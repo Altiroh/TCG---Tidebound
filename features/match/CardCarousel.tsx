@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import type { CardInstance } from "@/game";
+import { CardDetailModal } from "@/features/match/CardDetailModal";
 import { CardTile } from "@/features/match/CardTile";
+import { useLongPress } from "@/features/match/useLongPress";
 
 interface CardCarouselProps {
   cards: CardInstance[];
@@ -13,7 +16,12 @@ interface CardCarouselProps {
   /** Sélection MULTIPLE (ex: « défaussez 2 cartes ») — cumulable avec `selectedInstanceId`. */
   selectedInstanceIds?: readonly string[];
   onSelect?: (card: CardInstance) => void;
-  /** Clic droit sur une carte : sa fiche détaillée. */
+  /**
+   * Clic droit (souris) ou appui long (doigt) sur une carte : sa fiche
+   * détaillée. Absent : le carrousel ouvre lui-même `CardDetailModal` — une
+   * carte rétrécie pour tenir dans un téléphone couché doit toujours pouvoir
+   * se lire en grand.
+   */
   onInspect?: (card: CardInstance) => void;
   emptyLabel?: string;
   /**
@@ -57,6 +65,8 @@ export function CardCarousel({
   const trackRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{ startX: number; startScroll: number; moved: boolean } | null>(null);
   const [edges, setEdges] = useState({ atStart: true, atEnd: true });
+  const [inspected, setInspected] = useState<CardInstance | null>(null);
+  const longPress = useLongPress<CardInstance>(onInspect ?? setInspected);
 
   function updateEdges() {
     const el = trackRef.current;
@@ -116,28 +126,30 @@ export function CardCarousel({
           setTimeout(() => (drag.current = null), 0);
         }}
         onPointerLeave={() => (drag.current = null)}
-        className="flex snap-x snap-mandatory gap-5 overflow-x-auto scroll-smooth px-12 pb-4 pt-2 [scrollbar-width:thin] [scrollbar-color:rgba(130,178,210,0.35)_transparent]"
+        className="flex snap-x snap-mandatory gap-5 overflow-x-auto scroll-smooth px-12 pb-4 pt-2 [@media(max-height:520px)]:gap-3 [@media(max-height:520px)]:pb-2[scrollbar-width:thin] [scrollbar-color:rgba(130,178,210,0.35)_transparent]"
         style={{ scrollPaddingInline: 48 }}
       >
         {cards.map((card) => {
           const selected = selectedInstanceId === card.instanceId || (selectedInstanceIds?.includes(card.instanceId) ?? false);
           const unavailable = unavailableReason?.(card) ?? null;
           return (
-            <div key={card.instanceId} className="flex w-44 shrink-0 snap-center flex-col items-center gap-2 text-center sm:w-52">
+            // Largeur plafonnée par `--tb-carousel-card-max` quand le cadre la pose
+            // (`CarouselPromptFrame`) : bornée par la HAUTEUR visible, pour que le
+            // pied de validation tienne sous la rangée sur un téléphone couché.
+            <div
+              key={card.instanceId}
+              className="flex w-44 max-w-[var(--tb-carousel-card-max,none)] shrink-0 snap-center flex-col items-center gap-2 text-center sm:w-52"
+            >
               <div
                 title={unavailable ?? undefined}
                 aria-disabled={unavailable ? true : undefined}
-                className={`relative w-full rounded-xl transition-transform duration-150 ${
+                {...longPress.bind(card)}
+                className={`relative w-full select-none rounded-xl transition-transform duration-150 [-webkit-touch-callout:none] ${
                   unavailable ? "cursor-not-allowed" : onSelect ? "cursor-pointer hover:-translate-y-1" : ""
                 } ${selected ? "ring-2 ring-board-accent ring-offset-2 ring-offset-black/60" : ""}`}
                 onClick={() => {
-                  if (drag.current?.moved || unavailable) return;
+                  if (longPress.consumeClick() || drag.current?.moved || unavailable) return;
                   onSelect?.(card);
-                }}
-                onContextMenu={(event) => {
-                  if (!onInspect) return;
-                  event.preventDefault();
-                  onInspect(card);
                 }}
               >
                 {/* `CardTile` sans `onClick` rend un bouton désactivé, qui avalerait clics et glissements : on les capte
@@ -183,6 +195,11 @@ export function CardCarousel({
           </svg>
         </button>
       )}
+
+      {/* Portée sur `body` : le panneau des invites porte un `backdrop-filter`, qui ferait de lui le
+          cadre de référence d'un `position: fixed` — la fiche y serait enfermée et rognée. */}
+      {inspected &&
+        createPortal(<CardDetailModal instance={inspected} tideState="calme" onClose={() => setInspected(null)} />, document.body)}
     </div>
   );
 }

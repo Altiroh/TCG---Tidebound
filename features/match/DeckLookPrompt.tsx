@@ -4,6 +4,7 @@ import { useState } from "react";
 import { deckLookRefusal, getCardDefinition, isDeckLookTakeable, type CardInstance, type DeckLookChoice } from "@/game";
 import { CARD_TYPE_LABELS } from "@/features/match/cardDisplay";
 import { CardCarousel } from "@/features/match/CardCarousel";
+import { CarouselPromptFrame } from "@/features/match/CarouselPromptFrame";
 
 interface DeckLookPromptProps {
   choice: DeckLookChoice;
@@ -63,45 +64,22 @@ export function DeckLookPrompt({ choice, onConfirm, onRefuse }: DeckLookPromptPr
   const complete = selected.length === choice.take || (choice.refusable && selected.length > 0);
 
   return (
-    <div className="fixed inset-0 z-[85] flex items-center justify-center bg-black/70 p-6 backdrop-blur-md">
-      <div
-        role="dialog"
-        aria-label="Regarder le dessus de sa pioche"
-        className="relative flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-white/15 bg-white/[0.06] shadow-[0_8px_40px_rgba(0,0,0,0.6)] backdrop-blur-2xl"
-      >
-        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/20 to-transparent" />
-        <div className="relative flex flex-col items-center gap-1 px-6 pb-3 pt-7 text-center">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-            Dessus de ta pioche
-          </p>
-          <h2 className="text-2xl font-semibold text-white [font-family:var(--font-card-title)]">
-            {choice.take > 1 ? `Prends jusqu'à ${choice.take} cartes` : "Prends une carte"}
-          </h2>
-          <p className="max-w-2xl text-sm text-slate-300">
-            {aucunePrenable
-              ? "Aucune de ces cartes ne correspond : elles repassent toutes sous ta pioche."
-              : "Les autres repassent sous ta pioche, dans l'ordre."}
-          </p>
-        </div>
-
-        <div className="relative pb-2">
-          <CardCarousel
-            cards={choice.revealed}
-            selectedInstanceIds={selected}
-            onSelect={toggle}
-            unavailableReason={raison}
-            emptyLabel="Ta pioche est vide."
-          />
-        </div>
-
-        <div className="relative flex items-center justify-end gap-2 border-t border-white/10 px-6 py-4">
-          <span className="mr-auto text-sm text-slate-400">
-            {selected.length > 0
-              ? selected
-                  .map((id) => getCardDefinition(choice.revealed.find((c) => c.instanceId === id)!.cardId).name)
-                  .join(", ")
-              : `${selected.length} / ${choice.take} sélectionnée${choice.take > 1 ? "s" : ""}`}
-          </span>
+    <CarouselPromptFrame
+      ariaLabel="Regarder le dessus de sa pioche"
+      eyebrow="Dessus de ta pioche"
+      title={choice.take > 1 ? `Prends jusqu'à ${choice.take} cartes` : "Prends une carte"}
+      description={
+        aucunePrenable
+          ? "Aucune de ces cartes ne correspond : elles repassent toutes sous ta pioche."
+          : "Les autres repassent sous ta pioche, dans l'ordre."
+      }
+      status={
+        selected.length > 0
+          ? selected.map((id) => getCardDefinition(choice.revealed.find((c) => c.instanceId === id)!.cardId).name).join(", ")
+          : `${selected.length} / ${choice.take} sélectionnée${choice.take > 1 ? "s" : ""}`
+      }
+      actions={
+        <>
           {(choice.refusable || aucunePrenable) && (
             <button
               type="button"
@@ -119,8 +97,16 @@ export function DeckLookPrompt({ choice, onConfirm, onRefuse }: DeckLookPromptPr
           >
             Prendre
           </button>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    >
+      <CardCarousel
+        cards={choice.revealed}
+        selectedInstanceIds={selected}
+        onSelect={toggle}
+        unavailableReason={raison}
+        emptyLabel="Ta pioche est vide."
+      />
+    </CarouselPromptFrame>
   );
 }

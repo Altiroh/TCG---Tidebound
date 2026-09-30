@@ -88,8 +88,8 @@ export function PendingChoicePrompt({ choice, onChoose }: PendingChoicePromptPro
     return (
       <PromptShell ariaLabel="Carte du dessus de la pioche adverse" width="wide">
         <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:text-left">
-          <div className="pointer-events-none mx-auto w-36 shrink-0">
-            <CardTile instance={choice.card} tideState="calme" widthClassName="w-36" scaleOnHover={false} badgeSize={38} />
+          <div className="pointer-events-none mx-auto w-36 shrink-0 [@media(max-height:520px)]:w-28">
+            <CardTile instance={choice.card} tideState="calme" widthClassName="w-full" scaleOnHover={false} badgeSize={38} />
           </div>
           <div className="flex flex-1 flex-col items-center gap-3 sm:items-start">
             <PromptEyebrow>Dessus de la pioche adverse</PromptEyebrow>

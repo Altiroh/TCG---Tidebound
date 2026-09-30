@@ -65,7 +65,12 @@ export function ShipWindowHint({ name, onPass }: ShipWindowHintProps) {
   }
 
   return (
-    <div className="pointer-events-none fixed left-1/2 top-12 z-[65] flex -translate-x-1/2 items-center gap-3 overflow-hidden rounded-full border border-white/20 bg-slate-950/75 px-4 py-2 text-xs text-slate-200 backdrop-blur-md">
+    // Pas d'`overflow-hidden` sur la pastille : il rognerait la zone tactile
+    // du bouton « Passer ». C'est la jauge qui porte son propre cadre arrondi.
+    <div
+      className="pointer-events-none fixed left-1/2 z-[65] flex -translate-x-1/2 items-center gap-3 rounded-full border border-white/20 bg-slate-950/75 px-4 py-2 text-xs text-slate-200 backdrop-blur-md"
+      style={{ top: "calc(3rem + var(--tb-safe-top))" }}
+    >
       <span>
         Marée annoncée — <span className="font-semibold text-white">{name}</span> peut encore agir.
       </span>
@@ -73,19 +78,22 @@ export function ShipWindowHint({ name, onPass }: ShipWindowHintProps) {
       <span className="tabular-nums text-[11px] text-slate-300/80" aria-label={`Se referme dans ${secondsLeft} secondes`}>
         {secondsLeft} s
       </span>
-      <span aria-hidden className="absolute inset-x-0 bottom-0 h-[2px] bg-white/10">
-        <span
-          className="block h-full origin-left bg-cyan-300/80"
-          style={{
-            transform: draining ? "scaleX(0)" : "scaleX(1)",
-            transition: draining ? `transform ${TIMEOUT_MS}ms linear` : "none",
-          }}
-        />
+      <span aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden rounded-full">
+        <span className="absolute inset-x-0 bottom-0 h-[2px] bg-white/10">
+          <span
+            className="block h-full origin-left bg-cyan-300/80"
+            style={{
+              transform: draining ? "scaleX(0)" : "scaleX(1)",
+              transition: draining ? `transform ${TIMEOUT_MS}ms linear` : "none",
+            }}
+          />
+        </span>
       </span>
+      {/* 24 px à l'écran, 48 px sous le doigt : un `::before` invisible déborde de la pastille. */}
       <button
         type="button"
         onClick={handlePass}
-        className="pointer-events-auto rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white outline-none transition-colors hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-white/40"
+        className="pointer-events-auto relative rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white outline-none transition-colors before:absolute before:-inset-x-2 before:-inset-y-3 before:content-[''] hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-white/40"
       >
         Passer
       </button>

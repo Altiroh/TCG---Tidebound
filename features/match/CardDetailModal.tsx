@@ -53,7 +53,7 @@ export function CardDetailModal({ instance, tideState, boardUnits = [], auraCont
       <button
         type="button"
         onClick={onClose}
-        className="fixed right-6 top-6 z-[60] flex items-center gap-2 rounded-md px-3 py-1.5 text-sm text-slate-300 drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)] transition-colors hover:bg-white/10 hover:text-board-accent"
+        className="fixed right-6 top-6 z-[60] flex items-center gap-2 rounded-md px-3 py-1.5 text-sm before:absolute before:inset-x-0 before:-inset-y-1.5 before:content-[''] text-slate-300 drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)] transition-colors hover:bg-white/10 hover:text-board-accent"
         style={{ top: "calc(1.5rem + var(--tb-safe-top))", right: "calc(1.5rem + var(--tb-safe-right))" }}
       >
         Fermer

@@ -11,6 +11,7 @@ import {
   type ChromaticColor,
 } from "@/game";
 import { CardCarousel } from "@/features/match/CardCarousel";
+import { CarouselPromptFrame } from "@/features/match/CarouselPromptFrame";
 import { CardTile } from "@/features/match/CardTile";
 import { playButtonClick } from "@/lib/sound";
 
@@ -76,24 +77,32 @@ function AssemblageConfirm({
   const autresPossibles = board.filter(isSentinel).length > proposal.length;
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-[70] flex items-center justify-center p-4">
+    // Zone sûre comprise, et hauteur bornée : sur un téléphone couché, le haut
+    // (vignettes, texte) défile, Oui / Non restent toujours visibles.
+    <div
+      className="pointer-events-none fixed inset-0 z-[70] flex items-center justify-center"
+      style={{
+        padding:
+          "calc(1rem + var(--tb-safe-top)) calc(1rem + var(--tb-safe-right)) calc(1rem + var(--tb-safe-bottom)) calc(1rem + var(--tb-safe-left))",
+      }}
+    >
       <div
         role="dialog"
         aria-label={`Assemblage de ${def.name}`}
-        className="pointer-events-auto relative w-full max-w-md overflow-hidden rounded-3xl bg-white/6 p-6 text-center backdrop-blur-[32px] backdrop-brightness-110 backdrop-saturate-150"
+        className="pointer-events-auto relative flex max-h-full w-full max-w-md flex-col overflow-hidden rounded-3xl bg-white/6 p-6 text-center backdrop-blur-[32px] backdrop-brightness-110 backdrop-saturate-150 [@media(max-height:520px)]:p-4"
         style={{
           boxShadow:
             "inset 0 1px 1px rgba(255,255,255,0.5), inset 0 0 0 1px rgba(255,255,255,0.08), inset 0 -12px 24px -12px rgba(255,255,255,0.06), 0 24px 60px rgba(0,0,0,0.6)",
         }}
       >
-        <div className="relative flex flex-col items-center gap-3">
+        <div className="relative flex min-h-0 flex-col items-center gap-3 overflow-y-auto overscroll-contain [@media(max-height:520px)]:gap-2">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-white/60">Assemblage Chromatique</p>
           <p className="text-base font-semibold text-white">Assembler {def.name} ?</p>
           <div className="flex justify-center gap-2">
             {unites.map((unit) => (
-              <div key={unit.instanceId} className="pointer-events-none flex w-16 flex-col items-center gap-1">
+              <div key={unit.instanceId} className="pointer-events-none flex w-16 shrink-0 flex-col items-center gap-1">
                 <CardTile instance={unit} tideState="calme" widthClassName="w-full" scaleOnHover={false} showStatusBadges={false} />
-                <span className="text-[10px] text-white/70">
+                <span className="text-[10px] text-white/70 [@media(max-height:520px)]:text-[11px]">
                   {CHROMATIC_COLOR_LABELS[proposal.find((p) => p.instanceId === unit.instanceId)!.color]}
                 </span>
               </div>
@@ -103,14 +112,16 @@ function AssemblageConfirm({
             Ces {proposal.length} Sentinelles vont au Cimetière sans être détruites — elles ne laissent pas d&apos;Éclat.
           </p>
           <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-[11px] font-medium text-white/70">{cout} Raison</span>
-          <div className="mt-1 flex items-center gap-3">
+        </div>
+        <div className="relative mt-4 flex shrink-0 flex-col items-center gap-3 [@media(max-height:520px)]:mt-2 [@media(max-height:520px)]:gap-2">
+          <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => {
                 playButtonClick();
                 onAssemble(proposal);
               }}
-              className="rounded-full bg-emerald-400 px-7 py-2 text-sm font-semibold text-emerald-950 outline-none transition-colors hover:bg-emerald-300 focus-visible:ring-2 focus-visible:ring-emerald-200"
+              className="rounded-full bg-emerald-400 px-7 py-2 text-sm font-semibold text-emerald-950 outline-none transition-colors hover:bg-emerald-300 focus-visible:ring-2 focus-visible:ring-emerald-200 [@media(max-height:520px)]:min-h-11 [@media(pointer:coarse)]:min-h-11"
             >
               Oui
             </button>
@@ -120,7 +131,7 @@ function AssemblageConfirm({
                 playButtonClick();
                 onCancel();
               }}
-              className="rounded-full bg-white/10 px-7 py-2 text-sm font-semibold text-white outline-none transition-colors hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-white/40"
+              className="rounded-full bg-white/10 px-7 py-2 text-sm font-semibold text-white outline-none transition-colors hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-white/40 [@media(max-height:520px)]:min-h-11 [@media(pointer:coarse)]:min-h-11"
             >
               Non
             </button>
@@ -129,7 +140,11 @@ function AssemblageConfirm({
             <div className="reaction-countdown-fill h-full w-full bg-white/55" style={{ animationDuration: `${CONFIRM_TIMEOUT_MS}ms` }} />
           </div>
           {autresPossibles && onChooseOthers && (
-            <button type="button" onClick={onChooseOthers} className="text-xs text-sky-200/80 underline-offset-2 hover:text-sky-100 hover:underline">
+            <button
+              type="button"
+              onClick={onChooseOthers}
+              className="text-xs text-sky-200/80 underline-offset-2 hover:text-sky-100 hover:underline [@media(pointer:coarse)]:min-h-11"
+            >
               Choisir d&apos;autres Sentinelles
             </button>
           )}
@@ -158,42 +173,20 @@ function AssemblageChooser({ card, board, onAssemble, onPlayNormally, onCancel }
   }
 
   return (
-    <div className="fixed inset-0 z-[85] flex items-center justify-center bg-black/70 p-6 backdrop-blur-md">
-      <div
-        role="dialog"
-        aria-label={`Assemblage de ${def.name}`}
-        className="relative flex max-h-[92dvh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-white/15 bg-white/[0.06] shadow-[0_8px_40px_rgba(0,0,0,0.6)] backdrop-blur-2xl"
-      >
-        <div className="relative flex flex-col items-center gap-1 px-6 pb-3 pt-7 text-center">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Assemblage Chromatique</p>
-          <h2 className="text-2xl font-semibold text-white [font-family:var(--font-card-title)]">{def.name}</h2>
-          <p className="max-w-2xl text-sm text-slate-300">
-            Désigne {requis} Sentinelles de couleurs différentes : elles vont au Cimetière sans être détruites, et la
-            carte se joue pour {cout} Raison.
-          </p>
-        </div>
-
-        <div className="relative pb-2">
-          <CardCarousel
-            cards={sentinelles}
-            selectedInstanceIds={selected}
-            onSelect={toggle}
-            renderCaption={(unit) => (
-              <span className="text-xs text-slate-300">
-                {chromaticColorsOf(unit, board)
-                  .map((color) => CHROMATIC_COLOR_LABELS[color])
-                  .join(" · ") || "Sans couleur"}
-              </span>
-            )}
-            emptyLabel="Aucune Sentinelle en jeu."
-          />
-        </div>
-
-        <div className="relative flex flex-wrap items-center justify-end gap-2 border-t border-white/10 px-6 py-4">
-          <span className="mr-auto text-sm text-slate-400">
-            {choisies.length}/{requis} désignées
-            {choisies.length === requis && !assemblage ? " — il faut des couleurs différentes" : ""}
-          </span>
+    <CarouselPromptFrame
+      ariaLabel={`Assemblage de ${def.name}`}
+      eyebrow="Assemblage Chromatique"
+      title={def.name}
+      description={`Désigne ${requis} Sentinelles de couleurs différentes : elles vont au Cimetière sans être détruites, et la carte se joue pour ${cout} Raison.`}
+      gloss={false}
+      status={
+        <>
+          {choisies.length}/{requis} désignées
+          {choisies.length === requis && !assemblage ? " — il faut des couleurs différentes" : ""}
+        </>
+      }
+      actions={
+        <>
           <button type="button" onClick={onCancel} className="rounded-md px-4 py-2 text-sm text-slate-300 hover:text-white">
             Annuler
           </button>
@@ -212,8 +205,22 @@ function AssemblageChooser({ card, board, onAssemble, onPlayNormally, onCancel }
           >
             Assembler ({cout} Raison)
           </button>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    >
+      <CardCarousel
+        cards={sentinelles}
+        selectedInstanceIds={selected}
+        onSelect={toggle}
+        renderCaption={(unit) => (
+          <span className="text-xs text-slate-300">
+            {chromaticColorsOf(unit, board)
+              .map((color) => CHROMATIC_COLOR_LABELS[color])
+              .join(" · ") || "Sans couleur"}
+          </span>
+        )}
+        emptyLabel="Aucune Sentinelle en jeu."
+      />
+    </CarouselPromptFrame>
   );
 }

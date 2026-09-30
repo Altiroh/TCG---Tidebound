@@ -36,24 +36,29 @@ const GLASS_SHADOW =
 export function PromptShell({ ariaLabel, children, onClose, closeLabel = "Fermer", width = "narrow", dim = false }: PromptShellProps) {
   return (
     <div
-      className={`fixed inset-0 z-[85] flex items-center justify-center p-4 ${
+      className={`fixed inset-0 z-[85] flex items-center justify-center ${
         dim ? "bg-black/65 backdrop-blur-md" : "pointer-events-none"
       }`}
+      style={{
+        padding:
+          "calc(1rem + var(--tb-safe-top)) calc(1rem + var(--tb-safe-right)) calc(1rem + var(--tb-safe-bottom)) calc(1rem + var(--tb-safe-left))",
+      }}
       onClick={dim && onClose ? onClose : undefined}
     >
       <div
         role="dialog"
         aria-label={ariaLabel}
         onClick={(event) => event.stopPropagation()}
-        className={`pointer-events-auto relative w-full ${
+        className={`pointer-events-auto relative flex max-h-full w-full flex-col ${
           width === "wide" ? "max-w-xl" : "max-w-sm"
-        } overflow-hidden rounded-3xl bg-white/6 p-6 text-center backdrop-blur-[32px] backdrop-brightness-110 backdrop-saturate-150`}
+        } overflow-hidden rounded-3xl bg-white/6 p-6 text-center backdrop-blur-[32px] backdrop-brightness-110 backdrop-saturate-150 [@media(max-height:520px)]:p-4`}
         style={{ boxShadow: GLASS_SHADOW }}
       >
         {/* Léger reflet en haut à gauche — le grain "verre liquide" (courbure
             qui capte la lumière), pas un aplat qui masquerait le flou du fond. */}
         <div className="pointer-events-none absolute -left-6 -top-10 h-32 w-32 rounded-full bg-white/25 blur-2xl" aria-hidden />
 
+        {/* Croix de 28 px à l'écran, 44 px sous le doigt : un `::before` invisible déborde de 8 px. */}
         {onClose && (
           <button
             type="button"
@@ -62,7 +67,7 @@ export function PromptShell({ ariaLabel, children, onClose, closeLabel = "Fermer
               onClose();
             }}
             aria-label={closeLabel}
-            className="absolute right-3 top-3 z-10 flex h-7 w-7 items-center justify-center rounded-full text-white/60 outline-none transition-colors hover:bg-white/15 hover:text-white focus-visible:ring-2 focus-visible:ring-white/40"
+            className="absolute right-3 top-3 z-10 flex h-7 w-7 items-center justify-center rounded-full text-white/60 outline-none transition-colors before:absolute before:-inset-2 before:content-[''] hover:bg-white/15 hover:text-white focus-visible:ring-2 focus-visible:ring-white/40"
           >
             <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5">
               <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
@@ -70,7 +75,10 @@ export function PromptShell({ ariaLabel, children, onClose, closeLabel = "Fermer
           </button>
         )}
 
-        {children}
+        {/* Seule zone qui défile quand la hauteur manque (téléphone couché) ;
+            la croix reste posée sur le panneau, et `PromptActions` colle au
+            bas de cette zone — les boutons ne sortent jamais de l'écran. */}
+        <div className="relative min-h-0 overflow-y-auto overscroll-contain">{children}</div>
       </div>
     </div>
   );
@@ -119,14 +127,25 @@ export function PromptButton({
         playButtonClick();
         onClick();
       }}
-      className={`rounded-full px-7 py-2 text-sm font-semibold outline-none transition-colors focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-40 ${TONES[tone]}`}
+      className={`rounded-full px-7 py-2 text-sm font-semibold outline-none transition-colors focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-40 [@media(max-height:520px)]:min-h-11 [@media(pointer:coarse)]:min-h-11 ${TONES[tone]}`}
     >
       {children}
     </button>
   );
 }
 
-/** Rangée de boutons, centrée : action engageante en premier à gauche, refus à droite (comme le choix de réaction). */
+/**
+ * Rangée de boutons, centrée : action engageante en premier à gauche, refus à droite (comme le choix de réaction).
+ *
+ * Collée au bas de la zone défilante de `PromptShell` : quand le texte
+ * dépasse, il passe SOUS les boutons au lieu de les pousser hors de
+ * l'écran. Sur un bureau, rien ne dépasse et `sticky` ne fait rien ; le
+ * voile sombre qui sépare le texte des boutons n'est posé qu'en paysage bas.
+ */
 export function PromptActions({ children }: { children: ReactNode }) {
-  return <div className="mt-1 flex flex-wrap items-center justify-center gap-3">{children}</div>;
+  return (
+    <div className="sticky bottom-0 z-10 mt-1 flex flex-wrap items-center justify-center gap-3 [@media(max-height:520px)]:gap-2 [@media(max-height:520px)]:self-stretch [@media(max-height:520px)]:bg-[linear-gradient(to_top,rgba(6,12,22,0.92)_65%,transparent)] [@media(max-height:520px)]:pb-1 [@media(max-height:520px)]:pt-3">
+      {children}
+    </div>
+  );
 }

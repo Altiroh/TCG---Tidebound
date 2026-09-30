@@ -4,13 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 import type { CardInstance, GraveyardCause } from "@/game";
 import { CardTile } from "@/features/match/CardTile";
 import { GRAVEYARD_CAUSE_LABELS } from "@/features/match/cardDisplay";
+import { useLongPress } from "@/features/match/useLongPress";
 import sheet from "@/features/match/table/TableSheet.module.css";
 
 interface GraveyardViewerProps {
   playerLabel: string;
   cards: CardInstance[];
   onClose: () => void;
-  /** Clic droit sur une carte : sa fiche détaillée. */
+  /** Clic droit (souris) ou appui long (doigt, iOS n'émet pas `contextmenu`) sur une carte : sa fiche détaillée. */
   onInspect?: (card: CardInstance) => void;
 }
 
@@ -35,6 +36,7 @@ function imprimee(card: CardInstance): CardInstance {
 export function GraveyardViewer({ playerLabel, cards, onClose, onInspect }: GraveyardViewerProps) {
   const [cause, setCause] = useState<GraveyardCause | null>(null);
   const [focusId, setFocusId] = useState<string | null>(null);
+  const longPress = useLongPress<CardInstance>(onInspect);
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -65,7 +67,7 @@ export function GraveyardViewer({ playerLabel, cards, onClose, onInspect }: Grav
             <h2 className={sheet.title}>Cimetière</h2>
             <p className={sheet.subtitle}>
               {playerLabel} · {cards.length} carte{cards.length > 1 ? "s" : ""}
-              {onInspect && cards.length > 0 ? " · clic droit : fiche" : ""}
+              {onInspect && cards.length > 0 ? " · clic droit ou appui long : fiche" : ""}
             </p>
           </div>
           <button type="button" className={sheet.close} onClick={onClose} aria-label="Fermer">
@@ -111,12 +113,11 @@ export function GraveyardViewer({ playerLabel, cards, onClose, onInspect }: Grav
                       data-focus={focus?.instanceId === card.instanceId || undefined}
                       onMouseEnter={() => setFocusId(card.instanceId)}
                       onFocus={() => setFocusId(card.instanceId)}
-                      onClick={() => setFocusId(card.instanceId)}
-                      onContextMenu={(event) => {
-                        if (!onInspect) return;
-                        event.preventDefault();
-                        onInspect(card);
+                      onClick={() => {
+                        if (longPress.consumeClick()) return;
+                        setFocusId(card.instanceId);
                       }}
+                      {...longPress.bind(card)}
                       tabIndex={0}
                     >
                       <div className={sheet.graveyardTile}>

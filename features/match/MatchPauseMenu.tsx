@@ -37,7 +37,11 @@ export function MatchPauseMenu({ onResume, onConcede, concedePending = false, on
 
   return (
     <div
-      className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 p-4 backdrop-blur-md"
+      className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 backdrop-blur-md"
+      style={{
+        padding:
+          "calc(1rem + var(--tb-safe-top)) calc(1rem + var(--tb-safe-right)) calc(1rem + var(--tb-safe-bottom)) calc(1rem + var(--tb-safe-left))",
+      }}
       onClick={onResume}
       role="presentation"
     >
@@ -46,11 +50,11 @@ export function MatchPauseMenu({ onResume, onConcede, concedePending = false, on
         aria-modal
         aria-label="Partie en pause"
         onClick={(e) => e.stopPropagation()}
-        className="relative max-h-[85vh] w-full max-w-sm overflow-hidden rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-glass)] shadow-[var(--shadow-floating)] backdrop-blur-2xl"
+        className="relative max-h-[85dvh] w-full max-w-sm overflow-hidden rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-glass)] shadow-[var(--shadow-floating)] backdrop-blur-2xl"
       >
         <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/10 to-transparent" />
 
-        <div className="relative max-h-[85vh] overflow-y-auto p-6">
+        <div className="relative max-h-[85dvh] overflow-y-auto overscroll-contain p-6">
           <div className="mb-4 flex items-baseline justify-between gap-4">
             <h2 className="text-xl font-semibold text-[var(--text-primary)]">Partie en pause</h2>
             <span className="text-[11px] text-[var(--text-secondary)]">Échap pour reprendre</span>

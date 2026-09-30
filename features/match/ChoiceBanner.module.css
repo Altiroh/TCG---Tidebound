@@ -6,7 +6,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  max-width: min(760px, calc(100vw - 24px));
+  max-width: min(760px, calc(100vw - 24px - var(--tb-safe-left, 0px) - var(--tb-safe-right, 0px)));
   padding: 8px 10px 8px 8px;
   border: 1px solid rgba(95, 208, 230, 0.45);
   border-radius: 999px;
@@ -77,12 +77,26 @@
 
 .primary,
 .secondary {
+  position: relative;
   padding: 6px 14px;
   border-radius: 999px;
   font-size: 12.5px;
   font-weight: 600;
   white-space: nowrap;
   cursor: var(--tb-cursor-pointer);
+}
+
+/*
+ * Zone tactile de 44 px : le bouton en fait ≈ 30 à l'écran. Un calque
+ * invisible déborde de 7 px en haut et en bas (dans le rembourrage du
+ * bandeau) et de 3 px sur les côtés (la moitié de l'écart entre deux
+ * boutons) — rien ne grossit à l'œil, sur bureau non plus.
+ */
+.primary::before,
+.secondary::before {
+  content: "";
+  position: absolute;
+  inset: -7px -3px;
 }
 
 .primary {
@@ -125,5 +139,12 @@
   }
   .detail {
     display: none;
+  }
+}
+
+/* Téléphone couché (seuil du plateau) : rien sous 11 px. */
+@media (max-height: 520px) {
+  .source {
+    font-size: 11px;
   }
 }
