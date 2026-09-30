@@ -1406,8 +1406,23 @@ export const CORE_SET: CardDefinition[] = [
     cost: 1,
     attack: 1,
     health: 3,
-    text: "Tant que vous contrôlez une Structure visible, il gagne +1 Résistance.",
+    // Standard Verrier (30/09/2026, validé par le propriétaire) : « un piège
+    // part, la troupe grandit ». Coût et statistiques inchangés.
+    text:
+      "Tant que vous contrôlez une Structure visible, il gagne +1 Résistance. La première fois à chaque tour qu'une " +
+      "Structure que vous contrôlez est détruite ou Sabordée, il gagne +1 Puissance.",
     selfBuffWhileControllingVisibleStructure: { healthAmount: 1 },
+    abilities: [
+      {
+        trigger: "onDeath",
+        triggeredBy: { cardTypes: ["structure"] },
+        oncePerTurnKey: "bernardStructurePartie",
+        description: "Une de vos Structures part : +1 Puissance, conservée.",
+        effects: [
+          { type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, healthAmount: { kind: "flat", value: 0 }, permanent: true },
+        ],
+      },
+    ],
   },
   {
     id: "poisson-scie-gris",
@@ -4161,16 +4176,19 @@ export const CORE_SET: CardDefinition[] = [
     health: 4,
     text:
       "La première fois à chaque tour qu'une Structure que vous contrôlez est détruite ou Sabordée, piochez " +
-      "1 carte puis défaussez 1 carte.",
+      "1 carte puis défaussez 1 carte, et il gagne +1 Puissance.",
+    // Standard Verrier (30/09/2026, validé par le propriétaire) : « un piège
+    // part, la troupe grandit ». Coût et statistiques inchangés.
     abilities: [
       {
         trigger: "onDeath",
         triggeredBy: { cardTypes: ["structure"] },
         oncePerTurnKey: "charpentierFiltre",
-        description: "Une de vos Structures part : piochez 1 carte puis défaussez 1 carte.",
+        description: "Une de vos Structures part : piochez 1 carte puis défaussez 1 carte, +1 Puissance conservée.",
         effects: [
           { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
           { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+          { type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, healthAmount: { kind: "flat", value: 0 }, permanent: true },
         ],
       },
     ],

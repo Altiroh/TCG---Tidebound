@@ -35,34 +35,18 @@ const grandit = (key: string, puissance: number) => ({
   ],
 });
 
-const bernard = base("bernard-lermite-dacier");
-for (const [id, puissance] of [["lab-bernard-verrier", 1], ["lab-bernard-verrier-2", 2]] as const) {
-  enregistrer({
-    ...bernard,
-    id,
-    text:
-      "Tant que vous contrôlez une Structure visible, il gagne +1 Résistance. La première fois à chaque tour qu'une " +
-      `Structure que vous contrôlez est détruite ou Sabordée, il gagne +${puissance} Puissance.`,
-    abilities: [grandit(`bernardVerrier${puissance}`, puissance)],
-  });
-}
+// Bernard +1 et Charpentier qui grandit : ADOPTÉS le 30/09/2026 — ce sont
+// désormais les textes des cartes elles-mêmes. Les identifiants de labo
+// restent des alias, pour rejouer les listes archivées.
+enregistrer({ ...base("bernard-lermite-dacier"), id: "lab-bernard-verrier" });
+enregistrer({ ...base("charpentier-des-epaves"), id: "lab-charpentier-verrier" });
 
-// Charpentier des Épaves — il filtre ET il grandit (partagé avec les Épavistes).
-const charpentier = base("charpentier-des-epaves");
+// Bernard +2 — écarté (50,4 %, moins bien que Bernard +1 avec le Charpentier).
 enregistrer({
-  ...charpentier,
-  id: "lab-charpentier-verrier",
+  ...base("bernard-lermite-dacier"),
+  id: "lab-bernard-verrier-2",
   text:
-    "La première fois à chaque tour qu'une Structure que vous contrôlez est détruite ou Sabordée, piochez 1 carte " +
-    "puis défaussez 1 carte, et il gagne +1 Puissance.",
-  abilities: [
-    {
-      ...charpentier.abilities![0]!,
-      description: "Une de vos Structures part : piochez 1, défaussez 1, +1 Puissance conservée.",
-      effects: [
-        ...charpentier.abilities![0]!.effects,
-        { type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, healthAmount: { kind: "flat", value: 0 }, permanent: true },
-      ],
-    },
-  ],
+    "Tant que vous contrôlez une Structure visible, il gagne +1 Résistance. La première fois à chaque tour qu'une " +
+    "Structure que vous contrôlez est détruite ou Sabordée, il gagne +2 Puissance.",
+  abilities: [grandit("bernardVerrier2", 2)],
 });
