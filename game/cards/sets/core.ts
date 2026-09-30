@@ -2949,8 +2949,24 @@ export const CORE_SET: CardDefinition[] = [
     attack: 2,
     health: 3,
     maxCopies: 3,
-    text: "Quand il est détruit, vous pouvez choisir une Créature adverse : infligez-lui 1 dégât.",
+    // Test Verrier (30/09/2026) : l'effet joue AUSSI à l'arrivée. Mort
+    // seulement, Pulcinella n'avait rien à offrir au rappel du Théâtre —
+    // le rejouer ne rapportait rien. Mesuré sur 60 parties : Δ +16, le
+    // Théâtre de 39 % à 44 %. Validé par le propriétaire le 30/09/2026.
+    text: "À son arrivée et quand il est détruit, vous pouvez choisir une Créature adverse : infligez-lui 1 dégât.",
     abilities: [
+      {
+        trigger: "onEnterPlay",
+        mode: "optional",
+        description: "À son arrivée : 1 dégât à une créature ennemie.",
+        effects: [
+          {
+            type: "damage",
+            target: { kind: "chosenUnit", among: { opponentOnly: true, cardTypes: ["creature"] } },
+            amount: { kind: "flat", value: 1 },
+          },
+        ],
+      },
       {
         trigger: "onDeath",
         mode: "optional",

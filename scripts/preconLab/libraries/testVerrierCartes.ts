@@ -49,7 +49,10 @@ function double(id: string, labId: string, text: string): CardDefinition {
   const mort = (carte.abilities ?? []).find((a) => a.trigger === "onDeath")!;
   return { ...carte, id: labId, text, abilities: [{ ...mort, trigger: "onEnterPlay" }, mort] };
 }
-enregistrer(double("pulcinella-gonfle", "lab-pulcinella-double", "À son arrivée et quand il est détruit, vous pouvez choisir une Créature adverse : infligez-lui 1 dégât."));
+// Pulcinella double : ADOPTÉE le 30/09/2026 — c'est désormais le texte de
+// `pulcinella-gonfle` lui-même. L'identifiant de labo reste un alias, pour que
+// les listes archivées (`docs/equilibrage/`) se rejouent telles quelles.
+enregistrer({ ...base("pulcinella-gonfle"), id: "lab-pulcinella-double" });
 enregistrer(double("arlequin-raccommodeur", "lab-arlequin-double", "À son arrivée et quand il est détruit, récupérez 1 Ancrage."));
 
 // DESCENTE AUX ABYSSES — la Veilleuse retient la mer au fond.
