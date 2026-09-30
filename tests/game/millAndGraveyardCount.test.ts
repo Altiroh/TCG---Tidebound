@@ -51,4 +51,9 @@ describe("montant graveyardCount", () => {
   it("respecte le plafond", () => {
     expect(dommage({ kind: "graveyardCount", max: 3 })).toBe(3);
   });
+  it("ne compte que les types de carte demandés", () => {
+    // Le Cimetière de ce test ne contient que des unités (P'tit Bout, Têtard-Fesse).
+    expect(dommage({ kind: "graveyardCount", cardTypes: ["structure"] })).toBe(0);
+    expect(dommage({ kind: "graveyardCount", cardTypes: ["creature", "marin"] })).toBe(8);
+  });
 });

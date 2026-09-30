@@ -387,7 +387,9 @@ export type EffectAmount =
    *
    * `perCards` est la TAILLE d'une tranche (4 = un point toutes les quatre
    * cartes), à ne pas confondre avec le multiplicateur `per` des autres
-   * montants. `subtype` ne compte que ce sous-type (« cartes Un Dead »).
+   * montants. `subtype` ne compte que ce sous-type (« cartes Un Dead »),
+   * `cardTypes` que ces types de carte (« Structures dans votre Cimetière »,
+   * Standard Verrier des Épavistes, 30/09/2026). Les deux se cumulent.
    */
   | {
       kind: "graveyardCount";
@@ -395,6 +397,8 @@ export type EffectAmount =
       of?: "self" | "opponent";
       /** Sous-type compté ; absent = toutes les cartes. */
       subtype?: string;
+      /** Types de carte comptés ; absent = tous les types. */
+      cardTypes?: import("@/game/cards/types").CardType[];
       /** Cartes par point. Défaut 1. */
       perCards?: number;
       /** Plafond du montant obtenu. Absent = pas de plafond. */

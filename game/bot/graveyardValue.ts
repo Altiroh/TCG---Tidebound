@@ -40,7 +40,7 @@ interface GraveyardReaders {
   /** Effets qui désignent une carte du Cimetière du contrôleur. */
   recursion: EffectDefinition[];
   /** Montants comptés sur un Cimetière. */
-  counts: Array<{ of: "self" | "opponent"; subtype?: string; perCards: number; max?: number }>;
+  counts: Array<{ of: "self" | "opponent"; subtype?: string; cardTypes?: string[]; perCards: number; max?: number }>;
 }
 
 const NO_READERS: GraveyardReaders = { recursion: [], counts: [] };
@@ -80,6 +80,7 @@ function readersOf(cardId: string): GraveyardReaders {
       readers.counts.push({
         of: record.of === "opponent" ? "opponent" : "self",
         subtype: typeof record.subtype === "string" ? record.subtype : undefined,
+        cardTypes: Array.isArray(record.cardTypes) ? (record.cardTypes as string[]) : undefined,
         perCards: typeof record.perCards === "number" && record.perCards > 0 ? record.perCards : 1,
         max: typeof record.max === "number" ? record.max : undefined,
       });
@@ -103,11 +104,12 @@ function cardInHandValue(cardId: string): number {
   }
 }
 
-function countIn(graveyard: PlayerState["graveyard"], subtype: string | undefined): number {
-  if (!subtype) return graveyard.length;
+function countIn(graveyard: PlayerState["graveyard"], subtype: string | undefined, cardTypes: string[] | undefined): number {
+  if (!subtype && !cardTypes) return graveyard.length;
   return graveyard.filter((card) => {
     try {
-      return getCardDefinition(card.cardId).subtype === subtype;
+      const def = getCardDefinition(card.cardId);
+      return (!subtype || def.subtype === subtype) && (!cardTypes || cardTypes.includes(def.type));
     } catch {
       return false;
     }
@@ -141,7 +143,7 @@ export function graveyardValue(state: GameState, player: PlayerState): number {
     }
     for (const count of readers.counts) {
       const graveyard = count.of === "opponent" ? (opponent?.graveyard ?? []) : player.graveyard;
-      const units = Math.floor(countIn(graveyard, count.subtype) / count.perCards);
+      const units = Math.floor(countIn(graveyard, count.subtype, count.cardTypes) / count.perCards);
       value += Math.min(units, count.max ?? Infinity) * GRAVEYARD_COUNT_UNIT;
     }
   }

@@ -245,7 +245,11 @@ function amountValue(
   }
   if (amount.kind === "graveyardCount") {
     const joueur = amount.of === "opponent" ? getOpponent(state, controllerId) : getPlayer(state, controllerId);
-    const cartes = joueur.graveyard.filter((c) => !amount.subtype || getCardDefinition(c.cardId).subtype === amount.subtype).length;
+    const cartes = joueur.graveyard.filter((c) => {
+      const def = getCardDefinition(c.cardId);
+      if (amount.subtype && def.subtype !== amount.subtype) return false;
+      return !amount.cardTypes || amount.cardTypes.includes(def.type);
+    }).length;
     const brut = Math.floor(cartes / Math.max(1, amount.perCards ?? 1));
     return amount.max === undefined ? brut : Math.min(amount.max, brut);
   }

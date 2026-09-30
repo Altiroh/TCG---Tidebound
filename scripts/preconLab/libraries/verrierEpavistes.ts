@@ -83,3 +83,28 @@ enregistrer({
       : ability
   ),
 });
+
+// FINISHER — chaque Structure partie devient une menace qui s'accumule.
+// Carte NOUVELLE (aucune unité n'appartient en propre aux Épavistes).
+const finisher = (id: string, cost: number, attack: number, health: number, perCards: number, max: number): CardDefinition => ({
+  ...base("matelot-du-sans-nom"),
+  id,
+  name: "Le Ferrailleur des Épaves",
+  cost,
+  attack,
+  health,
+  maxCopies: 2,
+  text:
+    `À son arrivée, infligez au Navire adverse 1 dégât ${perCards === 1 ? "par Structure" : `par tranche de ${perCards} Structures`} ` +
+    `dans votre Cimetière (maximum ${max}).`,
+  abilities: [],
+  onPlayEffects: [
+    {
+      type: "damage",
+      target: { kind: "opponentPlayer" },
+      amount: { kind: "graveyardCount", cardTypes: ["structure"], perCards, max },
+    },
+  ],
+});
+enregistrer(finisher("lab-ferrailleur-lent", 5, 4, 5, 2, 4));
+enregistrer(finisher("lab-ferrailleur-vif", 4, 3, 4, 1, 3));
