@@ -25,7 +25,7 @@ import {
 } from "@/game/rules/validation";
 import { payReasonCost, reasonCostAfterShield } from "@/game/state/shields";
 import { recordGraveyardArrival } from "@/game/state/discard";
-import { assemblageError } from "@/game/rules/chromatic";
+import { assemblageError, findAssemblage } from "@/game/rules/chromatic";
 import { getPlayer, MIN_DISCOUNTED_COST, type GameState, type PlayerId, type PlayerState } from "@/game/state/types";
 import type { ActionResult, PlayCardAction } from "@/game/actions/types";
 
@@ -120,7 +120,32 @@ export function previewPlayCardReason(
   return { cost, reasonAfter: player.reason - cost, allowed: true };
 }
 
-function validate(state: GameState, action: PlayCardAction) {
+/**
+ * Motif pour lequel la carte ne peut pas être jouée MAINTENANT, ou `null`
+ * si elle le peut — sa cible et son choix au Cimetière restant à désigner.
+ * Même validation que `playCard` : l'interface annonce le refus sur le
+ * bouton « Jouer » au lieu de le découvrir au geste. Plateau plein, une
+ * carte à Assemblage reste jouable si un Assemblage existe : il libère sa
+ * place.
+ */
+export function playCardRefusal(state: GameState, playerId: PlayerId, instanceId: string): string | null {
+  const action: PlayCardAction = { type: "playCard", playerId, instanceId };
+  const result = validatePlayability(state, action);
+  if (result.ok) return null;
+  const player = state.players.find((p) => p.id === playerId);
+  const card = player?.hand.find((c) => c.instanceId === instanceId);
+  const sentinels = card && getCardDefinition(card.cardId).chromaticAssemblage?.sentinels;
+  const assemblage = sentinels ? findAssemblage(player!.board, sentinels) : undefined;
+  if (assemblage && validatePlayability(state, { ...action, assemblage }).ok) return null;
+  return result.error;
+}
+
+/**
+ * Tout ce qui empêche de jouer la carte, AVANT la question de sa cible et
+ * de son choix au Cimetière : tour, phase, Marée, condition de Raison,
+ * coût, place sur le plateau, Équipement sans porteur possible.
+ */
+function validatePlayability(state: GameState, action: PlayCardAction) {
   const player = state.players.find((p) => p.id === action.playerId);
   const generalChecks = combine(
     assertGameActive(state),
@@ -173,19 +198,30 @@ function validate(state: GameState, action: PlayCardAction) {
     if (!boardCheck.ok) return boardCheck;
   }
 
+  // « Équipez une unité Un Dead », « Équipez une Structure » : le texte
+  // ORDONNE l'attache. Un Équipement qui ne trouve personne à équiper
+  // ne se pose donc pas — il resterait sur le plateau à occuper un Slot
+  // sans jamais rien faire. La règle vaut pour tous : chaque texte
+  // d'Équipement commence par cet impératif.
+  const attachEffect = (def.onPlayEffects ?? []).find((e) => e.type === "attachEquipment");
+  if (attachEffect && !hasAnyValidEquipTarget(def, player!.board)) {
+    return { ok: false as const, error: "Aucun permanent de votre plateau ne peut recevoir cet Équipement." };
+  }
+
+  return { ok: true as const };
+}
+
+function validate(state: GameState, action: PlayCardAction) {
+  const playability = validatePlayability(state, action);
+  if (!playability.ok) return playability;
+
+  const player = state.players.find((p) => p.id === action.playerId);
+  const def = getCardDefinition(player!.hand.find((c) => c.instanceId === action.instanceId)!.cardId);
   const attachEffect = (def.onPlayEffects ?? []).find((e) => e.type === "attachEquipment");
   const needsTarget = (def.onPlayEffects ?? []).some((e) => e.target.kind === "chosenUnit");
 
   if (needsTarget) {
     if (attachEffect) {
-      // « Équipez une unité Un Dead », « Équipez une Structure » : le texte
-      // ORDONNE l'attache. Un Équipement qui ne trouve personne à équiper
-      // ne se pose donc pas — il resterait sur le plateau à occuper un Slot
-      // sans jamais rien faire. La règle vaut pour tous : chaque texte
-      // d'Équipement commence par cet impératif.
-      if (!hasAnyValidEquipTarget(def, player!.board)) {
-        return { ok: false as const, error: "Aucun permanent de votre plateau ne peut recevoir cet Équipement." };
-      }
       if (!action.targetInstanceId) {
         return { ok: false as const, error: "Cet Équipement nécessite une cible." };
       }
