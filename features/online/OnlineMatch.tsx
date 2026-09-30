@@ -10,6 +10,7 @@ import type { MatchRow } from "@/features/matches/matchStore";
 import { unpackFrames } from "@/features/matches/matchFrames";
 import { predictView } from "@/features/online/predictView";
 import { WaitingRoom } from "@/features/online/WaitingRoom";
+import { createChannelRecoveryTracker, useResyncOnReturn } from "@/features/online/resync";
 
 /**
  * Pause entre deux états successifs renvoyés par le serveur pour le tour du
@@ -130,12 +131,27 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `refresh` est stable pour une partie donnée.
   }, [deadlineAt, awaiting, match.status]);
 
+  /**
+   * RATTRAPAGE — iOS suspend l'app en arrière-plan, le réseau tombe, le
+   * canal Realtime se coupe : les mises à jour émises entre-temps sont
+   * perdues (voir `features/online/resync.ts`). Au retour, on redemande la
+   * vue. Pendant un coup en cours, sa réponse fait foi : on note seulement
+   * qu'il faudra recharger une fois la file vidée (`drainQueue`).
+   */
+  const resyncAfterBusy = useRef(false);
+  const requestResync = useResyncOnReturn(() => {
+    if (busy.current) resyncAfterBusy.current = true;
+    else void refresh();
+  }, match.status !== "abandoned");
+
   useEffect(() => {
     // Contre le bot, le seul joueur humain est l'appelant : chaque coup
     // renvoie déjà l'état à jour, Realtime n'apporterait rien.
     if (isBotMatch) return;
 
     const supabase = createSupabaseBrowserClient();
+    const channelRecovered = createChannelRecoveryTracker();
+    let unmounted = false;
     const channel = supabase
       .channel(`match-${matchId}`)
       .on(
@@ -150,9 +166,14 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
           if (!busy.current && next.state_version > shownVersion.current) void refresh();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        // Canal rétabli après une erreur ou une fermeture : ce qui a été
+        // diffusé pendant la coupure ne sera jamais rejoué, on le redemande.
+        if (!unmounted && channelRecovered(status)) requestResync();
+      });
 
     return () => {
+      unmounted = true;
       supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- abonnement unique par partie.
@@ -237,7 +258,10 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
 
     busy.current = false;
     setPending(false);
-    if (latestRemoteVersion.current > shownVersion.current) await refresh();
+    if (resyncAfterBusy.current || latestRemoteVersion.current > shownVersion.current) {
+      resyncAfterBusy.current = false;
+      await refresh();
+    }
   }
 
   if (match.status === "abandoned") {

@@ -79,10 +79,43 @@ html {
   touch-action: manipulation;
 }
 
+/*
+ * PAS DE REBOND NI DE « TIRER POUR ACTUALISER » au niveau du document. Sur
+ * mobile, un glissé vers le bas en haut de page rechargeait l'app (Chrome
+ * Android) ou faisait rebondir tout l'écran (Safari iOS) — en pleine partie,
+ * un rechargement perdait le fil. `overscroll-behavior` ne touche qu'au
+ * DÉBORDEMENT du défilement (rebond, enchaînement vers le parent) : les
+ * écrans qui défilent défilent toujours. Volontairement PAS de
+ * `touch-action: none` global, qui, lui, supprimerait le défilement tactile.
+ */
+html,
+body {
+  overscroll-behavior-y: none;
+}
+
 body {
   /* iOS pose un voile gris sur tout élément touché : inutile ici, chaque
      contrôle a déjà son état pressé. */
   -webkit-tap-highlight-color: transparent;
+}
+
+/*
+ * APPUI LONG SUR UNE IMAGE — iOS ouvre la bulle « Enregistrer l'image /
+ * Partager » par-dessus le jeu, et l'appui long est justement le geste qui
+ * montre le détail d'une carte. Une image marquée `draggable="false"` est
+ * une image du jeu (cartes, décor, icônes) : jamais un contenu à enregistrer.
+ * `[draggable] img` couvre les images d'une carte `CardTile` : son bouton
+ * porte toujours l'attribut (`draggable="false"` hors main glissable), ses
+ * illustrations non. `.tb-no-callout` sert aux conteneurs qui n'ont ni l'un
+ * ni l'autre. `user-select: none` évite en plus la sélection bleue.
+ */
+img[draggable="false"],
+[draggable] img,
+.tb-no-callout,
+.tb-no-callout img {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 body {

@@ -35,6 +35,14 @@ export function PinchZoomGuard() {
     // Un `touchmove` à deux doigts et plus est un pincement (ou un
     // défilement à deux doigts) : rien de ce que le jeu utilise. Non
     // passif, sans quoi `preventDefault` n'a aucun effet.
+    //
+    // Défilement à UN doigt (listes, collection, decks) : jamais annulé —
+    // le test sur `touches.length` sort aussitôt. Le seul coût d'un
+    // écouteur non passif sur le document est que le navigateur attend ce
+    // gestionnaire avant de lancer le défilement ; il ne fait qu'une
+    // comparaison, et Chrome rend de toute façon les `touchmove` suivants
+    // non annulables une fois le défilement parti. Audit mobile du
+    // 30/09/2026 : gardé tel quel.
     function onTouchMove(event: TouchEvent) {
       if (event.touches.length > 1) event.preventDefault();
     }

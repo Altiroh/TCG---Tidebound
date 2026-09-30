@@ -6,6 +6,15 @@ const config: Config = {
     "./components/**/*.{ts,tsx}",
     "./features/**/*.{ts,tsx}",
   ],
+  // `hover:` ne s'applique que là où le survol existe (`@media (hover: hover)`).
+  // Au doigt, iOS « colle » l'état survolé sur le dernier élément touché :
+  // une carte restait soulevée, un bouton restait allumé après l'appui.
+  // Aucun contrôle indispensable ne dépend d'un `hover:` Tailwind (vérifié
+  // le 30/09/2026) ; ceux révélés par un `:hover` en CSS module ont leur
+  // repli `@media (hover: none)`.
+  future: {
+    hoverOnlyWhenSupported: true,
+  },
   theme: {
     extend: {
       // Tout le jeu est en serif (`app/tokens.css`, Typographie) : `font-sans`

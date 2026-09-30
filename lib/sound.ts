@@ -148,6 +148,28 @@ function getAudioContext(): AudioContext | null {
   return audioContext;
 }
 
+/**
+ * Relance un contexte qui ne tourne plus. Deux états l'arrêtent :
+ * `suspended` (aucun geste du joueur encore, ou suspension explicite) et
+ * `interrupted`, propre à Safari iOS — posé après un appel entrant, une
+ * alarme ou un passage en arrière-plan, et que le contexte ne quitte pas
+ * tout seul. Sans cette relance, plus aucun effet ne sonnait au retour dans
+ * l'app. Best-effort : hors geste du joueur, iOS peut refuser, et le
+ * prochain son (déclenché par un geste) retentera.
+ */
+function wakeAudioContext(context: AudioContext): void {
+  const state = context.state as AudioContextState | "interrupted";
+  if (state === "suspended" || state === "interrupted") void context.resume().catch(() => undefined);
+}
+
+if (typeof document !== "undefined") {
+  // Retour au premier plan : on réveille le contexte s'il existe déjà (on
+  // n'en crée pas un pour autant — il naît au premier son).
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && audioContext) wakeAudioContext(audioContext);
+  });
+}
+
 function decodeSound(context: AudioContext, src: string): Promise<AudioBuffer | null> {
   let pending = decodedSounds.get(src);
   if (!pending) {
@@ -195,7 +217,7 @@ function play(src: string, volume: number, offset = 0, duration?: number): StopP
   const context = getAudioContext();
   if (!context) return playWithElement(src, gain, offset, duration);
   // Suspendu tant qu'aucune interaction n'a eu lieu : un clic le réveille.
-  if (context.state === "suspended") void context.resume().catch(() => undefined);
+  wakeAudioContext(context);
 
   const decoded = decodedSounds.get(src);
   if (!decoded) {

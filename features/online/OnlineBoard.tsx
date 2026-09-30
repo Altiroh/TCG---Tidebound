@@ -4,6 +4,7 @@ import { useNoMenuAmbiance } from "@/components/menu/MenuAmbiance";
 import { useEffect } from "react";
 import { matchAudienceVerdict } from "@/features/audience/verdict";
 import { useEndScreenHold } from "@/features/match/useEndScreenHold";
+import { useScreenWakeLock } from "@/features/match/useScreenWakeLock";
 import {
   canUnitAttack,
   eligibleCandidatesFor,
@@ -89,6 +90,7 @@ export function OnlineBoard({
 }: OnlineBoardProps) {
   // En partie, la musique du menu se tait.
   useNoMenuAmbiance();
+  useScreenWakeLock();
   // `state` = état AFFICHÉ, retenu avant le choc pendant une attaque (cf. `useAttackPresentation`).
   const { displayState: state, attacks, volleys } = useAttackPresentation(liveState);
   const me = state.players.find((p) => p.id === myUserId)!;

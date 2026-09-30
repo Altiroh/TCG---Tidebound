@@ -1,0 +1,121 @@
+/*
+ * Invitation à installer / passer en plein écran (`InstallPrompt`). Même
+ * matière que le bandeau de mise à jour (`AppUpdatePrompt.module.css`), mais
+ * calée en bas à GAUCHE : les deux peuvent coexister sans se couvrir. Écart
+ * aux bords par les zones sûres (`--tb-safe-*`), jamais par une marge fixe
+ * seule — en paysage, l'encoche est sur le côté.
+ */
+.anchor {
+  position: fixed;
+  left: calc(12px + var(--tb-safe-left));
+  bottom: calc(12px + var(--tb-safe-bottom));
+  z-index: var(--tb-z-toast);
+  display: flex;
+  max-width: calc(100% - 24px - var(--tb-safe-left) - var(--tb-safe-right));
+  pointer-events: none;
+}
+
+.card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  max-width: min(440px, 100%);
+  padding: 8px 8px 8px 12px;
+  border: 1px solid var(--tb-border-strong);
+  border-radius: var(--tb-radius-md);
+  background: var(--tb-surface-solid);
+  box-shadow: var(--tb-shadow-lg);
+  color: var(--tb-text);
+  font-family: var(--tb-font-ui);
+  font-size: calc(clamp(12px, 0.88vw, 13.5px) * var(--tb-text-scale));
+  line-height: 1.35;
+  pointer-events: auto;
+  animation: promptIn 260ms var(--tb-ease) both;
+}
+
+@keyframes promptIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.text {
+  flex: 1 1 180px;
+  margin: 0;
+  min-width: 0;
+}
+
+.hint {
+  display: block;
+  color: var(--tb-text-muted);
+  font-size: 0.86em;
+}
+
+.hint strong {
+  color: var(--tb-text-strong);
+  font-weight: 600;
+}
+
+.primary,
+.secondary {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 6px 12px;
+  border-radius: var(--tb-radius-sm);
+  color: var(--tb-text-strong);
+  font: inherit;
+  font-weight: 600;
+  cursor: var(--tb-cursor-pointer);
+  pointer-events: auto;
+  transition: background-color 160ms var(--tb-ease), box-shadow 160ms var(--tb-ease);
+}
+
+.primary {
+  border: 1px solid var(--tb-accent);
+  background: var(--tb-accent-soft);
+}
+
+/* Seule dans l'ancre (encart fermé) : la pastille porte sa propre matière. */
+.secondary {
+  border: 1px solid var(--tb-border-strong);
+  background: var(--tb-surface-solid);
+  box-shadow: var(--tb-shadow-sm);
+}
+
+.primary:active,
+.primary:focus-visible,
+.secondary:active,
+.secondary:focus-visible {
+  background: color-mix(in srgb, var(--tb-accent) 32%, transparent);
+  box-shadow: var(--tb-glow-sm);
+}
+
+.dismiss {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--tb-text-muted);
+  font: inherit;
+  font-size: calc(17px * var(--tb-text-scale));
+  line-height: 1;
+  cursor: var(--tb-cursor-pointer);
+}
+
+.dismiss:focus-visible {
+  color: var(--tb-text-strong);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    animation: none;
+  }
+}

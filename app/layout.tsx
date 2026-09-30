@@ -2,6 +2,7 @@ import { MenuAmbiance } from "@/components/menu/MenuAmbiance";
 import type { Metadata, Viewport } from "next";
 import { cardBodyFont, cardTitleFont, uiFont } from "@/lib/fonts";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
+import { InstallPromptCapture } from "@/components/InstallPrompt";
 import { OrientationGate } from "@/features/shell/OrientationGate";
 import { PageTransition } from "@/features/shell/PageTransition";
 import { PinchZoomGuard } from "@/features/shell/PinchZoomGuard";
@@ -97,6 +98,9 @@ export default function RootLayout({
             {/* Musique du menu sur tous les écrans ; une partie la fait taire. */}
             <MenuAmbiance />
             <ServiceWorkerRegister />
+            {/* Invite d'installation (Android) captée dès le chargement ;
+                l'accueil la propose (`InstallPrompt`). */}
+            <InstallPromptCapture />
             {/* Ombre qui balaie l'écran à chaque changement de page. */}
             <PageTransition />
             {/* Paysage imposé sur mobile : le plateau est dessiné en

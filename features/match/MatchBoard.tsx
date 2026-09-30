@@ -3,6 +3,7 @@
 import { useNoMenuAmbiance } from "@/components/menu/MenuAmbiance";
 import { matchAudienceVerdict } from "@/features/audience/verdict";
 import { useEndScreenHold } from "@/features/match/useEndScreenHold";
+import { useScreenWakeLock } from "@/features/match/useScreenWakeLock";
 import { useEffect, useRef, useState } from "react";
 import {
   canUnitAttack,
@@ -111,6 +112,7 @@ export function MatchBoard({
 }: MatchBoardProps) {
   // En partie, la musique du menu se tait.
   useNoMenuAmbiance();
+  useScreenWakeLock();
   const [liveState, setState] = useState<GameState>(initialState);
   // `state` = état AFFICHÉ (retenu avant le choc pendant une attaque, cf. `useAttackPresentation`) ; toute
   // action se valide et s'applique sur `liveState`, l'état de jeu réel.
