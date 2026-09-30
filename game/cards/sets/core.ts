@@ -1707,8 +1707,23 @@ export const CORE_SET: CardDefinition[] = [
     health: 5,
     durationTurns: 4,
     visibleDuringTide: ["houle", "tempete", "abysses"],
-    text: "Durée : 4 tours. Visible pendant Houle, Tempête et Abysses. Tant qu'elle est visible, votre Navire ne peut pas subir plus de 4 dégâts d'une même attaque.",
-    capDirectShipDamageWhileVisible: 4,
+    // Standard Verrier (30/09/2026, validé par le propriétaire) : la Forteresse
+    // « encaisse, grandit, frappe ». Coût et statistiques inchangés.
+    text:
+      "Durée : 4 tours. Visible pendant Houle, Tempête et Abysses. Si elle est visible, la première fois à chaque " +
+      "tour qu'une de vos unités survit à des dégâts, cette unité gagne +1 Puissance.",
+    abilities: [
+      {
+        trigger: "onSurvivedDamage",
+        triggeredBy: { cardTypes: ["marin", "creature"] },
+        condition: { selfVisible: true },
+        oncePerTurnKey: "carcasseRenversee",
+        description: "Une de vos unités tient bon derrière la Carcasse : +1 Puissance, conservée.",
+        effects: [
+          { type: "buff", target: { kind: "triggerSource" }, attackAmount: { kind: "flat", value: 1 }, healthAmount: { kind: "flat", value: 0 }, permanent: true },
+        ],
+      },
+    ],
   },
   {
     id: "cloche-immergee",
@@ -3903,12 +3918,17 @@ export const CORE_SET: CardDefinition[] = [
     attack: 1,
     health: 4,
     keywords: ["garde"],
-    text: "Garde. Quand elle est détruite, récupérez 1 Raison.",
+    // Standard Verrier (30/09/2026, validé par le propriétaire) : la Forteresse
+    // « encaisse, grandit, frappe ». Coût et statistiques inchangés.
+    text: "Garde. La première fois à chaque tour qu'elle survit à des dégâts, elle gagne +1 Puissance.",
     abilities: [
       {
-        trigger: "onDeath",
-        description: "Elle est détruite : récupérez 1 Raison.",
-        effects: [{ type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
+        trigger: "onSurvivedDamage",
+        oncePerTurnKey: "survieMouetteBriseLames",
+        description: "Elle tient bon : +1 Puissance, conservée.",
+        effects: [
+          { type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, healthAmount: { kind: "flat", value: 0 }, permanent: true },
+        ],
       },
     ],
   },
@@ -5736,7 +5756,17 @@ export const CORE_SET: CardDefinition[] = [
     health: 8,
     maxCopies: 2,
     keywords: ["garde"],
-    text: "Garde.",
+    // Standard Verrier (30/09/2026, validé par le propriétaire) : la Forteresse
+    // « encaisse, grandit, frappe ». Coût et statistiques inchangés.
+    text: "Garde. La première fois à chaque tour qu'il survit à des dégâts, infligez 2 dégâts au Navire adverse.",
+    abilities: [
+      {
+        trigger: "onSurvivedDamage",
+        oncePerTurnKey: "survieDernierRempart",
+        description: "Il tient : 2 dégâts au Navire adverse.",
+        effects: [{ type: "damage", target: { kind: "opponentPlayer" }, amount: { kind: "flat", value: 2 } }],
+      },
+    ],
   },
   {
     id: "lamiral-sans-pavillon",

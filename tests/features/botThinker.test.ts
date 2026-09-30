@@ -17,13 +17,19 @@ function midGame(seed: number): GameState {
   return state;
 }
 
-/** Heure des événements et échéance du tour viennent de l'horloge murale : on les neutralise. */
-function withoutClock(state: GameState): GameState {
-  return {
-    ...state,
-    eventLog: state.eventLog.map((event) => ({ ...event, timestamp: 0 })),
-    turnTimer: state.turnTimer ? { ...state.turnTimer, deadlineAt: 0 } : state.turnTimer,
-  };
+/**
+ * Ce qui ne dépend pas du choix du bot : l'heure (horodatages, échéance du
+ * tour) et les identifiants tirés au hasard (modificateurs). Neutralisés
+ * partout dans l'état, pour ne comparer que la partie elle-même.
+ */
+function withoutClock(state: GameState): unknown {
+  return JSON.parse(
+    JSON.stringify(state, (key, value) => {
+      if (key === "timestamp" || key === "deadlineAt") return 0;
+      if (key === "id" && typeof value === "string" && value.startsWith("mod_")) return "mod";
+      return value;
+    })
+  );
 }
 
 describe("réflexion du bot hors du fil principal", () => {

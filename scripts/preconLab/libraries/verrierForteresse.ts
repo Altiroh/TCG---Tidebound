@@ -26,30 +26,15 @@ const base = (id: string) => getCardDefinition(id);
 const enregistrer = (carte: CardDefinition) => db.set(carte.id, carte);
 const UNITES = ["marin", "creature"] as const;
 
-const grandit = (key: string, puissance: number) => ({
-  trigger: "onSurvivedDamage" as const,
-  oncePerTurnKey: key,
-  description: `Tient bon : +${puissance} Puissance, conservée.`,
-  effects: [
-    {
-      type: "buff" as const,
-      target: { kind: "self" as const },
-      attackAmount: { kind: "flat" as const, value: puissance },
-      healthAmount: { kind: "flat" as const, value: 0 },
-      permanent: true,
-    },
-  ],
-});
+// Mouette du Brise-Lames, Carcasse Renversée, Le Dernier Rempart : ADOPTÉES
+// le 30/09/2026 — ce sont désormais les textes des cartes elles-mêmes. Les
+// identifiants de labo restent des alias, pour rejouer les listes archivées.
+enregistrer({ ...base("mouette-du-brise-lames"), id: "lab-mouette-verrier" });
+enregistrer({ ...base("carcasse-renversee"), id: "lab-carcasse-verrier" });
+enregistrer({ ...base("le-dernier-rempart"), id: "lab-rempart-verrier" });
 
-// Mouette du Brise-Lames — le petit mur qui devient une arme.
-enregistrer({
-  ...base("mouette-du-brise-lames"),
-  id: "lab-mouette-verrier",
-  text: "Garde. La première fois à chaque tour qu'elle survit à des dégâts, elle gagne +1 Puissance.",
-  abilities: [grandit("mouetteVerrier", 1)],
-});
-
-// Brise-Vague de Fortune — le mur arme ceux qu'il abrite.
+// Brise-Vague de Fortune — ÉCARTÉE : une aura de stats sans boucle, qui
+// poussait la Forteresse à 68 %.
 enregistrer({
   ...base("brise-vague-de-fortune"),
   id: "lab-brise-vague-verrier",
@@ -58,46 +43,3 @@ enregistrer({
   reduceTideShipDamageOncePerTurn: undefined,
   auraBuffControllerCardTypes: { targetTypes: [...UNITES], attackAmount: 1, whileSelfVisible: true },
 } as CardDefinition);
-
-// Carcasse Renversée — derrière elle, chaque coup encaissé endurcit.
-enregistrer({
-  ...base("carcasse-renversee"),
-  id: "lab-carcasse-verrier",
-  text:
-    "Durée : 4 tours. Visible pendant Houle, Tempête et Abysses. Si elle est visible, la première fois à chaque " +
-    "tour qu'une de vos unités survit à des dégâts, cette unité gagne +1 Puissance.",
-  capDirectShipDamageWhileVisible: undefined,
-  abilities: [
-    {
-      trigger: "onSurvivedDamage",
-      triggeredBy: { cardTypes: [...UNITES] },
-      condition: { selfVisible: true },
-      oncePerTurnKey: "carcasseVerrier",
-      description: "Une de vos unités tient bon derrière la Carcasse : +1 Puissance, conservée.",
-      effects: [
-        {
-          type: "buff",
-          target: { kind: "triggerSource" },
-          attackAmount: { kind: "flat", value: 1 },
-          healthAmount: { kind: "flat", value: 0 },
-          permanent: true,
-        },
-      ],
-    },
-  ],
-} as CardDefinition);
-
-// Le Dernier Rempart — chaque coup encaissé revient à l'envoyeur.
-enregistrer({
-  ...base("le-dernier-rempart"),
-  id: "lab-rempart-verrier",
-  text: "Garde. La première fois à chaque tour qu'il survit à des dégâts, infligez 2 dégâts au Navire adverse.",
-  abilities: [
-    {
-      trigger: "onSurvivedDamage",
-      oncePerTurnKey: "rempartVerrier",
-      description: "Il tient : 2 dégâts au Navire adverse.",
-      effects: [{ type: "damage", target: { kind: "opponentPlayer" }, amount: { kind: "flat", value: 2 } }],
-    },
-  ],
-});

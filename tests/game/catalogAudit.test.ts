@@ -411,29 +411,9 @@ describe("Filet à la Dérive, Radeau de Fortune, Carcasse Renversée, Il Capita
     expect(player(result.state, "p1").anchor).toBe(11);
   });
 
-  it("Carcasse Renversée : tant qu'elle est visible, le Navire ne subit pas plus de 4 dégâts d'une même attaque", () => {
-    const setup = (tideState: "houle" | "calme") => {
-      const attacker = instance("baleine-aux-cicatrices-blanches", "p1"); // 5 Puissance
-      const carcasse = instance("carcasse-renversee", "p2");
-      return {
-        attacker,
-        state: testGameState({
-          phase: "combatPhase",
-          environment: testEnvironment({ tideState, tideRemainingTurns: 4 }),
-          players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2", { board: [carcasse], anchor: 20 })],
-        }),
-      };
-    };
-    const capped = setup("houle");
-    const cappedResult = dispatch(capped.state, { type: "attack", playerId: "p1", attackerInstanceId: capped.attacker.instanceId });
-    ok(cappedResult);
-    expect(player(cappedResult.state, "p2").anchor).toBe(16);
-
-    const free = setup("calme"); // Carcasse invisible en Calme
-    const freeResult = dispatch(free.state, { type: "attack", playerId: "p1", attackerInstanceId: free.attacker.instanceId });
-    ok(freeResult);
-    expect(player(freeResult.state, "p2").anchor).toBe(15);
-  });
+  // Carcasse Renversée ne plafonne plus les dégâts d'une attaque : depuis le
+  // 30/09/2026 (Standard Verrier), elle fait grandir l'unité qui survit
+  // derrière elle — testé dans `forteresseVerrier.test.ts`.
 
   it("Il Capitano Naufragé : ne perd ses -3 / -2 qu'une seule fois, même sur plusieurs tours", () => {
     const capitano = instance("il-capitano-naufrage", "p1");
