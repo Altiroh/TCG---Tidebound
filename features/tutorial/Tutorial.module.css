@@ -239,6 +239,59 @@
   }
 }
 
+/*
+ * TÉLÉPHONE COUCHÉ — une BANDE, en haut ou en bas selon la zone à utiliser
+ * (`placeCoach`, qui pose `left` / `top` en ligne). Plus de translation :
+ * la position calculée est déjà centrée (le décalage de −50 % du bloc
+ * ci-dessus poussait la fiche vers la gauche, sur la main). Large et basse
+ * plutôt qu'étroite et haute, et « Passer le tutoriel » remonte dans le
+ * coin : la fiche mange une bande de ~110 px, pas le tiers de l'écran.
+ */
+@media (max-height: 560px) {
+  .coach {
+    bottom: auto;
+    width: min(620px, 74vw);
+    padding: 8px 14px 10px;
+    transform: none;
+  }
+
+  .coachHead {
+    margin-bottom: 2px;
+  }
+
+  .coachTitle {
+    margin-bottom: 2px;
+    font-size: 15px;
+  }
+
+  .coachInstruction {
+    font-size: 12.5px;
+    line-height: 1.35;
+  }
+
+  .coachDetail {
+    margin-top: 3px;
+    font-size: 11px;
+    line-height: 1.35;
+  }
+
+  .coachTrack {
+    margin-top: 6px;
+  }
+
+  .coachActions {
+    position: absolute;
+    top: 2px;
+    right: 6px;
+    margin: 0;
+  }
+
+  .coachGhost {
+    min-height: 32px;
+    font-size: 11px;
+  }
+}
+
 
 /*
  * Premier rendu, avant mesure : la fiche doit exister pour qu'on connaisse

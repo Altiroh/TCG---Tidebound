@@ -220,4 +220,29 @@ describe("placement de la fiche du guide", () => {
     expect(["top", "bottom", "left", "right"]).toContain(placed.side);
     expect(placed.left).toBeGreaterThanOrEqual(0);
   });
+
+  describe("téléphone couché (hauteur ≤ 560 px)", () => {
+    const phone = { width: 844, height: 390 };
+    const compact = { width: 420, height: 120 };
+
+    it("passe EN HAUT quand la zone à utiliser est en bas (la main) — jamais sur la rangée où poser", () => {
+      const hand = { left: 120, top: 300, width: 600, height: 90 };
+      const placed = placeCoach(hand, compact, phone);
+      expect(placed.side).toBe("top");
+      expect(placed.top + compact.height).toBeLessThanOrEqual(hand.top);
+    });
+
+    it("passe EN BAS quand la zone est au milieu ou en haut (piste de Marée, Navire adverse)", () => {
+      const tide = { left: 150, top: 150, width: 500, height: 40 };
+      const placed = placeCoach(tide, compact, phone);
+      expect(placed.side).toBe("bottom");
+      expect(placed.top).toBeGreaterThanOrEqual(tide.top + tide.height);
+    });
+
+    it("reste centrée et dans l'écran", () => {
+      const placed = placeCoach({ left: 0, top: 350, width: 40, height: 40 }, compact, phone);
+      expect(placed.left).toBeCloseTo((phone.width - compact.width) / 2);
+      expect(placed.top).toBeGreaterThanOrEqual(0);
+    });
+  });
 });

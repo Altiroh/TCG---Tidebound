@@ -27,7 +27,30 @@ const EDGE = 12;
  *
  * Fonction PURE : c'est elle qui est testée, pas le composant.
  */
+/** Hauteur d'écran en deçà de laquelle on est sur un téléphone couché (seuil commun, `landscapePhone.test.ts`). */
+export const SHORT_VIEWPORT = 560;
+
+/*
+ * TÉLÉPHONE COUCHÉ : il n'y a jamais la place « à côté ». Posée au-dessus
+ * de la main, la fiche retombait sur la rangée du joueur — précisément là
+ * où la carte devait atterrir (audit mobile). La fiche passe donc dans la
+ * MOITIÉ OPPOSÉE de l'écran : en haut quand la zone à utiliser est en bas
+ * (main, rangée du joueur, Cimetière), en bas sinon (piste de Marée,
+ * colonne de droite, Navire adverse). Centrée en largeur.
+ */
+function placeCoachShort(anchor: AnchorRect, panel: { width: number; height: number }, viewport: Viewport): CoachPlacement {
+  const anchorCentre = anchor.top + anchor.height / 2;
+  const side: CoachPlacement["side"] = anchorCentre >= viewport.height * 0.55 ? "top" : "bottom";
+  return {
+    left: clamp((viewport.width - panel.width) / 2, EDGE, Math.max(EDGE, viewport.width - panel.width - EDGE)),
+    top: side === "top" ? EDGE : Math.max(EDGE, viewport.height - panel.height - EDGE),
+    side,
+  };
+}
+
 export function placeCoach(anchor: AnchorRect, panel: { width: number; height: number }, viewport: Viewport): CoachPlacement {
+  if (viewport.height <= SHORT_VIEWPORT) return placeCoachShort(anchor, panel, viewport);
+
   const space = {
     top: anchor.top,
     bottom: viewport.height - (anchor.top + anchor.height),

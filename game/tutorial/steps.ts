@@ -116,7 +116,7 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
     // explique. La leçon de cette étape est le GESTE — mettre un corps sur
     // le pont — pas la distinction entre les deux types d'unité.
     instruction: "Pose une unité sur ton plateau : un Marin ou une Créature.",
-    detail: "Glisse la carte sur ton plateau, ou touche-la puis touche une place libre.",
+    detail: "Glisse la carte sur ton plateau — au doigt, tu peux aussi la toucher, puis « Jouer ».",
     anchor: '[data-zone="PlayerHand"]',
     eligibleHandCards: (state, playerId) => handCardsOfType(state, playerId, UNIT_CARD_TYPES),
     isDone: (state, playerId) => playedOneOf(state, playerId, UNIT_CARD_TYPES),
