@@ -7,6 +7,7 @@ import { deraisonAnchorDamage } from "@/game/state/reason";
 import { isShipArmed, shipAbilityOf } from "@/game/state/shipAbility";
 import type { GameState, PlayerId, PlayerState } from "@/game/state/types";
 import { graveyardValue, oceanJudgmentPressure } from "@/game/bot/graveyardValue";
+import { abilityValue } from "@/game/bot/abilityValue";
 
 /**
  * Évaluation d'une position, du point de vue d'un joueur.
@@ -105,6 +106,10 @@ function permanentValue(state: GameState, unit: CardInstance, controller: Player
   // combat (le rappel du Théâtre Englouti) paraissait lui faire perdre 15 %.
   const attackStillAhead = state.activePlayerId === controller.id && state.phase !== "mainPhase2";
   if (isUnit && unit.summoningSick && attackStillAhead) value *= SUMMONING_SICK_FACTOR;
+
+  // Ce que ses capacités déclenchées rapporteront dans les tours à venir
+  // (`abilityValue.ts`) : un moteur posé vaut plus que sa Résistance.
+  value += abilityValue(state, unit, controller);
 
   // Inactive à cause de la Marée : elle ne fait rien MAINTENANT, mais elle
   // tient son Slot et redeviendra active. Diminuée, jamais annulée.

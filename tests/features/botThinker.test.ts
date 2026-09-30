@@ -17,8 +17,13 @@ function midGame(seed: number): GameState {
   return state;
 }
 
+/** Heure des événements et échéance du tour viennent de l'horloge murale : on les neutralise. */
 function withoutClock(state: GameState): GameState {
-  return { ...state, eventLog: state.eventLog.map((event) => ({ ...event, timestamp: 0 })) };
+  return {
+    ...state,
+    eventLog: state.eventLog.map((event) => ({ ...event, timestamp: 0 })),
+    turnTimer: state.turnTimer ? { ...state.turnTimer, deadlineAt: 0 } : state.turnTimer,
+  };
 }
 
 describe("réflexion du bot hors du fil principal", () => {
@@ -36,7 +41,6 @@ describe("réflexion du bot hors du fil principal", () => {
       const split = applyBotAction(state, actor, chooseBotAction(state, actor, "difficile"));
       const whole = stepBotTurn(state, actor, "difficile");
       expect(split.done).toBe(whole.done);
-      // Seule l'heure des événements diffère (horloge murale) : on la neutralise.
       expect(withoutClock(split.state)).toEqual(withoutClock(whole.state));
     }
   });
