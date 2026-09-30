@@ -114,6 +114,14 @@
   color: var(--tb-text-strong);
 }
 
+/* Au doigt : 44 px, la taille d'un pouce. */
+@media (pointer: coarse) {
+  .primary,
+  .secondary {
+    min-height: 44px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .card {
     animation: none;

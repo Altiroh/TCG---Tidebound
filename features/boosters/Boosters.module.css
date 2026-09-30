@@ -218,8 +218,10 @@
   cursor: grabbing;
 }
 
-.roll:hover {
-  translate: calc(0.35cqw * var(--z, 1)) 0;
+@media (hover: hover) {
+  .roll:hover {
+    translate: calc(0.35cqw * var(--z, 1)) 0;
+  }
 }
 
 .roll:focus-visible {
@@ -352,12 +354,16 @@
   rotate: -90deg;
 }
 
-.shelfArrow[data-side="up"]:hover {
-  translate: 0 -8%;
+@media (hover: hover) {
+  .shelfArrow[data-side="up"]:hover {
+    translate: 0 -8%;
+  }
 }
 
-.shelfArrow[data-side="down"]:hover {
-  translate: 0 8%;
+@media (hover: hover) {
+  .shelfArrow[data-side="down"]:hover {
+    translate: 0 8%;
+  }
 }
 
 .shelfArrow:focus-visible {
@@ -411,12 +417,20 @@
     filter 180ms ease-out;
 }
 
-.planPack:hover,
 .stage[data-plan="over"] .planPack {
   rotate: -1deg;
   translate: 0 -1.4cqw;
   scale: 1.035;
   filter: drop-shadow(0 calc(1.6cqw * var(--z, 1)) calc(1.6cqw * var(--z, 1)) rgba(0, 0, 0, 0.35));
+}
+
+@media (hover: hover) {
+  .planPack:hover {
+    rotate: -1deg;
+    translate: 0 -1.4cqw;
+    scale: 1.035;
+    filter: drop-shadow(0 calc(1.6cqw * var(--z, 1)) calc(1.6cqw * var(--z, 1)) rgba(0, 0, 0, 0.35));
+  }
 }
 
 /* L'ombre portée SUR la carte, sous le pied du sachet. */
@@ -435,10 +449,16 @@
   transition: scale 320ms cubic-bezier(0.3, 0.7, 0.3, 1), opacity 320ms ease-out;
 }
 
-.plan:has(.planPack:hover) .planShadow,
 .stage[data-plan="over"] .planShadow {
   scale: 0.84;
   opacity: 0.6;
+}
+
+@media (hover: hover) {
+  .plan:has(.planPack:hover) .planShadow {
+    scale: 0.84;
+    opacity: 0.6;
+  }
 }
 
 /* Parti vers le centre de l'écran : son ombre part avec lui. */
@@ -548,9 +568,14 @@
   transition: opacity 180ms ease-out;
 }
 
-.plan:has(.planPack:hover:not(:disabled)) .planHint,
 .plan:has(.planPack:focus-visible) .planHint {
   opacity: 1;
+}
+
+@media (hover: hover) {
+  .plan:has(.planPack:hover:not(:disabled)) .planHint {
+    opacity: 1;
+  }
 }
 
 .planPack:disabled {
@@ -783,8 +808,10 @@
   background-image: url("/assets/ui/boutons/bouton-bleu.webp");
 }
 
-.plank:hover:not(:disabled)::before {
-  filter: brightness(1.2) drop-shadow(0 calc(0.15cqw * var(--z, 1)) calc(0.25cqw * var(--z, 1)) rgba(0, 0, 0, 0.45));
+@media (hover: hover) {
+  .plank:hover:not(:disabled)::before {
+    filter: brightness(1.2) drop-shadow(0 calc(0.15cqw * var(--z, 1)) calc(0.25cqw * var(--z, 1)) rgba(0, 0, 0, 0.45));
+  }
 }
 
 .plank:focus-visible {
@@ -833,8 +860,10 @@
   cursor: var(--tb-cursor-pointer);
 }
 
-.batchStep:hover:not(:disabled) {
-  background: rgba(241, 227, 196, 0.12);
+@media (hover: hover) {
+  .batchStep:hover:not(:disabled) {
+    background: rgba(241, 227, 196, 0.12);
+  }
 }
 
 .batchStep:focus-visible {
@@ -863,9 +892,11 @@
   cursor: var(--tb-cursor-pointer);
 }
 
-.openAll:hover:not(:disabled) {
-  color: #0f5566;
-  text-decoration: underline;
+@media (hover: hover) {
+  .openAll:hover:not(:disabled) {
+    color: #0f5566;
+    text-decoration: underline;
+  }
 }
 
 .openAll:disabled {

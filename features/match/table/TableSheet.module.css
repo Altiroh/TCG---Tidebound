@@ -115,9 +115,11 @@
   transition: border-color 150ms ease-out, color 150ms ease-out;
 }
 
-.close:hover {
-  border-color: #58c8d8;
-  color: #eaf8fb;
+@media (hover: hover) {
+  .close:hover {
+    border-color: #58c8d8;
+    color: #eaf8fb;
+  }
 }
 
 .close:focus-visible {
@@ -155,9 +157,25 @@
   transition: border-color 150ms ease-out, color 150ms ease-out, background-color 150ms ease-out;
 }
 
-.filter:hover {
-  border-color: rgba(130, 178, 210, 0.4);
-  color: #dce8f2;
+/* Au doigt, les filtres (28 px) gardent leur taille et gagnent une zone
+   de toucher de 44 px — invisible, sans pousser la rangée. */
+@media (pointer: coarse) {
+  .filter {
+    position: relative;
+  }
+
+  .filter::before {
+    content: "";
+    position: absolute;
+    inset: -8px -2px;
+  }
+}
+
+@media (hover: hover) {
+  .filter:hover {
+    border-color: rgba(130, 178, 210, 0.4);
+    color: #dce8f2;
+  }
 }
 
 .filter[aria-pressed="true"] {

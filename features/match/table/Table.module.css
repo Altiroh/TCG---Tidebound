@@ -599,8 +599,10 @@
   animation: shipAbilityGlow 1.9s ease-in-out infinite;
 }
 
-.shipAbilityReady:hover {
-  animation-duration: 1s;
+@media (hover: hover) {
+  .shipAbilityReady:hover {
+    animation-duration: 1s;
+  }
 }
 
 /*
@@ -1183,8 +1185,10 @@
   cursor: var(--tb-cursor-pointer);
 }
 
-.centerHintButton:hover {
-  border-color: var(--accent);
+@media (hover: hover) {
+  .centerHintButton:hover {
+    border-color: var(--accent);
+  }
 }
 
 .tideTile {
@@ -1446,10 +1450,16 @@
   cursor: help;
 }
 
-.tideInfo:hover,
 .tideInfo:focus-visible {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+@media (hover: hover) {
+  .tideInfo:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
 }
 
 .tideTooltip {
@@ -1744,8 +1754,10 @@
   transition: transform 140ms ease-out;
 }
 
-.phaseButton:hover:not(:disabled) .phaseIcon {
-  transform: scale(1.1);
+@media (hover: hover) {
+  .phaseButton:hover:not(:disabled) .phaseIcon {
+    transform: scale(1.1);
+  }
 }
 
 .phaseButton:disabled {
@@ -1942,8 +1954,10 @@
   box-shadow: 0 1px 1px rgba(0, 0, 0, 0.7);
 }
 
-.hudButton:hover .menuGlyph {
-  transform: scale(1.12);
+@media (hover: hover) {
+  .hudButton:hover .menuGlyph {
+    transform: scale(1.12);
+  }
 }
 
 /* Étiquette du joueur : plaque de bois cerclée de laiton, police des cartes. */
@@ -2066,8 +2080,10 @@
   filter: drop-shadow(0 0 1px rgba(248, 113, 113, 0.9)) drop-shadow(0 0 8px rgba(239, 68, 68, 0.45));
 }
 
-.attacker:hover {
-  filter: drop-shadow(0 0 2px rgba(254, 202, 202, 1)) drop-shadow(0 0 14px rgba(239, 68, 68, 0.75));
+@media (hover: hover) {
+  .attacker:hover {
+    filter: drop-shadow(0 0 2px rgba(254, 202, 202, 1)) drop-shadow(0 0 14px rgba(239, 68, 68, 0.75));
+  }
 }
 
 .aimSource,
@@ -2165,8 +2181,10 @@
   cursor: var(--tb-cursor-pointer);
 }
 
-.shipInspectable:hover {
-  filter: brightness(1.1);
+@media (hover: hover) {
+  .shipInspectable:hover {
+    filter: brightness(1.1);
+  }
 }
 
 /* ──────────────────────────────────────────────────────────────
@@ -2705,9 +2723,11 @@
   transition: filter 140ms ease-out, transform 140ms ease-out;
 }
 
-.cargoDeckButton:hover:not(:disabled) {
-  filter: brightness(1.15) drop-shadow(0 0 8px rgba(126, 224, 208, 0.6));
-  transform: translateY(-2%);
+@media (hover: hover) {
+  .cargoDeckButton:hover:not(:disabled) {
+    filter: brightness(1.15) drop-shadow(0 0 8px rgba(126, 224, 208, 0.6));
+    transform: translateY(-2%);
+  }
 }
 
 .cargoDeckButton:disabled {
@@ -3337,8 +3357,10 @@
   transition: filter 200ms ease-out, opacity 200ms ease-out;
 }
 
-.handCardSlot:hover .handCardMuted {
-  filter: grayscale(0.45) brightness(0.7);
+@media (hover: hover) {
+  .handCardSlot:hover .handCardMuted {
+    filter: grayscale(0.45) brightness(0.7);
+  }
 }
 
 /* ──────────────────────────────────────────────────────────────
@@ -3522,12 +3544,20 @@
 }
 
 /* Sous le pointeur, la pastille cesse de bouger : un toucher qui la vise la trouve. */
-.abilityButton:hover,
 .abilityButton:active {
   animation: none;
   transform: scale(1.12);
   box-shadow: inset 0 0 0 1px rgba(255, 226, 160, 0.35), 0 0 7px rgba(255, 214, 140, 0.85), 0 0 22px rgba(255, 176, 72, 0.5),
     0 3px 8px rgba(0, 0, 0, 0.6);
+}
+
+@media (hover: hover) {
+  .abilityButton:hover {
+    animation: none;
+    transform: scale(1.12);
+    box-shadow: inset 0 0 0 1px rgba(255, 226, 160, 0.35), 0 0 7px rgba(255, 214, 140, 0.85), 0 0 22px rgba(255, 176, 72, 0.5),
+      0 3px 8px rgba(0, 0, 0, 0.6);
+  }
 }
 
 /* Prix d'une carte glissée (`ReasonCostPreview`) : il surgit au-dessus de

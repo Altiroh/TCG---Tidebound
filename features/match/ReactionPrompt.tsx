@@ -59,6 +59,13 @@ interface ReactionPromptProps {
  * attente d'une décision facultative.
  */
 export function ReactionPrompt({ candidates, onActivateMany, onPass }: ReactionPromptProps) {
+  /**
+   * Panneau replié en pastille, le temps de REGARDER le plateau : sur un
+   * téléphone couché, sa bande couvre l'emplacement de droite des deux
+   * rangées — souvent la carte dont il faut juger la réaction. Le compte à
+   * rebours, lui, continue.
+   */
+  const [peek, setPeek] = useState(false);
   const onPassRef = useRef(onPass);
   onPassRef.current = onPass;
 
@@ -83,40 +90,64 @@ export function ReactionPrompt({ candidates, onActivateMany, onPass }: ReactionP
     // réaction vise. Le bord bas, lui, porte la main et la rangée du joueur :
     // une bande en bas cacherait précisément les cibles.
     <div
+      role="dialog"
+      aria-label="Réaction possible"
+      aria-live="polite"
       className="pointer-events-none fixed inset-0 z-[70] flex items-center justify-center [@media(max-height:520px)]:justify-end"
       style={{
         padding:
           "calc(1rem + var(--tb-safe-top)) calc(1rem + var(--tb-safe-right)) calc(1rem + var(--tb-safe-bottom)) calc(1rem + var(--tb-safe-left))",
       }}
     >
-      <div
-        className="pointer-events-auto relative flex max-h-full w-full max-w-sm flex-col overflow-hidden rounded-3xl bg-white/6 p-6 text-center backdrop-blur-[32px] backdrop-brightness-110 backdrop-saturate-150 [@media(max-height:520px)]:max-w-[15rem] [@media(max-height:520px)]:p-4"
-        style={{
-          boxShadow:
-            "inset 0 1px 1px rgba(255,255,255,0.5), inset 0 0 0 1px rgba(255,255,255,0.08), inset 0 -12px 24px -12px rgba(255,255,255,0.06), 0 24px 60px rgba(0,0,0,0.6)",
-        }}
-      >
-        {/* Léger reflet en haut à gauche — le grain "verre liquide" (courbure qui capte la lumière), pas un
-            aplat de couleur qui recouvrirait toute la carte et masquerait le flou du fond derrière. */}
-        <div className="pointer-events-none absolute -left-6 -top-10 h-32 w-32 rounded-full bg-white/25 blur-2xl" aria-hidden />
-
+      {peek ? (
         <button
           type="button"
-          onClick={handlePass}
-          aria-label="Refuser"
-          className={`absolute right-3 top-3 z-10 flex h-7 w-7 items-center justify-center rounded-full text-white/60 outline-none transition-colors hover:bg-white/15 hover:text-white focus-visible:ring-2 focus-visible:ring-white/40 ${TOUCH_TARGET_44}`}
+          onClick={() => setPeek(false)}
+          className="pointer-events-auto flex min-h-11 items-center gap-2 self-end rounded-full border border-white/25 bg-slate-950/90 px-4 text-sm font-semibold text-white shadow-[0_8px_24px_rgba(0,0,0,0.55)] outline-none focus-visible:ring-2 focus-visible:ring-white/40"
         >
-          <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5">
-            <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
-          </svg>
+          <span aria-hidden className="h-2 w-2 rounded-full bg-emerald-400" />
+          Réaction possible — revenir
         </button>
+      ) : (
+        <div
+          // Au doigt, le verre flouté redevient un fond opaque : un flou de
+          // 32 px recalculé par-dessus un plateau animé coûte cher au téléphone.
+          className="pointer-events-auto relative flex max-h-full w-full max-w-sm flex-col overflow-hidden rounded-3xl bg-white/6 p-6 text-center backdrop-blur-[32px] backdrop-brightness-110 backdrop-saturate-150 [@media(max-height:520px)]:max-w-[15rem] [@media(max-height:520px)]:p-4 [@media(pointer:coarse)]:bg-slate-950/90 [@media(pointer:coarse)]:backdrop-blur-none"
+          style={{
+            boxShadow:
+              "inset 0 1px 1px rgba(255,255,255,0.5), inset 0 0 0 1px rgba(255,255,255,0.08), inset 0 -12px 24px -12px rgba(255,255,255,0.06), 0 24px 60px rgba(0,0,0,0.6)",
+          }}
+        >
+          {/* Léger reflet en haut à gauche — le grain "verre liquide" (courbure qui capte la lumière), pas un
+              aplat de couleur qui recouvrirait toute la carte et masquerait le flou du fond derrière. */}
+          <div className="pointer-events-none absolute -left-6 -top-10 h-32 w-32 rounded-full bg-white/25 blur-2xl" aria-hidden />
 
-        {candidates.length === 1 ? (
-          <SingleCandidate candidate={candidates[0]!} onActivate={() => onActivateMany([candidates[0]!])} onPass={handlePass} />
-        ) : (
-          <MultipleCandidates candidates={candidates} onActivateMany={onActivateMany} onPass={handlePass} />
-        )}
-      </div>
+          <button
+            type="button"
+            onClick={handlePass}
+            aria-label="Refuser"
+            className={`absolute right-3 top-3 z-10 flex h-7 w-7 items-center justify-center rounded-full text-white/60 outline-none transition-colors hover:bg-white/15 hover:text-white focus-visible:ring-2 focus-visible:ring-white/40 ${TOUCH_TARGET_44}`}
+          >
+            <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5">
+              <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
+            </svg>
+          </button>
+
+          {candidates.length === 1 ? (
+            <SingleCandidate candidate={candidates[0]!} onActivate={() => onActivateMany([candidates[0]!])} onPass={handlePass} />
+          ) : (
+            <MultipleCandidates candidates={candidates} onActivateMany={onActivateMany} onPass={handlePass} />
+          )}
+
+          <button
+            type="button"
+            onClick={() => setPeek(true)}
+            className="mt-2 min-h-11 shrink-0 self-center rounded-full px-3 text-xs font-medium text-white/70 underline-offset-2 outline-none hover:text-white hover:underline focus-visible:ring-2 focus-visible:ring-white/40 [@media(max-height:520px)]:mt-1 [@media(max-height:520px)]:min-h-9"
+          >
+            Voir le plateau
+          </button>
+        </div>
+      )}
     </div>
   );
 }
