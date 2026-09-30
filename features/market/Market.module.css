@@ -1397,4 +1397,25 @@
     height: 44px;
     transform: translateY(-50%);
   }
+
+  /* « Contenu », « Au panier », « Vider » et le lien vers les Decks : de
+     19 à 22 px de haut sur un téléphone. Même zone transparente de 44 px
+     de haut, un peu de débord sur les côtés (ils sont isolés). */
+  .contentsButton,
+  .clearButton,
+  .stageLink {
+    position: relative;
+  }
+
+  .contentsButton::before,
+  .clearButton::before,
+  .stageLink::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: -6px;
+    right: -6px;
+    height: 44px;
+    transform: translateY(-50%);
+  }
 }

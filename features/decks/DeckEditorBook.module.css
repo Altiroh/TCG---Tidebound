@@ -1585,6 +1585,46 @@
   .collection[data-drawer="open"] .left.left.left {
     transform: rotate(-0.6deg);
   }
+
+  /*
+   * MÊME PIÈGE DANS L'ÉDITEUR, des deux côtés : l'inclinaison des cadres
+   * (`.left.left`, `.right.right`) écrasait la translation qui range les
+   * tiroirs hors de l'écran. Sur un téléphone couché, filtres ET deck
+   * restaient ouverts par-dessus une grille de cartes réduite à 228 px (la
+   * grille, elle, gardait ses trois colonnes). Une colonne, deux tiroirs
+   * fermés ; ils s'ouvrent à leur bouton.
+   */
+  .workspace.workspace.workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workspace .left.left.left {
+    transform: translateX(calc(-100% - clamp(8px, 1.4vw, 16px) - var(--tb-safe-left, 0px)));
+  }
+
+  .workspace[data-drawer="open"] .left.left.left {
+    transform: rotate(-0.6deg);
+  }
+
+  .workspace .right.right.right {
+    transform: translateX(calc(100% + clamp(8px, 1.4vw, 16px) + var(--tb-safe-right, 0px)));
+  }
+
+  .workspace[data-deck="open"] .right.right.right {
+    transform: rotate(0.8deg);
+  }
+
+  /* Tiroirs fermés, la grille a toute la largeur : les trois colonnes
+     imposées quand elle partageait la table (plus haut) donnaient des
+     cartes de 250 px, trois par rangée. Autant qu'il en tient à ~140 px. */
+  .workspace .center [class*="_cardGrid__"] {
+    grid-template-columns: repeat(auto-fill, minmax(136px, 1fr));
+  }
+
+  /* Le bouton du deck (bleu nuit) : l'encre du parchemin y était illisible. */
+  .workspace [class*="_deckToggle__"] {
+    color: #eaf8ff;
+  }
 }
 
 /* ── La colonne : son en-tête reste — « Réinitialiser » sert ici ── */

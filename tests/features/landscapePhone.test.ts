@@ -39,6 +39,7 @@ const SCREENS = [
   "features/cosmetics/Collectables.module.css",
   "features/boosters/Boosters.module.css",
   "features/quests/VoyagePanel.module.css",
+  "features/decks/DeckTable.module.css",
 ];
 
 /**
