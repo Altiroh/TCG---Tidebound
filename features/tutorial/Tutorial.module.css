@@ -56,7 +56,7 @@
   padding: 0.25em 0.7em;
   border: 1px solid var(--line);
   border-radius: 999px;
-  font-size: clamp(10px, 0.85vw, 12px);
+  font-size: clamp(max(10px, var(--tb-fs-floor, 0px)), 0.85vw, 12px);
   color: var(--ink-dim);
 }
 

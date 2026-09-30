@@ -174,7 +174,7 @@
   border-radius: 999px;
   background: var(--cb-cyan);
   color: #04121d;
-  font-size: calc(10px * var(--tb-text-scale));
+  font-size: calc(max(10px, var(--tb-fs-floor, 0px)) * var(--tb-text-scale));
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -342,7 +342,7 @@
   border-radius: 999px;
   background: var(--cb-cyan);
   color: #04121d;
-  font-size: calc(9px * var(--tb-text-scale));
+  font-size: calc(max(9px, var(--tb-fs-floor, 0px)) * var(--tb-text-scale));
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;

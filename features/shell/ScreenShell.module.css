@@ -51,9 +51,9 @@
      `app/globals.css`) : sur un iPhone à encoche, le bandeau garde sa
      hauteur utile sous la barre d'état au lieu de passer dessous. */
   grid-template-rows:
-    calc(clamp(54px, 6.8vh, 72px) + var(--tb-safe-top))
+    calc(clamp(54px, 6.8dvh, 72px) + var(--tb-safe-top))
     minmax(0, 1fr)
-    calc(clamp(50px, 6.2vh, 64px) + var(--tb-safe-bottom));
+    calc(clamp(50px, 6.2dvh, 64px) + var(--tb-safe-bottom));
   overflow: hidden;
   font-family: var(--cb-font-ui);
   color: var(--cb-ivory);
@@ -257,8 +257,8 @@
   flex: 0 0 auto;
   display: grid;
   place-items: center;
-  width: clamp(30px, 3.4vh, 36px);
-  height: clamp(30px, 3.4vh, 36px);
+  width: clamp(30px, 3.4dvh, 36px);
+  height: clamp(30px, 3.4dvh, 36px);
   border: 1px solid transparent;
   border-radius: 50%;
   background: none;
@@ -312,14 +312,14 @@
   display: grid;
   place-items: center;
   /* Assez grand pour qu'on RECONNAISSE l'illustration choisie (25/09/2026). */
-  width: clamp(36px, 4.8vh, 50px);
-  height: clamp(36px, 4.8vh, 50px);
+  width: clamp(36px, 4.8dvh, 50px);
+  height: clamp(36px, 4.8dvh, 50px);
   border: 1.5px solid var(--tb-accent-line);
   border-radius: 50%;
   background: radial-gradient(circle at 50% 30%, rgba(42, 143, 168, 0.55), rgba(10, 30, 50, 0.9) 75%);
   box-shadow: inset 0 1px 0 var(--tb-border-light);
   font-family: var(--cb-font-display);
-  font-size: calc(clamp(14px, 2vh, 19px) * var(--tb-text-scale));
+  font-size: calc(clamp(14px, 2dvh, 19px) * var(--tb-text-scale));
   font-weight: 600;
   color: var(--tb-text-strong);
   text-shadow: none;
@@ -376,7 +376,7 @@
 }
 
 .accountLevel {
-  font-size: calc(clamp(10px, 0.78vw, 12.5px) * var(--tb-text-scale));
+  font-size: calc(clamp(max(10px, var(--tb-fs-floor, 0px)), 0.78vw, 12.5px) * var(--tb-text-scale));
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -491,8 +491,8 @@
   z-index: 2;
   display: grid;
   place-items: center;
-  width: clamp(30px, 3.4vh, 36px);
-  height: clamp(30px, 3.4vh, 36px);
+  width: clamp(30px, 3.4dvh, 36px);
+  height: clamp(30px, 3.4dvh, 36px);
   border: 1px solid transparent;
   border-radius: 50%;
   background: none;
@@ -518,7 +518,7 @@
    ce débordement qui la fait exister au-dessus du filet. */
 .brandLogo {
   width: auto;
-  height: clamp(34px, 6.4vh, 62px);
+  height: clamp(34px, 6.4dvh, 62px);
   object-fit: contain;
   filter: drop-shadow(0 3px 10px rgba(0, 0, 0, 0.85));
 }
@@ -556,7 +556,7 @@
   border-radius: 999px;
   background: linear-gradient(180deg, var(--tb-gold-bright), var(--tb-gold));
   color: var(--tb-on-gold);
-  font-size: calc(10px * var(--tb-text-scale));
+  font-size: calc(max(10px, var(--tb-fs-floor, 0px)) * var(--tb-text-scale));
   font-weight: 700;
   line-height: 16px;
   text-align: center;
@@ -644,7 +644,7 @@
   display: grid;
   /* Comme le bandeau des autres écrans : la hauteur utile est préservée et
      la zone sûre du haut est absorbée en plus (encoche, Dynamic Island). */
-  height: calc(clamp(54px, 6.8vh, 72px) + var(--tb-safe-top));
+  height: calc(clamp(54px, 6.8dvh, 72px) + var(--tb-safe-top));
   padding-top: var(--tb-safe-top);
   font-family: var(--cb-font-ui);
   color: var(--cb-ivory);
@@ -850,7 +850,7 @@
   height: 25px;
   padding: 1px 1px 0 0;
   font-family: var(--cb-font-ui);
-  font-size: calc(10px * var(--tb-text-scale));
+  font-size: calc(max(10px, var(--tb-fs-floor, 0px)) * var(--tb-text-scale));
   font-weight: 800;
   line-height: 1;
   text-align: center;
@@ -864,4 +864,47 @@
 
 @media (prefers-reduced-motion: reduce) {
   .rewardBadge { animation: none; }
+}
+
+/*
+ * TÉLÉPHONE COUCHÉ / ÉCRAN TACTILE — des cibles au pouce (audit mobile du
+ * 30/09/2026). Le visuel ne bouge pas : la flèche, l'engrenage et l'avatar
+ * gardent leur gabarit, c'est leur ZONE TACTILE qui s'étend à 44 px par un
+ * pseudo-élément transparent débordant (`inset` négatif).
+ */
+@media (max-height: 560px), (pointer: coarse) {
+  .backButton::before,
+  .optionsButton::before,
+  .accountAvatarLink::before {
+    content: "";
+    position: absolute;
+    inset: -7px;
+    border-radius: 50%;
+  }
+
+  /* L'avatar tombe à 32 px en bandeau serré : 6 px de plus de chaque côté. */
+  .accountAvatarLink::before {
+    inset: -6px;
+  }
+}
+
+@media (max-height: 560px) {
+  /*
+   * Onglets : 44 px de haut au lieu de ~29. Le bandeau en fait 54 : ils y
+   * tiennent. Le filet et le halo de l'onglet actif remontent d'autant pour
+   * rester collés au libellé.
+   */
+  .navTab,
+  .navTabActive {
+    min-height: 44px;
+    padding-block: 0;
+  }
+
+  .navTab::after {
+    bottom: 6px;
+  }
+
+  .navTabActive::before {
+    bottom: 5px;
+  }
 }

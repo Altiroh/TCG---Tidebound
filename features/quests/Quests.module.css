@@ -341,7 +341,7 @@ button.tab:not([data-active]):hover {
   overflow: hidden;
   text-overflow: ellipsis;
   font-family: var(--tb-font-body);
-  font-size: max(9.5px, calc(12.5 * var(--u) * var(--tb-text-scale, 1)));
+  font-size: max(9.5px, var(--tb-fs-floor, 0px), calc(12.5 * var(--u) * var(--tb-text-scale, 1)));
   line-height: 1.15;
   white-space: nowrap;
   color: #3a2715;
@@ -487,7 +487,7 @@ button.row:disabled {
 
 .name {
   font-family: var(--tb-font-display);
-  font-size: max(10.5px, calc(13 * var(--u) * var(--tb-text-scale, 1)));
+  font-size: max(10.5px, var(--tb-fs-floor, 0px), calc(13 * var(--u) * var(--tb-text-scale, 1)));
   font-weight: 700;
   letter-spacing: 0.01em;
   line-height: 1.15;
@@ -497,7 +497,7 @@ button.row:disabled {
 
 .category {
   font-family: var(--tb-font-display);
-  font-size: max(9px, calc(11 * var(--u) * var(--tb-text-scale, 1)));
+  font-size: max(9px, var(--tb-fs-floor, 0px), calc(11 * var(--u) * var(--tb-text-scale, 1)));
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -509,7 +509,7 @@ button.row:disabled {
   border: 1px solid rgba(140, 40, 25, 0.55);
   border-radius: 999px;
   font-family: var(--tb-font-display);
-  font-size: max(8.5px, calc(10 * var(--u) * var(--tb-text-scale, 1)));
+  font-size: max(8.5px, var(--tb-fs-floor, 0px), calc(10 * var(--u) * var(--tb-text-scale, 1)));
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -519,7 +519,7 @@ button.row:disabled {
 .objective {
   margin: 0;
   font-family: var(--tb-font-body);
-  font-size: max(10px, calc(12.5 * var(--u) * var(--tb-text-scale, 1)));
+  font-size: max(10px, var(--tb-fs-floor, 0px), calc(12.5 * var(--u) * var(--tb-text-scale, 1)));
   line-height: 1.12;
   color: #2f2012;
 }
@@ -557,7 +557,7 @@ button.row:disabled {
   flex: 0 0 auto;
   min-width: calc(40 * var(--u));
   font-family: var(--tb-font-body);
-  font-size: max(10.5px, calc(14 * var(--u) * var(--tb-text-scale, 1)));
+  font-size: max(10.5px, var(--tb-fs-floor, 0px), calc(14 * var(--u) * var(--tb-text-scale, 1)));
   font-variant-numeric: tabular-nums;
   text-align: right;
   color: #2f2012;
@@ -588,7 +588,7 @@ button.row:disabled {
 
 .rewardUnit {
   font-family: var(--tb-font-display);
-  font-size: max(9.5px, calc(12 * var(--u) * var(--tb-text-scale, 1)));
+  font-size: max(9.5px, var(--tb-fs-floor, 0px), calc(12 * var(--u) * var(--tb-text-scale, 1)));
   font-weight: 700;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -597,7 +597,7 @@ button.row:disabled {
 
 .rewardXp {
   font-family: var(--tb-font-display);
-  font-size: max(10px, calc(14 * var(--u) * var(--tb-text-scale, 1)));
+  font-size: max(10px, var(--tb-fs-floor, 0px), calc(14 * var(--u) * var(--tb-text-scale, 1)));
   font-weight: 700;
   color: #2f2012;
   white-space: nowrap;
@@ -616,7 +616,7 @@ button.row:disabled {
   border-radius: 999px;
   background: none;
   font-family: var(--tb-font-body);
-  font-size: max(9.5px, calc(11.5 * var(--u) * var(--tb-text-scale, 1)));
+  font-size: max(9.5px, var(--tb-fs-floor, 0px), calc(11.5 * var(--u) * var(--tb-text-scale, 1)));
   font-style: italic;
   color: #6a5238;
   cursor: var(--tb-cursor-pointer);

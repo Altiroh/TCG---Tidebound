@@ -87,7 +87,7 @@
   border-bottom: 1px solid rgba(70, 42, 18, 0.35);
   color: #1d120a;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: calc(max(10px, 1.42cqw) * var(--tb-text-scale));
+  font-size: calc(max(10px, var(--tb-fs-floor, 0px), 1.42cqw) * var(--tb-text-scale));
   font-weight: 700;
   font-variant: small-caps;
   letter-spacing: 0.03em;
@@ -156,7 +156,7 @@
   flex: 1;
   min-width: 0;
   font-family: var(--tb-font-body, Georgia, serif);
-  font-size: calc(max(9px, 0.98cqw) * var(--tb-text-scale));
+  font-size: calc(max(9px, var(--tb-fs-floor, 0px), 0.98cqw) * var(--tb-text-scale));
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
@@ -164,7 +164,7 @@
 }
 
 .familyCount {
-  font-size: calc(max(8px, 0.8cqw) * var(--tb-text-scale));
+  font-size: calc(max(8px, var(--tb-fs-floor, 0px), 0.8cqw) * var(--tb-text-scale));
   font-variant-numeric: tabular-nums;
   opacity: 0.85;
 }
@@ -176,7 +176,7 @@
 
 .signedOutNote {
   margin: 1cqw 0 0;
-  font-size: calc(max(8px, 0.75cqw) * var(--tb-text-scale));
+  font-size: calc(max(8px, var(--tb-fs-floor, 0px), 0.75cqw) * var(--tb-text-scale));
   line-height: 1.35;
   color: #4a3320;
 }
@@ -307,7 +307,7 @@
 
 .bannerHint,
 .bannerError {
-  font-size: calc(max(8px, 0.9cqw) * var(--tb-text-scale));
+  font-size: calc(max(8px, var(--tb-fs-floor, 0px), 0.9cqw) * var(--tb-text-scale));
   line-height: 1.15;
   white-space: nowrap;
   overflow: hidden;
@@ -357,7 +357,7 @@
   background: url("/assets/ui/plaques/onglet.webp") center / 100% 100% no-repeat;
   color: #4a3320;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: calc(max(8px, 0.84cqw) * var(--tb-text-scale));
+  font-size: calc(max(8px, var(--tb-fs-floor, 0px), 0.84cqw) * var(--tb-text-scale));
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;
@@ -413,7 +413,7 @@
   border-radius: 999px;
   background: rgba(58, 38, 22, 0.16);
   color: #5a3d22;
-  font-size: calc(max(7px, 0.74cqw) * var(--tb-text-scale));
+  font-size: calc(max(7px, var(--tb-fs-floor, 0px), 0.74cqw) * var(--tb-text-scale));
   font-variant-numeric: tabular-nums;
 }
 
@@ -442,7 +442,7 @@
   padding: 0 1.6cqw;
   color: #eaf8ff;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: calc(max(8px, 0.8cqw) * var(--tb-text-scale));
+  font-size: calc(max(8px, var(--tb-fs-floor, 0px), 0.8cqw) * var(--tb-text-scale));
   font-weight: 700;
   letter-spacing: 0.07em;
   line-height: 1;
@@ -604,7 +604,7 @@
   place-content: center;
   margin: 0;
   color: #3a2616;
-  font-size: calc(max(9px, 0.95cqw) * var(--tb-text-scale));
+  font-size: calc(max(9px, var(--tb-fs-floor, 0px), 0.95cqw) * var(--tb-text-scale));
   text-align: center;
 }
 
@@ -715,7 +715,7 @@
   background: #0b1d29;
   color: #e6f7fb;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: calc(max(7px, 0.72cqw) * var(--tb-text-scale));
+  font-size: calc(max(7px, var(--tb-fs-floor, 0px), 0.72cqw) * var(--tb-text-scale));
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -725,7 +725,7 @@
 .section[data-variant="compact"] .badge {
   top: 4%;
   right: 3%;
-  font-size: calc(max(7px, 0.62cqw) * var(--tb-text-scale));
+  font-size: calc(max(7px, var(--tb-fs-floor, 0px), 0.62cqw) * var(--tb-text-scale));
 }
 
 .plate {
@@ -758,7 +758,7 @@
 }
 
 .section[data-variant="large"] .plateText {
-  font-size: calc(max(9px, 1.1cqw) * var(--tb-text-scale));
+  font-size: calc(max(9px, var(--tb-fs-floor, 0px), 1.1cqw) * var(--tb-text-scale));
 }
 
 .section[data-variant="compact"] .plate {
@@ -769,7 +769,7 @@
 }
 
 .section[data-variant="compact"] .plateText {
-  font-size: calc(max(8px, 0.76cqw) * var(--tb-text-scale));
+  font-size: calc(max(8px, var(--tb-fs-floor, 0px), 0.76cqw) * var(--tb-text-scale));
 }
 
 .description {
@@ -782,7 +782,7 @@
   -webkit-line-clamp: 3;
   overflow: hidden;
   color: #3a2616;
-  font-size: calc(max(7px, 0.78cqw) * var(--tb-text-scale));
+  font-size: calc(max(7px, var(--tb-fs-floor, 0px), 0.78cqw) * var(--tb-text-scale));
   line-height: 1.25;
 }
 
@@ -835,11 +835,11 @@
 }
 
 .section[data-variant="large"] .action {
-  font-size: calc(max(8px, 0.84cqw) * var(--tb-text-scale));
+  font-size: calc(max(8px, var(--tb-fs-floor, 0px), 0.84cqw) * var(--tb-text-scale));
 }
 
 .section[data-variant="compact"] .action {
-  font-size: calc(max(7px, 0.7cqw) * var(--tb-text-scale));
+  font-size: calc(max(7px, var(--tb-fs-floor, 0px), 0.7cqw) * var(--tb-text-scale));
 }
 
 .action:hover:not(:disabled)::before {
@@ -894,11 +894,11 @@
 
 
 .section[data-variant="large"] .action[data-long="true"] {
-  font-size: calc(max(7px, 0.66cqw) * var(--tb-text-scale));
+  font-size: calc(max(7px, var(--tb-fs-floor, 0px), 0.66cqw) * var(--tb-text-scale));
 }
 
 .section[data-variant="compact"] .action[data-long="true"] {
-  font-size: calc(max(6px, 0.54cqw) * var(--tb-text-scale));
+  font-size: calc(max(6px, var(--tb-fs-floor, 0px), 0.54cqw) * var(--tb-text-scale));
 }
 
 /* Achat en deux temps : « Confirmer » garde la plaque, la croix l'annule. */
@@ -924,7 +924,7 @@
   border-radius: 0.3cqw;
   background: rgba(58, 38, 22, 0.2);
   color: #3a2616;
-  font-size: calc(max(8px, 0.8cqw) * var(--tb-text-scale));
+  font-size: calc(max(8px, var(--tb-fs-floor, 0px), 0.8cqw) * var(--tb-text-scale));
   cursor: var(--tb-cursor-pointer);
 }
 

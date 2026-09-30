@@ -1862,7 +1862,7 @@
   background: rgba(6, 14, 22, 0.82);
   backdrop-filter: blur(3px);
   color: #eed9a8;
-  font-size: calc(clamp(8px, calc(var(--u) * 0.95), 11px) * var(--tb-text-scale));
+  font-size: calc(clamp(max(8px, var(--tb-fs-floor, 0px)), calc(var(--u) * 0.95), 11px) * var(--tb-text-scale));
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;

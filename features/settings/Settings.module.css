@@ -32,7 +32,7 @@
 
 .sectionTitle {
   margin: 0;
-  font-size: calc(clamp(9px, 1vh, 11px) * var(--tb-text-scale));
+  font-size: calc(clamp(max(9px, var(--tb-fs-floor, 0px)), 1vh, 11px) * var(--tb-text-scale));
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;

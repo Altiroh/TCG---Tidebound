@@ -55,7 +55,7 @@
 }
 
 .traitLabel {
-  font-size: calc(9px * var(--tb-text-scale));
+  font-size: calc(max(9px, var(--tb-fs-floor, 0px)) * var(--tb-text-scale));
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;

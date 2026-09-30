@@ -50,7 +50,7 @@
   font-family: var(--tb-font-display);
   flex-wrap: nowrap;
   white-space: nowrap;
-  font-size: max(7.5px, calc(11.5 * var(--u) * var(--tb-text-scale, 1)));
+  font-size: max(7.5px, var(--tb-fs-floor, 0px), calc(11.5 * var(--u) * var(--tb-text-scale, 1)));
   font-weight: 700;
   letter-spacing: 0.04em;
   line-height: 1.1;
@@ -75,7 +75,7 @@
   border-radius: 999px;
   background: rgba(255, 244, 214, 0.35);
   font-family: var(--tb-font-display);
-  font-size: max(7.5px, calc(9.5 * var(--u) * var(--tb-text-scale, 1)));
+  font-size: max(7.5px, var(--tb-fs-floor, 0px), calc(9.5 * var(--u) * var(--tb-text-scale, 1)));
   font-weight: 700;
   letter-spacing: 0.02em;
   color: #3a2715;
@@ -127,7 +127,7 @@
 .tagline {
   margin: calc(3 * var(--u)) 0 0;
   font-family: var(--tb-font-body);
-  font-size: max(7.5px, calc(10.5 * var(--u) * var(--tb-text-scale, 1)));
+  font-size: max(7.5px, var(--tb-fs-floor, 0px), calc(10.5 * var(--u) * var(--tb-text-scale, 1)));
   font-style: italic;
   line-height: 1.2;
   color: #2f2012;
@@ -149,7 +149,7 @@
   border: 0 solid transparent;
   border-image: url("/assets/ui/panneaux/panneau-parchemin.webp") 40 fill / 10px / 0 stretch;
   font-family: var(--tb-font-body);
-  font-size: max(10px, calc(12.5 * var(--u) * var(--tb-text-scale, 1)));
+  font-size: max(10px, var(--tb-fs-floor, 0px), calc(12.5 * var(--u) * var(--tb-text-scale, 1)));
   line-height: 1.25;
   color: #3a2715;
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.55));
@@ -303,7 +303,7 @@ button.plaque:focus-visible {
 
 .plaqueState {
   font-family: var(--tb-font-body);
-  font-size: max(9.5px, calc(12 * var(--u) * var(--tb-text-scale, 1)));
+  font-size: max(9.5px, var(--tb-fs-floor, 0px), calc(12 * var(--u) * var(--tb-text-scale, 1)));
   font-style: italic;
   color: #5a4330;
 }
@@ -316,7 +316,7 @@ button.plaque:focus-visible {
   border: calc(2.5 * var(--u)) solid currentColor;
   border-radius: calc(4 * var(--u));
   font-family: var(--tb-font-display);
-  font-size: max(10px, calc(14 * var(--u) * var(--tb-text-scale, 1)));
+  font-size: max(10px, var(--tb-fs-floor, 0px), calc(14 * var(--u) * var(--tb-text-scale, 1)));
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;

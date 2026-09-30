@@ -79,7 +79,7 @@
   max-width: 62%;
   overflow: hidden;
   color: rgba(244, 234, 212, 0.85);
-  font-size: calc(9.5px * var(--tb-text-scale));
+  font-size: calc(max(9.5px, var(--tb-fs-floor, 0px)) * var(--tb-text-scale));
   font-weight: 700;
   letter-spacing: 0.08em;
   text-overflow: ellipsis;
@@ -101,7 +101,11 @@
     font-size: calc(16px * var(--tb-text-scale));
   }
   .caption {
-    font-size: calc(7px * var(--tb-text-scale));
+    /* 11 px au plus bas (audit mobile du 30/09/2026) : pour que « Maîtrise »
+       y tienne encore, le lettrage se resserre et la légende s'élargit. */
+    max-width: 92%;
+    font-size: max(calc(7px * var(--tb-text-scale)), var(--tb-fs-floor, 0px));
+    letter-spacing: 0.02em;
   }
 }
 

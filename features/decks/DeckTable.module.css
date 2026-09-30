@@ -263,7 +263,7 @@
   filter: drop-shadow(0 0.4cqw 0.6cqw rgba(0, 0, 0, 0.55));
   color: #3a2616;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: calc(max(9px, 0.86cqw) * var(--tb-text-scale));
+  font-size: calc(max(9px, var(--tb-fs-floor, 0px), 0.86cqw) * var(--tb-text-scale));
   font-weight: 700;
   white-space: nowrap;
   cursor: var(--tb-cursor-pointer);
@@ -296,7 +296,7 @@
   border-radius: 999px;
   background: #5a2a1a;
   color: #f4e6c6;
-  font-size: calc(max(8px, 0.7cqw) * var(--tb-text-scale));
+  font-size: calc(max(8px, var(--tb-fs-floor, 0px), 0.7cqw) * var(--tb-text-scale));
   line-height: 1.2;
   text-align: center;
   font-variant-numeric: tabular-nums;
@@ -360,7 +360,7 @@
   border-radius: 0.3cqw;
   background: linear-gradient(180deg, #3b2616, #24170d);
   color: #f1e3c4;
-  font-size: calc(max(10px, 0.85cqw) * var(--tb-text-scale));
+  font-size: calc(max(10px, var(--tb-fs-floor, 0px), 0.85cqw) * var(--tb-text-scale));
   cursor: var(--tb-cursor-pointer);
 }
 
@@ -389,7 +389,7 @@
   border: 0;
   background: none;
   color: #f1e3c4;
-  font-size: calc(max(10px, 0.85cqw) * var(--tb-text-scale));
+  font-size: calc(max(10px, var(--tb-fs-floor, 0px), 0.85cqw) * var(--tb-text-scale));
   outline: none;
 }
 
@@ -488,7 +488,7 @@
   filter: drop-shadow(0 0.2cqw 0.35cqw rgba(0, 0, 0, 0.6));
   color: #f1d38a;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: calc(max(8px, 0.62cqw) * var(--tb-text-scale));
+  font-size: calc(max(8px, var(--tb-fs-floor, 0px), 0.62cqw) * var(--tb-text-scale));
   font-weight: 700;
   letter-spacing: 0.06em;
   white-space: nowrap;
@@ -889,7 +889,7 @@
   margin: 0;
   overflow: hidden;
   color: #3a2616;
-  font-size: calc(max(10px, 0.78cqw) * var(--tb-text-scale));
+  font-size: calc(max(10px, var(--tb-fs-floor, 0px), 0.78cqw) * var(--tb-text-scale));
   line-height: 1.4;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
@@ -936,7 +936,7 @@
   color: #f1e3c4;
   font-family: var(--tb-font-display, Georgia, serif);
   /* Plancher à 8 px : sur un téléphone en paysage, la case ne fait que ~65 px. */
-  font-size: calc(max(8px, 0.74cqw) * var(--tb-text-scale));
+  font-size: calc(max(8px, var(--tb-fs-floor, 0px), 0.74cqw) * var(--tb-text-scale));
   font-weight: 700;
   letter-spacing: 0.06em;
   line-height: 1;
@@ -1116,7 +1116,7 @@
 .cardName {
   z-index: 1;
   overflow: hidden;
-  font-size: calc(max(9.5px, 0.74cqw) * var(--tb-text-scale));
+  font-size: calc(max(9.5px, var(--tb-fs-floor, 0px), 0.74cqw) * var(--tb-text-scale));
   text-overflow: ellipsis;
   white-space: nowrap;
 }

@@ -1001,7 +1001,7 @@
   }
 
   .sideLevelCaption {
-    font-size: calc(9.5px * var(--tb-text-scale));
+    font-size: calc(max(9.5px, var(--tb-fs-floor, 0px)) * var(--tb-text-scale));
   }
 
   .sideXpLine {
@@ -1067,7 +1067,7 @@
   }
 
   .blockHead > * {
-    font-size: calc(10.5px * var(--tb-text-scale));
+    font-size: calc(max(10.5px, var(--tb-fs-floor, 0px)) * var(--tb-text-scale));
   }
 
   .levelNumber {
@@ -1076,7 +1076,7 @@
 
   .levelCaption,
   .statLabel {
-    font-size: calc(10px * var(--tb-text-scale));
+    font-size: calc(max(10px, var(--tb-fs-floor, 0px)) * var(--tb-text-scale));
   }
 
   .xpLine {
@@ -1136,7 +1136,7 @@
   .stageLabel,
   .stageStatus,
   .stageLevel {
-    font-size: calc(10px * var(--tb-text-scale));
+    font-size: calc(max(10px, var(--tb-fs-floor, 0px)) * var(--tb-text-scale));
   }
 
   .rewardsHead {

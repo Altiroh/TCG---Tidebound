@@ -597,6 +597,18 @@
   opacity: 1;
 }
 
+/* Écran tactile : pas de survol pour les révéler — « Voir » et le cœur
+   restent affichés, sans quoi ils seraient inatteignables au doigt. */
+@media (hover: none) {
+  .center [class*="_cellBar__"] [aria-label^="Voir"] {
+    display: grid;
+  }
+
+  .center [class*="Shelf_heart__"] {
+    opacity: 1;
+  }
+}
+
 /* ── Colonne de gauche : aérée comme la référence ──
    Titre du Navire sur une ligne, pas de lien « Mes decks » (la flèche du
    bandeau ramène), pas d'en-tête « Filtres », pas d'effectifs, et chaque
@@ -921,7 +933,7 @@
 
 .summaryCurve [class*="_curveLabels__"] {
   color: #3a2616;
-  font-size: calc(10px * var(--tb-text-scale));
+  font-size: calc(max(10px, var(--tb-fs-floor, 0px)) * var(--tb-text-scale));
   font-weight: 700;
 }
 
@@ -1136,7 +1148,7 @@
 /* Le plus long titre (« Statut de collection ») tient entre ses deux ancres. */
 .left [class*="_sectionTitle__"] {
   gap: 4px;
-  font-size: calc(clamp(10.5px, 1.25vh, 12px) * var(--tb-text-scale));
+  font-size: calc(clamp(max(10.5px, var(--tb-fs-floor, 0px)), 1.25vh, 12px) * var(--tb-text-scale));
   letter-spacing: 0.02em;
 }
 
@@ -1809,4 +1821,58 @@
 .center [class*="_toolbar__"] {
   position: relative;
   z-index: 20;
+}
+
+/*
+ * TÉLÉPHONE COUCHÉ / ÉCRAN TACTILE — des cibles au pouce (audit mobile du
+ * 30/09/2026). Les boutons de la grille (−, +, « Voir », cœur), le crayon
+ * du nom et la croix de retrait des lignes du deck faisaient 20 à 34 px.
+ * Leur dessin ne change pas : un pseudo-élément transparent débordant
+ * (`inset` négatif) porte leur zone tactile à ~44 px.
+ */
+@media (max-height: 560px), (pointer: coarse) {
+  .center [class*="_cellBar__"] [aria-label^="Retirer"],
+  .center [class*="_cellBar__"] [aria-label^="Ajouter"],
+  .right [class*="_rowRemove__"],
+  .headPencil {
+    position: relative;
+  }
+
+  .center [class*="_cellBar__"] [aria-label^="Retirer"]::before,
+  .center [class*="_cellBar__"] [aria-label^="Ajouter"]::before,
+  .center [class*="_cellBar__"] [aria-label^="Voir"]::before,
+  .center [class*="Shelf_heart__"]::before,
+  .right [class*="_rowRemove__"]::before,
+  .headPencil::before {
+    content: "";
+    position: absolute;
+    inset: -11px;
+    border-radius: 50%;
+  }
+
+  /* − et + : la barre les colle au « Voir » posé au-dessus du + — la zone
+     s'étend sur les côtés et vers le bas, pas vers lui. */
+  .center [class*="_cellBar__"] [aria-label^="Retirer"]::before,
+  .center [class*="_cellBar__"] [aria-label^="Ajouter"]::before {
+    inset: -2px -8px -10px;
+    border-radius: 0;
+  }
+
+  /* « Voir » : vers le haut et les côtés, jamais sur le + en dessous. */
+  .center [class*="_cellBar__"] [aria-label^="Voir"]::before {
+    inset: -10px -10px 0;
+  }
+}
+
+@media (max-height: 560px) {
+  /* Lignes du deck : 44 px, pour que la croix de retrait y tienne sans
+     déborder sur la ligne voisine (retirer la mauvaise carte). */
+  .right [class*="_row__"] {
+    min-height: 44px;
+  }
+
+  /* Lignes de filtre : une ligne = une cible. */
+  .left [class*="_filterRow__"] {
+    min-height: 44px;
+  }
 }

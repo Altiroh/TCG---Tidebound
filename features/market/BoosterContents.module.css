@@ -270,7 +270,7 @@
 
 .rarity {
   padding: 0 8px;
-  font-size: calc(10px * var(--tb-text-scale));
+  font-size: calc(max(10px, var(--tb-fs-floor, 0px)) * var(--tb-text-scale));
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--rarity-color);
@@ -305,7 +305,7 @@
   border-radius: 999px;
   background: rgba(6, 14, 22, 0.9);
   color: #eed9a8;
-  font-size: calc(9px * var(--tb-text-scale));
+  font-size: calc(max(9px, var(--tb-fs-floor, 0px)) * var(--tb-text-scale));
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -362,5 +362,20 @@
   .backdrop,
   .dialog.dialog {
     animation: none;
+  }
+}
+
+/* Écran tactile / téléphone couché : la croix garde son dessin de 34 px,
+   sa zone tactile passe à 44 (audit mobile du 30/09/2026). */
+@media (max-height: 560px), (pointer: coarse) {
+  .close {
+    position: relative;
+  }
+
+  .close::before {
+    content: "";
+    position: absolute;
+    inset: -5px;
+    border-radius: 50%;
   }
 }

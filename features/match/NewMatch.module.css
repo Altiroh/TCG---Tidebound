@@ -28,7 +28,7 @@
   height: 20px;
   border: 1px solid currentColor;
   border-radius: 50%;
-  font-size: 10px;
+  font-size: max(10px, var(--tb-fs-floor, 0px));
   letter-spacing: 0;
 }
 
@@ -486,7 +486,7 @@
 }
 
 .rowShip {
-  font-size: clamp(9.5px, 0.7vw, 11px);
+  font-size: clamp(max(9.5px, var(--tb-fs-floor, 0px)), 0.7vw, 11px);
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -503,7 +503,7 @@
 }
 
 .rowIssue {
-  font-size: 10.5px;
+  font-size: max(10.5px, var(--tb-fs-floor, 0px));
   line-height: 1.3;
   color: var(--ink-faint);
 }
@@ -515,7 +515,7 @@
   border-radius: 999px;
   background: var(--cb-cyan);
   color: #04121d;
-  font-size: 9.5px;
+  font-size: max(9.5px, var(--tb-fs-floor, 0px));
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -604,7 +604,7 @@
 
 .sheetShip {
   margin: 0;
-  font-size: clamp(10px, 0.8vw, 12.5px);
+  font-size: clamp(max(10px, var(--tb-fs-floor, 0px)), 0.8vw, 12.5px);
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -663,7 +663,7 @@
 }
 
 .statLabel {
-  font-size: 9.5px;
+  font-size: max(9.5px, var(--tb-fs-floor, 0px));
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -833,9 +833,17 @@
     font-size: 11px;
   }
 
+  /* Cibles au pouce (audit mobile du 30/09/2026) : 44 px de haut, le
+     libellé reste centré dans l'onglet comme dans la tuile. */
   .deckTab {
+    min-height: 44px;
+    align-items: center;
     padding: 0.35em 0.9em;
     font-size: 12px;
+  }
+
+  .difficultyChip {
+    min-height: 44px;
   }
 
   /* Deux lignes de résumé : la fiche doit tenir à côté de la liste. */
@@ -947,7 +955,7 @@
 }
 
 .factNote {
-  font-size: clamp(9.5px, 0.72vw, 11px);
+  font-size: clamp(max(9.5px, var(--tb-fs-floor, 0px)), 0.72vw, 11px);
   color: var(--ink-faint);
   white-space: nowrap;
   overflow: hidden;
@@ -1058,7 +1066,7 @@
   .factHead { font-size: 11px; }
 
   .launchButton {
-    min-height: 34px;
+    min-height: 44px; /* cible au pouce (audit mobile du 30/09/2026) */
     padding-inline: 14px;
     font-size: 12.5px;
     letter-spacing: 0.04em;

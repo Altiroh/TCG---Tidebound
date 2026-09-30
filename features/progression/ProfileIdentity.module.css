@@ -66,7 +66,7 @@
 
 .eyebrow {
   margin: 0;
-  font-size: calc(10px * var(--tb-text-scale));
+  font-size: calc(max(10px, var(--tb-fs-floor, 0px)) * var(--tb-text-scale));
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -224,7 +224,7 @@
   }
 
   .eyebrow {
-    font-size: calc(9px * var(--tb-text-scale));
+    font-size: calc(max(9px, var(--tb-fs-floor, 0px)) * var(--tb-text-scale));
   }
 
   .name {

@@ -272,7 +272,7 @@
   display: inline-flex;
   align-items: center;
   gap: calc(var(--u) * 0.6);
-  font-size: max(9px, calc(var(--u) * 2));
+  font-size: max(9px, var(--tb-fs-floor, 0px), calc(var(--u) * 2));
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: rgba(241, 227, 196, 0.82);
@@ -503,7 +503,7 @@
 
 .foeText {
   margin: 0;
-  font-size: max(10px, calc(var(--u) * 2.1));
+  font-size: max(10px, var(--tb-fs-floor, 0px), calc(var(--u) * 2.1));
   line-height: 1.35;
   color: #3a2616;
 }
@@ -519,7 +519,7 @@
 }
 
 .foeFact span {
-  font-size: max(8px, calc(var(--u) * 1.6));
+  font-size: max(8px, var(--tb-fs-floor, 0px), calc(var(--u) * 1.6));
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -543,7 +543,7 @@
 
 .foeNote {
   margin: 0;
-  font-size: max(9px, calc(var(--u) * 1.6));
+  font-size: max(9px, var(--tb-fs-floor, 0px), calc(var(--u) * 1.6));
   line-height: 1.3;
   color: var(--ink-soft);
 }
@@ -687,7 +687,7 @@
   padding: calc(var(--u) * 0.5) calc(var(--u) * 1.5);
   border-radius: 999px;
   background: rgba(30, 8, 4, 0.8);
-  font-size: max(10px, calc(var(--u) * 1.9));
+  font-size: max(10px, var(--tb-fs-floor, 0px), calc(var(--u) * 1.9));
   color: #ffb0a0;
 }
 
@@ -987,3 +987,30 @@
   }
 }
 
+
+/*
+ * TÉLÉPHONE COUCHÉ / ÉCRAN TACTILE — cibles au pouce (audit mobile du
+ * 30/09/2026). L'unité `--u` suit la hauteur : couché, « Changer de deck »
+ * ne faisait plus que ~20 px de haut. Son dessin ne bouge pas, une zone
+ * transparente débordante lui donne 44 px ; les puces de style du tiroir
+ * de decks passent à 44 px.
+ */
+@media (max-height: 560px), (pointer: coarse) {
+  .changeDeck {
+    position: relative;
+  }
+
+  .changeDeck::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 44px;
+    transform: translateY(-50%);
+  }
+
+  .styleChip {
+    min-height: 44px;
+  }
+}

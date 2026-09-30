@@ -1356,7 +1356,7 @@
   padding: 0.18em 0.6em;
   border: 1px solid var(--line);
   border-radius: var(--tb-radius-pill);
-  font-size: calc(clamp(10px, 0.72vw, 11px) * var(--tb-text-scale));
+  font-size: calc(clamp(max(10px, var(--tb-fs-floor, 0px)), 0.72vw, 11px) * var(--tb-text-scale));
   font-weight: 600;
   letter-spacing: var(--tb-track-caps);
   text-transform: uppercase;

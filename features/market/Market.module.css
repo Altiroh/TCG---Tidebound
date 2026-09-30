@@ -151,7 +151,7 @@
   display: block;
   margin-top: 2px;
   font-family: var(--tb-font-ui);
-  font-size: calc(10px * var(--tb-text-scale));
+  font-size: calc(max(10px, var(--tb-fs-floor, 0px)) * var(--tb-text-scale));
   font-weight: 600;
   letter-spacing: 0.1em;
   color: rgba(217, 181, 106, 0.6);
@@ -424,7 +424,7 @@
   border-radius: 999px;
   background: rgba(8, 26, 18, 0.9);
   color: #c9f5da;
-  font-size: calc(clamp(10px, 1.15cqw, 13px) * var(--tb-text-scale));
+  font-size: calc(clamp(max(10px, var(--tb-fs-floor, 0px)), 1.15cqw, 13px) * var(--tb-text-scale));
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -624,7 +624,7 @@
   line-clamp: 2;
   overflow: hidden;
   font-family: var(--tb-font-display);
-  font-size: calc(clamp(10px, 1.35cqw, 17px) * var(--tb-text-scale));
+  font-size: calc(clamp(max(10px, var(--tb-fs-floor, 0px)), 1.35cqw, 17px) * var(--tb-text-scale));
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -640,7 +640,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: calc(clamp(9px, 0.95cqw, 12px) * var(--tb-text-scale));
+  font-size: calc(clamp(max(9px, var(--tb-fs-floor, 0px)), 0.95cqw, 12px) * var(--tb-text-scale));
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: rgba(239, 230, 210, 0.62);
@@ -671,7 +671,7 @@
   background: rgba(6, 14, 20, 0.75);
   color: #e6edf1;
   font: inherit;
-  font-size: calc(clamp(10px, 1cqw, 13px) * var(--tb-text-scale));
+  font-size: calc(clamp(max(10px, var(--tb-fs-floor, 0px)), 1cqw, 13px) * var(--tb-text-scale));
   white-space: nowrap;
   cursor: var(--tb-cursor-pointer);
   pointer-events: auto;
@@ -1214,7 +1214,7 @@
   }
 
   .totalLabel {
-    font-size: calc(9px * var(--tb-text-scale));
+    font-size: calc(max(9px, var(--tb-fs-floor, 0px)) * var(--tb-text-scale));
   }
 
   .totalValue {
@@ -1253,7 +1253,7 @@
   }
 
   .stageLink {
-    font-size: calc(10.5px * var(--tb-text-scale));
+    font-size: calc(max(10.5px, var(--tb-fs-floor, 0px)) * var(--tb-text-scale));
   }
 
   /*
@@ -1372,4 +1372,29 @@
   .pack:hover:not(:disabled) .packArt,
   .pack:active:not(:disabled) .packArt { transform: none; }
   .cartBadge { animation: none; }
+}
+
+/*
+ * ÉCRAN TACTILE / TÉLÉPHONE COUCHÉ — cibles au pouce (audit mobile du
+ * 30/09/2026). Les boutons − / + et la corbeille du panier descendent à
+ * 22 px : une zone transparente débordante leur donne 44 px de HAUT. Pas
+ * de débord sur les côtés — − et + se touchent presque, un débord latéral
+ * ferait prendre l'un pour l'autre.
+ */
+@media (max-height: 620px), (pointer: coarse) {
+  .stepperButton,
+  .removeButton {
+    position: relative;
+  }
+
+  .stepperButton::before,
+  .removeButton::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: -2px;
+    right: -2px;
+    height: 44px;
+    transform: translateY(-50%);
+  }
 }

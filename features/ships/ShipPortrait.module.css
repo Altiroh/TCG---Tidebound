@@ -47,7 +47,7 @@
   width: 70%;
   text-align: center;
   font-family: var(--cb-font-display, Georgia, serif);
-  font-size: calc(clamp(9px, 8.5cqw, 18px) * var(--tb-text-scale));
+  font-size: calc(clamp(max(9px, var(--tb-fs-floor, 0px)), 8.5cqw, 18px) * var(--tb-text-scale));
   font-weight: 600;
   letter-spacing: 0.06em;
   color: #f0e4c8;

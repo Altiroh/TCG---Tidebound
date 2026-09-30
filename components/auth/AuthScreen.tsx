@@ -26,12 +26,16 @@ export function AuthScreen({ children }: AuthScreenProps) {
         className={game.content}
         style={{
           display: "grid",
-          placeItems: "center",
+          // Centrage « sûr » : le panneau se centre par ses marges auto, qui
+          // retombent à 0 quand il dépasse. Avec `place-items: center`, un
+          // panneau plus haut que l'écran (téléphone couché, clavier ouvert)
+          // débordait AUSSI par le haut, hors de portée du défilement.
+          justifyItems: "center",
           overflowY: "auto",
           padding: "calc(16px + var(--tb-safe-top)) calc(16px + var(--tb-safe-right)) calc(16px + var(--tb-safe-bottom)) calc(16px + var(--tb-safe-left))",
         }}
       >
-        <div style={{ width: "min(100%, 400px)", display: "flex", flexDirection: "column", alignItems: "center", gap: "clamp(8px, 3dvh, 28px)" }}>
+        <div style={{ width: "min(100%, 400px)", marginBlock: "auto", display: "flex", flexDirection: "column", alignItems: "center", gap: "clamp(8px, 3dvh, 28px)" }}>
           <Image
             src="/assets/menu/logo/tidebound-logo.webp"
             alt="Tidebound"

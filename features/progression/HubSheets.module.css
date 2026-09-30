@@ -239,3 +239,18 @@
     padding: 12px 16px 16px;
   }
 }
+
+/* Écran tactile / téléphone couché : la croix garde son dessin de 34 px,
+   sa zone tactile passe à 44 (audit mobile du 30/09/2026). */
+@media (max-height: 560px), (pointer: coarse) {
+  .close {
+    position: relative;
+  }
+
+  .close::before {
+    content: "";
+    position: absolute;
+    inset: -5px;
+    border-radius: 50%;
+  }
+}

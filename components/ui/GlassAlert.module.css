@@ -52,7 +52,7 @@
 
 .label {
   margin: 0;
-  font-size: calc(10px * var(--tb-text-scale));
+  font-size: calc(max(10px, var(--tb-fs-floor, 0px)) * var(--tb-text-scale));
   font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;

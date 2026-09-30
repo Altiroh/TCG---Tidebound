@@ -106,7 +106,7 @@
   margin: 0;
   color: #24160b;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: calc(max(10px, 1.5cqw) * var(--tb-text-scale));
+  font-size: calc(max(10px, var(--tb-fs-floor, 0px), 1.5cqw) * var(--tb-text-scale));
   font-weight: 700;
   font-variant: small-caps;
   letter-spacing: 0.02em;
@@ -116,7 +116,7 @@
 
 .shelfCount {
   color: #4a3320;
-  font-size: calc(max(8px, 0.82cqw) * var(--tb-text-scale));
+  font-size: calc(max(8px, var(--tb-fs-floor, 0px), 0.82cqw) * var(--tb-text-scale));
   white-space: nowrap;
 }
 
@@ -263,7 +263,7 @@
   translate: 0 -50%;
   color: #24160b;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: calc(max(7px, 0.74cqw) * var(--tb-text-scale));
+  font-size: calc(max(7px, var(--tb-fs-floor, 0px), 0.74cqw) * var(--tb-text-scale));
   font-weight: 700;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -533,7 +533,7 @@
   background: rgba(20, 12, 6, 0.72);
   color: #f1e3c4;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: calc(max(9px, 0.9cqw) * var(--tb-text-scale));
+  font-size: calc(max(9px, var(--tb-fs-floor, 0px), 0.9cqw) * var(--tb-text-scale));
   white-space: nowrap;
   pointer-events: none;
 }
@@ -564,7 +564,7 @@
 
 .planPity {
   top: 86%;
-  font-size: calc(max(8px, 0.76cqw) * var(--tb-text-scale));
+  font-size: calc(max(8px, var(--tb-fs-floor, 0px), 0.76cqw) * var(--tb-text-scale));
   color: #9fe7f3;
 }
 
@@ -606,7 +606,7 @@
   margin: 0;
   color: #1f6f8b;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: calc(max(7px, 0.78cqw) * var(--tb-text-scale));
+  font-size: calc(max(7px, var(--tb-fs-floor, 0px), 0.78cqw) * var(--tb-text-scale));
   font-weight: 700;
   letter-spacing: 0.14em;
   text-align: center;
@@ -696,7 +696,7 @@
   bottom: 17%;
   color: #f1e3c4;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: calc(max(10px, 1.45cqw) * var(--tb-text-scale));
+  font-size: calc(max(10px, var(--tb-fs-floor, 0px), 1.45cqw) * var(--tb-text-scale));
   font-weight: 700;
   line-height: 1;
   text-align: center;
@@ -709,7 +709,7 @@
   align-items: center;
   color: #24160b;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: calc(max(8px, 0.86cqw) * var(--tb-text-scale));
+  font-size: calc(max(8px, var(--tb-fs-floor, 0px), 0.86cqw) * var(--tb-text-scale));
   font-weight: 700;
   font-variant: small-caps;
   line-height: 1.1;
@@ -717,7 +717,7 @@
 }
 
 .statLabel small {
-  font-size: calc(max(7px, 0.7cqw) * var(--tb-text-scale));
+  font-size: calc(max(7px, var(--tb-fs-floor, 0px), 0.7cqw) * var(--tb-text-scale));
 }
 
 .panelLore {
@@ -730,7 +730,7 @@
   overflow-y: auto;
   color: #2a1a0c;
   font-family: var(--tb-font-body, Georgia, serif);
-  font-size: calc(max(9px, 0.9cqw) * var(--tb-text-scale));
+  font-size: calc(max(9px, var(--tb-fs-floor, 0px), 0.9cqw) * var(--tb-text-scale));
   line-height: 1.45;
   text-align: center;
   scrollbar-width: none;
@@ -761,7 +761,7 @@
   background: none;
   color: #f1e3c4;
   font-family: var(--tb-font-body, Georgia, serif);
-  font-size: calc(max(9px, 1cqw) * var(--tb-text-scale));
+  font-size: calc(max(9px, var(--tb-fs-floor, 0px), 1cqw) * var(--tb-text-scale));
   font-weight: 700;
   text-decoration: none;
   white-space: nowrap;
@@ -828,7 +828,7 @@
   background: transparent;
   color: #f1e3c4;
   font: inherit;
-  font-size: calc(max(10px, 1.15cqw) * var(--tb-text-scale));
+  font-size: calc(max(10px, var(--tb-fs-floor, 0px), 1.15cqw) * var(--tb-text-scale));
   line-height: 1;
   cursor: var(--tb-cursor-pointer);
 }
@@ -859,7 +859,7 @@
   background: none;
   color: #3a2616;
   font-family: var(--tb-font-body, Georgia, serif);
-  font-size: calc(max(8px, 0.86cqw) * var(--tb-text-scale));
+  font-size: calc(max(8px, var(--tb-fs-floor, 0px), 0.86cqw) * var(--tb-text-scale));
   cursor: var(--tb-cursor-pointer);
 }
 
@@ -876,7 +876,7 @@
 .panelLocked {
   margin: 0;
   color: #4a3320;
-  font-size: calc(max(8px, 0.8cqw) * var(--tb-text-scale));
+  font-size: calc(max(8px, var(--tb-fs-floor, 0px), 0.8cqw) * var(--tb-text-scale));
   font-style: italic;
   text-align: center;
 }
