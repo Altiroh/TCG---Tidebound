@@ -6,6 +6,7 @@ import { hasEffectiveKeyword } from "@/game/rules/validation";
 import { deraisonAnchorDamage } from "@/game/state/reason";
 import { isShipArmed, shipAbilityOf } from "@/game/state/shipAbility";
 import type { GameState, PlayerId, PlayerState } from "@/game/state/types";
+import { graveyardValue, oceanJudgmentPressure } from "@/game/bot/graveyardValue";
 
 /**
  * Évaluation d'une position, du point de vue d'un joueur.
@@ -250,7 +251,9 @@ function playerValue(state: GameState, player: PlayerState): number {
     Math.max(0, player.reason) * 0.5 +
     boardValue +
     armedShotValue(state, player) +
-    handValue(player)
+    handValue(player) +
+    // Cimetière : ce que les cartes tenues sauront en tirer (`graveyardValue.ts`).
+    graveyardValue(state, player)
   );
 }
 
@@ -278,5 +281,8 @@ export function evaluateState(state: GameState, forPlayerId: PlayerId): number {
   // qu'il abandonne comme aux corps adverses qu'il laisse debout.
   const pressure = unblockedThreat(state, me, opponent) * THREAT_MADE - unblockedThreat(state, opponent, me) * THREAT_TAKEN;
 
-  return material + pressure;
+  // Pioches bientôt vides : l'avance au Jugement de l'Océan décide de la partie.
+  const judgment = oceanJudgmentPressure(me, opponent);
+
+  return material + pressure + judgment;
 }

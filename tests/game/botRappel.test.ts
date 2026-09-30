@@ -13,6 +13,10 @@ const noMistake = () => 0.99;
  * Le Théâtre Englouti en Phase principale 2 : Il Dottore a déjà attaqué, Le
  * Masque Fendu est en main, la Raison suffit pour rappeler puis rejouer.
  */
+function pioche(n: number, owner: string) {
+  return Array.from({ length: n }, () => instance("tetard-fesse", owner));
+}
+
 function theatreApresCombat(): { state: GameState; dottoreId: string; masqueId: string } {
   const dottore = instance("il-dottore-des-noyes", "p1", { hasAttackedThisTurn: true });
   const masque = instance("le-masque-fendu", "p1");
@@ -23,9 +27,11 @@ function theatreApresCombat(): { state: GameState; dottoreId: string; masqueId: 
         reason: 10,
         board: [dottore],
         hand: [masque],
-        deck: [instance("pulcinella-gonfle", "p1"), instance("pulcinella-gonfle", "p1")],
+        // Une vraie pioche des deux côtés : vide, elle annoncerait le Jugement
+        // de l'Océan au prochain tour, et le bot le lit (`graveyardValue.ts`).
+        deck: [instance("pulcinella-gonfle", "p1"), instance("pulcinella-gonfle", "p1"), ...pioche(20, "p1")],
       }),
-      testPlayer("p2", { shipId: "le-goliath", board: [instance("canonnier-fele", "p2")] }),
+      testPlayer("p2", { shipId: "le-goliath", board: [instance("canonnier-fele", "p2")], deck: pioche(20, "p2") }),
     ],
   });
   return { state, dottoreId: dottore.instanceId, masqueId: masque.instanceId };
@@ -64,9 +70,23 @@ describe("bot — rappel puis rejeu", () => {
     expect(board.some((u) => u.cardId === "il-dottore-des-noyes")).toBe(true);
   });
 
-  it("« difficile » voit le même enchaînement", () => {
+  /*
+   * « Difficile » ne fait PAS le rappel ici, et il a raison.
+   *
+   * Ce test attendait le rappel du Dottore. Il ne passait que parce que la
+   * pioche adverse était VIDE : dans sa recherche, la riposte adverse
+   * commençait par une pioche impossible, donc par un Jugement de l'Océan qui
+   * terminait la partie — la décision tenait à cet accident, pas au combo.
+   * Avec de vraies pioches (et le Jugement désormais lu par l'évaluation,
+   * `graveyardValue.ts`), mesuré le 30/09/2026 après la riposte adverse :
+   * poser le Masque vaut −2,2, le rappel −6,2. Le rappel dépense 3 Raison
+   * pour une arrivée qui ne rapporte presque rien dans cette position, et
+   * perd le Masque ; posé, il reste disponible pour un meilleur moment.
+   * « Moyen » sait toujours faire l'enchaînement (test précédent).
+   */
+  it("« difficile » garde le Masque plutôt qu'un rappel qui ne paie pas", () => {
     const { state, masqueId } = theatreApresCombat();
-    expect(searchBestAction(state, "p1")).toMatchObject({ type: "breakObject", instanceId: masqueId });
+    expect(searchBestAction(state, "p1")).toMatchObject({ type: "playCard", instanceId: masqueId });
   });
 
   it("ne rappelle pas AVANT le combat une unité qui peut encore attaquer", () => {

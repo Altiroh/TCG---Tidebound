@@ -41,6 +41,10 @@ function withAnchor(state: GameState, playerId: string, anchor: number): GameSta
   };
 }
 
+function pioche(n: number, owner: string) {
+  return Array.from({ length: n }, () => instance("tetard-fesse", owner));
+}
+
 describe("évaluation du bot — Ancrage", () => {
   it("l'Ancrage AU-DELÀ du départ vaut bien moins qu'en-deçà", () => {
     const base = newGame();
@@ -139,8 +143,9 @@ describe("évaluation du bot — la peur", () => {
     const defenseur = instance("raie-des-fosses", "b"); // 3 / 3 : meurt, et le mien survit
     const state = testGameState({
       players: [
-        testPlayer("a", { board: [attaquant] }),
-        testPlayer("b", { board: [defenseur] }),
+        // Pioches pleines : vides, elles annonceraient le Jugement de l'Océan, que le bot lit désormais.
+        testPlayer("a", { board: [attaquant], deck: pioche(20, "a") }),
+        testPlayer("b", { board: [defenseur], deck: pioche(20, "b") }),
       ],
       phase: "combatPhase",
       activePlayerId: "a",
