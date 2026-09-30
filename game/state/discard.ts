@@ -21,7 +21,7 @@ import type { GameState, GraveyardArrival, PlayerId, PlayerState } from "@/game/
  * son identité — et inscrit l'arrivée dans `graveyardArrivals`, que lisent
  * les conditions « … a rejoint votre Cimetière ce tour ».
  *
- * Il ne déclenche RIEN lui-même : `processDiscardedFromHandTriggers`
+ * Il ne déclenche RIEN lui-même : `processGraveyardEntryTriggers`
  * (`game/triggers/triggerBus.ts`) relit les événements produits. La
  * dépendance inverse serait circulaire, exactement comme pour les retours
  * en main et les invocations.

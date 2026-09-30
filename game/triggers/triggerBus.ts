@@ -729,22 +729,30 @@ export function processReturnedToHandTriggers(
 }
 
 /**
- * Déclenchements de DÉFAUSSE (Lot 13), à partir des `CARD_MOVED`
- * main → Cimetière produits par `game/state/discard.ts`.
+ * Déclenchements d'ENTRÉE AU CIMETIÈRE hors mort (Lot 13, élargi le
+ * 30/09/2026), à partir des `CARD_MOVED` main → Cimetière produits par
+ * `game/state/discard.ts` et pioche → Cimetière produits par l'effet `mill`.
  *
- * Deux déclencheurs pour un même geste, et ils ne se recouvrent pas :
+ * Pour une défausse, trois déclencheurs, qui ne se recouvrent pas :
  *
  *   - `onDiscarded` est PERSONNEL — « quand cette carte est défaussée »,
  *     lu sur la définition de la carte partie (P'tit Bout) ;
  *   - `onCardDiscardedFromHand` est un déclencheur d'OBSERVATEUR — « une
  *     carte rejoint votre Cimetière depuis votre main », pour ce qui est
  *     en jeu et regarde (Cache-Cache, La Marelle). Il se filtre avec
- *     `triggeredBy` comme n'importe quel observateur.
+ *     `triggeredBy` comme n'importe quel observateur ;
+ *   - `onCardPutIntoGraveyard`, observateur lui aussi, voit la défausse ET
+ *     le meulage : « une carte rejoint votre Cimetière depuis votre main ou
+ *     votre pioche » (La Marelle, Cache-Cache, On avait dit tous ensemble).
+ *     C'est ce qui fait d'une pioche qui se vide un carburant plutôt qu'une
+ *     simple perte.
+ *
+ * Un meulage ne réveille que ce dernier : la carte n'a jamais été en main.
  *
  * Même forme et même raison que `processReturnedToHandTriggers` : la
  * défausse est décidée ailleurs, l'appelant repasse ici les événements.
  */
-export function processDiscardedFromHandTriggers(
+export function processGraveyardEntryTriggers(
   state: GameState,
   events: readonly GameEvent[],
   turnNumber: number,
@@ -754,10 +762,13 @@ export function processDiscardedFromHandTriggers(
   const produced: GameEvent[] = [];
 
   for (const event of events) {
-    if (event.type !== "CARD_MOVED" || event.fromZone !== "hand" || event.toZone !== "graveyard") continue;
+    if (event.type !== "CARD_MOVED" || event.toZone !== "graveyard") continue;
+    if (event.fromZone !== "hand" && event.fromZone !== "deck") continue;
     if (!event.cardId || !event.ownerId) continue;
+    const fromZone = event.fromZone;
 
-    for (const trigger of ["onDiscarded", "onCardDiscardedFromHand"] as const) {
+    const triggers = fromZone === "hand" ? (["onDiscarded", "onCardDiscardedFromHand", "onCardPutIntoGraveyard"] as const) : (["onCardPutIntoGraveyard"] as const);
+    for (const trigger of triggers) {
       const result = processTrigger(
         nextState,
         {
@@ -766,6 +777,7 @@ export function processDiscardedFromHandTriggers(
           cardId: event.cardId,
           sourceInstanceId: event.instanceId,
           discardedOwnerId: event.ownerId,
+          fromZone,
           ...(event.discardByEffect ? { discardByEffect: true } : {}),
         },
         turnNumber,
@@ -929,7 +941,7 @@ export function processTrigger(
     // Et pour une défausse provoquée par une capacité (Lot 13) : une carte
     // envoyée au Cimetière par un déclenchement est défaussée tout autant
     // qu'une carte envoyée par une pose.
-    const discarded = processDiscardedFromHandTriggers(nextState, events, turnNumber, depth + 1);
+    const discarded = processGraveyardEntryTriggers(nextState, events, turnNumber, depth + 1);
     nextState = discarded.state;
     events.push(...discarded.events);
 

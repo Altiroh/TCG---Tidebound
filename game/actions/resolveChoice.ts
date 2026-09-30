@@ -4,7 +4,7 @@ import { UNIT_CARD_TYPES } from "@/game/cards/types";
 import { chromaticColorsOf } from "@/game/rules/chromatic";
 import { resolveEffectSequence } from "@/game/effects/resolveSequence";
 import { discardFromHand } from "@/game/state/discard";
-import { processDiscardedFromHandTriggers, processGraveyardRecoveryTriggers } from "@/game/triggers/triggerBus";
+import { processGraveyardEntryTriggers, processGraveyardRecoveryTriggers } from "@/game/triggers/triggerBus";
 import { finirTour } from "@/game/actions/endTurn";
 import type { GameEvent } from "@/game/events/types";
 import { assertGameActive, assertPlayerInGame, combine } from "@/game/rules/validation";
@@ -62,7 +62,7 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
 
     // L'option choisie peut défausser ou repêcher : ses déclencheurs se
     // réveillent comme partout ailleurs.
-    const discarded = processDiscardedFromHandTriggers(nextState, applied.events, choice.turnNumber);
+    const discarded = processGraveyardEntryTriggers(nextState, applied.events, choice.turnNumber);
     nextState = discarded.state;
     events.push(...discarded.events);
     const recovered = processGraveyardRecoveryTriggers(nextState, applied.events, choice.turnNumber);
@@ -335,7 +335,7 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
     }
 
     // SOUS LA PIOCHE plutôt qu'au Cimetière (Mauvaise Main) : ce n'est pas
-    // une défausse, donc `processDiscardedFromHandTriggers` n'a rien à y
+    // une défausse, donc `processGraveyardEntryTriggers` n'a rien à y
     // réveiller et rien ne les repêchera.
     if (choice.destination === "deckBottom") {
       const player = getPlayer(nextState, choice.playerId);
@@ -376,7 +376,7 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
     // du tour reprend là où `endTurn` l'avait suspendue.
     if (choice.handLimit) {
       events.push(...discarded.events);
-      const triggered = processDiscardedFromHandTriggers(nextState, discarded.events, choice.turnNumber);
+      const triggered = processGraveyardEntryTriggers(nextState, discarded.events, choice.turnNumber);
       events.push(...triggered.events);
       return finirTour(triggered.state, choice.playerId, events);
     }
@@ -391,7 +391,7 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
 
     // La défausse est un fait du jeu : elle réveille ses déclencheurs, où
     // qu'elle ait été décidée (`game/state/discard.ts`).
-    const triggered = processDiscardedFromHandTriggers(nextState, discarded.events, choice.turnNumber);
+    const triggered = processGraveyardEntryTriggers(nextState, discarded.events, choice.turnNumber);
     nextState = triggered.state;
     events.push(...triggered.events);
 

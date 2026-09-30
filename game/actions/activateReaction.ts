@@ -4,7 +4,7 @@ import { isEligibleChosenUnit } from "@/game/effects/chosenTargets";
 import { validateGraveyardChoice } from "@/game/effects/graveyardChoices";
 import { candidateKey, deriveReactionTriggerEvents, eligibleCandidatesFor, recomputePendingReaction } from "@/game/reactions/reactionWindow";
 import {
-  processDiscardedFromHandTriggers,
+  processGraveyardEntryTriggers,
   processGraveyardRecoveryTriggers,
   processSummonEnterTriggers,
   resolveReaction,
@@ -160,7 +160,7 @@ export function activateReaction(state: GameState, action: ActivateReactionActio
   const recovered = processGraveyardRecoveryTriggers(nextState, resolution.events, pending.turnNumber);
   nextState = recovered.state;
   events.push(...recovered.events);
-  const discarded = processDiscardedFromHandTriggers(nextState, resolution.events, pending.turnNumber);
+  const discarded = processGraveyardEntryTriggers(nextState, resolution.events, pending.turnNumber);
   nextState = discarded.state;
   events.push(...discarded.events);
 

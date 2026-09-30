@@ -8,7 +8,7 @@ import type { CardInstance } from "@/game/cards/types";
 import { RULES } from "@/game/rules/constants";
 import { nextInt } from "@/game/rng";
 import type { GameEvent } from "@/game/events/types";
-import { processDiscardedFromHandTriggers, processTrigger } from "@/game/triggers/triggerBus";
+import { processGraveyardEntryTriggers, processTrigger } from "@/game/triggers/triggerBus";
 import { discardFromHandState, recordGraveyardArrival } from "@/game/state/discard";
 import { applyTideChangeAnomalies } from "@/game/state/anomalies";
 import {
@@ -302,7 +302,7 @@ export function applyTideTurnEffects(
   // comme les autres : leurs déclencheurs se réveillent ici, une fois le
   // nouvel état des joueurs posé.
   if (discardEvents.length > 0) {
-    const discardTriggers = processDiscardedFromHandTriggers(nextState, discardEvents, turnNumber);
+    const discardTriggers = processGraveyardEntryTriggers(nextState, discardEvents, turnNumber);
     nextState = discardTriggers.state;
     events.push(...discardTriggers.events);
   }

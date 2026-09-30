@@ -6,7 +6,7 @@ import { discountApplies, resolveEffect } from "@/game/effects/resolveEffect";
 import { resolveEffectSequence } from "@/game/effects/resolveSequence";
 import type { GameEvent } from "@/game/events/types";
 import {
-  processDiscardedFromHandTriggers,
+  processGraveyardEntryTriggers,
   processGraveyardRecoveryTriggers,
   processReturnedToHandTriggers,
   processSummonEnterTriggers,
@@ -400,7 +400,7 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
 
   // Cartes défaussées par la pose (Lot 13) : « quand cette carte est
   // défaussée » et les observateurs du Cimetière doivent la voir partir.
-  const discardedOnPlay = processDiscardedFromHandTriggers(nextState, playEffectEvents, state.turnNumber);
+  const discardedOnPlay = processGraveyardEntryTriggers(nextState, playEffectEvents, state.turnNumber);
   nextState = discardedOnPlay.state;
   events.push(...discardedOnPlay.events);
 

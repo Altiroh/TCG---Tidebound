@@ -45,6 +45,7 @@ const EVERY_TURN: ReadonlySet<TriggerType> = new Set(["startOfTurn", "endOfTurn"
 const OBSERVERS: ReadonlySet<TriggerType> = new Set([
   "onCardPlayed",
   "onCardDiscardedFromHand",
+  "onCardPutIntoGraveyard",
   "onCardRecoveredFromGraveyard",
   "onObjectBroken",
   "onPowerGained",
@@ -197,9 +198,13 @@ interface AbilityIncome {
   perTurn: number;
   /** Revenu des capacités qui ne joueront qu'une fois. */
   once: number;
+  /** Nombre de résolutions par tour qui envoient des cartes de SA pioche au Cimetière. */
+  selfMillPerTurn: number;
+  /** Ce que rapporte une résolution de ses capacités qui guettent une arrivée au Cimetière hors mort. */
+  graveyardWatch: number;
 }
 
-const NO_INCOME: AbilityIncome = { perTurn: 0, once: 0 };
+const NO_INCOME: AbilityIncome = { perTurn: 0, once: 0, selfMillPerTurn: 0, graveyardWatch: 0 };
 const incomeCache = new Map<string, AbilityIncome>();
 
 function incomeOf(def: CardDefinition): AbilityIncome {
@@ -208,6 +213,8 @@ function incomeOf(def: CardDefinition): AbilityIncome {
 
   let perTurn = 0;
   let once = 0;
+  let selfMillPerTurn = 0;
+  let graveyardWatch = 0;
   const selfHurting = hurtsItselfEveryTurn(def);
   for (const ability of def.abilities ?? []) {
     const cadence = cadenceOf(ability, selfHurting);
@@ -220,9 +227,15 @@ function incomeOf(def: CardDefinition): AbilityIncome {
     if (ability.mode === "optional") payoff = Math.max(0, payoff);
     if ("perTurn" in cadence) perTurn += payoff * cadence.perTurn;
     else once += payoff * cadence.once;
+
+    if ("perTurn" in cadence && (ability.effects ?? []).some((e) => e.type === "mill" && sideOf(e) === -1)) {
+      selfMillPerTurn += cadence.perTurn;
+    }
+    if (ability.trigger === "onCardPutIntoGraveyard") graveyardWatch += payoff;
   }
 
-  const income = perTurn === 0 && once === 0 ? NO_INCOME : { perTurn, once };
+  const income =
+    perTurn === 0 && once === 0 && selfMillPerTurn === 0 && graveyardWatch === 0 ? NO_INCOME : { perTurn, once, selfMillPerTurn, graveyardWatch };
   incomeCache.set(def.id, income);
   return income;
 }
@@ -232,7 +245,7 @@ function incomeOf(def: CardDefinition): AbilityIncome {
  * carte sans capacité déclenchée ; négative si ses capacités lui coûtent
  * (une Anomalie qui blesse son propre camp, par exemple).
  */
-export function abilityValue(_state: GameState, unit: CardInstance, _controller: PlayerState): number {
+export function abilityValue(_state: GameState, unit: CardInstance, controller: PlayerState): number {
   let def: CardDefinition;
   try {
     def = getCardDefinition(unit.cardId);
@@ -244,5 +257,31 @@ export function abilityValue(_state: GameState, unit: CardInstance, _controller:
 
   const remaining = unit.turnsRemaining ?? def.durationTurns ?? HORIZON_TURNS;
   const turns = Math.max(0, Math.min(HORIZON_TURNS, remaining));
-  return (income.perTurn * turns + income.once) * FUTURE_DISCOUNT;
+  return (income.perTurn * turns + income.once + feedingValue(unit, income, controller) * turns) * FUTURE_DISCOUNT;
+}
+
+/**
+ * UN CARBURANT VAUT CE QU'IL FAIT TOURNER.
+ *
+ * Meuler sa propre pioche ne rapporte rien en soi — mais, avec La Marelle en
+ * jeu, chaque meulage est 1 dégât au Navire adverse. Une carte qui remplit
+ * son Cimetière à chaque tour vaut donc, en plus, ce que rapportent les
+ * cartes du même camp qui guettent cette arrivée (`onCardPutIntoGraveyard`).
+ * Chacune ne compte qu'une fois par tour : elles sont presque toutes
+ * limitées à « la première fois à chaque tour ».
+ */
+function feedingValue(unit: CardInstance, income: AbilityIncome, controller: PlayerState | undefined): number {
+  if (income.selfMillPerTurn === 0 || !controller?.board) return 0;
+  let watchers = 0;
+  for (const other of controller.board) {
+    if (other.instanceId === unit.instanceId) continue;
+    let otherDef: CardDefinition;
+    try {
+      otherDef = getCardDefinition(other.cardId);
+    } catch {
+      continue;
+    }
+    watchers += Math.max(0, incomeOf(otherDef).graveyardWatch);
+  }
+  return watchers * Math.min(1, income.selfMillPerTurn);
 }

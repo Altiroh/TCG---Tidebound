@@ -5,7 +5,7 @@ import { resolveEffect } from "@/game/effects/resolveEffect";
 import { resolveEffectSequence } from "@/game/effects/resolveSequence";
 import {
   collectReactionCandidates,
-  processDiscardedFromHandTriggers,
+  processGraveyardEntryTriggers,
   processGraveyardRecoveryTriggers,
   processReturnedToHandTriggers,
   processSummonEnterTriggers,
@@ -129,7 +129,7 @@ function resoudreEffetsDeBris(
   events.push(...recalled.events);
 
   // Cartes défaussées par le Bris (ex: Le Goûter, Lot 13).
-  const discardedByBreak = processDiscardedFromHandTriggers(nextState, breakEffectEvents, turnNumber);
+  const discardedByBreak = processGraveyardEntryTriggers(nextState, breakEffectEvents, turnNumber);
   nextState = discardedByBreak.state;
   events.push(...discardedByBreak.events);
 
@@ -190,7 +190,7 @@ function handBreakJoinsGraveyard(
     cardId,
     ownerId: playerId,
   };
-  return processDiscardedFromHandTriggers(state, [moved], turnNumber);
+  return processGraveyardEntryTriggers(state, [moved], turnNumber);
 }
 
 /**

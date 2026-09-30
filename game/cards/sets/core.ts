@@ -4293,14 +4293,16 @@ export const CORE_SET: CardDefinition[] = [
     attack: 2,
     health: 1,
     text:
-      "La première fois pendant votre tour qu'une de vos cartes rejoint le Cimetière depuis votre main, " +
+      "La première fois pendant votre tour qu'une de vos cartes rejoint le Cimetière depuis votre main ou votre pioche, " +
       "elle gagne +1 Puissance jusqu'à la fin du tour.",
+    // « ou votre pioche » (Test Verrier, 30/09/2026) : le meulage nourrit la
+    // Veillée comme la défausse (`onCardPutIntoGraveyard`).
     abilities: [
       {
-        trigger: "onCardDiscardedFromHand",
+        trigger: "onCardPutIntoGraveyard",
         triggeredBy: {},
         oncePerTurnKey: "cacheCacheDefausse",
-        description: "Une de vos cartes est défaussée : +1 Puissance jusqu'à la fin du tour.",
+        description: "Une de vos cartes rejoint le Cimetière (main ou pioche) : +1 Puissance jusqu'à la fin du tour.",
         effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, duration: "endOfTurn" }],
       },
     ],
@@ -4578,14 +4580,15 @@ export const CORE_SET: CardDefinition[] = [
     durationTurns: 4,
     maxCopies: 2,
     text:
-      "Durée : 4 tours. La première fois à chaque tour qu'une carte rejoint votre Cimetière depuis votre main, " +
+      "Durée : 4 tours. La première fois à chaque tour qu'une carte rejoint votre Cimetière depuis votre main ou votre pioche, " +
       "infligez 1 dégât au Navire adverse.",
+    // « ou votre pioche » (Test Verrier, 30/09/2026) : vider sa pioche devient une menace.
     abilities: [
       {
-        trigger: "onCardDiscardedFromHand",
+        trigger: "onCardPutIntoGraveyard",
         triggeredBy: {},
         oncePerTurnKey: "marelleDefausse",
-        description: "Une carte part de votre main au Cimetière : 1 dégât au Navire adverse.",
+        description: "Une carte rejoint votre Cimetière (main ou pioche) : 1 dégât au Navire adverse.",
         effects: [{ type: "damage", target: { kind: "opponentPlayer" }, amount: { kind: "flat", value: 1 } }],
       },
     ],
@@ -4688,9 +4691,10 @@ export const CORE_SET: CardDefinition[] = [
     health: 5,
     maxCopies: 1,
     text:
-      "La première fois à chaque tour qu'une autre de vos cartes Un Dead est détruite ou défaussée, " +
-      "infligez 1 dégât au Navire adverse.",
-    // « Détruite OU défaussée » : deux déclencheurs, UNE seule clé de suivi.
+      "La première fois à chaque tour qu'une autre de vos cartes Un Dead est détruite ou rejoint votre Cimetière " +
+      "depuis votre main ou votre pioche, infligez 1 dégât au Navire adverse.",
+    // « Détruite OU défaussée / meulée » : deux déclencheurs, UNE seule clé de suivi.
+    // (« ou votre pioche » : Test Verrier, 30/09/2026.)
     // `oncePerTurnFlags` est porté par la carte et non par la capacité, donc
     // la même clé donne bien « une fois par tour » au total, pas une fois
     // par voie.
@@ -4703,10 +4707,10 @@ export const CORE_SET: CardDefinition[] = [
         effects: [{ type: "damage", target: { kind: "opponentPlayer" }, amount: { kind: "flat", value: 1 } }],
       },
       {
-        trigger: "onCardDiscardedFromHand",
+        trigger: "onCardPutIntoGraveyard",
         triggeredBy: { subtype: UN_DEAD },
         oncePerTurnKey: "tousEnsemble",
-        description: "Un autre Un Dead est défaussé : 1 dégât au Navire adverse.",
+        description: "Un autre Un Dead rejoint le Cimetière (main ou pioche) : 1 dégât au Navire adverse.",
         effects: [{ type: "damage", target: { kind: "opponentPlayer" }, amount: { kind: "flat", value: 1 } }],
       },
     ],
