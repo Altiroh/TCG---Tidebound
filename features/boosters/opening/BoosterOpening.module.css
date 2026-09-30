@@ -172,6 +172,20 @@
   }
 }
 
+/*
+ * Téléphone couché : la hauteur borne l'unité (1 vh), et la rangée de huit
+ * cartes n'occupait qu'un tiers de l'écran — des cartes de ~85 px. On
+ * grandit la CARTE (22 → 25 u) en resserrant un peu le PAS (25 → 23 u) :
+ * un léger chevauchement, des cartes d'~97 px. Le gros plan (fiche au
+ * toucher) reste le moyen de lire le texte.
+ */
+@media (orientation: landscape) and (max-height: 560px) {
+  .scene {
+    --card-w-u: 25;
+    --slot-step-u: 23;
+  }
+}
+
 /* ---------- Fond ---------- */
 
 /*

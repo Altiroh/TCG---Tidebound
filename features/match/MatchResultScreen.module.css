@@ -112,21 +112,21 @@
   align-self: flex-start;
   display: flex;
   align-items: center;
-  gap: 0.5cqw;
+  gap: calc(0.5cqw * var(--z, 1));
   margin: 0 0 -1.2cqw;
   line-height: 1;
 }
 
 .eye {
   flex: none;
-  width: 4.5cqw;
+  width: calc(4.5cqw * var(--z, 1));
   height: auto;
   color: var(--ink);
 }
 
 .viewersValue {
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: 5.3cqw;
+  font-size: calc(5.3cqw * var(--z, 1));
   font-weight: 700;
   letter-spacing: -0.01em;
   line-height: 0.9;
@@ -134,9 +134,9 @@
 }
 
 .viewersLabel {
-  margin: 0.75cqw 0 0;
+  margin: calc(0.75cqw * var(--z, 1)) 0 0;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: 1.44cqw;
+  font-size: calc(1.44cqw * var(--z, 1));
   font-weight: 600;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -146,9 +146,9 @@
 /* L'humeur de la salle (victoire), en capitales sous « Spectateurs ». Le
    chiffre du spectacle n'est plus affiché (retour du 26/09/2026). */
 .mood {
-  margin: 0.7cqw 0 0;
+  margin: calc(0.7cqw * var(--z, 1)) 0 0;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: 1.2cqw;
+  font-size: calc(1.2cqw * var(--z, 1));
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -158,9 +158,9 @@
 /* Le petit filet à losange sous le public. */
 .flourish {
   position: relative;
-  width: 5cqw;
-  height: 0.6cqw;
-  margin-top: 0.35cqw;
+  width: calc(5cqw * var(--z, 1));
+  height: calc(0.6cqw * var(--z, 1));
+  margin-top: calc(0.35cqw * var(--z, 1));
   background: linear-gradient(90deg, transparent, var(--ink-soft) 20%, var(--ink-soft) 80%, transparent) center / 100% 1px no-repeat;
 }
 
@@ -169,8 +169,8 @@
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 0.42cqw;
-  height: 0.42cqw;
+  width: calc(0.42cqw * var(--z, 1));
+  height: calc(0.42cqw * var(--z, 1));
   border: 1px solid var(--ink);
   background: #e9dfc9;
   transform: translate(-50%, -50%) rotate(45deg);
@@ -186,16 +186,16 @@
 }
 
 .recapTitle {
-  margin: 0 0 0.2cqw;
+  margin: 0 0 calc(0.2cqw * var(--z, 1));
   font-family: var(--tb-font-ui, Georgia, serif);
-  font-size: 1.62cqw;
+  font-size: calc(1.62cqw * var(--z, 1));
   font-weight: 600;
   line-height: 1.1;
 }
 
 .recapUnit {
-  margin: 0 0 0.6cqw;
-  font-size: max(8px, var(--tb-fs-floor, 0px), 0.72cqw);
+  margin: 0 0 calc(0.6cqw * var(--z, 1));
+  font-size: max(8px, var(--tb-fs-floor, 0px), calc(0.72cqw * var(--z, 1)));
   letter-spacing: 0.06em;
   text-transform: uppercase;
   opacity: 0.7;
@@ -210,25 +210,25 @@
 
 .signals li {
   display: grid;
-  grid-template-columns: 1.55cqw 3.9cqw minmax(0, 1fr);
+  grid-template-columns: calc(1.55cqw * var(--z, 1)) calc(3.9cqw * var(--z, 1)) minmax(0, 1fr);
   align-items: center;
-  column-gap: 0.9cqw;
-  height: 2.11cqw;
+  column-gap: calc(0.9cqw * var(--z, 1));
+  height: calc(2.11cqw * var(--z, 1));
   font-family: var(--tb-font-ui, Georgia, serif);
-  font-size: max(10px, var(--tb-fs-floor, 0px), 1.2cqw);
+  font-size: max(10px, var(--tb-fs-floor, 0px), calc(1.2cqw * var(--z, 1)));
   font-weight: 500;
   white-space: nowrap;
 }
 
 .signalGlyph {
-  width: 1.55cqw;
-  height: 1.55cqw;
+  width: calc(1.55cqw * var(--z, 1));
+  height: calc(1.55cqw * var(--z, 1));
   color: var(--ink);
 }
 
 .signalWeight {
   color: var(--cyan);
-  font-size: 1.3cqw;
+  font-size: calc(1.3cqw * var(--z, 1));
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -257,7 +257,7 @@
 .questsTitle {
   margin: 0;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: 1.6cqw;
+  font-size: calc(1.6cqw * var(--z, 1));
   font-weight: 700;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -267,7 +267,7 @@
 .questsSubtitle {
   margin: 0;
   font-family: var(--tb-font-ui, Georgia, serif);
-  font-size: max(9px, var(--tb-fs-floor, 0px), 1.08cqw);
+  font-size: max(9px, var(--tb-fs-floor, 0px), calc(1.08cqw * var(--z, 1)));
   font-weight: 500;
   line-height: 1.2;
   color: var(--ink-soft);
@@ -295,15 +295,15 @@
 
 .quest {
   display: grid;
-  grid-template-columns: 3.47cqw minmax(0, 1fr);
+  grid-template-columns: calc(3.47cqw * var(--z, 1)) minmax(0, 1fr);
   align-items: center;
-  column-gap: 1cqw;
-  padding: 0 1.2cqw 0 0;
+  column-gap: calc(1cqw * var(--z, 1));
+  padding: 0 calc(1.2cqw * var(--z, 1)) 0 0;
   border-right: 1px solid var(--ink-faint);
 }
 
 .quest + .quest {
-  padding-left: 1cqw;
+  padding-left: calc(1cqw * var(--z, 1));
 }
 
 .quest:last-child {
@@ -314,8 +314,8 @@
 .questMark {
   display: grid;
   place-items: center;
-  width: 3.47cqw;
-  height: 3.47cqw;
+  width: calc(3.47cqw * var(--z, 1));
+  height: calc(3.47cqw * var(--z, 1));
   border: 2px solid #b08a4a;
   border-radius: 50%;
   background: radial-gradient(circle at 45% 35%, #3a2a1c, #120c07 75%);
@@ -331,7 +331,7 @@
 .questNumeral {
   color: #f3dca2;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: 1.4cqw;
+  font-size: calc(1.4cqw * var(--z, 1));
   font-weight: 700;
 }
 
@@ -343,7 +343,7 @@
     "second count"
     "track track";
   align-items: end;
-  row-gap: 0.2cqw;
+  row-gap: calc(0.2cqw * var(--z, 1));
   min-width: 0;
   font-family: var(--tb-font-ui, Georgia, serif);
 }
@@ -351,7 +351,7 @@
 .questName {
   grid-area: name;
   overflow: hidden;
-  font-size: max(9px, var(--tb-fs-floor, 0px), 0.96cqw);
+  font-size: max(9px, var(--tb-fs-floor, 0px), calc(0.96cqw * var(--z, 1)));
   font-weight: 500;
   line-height: 1.15;
   text-overflow: ellipsis;
@@ -360,14 +360,14 @@
 
 .questSecondary {
   grid-area: second;
-  font-size: max(8px, var(--tb-fs-floor, 0px), 0.78cqw);
+  font-size: max(8px, var(--tb-fs-floor, 0px), calc(0.78cqw * var(--z, 1)));
   line-height: 1;
   color: var(--ink-soft);
 }
 
 .questCount {
   grid-area: count;
-  font-size: max(8.5px, var(--tb-fs-floor, 0px), 0.9cqw);
+  font-size: max(8.5px, var(--tb-fs-floor, 0px), calc(0.9cqw * var(--z, 1)));
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
@@ -379,7 +379,7 @@
 
 .questTrack {
   grid-area: track;
-  height: 0.36cqw;
+  height: calc(0.36cqw * var(--z, 1));
   overflow: hidden;
   border-radius: 1px;
   background: rgba(23, 16, 10, 0.18);
@@ -401,13 +401,13 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  column-gap: 1.4cqw;
-  row-gap: 0.3cqw;
+  column-gap: calc(1.4cqw * var(--z, 1));
+  row-gap: calc(0.3cqw * var(--z, 1));
   max-width: 23.5%;
   isolation: isolate;
   font-family: var(--tb-font-display, Georgia, serif);
   /* 2,4 cqw sur la référence, mais la Cinzel y est ~20 % plus large : 2,05 tient dans la marge. */
-  font-size: 2.05cqw;
+  font-size: calc(2.05cqw * var(--z, 1));
   font-weight: 700;
   line-height: 1.1;
   white-space: nowrap;
@@ -433,7 +433,7 @@
 
 .rewardRule {
   width: 1px;
-  height: 2.1cqw;
+  height: calc(2.1cqw * var(--z, 1));
   background: rgba(241, 227, 196, 0.6);
 }
 
@@ -447,7 +447,7 @@
 .rewardNote {
   flex-basis: 100%;
   color: var(--gold);
-  font-size: 1.05cqw;
+  font-size: calc(1.05cqw * var(--z, 1));
   letter-spacing: 0.06em;
   text-transform: uppercase;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
@@ -467,7 +467,7 @@
   width: 48.6%;
   aspect-ratio: 1536 / 1024;
   container-type: inline-size;
-  filter: drop-shadow(0 1.2cqw 1.6cqw rgba(0, 0, 0, 0.45));
+  filter: drop-shadow(0 calc(1.2cqw * var(--z, 1)) calc(1.6cqw * var(--z, 1)) rgba(0, 0, 0, 0.45));
   animation: photo-in 800ms cubic-bezier(0.2, 0.9, 0.3, 1.1) 450ms both;
   transition: scale 140ms ease-out, filter 140ms ease-out;
 }
@@ -476,7 +476,7 @@
    l'animation d'entrée garde la main sur `transform`. */
 .photo:hover {
   scale: 1.03;
-  filter: drop-shadow(0 1.6cqw 2.2cqw rgba(0, 0, 0, 0.55));
+  filter: drop-shadow(0 calc(1.6cqw * var(--z, 1)) calc(2.2cqw * var(--z, 1)) rgba(0, 0, 0, 0.55));
 }
 
 .photoWindow {
@@ -561,7 +561,7 @@
   max-width: 100%;
   overflow: hidden;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: 3.1cqw;
+  font-size: calc(3.1cqw * var(--z, 1));
   font-weight: 700;
   letter-spacing: 0.04em;
   text-overflow: ellipsis;
@@ -572,7 +572,7 @@
   max-width: 100%;
   overflow: hidden;
   font-family: var(--tb-font-ui, Georgia, serif);
-  font-size: 2.1cqw;
+  font-size: calc(2.1cqw * var(--z, 1));
   font-style: italic;
   font-weight: 600;
   text-overflow: ellipsis;
@@ -604,7 +604,7 @@
   background: center / 100% 100% no-repeat;
   color: #f4ead6;
   font-family: var(--tb-font-ui, Georgia, serif);
-  font-size: max(10px, var(--tb-fs-floor, 0px), 1.2cqw);
+  font-size: max(10px, var(--tb-fs-floor, 0px), calc(1.2cqw * var(--z, 1)));
   font-weight: 500;
   letter-spacing: 0.01em;
   text-decoration: none;
@@ -640,11 +640,11 @@
 }
 
 .buttonBack:hover {
-  filter: brightness(1.12) drop-shadow(0 0 0.5cqw rgba(234, 198, 98, 0.55));
+  filter: brightness(1.12) drop-shadow(0 0 calc(0.5cqw * var(--z, 1)) rgba(234, 198, 98, 0.55));
 }
 
 .buttonNew:hover {
-  filter: brightness(1.12) drop-shadow(0 0 0.7cqw rgba(60, 200, 240, 0.7));
+  filter: brightness(1.12) drop-shadow(0 0 calc(0.7cqw * var(--z, 1)) rgba(60, 200, 240, 0.7));
 }
 
 .buttonBack:focus-visible,
@@ -659,37 +659,105 @@
 }
 
 /*
- * TÉLÉPHONE COUCHÉ (audit mobile du 30/09/2026). À 844 × 390 la scène ne
- * fait plus que ~656 px de large (1 cqw ≈ 6,6 px) : les textes en `cqw`
- * tombaient à 7-9 px et les plaques d'action à 19 px de haut. Même
- * composition, mais aucun texte sous 11 px, des plaques un peu plus
- * grandes, et une zone tactile de 44 px autour de chacune.
+ * TÉLÉPHONE COUCHÉ — la fin de partie se lit en défilant.
+ *
+ * Posée d'un bloc à la hauteur de l'écran (1 cqw ≈ 6,9 px), la scène
+ * donnait des textes de 7 à 9 px ; les planchers de 11 px les ont rendus
+ * lisibles mais trop grands pour leurs boîtes : l'humeur sur « Moments
+ * forts », le dernier moment sur « Quêtes », les récompenses sur la
+ * quatrième quête. Sous 560 px de haut, la scène prend toute la largeur et
+ * devient une page qui défile : titre, public et photo ; les moments forts
+ * à gauche, le gain sous la photo ; les quatre quêtes sur toute la largeur ;
+ * les deux plaques. Chaque zone grandit de `--z` (1 sur ordinateur).
+ * Positions en % de la scène : largeur W, hauteur 0,72 W.
  */
 @media (max-height: 560px) {
-  .viewersLabel { font-size: max(11px, 1.44cqw); }
-  .mood { font-size: max(11px, 1.2cqw); line-height: 1.1; }
-  .recapTitle { font-size: max(12px, 1.62cqw); }
-  .signalWeight { font-size: max(11px, 1.3cqw); }
-  .questsTitle { font-size: max(12px, 1.6cqw); }
-  .questNumeral { font-size: max(11px, 1.4cqw); }
-
-  .signals li {
-    height: max(15px, 2.11cqw);
+  .screen {
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
-  /* La note du gain peut passer à la ligne : à 11 px elle ne tient plus sur une. */
+  /* Le fond peint reste à la fenêtre : posé sur l'écran qui défile, il
+     s'arrêtait au premier écran et la suite passait sur un aplat crème. */
+  .backdrop {
+    position: fixed;
+  }
+
+  .stage {
+    position: relative;
+    left: auto;
+    top: auto;
+    width: calc(100vw - var(--tb-safe-left, 0px) - var(--tb-safe-right, 0px));
+    aspect-ratio: 100 / 72;
+    margin: 0 auto;
+    transform: none;
+  }
+
+  /* Le lavis crème suit la colonne de gauche et la ligne des quêtes. */
+  .stage::before {
+    background:
+      radial-gradient(ellipse 30% 30% at 20% 52%, rgba(238, 229, 210, 0.62), rgba(238, 229, 210, 0.3) 60%, transparent 100%),
+      radial-gradient(ellipse 72% 13% at 50% 78%, rgba(236, 227, 207, 0.88), rgba(236, 227, 207, 0.62) 70%, transparent 100%);
+  }
+
+  .title {
+    top: 8.5%;
+  }
+
+  .spectators {
+    --z: 1.2;
+    top: 23%;
+    width: 26%;
+  }
+
+  .photo {
+    top: 5%;
+  }
+
+  .recap {
+    --z: 1.35;
+    top: 41%;
+    width: 44%;
+  }
+
+  .rewards {
+    --z: 1.2;
+    left: 52%;
+    top: 55%;
+    max-width: 44%;
+  }
+
   .rewardNote {
-    font-size: max(11px, 1.05cqw);
     white-space: normal;
+  }
+
+  .rule {
+    top: 65.5%;
+    width: 92%;
+  }
+
+  .questsHead {
+    --z: 1.3;
+    top: 66.5%;
+  }
+
+  .questRow {
+    --z: 1.4;
+    left: 3%;
+    top: 73%;
+    width: 94%;
+    height: 9%;
   }
 
   .buttonBack,
   .buttonNew {
-    width: 19%;
+    top: 86%;
+    width: 21%;
   }
 
-  .buttonBack { left: 30.6%; }
-  .buttonNew { left: 50.2%; }
+  .buttonBack { left: 27.5%; }
+  .buttonNew { left: 51.5%; }
 
   .buttonBack::before,
   .buttonNew::before {
@@ -707,7 +775,7 @@
 }
 
 @keyframes rise-in {
-  from { opacity: 0; transform: translateY(0.6cqw); }
+  from { opacity: 0; transform: translateY(calc(0.6cqw * var(--z, 1))); }
   to { opacity: 1; transform: none; }
 }
 
@@ -717,7 +785,7 @@
 }
 
 @keyframes photo-in {
-  from { opacity: 0; transform: translate(2cqw, -3cqw) rotate(4deg); }
+  from { opacity: 0; transform: translate(calc(2cqw * var(--z, 1)), -3cqw) rotate(4deg); }
   to { opacity: 1; transform: none; }
 }
 
