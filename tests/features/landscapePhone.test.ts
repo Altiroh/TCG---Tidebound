@@ -34,6 +34,9 @@ const SCREENS = [
   "features/quests/Quests.module.css",
   "features/match/NewMatch.module.css",
   "features/match/MatchEndScreen.module.css",
+  "features/progression/ProfileScene.module.css",
+  "features/progression/RewardsHub.module.css",
+  "features/cosmetics/Collectables.module.css",
 ];
 
 /**

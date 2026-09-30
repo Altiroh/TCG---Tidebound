@@ -485,6 +485,13 @@
   .header[data-nav="collection"] .headerBrand { display: none; }
 }
 
+/* Même chose pour un écran qui porte SES onglets (Profil : quatre onglets)
+   sur un bandeau `minimal` : sur un téléphone couché, le logo passait
+   par-dessus « Quêtes » et « Exploits ». */
+@media (max-width: 780px) {
+  .header[data-tabs] .headerBrand { display: none; }
+}
+
 /* Retour au menu : une flèche seule, à la même encre que les onglets. */
 .backButton {
   position: relative;

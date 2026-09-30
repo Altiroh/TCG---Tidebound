@@ -117,7 +117,7 @@ export function ScreenHeader({ active, actions, onNavigate, nav = "collection", 
   }
 
   return (
-    <header className={styles.header} data-nav={nav}>
+    <header className={styles.header} data-nav={nav} data-tabs={screenTabs?.length ? "" : undefined}>
       <div className={styles.headerLeft}>
         {/* Retour au menu : une flèche, sans libellé. Le geste est assez
             courant dans un client de jeu pour se passer du mot, et le mot
