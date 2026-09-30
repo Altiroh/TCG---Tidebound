@@ -373,6 +373,39 @@
 }
 
 
+/*
+ * TÉLÉPHONE COUCHÉ — le choix du mode en grand.
+ *
+ * La scène au format 16 / 9, calée sur la hauteur, laissait des cartes de
+ * ~130 px dont les pastilles peintes (« XP et quêtes », « Aucun gain »)
+ * étaient illisibles, avec de la table vide de part et d'autre. Sous
+ * 560 px de haut, la scène prend toute la place, et les cartes la plus
+ * grande largeur que la HAUTEUR permet (50 % de la page : elles tiennent
+ * sous le bandeau), centrées.
+ */
+@media (max-height: 560px) {
+  .stage:not([data-fill]) {
+    align-self: stretch;
+    justify-self: stretch;
+    width: auto;
+    aspect-ratio: auto;
+  }
+
+  .banner {
+    --bw: min(48%, 80cqh);
+    left: calc(50% - var(--bw) / 2);
+    top: -3%;
+    width: var(--bw);
+  }
+
+  .card {
+    --cw: min(24%, 50cqh);
+    top: 22%;
+    left: calc(50% - var(--cw) * 1.5 - 3% + var(--index) * (var(--cw) + 3%));
+    width: var(--cw);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .modeScene[data-leaving] *,
   .card,

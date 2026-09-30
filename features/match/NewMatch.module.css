@@ -252,7 +252,7 @@
 
 .deckTabCount {
   font-family: var(--cb-font-ui);
-  font-size: 0.82em;
+  font-size: max(0.82em, var(--tb-fs-floor, 0px));
   font-weight: 500;
   opacity: 0.65;
 }

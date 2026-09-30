@@ -377,10 +377,12 @@
 }
 
 /* Téléphone en paysage : le bandeau est bas, la bougie reste à sa mesure. */
+/* Téléphone couché : la barre de la grille n'a plus la place d'un décor —
+   la recherche y tombait à trois lettres (« Rec… ») et « Revendre » sortait
+   de l'écran. La bougie s'efface. */
 @media (max-height: 560px) {
   .candleSlot {
-    --candle-h: clamp(66px, 19vh, 88px);
-    width: calc(var(--candle-h) * 0.5);
+    display: none;
   }
 }
 

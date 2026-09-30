@@ -1777,6 +1777,26 @@
   filter: grayscale(0.4) drop-shadow(0 3px 5px rgba(0, 0, 0, 0.5));
 }
 
+/* « le surplus » : la fin du libellé, qui s'efface sur téléphone. */
+.surplusLong {
+  font-size: inherit;
+}
+
+@media (max-height: 560px) {
+  .surplusLong {
+    display: none;
+  }
+}
+
+/* Téléphone ÉTROIT (iPhone SE couché) : même raccourci, « Revendre » sortait
+   encore de l'écran. La plaque du nombre de cartes, la moins utile de la
+   barre, s'efface. */
+@media (max-height: 560px) and (max-width: 720px) {
+  .collection .center [class*="_count__"] {
+    display: none;
+  }
+}
+
 /* Le compte à revendre : la pastille « à réclamer » du jeu. */
 .workspace .surplusButton > span {
   width: 26px;

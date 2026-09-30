@@ -1013,4 +1013,22 @@
   .styleChip {
     min-height: 44px;
   }
+
+  /* Les trois niveaux du bot (~30 px de haut) et la plaque de la poignée
+     (~35 px) : même zone transparente de 44 px de haut, sans débord
+     latéral — les niveaux se touchent. */
+  .levelButton {
+    position: relative;
+  }
+
+  .levelButton::before,
+  .leverHandle::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 44px;
+    transform: translateY(-50%);
+  }
 }

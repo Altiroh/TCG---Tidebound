@@ -123,7 +123,9 @@ function CollectionScreenBody({ isSignedIn, ownedCardIds, ownedCounts, catalog, 
         setSurplusOpen(true);
       }}
     >
-      Revendre le surplus
+      {/* `small`, pas `span` : un `span` enfant direct est la pastille du compte.
+          Sur téléphone, « le surplus » s'efface (le bouton passait sous le bord). */}
+      Revendre<small className={book.surplusLong}> le surplus</small>
       {surplusCount > 0 && <span className={surplusStyles.buttonCount}>{surplusCount}</span>}
     </button>
   ) : undefined;
