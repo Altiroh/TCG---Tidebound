@@ -1,4 +1,5 @@
 import { getShipDefinition } from "@/game/environment/shipData";
+import { advanceTideState } from "@/game/environment/types";
 import { computeEffectiveStats } from "@/game/cards/stats";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { UNIT_CARD_TYPES, type CardInstance } from "@/game/cards/types";
@@ -86,6 +87,11 @@ function permanentValue(state: GameState, unit: CardInstance, controller: Player
     controllerBoard: controller.board,
     controllerReason: controller.reason,
   });
+
+  // Emportée par cette Marée (affinité `destroyed`) : elle ne vaut plus
+  // rien. Sans objet dans l'état courant — le moteur l'a déjà retirée — mais
+  // décisif quand on évalue la Marée QUI VIENT (`tideOutlook`).
+  if (stats.destroyedByTide) return 0;
 
   const def = getCardDefinition(unit.cardId);
   const isUnit = (UNIT_CARD_TYPES as readonly string[]).includes(def.type);
@@ -263,6 +269,42 @@ function playerValue(state: GameState, player: PlayerState): number {
 }
 
 /**
+ * LA MARÉE QUI VIENT.
+ *
+ * L'évaluation lisait les stats dans la Marée COURANTE, jamais dans la
+ * suivante. Raccourcir la Marée, inverser son sens, la maintenir : pour le
+ * bot, tout cela coûtait de la Raison et ne rapportait rien. Il pilotait mal,
+ * et le banc d'essai ne pouvait pas juger les decks qui pilotent (Descente
+ * aux Abysses, relevé du 30/09/2026 : le Sondeur posé 0,3 fois par partie).
+ *
+ * On compare donc, pour chaque camp, la valeur de son plateau dans l'état
+ * de Marée SUIVANT (selon l'orientation) à sa valeur actuelle — stats,
+ * inactivité, destructions : tout est lu dans les affinités de Marée des
+ * cartes (`tideAffinity`), rien n'est nommé ici. L'écart pèse d'autant plus
+ * que le changement est proche : `TIDE_LOOKAHEAD / tours restants`. Une
+ * Marée maintenue (« maintain ») ne change pas au prochain décompte : son
+ * écart ne pèse qu'à moitié.
+ */
+const TIDE_LOOKAHEAD = 0.5;
+
+function boardValue(state: GameState, player: PlayerState): number {
+  return player.board.reduce((sum, unit) => sum + permanentValue(state, unit, player), 0);
+}
+
+function tideOutlook(state: GameState, me: PlayerState, opponent: PlayerState): number {
+  const env = state.environment;
+  const next = advanceTideState(env.tideState, env.tideOrientation);
+  if (next === env.tideState) return 0;
+
+  const future: GameState = { ...state, environment: { ...env, tideState: next } };
+  const shift = (player: PlayerState) => boardValue(future, player) - boardValue(state, player);
+
+  const maintained = env.pendingTideModifiers.some((m) => m.kind === "maintain" && m.remainingTriggers > 0);
+  const weight = (TIDE_LOOKAHEAD / Math.max(1, env.tideRemainingTurns)) * (maintained ? 0.5 : 1);
+  return weight * (shift(me) - shift(opponent));
+}
+
+/**
  * Score une position du point de vue de `forPlayerId` : plus c'est élevé,
  * meilleure est la position. Comparable d'un état à l'autre, jamais lu
  * comme une valeur absolue.
@@ -289,5 +331,8 @@ export function evaluateState(state: GameState, forPlayerId: PlayerId): number {
   // Pioches bientôt vides : l'avance au Jugement de l'Océan décide de la partie.
   const judgment = oceanJudgmentPressure(me, opponent);
 
-  return material + pressure + judgment;
+  // La Marée qui vient : qui y gagne, qui y perd (`tideOutlook`).
+  const tide = tideOutlook(state, me, opponent);
+
+  return material + pressure + judgment + tide;
 }
