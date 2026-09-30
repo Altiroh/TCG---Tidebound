@@ -369,6 +369,43 @@ button.plaque:focus-visible {
   50% { box-shadow: 0 0 calc(22 * var(--u)) rgba(255, 196, 80, 0.8); }
 }
 
+/*
+ * TÉLÉPHONE COUCHÉ : la carte prend TOUTE la largeur de la colonne (au lieu
+ * de 1040 / 1250, décalée à droite), soit un tiers plus grande — sa devise
+ * débordait du papier vierge et ses trois sceaux faisaient 13 px. Son
+ * pixel de maquette (`--u`) est redéfini sur elle : tout ce qu'elle porte
+ * grandit d'autant.
+ */
+@media (max-height: 560px) {
+  .map {
+    --u: calc(100cqw / 1040);
+    margin-left: 0;
+  }
+
+  .tagline {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+}
+
+/*
+ * Colonne étroite (iPhone SE couché, ~560 px) : la devise n'a plus la
+ * place dans le papier vierge — elle mordait sur la route —, et le tampon
+ * « Réclamer » se resserre pour rester sur sa plaque.
+ */
+@container (max-width: 640px) {
+  .tagline {
+    display: none;
+  }
+
+  .plaqueClaim {
+    margin-left: 0;
+    letter-spacing: 0.01em;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .map,
   .buoy[data-state="claimable"],

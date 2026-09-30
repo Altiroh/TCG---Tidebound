@@ -834,6 +834,29 @@ button.row:disabled {
   .column {
     width: min(100cqw - 2 * var(--lantern-w) * 0.5, 980px);
   }
+
+  /*
+   * Les deux feuilles côte à côte n'avaient que ~330 px chacune : au
+   * plancher de 11 px, trois quêtes débordaient de leur tiers de feuille,
+   * la récompense (« 120 TIDES ») était rognée à droite et « Remplacer »
+   * chevauchait la catégorie. Elles passent l'une sous l'autre, pleine
+   * largeur ; la colonne de la récompense prend la largeur de son texte,
+   * et « Remplacer » se range dans le coin haut de la ligne.
+   */
+  .board {
+    grid-template-columns: minmax(0, 1fr);
+    gap: calc(20 * var(--u));
+  }
+
+  .row {
+    grid-template-columns: calc(50 * var(--u)) minmax(0, 1fr) minmax(calc(88 * var(--u)), auto);
+  }
+
+  .reroll {
+    top: 0;
+    right: 0;
+    min-height: 28px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -37,6 +37,8 @@ const SCREENS = [
   "features/progression/ProfileScene.module.css",
   "features/progression/RewardsHub.module.css",
   "features/cosmetics/Collectables.module.css",
+  "features/boosters/Boosters.module.css",
+  "features/quests/VoyagePanel.module.css",
 ];
 
 /**
