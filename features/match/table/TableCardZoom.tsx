@@ -9,6 +9,12 @@ interface TableCardZoomProps {
   /** Ouvre la fiche détaillée (dégâts, modificateurs, Équipements) depuis l'agrandissement. */
   onDetail: () => void;
   onClose: () => void;
+  /**
+   * Action principale proposée sous la carte — « Jouer » pour une carte de
+   * main touchée au doigt : au doigt, toucher une carte la MONTRE, et c'est
+   * ce bouton qui la joue (un toucher pour lire ne dépense plus la Raison).
+   */
+  action?: { label: string; onAction: () => void };
 }
 
 /**
@@ -28,7 +34,7 @@ interface TableCardZoomProps {
  * Se ferme au prochain APPUI et non au clic : le relâché du doigt qui
  * vient d'ouvrir la vue ne doit pas la refermer aussitôt.
  */
-export function TableCardZoom({ children, onDetail, onClose }: TableCardZoomProps) {
+export function TableCardZoom({ children, onDetail, onClose, action }: TableCardZoomProps) {
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       if (event.key === "Escape") onClose();
@@ -51,17 +57,33 @@ export function TableCardZoom({ children, onDetail, onClose }: TableCardZoomProp
     >
       <div className={styles.cardZoomCard}>{children}</div>
 
-      {/* Le seul contrôle du calque : tout le reste referme. */}
-      <button
-        type="button"
-        className={styles.cardZoomDetail}
-        onPointerDown={(event) => {
-          event.stopPropagation();
-          onDetail();
-        }}
-      >
-        Fiche détaillée
-      </button>
+      {/* Les seuls contrôles du calque : tout le reste referme. */}
+      <div className={styles.cardZoomActions}>
+        {action && (
+          <button
+            type="button"
+            className={styles.cardZoomPlay}
+            // Au CLIC, pas à l'appui : l'action engage la partie, elle se confirme au relâché.
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              action.onAction();
+            }}
+          >
+            {action.label}
+          </button>
+        )}
+        <button
+          type="button"
+          className={styles.cardZoomDetail}
+          onPointerDown={(event) => {
+            event.stopPropagation();
+            onDetail();
+          }}
+        >
+          Fiche détaillée
+        </button>
+      </div>
     </div>
   );
 }

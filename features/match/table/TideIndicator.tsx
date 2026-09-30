@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState, type CSSProperties } from "react";
+import { Fragment, useEffect, useRef, useState, type CSSProperties } from "react";
 import type { TideStateName } from "@/game";
 import styles from "@/features/match/table/Table.module.css";
 import { PORTHOLE_FRAME, PORTHOLE_SEAS } from "@/features/match/table/TidePorthole";
@@ -40,16 +40,40 @@ const TIDE_EFFECT: Record<TideStateName, string> = {
  *     courant = hublot plus grand, halo à la couleur de l'état, et le
  *     NOMBRE DE TOURS RESTANTS gravé dans le médaillon du bas du cadre ;
  *   - le segment après l'état courant se remplit au fil de ses tours ;
- *   - un « i » au-dessus du repère courant rappelle son effet.
+ *   - un « i » au-dessus du repère courant rappelle son effet. Au doigt,
+ *     toute la piste l'ouvre (le « i » seul est une cible trop petite) et
+ *     elle reste ouverte jusqu'au toucher suivant, ailleurs.
  * Tailles en tokens (et non en pixels fixes) pour tenir jusqu'au mobile.
  * Le sens (montante / descendante) a sa propre tuile, entre les navires.
  */
 export function TideIndicator({ tide }: TideIndicatorProps) {
   const [infoOpen, setInfoOpen] = useState(false);
   const current = tide.states[tide.current];
+  const rootRef = useRef<HTMLDivElement>(null);
+  /** La souris est sur le « i » : un clic ne doit pas refermer ce que le survol a ouvert. */
+  const hovered = useRef(false);
+
+  // Ouverte au toucher : un appui HORS de la piste la referme (le survol ne le fera pas).
+  useEffect(() => {
+    if (!infoOpen) return;
+    function onDown(event: PointerEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) setInfoOpen(false);
+    }
+    window.addEventListener("pointerdown", onDown, true);
+    return () => window.removeEventListener("pointerdown", onDown, true);
+  }, [infoOpen]);
 
   return (
-    <div className={styles.tide} aria-label="Progression de la Marée" role="group">
+    <div
+      ref={rootRef}
+      className={styles.tide}
+      aria-label="Progression de la Marée"
+      role="group"
+      // Au doigt, toute la piste est la cible : le « i » fait 16 px sur un téléphone.
+      onPointerUp={(event) => {
+        if (event.pointerType !== "mouse" && !(event.target as Element).closest("button")) setInfoOpen((open) => !open);
+      }}
+    >
       {tide.states.map((state, index) => {
         const isActive = index === tide.current;
         const isPast = index < tide.current;
@@ -71,12 +95,21 @@ export function TideIndicator({ tide }: TideIndicatorProps) {
                     className={styles.tideInfo}
                     aria-label={`Effets de la Marée ${state.label}`}
                     aria-expanded={infoOpen}
-                    onMouseEnter={() => setInfoOpen(true)}
-                    onMouseLeave={() => setInfoOpen(false)}
-                    onFocus={() => setInfoOpen(true)}
+                    // Survol à la SOURIS seulement : au doigt, le navigateur simule
+                    // un survol juste avant le clic, qui ouvrait la bulle… que le
+                    // clic refermait aussitôt (le premier toucher ne montrait rien).
+                    onPointerEnter={(event) => {
+                      if (event.pointerType !== "mouse") return;
+                      hovered.current = true;
+                      setInfoOpen(true);
+                    }}
+                    onPointerLeave={(event) => {
+                      if (event.pointerType !== "mouse") return;
+                      hovered.current = false;
+                      setInfoOpen(false);
+                    }}
                     onBlur={() => setInfoOpen(false)}
-                    // Au doigt, pas de survol : un toucher ouvre et referme.
-                    onClick={() => setInfoOpen((open) => !open)}
+                    onClick={() => setInfoOpen((open) => hovered.current || !open)}
                   >
                     i
                   </button>
@@ -94,7 +127,12 @@ export function TideIndicator({ tide }: TideIndicatorProps) {
                   {isActive && <span className={styles.tidePortCount}>{tide.remainingTurns}</span>}
                 </span>
               </span>
-              <span className={styles.tideName}>{state.label}</span>
+              <span className={styles.tideName}>
+                {state.label}
+                {/* Sur téléphone, le médaillon du hublot est trop petit pour un
+                    chiffre : le décompte suit le nom (masqué ailleurs). */}
+                {isActive && <span className={styles.tideNameCount}> · {tide.remainingTurns}</span>}
+              </span>
             </div>
             {!isLast && (
               /* Le tuyau vers l'état suivant : il se remplit d'eau, à la

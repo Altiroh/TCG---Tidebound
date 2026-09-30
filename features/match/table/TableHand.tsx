@@ -8,6 +8,13 @@ interface PreviewHandProps {
   renderCard: (card: TableCardModel) => ReactNode;
   /** Une carte est en cours de glisser : la levée au survol se coupe. */
   dragging?: boolean;
+  /**
+   * Main DÉPLOYÉE (téléphone couché) : les cartes se relèvent en entier et
+   * grandissent, au-dessus d'un voile qui assombrit le plateau.
+   */
+  raised?: boolean;
+  /** Toucher sur le voile : la main se replie. */
+  onLower?: () => void;
 }
 
 /**
@@ -21,11 +28,23 @@ interface PreviewHandProps {
  * variables posées par carte : `--fan-offset` (écart signé au centre) et
  * `--fan-dist` (sa valeur absolue — `abs()` CSS n'est pas encore partout).
  */
-export function TableHand({ cards, renderCard, dragging = false }: PreviewHandProps) {
+export function TableHand({ cards, renderCard, dragging = false, raised = false, onLower }: PreviewHandProps) {
   const center = (cards.length - 1) / 2;
 
   return (
-    <div className={`${styles.hand} ${dragging ? styles.handDragging : ""}`} data-zone="PlayerHand">
+    <div className={`${styles.hand} ${dragging ? styles.handDragging : ""} ${raised ? styles.handRaised : ""}`} data-zone="PlayerHand">
+      {/* Le voile ATTRAPE le toucher qui replie la main : sans lui, ce toucher
+          tombait sur le plateau (armer une unité, finir le tour…). */}
+      {raised && (
+        <div
+          className={styles.handVeil}
+          aria-hidden
+          onPointerDown={(event) => {
+            event.stopPropagation();
+            onLower?.();
+          }}
+        />
+      )}
       <div className={styles.handRow}>
         {cards.map((card, index) => (
           <div

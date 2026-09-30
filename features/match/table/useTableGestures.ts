@@ -42,6 +42,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 /** Distance (px) en deçà de laquelle un appui reste un toucher, pas un glisser. */
 const DRAG_THRESHOLD = 6;
 
+/**
+ * Même seuil au doigt : un pouce tremble plus qu'une souris, et 6 px
+ * annulaient l'appui long (lecture) au moindre frémissement.
+ */
+const DRAG_THRESHOLD_TOUCH = 11;
+
 /** Durée (ms) d'un appui long. */
 const LONG_PRESS_MS = 450;
 
@@ -63,6 +69,8 @@ export interface Gesture {
   pointer: { x: number; y: number };
   /** Armée d'un toucher (et non en cours de glisser). */
   armed: boolean;
+  /** Au doigt (ou au stylet) : le fantôme se pose au-dessus du doigt, qui le cacherait. */
+  touch: boolean;
 }
 
 interface Pending {
@@ -84,8 +92,11 @@ interface Options {
   canArm: (sourceId: string) => boolean;
   /** Poser la carte en grand par-dessus le plateau (appui long, ou toucher sans autre effet). */
   onInspect: (sourceId: string) => void;
-  /** Toucher / clic simple : `true` = la page l'a traité, rien d'autre ne se passe. */
-  onTap?: (kind: GestureKind, sourceId: string) => boolean;
+  /**
+   * Toucher / clic simple : `true` = la page l'a traité, rien d'autre ne se passe.
+   * `touch` : au doigt (ou au stylet) — la page peut préférer montrer avant d'agir.
+   */
+  onTap?: (kind: GestureKind, sourceId: string, touch: boolean) => boolean;
   /** Glisser lâché ailleurs que sur une zone valide (`drops` : les zones sous le pointeur, peut-être aucune). */
   onInvalidDrop?: (kind: GestureKind, sourceId: string, drops: string[]) => void;
 }
@@ -132,10 +143,10 @@ export function useTableGestures({ isValidDrop, onDrop, canArm, onInspect, onTap
 
     function onMove(e: PointerEvent) {
       const p = pending.current;
-      if (p && p.kind !== "inspect" && !p.started && Math.hypot(e.clientX - p.startX, e.clientY - p.startY) > DRAG_THRESHOLD) {
+      if (p && p.kind !== "inspect" && !p.started && Math.hypot(e.clientX - p.startX, e.clientY - p.startY) > (p.touch ? DRAG_THRESHOLD_TOUCH : DRAG_THRESHOLD)) {
         clearLongPress();
         p.started = true;
-        setGesture({ kind: p.kind, sourceId: p.sourceId, origin: p.origin, pointer: { x: e.clientX, y: e.clientY }, armed: false });
+        setGesture({ kind: p.kind, sourceId: p.sourceId, origin: p.origin, pointer: { x: e.clientX, y: e.clientY }, armed: false, touch: p.touch });
       }
       const active = p?.started ? p : gestureRef.current?.armed ? gestureRef.current : null;
       if (!active) return;
@@ -152,7 +163,7 @@ export function useTableGestures({ isValidDrop, onDrop, canArm, onInspect, onTap
       if (!p.started) {
         // Simple toucher : la page d'abord, puis une unité s'arme (ou se
         // désarme si elle l'était) ; au doigt, toute autre carte s'affiche en grand.
-        if (optionsRef.current.onTap?.(p.kind, p.sourceId)) return;
+        if (optionsRef.current.onTap?.(p.kind, p.sourceId, p.touch)) return;
         const arms = p.kind === "aim" && optionsRef.current.canArm(p.sourceId);
         if (!arms) {
           if (p.touch) optionsRef.current.onInspect(p.sourceId);
@@ -160,7 +171,7 @@ export function useTableGestures({ isValidDrop, onDrop, canArm, onInspect, onTap
         }
         const g = gestureRef.current;
         if (g?.armed && g.sourceId === p.sourceId) end();
-        else setGesture({ kind: "aim", sourceId: p.sourceId, origin: p.origin, pointer: { x: e.clientX, y: e.clientY }, armed: true });
+        else setGesture({ kind: "aim", sourceId: p.sourceId, origin: p.origin, pointer: { x: e.clientX, y: e.clientY }, armed: true, touch: p.touch });
         return;
       }
 

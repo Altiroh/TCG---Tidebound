@@ -300,8 +300,23 @@ export function TableBoard(props: TableBoardProps) {
    * la main n'allume pas cinq aperçus à la suite ; souris seulement.
    */
   const [preview, setPreview] = useState<{ id: string; rect: DOMRect } | null>(null);
-  /** Carte lue en grand par-dessus le plateau (`TableCardZoom`), au doigt. */
-  const [zoomId, setZoomId] = useState<string | null>(null);
+  /**
+   * Carte lue en grand par-dessus le plateau (`TableCardZoom`), au doigt.
+   * `play` : carte de main jouable touchée — le zoom porte le bouton « Jouer ».
+   */
+  const [zoom, setZoom] = useState<{ id: string; play: boolean } | null>(null);
+  const zoomId = zoom?.id ?? null;
+  const setZoomId = (id: string | null) => setZoom(id ? { id, play: false } : null);
+  /**
+   * MAIN DÉPLOYÉE — téléphone couché seulement. Repliée, la main ne montre
+   * que le haut de cartes d'une centaine de pixels : on la déploie d'un
+   * toucher, en rang de cartes lisibles au-dessus d'un voile ; un toucher sur
+   * le voile la replie. Glisser une carte reste possible dans les deux états
+   * (la main se replie dès que le glisser part : c'est le plateau qu'on
+   * regarde alors).
+   */
+  const compactHand = metrics.breakpoint === "mobile-landscape";
+  const [handRaised, setHandRaised] = useState(false);
   const previewTimer = useRef<number | null>(null);
   const cancelPreview = () => {
     if (previewTimer.current !== null) window.clearTimeout(previewTimer.current);
@@ -480,8 +495,12 @@ export function TableBoard(props: TableBoardProps) {
           return;
         }
         const el = document.querySelector<HTMLElement>(`[data-card-id="${sourceId}"]`);
-        const width = (el?.offsetWidth ?? 0) * 1.08;
-        if (width) motion.rememberDrop(sourceId, { x: point.x - width / 2, y: point.y - (width * 1.4) / 2, width, height: width * 1.4 });
+        // La carte part d'où le fantôme était lâché : centré sous la souris,
+        // au-dessus du doigt (cf. `.dragGhostTouch`, mêmes 1.3 et 16 px).
+        const touchGhost = gesture?.touch ?? false;
+        const width = (el?.offsetWidth ?? 0) * (touchGhost ? 1.3 : 1.08);
+        const height = width * 1.4;
+        if (width) motion.rememberDrop(sourceId, { x: point.x - width / 2, y: touchGhost ? point.y - 16 - height : point.y - height / 2, width, height });
         props.onPlayCard(sourceId, undefined, slotOf(drop));
         return;
       }
@@ -512,7 +531,7 @@ export function TableBoard(props: TableBoardProps) {
     onInspect: (sourceId) => {
       if (byId.has(sourceId)) setZoomId(sourceId);
     },
-    onTap: (kind, sourceId) => {
+    onTap: (kind, sourceId, touch) => {
       const entry = byId.get(sourceId);
       if (!entry) return false;
       // La pastille touchée : l'activation (ou, si l'effet vise une unité, le choix de sa cible).
@@ -521,8 +540,18 @@ export function TableBoard(props: TableBoardProps) {
         return true;
       }
       if (kind === "place" || kind === "cast") {
+        // AU DOIGT, TOUCHER UNE CARTE LA MONTRE, JAMAIS NE LA JOUE : le geste
+        // naturel « toucher pour lire » posait la carte et dépensait la Raison
+        // (audit mobile du 29/09). Main repliée : le toucher la déploie ;
+        // déployée (ou hors téléphone) : la carte s'agrandit, avec « Jouer »
+        // si elle est jouable. À la souris, le clic joue toujours en un geste.
+        if (touch) {
+          if (compactHand && !handRaised) setHandRaised(true);
+          else setZoom({ id: sourceId, play: isPlayable(sourceId) && !discardMode });
+          return true;
+        }
         // Même règle qu'au glisser : une carte écartée par le tutoriel ne
-        // réagit pas non plus au toucher.
+        // réagit pas non plus au clic.
         if (!isPlayable(sourceId)) return false;
         props.onHandCardClick(sourceId);
         return true;
@@ -561,6 +590,15 @@ export function TableBoard(props: TableBoardProps) {
   useEffect(() => {
     onHandDragChange?.(draggedHand);
   }, [draggedHand, onHandDragChange]);
+  // Un glisser part (d'une carte de main ou du plateau) : la main se replie.
+  useEffect(() => {
+    if (gesture && !gesture.armed) setHandRaised(false);
+  }, [gesture]);
+  // Plus de main déployée hors du mode téléphone, ni quand elle est vide.
+  const handCount = viewer.hand.length;
+  useEffect(() => {
+    if (!compactHand || handCount === 0) setHandRaised(false);
+  }, [compactHand, handCount]);
 
   const tone: AimTone = casting || abilityDrag || (aimSource && !aimAttacks) ? "effect" : hover === "graveyard" ? "sabotage" : "attack";
   // Le tir du canon désigne exactement les mêmes cibles qu'une attaque —
@@ -846,6 +884,8 @@ export function TableBoard(props: TableBoardProps) {
             renderCard={(card) => renderBoardCard(card, viewer)}
           />
           <TableHand
+            raised={handRaised}
+            onLower={() => setHandRaised(false)}
             cards={(discardMode ? viewer.hand.filter((card) => !discardMode.staged.has(card.instanceId)) : viewer.hand).map(toModel)}
             dragging={placing !== null || casting !== null}
             renderCard={(card) => {
@@ -892,6 +932,7 @@ export function TableBoard(props: TableBoardProps) {
             phaseButton={
               <PhaseButton
                 label={props.phaseButton.label}
+                phaseLabel={props.phaseButton.phaseLabel}
                 icon={props.phaseButton.icon}
                 disabled={props.phaseButton.disabled}
                 onClick={props.phaseButton.onClick}
@@ -940,9 +981,22 @@ export function TableBoard(props: TableBoardProps) {
       {(() => {
         const found = zoomId ? byId.get(zoomId) : undefined;
         if (!found) return null;
+        const price = zoom?.play ? previewPlayCardReason(state, viewerId, found.instance.instanceId) : undefined;
         return (
           <TableCardZoom
             onClose={() => setZoomId(null)}
+            action={
+              zoom?.play
+                ? {
+                    label: price?.allowed ? `Jouer · ${price.cost} Raison` : "Jouer",
+                    onAction: () => {
+                      setZoom(null);
+                      setHandRaised(false);
+                      props.onHandCardClick(found.instance.instanceId);
+                    },
+                  }
+                : undefined
+            }
             onDetail={() => {
               setZoomId(null);
               props.onInspect(found.instance);

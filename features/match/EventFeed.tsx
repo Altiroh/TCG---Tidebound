@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { getCardDefinition, getShipDefinition, HIDDEN_CARD_ID, type GameEvent, type GameState, type PlayerId } from "@/game";
 import { CardThumb } from "@/features/match/CardThumb";
@@ -449,7 +449,16 @@ interface EventFeedProps {
 export function EventFeed({ state, playerLabel, variant = "panel" }: EventFeedProps) {
   const rail = variant === "rail";
   const thumbSize = rail ? 30 : 20;
-  const [hovered, setHovered] = useState<{ text: string; anchor: DOMRect } | null>(null);
+  const [hovered, setHovered] = useState<{ key: string; text: string; anchor: DOMRect } | null>(null);
+  // Bulle épinglée au doigt : un appui hors du journal la retire.
+  useEffect(() => {
+    if (!hovered) return;
+    function onDown(event: PointerEvent) {
+      if (event.pointerType !== "mouse" && !(event.target as Element | null)?.closest("[data-journal-row]")) setHovered(null);
+    }
+    window.addEventListener("pointerdown", onDown, true);
+    return () => window.removeEventListener("pointerdown", onDown, true);
+  }, [hovered]);
   const label = playerLabel ?? ((id?: string) => (id === "p1" ? "Joueur 1" : id === "p2" ? "Joueur 2" : "?"));
   // Le plateau se re-rend souvent sans que l'état change (survol, glisser…).
   const highlights = useMemo(() => buildHighlights(state, label), [state, label]);
@@ -461,8 +470,20 @@ export function EventFeed({ state, playerLabel, variant = "panel" }: EventFeedPr
     body = highlights.map((highlight) => (
       <div
         key={highlight.key}
-        onPointerEnter={(event) => setHovered({ text: highlight.summary, anchor: event.currentTarget.getBoundingClientRect() })}
-        onPointerLeave={() => setHovered(null)}
+        // Survol à la souris ; au doigt, un toucher épingle la bulle (un second, ou un
+        // toucher ailleurs, la retire) — sinon elle ne vivait que sous le doigt.
+        data-journal-row=""
+        onPointerEnter={(event) => {
+          if (event.pointerType === "mouse") setHovered({ key: highlight.key, text: highlight.summary, anchor: event.currentTarget.getBoundingClientRect() });
+        }}
+        onPointerLeave={(event) => {
+          if (event.pointerType === "mouse") setHovered(null);
+        }}
+        onPointerUp={(event) => {
+          if (event.pointerType === "mouse") return;
+          const anchor = event.currentTarget.getBoundingClientRect();
+          setHovered((current) => (current?.key === highlight.key ? null : { key: highlight.key, text: highlight.summary, anchor }));
+        }}
         className="cursor-default rounded transition-colors hover:bg-white/10"
       >
         {rail ? <RailRow state={state} highlight={highlight} /> : <HighlightRow state={state} highlight={highlight} thumbSize={thumbSize} />}

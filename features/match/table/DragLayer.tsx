@@ -77,11 +77,23 @@ export function DragLayer({ gesture, onTarget, tone, renderGhost }: DragLayerPro
       return undefined;
     }
     setPointer(gesture.pointer);
+    // Un rendu par image, pas par événement : un écran tactile en envoie
+    // bien plus que la souris, et chacun re-rendait la carte fantôme.
+    let frame: number | null = null;
+    let latest = gesture.pointer;
     function onMove(e: PointerEvent) {
-      setPointer({ x: e.clientX, y: e.clientY });
+      latest = { x: e.clientX, y: e.clientY };
+      if (frame !== null) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = null;
+        setPointer(latest);
+      });
     }
     window.addEventListener("pointermove", onMove);
-    return () => window.removeEventListener("pointermove", onMove);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      if (frame !== null) window.cancelAnimationFrame(frame);
+    };
   }, [gesture]);
 
   if (!gesture || !pointer) return null;
@@ -90,7 +102,9 @@ export function DragLayer({ gesture, onTarget, tone, renderGhost }: DragLayerPro
     return (
       <div
         aria-hidden
-        className={styles.dragGhost}
+        // Au doigt, la carte flotte AU-DESSUS du pouce, agrandie : centrée
+        // dessous, le pouce cachait à la fois la carte et l'emplacement visé.
+        className={gesture.touch ? `${styles.dragGhost} ${styles.dragGhostTouch}` : styles.dragGhost}
         style={{ left: pointer.x, top: pointer.y, width: gesture.origin.width }}
       >
         {renderGhost(gesture.sourceId)}

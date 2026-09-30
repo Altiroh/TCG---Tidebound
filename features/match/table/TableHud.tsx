@@ -97,6 +97,12 @@ export function PhaseButton({ label, phaseLabel, icon, disabled = false, onClick
 
       {/* `aria-hidden` : le bouton porte déjà les deux informations dans son
           `aria-label`, un lecteur d'écran les entendrait deux fois. */}
+      {/* Sur téléphone, pas de survol pour l'infobulle : ce que fait le
+          bouton s'écrit dessous, en toutes lettres (masqué ailleurs). */}
+      <span className={styles.phaseCaption} aria-hidden>
+        {label}
+      </span>
+
       <span className={styles.phaseTip} aria-hidden>
         {phaseLabel && <span className={styles.phaseTipPhase}>{phaseLabel}</span>}
         <span className={styles.phaseTipAction}>{label}</span>

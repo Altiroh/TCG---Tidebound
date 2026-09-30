@@ -648,6 +648,7 @@ export function CardTile({
                   )}
                   <div
                     className="flex items-center justify-center text-center font-bold leading-none text-white [font-family:var(--font-card-title)]"
+                    data-tile="cost"
                     style={{ ...zoneStyle(BOARD_COST_ZONE), fontSize: "15cqw", textShadow: "0 2px 4px rgba(0,0,0,0.7)" }}
                   >
                     {def.cost}
@@ -656,6 +657,7 @@ export function CardTile({
               )}
 
               <div
+                data-tile="name"
                 className="flex items-end justify-center overflow-hidden px-[2%] pb-[1%] text-center font-semibold uppercase leading-tight text-white [font-family:var(--font-card-title)]"
                 style={{
                   ...zoneStyle(isToken ? TOKEN_TILE_NAME_ZONE : isUnit || hasResistance ? BOARD_NAME_ZONE : BOARD_NAME_ZONE_NO_STATS),
@@ -683,6 +685,7 @@ export function CardTile({
               {underlineOk ? (
                 // eslint-disable-next-line @next/next/no-img-element -- asset d'habillage unique
                 <img
+                  data-tile="underline"
                   src={BOARD_UNDERLINE}
                   alt=""
                   className="object-contain"
@@ -691,6 +694,7 @@ export function CardTile({
               ) : (
                 // Repli : un filet clair qui s'efface vers les bords, un losange au centre.
                 <div
+                  data-tile="underline"
                   className="flex items-center"
                   style={zoneStyle(isToken ? TOKEN_TILE_UNDERLINE_ZONE : isUnit || hasResistance ? BOARD_UNDERLINE_ZONE : BOARD_UNDERLINE_ZONE_NO_STATS)}
                 >
@@ -702,6 +706,7 @@ export function CardTile({
 
               {(isUnit || hasResistance) && (
                 <div
+                  data-tile={isToken ? "token-stats" : "stats"}
                   className="flex items-center justify-evenly font-bold leading-none [font-family:var(--font-card-title)]"
                   style={{ ...zoneStyle(isToken ? TOKEN_TILE_STATS_ZONE : BOARD_STATS_ZONE), fontSize: isToken ? "9cqw" : "10cqw", textShadow: THICK_TEXT_OUTLINE }}
                 >
