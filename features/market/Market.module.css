@@ -1400,16 +1400,18 @@
 
   /* « Contenu », « Au panier », « Vider » et le lien vers les Decks : de
      19 à 22 px de haut sur un téléphone. Même zone transparente de 44 px
-     de haut, un peu de débord sur les côtés (ils sont isolés). */
+     de haut, un peu de débord sur les côtés (ils sont isolés). La zone
+     du lien se pose sur le <a> lui-même : sur son « span », elle captait
+     le toucher sans rien ouvrir. */
   .contentsButton,
   .clearButton,
-  .stageLink {
+  .stageLink a {
     position: relative;
   }
 
   .contentsButton::before,
   .clearButton::before,
-  .stageLink::before {
+  .stageLink a::before {
     content: "";
     position: absolute;
     top: 50%;
