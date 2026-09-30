@@ -65,7 +65,7 @@
 .primary,
 .secondary {
   flex: 0 0 auto;
-  min-height: 34px;
+  min-height: 40px;
   padding: 6px 12px;
   border-radius: var(--tb-radius-sm);
   color: var(--tb-text-strong);
@@ -98,8 +98,8 @@
 
 .dismiss {
   flex: 0 0 auto;
-  width: 34px;
-  height: 34px;
+  width: 40px;
+  height: 40px;
   border: 0;
   border-radius: 50%;
   background: transparent;

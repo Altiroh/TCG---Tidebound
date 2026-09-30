@@ -734,6 +734,34 @@
  * droite.
  */
 @media (max-height: 560px) and (orientation: landscape) {
+  /* Les photos font ~95 px : leurs légendes tombaient à 7 px. Le nom passe
+     au plancher de 11 px (deux lignes au plus) ; le statut, déjà dit dans
+     l'encart de droite pour le mécène choisi, quitte la photo. La télé
+     garde son record et son « En direct » lisibles. */
+  .photoName {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    font-size: max(11px, calc(7.6cqw * var(--tb-text-scale)));
+  }
+
+  .photoStatus {
+    display: none;
+  }
+
+  .countUnit,
+  .record {
+    font-size: 11px;
+  }
+
+  /* « En direct » : illisible à sa taille, et à 11 px il couvrait le
+     compteur. Pur ornement (le compteur et le record portent l'information) :
+     il s'efface. */
+  .live {
+    display: none;
+  }
+
   .panel {
     width: 100vw;
     min-width: 0;

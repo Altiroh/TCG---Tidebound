@@ -411,6 +411,27 @@ textarea {
   cursor: var(--tb-cursor-pointer);
 }
 
+/* Au doigt : un rail de 6 px et une pastille de 14 px ne s'attrapent pas.
+   La boîte du curseur prend 28 px de haut (padding transparent — le rail
+   peint reste dans la boîte de contenu), la pastille 24 px. */
+@media (pointer: coarse) {
+  .volume-slider {
+    box-sizing: content-box;
+    padding: 11px 0;
+    background-clip: content-box !important;
+  }
+
+  .volume-slider::-webkit-slider-thumb {
+    width: 24px;
+    height: 24px;
+  }
+
+  .volume-slider::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+  }
+}
+
 /*
  * SwampHaze (features/match/SwampHaze.tsx) : ambiance de l'écran de
  * défaite — l'équivalent "eau stagnante" des feux d'artifice de la
