@@ -119,6 +119,10 @@ export default function DiagnosticEcran() {
             {line}
           </p>
         ))}
+        {/* L'app installée n'a pas de bouton « précédent » : la sortie est ici. */}
+        <a href="/" style={{ display: "inline-block", marginTop: 8, padding: "10px 0", color: "#7dd3fc" }}>
+          ← Retour à l&apos;accueil
+        </a>
       </div>
     </>
   );
