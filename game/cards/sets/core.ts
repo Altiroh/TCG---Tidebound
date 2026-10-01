@@ -2189,7 +2189,16 @@ export const CORE_SET: CardDefinition[] = [
     cost: 1,
     attack: 1,
     health: 1,
-    // Volontairement sans effet : petite unité de base de l'archétype.
+    // Standard Verrier (01/10/2026, validé par le propriétaire) : le banc
+    // grossit — sa perte relance une arrivée. Coût et statistiques inchangés.
+    text: "Quand il est détruit, invoquez 1 Péon Cra-Poiscail 1 / 1.",
+    abilities: [
+      {
+        trigger: "onDeath",
+        description: "Détruit : invoquez 1 Péon Cra-Poiscail.",
+        effects: [{ type: "summon", target: { kind: "controllerPlayer" }, cardId: "peon-cra-poiscail" }],
+      },
+    ],
   },
   {
     id: "ptite-fesse",
@@ -2373,15 +2382,19 @@ export const CORE_SET: CardDefinition[] = [
     cost: 3,
     attack: 2,
     health: 3,
+    // Standard Verrier (01/10/2026, validé par le propriétaire) : le banc
+    // grossit — le gain est conservé. Le texte nomme désormais l'arrivante,
+    // que le code renforçait déjà (l'ancien texte nommait le Chef lui-même).
+    // Coût et statistiques inchangés.
     text:
       "La première fois à chaque tour qu'une autre unité Cra-Poiscail que vous contrôlez arrive en jeu, " +
-      "Cra-Poiscail Chef de Banc gagne +1 / +1 jusqu'à la fin du tour.",
+      "elle gagne +1 / +1.",
     abilities: [
       {
         trigger: "onEnterPlay",
         triggeredBy: { archetype: "cra-poiscail" },
         oncePerTurnKey: "chefDeBancAllyEnter",
-        description: "Un autre Cra-Poiscail arrive : il gagne +1 / +1 jusqu'à la fin du tour.",
+        description: "Un autre Cra-Poiscail arrive : il gagne +1 / +1, conservé.",
         effects: [
           {
             type: "buff",
@@ -2389,7 +2402,7 @@ export const CORE_SET: CardDefinition[] = [
             target: { kind: "triggerSource" },
             attackAmount: { kind: "flat", value: 1 },
             healthAmount: { kind: "flat", value: 1 },
-            permanent: false,
+            permanent: true,
           },
         ],
       },
@@ -2404,7 +2417,9 @@ export const CORE_SET: CardDefinition[] = [
     cost: 2,
     attack: 2,
     health: 2,
-    text: "La première fois à chaque tour que vous Brisez un Objet, il gagne +1 / +1 jusqu'à la fin du tour.",
+    // Standard Verrier (01/10/2026, validé par le propriétaire) : le banc
+    // grossit — le gain est conservé. Coût et statistiques inchangés.
+    text: "La première fois à chaque tour que vous Brisez un Objet, il gagne +1 / +1.",
     abilities: [
       {
         trigger: "onObjectBroken",
@@ -2412,14 +2427,14 @@ export const CORE_SET: CardDefinition[] = [
         // contrôleur qui le brise (`sameController` par défaut).
         triggeredBy: {},
         oncePerTurnKey: "ramasseurObjectBroken",
-        description: "Vous Brisez un Objet : +1 / +1 jusqu'à la fin du tour.",
+        description: "Vous Brisez un Objet : +1 / +1, conservé.",
         effects: [
           {
             type: "buff",
             target: { kind: "self" },
             attackAmount: { kind: "flat", value: 1 },
             healthAmount: { kind: "flat", value: 1 },
-            permanent: false,
+            permanent: true,
           },
         ],
       },
@@ -2694,16 +2709,18 @@ export const CORE_SET: CardDefinition[] = [
     attack: 1,
     health: 2,
     maxCopies: 2,
+    // Standard Verrier (01/10/2026, validé par le propriétaire) : le banc
+    // grossit — le gain est conservé. Coût et statistiques inchangés.
     text:
       "La première fois à chaque tour qu'une autre unité Cra-Poiscail que vous contrôlez gagne de la Puissance, " +
-      "P'tite Fesse, Grand Rêve gagne +1 Puissance jusqu'à la fin du tour.",
+      "P'tite Fesse, Grand Rêve gagne +1 Puissance.",
     abilities: [
       {
         trigger: "onPowerGained",
         triggeredBy: { archetype: "cra-poiscail" },
         oncePerTurnKey: "grandReveAllyPowerGain",
-        description: "Un autre Cra-Poiscail gagne de la Puissance : +1 Puissance jusqu'à la fin du tour.",
-        effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 } }],
+        description: "Un autre Cra-Poiscail gagne de la Puissance : +1 Puissance, conservée.",
+        effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, permanent: true }],
       },
     ],
   },

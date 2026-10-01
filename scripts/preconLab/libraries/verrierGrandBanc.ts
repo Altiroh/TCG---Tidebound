@@ -1,6 +1,5 @@
 import { CARD_DATABASE, getCardDefinition } from "@/game/cards/sets/core";
 import type { CardDefinition } from "@/game/cards/types";
-import type { EffectDefinition } from "@/game/effects/types";
 
 /**
  * STANDARD VERRIER — LE GRAND BANC (01/10/2026).
@@ -24,46 +23,10 @@ const db = CARD_DATABASE as Map<string, CardDefinition>;
 const base = (id: string) => getCardDefinition(id);
 const enregistrer = (carte: CardDefinition) => db.set(carte.id, carte);
 
-/** Même carte, mais chaque gain de ses capacités est conservé. */
-function gainsConserves(id: string, labId: string, text: string): void {
-  const carte = base(id);
-  enregistrer({
-    ...carte,
-    id: labId,
-    text,
-    abilities: (carte.abilities ?? []).map((capacite) => ({
-      ...capacite,
-      effects: capacite.effects.map((effet) => (effet.type === "buff" ? ({ ...effet, permanent: true } as EffectDefinition) : effet)),
-    })),
-  } as CardDefinition);
-}
-
-gainsConserves(
-  "cra-poiscail-chef-de-banc",
-  "lab-chef-de-banc-verrier",
-  "La première fois à chaque tour qu'une autre unité Cra-Poiscail que vous contrôlez arrive en jeu, elle gagne +1 / +1.",
-);
-gainsConserves(
-  "cra-poiscail-ramasseur",
-  "lab-ramasseur-verrier",
-  "La première fois à chaque tour que vous Brisez un Objet, il gagne +1 / +1.",
-);
-gainsConserves(
-  "ptite-fesse-grand-reve",
-  "lab-grand-reve-verrier",
-  "La première fois à chaque tour qu'une autre unité Cra-Poiscail que vous contrôlez gagne de la Puissance, " +
-    "P'tite Fesse, Grand Rêve gagne +1 Puissance.",
-);
-
-enregistrer({
-  ...base("tetard-fesse"),
-  id: "lab-tetard-verrier",
-  text: "Quand il est détruit, invoquez 1 Péon Cra-Poiscail 1 / 1.",
-  abilities: [
-    {
-      trigger: "onDeath",
-      description: "Détruit : invoquez 1 Péon Cra-Poiscail.",
-      effects: [{ type: "summon", target: { kind: "controllerPlayer" }, cardId: "peon-cra-poiscail" }],
-    },
-  ],
-} as CardDefinition);
+// Chef de Banc, Ramasseur, Grand Rêve, Têtard-Fesse : ADOPTÉS (V2) le
+// 01/10/2026 — ce sont désormais les textes des cartes elles-mêmes. Les
+// identifiants de labo restent des alias, pour rejouer les listes archivées.
+enregistrer({ ...base("cra-poiscail-chef-de-banc"), id: "lab-chef-de-banc-verrier" });
+enregistrer({ ...base("cra-poiscail-ramasseur"), id: "lab-ramasseur-verrier" });
+enregistrer({ ...base("ptite-fesse-grand-reve"), id: "lab-grand-reve-verrier" });
+enregistrer({ ...base("tetard-fesse"), id: "lab-tetard-verrier" });

@@ -16,7 +16,7 @@ const value = (cardId: string, overrides = {}) => abilityValue(state, instance(c
 
 describe("valeur des capacités d'un permanent", () => {
   it("une carte sans capacité déclenchée ne gagne rien", () => {
-    expect(value("tetard-fesse")).toBe(0);
+    expect(value("ptite-fesse")).toBe(0);
   });
 
   it("une Structure de moteur (La Marelle : défausse → dégâts au Navire) rapporte", () => {

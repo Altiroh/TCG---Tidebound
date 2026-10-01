@@ -306,7 +306,8 @@ describe("archétype Cra-Poiscail — capacités d'observateur (Booster 2)", () 
 
   it("La Grande Migration remplace un Cra-Poiscail détruit par un Péon, une fois par tour", () => {
     const migration = instance("la-grande-migration", "p1");
-    const victime = instance("tetard-fesse", "p1", { damageMarked: 0 });
+    // P'tite Fesse, sans texte : Têtard-Fesse invoque lui-même un Péon en mourant.
+    const victime = instance("ptite-fesse", "p1", { damageMarked: 0 });
     const state = testGameState({
       players: [testPlayer("p1", { board: [migration, victime] }), testPlayer("p2")],
     });
@@ -958,7 +959,8 @@ describe("Équipements — le sort de l'Équipement suit celui de son porteur", 
   });
 
   it("part au cimetière quand le permanent équipé est sabordé", () => {
-    const porteur = instance("tetard-fesse", "p1");
+    // P'tite Fesse, sans texte : Têtard-Fesse laisserait un Péon derrière lui.
+    const porteur = instance("ptite-fesse", "p1");
     const slip = equipped(porteur.instanceId);
     const state = testGameState({
       players: [testPlayer("p1", { board: [porteur, slip] }), testPlayer("p2")],
