@@ -4332,16 +4332,18 @@ export const CORE_SET: CardDefinition[] = [
     health: 1,
     text:
       "La première fois pendant votre tour qu'une de vos cartes rejoint le Cimetière depuis votre main ou votre pioche, " +
-      "elle gagne +1 Puissance jusqu'à la fin du tour.",
+      "elle gagne +1 Puissance.",
     // « ou votre pioche » (Test Verrier, 30/09/2026) : le meulage nourrit la
     // Veillée comme la défausse (`onCardPutIntoGraveyard`).
+    // Standard Verrier (01/10/2026, validé par le propriétaire) : les gains de
+    // la Veillée RESTENT. Coût et statistiques inchangés.
     abilities: [
       {
         trigger: "onCardPutIntoGraveyard",
         triggeredBy: {},
         oncePerTurnKey: "cacheCacheDefausse",
-        description: "Une de vos cartes rejoint le Cimetière (main ou pioche) : +1 Puissance jusqu'à la fin du tour.",
-        effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, duration: "endOfTurn" }],
+        description: "Une de vos cartes rejoint le Cimetière (main ou pioche) : +1 Puissance, conservée.",
+        effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, healthAmount: { kind: "flat", value: 0 }, permanent: true }],
       },
     ],
   },
@@ -4383,7 +4385,19 @@ export const CORE_SET: CardDefinition[] = [
     // à la Revenante de la Fosse. `from: ["combat"]` réalise « AU COMBAT » à
     // la lettre : ni un effet de destruction, ni la Marée ne la sauvent.
     survivesLethalOncePerTurn: { from: ["combat"] },
-    text: "La première fois à chaque tour qu'elle devrait être détruite au combat, elle reste à 1 Résistance.",
+    // Standard Verrier (01/10/2026, validé par le propriétaire) : les gains de
+    // la Veillée RESTENT. Coût et statistiques inchangés.
+    text:
+      "La première fois à chaque tour qu'elle devrait être détruite au combat, elle reste à 1 Résistance. La première " +
+      "fois à chaque tour qu'elle survit à des dégâts, elle gagne +1 Puissance.",
+    abilities: [
+      {
+        trigger: "onSurvivedDamage",
+        oncePerTurnKey: "cinqMinutesTientBon",
+        description: "Elle tient bon : +1 Puissance, conservée.",
+        effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, healthAmount: { kind: "flat", value: 0 }, permanent: true }],
+      },
+    ],
   },
   {
     id: "le-gouter",
@@ -4421,15 +4435,16 @@ export const CORE_SET: CardDefinition[] = [
     attack: 2,
     health: 2,
     text:
-      "Quand une autre de vos unités Un Dead est détruite, il gagne +1 Puissance jusqu'à la fin du tour. " +
-      "Une fois par tour.",
+      "Quand une autre de vos unités Un Dead est détruite, il gagne +1 Puissance. Une fois par tour.",
+    // Standard Verrier (01/10/2026, validé par le propriétaire) : les gains de
+    // la Veillée RESTENT. Coût et statistiques inchangés.
     abilities: [
       {
         trigger: "onDeath",
         triggeredBy: { subtype: UN_DEAD, cardTypes: ["marin", "creature"] },
         oncePerTurnKey: "papaAllieDetruit",
-        description: "Un autre Un Dead meurt : +1 Puissance jusqu'à la fin du tour.",
-        effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, duration: "endOfTurn" }],
+        description: "Un autre Un Dead meurt : +1 Puissance, conservée.",
+        effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, healthAmount: { kind: "flat", value: 0 }, permanent: true }],
       },
     ],
   },
