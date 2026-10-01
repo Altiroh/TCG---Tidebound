@@ -452,7 +452,11 @@
    dessous ne sont donc que des replis, pour le cadre d'origine. */
 .ship {
   position: relative;
-  height: 100%;
+  /* La hauteur de la RANGÉE, en clair — pas `100%` : la chaîne de hauteurs
+     en pourcentage (cellule de grille › enveloppe flex › Navire), avec un
+     `aspect-ratio`, se résolvait à zéro dans Safari sur iPhone, et le cadre,
+     l'illustration et les jauges disparaissaient (retour du 01/10). */
+  height: var(--row-h);
   aspect-ratio: var(--frame-aspect, 0.8);
   max-width: 100%;
   filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.6));
@@ -2153,7 +2157,7 @@
 /* Enveloppe du Navire adverse : garde la hauteur de la cellule. */
 .shipTarget {
   position: relative;
-  height: 100%;
+  height: var(--row-h);
   display: flex;
   align-items: center;
   justify-content: center;
