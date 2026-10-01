@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { SCREEN_DIAGNOSTIC_KEY } from "@/components/ScreenDiagnostic";
 
 /**
  * DIAGNOSTIC D'ÉCRAN — mesure ce que le navigateur annonce, pour la bande
@@ -119,6 +120,23 @@ export default function DiagnosticEcran() {
             {line}
           </p>
         ))}
+        {/* Panneau de mesure sur TOUS les écrans (`ScreenDiagnostic`), jusqu'à ce qu'on le coupe. */}
+        <button
+          type="button"
+          onClick={() => {
+            try {
+              const on = window.localStorage.getItem(SCREEN_DIAGNOSTIC_KEY) === "1";
+              if (on) window.localStorage.removeItem(SCREEN_DIAGNOSTIC_KEY);
+              else window.localStorage.setItem(SCREEN_DIAGNOSTIC_KEY, "1");
+              window.location.href = "/";
+            } catch {
+              /* stockage indisponible : rien à faire */
+            }
+          }}
+          style={{ display: "block", marginTop: 10, padding: "10px 14px", borderRadius: 8, border: "1px solid #fde047", background: "transparent", color: "#fde047", font: "inherit" }}
+        >
+          Mesurer les autres écrans (activer / couper)
+        </button>
         {/* L'app installée n'a pas de bouton « précédent » : la sortie est ici. */}
         <a href="/" style={{ display: "inline-block", marginTop: 8, padding: "10px 0", color: "#7dd3fc" }}>
           ← Retour à l&apos;accueil
