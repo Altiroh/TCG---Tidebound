@@ -959,14 +959,96 @@
  * discret et la fiche garde l'essentiel.
  */
 @media (max-height: 520px) {
+  /* Le bois inutile cède : marges latérales réduites, VS plus étroit — la
+     largeur rendue va aux deux côtés (retour iPhone du 01/10 : « ça fait
+     très petit »). */
   .scene {
-    padding-left: max(10cqw, calc(var(--u) * 16));
-    padding-right: max(10cqw, calc(var(--u) * 16));
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.55fr) minmax(0, 1fr);
+    padding-left: max(6cqw, calc(var(--u) * 12));
+    padding-right: max(5cqw, calc(var(--u) * 10));
     column-gap: calc(var(--u) * 2);
   }
   .foeNote,
   .foeText {
     display: none;
+  }
+
+  /* Les trois niveaux : plaques plus larges, donc plus hautes (~45 px) et
+     lisibles au pouce. */
+  .levelsPanel {
+    width: min(100%, calc(var(--u) * 110));
+    translate: calc(var(--u) * 3) 0;
+  }
+
+  .levels {
+    gap: calc(var(--u) * 1.6);
+  }
+
+  /* Tiroir des decks : l'en-tête se resserre, les filtres tiennent sur UNE
+     ligne qui défile, et la hauteur rendue va à la grille — trois rangées
+     de puces ne laissaient voir que le haut de deux boîtes. */
+  .picker {
+    width: min(70vw, 100%);
+    gap: 8px;
+    padding: calc(10px + var(--tb-safe-top)) 14px calc(8px + var(--tb-safe-bottom)) calc(14px + var(--tb-safe-left));
+  }
+
+  .pickerTitle {
+    font-size: 20px;
+  }
+
+  .pickerClose {
+    width: 40px;
+    height: 40px;
+  }
+
+  .sourceTab {
+    padding: 6px 16px 8px;
+    font-size: 13px;
+  }
+
+  .styleFilter {
+    flex-wrap: nowrap;
+    flex-shrink: 0;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+
+  .styleFilter::-webkit-scrollbar {
+    display: none;
+  }
+
+  .styleChip {
+    flex: none;
+    min-height: 40px;
+    padding: 3px 10px 3px 5px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .styleChip img {
+    width: 20px;
+    height: 20px;
+  }
+
+  .pickerGrid {
+    flex: 1 1 auto;
+    grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+    gap: 10px;
+  }
+
+  .tile {
+    padding: 6px 6px 8px;
+  }
+
+  .tileBox {
+    width: 52%;
+  }
+
+  .tileName {
+    font-size: 13px;
   }
 }
 

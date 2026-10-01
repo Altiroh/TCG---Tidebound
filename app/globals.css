@@ -26,6 +26,19 @@ body {
 }
 
 /*
+ * Le document fait AU MOINS la hauteur de l'écran. Dans l'app installée sur
+ * iPhone, iOS annonce une page plus basse que l'écran (371 px pour 430 sur
+ * un iPhone couché, `/diagnostic-ecran`, 01/10) et y cale les calques
+ * `position: fixed` tant qu'aucun contenu du flux n'étire la page : la
+ * partie et l'écran de victoire, faits de calques fixes seulement, gardaient
+ * une bande vide en bas. Les menus, dont la racine fait `100dvh` dans le
+ * flux, n'en avaient pas.
+ */
+body {
+  min-height: 100dvh;
+}
+
+/*
  * CURSEURS DU JEU (29/09/2026). Une flèche de laiton au repos, la même
  * emplie de cyan sur ce qui se clique — la couleur de l'interaction
  * (`features/shell/DESIGN.md`). Deux variables, et deux seulement : les
