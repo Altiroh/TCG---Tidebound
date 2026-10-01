@@ -1,7 +1,7 @@
 import { countArchetypeUnits } from "@/game/cards/archetypes";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { isVisibleDuringTide, UNIT_CARD_TYPES, type CardInstance } from "@/game/cards/types";
-import { signalSources } from "@/game/rules/chromatic";
+import { CHROMATIC_TUNING, signalSources } from "@/game/rules/chromatic";
 import type { TideStateName } from "@/game/environment/types";
 import type { GameState } from "@/game/state/types";
 
@@ -170,7 +170,8 @@ export function collectAuraContributions(
   // les AUTRES Sentinelles — même couleur comprise, et en cumul. Une
   // contribution par émetteur, pour que la fiche dise d'où vient chaque +1.
   const addSignal = (color: "rouge" | "jaune", spec: { attackAmount?: number; healthAmount?: number }) => {
-    for (const emitter of signalSources(unit, color, controllerBoard)) {
+    // Plafond éventuel du cumul (`CHROMATIC_TUNING`, aucun par défaut).
+    for (const emitter of signalSources(unit, color, controllerBoard).slice(0, CHROMATIC_TUNING.staticSignalCap)) {
       contributions.push({
         sourceCardId: emitter.cardId,
         sourceInstanceId: emitter.instanceId,

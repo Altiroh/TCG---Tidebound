@@ -99,6 +99,19 @@ function benefitsFromOwnSignals(unit: CardInstance): boolean {
 }
 
 /**
+ * RÉGLAGES DES SIGNAUX — un levier d'équilibrage, pas une règle cachée.
+ *
+ * `staticSignalCap` : nombre maximal d'émetteurs d'un Signal PERMANENT (Rouge,
+ * Jaune) dont une Sentinelle profite. La règle en vigueur (arbitrage du
+ * 23/09/2026) est le cumul sans plafond : `Infinity`. Le Standard Verrier
+ * (01/10/2026) a mesuré que ce cumul rend la puissance des Sentinelles
+ * proportionnelle au CARRÉ du nombre d'emplacements (17 % sur 4 emplacements,
+ * 79 % sur 5) ; le labo peut donc le plafonner pour mesurer l'alternative.
+ * Ne change rien tant qu'on n'y touche pas.
+ */
+export const CHROMATIC_TUNING = { staticSignalCap: Number.POSITIVE_INFINITY };
+
+/**
  * Les émetteurs du Signal de cette couleur dont cette Sentinelle profite.
  * CHACUN compte : les Signaux se cumulent. Ce sont les autres cartes du
  * plateau qui émettent cette couleur, et la Sentinelle elle-même seulement
