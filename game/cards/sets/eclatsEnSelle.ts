@@ -514,8 +514,20 @@ const CAVALERIE_LOT: CardDefinition[] = [
     maxCopies: 3,
     attack: 2,
     health: 3,
-    text: "Lorsqu'elle attaque une unité ayant Garde, elle gagne +1 Puissance pour cette attaque.",
+    // Standard Verrier (01/10/2026, validé par le propriétaire) : la Cavalerie
+    // prend de l'élan. Coût et statistiques inchangés.
+    text:
+      "Lorsqu'elle attaque une unité ayant Garde, elle gagne +1 Puissance pour cette attaque. Chaque fois qu'elle " +
+      "attaque, elle gagne +1 Puissance.",
     bonusDamageVsKeyword: { keyword: "garde", amount: 1 },
+    abilities: [
+      {
+        trigger: "onAttack",
+        oncePerTurnKey: "montureElan",
+        description: "Elle charge : +1 Puissance, conservée.",
+        effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, healthAmount: { kind: "flat", value: 0 }, permanent: true }],
+      },
+    ],
   },
   {
     id: "bete-de-halage",
@@ -559,8 +571,17 @@ const CAVALERIE_LOT: CardDefinition[] = [
     maxCopies: 3,
     attack: 3,
     health: 5,
-    text: "Tant qu'il est votre seule unité, il a +1 Puissance.",
-    selfBuffWhileOnlyUnit: { attackAmount: 1 },
+    // Standard Verrier (01/10/2026, validé par le propriétaire) : la Cavalerie
+    // prend de l'élan. Coût et statistiques inchangés.
+    text: "Chaque fois qu'il attaque, il gagne +1 Puissance.",
+    abilities: [
+      {
+        trigger: "onAttack",
+        oncePerTurnKey: "destrierElan",
+        description: "Il charge : +1 Puissance, conservée.",
+        effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, healthAmount: { kind: "flat", value: 0 }, permanent: true }],
+      },
+    ],
   },
   {
     id: "mufle-au-fanion",
@@ -573,8 +594,18 @@ const CAVALERIE_LOT: CardDefinition[] = [
     maxCopies: 3,
     attack: 4,
     health: 6,
-    text: "Tant qu'il est blessé, il a Garde.",
+    // Standard Verrier (01/10/2026, validé par le propriétaire) : la Cavalerie
+    // prend de l'élan. Coût et statistiques inchangés.
+    text: "Tant qu'il est blessé, il a Garde. La première fois à chaque tour qu'il survit à des dégâts, il gagne +1 Puissance.",
     conditionalKeywords: [{ keyword: "garde", selfDamaged: true }],
+    abilities: [
+      {
+        trigger: "onSurvivedDamage",
+        oncePerTurnKey: "mufleTientBon",
+        description: "Il tient bon : +1 Puissance, conservée.",
+        effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, healthAmount: { kind: "flat", value: 0 }, permanent: true }],
+      },
+    ],
   },
   {
     id: "chargeur-des-ecueils",
