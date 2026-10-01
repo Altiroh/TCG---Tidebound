@@ -810,6 +810,14 @@ export interface EffectDefinition {
    */
   arrivalDamage?: number;
   /**
+   * `discountNextCards` : la prochaine carte qui correspond se joue SANS
+   * payer son coût de Raison (`CostDiscount.free`), plancher et majorations
+   * compris. Combiné à `filter.excludeChosenTarget`, la cible désignée — et
+   * l'exemplaire qu'elle devient si elle vient d'être renvoyée en main —
+   * en est exclue (Changement de rôle !, « une AUTRE Marionnette »).
+   */
+  free?: boolean;
+  /**
    * `pickUnits` : les unités désignées doivent être de couleurs
    * chromatiques différentes (Les Couleurs Répondent).
    */

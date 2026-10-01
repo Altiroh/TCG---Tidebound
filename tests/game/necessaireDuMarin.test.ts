@@ -443,7 +443,6 @@ describe("Bris depuis la main : la formule ne bouge pas", () => {
       "bouclier-decume",
       "signal-de-detresse",
       "corde-de-rappel",
-      "planche-de-fortune",
       "contre-harpon",
     ]) {
       const def = getCardDefinition(id);

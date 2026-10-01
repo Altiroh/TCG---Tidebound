@@ -31,7 +31,9 @@ describe("pools de boosters", () => {
     // du même socle « fondamentaux de Structures » que B1 enseigne déjà.
     expect(BOOSTER_POOLS[BOOSTER_DEFAUT]).toHaveLength(63);
     expect(BOOSTER_POOLS[BOOSTER_POISSONS_PAS_FRAIS]).toHaveLength(65);
-    expect(BOOSTER_POOLS[BOOSTER_ETRANGETE_SOUS_MARINE]).toHaveLength(64);
+    // 64 → 62 : Ce que la Marée Rend et Les Coulisses Inondées, supprimées
+    // du catalogue le 01/10/2026.
+    expect(BOOSTER_POOLS[BOOSTER_ETRANGETE_SOUS_MARINE]).toHaveLength(62);
   });
 
   it("n'a que trois cartes passerelles ENTRE LES TROIS PREMIERS boosters, exactement celles que le cadrage nomme", () => {

@@ -61,6 +61,10 @@ const EXCEPTIONS: Record<string, string> = {
     "« La première fois que chacune de vos unités » vaut pour la durée de l'Anomalie, qui ne vit que jusqu'à la " +
     "fin du tour (`expiresAtEndOfTurn`) : le « une fois par tour » suivi PAR UNITÉ (`oncePerTurnPerTriggerSource`) " +
     "en est la lecture exacte, sans `onceEver`.",
+  "changement-de-role:optional":
+    "« Vous pouvez jouer une autre Marionnette […] sans payer son coût » ne résout rien d'office : le Bris pose " +
+    "une gratuité (`discountNextCards` + `free`) que le joueur utilise en jouant lui-même la carte de son choix, " +
+    "ou laisse perdre à la fin du tour. Le choix reste entièrement le sien.",
 };
 
 /**

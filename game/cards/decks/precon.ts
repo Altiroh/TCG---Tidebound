@@ -251,8 +251,9 @@ export const DECK_LE_THEATRE_ENGLOUTI: DeckList = {
     ...repeat("le-masque-fendu", 3),
     ...repeat("la-clochette-du-rappel", 3),
     ...repeat("trappe-du-souffleur", 2),
-    ...repeat("les-coulisses-inondees", 1),
-    ...repeat("changement-de-role", 1),
+    // Les Coulisses Inondées, supprimées du catalogue (01/10/2026), cèdent
+    // leur place à un deuxième Changement de rôle !, refondu le même jour.
+    ...repeat("changement-de-role", 2),
     // Tenir la ligne pendant que le moteur se monte.
     ...repeat("matelot-du-sans-nom", 3),
     ...repeat("chaine-de-travers", 2),
@@ -646,10 +647,11 @@ export const DECK_ARSENAL_DE_PONT: DeckList = {
     // Deux exemplaires pour les deux qui partent vraiment, un pour le reste.
     ...repeat("harpon-a-ressort", 2),
     ...repeat("contre-harpon", 2),
-    ...repeat("bouclier-decume", 1),
+    // Planche de Fortune, supprimée du catalogue (01/10/2026), cède sa
+    // place à un deuxième Bouclier d'Écume : même rôle, sauver un permanent.
+    ...repeat("bouclier-decume", 2),
     ...repeat("signal-de-detresse", 1),
     ...repeat("corde-de-rappel", 1),
-    ...repeat("planche-de-fortune", 1),
     // Le removal, qui part du même endroit.
     ...repeat("coup-de-harpon", 3),
     ...repeat("sabotage-discret", 2),

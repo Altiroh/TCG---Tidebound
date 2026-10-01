@@ -55,15 +55,19 @@ function printedCost(def: CardDefinition, state: GameState): number {
  * gratuite par override de Marée) n'est pas remontée : le plancher borne
  * les réductions, il n'impose pas un coût minimum au catalogue.
  */
-function effectiveCost(def: CardDefinition, state: GameState, playerId?: PlayerId): number {
+function effectiveCost(def: CardDefinition, state: GameState, playerId?: PlayerId, instanceId?: string): number {
   const printed = printedCost(def, state);
   if (playerId === undefined) return printed;
 
   const player = state.players.find((p) => p.id === playerId);
   const poseesCeTour = player?.unitsPlayedThisTurn ?? 0;
-  const reduction = (player?.costDiscounts ?? [])
-    .filter((discount) => discountApplies(discount, def, state.turnNumber, poseesCeTour))
-    .reduce((sum, discount) => sum + discount.amount, 0);
+  const applicables = (player?.costDiscounts ?? []).filter((discount) =>
+    discountApplies(discount, def, state.turnNumber, poseesCeTour, instanceId)
+  );
+  // « sans payer son coût de Raison » (Changement de rôle !) : ni le
+  // plancher des réductions ni une majoration ne s'appliquent.
+  if (applicables.some((discount) => discount.free)) return 0;
+  const reduction = applicables.reduce((sum, discount) => sum + discount.amount, 0);
   if (reduction === 0) return printed;
   // Une MAJORATION (`amount` négatif, Pas Tous à la Fois !) n'est bornée
   // par rien : le plancher existe pour empêcher une réduction de rendre une
@@ -79,7 +83,7 @@ function effectiveCost(def: CardDefinition, state: GameState, playerId?: PlayerI
  * où la carte est effectivement payée — prévisualiser un coût ne doit rien
  * consommer.
  */
-function consumeCostDiscounts(state: GameState, playerId: PlayerId, def: CardDefinition): GameState {
+function consumeCostDiscounts(state: GameState, playerId: PlayerId, def: CardDefinition, instanceId: string): GameState {
   const player = state.players.find((p) => p.id === playerId);
   if (!player?.costDiscounts?.length) return state;
 
@@ -88,7 +92,7 @@ function consumeCostDiscounts(state: GameState, playerId: PlayerId, def: CardDef
     .map((discount) =>
       // Un modificateur PERSISTANT ne se consomme pas : « les unités
       // supplémentaires », ce n'est pas « la prochaine ».
-      !discount.persistent && discountApplies(discount, def, state.turnNumber, poseesCeTour)
+      !discount.persistent && discountApplies(discount, def, state.turnNumber, poseesCeTour, instanceId)
         ? { ...discount, uses: discount.uses - 1 }
         : discount
     )
@@ -114,7 +118,12 @@ export function previewPlayCardReason(
   const player = state.players.find((p) => p.id === playerId);
   const card = player?.hand.find((c) => c.instanceId === instanceId);
   if (!player || !card) return undefined;
-  const cost = reasonCostAfterShield(state, playerId, effectiveCost(getCardDefinition(card.cardId), state, playerId), state.turnNumber);
+  const cost = reasonCostAfterShield(
+    state,
+    playerId,
+    effectiveCost(getCardDefinition(card.cardId), state, playerId, card.instanceId),
+    state.turnNumber
+  );
   // `allowed` reste dans la forme rendue : sans plancher de Déraison, un
   // coût se paie toujours, l'UI n'a plus qu'à annoncer la dette.
   return { cost, reasonAfter: player.reason - cost, allowed: true };
@@ -161,7 +170,7 @@ function validate(state: GameState, action: PlayCardAction) {
   const costCheck = assertCanPayCost(
     state,
     action.playerId,
-    reasonCostAfterShield(state, action.playerId, effectiveCost(def, state, action.playerId), state.turnNumber)
+    reasonCostAfterShield(state, action.playerId, effectiveCost(def, state, action.playerId, action.instanceId), state.turnNumber)
   );
   if (!costCheck.ok) return costCheck;
 
@@ -275,7 +284,9 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
   const degatsArrivee = assemblage
     ? []
     : (player.costDiscounts ?? []).filter(
-        (discount) => discount.arrivalDamage && discountApplies(discount, def, state.turnNumber, player.unitsPlayedThisTurn ?? 0)
+        (discount) =>
+          discount.arrivalDamage &&
+          discountApplies(discount, def, state.turnNumber, player.unitsPlayedThisTurn ?? 0, instance.instanceId)
       );
 
   // « en payant 2 Raison au lieu de son coût » : l'Assemblage remplace le
@@ -283,12 +294,12 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
   const payment = payReasonCost(
     nextState,
     player.id,
-    assemblage ? def.chromaticAssemblage!.reasonCost : effectiveCost(def, state, player.id),
+    assemblage ? def.chromaticAssemblage!.reasonCost : effectiveCost(def, state, player.id, instance.instanceId),
     state.turnNumber
   );
   // La réduction est dépensée en même temps que la Raison, jamais avant :
   // une pose refusée plus haut ne doit pas avoir consommé la charge.
-  nextState = assemblage ? payment.state : consumeCostDiscounts(payment.state, player.id, def);
+  nextState = assemblage ? payment.state : consumeCostDiscounts(payment.state, player.id, def, instance.instanceId);
   // Compté APRÈS le paiement : « après la troisième unité jouée », c'est la
   // quatrième qui paie, donc la carte en cours ne doit pas s'être déjà
   // comptée quand son propre coût est calculé.

@@ -16,8 +16,10 @@ import { instance, testGameState, testPlayer } from "./testHelpers";
 const LOT_11 = CORE_SET.filter((def) => def.setCode === "theatre-englouti");
 
 describe("catalogue du Lot 11", () => {
-  it("apporte 14 cartes STANDARD et 2 variantes Abyssales", () => {
-    expect(LOT_11).toHaveLength(16);
+  // 14 → 13 cartes STANDARD : Les Coulisses Inondées ont été supprimées du
+  // catalogue le 01/10/2026.
+  it("apporte 13 cartes STANDARD et 2 variantes Abyssales", () => {
+    expect(LOT_11).toHaveLength(15);
     expect(LOT_11.filter((def) => def.id.endsWith("-abyssal"))).toHaveLength(2);
   });
 

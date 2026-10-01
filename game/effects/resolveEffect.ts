@@ -56,6 +56,16 @@ import {
  * références pendantes (Équipements attachés, capacités qui suivent une
  * instance) pointer sur une carte qui n'est plus en jeu.
  */
+/**
+ * Identifiant de l'exemplaire NEUF qu'un permanent renvoyé en main y
+ * devient (`returnPermanentToHand`). Exporté pour qu'un effet qui suit le
+ * renvoi puisse désigner cette carte — « une AUTRE Marionnette » — sans
+ * redeviner la convention.
+ */
+export function recalledInstanceId(boardInstanceId: string, turnNumber: number): string {
+  return `${boardInstanceId}:hand:${turnNumber}`;
+}
+
 function returnPermanentToHand(
   state: GameState,
   ownerId: PlayerId,
@@ -66,7 +76,7 @@ function returnPermanentToHand(
   if (!unit) return { state, events: [], returned: null };
 
   const fresh: CardInstance = {
-    instanceId: `${unit.instanceId}:hand:${state.turnNumber}`,
+    instanceId: recalledInstanceId(unit.instanceId, state.turnNumber),
     cardId: unit.cardId,
     ownerId: unit.ownerId,
     damageMarked: 0,
@@ -125,9 +135,12 @@ export function discountApplies(
   def: CardDefinition,
   turnNumber: number,
   /** Unités déjà posées par le joueur ce tour-ci, celle en cours NON comprise. */
-  unitsPlayedThisTurn = 0
+  unitsPlayedThisTurn = 0,
+  /** Instance de la carte jouée : sert à `excludeInstanceIds` (« une AUTRE Marionnette »). */
+  instanceId?: string
 ): boolean {
   if (!discount.persistent && discount.uses <= 0) return false;
+  if (instanceId !== undefined && discount.excludeInstanceIds?.includes(instanceId)) return false;
   if (turnNumber > discount.expiresAfterTurn) return false;
   if (discount.subtype && def.subtype !== discount.subtype) return false;
   if (discount.cardTypes && !discount.cardTypes.includes(def.type)) return false;
@@ -1657,8 +1670,12 @@ export function resolveEffect(
     }
 
     case "discountNextCards": {
-      const reduction = amountValue(effect.amount, state, context.controllerId);
-      if (reduction <= 0) return { state, events };
+      const reduction = effect.free ? 0 : amountValue(effect.amount, state, context.controllerId);
+      if (!effect.free && reduction <= 0) return { state, events };
+      // « une AUTRE Marionnette » : la cible désignée par le joueur — et
+      // l'exemplaire qu'elle est devenue si l'effet précédent l'a renvoyée
+      // en main — n'en profite pas.
+      const chosen = effect.filter?.excludeChosenTarget ? context.chosenTargetInstanceId : undefined;
 
       const player = getPlayer(state, context.controllerId);
       const discount: CostDiscount = {
@@ -1672,6 +1689,8 @@ export function resolveEffect(
         // La Mauvaise Réputation : la carte qui en profite « subit 1 dégât »
         // à son arrivée — porté par la réduction, qui sait laquelle c'est.
         ...(effect.arrivalDamage ? { arrivalDamage: effect.arrivalDamage, grantedBy: context.controllerId } : {}),
+        ...(effect.free ? { free: true } : {}),
+        ...(chosen ? { excludeInstanceIds: [chosen, recalledInstanceId(chosen, state.turnNumber)] } : {}),
       };
 
       return {

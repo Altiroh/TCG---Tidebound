@@ -336,6 +336,11 @@ export function previewBreakReason(
 }
 
 
+/** Noms des Objets déjà Brisés par ce joueur ce tour-ci (`PlayerState.objectsBrokenThisTurn`). */
+function objectsBrokenThisTurn(player: PlayerState, turnNumber: number): string[] {
+  return player.objectsBrokenThisTurn?.turnNumber === turnNumber ? player.objectsBrokenThisTurn.names : [];
+}
+
 function validate(state: GameState, action: BreakObjectAction) {
   const generalChecks = combine(
     assertGameActive(state),
@@ -368,6 +373,10 @@ function validate(state: GameState, action: BreakObjectAction) {
 
   if (def.requiresTideStateForBreak && !def.requiresTideStateForBreak.includes(state.environment.tideState)) {
     return { ok: false as const, error: "Cet Objet ne peut être brisé dans l'état de Marée actuel." };
+  }
+
+  if (def.breakOncePerTurnByName && objectsBrokenThisTurn(player, state.turnNumber).includes(def.name)) {
+    return { ok: false as const, error: `Une seule carte nommée ${def.name} peut être Brisée par tour.` };
   }
 
   // « S'il ne peut pas payer, l'Objet ne peut pas être Brisé » (Cloche
@@ -445,6 +454,7 @@ export function breakObject(state: GameState, action: BreakObjectAction): Action
       hand: action.fromHand ? player.hand.filter((c) => c.instanceId !== unit.instanceId) : player.hand,
       board: action.fromHand ? player.board : player.board.filter((u) => u.instanceId !== unit.instanceId),
       graveyard: [...player.graveyard, { ...unit, damageMarked: 0, modifiers: [] }],
+      objectsBrokenThisTurn: { turnNumber: state.turnNumber, names: [...objectsBrokenThisTurn(player, state.turnNumber), def.name] },
     },
     { cardId: unit.cardId, turnNumber: state.turnNumber, fromZone }
   );

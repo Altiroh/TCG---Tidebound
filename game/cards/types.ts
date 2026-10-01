@@ -880,6 +880,14 @@ export interface CardDefinition {
    * circonstance.
    */
   requiresTideStateForBreak?: TideStateName[];
+  /**
+   * Pour un Objet uniquement : « une seule carte NOMMÉE ainsi peut être
+   * Brisée par tour » (Changement de rôle !). Compté par NOM et par joueur
+   * sur le tour de table (`PlayerState.objectsBrokenThisTurn`), depuis la
+   * main comme depuis le plateau : plusieurs exemplaires ne s'enchaînent
+   * pas.
+   */
+  breakOncePerTurnByName?: boolean;
 
   /**
    * Pour une unité ATTAQUANTE (ou l'Équipement qui l'équipe, via

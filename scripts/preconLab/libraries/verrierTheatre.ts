@@ -40,28 +40,9 @@ enregistrer({
   })),
 } as CardDefinition);
 
-const coulisses = base("les-coulisses-inondees");
-enregistrer({
-  ...coulisses,
-  id: "lab-coulisses-verrier",
-  text:
-    "Durée : 3 tours. La première fois à chaque tour qu'une carte Marionnette que vous contrôlez revient dans " +
-    "votre main, vous pouvez choisir une Créature adverse : infligez-lui 1 dégât.",
-  abilities: [
-    {
-      ...coulisses.abilities![0]!,
-      mode: "optional",
-      description: "Première Marionnette revenue en main du tour : 1 dégât à une Créature adverse.",
-      effects: [
-        {
-          type: "damage",
-          target: { kind: "chosenUnit", among: { opponentOnly: true, cardTypes: ["creature"] } },
-          amount: { kind: "flat", value: 1 },
-        },
-      ],
-    },
-  ],
-} as CardDefinition);
+// Les Coulisses Inondées ont été SUPPRIMÉES du catalogue le 01/10/2026 :
+// leurs variantes (`lab-coulisses-verrier`, `lab-coulisses-arrivee`) sont
+// retirées, et les listes archivées V1, V3 et V4 ne se rejouent plus.
 
 const theatre = base("le-theatre-englouti");
 enregistrer({
@@ -92,30 +73,6 @@ enregistrer({
  *        → 1 dégât à une Créature adverse (une fois par tour) ; Le Théâtre
  *        Englouti : chaque Marionnette qui arrive → 1 dégât au Navire adverse.
  */
-enregistrer({
-  ...coulisses,
-  id: "lab-coulisses-arrivee",
-  text:
-    "Durée : 3 tours. La première fois à chaque tour qu'une unité Marionnette arrive sous votre contrôle, " +
-    "vous pouvez choisir une Créature adverse : infligez-lui 1 dégât.",
-  abilities: [
-    {
-      trigger: "onEnterPlay",
-      triggeredBy: { subtype: "marionnette" },
-      oncePerTurnKey: "coulissesArrivee",
-      mode: "optional",
-      description: "Première Marionnette arrivée du tour : 1 dégât à une Créature adverse.",
-      effects: [
-        {
-          type: "damage",
-          target: { kind: "chosenUnit", among: { opponentOnly: true, cardTypes: ["creature"] } },
-          amount: { kind: "flat", value: 1 },
-        },
-      ],
-    },
-  ],
-} as CardDefinition);
-
 enregistrer({
   ...theatre,
   id: "lab-theatre-arrivee",

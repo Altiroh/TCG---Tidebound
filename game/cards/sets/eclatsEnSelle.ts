@@ -1353,37 +1353,6 @@ const SENTINELLES: CardDefinition[] = [
     ],
   },
   {
-    id: "coffret-aux-cinq-pierres",
-    name: "Coffret aux Cinq Pierres",
-    type: "structure",
-    archetype: "sentinelle-chromatique",
-    setCode: ECLATS_EN_SELLE,
-    cost: 3,
-    maxCopies: 2,
-    health: 3,
-    text:
-      "Vos Éclats Chromatiques ont +1 Résistance. Une fois par tour, vous pouvez Saborder un Éclat : regardez les " +
-      "3 premières cartes de votre pioche. Vous pouvez ajouter une Sentinelle de cette couleur parmi elles à votre main.",
-    auraBuffControllerCardTypes: { targetTypes: ["structure"], targetSubtype: ECLAT, healthAmount: 1 },
-    activatableOncePerTurn: {
-      cost: {},
-      effects: [
-        // La couleur de l'Éclat est lue en posant la question, AVANT qu'il ne
-        // soit Sabordé par l'effet suivant.
-        {
-          type: "lookAtDeckTop",
-          target: { kind: "controllerPlayer" },
-          amount: { kind: "flat", value: 3 },
-          uses: 1,
-          refusable: true,
-          filter: { cardTypes: [...UNITES], archetype: "sentinelle-chromatique" },
-          takeableColorFrom: "chosenUnit",
-        },
-        { type: "saborde", target: { kind: "chosenUnit", among: { subtype: ECLAT } } },
-      ],
-    },
-  },
-  {
     id: "synchronisation",
     name: "Synchronisation !",
     type: "objet",

@@ -3290,31 +3290,6 @@ export const CORE_SET: CardDefinition[] = [
     // « 3 Marionnettes de noms différents » du lot initial est abandonnée).
   },
   {
-    id: "les-coulisses-inondees",
-    name: "Les Coulisses Inondées",
-    type: "structure",
-    subtype: MARIONNETTE,
-    setCode: THEATRE_ENGLOUTI,
-    cost: 2,
-    health: 3,
-    durationTurns: 3,
-    maxCopies: 3,
-    text:
-      "Durée : 3 tours. La première fois à chaque tour qu'une carte Marionnette que vous contrôlez revient dans " +
-      "votre main, la prochaine carte Marionnette que vous jouez ce tour coûte 1 de moins, minimum 1.",
-    abilities: [
-      {
-        trigger: "onReturnedToHand",
-        triggeredBy: { subtype: MARIONNETTE, excludeSelf: false },
-        oncePerTurnKey: "coulissesRecall",
-        description: "Première Marionnette revenue en main du tour : elle coûte 1 de moins à rejouer ce tour.",
-        effects: [
-          { type: "discountNextCards", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, filter: { subtype: MARIONNETTE } },
-        ],
-      },
-    ],
-  },
-  {
     id: "changement-de-role",
     name: "Changement de rôle !",
     type: "objet",
@@ -3322,14 +3297,25 @@ export const CORE_SET: CardDefinition[] = [
     setCode: THEATRE_ENGLOUTI,
     cost: 2,
     maxCopies: 3,
+    // REFONTE (décision du propriétaire, 01/10/2026) : une substitution de
+    // scène — une Marionnette sort, une AUTRE entre, gratuitement. L'ancien
+    // texte (renvoi + remise de 1) ne faisait que rendre la monnaie. Une
+    // seule par tour, par NOM : plusieurs exemplaires ne videraient pas la
+    // main gratuitement. Coût inchangé.
     text:
-      "Brisez cet Objet : renvoyez une unité Marionnette que vous contrôlez dans votre main. La prochaine unité " +
-      "Marionnette que vous jouez ce tour coûte 1 de moins, minimum 1.",
-    // Réduction abaissée de 2 à 1 par l'audit : Brisé depuis la main, il ne
-    // doit pas transformer un retour défensif en accélération explosive.
+      "Brisez cet Objet : renvoyez une unité Marionnette que vous contrôlez dans votre main. Vous pouvez jouer une " +
+      "autre Marionnette depuis votre main ce tour sans payer son coût de Raison. Une seule carte nommée " +
+      "Changement de rôle ! peut être Brisée par tour.",
+    breakOncePerTurnByName: true,
     onBreakEffects: [
       { type: "moveZone", toZone: "hand", target: { kind: "chosenUnit", among: { subtype: MARIONNETTE } } },
-      { type: "discountNextCards", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, filter: { subtype: MARIONNETTE } },
+      {
+        type: "discountNextCards",
+        target: { kind: "controllerPlayer" },
+        free: true,
+        // « une AUTRE Marionnette » : celle qui vient de sortir n'en profite pas.
+        filter: { subtype: MARIONNETTE, excludeChosenTarget: true },
+      },
     ],
   },
   {
@@ -4287,20 +4273,6 @@ export const CORE_SET: CardDefinition[] = [
       },
     ],
   },
-  {
-    id: "ce-que-la-maree-rend",
-    name: "Ce que la Marée Rend",
-    type: "anomalie",
-    setCode: RAPIECER_LA_COQUE,
-    cost: 5,
-    health: 3,
-    durationTurns: 2,
-    maxCopies: 2,
-    // Choix IMPOSÉ : le joueur tranche, mais il ne peut pas refuser les deux
-    // (même primitive que Le Fond Vous Regarde).
-    anomalyForceChoiceAtStartOfTurn: { reasonLossAmount: 1, anchorDamageAmount: 1 },
-    text: "Pendant 2 tours, au début du tour de chaque joueur, celui-ci choisit : perdre 1 Raison ou subir 1 dégât d'Ancrage.",
-  },
   // ======================================================================
   // LOT 13 — Un Dead / La Veillée des Disparus
   // ======================================================================
@@ -5228,36 +5200,16 @@ export const CORE_SET: CardDefinition[] = [
     ],
   },
   {
-    id: "panique-sur-le-pont",
-    // Résolution immédiate : part au Cimetière, n'occupe pas de Slot.
-    permanent: false,
-    name: "Panique sur le Pont",
-    type: "anomalie",
-    setCode: NECESSAIRE_DU_MARIN,
-    cost: 4,
-    maxCopies: 2,
-    text:
-      "Si l'adversaire contrôle au moins 4 unités, renvoyez jusqu'à 2 unités de coût 3 ou moins qu'il contrôle " +
-      "dans sa main.",
-    onPlayEffects: [
-      {
-        type: "pickUnits",
-        target: { kind: "allEnemyUnits" },
-        filter: { cardTypes: ["marin", "creature"], maxCost: 3 },
-        uses: 2,
-        conditionOpponentUnitsAtLeast: 4,
-        thenEffects: [{ type: "moveZone", toZone: "hand", target: { kind: "triggerSource" } }],
-      },
-    ],
-  },
-  {
     id: "chacun-sa-place",
     // Résolution immédiate : part au Cimetière, n'occupe pas de Slot.
     permanent: false,
     name: "Chacun sa Place",
     type: "anomalie",
     setCode: NECESSAIRE_DU_MARIN,
-    cost: 5,
+    // 5 → 3 (décision du propriétaire, 01/10/2026) : à 5, elle arrivait trop
+    // tard pour un effet souvent partiel. À 3, un outil contre les plateaux
+    // qui commencent à déborder, sans remplacer les vrais balais. Effet inchangé.
+    cost: 3,
     maxCopies: 1,
     text: "Chaque joueur choisit jusqu'à 3 unités qu'il contrôle. Détruisez toutes les autres.",
     onPlayEffects: [{ type: "keepUnitsDestroyRest", target: { kind: "allPlayers" }, uses: 3 }],
@@ -5380,27 +5332,6 @@ export const CORE_SET: CardDefinition[] = [
     ],
   },
   {
-    id: "journal-de-bord",
-    name: "Journal de Bord",
-    type: "objet",
-    setCode: NECESSAIRE_DU_MARIN,
-    cost: 2,
-    maxCopies: 3,
-    text:
-      "Brisez cet Objet : regardez les 4 premières cartes de votre pioche. Vous pouvez ajouter une Structure " +
-      "parmi elles à votre main. Placez les autres sous votre pioche.",
-    onBreakEffects: [
-      {
-        type: "lookAtDeckTop",
-        target: { kind: "controllerPlayer" },
-        amount: { kind: "flat", value: 4 },
-        uses: 1,
-        filter: { cardTypes: ["structure"] },
-        refusable: true,
-      },
-    ],
-  },
-  {
     id: "fouille-de-la-cale",
     name: "Fouille de la Cale",
     type: "objet",
@@ -5515,30 +5446,6 @@ export const CORE_SET: CardDefinition[] = [
         description: "Brisez Corde de Rappel : l'unité visée rentre dans votre main.",
         effects: [
           { type: "moveZone", toZone: "hand", target: { kind: "attackTarget" } },
-          { type: "saborde", target: { kind: "self" } },
-        ],
-      },
-    ],
-  },
-  {
-    id: "planche-de-fortune",
-    name: "Planche de Fortune",
-    type: "objet",
-    setCode: NECESSAIRE_DU_MARIN,
-    cost: 4,
-    maxCopies: 2,
-    text:
-      "Lorsqu'une Structure que vous contrôlez devrait être détruite pendant le tour adverse, vous pouvez Briser " +
-      "cet Objet : elle reste en jeu avec 1 Résistance.",
-    onBreakEffects: [{ type: "surviveWithHealth", target: { kind: "triggerSource" }, amount: { kind: "flat", value: 1 } }],
-    abilities: [
-      {
-        trigger: "onPermanentWouldBeDestroyed",
-        triggeredBy: { cardTypes: ["structure"] },
-        mode: "optional",
-        description: "Brisez Planche de Fortune : votre Structure reste en jeu avec 1 Résistance.",
-        effects: [
-          { type: "surviveWithHealth", target: { kind: "triggerSource" }, amount: { kind: "flat", value: 1 } },
           { type: "saborde", target: { kind: "self" } },
         ],
       },
@@ -5883,6 +5790,7 @@ export const CORE_SET: CardDefinition[] = [
   // --- Finishers non-unités ----------------------------------------------
   // Trois cartes qui ferment une partie sans passer par un corps : c'est le
   // seul endroit du lot où le coût 6-7 achète un effet, pas une statistique.
+  // (Abandonnez le Navire ! en est sorti le 01/10/2026 : coût 2.)
   {
     id: "abandonnez-le-navire",
     // Résolution immédiate : part au Cimetière, n'occupe pas de Slot.
@@ -5890,7 +5798,10 @@ export const CORE_SET: CardDefinition[] = [
     name: "Abandonnez le Navire !",
     type: "anomalie",
     setCode: NECESSAIRE_DU_MARIN,
-    cost: 6,
+    // 6 → 2 (décision du propriétaire, 01/10/2026) : plus un finisher raté,
+    // une remise à zéro partielle très agressive. À surveiller dans les decks
+    // qui jouent naturellement peu d'unités. Effet inchangé.
+    cost: 2,
     maxCopies: 1,
     text: "Chaque joueur choisit jusqu'à 2 unités qu'il contrôle. Détruisez toutes les autres.",
     onPlayEffects: [{ type: "keepUnitsDestroyRest", target: { kind: "allPlayers" }, uses: 2 }],
