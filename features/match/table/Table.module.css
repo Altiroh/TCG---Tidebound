@@ -2157,6 +2157,11 @@
 /* Enveloppe du Navire adverse : garde la hauteur de la cellule. */
 .shipTarget {
   position: relative;
+  /* Largeur PROPRE (celle de la cellule, `--ship-w`) : sans elle, le
+     `max-width: 100%` du Navire se mesurait à une enveloppe qui tirait sa
+     largeur… du Navire. iOS résout ce cercle à zéro — Navire sans largeur,
+     cadre et médaillons invisibles, chiffres superposés (retour du 01/10). */
+  width: 100%;
   height: var(--row-h);
   display: flex;
   align-items: center;
@@ -3092,11 +3097,13 @@
     font-size: clamp(11px, 17cqw, 16px) !important;
   }
 
-  /* Badges de statut : DANS la carte, sur l'illustration. Posés au-dessus
-     d'elle, ceux de la rangée du joueur tombaient sur la bande de Marée,
-     devenue basse. Le texte de chaque statut se lit dans la carte agrandie. */
+  /* Badges de statut : DANS la carte, en haut et au centre. Posés
+     au-dessus d'elle, ceux de la rangée du joueur tombaient sur la bande de
+     Marée, devenue basse ; au milieu de la carte, ils masquaient
+     l'illustration (retour du 01/10). Le texte de chaque statut se lit dans
+     la carte agrandie. */
   .zoneSlotBoard .tableCard [data-status-row] {
-    top: 30% !important;
+    top: 3% !important;
   }
 
   /* ── Bande de Marée compacte ── */
