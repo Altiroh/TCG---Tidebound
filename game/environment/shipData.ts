@@ -49,10 +49,18 @@ export const SHIP_SET: ShipDefinition[] = [
     // Slots (+0 point à 5 Slots, +13 à 30 Ancrage). Chacun des trois decks
     // qui l'avaient quitté progressait d'abord par là. Il rejoint les
     // coques moyennes (L'Errant, Le Goliath, La Religieuse, La Verrière) et
-    // garde ce qui le distingue : 4 Slots, 12 Raison, Tirant léger.
+    // garde ce qui le distingue : 12 Raison, Tirant léger.
+    //
+    // 4 → 5 SLOTS (décision du 01/10/2026). Les Sentinelles Chromatiques,
+    // deck d'unités bon marché et d'invocations, y étaient bridées : 18,7 %
+    // de parties à au moins deux tours inactifs sur T1-4, 41 % de victoires
+    // contre la méta. À 5 Slots : 6 % et 54 %. Après la Tempête n'y gagne
+    // rien (49 → 46 %, dans le bruit) mais n'y perd que si l'Ancrage baisse
+    // aussi (5 Slots / 28 Ancrage : 40 %) — d'où 30 Ancrage conservés.
+    // Archives : docs/equilibrage/courlis-5-slots.txt.
     startingAnchor: 30,
     reasonMax: 12,
-    slotCount: 4,
+    slotCount: 5,
     illustration: "le-courlis.webp",
     text: "Profil : léger / maniable / contrôle environnemental.",
     // TIRANT LÉGER — texte remis à jour le 22/09/2026. Il nommait « un
@@ -67,7 +75,7 @@ export const SHIP_SET: ShipDefinition[] = [
     // L'Errant au labo (15 listes × chaque coque, bot moyen ; −7 → +1 au bot
     // difficile). Sans elle, le Courlis revient au niveau de L'Errant et
     // garde ce qui le distingue : 26 Ancrage (30 depuis le 29/09/2026),
-    // 4 Slots, 12 Raison.
+    // 4 Slots (5 depuis le 01/10/2026), 12 Raison.
     // VIRAGE COURT — texte repris de la fiche Notion (22/09/2026).
     //
     // Le code portait encore l'ancien texte, celui des Eaux (« lorsqu'une

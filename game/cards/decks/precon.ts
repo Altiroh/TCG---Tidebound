@@ -740,6 +740,10 @@ export const DECK_CHASSE_AU_GROS: DeckList = {
  * DEUXIÈME PASSE (29/09/2026, contre le rayon révisé) : retombé à 42 %.
  * Le Capitaine du Dernier Retour (Δ −12) cède la place à deux Matelots du
  * Sans-Nom. 42 % → 48 % au labo.
+ *
+ * LE COURLIS À 5 SLOTS (01/10/2026) : 49 % → 46 %, dans le bruit — la
+ * mesure de 2026-09 se confirme, le Slot de plus ne lui sert pas. Son
+ * frein est sa courbe : 38 % de mains sans carte à 2 Raison ou moins.
  */
 export const DECK_APRES_LA_TEMPETE: DeckList = {
   id: "apres-la-tempete",
@@ -885,6 +889,11 @@ export const DECK_CAVALERIE: DeckList = {
  * (bot moyen, 60 parties par paire contre le rayon) : liste nettoyée 87 %
  * sous L'Errant, 75 % sous Le Goliath, 50 % sous Le Courlis. Aucun texte
  * changé. Si Le Courlis passe un jour à 30 Ancrage, remesurer.
+ *
+ * LE COURLIS À 5 SLOTS (01/10/2026). Remesuré contre la méta du jour :
+ * 41 % sous le Courlis à 4 Slots / 30 Ancrage — le deck restait inactif
+ * deux tours sur T1-4 dans 19 % des parties, faute de place. À 5 Slots :
+ * 54 %, 6 % de tours perdus. Liste inchangée.
  */
 export const DECK_SENTINELLES_CHROMATIQUES: DeckList = {
   id: "sentinelles-chromatiques",
