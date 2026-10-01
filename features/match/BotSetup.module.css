@@ -738,7 +738,7 @@
   gap: 12px;
   width: min(52vw, 100%);
   min-width: min(560px, 100vw);
-  height: var(--tb-app-h);
+  height: 100dvh;
   padding: calc(18px + var(--tb-safe-top)) 22px calc(18px + var(--tb-safe-bottom)) calc(22px + var(--tb-safe-left));
   overflow: hidden;
   background:

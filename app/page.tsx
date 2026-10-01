@@ -50,7 +50,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   if (onboarding.needsTutorialChoice) redirect("/tutoriel");
 
   return (
-    <main className="fixed inset-x-0 top-0 h-[var(--tb-app-h)] overflow-hidden bg-[#050d16]">
+    <main className="relative h-[100dvh] overflow-hidden bg-[#050d16]">
       {/* Ni onglets ni voile : la carte porte sa propre navigation, il ne
           reste que le compte et les options, à droite. */}
       <HomeBar isSignedIn={isSignedIn} nav="menu" />

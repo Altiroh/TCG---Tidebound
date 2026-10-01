@@ -1,7 +1,6 @@
 import { MenuAmbiance } from "@/components/menu/MenuAmbiance";
 import type { Metadata, Viewport } from "next";
 import { cardBodyFont, cardTitleFont, uiFont } from "@/lib/fonts";
-import { AppHeight } from "@/components/AppHeight";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import { InstallPromptCapture } from "@/components/InstallPrompt";
 import { OrientationGate } from "@/features/shell/OrientationGate";
@@ -99,8 +98,6 @@ export default function RootLayout({
             {/* Musique du menu sur tous les écrans ; une partie la fait taire. */}
             <MenuAmbiance />
             <ServiceWorkerRegister />
-            {/* App installée sur iPhone : la vraie hauteur de l'écran (`--tb-app-h`). */}
-            <AppHeight />
             {/* Invite d'installation (Android) captée dès le chargement ;
                 l'accueil la propose (`InstallPrompt`). */}
             <InstallPromptCapture />

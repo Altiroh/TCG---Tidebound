@@ -50,8 +50,8 @@
   justify-content: center;
   gap: clamp(8px, 2.2dvh, 32px);
   width: 100%;
-  height: var(--tb-app-h);
-  max-height: var(--tb-app-h);
+  height: 100dvh;
+  max-height: 100dvh;
   /* Zone sûre comprise : les boutons ne passent pas sous la barre de
      gestes, ni le cadre sous les coins arrondis en paysage. */
   padding:

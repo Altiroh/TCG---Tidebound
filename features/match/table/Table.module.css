@@ -54,13 +54,7 @@
  * ────────────────────────────────────────────────────────────── */
 .viewport {
   position: fixed;
-  /* Pas de `bottom: 0` : la hauteur est celle de l'écran (`--tb-app-h`,
-     `app/globals.css`), que l'app installée sur iPhone peut annoncer trop
-     basse. */
-  top: 0;
-  right: 0;
-  left: 0;
-  height: var(--tb-app-h);
+  inset: 0;
   overflow: hidden;
   container-type: size;
   container-name: gameviewport;
