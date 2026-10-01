@@ -68,7 +68,7 @@ export async function middleware(request: NextRequest) {
  * Pages ouvertes sans compte : l'authentification elle-même, et les
  * laboratoires de réglage (`/game/*-preview`, sans lecture de base).
  */
-const PUBLIC_PATHS = [/^\/connexion(\/|$)/, /^\/inscription(\/|$)/, /^\/reinitialiser-mot-de-passe(\/|$)/, /^\/auth\//, /^\/game\/[\w-]+-preview(\/|$)/];
+const PUBLIC_PATHS = [/^\/connexion(\/|$)/, /^\/inscription(\/|$)/, /^\/reinitialiser-mot-de-passe(\/|$)/, /^\/auth\//, /^\/game\/[\w-]+-preview(\/|$)/, /^\/diagnostic-ecran$/];
 
 export function mustSignIn(request: NextRequest): boolean {
   // Une navigation (GET/HEAD) : pas une Server Action, ni un préchargement de données.
