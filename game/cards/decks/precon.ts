@@ -744,6 +744,14 @@ export const DECK_CHASSE_AU_GROS: DeckList = {
  * LE COURLIS À 5 SLOTS (01/10/2026) : 49 % → 46 %, dans le bruit — la
  * mesure de 2026-09 se confirme, le Slot de plus ne lui sert pas. Son
  * frein est sa courbe : 38 % de mains sans carte à 2 Raison ou moins.
+ *
+ * STANDARD VERRIER (01/10/2026, validé par le propriétaire) : la courbe.
+ * Sortent Chirurgien du Bord ×2 (Δ −11) et Un Peu de Répit ×3 (joué 4 fois
+ * sur 10) ; entrent Mouette du Brise-Lames ×3 — Garde, et +1 Puissance
+ * conservée chaque fois qu'elle survit : les balais du deck la forgent — et
+ * Matelot Insomniaque ×2, qui vit bien en Déraison. Aucun texte changé.
+ * Mesuré sur cette liste (bot moyen, 60 parties par paire contre le rayon) :
+ * 52,5 % → 63 %, mains sans carte à 2 ou moins 66 % → 29 %.
  */
 export const DECK_APRES_LA_TEMPETE: DeckList = {
   id: "apres-la-tempete",
@@ -766,10 +774,11 @@ export const DECK_APRES_LA_TEMPETE: DeckList = {
     ...repeat("carape-hus", 3),
     ...repeat("matelot-du-sans-nom", 3),
     ...repeat("chose-des-hauts-fonds", 2),
-    ...repeat("chirurgien-du-bord", 2),
     ...repeat("trousse-du-bord", 2),
+    // Les petits corps que les balais forgent (Standard Verrier, 01/10/2026).
+    ...repeat("mouette-du-brise-lames", 3),
+    ...repeat("matelot-insomniaque", 2),
     // Voir venir : un deck de contrôle qui pioche mal ne contrôle rien.
-    ...repeat("un-peu-de-repit", 3),
     ...repeat("dernieres-reserves", 1),
     ...repeat("faire-linventaire", 3),
     // Et de quoi conclure, une fois le plateau vide.
