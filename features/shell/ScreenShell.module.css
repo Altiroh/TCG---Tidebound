@@ -42,8 +42,16 @@
   --cb-font-display: var(--tb-font-display);
 
 
+  /* FIXE, en haut à gauche, à la hauteur de l'écran (`--tb-app-h`) : un
+     élément fixe ne compte jamais dans la hauteur du document, qui ne
+     devient donc pas défilable quand l'app installée sur iPhone annonce une
+     fenêtre plus basse que l'écran. Ses calques en `inset: 0` (voile,
+     vignette) le couvrent entier. */
+  position: fixed;
+  top: 0;
+  left: 0;
   width: 100vw;
-  height: 100dvh;
+  height: var(--tb-app-h);
   display: grid;
   /* Bandeau volontairement bas : un plan de service, pas une navbar qui
      encadre le contenu (GameScreen ne garde que deux rangées).

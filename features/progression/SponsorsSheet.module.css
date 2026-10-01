@@ -11,7 +11,7 @@
   flex-direction: column;
   width: min(50vw, 100%);
   min-width: min(560px, 100vw);
-  height: 100dvh;
+  height: var(--tb-app-h);
   padding-top: var(--tb-safe-top, 0px);
   padding-right: var(--tb-safe-right, 0px);
   overflow: hidden;

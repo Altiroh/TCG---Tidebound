@@ -26,6 +26,17 @@ body {
 }
 
 /*
+ * HAUTEUR D'UN ÉCRAN PLEIN CADRE : `100dvh`, sauf dans l'app installée sur
+ * iPhone, où iOS peut annoncer une fenêtre plus basse que l'écran — une
+ * bande de fond restait alors en bas. `components/AppHeight.tsx` y pose la
+ * vraie hauteur. Les écrans plein cadre lisent cette variable, jamais
+ * `100dvh` directement.
+ */
+:root {
+  --tb-app-h: 100dvh;
+}
+
+/*
  * CURSEURS DU JEU (29/09/2026). Une flèche de laiton au repos, la même
  * emplie de cyan sur ce qui se clique — la couleur de l'interaction
  * (`features/shell/DESIGN.md`). Deux variables, et deux seulement : les
