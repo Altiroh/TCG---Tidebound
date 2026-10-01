@@ -3286,6 +3286,14 @@
     box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.9), 0 0 22px 4px rgba(var(--target-rgb), 1);
   }
 
+  /* Un Navire visé n'a pas de cadre rectangulaire : taillé pour une carte,
+     il dessinait autour de l'arche une zone de trop (retour du 01/10). La
+     lueur qui épouse le cadre, et le grossissement sous la flèche, disent
+     assez qu'on le vise. */
+  .shipTarget.targetable::after {
+    content: none;
+  }
+
   .cardZoom {
     background: rgba(2, 6, 23, 0.86);
     backdrop-filter: none;
