@@ -1794,22 +1794,6 @@
   gap: calc(var(--hud-h) * 0.25);
 }
 
-.hudCornerBottom {
-  grid-column: 4;
-  position: relative;
-  z-index: 20;
-  justify-self: end;
-  min-width: 0;
-}
-
-.hudCornerTop {
-  grid-row: 1;
-  align-self: start;
-  display: flex;
-  align-items: center;
-  gap: calc(var(--hud-h) * 0.25);
-}
-
 /*
  * Le public en direct (`LiveAudience`) : une pastille sombre, un œil et le
  * nombre en blanc (comme au panneau des Mécènes). Pendant qu'il défile, il
@@ -2734,10 +2718,18 @@
   cursor: var(--tb-cursor);
 }
 
-/* Couche de glisser (`DragLayer`) : au-dessus de tout, jamais cliquable. */
-.dragGhost {
+/* Couche de glisser (`DragLayer`) : au-dessus de tout, jamais cliquable.
+   L'ancre, posée en haut à gauche, suit le pointeur par `transform`. */
+.dragGhostAnchor {
   position: fixed;
+  top: 0;
+  left: 0;
   z-index: 45;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.dragGhost {
   pointer-events: none;
   transform: translate(-50%, -50%) scale(1.08) rotate(-2deg);
   filter: drop-shadow(0 18px 22px rgba(0, 0, 0, 0.65));
@@ -2808,6 +2800,16 @@
 
 .aimDot {
   fill: rgba(var(--aim-rgb), 1);
+}
+
+/* Au doigt, la flèche est redessinée à chaque image : ses halos flous
+   (`drop-shadow`) coûtaient un filtre complet par image. Le trait d'ombre
+   continu suffit à la détacher du plateau. */
+@media (pointer: coarse) {
+  .aimLine,
+  .aimHead {
+    filter: none;
+  }
 }
 
 /* ──────────────────────────────────────────────────────────────
@@ -3056,6 +3058,26 @@
     width: 98% !important;
     height: 23% !important;
     font-size: clamp(12px, 18cqw, 17px) !important;
+  }
+
+  /* Une carte SANS stats n'aurait plus que son coût : son nom reste, en
+     bas de la carte, sur deux lignes à 11 px. */
+  .zoneSlotBoard .tableCard [data-tile="name"][data-no-stats] {
+    display: flex !important;
+    top: 72% !important;
+    left: 2% !important;
+    width: 96% !important;
+    height: 26% !important;
+    align-items: center !important;
+  }
+
+  .zoneSlotBoard .tableCard [data-tile="name"][data-no-stats] > span:last-child {
+    display: -webkit-box;
+    font-size: 11px !important;
+    line-height: 1.05;
+    white-space: normal;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
   }
 
   .zoneSlotBoard .tableCard [data-tile="token-stats"] {

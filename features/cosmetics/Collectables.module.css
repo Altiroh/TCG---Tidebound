@@ -514,11 +514,11 @@
 }
 
 .pageArrow[data-side="prev"] {
-  left: -3cqw;
+  left: calc(-3cqw * var(--z, 1));
 }
 
 .pageArrow[data-side="next"] {
-  right: -3cqw;
+  right: calc(-3cqw * var(--z, 1));
   transform: scaleX(-1);
 }
 

@@ -100,14 +100,18 @@ export function DragLayer({ gesture, onTarget, tone, renderGhost }: DragLayerPro
 
   if (gesture.kind === "place") {
     return (
-      <div
-        aria-hidden
-        // Au doigt, la carte flotte AU-DESSUS du pouce, agrandie : centrée
-        // dessous, le pouce cachait à la fois la carte et l'emplacement visé.
-        className={gesture.touch ? `${styles.dragGhost} ${styles.dragGhostTouch}` : styles.dragGhost}
-        style={{ left: pointer.x, top: pointer.y, width: gesture.origin.width }}
-      >
-        {renderGhost(gesture.sourceId)}
+      // Le pointeur déplace l'ANCRE par `transform` (composité, sans mise en
+      // page) ; la carte et son ombre, dessous, ne changent pas d'une image
+      // à l'autre — le navigateur n'a plus à repeindre son flou.
+      <div aria-hidden className={styles.dragGhostAnchor} style={{ transform: `translate3d(${pointer.x}px, ${pointer.y}px, 0)` }}>
+        <div
+          // Au doigt, la carte flotte AU-DESSUS du pouce, agrandie : centrée
+          // dessous, le pouce cachait à la fois la carte et l'emplacement visé.
+          className={gesture.touch ? `${styles.dragGhost} ${styles.dragGhostTouch}` : styles.dragGhost}
+          style={{ width: gesture.origin.width }}
+        >
+          {renderGhost(gesture.sourceId)}
+        </div>
       </div>
     );
   }

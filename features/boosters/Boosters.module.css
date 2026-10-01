@@ -253,7 +253,7 @@
 @keyframes roll-in {
   from {
     opacity: 0;
-    translate: -1.2cqw 0;
+    translate: calc(-1.2cqw * var(--z, 1)) 0;
   }
 }
 
@@ -419,7 +419,7 @@
 
 .stage[data-plan="over"] .planPack {
   rotate: -1deg;
-  translate: 0 -1.4cqw;
+  translate: 0 calc(-1.4cqw * var(--z, 1));
   scale: 1.035;
   filter: drop-shadow(0 calc(1.6cqw * var(--z, 1)) calc(1.6cqw * var(--z, 1)) rgba(0, 0, 0, 0.35));
 }
@@ -427,7 +427,7 @@
 @media (hover: hover) {
   .planPack:hover {
     rotate: -1deg;
-    translate: 0 -1.4cqw;
+    translate: 0 calc(-1.4cqw * var(--z, 1));
     scale: 1.035;
     filter: drop-shadow(0 calc(1.6cqw * var(--z, 1)) calc(1.6cqw * var(--z, 1)) rgba(0, 0, 0, 0.35));
   }

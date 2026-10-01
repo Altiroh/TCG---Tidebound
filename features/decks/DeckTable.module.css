@@ -817,7 +817,7 @@
 }
 
 .ficheShip {
-  margin: -0.35cqw 0 0;
+  margin: calc(-0.35cqw * var(--z, 1)) 0 0;
   color: #1c6d86;
   font-size: calc(calc(0.7cqw * var(--z, 1)) * var(--tb-text-scale));
   font-weight: 700;

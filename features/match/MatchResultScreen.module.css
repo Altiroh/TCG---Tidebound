@@ -113,7 +113,7 @@
   display: flex;
   align-items: center;
   gap: calc(0.5cqw * var(--z, 1));
-  margin: 0 0 -1.2cqw;
+  margin: 0 0 calc(-1.2cqw * var(--z, 1));
   line-height: 1;
 }
 
@@ -419,7 +419,7 @@
 .rewards::before {
   content: "";
   position: absolute;
-  inset: -1.4cqw -2.2cqw;
+  inset: calc(-1.4cqw * var(--z, 1)) calc(-2.2cqw * var(--z, 1));
   z-index: -1;
   background: radial-gradient(ellipse 50% 50% at 50% 50%, rgba(12, 9, 6, 0.72), rgba(12, 9, 6, 0.45) 55%, transparent 100%);
   filter: blur(3px);
@@ -785,7 +785,7 @@
 }
 
 @keyframes photo-in {
-  from { opacity: 0; transform: translate(calc(2cqw * var(--z, 1)), -3cqw) rotate(4deg); }
+  from { opacity: 0; transform: translate(calc(2cqw * var(--z, 1)), calc(-3cqw * var(--z, 1))) rotate(4deg); }
   to { opacity: 1; transform: none; }
 }
 

@@ -698,6 +698,9 @@ export function CardTile({
 
               <div
                 data-tile="name"
+                // Sans stats (Objet, Structure sans Résistance) : le plateau
+                // téléphone garde ce nom, seul repère de la carte avec son coût.
+                data-no-stats={isUnit || hasResistance ? undefined : ""}
                 className="flex items-end justify-center overflow-hidden px-[2%] pb-[1%] text-center font-semibold uppercase leading-tight text-white [font-family:var(--font-card-title)]"
                 style={{
                   ...zoneStyle(isToken ? TOKEN_TILE_NAME_ZONE : isUnit || hasResistance ? BOARD_NAME_ZONE : BOARD_NAME_ZONE_NO_STATS),

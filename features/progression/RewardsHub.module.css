@@ -1034,7 +1034,7 @@
 }
 
 .shipName {
-  margin: -1.2cqw 0 0;
+  margin: calc(-1.2cqw * var(--z, 1)) 0 0;
   position: relative;
   text-align: center;
   font-family: var(--tb-font-display);
@@ -1046,7 +1046,7 @@
 }
 
 .shipPlayed {
-  margin-top: -0.3cqw;
+  margin-top: calc(-0.3cqw * var(--z, 1));
   text-align: center;
   font-size: max(var(--tb-fs-floor, 0px), calc(calc(0.56cqw * var(--z, 1)) * var(--tb-text-scale)));
   color: #aebdc7;
@@ -1105,7 +1105,7 @@
 
 .sideArrow {
   position: absolute;
-  right: -0.9cqw;
+  right: calc(-0.9cqw * var(--z, 1));
   top: 50%;
   width: calc(1.8cqw * var(--z, 1));
   height: calc(1.8cqw * var(--z, 1));
@@ -1220,8 +1220,8 @@
   .giftButton[data-ready] img { animation: none; }
 }
 .giftButton .alert {
-  top: -0.5cqw;
-  right: -0.5cqw;
+  top: calc(-0.5cqw * var(--z, 1));
+  right: calc(-0.5cqw * var(--z, 1));
 }
 
 .locked {
