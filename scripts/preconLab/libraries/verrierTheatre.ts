@@ -131,3 +131,36 @@ enregistrer({
     },
   ],
 } as CardDefinition);
+
+/*
+ * V4 — diagnostic du pilote (01/10/2026) : le bot VOIT le rejeu d'un rappel
+ * (`scoreAction`, depuis le 29/09) ; mais en Phase principale 2 il est
+ * presque toujours en Déraison (−1 à −4). Rappeler coûte 2 à 3 Raison, puis
+ * rejouer coûte encore : le moteur du Théâtre est trop cher pour tourner.
+ * Le gage de Verre — un déclencheur GRATUIT — appliqué au rappel : les
+ * outils de rappel remboursent le rejeu.
+ *   V4 — V1 + Le Masque Fendu : « …renvoyez…, puis récupérez 2 Raison »
+ *        (au lieu de piocher/défausser) ; La Clochette du Rappel :
+ *        « …renvoyez… Récupérez 2 Raison » (au lieu de la remise).
+ */
+const masque = base("le-masque-fendu");
+enregistrer({
+  ...masque,
+  id: "lab-masque-verrier",
+  text: "Brisez cet Objet : renvoyez une unité Marionnette que vous contrôlez dans votre main, puis récupérez 2 Raison.",
+  onBreakEffects: [
+    masque.onBreakEffects![0]!,
+    { type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } },
+  ],
+} as CardDefinition);
+
+const clochette = base("la-clochette-du-rappel");
+enregistrer({
+  ...clochette,
+  id: "lab-clochette-verrier",
+  text: "Brisez cet Objet : renvoyez une carte Marionnette que vous contrôlez dans votre main. Récupérez 2 Raison.",
+  onBreakEffects: [
+    clochette.onBreakEffects![0]!,
+    { type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } },
+  ],
+} as CardDefinition);

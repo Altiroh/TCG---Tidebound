@@ -63,3 +63,24 @@ lab-coulisses-arrivee x3
 changement-de-role x2
 lab-theatre-arrivee x1
 matelot-du-sans-nom x3
+liste: Le Théâtre Englouti [V4 le rappel rembourse]
+deck: le-theatre-englouti-deck
+navire: lerrant
+pulcinella-gonfle x3
+lab-arlecchino-verrier x3
+arlequin-raccommodeur x3
+pantalone-sans-sou x3
+la-prima-noyee x3
+colombina-aux-cent-visages x2
+il-dottore-des-noyes x2
+il-capitano-naufrage x2
+le-regisseur-sans-visage x1
+arlecchino-celui-derriere-le-masque-abyssal x1
+la-prima-noyee-abyssal x1
+le-regisseur-des-profondeurs-abyssal x1
+lab-masque-verrier x3
+lab-clochette-verrier x3
+lab-coulisses-verrier x3
+changement-de-role x2
+le-theatre-englouti x1
+matelot-du-sans-nom x3
